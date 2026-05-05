@@ -18479,21 +18479,31 @@ var Curriculum = class _Curriculum {
     }
   }
   // iter20-H — write a Tier 1 episode for every completed teach phase.
-  // Called from per-cell-runner `_phaseDone` helpers in kindergarten.js
-  // + pre-K.js (the helpers that emit the "✓ Phase DONE" log lines).
-  // Auto-wrap path was unreliable for K_MIXIN methods — hooking here
-  // in the helpers known to fire on every phase completion.
+  // iter20-L per operator 2026-05-05 "she should be building concepts on
+  // her own to help her logically solve problems": transform the
+  // technical phase name `_teachVowelSoundVariants` into a natural-
+  // language concept "vowel sound variants" so GloVe can match the
+  // tokens. With real GloVe embeddings, cosine of similar phase
+  // descriptions ("vowel sound variants" vs "rhyme families") produces
+  // meaningful similarity → ConsolidationEngine clusters phonetics
+  // episodes into a phonetics schema → Tier 2 represents ACTUAL
+  // CONCEPTS instead of method-name noise.
+  _methodToConcept(methodName) {
+    if (!methodName || typeof methodName !== "string") return "";
+    let s = methodName.replace(/^_teach/i, "");
+    s = s.replace(/([a-z])([A-Z])/g, "$1 $2").toLowerCase().trim();
+    return s;
+  }
   _recordPhaseEpisode(cellKey, phaseName) {
     const cl = this.cluster;
     const brain2 = this.brain || cl && cl._brain;
     if (!brain2 || typeof brain2.storeEpisode !== "function") return;
     try {
-      brain2.storeEpisode(
-        "curriculum-phase",
-        "phase-done",
-        `learned ${cellKey}:${phaseName}`,
-        `teach phase ${phaseName} completed in cell ${cellKey}`
-      );
+      const conceptText = this._methodToConcept(phaseName);
+      const subjectGrade = (cellKey || "").replace("/", " ");
+      const inputText = conceptText ? `learned ${conceptText} in ${subjectGrade}` : `learned ${cellKey}:${phaseName}`;
+      const responseText = `taught the ${conceptText || phaseName} concept`;
+      brain2.storeEpisode("curriculum-phase", "phase-done", inputText, responseText);
     } catch {
     }
   }
