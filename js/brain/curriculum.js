@@ -577,27 +577,13 @@ export class Curriculum {
                 s.lastCellAt = Date.now();
               }
             }
-            // iter20-D — populate Tier 1 episodic memory on every OUTERMOST
-            // phase completion. Operator caught (2026-05-05 "fix it all
-            // thouroughly"): curriculum learning events weren't creating
-            // episodes — only generic heartbeat fired storeEpisode. Now
-            // every teach phase that actually completes writes an episode
-            // recording WHAT she learned. Frequency-merge collapses
-            // similar phases (cosine 0.7 threshold post-iter20-C) into
-            // anchor episodes that accumulate freq_count. Promotion
-            // threshold (post-iter20-B) at 0.2 salience / 2 freq lets
-            // these graduate to Tier 2 schemas via dream-cycle replay.
-            try {
-              const brain = this.brain || (cl && cl._brain);
-              if (brain && typeof brain.storeEpisode === 'function') {
-                // Extract cellKey from phaseKey (`cellKey:methodName`).
-                const splitIdx = phaseKey.lastIndexOf(':');
-                const cellPart = splitIdx > 0 ? phaseKey.slice(0, splitIdx) : 'unknown';
-                brain.storeEpisode('curriculum-phase', 'phase-done',
-                  `learned ${phaseKey}`,
-                  `teach phase completed in cell ${cellPart}`);
-              }
-            } catch { /* memory updates non-fatal */ }
+            // iter20-D moved to per-cell-runner _phaseDone helpers
+            // (kindergarten.js + pre-K.js). The auto-wrap path for
+            // outermost phase detection wasn't reliably reaching here
+            // for K_MIXIN methods despite TRACKED including them.
+            // Per-runner _phaseDone helpers DO fire reliably (visible
+            // as "✓ Phase DONE" log lines) so storeEpisode is hooked
+            // directly there in `_recordPhaseEpisode()`.
           }
           // Every wrapped teach call (outermost OR nested) counts as a
           // teach event for per-subject totals so the dashboard's long-
@@ -630,6 +616,22 @@ export class Curriculum {
         }
       };
     }
+  }
+
+  // iter20-H — write a Tier 1 episode for every completed teach phase.
+  // Called from per-cell-runner `_phaseDone` helpers in kindergarten.js
+  // + pre-K.js (the helpers that emit the "✓ Phase DONE" log lines).
+  // Auto-wrap path was unreliable for K_MIXIN methods — hooking here
+  // in the helpers known to fire on every phase completion.
+  _recordPhaseEpisode(cellKey, phaseName) {
+    const cl = this.cluster;
+    const brain = this.brain || (cl && cl._brain);
+    if (!brain || typeof brain.storeEpisode !== 'function') return;
+    try {
+      brain.storeEpisode('curriculum-phase', 'phase-done',
+        `learned ${cellKey}:${phaseName}`,
+        `teach phase ${phaseName} completed in cell ${cellKey}`);
+    } catch { /* memory writes are non-fatal */ }
   }
 
   /**
@@ -679,6 +681,12 @@ export class Curriculum {
         s.lastCellAt = Date.now();
       }
       this._currentCellPhasesCompleted = (this._currentCellPhasesCompleted | 0) + 1;
+      // iter20-H — Tier 1 episode for Math/Sci/Soc/Art/Life-K phases
+      // (these use _phasedTeach instead of ELA-K's hand-rolled
+      // _phaseDone helper).
+      if (typeof this._recordPhaseEpisode === 'function') {
+        this._recordPhaseEpisode(cellKey, methodName);
+      }
     }
     return result;
   }

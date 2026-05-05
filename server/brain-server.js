@@ -4090,18 +4090,22 @@ class ServerBrain {
       if (this._isDreaming) {
         this.tonicDrives.amygdala *= 0.9999;
         if (this.tonicDrives.amygdala < 12) this.tonicDrives.amygdala = 12;
+      }
 
-        // iter13 T13.10 — Dream-cycle consolidation pass invocation.
-        // Fires when _isDreaming + timeSinceInput > 60s + 5-min
-        // interval since last pass + curriculum not teaching.
-        if (this.consolidationEngine
-            && timeSinceInput > 60000
-            && !this._curriculumInProgress
-            && this.consolidationEngine.shouldRunPass()) {
-          this.consolidationEngine.runConsolidationPass().catch(err => {
-            console.warn('[Consolidation] pass failed:', err?.message || err);
-          });
-        }
+      // iter20-J — ConsolidationEngine fires during curriculum too.
+      // Operator 2026-05-05 "fix all the memory teirs so they fucking
+      // work". Old gate (`!_curriculumInProgress`) blocked Tier 2
+      // schema formation for hours during long curriculum runs. Now
+      // consolidation runs during curriculum at the same 5-min
+      // interval as during dream cycles — schemas form continuously
+      // as episodes accumulate. iter20-A's gate hardening (lastPassAt
+      // set at start of pass) prevents rapid re-fire. Pass duration
+      // ~25ms doesn't materially compete with Hebbian.
+      if (this.consolidationEngine
+          && this.consolidationEngine.shouldRunPass()) {
+        this.consolidationEngine.runConsolidationPass().catch(err => {
+          console.warn('[Consolidation] pass failed:', err?.message || err);
+        });
       }
 
       // iter18/19 memory heartbeat moved to the TOP of the tick body
@@ -4993,6 +4997,37 @@ class ServerBrain {
     const now = Date.now();
     if (!this._lastTier3HbAt) this._lastTier3HbAt = 0;
     if (!this._lastTier1HbAt) this._lastTier1HbAt = 0;
+    if (!this._lastTier0HbAt) this._lastTier0HbAt = 0;
+
+    // iter20-I — Tier 0 working memory population. Per operator
+    // 2026-05-05 "fix all the memory teirs so they fucking work".
+    // Working memory currently shows 0 items because nothing populates
+    // this.memory.workingMemoryItems during curriculum or chat. Now
+    // every 2s, snapshot current cortex state into working memory:
+    // current phase / cell / arousal / valence as a "what's currently
+    // active" item. Cap at unbounded (operator's "no eroonous limits").
+    if (now - this._lastTier0HbAt >= 2000) {
+      this._lastTier0HbAt = now;
+      if (!this.memory) this.memory = {};
+      if (!Array.isArray(this.memory.workingMemoryItems)) this.memory.workingMemoryItems = [];
+      const phase = this.cortexCluster?._activePhase?.name || null;
+      const cellKey = this.cortexCluster?._currentCellKey || null;
+      const item = {
+        ts: now,
+        phase, cellKey,
+        arousal: +(this.arousal || 0).toFixed(3),
+        valence: +(this.valence || 0).toFixed(3),
+        psi: +(this.psi || 0).toFixed(3),
+      };
+      this.memory.workingMemoryItems.push(item);
+      // Keep last 7 items (Miller 1956 working memory ceiling — kept
+      // here even though Tier 2/3 are unbounded because working memory
+      // is by definition the active-thinking window, not long-term
+      // storage). Operator can raise this if needed.
+      while (this.memory.workingMemoryItems.length > 7) {
+        this.memory.workingMemoryItems.shift();
+      }
+    }
 
     // Tier 3 baseline inject — every ≥1000ms wall-clock
     if (now - this._lastTier3HbAt >= 1000) {

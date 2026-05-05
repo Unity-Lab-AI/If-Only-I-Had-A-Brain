@@ -958,7 +958,7 @@ var init_benchmark = __esm({
 
 // ../js/version.js
 var VERSION = "0.1.0";
-var BUILD = "49802930-e62d";
+var BUILD = "0a6eebba-6cd5";
 var FULL = `${VERSION}+${BUILD}`;
 
 // ../js/brain/neurons.js
@@ -14246,6 +14246,9 @@ var K_MIXIN = {
           if (typeof this._saveCheckpoint === "function") {
             this._saveCheckpoint(`ela/kindergarten:phase:${name}`);
           }
+          if (typeof this._recordPhaseEpisode === "function") {
+            this._recordPhaseEpisode("ela/kindergarten", name);
+          }
         } catch (err) {
           console.warn(`[Curriculum] mid-phase save for ${name} failed:`, err?.message || err);
         }
@@ -18449,20 +18452,6 @@ var Curriculum = class _Curriculum {
                 s.lastCellAt = Date.now();
               }
             }
-            try {
-              const brain2 = this.brain || cl && cl._brain;
-              if (brain2 && typeof brain2.storeEpisode === "function") {
-                const splitIdx = phaseKey.lastIndexOf(":");
-                const cellPart = splitIdx > 0 ? phaseKey.slice(0, splitIdx) : "unknown";
-                brain2.storeEpisode(
-                  "curriculum-phase",
-                  "phase-done",
-                  `learned ${phaseKey}`,
-                  `teach phase completed in cell ${cellPart}`
-                );
-              }
-            } catch {
-            }
           }
           if (this._currentSubject && this._perSubjectStats) {
             const s = this._perSubjectStats[this._currentSubject];
@@ -18487,6 +18476,25 @@ var Curriculum = class _Curriculum {
           if (cl) cl._activePhase = prev;
         }
       };
+    }
+  }
+  // iter20-H — write a Tier 1 episode for every completed teach phase.
+  // Called from per-cell-runner `_phaseDone` helpers in kindergarten.js
+  // + pre-K.js (the helpers that emit the "✓ Phase DONE" log lines).
+  // Auto-wrap path was unreliable for K_MIXIN methods — hooking here
+  // in the helpers known to fire on every phase completion.
+  _recordPhaseEpisode(cellKey, phaseName) {
+    const cl = this.cluster;
+    const brain2 = this.brain || cl && cl._brain;
+    if (!brain2 || typeof brain2.storeEpisode !== "function") return;
+    try {
+      brain2.storeEpisode(
+        "curriculum-phase",
+        "phase-done",
+        `learned ${cellKey}:${phaseName}`,
+        `teach phase ${phaseName} completed in cell ${cellKey}`
+      );
+    } catch {
     }
   }
   /**
@@ -18539,6 +18547,9 @@ var Curriculum = class _Curriculum {
         s.lastCellAt = Date.now();
       }
       this._currentCellPhasesCompleted = (this._currentCellPhasesCompleted | 0) + 1;
+      if (typeof this._recordPhaseEpisode === "function") {
+        this._recordPhaseEpisode(cellKey, methodName);
+      }
     }
     return result;
   }

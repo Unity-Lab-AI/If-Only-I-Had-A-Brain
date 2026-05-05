@@ -1865,12 +1865,7 @@ export const K_MIXIN = {
         this._hb(`[Curriculum] ✓ ELA-K Phase DONE — ${name} in ${dt}s`);
         // Mid-phase checkpoint save. Records the phase in
         // cortex.passedPhases + fires saveWeights({force:true}) so
-        // the weights trained up to this point persist to disk. If
-        // the brain crashes during a later phase, the operator's
-        // Savestart.bat boot reloads the mid-phase-saved state
-        // instead of losing hours of prior-phase training. Resume
-        // logic within the cell runner is a future pass — for now
-        // this fix guarantees weight-state durability across crash.
+        // the weights trained up to this point persist to disk.
         try {
           const cl = this.cluster;
           if (cl) {
@@ -1880,6 +1875,10 @@ export const K_MIXIN = {
           }
           if (typeof this._saveCheckpoint === 'function') {
             this._saveCheckpoint(`ela/kindergarten:phase:${name}`);
+          }
+          // iter20-H — Tier 1 episode for every completed teach phase
+          if (typeof this._recordPhaseEpisode === 'function') {
+            this._recordPhaseEpisode('ela/kindergarten', name);
           }
         } catch (err) {
           console.warn(`[Curriculum] mid-phase save for ${name} failed:`, err?.message || err);
