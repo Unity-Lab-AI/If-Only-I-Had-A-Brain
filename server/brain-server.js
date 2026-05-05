@@ -5070,7 +5070,12 @@ class ServerBrain {
         if (this._curriculumInProgress) {
           const phase = this.cortexCluster?._activePhase?.name || 'teach';
           const cellKey = this.cortexCluster?._currentCellKey || 'unknown';
-          context = `learning ${cellKey}:${phase}`;
+          // iter20-L — transform technical method name to natural language
+          // so GloVe embeds it meaningfully (otherwise embeddings are noise
+          // and cosine merge fails for identical-text episodes).
+          const phaseConcept = phase.replace(/^_teach/i, '').replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase().trim() || phase;
+          const subjectGrade = cellKey.replace('/', ' ');
+          context = `learning ${phaseConcept} in ${subjectGrade}`;
           contextCategory = `learning:${cellKey}`;
         } else if (this._isDreaming) {
           context = 'dreaming (idle consolidation window)';
