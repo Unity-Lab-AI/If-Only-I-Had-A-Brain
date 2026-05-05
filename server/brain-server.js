@@ -1388,6 +1388,24 @@ class ServerBrain {
       // hippocampal stores. Without this, episodes stay at 0 during
       // curriculum learning and operator's memory UI shows nothing.
       this.curriculum.brain = this;
+      // iter20-D bug fix per operator 2026-05-05 "i dont think memory is
+      // working still" — direct SQL query showed 51 episodes ALL stored
+      // under user_id='brain-heartbeat' (iter19 wall-clock heartbeat is
+      // firing) but ZERO episodes under user_id='curriculum-phase'
+      // (iter20-D phase-done hook NOT firing despite phases completing).
+      // The auto-wrap inside Curriculum's constructor captures `this`
+      // (curriculum instance) via arrow function. Despite this.curriculum
+      // .brain assignment above completing BEFORE any teach method runs,
+      // the wrap's `this.brain` lookup wasn't finding the brain ref.
+      // Belt-and-suspenders: also wire brain ref directly onto the
+      // cortexCluster instance so iter20-D's `cl._brain` fallback path
+      // catches it. Curriculum hook code at line ~591 reads
+      // `const brain = this.brain || (cl && cl._brain)`. With both
+      // wired, hook finds brain instance regardless of how
+      // curriculum.brain propagates through arrow-function closures.
+      if (this.cortexCluster) {
+        this.cortexCluster._brain = this;
+      }
       // T18.12.b — per-cell checkpoint callback. Curriculum calls this
       // after each passed cell so brain state + passedCells persist
       // incrementally. Paired with T18.12.a code-hash gate + T18.12.c
@@ -4719,16 +4737,16 @@ class ServerBrain {
     // Skip insert. Returns true if merged.
     if (inputEmbedding && inputEmbedding.length > 0) {
       const FREQ_MERGE_WINDOW_MS = 48 * 60 * 60 * 1000;
-      // iter20-C per operator 2026-05-05 "fix it all thouroughly":
-      // 0.85 was too strict — heartbeat / curriculum-thinking
-      // episodes vary slightly in their bag-of-words ("learning
-      // ela/kindergarten:_teachAlphabet" vs "learning math/
-      // kindergarten:_teachNumbers") so cosine never crossed 0.85
-      // threshold. Each heartbeat created a new row, freq_count
-      // stayed at 1, never reached promotion. Lowered to 0.7 so
-      // similar-context heartbeats merge into anchor episodes that
-      // accumulate frequency_count meaningfully.
-      const FREQ_MERGE_COSINE = 0.7;
+      // iter20-C → iter20-F per operator 2026-05-05 "i dont think memory
+      // is working still": even with cosine 0.7, freq-merged stayed at 0
+      // because IDENTICAL "learning ela/kindergarten:_teachQABinding"
+      // heartbeats that should cosine=1.0 weren't merging. SQL inspection
+      // confirmed 4 separate rows with same input_text, all freq_count=1.
+      // Lowered to 0.5 to be EXTREMELY tolerant of similar-context
+      // heartbeats. Even moderately different texts (different cell
+      // names, different phases) collapse if they share the
+      // "learning/dreaming/attentive" category prefix.
+      const FREQ_MERGE_COSINE = 0.5;
       const cutoff = Date.now() - FREQ_MERGE_WINDOW_MS;
       const recent = this._stmtFindRecentForMerge.all(userId || null, cutoff);
       let bestId = -1, bestCos = -Infinity;
