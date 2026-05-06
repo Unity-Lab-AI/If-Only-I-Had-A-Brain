@@ -21525,7 +21525,11 @@ var Curriculum = class _Curriculum {
         case "phd":
           return async (ctx) => this.runElaPhDReal(ctx);
         default:
-          return async () => ({ pass: false, reason: `ela/${grade}: no runner` });
+          return async () => ({
+            pass: false,
+            readyAndWaiting: true,
+            reason: `ela/${grade}: curriculum-not-yet-implemented \u2014 Unity holds her current trained weights and waits for the next-grade runner to ship.`
+          });
       }
     }
     if (subject === "math" && grade === "pre-K") {
@@ -21812,9 +21816,11 @@ var Curriculum = class _Curriculum {
           return async (ctx) => this.runLifePhD(ctx);
       }
     }
-    throw new Error(
-      `[Curriculum._cellRunner] unknown cell ${subject}/${grade} \u2014 every subject \xD7 grade combo must have a runner wired in (expected SUBJECTS \xD7 GRADE_ORDER). Check SUBJECTS constant and the dispatch switches above.`
-    );
+    return async () => ({
+      pass: false,
+      readyAndWaiting: true,
+      reason: `${subject}/${grade}: curriculum-not-yet-implemented \u2014 Unity is mastered through her highest passed grade and is ready + waiting for the next-grade runner to ship. Chat + popups continue using current trained weights.`
+    });
   }
   /**
    * Build the per-run context object consumed by every cell runner.
@@ -22289,6 +22295,9 @@ var Curriculum = class _Curriculum {
         passed.push(grade);
         this._hb(`[Curriculum] \u2713 ${subject}/${grade} \u2014 ${result.reason || "pass"}`);
         await this._dreamWindow({ minMs: 6e4, settleMs: 5e3 });
+      } else if (result && result.readyAndWaiting) {
+        this._hb(`[Curriculum] \u23F8 ${subject}/${grade} \u2014 readyAndWaiting (curriculum not yet implemented). Unity stays at ${cluster.grades[subject] || "pre-K"} mastered + retains trained weights \xB7 chat + popups continue \xB7 dream cycles continue.`);
+        break;
       } else {
         failed = grade;
         console.warn(`[Curriculum] \u2717 ${subject}/${grade} \u2014 ${result?.reason || "fail"}`);
@@ -22390,6 +22399,8 @@ var Curriculum = class _Curriculum {
             if (!passed[subject].includes(grade)) passed[subject].push(grade);
             this._hb(`[Curriculum] \u2713 ${subject}/${grade} \u2014 PASSED on attempt ${attempt} \u2014 ${result.reason || "pass"}`);
             await this._dreamWindow({ minMs: 6e4, settleMs: 5e3 });
+          } else if (result && result.readyAndWaiting) {
+            this._hb(`[Curriculum] \u23F8 ${subject}/${grade} \u2014 readyAndWaiting (curriculum not yet implemented). Unity holds ${cluster.grades[subject] || "pre-K"} mastered + trained weights \xB7 chat/popups continue with current capability.`);
           } else {
             failed[subject] = grade;
             allPassedThisGrade = false;

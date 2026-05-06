@@ -3868,7 +3868,16 @@ export class Curriculum {
         case 'grad':         return async (ctx) => this.runElaGradReal(ctx);
         case 'phd':          return async (ctx) => this.runElaPhDReal(ctx);
         default:
-          return async () => ({ pass: false, reason: `ela/${grade}: no runner` });
+          // iter25-F — graceful fallback (was a hard pass:false fail).
+          // ELA's switch covers pre-K → PhD; landing here means an
+          // unknown grade label slipped through (e.g. a future grade
+          // not yet wired). Return readyAndWaiting so outer loops
+          // stop cleanly instead of marking it a fail + retrying.
+          return async () => ({
+            pass: false,
+            readyAndWaiting: true,
+            reason: `ela/${grade}: curriculum-not-yet-implemented — Unity holds her current trained weights and waits for the next-grade runner to ship.`,
+          });
       }
     }
     // T18.12 — Math Pre-K equational runner (LAW 6 Part 1 pre-K scope).
@@ -4166,9 +4175,23 @@ export class Curriculum {
       }
     }
 
-    throw new Error(
-      `[Curriculum._cellRunner] unknown cell ${subject}/${grade} — every subject × grade combo must have a runner wired in (expected SUBJECTS × GRADE_ORDER). Check SUBJECTS constant and the dispatch switches above.`
-    );
+    // iter25-F — DEFENSIVE GRACEFUL FALLBACK. Operator (2026-05-06):
+    // "i know we havent added 1st grade ciriculum yet, i just dont want
+    // an edge case error happening once kindergarden completes and it
+    // fails or something to propely complete and get ready for next
+    // grade and waiting with its K grade knowledge". Replaces the prior
+    // hard `throw new Error` with a "readyAndWaiting" runner that
+    // returns cleanly. Outer loops (runAllSubjects, runFullSubjectCurriculum)
+    // detect readyAndWaiting === true and stop the curriculum loop
+    // without marking the cell as a failure (no retry storm), leaving
+    // cluster.grades at its current mastered level so chat + popups +
+    // dream cycles continue using the trained weights from the highest
+    // passed grade. State: "K-mastered, awaiting next grade curriculum".
+    return async () => ({
+      pass: false,
+      readyAndWaiting: true,
+      reason: `${subject}/${grade}: curriculum-not-yet-implemented — Unity is mastered through her highest passed grade and is ready + waiting for the next-grade runner to ship. Chat + popups continue using current trained weights.`,
+    });
   }
 
   /**
@@ -4981,6 +5004,13 @@ export class Curriculum {
         // until the consolidation pass actually completes. Skipped
         // on fail so failure → next-attempt happens immediately.
         await this._dreamWindow({ minMs: 60_000, settleMs: 5_000 });
+      } else if (result && result.readyAndWaiting) {
+        // iter25-F — curriculum not yet implemented for this grade.
+        // Stop the loop cleanly without marking it a failure or
+        // retrying. Unity holds her current trained weights and waits
+        // for the next-grade runner to ship.
+        this._hb(`[Curriculum] ⏸ ${subject}/${grade} — readyAndWaiting (curriculum not yet implemented). Unity stays at ${cluster.grades[subject] || 'pre-K'} mastered + retains trained weights · chat + popups continue · dream cycles continue.`);
+        break;
       } else {
         failed = grade;
         console.warn(`[Curriculum] ✗ ${subject}/${grade} — ${result?.reason || 'fail'}`);
@@ -5123,6 +5153,13 @@ export class Curriculum {
             // consolidation pass actually completes. Skipped on
             // fail so failure → next-attempt happens immediately.
             await this._dreamWindow({ minMs: 60_000, settleMs: 5_000 });
+          } else if (result && result.readyAndWaiting) {
+            // iter25-F — curriculum not yet implemented for this
+            // subject/grade. NOT a failure — Unity stays at her
+            // currently mastered grade with trained weights live.
+            // Skip retry, mark this subject as ready-and-waiting,
+            // continue to other subjects in the same grade tier.
+            this._hb(`[Curriculum] ⏸ ${subject}/${grade} — readyAndWaiting (curriculum not yet implemented). Unity holds ${cluster.grades[subject] || 'pre-K'} mastered + trained weights · chat/popups continue with current capability.`);
           } else {
             failed[subject] = grade;
             allPassedThisGrade = false;
