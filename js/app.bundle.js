@@ -48651,8 +48651,44 @@ Probes: ${ps.totalProbes} total, ${ps.totalPasses} pass, ${ps.totalFails} fail`;
    * the landing page → boot transition.
    */
   setBrain(brain2) {
+    if (this._brain && this._innerThoughtHandler && typeof this._brain.off === "function") {
+      try {
+        this._brain.off("innerThought", this._innerThoughtHandler);
+      } catch {
+      }
+    }
     this._brain = brain2 || null;
     this._seedVectorCache.clear();
+    if (brain2 && typeof brain2.on === "function") {
+      this._innerThoughtHandler = (payload) => {
+        if (this._destroyed || !this._open) return;
+        const text = payload?.sentence || payload?.word || "";
+        if (!text) return;
+        const seedToCluster = {
+          learning: 9,
+          // sem sub-region — current curriculum context
+          memory: 1,
+          // hippocampus
+          "chat-recall": 1,
+          // hippocampus (chat episodes live in Tier 1)
+          mood: 2,
+          // amygdala
+          identity: 6,
+          // mystery (Ψ / consciousness / self)
+          baseline: 0
+          // main cortex
+        };
+        const clusterIdx = seedToCluster[payload?.seed] ?? 0;
+        try {
+          this._addNotification(`\u{1F4AD} ${text}`, clusterIdx);
+        } catch {
+        }
+      };
+      try {
+        brain2.on("innerThought", this._innerThoughtHandler);
+      } catch {
+      }
+    }
   }
   /**
    * Compute a 50d GloVe centroid for a seed word list, caching it

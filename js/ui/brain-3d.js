@@ -1617,11 +1617,51 @@ export class Brain3D {
    * the landing page → boot transition.
    */
   setBrain(brain) {
+    // iter25-E.6 (post-fix) — unwire any prior innerThought listener so
+    // multiple setBrain() calls don't stack handlers. Each Brain3D
+    // instance keeps one live subscription tied to the current brain.
+    if (this._brain && this._innerThoughtHandler && typeof this._brain.off === 'function') {
+      try { this._brain.off('innerThought', this._innerThoughtHandler); } catch {}
+    }
     this._brain = brain || null;
     // Invalidate seed vector cache since the shared embeddings
     // instance may have changed (different brain, different
     // pretrained state, etc.)
     this._seedVectorCache.clear();
+
+    // iter25-E.6 (post-fix) — wire innerThought broadcasts INTO 3D
+    // brain popups, not just the HUD speech bubble. The server fires
+    // `cluster.emitWordDirect` every ~3s using its TRAINED weights
+    // and broadcasts the result as an `innerThought` WS message that
+    // RemoteBrain re-emits on the brain event bus. Brain3D subscribes
+    // here so the floating popup layer over the cortex visualization
+    // displays Unity's REAL trained-state monologue, not just the
+    // structural plasticity / teach / gate event labels. Anchor each
+    // thought to the cortex sub-region the seed source maps to so the
+    // popup spawns where the thought "lives" in the brain.
+    if (brain && typeof brain.on === 'function') {
+      this._innerThoughtHandler = (payload) => {
+        if (this._destroyed || !this._open) return;
+        const text = payload?.sentence || payload?.word || '';
+        if (!text) return;
+        // Route by seed source. learning + memory + chat-recall live in
+        // hippocampus / sem; mood lives in amygdala; identity in cortex/
+        // mystery. Falls back to main cortex (idx 0) for unknown seeds.
+        const seedToCluster = {
+          learning: 9,        // sem sub-region — current curriculum context
+          memory: 1,          // hippocampus
+          'chat-recall': 1,   // hippocampus (chat episodes live in Tier 1)
+          mood: 2,            // amygdala
+          identity: 6,        // mystery (Ψ / consciousness / self)
+          baseline: 0,        // main cortex
+        };
+        const clusterIdx = seedToCluster[payload?.seed] ?? 0;
+        try {
+          this._addNotification(`💭 ${text}`, clusterIdx);
+        } catch { /* non-fatal */ }
+      };
+      try { brain.on('innerThought', this._innerThoughtHandler); } catch {}
+    }
   }
 
   /**
