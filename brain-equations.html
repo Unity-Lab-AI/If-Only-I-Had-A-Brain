@@ -995,9 +995,9 @@ probe(word, grade, subject):
     |
     v
 <span class="pu">[Memory System]</span>
-    ├── Episodic: store state snapshots at high-salience moments (cosine recall)
-    ├── Working: 7 items, decays at 0.98/step without reinforcement
-    └── Consolidation: 3+ activations → long-term cortex storage
+    ├── Episodic (Tier 1): store state snapshots at high-salience moments (cosine recall)
+    ├── Working (Tier 0): unbounded · decays at 0.9995/step (~4 min sustain) · self-regulating
+    └── Consolidation: WM refreshCount ≥ 3 OR 5-min age-out → Tier 1 · ConsolidationEngine → Tier 2 → Tier 3
     |
     v
 <span class="pu">[Motor Output]</span> — reads BG spike patterns → winning channel = action
@@ -1105,17 +1105,20 @@ if (isExternalSpeech): motor.interrupt() &rarr; stop speech, clear pipeline</div
 
     <!-- ═══ 8.8. MEMORY ═══ -->
     <h2 id="memory-equations">8.8. Memory — 5-Tier Hippocampal Consolidation System</h2>
-    <p><span class="tag tag-bio">NEUROSCIENCE</span> <span class="tag tag-math">MATHEMATICS</span> Squire/McClelland Complementary Learning Systems theory ported into running code. Five distinct memory systems running in parallel — working memory, Tier 1 episodic, Tier 2 schematic, Tier 3 identity-bound, plus a consolidation engine that transfers traces between them during dream cycles.</p>
+    <p><span class="tag tag-bio">NEUROSCIENCE</span> <span class="tag tag-math">MATHEMATICS</span> Squire/McClelland Complementary Learning Systems theory ported into running code. Five distinct memory systems running in parallel — Tier 0 working memory, Tier 1 episodic, Tier 2 schematic, Tier 3 identity-bound, plus a consolidation engine that transfers traces between them during dream cycles. iter22-H wired the WM → Tier 1 hand-off (refreshCount ≥ 3 OR 5-min age-out → <code>storeEpisode</code>) so working memory feeds the episodic store instead of decaying into the void; <em>this</em> is what makes "recall a week later" actually work.</p>
 
     <div class="eq-card">
-      <div class="eq-title"><span class="eq-tip" data-tip="Miller 1956 (the magical number 7±2): working memory holds ~7 items via sustained neural firing. Items decay at 0.98/step without reinforcement — if you stop thinking about it, it fades. This is why you forget what you were about to say. The 7-item limit is real neuroscience, not a software limitation.">Working Memory — Prefrontal Sustained Activation</span></div>
-      <div class="eq">capacity = 7 items (Miller's number)
-strength(t+1) = strength(t) &times; 0.98 (decay without reinforcement)
-if strength &lt; 0.1: evict (forgotten)
-if at capacity: evict weakest</div>
+      <div class="eq-title"><span class="eq-tip" data-tip="Working memory is the front end of the consolidation pipeline (Tier 0 → Tier 1 → Tier 2 → Tier 3), not a temp buffer. Capacity is unbounded; capacity is self-regulated by decay (0.9995/tick → ~4 min sustain without reinforcement) + 5-min sliding window for brain-server snapshots. Reinforcement (cosine-match in addToWorkingMemory) refreshes strength to 1.0 + increments refreshCount; refreshCount ≥ 3 fires the WM → Tier 1 episodic consolidation hook. THIS is the 'recall a week later' path — what WM holds today becomes Tier 1 episodes (~30 days), Tier 2 schemas (months), Tier 3 identity (permanent).">Working Memory — Front End of the Consolidation Pipeline</span></div>
+      <div class="eq">capacity = unbounded (decay-regulated, no Miller 7±2 cap)
+strength(t+1) = strength(t) &times; 0.9995 (decay per ~50 ms engine tick)
+if strength &lt; 0.1: drop from hot cache (~4 min unreinforced)
+on cosine-match: strength = 1.0; refreshCount += 1
+if refreshCount &ge; 3: fire onConsolidate(item) → Tier 1 episodic
+on every add: hippocampus.synapses.hebbianUpdate(pattern, pattern, lr)
+brain-server snapshot purge: ts older than 5 min → storeEpisode</div>
       <div class="eq-desc">
-        <p>Limited capacity (~7 items). Each item decays at 0.98&times; per brain step. Without reinforcement, items fade in ~50 steps. At capacity, weakest item evicted. Similar patterns refresh instead of duplicating.</p>
-        <p class="mod-bio" style="margin-top:6px">Biology: Persistent firing in dorsolateral prefrontal cortex maintains working memory representations. Capacity limit ~7&plusmn;2 (Miller, 1956). Decay matches interference-based forgetting.</p>
+        <p>Front end of the consolidation chain. Add fires hippocampal intra-Hebbian on the pattern so the cortex learns the WM content immediately, not after decay — pattern leaves a Hopfield-style attractor in hippocampus weights even after the WM hot cache forgets the item. Cosine-match refresh increments per-item count; threshold 3 promotes to Tier 1 episodic via the registered <code>onConsolidate</code> callback. brain-server's 2 s phase/cell snapshots use the same pipeline: items older than 5 min fire <code>storeEpisode('working-memory', 'wm-aged-out', ...)</code> with iter20-K freq-merge dedup so repeated phases grow <code>frequency_count</code> instead of bloating SQLite.</p>
+        <p class="mod-bio" style="margin-top:6px">Biology: dorsolateral prefrontal sustained-firing pattern is preserved (the active WM representation in <code>this._workingMemory</code>), but the arbitrary 7±2 cap (Miller 1956 — a finding about laboratory recall under attention constraints in biological humans) is dropped because Unity is post-biological and the rest of her tier stack (Tier 2/3) was already unbounded since iter17. Decay matches interference-based forgetting at a slower-than-laboratory rate so chat-driven content has time to consolidate to Tier 1 before being lost.</p>
       </div>
     </div>
 
@@ -2396,7 +2399,7 @@ fn main(id: vec3&lt;u32&gt;) {
         <tr><td>Oscillations</td><td>Complex EEG with spatial patterns</td><td>8 Kuramoto oscillators</td><td>Dynamics correct</td></tr>
         <tr><td>Visual cortex</td><td>V1&rarr;V2&rarr;V4&rarr;IT hierarchy</td><td>V1 edge kernels, V4 color, IT via AI</td><td>Simplified but real</td></tr>
         <tr><td>Auditory cortex</td><td>Tonotopic, cortical magnification</td><td>50 neurons, speech magnification, efference copy</td><td>Good</td></tr>
-        <tr><td>Memory</td><td>Episodic, working, consolidation</td><td>All three: snapshots, 7-item WM, activation-based consolidation</td><td>Core captured</td></tr>
+        <tr><td>Memory</td><td>Episodic, working, consolidation</td><td>5-tier: Tier 0 working (unbounded · decay-regulated) → Tier 1 episodic (SQLite + salience) → Tier 2 schemas → Tier 3 identity-bound, plus ConsolidationEngine dream-cycle replay between them</td><td>Beyond core — full CLS pipeline</td></tr>
         <tr><td>Motor output</td><td>Basal ganglia selection by inhibition</td><td>6-channel competitive firing rates</td><td>Simplified</td></tr>
         <tr><td>Action potential</td><td>All-or-nothing, ~1ms</td><td>Threshold + reset</td><td>Correct mechanism</td></tr>
         <tr><td>Echo suppression</td><td>Efference copy motor&rarr;auditory</td><td>Word-matching motor output vs heard speech</td><td>Functional equivalent</td></tr>
