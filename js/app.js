@@ -737,7 +737,7 @@ function renderLandingTab(tab, s) {
           }</div>`
         : '<div style="margin-top:6px;color:#666;font-size:10px;font-style:italic;">no items in WM yet — items rotate in as cluster activity drives addToWorkingMemory()</div>';
       el.innerHTML =
-        card('Working Memory (Tier 0 · cap=7 Miller 1956 · items rotate underneath)', `
+        card('Working Memory (Tier 0 · unbounded · 5min sliding window · consolidates → Tier 1)', `
           ${metric('Items', wcDisplay, '#00e5ff')}
           ${workingCap == null ? '' : bar((workingItems / Math.max(1, workingCap)) * 100, '#00e5ff')}
           ${workingItemsHtml}

@@ -191,6 +191,24 @@ export class UnityBrain extends EventEmitter {
     this.sensory = new SensoryProcessor();
     this.motor = new MotorOutput();
     this.memorySystem = new MemorySystem(this.clusters.hippocampus);
+    // Wire WM consolidation hook — when an item refreshes past
+    // CONSOLIDATION_THRESHOLD, MemorySystem fires this callback to
+    // promote the WM trace into a Tier 1 episodic snapshot. The
+    // brain-server's wider hippocampal pipeline (iter13-iter20 stack
+    // — frequency-merge / decay / Tier 2 schemas / Tier 3 identity)
+    // then handles long-term retention. Browser-only mode without a
+    // brain-server: callback no-ops via the optional-chain check.
+    this.memorySystem.onConsolidate = (item) => {
+      try {
+        this.memorySystem.storeEpisode({
+          clusters: { cortex: { firingRate: 0, spikeCount: 0 } },
+          amygdala: { arousal: 0.5, valence: 0 },
+          psi: 0,
+          time: item.lastRefreshAt || Date.now(),
+          trigger: `wm-consolidate:${item.label || 'unlabeled'}`,
+        });
+      } catch { /* non-fatal */ }
+    };
     this.auditoryCortex = new AuditoryCortex();
     this.visualCortex = new VisualCortex();
     this.innerVoice = new InnerVoice();

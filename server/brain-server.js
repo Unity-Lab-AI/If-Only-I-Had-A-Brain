@@ -5042,13 +5042,17 @@ class ServerBrain {
     if (!this._lastTier1HbAt) this._lastTier1HbAt = 0;
     if (!this._lastTier0HbAt) this._lastTier0HbAt = 0;
 
-    // iter20-I — Tier 0 working memory population. Per operator
-    // 2026-05-05 "fix all the memory teirs so they fucking work".
-    // Working memory currently shows 0 items because nothing populates
-    // this.memory.workingMemoryItems during curriculum or chat. Now
-    // every 2s, snapshot current cortex state into working memory:
-    // current phase / cell / arousal / valence as a "what's currently
-    // active" item. Cap at unbounded (operator's "no eroonous limits").
+    // Tier 0 working memory population. Every 2s, snapshot current
+    // cortex state into working memory: current phase / cell / arousal
+    // / valence as a "what's currently active" item.
+    //
+    // Operator caught: "items: 7 NEVER MOVES FROM 7" was caused by the
+    // hardcoded 7-cap below trimming via while-shift, not the items
+    // staying frozen. Replaced with TIME-BASED purge — items older than
+    // 5 minutes drop out. Stays consistent with the unbounded
+    // capacity-but-decay-driven model in MemorySystem (memory.js
+    // WM_DECAY_RATE 0.9995 → ~4 min sustain). No arbitrary numeric
+    // ceiling. Active recent content visible; stale content evaporates.
     if (now - this._lastTier0HbAt >= 2000) {
       this._lastTier0HbAt = now;
       if (!this.memory) this.memory = {};
@@ -5063,12 +5067,39 @@ class ServerBrain {
         psi: +(this.psi || 0).toFixed(3),
       };
       this.memory.workingMemoryItems.push(item);
-      // Keep last 7 items (Miller 1956 working memory ceiling — kept
-      // here even though Tier 2/3 are unbounded because working memory
-      // is by definition the active-thinking window, not long-term
-      // storage). Operator can raise this if needed.
-      while (this.memory.workingMemoryItems.length > 7) {
-        this.memory.workingMemoryItems.shift();
+      // Drop items older than 5 minutes. Matches MemorySystem's decay
+      // window (4 min @ 0.9995/tick → strength < 0.1 forget threshold).
+      // Sliding time window — count grows + shrinks naturally with
+      // activity. No hardcoded numeric ceiling.
+      //
+      // Operator: "if i told someone something and asked them about it
+      // 10 minutes or even a day later most people can recall that".
+      // The recall path is Tier 0 → Tier 1 → Tier 2 → Tier 3, not
+      // "Tier 0 holds it for a week." Each WM item that ages out
+      // gets promoted to a Tier 1 episodic snapshot (frequency-merge
+      // dedupes via iter20-K so repeated phase entries grow
+      // freq_count instead of bloating SQLite). Once in Tier 1, the
+      // standard hippocampal lifecycle takes over: salience-weighted
+      // decay (1-week half-life), promotion to Tier 2 schemas at
+      // consolidation gate, Tier 3 identity for high-emotional-weight
+      // anchors. THAT'S the "recall a week later" path.
+      const TIER0_AGE_LIMIT_MS = 5 * 60 * 1000;
+      const cutoff = now - TIER0_AGE_LIMIT_MS;
+      while (this.memory.workingMemoryItems.length > 0
+             && this.memory.workingMemoryItems[0].ts < cutoff) {
+        const aged = this.memory.workingMemoryItems.shift();
+        // Promote to Tier 1 before the WM hot-cache representation
+        // disappears. iter20-K freq-merge handles dedup. storeEpisode
+        // signature: (userId, type, inputText, responseText).
+        try {
+          if (typeof this.storeEpisode === 'function') {
+            const labelParts = [];
+            if (aged.cellKey) labelParts.push(`learning ${aged.cellKey}`);
+            if (aged.phase) labelParts.push(`phase=${aged.phase}`);
+            const inputText = labelParts.length > 0 ? labelParts.join(' · ') : 'working memory snapshot';
+            this.storeEpisode('working-memory', 'wm-aged-out', inputText, null);
+          }
+        } catch { /* non-fatal — WM age-out already happened */ }
       }
     }
 

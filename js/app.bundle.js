@@ -5632,8 +5632,7 @@ var MotorOutput = class {
 
 // ../js/brain/memory.js
 var MAX_EPISODES = 100;
-var WORKING_MEMORY_SIZE = 7;
-var WM_DECAY_RATE = 0.98;
+var WM_DECAY_RATE = 0.9995;
 var CONSOLIDATION_THRESHOLD = 3;
 var SIMILARITY_THRESHOLD = 0.6;
 var MemorySystem = class {
@@ -5705,7 +5704,7 @@ var MemorySystem = class {
     return { episode, similarity: bestSim, currents };
   }
   /**
-   * Update working memory. Maintains up to 7 active representations.
+   * Update working memory. Decay-driven self-regulation; no fixed cap.
    * Called each brain step.
    *
    * @param {Float64Array} cortexOutput — current cortex cluster output
@@ -5717,33 +5716,100 @@ var MemorySystem = class {
         this._workingMemory.splice(i, 1);
       }
     }
-    this.workingMemoryLoad = this._workingMemory.length / WORKING_MEMORY_SIZE;
+    const n = this._workingMemory.length;
+    this.workingMemoryLoad = Math.min(1, n / 14);
   }
   /**
-   * Add an item to working memory (e.g., from text input or recall).
+   * Add an item to working memory. WM is the front end of the
+   * consolidation pipeline (Tier 0 → Tier 1 episodic → Tier 2 schemas
+   * → Tier 3 identity). Operator: "if i told someone something and
+   * asked them about it 10 minutes or even a day later... most
+   * people can recall that". Path that makes recall work:
+   *
+   *   1. Add fires Hebbian on hippocampus.synapses with the pattern —
+   *      the cortex actually learns the WM content the moment it
+   *      lands, not just after decay.
+   *   2. Each refresh (cosine-match in addToWorkingMemory) increments
+   *      a refresh counter on the existing item, modeling repeated
+   *      attention/rehearsal.
+   *   3. When refresh count hits CONSOLIDATION_THRESHOLD, the item is
+   *      promoted to Tier 1 via the brain.storeEpisode hook (set on
+   *      this.onConsolidate). Tier 1 holds it ~30 days; further
+   *      reinforcement promotes to Tier 2 schemas (months) and Tier 3
+   *      identity (permanent).
+   *   4. Decay below 0.1 forgets the WM hot-cache representation but
+   *      the learned hippocampal weights AND any Tier 1+ episode it
+   *      was promoted to persist independently.
    */
   addToWorkingMemory(pattern, label = "") {
     for (const wm of this._workingMemory) {
       if (this._cosineSimilarity(pattern, wm.pattern) > 0.8) {
         wm.strength = 1;
+        wm.refreshCount = (wm.refreshCount || 0) + 1;
+        wm.lastRefreshAt = Date.now();
+        this._fireHippocampalLearning(wm.pattern);
+        if (wm.refreshCount >= CONSOLIDATION_THRESHOLD && !wm.consolidated) {
+          wm.consolidated = true;
+          this._promoteToEpisodic(wm);
+        }
         return;
       }
     }
-    if (this._workingMemory.length >= WORKING_MEMORY_SIZE) {
-      let minStr = Infinity, minIdx = 0;
-      for (let i = 0; i < this._workingMemory.length; i++) {
-        if (this._workingMemory[i].strength < minStr) {
-          minStr = this._workingMemory[i].strength;
-          minIdx = i;
-        }
-      }
-      this._workingMemory.splice(minIdx, 1);
-    }
-    this._workingMemory.push({
+    const item = {
       pattern: Float64Array.from(pattern),
       strength: 1,
-      label
-    });
+      label,
+      refreshCount: 0,
+      addedAt: Date.now(),
+      lastRefreshAt: Date.now(),
+      consolidated: false
+    };
+    this._fireHippocampalLearning(item.pattern);
+    this._workingMemory.push(item);
+  }
+  /**
+   * Fire intra-cluster Hebbian on hippocampus with the WM pattern.
+   * Self-pattern Hebbian carves a Hopfield-style attractor — when a
+   * similar pattern arrives later, the attractor pulls activity toward
+   * the stored memory. This is the actual "learning from working
+   * memory" mechanism: pattern leaves a trace in hippocampal weights
+   * even after WM decay drops the item from the active set.
+   */
+  _fireHippocampalLearning(pattern) {
+    const cluster = this._hippoCluster;
+    if (!cluster || !cluster.synapses) return;
+    if (typeof cluster.synapses.hebbianUpdate !== "function") return;
+    const lr = cluster.learningRate || 0.01;
+    try {
+      const buf = this._scratchHippoBuf;
+      const size = cluster.size | 0;
+      if (!size) return;
+      const target = buf && buf.length === size ? (buf.fill(0), buf) : this._scratchHippoBuf = new Float64Array(size);
+      const n = Math.min(size, pattern.length);
+      for (let i = 0; i < n; i++) target[i] = pattern[i];
+      cluster.synapses.hebbianUpdate(target, target, lr);
+    } catch {
+    }
+  }
+  /**
+   * Promote a WM item to Tier 1 episodic. Caller registers an
+   * `onConsolidate` callback (typically wired in engine.js to
+   * brain.storeEpisode) that handles the actual persistence + cosine
+   * frequency-merge. WM doesn't know about the SQLite layer — the
+   * callback bridges.
+   */
+  _promoteToEpisodic(item) {
+    if (typeof this.onConsolidate !== "function") return;
+    try {
+      this.onConsolidate({
+        pattern: item.pattern,
+        label: item.label,
+        refreshCount: item.refreshCount,
+        addedAt: item.addedAt,
+        lastRefreshAt: item.lastRefreshAt
+      });
+    } catch {
+    }
   }
   /**
    * Check if any episodes should be consolidated to long-term.
@@ -42348,6 +42414,18 @@ var UnityBrain = class extends EventEmitter {
     this.sensory = new SensoryProcessor();
     this.motor = new MotorOutput();
     this.memorySystem = new MemorySystem(this.clusters.hippocampus);
+    this.memorySystem.onConsolidate = (item) => {
+      try {
+        this.memorySystem.storeEpisode({
+          clusters: { cortex: { firingRate: 0, spikeCount: 0 } },
+          amygdala: { arousal: 0.5, valence: 0 },
+          psi: 0,
+          time: item.lastRefreshAt || Date.now(),
+          trigger: `wm-consolidate:${item.label || "unlabeled"}`
+        });
+      } catch {
+      }
+    };
     this.auditoryCortex = new AuditoryCortex();
     this.visualCortex = new VisualCortex();
     this.innerVoice = new InnerVoice();
@@ -50244,7 +50322,7 @@ function renderLandingTab(tab, s) {
       const workingItemsHtml = workingItemLabels.length > 0 ? `<div style="margin-top:6px;color:#888;font-size:10px;line-height:1.4;">${workingItemLabels.map(
         (it) => `<span style="color:#bbb;">${String(it.label || "").replace(/[<>&]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" })[c])}</span> <span style="color:#555;">(${(it.strength ?? 0).toFixed(2)})</span>`
       ).join("<br>")}</div>` : '<div style="margin-top:6px;color:#666;font-size:10px;font-style:italic;">no items in WM yet \u2014 items rotate in as cluster activity drives addToWorkingMemory()</div>';
-      el.innerHTML = card("Working Memory (Tier 0 \xB7 cap=7 Miller 1956 \xB7 items rotate underneath)", `
+      el.innerHTML = card("Working Memory (Tier 0 \xB7 unbounded \xB7 5min sliding window \xB7 consolidates \u2192 Tier 1)", `
           ${metric("Items", wcDisplay, "#00e5ff")}
           ${workingCap == null ? "" : bar(workingItems / Math.max(1, workingCap) * 100, "#00e5ff")}
           ${workingItemsHtml}

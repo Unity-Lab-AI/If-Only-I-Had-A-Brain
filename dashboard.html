@@ -187,9 +187,9 @@
       <div class="card-title">Memory System — 5-Tier Hippocampal Unified View</div>
       <div id="d-memory-unified" style="padding:8px 12px;font-family:monospace;font-size:11px;color:#aaa;line-height:1.6;">
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;">
-          <div title="Tier 0 working memory — Miller's magic number 7±2 (Miller 1956). When at capacity, addToWorkingMemory evicts the weakest item by strength before adding new ones. The count plateaus at 7 because the cap is biological, not a bug — items rotate underneath. The list below shows WHAT is currently in WM, sorted by strength (strongest first); watch the labels rotate as new content lands and weak items get evicted.">
-            <div style="color:#00e5ff;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">⌛ TIER 0 — WORKING (volatile · cap=7 Miller 1956)</div>
-            <div>items: <span id="d-mem-working" style="color:#22c55e;">0 / 7</span></div>
+          <div title="Tier 0 working memory — UNBOUNDED capacity, decay-driven self-regulation. Items decay 0.9995 per engine tick (~50ms); items below 0.1 strength drop out. brain-server snapshots phase/cell every 2s; items older than 5 minutes promote to Tier 1 episodic before aging out. Reinforcement (cosine-match in addToWorkingMemory) refreshes strength to 1.0 + increments refreshCount; refreshCount ≥ 3 fires the WM → Tier 1 consolidation hook. THIS IS the recall pipeline — what WM holds today becomes Tier 1 episodes (recallable for ~30 days), promotes to Tier 2 schemas (months), and Tier 3 identity (permanent) for high-emotional anchors.">
+            <div style="color:#00e5ff;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">⌛ TIER 0 — WORKING (unbounded · 5 min sliding window · consolidates → Tier 1)</div>
+            <div>items: <span id="d-mem-working" style="color:#22c55e;">0</span></div>
             <div id="d-mem-working-labels" style="margin-top:4px;color:#888;font-size:10px;font-style:italic;">no items yet</div>
           </div>
           <div title="Tier 1 episodic memory in episodic-memory.db. Every chat turn + every curriculum phase completion + every brain-heartbeat encodes an episode with salience metadata (emotional_valence + arousal + surprise + novelty + frequency_count + consolidation_count). Frequency-merge gate at cosine ≥ 0.5 within 48h merges identical-text episodes into anchor rows instead of creating new ones. Promoted episodes get promoted_to_schema_id pointing at the Tier 2 schema they joined.">

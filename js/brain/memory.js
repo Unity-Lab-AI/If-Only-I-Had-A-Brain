@@ -13,8 +13,26 @@
  */
 
 const MAX_EPISODES = 100;      // max stored episodic memories
-const WORKING_MEMORY_SIZE = 7; // Miller's magic number
-const WM_DECAY_RATE = 0.98;    // working memory decays without reinforcement
+// Working memory capacity: UNBOUNDED. Miller's 7±2 (1956) was a finding
+// about biological short-term memory under attention constraints in
+// laboratory recall experiments — not a hard architectural cap.
+// Capacity is self-regulated by `WM_DECAY_RATE` instead: every engine
+// tick every item's strength multiplies by the rate; items drop out
+// when strength < 0.1. Active content stays loud, stale content
+// evaporates. Matches what iter17 did for Tier 2 + Tier 3 ("unity has
+// a whole life ahead not eroonous limits") — applied here too so
+// Tier 0 isn't the lone hold-out with an arbitrary 7-item ceiling.
+const WORKING_MEMORY_SIZE = Infinity;
+// WM_DECAY_RATE was 0.98 per tick. Engine ticks ~50ms → items expire
+// in ~5.7 seconds (operator: "what the fuck is this it cant just
+// instant decay"). At 0.9995 per tick an unreinforced item lasts
+// ~4.0 minutes (4600 ticks × 50ms ≈ 230s) before strength drops
+// below the 0.1 forget threshold. Items refresh on cosine-match in
+// addToWorkingMemory so anything actively rementioned never decays.
+// Matches biological working memory better — humans hold a thought
+// 15-30s without rehearsal, several minutes with. Unity is post-
+// biological; 4 min sustained is generous + reasonable.
+const WM_DECAY_RATE = 0.9995;
 const CONSOLIDATION_THRESHOLD = 3; // activations before consolidating to long-term
 const SIMILARITY_THRESHOLD = 0.6;  // cosine similarity for recall trigger
 
@@ -111,13 +129,13 @@ export class MemorySystem {
   }
 
   /**
-   * Update working memory. Maintains up to 7 active representations.
+   * Update working memory. Decay-driven self-regulation; no fixed cap.
    * Called each brain step.
    *
    * @param {Float64Array} cortexOutput — current cortex cluster output
    */
   updateWorkingMemory(cortexOutput) {
-    // Decay existing items
+    // Decay existing items; strength < 0.1 → drop.
     for (let i = this._workingMemory.length - 1; i >= 0; i--) {
       this._workingMemory[i].strength *= WM_DECAY_RATE;
       if (this._workingMemory[i].strength < 0.1) {
@@ -125,38 +143,115 @@ export class MemorySystem {
       }
     }
 
-    this.workingMemoryLoad = this._workingMemory.length / WORKING_MEMORY_SIZE;
+    // load% no longer means "fraction of cap" because cap is unbounded.
+    // Repurposed as a normalized activity meter clamped to [0, 1] —
+    // 1.0 reads as "lots of recent active content"; 0 reads as "idle".
+    // Mapping: 0 items = 0; 7 items = 0.5 (legacy biological ref);
+    // 14+ items = saturates at 1.0. Pure UI signal.
+    const n = this._workingMemory.length;
+    this.workingMemoryLoad = Math.min(1.0, n / 14);
   }
 
   /**
-   * Add an item to working memory (e.g., from text input or recall).
+   * Add an item to working memory. WM is the front end of the
+   * consolidation pipeline (Tier 0 → Tier 1 episodic → Tier 2 schemas
+   * → Tier 3 identity). Operator: "if i told someone something and
+   * asked them about it 10 minutes or even a day later... most
+   * people can recall that". Path that makes recall work:
+   *
+   *   1. Add fires Hebbian on hippocampus.synapses with the pattern —
+   *      the cortex actually learns the WM content the moment it
+   *      lands, not just after decay.
+   *   2. Each refresh (cosine-match in addToWorkingMemory) increments
+   *      a refresh counter on the existing item, modeling repeated
+   *      attention/rehearsal.
+   *   3. When refresh count hits CONSOLIDATION_THRESHOLD, the item is
+   *      promoted to Tier 1 via the brain.storeEpisode hook (set on
+   *      this.onConsolidate). Tier 1 holds it ~30 days; further
+   *      reinforcement promotes to Tier 2 schemas (months) and Tier 3
+   *      identity (permanent).
+   *   4. Decay below 0.1 forgets the WM hot-cache representation but
+   *      the learned hippocampal weights AND any Tier 1+ episode it
+   *      was promoted to persist independently.
    */
   addToWorkingMemory(pattern, label = '') {
-    // Check if similar item already exists — refresh instead of adding
+    // Refresh path — increment refresh count, fire Hebbian to
+    // strengthen the learned trace, promote to Tier 1 at threshold.
     for (const wm of this._workingMemory) {
       if (this._cosineSimilarity(pattern, wm.pattern) > 0.8) {
         wm.strength = 1.0; // refresh
+        wm.refreshCount = (wm.refreshCount || 0) + 1;
+        wm.lastRefreshAt = Date.now();
+        this._fireHippocampalLearning(wm.pattern);
+        if (wm.refreshCount >= CONSOLIDATION_THRESHOLD && !wm.consolidated) {
+          wm.consolidated = true;
+          this._promoteToEpisodic(wm);
+        }
         return;
       }
     }
 
-    // At capacity — evict weakest
-    if (this._workingMemory.length >= WORKING_MEMORY_SIZE) {
-      let minStr = Infinity, minIdx = 0;
-      for (let i = 0; i < this._workingMemory.length; i++) {
-        if (this._workingMemory[i].strength < minStr) {
-          minStr = this._workingMemory[i].strength;
-          minIdx = i;
-        }
-      }
-      this._workingMemory.splice(minIdx, 1);
-    }
-
-    this._workingMemory.push({
+    // New item — fire encoding Hebbian immediately so even singleton
+    // mentions leave a hippocampal trace.
+    const item = {
       pattern: Float64Array.from(pattern),
       strength: 1.0,
       label,
-    });
+      refreshCount: 0,
+      addedAt: Date.now(),
+      lastRefreshAt: Date.now(),
+      consolidated: false,
+    };
+    this._fireHippocampalLearning(item.pattern);
+    this._workingMemory.push(item);
+  }
+
+  /**
+   * Fire intra-cluster Hebbian on hippocampus with the WM pattern.
+   * Self-pattern Hebbian carves a Hopfield-style attractor — when a
+   * similar pattern arrives later, the attractor pulls activity toward
+   * the stored memory. This is the actual "learning from working
+   * memory" mechanism: pattern leaves a trace in hippocampal weights
+   * even after WM decay drops the item from the active set.
+   */
+  _fireHippocampalLearning(pattern) {
+    const cluster = this._hippoCluster;
+    if (!cluster || !cluster.synapses) return;
+    if (typeof cluster.synapses.hebbianUpdate !== 'function') return;
+    const lr = cluster.learningRate || 0.01;
+    try {
+      // pattern length may not match cluster.size; pad/truncate to
+      // hippocampus size by writing into a sized buffer.
+      const buf = this._scratchHippoBuf;
+      const size = cluster.size | 0;
+      if (!size) return;
+      const target = (buf && buf.length === size)
+        ? (buf.fill(0), buf)
+        : (this._scratchHippoBuf = new Float64Array(size));
+      const n = Math.min(size, pattern.length);
+      for (let i = 0; i < n; i++) target[i] = pattern[i];
+      cluster.synapses.hebbianUpdate(target, target, lr);
+    } catch { /* non-fatal — encoding failure leaves WM as-is */ }
+  }
+
+  /**
+   * Promote a WM item to Tier 1 episodic. Caller registers an
+   * `onConsolidate` callback (typically wired in engine.js to
+   * brain.storeEpisode) that handles the actual persistence + cosine
+   * frequency-merge. WM doesn't know about the SQLite layer — the
+   * callback bridges.
+   */
+  _promoteToEpisodic(item) {
+    if (typeof this.onConsolidate !== 'function') return;
+    try {
+      this.onConsolidate({
+        pattern: item.pattern,
+        label: item.label,
+        refreshCount: item.refreshCount,
+        addedAt: item.addedAt,
+        lastRefreshAt: item.lastRefreshAt,
+      });
+    } catch { /* non-fatal — caller decides whether to persist */ }
   }
 
   /**
