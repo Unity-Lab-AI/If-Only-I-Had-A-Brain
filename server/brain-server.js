@@ -5273,23 +5273,48 @@ class ServerBrain {
     stats.working.items = Array.isArray(mem.workingMemoryItems) ? mem.workingMemoryItems.length
                        : (mem.workingCount || 0);
     stats.working.cap = (mem.workingCap === Infinity || !mem.workingCap) ? null : mem.workingCap;
-    // iter22-E — expose the actual working memory item LABELS so the
-    // dashboard can render WHAT is currently in WM, not just the count.
-    // Operator caught (verbatim 2026-05-05): *"items: 7 NEVER MOVES
-    // FROM 7"*. The count plateau at 7 is biological cap (Miller 1956
-    // 7±2) but the items underneath DO rotate as new content lands +
-    // weakest-strength item gets evicted. Without the labels visible
-    // the rotation is invisible. Top-7 sorted by strength descending
-    // so most-active item shows first.
+    // Expose the actual working memory item labels + strengths so the
+    // dashboard can render what is currently held in Tier 0. Operator
+    // caught two bugs that combined to produce "(0.00)(0.00)..." ghost
+    // rows in the dashboard:
+    //   (1) hardcoded .slice(0, 7) leftover from the original Miller
+    //       cap was clipping the list to 7 entries even though items
+    //       grow unbounded — that's why 7 ghost rows appeared
+    //       regardless of actual count.
+    //   (2) Tier 0 heartbeat snapshots push {ts, phase, cellKey,
+    //       arousal, valence, psi} — they don't carry `.label` or
+    //       `.strength` fields, so the renderer was showing empty
+    //       label + 0.00 strength.
+    // Both fixed: derive label from cellKey + phase when no explicit
+    // label, derive strength from age (freshness 1.0 → 0.0 across the
+    // 5-min sliding window) when no explicit strength, and drop the
+    // 7-row cap. Display sorted newest-first.
     if (Array.isArray(mem.workingMemoryItems) && mem.workingMemoryItems.length > 0) {
+      const now = Date.now();
+      const windowMs = 5 * 60 * 1000;
       stats.working.itemLabels = mem.workingMemoryItems
         .slice()
-        .sort((a, b) => (b.strength ?? 0) - (a.strength ?? 0))
-        .slice(0, 7)
-        .map(wm => ({
-          label: typeof wm.label === 'string' ? wm.label.slice(0, 80) : '',
-          strength: typeof wm.strength === 'number' ? +wm.strength.toFixed(3) : 0,
-        }));
+        .sort((a, b) => (b.ts ?? 0) - (a.ts ?? 0))
+        .map(wm => {
+          let label = typeof wm.label === 'string' ? wm.label : '';
+          if (!label) {
+            const parts = [];
+            if (wm.cellKey) parts.push(wm.cellKey);
+            if (wm.phase) parts.push(`@${wm.phase}`);
+            label = parts.join(' ') || 'wm-snapshot';
+          }
+          let strength;
+          if (typeof wm.strength === 'number') {
+            strength = wm.strength;
+          } else {
+            const ageMs = now - (wm.ts ?? now);
+            strength = Math.max(0, Math.min(1, 1 - ageMs / windowMs));
+          }
+          return {
+            label: label.slice(0, 80),
+            strength: +strength.toFixed(3),
+          };
+        });
     } else {
       stats.working.itemLabels = [];
     }
