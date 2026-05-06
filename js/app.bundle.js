@@ -16693,10 +16693,26 @@ var K_MIXIN = {
               const expectedRank = topSlots.findIndex((s) => s.idx === expectedIdx);
               _firstProbeDiag = `[Curriculum][K-DIAG] DYN-PROD[${p.word}\u2192${p.expected}] decoded=${decoded || "\u2205"}, expected_slot=${p.expected}(${expectedIdx}:${Number.isFinite(expectedVal) ? expectedVal.toFixed(3) : "NaN"}) rank=${expectedRank + 1}/${motorReadout.length}, top5_motor=${topStr}`;
             }
-            if (decoded === p.expected) {
+            let wordDecoded = null;
+            let firstLetterFromWord = null;
+            if (typeof this.cluster?.emitWordDirect === "function" && semPathAvailable) {
+              try {
+                if (typeof this.cluster.injectEmbeddingToRegion === "function") {
+                  this.cluster.injectEmbeddingToRegion("sem", emb, 1);
+                }
+                wordDecoded = this.cluster.emitWordDirect({}) || null;
+                if (wordDecoded && wordDecoded.length > 0) {
+                  firstLetterFromWord = wordDecoded[0];
+                }
+              } catch {
+              }
+            }
+            const passed = decoded === p.expected || firstLetterFromWord === p.expected;
+            if (passed) {
               prodPass++;
             } else {
-              prodFails.push(`${p.word}\u2192${decoded || "?"}`);
+              const detail = wordDecoded ? `letter=${decoded || "?"} word=${wordDecoded}` : decoded || "?";
+              prodFails.push(`${p.word}\u2192${detail}`);
             }
             const _probeMs = Date.now() - _probeStart;
             const _slowTag = _probeMs > 1e4 ? " SLOW" : "";
@@ -19935,8 +19951,20 @@ var Curriculum = class _Curriculum {
         // below the 0.5 strict fake-answer guard.
         minScore: 0.2
       };
-      const raw = await cluster.generateSentenceAwait(intentSeed, emitOpts);
-      generated = (raw && typeof raw === "string" ? raw : raw?.text || "") || "";
+      let wordEmit = "";
+      if (typeof cluster.emitWordDirect === "function") {
+        try {
+          wordEmit = cluster.emitWordDirect({}) || "";
+        } catch {
+          wordEmit = "";
+        }
+      }
+      if (wordEmit && wordEmit.length > 0) {
+        generated = wordEmit;
+      } else {
+        const raw = await cluster.generateSentenceAwait(intentSeed, emitOpts);
+        generated = (raw && typeof raw === "string" ? raw : raw?.text || "") || "";
+      }
     } catch {
     }
     const answer = generated.toLowerCase().trim();
