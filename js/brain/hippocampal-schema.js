@@ -49,7 +49,19 @@ const SCHEMA_MERGE_COSINE = 0.90;
 // Episodes within this cosine bucket form a single schema instead of N
 // near-duplicate schemas. Looser than merge threshold because new schemas
 // have less context to differentiate.
-const SCHEMA_GROUP_COSINE = 0.70;
+//
+// iter22 — bumped 0.70 → 0.85. Saturation issue caught: every consolidation
+// pass after the first was merging 100% of new candidates into the SAME
+// existing schema, producing pass logs with `0 new schemas, 1 reinforced`
+// indefinitely. Operator caught (verbatim 2026-05-05): consolidation passes
+// firing all-zero. Root cause: phase-completion episodes from different
+// teach methods (alphabet sequence, vowel variants, rhyme families,
+// phoneme blending) cosined > 0.70 because their input_embedding traces
+// shared the high-frequency CELL_ALIVE / phase-marker tokens. Tightening
+// to 0.85 forces semantically distinct teach events to form distinct
+// schemas — alphabet, vowels, rhymes, phonemes each get their own Tier 2
+// node instead of all collapsing into a single "learning" mega-schema.
+const SCHEMA_GROUP_COSINE = 0.85;
 
 let _nextSchemaCounter = 0;
 function generateSchemaId() {

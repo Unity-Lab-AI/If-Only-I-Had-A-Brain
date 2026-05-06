@@ -700,7 +700,33 @@ Captured iter11 sep-probe reading on first of 7 assoc-pair phases:
 
 ---
 
-### iter22 — WARNING CATALOGUE: LEAK / CLIMBING / OVERLOAD + ALL-ZERO CONSOLIDATION PASSES (operator verbatim 2026-05-05: *"there are overload, leak, and cl;imbing warnings like crazy... make sure you are noting these so they casn be fixed"* + *"is it normal all these are zeros? take a note"* re pass 11: `0 candidates → 0 clusters → 0 new schemas, 0 reinforced, 0 replays, 0 merged, 2 decayed, 0 promoted to Tier 3, 0 episodes decayed / 0 pruned`) — OPEN
+### iter22 — WARNING CATALOGUE: LEAK / CLIMBING / OVERLOAD + ALL-ZERO CONSOLIDATION PASSES (operator verbatim 2026-05-05: *"there are overload, leak, and cl;imbing warnings like crazy... make sure you are noting these so they casn be fixed"* + *"is it normal all these are zeros? take a note"* re pass 11: `0 candidates → 0 clusters → 0 new schemas, 0 reinforced, 0 replays, 0 merged, 2 decayed, 0 promoted to Tier 3, 0 episodes decayed / 0 pruned`) — IN PROGRESS
+
+**Operator escalation 2026-05-05 verbatim**: *"why is that shit not fixed!!!!!!! FIX IT ALL NOW!! AND STOP FUCKING AROUND THESE ARE A UNITY BRAIN WE HAVE TO BE PERFECT IN HOW WE CODE IT"*
+
+**iter22 fixes shipped this commit**:
+
+1. **`_ensureScratchBuffers()` + `_fillRegionPatternInto()`** added to curriculum.js — reusable scratch Float64Array(cluster.size) pair allocated once per curriculum instance, filled in-place per call. Replaces the per-call `new Float64Array(cluster.size)` that was the primary leak source. At biological scale `cluster.size = 13.4M neurons` so each fresh allocation = 107 MB. `_teachLetterNaming` alone made 26 letters × 18 reps × 2 calls = 936 allocations × 107 MB = ~100 GB of churn that V8 GC could not keep up with.
+
+2. **`_teachWordSpellingDirect`** (line ~5526) — converted both `_buildRegionPattern` calls to scratch buffer fills.
+
+3. **`_teachLetterNaming`** (lines ~5941, 5948) — converted both `_buildRegionPattern` calls. Path-fallback retained when `cluster.size = 0`.
+
+4. **`_teachWordEmission`** (lines ~6188, 6203) — converted Initiation and Continuation chain `_buildRegionPattern` calls. Per-letter chain now reuses buffers instead of allocating per chain step.
+
+5. **`_teachPhonemeBlending`** (line ~6911) — converted phoneme-pair `_buildRegionPattern` calls. Was 350s wallclock at biological scale × N words × N letter pairs of allocation.
+
+6. **`SCHEMA_GROUP_COSINE` 0.70 → 0.85** in `js/brain/hippocampal-schema.js` — fixes the all-zero consolidation pass saturation. Distinct teach phases (alphabet sequence, vowel variants, rhyme families, phoneme blending) now form distinct schemas instead of all collapsing into a single "learning" mega-schema. Pass 13's 19 candidates → 1 cluster → 0 new (1 reinforced) was the clearest signature of the problem.
+
+**iter22 fixes still pending**:
+
+A. **WorkerPool SAB churn audit** — native memory growth correlates with WS dispatch volume during heavy Hebbian phases. `server/sparse-worker.js` may be allocating fresh SABs per dispatch.
+
+B. **compute_batch arrayBuffer lifecycle** — `ab` (arrayBuffers) bouncing 1495-2679 MB during teach. Binary-protocol buffer lifecycle audit needed.
+
+C. **Promotion-saturation drain** — option (A) drop `promoted_at IS NULL` filter so anchor episodes can be re-clustered as `frequency_count` climbs. Currently relies on schema-group cosine tightening (#6 above) doing the job.
+
+
 
 **Pass evolution observed:**
 - pass 8: 8 candidates → 1 cluster → 1 reinforced

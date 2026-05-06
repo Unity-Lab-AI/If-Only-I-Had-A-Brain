@@ -22525,6 +22525,11 @@ var Curriculum = class _Curriculum {
     const t0 = Date.now();
     let updates = 0;
     let skipped = 0;
+    const scratch = this._ensureScratchBuffers();
+    if (!scratch) {
+      this._hb("[Curriculum] _teachWordSpellingDirect SKIPPED \u2014 no scratch buffer (cluster.size invalid)");
+      return;
+    }
     for (let rep = 0; rep < reps; rep++) {
       if (typeof globalThis._brainShutdownRequested !== "undefined" && globalThis._brainShutdownRequested) return;
       let count = 0;
@@ -22540,10 +22545,10 @@ var Curriculum = class _Curriculum {
           skipped++;
           continue;
         }
-        const preSem = this._buildRegionPattern(semRegion, entry.pattern, false);
-        const postMot = this._buildRegionPattern(motorRegion, firstCharOneHot, true);
+        this._fillRegionPatternInto(scratch.pre, semRegion, entry.pattern, false);
+        this._fillRegionPatternInto(scratch.post, motorRegion, firstCharOneHot, true);
         try {
-          await this._teachHebbianAsymmetric(preSem, postMot, lr);
+          await this._teachHebbianAsymmetric(scratch.pre, scratch.post, lr);
           updates++;
         } catch {
           skipped++;
@@ -22898,6 +22903,7 @@ var Curriculum = class _Curriculum {
     ensureLetters(Array.from(ALPHABET_LOWER));
     this._hb(`[Curriculum] _teachLetterNaming START: 26 letters \xD7 ${reps} reps \u2014 binding letter(X) \u2192 motor(X) so TALK can answer 'what letter is this?'`);
     const t0 = Date.now();
+    const scratch = this._ensureScratchBuffers();
     for (let rep = 0; rep < reps; rep++) {
       if (typeof globalThis._brainShutdownRequested !== "undefined" && globalThis._brainShutdownRequested) return;
       for (const letter of ALPHABET_LOWER) {
@@ -22909,13 +22915,24 @@ var Curriculum = class _Curriculum {
           const phonFeat = _phonemeFeatureForLetter(letter);
           this._writeTiledPattern(phonRegion, phonFeat);
         }
-        const preLet = this._buildRegionPattern(letterRegion, letterOneHot);
-        const postMot = this._buildRegionPattern(motorRegion, letterOneHot);
-        await this._teachHebbianAsymmetric(preLet, postMot, lr);
-        if (phonRegion) {
-          const phonFeat = _phonemeFeatureForLetter(letter);
-          const postPhon = this._buildRegionPattern(phonRegion, phonFeat);
-          await this._teachHebbianAsymmetric(preLet, postPhon, lr);
+        if (scratch) {
+          this._fillRegionPatternInto(scratch.pre, letterRegion, letterOneHot);
+          this._fillRegionPatternInto(scratch.post, motorRegion, letterOneHot);
+          await this._teachHebbianAsymmetric(scratch.pre, scratch.post, lr);
+          if (phonRegion) {
+            const phonFeat = _phonemeFeatureForLetter(letter);
+            this._fillRegionPatternInto(scratch.post, phonRegion, phonFeat);
+            await this._teachHebbianAsymmetric(scratch.pre, scratch.post, lr);
+          }
+        } else {
+          const preLet = this._buildRegionPattern(letterRegion, letterOneHot);
+          const postMot = this._buildRegionPattern(motorRegion, letterOneHot);
+          await this._teachHebbianAsymmetric(preLet, postMot, lr);
+          if (phonRegion) {
+            const phonFeat = _phonemeFeatureForLetter(letter);
+            const postPhon = this._buildRegionPattern(phonRegion, phonFeat);
+            await this._teachHebbianAsymmetric(preLet, postPhon, lr);
+          }
         }
       }
       await _microtask();
@@ -23057,6 +23074,7 @@ var Curriculum = class _Curriculum {
     for (const w of wordList) for (const ch of w.toLowerCase()) if (/[a-z]/.test(ch)) uniqueLetters.add(ch);
     ensureLetters(Array.from(uniqueLetters));
     this._hb(`[Curriculum] _teachWordEmission START: ${wordList.length} words \xD7 ${reps} reps (asymmetric directional)`);
+    const scratch = this._ensureScratchBuffers();
     const _t18_13_startMs = Date.now();
     let _t18_13_lastHbMs = _t18_13_startMs;
     let _t18_13_opsSinceHb = 0;
@@ -23096,17 +23114,29 @@ var Curriculum = class _Curriculum {
         this._clearSpikes();
         this._writeTiledPattern(semRegion, wordEmb);
         this._writeTiledPattern(motorRegion, encodeLetter(letters[0]));
-        const preInit = this._buildRegionPattern(semRegion, wordEmb, false);
-        const postInit = this._buildRegionPattern(motorRegion, encodeLetter(letters[0]));
-        await this._teachHebbianAsymmetric(preInit, postInit, lr);
+        if (scratch) {
+          this._fillRegionPatternInto(scratch.pre, semRegion, wordEmb, false);
+          this._fillRegionPatternInto(scratch.post, motorRegion, encodeLetter(letters[0]));
+          await this._teachHebbianAsymmetric(scratch.pre, scratch.post, lr);
+        } else {
+          const preInit = this._buildRegionPattern(semRegion, wordEmb, false);
+          const postInit = this._buildRegionPattern(motorRegion, encodeLetter(letters[0]));
+          await this._teachHebbianAsymmetric(preInit, postInit, lr);
+        }
         for (let i = 1; i < letters.length; i++) {
           this._clearSpikes();
           this._writeTiledPattern(semRegion, wordEmb);
           this._writeTiledPattern(letterRegion, encodeLetter(letters[i - 1]));
           this._writeTiledPattern(motorRegion, encodeLetter(letters[i]));
-          const preChain = this._buildRegionPattern(letterRegion, encodeLetter(letters[i - 1]));
-          const postChain = this._buildRegionPattern(motorRegion, encodeLetter(letters[i]));
-          await this._teachHebbianAsymmetric(preChain, postChain, lr);
+          if (scratch) {
+            this._fillRegionPatternInto(scratch.pre, letterRegion, encodeLetter(letters[i - 1]));
+            this._fillRegionPatternInto(scratch.post, motorRegion, encodeLetter(letters[i]));
+            await this._teachHebbianAsymmetric(scratch.pre, scratch.post, lr);
+          } else {
+            const preChain = this._buildRegionPattern(letterRegion, encodeLetter(letters[i - 1]));
+            const postChain = this._buildRegionPattern(motorRegion, encodeLetter(letters[i]));
+            await this._teachHebbianAsymmetric(preChain, postChain, lr);
+          }
         }
       }
       await _microtask();
@@ -23694,6 +23724,7 @@ var Curriculum = class _Curriculum {
     for (const w of wordList) for (const ch of w.toLowerCase()) if (/[a-z]/.test(ch)) uniqueLetters.add(ch);
     ensureLetters(Array.from(uniqueLetters));
     this._hb(`[Curriculum] _teachPhonemeBlending START: ${wordList.length} words \xD7 ${reps} reps (phoneme-sequence Hebbian)`);
+    const scratch = this._ensureScratchBuffers();
     const _t18_13_startMs = Date.now();
     let _t18_13_lastHbMs = _t18_13_startMs;
     let _t18_13_opsSinceHb = 0;
@@ -23733,8 +23764,14 @@ var Curriculum = class _Curriculum {
           const phonA = _phonemeFeatureForLetter(letters[i]);
           const phonB = _phonemeFeatureForLetter(letters[i + 1]);
           if (!phonA.some((v) => v > 0) || !phonB.some((v) => v > 0)) continue;
-          const pre = this._buildRegionPattern(phonRegion, phonA);
-          const post = this._buildRegionPattern(phonRegion, phonB);
+          let pre, post;
+          if (scratch) {
+            pre = this._fillRegionPatternInto(scratch.pre, phonRegion, phonA);
+            post = this._fillRegionPatternInto(scratch.post, phonRegion, phonB);
+          } else {
+            pre = this._buildRegionPattern(phonRegion, phonA);
+            post = this._buildRegionPattern(phonRegion, phonB);
+          }
           if (typeof cluster.intraSynapsesHebbian === "function") {
             cluster.intraSynapsesHebbian(pre, post, lr);
           } else {
@@ -25546,6 +25583,48 @@ var Curriculum = class _Curriculum {
   //   const pre = this._buildRegionPattern(letterRegion, encodeLetter(ch));
   //   const post = this._buildRegionPattern(motorRegion, encodeLetter(next));
   //   this._teachHebbianAsymmetric(pre, post, lr);
+  //
+  // iter22 — buffer reuse to kill the +400 MB/min LEAK during
+  // _teachHebbianAsymmetric phases. cluster.size at biological scale
+  // is ~13.4M neurons → each fresh Float64Array allocation = 107 MB.
+  // _teachLetterNaming alone triggered 26 letters × 18 reps × 2 calls
+  // = 936 allocations × 107 MB = ~100 GB of allocation churn that
+  // V8 GC could not keep up with. Reusing scratch buffers (filled
+  // with 0 on each entry) keeps allocation steady-state at zero.
+  _ensureScratchBuffers() {
+    const cluster = this.cluster;
+    if (!cluster) return null;
+    const size = cluster.size | 0;
+    if (size <= 0) return null;
+    if (!this._scratchPre || this._scratchPre.length !== size) {
+      this._scratchPre = new Float64Array(size);
+    }
+    if (!this._scratchPost || this._scratchPost.length !== size) {
+      this._scratchPost = new Float64Array(size);
+    }
+    return { pre: this._scratchPre, post: this._scratchPost };
+  }
+  // In-place variant — fills `target` instead of allocating. Caller
+  // owns the buffer. Returns target for chaining.
+  _fillRegionPatternInto(target, region, feat, binarize = true) {
+    const cluster = this.cluster;
+    if (!cluster || !target) return target;
+    if (!region || !feat || feat.length === 0) {
+      target.fill(0);
+      return target;
+    }
+    target.fill(0);
+    const size = region.end - region.start;
+    const gSize = Math.max(1, Math.floor(size / feat.length));
+    for (let d = 0; d < feat.length; d++) {
+      if (feat[d] <= 0) continue;
+      for (let n = 0; n < gSize; n++) {
+        const idx = region.start + d * gSize + n;
+        if (idx < region.end) target[idx] = binarize ? 1 : feat[d];
+      }
+    }
+    return target;
+  }
   _buildRegionPattern(region, feat, binarize = true) {
     const cluster = this.cluster;
     if (!cluster || !region || !feat || feat.length === 0) return new Float64Array(cluster ? cluster.size : 0);
