@@ -11593,17 +11593,45 @@ export class Curriculum {
     const semSize = semRegion ? (semRegion.end - semRegion.start) : 0;
     const motorSize = motorRegion.end - motorRegion.start;
 
-    const buildPattern = (regionSize, feat) => {
-      const pat = new Float64Array(regionSize);
+    // iter22 — reusable scratch pools, allocated once per call instead
+    // of per-letter-per-rep. _teachWordIntegrated was the silent +587
+    // MB/min leaker: 76 words × 4 reps × 25 wrong-letter contrastive
+    // passes × 2 buffers each = 15200 allocations × 13MB at biological
+    // scale = ~197 GB allocation churn per cell.
+    if (!this._wordIntScratch || this._wordIntScratch.size !== cluster.size) {
+      this._wordIntScratch = {
+        size: cluster.size,
+        letterPat: new Float64Array(letterSize),
+        phonPat: phonSize > 0 ? new Float64Array(phonSize) : null,
+        motorPat: new Float64Array(motorSize),
+        preF: semSize > 0 ? new Float64Array(semSize) : null,
+        postF: new Float64Array(motorSize),
+        preAF: semSize > 0 ? new Float64Array(semSize) : null,
+        postAF: new Float64Array(motorSize),
+        motorFirstLetterBuf: new Float64Array(motorSize),
+      };
+    }
+    // If region sizes drift (region carve change), reallocate. Cheap.
+    if (this._wordIntScratch.letterPat.length !== letterSize) this._wordIntScratch.letterPat = new Float64Array(letterSize);
+    if (phonSize > 0 && (!this._wordIntScratch.phonPat || this._wordIntScratch.phonPat.length !== phonSize)) this._wordIntScratch.phonPat = new Float64Array(phonSize);
+    if (this._wordIntScratch.motorPat.length !== motorSize) this._wordIntScratch.motorPat = new Float64Array(motorSize);
+    if (semSize > 0 && (!this._wordIntScratch.preF || this._wordIntScratch.preF.length !== semSize)) this._wordIntScratch.preF = new Float64Array(semSize);
+    if (this._wordIntScratch.postF.length !== motorSize) this._wordIntScratch.postF = new Float64Array(motorSize);
+    if (semSize > 0 && (!this._wordIntScratch.preAF || this._wordIntScratch.preAF.length !== semSize)) this._wordIntScratch.preAF = new Float64Array(semSize);
+    if (this._wordIntScratch.postAF.length !== motorSize) this._wordIntScratch.postAF = new Float64Array(motorSize);
+    if (this._wordIntScratch.motorFirstLetterBuf.length !== motorSize) this._wordIntScratch.motorFirstLetterBuf = new Float64Array(motorSize);
+    const wScratch = this._wordIntScratch;
+    const buildPattern = (regionSize, feat, target) => {
+      target.fill(0);
       const gSize = Math.max(1, Math.floor(regionSize / feat.length));
       for (let d = 0; d < feat.length; d++) {
         if (feat[d] <= 0) continue;
         for (let n = 0; n < gSize; n++) {
           const idx = d * gSize + n;
-          if (idx < regionSize) pat[idx] = feat[d];
+          if (idx < regionSize) target[idx] = feat[d];
         }
       }
-      return pat;
+      return target;
     };
 
     ensureLetters(letters);
@@ -11617,7 +11645,7 @@ export class Curriculum {
       ? sharedEmbeddings.getEmbedding(cleanWord) : null;
 
     const firstLetterOneHot = encodeLetter(letters[0]);
-    const motorFirstLetter = buildPattern(motorSize, firstLetterOneHot);
+    const motorFirstLetter = buildPattern(motorSize, firstLetterOneHot, wScratch.motorFirstLetterBuf);
 
     for (let rep = 0; rep < reps; rep++) {
       if (typeof globalThis._brainShutdownRequested !== 'undefined' && globalThis._brainShutdownRequested) return;
@@ -11638,17 +11666,17 @@ export class Curriculum {
 
         for (let j = 0; j < cluster.size; j++) cluster.lastSpikes[j] = 0;
 
-        const letterPat = buildPattern(letterSize, chOneHot);
+        const letterPat = buildPattern(letterSize, chOneHot, wScratch.letterPat);
         for (let j = 0; j < letterSize; j++) {
           cluster.lastSpikes[letterRegion.start + j] = letterPat[j] > 0 ? 1 : 0;
         }
-        if (phonRegion && phonFeat.length > 0) {
-          const phonPat = buildPattern(phonSize, phonFeat);
+        if (phonRegion && phonFeat.length > 0 && wScratch.phonPat) {
+          const phonPat = buildPattern(phonSize, phonFeat, wScratch.phonPat);
           for (let j = 0; j < phonSize; j++) {
             cluster.lastSpikes[phonRegion.start + j] = phonPat[j] > 0 ? 1 : 0;
           }
         }
-        const motorPat = buildPattern(motorSize, chOneHot);
+        const motorPat = buildPattern(motorSize, chOneHot, wScratch.motorPat);
         for (let j = 0; j < motorSize; j++) {
           cluster.lastSpikes[motorRegion.start + j] = motorPat[j] > 0 ? 1 : 0;
         }
@@ -11683,8 +11711,9 @@ export class Curriculum {
         this._writeTiledPattern(motorRegion, firstLetterOneHot, true);
         // Build preF/postF from the now-populated lastSpikes for the
         // CPU shadow oja update (ojaUpdate takes region-sized arrays).
-        const preF = new Float64Array(semSize);
-        const postF = new Float64Array(motorSize);
+        // iter22 — reuse scratch buffers, don't allocate per rep.
+        const preF = wScratch.preF;
+        const postF = wScratch.postF;
         for (let j = 0; j < semSize; j++) preF[j] = cluster.lastSpikes[semRegion.start + j];
         for (let j = 0; j < motorSize; j++) postF[j] = cluster.lastSpikes[motorRegion.start + j];
         for (let k = 0; k < firstLetterCarvingReps; k++) {
@@ -11731,8 +11760,11 @@ export class Curriculum {
           for (let j = 0; j < cluster.size; j++) cluster.lastSpikes[j] = 0;
           this._writeTiledPattern(semRegion, wordEmb, true);
           this._writeTiledPattern(motorRegion, wrongOneHot, true);
-          const preAF = new Float64Array(semSize);
-          const postAF = new Float64Array(motorSize);
+          // iter22 — reuse scratch buffers, don't allocate per wrong letter.
+          // Was 25 wrong letters × 2 buffers per word per rep = primary
+          // _teachWordIntegrated leak source.
+          const preAF = wScratch.preAF;
+          const postAF = wScratch.postAF;
           for (let j = 0; j < semSize; j++) preAF[j] = cluster.lastSpikes[semRegion.start + j];
           for (let j = 0; j < motorSize; j++) postAF[j] = cluster.lastSpikes[motorRegion.start + j];
           const antiLr = lr * wrongLrScale;
@@ -11789,8 +11821,9 @@ export class Curriculum {
           for (let j = 0; j < cluster.size; j++) cluster.lastSpikes[j] = 0;
           this._writeTiledPattern(semRegion, sentEmb, true);
           this._writeTiledPattern(motorRegion, firstLetterOneHot, true);
-          const preF = new Float64Array(semSize);
-          const postF = new Float64Array(motorSize);
+          // iter22 — reuse scratch buffers, don't allocate per template.
+          const preF = wScratch.preF;
+          const postF = wScratch.postF;
           for (let j = 0; j < semSize; j++) preF[j] = cluster.lastSpikes[semRegion.start + j];
           for (let j = 0; j < motorSize; j++) postF[j] = cluster.lastSpikes[motorRegion.start + j];
           if (typeof semToMotor.ojaUpdate === 'function' && semToMotor.values && semToMotor.values.length > 0) {
