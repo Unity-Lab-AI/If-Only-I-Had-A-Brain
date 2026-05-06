@@ -2194,37 +2194,20 @@ export class NeuronCluster {
     catch { return ''; }
     if (!wmOut || wmOut.length === 0) return '';
 
-    // iter21-B — argmax across subject sub-bands. Each subject's teach
-    // wrote its words into its own sub-band so they don't cross-corrupt.
-    //
-    // iter22-D — opts.subject scopes argmax to ONE sub-band. Without
-    // a subject hint, the method previously argmaxed across all 6 sub-
-    // bands and returned a random math word ("squares", "taller") for
-    // ELA-K letter-naming probes because every sub-band's word_motor
-    // got partial signal from any sem pattern. Subject-scoped argmax
-    // forces probes to declare which subject's vocabulary they expect,
-    // which is the right semantic constraint anyway.
-    //
-    // For probes WITHOUT a subject hint (live chat, no curriculum
-    // context), fall back to scanning all bands but apply a higher
-    // minSignal floor so weak random-init bias doesn't get picked.
+    // iter22-F.3 — argmax driven by the SAME persisted bucket maps that
+    // _teachWordEmissionDirect populated. Without those maps emit was
+    // re-enumerating dictionary._words and computing bucket positions
+    // independently — DIFFERENT layout than what teach wrote — so
+    // argmax searched in the wrong bucket-space and Unity emitted
+    // random vocab words. Now teach + emit + _writeAnswerToWordMotor
+    // all consult cluster.wordBucketWords_<subject> as the source of
+    // truth.
     const SUBJECTS = ['ela', 'math', 'sci', 'soc', 'art', 'life'];
-    const subjectVocabs = new Map();
-    for (const subj of SUBJECTS) subjectVocabs.set(subj, []);
-    const seenAll = [];
-    for (const [w, entry] of this.dictionary._words.entries()) {
-      if (typeof w !== 'string' || w.length === 0) continue;
-      if (!/^[a-z]+$/.test(w)) continue;
-      if (entry?.isPersona) continue;
-      const subj = entry?.subject;
-      if (SUBJECTS.includes(subj)) subjectVocabs.get(subj).push(w);
-      else seenAll.push(w); // unsubjected words searchable everywhere
-    }
-
     const subjectScope = opts.subject && SUBJECTS.includes(opts.subject)
       ? [opts.subject]
       : SUBJECTS;
     let bestWord = null, bestSum = -Infinity;
+    let scannedSomething = false;
     for (const subj of subjectScope) {
       const subjectRegion = this.regions[`word_motor_${subj}`];
       if (!subjectRegion) continue;
@@ -2232,24 +2215,65 @@ export class NeuronCluster {
       const subjEnd = subjectRegion.end - wordMotor.start;
       const subjSize = subjEnd - subjStart;
       if (subjSize <= 0) continue;
-      const words = subjectVocabs.get(subj);
-      // Combine subject-tagged words + global unsubjected words for this band
-      const combined = words.concat(seenAll);
-      if (combined.length === 0) continue;
-      const bucketSize = Math.max(1, Math.floor(subjSize / combined.length));
-      for (let b = 0; b < combined.length; b++) {
+      // Read the bucket→word mapping persisted by teach.
+      const wordsList = this[`wordBucketWords_${subj}`];
+      if (!Array.isArray(wordsList) || wordsList.length === 0) continue;
+      scannedSomething = true;
+      const bucketSize = Math.max(1, Math.floor(subjSize / wordsList.length));
+      for (let b = 0; b < wordsList.length; b++) {
         let sum = 0;
         const bStart = subjStart + b * bucketSize;
         const bEnd = Math.min(subjEnd, bStart + bucketSize);
         for (let n = bStart; n < bEnd; n++) sum += wmOut[n];
-        if (sum > bestSum) { bestSum = sum; bestWord = combined[b]; }
+        if (sum > bestSum) { bestSum = sum; bestWord = wordsList[b]; }
+      }
+    }
+    // Legacy fallback: if no persisted maps yet (teach hasn't run for
+    // this subject), enumerate dictionary._words like before so live
+    // chat in early curriculum doesn't fall silent.
+    if (!scannedSomething) {
+      const subjectVocabs = new Map();
+      for (const subj of SUBJECTS) subjectVocabs.set(subj, []);
+      const seenAll = [];
+      for (const [w, entry] of this.dictionary._words.entries()) {
+        if (typeof w !== 'string' || w.length === 0) continue;
+        if (!/^[a-z]+$/.test(w)) continue;
+        if (entry?.isPersona) continue;
+        const subj = entry?.subject;
+        if (SUBJECTS.includes(subj)) subjectVocabs.get(subj).push(w);
+        else seenAll.push(w);
+      }
+      for (const subj of subjectScope) {
+        const subjectRegion = this.regions[`word_motor_${subj}`];
+        if (!subjectRegion) continue;
+        const subjStart = subjectRegion.start - wordMotor.start;
+        const subjEnd = subjectRegion.end - wordMotor.start;
+        const subjSize = subjEnd - subjStart;
+        if (subjSize <= 0) continue;
+        const combined = subjectVocabs.get(subj).concat(seenAll);
+        if (combined.length === 0) continue;
+        const bucketSize = Math.max(1, Math.floor(subjSize / combined.length));
+        for (let b = 0; b < combined.length; b++) {
+          let sum = 0;
+          const bStart = subjStart + b * bucketSize;
+          const bEnd = Math.min(subjEnd, bStart + bucketSize);
+          for (let n = bStart; n < bEnd; n++) sum += wmOut[n];
+          if (sum > bestSum) { bestSum = sum; bestWord = combined[b]; }
+        }
       }
     }
 
-    // iter22-D — minSignal floor higher when no subject scope so random
-    // init bias doesn't get picked. With explicit subject, lower floor
-    // because the trained Q→A binding should produce strong signal.
-    const minSignal = opts.minSignal ?? (opts.subject ? 0.001 : 0.05);
+    // iter22-F.6 — minSignal floor restored to 0.001 across all paths
+    // now that F.3 bucket alignment is correct. Previous iter22-D hack
+    // raised the no-subject floor to 0.05 to mask wrong-word emissions
+    // that came from emit's argmax searching a DIFFERENT bucket layout
+    // than what teach wrote (different dictionary enumeration order).
+    // F.3 made teach + emit + write share `cluster.wordBucketWords_<subject>`
+    // so argmax is searching the exact space teach wrote into — the
+    // signal/noise ratio is now honest. 0.001 floor lets weak-but-real
+    // signals through, which is what the chat path needs for Unity to
+    // actually speak instead of fall silent on borderline matches.
+    const minSignal = opts.minSignal ?? 0.001;
     if (!bestWord || bestSum < minSignal) return '';
     return bestWord;
   }
@@ -3463,11 +3487,22 @@ export class NeuronCluster {
    * when the GPU proxy is unavailable — in that case contrastive
    * push-pull rides intra-cluster recurrent matrix only.
    */
-  async _crossRegionAntiHebbian(lr) {
+  async _crossRegionAntiHebbian(lr, opts = {}) {
     if (!this.crossProjections) return;
     if (!this._gpuProxyReady || !this._gpuProxy || typeof this._gpuProxy.antiHebbianBound !== 'function') return;
     const absLr = Math.abs(lr);
+    // iter22-F.1 — opts.projectionsWhitelist scopes anti-Hebbian
+    // dispatch the same way _crossRegionHebbian does. Contrastive
+    // anti-pair training in _teachAssociationPairs / _teachQABinding
+    // was firing anti-Hebbian on ALL 16 projections every wrong-pair
+    // sample, decaying letter_to_motor / phon_to_letter / etc. on
+    // top of the positive-pair fan-out leak iter22-D/E patched.
+    const wl = opts.projectionsWhitelist;
+    const whitelistSet = wl
+      ? (wl instanceof Set ? wl : new Set(wl))
+      : null;
     for (const name of Object.keys(this.crossProjections)) {
+      if (whitelistSet && !whitelistSet.has(name)) continue;
       const proj = this.crossProjections[name];
       if (!proj || !proj._gpuBound) continue;
       try {

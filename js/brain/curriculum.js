@@ -5700,6 +5700,24 @@ export class Curriculum {
       return;
     }
 
+    // iter22-F.3 — persist the bucket layout on the cluster so the
+    // OTHER paths that need to know which bucket holds which word
+    // (emitWordDirect argmax, _writeAnswerToWordMotor for QA training)
+    // can read the SAME bucket assignment teach actually wrote into.
+    // Without this, three call sites all enumerate dictionary._words
+    // independently and end up with different bucket positions, so
+    // QA→word_motor binding wrote to wrong buckets and emit's argmax
+    // searched in the wrong space — Unity emitted random vocab words
+    // ("squares" / "taller") for arithmetic Q-A. After this map
+    // persists, all three paths share one source of truth.
+    const bucketMapKey = subjectBandName ? `wordBucketMap_${subject}` : 'wordBucketMap';
+    const bucketWordsKey = subjectBandName ? `wordBucketWords_${subject}` : 'wordBucketWords';
+    const bucketMap = new Map();
+    for (let wi = 0; wi < words.length; wi++) bucketMap.set(words[wi], wi);
+    cluster[bucketMapKey] = bucketMap;
+    cluster[bucketWordsKey] = words.slice();
+    cluster[`wordBucketBandName_${subject}`] = subjectBandName || 'word_motor';
+
     this._hb(`[Curriculum] _teachWordEmissionDirect START: ${words.length} K words × ${reps} reps · lr=${lr.toFixed(4)} (subject=${subject} band=${subjectBandName || 'umbrella word_motor'}) — single-tick word emission via sem_to_word_motor`);
 
     const t0 = Date.now();
@@ -8640,19 +8658,25 @@ export class Curriculum {
     }
   }
 
-  async _teachAntiHebbian(lr) {
+  async _teachAntiHebbian(lr, opts = {}) {
     const cluster = this.cluster;
     if (!cluster) return;
     const absLr = Math.abs(lr);
-    // Cross-region anti-Hebbian — GPU dispatch via the batched plasticity
-    // queue with negative lr selecting anti-Hebbian mode in the shader.
-    // Silent no-op when GPU proxy unavailable (browser-only mode or pre-
-    // rebind), in which case only the intra-cluster contrastive fires.
+    // iter22-F.1 — opts.projectionsWhitelist forwarded to cross-region
+    // anti-Hebbian so contrastive negative-pair training only depresses
+    // the projections being trained. Without this, every wrong-pair
+    // sample in _teachAssociationPairs / _teachQABinding was firing
+    // anti-Hebbian on all 16 cross-projections — decaying
+    // letter_to_motor on top of the positive-pair fan-out leak that
+    // iter22-D/E already patched.
     if (typeof cluster._crossRegionAntiHebbian === 'function') {
-      await cluster._crossRegionAntiHebbian(absLr);
+      await cluster._crossRegionAntiHebbian(absLr, opts);
     }
     // Intra-cluster recurrent anti-Hebbian. Always runs at biological
     // scale — the intra-synapses CSR stays live on CPU for probe paths.
+    // opts.skipIntraAntiHebbian for callers that only want cross-region
+    // depression without recurrent matrix touch.
+    if (opts.skipIntraAntiHebbian) return;
     if (typeof cluster.intraSynapsesAntiHebbian === 'function') {
       await cluster.intraSynapsesAntiHebbian(cluster.lastSpikes, cluster.lastSpikes, absLr);
     } else if (cluster.synapses && typeof cluster.synapses.antiHebbianUpdate === 'function') {
@@ -8839,6 +8863,37 @@ export class Curriculum {
     const reps = opts.reps ?? 8;
     const lr = opts.lr ?? cluster.learningRate;
     const allowMicrotask = opts.allowMicrotask !== false;
+    // iter22-F.2 — projection whitelist scoping. Operator: combination
+    // phases (StoryComprehension, CausalChains, MakeTen, ShapeCompose
+    // etc.) write A + B + C into sem / motor / fineType / phon and
+    // call _teachHebbian which fans out to ALL 16 cross-projections.
+    // Silent regions (letter / visual / auditory / word_motor) decay
+    // via Oja's `Δw = -η·post²·w` — same shape as the QA + association
+    // leaks iter22-D/E patched. Scope to the projections that actually
+    // touch the writes' regions. Auto-derive whitelist from the fact's
+    // write list if caller doesn't provide explicit
+    // opts.projectionsWhitelist.
+    const explicitWhitelist = opts.projectionsWhitelist || null;
+    const deriveWhitelistFromFact = (fact) => {
+      if (explicitWhitelist) return explicitWhitelist;
+      if (!fact || !Array.isArray(fact.writes)) return null;
+      // Build pairwise projection names between every region the fact
+      // writes into. Combination teach-events bind A↔B, A↔C, B↔C in
+      // both directions; the matrix's projection list only contains
+      // pairs that actually exist (defined in cluster.crossProjections).
+      const regions = [...new Set(fact.writes
+        .filter(w => w && typeof w.region === 'string')
+        .map(w => w.region))];
+      const wl = [];
+      for (let i = 0; i < regions.length; i++) {
+        for (let j = 0; j < regions.length; j++) {
+          if (i === j) continue;
+          const name = `${regions[i]}_to_${regions[j]}`;
+          if (cluster.crossProjections[name]) wl.push(name);
+        }
+      }
+      return wl.length > 0 ? wl : null;
+    };
     // Per-batch microtask yield. Was once per rep — at low fact counts
     // (50-200 facts) that was fine, but vocab-derived helpers can hit
     // 1500+ facts per rep and the inner loop dispatches Hebbian without
@@ -8859,7 +8914,8 @@ export class Curriculum {
           if (!w || !w.region || !w.feat) continue;
           this._writeTiledPattern(w.region, w.feat, w.binarize !== false);
         }
-        await this._teachHebbian(lr);
+        const wl = deriveWhitelistFromFact(fact);
+        await this._teachHebbian(lr, wl ? { projectionsWhitelist: wl } : {});
         factsThisRep++;
         if (allowMicrotask && (factsThisRep % YIELD_EVERY) === 0) {
           await _microtask();
@@ -9015,6 +9071,49 @@ export class Curriculum {
   // sem_to_word_motor only knew word→word mappings (autoassociation)
   // and Q→A questions argmaxed to whatever bucket had random-init
   // bias.
+  // iter22-F.3 / F.5 — lazy-populate the word_motor bucket map for
+  // `subject`. Used by both _teachWordEmissionDirect (writer) and
+  // _writeAnswerToWordMotor (QA caller). Same algorithm as
+  // _teachWordEmissionDirect's enumeration so first-caller-wins
+  // produces an identical layout regardless of order. Critical
+  // because cell phase order runs _teachQABinding BEFORE
+  // _teachWordEmissionDirect — without this, QA writes hit a missing
+  // map and the answer's word-bucket never gets activated.
+  _ensureWordBucketMap(subject) {
+    const cluster = this.cluster;
+    if (!cluster) return null;
+    const subj = (subject || '').toLowerCase();
+    const SUBJ_NORM = {
+      ela: 'ela', math: 'math', mathematics: 'math',
+      sci: 'sci', science: 'sci',
+      soc: 'soc', social: 'soc',
+      art: 'art', life: 'life', 'life-skills': 'life',
+    };
+    const subjKey = SUBJ_NORM[subj] || null;
+    if (!subjKey) return null;
+    const mapKey = `wordBucketMap_${subjKey}`;
+    const wordsKey = `wordBucketWords_${subjKey}`;
+    if (cluster[mapKey] && Array.isArray(cluster[wordsKey]) && cluster[wordsKey].length > 0) {
+      return { map: cluster[mapKey], words: cluster[wordsKey] };
+    }
+    if (!this.dictionary || !this.dictionary._words?.entries) return null;
+    const words = [];
+    for (const [w, entry] of this.dictionary._words.entries()) {
+      if (typeof w !== 'string' || w.length === 0) continue;
+      if (!/^[a-z]+$/.test(w)) continue;
+      if (!entry || !entry.pattern || !entry.pattern.length) continue;
+      if (entry.isPersona) continue;
+      words.push(w);
+      if (!entry.subject) entry.subject = subjKey;
+    }
+    if (words.length === 0) return null;
+    const map = new Map();
+    for (let wi = 0; wi < words.length; wi++) map.set(words[wi], wi);
+    cluster[mapKey] = map;
+    cluster[wordsKey] = words;
+    cluster[`wordBucketBandName_${subjKey}`] = `word_motor_${subjKey}`;
+    return { map, words };
+  }
   _writeAnswerToWordMotor(answerText, subject) {
     const cluster = this.cluster;
     if (!cluster || !cluster.regions) return;
@@ -9025,40 +9124,57 @@ export class Curriculum {
     let answerWord = '';
     for (const t of tokens) if (t.length > answerWord.length) answerWord = t;
     if (!answerWord) return;
-    // Only write if the answer is in the cluster's word-bucket map.
-    // Bucket maps live at cluster.wordBucketMap (full vocab) and
-    // per-subject sub-band maps at cluster.wordBucketMap_<subject>.
-    const fullMap = cluster.wordBucketMap;
-    const subjMap = subject
-      ? (cluster[`wordBucketMap_${subject.toLowerCase()}`] || null)
-      : null;
-    const writeBucketIntoBand = (bucketIdx, regionName) => {
+    // iter22-F.3 — ensure the bucket map exists. _teachQABinding runs
+    // BEFORE _teachWordEmissionDirect in the cell phase order, so on
+    // first QA write the map is unpopulated. Lazy-init using the same
+    // algorithm teach uses so layouts match.
+    this._ensureWordBucketMap(subject);
+    // iter22-F.3 — read the SAME bucket map _teachWordEmissionDirect
+    // persisted on the cluster. Map key uses iter21-B subject codes
+    // (ela/math/sci/soc/art/life) so caller's subject (which may be
+    // "science"/"social") is normalized to teach's vocabulary.
+    const SUBJ_NORM = {
+      ela: 'ela',
+      math: 'math',
+      mathematics: 'math',
+      sci: 'sci',
+      science: 'sci',
+      soc: 'soc',
+      social: 'soc',
+      art: 'art',
+      life: 'life',
+      'life-skills': 'life',
+    };
+    const subjKey = SUBJ_NORM[(subject || '').toLowerCase()] || null;
+    const writeBucketIntoBand = (bucketIdx, regionName, totalBuckets) => {
       const region = cluster.regions[regionName];
       if (!region || bucketIdx == null || bucketIdx < 0) return;
       const regionSize = region.end - region.start;
-      const buckets = cluster[`${regionName}BucketCount`] || regionSize;
+      const buckets = totalBuckets || regionSize;
       const perBucket = Math.max(1, Math.floor(regionSize / buckets));
       const start = region.start + bucketIdx * perBucket;
       const end = Math.min(region.end, start + perBucket);
       for (let i = start; i < end; i++) cluster.lastSpikes[i] = 1;
     };
-    if (fullMap && fullMap.get) {
-      const idx = fullMap.get(answerWord);
-      if (typeof idx === 'number') writeBucketIntoBand(idx, 'word_motor');
+    // Subject-band write (primary path — what emit will argmax in).
+    if (subjKey) {
+      const subjMap = cluster[`wordBucketMap_${subjKey}`];
+      const subjWords = cluster[`wordBucketWords_${subjKey}`];
+      const subjBand = `word_motor_${subjKey}`;
+      if (subjMap && typeof subjMap.get === 'function' && Array.isArray(subjWords) && cluster.regions[subjBand]) {
+        const idx = subjMap.get(answerWord);
+        if (typeof idx === 'number' && idx >= 0) {
+          writeBucketIntoBand(idx, subjBand, subjWords.length);
+        }
+      }
     }
-    if (subjMap && subjMap.get) {
-      const idx = subjMap.get(answerWord);
-      if (typeof idx === 'number') {
-        const subj = subject.toLowerCase();
-        const subjBand = ({
-          ela: 'word_motor_ela',
-          math: 'word_motor_math',
-          science: 'word_motor_sci',
-          social: 'word_motor_soc',
-          art: 'word_motor_art',
-          life: 'word_motor_life',
-        })[subj];
-        if (subjBand) writeBucketIntoBand(idx, subjBand);
+    // Umbrella word_motor write (legacy path for unsubjected QA).
+    const fullMap = cluster.wordBucketMap;
+    const fullWords = cluster.wordBucketWords;
+    if (fullMap && typeof fullMap.get === 'function' && Array.isArray(fullWords)) {
+      const idx = fullMap.get(answerWord);
+      if (typeof idx === 'number' && idx >= 0) {
+        writeBucketIntoBand(idx, 'word_motor', fullWords.length);
       }
     }
   }
@@ -9243,7 +9359,15 @@ export class Curriculum {
                   }
                   if (templateId >= 0) this._writeQuestionTemplateTag(templateId);
                   this._writeTiledPattern(motorRegion, wrongMotorPattern, false);
-                  await this._teachAntiHebbian(lr * antiLrScale);
+                  // iter22-F.1 — match positive-pair whitelist so anti-
+                  // Hebbian only depresses sem→motor + sem→word_motor +
+                  // subject-band, not letter_to_motor / letter_to_phon /
+                  // visual_to_letter. Closes the symmetric decay leak
+                  // iter22-D positive-side scoping left open.
+                  await this._teachAntiHebbian(lr * antiLrScale, {
+                    projectionsWhitelist: this._qaBindingWhitelist(opts.subject),
+                    skipIntraAntiHebbian: true,
+                  });
                   antiFires++;
                 } catch { /* non-fatal */ }
               }
@@ -9988,7 +10112,12 @@ export class Curriculum {
                     const tagVal = binarize ? 1 : 0.5;
                     for (let i = tagStart; i < tagEnd; i++) cluster.lastSpikes[i] = tagVal;
                   }
-                  await this._teachAntiHebbian(lr * antiLrScale);
+                  // iter22-F.1 — match positive-pair association whitelist
+                  // (sem↔motor + sem↔fineType for relation tags) so anti-
+                  // Hebbian only depresses those projections.
+                  await this._teachAntiHebbian(lr * antiLrScale, {
+                    projectionsWhitelist: this._associationPairsWhitelist(opts.subject),
+                  });
                   antiFires++;
                 } catch { /* non-fatal contrastive pass */ }
               }
@@ -11866,7 +11995,21 @@ export class Curriculum {
         }
         // NO sem overlay here — see header comment.
 
-        await cluster._crossRegionHebbian(lr);
+        // iter22-F.5 — scope cross-region Hebbian to projections actually
+        // touching the active regions (letter / phon / motor — sem is
+        // intentionally silent here per Layer 1+2 design). Without this
+        // whitelist the legacy fan-out fired Hebbian on all 16 projections
+        // every letter every rep — at biological scale that's the dominant
+        // remaining +300 MB/min UPFRONT-VOCAB leak the iter22-C scratch
+        // pool didn't catch (scratch covered Float64Array allocations,
+        // not the projection iteration overhead).
+        const layer12Whitelist = ['letter_to_phon', 'phon_to_letter', 'letter_to_motor', 'motor_to_letter'];
+        if (phonRegion) {
+          // include phon→motor / motor→phon when phoneme region is active
+          if (cluster.crossProjections?.phon_to_motor) layer12Whitelist.push('phon_to_motor');
+          if (cluster.crossProjections?.motor_to_phon) layer12Whitelist.push('motor_to_phon');
+        }
+        await cluster._crossRegionHebbian(lr, { projectionsWhitelist: layer12Whitelist });
       }
 
       // === Layer 3 (CLEAN sem→motor first-letter carve, DIRECT projection) ===

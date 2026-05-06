@@ -4639,12 +4639,28 @@ class ServerBrain {
     `);
 
     // iter13 T13.4 — promotion candidates: salience > threshold + freq + consol.
+    //
+    // iter22-F.4 — drop `promoted_at IS NULL` filter. Operator caught:
+    // every consolidation pass after the first few went all-zero
+    // because anchor episodes (heartbeats with iter20-K exact-text
+    // merge) get promoted ONCE then are excluded forever, even though
+    // their `frequency_count` keeps climbing as new identical-text
+    // heartbeats merge in. The point of frequency-merge IS that the
+    // anchor row stays the source-of-truth; consolidation should re-
+    // visit it when its salience climbs high enough to re-qualify.
+    // ConsolidationEngine guards against infinite reinforcement via
+    // its `_findExistingSchema(centroid, threshold)` lookup that
+    // funnels re-promoted candidates into their existing schema
+    // (reinforced += 1, not new schema). So dropping the filter ⇒
+    // anchor episodes contribute their frequency-driven climb to the
+    // matching schema's consolidation_strength instead of saturating.
+    // Schemas grow with continued exposure — which is the actual
+    // biology of consolidation in real hippocampus.
     this._stmtFindPromotionCandidates = this._db.prepare(`
       SELECT * FROM episodes
       WHERE effective_salience > ?
         AND frequency_count >= ?
         AND consolidation_count >= ?
-        AND promoted_at IS NULL
       ORDER BY effective_salience DESC LIMIT ?
     `);
 
