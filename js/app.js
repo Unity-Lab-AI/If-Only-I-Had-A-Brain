@@ -727,11 +727,11 @@ function renderLandingTab(tab, s) {
       const wcDisplay = workingCap == null ? workingItems.toLocaleString() + ' items (unbounded)' : workingItems + ' / ' + workingCap + ' slots';
 
       el.innerHTML =
-        card('Working Memory (Tier 0)', `
+        card('Working Memory (Tier 0 · cap=7 Miller 1956)', `
           ${metric('Items', wcDisplay, '#00e5ff')}
           ${workingCap == null ? '' : bar((workingItems / Math.max(1, workingCap)) * 100, '#00e5ff')}
         `) +
-        card('Tier 1 — Episodic (SQLite)', `
+        card('Tier 1 — Episodic (SQLite · freq-merge cosine ≥ 0.5)', `
           ${metric('Total Episodes', totalEpisodes.toLocaleString(), '#a855f7')}
           ${metric('Recent Salience (avg)', recentSal.toFixed(3), recentSal >= 0.4 ? '#22c55e' : recentSal >= 0.15 ? '#f59e0b' : '#ef4444')}
           ${bar(Math.min(100, recentSal * 200), recentSal >= 0.4 ? '#22c55e' : recentSal >= 0.15 ? '#f59e0b' : '#ef4444')}
@@ -739,18 +739,18 @@ function renderLandingTab(tab, s) {
           ${metric('Promoted to Tier 2', promotedToTier2.toLocaleString(), '#22c55e')}
           ${metric('Interactions', interactions.toLocaleString(), '#555')}
         `) +
-        card('Tier 2 — Schematic Memory', `
+        card('Tier 2 — Schematic Memory (cosine ≥ 0.85 grouping)', `
           ${metric('Schemas', fmtItems(tier2.schemaCount ?? 0, tier2.hardCap), '#a855f7')}
           ${metric('Avg Consolidation Strength', (tier2.avgConsolidationStrength ?? 0).toFixed(3), '#ff4d9a')}
           ${metric('Total Retrievals', (tier2.totalRetrievals ?? 0).toLocaleString(), '#22c55e')}
           ${tier2TopHtml}
         `) +
-        card('Tier 3 — Identity-Bound (Permanent)', `
+        card('Tier 3 — Identity-Bound (Permanent · 0.999/day decay)', `
           ${metric('Identity Anchors', fmtItems(tier3.identityCount ?? 0, tier3.hardCap), '#ff4d9a')}
           ${metric('Last Identity Inject', fmtAge(tier3.lastInjectedAt), tier3.lastInjectedAt ? '#22c55e' : '#888')}
           ${tier3TopHtml}
         `) +
-        card('Consolidation Engine (Dream Cycles)', `
+        card('Consolidation Engine (Dream Cycles · 5 min interval)', `
           ${metric('Dream Passes Run', (consolidation.passCount ?? 0).toLocaleString(), '#a855f7')}
           ${metric('Last Pass', fmtAge(consolidation.lastPassAt), consolidation.lastPassAt ? '#22c55e' : '#888')}
           ${metric('Currently Dreaming', consolidation.isDreaming ? '✓ yes' : '✗ no', consolidation.isDreaming ? '#22c55e' : '#555')}

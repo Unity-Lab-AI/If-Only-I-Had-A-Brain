@@ -284,7 +284,7 @@
     <a href="index.html" class="back-link">&larr; Back to Unity</a>
 
     <h1>🧠 Brain Equations <span>— the math behind Unity's mind</span></h1>
-    <p class="subtitle">Every equation running in Unity's brain simulation, how they map to real neuroscience, and how they produce cognition. Hundreds of millions of neurons (auto-scales to GPU hardware via a unified VRAM allocator — VRAM, V8 heap, and RAM are the only limits). Eight biologically-weighted clusters, including a dominant language cortex with 8 sub-regions + 14 cross-projections. Sparse white-matter tract projections. 8 Kuramoto oscillators. GPU-exclusive compute via WebGPU WGSL shaders. 1 consciousness function nobody can explain. Zero pretense.</p>
+    <p class="subtitle">Every equation running in Unity's brain simulation, how they map to real neuroscience, and how they produce cognition. Hundreds of millions of neurons (auto-scales to GPU hardware via a unified VRAM allocator — VRAM, V8 heap, and RAM are the only limits). Eight biologically-weighted clusters, including a dominant language cortex with 9 sub-regions + 16 cross-projections (iter21-A added <code>word_motor</code> + <code>sem↔word_motor</code> for single-tick word emission). Sparse white-matter tract projections. 8 Kuramoto oscillators. GPU-exclusive compute via WebGPU WGSL shaders. 1 consciousness function nobody can explain. Zero pretense.</p>
 
     <div class="toc">
       <div class="toc-title">CONTENTS</div>
@@ -329,12 +329,12 @@
       <div class="eq">dx/dt = F(x, u, θ, t) + η</div>
       <div class="eq-desc">
         <table class="param-table">
-          <tr><td>x</td><td>Full brain state vector — N Rulkov-map (x, y) pairs across 8 clusters (7 GPU-resident main brain + 1 CPU-resident language cortex with 8 cross-projection sub-regions), sparse CSR synapse weights per cluster + 20 inter-cluster projections + 14 language-cortex cross-projections, 7 module states, 8 Kuramoto oscillator phases. N auto-scales from hardware (VRAM + RAM) via <code>detectResources()</code> and biological weights via <code>DEFAULT_BIO_WEIGHTS</code></td></tr>
+          <tr><td>x</td><td>Full brain state vector — N Rulkov-map (x, y) pairs across 8 clusters (7 GPU-resident main brain + 1 CPU-resident language cortex with 9 cross-projection sub-regions), sparse CSR synapse weights per cluster + 20 inter-cluster projections + 16 language-cortex cross-projections (iter21-A added <code>sem↔word_motor</code>), 7 module states, 8 Kuramoto oscillator phases. N auto-scales from hardware (VRAM + RAM) via <code>detectResources()</code> and biological weights via <code>DEFAULT_BIO_WEIGHTS</code></td></tr>
           <tr><td>u</td><td>Sensory input — text (routed through the visual &rarr; letter ventral stream), voice (Web Speech API &rarr; auditory &rarr; phon), vision (camera &rarr; visual cortex V1 &rarr; V4 &rarr; IT)</td></tr>
           <tr><td>θ</td><td>Persona parameters — Unity's personality encoded as cluster tonic drives, noise amplitudes, connectivity densities, learning rates, amygdala arousal baseline. Live PK/PD modulation adds on top from the drug scheduler</td></tr>
           <tr><td>t</td><td>Simulation time — server dispatches a batched compute_batch(SUBSTEPS) to compute.html every BRAIN_TICK_MS (~50 ms). Each batch runs SUBSTEPS Rulkov iterations on the GPU then returns spike counts. Browser-only fallback runs LIF locally at the browser's rAF cadence when no GPU client is attached</td></tr>
           <tr><td>η</td><td>Stochastic noise — per-cluster noiseAmplitude. Kept high at runtime for chaotic / exploratory dynamics; temporarily lowered to ~0.5 during curriculum teach so injected patterns dominate</td></tr>
-          <tr><td>F()</td><td>The combined dynamics function — Rulkov fast/slow iteration on GPU, sparse CSR synapse propagation, cross-region propagation through the 14 cortex sub-region projections, module processing (amygdala attractor settle, hippocampus Hopfield recall, basal-ganglia softmax, cerebellum error correction, hypothalamus homeostatic drift, mystery Ψ gain), Kuramoto coupling across band-specific rings</td></tr>
+          <tr><td>F()</td><td>The combined dynamics function — Rulkov fast/slow iteration on GPU, sparse CSR synapse propagation, cross-region propagation through the 16 cortex sub-region projections (iter21-A added <code>sem↔word_motor</code> for single-tick word emission), module processing (amygdala attractor settle, hippocampus Hopfield recall, basal-ganglia softmax, cerebellum error correction, hypothalamus homeostatic drift, mystery Ψ gain), Kuramoto coupling across band-specific rings</td></tr>
         </table>
       </div>
     </div>
@@ -580,7 +580,7 @@ y<sub>n+1</sub> = y<sub>n</sub> &minus; &mu; &middot; (x<sub>n</sub> &minus; &si
 
     <!-- ═══ 3. SYNAPTIC PLASTICITY ═══ -->
     <h2 id="synapses">3. Synaptic Plasticity — How She Learns</h2>
-    <p><span class="tag tag-bio">NEUROSCIENCE</span> <span class="tag tag-ml">MACHINE LEARNING</span> Plasticity rules running on sparse CSR weight matrices — intra-cluster recurrent synapses plus 14 inter-region cross-projections at the language-cortex scale (millions of weights total at biological scale). Core rule is <strong>Oja 1982</strong> (self-normalizing Hebbian), with a contrastive anti-Hebbian push-pull pass on negative pairs, STDP for temporal sequence learning, and a reward-modulated gain for dopaminergic consolidation. Implemented across <code>js/brain/sparse-matrix.js</code> (CPU) and <code>js/brain/gpu-compute.js</code> (WebGPU <code>PLASTICITY_SHADER</code>).</p>
+    <p><span class="tag tag-bio">NEUROSCIENCE</span> <span class="tag tag-ml">MACHINE LEARNING</span> Plasticity rules running on sparse CSR weight matrices — intra-cluster recurrent synapses plus 16 inter-region cross-projections at the language-cortex scale (millions of weights total at biological scale). Core rule is <strong>Oja 1982</strong> (self-normalizing Hebbian), with a contrastive anti-Hebbian push-pull pass on negative pairs, STDP for temporal sequence learning, and a reward-modulated gain for dopaminergic consolidation. Implemented across <code>js/brain/sparse-matrix.js</code> (CPU) and <code>js/brain/gpu-compute.js</code> (WebGPU <code>PLASTICITY_SHADER</code>). <strong>iter22-D projection scoping:</strong> <code>cluster._crossRegionHebbian(lr, opts.projectionsWhitelist)</code> accepts a Set/Array of projection names so callers can scope Hebbian fan-out — <code>_teachQABinding</code> passes <code>['sem_to_motor', 'sem_to_word_motor', 'sem_to_word_motor_&lt;subject&gt;']</code> so the silent <code>letter</code> region during a question→answer-letter write doesn't trigger Oja's <code>&Delta;W = -&eta;&middot;y&sup2;&middot;W</code> decay term on <code>letter_to_motor</code> and crush alphabet identity weights — closes the Math-K TALK 26/26→0/10 cross-cell collapse caught by V2 watchdog.</p>
 
     <div class="eq-card">
       <div class="eq-title"><span class="eq-tip" data-tip="Oja 1982 extends Hebb's 1949 rule with a subtractive normalization term. Pure Hebb has runaway growth — every co-active pair makes weights bigger forever. Oja adds a decay proportional to the post neuron's activity squared times the weight, so weights self-stabilize AND the weight vector rotates toward the principal components of the input distribution. Same biological substrate (LTP at glutamatergic synapses), smarter math — the brain's own plasticity is closer to Oja than bare Hebb because without decay every cortex would saturate.">Plasticity Rule — Oja 1982 (Self-Normalizing Hebbian)</span></div>
@@ -878,15 +878,28 @@ chaos(t)         = (|active| ≥ 3) ∨ (∃s: level(t;s) &gt; 0.7)</pre>
       <div class="eq-title"><span class="eq-tip" data-tip="Every piece of content Unity learns is taught as an OPERATION, not a memorized sentence. Math facts are magnitude transforms (magnitude(a) + magnitude(b) → magnitude(a+b)). Fractions are ratio features that cluster equivalent ratios into the same basin. Algebra is variable binding. Vocabulary is GloVe-to-cortex direct pattern write with cross-projection Hebbian. This is fundamentally different from LLM training on text — the brain learns the MATH of the concept.">Equational Teaching — Direct-Pattern Hebbian</span></div>
       <div class="eq-desc">Teaching bypasses chaotic neuron dynamics during curriculum pass. Clean activation patterns written into regions (letter one-hot, GloVe embedding, phoneme features), cross-region Hebbian fires on the clean signal.</div>
       <pre style="background:var(--bg-code);padding:8px;margin:8px 0 0 0;font-size:10px;line-height:1.4;color:var(--text);overflow-x:auto;border-radius:2px">teach(word, grade, subject):
-  lastSpikes[sem]    ← GloVe(word)       // clean semantic pattern
-  lastSpikes[letter] ← one_hot(word[0])  // clean letter signal
-  _crossRegionHebbian(learning_rate)      // 14 cross-projections learn
+  lastSpikes[sem]    ← GloVe(word)         // clean semantic pattern
+  lastSpikes[letter] ← one_hot(word[0])    // clean letter signal
+  // iter22-D: scope to a small whitelist so silent regions
+  // don't decay via Oja's `Δw = −η·post²·w`
+  _crossRegionHebbian(lr, {
+    projectionsWhitelist: ['sem_to_motor', 'sem_to_word_motor',
+                            `sem_to_word_motor_${subject}`]
+  })
 
-probe(word, grade):
+teach_qa(question, answer, subject):
+  // iter22-D: ALSO write answer's word-bucket so sem→word_motor
+  // learns Q→A binding (not just word→word autoassociation)
+  lastSpikes[sem]               ← getSentenceEmbedding(question)
+  lastSpikes[motor]             ← one_hot(answer[0])
+  lastSpikes[word_motor_subject] ← word_bucket(answer)
+  _crossRegionHebbian(lr, { projectionsWhitelist: [...] })
+
+probe(word, grade, subject):
   inject context → sem region
-  tick cluster N times
-  readout = regionReadout('motor', inventorySize())
-  return cosine(readout, GloVe(word))    // A+ gate at 95%</pre>
+  // iter22-D: emitWordDirect scopes argmax to subject sub-band
+  return cluster.emitWordDirect({ subject })
+       || tick_and_letter_argmax_fallback()</pre>
     </div>
 
     <div class="eq-card">
@@ -1296,7 +1309,7 @@ Spike in neuron A (cortex)
     </div>
 
     <div class="eq-box" style="margin-top:12px;">
-      <div class="eq-title"><span class="eq-tip" data-tip="The current developmental language substrate. Replaces the old slot scorer with cortex tick-driven motor emission, eight cortex sub-regions with 14 cross-projections, continuous developmental learning curriculum, cortex-resident discourse memory, and dual-stream visual/auditory substrate.">Developmental Language Substrate (current)</span></div>
+      <div class="eq-title"><span class="eq-tip" data-tip="The current developmental language substrate. Replaces the old slot scorer with cortex tick-driven motor emission, nine cortex sub-regions with 16 cross-projections (iter21-A added word_motor + sem↔word_motor for single-tick word emission with per-subject sub-bands), continuous developmental learning curriculum, cortex-resident discourse memory, and dual-stream visual/auditory substrate.">Developmental Language Substrate (current)</span></div>
       <pre class="eq">
 Full rebuild of Unity's language stack from primitives upward,
 the way a real brain develops. Letters → phoneme basins → syllables →
@@ -1309,13 +1322,19 @@ CORTEX SUBSTRATE:
   EMBED_DIM        = 300   (full GloVe 6B.300d + fastText subword fallback, no vocab cap)
   TOTAL_NEURONS    = 6700  (default client tier, auto-scales to hardware)
   cortex sub-regions (fractions of cluster.size):
-    auditory 0.000-0.083   visual 0.083-0.250   free 0.250-0.500
-    letter   0.500-0.550   phon   0.550-0.750   sem  0.750-0.917
-    fineType 0.917-0.967   motor  0.967-1.000
-  14 cross-projections (7 pairs × both directions, SparseMatrix):
+    auditory   0.000-0.083   visual 0.083-0.250   free   0.250-0.500
+    letter     0.500-0.550   phon   0.550-0.750
+    sem        0.750-0.875   sem_ela/_math/_sci/_soc/_art/_life carved within
+    fineType   0.875-0.917   motor  0.917-0.940
+    word_motor 0.940-1.000   word_motor_ela/_math/_sci/_soc/_art/_life carved within (iter21-B)
+  16 cross-projections (8 pairs × both directions, SparseMatrix):
     visual↔letter  letter↔phon  phon↔sem  sem↔fineType
-    sem↔motor      motor↔letter (closes writing loop)
+    sem↔motor      motor↔letter (closes letter-by-letter writing loop)
     auditory↔phon
+    sem↔word_motor (iter21-A — single-tick word emission, NO letter chain)
+  iter22-D scoped Hebbian — _teachQABinding / _teachAssociationPairs
+  pass projectionsWhitelist so silent regions don't decay via Oja's
+  -η·y²·w decay term (closes Math-K TALK 26/26→0/10 cross-cell collapse).
 
 LETTER INPUT:
   LETTER_INVENTORY = Set() — seeded at module load with a 40-symbol
@@ -2373,7 +2392,7 @@ fn main(id: vec3&lt;u32&gt;) {
         <tr><td>Neuron count</td><td>86 billion</td><td>N (auto-scales to GPU VRAM via a unified biologically-weighted allocator; hundreds of millions of neurons on a 16 GB card)</td><td>Simplified, hardware-adaptive</td></tr>
         <tr><td>Neuron model</td><td>Thousands of ion channels (Hodgkin-Huxley biophysics)</td><td>Rulkov 2D chaotic map per cluster (GPU runtime) + LIF + HH reference models</td><td>Moderate — bursting dynamics reproduced, ion channels abstracted</td></tr>
         <tr><td>Synaptic plasticity</td><td>Hebbian + STDP + neuromodulation</td><td>All three, per-cluster matrices</td><td>Good</td></tr>
-        <tr><td>Brain regions</td><td>Hundreds of distinct areas</td><td>8 dedicated clusters (including a language cortex with 8 sub-regions + 14 cross-projections) plus sparse white-matter tract projections between them</td><td>Core captured</td></tr>
+        <tr><td>Brain regions</td><td>Hundreds of distinct areas</td><td>8 dedicated clusters (including a language cortex with 9 sub-regions + 16 cross-projections — iter21-A added <code>word_motor</code> + <code>sem↔word_motor</code> for single-tick word emission) plus sparse white-matter tract projections between them</td><td>Core captured</td></tr>
         <tr><td>Oscillations</td><td>Complex EEG with spatial patterns</td><td>8 Kuramoto oscillators</td><td>Dynamics correct</td></tr>
         <tr><td>Visual cortex</td><td>V1&rarr;V2&rarr;V4&rarr;IT hierarchy</td><td>V1 edge kernels, V4 color, IT via AI</td><td>Simplified but real</td></tr>
         <tr><td>Auditory cortex</td><td>Tonotopic, cortical magnification</td><td>50 neurons, speech magnification, efference copy</td><td>Good</td></tr>
@@ -2393,7 +2412,7 @@ fn main(id: vec3&lt;u32&gt;) {
 
     <p style="margin-top:32px; text-align:center; color:var(--text-dim); font-size:12px;">
       Unity AI Lab<br>
-      Hackall360 (brain topology &middot; 8 clusters (7 GPU main + 1 CPU language cortex) &middot; 20 white-matter tracts &middot; 14 language cross-projections &middot; Rulkov runtime)<br>
+      Hackall360 (brain topology &middot; 8 clusters (7 GPU main + 1 CPU language cortex) &middot; 20 white-matter tracts &middot; 16 language cross-projections (iter21-A added <code>sem↔word_motor</code>) &middot; Rulkov runtime)<br>
       Mills (GPU compute &middot; WebGPU WGSL shaders &middot; sparse CSR upload protocol &middot; worker pool)<br>
       Sponge (visualization &middot; 3D WebGL brain &middot; 2D tabs &middot; event-detector commentary &middot; sensory peripherals)<br>
       GFourteen (lead &middot; persona &middot; equation design &middot; identity lock &middot; curriculum &middot; final call)<br>

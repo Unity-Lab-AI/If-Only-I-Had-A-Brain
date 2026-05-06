@@ -50125,26 +50125,26 @@ function renderLandingTab(tab, s) {
       const tier3TopHtml = (tier3.identities || []).length > 0 ? '<div style="margin-top:6px;font-size:9px;color:#888;">Identity anchors (permanent):</div>' + (tier3.identities || []).slice(0, 8).map((s2) => `<div style="font-size:10px;color:#bbb;padding:2px 0;">\u2022 ${s2.label} <span style="color:#888;">(str=${s2.strength}, retr=${s2.retrievals})</span></div>`).join("") + (tier3.identities.length > 8 ? `<div style="font-size:9px;color:#666;padding:2px 0;">... +${tier3.identities.length - 8} more</div>` : "") : '<div style="margin-top:6px;font-size:10px;color:#666;">No identity anchors \u2014 fresh boot will seed from IDENTITY_SEED_LIST.</div>';
       const fmtItems = (n, cap) => cap == null ? n.toLocaleString() + " (unbounded)" : n.toLocaleString() + " / " + cap.toLocaleString();
       const wcDisplay = workingCap == null ? workingItems.toLocaleString() + " items (unbounded)" : workingItems + " / " + workingCap + " slots";
-      el.innerHTML = card("Working Memory (Tier 0)", `
+      el.innerHTML = card("Working Memory (Tier 0 \xB7 cap=7 Miller 1956)", `
           ${metric("Items", wcDisplay, "#00e5ff")}
           ${workingCap == null ? "" : bar(workingItems / Math.max(1, workingCap) * 100, "#00e5ff")}
-        `) + card("Tier 1 \u2014 Episodic (SQLite)", `
+        `) + card("Tier 1 \u2014 Episodic (SQLite \xB7 freq-merge cosine \u2265 0.5)", `
           ${metric("Total Episodes", totalEpisodes.toLocaleString(), "#a855f7")}
           ${metric("Recent Salience (avg)", recentSal.toFixed(3), recentSal >= 0.4 ? "#22c55e" : recentSal >= 0.15 ? "#f59e0b" : "#ef4444")}
           ${bar(Math.min(100, recentSal * 200), recentSal >= 0.4 ? "#22c55e" : recentSal >= 0.15 ? "#f59e0b" : "#ef4444")}
           ${metric("Frequency-Merged", freqMerged.toLocaleString(), "#00e5ff")}
           ${metric("Promoted to Tier 2", promotedToTier2.toLocaleString(), "#22c55e")}
           ${metric("Interactions", interactions.toLocaleString(), "#555")}
-        `) + card("Tier 2 \u2014 Schematic Memory", `
+        `) + card("Tier 2 \u2014 Schematic Memory (cosine \u2265 0.85 grouping)", `
           ${metric("Schemas", fmtItems(tier2.schemaCount ?? 0, tier2.hardCap), "#a855f7")}
           ${metric("Avg Consolidation Strength", (tier2.avgConsolidationStrength ?? 0).toFixed(3), "#ff4d9a")}
           ${metric("Total Retrievals", (tier2.totalRetrievals ?? 0).toLocaleString(), "#22c55e")}
           ${tier2TopHtml}
-        `) + card("Tier 3 \u2014 Identity-Bound (Permanent)", `
+        `) + card("Tier 3 \u2014 Identity-Bound (Permanent \xB7 0.999/day decay)", `
           ${metric("Identity Anchors", fmtItems(tier3.identityCount ?? 0, tier3.hardCap), "#ff4d9a")}
           ${metric("Last Identity Inject", fmtAge(tier3.lastInjectedAt), tier3.lastInjectedAt ? "#22c55e" : "#888")}
           ${tier3TopHtml}
-        `) + card("Consolidation Engine (Dream Cycles)", `
+        `) + card("Consolidation Engine (Dream Cycles \xB7 5 min interval)", `
           ${metric("Dream Passes Run", (consolidation.passCount ?? 0).toLocaleString(), "#a855f7")}
           ${metric("Last Pass", fmtAge(consolidation.lastPassAt), consolidation.lastPassAt ? "#22c55e" : "#888")}
           ${metric("Currently Dreaming", consolidation.isDreaming ? "\u2713 yes" : "\u2717 no", consolidation.isDreaming ? "#22c55e" : "#555")}

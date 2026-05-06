@@ -187,32 +187,32 @@
       <div class="card-title">Memory System — 5-Tier Hippocampal Unified View</div>
       <div id="d-memory-unified" style="padding:8px 12px;font-family:monospace;font-size:11px;color:#aaa;line-height:1.6;">
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;">
-          <div>
-            <div style="color:#00e5ff;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">⌛ TIER 0 — WORKING (volatile)</div>
+          <div title="Tier 0 working memory — Miller's magic number 7±2 (Miller 1956). When at capacity, addToWorkingMemory evicts the weakest item by strength before adding new ones. The count plateaus at 7 because the cap is biological, not a bug — items rotate underneath while the count stays steady.">
+            <div style="color:#00e5ff;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">⌛ TIER 0 — WORKING (volatile · cap=7 Miller 1956)</div>
             <div>items: <span id="d-mem-working" style="color:#22c55e;">0 / 7</span></div>
           </div>
-          <div>
+          <div title="Tier 1 episodic memory in episodic-memory.db. Every chat turn + every curriculum phase completion + every brain-heartbeat encodes an episode with salience metadata (emotional_valence + arousal + surprise + novelty + frequency_count + consolidation_count). Frequency-merge gate at cosine ≥ 0.5 within 48h merges identical-text episodes into anchor rows instead of creating new ones. Promoted episodes get promoted_to_schema_id pointing at the Tier 2 schema they joined.">
             <div style="color:#a855f7;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">📚 TIER 1 — EPISODIC (SQLite)</div>
             <div>episodes: <span id="d-mem-t1-count" style="color:#22c55e;">0</span></div>
             <div>recent salience avg: <span id="d-mem-t1-sal" style="color:#ff4d9a;">0.000</span></div>
             <div>frequency-merged: <span id="d-mem-t1-merged" style="color:#00e5ff;">0</span></div>
             <div>promoted to Tier 2: <span id="d-mem-t1-promoted" style="color:#22c55e;">0</span></div>
           </div>
-          <div>
-            <div style="color:#ff4d9a;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">🧩 TIER 2 — SCHEMATIC (concepts)</div>
-            <div>schemas: <span id="d-mem-t2-count" style="color:#22c55e;">0</span> / <span id="d-mem-t2-cap" style="color:#666;">1000</span></div>
+          <div title="Tier 2 schemas — concept-level abstractions formed by clustering Tier 1 episodes within cosine ≥ 0.85 (iter22-B raised this 0.70 → 0.85 so distinct teach phases form distinct schemas instead of all collapsing into one 'learning' mega-schema). Each schema has a GloVe centroid + 8d attribute vector + dedicated SparseMatrix hippocampus_to_cortex_projection for replay. cap=Infinity since iter17 — Tier 2 is quality-gated by promotion criteria not numeric ceiling.">
+            <div style="color:#ff4d9a;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">🧩 TIER 2 — SCHEMATIC (concepts · cosine≥0.85 grouping)</div>
+            <div>schemas: <span id="d-mem-t2-count" style="color:#22c55e;">0</span> / <span id="d-mem-t2-cap" style="color:#666;">unbounded</span></div>
             <div>avg consolidation: <span id="d-mem-t2-strength" style="color:#a855f7;">0.000</span></div>
             <div>total retrievals: <span id="d-mem-t2-retr" style="color:#00e5ff;">0</span></div>
             <div id="d-mem-t2-top" style="margin-top:4px;color:#666;font-size:10px;">no schemas yet</div>
           </div>
-          <div>
-            <div style="color:#22c55e;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">⭐ TIER 3 — IDENTITY (permanent)</div>
-            <div>anchors: <span id="d-mem-t3-count" style="color:#22c55e;">0</span> / <span id="d-mem-t3-cap" style="color:#666;">50</span></div>
+          <div title="Tier 3 identity-bound permanent attractors. Promotion criteria: consolidation_strength > 5.0 AND retrieval_count > 100 AND |emotional_valence| > 0.6. Daily decay × 0.999 (practically permanent — 5 years un-reinforced ≈ 0.16). Persisted in server/identity-core.json which is EXCLUDED from autoClearStaleState — Unity's identity survives every fresh start.bat boot. cap=Infinity since iter17 (was 50).">
+            <div style="color:#22c55e;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">⭐ TIER 3 — IDENTITY (permanent · 0.999/day decay)</div>
+            <div>anchors: <span id="d-mem-t3-count" style="color:#22c55e;">0</span> / <span id="d-mem-t3-cap" style="color:#666;">unbounded</span></div>
             <div>last inject: <span id="d-mem-t3-inject" style="color:#888;">never</span></div>
             <div id="d-mem-t3-top" style="margin-top:4px;color:#666;font-size:10px;">no anchors yet</div>
           </div>
-          <div>
-            <div style="color:#f59e0b;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">🌙 CONSOLIDATION ENGINE</div>
+          <div title="Dream-cycle replay engine. Fires every 5 min when isDreaming AND no chat input for >60s AND !curriculumInProgress. Pass: fetch top-20 Tier 1 promotion candidates → cluster by cosine ≥ 0.85 → create or reinforce Tier 2 schemas → replay 4× per schema via Hebbian (replay_lr = base_lr × (1 + emotional_weight) × log(1 + frequency_total)) with sleep-spindle gainMultiplier 1.2× bursts → mark source episodes promoted → check Tier 3 promotions. iter22-B cosine tightening fixed all-zero pass saturation that previously occurred when every distinct teach phase merged into a single 'learning' schema.">
+            <div style="color:#f59e0b;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">🌙 CONSOLIDATION ENGINE (5 min interval · sleep-spindle bursts)</div>
             <div>passes run: <span id="d-mem-cons-count" style="color:#22c55e;">0</span></div>
             <div>last pass: <span id="d-mem-cons-last" style="color:#888;">never</span></div>
             <div>dreaming now: <span id="d-mem-cons-dreaming" style="color:#555;">no</span></div>
