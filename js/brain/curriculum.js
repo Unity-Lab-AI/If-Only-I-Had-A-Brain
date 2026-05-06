@@ -5683,19 +5683,24 @@ export class Curriculum {
     const bandSize = bandEnd - bandStart;
     const bucketSize = Math.max(1, Math.floor(bandSize / words.length));
 
-    const buildSem = (pattern) => {
-      const vec = new Float64Array(semSize);
-      if (!pattern || pattern.length === 0) return vec;
+    // iter21-A leak fix: REUSE buffers across iterations instead of
+    // allocating new Float64Arrays per word × per rep. Operator caught
+    // ⚠⚠LEAK+577MB/min during teach phases — heavy allocation churn.
+    // Allocate once outside loop, clear+fill per word.
+    const preSem = new Float64Array(semSize);
+    const postWM = new Float64Array(wmSize);
+    const fillSem = (pattern) => {
+      preSem.fill(0);
+      if (!pattern || pattern.length === 0) return;
       const gSize = Math.max(1, Math.floor(semSize / pattern.length));
       for (let d = 0; d < pattern.length; d++) {
         const v = pattern[d] || 0;
         if (v === 0) continue;
         for (let n = 0; n < gSize; n++) {
           const idx = d * gSize + n;
-          if (idx < semSize) vec[idx] = v;
+          if (idx < semSize) preSem[idx] = v;
         }
       }
-      return vec;
     };
 
     for (let rep = 0; rep < reps; rep++) {
@@ -5705,9 +5710,9 @@ export class Curriculum {
         const word = words[wi];
         const entry = this.dictionary._words.get(word);
         if (!entry || !entry.pattern) { skipped++; continue; }
-        const preSem = buildSem(entry.pattern);
+        fillSem(entry.pattern);
         // Post: word_motor with this word's bucket lit ONLY in subject's sub-band
-        const postWM = new Float64Array(wmSize);
+        postWM.fill(0);
         const bStart = bandStart + wi * bucketSize;
         const bEnd = Math.min(bandEnd, bStart + bucketSize);
         for (let n = bStart; n < bEnd; n++) postWM[n] = 1;

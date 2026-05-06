@@ -22664,19 +22664,20 @@ var Curriculum = class _Curriculum {
     const bandEnd = subjectBand ? subjectBand.end - wordMotorRegion.start : wmSize;
     const bandSize = bandEnd - bandStart;
     const bucketSize = Math.max(1, Math.floor(bandSize / words.length));
-    const buildSem = (pattern) => {
-      const vec = new Float64Array(semSize);
-      if (!pattern || pattern.length === 0) return vec;
+    const preSem = new Float64Array(semSize);
+    const postWM = new Float64Array(wmSize);
+    const fillSem = (pattern) => {
+      preSem.fill(0);
+      if (!pattern || pattern.length === 0) return;
       const gSize = Math.max(1, Math.floor(semSize / pattern.length));
       for (let d = 0; d < pattern.length; d++) {
         const v = pattern[d] || 0;
         if (v === 0) continue;
         for (let n = 0; n < gSize; n++) {
           const idx = d * gSize + n;
-          if (idx < semSize) vec[idx] = v;
+          if (idx < semSize) preSem[idx] = v;
         }
       }
-      return vec;
     };
     for (let rep = 0; rep < reps; rep++) {
       if (typeof globalThis._brainShutdownRequested !== "undefined" && globalThis._brainShutdownRequested) return;
@@ -22688,8 +22689,8 @@ var Curriculum = class _Curriculum {
           skipped++;
           continue;
         }
-        const preSem = buildSem(entry.pattern);
-        const postWM = new Float64Array(wmSize);
+        fillSem(entry.pattern);
+        postWM.fill(0);
         const bStart = bandStart + wi * bucketSize;
         const bEnd = Math.min(bandEnd, bStart + bucketSize);
         for (let n = bStart; n < bEnd; n++) postWM[n] = 1;
