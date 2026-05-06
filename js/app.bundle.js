@@ -26253,7 +26253,35 @@ var Curriculum = class _Curriculum {
         }
       }
       await _microtask();
+      if (rep >= 1 && qaList.length >= 2) {
+        try {
+          const pseudoPairs = qaList.slice(0, 8).map((e) => {
+            const kt = this._extractKeyToken(e.question);
+            const ans = String(e.expectedAnswer || "").toLowerCase().charAt(0);
+            return kt && ans ? [kt, ans] : null;
+          }).filter(Boolean);
+          if (pseudoPairs.length >= 2) {
+            const quickSep = this._checkSemBasinSeparation(pseudoPairs, {
+              semRegion,
+              motorRegion,
+              overloadMax: 0.4,
+              sampleSize: 4
+            });
+            if (quickSep && typeof quickSep.meanCos === "number" && quickSep.meanCos < 0.4) {
+              this._qaConvergenceStreak = (this._qaConvergenceStreak || 0) + 1;
+              if (this._qaConvergenceStreak >= 2 && rep < reps - 1) {
+                this._hb(`[Curriculum][${label}] convergence early-exit at rep ${rep + 1}/${reps} \xB7 mean-cos=${quickSep.meanCos.toFixed(3)} < 0.40`);
+                break;
+              }
+            } else {
+              this._qaConvergenceStreak = 0;
+            }
+          }
+        } catch {
+        }
+      }
     }
+    this._qaConvergenceStreak = 0;
     const qaPruneTopK = opts.pruneTopK ?? 10;
     let qaPruneReport = "";
     if (qaPruneTopK > 0 && cluster.crossProjections) {
@@ -26784,7 +26812,30 @@ var Curriculum = class _Curriculum {
         }
       }
       await _microtask();
+      if (rep >= 1 && pairs.length >= 2) {
+        try {
+          const quickSep = this._checkSemBasinSeparation(pairs, {
+            semRegion,
+            motorRegion,
+            overloadMax,
+            sampleSize: 4,
+            semWTA,
+            semTopK
+          });
+          if (quickSep && typeof quickSep.meanCos === "number" && quickSep.meanCos < overloadMax) {
+            this._convergenceStreak = (this._convergenceStreak || 0) + 1;
+            if (this._convergenceStreak >= 2 && rep < reps - 1) {
+              this._hb(`[Curriculum][${label}] convergence early-exit at rep ${rep + 1}/${reps} \xB7 mean-cos=${quickSep.meanCos.toFixed(3)} < ${overloadMax}`);
+              break;
+            }
+          } else {
+            this._convergenceStreak = 0;
+          }
+        } catch {
+        }
+      }
     }
+    this._convergenceStreak = 0;
     let pruneReport = "";
     if (pruneTopK > 0 && cluster.crossProjections) {
       const projKeys = ["sem_to_motor", "motor_to_sem"];
@@ -40642,7 +40693,14 @@ var Curriculum = class _Curriculum {
     };
   }
 };
-function _microtask() {
+var _lastYieldAt = 0;
+var _YIELD_MIN_INTERVAL_MS = 100;
+function _microtask(opts) {
+  const now = Date.now();
+  if (!(opts && opts.force) && now - _lastYieldAt < _YIELD_MIN_INTERVAL_MS) {
+    return Promise.resolve();
+  }
+  _lastYieldAt = now;
   return new Promise((resolve) => {
     if (typeof setImmediate === "function") {
       setImmediate(resolve);

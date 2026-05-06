@@ -5064,13 +5064,26 @@ class ServerBrain {
       if (!Array.isArray(this.memory.workingMemoryItems)) this.memory.workingMemoryItems = [];
       const phase = this.cortexCluster?._activePhase?.name || null;
       const cellKey = this.cortexCluster?._currentCellKey || null;
-      const item = {
-        ts: now,
-        phase, cellKey,
-        arousal: +(this.arousal || 0).toFixed(3),
-        valence: +(this.valence || 0).toFixed(3),
-        psi: +(this.psi || 0).toFixed(3),
+      // iter24.1 — pool the snapshot objects via a ring of free slots
+      // so the heartbeat stops driving 1350 fresh allocations per ELA-K
+      // cell into V8's young generation. When the time-purge below
+      // shifts an aged item out, it lands back in the free pool. Steady-
+      // state allocation from this loop drops to zero after the pool
+      // fills (~150 slots is plenty for the 5-min sliding window at
+      // 2s cadence). Field values get overwritten in-place per push;
+      // no aliasing because the pool object is owned by the array
+      // until the next time-purge frees it.
+      if (!this._tier0HbPool) this._tier0HbPool = [];
+      const item = this._tier0HbPool.pop() || {
+        ts: 0, phase: null, cellKey: null,
+        arousal: 0, valence: 0, psi: 0,
       };
+      item.ts = now;
+      item.phase = phase;
+      item.cellKey = cellKey;
+      item.arousal = +(this.arousal || 0).toFixed(3);
+      item.valence = +(this.valence || 0).toFixed(3);
+      item.psi = +(this.psi || 0).toFixed(3);
       this.memory.workingMemoryItems.push(item);
       // Drop items older than 5 minutes. Matches MemorySystem's decay
       // window (4 min @ 0.9995/tick → strength < 0.1 forget threshold).
@@ -5093,6 +5106,13 @@ class ServerBrain {
       while (this.memory.workingMemoryItems.length > 0
              && this.memory.workingMemoryItems[0].ts < cutoff) {
         const aged = this.memory.workingMemoryItems.shift();
+        // iter24.1 — return the object to the free pool for reuse on
+        // the next heartbeat push. Cap pool size so memory doesn't
+        // unboundedly grow if the array shrinks faster than it grows
+        // for some reason.
+        if (this._tier0HbPool && this._tier0HbPool.length < 256) {
+          this._tier0HbPool.push(aged);
+        }
         // Promote to Tier 1 before the WM hot-cache representation
         // disappears. iter20-K freq-merge handles dedup. storeEpisode
         // signature: (userId, type, inputText, responseText).

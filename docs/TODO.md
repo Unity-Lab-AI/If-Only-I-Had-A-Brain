@@ -750,49 +750,71 @@ Phases with `_checkSemBasinSeparation` already compute mean-cosine post-rep. Add
 
 ---
 
-#### iter24.4 — GPU-resident curriculum vocabulary · **1.05-1.15× · 2 days · math-identical**
+#### iter24.4 — GPU-resident curriculum vocabulary — **LARGELY ALREADY SHIPPED via T17.7 Phase C.1 binding**
 
-K-vocab GloVe patterns (~3000 words × 300d × 8 bytes ≈ 7.2 MB) currently re-uploaded per Hebbian dispatch via the WS sparse-frame protocol. Upload once at curriculum start to a persistent GPU buffer; dispatches reference by word-index. Falls back to current upload-per-call when buffer not bound (browser-only mode, pre-rebind window).
+**Discovery during iter24 implementation:** at biological scale, all cross-projections are rebound (T17.7 Phase C.1) so pre-spikes read directly from the cluster spike buffer — no per-call upload. The "GPU-resident vocab" I specced is what T17.7 already delivers for the bio-scale path. Per-call upload only fires for standalone (non-bound) projections, which is the cold path (browser-only mode + pre-rebind window).
 
-**Files:** new `cluster._gpuVocabBuffer` + index-based dispatch path in `_teachWordEmissionDirect`, `_teachWordSpellingDirect`, `_teachQABinding`.
+**Remaining marginal win:** standalone projections still pay per-call `writeSparsePreSpikes`. Adding a separate vocab buffer for those would save the per-call upload but only on the cold path.
 
-**Risk:** zero math. Pure transport optimization. Implementation risk = vocab-changes-mid-curriculum (new word learned via chat) need to extend the GPU buffer; iter22-G append-only bucket map already establishes the pattern.
+**Files audited:** `js/brain/gpu-compute.js:1728` (hebbianSparse uses bound spike buffer), `server/brain-server.js:1216` (hebbianBound proxy → gpuSparseHebbianBound).
 
-**Validation:** trained matrix bit-identical between current and resident-vocab path.
+**Implementation scope (full ship — no partial / deferred):**
+1. **SPRS protocol extension** — new frame type `type=6 VOCAB` carrying `{name, vocabIdx, dim, packedF32}` for one-shot upload. compute.html WS handler accepts and stashes into a vocab GPU buffer keyed by name.
+2. **WGSL kernel addition** — new `HEBBIAN_FROM_VOCAB_INDEX` shader that reads pre from `vocabBuffer[vocabIdx * dim..]` instead of from `preSpikesBuf`. Post still reads from spike slice.
+3. **GPU proxy method** — `cluster._gpuProxy.hebbianFromVocabIndex(projName, vocabName, vocabIdx, postSlice, lr)` dispatches the new shader.
+4. **Curriculum caller adapter** — `_teachWordEmissionDirect` / `_teachWordSpellingDirect` / `_teachQABinding` switch from `cluster._gpuProxy.hebbian(name, preF, postF, lr)` (with per-call pre upload) to `hebbianFromVocabIndex(name, 'kvocab', wordIdx, postSlice, lr)`. Vocab index comes from `cluster.wordBucketMap_<subj>` (iter22-F.3 already maintains this).
+5. **Initial upload** — at curriculum start, pack all `dictionary._words` patterns into a packed Float32 buffer + send VOCAB SPRS frame. Append-only update via iter22-G `_ensureWordBucketMap` size-watermark mechanism — when dictionary grows mid-curriculum, send delta upload for new words.
+6. **CPU fallback** — when no GPU proxy bound (browser-only mode), legacy upload-per-call path still works. Adapter checks `cluster._gpuProxyReady` + falls back automatically.
+
+**Files:** `compute.html` (WGSL kernel + WS handler), `js/brain/gpu-compute.js` (proxy method), `js/brain/cluster.js` (vocab buffer init + upload helper), `js/brain/curriculum.js` (caller adapters in 3 teach methods).
+
+**Risk:** zero math impact when implemented correctly — same Hebbian formula, same pre/post values, just different transport. Implementation risk lives in the SPRS protocol extension + shader signature change.
+
+**Validation:** trained `sem_to_motor` matrix `|W| mean / max / nnz` snapshot must be bit-identical between resident-vocab path and current upload-per-call path on a fresh ELA-K cell run.
 
 ---
 
-#### iter24.5 — Worker-pool dispatch batching · **1.3-1.8× · 1-2 days · math-identical**
+#### iter24.5 — Worker-pool dispatch batching · **1.3-1.8× · math-identical**
 
-Pack N consecutive (pre, post) pairs into ONE worker `postMessage`. The worker iterates internally and runs sequential `hebbianUpdate` per pair (math identical to current per-pair dispatch). Saves N-1 `postMessage` round-trips per batch.
+Pack N consecutive (pre, post) pairs into ONE worker `postMessage` via a strided multi-slot SAB cache. Worker iterates internally and runs sequential `hebbianUpdate` per pair — math identical to current per-pair dispatch, fewer `postMessage` round-trips.
 
-**Files:** `server/worker-pool.js` `hebbianUpdate` accepts `{batches: [{preBuf, postBuf}, ...]}`. `server/sparse-worker.js` loops over batches in the same handler.
+**Implementation scope (full ship):**
+1. **Multi-slot SAB cache** — extend `worker-pool.js` from single `_cachedPreSab` / `_cachedPostSab` to a small pool of slots (e.g. 8-16) keyed by batch index. Each slot holds one pre + one post Float32Array.
+2. **Strided batch packer** — `hebbianUpdateBatch(matrix, pairs, lr)` where `pairs` is an array of `{preSpikes, postSpikes}`. Packs all N pre buffers into one large strided SAB + same for post. Single dispatch via `postMessage` with the strided layout descriptor `{batchCount, sliceStride}`.
+3. **Worker-side iteration** — `sparse-worker.js` `hebbianBatch` handler reads strided pre/post for each k in 0..N, runs sequential Hebbian per pair, writes to shared values. Math identical to N separate dispatches.
+4. **Caller batching** — `_teachWordEmissionDirect` / `_teachAssociationPairs` accumulate up to 16 pairs before dispatching as one batch. Flush on reaching batch limit or end-of-rep.
+5. **Fallback path** — single-pair `hebbianUpdate` retained for callers that can't batch. Worker handles both message types.
 
-**Risk:** zero math impact (sequential inside worker). Implementation risk = SAB cache sizing for batched buffers; iter22-G's `_cachedPreSab` / `_cachedPostSab` foundation already in place — extend to a small pool keyed by batch slot.
+**Files:** `server/worker-pool.js` (new method + multi-slot cache), `server/sparse-worker.js` (new message type + iteration loop), `js/brain/curriculum.js` (caller accumulators in `_teachWordEmissionDirect` + `_teachAssociationPairs`).
 
-**Validation:** trained matrix bit-identical between batched and per-pair dispatch.
+**Risk:** zero math impact (sequential inside worker). Implementation risk = strided buffer layout must be correct; SAB sizing per slot must accommodate biological-scale region sizes.
+
+**Validation:** trained matrix bit-identical between batched and per-pair dispatch on a fresh ELA-K cell run. Hash compare on `sem_to_motor.values` post-phase.
 
 ---
 
-#### iter24.6 — Disjoint-pair plasticity-shader batching (Path C only) · **3-5× · 5-10 days · math-identical for non-overlapping pairs**
+#### iter24.6 — Disjoint-pair plasticity-shader batching — **LARGELY ALREADY SHIPPED via T18.8 + T32 batched bound-Hebbian**
 
-Pack N (pre, post) pairs into a single plasticity shader call **only when pairs touch disjoint `post` rows**. Oja's update `Δw[i,j] = η·post[i]·(pre[j] - post[i]·w[i,j])` reads `w[i,j]` from the prior step. If two pairs share `post[i]=k`, sequential and batched diverge. If `post` rows are disjoint, weight rows touched are disjoint → batched math is bit-identical to sequential.
+**Discovery during iter24 implementation:** `gpuSparseHebbianBound` (server/brain-server.js:2995-3048) already accumulates ops into 256-op batches with 20ms flush, dispatched as one SPRS frame → compute.html issues `gpu.hebbianSparseBatch(ops)` which uses ONE encoder + ONE pass + ONE submit for all 256 ops. Per-call WS round-trip + GPU submit overhead amortizes across the batch. **This is exactly the disjoint-pair batching speedup I specced, just implemented at the projection-list layer rather than the disjoint-detection layer.**
 
-**Implementation:**
-1. Pre-batch grouping: scan upcoming N pairs, partition into disjoint subsets by `post` argmax/region.
-2. Each subset gets its own batched dispatch.
-3. Worst case (all overlapping) = sequential per-pair, no slowdown vs current.
-4. Best case (all disjoint) = N → 1 dispatch reduction.
+**Remaining additional win available — spike-buffer striding:** for true per-fact batching (different facts' spike patterns dispatched together), the spike buffer would need N strided slots and the WGSL plasticity shader signature already supports per-dispatch srcOffset/dstOffset variation. Estimated additional gain on top of T18.8+T32 batching: 1.5-2× via spike-buffer-striding for QA-binding + word-emission phases.
 
-**Phases benefiting:** Q→A binding (different first-letter answers per pair = disjoint motor rows), word emission (different word buckets = disjoint word_motor rows). Letter-naming where every letter touches motor's same-letter row = sequential, no batching applies.
+**Files audited:** `server/brain-server.js:2995` (gpuSparseHebbianBound batches via _enqueueBoundHebbian), `js/brain/gpu-compute.js:1681` (hebbianSparseBatch single-encoder dispatch).
+
+**Implementation scope (full ship):**
+1. **WGSL batched plasticity kernel** — new `PLASTICITY_BATCH_SHADER` in compute.html that takes `{batchCount, prePackedF32, postPackedF32, lr}` and dispatches one workgroup per (post-row, batch-slot) cell. Internally for k in 0..batchCount: read strided pre[k] / post[k], compute Δw, atomic-add to weight buffer. Atomic-add only safe when post rows are disjoint across slots — caller's responsibility to enforce.
+2. **Disjoint-pair grouper** — `cluster._partitionDisjointPairs(pairs)` returns Array<Array<pair>> where each inner array's pairs touch non-overlapping `post` rows. Greedy partition: walk pairs, place each in first compatible bucket (post-row-set disjoint), else start new bucket. Returns subsets sized 1..N.
+3. **Subset dispatcher** — `cluster._gpuProxy.plasticityBatch(projName, subset, lr)` sends one shader dispatch per disjoint subset. Worst case all-overlapping → all subsets size 1 → behaves as sequential. Best case all-disjoint → one dispatch for N pairs.
+4. **Caller integration** — `_teachQABinding` (different first-letter answers = disjoint motor rows) + `_teachWordEmissionDirect` (different word buckets = disjoint word_motor rows) accumulate pairs per rep, partition + dispatch via subset dispatcher.
+5. **Bit-identity validation harness** — compile-time flag `cluster._validateBatchedHebbian = true` runs sequential path AND batched path in parallel, hashes weight matrix post-each-rep, asserts bit-identical. Disable in production after validation.
 
 **Path A (batched fold) and Path B (mini-batch with drift) both produce different math. EXPLICITLY EXCLUDED.**
 
-**Files:** new `_dispatchDisjointBatch(pairs)` helper in `js/brain/cluster.js`; per-phase grouper in `_teachQABinding`, `_teachWordEmissionDirect`.
+**Files:** `compute.html` (WGSL `PLASTICITY_BATCH_SHADER` + WS handler), `js/brain/gpu-compute.js` (proxy method), `js/brain/cluster.js` (`_partitionDisjointPairs` helper + dispatcher), `js/brain/curriculum.js` (caller accumulators + dispatch in `_teachQABinding` + `_teachWordEmissionDirect`).
 
-**Risk:** disjoint-detection logic must be correct. Validate by hashing weight matrices pre/post against current sequential path on a single ELA-K cell. Bit-identical or it's a bug.
+**Risk:** disjoint-detection logic must be correct. Validate by hashing weight matrices pre/post against current sequential path on a single ELA-K cell. Bit-identical or it's a bug, not "acceptable drift."
 
-**Validation:** weight-matrix hash compare against sequential path on the same input sequence. Must be bit-identical for the disjoint-batch path; fall through to sequential for overlapping subsets.
+**Validation:** weight-matrix hash compare against sequential path on the same input sequence. Must be bit-identical for the disjoint-batch path; fall through to sequential for overlapping subsets. Validation harness ships first; production batch dispatch ships after harness shows bit-identity across full ELA-K cell.
 
 ---
 

@@ -26,6 +26,8 @@ parentPort.on('message', (msg) => {
     propagate(msg);
   } else if (msg.type === 'hebbian') {
     hebbian(msg);
+  } else if (msg.type === 'hebbianBatch') {
+    hebbianBatch(msg);
   } else if (msg.type === 'mem') {
     // Memory snapshot request. Main thread aggregates these across
     // all workers so the heartbeat can show `workers=XXXmb` as a
@@ -132,6 +134,63 @@ function hebbian(msg) {
       if (v > wMax) v = wMax;
       else if (v < wMin) v = wMin;
       values[k] = v;
+    }
+  }
+
+  parentPort.postMessage({ type: 'done', jobId, startRow, endRow });
+}
+
+/**
+ * iter24.5 — batched Hebbian. Pack N (pre, post) pairs into a single
+ * postMessage; worker iterates internally and runs sequential Hebbian
+ * per pair. Math identical to N separate `hebbian` dispatches because
+ * the inner loop is the same per-pair logic in the same order.
+ *
+ * Strided layout:
+ *   prePackedBuf  = batchCount slices of `sliceLen` floats, contiguous
+ *   postPackedBuf = batchCount slices of `sliceLen` floats, contiguous
+ *
+ * Single CSR is shared across the whole batch — caller groups pairs
+ * by matrix.
+ */
+function hebbianBatch(msg) {
+  const {
+    jobId,
+    valuesBuf,
+    colIdxBuf,
+    rowPtrBuf,
+    prePackedBuf,
+    postPackedBuf,
+    sliceLen,
+    batchCount,
+    startRow,
+    endRow,
+    lr,
+    wMin,
+    wMax,
+  } = msg;
+
+  const values = new Float32Array(valuesBuf);
+  const colIdx = new Uint32Array(colIdxBuf);
+  const rowPtr = new Uint32Array(rowPtrBuf);
+  const prePacked = new Float32Array(prePackedBuf);
+  const postPacked = new Float32Array(postPackedBuf);
+
+  for (let k = 0; k < batchCount; k++) {
+    const preBase = k * sliceLen;
+    const postBase = k * sliceLen;
+    for (let i = startRow; i < endRow; i++) {
+      const post = postPacked[postBase + i];
+      if (post === 0) continue;
+      const scaled = lr * post;
+      const rowStart = rowPtr[i];
+      const rowEnd = rowPtr[i + 1];
+      for (let p = rowStart; p < rowEnd; p++) {
+        let v = values[p] + scaled * prePacked[preBase + colIdx[p]];
+        if (v > wMax) v = wMax;
+        else if (v < wMin) v = wMin;
+        values[p] = v;
+      }
     }
   }
 

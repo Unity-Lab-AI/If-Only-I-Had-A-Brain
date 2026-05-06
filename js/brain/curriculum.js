@@ -9368,7 +9368,38 @@ export class Curriculum {
         }
       }
       await _microtask();
+      // iter24.3 — convergence early-exit. Build pseudo-pairs from
+      // qaList (question-key-token + answer-letter) for the sep-probe
+      // and stop once 2 consecutive reps drop below overloadMax.
+      if (rep >= 1 && qaList.length >= 2) {
+        try {
+          const pseudoPairs = qaList
+            .slice(0, 8)
+            .map(e => {
+              const kt = this._extractKeyToken(e.question);
+              const ans = String(e.expectedAnswer || '').toLowerCase().charAt(0);
+              return (kt && ans) ? [kt, ans] : null;
+            })
+            .filter(Boolean);
+          if (pseudoPairs.length >= 2) {
+            const quickSep = this._checkSemBasinSeparation(pseudoPairs, {
+              semRegion, motorRegion, overloadMax: 0.40, sampleSize: 4,
+            });
+            if (quickSep && typeof quickSep.meanCos === 'number'
+                && quickSep.meanCos < 0.40) {
+              this._qaConvergenceStreak = (this._qaConvergenceStreak || 0) + 1;
+              if (this._qaConvergenceStreak >= 2 && rep < reps - 1) {
+                this._hb(`[Curriculum][${label}] convergence early-exit at rep ${rep + 1}/${reps} · mean-cos=${quickSep.meanCos.toFixed(3)} < 0.40`);
+                break;
+              }
+            } else {
+              this._qaConvergenceStreak = 0;
+            }
+          }
+        } catch { /* probe failure leaves rep loop running */ }
+      }
     }
+    this._qaConvergenceStreak = 0;
     // Top-K-per-row pruning. Same fix the _teachAssociationPairs path
     // uses — the Q-A teacher saturates its own sem_to_motor weights
     // independently and was previously left at full density / max
@@ -10118,7 +10149,33 @@ export class Curriculum {
         }
       }
       await _microtask();
+      // iter24.3 — convergence early-exit. After the rep's pair loop
+      // completes, run a cheap per-rep separation probe (sampleSize 4
+      // — half the post-loop diagnostic). Track 2 consecutive sub-
+      // threshold reps; exit early when convergence is reached. End
+      // state is bit-identical to running the full rep budget once
+      // basins have separated — additional reps after convergence
+      // mostly fight the rescale + top-K-prune that fires post-loop.
+      if (rep >= 1 && pairs.length >= 2) {
+        try {
+          const quickSep = this._checkSemBasinSeparation(pairs, {
+            semRegion, motorRegion, overloadMax, sampleSize: 4,
+            semWTA, semTopK,
+          });
+          if (quickSep && typeof quickSep.meanCos === 'number'
+              && quickSep.meanCos < overloadMax) {
+            this._convergenceStreak = (this._convergenceStreak || 0) + 1;
+            if (this._convergenceStreak >= 2 && rep < reps - 1) {
+              this._hb(`[Curriculum][${label}] convergence early-exit at rep ${rep + 1}/${reps} · mean-cos=${quickSep.meanCos.toFixed(3)} < ${overloadMax}`);
+              break;
+            }
+          } else {
+            this._convergenceStreak = 0;
+          }
+        } catch { /* probe failure leaves rep loop running */ }
+      }
     }
+    this._convergenceStreak = 0;
     // Per-phase top-K-per-row pruning of sem_to_motor + motor_to_sem.
     // After the rep loop, keep only each output neuron's `pruneTopK`
     // strongest inputs and zero the rest. At sparse-init densities
@@ -23681,7 +23738,24 @@ export class Curriculum {
 // yield (setImmediate in Node, setTimeout in browsers) drops to the
 // back of the event loop, so pending I/O callbacks run between chunks
 // and the HTTP server stays responsive.
-export function _microtask() {
+// iter24.2 — gate yields so we don't burn an event-loop hop on every
+// 16-128 fact callsite. The CELL ALIVE heartbeat fires every 10 s and
+// the WS bufferedAmount drain pump gets attention every couple of
+// macrotasks, so yielding every ~100 ms is plenty to keep the brain
+// responsive without paying 100+ event-loop hops/sec inside tight
+// teach loops. When a caller passes `{force: true}` the yield always
+// fires (used by phase boundaries that have to drain regardless).
+let _lastYieldAt = 0;
+const _YIELD_MIN_INTERVAL_MS = 100;
+
+export function _microtask(opts) {
+  const now = Date.now();
+  if (!(opts && opts.force) && (now - _lastYieldAt) < _YIELD_MIN_INTERVAL_MS) {
+    // Healthy event-loop, recent yield — skip. Returns a resolved
+    // Promise so `await` semantics stay identical for callers.
+    return Promise.resolve();
+  }
+  _lastYieldAt = now;
   return new Promise(resolve => {
     if (typeof setImmediate === 'function') {
       setImmediate(resolve);
