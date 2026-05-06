@@ -3084,8 +3084,9 @@ var NeuronCluster = class {
       if (SUBJECTS2.includes(subj)) subjectVocabs.get(subj).push(w);
       else seenAll.push(w);
     }
+    const subjectScope = opts.subject && SUBJECTS2.includes(opts.subject) ? [opts.subject] : SUBJECTS2;
     let bestWord = null, bestSum = -Infinity;
-    for (const subj of SUBJECTS2) {
+    for (const subj of subjectScope) {
       const subjectRegion = this.regions[`word_motor_${subj}`];
       if (!subjectRegion) continue;
       const subjStart = subjectRegion.start - wordMotor.start;
@@ -3107,7 +3108,7 @@ var NeuronCluster = class {
         }
       }
     }
-    const minSignal = opts.minSignal ?? 1e-3;
+    const minSignal = opts.minSignal ?? (opts.subject ? 1e-3 : 0.05);
     if (!bestWord || bestSum < minSignal) return "";
     return bestWord;
   }
@@ -3532,7 +3533,10 @@ var NeuronCluster = class {
       }
     }
     const skipCpuWhitelist = opts.skipCpuWhitelist === true || this._teachIntermediateRep === true;
+    const wl = opts.projectionsWhitelist;
+    const whitelistSet = wl ? wl instanceof Set ? wl : new Set(wl) : null;
     for (const [name, proj] of Object.entries(this.crossProjections)) {
+      if (whitelistSet && !whitelistSet.has(name)) continue;
       const idx = name.indexOf("_to_");
       if (idx < 0) continue;
       const src = name.slice(0, idx);
@@ -13044,6 +13048,7 @@ var K_MIXIN = {
     return await this._gateLifeKReal();
   },
   async _gateLifeKReal() {
+    this._currentGateSubject = "life";
     const cluster = this.cluster;
     if (!cluster || !cluster.synapses) return { pass: false, reason: "no cluster" };
     await this._pregateEnrichment("life/kindergarten");
@@ -13137,7 +13142,7 @@ var K_MIXIN = {
       ], { reps: 8, label: "ART-K-CONCEPTS", relationTagId: 1 }));
       const artQA = TRAIN_BANKS["art/kindergarten"] || [];
       if (artQA.length > 0) {
-        await this._phasedTeach("ART-K-QA-TRAIN", () => this._teachQABinding(artQA, { label: "ART-K-QA-TRAIN" }));
+        await this._phasedTeach("ART-K-QA-TRAIN", () => this._teachQABinding(artQA, { label: "ART-K-QA-TRAIN", subject: "art" }));
       }
       if (typeof this._teachWordSpellingDirect === "function") {
         await this._phasedTeach("ART-K-WORD-SPELL", () => this._teachWordSpellingDirect({ reps: 8, subject: "art" }));
@@ -13156,6 +13161,7 @@ var K_MIXIN = {
     return await this._gateArtKReal();
   },
   async _gateArtKReal() {
+    this._currentGateSubject = "art";
     const cluster = this.cluster;
     if (!cluster || !cluster.synapses) return { pass: false, reason: "no cluster" };
     await this._pregateEnrichment("art/kindergarten");
@@ -13305,7 +13311,7 @@ var K_MIXIN = {
       ], { reps: 8, label: "SOC-K-CONCEPTS", relationTagId: 1 }));
       const socQA = TRAIN_BANKS["social/kindergarten"] || [];
       if (socQA.length > 0) {
-        await this._phasedTeach("SOC-K-QA-TRAIN", () => this._teachQABinding(socQA, { label: "SOC-K-QA-TRAIN" }));
+        await this._phasedTeach("SOC-K-QA-TRAIN", () => this._teachQABinding(socQA, { label: "SOC-K-QA-TRAIN", subject: "social" }));
       }
       if (typeof this._teachWordSpellingDirect === "function") {
         await this._phasedTeach("SOC-K-WORD-SPELL", () => this._teachWordSpellingDirect({ reps: 8, subject: "social" }));
@@ -13324,6 +13330,7 @@ var K_MIXIN = {
     return await this._gateSocKReal();
   },
   async _gateSocKReal() {
+    this._currentGateSubject = "soc";
     const cluster = this.cluster;
     if (!cluster || !cluster.synapses) return { pass: false, reason: "no cluster" };
     await this._pregateEnrichment("social/kindergarten");
@@ -13460,7 +13467,7 @@ var K_MIXIN = {
       ], { reps: 8, label: "SCI-K-CONCEPTS", relationTagId: 1 }));
       const sciQA = TRAIN_BANKS["science/kindergarten"] || [];
       if (sciQA.length > 0) {
-        await this._phasedTeach("SCI-K-QA-TRAIN", () => this._teachQABinding(sciQA, { label: "SCI-K-QA-TRAIN" }));
+        await this._phasedTeach("SCI-K-QA-TRAIN", () => this._teachQABinding(sciQA, { label: "SCI-K-QA-TRAIN", subject: "science" }));
       }
       if (typeof this._teachWordSpellingDirect === "function") {
         await this._phasedTeach("SCI-K-WORD-SPELL", () => this._teachWordSpellingDirect({ reps: 8, subject: "science" }));
@@ -13479,6 +13486,7 @@ var K_MIXIN = {
     return await this._gateSciKReal();
   },
   async _gateSciKReal() {
+    this._currentGateSubject = "sci";
     const cluster = this.cluster;
     if (!cluster || !cluster.synapses) return { pass: false, reason: "no cluster" };
     await this._pregateEnrichment("science/kindergarten");
@@ -13731,7 +13739,7 @@ var K_MIXIN = {
       ], { reps: 8, label: "MATH-K-ARITH-WORDS", relationTagId: 4 }));
       const mathQA = TRAIN_BANKS["math/kindergarten"] || [];
       if (mathQA.length > 0) {
-        await this._phasedTeach("MATH-K-QA-TRAIN", () => this._teachQABinding(mathQA, { label: "MATH-K-QA-TRAIN" }));
+        await this._phasedTeach("MATH-K-QA-TRAIN", () => this._teachQABinding(mathQA, { label: "MATH-K-QA-TRAIN", subject: "math" }));
       }
       if (typeof this._teachWordSpellingDirect === "function") {
         await this._phasedTeach("MATH-K-WORD-SPELL", () => this._teachWordSpellingDirect({ reps: 8, subject: "math" }));
@@ -13750,6 +13758,7 @@ var K_MIXIN = {
     return await this._gateMathKReal();
   },
   async _gateMathKReal() {
+    this._currentGateSubject = "math";
     const cluster = this.cluster;
     const DIGITS = DIGIT_ORDER;
     const NAMES = DIGIT_NAMES;
@@ -16290,7 +16299,7 @@ var K_MIXIN = {
       }
       if (_phaseTick("_teachQABinding")) {
         const qaTrain = TRAIN_BANKS["ela/kindergarten"] || [];
-        await this._teachQABinding(qaTrain, { label: "ELA-K-QA-TRAIN" });
+        await this._teachQABinding(qaTrain, { label: "ELA-K-QA-TRAIN", subject: "ela" });
         _phaseDone("_teachQABinding");
       }
       if (typeof this._teachLetterNamingDirect === "function" && _phaseTick("_teachLetterNamingDirect")) {
@@ -16356,6 +16365,7 @@ var K_MIXIN = {
    * when the operator wants the closed-loop pre-test pipeline.
    */
   async _gateElaKReal() {
+    this._currentGateSubject = "ela";
     const cluster = this.cluster;
     const ALPHABET = ALPHABET_ORDER;
     await this._pregateEnrichment("ela/kindergarten");
@@ -16700,7 +16710,7 @@ var K_MIXIN = {
                 if (typeof this.cluster.injectEmbeddingToRegion === "function") {
                   this.cluster.injectEmbeddingToRegion("sem", emb, 1);
                 }
-                wordDecoded = this.cluster.emitWordDirect({}) || null;
+                wordDecoded = this.cluster.emitWordDirect({ subject: this._currentGateSubject }) || null;
                 if (wordDecoded && wordDecoded.length > 0) {
                   firstLetterFromWord = wordDecoded[0];
                 }
@@ -19954,7 +19964,7 @@ var Curriculum = class _Curriculum {
       let wordEmit = "";
       if (typeof cluster.emitWordDirect === "function") {
         try {
-          wordEmit = cluster.emitWordDirect({}) || "";
+          wordEmit = cluster.emitWordDirect({ subject: this._currentGateSubject }) || "";
         } catch {
           wordEmit = "";
         }
@@ -25371,10 +25381,11 @@ var Curriculum = class _Curriculum {
   // short-circuits at reward=0 (sparse-matrix.js:191) and updates
   // nothing. Calling `synapses.hebbianUpdate` directly bypasses the
   // reward gate and fires symmetric Hebbian across the full cluster.
-  async _teachHebbian(lr) {
+  async _teachHebbian(lr, opts = {}) {
     const cluster = this.cluster;
     if (!cluster) return;
-    await cluster._crossRegionHebbian(lr);
+    await cluster._crossRegionHebbian(lr, opts);
+    if (opts.skipIntraHebbian) return;
     if (typeof cluster.intraSynapsesHebbian === "function") {
       await cluster.intraSynapsesHebbian(cluster.lastSpikes, cluster.lastSpikes, lr);
     } else if (cluster.synapses && typeof cluster.synapses.hebbianUpdate === "function") {
@@ -25811,6 +25822,92 @@ var Curriculum = class _Curriculum {
   // @param {number} [opts.reps=12] training reps
   // @param {number} [opts.lr=0.03] Hebbian rate
   // @param {string} [opts.label='K-QA-TRAIN'] log label
+  // iter22-D — projection whitelist for association-pair phases
+  // (Opposites, Categories, WordTypes, StoryRoles, PrintConcepts, etc.).
+  // Sem↔motor bidirectional plus optional fineType for relation tags.
+  // Excludes letter_to_* / phon_to_* / visual_to_* / auditory_to_* so
+  // those don't see spurious Oja decay during association-pair writes.
+  _associationPairsWhitelist(subject) {
+    const cluster = this.cluster;
+    if (!cluster || !cluster.crossProjections) return null;
+    const wl = ["sem_to_motor", "motor_to_sem"];
+    if (cluster.crossProjections.sem_to_fineType) wl.push("sem_to_fineType");
+    if (cluster.crossProjections.fineType_to_sem) wl.push("fineType_to_sem");
+    return wl;
+  }
+  // iter22-D — projection whitelist for sem→motor + sem→word_motor
+  // training. Per-subject word_motor sub-band (iter21-B) keeps cross-
+  // subject word emission isolated. Non-letter projections only —
+  // letter_to_motor / letter_to_phon / visual_to_letter must NOT see
+  // Hebbian decay from QA writes that leave letter region silent.
+  _qaBindingWhitelist(subject) {
+    const cluster = this.cluster;
+    if (!cluster || !cluster.crossProjections) return null;
+    const subj = (subject || "").toLowerCase();
+    const subjMap = {
+      ela: "word_motor_ela",
+      math: "word_motor_math",
+      mathematics: "word_motor_math",
+      science: "word_motor_sci",
+      sci: "word_motor_sci",
+      social: "word_motor_soc",
+      art: "word_motor_art",
+      life: "word_motor_life",
+      "life-skills": "word_motor_life"
+    };
+    const subjBand = subjMap[subj] || null;
+    const wl = ["sem_to_motor"];
+    if (cluster.crossProjections.sem_to_word_motor) wl.push("sem_to_word_motor");
+    if (subjBand && cluster.crossProjections[`sem_to_${subjBand}`]) wl.push(`sem_to_${subjBand}`);
+    return wl;
+  }
+  // iter22-D — write the answer's word-bucket into word_motor + per-
+  // subject sub-band. Mirror of _teachWordEmissionDirect's per-word
+  // bucket fill but called inline during QA training so emitWordDirect
+  // can route question→answer-word at probe time. Without this,
+  // sem_to_word_motor only knew word→word mappings (autoassociation)
+  // and Q→A questions argmaxed to whatever bucket had random-init
+  // bias.
+  _writeAnswerToWordMotor(answerText, subject) {
+    const cluster = this.cluster;
+    if (!cluster || !cluster.regions) return;
+    if (!answerText || typeof answerText !== "string") return;
+    const tokens = answerText.toLowerCase().split(/[,;\s]+/).filter(Boolean);
+    let answerWord = "";
+    for (const t of tokens) if (t.length > answerWord.length) answerWord = t;
+    if (!answerWord) return;
+    const fullMap = cluster.wordBucketMap;
+    const subjMap = subject ? cluster[`wordBucketMap_${subject.toLowerCase()}`] || null : null;
+    const writeBucketIntoBand = (bucketIdx, regionName) => {
+      const region = cluster.regions[regionName];
+      if (!region || bucketIdx == null || bucketIdx < 0) return;
+      const regionSize = region.end - region.start;
+      const buckets = cluster[`${regionName}BucketCount`] || regionSize;
+      const perBucket = Math.max(1, Math.floor(regionSize / buckets));
+      const start = region.start + bucketIdx * perBucket;
+      const end = Math.min(region.end, start + perBucket);
+      for (let i = start; i < end; i++) cluster.lastSpikes[i] = 1;
+    };
+    if (fullMap && fullMap.get) {
+      const idx = fullMap.get(answerWord);
+      if (typeof idx === "number") writeBucketIntoBand(idx, "word_motor");
+    }
+    if (subjMap && subjMap.get) {
+      const idx = subjMap.get(answerWord);
+      if (typeof idx === "number") {
+        const subj = subject.toLowerCase();
+        const subjBand = {
+          ela: "word_motor_ela",
+          math: "word_motor_math",
+          science: "word_motor_sci",
+          social: "word_motor_soc",
+          art: "word_motor_art",
+          life: "word_motor_life"
+        }[subj];
+        if (subjBand) writeBucketIntoBand(idx, subjBand);
+      }
+    }
+  }
   async _teachQABinding(qaList, opts = {}) {
     const cluster = this.cluster;
     if (!cluster || !cluster.crossProjections) return { trained: 0, skipped: 0 };
@@ -25873,11 +25970,15 @@ var Curriculum = class _Curriculum {
           }
           if (templateId >= 0) this._writeQuestionTemplateTag(templateId);
           this._writeTiledPattern(motorRegion, motorPattern, false);
+          this._writeAnswerToWordMotor(answerText, opts.subject);
           try {
             await this._teachPredictiveError(lr);
           } catch {
           }
-          await this._teachHebbian(lr);
+          await this._teachHebbian(lr, {
+            projectionsWhitelist: this._qaBindingWhitelist(opts.subject),
+            skipIntraHebbian: true
+          });
           try {
             await this._teachLateralInhibition(lr);
           } catch {
@@ -25898,7 +25999,11 @@ var Curriculum = class _Curriculum {
               }
               if (templateId >= 0) this._writeQuestionTemplateTag(templateId);
               this._writeTiledPattern(motorRegion, motorPattern, false);
-              await this._teachHebbian(lr);
+              this._writeAnswerToWordMotor(answerText, opts.subject);
+              await this._teachHebbian(lr, {
+                projectionsWhitelist: this._qaBindingWhitelist(opts.subject),
+                skipIntraHebbian: true
+              });
               altTrained++;
             }
           } catch {
@@ -26416,7 +26521,11 @@ var Curriculum = class _Curriculum {
             await this._teachPredictiveError(lr);
           } catch {
           }
-          await this._teachHebbian(lr);
+          await this._teachHebbian(lr, {
+            projectionsWhitelist: this._associationPairsWhitelist(opts.subject),
+            skipIntraHebbian: false
+            // intra-cluster recurrent still benefits
+          });
           try {
             await this._teachLateralInhibition(lr);
           } catch {
@@ -27046,7 +27155,7 @@ var Curriculum = class _Curriculum {
     if (!emitted && typeof cluster.emitWordDirect === "function") {
       emissionPath = "emitWordDirect";
       try {
-        emitted = cluster.emitWordDirect({}) || "";
+        emitted = cluster.emitWordDirect({ subject: this._currentGateSubject }) || "";
       } catch (err) {
         emitted = "";
         emissionError = err && err.message ? err.message.slice(0, 80) : "throw";

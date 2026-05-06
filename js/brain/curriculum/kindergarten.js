@@ -210,6 +210,7 @@ export const K_MIXIN = {
 
 
   async _gateLifeKReal() {
+    this._currentGateSubject = 'life';
     const cluster = this.cluster;
     if (!cluster || !cluster.synapses) return { pass: false, reason: 'no cluster' };
 
@@ -299,7 +300,7 @@ export const K_MIXIN = {
       // and music. Held-out-distinct from EXAM questions.
       const artQA = TRAIN_BANKS['art/kindergarten'] || [];
       if (artQA.length > 0) {
-        await this._phasedTeach('ART-K-QA-TRAIN', () => this._teachQABinding(artQA, { label: 'ART-K-QA-TRAIN' }));
+        await this._phasedTeach('ART-K-QA-TRAIN', () => this._teachQABinding(artQA, { label: 'ART-K-QA-TRAIN', subject: 'art' }));
       }
 
       // iter11-J — Word-spelling discriminative one-hot for sem→motor
@@ -331,6 +332,7 @@ export const K_MIXIN = {
 
 
   async _gateArtKReal() {
+    this._currentGateSubject = 'art';
     const cluster = this.cluster;
     if (!cluster || !cluster.synapses) return { pass: false, reason: 'no cluster' };
 
@@ -475,7 +477,7 @@ export const K_MIXIN = {
       // citizenship). Held-out-distinct from EXAM questions.
       const socQA = TRAIN_BANKS['social/kindergarten'] || [];
       if (socQA.length > 0) {
-        await this._phasedTeach('SOC-K-QA-TRAIN', () => this._teachQABinding(socQA, { label: 'SOC-K-QA-TRAIN' }));
+        await this._phasedTeach('SOC-K-QA-TRAIN', () => this._teachQABinding(socQA, { label: 'SOC-K-QA-TRAIN', subject: 'social' }));
       }
 
       // iter11-J — Word-spelling discriminative one-hot.
@@ -505,6 +507,7 @@ export const K_MIXIN = {
 
 
   async _gateSocKReal() {
+    this._currentGateSubject = 'soc';
     const cluster = this.cluster;
     if (!cluster || !cluster.synapses) return { pass: false, reason: 'no cluster' };
 
@@ -639,7 +642,7 @@ export const K_MIXIN = {
       // every K-NGSS standard the exam tests.
       const sciQA = TRAIN_BANKS['science/kindergarten'] || [];
       if (sciQA.length > 0) {
-        await this._phasedTeach('SCI-K-QA-TRAIN', () => this._teachQABinding(sciQA, { label: 'SCI-K-QA-TRAIN' }));
+        await this._phasedTeach('SCI-K-QA-TRAIN', () => this._teachQABinding(sciQA, { label: 'SCI-K-QA-TRAIN', subject: 'science' }));
       }
 
       // iter11-J — Word-spelling discriminative one-hot via cross-region
@@ -670,6 +673,7 @@ export const K_MIXIN = {
 
 
   async _gateSciKReal() {
+    this._currentGateSubject = 'sci';
     const cluster = this.cluster;
     if (!cluster || !cluster.synapses) return { pass: false, reason: 'no cluster' };
 
@@ -987,7 +991,7 @@ export const K_MIXIN = {
       // — held-out-distinct from MATH_KINDERGARTEN_EXAM.
       const mathQA = TRAIN_BANKS['math/kindergarten'] || [];
       if (mathQA.length > 0) {
-        await this._phasedTeach('MATH-K-QA-TRAIN', () => this._teachQABinding(mathQA, { label: 'MATH-K-QA-TRAIN' }));
+        await this._phasedTeach('MATH-K-QA-TRAIN', () => this._teachQABinding(mathQA, { label: 'MATH-K-QA-TRAIN', subject: 'math' }));
       }
 
       // iter11-J — Word-spelling discriminative one-hot via cross-region
@@ -1021,6 +1025,7 @@ export const K_MIXIN = {
 
 
   async _gateMathKReal() {
+    this._currentGateSubject = 'math';
     const cluster = this.cluster;
     const DIGITS = DIGIT_ORDER;
     const NAMES = DIGIT_NAMES;
@@ -2619,7 +2624,7 @@ export const K_MIXIN = {
       // bypassing cross-region Hebbian.
       if (_phaseTick('_teachQABinding')) {
         const qaTrain = TRAIN_BANKS['ela/kindergarten'] || [];
-        await this._teachQABinding(qaTrain, { label: 'ELA-K-QA-TRAIN' });
+        await this._teachQABinding(qaTrain, { label: 'ELA-K-QA-TRAIN', subject: 'ela' });
         _phaseDone('_teachQABinding');
       }
 
@@ -2712,6 +2717,7 @@ export const K_MIXIN = {
    */
 
   async _gateElaKReal() {
+    this._currentGateSubject = 'ela';
     const cluster = this.cluster;
     const ALPHABET = ALPHABET_ORDER;
     // Pre-gate enrichment chain — vocabulary audit + sentence-
@@ -3310,7 +3316,11 @@ export const K_MIXIN = {
               if (typeof this.cluster.injectEmbeddingToRegion === 'function') {
                 this.cluster.injectEmbeddingToRegion('sem', emb, 1.0);
               }
-              wordDecoded = this.cluster.emitWordDirect({}) || null;
+              // iter22-D — pass subject so emitWordDirect scopes argmax to
+              // this cell's word_motor sub-band. Without it the emit
+              // returned random math-vocab words ("squares", "taller")
+              // for ELA-K letter-naming probes.
+              wordDecoded = this.cluster.emitWordDirect({ subject: this._currentGateSubject }) || null;
               if (wordDecoded && wordDecoded.length > 0) {
                 firstLetterFromWord = wordDecoded[0];
               }

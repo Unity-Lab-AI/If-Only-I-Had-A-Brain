@@ -2194,10 +2194,20 @@ export class NeuronCluster {
     catch { return ''; }
     if (!wmOut || wmOut.length === 0) return '';
 
-    // iter21-B — argmax across ALL 6 subject sub-bands. Each subject's
-    // teach wrote its words into its own sub-band so they don't
-    // cross-corrupt. Here we scan every sub-band's word buckets and
-    // pick the global highest-signal word regardless of subject.
+    // iter21-B — argmax across subject sub-bands. Each subject's teach
+    // wrote its words into its own sub-band so they don't cross-corrupt.
+    //
+    // iter22-D — opts.subject scopes argmax to ONE sub-band. Without
+    // a subject hint, the method previously argmaxed across all 6 sub-
+    // bands and returned a random math word ("squares", "taller") for
+    // ELA-K letter-naming probes because every sub-band's word_motor
+    // got partial signal from any sem pattern. Subject-scoped argmax
+    // forces probes to declare which subject's vocabulary they expect,
+    // which is the right semantic constraint anyway.
+    //
+    // For probes WITHOUT a subject hint (live chat, no curriculum
+    // context), fall back to scanning all bands but apply a higher
+    // minSignal floor so weak random-init bias doesn't get picked.
     const SUBJECTS = ['ela', 'math', 'sci', 'soc', 'art', 'life'];
     const subjectVocabs = new Map();
     for (const subj of SUBJECTS) subjectVocabs.set(subj, []);
@@ -2211,8 +2221,11 @@ export class NeuronCluster {
       else seenAll.push(w); // unsubjected words searchable everywhere
     }
 
+    const subjectScope = opts.subject && SUBJECTS.includes(opts.subject)
+      ? [opts.subject]
+      : SUBJECTS;
     let bestWord = null, bestSum = -Infinity;
-    for (const subj of SUBJECTS) {
+    for (const subj of subjectScope) {
       const subjectRegion = this.regions[`word_motor_${subj}`];
       if (!subjectRegion) continue;
       const subjStart = subjectRegion.start - wordMotor.start;
@@ -2233,7 +2246,10 @@ export class NeuronCluster {
       }
     }
 
-    const minSignal = opts.minSignal ?? 0.001;
+    // iter22-D — minSignal floor higher when no subject scope so random
+    // init bias doesn't get picked. With explicit subject, lower floor
+    // because the trained Q→A binding should produce strong signal.
+    const minSignal = opts.minSignal ?? (opts.subject ? 0.001 : 0.05);
     if (!bestWord || bestSum < minSignal) return '';
     return bestWord;
   }
@@ -2881,7 +2897,27 @@ export class NeuronCluster {
     // flag `_teachIntermediateRep` (toggled by teach loops for all reps
     // except the final one). Either gate skips the sync CPU whitelist.
     const skipCpuWhitelist = opts.skipCpuWhitelist === true || this._teachIntermediateRep === true;
+    // iter22-D — projection whitelist scoping. Operator caught
+    // (verbatim 2026-05-05): TALK 26/26 → 0/10 in Math-K because
+    // _teachQABinding's sem(question)+motor(answer-letter) write fired
+    // _crossRegionHebbian which iterates ALL projections, including
+    // letter_to_motor where the LETTER region was silent (zero in
+    // lastSpikes). Oja's `Δw = η·post·(pre - post·w)` with pre=0 →
+    // `Δw = -η·post²·w` decays letter_to_motor weights wherever motor
+    // fired the answer-letter. Across 1000+ Q-A pairs × 12 reps that
+    // crushes letter→motor identity that the alphabet-naming phase
+    // had carved cleanly. opts.projectionsWhitelist (Set or Array of
+    // projection names) restricts the iterator so unrelated projections
+    // don't get spurious decay. Callers that train sem→motor pass
+    // {projectionsWhitelist: ['sem_to_motor', 'sem_to_word_motor']}
+    // so letter_to_motor / letter_to_phon / visual_to_letter etc. stay
+    // untouched.
+    const wl = opts.projectionsWhitelist;
+    const whitelistSet = wl
+      ? (wl instanceof Set ? wl : new Set(wl))
+      : null;
     for (const [name, proj] of Object.entries(this.crossProjections)) {
+      if (whitelistSet && !whitelistSet.has(name)) continue;
       const idx = name.indexOf('_to_');
       if (idx < 0) continue;
       const src = name.slice(0, idx);

@@ -726,6 +726,68 @@ B. **compute_batch arrayBuffer lifecycle** — `ab` (arrayBuffers) bouncing 1495
 
 C. **Promotion-saturation drain** — option (A) drop `promoted_at IS NULL` filter so anchor episodes can be re-clustered as `frequency_count` climbs. Currently relies on schema-group cosine tightening (#6 above) doing the job.
 
+---
+
+### iter22-D — TALK 0/10 cross-subject collapse + PROD wrong-word emission ("squares", "taller", "wheels") + Tier 0 working memory cap (operator verbatim 2026-05-05: *"there are all kindsds of problems you shall have documented.. i want yopu to fix every single last one of them and dont just fix one type of problem fix it thouroughly and all connecting versions of the problem everywhere in the code similare issues arrise"* + *"AND WHY THE FUCK DID YOU NOT DOCUMENT THESE MAJOR FAILURES"*) — IN PROGRESS
+
+**Failures observed in syllabus-k-phd run (2026-05-05, post-iter22-A/B/C deploy)**:
+
+1. **Math-K TALK 0/10 (0%)** — fully collapsed letter→motor identity that ELA-K had carved 26/26. Cross-cell corruption, NOT addressed by iter21-B per-subject word_motor sub-bands.
+
+2. **Math-K PROD failures emitting unrelated math vocabulary**:
+   - "what number comes after seven" → emitted "squares" (expected "8,eight")
+   - "what comes after three" → emitted "stickers" (expected "4,four")
+   - "what number is after five" → emitted "squares" (expected "6,six")
+   - "two plus three equals" → emitted "taller" (expected "5,five")
+   - "four plus one equals" → emitted "wheels" (expected "5,five")
+   - "three plus two equals" → emitted "taller" (expected "5,five")
+   - "one plus one equals" → emitted "tens" (expected "2,two")
+   - "five minus two equals" → emitted "squares" (expected "3,three")
+   - "four minus one equals" → emitted "taller" (expected "3,three")
+   - "three minus one equals" → emitted "smaller" (expected "2,two")
+   Operator killed the brain at sample 11/17 because the failure pattern was systematic. Total failure of Q→A semantic routing.
+
+3. **Tier 0 working memory items=7 stuck** — UI shows "items: 7" frozen. Functionally correct (Miller's 7-item biological cap, `WORKING_MEMORY_SIZE = 7` in `js/brain/memory.js:16`) but UI doesn't show item rotation/eviction events so it looks broken.
+
+**Root cause analysis**:
+
+**(1) TALK 0/10**: `_teachQABinding` writes sem(question) + motor(answer-letter) into `cluster.lastSpikes`, then calls `_teachHebbian(lr)` which routes through `cluster._crossRegionHebbian(lr)`. That iterator fires Hebbian on **EVERY** entry in `cluster.crossProjections`, including `letter_to_motor`. The LETTER region is silent during the QA write (zero in lastSpikes), so Oja's update `Δw[letter→motor] = η·motor·(letter − motor·w)` with letter=0 collapses to `Δw = −η·motor²·w` — pure DECAY of letter_to_motor weights wherever motor fired the answer letter. Across 1000+ Q-A pairs × 12 reps that crushes the alphabet identity weights `_teachLetterNamingDirect` had carved.
+
+The same shape applies to `_teachAssociationPairs` (Opposites/Categories/WordTypes/PrintConcepts/etc.) and `_teachCombination`. They all decay letter_to_motor on every fire because the cross-region Hebbian fans out to all projections without scoping.
+
+**(2) PROD wrong words**: `_teachQABinding` only wrote to letter `motor` region (first letter of answer). The new word-level emission projection `sem_to_word_motor` was NEVER updated by QA training — only by `_teachWordEmissionDirect` which trained word→word autoassociation (concept(word) → word_motor[wordBucket(word)]). So at probe time, when the brain tries `emitWordDirect` on "two plus three equals", `sem_to_word_motor.propagate(question_emb)` argmaxes over word_motor sub-bands without ANY trained Q→A routing. Whatever word bucket has the strongest random-init bias wins. Per the iter21-B 6-subject sub-band carve, all 6 sub-bands contribute to argmax regardless of which subject the probe is testing — so an ELA-K letter probe could return a math-K word like "squares" if math's sub-band has stronger random bias for that pattern.
+
+**(3) Tier 0 stuck at 7**: Working as designed (Miller's number cap), but UI is misleading. Will document in cluster.js or memory.js comments rather than change behavior.
+
+**iter22-D fixes shipped this commit**:
+
+1. **`opts.projectionsWhitelist` added to `cluster._crossRegionHebbian`** (`js/brain/cluster.js`). When a Set or Array of projection names is passed, only those projections fire Hebbian. Without it, legacy fan-out behavior preserved for backward compat.
+
+2. **`opts` plumbed through `curriculum._teachHebbian`** so callers can scope Hebbian writes to specific cross-projections. Adds `opts.skipIntraHebbian` for callers that don't want intra-cluster recurrent matrix updated.
+
+3. **`_qaBindingWhitelist(subject)` helper** — returns `['sem_to_motor', 'sem_to_word_motor', 'sem_to_word_motor_<subject>']` so Q-A training scopes Hebbian to ONLY those projections. letter_to_motor / letter_to_phon / visual_to_letter / phon_to_letter etc. stay UNTOUCHED during QA writes. Prevents TALK 26/26 → 0/10 cross-cell collapse.
+
+4. **`_writeAnswerToWordMotor(answerText, subject)` helper** — writes the answer's word-bucket into both the global word_motor region AND the per-subject sub-band before each QA Hebbian fire. Now `sem_to_word_motor` learns Q→A binding (sentence-pattern → answer-word-bucket) so emitWordDirect produces correct answer words instead of random math vocab.
+
+5. **`_associationPairsWhitelist(subject)` helper** — returns `['sem_to_motor', 'motor_to_sem', 'sem_to_fineType', 'fineType_to_sem']`. Applied to `_teachAssociationPairs` so Opposites/Categories/WordTypes/StoryRoles/PrintConcepts/etc. don't decay letter_to_motor.
+
+6. **`emitWordDirect(opts.subject)` argmax scoping** in `js/brain/cluster.js`. When subject hint passed, argmax restricted to that subject's word_motor sub-band. Without it, scans all 6 sub-bands but applies higher minSignal threshold (0.05 vs 0.001) so weak random-init bias doesn't surface as a wrong-word emission.
+
+7. **`this._currentGateSubject` set in every `_gate*KReal` method** (kindergarten.js — ela/math/sci/soc/art/life). Probe paths (DYN-PROD + K-STUDENT + `_probeProductionEmission`) read this and pass `subject:` to emitWordDirect for proper scoping.
+
+8. **All 6 K-cell `_teachQABinding` callers** updated to pass `subject:` opt (ELA, Math, Sci, Soc, Art, Life). Subject is what `_writeAnswerToWordMotor` and `_qaBindingWhitelist` need.
+
+After next start.bat:
+- TALK should hold 26/26 across all 6 K cells (no more cross-cell letter_to_motor decay).
+- PROD should emit subject-correct answer words (not random math vocab in ELA-K probes).
+- emitWordDirect with no subject scope returns empty unless signal exceeds 0.05 floor (was 0.001).
+
+**iter22-D fixes still pending**:
+
+A. Apply same whitelist scoping to `_teachCombination` (used by `_teachStoryComprehension`, `_teachCausalChains`, `_teachMakeTen` etc.). Same fan-out decay problem.
+
+B. **Tier 0 UI rotation log** — emit a `[WM] item evicted: <label>` log line when `addToWorkingMemory` evicts the weakest item, so operator can see the rotation events even though the count stays at 7.
+
 
 
 **Pass evolution observed:**

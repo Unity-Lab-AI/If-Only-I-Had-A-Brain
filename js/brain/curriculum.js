@@ -2238,7 +2238,10 @@ export class Curriculum {
       let wordEmit = '';
       if (typeof cluster.emitWordDirect === 'function') {
         try {
-          wordEmit = cluster.emitWordDirect({}) || '';
+          // iter22-D — pass current gate subject so word emit scopes to
+          // that subject's word_motor sub-band. Without it the emit
+          // returned random math vocab for ELA-K alphabet probes.
+          wordEmit = cluster.emitWordDirect({ subject: this._currentGateSubject }) || '';
         } catch { wordEmit = ''; }
       }
       if (wordEmit && wordEmit.length > 0) {
@@ -8420,14 +8423,26 @@ export class Curriculum {
   // short-circuits at reward=0 (sparse-matrix.js:191) and updates
   // nothing. Calling `synapses.hebbianUpdate` directly bypasses the
   // reward gate and fires symmetric Hebbian across the full cluster.
-  async _teachHebbian(lr) {
+  async _teachHebbian(lr, opts = {}) {
     const cluster = this.cluster;
     if (!cluster) return;
+    // iter22-D — opts.projectionsWhitelist scopes _crossRegionHebbian to
+    // a subset of cross-projections so unrelated projections don't get
+    // spurious Oja decay during sem→motor training. Caller passes a Set
+    // or Array of projection names. Without it, all cross-projections
+    // fire (legacy behavior).
     // OOM fix — await both calls so
     // teach-loop iteration rate throttles to the worker-pool
     // drain rate, preventing unbounded pending-job pile-up that
     // blew V8 semi-space at biological scale.
-    await cluster._crossRegionHebbian(lr);
+    await cluster._crossRegionHebbian(lr, opts);
+    // iter22-D — opts.skipIntraHebbian when caller wants ONLY cross-
+    // projection Hebbian. The intra-cluster recurrent matrix is a
+    // shared substrate so it benefits broadly, but sem→motor training
+    // doesn't need to write into it for every Q→A pair (letter
+    // sequence already trained it via _teachLetterSequenceDirect /
+    // _teachAlphabetSequencePairs).
+    if (opts.skipIntraHebbian) return;
     if (typeof cluster.intraSynapsesHebbian === 'function') {
       await cluster.intraSynapsesHebbian(cluster.lastSpikes, cluster.lastSpikes, lr);
     } else if (cluster.synapses && typeof cluster.synapses.hebbianUpdate === 'function') {
@@ -8917,6 +8932,99 @@ export class Curriculum {
   // @param {number} [opts.reps=12] training reps
   // @param {number} [opts.lr=0.03] Hebbian rate
   // @param {string} [opts.label='K-QA-TRAIN'] log label
+  // iter22-D — projection whitelist for association-pair phases
+  // (Opposites, Categories, WordTypes, StoryRoles, PrintConcepts, etc.).
+  // Sem↔motor bidirectional plus optional fineType for relation tags.
+  // Excludes letter_to_* / phon_to_* / visual_to_* / auditory_to_* so
+  // those don't see spurious Oja decay during association-pair writes.
+  _associationPairsWhitelist(subject) {
+    const cluster = this.cluster;
+    if (!cluster || !cluster.crossProjections) return null;
+    const wl = ['sem_to_motor', 'motor_to_sem'];
+    if (cluster.crossProjections.sem_to_fineType) wl.push('sem_to_fineType');
+    if (cluster.crossProjections.fineType_to_sem) wl.push('fineType_to_sem');
+    return wl;
+  }
+  // iter22-D — projection whitelist for sem→motor + sem→word_motor
+  // training. Per-subject word_motor sub-band (iter21-B) keeps cross-
+  // subject word emission isolated. Non-letter projections only —
+  // letter_to_motor / letter_to_phon / visual_to_letter must NOT see
+  // Hebbian decay from QA writes that leave letter region silent.
+  _qaBindingWhitelist(subject) {
+    const cluster = this.cluster;
+    if (!cluster || !cluster.crossProjections) return null;
+    const subj = (subject || '').toLowerCase();
+    const subjMap = {
+      ela: 'word_motor_ela',
+      math: 'word_motor_math',
+      mathematics: 'word_motor_math',
+      science: 'word_motor_sci',
+      sci: 'word_motor_sci',
+      social: 'word_motor_soc',
+      art: 'word_motor_art',
+      life: 'word_motor_life',
+      'life-skills': 'word_motor_life',
+    };
+    const subjBand = subjMap[subj] || null;
+    const wl = ['sem_to_motor'];
+    if (cluster.crossProjections.sem_to_word_motor) wl.push('sem_to_word_motor');
+    if (subjBand && cluster.crossProjections[`sem_to_${subjBand}`]) wl.push(`sem_to_${subjBand}`);
+    return wl;
+  }
+  // iter22-D — write the answer's word-bucket into word_motor + per-
+  // subject sub-band. Mirror of _teachWordEmissionDirect's per-word
+  // bucket fill but called inline during QA training so emitWordDirect
+  // can route question→answer-word at probe time. Without this,
+  // sem_to_word_motor only knew word→word mappings (autoassociation)
+  // and Q→A questions argmaxed to whatever bucket had random-init
+  // bias.
+  _writeAnswerToWordMotor(answerText, subject) {
+    const cluster = this.cluster;
+    if (!cluster || !cluster.regions) return;
+    if (!answerText || typeof answerText !== 'string') return;
+    // Strip number-prefix-comma format ("8,eight" → "eight"). Pick the
+    // longest token so "5,five" → "five" not "5".
+    const tokens = answerText.toLowerCase().split(/[,;\s]+/).filter(Boolean);
+    let answerWord = '';
+    for (const t of tokens) if (t.length > answerWord.length) answerWord = t;
+    if (!answerWord) return;
+    // Only write if the answer is in the cluster's word-bucket map.
+    // Bucket maps live at cluster.wordBucketMap (full vocab) and
+    // per-subject sub-band maps at cluster.wordBucketMap_<subject>.
+    const fullMap = cluster.wordBucketMap;
+    const subjMap = subject
+      ? (cluster[`wordBucketMap_${subject.toLowerCase()}`] || null)
+      : null;
+    const writeBucketIntoBand = (bucketIdx, regionName) => {
+      const region = cluster.regions[regionName];
+      if (!region || bucketIdx == null || bucketIdx < 0) return;
+      const regionSize = region.end - region.start;
+      const buckets = cluster[`${regionName}BucketCount`] || regionSize;
+      const perBucket = Math.max(1, Math.floor(regionSize / buckets));
+      const start = region.start + bucketIdx * perBucket;
+      const end = Math.min(region.end, start + perBucket);
+      for (let i = start; i < end; i++) cluster.lastSpikes[i] = 1;
+    };
+    if (fullMap && fullMap.get) {
+      const idx = fullMap.get(answerWord);
+      if (typeof idx === 'number') writeBucketIntoBand(idx, 'word_motor');
+    }
+    if (subjMap && subjMap.get) {
+      const idx = subjMap.get(answerWord);
+      if (typeof idx === 'number') {
+        const subj = subject.toLowerCase();
+        const subjBand = ({
+          ela: 'word_motor_ela',
+          math: 'word_motor_math',
+          science: 'word_motor_sci',
+          social: 'word_motor_soc',
+          art: 'word_motor_art',
+          life: 'word_motor_life',
+        })[subj];
+        if (subjBand) writeBucketIntoBand(idx, subjBand);
+      }
+    }
+  }
   async _teachQABinding(qaList, opts = {}) {
     const cluster = this.cluster;
     if (!cluster || !cluster.crossProjections) return { trained: 0, skipped: 0 };
@@ -9027,9 +9135,26 @@ export class Curriculum {
           // basins via template presence in fineType.
           if (templateId >= 0) this._writeQuestionTemplateTag(templateId);
           this._writeTiledPattern(motorRegion, motorPattern, false);
+          // iter22-D — also write answer's word-bucket into word_motor
+          // so emitWordDirect can route Q→A via word-level projection.
+          // PROD probe was emitting random math vocab ("squares",
+          // "taller", "wheels") for "two plus three equals" because
+          // sem_to_word_motor never learned Q→A pairs — only learned
+          // word→word from _teachWordEmissionDirect. Routing answer
+          // word_motor bucket into the same write so Hebbian on
+          // sem_to_word_motor binds question-pattern → answer-word.
+          this._writeAnswerToWordMotor(answerText, opts.subject);
           try { await this._teachPredictiveError(lr); }
           catch { /* non-fatal */ }
-          await this._teachHebbian(lr);
+          // iter22-D — scope Hebbian to sem→motor + sem→word_motor.
+          // Letter region is silent during this write so legacy fan-out
+          // through letter_to_motor / letter_to_phon decayed weights
+          // those phases had carved. TALK 26/26 → 0/10 in cross-cell
+          // runs was the smoking gun.
+          await this._teachHebbian(lr, {
+            projectionsWhitelist: this._qaBindingWhitelist(opts.subject),
+            skipIntraHebbian: true,
+          });
           try { await this._teachLateralInhibition(lr); }
           catch { /* non-fatal */ }
           trained++;
@@ -9052,7 +9177,11 @@ export class Curriculum {
               }
               if (templateId >= 0) this._writeQuestionTemplateTag(templateId);
               this._writeTiledPattern(motorRegion, motorPattern, false);
-              await this._teachHebbian(lr);
+              this._writeAnswerToWordMotor(answerText, opts.subject);
+              await this._teachHebbian(lr, {
+                projectionsWhitelist: this._qaBindingWhitelist(opts.subject),
+                skipIntraHebbian: true,
+              });
               altTrained++;
             }
           } catch { /* non-fatal alt-format pass */ }
@@ -9760,7 +9889,15 @@ export class Curriculum {
           // weights' prediction, not the post-Oja state.
           try { await this._teachPredictiveError(lr); }
           catch { /* non-fatal */ }
-          await this._teachHebbian(lr);
+          // iter22-D — scope Hebbian to sem→motor + sem→word_motor +
+          // motor→sem (pair learning is bidirectional sem↔motor only).
+          // Letter region is silent during association-pair writes so
+          // legacy fan-out through letter_to_motor / letter_to_phon
+          // decayed weights those phases had carved cleanly.
+          await this._teachHebbian(lr, {
+            projectionsWhitelist: this._associationPairsWhitelist(opts.subject),
+            skipIntraHebbian: false, // intra-cluster recurrent still benefits
+          });
           // Runtime lateral inhibition overlay — depress recurrent
           // weights that drive activity across different "buckets" of
           // motor. GABAergic cross-inhibition functional shape without
@@ -10586,7 +10723,8 @@ export class Curriculum {
     if (!emitted && typeof cluster.emitWordDirect === 'function') {
       emissionPath = 'emitWordDirect';
       try {
-        emitted = cluster.emitWordDirect({}) || '';
+        // iter22-D — pass active gate subject for sub-band scoping.
+        emitted = cluster.emitWordDirect({ subject: this._currentGateSubject }) || '';
       } catch (err) {
         emitted = '';
         emissionError = err && err.message ? err.message.slice(0, 80) : 'throw';
