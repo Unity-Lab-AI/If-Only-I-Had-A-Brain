@@ -700,6 +700,142 @@ Captured iter11 sep-probe reading on first of 7 assoc-pair phases:
 
 ---
 
+### iter24 — TRAINING THROUGHPUT: 6-10× cell wallclock without losing efficacy or changing functionality (operator verbatim 2026-05-06: *"what do you recommend would be the biggest quickest wins to increase training throughput give me a plan with actually based results"* + constraint *"without lossing efficacy or changing fucntionaliuty"*) — DRAFT
+
+**Baseline (post iter22-H, measured this session):**
+- ELA-K cell: 40-48 min · Math-K cell: 12-13 min · K total: ~9 hours
+- _teachPhonemeBlending dominant: 632-709s @ 11-19 w/s
+- _teachWordEmission: 420-484s · _teachQABinding: 494-573s
+- ~70k Hebbian dispatches per phase × ~1-5ms WS framing each = significant per-call overhead share
+
+**Bottleneck diagnosis:** dispatch granularity + framing overhead, NOT raw GPU compute. Hard physics ceiling = GPU compute time at biological scale; everything above that is admin.
+
+**Hard constraint:** every win must produce identical trained matrix + identical gate pass-rates. No "acceptable drift" tradeoffs. No top-K-prune capacity changes. No batched-fold Oja with order-dependent math change.
+
+---
+
+#### iter24.1 — Tier 0 heartbeat object pooling · **1.02-1.05× · 0.5 days · math-identical**
+
+Current `_lastTier0HbAt` push allocates fresh `{ts, phase, cellKey, arousal, valence, psi}` every 2s — 1350 allocations per ELA-K cell driving V8 GC pressure. Pool the snapshot objects in a ring buffer; reuse slot fields instead of allocating.
+
+**Files:** `server/brain-server.js` Tier 0 heartbeat block (~line 5052).
+
+**Risk:** zero. Pure GC mitigation, no compute change.
+
+**Validation:** V2 watchdog ⚠⚠LEAK / ⚠climbing fire frequency should drop measurably during _teachPhonemeBlending.
+
+---
+
+#### iter24.2 — Conditional `await _microtask()` · **1.05-1.15× · 1 day · math-identical**
+
+Currently yields unconditionally every 128 facts. Most yields fire when WS bufferedAmount is fine and event loop is healthy → wasted hop cost. Gate the yield: only yield when `ws.bufferedAmount > threshold` OR `wallClockSinceLastYield > N ms` (heartbeat-starvation guard).
+
+**Files:** `js/brain/curriculum.js` — every `await _microtask()` site (search the file).
+
+**Risk:** zero math. Implementation risk = setting the gate too aggressively starves the heartbeat. Conservative defaults: yield-every-100ms minimum + yield-when-bufferedAmount > 100MB.
+
+**Validation:** CELL ALIVE heartbeat cadence stays ≤ 12s, WS bufferedAmount stays bounded, phase wallclock drops.
+
+---
+
+#### iter24.3 — Convergence early-exit · **1.2-1.4× · 1-2 days · math-identical at convergence**
+
+Phases with `_checkSemBasinSeparation` already compute mean-cosine post-rep. Add: when separation reaches its target (mean-cos < `overloadMax`) for 2 consecutive reps, stop the rep loop. Conservative: 2 consecutive sub-threshold reps required to avoid premature exit on noise.
+
+**Files:** `js/brain/curriculum.js` `_teachAssociationPairs` rep loop, `_teachQABinding` rep loop, `_teachCombination` if applicable.
+
+**Risk:** end state IDENTICAL to current at convergence (same trained matrix). Zero risk if guards are correct. Stochastic Rulkov noise within ±2% pass-rate tolerance.
+
+**Validation:** trained `sem_to_motor` matrix `|W| mean / max / nnz` snapshot matches baseline within ±1%; gate pass-rates within ±2%.
+
+---
+
+#### iter24.4 — GPU-resident curriculum vocabulary · **1.05-1.15× · 2 days · math-identical**
+
+K-vocab GloVe patterns (~3000 words × 300d × 8 bytes ≈ 7.2 MB) currently re-uploaded per Hebbian dispatch via the WS sparse-frame protocol. Upload once at curriculum start to a persistent GPU buffer; dispatches reference by word-index. Falls back to current upload-per-call when buffer not bound (browser-only mode, pre-rebind window).
+
+**Files:** new `cluster._gpuVocabBuffer` + index-based dispatch path in `_teachWordEmissionDirect`, `_teachWordSpellingDirect`, `_teachQABinding`.
+
+**Risk:** zero math. Pure transport optimization. Implementation risk = vocab-changes-mid-curriculum (new word learned via chat) need to extend the GPU buffer; iter22-G append-only bucket map already establishes the pattern.
+
+**Validation:** trained matrix bit-identical between current and resident-vocab path.
+
+---
+
+#### iter24.5 — Worker-pool dispatch batching · **1.3-1.8× · 1-2 days · math-identical**
+
+Pack N consecutive (pre, post) pairs into ONE worker `postMessage`. The worker iterates internally and runs sequential `hebbianUpdate` per pair (math identical to current per-pair dispatch). Saves N-1 `postMessage` round-trips per batch.
+
+**Files:** `server/worker-pool.js` `hebbianUpdate` accepts `{batches: [{preBuf, postBuf}, ...]}`. `server/sparse-worker.js` loops over batches in the same handler.
+
+**Risk:** zero math impact (sequential inside worker). Implementation risk = SAB cache sizing for batched buffers; iter22-G's `_cachedPreSab` / `_cachedPostSab` foundation already in place — extend to a small pool keyed by batch slot.
+
+**Validation:** trained matrix bit-identical between batched and per-pair dispatch.
+
+---
+
+#### iter24.6 — Disjoint-pair plasticity-shader batching (Path C only) · **3-5× · 5-10 days · math-identical for non-overlapping pairs**
+
+Pack N (pre, post) pairs into a single plasticity shader call **only when pairs touch disjoint `post` rows**. Oja's update `Δw[i,j] = η·post[i]·(pre[j] - post[i]·w[i,j])` reads `w[i,j]` from the prior step. If two pairs share `post[i]=k`, sequential and batched diverge. If `post` rows are disjoint, weight rows touched are disjoint → batched math is bit-identical to sequential.
+
+**Implementation:**
+1. Pre-batch grouping: scan upcoming N pairs, partition into disjoint subsets by `post` argmax/region.
+2. Each subset gets its own batched dispatch.
+3. Worst case (all overlapping) = sequential per-pair, no slowdown vs current.
+4. Best case (all disjoint) = N → 1 dispatch reduction.
+
+**Phases benefiting:** Q→A binding (different first-letter answers per pair = disjoint motor rows), word emission (different word buckets = disjoint word_motor rows). Letter-naming where every letter touches motor's same-letter row = sequential, no batching applies.
+
+**Path A (batched fold) and Path B (mini-batch with drift) both produce different math. EXPLICITLY EXCLUDED.**
+
+**Files:** new `_dispatchDisjointBatch(pairs)` helper in `js/brain/cluster.js`; per-phase grouper in `_teachQABinding`, `_teachWordEmissionDirect`.
+
+**Risk:** disjoint-detection logic must be correct. Validate by hashing weight matrices pre/post against current sequential path on a single ELA-K cell. Bit-identical or it's a bug.
+
+**Validation:** weight-matrix hash compare against sequential path on the same input sequence. Must be bit-identical for the disjoint-batch path; fall through to sequential for overlapping subsets.
+
+---
+
+**Sequencing (each step ships independently, monotonic gate pass-rate validation between):**
+
+| Day | Ship | Cumulative speedup | Math identity |
+|-----|------|---------------------|---------------|
+| 1 | iter24.1 (heartbeat pool) | 1.03× | bit-identical |
+| 2 | iter24.2 (conditional yield) | 1.10× | bit-identical |
+| 3-4 | iter24.3 (convergence early-exit) | 1.40× | bit-identical at convergence |
+| 5-6 | iter24.4 (GPU-resident vocab) | 1.55× | bit-identical |
+| 7-8 | iter24.5 (worker-pool batching) | 2.7× | bit-identical (seq in worker) |
+| 9-15 | iter24.6 (disjoint-pair shader batching) | **6-10×** | bit-identical for disjoint subsets |
+
+**Realistic shipped result:** ELA-K cell 45 min → 4-7 min. K curriculum 9 hours → 60-90 min. Same trained matrix. Same gate pass-rates. Same Unity.
+
+---
+
+**Validation gate (BLOCKING between each iter24 step):**
+
+1. Run a single ELA-K cell from clean weights state.
+2. Compare to baseline:
+   - Cell wallclock — monotonic decrease expected
+   - Gate pass-rates READ / THINK / TALK / PROD / WRITE / RESP / SEQ — must match within ±2% (Rulkov stochastic noise floor)
+   - Trained `sem_to_motor` + `letter_to_motor` matrix `|W| mean / max / nnz` — must match baseline within ±1% (or bit-identical for math-identical wins)
+   - K-STUDENT score — within ±5%
+   - V2 watchdog ⚠⚠LEAK / ⚠climbing frequency — monotonic decrease expected
+3. Any metric regression outside tolerance → revert that specific win, investigate before next ship.
+
+If iter24.6 weight-matrix hash isn't bit-identical to sequential on disjoint subsets → bug in disjoint-detection, not "acceptable drift." Path C is the safe variant precisely because it CAN be bit-identical; if it isn't, fix the implementation.
+
+---
+
+**EXPLICITLY OUT OF SCOPE for iter24 (require efficacy / functionality changes):**
+- top-K-prune K=10 → K=5: changes per-output-neuron fan-in capacity → different basins → different gate pass-rates. Out.
+- Batched Oja with order-dependent fold (Path A): different math. Out.
+- Mini-batched Oja with drift (Path B): different math. Out.
+- CUDA port: changes platform, build, test surface area. Out.
+
+These remain available as iter25+ if the iter24 ceiling isn't enough; under the current constraint they don't qualify.
+
+---
+
 ### iter23 — UNITY-AS-UNITY: 6 architectural gaps preventing Unity from operating as intended (operator verbatim 2026-05-06: *"so whilke u monitor... what are we missing for this project... what are we missing to have Unity operate her brain as we intended, as Unity"* + clarification: *"for #2 we are waiting till kindergarden shows results before building out the rest of the ciriculum.. as we need a grade proof of concept working first"*) — IN PROGRESS
 
 After iter22-A through iter22-H shipped the leak fixes + cross-cell collapse protection + Q→A word-routing + Tier 0 unbounded + WM consolidation pipeline, the architectural substrate is in place but **Unity isn't yet operating as Unity** — what we built is decorative until consumed by the actual operator-facing paths. The K curriculum gate is the proof-of-concept blocker but does NOT belong in this list (it's in-progress validation of iter22-G/H, not a missing piece).
