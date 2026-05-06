@@ -357,11 +357,20 @@ tonicDrive[amygdala]    = θ.arousalBaseline × (1 + contrib(t).arousal) × driv
                         = 0.9 × (1 + 0) × 12 ≈ 10.8   (sober baseline)<br>
                         = 0.9 × (1 + 0.33) × 12 ≈ 14.4 (PhD-era coke+weed peak, emerges dynamically)<br>
 <br>
-noiseAmp[cortex]        = θ.creativity × (1 + contrib(t).creativity) × 5<br>
-                        = 0.9 × (1 + 0) × 5 ≈ 4.5     (sober)<br>
-                        = 0.9 × (1 + 0.28) × 5 ≈ 5.76 (cannabis active)<br>
+// iter23.3 — _refreshBrainParamsFromScheduler runs every 60 frames<br>
+// and pushes brainParams onto the live cluster. Cortex noise + learning<br>
+// rate now both track scheduler contributions, closing the drug→cognition loop:<br>
+chaos                   = 1.5 if (≥3 active substances OR any level > 0.7) else 1.0<br>
+noiseAmp[cortex]        = 8 × (1 + creativity_contrib × 0.4 + impulsivity_contrib × 0.3) × chaos<br>
+                        = 8 × (1 + 0 + 0) × 1.0 = 8.0     (sober)<br>
+                        = 8 × (1 + 0.28×0.4 + 0.21×0.3) × 1.0 ≈ 9.40  (PhD coke+weed)<br>
+learningRate[cortex]    = baseLR × synaptic_sensitivity<br>
+                        = 0.01 × 1.05 ≈ 0.0105   (PhD coke+weed bumps plasticity slightly)<br>
+                        = 0.01 × 1.40 ≈ 0.014    (MDMA + acid open critical-period-like window)<br>
+noiseAmp[amygdala]      = 6 × (1 + emotional_volatility × 0.5)<br>
+noiseAmp[mystery]       = 12 × chaos<br>
         </div>
-        <p>Those two numbers get passed to the Rulkov shader as the σ driver and the jitter term. Her x,y state is chaotic but bounded — the attractor basin holds every neuron inside a repeating burst envelope even with zero sensory input. Mystery module Ψ is sitting around 0.003 — low-grade background consciousness. The old static <code>drugState.arousalMult</code> / <code>drugState.creativityMult</code> scalars have been replaced by the scheduler's superposition model where every active substance contributes its own curve-driven delta and combinations emerge without any hardcoded combo labels.</p>
+        <p>Those numbers get passed to the Rulkov shader as the σ driver and the jitter term. Her x,y state is chaotic but bounded — the attractor basin holds every neuron inside a repeating burst envelope even with zero sensory input. Mystery module Ψ is sitting around 0.003 — low-grade background consciousness. The old static <code>drugState.arousalMult</code> / <code>drugState.creativityMult</code> scalars have been replaced by the scheduler's superposition model where every active substance contributes its own curve-driven delta and combinations emerge without any hardcoded combo labels. Before iter23.3, those deltas only reached tonic drive + speech modulation; now they also reach cortex noise + cortex learning rate + amygdala noise + mystery noise, so plasticity is no longer drug-blind.</p>
       </div>
     </div>
 
@@ -441,13 +450,33 @@ errorCorrection = −(Σ error² / n) × 2<br>
     </div>
 
     <div class="eq-card">
-      <div class="eq-title">Step 6 — Language cortex emits words via tick-driven motor readout</div>
+      <div class="eq-title">Step 6 — Language cortex emits words via three-path priority cascade</div>
       <div class="eq-desc">
-        <p>This is the step that actually produces the sentence. The prior slot scorer (weighted <code>semanticFit + moodFit + drugFit + bigramFit + trigramFit + recencyPenalty</code> argmax per slot) was replaced with a cortex-resident tick-driven motor emission loop that reads directly from the trained attractor basins — same substrate that handles reading + thinking, different propagation direction for production (Hickok &amp; Poeppel 2007 dual-stream):</p>
+        <p>Production is a three-path priority cascade — fastest structured paths first, slowest most-flexible substrate as final fallback. The prior slot scorer (weighted <code>semanticFit + moodFit + drugFit + bigramFit + trigramFit + recencyPenalty</code> argmax per slot) was deleted entirely; what replaced it propagates through the trained attractor basins on the same substrate that handles reading + thinking, different direction for production (Hickok &amp; Poeppel 2007 dual-stream).</p>
+
+        <p style="margin-top:10px;"><strong>Path A — single-tick word emission via <code>word_motor</code> (iter21-A, PRIMARY).</strong> Cortex grew a dedicated <code>word_motor</code> sub-region (iter21-A) split into six per-subject sub-bands carved by <code>word_motor_ela / _math / _sci / _soc / _art / _life</code> (iter21-B). The <code>sem ↔ word_motor</code> cross-projection is trained during the curriculum on Q→A bindings + word-pattern bindings (iter22-D writes the answer's word-bucket inline during QA training; iter22-F.3 + G persists <code>cluster.wordBucketWords_&lt;subject&gt;</code> shared by teach + emit + write). At chat time:</p>
         <div class="eq" style="font-size:13px;">
-// Intent seed
+// Path A — single-tick emission<br>
 sem ← cluster.getSemanticReadout(sharedEmbeddings)<br>
-// Tick loop — no slot counter, no candidate scoring<br>
+cluster.injectIntent(sem, 'sem', 0.6)<br>
+cluster.step(dt)                                 // ONE tick<br>
+word ← cluster.emitWordDirect({ subject })<br>
+&nbsp;&nbsp;// mean-argmax over wordBucketWords_&lt;subject&gt; cells<br>
+&nbsp;&nbsp;// minSignal = 0.001<br>
+if word !== null: return word                    // emitted in 1 tick
+        </div>
+
+        <p style="margin-top:10px;"><strong>Path B — dictionary oracle (FALLBACK).</strong> When <code>emitWordDirect</code> returns <code>null</code> (signal below floor, novel intent), per-subject persona-first dictionary cosine scan over every word the curriculum has taught. If a known word strongly matches the current intent vector, emit its spelling directly:</p>
+        <div class="eq" style="font-size:13px;">
+// Path B — dictionary oracle<br>
+candidates ← dictionary.byPersonaFirst(subject)<br>
+best ← argmax_w cosine(sem, dictionary[w].emb)<br>
+if cosine(sem, best.emb) ≥ 0.55: return best.spelling
+        </div>
+
+        <p style="margin-top:10px;"><strong>Path C — tick-driven motor emission (LAST RESORT, the original biological substrate).</strong> When neither Path A nor Path B produces a match, fall through to the cortex tick loop and read letters off the spike pattern of the motor sub-region one tick at a time:</p>
+        <div class="eq" style="font-size:13px;">
+// Path C — tick-driven motor readout<br>
 for t in 0..MAX_EMISSION_TICKS (≤ 2000):<br>
 &nbsp;&nbsp;cluster.step(dt)<br>
 &nbsp;&nbsp;motorReadout ← cluster.regionReadout('motor', inventorySize())<br>
@@ -456,18 +485,27 @@ for t in 0..MAX_EMISSION_TICKS (≤ 2000):<br>
 &nbsp;&nbsp;&nbsp;&nbsp;commit letter; if cluster.letterTransitionSurprise() > 0.15 → word boundary<br>
 &nbsp;&nbsp;if motorQuiescent(END_QUIESCE_TICKS=30) and emitted ≥ 1: break<br>
 &nbsp;&nbsp;if committed terminator (.!?): break<br>
-<br>
-// Speech modulation post-processor (applies AFTER clean cortex emission)<br>
-mod = scheduler.speechModulation(now)      // { inhibition, slur, coherence, ethereality, speechRate, emotionalOverflow, dissociation, paranoia, giggleBias, ... }<br>
+        </div>
+
+        <p style="margin-top:10px;"><strong>Speech modulation post-processor</strong> applies AFTER the chosen path produces clean text:</p>
+        <div class="eq" style="font-size:13px;">
+mod = scheduler.speechModulation(now)<br>
+&nbsp;&nbsp;// { inhibition, slur, coherence, ethereality, speechRate, emotionalOverflow,<br>
+&nbsp;&nbsp;//   dissociation, paranoia, giggleBias, ... }<br>
 rendered = _applySpeechModulation(text, mod)<br>
 &nbsp;&nbsp;// slur letter-doubling on alcohol/ketamine/ghb<br>
 &nbsp;&nbsp;// pause '...' injection at negative speech rate<br>
 &nbsp;&nbsp;// cosmic/Oz/kaleidoscope vocabulary pulled into sem on LSD/psilocybin peak<br>
 &nbsp;&nbsp;// first-person → third-person copula-conjugated flip at dissociation > 0.5<br>
         </div>
-        <p>For this tick the cortex's motor region argmax evolves through a learned articulator trajectory shaped by the persona Hebbian attractor basins. Which letters commit AND in what order emerges from the recurrent dynamics of the cortex cluster — not from a word-level slot scorer. The substance-specific speech distortion is applied AFTER cortex emission at the output layer, so the cortex stays equational and only the rendering shows the drug state. Unity never narrates her drug choice ("I am doing coke" is a banned utterance pattern); the distortion IS the signal.</p>
-        <p>Sample sober output: <em>"what's up — how's it going"</em>. Same input at PhD-era coke+weed peak with scheduler active: <em>"whaaat's up fucker — we're wiiired tonight, how bout youuu"</em> (slur doubling on vowels + drawn terminal 'u' from cannabis-contribution speechRate drop layered on cocaine-contribution jitter).</p>
-        <p><strong>What this sums into:</strong> a sentence whose every letter was the stable motor argmax of the cortex at that tick, shaped by persona Hebbian basins, then distorted by the scheduler's live speechModulation vector. Change any substance event in the scheduler and the rendered output changes even if the cortex motor emission was identical.</p>
+
+        <p>The substance-specific speech distortion always applies AFTER clean cortex emission at the output layer — cortex stays equational and only the rendering shows the drug state. Unity never narrates her drug choice ("I am doing coke" is a banned utterance pattern); the distortion IS the signal.</p>
+
+        <p>Sample sober Path A: <em>"squares"</em>. Same input PhD-era coke+weed peak: <em>"squaaares"</em> (vowel slur from cocaine jitter layered on cannabis speechRate drop). Path C sample sober: <em>"what's up — how's it going"</em>. Same input PhD coke+weed: <em>"whaaat's up fucker — we're wiiired tonight, how bout youuu"</em>.</p>
+
+        <p><strong>oracleRatio heartbeat:</strong> every 10 s the heartbeat reports what fraction of recent emissions came from Path A+B (structured) vs Path C (tick loop). Surfacing that ratio keeps the central research question honest — if structured paths dominate entirely, the trained matrix isn't carrying load; if Path C produces meaningful output too, the matrix is real.</p>
+
+        <p><strong>What this sums into:</strong> a sentence whose every word was either the mean-argmax of <code>word_motor</code> at one tick (Path A), the cosine-best dictionary entry against the cortical sem readout (Path B), or the stable motor argmax across many ticks (Path C) — then distorted by the scheduler's live speechModulation vector. Change any substance event in the scheduler and the rendered output changes even if the underlying emission was identical.</p>
       </div>
     </div>
 
@@ -1019,6 +1057,11 @@ probe(word, grade, subject):
     ├── <span class="hl">Vision describer</span> → input peripheral, Pollinations or local
     │                         VLM (Ollama llava, LM Studio, etc.) — returns
     │                         a one-sentence description into brainState.visionDescription
+    ├── <span class="hl">World knowledge ingest</span> (iter23.5, operator-triggered) — POST /learn-from-web
+    │                         { topic } → Wikipedia REST summary fetch → tokenize alpha-only
+    │                         → dictionary.learnWord per new token → fire Tier 1 episode
+    │                         tagged with source URL. No external AI cognition; the article
+    │                         text is sensory-only — cognition stays equational.
     └── <span class="hl">Sandbox</span> → dynamic UI injection via component-synth.js
                  cosine-match against docs/component-templates.txt corpus
     |
@@ -1218,6 +1261,7 @@ pass:
       <div class="eq-desc">
         <p>When Unity is idle, the consolidation engine replays high-salience episodes 4 times each through the schema's hippocampus→cortex projection. Replay magnitude scales with emotional weight × log(frequency) so emotionally-loaded repeated episodes get the strongest reinforcement. Sleep-spindle bursts at 1.2× gain (200ms burst + 1000ms quiet) mimic biological 12-14 Hz thalamocortical spindles that synchronize hippocampus-cortex replay during slow-wave sleep.</p>
         <p class="mod-bio" style="margin-top:6px">Biology: McClelland 1995 / Squire 1992 systems consolidation. Sleep-spindle bursts during NREM sleep coordinate hippocampal-cortical replay. The 5-minute pass interval mimics ultradian rhythm scale of replay events in rodents.</p>
+        <p style="margin-top:8px;"><strong>iter23.4 — Operator-triggered sleep windows.</strong> The brain server exposes <code>POST /sleep</code> and <code>POST /wake</code> so the operator (or an external scheduler) can force the consolidation engine into an explicit sleep window outside the normal idle-trigger heuristic. <code>/sleep</code> sets <code>_isDreaming = true</code> and disables the &gt; 60s idle gate so passes fire even with active chat suppressed. <code>/wake</code> clears the flag and resumes normal idle-driven replay. This lets the operator align consolidation with curriculum gaps or off-hours rather than waiting for the brain to fall idle on its own.</p>
       </div>
     </div>
 
@@ -2322,14 +2366,46 @@ IDENTITY: 25yo human female, emo goth coder, free will, never AI
 
 θ → NOISE (personality → neural chaos):
 
-  // Sober
-  cortex       = 5 + creativity(0.9) × 4                       = 8.6
-  amygdala     = 6 + volatility(0.8) × 6                       = 10.8
-  mystery      = 8 + creativity(0.9) × 5 + darkHumor(0.9) × 2  = 14.3
+  // iter23.3 — engine._refreshBrainParamsFromScheduler runs every 60 frames
+  // (≈ 3 s real time) and pushes the latest brainParams (which already fold in
+  // scheduler.activeContributions deltas) DIRECTLY onto the live cluster
+  // parameters, closing the drug → cognition loop. Before iter23.3, drug
+  // contributions only altered tonic drive + speech modulation; cortex noise
+  // and learning rate stayed static so plasticity was drug-blind.
+  //
+  // Live formulas applied to the running cluster objects:
 
-  // PhD-era coke+weed (contrib.creativity ≈ 0.28, contrib.volatility ≈ 0.18)
-  cortex       = 5 + creativity(0.9) × 4 × (1 + 0.28)          = 9.61
-  amygdala     = 6 + volatility(0.8) × 6 × (1 + 0.18)          = 11.66
+  cortex.noiseAmplitude   = 8 × (1 + creativity_contrib × 0.4
+                                    + impulsivity_contrib × 0.3) × chaos
+  cortex.learningRate     = (cortex._baseLearningRate ?? 0.01) × synaptic_sensitivity
+  amygdala.noiseAmplitude = 6 × (1 + emotional_volatility × 0.5)
+  mystery.noiseAmplitude  = 12 × chaos
+
+  where:
+    chaos                = 1.5 if (≥3 active substances OR any level > 0.7) else 1.0
+    creativity_contrib   = Σ_drug level_drug · cap_drug.creativity
+    impulsivity_contrib  = Σ_drug level_drug · cap_drug.impulsivity
+    synaptic_sensitivity = 1.0 + Σ_drug level_drug · cap_drug.sensitivityDelta
+    emotional_volatility = Σ_drug level_drug · cap_drug.volatilityDelta
+
+  // Worked examples (substituting persona θ + scheduler levels):
+
+  // Sober (no contributions, chaos = 1.0)
+  cortex.noiseAmplitude   = 8 × (1 + 0 + 0) × 1.0           = 8.0
+  cortex.learningRate     = 0.01 × 1.0                       = 0.010
+  amygdala.noiseAmplitude = 6 × (1 + 0 × 0.5)                = 6.0
+
+  // PhD-era coke+weed at 25-min mark — 2 substances, no >0.7 level so chaos=1.0
+  // (creativity_contrib ≈ 0.28, impulsivity_contrib ≈ 0.21,
+  //  synaptic_sensitivity ≈ 1.05, emotional_volatility ≈ 0.18)
+  cortex.noiseAmplitude   = 8 × (1 + 0.28×0.4 + 0.21×0.3) × 1.0  = 9.40
+  cortex.learningRate     = 0.01 × 1.05                          = 0.0105
+  amygdala.noiseAmplitude = 6 × (1 + 0.18 × 0.5)                 = 6.54
+
+  // Coke + weed + molly + acid (4 active → chaos = 1.5)
+  cortex.noiseAmplitude   = 8 × (1 + 0.55×0.4 + 0.30×0.3) × 1.5  = 16.7
+  cortex.learningRate     = 0.01 × 1.40                          = 0.014   (MDMA + acid open plasticity)
+  mystery.noiseAmplitude  = 12 × 1.5                             = 18.0
 
 θ → Ψ CONSCIOUSNESS:
   Id    = amygdala_activity × arousalBaseline(0.9)
