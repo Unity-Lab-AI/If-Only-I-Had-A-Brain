@@ -494,6 +494,149 @@ class SparseMatmulPool {
     return true;
   }
 
+  /**
+   * iter24.5 — batched Hebbian dispatch. Packs N (preSpikes, postSpikes)
+   * pairs into a single strided buffer + ONE postMessage per worker.
+   * Worker iterates internally and runs sequential Hebbian per pair.
+   * Math is bit-identical to N separate `hebbianUpdate` calls in the
+   * same order — the inner loop body is the same per-pair logic, just
+   * reading pre/post from strided slices.
+   *
+   * @param {object} matrix - SparseMatrix with shared values + colIdx + rowPtr
+   * @param {Array<{pre:Float32Array, post:Float32Array}>} pairs
+   * @param {number} lr
+   * @returns {Promise<boolean>}
+   */
+  async hebbianUpdateBatch(matrix, pairs, lr) {
+    if (!Array.isArray(pairs) || pairs.length === 0) return true;
+    if (pairs.length === 1) {
+      // Single-pair fast path — reuse non-batched dispatch so no
+      // unnecessary strided-pack work happens for size-1 batches.
+      return this.hebbianUpdate(matrix, pairs[0].pre, pairs[0].post, lr);
+    }
+    this._lastJobAt = Date.now();
+    const rows = matrix.rows;
+    const wMin = matrix.wMin ?? -2.0;
+    const wMax = matrix.wMax ?? 2.0;
+
+    // Synchronous fallback for browser-only / pre-init pool. Walks
+    // pairs sequentially via the in-process Hebbian update — math
+    // identical to the threaded path.
+    if (!this._ready || this._workers.length === 0) {
+      const values = matrix.values;
+      const colIdx = matrix.colIdx;
+      const rowP = matrix.rowPtr;
+      for (const { pre, post } of pairs) {
+        for (let i = 0; i < rows; i++) {
+          if (!post[i]) continue;
+          const scaled = lr * post[i];
+          const start = rowP[i];
+          const end = rowP[i + 1];
+          for (let k = start; k < end; k++) {
+            let v = values[k] + scaled * pre[colIdx[k]];
+            if (v > wMax) v = wMax;
+            else if (v < wMin) v = wMin;
+            values[k] = v;
+          }
+        }
+      }
+      return true;
+    }
+
+    // Pack the strided pre + post buffers via the iter22-G SAB cache,
+    // upgraded for batch capacity.
+    const sliceLen = pairs[0].pre.length;
+    for (const p of pairs) {
+      if (p.pre.length !== sliceLen || p.post.length !== sliceLen) {
+        // Fall back to per-pair sequential — strided packing requires
+        // uniform slice lengths. Math identical.
+        for (const pp of pairs) {
+          // eslint-disable-next-line no-await-in-loop
+          await this.hebbianUpdate(matrix, pp.pre, pp.post, lr);
+        }
+        return true;
+      }
+    }
+    const totalLen = sliceLen * pairs.length;
+    const prePacked = this._getCachedFloat32Sab('PreBatch', totalLen);
+    const postPacked = this._getCachedFloat32Sab('PostBatch', totalLen);
+    for (let k = 0; k < pairs.length; k++) {
+      prePacked.view.set(pairs[k].pre, k * sliceLen);
+      postPacked.view.set(pairs[k].post, k * sliceLen);
+    }
+
+    // Same shared-CSR upgrade path as hebbianUpdate.
+    if (!(matrix.values.buffer instanceof SharedArrayBuffer)) {
+      const sab = new SharedArrayBuffer(matrix.values.byteLength);
+      const shView = matrix.values instanceof Float32Array
+        ? new Float32Array(sab)
+        : new Float64Array(sab);
+      shView.set(matrix.values);
+      matrix.values = shView;
+    }
+    const valsShared = matrix.values instanceof Float32Array
+      ? matrix.values
+      : (() => {
+          const sab = new SharedArrayBuffer(matrix.rows === 0 ? 4 : matrix.values.length * 4);
+          const v = new Float32Array(sab);
+          for (let i = 0; i < matrix.values.length; i++) v[i] = matrix.values[i];
+          return v;
+        })();
+    const shared = (arr, SharedCtor) => {
+      if (arr.buffer instanceof SharedArrayBuffer) return arr;
+      const sab = new SharedArrayBuffer(arr.byteLength);
+      const view = new SharedCtor(sab);
+      view.set(arr);
+      return view;
+    };
+    const colsShared = shared(matrix.colIdx instanceof Uint32Array ? matrix.colIdx : new Uint32Array(matrix.colIdx), Uint32Array);
+    const rowPShared = shared(matrix.rowPtr instanceof Uint32Array ? matrix.rowPtr : new Uint32Array(matrix.rowPtr), Uint32Array);
+
+    const jobId = ++this._jobSeq;
+    const N = this._workers.length;
+    const rowsPerWorker = Math.ceil(rows / N);
+
+    await new Promise((resolve) => {
+      this._pending.set(jobId, { resolve, expected: N, received: 0 });
+      for (let i = 0; i < N; i++) {
+        const startRow = i * rowsPerWorker;
+        const endRow = Math.min(startRow + rowsPerWorker, rows);
+        if (startRow >= rows) {
+          const entry = this._pending.get(jobId);
+          if (entry) {
+            entry.received++;
+            if (entry.received >= entry.expected) {
+              this._pending.delete(jobId);
+              resolve();
+            }
+          }
+          continue;
+        }
+        this._workers[i].postMessage({
+          type: 'hebbianBatch',
+          jobId,
+          valuesBuf: valsShared.buffer,
+          colIdxBuf: colsShared.buffer,
+          rowPtrBuf: rowPShared.buffer,
+          prePackedBuf: prePacked.sab,
+          postPackedBuf: postPacked.sab,
+          sliceLen,
+          batchCount: pairs.length,
+          startRow,
+          endRow,
+          lr,
+          wMin,
+          wMax,
+        });
+      }
+    });
+
+    if (valsShared !== matrix.values) {
+      for (let i = 0; i < valsShared.length; i++) matrix.values[i] = valsShared[i];
+    }
+    return true;
+  }
+
   get ready() {
     // Lazy re-init when the idle watchdog previously shut the pool
     // down. A caller asking for readiness after a long idle window
