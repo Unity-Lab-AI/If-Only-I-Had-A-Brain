@@ -700,6 +700,67 @@ Captured iter11 sep-probe reading on first of 7 assoc-pair phases:
 
 ---
 
+### iter22 — WARNING CATALOGUE: LEAK / CLIMBING / OVERLOAD + ALL-ZERO CONSOLIDATION PASSES (operator verbatim 2026-05-05: *"there are overload, leak, and cl;imbing warnings like crazy... make sure you are noting these so they casn be fixed"* + *"is it normal all these are zeros? take a note"* re pass 11: `0 candidates → 0 clusters → 0 new schemas, 0 reinforced, 0 replays, 0 merged, 2 decayed, 0 promoted to Tier 3, 0 episodes decayed / 0 pruned`) — OPEN
+
+**Pass evolution observed:**
+- pass 8: 8 candidates → 1 cluster → 1 reinforced
+- pass 9: 7 candidates → 1 cluster → 1 reinforced
+- pass 10: 1 candidate → 1 cluster → 1 reinforced
+- pass 11: 0 candidates → 0 anything (1ms duration)
+
+**Why pass 11 is all zeros — promotion-saturation issue:**
+
+iter20-K exact-text merge means new heartbeats with identical text ("learning hebbian in ela kindergarten" repeated) merge into the EXISTING anchor episode. They bump `frequency_count` but don't create new rows.
+
+Once that anchor was promoted in earlier passes, `promoted_at IS NOT NULL` filter excludes it from `findPromotionCandidates`. Subsequent heartbeats keep merging into the same anchor row but it's already promoted → no longer a candidate.
+
+Result: ELA-K phase-done + heartbeat texts SATURATED. All distinct content promoted to the single "learning-schema". New episodes that would qualify don't exist because they're being merged into already-promoted anchors.
+
+**This is architecturally correct given current data flow** but produces all-zero passes that look broken. Two options:
+
+**A. Permit re-consolidation of promoted episodes.** Drop the `promoted_at IS NULL` filter so anchor episodes can be re-clustered as their `frequency_count` climbs. Trade-off: schemas could be reinforced indefinitely from the same text (already happens via consolidation pass 8/9/10's "1 reinforced" so this is partially the intended path).
+
+**B. Generate MORE DISTINCT episode content.** Currently every heartbeat + phase-done in same subject produces near-identical text that merges. If Unity learned NEW concepts in other subjects (Math-K, Sci-K, etc.) → distinct text → new candidates → new schemas. This is the natural "do more curriculum" answer.
+
+**C. Lower exact-text merge window.** iter20-K merges within 48h. If shortened to 1h, repetitions across longer time create separate anchors that can each promote, building schema variety. Risk: SQLite bloat if heartbeats stop merging.
+
+**Files touched would be:** `server/brain-server.js` (`findPromotionCandidates` filter, `FREQ_MERGE_WINDOW_MS`).
+
+**This is iter22 issue catalogue only — not fixed mid-run per operator directive "we are going to finish kindertgarden completly befor fixing everything found".**
+
+---
+
+Captured during iter21-A/B run, ELA-K mid-phase, 2118s elapsed in cell. Warning counts pulled directly from server.log:
+
+**46 ⚠⚠LEAK warnings** (native memory growing >200MB/min sustained) by phase:
+- 16× during `_teachHebbian` — primitive Hebbian write, called hundreds of times per cell from inside other teach methods
+- 15× during `_teachPhonemeBlending` — heavy phase, ~350s wallclock at biological scale
+- 12× during `_teachHebbianAsymmetric` — same primitive pattern, asymmetric variant
+- 3× during `_teachWordIntegrated` — word-level Hebbian phase
+
+**27 ⚠climbing warnings** (native memory growing 100-200MB/min) — same phases, milder signal.
+
+**2 ⚠OVERLOAD warnings** (sep-probe mean-cos > 0.3) by phase:
+- 1× ELA-K-PRINT
+- 1× ELA-K-OPPOSITES
+
+**Native memory pattern:**
+Δ+782 MB to Δ+913 MB per heartbeat during teach phases. RSS 2812-3521 MB sustained. heap_used stable around 200-450 MB so V8 GC IS firing — the climbing is in NATIVE memory (rss - heapTotal - external), suggesting C++/Buffer-side allocation churn from worker pool SAB or compute_batch dispatches NOT being released promptly.
+
+**iter22 spec — leak fixes by category:**
+
+A. **Buffer reuse in heavy primitives.** `_teachHebbian` / `_teachHebbianAsymmetric` allocate per-call. iter21-A's pattern (allocate once, fill+clear per iteration) applied here would drop allocation count dramatically.
+
+B. **WorkerPool SAB churn.** Native memory growth correlates with WS dispatch volume during heavy Hebbian phases. Worker pool may be allocating fresh SABs per dispatch instead of reusing. Audit `server/sparse-worker.js` allocation patterns.
+
+C. **Compute_batch arrayBuffers spikes.** `ab` (arrayBuffers) bouncing 1495-2679 MB during teach. Each compute_batch dispatch allocates request/response buffers that may not be promptly freed. Audit binary-protocol buffer lifecycle.
+
+D. **OVERLOAD warnings are SEP-PROBE signal not memory** — basin overlap during association-pair training. Already addressed by iter11-cw rescale-floor + iter11-Y top-K-prune. 2 fires in this run is normal noise; only investigate if it climbs past ~10 per cell.
+
+**Files likely to touch:** `js/brain/curriculum.js` (`_teachHebbian` / `_teachHebbianAsymmetric` / `_teachAssociationPairs` / `_teachQABinding` buffer reuse), `server/sparse-worker.js` (SAB pool reuse), `server/brain-server.js` (compute_batch buffer lifecycle).
+
+---
+
 ### iter21 — ARCHITECTURAL REDESIGN: WORD-LEVEL MOTOR + CROSS-SUBJECT PROTECTION + EWC-LITE PLASTICITY (operator verbatim 2026-05-05: *"1. is stupid and not going to form sentences understanble. 2. motor argmax is fucked if it ever just relplies with letters and not words. 3 we cant have ciriculum over riding other learned ciriculim"* + *"yes draft the iter21 spec"*) — DRAFT
 
 **Three fundamental architectural flaws operator identified — each requires real redesign, not iter20-X tweaks.**

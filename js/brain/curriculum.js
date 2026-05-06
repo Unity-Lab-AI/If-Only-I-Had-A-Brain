@@ -2230,8 +2230,23 @@ export class Curriculum {
         // below the 0.5 strict fake-answer guard.
         minScore: 0.2,
       };
-      const raw = await cluster.generateSentenceAwait(intentSeed, emitOpts);
-      generated = (raw && typeof raw === 'string' ? raw : (raw?.text || '')) || '';
+      // iter21-A — try word-level emission FIRST. If sem→word_motor
+      // returns a real word, use it. Otherwise fall through to chaotic
+      // generateSentenceAwait. Operator: K-STUDENT was emitting letter
+      // chains ("stuvwxyz", "opqrstuvwxyz") instead of words. word_motor
+      // is the production path.
+      let wordEmit = '';
+      if (typeof cluster.emitWordDirect === 'function') {
+        try {
+          wordEmit = cluster.emitWordDirect({}) || '';
+        } catch { wordEmit = ''; }
+      }
+      if (wordEmit && wordEmit.length > 0) {
+        generated = wordEmit;
+      } else {
+        const raw = await cluster.generateSentenceAwait(intentSeed, emitOpts);
+        generated = (raw && typeof raw === 'string' ? raw : (raw?.text || '')) || '';
+      }
     } catch { /* generation failed — answer stays '' */ }
 
     const answer = generated.toLowerCase().trim();
