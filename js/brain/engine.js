@@ -212,6 +212,14 @@ export class UnityBrain extends EventEmitter {
     this.auditoryCortex = new AuditoryCortex();
     this.visualCortex = new VisualCortex();
     this.innerVoice = new InnerVoice();
+    // iter23.2 — give inner-voice direct refs so its idle generation
+    // can fire emitWordDirect on the cortex cluster + push thoughts
+    // into WM (which then fires hippocampal Hebbian + tracks refresh
+    // for Tier 1 consolidation). Fallback chain through
+    // languageCortex._cluster + dictionary._cluster covers older
+    // wiring orders.
+    this.innerVoice._cluster = this.clusters.cortex;
+    this.innerVoice._memorySystem = this.memorySystem;
     // T14.3 — wire the cortex cluster into the dictionary so learnWord
     // can stream new words' letters through cluster.detectBoundaries +
     // cluster.detectStress on first observation, storing syllable
@@ -1440,9 +1448,32 @@ export class UnityBrain extends EventEmitter {
     this.brainParams = getBrainParams(this.persona, this.drugScheduler);
     if (this.mystery?.setWeights) this.mystery.setWeights(this.brainParams.mysteryWeights);
     const arousal = this.brainParams.arousalBaseline || 0.9;
-    if (this.clusters?.cortex)    this.clusters.cortex.tonicDrive    = 14 + arousal * 6;
-    if (this.clusters?.amygdala)  this.clusters.amygdala.tonicDrive  = 15 + arousal * 8;
-    if (this.clusters?.mystery)   this.clusters.mystery.noiseAmplitude = 12 * (this.brainParams.chaos ? 1.5 : 1.0);
+    const creativity = this.brainParams.creativity || 0;
+    const impulsivity = this.brainParams.impulsivity || 0;
+    const chaos = this.brainParams.chaos ? 1.5 : 1.0;
+    const sensitivity = this.brainParams.synapticSensitivity ?? 1.0;
+    if (this.clusters?.cortex) {
+      this.clusters.cortex.tonicDrive    = 14 + arousal * 6;
+      // iter23.3 — close the drug-cognition loop. cortex.noiseAmplitude
+      // tracks creativity + impulsivity (more chaos under stimulants /
+      // psychedelics), and cortex.learningRate scales with synaptic
+      // sensitivity (some drugs facilitate plasticity, e.g. MDMA opens a
+      // critical-period-like window; psychedelics dial 5HT2A which
+      // increases plasticity). Without this the rich substance-specific
+      // contribution deltas (creativity / impulsivity / synaptic
+      // sensitivity) accumulated in brainParams but never reached
+      // runtime cluster parameters — drugs were only shifting tonic
+      // drive + speech modulation, not actual cognition.
+      this.clusters.cortex.noiseAmplitude = 8 * (1 + creativity * 0.4 + impulsivity * 0.3) * chaos;
+      this.clusters.cortex.learningRate   = (this.clusters.cortex._baseLearningRate ?? 0.01) * sensitivity;
+    }
+    if (this.clusters?.amygdala) {
+      this.clusters.amygdala.tonicDrive  = 15 + arousal * 8;
+      // Amygdala noise scales with emotional volatility delta.
+      const volatility = this.brainParams.emotionalVolatility || 0;
+      this.clusters.amygdala.noiseAmplitude = 6 * (1 + volatility * 0.5);
+    }
+    if (this.clusters?.mystery)   this.clusters.mystery.noiseAmplitude = 12 * chaos;
   }
 
   /**

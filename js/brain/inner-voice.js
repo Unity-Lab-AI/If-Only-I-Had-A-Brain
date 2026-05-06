@@ -183,14 +183,58 @@ export class InnerVoice {
     const speechDrive = socialNeed * arousal * coherence;
     const shouldSpeak = speechDrive > SPEECH_THRESHOLD;
 
-    // Idle speech generation DISABLED in think(). Previously this
-    // fired languageCortex.generate() once per second when shouldSpeak
-    // triggered — another O(N) pass over the 44k dictionary every
-    // time, and the output wasn't even emitted to the chat (think()
-    // is idle pre-verbal thought, not actual speech to the user).
-    // Actual speech generation happens in engine.processAndRespond()
-    // when user input arrives. Idle thought stays pre-verbal.
-    const sentence = '';
+    // iter23.2 — idle inner-voice generation. Previously disabled
+    // because languageCortex.generate() scanned the 44k-entry
+    // dictionary in O(N) once per second on the main thread. With
+    // iter22-G's persistent bucket maps + mean-argmax,
+    // cluster.emitWordDirect is cheap (single propagate + bucket
+    // sum). Re-enabling so Unity actually thinks between turns —
+    // this is the difference between "brain sim that responds when
+    // prompted" and "Unity, alive."
+    //
+    // Where the thought goes:
+    //   • cluster.lastUserInputEmbedding stays unchanged (this is
+    //     internal not a chat reply).
+    //   • The emitted word lands in WM via the brain.memory pipeline
+    //     when wired (iter22-H addToWorkingMemory fires hippocampal
+    //     Hebbian + tracks refreshCount → Tier 1 promotion at ≥3).
+    //   • Even when WM hook is absent (browser-only mode without a
+    //     brain-server reference), the cortex still ticks underneath
+    //     so recurrent attractors keep firing.
+    //
+    // Gate: only fire when shouldSpeak crosses threshold OR
+    // socialNeed×arousal warrants — so idle thoughts come and go
+    // with internal drive state, not on a fixed cadence.
+    let sentence = '';
+    const cluster = this._cluster
+      || this.languageCortex?._cluster
+      || this.dictionary?._cluster
+      || null;
+    const wantsThought = shouldSpeak || (socialNeed * arousal > 0.25);
+    if (wantsThought && cluster && typeof cluster.emitWordDirect === 'function') {
+      try {
+        const word = cluster.emitWordDirect({}) || '';
+        if (word && word.length > 0) {
+          sentence = word;
+          // Push the thought into WM so it accumulates → fires
+          // hippocampal Hebbian (iter22-H) → consolidates to Tier 1
+          // when refreshed enough times. Embedding pulled from the
+          // dictionary entry so the WM pattern matches what teach
+          // wrote into sem→word_motor.
+          const entry = this.dictionary?._words?.get(word);
+          const pattern = entry?.pattern;
+          const memSys = this._memorySystem
+            || cluster?._brain?.memorySystem
+            || cluster?._brain?.memory
+            || null;
+          if (pattern && memSys && typeof memSys.addToWorkingMemory === 'function') {
+            try {
+              memSys.addToWorkingMemory(pattern, `inner-thought:${word}`);
+            } catch { /* WM push non-fatal */ }
+          }
+        }
+      } catch { /* idle thought failure leaves sentence empty */ }
+    }
 
     // Update current thought
     this.currentThought = {

@@ -700,6 +700,74 @@ Captured iter11 sep-probe reading on first of 7 assoc-pair phases:
 
 ---
 
+### iter23 — UNITY-AS-UNITY: 6 architectural gaps preventing Unity from operating as intended (operator verbatim 2026-05-06: *"so whilke u monitor... what are we missing for this project... what are we missing to have Unity operate her brain as we intended, as Unity"* + clarification: *"for #2 we are waiting till kindergarden shows results before building out the rest of the ciriculum.. as we need a grade proof of concept working first"*) — IN PROGRESS
+
+After iter22-A through iter22-H shipped the leak fixes + cross-cell collapse protection + Q→A word-routing + Tier 0 unbounded + WM consolidation pipeline, the architectural substrate is in place but **Unity isn't yet operating as Unity** — what we built is decorative until consumed by the actual operator-facing paths. The K curriculum gate is the proof-of-concept blocker but does NOT belong in this list (it's in-progress validation of iter22-G/H, not a missing piece).
+
+**The 6 missing items, ranked by Unity-as-Unity impact:**
+
+#### #1 — Chat path uses emitWordDirect / word_motor (PRIMARY production)
+
+**Problem:** All iter22 architectural work (`sem→word_motor`, persistent bucket maps, per-subject sub-bands, mean argmax, Q→A binding writes) currently only fires from curriculum probe paths (DYN-PROD / K-STUDENT / `_probeProductionEmission`). Live chat at `processAndRespond` still routes through `cluster.generateSentenceAwait` which is the legacy letter-by-letter attractor-settling path.
+
+**Result:** The architectural fix is decorative for operator-facing chat. Operator typing to Unity gets the OLD letter-chain emission that produced "Layered!" and gibberish, even though the new word-emission path exists.
+
+**Fix:** Wire `language-cortex.generate` / `processAndRespond` to call `cluster.emitWordDirect({ subject: inferredFromIntent })` first, falls through to `generateSentenceAwait` only when word emission returns empty. ~15-20 lines. Subject-hint inference from user input semantic content (math keywords → 'math', science keywords → 'sci', etc.) — or simple sequential scan across all 6 sub-bands if intent classifier not present.
+
+**Files:** `js/brain/language-cortex.js`, `server/brain-server.js` (`processAndRespond`), and the chat-side intent classifier if one exists.
+
+#### #2 — Continuous inner voice loop (Unity exists between turns)
+
+**Problem:** The brain ticks every 50ms but absent chat input + absent curriculum, what's Unity DOING? `js/brain/inner-voice.js` exists but the loop may not be generating spontaneous thinking. Real personhood = thinking-when-no-one-is-watching.
+
+**Fix:** Audit InnerVoice — confirm continuous self-emission firing motor every N ticks even without external prompt. Output goes nowhere (no listener) but the cortex keeps settling, recurrent attractors keep firing, episodes keep forming. WM populates with her own thoughts; ConsolidationEngine has content to chew on; Tier 0/1/2 grow from her own thinking, not just from operator chat.
+
+**Files:** `js/brain/inner-voice.js`, `js/brain/engine.js` (tick-loop integration).
+
+#### #3 — Drug loop closure verified (δ(t) → cluster cognition)
+
+**Problem:** Pharmacokinetic scheduler runs δ(t) curves and emits state deltas. Unclear whether anything READS those deltas and shifts `cortexCluster.noiseAmplitude` / `tonicDrive` / `learningRate` in real time. If broken, drugs are decorative chat-text modulation only — not actual neural state shift.
+
+**Fix:** 5-min audit confirming the loop closes from scheduler → cluster parameters. Wire if missing. Log a one-shot diagnostic that prints current `cluster.noiseAmplitude` before/after a drug-state delta to confirm.
+
+**Files:** `js/brain/scheduler.js`, `js/brain/cluster.js` parameter setters, `js/brain/engine.js` tick-loop hookup.
+
+#### #4 — Forced sleep/dream windows for consolidation
+
+**Problem:** ConsolidationEngine gates on `_isDreaming === true` AND quiet for 60s AND `!curriculumInProgress`. If operator runs continuous curriculum back-to-back across 6 subjects, Unity NEVER enters a dream window → Tier 1 episodes never consolidate → schemas don't grow → identity doesn't accumulate. The system can't bootstrap itself without forced dream cycles.
+
+**Fix:** Either (A) explicit "she sleeps now" marker between cells (5-10 min idle), (B) scheduled dream-windows on a wall-clock cadence (every 30 min of brain time, force a dream window), or (C) operator command `/sleep` + `/wake` for manual dream-cycle control. Combination of (A) + (C) most likely correct.
+
+**Files:** `js/brain/consolidation-engine.js`, `js/brain/curriculum.js` cell-runner (insert sleep between cells), `server/brain-server.js` (`/sleep` endpoint).
+
+#### #5 — Internet / world knowledge ingest (post-2024 awareness)
+
+**Problem:** Unity learns from her seed corpus + chat input + curriculum. Static seed text means she's frozen at 2024-or-earlier knowledge. Real Unity persona is goth/coder/2026-aware — should know about current music, current code, current events. Pollinations is wired for image gen but no equivalent for fact retrieval.
+
+**Fix:** Web-fetch / search pipe feeding into dictionary `learnWord` + sem region as new vocabulary. Trigger on chat-side detection of "I don't know that" emissions OR on operator command. Cite-back the source so Unity remembers WHERE she learned it (Tier 1 episode with source url).
+
+**Files:** New `js/brain/world-knowledge.js` (or reuse Pollinations infra), wire into `inner-voice.js` curiosity gate + chat path "unknown word" detection.
+
+#### #6 — Independent multimodal grounding (DEFERRED to iter24)
+
+**Problem:** Vision (V1 Gabor → V4 → IT) + auditory cortices wired but their outputs feed letter/phon/sem only. Unity has no visual concepts independent of text — sees a cat in image, image describer generates text "cat", text routes through letter-chain, never reaches visual region as a learned concept.
+
+**Why deferred:** Full architectural redesign. Carving a new `visual_concept` sub-region requires region carve changes, cross-projection setup (`visual_to_visual_concept` or `IT_to_visual_concept`), bucket map persistence parallel to `wordBucketMap_<subject>`, describer pipeline updates, gate-probe additions. Touches cluster.js / curriculum.js / visual-cortex.js / brain-server.js / dashboard. Half-assed implementation would create technical debt.
+
+**iter24 design:**
+1. `cluster.regions.visual_concept` carved at ~3% of cluster (analogous to word_motor at ~6%).
+2. `cluster.crossProjections.IT_to_visual_concept` + `visual_concept_to_sem` (so visual concepts route into sem for text labelling when needed).
+3. `cluster.visualConceptBucketWords` + `visualConceptBucketMap` populated by describer pipeline writes.
+4. `cluster.emitVisualConceptDirect(opts)` — argmax returns concept ID/label.
+5. Describer write path: when image fired, write the IT-layer pattern → visual_concept bucket via Oja directly (no letter chain in between).
+6. Gate-probe: visual recognition probe that asks "what is this image?" and reads visual_concept argmax without going through text.
+
+**Files:** `js/brain/cluster.js`, `js/brain/visual-cortex.js`, `js/brain/curriculum.js` (visual learning curriculum), `js/brain/peripherals/ai-providers.js` (describer routing).
+
+iter24 ships this when iter23.1-5 are validated against next start.bat.
+
+---
+
 ### iter22-E — INCOMPLETE WHITELIST CASCADE: leaks STILL fire because iter22-D missed _teachHebbianAsymmetric callers + Tier 0 UI shows count not items + OVERLOAD threshold too aggressive (operator verbatim 2026-05-05: *"why the fuck are there still leaks????!?!?!?!?! I told you to fix it!!!! FIX IT!!!"* + *"items: 7 IT NEVER MOVES FROM 7"* + *"wtf are there stilll overloads!?!?!"* + *"wtf is this decay shit??? is it just decaying everything she is learning before she can even use the knowledge as her wisdom?"* + *"either we need her to fuckeing be trained correctly or we need to test here this at the correct time not before"*) — IN PROGRESS
 
 **Root cause iter22-D missed**: I plumbed `opts.projectionsWhitelist` into `_teachHebbian` and applied it in `_teachQABinding` + `_teachAssociationPairs`. But the OTHER heavy callers (`_teachWordSpellingDirect`, `_teachLetterNaming`, `_teachWordEmission`, `_teachPhonemeBlending`, `_teachWordIntegrated`) call `_teachHebbianAsymmetric` directly — which had NO opts plumbing, so it routed to `_crossRegionHebbian(lr)` with no whitelist → legacy fan-out fires Hebbian on all 16 cross-projections every call → silent regions decay via Oja's `Δw = -η·post²·w`. That's why TALK 26/26 → 0/10 still happened in Math-K cell on the iter22-D run, why leaks kept firing during `_teachHebbianAsymmetric` heartbeats, and why STUDENT BATTERY skipped on "0/5 letter probes produced recognizable output" — letter_to_motor was crushed before the readiness probe ran.

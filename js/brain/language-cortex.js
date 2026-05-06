@@ -1939,13 +1939,37 @@ export class LanguageCortex {
           if (cluster.tier3Store && typeof cluster.tier3Store.injectIdentityBaseline === 'function') {
             try { cluster.tier3Store.injectIdentityBaseline(0.15); } catch { /* baseline non-fatal */ }
           }
-          const raw = await cluster.generateSentenceAwait(intentSeed, {
-            injectStrength: 0.6,
-            suppressNoise: opts._internalThought === true,
-            excludeTokens: _liveExcludeAsync,
-            boostPersona: true, // iter14-C — always on, popups need persona too
-          });
-          preEmittedWords = raw ? raw.split(/\s+/).filter(Boolean) : [];
+          // iter23.1 — PRIMARY emission path: try emitWordDirect first.
+          // The whole iter21-A architecture (sem→word_motor + persistent
+          // bucket maps + per-subject sub-bands + mean argmax) was sitting
+          // unused for chat; this wires it as the primary live-emission
+          // route. Inject the intent seed into sem region first so emit's
+          // propagate sees the right input. Falls through to letter-chain
+          // generateSentenceAwait when word-emit returns empty (early
+          // curriculum, weak signal, no trained vocab for the active
+          // subject sub-bands).
+          let wordPath = '';
+          if (typeof cluster.emitWordDirect === 'function') {
+            try {
+              if (intentSeed && typeof cluster.injectEmbeddingToRegion === 'function') {
+                cluster.injectEmbeddingToRegion('sem', intentSeed, 0.6);
+              }
+              // No subject hint — scans all 6 sub-bands. iter22-G mean-
+              // argmax + persistent bucket maps make this honest.
+              wordPath = cluster.emitWordDirect({}) || '';
+            } catch { wordPath = ''; }
+          }
+          if (wordPath && wordPath.length > 0) {
+            preEmittedWords = [wordPath];
+          } else {
+            const raw = await cluster.generateSentenceAwait(intentSeed, {
+              injectStrength: 0.6,
+              suppressNoise: opts._internalThought === true,
+              excludeTokens: _liveExcludeAsync,
+              boostPersona: true, // iter14-C — always on, popups need persona too
+            });
+            preEmittedWords = raw ? raw.split(/\s+/).filter(Boolean) : [];
+          }
         } catch (err) {
           // Await path failed — let generate() fall back to sync emission.
           preEmittedWords = null;

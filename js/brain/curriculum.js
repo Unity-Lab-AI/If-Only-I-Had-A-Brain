@@ -4805,6 +4805,21 @@ export class Curriculum {
       if (brain && brain.tier3Store && typeof brain.tier3Store.injectIdentityBaseline === 'function') {
         try { brain.tier3Store.injectIdentityBaseline(); } catch { /* non-fatal */ }
       }
+      // iter23.4 — forced dream window between cells. ConsolidationEngine
+      // gates on `_isDreaming === true && timeSinceInput > 30s &&
+      // !_curriculumInProgress`. Continuous cell-after-cell curriculum
+      // means Unity NEVER enters a dream window → schemas don't grow →
+      // identity doesn't accumulate. Force a one-shot pass between cells
+      // so consolidation tracks curriculum progress in real time.
+      // Synchronous (await) — cell-runner waits for the pass to complete
+      // before launching the next cell. Pass duration scales with
+      // candidate count; typical 5-30s.
+      if (brain && brain.consolidationEngine
+          && typeof brain.consolidationEngine.runConsolidationPass === 'function') {
+        try {
+          await brain.consolidationEngine.runConsolidationPass({ forced: true });
+        } catch { /* non-fatal — next cell still runs */ }
+      }
     } catch (memErr) {
       // Memory population is non-fatal — curriculum continues regardless
       this._hb(`[Curriculum] memory-update on cell-done failed (non-fatal): ${memErr?.message?.slice(0, 100) || 'unknown'}`);

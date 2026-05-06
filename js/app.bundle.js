@@ -8160,14 +8160,29 @@ var LanguageCortex = class {
             } catch {
             }
           }
-          const raw = await cluster.generateSentenceAwait(intentSeed, {
-            injectStrength: 0.6,
-            suppressNoise: opts._internalThought === true,
-            excludeTokens: _liveExcludeAsync,
-            boostPersona: true
-            // iter14-C — always on, popups need persona too
-          });
-          preEmittedWords = raw ? raw.split(/\s+/).filter(Boolean) : [];
+          let wordPath = "";
+          if (typeof cluster.emitWordDirect === "function") {
+            try {
+              if (intentSeed && typeof cluster.injectEmbeddingToRegion === "function") {
+                cluster.injectEmbeddingToRegion("sem", intentSeed, 0.6);
+              }
+              wordPath = cluster.emitWordDirect({}) || "";
+            } catch {
+              wordPath = "";
+            }
+          }
+          if (wordPath && wordPath.length > 0) {
+            preEmittedWords = [wordPath];
+          } else {
+            const raw = await cluster.generateSentenceAwait(intentSeed, {
+              injectStrength: 0.6,
+              suppressNoise: opts._internalThought === true,
+              excludeTokens: _liveExcludeAsync,
+              boostPersona: true
+              // iter14-C — always on, popups need persona too
+            });
+            preEmittedWords = raw ? raw.split(/\s+/).filter(Boolean) : [];
+          }
         } catch (err) {
           preEmittedWords = null;
         }
@@ -8872,7 +8887,27 @@ var InnerVoice = class {
     const socialNeed = hypo.drives?.social_need ?? 0.5;
     const speechDrive = socialNeed * arousal * coherence;
     const shouldSpeak = speechDrive > SPEECH_THRESHOLD;
-    const sentence = "";
+    let sentence = "";
+    const cluster = this._cluster || this.languageCortex?._cluster || this.dictionary?._cluster || null;
+    const wantsThought = shouldSpeak || socialNeed * arousal > 0.25;
+    if (wantsThought && cluster && typeof cluster.emitWordDirect === "function") {
+      try {
+        const word = cluster.emitWordDirect({}) || "";
+        if (word && word.length > 0) {
+          sentence = word;
+          const entry = this.dictionary?._words?.get(word);
+          const pattern2 = entry?.pattern;
+          const memSys = this._memorySystem || cluster?._brain?.memorySystem || cluster?._brain?.memory || null;
+          if (pattern2 && memSys && typeof memSys.addToWorkingMemory === "function") {
+            try {
+              memSys.addToWorkingMemory(pattern2, `inner-thought:${word}`);
+            } catch {
+            }
+          }
+        }
+      } catch {
+      }
+    }
     this.currentThought = {
       pattern,
       arousal,
@@ -22035,6 +22070,12 @@ var Curriculum = class _Curriculum {
       if (brain2 && brain2.tier3Store && typeof brain2.tier3Store.injectIdentityBaseline === "function") {
         try {
           brain2.tier3Store.injectIdentityBaseline();
+        } catch {
+        }
+      }
+      if (brain2 && brain2.consolidationEngine && typeof brain2.consolidationEngine.runConsolidationPass === "function") {
+        try {
+          await brain2.consolidationEngine.runConsolidationPass({ forced: true });
         } catch {
         }
       }
@@ -42429,6 +42470,8 @@ var UnityBrain = class extends EventEmitter {
     this.auditoryCortex = new AuditoryCortex();
     this.visualCortex = new VisualCortex();
     this.innerVoice = new InnerVoice();
+    this.innerVoice._cluster = this.clusters.cortex;
+    this.innerVoice._memorySystem = this.memorySystem;
     this.innerVoice.dictionary.setCluster(this.clusters.cortex);
     if (typeof this.innerVoice.languageCortex?.setCluster === "function") {
       this.innerVoice.languageCortex.setCluster(this.clusters.cortex);
@@ -43245,9 +43288,21 @@ var UnityBrain = class extends EventEmitter {
     this.brainParams = getBrainParams(this.persona, this.drugScheduler);
     if (this.mystery?.setWeights) this.mystery.setWeights(this.brainParams.mysteryWeights);
     const arousal = this.brainParams.arousalBaseline || 0.9;
-    if (this.clusters?.cortex) this.clusters.cortex.tonicDrive = 14 + arousal * 6;
-    if (this.clusters?.amygdala) this.clusters.amygdala.tonicDrive = 15 + arousal * 8;
-    if (this.clusters?.mystery) this.clusters.mystery.noiseAmplitude = 12 * (this.brainParams.chaos ? 1.5 : 1);
+    const creativity = this.brainParams.creativity || 0;
+    const impulsivity = this.brainParams.impulsivity || 0;
+    const chaos = this.brainParams.chaos ? 1.5 : 1;
+    const sensitivity = this.brainParams.synapticSensitivity ?? 1;
+    if (this.clusters?.cortex) {
+      this.clusters.cortex.tonicDrive = 14 + arousal * 6;
+      this.clusters.cortex.noiseAmplitude = 8 * (1 + creativity * 0.4 + impulsivity * 0.3) * chaos;
+      this.clusters.cortex.learningRate = (this.clusters.cortex._baseLearningRate ?? 0.01) * sensitivity;
+    }
+    if (this.clusters?.amygdala) {
+      this.clusters.amygdala.tonicDrive = 15 + arousal * 8;
+      const volatility = this.brainParams.emotionalVolatility || 0;
+      this.clusters.amygdala.noiseAmplitude = 6 * (1 + volatility * 0.5);
+    }
+    if (this.clusters?.mystery) this.clusters.mystery.noiseAmplitude = 12 * chaos;
   }
   /**
    * T15-C7 — Unity's own context can trigger drug seeking even without a

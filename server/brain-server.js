@@ -27,6 +27,7 @@ const os = require('os');
 const { execSync } = require('child_process');
 const { performance } = require('perf_hooks');
 const { SparseMatmulPool } = require('./worker-pool.js');
+const { learnFromWeb } = require('./world-knowledge.js');
 
 // ── Auto-Scale: Detect Hardware → Set Neuron Count ─────────────
 
@@ -4104,7 +4105,11 @@ class ServerBrain {
       //    / Tier 3 update continuously as Unity exists, not just on
       //    chat turns or cell-pass events.
       const timeSinceInput = Date.now() - this._lastInputTime;
-      this._isDreaming = timeSinceInput > 30000 && !this._curriculumInProgress;
+      // iter23.4 — operator can force a dream window via /sleep so
+      // ConsolidationEngine has guaranteed time to promote Tier 1 →
+      // Tier 2 → Tier 3 between back-to-back curriculum sessions.
+      this._isDreaming = !!this._operatorSleepRequested
+        || (timeSinceInput > 30000 && !this._curriculumInProgress);
       if (this._isDreaming) {
         this.tonicDrives.amygdala *= 0.9999;
         if (this.tonicDrives.amygdala < 12) this.tonicDrives.amygdala = 12;
@@ -6337,6 +6342,79 @@ const httpServer = http.createServer((req, res) => {
 
   // Exam-answer endpoint. Takes a single question string, runs it
   // through the brain's question → answer path (same pipeline a chat
+  // iter23.5 — POST /learn-from-web { topic } fetches a Wikipedia
+  // summary for the topic, tokenizes alpha-only single-tokens, calls
+  // dictionary.learnWord on each new one, fires a Tier 1 episode with
+  // the source URL. Unity's vocabulary grows from real-world content
+  // without any text-AI in her cognition path. Body cap 4 KB —
+  // topic strings shouldn't be longer than that.
+  if (req.url === '/learn-from-web' && req.method === 'POST') {
+    if (!requireLoopback(req, res, '/learn-from-web')) return;
+    const chunks = [];
+    let total = 0;
+    req.on('data', (chunk) => {
+      total += chunk.length;
+      if (total > 4096) { req.destroy(); return; }
+      chunks.push(chunk);
+    });
+    req.on('end', async () => {
+      try {
+        const body = Buffer.concat(chunks).toString('utf8');
+        const parsed = JSON.parse(body || '{}');
+        const topic = (parsed.topic || '').toString().slice(0, 200);
+        if (!topic) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'topic required' }));
+          return;
+        }
+        const result = await learnFromWeb(brain, topic);
+        const code = result.ok ? 200 : 502;
+        res.writeHead(code, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(result));
+      } catch (err) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: err?.message || 'learn-from-web failed' }));
+      }
+    });
+    return;
+  }
+
+  // iter23.4 — operator-controlled dream window. POST /sleep enters a
+  // forced consolidation state (sets _operatorSleepRequested, fires
+  // one-shot ConsolidationEngine pass). POST /wake clears the flag.
+  // Useful for manual "let her dream for a bit" between curriculum
+  // sessions — gives the consolidation pipeline guaranteed time to
+  // promote Tier 1 → Tier 2 → Tier 3 instead of relying on the 60s
+  // post-input quiet window that operator-driven curriculum
+  // back-to-back cells never satisfy.
+  if ((req.url === '/sleep' || req.url === '/wake') && req.method === 'POST') {
+    if (!requireLoopback(req, res, req.url)) return;
+    if (req.url === '/sleep') {
+      brain._operatorSleepRequested = true;
+      // One-shot consolidation pass before the response so the
+      // operator-visible state reflects work already done.
+      if (brain.consolidationEngine
+          && typeof brain.consolidationEngine.runConsolidationPass === 'function') {
+        try {
+          brain.consolidationEngine.runConsolidationPass({ forced: true })
+            .then(stats => console.log(`[Sleep] forced consolidation pass complete: ${JSON.stringify(stats)}`))
+            .catch(err => console.warn(`[Sleep] forced pass failed: ${err.message}`));
+        } catch (err) {
+          console.warn(`[Sleep] runConsolidationPass threw: ${err.message}`);
+        }
+      }
+      console.log('[Sleep] /sleep — operator-requested dream window opened');
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: true, sleeping: true }));
+    } else {
+      brain._operatorSleepRequested = false;
+      console.log('[Sleep] /wake — operator cleared sleep flag');
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: true, sleeping: false }));
+    }
+    return;
+  }
+
   // message would use, but without episodic memory writes or the
   // conversation history append), returns just the answer text.
   // Used by scripts/transformer-ablation.mjs to compare Unity's
