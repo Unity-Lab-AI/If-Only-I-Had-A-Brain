@@ -5293,48 +5293,50 @@ class ServerBrain {
     stats.working.items = Array.isArray(mem.workingMemoryItems) ? mem.workingMemoryItems.length
                        : (mem.workingCount || 0);
     stats.working.cap = (mem.workingCap === Infinity || !mem.workingCap) ? null : mem.workingCap;
-    // Expose the actual working memory item labels + strengths so the
-    // dashboard can render what is currently held in Tier 0. Operator
-    // caught two bugs that combined to produce "(0.00)(0.00)..." ghost
-    // rows in the dashboard:
-    //   (1) hardcoded .slice(0, 7) leftover from the original Miller
-    //       cap was clipping the list to 7 entries even though items
-    //       grow unbounded — that's why 7 ghost rows appeared
-    //       regardless of actual count.
-    //   (2) Tier 0 heartbeat snapshots push {ts, phase, cellKey,
-    //       arousal, valence, psi} — they don't carry `.label` or
-    //       `.strength` fields, so the renderer was showing empty
-    //       label + 0.00 strength.
-    // Both fixed: derive label from cellKey + phase when no explicit
-    // label, derive strength from age (freshness 1.0 → 0.0 across the
-    // 5-min sliding window) when no explicit strength, and drop the
-    // 7-row cap. Display sorted newest-first.
+    // Working memory item display. Operator caught: rendering raw
+    // every snapshot produced hundreds of "wm-snapshot (0.98)"-style
+    // rows that all cluster within the 5-min freshness window —
+    // strength scores in the 0.83-1.00 band convey almost nothing,
+    // and identical labels stack as a wall. Fix: GROUP consecutive
+    // same-label items into one row with a count suffix; drop the
+    // strength column for grouped rows (the count IS the signal).
+    // Cap at 12 distinct rows for display sanity.
     if (Array.isArray(mem.workingMemoryItems) && mem.workingMemoryItems.length > 0) {
       const now = Date.now();
       const windowMs = 5 * 60 * 1000;
-      stats.working.itemLabels = mem.workingMemoryItems
+      const sorted = mem.workingMemoryItems
         .slice()
-        .sort((a, b) => (b.ts ?? 0) - (a.ts ?? 0))
-        .map(wm => {
-          let label = typeof wm.label === 'string' ? wm.label : '';
-          if (!label) {
-            const parts = [];
-            if (wm.cellKey) parts.push(wm.cellKey);
-            if (wm.phase) parts.push(`@${wm.phase}`);
-            label = parts.join(' ') || 'wm-snapshot';
-          }
-          let strength;
-          if (typeof wm.strength === 'number') {
-            strength = wm.strength;
-          } else {
-            const ageMs = now - (wm.ts ?? now);
-            strength = Math.max(0, Math.min(1, 1 - ageMs / windowMs));
-          }
-          return {
-            label: label.slice(0, 80),
-            strength: +strength.toFixed(3),
-          };
-        });
+        .sort((a, b) => (b.ts ?? 0) - (a.ts ?? 0));
+      const grouped = [];
+      let cur = null;
+      for (const wm of sorted) {
+        let label = typeof wm.label === 'string' ? wm.label : '';
+        if (!label) {
+          const parts = [];
+          if (wm.cellKey) parts.push(wm.cellKey);
+          if (wm.phase) parts.push(`@${wm.phase}`);
+          label = parts.join(' ') || 'wm-snapshot';
+        }
+        label = label.slice(0, 80);
+        let strength;
+        if (typeof wm.strength === 'number') {
+          strength = wm.strength;
+        } else {
+          const ageMs = now - (wm.ts ?? now);
+          strength = Math.max(0, Math.min(1, 1 - ageMs / windowMs));
+        }
+        if (cur && cur.label === label) {
+          cur.count++;
+          if (strength > cur.maxStrength) cur.maxStrength = strength;
+        } else {
+          cur = { label, count: 1, maxStrength: strength };
+          grouped.push(cur);
+        }
+      }
+      stats.working.itemLabels = grouped.slice(0, 12).map(g => ({
+        label: g.count > 1 ? `${g.label} ×${g.count}` : g.label,
+        strength: g.count === 1 ? +g.maxStrength.toFixed(3) : null,
+      }));
     } else {
       stats.working.itemLabels = [];
     }

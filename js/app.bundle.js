@@ -50432,9 +50432,11 @@ function renderLandingTab(tab, s) {
       const fmtItems = (n, cap) => cap == null ? n.toLocaleString() + " (unbounded)" : n.toLocaleString() + " / " + cap.toLocaleString();
       const wcDisplay = workingCap == null ? workingItems.toLocaleString() + " items (unbounded)" : workingItems + " / " + workingCap + " slots";
       const workingItemLabels = Array.isArray(working.itemLabels) ? working.itemLabels : [];
-      const workingItemsHtml = workingItemLabels.length > 0 ? `<div style="margin-top:6px;color:#888;font-size:10px;line-height:1.4;">${workingItemLabels.map(
-        (it) => `<span style="color:#bbb;">${String(it.label || "").replace(/[<>&]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" })[c])}</span> <span style="color:#555;">(${(it.strength ?? 0).toFixed(2)})</span>`
-      ).join("<br>")}</div>` : '<div style="margin-top:6px;color:#666;font-size:10px;font-style:italic;">no items in WM yet \u2014 items rotate in as cluster activity drives addToWorkingMemory()</div>';
+      const workingItemsHtml = workingItemLabels.length > 0 ? `<div style="margin-top:6px;color:#888;font-size:10px;line-height:1.4;max-height:96px;overflow-y:auto;">${workingItemLabels.map((it) => {
+        const safe = String(it.label || "").replace(/[<>&]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" })[c]);
+        const str = typeof it.strength === "number" ? ` <span style="color:#555;">(${it.strength.toFixed(2)})</span>` : "";
+        return `<span style="color:#bbb;">${safe}</span>${str}`;
+      }).join("<br>")}</div>` : '<div style="margin-top:6px;color:#666;font-size:10px;font-style:italic;">no items in WM yet \u2014 items rotate in as cluster activity drives addToWorkingMemory()</div>';
       el.innerHTML = card("Working Memory (Tier 0 \xB7 unbounded \xB7 5min sliding window \xB7 consolidates \u2192 Tier 1)", `
           ${metric("Items", wcDisplay, "#00e5ff")}
           ${workingCap == null ? "" : bar(workingItems / Math.max(1, workingCap) * 100, "#00e5ff")}
