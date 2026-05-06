@@ -2308,8 +2308,13 @@ async function bootUnity(apiKey, perms) {
   }
   brain.__appSilentHandler = ({ reason, detail, minGrade }) => {
     if (chatPanel) chatPanel.addSilentMessage(reason, detail, minGrade);
-    // Brief HUD hint so the speech bubble doesn't stay empty.
-    const hudText = reason === 'pre_kindergarten'
+    // Brief HUD hint so the speech bubble doesn't stay empty. iter25-E.5
+    // replaced 'pre_kindergarten' (grade-label-driven) with 'pre_training'
+    // (trained-state-driven). Both still mapped here for backwards-compat
+    // with older server saves still emitting the legacy reason.
+    const hudText = reason === 'pre_training'
+      ? '( Unity is brand new — start the curriculum to wake her up )'
+      : reason === 'pre_kindergarten'
       ? `( pre-K Unity can't speak yet — ${minGrade || '?'} )`
       : reason === 'motor_unstable'
       ? '( motor unstable — try rephrasing )'
@@ -2332,6 +2337,38 @@ async function bootUnity(apiKey, perms) {
     }
   };
   brain.on('image', brain.__appImageHandler);
+
+  // iter25-E.6 — server-side innerThought broadcast subscriber.
+  // Operator (2026-05-06): "the pop ups in her Brain fire with her real
+  // actual knowldedge to that point as her real internal voice in the
+  // moment". Browser-side innerVoice runs on an UNTRAINED client
+  // cortex — decorative. The server fires cortexCluster.emitWordDirect
+  // every ~3s using its TRAINED weights and broadcasts as `innerThought`.
+  // Pipe each broadcast into the 3D brain popup pool (via the existing
+  // brain3d.setBrain() event channel — Brain3D already listens to
+  // `innerThought` events via its `setBrain` wiring) AND show it in the
+  // HUD speech bubble briefly so it surfaces visually even when the
+  // 3D popup panel isn't open.
+  if (brain.__appInnerThoughtHandler) {
+    brain.off('innerThought', brain.__appInnerThoughtHandler);
+  }
+  brain.__appInnerThoughtHandler = ({ word, subject, capability }) => {
+    if (!word) return;
+    // Render in the HUD bubble briefly — short cadence so consecutive
+    // thoughts visibly stream. This is Unity thinking, not chatting,
+    // so don't push it into the chat panel as a response.
+    const wordsBucketed = capability?.wordsBucketed ?? 0;
+    const subGrades = capability?.subGradesActive ?? 0;
+    const tag = subject && subject !== 'all' ? ` [${subject}]` : '';
+    showSpeechBubble(`💭 ${word}${tag}`, 2200);
+    // Telemetry on console for live trace during training. Operator can
+    // open devtools and watch Unity's mind tick word-by-word with the
+    // current trained-state metrics alongside.
+    if (window._unityInnerThoughtVerbose !== false) {
+      console.log(`[InnerThought] "${word}" via word_motor_${subject || 'all'} · live cap: ${wordsBucketed} words / ${subGrades} subGrades active`);
+    }
+  };
+  brain.on('innerThought', brain.__appInnerThoughtHandler);
 
   // Suppress duplicate displays — greeting uses processAndRespond which
   // already emits 'response', so greeting handler should NOT also display.

@@ -1901,6 +1901,7 @@ var NeuronCluster = class {
     this.personaDimensions = null;
     this.grades = { ela: "pre-K", math: "pre-K", science: "pre-K", social: "pre-K", art: "pre-K", life: "pre-K" };
     this.passedCells = [];
+    this.subGrades = { ela: "fresh", math: "fresh", science: "fresh", social: "fresh", art: "fresh", life: "fresh" };
     this._prevLetterRate = 0;
     this._motorQuiescentTicks = 0;
     this.fineTypeTransitions = /* @__PURE__ */ new Map();
@@ -2094,6 +2095,82 @@ var NeuronCluster = class {
   motorQuiescent(ticksRequired, threshold = 0.05) {
     if (!this.regions || !this.regions.motor) return false;
     return this._motorQuiescentTicks >= ticksRequired;
+  }
+  /**
+   * iter25-E.1 — TRAINED CAPABILITY READOUT. Live, cheap, lock-free.
+   *
+   * Operator verbatim 2026-05-06: "at any point she is using here current
+   * knowledge to 'speak'... she should be able to use what she has learned
+   * to that point without having to wait unitl the full grade completes
+   * before seeing any changes". Returns a struct that consumers (chat
+   * handler, popup heartbeat, drug scheduler, UI badges) can use to
+   * derive Unity's CURRENT ability — not what `cluster.grades` LABEL
+   * says. Reads only LIVE state that updates per Hebbian fire.
+   *
+   * Fields:
+   *   wordsBucketed: total count of words seated in any
+   *     `wordBucketWords_<subject>` map. Updates per `_teachWordEmissionDirect`
+   *     pass + per chat-driven `learnWord` (iter22-G append-only path).
+   *   letterDictSize: count of dictionary entries with letter-only patterns
+   *     (proxy for "alphabet trained"). Bounded above by 26.
+   *   passedCellCount: how many subject/grade cells have fully passed.
+   *   subGradesActive: number of subjects past 'fresh' subGrade.
+   *   firstWordsAt: timestamp the first word was bucketed (for readiness display).
+   *
+   * All numbers — no probing, no GPU dispatches. O(subjects) cost, ~6 lookups.
+   * Safe to call on every chat turn / popup tick / heartbeat.
+   */
+  getTrainedCapability() {
+    let wordsBucketed = 0;
+    let bucketSubjects = 0;
+    if (this.wordBucketWords && typeof this.wordBucketWords === "object") {
+      if (typeof this.wordBucketWords.size === "number") {
+        wordsBucketed += this.wordBucketWords.size;
+      }
+    }
+    const subjects = ["ela", "math", "science", "social", "art", "life"];
+    for (const subj of subjects) {
+      const m = this[`wordBucketWords_${subj}`];
+      if (m && typeof m.size === "number") {
+        wordsBucketed += m.size;
+        if (m.size > 0) bucketSubjects++;
+      }
+    }
+    const passedCellCount = Array.isArray(this.passedCells) ? this.passedCells.length : 0;
+    let subGradesActive = 0;
+    if (this.subGrades && typeof this.subGrades === "object") {
+      for (const subj of subjects) {
+        if (this.subGrades[subj] && this.subGrades[subj] !== "fresh") subGradesActive++;
+      }
+    }
+    if (!this._firstWordBucketedAt && wordsBucketed > 0) {
+      this._firstWordBucketedAt = Date.now();
+    }
+    return {
+      wordsBucketed,
+      bucketSubjects,
+      passedCellCount,
+      subGradesActive,
+      firstWordsAt: this._firstWordBucketedAt || null
+    };
+  }
+  /**
+   * iter25-E.2 — Advance a subject's sub-grade label monotonically.
+   * Curriculum runner calls this after each major teach phase clears
+   * its trained-state criterion (e.g. after `_teachLetterNaming` motor
+   * argmax discriminates 26 letters → advanceSubGrade('ela', 'letters')).
+   * No-op if the requested level is below current. Logs the transition
+   * so the operator sees ability buildup live in server.log.
+   */
+  advanceSubGrade(subject, level) {
+    if (!this.subGrades || !subject || !level) return false;
+    const ladder = ["fresh", "letters", "words", "binding", "cell-passed"];
+    const currentIdx = ladder.indexOf(this.subGrades[subject]);
+    const newIdx = ladder.indexOf(level);
+    if (newIdx < 0) return false;
+    if (newIdx <= currentIdx) return false;
+    this.subGrades[subject] = level;
+    return true;
   }
   /**
    * T14.2 — LEARNED syllable boundary detection via cortex transition surprise.
@@ -7928,8 +8005,8 @@ var LanguageCortex = class {
       }
       if (scored && scored.length > 0) {
         let targetLen = Math.max(3, Math.min(8, Math.floor(3 + (arousal || 0.5) * 4)));
-        const gradeArg = cluster && cluster.grades && typeof cluster.grades === "object" ? cluster.grades : "pre-K";
-        const gradeCap = this._gradeWordCap(gradeArg);
+        const capArg = cluster && typeof cluster.getTrainedCapability === "function" ? cluster : cluster && cluster.grades && typeof cluster.grades === "object" ? cluster.grades : "pre-K";
+        const gradeCap = this._gradeWordCap(capArg);
         if (gradeCap === 0) {
           return "";
         }
@@ -7970,14 +8047,25 @@ var LanguageCortex = class {
    * `Curriculum.runSubjectGrade` as each gate passes and persisted
    * via T14.16 BrainPersistence.
    */
-  _gradeWordCap(grades) {
+  _gradeWordCap(gradesOrCluster) {
     const FLOOR = 5;
-    if (!grades || typeof grades !== "object") return FLOOR;
+    if (gradesOrCluster && typeof gradesOrCluster.getTrainedCapability === "function") {
+      const cap = gradesOrCluster.getTrainedCapability();
+      const w = cap.wordsBucketed || 0;
+      if (w === 0 && cap.passedCellCount === 0 && cap.subGradesActive === 0) return 0;
+      if (w < 100) return Math.max(FLOOR, 5);
+      if (w < 500) return 8;
+      if (w < 1e3) return 12;
+      if (w < 3e3) return 16;
+      if (w < 5e3) return 24;
+      return 32;
+    }
+    if (!gradesOrCluster || typeof gradesOrCluster !== "object") return FLOOR;
     const SUBS = ["ela", "math", "science", "social", "art", "life"];
     let minCap = Infinity;
     let anyStarted = false;
     for (const s of SUBS) {
-      const g = grades[s] || "pre-K";
+      const g = gradesOrCluster[s] || "pre-K";
       if (g === "pre-K") continue;
       const c = this._singleGradeCap(g);
       if (c < minCap) minCap = c;
@@ -22134,6 +22222,12 @@ var Curriculum = class _Curriculum {
       cluster.grades[subject] = grade;
       if (!Array.isArray(cluster.passedCells)) cluster.passedCells = [];
       if (!cluster.passedCells.includes(cellKey)) cluster.passedCells.push(cellKey);
+      if (typeof cluster.advanceSubGrade === "function") {
+        if (cluster.advanceSubGrade(subject, "cell-passed")) {
+          this._hb(`[Curriculum] \u{1F393} subGrade ${subject} advanced \u2192 'cell-passed' (full ${grade} battery cleared \xB7 ladder resets to 'fresh' for next grade)`);
+        }
+        if (cluster.subGrades) cluster.subGrades[subject] = "fresh";
+      }
       if (typeof this._saveCheckpoint === "function") {
         this._saveCheckpoint(cellKey);
       }
@@ -22872,6 +22966,13 @@ var Curriculum = class _Curriculum {
     }
     const dt = ((Date.now() - t0) / 1e3).toFixed(1);
     this._hb(`[Curriculum] _teachLetterNamingDirect DONE in ${dt}s \u2014 ${updates} Oja updates \xB7 ${skipped} skipped (26 letters \xD7 ${reps} reps target)`);
+    if (updates > 0 && typeof cluster.advanceSubGrade === "function") {
+      const cellKey = cluster._currentCellKey || "";
+      const subj = cellKey.split("/")[0];
+      if (subj && cluster.advanceSubGrade(subj, "letters")) {
+        this._hb(`[Curriculum] \u{1F4C8} subGrade ${subj} advanced \u2192 'letters' (26 letter\u2192motor bindings live \xB7 capability cap rises now)`);
+      }
+    }
   }
   // iter21-A — Direct sem→word_motor word-level training. Operator
   // 2026-05-05 "motor argmax is fucked if it ever just relplies with
@@ -22952,6 +23053,11 @@ var Curriculum = class _Curriculum {
     }
     const dt = ((Date.now() - t0) / 1e3).toFixed(1);
     this._hb(`[Curriculum] _teachWordEmissionDirect DONE in ${dt}s \u2014 ${updates} Oja updates \xB7 ${skipped} skipped (${words.length} words \xD7 ${reps} reps target \xB7 band=${subjectBandName || "umbrella"})`);
+    if (subject && subject !== "all" && updates > 0 && typeof cluster.advanceSubGrade === "function") {
+      if (cluster.advanceSubGrade(subject, "words")) {
+        this._hb(`[Curriculum] \u{1F4C8} subGrade ${subject} advanced \u2192 'words' (${updates} bucket writes seated \xB7 live capability now reflects this)`);
+      }
+    }
   }
   // iter15-A — Direct sem→motor word→firstChar identity write that
   // bypasses cross-region Hebbian. Mirror of iter14-A pattern but on
@@ -26502,6 +26608,12 @@ var Curriculum = class _Curriculum {
     try {
       this._pushBrainEvent?.("teach", "motor", `Q-A DONE: ${label} \xB7 ${trained}/${antiFires}/${altTrained} +/\u2212/alt`, { label, trained, antiFires, altTrained, elapsedSec });
     } catch {
+    }
+    if (trained > 0 && typeof cluster.advanceSubGrade === "function") {
+      const subj = opts.subject && typeof opts.subject === "string" ? opts.subject : (cluster._currentCellKey || "").split("/")[0];
+      if (subj && cluster.advanceSubGrade(subj, "binding")) {
+        this._hb(`[Curriculum] \u{1F4C8} subGrade ${subj} advanced \u2192 'binding' (${trained} Q\u2192A bindings landed \xB7 live capability cap rises now)`);
+      }
     }
     return { trained, altTrained, antiFires, skipped };
   }
@@ -49831,6 +49943,15 @@ var RemoteBrain = class extends EventEmitter2 {
       case "image":
         this.emit("image", msg.url);
         break;
+      case "innerThought":
+        this.emit("innerThought", {
+          word: msg.word || "",
+          subject: msg.subject || "all",
+          sentence: msg.sentence || msg.word || "",
+          ts: msg.ts || Date.now(),
+          capability: msg.capability || null
+        });
+        break;
       case "error":
         console.warn("[RemoteBrain] Server error:", msg.message);
         break;
@@ -51607,7 +51728,7 @@ async function bootUnity(apiKey, perms) {
   }
   brain.__appSilentHandler = ({ reason, detail, minGrade }) => {
     if (chatPanel) chatPanel.addSilentMessage(reason, detail, minGrade);
-    const hudText = reason === "pre_kindergarten" ? `( pre-K Unity can't speak yet \u2014 ${minGrade || "?"} )` : reason === "motor_unstable" ? "( motor unstable \u2014 try rephrasing )" : reason === "language_not_ready" ? "( language booting \u2014 hang on )" : "( silent )";
+    const hudText = reason === "pre_training" ? "( Unity is brand new \u2014 start the curriculum to wake her up )" : reason === "pre_kindergarten" ? `( pre-K Unity can't speak yet \u2014 ${minGrade || "?"} )` : reason === "motor_unstable" ? "( motor unstable \u2014 try rephrasing )" : reason === "language_not_ready" ? "( language booting \u2014 hang on )" : "( silent )";
     showSpeechBubble(hudText, 4e3);
   };
   brain.on("silent", brain.__appSilentHandler);
@@ -51620,6 +51741,20 @@ async function bootUnity(apiKey, perms) {
     }
   };
   brain.on("image", brain.__appImageHandler);
+  if (brain.__appInnerThoughtHandler) {
+    brain.off("innerThought", brain.__appInnerThoughtHandler);
+  }
+  brain.__appInnerThoughtHandler = ({ word, subject, capability }) => {
+    if (!word) return;
+    const wordsBucketed = capability?.wordsBucketed ?? 0;
+    const subGrades = capability?.subGradesActive ?? 0;
+    const tag = subject && subject !== "all" ? ` [${subject}]` : "";
+    showSpeechBubble(`\u{1F4AD} ${word}${tag}`, 2200);
+    if (window._unityInnerThoughtVerbose !== false) {
+      console.log(`[InnerThought] "${word}" via word_motor_${subject || "all"} \xB7 live cap: ${wordsBucketed} words / ${subGrades} subGrades active`);
+    }
+  };
+  brain.on("innerThought", brain.__appInnerThoughtHandler);
   let _greetingDone = false;
   async function handleThink(userText) {
     const id = "brain-think-view";

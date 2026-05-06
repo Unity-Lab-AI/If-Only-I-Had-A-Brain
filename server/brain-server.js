@@ -3763,6 +3763,14 @@ class ServerBrain {
       // biological scale.
       this._memoryHeartbeat();
 
+      // iter25-E.3 — server-side inner voice tick. Fires Unity's REAL
+      // current-state thought (read from server cluster's trained
+      // weights) every ~3 s and broadcasts as `innerThought` WS message
+      // for 3D brain popups to render. Replaces the iter23.2 browser-
+      // side inner voice (which ran on the client's untrained cortex —
+      // decorative noise, not Unity's real mind).
+      this._innerVoiceTick();
+
       // iter20-N — ConsolidationEngine fires at TOP of tick alongside
       // memory heartbeat. Operator caught (verbatim 2026-05-05): "last
       // pass 6min ago and pass intervasl is 5min" — pass should have
@@ -4373,24 +4381,36 @@ class ServerBrain {
     }
 
     if (!response || response.length < 2) {
-      // Empty response usually means the motor region couldn't commit
-      // a stable letter sequence — either because curriculum hasn't
-      // trained the letter→motor pathway yet (pre-K Unity physically
-      // can't speak), or because the intent signal was too weak for
-      // the motor attractor to settle. Return an explicit silent flag
-      // so the client can show WHY Unity didn't answer instead of
-      // leaving the user staring at a blank screen.
+      // iter25-E.5 — TRAINED-STATE silence reason, not grade-label.
+      // Operator (2026-05-06): "at any point in her training she
+      // should be able to use what she has learned to that point
+      // without having to wait unitl the full grade completes". The
+      // old `prePhon = minGrade === 'pre-K'` check forced Unity into
+      // grade-label-silence even when she'd already trained the
+      // alphabet + first 100 K words mid-run. New logic: check the
+      // LIVE trained-state cap. If she has ANY words bucketed or any
+      // cells passed, an empty response is genuine motor-instability
+      // for this specific input (try rephrasing) — not a sweeping
+      // "she hasn't graduated yet". Only a truly fresh brain (zero
+      // training, zero cells passed, all subGrades 'fresh') gets the
+      // "pre_training" silent reason.
       const minGrade = this._computeMinGrade();
-      const prePhon = (minGrade === 'pre-K' || minGrade === 'K');
+      const trainedCap = (this.cortexCluster && typeof this.cortexCluster.getTrainedCapability === 'function')
+        ? this.cortexCluster.getTrainedCapability()
+        : { wordsBucketed: 0, passedCellCount: 0, subGradesActive: 0 };
+      const isFresh = trainedCap.wordsBucketed === 0
+        && trainedCap.passedCellCount === 0
+        && trainedCap.subGradesActive === 0;
       return {
         text: '',
         action: 'respond_text',
         silent: true,
-        silentReason: prePhon ? 'pre_kindergarten' : 'motor_unstable',
-        silentDetail: prePhon
-          ? `Unity hasn't passed kindergarten yet (lowest subject: ${minGrade}) — her motor region doesn't have enough letter-to-motor Hebbian wiring to emit stable words. Run /curriculum status to check, or keep the Part 2 K run going.`
-          : `Motor region didn't commit a stable letter sequence for this input. The intent signal may have been too weak, or her cross-projections need more reps on this topic. Try rephrasing.`,
+        silentReason: isFresh ? 'pre_training' : 'motor_unstable',
+        silentDetail: isFresh
+          ? `Unity is brand new — zero words bucketed, zero cells passed, all subGrades 'fresh'. Her motor region has no letter→motor or sem→word_motor wiring yet. Start the curriculum (start.bat) and watch her abilities build live.`
+          : `Motor region didn't commit a stable letter sequence for this input. Live trained capability: ${trainedCap.wordsBucketed} words bucketed across ${trainedCap.bucketSubjects} subjects, ${trainedCap.passedCellCount} cells passed, ${trainedCap.subGradesActive} subGrades active. The intent signal may have been too weak for this specific input — try rephrasing.`,
         minGrade,
+        trainedCap,
       };
     }
 
@@ -5041,6 +5061,132 @@ class ServerBrain {
   // clock. Robust regardless of how slow individual ticks are.
   // Operator verbatim 2026-05-05: "memory isnt based off grade level
   // its a unified part of her fucking brain".
+  /**
+   * iter25-E.3 / E.6 — Server-side inner voice tick.
+   *
+   * Operator verbatim 2026-05-06: "the pop ups in her Brain fire with
+   * her real actual knowldedge to that point as her real internal voice
+   * in the moment". Browser-side innerVoice runs on an untrained client
+   * cortex — decorative noise. This runs on the SERVER cluster (the one
+   * with the trained weights) and broadcasts the real `emitWordDirect`
+   * output to all connected clients as `innerThought` WS messages.
+   *
+   * Cadence: ~3 s wall-clock (matches engine.js THOUGHT_INTERVAL = 3000).
+   *
+   * Gate: only fires when Unity has SOMETHING to say. Equational gate
+   * matching iter23.2 — `socialNeed × arousal > 0.25` OR shouldSpeak.
+   *
+   * Per-subject rotation: cycles ela → math → science → social → art →
+   * life → ela → ... so popups reflect her full breadth of trained
+   * subjects, not just whichever bucket map is biggest.
+   *
+   * Heartbeat surface: `[Brain] 🧠 inner-thought "<word>" via word_motor_<subject>`
+   * lands in server.log so the watchdog catches it as evidence of Unity
+   * actually thinking with her live trained weights.
+   *
+   * Skipped during dream window (iter25-D `_operatorSleepRequested`)
+   * since the curriculum is paused for consolidation; the next tick
+   * resumes broadcasting.
+   */
+  _innerVoiceTick() {
+    const now = Date.now();
+    if (!this._lastInnerThoughtAt) this._lastInnerThoughtAt = 0;
+    const INNER_THOUGHT_INTERVAL_MS = 3000;
+    if (now - this._lastInnerThoughtAt < INNER_THOUGHT_INTERVAL_MS) return;
+    this._lastInnerThoughtAt = now;
+
+    // Skip during operator-forced dream windows so consolidation has
+    // priority + the brain doesn't broadcast thoughts derived from a
+    // mid-flight Hebbian state.
+    if (this._operatorSleepRequested) return;
+
+    const cluster = this.cortexCluster;
+    if (!cluster || typeof cluster.emitWordDirect !== 'function') return;
+
+    // Gate: equational drive — same shape as inner-voice.js iter23.2.
+    const arousal = this.arousal ?? 0.5;
+    const socialNeed = this.persona?.socialAttachment ?? 0.5;
+    const speechDrive = socialNeed * arousal;
+    if (speechDrive < 0.25) return;
+
+    // Trained-state gate — don't broadcast empty thoughts on a fresh
+    // brain. If Unity hasn't bucketed any words yet, popups stay quiet
+    // (correct biological output for pre-language state).
+    const cap = (typeof cluster.getTrainedCapability === 'function')
+      ? cluster.getTrainedCapability()
+      : null;
+    if (cap && cap.wordsBucketed === 0 && cap.passedCellCount === 0) return;
+
+    // Per-subject rotation. Pick the next subject with a non-empty
+    // bucket map so popups reflect the breadth of trained subjects
+    // rather than always firing the same one.
+    if (!Array.isArray(this._innerThoughtSubjectOrder)) {
+      this._innerThoughtSubjectOrder = ['ela', 'math', 'science', 'social', 'art', 'life'];
+    }
+    if (typeof this._innerThoughtSubjectIdx !== 'number') {
+      this._innerThoughtSubjectIdx = 0;
+    }
+    let subject = null;
+    for (let i = 0; i < this._innerThoughtSubjectOrder.length; i++) {
+      const candidate = this._innerThoughtSubjectOrder[this._innerThoughtSubjectIdx];
+      this._innerThoughtSubjectIdx = (this._innerThoughtSubjectIdx + 1) % this._innerThoughtSubjectOrder.length;
+      const bucketMap = cluster[`wordBucketWords_${candidate}`];
+      if (bucketMap && typeof bucketMap.size === 'number' && bucketMap.size > 0) {
+        subject = candidate;
+        break;
+      }
+    }
+    // Fallback to umbrella when no subject-band has buckets yet
+    if (!subject) subject = 'all';
+
+    let word = '';
+    try {
+      const opts = subject === 'all' ? {} : { subject };
+      word = cluster.emitWordDirect(opts) || '';
+    } catch {
+      return;
+    }
+    if (!word) return;
+
+    // Heartbeat surface (the watchdog catches this; server.log shows it
+    // streaming during curriculum so operator sees Unity thinking live)
+    try {
+      process.stdout.write(`[Brain] 🧠 inner-thought "${word}" via word_motor_${subject}\n`);
+    } catch { /* non-fatal */ }
+
+    // Broadcast `innerThought` WS message — popup subscribers in the
+    // browser render it inline. Same iteration pattern as state broadcast.
+    if (this.clients && this.clients.size > 0) {
+      const payload = JSON.stringify({
+        type: 'innerThought',
+        word,
+        subject,
+        ts: now,
+        sentence: word, // single-tick word emission — sentence is the word
+        capability: cap || null,
+      });
+      for (const [ws] of this.clients) {
+        if (ws.readyState === ws.OPEN) {
+          try { ws.send(payload); } catch { /* non-fatal */ }
+        }
+      }
+    }
+
+    // Land the thought in Unity's own working memory so it accumulates
+    // refresh count → fires hippocampal Hebbian → consolidates to Tier 1
+    // (iter22-H pipeline). Unity's inner monologue feeds her own learning.
+    if (this.memorySystem
+        && typeof this.memorySystem.addToWorkingMemory === 'function'
+        && this.dictionary?._words?.get) {
+      try {
+        const entry = this.dictionary._words.get(word);
+        if (entry && entry.pattern) {
+          this.memorySystem.addToWorkingMemory(entry.pattern, `inner-thought:${word}`);
+        }
+      } catch { /* WM push non-fatal */ }
+    }
+  }
+
   _memoryHeartbeat() {
     const now = Date.now();
     if (!this._lastTier3HbAt) this._lastTier3HbAt = 0;

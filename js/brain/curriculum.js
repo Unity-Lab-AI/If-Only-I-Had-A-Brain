@@ -4857,6 +4857,19 @@ export class Curriculum {
       cluster.grades[subject] = grade;
       if (!Array.isArray(cluster.passedCells)) cluster.passedCells = [];
       if (!cluster.passedCells.includes(cellKey)) cluster.passedCells.push(cellKey);
+      // iter25-E.2 — full cell pass advances subGrade ladder to its top.
+      // subGrade resets to 'fresh' for the NEXT grade so the ladder
+      // walks again from letters → words → binding within that next
+      // cell (subject ladders are per-grade, monotonic within a grade).
+      if (typeof cluster.advanceSubGrade === 'function') {
+        if (cluster.advanceSubGrade(subject, 'cell-passed')) {
+          this._hb(`[Curriculum] 🎓 subGrade ${subject} advanced → 'cell-passed' (full ${grade} battery cleared · ladder resets to 'fresh' for next grade)`);
+        }
+        // Reset ladder for next grade — operator: "build her abilities
+        // over the full cousre of each grade" implies the buildup runs
+        // ANEW for each grade level, not just up to the first cell pass.
+        if (cluster.subGrades) cluster.subGrades[subject] = 'fresh';
+      }
       // T18.12.b — checkpoint save after each passed cell. Callback is
       // wired by brain-server.js right after `new Curriculum(...)` so
       // passedCells + brain state land on disk atomically.
@@ -5777,6 +5790,18 @@ export class Curriculum {
 
     const dt = ((Date.now() - t0) / 1000).toFixed(1);
     this._hb(`[Curriculum] _teachLetterNamingDirect DONE in ${dt}s — ${updates} Oja updates · ${skipped} skipped (26 letters × ${reps} reps target)`);
+
+    // iter25-E.2 — once 26-letter direct writes land, advance the
+    // calling subject's subGrade to 'letters'. _teachLetterNamingDirect
+    // runs across all 6 subjects' K runners; each invocation is
+    // subject-scoped via cluster._currentCellKey set by runSubjectGrade.
+    if (updates > 0 && typeof cluster.advanceSubGrade === 'function') {
+      const cellKey = cluster._currentCellKey || '';
+      const subj = cellKey.split('/')[0];
+      if (subj && cluster.advanceSubGrade(subj, 'letters')) {
+        this._hb(`[Curriculum] 📈 subGrade ${subj} advanced → 'letters' (26 letter→motor bindings live · capability cap rises now)`);
+      }
+    }
   }
 
   // iter21-A — Direct sem→word_motor word-level training. Operator
@@ -5874,6 +5899,16 @@ export class Curriculum {
 
     const dt = ((Date.now() - t0) / 1000).toFixed(1);
     this._hb(`[Curriculum] _teachWordEmissionDirect DONE in ${dt}s — ${updates} Oja updates · ${skipped} skipped (${words.length} words × ${reps} reps target · band=${subjectBandName || 'umbrella'})`);
+
+    // iter25-E.2 — advance subGrade label once words land. Subject-
+    // scoped advance (subject !== 'all') so per-subject UI / drug
+    // scheduler / popup heartbeat sees ability-buildup live.
+    if (subject && subject !== 'all' && updates > 0
+        && typeof cluster.advanceSubGrade === 'function') {
+      if (cluster.advanceSubGrade(subject, 'words')) {
+        this._hb(`[Curriculum] 📈 subGrade ${subject} advanced → 'words' (${updates} bucket writes seated · live capability now reflects this)`);
+      }
+    }
   }
 
   // iter15-A — Direct sem→motor word→firstChar identity write that
@@ -9689,6 +9724,17 @@ export class Curriculum {
     const antiReport = antiPairs ? ` · anti-fires=${antiFires}` : '';
     this._hb(`[Curriculum][${label}] DONE — ${trained} positive + ${altTrained} alt + ${antiFires} anti across ${qaList.length} pairs × ${reps} reps in ${elapsedSec}s (skipped ${skipped})${altReport}${antiReport}${qaPruneReport}${qaNormReport}${qaRescaleReport}${qaSepReport}${weightReport}`);
     try { this._pushBrainEvent?.('teach', 'motor', `Q-A DONE: ${label} · ${trained}/${antiFires}/${altTrained} +/−/alt`, { label, trained, antiFires, altTrained, elapsedSec }); } catch {}
+    // iter25-E.2 — once Q→A pairs land, advance subGrade to 'binding'.
+    // Subject scope from opts.subject (every K-cell QA-train caller
+    // passes it) or fallback to cluster._currentCellKey split.
+    if (trained > 0 && typeof cluster.advanceSubGrade === 'function') {
+      const subj = (opts.subject && typeof opts.subject === 'string')
+        ? opts.subject
+        : (cluster._currentCellKey || '').split('/')[0];
+      if (subj && cluster.advanceSubGrade(subj, 'binding')) {
+        this._hb(`[Curriculum] 📈 subGrade ${subj} advanced → 'binding' (${trained} Q→A bindings landed · live capability cap rises now)`);
+      }
+    }
     return { trained, altTrained, antiFires, skipped };
   }
 

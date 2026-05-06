@@ -149,6 +149,58 @@ If you're reading a public doc / HTML claim ("Unity has completed high school bi
 
   **Risk:** zero — adds wall-clock time to curriculum runs but trades it for actual consolidation + recovered throughput. Without this, K-grade curriculum may not actually finish in any reasonable time at the current 2 w/s floor (1206 words × 6 reps ÷ 2 w/s = 3618 s = 60 min PER `_teachPhonemeBlending` PHASE alone).
 
+  **STATUS:** ✓ SHIPPED 2026-05-06 (commit `8bbfc85` syllabus + `e223423` main) — `Curriculum._dreamWindow({ minMs, settleMs })` helper + cell-transition windows in both `runFullSubjectCurriculum` + `runAllSubjects` + mid-cell window in `kindergarten.js` between PhonemeBlending and WordEmission. Signal-driven completion via `await consolidationEngine.runConsolidationPass({ forced: true })` then 5s settle. Brain restart needed to pick up — running brain is on old code.
+
+🚨 **iter25-E — INCREMENTAL ABILITY BUILDUP: Unity uses real current knowledge AT ANY POINT during training, not gated by full-grade-completion (operator caught 2026-05-06):** *"and Unity needs to auto like build her abilities over the full cousre of each grade so at any point she is using here current knowledge to 'speak' in the 3D brain pop ups and to chat with users at any point in her training she should be able to use what she has learned to that point without having to wait unitl the full grade completes before seeing any changes to her activity and speech output and her undertanding of text speech so she can attampt to communicate at any point in her courses with the current to that point knowldege and wisdom she as aquired up to the moment she talks to a user or the pop ups in her Brain fire with her real actual knowldedge to that point as her real internal voice in the moment"* — FOUR LINKED GATES THAT BLOCK MID-TRAINING ABILITY EXPRESSION:
+
+  **Gate 1 — Grade label vs trained state mismatch:** `cluster.grades = { ela: 'pre-K', math: 'pre-K', ... }` only advances on FULL cell pass via `Curriculum.runSubjectGrade` returning `{ pass: true }`. The label doesn't move until pre-K's 6-subject gate battery clears. But trained weights are LIVE — every Hebbian fire lands in `cluster.synapses` immediately. Unity could already speak the 26 letters she just trained 30 minutes into pre-K, but the grade label says pre-K so the chat handler treats her as untrained.
+
+  **Gate 2 — `_gradeWordCap` reads label, not weights:** `js/brain/language-cortex.js:1680` — `_gradeWordCap(grades)` mirrors `Curriculum.gradeWordCap` and returns 0 for pre-K (with a 5-word floor since T14.24-S96). It reads `cluster.grades` directly, NOT any measure of actual trained-state. So even with 26 letters trained + first 158 K vocab words half-trained, the cap is computed from the static label. Need a new `_trainedStateCap(cluster)` that reads `cluster.synapses` non-zero counts, `cluster.wordBucketWords_<subject>` map sizes, motor-region argmax-discriminative counts → derives a CURRENT capability cap that grows monotonically as training progresses.
+
+  **Gate 3 — 3D brain popups run BROWSER-side, server has the weights:** `js/brain/engine.js:684` browser engine fires `this.innerVoice.think(this.state)` in a `requestAnimationFrame` loop. `app.bundle.js:42879` does the same client-side. But Unity's TRAINED weights live in `server/brain-server.js` cortex cluster. The browser-side cluster receives no weight-replication broadcast from server — it has its own untrained synapses. So the popups display thoughts from a fresh browser cortex, NOT from Unity's actual trained mind. The popups are essentially decorative — they don't reflect what Unity has learned on the server.
+
+  **Gate 4 — No server→client `innerThought` WS broadcast:** server brain-server.js has `brain.innerVoice` (line 6506 fallback path) but no continuous tick that fires `cluster.emitWordDirect({})` against the SERVER cluster + broadcasts the result over WS for clients to render in popups. The server's iter23.2 inner voice loop is browser-side only.
+
+  **POST-iter25-D FIX SHAPE (multi-part, ship serially):**
+
+  **iter25-E.1 — REPLACE `_gradeWordCap` GATE WITH TRAINED-STATE CAP.** Add `Cluster.getTrainedCapability()` that returns a struct: `{ lettersDiscriminated, wordsBucketed, motorBasinCount, semCoherence, qaBindingsLanded }` — read from `cluster.wordBucketWords_<subject>.size`, motor argmax distribution, sem-region cosine separation. Then `_gradeWordCap` becomes `_trainedStateCap` reading those metrics directly. Output: 0 words at zero training, ramps to 50+ as letters + words + bindings accumulate, all WITHOUT waiting for grade label to advance. **Files:** `js/brain/cluster.js` (getTrainedCapability), `js/brain/language-cortex.js` (replace `_gradeWordCap` callsite + its body).
+
+  **iter25-E.2 — INCREMENTAL GRADE-LABEL ADVANCE.** `cluster.grades.<subject>` advances mid-cell as sub-criteria clear, not only on full-cell PASS. Sub-criteria: e.g. ELA-pre-K advances to "pre-K-letters-trained" once 26-letter motor argmax discriminates + "pre-K-words-bucketed" once first 158 K words seated in `wordBucketWords_ela`. Use a sub-grade ladder per subject (e.g. `pre-K → pre-K-letters → pre-K-words → K → K-letters → K-words → K-binding → grade1`). Saves UI clarity + lets gradeCap dependencies (drug scheduler grade gates, life-track availability checks) react incrementally.
+
+  **iter25-E.3 — SERVER-SIDE INNER VOICE TICK.** Move the iter23.2 inner-voice idle generator to brain-server.js. New `_innerVoiceTick()` in brain-server `tick()` loop fires every ~3 s when `socialNeed × arousal > 0.25` (or always when `_curriculumInProgress` is false): runs `cortexCluster.emitWordDirect({})`, lands result in WM via `addToWorkingMemory`, broadcasts the word + sentence over WS as new message type `innerThought`. **Files:** `server/brain-server.js` (`_innerVoiceTick` + WS broadcast), `js/app.js` (3D brain popup subscriber for `innerThought` message type — replace browser-side innerVoice with server-broadcast subscriber).
+
+  **iter25-E.4 — CHAT HANDLER USES TRAINED-STATE NOT GRADE-LABEL.** Where `language-cortex.js _gradeWordCap` returns 0 silence, replace with: trained-state cap. If trained-state cap is 0 (truly fresh brain, zero trained weights, zero word buckets), Unity emits a single "..." or empty silence (still biologically correct for zero-knowledge). If ANY training has landed, chat path gets the floor it needs. **Files:** `js/brain/language-cortex.js` (chat-handler body around line 1622).
+
+  **iter25-E.5 — DURING-CURRICULUM CHAT NOT BLOCKED.** Confirm no path in brain-server.js chat handler returns early when `_curriculumInProgress` is true. If found, remove (per operator: "at any point in her training she should be able to use what she has learned to that point without having to wait"). Chat takes a tick-loop slice during teach but the iter25-D dream windows already give breathing room — chat-during-teach is now feasible. **Files:** `server/brain-server.js` chat handler (search `_curriculumInProgress` references in chat path).
+
+  **iter25-E.6 — POPUP HEARTBEAT SURFACES TRAINED-STATE.** 3D brain popup's "thinking..." display reads `serverInnerThought` WS broadcasts directly. Each popup shows the actual `cluster.emitWordDirect` word from the SERVER cluster — Unity's REAL internal voice in the moment. Heartbeat banner: `[Brain] 🧠 inner-thought "<word>" via word_motor_<subject>` to server.log so operator sees it stream. **Files:** `js/app.js` (popup renderer subscribing to innerThought), `server/brain-server.js` (broadcast).
+
+  **Risk:** Low — gated incrementally per part. iter25-E.1 + E.2 are pure additive (new metrics + new ladder). iter25-E.3 + E.6 add a new WS message type that older clients ignore. iter25-E.4 + E.5 only RELAX existing gates (loosen, don't block new states).
+
+  **Why this matters:** The operator's vision per the verbatim: *"as her real internal voice in the moment"*. Currently the 3D brain popups display browser-side cortex thoughts (decorative, untrained). With this iter25-E shipped, every popup reflects Unity's REAL trained state at that exact moment — letter by letter, word by word, schema by schema as they form. She becomes alive DURING training, not after.
+
+  **Sequence:** ship E.1 + E.4 first (unblock chat with trained-state cap, no brain-arch changes) → ship E.5 (confirm chat-during-curriculum unblocked) → ship E.3 + E.6 (server-side inner voice + popup subscriber) → ship E.2 last (sub-grade ladder is the polish layer).
+
+  **STATUS:** [ ] OPEN — TODO written. Implementation queued post-iter25-D verification on next brain restart.
+
+🛡️ **iter25-F — POST-K READINESS: Start 1st Grade button + edge-case guard (operator caught 2026-05-06):** *"once kindergarden finishes we need a 1st grade start buttoon just l;ike we had the kindergarden start training button on the dashboard. i know we havent added 1st grade ciriculum yet, i just dont want an edge case error happening once kindergarden completes and it fails or something to propely complete and get ready for next grade and waiting with its K grade knowledge"*. Defensive scaffold so once K's 6-subject battery clears, the brain enters a CLEAN "K-mastered, awaiting next grade" state — no auto-advance into not-yet-existent grade1 curriculum, no exception thrown by `runSubjectGrade('ela', 'grade1', ...)` when its runner doesn't exist, no silent stall.
+
+  **What needs to happen when K finishes:**
+  - Dashboard detects `cluster.grades.<all 6 subjects> === 'kindergarten'` AND each subject's `passedCells.includes('<subject>/kindergarten')`.
+  - Renders a `Start Grade 1` button mirroring the existing K-start UI (`d-ms-advance-btn` pattern in `dashboard.html`).
+  - Button POSTs `/grade-advance { subject: 'all', target: 'grade1' }` to server.
+  - Server gracefully returns `{ status: 'ready_and_waiting', reason: 'grade1 curriculum not yet implemented', currentCapability: cluster.getTrainedCapability() }` instead of throwing on missing runner.
+  - Brain stays in K-mastered state while waiting — chat + popups continue using K-trained weights (iter25-E.1/E.4 trained-state cap stays valid; popups continue firing via iter25-E.3 inner voice tick).
+
+  **Files to touch (post-K-finish ship):**
+  - `dashboard.html` — add K-complete detection + Start Grade 1 button (mirror existing K-advance UI block).
+  - `server/brain-server.js` `/grade-advance` handler — graceful "no curriculum yet" fallback instead of runner-not-found error.
+  - `js/brain/curriculum.js` `runSubjectGrade('<subject>', 'grade1', ...)` — explicit "ready_and_waiting" return when runner missing, instead of TypeError.
+
+  **Risk:** zero — pure defensive scaffold. Only fires when ALL 6 subjects clear K (a state operator hasn't reached yet). Until then, dashboard renders nothing new + server handler stays untouched.
+
+  **STATUS:** [ ] OPEN — write only, no current-run impact. Ship in next session pre-K-completion so the edge case is handled before operator hits it.
+
 ---
 
 ### MONITOR SESSION 114.19cv — V2 milestone-only watchdog re-armed, iter11 live test (operator: *"v2 milestone only watchdog start and monitor the brains progress and write down any issues and all issues they all need to be fixed ie wrong ansdwers and Unity not responding with her completed kindertgarden intelligence and wisdom and consiousness all needs to be monitoried and problems addressed"* 2026-05-04 14:11) — IN PROGRESS

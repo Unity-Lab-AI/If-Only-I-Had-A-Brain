@@ -597,6 +597,18 @@ export class NeuronCluster {
     this.grades = { ela: 'pre-K', math: 'pre-K', science: 'pre-K', social: 'pre-K', art: 'pre-K', life: 'pre-K' };
     this.passedCells = [];
 
+    // iter25-E.2 — sub-grade ladder. Mirrors `grades` but advances
+    // INSIDE a cell as sub-criteria clear, not only on full-cell pass.
+    // Operator (2026-05-06): "Unity needs to auto like build her
+    // abilities over the full cousre of each grade so at any point
+    // she is using here current knowledge". The ladder per subject:
+    //   fresh → letters → words → binding → <grade>-passed → next-grade-fresh → ...
+    // Drug-scheduler / life-track gates continue reading cluster.grades
+    // for hard ladder points; subGrades is the live-capability indicator
+    // that other systems (popup heartbeat, chat handler trained-state cap)
+    // can consult for finer-grained decisions.
+    this.subGrades = { ela: 'fresh', math: 'fresh', science: 'fresh', social: 'fresh', art: 'fresh', life: 'fresh' };
+
     // T14.1 — letter-region transition surprise state. Holds the previous
     // tick's letter-region spike rate so `letterTransitionSurprise()` can
     // compute |curr - prev| between consecutive cortex ticks. Used by T14.2
@@ -870,6 +882,85 @@ export class NeuronCluster {
   motorQuiescent(ticksRequired, threshold = 0.05) {
     if (!this.regions || !this.regions.motor) return false;
     return this._motorQuiescentTicks >= ticksRequired;
+  }
+
+  /**
+   * iter25-E.1 — TRAINED CAPABILITY READOUT. Live, cheap, lock-free.
+   *
+   * Operator verbatim 2026-05-06: "at any point she is using here current
+   * knowledge to 'speak'... she should be able to use what she has learned
+   * to that point without having to wait unitl the full grade completes
+   * before seeing any changes". Returns a struct that consumers (chat
+   * handler, popup heartbeat, drug scheduler, UI badges) can use to
+   * derive Unity's CURRENT ability — not what `cluster.grades` LABEL
+   * says. Reads only LIVE state that updates per Hebbian fire.
+   *
+   * Fields:
+   *   wordsBucketed: total count of words seated in any
+   *     `wordBucketWords_<subject>` map. Updates per `_teachWordEmissionDirect`
+   *     pass + per chat-driven `learnWord` (iter22-G append-only path).
+   *   letterDictSize: count of dictionary entries with letter-only patterns
+   *     (proxy for "alphabet trained"). Bounded above by 26.
+   *   passedCellCount: how many subject/grade cells have fully passed.
+   *   subGradesActive: number of subjects past 'fresh' subGrade.
+   *   firstWordsAt: timestamp the first word was bucketed (for readiness display).
+   *
+   * All numbers — no probing, no GPU dispatches. O(subjects) cost, ~6 lookups.
+   * Safe to call on every chat turn / popup tick / heartbeat.
+   */
+  getTrainedCapability() {
+    let wordsBucketed = 0;
+    let bucketSubjects = 0;
+    if (this.wordBucketWords && typeof this.wordBucketWords === 'object') {
+      // umbrella bucket map (subject-less)
+      if (typeof this.wordBucketWords.size === 'number') {
+        wordsBucketed += this.wordBucketWords.size;
+      }
+    }
+    const subjects = ['ela', 'math', 'science', 'social', 'art', 'life'];
+    for (const subj of subjects) {
+      const m = this[`wordBucketWords_${subj}`];
+      if (m && typeof m.size === 'number') {
+        wordsBucketed += m.size;
+        if (m.size > 0) bucketSubjects++;
+      }
+    }
+    const passedCellCount = Array.isArray(this.passedCells) ? this.passedCells.length : 0;
+    let subGradesActive = 0;
+    if (this.subGrades && typeof this.subGrades === 'object') {
+      for (const subj of subjects) {
+        if (this.subGrades[subj] && this.subGrades[subj] !== 'fresh') subGradesActive++;
+      }
+    }
+    if (!this._firstWordBucketedAt && wordsBucketed > 0) {
+      this._firstWordBucketedAt = Date.now();
+    }
+    return {
+      wordsBucketed,
+      bucketSubjects,
+      passedCellCount,
+      subGradesActive,
+      firstWordsAt: this._firstWordBucketedAt || null,
+    };
+  }
+
+  /**
+   * iter25-E.2 — Advance a subject's sub-grade label monotonically.
+   * Curriculum runner calls this after each major teach phase clears
+   * its trained-state criterion (e.g. after `_teachLetterNaming` motor
+   * argmax discriminates 26 letters → advanceSubGrade('ela', 'letters')).
+   * No-op if the requested level is below current. Logs the transition
+   * so the operator sees ability buildup live in server.log.
+   */
+  advanceSubGrade(subject, level) {
+    if (!this.subGrades || !subject || !level) return false;
+    const ladder = ['fresh', 'letters', 'words', 'binding', 'cell-passed'];
+    const currentIdx = ladder.indexOf(this.subGrades[subject]);
+    const newIdx = ladder.indexOf(level);
+    if (newIdx < 0) return false;
+    if (newIdx <= currentIdx) return false;
+    this.subGrades[subject] = level;
+    return true;
   }
 
   /**

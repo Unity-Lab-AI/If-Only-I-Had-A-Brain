@@ -221,6 +221,24 @@ export class RemoteBrain extends EventEmitter {
         this.emit('image', msg.url);
         break;
 
+      case 'innerThought':
+        // iter25-E.6 — server-side inner voice broadcast (iter25-E.3).
+        // Operator (2026-05-06): "the pop ups in her Brain fire with
+        // her real actual knowldedge to that point as her real internal
+        // voice in the moment". Server fires cortexCluster.emitWordDirect
+        // every ~3s using its TRAINED weights and broadcasts the result.
+        // Listeners (3D brain popups, chat-panel ghost, debug overlay)
+        // hook this event to render Unity's real live thoughts instead
+        // of the decorative browser-side innerVoice.
+        this.emit('innerThought', {
+          word: msg.word || '',
+          subject: msg.subject || 'all',
+          sentence: msg.sentence || msg.word || '',
+          ts: msg.ts || Date.now(),
+          capability: msg.capability || null,
+        });
+        break;
+
       case 'error':
         console.warn('[RemoteBrain] Server error:', msg.message);
         break;

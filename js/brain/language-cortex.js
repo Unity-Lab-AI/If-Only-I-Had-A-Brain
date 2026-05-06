@@ -1611,19 +1611,25 @@ export class LanguageCortex {
       if (scored && scored.length > 0) {
         // Length driven by arousal — same rough rule the old path used
         let targetLen = Math.max(3, Math.min(8, Math.floor(3 + (arousal || 0.5) * 4)));
-        // T14.24 — GRADE-AWARE word cap. Reads the multi-subject grades
-        // object `cluster.grades = {ela, math, science, social, art, life}`
-        // and caps output to the MIN grade across all 6 subjects, so Unity
-        // speaks at whatever subject she's weakest in. Uncurriculum'd
-        // brains default to pre-K → silence.
-        const gradeArg = cluster && cluster.grades && typeof cluster.grades === 'object'
-          ? cluster.grades
-          : 'pre-K';
-        const gradeCap = this._gradeWordCap(gradeArg);
+        // iter25-E.1 / E.4 — TRAINED-STATE CAP (was grade-label cap).
+        // Pass the cluster directly so `_gradeWordCap` can read
+        // `cluster.getTrainedCapability()` LIVE — wordsBucketed across
+        // all subjects, subGradesActive, passedCellCount. Unity speaks
+        // the moment her first word lands in any bucket map, not when
+        // the gate-battery clears. Fallback to legacy grades-object path
+        // if cluster doesn't expose the new method (older saves).
+        const capArg = cluster && typeof cluster.getTrainedCapability === 'function'
+          ? cluster
+          : (cluster && cluster.grades && typeof cluster.grades === 'object'
+              ? cluster.grades
+              : 'pre-K');
+        const gradeCap = this._gradeWordCap(capArg);
         if (gradeCap === 0) {
-          // Pre-K Unity does not speak. Silence is the correct biological
-          // output — a child who has not yet learned the alphabet does
-          // not produce words.
+          // Truly fresh brain (zero trained weights, zero word buckets,
+          // zero passed cells, zero sub-grades advanced) → silence.
+          // Biologically correct: an infant pre-language doesn't speak.
+          // The MOMENT any training lands, the cap returns ≥5 and Unity
+          // speaks with whatever she has learned.
           return '';
         }
         targetLen = Math.min(targetLen, gradeCap);
@@ -1677,36 +1683,46 @@ export class LanguageCortex {
    * `Curriculum.runSubjectGrade` as each gate passes and persisted
    * via T14.16 BrainPersistence.
    */
-  _gradeWordCap(grades) {
-    // T14.24 Session 96 — absolute speech floor of 5 words. pre-K=0
-    // would silence Unity entirely on fresh brains where no gate had
-    // passed; every grade returns `max(formalCap, 5)` so she's never
-    // below 5 regardless of curriculum state. Formal progression still
-    // matters for G4+ where caps rise above the floor. Her T14.5
-    // corpus walk shapes base cortex state on boot so 5 words is
-    // reasonable even for a zero-cells-passed brain.
+  _gradeWordCap(gradesOrCluster) {
+    // iter25-E.1 / E.4 — TRAINED-STATE CAP, not grade-label cap.
+    // Operator (2026-05-06): "at any point in her training she should
+    // be able to use what she has learned to that point without having
+    // to wait unitl the full grade completes". Source-of-truth flips
+    // from `cluster.grades` LABEL to LIVE trained-state metrics
+    // (cluster.getTrainedCapability) so Unity speaks the moment her
+    // first word lands in any wordBucketWords map — not when the
+    // gate-battery clears.
     //
-    // LENIENT MIN semantic: min is taken across subjects that have
-    // ADVANCED PAST pre-K, not a true min over all 6. Pre-K subjects
-    // don't constrain the cap. Rationale: strict min would silence
-    // Unity entirely until every subject clears K — which is weeks
-    // of curriculum work. Lenient min lets Unity speak at her
-    // weakest-STARTED-subject level while remaining subjects advance.
-    // The binding "she speaks at her weakest-subject level" is
-    // preserved — pre-K isn't a "subject level she's at", it's the
-    // null state before curriculum exposure has begun. Once a subject
-    // passes K it joins the min calculation.
-    // To flip to strict min, delete the `if (g === 'pre-K') continue`
-    // guard below — then zero_gates_passed returns formal=0 and only
-    // the FLOOR survives.
+    // Backwards-compat: when called with a `grades` object (legacy
+    // callers that still pass `cluster.grades` directly), fall through
+    // to a minimal label→cap mapping with the same FLOOR=5 semantic
+    // T14.24-S96 introduced. When called with a cluster reference
+    // (preferred new path), reads getTrainedCapability and ramps with
+    // wordsBucketed count.
     const FLOOR = 5;
-    if (!grades || typeof grades !== 'object') return FLOOR;
+    // Cluster-shaped: has getTrainedCapability method.
+    if (gradesOrCluster && typeof gradesOrCluster.getTrainedCapability === 'function') {
+      const cap = gradesOrCluster.getTrainedCapability();
+      const w = cap.wordsBucketed || 0;
+      // Truly fresh brain — no words in any bucket yet → silence.
+      // The MOMENT first Hebbian fire seats a word, Unity gets her floor.
+      if (w === 0 && cap.passedCellCount === 0 && cap.subGradesActive === 0) return 0;
+      // Any training landed at all → floor 5.
+      if (w < 100) return Math.max(FLOOR, 5);
+      if (w < 500) return 8;
+      if (w < 1000) return 12;
+      if (w < 3000) return 16;
+      if (w < 5000) return 24;
+      return 32;
+    }
+    // Legacy grades-object path. Same lenient-min semantic + floor 5.
+    if (!gradesOrCluster || typeof gradesOrCluster !== 'object') return FLOOR;
     const SUBS = ['ela', 'math', 'science', 'social', 'art', 'life'];
     let minCap = Infinity;
     let anyStarted = false;
     for (const s of SUBS) {
-      const g = grades[s] || 'pre-K';
-      if (g === 'pre-K') continue;  // LENIENT: pre-K subjects don't constrain
+      const g = gradesOrCluster[s] || 'pre-K';
+      if (g === 'pre-K') continue;
       const c = this._singleGradeCap(g);
       if (c < minCap) minCap = c;
       anyStarted = true;
