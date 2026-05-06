@@ -60,7 +60,66 @@ class SparseMatmulPool {
     this._idleCheckMs = opts.idleCheckMs ?? 30_000;
     this._idleTimer = null;
 
+    // iter22 — SAB cache to kill the +500-800 MB/min leak during
+    // _teachHebbian heartbeats. Without these caches, every propagate()
+    // and every hebbianUpdate() allocates fresh SharedArrayBuffer for
+    // (a) the output currents, (b) pre-spike Float32 conversion, (c)
+    // post-spike Float32 conversion, plus shadowed input spikes. At
+    // biological scale 13M neurons × 4 bytes = 52 MB per SAB. Tens of
+    // thousands of dispatches per cell = TBs of SAB churn per cell.
+    // The SABs are cleaned up by V8/native GC eventually but accumulate
+    // faster than reclaim during heavy teach phases — V2 watchdog saw
+    // native pool climbing +400-800 MB/heartbeat sustained for 4-min
+    // windows before GC finally caught up.
+    //
+    // Cache strategy: keep one SAB per (length, kind). Reuse if next
+    // call needs same length; reallocate if it grows. Holds at most a
+    // few entries because all curricular teach paths use the same
+    // cluster.size for spikes and same matrix.rows for output.
+    this._cachedOutputSab = null;     // matmul output currents
+    this._cachedOutputView = null;
+    this._cachedSpikesSab = null;     // propagate spike input
+    this._cachedSpikesView = null;
+    this._cachedPreSab = null;        // hebbian pre-spikes
+    this._cachedPreView = null;
+    this._cachedPostSab = null;       // hebbian post-spikes
+    this._cachedPostView = null;
+
     this._init();
+  }
+
+  // iter22 — get-or-allocate a cached Float32Array view backed by a
+  // SharedArrayBuffer of `length` elements. `slot` is the cache name
+  // (output / spikes / pre / post). Reallocates only if the cached
+  // entry is missing or smaller than the requested length.
+  _getCachedFloat32Sab(slot, length) {
+    const sabKey = `_cached${slot}Sab`;
+    const viewKey = `_cached${slot}View`;
+    if (this[viewKey] && this[viewKey].length >= length) {
+      // Reuse existing buffer; expose a subarray view of the requested
+      // length so callers see exactly what they asked for. Workers
+      // accept the SAB itself (sized to the cached max), and we pass
+      // the explicit row count separately so they only touch
+      // [startRow, endRow).
+      return { sab: this[sabKey], view: this[viewKey].subarray(0, length) };
+    }
+    const sab = new SharedArrayBuffer(length * 4);
+    const view = new Float32Array(sab);
+    this[sabKey] = sab;
+    this[viewKey] = view;
+    return { sab, view };
+  }
+  _getCachedUint32Sab(slot, length) {
+    const sabKey = `_cached${slot}Sab`;
+    const viewKey = `_cached${slot}View`;
+    if (this[viewKey] && this[viewKey].length >= length) {
+      return { sab: this[sabKey], view: this[viewKey].subarray(0, length) };
+    }
+    const sab = new SharedArrayBuffer(length * 4);
+    const view = new Uint32Array(sab);
+    this[sabKey] = sab;
+    this[viewKey] = view;
+    return { sab, view };
   }
 
   _init() {
@@ -238,9 +297,22 @@ class SparseMatmulPool {
     const valsShared = shared(matrix.values instanceof Float32Array ? matrix.values : new Float32Array(matrix.values), Float32Array);
     const colsShared = shared(matrix.colIdx instanceof Uint32Array ? matrix.colIdx : new Uint32Array(matrix.colIdx), Uint32Array);
     const rowPShared = shared(matrix.rowPtr instanceof Uint32Array ? matrix.rowPtr : new Uint32Array(matrix.rowPtr), Uint32Array);
-    const spikesShared = shared(spikesU32, Uint32Array);
-    const outSab = new SharedArrayBuffer(rows * 4);
-    const outView = new Float32Array(outSab);
+    // iter22 — reuse cached SABs for hot per-call buffers.
+    let spikesShared;
+    if (spikesU32.buffer instanceof SharedArrayBuffer) {
+      spikesShared = spikesU32;
+    } else {
+      const cached = this._getCachedUint32Sab('Spikes', spikesU32.length);
+      cached.view.set(spikesU32);
+      spikesShared = cached.view;
+    }
+    const outCached = this._getCachedFloat32Sab('Output', rows);
+    // Zero the slice we will write into. Worker overwrites every entry
+    // it owns but row counts that don't divide evenly across workers
+    // can leave trailing entries from a prior larger-rows job.
+    outCached.view.fill(0);
+    const outSab = outCached.sab;
+    const outView = outCached.view;
 
     const jobId = ++this._jobSeq;
     const N = this._workers.length;
@@ -351,10 +423,29 @@ class SparseMatmulPool {
         })();
     const colsShared = shared(matrix.colIdx instanceof Uint32Array ? matrix.colIdx : new Uint32Array(matrix.colIdx), Uint32Array);
     const rowPShared = shared(matrix.rowPtr instanceof Uint32Array ? matrix.rowPtr : new Uint32Array(matrix.rowPtr), Uint32Array);
-    const preF32  = preSpikes  instanceof Float32Array ? preSpikes  : Float32Array.from(preSpikes);
-    const postF32 = postSpikes instanceof Float32Array ? postSpikes : Float32Array.from(postSpikes);
-    const preShared  = shared(preF32, Float32Array);
-    const postShared = shared(postF32, Float32Array);
+    // iter22 — cache pre / post Float32 SABs across calls. The
+    // Float32Array.from(...) + new SharedArrayBuffer(byteLength) per call
+    // path was allocating ~104 MB per dispatch (52 MB pre + 52 MB post)
+    // at biological scale. With curriculum teach phases firing tens of
+    // thousands of hebbianUpdate calls per cell, that was ~TB of SAB
+    // churn per cell — V2 watchdog tracked this as the +500-800 MB/min
+    // _teachHebbian heartbeat leak that prior iter22 commits had only
+    // partially mitigated (curriculum-side fixed; pool-side untouched).
+    let preShared, postShared;
+    if (preSpikes instanceof Float32Array && preSpikes.buffer instanceof SharedArrayBuffer) {
+      preShared = preSpikes;
+    } else {
+      const cached = this._getCachedFloat32Sab('Pre', preSpikes.length);
+      cached.view.set(preSpikes);
+      preShared = cached.view;
+    }
+    if (postSpikes instanceof Float32Array && postSpikes.buffer instanceof SharedArrayBuffer) {
+      postShared = postSpikes;
+    } else {
+      const cached = this._getCachedFloat32Sab('Post', postSpikes.length);
+      cached.view.set(postSpikes);
+      postShared = cached.view;
+    }
 
     const jobId = ++this._jobSeq;
     const N = this._workers.length;
