@@ -50413,16 +50413,27 @@ var landingBrainSource = null;
       <p style="margin:0 0 18px 0;font-size:13px;color:#9ca3af;">
         Talking to Unity makes her smarter and more articulate. Sharing personal information puts <em>you</em> at risk in a way the system cannot undo. Keep it conversational, not personal.
       </p>
-      <button id="unity-first-use-ack" style="
-        width:100%; padding:11px 16px;
-        background:#ff4d9a; color:#000; font-weight:700;
-        border:none; border-radius:8px;
-        font-size:14px; cursor:pointer; letter-spacing:0.3px;
-      ">I understand \u2014 proceed</button>
+      <p style="margin:0 0 16px 0;font-size:12px;color:#9ca3af;text-align:center;">
+        You must explicitly accept these terms to use Unity.
+      </p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <button id="unity-first-use-decline" style="
+          flex:1; min-width:140px; padding:11px 14px;
+          background:transparent; color:#9ca3af; font-weight:600;
+          border:1px solid #374151; border-radius:8px;
+          font-size:13px; cursor:pointer; letter-spacing:0.3px;
+        ">I don't agree \u2014 leave</button>
+        <button id="unity-first-use-ack" style="
+          flex:2; min-width:200px; padding:11px 14px;
+          background:#ff4d9a; color:#000; font-weight:700;
+          border:none; border-radius:8px;
+          font-size:14px; cursor:pointer; letter-spacing:0.3px;
+        ">I understand \u2014 proceed</button>
+      </div>
     `;
     overlay.appendChild(card);
     document.body.appendChild(overlay);
-    const dismiss = () => {
+    const accept = () => {
       try {
         localStorage.setItem(FIRST_USE_FLAG, "1");
       } catch {
@@ -50433,17 +50444,18 @@ var landingBrainSource = null;
       }
       onProceed();
     };
-    card.querySelector("#unity-first-use-ack").addEventListener("click", dismiss);
-    overlay.addEventListener("click", (e) => {
-      if (e.target === overlay) dismiss();
-    });
-    const onEsc = (e) => {
-      if (e.key === "Escape") {
-        document.removeEventListener("keydown", onEsc);
-        dismiss();
+    const decline = () => {
+      try {
+        window.location.href = "https://www.google.com";
+      } catch {
+        try {
+          window.location.replace("https://www.google.com");
+        } catch {
+        }
       }
     };
-    document.addEventListener("keydown", onEsc);
+    card.querySelector("#unity-first-use-ack").addEventListener("click", accept);
+    card.querySelector("#unity-first-use-decline").addEventListener("click", decline);
   };
   const chatBtn = document.getElementById("landing-chat-btn");
   if (chatBtn) chatBtn.addEventListener("click", () => showFirstUseWarning(openSetupModal));
