@@ -128,9 +128,37 @@ export class ConsolidationEngine {
       // Step 3 + 4 — for each cluster, create or reinforce a schema, then replay
       for (const cluster of clusters) {
         if (cluster.length === 0) continue;
-        // Find existing schema with high cosine to cluster centroid
-        const clusterCentroid = this._centroidOf(cluster.map(ep => ep.embedding));
-        let schema = this._findExistingSchema(clusterCentroid, SCHEMA_GROUP_COSINE);
+        // Already-promoted fast-path. iter22-F dropped the
+        // `promoted_at IS NULL` filter from findPromotionCandidates so
+        // anchor episodes can re-cluster as their frequency_count
+        // climbs (heartbeat merges into them via iter20-K). When that
+        // happens, route the candidate cluster directly back to its
+        // existing schema instead of letting cosine drift below the
+        // grouping threshold ever spawn a duplicate schema for the
+        // same anchor. Picks the most-common schema id among
+        // already-promoted episodes in the cluster.
+        const promotedIdCounts = new Map();
+        for (const ep of cluster) {
+          const sid = ep.promoted_to_schema_id;
+          if (sid) promotedIdCounts.set(sid, (promotedIdCounts.get(sid) || 0) + 1);
+        }
+        let schema = null;
+        if (promotedIdCounts.size > 0) {
+          let bestSid = null, bestCount = 0;
+          for (const [sid, n] of promotedIdCounts) {
+            if (n > bestCount) { bestCount = n; bestSid = sid; }
+          }
+          if (bestSid && this.schemaStore.schemas?.has?.(bestSid)) {
+            schema = this.schemaStore.schemas.get(bestSid);
+          }
+        }
+        // Cosine-match path runs when no episode in the cluster
+        // already has a live schema (or the live schema was decayed
+        // away).
+        if (!schema) {
+          const clusterCentroid = this._centroidOf(cluster.map(ep => ep.embedding));
+          schema = this._findExistingSchema(clusterCentroid, SCHEMA_GROUP_COSINE);
+        }
         if (!schema) {
           // Create new schema
           schema = this.schemaStore.createSchema(cluster);

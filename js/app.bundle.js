@@ -1631,6 +1631,32 @@ function loadInventory(arr) {
   _cachedInventorySize = 0;
 }
 
+// ../js/brain/subjects.js
+var SUBJECT_NORMALIZE = Object.freeze({
+  ela: "ela",
+  english: "ela",
+  math: "math",
+  mathematics: "math",
+  sci: "sci",
+  science: "sci",
+  soc: "soc",
+  social: "soc",
+  "social-studies": "soc",
+  art: "art",
+  arts: "art",
+  life: "life",
+  "life-skills": "life"
+});
+var SUBJECTS = Object.freeze(["ela", "math", "sci", "soc", "art", "life"]);
+function normalizeSubject(subject) {
+  if (!subject || typeof subject !== "string") return null;
+  return SUBJECT_NORMALIZE[subject.toLowerCase()] || null;
+}
+function wordMotorBandName(subject) {
+  const subj = normalizeSubject(subject);
+  return subj ? `word_motor_${subj}` : null;
+}
+
 // ../js/brain/cluster.js
 var CLUSTER_FRACTIONS = {
   cortex: 0.55,
@@ -3072,11 +3098,10 @@ var NeuronCluster = class {
       return "";
     }
     if (!wmOut || wmOut.length === 0) return "";
-    const SUBJECTS2 = ["ela", "math", "sci", "soc", "art", "life"];
-    const subjectScope = opts.subject && SUBJECTS2.includes(opts.subject) ? [opts.subject] : SUBJECTS2;
-    let bestWord = null, bestSum = -Infinity;
-    let scannedSomething = false;
-    for (const subj of subjectScope) {
+    const subjScope = opts.subject && normalizeSubject(opts.subject) ? [normalizeSubject(opts.subject)] : SUBJECTS;
+    let bestWord = null;
+    let bestMean = -Infinity;
+    for (const subj of subjScope) {
       const subjectRegion = this.regions[`word_motor_${subj}`];
       if (!subjectRegion) continue;
       const subjStart = subjectRegion.start - wordMotor.start;
@@ -3085,55 +3110,22 @@ var NeuronCluster = class {
       if (subjSize <= 0) continue;
       const wordsList = this[`wordBucketWords_${subj}`];
       if (!Array.isArray(wordsList) || wordsList.length === 0) continue;
-      scannedSomething = true;
       const bucketSize = Math.max(1, Math.floor(subjSize / wordsList.length));
       for (let b = 0; b < wordsList.length; b++) {
         let sum = 0;
         const bStart = subjStart + b * bucketSize;
         const bEnd = Math.min(subjEnd, bStart + bucketSize);
+        const cellCount = Math.max(1, bEnd - bStart);
         for (let n = bStart; n < bEnd; n++) sum += wmOut[n];
-        if (sum > bestSum) {
-          bestSum = sum;
+        const mean = sum / cellCount;
+        if (mean > bestMean) {
+          bestMean = mean;
           bestWord = wordsList[b];
         }
       }
     }
-    if (!scannedSomething) {
-      const subjectVocabs = /* @__PURE__ */ new Map();
-      for (const subj of SUBJECTS2) subjectVocabs.set(subj, []);
-      const seenAll = [];
-      for (const [w, entry] of this.dictionary._words.entries()) {
-        if (typeof w !== "string" || w.length === 0) continue;
-        if (!/^[a-z]+$/.test(w)) continue;
-        if (entry?.isPersona) continue;
-        const subj = entry?.subject;
-        if (SUBJECTS2.includes(subj)) subjectVocabs.get(subj).push(w);
-        else seenAll.push(w);
-      }
-      for (const subj of subjectScope) {
-        const subjectRegion = this.regions[`word_motor_${subj}`];
-        if (!subjectRegion) continue;
-        const subjStart = subjectRegion.start - wordMotor.start;
-        const subjEnd = subjectRegion.end - wordMotor.start;
-        const subjSize = subjEnd - subjStart;
-        if (subjSize <= 0) continue;
-        const combined = subjectVocabs.get(subj).concat(seenAll);
-        if (combined.length === 0) continue;
-        const bucketSize = Math.max(1, Math.floor(subjSize / combined.length));
-        for (let b = 0; b < combined.length; b++) {
-          let sum = 0;
-          const bStart = subjStart + b * bucketSize;
-          const bEnd = Math.min(subjEnd, bStart + bucketSize);
-          for (let n = bStart; n < bEnd; n++) sum += wmOut[n];
-          if (sum > bestSum) {
-            bestSum = sum;
-            bestWord = combined[b];
-          }
-        }
-      }
-    }
     const minSignal = opts.minSignal ?? 1e-3;
-    if (!bestWord || bestSum < minSignal) return "";
+    if (!bestWord || bestMean < minSignal) return "";
     return bestWord;
   }
   async generateSentenceAwait(intentSeed = null, opts = {}) {
@@ -3800,7 +3792,13 @@ var NeuronCluster = class {
     for (const name of Object.keys(this.crossProjections)) {
       if (whitelistSet && !whitelistSet.has(name)) continue;
       const proj = this.crossProjections[name];
-      if (!proj || !proj._gpuBound) continue;
+      if (!proj || !proj._gpuBound) {
+        if (proj && (!proj.values || !proj.colIdx || !proj.rowPtr) && !proj._nullCsrAntiHebbianWarned) {
+          proj._nullCsrAntiHebbianWarned = true;
+          console.warn(`[Cluster ${this.name}] Anti-Hebbian skip on ${name} \u2014 CPU CSR null AND not GPU-bound (gpuBound=${!!proj._gpuBound} gpuProxyReady=${!!this._gpuProxyReady}).`);
+        }
+        continue;
+      }
       try {
         this._gpuProxy.antiHebbianBound(`${this.name}_${name}`, absLr);
       } catch {
@@ -18296,7 +18294,7 @@ var LETTER_REPS_MAX = 5;
 var SHORT_WORD_REPS_MAX = 2;
 var LONG_WORD_REPS_MAX = 1;
 var SHORT_WORD_MAX_LEN = 3;
-var SUBJECTS = ["ela", "math", "science", "social", "art", "life"];
+var SUBJECTS2 = ["ela", "math", "science", "social", "art", "life"];
 var SUBJECT_LABELS = {
   ela: "ELA \u2014 English Language Arts: alphabet, phonics, reading, writing, question-answer grounding.",
   math: "Math: counting, number names, magnitude, arithmetic, shape + position.",
@@ -18749,7 +18747,7 @@ var Curriculum = class _Curriculum {
     const cluster = this.cluster;
     const perSubject = {};
     if (this._perSubjectStats) {
-      for (const sub of SUBJECTS) {
+      for (const sub of SUBJECTS2) {
         const s = this._perSubjectStats[sub] || null;
         perSubject[sub] = s ? { ...s } : {
           subject: sub,
@@ -18762,7 +18760,7 @@ var Curriculum = class _Curriculum {
         };
       }
     } else {
-      for (const sub of SUBJECTS) {
+      for (const sub of SUBJECTS2) {
         perSubject[sub] = {
           subject: sub,
           label: SUBJECT_LABELS[sub] || sub,
@@ -18817,7 +18815,7 @@ var Curriculum = class _Curriculum {
       cellElapsedMs: this._currentCellStartAt ? Date.now() - this._currentCellStartAt : 0,
       perSubject,
       passedCellsTotal: cluster && Array.isArray(cluster.passedCells) ? cluster.passedCells.length : 0,
-      subjects: SUBJECTS.slice()
+      subjects: SUBJECTS2.slice()
     };
   }
   /**
@@ -21566,7 +21564,7 @@ var Curriculum = class _Curriculum {
    * corpora.
    */
   async runSubjectGrade(subject, grade, corpora, opts = {}) {
-    if (!SUBJECTS.includes(subject)) return { pass: false, reason: `unknown subject: ${subject}` };
+    if (!SUBJECTS2.includes(subject)) return { pass: false, reason: `unknown subject: ${subject}` };
     if (!GRADE_ORDER.includes(grade)) return { pass: false, reason: `unknown grade: ${grade}` };
     const cluster = this.cluster;
     if (!cluster) return { pass: false, reason: "no cluster wired" };
@@ -22069,7 +22067,7 @@ var Curriculum = class _Curriculum {
     if (corpora) this._buildCtx(corpora, opts);
     const passed = {};
     const failed = {};
-    for (const s of SUBJECTS) {
+    for (const s of SUBJECTS2) {
       passed[s] = [];
       failed[s] = null;
     }
@@ -22090,7 +22088,7 @@ var Curriculum = class _Curriculum {
           this._hb(`[Curriculum] \u{1F504} grade ${grade} round ${round + 1} \u2014 retrying failed subjects...`);
         }
         allPassedThisGrade = true;
-        for (const subject of SUBJECTS) {
+        for (const subject of SUBJECTS2) {
           const currentIdx = GRADE_ORDER.indexOf(cluster.grades[subject] || "pre-K");
           if (currentIdx >= i) continue;
           let attempt = 0;
@@ -22115,7 +22113,7 @@ var Curriculum = class _Curriculum {
       if (!allPassedThisGrade) {
         const cl = this.cluster;
         const pp = cl && Array.isArray(cl.passedPhases) ? cl.passedPhases : [];
-        for (const subject of SUBJECTS) {
+        for (const subject of SUBJECTS2) {
           const currentIdx = GRADE_ORDER.indexOf(cl.grades[subject] || "pre-K");
           if (currentIdx >= i) continue;
           const cellKey = `${subject}/${grade}`;
@@ -22138,7 +22136,7 @@ var Curriculum = class _Curriculum {
         console.warn(`[Curriculum] \u26D4 grade ${grade} incomplete after ${MAX_GRADE_ROUNDS} rounds \u2014 force-advanced any cells with real teaching. Curriculum walk continues to next grade.`);
         continue;
       }
-      this._hb(`[Curriculum] \u2550\u2550\u2550 ALL ${SUBJECTS.length} subjects passed ${grade} \u2014 advancing to next grade \u2550\u2550\u2550`);
+      this._hb(`[Curriculum] \u2550\u2550\u2550 ALL ${SUBJECTS2.length} subjects passed ${grade} \u2014 advancing to next grade \u2550\u2550\u2550`);
       const nextIdx = i + 1;
       const nextGrade = nextIdx < GRADE_ORDER.length && (maxIdx < 0 || nextIdx <= maxIdx) ? GRADE_ORDER[nextIdx] : null;
       if (nextGrade === null) {
@@ -22164,7 +22162,7 @@ var Curriculum = class _Curriculum {
       }
     }
     const reached = {};
-    for (const s of SUBJECTS) reached[s] = cluster.grades[s] || "pre-K";
+    for (const s of SUBJECTS2) reached[s] = cluster.grades[s] || "pre-K";
     return { reached, passed, failed };
   }
   /**
@@ -22201,7 +22199,7 @@ var Curriculum = class _Curriculum {
   resetSubject(subject) {
     const cluster = this.cluster;
     if (!cluster) return false;
-    if (!SUBJECTS.includes(subject)) return false;
+    if (!SUBJECTS2.includes(subject)) return false;
     if (!cluster.grades || typeof cluster.grades !== "object") {
       cluster.grades = { ela: "pre-K", math: "pre-K", science: "pre-K", social: "pre-K", art: "pre-K" };
     }
@@ -22254,7 +22252,7 @@ var Curriculum = class _Curriculum {
    */
   static _minGrade(grades) {
     let minIdx = Infinity;
-    for (const s of SUBJECTS) {
+    for (const s of SUBJECTS2) {
       const g = grades && grades[s] || "pre-K";
       const idx = GRADE_ORDER.indexOf(g);
       if (idx >= 0 && idx < minIdx) minIdx = idx;
@@ -22700,40 +22698,16 @@ var Curriculum = class _Curriculum {
     if (typeof semToWordMotor.ojaUpdate !== "function") return;
     const reps = opts.reps ?? 8;
     const lr = (cluster.learningRate ?? 0.01) * 5;
-    const subject = opts.subject || "all";
-    const SUBJ_MAP = {
-      ela: "word_motor_ela",
-      math: "word_motor_math",
-      science: "word_motor_sci",
-      social: "word_motor_soc",
-      art: "word_motor_art",
-      life: "word_motor_life"
-    };
-    const subjectBandName = SUBJ_MAP[subject] || null;
+    const subject = normalizeSubject(opts.subject) || "all";
+    const subjectBandName = wordMotorBandName(subject);
     const subjectBand = subjectBandName ? cluster.regions[subjectBandName] : null;
-    let words = Array.isArray(opts.words) ? opts.words : null;
-    if (!words && this.dictionary && this.dictionary._words?.entries) {
-      words = [];
-      for (const [w, entry] of this.dictionary._words.entries()) {
-        if (typeof w !== "string" || w.length === 0) continue;
-        if (!/^[a-z]+$/.test(w)) continue;
-        if (!entry || !entry.pattern || !entry.pattern.length) continue;
-        if (entry.isPersona) continue;
-        words.push(w);
-        if (subject !== "all" && !entry.subject) entry.subject = subject;
-      }
-    }
-    if (!words || words.length === 0) {
+    const opts_words = Array.isArray(opts.words) ? opts.words : null;
+    const bucketState = opts_words ? this._installBucketMap(subject, opts_words) : this._ensureWordBucketMap(subject);
+    if (!bucketState || !Array.isArray(bucketState.words) || bucketState.words.length === 0) {
       this._hb(`[Curriculum] _teachWordEmissionDirect SKIPPED \u2014 no K vocab found (subject=${subject})`);
       return;
     }
-    const bucketMapKey = subjectBandName ? `wordBucketMap_${subject}` : "wordBucketMap";
-    const bucketWordsKey = subjectBandName ? `wordBucketWords_${subject}` : "wordBucketWords";
-    const bucketMap = /* @__PURE__ */ new Map();
-    for (let wi = 0; wi < words.length; wi++) bucketMap.set(words[wi], wi);
-    cluster[bucketMapKey] = bucketMap;
-    cluster[bucketWordsKey] = words.slice();
-    cluster[`wordBucketBandName_${subject}`] = subjectBandName || "word_motor";
+    const words = bucketState.words;
     this._hb(`[Curriculum] _teachWordEmissionDirect START: ${words.length} K words \xD7 ${reps} reps \xB7 lr=${lr.toFixed(4)} (subject=${subject} band=${subjectBandName || "umbrella word_motor"}) \u2014 single-tick word emission via sem_to_word_motor`);
     const t0 = Date.now();
     let updates = 0, skipped = 0;
@@ -25437,7 +25411,7 @@ var Curriculum = class _Curriculum {
     const cluster = this.cluster;
     if (!cluster) return;
     await cluster._crossRegionHebbian(lr, opts);
-    if (opts.skipIntraHebbian) return;
+    if (opts.skipIntraSynapses || opts.skipIntraHebbian) return;
     if (typeof cluster.intraSynapsesHebbian === "function") {
       await cluster.intraSynapsesHebbian(cluster.lastSpikes, cluster.lastSpikes, lr);
     } else if (cluster.synapses && typeof cluster.synapses.hebbianUpdate === "function") {
@@ -25594,7 +25568,7 @@ var Curriculum = class _Curriculum {
     if (typeof cluster._crossRegionAntiHebbian === "function") {
       await cluster._crossRegionAntiHebbian(absLr, opts);
     }
-    if (opts.skipIntraAntiHebbian) return;
+    if (opts.skipIntraSynapses || opts.skipIntraAntiHebbian) return;
     if (typeof cluster.intraSynapsesAntiHebbian === "function") {
       await cluster.intraSynapsesAntiHebbian(cluster.lastSpikes, cluster.lastSpikes, absLr);
     } else if (cluster.synapses && typeof cluster.synapses.antiHebbianUpdate === "function") {
@@ -25636,7 +25610,7 @@ var Curriculum = class _Curriculum {
     const cluster = this.cluster;
     if (!cluster) return;
     await cluster._crossRegionHebbian(lr, opts);
-    if (opts.skipIntraHebbian) return;
+    if (opts.skipIntraSynapses || opts.skipIntraHebbian) return;
     if (typeof cluster.intraSynapsesHebbian === "function") {
       await cluster.intraSynapsesHebbian(preVec, postVec, lr);
     } else if (cluster.synapses && typeof cluster.synapses.hebbianUpdate === "function") {
@@ -25763,10 +25737,15 @@ var Curriculum = class _Curriculum {
     const lr = opts.lr ?? cluster.learningRate;
     const allowMicrotask = opts.allowMicrotask !== false;
     const explicitWhitelist = opts.projectionsWhitelist || null;
+    const wlCache = explicitWhitelist ? null : /* @__PURE__ */ new Map();
     const deriveWhitelistFromFact = (fact) => {
       if (explicitWhitelist) return explicitWhitelist;
       if (!fact || !Array.isArray(fact.writes)) return null;
-      const regions = [...new Set(fact.writes.filter((w) => w && typeof w.region === "string").map((w) => w.region))];
+      const regions = [...new Set(fact.writes.filter((w) => w && typeof w.region === "string").map((w) => w.region))].sort();
+      if (regions.length === 0) return null;
+      const key = regions.join("|");
+      const cached = wlCache.get(key);
+      if (cached !== void 0) return cached;
       const wl = [];
       for (let i = 0; i < regions.length; i++) {
         for (let j = 0; j < regions.length; j++) {
@@ -25775,7 +25754,9 @@ var Curriculum = class _Curriculum {
           if (cluster.crossProjections[name]) wl.push(name);
         }
       }
-      return wl.length > 0 ? wl : null;
+      const result = wl.length > 0 ? wl : null;
+      wlCache.set(key, result);
+      return result;
     };
     const YIELD_EVERY = 128;
     for (let rep = 0; rep < reps; rep++) {
@@ -25905,27 +25886,14 @@ var Curriculum = class _Curriculum {
     if (cluster.crossProjections.fineType_to_sem) wl.push("fineType_to_sem");
     return wl;
   }
-  // iter22-D — projection whitelist for sem→motor + sem→word_motor
-  // training. Per-subject word_motor sub-band (iter21-B) keeps cross-
-  // subject word emission isolated. Non-letter projections only —
-  // letter_to_motor / letter_to_phon / visual_to_letter must NOT see
-  // Hebbian decay from QA writes that leave letter region silent.
+  // Projection whitelist for QA-binding. sem→motor + sem→word_motor +
+  // per-subject sem→word_motor_<subj> sub-band. Letter / phon / visual
+  // projections excluded so silent regions during QA writes don't
+  // decay via Oja's `Δw = -η·post²·w`.
   _qaBindingWhitelist(subject) {
     const cluster = this.cluster;
     if (!cluster || !cluster.crossProjections) return null;
-    const subj = (subject || "").toLowerCase();
-    const subjMap = {
-      ela: "word_motor_ela",
-      math: "word_motor_math",
-      mathematics: "word_motor_math",
-      science: "word_motor_sci",
-      sci: "word_motor_sci",
-      social: "word_motor_soc",
-      art: "word_motor_art",
-      life: "word_motor_life",
-      "life-skills": "word_motor_life"
-    };
-    const subjBand = subjMap[subj] || null;
+    const subjBand = wordMotorBandName(subject);
     const wl = ["sem_to_motor"];
     if (cluster.crossProjections.sem_to_word_motor) wl.push("sem_to_word_motor");
     if (subjBand && cluster.crossProjections[`sem_to_${subjBand}`]) wl.push(`sem_to_${subjBand}`);
@@ -25938,78 +25906,81 @@ var Curriculum = class _Curriculum {
   // sem_to_word_motor only knew word→word mappings (autoassociation)
   // and Q→A questions argmaxed to whatever bucket had random-init
   // bias.
-  // iter22-F.3 / F.5 — lazy-populate the word_motor bucket map for
-  // `subject`. Used by both _teachWordEmissionDirect (writer) and
-  // _writeAnswerToWordMotor (QA caller). Same algorithm as
-  // _teachWordEmissionDirect's enumeration so first-caller-wins
-  // produces an identical layout regardless of order. Critical
-  // because cell phase order runs _teachQABinding BEFORE
-  // _teachWordEmissionDirect — without this, QA writes hit a missing
-  // map and the answer's word-bucket never gets activated.
-  _ensureWordBucketMap(subject) {
-    const cluster = this.cluster;
-    if (!cluster) return null;
-    const subj = (subject || "").toLowerCase();
-    const SUBJ_NORM = {
-      ela: "ela",
-      math: "math",
-      mathematics: "math",
-      sci: "sci",
-      science: "sci",
-      soc: "soc",
-      social: "soc",
-      art: "art",
-      life: "life",
-      "life-skills": "life"
-    };
-    const subjKey = SUBJ_NORM[subj] || null;
-    if (!subjKey) return null;
-    const mapKey = `wordBucketMap_${subjKey}`;
-    const wordsKey = `wordBucketWords_${subjKey}`;
-    if (cluster[mapKey] && Array.isArray(cluster[wordsKey]) && cluster[wordsKey].length > 0) {
-      return { map: cluster[mapKey], words: cluster[wordsKey] };
-    }
-    if (!this.dictionary || !this.dictionary._words?.entries) return null;
-    const words = [];
+  // Enumerate dictionary words eligible for word_motor buckets. Single
+  // algorithm consumed by _teachWordEmissionDirect, _ensureWordBucketMap,
+  // and the emit-side fallback in cluster.emitWordDirect. No side
+  // effects — does NOT mutate `entry.subject`. Subject routing comes
+  // from the persistent bucket maps, not from a flag on the entry.
+  _enumerateBucketableWords() {
+    if (!this.dictionary || !this.dictionary._words?.entries) return [];
+    const out = [];
     for (const [w, entry] of this.dictionary._words.entries()) {
       if (typeof w !== "string" || w.length === 0) continue;
       if (!/^[a-z]+$/.test(w)) continue;
       if (!entry || !entry.pattern || !entry.pattern.length) continue;
       if (entry.isPersona) continue;
-      words.push(w);
-      if (!entry.subject) entry.subject = subjKey;
+      out.push(w);
     }
-    if (words.length === 0) return null;
+    return out;
+  }
+  // Install a freshly-built bucket map for `subject` from a caller-
+  // supplied words array (used when _teachWordEmissionDirect receives
+  // opts.words instead of inferring from dictionary).
+  _installBucketMap(subject, words) {
+    const cluster = this.cluster;
+    if (!cluster) return null;
+    const subjKey = normalizeSubject(subject);
+    if (!subjKey || !Array.isArray(words) || words.length === 0) return null;
     const map = /* @__PURE__ */ new Map();
     for (let wi = 0; wi < words.length; wi++) map.set(words[wi], wi);
-    cluster[mapKey] = map;
-    cluster[wordsKey] = words;
+    cluster[`wordBucketMap_${subjKey}`] = map;
+    cluster[`wordBucketWords_${subjKey}`] = words.slice();
     cluster[`wordBucketBandName_${subjKey}`] = `word_motor_${subjKey}`;
-    return { map, words };
+    cluster[`wordBucketDictSize_${subjKey}`] = this.dictionary?._words?.size ?? 0;
+    return { map, words: cluster[`wordBucketWords_${subjKey}`] };
+  }
+  // Ensure the bucket map exists for `subject`. Lazy-populates on first
+  // call, then APPEND-ONLY extends as new dictionary words land via
+  // chat-driven `learnWord`. Existing bucket positions never renumber
+  // — which would invalidate trained sem_to_word_motor weights.
+  _ensureWordBucketMap(subject) {
+    const cluster = this.cluster;
+    if (!cluster) return null;
+    const subjKey = normalizeSubject(subject);
+    if (!subjKey) return null;
+    const mapKey = `wordBucketMap_${subjKey}`;
+    const wordsKey = `wordBucketWords_${subjKey}`;
+    const sizeKey = `wordBucketDictSize_${subjKey}`;
+    const dictSize = this.dictionary?._words?.size ?? 0;
+    if (cluster[mapKey] && Array.isArray(cluster[wordsKey]) && cluster[wordsKey].length > 0 && cluster[sizeKey] === dictSize) {
+      return { map: cluster[mapKey], words: cluster[wordsKey] };
+    }
+    if (cluster[mapKey] && Array.isArray(cluster[wordsKey]) && cluster[wordsKey].length > 0) {
+      const map = cluster[mapKey];
+      const words2 = cluster[wordsKey];
+      const seen = new Set(words2);
+      const fresh = this._enumerateBucketableWords();
+      for (const w of fresh) {
+        if (seen.has(w)) continue;
+        map.set(w, words2.length);
+        words2.push(w);
+      }
+      cluster[sizeKey] = dictSize;
+      return { map, words: words2 };
+    }
+    const words = this._enumerateBucketableWords();
+    if (words.length === 0) return null;
+    return this._installBucketMap(subjKey, words);
   }
   _writeAnswerToWordMotor(answerText, subject) {
     const cluster = this.cluster;
     if (!cluster || !cluster.regions) return;
     if (!answerText || typeof answerText !== "string") return;
-    const tokens = answerText.toLowerCase().split(/[,;\s]+/).filter(Boolean);
-    let answerWord = "";
-    for (const t of tokens) if (t.length > answerWord.length) answerWord = t;
-    if (!answerWord) return;
-    this._ensureWordBucketMap(subject);
-    const SUBJ_NORM = {
-      ela: "ela",
-      math: "math",
-      mathematics: "math",
-      sci: "sci",
-      science: "sci",
-      soc: "soc",
-      social: "soc",
-      art: "art",
-      life: "life",
-      "life-skills": "life"
-    };
-    const subjKey = SUBJ_NORM[(subject || "").toLowerCase()] || null;
-    const writeBucketIntoBand = (bucketIdx, regionName, totalBuckets) => {
+    const tokens = answerText.toLowerCase().split(/[,;\s]+/).filter((t) => /^[a-z]+$/.test(t));
+    if (tokens.length === 0) return;
+    const subjKey = normalizeSubject(subject);
+    if (subjKey) this._ensureWordBucketMap(subjKey);
+    const writeBucketIntoBand = (bucketIdx, regionName, totalBuckets, value = 1) => {
       const region = cluster.regions[regionName];
       if (!region || bucketIdx == null || bucketIdx < 0) return;
       const regionSize = region.end - region.start;
@@ -26017,25 +25988,29 @@ var Curriculum = class _Curriculum {
       const perBucket = Math.max(1, Math.floor(regionSize / buckets));
       const start = region.start + bucketIdx * perBucket;
       const end = Math.min(region.end, start + perBucket);
-      for (let i = start; i < end; i++) cluster.lastSpikes[i] = 1;
+      for (let i = start; i < end; i++) cluster.lastSpikes[i] = value;
     };
     if (subjKey) {
       const subjMap = cluster[`wordBucketMap_${subjKey}`];
       const subjWords = cluster[`wordBucketWords_${subjKey}`];
       const subjBand = `word_motor_${subjKey}`;
       if (subjMap && typeof subjMap.get === "function" && Array.isArray(subjWords) && cluster.regions[subjBand]) {
-        const idx = subjMap.get(answerWord);
-        if (typeof idx === "number" && idx >= 0) {
-          writeBucketIntoBand(idx, subjBand, subjWords.length);
+        for (const tok of tokens) {
+          const idx = subjMap.get(tok);
+          if (typeof idx === "number" && idx >= 0) {
+            writeBucketIntoBand(idx, subjBand, subjWords.length);
+          }
         }
       }
     }
     const fullMap = cluster.wordBucketMap;
     const fullWords = cluster.wordBucketWords;
     if (fullMap && typeof fullMap.get === "function" && Array.isArray(fullWords)) {
-      const idx = fullMap.get(answerWord);
-      if (typeof idx === "number" && idx >= 0) {
-        writeBucketIntoBand(idx, "word_motor", fullWords.length);
+      for (const tok of tokens) {
+        const idx = fullMap.get(tok);
+        if (typeof idx === "number" && idx >= 0) {
+          writeBucketIntoBand(idx, "word_motor", fullWords.length);
+        }
       }
     }
   }
@@ -26108,7 +26083,7 @@ var Curriculum = class _Curriculum {
           }
           await this._teachHebbian(lr, {
             projectionsWhitelist: this._qaBindingWhitelist(opts.subject),
-            skipIntraHebbian: true
+            skipIntraSynapses: true
           });
           try {
             await this._teachLateralInhibition(lr);
@@ -26133,7 +26108,7 @@ var Curriculum = class _Curriculum {
               this._writeAnswerToWordMotor(answerText, opts.subject);
               await this._teachHebbian(lr, {
                 projectionsWhitelist: this._qaBindingWhitelist(opts.subject),
-                skipIntraHebbian: true
+                skipIntraSynapses: true
               });
               altTrained++;
             }
@@ -26160,7 +26135,7 @@ var Curriculum = class _Curriculum {
                   this._writeTiledPattern(motorRegion, wrongMotorPattern, false);
                   await this._teachAntiHebbian(lr * antiLrScale, {
                     projectionsWhitelist: this._qaBindingWhitelist(opts.subject),
-                    skipIntraAntiHebbian: true
+                    skipIntraSynapses: true
                   });
                   antiFires++;
                 } catch {
@@ -26657,7 +26632,7 @@ var Curriculum = class _Curriculum {
           }
           await this._teachHebbian(lr, {
             projectionsWhitelist: this._associationPairsWhitelist(opts.subject),
-            skipIntraHebbian: false
+            skipIntraSynapses: false
             // intra-cluster recurrent still benefits
           });
           try {
@@ -28239,6 +28214,10 @@ var Curriculum = class _Curriculum {
     if (this._wordIntScratch.postAF.length !== motorSize) this._wordIntScratch.postAF = new Float64Array(motorSize);
     if (this._wordIntScratch.motorFirstLetterBuf.length !== motorSize) this._wordIntScratch.motorFirstLetterBuf = new Float64Array(motorSize);
     const wScratch = this._wordIntScratch;
+    const layer12Whitelist = ["letter_to_phon", "phon_to_letter", "letter_to_motor", "motor_to_letter"];
+    if (phonRegion && cluster.crossProjections?.phon_to_motor) layer12Whitelist.push("phon_to_motor");
+    if (phonRegion && cluster.crossProjections?.motor_to_phon) layer12Whitelist.push("motor_to_phon");
+    const layer12Opts = { projectionsWhitelist: layer12Whitelist };
     const buildPattern = (regionSize, feat, target) => {
       target.fill(0);
       const gSize = Math.max(1, Math.floor(regionSize / feat.length));
@@ -28282,12 +28261,7 @@ var Curriculum = class _Curriculum {
         for (let j = 0; j < motorSize; j++) {
           cluster.lastSpikes[motorRegion.start + j] = motorPat[j] > 0 ? 1 : 0;
         }
-        const layer12Whitelist = ["letter_to_phon", "phon_to_letter", "letter_to_motor", "motor_to_letter"];
-        if (phonRegion) {
-          if (cluster.crossProjections?.phon_to_motor) layer12Whitelist.push("phon_to_motor");
-          if (cluster.crossProjections?.motor_to_phon) layer12Whitelist.push("motor_to_phon");
-        }
-        await cluster._crossRegionHebbian(lr, { projectionsWhitelist: layer12Whitelist });
+        await cluster._crossRegionHebbian(lr, layer12Opts);
       }
       const semToMotor = cluster.crossProjections?.sem_to_motor;
       if (semRegion && wordEmb && wordEmb.length > 0 && semToMotor) {
@@ -38719,7 +38693,7 @@ var Curriculum = class _Curriculum {
     if (!cluster) return null;
     const hist = cluster.probeHistory || {};
     const perSubject = {};
-    for (const s of SUBJECTS) {
+    for (const s of SUBJECTS2) {
       perSubject[s] = { strong: 0, wobbly: 0, degrading: 0, untested: 0 };
     }
     const overall = { strong: 0, wobbly: 0, degrading: 0, untested: 0, totalCells: 0 };
@@ -38766,7 +38740,7 @@ var Curriculum = class _Curriculum {
       social: "social studies",
       art: "art"
     };
-    const ranked = SUBJECTS.map((s) => ({
+    const ranked = SUBJECTS2.map((s) => ({
       subject: s,
       grade: grades[s] || "pre-K",
       idx: GRADE_ORDER.indexOf(grades[s] || "pre-K")
@@ -38840,7 +38814,7 @@ var Curriculum = class _Curriculum {
     let failCount = 0;
     const perSubject = { ela: { p: 0, f: 0 }, math: { p: 0, f: 0 }, science: { p: 0, f: 0 }, social: { p: 0, f: 0 }, art: { p: 0, f: 0 } };
     try {
-      for (const subject of SUBJECTS) {
+      for (const subject of SUBJECTS2) {
         for (const grade of GRADE_ORDER) {
           if (grade === "pre-K") continue;
           const runner = this._cellRunner(subject, grade);
@@ -38962,7 +38936,7 @@ var Curriculum = class _Curriculum {
     } catch (err) {
       console.warn("[Curriculum] Embedding status check failed:", err?.message || err);
     }
-    this._hb(`[Curriculum] runCompleteCurriculum: GPU ready \u2014 walking all ${SUBJECTS.length} subjects pre-K onward (cap via DREAM_MAX_GRADE; default 'kindergarten' per Pre-K + K ONLY LAW)`);
+    this._hb(`[Curriculum] runCompleteCurriculum: GPU ready \u2014 walking all ${SUBJECTS2.length} subjects pre-K onward (cap via DREAM_MAX_GRADE; default 'kindergarten' per Pre-K + K ONLY LAW)`);
     const savedLR = this.cluster.learningRate;
     const savedNoise = this.cluster.noiseAmplitude;
     this.cluster.learningRate = 0.01;
@@ -39007,7 +38981,7 @@ var Curriculum = class _Curriculum {
     if (gradeOrGrades && typeof gradeOrGrades === "object") {
       let minCap = Infinity;
       let anyStarted = false;
-      for (const s of SUBJECTS) {
+      for (const s of SUBJECTS2) {
         const g = gradeOrGrades[s] || "pre-K";
         if (g === "pre-K") continue;
         const c = _Curriculum._singleGradeCap(g);

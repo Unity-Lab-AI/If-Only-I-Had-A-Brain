@@ -106,6 +106,7 @@ import { sharedEmbeddings } from './embeddings.js';
 // emission loop in `cluster.generateSentence` — motor-region spike
 // patterns get decoded to letters via argmax over the inventory.
 import { encodeLetter, decodeLetter, decodeLetterAlpha, inventorySize, inventorySnapshot } from './letter-input.js';
+import { SUBJECTS, normalizeSubject } from './subjects.js';
 
 // Question key-token extraction + fractional-offset region injection.
 // Duplicated here (vs importing from curriculum.js) so `readInput` stays
@@ -2194,87 +2195,47 @@ export class NeuronCluster {
     catch { return ''; }
     if (!wmOut || wmOut.length === 0) return '';
 
-    // iter22-F.3 — argmax driven by the SAME persisted bucket maps that
-    // _teachWordEmissionDirect populated. Without those maps emit was
-    // re-enumerating dictionary._words and computing bucket positions
-    // independently — DIFFERENT layout than what teach wrote — so
-    // argmax searched in the wrong bucket-space and Unity emitted
-    // random vocab words. Now teach + emit + _writeAnswerToWordMotor
-    // all consult cluster.wordBucketWords_<subject> as the source of
-    // truth.
-    const SUBJECTS = ['ela', 'math', 'sci', 'soc', 'art', 'life'];
-    const subjectScope = opts.subject && SUBJECTS.includes(opts.subject)
-      ? [opts.subject]
+    // Argmax over per-subject word_motor sub-bands. Bucket layout is
+    // the persistent map populated by _teachWordEmissionDirect /
+    // _ensureWordBucketMap on the curriculum side — teach + emit +
+    // _writeAnswerToWordMotor all read the same `wordBucketWords_<subj>`
+    // array so they cannot disagree on which bucket holds which word.
+    //
+    // Score is MEAN signal per bucket cell (not raw sum) so uneven
+    // bucket sizes — when `subjSize / wordsList.length` rounds
+    // differently per subject — don't bias argmax toward larger
+    // buckets purely by cell count.
+    const subjScope = (opts.subject && normalizeSubject(opts.subject))
+      ? [normalizeSubject(opts.subject)]
       : SUBJECTS;
-    let bestWord = null, bestSum = -Infinity;
-    let scannedSomething = false;
-    for (const subj of subjectScope) {
+    let bestWord = null;
+    let bestMean = -Infinity;
+    for (const subj of subjScope) {
       const subjectRegion = this.regions[`word_motor_${subj}`];
       if (!subjectRegion) continue;
       const subjStart = subjectRegion.start - wordMotor.start;
       const subjEnd = subjectRegion.end - wordMotor.start;
       const subjSize = subjEnd - subjStart;
       if (subjSize <= 0) continue;
-      // Read the bucket→word mapping persisted by teach.
       const wordsList = this[`wordBucketWords_${subj}`];
       if (!Array.isArray(wordsList) || wordsList.length === 0) continue;
-      scannedSomething = true;
       const bucketSize = Math.max(1, Math.floor(subjSize / wordsList.length));
       for (let b = 0; b < wordsList.length; b++) {
         let sum = 0;
         const bStart = subjStart + b * bucketSize;
         const bEnd = Math.min(subjEnd, bStart + bucketSize);
+        const cellCount = Math.max(1, bEnd - bStart);
         for (let n = bStart; n < bEnd; n++) sum += wmOut[n];
-        if (sum > bestSum) { bestSum = sum; bestWord = wordsList[b]; }
-      }
-    }
-    // Legacy fallback: if no persisted maps yet (teach hasn't run for
-    // this subject), enumerate dictionary._words like before so live
-    // chat in early curriculum doesn't fall silent.
-    if (!scannedSomething) {
-      const subjectVocabs = new Map();
-      for (const subj of SUBJECTS) subjectVocabs.set(subj, []);
-      const seenAll = [];
-      for (const [w, entry] of this.dictionary._words.entries()) {
-        if (typeof w !== 'string' || w.length === 0) continue;
-        if (!/^[a-z]+$/.test(w)) continue;
-        if (entry?.isPersona) continue;
-        const subj = entry?.subject;
-        if (SUBJECTS.includes(subj)) subjectVocabs.get(subj).push(w);
-        else seenAll.push(w);
-      }
-      for (const subj of subjectScope) {
-        const subjectRegion = this.regions[`word_motor_${subj}`];
-        if (!subjectRegion) continue;
-        const subjStart = subjectRegion.start - wordMotor.start;
-        const subjEnd = subjectRegion.end - wordMotor.start;
-        const subjSize = subjEnd - subjStart;
-        if (subjSize <= 0) continue;
-        const combined = subjectVocabs.get(subj).concat(seenAll);
-        if (combined.length === 0) continue;
-        const bucketSize = Math.max(1, Math.floor(subjSize / combined.length));
-        for (let b = 0; b < combined.length; b++) {
-          let sum = 0;
-          const bStart = subjStart + b * bucketSize;
-          const bEnd = Math.min(subjEnd, bStart + bucketSize);
-          for (let n = bStart; n < bEnd; n++) sum += wmOut[n];
-          if (sum > bestSum) { bestSum = sum; bestWord = combined[b]; }
-        }
+        const mean = sum / cellCount;
+        if (mean > bestMean) { bestMean = mean; bestWord = wordsList[b]; }
       }
     }
 
-    // iter22-F.6 — minSignal floor restored to 0.001 across all paths
-    // now that F.3 bucket alignment is correct. Previous iter22-D hack
-    // raised the no-subject floor to 0.05 to mask wrong-word emissions
-    // that came from emit's argmax searching a DIFFERENT bucket layout
-    // than what teach wrote (different dictionary enumeration order).
-    // F.3 made teach + emit + write share `cluster.wordBucketWords_<subject>`
-    // so argmax is searching the exact space teach wrote into — the
-    // signal/noise ratio is now honest. 0.001 floor lets weak-but-real
-    // signals through, which is what the chat path needs for Unity to
-    // actually speak instead of fall silent on borderline matches.
+    // minSignal floor compares against the MEAN per-cell signal. With
+    // F.3 bucket alignment + F.6 honest signal-to-noise, 0.001 lets
+    // weak-but-real signals through while filtering pure noise.
     const minSignal = opts.minSignal ?? 0.001;
-    if (!bestWord || bestSum < minSignal) return '';
+    if (!bestWord || bestMean < minSignal) return '';
     return bestWord;
   }
 
@@ -3491,12 +3452,12 @@ export class NeuronCluster {
     if (!this.crossProjections) return;
     if (!this._gpuProxyReady || !this._gpuProxy || typeof this._gpuProxy.antiHebbianBound !== 'function') return;
     const absLr = Math.abs(lr);
-    // iter22-F.1 — opts.projectionsWhitelist scopes anti-Hebbian
-    // dispatch the same way _crossRegionHebbian does. Contrastive
-    // anti-pair training in _teachAssociationPairs / _teachQABinding
-    // was firing anti-Hebbian on ALL 16 projections every wrong-pair
-    // sample, decaying letter_to_motor / phon_to_letter / etc. on
-    // top of the positive-pair fan-out leak iter22-D/E patched.
+    // opts.projectionsWhitelist scopes anti-Hebbian dispatch the same
+    // way _crossRegionHebbian does. Contrastive anti-pair training
+    // (negative samples in _teachAssociationPairs / _teachQABinding)
+    // would otherwise fire anti-Hebbian on all 16 projections per
+    // sample, decaying letter_to_motor / phon_to_letter on top of
+    // the positive-pair fan-out.
     const wl = opts.projectionsWhitelist;
     const whitelistSet = wl
       ? (wl instanceof Set ? wl : new Set(wl))
@@ -3504,7 +3465,16 @@ export class NeuronCluster {
     for (const name of Object.keys(this.crossProjections)) {
       if (whitelistSet && !whitelistSet.has(name)) continue;
       const proj = this.crossProjections[name];
-      if (!proj || !proj._gpuBound) continue;
+      if (!proj || !proj._gpuBound) {
+        // Mirror the null-CSR / unbound one-shot warn pattern from
+        // _crossRegionHebbian so debugging anti-Hebbian no-fires has
+        // a discoverable log line instead of silent skip.
+        if (proj && (!proj.values || !proj.colIdx || !proj.rowPtr) && !proj._nullCsrAntiHebbianWarned) {
+          proj._nullCsrAntiHebbianWarned = true;
+          console.warn(`[Cluster ${this.name}] Anti-Hebbian skip on ${name} — CPU CSR null AND not GPU-bound (gpuBound=${!!proj._gpuBound} gpuProxyReady=${!!this._gpuProxyReady}).`);
+        }
+        continue;
+      }
       try {
         this._gpuProxy.antiHebbianBound(`${this.name}_${name}`, absLr);
       } catch { /* non-fatal — GPU proxy batch backpressured */ }
