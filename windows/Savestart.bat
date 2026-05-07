@@ -1,4 +1,8 @@
 @echo off
+REM Launcher lives in windows\ — cd up one level so the rest of the script
+REM resolves paths from the project root (corpora\, server\, js\, etc.)
+REM exactly the way it did when this file used to live in the root.
+cd /d "%~dp0.."
 title Unity Brain Server (SAVE-STATE RESUME)
 echo.
 echo   ==============================
@@ -10,6 +14,26 @@ echo   [Savestart] preserving brain state unconditionally.
 echo   [Savestart] boot will hydrate from server\brain-weights*.json
 echo   [Savestart] + conversations.json + episodic-memory.db.
 echo.
+
+REM Optional env flags — see start.bat header for full list.
+REM DREAM_DEFINITION_CACHE_FILE=path.json especially relevant for Savestart
+REM (persistent dictionary cache survives restart → no ~1 min re-warm).
+
+REM Node 18+ required (built-in globalThis.fetch for dictionary API).
+for /f "tokens=*" %%v in ('node -v 2^>nul') do set NODE_RAW=%%v
+if "%NODE_RAW%"=="" (
+    echo   WARNING: node not found in PATH. Install Node ^>=18 from https://nodejs.org
+    pause
+    exit /b 1
+)
+set NODE_RAW=%NODE_RAW:v=%
+for /f "tokens=1 delims=." %%m in ("%NODE_RAW%") do set NODE_MAJOR=%%m
+if %NODE_MAJOR% LSS 18 (
+    echo   WARNING: Node v%NODE_RAW% detected. Dictionary API requires Node ^>=18.
+    echo   Brain still boots; definitions degrade to no-op.
+    echo.
+)
+
 
 REM FORCE preserve-state. Overrides autoClearStaleState() regardless of
 REM code-hash change since last run. DREAM_FORCE_CLEAR is explicitly
@@ -37,7 +61,7 @@ for /f "tokens=5" %%a in ('netstat -ano ^| findstr :7525 ^| findstr LISTENING') 
 echo.
 
 echo [Savestart] step 2/7: entering server folder...
-cd /d "%~dp0server"
+cd /d "%~dp0..\server"
 echo.
 
 echo [Savestart] step 3/7: checking npm dependencies...
@@ -64,11 +88,11 @@ REM corpora folder was wiped since the save was produced, we STILL need to
 REM download GloVe so the semantic substrate matches what the saved weights
 REM learned against. Falling back to subword on a GloVe-trained save would
 REM corrupt semantic probes. Download if missing (same logic as start.bat).
-if exist "%~dp0corpora\glove.6B.300d.txt" goto glove_done
+if exist "%~dp0..\corpora\glove.6B.300d.txt" goto glove_done
 echo   GloVe 6B.300d not found - downloading (~823 MB zip, one-time, 5-15 min)...
 echo   Source: https://nlp.stanford.edu/data/glove.6B.zip
-if not exist "%~dp0corpora" mkdir "%~dp0corpora"
-pushd "%~dp0corpora"
+if not exist "%~dp0..\corpora" mkdir "%~dp0..\corpora"
+pushd "%~dp0..\corpora"
 curl -L --fail --show-error --progress-bar --max-time 1800 -o glove.6B.zip https://nlp.stanford.edu/data/glove.6B.zip
 if %ERRORLEVEL% NEQ 0 (
     popd
@@ -105,11 +129,11 @@ REM console OutputEncoding to UTF-8 AND pass -Encoding UTF8 to
 REM Get-Content so the bytes are both decoded AND rendered as UTF-8
 REM end-to-end.
 echo [Savestart] step 7/7: launching brain server + log tail (SAVE-STATE RESUME, DREAM_KEEP_STATE=1)...
-echo   server log: %~dp0server\server.log
+echo   server log: %~dp0..\server\server.log
 if exist server.log del server.log
 start /b "" cmd /c "node --max-old-space-size=65536 --max-semi-space-size=1024 --expose-gc brain-server.js > server.log 2>&1"
 ping -n 2 127.0.0.1 >nul
-start "Unity Brain Log Tail" powershell -NoExit -Command "[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; $OutputEncoding = [System.Text.Encoding]::UTF8; Get-Content -Path '%~dp0server\server.log' -Wait -Tail 200 -Encoding UTF8"
+start "Unity Brain Log Tail" powershell -NoExit -Command "[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; $OutputEncoding = [System.Text.Encoding]::UTF8; Get-Content -Path '%~dp0..\server\server.log' -Wait -Tail 200 -Encoding UTF8"
 ping -n 2 127.0.0.1 >nul
 start "" http://localhost:7525
 REM Dashboard auto-opens alongside the landing page so the milestone panel
@@ -123,7 +147,7 @@ echo   Landing:     http://localhost:7525
 echo   Dashboard:   http://localhost:7525/dashboard.html (auto-opened)
 echo   GPU compute: http://localhost:7525/compute.html (auto-launched by server)
 echo   Log tail:    separate PowerShell window "Unity Brain Log Tail"
-echo   Log file:    %~dp0server\server.log (always on disk)
+echo   Log file:    %~dp0..\server\server.log (always on disk)
 echo.
 echo   NOTE: brain runs ONLY on GPU. compute.html MUST stay open.
 echo   To STOP the brain cleanly: run stop.bat (Ctrl+C in this launcher

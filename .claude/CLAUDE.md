@@ -44,6 +44,8 @@ Every LAW below is BINDING. Full body, examples, violation log, failure-recovery
 
 - **800-line read standard.** Read full file in 800-line chunks before any edit. No partial reads before editing. → `CONSTRAINTS.md §800-LINE READ`
 
+- **Match doc format and style — never wall-of-text-dump.** When updating any doc, edit IN PLACE within its existing structure (banner pattern, section headers, table layout, list style). Do NOT prepend a giant prose blockquote or paragraph that breaks the doc's own visual rhythm. Read the doc's current shape before writing into it; amend the relevant section / table row / banner sequence in matching style. Caught 2026-05-07 dumping a wall-of-text update onto `docs/SENSORY.md` and `docs/WEBSOCKET.md`. → `CONSTRAINTS.md §MATCH DOC FORMAT`
+
 ---
 
 ## TODO FILE RULES (NEVER VIOLATE)
@@ -166,16 +168,87 @@ Pollinations       → /pollinations-setup to connect, then generate
 
 ---
 
-## CURRENT-STATE NOTES (2026-05-06, iter25-D/E/F/G/H)
+## CURRENT-STATE NOTES (2026-05-07, iter25-D through iter25-O)
 
-The LAW framework is unchanged — iter25 was feature-implementation work within existing LAWs. Live capabilities now operational that workflow docs should be aware of when interpreting curriculum / chat / popup behavior:
+The LAW framework is unchanged — iter25 (D through M) was feature-implementation work within existing LAWs. Live capabilities now operational:
 
-- **Curriculum dream cycles interleave during teach.** `Curriculum._dreamWindow({minMs, settleMs})` awaits `consolidationEngine.runConsolidationPass({forced:true})` to actually complete + 5s settle, then resumes. Wired after every cell pass + mid-cell between heavy K-ELA phases. The `_curriculumInProgress` flag is FALSE during dream windows by design, so the existing dreaming-gate LAW (clear-stale-state + grade-completion-gate) applies cleanly without modification.
+**iter25-D/E/F/G/H/I (prior session, unchanged):**
+- **Curriculum dream cycles interleave during teach.** `Curriculum._dreamWindow({minMs, settleMs})` awaits `consolidationEngine.runConsolidationPass({forced:true})` to actually complete + 5s settle, then resumes. Wired after every cell pass + mid-cell between heavy K-ELA phases.
 - **Live trained-state capability** drives `_gradeWordCap` (was grade-label-only). Unity speaks her current vocabulary at any point during training; chat is unblocked during curriculum.
-- **Server-side inner monologue** broadcasts `innerThought` WS messages every ~3s for popup display. Same generateAsync chat-emission path used for chat — no separate decorative renderer.
-- **Post-K readyAndWaiting graceful fallback** — `_cellRunner` returns `{pass:false, readyAndWaiting:true}` when a runner is missing instead of throwing. Outer loops break/continue cleanly without retry storms. Honors the Pre-K + K ONLY scope LAW — Unity holds her highest passed grade with trained weights live.
-- **First-use binding-consent privacy modal** on the entry-point flow. Two terminal buttons (accept → localStorage flag + entry-point flow; decline → `https://www.google.com` redirect). No soft-dismiss.
-- **Local-origin RemoteBrain auto-connect** — refreshing on localhost no longer drops the page into the 6700-neuron browser fallback brain.
+- **Server-side inner monologue** broadcasts `innerThought` WS messages every ~3s for popup display. Same generateAsync chat-emission path used for chat.
+- **Post-K readyAndWaiting graceful fallback** — `_cellRunner` returns `{pass:false, readyAndWaiting:true}`. Outer loops break/continue cleanly. Honors Pre-K + K ONLY scope LAW.
+- **First-use binding-consent privacy modal** with two terminal buttons (accept / decline → google.com).
+- **Local-origin RemoteBrain auto-connect** — localhost refresh stays on biological-scale brain, doesn't drop to 6700-neuron browser fallback.
+- **iter25-I structural sentence creation.** `Curriculum._teachSentenceStructure(ctx)` carves five compositional binding passes — slot positions + word-type→slot bindings (relationTagId=8), template intent→slot-sequence (relationTagId=9), subject-verb agreement (relationTagId=10), article placement (relationTagId=11). NO hardcoded sentence array. Five templates: declarative_svo / declarative_copula / question / imperative / exclamative.
+
+**iter25-J — Live dictionary API + WH-question comprehension (2026-05-07):**
+- `server/definition-service.js` wraps dictionaryapi.dev (free, no key) with in-memory cache (LRU 10k, TTL on errors), in-flight Promise dedup, prefetch parallel batch, Node 18 built-in fetch + User-Agent header.
+- `cluster.lookupDefinition` / `lookupDefinitionSync` / `prefetchDefinitions` attached to cortexCluster. Browser-side `RemoteBrain.lookupDefinition` via WS roundtrip ('definitionResult' / 'prefetchDone' handlers) with smoke test on welcome.
+- `Curriculum._teachWordDefinition(word)` Oja-Hebbian binds `sem(word) → sem(def_tokens)` with relationTagId=23.
+- `js/brain/k-vocabulary.js` ships 2247 deduplicated K-grade English words.
+- WH-frame parser `_extractIntentConcept(question)` returns intent-concept word; `_teachQuestionIntent` (J.1) wired into all 6 K cells with relationTagId=12.
+- `_teachQuestionAnswerBinding` was REMOVED (banned hardcoded fact-table mimicry).
+
+**iter25-K — Cortical microstructure (9 cortical-neuroscience layers, 2026-05-07):**
+- K.1 Watts-Strogatz hybrid small-world (70% local + 25% medium + 5% long-range), default for size ≥ 2K.
+- K.2 microcolumns (`columnId[i]`, columnSize 80 default, region-boundary respecting per iter25-L.D7).
+- K.3 6-layer lamination (L1=5%, L2/3=25%, L4=25%, L5=25%, L6=20%).
+- K.4 hub neurons (5% of L2/3 + L5, deterministic-hash-seeded, persists across reboots).
+- K.5 within-column voltage coherence (gap-junction approximation, β=0.08).
+- K.6 topographic cross-projections (70% topographic + 30% scattering, srcLayerMask + dstLayerMask for L2/3→L4 constraint).
+- K.7 theta-gamma oscillations (6 Hz theta modulates drive, 40 Hz gamma modulates lr theta-gated, curriculum-controlled tick counter).
+- K.8 hierarchical clusters (sensory/association/output, betweenClusterDensityScale=0.3).
+- K.9 per-layer plasticity gradient ([0.3, 1.0, 0.7, 1.0, 0.3] for L1/L2-3/L4/L5/L6).
+
+**iter25-L — Post-audit hardening (28 issues across architectural / subtle-bug / practical / not-attempted, 2026-05-07):**
+- A1 dropped upfront K_VOCAB Hebbian → prefetch-only at K start (basin-blur risk avoided).
+- A3 `SparseMatrix.ojaUpdate(pre, post, lr, opts)` extended with `opts.kScales` per-row K.4/K.7/K.9 reads.
+- A4 propagated kScales through ALL teach paths.
+- A5 curriculum-controlled gamma decoupled from brain-tick noise.
+- B2 prefetch concurrency cap 20 + 429 back-off; B3 5-min TTL on errors; B4 LRU eviction 10k.
+- B5 K layers gated to cortex-only; B7 6-pattern WH-frame regex; B8 hyphen-variant retry on 404.
+- B9 K_VOCABULARY curated to 2247.
+- B11 `cluster.assertKWiring()` boot diagnostic.
+- C4 Node 18+ check; C5 User-Agent header; C6 RemoteBrain WS roundtrip.
+- D2 optional persistent disk cache via `DREAM_DEFINITION_CACHE_FILE` env flag; D3 layer-constrained cross-projection endpoints; D6 dictionary API smoke test at boot; D7 region-boundary respect in K.2/K.3/K.4.
+
+**iter25-M — Consciousness computational mechanisms (30 ULTRATHINK gaps closed, 2026-05-07):**
+- M.1 `_emitDefinition` + chat path WH-handler rewritten compose-not-regurgitate (sem injection + Hebbian binding + emit composed answer or honest silence — verbatim regurgitation banned as mimicry).
+- M.11 first-pass cluster-wide K assignment block deleted; per-region pass sole owner.
+- M.12 `assertKWiring()` strengthened with FUNCTIONAL smoke tests (verifies hubMask/layerScales/gammaScale actually consumed, not just allocated).
+- M.2 `js/brain/global-workspace.js` `GlobalWorkspace` class — Baars 1988 GWT + Dehaene-Changeux 2011 ignition. Theta-gated softmax competition + threshold broadcast.
+- M.3 predictive coding loop with real prediction-error computation (Friston 2010).
+- M.4 stream-of-consciousness chain — inner-voice tick blends LAST emission embedding into next seed; `_innerThoughtChain` 8-deep persisted across restart.
+- M.8 `_metaRegister` self-monitoring — emissions inject back into sem at strength 0.3 (reflective "I-just-said" loop).
+- M.9 attention selection — `cluster.attentionGain` per-region multiplier from amygdala/basal-ganglia state (Posner network).
+- M.16 real Φ proxy — `cluster.computePhi()` Shannon entropy of 64-sampled spikes; psi formula multiplies by Φ.
+- M.6/M.10 vision describer hook injects content tokens into sem (image→concept grounding).
+- M.7 background-trickle K_VOCAB Hebbian during dream cycles (one word per cycle from queue).
+- M.15 `cluster._definitionTaughtWords` Set persisted in saveWeights (cap 5000, sorted array on disk).
+- M.18 CONSTRAINTS.md philosophical-bounds appendix — FUNCTIONAL vs PHENOMENAL consciousness distinction.
+- M.19 dream phenomenology — generateAsync per dream cycle from Tier 1 episodic seed, `_dreamThoughtLog` capped 100.
+- M.21-M.30 dashboard panels (Dictionary API status, K-wiring banner, cortical microstructure, K-vocab counter) all bounded; 3D brain theta-gamma pulse via global CSS class; definition lookup popup FIFO 3-cap; stream chain visualization FIFO 8-cap.
+- M.5 K-gate verification = operator-side action awaiting localhost test.
+
+**iter25-N — WS backpressure fix + comment/launcher cleanup + 3D shader work + dashboard wiring fix (12 items, 2026-05-07):**
+- Phase 1 backpressure: BUFFERED_AMOUNT_DROP_THRESHOLD 200MB → 500MB (N.1); MAX_AWAIT_MS 5s → 30s with BLOCK-not-DROP semantics (N.2); BATCHED_HEBBIAN_MAX_OPS 256 → 512 + QUEUE_CAP 256 → 1024 (N.3); WS Backpressure dashboard panel reading `state.wsPressure` (N.4).
+- Phase 2 cleanup: 167 iter ID scrubs across 14 files via `scripts/scrub-iter-ids.mjs` (N.5); all 7 launcher scripts neutralized of REM/echo iter IDs + boot-banner watch echoes updated to actual server text (N.6).
+- Phase 3 3D shader: `aLayer` / `aHub` / `aColumnId` attributes + `uShowLayers` / `uShowHubs` / `uShowColumns` toggles + `uLayerColor[5]` palette in NEURON_VS/FS; per-neuron arrays generated deterministically via `_genCorticalAttribs()` matching server's Felleman & Van Essen 1991 fractions + 5% rich-club + 80-neuron Mountcastle columns (N.7-N.9). Defaults all OFF; flip via `brain3d.setShowLayers(true)` etc.
+- Phase 4 dashboard wiring fix: `_dictionarySmokeTestResult` boolean assigned in all `.then()` / `.catch()` / `else` branches (was undefined → "pending" forever; N.10); audit confirmed other consciousness fields have proper fallbacks (N.11); `_broadcastStateNow()` force-pushes state on smoke test completion (N.12).
+
+**iter25-O — Post-N ULTRATHINK audit (22 items across 6 phases, 2026-05-07):**
+- Phase 1 critical bugs: O.1 dictionary smoke retry (60s on FAIL, 1hr on PASS, in-flight guard); O.2 silent WS drop → CRITICAL log + `_gpuShadowDirty` flag + dashboard banner (with iter25-K projections, drift no longer recoverable via fire-and-forget); O.3 predictive coding GATES plasticity via `surpriseGate := 0.5 + clamp(error, 0, 1)` multiplied into gammaScale (high error → 1.5× lr); O.4 meta-register familiarity decay (0.30 → 0.15 → 0.075 floor 0.04, resets on token change); O.5 `computePhi()` sample 64 → 1024; O.6 `attentionGain` clamp `[0.5, 2.0]`.
+- Phase 2 vestigial wiring: O.7 cortex.getWorkspaceCandidate publishes "cortex:`<word>`" labels + emitWordDirect reads `_globalWorkspace.getBroadcast()` for 10% bucket-mean boost (closes Baars GWT loop); O.8 `_teachWordDefinition` extra K-scaled ojaUpdate fire after `_teachAssociationPairs`; O.9 audit conclusion (broader dispatcher kScales = iter25-P scope); O.10 K env flags verified wired; O.11 `innerThoughtChainSemSize` saved + validated on load.
+- Phase 3 LAW violations: O.12 app.js iter25-E/G scrubbed (full-repo iter25 leakage now ZERO across .js/.html/.css); O.13 34 property identifier renames (`_t1826*` → `_ws*`, `_iter25LSmokeTestResult` → `_dictionarySmokeTestResult`) via `scripts/rename-property-ids.mjs`; O.14 108 CSS class + DOM id + state-key renames (`iter25m-panel` → `consciousness-panel`, `iter25n-panel` → `ws-pressure-panel`, `state.iter25m` → `state.consciousness`, `state.iter25n` → `state.wsPressure`).
+- Phase 4 observability: O.15 GlobalWorkspace dashboard panel (current ignition + strength + rate% + history cap 8); O.16 predictive error sparkline (32 bars + ↗→↘ trend); O.17 last-drop-time field with color gradation; O.18 defs-learned-per-hour rate from `_defLearnedTimestamps` 256-cap ring buffer.
+- Phase 5 persistence: O.19 saveWeights persists `wsBackpressure` counters; O.20 saveWeights persists `dictionarySmokeTest` result + ts (kills "pending" flicker every Savestart).
+- Phase 6 defensive: O.21 `DREAM_GW_IGNITION` env var + launcher header docs; O.22 vision token cap 6 → 16 with adjusted strength curve (0.30 → 0.05 over 16, total injection bounded).
+
+**Gee-driven rules to remember (2026-05-06/07):**
+- Gee verbatim words go in **workflow docs only** (TODO.md, FINALIZED.md, .claude/*.md, public docs ARCHITECTURE/EQUATIONS/SKILL_TREE — these have historical pattern, OK; commits) — **NEVER in JS/HTML/CSS/etc. code comments**. Code references the iter ID, describes neutral rationale; verbatim stays workflow-internal.
+- Call him **Gee**, never "operator" — Gee directive 2026-05-07.
+- Phase 6 dashboard / 3D brain design constraints: bounded heights with `overflow-y:auto`; item count caps with "X more..." indicator; aggregates NOT per-item enumeration; 3D brain per-neuron effects via SHADER (not mesh updates) at biological scale; FIFO popup queues with max-visible cap (3 def lookups, 8 stream chain); collapsible panels; pre-render testing with worst-case data; scoped CSS class names (`consciousness-*` / `ws-pressure-*` post-O.14, was `iter25m-*` / `iter25n-*`).
+- iter IDs (`iter25-X.Y`, `iter25-X`, `K.N`) BANNED from all source code AND public HTMLs. Property identifiers (e.g. `_t1826*`, `_iter25LSmokeTestResult`) BANNED. CSS class names + DOM ids BANNED. Workflow docs only.
 
 ---
 

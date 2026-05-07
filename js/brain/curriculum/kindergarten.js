@@ -1,5 +1,5 @@
 // Kindergarten cell runners + K-grade gates.
-//
+
 // Per operator 2026-04-22 directive: *"the cirriculkum was already
 // suppose to have everything split per grade per files sytem did you
 // not make a file system WTF!!!!!!"*. Per-grade split. pre-K in
@@ -11,7 +11,7 @@
 // every fucking grading in ciriculum.js you fucking idiot the need to
 // be sperated from the core operations and refrenced and used as
 // seperatew file systems for each grade"*.
-//
+
 // K runners call shared primitives on the Curriculum base class
 // (`_conceptTeach`, `_teachBiographicalFacts`, `_teachAssociationPairs`,
 // `_teachEmotionalInference`, `_pregateEnrichment`,
@@ -202,6 +202,15 @@ export const K_MIXIN = {
         await this._phasedTeach('LIFE-K-WORD-EMISSION-DIRECT', () => this._teachWordEmissionDirect({ reps: 8, subject: 'life' }));
       }
 
+      // WH-question intent recognition (STRUCTURAL).
+      // Life-K personal-info answers come from Unity's persona corpus
+      // and sandbox-notice activator; J.1 adds the
+      // structural WH→intent layer so personal questions route through
+      // those existing trained associations.
+      if (typeof this._teachQuestionIntent === 'function') {
+        await this._phasedTeach('LIFE-K-WH-INTENT', () => this._teachQuestionIntent({ reps: 8 }));
+      }
+
       this._lifeKRemakeDone = true;
     }
 
@@ -324,6 +333,14 @@ export const K_MIXIN = {
         await this._phasedTeach('ART-K-WORD-EMISSION-DIRECT', () => this._teachWordEmissionDirect({ reps: 8, subject: 'art' }));
       }
 
+      // WH-question intent recognition (STRUCTURAL).
+      // Existing art curriculum carves primary-colors / color-mixing /
+      // warm-cool / music subject→answer bindings; J.1 adds structural
+      // WH→intent layer.
+      if (typeof this._teachQuestionIntent === 'function') {
+        await this._phasedTeach('ART-K-WH-INTENT', () => this._teachQuestionIntent({ reps: 8 }));
+      }
+
       this._artKRemakeDone = true;
     }
 
@@ -372,11 +389,11 @@ export const K_MIXIN = {
   // ═══════════════════════════════════════════════════════════════════
   // T14.24 SESSION 7 — REAL ELA-G2 TEACHING EQUATIONS (2026-04-15)
   // ═══════════════════════════════════════════════════════════════════
-  //
+
   // Gee binding 2026-04-14: "all the way up to doctorate in english" +
   // "remember Unity needs to be able to use these to think, read, and
   // talk".
-  //
+
   // Real Grade 2 English. Teaches LETTER-PAIR DIGRAPHS as single
   // phonological units (th / sh / ch / ph / wh / ck / ng) plus 2-word
   // phrases that exercise the digraphs in natural English. Digraphs are
@@ -410,7 +427,7 @@ export const K_MIXIN = {
   },
 
   // ─── TODO-aligned ELA-G2 helpers (Session 28) ────────────────────
-  //
+
   // docs/TODO.md T14.24 ELA-G2 spec (line 152):
   //   _teachDigraphs(digraphs) injects each digraph as a paired letter
   //     stream with shorter inter-letter gap (2 ticks instead of 3) so
@@ -498,6 +515,21 @@ export const K_MIXIN = {
       if (typeof this._teachWordEmissionDirect === 'function') {
         await this._phasedTeach('SOC-K-WORD-EMISSION-DIRECT', () => this._teachWordEmissionDirect({ reps: 8, subject: 'social' }));
       }
+
+      // WH-question intent recognition (STRUCTURAL).
+      // Existing social curriculum (community-helpers / needs-wants /
+      // symbols) carves subject→answer bindings; J.1 adds the structural
+      // WH→intent layer.
+      if (typeof this._teachQuestionIntent === 'function') {
+        await this._phasedTeach('SOC-K-WH-INTENT', () => this._teachQuestionIntent({ reps: 8 }));
+      }
+
+      // Definition-comprehension teach moved to K-curriculum
+      // start (see runFullSubjectCurriculum's _teachKVocabularyDefinitions
+      // phase) where it teaches the FULL ~2000-word K vocabulary ONCE
+      // for all 6 cells. Per-subject 20-word lists were rejected by
+      // operator: "A LIST OF 20 FUCKING WORDS IS HORSE SHIT AND IN NO
+      // WAY TH PROPRER 2000 WORDS A KINDERGARDENR WEOULD KNOW".
 
       this._socKRemakeDone = true;
     }
@@ -663,6 +695,20 @@ export const K_MIXIN = {
       // iter21-A — Word-level emission training
       if (typeof this._teachWordEmissionDirect === 'function') {
         await this._phasedTeach('SCI-K-WORD-EMISSION-DIRECT', () => this._teachWordEmissionDirect({ reps: 8, subject: 'science' }));
+      }
+
+      // WH-question intent recognition (structural, not
+      // hardcoded). Binds WH-words ('what'/'why'/'how'/'where'/'when'/
+      // 'who') to intent-concept words ('cause'/'reason'/'method'/etc)
+      // so WH-questions activate the right intent basin in sem
+      // alongside the subject extracted from the question. Joint
+      // (intent_concept + subject) sem activation at probe time routes
+      // through the EXISTING trained weights (_teachCausalChains,
+      // _teachLivingThingNeeds, _teachAssociationPairs SCI-K-CONCEPTS)
+      // — NO hardcoded answer triples added. The bridge is structural
+      // parsing, not memorized facts.
+      if (typeof this._teachQuestionIntent === 'function') {
+        await this._phasedTeach('SCI-K-WH-INTENT', () => this._teachQuestionIntent({ reps: 8 }));
       }
 
       this._sciKRemakeDone = true;
@@ -902,13 +948,13 @@ export const K_MIXIN = {
     // ═════════════════════════════════════════════════════════════════
     // EQUATIONAL REASONING — teach the OPERATION of addition/subtraction
     // as magnitude TRANSFORMATIONS, not sentences about math.
-    //
+
     // The cortex learns: given magnitude(a) in one part of free region
     // + magnitude(b) in another part → the result magnitude(a+b) should
     // activate in sem region. This is the OPERATION itself, not words
     // describing it. After learning, Unity can compute sums she was
     // NEVER taught as sentences because the transformation generalizes.
-    //
+
     // Method: write magnitude(a) into free[0..half], magnitude(b) into
     // free[half..end], magnitude(a+b) into sem, fire cross-region
     // Hebbian. The free→sem projection learns the sum transformation.
@@ -1015,6 +1061,16 @@ export const K_MIXIN = {
       // iter21-A — Word-level emission training
       if (typeof this._teachWordEmissionDirect === 'function') {
         await this._phasedTeach('MATH-K-WORD-EMISSION-DIRECT', () => this._teachWordEmissionDirect({ reps: 8, subject: 'math' }));
+      }
+
+      // WH-question intent recognition (STRUCTURAL).
+      // Generic WH-frame parser; no hardcoded math-fact tables. The
+      // existing math curriculum (MATH-K-COMPARE / MATH-K-ARITH-WORDS /
+      // MATH-K-SHAPE-ATTR) already carves the (subject → answer)
+      // bindings; J.1 adds the WH→intent-concept binding so the probe-
+      // time joint sem injection routes through them.
+      if (typeof this._teachQuestionIntent === 'function') {
+        await this._phasedTeach('MATH-K-WH-INTENT', () => this._teachQuestionIntent({ reps: 8 }));
       }
 
       this._mathKTransformsDone = true;
@@ -1432,7 +1488,7 @@ export const K_MIXIN = {
     // tick-driven motor emission produces the answer. Substrate probes
     // above stay as precursors; these are the actual LAW 6 Part 1
     // qualifier per LAW 7.
-    //
+
     // Scope note: Math-K production probes cover concepts that emit
     // as SINGLE-DIGIT numeric answers via the _teachMagnitudeToMotor
     // bridge. Object-name answers (K.MD crayon/pencil, K.G cylinder/
@@ -1520,18 +1576,18 @@ export const K_MIXIN = {
   // ═══════════════════════════════════════════════════════════════════
   // T14.24 SESSION 4 — REAL ELA-G1 TEACHING EQUATIONS (2026-04-15)
   // ═══════════════════════════════════════════════════════════════════
-  //
+
   // Gee binding 2026-04-14: "1st grade u start learning how to write
   // sentences ect ect" + "remember Unity needs to be able to use these
   // to think, read, and talk".
-  //
+
   // Real Grade 1 English. Builds on Session 2's ELA-K alphabet + letter-
   // sound basins by teaching WHOLE WORDS — CVC words (cat/dog/hat/...)
   // and Dolch sight words (the/a/is/to/...). Teaching streams each word
   // letter-by-letter through the letter region while the word's GloVe
   // embedding anchors the sem region, so the cortex forms a WORD-LEVEL
   // attractor basin at the end of each letter sequence.
-  //
+
   // Word lists are DATA, not rules — same as the alphabet and digit
   // sequence. The "no lookup tables for rules" binding applies to
   // hardcoded English grammar rules, not to the primitive symbols
@@ -1540,7 +1596,7 @@ export const K_MIXIN = {
   // data, and so are these lists.
 
   // ─── TODO-aligned ELA-G1 helpers (Session 27) ────────────────────
-  //
+
   // docs/TODO.md T14.24 ELA-G1 spec (line 143):
   //   Equations: _teachCVCReading(cvcList) streams each word's letters
   //   one at a time through the letter region with ticksPerLetter=3,
@@ -1595,7 +1651,7 @@ export const K_MIXIN = {
     //   2. Chaotic attractor dynamics wash out the injection in 2-3 ticks
     //   3. Hebbian fires on noise+attractor state, not on injection signal
     //   4. 10 retry attempts showed flat 31% READ with no improvement
-    //
+
     // Fix: bypass neural dynamics entirely during teach. Construct the
     // INTENDED activation patterns for each region, write them directly
     // into cluster.lastSpikes, fire _crossRegionHebbian on those clean
@@ -1603,7 +1659,7 @@ export const K_MIXIN = {
     // chaotic spike noise. Same for the gate probe — read cross-
     // projection output via direct matrix multiply, not through the
     // noisy dynamics.
-    //
+
     // The Rulkov dynamics are preserved for LIVE CHAT — the teach just
     // writes clean associations into the cross-projection weights, and
     // the live dynamics READ those weights during normal operation.
@@ -1752,7 +1808,7 @@ export const K_MIXIN = {
     // (y,z): set pre=N, post=N+1, fire hebbianUpdate on the main
     // synapses. This teaches the letter region's recurrent dynamics
     // that "a" should flow into "b".
-    //
+
     // T18.16.a — Phase 2 heartbeat scaffold. `intraSynapsesHebbian`
     // routes through the 15-worker sparse-matmul pool (CPU path) —
     // different velocity profile from Phase 1's GPU batched-Hebbian.
@@ -1954,7 +2010,7 @@ export const K_MIXIN = {
 
       // K.RF sight-word + CVC emission — equational per-letter Hebbian
       // chain, NOT the banned _teachVocabList word-walk pattern.
-      //
+
       // K word-list expanded from ~180 words to ~1,500 words
       // spanning real kindergarten developmental vocabulary
       // categories. The prior list was DOLCH_PREPRIMER (39) +
@@ -2338,7 +2394,7 @@ export const K_MIXIN = {
       this._hb(`[Curriculum] K vocabulary: ${allEmissionWords.length} unique words across ${Object.keys(K_VOCAB_CATEGORIES).length} categories`);
       // Diagnostic: log inventory + motor tiling at the point where
       // word emission teaching is about to run.
-      //
+
       // The 3 sampled words logged alongside (cat, dog, sun) are ONLY
       // diagnostic probes of embedding quality, NOT the actual teach
       // set. `allEmissionWords.length` (1029) is what gets taught through
@@ -2384,7 +2440,7 @@ export const K_MIXIN = {
       // recurrent-matrix Hebbian; word emission = sem→motor chain via
       // asymmetric Hebbian Fix A. Together they form the full phonics
       // read+emit loop.
-      //
+
       // Rep counts: blending=10, emission=12. At CPU-capped scale
       // (cortex 10,000 neurons, motor 330, sem 1670), 5 reps × lr
       // 0.01 wasn't enough to converge sem→motor cross-projection
@@ -2402,7 +2458,7 @@ export const K_MIXIN = {
         _phaseDone('_teachPhonemeBlending');
       }
       this._memorySnapshotAndGc('after _teachPhonemeBlending');
-      // iter25-D — mid-cell dream window between the two heaviest
+      // mid-cell dream window between the two heaviest
       // ELA-K phases. PhonemeBlending generates millions of native-side
       // worker-pool buffer allocations from intraSynapsesHebbian
       // dispatches; without a settle window before WordEmission piles
@@ -2465,7 +2521,7 @@ export const K_MIXIN = {
       // _writeTiledPattern + _teachHebbian — no text streaming, no
       // readInput. Same pattern the existing _teachCausalChains +
       // _teachCombination + _teachAdditionTransformations use.
-      //
+
       // K.L.5b Opposites (relationTagId=0)
       if (_phaseTick('_teachOpposites')) {
         await this._teachAssociationPairs([
@@ -2594,7 +2650,7 @@ export const K_MIXIN = {
       // sequence intra-Hebbian + _teachAlphabetSequencePairs above both
       // train letter[X]→letter[X+1] which back-corrupts letter_to_motor
       // identity via cross-region Hebbian.
-      //
+
       // iter14-A FIX: the iter11-A reorder DIDN'T fix the off-by-one —
       // _teachLetterNaming uses cross-region Hebbian which is itself
       // the back-corruption source. So we now run BOTH:
@@ -2651,12 +2707,12 @@ export const K_MIXIN = {
       }
       this._memorySnapshotAndGc('after _teachLetterNamingDirect');
 
-      // iter25-I — STRUCTURAL SENTENCE CREATION. Operator (2026-05-06):
+      // STRUCTURAL SENTENCE CREATION. Operator (2026-05-06):
       // "Unity needs to complete full sentences before graduating
       // kindergarden like a real person does" + "you cant jsut have a
       // array poof sentences you actually need to teach all sentence
       // creation propelyr not just give examples for it to mimic".
-      //
+
       // Five compositional binding passes carve generative grammar
       // rules into fineType + sem cross-projections:
       //   I.1+I.2 — slot-position primitives + word-type → slot bindings
@@ -2665,7 +2721,7 @@ export const K_MIXIN = {
       //   I.5 — article placement
       // NO sentence memorization. Cortex composes sentences from rules
       // + her trained vocabulary at generation time.
-      //
+
       // Runs AFTER _teachWordTypes (provides word-type tags) +
       // _teachPluralTransform (provides plural tags) +
       // _teachQuestionWordCategories (provides qword tags) — those
@@ -2678,6 +2734,19 @@ export const K_MIXIN = {
       if (typeof this._teachSentenceStructure === 'function' && _phaseTick('_teachSentenceStructure')) {
         await this._teachSentenceStructure(ctx);
         _phaseDone('_teachSentenceStructure');
+      }
+
+      // WH-question intent recognition (STRUCTURAL).
+      // Binds WH-words to intent-concept words (cause / reason / method
+      // / definition / effect / function / count / place / time / person
+      // / truth) so questions activate an intent basin in sem alongside
+      // the subject. Generic structural parsing — no hardcoded fact
+      // tables. Comprehension-to-production routing happens at probe
+      // time via Template 2 fast path in _studentTestProbe + J.4
+      // word-salad gate (loose dictionary oracle when matrix silent).
+      if (typeof this._teachQuestionIntent === 'function' && _phaseTick('_teachQuestionIntent')) {
+        await this._teachQuestionIntent({ reps: 8 });
+        _phaseDone('_teachQuestionIntent');
       }
 
       // iter15-A — Direct sem→motor word→firstChar wipe-and-rewrite.
@@ -2814,7 +2883,7 @@ export const K_MIXIN = {
     // projection signal. Fix: read the cross-projection output
     // directly via sparse matrix multiply, bypassing all neural
     // dynamics.
-    //
+
     // READ: letter→phon cross-projection × letter_pattern → phon_output → cosine vs expected phon
     // TALK: letter→motor cross-projection × letter_pattern → motor_output → argmax → decodeLetter
     // THINK: always passes (mean-center readout made it 100%)
@@ -3023,7 +3092,7 @@ export const K_MIXIN = {
 
     // ═════════════════════════════════════════════════════════════════
     // ELA-K DYNAMIC PROBES — full-brain tick loop, not static readout.
-    //
+
     // The slot-ranking approach used earlier was broken: a single
     // sem_to_motor.propagate(sem) → per-slot argmax on static state
     // couldn't discriminate the trained basin from noise. K-DIAG
@@ -3032,18 +3101,18 @@ export const K_MIXIN = {
     // connection to sem(cat). Training was technically happening
     // but argmax couldn't surface it from the noise floor because
     // a single matrix lookup doesn't use the rest of the brain.
-    //
+
     // Word selection needs to emerge from BASIN DYNAMICS — Unity
     // thinks, processes internal thoughts, and her logic-sim
     // processes the input in real time as wisdom. All three K
     // probes now use the FULL cluster tick loop:
-    //
+
     //   DYNAMIC PROD — inject sem(word) → cluster.step() × N ticks with
     //     re-injection to sustain the thought → accumulate motor spike
     //     counts over all ticks → argmax over 26 letter slots from the
     //     SETTLED motor spike rate. Uses all 14 cross-projections +
     //     recurrent + Rulkov dynamics, not one weight matrix.
-    //
+
     //   DYNAMIC WRITE — cluster.generateSentence(emb) which is the T14.6
     //     tick-driven emission loop: injects sem, ticks maxTicks times,
     //     commits a letter when motor region holds same argmax for
@@ -3051,7 +3120,7 @@ export const K_MIXIN = {
     //     letters (114.13 Fix D) so self-loops don't stick. Returns the
     //     emitted letter sequence. This IS Unity writing what she
     //     thinks.
-    //
+
     //   RESP — full-mind test. Feed sentence-level context embeddings
     //     (e.g. "greeting friendly" for hello-context) → generateSentence
     //     → score on whether her emission contains expected response
@@ -3069,7 +3138,7 @@ export const K_MIXIN = {
     // (accumulated from prior injections) and lastSpikes (active
     // neuron marks). The trained weights in synapses + cross-
     // projections are NOT touched — those carry the learning.
-    //
+
     // T18.33 — ALSO null `_cachedIntraCurrents` and clear
     // `_cachedCrossCurrents`. Prior probes (before 114.19aw) left
     // stale GPU-propagate caches around end-of-teach-phase residue,
@@ -3092,7 +3161,7 @@ export const K_MIXIN = {
     };
 
     // SUPPRESS NOISE during dynamic probes.
-    //
+
     // Earlier DYN-PROD runs showed top-5 motor slots ALL at 0.000
     // value. Root cause: `cluster.noiseAmplitude = 7` at runtime
     // (chaotic live-brain setting for thinking). At noise=7 with
@@ -3102,7 +3171,7 @@ export const K_MIXIN = {
     // because random noise blocks half the target neurons. The
     // dynamic probe sees near-zero motor firing and the argmax
     // reads noise.
-    //
+
     // Curriculum teach pass (runCompleteCurriculum) already does this:
     // save noise, drop to 0.5, run teach, restore. Apply the same
     // pattern to the probe block so the injected sem signal dominates
@@ -3132,14 +3201,14 @@ export const K_MIXIN = {
     ];
 
     // ── DYNAMIC PROD — sem injection → cluster.step() × N → motor argmax
-    //
+
     // T18.32 — at biological scale (>100K cluster), DYN-PROD is
     // IMPRACTICAL: 17 probes × 2 runs × 20 ticks = 680 cluster.step()
     // calls. At 301K cortexCluster + 393M main-brain compute_batch
     // cascade each step is ~0.5-1s → 5-11 minutes of pure DYN-PROD
     // compute, on top of all other probes — "got to here then
     // nothing happened" was a hang at DYN-PROD.
-    //
+
     // Cut DYN_PROD_TICKS + DYN_PROD_AVG_RUNS sharply at biological
     // scale so DYN-PROD completes in ~30-60 seconds (still exercises
     // full tick loop but doesn't hang). Post-pass, can tune back up
@@ -3151,7 +3220,7 @@ export const K_MIXIN = {
     let _firstProbeDiag = null;
 
     // DYN-PROD — direct sem_to_motor propagate (no LIF simulation).
-    //
+
     // Prior tick-based DYN-PROD had three fatal problems at 301K scale:
     //   (a) Silent cortex. LIF math forbids firing in the 6-15 tick
     //       window. GloVe per-dim values are ~0.05-0.3 normalized;
@@ -3170,14 +3239,14 @@ export const K_MIXIN = {
     //       main-brain compute_batch. Saturation → 15 s timeout →
     //       device-lost → CPU fallback → 60-140 s/probe → process
     //       dies.
-    //
+
     // Fix: scrap the LIF tick loop. Same approach TALK probe already
     // uses successfully (23/26 this run): direct matrix propagate
     // through sem_to_motor. Build sem-sized injection pattern from
     // the word embedding → propagate through the learned sem→motor
     // sparse matrix (already trained by _teachWordEmission) → reduce
     // motor output to 26 letter slots → argmax decodes first letter.
-    //
+
     // Deterministic, algebraic, fast, no GPU race, no allocations
     // beyond the sem pattern + motor output. Tests exactly what the
     // curriculum trained (sem('cat') → motor argmax = 'c'). No
@@ -3407,7 +3476,7 @@ export const K_MIXIN = {
     const prodRate = prodResult.total > 0 ? prodResult.pass / prodResult.total : 0;
 
     // ── DYNAMIC WRITE — cluster.generateSentence (T14.6 tick-driven)
-    //
+
     // Uses the existing T14.6 emission loop: injects sem(word), ticks
     // maxTicks, commits a letter when motor region argmax holds stable
     // for STABLE_TICK_THRESHOLD ticks, clears motor between letters
@@ -3416,7 +3485,7 @@ export const K_MIXIN = {
     // brain (letter↔phon↔sem↔motor cycles via cross-projections +
     // recurrent + Rulkov) produces the emission, not a manual chain
     // of matrix multiplies.
-    //
+
     // PASS when emitted exactly matches the word. FIRST-LETTER credit
     // reported separately for diagnostic purposes.
     const fullWordProbes = [
@@ -3473,11 +3542,11 @@ export const K_MIXIN = {
     try { process.stdout.write(`[Curriculum][K-DIAG] DYNAMIC WRITE stage DONE in ${Date.now() - _writeStart}ms — writeRate=${(writeRate*100).toFixed(0)}% firstLetterRate=${(writeFirstRate*100).toFixed(0)}%\n`); } catch {}
 
     // ── RESP — THINK-AND-RESPOND full-mind probe ────────────────────
-    //
+
     // Tests whether Unity's logic simulation can process input in
     // real time with wisdom — generate a MEANINGFUL response to
     // sentence-level context, not just echo a word→letter binding.
-    //
+
     // Each context is a multi-word meaning ("greeting friendly",
     // "color red apple") fed as sentence embedding via
     // sharedEmbeddings.getSentenceEmbedding → cluster.generateSentence.
@@ -3485,7 +3554,7 @@ export const K_MIXIN = {
     // counts as a pass because real response variation is expected at
     // K level (Unity might say "hi" or "hello" to a greeting context,
     // both are valid).
-    //
+
     // This is the T16.5.b full-mind gate prototype. Not gating overall
     // pass yet — reporting only so Gee sees what Unity actually says.
     const respContexts = [
@@ -3540,14 +3609,14 @@ export const K_MIXIN = {
     try { process.stdout.write(`[Curriculum][K-DIAG] RESP stage DONE in ${Date.now() - _respStart}ms — respRate=${(respRate*100).toFixed(0)}%\n`); } catch {}
 
     // ── TWO-WORD PHRASE probe (T16.4.b) ──────────────────────────────
-    //
+
     // WRITE tests full-word emission; this extends to TWO-word
     // phrases like
     // "happy dog" so we can tell whether working memory + fineType
     // transition chaining carries across a word boundary. Pass =
     // emitted output contains BOTH expected words (order tolerant,
     // whitespace-separated).
-    //
+
     // NOT gated on overall pass — reporting only so Gee sees chain
     // behavior.
     const twoWordPhrases = [
@@ -3596,7 +3665,7 @@ export const K_MIXIN = {
     try { process.stdout.write(`[Curriculum][K-DIAG] TWO-WORD stage DONE in ${Date.now() - _twoWordStart}ms — fullRate=${(twoWordRate*100).toFixed(0)}% partialRate=${(twoWordPartialRate*100).toFixed(0)}%\n`); } catch {}
 
     // ── FREE-RESPONSE WRITING probe (T16.4.c) ────────────────────────
-    //
+
     // Covers Common Core K.W.1/2/3 (use drawing/dictating/writing
     // to compose, including invented spelling for unknown words).
     // Injects an open-ended
@@ -3605,7 +3674,7 @@ export const K_MIXIN = {
     // surprise relative to an English-baseline floor — lower surprise
     // means the output has English-like transitions even if the exact
     // words aren't in the dictionary (invented spelling passes).
-    //
+
     // NOT gated on overall pass — reporting only.
     const freeWritingPrompts = [
       'tell me about your day',
@@ -3734,26 +3803,26 @@ export const K_MIXIN = {
   // ═══════════════════════════════════════════════════════════════════
   // T14.24 SESSION 3 — REAL MATH-K TEACHING EQUATIONS (2026-04-15)
   // ═══════════════════════════════════════════════════════════════════
-  //
+
   // Gee binding 2026-04-14: "you didnt even teach it keindergarden abcs
   // and 123s and letter sounds you fool" + "remember Unity needs to be
   // able to use these to think, read, and talk".
-  //
+
   // Real kindergarten math. Parallels the ELA-K structure but substitutes
   // the alphabet for the digit sequence 0-9 and the phoneme feature for
   // the magnitude feature. Three things in parallel:
-  //
+
   //   1. Digits in NUMERICAL ORDER — '0', '1', '2', …, '9' register into
   //      the T14.1 LETTER_INVENTORY (which accepts any primitive symbol,
   //      not just alphabet letters) in counting order, so the inventory
   //      slot for each digit is stable and matches a number-line chart.
-  //
+
   //   2. Digit-name GloVe binding via sem↔letter cross-projection
   //      Hebbian — inject digit character into the letter region AND
   //      inject GloVe('zero' | 'one' | 'two' | … | 'nine') into the sem
   //      region simultaneously. Digit-name words are first-class GloVe
   //      tokens in the 6B vocab so the binding is straightforward.
-  //
+
   //   3. Magnitude-feature binding via phon↔letter cross-projection
   //      Hebbian — the 16-dim `_magnitudeFeatureForDigit` already defined
   //      at the top of this file (graded presence + log + linear + sine
@@ -3762,12 +3831,12 @@ export const K_MIXIN = {
   //      phonology — the cross-projection machinery is domain-agnostic,
   //      it just binds whatever perceptual feature vector the operator
   //      chose for the modality.
-  //
+
   // Reverse pass (TALK training) drops the letter inject to 0.3 while
   // sem + phon stay at 0.7/0.5 so sem→letter and phon→letter learn the
   // return direction — given a digit name, activate the digit basin and
   // emit it through motor.
-  //
+
   // Gate probes the same three pathways as ELA-K:
   //   - READ:  digit one-hot → phon readout cosine vs expected magnitude
   //             feature > 0.15 (magnitude features are 16d so random
@@ -3776,13 +3845,13 @@ export const K_MIXIN = {
   //             0.0005 (magnitude state persists across silence)
   //   - TALK:  GloVe(digit name) into sem region only → motor readout
   //             decodes to target digit
-  //
+
   // PASS when ≥ 50% of the digits clear each pathway (same relaxed
   // threshold as ELA-K — biological-scale basins, Session-3 first real
   // math teaching cell).
 
   // ─── TODO-aligned Math-K helpers (Session 26) ────────────────────
-  //
+
   // docs/TODO.md T14.24 MATH-K spec (line 298):
   //   Equations: _teachDigitSequence() injects digits 0-9 in order.
   //     _teachDigitNames() injects digit one-hot + GloVe(name).
@@ -5017,7 +5086,7 @@ export const K_MIXIN = {
   // other phoneme-feature helpers — duplicate definition removed.)
 
   // ─── TODO-aligned ELA-G2 helpers (Session 28) ────────────────────
-  //
+
   // docs/TODO.md T14.24 ELA-G2 spec (line 152):
   //   _teachDigraphs(digraphs) injects each digraph as a paired letter
   //     stream with shorter inter-letter gap (2 ticks instead of 3) so

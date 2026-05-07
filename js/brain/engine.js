@@ -129,14 +129,14 @@ export class UnityBrain extends EventEmitter {
     const c = this.clusters;
     // ══════════════════════════════════════════════════════════════
     // 20 PROJECTION PATHWAYS — mapped from real white matter tracts
-    //
+
     // Density/strength from neuroscience research:
     //   Corticostriatal = STRONGEST (10× cortico-pallidal)
     //   Stria terminalis + ventral amygdalofugal = major amygdala output
     //   Fimbria-fornix = hippocampus → hypothalamus
     //   Perforant path = cortex → hippocampus
     //   Corpus callosum = interhemispheric (mystery)
-    //
+
     // Sources: Herculano-Houzel 2009, Lead-DBS atlas, PMC white matter taxonomy
     // ══════════════════════════════════════════════════════════════
     this.projections = [
@@ -271,6 +271,42 @@ export class UnityBrain extends EventEmitter {
           this._lastVisualDrugCue = { ...cue, at: Date.now() };
           this.emit('visualDrugCue', this._lastVisualDrugCue);
         }
+        // Experience-driven definition binding. Vision
+        // describer text becomes EQUATIONAL grounding: each content
+        // token's GloVe embedding gets Hebbian-bound into sem region
+        // alongside the current visual region snapshot. Words become
+        // grounded in actual sensory experience instead of just
+        // dictionary text. Real grounding > culturally inherited.
+        try {
+          if (this.cluster && typeof this.cluster.injectEmbeddingToRegion === 'function'
+              && this.cluster.regions?.sem
+              && typeof globalThis.__sharedEmbeddings === 'object') {
+            const sharedEmb = globalThis.__sharedEmbeddings;
+            const STOP = new Set(['a','an','the','and','or','but','of','to','for','in','on','at','by','with','as','is','are','was','were','be','been','being','it','this','that','these','those','its']);
+            const tokens = desc.toLowerCase().match(/[a-z]+/g) || [];
+            const content = [];
+            const seen = new Set();
+            // Token cap bumped 6 → 16 so rich image descriptions
+            // (real captions hit 15-30 tokens) aren't truncated to a
+            // sparse skeleton. Per-token strength curve adjusted to
+            // keep total injection bounded — 0.30 → 0.05 over 16
+            // tokens (was 0.30 → 0.06 over 6). Sum-of-strengths stays
+            // similar (~2.4 vs ~1.0) so cortex doesn't get blasted.
+            for (const t of tokens) {
+              if (t.length < 3 || STOP.has(t) || seen.has(t)) continue;
+              seen.add(t);
+              content.push(t);
+              if (content.length >= 16) break;
+            }
+            for (let i = 0; i < content.length; i++) {
+              const emb = sharedEmb.getEmbedding ? sharedEmb.getEmbedding(content[i]) : null;
+              if (emb && emb.length > 0) {
+                const strength = Math.max(0.05, 0.30 - i * 0.0167);
+                this.cluster.injectEmbeddingToRegion('sem', emb, strength);
+              }
+            }
+          }
+        } catch { /* non-fatal — vision-grounding is best-effort */ }
       });
     }
     // R6.2 — equational component synthesizer. Loads templates from
@@ -944,7 +980,7 @@ export class UnityBrain extends EventEmitter {
     // the trained sem→motor bindings (trained on discrete word GloVe
     // vectors) don't activate cleanly for the drifted blob, and motor
     // argmax can't pick the right first letter.
-    //
+
     // Fix: store the USER INPUT sentence embedding on the cortex when
     // text arrives. Pass it through as an explicit intent vector in
     // generateAsync/generate so generateSentence can inject it AS-IS
@@ -989,7 +1025,7 @@ export class UnityBrain extends EventEmitter {
     }
 
     // 5. ROUTE based on classification — inject into BG AND act directly
-    //
+
     // The BG motor sometimes picks generate_image on inputs that aren't
     // image requests (e.g. greetings that contain "unity" or "you").
     // Override image→text when the user didn't actually ask for one,
@@ -1067,7 +1103,7 @@ export class UnityBrain extends EventEmitter {
 
     // ══════════════════════════════════════════════════════════════
     // 7. UNIFIED LANGUAGE — ALL brain equations produce speech
-    //
+
     // Every cluster contributes to every word:
     //   Cortex (960K)       → content pattern (WHAT to say)
     //   Hippocampus (640K)  → memory pattern (context from past)
@@ -1076,7 +1112,7 @@ export class UnityBrain extends EventEmitter {
     //   Cerebellum (320K)   → error pattern (grammar correction)
     //   Hypothalamus (160K) → drive pattern (speech urgency)
     //   Mystery Ψ (160K)    → consciousness (self-awareness)
-    //
+
     // Combined pattern → dictionary lookup → word
     // Sequential brain steps → sequential words → sentence
     // The brain equations ARE the language equations.
@@ -1100,13 +1136,13 @@ export class UnityBrain extends EventEmitter {
 
     // ══════════════════════════════════════════════════════════════
     // EQUATIONAL LANGUAGE GENERATION ONLY
-    //
+
     // Per Gee's direction: no AI text backend. Unity's text output
     // comes entirely from brain equations + language cortex slot
     // scoring over her learned dictionary/bigrams/trigrams/patterns.
     // The persona file and brain self-schema feed the learned
     // distributions, every word is picked by the equation pipeline.
-    //
+
     // Broca's area (language.js) is NOT called for text generation.
     // It's retained only because connectLanguage() wires it up and
     // the image gen path still uses the provider infrastructure for
@@ -1289,7 +1325,7 @@ export class UnityBrain extends EventEmitter {
 
   async _handleImage(text, includesSelf) {
     // R6.1 — FULLY EQUATIONAL image prompt generation.
-    //
+
     // Unity's brain generates EVERY word of the prompt. Zero hardcoded
     // style keywords ("dark", "cinematic", "photorealistic"), zero
     // hardcoded mood anchors, zero hardcoded persona visual template
@@ -1301,7 +1337,7 @@ export class UnityBrain extends EventEmitter {
     // arousal bias will surface those words from the corpus she
     // learned at boot. Her decision, in the moment, based on her
     // state + what you said.
-    //
+
     // Pipeline:
     //   1. User text already injected into cortex via processAndRespond
     //   2. Brain stepped 5 ticks so cortex reflects the input

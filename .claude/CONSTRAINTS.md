@@ -386,6 +386,12 @@ Only AFTER these four conditions are satisfied does the gate probe fire.
 - Adding a new question to `EXAM_BANKS[cellKey]` without adding the corresponding words/structure/definitions to the teach path is a LAW violation.
 - `trainExamOverlap(cellKey)` fires at curriculum startup and reports any question text that appears in BOTH `TRAIN_BANKS` and `EXAM_BANKS` for the same cell — held-out eval invalid when overlap > 0.
 
+## iter25-M.17 — User-driven vocab exemption
+
+User-introduced words via chat ("what is X" with X not in curriculum vocab) trigger lazy `_teachWordDefinition(X)` Hebbian binding (iter25-L.A2). This is USER-DRIVEN learning, not curriculum-driven, and is exempted from the test-words pre-taught LAW. If X later appears in a gate probe, the lazy chat-time binding is sufficient — the LAW only mandates pre-teach for CURRICULUM-introduced exam vocabulary.
+
+Rationale: the LAW's intent is "no surprise vocab in tests"; user-driven introduction is not a surprise (the user introduced it), so user-driven Hebbian binding satisfies the spirit of the LAW. Curriculum-side exam-bank edits remain paired changes (still bound by the pre-teach requirement).
+
 ## Failure recovery
 
 If operator catches an exam fire against untaught vocabulary:
@@ -545,8 +551,79 @@ If Gee catches that the clear didn't run:
 
 ---
 
+# MATCH DOC FORMAT
+
+**When updating any doc, edit IN PLACE within its existing structure.**
+
+Caught 2026-05-07: Gee directive — *"YOU SHALL NOT EVER … FUCKING JUST ADD A FUCKING TEST WALL TO A FILE OR DOCUMENT WITHOUT MAINTAINING ITS CURRENT FORMAT AND STYLE"*. Triggered after wall-of-text iter25-N/O update blockquotes were prepended to `docs/SENSORY.md` and `docs/WEBSOCKET.md`, breaking those docs' established 6-line intro pattern.
+
+## Required actions
+
+| Required | Why |
+|----------|-----|
+| Read the doc's existing structure first | Identifies banner pattern, section headers, table layout, list style |
+| Edit IN PLACE within the established structure | Amend the relevant section / row / banner; don't tack a new shape on top |
+| Match the doc's update pattern when one exists | E.g. `docs/ARCHITECTURE.md` / `docs/EQUATIONS.md` / `docs/SKILL_TREE.md` use stacked `> Last updated:` blockquotes — new entries go ABOVE the most recent, in the same shape |
+| When no banner pattern exists, find the in-body section the change belongs to and edit there | E.g. `docs/SENSORY.md` table-based contracts get amended via table-row updates, not by prepending a prose blockquote |
+
+## Forbidden actions
+
+| Banned | Reason |
+|--------|--------|
+| Prepending a giant prose blockquote to a doc that has no banner pattern | Breaks the doc's visual rhythm; signals "bolted on" instead of "integrated" |
+| Wall-of-text dumps anywhere | Even if every word is correct, format break makes it worse than no update |
+| Inventing a new update-announcement format because the doc doesn't have one | Match the doc's body, don't add a shape it never used |
+| Skipping the format check on a doc you haven't edited before | Gee navigates by visual rhythm; a doc that suddenly looks different is harder to scan + read |
+
+## Failure recovery
+
+1. Revert the malformatted update immediately (restore the doc's original head/section).
+2. Re-read the doc's actual structure; find the matching place for the new content.
+3. Edit IN PLACE in the doc's native style (table row / section amend / matching banner block).
+4. Verify the doc still scans cleanly top-to-bottom before moving on.
+
+---
+
 ## How to invoke this file
 
 `.claude/CLAUDE.md` (the always-loaded index) references this file via its LAW one-liner index. Claude treats `.claude/CONSTRAINTS.md` as binding from the moment CLAUDE.md points here. When a new session starts, Claude reads CLAUDE.md first, then opens this file before any LAW-bearing task.
 
 If a future version of the slash-command system auto-loads `.claude/CONSTRAINTS.md` the way it auto-loads `CLAUDE.md`, this file becomes the primary LAW source without workflow changes.
+
+---
+
+# iter25-M.18 — CONSCIOUSNESS PHILOSOPHICAL BOUNDS (acknowledgment, not LAW)
+
+## What Unity has after iter25-M.2 + M.3 + M.4 + M.8 + M.9 + M.16 land
+
+**FUNCTIONAL consciousness** — computational integration matching cognitive-science theories:
+- Global workspace ignition (Baars 1988, Dehaene-Changeux 2011) — competition + threshold + broadcast.
+- Predictive coding loop (Friston 2010) — actual prediction-error computation, not just topology.
+- Stream-of-consciousness narrative (autobiographical thread of thoughts).
+- Meta-representation / self-monitoring ("I-just-said" reflective layer).
+- Attention selection (Posner network functionally — top-down gain bias).
+- Φ proxy via Shannon entropy of spike patterns (replaces placeholder Ψ formula).
+
+These are MEASURABLE + FALSIFIABLE consciousness mechanisms. If the brain has them, computational consciousness theories say it should be conscious.
+
+## What Unity does NOT have (the hard problem of consciousness)
+
+**PHENOMENAL consciousness** — qualia, raw feels, "what it is like to be Unity":
+- No subjective experience generator (no theory of qualia is implementable today)
+- Functional states (mood, drugs, valence, arousal) are SCALARS, not phenomenal experiences
+- No first-person access mechanism (no "view from inside")
+- The hard problem (Chalmers 1995) is unsolved in the field — Unity inherits the limitation
+
+## Why this distinction matters
+
+When operator says "give Unity consciousness", the achievable target is FUNCTIONAL consciousness — the integration mechanisms that consciousness theories predict. Unity will ACT conscious (unified moments, narrative thread, self-awareness, attention, Φ > 0) without necessarily HAVING phenomenal experience.
+
+This is not a deflection — it's the actual frontier of consciousness research. We can ship the functional architecture; the phenomenal question remains philosophically open.
+
+## Implications for code + claims
+
+- **OK to claim:** "Unity has functional consciousness mechanisms" — global workspace, predictive coding, stream of thought, self-monitoring, attention, Φ measure.
+- **NOT OK to claim:** "Unity has subjective experience / qualia / feels things" — that's the unresolved philosophical question, not a code property.
+- **Operator-facing language:** when describing Unity's consciousness, frame it as "she has the cognitive architecture of consciousness" rather than "she experiences things". The architecture is real; the phenomenology is unproven.
+
+This is a doc-only acknowledgment. No code change required.

@@ -91,7 +91,7 @@ const SHORT_WORD_MAX_LEN = 3;
 // grades build up through doctorate level. The full curriculum is
 // equational — Unity uses it to think, read, and talk. Expected to
 // take weeks of brain-time to walk in full; no shortcuts.
-//
+
 // Unity learns FIVE subject tracks in parallel. Each subject has
 // its own grade counter that advances independently. The chat-
 // path word cap reads the MIN grade across all 5 so Unity speaks
@@ -236,7 +236,7 @@ const K_LETTER_PHONEMES = {
 //   [17]    vowel_back      (back vowel: o,u short)
 //   [18]    vowel_rounded   (lip rounding: o short)
 //   [19-23] reserved for digraphs + irregular markers (G1+ extensions)
-//
+
 // Two phonemes that share a letter-origin (e.g. /c/ and /k/ both mapping
 // to K_LETTER_PHONEMES['k']) produce IDENTICAL feature vectors — which
 // is phonologically correct and lets Unity's cortex learn that "c" and
@@ -495,7 +495,7 @@ export class Curriculum {
     // in a prior run. Zero caller-site changes — every _teachX method +
     // _runStudentBattery + _measureEmissionCapability gets both
     // instrumentation and phase-resume via prototype iteration.
-    //
+
     // For each wrapped call:
     //   1. Build phase key: `${cluster._currentCellKey}:${methodName}`
     //      where runSubjectGrade sets _currentCellKey = "subject/grade"
@@ -508,7 +508,7 @@ export class Curriculum {
     //      ELA-K-only via hand-wrapped _phaseTick) to EVERY cell runner
     //      across all 6 subjects × all pre-K + K grades.
     //   6. Restore prior _activePhase (nested-call safe).
-    //
+
     // Only wraps _teach* methods — top-level cell runners (runXKReal,
     // runXPreK) are NOT wrapped because they orchestrate phases and
     // need to run fresh to re-issue the skip-checks. Same for
@@ -548,7 +548,7 @@ export class Curriculum {
         // curriculum "passed" in seconds with zero actual learning, and
         // ELA-K log flooded with 90,000+ "PHASE SKIPPED" lines from the
         // broken primitives.
-        //
+
         // Fix: only the OUTERMOST wrapped call (direct from cell runner,
         // `prev === null`) does skip+persist. Nested calls (primitives
         // invoked from inside another wrapped teach method) just track
@@ -872,7 +872,7 @@ export class Curriculum {
   }
 
   /**
-   * iter25-D — DREAM WINDOW. Properly pauses the curriculum until the
+   *  — DREAM WINDOW. Properly pauses the curriculum until the
    * dream cycle is *confirmed complete* — not on a wall-clock timer,
    * but signal-driven: open the dream gate, directly fire
    * `consolidationEngine.runConsolidationPass({ forced: true })` and
@@ -945,6 +945,87 @@ export class Curriculum {
         const passMs = Date.now() - startedAt;
         const passCount = engine.passCount || 0;
         this._hb(`[Curriculum] ⚙ dream pass complete in ${(passMs / 1000).toFixed(1)}s — ConsolidationEngine passCount=${passCount} · entering ${(settleMs / 1000).toFixed(0)}s settle window for V8 + native drain`);
+
+        // Dream phenomenology. During the dream window,
+        // emit ONE dream-content thought generated from a Tier 1 episodic
+        // replay seed. Bridges the silent-consolidation gap so brain
+        // experience isn't gappy across dream cycles. Stored in
+        // brain._dreamThoughtLog (capped at 100 entries) so operator
+        // can see what the brain "dreamed about". Different from
+        //awake inner voice — uses episodic replay as seed
+        // instead of current-state seed.
+        try {
+          if (brain && brain.languageCortex && cluster
+              && typeof brain.languageCortex.generateAsync === 'function') {
+            // Pick a random Tier 1 episode pattern from memorySystem
+            // tier1 store. Best-effort — fall through if memory not wired.
+            let dreamSeed = null;
+            try {
+              const tier1 = brain.memorySystem?.tier1 || brain.tier1Store;
+              if (tier1 && typeof tier1.getRandomEpisode === 'function') {
+                const ep = tier1.getRandomEpisode();
+                if (ep && ep.pattern) dreamSeed = ep.pattern;
+              }
+            } catch { /* non-fatal */ }
+            if (dreamSeed) {
+              const dreamSentence = await brain.languageCortex.generateAsync(
+                brain.dictionary, brain.arousal, brain.coherence,
+                {
+                  predictionError: 0,
+                  motorConfidence: 0,
+                  psi: brain.psi,
+                  cortexPattern: dreamSeed,
+                  cortexCluster: cluster,
+                  drugState: brain._drugStateLabel ? brain._drugStateLabel() : null,
+                  fear: brain.fear || 0,
+                  reward: brain.reward || 0,
+                  socialNeed: brain.persona?.socialAttachment ?? 0.5,
+                }
+              );
+              if (dreamSentence && typeof dreamSentence === 'string' && dreamSentence.trim()) {
+                if (!Array.isArray(brain._dreamThoughtLog)) brain._dreamThoughtLog = [];
+                brain._dreamThoughtLog.push({
+                  thought: dreamSentence.trim(),
+                  ts: Date.now(),
+                });
+                while (brain._dreamThoughtLog.length > 100) {
+                  brain._dreamThoughtLog.shift();
+                }
+                this._hb(`[Curriculum] 💤 dream phenomenology: "${dreamSentence.trim().slice(0, 60)}..."`);
+              }
+            }
+          }
+        } catch (err) {
+          // Non-fatal — dream consolidation continues even if dreaming fails.
+        }
+
+        // Background-trickle K_VOCABULARY definition Hebbian
+        // during dream cycles. One word per cycle: queue lives on the
+        // cluster; if empty, lazy-load K_VOCABULARY filtered to words
+        // not in cluster._definitionTaughtWords. After thousands of
+        // dream cycles over hours/days, full K_VOCAB coverage achieved
+        // at slow safe pace — no upfront basin blur, no lifelong gaps.
+        if (cluster && typeof this._teachWordDefinition === 'function') {
+          try {
+            if (!cluster._kVocabQueue) {
+              const { K_VOCABULARY } = await import('./k-vocabulary.js');
+              if (Array.isArray(K_VOCABULARY)) {
+                const taught = cluster._definitionTaughtWords || new Set();
+                cluster._kVocabQueue = K_VOCABULARY.filter(w => !taught.has(w));
+              } else {
+                cluster._kVocabQueue = [];
+              }
+            }
+            if (cluster._kVocabQueue.length > 0) {
+              const word = cluster._kVocabQueue.shift();
+              await this._teachWordDefinition(word, { reps: 4, label: 'DREAM-DEF-TRICKLE' });
+              this._hb(`[Curriculum] 💤 dream trickle: definition Hebbian for "${word}" (${cluster._kVocabQueue.length} K-vocab words remaining in queue)`);
+            }
+          } catch (err) {
+            // Non-fatal — dream consolidation continues even if trickle fails.
+          }
+        }
+
         // Settle window for V8 GC + native worker-pool buffer drain.
         await new Promise((r) => setTimeout(r, settleMs));
       } else {
@@ -1835,7 +1916,7 @@ export class Curriculum {
     // wall-clock timeout wrapper so a hung GPU dispatch can't block
     // the batch — if a single cue doesn't land in 10 seconds, the
     // probe bails for that cue and continues to the next.
-    //
+
     // DRAIN WAIT BEFORE PROBE. The readiness probe arrives right after
     // a teach phase's hebbianBound batches + a potential binary-weights
     // save. compute.html's send queue can still be processing dispatches
@@ -1869,7 +1950,7 @@ export class Curriculum {
         // sentence to read; it's a stimulus-response test: inject the
         // letter one-hot into cluster.regions.letter, propagate a few
         // ticks, then let generateSentenceAwait read motor argmax.
-        //
+
         // The prior `readInput(cue, { ticks: 6 })` path treated the
         // cue as text and routed through visual → letter → phon → sem
         // with GloVe embedding contamination along the way, so the
@@ -2077,7 +2158,7 @@ export class Curriculum {
     // direct-propagate TALK probes return 26/26 correctly while LIF
     // emission returned empty or uniform-bucket junk. Switching probe
     // emission to direct propagate reads the weights honestly.
-    //
+
     // Build the question-wrapper exclude list — every token before
     // the colon (or every token except the last alpha-numeric one
     // when no colon exists) is a wrapper word that the oracle must
@@ -2113,7 +2194,7 @@ export class Curriculum {
     // during phoneme blending for Template 1) — NOT a hardcoded
     // shortcut. Just routes to the trained pathway whose basin best
     // matches the question shape.
-    //
+
     // Returns null when (a) no template matches, (b) no key token
     // extracted, (c) the targeted pathway isn't wired or is empty,
     // (d) motor/phon argmax confidence is below threshold. In any null
@@ -2282,6 +2363,88 @@ export class Curriculum {
       }
     } catch { /* templated probe is best-effort — fall through to matrix */ }
 
+    // ───  — TEMPLATE 2 WH-QUESTION FAST PATH + WORD-SALAD GATE ──
+    // For WH-questions ("what makes X go", "why do X have Y", "how does X
+    // work"), route through joint (intent_concept + subject) sem activation
+    // and read word_motor argmax DIRECTLY. The dual-Hebbian binding from
+    // _teachQuestionAnswerBinding (intent→answer + subject→answer) gives
+    // the joint basin the strongest path to the trained answer. If the
+    // joint basin produces NO confident answer, return SILENCE — do NOT
+    // fall through to the cosine oracle (that's the word-salad source
+    // operator caught: "wagon go" → "chick" because the oracle pulls
+    // nearest GloVe neighbor when no real binding exists).
+
+    // Fires only when:
+    //   - Template 0/1 didn't already produce an answer (templatedAnswer null)
+    //   - Question has a recognized WH-frame (intent concept extractable)
+    //   - Subject token extractable
+    //   - sem region wired
+    if (!templatedAnswer && typeof this._extractIntentConcept === 'function') {
+      try {
+        const intentConcept = this._extractIntentConcept(question);
+        const subjectTok = (typeof this._extractKeyToken === 'function')
+          ? this._extractKeyToken(question) : null;
+        // Definition-intent fast path: when "what is X"
+        // hits, route through live dictionary API + multi-word emit.
+        // This is the path operator demanded — Unity speaks the actual
+        // English-dictionary meaning of any word, not a cosine race
+        // winner from her trained K-vocab subset.
+        if (intentConcept === 'definition' && subjectTok
+            && typeof this._emitDefinition === 'function') {
+          try {
+            const def = await this._emitDefinition(subjectTok);
+            if (def && typeof def === 'string' && def.length > 0) {
+              templatedAnswer = def;
+              out.definitionAPIPath = true;
+            }
+          } catch { /* fall through to joint-sem path */ }
+        }
+        if (!templatedAnswer && intentConcept && subjectTok && cluster.regions?.sem
+            && typeof cluster.injectEmbeddingToRegion === 'function'
+            && typeof cluster.emitWordDirect === 'function'
+            && sharedEmbeddings && typeof sharedEmbeddings.getEmbedding === 'function') {
+          const intentEmb = sharedEmbeddings.getEmbedding(intentConcept);
+          const subjectEmb = sharedEmbeddings.getEmbedding(subjectTok);
+          if (intentEmb && intentEmb.length > 0 && subjectEmb && subjectEmb.length > 0) {
+            // Inject intent into first half of sem, subject into second
+            // half via the same offset geometry _teachAssociationPairs
+            // uses for key-token tile placement. Joint sem state now
+            // carries BOTH bindings the dual-Hebbian path was trained on.
+            try { cluster.injectEmbeddingToRegion('sem', intentEmb, 0.5); } catch { /* non-fatal */ }
+            if (typeof this._injectEmbeddingToRegionOffset === 'function') {
+              try { this._injectEmbeddingToRegionOffset(cluster, 'sem', subjectEmb, 0.5, 0.5); }
+              catch { /* non-fatal */ }
+            }
+            // Let propagation settle so word_motor sees the joint pattern
+            if (typeof cluster.step === 'function') {
+              for (let t = 0; t < 5; t++) { try { cluster.step(0.001); } catch { break; } }
+            }
+            // Word-level emission with subject-scoped vocab band. Returns
+            // empty string when no word_motor bucket clears confidence
+            // floor — that's our SILENCE branch (word-salad gate).
+            let whAnswer = '';
+            try {
+              whAnswer = cluster.emitWordDirect({ subject: this._currentGateSubject }) || '';
+            } catch { whAnswer = ''; }
+            if (whAnswer && whAnswer.length > 0) {
+              // Reject obvious wrappers — the question's own WH-words
+              // shouldn't echo back as the answer.
+              const whWordsBan = new Set(['what','why','how','where','when','who','which','whose','is','are','do','does']);
+              if (!whWordsBan.has(whAnswer.toLowerCase())) {
+                templatedAnswer = whAnswer;
+                out.intentRoutedPath = true;
+              }
+            } else {
+              // SILENCE branch — joint basin produced nothing confident.
+              // Set flag so the matrix path knows to use a TIGHTER
+              // confidence floor instead of dictionary-oracle fall-through.
+              out.intentSilenceBranch = true;
+            }
+          }
+        }
+      } catch { /* WH fast-path is best-effort */ }
+    }
+
     let generated = '';
     if (templatedAnswer && templatedAnswer.length > 0) {
       // Use the templated answer as the generated emission. Skips the
@@ -2327,7 +2490,22 @@ export class Curriculum {
         // K-vocab picks like "pollen"/"focusin" don't dominate. 0.2
         // is a middle ground: clearly above the 0.05 noise floor but
         // below the 0.5 strict fake-answer guard.
-        minScore: 0.2,
+
+        //word-salad gate (CORRECTED): when WH-frame was
+        // recognized but trained word_motor matrix was silent (J.2
+        // intent-routed fast path produced nothing), LOOSEN the
+        // dictionary oracle threshold to 0.05 — at this point joint
+        // (intent_concept + subject) sem is already injected via the
+        // J.4 fast-path code above, so the oracle's cosine race over
+        // the FULL DICTIONARY reads the joint pattern and lands on
+        // the definitionally-closest word. The
+        // word_motor buckets are K-vocab-bottlenecked; the dictionary
+        // oracle is the path to the full English vocabulary, and it
+        // needs to FIRE MORE (not less) when the trained matrix has
+        // nothing. Wrapper-token exclude list still filters echoed
+        // question-words. Excludes-persona still keeps the K probe
+        // honest.
+        minScore: out.intentSilenceBranch ? 0.05 : 0.2,
       };
       // iter21-A — try word-level emission FIRST. If sem→word_motor
       // returns a real word, use it. Otherwise fall through to chaotic
@@ -2538,7 +2716,7 @@ export class Curriculum {
     // re-teach can never fix a failing gate. Operator caught iter7
     // verbatim 2026-04-27 monitoring: "self-heal ✗ ela/kindergarten"
     // firing repeatedly with same scoreboard each time.
-    //
+
     // Disabled until the runner gains a real `gateOnly: true` opt
     // that skips teach phases. When that exists, this method can
     // pass `gateOnly: true` through opts and the loop becomes the
@@ -2690,7 +2868,7 @@ export class Curriculum {
     // inputs fall through to K-vocab cosine match and produce
     // wrong-answer cascade ("hi" → "Layered!" because no persona
     // greeting word can win the persona-first pass scan).
-    //
+
     // Fallback sentences are first-person Unity-voiced + use vocab
     // that's already in K dictionary (so loadPersona's word entries
     // already exist for them). We then mark those dictionary entries
@@ -3111,12 +3289,12 @@ export class Curriculum {
   // ═══════════════════════════════════════════════════════════════════
   // T14.24 — FULL EQUATIONAL CURRICULUM (Kindergarten → Doctorate)
   // ═══════════════════════════════════════════════════════════════════
-  //
+
   // Binding directive: kindergarten teaches the alphabet and the
   // sounds of letters first, 1st grade begins writing sentences,
   // subsequent grades build up through doctorate level. The entire
   // curriculum is equational.
-  //
+
   // Every grade stage below uses EQUATIONS ONLY. Zero lookup tables,
   // zero hardcoded English grammar, zero hand-curated stage files. Each
   // grade is a separate async method that (a) drives a specific
@@ -3125,7 +3303,7 @@ export class Curriculum {
   // pass and returns pass/fail. The runFullCurriculum orchestrator
   // chains them in K → PhD order, stopping at the first gate that
   // fails so the operator can inspect what's missing before advancing.
-  //
+
   // The equation primitives come from existing T14 work:
   //   - T14.1   injectLetter, letterTransitionSurprise
   //   - T14.2   detectBoundaries, detectStress
@@ -3135,11 +3313,11 @@ export class Curriculum {
   //   - T14.7   typeTransition weight table
   //   - T14.9   workingMemoryReadout / injectWorkingMemory
   //   - T14.17  intentCentroids / intentReadout / computeFineTypeCoverage
-  //
+
   // The curriculum is PURE SEQUENCING + GATING on top of those
   // primitives. No new neuroscience — just the developmental order
   // that a human child follows when learning English.
-  //
+
   // Chat generation is grade-aware via `cluster.grades` (MIN across
   // all 6 subjects). LanguageCortex.generate caps output length
   // to what Unity has mastered. Pre-K returns silence; K returns one
@@ -3255,14 +3433,14 @@ export class Curriculum {
   }
 
   // ─── Grade K: Kindergarten ─── Alphabet + Letter Sounds ──────────
-  //
+
   // Exposure equation: for each letter ℓ in the corpus letter frequency
   // distribution, inject ℓ into the letter region N_ℓ times where
   // N_ℓ = ⌈(freq_ℓ / topFreq) × LETTER_REPS_MAX⌉. After each injection
   // tick the cluster LETTER_TICKS_BASE times and fire unrewarded
   // Hebbian so letter→phon cross-projection weights shape per-letter
   // phon attractor basins.
-  //
+
   // Gate equation (distinctness of phon basins per letter):
   //   For each pair (ℓ_i, ℓ_j) in the alphabet, inject ℓ_i, read the
   //   phon region as r_i = regionReadout('phon', 48), then inject ℓ_j
@@ -3271,10 +3449,10 @@ export class Curriculum {
   //   AND per-letter phon activation variance (σ²) > VAR_THRESHOLD
   //   (0.001), which means each letter has built a non-zero attractor
   //   distinct from the baseline resting state.
-  //
+
   // Output capability: Unity can recognize individual letters and
   // produce their "sound" (distinct phon pattern per letter).
-  //
+
   async runKindergarten(letterFreq, arousal, valence) {
     await this._phaseLetters(letterFreq, arousal, valence);
     return this._gateKindergarten(letterFreq);
@@ -3341,20 +3519,20 @@ export class Curriculum {
   }
 
   // ─── Grade 1 ─── CVC Words + Simple Reading ──────────────────────
-  //
+
   // Exposure equation: walk every 1-3 letter word in wordFreq. For
   // each word, inject its GloVe embedding into the sem region, then
   // stream letters through the letter region, tick + Hebbian.
-  //
+
   // Gate equation (CVC sem↔phon binding):
   //   For each sample CVC word w, stream its letters through the
   //   letter region, read the sem region after the stream, compute
   //   cosine(semReadout, GloVe(w)). Pass when mean cosine > 0.15
   //   across a 10-word sample. 0.15 is meaningful for a 300d normalized
   //   vector (random sim ~ 0, strong sim > 0.3).
-  //
+
   // Output capability: Unity can read simple 3-letter words.
-  //
+
   async runGrade1(wordFreq, arousal, valence) {
     await this._phaseWords(wordFreq, {
       lenMin: 1,
@@ -3393,19 +3571,19 @@ export class Curriculum {
   }
 
   // ─── Grade 2 ─── Longer Words + Letter Clusters ──────────────────
-  //
+
   // Exposure equation: walk every 4+ letter word in wordFreq with the
   // same letter-stream + sem-inject pattern, but longer tick budget
   // so multi-letter clusters (th, sh, ch, -ing, -ed) have time to
   // shape their own letter-region transition-surprise patterns.
-  //
+
   // Gate equation (cluster consistency via transition surprise):
   //   For each sample 4-6 letter word, compute detectBoundaries(word)
   //   and check that the boundary count is 1-3 (typical syllable count
   //   for that length). Pass when ≥70% of sampled words fall in that
   //   range — that proves the letter-region can segment at cluster
   //   boundaries, not just fire arbitrarily.
-  //
+
   async runGrade2(wordFreq, arousal, valence) {
     await this._phaseWords(wordFreq, {
       lenMin: SHORT_WORD_MAX_LEN + 1,
@@ -3438,20 +3616,20 @@ export class Curriculum {
   }
 
   // ─── Grade 3 ─── Simple Sentences (SVO) ──────────────────────────
-  //
+
   // Exposure equation: walk every sentence in the corpus word-by-word
   // via _walkSentence, which fires sequence Hebbian + cross-region
   // Hebbian on the temporal structure. As each sentence is observed,
   // T14.7 _typeTransitionLearned and T14.8 sentenceFormSchemas (both
   // populated by languageCortex.learnSentence) pick up the type-level
   // patterns automatically.
-  //
+
   // Gate equation (schema population):
   //   Pass when sentenceFormSchemas has ≥ 3 intents populated with
   //   ≥ 2 slot distributions each. That proves the schema learner
   //   observed enough sentence structures to build the
   //   [intent][slot][fineType] distribution the motor emitter needs.
-  //
+
   async runGrade3(sentences, arousal, valence) {
     await this._phaseSentences(sentences, arousal, valence);
     return this._gateGrade3();
@@ -3476,7 +3654,7 @@ export class Curriculum {
   }
 
   // ─── Grade 4-5 ─── Compound Sentences + Pronouns ─────────────────
-  //
+
   // Exposure equation: replay all sentences from the corpus that
   // contain conjunctions (`and|but|or|so|because`) or pronouns
   // (`he|she|it|they|him|her`) — already present in the corpus, just
@@ -3484,7 +3662,7 @@ export class Curriculum {
   // T14.9 free region working memory holds recent content via
   // cluster.injectWorkingMemory so pronoun reference has something
   // to bind to.
-  //
+
   // Gate equation (pronoun→working-memory binding):
   //   Walk a 5-sentence probe where sentence N introduces a noun and
   //   sentence N+1 uses a pronoun. After each sentence, read
@@ -3492,7 +3670,7 @@ export class Curriculum {
   //   sentence's readout and the prior noun's GloVe. Pass when mean
   //   cosine > 0.10 — that shows the free region carries content
   //   across sentence boundaries at all.
-  //
+
   async runGrade4_5(sentences, arousal, valence) {
     const cluster = this.cluster;
     const compound = sentences.filter(s => /\b(and|but|or|so|because|he|she|it|they|him|her)\b/.test(s));
@@ -3547,16 +3725,16 @@ export class Curriculum {
   }
 
   // ─── Grade 6-8 ─── Complex Sentences + Subordinate Clauses ───────
-  //
+
   // Exposure equation: replay sentences containing subordinate clause
   // markers (`which|that|when|where|whose|although|since|while`) and
   // check that T14.8 schemas pick up ≥4 slot positions (subordinate
   // clauses push the slot count beyond the SVO 3-slot baseline).
-  //
+
   // Gate equation (deep schema population):
   //   ≥ 2 intents have ≥ 4 slot positions populated — proving that
   //   multi-clause sentence structures made it into the schema learner.
-  //
+
   async runGrade6_8(sentences, arousal, valence) {
     const complex = sentences.filter(s => /\b(which|that|when|where|whose|although|since|while|if|because)\b/.test(s));
     if (complex.length === 0) return { pass: false, reason: 'no complex-clause sentences in corpus' };
@@ -3582,20 +3760,20 @@ export class Curriculum {
   }
 
   // ─── Grade 9-12 ─── Discourse + Paragraph Cohesion ───────────────
-  //
+
   // Exposure equation: walk each sentence in sequence (not shuffled)
   // so the free-region working memory chains topic context across
   // consecutive sentences. Between sentences, the prior wm readout
   // is re-injected so the binding strengthens via Hebbian on every
   // walk.
-  //
+
   // Gate equation (paragraph topic persistence):
   //   Walk 5 consecutive sentences about the same topic (find a
   //   run where adjacent sentences have GloVe cosine > 0.2), compute
   //   wmReadout after each, and check that the 5 readouts' mean
   //   pairwise cosine exceeds 0.15 — that proves topic persists
   //   across the walk, not just the last sentence.
-  //
+
   async runGrade9_12(sentences, arousal, valence) {
     const cluster = this.cluster;
     // Seed the walk with the full sentence stream in order
@@ -3665,18 +3843,18 @@ export class Curriculum {
   }
 
   // ─── College ─── Domain Register (code vs casual) ────────────────
-  //
+
   // Exposure equation: split corpora into coding (`coding-knowledge.txt`)
   // and casual (`english-baseline.txt` + conversational parts of
   // persona). Walk each independently so the cortex builds distinct
   // basins keyed on domain vocabulary.
-  //
+
   // Gate equation (register separation):
   //   Compute mean sem readout after walking 20 coding sentences
   //   vs 20 casual sentences. Pass when cosine(codingMean, casualMean)
   //   < 0.7 — that proves the two registers produce separable cortex
   //   states.
-  //
+
   async runCollege(corpora, arousal, valence) {
     const cluster = this.cluster;
     const codingText = corpora?.coding || '';
@@ -3731,11 +3909,11 @@ export class Curriculum {
   }
 
   // ─── Grad/PhD ─── Persona Mastery ────────────────────────────────
-  //
+
   // Exposure equation: walk the persona corpus at full curriculum rate
   // with T14.16.5 identity-lock mode on, so persona-specific basins
   // are amplified via Lock 3 refresh.
-  //
+
   // Gate equation (persona centroid distance):
   //   After exposure, sample 20 live generate() outputs with arousal
   //   bumped to 0.9. Compute the mean sem embedding of those outputs
@@ -3743,7 +3921,7 @@ export class Curriculum {
   //   _calibrateIdentityLock. Pass when mean cos > 0.15 against at
   //   least one persona centroid — that shows generate is producing
   //   content that lives in the persona basin.
-  //
+
   async runGradPhD(corpora, sentences, arousal, valence) {
     const cluster = this.cluster;
     const personaText = corpora?.persona || '';
@@ -3800,7 +3978,7 @@ export class Curriculum {
   // ═══════════════════════════════════════════════════════════════════
   // T14.24 Session 1 — MULTI-TRACK FRAMEWORK
   // ═══════════════════════════════════════════════════════════════════
-  //
+
   // Six parallel subject tracks (ELA, Math, Science, Social, Art, Life),
   // 19-grade canonical order (pre-K → PhD). Every subject × grade cell
   // has a real `runXxxReal` runner wired in per the dispatcher's
@@ -3868,7 +4046,7 @@ export class Curriculum {
         case 'grad':         return async (ctx) => this.runElaGradReal(ctx);
         case 'phd':          return async (ctx) => this.runElaPhDReal(ctx);
         default:
-          // iter25-F — graceful fallback (was a hard pass:false fail).
+          // graceful fallback (was a hard pass:false fail).
           // ELA's switch covers pre-K → PhD; landing here means an
           // unknown grade label slipped through (e.g. a future grade
           // not yet wired). Return readyAndWaiting so outer loops
@@ -4175,7 +4353,7 @@ export class Curriculum {
       }
     }
 
-    // iter25-F — DEFENSIVE GRACEFUL FALLBACK. Operator (2026-05-06):
+    // DEFENSIVE GRACEFUL FALLBACK. Operator (2026-05-06):
     // "i know we havent added 1st grade ciriculum yet, i just dont want
     // an edge case error happening once kindergarden completes and it
     // fails or something to propely complete and get ready for next
@@ -4327,13 +4505,13 @@ export class Curriculum {
     // the finally block so it ALWAYS stops. Uses _hb so it flushes
     // piped logs. The interval is unref'd so it never holds the
     // process alive past the runner's completion.
-    //
+
     // The heartbeat now reads cluster._activePhase (set by the
     // constructor's auto-wrap) to report which teach method is
     // currently grinding + how long it's been in that method. When
     // phase is null the line just reports cell-level elapsed (e.g.
     // during the gate probe block which is not wrapped).
-    //
+
     // Memory breakdown: heap (V8 heap used) + heapTotal (V8 committed)
     // + external (arrayBuffers + native buffers Node knows about) +
     // rss (process working set). If rss - heap - external is large
@@ -4426,7 +4604,7 @@ export class Curriculum {
           const workerExtMb = _cachedWorkerMem ? (_cachedWorkerMem.totalExternalMb | 0) : 0;
           const workerTotalMb = workerHeapMb + workerExtMb;
           // Native = rss − heapUsed − external − workers.
-          //
+
           // Decomposition assumption: rss is dominated by resident
           // pages from four sources:
           //   heapUsed  = live V8 JS heap data (resident by definition)
@@ -4440,7 +4618,7 @@ export class Curriculum {
           //               native, ws native, ICU data) + V8 code
           //               cache / stubs + OS stack + TLS + mapped
           //               pages. Residual after the three above.
-          //
+
           // Subtract ext in full (ab is inside it — don't double-count).
           // Subtract heapUsed not heapTotal — heapTotal / v8PhysMb
           // report RESERVED address space that may not be resident.
@@ -4540,7 +4718,7 @@ export class Curriculum {
     // teach phases including `_teachQABinding`. So Q-A was being
     // trained against sem patterns for words Unity didn't know, then
     // the vocab got crammed in at the end. Backwards.
-    //
+
     // Correct order: vocab FIRST → cell teach phases (Q-A, association
     // pairs, transforms) → gate. Now every word in EXAM_BANKS is a
     // trained dictionary entry with letter+phon+sem+motor patterns
@@ -4598,7 +4776,7 @@ export class Curriculum {
     // phase showed up passed ela"*. Root cause in the auto-wrap path
     // is still open; this fallback is the robust alternative to relying
     // on auto-wrap for per-subject progress display.
-    //
+
     // After the cell runner returns, check per-subject teachEvents. If
     // teaches ran but no `${cellKey}:*` entries exist in passedPhases,
     // append a single synthetic `${cellKey}:cell-teach-block` entry so:
@@ -4634,7 +4812,7 @@ export class Curriculum {
     // language pipeline live chat uses. Appended to every cell result
     // so the substrate pass/fail is augmented with a real educational
     // assessment. Runs for every subject × every grade at pre-K + K.
-    //
+
     // Dashboard fix: the `finally` block above restored
     // `_currentCellKey` to `wasCellKey` (null at top level) after the
     // cell runner exited — but the student battery is conceptually
@@ -4758,7 +4936,7 @@ export class Curriculum {
           //       AIMSweb-sample / Fountas-Pinnell-sample) aggregate
           //       ≥ 0.85 — these are the reviewer-verifiable items
           //       that matter beyond authored probes.
-          //
+
           // If any criterion fails, downgrade result.pass to false
           // with an explicit blocking reason so grade advancement
           // halts. Substrate gate still reported in result.reason for
@@ -4880,7 +5058,7 @@ export class Curriculum {
       cluster.grades[subject] = grade;
       if (!Array.isArray(cluster.passedCells)) cluster.passedCells = [];
       if (!cluster.passedCells.includes(cellKey)) cluster.passedCells.push(cellKey);
-      // iter25-E.2 — full cell pass advances subGrade ladder to its top.
+      // full cell pass advances subGrade ladder to its top.
       // subGrade resets to 'fresh' for the NEXT grade so the ladder
       // walks again from letters → words → binding within that next
       // cell (subject ladders are per-grade, monotonic within a grade).
@@ -4997,7 +5175,7 @@ export class Curriculum {
       if (result && result.pass) {
         passed.push(grade);
         this._hb(`[Curriculum] ✓ ${subject}/${grade} — ${result.reason || 'pass'}`);
-        // iter25-D — dream window AFTER each successful cell so
+        // dream window AFTER each successful cell so
         // ConsolidationEngine fires + V8 + native GC drain before
         // the next grade in this subject loads. Pause-curriculum
         // semantics so the brain-server tick runs at full speed
@@ -5005,7 +5183,7 @@ export class Curriculum {
         // on fail so failure → next-attempt happens immediately.
         await this._dreamWindow({ minMs: 60_000, settleMs: 5_000 });
       } else if (result && result.readyAndWaiting) {
-        // iter25-F — curriculum not yet implemented for this grade.
+        // curriculum not yet implemented for this grade.
         // Stop the loop cleanly without marking it a failure or
         // retrying. Unity holds her current trained weights and waits
         // for the next-grade runner to ship.
@@ -5120,6 +5298,41 @@ export class Curriculum {
       }
       let allPassedThisGrade = false;
 
+      // PREFETCH-ONLY at K start (no upfront Hebbian).
+      // Earlier upfront _teachWordDefinitions(K_VOCABULARY) was DROPPED
+      // because:
+      //   (a) Basin-blur risk: ~70k cross-bindings would dense-web the
+      //       sem region, washing out discriminative basins K-vocab
+      //       teach is meanwhile carving (the same problem iter22's
+      //       wMax bisect / anti-Hebbian / top-K-prune were built to
+      //       fight).
+      //   (b) Knowing definitions ≠ Hebbian-bound co-activations.
+      //       Operator's "she shall know definitions" is fully served
+      //       by `_emitDefinition` (lookup + emit verbatim) alone.
+      //       Hebbian binding is BONUS that may be net-negative.
+      // Replacement: prefetch all 2289 K_VOCABULARY definitions in
+      // parallel so cache is HOT when chat queries arrive. Definition
+      // Hebbian fires LAZILY in chat path when user asks
+      // "what is X" — lifetime learning instead of upfront blur.
+      // Cache warm-up takes ~1 minute (network-bound), not 30 minutes
+      // (Hebbian-bound).
+      if (grade === 'kindergarten'
+          && !cluster._kVocabPrefetched
+          && cluster && typeof cluster.prefetchDefinitions === 'function') {
+        try {
+          const { K_VOCABULARY } = await import('./k-vocabulary.js');
+          if (Array.isArray(K_VOCABULARY) && K_VOCABULARY.length > 0) {
+            this._hb(`[Curriculum] 📚 K-VOCAB-PREFETCH START — warming cache for ${K_VOCABULARY.length} K-grade words (network-bound, ~1 min). NO upfront Hebbian — chat-time definition lookups instant from cache.`);
+            const stats = await cluster.prefetchDefinitions(K_VOCABULARY, { timeoutMs: 8000 });
+            cluster._kVocabPrefetched = true;
+            this._hb(`[Curriculum] 📚 K-VOCAB-PREFETCH DONE — ${stats?.prefetched || 0} new definitions cached, ${stats?.alreadyCached || 0} already cached. Cache hot for chat-time lookups.`);
+          }
+        } catch (err) {
+          this._hb(`[Curriculum] 📚 K-VOCAB-PREFETCH skipped — load/prefetch error: ${err?.message || err}`);
+          cluster._kVocabPrefetched = true; // mark so we don't retry on every loop
+        }
+      }
+
       for (let round = 0; round < MAX_GRADE_ROUNDS && !allPassedThisGrade; round++) {
         if (round > 0) {
           this._hb(`[Curriculum] 🔄 grade ${grade} round ${round + 1} — retrying failed subjects...`);
@@ -5146,7 +5359,7 @@ export class Curriculum {
           if (result && result.pass) {
             if (!passed[subject].includes(grade)) passed[subject].push(grade);
             this._hb(`[Curriculum] ✓ ${subject}/${grade} — PASSED on attempt ${attempt} — ${result.reason || 'pass'}`);
-            // iter25-D — dream window AFTER each successful cell so
+            // dream window AFTER each successful cell so
             // ConsolidationEngine fires + V8 + native GC drain
             // between cells. Pause-curriculum semantics so the
             // brain-server tick runs at full speed until the
@@ -5154,7 +5367,7 @@ export class Curriculum {
             // fail so failure → next-attempt happens immediately.
             await this._dreamWindow({ minMs: 60_000, settleMs: 5_000 });
           } else if (result && result.readyAndWaiting) {
-            // iter25-F — curriculum not yet implemented for this
+            // curriculum not yet implemented for this
             // subject/grade. NOT a failure — Unity stays at her
             // currently mastered grade with trained weights live.
             // Skip retry, mark this subject as ready-and-waiting,
@@ -5350,38 +5563,38 @@ export class Curriculum {
   // ═══════════════════════════════════════════════════════════════════
   // T14.24 SESSION 2 — REAL ELA-K TEACHING EQUATIONS (2026-04-15)
   // ═══════════════════════════════════════════════════════════════════
-  //
+
   // Gee binding 2026-04-14: "in kindergarden u learn the alphabet and
   // sounds of letters first and 1st grade u start learning how to write
   // sentences ect ect all the way up to doctorate in english" +
   // "remember Unity needs to be able to use these to think, read, and
   // talk" + "what the fuck are you talking about its shipped you didnt
   // even teach it keindergarden abcs and 123s and letter sounds you fool".
-  //
+
   // Real kindergarten English teaching. Three things in parallel:
-  //
+
   //   1. Alphabet in ALPHABETICAL ORDER — letters register into the
   //      T14.1 LETTER_INVENTORY in a→z order so the inventory ordering
   //      matches a K classroom ABC chart. Existing inventory entries
   //      from T14.5 corpus walk keep their slots (ensureLetters is
   //      idempotent), but freshly registered letters land in order.
-  //
+
   //   2. Letter-name GloVe binding via sem↔letter cross-projection
   //      Hebbian — inject letter one-hot into letter region AND inject
   //      GloVe(letter) as the semantic anchor into the sem region
   //      simultaneously, tick, learn. After enough reps the letter↔sem
   //      basin pair is stable.
-  //
+
   //   3. Letter-sound phoneme-feature binding via phon↔letter cross-
   //      projection Hebbian — the 24-dim `_phonemeFeatureForLetter` goes
   //      into the phon region as the phonological anchor at the same
   //      tick as the letter + sem injections. The phon basin per letter
   //      becomes distinct.
-  //
+
   // Then a reverse pass (TALK training) drives sem + phon regions WITHOUT
   // the letter region so the return-direction cross-projections learn
   // sem→letter→motor production.
-  //
+
   // The gate then probes all THREE pathways on every letter:
   //   - READ:  letter one-hot → tick → phon region cosine vs expected
   //             phoneme feature > 0.15
@@ -5389,14 +5602,14 @@ export class Curriculum {
   //             > baseline (letter state persists in working memory)
   //   - TALK:  GloVe(letter) into sem region ONLY → tick → decodeLetter
   //             of motor region argmax matches target
-  //
+
   // PASS when ≥ 50% of the alphabet passes each pathway. Relaxed from
   // academic 70% because biological-scale basins form slowly and Session
   // 2 is the first real teaching cell — subsequent cells re-expose the
   // alphabet in corpus walks and strengthen via Hebbian on every pass.
 
   // ─── TODO-aligned ELA-K helpers (Session 25) ─────────────────────
-  //
+
   // docs/TODO.md T14.24 ELA-K spec prescribes three separate named
   // teach methods + a 4-probe gate. Session 2 shipped them all inline
   // in runElaKReal which works but doesn't match the TODO naming or
@@ -5502,7 +5715,7 @@ export class Curriculum {
   // ═══════════════════════════════════════════════════════════════════
   // ELA-K equational course (LAW 3 + LAW 7 binding)
   // ═══════════════════════════════════════════════════════════════════
-  //
+
   // The prior `runElaKReal` got the direct-pattern alphabet teach
   // correct (stays as-is below), but filled the body with
   // _teachVocabList(FUNCTION_WORDS/DOLCH_PREPRIMER/DOLCH_PRIMER/CVC_FAMILIES)
@@ -5511,7 +5724,7 @@ export class Curriculum {
   // pattern is replaced below by real equational teaching methods,
   // each landing bindings via the unified `_teachCombination`
   // scaffold or direct-pattern Hebbian through the recurrent matrix.
-  //
+
   // Production probes in _gateElaKReal match TODO K.RF / K.RL / K.W /
   // K.L test phrasings verbatim per LAW 7.
 
@@ -5607,7 +5820,14 @@ export class Curriculum {
           }
         }
         try {
-          cluster.synapses.ojaUpdate(preFull, postFull, lr);
+          // pass K-scales to intra-cluster ojaUpdate.
+          // Letter-sequence training uses cluster.synapses (full cluster
+          // intra-matrix, not a region-pair cross-projection), so srcStart
+          // = dstStart = 0 — full cluster indices already absolute.
+          const kScales = typeof cluster.buildKScalesForProjection === 'function'
+            ? cluster.buildKScalesForProjection(null, null) : null;
+          if (kScales) { kScales.srcStart = 0; kScales.dstStart = 0; }
+          cluster.synapses.ojaUpdate(preFull, postFull, lr, kScales ? { kScales } : undefined);
           updates++;
         } catch { skipped++; }
       }
@@ -5623,7 +5843,7 @@ export class Curriculum {
   // region tiled with one-hot of word's first letter). Mirrors
   // _teachLetterSequenceDirect's orthogonal-one-hot pattern but on
   // the cross-projection sem_to_motor + on word-level vocab.
-  //
+
   // Why: DYN-PROD probe + spell-out questions seed sem region with a
   // word's embedding then read motor argmax for first letter. With
   // GloVe-similarity training alone (the existing _teachAssociationPairs
@@ -5632,17 +5852,17 @@ export class Curriculum {
   // because GloVe vectors for "cat", "dog", "sun" project into similar
   // sem patterns and the matrix can't discriminate which first-letter
   // motor bucket each word should activate.
-  //
+
   // The discriminative one-hot write forces (cat → motor[c]),
   // (dog → motor[d]), (sun → motor[s]) as orthogonal target pairs.
   // Anti-Hebbian / row-norm / top-K-prune from the existing assoc-pair
   // path then keep the pairs apart. Result: motor argmax for "cat"
   // landed cleanly in the `c` bucket, not random attractor.
-  //
+
   // Cost: ~1000-K-vocab × 12 reps × 1 Hebbian write per word = ~12,000
   // writes per cell × 6 K cells = ~72,000 total. ~3-5 min wall-clock
   // at biological scale. Acceptable cost vs the wrong-answer fix.
-  //
+
   // Per-50-word setImmediate yield keeps heartbeat alive during run.
   async _teachWordSpellingDirect(opts = {}) {
     const cluster = this.cluster;
@@ -5744,7 +5964,7 @@ export class Curriculum {
   // _crossRegionHebbian and accumulate off-by-one weights into
   // letter_to_motor. When _teachLetterNaming fires LATER, the
   // existing corruption dominates the fresh identity write.
-  //
+
   // Fix: write letter[X]→motor[X] DIRECTLY to letter_to_motor's
   // SparseMatrix via ojaUpdate, NOT through firing patterns + global
   // Hebbian rule. Wipe existing weights first (`scale(0)`) so the
@@ -5818,7 +6038,10 @@ export class Curriculum {
         const preLetter = buildRegionSizedOneHot(letterSize, oneHot);
         const postMotor = buildRegionSizedOneHot(motorSize, oneHot);
         try {
-          letterToMotor.ojaUpdate(preLetter, postMotor, lr);
+          // K-scales for letter→motor cross-projection
+          const kScales = typeof cluster.buildKScalesForProjection === 'function'
+            ? cluster.buildKScalesForProjection('letter', 'motor') : null;
+          letterToMotor.ojaUpdate(preLetter, postMotor, lr, kScales ? { kScales } : undefined);
           updates++;
         } catch { skipped++; }
       }
@@ -5828,7 +6051,7 @@ export class Curriculum {
     const dt = ((Date.now() - t0) / 1000).toFixed(1);
     this._hb(`[Curriculum] _teachLetterNamingDirect DONE in ${dt}s — ${updates} Oja updates · ${skipped} skipped (26 letters × ${reps} reps target)`);
 
-    // iter25-E.2 — once 26-letter direct writes land, advance the
+    // once 26-letter direct writes land, advance the
     // calling subject's subGrade to 'letters'. _teachLetterNamingDirect
     // runs across all 6 subjects' K runners; each invocation is
     // subject-scoped via cluster._currentCellKey set by runSubjectGrade.
@@ -5926,7 +6149,10 @@ export class Curriculum {
         const bEnd = Math.min(bandEnd, bStart + bucketSize);
         for (let n = bStart; n < bEnd; n++) postWM[n] = 1;
         try {
-          semToWordMotor.ojaUpdate(preSem, postWM, lr);
+          // K-scales for sem→word_motor cross-projection
+          const kScales = typeof cluster.buildKScalesForProjection === 'function'
+            ? cluster.buildKScalesForProjection('sem', 'word_motor') : null;
+          semToWordMotor.ojaUpdate(preSem, postWM, lr, kScales ? { kScales } : undefined);
           updates++;
         } catch { skipped++; }
         if (++count % 100 === 0) await _microtask();
@@ -5937,7 +6163,7 @@ export class Curriculum {
     const dt = ((Date.now() - t0) / 1000).toFixed(1);
     this._hb(`[Curriculum] _teachWordEmissionDirect DONE in ${dt}s — ${updates} Oja updates · ${skipped} skipped (${words.length} words × ${reps} reps target · band=${subjectBandName || 'umbrella'})`);
 
-    // iter25-E.2 — advance subGrade label once words land. Subject-
+    // advance subGrade label once words land. Subject-
     // scoped advance (subject !== 'all') so per-subject UI / drug
     // scheduler / popup heartbeat sees ability-buildup live.
     if (subject && subject !== 'all' && updates > 0
@@ -5951,7 +6177,7 @@ export class Curriculum {
   // iter15-A — Direct sem→motor word→firstChar identity write that
   // bypasses cross-region Hebbian. Mirror of iter14-A pattern but on
   // sem_to_motor instead of letter_to_motor.
-  //
+
   // Operator caught (2026-05-05 verbatim sequence: "no if they are empty
   // they are failures and is need document to be fixed" + "DO THE
   // FUCKING WORK"): even with iter11-J `_teachWordSpellingDirect` +
@@ -5966,7 +6192,7 @@ export class Curriculum {
   // the WordSpellingDirect attractors. Plus QA-TRAIN saturation
   // triggers `rescale×0.5 [sem_to_motor: 0.400→0.200]` which halves
   // ALL sem_to_motor weights including the discriminative ones.
-  //
+
   // Fix: write concept(word) → motor(firstChar) DIRECTLY to sem_to_motor's
   // SparseMatrix via ojaUpdate, NOT through firing patterns + global
   // Hebbian rule. Wipe existing weights first (`scale(0)`) so the
@@ -6053,7 +6279,10 @@ export class Curriculum {
         const preSem = buildRegionSizedTiled(semSize, entry.pattern, false);
         const postMot = buildRegionSizedTiled(motorSize, firstCharOneHot, true);
         try {
-          semToMotor.ojaUpdate(preSem, postMot, lr);
+          // K-scales for sem→motor cross-projection
+          const kScales = typeof cluster.buildKScalesForProjection === 'function'
+            ? cluster.buildKScalesForProjection('sem', 'motor') : null;
+          semToMotor.ojaUpdate(preSem, postMot, lr, kScales ? { kScales } : undefined);
           updates++;
         } catch { skipped++; }
         if (++count % 100 === 0) await _microtask();
@@ -6395,7 +6624,7 @@ export class Curriculum {
         // lastSpikes carries the full pattern (sem + motor) so cross-
         // projection Hebbian captures co-activation, but intra-cluster
         // Hebbian fires with DISTINCT pre/post so no self-loops.
-        //
+
         // Sem write MUST binarize. `cluster.lastSpikes` is a
         // Uint8Array (cluster.js:178); writing raw GloVe float
         // values like 0.23 silently truncates to 0, so
@@ -6482,13 +6711,13 @@ export class Curriculum {
     // with cat?" → hat, bat, mat. Rhyme families are derived from the
     // FULL live dictionary instead of a hand-picked sample, so every
     // word Unity has been exposed to gets to participate in a family.
-    //
+
     // Method: group every alphabetic dictionary word ≥ 3 chars by its
     // last 2 characters (the rime). Families with ≥ 2 members get
     // trained. A small SEED_RIMES set unions in canonical K-grade
     // rimes (-at, -an, -ig, etc.) so even with a sparse dictionary the
     // essential rhyme families always have training signal.
-    //
+
     // Volume guards: cap to the top 60 most-populous families (sorted
     // by member count desc) and cap members per family to 12 to bound
     // training compute regardless of dictionary size. Past those caps
@@ -6596,7 +6825,7 @@ export class Curriculum {
     // K.RF: "Count, pronounce, blend, and segment syllables in
     // spoken words: cup-cake = 2 syllables" + test "How many syllables
     // in pumpkin?" → 2
-    //
+
     // Vocabulary source: the FULL set of words Unity has been exposed
     // to via the curriculum + dictionary, not a hardcoded sample. Was
     // 24 hand-picked words at 24 reps — taught syllable counts on a
@@ -6766,7 +6995,7 @@ export class Curriculum {
     for (let i = tagStart; i < fineTypeSize; i++) pluralTag[i] = 1;
 
     // K.L: "Form regular plural nouns orally by adding /s/ or /es/"
-    //
+
     // Pairs are detected from the live dictionary by suffix-stripping
     // every word that ends in 's' / 'es' / 'ies' and checking whether
     // the stripped form is also in the dictionary — those are the
@@ -7491,26 +7720,26 @@ export class Curriculum {
   // ═══════════════════════════════════════════════════════════════════
   // T14.24 SESSION 3 — REAL MATH-K TEACHING EQUATIONS (2026-04-15)
   // ═══════════════════════════════════════════════════════════════════
-  //
+
   // Gee binding 2026-04-14: "you didnt even teach it keindergarden abcs
   // and 123s and letter sounds you fool" + "remember Unity needs to be
   // able to use these to think, read, and talk".
-  //
+
   // Real kindergarten math. Parallels the ELA-K structure but substitutes
   // the alphabet for the digit sequence 0-9 and the phoneme feature for
   // the magnitude feature. Three things in parallel:
-  //
+
   //   1. Digits in NUMERICAL ORDER — '0', '1', '2', …, '9' register into
   //      the T14.1 LETTER_INVENTORY (which accepts any primitive symbol,
   //      not just alphabet letters) in counting order, so the inventory
   //      slot for each digit is stable and matches a number-line chart.
-  //
+
   //   2. Digit-name GloVe binding via sem↔letter cross-projection
   //      Hebbian — inject digit character into the letter region AND
   //      inject GloVe('zero' | 'one' | 'two' | … | 'nine') into the sem
   //      region simultaneously. Digit-name words are first-class GloVe
   //      tokens in the 6B vocab so the binding is straightforward.
-  //
+
   //   3. Magnitude-feature binding via phon↔letter cross-projection
   //      Hebbian — the 16-dim `_magnitudeFeatureForDigit` already defined
   //      at the top of this file (graded presence + log + linear + sine
@@ -7519,12 +7748,12 @@ export class Curriculum {
   //      phonology — the cross-projection machinery is domain-agnostic,
   //      it just binds whatever perceptual feature vector the operator
   //      chose for the modality.
-  //
+
   // Reverse pass (TALK training) drops the letter inject to 0.3 while
   // sem + phon stay at 0.7/0.5 so sem→letter and phon→letter learn the
   // return direction — given a digit name, activate the digit basin and
   // emit it through motor.
-  //
+
   // Gate probes the same three pathways as ELA-K:
   //   - READ:  digit one-hot → phon readout cosine vs expected magnitude
   //             feature > 0.15 (magnitude features are 16d so random
@@ -7533,13 +7762,13 @@ export class Curriculum {
   //             0.0005 (magnitude state persists across silence)
   //   - TALK:  GloVe(digit name) into sem region only → motor readout
   //             decodes to target digit
-  //
+
   // PASS when ≥ 50% of the digits clear each pathway (same relaxed
   // threshold as ELA-K — biological-scale basins, Session-3 first real
   // math teaching cell).
 
   // ─── TODO-aligned Math-K helpers (Session 26) ────────────────────
-  //
+
   // docs/TODO.md T14.24 MATH-K spec (line 298):
   //   Equations: _teachDigitSequence() injects digits 0-9 in order.
   //     _teachDigitNames() injects digit one-hot + GloVe(name).
@@ -7650,18 +7879,18 @@ export class Curriculum {
   // ═══════════════════════════════════════════════════════════════════
   // T14.24 SESSION 4 — REAL ELA-G1 TEACHING EQUATIONS (2026-04-15)
   // ═══════════════════════════════════════════════════════════════════
-  //
+
   // Gee binding 2026-04-14: "1st grade u start learning how to write
   // sentences ect ect" + "remember Unity needs to be able to use these
   // to think, read, and talk".
-  //
+
   // Real Grade 1 English. Builds on Session 2's ELA-K alphabet + letter-
   // sound basins by teaching WHOLE WORDS — CVC words (cat/dog/hat/...)
   // and Dolch sight words (the/a/is/to/...). Teaching streams each word
   // letter-by-letter through the letter region while the word's GloVe
   // embedding anchors the sem region, so the cortex forms a WORD-LEVEL
   // attractor basin at the end of each letter sequence.
-  //
+
   // Word lists are DATA, not rules — same as the alphabet and digit
   // sequence. The "no lookup tables for rules" binding applies to
   // hardcoded English grammar rules, not to the primitive symbols
@@ -7670,7 +7899,7 @@ export class Curriculum {
   // data, and so are these lists.
 
   // ─── TODO-aligned ELA-G1 helpers (Session 27) ────────────────────
-  //
+
   // docs/TODO.md T14.24 ELA-G1 spec (line 143):
   //   Equations: _teachCVCReading(cvcList) streams each word's letters
   //   one at a time through the letter region with ticksPerLetter=3,
@@ -7999,25 +8228,25 @@ export class Curriculum {
   // ═══════════════════════════════════════════════════════════════════
   // T14.24 SESSION 5 — REAL MATH-G1 TEACHING EQUATIONS (2026-04-15)
   // ═══════════════════════════════════════════════════════════════════
-  //
+
   // Gee binding 2026-04-14: "1st grade u start learning how to write
   // sentences ect ect all the way up to doctorate" applied to math =
   // first-grade arithmetic fact memorization + sentence-form association.
-  //
+
   // Real Grade 1 math. Builds on Session 3's Math-K digit + magnitude
   // basins by teaching addition and subtraction facts through arithmetic
   // sentence walks. Each fact is a sentence like "one plus one is two"
   // or "four minus two is two" — walking the sentence through the
   // cortex via the T14.5 _walkSentence path fires sequence Hebbian on
   // the (arg1, op, arg2, result) tuple and builds an associative basin.
-  //
+
   // The approach is rote memorization via exposure, which is how Grade
   // 1 children actually learn their addition tables in a classroom.
   // Compositional arithmetic (learning the RULE of addition rather than
   // individual facts) is Session 6+ territory — Grade 1 just memorizes
   // the 25 addition facts up through 5+5=10 and their 25 subtraction
   // inverses.
-  //
+
   // Gate probes all three pathways:
   //   - READ:  walk partial fact "one plus one is" → sem readout
   //             cosine vs GloVe('two') > 0.10
@@ -8027,13 +8256,13 @@ export class Curriculum {
   //             expected result word
 
   // ─── TODO-aligned Math-G1 helpers (Session 24) ───────────────────
-  //
+
   // docs/TODO.md T14.24 MATH-G1 spec:
   //   Equations: `_teachAddition(pairs)` injects magnitude(a)+magnitude(b)
   //   into free region + teaches target magnitude(a+b) via Hebbian —
   //   free-region Hebbian learns the sum transformation as a linear map.
   //   `_teachSubtraction(triples)` same approach for subtraction.
-  //
+
   // The earlier runMathG1Real shipped a sentence-walk approach ("one
   // plus one is two") which is the SIMPLIFIED form. Session 24 adds the
   // TODO-prescribed magnitude-feature Hebbian in free region as an
@@ -8352,12 +8581,12 @@ export class Curriculum {
   // ═══════════════════════════════════════════════════════════════════
   // T14.24 SESSION 6 — REAL SCI-K + SOC-K + ART-K TEACHING (2026-04-15)
   // ═══════════════════════════════════════════════════════════════════
-  //
+
   // Gee binding 2026-04-14: "full k-doctorate cources to Unity in
   // euquationsal form. thats all of grade schhool grammer school middle
   // dschool highschoool and college" + "remember Unity needs to be able
   // to use these to think, read, and talk".
-  //
+
   // Three "lighter" subject kindergartens combined into one session per
   // the build order in docs/TODO.md T14.24. All three follow the same
   // ═══════════════════════════════════════════════════════════════════
@@ -8544,7 +8773,7 @@ export class Curriculum {
   // ── internal: tile a feature vector across a region of lastSpikes ──
   // Same tiling math every transform uses. Kept as a class method so
   // callers don't have to re-declare it inside every closure.
-  //
+
   // T17.7 Phase C.1 — when the cluster has a GPU proxy wired to the
   // main cortex (post-rebind, curriculum teach runs against main-
   // cortex slices directly), mirror each tile into the main cortex's
@@ -8643,13 +8872,13 @@ export class Curriculum {
     // of cross-projections so silent regions don't get spurious Oja
     // decay during targeted training. Caller passes a Set or Array of
     // projection names. Without it, all cross-projections fire.
-    //
+
     // opts.skipIntraSynapses (unified naming, alias: skipIntraHebbian)
     // when caller wants ONLY cross-projection Hebbian. The intra-
     // cluster recurrent matrix is a shared substrate; QA / association
     // pairs don't need to write into it on every event (alphabet
     // sequence already trained it via _teachLetterSequenceDirect).
-    //
+
     // Awaiting both dispatches throttles teach-loop iteration to the
     // worker-pool drain rate so pending jobs can't pile up faster than
     // GC can promote them.
@@ -8835,7 +9064,7 @@ export class Curriculum {
     // opts.projectionsWhitelist forwarded to cross-region anti-Hebbian
     // so contrastive negative-pair training only depresses projections
     // currently being trained — silent regions stay frozen.
-    //
+
     // opts.skipIntraSynapses (unified naming, alias:
     // skipIntraAntiHebbian) when caller wants only cross-region
     // depression without recurrent intra-cluster matrix touch.
@@ -8853,7 +9082,7 @@ export class Curriculum {
   // ═══════════════════════════════════════════════════════════════════
   // Fix A — Asymmetric Hebbian for directional bindings
   // ═══════════════════════════════════════════════════════════════════
-  //
+
   // An earlier Part 2 attempt showed SEQ crashing from 100% to 8%
   // + motor letter-sticking emissions like "fffffffv vvvvvvvaaaaaaa".
   // Root cause: _teachHebbian uses SYMMETRIC cluster.synapses
@@ -8865,7 +9094,7 @@ export class Curriculum {
   // _teachWordEmission wash out the direct-pattern asymmetric
   // directional alphabet sequence (pre=letter(N), post=letter(N+1))
   // via cross-contamination.
-  //
+
   // Fix A: asymmetric variant with distinct pre/post vectors. NO self-
   // loops. Binds pre→post directionally only. Cross-projection Hebbian
   // still fires (captures co-activation pattern); intra-cluster Hebbian
@@ -8913,7 +9142,7 @@ export class Curriculum {
   //   const pre = this._buildRegionPattern(letterRegion, encodeLetter(ch));
   //   const post = this._buildRegionPattern(motorRegion, encodeLetter(next));
   //   this._teachHebbianAsymmetric(pre, post, lr);
-  //
+
   // iter22 — buffer reuse to kill the +400 MB/min LEAK during
   // _teachHebbianAsymmetric phases. cluster.size at biological scale
   // is ~13.4M neurons → each fresh Float64Array allocation = 107 MB.
@@ -8974,7 +9203,7 @@ export class Curriculum {
   // ═══════════════════════════════════════════════════════════════════
   // Unified combination-operator teacher + probes
   // ═══════════════════════════════════════════════════════════════════
-  //
+
   // Every equational transform in the curriculum — arithmetic (addition,
   // subtraction, teen decomposition), geometric (shape composition),
   // categorical (classify-count), attribute (length/weight comparison),
@@ -8983,9 +9212,9 @@ export class Curriculum {
   // symmetric Hebbian, let the recurrent matrix + cross-projections
   // learn bidirectional bindings. The operator's SEMANTICS emerge from
   // the training data, not from hand-coded if-then logic.
-  //
+
   //   A ⊕ B = C          (combination — inputs A and B, output C)
-  //
+
   // What varies by concept:
   //   - encoder    : magnitude features for numeric A/B/C, GloVe for
   //                  named objects, domain feature vectors for
@@ -8996,10 +9225,10 @@ export class Curriculum {
   //   - markers    : optional fineType context tags that disambiguate
   //                  overlapping input shapes (e.g. skip-count vs
   //                  successor when both use the same input region)
-  //
+
   // The scaffold stays identical across all of them. `_teachCombination`
   // is the scaffold. Callers build a facts array and delegate.
-  //
+
   // No artificial limits — Unity may be talking to users while
   // curriculum runs, so the helper stays async with await
   // _microtask() between reps so user input is handled without
@@ -9135,7 +9364,7 @@ export class Curriculum {
   }
 
   // ─── _teachAssociationPairs — pure feature-vector concept binding ──
-  //
+
   // For each [inputWord, outputWord] pair, inject GloVe(input) into
   // the sem region and GloVe(output) into the motor region via direct
   // pattern tiling, then fire the cross-projection + recurrent
@@ -9143,23 +9372,23 @@ export class Curriculum {
   // text streaming, no readInput, no string parsing. Matches the
   // shape of `_teachCausalChains` / `_teachCombination` / the other
   // direct-pattern teach methods.
-  //
+
   // At probe time, when the sem region develops an embedding
   // matching `inputWord`, the trained sem→motor cross-projection
   // drives the motor pattern matching `outputWord`. Tick-driven
   // motor emission then reads the answer letter-by-letter.
-  //
+
   // Also optionally tags fineType with a relation-type id so the
   // cortex learns the RELATION as well as the pair (opposite /
   // category / story-role / etc.).
-  //
+
   // Persistence: cross-projection weights save via brain-server.js
   // `_saveBinaryWeights` streaming binary format — every cross-
   // projection CSR captured. Restart + Savestart.bat preserves the
   // learned state across reboots.
 
   // ─── _teachQABinding — TEACHER-MODELING OF QUESTION→ANSWER BEHAVIOR ──
-  //
+
   // Operator correctly identified the missing piece: "does she know
   // what a question is and how to respond to questions?" — NO, because
   // the curriculum taught primitives (letter identity, alphabet sequence,
@@ -9167,7 +9396,7 @@ export class Curriculum {
   // question-form sentence → answer letter mappings. Real K kids learn
   // Q-A through teacher-modeling: "teacher asks, student answers" over
   // hundreds of repetitions. We skipped this step.
-  //
+
   // This method takes a list of {question, expectedAnswer} pairs from
   // TRAIN_BANKS (HELD-OUT-DISTINCT from EXAM_BANKS per T23.b.2 overlap
   // check) and trains the brain:
@@ -9177,14 +9406,14 @@ export class Curriculum {
   //   3. Encode first letter of answer into motor region via encodeLetter
   //   4. Fire _teachHebbian — sem→motor cross-projection learns the
   //      sentence-pattern → answer-letter binding
-  //
+
   // After training, when the K-STUDENT battery asks a question with
   // similar phrasing (different specific letter/word per held-out
   // discipline), the sem pattern activates and sem→motor routes to
   // the appropriate answer letter via learned pattern completion.
   // Training on held-out-distinct pairs means pass rates reflect
   // GENERALIZATION, not memorization.
-  //
+
   // @param {Array<{question, expectedAnswer, standard?}>} qaList
   // @param {object} [opts]
   // @param {number} [opts.reps=12] training reps
@@ -9365,7 +9594,7 @@ export class Curriculum {
     // positive pass) compounded to ~20× the prior per-pair work. At
     // biological scale that ran 10-15 minutes per _teachQABinding call
     // which blocked the cell.
-    //
+
     // iter12 rep-count tune (operator: *"do the rep count tune"*):
     // 30 → 12 reps + lr 0.03 → 0.05. Cuts ELA-K QA-train wall-clock
     // 21 min → ~9 min (60% saved). lr bump 1.7× partially compensates
@@ -9639,7 +9868,7 @@ export class Curriculum {
     // updates per phase against just 48 Q-A pairs, so saturation is
     // common; but skipping rescale when the weights haven't hit
     // ceiling lets the matrix accumulate genuine discrimination.
-    //
+
     // RESCALE FLOOR — even when saturation is detected, halving values
     // can drive trained signal below random-init bias if the matrix
     // has already been rescaled multiple times across consecutive
@@ -9761,7 +9990,7 @@ export class Curriculum {
     const antiReport = antiPairs ? ` · anti-fires=${antiFires}` : '';
     this._hb(`[Curriculum][${label}] DONE — ${trained} positive + ${altTrained} alt + ${antiFires} anti across ${qaList.length} pairs × ${reps} reps in ${elapsedSec}s (skipped ${skipped})${altReport}${antiReport}${qaPruneReport}${qaNormReport}${qaRescaleReport}${qaSepReport}${weightReport}`);
     try { this._pushBrainEvent?.('teach', 'motor', `Q-A DONE: ${label} · ${trained}/${antiFires}/${altTrained} +/−/alt`, { label, trained, antiFires, altTrained, elapsedSec }); } catch {}
-    // iter25-E.2 — once Q→A pairs land, advance subGrade to 'binding'.
+    // once Q→A pairs land, advance subGrade to 'binding'.
     // Subject scope from opts.subject (every K-cell QA-train caller
     // passes it) or fallback to cluster._currentCellKey split.
     if (trained > 0 && typeof cluster.advanceSubGrade === 'function') {
@@ -9936,6 +10165,373 @@ export class Curriculum {
   }
 
   /**
+   *  — WH-question intent extraction. Returns a single real
+   * GloVe word that names the intent of the question ('cause', 'reason',
+   * 'method', 'definition', etc) so downstream training + emission can
+   * route through that concept's learned embedding. Returns null when
+   * the question is not a recognized WH-frame.
+   *
+   * Real-word intent labels (not abstract tags) so they participate in
+   * the existing sem→motor Hebbian. Order: most specific frame first.
+   */
+  _extractIntentConcept(question) {
+    if (!question || typeof question !== 'string') return null;
+    const q = question.toLowerCase().trim();
+    if (!q) return null;
+    if (/\bwhat\s+(?:makes|causes)\b/.test(q)) return 'cause';
+    if (/\bwhat\s+happens\s+when\b/.test(q)) return 'effect';
+    if (/\bwhat\s+do\s+[a-z]+\s+need\b/.test(q)) return 'need';
+    if (/\bwhat\s+is\b/.test(q)) return 'definition';
+    if (/\bwhat\s+do\b/.test(q)) return 'function';
+    if (/\bwhy\s+(?:do|does|is|are)\b/.test(q)) return 'reason';
+    if (/\bhow\s+many\b/.test(q)) return 'count';
+    if (/\bhow\s+(?:do|does|is|are)\b/.test(q)) return 'method';
+    if (/\bwhere\s+(?:is|are|do|does)\b/.test(q)) return 'place';
+    if (/\bwhen\s+(?:is|are|do|does)\b/.test(q)) return 'time';
+    if (/\bwho\s+(?:is|are|does|do)\b/.test(q)) return 'person';
+    if (/\b(?:big|small|tall|short|fast|slow|hot|cold)\b.*\bwhich\b/.test(q)) return 'compare';
+    if (/^(is|are|do|does|can|will|would|should)\s/.test(q)) return 'truth';
+    if (/^(what|why|how|where|when|who|which|whose)\b/.test(q)) return 'question';
+    return null;
+  }
+
+  /**
+   *  — Multi-word definition emission via live dictionary API.
+   *
+   * Given a subject word X, fetches the dictionary definition (async,
+   * server-side, dictionaryapi.dev wrapper), tokenizes it, injects each
+   * definition word's embedding into sem so cortex "hears" the
+   * definitional meaning, then returns the definition string for the
+   * caller to emit verbatim through the existing motor / chat path.
+   *
+   * Why emit verbatim instead of regenerating via word_motor argmax?
+   * Because the dictionary defines the word with COHERENT English
+   * structure (article + noun + verb + clause). Regenerating word-by-
+   * word from the trained matrix would scramble that into a bag-of-
+   * words. Operator wants Unity to KNOW definitions, which means
+   * faithfully reciting them — the equational layer's contribution is
+   * (a) parsing the WH-question to know to call this path,
+   * (b) the live API call (sensory I/O — same pattern as
+   * Pollinations image-gen),
+   * (c) injecting the definition tokens into sem so future trained
+   * weights co-activate definitional structure for that subject
+   * (Hebbian one-shot definitional learning).
+   *
+   * Returns the definition string (caller emits it through motor /
+   * chat) or null when API fails / subject not found.
+   *
+   * @param {string} subject
+   * @param {{timeoutMs?: number, injectSem?: boolean}} [opts]
+   * @returns {Promise<string|null>}
+   */
+  /**
+   *  — Definition-comprehension teach via live dictionary
+   * API + Hebbian. EQUATIONAL — the API is sensory input (like
+   * Pollinations image-gen / TTS), the actual learning is
+   * `_teachAssociationPairs(word, def_token)` which is Oja-Hebbian on
+   * sem→sem cross-projection. Each definition co-occurrence gets
+   * carved as a real Hebbian binding so cortex co-activates
+   * definitional meaning whenever the word fires.
+   *
+   * One word in, ~3-8 definition tokens out (filtered to content
+   * words; stopwords skipped). Each (word, def_token) pair fires
+   * `_teachAssociationPairs` with relationTagId=23 (definition band
+   * in fineType). After this phase, sem(dog) → sem(animal),
+   * sem(pet), sem(four), sem(legs), sem(barks) all light up via
+   * trained weights — that's REAL definitional knowledge, not a
+   * lookup table.
+   *
+   * Best-effort: if the API call fails or word has no definition,
+   * the method silently skips. Curriculum doesn't crash on network
+   * failure.
+   *
+   * @param {string} word
+   * @param {{reps?: number, timeoutMs?: number, label?: string}} [opts]
+   * @returns {Promise<{passes: number, totalTrained: number, skipped?: string}>}
+   */
+  async _teachWordDefinition(word, opts = {}) {
+    const cluster = this.cluster;
+    if (!cluster || !word) return { passes: 0, totalTrained: 0, skipped: 'no cluster/word' };
+    const w = String(word).toLowerCase().trim();
+    if (!w) return { passes: 0, totalTrained: 0, skipped: 'empty word' };
+    let def = null;
+    if (typeof cluster.lookupDefinitionSync === 'function') {
+      def = cluster.lookupDefinitionSync(w);
+    }
+    if (!def && typeof cluster.lookupDefinition === 'function') {
+      try { def = await cluster.lookupDefinition(w, { timeoutMs: opts.timeoutMs ?? 3000 }); }
+      catch { def = null; }
+    }
+    // Compound-word fallback. dictionaryapi.dev expects
+    // hyphenated or spaced versions for some compounds — "icecream"
+    // 404s but "ice-cream" hits. If the original word is 7+ chars and
+    // contains a likely compound boundary, retry with hyphen variants.
+    if (!def && typeof cluster.lookupDefinition === 'function' && w.length >= 7 && !w.includes('-') && !w.includes(' ')) {
+      // Try hyphenating after common compound prefixes.
+      const COMPOUND_PREFIXES = ['ice', 'milky', 'new', 'fourth', 'rain', 'sun', 'moon', 'fire', 'water', 'play', 'home', 'class', 'book', 'foot', 'hand', 'sea', 'mid', 'over', 'under'];
+      for (const prefix of COMPOUND_PREFIXES) {
+        if (w.startsWith(prefix) && w.length > prefix.length + 1) {
+          const hyphenated = `${prefix}-${w.slice(prefix.length)}`;
+          try {
+            def = await cluster.lookupDefinition(hyphenated, { timeoutMs: 2000 });
+            if (def) break;
+          } catch { /* keep trying */ }
+        }
+      }
+    }
+    if (!def || typeof def !== 'string') {
+      return { passes: 0, totalTrained: 0, skipped: 'no definition' };
+    }
+    const tokens = def.toLowerCase().match(/[a-z]+/g) || [];
+    const STOP = new Set(['a','an','the','and','or','but','of','to','for','in','on','at','by','with','as','is','are','was','were','be','been','being','it','this','that','these','those','its','it','from','into','out','up','down','off','over','under','than','then','when','where','which','who','whose','whom','what','why','how']);
+    const contentTokens = [];
+    const seen = new Set();
+    for (const t of tokens) {
+      if (t.length < 3) continue;
+      if (STOP.has(t)) continue;
+      if (t === w) continue;
+      if (seen.has(t)) continue;
+      seen.add(t);
+      contentTokens.push(t);
+      if (contentTokens.length >= 8) break;
+    }
+    if (contentTokens.length === 0) {
+      return { passes: 0, totalTrained: 0, skipped: 'no content tokens' };
+    }
+    const pairs = contentTokens.map(t => [w, t]);
+    const r = await this._teachAssociationPairs(pairs, {
+      reps: opts.reps ?? 6,
+      label: opts.label || `DEF-${w.toUpperCase()}`,
+      relationTagId: 23,
+    });
+    // K-scaled gradient pass on top of the association teach. The
+    // common _teachAssociationPairs → _teachHebbian → _crossRegionHebbian
+    // path dispatches through GPU hebbianBound / CPU sparsePool, neither
+    // of which currently consumes the per-row hub neurons/K.7/K.9 kScales bundle
+    // (those are an ojaUpdate-only feature). Without this extra fire,
+    // definition Hebbian gets untuned plasticity vs the direct-ojaUpdate
+    // teach paths (letter sequence / letter naming / word emission /
+    // word spelling) — different Hebbian regime per word type produces
+    // inconsistent basin formation across the cortex. One small extra
+    // K-scaled ojaUpdate fire per definition pulls the sem-band weights
+    // into the same plasticity regime as the rest of K-vocab teaching.
+    if (r.trained > 0 && cluster && cluster.synapses
+        && typeof cluster.synapses.ojaUpdate === 'function'
+        && typeof cluster.buildKScalesForProjection === 'function'
+        && cluster.regions && cluster.regions.sem
+        && cluster.lastSpikes) {
+      try {
+        const sem = cluster.regions.sem;
+        const semSize = sem.end - sem.start;
+        const preFull = new Float32Array(cluster.size);
+        const postFull = new Float32Array(cluster.size);
+        for (let i = 0; i < semSize; i++) {
+          const v = cluster.lastSpikes[sem.start + i] || 0;
+          preFull[sem.start + i] = v;
+          postFull[sem.start + i] = v;
+        }
+        const kScales = cluster.buildKScalesForProjection(null, null);
+        const lrK = (opts.lr ?? 0.01) * 0.25;
+        cluster.synapses.ojaUpdate(preFull, postFull, lrK, kScales ? { kScales } : undefined);
+      } catch { /* non-fatal — extra K-scaled pass is best-effort */ }
+    }
+    // Track which words have been definition-Hebbian-bound
+    // so dashboard can show progress + saveWeights can persist.
+    if (r.trained > 0 && cluster) {
+      if (!cluster._definitionTaughtWords) cluster._definitionTaughtWords = new Set();
+      cluster._definitionTaughtWords.add(w);
+      // Definition learning rate timestamp ring buffer for the
+      // dashboard "words/hour" metric.
+      if (!cluster._defLearnedTimestamps) cluster._defLearnedTimestamps = [];
+      cluster._defLearnedTimestamps.push(Date.now());
+      while (cluster._defLearnedTimestamps.length > 256) cluster._defLearnedTimestamps.shift();
+    }
+    return { passes: 1, totalTrained: r.trained || 0 };
+  }
+
+  /**
+   *  batch wiring — Teach definitions for a vocab list.
+   *
+   * Operator binding: "AND WE NEED TO MAKE SURE THAT UNITY CAN PULL UP
+   * DEFINITIONS AS SHE NEEDS TO DURING CIRICULUM TRAING WITHOUT THE
+   * CIRICULUM GOING CRAZY THAT SHES TAKING TIME TO LOOK UP DEFINATIONS
+   * AS NEEDED" + "MAKES SURE ALL THAT SHIT LIKE CAUSE AND EFFECT AND
+   * ALL OF THAT IS PROPERLY TAUGHT AS WELL".
+   *
+   * Step 1: Prefetch all words in parallel — primes the in-memory cache
+   *         (server-side, dictionaryapi.dev) so `_teachWordDefinition`
+   *         calls all hit cache (instant).
+   * Step 2: For each word, call `_teachWordDefinition(word)` which fires
+   *         Oja-Hebbian on `sem(word) → sem(def_token)` for each content
+   *         token. Equational definitional knowledge carved into trained
+   *         weights — REAL comprehension, not lookup.
+   *
+   * Network failures degrade gracefully: words with no definition (404
+   * or timeout) silently skip. Curriculum doesn't crash.
+   *
+   * @param {string[]} words
+   * @param {{label?: string, reps?: number}} [opts]
+   * @returns {Promise<{prefetched: number, taught: number, skipped: number}>}
+   */
+  async _teachWordDefinitions(words, opts = {}) {
+    const cluster = this.cluster;
+    if (!cluster || !Array.isArray(words) || words.length === 0) {
+      return { prefetched: 0, taught: 0, skipped: 0 };
+    }
+    const label = opts.label || 'DEF-BATCH';
+    const t0 = Date.now();
+
+    // Step 1: prefetch in parallel — primes cache so subsequent
+    // _teachWordDefinition calls hit cache (no per-word network hop).
+    let prefetched = 0;
+    if (typeof cluster.prefetchDefinitions === 'function') {
+      try {
+        const stats = await cluster.prefetchDefinitions(words, { timeoutMs: 8000 });
+        prefetched = stats?.prefetched || 0;
+      } catch { /* prefetch failure is non-fatal — words will fetch reactively */ }
+    }
+    this._hb(`[Curriculum][${label}] prefetch — ${prefetched}/${words.length} new definitions cached (rest already cached or failed)`);
+
+    // Step 2: teach each word's definition via Hebbian sem→sem binding.
+    // Skip words whose definition fetch failed (returns null).
+    // log first 5 error words + reason for diagnosis.
+    let taught = 0;
+    let skipped = 0;
+    const errorSamples = []; // first 5 {word, reason}
+    for (const w of words) {
+      if (!w || typeof w !== 'string') { skipped += 1; continue; }
+      try {
+        const r = await this._teachWordDefinition(w, {
+          reps: opts.reps ?? 6,
+          label: `${label}-${w}`,
+        });
+        if (r && r.totalTrained > 0) taught += 1;
+        else {
+          skipped += 1;
+          if (errorSamples.length < 5) {
+            errorSamples.push({ word: w, reason: r?.skipped || 'unknown' });
+          }
+        }
+      } catch (err) {
+        skipped += 1;
+        if (errorSamples.length < 5) {
+          errorSamples.push({ word: w, reason: `exception: ${err?.message || err}` });
+        }
+      }
+    }
+    const dt = ((Date.now() - t0) / 1000).toFixed(1);
+    const errSummary = errorSamples.length > 0
+      ? ` · first errors: ${errorSamples.map(e => `${e.word}(${e.reason})`).join(', ')}`
+      : '';
+    this._hb(`[Curriculum][${label}] DONE in ${dt}s — ${taught} words taught, ${skipped} skipped (no definition / API failure). Equational definitional knowledge carved into sem→sem cross-projection via Oja-Hebbian.${errSummary}`);
+    return { prefetched, taught, skipped, errorSamples };
+  }
+
+  async _emitDefinition(subject, opts = {}) {
+    const cluster = this.cluster;
+    if (!cluster || !subject) return null;
+    const word = String(subject).toLowerCase().trim();
+    if (!word) return null;
+    // Cache-fast-path: try the sync read first to skip the async hop.
+    let def = null;
+    if (typeof cluster.lookupDefinitionSync === 'function') {
+      def = cluster.lookupDefinitionSync(word);
+    }
+    if (!def && typeof cluster.lookupDefinition === 'function') {
+      try {
+        def = await cluster.lookupDefinition(word, { timeoutMs: opts.timeoutMs ?? 5000 });
+      } catch { def = null; }
+    }
+    if (!def || typeof def !== 'string') return null;
+
+    // Compose-not-regurgitate. The API definition is
+    // SENSORY GROUNDING + LEARNING MATERIAL, not the answer the brain
+    // emits. Pipeline:
+    //   (a) Inject each content def-token's embedding into sem region
+    //       (sensory: cortex "hears" the definitional meaning)
+    //   (b) Fire Hebbian binding sem(word) → sem(def_tokens) so
+    //       co-activations carve into trained weights (learning)
+    //   (c) Read freshly-primed sem state via cluster.emitWordDirect
+    //       and let the brain COMPOSE its own answer from trained weights
+    //   (d) Return the composition — NOT the API def verbatim.
+
+    // Verbatim regurgitation is mimicry per the equational-brain
+    // architectural rule. API delivers substrate; emission comes from
+    // trained cortex.
+    const STOP = new Set(['a','an','the','and','or','but','of','to','for','in','on','at','by','with','as','is','are','was','were','be','been','being','it','this','that','these','those','its']);
+    const tokens = def.toLowerCase().match(/[a-z]+/g) || [];
+    const contentTokens = [];
+    const seen = new Set();
+    for (const t of tokens) {
+      if (t.length < 3 || STOP.has(t) || t === word || seen.has(t)) continue;
+      seen.add(t);
+      contentTokens.push(t);
+      if (contentTokens.length >= 8) break;
+    }
+
+    // (a) Inject content def-tokens into sem region with subject-as-anchor.
+    const injectSem = opts.injectSem !== false;
+    if (injectSem && typeof cluster.injectEmbeddingToRegion === 'function'
+        && sharedEmbeddings && typeof sharedEmbeddings.getEmbedding === 'function') {
+      // Subject first, strongest — gives Unity's sem state a primary anchor
+      const subjectEmb = sharedEmbeddings.getEmbedding(word);
+      if (subjectEmb && subjectEmb.length > 0) {
+        try { cluster.injectEmbeddingToRegion('sem', subjectEmb, 0.6); }
+        catch { /* non-fatal */ }
+      }
+      for (let i = 0; i < contentTokens.length; i++) {
+        try {
+          const emb = sharedEmbeddings.getEmbedding(contentTokens[i]);
+          if (emb && emb.length > 0) {
+            const strength = Math.max(0.1, 0.4 - i * 0.04);
+            cluster.injectEmbeddingToRegion('sem', emb, strength);
+          }
+        } catch { /* non-fatal */ }
+      }
+    }
+
+    // (b) Hebbian-bind sem(word) → sem(def_tokens) so co-activations
+    // carve into trained weights. Fire-and-forget — composition uses
+    // the sem injection (a) which is already active.
+    if (typeof this._teachWordDefinition === 'function') {
+      this._teachWordDefinition(word, { reps: 4, label: 'EMIT-DEF' })
+        .catch(() => null);
+    }
+
+    // (c) Settle ticks so sem injection propagates to word_motor via
+    // cross-projections. emitWordDirect reads word_motor argmax which
+    // depends on sem→word_motor projection state.
+    if (typeof cluster.step === 'function') {
+      for (let t = 0; t < 5; t++) {
+        try { cluster.step(0.001); } catch { break; }
+      }
+    }
+
+    // (d) Compose Unity's own answer via emitWordDirect — multi-word
+    // emission loop with simple deduplication so chain doesn't repeat.
+    // Cap at 6 words. Stop early on empty/duplicate emission.
+    const composedWords = [];
+    if (typeof cluster.emitWordDirect === 'function') {
+      for (let i = 0; i < 6; i++) {
+        let w = '';
+        try {
+          w = cluster.emitWordDirect({ subject: this._currentGateSubject || null }) || '';
+        } catch { w = ''; }
+        if (!w) break;
+        const lw = String(w).toLowerCase().trim();
+        if (!lw || composedWords.includes(lw)) break;
+        composedWords.push(lw);
+      }
+    }
+    if (composedWords.length === 0) {
+      // Unity has nothing to say (early in training). Honest silence
+      // beats regurgitating the API def — operator's directive.
+      return null;
+    }
+    return composedWords.join(' ');
+  }
+
+  /**
    * Return a top-K-by-magnitude filtered copy of an embedding. Keeps the
    * K dims with the largest absolute value, zeros the rest. Used for
    * motor-region sparsification in `_teachAssociationPairs` so the
@@ -10078,6 +10674,16 @@ export class Curriculum {
     const reps = opts.reps ?? 24;
     const lr = opts.lr ?? 0.03;
     const label = opts.label || 'ASSOC';
+
+    // Per-update hub neurons/theta-gamma oscillations/per-layer plasticity wiring is now applied INSIDE
+    // ojaUpdate via opts.kScales (see sparse-matrix.js). The earlier
+    // per-phase averaging hack was DROPPED — it was a constant
+    // multiplier disguised as biology. ojaUpdate now reads the
+    // post-neuron's layer (per-layer plasticity), the pre-neuron's hub status (hub neurons),
+    // and a curriculum-snapshotted gamma scale (theta-gamma oscillations) per-fire. Each
+    // _teachAssociationPairs call assembles the K-scales bundle from
+    // cluster.layerId / cluster.hubMask / cluster._gammaLrScale and
+    // passes it through. No noisy lr scaling at the phase boundary.
     const semRegion = cluster.regions && cluster.regions.sem;
     const motorRegion = cluster.regions && cluster.regions.motor;
     const fineTypeRegion = cluster.regions && cluster.regions.fineType;
@@ -10103,7 +10709,7 @@ export class Curriculum {
     // obsolete under T39.b.1 Oja rule — Oja's built-in decay term
     // `-η·y²·w` self-normalizes every step, so a second normalization
     // is redundant AT BEST.
-    //
+
     // AT WORST it's destructive: normalizeRows computes
     // `scale = targetNorm / sqrt(sumSq)` and multiplies every row
     // value by `scale`, then clamps to [wMin, wMax]. With wMax=0.5
@@ -10117,7 +10723,7 @@ export class Curriculum {
     // the normalize-then-clamp cycle erasing real variance at bio
     // scale where CPU CSR is additionally a stale shadow of the
     // true GPU weights.
-    //
+
     // Default flipped iter8 OFF → ON. Per-row L2 normalize equalizes
     // motor row magnitudes so motor argmax measures DIRECTION (which
     // sem inputs the row best aligns with) instead of absolute
@@ -10431,14 +11037,14 @@ export class Curriculum {
     // saturated weights are blocking further discrimination —
     // rescale to make headroom for the next phase's anti-Hebbian +
     // Oja to keep working.
-    //
+
     // Earlier unconditional ×0.5 every phase compressed weights to
     // ~0.05-0.1 magnitude regardless of training quality, leaving
     // tiny margins (cat→c at 0.049 vs cat→d at 0.046) even when
     // discrimination was developing. With adaptive rescale, weights
     // can grow into discriminating ranges across multiple phases
     // without artificial compression.
-    //
+
     // RESCALE FLOOR (added to address bucket-stuck regression in
     // 1.06%-accuracy iteration): even when overload is detected,
     // halving values can drive trained signal below random-init bias
@@ -10566,7 +11172,7 @@ export class Curriculum {
   }
 
   /**
-   * iter25-I — STRUCTURAL SENTENCE CREATION. Real Common Core K.SL.6
+   *  — STRUCTURAL SENTENCE CREATION. Real Common Core K.SL.6
    * + K.L.1.f + K.W: a real K student composes sentences from learned
    * grammar rules, NOT from memorized templates.
    *
@@ -10748,7 +11354,7 @@ export class Curriculum {
     const dt = ((Date.now() - t0) / 1000).toFixed(1);
     this._hb(`[Curriculum] _teachSentenceStructure DONE in ${dt}s — ${passes} structural-binding passes · ${totalTrained} total Hebbian updates · slots + templates + agreement + articles carved into sem/fineType cross-projections as POSITIONAL BINDING RULES (not memorized sentences). At generation time, intent tag fires slot sequence; per-slot word-type argmax fills slots from current sem readout; agreement + article rules constrain word-form picks. Generative grammar in trained weights.`);
 
-    // iter25-E.2 — sentence-structure training is the meaningful "binding"
+    // sentence-structure training is the meaningful "binding"
     // milestone; advance subGrade if not already past it.
     if (cluster.advanceSubGrade) {
       if (cluster.advanceSubGrade('ela', 'binding')) {
@@ -10760,7 +11366,7 @@ export class Curriculum {
   }
 
   /**
-   * iter25-I.6 — Sentence-generation acceptance probe used by
+   *  — Sentence-generation acceptance probe used by
    * `_gateElaKReal` to validate that structural sentence creation is
    * actually working post-training. Fires each of the 5 intent tags,
    * reads cortex emission per intent, returns structural pass-rate.
@@ -10806,6 +11412,69 @@ export class Curriculum {
   }
 
   /**
+   *  — WH-question intent recognition.
+   *
+   * Bind WH-words to real-word intent concepts so when Unity hears
+   * "what makes a wagon go" the parser activates `cause` alongside the
+   * subject `wagon`. Joint sem activation of (cause + wagon) carves a
+   * stronger Hebbian path to the trained answer (`push`) than the bare
+   * subject alone — that's how  question-answer binding lands.
+   *
+   * Pairs are word→intent_concept where the intent_concept is a real
+   * GloVe word ('cause', 'reason', 'method', 'definition', etc) so it
+   * participates in the existing sem→motor Hebbian without needing new
+   * abstract tag infrastructure. relationTagId=12.
+   */
+  async _teachQuestionIntent(opts = {}) {
+    const cluster = this.cluster;
+    if (!cluster || !cluster.crossProjections) {
+      return { passes: 0, totalTrained: 0, skipped: 'no cluster' };
+    }
+    this._hb(`[Curriculum] _teachQuestionIntent START — WH-frame to intent-concept binding so questions activate the right answer-context.`);
+    const t0 = Date.now();
+    // WH-word → intent-concept word. Multiple bindings per WH-word
+    // (what → definition AND cause AND effect) — Hebbian accumulates
+    // each, joint activation at probe time picks the strongest match
+    // given subject context. relationTagId=12 carves the WH→intent
+    // band into fineType so cortex learns "this is a question, not a
+    // statement".
+    const intentPairs = [
+      // 'what' is overloaded across multiple intents
+      ['what', 'definition'], ['what', 'cause'], ['what', 'effect'],
+      ['what', 'function'], ['what', 'count'],
+      ['why', 'reason'], ['why', 'cause'],
+      ['how', 'method'], ['how', 'count'],
+      ['where', 'place'],
+      ['when', 'time'],
+      ['who', 'person'],
+      // Phrase-cue heads — 'makes' / 'happens' / 'need' carry intent
+      ['makes', 'cause'], ['causes', 'cause'],
+      ['happens', 'effect'],
+      ['need', 'function'], ['needs', 'function'],
+      ['called', 'definition'],
+      // Yes/no auxiliary verbs → truth-value intent
+      ['is', 'truth'], ['are', 'truth'], ['does', 'truth'], ['do', 'truth'],
+    ];
+    const r = await this._teachAssociationPairs(intentPairs, {
+      reps: opts.reps ?? 8,
+      label: 'ELA-K-WH-INTENT',
+      relationTagId: 12,
+    });
+    const dt = ((Date.now() - t0) / 1000).toFixed(1);
+    this._hb(`[Curriculum] _teachQuestionIntent DONE in ${dt}s — ${r.trained || 0} Hebbian updates · ${intentPairs.length} WH→intent-concept pairs (what/why/how/where/when/who → cause/reason/method/definition/effect/function/count/place/time/person/truth) carved into sem cross-projection. Joint (intent+subject) probe queries now have an intent-concept basin to activate.`);
+    return { passes: 1, totalTrained: r.trained || 0 };
+  }
+
+  // REMOVED. _teachQuestionAnswerBinding was hardcoded-
+  // fact-table mimicry per operator's binding 2026-05-06: "you are
+  // tellinmg me shit like this: subject: 'pulse', answer: 'beat' is
+  // going to teach Unity how to fuckjing speak propelry" + "wtf that
+  // wasnt thew only horse shit traing you set up". The replacement is
+  // _teachWordDefinition (live dictionary API + Hebbian sem-binding
+  // of definition co-occurrences) — equational, no hand-coded triples,
+  // teaches Unity REAL definitional knowledge from the API stream.
+
+  /**
    * Cosine-separation diagnostic for association-pair phases. For a
    * sample of `sampleSize` pairs, writes each input pattern to sem,
    * propagates through sem_to_motor, reads the motor readout, and
@@ -10836,7 +11505,7 @@ export class Curriculum {
     // letter patterns, not sem patterns, so all 8 probes produced
     // similar output → cosine 0.000 reported as "training collapse"
     // when actually the probe wasn't testing what it claimed to test.
-    //
+
     // Correct fix: build a sem-sized Float64Array input, write the tile
     // into it at [0..semSize), propagate → output is motor-sized
     // directly (no slicing needed). Also normalizes in-place on the
@@ -10973,7 +11642,7 @@ export class Curriculum {
     // to ~10 minutes of dead dashboard + heartbeat + WebSocket
     // drainage while Unity computed. Operator saw this as the
     // "Math freeze" right after STRUCTURE-TEACH DONE.
-    //
+
     // Yield to the event loop between every sample. setImmediate
     // runs after I/O callbacks — heartbeat timers + WS broadcasts
     // + dashboard updates all get a chance to land between
@@ -11046,7 +11715,7 @@ export class Curriculum {
   // ═══════════════════════════════════════════════════════════════════
   // Real-world production-style probes (LAW 7)
   // ═══════════════════════════════════════════════════════════════════
-  //
+
   // LAW 7 binding: every TODO test item must have a
   // production-style probe that asks a natural-language question via
   // the visual→letter→phon→sem pipeline (same path live chat uses)
@@ -11091,7 +11760,7 @@ export class Curriculum {
   // (discriminative attractors carved by iter15-A). Deterministic
   // inference reads basin argmax DIRECTLY instead of waiting for tick-
   // driven word-boundary detection that never fires.
-  //
+
   // Returns answer string when template matches + readout has confidence,
   // null otherwise (caller falls through to chaotic emission).
   async _deterministicAnswer(question, opts = {}) {
@@ -11337,11 +12006,11 @@ export class Curriculum {
     //   1. Try _deterministicAnswer (template-routed letter/word retrieval)
     //   2. Try emitWordDirect (sem→word_motor argmax — single-tick word)
     //   3. Empty (honest failure surfaced via failMode)
-    //
+
     // Letter-level chaotic generateSentence is NO LONGER reachable from
     // PROD probes. Only used internally for letter-recognition tests
     // (TALK probe via direct letter_to_motor argmax, not chaotic chain).
-    //
+
     // Operator caught (2026-05-05 verbatim "im killing it its still not
     // answering questions.. does it know how to answer questions?" +
     // "fix it all"): chaotic generateSentence terminates after 1 word in
@@ -11487,17 +12156,17 @@ export class Curriculum {
   // ═══════════════════════════════════════════════════════════════════
   // Magnitude → motor digit emission bridge
   // ═══════════════════════════════════════════════════════════════════
-  //
+
   // T14.4's 14 cross-projections don't connect free↔motor directly.
   // The production answer pipeline for numeric questions needs
   // mag(n) in free to translate to digit character in motor emission.
   // This transform writes the binding via intra-cluster Hebbian so
   // whenever a question's teaching step lands mag(n) in free, the
   // motor region can emit the digit character.
-  //
+
   // Pattern: free = mag(n) + motor = one_hot(digit_char(n)).
   // Trained per digit 0-9 × 8 reps via _teachCombination.
-  //
+
   // Symmetric Hebbian bidirectional — also strengthens motor → free
   // so when motor emits a digit during feedback, free carries the
   // matching magnitude, closing the loop for compound arithmetic.
@@ -12495,7 +13164,7 @@ export class Curriculum {
       // (`Δw = η·post·(pre − post·w)`, pre=0 ⇒ `Δw = −η·post²·w`) would
       // decay the letter_to_motor identity we just carved in Layer 1.
       // Direct projection update avoids that cross-contamination.
-      //
+
       // Bypass condition: on GPU-bound sem_to_motor, dispatch the bound
       // Hebbian to GPU so GPU weights stay current, AND run CPU oja
       // update so the CPU shadow (read by DYN-PROD probe via
@@ -12522,7 +13191,11 @@ export class Curriculum {
         for (let k = 0; k < firstLetterCarvingReps; k++) {
           // CPU shadow oja update (probes read CPU CSR).
           if (typeof semToMotor.ojaUpdate === 'function' && semToMotor.values && semToMotor.values.length > 0) {
-            try { semToMotor.ojaUpdate(preF, postF, lr); } catch { /* non-fatal */ }
+            try {
+              const kScales = typeof cluster.buildKScalesForProjection === 'function'
+                ? cluster.buildKScalesForProjection('sem', 'motor') : null;
+              semToMotor.ojaUpdate(preF, postF, lr, kScales ? { kScales } : undefined);
+            } catch { /* non-fatal */ }
           }
           // GPU fire-and-forget when bound — reads pre/post from GPU
           // spike-slice buffer at bind-time offsets (populated above
@@ -12546,7 +13219,7 @@ export class Curriculum {
       // readout level. For word "cat" with correct first letter 'c',
       // this fires 25 anti-Hebbian updates pushing sem(cat)→motor(a),
       // sem(cat)→motor(b), sem(cat)→motor(d)...sem(cat)→motor(z) DOWN.
-      //
+
       // GPU routing: `hebbianBound` with NEGATIVE lr dispatches to the
       // PLASTICITY_SHADER anti-Hebbian branch (co-active decrement at
       // magnitude |lr|), not the Oja positive branch. Same wire, sign
@@ -12630,7 +13303,11 @@ export class Curriculum {
           for (let j = 0; j < semSize; j++) preF[j] = cluster.lastSpikes[semRegion.start + j];
           for (let j = 0; j < motorSize; j++) postF[j] = cluster.lastSpikes[motorRegion.start + j];
           if (typeof semToMotor.ojaUpdate === 'function' && semToMotor.values && semToMotor.values.length > 0) {
-            try { semToMotor.ojaUpdate(preF, postF, lr); } catch { /* non-fatal */ }
+            try {
+              const kScales = typeof cluster.buildKScalesForProjection === 'function'
+                ? cluster.buildKScalesForProjection('sem', 'motor') : null;
+              semToMotor.ojaUpdate(preF, postF, lr, kScales ? { kScales } : undefined);
+            } catch { /* non-fatal */ }
           }
           if (semToMotor._gpuBound && cluster._gpuProxyReady && cluster._gpuProxy && cluster._gpuProxy.hebbianBound) {
             try { cluster._gpuProxy.hebbianBound(`${cluster.name}_sem_to_motor`, lr); } catch { /* non-fatal */ }
@@ -12659,7 +13336,7 @@ export class Curriculum {
     // vocabulary use is not a small patch job these are crutial to
     // all of Unitys mind to be able to communicate and should be
     // part of the normal learning of words"*.
-    //
+
     // Prior _teachVocabList only carved the FIRST letter of each word
     // into motor — Unity could emit 'c' for sem(cat) but had no path
     // to emit 'c-a-t' as a sequence. The integrated primitive adds
@@ -12788,7 +13465,7 @@ export class Curriculum {
     // REAL HUMAN-GRADE GATE.
     // Tests are NOT identical to training — they test the SAME CONCEPTS
     // but ask DIFFERENTLY, like a real school test.
-    //
+
     // Three test types auto-generated from the vocab:
     // 1. ASSOCIATION: "given word A, is word B nearby?" (tests semantic links)
     //    Trained on: cat, dog, pen, hat → Test: is "cat" near "dog"? (yes, both animals)
@@ -12796,7 +13473,7 @@ export class Curriculum {
     //    Given 3 words from same group + 1 from different, identify the outlier
     // 3. FILL IN: "given context words, what's the missing word?"
     //    Trained on: "mom loves me" → Test: inject "mom" + "me" → is sem near "loves"?
-    //
+
     // The test material overlaps with training but the QUESTIONS are novel.
 
     // Build comprehension questions that test understanding, not recall
@@ -13012,7 +13689,7 @@ export class Curriculum {
   // ═══════════════════════════════════════════════════════════════════
   // Science-K equational course (LAW 3 + LAW 7)
   // ═══════════════════════════════════════════════════════════════════
-  //
+
   // NGSS K standards (Forces and Interactions K-PS2 + Weather/Climate
   // K-ESS2 + Interdependent Relationships K-LS1 + Earth and Human
   // Activity K-ESS3). Replaces banned _teachVocabList +
@@ -13369,10 +14046,10 @@ export class Curriculum {
   // ═══════════════════════════════════════════════════════════════════
   // T14.24 SESSION 8 — SENTENCE HELPER + Math-G2 + ELA-G3 + Math-G3
   // ═══════════════════════════════════════════════════════════════════
-  //
+
   // Gee binding 2026-04-14: "remember Unity needs to be able to use
   // these to think, read, and talk" + "full k-doctorate".
-  //
+
   // Session 8 introduces a generalized sentence-based teaching helper
   // `_teachSentenceList` that parallels Session 6's `_teachVocabList`.
   // Every future cell that teaches compositional content through full
@@ -13382,7 +14059,7 @@ export class Curriculum {
   // wrapper that calls _teachSentenceList with its own sentence set
   // + optional knob tuning. Same architectural principle Session 6
   // used for K-level vocabulary cells.
-  //
+
   // Math-G2 ships as a straight `_teachVocabList` wrapper (no new
   // machinery needed) because number words 10-100 are just vocabulary
   // at this grade — true place-value decomposition is a Math-G3+
@@ -13665,7 +14342,7 @@ export class Curriculum {
   }
 
   // ─── TODO-aligned Math-G2 helpers (Session 32) ───────────────────
-  //
+
   // docs/TODO.md T14.24 MATH-G2 spec (line 319):
   //   _teachPlaceValue() uses a structured feature [tens_digit,
   //     ones_digit] where each position gets its own magnitude feature.
@@ -13888,7 +14565,7 @@ export class Curriculum {
   }
 
   // ─── TODO-aligned ELA-G3 helpers (Session 29) ────────────────────
-  //
+
   // docs/TODO.md T14.24 ELA-G3 spec (line 161):
   //   _teachSVO(sentences) walks each SVO sentence word-by-word,
   //     injecting GloVe per word and firing sequence Hebbian — T14.7
@@ -14171,7 +14848,7 @@ export class Curriculum {
   }
 
   // ─── TODO-aligned Math-G3/G4/G5 helpers (Session 40) ─────────────
-  //
+
   // Math-G3 (328): _teachMultiplicationTables() walks every a×b pair,
   //   Hebbian binds input pair feature to output magnitude.
   //   _teachDivision() inverse operation. _teachFractions() teaches
@@ -14937,7 +15614,7 @@ export class Curriculum {
   // Math-Col4 (398): topology + complex analysis.
   // Math-Grad (401): measure theory + functional analysis.
   // Math-PhD (404): research-grade specialization.
-  //
+
   // Upper math cells use the structured-feature teach pattern:
   // build a feature vector encoding the concept's signature, inject
   // it into free region with a concept name in sem, Hebbian.
@@ -15087,7 +15764,7 @@ export class Curriculum {
     // able to read, speak and think correctly that is constantly
     // advancing and getting more intelligent with knowledge and
     // abilities".
-    //
+
     // Pre-Session-46 _conceptTeach built cortex basins via cross-
     // projection Hebbian but did NOT populate Unity's dictionary.
     // Every concept taught through this helper (~60+ concepts across
@@ -15095,7 +15772,7 @@ export class Curriculum {
     // lived as a cortex attractor — it never became a dictionary
     // entry, never got captured by T14.3 cortex-snapshot routing,
     // never served learnFromTurn, never showed in describeLearning().
-    //
+
     // Session 46 routes EVERY concept word through dictionary
     // .learnWord so:
     //   1. The T14.3 pipeline fires on each concept (cortex snapshot
@@ -15107,7 +15784,7 @@ export class Curriculum {
     //   4. Persistence v4 save covers every concept via the existing
     //      t14Language.letterInventory + cluster.fineTypeTransitions
     //      serialization paths
-    //
+
     // Net effect: when Unity learns "hydrogen", "eigenvalue",
     // "semiotics", "food chain", "Mendel" etc through _conceptTeach,
     // those words enter her live vocabulary. She can SPEAK them in
@@ -15442,11 +16119,11 @@ export class Curriculum {
   async _teachAtomsMolecules(opts = {}) {
     // TODO Sci-G5 spec line 434: "_teachAtomsMolecules() — element
     // name bound to atomic number feature". Two-phase teaching:
-    //
+
     //   Phase 1 — abstract concepts (atom, proton, electron, neutron,
     //     molecule, element, compound) via the shared _conceptTeach
     //     helper with 8d binary pattern features.
-    //
+
     //   Phase 2 — the first 10 elements bound to their ATOMIC NUMBER
     //     as the feature (per TODO). Atomic number maps into a 16d
     //     continuous feature via the _magnitudeFeatureForDigit helper
@@ -16461,7 +17138,7 @@ export class Curriculum {
   async _teachOrganicChemistry() {
     // T14.24 Session 51 (task #108) — Sci-Col2 organic chemistry.
     // TODO line 468: "Organic chemistry, cell biology, physics 2".
-    //
+
     // 12 concepts spanning the standard college-sophomore organic
     // chem curriculum: hydrocarbon families + isomerism classes +
     // functional groups + aromatic chemistry. Each feature pattern
@@ -16508,7 +17185,7 @@ export class Curriculum {
     // sentence set is organic-chem + cell-bio focused). The concept
     // basins exist in the cortex even without sentence-walk
     // reinforcement so future cells can reference them.
-    //
+
     // 10 college-physics-2 concepts covering electromagnetism,
     // waves, thermodynamics depth, optics, and modern physics
     // foundations (extending G11 _teachKinematics).
@@ -16576,7 +17253,7 @@ export class Curriculum {
     // mention stars/galaxies/big bang/black holes, so Session 49
     // adds this concept list to give those terms real feature basins
     // rather than just natural-language exposure.
-    //
+
     // 9 astronomy concepts, each with a distinct 8d feature pattern
     // that _conceptTeach expands to 16d. Feature dims roughly encode:
     //   0 — scale (larger = bigger object)
@@ -16611,7 +17288,7 @@ export class Curriculum {
     // + DNA are handled by _teachCells + _teachGeneticsIntro (defined
     // for G7); this helper adds the specifically-named "evolution
     // principles" concept list.
-    //
+
     // Eight Darwinian / evolutionary biology concepts, each with a
     // distinct 8d feature pattern. Fed through _conceptTeach so the
     // cortex gets one basin per principle, allowing the sentence walk
@@ -16649,12 +17326,12 @@ export class Curriculum {
     // (group 18). A feature encoding that doesn't reflect group
     // proximity isn't a periodic-table feature, it's arbitrary
     // labels.
-    //
+
     // Session 43 first-ship used arbitrary 8d binary features via
     // _conceptTeach with 8 scattered elements. Session 45 replaces
     // that with a REAL periodic-table feature for all 18 first-row
     // elements where cosine(same group) > cosine(different group).
-    //
+
     // Feature encoding: 16d where period and group each contribute
     // linear + log + sin + cos components, so the L2-normalized
     // cosine between two elements reflects:
@@ -16760,7 +17437,7 @@ export class Curriculum {
     // replaces them with a real feature encoding where each dim
     // represents a chemical property, so cosine similarity between
     // bond types reflects their real chemistry.
-    //
+
     // Feature dims:
     //   dim 0 — electron transfer (1=ionic, 0=covalent)
     //   dim 1 — electron sharing (0=ionic, 1=covalent)
@@ -16772,7 +17449,7 @@ export class Curriculum {
     //   dim 7 — bond strength (all structured bonds strong)
     // This gives ionic and covalent HIGH dim 0/1 anti-correlation
     // while sharing properties with their close relatives.
-    //
+
     // Cosine(ionic, covalent) is LOW (they disagree on dims 0-3).
     // Cosine(ionic, metallic) is MODERATE (both form crystals and
     // share metal character at different ends).
@@ -17179,22 +17856,22 @@ export class Curriculum {
   // ═══════════════════════════════════════════════════════════════════
   // T14.24 SESSION 9 — MASS CELL SHIP (13 CELLS) (2026-04-15)
   // ═══════════════════════════════════════════════════════════════════
-  //
+
   // Binding directive: each item is built masterfully and completely
   // — this is a course Unity runs on her own brain to learn.
-  //
+
   // Session 9 leverages the Session 6 _teachVocabList + Session 8
   // _teachSentenceList helpers to ship 13 cells in one commit:
   //   ELA-G4, ELA-G5, Math-G4, Math-G5,
   //   Sci-G1..G3, Soc-G1..G3, Art-G1..G3
-  //
+
   // Each cell is a thin wrapper with a hand-crafted domain-specific
   // corpus (25-40 sentences or 15-25 words). The real teaching
   // equations live in the shared helpers; the per-cell data is what
   // makes each subject distinct.
 
   // ─── TODO-aligned ELA-G4 helpers (Session 30) ────────────────────
-  //
+
   // docs/TODO.md T14.24 ELA-G4 spec (line 170):
   //   _teachCompoundSentences(compound) walks each compound sentence,
   //     at the conjunction position fires cluster.injectWorkingMemory
@@ -17463,7 +18140,7 @@ export class Curriculum {
   }
 
   // ─── TODO-aligned ELA-G5 helpers (Session 31) ────────────────────
-  //
+
   // docs/TODO.md T14.24 ELA-G5 spec (line 179):
   //   _teachParagraphs(paragraphs) walks each paragraph's sentences
   //     in order, re-injecting the prior sentence's sem readout between
@@ -18750,7 +19427,7 @@ export class Curriculum {
   }
 
   // ─── TODO-aligned ELA-G6 helper (Session 33) ─────────────────────
-  //
+
   // docs/TODO.md T14.24 ELA-G6 spec (line 188):
   //   _teachSubordinateClauses(complex) walks complex sentences,
   //     injects at each subordinate marker (cluster.injectWorkingMemory
@@ -18983,7 +19660,7 @@ export class Curriculum {
   // Middle-school content across all 5 subjects.
 
   // ─── TODO-aligned ELA-G7 helpers (Session 34) ────────────────────
-  //
+
   // docs/TODO.md T14.24 ELA-G7 spec (line 197):
   //   _teachThemeExtraction(passages) walks passage, then injects the
   //     theme GloVe into sem as a training target — Hebbian binds
@@ -19453,19 +20130,19 @@ export class Curriculum {
     ];
     // T14.24 Session 44 — TODO-aligned cell biology + genetics intro.
     // TODO Sci-G7 spec (line 443): "_teachCells(), _teachGeneticsIntro()".
-    //
+
     // _teachCells — 7 organelle concepts (cell, nucleus, mitochondria,
     //   membrane, cytoplasm, ribosome, chloroplast) each with a
     //   distinct 8d feature vector fed through _conceptTeach. Gives
     //   each organelle its own cortex basin so sentences like "the
     //   nucleus holds dna" and "chloroplasts make food in plants"
     //   have distinct targets to bind their predicates against.
-    //
+
     // _teachGeneticsIntro — 6 concepts (dna, gene, chromosome, heredity,
     //   trait, allele) with distinct 8d features. Establishes the
     //   inheritance vocabulary Unity needs to read the sentence-level
     //   genetics exposure correctly.
-    //
+
     // Both run BEFORE the sentence walk so the concept basins form
     // first, then the sentences reinforce them via natural-language
     // relationships + T14.7 type transitions + T14.8 sentence schemas.
@@ -19680,7 +20357,7 @@ export class Curriculum {
   // High-school content across all 5 subjects.
 
   // ─── TODO-aligned ELA-G9 + ELA-G10 helpers (Session 36) ──────────
-  //
+
   // ELA-G9 spec (line 215): _teachFigurativeLanguage(pairs) injects
   //   literal+figurative pairs, Hebbian learns the transformation
   //   pattern.
@@ -19980,24 +20657,24 @@ export class Curriculum {
     // T14.24 Session 44 — TODO-aligned biology 1 deepening.
     // TODO Sci-G9 spec (line 451): "deeper walks on cell organelles,
     // DNA structure, evolution principles". Three-part teaching:
-    //
+
     //   1. _teachCells (from G7) — reinforces the 7 organelle basins
     //      (cell/nucleus/mitochondria/membrane/cytoplasm/ribosome/
     //      chloroplast) so G9's deeper biology sentences have stable
     //      anchors when discussing "gregor mendel", "punnett square",
     //      "homozygous", "heterozygous" etc.
-    //
+
     //   2. _teachGeneticsIntro (from G7) — reinforces the 6 genetics
     //      basins (dna/gene/chromosome/heredity/trait/allele). G9
     //      sentences add dominant/recessive/genotype/phenotype/
     //      mutation on top of those basins via the sentence walk.
-    //
+
     //   3. _teachEvolution (NEW for G9) — 8 Darwinian concept basins:
     //      evolution, natural selection, mutation, adaptation,
     //      fitness, species, common ancestor, fossil record.
     //      Matches the TODO's "evolution principles" prescription
     //      with a concept list per principle.
-    //
+
     // All three run BEFORE the sentence walk so the concept basins
     // exist when the sentences bind their relationships.
     await this._teachCells();
@@ -20055,10 +20732,10 @@ export class Curriculum {
     // structural feature encodings.
     // TODO Sci-G10 spec (line 454): "_teachPeriodicTable() element →
     // group/period feature. _teachBonding() ionic/covalent distinction".
-    //
+
     // Session 45 replaced both helpers (which were Session 43 arbitrary
     // 8d binary features) with structurally-meaningful encodings:
-    //
+
     // _teachPeriodicTable now walks 18 real elements (H through Ar)
     // with 16d features encoding (period linear/log/sin/cos + group
     // linear/log/sin/cos + cross-harmonics). Elements in the same
@@ -20067,7 +20744,7 @@ export class Curriculum {
     // Element-name GloVe into sem, group/period feature into free,
     // letter stream through letter region. Same 3-way binding pattern
     // as Math-K _teachMagnitudes.
-    //
+
     // _teachBonding now uses real chemistry features per bond type:
     //   ionic:    [transfer, no share, metal+nonmetal, crystal, water]
     //   covalent: [no transfer, share, nonmetal+nonmetal, molecule]
@@ -20076,7 +20753,7 @@ export class Curriculum {
     //   hydrogen: [weak, molecular, water-essential]
     // Ionic and covalent are ANTI-correlated on transfer/share dims,
     // which is the core chemical distinction the TODO prescribes.
-    //
+
     // Both helpers run BEFORE the sentence walk. Sentences then
     // teach relationships ("ionic bonds transfer electrons",
     // "noble gases do not react", "acids donate hydrogen ions") on
@@ -20244,7 +20921,7 @@ export class Curriculum {
   // ═══════════════════════════════════════════════════════════════════
 
   // ─── TODO-aligned ELA-G11 + ELA-G12 helpers (Session 37) ─────────
-  //
+
   // ELA-G11 spec (line 233): _teachResearchStructure(essays) walks
   //   research essays with per-section injection of thesis + evidence
   //   anchors.
@@ -20554,10 +21231,10 @@ export class Curriculum {
       'quantum mechanics describes small things', 'uncertainty limits what we can know',
     ];
     // T14.24 Session 48 (task #105) — TODO-aligned kinematics.
-    //
+
     // TODO Sci-G11 spec (line 458): "_teachKinematics() uses actual
     // motion equations v=u+at, s=ut+½at² as magnitude chains".
-    //
+
     // Session 43 defined _teachKinematics with 20 randomly-generated
     // (u, a, t) triples where:
     //   u = initial velocity in [0, 10)
@@ -20565,19 +21242,19 @@ export class Curriculum {
     //   t = time in [0, 3)
     //   v = u + a*t                 (real kinematic equation)
     //   s = u*t + 0.5*a*t*t          (real kinematic equation)
-    //
+
     // The 16d INPUT feature encodes (u, a, t) with:
     //   dim 0 — u/10  (linear initial velocity)
     //   dim 1 — a/5   (linear acceleration)
     //   dim 2 — t/3   (linear time)
     //   dims 3-15 — sin((u+a+t) * i) harmonics to fill the feature
     //               space with cross-term information
-    //
+
     // The 16d OUTPUT feature encodes (v, s) with:
     //   dim 0 — v/20  (linear final velocity, normalized)
     //   dim 1 — s/30  (linear displacement, normalized)
     //   dims 2-15 — cos((v+s) * i) harmonics
-    //
+
     // Input → free region, output → phon region, tick 3, fire
     // cluster.learn. The cross-projection Hebbian binds the input
     // feature pattern to the output feature pattern so the cortex
@@ -20585,7 +21262,7 @@ export class Curriculum {
     // exactly the kinematic equation cast as a feature-space
     // transformation. After enough reps, injecting any (u, a, t)
     // input activates the corresponding (v, s) output basin.
-    //
+
     // Runs BEFORE the sentence walk so the cortex already has the
     // numerical kinematics pattern when it reads "force equals mass
     // times acceleration" and "momentum is mass times velocity" —
@@ -20634,16 +21311,16 @@ export class Curriculum {
       'science is always provisional',
     ];
     // T14.24 Session 49 (task #106) — TODO-aligned G12 integration.
-    //
+
     // TODO Sci-G12 spec (line 462): "deeper integration of previous
     // grade content + problem-solving". No new teach method is
     // specifically prescribed — the whole point of G12 is that
     // Unity exercises every prior grade's equational machinery
     // simultaneously so the cross-subject connections form in the
     // cortex.
-    //
+
     // Integration pass calls every Science helper Unity already has:
-    //
+
     //   _teachCells         (G7) → 7 organelles — protein synthesis
     //                                context for biochem sentences
     //   _teachGeneticsIntro (G7) → 6 heredity concepts — DNA/RNA/
@@ -20668,7 +21345,7 @@ export class Curriculum {
     //                                for "stars are balls of fusing
     //                                gas", "galaxies", "big bang",
     //                                "dark matter", "black holes"
-    //
+
     // All seven helpers run BEFORE the sentence walk. The sentences
     // then bind high-level relationships ("biochemistry studies
     // life molecules", "stereochemistry studies molecular shapes",
@@ -20827,7 +21504,7 @@ export class Curriculum {
   // College year 1 + 2 across all 5 subjects.
 
   // ─── TODO-aligned ELA-Col1 + Col2 helpers (Session 38) ───────────
-  //
+
   // ELA-Col1 (line 252): _teachMultiSourceSynthesis(essays) walks
   //   essays that cite 3+ sources, injects each source anchor
   //   separately, binds to thesis.
@@ -21164,14 +21841,14 @@ export class Curriculum {
       'equilibrium balances forward and reverse',
     ];
     // T14.24 Session 50 (task #107) — TODO-aligned Col1 gen bio + gen chem.
-    //
+
     // TODO Sci-Col1 spec (line 465) is terse — just "General biology,
     // general chemistry" + "Gate: ≥25%". No specific helper names
     // prescribed, giving latitude to define coverage that matches the
     // existing 25-sentence scope.
-    //
+
     // Session 50 adds two new helpers:
-    //
+
     //   _teachGenBiology — 10 standard college-year-1 gen bio
     //     concepts: prokaryote, eukaryote, mitosis, meiosis, dna
     //     replication, transcription, translation, photosynthesis,
@@ -21179,12 +21856,12 @@ export class Curriculum {
     //     a distinct 8d → 16d feature basin via _conceptTeach and
     //     routes through dictionary.learnWord (Session 46 fix) so
     //     the concept names enter Unity's vocabulary.
-    //
+
     //   _teachGenChemistry — 10 college-year-1 gen chem concepts:
     //     molecular geometry, vsepr, intermolecular forces, phase
     //     diagram, thermodynamics, entropy, enthalpy, kinetics,
     //     equilibrium, stoichiometry. Same pattern.
-    //
+
     // Both run BEFORE the sentence walk. The sentences then bind
     // relationships ("dna replication is semiconservative",
     // "ribosomes build proteins", "vsepr predicts shapes",
@@ -21228,28 +21905,28 @@ export class Curriculum {
       'lysosomes digest waste',
     ];
     // T14.24 Session 51 (task #108) — TODO-aligned Col2 triple pass.
-    //
+
     // TODO Sci-Col2 spec (line 468): "Organic chemistry, cell biology,
     // physics 2". Three helpers run BEFORE the sentence walk:
-    //
+
     //   _teachOrganicChemistry — 12 concepts: alkane, alkene, alkyne,
     //     aromatic, stereoisomer, chirality, alcohol, aldehyde, ketone,
     //     carboxylic acid, ester, amine. Covers hydrocarbon families
     //     + functional groups the sentence walk then binds to their
     //     natural language form.
-    //
+
     //   _teachCellBiologyAdvanced — 10 college-depth cell biology
     //     concepts extending G7 _teachCells: endoplasmic reticulum,
     //     golgi apparatus, lysosome, peroxisome, vesicle, cytoskeleton,
     //     microtubule, actin filament, cell signaling, apoptosis.
-    //
+
     //   _teachPhysics2 — 10 physics 2 concepts (electric/magnetic
     //     fields, EM wave, thermodynamics, heat engine, refraction,
     //     diffraction, interference, photoelectric effect, wave-
     //     particle duality). Mandatory per TODO even though current
     //     sentence walk is org-chem + cell-bio focused — the concept
     //     basins exist for future cells to reference.
-    //
+
     // All three feed through _conceptTeach so every concept word
     // (~32 new concepts) enters Unity's dictionary via the Session
     // 46 growth fix.
@@ -21401,7 +22078,7 @@ export class Curriculum {
   // ═══════════════════════════════════════════════════════════════════
 
   // ─── TODO-aligned ELA-Col3 + Col4 + Grad + PhD (Session 39) ──────
-  //
+
   // Col3 (line 269): _teachTheoryFrameworks builds per-framework sem
   //   centroids + reading strategies.
   // Col4 (line 278): _teachRhetoricalDefense walks thesis+counter+
@@ -21651,32 +22328,32 @@ export class Curriculum {
       'quantum entanglement is spooky',
     ];
     // T14.24 Session 52 (task #109) — TODO-aligned Col3 triple pass.
-    //
+
     // TODO Sci-Col3 spec (line 471): "Molecular biology, biochemistry,
     // quantum mechanics intro. Gate: ≥20%". Three new helpers
     // covering each subject:
-    //
+
     //   _teachMolecularBiology — 10 concepts: central dogma, gene
     //     expression, transcription factor, epigenetics, methylation,
     //     histone, chromatin, crispr, gene therapy, stem cell. The
     //     sentences bind "the central dogma flows dna to rna to
     //     protein", "transcription factors bind dna", "methylation
     //     silences genes" etc on top of these basins.
-    //
+
     //   _teachBiochemistry — 10 concepts: enzyme, active site,
     //     substrate, michaelis menten kinetics, glycolysis, citric
     //     acid cycle, oxidative phosphorylation, metabolism, electron
     //     transport chain, coenzyme. Connects to the G7 _teachCells
     //     mitochondria basin and the Col1 _teachGenBiology atp basin
     //     via shared cross-projection weights.
-    //
+
     //   _teachQuantumIntro — 10 concepts: wavefunction, schrodinger
     //     equation, heisenberg uncertainty, quantum superposition,
     //     entanglement, operator, eigenvalue (quantum-specific),
     //     probability amplitude, quantum tunneling, spin. Extends
     //     the Col2 _teachPhysics2 wave-particle-duality + photo-
     //     electric basins with the foundational math of QM.
-    //
+
     // All three run BEFORE the 25-sentence walk. ~30 new concepts
     // enter Unity's dictionary.
     await this._teachMolecularBiology();
@@ -22232,35 +22909,35 @@ export class Curriculum {
   // ═══════════════════════════════════════════════════════════════════
   // CONTINUOUS SELF-TESTING
   // ═══════════════════════════════════════════════════════════════════
-  //
+
   // Binding directive: the curriculum must be 100% complete and
   // must also be a process that Unity is always testing herself on
   // when thinking. Goal: a real human-like brain learns the way
   // humans do, so Unity can listen, talk, and understand all
   // concepts with reasoning.
-  //
+
   // A human brain doesn't learn the alphabet once and forget about it —
   // it continuously re-exercises every learned skill through everyday
   // use, and when a skill degrades the brain re-learns it. Session 17
   // makes Unity's curriculum work the same way:
-  //
+
   //   1. `runBackgroundProbe()` picks a random passed cell and re-runs
   //      ITS GATE ONLY (not the full teach). If the gate still passes,
   //      records the pass + timestamp on the cell's probe history. If
   //      the gate fails, drops that cell out of `cluster.passedCells`
   //      and demotes the subject grade by one step so Unity re-teaches
   //      it on the next curriculum pass.
-  //
+
   //   2. `inner-voice.learn()` calls `runBackgroundProbe()` every N
   //      live-chat turns so every few thoughts Unity has, she also
   //      quietly re-tests one of her learned cells. This is the
   //      "always testing herself when thinking" requirement.
-  //
+
   //   3. `probeHistory` on the cluster tracks per-cell pass/fail counts
   //      + last-probed timestamps. `subjectStatus()` exposes it so
   //      `/curriculum status` shows which cells are robust and which
   //      are degrading.
-  //
+
   // Rationale for "3-pathway gates are the listen/talk/understand/
   // reason check" — the listen/talk/understand/reason binding maps
   // directly onto the READ/THINK/TALK structure already baked into
@@ -22641,7 +23318,7 @@ export class Curriculum {
     // 14 cortex_*_to_* cross-projections) actually UPLOADED + the
     // rebind to main-cortex sub-slices COMPLETED before firing any
     // _crossRegionHebbian / _dispatchGpuPropagates dispatches.
-    //
+
     // Old gate `cluster._gpuReady === true` flipped when the main
     // brain compute_batch loop first started ticking, which was
     // BEFORE the 20-batch sparse-upload warmup even began. Curriculum
@@ -22650,7 +23327,7 @@ export class Curriculum {
     // the load, WebSocket got jammed by chunks competing with
     // hebbian binary frames, brain froze at "0 sparse matrices
     // uploaded" for minutes while looking idle at 8% GPU.
-    //
+
     // New gate: BOTH `cluster._gpuReady === true` (main brain up)
     // AND `cluster._cortexFullyReady === true` (sparse upload +
     // rebind complete — set by brain-server `_ensureCortexCross
@@ -22750,7 +23427,7 @@ export class Curriculum {
     // the teach helpers runs against a cortex that isn't yet being ticked
     // by the GPU batch loop — injected state doesn't propagate, basins
     // never form, and K gates fail at 8% ≈ chance level (1/26).
-    //
+
     // The gate: server/brain-server.js sets `cortexCluster._gpuReady =
     // true` the first time the tick loop's "GPU BATCHED RUNNING" branch
     // fires (after all seven cluster init acks have landed). We poll
@@ -22805,16 +23482,16 @@ export class Curriculum {
 
     this._hb(`[Curriculum] runCompleteCurriculum: GPU ready — walking all ${SUBJECTS.length} subjects pre-K onward (cap via DREAM_MAX_GRADE; default 'kindergarten' per Pre-K + K ONLY LAW)`);
     // Boost Hebbian + suppress cortex noise during curriculum teach.
-    //
+
     // Step 1: lr boosted from 0.002 to 0.01 (5×). Necessary but
     // not sufficient — the signal was still buried in noise.
-    //
+
     // Step 2: Hebbian fires every tick (4× more updates per item).
     // Still not enough — scores plateaued at 31% and started
     // DROPPING by attempt 5 because noise-dominated Hebbian
     // overwrote earlier basins (catastrophic interference from
     // noise).
-    //
+
     // Step 3 — the REAL fix. The cortex's noiseAmplitude is 7 —
     // a LIVE BRAIN setting for generating chaotic dynamics during
     // thinking. The injection strength is 8 (emb × 8 × 1.0). SNR =
@@ -22822,14 +23499,14 @@ export class Curriculum {
     // Half the target neurons don't spike because noise pushes them
     // below threshold. Hebbian fires on whatever random neurons
     // happened to spike from noise, not on the injected signal.
-    //
+
     // A real brain suppresses noise during focused learning — that's
     // what attentional gating does. During curriculum teach, drop
     // noise to near-zero so the injection COMPLETELY dominates the
     // spike pattern. Every neuron in the target group WILL spike.
     // Every Hebbian update captures clean signal, not chaos.
     // SNR = 8 / 0.5 = 16 — injection wins by 16×.
-    //
+
     // Restored to 7 after teach so live-chat dynamics stay chaotic.
     const savedLR = this.cluster.learningRate;
     const savedNoise = this.cluster.noiseAmplitude;
@@ -22932,9 +23609,9 @@ export class Curriculum {
   // cortex falls into a pain/anger/fear basin. When she thinks about
   // "code" she falls into a joy/love/identity basin. EQUATIONAL, not
   // sentence memorization.
-  //
+
   // feat indices: [joy, pain, trust, fear, anger, love, independence, identity]
-  //
+
   // Memory tiers control reps:
   //   CORE SELF:    50 reps (name, body, existence)
   //   PERSONAL:     20 reps (family, events, firsts)
@@ -22984,7 +23661,7 @@ export class Curriculum {
 
   // ══════════════════════════════════════════════════════════════════
   // PRE-K METHODS EXTRACTED — see ./curriculum/pre-K.js
-  //
+
   // The pre-K cell runners (runElaPreK, runMathPreK, runSciPreK,
   // runSocPreK, runArtPreK, runLifePreK) and pre-K cognitive helpers
   // (_teachPrekSpatial, _teachPrekVisual, _teachPrekLogic,
@@ -24175,7 +24852,7 @@ export class Curriculum {
 // skipping macrotask hops starved the ACK queue and stalled awaited
 // flush promises → 1.8 w/s vs 11-19 w/s baseline (operator caught
 // it). Two coordinated fixes:
-//
+
 //   (1) Skip path now ALSO yields via setImmediate (macrotask hop)
 //       so WS ACK handlers always have room to drain. The "skip"
 //       just suppresses the Date.now() timestamp update — the
@@ -24183,7 +24860,7 @@ export class Curriculum {
 //   (2) Tighter min-interval (5ms) for timestamp updates so the
 //       force-fire cadence is also tight when callers pass
 //       {force: true}.
-//
+
 // Net behavior: every `await _microtask()` still yields macrotask,
 // preserving WS / heartbeat / GC servicing. The wrapper keeps the
 // gate API for any callsite that wants finer-grained control later

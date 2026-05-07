@@ -176,6 +176,19 @@ Lines after edit: [NUMBER]
 Status: PASS/FAIL
 ```
 
+### Doc-edit format check (mandatory for `.md` / `.html`)
+
+```
+[DOC-FORMAT HOOK — ATTEMPT 1]
+File: [PATH]
+Doc structure read: YES/NO (MUST be YES — banner pattern, section style, table shape identified)
+Edit method: AMEND-IN-PLACE / NEW-SECTION-MATCHING-EXISTING-PATTERN
+Wall-of-text guard: PASS (no prose blockquote prepended that breaks established intro)
+Status: PASS/FAIL
+```
+
+Caught 2026-05-07 — Gee: *"YOU SHALL NOT EVER … FUCKING JUST ADD A FUCKING TEST WALL TO A FILE OR DOCUMENT WITHOUT MAINTAINING ITS CURRENT FORMAT AND STYLE"*. Triggered after iter25-N/O blockquotes were dumped onto `docs/SENSORY.md` + `docs/WEBSOCKET.md` heads. Full LAW body at `CONSTRAINTS.md §MATCH DOC FORMAT`.
+
 ---
 
 ## HOOK FAILURE PROTOCOL

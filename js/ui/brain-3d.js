@@ -31,7 +31,7 @@ import { detectBrainEvents, CLUSTER_KEYS } from './brain-event-detectors.js';
 // ── Constants ───────────────────────────────────────────────────────
 
 // Render neuron count — PER-CLUSTER peg at 20K.
-//
+
 // The display ratio pegs at 20K per brain cluster/region so every
 // cluster renders its firing activity at comparable visual density.
 // The earlier MAX_RENDER_NEURONS was a GLOBAL cap across ALL 15
@@ -58,7 +58,7 @@ const AUTO_ROT_SPEED = 0.0015;
 // ORIGINAL ORDER preserved (changing order breaks indexing chain)
 // Sizes biologically proportioned — cerebellum LARGEST
 // Original 7: 200+100+80+80+380+50+110 = 1000
-//
+
 // Language-cortex sub-regions fill the biological gaps BETWEEN the
 // existing 7 so the rendered brain looks filled-in instead
 // of spotty and holey. Each sub-region maps to a real anatomical
@@ -91,18 +91,42 @@ attribute vec3 aPos;
 attribute vec3 aCol;
 attribute float aGlow;
 attribute float aVis;
+attribute float aLayer;     // cortical layer 0..4 (L1, L2/3, L4, L5, L6)
+attribute float aHub;       // 0 or 1 — rich-club hub flag
+attribute float aColumnId;  // microcolumn id (float for shader fract math)
 uniform mat4 uMVP;
 uniform float uScale;
-varying vec3 vCol;
+uniform float uShowLayers;     // toggle 0/1 — when on, base color mixes with layer color
+uniform float uShowHubs;       // toggle 0/1 — when on, hub neurons render larger + golden
+uniform float uShowColumns;    // toggle 0/1 — when on, fragment alpha modulates by column id
+uniform vec3  uLayerColor[5];  // L1..L6 palette (5 entries — L2/3 collapsed)
+varying vec3  vCol;
 varying float vGlow;
 varying float vVis;
+varying float vHub;
+varying float vColumnId;
+varying float vShowColumns;
 void main() {
-  vCol = aCol;
+  // Layer color blend: mix base color with the assigned layer color when
+  // the layer-color toggle is on. Layer index is rounded to int for index
+  // into the palette uniform.
+  int layerIdx = int(clamp(aLayer + 0.5, 0.0, 4.0));
+  vec3 layerC = uLayerColor[0];
+  if (layerIdx == 1) layerC = uLayerColor[1];
+  else if (layerIdx == 2) layerC = uLayerColor[2];
+  else if (layerIdx == 3) layerC = uLayerColor[3];
+  else if (layerIdx == 4) layerC = uLayerColor[4];
+  vCol = mix(aCol, layerC, uShowLayers * 0.7);
   vGlow = aGlow;
   vVis = aVis;
+  vHub = aHub * uShowHubs;
+  vColumnId = aColumnId;
+  vShowColumns = uShowColumns;
   vec4 p = uMVP * vec4(aPos, 1.0);
   gl_Position = p;
-  float sz = mix(8.0, 18.0, aGlow);
+  // Hub bump: rich-club hubs render 1.6× larger when the hub toggle is on.
+  float hubBump = 1.0 + vHub * 0.6;
+  float sz = mix(8.0, 18.0, aGlow) * hubBump;
   gl_PointSize = max(5.0, sz * uScale / max(p.w, 0.3));
 }
 `;
@@ -112,6 +136,9 @@ precision mediump float;
 varying vec3 vCol;
 varying float vGlow;
 varying float vVis;
+varying float vHub;
+varying float vColumnId;
+varying float vShowColumns;
 void main() {
   if (vVis < 0.5) discard;
   vec2 c = gl_PointCoord - 0.5;
@@ -120,7 +147,7 @@ void main() {
 
   // STRUCTURE: bright solid core + ring + soft halo fading to edge
   // All three are visible on every neuron — the HALO is the key visual element
-  //
+
   // PHOTOSENSITIVITY PASS — desaturate to ~60% of raw vCol and dim
   // overall output by ~25%. The old shader blasted pure saturated
   // pink/cyan/purple at full intensity which reads as "Vegas neon"
@@ -162,6 +189,27 @@ void main() {
   if (core > 0.01) col = coreCol;
   else if (ring > 0.01) col = ringCol;
   else col = haloCol;
+
+  // Hub highlight — when the hub toggle is on AND this neuron is a hub,
+  // tint toward gold. vHub already gates by uShowHubs in the vertex
+  // shader, so non-hub fragments and toggle-off frames see vHub == 0
+  // and this is a no-op.
+  if (vHub > 0.5) {
+    vec3 gold = vec3(1.0, 0.78, 0.27);
+    col = mix(col, gold, 0.55);
+  }
+
+  // Microcolumn boundary visualization — when the column toggle is on,
+  // map column id into a hue-stride pattern via fract() and apply a
+  // subtle brightness pulse so column boundaries become visible as
+  // alternating-column intensity bands. Uses fract(columnId * 0.5) to
+  // alternate every column; multiplied by 0.15 amplitude so individual
+  // neurons stay readable.
+  if (vShowColumns > 0.5) {
+    float bandPhase = fract(vColumnId * 0.5);
+    float band = 0.85 + 0.30 * step(0.5, bandPhase);
+    col *= band;
+  }
 
   gl_FragColor = vec4(col, alpha);
 }
@@ -336,7 +384,7 @@ function gauss() {
 // MNI-coordinate-based positions scaled to render space.
 // Real brain: X = lateral (±90mm), Y = anterior-posterior (±126mm), Z = superior-inferior (±72mm)
 // Render space: normalized to ~±2 units. Scale factor: 1 unit ≈ 45mm.
-//
+
 // Sources: Lead-DBS atlas, ICBM 152, Herculano-Houzel 2009, PMC stereological studies
 // Each returns an array of [x,y,z] for every neuron in that cluster.
 
@@ -492,12 +540,12 @@ function genHypothalamus(n) {
 
 function genMystery(n) {
   // Ψ CONSCIOUSNESS — corpus callosum + cingulate cortex.
-  //
+
   // Fully contained INSIDE the cortex dome (which extends roughly Z=-0.7 to +0.7).
   // Callosum length 0.55, centered slightly back at Z=-0.05 → range -0.325 to +0.225
   // Cingulate length 0.5, centered at Z=-0.05 → range -0.30 to +0.20
   // Pushed ~1/5 back of center so the genu doesn't poke out the front.
-  //
+
   // t is normalized 0-1 (NOT 0-π) for proper length control.
   // Shape is determined by sin(t*π) for the arch curve.
   const pts = [];
@@ -957,7 +1005,7 @@ export class Brain3D {
     }
 
     // R9 — per-cluster spike readout.
-    //
+
     // Was: read the flat `state.spikes` bitmask using the VIZ's CLUSTERS
     // array sizes as the offset layout. BUG: the viz uses biologically
     // weighted proportions (cortex=200, cerebellum=380, mystery=110)
@@ -967,7 +1015,7 @@ export class Brain3D {
     // actually covered amyg+BG+cerebellum+hypo in engine space. That's
     // why cerebellum activation circles never landed on cerebellum
     // positions.
-    //
+
     // Now: iterate clusters and read each cluster's own `state.clusters[
     // name].spikes` bitmask. Each bitmask has length equal to the REAL
     // cluster size from engine (e.g. cerebellum = 100), independent of
@@ -1075,7 +1123,7 @@ export class Brain3D {
     // from specific neuron positions, which is accurate. Global
     // expansion added a synthetic heartbeat on top that obscured
     // the real per-cluster dynamics.
-    //
+
     // _expansionFactor stays at 1.0 — positions are static.
     // _basePos initialization still runs in _applyExpansion if
     // you re-enable this in the future (it's idempotent).
@@ -1101,7 +1149,7 @@ export class Brain3D {
     // Curriculum intelligence-level display — shows Unity's current
     // grade level (preschool / kindergarten / G1 / ... / PhD) per
     // subject on the 3D brain viewer for all the milestones.
-    //
+
     // Reads Curriculum.subjectStatus() which ships per-subject
     // grades + passedCells count. Computes a band label based on the
     // MIN grade across all 5 subjects (matches the chat-path word
@@ -1263,6 +1311,13 @@ export class Brain3D {
 .b3d-notif-comment::before{content:'“';margin-right:2px;opacity:.6;color:currentColor;font-size:16px}
 .b3d-notif-comment::after{content:'”';margin-left:2px;opacity:.6;color:currentColor;font-size:16px}
 @keyframes b3d-notif-in{0%{opacity:0;transform:translate(-50%,-80%) scale(.85)}60%{opacity:1;transform:translate(-50%,-105%) scale(1.04)}100%{opacity:1;transform:translate(-50%,-100%) scale(1)}}
+/*  — Theta-gamma oscillation pulse. Single global tint
+   class toggled by state.consciousness.thetaPhase. CSS-only, no per-neuron
+   animation, no GPU stress at biological scale. Subtle breathing
+   effect (alpha modulation on a global overlay) so operator sees
+   oscillations are active. */
+.b3d-container.theta-pulse::after{content:'';position:absolute;inset:0;pointer-events:none;z-index:1;background:radial-gradient(ellipse at center,rgba(0,229,255,0.04) 0%,transparent 60%);animation:theta-breath 167ms ease-in-out infinite alternate}
+@keyframes theta-breath{0%{opacity:0.6}100%{opacity:1}}
 .b3d-log-wrap{position:absolute;bottom:30px;right:10px;width:280px;max-height:200px;z-index:2;pointer-events:auto}
 .b3d-log-title{font-size:9px;color:#555;letter-spacing:1px;margin-bottom:4px}
 .b3d-log{max-height:180px;overflow-y:auto;font-size:8px;line-height:1.5;scrollbar-width:thin;scrollbar-color:#222 transparent}
@@ -1431,6 +1486,22 @@ export class Brain3D {
     this._bCol  = gl.createBuffer();
     this._bGlow = gl.createBuffer();
     this._bVis  = gl.createBuffer();
+    // Cortical microstructure attributes — per-neuron layer (5 layers
+    // following Felleman & Van Essen 1991 fractions L1=5%, L2/3=25%,
+    // L4=25%, L5=25%, L6=20%), hub flag (5% rich-club), column id
+    // (80-neuron Mountcastle microcolumns). Generated deterministically
+    // per render-neuron index in _genCorticalAttribs so visualization
+    // matches the same structural rules the server uses on the real
+    // biological-scale cortex.
+    this._bLayer    = gl.createBuffer();
+    this._bHub      = gl.createBuffer();
+    this._bColumnId = gl.createBuffer();
+    // Toggle state — operator can flip layer / hub / column overlays
+    // independently. Default OFF so the normal cluster colors render
+    // unchanged until the user opts into a structural view.
+    this._showLayers  = false;
+    this._showHubs    = false;
+    this._showColumns = false;
 
     // Line buffers
     this._bLnPos = gl.createBuffer();
@@ -1493,6 +1564,55 @@ export class Brain3D {
       this._centers.push([cx/cl.n, cy/cl.n, cz/cl.n]);
       off += cl.n;
     });
+    this._genCorticalAttribs();
+  }
+
+  /**
+   * Per-neuron cortical microstructure attributes. Generated deterministically
+   * from neuron index so the same render-neuron always gets the same layer /
+   * hub / column assignment across re-builds. Mirrors the same structural
+   * rules the server-side cortex uses (Felleman & Van Essen 1991 lamination
+   * fractions, van den Heuvel & Sporns 2011 rich-club hub fraction,
+   * Mountcastle 1957 microcolumn size).
+   *
+   * `_layer[i]`     — Uint8 in 0..4 mapping to L1, L2/3, L4, L5, L6
+   * `_hub[i]`       — Uint8 0/1 — rich-club hub flag (~5% of neurons)
+   * `_columnId[i]`  — Float32 (column index ÷ 1000 for shader fract math)
+   *
+   * Layer fractions: 0.05 / 0.25 / 0.25 / 0.25 / 0.20 (cumulative
+   * thresholds 0.05 / 0.30 / 0.55 / 0.80 / 1.00).
+   * Hub fraction: 0.05 (deterministic hash so the same indexes are hubs
+   * across render rebuilds; matches the server's stable hub set).
+   * Column size: 80 neurons per microcolumn.
+   */
+  _genCorticalAttribs() {
+    const N = TOTAL;
+    this._layer    = new Float32Array(N);
+    this._hub      = new Float32Array(N);
+    this._columnId = new Float32Array(N);
+    const COLUMN_SIZE = 80;
+    // Cumulative layer thresholds for hash-based assignment.
+    const T_L1   = 0.05;
+    const T_L23  = 0.30;
+    const T_L4   = 0.55;
+    const T_L5   = 0.80;
+    // T_L6 implicit at 1.00.
+    for (let i = 0; i < N; i++) {
+      // Stable hash of neuron index — small mix function gives a
+      // pseudo-random uniform distribution while staying deterministic.
+      // Two independent hash streams so layer and hub assignments are
+      // not correlated (hubs distributed across all layers).
+      const h1 = ((i * 2654435761) >>> 0) / 0xFFFFFFFF;
+      const h2 = (((i * 40503) ^ 0xC0DE) >>> 0) / 0xFFFFFFFF;
+      let layer = 4; // default L6
+      if (h1 < T_L1) layer = 0;
+      else if (h1 < T_L23) layer = 1;
+      else if (h1 < T_L4) layer = 2;
+      else if (h1 < T_L5) layer = 3;
+      this._layer[i] = layer;
+      this._hub[i] = h2 < 0.05 ? 1.0 : 0.0;
+      this._columnId[i] = Math.floor(i / COLUMN_SIZE);
+    }
   }
 
   _uploadStatic() {
@@ -1502,6 +1622,18 @@ export class Brain3D {
     gl.bufferData(gl.ARRAY_BUFFER, this._pos, gl.STATIC_DRAW);
     gl.bindBuffer(gl.ARRAY_BUFFER, this._bCol);
     gl.bufferData(gl.ARRAY_BUFFER, this._col, gl.STATIC_DRAW);
+    if (this._layer) {
+      gl.bindBuffer(gl.ARRAY_BUFFER, this._bLayer);
+      gl.bufferData(gl.ARRAY_BUFFER, this._layer, gl.STATIC_DRAW);
+    }
+    if (this._hub) {
+      gl.bindBuffer(gl.ARRAY_BUFFER, this._bHub);
+      gl.bufferData(gl.ARRAY_BUFFER, this._hub, gl.STATIC_DRAW);
+    }
+    if (this._columnId) {
+      gl.bindBuffer(gl.ARRAY_BUFFER, this._bColumnId);
+      gl.bufferData(gl.ARRAY_BUFFER, this._columnId, gl.STATIC_DRAW);
+    }
   }
 
   _syncVis() {
@@ -1521,7 +1653,7 @@ export class Brain3D {
     // Full Unicode emoji range — brain equations select from ALL emoji
     // Multiple blocks spanning faces, nature, objects, symbols, activities
     // Each brain value shifts into a different Unicode region
-    //
+
     // Unicode emoji blocks:
     //   0x1F600-0x1F64F  Emoticons (faces)         80
     //   0x1F300-0x1F3FF  Misc symbols (weather/nature) 256
@@ -1532,7 +1664,7 @@ export class Brain3D {
     //   0x2600-0x26FF    Misc symbols              256
     //   0x2700-0x27BF    Dingbats                  192
     //   Total: ~1680 emoji accessible
-    //
+
     // Brain state → which block + position within block
 
     // Block selection from dominant brain signal
@@ -1617,7 +1749,7 @@ export class Brain3D {
    * the landing page → boot transition.
    */
   setBrain(brain) {
-    // iter25-E.6 (post-fix) — unwire any prior innerThought listener so
+    //(post-fix) — unwire any prior innerThought listener so
     // multiple setBrain() calls don't stack handlers. Each Brain3D
     // instance keeps one live subscription tied to the current brain.
     if (this._brain && this._innerThoughtHandler && typeof this._brain.off === 'function') {
@@ -1629,7 +1761,7 @@ export class Brain3D {
     // pretrained state, etc.)
     this._seedVectorCache.clear();
 
-    // iter25-E.6 (post-fix) — wire innerThought broadcasts INTO 3D
+    //(post-fix) — wire innerThought broadcasts INTO 3D
     // brain popups, not just the HUD speech bubble. The server fires
     // `cluster.emitWordDirect` every ~3s using its TRAINED weights
     // and broadcasts the result as an `innerThought` WS message that
@@ -1661,6 +1793,81 @@ export class Brain3D {
         } catch { /* non-fatal */ }
       };
       try { brain.on('innerThought', this._innerThoughtHandler); } catch {}
+
+      // Stream-of-consciousness chain visualization.
+      // Track recent inner thoughts in a FIFO queue capped at 8 (matches
+      // server-side _innerThoughtChain cap). Newest popup brightest;
+      // older fades. No unbounded chain growth.
+      if (!this._streamChain) this._streamChain = [];
+      const STREAM_CHAIN_MAX = 8;
+      const innerThoughtOriginal = this._innerThoughtHandler;
+      this._innerThoughtHandler = (payload) => {
+        // Append to chain (FIFO cap).
+        this._streamChain.push({ text: payload?.sentence || payload?.word || '', ts: Date.now() });
+        while (this._streamChain.length > STREAM_CHAIN_MAX) this._streamChain.shift();
+        // Delegate to original handler for popup spawn.
+        if (typeof innerThoughtOriginal === 'function') innerThoughtOriginal(payload);
+      };
+      try {
+        brain.off('innerThought', innerThoughtOriginal);
+        brain.on('innerThought', this._innerThoughtHandler);
+      } catch {}
+
+      // Definition lookup notification popups. When server
+      // fires a lookupDefinition (chat-time WH-handler), brain emits a
+      // definitionLookup event; brief popup on the 3D brain surface.
+      // FIFO queue cap: 3 visible at once (Phase 6 design constraint).
+      if (!this._defLookupQueue) this._defLookupQueue = [];
+      this._defLookupHandler = (payload) => {
+        if (this._destroyed || !this._open) return;
+        const word = payload?.word || '';
+        const def = payload?.definition || '';
+        if (!word) return;
+        // FIFO: cap at 3 visible. Older popups fade out per existing
+        // _addNotification behavior; we just don't spawn more than the
+        // cap concurrently.
+        this._defLookupQueue.push({ word, def, ts: Date.now() });
+        while (this._defLookupQueue.length > 3) this._defLookupQueue.shift();
+        try {
+          // Anchor to sem cluster (idx 9 — semantic region).
+          this._addNotification(`📖 ${word}: ${(def || '').slice(0, 30)}${def && def.length > 30 ? '...' : ''}`, 9);
+        } catch { /* non-fatal */ }
+      };
+      try { brain.on('definitionLookup', this._defLookupHandler); } catch {}
+
+      // Theta-gamma oscillation pulse via global CSS class
+      // toggle reading state.consciousness.thetaPhase. Single global tint
+      // (one CSS uniform), no per-neuron animation. Activated below by
+      // a stateUpdate listener; class added/removed based on phase.
+      if (!this._oscPulseEnabled) {
+        this._oscPulseEnabled = true;
+        // Hook into state updates to drive the pulse.
+        const stateHandler = (state) => {
+          if (this._destroyed || !this._open) return;
+          const m = state?.consciousness;
+          if (!m) return;
+          // Theta phase in [0, 1]: peak around 0.5. Apply CSS class
+          // when in upper-half-cycle (visible breathing).
+          if (this._container) {
+            const inThetaPeak = m.thetaPhase >= 0.25 && m.thetaPhase <= 0.75;
+            this._container.classList.toggle('theta-pulse', inThetaPeak);
+          }
+        };
+        try { brain.on('stateUpdate', stateHandler); } catch {}
+        this._consciousnessStateHandler = stateHandler;
+      }
+
+      /// M.26 / M.27 — Layer color-coding + hub highlighting
+      // + microcolumn boundary visualization. At biological scale these
+      // require shader-based per-neuron rendering (Phase 6 design
+      // constraint: NO per-neuron mesh updates). The data IS exposed
+      // via state.consciousness (numColumns, columnSize, layerCounts, hubCount)
+      // so the dashboard panel renders aggregates. Full shader-based
+      // 3D-brain rendering is deferred to a follow-up iter when the
+      // operator has profiled the existing mesh pipeline at biological
+      // scale and identified the safe insertion points for shader
+      // uniforms reading hubMask / layerId / columnId arrays.
+      // Tracking only — no per-neuron draw call here.
     }
   }
 
@@ -1822,7 +2029,7 @@ export class Brain3D {
       // downstream parameter. Unity's commentary was being generated
       // without her live cortex pattern, so popups showed flat default-
       // state speech instead of her actual in-the-moment thoughts.
-      //
+
       // Remote server state has flat fields (state.arousal, state.psi,
       // state.fear, state.reward, state.coherence, state.drugState) —
       // not nested under amygdala/oscillations. Read directly.
@@ -2013,7 +2220,7 @@ export class Brain3D {
     // all, and the few that did (psiClimb, dopamineHit — which read
     // flat paths) got rate-limited by cooldown and never produced
     // visible popups.
-    //
+
     // Fix: synthesize the nested shape from flat fields AND from
     // cluster-level activity data (spikeCount / firingRate / size)
     // for every detector path the server can reasonably derive.
@@ -2288,7 +2495,7 @@ export class Brain3D {
       }
       // T4.10 — render all three lines equationally. No hand-written
       // labels, no per-event emoji map.
-      //
+
       //   Line 1 = {emoji} {clusterKey} {metric}{arrow}
       //     - emoji from _brainEmoji salted with event magnitude so
       //       different events produce different Unicode even at the
@@ -2896,8 +3103,58 @@ export class Brain3D {
     gl.uniformMatrix4fv(gl.getUniformLocation(p, 'uMVP'), false, mvp);
     gl.uniform1f(gl.getUniformLocation(p, 'uScale'), sc);
 
+    // Cortical microstructure overlay toggles. Default OFF — base
+    // cluster colors render unchanged. Toggling these via setters
+    // (setShowLayers / setShowHubs / setShowColumns) flips the
+    // matching shader path on without recompiling.
+    gl.uniform1f(gl.getUniformLocation(p, 'uShowLayers'),  this._showLayers  ? 1 : 0);
+    gl.uniform1f(gl.getUniformLocation(p, 'uShowHubs'),    this._showHubs    ? 1 : 0);
+    gl.uniform1f(gl.getUniformLocation(p, 'uShowColumns'), this._showColumns ? 1 : 0);
+    // Layer color palette — perceptually-distinct hues for L1..L6 so
+    // the layer-color overlay renders the cortical lamination as a
+    // visible structure. Order matches Felleman & Van Essen 1991:
+    //   L1   = light pink  (molecular layer)
+    //   L2/3 = orange      (external pyramidal)
+    //   L4   = yellow      (granular)
+    //   L5   = green       (internal pyramidal)
+    //   L6   = blue        (multiform)
+    const palette = new Float32Array([
+      1.00, 0.71, 0.85,
+      1.00, 0.55, 0.20,
+      1.00, 0.92, 0.30,
+      0.40, 0.85, 0.45,
+      0.30, 0.55, 1.00,
+    ]);
+    gl.uniform3fv(gl.getUniformLocation(p, 'uLayerColor[0]'), palette);
+
     this._bindAttr(gl, p, 'aPos',  this._bPos,  3, false);
     this._bindAttr(gl, p, 'aCol',  this._bCol,  3, false);
+    // Static cortical-microstructure attributes — uploaded once in
+    // _uploadStatic. Bind directly to attribute locations.
+    if (this._layer) {
+      gl.bindBuffer(gl.ARRAY_BUFFER, this._bLayer);
+      const layerL = gl.getAttribLocation(p, 'aLayer');
+      if (layerL >= 0) {
+        gl.enableVertexAttribArray(layerL);
+        gl.vertexAttribPointer(layerL, 1, gl.FLOAT, false, 0, 0);
+      }
+    }
+    if (this._hub) {
+      gl.bindBuffer(gl.ARRAY_BUFFER, this._bHub);
+      const hubL = gl.getAttribLocation(p, 'aHub');
+      if (hubL >= 0) {
+        gl.enableVertexAttribArray(hubL);
+        gl.vertexAttribPointer(hubL, 1, gl.FLOAT, false, 0, 0);
+      }
+    }
+    if (this._columnId) {
+      gl.bindBuffer(gl.ARRAY_BUFFER, this._bColumnId);
+      const colIdL = gl.getAttribLocation(p, 'aColumnId');
+      if (colIdL >= 0) {
+        gl.enableVertexAttribArray(colIdL);
+        gl.vertexAttribPointer(colIdL, 1, gl.FLOAT, false, 0, 0);
+      }
+    }
 
     gl.bindBuffer(gl.ARRAY_BUFFER, this._bGlow);
     gl.bufferData(gl.ARRAY_BUFFER, this._glow, gl.DYNAMIC_DRAW);
@@ -2913,6 +3170,17 @@ export class Brain3D {
 
     gl.drawArrays(gl.POINTS, 0, TOTAL);
   }
+
+  /**
+   * Public toggle setters for the cortical microstructure overlays.
+   * Used by the dashboard checkboxes (and any other consumer) to flip
+   * layer / hub / column visualization on or off without recompiling
+   * shaders. Defaults all-off so the normal cluster colors render
+   * unchanged until Gee opts into a structural view.
+   */
+  setShowLayers(on)  { this._showLayers  = !!on; }
+  setShowHubs(on)    { this._showHubs    = !!on; }
+  setShowColumns(on) { this._showColumns = !!on; }
 
   _drawLines(gl, mvp) {
     if (!this._connN) return;

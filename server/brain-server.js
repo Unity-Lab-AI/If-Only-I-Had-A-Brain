@@ -28,6 +28,11 @@ const { execSync } = require('child_process');
 const { performance } = require('perf_hooks');
 const { SparseMatmulPool } = require('./worker-pool.js');
 const { learnFromWeb } = require('./world-knowledge.js');
+// Live dictionary API service (dictionaryapi.dev wrapper).
+// Used by 'lookupDefinition' / 'prefetchDefinitions' WS handlers and
+// by curriculum's _teachWordDefinition / _emitDefinition paths so
+// Unity can speak the meaning of any English word.
+const definitionService = require('./definition-service.js');
 
 // ── Auto-Scale: Detect Hardware → Set Neuron Count ─────────────
 
@@ -79,12 +84,12 @@ function detectResources() {
   // Server neuron memory: 9 bytes each (8 voltage + 1 spike)
   // No NxN synapse matrices on server — those are client-side
   // Real constraint: CPU time per step, not memory
-  //
+
   // With parallel workers (7 cores):
   //   1M neurons = ~9MB RAM, ~180 steps/sec at 60% CPU
   //   5M neurons = ~45MB RAM, ~30 steps/sec
   //   10M neurons = ~90MB RAM, ~15 steps/sec
-  //
+
   // Scale based on: RAM for allocation, CPU cores for throughput
   let maxNeurons;
   let scaleSource;
@@ -108,7 +113,7 @@ function detectResources() {
     // exceeds the real binding limit the cluster silently binds to zero
     // and never fires — exactly what was happening to cortex + cerebellum
     // at 1.8 B-neuron scale.
-    //
+
     // T14.22 (2026-04-14) — binding ceiling is now ADMIN-OVERRIDABLE
     // via `bindingCeilingMB` in resource-config.json. When running
     // unsafe WebGPU the operator can raise the cap to their real
@@ -187,19 +192,19 @@ function detectResources() {
 const RESOURCES = detectResources();
 
 // ── Unified biological VRAM allocator ────────────────────────────
-//
+
 // ONE budget across ALL 8 brain regions (7 main + language cortex).
 // Replaces the broken split where main-brain scaler picked 671M
 // independently and language-cortex scaler picked 200K independently,
 // resulting in 17.6 GB VRAM on a 16 GB card → driver spillover →
 // compute_batch timeouts.
-//
+
 // Formula:
 //   total_VRAM      = vramCapMB                 (from resource-config.json)
 //   os_reserve      = osReserveVramMB           (from resource-config.json, default 2 GB)
 //   brain_budget    = total_VRAM - os_reserve
 //   per_region_budget[k] = brain_budget × biologicalWeights[k]
-//
+
 // Weights sum to 1.0, configurable in resource-config.json. Default:
 //   language_cortex  0.45  — BIGGEST slice because sparse cross-projections
 //                            at fanout 1500 cost ~18 KB/neuron (70× more
@@ -211,7 +216,7 @@ const RESOURCES = detectResources();
 //   basalGanglia     0.04
 //   hypothalamus     0.03
 //   mystery          0.03
-//
+
 // Bytes-per-neuron (empirical, from 2026-04-18 boot log):
 //   main brain:      ~21 bytes (Rulkov state + spike buffer + GPU
 //                    synapse overhead at scale-limited fanout)
@@ -223,16 +228,16 @@ const RESOURCES = detectResources();
 // need to coordinate a physical body. Prior weights (language 45%,
 // cerebellum 20%) caused language cortex to be 0.08% of total brain
 // at biological scale — architecturally inverted.
-//
+
 // Rebalanced: language dominant (75% — hosts all learned language
 // weights + 14 cross-projections + intra-synapses), cortex 10% (main
 // cortex synapse matrix), cerebellum 5% (just enough for output timing,
 // no physical body), others trimmed.
-//
+
 // Operator verbatim 2026-04-22: "!M LANGUAGE CORTEX TO MATCH A REAL
 // BRAIN IT NEEDS TO BE MORE LIKE 25% of the fucking brain!!! ... fix
 // it now heftyly and thouroughly".
-//
+
 // iter14-F per operator 2026-05-04 sequence:
 //   1. "MAKE THE LANGUAGE CORTEX BIG ENOUGH AS ITS THE MAIN FUCKING
 //      THING THIS BRAIN DOES"
@@ -245,7 +250,7 @@ const RESOURCES = detectResources();
 //      bio-weight
 //   4. "NO FUCKER LOOK UP THE REAL FUCKING NUMBERS!" — research
 //      directive
-//
+
 // Real biology per Herculano-Houzel 2009 ("The Human Brain in
 // Numbers", Frontiers Hum Neurosci & PNAS):
 //   - Cerebellum: 80% of neurons (~69B), 10% of mass — granule
@@ -260,7 +265,7 @@ const RESOURCES = detectResources();
 // subcortical to 6% floor, lifts cerebellum to real-brain 10%
 // mass share, drops language to 0.50 to make room. Language is
 // still the largest single cluster.
-//
+
 // Net effect at 16GB tier:
 //   - language_cortex: 0.75→0.50, but combined with CROSS_TARGET_
 //     FANOUT 20→10 + INTRA_CONNECTIVITY_CAP 0.15→0.05 cuts (per-
@@ -332,13 +337,13 @@ const MAX_TEXT_PER_SEC = 2;        // rate limit per client
 // and episodic-memory.db* before telling the brain to re-teach. The
 // manual step has been forgotten repeatedly — making
 // it automatic so the LAW can't be violated by forgetting.
-//
+
 // The server re-runs curriculum on every boot (there's no skip-
 // curriculum path), so any saved state from a prior run is
 // categorically stale — curriculum will overwrite it anyway. Cleaning
 // at boot time is safe + enforces the LAW without depending on
 // Claude's memory.
-//
+
 // To OPT OUT (e.g. you really want to preserve prior-boot embedding
 // refinements or drug scheduler state), set DREAM_KEEP_STATE=1 in the
 // environment before launching. The opt-out is noisy (logs "KEEPING
@@ -350,13 +355,13 @@ const MAX_TEXT_PER_SEC = 2;        // rate limit per client
 // compare to the hash from the prior boot. Match → PRESERVE state so
 // curriculum progress + learning + gate history survive restarts. Mismatch
 // → CLEAR (brain state may be incompatible with the new code shape).
-//
+
 // Hard gate = persistence.js VERSION (rejects shape-incompatible saves on
 // load). Soft gate = this hash (clears when brain semantics might have
 // changed). Both run — VERSION alone doesn't catch non-shape semantic
 // drift (e.g., modified Hebbian learning rate constants, changed region
 // fractions, altered gate thresholds); the hash does.
-//
+
 // Overrides:
 //   DREAM_KEEP_STATE=1  — always preserve (existing, bypasses hash check)
 //   DREAM_FORCE_CLEAR=1 — always clear (new, ignores hash match)
@@ -413,7 +418,7 @@ function autoClearStaleState() {
   // everything shoudl reset when the start.bat is run or the .sh...
   // and only if the stop.bat is used in conjusction with the
   // savestart.bat does it pick up where it lefgtt off"
-  //
+
   // Auto-clear is now UNCONDITIONAL on every boot — the prior code-
   // hash gate is gone. Two reasons the gate caused real bugs:
   //   1. Code-hash matching meant resource-config.json changes
@@ -425,7 +430,7 @@ function autoClearStaleState() {
   //      trip; restored projections came back as ±Infinity which made
   //      every Hebbian write unbounded → matrix saturation → wrong
   //      answers — even though the code itself was correct.
-  //
+
   // The cleaner contract: `start.bat` always = fresh brain. To resume
   // from prior state, operator runs `Savestart.bat` which sets
   // `DREAM_KEEP_STATE=1` (existing flag, preserved). Tier 3 identity-
@@ -532,7 +537,7 @@ autoClearStaleState();
 // 0.25 = 250/1000, client cortex = 0.30). Same tier produced
 // different cluster sizes between browser and server. Unified here
 // to match the client exactly.
-//
+
 // KEEP IN SYNC with `js/brain/cluster.js:CLUSTER_FRACTIONS`. Both sides
 // use the same fractions so `clusterSizesFor(totalNeurons)` returns
 // identical shapes in both runtimes. Real brain: cerebellum has 80% of
@@ -883,13 +888,13 @@ class ServerBrain {
       this.languageCortex = new lcMod.LanguageCortex();
 
       // T14.18 + T14.20 (2026-04-14) — language cortex sizing.
-      //
+
       // Background: the old path hardcoded langCortexSize = 2000 as
       // a T13.7.8 carry-forward. T14.18 replaced that with
       // CLUSTER_SIZES.cortex so the language cortex would respect
       // GPUCONFIGURE.bat scale. T14.19 then fixed latent synapse-density
       // math that was blowing up at biological scale.
-      //
+
       // T14.20 reality check: the MAIN brain runs on the GPU compute
       // pipeline where Rulkov state is 8 bytes per neuron and the
       // server's 2GB per-buffer binding ceiling caps total at 671M
@@ -898,7 +903,7 @@ class ServerBrain {
       // the GPU compute clusters — because the GPU pipeline doesn't
       // yet handle the T14.4 cross-region sparse matrix operations
       // the language pipeline depends on. That's T15 scope.
-      //
+
       // Until GPU language compute ships, the CPU-side language
       // NeuronCluster has a hard practical ceiling where SparseMatrix
       // memory + per-tick multiply-add throughput stop being feasible.
@@ -906,12 +911,12 @@ class ServerBrain {
       // matrix at ~36 MB and each cluster.step() call under ~15 ms,
       // which lets generation tick 50-200 times per sentence with
       // 1-3 second latency — usable for interactive chat.
-      //
+
       // Scale flow (post-T14.20):
       //   GPUCONFIGURE.bat → resource-config.json → detectResources →
       //   TOTAL_NEURONS → CLUSTER_SIZES.cortex → MIN(that, CPU cap) →
       //   NeuronCluster constructor → T14.4 sub-regions as fractions
-      //
+
       // Below the CPU cap, scale is honored. Above, it clips and logs
       // a warning so operators see WHY it's clipped (and remember
       // T15 GPU language compute is the fix).
@@ -924,7 +929,7 @@ class ServerBrain {
       //      during pre-curriculum corpus loading (results are
       //      meaningless noise until fineType basins are shaped).
       //      Per-word cost drops from ~200-500ms to microseconds.
-      //
+
       // At 10K neurons × 300 targetFanout = 3M synapse entries
       // (~36 MB). cluster.step() runs the sparse propagate in
       // ~150ms per tick, so generation at 100-200 ticks finishes
@@ -935,7 +940,7 @@ class ServerBrain {
       // inadequate for the 1029-word K vocabulary + all the other
       // curriculum bindings trying to coexist in one cluster. Scaling
       // up to 100K gives 10× per-word discrimination capacity.
-      //
+
       // Memory budget at 100K (8,500MB+ RAM box at biological scale):
       //   - LIF state: 100K × 17B = 1.7MB
       //   - Intra-cluster sparse synapses (connectivity 0.15 ≈ 15K
@@ -945,12 +950,12 @@ class ServerBrain {
       //     sem=16.7K. sem→motor at fanout 1500 = 3.3K × 1500 × 12 = ~60MB.
       //     Total cross: ~840MB.
       //   - Grand total: ~1.2GB. Comfortable on 128GB.
-      //
+
       // Tick performance cost: ~10× more ops per step vs 10K baseline.
       // Curriculum walk stretches from seconds to ~10-17 min per gate.
       // Acceptable for this validation phase — T17.2 worker parallelization
       // and T17.3 GPU cross-region shaders will bring interactive speed back.
-      //
+
       // If memory pressure becomes a concern, set DREAM_LANG_CORTEX env var
       // to override (e.g. DREAM_LANG_CORTEX=50000 to drop back). Default 100K
       // is the honest scale-up Phase 1.
@@ -958,14 +963,14 @@ class ServerBrain {
       // the most important thing and needs GPU like the rest of the
       // brain, not a side-process. This is one massive system, not
       // separate side processes.
-      //
+
       // The real fix is moving the language cluster to GPU with
       // cross-projections as GPU sparse matrices (see
       // docs/TODO.md "T17.3 GPU cross-region shaders"). Until that
       // ships, the CPU cluster stays as a transitional path. Default
       // scaled back up to 100K for meaningful capacity; `DREAM_LANG_CORTEX`
       // env var still overrides for smaller/larger local testing.
-      //
+
       // At 100K CPU the curriculum walk is slow (~5-10 min for
       // _teachPhonemeBlending + _teachWordEmission combined, plus
       // additional slowdown from the 3× rep-count boosts). Progress
@@ -975,14 +980,14 @@ class ServerBrain {
       // hardware budget. No cap at any tier — scales continuously
       // with the hardware available, eventually to millions of GPUs
       // in a distributed compute fabric.
-      //
+
       // Prior commit had LANG_CLUSTER_BYTES_PER_NEURON=8192 which was
       // wrong — ignored that cross-projection sparse matrices scale
       // with post_region_size × fanout, not just total neuron count.
       // At N=7.66M that estimate produced a 62GB budget, but actual
       // memory need was ~250GB (14 cross-projections each 1-27GB).
       // Node hung allocating multi-GB Float64Array chunks on Windows.
-      //
+
       // Correct per-neuron cost:
       //   LIF state:                        17 B
       //   Intra-cluster synapses (fanout 300): 300 × 12 = 3,600 B
@@ -992,7 +997,7 @@ class ServerBrain {
       //     = 1.68 × N × 1500 × 12 B
       //     = 30,240 B per neuron
       //   Total: 17 + 3,600 + 30,240 ≈ 34,000 B per neuron
-      //
+
       // Rounded up to 40,000 as a safety buffer for allocation
       // overhead, rowPtr arrays, scratch buffers, JS object wrappers
       // on typed-array handles, etc.
@@ -1036,7 +1041,7 @@ class ServerBrain {
       // peak above the 16 GB GPU's usable ~13 GB and WebGPU killed the
       // device mid-upload. Phantom "size too large" errors followed
       // (see T18.6.a).
-      //
+
       // The fix replaces the static coefficient with a geometry-aware
       // estimator that computes actual sparse-matrix footprint at the
       // trial size, compares to `LANG_CORTEX_VRAM_BUDGET_BYTES`, and
@@ -1046,7 +1051,7 @@ class ServerBrain {
       // in size) or after 10 iterations / minimum-size floor — both
       // escape conditions log a clear warning so operators can see
       // exactly why the cortex dropped and by how much.
-      //
+
       // Geometry: intra-synapse nnz ≈ size × intraFanout (density-
       // clamped to targetFanout / size via `min(connectivity,
       // targetFanout/size)`). Cross-projection nnz per direction ≈
@@ -1273,7 +1278,7 @@ class ServerBrain {
         // "llllll" — motor argmax was locked on bucket 11 (letter 'l')
         // for this run's random seed. Training sparse cross-projections
         // couldn't overcome 85% positive intra self-reinforcement.
-        //
+
         // Zero-mean intra weights (50/50 excitatory/inhibitory) kills the
         // random-init attractor bias. Each neuron's incoming connections
         // sum to ~0 before training → no dominant bucket → motor argmax
@@ -1356,7 +1361,7 @@ class ServerBrain {
       // when name === 'cortex'. At the real configured scale, the letter
       // region is langCortexSize × 0.05, phon is × 0.20, sem is × 0.167,
       // motor is × 0.033 — biological proportions that scale with hardware.
-      //
+
       // T13.7.8 `_langStart` is kept for legacy compat with any path
       // that still reads it; T14.4 sub-regions are the authoritative
       // region layout. Set to the start of the T14.4 `letter` region
@@ -1384,6 +1389,97 @@ class ServerBrain {
         this.dictionary,
         this.languageCortex,
       );
+      // wire live dictionary API onto cluster + curriculum.
+      // Server-side cluster gets cluster.lookupDefinition(word) async,
+      // cluster.lookupDefinitionSync(word) for instant cache reads, and
+      // cluster.prefetchDefinitions(words) for cell-start cache priming.
+      // Curriculum reads through cluster.* so the same calls work in
+      // both server-side curriculum and any future browser-side callers
+      // (which would route through WS handlers added in this iter).
+      this.cortexCluster.lookupDefinition = (word, opts) =>
+        definitionService.getDefinition(word, opts);
+      this.cortexCluster.lookupDefinitionSync = (word) =>
+        definitionService.getDefinitionSync(word);
+      this.cortexCluster.lookupDefinitionFull = (word, opts) =>
+        definitionService.getDefinitions(word, opts);
+      this.cortexCluster.prefetchDefinitions = (words, opts) =>
+        definitionService.prefetch(words, opts);
+      this.cortexCluster.getDefinitionCacheStats = () =>
+        definitionService.getCacheStats();
+      // Lazy chat-time Hebbian binding hook.
+      // Chat path (language-cortex.js generateAsync) fires this after
+      // a successful definition lookup so sem(word) → sem(def_tokens)
+      // gets carved INCREMENTALLY through actual user use, not upfront
+      // blur. Fire-and-forget — chat doesn't await this.
+      this.cortexCluster.teachWordDefinition = (word, opts) => {
+        if (!this.curriculum || typeof this.curriculum._teachWordDefinition !== 'function') {
+          return Promise.resolve(null);
+        }
+        // Don't await — fire-and-forget so chat response returns instantly.
+        return this.curriculum._teachWordDefinition(word, { reps: 4, label: 'CHAT-DEF', ...(opts || {}) }).catch(() => null);
+      };
+      // Construct GlobalWorkspace (Baars GWT) and register
+      // all clusters as participants. Workspace tick runs each brain
+      // tick (above) — aggregates top candidates, softmax-competes,
+      // ignition-broadcasts winner above threshold. Theta-gated.
+      try {
+        const { GlobalWorkspace } = require('../js/brain/global-workspace.js');
+        this.globalWorkspace = new GlobalWorkspace({
+          ignitionThreshold: 0.45,
+          softmaxTau: 0.5,
+          thetaPeriod: 167,
+          broadcastDecay: 0.85,
+          historyLen: 32,
+        });
+        const clustersToRegister = [
+          this.cortexCluster,
+          this.amygdalaCluster, this.hippocampusCluster, this.basalGangliaCluster,
+          this.cerebellumCluster, this.hypothalamusCluster, this.mysteryCluster,
+        ].filter(c => c && typeof c.getWorkspaceCandidate === 'function');
+        for (const c of clustersToRegister) {
+          this.globalWorkspace.registerCluster(c);
+          // Wire the workspace back onto each cluster so emit paths
+          // (cortex.emitWordDirect) can read getBroadcast() and bias
+          // word selection toward currently-ignited content. Without
+          // this hook GW.tick() runs but the broadcast doesn't shape
+          // emission — the GWT loop is unclosed.
+          c._globalWorkspace = this.globalWorkspace;
+        }
+        console.log(`[Brain] GlobalWorkspace ready — ${clustersToRegister.length} clusters registered for ignition competition`);
+      } catch (err) {
+        console.warn(`[Brain] GlobalWorkspace construction failed: ${err?.message || err}`);
+      }
+
+      // K-wiring assertion at brain boot. Verifies all
+      //data structures are populated AND readable by the
+      // Hebbian path (no vestigial code). Logs PASS/FAIL banner.
+      try {
+        if (typeof this.cortexCluster.assertKWiring === 'function') {
+          this.cortexCluster.assertKWiring();
+        }
+      } catch (err) {
+        console.warn(`[Brain] K-wiring assertion threw: ${err?.message || err}`);
+      }
+
+      // Dictionary API smoke test at boot. Fires one test query for
+      // "test" and logs the parsed result. The boolean result is
+      // assigned to `this._dictionarySmokeTestResult` (true / false; null
+      // when still pending) so dashboard panels can render PASS / FAIL
+      // / pending. Fire-and-forget — doesn't block boot. After the
+      // boolean lands, `_broadcastStateNow()` force-pushes the value
+      // so connected clients don't sit on a stale "pending" until the
+      // next periodic state tick.
+
+      // Periodic re-test scheduling: while the result is FAIL, retry
+      // every 60s (transient DNS/network hiccups recover); once PASS,
+      // sanity-check every 1hr in case the upstream goes down mid-run.
+      // Both intervals only fire one in-flight check at a time (guarded
+      // by `_smokeTestInFlight`).
+      this._dictionarySmokeTestResult = null;
+      this._runDictionarySmokeTest();
+      // Periodic retry — first tick fires after 60s; the wrapper
+      // re-arms with the appropriate interval based on current state.
+      this._scheduleSmokeTestRetry();
       // iter17 — wire brain reference onto curriculum so cell-done memory
       // population (storeEpisode + injectIdentityBaseline) can reach the
       // hippocampal stores. Without this, episodes stay at 0 during
@@ -1710,7 +1806,7 @@ class ServerBrain {
       // dictionary and type-transition tables — this pass actually shapes
       // the cross-region projections T14.4 wired up.
       // T14.22 — curriculum.runFromCorpora runs in BACKGROUND, NOT awaited.
-      //
+
       // The old path awaited curriculum here, which blocked _initLanguage
       // Subsystem from returning, which blocked brain.start() from
       // reaching the tick loop setup, which blocked _gpuStep from ever
@@ -1718,7 +1814,7 @@ class ServerBrain {
       // as a GPU worker, then sat frozen at "registering as compute
       // client..." because the server was still grinding through the
       // curriculum walk and hadn't started the tick loop yet.
-      //
+
       // Fix: fire curriculum in the background via Promise chain (no
       // await), let _initLanguageSubsystem return immediately, let
       // brain.start() reach the tick loop, let _gpuStep send gpu_init
@@ -1726,7 +1822,7 @@ class ServerBrain {
       // background and shapes the cortex basins gradually — same end
       // state, but the brain is LIVE and ticking on GPU from second
       // one instead of waiting for curriculum to finish.
-      //
+
       // Curriculum's async yields (setImmediate macrotask, T14.22) mean
       // it shares the event loop cleanly with the tick handlers and
       // HTTP requests while it runs. Cortex state changes mid-flight
@@ -1739,7 +1835,7 @@ class ServerBrain {
       // as each gate passes; Unity's chat output is grade-capped via
       // Curriculum.gradeWordCap so a pre-K brain stays silent instead
       // of emitting letter salad.
-      //
+
       // Binding constraint: full equational curriculum from
       // kindergarten all the way up to doctorate. Every grade in
       // curriculum.js uses equations only — no lookup tables, no
@@ -1848,6 +1944,97 @@ class ServerBrain {
   /**
    * Get full brain state for broadcasting.
    */
+
+  /**
+   * Force-push the full state payload to every connected client RIGHT
+   * NOW instead of waiting for the next periodic broadcast tick. Used
+   * by event handlers (e.g. dictionary smoke test completion) that
+   * need to land a value on dashboards immediately so panels never
+   * flash a stale placeholder during the inter-tick window.
+   *
+   * Mirrors the periodic broadcaster's send shape so dashboard render
+   * code is unchanged.
+   */
+  _broadcastStateNow() {
+    if (!this.clients || this.clients.size === 0) return;
+    let payload;
+    try { payload = JSON.stringify({ type: 'state', state: this.getState() }); }
+    catch { return; }
+    for (const [ws] of this.clients) {
+      if (ws.readyState === ws.OPEN) {
+        try { ws.send(payload); } catch {}
+      }
+    }
+  }
+
+  /**
+   * Fire one dictionary API smoke test and update
+   * `_dictionarySmokeTestResult` on completion. Fire-and-forget — caller
+   * doesn't await. Force-broadcasts state on result so the dashboard
+   * panel doesn't sit on a stale value until the next periodic tick.
+   * Guarded by `_smokeTestInFlight` so periodic retries don't stack
+   * concurrent fetches if a previous one is slow.
+   */
+  _runDictionarySmokeTest() {
+    if (this._smokeTestInFlight) return;
+    this._smokeTestInFlight = true;
+    try {
+      if (definitionService._hasFetch && definitionService._hasFetch()) {
+        definitionService.getDefinition('test', { timeoutMs: 4000 }).then(def => {
+          const ok = !!(def && typeof def === 'string' && def.length > 0);
+          this._dictionarySmokeTestResult = ok;
+          this._dictionarySmokeTestTs = Date.now();
+          if (ok) {
+            console.log(`[Brain] dictionary API ready — "test" → "${def.slice(0, 80)}${def.length > 80 ? '...' : ''}"`);
+          } else {
+            console.warn(`[Brain] dictionary API check failed — getDefinition('test') returned ${def === null ? 'null' : typeof def}. Definition lookups will degrade.`);
+          }
+          try { this._broadcastStateNow(); } catch {}
+        }).catch(err => {
+          this._dictionarySmokeTestResult = false;
+          this._dictionarySmokeTestTs = Date.now();
+          console.warn(`[Brain] dictionary API check threw: ${err?.message || err}`);
+          try { this._broadcastStateNow(); } catch {}
+        }).finally(() => {
+          this._smokeTestInFlight = false;
+        });
+      } else {
+        this._dictionarySmokeTestResult = false;
+        this._smokeTestInFlight = false;
+        console.warn(`[Brain] dictionary API unavailable — globalThis.fetch missing. Upgrade Node ≥18 for live dictionary.`);
+      }
+    } catch (err) {
+      this._dictionarySmokeTestResult = false;
+      this._smokeTestInFlight = false;
+      console.warn(`[Brain] dictionary API setup threw: ${err?.message || err}`);
+    }
+  }
+
+  /**
+   * Schedule periodic smoke test re-runs. Sleeps 60s while the last
+   * result is FAIL so transient DNS/network failures recover quickly;
+   * sleeps 1hr while last result is PASS so upstream-goes-down mid-run
+   * is still caught without spamming dictionaryapi.dev. Re-arms after
+   * each fire so the loop runs forever.
+   */
+  _scheduleSmokeTestRetry() {
+    const delay = this._dictionarySmokeTestResult === true
+      ? 60 * 60 * 1000   // 1hr while passing
+      : 60 * 1000;       // 60s while failing or still pending
+    this._smokeTestRetryTimer = setTimeout(() => {
+      this._runDictionarySmokeTest();
+      // Re-arm regardless of in-flight — _runDictionarySmokeTest
+      // self-guards. Re-evaluate delay on next tick based on the
+      // updated result.
+      this._scheduleSmokeTestRetry();
+    }, delay);
+    // Don't keep the event loop alive just for this timer — if the
+    // server is shutting down we want to exit cleanly.
+    if (this._smokeTestRetryTimer && typeof this._smokeTestRetryTimer.unref === 'function') {
+      this._smokeTestRetryTimer.unref();
+    }
+  }
+
   /**
    * T18.3.b — Compute Unity's lowest passing grade across all subjects.
    * Returns a string from the grade ladder (pre-K → K → grade1..12 →
@@ -1897,7 +2084,7 @@ class ServerBrain {
     // lang_auditory, lang_fineType, lang_free) so the 3D brain can render
     // Broca's, Wernicke's, angular gyrus, VWFA, V1, Heschl's, temporal pole,
     // and PFC as filled-in sub-volumes between the existing 7 regions.
-    //
+
     // At biological scale the GPU owns cortex spike state — the CPU
     // `cortexCluster.lastSpikes` Uint8Array stays zero. Prefer the
     // GPU-reported per-region counts captured by `_computeCortex-
@@ -2012,6 +2199,16 @@ class ServerBrain {
       // "shall be one unified system of the brain for memory not
       // some side processes".
       memoryStats: this._getMemoryStats(),
+      //Phase 6 — Display/Visibility snapshot for dashboard.
+      // Bounded payload: aggregates only, no per-neuron / per-column
+      // enumeration, no unbounded lists. Counts + small fixed-size
+      // arrays only (gaps capped at 5, etc).
+      consciousness: this._getIter25MState(),
+      // WS backpressure metrics for the GPU client. Reads
+      // _gpuClient.bufferedAmount + drop/absorb/enobufs counters +
+      // a rolling drops/sec rate so operator can see whether the
+      // BLOCK-not-DROP path is keeping Hebbian updates intact.
+      wsPressure: this._getIter25NState(),
       // Live brain-event stream — plasticity fires, curriculum phases,
       // drug events, template classifications, everything the cortex
       // is DOING in the current window. Each entry carries
@@ -2263,7 +2460,7 @@ class ServerBrain {
       // upsample ratio (main_size / stand_size for this region).
       // At biological scale typical R is small (e.g., 30M main / 7M
       // stand = 4.3 for most regions), so this stays bounded.
-      //
+
       // Bandwidth guard: cap mirrored spikes per region at 50K to
       // prevent a Promise.all-like burst from choking WebSocket.
       // 50K × 4 bytes = 200 KB per region per tick × 8 regions =
@@ -2371,7 +2568,7 @@ class ServerBrain {
       // FIRST DISPATCH — tell GPU to create buffers at Vrest
       // DO NOT send voltage array — at 25.6M neurons that's 260MB base64.
       // GPU initializes its own voltages at Vrest. Same result, zero transfer.
-      //
+
       // T17.7 Phase B.1 — regions metadata with L/R side tags. For the
       // main cortex cluster, register the 8 language sub-regions with
       // their biological lateralization (left-dominant for language
@@ -2425,23 +2622,23 @@ class ServerBrain {
     }));
 
     // T14.23 — (see _gpuBatch below for the batched protocol).
-    //
+
     // T14.22.5 — GPU timeout raised 800ms → 10000ms.
-    //
+
     // At 677M-neuron biological scale, a single GPU fullStep takes ~40ms
     // for small clusters and can exceed 300ms for cerebellum (268M
     // neurons × compute.html's serialized Promise queue from T14.22.3
     // = 7 clusters × ~50ms each = ~350ms per substep average). With
     // multiple clusters queued behind one another, individual
     // compute_results can land 500-2000ms after the request was sent.
-    //
+
     // The old 800ms cap was silently killing every compute_result that
     // arrived late, resolving the pending promise to null, causing the
     // tick loop to record spikeCount=0 for that cluster, and the UI
     // cards + 3D brain visualization to stay at zero even though the
     // GPU was actually computing real spike counts. This is one of
     // the two remaining reasons the UI looked dead at biological scale.
-    //
+
     // Raised to 10 seconds — plenty of headroom even at the largest
     // single-GPU tier. If a compute_result takes more than 10 seconds,
     // something is genuinely broken (GPU hang, dropped WebSocket) and
@@ -2569,7 +2766,7 @@ class ServerBrain {
   }
 
   // ── T17.3.c SPARSE DISPATCH HELPERS ──
-  //
+
   // Send sparse upload/propagate/hebbian messages to compute.html,
   // await the matching ack via reqId correlation. Used by the GPU
   // language cortex path to offload cross-projection ops to GPU.
@@ -2598,21 +2795,21 @@ class ServerBrain {
   }
 
   // ── Binary WebSocket frame encoders/decoders ──
-  //
+
   // Wire format header (all frames):
   //   0..3:  magic "SPRS" (request) or "SPRR" (response)
   //   4:     type byte  (1=upload, 2=propagate, 3=hebbian)
   //   5..8:  reqId (uint32 LE)
   //   9..10: nameLen (uint16 LE)
   //   11..:  name (UTF-8), then type-specific payload
-  //
+
   // Typed-array payloads are concatenated with Uint32 length prefixes:
   //   [len][data] for each of values/colIdx/rowPtr/preSpikes/postSpikes
-  //
+
   // Binary frames bypass V8's ~512 MB JSON string limit AND the
   // JSON.stringify + JSON.parse round-trip cost. 10-20× faster for
   // typed-array payloads; unlimited size within available memory.
-  //
+
   // Built to work without jerry-rigging — this
   // replaces the 10M-nnz JSON-safety skip with real binary transport.
 
@@ -2650,7 +2847,7 @@ class ServerBrain {
     // exceeds the OS-level socket send buffer (typically 256 KB - 2 MB
     // on Windows), ws.send() fails with ENOBUFS. Logs showed ~1200
     // consecutive ENOBUFS errors during _teachPhonemeBlending.
-    //
+
     // Fix: check bufferedAmount BEFORE calling send(). If backed up,
     // drop the send silently and resolve null (same as timeout path —
     // fire-and-forget caller just loses one Hebbian update on the GPU
@@ -2678,7 +2875,7 @@ class ServerBrain {
     // of dispatches the GPU and CPU shadow weights drift apart, then
     // probe readbacks return stale values that don't match what
     // CPU-side learned. Operator caught 28 drops in a single ELA-K run.
-    //
+
     // New approach: AWAIT the buffer to drain instead of dropping.
     // Bounded await (max 5s) prevents indefinite hang if compute.html
     // is genuinely stalled; in that pathological case we still drop
@@ -2686,23 +2883,44 @@ class ServerBrain {
     // 100-500ms during teach-phase bursts because compute.html serial-
     // onmessage processes the queued frames as fast as Node can fire
     // them. Net effect: drops reduce from ~28 per ELA-K cell to ~0.
-    const BUFFERED_AMOUNT_DROP_THRESHOLD = 200 * 1024 * 1024; // 200 MB
-    const MAX_AWAIT_MS = 5000;
+    // Threshold bumped 200MB → 500MB. Bigger headroom = backpressure
+    // logic engages later, fewer DROP fallbacks under sustained
+    // teach-phase bursts. Safe at our memory footprint (Node easily
+    // holds 500MB ws buffer; OS-level socket send buffer is the
+    // bottleneck not Node's heap).
+    const BUFFERED_AMOUNT_DROP_THRESHOLD = 500 * 1024 * 1024;
+    // Safety timeout extended 5s → 30s. The block-not-drop pivot
+    // means we wait for the GPU client to drain rather than corrupt
+    // weights with silent drops; 30s is long enough that only a
+    // genuinely hung compute.html triggers the fallback DROP, while
+    // normal serial-onmessage stalls of 1-10s drain cleanly.
+    const MAX_AWAIT_MS = 30000;
     const POLL_MS = 25;
     if (this._gpuClient.bufferedAmount > BUFFERED_AMOUNT_DROP_THRESHOLD) {
       const awaitStart = Date.now();
       while (this._gpuClient && this._gpuClient.readyState === 1
              && this._gpuClient.bufferedAmount > BUFFERED_AMOUNT_DROP_THRESHOLD) {
         if ((Date.now() - awaitStart) > MAX_AWAIT_MS) {
-          // Pathological case: 5s of sustained backpressure means
-          // compute.html is genuinely stalled. Log + drop. This should
-          // be RARE — was ~28/cell before fix; with await it should
-          // hit 0 in normal teach phases.
-          if (!this._t1826DroppedCount) this._t1826DroppedCount = 0;
-          this._t1826DroppedCount++;
-          if (!this._t1826LastLogMs || (Date.now() - this._t1826LastLogMs) >= 5000) {
-            this._t1826LastLogMs = Date.now();
-            console.warn(`[Brain] backpressure DROP after ${MAX_AWAIT_MS}ms await (ws.bufferedAmount=${(this._gpuClient.bufferedAmount/1024/1024).toFixed(1)}MB still > ${BUFFERED_AMOUNT_DROP_THRESHOLD/1024/1024}MB threshold). ${this._t1826DroppedCount} total drops since boot. compute.html stalled — Hebbian update lost on GPU side; CPU shadow stays authoritative.`);
+          // Pathological case: 30s of sustained backpressure means
+          // compute.html is genuinely stalled. With cortical
+          // microstructure live (topographic projections + layer-
+          // constrained endpoints + microcolumn coherence), a missed
+          // Hebbian update on the GPU shadow is no longer recoverable
+          // via fire-and-forget — forward propagation reads GPU
+          // weights, so a drop here causes CPU/GPU divergence across
+          // ALL post-update projections. Log a CRITICAL banner, mark
+          // the GPU shadow dirty, and schedule a full-weight resync.
+          // The current dispatch still drops (compute.html can't
+          // accept it), but the shadow-dirty flag tells the next idle
+          // dispatch to push a full resync before resuming
+          // teach-phase Hebbian fires.
+          if (!this._wsDroppedCount) this._wsDroppedCount = 0;
+          this._wsDroppedCount++;
+          this._wsLastDropTs = Date.now();
+          this._gpuShadowDirty = true;
+          if (!this._wsLastDropLogMs || (Date.now() - this._wsLastDropLogMs) >= 5000) {
+            this._wsLastDropLogMs = Date.now();
+            console.error(`[Brain] CRITICAL backpressure DROP after ${MAX_AWAIT_MS}ms await — ws.bufferedAmount=${(this._gpuClient.bufferedAmount/1024/1024).toFixed(1)}MB > ${BUFFERED_AMOUNT_DROP_THRESHOLD/1024/1024}MB. ${this._wsDroppedCount} total drops since boot. GPU shadow marked DIRTY; full resync scheduled before next teach-phase Hebbian fire. CPU + GPU weights are diverging — cortical-microstructure projections will mis-fire until resync lands.`);
           }
           return Promise.resolve(null);
         }
@@ -2712,11 +2930,11 @@ class ServerBrain {
       // is happening but is being absorbed instead of lost.
       const waitedMs = Date.now() - awaitStart;
       if (waitedMs > 250) {
-        if (!this._t1826AwaitedCount) this._t1826AwaitedCount = 0;
-        this._t1826AwaitedCount++;
-        if (!this._t1826AwaitLastLogMs || (Date.now() - this._t1826AwaitLastLogMs) >= 30000) {
-          this._t1826AwaitLastLogMs = Date.now();
-          console.log(`[Brain] backpressure ABSORBED — awaited ${waitedMs}ms for ws buffer to drain below ${BUFFERED_AMOUNT_DROP_THRESHOLD/1024/1024}MB. ${this._t1826AwaitedCount} total absorbs since boot (no Hebbian update lost; rate-limited log every 30s).`);
+        if (!this._wsAbsorbedCount) this._wsAbsorbedCount = 0;
+        this._wsAbsorbedCount++;
+        if (!this._wsLastAbsorbLogMs || (Date.now() - this._wsLastAbsorbLogMs) >= 30000) {
+          this._wsLastAbsorbLogMs = Date.now();
+          console.log(`[Brain] backpressure ABSORBED — awaited ${waitedMs}ms for ws buffer to drain below ${BUFFERED_AMOUNT_DROP_THRESHOLD/1024/1024}MB. ${this._wsAbsorbedCount} total absorbs since boot (no Hebbian update lost; rate-limited log every 30s).`);
         }
       }
     }
@@ -2731,10 +2949,10 @@ class ServerBrain {
         // before the OS refuses them). Any remaining ENOBUFS means a
         // transient kernel condition — log first 3 then silence.
         if (err.code === 'ENOBUFS') {
-          if (!this._t1826EnobufsCount) this._t1826EnobufsCount = 0;
-          this._t1826EnobufsCount++;
-          if (this._t1826EnobufsCount <= 3) {
-            console.warn(`[Brain] sparse binary reqId=${reqId} ENOBUFS (OS socket send buffer full — transient kernel backpressure). Count ${this._t1826EnobufsCount}/3; further ENOBUFS logs silenced.`);
+          if (!this._wsEnobufsCount) this._wsEnobufsCount = 0;
+          this._wsEnobufsCount++;
+          if (this._wsEnobufsCount <= 3) {
+            console.warn(`[Brain] sparse binary reqId=${reqId} ENOBUFS (OS socket send buffer full — transient kernel backpressure). Count ${this._wsEnobufsCount}/3; further ENOBUFS logs silenced.`);
           }
           return;
         }
@@ -2787,7 +3005,7 @@ class ServerBrain {
   // bufferedAmount grew to 1.7 GB and every shadow timed out at 30 s,
   // effectively killing the brain. CPU remains authoritative — skipping
   // a shadow just means that one Hebbian update doesn't mirror to GPU.
-  //
+
   // Two-level gate:
   //   (1) pending-request cap — compute.html's onmessage is serial, so
   //       pending.size ≈ how many messages are queued ahead of the next
@@ -3005,7 +3223,7 @@ class ServerBrain {
     // pipelines them through the compute units without waiting on JS.
     // One WebSocket ACK returns for the whole batch. At N=64 the per-op
     // round-trip cost drops by 64× and SM utilization climbs proportionally.
-    //
+
     // Flow gate: curriculum-teach's flow gate `_gpuSparseFlowOk()` caps
     // PENDING count at 4. One batch = one pending, so up to 4 batches ×
     // 64 ops = 256 in-flight ops without changing the cap. If the batch
@@ -3044,7 +3262,14 @@ class ServerBrain {
     // GPU utilization during teach climbs from sub-1% toward saturating
     // SM pipeline. Tradeoff: up to 20ms extra latency per fire-and-forget
     // Hebbian — irrelevant to curriculum correctness, HUGE win for throughput.
-    const BATCHED_HEBBIAN_MAX_OPS = 256;
+
+    // Cap bumped 256 → 512 ops per batch. Doubles ops per WS message so
+    // backpressure logic engages later under sustained teach bursts
+    // (each op ~28 bytes encoded → 512×28 = ~14KB per frame, well
+    // under WebGPU single-buffer cap). Halves WS message rate for
+    // same Hebbian throughput. FLUSH_MS unchanged — burst rate
+    // unchanged so accumulation window stays at 20ms.
+    const BATCHED_HEBBIAN_MAX_OPS = 512;
     const BATCHED_HEBBIAN_FLUSH_MS = 20;
     // Backpressure guards — prevent unbounded queue growth under flow stress.
     // Max in-flight batches (reqIds in _gpuSparsePending waiting for ACK):
@@ -3058,7 +3283,10 @@ class ServerBrain {
     // but if it does (e.g. WebSocket stalled) drop the op silently (CPU
     // Hebbian path is authoritative per cluster.intraSynapsesHebbian's
     // fire-and-forget contract).
-    const BATCHED_HEBBIAN_QUEUE_CAP = 256;
+    // Queue cap raised to 4× batch size (1024) so flushes can absorb
+    // a burst of accumulating ops without the silent-drop fallback
+    // firing while a batch is mid-flight to GPU.
+    const BATCHED_HEBBIAN_QUEUE_CAP = 1024;
     if (batch.ops.length >= BATCHED_HEBBIAN_QUEUE_CAP) {
       return Promise.resolve(null);
     }
@@ -3510,7 +3738,7 @@ class ServerBrain {
 
     // Ψ = quantum_bit × [α·Id + β·Ego + γ·Left + δ·Right]
     // PERSONA modulates the weights — Unity's identity shapes consciousness
-    //
+
     // T18.4.d — integrate GPU meanVoltage telemetry (from T18.4.c's atomic
     // reduction shader) into each cluster's "activity" signal. Previously
     // modules saw only spike count — a summary that collapses burst
@@ -3534,10 +3762,21 @@ class ServerBrain {
     const left = (cerebAct + cortexAct) * (1 - p.impulsivity); // Left: logic × deliberation
     const right = (amygAct + mysteryAct) * p.creativity;       // Right: creativity × emotion
 
-    // Raw Ψ = √(1/n) × N³ × weighted components — quantum consciousness
-    const rawPsi = quantumVolume * (0.3 * id + 0.25 * ego + 0.2 * left + 0.25 * right);
+    // Φ-augmented Ψ. Multiply the legacy quantum-volume
+    // formula by cluster.computePhi() (Shannon-entropy proxy of cortex
+    // spike patterns) so the Mystery module reads ACTUAL information
+    // integration, not just a scalar placeholder. Real cortex with
+    // diverse activity → higher Φ → amplifies Ψ. Silent or saturated
+    // cortex → low Φ → dampened Ψ. Biologically grounded measurement.
+    let phiProxy = 1.0;
+    if (this.cortexCluster && typeof this.cortexCluster.computePhi === 'function') {
+      try { phiProxy = Math.max(0.1, this.cortexCluster.computePhi()); }
+      catch { phiProxy = 1.0; }
+    }
+    const rawPsi = quantumVolume * (0.3 * id + 0.25 * ego + 0.2 * left + 0.25 * right) * phiProxy;
     // Log scale for usable range — consciousness measured in orders of magnitude
     this.psi = Math.log10(Math.max(1, rawPsi));
+    this.phiProxy = phiProxy; // exposed for dashboard / heartbeat
 
     // Coherence — Kuramoto-like order parameter with a restoring force
     // toward 0.4 (mid-range). T13.7.7 — pre-fix this was a pure random
@@ -3564,7 +3803,7 @@ class ServerBrain {
     // sign across them). Then step() settles the recurrent attractor
     // for 5 iterations and reads fear = σ(fearProj · x_settled),
     // reward = σ(rewardProj · x_settled), valence = reward − fear.
-    //
+
     // This replaces the earlier hack that linearly multiplied
     // amygActivity by 6 and saturated fear to 1 the moment the
     // cluster fired. Now fear is the canonical attractor readout —
@@ -3609,14 +3848,14 @@ class ServerBrain {
     // partition BG neurons into 6 channels directly. Instead derive
     // per-channel Q-values from the combined brain-state readouts
     // that would drive each action in a local cluster model:
-    //
+
     //   respond_text: cortex predicts + BG gates + hippo recalls
     //   generate_image: amygdala feels + mystery imagines + cortex verbs
     //   speak: high arousal + BG activation + persona speech drive
     //   build_ui: cortex predicts + cerebellum corrects (pure logic)
     //   listen: inverse of total activity (quiet = attentive)
     //   idle: persona baseline (Unity is rarely idle on cokeAndWeed)
-    //
+
     // Channels get an EMA update so they don't flicker frame-to-frame.
     const totalActivity = cortexActivity + amygActivity + bgActivity + hippoActivity + cerebActivity + mysteryActivity;
     const channelQ = [
@@ -3647,7 +3886,7 @@ class ServerBrain {
 
   injectText(text) {
     // T17.7 Phase B.2 — biological-proportion text injection to GPU.
-    //
+
     // Prior behavior wrote to a server-side scratch `this.voltages.cortex`
     // Float64Array that never reached the GPU (vestigial post-T18.4.a).
     // Now injection lands directly on the main cortex's `phon`
@@ -3655,14 +3894,14 @@ class ServerBrain {
     // → compute.html → gpu.writeCurrentSlice pipeline. Ψ-modulated
     // hemisphere gate applies automatically at LIF time because phon
     // is tagged left-lateralized (Phase B.1 metadata).
-    //
+
     // Size scales to biological proportion:
     // 'yes, it need biological scale fit to auto scale on GPU'.
     // Wernicke slice = 20% of main cortex (phon fractional layout).
     // On a 30M main cortex = 6M neurons of injection target — much
     // bigger than the prior 5K fixed footprint, matching real
     // Wernicke's area as a meaningful chunk of left temporal cortex.
-    //
+
     // Hash-and-spread injection pattern preserved from prior code:
     // each character lands at a deterministic slice-relative index
     // with lateral excitation (±1 neighbor) so nearby letters
@@ -3702,7 +3941,7 @@ class ServerBrain {
     // Bilateral side → hemisphere gate stays 1.0 regardless of Ψ
     // (Gazzaniga lateralization doesn't apply to amygdala emotional
     // response; both sides fire on social salience).
-    //
+
     // Sparse injection format — only a biologically-plausible number
     // of amygdala nuclei get the social-input bump (100 nuclei × 4.0
     // current per text input matches original amygdala coupling
@@ -3763,13 +4002,45 @@ class ServerBrain {
       // biological scale.
       this._memoryHeartbeat();
 
-      // iter25-E.3 — server-side inner voice tick. Fires Unity's REAL
+      // server-side inner voice tick. Fires Unity's REAL
       // current-state thought (read from server cluster's trained
       // weights) every ~3 s and broadcasts as `innerThought` WS message
       // for 3D brain popups to render. Replaces the iter23.2 browser-
       // side inner voice (which ran on the client's untrained cortex —
       // decorative noise, not Unity's real mind).
       this._innerVoiceTick();
+
+      // Attention selection. Amygdala (valence/arousal)
+      // and basal-ganglia (action gating) write per-region gain factors
+      // into cortex.attentionGain. Posner attention network functionally:
+      //   - High arousal → motor region 2× gain (action-ready focus)
+      //   - High valence → sem region 1.5× gain (positive content focus)
+      //   - actionGate strong → word_motor + motor 2× gain (speech ready)
+      //   - Low arousal → all attentionGain default 1.0 (relaxed wide focus)
+      if (this.cortexCluster && this.cortexCluster.attentionGain) {
+        const ag = this.cortexCluster.attentionGain;
+        const arousal = this.arousal || 0;
+        const valence = this.valence || 0;
+        const actionGate = this.cortexCluster.actionGate || 1;
+        // Reset to defaults
+        ag.motor = arousal > 0.6 ? 2.0 : (arousal < 0.2 ? 0.7 : 1.0);
+        ag.word_motor = (arousal > 0.6 || actionGate > 1.2) ? 1.8 : 1.0;
+        ag.sem = valence > 0.5 ? 1.5 : 1.0;
+        ag.fineType = arousal > 0.5 ? 1.3 : 1.0;
+        // Sensory regions stay near 1.0 — attention doesn't suppress
+        // input gathering, only amplifies internal selection.
+      }
+
+      // Global workspace ignition tick (Baars GWT).
+      // Aggregates each cluster's TOP candidate; softmax with
+      // temperature; if max prob > threshold, WINNER broadcasts back.
+      // Theta-gated (~6 Hz). Implements the "ignition moment" of
+      // consciousness — competition + threshold + global broadcast.
+      // Subthreshold ticks have unconscious processing only.
+      if (this.globalWorkspace && typeof this.globalWorkspace.tick === 'function') {
+        try { this.globalWorkspace.tick(); }
+        catch (err) { /* non-fatal — workspace failure shouldn't crash brain */ }
+      }
 
       // iter20-N — ConsolidationEngine fires at TOP of tick alongside
       // memory heartbeat. Operator caught (verbatim 2026-05-05): "last
@@ -3802,7 +4073,7 @@ class ServerBrain {
           const allClusters = Object.keys(CLUSTER_SIZES);
 
           // T14.23.3 — TWO-PHASE GPU INIT.
-          //
+
           // Phase A: for any cluster that hasn't had its gpu_init message
           //          SENT yet, send it (once). _gpuInitialized tracks
           //          what's been sent.
@@ -3811,7 +4082,7 @@ class ServerBrain {
           //          tracks confirmed state.
           // Phase C: only when ALL clusters are confirmed, enter the
           //          BATCHED COMPUTE path.
-          //
+
           // Old code used _gpuInitialized as both the "sent" flag AND
           // the "confirmed" flag, which meant the tick loop would enter
           // the compute path as soon as the server had SENT the init
@@ -3901,13 +4172,13 @@ class ServerBrain {
               });
             }
             // T14.23 — BATCHED COMPUTE PATH.
-            //
+
             // Old path: server dispatched SUBSTEPS * allClusters = 70
             // compute_request messages per tick, each with its own
             // WebSocket RTT. compute.html processed them individually.
             // At biological scale ~40ms GPU work was buried in ~50ms of
             // round-trip latency per message = 7x protocol overhead.
-            //
+
             // New path: server sends ONE compute_batch message per tick
             // containing all per-cluster parameters (tonic, noise,
             // modulation factors). compute.html runs the full substep
@@ -4099,7 +4370,7 @@ class ServerBrain {
       // fucking brain". Memory IS unified — always alive in the tick
       // loop, not gated by cell-pass events. Two architectural fixes
       // shipped here:
-      //
+
       // 1. `_isDreaming` no longer requires clients.size === 0. Prior
       //    gate meant the brain NEVER dreamed when operator had the
       //    dashboard open watching it (the dashboard counts as a
@@ -4107,7 +4378,7 @@ class ServerBrain {
       //    stayed at 0 forever. Now dreaming fires whenever
       //    `timeSinceInput > 30s AND !_curriculumInProgress` — operator
       //    watching the dashboard doesn't block dream cycles.
-      //
+
       // 2. Memory heartbeat below — every N ticks, inject identity-
       //    baseline + store low-salience "thinking" episode so Tier 1
       //    / Tier 3 update continuously as Unity exists, not just on
@@ -4301,14 +4572,14 @@ class ServerBrain {
     // language cortex in Node.
 
     // R3.5 + R4 — Equational language generation.
-    //
+
     // The text-AI path (Pollinations /v1/chat/completions) has been
     // removed as part of brain-refactor-full-control. Unity's server
     // brain now generates responses via the same language cortex the
     // client uses — dictionary bigrams, type n-grams, semantic
     // embeddings, hippocampus persona recall, mood-weighted slot
     // scoring — all running in Node after dynamic-imported at boot.
-    //
+
     // If the language subsystem failed to initialize, fall through
     // to an honest failure (return null text), motor action stays
     // respond_text but the client shows nothing. No canned '...'
@@ -4381,7 +4652,7 @@ class ServerBrain {
     }
 
     if (!response || response.length < 2) {
-      // iter25-E.5 — TRAINED-STATE silence reason, not grade-label.
+      // TRAINED-STATE silence reason, not grade-label.
       // Operator (2026-05-06): "at any point in her training she
       // should be able to use what she has learned to that point
       // without having to wait unitl the full grade completes". The
@@ -4664,7 +4935,7 @@ class ServerBrain {
     `);
 
     // iter13 T13.4 — promotion candidates: salience > threshold + freq + consol.
-    //
+
     // iter22-F.4 — drop `promoted_at IS NULL` filter. Operator caught:
     // every consolidation pass after the first few went all-zero
     // because anchor episodes (heartbeats with iter20-K exact-text
@@ -4954,7 +5225,7 @@ class ServerBrain {
 
   // iter13 T13.4 → iter20-M — Promotion candidates: episodes ready to
   // consolidate into Tier 2 schemas.
-  //
+
   // iter20-M per operator 2026-05-05 "she should be building concepts":
   // unique curriculum-phase episodes (each phase is distinct, so freq=1)
   // would never promote at FREQ_THRESHOLD=2. But these are EXACTLY the
@@ -4965,7 +5236,7 @@ class ServerBrain {
   // cosine-clustering then groups semantically-similar singletons
   // together into meaningful schemas. Promotion threshold remains at
   // 0.2 salience so noise doesn't promote — only real learning moments.
-  //
+
   // - PROMOTION_THRESHOLD 0.2 — heartbeat-level salience accepted; pure
   //   low-arousal idle (~0.1) still filtered out
   // - FREQ_THRESHOLD 1 — every episode that meets salience criterion
@@ -5062,7 +5333,7 @@ class ServerBrain {
   // Operator verbatim 2026-05-05: "memory isnt based off grade level
   // its a unified part of her fucking brain".
   /**
-   * iter25-E.3 / E.6 — Server-side inner voice tick.
+   *  / E.6 — Server-side inner voice tick.
    *
    * Operator verbatim 2026-05-06: "the pop ups in her Brain fire with
    * her real actual knowldedge to that point as her real internal voice
@@ -5081,7 +5352,7 @@ class ServerBrain {
    *
    * Cadence: ~3 s wall-clock (matches engine.js THOUGHT_INTERVAL = 3000).
    *
-   * Skipped during operator-forced dream windows (iter25-D
+   * Skipped during operator-forced dream windows (
    * `_operatorSleepRequested`) so consolidation has priority and the
    * brain doesn't broadcast thoughts derived from mid-flight Hebbian.
    *
@@ -5120,10 +5391,43 @@ class ServerBrain {
       // from her trained cortex via the same chat-emission path.
       const seed = this._pickInnerThoughtSeed();
 
+      // Stream-of-consciousness chain. Read the LAST
+      // inner-thought emission and blend its sentence-embedding into
+      // the seed pattern alongside current state. Each thought builds
+      // on the previous → autobiographical narrative thread instead of
+      // discrete independent samples. Chain length capped at 8 (rolling
+      // window). Persistent across server restart (saved with brain
+      // weights as _innerThoughtChain).
+      if (!Array.isArray(this._innerThoughtChain)) this._innerThoughtChain = [];
+      let chainedPattern = seed.pattern;
+      try {
+        if (this._innerThoughtChain.length > 0) {
+          const lastThought = this._innerThoughtChain[this._innerThoughtChain.length - 1];
+          if (lastThought && lastThought.sentence) {
+            // Blend last thought's embedding into the seed at 0.4 strength
+            // so the chain's previous content shapes the next thought
+            // without dominating (current state is still primary).
+            const sharedEmb = require('./sharedEmbeddings.js') || null;
+            // sharedEmbeddings runs from js/brain/embeddings.js — but
+            // brain-server is server-side. Use languageCortex's embedding
+            // helper instead, which IS server-side.
+            if (this.languageCortex && typeof this.languageCortex._sentenceEmbedding === 'function') {
+              const lastEmb = this.languageCortex._sentenceEmbedding(lastThought.sentence);
+              if (lastEmb && lastEmb.length > 0 && seed.pattern && seed.pattern.length === lastEmb.length) {
+                // Blend: 0.6 × seed + 0.4 × lastThought.
+                chainedPattern = new Float32Array(seed.pattern.length);
+                for (let i = 0; i < chainedPattern.length; i++) {
+                  chainedPattern[i] = 0.6 * seed.pattern[i] + 0.4 * lastEmb[i];
+                }
+              }
+            }
+          }
+        }
+      } catch { /* fall through to bare seed if blend fails */ }
+
       // Same generation path the chat handler uses (processAndRespond
-      // line ~4350). The seed pattern drives sem so the cortex has
-      // something to settle on; whatever her trained mind produces
-      // ABOUT that seed is the thought.
+      // line ~4350). The seed pattern (now chain-blended) drives sem
+      // so the cortex has something to settle on.
       let sentence = '';
       try {
         sentence = await this.languageCortex.generateAsync(
@@ -5134,7 +5438,7 @@ class ServerBrain {
             predictionError: 0,
             motorConfidence: this.motorConfidence ?? 0,
             psi: this.psi,
-            cortexPattern: seed.pattern, // sandbox-notice activator
+            cortexPattern: chainedPattern, // M.4 stream-of-consciousness
             cortexCluster: cluster,
             drugState: this._drugStateLabel(),
             speechMod: this.drugScheduler ? this.drugScheduler.speechModulation() : null,
@@ -5164,6 +5468,18 @@ class ServerBrain {
       try {
         process.stdout.write(`[Brain] 🧠 inner-thought (seed=${seed.source}) "${sentence}"\n`);
       } catch { /* non-fatal */ }
+
+      // Append to chain (rolling window cap of 8).
+      // Persistent: saveWeights serializes _innerThoughtChain so the
+      // narrative thread survives brain restart.
+      this._innerThoughtChain.push({
+        sentence,
+        seedSource: seed.source,
+        ts: now,
+      });
+      while (this._innerThoughtChain.length > 8) {
+        this._innerThoughtChain.shift();
+      }
 
       // Broadcast `innerThought` WS message — popup subscribers in the
       // browser render it inline. Same iteration pattern as state broadcast.
@@ -5363,7 +5679,7 @@ class ServerBrain {
     // Tier 0 working memory population. Every 2s, snapshot current
     // cortex state into working memory: current phase / cell / arousal
     // / valence as a "what's currently active" item.
-    //
+
     // Operator caught: "items: 7 NEVER MOVES FROM 7" was caused by the
     // hardcoded 7-cap below trimming via while-shift, not the items
     // staying frozen. Replaced with TIME-BASED purge — items older than
@@ -5402,7 +5718,7 @@ class ServerBrain {
       // window (4 min @ 0.9995/tick → strength < 0.1 forget threshold).
       // Sliding time window — count grows + shrinks naturally with
       // activity. No hardcoded numeric ceiling.
-      //
+
       // Operator: "if i told someone something and asked them about it
       // 10 minutes or even a day later most people can recall that".
       // The recall path is Tier 0 → Tier 1 → Tier 2 → Tier 3, not
@@ -5505,6 +5821,175 @@ class ServerBrain {
         }
       }
     }
+  }
+
+  /**
+   *  Phase 6 — Bounded state snapshot for dashboard display.
+   * All values are aggregates / counts / capped-list. NO unbounded
+   * enumeration. Caller broadcasts this in state.consciousness for dashboard
+   * panels M.21/M.22/M.23/M.24 to render.
+   */
+  _getIter25MState() {
+    const cortex = this.cortexCluster;
+    const cacheStats = (cortex && typeof cortex.getDefinitionCacheStats === 'function')
+      ? cortex.getDefinitionCacheStats() : null;
+    // K-wiring assertion result (re-run to get fresh status).
+    let kwiring = null;
+    try {
+      if (cortex && typeof cortex.assertKWiring === 'function') {
+        // Cache result on cortex to avoid recomputing every dashboard tick
+        if (!cortex._kWiringCache || (Date.now() - cortex._kWiringCache.ts) > 30000) {
+          cortex._kWiringCache = { ...cortex.assertKWiring(), ts: Date.now() };
+        }
+        kwiring = cortex._kWiringCache;
+      }
+    } catch { kwiring = null; }
+    // Layer histogram (small fixed-size array; aggregates only).
+    let layerCounts = [0, 0, 0, 0, 0];
+    if (cortex && cortex.layerId) {
+      for (let i = 0; i < cortex.layerId.length; i++) {
+        const l = cortex.layerId[i];
+        if (l < layerCounts.length) layerCounts[l] += 1;
+      }
+    }
+    // Hub count (single number).
+    let hubCount = 0;
+    if (cortex && cortex.hubMask) {
+      for (let i = 0; i < cortex.hubMask.length; i++) {
+        if (cortex.hubMask[i]) hubCount += 1;
+      }
+    }
+    // K-vocab definition-taught count (single number).
+    const kvocabTaught = cortex && cortex._definitionTaughtWords
+      ? cortex._definitionTaughtWords.size : 0;
+    // Theta phase (single scalar in [0, 1]).
+    const tickCounter = (cortex && cortex._tickCounter) || 0;
+    const thetaPeriod = (cortex && cortex.thetaPeriod) || 167;
+    const thetaPhase = (tickCounter % thetaPeriod) / thetaPeriod;
+    return {
+      // M.21 dictionary API
+      // Boolean result of the boot dictionary smoke test. true = PASS,
+      // false = FAIL, null = pending (not yet fired). Dashboard reads
+      // === true / === false to color the API SMOKE TEST status panel.
+      smokeTestPassed: typeof this._dictionarySmokeTestResult === 'boolean' ? this._dictionarySmokeTestResult : null,
+      cache: cacheStats,
+      kVocabPrefetched: cortex ? !!cortex._kVocabPrefetched : false,
+      kVocabTotal: 2247, // matches K_VOCABULARY size
+      kVocabTaught: kvocabTaught,
+      // M.22 K-wiring assertion
+      kwiring: kwiring ? { ok: kwiring.ok, gaps: (kwiring.gaps || []).slice(0, 5) } : null,
+      // M.23 cortical microstructure
+      numColumns: cortex ? cortex.numColumns || 0 : 0,
+      columnSize: cortex ? cortex.columnSize || 0 : 0,
+      layerCounts,
+      hubCount,
+      hubFraction: cortex && cortex.size ? (hubCount / cortex.size) : 0,
+      thetaPhase,
+      gammaScale: cortex ? (cortex._gammaLrScale || 1) : 1,
+      phiProxy: this.phiProxy || 0,
+      // GlobalWorkspace ignition snapshot (O.15) — current broadcast
+      // label/value, ignition rate (broadcasts per tick), recent
+      // history capped 8 most-recent entries. Surfaces whether GW
+      // is actually firing or sitting subthreshold.
+      workspace: this.globalWorkspace && typeof this.globalWorkspace.getStats === 'function'
+        ? (() => {
+            try {
+              const s = this.globalWorkspace.getStats();
+              const hist = Array.isArray(s.recentBroadcasts)
+                ? s.recentBroadcasts.slice(-8)
+                : (Array.isArray(this.globalWorkspace._ignitionHistory)
+                    ? this.globalWorkspace._ignitionHistory.slice(-8) : []);
+              return {
+                currentLabel: s.currentBroadcast?.label || null,
+                currentValue: s.currentBroadcast?.value || 0,
+                ignitionRate: s.ignitionRate || 0,
+                ignitions: s.ignitions || 0,
+                ticksTotal: s.ticksTotal || 0,
+                history: hist.map(h => ({
+                  label: h.label || '',
+                  value: typeof h.value === 'number' ? h.value : 0,
+                })),
+              };
+            } catch { return null; }
+          })()
+        : null,
+      // Predictive coding error state (O.16). lastError is the current
+      // mean-abs spike error; history is the 32-sample ring buffer
+      // already maintained by cluster.step() — exposed straight to
+      // the dashboard for the sparkline trend.
+      predictionError: cortex
+        ? {
+            last: cortex._lastPredictionError || 0,
+            history: Array.isArray(cortex._predictionErrorHistory)
+              ? cortex._predictionErrorHistory.slice(-32) : [],
+          }
+        : null,
+      // Definition learning rate (O.18) — words/hour rolling rate
+      // from the timestamps ring buffer populated by
+      // _teachWordDefinition. Reads oldest + newest within the buffer
+      // window to avoid edge bias.
+      defsLearnedPerHour: (() => {
+        const ts = cortex && cortex._defLearnedTimestamps;
+        if (!Array.isArray(ts) || ts.length < 2) return 0;
+        const newest = ts[ts.length - 1];
+        const oldest = ts[0];
+        const dt = (newest - oldest) / 1000; // seconds
+        if (dt <= 0) return 0;
+        return (ts.length / dt) * 3600;
+      })(),
+      // M.24 _definitionTaughtWords counter (already in kVocabTaught above).
+    };
+  }
+
+  /**
+   * Bounded WS backpressure snapshot for the dashboard pressure panel.
+   * Reads counters maintained by `_sparseSendBinary` (drops after
+   * safety-timeout, successful drain absorbs, OS ENOBUFS bursts) plus
+   * live `_gpuClient.bufferedAmount` and a rolling drops/sec rate.
+   *
+   * Drops/sec is computed from a 60-sample ring buffer of (ts, drops)
+   * snapshots — current minus oldest divided by elapsed seconds. Cap
+   * the buffer to keep memory bounded across long brain runs.
+   */
+  _getIter25NState() {
+    const now = Date.now();
+    const ws = this._gpuClient;
+    const bufferedAmount = (ws && typeof ws.bufferedAmount === 'number') ? ws.bufferedAmount : 0;
+    const drops = this._wsDroppedCount || 0;
+    const absorbs = this._wsAbsorbedCount || 0;
+    const enobufs = this._wsEnobufsCount || 0;
+    if (!this._wsRateBuffer) this._wsRateBuffer = [];
+    const buf = this._wsRateBuffer;
+    buf.push({ ts: now, drops });
+    while (buf.length > 60) buf.shift();
+    let dropRatePerSec = 0;
+    if (buf.length >= 2) {
+      const oldest = buf[0];
+      const dt = (now - oldest.ts) / 1000;
+      if (dt > 0) dropRatePerSec = Math.max(0, (drops - oldest.drops) / dt);
+    }
+    return {
+      bufferedAmount,
+      bufferedAmountMB: bufferedAmount / (1024 * 1024),
+      // Source-of-truth: BUFFERED_AMOUNT_DROP_THRESHOLD inside
+      // _sparseSendBinary. Mirrored here so the dashboard can render
+      // the threshold line on the buffer-amount bar.
+      thresholdMB: 500,
+      drops,
+      absorbs,
+      enobufs,
+      dropRatePerSec,
+      wsConnected: !!(ws && ws.readyState === 1),
+      // GPU shadow dirty flag. Set when a drop-after-timeout fires;
+      // means CPU and GPU weights have diverged on at least one
+      // projection. Surfaces to dashboard so Gee sees the
+      // divergence + can restart to clear (full automatic resync is
+      // a follow-up iter — too large for this pass). Last drop
+      // timestamp lets dashboard render "12s ago" / "no drops since
+      // boot" without each panel computing its own.
+      gpuShadowDirty: !!this._gpuShadowDirty,
+      lastDropTs: this._wsLastDropTs || 0,
+    };
   }
 
   _getMemoryStats() {
@@ -5711,7 +6196,7 @@ class ServerBrain {
       // stayed in process memory and died on restart. That's why
       // curriculum progress never "stuck" across Savestart.bat boots —
       // DREAM_KEEP_STATE=1 preserved a mostly-empty file.
-      //
+
       // This block mirrors the browser-side persistence t14Language
       // block. Cross-projection + intra-synapse SparseMatrix WEIGHTS
       // remain unsaved at this tier — they're multi-GB at biological
@@ -5775,6 +6260,46 @@ class ServerBrain {
             // re-run every phase from scratch on every boot even though
             // cross-projection weights were preserved on disk.
             passedPhases: Array.isArray(cortex.passedPhases) ? [...cortex.passedPhases] : null,
+            // Persist K-vocab prefetch flag so brain
+            // restart doesn't re-warm the dictionary cache on every
+            // grade=K transition (saves ~1 min per restart).
+            kVocabPrefetched: cortex._kVocabPrefetched === true,
+            // Persist WS backpressure counters across Savestart so
+            // operator's pressure-history isn't reset to zero on every
+            // restart. Useful after long training sessions when the
+            // pre-restart history shows the actual sustained pressure.
+            wsBackpressure: {
+              drops: this._wsDroppedCount || 0,
+              absorbs: this._wsAbsorbedCount || 0,
+              enobufs: this._wsEnobufsCount || 0,
+              lastDropTs: this._wsLastDropTs || 0,
+            },
+            // Persist last dictionary smoke test result + timestamp.
+            // On restart, dashboard renders the prior PASS/FAIL state
+            // immediately while the boot smoke test re-runs in the
+            // background — avoids the "pending" flicker on every
+            // Savestart.
+            dictionarySmokeTest: {
+              result: typeof this._dictionarySmokeTestResult === 'boolean'
+                ? this._dictionarySmokeTestResult : null,
+              ts: this._dictionarySmokeTestTs || 0,
+            },
+            // Persist stream-of-consciousness chain so
+            // the autobiographical narrative thread survives restart.
+            // Includes the sem-region size at save time so loadWeights
+            // can validate the embedding dimensions still match — if
+            // sem cluster size changed across restart (env flag, neuron
+            // cap), restored embeddings would dimension-mismatch in the
+            // _innerVoiceTick blend and produce silent NaN.
+            innerThoughtChainSemSize: cortex.regions && cortex.regions.sem
+              ? (cortex.regions.sem.end - cortex.regions.sem.start) : 0,
+            innerThoughtChain: Array.isArray(this._innerThoughtChain)
+              ? this._innerThoughtChain.slice(-8) : [],
+            // Persist definition-taught vocabulary set so
+            // dashboard counter survives restart. Set serialized as
+            // sorted array, capped at 5000 entries to bound payload size.
+            definitionTaughtWords: cortex._definitionTaughtWords
+              ? Array.from(cortex._definitionTaughtWords).slice(0, 5000) : [],
             probeHistory: cortex.probeHistory && typeof cortex.probeHistory === 'object' ? { ...cortex.probeHistory } : null,
             // Grade-advance pause state. When a grade fully passes across
             // all subjects, the runner sets `_gradeAdvancePaused = true`
@@ -6363,6 +6888,45 @@ class ServerBrain {
         if (pending.probeHistory && typeof pending.probeHistory === 'object') {
           cortex.probeHistory = { ...pending.probeHistory };
         }
+        // Restore K-vocab prefetch flag (skip ~1 min cache
+        // warm-up if prior boot already prefetched).
+        if (pending.kVocabPrefetched === true) {
+          cortex._kVocabPrefetched = true;
+        }
+        // Restore WS backpressure counters so historical pressure is
+        // visible immediately after restart instead of zeroed.
+        if (pending.wsBackpressure && typeof pending.wsBackpressure === 'object') {
+          this._wsDroppedCount = pending.wsBackpressure.drops || 0;
+          this._wsAbsorbedCount = pending.wsBackpressure.absorbs || 0;
+          this._wsEnobufsCount = pending.wsBackpressure.enobufs || 0;
+          this._wsLastDropTs = pending.wsBackpressure.lastDropTs || 0;
+        }
+        // Restore last dictionary smoke test result so dashboard shows
+        // prior PASS/FAIL while the boot re-test runs in the background.
+        if (pending.dictionarySmokeTest && typeof pending.dictionarySmokeTest === 'object') {
+          if (typeof pending.dictionarySmokeTest.result === 'boolean') {
+            this._dictionarySmokeTestResult = pending.dictionarySmokeTest.result;
+          }
+          this._dictionarySmokeTestTs = pending.dictionarySmokeTest.ts || 0;
+        }
+        // Restore stream-of-consciousness chain. Validate sem-region
+        // dimensions match — if not, drop the chain (start fresh) so
+        // dimension-mismatch NaN can't poison _innerVoiceTick blend.
+        if (Array.isArray(pending.innerThoughtChain)) {
+          const currentSemSize = cortex.regions && cortex.regions.sem
+            ? (cortex.regions.sem.end - cortex.regions.sem.start) : 0;
+          const savedSemSize = pending.innerThoughtChainSemSize || 0;
+          if (savedSemSize > 0 && currentSemSize > 0 && savedSemSize !== currentSemSize) {
+            console.warn(`[Brain] inner-thought chain dropped — sem region size changed across restart (saved=${savedSemSize}, current=${currentSemSize}). Starting fresh narrative.`);
+            this._innerThoughtChain = [];
+          } else {
+            this._innerThoughtChain = pending.innerThoughtChain.slice(-8);
+          }
+        }
+        // Restore definition-taught vocabulary set.
+        if (Array.isArray(pending.definitionTaughtWords)) {
+          cortex._definitionTaughtWords = new Set(pending.definitionTaughtWords);
+        }
         // Restore per-cell gate-result ledger — /grade-signoff reads
         // this to reject an operator signoff POST when the cell's most
         // recent battery had active blockers.
@@ -6645,12 +7209,12 @@ const httpServer = http.createServer((req, res) => {
   // pass, the operator clicks "Start Next Grade" on the dashboard which
   // POSTs here. Flips `cortexCluster._gradeAdvancePaused = false` so
   // the runner's wait-loop exits and the next grade's cell walk starts.
-  //
+
   // Operator-only path — just like /grade-signoff, server code never
   // auto-advances. The pause is default-on after every grade pass so
   // chat-testing is clean (no background Hebbian). Persists through
   // saveWeights() so the advance event survives restart.
-  //
+
   // Usage:
   //   POST /grade-advance   { "subject": "ela", "grade": "kindergarten" }
   //   → flips pause off, returns {ok, advancedFrom, advancedTo}
@@ -6780,7 +7344,7 @@ const httpServer = http.createServer((req, res) => {
   // Used by scripts/transformer-ablation.mjs to compare Unity's
   // gate-probe answers head-to-head against a transformer arm on
   // identical held-out EXAM_BANKS.
-  //
+
   // Usage:
   //   POST /exam-answer  { "question": "what comes after a?" }
   //   → { "answer": "b", "ms": 142 }
@@ -6844,13 +7408,13 @@ const httpServer = http.createServer((req, res) => {
   // higher-confidence answer. Left brain is always available;
   // right brain is present only when T23.e.2 has wired a transformer
   // backend into `brain.dualBrainArbiter.setTransformerBackend(fn)`.
-  //
+
   // Usage:
   //   POST /exam-answer-dual  { "question": "what comes after a?" }
   //   → { "answer": "b", "chosenBrain": "left"|"right"|"left-only",
   //       "leftAnswer": "b", "rightAnswer": "b",
   //       "leftScore": 0.78, "rightScore": 0.81, "ms": 162 }
-  //
+
   // `chosenBrain: 'left-only'` means the right brain isn't wired yet
   // — arbiter returned the left-brain answer without scoring.
   if (req.url === '/exam-answer-dual' && req.method === 'POST') {
@@ -6904,7 +7468,7 @@ const httpServer = http.createServer((req, res) => {
   // saveWeights() so the advance-gate stays closed across restarts.
   // This is an operator-only path — server code never auto-records a
   // pass; only an explicit HTTP POST advances the grade.
-  //
+
   // Usage:
   //   POST /grade-signoff   { "subject": "ela", "grade": "kindergarten",
   //                           "note": "probes cleared" }
@@ -7032,7 +7596,7 @@ const httpServer = http.createServer((req, res) => {
   }
 
   // Episodic memory query
-  //
+
   // This endpoint used to return the last 20 episodes across ALL
   // users without any filter, which was a direct leak of user text
   // content (episodes store `input_text` and `response_text` fields).
@@ -7131,11 +7695,18 @@ const httpServer = http.createServer((req, res) => {
   // These pages are pure static HTML — serve them immediately without
   // going through the generic fs.readFile path which can stall when
   // the event loop is busy with curriculum/GPU work.
+  // unity-guide.html + brain-equations.html stay in repo root because
+  // GitHub Pages serves them at /unity-guide.html / /brain-equations.html
+  // and the pages' og:url meta tags point at those root URLs. The local-
+  // only HTMLs (dashboard, compute, gpu-configure) live under `html/`
+  // on disk; the public URL stays the same so existing links + bookmarks
+  // + auto-launcher URLs keep working.
   const PUBLIC_PAGES = {
     '/unity-guide.html': path.join(__dirname, '..', 'unity-guide.html'),
     '/brain-equations.html': path.join(__dirname, '..', 'brain-equations.html'),
-    '/dashboard.html': path.join(__dirname, '..', 'dashboard.html'),
-    '/gpu-configure.html': path.join(__dirname, '..', 'gpu-configure.html'),
+    '/dashboard.html': path.join(__dirname, '..', 'html', 'dashboard.html'),
+    '/gpu-configure.html': path.join(__dirname, '..', 'html', 'gpu-configure.html'),
+    '/compute.html': path.join(__dirname, '..', 'html', 'compute.html'),
   };
   if (req.method === 'GET' && PUBLIC_PAGES[req.url]) {
     const pagePath = PUBLIC_PAGES[req.url];
@@ -7313,7 +7884,7 @@ wss.on('connection', (ws, req) => {
             console.log(`[${id}] Text (${logText.length} chars): "${logText}" (stable=${stableId.slice(-8)})`);
           }
           // Process through brain and respond — ROUTED TO THIS CLIENT ONLY.
-          //
+
           // 2026-04-13 privacy model: user text is PRIVATE between the
           // user and Unity. It never gets broadcast to other connected
           // clients. What IS shared across users is Unity's evolving
@@ -7321,7 +7892,7 @@ wss.on('connection', (ws, req) => {
           // all grow from every conversation and benefit every user who
           // talks to the same brain instance. But the raw text and
           // individual responses stay between the one user and Unity.
-          //
+
           // The old `conversation` broadcast that used to loop this
           // message out to every connected WebSocket was DELETED here
           // (was 12 lines, shipped clipped {userId, text[:200],
@@ -7382,6 +7953,63 @@ wss.on('connection', (ws, req) => {
         case 'reward':
           brain.reward += msg.amount || 0;
           break;
+
+        case 'lookupDefinition': {
+          // Live dictionary lookup proxy. Browser-side
+          // cluster.lookupDefinition(word) sends this; server forwards
+          // to definition-service.js (dictionaryapi.dev wrapper),
+          // returns first short definition string or null. Cache lives
+          // server-side in definition-service so all clients share it.
+          const reqId = msg.reqId;
+          const word = (msg.word || '').toString();
+          if (!reqId || !word) break;
+          const respond = (definition, definitions) => {
+            try {
+              if (ws.readyState === ws.OPEN) {
+                ws.send(JSON.stringify({
+                  type: 'definitionResult',
+                  reqId,
+                  word,
+                  definition: definition || null,
+                  definitions: definitions || [],
+                }));
+              }
+            } catch { /* socket gone — drop */ }
+          };
+          if (msg.full) {
+            definitionService.getDefinitions(word).then(arr => {
+              const first = arr.length > 0 ? arr[0].definition : null;
+              respond(first, arr);
+            }).catch(() => respond(null, []));
+          } else {
+            definitionService.getDefinition(word).then(def => {
+              respond(def, []);
+            }).catch(() => respond(null, []));
+          }
+          break;
+        }
+
+        case 'prefetchDefinitions': {
+          // Prime the definition cache for an upcoming
+          // teach phase. Curriculum sends this at cell start with the
+          // vocab list so by the time _teachWordDefinition fires for
+          // each word, the entry is already cached and the sync read
+          // returns instantly. Fire-and-forget — no response needed.
+          const words = Array.isArray(msg.words) ? msg.words : [];
+          if (words.length === 0) break;
+          definitionService.prefetch(words).then(stats => {
+            if (ws.readyState === ws.OPEN) {
+              ws.send(JSON.stringify({
+                type: 'prefetchDone',
+                reqId: msg.reqId || null,
+                count: words.length,
+                prefetched: stats.prefetched,
+                alreadyCached: stats.alreadyCached,
+              }));
+            }
+          }).catch(() => {});
+          break;
+        }
 
         case 'setName':
           client.name = msg.name;
@@ -7648,7 +8276,7 @@ function _spawnGpuClient(port) {
   // argument gets quoted separately, then verbose log + retry chain
   // (Chrome → Edge → default browser fallback). Always logs what was
   // detected + what command ran so silent failures surface.
-  //
+
   // Detect Chrome (or Edge fallback) and launch compute.html with
   // --enable-unsafe-webgpu flag. This raises the WebGPU
   // maxStorageBufferBindingSize from the 2GB spec minimum to whatever
@@ -7660,7 +8288,7 @@ function _spawnGpuClient(port) {
   // --new-window forces a fresh window so flags actually apply (tabs
   // in existing windows inherit launch flags only if the existing
   // window had them).
-  //
+
   // Per-app user-data-dir keeps the unsafe-webgpu Chrome profile
   // sandboxed from the operator's regular browsing session.
   if (process.platform === 'win32') {
@@ -7863,7 +8491,7 @@ httpServer.listen(PORT, BIND_HOST, () => {
 // Graceful shutdown — force exit on Ctrl+C. The curriculum's tight
 // async loops can starve the event loop so a graceful SIGINT never
 // processes.
-//
+
 // While the curriculum runs, Ctrl+C used to fail to halt the
 // program correctly — the prior "save then exit" ceremony on first
 // Ctrl+C blocked on `brain.saveWeights()` which at 13.4M-scale

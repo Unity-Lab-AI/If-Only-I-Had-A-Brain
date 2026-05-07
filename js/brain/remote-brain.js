@@ -183,6 +183,22 @@ export class RemoteBrain extends EventEmitter {
         this._userId = msg.id;
         if (msg.state) this._applyState(msg.state);
         console.log(`[RemoteBrain] Welcome — user ${this._userId}, ${msg.state?.connectedUsers ?? '?'} users online`);
+        // Browser-side WS roundtrip smoke test. Verifies
+        // `lookupDefinition` works end-to-end (browser → WS →
+        // server's definition-service → API → response → resolver).
+        // Catches off-by-one in field names + dead handlers.
+        if (!this._wsRoundtripTested) {
+          this._wsRoundtripTested = true;
+          this.lookupDefinition('test', { timeoutMs: 8000 }).then(def => {
+            if (def && typeof def === 'string' && def.length > 0) {
+              console.log(`[RemoteBrain] dictionary WS roundtrip ready — "test" → "${def.slice(0, 50)}${def.length > 50 ? '...' : ''}"`);
+            } else {
+              console.warn(`[RemoteBrain] dictionary WS roundtrip check failed — got ${def === null ? 'null' : typeof def}.`);
+            }
+          }).catch(err => {
+            console.warn(`[RemoteBrain] dictionary WS roundtrip check threw: ${err?.message || err}`);
+          });
+        }
         break;
 
       case 'state':
@@ -221,8 +237,29 @@ export class RemoteBrain extends EventEmitter {
         this.emit('image', msg.url);
         break;
 
+      case 'definitionResult': {
+        // browser-side definition lookup response from
+        // server's WS handler. Resolve the awaiting promise stored
+        // in this._pendingDefLookups (keyed by reqId).
+        if (this._pendingDefLookups && this._pendingDefLookups.has(msg.reqId)) {
+          const resolver = this._pendingDefLookups.get(msg.reqId);
+          this._pendingDefLookups.delete(msg.reqId);
+          if (resolver) resolver(msg.definition || null);
+        }
+        break;
+      }
+
+      case 'prefetchDone': {
+        if (this._pendingDefPrefetch && this._pendingDefPrefetch.has(msg.reqId)) {
+          const resolver = this._pendingDefPrefetch.get(msg.reqId);
+          this._pendingDefPrefetch.delete(msg.reqId);
+          if (resolver) resolver({ prefetched: msg.prefetched, alreadyCached: msg.alreadyCached });
+        }
+        break;
+      }
+
       case 'innerThought':
-        // iter25-E.6 — server-side inner voice broadcast (iter25-E.3).
+        // server-side inner voice broadcast.
         // Operator (2026-05-06): "the pop ups in her Brain fire with
         // her real actual knowldedge to that point as her real internal
         // voice in the moment" + "the pop ups are suppose to bue unitys
@@ -340,6 +377,72 @@ export class RemoteBrain extends EventEmitter {
     this._ws.send(JSON.stringify({ type, [type]: data }));
   }
 
+  /**
+   *  — Browser-side dictionary definition lookup via WS
+   * roundtrip. Sends 'lookupDefinition' WS message to server (handler
+   * in brain-server.js calls definitionService.getDefinition); awaits
+   * 'definitionResult' response. Returns definition string or null.
+   *
+   * @param {string} word
+   * @param {{timeoutMs?: number}} [opts]
+   * @returns {Promise<string|null>}
+   */
+  async lookupDefinition(word, opts = {}) {
+    if (!this._connected || !this._ws || !word) return null;
+    const reqId = `def-${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
+    if (!this._pendingDefLookups) this._pendingDefLookups = new Map();
+    const timeoutMs = opts.timeoutMs ?? 5000;
+    return new Promise((resolve) => {
+      const timer = setTimeout(() => {
+        this._pendingDefLookups.delete(reqId);
+        resolve(null);
+      }, timeoutMs);
+      this._pendingDefLookups.set(reqId, (def) => {
+        clearTimeout(timer);
+        resolve(def);
+      });
+      try {
+        this._ws.send(JSON.stringify({ type: 'lookupDefinition', reqId, word }));
+      } catch {
+        this._pendingDefLookups.delete(reqId);
+        clearTimeout(timer);
+        resolve(null);
+      }
+    });
+  }
+
+  lookupDefinitionSync(/* word */) {
+    // Browser-side has no local cache (server holds it); sync read returns null.
+    // Callers should use the async lookupDefinition.
+    return null;
+  }
+
+  async prefetchDefinitions(words, opts = {}) {
+    if (!this._connected || !this._ws || !Array.isArray(words) || words.length === 0) {
+      return { prefetched: 0, alreadyCached: 0 };
+    }
+    const reqId = `pf-${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
+    if (!this._pendingDefPrefetch) this._pendingDefPrefetch = new Map();
+    const timeoutMs = opts.timeoutMs ?? 60000;
+    return new Promise((resolve) => {
+      const timer = setTimeout(() => {
+        this._pendingDefPrefetch.delete(reqId);
+        resolve({ prefetched: 0, alreadyCached: 0 });
+      }, timeoutMs);
+      this._pendingDefPrefetch.set(reqId, (stats) => {
+        clearTimeout(timer);
+        resolve(stats);
+      });
+      try {
+        this._ws.send(JSON.stringify({ type: 'prefetchDefinitions', reqId, words }));
+      } catch {
+        this._pendingDefPrefetch.delete(reqId);
+        clearTimeout(timer);
+        resolve({ prefetched: 0, alreadyCached: 0 });
+      }
+    });
+  }
+
   async processAndRespond(text) {
     if (!this._connected || !this._ws) {
       return { text: 'Brain server disconnected.', action: 'respond_text' };
@@ -436,7 +539,7 @@ export class RemoteBrain extends EventEmitter {
           console.log('[RemoteBrain] Visual cortex connected to camera');
 
           // T14.23.5 — self-driving processFrame RAF loop.
-          //
+
           // RemoteBrain has no tick loop (the main brain runs server-
           // side), so nothing was calling visualCortex.processFrame()
           // on the client side. VisualCortex.init() starts the video
@@ -444,7 +547,7 @@ export class RemoteBrain extends EventEmitter {
           // runs when processFrame() is called externally. Without a
           // driver, gazeX/gazeY stayed at their default 0.5/0.5 and
           // the Eye widget's iris rendered frozen in the center.
-          //
+
           // Fix: kick off a requestAnimationFrame loop that calls
           // processFrame() every frame as long as the visual cortex
           // is active. The loop self-cancels when the cortex goes
@@ -511,12 +614,12 @@ export async function detectRemoteBrain(url = 'ws://localhost:7525') {
   // R14 — default probe URL moved off port 8080 (which collides with
   // llama.cpp, LocalAI, and every other service that claims 8080).
   // Unity's brain-server now binds to 7525 by default.
-  //
+
   // Hostname gate: only consider the local server when the page is actually
   // served from localhost/127.0.0.1/file://. On GitHub Pages (or any other
   // public origin) there is no server — return null, let app.js fall
   // through to the local fallback UnityBrain.
-  //
+
   // Without this gate, visiting the Pages URL from a dev box with brain-server
   // running would connect to ws://localhost:7525 (Chrome allows loopback from
   // https secure-context) and the Pages UI would display the dev box's
@@ -532,9 +635,9 @@ export async function detectRemoteBrain(url = 'ws://localhost:7525') {
       location.protocol === 'file:';
     if (!isLocal) return null;
   }
-  // iter25-H — operator (2026-05-06): "if i refresh the 3D brain html
+  // operator (2026-05-06): "if i refresh the 3D brain html
   // page it only reloads with 7k nurons like its deployed on github".
-  //
+
   // Root cause: prior implementation opened a probe WebSocket, waited
   // up to 10s for `onopen`, closed it, THEN constructed `RemoteBrain`
   // which opens a SECOND WebSocket. That probe-then-reconnect dance
@@ -546,7 +649,7 @@ export async function detectRemoteBrain(url = 'ws://localhost:7525') {
   // `TOTAL_NEURONS = 6700` default in engine.js) — exactly the GitHub-
   // Pages-deployed behavior, even though the local brain-server WAS
   // running.
-  //
+
   // Fix: SKIP THE PROBE ENTIRELY when on a local origin. Construct
   // `RemoteBrain` directly. Its internal `_connect()` already handles
   // retry-forever-on-failure with a 3s reconnect cadence (see line ~149),

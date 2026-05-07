@@ -1,4 +1,8 @@
 @echo off
+REM Launcher lives in windows\ — cd up one level so the rest of the script
+REM resolves paths from the project root (corpora\, server\, js\, etc.)
+REM exactly the way it did when this file used to live in the root.
+cd /d "%~dp0.."
 title Stop Unity Brain Server
 echo.
 echo   ==============================
@@ -67,7 +71,7 @@ echo   UnityBrain-WebGPU-Profile so subsequent start.bat boots clean
 echo   (prior Chrome compute.html windows would otherwise auto-reconnect
 echo   on next boot and the server would skip the auto-launch — operator
 echo   ends up with no visible compute.html).
-REM iter15-D — kill Chrome processes that have UnityBrain-WebGPU-Profile
+REM Kill Chrome processes that have UnityBrain-WebGPU-Profile
 REM in their command line. PowerShell + Get-CimInstance is the modern
 REM replacement for the deprecated WMIC. Only kills Chrome processes
 REM attached to OUR isolated profile — operator's regular Chrome stays
