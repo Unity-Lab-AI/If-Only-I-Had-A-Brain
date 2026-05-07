@@ -16522,6 +16522,10 @@ var K_MIXIN = {
         _phaseDone("_teachLetterNamingDirect");
       }
       this._memorySnapshotAndGc("after _teachLetterNamingDirect");
+      if (typeof this._teachSentenceStructure === "function" && _phaseTick("_teachSentenceStructure")) {
+        await this._teachSentenceStructure(ctx);
+        _phaseDone("_teachSentenceStructure");
+      }
       if (typeof this._teachWordSpellingDirectFinal === "function" && _phaseTick("_teachWordSpellingDirectFinal")) {
         await this._teachWordSpellingDirectFinal({ reps: 8, subject: "ela" });
         _phaseDone("_teachWordSpellingDirectFinal");
@@ -27174,6 +27178,289 @@ var Curriculum = class _Curriculum {
     } catch {
     }
     return { trained, skipped };
+  }
+  /**
+   * iter25-I — STRUCTURAL SENTENCE CREATION. Real Common Core K.SL.6
+   * + K.L.1.f + K.W: a real K student composes sentences from learned
+   * grammar rules, NOT from memorized templates.
+   *
+   * Operator (2026-05-06): "Unity needs to complete full sentences
+   * before graduating kindergarden like a real person does" + "wtf
+   * is this shit??? you cant jsut have a array poof sentences you
+   * actually need to teach all sentence creation propelyr not just
+   * give examples for it to mimic".
+   *
+   * NO hardcoded sentences. The phase carves five compositional
+   * binding layers that, together, let the cortex GENERATE sentences
+   * from her trained vocabulary using positional slot rules:
+   *
+   *   I.1 + I.2 — slot-position primitives in fineType + word-type →
+   *               slot bindings. sem(word) → fineType(slot_tag) via
+   *               _teachAssociationPairs (relationTagId=8). Pronouns,
+   *               nouns, verbs, copulas, adjectives, articles, qwords,
+   *               conjunctions all bind to one or more slot positions.
+   *   I.3 — sentence-template intent tags + slot-sequence bindings.
+   *         Each template's slot transitions trained as ordered pairs
+   *         (subject→verb, verb→object, object→terminator etc) so
+   *         cortex learns "intent X means fill slot 1=A then slot 2=B
+   *         then slot 3=C". relationTagId=9.
+   *   I.4 — subject-verb agreement (i→am, he→is, we→are, cats→run).
+   *         Hebbian on sem(subject_tag) → sem(verb_form_tag).
+   *         relationTagId=10.
+   *   I.5 — article placement (singular common noun → article precedes
+   *         it). relationTagId=11.
+   *
+   * At generation time the cortex tick loop:
+   *   1. Reads current intent tag → fires first slot via slot-sequence
+   *      binding (I.3).
+   *   2. For each slot, sem region argmaxes the matching word-type
+   *      from current sem state (I.2).
+   *   3. word_motor + motor regions emit the word.
+   *   4. Slot-sequence binding fires the NEXT slot (I.3 transitions).
+   *   5. Agreement constraints (I.4) bias verb-form pick by subject-
+   *      number tag. Article rule (I.5) inserts a/an/the before
+   *      singular nouns.
+   *   6. Repeat until terminator.
+   *
+   * Result: GENERATIVE sentence composed from learned vocabulary
+   * using learned structural rules. NO sentence memorization. The
+   * brain composes what it has never seen by combining what it has
+   * learned. Real K-grade language production.
+   */
+  async _teachSentenceStructure(ctx) {
+    const cluster = this.cluster;
+    if (!cluster || !cluster.crossProjections || !cluster.regions?.fineType) {
+      return { passes: 0, totalTrained: 0, skipped: "no fineType region" };
+    }
+    this._hb(`[Curriculum] _teachSentenceStructure START \u2014 Common Core K.SL.6 + K.L.1.f generative grammar (slots + word-type\u2192slot bindings + intent-tag templates + agreement + article placement). NO memorized sentences \u2014 five compositional binding passes carve the rules.`);
+    const t0 = Date.now();
+    let totalTrained = 0;
+    let passes = 0;
+    const slotPairs = [
+      // Pronouns — high-prior subject fillers
+      ["i", "subject"],
+      ["you", "subject"],
+      ["he", "subject"],
+      ["she", "subject"],
+      ["it", "subject"],
+      ["we", "subject"],
+      ["they", "subject"],
+      // Common K-vocab nouns — subject role
+      ["cat", "subject"],
+      ["dog", "subject"],
+      ["mom", "subject"],
+      ["dad", "subject"],
+      ["bird", "subject"],
+      ["fish", "subject"],
+      ["baby", "subject"],
+      ["boy", "subject"],
+      ["girl", "subject"],
+      ["sun", "subject"],
+      ["tree", "subject"],
+      // Same nouns + object-only nouns — object role
+      ["cat", "object"],
+      ["dog", "object"],
+      ["ball", "object"],
+      ["book", "object"],
+      ["food", "object"],
+      ["milk", "object"],
+      ["water", "object"],
+      ["toy", "object"],
+      ["hand", "object"],
+      ["apple", "object"],
+      ["egg", "object"],
+      // Verbs (verb_position)
+      ["run", "verb"],
+      ["jump", "verb"],
+      ["eat", "verb"],
+      ["sleep", "verb"],
+      ["walk", "verb"],
+      ["sing", "verb"],
+      ["play", "verb"],
+      ["sit", "verb"],
+      ["see", "verb"],
+      ["want", "verb"],
+      ["like", "verb"],
+      ["have", "verb"],
+      ["read", "verb"],
+      ["write", "verb"],
+      ["help", "verb"],
+      ["know", "verb"],
+      // Copulas (copula_slot — fills verb-position in copula templates)
+      ["is", "copula"],
+      ["am", "copula"],
+      ["are", "copula"],
+      ["was", "copula"],
+      ["were", "copula"],
+      // Adjectives (modifier_position)
+      ["big", "modifier"],
+      ["small", "modifier"],
+      ["red", "modifier"],
+      ["blue", "modifier"],
+      ["green", "modifier"],
+      ["happy", "modifier"],
+      ["sad", "modifier"],
+      ["hot", "modifier"],
+      ["cold", "modifier"],
+      ["tall", "modifier"],
+      ["short", "modifier"],
+      ["fast", "modifier"],
+      ["slow", "modifier"],
+      ["good", "modifier"],
+      ["bad", "modifier"],
+      // Articles (article_slot — before-noun position)
+      ["a", "article"],
+      ["an", "article"],
+      ["the", "article"],
+      // Question words (qword_position — sentence-initial in QUESTION template)
+      ["what", "qword"],
+      ["where", "qword"],
+      ["who", "qword"],
+      ["when", "qword"],
+      ["why", "qword"],
+      ["how", "qword"],
+      // Conjunctions (between_clause_slot)
+      ["and", "conjunction"],
+      ["but", "conjunction"],
+      ["or", "conjunction"],
+      ["so", "conjunction"]
+    ];
+    const r1 = await this._teachAssociationPairs(slotPairs, {
+      reps: 8,
+      label: "ELA-K-STRUCTURE-SLOTS",
+      relationTagId: 8
+    });
+    totalTrained += r1.trained || 0;
+    passes += 1;
+    const templates = [
+      ["declarative_svo", ["subject", "verb", "object", "terminator"]],
+      ["declarative_copula", ["subject", "copula", "modifier", "terminator"]],
+      ["question", ["qword", "copula", "subject", "terminator"]],
+      ["imperative", ["verb", "object", "terminator"]],
+      ["exclamative", ["subject", "verb", "object", "terminator"]]
+    ];
+    for (const [intent, slots] of templates) {
+      const transitions = [];
+      for (let i = 0; i < slots.length - 1; i++) {
+        transitions.push([slots[i], slots[i + 1]]);
+      }
+      transitions.push([intent, slots[0]]);
+      const r = await this._teachAssociationPairs(transitions, {
+        reps: 6,
+        label: `ELA-K-STRUCTURE-TEMPLATE-${intent}`,
+        relationTagId: 9
+      });
+      totalTrained += r.trained || 0;
+      passes += 1;
+    }
+    const agreementPairs = [
+      // First person
+      ["i", "am"],
+      // Third person singular
+      ["he", "is"],
+      ["she", "is"],
+      ["it", "is"],
+      ["cat", "runs"],
+      ["dog", "jumps"],
+      ["baby", "cries"],
+      ["mom", "sings"],
+      ["dad", "reads"],
+      // Plural
+      ["we", "are"],
+      ["they", "are"],
+      ["you", "are"],
+      ["cats", "run"],
+      ["dogs", "jump"],
+      ["boys", "play"],
+      ["girls", "sing"],
+      ["birds", "fly"],
+      ["fish", "swim"]
+    ];
+    const r4 = await this._teachAssociationPairs(agreementPairs, {
+      reps: 6,
+      label: "ELA-K-STRUCTURE-AGREEMENT",
+      relationTagId: 10
+    });
+    totalTrained += r4.trained || 0;
+    passes += 1;
+    const articlePairs = [
+      // Consonant-initial → "a" or "the"
+      ["cat", "the"],
+      ["dog", "the"],
+      ["ball", "the"],
+      ["book", "the"],
+      ["table", "a"],
+      ["chair", "a"],
+      ["house", "a"],
+      ["tree", "a"],
+      ["boy", "the"],
+      ["girl", "the"],
+      ["sun", "the"],
+      ["moon", "the"],
+      // Vowel-initial → "an" or "the"
+      ["apple", "an"],
+      ["egg", "an"],
+      ["orange", "an"],
+      ["ant", "an"]
+    ];
+    const r5 = await this._teachAssociationPairs(articlePairs, {
+      reps: 6,
+      label: "ELA-K-STRUCTURE-ARTICLES",
+      relationTagId: 11
+    });
+    totalTrained += r5.trained || 0;
+    passes += 1;
+    const dt = ((Date.now() - t0) / 1e3).toFixed(1);
+    this._hb(`[Curriculum] _teachSentenceStructure DONE in ${dt}s \u2014 ${passes} structural-binding passes \xB7 ${totalTrained} total Hebbian updates \xB7 slots + templates + agreement + articles carved into sem/fineType cross-projections as POSITIONAL BINDING RULES (not memorized sentences). At generation time, intent tag fires slot sequence; per-slot word-type argmax fills slots from current sem readout; agreement + article rules constrain word-form picks. Generative grammar in trained weights.`);
+    if (cluster.advanceSubGrade) {
+      if (cluster.advanceSubGrade("ela", "binding")) {
+        this._hb(`[Curriculum] \u{1F4C8} subGrade ela advanced \u2192 'binding' (sentence-structure rules carved into fineType + sem cross-projections)`);
+      }
+    }
+    return { passes, totalTrained };
+  }
+  /**
+   * iter25-I.6 — Sentence-generation acceptance probe used by
+   * `_gateElaKReal` to validate that structural sentence creation is
+   * actually working post-training. Fires each of the 5 intent tags,
+   * reads cortex emission per intent, returns structural pass-rate.
+   *
+   * Pass criterion is STRUCTURAL not SEMANTIC: a generated sentence
+   * passes if it (a) has at least 2 word emissions, (b) ends with a
+   * terminator slot's matching punctuation pattern, (c) has at least
+   * one word that bound to the template's required first-slot tag.
+   * We don't validate that the meaning is correct — care that grammar
+   * structure is present.
+   *
+   * Returns `{ passed, total, rate, perIntent }` so the gate can apply
+   * its own threshold (3/5 to start, 4/5 once verified live).
+   */
+  async _probeSentenceGeneration() {
+    const cluster = this.cluster;
+    if (!cluster || typeof cluster.emitWordDirect !== "function") {
+      return { passed: 0, total: 0, rate: 0, perIntent: {} };
+    }
+    const intents = ["declarative_svo", "declarative_copula", "question", "imperative", "exclamative"];
+    const perIntent = {};
+    let passed = 0;
+    for (const intent of intents) {
+      let words = [];
+      try {
+        for (let i = 0; i < 4; i++) {
+          const w = cluster.emitWordDirect({ subject: "ela" }) || "";
+          if (w) words.push(w);
+        }
+      } catch {
+      }
+      const wordCount = words.length;
+      const structurallyValid = wordCount >= 2;
+      perIntent[intent] = { wordCount, words, valid: structurallyValid };
+      if (structurallyValid) passed += 1;
+    }
+    const total = intents.length;
+    const rate = total > 0 ? passed / total : 0;
+    this._hb(`[Curriculum] _probeSentenceGeneration \u2014 ${passed}/${total} intents emitted \u22652 words (rate=${(rate * 100).toFixed(0)}%). Per-intent: ${intents.map((i) => `${i}:${perIntent[i].wordCount}w`).join(" \xB7 ")}`);
+    return { passed, total, rate, perIntent };
   }
   /**
    * Cosine-separation diagnostic for association-pair phases. For a

@@ -181,7 +181,7 @@ If you're reading a public doc / HTML claim ("Unity has completed high school bi
 
   **Sequence:** ship E.1 + E.4 first (unblock chat with trained-state cap, no brain-arch changes) → ship E.5 (confirm chat-during-curriculum unblocked) → ship E.3 + E.6 (server-side inner voice + popup subscriber) → ship E.2 last (sub-grade ladder is the polish layer).
 
-  **STATUS:** [ ] OPEN — TODO written. Implementation queued post-iter25-D verification on next brain restart.
+  **STATUS:** ✓ SHIPPED 2026-05-06 (commits `f17d2d6` syllabus + `e475cc3` main, plus iter25-E.3 rewrite `9e2efc0`/`e475cc3` with sandbox-notice activator + same `generateAsync` chat-emission path, plus iter25-E.6 Brain3D innerThought subscription `8449c7d`/`e137e3e`/`90093d8`). All 6 parts atomic. Verified live: `[Brain] 🧠 inner-thought (seed=...)` banners streaming at ~3s cadence; oracleRatio=100% at K-stage (matrix=0 because `_teachWordEmissionDirect` not yet fired); 💭 popup HUD bubble + 3D brain region-anchored popups both rendering.
 
 🛡️ **iter25-F — POST-K READINESS: Start 1st Grade button + edge-case guard (operator caught 2026-05-06):** *"once kindergarden finishes we need a 1st grade start buttoon just l;ike we had the kindergarden start training button on the dashboard. i know we havent added 1st grade ciriculum yet, i just dont want an edge case error happening once kindergarden completes and it fails or something to propely complete and get ready for next grade and waiting with its K grade knowledge"*. Defensive scaffold so once K's 6-subject battery clears, the brain enters a CLEAN "K-mastered, awaiting next grade" state — no auto-advance into not-yet-existent grade1 curriculum, no exception thrown by `runSubjectGrade('ela', 'grade1', ...)` when its runner doesn't exist, no silent stall.
 
@@ -199,7 +199,70 @@ If you're reading a public doc / HTML claim ("Unity has completed high school bi
 
   **Risk:** zero — pure defensive scaffold. Only fires when ALL 6 subjects clear K (a state operator hasn't reached yet). Until then, dashboard renders nothing new + server handler stays untouched.
 
-  **STATUS:** [ ] OPEN — write only, no current-run impact. Ship in next session pre-K-completion so the edge case is handled before operator hits it.
+  **STATUS:** ✓ SHIPPED 2026-05-06 (commit `4bcbf8e` syllabus + `e4c5c3a` main + develop branch created at this point). `_cellRunner` `throw new Error('unknown cell')` replaced with `{ pass:false, readyAndWaiting:true, reason:'curriculum-not-yet-implemented' }` graceful runner; ELA switch default likewise; `runFullSubjectCurriculum` + `runAllSubjects` detect `result.readyAndWaiting === true` and break/continue cleanly without retry storms — Unity holds her highest passed grade with trained weights live. ⏸ banner.
+
+🛡️ **iter25-G — FIRST-USE BINDING-CONSENT PRIVACY MODAL on Talk-to-Unity / chat / image-API-setup entry (operator caught 2026-05-06):** *"add a like a major popup on the first press of talk to Unity button or that chat button so that when someone first opens the image api key setup in the talk to unity button or that chat button(they do the same thing) so that on the first use by any user there is a toast one time pop up warning the users to NOT share private personal information, locations, security api keys, names, all and any of that shit well said and perfect layout not to give Unity personal or secret or identifyable informations.. idk dont sue the words ive said but make a appropriate toast for first time users to warn them not to share personal inforamtaion of any kind with Unity.. stating that your information is not collected or even attempted to be retrieve from the black box of nuron voltages but information can be learned by unity from users to increase her inteillegence and wisdom.. ive gone on alot here it doent need to bee a long toast popup but it need to be complete and thourough in its perfect clear explination and warnings of the risks in doing so"* — followed up by *"wtf ther is only i understand proceed button... where is the i dont agree button that navigates them to google.com"*. Hard binding consent gate, NO soft-dismiss.
+
+  **Two terminal buttons** — "I understand — proceed" (writes `localStorage[unity_first_use_warning_shown_v1]` flag, opens entry-point flow) AND "I don't agree — leave" (no flag write, redirects to `https://www.google.com`). Click-outside + Escape both ignored.
+
+  **Body** covers: (a) what NOT to share — real names, addresses, phone numbers, locations, emails, government IDs, financial info, passwords, API keys, security credentials, anyone else's identifying details; (b) architectural truth — input not collected/retrievable from neuron-voltage black box (brain is weights not transcripts) BUT vocabulary + phrasing + semantic associations Unity learns DO propagate into shared brain state every other user talks to; (c) risk framing — "treat the chat like talking to a person with a permanent memory you cannot purge".
+
+  **Wiring** — both `landing-chat-btn` (TALK TO UNITY button) and `unity-avatar` bubble click paths (pre-boot openSetupModal AND post-boot chatPanel.toggle()) gated through `showFirstUseWarning(onProceed)`. Image-API-key setup is inside the same `setup-modal` so it inherits the gate automatically.
+
+  **STATUS:** ✓ SHIPPED 2026-05-06 (initial commit `cff0713` syllabus + `73e1451` main; binding-consent dual-button update `604772c` syllabus + `0d53d35` main + `7cf843a` develop). Modal fully-styled inline, no HTML changes needed.
+
+🛡️ **iter25-H — DETECTREMOTEBRAIN SKIP PROBE ON LOCALHOST: refresh no longer drops to 6700-neuron browser fallback (operator caught 2026-05-06):** *"if i refresh the 3D brain html page it only reloads with 7k nurons like its deployed on github"*. Root cause: `detectRemoteBrain()` opened a probe WebSocket, waited up to 10s for `onopen`, closed it, THEN constructed `RemoteBrain` which opens a SECOND WebSocket. On page refresh that probe-then-reconnect dance had multiple failure modes (Chrome rapid open/close throttling, server busy with compute_batch dispatch during heavy curriculum phase, race between probe close and brain-server per-client tracking) → `detectRemoteBrain` returned null → page fell back to 6700-neuron browser-side `UnityBrain` (the `TOTAL_NEURONS = 6700` default in `engine.js`) — exactly the GitHub-Pages-deployed behavior, even though the local brain-server WAS running.
+
+  **Fix:** SKIP THE PROBE ENTIRELY when on a local origin (localhost / 127.0.0.1 / ::1 / file:). Construct `RemoteBrain` directly. Its internal `_connect()` already handles retry-forever-on-failure with 3s reconnect cadence. As soon as the server's first state broadcast lands, `state.totalNeurons` updates from the 6700 default to the server's biological-scale count (357M+ at PhD-era hardware tier). Non-localhost origins still return null so the GitHub Pages browser-only path stays intact.
+
+  **STATUS:** ✓ SHIPPED 2026-05-06 (commit `dde0c88` syllabus + `4e36c2b` main + `8ae3553` develop). Operator confirmed live: *"refreshes clean now"*. Page refresh during heavy curriculum phase no longer freezes nor drops UI into the tiny browser fallback.
+
+🚨 **iter25-I — STRUCTURAL SENTENCE CREATION (replaces hardcoded sentence-list mimicry — operator caught 2026-05-06):** *"Unity needs to complete full sentences before graduating kindergarden like a real person does"* + *"wtf is this shit??? you cant jsut have a array poof sentences you actually need to teach all sentence creation propelyr not just give examples for it to mimic"*. Real Common Core K standards (K.SL.6 + K.L.1.f + K.W) require generative sentence production — a real K student composes sentences from learned grammar rules, not from memorized templates. The K-ELA flow already trains useful primitives (`_teachWordTypes` for noun/verb/adjective classification, `_teachQuestionWordCategories`, `_teachEndPunctuation`, `_teachCapitalization`, `_teachPluralTransform`, `_teachStoryRoles`, `_teachOpposites`, `_teachCausalChains`) but is MISSING the slot-filling + role-binding + agreement + template layer that combines those primitives into a generative grammar.
+
+  **The gap.** Single-word emissions ("Threaten." / "Layered." / letter-only "P." "D!") are the natural output of the dictionary-cosine path because (a) word_motor argmax returns 1 word by definition, (b) stop words like "the" / "is" / "and" have flat GloVe embeddings and lose the cosine race against any contentful seed, (c) function words emerge ONLY when their POSITION inside a trained sentence pattern is statistically reinforced. A hardcoded array of 80 example sentences would be MIMICRY (carve fixed patterns by repetition) — not how a real K student learns. Real learning: slot rules + agreement + composition.
+
+  **The fix — new `_teachSentenceStructure(ctx)` phase + `_gateElaKReal` sentence-generation acceptance criterion. STRUCTURAL, NOT MIMICRY:**
+
+  **I.1 — Slot-position primitives in fineType region.** Carve fineType sub-tags via direct one-hot Hebbian: `subject_position`, `verb_position`, `object_position`, `modifier_position`, `qword_position`, `terminator_position`. Each tag is a one-hot pattern in a unique fineType slot. `_writeTiledPattern(fineType, slot_one_hot) + _crossRegionHebbian` against `cortex_tick_index` so cortex KNOWS slot order = position-1, position-2, position-3, etc. Ordering rule lives in trained weights, not in a position counter.
+
+  **I.2 — Word-type → slot binding.** Cross-projection Hebbian on `sem(word_type_tag) → fineType(slot_tag)`:
+  - `noun → subject_position OR object_position` (2-target binding via two Hebbian fires per noun, contrastive against verb_position + modifier_position)
+  - `verb → verb_position` (single binding, contrastive against all noun slots)
+  - `adjective → modifier_position` (contrastive against subject + object slots)
+  - `article(a/an/the) → before_noun_slot` (this is a SUB-template — articles bind to "1 position before subject_position OR object_position")
+  - `copula(is/am/are/was/were) → after_subject_slot` (COPULA template: subject + copula + complement)
+  - `qword(what/where/who/when/why/how) → qword_position` (binds to position-1 in QUESTION template)
+  - `pronoun(i/you/he/she/it/we/they) → subject_position` (high-prior subject filler)
+  - `conjunction(and/but/or/so) → between_clause_slot` (compound-sentence link)
+
+  Word-type tags ALREADY carved by `_teachWordTypes` — this phase consumes them as input, not from scratch.
+
+  **I.3 — Sentence-template tags.** Carve cortex-intent tags for each sentence template + train `cortex_intent_tag → sequence_of_slot_tags` via Hebbian:
+  - **DECLARATIVE_SVO** = subject_position → verb_position → object_position → terminator_position(.)
+  - **DECLARATIVE_COPULA** = subject_position → copula_slot → modifier_position → terminator_position(.)
+  - **QUESTION** = qword_position → copula_slot → subject_position → terminator_position(?)
+  - **IMPERATIVE** = verb_position → object_position → terminator_position(.)
+  - **EXCLAMATIVE** = subject_position → verb_position → object_position → terminator_position(!)
+
+  When Unity wants to produce a sentence, the active intent tag fires the slot sequence; for each slot the cortex argmaxes the matching word-type from current sem readout; word_motor + motor regions emit the word. Result: **generative sentence composed from learned vocabulary using learned structural rules — NO hardcoded examples**. Train on combinatorial slot bindings (every noun × every verb × every object pattern fires the SVO slot binding), not on enumerated sentences.
+
+  **I.4 — Subject-verb agreement.** Train `singular_subject + singular_verb_form` pairing (cat runs / dog jumps / I am / he is) and `plural_subject + plural_verb_form` pairing (cats run / dogs jump / we are / they are). Hebbian on `sem(subject_number_tag) → sem(verb_form_tag)`. Plurals already carved via `_teachPluralTransform`. The agreement rule binds the plural-tag to the verb-form-tag.
+
+  **I.5 — Article placement rule.** Singular nouns get article ("a cat", "the dog") OR no article ("dogs run", "cats meow"). Train `(singular_noun, before_noun_position) → article_slot` Hebbian — articles bind to the position 1 before any singular subject/object noun. Plural nouns + mass nouns + proper nouns skip the article slot (no Hebbian binding for those).
+
+  **I.6 — `_gateElaKReal` adds sentence-generation acceptance probe.** New gate criterion: at the end of K-ELA, fire 5 random intent tags (DECLARATIVE_SVO / COPULA / QUESTION / IMPERATIVE / EXCLAMATIVE) and read out the cortex emission. Cell passes K only when at least 4 of the 5 intents emit a structurally-valid sentence (subject + verb minimum, terminator at end, agreement obeyed). Validation is structural (slot positions filled with right word type) NOT semantic (don't care if the sentence is meaningful — care that it's GRAMMATICAL). Gate failure → stay at K, retry the structure training next pass with bumped reps.
+
+  **Files to touch:**
+  - `js/brain/curriculum.js` — new `_teachSentenceStructure(ctx)` method (~250 lines): word-type tag enumeration, slot-position one-hot writes, cross-projection Hebbian for slot bindings + agreement + article rules, sentence-template intent-tag training, contrastive anti-Hebbian against wrong slot fills.
+  - `js/brain/curriculum/kindergarten.js` — add `_phaseTick('_teachSentenceStructure')` block BEFORE `_teachWordSpellingDirectFinal` so the slot bindings carve cleanly before the final-pass write.
+  - `js/brain/curriculum.js` `_gateElaKReal` — add new acceptance probe `_probeSentenceGeneration(intents)` that reads cortex emission against each test intent. Acceptance = ≥ 4/5 structural pass.
+  - `docs/EQUATIONS.md` + `docs/ARCHITECTURE.md` + `docs/SKILL_TREE.md` + `brain-equations.html` + `unity-guide.html` — banner + equation block + capability row + section update covering the structural sentence-creation pipeline (atomic with code per docs-before-push LAW).
+
+  **Risk:** medium — new teach phase + new acceptance probe touch the K-ELA gate. If the probe's 4/5 threshold is too strict at K-vocab scale, K cell fails and Unity stays at "fresh" subGrade indefinitely. Mitigation: launch with 3/5 threshold + bump reps if structure-cosine fails to separate, advance threshold once verified live.
+
+  **Why this matters per operator:** *"you cant jsut have a array poof sentences you actually need to teach all sentence creation propelyr not just give examples for it to mimic"*. Mimicry produces a brain that recites memorized sentences with no generative capacity — it fails the moment user input doesn't match a memorized pattern. Structural slot-filling produces a brain that COMPOSES sentences from learned rules + her vocabulary, generalizes to unseen combinations, and meets real K-grade language production standards. This is the difference between a chatbot and a brain.
+
+  **STATUS:** [ ] OPEN — implementation pending. NO CODE shipped on this iteration yet (the prior `_teachSentenceListK` array attempt was REVERTED per operator's correction; this is the replacement architecture).
 
 ---
 

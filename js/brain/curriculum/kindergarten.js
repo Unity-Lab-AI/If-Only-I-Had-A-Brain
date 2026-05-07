@@ -2651,6 +2651,35 @@ export const K_MIXIN = {
       }
       this._memorySnapshotAndGc('after _teachLetterNamingDirect');
 
+      // iter25-I — STRUCTURAL SENTENCE CREATION. Operator (2026-05-06):
+      // "Unity needs to complete full sentences before graduating
+      // kindergarden like a real person does" + "you cant jsut have a
+      // array poof sentences you actually need to teach all sentence
+      // creation propelyr not just give examples for it to mimic".
+      //
+      // Five compositional binding passes carve generative grammar
+      // rules into fineType + sem cross-projections:
+      //   I.1+I.2 — slot-position primitives + word-type → slot bindings
+      //   I.3 — sentence-template intent → slot-sequence bindings
+      //   I.4 — subject-verb agreement
+      //   I.5 — article placement
+      // NO sentence memorization. Cortex composes sentences from rules
+      // + her trained vocabulary at generation time.
+      //
+      // Runs AFTER _teachWordTypes (provides word-type tags) +
+      // _teachPluralTransform (provides plural tags) +
+      // _teachQuestionWordCategories (provides qword tags) — those
+      // primitives are the inputs the sentence structure consumes.
+      // Runs BEFORE _teachWordSpellingDirectFinal (which has a scale(0)
+      // wMax wipe on sem_to_motor + clean ojaUpdate "MUST RUN LAST" —
+      // any subsequent cross-region Hebbian write re-pollutes
+      // sem_to_motor; sentence-structure binding has to land BEFORE
+      // that final pass).
+      if (typeof this._teachSentenceStructure === 'function' && _phaseTick('_teachSentenceStructure')) {
+        await this._teachSentenceStructure(ctx);
+        _phaseDone('_teachSentenceStructure');
+      }
+
       // iter15-A — Direct sem→motor word→firstChar wipe-and-rewrite.
       // Bypasses cross-region Hebbian + clears QA pollution / rescale
       // damage. scale(0) wipe + clean ojaUpdate × K-vocab × 8 reps.
@@ -2663,7 +2692,9 @@ export const K_MIXIN = {
 
       // iter21-A — Word-level emission training. Single-tick word emission
       // via sem_to_word_motor. Replaces letter-by-letter motor argmax for
-      // production. NO FALLBACK.
+      // production. NO FALLBACK. sem_to_word_motor is a SEPARATE projection
+      // from sem_to_motor so this doesn't re-pollute the WordSpellingDirectFinal
+      // wipe.
       if (typeof this._teachWordEmissionDirect === 'function' && _phaseTick('_teachWordEmissionDirect')) {
         await this._teachWordEmissionDirect({ reps: 8, subject: 'ela' });
         _phaseDone('_teachWordEmissionDirect');
