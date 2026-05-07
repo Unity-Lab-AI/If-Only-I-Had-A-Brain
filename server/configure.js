@@ -38,7 +38,7 @@ const { execSync } = require('child_process');
 const { exec } = require('child_process');
 
 const CONFIG_PATH = path.join(__dirname, 'resource-config.json');
-const HTML_PATH = path.join(__dirname, '..', 'gpu-configure.html');
+const HTML_PATH = path.join(__dirname, '..', 'html', 'gpu-configure.html');
 const PORT = 7526;
 
 // ── Hardware detection (mirrors brain-server.js logic) ───────────

@@ -42,6 +42,33 @@ Only when **every** box is checked does the stamp + commit + push run.
 
 ---
 
+## LAW — Match doc format and style (Gee, 2026-05-07)
+
+**Gee's exact words on 2026-05-07:**
+
+> *"YOU SHALL NOT EVER … FUCKING JUST ADD A FUCKING TEST WALL TO A FILE OR DOCUMENT WITHOUT MAINTAINING ITS CURRENT FORMAT AND STYLE"*
+
+Triggered after iter25-N/O update content was prepended as a wall-of-text blockquote onto `docs/SENSORY.md` and `docs/WEBSOCKET.md`, breaking those docs' established 6-line intro pattern.
+
+### The law
+
+1. **Read the doc's existing structure first.** Identify its banner pattern, section headers, table layout, list style, and how prior updates were announced.
+2. **Edit IN PLACE within that structure.** Amend the relevant section / table row / banner sequence in matching shape.
+3. **When a banner-update pattern exists, match it.** `docs/ARCHITECTURE.md` / `docs/EQUATIONS.md` / `docs/SKILL_TREE.md` use stacked `> Last updated:` blockquotes — new entries go ABOVE the most recent, in the same shape.
+4. **When no banner-update pattern exists, find the in-body section the change belongs to and edit there.** Do NOT invent a new shape the doc never used.
+5. **Forbidden:** prepending a giant prose blockquote to a doc that has no banner pattern. Even if every word is correct, a format break makes the update worse than no update.
+
+### Failure recovery
+
+1. Revert the malformatted update immediately (restore the doc's original head/section).
+2. Re-read the doc's actual structure.
+3. Find the matching place for the new content; edit IN PLACE in the doc's native style.
+4. Verify the doc still scans cleanly top-to-bottom before moving on.
+
+Full LAW body + tables: `.claude/CONSTRAINTS.md §MATCH DOC FORMAT`. Pre-edit hook: `.claude/WORKFLOW.md` `[DOC-FORMAT HOOK]`.
+
+---
+
 ## Deploy versioning
 
 Unity's deployed bundle is identified by `VERSION+BUILD`:

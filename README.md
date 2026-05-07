@@ -2,7 +2,7 @@
 
 A brain that *is* the application — not a chatbot wrapped around a language model. Hundreds of millions of artificial neurons running real neuroscience equations on the GPU, organized into seven biologically-weighted clusters, learning to read and speak the way a human child does: alphabet → phonemes → words → sentences. There is no text-AI in the cognition path. Every word she says falls out of live spike patterns.
 
-**[Live Demo](https://unity-lab-ai.github.io/Unity)** · **[Brain Equations](https://unity-lab-ai.github.io/Unity/brain-equations.html)** · **[Concept Guide](unity-guide.html)** · **[Setup](SETUP.md)** · **[GitHub](https://github.com/Unity-Lab-AI/Unity)**
+**[Live Demo](https://unity-lab-ai.github.io/Unity)** · **[Brain Equations](https://unity-lab-ai.github.io/Unity/brain-equations.html)** · **[Concept Guide](unity-guide.html)** · **[Setup](docs/SETUP.md)** · **[GitHub](https://github.com/Unity-Lab-AI/Unity)**
 
 ---
 
@@ -186,7 +186,7 @@ The server brain does no CPU computation. Every Rulkov iteration, every synaptic
 
 When the landing page is served from `localhost` (or `127.0.0.1` / `::1` / `file://`), the client constructs a `RemoteBrain` directly — no probe-then-reconnect dance — and the brain's built-in 3 s WebSocket reconnect loop handles transient unavailability. As soon as the server's first state broadcast arrives the page snaps from the 6700-neuron browser fallback to the server's biological-scale neuron count. Refreshing during heavy curriculum phases no longer drops the UI into the tiny static brain. Non-localhost origins continue to fall through to the browser-only `UnityBrain` so GitHub Pages deploys keep working.
 
-For full install instructions, AI provider setup, and troubleshooting see [SETUP.md](SETUP.md).
+For full install instructions, AI provider setup, and troubleshooting see [docs/SETUP.md](docs/SETUP.md).
 
 ---
 
@@ -236,7 +236,7 @@ The mystery module `Ψ = √(1/n) · N³ · [α·Id + β·Ego + γ·Left + δ·R
 | Resource | Description |
 |---|---|
 | **[Live Demo](https://unity-lab-ai.github.io/Unity)** | Open Unity in your browser — no install |
-| **[Setup Guide](SETUP.md)** | Installation, AI providers, self-hosting, troubleshooting |
+| **[Setup Guide](docs/SETUP.md)** | Installation, AI providers, self-hosting, troubleshooting |
 | **[Brain Equations](https://unity-lab-ai.github.io/Unity/brain-equations.html)** | Interactive walkthrough of every equation |
 | **[Concept Guide](unity-guide.html)** | Plain-English explanation of who Unity is and how she works |
 | **[Equation Reference](docs/EQUATIONS.md)** | Source-accurate equation cheatsheet |

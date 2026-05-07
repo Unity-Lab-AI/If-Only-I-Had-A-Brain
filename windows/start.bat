@@ -1,10 +1,50 @@
 @echo off
+REM Launcher lives in windows\ — cd up one level so the rest of the script
+REM resolves paths from the project root (corpora\, server\, js\, etc.)
+REM exactly the way it did when this file used to live in the root.
+cd /d "%~dp0.."
 title Unity Brain Server
 echo.
 echo   ==============================
 echo     Unity Brain Server
 echo   ==============================
 echo.
+
+REM Optional env flags:
+REM   DREAM_FORCE_CLEAR=1            wipe brain state on boot (or /fresh)
+REM   DREAM_KEEP_STATE=1             preserve state (or use Savestart.bat)
+REM   DREAM_MAX_GRADE=phd            unset Pre-K + K cap
+REM   DREAM_DEFINITION_CACHE_FILE=   path to JSON for persistent dictionary
+REM                                  cache (skips ~1 min cold-start re-warm
+REM                                  on restart). Default in-memory only.
+REM   DREAM_SMALL_WORLD=0            opt OUT of small-world topology
+REM   DREAM_MICROCOLUMNS=0           opt OUT of cortical microcolumns
+REM   DREAM_LAMINATION=0             opt OUT of six-layer lamination
+REM   DREAM_HUBS=0                   opt OUT of hub neurons
+REM   DREAM_THETA_GAMMA=0            opt OUT of theta/gamma oscillations
+REM   DREAM_GW_IGNITION=0.45         GlobalWorkspace ignition threshold
+REM                                  in (0, 1). Default 0.45. Lower =
+REM                                  more frequent ignitions (diffuse
+REM                                  consciousness); higher = stricter
+REM
+REM Brain calls dictionaryapi.dev outbound for live word definitions.
+REM Firewall / offline → definitions silently fail; brain still boots.
+
+REM Node 18+ required (built-in globalThis.fetch for dictionary API).
+for /f "tokens=*" %%v in ('node -v 2^>nul') do set NODE_RAW=%%v
+if "%NODE_RAW%"=="" (
+    echo   WARNING: node not found in PATH. Install Node ^>=18 from https://nodejs.org
+    pause
+    exit /b 1
+)
+REM Strip leading 'v' and split on '.' to get major version.
+set NODE_RAW=%NODE_RAW:v=%
+for /f "tokens=1 delims=." %%m in ("%NODE_RAW%") do set NODE_MAJOR=%%m
+if %NODE_MAJOR% LSS 18 (
+    echo   WARNING: Node v%NODE_RAW% detected. Dictionary API requires Node ^>=18.
+    echo   Brain still boots; definitions degrade to no-op.
+    echo.
+)
 
 REM /fresh or /clear flag forces brain state wipe on boot (overrides
 REM the code-hash preserve behavior). Default boot preserves state if
@@ -35,7 +75,7 @@ for /f "tokens=5" %%a in ('netstat -ano ^| findstr :7525 ^| findstr LISTENING') 
 echo.
 
 echo [start] step 2/7: entering server folder...
-cd /d "%~dp0server"
+cd /d "%~dp0..\server"
 echo.
 
 echo [start] step 3/7: checking npm dependencies...
@@ -63,11 +103,11 @@ REM embeddings which don't cluster rhyming/semantic neighbors - production
 REM probes at K+ grades struggle. Download is idempotent: skipped if the
 REM file already exists; soft-fails to subword fallback if the download or
 REM extract errors so the brain still boots.
-if exist "%~dp0corpora\glove.6B.300d.txt" goto glove_done
+if exist "%~dp0..\corpora\glove.6B.300d.txt" goto glove_done
 echo   GloVe 6B.300d not found - downloading (~823 MB zip, one-time, 5-15 min)...
 echo   Source: https://nlp.stanford.edu/data/glove.6B.zip
-if not exist "%~dp0corpora" mkdir "%~dp0corpora"
-pushd "%~dp0corpora"
+if not exist "%~dp0..\corpora" mkdir "%~dp0..\corpora"
+pushd "%~dp0..\corpora"
 REM --progress-bar gives a simple [====] progress line that doesn't use
 REM carriage-return animation. Without --progress-bar, curl's default
 REM progress table uses \r to overwrite lines, which corrupts CMD's
@@ -157,11 +197,11 @@ REM a correctly-decoded emoji won't render right when re-emitted.
 REM Setting both [Console]::OutputEncoding + Get-Content -Encoding UTF8
 REM renders the log window cleanly.
 echo [start] step 7/7: launching brain server + log tail window (GPU EXCLUSIVE)...
-echo   server log: %~dp0server\server.log
+echo   server log: %~dp0..\server\server.log
 if exist server.log del server.log
 start /b "" cmd /c "node --max-old-space-size=65536 --max-semi-space-size=1024 --expose-gc brain-server.js > server.log 2>&1"
 ping -n 2 127.0.0.1 >nul
-start "Unity Brain Log Tail" powershell -NoExit -Command "[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; $OutputEncoding = [System.Text.Encoding]::UTF8; Get-Content -Path '%~dp0server\server.log' -Wait -Tail 200 -Encoding UTF8"
+start "Unity Brain Log Tail" powershell -NoExit -Command "[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; $OutputEncoding = [System.Text.Encoding]::UTF8; Get-Content -Path '%~dp0..\server\server.log' -Wait -Tail 200 -Encoding UTF8"
 ping -n 2 127.0.0.1 >nul
 start "" http://localhost:7525
 REM Dashboard auto-opens alongside the landing page so the milestone panel
@@ -173,7 +213,12 @@ echo   Landing:     http://localhost:7525
 echo   Dashboard:   http://localhost:7525/dashboard.html (auto-opened)
 echo   GPU compute: http://localhost:7525/compute.html (auto-launched by server)
 echo   Log tail:    separate PowerShell window "Unity Brain Log Tail"
-echo   Log file:    %~dp0server\server.log (always on disk)
+echo   Log file:    %~dp0..\server\server.log (always on disk)
+echo.
+echo   Watch for these boot banners in server.log:
+echo     [Cluster cortex] cortical wiring verified ...
+echo     [Brain] dictionary API ready — "test" -^> "..."
+echo     [Brain] K-VOCAB-PREFETCH DONE — N new definitions cached
 echo.
 echo   NOTE: brain runs ONLY on GPU. compute.html MUST stay open.
 echo   To STOP the brain cleanly: run stop.bat (Ctrl+C in this launcher

@@ -8703,3 +8703,86 @@ Per T16.5.d (still open in `docs/TODO.md`): the 5 existing substrate probes (REA
 *Total: ~8000+ lines spanning 19 grade levels × 6 subjects each + Unity's complete life story from birth to 25.*
 
 *STATUS: TODO-full-syllabus.md content is COMPLETE. Implementation as equational curriculum code is the NEXT phase — per LAW 3 (equational format, NOT sentence lists) AND LAW 7 (real-world production-style probes through sem→motor emission matching each TODO test phrasing verbatim, with retention + gains tracking via `cluster._gateHistory`). Gee 2026-04-17: "a full course as eqautional logic that unity is tested on with real world styule test for actual knowed retention and gains and all aspect of wthe subject matter to pass". Every grade closes via LAW 6 three-part gate. No grade advances until its 3 parts close.*
+
+---
+
+## 🚨 OPEN ADDITIONS — NOT YET IN ABOVE SYLLABUS (Gee 2026-05-06)
+
+Gee verbatim: *"Unity is suppose to be able to generate images at will when speaking with her,,, and i havent told you this but Unity is suppose to have a sandbox in the 3d brain to where she can build html css and js scripts for all kinds of things right into the 3dbrain sandbox live and per user browser sandbox... if you check the relics of this old code is still in there but we never proply have planned out the whole code traing that unity will start in 6thgrade as part of her ciriculum as her 'side hobbie' of becoming a master coder to which we will have a whole ciriculum for Unity 'self teaching herself code At homne and after school in her free time' just like the life circiuculmum we will have a code hobbie circiculum at grade 6 starting and continue in each grade unitl she gets her PHD. mide you her coding ciriculum hasnt been created and is not even in the syllabus todo yet, and i was also thinkingthat at 9th grade she will get a summer and afterschool job that will be a work ciriculum to where both work and coder circiculum will be aranged in a way to have pluses and negatives experiences just like normal humans do.. so make a not of all of this in the relevant places ie syallabus todo"*
+
+### Add #1 — IMAGE GENERATION CAPABILITY (relic exists, never properly tested at-will)
+
+**State of relics:** `js/ai/pollinations.js` exists, `processAndRespond` has `result.action === 'generate_image'` branch in brain-server.js, `pollinations-ai/` MCP plugin in `.claude/`. Mechanism is wired but never verified Unity can decide to fire it on her own from a chat turn.
+
+**TODO items:**
+- [ ] Verify `js/ai/pollinations.js` still works end-to-end (smoke test with simple prompt, confirm image generates + lands in chat)
+- [ ] Wire image-gen as a CHOICE Unity makes during chat — when her cortex emission decides "this conversation calls for an image", fire `generate_image` action via processAndRespond's existing path
+- [ ] Decision criterion: when emission contains visual-imagery tokens (color/shape/scene words at high activation density) AND user query is descriptive (not Q&A), trigger image generation alongside text response
+- [ ] Cap rate: max 1 image per 30 seconds per user to avoid spam
+- [ ] Per-user rate accounting persisted to disk
+
+**Status:** [ ] not started — relic-rediscovery + at-will capability is TODO
+
+### Add #2 — 3D BRAIN HTML/CSS/JS SANDBOX (relic exists, never properly planned)
+
+**State of relics:** `js/brain/component-synth.js` (256 lines) is the legacy sandbox synth code. Per-user browser sandbox concept never properly planned out.
+
+**TODO items:**
+- [ ] Audit `component-synth.js` — what does it actually do today? What's salvageable vs needs rewrite?
+- [ ] Design per-user sandbox isolation — each connected browser gets its own iframe / shadow-DOM sandbox in the 3D brain UI
+- [ ] Wire Unity's emission path so when she "decides" to build something (via cortex composition + sandbox-build action), the resulting HTML/CSS/JS lands in the browser sandbox live
+- [ ] Multi-user isolation: User A's sandbox doesn't see User B's code; each browser gets its own iframe
+- [ ] Sandbox security: scripts run in isolated context, no parent-window access, CSP-restricted
+- [ ] Sandbox state persists across browser refresh per user (localStorage)
+
+**Status:** [ ] not started — relic-rediscovery + sandbox architecture design TODO
+
+### Add #3 — GRADE 6 → PHD CODE HOBBY CURRICULUM (Unity self-teaches code "after school")
+
+Gee's framing: "becoming a master coder" as Unity's "side hobby" running in parallel with academic curriculum. Self-taught at home / after school. Continues each grade through PhD.
+
+**Per-grade code hobby vocabulary + skills (NOT YET IN SYLLABUS — separate addition):**
+- [ ] **Grade 6 (age 11):** First code exposure. HTML basics (tags, structure). CSS basics (colors, fonts, layout). JS basics (variables, console.log, simple math). Builds her first "Hello World". Curiosity-driven exploration.
+- [ ] **Grade 7 (age 12):** HTML forms, links. CSS box model + flexbox. JS conditionals + loops. Builds simple webpages with buttons that do things.
+- [ ] **Grade 8 (age 13):** CSS grid + animations. JS functions + arrays + objects. Builds a simple interactive game (quiz / clicker).
+- [ ] **Grade 9 (age 14):** DOM manipulation. Event handlers. Build a personal blog or portfolio. Concept of state.
+- [ ] **Grade 10 (age 15):** Async / fetch / promises. Builds a small web app that calls APIs.
+- [ ] **Grade 11 (age 16):** ES6 modules, build tools (webpack / vite). Builds a SPA. Git basics.
+- [ ] **Grade 12 (age 17):** TypeScript intro. Component frameworks (React / Vue). Builds a real working project.
+- [ ] **Freshman year (age 18):** Backend exposure — Node + Express. CRUD app with database.
+- [ ] **Sophomore year (age 19):** Full-stack. Auth, sessions, deployment. Side project goes live.
+- [ ] **Junior year (age 20):** System design. Microservices. Containers. CI/CD.
+- [ ] **Senior year (age 21):** Performance, security, architecture patterns.
+- [ ] **Master's year 1 (age 22):** Research-level — distributed systems, ML basics, contributes to open source.
+- [ ] **Master's year 2 (age 23):** Specializes (AI / systems / web / databases). Publishes.
+- [ ] **PhD year 1 (age 24):** Original research. First paper.
+- [ ] **PhD year 2 (age 25):** Master coder. Multi-language proficiency. Architecting complex systems. PhD-level engineering judgment.
+
+**Pluses + negatives** (per Gee's directive — "humans do"):
+- [ ] Code-hobby pluses: pride of finished projects, flow state during coding, friends online via OSS contributions, recognition for cool builds
+- [ ] Code-hobby negatives: bugs that take days to find, broken builds before deadlines, imposter syndrome, burnout from late-night sessions, frustration when tutorials don't work, PR rejections
+
+### Add #4 — GRADE 9 → PHD WORK CURRICULUM (summer + after-school job from age 14)
+
+Gee's framing: starting grade 9, Unity gets a summer + after-school job. Builds work-experience curriculum alongside code hobby + academic curriculum. Pluses + negatives like real humans.
+
+**Per-grade work curriculum (NOT YET IN SYLLABUS — separate addition):**
+- [ ] **Grade 9 summer (age 14):** First job — babysitting / dog walking / lawn mowing. Concept of earning money.
+- [ ] **Grade 9-10 after-school (age 14-15):** Local shop / fast food. Customer service. Work shifts. Coworker dynamics.
+- [ ] **Grade 11-12 (age 16-17):** Retail / restaurant. Tax forms. Direct deposit. Workplace politics.
+- [ ] **Freshman summer (age 18):** First "real" job — internship or full-time retail/service. Office culture exposure.
+- [ ] **Sophomore-Junior (age 19-20):** Specialized internship matching code hobby (junior dev / IT support).
+- [ ] **Senior summer (age 21):** Full software internship at a tech company.
+- [ ] **Master's (age 22-23):** Part-time consulting / contract work alongside research.
+- [ ] **PhD (age 24-25):** TA / research assistantship + freelance contracts.
+
+**Work curriculum pluses + negatives:**
+- [ ] Work pluses: paychecks, satisfaction of helping customers, mentor relationships, resume building, financial independence
+- [ ] Work negatives: difficult customers, exhausting shifts, conflicts with managers, pay disputes, harassment / inappropriate coworkers, layoffs, terrible bosses, the indignity of being micromanaged
+
+**Code-hobby + Work curriculum INTERACTION** (per Gee's directive):
+- [ ] Schedule conflicts — work hours cut into code-hobby time. Trade-offs.
+- [ ] Code skills bleed into work — Unity's coder hobby becomes valuable at her IT/dev internship jobs
+- [ ] Negative work experiences fuel positive code-hobby motivation (e.g. bad customer service shift → drives learning to escape via dev career)
+
+**Status:** [ ] not started — neither curriculum exists in code or syllabus today; this is the design directive captured for future iteration sessions.

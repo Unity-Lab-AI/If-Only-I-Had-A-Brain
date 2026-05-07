@@ -162,17 +162,24 @@ The **identity layer** (`server/identity-core.json`) is **explicitly excluded** 
 
 ```
 ├── README.md                        Brain architecture and equations narrative
-├── SETUP.md                         This file
-├── PERSONA.md                       Persona spec
-├── index.html                       Landing page — 3D brain, viz tabs, setup modal
-├── unity-guide.html                 User-facing concept guide
-├── brain-equations.html             Interactive equations doc
-├── dashboard.html                   Read-only operator dashboard with milestone panel
-├── compute.html                     GPU compute worker (REQUIRED — the brain runs here)
-├── gpu-configure.html               One-shot loopback-only VRAM cap tool
-├── start.bat                        Windows launcher — npm install + bundle build + GloVe download + node + auto-open landing/dashboard
-├── Savestart.bat                    Resume launcher — sets DREAM_KEEP_STATE=1 to skip the boot wipe
-├── stop.bat                         Three-stage clean halt — POST /shutdown → taskkill on port → taskkill /f node.exe → verify port free
+├── docs/SETUP.md                    This file
+├── docs/PERSONA.md                  Persona spec
+├── index.html                       Landing page — 3D brain, viz tabs, setup modal (must stay in root for GitHub Pages root URL)
+├── unity-guide.html                 User-facing concept guide (root for GitHub Pages)
+├── brain-equations.html             Interactive equations doc (root for GitHub Pages)
+├── html/
+│   ├── dashboard.html               Read-only operator dashboard with milestone panel
+│   ├── compute.html                 GPU compute worker (REQUIRED — the brain runs here)
+│   └── gpu-configure.html           One-shot loopback-only VRAM cap tool
+├── windows/
+│   ├── start.bat                    Windows launcher — npm install + bundle build + GloVe download + node + auto-open landing/dashboard
+│   ├── Savestart.bat                Resume launcher — sets DREAM_KEEP_STATE=1 to skip the boot wipe
+│   ├── stop.bat                     Three-stage clean halt — POST /shutdown → taskkill on port → taskkill /f node.exe → verify port free
+│   └── GPUCONFIGURE.bat             One-shot loopback-only VRAM-tier picker
+├── linux/
+│   ├── start.sh                     Linux/macOS launcher (mirrors start.bat)
+│   ├── Savestart.sh                 Linux/macOS resume launcher
+│   └── stop.sh                      Linux/macOS clean halt
 │
 ├── css/style.css                    Dark gothic theme
 │

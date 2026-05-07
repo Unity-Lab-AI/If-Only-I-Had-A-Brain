@@ -152,3 +152,6 @@ out/
 # rebuilds the bundle via `cd server && npm run build` before launching
 # the server; Gee's commits should include the fresh bundle whenever
 # source files under `js/` change.
+
+# Claude task scheduler runtime lock (session-specific PID)
+.claude/scheduled_tasks.lock

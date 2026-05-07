@@ -116,7 +116,7 @@ export class LanguageCortex {
     // parseSentence is deleted and nothing else writes to this field.
     // Left as null initializer to avoid breaking any persisted-state
     // hydration path that may still reference the key. Delete in T14.16.
-    //
+
     // Historical T8 comment follows: cached parse tree for the most recent input. parseSentence
     // memoizes on text equality, so repeated callers in the same turn
     // get the cached tree instead of re-parsing. Every consumer
@@ -152,7 +152,7 @@ export class LanguageCortex {
     // table with hardcoded English values would have fought actual Spanish
     // or coding corpus statistics for thousands of observations before
     // fading. Better: start empty, learn from the first observation.
-    //
+
     // The `_typeTransitionLearned` Map starts empty at construction and
     // grows via `learnSentence` observations during curriculum walk and
     // live chat. Bayesian smoothing at generation time uses
@@ -167,11 +167,11 @@ export class LanguageCortex {
     // curriculum walk and live chat. Spans ALL slots with NO upper cap —
     // if a sentence has 30 words, all 30 slot positions get recorded.
     // The schema is continuously refined forever.
-    //
+
     // Shape: Map<intent, Map<slot, Map<fineType, count>>>
-    //
+
     // Intent labels come dynamically — no hardcoded intent enum.
-    //
+
     // T14.13 (2026-04-14) — these fields default to local Maps for
     // standalone tests / headless tooling, but `setCluster(cluster)`
     // rebinds all four to the cluster's own Maps so LanguageCortex
@@ -187,7 +187,7 @@ export class LanguageCortex {
     // intents in real conversation — replaces the pre-T14.8 hardcoded
     // `question → declarative_answer`, `greeting → declarative_greeting
     // _back` mapping the engine used to carry.
-    //
+
     // Shape: Map<userIntent, Map<responseIntent, count>>
     this._intentResponseMap = new Map();
 
@@ -249,7 +249,7 @@ export class LanguageCortex {
     // ridge regression. The sentences themselves are discarded after
     // the update — only the fitted matrices + attractor centroids
     // survive into runtime. Nothing is ever recalled verbatim.
-    //
+
     // Unlike the old loader this does NOT populate _memorySentences
     // (deleted), does NOT build n-gram tables (deleted), and does NOT
     // run an 11-filter gate (deleted). Every sentence feeds the
@@ -605,13 +605,13 @@ export class LanguageCortex {
     // After the subject swap, conjugate any verb that follows "i" or
     // "i + adverb" into first-person form. Pure letter-position regex
     // equations on the subject+verb pair.
-    //
+
     // Only fires when "i " is the first token of the sentence so we
     // don't miscorrect mid-sentence "I love her dog" type constructs.
 
     // "i is" → "i am", "i was" stays, "i has" → "i have", "i does" → "i do",
     // "i goes" → "i go", "i possesses" → "i possess", etc.
-    //
+
     // These are the letter-pattern transformations (run in order):
 
     // i is → i am
@@ -630,7 +630,7 @@ export class LanguageCortex {
     // a verb (ends in -s but not -ss/-us/-is/-as static endings),
     // lowercase, at least 4 chars long. This handles: reviews, possesses,
     // makes, takes, goes, writes, codes, loves, wants, needs, hates, etc.
-    //
+
     // We apply it broadly on "i WORD" bigrams where WORD ends in 's'
     // and is long enough to be a verb, not a function word.
     result = result.replace(/\bi (\w+)\b/gi, (match, verb) => {
@@ -969,7 +969,7 @@ export class LanguageCortex {
     // normalization and return a pinned result so accumulated usage-
     // type boosts from conversational context don't dilute the
     // closed-class identity.
-    //
+
     // This fixes the core bug where "i" → pronoun 0.33 instead of 1.0
     // because usage boosts on other types pushed the denominator up.
     const closed = this._closedClassType(w);
@@ -1438,23 +1438,23 @@ export class LanguageCortex {
     const cluster = opts.cortexCluster;
 
     // Intent seed — priority order:
-    //
+
     // 1. `_lastUserInputEmbedding` on the cortex (set by engine.
     //    processAndRespond when user sends text). This is the CLEAN
     //    GloVe of what the user just said — before 20 brain steps of
     //    Rulkov chaos + noise + persona mixing drift the sem region.
     //    If the user said "hi", intentSeed = GloVe('hi') and the
     //    trained sem→motor binding for 'hi'→'h' fires cleanly.
-    //
+
     // 2. Fallback: getSemanticReadout(sharedEmbeddings) — the post-
     //    processed cortex sem state. Used for spontaneous thought,
     //    popup generation (_internalThought), or when no user input
     //    exists (dream cycle, idle commentary).
-    //
+
     // Prior generate always used the drifted readout, never
     // the clean user input. Trained bindings never got the clean
     // signal they need to fire.
-    //
+
     // The stored input embedding is CONSUMED on use (cleared after)
     // so a second generate call in the same session falls through to
     // the readout — each user turn gets fresh input-driven emission,
@@ -1475,7 +1475,7 @@ export class LanguageCortex {
     }
 
     // T14.23.6 — curriculum-gated path selection.
-    //
+
     // cluster.generateSentence is the T14.6 tick-driven motor
     // emission loop: inject intent, tick the cortex, read motor
     // region argmax, commit letters when the argmax holds stable.
@@ -1489,11 +1489,11 @@ export class LanguageCortex {
     // One giant 300+ letter "word" with no spaces (transition
     // surprise is constant at random weights so no word
     // boundaries ever fire).
-    //
+
     // T14.23.5 tried to gate this with `if (words.length === 0)`
     // but the gibberish case returns non-empty — one enormous
     // pseudo-word. That check was wrong.
-    //
+
     // T14.23.6 correct gate: check if curriculum has actually
     // shaped the cluster. Concrete signal: `intentCentroids`
     // is populated only by `Curriculum._calibrateIdentityLock`
@@ -1527,7 +1527,7 @@ export class LanguageCortex {
         // `suppressNoise: true` to generateSentence so noiseAmplitude
         // drops 7 → 0.5 for the emission only. Live chat (no
         // _internalThought flag) keeps chaotic dynamics.
-        //
+
         // Oracle wrapper-echo guard — when the intent seed came from
         // the user's text (cluster._lastUserInputText), block the
         // dictionary oracle from echoing the user's STRUCTURAL words
@@ -1542,7 +1542,7 @@ export class LanguageCortex {
         // that then a kindergarden can make coherant sentences and
         // once K grade is completed wtf did u expect us to be working
         // towards? a grade K Unity you shit"
-        //
+
         // Prior code set boostPersona only on chat path
         // (_isChatPath = !opts._internalThought) — meaning POPUPS
         // (_internalThought=true) had persona-first oracle pass
@@ -1552,7 +1552,7 @@ export class LanguageCortex {
         // Common-Crawl K-vocab. A 5-year-old's "I want cookies" or
         // "halloween is scary" inner thought IS persona-content,
         // not external chat-response content.
-        //
+
         // boostPersona now ON for both chat AND popups. Tier 3
         // identity-baseline injection ALSO fires on popups (added
         // here below — was previously chat-only in processAndRespond).
@@ -1578,7 +1578,7 @@ export class LanguageCortex {
     // slot scorer: iterate dictionary entries, cosine-score
     // against the cortex semantic target, softmax-sample top-K.
     // Just enough to give Unity a voice from cold boot.
-    //
+
     // T14.26 — the dictionary loop is the chat-freeze culprit: at
     // 3700+ entries × 300d cosine each call it burns ~100-300ms
     // synchronous on the Node event loop, blocking the server's
@@ -1611,7 +1611,7 @@ export class LanguageCortex {
       if (scored && scored.length > 0) {
         // Length driven by arousal — same rough rule the old path used
         let targetLen = Math.max(3, Math.min(8, Math.floor(3 + (arousal || 0.5) * 4)));
-        // iter25-E.1 / E.4 — TRAINED-STATE CAP (was grade-label cap).
+        /// E.4 — TRAINED-STATE CAP (was grade-label cap).
         // Pass the cluster directly so `_gradeWordCap` can read
         // `cluster.getTrainedCapability()` LIVE — wordsBucketed across
         // all subjects, subGradesActive, passedCellCount. Unity speaks
@@ -1684,7 +1684,7 @@ export class LanguageCortex {
    * via T14.16 BrainPersistence.
    */
   _gradeWordCap(gradesOrCluster) {
-    // iter25-E.1 / E.4 — TRAINED-STATE CAP, not grade-label cap.
+    /// E.4 — TRAINED-STATE CAP, not grade-label cap.
     // Operator (2026-05-06): "at any point in her training she should
     // be able to use what she has learned to that point without having
     // to wait unitl the full grade completes". Source-of-truth flips
@@ -1692,7 +1692,7 @@ export class LanguageCortex {
     // (cluster.getTrainedCapability) so Unity speaks the moment her
     // first word lands in any wordBucketWords map — not when the
     // gate-battery clears.
-    //
+
     // Backwards-compat: when called with a `grades` object (legacy
     // callers that still pass `cluster.grades` directly), fall through
     // to a minimal label→cap mapping with the same FLOOR=5 semantic
@@ -1899,6 +1899,127 @@ export class LanguageCortex {
     let preEmittedWords = null;
 
     const cluster = opts.cortexCluster;
+
+    // ───  — WH-DEFINITION FAST PATH FOR LIVE CHAT ────────
+    // When user asks "what is X" / "what does X mean" / "define X",
+    // route through live dictionary API (cluster.lookupDefinition →
+    // dictionaryapi.dev) for sensory grounding + Hebbian binding;
+    // emission then comes from trained cortex composition (M.1 fix).
+    // Skips the trained-matrix cosine race that produces word-salad on
+    // definitional queries.
+
+    // Equational layer still fires: the API result gets injected as
+    // sem-region embeddings via _emitDefinition's injectSem path so
+    // future Hebbian updates carve definitional co-activation. The
+    // API call itself is sensory I/O, parallel to Pollinations.
+    try {
+      if (cluster && typeof cluster.lookupDefinition === 'function'
+          && cluster._lastUserInputText) {
+        const userText = String(cluster._lastUserInputText).toLowerCase().trim();
+        // broadened WH-frame coverage. Multiple regex
+        // patterns try in order, first match wins. Captures multi-word
+        // subjects when phrased "X" (last alphabetic token after the
+        // WH-frame). Patterns:
+        //   "what is X" / "what's X" / "what is a/an/the X"
+        //   "define X" / "tell me about X"
+        //   "explain X" / "describe X"
+        //   "what does X mean" / "what does the word X mean"
+        //   "the definition of X" / "meaning of X"
+        let subject = null;
+        const patterns = [
+          /^\s*(?:what\s+is(?:\s+a|\s+an|\s+the)?|what'?s(?:\s+a|\s+an|\s+the)?)\s+([a-z][a-z'-]*)/,
+          /^\s*(?:define|describe|explain)\s+(?:a|an|the)?\s*([a-z][a-z'-]*)/,
+          /^\s*tell\s+me\s+(?:about|what)\s+(?:a|an|the|is)?\s*([a-z][a-z'-]*)/,
+          /\bwhat\s+does\s+(?:the\s+word\s+)?["']?([a-z][a-z'-]*)["']?\s+mean/,
+          /\b(?:the\s+)?(?:definition|meaning)\s+of\s+(?:the\s+word\s+)?["']?([a-z][a-z'-]*)/,
+          /\bwhat\s+is\s+meant\s+by\s+["']?([a-z][a-z'-]*)/,
+        ];
+        for (const p of patterns) {
+          const m = userText.match(p);
+          if (m && m[1]) { subject = m[1]; break; }
+        }
+        if (subject) {
+          let def = null;
+          if (typeof cluster.lookupDefinitionSync === 'function') {
+            def = cluster.lookupDefinitionSync(subject);
+          }
+          if (!def) {
+            try { def = await cluster.lookupDefinition(subject, { timeoutMs: 4000 }); }
+            catch { def = null; }
+          }
+          if (def && typeof def === 'string' && def.length > 0) {
+            // Compose-not-regurgitate. The API def is
+            // sensory grounding + learning material, NOT the answer.
+            // Pipeline:
+            //   (a) Inject content def-tokens into sem (sensory)
+            //   (b) Fire Hebbian binding (learning, fire-and-forget)
+            //   (c) Settle ticks so sem→word_motor propagates
+            //   (d) emitWordDirect multi-word loop = composed answer
+            //   (e) Return composition or null (silence) — never verbatim
+
+            // Verbatim emission is mimicry per the equational-brain
+            // architectural rule. Composition comes from trained cortex.
+            const STOP = new Set(['a','an','the','and','or','but','of','to','for','in','on','at','by','with','as','is','are','was','were','be','been','being','it','this','that','these','those','its']);
+            const tokens = def.toLowerCase().match(/[a-z]+/g) || [];
+            const content = [];
+            const seen = new Set();
+            for (const t of tokens) {
+              if (t.length < 3 || STOP.has(t) || t === subject || seen.has(t)) continue;
+              seen.add(t);
+              content.push(t);
+              if (content.length >= 8) break;
+            }
+            // (a) Inject sem
+            try {
+              if (typeof cluster.injectEmbeddingToRegion === 'function'
+                  && sharedEmbeddings && typeof sharedEmbeddings.getEmbedding === 'function') {
+                const subjectEmb = sharedEmbeddings.getEmbedding(subject);
+                if (subjectEmb && subjectEmb.length > 0) {
+                  cluster.injectEmbeddingToRegion('sem', subjectEmb, 0.6);
+                }
+                for (let i = 0; i < content.length; i++) {
+                  const emb = sharedEmbeddings.getEmbedding(content[i]);
+                  if (emb && emb.length > 0) {
+                    const strength = Math.max(0.1, 0.4 - i * 0.04);
+                    cluster.injectEmbeddingToRegion('sem', emb, strength);
+                  }
+                }
+              }
+            } catch { /* injection best-effort */ }
+            // (b) Hebbian binding fire-and-forget (lifetime learning)
+            if (typeof cluster.teachWordDefinition === 'function') {
+              try { cluster.teachWordDefinition(subject); }
+              catch { /* fire-and-forget */ }
+            }
+            // (c) Settle ticks for sem → word_motor propagation
+            if (typeof cluster.step === 'function') {
+              for (let t = 0; t < 5; t++) {
+                try { cluster.step(0.001); } catch { break; }
+              }
+            }
+            // (d) Compose Unity's own answer — multi-word emission loop
+            const composedWords = [];
+            if (typeof cluster.emitWordDirect === 'function') {
+              for (let i = 0; i < 6; i++) {
+                let w = '';
+                try { w = cluster.emitWordDirect({}) || ''; } catch { w = ''; }
+                if (!w) break;
+                const lw = String(w).toLowerCase().trim();
+                if (!lw || composedWords.includes(lw)) break;
+                composedWords.push(lw);
+              }
+            }
+            if (composedWords.length > 0) {
+              return composedWords.join(' ');
+            }
+            // (e) Honest silence on no composition (early-training reality).
+            // Operator: silence > regurgitation.
+            return null;
+          }
+        }
+      }
+    } catch { /* fast path is best-effort — fall through to existing emission */ }
+    // ─── END  fast path ─────────────────────────────────
     if (cluster && typeof cluster.generateSentence === 'function') {
       // If curriculum is done, generate() will use cluster.generateSentence
       // (tick-driven motor emission) which is bounded and fast — no need
@@ -1918,7 +2039,7 @@ export class LanguageCortex {
       // penalties). Live chat on the upscaled cortex now consistently
       // gets GPU-resolved currents per tick instead of the 3s cache-
       // miss fallback.
-      //
+
       // Falls through to the sync path (generate() calls
       // cluster.generateSentence) when GPU proxy isn't ready, when
       // generateSentenceAwait isn't available (older cluster build),
@@ -2377,13 +2498,13 @@ export class LanguageCortex {
     // sentence centroid, recall matching) was doing cosine similarity
     // between cortex neural state and this letter hash — which meant
     // meaning could never propagate from input to output.
-    //
+
     // Now it's a thin wrapper around the shared semantic embedding
     // table. Same Float64Array output shape so 11+ call sites don't
     // need to change. The returned pattern is the word's GloVe 50d
     // embedding (+ any online context refinement from live learning),
     // or the embedding's internal hash-fallback for OOV words.
-    //
+
     // Float32Array → Float64Array conversion happens here because the
     // embedding store uses Float32Array for RAM efficiency but the
     // slot scorer + cosine math works in Float64.
@@ -2413,12 +2534,12 @@ export class LanguageCortex {
     // at boot (T13.1), not per-slot priors here. `skipSlotPriors` arg
     // is retained as a no-op for backcompat with the `loadCodingKnowledge`
     // caller until that call site is cleaned up.
-    //
+
     // T14.8 (2026-04-14) — learned-structure observation added. Updates
     // `_typeTransitionLearned` on every consecutive fineType pair AND
     // `_sentenceFormSchemas[intent][t][fineType]` at every slot position.
     // Schema spans the full sentence — no slot cap.
-    //
+
     // T14.12 (2026-04-14) — parseSentence deleted. Intent classification
     // now comes from a lightweight inline fallback — the heuristic
     // mirrors what `cluster.readInput` does for input classification.
@@ -2510,7 +2631,7 @@ export class LanguageCortex {
   // exact same state via T14.13 setCluster identity-bind. Deleted here
   // to eliminate the dead organ. Callers go through
   // `cluster.schemaScore` / `cluster.typeTransitionWeight` directly.
-  //
+
   // T14.17 (2026-04-14) — `recordIntentPair` and `responseIntentFor`
   // were DUPLICATES of the cluster-resident versions (T14.13 migrated
   // the state to the cluster, T14.14 migrated the consumer wiring).

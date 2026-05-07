@@ -54,15 +54,15 @@ export class SparseMatrix {
     // T14.21 (2026-04-14) — rewritten to sample in O(nnz) instead of
     // O(rows * cols). The old algorithm walked a nested loop over every
     // matrix cell and ran Math.random() per cell to decide inclusion:
-    //
+
     //   for i in 0..rows:
     //     for j in 0..cols:
     //       if random() < density: include (i, j)
-    //
+
     // At 10K * 10K that's 100M iterations per cluster. At 100K * 100K
     // it's 10B iterations — won't finish in human timescales. Biological
     // scale (1M+ neurons) is completely unreachable via the nested scan.
-    //
+
     // New algorithm: for each row, compute target k = round(cols * density),
     // then sample k unique column indices via rejection (Set-dedup). At
     // sparse densities (d < 0.1) rejection is efficient because the
@@ -77,7 +77,7 @@ export class SparseMatrix {
     // Node into an apparent hang. Direct typed-array fills cut that
     // to the final ~360MB footprint plus a per-row Uint32 scratch for
     // sorting column indices.
-    //
+
     // Per row: sample kPerRow unique column indices into a scratch
     // Uint32Array, in-place radix-ish sort (actually plain Array sort
     // on a sliced typed-array view), then fill values + colIdx
@@ -244,6 +244,270 @@ export class SparseMatrix {
   }
 
   /**
+   *  — Small-world topology (Watts-Strogatz hybrid via 3-tier
+   * locality biased sampling). For each pre-neuron `i`, pick `fanout`
+   * post-targets distributed across:
+   *   - 70% local: uniform from [i ± radiusLocal] excluding self
+   *   - 25% medium: uniform from [i ± radiusMed] excluding the inner ring
+   *   -  5% long-range: uniform from full [0, cols) (Watts-Strogatz rewire)
+   *
+   * Yields clustering coefficient ~0.3 (real cortex range) + mean path
+   * length ~6-8 (small-world). Random `initRandom` produces clustering
+   * ~0.001 + path length ~log(N) (no basin formation, pure smearing).
+   * Pure `initTopographic` produces high clustering but path length
+   * ~N/(2·fanout) (basins isolated, no global integration).
+   *
+   * Functional approximation per operator binding "WE DONT WANT JUST
+   * RANDOM FIRING" — locality-biased sampling produces directed voltage
+   * propagation along functional pathways instead of random-walk smearing.
+   *
+   * Uses index-position as the spatial dimension — neurons are arrayed
+   * along a 1D line and "distance" = |i - j|. No physical 3D substrate
+   * needed; the 1D ring captures small-world topology adequately.
+   *
+   * @param {number} fanout — total post-targets per pre-neuron
+   * @param {number} excitatoryRatio — fraction of edges with positive weights
+   * @param {number} strength — weight magnitude scale
+   * @param {object} [opts]
+   * @param {number} [opts.radiusLocal=50] — half-window for local 70%
+   * @param {number} [opts.radiusMed=200] — half-window for medium 25%
+   * @param {number} [opts.localFrac=0.70]
+   * @param {number} [opts.medFrac=0.25]
+   * @param {number} [opts.longFrac=0.05]
+   */
+  initSmallWorld(fanout, excitatoryRatio = 0.8, strength = 0.3, opts = {}) {
+    const { rows, cols } = this;
+    const noSelfConnect = (rows === cols);
+    const effFanout = Math.min(Math.max(0, fanout | 0), cols - (noSelfConnect ? 1 : 0));
+    if (effFanout <= 0) {
+      this.values = new Float64Array(0);
+      this.colIdx = new Uint32Array(0);
+      this.rowPtr = new Uint32Array(rows + 1);
+      this.nnz = 0;
+      return;
+    }
+    const radiusLocal = Math.min(opts.radiusLocal ?? 50, Math.floor(cols / 4));
+    const radiusMed = Math.min(opts.radiusMed ?? 200, Math.floor(cols / 2));
+    const localFrac = opts.localFrac ?? 0.70;
+    const medFrac = opts.medFrac ?? 0.25;
+    // longFrac = 1 - localFrac - medFrac (5% Watts-Strogatz rewire)
+    const localCount = Math.max(1, Math.round(effFanout * localFrac));
+    const medCount = Math.max(0, Math.round(effFanout * medFrac));
+    const longCount = Math.max(0, effFanout - localCount - medCount);
+
+    const totalPre = rows * effFanout;
+    this.values = new Float64Array(totalPre);
+    this.colIdx = new Uint32Array(totalPre);
+    this.rowPtr = new Uint32Array(rows + 1);
+    this.nnz = totalPre;
+
+    // Reusable per-row buffers — picks are unique-deduped via Set.
+    const picks = new Set();
+    const rowBufCol = new Uint32Array(effFanout);
+    const rowBufVal = new Float64Array(effFanout);
+
+    let idx = 0;
+    this.rowPtr[0] = 0;
+    for (let i = 0; i < rows; i++) {
+      picks.clear();
+      let filled = 0;
+
+      // Tier 1: local — sample localCount from [i-radiusLocal, i+radiusLocal]
+      let attempts = 0;
+      const maxAttempts = effFanout * 6;
+      while (filled < localCount && attempts < maxAttempts) {
+        const offset = Math.floor((Math.random() * 2 - 1) * radiusLocal);
+        let col = i + offset;
+        if (col < 0) col += cols;
+        else if (col >= cols) col -= cols;
+        if (col === i && noSelfConnect) { attempts++; continue; }
+        if (picks.has(col)) { attempts++; continue; }
+        picks.add(col);
+        rowBufCol[filled] = col;
+        const sign = Math.random() < excitatoryRatio ? 1 : -1;
+        rowBufVal[filled] = sign * (0.1 + Math.random() * 0.4) * strength;
+        filled++;
+        attempts++;
+      }
+
+      // Tier 2: medium — sample medCount from [i-radiusMed, i+radiusMed]
+      attempts = 0;
+      while (filled < localCount + medCount && attempts < maxAttempts) {
+        const offset = Math.floor((Math.random() * 2 - 1) * radiusMed);
+        let col = i + offset;
+        if (col < 0) col += cols;
+        else if (col >= cols) col -= cols;
+        if (col === i && noSelfConnect) { attempts++; continue; }
+        if (picks.has(col)) { attempts++; continue; }
+        picks.add(col);
+        rowBufCol[filled] = col;
+        const sign = Math.random() < excitatoryRatio ? 1 : -1;
+        rowBufVal[filled] = sign * (0.1 + Math.random() * 0.4) * strength;
+        filled++;
+        attempts++;
+      }
+
+      // Tier 3: long-range — uniform from full [0, cols) (Watts-Strogatz)
+      attempts = 0;
+      while (filled < effFanout && attempts < maxAttempts) {
+        const col = Math.floor(Math.random() * cols);
+        if (col === i && noSelfConnect) { attempts++; continue; }
+        if (picks.has(col)) { attempts++; continue; }
+        picks.add(col);
+        rowBufCol[filled] = col;
+        const sign = Math.random() < excitatoryRatio ? 1 : -1;
+        rowBufVal[filled] = sign * (0.1 + Math.random() * 0.4) * strength;
+        filled++;
+        attempts++;
+      }
+
+      // Sort row's col indices ascending per CSR contract.
+      for (let a = 1; a < filled; a++) {
+        const keyCol = rowBufCol[a];
+        const keyVal = rowBufVal[a];
+        let b = a - 1;
+        while (b >= 0 && rowBufCol[b] > keyCol) {
+          rowBufCol[b + 1] = rowBufCol[b];
+          rowBufVal[b + 1] = rowBufVal[b];
+          b--;
+        }
+        rowBufCol[b + 1] = keyCol;
+        rowBufVal[b + 1] = keyVal;
+      }
+
+      // Copy row to CSR storage.
+      for (let k = 0; k < filled; k++) {
+        this.colIdx[idx + k] = rowBufCol[k];
+        this.values[idx + k] = rowBufVal[k];
+      }
+      idx += filled;
+      this.rowPtr[i + 1] = idx;
+    }
+    this.nnz = idx;
+  }
+
+  /**
+   *  — Topographic cross-projection construction. For each
+   * dest (row), sample col targets centered on the topographically-
+   * mapped source position `i × cols / rows`. 70% of fanout from
+   * within ±radiusTopo of center, 30% random spread (Watts-Strogatz
+   * scattering for cross-region long-range routes).
+   *
+   * Preserves spatial-feature continuity across regions — letter
+   * region's 'a' bucket (low neuron index) maps to motor 'a' bucket
+   * (low motor neuron index), 'z' bucket maps to motor 'z' bucket
+   * automatically. Hebbian doesn't have to discover the alignment
+   * from scratch; it just refines the topographic prior.
+   *
+   * Use when source and dest regions have ordered/aligned feature
+   * spaces (sem ↔ motor, letter ↔ motor, letter ↔ phon, etc).
+   * For unaligned spaces (sem ↔ fineType where fineType is one-hot
+   * tags), keep `initRandom`.
+   *
+   * @param {number} density — connection density
+   * @param {number} excitatoryRatio — fraction with positive weights
+   * @param {number} strength — weight magnitude scale
+   * @param {object} [opts]
+   * @param {number} [opts.radiusTopo=30] — topographic radius
+   * @param {number} [opts.localFrac=0.70] — fraction from topographic center
+   */
+  initTopographicProjection(density, excitatoryRatio = 0.7, strength = 0.2, opts = {}) {
+    const { rows, cols } = this;
+    const fanout = Math.min(Math.max(1, Math.round(density * cols)), cols);
+    const radiusTopo = opts.radiusTopo ?? 30;
+    const localFrac = opts.localFrac ?? 0.70;
+    const localCount = Math.max(1, Math.round(fanout * localFrac));
+    // Layer-constrained cross-projection endpoints.
+    // opts.srcLayerMask = Uint8Array[cols] flagging valid pre-neurons
+    // (e.g. L2/3 of source region). opts.dstLayerMask = Uint8Array[rows]
+    // flagging valid post-neurons (e.g. L4 of dest region). When set,
+    // skip rows/cols not in masks. Preserves Felleman & Van Essen 1991
+    // hierarchical connectivity at construction.
+    const srcLayerMask = opts.srcLayerMask || null;
+    const dstLayerMask = opts.dstLayerMask || null;
+
+    const totalPre = rows * fanout;
+    this.values = new Float64Array(totalPre);
+    this.colIdx = new Uint32Array(totalPre);
+    this.rowPtr = new Uint32Array(rows + 1);
+    this.nnz = totalPre;
+
+    const picks = new Set();
+    const rowBufCol = new Uint32Array(fanout);
+    const rowBufVal = new Float64Array(fanout);
+
+    let idx = 0;
+    this.rowPtr[0] = 0;
+    for (let i = 0; i < rows; i++) {
+      // skip dest rows not in the dest layer mask.
+      // Empty rows produce no connections (rowPtr[i+1] = rowPtr[i]).
+      if (dstLayerMask && !dstLayerMask[i]) {
+        this.rowPtr[i + 1] = idx;
+        continue;
+      }
+      picks.clear();
+      let filled = 0;
+      // Topographic center: where in cols this dest row maps to.
+      const center = Math.floor(i * cols / Math.max(1, rows));
+
+      // Tier 1: localCount targets within ±radiusTopo of center
+      let attempts = 0;
+      const maxAttempts = fanout * 6;
+      while (filled < localCount && attempts < maxAttempts) {
+        const offset = Math.floor((Math.random() * 2 - 1) * radiusTopo);
+        let col = center + offset;
+        if (col < 0) col += cols;
+        else if (col >= cols) col -= cols;
+        if (picks.has(col)) { attempts++; continue; }
+        // skip cols not in the src layer mask.
+        if (srcLayerMask && !srcLayerMask[col]) { attempts++; continue; }
+        picks.add(col);
+        rowBufCol[filled] = col;
+        const sign = Math.random() < excitatoryRatio ? 1 : -1;
+        rowBufVal[filled] = sign * (0.1 + Math.random() * 0.4) * strength;
+        filled++;
+        attempts++;
+      }
+
+      // Tier 2: random spread (30% Watts-Strogatz scattering)
+      attempts = 0;
+      while (filled < fanout && attempts < maxAttempts) {
+        const col = Math.floor(Math.random() * cols);
+        if (picks.has(col)) { attempts++; continue; }
+        if (srcLayerMask && !srcLayerMask[col]) { attempts++; continue; }
+        picks.add(col);
+        rowBufCol[filled] = col;
+        const sign = Math.random() < excitatoryRatio ? 1 : -1;
+        rowBufVal[filled] = sign * (0.1 + Math.random() * 0.4) * strength;
+        filled++;
+        attempts++;
+      }
+
+      // Sort row's cols ascending per CSR contract
+      for (let a = 1; a < filled; a++) {
+        const keyCol = rowBufCol[a];
+        const keyVal = rowBufVal[a];
+        let b = a - 1;
+        while (b >= 0 && rowBufCol[b] > keyCol) {
+          rowBufCol[b + 1] = rowBufCol[b];
+          rowBufVal[b + 1] = rowBufVal[b];
+          b--;
+        }
+        rowBufCol[b + 1] = keyCol;
+        rowBufVal[b + 1] = keyVal;
+      }
+
+      for (let k = 0; k < filled; k++) {
+        this.colIdx[idx + k] = rowBufCol[k];
+        this.values[idx + k] = rowBufVal[k];
+      }
+      idx += filled;
+      this.rowPtr[i + 1] = idx;
+    }
+    this.nnz = idx;
+  }
+
+  /**
    * Build from an existing dense matrix (for migration).
    * @param {Float64Array} W — dense row-major matrix (rows × cols)
    * @param {number} threshold — minimum |weight| to keep
@@ -392,20 +656,51 @@ export class SparseMatrix {
    * Same null-CSR safety + row-iteration shape as `hebbianUpdate`. Drop-in
    * replacement for the per-projection Hebbian call in the teach paths.
    */
-  ojaUpdate(preSpikes, postSpikes, lr) {
+  ojaUpdate(preSpikes, postSpikes, lr, opts) {
     const { rows, values, colIdx, rowPtr, wMin, wMax } = this;
     if (!values || !rowPtr || !colIdx) return;
+
+    // Per-update hub neurons / theta-gamma oscillations / per-layer plasticity wiring via opts.kScales.
+    // Caller passes cluster-wide layerId / hubMask + region start offsets
+    // so the per-row / per-col lookup gets the correct absolute cluster
+    // index. When opts undefined or missing fields, falls back to plain
+    // Oja (backward-compatible — old callers see no behavior change).
+    const kScales = opts && opts.kScales;
+    const layerScales = kScales && kScales.layerScales;        // [0.3,1.0,0.7,1.0,0.3]
+    const dstLayerId = kScales && kScales.dstLayerId;          // Uint8Array (cluster-wide)
+    const srcLayerId = kScales && kScales.srcLayerId;          // Uint8Array (cluster-wide)
+    const srcHubMask = kScales && kScales.srcHubMask;          // Uint8Array (cluster-wide)
+    const dstStart = kScales && typeof kScales.dstStart === 'number' ? kScales.dstStart : 0;
+    const srcStart = kScales && typeof kScales.srcStart === 'number' ? kScales.srcStart : 0;
+    const hubMult = kScales && typeof kScales.hubMult === 'number' ? kScales.hubMult : 1.0;
+    const gammaScale = kScales && typeof kScales.gammaScale === 'number' ? kScales.gammaScale : 1.0;
+    const haveLayer = !!(layerScales && dstLayerId);
+    const haveHub = !!srcHubMask;
 
     for (let i = 0; i < rows; i++) {
       const y = postSpikes[i];
       if (!y) continue;
+      // per-layer plasticity per-row layer plasticity scale (post-neuron's absolute layer)
+      let lrPostScale = 1.0;
+      if (haveLayer) {
+        const lyr = dstLayerId[dstStart + i];
+        const s = layerScales[lyr];
+        if (typeof s === 'number') lrPostScale = s;
+      }
+      // theta-gamma oscillations gamma scale (curriculum-controlled snapshot)
+      lrPostScale *= gammaScale;
       const y2 = y * y;
       const start = rowPtr[i];
       const end = rowPtr[i + 1];
       for (let k = start; k < end; k++) {
-        const x = preSpikes[colIdx[k]];
+        const col = colIdx[k];
+        const x = preSpikes[col];
+        // hub neurons per-pre hub multiplier (source-neuron rich-club boost)
+        let lrPreScale = 1.0;
+        if (haveHub && srcHubMask[srcStart + col]) lrPreScale = hubMult;
+        const lrEff = lr * lrPostScale * lrPreScale;
         // Oja: Δw = lr × y × (x - y × w) = lr·y·x - lr·y²·w
-        values[k] += lr * y * x - lr * y2 * values[k];
+        values[k] += lrEff * y * x - lrEff * y2 * values[k];
         if (values[k] > wMax) values[k] = wMax;
         else if (values[k] < wMin) values[k] = wMin;
       }
@@ -509,7 +804,7 @@ export class SparseMatrix {
     //   foreach k: value[k] *= scale; clamp to [wMin, wMax]
     // which flattened post-Hebbian row signatures into uniform
     // ±wMax magnitudes whenever targetNorm > row-max · sqrt(nnz).
-    //
+
     // Clamp-aware variant:
     //   naiveScale = targetNorm / sqrt(sumSq)
     //   maxAllowed = min(wMax / maxAbs, |wMin| / maxAbs)

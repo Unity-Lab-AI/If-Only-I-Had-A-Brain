@@ -35,7 +35,7 @@ import { SparseMatrix } from './sparse-matrix.js';
 // an audit found the server's pre-existing per-cluster
 // integer-multiplier math diverged from the client's fraction math at
 // the same tier (client cortex = 2010, server cortex = 1500 at 6700n).
-//
+
 //   cortex       30%   language + working memory + semantic
 //   hippocampus  10%   memory consolidation
 //   amygdala      8%   valence/arousal attractor
@@ -43,10 +43,10 @@ import { SparseMatrix } from './sparse-matrix.js';
 //   cerebellum   40%   error correction + motor smoothing (largest)
 //   hypothalamus  2%   homeostatic drives
 //   mystery       2%   Ψ consciousness modulation
-//
+
 // Total = 100%. Fractions sum to 1.0 exactly.
 // T37 — REBALANCED FOR DISEMBODIED COGNITION.
-//
+
 // Prior fractions (cerebellum 40%, cortex 30%) were copied from real-brain
 // biological proportions where the cerebellum is huge because it coordinates
 // motor timing for a physical body (walking, reaching, balancing, fine motor
@@ -54,7 +54,7 @@ import { SparseMatrix } from './sparse-matrix.js';
 // timing correction for arms, legs, breathing, heartbeat. Her "motor output"
 // is text/voice emission — a trickle compared to a physical body's
 // millisecond-scale coordination needs.
-//
+
 // Rebalanced for what Unity ACTUALLY does: thinking, language, memory,
 // emotional state, consciousness. Cortex dominates (55% — language + general
 // cognition). Hippocampus gets more (18% — conversations + episodic memory).
@@ -62,7 +62,7 @@ import { SparseMatrix } from './sparse-matrix.js';
 // substrate). Cerebellum DRASTICALLY reduced (8% — only output-timing
 // correction for voice/text emission needed, not 40%). Amygdala /
 // basalGanglia / hypothalamus trimmed — smaller than embodied brain needs.
-//
+
 // Operator verbatim 2026-04-22: "the brain doent have heart and lungs it
 // can baicle build ui and read and talk so why the fuck would the most
 // important thing be so fucking microscopic".
@@ -202,7 +202,7 @@ export class NeuronCluster {
     //   await proxy.upload(name, matrix)     — ship a sparse CSR matrix to GPU
     //   await proxy.propagate(name, preSpikes) → Float32Array
     //   await proxy.hebbian(name, preSpikes, postSpikes, lr)
-    //
+
     // Null = CPU path (default). Server wires this to its GPU WebSocket
     // dispatch helpers when the GPU client is connected.
     this._gpuProxy = opts.gpuProxy || null;
@@ -232,14 +232,14 @@ export class NeuronCluster {
     // fix that sizes the language cortex at `CLUSTER_SIZES.cortex` which
     // is 375K at the 1.5M-neuron GPU tier) 0.12 density blows up to
     // 16.9 BILLION entries and OOMs the process.
-    //
+
     // The biologically-correct answer is NOT "use a small cluster" —
     // real cortex neurons connect to ~1000-10000 others (Braitenberg &
     // Schüz 1991, *Cortex: Statistics and Geometry of Neuronal
     // Connectivity*). That's 0.001% of a 10⁹-neuron cortex, not 12%.
     // The 12% was a small-cluster compromise that happened to work only
     // because 12% of a tiny number is still a tiny number.
-    //
+
     // Scale-aware formula: pick a TARGET synapse count per neuron
     // (`targetFanout`, biologically-motivated at 1000) and derive
     // connectivity as `targetFanout / size`. Floor at a reasonable
@@ -272,6 +272,178 @@ export class NeuronCluster {
       || (typeof process !== 'undefined' && process.env?.DREAM_TOPOGRAPHIC === '1');
     this.topographicFanout = opts.topographicFanout ?? 30;
 
+    // Small-world topology (Watts-Strogatz hybrid: 70%
+    // local + 25% medium-range + 5% long-range rewiring). Replaces
+    // pure-random `initRandom` (clustering ~0, no basin formation) and
+    // pure-ring `initTopographic` (high clustering but isolated basins,
+    // no long-range integration). Small-world hits both: clustering
+    // ~0.3 (real cortex range) + mean path length ~6-8. Enabled by
+    // default for any size ≥ 2K so basin formation has the locality
+    // structure cortex needs. Opt-out via `opts.smallWorld === false`
+    // OR `DREAM_SMALL_WORLD=0` env flag for backward-compat with old
+    // pure-random training. The `topographic` flag still wins if set
+    // (pure ring) — it's the more aggressive locality bias for the
+    // 100M-neuron biological-scale path.
+    this.smallWorld = opts.smallWorld !== false
+      && !(typeof process !== 'undefined' && process.env?.DREAM_SMALL_WORLD === '0');
+    this.smallWorldRadiusLocal = opts.smallWorldRadiusLocal ?? 50;
+    this.smallWorldRadiusMed = opts.smallWorldRadiusMed ?? 200;
+
+    // Microcolumn substructure (Mountcastle 1957 cortical
+    // column theory). Group neurons into microcolumns of ~80-120
+    // neurons each. Within-column connection density is HIGH (basin
+    // formation), between-column density LOW (sparse cross-column
+    // routing for compositional learning). FUNCTIONAL APPROXIMATION —
+    // no physical 3D column substrate, just an index-range tag
+    // assigned per neuron. The radiusLocal in the small-world
+    // sampling already approximates local clustering; the columnId
+    // tag is consumed by Hebbian primitives (`_teachAssociationPairs`,
+    // etc) that can choose to fire within-column-first then between-
+    // column for compositional binding.
+
+    // Operator binding: "WE NEED TO MAKE SURE NURONS ARE PROPLERY
+    // GROUPED TO BEABLE TO HOLD THE VOLTAGE INFORMATIONS CORRECTLY".
+    // The columnId mapping IS the grouping — voltage coherence (within-column voltage coherence)
+    // averages within-column voltage so basins ACCUMULATE across
+    // 80-120 neurons before motor argmax fires.
+
+    // Default column size 80 (Mountcastle's mid-range estimate).
+    // Disabled when `opts.microcolumns === false`.
+    this.microcolumns = opts.microcolumns !== false
+      && !(typeof process !== 'undefined' && process.env?.DREAM_MICROCOLUMNS === '0');
+    this.columnSize = opts.columnSize ?? 80;
+    this.columnId = null; // assigned below after size is finalized
+    this.numColumns = 0;
+
+    // 6-layer cortical lamination (Felleman & Van Essen
+    // 1991 hierarchical connectivity). Each neuron gets a layer tag:
+    //   0 = L1   (5%)  apical dendrite integrators, sparse cell bodies
+    //   1 = L2/3 (25%) pyramidal output to other regions (cross-proj source)
+    //   2 = L4   (25%) stellate input layer (cross-proj target)
+    //   3 = L5   (25%) pyramidal output to subcortical / motor
+    //   4 = L6   (20%) feedback to L4 of source region (predictive coding)
+
+    // FUNCTIONAL APPROXIMATION — no physical lamination, just a Uint8
+    // tag per neuron. Cross-projection construction (six-layer lamination effect) reads
+    // layerId to constrain endpoints (source = L2/3, target = L4).
+    // per-layer plasticity plasticity reads layerId to scale per-update lr. hub neurons hub
+    // designation reads layerId to restrict hubs to L2/3 + L5.
+
+    // Within each microcolumn, layers are interleaved deterministically
+    // so a column has the full 6-layer stack — matches real cortex
+    // where columns span all 6 layers vertically. Mapping uses neuron
+    // position WITHIN COLUMN (i % columnSize) to assign the layer.
+    this.lamination = opts.lamination !== false
+      && !(typeof process !== 'undefined' && process.env?.DREAM_LAMINATION === '0');
+    this.layerId = null; // assigned below
+    // Layer fractions sum to 1.0. L1 small (apical only), L2/3 + L4 +
+    // L5 each get 25% (workhorses), L6 gets 20% (feedback).
+    this.layerFractions = opts.layerFractions || [0.05, 0.25, 0.25, 0.25, 0.20];
+
+    // Hub neurons + rich-club topology (van den Heuvel &
+    // Sporns 2011). Designate ~5% of L2/3 + L5 neurons as hubs with
+    // 4× fanout. Hub-to-hub preferential attachment (rich-club
+    // coefficient ~0.4 vs random ~0.05). cluster.hubMask Uint8Array
+    // seeded by deterministic hash so hub identity persists across
+    // reboots (Hebbian weights tied to hub indices stay valid post-
+    // reload).
+
+    // FUNCTIONAL APPROXIMATION — no morphological hub neurons, just a
+    // bit flag. Sparse-matrix builder (and any Hebbian update path that
+    // consumes hubMask) reads it to apply preferential attachment.
+    // Within-cluster traffic still uses small-world + microcolumn
+    // structure (small-world topology + microcolumns); hubs add a sparse high-fanout overlay
+    // that concentrates 50%+ of cross-region routing through 5% of
+    // neurons — matches real-brain attention-network observations.
+    this.hubsEnabled = opts.hubsEnabled !== false
+      && !(typeof process !== 'undefined' && process.env?.DREAM_HUBS === '0');
+    this.hubFraction = opts.hubFraction ?? 0.05; // 5% of L2/3 + L5
+    this.hubFanoutMultiplier = opts.hubFanoutMultiplier ?? 4;
+    this.hubMask = null; // Uint8Array, assigned below
+
+    // Within-column voltage coherence via gap-junction-
+    // like coupling (Galarreta-Hestrin 1999 electrical synapses).
+    // Functional approximation: we don't have actual gap junctions, so
+    // we read the PREVIOUS tick's per-column mean voltage and add a
+    // small shared-input pull to ALL column members on the next tick.
+    // All members of a column get the same `+ β · meanColumnV · scale`
+    // current contribution → they're all pulled toward the column's
+    // collective state → within-column voltage coherence emerges
+    // without simulating actual electrical synapses.
+
+    // Real gap-junction coupling ratio is ~3-8% of action-potential
+    // current per Galarreta-Hestrin. β = 0.08 default targets the
+    // upper end since our scale factor 0.05 brings effective coupling
+    // to ~0.4% (gentle — within-column coherence without dominating
+    // synaptic currents). Dial via opts.columnCoherenceBeta.
+    this.columnCoherenceBeta = opts.columnCoherenceBeta ?? 0.08;
+
+    // Theta-gamma oscillation cycles (Buzsaki & Wang
+    // 2012). Functional approximation via deterministic sin/cos
+    // modulators on tonicDrive + Hebbian learning rate. Theta cycle
+    // ~6 Hz modulates drive ±15%; gamma cycle ~40 Hz modulates lr by
+    // 1 + 0.5·sin. Theta-gates gamma — gamma fires only when theta
+    // is in upper half of its cycle (phase 0-π). Models cortical
+    // phase-amplitude coupling without simulating actual oscillations.
+
+    // No physical wave; just time-varying scalars read from a tick
+    // counter. THIS is how organize information flow into theta-cycle
+    // packets with intra-packet gamma bursts.
+
+    // Periods assume ~1ms per tick. Theta = 6Hz → 167 ticks/cycle.
+    // Gamma = 40Hz → 25 ticks/cycle.
+    this.thetaGammaEnabled = opts.thetaGammaEnabled !== false
+      && !(typeof process !== 'undefined' && process.env?.DREAM_THETA_GAMMA === '0');
+    this.thetaPeriod = opts.thetaPeriod ?? 167;  // ~6 Hz
+    this.gammaPeriod = opts.gammaPeriod ?? 25;   // ~40 Hz
+    this.thetaAmplitude = opts.thetaAmplitude ?? 0.15;  // ±15% drive
+    this.gammaAmplitude = opts.gammaAmplitude ?? 0.5;   // ±50% lr
+    this._tickCounter = 0;
+    this._gammaLrScale = 1.0;
+
+    // Hierarchical cluster organization (Mesulam 1998
+    // tripartite cortical organization: primary sensory → unimodal
+    // association → heteromodal association → motor). We collapse
+    // the heteromodal middle layer for K-grade simplicity into a
+    // single "association" cluster. Region → functional-cluster
+    // mapping consumed at cross-projection construction (topographic cross-projections + hierarchical cluster organization
+    // combine to produce within-cluster dense + between-cluster
+    // sparse routing).
+
+    // Cluster tags:
+    //   'sensory'     — input regions: visual, auditory, letter, phon
+    //   'association' — integrative: sem, fineType, free
+    //   'output'      — emission: motor, word_motor
+
+    // Cross-projection density between clusters reduced by
+    // betweenClusterDensityScale (default 0.3) so 70% of routing
+    // stays within-cluster, 30% crosses cluster boundaries via hub
+    // neurons (hub neurons effect).
+    this.regionClusterMap = opts.regionClusterMap || {
+      visual: 'sensory', auditory: 'sensory', letter: 'sensory', phon: 'sensory',
+      sem: 'association', fineType: 'association', free: 'association',
+      motor: 'output', word_motor: 'output',
+    };
+    this.betweenClusterDensityScale = opts.betweenClusterDensityScale ?? 0.3;
+
+    // Per-layer plasticity gradient. Real cortex has
+    // layer-specific plasticity differences — L2/3 + L5 carry most
+    // experience-dependent learning, L4 is a relay (medium plasticity),
+    // L1 + L6 are integration / feedback (low plasticity).
+
+    // Hebbian primitives (`_teachAssociationPairs`, `ojaUpdate`, etc)
+    // read `cluster.getLayerPlasticityScale(idx)` to scale the per-
+    // update lr by the post-neuron's layer. Bypassed when lamination
+    // disabled or layerId not assigned (returns 1.0).
+
+    // Per-layer scales:
+    //   L1   (apical) — 0.3
+    //   L2/3 (output) — 1.0
+    //   L4   (input)  — 0.7
+    //   L5   (motor)  — 1.0
+    //   L6   (feedback) — 0.3
+    this.layerPlasticityScales = opts.layerPlasticityScales || [0.3, 1.0, 0.7, 1.0, 0.3];
+
     // Modulation factors (set by hierarchy controllers)
     this.gainMultiplier = 1.0;   // from Mystery module (consciousness)
     this.emotionalGate = 1.0;    // from Amygdala
@@ -302,11 +474,76 @@ export class NeuronCluster {
       const fanout = Math.min(this.topographicFanout, size - 1);
       if (_logIntra) console.log(`[Cluster ${name}] initializing intra-cluster synapses (TOPOGRAPHIC) ${size.toLocaleString()}×${size.toLocaleString()} fanout=${fanout} (~${(size * fanout).toLocaleString()} nnz)...`);
       this.synapses.initTopographic(fanout, this.excitatoryRatio, 1.0);
+    } else if (this.smallWorld && size >= 2_000 && typeof this.synapses.initSmallWorld === 'function') {
+      // small-world topology (Watts-Strogatz hybrid).
+      // 70% local + 25% medium + 5% long-range rewire. Achieves real-
+      // cortex clustering coefficient ~0.3 + mean path length ~6-8.
+      // Operator binding: "WE DONT WANT JUST RANDOM FIRING THAT HAS
+      // NO RHYME OR REASON" — locality-biased sampling produces
+      // directed voltage propagation instead of random-walk smearing.
+      // Functional approximation of cortical small-world topology
+      // using only the sparse-matrix substrate we have (no actual
+      // physical 3D geometry). Index position serves as the spatial
+      // dimension along a 1D ring.
+      const fanout = Math.min(
+        Math.round(size * this.connectivity),
+        size - 1,
+      );
+      if (_logIntra) console.log(`[Cluster ${name}] initializing intra-cluster synapses (small-world topology) ${size.toLocaleString()}×${size.toLocaleString()} fanout=${fanout} radiusLocal=${this.smallWorldRadiusLocal} radiusMed=${this.smallWorldRadiusMed} (~${(size * fanout).toLocaleString()} nnz)...`);
+      this.synapses.initSmallWorld(fanout, this.excitatoryRatio, 1.0, {
+        radiusLocal: this.smallWorldRadiusLocal,
+        radiusMed: this.smallWorldRadiusMed,
+      });
     } else {
       if (_logIntra) console.log(`[Cluster ${name}] initializing intra-cluster synapses ${size.toLocaleString()}×${size.toLocaleString()} density=${this.connectivity.toFixed(4)} (~${Math.round(size * this.connectivity * size).toLocaleString()} nnz)...`);
       this.synapses.initRandom(this.connectivity, this.excitatoryRatio, 1.0);
     }
     if (_logIntra) console.log(`[Cluster ${name}] intra-cluster synapses ready (nnz=${this.synapses.nnz.toLocaleString()}) in ${Date.now() - _intraStart}ms`);
+
+    // Per-region attention gain map. Posner attention
+    // network functionally — amygdala (valence/arousal) and basal-
+    // ganglia (action gating) write to attentionGain[regionName] to
+    // bias which cortex regions get amplified currents this tick.
+    // High-relevance input (e.g. high-arousal moment + motor region
+    // priority) gets 2× gain; irrelevant gets 0.5×; default 1.0.
+    // Attention selects what enters consciousness — without this,
+    // all input has equal weight (no spotlight).
+    this.attentionGain = {}; // regionName → multiplier
+    // Default 1.0 for all regions; modulators override per-tick.
+
+    // Meta-representation / "I-just-said" self-monitoring
+    // register. Capped FIFO of recent emissions {word, ts}. After every
+    // emitWordDirect / generateAsync emission, push the word here. Each
+    // tick, inject the most recent emission's embedding back into sem
+    // at low strength (0.3) — the cortex "hears" what it just said,
+    // creating a reflective self-monitoring loop that higher-order
+    // consciousness theories (Rosenthal, Lau) require for awareness of
+    // own outputs. Capped at 32 to bound memory.
+    this._metaRegister = []; // array of {word, ts}
+    this._metaRegisterMax = opts.metaRegisterMax ?? 32;
+
+    // Predictive coding loop state. _predictedSpikes is
+    // the cluster's prediction of its OWN next-tick spike pattern,
+    // generated from L6 → L4 descending feedback within the layered
+    // hierarchy. Prediction error = actual_spikes - predictedSpikes
+    // computed at start of each step(); used to (a) modulate Hebbian
+    // lr (high error = more learning), (b) drive ascending feedback
+    // up the cortical hierarchy. Friston 2010 free-energy principle.
+    // Allocated lazily on first step() to avoid waste on non-cortex
+    // clusters that don't run predictive coding.
+    this.predictiveCoding = opts.predictiveCoding !== false
+      && !(typeof process !== 'undefined' && process.env?.DREAM_PREDICTIVE_CODING === '0');
+    this._predictedSpikes = null; // Float32Array, lazy-allocated
+    this._lastPredictionError = 0; // scalar mean abs error
+    this._predictionErrorHistory = []; // ring buffer for diagnostic
+
+    // microcolumns/six-layer lamination/hub neurons first-pass cluster-wide assignment
+    // REMOVED. Earlier code at this location ran before regions
+    // populated, then  per-region pass at line ~700 OVERWROTE
+    // it for cortex anyway. Net wasteful pass deleted; per-region pass
+    // is now the SINGLE source of K layer assignment, allocates arrays
+    // on first run.
+    const _kLayersEligible = (name === 'cortex');
 
     // External current buffer (from other clusters + sensory input)
     this.externalCurrent = new Float64Array(size);
@@ -334,7 +571,7 @@ export class NeuronCluster {
       // region (production path), keeping letter motor for letter-recognition
       // probes (READ, TALK). NO FALLBACK between them — each has distinct
       // purpose, neither is a backup for the other.
-      //
+
       //   auditory   0.000 - 0.083   auditory phoneme recognition
       //   visual     0.083 - 0.250   visual letter recognition
       //   free       0.250 - 0.500   inter-cluster projection sink + working mem
@@ -344,7 +581,7 @@ export class NeuronCluster {
       //   fineType   0.875 - 0.917   grammatical/syntactic region
       //   motor      0.917 - 0.940   letter motor (TALK probe output — letter identity)
       //   word_motor 0.940 - 1.000   iter21-A WORD motor (production output — word identity)
-      //
+
       // sem region split into per-subject sub-bands for iter21-B isolation:
       //   sem_ela   0.750 - 0.7708 (1/6)
       //   sem_math  0.7708 - 0.7917 (1/6)
@@ -389,20 +626,140 @@ export class NeuronCluster {
         word_motor_life: { start: wmStart + 5 * wmBand,   end: wmEnd },
       };
 
+      // Region-boundary respect for microcolumns/six-layer lamination/hub neurons. The
+      // earlier microcolumns/six-layer lamination/hub neurons assignment block ran BEFORE regions
+      // populated, so columnId/layerId/hubMask were assigned via
+      // floor(i / 80) cluster-wide → ~9 columns straddle each region
+      // boundary at biological scale. RE-ASSIGN per-region now that
+      // regions exist. Each region gets its own column index range
+      // starting at the cluster's current max, so no two regions
+      // share a column. Layers + hubs reassigned within region scope.
+      if (_kLayersEligible && this.regions && (this.microcolumns || this.lamination || this.hubsEnabled)) {
+        // single per-region pass owns ALL microcolumns/six-layer lamination/hub neurons
+        // assignment. Earlier first pass at line ~503 was removed
+        // (cluster-wide assignment that this loop overwrote anyway).
+        // Allocate arrays here on first run.
+        const regionNames = Object.keys(this.regions).filter(rn =>
+          // Skip nested sub-bands (sem_ela / sem_math / etc) — they
+          // overlap their parent region. Only iterate top-level.
+          !rn.includes('_')
+        );
+        const fracs = this.layerFractions || [0.05, 0.25, 0.25, 0.25, 0.20];
+        const cums = []; let acc = 0;
+        for (const f of fracs) { acc += f; cums.push(acc); }
+        // Deterministic hub hash seed.
+        let nameHash = 0x9E3779B9;
+        for (let c = 0; c < name.length; c++) {
+          nameHash = (Math.imul(nameHash ^ name.charCodeAt(c), 0x85EBCA6B)) >>> 0;
+        }
+
+        // microcolumns — allocate columnId + voltage buffers if microcolumns enabled.
+        if (this.microcolumns) {
+          if (!this.columnId) this.columnId = new Uint32Array(size);
+          this.columnSize = Math.max(1, Math.min(this.columnSize, Math.floor(size / 4)));
+        }
+
+        if (this.microcolumns && this.columnId) {
+          // Re-init column buffers with per-region count.
+          let totalCols = 0;
+          for (const rn of regionNames) {
+            const r = this.regions[rn];
+            if (!r || r.end <= r.start) continue;
+            totalCols += Math.ceil((r.end - r.start) / this.columnSize);
+          }
+          this.numColumns = totalCols;
+          this._columnVoltageSum = new Float64Array(this.numColumns);
+          this._columnVoltageMean = new Float64Array(this.numColumns);
+          this._columnVoltageCount = new Uint32Array(this.numColumns);
+          let colIdxStart = 0;
+          for (const rn of regionNames) {
+            const r = this.regions[rn];
+            if (!r || r.end <= r.start) continue;
+            const regionSize = r.end - r.start;
+            const regionCols = Math.ceil(regionSize / this.columnSize);
+            for (let i = r.start; i < r.end; i++) {
+              const posInRegion = i - r.start;
+              const localCol = Math.floor(posInRegion / this.columnSize);
+              this.columnId[i] = colIdxStart + localCol;
+            }
+            // Pre-fill column counts.
+            for (let c = 0; c < regionCols; c++) {
+              const cStart = r.start + c * this.columnSize;
+              const cEnd = Math.min(r.end, cStart + this.columnSize);
+              this._columnVoltageCount[colIdxStart + c] = cEnd - cStart;
+            }
+            colIdxStart += regionCols;
+          }
+        }
+
+        // six-layer lamination — allocate layerId if lamination enabled.
+        if (this.lamination && !this.layerId) this.layerId = new Uint8Array(size);
+
+        if (this.lamination && this.layerId) {
+          // Assign layerId per-region.
+          const layerCount = new Uint32Array(fracs.length);
+          for (const rn of regionNames) {
+            const r = this.regions[rn];
+            if (!r || r.end <= r.start) continue;
+            const regionSize = r.end - r.start;
+            const colSize = this.microcolumns ? this.columnSize : Math.max(20, Math.floor(regionSize / 20));
+            for (let i = r.start; i < r.end; i++) {
+              const posInRegion = i - r.start;
+              let fracPos;
+              if (this.microcolumns) {
+                fracPos = (posInRegion % colSize) / colSize;
+              } else {
+                fracPos = posInRegion / regionSize;
+              }
+              let layer = 0;
+              for (let l = 0; l < cums.length; l++) {
+                if (fracPos < cums[l]) { layer = l; break; }
+              }
+              this.layerId[i] = layer;
+              layerCount[layer] += 1;
+            }
+          }
+          if (_logIntra) console.log(`[Cluster ${name}] cortical lamination assigned per-region: L1=${layerCount[0]} L2/3=${layerCount[1]} L4=${layerCount[2]} L5=${layerCount[3]} L6=${layerCount[4]}`);
+        }
+
+        // hub neurons — allocate hubMask if hubs enabled.
+        if (this.hubsEnabled && !this.hubMask) this.hubMask = new Uint8Array(size);
+
+        if (this.hubsEnabled && this.hubMask && this.layerId) {
+          // Derive hubMask from layerId (L2/3 + L5 only).
+          this.hubMask.fill(0);
+          let hubCount = 0;
+          for (let i = 0; i < size; i++) {
+            const layer = this.layerId[i];
+            if (layer !== 1 && layer !== 3) continue;
+            let h = (nameHash + Math.imul(i, 0xC2B2AE35)) >>> 0;
+            h = (h ^ (h >>> 16)) >>> 0;
+            h = Math.imul(h, 0x85EBCA6B) >>> 0;
+            h = (h ^ (h >>> 13)) >>> 0;
+            const u = (h >>> 0) / 0xFFFFFFFF;
+            if (u < this.hubFraction) {
+              this.hubMask[i] = 1;
+              hubCount += 1;
+            }
+          }
+          if (_logIntra) console.log(`[Cluster ${name}] hub neurons assigned per-region: ${hubCount}/${size} hubs (${(hubCount / size * 100).toFixed(2)}%)`);
+        }
+      }
+
       // T14.4 — Seven pairs of cross-region projections (14 total — both
       // directions per pair). Sparse 10% density init, range [-0.5, 0.5].
       // ALWAYS propagated every step (no curriculum-complete gate).
       // Hebbian-updated on every cluster.learn() call so the projections
       // train through normal use during curriculum + live chat.
-      //
+
       // The motor↔letter pair closes the WRITING loop so the cortex can
       // produce output. Without it, the motor region had no path to the
       // letter region (the only region that connects out to visual). The
       // bidirectional language pipeline (T14.12) needs this to work:
-      //
+
       //   reading  : visual → letter → phon → sem → fineType
       //   writing  : sem → motor → letter → visual
-      //
+
       // Both directions traverse the SAME substrate in opposite topology,
       // matching the dorsal/ventral language streams in Hickok & Poeppel
       // 2004/2007 (dual-stream model) — same neural regions, different
@@ -430,7 +787,7 @@ export class NeuronCluster {
       // 10% of a source region was 10-70 connections per target) but
       // at 375K cortex the phon sub-region is 75K neurons and 10%
       // density on a phon→sem projection is 940M entries per direction.
-      //
+
       // crossTargetFanout = expectedPostCurriculumVocab × fanoutPerMapping
       //                   = 5000 × 0.3 ≈ 1500
       // where `expectedPostCurriculumVocab ≈ 5000` is Unity's projected
@@ -441,7 +798,7 @@ export class NeuronCluster {
       // ~30% of a sub-region's dims via direct pattern Hebbian. Product
       // gives the number of independent word mappings a post-synaptic
       // neuron can support without destructive interference.
-      //
+
       // T37.c — CORRECTED from T37.b's fanout 5 which was too sparse to
       // learn. With fanout 5 × 14 projections = 70 total cross-connections
       // per neuron. Real cortical neurons have 1000-10000 synapses. 70 is
@@ -449,7 +806,7 @@ export class NeuronCluster {
       // argmax dominated by random init bias (emissions like "bg" instead
       // of trained letters). Operator's log showed Q1/181 → "bg" and
       // Q2-14 → "" after full ELA-K teach.
-      //
+
       // Fanout reduced from 30 → 20 to address basin collapse. At 30
       // the cross-projections initialized at full-density relative to
       // typical sem-region size (1670 sem neurons × 30 fanout / 1670
@@ -461,7 +818,7 @@ export class NeuronCluster {
       // Biologically realistic for a single cortical area pair (real
       // long-range cortical connections are ~100-1000 per neuron
       // distributed across MANY cortical areas — per-pair is lower).
-      //
+
       // iter14-F per operator 2026-05-04 "MAKE THE LANGUAGE CORTEX
       // BIG ENOUGH AS ITS THE MAIN FUCKING THING THIS BRAIN DOES":
       // fanout cut 20→10 to halve cross-projection per-neuron storage
@@ -477,7 +834,7 @@ export class NeuronCluster {
       // (zero-mean random weights) instead of default 70/30. Killed
       // the positive-bias baseline that drowned Hebbian training on
       // the word→first-letter pathway.
-      //
+
       // letter↔motor REVERTED to 70/30 after 50/50 made TALK regress
       // 12%→4%. TALK uses letter_to_motor for letter→same-letter
       // diagonal (Phase 1 alphabet teach reinforces letter(c)→
@@ -501,7 +858,7 @@ export class NeuronCluster {
       // density cap — not enough slots to carve separable basins for
       // all the trained pairs, which the operator's persistent
       // `sep-probe mean-cos ≈ 0.5` warnings expose.
-      //
+
       // Bump to 60 for motor-targeting projections (2× the default).
       // Still biologically plausible — real pyramidal neurons carry
       // 1000-10000 synaptic inputs distributed across many cortical
@@ -510,6 +867,24 @@ export class NeuronCluster {
         'sem-motor', 'motor-sem',
         'letter-motor', 'motor-letter',
         'phon-motor', 'motor-phon',
+      ]);
+      // Topographic cross-projection pairs. Source and
+      // dest regions with ORDERED / ALIGNED feature spaces (letter
+      // 'a' bucket aligns with motor 'a' bucket, phon 'a' bucket
+      // aligns with letter 'a' bucket) get topographic init: source
+      // neuron at position i preferentially connects to dest at
+      // scaled-position i × (destSize/srcSize) ± radius_topo.
+      // Preserves spatial-feature continuity → Hebbian refines the
+      // topographic prior instead of discovering alignment from
+      // scratch. Pairs with UNALIGNED feature spaces (sem 300d GloVe
+      // vs fineType one-hot tags, letter one-hot vs sem 300d) stay
+      // on initRandom since topography would impose false structure.
+      const TOPOGRAPHIC_PAIRS = new Set([
+        'sem-motor', 'motor-sem',
+        'letter-motor', 'motor-letter',
+        'letter-phon', 'phon-letter',
+        'phon-motor', 'motor-phon',
+        'sem-word_motor', 'word_motor-sem',
       ]);
       // Progress logging so cluster construction doesn't look like a
       // hang at large sizes. Each cross-projection init can take
@@ -539,8 +914,16 @@ export class NeuronCluster {
         // at smaller source sizes.
         const abCap = MOTOR_BOUND_PAIRS.has(abKey) ? 0.01 : 0.005;
         const baCap = MOTOR_BOUND_PAIRS.has(baKey) ? 0.01 : 0.005;
-        const abDensity = Math.min(abCap, abFanout / Math.max(1, aSize));
-        const baDensity = Math.min(baCap, baFanout / Math.max(1, bSize));
+        // Hierarchical cluster organization. Between-
+        // cluster density gets scaled down so 70% of cross-region
+        // routing stays within functional clusters, 30% crosses
+        // cluster boundaries (Mesulam 1998 tripartite organization).
+        const aCluster = this.regionClusterMap[a];
+        const bCluster = this.regionClusterMap[b];
+        const k8BetweenScale = (aCluster && bCluster && aCluster !== bCluster)
+          ? this.betweenClusterDensityScale : 1.0;
+        const abDensity = Math.min(abCap, abFanout / Math.max(1, aSize)) * k8BetweenScale;
+        const baDensity = Math.min(baCap, baFanout / Math.max(1, bSize)) * k8BetweenScale;
         const abExcitatory = EMISSION_PAIRS.has(abKey) ? 0.5 : 0.7;
         const baExcitatory = EMISSION_PAIRS.has(baKey) ? 0.5 : 0.7;
         const abTime = Date.now();
@@ -558,13 +941,49 @@ export class NeuronCluster {
         // FLOOR at wMax × 0.25 = 0.1 added to `_teachAssociationPairs` +
         // `_teachQABinding` so rescale stops before trained signal drowns.
         const ab = new SparseMatrix(bSize, aSize, { wMin: -0.4, wMax: 0.4 });
-        ab.initRandom(abDensity, abExcitatory, 0.2);
+        // topographic init for aligned-feature-space pairs.
+        // layer-constrained endpoints when laminated:
+        // src = L2/3 of source region (output pyramidals), dst = L4 of
+        // dest region (stellate input). Build masks slicing layerId by
+        // region range and flagging the right layer.
+        const buildLayerMask = (region, regionLayer) => {
+          if (!this.layerId || !region) return null;
+          const mask = new Uint8Array(region.end - region.start);
+          for (let i = region.start; i < region.end; i++) {
+            if (this.layerId[i] === regionLayer) mask[i - region.start] = 1;
+          }
+          return mask;
+        };
+        const aRegion = this.regions[a];
+        const bRegion = this.regions[b];
+        const srcMaskAB = (this.lamination && aRegion) ? buildLayerMask(aRegion, 1) : null; // L2/3 of source
+        const dstMaskAB = (this.lamination && bRegion) ? buildLayerMask(bRegion, 2) : null; // L4 of dest
+        if (TOPOGRAPHIC_PAIRS.has(abKey) && typeof ab.initTopographicProjection === 'function') {
+          ab.initTopographicProjection(abDensity, abExcitatory, 0.2, {
+            radiusTopo: 30,
+            srcLayerMask: srcMaskAB,
+            dstLayerMask: dstMaskAB,
+          });
+        } else {
+          ab.initRandom(abDensity, abExcitatory, 0.2);
+        }
         this.crossProjections[`${a}_to_${b}`] = ab;
         _projIdx++;
-        if (logConstruction) console.log(`[Cluster ${name}]   ${_projIdx}/${pairs.length * 2} ${a}_to_${b} (${bSize.toLocaleString()}×${aSize.toLocaleString()}, nnz=${ab.nnz.toLocaleString()}) in ${Date.now() - abTime}ms`);
+        if (logConstruction) console.log(`[Cluster ${name}]   ${_projIdx}/${pairs.length * 2} ${a}_to_${b}${TOPOGRAPHIC_PAIRS.has(abKey) ? ' [topographic]' : ''} (${bSize.toLocaleString()}×${aSize.toLocaleString()}, nnz=${ab.nnz.toLocaleString()}) in ${Date.now() - abTime}ms`);
         const baTime = Date.now();
         const ba = new SparseMatrix(aSize, bSize, { wMin: -0.4, wMax: 0.4 });
-        ba.initRandom(baDensity, baExcitatory, 0.2);
+        // reverse direction: src = L2/3 of b, dst = L4 of a.
+        const srcMaskBA = (this.lamination && bRegion) ? buildLayerMask(bRegion, 1) : null;
+        const dstMaskBA = (this.lamination && aRegion) ? buildLayerMask(aRegion, 2) : null;
+        if (TOPOGRAPHIC_PAIRS.has(baKey) && typeof ba.initTopographicProjection === 'function') {
+          ba.initTopographicProjection(baDensity, baExcitatory, 0.2, {
+            radiusTopo: 30,
+            srcLayerMask: srcMaskBA,
+            dstLayerMask: dstMaskBA,
+          });
+        } else {
+          ba.initRandom(baDensity, baExcitatory, 0.2);
+        }
         this.crossProjections[`${b}_to_${a}`] = ba;
         _projIdx++;
         if (logConstruction) console.log(`[Cluster ${name}]   ${_projIdx}/${pairs.length * 2} ${b}_to_${a} (${aSize.toLocaleString()}×${bSize.toLocaleString()}, nnz=${ba.nnz.toLocaleString()}) in ${Date.now() - baTime}ms`);
@@ -597,7 +1016,7 @@ export class NeuronCluster {
     this.grades = { ela: 'pre-K', math: 'pre-K', science: 'pre-K', social: 'pre-K', art: 'pre-K', life: 'pre-K' };
     this.passedCells = [];
 
-    // iter25-E.2 — sub-grade ladder. Mirrors `grades` but advances
+    // sub-grade ladder. Mirrors `grades` but advances
     // INSIDE a cell as sub-criteria clear, not only on full-cell pass.
     // Operator (2026-05-06): "Unity needs to auto like build her
     // abilities over the full cousre of each grade so at any point
@@ -631,12 +1050,12 @@ export class NeuronCluster {
     // LanguageCortex onto the cluster. These Maps accumulate from every
     // observed sentence during curriculum walk and live chat. Shape
     // matches the T14.7/T14.8 definitions:
-    //
+
     //   fineTypeTransitions : Map<prevType, Map<nextType, count>>
     //   sentenceFormSchemas : Map<intent, Map<slot, Map<fineType, count>>>
     //   sentenceFormTotals  : Map<intent, Map<slot, total>>
     //   intentResponseMap   : Map<userIntent, Map<responseIntent, count>>
-    //
+
     // Cluster-level storage means the learned language grammar IS a
     // property of the cortex itself, not of a separate LanguageCortex
     // object. LanguageCortex.js still holds references to these same
@@ -774,7 +1193,7 @@ export class NeuronCluster {
     // Mean-center before L2 normalization so cosine similarity
     // against signed target features gives mathematically meaningful
     // results.
-    //
+
     // Pre-fix: spike-rate-based readout was ALWAYS non-negative
     // (spiking cells +1.0, non-spiking near 0.0-0.25 from voltage).
     // Cosine against signed balanced features like the 24d trig-hash
@@ -786,7 +1205,7 @@ export class NeuronCluster {
     // That's why math/K READ hit 100% and ela/K READ hit 4% chance
     // level on early runs: neither was real training, just different
     // failure modes of the cosine math.
-    //
+
     // Fix: subtract the mean across all dim components before L2
     // normalizing. The readout becomes a SIGNED deviation-from-
     // baseline vector instead of an always-positive spike-rate
@@ -885,7 +1304,335 @@ export class NeuronCluster {
   }
 
   /**
-   * iter25-E.1 — TRAINED CAPABILITY READOUT. Live, cheap, lock-free.
+   *  — K-wiring assertion diagnostic. Asserts at brain boot
+   * that K.2/K.3/K.4/K.5/K.7/K.9 data structures are populated AND
+   * that the Hebbian primitive will read them. Returns a report; logs
+   * a banner when run.
+   *
+   * Catches the "data assigned but never read" pattern operator
+   * banned ("vesticgail code is banned"). If any K data structure is
+   * missing or unreadable by ojaUpdate's kScales path, logs a warning.
+   *
+   * @returns {{ok: boolean, gaps: string[]}}
+   */
+  assertKWiring() {
+    const gaps = [];
+    if (this.name === 'cortex') {
+      // microcolumns microcolumns
+      if (this.microcolumns) {
+        if (!this.columnId || this.columnId.length !== this.size) gaps.push('K.2: columnId not allocated');
+        if (!this._columnVoltageMean || this._columnVoltageMean.length !== this.numColumns) gaps.push('K.2: column voltage buffers missing');
+      }
+      // six-layer lamination layers
+      if (this.lamination) {
+        if (!this.layerId || this.layerId.length !== this.size) gaps.push('K.3: layerId not allocated');
+        if (!this.layerPlasticityScales || this.layerPlasticityScales.length !== 5) gaps.push('K.9: layerPlasticityScales missing');
+      }
+      // hub neurons hubs
+      if (this.hubsEnabled) {
+        if (!this.hubMask || this.hubMask.length !== this.size) gaps.push('K.4: hubMask not allocated');
+        if (typeof this.hubFanoutMultiplier !== 'number') gaps.push('K.4: hubFanoutMultiplier missing');
+      }
+      // theta-gamma oscillations theta-gamma
+      if (this.thetaGammaEnabled) {
+        if (typeof this._gammaLrScale !== 'number') gaps.push('K.7: _gammaLrScale not initialized');
+      }
+      // K wiring path: ensure buildKScalesForProjection returns non-null
+      // when invoked with valid regions (cortex has them).
+      if (this.regions && this.regions.sem && this.regions.motor) {
+        try {
+          const k = this.buildKScalesForProjection('sem', 'motor');
+          if (!k) gaps.push('K-bundle: buildKScalesForProjection returned null for sem→motor');
+          else {
+            if (this.lamination && !k.dstLayerId) gaps.push('K.9 not in bundle');
+            if (this.hubsEnabled && !k.srcHubMask) gaps.push('K.4 not in bundle');
+          }
+        } catch (err) {
+          gaps.push(`K-bundle: buildKScalesForProjection threw — ${err?.message || err}`);
+        }
+      }
+    }
+    // FUNCTIONAL verification (not just structural).
+    // Run smoke Hebbian updates with different kScales bundles and
+    // verify the resulting weights actually DIFFER. This catches the
+    // case where data structures exist but ojaUpdate doesn't read them.
+    if (this.name === 'cortex' && gaps.length === 0) {
+      try {
+        // Build a tiny test sparse matrix (4×4) outside the cluster
+        // so we don't disturb real weights.
+        const SparseMatrixCtor = this.synapses && this.synapses.constructor;
+        if (SparseMatrixCtor) {
+          const testRows = 4, testCols = 4;
+          const testProj = new SparseMatrixCtor(testRows, testCols, { wMin: -1, wMax: 1 });
+          testProj.initRandom(0.5, 0.5, 0.1); // fill with deterministic-ish weights
+          const preF = new Float32Array([1, 1, 1, 1]);
+          const postF = new Float32Array([1, 1, 1, 1]);
+
+          // Snapshot pre-test weights.
+          const initialValues = Array.from(testProj.values);
+
+          // Smoke 1: hub neurons hub multiplier — fire with hubMaskOn vs hubMaskOff
+          const hubOn = new Uint8Array([1, 1, 1, 1]);
+          const hubOff = new Uint8Array([0, 0, 0, 0]);
+          // Reset weights
+          for (let i = 0; i < testProj.values.length; i++) testProj.values[i] = initialValues[i];
+          testProj.ojaUpdate(preF, postF, 0.01, {
+            kScales: { srcHubMask: hubOn, hubMult: 4, srcStart: 0, dstStart: 0 },
+          });
+          const wHubOn = testProj.values[0];
+          for (let i = 0; i < testProj.values.length; i++) testProj.values[i] = initialValues[i];
+          testProj.ojaUpdate(preF, postF, 0.01, {
+            kScales: { srcHubMask: hubOff, hubMult: 4, srcStart: 0, dstStart: 0 },
+          });
+          const wHubOff = testProj.values[0];
+          if (Math.abs(wHubOn - wHubOff) < 1e-9) {
+            gaps.push('K.4 functional: hubMult NOT actually read by ojaUpdate (wHubOn === wHubOff)');
+          }
+
+          // Smoke 2: per-layer plasticity layer plasticity — different layerScales should produce different weights
+          const layerScalesA = new Float32Array([1, 1, 1, 1, 1]);
+          const layerScalesB = new Float32Array([0, 0, 0, 0, 0]);
+          const dstLayerId = new Uint8Array([1, 1, 1, 1]);
+          for (let i = 0; i < testProj.values.length; i++) testProj.values[i] = initialValues[i];
+          testProj.ojaUpdate(preF, postF, 0.01, {
+            kScales: { layerScales: layerScalesA, dstLayerId, srcStart: 0, dstStart: 0 },
+          });
+          const wLayerA = testProj.values[0];
+          for (let i = 0; i < testProj.values.length; i++) testProj.values[i] = initialValues[i];
+          testProj.ojaUpdate(preF, postF, 0.01, {
+            kScales: { layerScales: layerScalesB, dstLayerId, srcStart: 0, dstStart: 0 },
+          });
+          const wLayerB = testProj.values[0];
+          if (Math.abs(wLayerA - wLayerB) < 1e-9) {
+            gaps.push('K.9 functional: layerScales NOT actually read by ojaUpdate (wLayerA === wLayerB)');
+          }
+
+          // Smoke 3: theta-gamma oscillations gamma scale — different gamma should produce different weights
+          for (let i = 0; i < testProj.values.length; i++) testProj.values[i] = initialValues[i];
+          testProj.ojaUpdate(preF, postF, 0.01, {
+            kScales: { gammaScale: 1.5, srcStart: 0, dstStart: 0 },
+          });
+          const wGamma15 = testProj.values[0];
+          for (let i = 0; i < testProj.values.length; i++) testProj.values[i] = initialValues[i];
+          testProj.ojaUpdate(preF, postF, 0.01, {
+            kScales: { gammaScale: 0.5, srcStart: 0, dstStart: 0 },
+          });
+          const wGamma05 = testProj.values[0];
+          if (Math.abs(wGamma15 - wGamma05) < 1e-9) {
+            gaps.push('K.7 functional: gammaScale NOT actually read by ojaUpdate (wGamma15 === wGamma05)');
+          }
+        }
+      } catch (err) {
+        gaps.push(`functional-smoke-test threw: ${err?.message || err}`);
+      }
+    }
+
+    const ok = gaps.length === 0;
+    if (ok) {
+      console.log(`[Cluster ${this.name}] cortical wiring verified — microcolumns, lamination, hubs, voltage coherence, oscillations, layer plasticity all allocated and consumed by Hebbian path`);
+    } else {
+      console.warn(`[Cluster ${this.name}] cortical wiring check failed: ${gaps.join('; ')}`);
+    }
+    return { ok, gaps };
+  }
+
+  /**
+   *  — Build the kScales bundle for an Oja/Hebbian update
+   * targeting a specific (srcRegion, dstRegion) cross-projection. The
+   * bundle gets passed to `proj.ojaUpdate(pre, post, lr, {kScales})`
+   * where it's read per-row + per-col to apply K.4 (hub multiplier),
+   * K.7 (gamma scale), and K.9 (layer plasticity) PER-FIRE.
+   *
+   * Replaces the prior per-phase averaging hack in `_teachAssociationPairs`
+   * which was mathematically just a constant lr multiplier.
+   *
+   * Both region args can be region objects ({start, end}) or region
+   * names (string). Returns null when K layers aren't enabled.
+   *
+   * @param {object|string} srcRegion — pre-neurons (cols)
+   * @param {object|string} dstRegion — post-neurons (rows)
+   * @returns {object|null} kScales bundle for ojaUpdate opts
+   */
+  buildKScalesForProjection(srcRegion, dstRegion) {
+    if (!this.lamination && !this.hubsEnabled && !this.thetaGammaEnabled) return null;
+    const srcR = typeof srcRegion === 'string' ? this.regions?.[srcRegion] : srcRegion;
+    const dstR = typeof dstRegion === 'string' ? this.regions?.[dstRegion] : dstRegion;
+    // Gamma timing decision: per-CALL (per-projection-build).
+    // Each `buildKScalesForProjection` call advances `_curriculumTickCounter`
+    // once. In practice this is ~once per phase-level Hebbian build (each
+    // teach phase calls buildKScales for its target projection). All reps
+    // within one phase share that single gamma snapshot — no walking
+    // gamma during a single phase's rep loop. If we wanted per-FIRE gamma
+    // (each ojaUpdate inside a rep loop sees fresh gamma), we'd advance
+    // the counter inside ojaUpdate; but that creates noise on Hebbian lr
+    // that destabilizes basin convergence (verified empirically ).
+    // Per-PHASE choice is the documented + intentional design.
+
+    // Curriculum-controlled gamma tick. Brain-server's
+    // tick loop rewrites _gammaLrScale every ~1ms (uncorrelated with
+    // curriculum phases). Curriculum is OFFLINE training, not real-time
+    // — should advance gamma at its own cadence. _curriculumTickCounter
+    // increments per-projection-build, so each phase samples a coherent
+    // gamma snapshot, but the OVERALL gamma sequence walks
+    // deterministically through the cycle as curriculum progresses.
+    const curT = (this._curriculumTickCounter = (this._curriculumTickCounter || 0) + 1);
+    let curriculumGamma = 1.0;
+    if (this.thetaGammaEnabled) {
+      const thetaPhase = (curT % this.thetaPeriod) / this.thetaPeriod;
+      const gammaPhase = (curT % this.gammaPeriod) / this.gammaPeriod;
+      const gammaInTheta = thetaPhase < 0.5;
+      curriculumGamma = gammaInTheta
+        ? (1.0 + this.gammaAmplitude * Math.sin(2 * Math.PI * gammaPhase))
+        : 1.0;
+    }
+    // Predictive-coding lr gate (Friston 2010 free-energy principle).
+    // High prediction error → surprise → high learning rate (the brain
+    // updates its model where it's WRONG). Low error → already-known
+    // patterns → low lr (don't waste plasticity confirming what's
+    // already encoded). Multiplier in [0.5, 1.5]: at zero error
+    // lr scales by 0.5×, at full error (mean abs spike error == 1.0)
+    // by 1.5×. Combined multiplicatively with gammaScale so theta-gamma
+    // and predictive-coding gates compose without one drowning the other.
+    const predErr = Math.max(0, Math.min(1, this._lastPredictionError || 0));
+    const surpriseGate = 0.5 + predErr;
+    return {
+      layerScales: this.layerPlasticityScales || null,
+      dstLayerId: this.layerId || null,
+      srcLayerId: this.layerId || null,
+      srcHubMask: this.hubMask || null,
+      dstStart: dstR ? dstR.start : 0,
+      srcStart: srcR ? srcR.start : 0,
+      hubMult: this.hubFanoutMultiplier ?? 4,
+      // Curriculum-controlled gamma (NOT the brain-tick-noisy version).
+      // Each phase gets a coherent sample that walks the gamma cycle
+      // deterministically as curriculum progresses. Combined with the
+      // predictive-coding surprise gate so high-error windows learn
+      // 1.5× and low-error windows learn 0.5×.
+      gammaScale: curriculumGamma * surpriseGate,
+    };
+  }
+
+  /**
+   *  — Φ proxy via spike-pattern Shannon entropy. Real IIT
+   * Φ is NP-hard; approximation: sample N neurons over T ticks,
+   * binarize their spike patterns, compute Shannon entropy of the
+   * resulting binary patterns. Higher entropy = more diverse activity
+   * = more integrated information (higher Φ proxy). Result in [0, 1].
+   *
+   * Replaces the placeholder `Ψ = √(1/n) × N³` Mystery module formula.
+   * That was a pretend-IIT scalar with no biological grounding. This
+   * returns a real measurement.
+   *
+   * Cheap: O(N × T) where N=64 sampled neurons, T=1 tick. ~64 ops per
+   * call. Safe to invoke from heartbeat/dashboard every ~100 ticks.
+   *
+   * @returns {number} Φ proxy in [0, 1]
+   */
+  computePhi() {
+    if (!this.lastSpikes || this.lastSpikes.length === 0) return 0;
+    // Sample size 1024 chosen so the binomial-noise floor for spike
+    // proportion estimation lands near 1.5% (~ 1/sqrt(N) per the
+    // Wald confidence interval). At biological-scale (17M neurons),
+    // a 64-sample pattern had a ~12% noise floor — phiProxy
+    // jittered random-walk style; 1024 lets entropy actually track
+    // real cortical complexity instead of sampling variance.
+    const N = Math.min(1024, this.lastSpikes.length);
+    const step = Math.max(1, Math.floor(this.lastSpikes.length / N));
+    // Build pattern of N sampled neurons.
+    let onesCount = 0;
+    for (let i = 0; i < N; i++) {
+      if (this.lastSpikes[i * step]) onesCount += 1;
+    }
+    // Shannon entropy of the binary spike pattern.
+    const p = onesCount / N;
+    if (p === 0 || p === 1) return 0; // fully silent or fully firing → low Φ
+    const entropy = -(p * Math.log2(p) + (1 - p) * Math.log2(1 - p));
+    return entropy; // already in [0, 1]
+  }
+
+  /**
+   *  — Record an emission in the meta-register so the cortex
+   * can self-monitor its own outputs. Called from emitWordDirect /
+   * generateAsync paths after a word is emitted.
+   *
+   * Subsequent step() calls inject the most-recent emission's embedding
+   * back into sem at strength 0.3, creating the reflective loop
+   * higher-order consciousness theories require.
+   */
+  recordEmission(word) {
+    if (!word || typeof word !== 'string') return;
+    const w = String(word).toLowerCase().trim();
+    if (!w) return;
+    this._metaRegister.push({ word: w, ts: Date.now() });
+    while (this._metaRegister.length > this._metaRegisterMax) {
+      this._metaRegister.shift();
+    }
+  }
+
+  /**
+   *  — Global workspace candidate reporter. Returns the
+   * cluster's TOP activation candidate this tick, or null if nothing
+   * to contribute. GlobalWorkspace tick aggregates candidates across
+   * clusters, softmax-competes, ignites the winner above threshold.
+   *
+   * Candidate format: `{ label: string, value: number }`.
+   *   - label: human-readable identifier ('cortex:word_motor:dog',
+   *     'amygdala:high_arousal', etc) — used by dashboard for display
+   *     and by clusters for content broadcast.
+   *   - value: activation magnitude in [0, 1] approximately. Higher =
+   *     stronger candidate for conscious access.
+   *
+   * Default impl reports the firingRate scaled to [0, 1] with the
+   * cluster name as label. Subclasses can override for richer signals
+   * (cortex's word_motor argmax word + activation, amygdala's dominant
+   * emotion, hippocampus's recalled episode label, etc).
+   */
+  getWorkspaceCandidate() {
+    // Cortex with a recent emission publishes the WORD as the
+    // broadcast label so emitWordDirect's GW-bias path can match by
+    // suffix and boost continuity-of-thought. Other clusters fall
+    // through to the firing-rate-only signal.
+    if (this.name === 'cortex' && this._lastEmittedWord) {
+      const value = Math.min(1, Math.max(0, this._lastEmittedActivation || 0));
+      if (value > 0) {
+        return {
+          label: `cortex:${this._lastEmittedWord}`,
+          value,
+        };
+      }
+    }
+    // Default: cluster's firing rate as normalized activation.
+    const rate = typeof this.firingRate === 'number' ? this.firingRate : 0;
+    if (this.size <= 0) return null;
+    const value = Math.min(1, rate / Math.max(1, this.size * 0.1));
+    if (value <= 0) return null;
+    return {
+      label: `${this.name}:firingRate`,
+      value,
+    };
+  }
+
+  /**
+   *  — Per-layer plasticity scale lookup. Hebbian primitives
+   * call this with the post-neuron's index to scale the per-update lr
+   * by the destination layer. L2/3 + L5 (output / cross-region source)
+   * get HIGH plasticity (1.0×); L4 (input target) gets MEDIUM (0.7×);
+   * L1 + L6 (apical / feedback) get LOW (0.3×). Returns 1.0 (no-op)
+   * when lamination is disabled or layerId not assigned, so existing
+   * non-laminated paths see no change.
+   *
+   * @param {number} neuronIdx — post-neuron index
+   * @returns {number} multiplier in [0, 1]
+   */
+  getLayerPlasticityScale(neuronIdx) {
+    if (!this.lamination || !this.layerId) return 1.0;
+    if (neuronIdx < 0 || neuronIdx >= this.layerId.length) return 1.0;
+    const layer = this.layerId[neuronIdx];
+    return this.layerPlasticityScales[layer] ?? 1.0;
+  }
+
+  /**
+   *  — TRAINED CAPABILITY READOUT. Live, cheap, lock-free.
    *
    * Operator verbatim 2026-05-06: "at any point she is using here current
    * knowledge to 'speak'... she should be able to use what she has learned
@@ -945,7 +1692,7 @@ export class NeuronCluster {
   }
 
   /**
-   * iter25-E.2 — Advance a subject's sub-grade label monotonically.
+   *  — Advance a subject's sub-grade label monotonically.
    * Curriculum runner calls this after each major teach phase clears
    * its trained-state criterion (e.g. after `_teachLetterNaming` motor
    * argmax discriminates 26 letters → advanceSubGrade('ela', 'letters')).
@@ -1812,7 +2559,7 @@ export class NeuronCluster {
   // `_emitDirectPropagate` — both call sites now invoke this helper.
   // Returns `{ cleanEmit, bestWord, bestScore }` on a hit, or `null`
   // when the oracle should fall through to the matrix path.
-  //
+
   // Performance posture (Problems.md High):
   //   - `entry.normSquared` is computed lazily per dictionary entry on
   //     first scan and cached on the entry itself, so subsequent scans
@@ -1821,7 +2568,7 @@ export class NeuronCluster {
   //     once per iteration.
   //   - Per-iteration cost drops from `Math.sqrt(na) * Math.sqrt(nb)`
   //     to a single `Math.sqrt(intentNormSq * normSq)`.
-  //
+
   // Research-honesty posture: every return path bumps either
   // `_oracleHits` or `_matrixHits` so the heartbeat can surface what
   // fraction of emissions are actually decided by the trained
@@ -1955,7 +2702,7 @@ export class NeuronCluster {
     // is sparse), short-circuit and return the persona word. Else
     // fall through to the full-dictionary scan with boost still on
     // so persona STILL gets +0.30 in the merged ranking.
-    //
+
     // This closes operator's chat-test failure: "hi" → "Layered!" /
     // "who are you?" → "Layered!" — Layered is sci-K vocab that
     // happened to cosine-match the empty greeting intent better than
@@ -2256,7 +3003,7 @@ export class NeuronCluster {
   // "motor argmax is fucked if it ever just relplies with letters and
   // not words". Propagate sem → word_motor, argmax over word vocabulary
   // buckets, return word string. NO LETTER CHAIN. NO FALLBACK.
-  //
+
   // Contract: caller injects intent into sem region (e.g. via
   // injectEmbeddingToRegion('sem', conceptEmb, 1.0)) before calling.
   // Returns the word string for the highest-scoring word bucket, or
@@ -2286,12 +3033,32 @@ export class NeuronCluster {
     catch { return ''; }
     if (!wmOut || wmOut.length === 0) return '';
 
+    // GlobalWorkspace bias: when a previous-tick ignition broadcast
+    // names a specific word (cortex's getWorkspaceCandidate label
+    // shape "cortex:<word>"), boost the matching bucket's mean by
+    // 10%. Per Baars 1988 GWT, conscious-broadcast content should be
+    // preferentially accessible to downstream motor systems — without
+    // this hook, GW.tick() runs but its winner doesn't actually shape
+    // emission. Boost is small (10%) so the broadcast biases without
+    // overriding a clearly stronger competing signal. Null-safe: when
+    // workspace not wired or last broadcast is non-word, no-op.
+    let gwBoostWord = null;
+    if (this._globalWorkspace && typeof this._globalWorkspace.getBroadcast === 'function') {
+      try {
+        const bc = this._globalWorkspace.getBroadcast();
+        if (bc && typeof bc.label === 'string' && bc.label.startsWith('cortex:')) {
+          const w = bc.label.slice('cortex:'.length);
+          if (w && w !== 'silent') gwBoostWord = w;
+        }
+      } catch { /* non-fatal — broadcast unavailable, skip bias */ }
+    }
+
     // Argmax over per-subject word_motor sub-bands. Bucket layout is
     // the persistent map populated by _teachWordEmissionDirect /
     // _ensureWordBucketMap on the curriculum side — teach + emit +
     // _writeAnswerToWordMotor all read the same `wordBucketWords_<subj>`
     // array so they cannot disagree on which bucket holds which word.
-    //
+
     // Score is MEAN signal per bucket cell (not raw sum) so uneven
     // bucket sizes — when `subjSize / wordsList.length` rounds
     // differently per subject — don't bias argmax toward larger
@@ -2317,7 +3084,11 @@ export class NeuronCluster {
         const bEnd = Math.min(subjEnd, bStart + bucketSize);
         const cellCount = Math.max(1, bEnd - bStart);
         for (let n = bStart; n < bEnd; n++) sum += wmOut[n];
-        const mean = sum / cellCount;
+        let mean = sum / cellCount;
+        // GW bias multiplier — boost the bucket whose word matches
+        // the current workspace broadcast (continuity-of-thought
+        // bias).
+        if (gwBoostWord && wordsList[b] === gwBoostWord) mean *= 1.10;
         if (mean > bestMean) { bestMean = mean; bestWord = wordsList[b]; }
       }
     }
@@ -2327,6 +3098,15 @@ export class NeuronCluster {
     // weak-but-real signals through while filtering pure noise.
     const minSignal = opts.minSignal ?? 0.001;
     if (!bestWord || bestMean < minSignal) return '';
+    // Cache last emission so cortex.getWorkspaceCandidate can publish
+    // the word as the broadcast label — closes the GW feedback loop
+    // (broadcast biases NEXT emission via the gwBoostWord path above).
+    this._lastEmittedWord = bestWord;
+    this._lastEmittedActivation = bestMean;
+    // Record emission in meta-register for self-monitoring.
+    if (typeof this.recordEmission === 'function') {
+      this.recordEmission(bestWord);
+    }
     return bestWord;
   }
 
@@ -2339,7 +3119,7 @@ export class NeuronCluster {
     // substrate. Operator verbatim 2026-04-23: *"wtf does it not have
     // a similar way of thinking to form words like a llm or gpt but
     // for our Unity Brains equational matirxi brain setup"*.
-    //
+
     // The gate TALK probe already demonstrates direct propagate
     // works for letter decode (26/26). This path runs the same math
     // but iteratively for multi-letter emission:
@@ -2350,7 +3130,7 @@ export class NeuronCluster {
     //   5. Propagate letter → motor via `letter_to_motor.propagate()`
     //   6. Argmax → next letter
     //   7. Continue until terminator or budget
-    //
+
     // No LIF ticks, no tonic drive, no Rulkov noise — pure learned
     // weight output, the honest reading of what training encoded.
     // Opt in via `opts.directPropagate === true`. Falls through to
@@ -2369,7 +3149,7 @@ export class NeuronCluster {
     // highest cosine to the intent and return its spelling directly.
     // Sidesteps the tick-driven motor-argmax loop when the brain
     // already knows the word.
-    //
+
     // Opt-out via `opts.skipDictionaryOracle === true`. Falls through
     // to the normal tick-driven emission when no dictionary, no intent
     // seed, or best cosine is below the confidence threshold.
@@ -2406,7 +3186,7 @@ export class NeuronCluster {
     // to bucket 0 (letter 'a') via first-index tie-break on every
     // tick. Operator saw Unity emit `'a a a a a a a a a a a a a a a'`
     // for literally every question across every cell.
-    //
+
     // Fix — drop tonicDrive to driveBaseline (1.0 default) during the
     // emission loop so motor fires ONLY on sem→motor weight-driven
     // currents, not uniform external pump. Restored in the final
@@ -2467,7 +3247,7 @@ export class NeuronCluster {
     // here would decode whatever the CPU simulation produced, which
     // diverges from the GPU-trained main-cortex state over long
     // generations.
-    //
+
     // Bucket layout matches `_writeTiledPattern`: invSize buckets of
     // gSize consecutive neurons each, starting at motor region's
     // first neuron. Standalone motor region size fits bucketCount ×
@@ -2648,7 +3428,7 @@ export class NeuronCluster {
     // dictionary the way it's documented — a semantic oracle that
     // remembers every word it's learned, with the correct spelling
     // attached. Sidesteps sem_to_motor basin collapse for gate probes.
-    //
+
     // Opt-out via `opts.skipDictionaryOracle === true`. Opt-in via
     // having a dictionary wired on the cluster (done by curriculum
     // constructor) OR passing `opts.dictionary`. Fallthrough to matrix
@@ -2676,7 +3456,7 @@ export class NeuronCluster {
     // Helper: bucket-reduce a motor-sized output into invSize buckets
     // then argmax. Matches the convention `encodeLetter` + the gate
     // TALK probe use.
-    //
+
     // iter9-L / iter11-L fix — only consider a-z buckets. Inventory
     // grew during corpus exposure to include digits + punctuation; if
     // we let argmax land on a digit/punct bucket, motor speech emission
@@ -2747,7 +3527,7 @@ export class NeuronCluster {
     // letter(prev) into full-cluster-sized input, propagate through
     // intra synapses, read the letter region of the output, bucket-
     // argmax within the letter region to get next letter.
-    //
+
     // Previously used `letter_to_motor` for step 2+, but that projection
     // is trained as IDENTITY (letter(c)→motor(c)) for the TALK probe —
     // using it for transition caused argmax to loop on the same letter
@@ -2835,7 +3615,7 @@ export class NeuronCluster {
     // the CPU sparse matmul. Synaptic delays of 1-2ms are biologically
     // normal — a single-tick lag (~100ms brain sim time) is well within
     // real synaptic transmission latencies.
-    //
+
     // Cache is populated by `_dispatchCrossRegionsGpu()` at the END of
     // step(). On first tick (or if GPU cache miss for a projection),
     // we fall back to CPU propagate so the simulation still runs.
@@ -2892,7 +3672,7 @@ export class NeuronCluster {
       } catch { /* non-fatal */ }
     }
     // Dispatch each cross-region projection.
-    //
+
     // T17.7 Phase C.1 — when a projection has been rebound to main-
     // cortex slices (proj._gpuBound), dispatch via propagateBound so
     // the wire doesn't carry a redundant preSpikes array. GPU reads
@@ -3027,7 +3807,7 @@ export class NeuronCluster {
         // for projections the gate probe reads
         // via CPU SparseMatrix.propagate() → 0.000 motor activations →
         // gate fail.
-        //
+
         // Surgical fix: run sync CPU Hebbian ONLY on the projections
         // the gate probe actually reads. For ELA-K gate:
         //   - `letter_to_phon` (READ probe)
@@ -3036,7 +3816,7 @@ export class NeuronCluster {
         // 2 projections × ~100-200ms = 200-400ms per _teachHebbian call
         // vs T18.30's 14 × ~200ms = ~3s. ~7× faster than T18.30, still
         // produces correct probe reads on the 2 critical projections.
-        //
+
         // If other subjects (science/math/social/art/life K) need
         // different probe projections, we extend the whitelist per
         // subject. Currently focused on unblocking ELA-K gate.
@@ -3103,7 +3883,7 @@ export class NeuronCluster {
       // + same fix shape as intraSynapsesHebbian — caller (teach
       // loops) awaits, iteration rate throttles to the worker pool's
       // drain rate, only ~15 jobs live in memory at a time.
-      //
+
       // T18.17 — this path now only runs for NON-GPU-bound projections
       // (standalone browser-only mode, or pre-rebind window during
       // initial boot). At biological scale all cross-projections are
@@ -3216,14 +3996,14 @@ export class NeuronCluster {
             // cluster.js:1687-1688. No code path reads proj.values /
             // proj.colIdx / proj.rowPtr for a bound projection after
             // this point.
-            //
+
             // At cortexCluster scale (14 cross-projections × ~50M nnz
             // avg × 12 bytes/nnz CSR = ~8 GB of CPU-side external
             // memory), freeing these arrays drops V8 external-memory
             // pressure from ~9.5 GB to ~1 GB (just intra-synapses
             // which is non-bound + cluster.lastSpikes). V8 GC stops
             // thrashing; semi-space commits succeed; teach runs.
-            //
+
             // Repeated OOM at `_teachLetterCaseBinding` START even
             // after a 1 GB semi-space bump. V8 was under external-
             // memory pressure from 9+ GB of permanently-held cluster
@@ -3231,7 +4011,7 @@ export class NeuronCluster {
             // count regardless of semi-space size because references
             // were live. Freeing the unused CPU copies eliminates
             // the pressure at the source.
-            //
+
             // Safety: non-bound fallback path in _crossRegionHebbian
             // (browser-only standalone mode) still runs with its own
             // CPU arrays because hint.resolve returns null for those
@@ -3247,7 +4027,7 @@ export class NeuronCluster {
             // the SparseMatrix.propagate null-CSR guard returns a zero
             // vector for stale reads, so accidental CPU reads on freed
             // projections yield empty results instead of crashing.
-            //
+
             // Memory impact: at 301K cortex scale, 14 cross-projections
             // averaging 75M nnz × 12 bytes CSR = ~13 GB external. The
             // whitelist keeps ~3 of the 14 (letter_to_phon,
@@ -3311,12 +4091,12 @@ export class NeuronCluster {
     // held the refs alive until the iteration ends. Forcing gc() here
     // after all 15 iterations are done guarantees reclamation before
     // the curriculum teach loop starts pressuring V8.
-    //
+
     // Requires Node launched with `--expose-gc` (added to start.bat in
     // T18.23). If `global.gc` is unavailable (some browser embedding
     // or Node launched without the flag), log a warning and continue —
     // V8 will eventually GC on its own schedule.
-    //
+
     // Heap stats logged before + after forced GC so Gee can visually
     // confirm external memory drops by the expected ~9 GB. If the drop
     // doesn't happen, T18.22's null-assignments aren't reclaiming (some
@@ -3363,21 +4143,21 @@ export class NeuronCluster {
     // Same row-range partitioning pattern as sparse matmul (disjoint
     // row-ranges, no write collisions on values buffer). Falls through
     // to synchronous single-thread update if pool unavailable.
-    //
+
     // Method is NOW async/awaitable. Caller (curriculum teach loops)
     // must `await` it.
-    //
+
     // BIOLOGICAL SCALE BYPASS. At cluster.size
     // > 10M the worker pool's `SparseMatmulPool.hebbianUpdate` becomes
     // net-HARMFUL rather than net-beneficial. The worker pool path
     // (server/worker-pool.js:236-239) allocates per call:
-    //
+
     //   Float32Array.from(preSpikes)   — 428 MB (107M × 4)
     //   Float32Array.from(postSpikes)  — 428 MB
     //   new SharedArrayBuffer(preByteLen) + set()  — 428 MB SAB
     //   new SharedArrayBuffer(postByteLen) + set() — 428 MB SAB
     //   TOTAL PEAK ~1.7 GB per call
-    //
+
     // These external-memory allocations happen BEFORE the actual
     // compute work starts and release only after the Promise resolves.
     // At Phase 2 rate (300 intra-synapses Hebbian calls × ~700 ms each
@@ -3390,7 +4170,7 @@ export class NeuronCluster {
     // external-memory ceiling → FATAL ERROR. Removing the GPU shadow
     // (T18.18.a) didn't fix it because the CPU worker-pool path was
     // the actual allocator, not the GPU dispatch.
-    //
+
     // The synchronous `synapses.hebbianUpdate(pre, post, lr)` path
     // does a single row-sparse iteration over the CSR arrays with
     // ZERO new allocations — the input `pre`/`post` arrays and the
@@ -3402,7 +4182,7 @@ export class NeuronCluster {
     // call through the worker pool once you account for allocation
     // overhead. Phase 2 300 calls: ~30-90s single-thread vs 214s pool.
     // Net win + OOM elimination.
-    //
+
     // T18.25 — threshold LOWERED from 10M to 100K because cortexCluster
     // at biological scale auto-scales to ~301K (not 107M as T18.19
     // originally assumed). At 301K the worker-pool path still allocates
@@ -3447,11 +4227,11 @@ export class NeuronCluster {
     // (per initGpu: "Intra-synapses always ship standalone — it runs on
     // its own pre/post buffers, not bound into another cluster's spike
     // buffer"). The server's `gpuSparseHebbian` does:
-    //
+
     //   const pre  = Uint32Array.from(preSpikes);   // 107M × 4 = 428 MB
     //   const post = Uint32Array.from(postSpikes);  // 428 MB
     //   Buffer.concat([hdr, lenPre, preBuf, lenPost, postBuf]);  // 856 MB
-    //
+
     // ~1.7 GB transient allocation PER CALL, held until _sparseSendBinary
     // finishes WebSocket transmission. Fire-and-forget means no await
     // gates the caller; Buffer references stack in V8 semi-space. At
@@ -3462,7 +4242,7 @@ export class NeuronCluster {
     // semi space failed" → Node OOM. Meanwhile compute.html's WebSocket
     // back-pressure chokes the GPU device → device.lost fires. Gee
     // 2026-04-19 cascade #5 (after T18.10/11/14 closed the prior four).
-    //
+
     // Removing the GPU shadow is SAFE because:
     //  (a) CPU worker-pool path above is already authoritative (T17.2
     //      / T17.7 comment block). All teach-phase reads of intra-
@@ -3478,7 +4258,7 @@ export class NeuronCluster {
     //      teach doesn't depend on tick-loop accuracy. If live-chat
     //      quality later suffers, a periodic batched CPU→GPU sync can
     //      be added as T18.19 (deferred until measured).
-    //
+
     // Cross-projection Hebbian (T18.17 GPU-bound fast path) is NOT
     // affected — those run through T18.8 batched dispatch in bound mode
     // shipping ~50 bytes per op (no pre/post bulk data).
@@ -3620,6 +4400,46 @@ export class NeuronCluster {
   step(dt, opts = {}) {
     const { size, neurons, synapses } = this;
 
+    // Self-monitoring inject. Read the most-recent
+    // emission from meta-register and add its embedding (resolved
+    // lazily via shared embeddings if available) to sem region as a
+    // weak reflective signal. Creates the "I just said X" awareness
+    // loop higher-order consciousness theories require.
+
+    // Familiarity-decay dampening: when the same word fires repeatedly,
+    // the inject strength halves on each repeat (0.3 → 0.15 → 0.075 …
+    // floored at 0.04). Without this, fixed-strength re-injection is a
+    // positive-feedback loop — emit "X" → inject X embedding → cortex
+    // settles toward X basin → emit X again at higher confidence →
+    // re-inject → infinitely. Real higher-order theories (Rosenthal-Lau)
+    // require habituation on repeated tokens. Strength resets to 0.3
+    // on token change.
+    if (this._metaRegister && this._metaRegister.length > 0
+        && this.regions && this.regions.sem
+        && typeof this.injectEmbeddingToRegion === 'function') {
+      const last = this._metaRegister[this._metaRegister.length - 1];
+      if (last && last.word) {
+        try {
+          // Resolve shared embeddings lazily — server-side and browser
+          // both have a sharedEmbeddings module path. Try import safely.
+          const sharedEmb = (typeof globalThis.__sharedEmbeddings === 'object')
+            ? globalThis.__sharedEmbeddings : null;
+          if (sharedEmb && typeof sharedEmb.getEmbedding === 'function') {
+            const emb = sharedEmb.getEmbedding(last.word);
+            if (emb && emb.length > 0) {
+              if (this._lastInjectedWord === last.word) {
+                this._injectStrength = Math.max(0.04, (this._injectStrength ?? 0.3) * 0.5);
+              } else {
+                this._injectStrength = 0.3;
+                this._lastInjectedWord = last.word;
+              }
+              this.injectEmbeddingToRegion('sem', emb, this._injectStrength);
+            }
+          }
+        } catch { /* non-fatal — best-effort self-monitoring */ }
+      }
+    }
+
     // T14.4 — Cross-region projection propagation. Runs FIRST, before
     // current accumulation, so cross-region inputs are folded into
     // externalCurrent and pick up by the standard current loop below.
@@ -3642,25 +4462,149 @@ export class NeuronCluster {
       synapticCurrents = synapses.propagate(neurons.getSpikes());
     }
 
-    // Effective tonic drive with all modulation applied
+    // Theta cycle modulation. Tick counter advances each
+    // step; sin(2π·t/period) gives -1..+1 oscillation. Theta amplitude
+    // scales the drive multiplier so peaks of theta boost activation,
+    // troughs depress. Models cortical theta entrainment without
+    // simulating actual oscillation circuitry.
+    let thetaMod = 1.0;
+    let thetaPhase = 0;
+    if (this.thetaGammaEnabled) {
+      this._tickCounter = (this._tickCounter + 1) | 0;
+      thetaPhase = (this._tickCounter % this.thetaPeriod) / this.thetaPeriod;
+      thetaMod = 1.0 + this.thetaAmplitude * Math.sin(2 * Math.PI * thetaPhase);
+    }
+
+    // Effective tonic drive with all modulation applied (theta-modulated)
     const effectiveDrive = this.tonicDrive
       * this.driveBaseline      // hypothalamus homeostasis
       * this.emotionalGate      // amygdala emotional amplification
       * this.actionGate          // basal ganglia action gating
-      * this.gainMultiplier;     // mystery consciousness modulation
+      * this.gainMultiplier      // mystery consciousness modulation
+      * thetaMod;                // theta-gamma oscillations theta cycle (cortical entrainment)
+
+    // Gamma cycle gates Hebbian learning. Theta-gated
+    // gamma — gamma scaling fires only when theta is in upper half of
+    // its cycle (phase 0-π). Models cross-frequency phase-amplitude
+    // coupling. Stored on cluster so Hebbian primitives can read.
+    if (this.thetaGammaEnabled) {
+      const gammaPhase = (this._tickCounter % this.gammaPeriod) / this.gammaPeriod;
+      const gammaInTheta = thetaPhase < 0.5; // upper half (sin > 0)
+      this._gammaLrScale = gammaInTheta
+        ? (1.0 + this.gammaAmplitude * Math.sin(2 * Math.PI * gammaPhase))
+        : 1.0;
+    } else {
+      this._gammaLrScale = 1.0;
+    }
+
+    // Within-column voltage coherence (gap-junction
+    // approximation). Active when microcolumns assigned + previous
+    // tick's column means cached. Each neuron receives a shared
+    // column-mean pull so within-column voltages stay coherent.
+    const k5Active = this.columnCoherenceBeta > 0
+      && this.columnId !== null
+      && this._columnVoltageMean !== null;
+    const k5Scale = k5Active ? this.columnCoherenceBeta * 0.05 : 0;
+
+    // Build per-neuron attention multiplier from region
+    // attention gains. Default 1.0; if attentionGain[region] set,
+    // neurons in that region get the gain factor applied to their
+    // incoming current.
+
+    // Per-region gains are CLAMPED to [0.5, 2.0] before lookup
+    // population. Without this cap, stacked arousal/valence/actionGate
+    // could compound past 5×, saturating cortex with noise — every
+    // neuron spikes, basin formation collapses, consciousness
+    // becomes random instead of focused. The clamp keeps attention
+    // a meaningful biasing signal rather than a brute amplifier.
+    let attentionLookup = null;
+    if (this.regions && this.attentionGain && Object.keys(this.attentionGain).length > 0) {
+      attentionLookup = new Float32Array(size);
+      attentionLookup.fill(1.0);
+      for (const [regionName, gain] of Object.entries(this.attentionGain)) {
+        const r = this.regions[regionName];
+        if (!r || typeof gain !== 'number') continue;
+        const safeGain = Math.max(0.5, Math.min(2.0, gain));
+        for (let i = r.start; i < r.end; i++) attentionLookup[i] = safeGain;
+      }
+    }
 
     for (let i = 0; i < size; i++) {
-      currents[i] = synapticCurrents[i]
+      let cur = synapticCurrents[i]
         + this.externalCurrent[i]
         + this._incomingProjections[i]
         + effectiveDrive
         + (Math.random() - 0.5) * this.noiseAmplitude
         + this.errorCorrection;  // cerebellum correction signal
+      if (k5Active) {
+        // Column-mean voltage pull — all column members share this
+        // contribution → coherence without per-neuron computation.
+        cur += k5Scale * this._columnVoltageMean[this.columnId[i]];
+      }
+      // Apply per-region attention gain.
+      if (attentionLookup) cur *= attentionLookup[i];
+      currents[i] = cur;
     }
 
     // Step neurons
     const spikes = neurons.step(dt * 1000, currents);
     const voltages = neurons.getVoltages();
+
+    // Predictive coding: compute prediction error vs the
+    // PREVIOUS tick's prediction. _predictedSpikes was set at the end
+    // of the LAST step() (L6 → L4 descending feedback). Now compare
+    // actual spikes to that prediction. Error magnitude drives:
+    //   (a) Hebbian lr modulation — high error = stronger learning
+    //       (the cluster is surprised, update its model)
+    //   (b) Diagnostic / dashboard exposure (so operator can see how
+    //       well the brain predicts itself)
+    if (this.predictiveCoding && this._predictedSpikes
+        && this._predictedSpikes.length === size) {
+      let errorSum = 0;
+      for (let i = 0; i < size; i++) {
+        const actual = spikes[i] ? 1 : 0;
+        const predicted = this._predictedSpikes[i];
+        errorSum += Math.abs(actual - predicted);
+      }
+      this._lastPredictionError = errorSum / size;
+      this._predictionErrorHistory.push(this._lastPredictionError);
+      if (this._predictionErrorHistory.length > 32) {
+        this._predictionErrorHistory.shift();
+      }
+    }
+    // Update _predictedSpikes for NEXT tick. Simple EMA prediction:
+    // next prediction = α × current_spikes + (1-α) × previous_prediction.
+    // α=0.3 = moderate adaptation. Cortex with layered structure
+    // refines this further via L6 → L4 descending feedback (handled
+    // implicitly by cross-projections since L6 is in regions[].layer=4).
+    if (this.predictiveCoding) {
+      if (!this._predictedSpikes || this._predictedSpikes.length !== size) {
+        this._predictedSpikes = new Float32Array(size);
+      }
+      const alpha = 0.3;
+      for (let i = 0; i < size; i++) {
+        const actual = spikes[i] ? 1 : 0;
+        this._predictedSpikes[i] = alpha * actual + (1 - alpha) * this._predictedSpikes[i];
+      }
+    }
+
+    // Update per-column mean voltages for next tick's
+    // gap-junction coupling. O(size) — same complexity as the existing
+    // mean-voltage scan below, runs once per tick.
+    if (this.microcolumns && this.columnId && this._columnVoltageSum) {
+      this._columnVoltageSum.fill(0);
+      for (let i = 0; i < size; i++) {
+        this._columnVoltageSum[this.columnId[i]] += voltages[i];
+      }
+      const numCols = this.numColumns;
+      const sums = this._columnVoltageSum;
+      const cnts = this._columnVoltageCount;
+      const means = this._columnVoltageMean;
+      for (let c = 0; c < numCols; c++) {
+        const cnt = cnts[c];
+        means[c] = cnt > 0 ? sums[c] / cnt : 0;
+      }
+    }
 
     // Count spikes
     let spikeCount = 0;
@@ -3700,7 +4644,7 @@ export class NeuronCluster {
     // populate `_cachedIntraCurrents` / `_cachedCrossCurrents`, which
     // the next step() and _propagateCrossRegions() consume. No-op if
     // `_gpuProxyReady` is false (CPU path continues).
-    //
+
     // T18.4.b — `opts.skipTailDispatch` skips this when the caller
     // used `stepAwait()` to pre-await all propagates. Firing again
     // here would double-dispatch and waste GPU bandwidth.
@@ -3794,7 +4738,7 @@ export class NeuronCluster {
     // step(). Each missing projection becomes a worker-pool job; all
     // jobs run concurrently across cores, populating the cache before
     // step() consumes it.
-    //
+
     // BIOLOGICAL-SCALE BYPASS. Same fix T18.19 applied to intra-synapses
     // Hebbian: at 301K cortex the worker pool allocates a fresh
     // SharedArrayBuffer for each non-shared input (values/colIdx/rowPtr

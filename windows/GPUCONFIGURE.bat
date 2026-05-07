@@ -1,4 +1,8 @@
 @echo off
+REM Launcher lives in windows\ — cd up one level so the rest of the script
+REM resolves paths from the project root (corpora\, server\, js\, etc.)
+REM exactly the way it did when this file used to live in the root.
+cd /d "%~dp0.."
 title Unity Brain Server - Resource Configuration
 echo.
 echo   ===========================================
@@ -23,7 +27,7 @@ if %errorlevel% neq 0 (
 
 :: Make sure server deps are installed (configure.js only needs stdlib,
 :: but the brain-server shares this folder and may need them at runtime)
-cd /d "%~dp0server"
+cd /d "%~dp0..\server"
 if not exist "node_modules" (
     echo   Installing server dependencies first...
     call npm install
@@ -35,7 +39,7 @@ for /f "tokens=5" %%a in ('netstat -ano ^| findstr :7526 ^| findstr LISTENING') 
     taskkill /f /pid %%a >nul 2>&1
 )
 
-cd /d "%~dp0"
+cd /d "%~dp0..\"
 echo   Launching configuration UI at http://127.0.0.1:7526
 echo   Your browser should open automatically.
 echo.

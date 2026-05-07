@@ -171,7 +171,7 @@ let landingBrainSource = null; // RemoteBrain or null
     loadPersonaSelfImage(landingBrainSource);
   } else {
     // No server — start a local brain just for visualization.
-    //
+
     // This is the GitHub Pages path. Any exception here used to be
     // swallowed by a bare `catch {}` which left the HUD showing
     // all zeros forever with zero diagnostic output in the console.
@@ -245,7 +245,7 @@ let landingBrainSource = null; // RemoteBrain or null
   // DASH-bug fix per operator 2026-05-04 verbatim:
   //   "the %'s never change even though the bars chaqnge frequently
   //    the numbers and %'sd never update"
-  //
+
   // Two bugs in the prior 2000ms interval:
   //   1. 2-second update felt static next to the 3D viz's RAF-driven
   //      bars — operator saw the bars animate frequently while the
@@ -255,7 +255,7 @@ let landingBrainSource = null; // RemoteBrain or null
   //      blocked updates whenever ANY text on the page was selected,
   //      not just text inside the viz panel itself. A user reading the
   //      panel had to actively click off the page to see fresh numbers.
-  //
+
   // Fix: 500ms interval (5× faster, feels live) + scope the selection
   // guard to ONLY the viz panel container — selecting brain-event log
   // text or anything else on the page no longer freezes the metrics.
@@ -295,7 +295,7 @@ let landingBrainSource = null; // RemoteBrain or null
     if (typeof renderSensoryInventory === 'function') renderSensoryInventory();
   };
 
-  // iter25-G — FIRST-USE PRIVACY WARNING. Operator (2026-05-06): one-
+  // FIRST-USE PRIVACY WARNING. Operator (2026-05-06): one-
   // time toast on first press of "Talk to Unity" / chat button / image
   // API key setup that warns users NOT to share personal info, names,
   // locations, API keys, etc, and explains that Unity's brain is a
@@ -1029,7 +1029,7 @@ const brainIndicator = document.getElementById('brain-indicator');
 // cached detected models into a dropdown. R4 killed text-AI cognition
 // entirely; everything here was the setup-modal UI graveyard. R15
 // landing page rework rips the whole thing.
-//
+
 // Unity's cognition is 100% equational now. Sensory AI (image gen,
 // vision describer, TTS) is configured via:
 //   - providers.autoDetect() / autoDetectVision() — boot-time probe
@@ -1193,7 +1193,7 @@ async function init() {
     // looked broken even though the brain was fine. Pollinations
     // works out of the box without any of this, so the sensible
     // default is "don't probe unless the user told us to".
-    //
+
     // Enable by setting ENV_KEYS.probeLocalAI = true in env.js OR
     // localStorage.unity_probe_local_ai = '1' from the setup
     // modal toggle. When off (default) we skip both probes
@@ -1415,7 +1415,7 @@ function refreshActiveBackendSelectors(status) {
 // as automatic as possible — auto-detect local backends work with
 // ZERO config; remote backends need a key ONLY; custom is the only
 // full-form path.
-//
+
 // Saved backends persist to localStorage so they survive page
 // reloads AND get pushed into providers._localImageBackends /
 // _localVisionBackends at bootUnity() time so Unity uses them
@@ -2357,13 +2357,13 @@ async function bootUnity(apiKey, perms) {
 
   // ── Listen for brain's response events — app.js just renders ──
   // Deduplicate: track last response to prevent double display.
-  //
+
   // Handler identity is stored on the brain instance so that re-running
   // bootUnity (Settings → Apply Changes path) can OFF the previous handler
   // before attaching the new one. Without this, every Apply Changes click
   // added another response listener to the same brain, producing 2x / 3x
   // / ... duplicate chat messages per user input.
-  //
+
   // Idle thoughts (engine.js:539, emitted from the think() frame loop when
   // thought.shouldSpeak fires) are INTERNAL — they update the HUD and brain
   // state but MUST NOT appear in the chat alongside the real respond_text
@@ -2401,7 +2401,7 @@ async function bootUnity(apiKey, perms) {
   }
   brain.__appSilentHandler = ({ reason, detail, minGrade }) => {
     if (chatPanel) chatPanel.addSilentMessage(reason, detail, minGrade);
-    // Brief HUD hint so the speech bubble doesn't stay empty. iter25-E.5
+    // Brief HUD hint so the speech bubble doesn't stay empty.
     // replaced 'pre_kindergarten' (grade-label-driven) with 'pre_training'
     // (trained-state-driven). Both still mapped here for backwards-compat
     // with older server saves still emitting the legacy reason.
@@ -2431,7 +2431,7 @@ async function bootUnity(apiKey, perms) {
   };
   brain.on('image', brain.__appImageHandler);
 
-  // iter25-E.6 — server-side innerThought broadcast subscriber.
+  // server-side innerThought broadcast subscriber.
   // Operator (2026-05-06): "the pop ups in her Brain fire with her real
   // actual knowldedge to that point as her real internal voice in the
   // moment". Browser-side innerVoice runs on an UNTRAINED client
@@ -2479,7 +2479,7 @@ async function bootUnity(apiKey, perms) {
   // a cognitive trace. The preview runs WITHOUT storing an episode
   // or emitting a real response event, so /think never counts as
   // real conversation: it's a pure debug lens.
-  //
+
   // R4 legacy note: pre-R4 this command also displayed the Pollinations
   // text-AI system prompt via `brocasArea._buildPrompt(state)`. That
   // backend is gone, so there's no synthetic prompt to show — the
@@ -3192,7 +3192,7 @@ async function generateGreeting(perms) {
   // idle speech drive evaluation on the brain by pumping zero-input
   // context and letting the normal response path fire if brain state
   // crosses the speech threshold. If nothing emerges, stay silent.
-  //
+
   // Alternative: we could force a greeting by calling
   // brain.innerVoice.languageCortex.generate() directly with a null
   // user context. That bypasses input-path side effects.

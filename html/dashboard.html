@@ -212,12 +212,139 @@
             <div>last inject: <span id="d-mem-t3-inject" style="color:#888;">never</span></div>
             <div id="d-mem-t3-top" style="margin-top:4px;color:#666;font-size:10px;">no anchors yet</div>
           </div>
-          <div title="Dream-cycle replay engine. Fires every 5 min when isDreaming AND no chat input for >60s AND !curriculumInProgress. Pass: fetch top-20 Tier 1 promotion candidates → cluster by cosine ≥ 0.85 → create or reinforce Tier 2 schemas → replay 4× per schema via Hebbian (replay_lr = base_lr × (1 + emotional_weight) × log(1 + frequency_total)) with sleep-spindle gainMultiplier 1.2× bursts → mark source episodes promoted → check Tier 3 promotions. iter22-B cosine tightening fixed all-zero pass saturation that previously occurred when every distinct teach phase merged into a single 'learning' schema. iter23.4 — operator can force a sleep window via POST /sleep (forces _isDreaming=true and bypasses the >60s idle gate so passes fire even with active chat suppressed) and POST /wake to clear it. iter25-D — dream cycles also INTERLEAVE INTO the curriculum: Curriculum._dreamWindow({minMs, settleMs}) flips both gates, awaits runConsolidationPass({forced:true}) to ACTUALLY complete (signal-driven not wall-clock), then a 5s settle for V8 GC + native worker-pool drain, then restores flags. Wired after every cell pass (60s) + mid-cell between PhonemeBlending and WordEmission (30s). 💤 opened + ⚙ pass complete + ☀ closed + ⚠ engine-unavailable banners log to server.log.">
+          <div title="Dream-cycle replay engine. Fires every 5 min when isDreaming AND no chat input for >60s AND !curriculumInProgress. Pass: fetch top-20 Tier 1 promotion candidates → cluster by cosine ≥ 0.85 → create or reinforce Tier 2 schemas → replay 4× per schema via Hebbian (replay_lr = base_lr × (1 + emotional_weight) × log(1 + frequency_total)) with sleep-spindle gainMultiplier 1.2× bursts → mark source episodes promoted → check Tier 3 promotions. iter22-B cosine tightening fixed all-zero pass saturation that previously occurred when every distinct teach phase merged into a single 'learning' schema. iter23.4 — operator can force a sleep window via POST /sleep (forces _isDreaming=true and bypasses the >60s idle gate so passes fire even with active chat suppressed) and POST /wake to clear it. Dream cycles also INTERLEAVE INTO the curriculum: Curriculum._dreamWindow({minMs, settleMs}) flips both gates, awaits runConsolidationPass({forced:true}) to ACTUALLY complete (signal-driven not wall-clock), then a 5s settle for V8 GC + native worker-pool drain, then restores flags. Wired after every cell pass (60s) + mid-cell between PhonemeBlending and WordEmission (30s). 💤 opened + ⚙ pass complete + ☀ closed + ⚠ engine-unavailable banners log to server.log.">
             <div style="color:#f59e0b;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">🌙 CONSOLIDATION ENGINE (5 min interval · sleep-spindle bursts)</div>
             <div>passes run: <span id="d-mem-cons-count" style="color:#22c55e;">0</span></div>
             <div>last pass: <span id="d-mem-cons-last" style="color:#888;">never</span></div>
             <div>dreaming now: <span id="d-mem-cons-dreaming" style="color:#555;">no</span></div>
             <div>pass interval: <span id="d-mem-cons-interval" style="color:#666;">5 min</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- M.22 + M.23 + M.24 — DISPLAY/VISIBILITY panels.
+         All bounded per Phase 6 design constraints (max-height + overflow,
+         item caps, aggregates not enumeration, scoped class names). -->
+    <div class="card consciousness-panel" style="margin-top:12px;">
+      <div class="card-title">📚 Dictionary API + K-Vocabulary</div>
+      <div id="d-cortex-dict" style="padding:8px 12px;font-family:monospace;font-size:11px;color:#aaa;line-height:1.6;max-height:280px;overflow-y:auto;">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;">
+          <div>
+            <div style="color:#00e5ff;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">🌐 API SMOKE TEST</div>
+            <div>status: <span id="d-cortex-smoketest" style="color:#888;">pending</span></div>
+            <div>fetch available: <span id="d-cortex-fetchavail" style="color:#888;">—</span></div>
+          </div>
+          <div>
+            <div style="color:#a855f7;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">💾 CACHE</div>
+            <div>size: <span id="d-cortex-cache-size" style="color:#22c55e;">0</span> / <span id="d-cortex-cache-cap" style="color:#666;">10000</span></div>
+            <div>hits: <span id="d-cortex-cache-hits" style="color:#22c55e;">0</span></div>
+            <div>errors: <span id="d-cortex-cache-errs" style="color:#ff4d9a;">0</span></div>
+            <div>rate-limited: <span id="d-cortex-cache-rl" style="color:#f59e0b;">0</span></div>
+            <div>in-flight: <span id="d-cortex-cache-inflight" style="color:#888;">0</span></div>
+          </div>
+          <div>
+            <div style="color:#22c55e;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">📖 K-VOCABULARY</div>
+            <div>prefetched: <span id="d-cortex-kvocab-prefetched" style="color:#888;">no</span></div>
+            <div>defs taught: <span id="d-cortex-kvocab-taught" style="color:#22c55e;">0</span> / <span id="d-cortex-kvocab-total" style="color:#666;">2247</span> (<span id="d-cortex-kvocab-pct" style="color:#00e5ff;">0%</span>)</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card consciousness-panel" style="margin-top:12px;">
+      <div class="card-title">🧠 Cortical Microstructure</div>
+      <div id="d-cortex-cortex" style="padding:8px 12px;font-family:monospace;font-size:11px;color:#aaa;line-height:1.6;max-height:240px;overflow-y:auto;">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;">
+          <div>
+            <div style="color:#00e5ff;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">🎯 K-WIRING ASSERTION</div>
+            <div>status: <span id="d-cortex-kwiring" style="color:#888;">unknown</span></div>
+            <div id="d-cortex-kwiring-gaps" style="color:#ff4d9a;font-size:10px;margin-top:2px;max-height:60px;overflow-y:auto;"></div>
+          </div>
+          <div>
+            <div style="color:#a855f7;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">🏛 MICROCOLUMNS (K.2)</div>
+            <div>columns: <span id="d-cortex-cols" style="color:#22c55e;">0</span></div>
+            <div>columnSize: <span id="d-cortex-colsize" style="color:#888;">80</span></div>
+          </div>
+          <div>
+            <div style="color:#22c55e;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">📑 LAYERS (K.3)</div>
+            <div>L1: <span id="d-cortex-l1" style="color:#888;">0</span></div>
+            <div>L2/3: <span id="d-cortex-l23" style="color:#888;">0</span></div>
+            <div>L4: <span id="d-cortex-l4" style="color:#888;">0</span></div>
+            <div>L5: <span id="d-cortex-l5" style="color:#888;">0</span></div>
+            <div>L6: <span id="d-cortex-l6" style="color:#888;">0</span></div>
+          </div>
+          <div>
+            <div style="color:#f59e0b;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">⭐ HUBS (K.4) + OSC (K.7)</div>
+            <div>hubs: <span id="d-cortex-hubs" style="color:#22c55e;">0</span> (<span id="d-cortex-hubpct" style="color:#888;">0%</span>)</div>
+            <div>θ phase: <span id="d-cortex-theta" style="color:#00e5ff;">0.0</span></div>
+            <div>γ scale: <span id="d-cortex-gamma" style="color:#a855f7;">1.0</span></div>
+            <div>Φ proxy (M.16): <span id="d-cortex-phi" style="color:#ff4d9a;">0.0</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- GlobalWorkspace ignition + predictive coding + definition
+         learning rate. Bounded panel reading state.consciousness.workspace
+         + state.consciousness.predictionError + state.consciousness.defsLearnedPerHour. -->
+    <div class="card consciousness-panel" style="margin-top:12px;">
+      <div class="card-title">🌟 GlobalWorkspace + Predictive Coding</div>
+      <div id="d-cortex-gw" style="padding:8px 12px;font-family:monospace;font-size:11px;color:#aaa;line-height:1.6;max-height:280px;overflow-y:auto;">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;">
+          <div>
+            <div style="color:#00e5ff;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">🌟 IGNITION (GW broadcast)</div>
+            <div>current: <span id="d-cortex-gw-current" style="color:#22c55e;">subthreshold</span></div>
+            <div>strength: <span id="d-cortex-gw-strength" style="color:#a855f7;">0.000</span></div>
+            <div>rate: <span id="d-cortex-gw-rate" style="color:#f59e0b;">0.0%</span> ticks ignited</div>
+            <div id="d-cortex-gw-history" style="color:#666;font-size:10px;margin-top:4px;max-height:80px;overflow-y:auto;"></div>
+          </div>
+          <div>
+            <div style="color:#a855f7;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">🔮 PREDICTIVE ERROR (Friston)</div>
+            <div>last: <span id="d-cortex-pred-last" style="color:#22c55e;">0.000</span></div>
+            <div>trend: <span id="d-cortex-pred-trend" style="color:#888;">→</span></div>
+            <div id="d-cortex-pred-spark" style="display:flex;align-items:flex-end;gap:1px;height:24px;margin-top:4px;"></div>
+          </div>
+          <div>
+            <div style="color:#22c55e;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">📖 DEFINITION LEARNING RATE</div>
+            <div>defs/hour: <span id="d-cortex-defrate" style="color:#22c55e;">0.0</span></div>
+            <div style="font-size:10px;color:#666;margin-top:2px;">background-trickle during dream cycles</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- WS backpressure metrics — live ws.bufferedAmount, drops/absorbs
+         counters, drops/sec rolling rate, threshold marker. Bounded
+         max-height + scoped class for parity with consciousness panels. -->
+    <div class="card ws-pressure-panel" style="margin-top:12px;">
+      <div class="card-title">📡 WS Backpressure (GPU client)</div>
+      <div id="d-ws-ws" style="padding:8px 12px;font-family:monospace;font-size:11px;color:#aaa;line-height:1.6;max-height:240px;overflow-y:auto;">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;">
+          <div>
+            <div style="color:#00e5ff;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">🔌 CONNECTION</div>
+            <div>compute.html: <span id="d-ws-connected" style="color:#888;">—</span></div>
+            <div>buffer: <span id="d-ws-buffer" style="color:#22c55e;">0.0</span> / <span id="d-ws-threshold" style="color:#666;">500</span> MB</div>
+            <div style="background:#1a1a1a;border-radius:3px;height:6px;margin-top:4px;overflow:hidden;">
+              <div id="d-ws-bufferbar" style="background:#22c55e;height:100%;width:0%;transition:width 0.3s,background 0.3s;"></div>
+            </div>
+          </div>
+          <div>
+            <div style="color:#a855f7;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">📤 DROPS (after timeout)</div>
+            <div>total: <span id="d-ws-drops" style="color:#ff4d9a;">0</span></div>
+            <div>rate: <span id="d-ws-droprate" style="color:#f59e0b;">0.00</span> / sec</div>
+            <div>last: <span id="d-ws-lastdrop" style="color:#888;font-size:10px;">never</span></div>
+            <div>shadow: <span id="d-ws-shadow" style="color:#22c55e;">clean</span></div>
+          </div>
+          <div>
+            <div style="color:#22c55e;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">⏳ ABSORBS (drained)</div>
+            <div>total: <span id="d-ws-absorbs" style="color:#22c55e;">0</span></div>
+            <div style="font-size:10px;color:#666;margin-top:2px;">no Hebbian update lost</div>
+          </div>
+          <div>
+            <div style="color:#f59e0b;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">⚠ ENOBUFS (OS-level)</div>
+            <div>total: <span id="d-ws-enobufs" style="color:#f59e0b;">0</span></div>
+            <div style="font-size:10px;color:#666;margin-top:2px;">first 3 logged then silenced</div>
           </div>
         </div>
       </div>
@@ -394,10 +521,148 @@
         `;
       }
 
+      //Phase 6 — Dashboard render for /K/L/M state.
+      // All values bounded; no per-neuron / per-column enumeration.
+      if (s.consciousness) {
+        const m = s.consciousness;
+        const $ = (id) => document.getElementById(id);
+        // M.21 Dictionary API
+        if (m.cache) {
+          $('d-cortex-fetchavail').textContent = m.cache.fetchAvailable ? 'yes' : 'NO (Node<18?)';
+          $('d-cortex-fetchavail').style.color = m.cache.fetchAvailable ? '#22c55e' : '#ff4d9a';
+          $('d-cortex-cache-size').textContent = m.cache.size || 0;
+          $('d-cortex-cache-cap').textContent = m.cache.capacity || 10000;
+          $('d-cortex-cache-hits').textContent = m.cache.hits || 0;
+          $('d-cortex-cache-errs').textContent = m.cache.errs || 0;
+          $('d-cortex-cache-rl').textContent = m.cache.rateLimited || 0;
+          $('d-cortex-cache-inflight').textContent = m.cache.inFlight || 0;
+        }
+        $('d-cortex-smoketest').textContent = m.smokeTestPassed === true ? 'PASS' : (m.smokeTestPassed === false ? 'FAIL' : 'pending');
+        $('d-cortex-smoketest').style.color = m.smokeTestPassed === true ? '#22c55e' : (m.smokeTestPassed === false ? '#ff4d9a' : '#888');
+        // M.21 + M.24 K-vocab
+        $('d-cortex-kvocab-prefetched').textContent = m.kVocabPrefetched ? 'yes' : 'no';
+        $('d-cortex-kvocab-prefetched').style.color = m.kVocabPrefetched ? '#22c55e' : '#888';
+        $('d-cortex-kvocab-taught').textContent = m.kVocabTaught || 0;
+        $('d-cortex-kvocab-total').textContent = m.kVocabTotal || 2247;
+        const kvocPct = m.kVocabTotal > 0 ? ((m.kVocabTaught || 0) / m.kVocabTotal * 100).toFixed(1) : '0.0';
+        $('d-cortex-kvocab-pct').textContent = kvocPct + '%';
+        // M.22 K-wiring assertion
+        if (m.kwiring) {
+          $('d-cortex-kwiring').textContent = m.kwiring.ok ? 'PASS' : 'FAIL';
+          $('d-cortex-kwiring').style.color = m.kwiring.ok ? '#22c55e' : '#ff4d9a';
+          // Bounded to 5 gaps max (already capped server-side); display as line list.
+          const gaps = (m.kwiring.gaps || []).slice(0, 5);
+          $('d-cortex-kwiring-gaps').textContent = gaps.length > 0 ? gaps.join(' · ') : '';
+        } else {
+          $('d-cortex-kwiring').textContent = 'unknown';
+          $('d-cortex-kwiring').style.color = '#888';
+          $('d-cortex-kwiring-gaps').textContent = '';
+        }
+        // M.23 cortical microstructure
+        $('d-cortex-cols').textContent = (m.numColumns || 0).toLocaleString();
+        $('d-cortex-colsize').textContent = m.columnSize || 80;
+        const lc = m.layerCounts || [0, 0, 0, 0, 0];
+        $('d-cortex-l1').textContent = lc[0].toLocaleString();
+        $('d-cortex-l23').textContent = lc[1].toLocaleString();
+        $('d-cortex-l4').textContent = lc[2].toLocaleString();
+        $('d-cortex-l5').textContent = lc[3].toLocaleString();
+        $('d-cortex-l6').textContent = lc[4].toLocaleString();
+        $('d-cortex-hubs').textContent = (m.hubCount || 0).toLocaleString();
+        $('d-cortex-hubpct').textContent = ((m.hubFraction || 0) * 100).toFixed(2) + '%';
+        $('d-cortex-theta').textContent = (m.thetaPhase || 0).toFixed(3);
+        $('d-cortex-gamma').textContent = (m.gammaScale || 1).toFixed(3);
+        $('d-cortex-phi').textContent = (m.phiProxy || 0).toFixed(3);
+        // GlobalWorkspace render (O.15).
+        if (m.workspace) {
+          const w = m.workspace;
+          $('d-cortex-gw-current').textContent = w.currentLabel || 'subthreshold';
+          $('d-cortex-gw-current').style.color = w.currentLabel ? '#22c55e' : '#888';
+          $('d-cortex-gw-strength').textContent = (w.currentValue || 0).toFixed(3);
+          $('d-cortex-gw-rate').textContent = ((w.ignitionRate || 0) * 100).toFixed(1) + '%';
+          const histEl = $('d-cortex-gw-history');
+          if (histEl && Array.isArray(w.history)) {
+            const lines = w.history.slice(-8).map(h =>
+              `${(h.label || '').slice(0, 24).padEnd(24)} ${(h.value || 0).toFixed(2)}`
+            );
+            histEl.textContent = lines.join('\n');
+          }
+        }
+        // Predictive coding error render (O.16).
+        if (m.predictionError) {
+          const pe = m.predictionError;
+          $('d-cortex-pred-last').textContent = (pe.last || 0).toFixed(3);
+          // Trend: compare last 4 vs previous 4 in history.
+          let trend = '→';
+          let trendColor = '#888';
+          if (Array.isArray(pe.history) && pe.history.length >= 8) {
+            const recent4 = pe.history.slice(-4).reduce((s, v) => s + v, 0) / 4;
+            const prev4 = pe.history.slice(-8, -4).reduce((s, v) => s + v, 0) / 4;
+            if (recent4 < prev4 * 0.9) { trend = '↘'; trendColor = '#22c55e'; }
+            else if (recent4 > prev4 * 1.1) { trend = '↗'; trendColor = '#ff4d9a'; }
+          }
+          $('d-cortex-pred-trend').textContent = trend;
+          $('d-cortex-pred-trend').style.color = trendColor;
+          // Sparkline — render history as inline div bars.
+          const sparkEl = $('d-cortex-pred-spark');
+          if (sparkEl && Array.isArray(pe.history)) {
+            const max = Math.max(0.001, ...pe.history);
+            sparkEl.innerHTML = pe.history.slice(-32).map(v => {
+              const h = Math.max(1, Math.min(24, (v / max) * 24));
+              return `<div style="width:3px;height:${h}px;background:#a855f7;flex:0 0 auto;"></div>`;
+            }).join('');
+          }
+        }
+        // Definition learning rate render (O.18).
+        const dpr = m.defsLearnedPerHour || 0;
+        $('d-cortex-defrate').textContent = dpr.toFixed(1);
+        $('d-cortex-defrate').style.color = dpr > 0 ? '#22c55e' : '#888';
+      }
+
+      // WS backpressure render. Reads state.wsPressure populated by
+      // brain-server `_getIter25NState()`. Color-codes the buffer bar
+      // green/yellow/red based on % of threshold consumed so operator
+      // can see backpressure pressure at a glance.
+      if (s.wsPressure) {
+        const n = s.wsPressure;
+        const $ = (id) => document.getElementById(id);
+        $('d-ws-connected').textContent = n.wsConnected ? 'connected' : 'disconnected';
+        $('d-ws-connected').style.color = n.wsConnected ? '#22c55e' : '#ff4d9a';
+        const bufMB = (n.bufferedAmountMB || 0).toFixed(1);
+        const thrMB = n.thresholdMB || 500;
+        const pct = thrMB > 0 ? Math.min(100, (n.bufferedAmountMB || 0) / thrMB * 100) : 0;
+        $('d-ws-buffer').textContent = bufMB;
+        $('d-ws-threshold').textContent = thrMB;
+        const bar = $('d-ws-bufferbar');
+        bar.style.width = pct + '%';
+        bar.style.background = pct < 50 ? '#22c55e' : (pct < 90 ? '#f59e0b' : '#ff4d9a');
+        $('d-ws-drops').textContent = (n.drops || 0).toLocaleString();
+        $('d-ws-droprate').textContent = (n.dropRatePerSec || 0).toFixed(2);
+        $('d-ws-absorbs').textContent = (n.absorbs || 0).toLocaleString();
+        $('d-ws-enobufs').textContent = (n.enobufs || 0).toLocaleString();
+        // O.17 last-drop timestamp + O.2 shadow-dirty flag.
+        if (n.lastDropTs && n.lastDropTs > 0) {
+          const ago = Math.max(0, (Date.now() - n.lastDropTs) / 1000);
+          let label;
+          if (ago < 60) label = `${ago.toFixed(0)}s ago`;
+          else if (ago < 3600) label = `${(ago / 60).toFixed(0)}m ago`;
+          else label = `${(ago / 3600).toFixed(1)}h ago`;
+          $('d-ws-lastdrop').textContent = label;
+          $('d-ws-lastdrop').style.color = ago < 60 ? '#ff4d9a' : (ago < 600 ? '#f59e0b' : '#666');
+        } else {
+          $('d-ws-lastdrop').textContent = 'never (since boot)';
+          $('d-ws-lastdrop').style.color = '#22c55e';
+        }
+        if (n.gpuShadowDirty) {
+          $('d-ws-shadow').textContent = 'DIRTY — restart to resync';
+          $('d-ws-shadow').style.color = '#ff4d9a';
+        } else {
+          $('d-ws-shadow').textContent = 'clean';
+          $('d-ws-shadow').style.color = '#22c55e';
+        }
+      }
+
       // iter15-mem unified 5-tier memory system render. Reads
       // state.memoryStats populated by brain-server `_getMemoryStats()`.
-      // Per operator verbatim 2026-05-05 "shall be one unified system
-      // of the brain for memory not some side processes".
       if (s.memoryStats) {
         const ms = s.memoryStats;
         const t1 = ms.tier1 || {};
@@ -562,7 +827,7 @@
     // sentence description under it, then an in-cell progress bar
     // (phase count / heuristic total) and a per-subject breakdown
     // grid showing phases + cells-passed + teach-events per subject.
-    //
+
     // Heuristic: we don't know the TOTAL phase count for the current
     // cell in advance (each cell's teach phase count varies — pre-K
     // runners fire 4-6 phases, K runners fire 14-18). So progress %
