@@ -11671,7 +11671,29 @@ export class Curriculum {
         }
       }
     } catch { /* non-fatal */ }
-    const assocRescaleFloor = assocWMaxRef * 0.25;
+    // 114.19fa — rescale floor was `assocWMaxRef * 0.25` unconditionally,
+    // but when `proj.wMax` is Infinity (unset clamp from iter14-D
+    // wMax-clamp-loss-on-restore lineage, or projection initialized
+    // without explicit wMax) the floor becomes Infinity → ANY post-
+    // rescale max < Infinity → `assocWouldDrown` ALWAYS true → rescale
+    // ALWAYS skipped → basin saturation PERSISTS INDEFINITELY (caught
+    // 2026-05-08 on ELA-K-WH-INTENT log: `maxAbs=0.174 × 0.5 < floor=Infinity
+    // — overload persists` retried with mean-cos=0.977). Fall back to a
+    // sane absolute floor when wMax isn't a finite positive number so
+    // the rescale path can still fire on overload.
+    let assocRescaleFloor;
+    if (Number.isFinite(assocWMaxRef) && assocWMaxRef > 0) {
+      assocRescaleFloor = assocWMaxRef * 0.25;
+    } else {
+      assocRescaleFloor = 0.05;
+      if (cluster && !cluster._warnedWMaxNonFinite) {
+        cluster._warnedWMaxNonFinite = true;
+        try {
+          const proj = cluster.crossProjections && cluster.crossProjections[primaryProj];
+          console.warn(`[Curriculum] WARN — proj.wMax non-finite (${proj?.wMax}) for ${primaryProj}; using absolute rescale floor 0.05 to keep overload-rescale path firing. iter14-D wMax-clamp-loss-on-restore likely cause; safe to continue but log once for diagnosis.`);
+        } catch { /* non-fatal */ }
+      }
+    }
     const assocWouldDrown = assocPreMaxAbs > 0 && (assocPreMaxAbs * rescaleFactor) < assocRescaleFloor;
     const shouldRescale = rescaleFactor > 0 && rescaleFactor < 1
       && cluster.crossProjections
@@ -12588,13 +12610,45 @@ export class Curriculum {
       }
     }
 
-    // STEP 3 — settle cortex
-    for (let t = 0; t < settleTicks; t++) cluster.step(0.001);
+    // STEP 3 — settle cortex with CUMULATIVE spike accumulation (114.19fa).
+    // The default `cluster.lastSpikes` after step() reflects ONLY the most-
+    // recent tick's spikes. Neurons that fired on tick 1-3 from the
+    // injection current go refractory + reset by tick 15, leaving
+    // lastSpikes near-zero on the FINAL tick even though training-
+    // relevant activation happened earlier in the window. Accumulating
+    // into a Uint8Array via logical OR captures "any spike fired during
+    // settle" — preserves the integrated post-injection signal for
+    // downstream emit paths (emitWordDirect's preSem build at
+    // cluster.js:3113) to read. Without this, PROD probes hit
+    // FAIL_MODE=spikes_empty_pre_emit on every sample because the per-
+    // tick instantaneous read sees the refractory tail, not the spike
+    // history that drove the trained matrix.
+    let cumulativeSpikes = null;
+    if (cluster.lastSpikes && cluster.lastSpikes.length === cluster.size) {
+      cumulativeSpikes = new Uint8Array(cluster.size);
+    }
+    for (let t = 0; t < settleTicks; t++) {
+      cluster.step(0.001);
+      if (cumulativeSpikes) {
+        const ls = cluster.lastSpikes;
+        for (let i = 0; i < cluster.size; i++) {
+          if (ls[i]) cumulativeSpikes[i] = 1;
+        }
+      }
+    }
+    // Swap in cumulative spikes so the emit path's CPU lastSpikes read
+    // sees the integrated activation across settle, not the final-tick
+    // refractory artifact. Per-call alloc bounded by cluster.size; one-
+    // shot per probe so no sustained memory pressure.
+    if (cumulativeSpikes) cluster.lastSpikes = cumulativeSpikes;
 
     // iter15-C — check post-settle spike state. If lastSpikes is all
     // zeros, motor argmax has nothing to read regardless of how many
     // emission ticks fire. Surface this distinct failure mode rather
-    // than blaming the emission loop.
+    // than blaming the emission loop. With 114.19fa cumulative
+    // accumulation above, lastSpikes now reflects total settle
+    // activation — non-zero count proves injection landed even when
+    // individual tick samples would miss it.
     let preEmitSpikeCount = 0;
     if (cluster.lastSpikes && cluster.lastSpikes.length) {
       for (let i = 0; i < cluster.lastSpikes.length; i++) {

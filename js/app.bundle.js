@@ -31985,7 +31985,20 @@ var Curriculum = class _Curriculum {
       }
     } catch {
     }
-    const assocRescaleFloor = assocWMaxRef * 0.25;
+    let assocRescaleFloor;
+    if (Number.isFinite(assocWMaxRef) && assocWMaxRef > 0) {
+      assocRescaleFloor = assocWMaxRef * 0.25;
+    } else {
+      assocRescaleFloor = 0.05;
+      if (cluster && !cluster._warnedWMaxNonFinite) {
+        cluster._warnedWMaxNonFinite = true;
+        try {
+          const proj = cluster.crossProjections && cluster.crossProjections[primaryProj];
+          console.warn(`[Curriculum] WARN \u2014 proj.wMax non-finite (${proj?.wMax}) for ${primaryProj}; using absolute rescale floor 0.05 to keep overload-rescale path firing. iter14-D wMax-clamp-loss-on-restore likely cause; safe to continue but log once for diagnosis.`);
+        } catch {
+        }
+      }
+    }
     const assocWouldDrown = assocPreMaxAbs > 0 && assocPreMaxAbs * rescaleFactor < assocRescaleFloor;
     const shouldRescale = rescaleFactor > 0 && rescaleFactor < 1 && cluster.crossProjections && (rescaleOnOverloadOnly ? overloadDetected : true) && !assocWouldDrown;
     if (shouldRescale) {
@@ -32835,7 +32848,20 @@ var Curriculum = class _Curriculum {
         for (let t = 0; t < ticksPerChar; t++) cluster.step(1e-3);
       }
     }
-    for (let t = 0; t < settleTicks; t++) cluster.step(1e-3);
+    let cumulativeSpikes = null;
+    if (cluster.lastSpikes && cluster.lastSpikes.length === cluster.size) {
+      cumulativeSpikes = new Uint8Array(cluster.size);
+    }
+    for (let t = 0; t < settleTicks; t++) {
+      cluster.step(1e-3);
+      if (cumulativeSpikes) {
+        const ls = cluster.lastSpikes;
+        for (let i = 0; i < cluster.size; i++) {
+          if (ls[i]) cumulativeSpikes[i] = 1;
+        }
+      }
+    }
+    if (cumulativeSpikes) cluster.lastSpikes = cumulativeSpikes;
     let preEmitSpikeCount = 0;
     if (cluster.lastSpikes && cluster.lastSpikes.length) {
       for (let i = 0; i < cluster.lastSpikes.length; i++) {

@@ -53,15 +53,73 @@ if [ "$NODE_VERSION" -lt 18 ]; then
     echo ""
 fi
 
-# /fresh or /clear flag forces brain state wipe on boot (overrides
-# the code-hash preserve behavior). Default boot preserves state if
-# brain-code source files are unchanged since the last run —
-# curriculum progress, passedCells, gateHistory, weights all survive
-# restarts. Use /fresh when you explicitly want a clean-slate retrain.
-if [[ "$1" == "/fresh" || "$1" == "/clear" || "$1" == "--fresh" || "$1" == "--clear" ]]; then
+# start.sh is DESTRUCTIVE per the iter14-D launcher contract: every boot
+# WIPES brain-weights + episodic memory + schemas + conversations via the
+# brain-server's autoClearStaleState(). Tier 3 identity-core.json is
+# preserved. Use Savestart.sh to RESUME from saved training instead.
+#
+# Bypass flags (skip the Y/N confirmation gate below):
+#   start.sh /fresh / /clear / --fresh / --clear  — explicit wipe, bypasses gate
+#   start.sh -y / --yes                           — bypass gate (CI / scripted path)
+#   DREAM_FORCE_CLEAR=1                           — env var bypass (CI / scripted path)
+if [[ "$1" == "/fresh" || "$1" == "/clear" || "$1" == "--fresh" || "$1" == "--clear" \
+   || "$1" == "-y" || "$1" == "--yes" || "$1" == "/yes" ]]; then
     export DREAM_FORCE_CLEAR=1
     echo "  [!] DREAM_FORCE_CLEAR=1 — will clear brain state on boot."
     echo ""
+fi
+
+if [ -z "$DREAM_FORCE_CLEAR" ]; then
+    # ────────────────────────────────────────────────────────────────
+    # Y/N CONFIRMATION GATE (Gee 2026-05-08 LAW — irreversible-loss warning)
+    # ────────────────────────────────────────────────────────────────
+    # Without this gate, accidentally running start.sh (or running it by
+    # reflex after a CLI restart) silently destroys hours of training.
+    # The gate forces explicit confirmation before the destructive wipe fires.
+    echo ""
+    echo "  ============================================================"
+    if [ -t 0 ] && [ -t 1 ]; then
+        # Terminal supports ANSI — emit red bold for the WARNING banner.
+        printf '  \033[1;31m[WARNING] start.sh is DESTRUCTIVE — it WIPES training state.\033[0m\n'
+    else
+        echo "  [WARNING] start.sh is DESTRUCTIVE — it WIPES training state."
+    fi
+    echo "  ============================================================"
+    echo ""
+    echo "  This boot will DELETE the following from server/:"
+    echo "    - brain-weights.json + v0-v4 rotation"
+    echo "    - brain-weights.bin (typically 100-200 MB of trained weights)"
+    echo "    - conversations.json"
+    echo "    - episodic-memory.db*"
+    echo "    - schemas.json"
+    echo ""
+    echo "  Preserved (Tier 3 auto-clear protected):"
+    echo "    - identity-core.json"
+    echo ""
+    echo "  THIS IS IRREVERSIBLE."
+    echo ""
+    echo "  To RESUME from saved training instead, run Savestart.sh — it sets"
+    echo "  DREAM_KEEP_STATE=1 and never wipes."
+    echo ""
+    # 30s timeout, default = N (don't wipe). `read -t 30 -r -p` is bash builtin.
+    if read -t 30 -r -p "  Are you sure you want to WIPE all training and boot fresh? (y/N): " confirm; then
+        :
+    else
+        confirm=""
+    fi
+    case "$confirm" in
+        y|Y|yes|YES)
+            echo ""
+            echo "  Confirmed — proceeding with WIPE + boot."
+            echo ""
+            ;;
+        *)
+            echo ""
+            echo "  Aborted. No state was modified. Run Savestart.sh to resume training."
+            echo ""
+            exit 0
+            ;;
+    esac
 fi
 
 DIR="$(cd "$(dirname "$0")/.." && pwd)"

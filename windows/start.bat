@@ -46,19 +46,66 @@ if %NODE_MAJOR% LSS 18 (
     echo.
 )
 
-REM /fresh or /clear flag forces brain state wipe on boot (overrides
-REM the code-hash preserve behavior). Default boot preserves state if
-REM brain-code source files are unchanged since the last run —
-REM curriculum progress, passedCells, gateHistory, weights all survive
-REM restarts. Use /fresh when you explicitly want a clean-slate retrain
-REM (e.g., embedding refinements went bad, persistence got corrupted,
-REM testing fresh boot behavior).
+REM start.bat is DESTRUCTIVE per the iter14-D launcher contract: every
+REM boot WIPES brain-weights + episodic memory + schemas + conversations
+REM via the brain-server's autoClearStaleState(). Tier 3 identity-core.json
+REM is preserved. Use Savestart.bat to RESUME from saved training instead.
+REM
+REM Bypass flags (skip the Y/N confirmation gate below):
+REM   start.bat /fresh        — explicit wipe, bypasses gate
+REM   start.bat /clear        — alias for /fresh
+REM   start.bat -y / /yes     — bypass gate (CI / scripted path)
+REM   DREAM_FORCE_CLEAR=1     — env var bypass (CI / scripted path)
 if /i "%1"=="/fresh" set DREAM_FORCE_CLEAR=1
 if /i "%1"=="/clear" set DREAM_FORCE_CLEAR=1
+if /i "%1"=="-y"     set DREAM_FORCE_CLEAR=1
+if /i "%1"=="--yes"  set DREAM_FORCE_CLEAR=1
+if /i "%1"=="/yes"   set DREAM_FORCE_CLEAR=1
+
 if defined DREAM_FORCE_CLEAR (
     echo   [!] DREAM_FORCE_CLEAR=1 — will clear brain state on boot.
     echo.
+    goto skip_confirm_gate
 )
+
+REM ────────────────────────────────────────────────────────────────
+REM Y/N CONFIRMATION GATE (Gee 2026-05-08 LAW — irreversible-loss warning)
+REM ────────────────────────────────────────────────────────────────
+REM Without this gate, accidentally double-clicking start.bat (or running
+REM it by reflex after a CLI restart) silently destroys hours of training.
+REM The gate forces explicit confirmation before the destructive wipe fires.
+echo.
+echo   ============================================================
+echo   [WARNING] start.bat is DESTRUCTIVE — it WIPES training state.
+echo   ============================================================
+echo.
+echo   This boot will DELETE the following from server\:
+echo     - brain-weights.json + v0-v4 rotation
+echo     - brain-weights.bin (typically 100-200 MB of trained weights)
+echo     - conversations.json
+echo     - episodic-memory.db*
+echo     - schemas.json
+echo.
+echo   Preserved (Tier 3 auto-clear protected):
+echo     - identity-core.json
+echo.
+echo   THIS IS IRREVERSIBLE.
+echo.
+echo   To RESUME from saved training instead, close this window and
+echo   run Savestart.bat — it sets DREAM_KEEP_STATE=1 and never wipes.
+echo.
+choice /C YN /D N /T 30 /M "Are you sure you want to WIPE all training and boot fresh"
+if errorlevel 2 (
+    echo.
+    echo   Aborted. No state was modified. Run Savestart.bat to resume training.
+    echo.
+    pause
+    exit /b 0
+)
+echo.
+echo   Confirmed — proceeding with WIPE + boot.
+echo.
+:skip_confirm_gate
 
 REM Step checkpoints so operators always see progress. Prior reports of
 REM "invisible translucent terminal with just the title tab" stemmed from
