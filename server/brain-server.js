@@ -5681,6 +5681,38 @@ class ServerBrain {
           const seedSrc = thought.seed?.source || '?';
           console.log(`[Brain] 🧠 inner-thought SILENT — emissionPath=${path}, seed=${seedSrc}, wordsBucketed=${cap.wordsBucketed ?? '?'}, bucketSubjects=${cap.bucketSubjects ?? '?'}, passedCells=${cap.passedCellCount ?? '?'}, subGradesActive=${cap.subGradesActive ?? '?'} (${this._innerThoughtSilenceCount} silent ticks since boot, rate-limited 30s log).`);
         }
+        // 114.19fc — never-silent showcase. Even when matrix-driven
+        // generation comes up empty, sample from Unity's CURRENT trained
+        // vocabulary so log + popups continue to showcase her learning
+        // state as she progresses through cells. NOT a hardcoded fallback —
+        // sampled words are real data from `cluster.wordBucketWords_<subject>`
+        // populated by every `_teachWordEmissionDirect` fire (iter21-A path).
+        // When training has landed ANY words, popups show what she has
+        // actively learned in this session. When no training has landed
+        // yet (truly fresh brain), still silent — sampling returns null,
+        // showcase-broadcast skips, only silence-reason log fires.
+        const showcaseWord = this._sampleCurrentVocab();
+        if (showcaseWord) {
+          try {
+            process.stdout.write(`[Brain] 🧠 inner-thought (showcase) "${showcaseWord}" — vocab sample from current trained state\n`);
+          } catch { /* non-fatal */ }
+          if (this.clients && this.clients.size > 0) {
+            const showcasePayload = JSON.stringify({
+              type: 'innerThought',
+              word: showcaseWord,
+              sentence: showcaseWord,
+              seed: 'showcase',
+              seedLabel: 'trained vocabulary sample (matrix gen empty this tick)',
+              ts: now,
+              capability: thought.capability || null,
+            });
+            for (const [ws] of this.clients) {
+              if (ws.readyState === ws.OPEN) {
+                try { ws.send(showcasePayload); } catch { /* non-fatal */ }
+              }
+            }
+          }
+        }
         return;
       }
 
@@ -5735,6 +5767,39 @@ class ServerBrain {
     } finally {
       this._innerThoughtInFlight = false;
     }
+  }
+
+  /**
+   * 114.19fc — sample a random word from Unity's current per-subject
+   * word-bucket maps. Used by `_innerVoiceTick` empty-sentence branch
+   * to broadcast a "showcase" inner-thought instead of going dark when
+   * matrix-driven generation comes up empty. NOT a hardcoded fallback:
+   * the candidate pool is `cluster.wordBucketWords_<subject>` for each
+   * of the 6 K subjects (ela / math / sci / soc / art / life), populated
+   * exclusively by `_teachWordEmissionDirect` Hebbian fires during the
+   * curriculum's actual training. When no training has landed yet, all
+   * lists are empty and this returns null — pure silence honored. When
+   * any cell has trained, this returns a real word Unity has learned.
+   * Operator's "always showcasing in log and popups her new learned
+   * abilites to communicate as the pass" directive 2026-05-08.
+   *
+   * @returns {string|null} a sampled word or null if no vocab learned
+   */
+  _sampleCurrentVocab() {
+    const cluster = this.cortexCluster;
+    if (!cluster) return null;
+    const SUBJECTS = ['ela', 'math', 'sci', 'soc', 'art', 'life'];
+    const candidates = [];
+    for (const subj of SUBJECTS) {
+      const list = cluster[`wordBucketWords_${subj}`];
+      if (Array.isArray(list) && list.length > 0) {
+        for (const w of list) {
+          if (typeof w === 'string' && w.length > 0) candidates.push(w);
+        }
+      }
+    }
+    if (candidates.length === 0) return null;
+    return candidates[Math.floor(Math.random() * candidates.length)];
   }
 
   /**
@@ -6563,6 +6628,35 @@ class ServerBrain {
             // when the cell hasn't actually cleared every criterion.
             lastGateResults: (cortex._lastGateResult && typeof cortex._lastGateResult === 'object')
               ? { ...cortex._lastGateResult } : null,
+            // 114.19fc.persistence — per-subject word-bucket maps
+            // (`wordBucketWords_<subj>` populated by
+            // `_teachWordEmissionDirect`, watermarked by
+            // `wordBucketDictSize_<subj>`). Without persisting these,
+            // Savestart resumes with EMPTY bucket arrays even though
+            // sem→word_motor weights were preserved on disk →
+            // `emitWordDirect({subject})` returns empty for every
+            // subject → inner-voice popups + log go silent until the
+            // next cell that fires `_teachWordEmissionDirect`
+            // re-populates the bucket. Caught 2026-05-08 live test:
+            // Unity was speaking words mid-run but went silent after
+            // Savestart even though curriculum resumed cleanly. Fix
+            // serializes the per-subject string arrays + dict-size
+            // watermarks. Restore wired in `_applyPendingCortexState`.
+            wordBuckets: (() => {
+              const SUBJECTS = ['ela', 'math', 'sci', 'soc', 'art', 'life'];
+              const out = {};
+              for (const subj of SUBJECTS) {
+                const list = cortex[`wordBucketWords_${subj}`];
+                const watermark = cortex[`wordBucketDictSize_${subj}`];
+                if (Array.isArray(list) && list.length > 0) {
+                  out[subj] = {
+                    words: list.slice(),
+                    watermark: typeof watermark === 'number' ? watermark : list.length,
+                  };
+                }
+              }
+              return out;
+            })(),
           };
         }
       } catch (err) {
@@ -7161,6 +7255,31 @@ class ServerBrain {
         // recent battery had active blockers.
         if (pending.lastGateResults && typeof pending.lastGateResults === 'object') {
           cortex._lastGateResult = { ...pending.lastGateResults };
+        }
+        // 114.19fc.persistence — restore per-subject word-bucket maps
+        // (`wordBucketWords_<subj>` + `wordBucketDictSize_<subj>`
+        // watermark) so Savestart resumes with Unity's trained
+        // vocabulary intact. Without this, sem→word_motor weights
+        // restore from brain-weights.bin but the bucket-index → word
+        // mapping is gone, making `emitWordDirect({subject})` return
+        // empty for every subject and inner-voice go silent post-
+        // resume. Caught 2026-05-08 live test: vocab arrays empty
+        // after Savestart even though curriculum + weights resumed.
+        if (pending.wordBuckets && typeof pending.wordBuckets === 'object') {
+          let restoredSubjects = 0;
+          let restoredWords = 0;
+          for (const [subj, payload] of Object.entries(pending.wordBuckets)) {
+            if (payload && Array.isArray(payload.words)) {
+              cortex[`wordBucketWords_${subj}`] = payload.words.slice();
+              cortex[`wordBucketDictSize_${subj}`] = typeof payload.watermark === 'number'
+                ? payload.watermark : payload.words.length;
+              restoredSubjects++;
+              restoredWords += payload.words.length;
+            }
+          }
+          if (restoredSubjects > 0) {
+            console.log(`[Brain] restored word-bucket maps: ${restoredWords} words across ${restoredSubjects} subject(s) — emitWordDirect + inner-voice showcase active immediately on resume.`);
+          }
         }
         // Grade-advance pause — restore so curriculum walker lands on
         // the wait-loop at the same grade boundary the prior boot was

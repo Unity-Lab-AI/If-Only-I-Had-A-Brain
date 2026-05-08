@@ -472,6 +472,19 @@ The prior code-hash gate (auto-clear runs only when `BRAIN_CODE_FILES` SHA256 di
 - **`Savestart.bat`** → sets `DREAM_KEEP_STATE=1` → auto-clear honors the resume opt-in → prior state preserved. The "stop.bat + Savestart.bat" pairing is the ONLY way to resume.
 - **`DREAM_FORCE_CLEAR=1`** still works (now redundant since default is wipe).
 
+### fb (2026-05-08) — Y/N confirmation gate added to start.bat / start.sh
+
+Gee verbatim 2026-05-08: *"also add to the todo a y/n gate on the loading of the start.bat and start.sh so before it clears all the weights and logs and everything it asks if the user is sure and the loss of all training and weights and logs that is irreversable"*.
+
+`start.bat` / `start.sh` now show a RED warning + Y/N prompt (default N, 30s timeout) before the destructive boot fires. This does NOT change `autoClearStaleState`'s behavior — once the user confirms Y, the unconditional wipe still runs exactly as iter14-D specifies. The gate is a safety guardrail against accidental double-click / reflex-run loss of training, NOT a softening of the wipe LAW.
+
+Bypass paths (skip the gate, wipe immediately):
+
+- `start.bat /fresh` / `start.bat /clear` — original wipe flags
+- `start.bat -y` / `start.bat /yes` / `start.bat --yes` — explicit-confirmation flag (CI-friendly)
+- `DREAM_FORCE_CLEAR=1` env var
+- `Savestart.bat` / `Savestart.sh` — never hits the gate (different scripts, set `DREAM_KEEP_STATE=1` and unset `DREAM_FORCE_CLEAR`)
+
 LAW still applies: if a future Claude edits `autoClearStaleState` to add code-hash-style gates, selective-skip logic, or any condition that makes `start.bat` skip the wipe, that's a direct LAW violation and same-day incident. Wipe-on-start.bat is the LOAD-BEARING contract for tier changes + wMax integrity. Don't break it.
 
 The manual-clear instructions above stay in this LAW as fallback documentation — if auto-clear ever fails (fs permissions, locked files from a crashed prior run), Claude must manually verify and clear before telling Gee to test.
