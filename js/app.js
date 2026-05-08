@@ -388,6 +388,32 @@ let landingBrainSource = null; // RemoteBrain or null
   const chatBtn = document.getElementById('landing-chat-btn');
   if (chatBtn) chatBtn.addEventListener('click', () => showFirstUseWarning(openSetupModal));
 
+  // Session 114.19eh — auto-open setup modal when arriving at index.html
+  // with `#setup` hash. Used by the "Back to Unity" links on
+  // `html/unity-guide.html` + `html/brain-equations.html` so clicking
+  // back from a docs page lands the operator on the settings page with
+  // the buttons-to-the-htmls instead of the bare landing without
+  // anything visible. Hash gets cleared after open so a refresh
+  // doesn't keep auto-popping the modal.
+  //
+  // Session 114.19ej P1 #7 — wrap the auto-open in showFirstUseWarning
+  // so the iter25-G first-use binding-consent privacy modal still gates
+  // first-time visitors arriving from a back-link. Without the wrap,
+  // someone who bookmarked unity-guide.html could land on the setup
+  // modal without ever seeing the privacy notice. localStorage flag
+  // ensures returning users skip the warning.
+  if (typeof location !== 'undefined' && location.hash === '#setup') {
+    try {
+      const proceed = () => {
+        openSetupModal();
+        if (typeof history !== 'undefined' && history.replaceState) {
+          history.replaceState(null, '', location.pathname + location.search);
+        }
+      };
+      showFirstUseWarning(proceed);
+    } catch { /* non-fatal — modal will still open via TALK button */ }
+  }
+
   const bubble = document.getElementById('unity-avatar');
   if (bubble) {
     bubble.addEventListener('click', () => {

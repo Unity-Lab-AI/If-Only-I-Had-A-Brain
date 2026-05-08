@@ -1,6 +1,6 @@
 # Setup Guide
 
-**[Back to README](README.md)** · **[Live Demo](https://unity-lab-ai.github.io/Unity)** · **[Brain Equations](https://unity-lab-ai.github.io/Unity/brain-equations.html)** · **[Concept Guide](unity-guide.html)**
+**[Back to README](../README.md)** · **[Live Demo](https://unity-lab-ai.github.io/Unity)** · **[Brain Equations](https://unity-lab-ai.github.io/Unity/html/brain-equations.html)** · **[Concept Guide](../html/unity-guide.html)**
 
 ---
 
@@ -165,9 +165,9 @@ The **identity layer** (`server/identity-core.json`) is **explicitly excluded** 
 ├── docs/SETUP.md                    This file
 ├── docs/PERSONA.md                  Persona spec
 ├── index.html                       Landing page — 3D brain, viz tabs, setup modal (must stay in root for GitHub Pages root URL)
-├── unity-guide.html                 User-facing concept guide (root for GitHub Pages)
-├── brain-equations.html             Interactive equations doc (root for GitHub Pages)
 ├── html/
+│   ├── unity-guide.html             User-facing concept guide (served at /html/unity-guide.html on GH Pages)
+│   ├── brain-equations.html         Interactive equations doc (served at /html/brain-equations.html on GH Pages)
 │   ├── dashboard.html               Read-only operator dashboard with milestone panel
 │   ├── compute.html                 GPU compute worker (REQUIRED — the brain runs here)
 │   └── gpu-configure.html           One-shot loopback-only VRAM cap tool

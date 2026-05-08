@@ -41,8 +41,21 @@ const THOUGHT_INTERVAL = 60; // ~1 second at 60fps
 
 export class InnerVoice {
   constructor(opts = {}) {
-    this.dictionary = new Dictionary();
-    this.languageCortex = new LanguageCortex();
+    // 114.19ek P2 #12 — accept external dictionary + languageCortex
+    // refs so the server-side _innerVoiceTick (which always uses the
+    // external think() form passing cluster/languageCortex/dictionary
+    // through opts) can skip the wasted internal allocation. Browser
+    // engine.js still constructs a default InnerVoice with its own
+    // internal dictionary + languageCortex when no opts are passed.
+    // Explicit `null` opts tells the server-only path to skip the
+    // internal instantiation (think() reads the externals out of its
+    // call args anyway).
+    this.dictionary = opts.dictionary === null
+      ? null
+      : (opts.dictionary || new Dictionary());
+    this.languageCortex = opts.languageCortex === null
+      ? null
+      : (opts.languageCortex || new LanguageCortex());
     // T14.5 — curriculum reference, null until engine wiring.
     this._curriculum = null;
     // Self-image: the brain boots EMPTY and learns everything from the
@@ -125,13 +138,167 @@ export class InnerVoice {
   }
 
   /**
-   * Process one thought cycle. Called by the brain engine each frame.
-   * Takes the full brain state, derives a thought, optionally forms words.
+   * Canonical single thinking entry — Session 114.19ee unification.
    *
-   * @param {object} brainState — from engine.getState()
-   * @returns {object} — the current thought
+   * Two call forms:
+   *
+   *   1. **Legacy browser form:** `think(brainState)` where `brainState`
+   *      is the engine.getState() snapshot. Used by `engine.js:720` —
+   *      stays unchanged so the GH-Pages-deployed browser path keeps
+   *      working. Internally derives cluster + dictionary + languageCortex
+   *      from `this`.
+   *
+   *   2. **Server / external form:** `think({ cluster, languageCortex,
+   *      dictionary, state, chain, opts })` — used by
+   *      `server/brain-server.js _innerVoiceTick` so the server path
+   *      shares one canonical body with the browser path. Caller passes
+   *      the SERVER's cortexCluster + languageCortex + dictionary + the
+   *      rich live state (drug/fear/reward/socialNeed) + the rolling
+   *      stream-of-consciousness chain.
+   *
+   * Detection: argument shape — if it has a `cluster` property it's the
+   * external form; otherwise it's the legacy form.
+   *
+   * @returns {object|Promise<object>} — `{ word, sentence, seed, emissionPath, capability, chainEntry }`
+   *   for the external form (Promise — generateAsync is async); the
+   *   legacy form returns the full `currentThought` snapshot synchronously
+   *   for backwards-compat with engine.js call site.
    */
-  think(brainState) {
+  think(arg) {
+    // External / server form detection — `cluster` is the unique marker
+    // that engine.getState() never produces (engine state has clusters
+    // PLURAL, not cluster singular). When the caller passes
+    // `{ cluster, languageCortex, dictionary, state, chain, opts }`,
+    // route to the canonical _thinkExternal body that's shared with
+    // the server orchestrator. Otherwise treat as the legacy
+    // `think(brainState)` browser form and delegate to _thinkLegacy.
+    if (arg && typeof arg === 'object' && arg.cluster) {
+      return this._thinkExternal(arg);
+    }
+    return this._thinkLegacy(arg || {});
+  }
+
+  /**
+   * External / canonical implementation — operates on whatever cluster /
+   * languageCortex / dictionary / state / chain the caller provides.
+   * Returns `{ word, sentence, seed, emissionPath, capability, chainEntry }`.
+   *
+   * Both browser engine.js (via `_thinkLegacy` wrapper) and server
+   * brain-server.js `_innerVoiceTick` route through this body so there's
+   * exactly ONE thinking implementation shared by both orchestrators
+   * (per Gee's "one Unity brain, GPU presence ONLY changes auto-scale"
+   * rule, Session 114.19ee).
+   */
+  async _thinkExternal(args) {
+    const cluster = args.cluster || null;
+    const languageCortex = args.languageCortex || null;
+    const dictionary = args.dictionary || null;
+    const state = args.state || {};
+    const chain = Array.isArray(args.chain) ? args.chain : [];
+    const opts = args.opts || {};
+    const seed = opts.seed || { pattern: null, source: 'baseline', label: 'baseline cortex state' };
+
+    // Stream-of-consciousness chain blend — read the LAST thought's
+    // sentence-embedding and blend it into the seed pattern at 0.4
+    // strength so the chain shapes the next thought without dominating
+    // (60/40 mix). Cap chain consumption to the last entry.
+    let chainedPattern = seed.pattern;
+    try {
+      if (chain.length > 0 && languageCortex && typeof languageCortex._sentenceEmbedding === 'function') {
+        const lastThought = chain[chain.length - 1];
+        if (lastThought && lastThought.sentence) {
+          const lastEmb = languageCortex._sentenceEmbedding(lastThought.sentence);
+          if (lastEmb && lastEmb.length > 0 && seed.pattern && seed.pattern.length === lastEmb.length) {
+            chainedPattern = new Float32Array(seed.pattern.length);
+            for (let i = 0; i < chainedPattern.length; i++) {
+              chainedPattern[i] = 0.6 * seed.pattern[i] + 0.4 * lastEmb[i];
+            }
+          }
+        }
+      }
+    } catch { /* fall through to bare seed if blend fails */ }
+
+    const now = Date.now();
+    const capability = (cluster && typeof cluster.getTrainedCapability === 'function')
+      ? cluster.getTrainedCapability()
+      : null;
+
+    // Rich path: server uses generateAsync for full-context emission with
+    // drug/fear/reward state. Browser engine path goes here too when its
+    // languageCortex has generateAsync wired.
+    if (languageCortex && typeof languageCortex.generateAsync === 'function' && opts.useEmitDirect !== true) {
+      try {
+        const sentence = await languageCortex.generateAsync(
+          dictionary,
+          state.arousal ?? 0.5,
+          state.coherence ?? 0.5,
+          {
+            predictionError: state.predictionError ?? 0,
+            motorConfidence: state.motorConfidence ?? 0,
+            psi: state.psi ?? 0,
+            cortexPattern: chainedPattern,
+            cortexCluster: cluster,
+            drugState: state.drugState ?? null,
+            speechMod: state.speechMod ?? null,
+            fear: state.fear ?? 0,
+            reward: state.reward ?? 0,
+            socialNeed: state.socialNeed ?? 0.5,
+          }
+        );
+        const trimmed = (sentence || '').trim();
+        const word = trimmed.split(/\s+/)[0] || '';
+        return {
+          word,
+          sentence: trimmed,
+          seed,
+          emissionPath: 'generateAsync',
+          capability,
+          chainEntry: trimmed ? { sentence: trimmed, seedSource: seed.source, ts: now } : null,
+        };
+      } catch (err) {
+        return {
+          word: '',
+          sentence: '',
+          seed,
+          emissionPath: `generate-error:${err?.message || err}`,
+          capability,
+          chainEntry: null,
+        };
+      }
+    }
+
+    // Fast path: cluster.emitWordDirect single-word emission — used when
+    // generateAsync isn't wired (browser-only fallback brain at
+    // ~7K-neuron scale on GH Pages doesn't load the full languageCortex
+    // generation engine, just runs the cluster's bucket-mean argmax).
+    if (cluster && typeof cluster.emitWordDirect === 'function') {
+      try {
+        const word = cluster.emitWordDirect(opts.emitOpts || {}) || '';
+        return {
+          word,
+          sentence: word,
+          seed,
+          emissionPath: 'emitWordDirect',
+          capability,
+          chainEntry: word ? { sentence: word, seedSource: seed.source, ts: now } : null,
+        };
+      } catch {
+        return { word: '', sentence: '', seed, emissionPath: 'emit-failed', capability, chainEntry: null };
+      }
+    }
+
+    // No cluster, no generateAsync — genuine silence. Don't fake it.
+    return { word: '', sentence: '', seed, emissionPath: 'no-cluster', capability, chainEntry: null };
+  }
+
+  /**
+   * Legacy browser entry — process one thought cycle from `engine.getState()`.
+   * Internally builds the external-form args from `this` + `brainState` and
+   * delegates to `_thinkExternal`, then updates `this.currentThought` and
+   * `this._thoughtHistory` for backwards-compat with the existing engine
+   * call site at `js/brain/engine.js:720`.
+   */
+  _thinkLegacy(brainState) {
     this._thoughtCounter++;
     if (this._thoughtCounter % THOUGHT_INTERVAL !== 0) return this.currentThought;
 

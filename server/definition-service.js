@@ -50,8 +50,19 @@ const inFlight = new Map();
 const ERROR_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
 // Concurrency cap on prefetch + back-off on 429.
-const PREFETCH_CONCURRENCY = 20;
-const RATE_LIMIT_BACKOFF_MS = 1000; // pause 1s after a 429 before next batch
+//
+// 114.19es.13 — gentler against the free-tier API. Captured 2026-05-07
+// overnight run had 89% miss rate (255/2247 cached) at PREFETCH_CONCURRENCY=20
+// + RATE_LIMIT_BACKOFF_MS=1000. dictionaryapi.dev rate-limits aggressively
+// under load: 20 parallel hits a 429, we back off for 1s, then 20 MORE
+// parallel hit another 429 immediately. Net: most batches lose to rate
+// limiting. Dropping to 5 parallel + 5s backoff means fewer 429s overall
+// + more time for the API's per-IP rate window to drain between batches.
+// Pairs with es.5 disk cache for compounding benefit — first run gets
+// better coverage, persistent cache means subsequent runs barely touch
+// the API at all.
+const PREFETCH_CONCURRENCY = 5;
+const RATE_LIMIT_BACKOFF_MS = 5000; // pause 5s after a 429 before next batch
 
 const _normalize = (w) => (typeof w === 'string' ? w.toLowerCase().trim() : '');
 
@@ -98,9 +109,24 @@ async function getDefinition(word, opts = {}) {
   const timeoutMs = opts.timeoutMs ?? 5000;
   const promise = (async () => {
     let timer = null;
+    let zombieGuard = null;
     try {
       const controller = new AbortController();
       timer = setTimeout(() => controller.abort(), timeoutMs);
+      // 114.19er.1 — defense-in-depth zombie-clear. AbortController +
+      // res.json() race below should handle every documented hang path,
+      // but if an unknown deadlock holds the (async () => {})() chain
+      // open past 2× timeoutMs the in-flight Map keeps a dead promise
+      // and every subsequent caller for this key inherits the zombie.
+      // This timer force-removes the in-flight entry so the next call
+      // starts a fresh fetch instead of awaiting a corpse.
+      zombieGuard = setTimeout(() => {
+        if (inFlight.get(key) === promise) {
+          inFlight.delete(key);
+          _cachePut(key, { error: true, fetchedAt: Date.now(), zombieClear: true });
+        }
+      }, timeoutMs * 2);
+
       const res = await fetch(API_BASE + encodeURIComponent(key), {
         signal: controller.signal,
         headers: { 'User-Agent': USER_AGENT, 'Accept': 'application/json' },
@@ -114,7 +140,18 @@ async function getDefinition(word, opts = {}) {
         _cachePut(key, { error: true, fetchedAt: Date.now() });
         return null;
       }
-      const data = await res.json();
+      // 114.19er.1 — wrap res.json() in its own timeout race. AbortController
+      // covers fetch() initiation but doesn't reliably abort streaming
+      // body parsing across all Node versions. If the server holds the
+      // connection open mid-stream (intermittent dictionaryapi.dev
+      // behavior under load), res.json() can hang past the controller
+      // timeout. Race against a Promise-rejection backstop so this path
+      // fails fast instead of dragging the curriculum into deadlock.
+      const jsonTimeoutMs = Math.max(2000, timeoutMs);
+      const data = await Promise.race([
+        res.json(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error(`json-parse-timeout-${jsonTimeoutMs}ms`)), jsonTimeoutMs)),
+      ]);
       if (!Array.isArray(data) || data.length === 0) {
         _cachePut(key, { error: true, fetchedAt: Date.now() });
         return null;
@@ -148,6 +185,7 @@ async function getDefinition(word, opts = {}) {
       return null;
     } finally {
       if (timer) clearTimeout(timer);
+      if (zombieGuard) clearTimeout(zombieGuard);
       inFlight.delete(key);
     }
   })();
@@ -263,16 +301,30 @@ function clearCache() {
   inFlight.clear();
 }
 
-// Persistent disk cache (behind feature flag).
-// Set DREAM_DEFINITION_CACHE_FILE=path/to/cache.json to enable. Loads
-// at module init; caller invokes `flushCacheToDisk()` periodically or
-// on shutdown to persist. Cache survives brain restart → no cold-start
-// re-fetch of K_VOCABULARY (saves ~1 min per restart).
+// 114.19es.5 — Persistent disk cache enabled BY DEFAULT.
+//
+// Earlier this lived behind the DREAM_DEFINITION_CACHE_FILE env flag,
+// which meant fresh deployments always paid the cold-start cost +
+// re-walked dictionaryapi.dev's rate-limit gauntlet on every boot.
+// Captured 2026-05-07 overnight run had 89% miss rate (255/2247 cached)
+// — most words returned null defs because the API rate-limited the
+// per-word lookups after the prefetch concurrency batch.
+//
+// Default now: write cache to `<server>/definition-cache.json`
+// (alongside brain-weights.bin, which sits in the same dir). Operator
+// can still override via env var. Set DREAM_DEFINITION_CACHE_FILE=''
+// (empty string) to explicitly disable.
+//
+// After 2-3 cold runs, cache approaches 100% K_VOCAB coverage and
+// per-word lookups hit cache instantly → zero rate-limit pressure on
+// subsequent boots.
 const fs = require('fs');
 const path = require('path');
-const DISK_CACHE_PATH = process.env.DREAM_DEFINITION_CACHE_FILE
-  ? path.resolve(process.env.DREAM_DEFINITION_CACHE_FILE)
-  : null;
+const DEFAULT_DISK_CACHE_PATH = path.join(__dirname, 'definition-cache.json');
+const _envCachePath = process.env.DREAM_DEFINITION_CACHE_FILE;
+const DISK_CACHE_PATH = (typeof _envCachePath === 'string')
+  ? (_envCachePath.length > 0 ? path.resolve(_envCachePath) : null)
+  : DEFAULT_DISK_CACHE_PATH;
 
 if (DISK_CACHE_PATH) {
   try {

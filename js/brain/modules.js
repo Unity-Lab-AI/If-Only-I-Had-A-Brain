@@ -239,7 +239,30 @@ export class Amygdala {
 
     // Arousal = persona baseline + depth of the attractor we fell into
     const attractorDepth = Math.sqrt(norm / size); // RMS of settled state, [0,1]
-    const arousal = Math.min(1, arousalBaseline * 0.6 + 0.4 * attractorDepth + 0.1 * (fear + reward));
+    // 114.19et — saturation fix. Earlier formula `min(1, baseline·0.6
+    // + 0.4·attractorDepth + 0.1·(fear+reward))` pegged arousal at 1.000
+    // because attractorDepth saturates near 1.0 once the recurrent
+    // basin settles (most nuclei converge to ±1 post-tanh). With
+    // arousalBaseline=0.9 (Unity persona): 0.54 hardcoded baseline +
+    // 0.40 attractor saturation = 0.94 floor before fear/reward even
+    // contribute. Master needed dynamic motion, not a 0.94-floor flat
+    // line. Fix: track a moving baseline of attractorDepth and feed
+    // the DEVIATION (centered around 0) into the arousal formula. This
+    // way arousal moves UP from persona baseline when attractor is
+    // MORE saturated than typical, DOWN when LESS saturated. Same
+    // mechanism the brain uses for novelty detection — relative not
+    // absolute.
+    if (typeof this._attractorDepthBaseline !== 'number') {
+      this._attractorDepthBaseline = attractorDepth;
+    }
+    const depthEMA_alpha = 0.005; // ~200-tick window for baseline
+    this._attractorDepthBaseline = this._attractorDepthBaseline * (1 - depthEMA_alpha) + attractorDepth * depthEMA_alpha;
+    const depthDeviation = attractorDepth - this._attractorDepthBaseline;
+    // arousal centered around persona baseline, modulated ±0.4 by
+    // depth deviation, ±0.1 by fear+reward. Tanh smooth-clamp so
+    // extreme deviations approach asymptotically instead of hard-pegging.
+    const rawArousal = arousalBaseline + 0.4 * Math.tanh(depthDeviation * 4) + 0.1 * ((fear + reward) - 1);
+    const arousal = Math.min(1, Math.max(0, rawArousal));
 
     this.lastEnergy = this._energy(x);
 

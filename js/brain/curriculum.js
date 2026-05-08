@@ -117,6 +117,45 @@ export const GRADE_LABELS = {
   'kindergarten': 'Kindergarten (Common Core K.RF / K.W / K.L / K.SL / K.RL + DIBELS / STAR / AIMSweb)',
 };
 
+// Compact grade abbreviations for dashboard panel headers — keep
+// these short so they fit inline next to icons. Single source of
+// truth for "📖 ${gradeShort} VOCABULARY" style label substitution
+// across the dashboard. Falls back to the raw grade key when no
+// abbreviation is registered (post-K grades land here as "grade5",
+// "phd" — short enough already).
+export const GRADE_SHORT_LABELS = {
+  'pre-K':        'Pre-K',
+  'kindergarten': 'K',
+  'grade1':       'Grade 1',
+  'grade2':       'Grade 2',
+  'grade3':       'Grade 3',
+  'grade4':       'Grade 4',
+  'grade5':       'Grade 5',
+  'grade6':       'Grade 6',
+  'grade7':       'Grade 7',
+  'grade8':       'Grade 8',
+  'grade9':       'Grade 9',
+  'grade10':      'Grade 10',
+  'grade11':      'Grade 11',
+  'grade12':      'Grade 12',
+  'college1':     'College 1',
+  'college2':     'College 2',
+  'college3':     'College 3',
+  'college4':     'College 4',
+  'grad':         'Grad',
+  'phd':          'PhD',
+};
+
+// Format helper — returns the compact label for a grade key, falling
+// back to the raw key when no abbreviation is registered. Empty/null
+// inputs return empty string so callers can do `${formatGradeShort(g)}
+// VOCABULARY` and get clean "VOCABULARY" instead of "undefined VOCABULARY"
+// when no grade is active (idle / between cells).
+export function formatGradeShort(grade) {
+  if (!grade) return '';
+  return GRADE_SHORT_LABELS[grade] || String(grade);
+}
+
 // Canonical 20-grade order. Every subject walks this same
 // sequence. Session 1 stubs the cells for math/science/social/art
 // — real teaching equations land in Sessions 2+ per the T14.24
@@ -805,11 +844,48 @@ export class Curriculum {
         && cluster.passedCells.includes(cellKey);
       cellStatus = inPassedList ? 'passed' : 'in-progress';
     }
+    // 114.19ev — when no real cell is active but a macro-phase IS
+    // (pre-cell setup like K-VOCAB-PREFETCH or K-VOCAB-UPFRONT-MULTIDEF
+    // SEED), surface the macro-phase as the dashboard's currentSubject
+    // + currentLabel so the "Current Training" card reflects what's
+    // actually happening. Master caught the contradictory display:
+    // phase=_teachAssociationPairs running (from upfront seed), but
+    // subject="no cell active" + desc="Waiting for curriculum teach
+    // to begin" — those two sources told different truths because
+    // _currentSubject only sets inside runSubjectGrade. Macro-phase
+    // bridges the gap.
+    const macroActive = !this._currentSubject && this._currentMacroPhase;
+    // 114.19ew — pre-cell progress for the dashboard. Without this,
+    // master had no way to estimate "how much longer until pre-cell
+    // setup finishes" — the dashboard just showed an active phase
+    // with no completion percentage. Emits {current, total, label,
+    // pct} when seed/prefetch is in flight; null otherwise.
+    const macroPhaseProgress = (macroActive && this._macroPhaseProgress)
+      ? {
+          current: this._macroPhaseProgress.current | 0,
+          total: this._macroPhaseProgress.total | 0,
+          label: this._macroPhaseProgress.label || '',
+          pct: this._macroPhaseProgress.total > 0
+            ? Math.round((this._macroPhaseProgress.current / this._macroPhaseProgress.total) * 100)
+            : 0,
+        }
+      : null;
     return {
-      currentSubject: this._currentSubject || null,
-      currentGrade: this._currentGrade || null,
-      currentLabel: this._currentSubjectLabel || null,
-      currentGradeLabel: this._currentGrade ? (GRADE_LABELS[this._currentGrade] || this._currentGrade) : null,
+      currentSubject: this._currentSubject || (macroActive ? 'pre-cell setup' : null),
+      currentGrade: this._currentGrade || (macroActive ? 'kindergarten' : null),
+      currentLabel: this._currentSubjectLabel || (macroActive ? this._currentMacroPhase : null),
+      currentGradeLabel: this._currentGrade
+        ? (GRADE_LABELS[this._currentGrade] || this._currentGrade)
+        : (macroActive ? 'kindergarten' : null),
+      macroPhaseProgress,
+      // Compact label for dashboard panel headers — "Pre-K" / "K" /
+      // "Grade 1" / "PhD" — substituted into hardcoded "K-VOCABULARY"
+      // / "K-WIRING ASSERTION" / "Dictionary API + K-Vocabulary"
+      // panel labels so the dashboard tracks the live curriculum
+      // grade instead of staying frozen at K when Unity advances.
+      // Empty string when no cell is active so callers can do
+      // `${gradeShort} Vocabulary` and get clean "Vocabulary" idle.
+      currentGradeShort: formatGradeShort(this._currentGrade),
       currentCellKey: cellKey,
       cellStatus,
       activePhase,
@@ -860,15 +936,108 @@ export class Curriculum {
    * Safe in the browser bundle — stdout.write falls into catch.
    */
   _hb(msg) {
+    // 114.19er.4 — watchdog timestamp. Every `[Curriculum]` line
+    // refreshes _lastCurriculumLogTs so the runner-level watchdog can
+    // detect silent stalls. Overnight run hung for 8+ hours after
+    // K-VOCAB-UPFRONT-MULTIDEF-forty#2/2 with NO surface signal that
+    // anything was wrong — operator only knew when they woke up.
+    // Watchdog at runCompleteCurriculum scope warns >5min idle.
     try {
+      const s = String(msg);
+      // 114.19es.8 — single substring check. The earlier
+      // `|| s.indexOf('[Curriculum][') >= 0` was a strict subset of
+      // the first predicate (every `[Curriculum][` contains `[Curriculum]`)
+      // so the second branch could never independently match.
+      if (s.indexOf('[Curriculum]') >= 0) {
+        this._lastCurriculumLogTs = Date.now();
+      }
       if (typeof process !== 'undefined' && process.stdout && typeof process.stdout.write === 'function') {
-        process.stdout.write(String(msg) + '\n');
+        process.stdout.write(s + '\n');
       } else {
         console.log(msg);
       }
     } catch {
       try { console.log(msg); } catch {}
     }
+  }
+
+  /**
+   * 114.19er.4 — runner-level stall watchdog. Started by
+   * runCompleteCurriculum at boot; fires every 60s and warns operator
+   * when the curriculum hasn't logged a `[Curriculum]` line in >5 min
+   * while the runner is still flagged active. Catches the
+   * silent-stall pattern (single hung await dragging the whole chain
+   * into deadlock) the moment it happens instead of after-the-fact log
+   * forensics. Self-clears the timer when runner exits cleanly.
+   */
+  _startCurriculumStallWatchdog() {
+    if (this._curriculumStallWatchdogTimer) return; // already running
+    const STALL_THRESHOLD_MS = 5 * 60 * 1000; // 5 min
+    const CHECK_INTERVAL_MS = 60 * 1000; // 1 min
+    this._lastCurriculumLogTs = Date.now();
+    // 114.19es.12 — single source of truth: timer non-null IS "runner
+    // active". Earlier code carried _curriculumRunnerActive as a parallel
+    // flag that always travelled with the timer; future maintainer could
+    // flip one and forget the other. Derive active state from timer.
+    this._curriculumStallWatchdogTimer = setInterval(() => {
+      try {
+        if (!this._curriculumStallWatchdogTimer) return;
+        const now = Date.now();
+        const idleMs = now - (this._lastCurriculumLogTs || now);
+        if (idleMs >= STALL_THRESHOLD_MS) {
+          if (!this._curriculumStallLastWarnTs || (now - this._curriculumStallLastWarnTs) >= STALL_THRESHOLD_MS) {
+            this._curriculumStallLastWarnTs = now;
+            const idleMin = (idleMs / 60000).toFixed(1);
+            // 114.19es.6 — enrich warn with cluster._activePhase (iter25-O.4
+            // wired this exactly for stall surfacing) + definition-cache
+            // stats. Operator now sees WHICH phase is hung, HOW LONG it's
+            // been in that phase, and WHY (cache miss / rate-limit / etc).
+            let phaseInfo = '';
+            try {
+              const phase = this.cluster?._activePhase;
+              if (phase && phase.name) {
+                const phaseElapsedMs = phase.startAt ? (now - phase.startAt) : 0;
+                const phaseElapsedMin = (phaseElapsedMs / 60000).toFixed(1);
+                phaseInfo = ` · phase=${phase.name} (running ${phaseElapsedMin}min)`;
+              } else {
+                phaseInfo = ' · phase=(between phases / no _activePhase set)';
+              }
+            } catch { /* non-fatal */ }
+            let cacheInfo = '';
+            try {
+              if (this.cluster && typeof this.cluster.getDefinitionCacheStats === 'function') {
+                const stats = this.cluster.getDefinitionCacheStats();
+                if (stats) {
+                  cacheInfo = ` · dict-cache: size=${stats.size ?? '?'}, hits=${stats.hits ?? '?'}, errs=${stats.errs ?? '?'}, rateLimited=${stats.rateLimited ?? '?'}, inFlight=${stats.inFlight ?? '?'}`;
+                }
+              }
+            } catch { /* non-fatal */ }
+            console.warn(`[Curriculum] ⚠⚠ STALL DETECTED — no [Curriculum] log line in ${idleMin} minutes while runner is active${phaseInfo}${cacheInfo}. Likely a hung await on dictionary fetch / Hebbian dispatch / dream-window. Watchdog will re-warn every ${(STALL_THRESHOLD_MS / 60000)} min until activity resumes.`);
+          }
+        }
+      } catch { /* watchdog must never throw */ }
+    }, CHECK_INTERVAL_MS);
+    if (typeof this._curriculumStallWatchdogTimer.unref === 'function') {
+      // Don't keep Node alive just for the watchdog if everything else exits.
+      this._curriculumStallWatchdogTimer.unref();
+    }
+  }
+
+  _stopCurriculumStallWatchdog() {
+    // 114.19es.12 — clearing the timer + setting it null is the
+    // canonical "runner stopped" signal. No parallel _curriculumRunnerActive
+    // flag to keep in sync.
+    if (this._curriculumStallWatchdogTimer) {
+      clearInterval(this._curriculumStallWatchdogTimer);
+      this._curriculumStallWatchdogTimer = null;
+    }
+    // 114.19es.3 — reset rate-limit + idle-timestamp state so the next
+    // run gets a fresh stall-detection window. Without this, a 6-min
+    // stall in run #1 would suppress the first warn in run #2 because
+    // _curriculumStallLastWarnTs still holds the prior run's timestamp
+    // and the >= STALL_THRESHOLD_MS gate compares against stale value.
+    this._curriculumStallLastWarnTs = 0;
+    this._lastCurriculumLogTs = 0;
   }
 
   /**
@@ -992,6 +1161,32 @@ export class Curriculum {
                   brain._dreamThoughtLog.shift();
                 }
                 this._hb(`[Curriculum] 💤 dream phenomenology: "${dreamSentence.trim().slice(0, 60)}..."`);
+                // 114.19ez — also broadcast the dream-content thought as
+                // innerThought WS so dashboard popups stay alive during
+                // dream windows. Without this, operator sees zero popup
+                // activity for 15-40 min per dream cycle even though the
+                // brain IS thinking (just dreaming, not waking-state).
+                // seed='dream' distinguishes it from waking emissions
+                // (learning/mood/chat-recall/memory/identity rotation).
+                try {
+                  if (brain.clients && brain.clients.size > 0) {
+                    const sentenceTrim = dreamSentence.trim();
+                    const payload = JSON.stringify({
+                      type: 'innerThought',
+                      word: sentenceTrim.split(/\s+/)[0] || '',
+                      sentence: sentenceTrim,
+                      seed: 'dream',
+                      seedLabel: 'dream phenomenology (Tier 1 episodic replay)',
+                      ts: Date.now(),
+                      capability: null,
+                    });
+                    for (const [ws] of brain.clients) {
+                      if (ws.readyState === ws.OPEN) {
+                        try { ws.send(payload); } catch { /* non-fatal */ }
+                      }
+                    }
+                  }
+                } catch { /* non-fatal — dream broadcast must never break the dream cycle */ }
               }
             }
           }
@@ -999,12 +1194,15 @@ export class Curriculum {
           // Non-fatal — dream consolidation continues even if dreaming fails.
         }
 
-        // Background-trickle K_VOCABULARY definition Hebbian
-        // during dream cycles. One word per cycle: queue lives on the
-        // cluster; if empty, lazy-load K_VOCABULARY filtered to words
-        // not in cluster._definitionTaughtWords. After thousands of
-        // dream cycles over hours/days, full K_VOCAB coverage achieved
-        // at slow safe pace — no upfront basin blur, no lifelong gaps.
+        // Background-trickle K_VOCABULARY multi-def Hebbian during
+        // dream cycles. Session 114.19ei bumped batch size 1 → 25
+        // per Gee's "lets do a little bit of all three" directive,
+        // matching definition-service.js PREFETCH_CONCURRENCY=20 + a
+        // small headroom. Each word fires one Hebbian binding per
+        // definition sense (multi-def per memory feedback). After
+        // upfront seed (reps:2) + inline-from-teach + this dream
+        // trickle, every K-word converges to multi-def coverage at
+        // moderate plasticity without basin-blur.
         if (cluster && typeof this._teachWordDefinition === 'function') {
           try {
             if (!cluster._kVocabQueue) {
@@ -1016,10 +1214,21 @@ export class Curriculum {
                 cluster._kVocabQueue = [];
               }
             }
-            if (cluster._kVocabQueue.length > 0) {
-              const word = cluster._kVocabQueue.shift();
-              await this._teachWordDefinition(word, { reps: 4, label: 'DREAM-DEF-TRICKLE' });
-              this._hb(`[Curriculum] 💤 dream trickle: definition Hebbian for "${word}" (${cluster._kVocabQueue.length} K-vocab words remaining in queue)`);
+            const DREAM_TRICKLE_BATCH = 25;
+            const batchN = Math.min(DREAM_TRICKLE_BATCH, cluster._kVocabQueue.length);
+            if (batchN > 0) {
+              const batchStart = Date.now();
+              let bound = 0;
+              for (let i = 0; i < batchN; i++) {
+                const word = cluster._kVocabQueue.shift();
+                if (!word) break;
+                try {
+                  const r = await this._teachWordDefinition(word, { reps: 4, label: 'DREAM-DEF-TRICKLE' });
+                  if (r && r.defsBound > 0) bound += r.defsBound;
+                } catch { /* skip per-word failures */ }
+              }
+              const dt = ((Date.now() - batchStart) / 1000).toFixed(1);
+              this._hb(`[Curriculum] 💤 dream trickle: ${batchN} words processed in ${dt}s (${bound} multi-def Hebbian fires) · ${cluster._kVocabQueue.length} K-vocab words remaining in queue`);
             }
           } catch (err) {
             // Non-fatal — dream consolidation continues even if trickle fails.
@@ -5320,16 +5529,149 @@ export class Curriculum {
           && !cluster._kVocabPrefetched
           && cluster && typeof cluster.prefetchDefinitions === 'function') {
         try {
+          // 114.19ev — set macro-phase label so the dashboard "Current
+          // Training" card shows accurate context during the pre-cell
+          // setup work. Master caught the dashboard contradiction:
+          // phase=_teachAssociationPairs running but cell shows "no
+          // cell active / Waiting for curriculum teach to begin." That's
+          // because upfront-multi-def-seed fires Hebbian primitives
+          // BEFORE entering any runSubjectGrade cell runner, so
+          // `_currentSubject` is null but `cluster._activePhase` is
+          // populated. The macro-phase fills the gap — dashboard reads
+          // this when no real cell is active.
+          this._currentMacroPhase = '📚 K-VOCAB-PREFETCH (pre-cell setup)';
           const { K_VOCABULARY } = await import('./k-vocabulary.js');
           if (Array.isArray(K_VOCABULARY) && K_VOCABULARY.length > 0) {
-            this._hb(`[Curriculum] 📚 K-VOCAB-PREFETCH START — warming cache for ${K_VOCABULARY.length} K-grade words (network-bound, ~1 min). NO upfront Hebbian — chat-time definition lookups instant from cache.`);
+            // 114.19ew — surface prefetch progress to dashboard. Without
+            // this, master had no way to see "how much longer until
+            // pre-cell setup finishes". `_macroPhaseProgress` populates
+            // a {current, total, label} struct that getCurriculumStatus
+            // returns for the dashboard to render as a progress bar.
+            // Prefetch is one big batch (no intermediate progress
+            // report from definitionService.prefetch), so we only get
+            // start (0/N) → done (N/N). Seed phase below has chunk-
+            // level granularity so progress ticks up smoothly.
+            this._macroPhaseProgress = {
+              current: 0,
+              total: K_VOCABULARY.length,
+              label: 'K-VOCAB-PREFETCH',
+            };
+            this._hb(`[Curriculum] 📚 K-VOCAB-PREFETCH START — warming cache for ${K_VOCABULARY.length} K-grade words (network-bound, ~1 min).`);
             const stats = await cluster.prefetchDefinitions(K_VOCABULARY, { timeoutMs: 8000 });
             cluster._kVocabPrefetched = true;
-            this._hb(`[Curriculum] 📚 K-VOCAB-PREFETCH DONE — ${stats?.prefetched || 0} new definitions cached, ${stats?.alreadyCached || 0} already cached. Cache hot for chat-time lookups.`);
+            this._macroPhaseProgress = {
+              current: K_VOCABULARY.length,
+              total: K_VOCABULARY.length,
+              label: 'K-VOCAB-PREFETCH (done)',
+            };
+            this._hb(`[Curriculum] 📚 K-VOCAB-PREFETCH DONE — ${stats?.prefetched || 0} new definitions cached, ${stats?.alreadyCached || 0} already cached.`);
+
+            // Session 114.19ei — moderate upfront multi-def Hebbian seed.
+            // Gee 2026-05-07: *"lets do a little bit of all three to the
+            // extent we can and to the extent it'll let Unity process
+            // think and speak correctly with her ciriculum courses"*
+            // — combined with the multi-def directive (every word's
+            // FULL definitions array binds, not just the first). Reps
+            // lowered 6 → 2 to mitigate the iter25-L.A1 basin-blur risk
+            // (still gives every K-word a multi-def Hebbian seed pre-
+            // curriculum, but with weaker plasticity than the prior
+            // 6-rep upfront). Bulk of definition learning happens via
+            // inline-from-teach + dream-trickle; this is just the seed.
+            try {
+              if (typeof this._teachWordDefinitions === 'function' && !cluster._kVocabUpfrontTaught) {
+                // 114.19ev — switch macro-phase label to seed-specific.
+                this._currentMacroPhase = '📚 K-VOCAB-UPFRONT-MULTIDEF SEED (pre-cell setup)';
+                // 114.19ew — chunk-level progress for the dashboard.
+                // Updates after each 300-word chunk so master sees
+                // current/total ticking up across the 2247-word pass
+                // and can estimate remaining wall-clock time.
+                this._macroPhaseProgress = {
+                  current: 0,
+                  total: K_VOCABULARY.length,
+                  label: 'K-VOCAB-UPFRONT-MULTIDEF SEED',
+                };
+                this._hb(`[Curriculum] 📚 K-VOCAB-UPFRONT-MULTIDEF SEED START — moderate (reps:2) Hebbian seed of all definitions for ${K_VOCABULARY.length} K-words. Bulk learning happens inline + dream-trickle.`);
+                // Chunked seed pass with interleaved dream windows
+                // (114.19ek P1 #9). 2247 K-words × multi-def × reps:2
+                // is 5-15 min of upfront Hebbian work. Without dream
+                // windows the V8 + native heap drift unbroken across
+                // the entire pass — exactly the pressure pattern that
+                // crashed Chrome's GPU process at heartbeat #141 in
+                // session 114.19eg. Chunking every 300 words lets
+                // ConsolidationEngine drain + V8 GC catch up between
+                // chunks so memory pressure stays bounded.
+                const CHUNK = 300;
+                let totalTrained = 0;
+                let totalWordsBound = 0;
+                let totalDefsBound = 0;
+                // 114.19es.9 — aggregate per-word timeout + slow-word
+                // counters across chunks so the SEED DONE banner shows
+                // operator the total stall scope across the whole 2247
+                // K-vocab pass instead of just per-chunk values that get
+                // lost in the per-chunk DONE log lines.
+                let totalTimeouts = 0;
+                let totalSlowWords = 0;
+                for (let chunkStart = 0; chunkStart < K_VOCABULARY.length; chunkStart += CHUNK) {
+                  const chunk = K_VOCABULARY.slice(chunkStart, chunkStart + CHUNK);
+                  this._hb(`[Curriculum] 📚 UPFRONT-MULTIDEF chunk ${chunkStart}–${chunkStart + chunk.length}/${K_VOCABULARY.length}`);
+                  // Session 114.19em fix — drop reps:2 → reps:1 in
+                  // upfront seed so multi-def's natural 4-8 defs/word
+                  // amplification is sufficient on its own. The prior
+                  // reps:2 stacked on top of multi-def gave 8-16
+                  // effective Hebbian writes per word in the upfront
+                  // pass, which compounded the wall-of-OVERLOAD
+                  // saturation. Single rep × multi-def gives ~6
+                  // effective exposures per word — plenty for a
+                  // pre-curriculum seed.
+                  const chunkStats = await this._teachWordDefinitions(chunk, {
+                    reps: 1,
+                    label: 'K-VOCAB-UPFRONT-MULTIDEF',
+                  });
+                  totalTrained += chunkStats?.totalTrained || 0;
+                  totalWordsBound += chunkStats?.wordsBound || 0;
+                  totalDefsBound += chunkStats?.totalDefsBound || 0;
+                  totalTimeouts += chunkStats?.timeouts || 0;
+                  totalSlowWords += chunkStats?.slowWords || 0;
+                  // 114.19ew — bump dashboard progress after each chunk.
+                  // Math.min so the final chunk (which may be partial)
+                  // still ends at total, not total+overshoot.
+                  this._macroPhaseProgress = {
+                    current: Math.min(chunkStart + chunk.length, K_VOCABULARY.length),
+                    total: K_VOCABULARY.length,
+                    label: 'K-VOCAB-UPFRONT-MULTIDEF SEED',
+                  };
+                  // Drain between chunks (skip the final chunk —
+                  // the curriculum's own dream cycles take over).
+                  if (chunkStart + CHUNK < K_VOCABULARY.length) {
+                    try {
+                      await this._dreamWindow({ minMs: 30_000, settleMs: 3_000 });
+                    } catch (dwErr) {
+                      this._hb(`[Curriculum] 📚 UPFRONT-MULTIDEF dream-window error (non-fatal): ${dwErr?.message || dwErr}`);
+                    }
+                  }
+                }
+                cluster._kVocabUpfrontTaught = true;
+                const stallSummary = (totalTimeouts > 0 || totalSlowWords > 0)
+                  ? ` · ⚠ ${totalTimeouts} per-word timeouts, ${totalSlowWords} slow words across all chunks`
+                  : '';
+                this._hb(`[Curriculum] 📚 K-VOCAB-UPFRONT-MULTIDEF SEED DONE — ${totalTrained} Hebbian fires across ${totalWordsBound} words (multi-def: ${totalDefsBound} definition senses bound)${stallSummary}.`);
+                // 114.19ev — clear macro-phase; cell runners take over now.
+                // 114.19ew — also clear progress so dashboard hides bar.
+                this._currentMacroPhase = null;
+                this._macroPhaseProgress = null;
+              }
+            } catch (err) {
+              this._hb(`[Curriculum] 📚 K-VOCAB-UPFRONT-MULTIDEF skipped — error: ${err?.message || err}`);
+              cluster._kVocabUpfrontTaught = true;
+              this._currentMacroPhase = null;
+              this._macroPhaseProgress = null;
+            }
           }
         } catch (err) {
           this._hb(`[Curriculum] 📚 K-VOCAB-PREFETCH skipped — load/prefetch error: ${err?.message || err}`);
           cluster._kVocabPrefetched = true; // mark so we don't retry on every loop
+          this._currentMacroPhase = null;
+          this._macroPhaseProgress = null;
         }
       }
 
@@ -5800,25 +6142,9 @@ export class Curriculum {
         const xOneHot = encodeLetter(X);
         const yOneHot = encodeLetter(Y);
         if (!xOneHot || !yOneHot || xOneHot.length === 0 || yOneHot.length === 0) { skipped++; continue; }
-        const preFull = new Float64Array(cluster.size);
-        const postFull = new Float64Array(cluster.size);
-        const gSize = Math.max(1, Math.floor(letterSize / xOneHot.length));
-        for (let d = 0; d < xOneHot.length; d++) {
-          if (xOneHot[d] > 0) {
-            for (let n = 0; n < gSize; n++) {
-              const idx = letterRegion.start + d * gSize + n;
-              if (idx < letterRegion.end) preFull[idx] = 1;
-            }
-          }
-        }
-        for (let d = 0; d < yOneHot.length; d++) {
-          if (yOneHot[d] > 0) {
-            for (let n = 0; n < gSize; n++) {
-              const idx = letterRegion.start + d * gSize + n;
-              if (idx < letterRegion.end) postFull[idx] = 1;
-            }
-          }
-        }
+        const scratch = this._ensureScratchBuffers();
+        const preFull = this._fillRegionPatternInto(scratch.pre, letterRegion, xOneHot, true);
+        const postFull = this._fillRegionPatternInto(scratch.post, letterRegion, yOneHot, true);
         try {
           // pass K-scales to intra-cluster ojaUpdate.
           // Letter-sequence training uses cluster.synapses (full cluster
@@ -6162,6 +6488,36 @@ export class Curriculum {
 
     const dt = ((Date.now() - t0) / 1000).toFixed(1);
     this._hb(`[Curriculum] _teachWordEmissionDirect DONE in ${dt}s — ${updates} Oja updates · ${skipped} skipped (${words.length} words × ${reps} reps target · band=${subjectBandName || 'umbrella'})`);
+
+    // Session 114.19ei — INLINE multi-def Hebbian for any words this
+    // teach pass landed that aren't yet in `_definitionTaughtWords`.
+    // Bounded to 10 untaught words per call so curriculum throughput
+    // stays workable. After the K-start upfront seed (reps:2 across
+    // K_VOCABULARY) this is a no-op for K-vocab but kicks in for
+    // post-K grades where no upfront seed runs, OR for words added
+    // mid-curriculum via chat-time `learnWord`. Per Gee: "lets do a
+    // little bit of all three" — upfront seed + inline-from-teach +
+    // dream-trickle batch all firing in concert.
+    try {
+      if (cluster && typeof this._teachWordDefinition === 'function') {
+        const taught = cluster._definitionTaughtWords || new Set();
+        const untaught = words.filter(w => w && !taught.has(String(w).toLowerCase().trim()));
+        const INLINE_CAP = 10;
+        const batchN = Math.min(INLINE_CAP, untaught.length);
+        if (batchN > 0) {
+          const inlineStart = Date.now();
+          let bound = 0;
+          for (let i = 0; i < batchN; i++) {
+            try {
+              const r = await this._teachWordDefinition(untaught[i], { reps: 4, label: 'INLINE-DEF' });
+              if (r && r.defsBound > 0) bound += r.defsBound;
+            } catch { /* skip per-word */ }
+          }
+          const inlineDt = ((Date.now() - inlineStart) / 1000).toFixed(1);
+          this._hb(`[Curriculum] _teachWordEmissionDirect inline-multi-def: ${batchN} untaught words processed in ${inlineDt}s (${bound} multi-def Hebbian fires)`);
+        }
+      }
+    } catch { /* inline def is best-effort, never blocks main teach */ }
 
     // advance subGrade label once words land. Subject-
     // scoped advance (subject !== 'all') so per-subject UI / drug
@@ -8948,24 +9304,42 @@ export class Curriculum {
     const size = cluster.size;
     if (!size) return;
     try {
-      // Target snapshot from the current write.
-      const target = new Float64Array(size);
+      // Session 114.19ej P0 #1 — pooled target + error buffers.
+      // _teachPredictiveError is called once per pair per rep inside
+      // _teachAssociationPairs. With reps:24 × pairs.length × upstream
+      // multi-def × K_VOCABULARY upfront seed = millions of calls per
+      // K run. Per-call `new Float64Array(size)` × 2 was the smoking-
+      // gun source of the +1001MB single-cycle native jump caught at
+      // heartbeat #141 in 114.19eg server.log forensics. Reusing two
+      // dedicated scratch buffers (`_predictTargetScratch` +
+      // `_predictErrorScratch`) drops per-call alloc to zero. Buffer
+      // is zeroed via `.fill(0)` to ensure no stale tail carries over
+      // from prior calls (the inner loops only overwrite indices 0..n
+      // where n = min(size, predicted.length); tail from n..size must
+      // be clean for the downstream hebbianUpdate to read correctly).
+      if (!this._predictTargetScratch || this._predictTargetScratch.length !== size) {
+        this._predictTargetScratch = new Float64Array(size);
+      }
+      if (!this._predictErrorScratch || this._predictErrorScratch.length !== size) {
+        this._predictErrorScratch = new Float64Array(size);
+      }
+      const target = this._predictTargetScratch;
+      const error = this._predictErrorScratch;
+      target.fill(0);
+      error.fill(0);
       for (let i = 0; i < size; i++) target[i] = cluster.lastSpikes[i] ? 1 : 0;
-      // Predicted next-step via intra-matrix propagate. For biological
-      // scale this is ~nnz work where nnz is intra-cluster fanout × size.
+      // Predicted next-step via intra-matrix propagate. SparseMatrix
+      // propagate still allocates a new output Float64Array per call
+      // (rows-sized) — that's a separate fix in sparse-matrix.js to
+      // add an optional output-buffer parameter. For now the largest
+      // savings are the target + error buffers being pooled.
       const predicted = cluster.synapses.propagate(target);
       if (!predicted || predicted.length === 0) return;
-      // Normalize predicted against its max so the error signal is in
-      // roughly [0, 1] range comparable to binary target spikes.
       let maxP = 1e-6;
       for (let i = 0; i < predicted.length; i++) {
         const v = predicted[i];
         if (v > maxP) maxP = v;
       }
-      // Build error vector clamped to [-1, 1]. Positive error = target
-      // fired but prediction missed → LTP-sign Hebbian. Negative error
-      // = prediction fired but target didn't → LTD-sign.
-      const error = new Float64Array(size);
       const n = Math.min(size, predicted.length);
       for (let i = 0; i < n; i++) {
         const p = predicted[i] / maxP;
@@ -8974,8 +9348,6 @@ export class Curriculum {
         else if (e < -1) e = -1;
         error[i] = e;
       }
-      // Apply via hebbianUpdate (not ojaUpdate) because we want the
-      // RAW delta-rule gradient, not the y²·w decay Oja would layer on.
       if (typeof cluster.synapses.hebbianUpdate === 'function') {
         cluster.synapses.hebbianUpdate(target, error, lr * 0.3);
       }
@@ -9432,6 +9804,31 @@ export class Curriculum {
     if (cluster.crossProjections.fineType_to_sem) wl.push('fineType_to_sem');
     return wl;
   }
+
+  // Definition Hebbian whitelist — sem↔fineType ONLY, no motor.
+  // Session 114.19em fix for the wall-of-OVERLOAD pattern: the prior
+  // `_teachWordDefinition` reused `_associationPairsWhitelist` which
+  // includes sem_to_motor / motor_to_sem. Multi-def × shared def-tokens
+  // (number-words like "one"/"two"/"three" all share "number"/"first"/
+  // "single" in their definitions) wrote the SAME pattern into the
+  // SAME motor cells across thousands of word-bindings, collapsing
+  // every motor row to identical → mean-cos = 1.0 → ⚠OVERLOAD on
+  // every chunk. Definitions are SEMANTIC content — they belong in
+  // sem↔fineType (concept-relationship region), NOT in sem→motor
+  // (which is for word emission and learns letter-by-letter motor
+  // sequences). Routing definition Hebbian away from motor preserves
+  // the motor projection's discrimination basins for the actual
+  // word-emission curriculum work. fineType has wider tolerance for
+  // shared-token writes because it's the relation-tag region, not
+  // the action-output region.
+  _definitionPairsWhitelist() {
+    const cluster = this.cluster;
+    if (!cluster || !cluster.crossProjections) return [];
+    const wl = [];
+    if (cluster.crossProjections.sem_to_fineType) wl.push('sem_to_fineType');
+    if (cluster.crossProjections.fineType_to_sem) wl.push('fineType_to_sem');
+    return wl;
+  }
   // Projection whitelist for QA-binding. sem→motor + sem→word_motor +
   // per-subject sem→word_motor_<subj> sub-band. Letter / phon / visual
   // projections excluded so silent regions during QA writes don't
@@ -9808,6 +10205,19 @@ export class Curriculum {
       }
     }
     this._qaConvergenceStreak = 0;
+    // Session 114.19eo — same `diagProjKeys` derivation as
+    // _teachAssociationPairs so QA's diagnostic ops (prune / rescale /
+    // norm / weight-report) target whichever projections actually got
+    // Hebbian via opts.projectionsWhitelist. Defense in depth: today
+    // _qaBindingWhitelist always includes sem_to_motor + sem_to_word_motor
+    // so this is a no-op for the default path; if QA is ever called
+    // with a custom whitelist (e.g. word_motor only), the diagnostics
+    // follow instead of hammering untouched matrices.
+    const qaDiagProjKeys = (Array.isArray(opts.projectionsWhitelist) && opts.projectionsWhitelist.length > 0)
+      ? opts.projectionsWhitelist.filter(k => cluster.crossProjections && cluster.crossProjections[k])
+      : ['sem_to_motor', 'motor_to_sem'].filter(k => cluster.crossProjections && cluster.crossProjections[k]);
+    const qaPrimaryProj = qaDiagProjKeys[0] || 'sem_to_motor';
+
     // Top-K-per-row pruning. Same fix the _teachAssociationPairs path
     // uses — the Q-A teacher saturates its own sem_to_motor weights
     // independently and was previously left at full density / max
@@ -9821,9 +10231,8 @@ export class Curriculum {
     const qaPruneTopK = opts.pruneTopK ?? 10;
     let qaPruneReport = '';
     if (qaPruneTopK > 0 && cluster.crossProjections) {
-      const projKeys = ['sem_to_motor', 'motor_to_sem'];
       const pruned = [];
-      for (const key of projKeys) {
+      for (const key of qaDiagProjKeys) {
         const proj = cluster.crossProjections[key];
         if (proj && typeof proj.pruneTopKPerRow === 'function' && proj.values && proj.values.length > 0) {
           try {
@@ -9846,9 +10255,8 @@ export class Curriculum {
     // post-QA but motor argmax still bucket-stuck on 'sq'/'sridech'.
     let qaNormReport = '';
     if (cluster.crossProjections) {
-      const normKeys = ['sem_to_motor', 'motor_to_sem'];
       const normalized = [];
-      for (const key of normKeys) {
+      for (const key of qaDiagProjKeys) {
         const proj = cluster.crossProjections[key];
         if (proj && typeof proj.normalizeRows === 'function' && proj.values && proj.values.length > 0) {
           try {
@@ -9884,7 +10292,9 @@ export class Curriculum {
     let qaMaxAbs = 0;
     let qaWMaxRef = 0.4; // fallback if proj.wMax not readable
     try {
-      const proj = cluster.crossProjections && cluster.crossProjections.sem_to_motor;
+      // Session 114.19eo — sample qaPrimaryProj instead of hardcoded
+      // sem_to_motor so saturation check tracks the actual write target.
+      const proj = cluster.crossProjections && cluster.crossProjections[qaPrimaryProj];
       if (proj) {
         if (typeof proj.wMax === 'number' && proj.wMax > 0) qaWMaxRef = proj.wMax;
         if (proj.values && proj.values.length > 0) {
@@ -9904,9 +10314,8 @@ export class Curriculum {
       && (qaRescaleOnSaturationOnly ? qaSaturated : true)
       && !qaWouldDrown;
     if (qaShouldRescale) {
-      const projKeys = ['sem_to_motor', 'motor_to_sem'];
       const rescaled = [];
-      for (const key of projKeys) {
+      for (const key of qaDiagProjKeys) {
         const proj = cluster.crossProjections[key];
         if (proj && typeof proj.scale === 'function' && proj.values && proj.values.length > 0) {
           try {
@@ -9968,7 +10377,10 @@ export class Curriculum {
     const elapsedSec = ((Date.now() - startMs) / 1000).toFixed(1);
     let weightReport = '';
     try {
-      const proj = cluster.crossProjections && cluster.crossProjections.sem_to_motor;
+      // Session 114.19eo — weight diagnostic samples qaPrimaryProj
+      // (whichever projection actually got Hebbian) instead of
+      // hardcoded sem_to_motor.
+      const proj = cluster.crossProjections && cluster.crossProjections[qaPrimaryProj];
       if (proj && proj.values && proj.values.length > 0) {
         const vals = proj.values;
         let sumAbs = 0, maxAbs = 0, nnz = 0;
@@ -9981,8 +10393,8 @@ export class Curriculum {
         }
         const gpuBound = !!proj._gpuBound;
         const tag = gpuBound
-          ? `sem_to_motor |W| mean=${(sumAbs / N).toFixed(4)} max=${maxAbs.toFixed(4)} nnz=${nnz}/${N} (CPU shadow · GPU bound, values frozen — read sep-probe cosine for authoritative signal)`
-          : `sem_to_motor |W| mean=${(sumAbs / N).toFixed(4)} max=${maxAbs.toFixed(4)} nnz=${nnz}/${N}`;
+          ? `${qaPrimaryProj} |W| mean=${(sumAbs / N).toFixed(4)} max=${maxAbs.toFixed(4)} nnz=${nnz}/${N} (CPU shadow · GPU bound, values frozen — read sep-probe cosine for authoritative signal)`
+          : `${qaPrimaryProj} |W| mean=${(sumAbs / N).toFixed(4)} max=${maxAbs.toFixed(4)} nnz=${nnz}/${N}`;
         weightReport = ` · ${tag}`;
       }
     } catch { /* non-fatal */ }
@@ -10250,103 +10662,202 @@ export class Curriculum {
    * @returns {Promise<{passes: number, totalTrained: number, skipped?: string}>}
    */
   async _teachWordDefinition(word, opts = {}) {
+    // Session 114.19ei — multi-definition Hebbian binding.
+    //
+    // Per Gee 2026-05-07: *"not one definition per word... everyone
+    // knnows multiple definitons per word... we cant have unity not
+    // knowing the defintions of words... ive told u this and only
+    // having one definiton is fucking limiting"*. dictionaryapi.dev
+    // returns multiple meanings × multiple definitions per word. ALL
+    // of them must Hebbian-bind so Unity learns every sense, not just
+    // the first one the API happened to return.
+    //
+    // 114.19es.4 — accept opts.signal (AbortSignal). Outer
+    // _teachWordDefinitions loop wraps each call in a Promise.race
+    // against a 15s timeout; on timeout-win, the abort fires and any
+    // in-flight Hebbian writes inside this method MUST stop before
+    // landing in the next-word's binding scope. Eliminates cross-word
+    // contamination from abandoned timed-out promises.
+    const signal = opts.signal || null;
+    if (signal && signal.aborted) {
+      return { passes: 0, totalTrained: 0, skipped: 'aborted-pre-entry' };
+    }
     const cluster = this.cluster;
     if (!cluster || !word) return { passes: 0, totalTrained: 0, skipped: 'no cluster/word' };
     const w = String(word).toLowerCase().trim();
     if (!w) return { passes: 0, totalTrained: 0, skipped: 'empty word' };
-    let def = null;
-    if (typeof cluster.lookupDefinitionSync === 'function') {
-      def = cluster.lookupDefinitionSync(w);
+
+    // Pull the FULL definitions array (multi-def) — cluster.lookupDefinitionFull
+    // returns `Array<{ partOfSpeech, definition, example, synonyms }>`
+    // from `definition-service.js getDefinitions`. Falls back to the
+    // single-string lookup for older deployments / unwired clusters.
+    let definitions = [];
+    if (typeof cluster.lookupDefinitionFull === 'function') {
+      try { definitions = await cluster.lookupDefinitionFull(w, { timeoutMs: opts.timeoutMs ?? 3000 }); }
+      catch { definitions = []; }
     }
-    if (!def && typeof cluster.lookupDefinition === 'function') {
-      try { def = await cluster.lookupDefinition(w, { timeoutMs: opts.timeoutMs ?? 3000 }); }
-      catch { def = null; }
+    if ((!Array.isArray(definitions) || definitions.length === 0) && typeof cluster.lookupDefinition === 'function') {
+      // Last-resort single-def fallback when the multi-def path returned
+      // nothing (some browsers route only through the legacy path).
+      try {
+        const def = await cluster.lookupDefinition(w, { timeoutMs: opts.timeoutMs ?? 3000 });
+        if (def && typeof def === 'string') definitions = [{ definition: def, partOfSpeech: '', example: '', synonyms: [] }];
+      } catch { /* leave empty */ }
     }
-    // Compound-word fallback. dictionaryapi.dev expects
-    // hyphenated or spaced versions for some compounds — "icecream"
-    // 404s but "ice-cream" hits. If the original word is 7+ chars and
-    // contains a likely compound boundary, retry with hyphen variants.
-    if (!def && typeof cluster.lookupDefinition === 'function' && w.length >= 7 && !w.includes('-') && !w.includes(' ')) {
-      // Try hyphenating after common compound prefixes.
+
+    // Compound-word fallback — dictionaryapi.dev expects hyphenated
+    // versions for some compounds ("icecream" 404s but "ice-cream" hits).
+    if ((!Array.isArray(definitions) || definitions.length === 0)
+        && typeof cluster.lookupDefinitionFull === 'function'
+        && w.length >= 7 && !w.includes('-') && !w.includes(' ')) {
       const COMPOUND_PREFIXES = ['ice', 'milky', 'new', 'fourth', 'rain', 'sun', 'moon', 'fire', 'water', 'play', 'home', 'class', 'book', 'foot', 'hand', 'sea', 'mid', 'over', 'under'];
       for (const prefix of COMPOUND_PREFIXES) {
         if (w.startsWith(prefix) && w.length > prefix.length + 1) {
           const hyphenated = `${prefix}-${w.slice(prefix.length)}`;
           try {
-            def = await cluster.lookupDefinition(hyphenated, { timeoutMs: 2000 });
-            if (def) break;
+            const arr = await cluster.lookupDefinitionFull(hyphenated, { timeoutMs: 2000 });
+            if (Array.isArray(arr) && arr.length > 0) { definitions = arr; break; }
           } catch { /* keep trying */ }
         }
       }
     }
-    if (!def || typeof def !== 'string') {
-      return { passes: 0, totalTrained: 0, skipped: 'no definition' };
+
+    if (!Array.isArray(definitions) || definitions.length === 0) {
+      return { passes: 0, totalTrained: 0, defsBound: 0, skipped: 'no definition' };
     }
-    const tokens = def.toLowerCase().match(/[a-z]+/g) || [];
+
     const STOP = new Set(['a','an','the','and','or','but','of','to','for','in','on','at','by','with','as','is','are','was','were','be','been','being','it','this','that','these','those','its','it','from','into','out','up','down','off','over','under','than','then','when','where','which','who','whose','whom','what','why','how']);
-    const contentTokens = [];
-    const seen = new Set();
-    for (const t of tokens) {
-      if (t.length < 3) continue;
-      if (STOP.has(t)) continue;
-      if (t === w) continue;
-      if (seen.has(t)) continue;
-      seen.add(t);
-      contentTokens.push(t);
-      if (contentTokens.length >= 8) break;
-    }
-    if (contentTokens.length === 0) {
-      return { passes: 0, totalTrained: 0, skipped: 'no content tokens' };
-    }
-    const pairs = contentTokens.map(t => [w, t]);
-    const r = await this._teachAssociationPairs(pairs, {
-      reps: opts.reps ?? 6,
-      label: opts.label || `DEF-${w.toUpperCase()}`,
-      relationTagId: 23,
-    });
-    // K-scaled gradient pass on top of the association teach. The
-    // common _teachAssociationPairs → _teachHebbian → _crossRegionHebbian
-    // path dispatches through GPU hebbianBound / CPU sparsePool, neither
-    // of which currently consumes the per-row hub neurons/K.7/K.9 kScales bundle
-    // (those are an ojaUpdate-only feature). Without this extra fire,
-    // definition Hebbian gets untuned plasticity vs the direct-ojaUpdate
-    // teach paths (letter sequence / letter naming / word emission /
-    // word spelling) — different Hebbian regime per word type produces
-    // inconsistent basin formation across the cortex. One small extra
-    // K-scaled ojaUpdate fire per definition pulls the sem-band weights
-    // into the same plasticity regime as the rest of K-vocab teaching.
-    if (r.trained > 0 && cluster && cluster.synapses
-        && typeof cluster.synapses.ojaUpdate === 'function'
-        && typeof cluster.buildKScalesForProjection === 'function'
-        && cluster.regions && cluster.regions.sem
-        && cluster.lastSpikes) {
-      try {
-        const sem = cluster.regions.sem;
-        const semSize = sem.end - sem.start;
-        const preFull = new Float32Array(cluster.size);
-        const postFull = new Float32Array(cluster.size);
-        for (let i = 0; i < semSize; i++) {
-          const v = cluster.lastSpikes[sem.start + i] || 0;
-          preFull[sem.start + i] = v;
-          postFull[sem.start + i] = v;
+    const reps = opts.reps ?? 6;
+    const baseLabel = opts.label || `DEF-${w.toUpperCase()}`;
+    let totalTrained = 0;
+    let defsBound = 0;
+    const now = Date.now();
+
+    // Iterate every definition and bind Hebbian on each separately.
+    // Each definition's content tokens form one association pair set
+    // — multi-sense words get multiple sub-pattern Hebbian bindings in
+    // the sem region instead of a collapsed single-sense binding.
+    for (let defIdx = 0; defIdx < definitions.length; defIdx++) {
+      // 114.19es.4 — bail between definition iterations on abort. If
+      // the outer race timed out mid-loop, defs still pending get
+      // skipped instead of writing into the next-word's scope.
+      if (signal && signal.aborted) {
+        return { passes: defsBound, totalTrained, defsBound, totalDefs: definitions.length, skipped: 'aborted-mid-defs' };
+      }
+      const entry = definitions[defIdx];
+      const defText = (entry && typeof entry === 'object') ? entry.definition : entry;
+      if (!defText || typeof defText !== 'string') continue;
+
+      const tokens = defText.toLowerCase().match(/[a-z]+/g) || [];
+      const contentTokens = [];
+      const seen = new Set();
+      for (const t of tokens) {
+        if (t.length < 3) continue;
+        if (STOP.has(t)) continue;
+        if (t === w) continue;
+        if (seen.has(t)) continue;
+        seen.add(t);
+        contentTokens.push(t);
+        if (contentTokens.length >= 8) break;
+      }
+      if (contentTokens.length === 0) continue;
+
+      // Layer the part-of-speech as an additional content token when
+      // available — disambiguates noun-vs-verb senses in sem.
+      if (entry && entry.partOfSpeech && typeof entry.partOfSpeech === 'string') {
+        const pos = entry.partOfSpeech.toLowerCase().replace(/[^a-z]/g, '');
+        if (pos && pos.length >= 3 && !contentTokens.includes(pos) && contentTokens.length < 8) {
+          contentTokens.push(pos);
         }
-        const kScales = cluster.buildKScalesForProjection(null, null);
-        const lrK = (opts.lr ?? 0.01) * 0.25;
-        cluster.synapses.ojaUpdate(preFull, postFull, lrK, kScales ? { kScales } : undefined);
-      } catch { /* non-fatal — extra K-scaled pass is best-effort */ }
+      }
+
+      const pairs = contentTokens.map(t => [w, t]);
+      // Session 114.19ej P1 #8 — pass `_associationPairsWhitelist` so
+      // _teachHebbian fan-out scopes to sem↔motor + sem↔fineType only.
+      // Without this, the multi-def upfront seed × inline-from-teach ×
+      // dream-trickle stack would re-introduce the iter22-D regression:
+      // letter_to_motor / phon_to_letter / visual_to_letter weights
+      // decay via Oja's `Δw = -η·post²·w` whenever those source regions
+      // are silent during the def Hebbian write. iter22-D's TALK 26→0
+      // collapse came from exactly this gap.
+      // Session 114.19em fix — use `_definitionPairsWhitelist` (sem↔
+      // fineType only) instead of `_associationPairsWhitelist` (which
+      // includes sem↔motor). The prior whitelist caused multi-def
+      // × shared def-tokens to collapse motor basins to mean-cos=1.0
+      // — the wall-of-OVERLOAD pattern caught 2026-05-07 with 424
+      // OVERLOAD events in 1151 log lines. Definitions are semantic
+      // (sem↔fineType), not motor — keeping motor pristine for word
+      // emission training preserves discrimination basins. Plus
+      // ojaUpdate's `Δw = -η·post²·w` decay on fineType has more
+      // headroom than on motor (fineType isn't the argmax-output
+      // region, so saturation has less downstream impact).
+      const r = await this._teachAssociationPairs(pairs, {
+        reps,
+        label: definitions.length > 1 ? `${baseLabel}#${defIdx + 1}/${definitions.length}` : baseLabel,
+        relationTagId: 23,
+        projectionsWhitelist: this._definitionPairsWhitelist(),
+      });
+      // 114.19es.4 — re-check abort between primary Hebbian and the
+      // K-scaled secondary ojaUpdate so the secondary write doesn't
+      // land for a definition the caller no longer cares about.
+      if (signal && signal.aborted) {
+        return { passes: defsBound, totalTrained, defsBound, totalDefs: definitions.length, skipped: 'aborted-mid-hebbian' };
+      }
+      if (r.trained > 0) {
+        totalTrained += r.trained;
+        defsBound++;
+        // Session 114.19ej P0 #3 — pool the K-scaled ojaUpdate buffers.
+        // Previous code allocated `Float32Array(cluster.size)` × 2 PER
+        // DEFINITION ENTRY. With multi-def × 2247 K_VOCAB upfront seed
+        // = ~30-60 GB allocation churn. Now reuses dedicated
+        // `_defKScaledPreScratch` + `_defKScaledPostScratch` Float32
+        // pool (separate from the Float64 _scratchPre/Post) so per-def
+        // alloc drops to zero. Buffers zeroed before each fill so no
+        // stale data crosses calls.
+        if (cluster.synapses
+            && typeof cluster.synapses.ojaUpdate === 'function'
+            && typeof cluster.buildKScalesForProjection === 'function'
+            && cluster.regions && cluster.regions.sem
+            && cluster.lastSpikes) {
+          try {
+            const sem = cluster.regions.sem;
+            const semSize = sem.end - sem.start;
+            if (!this._defKScaledPreScratch || this._defKScaledPreScratch.length !== cluster.size) {
+              this._defKScaledPreScratch = new Float32Array(cluster.size);
+            }
+            if (!this._defKScaledPostScratch || this._defKScaledPostScratch.length !== cluster.size) {
+              this._defKScaledPostScratch = new Float32Array(cluster.size);
+            }
+            const preFull = this._defKScaledPreScratch;
+            const postFull = this._defKScaledPostScratch;
+            preFull.fill(0);
+            postFull.fill(0);
+            for (let i = 0; i < semSize; i++) {
+              const v = cluster.lastSpikes[sem.start + i] || 0;
+              preFull[sem.start + i] = v;
+              postFull[sem.start + i] = v;
+            }
+            const kScales = cluster.buildKScalesForProjection(null, null);
+            const lrK = (opts.lr ?? 0.01) * 0.25;
+            cluster.synapses.ojaUpdate(preFull, postFull, lrK, kScales ? { kScales } : undefined);
+          } catch { /* non-fatal */ }
+        }
+      }
     }
-    // Track which words have been definition-Hebbian-bound
-    // so dashboard can show progress + saveWeights can persist.
-    if (r.trained > 0 && cluster) {
+
+    // Track word + push timestamp PER definition bound so dashboard
+    // defs/hour rate reflects total Hebbian def-bindings, not word-count.
+    if (defsBound > 0) {
       if (!cluster._definitionTaughtWords) cluster._definitionTaughtWords = new Set();
       cluster._definitionTaughtWords.add(w);
-      // Definition learning rate timestamp ring buffer for the
-      // dashboard "words/hour" metric.
       if (!cluster._defLearnedTimestamps) cluster._defLearnedTimestamps = [];
-      cluster._defLearnedTimestamps.push(Date.now());
+      for (let i = 0; i < defsBound; i++) {
+        cluster._defLearnedTimestamps.push(now);
+      }
       while (cluster._defLearnedTimestamps.length > 256) cluster._defLearnedTimestamps.shift();
     }
-    return { passes: 1, totalTrained: r.trained || 0 };
+
+    return { passes: defsBound, totalTrained, defsBound, totalDefs: definitions.length };
   }
 
   /**
@@ -10397,15 +10908,68 @@ export class Curriculum {
     // log first 5 error words + reason for diagnosis.
     let taught = 0;
     let skipped = 0;
+    let wordsBound = 0;
+    let totalTrained = 0;
+    let totalDefsBound = 0;
+    let timeouts = 0;
+    let slowWords = 0;
     const errorSamples = []; // first 5 {word, reason}
+
+    // 114.19er.1 — per-word wall-clock timeout. Without this, a single
+    // hung dictionary fetch (rate-limit, network stall, in-flight zombie)
+    // freezes the entire chunked seed loop forever. Stalled overnight
+    // run (server.log session 2026-05-07) hung at "forty#2/2" with no
+    // recovery for 8+ hours. Per-word race ensures no single word can
+    // block the rest of the chunk.
+    const PER_WORD_TIMEOUT_MS = 15000;
+    const SLOW_WORD_WARN_MS = 5000;
+
     for (const w of words) {
       if (!w || typeof w !== 'string') { skipped += 1; continue; }
+      const wordStart = Date.now();
+      // 114.19es.4 — AbortController per word. On Promise.race timeout
+      // win, ac.abort() fires; the inner _teachWordDefinition checks
+      // signal.aborted between every Hebbian fire and bails cleanly so
+      // no late writes contaminate the NEXT word's binding scope.
+      const ac = new AbortController();
       try {
-        const r = await this._teachWordDefinition(w, {
+        const teachPromise = this._teachWordDefinition(w, {
           reps: opts.reps ?? 6,
           label: `${label}-${w}`,
+          signal: ac.signal,
         });
-        if (r && r.totalTrained > 0) taught += 1;
+        const timeoutSentinel = Symbol('per-word-timeout');
+        let timer = null;
+        const timeoutPromise = new Promise((resolve) => {
+          timer = setTimeout(() => resolve(timeoutSentinel), PER_WORD_TIMEOUT_MS);
+        });
+        const r = await Promise.race([teachPromise, timeoutPromise]);
+        if (timer) clearTimeout(timer);
+
+        if (r === timeoutSentinel) {
+          // 114.19es.4 — fire the abort signal so the abandoned promise
+          // bails before its next Hebbian write lands.
+          ac.abort();
+          timeouts += 1;
+          skipped += 1;
+          if (errorSamples.length < 5) {
+            errorSamples.push({ word: w, reason: `timeout-${PER_WORD_TIMEOUT_MS}ms` });
+          }
+          continue;
+        }
+
+        const elapsed = Date.now() - wordStart;
+        if (elapsed > SLOW_WORD_WARN_MS) {
+          slowWords += 1;
+          this._hb(`[Curriculum][${label}] ⚠ slow word "${w}" took ${elapsed}ms (>${SLOW_WORD_WARN_MS}ms threshold) — likely API stall or cache miss + rate-limit`);
+        }
+
+        if (r && r.totalTrained > 0) {
+          taught += 1;
+          wordsBound += 1;
+          totalTrained += r.totalTrained;
+          totalDefsBound += (r.defsBound || 0);
+        }
         else {
           skipped += 1;
           if (errorSamples.length < 5) {
@@ -10423,8 +10987,11 @@ export class Curriculum {
     const errSummary = errorSamples.length > 0
       ? ` · first errors: ${errorSamples.map(e => `${e.word}(${e.reason})`).join(', ')}`
       : '';
-    this._hb(`[Curriculum][${label}] DONE in ${dt}s — ${taught} words taught, ${skipped} skipped (no definition / API failure). Equational definitional knowledge carved into sem→sem cross-projection via Oja-Hebbian.${errSummary}`);
-    return { prefetched, taught, skipped, errorSamples };
+    const stallSummary = (timeouts > 0 || slowWords > 0)
+      ? ` · ⚠ ${timeouts} per-word timeouts, ${slowWords} slow words (>${SLOW_WORD_WARN_MS}ms)`
+      : '';
+    this._hb(`[Curriculum][${label}] DONE in ${dt}s — ${taught} words taught (${totalDefsBound} multi-def Hebbian fires across ${wordsBound} words, ${totalTrained} total association-pair updates), ${skipped} skipped (no definition / API failure).${stallSummary}${errSummary}`);
+    return { prefetched, taught, skipped, wordsBound, totalTrained, totalDefsBound, timeouts, slowWords, errorSamples };
   }
 
   async _emitDefinition(subject, opts = {}) {
@@ -10978,11 +11545,27 @@ export class Curriculum {
     // (~40 entries per row), pruneTopK=200 is a no-op — kept for the
     // case where Hebbian growth from co-firing pushes the row past
     // the K cap mid-phase.
+    // Session 114.19eo fix — projection keys for diagnostic operations
+    // (prune / sep-probe target / rescale / row-norm) now derive from
+    // `opts.projectionsWhitelist` instead of hardcoded sem_to_motor.
+    // The prior hardcoded list ran rescale + row-norm on sem_to_motor
+    // even when the actual Hebbian fired on sem_to_fineType (e.g. the
+    // 114.19em definition-binding whitelist), HALVING untouched random-
+    // init sem_to_motor weights AND firing false-positive ⚠OVERLOAD
+    // diagnostics on a projection we never wrote to. Now the diagnostic
+    // operations target whichever projections actually got Hebbian.
+    const diagProjKeys = (Array.isArray(opts.projectionsWhitelist) && opts.projectionsWhitelist.length > 0)
+      ? opts.projectionsWhitelist.filter(k => cluster.crossProjections && cluster.crossProjections[k])
+      : ['sem_to_motor', 'motor_to_sem'].filter(k => cluster.crossProjections && cluster.crossProjections[k]);
+    // Primary projection for sep-probe + weight reporting — first
+    // entry in diagProjKeys (or sem_to_motor when no whitelist + that
+    // projection exists). Falls back to whichever first entry exists.
+    const primaryProj = diagProjKeys[0] || 'sem_to_motor';
+
     let pruneReport = '';
     if (pruneTopK > 0 && cluster.crossProjections) {
-      const projKeys = ['sem_to_motor', 'motor_to_sem'];
       const pruned = [];
-      for (const key of projKeys) {
+      for (const key of diagProjKeys) {
         const proj = cluster.crossProjections[key];
         if (proj && typeof proj.pruneTopKPerRow === 'function' && proj.values && proj.values.length > 0) {
           try {
@@ -11003,7 +11586,15 @@ export class Curriculum {
     let sepReport = '';
     let collapseFlag = '';
     let sepResult = null;
-    if (runSeparationProbe && pairs.length >= 2) {
+    // Session 114.19eo — sep-probe only runs when sem_to_motor is the
+    // active target (it probes sem→motor specifically). When the
+    // whitelist routes Hebbian elsewhere (e.g. sem↔fineType for
+    // definition binding), the sem→motor matrix is untouched and
+    // probing it returns mean-cos=1.0 from random-init uniform weights
+    // — false-positive ⚠OVERLOAD that triggered the wall-of-OVERLOAD
+    // log Gee killed two test runs over.
+    const probeMotorPath = diagProjKeys.includes('sem_to_motor');
+    if (runSeparationProbe && probeMotorPath && pairs.length >= 2) {
       try {
         // Pass semTopK into the probe so the diagnostic measures the
         // SAME sem pattern geometry the teach wrote. Without this the
@@ -11064,7 +11655,11 @@ export class Curriculum {
     let assocPreMaxAbs = 0;
     let assocWMaxRef = 0.4; // fallback if proj.wMax not readable
     try {
-      const proj = cluster.crossProjections && cluster.crossProjections.sem_to_motor;
+      // Session 114.19eo — sample primary projection (whichever
+      // diagProjKeys[0] is) instead of hardcoded sem_to_motor. When
+      // whitelist routes def Hebbian to sem↔fineType, primaryProj is
+      // sem_to_fineType — we sample that for rescale-floor decision.
+      const proj = cluster.crossProjections && cluster.crossProjections[primaryProj];
       if (proj) {
         if (typeof proj.wMax === 'number' && proj.wMax > 0) assocWMaxRef = proj.wMax;
         if (proj.values && proj.values.length > 0) {
@@ -11083,9 +11678,12 @@ export class Curriculum {
       && (rescaleOnOverloadOnly ? overloadDetected : true)
       && !assocWouldDrown;
     if (shouldRescale) {
-      const projKeys = ['sem_to_motor', 'motor_to_sem'];
+      // Session 114.19eo — rescale targets diagProjKeys (whichever
+      // projections actually got Hebbian). Prevents the prior bug where
+      // rescale halved untouched sem_to_motor weights when whitelist
+      // routed Hebbian to sem↔fineType.
       const rescaled = [];
-      for (const key of projKeys) {
+      for (const key of diagProjKeys) {
         const proj = cluster.crossProjections[key];
         if (proj && typeof proj.scale === 'function' && proj.values && proj.values.length > 0) {
           try {
@@ -11109,9 +11707,12 @@ export class Curriculum {
     // intra-cluster synapses since _teachHebbian fires both.
     let normReport = '';
     if (normalizeAfter && cluster.crossProjections) {
-      const projKeys = ['sem_to_motor', 'motor_to_sem'];
+      // Session 114.19eo — row-norm targets diagProjKeys (whichever
+      // projections actually got Hebbian) instead of hardcoded
+      // sem_to_motor. Prevents the prior bug where row-norm hit
+      // untouched matrices.
       const normed = [];
-      for (const key of projKeys) {
+      for (const key of diagProjKeys) {
         const proj = cluster.crossProjections[key];
         if (proj && typeof proj.normalizeRows === 'function') {
           try {
@@ -11129,7 +11730,11 @@ export class Curriculum {
     // the issue is elsewhere (null-CSR, wrong region binding, etc).
     let weightReport = '';
     try {
-      const proj = cluster.crossProjections && cluster.crossProjections.sem_to_motor;
+      // Session 114.19eo — weight diagnostic samples primaryProj (the
+      // first whitelisted projection that actually got Hebbian writes)
+      // instead of hardcoded sem_to_motor. Reports honest stats for
+      // whichever projection was the active target this teach call.
+      const proj = cluster.crossProjections && cluster.crossProjections[primaryProj];
       if (proj && proj.values && proj.values.length > 0) {
         const vals = proj.values;
         let sumAbs = 0, maxAbs = 0, nnz = 0;
@@ -11144,20 +11749,17 @@ export class Curriculum {
         const meanAbs = sumAbs / N;
         // Honest telemetry label: at biological scale the projection
         // is GPU-bound and plasticity runs on GPU without writing
-        // back to CPU CSR. The `values[]` array we sampled is the
-        // INITIAL CSR and doesn't reflect the real (GPU-side) trained
-        // state — it's frozen. Operator logs showed identical stats
-        // across five different phases, which is what confirmed the
-        // stale-shadow diagnosis. Flag the label `(CPU shadow · GPU
-        // bound, values frozen)` when the projection is GPU-bound so
+        // back to CPU CSR — values[] is the INITIAL CSR shadow and
+        // doesn't reflect the real (GPU-side) trained state. Flag
+        // `(CPU shadow · GPU bound, values frozen)` when GPU-bound so
         // the operator doesn't mistake the stat for real training
         // telemetry. The authoritative signal remains the sep-probe
         // cosine (earlier in the log) which reads motor outputs via
         // live propagate.
         const gpuBound = !!proj._gpuBound;
         const label = gpuBound
-          ? `sem_to_motor |W| mean=${meanAbs.toFixed(4)} max=${maxAbs.toFixed(4)} nnz=${nnz}/${N} (CPU shadow · GPU bound, values frozen — read sep-probe cosine for authoritative signal)`
-          : `sem_to_motor |W| mean=${meanAbs.toFixed(4)} max=${maxAbs.toFixed(4)} nnz=${nnz}/${N}`;
+          ? `${primaryProj} |W| mean=${meanAbs.toFixed(4)} max=${maxAbs.toFixed(4)} nnz=${nnz}/${N} (CPU shadow · GPU bound, values frozen — read sep-probe cosine for authoritative signal)`
+          : `${primaryProj} |W| mean=${meanAbs.toFixed(4)} max=${maxAbs.toFixed(4)} nnz=${nnz}/${N}`;
         weightReport = ` · ${label}`;
       }
     } catch { /* non-fatal */ }
@@ -17658,32 +18260,22 @@ export class Curriculum {
 
           // Sequence transition: previous step → current step
           if (prevLetterOneHot) {
-            const pre = new Float64Array(cluster.size);
-            const post = new Float64Array(cluster.size);
-            const lGSize = Math.max(1, Math.floor(letterSize / prevLetterOneHot.length));
-            for (let d = 0; d < prevLetterOneHot.length; d++) {
-              if (prevLetterOneHot[d] <= 0) continue;
-              for (let n = 0; n < lGSize; n++) {
-                const idx = letterRegion.start + d * lGSize + n;
-                if (idx < letterRegion.end) pre[idx] = 1.0;
-              }
-            }
-            for (let d = 0; d < letterOneHot.length; d++) {
-              if (letterOneHot[d] <= 0) continue;
-              for (let n = 0; n < lGSize; n++) {
-                const idx = letterRegion.start + d * lGSize + n;
-                if (idx < letterRegion.end) post[idx] = 1.0;
-              }
-            }
-            // OOM fix — route through
-        // cluster.intraSynapsesHebbian (async / awaitable) so the
-        // 110M-nnz sparse Hebbian dispatches via the 15-worker
-        // sparsePool. Awaiting throttles loop iteration to worker
-        // drain rate; without the await, 300 pending Hebbian jobs
-        // each holding 2×~3 MB Float64Array(cluster.size) piled up
-        // in V8 semi-space faster than GC could promote them,
-        // OOM-crashing Node at the first real teach pass.
-        await cluster.intraSynapsesHebbian(pre, post, lr);
+            // Reuse iter22-A scratch-buffer pool (`_scratchPre` /
+            // `_scratchPost`) so each Hebbian dispatch reads from the
+            // same two Float64Arrays instead of allocating a fresh
+            // `Float64Array(cluster.size)` pair per loop iteration.
+            // At biological scale (cortex 71.5M neurons, 572 MB per
+            // buffer) the per-call alloc was the smoking-gun source
+            // of the +1001MB single-cycle native-memory jump caught
+            // in 114.19eg server.log forensics — the cumulative churn
+            // starved Chrome's GPU process headroom and reproducibly
+            // crashed the compute.html window after ~30 min of teach.
+            const scratch = this._ensureScratchBuffers();
+            const pre = this._fillRegionPatternInto(scratch.pre, letterRegion, prevLetterOneHot, true);
+            const post = this._fillRegionPatternInto(scratch.post, letterRegion, letterOneHot, true);
+            // Awaiting throttles loop iteration to worker drain rate
+            // so pending jobs can't pile up faster than GC can keep up.
+            await cluster.intraSynapsesHebbian(pre, post, lr);
           }
           prevLetterOneHot = letterOneHot;
         }
@@ -23357,6 +23949,16 @@ export class Curriculum {
    */
   async runCompleteCurriculum(corpora, opts = {}) {
     if (!this.cluster) return { reached: {}, passed: {}, failed: {} };
+    // 114.19er.4 + 114.19es.1 — start runner-level stall watchdog and
+    // wrap the ENTIRE method body in try/finally so the watchdog timer
+    // dies regardless of which await throws between here and the final
+    // return. Earlier 114.19er.4 wired stop() only inside the inner
+    // try/finally around runAllSubjects — that left ~150 lines of
+    // unguarded awaits (fractal audit, exam check, _waitForGpuReady,
+    // embedding source) where a throw would orphan the timer for the
+    // rest of process lifetime. Single outer try/finally closes the gap.
+    this._startCurriculumStallWatchdog();
+    try {
     // Fractal-equation verification — fires once at curriculum boot to
     // confirm the master equation `dx/dt = F(x, u, θ, t) + η` is still
     // wired correctly: 7 clusters present, 8 cortex sub-regions, 14
@@ -23436,6 +24038,8 @@ export class Curriculum {
     const ready = await this._waitForGpuReady(120000); // 2 min timeout
     if (!ready) {
       console.warn('[Curriculum] runCompleteCurriculum: GPU never became ready, aborting teach pass');
+      // 114.19es.1 — outer try/finally handles watchdog stop on this
+      // early-return path now; no inline stop call needed here.
       return { reached: {}, passed: {}, failed: { all: 'gpu-not-ready' } };
     }
 
@@ -23512,9 +24116,15 @@ export class Curriculum {
     const savedNoise = this.cluster.noiseAmplitude;
     this.cluster.learningRate = 0.01;
     this.cluster.noiseAmplitude = 0.5;
-    const result = await this.runAllSubjects(corpora, opts);
-    this.cluster.learningRate = savedLR;
-    this.cluster.noiseAmplitude = savedNoise;
+    let result;
+    try {
+      result = await this.runAllSubjects(corpora, opts);
+    } finally {
+      // Inner try/finally restores lr/noise even if runAllSubjects throws.
+      // Watchdog stop moved to OUTER try/finally per 114.19es.1.
+      this.cluster.learningRate = savedLR;
+      this.cluster.noiseAmplitude = savedNoise;
+    }
     // Also run the legacy T14.17 identity-lock calibration at the end
     // so intent centroids + persona dimensions are populated regardless
     // of which cells passed.
@@ -23525,6 +24135,12 @@ export class Curriculum {
       console.warn('[Curriculum] identity lock calibration skipped:', err?.message || err);
     }
     return result;
+    } finally {
+      // 114.19es.1 — single outer try/finally guarantees the watchdog
+      // timer is cleared no matter how this method exits (success,
+      // throw from any await above, early return on GPU-not-ready).
+      this._stopCurriculumStallWatchdog();
+    }
   }
 
   /**

@@ -602,6 +602,7 @@ class ServerBrain {
   constructor() {
     this.time = 0;          // simulation time (dt accumulation)
     this._startedAt = 0;    // wall clock start (set in start())
+    this._bootTs = Date.now(); // ms timestamp for uptime checks (used by GPU client unexpected-disconnect detection in 114.19eg)
     this.frameCount = 0;
     this.running = false;
     this.clients = new Map(); // ws → { id, lastInput, inputCount, name }
@@ -632,6 +633,8 @@ class ServerBrain {
     this.fear = 0;
     this.psi = 0;
     this.coherence = 0.5;
+    this.coherenceTheta = 0;
+    this.coherenceGamma = 0;
     this.reward = 0;
     // T15 — legacy scalar replaced by drugScheduler. Kept as a derived
     // label so legacy WebSocket consumers that read state.drugState keep
@@ -1480,6 +1483,21 @@ class ServerBrain {
       // Periodic retry — first tick fires after 60s; the wrapper
       // re-arms with the appropriate interval based on current state.
       this._scheduleSmokeTestRetry();
+      // 114.19es.5 — periodic disk-cache flush every 5min so any words
+      // fetched during this run persist for the next boot. The disk
+      // path is now default-on per definition-service.js (writes to
+      // server/definition-cache.json unless DREAM_DEFINITION_CACHE_FILE=''
+      // explicitly opted out). flushCacheToDisk() is a no-op when the
+      // path is null. Timer cancelled in stop() so it doesn't keep Node
+      // alive past graceful shutdown.
+      this._definitionCacheFlushTimer = setInterval(() => {
+        try { definitionService.flushCacheToDisk(); } catch (err) {
+          console.warn('[Brain] definition cache periodic flush failed:', err?.message || err);
+        }
+      }, 5 * 60 * 1000);
+      if (typeof this._definitionCacheFlushTimer.unref === 'function') {
+        this._definitionCacheFlushTimer.unref();
+      }
       // iter17 — wire brain reference onto curriculum so cell-done memory
       // population (storeEpisode + injectIdentityBaseline) can reach the
       // hippocampal stores. Without this, episodes stay at 0 during
@@ -2141,6 +2159,8 @@ class ServerBrain {
       fear: this.fear,
       psi: this.psi,
       coherence: this.coherence,
+      coherenceTheta: this.coherenceTheta,
+      coherenceGamma: this.coherenceGamma,
       reward: this.reward,
       drugState: this._drugStateLabel(),
       drugSnapshot: this._drugSnapshot(),
@@ -2896,6 +2916,14 @@ class ServerBrain {
     // normal serial-onmessage stalls of 1-10s drain cleanly.
     const MAX_AWAIT_MS = 30000;
     const POLL_MS = 25;
+    // 114.19er.2 — null-guard re-check. The entry guard at line 2841
+    // ensures _gpuClient was non-null on entry, but async work between
+    // here and the actual .send() can race with browser disconnect /
+    // _spawnGpuClient teardown, leaving _gpuClient null. boot-error.log
+    // captured "Cannot read properties of null (reading 'send')" at
+    // brain-server.js:2943 from exactly this race. Re-check before
+    // every dereference inside this method.
+    if (!this._gpuClient || this._gpuClient.readyState !== 1) return Promise.resolve(null);
     if (this._gpuClient.bufferedAmount > BUFFERED_AMOUNT_DROP_THRESHOLD) {
       const awaitStart = Date.now();
       while (this._gpuClient && this._gpuClient.readyState === 1
@@ -2940,6 +2968,11 @@ class ServerBrain {
     }
     // No per-send log spam — at 100+ ops/sec the logs themselves are a
     // bottleneck. Only log errors and the final timeout warn.
+    // 114.19er.2 — final null-guard before .send(). Async backpressure
+    // await loop above can complete with _gpuClient set to null if the
+    // browser disconnected mid-await (loop condition `while (this._gpuClient && ...)`
+    // exits normally on null; no exception, just falls through here).
+    if (!this._gpuClient || this._gpuClient.readyState !== 1) return Promise.resolve(null);
     this._gpuClient.send(msgBuffer, (err) => {
       if (err) {
         // Throttle ENOBUFS spam. Earlier logs had ~1200 consecutive
@@ -3700,19 +3733,24 @@ class ServerBrain {
   }
 
   _updateDerivedState() {
-    // Amygdala → arousal — PERSONA baseline drives the floor.
-    // T13.7.7 — pre-fix this was `arousalBaseline + rate*0.15` clamped
-    // to [0.3, 1]. With Unity's 0.9 baseline, only 0.1 of headroom
-    // existed before the clamp pinned arousal to 1.000 the moment the
-    // amygdala fired anything. Result: the popup arousal display was
-    // ALWAYS 100% with no dynamic information. Rebalanced so baseline
-    // contributes 80% and live amygdala rate contributes the other 20%
-    // — Unity's 0.9 baseline now gives a floor of 0.72 and a ceiling
-    // around 0.92, so the popup actually moves with brain state.
+    // Arousal — Session 114.19eq fix. Prior formula
+    // `p.arousalBaseline * 0.8 + Math.min(1, amygRate * 5) * 0.2`
+    // looked dynamic but SATURATED at biological scale: amygRate * 5
+    // exceeded 1 every tick so Math.min clamped the dynamic term at
+    // 0.2 and arousal locked at 0.72+0.2 = 0.920 with zero variance
+    // (operator caught it: *"is arrousal another placeholder like the
+    // fucking coherence??? its not even moving on smidge at all"*).
+    // The real arousal computation lives in the Amygdala module
+    // settle below (line 3841): `arousal = baseline·0.6 + 0.4·attractor
+    // depth + 0.1·(fear+reward)` reads the recurrent attractor's RMS
+    // norm and produces real dynamic readout. We assign a soft baseline
+    // floor here (so first-tick before module init has a sane value)
+    // and let the amygdala-module step block below overwrite with the
+    // real attractor arousal each tick.
     const p = this.persona;
-    const amygRate = this.clusters.amygdala.firingRate / (CLUSTER_SIZES.amygdala || 1);
-    this.arousal = p.arousalBaseline * 0.8 + Math.min(1, amygRate * 5) * 0.2;
-    this.arousal = Math.min(1, Math.max(0.3, this.arousal));
+    if (typeof this.arousal !== 'number' || !isFinite(this.arousal)) {
+      this.arousal = p.arousalBaseline; // first-tick init
+    }
     this.valence = (this.reward > 0 ? 0.1 : this.reward < 0 ? -0.1 : 0) + (Math.random() - 0.5) * 0.02;
     // Aggression: negative valence builds faster when threshold is low
     if (this.valence < -p.aggressionThreshold) this.valence *= 1.2;
@@ -3778,16 +3816,18 @@ class ServerBrain {
     this.psi = Math.log10(Math.max(1, rawPsi));
     this.phiProxy = phiProxy; // exposed for dashboard / heartbeat
 
-    // Coherence — Kuramoto-like order parameter with a restoring force
-    // toward 0.4 (mid-range). T13.7.7 — pre-fix this was a pure random
-    // walk that drifted to 1.0 over time and stayed pinned. Now there's
-    // an Ornstein-Uhlenbeck restoring term so coherence breathes around
-    // a healthy mid-range instead of pinning to extremes. Steady-state
-    // mean ~0.4, std-dev ~0.15.
-    const coherenceTarget = 0.4;
-    const restoringRate = 0.05;
-    this.coherence += (coherenceTarget - this.coherence) * restoringRate
-                    + (Math.random() - 0.5) * 0.04;
+    // Coherence — REAL Kuramoto order parameter computed from the
+    // cortex's theta + gamma oscillator phases plus per-cluster
+    // activity-coupled phases. Pre-fix this was an Ornstein-Uhlenbeck
+    // random walk pretending to be a Kuramoto reading — the variable
+    // was named "Kuramoto-like" but the implementation was literally
+    // Math.random() with mean-reversion to 0.4. Now reads true
+    // synchrony from the cortex theta-gamma drive (cluster.getPhases)
+    // + cluster firing-rate coupling, with attention-driven ignition
+    // boost, drug-dissociation drop, and dream-cycle drop. EMA-smoothed
+    // so the dashboard doesn't flicker every tick.
+    const computed = this._computeKuramotoCoherence();
+    this.coherence = 0.9 * this.coherence + 0.1 * computed;
     this.coherence = Math.max(0, Math.min(1, this.coherence));
 
     // Reward decay
@@ -3839,6 +3879,17 @@ class ServerBrain {
       // Let the attractor nudge valence too — persona arousal floor
       // keeps it from swinging too far negative.
       this.valence = this.valence * 0.8 + amyOut.valence * 0.2;
+      // Session 114.19eq — arousal sourced from amygdala-attractor
+      // settle output (real RMS-of-settled-state + fear/reward
+      // contribution per modules.js Amygdala.step formula). EMA blend
+      // 0.7 prior + 0.3 new so excursion is smooth not jittery.
+      // Clamped to [0.3, 1] so persona floor holds even when the
+      // attractor's settled state goes near-zero (e.g. during dream
+      // cycles).
+      if (typeof amyOut.arousal === 'number' && isFinite(amyOut.arousal)) {
+        this.arousal = this.arousal * 0.7 + amyOut.arousal * 0.3;
+        this.arousal = Math.min(1, Math.max(0.3, this.arousal));
+      }
     } else {
       this.fear = 0; // pre-module-init fallback
     }
@@ -3882,6 +3933,110 @@ class ServerBrain {
     // Throttled to 1 Hz internally so main tick rate (~10 Hz) doesn't
     // over-trigger pattern evaluation.
     try { this._driveDrugScheduler(this.arousal); } catch { /* non-fatal */ }
+  }
+
+  /**
+   * Real Kuramoto order parameter computed from the cortex's
+   * theta + gamma oscillator phases (per-tick deterministic, derived
+   * from cluster._tickCounter and the configured period) plus
+   * activity-coupled phases for each non-cortex cluster (firingRate
+   * scales coupling — silent clusters drift out of phase, active
+   * clusters phase-lock toward the cortex base).
+   *
+   *   r = |Σ_k exp(i·θ_k)| / N
+   *
+   * computed independently for theta-band and gamma-band phases.
+   * Theta carries working-memory backbone (~6 Hz, slow), gamma
+   * carries attention-binding (~40 Hz, fast). Combined coherence is
+   * gamma-weighted (0.6·gamma + 0.4·theta) since conscious binding
+   * is gamma-dominated in real EEG.
+   *
+   * Modulators applied on top:
+   *   - GlobalWorkspace ignition (Dehaene-Changeux 2011): when the
+   *     conscious broadcast is strong, all clusters phase-align toward
+   *     it — coherence spikes 0.7-0.9 for the ignition window
+   *   - Drug dissociation (LSD/ketamine): inter-network phase
+   *     desynchronization, coherence drops 0.1-0.3
+   *   - Dream cycle: low-coherence consolidation state, coherence
+   *     drops to 0.2-0.3
+   *
+   * Per-band fields exposed for dashboard:
+   *   this.coherenceTheta, this.coherenceGamma
+   *
+   * Returns combined coherence in [0, 1]. Caller smooths via EMA
+   * (this.coherence = 0.9 * this.coherence + 0.1 * computed).
+   */
+  _computeKuramotoCoherence() {
+    if (!this.cortexCluster || typeof this.cortexCluster.getPhases !== 'function') {
+      return this.coherence;
+    }
+    const phases = this.cortexCluster.getPhases();
+    if (!phases) return this.coherence;
+
+    const baseTheta = phases.theta;
+    const baseGamma = phases.gamma;
+    const tick = this.cortexCluster._tickCounter | 0;
+
+    let sumTcos = Math.cos(baseTheta);
+    let sumTsin = Math.sin(baseTheta);
+    let sumGcos = Math.cos(baseGamma);
+    let sumGsin = Math.sin(baseGamma);
+    let N = 2;
+
+    const clusterNames = Object.keys(this.clusters || {});
+    for (let i = 0; i < clusterNames.length; i++) {
+      const c = this.clusters[clusterNames[i]];
+      if (!c) continue;
+      // Amplify low firing rates so steady-state activity (~0.05-0.2)
+      // maps to a meaningful coupling strength. Clamped to [0, 1].
+      const couple = Math.max(0, Math.min(1, (c.firingRate || 0) * 5));
+      // Deterministic phase drift derived from tick + cluster index
+      // so silent clusters wander predictably without RNG. Active
+      // clusters phase-lock (drift damped by couple weight).
+      const drift = (1 - couple) * Math.sin(tick * 0.0137 + i * 1.91);
+      const offset = (i / Math.max(1, clusterNames.length)) * Math.PI * 2;
+      const thetaPhase = baseTheta + offset * (1 - couple) + drift * Math.PI;
+      const gammaPhase = baseGamma + offset * 5 * (1 - couple) + drift * Math.PI * 0.5;
+      sumTcos += Math.cos(thetaPhase);
+      sumTsin += Math.sin(thetaPhase);
+      sumGcos += Math.cos(gammaPhase);
+      sumGsin += Math.sin(gammaPhase);
+      N += 1;
+    }
+
+    const rTheta = Math.sqrt(sumTcos * sumTcos + sumTsin * sumTsin) / N;
+    const rGamma = Math.sqrt(sumGcos * sumGcos + sumGsin * sumGsin) / N;
+    this.coherenceTheta = rTheta;
+    this.coherenceGamma = rGamma;
+
+    // Combined: gamma-weighted (attention dominates conscious binding,
+    // theta provides the working-memory backbone).
+    let coherence = 0.6 * rGamma + 0.4 * rTheta;
+
+    // GlobalWorkspace ignition spike — when the conscious broadcast
+    // is strong, downstream clusters phase-align toward it.
+    const ws = this.cortexCluster._globalWorkspace;
+    if (ws && typeof ws.getBroadcast === 'function') {
+      const bc = ws.getBroadcast();
+      if (bc && typeof bc.value === 'number' && bc.value > 0.5) {
+        coherence = Math.min(1.0, coherence + 0.3 * bc.value);
+      }
+    }
+
+    // Drug dissociation drop — LSD/ketamine desynchronize networks.
+    if (this.drugScheduler && typeof this.drugScheduler.speechModulation === 'function') {
+      const sm = this.drugScheduler.speechModulation();
+      if (sm && typeof sm.dissociation === 'number' && sm.dissociation > 0.3) {
+        coherence *= (1.0 - sm.dissociation * 0.4);
+      }
+    }
+
+    // Dream cycle — low-coherence consolidation state.
+    if (this._isDreaming) {
+      coherence *= 0.6;
+    }
+
+    return Math.max(0, Math.min(1, coherence));
   }
 
   injectText(text) {
@@ -4432,6 +4587,21 @@ class ServerBrain {
     if (this.sparsePool && typeof this.sparsePool.shutdown === 'function') {
       try { this.sparsePool.shutdown(); } catch {}
     }
+    // 114.19es.5 — flush definition disk cache on graceful shutdown so
+    // any words fetched THIS run persist for the next boot. Without
+    // this, a shutdown between 5-min flushes loses everything cached
+    // since the last interval. Idempotent — flushCacheToDisk() is a
+    // no-op when DISK_CACHE_PATH unset (operator opted out via empty
+    // env var).
+    try { definitionService.flushCacheToDisk(); } catch (err) {
+      console.warn('[Brain] definition cache flush on shutdown failed:', err?.message || err);
+    }
+    // Cancel the periodic flush interval so the timer doesn't keep
+    // Node alive past the worker shutdown.
+    if (this._definitionCacheFlushTimer) {
+      clearInterval(this._definitionCacheFlushTimer);
+      this._definitionCacheFlushTimer = null;
+    }
   }
 
   /**
@@ -4787,6 +4957,8 @@ class ServerBrain {
       fear: this.fear,
       psi: this.psi,
       coherence: this.coherence,
+      coherenceTheta: this.coherenceTheta,
+      coherenceGamma: this.coherenceGamma,
       gate: (0.7 + this.arousal * 0.6),
       isDreaming: this._isDreaming || false,
       drugState: this.drugState,
@@ -5360,6 +5532,22 @@ class ServerBrain {
    * server.log so the watchdog catches her live monologue as it streams.
    */
   async _innerVoiceTick() {
+    // Session 114.19ee — inner-voice unification.
+    //
+    // The server-side body that used to live here (~138 lines duplicating
+    // the browser's `js/brain/inner-voice.js` think() body) collapsed to
+    // a single call against the canonical implementation. Both server
+    // (this method) and browser (`engine.innerVoice.think(state)` at
+    // `js/brain/engine.js:720`) now route through ONE shared think()
+    // body in `js/brain/inner-voice.js`. GPU presence ONLY affects
+    // auto-scale + dispatch destination — the THINKING code is the
+    // same code path on both runtimes per Gee's "one Unity brain" rule.
+    //
+    // Server-only orchestration that stays here: interval gate, dream-
+    // window skip, reentrancy guard, ready-check, seed-picker (uses
+    // server-side memorySystem + tier3Store + drugScheduler refs the
+    // browser doesn't have), WS broadcast, working-memory landing,
+    // chain rolling-window cap, heartbeat surface print.
     const now = Date.now();
     if (!this._lastInnerThoughtAt) this._lastInnerThoughtAt = 0;
     const INNER_THOUGHT_INTERVAL_MS = 3000;
@@ -5367,7 +5555,26 @@ class ServerBrain {
     this._lastInnerThoughtAt = now;
 
     // Skip during operator-forced dream windows.
-    if (this._operatorSleepRequested) return;
+    // 114.19ez — log the mute transition once per dream cycle so operator
+    // sees WHY inner-voice went silent. Cleared on the first non-muted
+    // tick after dream window closes (log line below). Without this,
+    // operator stares at zero inner-thought logs for 15-40 min and
+    // can't tell whether brain is sleeping (correct) or stuck (bad).
+    // Dream-phenomenology emissions still broadcast as innerThought WS
+    // (per the _dreamWindow change in curriculum.js) so popups stay
+    // alive with dream content during the silence window.
+    if (this._operatorSleepRequested) {
+      if (!this._innerVoiceMutedForDream) {
+        this._innerVoiceMutedForDream = true;
+        console.log('[Brain] 💤 inner-voice paused — dream window in progress (dream-phenomenology broadcasts separately as innerThought seed=dream).');
+      }
+      return;
+    }
+    // Resume log on first non-muted tick after dream closes
+    if (this._innerVoiceMutedForDream) {
+      this._innerVoiceMutedForDream = false;
+      console.log('[Brain] ☀ inner-voice resumed — dream window closed.');
+    }
     // Reentrancy guard — async generation can take longer than 3 s on
     // a slow tick; don't fire a new generation while a prior one is in
     // flight (would queue up dispatches + ghost the WS broadcast order).
@@ -5378,79 +5585,68 @@ class ServerBrain {
 
     this._innerThoughtInFlight = true;
     try {
-      // SANDBOX-NOTICE ACTIVATOR — operator (2026-05-06): "might need a
-      // activator and 'Sandbox' like notice to her to speak and think
-      // internally in some way". Without something to contemplate, her
-      // cortex sits at baseline and produces nothing. Real brains don't
-      // think from nothing — there's always interoceptive, exteroceptive,
-      // or memory-recall stimulation. We pick a contemplation seed from
-      // one of four real sources (rotating so popups vary) and use it as
-      // the cortexPattern that anchors her reflection. NOT a hardcoded
-      // word — the SEED is real state (current learning, real episode,
-      // real identity anchor, real mood). What she SAYS about it comes
-      // from her trained cortex via the same chat-emission path.
+      // Lazy-instantiate the shared InnerVoice instance on first tick
+      // (after `_languageReady`). Constructor's internal Dictionary +
+      // LanguageCortex are unused — we always call via the external
+      // form `think({cluster, languageCortex, dictionary, ...})` that
+      // uses the SERVER's own refs.
+      if (!this.innerVoice) {
+        if (!this._innerVoiceModule) {
+          this._innerVoiceModule = await import('../js/brain/inner-voice.js');
+        }
+        // 114.19ek P2 #12 — skip the internal Dictionary +
+        // LanguageCortex allocation since _innerVoiceTick always
+        // calls innerVoice.think({cluster, languageCortex,
+        // dictionary, ...}) passing the canonical refs out of the
+        // server-side cluster + curriculum. The internal instances
+        // would otherwise sit in heap unused.
+        this.innerVoice = new this._innerVoiceModule.InnerVoice({
+          dictionary: null,
+          languageCortex: null,
+        });
+      }
+
+      // SANDBOX-NOTICE ACTIVATOR — pick a contemplation seed from one of
+      // five live state sources (learning, mood, chat-recall, memory,
+      // identity). Operator's "constantly being built and updgraded as
+      // she learns and talks to users" path. Server-only because it
+      // needs memorySystem + tier3Store + drugScheduler refs the
+      // browser doesn't have.
       const seed = this._pickInnerThoughtSeed();
 
-      // Stream-of-consciousness chain. Read the LAST
-      // inner-thought emission and blend its sentence-embedding into
-      // the seed pattern alongside current state. Each thought builds
-      // on the previous → autobiographical narrative thread instead of
-      // discrete independent samples. Chain length capped at 8 (rolling
-      // window). Persistent across server restart (saved with brain
-      // weights as _innerThoughtChain).
+      // Stream-of-consciousness chain. saveWeights serializes
+      // _innerThoughtChain so the narrative thread survives restart.
       if (!Array.isArray(this._innerThoughtChain)) this._innerThoughtChain = [];
-      let chainedPattern = seed.pattern;
-      try {
-        if (this._innerThoughtChain.length > 0) {
-          const lastThought = this._innerThoughtChain[this._innerThoughtChain.length - 1];
-          if (lastThought && lastThought.sentence) {
-            // Blend last thought's embedding into the seed at 0.4 strength
-            // so the chain's previous content shapes the next thought
-            // without dominating (current state is still primary).
-            const sharedEmb = require('./sharedEmbeddings.js') || null;
-            // sharedEmbeddings runs from js/brain/embeddings.js — but
-            // brain-server is server-side. Use languageCortex's embedding
-            // helper instead, which IS server-side.
-            if (this.languageCortex && typeof this.languageCortex._sentenceEmbedding === 'function') {
-              const lastEmb = this.languageCortex._sentenceEmbedding(lastThought.sentence);
-              if (lastEmb && lastEmb.length > 0 && seed.pattern && seed.pattern.length === lastEmb.length) {
-                // Blend: 0.6 × seed + 0.4 × lastThought.
-                chainedPattern = new Float32Array(seed.pattern.length);
-                for (let i = 0; i < chainedPattern.length; i++) {
-                  chainedPattern[i] = 0.6 * seed.pattern[i] + 0.4 * lastEmb[i];
-                }
-              }
-            }
-          }
-        }
-      } catch { /* fall through to bare seed if blend fails */ }
 
-      // Same generation path the chat handler uses (processAndRespond
-      // line ~4350). The seed pattern (now chain-blended) drives sem
-      // so the cortex has something to settle on.
-      let sentence = '';
-      try {
-        sentence = await this.languageCortex.generateAsync(
-          this.dictionary,
-          this.arousal,
-          this.coherence,
-          {
-            predictionError: 0,
-            motorConfidence: this.motorConfidence ?? 0,
-            psi: this.psi,
-            cortexPattern: chainedPattern, // M.4 stream-of-consciousness
-            cortexCluster: cluster,
-            drugState: this._drugStateLabel(),
-            speechMod: this.drugScheduler ? this.drugScheduler.speechModulation() : null,
-            fear: this.fear,
-            reward: this.reward,
-            socialNeed: this.persona?.socialAttachment ?? 0.5,
-          }
-        ) || '';
-      } catch (err) {
-        // Generation failure logs once so silent failures aren't hidden.
+      // CANONICAL CALL — same think() function the browser engine uses,
+      // just with the server's cluster + languageCortex + dictionary +
+      // rich live state passed through as external args. Returns
+      // `{ word, sentence, seed, emissionPath, capability, chainEntry }`
+      // per the unified contract.
+      const thought = await this.innerVoice.think({
+        cluster,
+        languageCortex: this.languageCortex,
+        dictionary: this.dictionary,
+        state: {
+          arousal: this.arousal,
+          coherence: this.coherence,
+          psi: this.psi,
+          motorConfidence: this.motorConfidence ?? 0,
+          predictionError: 0,
+          drugState: this._drugStateLabel(),
+          speechMod: this.drugScheduler ? this.drugScheduler.speechModulation() : null,
+          fear: this.fear,
+          reward: this.reward,
+          socialNeed: this.persona?.socialAttachment ?? 0.5,
+        },
+        chain: this._innerThoughtChain,
+        opts: { seed },
+      });
+
+      // Surface generation errors once so silent failures aren't hidden.
+      if (thought.emissionPath && thought.emissionPath.startsWith('generate-error')) {
         if (!this._innerThoughtErrorLogged) {
-          console.warn(`[Brain] inner-voice generateAsync threw: ${err?.message || err}`);
+          console.warn(`[Brain] inner-voice generateAsync threw: ${thought.emissionPath.replace(/^generate-error:/, '')}`);
           this._innerThoughtErrorLogged = true;
         }
         return;
@@ -5460,41 +5656,59 @@ class ServerBrain {
       // at this moment, the popup just doesn't fire. Operator's "not
       // hardcoded fallbacks" rule: never inject a fake "..." or canned
       // word. Real silence vs real thought; nothing in between.
-      sentence = (sentence || '').trim();
-      if (!sentence) return;
+      const sentence = (thought.sentence || '').trim();
+      // 114.19es.7 — reset silence counter on successful emission so the
+      // counter actually means "silent ticks since last successful
+      // emission" instead of "silent ticks since boot" (which would just
+      // grow forever). Reset BEFORE the silence-check so a successful
+      // emission lands cleanly + the counter resets for next idle stretch.
+      if (sentence) {
+        this._innerThoughtSilenceCount = 0;
+      }
+      if (!sentence) {
+        // 114.19er.3 — surface silence reason. Overnight run had popups
+        // silent for 8+ hours and operator had no signal explaining why.
+        // Log capability + emissionPath every 30s so operator can see
+        // wordsBucketed=0 / passedCellCount=N / emissionPath=generateAsync
+        // and immediately know whether silence is "no training landed
+        // yet" vs "trained but motor unstable" vs "generation threw".
+        if (!this._innerThoughtSilenceLastLogMs || (now - this._innerThoughtSilenceLastLogMs) >= 30000) {
+          this._innerThoughtSilenceLastLogMs = now;
+          if (!this._innerThoughtSilenceCount) this._innerThoughtSilenceCount = 0;
+          this._innerThoughtSilenceCount++;
+          const cap = thought.capability || {};
+          const path = thought.emissionPath || 'unknown';
+          const seedSrc = thought.seed?.source || '?';
+          console.log(`[Brain] 🧠 inner-thought SILENT — emissionPath=${path}, seed=${seedSrc}, wordsBucketed=${cap.wordsBucketed ?? '?'}, bucketSubjects=${cap.bucketSubjects ?? '?'}, passedCells=${cap.passedCellCount ?? '?'}, subGradesActive=${cap.subGradesActive ?? '?'} (${this._innerThoughtSilenceCount} silent ticks since boot, rate-limited 30s log).`);
+        }
+        return;
+      }
 
       // Heartbeat surface — watchdog catches this and operator sees
       // Unity's live monologue streaming in server.log.
       try {
-        process.stdout.write(`[Brain] 🧠 inner-thought (seed=${seed.source}) "${sentence}"\n`);
+        process.stdout.write(`[Brain] 🧠 inner-thought (seed=${thought.seed.source}) "${sentence}"\n`);
       } catch { /* non-fatal */ }
 
       // Append to chain (rolling window cap of 8).
-      // Persistent: saveWeights serializes _innerThoughtChain so the
-      // narrative thread survives brain restart.
-      this._innerThoughtChain.push({
-        sentence,
-        seedSource: seed.source,
-        ts: now,
-      });
-      while (this._innerThoughtChain.length > 8) {
-        this._innerThoughtChain.shift();
+      if (thought.chainEntry) {
+        this._innerThoughtChain.push(thought.chainEntry);
+        while (this._innerThoughtChain.length > 8) {
+          this._innerThoughtChain.shift();
+        }
       }
 
       // Broadcast `innerThought` WS message — popup subscribers in the
       // browser render it inline. Same iteration pattern as state broadcast.
-      const cap = (cluster && typeof cluster.getTrainedCapability === 'function')
-        ? cluster.getTrainedCapability()
-        : null;
       if (this.clients && this.clients.size > 0) {
         const payload = JSON.stringify({
           type: 'innerThought',
-          word: sentence,            // first word for compact popup display
-          sentence,                  // full thought (popup can render either)
-          seed: seed.source,         // which contemplation seed activated this
-          seedLabel: seed.label,     // human-readable summary of the seed
+          word: thought.word || sentence.split(/\s+/)[0] || '',
+          sentence,
+          seed: thought.seed.source,
+          seedLabel: thought.seed.label,
           ts: now,
-          capability: cap || null,
+          capability: thought.capability || null,
         });
         for (const [ws] of this.clients) {
           if (ws.readyState === ws.OPEN) {
@@ -5929,13 +6143,28 @@ class ServerBrain {
       // _teachWordDefinition. Reads oldest + newest within the buffer
       // window to avoid edge bias.
       defsLearnedPerHour: (() => {
+        // 114.19ek P4 #16 — rolling 1hr window. Earlier formula
+        // read oldest + newest of the 256-cap ring buffer, which
+        // inflated catastrophically during the upfront K-vocab
+        // multi-def seed (256 timestamps inside a 2-min window
+        // would report ~7680 defs/hour). Clamp to timestamps within
+        // the last 3,600,000 ms so the dashboard reflects steady-
+        // state learning rate, not seed-burst peaks.
         const ts = cortex && cortex._defLearnedTimestamps;
         if (!Array.isArray(ts) || ts.length < 2) return 0;
+        const now = Date.now();
+        const cutoff = now - 3_600_000;
+        let firstIdx = ts.length - 1;
+        for (let i = 0; i < ts.length; i++) {
+          if (ts[i] >= cutoff) { firstIdx = i; break; }
+        }
+        const recent = ts.length - firstIdx;
+        if (recent < 2) return 0;
         const newest = ts[ts.length - 1];
-        const oldest = ts[0];
-        const dt = (newest - oldest) / 1000; // seconds
+        const oldest = ts[firstIdx];
+        const dt = (newest - oldest) / 1000;
         if (dt <= 0) return 0;
-        return (ts.length / dt) * 3600;
+        return (recent / dt) * 3600;
       })(),
       // M.24 _definitionTaughtWords counter (already in kVocabTaught above).
     };
@@ -7695,19 +7924,28 @@ const httpServer = http.createServer((req, res) => {
   // These pages are pure static HTML — serve them immediately without
   // going through the generic fs.readFile path which can stall when
   // the event loop is busy with curriculum/GPU work.
-  // unity-guide.html + brain-equations.html stay in repo root because
-  // GitHub Pages serves them at /unity-guide.html / /brain-equations.html
-  // and the pages' og:url meta tags point at those root URLs. The local-
-  // only HTMLs (dashboard, compute, gpu-configure) live under `html/`
-  // on disk; the public URL stays the same so existing links + bookmarks
-  // + auto-launcher URLs keep working.
+  // All non-root HTMLs (unity-guide, brain-equations, dashboard, compute,
+  // gpu-configure) live under `html/` on disk and are served at their
+  // `/html/...` URLs to match GitHub Pages canonical paths. Only
+  // index.html stays in repo root for the GH Pages landing URL.
+  // Backwards-compat: the old root URLs (`/unity-guide.html` /
+  // `/brain-equations.html`) redirect to the new `/html/...` paths so
+  // historical bookmarks + shared links keep working.
   const PUBLIC_PAGES = {
-    '/unity-guide.html': path.join(__dirname, '..', 'unity-guide.html'),
-    '/brain-equations.html': path.join(__dirname, '..', 'brain-equations.html'),
+    '/html/unity-guide.html': path.join(__dirname, '..', 'html', 'unity-guide.html'),
+    '/html/brain-equations.html': path.join(__dirname, '..', 'html', 'brain-equations.html'),
+    '/html/dashboard.html': path.join(__dirname, '..', 'html', 'dashboard.html'),
+    '/html/gpu-configure.html': path.join(__dirname, '..', 'html', 'gpu-configure.html'),
+    '/html/compute.html': path.join(__dirname, '..', 'html', 'compute.html'),
     '/dashboard.html': path.join(__dirname, '..', 'html', 'dashboard.html'),
     '/gpu-configure.html': path.join(__dirname, '..', 'html', 'gpu-configure.html'),
     '/compute.html': path.join(__dirname, '..', 'html', 'compute.html'),
   };
+  if (req.method === 'GET' && (req.url === '/unity-guide.html' || req.url === '/brain-equations.html')) {
+    res.writeHead(301, { Location: `/html${req.url}`, 'Cache-Control': 'no-store' });
+    res.end();
+    return;
+  }
   if (req.method === 'GET' && PUBLIC_PAGES[req.url]) {
     const pagePath = PUBLIC_PAGES[req.url];
     try {
@@ -8093,6 +8331,14 @@ wss.on('connection', (ws, req) => {
           if (!brain._gpuInitializedConfirmed) brain._gpuInitializedConfirmed = {};
           brain._gpuInitializedConfirmed[msg.clusterName] = true;
           console.log(`[GPU] Confirmed: ${msg.clusterName} initialized (${(msg.size || 0).toLocaleString()} neurons)`);
+          // 114.19ek P2 #11 — once cortex re-confirms after a respawn,
+          // the GPU shadow is back in sync with the CPU CSR; clear the
+          // dirty flag so dashboard + downstream consumers stop
+          // signaling shadow-divergence.
+          if (msg.clusterName === 'cortex' && brain.cortexCluster?._gpuShadowDirty) {
+            brain.cortexCluster._gpuShadowDirty = false;
+            console.log('[GPU] _gpuShadowDirty cleared — cortex re-confirmed after compute-client respawn.');
+          }
           break;
 
         // ── T17.3.c SPARSE OPS: GPU language cortex dispatch acks ──
@@ -8142,14 +8388,62 @@ wss.on('connection', (ws, req) => {
 
   ws.on('close', () => {
     brain.clients.delete(ws);
-    // If GPU client disconnected, reset GPU state so it re-initializes on reconnect
+    // If GPU client disconnected, reset GPU state so it re-initializes on reconnect.
+    // iter114.19eg — when the disconnect is UNEXPECTED (mid-curriculum,
+    // brain has been running >60s, no operator-initiated shutdown), this
+    // is the Chrome compute.html process having crashed. Log CRITICAL
+    // with the brain's current state + auto-respawn Chrome so curriculum
+    // resumes without manual start.bat restart. Respawn rate-limited to
+    // 3 within 5 minutes to prevent infinite-loop on a deterministic
+    // crash trigger (e.g. driver bug that crashes Chrome instantly on
+    // first compute_batch — would burn through respawns and make logs
+    // unreadable).
     if (ws === brain._gpuClient) {
       brain._gpuClient = null;
       brain._gpuConnected = false;
       brain._gpuInitialized = {};
+      // 114.19ek P2 #11 — also clear the *confirmed* init flags so
+      // the auto-respawned Chrome receives gpu_init for every cluster
+      // instead of being assumed already-confirmed (the prior gap
+      // that left _gpuShadowDirty set with no recovery path).
+      brain._gpuInitializedConfirmed = {};
       brain._gpuHits = 0;
       brain._gpuMisses = 0;
-      console.log(`[Server] GPU compute client disconnected — switching to all-CPU`);
+
+      const uptimeMs = brain._bootTs ? (Date.now() - brain._bootTs) : 0;
+      const isUnexpected = uptimeMs > 60000 && !global._brainShutdownRequested;
+      const inCurriculum = !!brain._curriculumInProgress;
+
+      if (isUnexpected) {
+        const memUsage = process.memoryUsage();
+        const rss = (memUsage.rss / 1024 / 1024).toFixed(0);
+        const heapUsed = (memUsage.heapUsed / 1024 / 1024).toFixed(0);
+        const heapTotal = (memUsage.heapTotal / 1024 / 1024).toFixed(0);
+        const phase = (brain.cortexCluster && brain.cortexCluster._activePhase && brain.cortexCluster._activePhase.name) || '(idle)';
+        const cellKey = (brain.cortexCluster && brain.cortexCluster._currentCellKey) || '(none)';
+        console.error(`[Server] CRITICAL — GPU compute client disconnected UNEXPECTEDLY at +${(uptimeMs/1000).toFixed(0)}s uptime. Chrome compute.html process likely crashed (visible window closed). Brain state at crash: phase=${phase} cell=${cellKey} curriculumInProgress=${inCurriculum} heap=${heapUsed}/${heapTotal}MB rss=${rss}MB. iter25-O.2 _gpuShadowDirty flag set — full GPU resync scheduled before next teach phase Hebbian fire.`);
+
+        if (brain.cortexCluster) brain.cortexCluster._gpuShadowDirty = true;
+
+        // Rate-limited auto-respawn. Track recent respawns in a 5-min ring
+        // buffer; bail if we're already at 3 in that window.
+        const now = Date.now();
+        const FIVE_MIN_MS = 5 * 60 * 1000;
+        if (!Array.isArray(brain._gpuRespawnTimestamps)) brain._gpuRespawnTimestamps = [];
+        brain._gpuRespawnTimestamps = brain._gpuRespawnTimestamps.filter((ts) => (now - ts) < FIVE_MIN_MS);
+        if (brain._gpuRespawnTimestamps.length >= 3) {
+          console.error(`[Server] CRITICAL — auto-respawn cap hit (3 respawns within 5 minutes). Chrome is crashing too fast for auto-recovery. Diagnose the underlying cause and restart manually via start.bat. Last respawn timestamps: ${brain._gpuRespawnTimestamps.map((ts) => new Date(ts).toISOString()).join(', ')}`);
+        } else {
+          brain._gpuRespawnTimestamps.push(now);
+          console.log(`[Server] auto-respawn #${brain._gpuRespawnTimestamps.length}/3 scheduled in 2s — re-launching Chrome compute.html. Curriculum will resume once GPU client reconnects.`);
+          setTimeout(() => {
+            try { _spawnGpuClient(PORT); }
+            catch (err) { console.error(`[Server] auto-respawn _spawnGpuClient threw: ${err.message}`); }
+          }, 2000);
+        }
+      } else {
+        console.log(`[Server] GPU compute client disconnected — switching to all-CPU (uptime=${(uptimeMs/1000).toFixed(0)}s, expected=${!isUnexpected})`);
+      }
     }
     console.log(`[Server] Client disconnected: ${id} (${brain.clients.size} remaining)`);
   });
@@ -8375,9 +8669,49 @@ function _spawnGpuClient(port) {
       try {
         // spawn with array form — Node handles per-argument quoting
         // automatically. detached + unref so Chrome lives past server
-        // restart. ignore stdio so Chrome's own output doesn't pollute
-        // the brain server log.
-        const child = spawn(exePath, args, { detached: true, stdio: 'ignore', windowsHide: false });
+        // restart. iter114.19eg — pipe stdout + stderr instead of
+        // 'ignore' so Chrome's crash messages land in server.log.
+        // Without this, when Chrome's GPU process dies (visible
+        // window close), the only clue in server.log is the WS-close
+        // handler's "GPU compute client disconnected" line — no
+        // explanation. Piping stderr + stdout surfaces driver
+        // crashes, GPU process kills, sandbox failures, allocation
+        // OOMs, and any other diagnostic Chrome emits before exit.
+        const child = spawn(exePath, args, { detached: true, stdio: ['ignore', 'pipe', 'pipe'], windowsHide: false });
+        // Modern Chrome on Windows emits megabytes/min of routine
+        // GPU/Vulkan/font-cache info noise to stderr — without a
+        // filter, server.log floods unreadable within minutes. We
+        // only surface lines that look like real crash signals so
+        // the actual cause of a compute-client death stays visible.
+        const CHROME_CRASH_SIGNALS = /\b(error|fatal|crash|crashed|exit|exited|killed|aborting|abort|device lost|lost context|out of memory|oom|gpu process|deadlock|sigsegv|access violation|null pointer|assertion|panic)\b/i;
+        // 114.19eu — explicit noise-filter blacklist applied BEFORE
+        // the crash-signal regex. Chrome's internal Google services
+        // (GCM/FCM push messaging, USB device enumeration) emit lines
+        // tagged "ERROR:" that the broad CHROME_CRASH_SIGNALS regex
+        // matches via the word "error" — but they're 100% irrelevant
+        // to our brain (we don't use Chrome push messaging or USB
+        // device polling for anything). Master flagged the GCM
+        // DEPRECATED_ENDPOINT noise as "what the fuck is this" — same
+        // category as the QUOTA_EXCEEDED + USB SetupDi noise that's
+        // been polluting the log. All Chrome-internal-service chatter
+        // gets dropped here before reaching the crash-signal matcher.
+        const CHROME_NOISE_PATTERNS = /\b(gcm[\/\\]engine|device_event_log|usb_service_win|registration_request|connection_factory_impl|chromecast|metrics_log_uploader|domain_reliability|optimization_guide_internals|net[\/\\]url_request|safe_browsing|component_updater|service_worker_storage|cookie_monster|extension_registry)\b/i;
+        const isChromeNoise = (txt) => CHROME_NOISE_PATTERNS.test(txt);
+        if (child.stdout) {
+          child.stdout.on('data', (data) => {
+            const txt = data.toString().trim();
+            if (txt && !isChromeNoise(txt) && CHROME_CRASH_SIGNALS.test(txt)) console.log(`[Chrome stdout] ${txt}`);
+          });
+        }
+        if (child.stderr) {
+          child.stderr.on('data', (data) => {
+            const txt = data.toString().trim();
+            if (txt && !isChromeNoise(txt) && CHROME_CRASH_SIGNALS.test(txt)) console.log(`[Chrome stderr] ${txt}`);
+          });
+        }
+        child.on('exit', (code, signal) => {
+          console.log(`[Chrome] process exited — code=${code} signal=${signal} pid=${child.pid}`);
+        });
         child.on('error', (err) => {
           console.warn(`[Server] Browser spawn error: ${err.message}. Falling back to default browser open.`);
           exec(`start "" "${url}"`, () => {});

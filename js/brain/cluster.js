@@ -1316,6 +1316,18 @@ export class NeuronCluster {
    * @returns {{ok: boolean, gaps: string[]}}
    */
   assertKWiring() {
+    // 114.19es.2 — short-circuit when wiring already verified. Earlier
+    // 114.19er.2 only silenced the OK-log; the structural-check body
+    // (columnId.length, layerId.length, hubMask.length, plus
+    // buildKScalesForProjection call) still walked the data on every
+    // assertion. At biological scale (cortex ~71M neurons) that's 71MB
+    // Uint8Array property access × hundreds of dream-cycle assertions
+    // per minute. Now: post-verification calls return instantly.
+    // _kWiringForceRecheck flag exposed via invalidateKWiring() lets
+    // legitimate re-checkers (e.g. post-realloc) re-fire the check.
+    if (this._kWiringSmokeTested && !this._kWiringForceRecheck) {
+      return { ok: true, gaps: [] };
+    }
     const gaps = [];
     if (this.name === 'cortex') {
       // microcolumns microcolumns
@@ -1356,7 +1368,26 @@ export class NeuronCluster {
     // Run smoke Hebbian updates with different kScales bundles and
     // verify the resulting weights actually DIFFER. This catches the
     // case where data structures exist but ojaUpdate doesn't read them.
-    if (this.name === 'cortex' && gaps.length === 0) {
+    //
+    // 114.19er.2 — gate the 6-ojaUpdate smoke test behind a once-flag.
+    // Boot-time call needs full functional verification. Subsequent
+    // calls (dream-cycle, per-Hebbian, post-resync) only need structural
+    // re-verification. Smoke test was burning CPU and accumulating
+    // hundreds of throwaway 4×4 SparseMatrix allocations during
+    // overnight run while curriculum was stalled.
+    // 114.19es.11 — rate-limit failure-path smoke-test re-runs to once
+    // per minute. With es.2's early-return, post-success calls skip the
+    // smoke test entirely. But on persistent failures the er.2 logic
+    // resets _kWiringSmokeTested = false so the smoke test re-runs on
+    // every call — which means a flapping K-wiring fault could thrash
+    // CPU spinning up 4×4 SparseMatrix + 6 ojaUpdates over and over.
+    // _kWiringSmokeLastRunTs gates re-runs to >= 60s apart so the loud
+    // failure log still fires every call but compute stays bounded.
+    const SMOKE_TEST_MIN_INTERVAL_MS = 60 * 1000;
+    const nowSmoke = Date.now();
+    const smokeRecentlyRan = this._kWiringSmokeLastRunTs && (nowSmoke - this._kWiringSmokeLastRunTs) < SMOKE_TEST_MIN_INTERVAL_MS;
+    if (this.name === 'cortex' && gaps.length === 0 && !this._kWiringSmokeTested && !smokeRecentlyRan) {
+      this._kWiringSmokeLastRunTs = nowSmoke;
       try {
         // Build a tiny test sparse matrix (4×4) outside the cluster
         // so we don't disturb real weights.
@@ -1429,11 +1460,44 @@ export class NeuronCluster {
 
     const ok = gaps.length === 0;
     if (ok) {
-      console.log(`[Cluster ${this.name}] cortical wiring verified — microcolumns, lamination, hubs, voltage coherence, oscillations, layer plasticity all allocated and consumed by Hebbian path`);
+      // 114.19er.2 — once-log. Boot-time verification prints loudly so
+      // operator sees K wiring was checked + passed. Subsequent dream-
+      // cycle / per-Hebbian re-verifications stay silent because the
+      // wiring hasn't changed and the log was drowning real curriculum
+      // signal during overnight run (server.log session 2026-05-07
+      // showed ~hundreds of identical lines after curriculum stalled).
+      // Smoke test gate above also reads this flag — first OK pass
+      // does full functional verification, every subsequent pass does
+      // structural-only check.
+      if (!this._kWiringVerifiedLogged) {
+        console.log(`[Cluster ${this.name}] cortical wiring verified — microcolumns, lamination, hubs, voltage coherence, oscillations, layer plasticity all allocated and consumed by Hebbian path`);
+        this._kWiringVerifiedLogged = true;
+        this._kWiringSmokeTested = true;
+      }
     } else {
+      // Failures ALWAYS log loudly. Reset the once-flag so a recovery
+      // (re-allocation post-startup) re-prints the verified line.
       console.warn(`[Cluster ${this.name}] cortical wiring check failed: ${gaps.join('; ')}`);
+      this._kWiringVerifiedLogged = false;
+      this._kWiringSmokeTested = false;
     }
+    // 114.19es.2 — clear force-recheck flag after a single re-run so
+    // repeated invalidations don't permanently disable the short-circuit.
+    this._kWiringForceRecheck = false;
     return { ok, gaps };
+  }
+
+  /**
+   * 114.19es.2 — force the next assertKWiring() call to re-run the full
+   * structural + smoke-test path even when previously verified. Use
+   * after re-allocating cortex sub-region buffers, after a save/load
+   * cycle restores cluster state, or whenever the K-wiring data
+   * structures have been mutated and need fresh verification.
+   */
+  invalidateKWiring() {
+    this._kWiringForceRecheck = true;
+    this._kWiringSmokeTested = false;
+    this._kWiringVerifiedLogged = false;
   }
 
   /**
@@ -1548,6 +1612,29 @@ export class NeuronCluster {
     if (p === 0 || p === 1) return 0; // fully silent or fully firing → low Φ
     const entropy = -(p * Math.log2(p) + (1 - p) * Math.log2(1 - p));
     return entropy; // already in [0, 1]
+  }
+
+  /**
+   * Per-cluster theta + gamma oscillator phases in radians, derived
+   * from _tickCounter using the same period/modulo math the
+   * theta-gamma drive modulator uses inside step(). Exposed so an
+   * external observer can compute the Kuramoto order parameter
+   *   r = |Σ exp(i·θ_k)| / N
+   * across the cluster ensemble — real synchrony measurement instead
+   * of an Ornstein-Uhlenbeck random walk pretending to be coherence.
+   *
+   * Returns null when theta-gamma is disabled (no oscillator state
+   * exists); the Kuramoto computation should treat null clusters as
+   * non-contributors rather than as zero-phase.
+   *
+   * @returns {{theta:number, gamma:number}|null} radians in [0, 2π)
+   */
+  getPhases() {
+    if (!this.thetaGammaEnabled) return null;
+    const t = this._tickCounter | 0;
+    const theta = (2 * Math.PI * (t % this.thetaPeriod)) / this.thetaPeriod;
+    const gamma = (2 * Math.PI * (t % this.gammaPeriod)) / this.gammaPeriod;
+    return { theta, gamma };
   }
 
   /**

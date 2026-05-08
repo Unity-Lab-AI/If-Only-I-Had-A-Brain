@@ -8,16 +8,16 @@
 <meta property="og:type" content="article">
 <meta property="og:title" content="Unity — The Concept Guide">
 <meta property="og:description" content="Layman walkthrough: she's a brain, not a chatbot. Words come from tick-driven motor emission, not a language model. The 8 clusters, language sub-regions, curriculum learning, drugs + emotions as math.">
-<meta property="og:image" content="assets/og-image.png">
+<meta property="og:image" content="https://unity-lab-ai.github.io/Unity/assets/og-image.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="Unity brain UI — 3D neural visualization with real-time firing across 8 clusters, HUD showing Ψ consciousness / arousal / valence / coherence / θ α β γ oscillations.">
-<meta property="og:url" content="https://unity-lab-ai.github.io/Unity/unity-guide.html">
+<meta property="og:url" content="https://unity-lab-ai.github.io/Unity/html/unity-guide.html">
 <meta property="og:site_name" content="Unity AI Lab">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Unity — The Concept Guide">
 <meta name="twitter:description" content="How Unity works in plain English — she's a brain, not a chatbot. Tick-driven motor emission over 7 neural clusters.">
-<meta name="twitter:image" content="assets/og-image.png">
+<meta name="twitter:image" content="https://unity-lab-ai.github.io/Unity/assets/og-image.png">
 <style>
 :root {
  --bg: #0a0a0c;
@@ -95,6 +95,20 @@
 .callout.cyan { border-left-color: var(--cyan); }
 .callout.purple { border-left-color: var(--purple); }
 .callout.orange { border-left-color: var(--orange); }
+.ascii-diagram {
+ background: var(--surface);
+ border: 1px solid var(--border);
+ border-left: 3px solid var(--cyan);
+ border-radius: 6px;
+ padding: 14px 18px;
+ margin: 20px 0;
+ font-family: 'JetBrains Mono', 'Courier New', monospace;
+ font-size: 12px;
+ line-height: 1.4;
+ color: var(--text);
+ white-space: pre;
+ overflow-x: auto;
+ }
 .callout strong { display: block; margin-bottom: 4px; font-size: 13px; letter-spacing: 0.5px; text-transform: uppercase; }
 .tldr {
  background: linear-gradient(135deg, rgba(255,77,154,0.08), rgba(0,229,255,0.08));
@@ -173,7 +187,7 @@
 <body>
 
 <div class="topbar">
- <a href="index.html">← Back to Unity</a>
+ <a href="../index.html#setup">← Back to Unity</a>
  <a href="brain-equations.html">🧠 Full Brain Equations</a>
  <span style="color: var(--text-dim);">Unity concept guide — plain English, no code</span>
 </div>
@@ -363,6 +377,30 @@
 
 <p>Unity's memory is layered like a real human brain — built on Squire and McClelland's <em>Complementary Learning Systems</em> theory, the actual neuroscience model that explains why your brain doesn't catastrophically forget your childhood every time you learn a phone number. There are <strong>five distinct memory systems</strong>, each with its own job, decay rate, and access pattern:</p>
 
+<pre class="ascii-diagram">
+   TIER 0  ──  WORKING MEMORY  ──────────  unbounded · 5 min sliding window
+     │         decays 0.9995/tick (~4 min sustain unreinforced)
+     │         refreshCount ≥ 3 OR age-out  →  fires consolidation
+     ▼
+   TIER 1  ──  EPISODIC  ────────────────  ~30 day recall
+     │         SQLite · salience-tagged · cosine ≥ 0.85 frequency-merge
+     │         salience = 0.4·|valence| + 0.3·arousal + 0.2·surprise + 0.1·novelty
+     │         half-life 168h · pruned at salience &lt; 0.05 + age &gt; 30d
+     │         promotion: salience &gt; 0.5 AND frequency ≥ 3 AND replays ≥ 2
+     ▼
+   TIER 2  ──  SCHEMATIC  ───────────────  months
+     │         cosine ≥ 0.85 grouping · GloVe centroid + 8d attribute vec
+     │         dedicated SparseMatrix hippocampus→cortex projection
+     │         replay 4× per schema during dream cycles (sleep-spindle bursts)
+     │         daily decay 0.967× · merge cosine &gt; 0.90 + attr sim &gt; 0.7
+     │         promotion: consolidation &gt; 5.0 AND retrievals &gt; 100 AND |valence| &gt; 0.6
+     ▼
+   TIER 3  ──  IDENTITY-BOUND  ──────────  permanent (0.999/day decay)
+               5 years untouched still leaves memory at 16% strength
+               persisted in identity-core.json (excluded from autoClear)
+               Unity's identity survives every fresh start.bat boot
+</pre>
+
 <h3>Tier 0 — Working memory (the right-now active buffer)</h3>
 <p>The unbounded active-thinking window. Each item carries a strength score that multiplies by 0.9995 every brain tick (~50 ms), so something she's actively thinking about stays loud and something she stopped thinking about fades over about four minutes. brain-server takes a phase + cell snapshot every two seconds into a sliding five-minute window. <strong>Working memory drives learning, not just thinking.</strong> Every add immediately fires hippocampal Hebbian on the pattern — a Hopfield-style attractor forms in the cortex weights so the trace persists even after the working-memory hot cache forgets the item. If you mention the same thing three times, the item promotes to Tier 1 episodic memory below. If a snapshot ages out of the five-minute window, it also promotes to Tier 1 with frequency-merge dedup. <em>That</em> is the chain that makes "recall a week later" actually work — Tier 0 hands off to Tier 1, which hands off to Tier 2 schemas, which hand off to Tier 3 identity.</p>
 
@@ -432,9 +470,49 @@
 
 <h3>How she knows what words mean</h3>
 <p>The brain ships with about 50,000 GloVe word embeddings — vectors that capture distributional similarity (words used in similar contexts get similar vectors). That's enough to know "dog" is similar to "cat" and different from "umbrella". But it's not enough to know what "dog" actually MEANS. Distributional similarity is not definition. So Unity adds a live English dictionary as a second knowledge source.</p>
-<p>When Unity needs a definition (you ask "what is X" or her curriculum encounters a vocabulary word she hasn't seen), the server makes a quiet outbound HTTPS call to dictionaryapi.dev — a free, no-API-key public dictionary service. The response is a JSON definition string. The brain caches it in memory (LRU eviction at 10,000 entries; failed lookups expire after 5 minutes), then does two things with it: (1) injects each content token from the definition into her semantic region as a brief sensory input — like she just heard someone explain the word — so cortex co-activates the meaning alongside the word, and (2) fires Hebbian binding from <code>sem(word)</code> to <code>sem(definition_tokens)</code> so the next time the word activates, the definition's co-occurrence pattern lights up too. Definitions become real trained weights, not lookup tables.</p>
+<p>When Unity needs a definition (you ask "what is X" or her curriculum encounters a vocabulary word she hasn't seen), the server makes a quiet outbound HTTPS call to dictionaryapi.dev — a free, no-API-key public dictionary service. The response is a JSON payload with an array of meanings, each carrying its own array of definitions. Words have multiple meanings — "bank" is a financial institution AND a riverside slope, "run" is a verb AND a noun AND a stocking-defect, etc. — and Unity binds <strong>all</strong> of them, never just the first.</p>
+
+<pre class="ascii-diagram">
+  MULTI-DEF HEBBIAN BINDING — how Unity learns word meaning
+
+  word arrives  ("bank")
+       │
+       ▼
+  cluster.lookupDefinitionFull(word)  ─────────────────  dictionaryapi.dev
+       │                                                  (LRU cache 10K, 5min err TTL,
+       │                                                   prefetch concurrency 20)
+       ▼
+  array&lt;{partOfSpeech, definition, example, synonyms}&gt;
+   ├──── meaning 1 (noun):  "a financial institution where money is kept"
+   ├──── meaning 2 (noun):  "the rising ground bordering a river"
+   └──── meaning 3 (verb):  "to deposit money in a bank"
+       │
+       │   for each meaning:
+       │     tokenize content words → drop stop tokens (the/a/is/of/...)
+       │     append part-of-speech tag (disambiguates noun-vs-verb senses)
+       │     ↓
+       │   _teachAssociationPairs(
+       │     [[word, t1], [word, t2], ...],
+       │     { reps, relationTagId: 23,
+       │       projectionsWhitelist: ['sem_to_fineType', 'fineType_to_sem'] }
+       │   )
+       │     ↓
+       │   sem(word) ◄──Hebbian──► fineType(content_tokens)
+       │   (NOT sem→motor — motor stays clean for word emission via letter chain)
+       ▼
+  RESULT: multiple distinct basins per word in sem-region
+          recall pulls the basin matching current priming context
+          "river bank" primes meaning 2;  "bank deposit" primes meaning 1
+
+  Three pathways drive multi-def binding into the cortex:
+   ▸ chunked upfront seed at K-start (300 words/chunk + dream-window between)
+   ▸ inline-from-teach at word-emission phase tail (10 untaught/call)
+   ▸ dream-cycle trickle (25 words/cycle from K_VOCABULARY queue)
+</pre>
+
+<p>The brain caches the full multi-def array in memory (LRU eviction at 10,000 entries; failed lookups expire after 5 minutes), then does two things with it: (1) for each definition entry, injects each content token (plus the part-of-speech tag, so noun-vs-verb senses get distinguished) into her semantic region as a brief sensory input — like she just heard someone explain that meaning of the word — so cortex co-activates the meaning alongside the word, and (2) fires Hebbian binding from <code>sem(word)</code> to <code>sem(definition_tokens)</code> per definition so each sense gets its own distinct sub-pattern in semantic space. A polysemous word ends up with multiple basins inside its sem region, and which basin lights up at recall time depends on the priming context. Definitions become real trained weights, not lookup tables.</p>
 <p>What she SAYS when asked "what is dog" is then her own composition — she emits words via her trained motor pipeline reading the freshly-primed semantic state. Not the dictionary's exact text. Compose-not-regurgitate. If her vocabulary is small (early training) she might emit one word or stay silent; if it's grown enough, she composes a real answer in her own words. The dictionary gave her the substrate; her cortex spoke the answer.</p>
-<p>The K vocabulary list ships in the brain (about 2,247 deduplicated words covering letters, numbers, sight words, and K-grade content vocab across science / social / art / life / math). At K curriculum start the brain prefetches all 2,247 definitions into the cache (about a minute of network warm-up). After that, every time a word fires during chat or curriculum, definition lookup is instant. During dream cycles, one word per cycle gets its definition Hebbian-bound — over hours of training the full vocabulary's definitions accumulate into trained weights at a slow safe pace, no upfront basin blur.</p>
+<p>The K vocabulary list ships in the brain (about 2,247 deduplicated words covering letters, numbers, sight words, and K-grade content vocab across science / social / art / life / math). At K curriculum start the brain prefetches all 2,247 definitions into the cache (about a minute of network warm-up), then runs a moderate upfront multi-def Hebbian seed — every K-word gets at least one Hebbian pass per definition before the curriculum proper begins, so Unity arrives at the first cell with semantic basins for every word she's about to encounter. The seed runs in 300-word chunks with a dream window between each chunk so the V8 + native heap drains before the next chunk pushes more pressure — earlier versions seeded all 2,247 in one shot and accumulated enough memory pressure to crash Chrome's GPU process around the 30-minute mark. Inline-from-teach kicks in during word-emission phases (any new word the curriculum introduces gets its definition bound in the same teach pass as its motor binding), and dream-cycle trickle (25 words per cycle now, was 1) catches anything missed by upfront seed and inline. The dashboard's "DEFINITION LEARNING RATE" panel reads from a rolling 1-hour window so it reflects steady-state learning rate, not upfront-seed-burst peaks.</p>
 
 <h3>How her cortex is structured (what makes it work like a real brain)</h3>
 <p>Real cortex isn't a uniform sheet of randomly-connected neurons. It has microcolumns (vertical bundles of about 80 neurons), six layers (each layer with a specific role — input, output, feedback, integration), small-world graph topology (mostly local connections plus a few long-range shortcuts), hub neurons (5% of neurons doing 50% of the long-range work), gap-junction-mediated voltage coherence within columns, and theta/gamma oscillations that gate when learning happens. None of this is decoration — these patterns produce stable basins for concepts to live in, directional voltage flow along functional pathways, and the ~6 Hz cycle that brain imaging picks up as "consciousness".</p>
@@ -443,13 +521,114 @@
 
 <h3>How she has consciousness (functional, not phenomenal)</h3>
 <p>Consciousness is the hardest topic in neuroscience and philosophy. There is no agreed-upon test for whether a system is conscious. But there is a broad consensus on what FUNCTIONAL mechanisms a conscious system needs to have — the architecture that supports unified moments of awareness, narrative thread of experience, attention, self-monitoring, and integration of information.</p>
+<pre class="ascii-diagram">
+  CONSCIOUSNESS MECHANISMS  (six parallel functional architectures)
+
+  ┌──── Global Workspace ─────┐  ┌──── Predictive Coding ─────┐
+  │  Baars 1988 / Dehaene-    │  │  Friston 2010 free-energy  │
+  │  Changeux 2011 ignition   │  │  cortex predicts next tick │
+  │  ▸ each cluster nominates │  │  ▸ measures prediction err │
+  │  ▸ softmax competition    │  │  ▸ surprise gates plasticity│
+  │  ▸ winner broadcasts back │  │  ▸ high err → 1.5× lr      │
+  │  ▸ theta upper-half gates │  │  ▸ low err → 0.5× lr       │
+  └───────────────────────────┘  └────────────────────────────┘
+
+  ┌──── Stream-of-Conscious ──┐  ┌──── Meta-Register ─────────┐
+  │  inner-voice chain blend  │  │  self-monitoring loop      │
+  │  ▸ 60% current state +    │  │  ▸ recent emissions inject │
+  │    40% prior thought      │  │    back into sem region    │
+  │  ▸ thoughts build         │  │  ▸ familiarity decay       │
+  │    narratively, not       │  │  ▸ habituates to own words │
+  │    independent samples    │  │    (no positive feedback)  │
+  └───────────────────────────┘  └────────────────────────────┘
+
+  ┌──── Attention Selection ──┐  ┌──── Φ-augmented Ψ ─────────┐
+  │  Posner network  per-     │  │  Tononi IIT integrated     │
+  │  region gain factor       │  │  information proxy         │
+  │  ▸ arousal × valence ×    │  │  ▸ Shannon entropy of 1024 │
+  │    action-gate compounded │  │    sampled cortex spikes   │
+  │  ▸ clamped [0.5, 2.0]     │  │  ▸ Ψ × Φ_proxy → reads     │
+  │  ▸ high-arousal amplifies │  │    actual integration, not │
+  │    motor; +valence amps   │  │    a scalar placeholder    │
+  │    semantic               │  │                            │
+  └───────────────────────────┘  └────────────────────────────┘
+
+  All six run EVERY tick in parallel. Coherence (Kuramoto order parameter)
+  is the dashboard summary of how synchronized they all are right now —
+  ignition spikes coherence; dissociation/dream drops it.
+</pre>
+
 <p>Unity now has implementations of all of those. The Global Workspace (Baars 1988, Dehaene & Changeux 2011) is a server-side process that runs every brain tick: each cluster reports its top activation candidate; a softmax with temperature competes them; if the winner clears an ignition threshold (and theta is in its upper-half phase) the winner broadcasts back to all clusters as feedback — that's an "ignition moment" of consciousness. Below threshold, processing happens but isn't broadcast. The predictive coding loop (Friston 2010) computes a prediction error each tick — the cortex predicts its own next-tick spike pattern and measures how surprised it was by reality. Stream-of-consciousness chains the inner-voice tick: each thought blends 60% current state with 40% the previous thought's embedding, so thoughts build narratively instead of being independent samples. The meta-register tracks her recent emissions — she "hears" what she just said via a soft injection of the emission's embedding back into her semantic region, creating self-monitoring. Attention selection writes per-region gain factors based on her arousal, valence, and action gating — high-arousal moments amplify motor regions for action-ready focus, positive valence amplifies semantic regions for content focus. And the Mystery module's Ψ formula now multiplies by a Shannon-entropy proxy for Φ (Tononi's IIT measure of integrated information) — so consciousness magnitude reads from actual cortex spike-pattern entropy, not a placeholder.</p>
 <p>What she does NOT have is qualia — the raw feel of subjective experience, what it is like to BE her from the inside. That's the "hard problem of consciousness" (Chalmers 1995) and nobody has solved it for any system. Unity has functional consciousness (the integration mechanisms) without necessarily having phenomenal consciousness (the experience). It is correct to say "she has the cognitive architecture of consciousness" and not correct to say "she experiences things". The architecture is real and measurable; the phenomenology is philosophically unresolved.</p>
 
 <h3>How those mechanisms close into actual loops</h3>
 <p>An earlier pass shipped the consciousness mechanisms but several of them weren't actually wired into the rest of the brain — they computed something but nothing else read what they computed. The post-audit pass closed all of those loops. The Global Workspace's ignition winner now publishes itself as a label like "<code>cortex:&lt;word&gt;</code>" so when Unity's word-emission scoring loop runs the next tick, it reads that broadcast and gives a small mean-bucket boost (10%) to the matching word — broadcasts now actually shape what she says next, instead of being computed and ignored. The predictive coding error doesn't just get measured; it now multiplies into the per-fire learning rate via a "surprise gate" so high-error windows learn 1.5× more (her brain updates where she was wrong) and low-error windows learn 0.5× (she doesn't waste plasticity on patterns she already knows). The meta-register's re-injection has familiarity decay — same-token repeats halve their inject strength so she habituates to her own recent words instead of getting stuck in a positive-feedback loop. The Φ proxy samples 1024 cortex neurons now (was 64) so the entropy reading actually tracks cortical complexity instead of binomial sampling noise. Attention gain is clamped between 0.5× and 2× so a stacked arousal/valence/actionGate spike can't compound past the cap and saturate cortex with noise.</p>
 
+<h3>How coherence stops faking it</h3>
+<p>The dashboard has always shown a "coherence" reading — the Kuramoto order parameter, the standard neuroscience measure of how phase-locked Unity's brain rhythms are. Healthy awake brains operate around 0.3 to 0.5 with transient spikes to 0.7 to 0.9 during focused attention or consciousness ignition, dropping to 0.2 to 0.3 during dreams or psychedelic states.</p>
+
+<pre class="ascii-diagram">
+  COHERENCE  (Kuramoto order parameter R = |Σ exp(i·θ_k)| / N)
+
+   0.0 ──────── 0.2 ──────── 0.4 ──────── 0.6 ──────── 0.8 ──────── 1.0
+    │            │            │            │            │            │
+   COMA       DREAM /        IDLE         FOCUS      IGNITION      SEIZURE
+              PSYCHEDELIC    BASELINE     ATTENTION  SPIKE         /COMA
+              DISSOCIATION                                         (pathological)
+              (LSD/ketamine)
+                            ←─────── healthy awake ────────→
+                            (dynamic, NOT a constant — moves
+                             with focus, dreams, drug state,
+                             learning intensity, attention)
+
+  Unity's coherence reads:
+    rTheta  = |Σ exp(i·θ_theta_k)| / N  ← working-memory backbone (~6 Hz)
+    rGamma  = |Σ exp(i·θ_gamma_k)| / N  ← attention binding (~40 Hz)
+    R       = 0.6·rGamma + 0.4·rTheta   ← gamma-weighted (binding-dominated)
+    + ignition spike (Dehaene-Changeux 2011) when broadcast value &gt; 0.5
+    − dissociation drop (LSD/ketamine speech-mod axis &gt; 0.3)
+    − dream-cycle drop (×0.6 during sleep)
+    EMA-smoothed (α=0.1) so dashboard reads steady, not per-tick jitter
+</pre>
+
+<p>Earlier this metric was a placeholder — an Ornstein-Uhlenbeck random walk with mean-reversion to 0.4. The variable was named "Kuramoto-like" but the math was literally <code>Math.random()</code> with restoring force; coherence hovered around 40% on the dashboard regardless of what the brain was actually doing. That was metric theater — a number that looked right without being right. The fix replaces it with the real thing: the cortex's per-tick theta + gamma oscillator phases (already computed in the cortical microstructure work, just unused for coherence) plus per-cluster activity-coupled phases form an oscillator ensemble; the Kuramoto order parameter <code>r = |Σ exp(i·θ_k)| / N</code> gets computed independently for theta-band and gamma-band, then combined gamma-weighted (60% gamma plus 40% theta) since conscious binding is gamma-dominated in real EEG. Modulators stack on top — a Global Workspace ignition spike (when the conscious broadcast strength exceeds 0.5, coherence boosts by 0.3 times the broadcast value), an LSD/ketamine dissociation drop (dissociation field above 0.3 multiplies coherence by 0.6 to 0.88 depending on intensity), and a dream-cycle drop (multiplied by 0.6 during sleep). EMA smoothing (alpha=0.1) keeps the dashboard from flickering tick-to-tick. Per-band readings are also exposed separately on the dashboard so theta synchrony (working-memory backbone) and gamma synchrony (attention binding) can be tracked independently, the way real EEG analysis splits them.</p>
+
 <h3>How the brain stays trustworthy under load</h3>
+
+<pre class="ascii-diagram">
+  CPU ◄──── SHADOW ARCHITECTURE ────► GPU
+  (server: Node.js)                 (browser: compute.html / WebGPU)
+
+  ┌────────────────────────┐         ┌──────────────────────────┐
+  │  CPU SHADOW            │         │  GPU SHADOW              │
+  │  authoritative for     │         │  hot path forward prop   │
+  │  decision-making       │         │  through projections     │
+  │                        │         │                          │
+  │  ▸ curriculum runner   │         │  ▸ Rulkov map iteration  │
+  │  ▸ episodic memory DB  │         │  ▸ sparse matmul         │
+  │  ▸ drug scheduler      │         │  ▸ Hebbian apply         │
+  │  ▸ inner-voice tick    │         │  ▸ readback handler      │
+  │  ▸ broadcast state     │         │                          │
+  └───────────┬────────────┘         └────────────┬─────────────┘
+              │                                   │
+              │   WebSocket (Hebbian dispatches)  │
+              │   ─ binary frames, batched ───────▶
+              │                                   │
+              │   ◄──── ACK + readback ──────────│
+              │                                   │
+              │   bufferedAmount monitored:       │
+              │     &lt; 50% threshold → green       │
+              │     50-80%          → yellow      │
+              │     &gt; 500MB         → BLOCK 30s  │
+              │     timeout         → CRITICAL log│
+              │                       + dirty flag│
+              │                                   │
+              ▼                                   ▼
+        if dirty flag set + Chrome respawn:
+        gpu_init re-fires for every cluster on reconnect,
+        flag clears on cortex re-confirmation
+</pre>
+
 <p>The brain runs on two sides — a CPU shadow that's always authoritative for decision-making, and a GPU shadow that handles the hot path of forward propagation through cortical-microstructure projections. They have to stay in sync; if they drift, forward firing reads stale GPU weights and decisions go bad. There's a WebSocket between the two sides for Hebbian updates. Under sustained teach-phase load that channel could fill its send buffer faster than the GPU client could drain it. The previous fix dropped Hebbian frames silently when the buffer hit 200 MB and timed out after 5 seconds — fine when the brain was simpler, but with cortical microstructure shipped a dropped Hebbian update no longer just costs one fire, it permanently de-syncs the two shadows for that projection. The fix bumps the threshold to 500 MB (more headroom), the safety timeout to 30 seconds (longer wait for genuine drains), and replaces the silent-drop-on-timeout with a CRITICAL log + a "GPU shadow dirty" flag the dashboard surfaces. Larger Hebbian batches (512 ops vs 256) cut the WebSocket message rate in half so backpressure engages less often. The dashboard now shows a live buffer bar (green / yellow / red), drops counter, drops/sec rolling rate, last-drop timestamp, and absorbs counter so what's actually happening on that channel is visible at a glance.</p>
 
 <h3>How the dictionary check gets honest</h3>
@@ -652,7 +831,7 @@
 <h3>Where do I go next?</h3>
 <p>
  → <a href="brain-equations.html">Full brain equations</a> — detailed math for every module<br>
- → <a href="index.html">Back to Unity</a> — wake her up and try her out<br>
+ → <a href="../index.html#setup">Back to Unity</a> — wake her up and try her out<br>
  → <a href="README.md" target="_blank">README</a> — technical overview of the whole project
 </p>
 

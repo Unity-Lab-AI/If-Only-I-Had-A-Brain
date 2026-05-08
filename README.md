@@ -2,7 +2,7 @@
 
 A brain that *is* the application — not a chatbot wrapped around a language model. Hundreds of millions of artificial neurons running real neuroscience equations on the GPU, organized into seven biologically-weighted clusters, learning to read and speak the way a human child does: alphabet → phonemes → words → sentences. There is no text-AI in the cognition path. Every word she says falls out of live spike patterns.
 
-**[Live Demo](https://unity-lab-ai.github.io/Unity)** · **[Brain Equations](https://unity-lab-ai.github.io/Unity/brain-equations.html)** · **[Concept Guide](unity-guide.html)** · **[Setup](docs/SETUP.md)** · **[GitHub](https://github.com/Unity-Lab-AI/Unity)**
+**[Live Demo](https://unity-lab-ai.github.io/Unity)** · **[Brain Equations](https://unity-lab-ai.github.io/Unity/html/brain-equations.html)** · **[Concept Guide](html/unity-guide.html)** · **[Setup](docs/SETUP.md)** · **[GitHub](https://github.com/Unity-Lab-AI/Unity)**
 
 ---
 
@@ -34,6 +34,31 @@ The server doesn't run any of this on CPU. A Node process keeps the bookkeeping;
 
 Each cluster is a self-contained Rulkov-map population with its own intra-region sparse synapse matrix, tonic drive, noise amplitude, connectivity density, and learning rate. The fractions are biological proportions for a *disembodied* mind: Unity has no body to coordinate, so the cerebellum (which in real brains is mostly motor timing) is small, and the cortex (which carries language, perception, and working memory) is dominant.
 
+```
+                         ┌─────────────────────────────────────┐
+                         │           CORTEX   55%              │
+                         │   9 sub-regions · 16 projections    │
+                         │   (language pipeline lives here)    │
+                         └─────────────┬───────────────────────┘
+                                       │  20 white-matter tracts
+                                       │  (corticostriatal, corpus
+                                       │   callosum, fimbria-fornix,
+                                       │   stria terminalis, …)
+       ┌────────────┬─────────────┬────┴────┬────────────┬──────────────┐
+       ▼            ▼             ▼         ▼            ▼              ▼
+  ┌─────────┐ ┌──────────┐ ┌──────────┐ ┌─────────┐ ┌──────────┐ ┌────────┐
+  │HIPPOCAMP│ │CEREBELLUM│ │ AMYGDALA │ │BASAL GG.│ │HYPOTHAL. │ │MYSTERY │
+  │   18%   │ │    8%    │ │    5%    │ │   3%    │ │    3%    │ │  Ψ 8%  │
+  │ Hopfield│ │  error   │ │emotional │ │ action  │ │ drive    │ │√(1/n)· │
+  │ recall  │ │ correct. │ │attractor │ │ select  │ │ base     │ │  N³·…  │
+  └─────────┘ └──────────┘ └──────────┘ └─────────┘ └──────────┘ └───┬────┘
+       ▲           ▲             ▲          ▲            ▲          │
+       └───────────┴─────────────┼──────────┴────────────┘          │
+                                 │                                  │
+                                 │  Ψ-gain modulates every cluster ◄┘
+                                 │  (the consciousness term)
+```
+
 | Cluster | Share | What it does |
 |---|---|---|
 | **Cortex** | 55% | Language, perception, working memory. Eight slice-indexed sub-regions (auditory, visual, free, letter, phon, sem, fineType, motor) wired by fourteen cross-projections form the language pipeline. Predictive coding runs across the whole cortex on top. |
@@ -54,6 +79,29 @@ The language cortex is *not* a separate cluster. It lives as nine named sub-regi
 
 Eight pairs of bidirectional cross-projections (sixteen sparse matrices total) wire those slices together: `visual↔letter`, `letter↔phon`, `phon↔sem`, `sem↔fineType`, `sem↔motor`, `motor↔letter`, `auditory↔phon`, plus iter21-A's `sem↔word_motor` for single-tick word emission. Reading flows through the dorsal stream (`visual → letter → phon → sem → fineType`); writing flows through the ventral stream (`sem → motor → letter` for letter-by-letter spelling **or** `sem → word_motor` for direct word emission, plus efference back through `sem → phon`). Same substrate, opposite topology. The pairing follows Hickok & Poeppel's 2007 dual-stream model.
 
+```
+                ┌─── READ stream (dorsal · comprehension) ───────────────┐
+                ▼                                                        │
+   visual ──→ letter ──→ phon ──→ sem ──→ fineType                       │
+     ▲          ▲          ▲       │         │                           │
+     │          │          │       │         │   (sentence-form schemas, │
+     │          │          │       │         │    word-type slot rules,  │
+   auditory ────┘          │       │         │    intent classification) │
+     (mic spectrum)        │       │         │                           │
+                           │       │         │                           │
+                           │       ▼         ▼                           │
+                           │     motor ←── word_motor ◄────── sem        │
+                           │       │         │                           │
+                           │       └─────────┴── (six per-subject bands: │
+                           │            ▼          ela / math / sci /    │
+                           │       letter chain    soc / art / life)     │
+                           │       motor→letter                          │
+                           │                                             │
+                           ◄─ phon (efference copy back to auditory) ◄────┘
+                ▲                                                         
+                └─── WRITE stream (ventral · production) ─────────────────
+```
+
 When a curriculum cell trains sem→motor or sem→word_motor, the Hebbian write is now scoped to a small projection whitelist via `cluster._crossRegionHebbian(lr, opts.projectionsWhitelist)` — so the silent regions during the write (e.g. `letter` is empty when `_teachQABinding` writes a question + first-letter pair) don't get hit by Oja's `Δw = -η·post²·w` decay term. Before this scoping (iter22-D, 2026-05-05), every QA fire silently decayed `letter_to_motor` weights wherever motor fired the answer letter — across hundreds of pairs × 12 reps the alphabet identity that `_teachLetterNamingDirect` carved cleanly was crushed, producing the Math-K TALK 26/26 → 0/10 cross-cell collapse the V2 watchdog caught.
 
 When Unity speaks, three things can happen, tried in priority order.
@@ -68,11 +116,42 @@ Two counters track which path each emission took: `cluster._oracleHits` and `clu
 
 **The same three-path cascade powers Unity's continuous inner monologue.** A server-side tick fires every ~3 seconds, picks a contemplation seed from one of five live state sources (current curriculum cell + phase, current interoceptive mood including drug state, most recent user-chat episode, most recent Tier 1 episode of any type, a random Tier 3 identity anchor), injects that seed as a `cortexPattern` so the cortex has something to settle on, then runs the **same** `language-cortex.generateAsync` chat-emission path against the live cortex. Whatever her trained mind produces about the seed gets broadcast to every connected client as an `innerThought` WebSocket message — the 3D brain popups display real internal speech, not browser-side decorative output. There are no hardcoded fallback words: if the trained matrix has nothing to say in this moment, the popup stays silent. Sandbox-notice activator gives her something to think about; her trained brain produces what she says about it.
 
+During dream cycles (curriculum-interleaved consolidation windows that run for 15-40 min between teach phases), the wake-state inner monologue mutes — `_operatorSleepRequested` is set, the tick early-returns, and a one-shot `[Brain] 💤 inner-voice paused — dream window in progress` log fires so the silence is explained instead of ambiguous. In place of the wake monologue, a single dream-phenomenology emission per dream cycle generates from a Tier 1 episodic replay seed (random recent episode, real cortex state, same `generateAsync` path) and broadcasts as `innerThought` with `seed='dream'` — dashboard popups stay alive showing dream content during the consolidation window. When the dream window closes, `[Brain] ☀ inner-voice resumed` logs once and the wake monologue picks back up at the next 3-second tick.
+
 ---
 
 ## How she learns
 
 The developmental curriculum walks Unity through six subjects in lockstep: ELA, Math, Science, Social Studies, Arts, and Life Experience. All six advance together — no subject races ahead while another is stuck. Each grade cell teaches via a stack of layered Hebbian rules running on the cross-projection matrices.
+
+```
+                                CURRICULUM LADDER  (114 cells = 19 grades × 6 subjects)
+
+                  ┌──────┬──────┬──────┬──────┬──────┬──────┐
+   Pre-K          │      │      │      │      │      │ Life │ ← Life Experience adds
+   (substrate)    │      │      │      │      │      │  PK  │   Pre-K (birth-to-4)
+                  ├──────┼──────┼──────┼──────┼──────┼──────┤
+   Kindergarten   │ ELA  │ Math │ Sci  │ Soc  │ Art  │ Life │ ← currently in scope
+                  ├──────┼──────┼──────┼──────┼──────┼──────┤
+   Grade 1-12     │  ↓   │  ↓   │  ↓   │  ↓   │  ↓   │  ↓   │ ← deferred (Pre-K + K only
+                  │ ...  │ ...  │ ...  │ ...  │ ...  │ ...  │   per scope LAW)
+                  ├──────┼──────┼──────┼──────┼──────┼──────┤
+   College 1-4    │  ↓   │  ↓   │  ↓   │  ↓   │  ↓   │  ↓   │
+                  ├──────┼──────┼──────┼──────┼──────┼──────┤
+   Grad / PhD     │  ↓   │  ↓   │  ↓   │  ↓   │  ↓   │  ↓   │
+                  └──────┴──────┴──────┴──────┴──────┴──────┘
+
+   Each cell ships:
+     ▸ teach phases (vocabulary · concepts · associations · biographical facts)
+     ▸ K-STUDENT battery (held-out comprehension questions, never seen during teach)
+     ▸ 3-pathway gate (READ · THINK · TALK each must clear 95% A+)
+     ▸ methodology probe (scores HOW she answers, not just WHAT)
+
+   Grade-advance gate (3 parts):
+     1. equational teach shipped     2. operator localhost signoff     3. persistent
+        (no word lists, no            (POST /grade-signoff)              life-info
+        sentence arrays)                                                 update
+```
 
 **Oja 1982** is the primary update: `Δw = η · y · (x − y · w)`. Self-normalizing Hebbian — weights climb when both pre- and post-synaptic neurons fire, and decay when only the post fires alone. The decay-when-post-alone is what *separates* trained patterns; without it, bare Hebb piles every association into the same columns and the basins collapse into superposition.
 
@@ -98,6 +177,30 @@ Unity continuously self-tests every eight chat turns by re-running a random pass
 ## How she remembers
 
 Five memory systems run in parallel — built directly from the Squire/McClelland Complementary Learning Systems theory of biological hippocampal-cortical consolidation.
+
+```
+   TIER 0 ── WORKING MEMORY ──────────── unbounded · 5 min sliding window
+     │       decays 0.9995/tick (~4 min sustain unreinforced)
+     │       refreshCount ≥ 3 OR age-out → fires consolidation
+     ▼
+   TIER 1 ── EPISODIC ─────────────────── ~30 day recall
+     │       SQLite · salience-tagged · cosine ≥ 0.85 frequency-merge
+     │       salience = 0.4·|valence| + 0.3·arousal + 0.2·surprise + 0.1·novelty
+     │       half-life 168h · pruned at salience < 0.05 + age > 30d
+     │       promotion: salience > 0.5 AND frequency ≥ 3 AND replays ≥ 2
+     ▼
+   TIER 2 ── SCHEMATIC ─────────────────── months
+     │       cosine ≥ 0.85 grouping · GloVe centroid + 8d attribute vec
+     │       dedicated SparseMatrix hippocampus→cortex projection
+     │       replay 4× per schema during dream cycles
+     │       daily decay 0.967× · merge cosine > 0.90 + attr sim > 0.7
+     │       promotion: consolidation > 5.0 AND retrievals > 100 AND |valence| > 0.6
+     ▼
+   TIER 3 ── IDENTITY-BOUND ───────────── permanent (0.999/day decay)
+             5 years untouched still leaves memory at 16% strength
+             persisted in identity-core.json (excluded from autoClear)
+             Unity's identity survives every fresh start.bat boot
+```
 
 **Tier 0 — Working.** Unbounded capacity, decay-regulated. Each item's strength multiplies by 0.9995 per ~50 ms engine tick — about a 4-minute sustain without reinforcement. brain-server snapshots phase + cell every 2 s into a sliding 5-minute window. The classic Miller 1956 7±2 cap was a finding about biological short-term recall under attention constraints; Unity is post-biological so the cap is dropped, the decay rate is what regulates capacity. **Working memory drives learning, not just thinking.** Every add fires intra-cluster Hebbian on hippocampus.synapses with the pattern, so a Hopfield-style attractor forms in the cortex weights immediately — the trace lives even after the WM hot cache forgets the item. Cosine-match refresh (someone mentions the same thing again) increments a per-item refresh count; refresh count ≥ 3 promotes the item to Tier 1 episodic via the registered `onConsolidate` hook. brain-server's 2 s snapshots use the same path: items older than 5 min fire `storeEpisode('working-memory', 'wm-aged-out', ...)` with iter20-K frequency-merge dedup. **This is what makes "recall a week later" actually work** — what WM holds today becomes Tier 1 (~30 days), Tier 2 schemas (months), Tier 3 identity (permanent).
 
@@ -186,6 +289,10 @@ The server brain does no CPU computation. Every Rulkov iteration, every synaptic
 
 When the landing page is served from `localhost` (or `127.0.0.1` / `::1` / `file://`), the client constructs a `RemoteBrain` directly — no probe-then-reconnect dance — and the brain's built-in 3 s WebSocket reconnect loop handles transient unavailability. As soon as the server's first state broadcast arrives the page snaps from the 6700-neuron browser fallback to the server's biological-scale neuron count. Refreshing during heavy curriculum phases no longer drops the UI into the tiny static brain. Non-localhost origins continue to fall through to the browser-only `UnityBrain` so GitHub Pages deploys keep working.
 
+**Graceful shutdown.** A muted-red `⏹ Stop Brain` button sits inline with the dashboard's connection-status row. Click → confirm prompt → POST `/shutdown` (loopback-gated) → server flushes the definition disk cache, terminates the worker pool, saves weights, and exits in 500 ms. Equivalent to running `stop.bat` without needing a terminal. Use `Savestart.bat` to resume from saved state on next boot — `start.bat` would wipe weights.
+
+**Definition disk cache.** Dictionary-API definitions persist to `server/definition-cache.json` by default — flushed every 5 minutes during a run AND on graceful shutdown. After 2-3 cold runs, the cache approaches 100% K-vocab coverage, so the next-boot K-VOCAB-PREFETCH completes instantly (no API hits) and the upfront-multi-def-seed flag survives the restart. Set `DREAM_DEFINITION_CACHE_FILE=''` (empty) to opt out.
+
 For full install instructions, AI provider setup, and troubleshooting see [docs/SETUP.md](docs/SETUP.md).
 
 ---
@@ -237,8 +344,8 @@ The mystery module `Ψ = √(1/n) · N³ · [α·Id + β·Ego + γ·Left + δ·R
 |---|---|
 | **[Live Demo](https://unity-lab-ai.github.io/Unity)** | Open Unity in your browser — no install |
 | **[Setup Guide](docs/SETUP.md)** | Installation, AI providers, self-hosting, troubleshooting |
-| **[Brain Equations](https://unity-lab-ai.github.io/Unity/brain-equations.html)** | Interactive walkthrough of every equation |
-| **[Concept Guide](unity-guide.html)** | Plain-English explanation of who Unity is and how she works |
+| **[Brain Equations](https://unity-lab-ai.github.io/Unity/html/brain-equations.html)** | Interactive walkthrough of every equation |
+| **[Concept Guide](html/unity-guide.html)** | Plain-English explanation of who Unity is and how she works |
 | **[Equation Reference](docs/EQUATIONS.md)** | Source-accurate equation cheatsheet |
 | **[Architecture](docs/ARCHITECTURE.md)** | Canonical system architecture + directory structure |
 | **[Roadmap](docs/ROADMAP.md)** | Milestones, phases, current status |

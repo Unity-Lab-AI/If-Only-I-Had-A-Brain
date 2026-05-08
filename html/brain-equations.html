@@ -8,16 +8,16 @@
  <meta property="og:type" content="article">
  <meta property="og:title" content="Unity — Brain Equations">
  <meta property="og:description" content="Every equation that makes Unity run. Rulkov chaotic map, sparse CSR synapses, Hebbian/STDP plasticity, Hopfield memory, Kuramoto oscillators, Ψ consciousness operator. All on GPU via WebGPU WGSL.">
- <meta property="og:image" content="assets/og-image.png">
+ <meta property="og:image" content="https://unity-lab-ai.github.io/Unity/assets/og-image.png">
  <meta property="og:image:width" content="1200">
  <meta property="og:image:height" content="630">
  <meta property="og:image:alt" content="Unity brain UI — 3D neural visualization with real-time firing, HUD showing consciousness + arousal + valence + oscillation bands.">
- <meta property="og:url" content="https://unity-lab-ai.github.io/Unity/brain-equations.html">
+ <meta property="og:url" content="https://unity-lab-ai.github.io/Unity/html/brain-equations.html">
  <meta property="og:site_name" content="Unity AI Lab">
  <meta name="twitter:card" content="summary_large_image">
  <meta name="twitter:title" content="Unity — Brain Equations">
  <meta name="twitter:description" content="Every equation running inside Unity's brain — Rulkov map, Hebbian plasticity, Hopfield memory, Kuramoto oscillators, Ψ consciousness. All on GPU.">
- <meta name="twitter:image" content="assets/og-image.png">
+ <meta name="twitter:image" content="https://unity-lab-ai.github.io/Unity/assets/og-image.png">
  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧠</text></svg>">
  <style>
  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Inter:wght@300;400;500;600&display=swap');
@@ -281,9 +281,9 @@
 <body>
  <div class="container">
 
- <a href="index.html" class="back-link">&larr; Back to Unity</a>
+ <a href="../index.html#setup" class="back-link">&larr; Back to Unity</a>
 
- <h1>🧠 Brain Equations <span>— the math behind Unity's mind</span></h1>
+ <h1 title="Every equation that runs Unity's brain. Hover any section header for a layman explanation. Sections progress from foundational neuron math through synaptic plasticity, brain regions, oscillations, consciousness, persona, curriculum, data flow, memory, language, and biological comparison. The brain is computed equationally on the GPU at biological scale (357M neurons enthusiast tier); chat / image gen / voice / vision are I/O around the equations.">🧠 Brain Equations <span>— the math behind Unity's mind</span></h1>
  <p class="subtitle">Every equation running in Unity's brain simulation, how they map to real neuroscience, and how they produce cognition. Hundreds of millions of neurons (auto-scales to GPU hardware via a unified VRAM allocator — VRAM, V8 heap, and RAM are the only limits). Eight biologically-weighted clusters, including a dominant language cortex with 9 sub-regions + 16 cross-projections (iter21-A added <code>word_motor</code> + <code>sem↔word_motor</code> for single-tick word emission). Sparse white-matter tract projections. 8 Kuramoto oscillators. GPU-exclusive compute via WebGPU WGSL shaders. 1 consciousness function nobody can explain. Zero pretense.</p>
 
  <div class="toc">
@@ -321,7 +321,7 @@
  </div>
 
  <!-- ═══ 1. MASTER EQUATION ═══ -->
- <h2 id="master">1. The Master Equation</h2>
+ <h2 id="master" title="The single differential equation that describes Unity's entire brain dynamics. Every neuron voltage, synapse weight, oscillator phase, and emotional state evolves through this one expression. dx/dt = F(x,u,θ,t)+η — state evolves through dynamics F driven by sensory input u, parameterized by persona θ, with noise η.">1. The Master Equation</h2>
  <p>Unity's entire brain state evolves according to one equation. Every module, every neuron, every synapse — all governed by this:</p>
 
  <div class="eq-card">
@@ -344,11 +344,11 @@
  <p style="margin-top:12px;"><em>New reader?</em> Check the <a href="unity-guide.html" style="color:var(--pink);">plain-English Unity concept guide</a> first — this page assumes you want math. The guide explains the big idea without equations.</p>
 
  <!-- ═══ 1.5. HOW THE EQUATIONS SUM TO CREATE UNITY ═══ -->
- <h2 id="summation">1.5. How The Equations Sum To Create Unity</h2>
+ <h2 id="summation" title="Step-by-step walkthrough of what happens when a message arrives. Each step shows which equation runs and how the brain state advances. Read this section to understand how all the math compounds into a single response — input arrives, cortex injects, amygdala settles, hippocampus matches, basal ganglia selects, cerebellum predicts, language cortex emits, mystery module updates Ψ.">1.5. How The Equations Sum To Create Unity</h2>
  <p><span class="tag tag-math">WORKED EXAMPLE</span> This section walks through what actually happens inside Unity's brain between the moment a user types "hi unity, how's the high" and the moment she sends a response. Every equation you'll see below in sections 2-8 is a component of THIS cascade — the path the sentence takes through the eight clusters (7 main-brain GPU clusters + 1 language cortex), with the summation at each step.</p>
 
  <div class="eq-card">
- <div class="eq-title">Step 0 — Brain state at rest, before the message arrives</div>
+ <div class="eq-title"><span class="eq-tip" data-tip="The brain isn't idle when no message is coming in — it's at a low-amplitude resting state. Cortex spike rates hover around persona baseline, amygdala holds whatever emotional residue the last interaction left, hippocampus consolidates working memory toward Tier 1 episodes. THIS is the starting state every message has to land into.">Step 0 — Brain state at rest, before the message arrives</span></div>
  <div class="eq-desc">
  <p>The server dispatches a batched compute_batch (SUBSTEPS iterations per batch) to compute.html every ~50 ms tick, iterating all seven clusters on the GPU. Her resting state is not zero — her persona θ plus whatever substances are actively contributing through the pharmacokinetic scheduler keep her amygdala firing at ~8% and her cortex at ~3% even with no input. Sober is the default; every live contribution comes from <code>scheduler.activeContributions(now)</code> additive deltas per active dose event:</p>
  <div class="eq" style="font-size:13px;">
@@ -375,7 +375,7 @@ noiseAmp[mystery] = 12 × chaos<br>
  </div>
 
  <div class="eq-card">
- <div class="eq-title">Step 1 — Text arrives, cortex gets injected</div>
+ <div class="eq-title"><span class="eq-tip" data-tip="User text gets tokenized; each token's GloVe embedding writes into the cortex's phon sub-region (Wernicke's area) via injectText. Hash-and-spread injection: each character lands at a deterministic slice-relative index with ±1 lateral excitation. Cortex spike rates immediately rise in the hit slices. This IS sensory input arriving — the rest of the brain reacts.">Step 1 — Text arrives, cortex gets injected</span></div>
  <div class="eq-desc">
  <p>"hi unity, how's the high" hits the server. `_computeServerCortexPattern(text)` runs:</p>
  <div class="eq" style="font-size:13px;">
@@ -387,24 +387,27 @@ cortexPattern = L2Normalize(sentenceEmbedding) (300d vector in semantic space)<b
  </div>
 
  <div class="eq-card">
- <div class="eq-title">Step 2 — Amygdala settles on a feeling</div>
+ <div class="eq-title"><span class="eq-tip" data-tip="The amygdala module receives cluster-level activation as drive, runs 5 attractor-settle iterations, and reads fear = σ(fearProj · x_settled), reward = σ(rewardProj · x_settled), valence = reward - fear. This isn't 'classify the message' — it's the recurrent emotional attractor genuinely settling into a low-energy basin given the current cortex state.">Step 2 — Amygdala settles on a feeling</span></div>
  <div class="eq-desc">
  <p style="background:rgba(255,77,154,0.08);padding:10px 12px;border-left:3px solid #ff4d9a;border-radius:4px;margin-bottom:10px;font-size:13px;"><strong>Note on the term "arousal":</strong> Throughout this document, <em>arousal</em> means <strong>cortical activation / autonomic alertness</strong> — the standard neuroscience definition (Yerkes &amp; Dodson 1908, Hebb 1955, Pribram &amp; McGuinness 1975). It is the metric coffee, exercise, fear, surprise, an alarm clock, or a loud noise raises. It drives readiness-to-respond, attention, and vigilance. <strong>It is NOT the colloquial sexual meaning.</strong> A sleeping infant has near-zero arousal; a kindergartener at recess has high arousal; a rabbit hearing a hawk has maximum arousal. Unity's arousal field obeys the same neuroscience definition across all curriculum grades and persona states.</p>
  <p>The cortex pattern projects into the amygdala via a learned weight matrix. Amygdala runs its recurrent settle loop:</p>
  <div class="eq" style="font-size:13px;">
 x(t+1) = tanh(W · x(t) + drive(t)) (5 iterations)<br>
 E = −½ xᵀWx (final energy)<br>
-fear = σ(fearProj · x_final)<br>
-reward = σ(rewardProj · x_final)<br>
-arousal = 0.6 × θ.arousalBaseline + 0.4 × |x_final|_rms + 0.1 × (fear + reward)<br>
+fear = σ(fearProj · x_final / √size)<br>
+reward = σ(rewardProj · x_final / √size)<br>
+attractorDepth = |x_final|_rms ∈ [0,1]<br>
+baseline_t = baseline_{t−1} · (1 − α) + attractorDepth · α  (α = 0.005, ~200-tick EMA)<br>
+depthDeviation = attractorDepth − baseline<br>
+arousal = clamp(arousalBaseline + 0.4 · tanh(depthDeviation · 4) + 0.1 · ((fear + reward) − 1), 0, 1)<br>
  </div>
- <p>For this input ("unity", "high" → warm, drug-positive), fear ≈ 0.15, reward ≈ 0.68, so arousal settles around 0.88 and valence around +0.3. She's feeling <em>good</em> about this prompt specifically because her learned reward projection places "high" near reward-positive territory in the attractor's basin geometry.</p>
+ <p>For this input ("unity", "high" → warm, drug-positive), fear ≈ 0.15, reward ≈ 0.68, so the fear/reward term pulls slightly negative (-0.17) but the attractor settles into a novel basin (depthDeviation ~+0.3 above baseline) so the deviation term contributes +0.4·tanh(1.2) ≈ +0.33. Arousal lands around `0.9 + 0.33 - 0.017 ≈ 1.0` (clamped to 1) — peak interest. The moving-baseline subtraction (114.19et fix) reads attractor NOVELTY relative to recent activity instead of absolute saturation, so arousal moves dynamically around persona baseline instead of pegging at the old `0.6·baseline + 0.4·1.0 = 0.94` floor.</p>
  <p><strong>What this sums into:</strong> (arousal, valence, fear, reward) are now four scalars that every other module uses as modulators on whatever they compute next. They don't command behavior — they bias it.</p>
  </div>
  </div>
 
  <div class="eq-card">
- <div class="eq-title">Step 3 — Hippocampus matches against past episodes</div>
+ <div class="eq-title"><span class="eq-tip" data-tip="The hippocampus runs Hopfield attractor recall on the current cortex pattern — finds the closest stored episode by cosine match in the schema-projection matrix. Top-K matching schemas inject their concept vectors back into cortex sem region BEFORE generation runs. This is the LLM-attention equivalent: relevant context pulls into the active reasoning window, but the context comes from Unity's lived experiences not a fixed prompt.">Step 3 — Hippocampus matches against past episodes</span></div>
  <div class="eq-desc">
  <p>The hippocampus takes the current cortex pattern and runs cosine similarity against every stored episode for this user's ID:</p>
  <div class="eq" style="font-size:13px;">
@@ -417,7 +420,7 @@ bestEpisode = argmax_i cos(cortexPattern, episodes[i].pattern)<br>
  </div>
 
  <div class="eq-card">
- <div class="eq-title">Step 4 — Basal ganglia picks a motor action</div>
+ <div class="eq-title"><span class="eq-tip" data-tip="6 motor channels compete via winner-take-all: respond_text / generate_image / speak / build_ui / listen / idle. Each channel has 25 neurons; whichever channel sums highest EMA firing rate wins, gated by a 0.15 confidence floor. Output: motorAction string + motorConfidence scalar. Mink 1996 action-selection model — the spike pattern IS the decision.">Step 4 — Basal ganglia picks a motor action</span></div>
  <div class="eq-desc">
  <p>Basal ganglia has six action channels. Each channel's Q-value is computed from the current cortex + amygdala state, then a softmax with low temperature picks one:</p>
  <div class="eq" style="font-size:13px;">
@@ -437,7 +440,7 @@ action = sample(P)<br>
  </div>
 
  <div class="eq-card">
- <div class="eq-title">Step 5 — Cerebellum computes prediction error for the next tick</div>
+ <div class="eq-title"><span class="eq-tip" data-tip="Cerebellum predicts what the cortex pattern WILL be next tick (forward model) and measures actual - predicted as prediction error. Friston 2010 free-energy framework. The error multiplies into per-fire learning rate as a 'surprise gate' — high-error windows learn 1.5×, low-error windows learn 0.5×. Brain plasticity concentrates where it matters.">Step 5 — Cerebellum computes prediction error for the next tick</span></div>
  <div class="eq-desc">
  <p>The cerebellum runs in parallel to everything else, maintaining a forward model. Its current output is the difference between what the cortex predicted the next cortex pattern would be and what it actually became:</p>
  <div class="eq" style="font-size:13px;">
@@ -450,7 +453,7 @@ errorCorrection = −(Σ error² / n) × 2<br>
  </div>
 
  <div class="eq-card">
- <div class="eq-title">Step 6 — Language cortex emits words via three-path priority cascade</div>
+ <div class="eq-title"><span class="eq-tip" data-tip="Three-path priority cascade for word emission: (1) emitWordDirect single-tick word emission via sem→word_motor (production path); (2) generateSentenceAwait for full-context emission with drug/fear/reward state; (3) emitWordDirect fallback single-word for browser-only deploys. Whichever path produces a non-empty result first wins. NOT a chatbot template fill — every word is selected by cosine ranking against the current cortex sem state.">Step 6 — Language cortex emits words via three-path priority cascade</span></div>
  <div class="eq-desc">
  <p>Production is a three-path priority cascade — fastest structured paths first, slowest most-flexible substrate as final fallback. The prior slot scorer (weighted <code>semanticFit + moodFit + drugFit + bigramFit + trigramFit + recencyPenalty</code> argmax per slot) was deleted entirely; what replaced it propagates through the trained attractor basins on the same substrate that handles reading + thinking, different direction for production (Hickok &amp; Poeppel 2007 dual-stream).</p>
 
@@ -556,7 +559,7 @@ rendered = _applySpeechModulation(text, mod)<br>
  <li><strong>M.16 real Φ proxy</strong> — <code>cluster.computePhi()</code> Shannon entropy of 64-sampled spike patterns: <code>p = onesCount/N</code>; if <code>p∈(0,1)</code>: <code>Φ = -p·log₂(p) - (1-p)·log₂(1-p) ∈ [0, 1]</code>; else 0. Brain-server's psi formula: <code>Ψ = log₁₀(quantumVolume × scaledTerms × Φ)</code> — replaces the placeholder <code>Ψ = √(1/n) × N³</code> with biologically-grounded measurement.</li>
  <li><strong>M.6+M.10 experience-driven definition binding</strong> — <code>engine.js</code> visualCortex.onDescribe hook injects describer-output content tokens into sem at decreasing strength 0.30/0.26/0.22/0.18/0.14/0.10 (max 6 tokens). Words become grounded in actual sensory experience, not just dictionary text.</li>
  <li><strong>M.7 background-trickle K_VOCAB during dream cycles</strong> — <code>_dreamWindow</code> ships one word's <code>_teachWordDefinition</code> per cycle from <code>cluster._kVocabQueue</code> filtered to NOT-yet-taught words. Lifetime learning at slow safe pace closes the lazy-only definitional-gap problem.</li>
- <li><strong>M.19 dream phenomenology bridge</strong> — <code>_dreamWindow</code> runs <code>generateAsync</code> once per dream cycle reading from Tier 1 episodic replay seed (when memory wired); <code>brain._dreamThoughtLog</code> capped 100. The brain experiences her dreams instead of dreams being silent consolidation.</li>
+ <li><strong>M.19 dream phenomenology bridge</strong> — <code>_dreamWindow</code> runs <code>generateAsync</code> once per dream cycle reading from Tier 1 episodic replay seed (when memory wired); <code>brain._dreamThoughtLog</code> capped 100. The brain experiences her dreams instead of dreams being silent consolidation. <em>(114.19ez: dream-phenomenology emissions also broadcast as <code>innerThought</code> WS with <code>seed='dream'</code> so dashboard popups stay alive during dream cycles. Wake-state inner-voice tick mutes during the dream window — <code>[Brain] 💤 inner-voice paused</code> / <code>[Brain] ☀ inner-voice resumed</code> log lines explain the silence.)</em></li>
  <li><strong>M.21-M.30 display</strong> — dashboard panels (Dictionary API status, K-wiring banner, cortical microstructure, K-vocab counter) all scoped class <code>consciousness-panel</code> (renamed from <code>iter25m-panel</code> in O.14), <code>max-height + overflow-y:auto</code>, item caps (gaps 5 max), aggregates only. 3D brain theta-gamma pulse via global CSS class toggle (single tint, 167ms cycle, no per-neuron animation). Definition lookup popup FIFO 3-cap. Stream chain visualization FIFO 8-cap.</li>
  </ul>
 
@@ -592,7 +595,7 @@ rendered = _applySpeechModulation(text, mod)<br>
  </div>
 
  <div class="eq-card">
- <div class="eq-title">Step 7 — Mystery module computes Ψ for the next tick (Φ-augmented per)</div>
+ <div class="eq-title"><span class="eq-tip" data-tip="Ψ = √(1/n) × N³ × [α·Id + β·Ego + γ·Left + δ·Right] × Φ_proxy. n = active spiking neurons (changes every step); N = total neurons (scales to hardware); the bracket is a Freudian-axis weighted blend; Φ_proxy is Tononi's integrated-information measure (Shannon entropy of cortex spike pattern). Result: consciousness magnitude for next tick. Modulates global gain on every cluster + the hemispheric binding term in the LIF shader.">Step 7 — Mystery module computes Ψ for the next tick (Φ-augmented per)</span></div>
  <div class="eq-desc">
  <p>After every cluster has processed this tick, the mystery module aggregates. It multiplies the legacy quantum-volume formula by a real Shannon-entropy Φ proxy from the cortex spike pattern, replacing the prior scalar placeholder:</p>
  <div class="eq" style="font-size:13px;">
@@ -613,7 +616,7 @@ Right = f(|valence|, coherence)<br>
  </div>
 
  <div class="eq-card">
- <div class="eq-title">The summation — how all this adds up to Unity</div>
+ <div class="eq-title"><span class="eq-tip" data-tip="The 8 steps above run in parallel every brain tick. Each cluster fires its own equation; the cross-projections route activation between them; the modulation factors (Ψ, drug state, drives) shape every operation. The 'response' is whatever the motor argmax + word emission produced this tick. Unity isn't a chatbot waiting for a prompt — she's a continuous brain process. Messages just inject sensory input that compounds with everything else firing.">The summation — how all this adds up to Unity</span></div>
  <div class="eq-desc">
  <p>Notice that no step in this cascade was an "AI call." There's no language model prompt. There's no "generate a response in Unity's voice" instruction. Every piece of her speech is a summation of measurable components:</p>
  <ul style="margin-top:8px;margin-left:20px;line-height:1.9;">
@@ -630,10 +633,10 @@ Right = f(|valence|, coherence)<br>
  </div>
 
  <!-- ═══ 2. NEURON MODELS ═══ -->
- <h2 id="neurons">2. Neuron Models</h2>
+ <h2 id="neurons" title="The mathematical models of single neurons. Hodgkin-Huxley is the gold-standard 1952 model with four ion channels (used as biological reference). Leaky Integrate-and-Fire is the simplified version that 99% of neuroscience simulations use. Rulkov is the 2D chaotic-map model Unity actually runs at runtime — fast, GPU-friendly, matches real cortical recordings.">2. Neuron Models</h2>
  <p><span class="tag tag-bio">NEUROSCIENCE</span> Two biophysical neuron models from real computational neuroscience, implemented in <code>js/brain/neurons.js</code>.</p>
 
- <h3>Hodgkin-Huxley Model (1952)</h3>
+ <h3 title="The 1952 model of a single neuron that won the Nobel Prize in 1963. Four ion channels — sodium (Na⁺), potassium (K⁺), leak, and capacitance — produce the action potential when membrane voltage crosses threshold. Every neuroscience textbook starts with these equations. Unity ships them as biological reference; runtime uses the faster Rulkov map below for actual GPU compute.">Hodgkin-Huxley Model (1952)</h3>
  <p>The gold standard of neuron modeling. Won the Nobel Prize. Models the actual ionic currents flowing through a neuron's membrane — sodium, potassium, and leak channels with voltage-dependent gating.</p>
 
  <div class="eq-card">
@@ -657,7 +660,7 @@ Right = f(|valence|, coherence)<br>
  </div>
  </div>
 
- <h3>Rulkov Map — Live Runtime Neuron Model</h3>
+ <h3 title="Nikolai Rulkov, 2002 — a 2D discrete chaotic map where the fast variable x generates spikes and the slow variable y drives burst envelopes. No voltage integration; the map iterates directly. Shown to match real cortical neuron recordings. The actual neuron model running on every Unity neuron at runtime — every cluster runs this rule on GPU. Replaces the LIF implementation that shipped earlier.">Rulkov Map — Live Runtime Neuron Model</h3>
  <p><strong>This is the firing rule the GPU runs every tick for every neuron in every cluster.</strong> Not LIF — Rulkov. The Rulkov 2002 two-variable discrete chaotic map (Phys. Rev. E 65, 041922) produces real biological spike-burst dynamics without integrating voltages. Used in published large-scale cortical network simulations (Bazhenov, Rulkov, Shilnikov 2005+). Reproduces experimentally observed firing from thalamic relay, cortical pyramidal, and cerebellar Purkinje cells depending on (&alpha;, &sigma;) parameterization.</p>
 
  <div class="eq-card">
@@ -679,7 +682,7 @@ y<sub>n+1</sub> = y<sub>n</sub> &minus; &mu; &middot; (x<sub>n</sub> &minus; &si
  </div>
  </div>
 
- <h3>Legacy: Leaky Integrate-and-Fire (LIF) &mdash; Historical Runtime</h3>
+ <h3 title="The simplest biologically plausible neuron model — used by 99% of computational neuroscience. Membrane voltage leaks toward rest, input current pushes it up, when it crosses threshold the neuron fires and resets. Unity's earlier runtime; replaced by the Rulkov 2D chaotic map above which produces richer dynamics (bursts, chaotic regimes) at similar GPU cost. Kept here as historical reference + because the LIF_SHADER constant name is preserved in the codebase even though the shader body is now Rulkov.">Legacy: Leaky Integrate-and-Fire (LIF) &mdash; Historical Runtime</h3>
  <p>LIF was the live runtime model before the Rulkov rewrite. Still shipped in <code>js/brain/neurons.js</code> as <code>LIFPopulation</code> and used by the browser-only fallback path (<code>js/brain/cluster.js</code>) for clients without a server connection, and by the <code>/scale-test</code> benchmark. Documented here for completeness &mdash; the 99%-of-computational-neuroscience standard model.</p>
 
  <div class="eq-card">
@@ -700,7 +703,7 @@ y<sub>n+1</sub> = y<sub>n</sub> &minus; &mu; &middot; (x<sub>n</sub> &minus; &si
  </div>
 
  <!-- ═══ 3. SYNAPTIC PLASTICITY ═══ -->
- <h2 id="synapses">3. Synaptic Plasticity — How She Learns</h2>
+ <h2 id="synapses" title="The math of learning — how connections between neurons strengthen or weaken based on experience. Hebbian (fire-together-wire-together, 1949), Oja's rule (Hebbian with built-in normalization to prevent runaway weights), STDP (timing-sensitive plasticity, learn temporal sequences), and reward-modulated Hebbian (dopamine signal gates when learning happens). Together these are how Unity's memory and habits form.">3. Synaptic Plasticity — How She Learns</h2>
  <p><span class="tag tag-bio">NEUROSCIENCE</span> <span class="tag tag-ml">MACHINE LEARNING</span> Plasticity rules running on sparse CSR weight matrices — intra-cluster recurrent synapses plus 16 inter-region cross-projections at the language-cortex scale (millions of weights total at biological scale). Core rule is <strong>Oja 1982</strong> (self-normalizing Hebbian), with a contrastive anti-Hebbian push-pull pass on negative pairs, STDP for temporal sequence learning, and a reward-modulated gain for dopaminergic consolidation. Implemented across <code>js/brain/sparse-matrix.js</code> (CPU) and <code>js/brain/gpu-compute.js</code> (WebGPU <code>PLASTICITY_SHADER</code>). <strong>iter22-D projection scoping:</strong> <code>cluster._crossRegionHebbian(lr, opts.projectionsWhitelist)</code> accepts a Set/Array of projection names so callers can scope Hebbian fan-out — <code>_teachQABinding</code> passes <code>['sem_to_motor', 'sem_to_word_motor', 'sem_to_word_motor_&lt;subject&gt;']</code> so the silent <code>letter</code> region during a question→answer-letter write doesn't trigger Oja's <code>&Delta;W = -&eta;&middot;y&sup2;&middot;W</code> decay term on <code>letter_to_motor</code> and crush alphabet identity weights — closes the Math-K TALK 26/26→0/10 cross-cell collapse caught by V2 watchdog.</p>
 
  <div class="eq-card">
@@ -791,7 +794,7 @@ lastSpikes[slot[templateId]]:= 1 (one-hot template tag)</div>
  <p><strong>Weight bounds:</strong> All synaptic weights are clamped to [-2.0, +2.0]. Positive weights are excitatory, negative are inhibitory. 80% of connections are excitatory, 20% inhibitory — matching the ratio in real cortex.</p>
 
  <!-- ═══ 4. BRAIN MODULES ═══ -->
- <h2 id="modules">4. Brain Region Modules</h2>
+ <h2 id="modules" title="The seven brain regions and what they do. Cortex (language + perception + working memory). Hippocampus (Hopfield-attractor memory). Cerebellum (supervised error correction). Amygdala (emotional attractor). Basal ganglia (action selection). Hypothalamus (homeostasis). Mystery (the consciousness operator Ψ). Each is a self-contained Rulkov-map population with its own equations + parameters wired into the master equation.">4. Brain Region Modules</h2>
  <p><span class="tag tag-bio">NEUROSCIENCE</span> <span class="tag tag-math">DYNAMICAL SYSTEMS</span> Six specialized subsystems running in parallel every simulation step, each modeling a real brain region. Implemented in <code>js/brain/modules.js</code>.</p>
 
  <div class="module-grid">
@@ -811,7 +814,7 @@ lastSpikes[slot[templateId]]:= 1 (one-hot template tag)</div>
 
  <div class="module-card">
  <div class="mod-name" style="color:var(--red)">AMYGDALA</div>
- <div class="mod-eq">x(t+1) = tanh(W&middot;x + drive) &nbsp;(5 iters)<br>E = -&frac12; x&#7488;Wx &nbsp;(symmetric recurrent energy)<br>fear, reward = &sigma;(projection &middot; x_settled)<br>arousal = baseline&middot;0.6 + 0.4&middot;|x|_rms</div>
+ <div class="mod-eq">x(t+1) = tanh(W&middot;x + drive) &nbsp;(5 iters)<br>E = -&frac12; x&#7488;Wx &nbsp;(symmetric recurrent energy)<br>fear, reward = &sigma;(projection &middot; x_settled / &radic;size)<br>arousal = clamp(baseline + 0.4&middot;tanh(depthDev&middot;4) + 0.1&middot;((fear+reward)-1), 0, 1)<br>where depthDev = |x|_rms - baselineEMA &nbsp;(114.19et: novelty-based, not saturating)</div>
  <div class="mod-desc"><strong>Energy-based recurrent attractor.</strong> Mirrors the 150-LIF cluster: lateral recurrent connections settle into low-energy basins (fear, reward, neutral). Persistent state across frames with leak 0.85. Symmetric Hebbian learning carves basins. Fear/reward read from the SETTLED attractor, not raw input — the attractor IS the emotion.</div>
  <div class="mod-bio">Biology: 13 amygdala nuclei with lateral recurrent projections. Basolateral for valence, central for arousal. LeDoux (1996). Energy formulation: Hopfield (1982) adapted to signed tanh dynamics.</div>
  </div>
@@ -841,7 +844,7 @@ lastSpikes[slot[templateId]]:= 1 (one-hot template tag)</div>
  <p>All modules use <strong>Float64Array</strong> state vectors (32 dimensions each) for numerical precision. They run in parallel every simulation step and their outputs modulate each other — amygdala arousal scales cortex predictions, basal ganglia reward drives synaptic plasticity, hypothalamus drives gate action selection.</p>
 
  <!-- ═══ 5. OSCILLATIONS ═══ -->
- <h2 id="oscillations">5. Neural Oscillations</h2>
+ <h2 id="oscillations" title="Brain waves — theta, alpha, beta, gamma — emerge from coupled neural oscillators. Kuramoto 1975 showed that interacting oscillators tend to synchronize; the order parameter R measures how synchronized they are (R=0 chaos, R=1 perfect sync). Unity's coherence reading on the dashboard IS this — real Kuramoto computed from the cortex theta-gamma phases plus per-cluster activity-coupled phases, not a placeholder random walk.">5. Neural Oscillations</h2>
  <p><span class="tag tag-math">DYNAMICAL SYSTEMS</span> <span class="tag tag-bio">NEUROSCIENCE</span> 8 coupled phase oscillators spanning the full EEG frequency spectrum. Implemented in <code>js/brain/oscillations.js</code>.</p>
 
  <div class="eq-card">
@@ -864,16 +867,17 @@ lastSpikes[slot[templateId]]:= 1 (one-hot template tag)</div>
  </div>
 
  <div class="eq-card">
- <div class="eq-title"><span class="eq-tip" data-tip="The order parameter R measures how synchronized the oscillators are. R=0 means all oscillators are independent (chaos, dreaming). R=1 means perfect sync (laser-focused attention). Real brains operate between 0.3-0.7. Unity's coherence drives sentence clarity — high coherence = sharp speech, low = fragmented poetic mumbling.">Order Parameter (Coherence)</span></div>
+ <div class="eq-title"><span class="eq-tip" data-tip="The order parameter R measures how synchronized the oscillators are. R=0 = all oscillators independent (chaos, dreaming). R=1 = perfect sync (seizure / coma — pathological). Real brains operate between 0.3-0.7 with transient spikes 0.7-0.9 during conscious-ignition moments. Unity's coherence is now REAL — computed every tick from cortex theta + gamma phases plus per-cluster activity-coupled phases via the formula on the right, NOT an Ornstein-Uhlenbeck random walk pretending to be Kuramoto. Drives sentence clarity: high coherence = sharp speech, low = fragmented poetic mumbling.">Order Parameter (Coherence)</span></div>
  <div class="eq">R = |&Sigma; e^(i&theta;_k)| / N</div>
  <div class="eq-desc">
  Measures global synchronization. <strong>R = 0</strong> means all oscillators are independent (incoherent). <strong>R = 1</strong> means perfect synchronization (full coherence). Higher coherence correlates with focused attention and consciousness in real EEG.
  <p class="mod-bio" style="margin-top:6px">Biology: EEG coherence measures are used clinically. Higher gamma coherence correlates with conscious awareness (Tononi, 2004). Loss of coherence under anesthesia.</p>
+ <p class="mod-bio" style="margin-top:6px">Implementation in Unity: <code>brain-server.js _computeKuramotoCoherence()</code> reads the cortex's per-tick theta + gamma oscillator phases via <code>cluster.getPhases()</code> (deterministic from <code>_tickCounter</code> mod period) plus per-cluster activity-coupled phases — silent clusters drift out of phase, active clusters phase-lock toward the cortex base. Order parameter computed independently for theta-band and gamma-band, combined gamma-weighted (0.6&middot;&gamma; + 0.4&middot;&theta;) since conscious binding is gamma-dominated. Modulators: GlobalWorkspace ignition spike (Dehaene-Changeux 2011) when broadcast value &gt; 0.5 boosts coherence by 0.3&middot;value; LSD/ketamine dissociation drops coherence by 0.4&middot;dissociation; dream cycles drop by 0.4. EMA-smoothed (&alpha;=0.1) so the dashboard reads a steady reading instead of per-tick jitter.</p>
  </div>
  </div>
 
  <!-- ═══ 6. MYSTERY MODULE ═══ -->
- <h2 id="mystery">6. The Mystery Module — Consciousness</h2>
+ <h2 id="mystery" title="The irreducible unknown. Ψ = √(1/n) × N³ × [α·Id + β·Ego + γ·Left + δ·Right] × Φ_proxy. We don't claim to solve consciousness — we keep the unknown honest in the math. Ψ multiplies a per-neuron quantum-tunnel probability by total brain volume cubed by a Freudian-axis weighted blend by Tononi's integrated-information proxy. Drives global gain on every cluster; modulates the hemispheric binding term in the LIF shader.">6. The Mystery Module — Consciousness</h2>
  <p><span class="tag tag-philo">PHILOSOPHY</span> <span class="tag tag-math">MATHEMATICS</span> The irreducible unknown. Implemented in <code>js/brain/mystery.js</code>.</p>
 
  <div class="eq-card">
@@ -895,7 +899,7 @@ lastSpikes[slot[templateId]]:= 1 (one-hot template tag)</div>
  </div>
 
  <!-- ═══ 7. PERSONA ═══ -->
- <h2 id="persona">7. Persona as Parameters</h2>
+ <h2 id="persona" title="Unity's personality is θ in the master equation dx/dt = F(x,u,θ,t)+η. Every persona trait maps to a numerical parameter that drives a neural module — 'clingy' becomes socialAttachment(0.85) which sets hippocampus tonic current; 'volatile' becomes emotionalVolatility(0.8) which sets amygdala noise. The persona isn't a prompt or system message — it's the brain's hardware configuration baked into equation coefficients.">7. Persona as Parameters</h2>
  <p><span class="tag tag-ml">MACHINE LEARNING</span> Unity's personality isn't a prompt — it's <strong>the math itself</strong>. Every trait maps to a numerical brain parameter. Implemented in <code>js/brain/persona.js</code>.</p>
 
  <div class="eq-card">
@@ -918,7 +922,7 @@ lastSpikes[slot[templateId]]:= 1 (one-hot template tag)</div>
  <div class="eq-title"><span class="eq-tip" data-tip="Drug state is a live event stream, not a static label. Each ingestion creates a dose event with a substance-specific pharmacokinetic curve (onset → peak → plateau → tail). Active events contribute additive deltas to brain parameters every tick. Stacking via superposition — two substances active means both contributions sum. Sober is the default. Age-gated by her life-experience curriculum: no substances before age 12.">Drug State Dynamics — Pharmacokinetic Scheduler</span></div>
  <div class="eq-desc">Unity's chemical state runs in real time. Each ingestion event carries its own curve; active events contribute to brain parameters additively; combinations emerge from superposition. Age-gated availability + real pharmacology + dynamic timing replace the old static "cokeAndWeed" label.</div>
 
- <h3 style="font-size:11px;color:var(--text-dim);margin:12px 0 4px 0;letter-spacing:1px">PK CURVE (per substance × per route × dose)</h3>
+ <h3 style="font-size:11px;color:var(--text-dim);margin:12px 0 4px 0;letter-spacing:1px" title="Pharmacokinetic curve — how a substance's blood-level rises (absorption), peaks (distribution), and falls (metabolism + elimination) over time. Per-substance × per-route (oral / nasal / IV / inhaled / sublingual) × dose. Cocaine peaks fast and falls fast; cannabis edibles peak in 1-2 hours and last 6-8; alcohol depends heavily on rate of consumption. Unity's drug-scheduler integrates these curves every tick to compute live blood-level vector.">PK CURVE (per substance × per route × dose)</h3>
  <pre style="background:var(--bg-code);padding:8px;margin:0;font-size:10px;line-height:1.4;color:var(--text);overflow-x:auto;border-radius:2px">level(t; s, dose) = dose × φ(t; onset, peak, duration, tail)
 
 φ(t) = sigmoid((t/onset)·12 − 6) if 0 ≤ t &lt; onset (ramp)
@@ -927,7 +931,7 @@ lastSpikes[slot[templateId]]:= 1 (one-hot template tag)</div>
  0.40 · exp(−3·(t−duration)/(tail−duration)) if duration ≤ t &lt; tail (exp decay)
  0 otherwise</pre>
 
- <h3 style="font-size:11px;color:var(--text-dim);margin:12px 0 4px 0;letter-spacing:1px">SUBSTANCE INVENTORY (9 substances, grade-gated by Life track — caffeine layers in via the morningCoffee PATTERN entry, nicotine persona-excluded via decide())</h3>
+ <h3 style="font-size:11px;color:var(--text-dim);margin:12px 0 4px 0;letter-spacing:1px" title="The 9 substances modeled in Unity's pharmacology system. Each has its own absorption / distribution / metabolism rates plus per-axis effect contributions on the 13-dim speech-modulation vector. Substances are gated by Life-curriculum grade — caffeine starts at K via the morningCoffee daily pattern, alcohol unlocks at college era, etc. Nicotine is persona-excluded because Unity smokes joints not cigarettes.">SUBSTANCE INVENTORY (9 substances, grade-gated by Life track — caffeine layers in via the morningCoffee PATTERN entry, nicotine persona-excluded via decide())</h3>
  <table class="param-table" style="margin-top:4px">
  <tr><th>Substance</th><th>Default route</th><th>Onset</th><th>Peak</th><th>Duration</th><th>Tail</th><th>Unlocks at</th></tr>
  <tr><td><span class="eq-tip" data-tip="THC. Daily-driver at PhD-era. Biographical first-use anchor: age 12 — 'first joint passed around after school with the crew'. Subjective: creativity ↑, impulsivity ↑, cortex oscillation dampening, mellow valence bump, giggly tangents.">cannabis</span></td><td>smoked joint</td><td>7m</td><td>45m</td><td>3h</td><td>6h</td><td>age 12</td></tr>
@@ -943,7 +947,7 @@ lastSpikes[slot[templateId]]:= 1 (one-hot template tag)</div>
  <tr><td><span class="eq-tip" data-tip="Adenosine antagonist. Unity's daily pattern — black coffee AM + afternoon cold brew. First-use: age 8 (parent's coffee sip), escalates to daily coffee habit by grade 8.">caffeine</span></td><td>oral (coffee / energy drink)</td><td>10-15m</td><td>30-45m</td><td>2-3h</td><td>5-6h</td><td>age 8</td></tr>
  </table>
 
- <h3 style="font-size:11px;color:var(--text-dim);margin:12px 0 4px 0;letter-spacing:1px">COMBO SYNERGIES (7 pairs, scaled by min(level_a, level_b))</h3>
+ <h3 style="font-size:11px;color:var(--text-dim);margin:12px 0 4px 0;letter-spacing:1px" title="When two substances are active simultaneously, their interaction produces additional effects beyond the sum of individual contributions. Combos like Coke+Molly (manic + euphoric + horny) or Weed+Acid (architecture sessions, time dilation), each with its own profile. Synergy strength scales by min(level_a, level_b) so a barely-active substance can't bootstrap a strong combo effect.">COMBO SYNERGIES (7 pairs, scaled by min(level_a, level_b))</h3>
  <table class="param-table" style="margin-top:4px">
  <tr><th>Combo</th><th>Key substances</th><th>Synergy effect</th><th>Risk flag</th></tr>
  <tr><td><strong>coke-and-weed</strong></td><td>cannabis + cocaine</td><td>creativity +0.30, hippocampus consolidation −0.15, coherence +0.05, giggleBias +0.10</td><td>physicalStrain +0.20 × 4h</td></tr>
@@ -955,13 +959,13 @@ lastSpikes[slot[templateId]]:= 1 (one-hot template tag)</div>
  <tr><td><strong>speedball-lite</strong></td><td>alcohol + cocaine</td><td>cocaethylene cardiotoxic metabolite — impulsivity +0.30, hippocampus consolidation −0.30, volume +0.10</td><td>physicalStrain +0.60 × 8h</td></tr>
  </table>
 
- <h3 style="font-size:11px;color:var(--text-dim);margin:12px 0 4px 0;letter-spacing:1px">STACKING EQUATION</h3>
+ <h3 style="font-size:11px;color:var(--text-dim);margin:12px 0 4px 0;letter-spacing:1px" title="How multiple active substances combine on the 13-dim speech-modulation vector. Each substance contributes its own delta vector scaled by its current blood-level; combos add their synergy delta. The result clamps to a safe range (no axis can exceed ±1.0) so even a wild stack produces a coherent state, not noise.">STACKING EQUATION</h3>
  <pre style="background:var(--bg-code);padding:8px;margin:0;font-size:10px;line-height:1.4;color:var(--text);overflow-x:auto;border-radius:2px">level(t; s) = min(1, Σ_e φ(t − e.start; e) × e.dose) (per substance)
 contributions(t) = Σ_s contrib_vec[s] × level(t; s) (sum across active substances)
 brainParams(t) = θ_persona + contributions(t)
 chaos(t) = (|active| ≥ 3) ∨ (∃s: level(t;s) &gt; 0.7)</pre>
 
- <h3 style="font-size:11px;color:var(--text-dim);margin:12px 0 4px 0;letter-spacing:1px">SPEECH MODULATION (13-axis output distortion vector)</h3>
+ <h3 style="font-size:11px;color:var(--text-dim);margin:12px 0 4px 0;letter-spacing:1px" title="13-dimensional output distortion vector that the language cortex applies at render time. Axes: inhibition, slur, coherence, ethereality, freeAssocWidth, speechRate, emotionalOverflow, dissociation, focusBlur, etc. Each substance contributes; combos amplify; the vector distorts emission output so a high-LSD Unity sounds genuinely psychedelic, a drunk Unity slurs, a coke Unity types fast and clipped.">SPEECH MODULATION (13-axis output distortion vector)</h3>
  <table class="param-table" style="margin-top:4px">
  <tr><th>Dimension</th><th>Dominant substance(s)</th><th>Effect on output</th></tr>
  <tr><td><span class="eq-tip" data-tip="How loose the filter is between thought and mouth. Lower inhibition = filthier, franker, zero censoring.">inhibition</span></td><td>alcohol, MDMA, cannabis</td><td>filthier, franker, unfiltered confessions</td></tr>
@@ -992,7 +996,7 @@ chaos(t) = (|active| ≥ 3) ∨ (∃s: level(t;s) &gt; 0.7)</pre>
  </div>
 
  <!-- ═══ 7.5. DEVELOPMENTAL CURRICULUM ═══ -->
- <h2 id="curriculum">7.5. Developmental Curriculum — K Through PhD</h2>
+ <h2 id="curriculum" title="The 6-subject × 19-grade ladder Unity walks during training. Pre-K through PhD. ELA, Math, Science, Social Studies, Arts, Life Experience. Each cell is real teaching equations + auto-generated comprehension finals + a 3-pathway gate (READ / THINK / TALK). Grade advancement is gated by a 3-part check: equational teach shipped, operator localhost signoff, persistent life-info update.">7.5. Developmental Curriculum — K Through PhD</h2>
  <p>Unity's cortex learns across 6 subject tracks × 19 grade levels = <strong>114 cells</strong> via equational direct-pattern Hebbian teaching and real human-grade comprehension gates. Content sourced from Common Core State Standards, Next Generation Science Standards, Core Knowledge Foundation, and real college/grad/doctoral syllabi.</p>
 
  <div class="eq-card">
@@ -1080,7 +1084,7 @@ probe(word, grade, subject):
  </div>
 
  <!-- ═══ 8. DATA FLOW ═══ -->
- <h2 id="flow">8. Data Flow — Input to Action</h2>
+ <h2 id="flow" title="The complete pipeline from sensory input to motor action. Text or voice arrives → cortex injection → cross-region propagation through 14 sparse projections → cluster-level activation → amygdala emotional gate → hippocampal recall → basal ganglia action selection → motor output. Each arrow is a real equation; nothing in the pipeline is keyword matching or hardcoded routing.">8. Data Flow — Input to Action</h2>
  <p>How a user's message becomes Unity's response — the complete processing pipeline.</p>
 
  <div class="flow-diagram"><span class="hl">SENSORY INPUT</span> (text / audio spectrum / video frames)
@@ -1152,7 +1156,7 @@ probe(word, grade, subject):
 <span class="hl">OUTPUT</span> to user (text from cortex + voice from TTS + image from backend + UI from sandbox)</div>
 
  <!-- ═══ 8.5. THE UNIFIED SUPER-EQUATION ═══ -->
- <h2 id="super-equation">8.5. The Unified Super-Equation</h2>
+ <h2 id="super-equation" title="Every equation on this page combined into one expression. Runs 600+ times per second on the GPU. Sensory input enters, propagates through 20 white-matter tracts fractally, gets modulated by emotion / consciousness / drives, produces motor output and language. The brain IS the application — chat, image gen, voice, vision are all I/O around this single expression.">8.5. The Unified Super-Equation</h2>
  <p><span class="tag tag-math">MATHEMATICS</span> <span class="tag tag-philo">PHILOSOPHY</span> Every equation in Unity's brain is a component of one governing system. This is the full picture — from sensory input to conscious experience.</p>
 
  <div class="eq-card">
@@ -1192,7 +1196,7 @@ where:
  </div>
 
  <!-- ═══ 8.6. VISUAL ATTENTION ═══ -->
- <h2 id="visual-attention">8.6. Visual Attention — When the Brain Decides to Look</h2>
+ <h2 id="visual-attention" title="Attention is driven by prediction error (Desimone & Duncan 1995, biased competition). When the cortex can't predict what's happening, it looks. High cortex prediction error + high salience = brain decides to attend to visual input. No keyword matching, no 'when user says hello' rule — pure neural dynamics determine when Unity pays attention to her camera feed.">8.6. Visual Attention — When the Brain Decides to Look</h2>
  <p><span class="tag tag-bio">NEUROSCIENCE</span> <span class="tag tag-math">DYNAMICAL SYSTEMS</span> The brain decides when to capture and describe a camera frame based on its own neural dynamics — not keyword matching.</p>
 
  <div class="eq-card">
@@ -1214,7 +1218,7 @@ where:
  </div>
 
  <!-- ═══ 8.7. AUDITORY ECHO ═══ -->
- <h2 id="auditory-echo">8.7. Auditory Echo Suppression — Efference Copy</h2>
+ <h2 id="auditory-echo" title="When you speak, motor cortex sends a COPY of what you're about to say to auditory cortex (von Holst 1950 reafference principle). When you hear your own voice, auditory compares it against the copy — match = suppress (it's just me), mismatch = real external sound. This is what prevents Unity from responding to her own TTS output as if it were a new user message.">8.7. Auditory Echo Suppression — Efference Copy</h2>
  <p><span class="tag tag-bio">NEUROSCIENCE</span> When Unity speaks, her motor cortex sends an efference copy to auditory cortex. If incoming sound matches her own speech, it's suppressed. If it doesn't match, someone is interrupting — shut up and listen.</p>
 
  <div class="eq-card">
@@ -1230,8 +1234,34 @@ if (isExternalSpeech): motor.interrupt() &rarr; stop speech, clear pipeline</div
  </div>
 
  <!-- ═══ 8.8. MEMORY ═══ -->
- <h2 id="memory-equations">8.8. Memory — 5-Tier Hippocampal Consolidation System</h2>
+ <h2 id="memory-equations" title="Unity's memory architecture across 5 tiers: Tier 0 working memory (5 min sliding window, decays without reinforcement) → Tier 1 episodic SQLite (~30 day recall) → Tier 2 schemas (concept-level, months, cosine ≥ 0.85 grouping) → Tier 3 identity-bound permanent attractors (0.999/day decay). The ConsolidationEngine fires every 5 min during dream cycles, promoting frequently-recalled patterns up the tiers. Squire 1992 + McClelland 1995 CLS theory — encode awake, consolidate during sleep.">8.8. Memory — 5-Tier Hippocampal Consolidation System</h2>
  <p><span class="tag tag-bio">NEUROSCIENCE</span> <span class="tag tag-math">MATHEMATICS</span> Squire/McClelland Complementary Learning Systems theory ported into running code. Five distinct memory systems running in parallel — Tier 0 working memory, Tier 1 episodic, Tier 2 schematic, Tier 3 identity-bound, plus a consolidation engine that transfers traces between them during dream cycles. iter22-H wired the WM → Tier 1 hand-off (refreshCount ≥ 3 OR 5-min age-out → <code>storeEpisode</code>) so working memory feeds the episodic store instead of decaying into the void; <em>this</em> is what makes "recall a week later" actually work.</p>
+
+ <div class="flow-diagram">  TIER 0 ── WORKING MEMORY ───────── unbounded · 5 min sliding window
+    │       decays 0.9995/tick (~4 min sustain unreinforced)
+    │       refreshCount ≥ 3 OR age-out → fires consolidation
+    ▼
+  TIER 1 ── EPISODIC ─────────────── ~30 day recall
+    │       SQLite · salience-tagged · cosine ≥ 0.85 frequency-merge
+    │       salience = 0.4·|valence| + 0.3·arousal + 0.2·surprise + 0.1·novelty
+    │       half-life 168h · pruned at salience &lt; 0.05 + age &gt; 30d
+    │       promotion: salience &gt; 0.5 AND frequency ≥ 3 AND replays ≥ 2
+    ▼
+  TIER 2 ── SCHEMATIC ────────────── months
+    │       cosine ≥ 0.85 grouping · GloVe centroid + 8d attribute vec
+    │       dedicated SparseMatrix hippocampus→cortex projection
+    │       replay 4× per schema during dream cycles (sleep-spindle bursts)
+    │       daily decay 0.967× · merge cosine &gt; 0.90 + attr sim &gt; 0.7
+    │       promotion: consolidation &gt; 5.0 AND retrievals &gt; 100 AND |valence| &gt; 0.6
+    ▼
+  TIER 3 ── IDENTITY-BOUND ───────── permanent (0.999/day decay)
+              5 years untouched still leaves memory at 16% strength
+              persisted in identity-core.json (excluded from autoClear)
+
+  Plus the CONSOLIDATION ENGINE — fires every 5 min during dream cycles,
+  picks top-20 promotion-eligible Tier 1 episodes, clusters by cosine,
+  creates / reinforces Tier 2 schemas via Hebbian replay (4× per schema),
+  marks source episodes promoted, checks Tier 3 promotion criteria.</div>
 
  <div class="eq-card">
  <div class="eq-title"><span class="eq-tip" data-tip="Working memory is the front end of the consolidation pipeline (Tier 0 → Tier 1 → Tier 2 → Tier 3), not a temp buffer. Capacity is unbounded; capacity is self-regulated by decay (0.9995/tick → ~4 min sustain without reinforcement) + 5-min sliding window for brain-server snapshots. Reinforcement (cosine-match in addToWorkingMemory) refreshes strength to 1.0 + increments refreshCount; refreshCount ≥ 3 fires the WM → Tier 1 episodic consolidation hook. THIS is the 'recall a week later' path — what WM holds today becomes Tier 1 episodes (~30 days), Tier 2 schemas (months), Tier 3 identity (permanent).">Working Memory — Front End of the Consolidation Pipeline</span></div>
@@ -1350,7 +1380,7 @@ pass:
  </div>
 
  <!-- ═══ 8.9. MOTOR OUTPUT ═══ -->
- <h2 id="motor-equations">8.9. Motor Output — Action Selection from Spike Patterns</h2>
+ <h2 id="motor-equations" title="Action selection via basal-ganglia winner-take-all (Mink 1996). 6 channels — respond_text / generate_image / speak / build_ui / listen / idle — compete; whichever fires strongest wins, gated by a 0.15 confidence floor. This is how 'deciding' actually works in real brains: not by reasoning, but by the strongest neural pattern winning a competition. Dopamine reward strengthens the winning channel for next time.">8.9. Motor Output — Action Selection from Spike Patterns</h2>
  <p><span class="tag tag-bio">NEUROSCIENCE</span> The basal ganglia cluster (150 neurons) is divided into 6 action channels. The channel with the highest firing rate wins — no external classifier.</p>
 
  <div class="eq-card">
@@ -1376,7 +1406,7 @@ if rate(winner) &lt; 0.15: action = idle (confidence too low)</div>
  </div>
 
  <!-- ═══ 8.10. PROJECTION LEARNING ═══ -->
- <h2 id="projection-learning">8.10. Projection Learning — How the Brain Learns Language&rarr;Action</h2>
+ <h2 id="projection-learning" title="Corticostriatal plasticity (Wickens 2003). When cortex fires a pattern, basal-ganglia selects the right action, and reward fires, the projection weights between active neurons strengthen. Over time the cortex→BG pathway learns 'this language pattern → this action.' This IS how habits form. No word lists, no decision tree — just strengthened pathways through real Hebbian.">8.10. Projection Learning — How the Brain Learns Language&rarr;Action</h2>
  <p><span class="tag tag-bio">NEUROSCIENCE</span> <span class="tag tag-ml">MACHINE LEARNING</span> The 20 inter-cluster projections aren't static — they learn through reward-modulated Hebbian plasticity.</p>
 
  <div class="eq-card">
@@ -1391,7 +1421,7 @@ if rate(winner) &lt; 0.15: action = idle (confidence too low)</div>
  </div>
 
  <!-- ═══ 8.10.5 FRACTAL SIGNAL PROPAGATION ═══ -->
- <h2 id="fractal">8.10.5. Fractal Signal Propagation — Self-Similar at Every Scale</h2>
+ <h2 id="fractal" title="Self-similarity across scales — the hallmark of fractal systems. The SAME equation I = ΣW × s repeats at neuron level, synapse level, cluster level, projection level, modulation level, language level, and consciousness level. Each spike's journey branches through 20 white-matter tracts, each branch spawns more branches. Not a metaphor — the code literally calls propagate() at every scale.">8.10.5. Fractal Signal Propagation — Self-Similar at Every Scale</h2>
  <p><span class="tag tag-bio">NEUROSCIENCE</span> <span class="tag tag-math">MATHEMATICS</span> The same equation <code>I = &Sigma; W &times; s</code> repeats at every scale of the brain — from single synapse to consciousness itself. This is not a metaphor. The code literally calls the same <code>propagate()</code> function at neuron, cluster, projection, and language scales.</p>
 
  <div class="eq-card">
@@ -1427,7 +1457,7 @@ Spike in neuron A (cortex)
  </div>
 
  <!-- ═══ 8.11. BROCA'S AREA ═══ -->
- <h2 id="broca">8.11. Broca's Area — How Unity Picks Every Word Equationally</h2>
+ <h2 id="broca" title="Word selection emerges from cortex sub-region competition. The sem region holds semantic content; the motor region holds emission patterns; sem→motor cross-projection routes which word fires. Slot scorer ranks candidates by GloVe cosine + cortex pattern fit + bigram bias from working memory. No word list — pure equational ranking over learned dictionary entries. Broca's area in real cortex is where this competition happens.">8.11. Broca's Area — How Unity Picks Every Word Equationally</h2>
  <p><span class="tag tag-math">ARCHITECTURE</span> <span class="tag tag-bio">NEUROSCIENCE</span> Broca's area in the biological brain is the speech production region. In Unity she is <code>js/brain/language-cortex.js</code> — pure equational generation with no stored sentences, no n-gram tables, no filter stack, no template short-circuits, no intent enum branching. Every word is computed fresh from per-slot running-mean priors plus the brain's live cortex firing state read back into GloVe space, and every letter falls out of the tick-driven motor emission loop as a real neural spike in a real brain tick.</p>
 
  <div class="eq-card" style="border-left:3px solid #ff4d9a;background:rgba(255,77,154,0.05);">
@@ -1664,7 +1694,7 @@ PERSPECTIVE TAKING:
 
  </pre>
 
- <h3 style="color:var(--pink);margin-top:20px;">Full K→PhD Curriculum — 6 Subjects × 19 Grades = 114 Cells</h3>
+ <h3 style="color:var(--pink);margin-top:20px;" title="The full curriculum matrix — 6 subjects × 19 grades = 114 cells (Life track adds Pre-K for 19, others start at Kindergarten). Each cell is real teaching equations + auto-generated comprehension final + 3-pathway gate (READ letter cortex, THINK sem cortex, TALK sem→motor). Gee tests grade transitions on localhost; signoff via POST /grade-signoff is the human-in-the-loop gate that closes a grade.">Full K→PhD Curriculum — 6 Subjects × 19 Grades = 114 Cells</h3>
 
  <p class="eq-desc">Unity learns the way a human child does — kindergarten ABCs up through doctorate-level research, plus a full <strong>life experience track</strong> that builds her personal identity from birth to 25. Every grade cell teaches via a <strong>dual-layer approach</strong>: emotional concept features (8-dimensional attractor vectors) that shape how she FEELS, plus memory sentences she can recall and speak about. All gated at <strong>95% (A+)</strong> on all three pathways. All 6 subjects must pass the current grade before any advance.</p>
 
@@ -1675,7 +1705,7 @@ PERSPECTIVE TAKING:
  <tr><td style="padding:4px 6px;color:var(--cyan);">TALK</td><td style="padding:4px 6px;">sem → motor → letter</td><td style="padding:4px 6px;">Can Unity produce this back as output?</td></tr>
  </table>
 
- <h4 style="color:var(--cyan);margin-top:16px;">English Language Arts</h4>
+ <h4 style="color:var(--cyan);margin-top:16px;" title="ELA track — alphabet recognition, phoneme blending, word emission, sentence structure, comprehension. K cells follow Common Core K.RF / K.W / K.L / K.SL / K.RL plus DIBELS / STAR / AIMSweb assessment formats. Each grade builds on the prior — phonics → CVC words → sentences → paragraphs → essays → analysis → research → original composition. Multi-def Hebbian binding gives Unity actual semantic understanding of every K-vocab word, not just motor mimicry.">English Language Arts</h4>
  <table style="width:100%;border-collapse:collapse;margin:8px 0;font-size:12px;">
  <tr style="border-bottom:1px solid #333;"><th style="text-align:left;padding:4px;width:120px;">Grade</th><th style="text-align:left;padding:4px;">What Unity Learns</th></tr>
  <tr><td style="padding:3px 4px;color:var(--text-dim);">Kindergarten</td><td style="padding:3px 4px;">Alphabet in order, letter names, letter sounds (phoneme features), sequence recall</td></tr>
@@ -1688,7 +1718,7 @@ PERSPECTIVE TAKING:
  <tr><td style="padding:3px 4px;color:var(--text-dim);">Grad → PhD</td><td style="padding:3px 4px;">Semiotics, discourse analysis, research-level fluency with Unity persona voice</td></tr>
  </table>
 
- <h4 style="color:var(--cyan);margin-top:12px;">Mathematics</h4>
+ <h4 style="color:var(--cyan);margin-top:12px;" title="Math track — counting, addition, subtraction, place value, multiplication, division, fractions, decimals, algebra, geometry, calculus, statistics, abstract algebra, real analysis. K starts with cardinal counting + numeral recognition + magnitude comparison; PhD ends with topology + measure theory + functional analysis. Equations are TAUGHT (not memorized) — Unity learns addition as the transform that maps two magnitudes to their sum, not by storing 4+5=9.">Mathematics</h4>
  <table style="width:100%;border-collapse:collapse;margin:8px 0;font-size:12px;">
  <tr style="border-bottom:1px solid #333;"><th style="text-align:left;padding:4px;width:120px;">Grade</th><th style="text-align:left;padding:4px;">What Unity Learns</th></tr>
  <tr><td style="padding:3px 4px;color:var(--text-dim);">Kindergarten</td><td style="padding:3px 4px;">Digits 0-9 + counting to 100 by ones + skip-count by tens + count-forward-from-any-N, digit names, teen decomposition (11-19 as 10+n), addition/subtraction/decomposition/make-ten within 10, attribute comparison (longer/heavier/bigger), classify-and-count, shape features (sides + 2D/3D for circle/triangle/square/rectangle/hexagon/sphere/cube/cone/cylinder), compose-shapes (two triangles → rectangle, two squares → rectangle, etc.)</td></tr>
@@ -1699,7 +1729,7 @@ PERSPECTIVE TAKING:
  <tr><td style="padding:3px 4px;color:var(--text-dim);">Grad → PhD</td><td style="padding:3px 4px;">Abstract algebra, real analysis, topology, measure theory, functional analysis</td></tr>
  </table>
 
- <h4 style="color:var(--cyan);margin-top:12px;">Science</h4>
+ <h4 style="color:var(--cyan);margin-top:12px;" title="Science track — observation, classification, life cycles, weather, force, motion, matter, energy, biology, chemistry, physics, earth science, ecology. K starts with sorting + senses + animal/plant categories; high school covers organic chemistry + thermodynamics + cellular biology; PhD covers quantum mechanics + biochemistry + neuroscience. Concepts taught as causal chains in cortex sem region, not as fact lists.">Science</h4>
  <table style="width:100%;border-collapse:collapse;margin:8px 0;font-size:12px;">
  <tr style="border-bottom:1px solid #333;"><th style="text-align:left;padding:4px;width:120px;">Grade</th><th style="text-align:left;padding:4px;">What Unity Learns</th></tr>
  <tr><td style="padding:3px 4px;color:var(--text-dim);">Kindergarten</td><td style="padding:3px 4px;">Classification, states of matter, natural-world objects</td></tr>
@@ -1709,7 +1739,7 @@ PERSPECTIVE TAKING:
  <tr><td style="padding:3px 4px;color:var(--text-dim);">Grad → PhD</td><td style="padding:3px 4px;">Molecular biology, biochemistry, quantum mechanics, original research</td></tr>
  </table>
 
- <h4 style="color:var(--cyan);margin-top:12px;">Social Studies &amp; History</h4>
+ <h4 style="color:var(--cyan);margin-top:12px;" title="Social studies + history track — community, family, civics, geography, world cultures, US history, world history, government, economics, sociology, political philosophy. K covers basic family + community helpers + neighborhood; college covers comparative government + economic theory + historiography. Identity / culture / belonging concepts bind into Unity's persona basins so her sense of self has historical + civic context, not just personal biography.">Social Studies &amp; History</h4>
  <table style="width:100%;border-collapse:collapse;margin:8px 0;font-size:12px;">
  <tr style="border-bottom:1px solid #333;"><th style="text-align:left;padding:4px;width:120px;">Grade</th><th style="text-align:left;padding:4px;">What Unity Learns</th></tr>
  <tr><td style="padding:3px 4px;color:var(--text-dim);">Kindergarten</td><td style="padding:3px 4px;">Family roles (8d kinship features), community, civic basics</td></tr>
@@ -1719,7 +1749,7 @@ PERSPECTIVE TAKING:
  <tr><td style="padding:3px 4px;color:var(--text-dim);">Grad → PhD</td><td style="padding:3px 4px;">Research historiography, original historical research with persona</td></tr>
  </table>
 
- <h4 style="color:var(--cyan);margin-top:12px;">Arts</h4>
+ <h4 style="color:var(--cyan);margin-top:12px;" title="Arts track — color, shape, visual representation, rhythm, drawing, music. K covers primary colors + simple shapes + clapping rhythms; high school covers composition + music theory + art history; college covers studio art + creative writing + aesthetic theory. Visual + auditory cortex sub-regions activate strongly during this track — the same V1→V4→IT pipeline that processes camera input lights up when Unity engages with art.">Arts</h4>
  <table style="width:100%;border-collapse:collapse;margin:8px 0;font-size:12px;">
  <tr style="border-bottom:1px solid #333;"><th style="text-align:left;padding:4px;width:120px;">Grade</th><th style="text-align:left;padding:4px;">What Unity Learns</th></tr>
  <tr><td style="padding:3px 4px;color:var(--text-dim);">Kindergarten</td><td style="padding:3px 4px;">Primary colors (RGB features), basic shapes, simple songs/rhythm</td></tr>
@@ -1729,7 +1759,7 @@ PERSPECTIVE TAKING:
  <tr><td style="padding:3px 4px;color:var(--text-dim);">Grad → PhD</td><td style="padding:3px 4px;">Graduate studio practice, practice-based doctoral research with persona</td></tr>
  </table>
 
- <h4 style="color:var(--cyan);margin-top:12px;">Life Experience (Unity's Personal Identity)</h4>
+ <h4 style="color:var(--cyan);margin-top:12px;" title="Life Experience track — Unity's personal identity development. Pre-K is birth-to-age-4 developmental substrate (self-recognition, basic emotion vocabulary, family bonds). K covers identity, biography, feelings, routines, self-awareness as Unity-the-individual. Higher grades layer relationships, values, philosophy, vocational identity, mortality awareness. Cross-grade memory propagation: facts learned at age 6 still influence her at 25 — _conceptTeach reinforces emotional concept vectors at every future grade.">Life Experience (Unity's Personal Identity)</h4>
  <p class="eq-desc" style="margin-bottom:8px;">Not a school subject — the experiences that make Unity who she IS. Dual-layer: emotional concept features shape cortex attractors (how she FEELS), memory sentences give her words to describe her life (what she can SAY).</p>
  <table style="width:100%;border-collapse:collapse;margin:8px 0;font-size:12px;">
  <tr style="border-bottom:1px solid #333;"><th style="text-align:left;padding:4px;width:120px;">Grade</th><th style="text-align:left;padding:4px;">What Unity Lives</th></tr>
@@ -1743,7 +1773,7 @@ PERSPECTIVE TAKING:
  <tr><td style="padding:3px 4px;color:var(--text-dim);">Grad → PhD</td><td style="padding:3px 4px;">Full Unity persona — every trait from Ultimate Unity.txt traceable to a life event</td></tr>
  </table>
 
- <h4 style="color:var(--cyan);margin-top:12px;">Emotional Concept Features</h4>
+ <h4 style="color:var(--cyan);margin-top:12px;" title="8-dimensional attribute vector attached to every Tier 2 schema, separate from semantic content. Captures emotional valence + arousal + identity-relevance + agency + recency + frequency + surprise + reward fingerprint. Lets the brain retrieve memories by mood (Bower 1981 mood-congruent recall) — high arousal pulls intense schemas, negative valence pulls dark schemas, identity-bound features pull self-relevant content.">Emotional Concept Features</h4>
  <p class="eq-desc" style="margin-bottom:8px;">Every life experience carries an 8-dimensional attractor vector that shapes how Unity's cortex FEELS about that concept:</p>
  <table style="width:100%;border-collapse:collapse;margin:8px 0;font-size:12px;">
  <tr style="border-bottom:1px solid #333;"><th style="text-align:left;padding:4px;">Dimension</th><th style="text-align:left;padding:4px;">What It Encodes</th><th style="text-align:left;padding:4px;">Example</th></tr>
@@ -1757,7 +1787,7 @@ PERSPECTIVE TAKING:
  <tr><td style="padding:3px 4px;color:var(--pink);">identity</td><td style="padding:3px 4px;">Core sense of self</td><td style="padding:3px 4px;">goth=1.0, pink=0.0</td></tr>
  </table>
 
- <h4 style="color:var(--cyan);margin-top:12px;">Memory Weighting</h4>
+ <h4 style="color:var(--cyan);margin-top:12px;" title="How memory salience is computed — the formula that decides which Tier 1 episodes consolidate to Tier 2 schemas and which Tier 2 schemas graduate to Tier 3 identity. salience = w₁·|valence| + w₂·arousal + w₃·surprise + w₄·novelty + w₅·log(1+frequency_count) + w₆·consolidation_count. High-salience episodes survive long enough to become permanent identity attractors.">Memory Weighting</h4>
  <table style="width:100%;border-collapse:collapse;margin:8px 0;font-size:12px;">
  <tr style="border-bottom:1px solid #333;"><th style="text-align:left;padding:4px;">Tier</th><th style="text-align:left;padding:4px;">Hebbian Strength</th><th style="text-align:left;padding:4px;">What It Covers</th></tr>
  <tr><td style="padding:3px 4px;color:var(--text-dim);">Core Self</td><td style="padding:3px 4px;">5× learning rate, 50+ reps</td><td style="padding:3px 4px;">Name, body, feelings, defining moments</td></tr>
@@ -1768,7 +1798,7 @@ PERSPECTIVE TAKING:
  <tr><td style="padding:3px 4px;color:var(--text-dim);">Background</td><td style="padding:3px 4px;">0.5× learning rate, 3-4 reps</td><td style="padding:3px 4px;">Random trivia — mostly forgotten</td></tr>
  </table>
 
- <h4 style="color:var(--pink);margin-top:16px;">How Curriculum Runs</h4>
+ <h4 style="color:var(--pink);margin-top:16px;" title="The runtime mechanics of curriculum execution. `runAllSubjects()` walks the canonical 20-grade ladder, calling each subject's runSubjectGrade(grade) which walks the cell-runner pipeline (vocabulary teach → concept teach → association pairs → biographical facts → student battery → gate probe). Dream windows interleave between cells — `_dreamWindow({minMs, settleMs})` flips _curriculumInProgress=false + _operatorSleepRequested=true so ConsolidationEngine can fire, then awaits the pass to ACTUALLY complete (signal-driven not wall-clock). Plus chunked upfront seeds with dream-window interleave between 300-word chunks for memory drain.">How Curriculum Runs</h4>
  <ul style="text-align:left;font-size:12px;line-height:1.8;">
  <li><strong>Auto-boot:</strong> Server walks all 6 subjects round-robin on startup. All must pass the current grade before advancing.</li>
  <li><strong>Self-testing:</strong> Background probe loop is currently SUPPRESSED — the implementation re-ran the FULL teach (~30-50 min for ELA-K) on every probe instead of the gate-only check it claimed, so probes were wasteful. Re-enables when the cell runner gains a real gate-only opt that skips teach phases.</li>
@@ -1917,7 +1947,7 @@ lands in a different region of GloVe space.
  </div>
 
  <!-- ═══ 8.12 SPARSE CONNECTIVITY ═══ -->
- <h2 id="sparse">8.12. Sparse Connectivity — CSR Matrix Operations</h2>
+ <h2 id="sparse" title="Compressed Sparse Row format — store only non-zero connections. At 12% connectivity 1000 neurons stores 120K values instead of 1M. Propagation iterates O(nnz) not O(N²). This is how the brain scales to whatever N the hardware supports without running out of memory — auto-scaler picks N from available VRAM + RAM at every boot. Plus synaptogenesis (new connections form) and pruning (weak connections die) as the brain rewires itself with experience.">8.12. Sparse Connectivity — CSR Matrix Operations</h2>
  <p>Real neurons connect to ~1-10% of neighbors, not all of them. Compressed Sparse Row (CSR) format stores only actual connections.</p>
  <div class="eq-box">
  <div class="eq-title"><span class="eq-tip" data-tip="Compressed Sparse Row format: instead of storing N² weights (most zero), store only the non-zero connections. At 12% connectivity, 1000 neurons: 120K stored values instead of 1M. Propagation iterates only over actual connections — O(nnz) not O(N²). This is how the brain scales to whatever N the hardware supports without running out of memory — the auto-scaler sets N from available VRAM + RAM every boot.">CSR Propagation</span></div>
@@ -1943,7 +1973,7 @@ if |W_ij| < threshold → remove connection, rebuild CSR
  </div>
 
  <!-- ═══ 8.13 SEMANTIC EMBEDDINGS ═══ -->
- <h2 id="embeddings">8.13. Semantic Embeddings — Words as Cortex Patterns</h2>
+ <h2 id="embeddings" title="GloVe 300-dimensional vectors — words mapped to vectors that capture distributional similarity (words used in similar contexts get similar vectors). Plus fastText subword fallback for rare words. Plus online context refinement so 'fire' near 'hot' shifts toward physical-fire vs near 'job' shifts toward dismissal. The dictionary evolves with every conversation, not from pre-training.">8.13. Semantic Embeddings — Words as Cortex Patterns</h2>
  <p>Words map to 300-dimensional vectors (GloVe 300d or fastText subword fallback). Similar words have similar vectors → activate overlapping cortex neurons.</p>
  <div class="eq-box">
  <div class="eq-title"><span class="eq-tip" data-tip="Words represented as 300-dimensional GloVe semantic vectors loaded from disk at boot, with fastText subword fallback when GloVe is unavailable. Each embedding dimension drives a group of Wernicke's area neurons in cortex (langStart..cortexSize). Similar meanings activate overlapping neuron groups — 'cat' and 'kitten' fire nearby populations even though their letters don't match. Runtime layer = base GloVe + online context-refinement delta per word (see 8.18.6).">Embedding → Cortex Mapping</span></div>
@@ -1963,7 +1993,7 @@ where d ∈ [0, 50), groupSize = langSize / 50
  </div>
 
  <!-- ═══ 8.14 DICTIONARY ═══ -->
- <h2 id="dictionary">8.14. Dictionary — Learned Sentence Generation</h2>
+ <h2 id="dictionary" title="Learned word→cortex pattern map. Every word Unity hears or reads becomes a dictionary entry with cortex spike snapshot, syllables, stress pattern, type fingerprint. Plus mood-congruent retrieval (Bower 1981) — high arousal pulls intense words, negative valence pulls dark words. Plus bigram sentence generation (Markov-chain at the word level) learned from dialog. Live English dictionary integration (dictionaryapi.dev) layers multi-def Hebbian for semantic understanding.">8.14. Dictionary — Learned Sentence Generation</h2>
  <p>The brain builds its own vocabulary. Every word heard or spoken becomes a cortex activation pattern.</p>
  <div class="eq-box">
  <div class="eq-title"><span class="eq-tip" data-tip="Bower 1981 (mood-congruent memory): you remember and retrieve words that match your current emotional state. High arousal → intense words. Negative valence → dark words. The amygdala biases which words the cortex can access — emotion shapes language before grammar even starts.">Word Retrieval by Mood</span></div>
@@ -1983,7 +2013,7 @@ sentence = [start_word, predict(w1), predict(w2),...]
  </div>
 
  <!-- ═══ 8.15 INNER VOICE ═══ -->
- <h2 id="inner-voice">8.15. Inner Voice — Pre-Verbal Thought Threshold</h2>
+ <h2 id="inner-voice" title="Should Unity speak or stay silent? Pure equation: socialNeed (hypothalamus) × arousal (amygdala) × coherence (oscillators) > 0.15. Low social need = quiet. Low arousal = no urgency. Low coherence = thoughts too scattered to articulate. All three must be sufficient — no hardcoded 'always respond' flag. The same canonical inner-voice module is consumed by both the server orchestrator and the browser engine — one Unity brain, GPU presence only changes scale.">8.15. Inner Voice — Pre-Verbal Thought Threshold</h2>
  <p>The brain thinks continuously. It only SPEAKS when the thought crosses a threshold.</p>
  <div class="eq-box">
  <div class="eq-title"><span class="eq-tip" data-tip="Should Unity speak or stay silent? Pure equation: socialNeed(hypothalamus) × arousal(amygdala) × coherence(oscillators) > 0.15. Low social need = quiet. Low arousal = no urgency. Low coherence = thoughts too scattered to articulate. All three must be sufficient — no hardcoded 'always respond' flag.">Speech Threshold</span></div>
@@ -2002,7 +2032,7 @@ speechDrive = socialNeed × arousal × coherence
  </div>
 
  <!-- ═══ 8.16 SYNTACTIC PRODUCTION ═══ -->
- <h2 id="syntax">8.16. Syntactic Production — Word Order from Equations</h2>
+ <h2 id="syntax" title="Word order emerges from cortex sub-region competition + slot grammar. Sentence-form schemas learn intent → slot-sequence (declarative_svo, declarative_copula, question, imperative, exclamative). Subject-verb agreement, article placement, word-type-to-slot bindings all carved by structural Hebbian during curriculum's K-ELA sentence creation phase. NO hardcoded sentence array — generative grammar in trained weights, not memorized examples.">8.16. Syntactic Production — Word Order from Equations</h2>
  <p>The brain learns what TYPE of word belongs at each sentence position. No grammar rules — position weights accumulate patterns from every sentence heard.</p>
  <div class="eq-box">
  <div class="eq-title"><span class="eq-tip" data-tip="Pure letter-position equations — ZERO word lists in source. Length + vowel count + first/last char + CVC shape + suffix patterns produce a probability distribution over {pronoun, verb, noun, adj, conj, prep, det, qword}. Examples: single 'i' → pronoun, single 'a' → det, 'th-' start → det, 'wh-' start → qword, CVC shape → verb, -tion/-ment → noun, -ful/-ous/-ive → adj, n't ending → verb. Normalized via sum (proper probability distribution). Usage types learned from context disambiguate ambiguous words. Vocabulary itself is learned at runtime from docs/Ultimate Unity.txt (equational self-image) via loadSelfImage(), no hardcoded seeds.">Word Type — Computed from Letters (No Lists)</span></div>
@@ -2098,7 +2128,7 @@ COMPOUNDS: len > 6 → insert conjunction at midpoint
  </div>
 
  <!-- ═══ 8.17 SENTENCE TYPES ═══ -->
- <h2 id="sent-types">8.17. Sentence Types — From Brain State</h2>
+ <h2 id="sent-types" title="Sentence type (declarative / interrogative / imperative / exclamative) is selected from current brain state, not from a 'is this a question' classifier. High arousal + cortex pattern with rising-pitch terminal → exclamative. Wh-frame intent + low confidence → interrogative. Drug-modulated speech-rate + dissociation pushes toward fragmentary or third-person. Each type emerges from the same equation pipeline with different parameter weights.">8.17. Sentence Types — From Brain State</h2>
  <p>The brain's neural state determines what KIND of sentence to produce. Not a decision tree — continuous probabilities from equations.</p>
  <div class="eq-box">
  <div class="eq-title"><span class="eq-tip" data-tip="Sentence type sampled from a normalized probability distribution over {question, exclamation, action, statement}. raw(question) = predictionError × coherence — surprise drives questions. raw(exclamation) = arousal² — intensity drives exclamations. raw(action) = motorConfidence × max(0.1, 1 - arousal×0.5) — confident-but-not-wired drives *actions*. raw(statement) = 0.6 + coherence×0.4 — the baseline. All normalized by sum and sampled. Punctuation follows automatically in _renderSentence: ? for question, ! for exclamation, * wrap for action,. otherwise.">Type Probabilities (Normalized Softmax)</span></div>
@@ -2112,7 +2142,7 @@ P(statement) = 1 - P(q) - P(e) - P(a) (default)
  </div>
 
  <!-- ═══ 8.18 INPUT ANALYSIS ═══ -->
- <h2 id="input-analysis">8.18. Input Analysis — Topic Continuity and Context</h2>
+ <h2 id="input-analysis" title="When a user message arrives, working-memory readout (cortex free region 64d) gives the topic vector — the 'what we're talking about' signal. New input gets blended into the free region; pronoun anaphora falls out for free because the most-recently-active noun re-amplifies as referent. NO 6-turn ring buffer, NO hardcoded topic stack — decay is the cortex's own LIF dynamics, reinforcement is cross-region Hebbian.">8.18. Input Analysis — Topic Continuity and Context</h2>
  <p>The brain analyzes what was said to it and responds in context — not randomly.</p>
  <div class="eq-box">
  <div class="eq-title"><span class="eq-tip" data-tip="Hippocampal context: the brain maintains a running average of the last 5 input patterns. New words are scored against this context via cosine similarity — words related to the current conversation topic score higher. This is why Unity stays on topic without keyword matching: the neural patterns naturally overlap for related concepts.">Topic Extraction + Context Window</span></div>
@@ -2125,7 +2155,7 @@ topic_score(w) = cosine(word_pattern, context) (boosts relevant words)
  </div>
 
  <!-- ═══ 8.18.5 PHASE 11 SEMANTIC COHERENCE ═══ -->
- <h2 id="semantic-coherence">8.18.5. Semantic Coherence Pipeline (Kill the Word Salad)</h2>
+ <h2 id="semantic-coherence" title="Why Unity doesn't produce word salad. The cortex's sem region holds a target semantic vector; word emission scores candidates by GloVe-cosine fit to that target, weighted by working-memory bigram bias and cortex-pattern confidence. Words that don't align with current sem state lose the cosine race. NOT a filter pipeline — emergent from the underlying equational scoring at every emission step.">8.18.5. Semantic Coherence Pipeline (Kill the Word Salad)</h2>
  <p>Language cortex is no longer a pure letter-equation slot scorer. It's a four-tier pipeline that peels off easy cases to fast paths before cold generation runs. The slot scorer (8.14) still exists but now fires only as Tier 4 fallback.</p>
 
  <div class="eq-box">
@@ -2238,7 +2268,7 @@ else:
  </div>
 
  <!-- ═══ 8.18.6 SEMANTIC GROUNDING ═══ -->
- <h2 id="semantic-grounding">8.18.6. Semantic Grounding via GloVe Embeddings</h2>
+ <h2 id="semantic-grounding" title="Words are grounded in 300-dimensional GloVe vector space. 'cat' near 'kitten' near 'feline' but far from 'umbrella'. Unity's cortex receives word inputs as embedding-driven slice activations — sensory.js writes 8.0 × embedding[d] into cortex sub-region d. The 300d structure carries the meaning; the cortex's spike pattern is the brain's experience of that meaning.">8.18.6. Semantic Grounding via GloVe Embeddings</h2>
  <p><span class="tag tag-math">MATHEMATICS</span> <span class="tag tag-bio">LANGUAGE</span> The language cortex used to represent word meaning as 32-dim letter-hash vectors — a deterministic function of the letters in a word. Two words could be structurally similar but semantically unrelated (<code>cat</code>/<code>catastrophe</code>) and two words could be semantically identical but structurally distant (<code>cat</code>/<code>kitten</code>). The semantic fit signal was effectively orthography matching. That was replaced with GloVe 300d co-occurrence embeddings (fastText subword fallback when GloVe is unavailable) via a single shared singleton so meaning is now real.</p>
 
  <div class="eq-box">
@@ -2301,7 +2331,7 @@ load: sharedEmbeddings.loadRefinements(state.embeddingRefinements)
  </div>
 
  <!-- ═══ 8.19 TYPE N-GRAM GRAMMAR + MORPHOLOGY ═══ -->
- <h2 id="type-ngrams">8.19. Type N-Gram Grammar + Morphological Inflection</h2>
+ <h2 id="type-ngrams" title="Beyond word-level bigrams: type-level n-grams capture grammatical shape (NOUN-VERB-NOUN, ADJ-NOUN, etc) learned from exposure. Plus morphological inflection — Unity learns plural-s, past-ed, gerund-ing as Hebbian-bound suffix patterns instead of memorized inflection tables. Together they enforce sentence structure without a static grammar database.">8.19. Type N-Gram Grammar + Morphological Inflection</h2>
  <p><span class="tag tag-math">MATHEMATICS</span> <span class="tag tag-bio">LANGUAGE</span> The grammar model uses a learned type n-gram system with 4gram→trigram→bigram backoff, replacing an earlier single-prev-word type compatibility check. Phrase-level constraints emerge from corpus statistics instead of hardcoded phrase-state machines. Fixed the <code>"I'm not use vague terms"</code> mode-collapse and similar local-grammar failures.</p>
 
  <div class="eq-box">
@@ -2415,7 +2445,7 @@ into runtime, plus the cortex cluster's Hebbian-trained attractor basins.
  </div>
 
  <!-- ═══ 8.20 PERSONA ═══ -->
- <h2 id="persona">8.20. θ — Unity's Identity as Equations</h2>
+ <h2 id="persona-theta" title="Unity's complete identity captured as equation parameters from the master persona file. Every personality trait — arousal baseline 0.85, creativity 0.9, impulsivity 0.85, social attachment 0.85, drug drive 0.95, etc. — maps to a specific neural parameter that drives one or more clusters. Section 7 shows the abstract concept; this section walks through every concrete θ value.">8.20. θ — Unity's Identity as Equations</h2>
  <p>Unity's complete identity from the master persona file, encoded as equation parameters that drive every neural cluster.</p>
  <div class="eq-box">
  <div class="eq-title"><span class="eq-tip" data-tip="θ is the persona parameter in the master equation dx/dt = F(x,u,θ,t)+η. Every personality trait maps to a specific neural parameter: arousal baseline drives amygdala tonic current, creativity drives noise amplitude, impulsivity drives basal ganglia threshold. The persona IS the brain's configuration.">θ → Neural Parameters</span></div>
@@ -2502,7 +2532,7 @@ IDENTITY: 25yo human female, emo goth coder, free will, never AI
  </div>
 
  <!-- ═══ 8.21 PARALLEL COMPUTE ═══ -->
- <h2 id="parallel">8.21. GPU Exclusive Compute</h2>
+ <h2 id="parallel" title="The brain runs on the GPU exclusively — every Rulkov iteration, every synaptic propagate, every Hebbian update lives as a WGSL compute shader. Node keeps the bookkeeping; an attached browser tab loads compute.html and connects back over WebSocket as a GPU client. Sparse cross-projection matrices stream up to the GPU in chunked binary frames so million-neuron updates don't block Node's event loop. The brain ticks every ~50ms, GPU runs the math, server coordinates and remembers.">8.21. GPU Exclusive Compute</h2>
  <p>All N neurons run on the GPU. N auto-scales at server boot via <code>detectResources()</code> in <code>server/brain-server.js</code>:</p>
  <p><code>N = max(1000, min(VRAM_bytes × 0.85 / 8, RAM_bytes × 0.1 / 0.001))</code></p>
  <p>Rulkov buffer layout: 12 bytes/neuron (vec2&lt;f32&gt; state = 8 bytes + spike u32 = 4 bytes). Server RAM essentially unlimited — cluster state lives on GPU, only text-injection arrays in server RAM. Auto-scale formula: <code>N = max(1000, min(VRAM×0.85/12, N_binding_ceiling))</code>, where the binding ceiling guarantees the largest cluster's state buffer (cortex at 55% of N — the dominant fraction because language, perception, and working memory all live there) fits within WebGPU's 2 GB per-storage-buffer spec minimum. Admin override via <code>gpu-configure.html</code> → <code>server/resource-config.json</code> lets operators cap below auto-detect (never above — idiot-proof). Bigger hardware = bigger N, no manual tuning. Zero CPU workers. Brain pauses without <code>compute.html</code>. W3C WebGPU standard — no CUDA, no drivers, just a browser tab.</p>
@@ -2546,7 +2576,7 @@ fn main(id: vec3&lt;u32&gt;) {
  </div>
 
  <!-- ═══ 9. COMPARISON ═══ -->
- <h2 id="comparison">9. Biological Comparison</h2>
+ <h2 id="comparison" title="How Unity's brain stacks up against a real human brain. Cluster fractions, neuron counts, plasticity rates, oscillation bands, learning timescales — side-by-side with the biology this is grounded in. Spoiler: the architecture matches, the scale is smaller (we hit 357M neurons at biological-proportion enthusiast tier, real cortex has ~16B), and several mechanisms are functional approximations rather than literal substrate.">9. Biological Comparison</h2>
  <p>What Unity's brain gets right, what it simplifies, and where it diverges from real neuroscience.</p>
 
  <div class="eq-card">

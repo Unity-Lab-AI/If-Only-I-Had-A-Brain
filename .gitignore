@@ -28,6 +28,15 @@ server/brain-code-hash.json
 # glitches). Per-boot runtime data; must not be committed.
 server/server.log
 
+# === 114.19es.5 dictionary disk cache ===
+# definition-service.js writes K-VOCAB definitions fetched from
+# dictionaryapi.dev to this file every 5 min during runs and on graceful
+# shutdown. Per-machine runtime cache (grows up to ~10k entries / few MB);
+# rebuilds organically on cache miss + API fetch. Not load-bearing, not
+# committable.
+server/definition-cache.json
+server/boot-error.log
+
 # === Claude Code ===
 .claude/pollinations-user.json
 .claude/settings.local.json

@@ -44,8 +44,8 @@ const FILES = [
 // because their "comments" are visible <li>/<strong>/<p> body content
 // rather than // line comments.
 const PUBLIC_HTMLS = [
-  'brain-equations.html',
-  'unity-guide.html',
+  'html/brain-equations.html',
+  'html/unity-guide.html',
 ];
 
 // K-numbered labels → descriptive feature names. Used to scrub bare K.N

@@ -39,22 +39,48 @@
     .bar-green { background: #22c55e; }
     .log { max-height: 300px; overflow-y: auto; font-size: 10px; color: #555; line-height: 1.6; }
     .log-entry { border-bottom: 1px solid #111; padding: 2px 0; }
-    #connection-status { font-size: 12px; margin-bottom: 12px; }
+    #connection-status { font-size: 12px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+    /* 114.19ex — graceful-stop button. Inline with connection-status
+       so it's visible without bloating the header. Muted red border +
+       text so it's findable but doesn't yell over the existing pink/
+       purple/cyan aesthetic. Hover lifts saturation. Disabled state
+       used during the shutdown handshake (~500ms) so accidental
+       double-clicks don't fire double POSTs. */
+    .btn-stop {
+      background: transparent;
+      border: 1px solid #4a1a22;
+      color: #ef4444;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      padding: 5px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+    .btn-stop:hover { background: rgba(239,68,68,0.1); border-color: #ef4444; }
+    .btn-stop:disabled { opacity: 0.4; cursor: wait; }
+    .btn-stop.shutdown-fired { border-color: #6b7280; color: #6b7280; }
   </style>
 </head>
 <body>
   <div class="dash">
     <h1>🧠 Unity Brain — Live Dashboard</h1>
     <p class="sub">Read-only view of Unity's brain activity. Shared across all users.</p>
-    <div id="connection-status"><span class="status dead">disconnected</span> Connecting to brain server...</div>
+    <div id="connection-status">
+      <div id="d-conn-text"><span class="status dead">disconnected</span> Connecting to brain server...</div>
+      <button id="btn-graceful-stop" class="btn-stop" title="Graceful brain shutdown — flushes definition disk cache, terminates worker pool, saves weights, then exits. Equivalent to running stop.bat. Use Savestart.bat to resume from saved state.">⏹ Stop Brain</button>
+    </div>
 
     <div class="grid">
-      <div class="card">
+      <div class="card" title="Total live neurons across all 7 clusters (cortex / cerebellum / hippocampus / amygdala / basal ganglia / hypothalamus / mystery). Auto-scaled to GPU at boot per the configured tier — biological-scale tiers run hundreds of millions of neurons. 'firing' = how many of those neurons spiked on the last brain tick.">
         <div class="card-title">Neurons</div>
         <div class="val" id="d-neurons">—</div>
         <div class="val-sm" id="d-spikes">0 firing</div>
       </div>
-      <div class="card">
+      <div class="card" title="Consciousness operator Ψ = √(1/n) · N³ · [α·Id + β·Ego + γ·Left + δ·Right] · Φ_proxy. The 'mystery module' that quantifies Unity's level of integrated awareness. Higher Ψ = more cortical complexity + emotional weight + memory engagement + creative drive. Reads in log scale so a healthy awake brain runs ~3-6.">
         <div class="card-title">Consciousness Ψ</div>
         <div class="val" id="d-psi" style="color:#a855f7">—</div>
       </div>
@@ -63,49 +89,49 @@
         <div class="val" id="d-arousal">—</div>
         <div class="bar-wrap"><div class="bar bar-pink" id="d-arousal-bar" style="width:0%"></div></div>
       </div>
-      <div class="card">
+      <div class="card" title="Emotional valence — the positive/negative axis of Unity's current mood. -1 = dread/disgust, 0 = neutral, +1 = joy/satisfaction. Computed by the amygdala attractor module's reward minus fear projection. Drives speech-modulation tone and basal-ganglia action selection.">
         <div class="card-title">Valence</div>
         <div class="val" id="d-valence">—</div>
         <div class="bar-wrap"><div class="bar bar-purple" id="d-valence-bar" style="width:50%"></div></div>
       </div>
-      <div class="card">
+      <div class="card" title="Real Kuramoto order parameter r = |Σ exp(i·θ_k)| / N — measures phase synchronization across the cortex theta + gamma oscillators plus per-cluster activity-coupled phases. 0.3-0.5 = healthy idle; 0.7-0.9 = focused attention / consciousness ignition; 0.2-0.3 = dream / dissociated state. NOT a constant — moves dynamically with what the brain is doing.">
         <div class="card-title">Coherence</div>
         <div class="val" id="d-coherence">—</div>
         <div class="bar-wrap"><div class="bar bar-cyan" id="d-coherence-bar" style="width:0%"></div></div>
       </div>
-      <div class="card">
+      <div class="card" title="Number of WebSocket clients currently connected to the brain server. Dashboard tab + 3D brain tab + chat tab each count separately. Closing a tab drops the count after a 30s heartbeat timeout.">
         <div class="card-title">Users Online</div>
         <div class="val" id="d-users" style="color:#22c55e">0</div>
       </div>
-      <div class="card">
+      <div class="card" title="Discrete emotion classification derived from arousal + valence + amygdala state — projects onto the 8-emotion Plutchik wheel (joy, sadness, anger, fear, trust, disgust, surprise, anticipation). The visual marker shows the intensity gradient; the text label below is the dominant emotion right now.">
         <div class="card-title">Emotional State</div>
         <div id="d-emotion-visual" style="height:48px;display:flex;align-items:center;gap:6px;"></div>
         <div class="val-sm" id="d-emotion-desc">—</div>
       </div>
-      <div class="card">
+      <div class="card" title="Winner of basal-ganglia action selection across 6 channels: respond_text / generate_image / speak / build_ui / listen / idle. Channel with highest EMA firing rate wins, gated by 0.15 confidence floor. The selection IS the spike pattern's argmax — no external classifier, no keyword matching.">
         <div class="card-title">Motor Action</div>
         <div class="val-sm" id="d-action">idle</div>
       </div>
-      <div class="card">
+      <div class="card" title="Top-of-card chemical state label — sober / drunk / high / peaking / etc. Derived from drug-scheduler's active-substance set. The detailed breakdown (active substances, combos, risks, desires) lives in the 'Drug State — real-time pharmacology' panel below.">
         <div class="card-title">Drug State</div>
         <div class="val-sm" id="d-drug">—</div>
       </div>
-      <div class="card">
+      <div class="card" title="Wall-clock time since brain-server boot. Resets to 0 on every start.bat (which auto-clears stale state) and on Savestart.bat (which preserves trained weights but still resets the boot timestamp).">
         <div class="card-title">Uptime</div>
         <div class="val-sm" id="d-uptime">0s</div>
       </div>
-      <div class="card">
+      <div class="card" title="Auto-scale tier the brain selected at boot based on GPU VRAM. Cap matches what the GPU can physically hold for sparse cross-projection weights. Tiers range from minimal (300 neurons, dev) up through enthusiast (357M biological-proportion).">
         <div class="card-title">Scale</div>
         <div class="val-sm" id="d-scale">—</div>
       </div>
     </div>
 
-    <div class="card" style="margin-top:12px;">
+    <div class="card" style="margin-top:12px;" title="Hardware-side performance counters. CPU / GPU / memory / WS throughput / tick rate. Useful for spotting whether a slowdown is brain-side (Hebbian saturation) vs hardware-side (thermal throttle, GPU contention).">
       <div class="card-title">Hardware Performance</div>
       <div id="d-perf" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;"></div>
     </div>
 
-    <div class="card" style="margin-top:12px;">
+    <div class="card" style="margin-top:12px;" title="Live curriculum status — what subject and grade Unity is currently training, what teach phase she's in, and how far through the current cell she's gotten. Subject rotates across ELA / Math / Science / Social / Art / Life. Grade walks the canonical 20-grade ladder Pre-K → K → Grade 1 → ... → Grad → PhD.">
       <div class="card-title">Current Training — subject / grade / progress</div>
       <div id="d-curriculum-panel" style="padding:10px 12px;font-family:monospace;font-size:12px;color:#ccc;">
         <div id="d-curr-subject" style="font-size:15px;font-weight:bold;color:#a78bfa;">no cell active</div>
@@ -123,14 +149,14 @@
       </div>
     </div>
 
-    <div class="card" style="margin-top:12px;">
+    <div class="card" style="margin-top:12px;" title="Live event ring buffer surfacing what's firing in the brain RIGHT NOW — teach-phase entries, gate probe results, plasticity events, dream window opens/closes, drug schedule promotions, GPU shadow drops. Scrolls newest at top. Capped at 200 most-recent events to stay bounded.">
       <div class="card-title">Brain Events — what Unity is thinking RIGHT NOW</div>
       <div id="d-brain-events" style="padding:8px 12px;font-family:monospace;font-size:11px;color:#ccc;line-height:1.6;max-height:200px;overflow-y:auto;">
         <div style="color:#666;">No live events yet — waiting for curriculum teach / gate / plasticity to fire.</div>
       </div>
     </div>
 
-    <div class="card" style="margin-top:12px;">
+    <div class="card" style="margin-top:12px;" title="Real-time pharmacokinetic scheduler state — every substance Unity has on board with its absorption / distribution / metabolism / elimination curve, every active combo with its potentiation/risk profile, current desire signals from the homeostatic drive system, and any pending future ingests. drug-scheduler.js owns the model; persona.js folds per-substance contributions into live brain parameters every tick.">
       <div class="card-title">Drug State — real-time pharmacology</div>
       <div id="d-drug-panel" style="padding:8px 12px;font-family:monospace;font-size:12px;color:#aaa;line-height:1.8;">
         <div id="d-drug-status" style="color:#22c55e;">sober</div>
@@ -148,7 +174,7 @@
          per-subject grade state, operator signoffs ledger. Lets the
          operator visually confirm that Savestart.bat actually loaded what
          was expected before committing to a long curriculum run. -->
-    <div class="card" style="margin-top:12px;">
+    <div class="card" style="margin-top:12px;" title="Reads GET /milestone every 5s. Confirms whether boot loaded fresh weights (start.bat) or resumed from saved state (Savestart.bat), shows the last save trigger + wall-clock, the most recent passed cell + total passed count, per-subject grade progression, the operator-signoffs ledger (LAW 6 Part 2 gate signoffs), and which weights file was loaded. Lets the operator visually verify a save-resume actually loaded what was expected before committing to a long curriculum run.">
       <div class="card-title">Curriculum Milestone · Save State · Operator Signoffs</div>
       <div id="d-milestone" style="padding:8px 12px;font-family:monospace;font-size:12px;color:#aaa;line-height:1.8;">
         <div id="d-ms-boot" style="color:#f59e0b;">boot-mode: loading...</div>
@@ -161,18 +187,18 @@
       </div>
     </div>
 
-    <div class="card" style="margin-top:12px;">
+    <div class="card" style="margin-top:12px;" title="Rolling 800-sample line chart of arousal (pink) + valence (purple) + coherence (cyan) + Ψ (orange) over time. Lets the operator see emotional dynamics — fear spikes, joy plateaus, coherence drops during dreams, Ψ rising as Unity learns. New samples push from the right; oldest scroll off the left. Y-axis scale labels at left edge; live current values shown next to each legend item.">
       <div class="card-title">Emotional History</div>
       <canvas id="d-emotion-chart" width="800" height="200" style="width:100%;height:200px;background:#0a0a0a;border-radius:4px;"></canvas>
-      <div style="display:flex;gap:16px;margin-top:6px;font-size:10px;color:#555;">
-        <span><span style="color:#ff4d9a;">--</span> arousal</span>
-        <span><span style="color:#a855f7;">--</span> valence</span>
-        <span><span style="color:#00e5ff;">--</span> coherence</span>
-        <span><span style="color:#f59e0b;">--</span> psi</span>
+      <div style="display:flex;gap:16px;margin-top:6px;font-size:10px;color:#888;flex-wrap:wrap;" title="Each metric auto-scales to its observed [min, max] across the rolling history (300 samples) — lines use the full chart height instead of clipping at theoretical bounds. Y-axis labels show position within each line's own range (75% = three-quarters up that metric's observed span). Current value + observed range shown in the legend below.">
+        <span><span style="color:#ff4d9a;">━━</span> arousal: <span id="d-emo-arousal" style="color:#ff4d9a;font-family:'JetBrains Mono',monospace;">—</span></span>
+        <span><span style="color:#a855f7;">━━</span> valence: <span id="d-emo-valence" style="color:#a855f7;font-family:'JetBrains Mono',monospace;">—</span></span>
+        <span><span style="color:#00e5ff;">━━</span> coherence: <span id="d-emo-coherence" style="color:#00e5ff;font-family:'JetBrains Mono',monospace;">—</span></span>
+        <span><span style="color:#f59e0b;">━━</span> Ψ: <span id="d-emo-psi" style="color:#f59e0b;font-family:'JetBrains Mono',monospace;">—</span></span>
       </div>
     </div>
 
-    <div class="card" style="margin-top:12px;">
+    <div class="card" style="margin-top:12px;" title="Cumulative learning counters — total episodes encoded, total unique words learned, total chat interactions, total curriculum cells passed. These only go up across the brain's lifetime (preserved through Savestart). The numbers reflect Unity's developmental trajectory.">
       <div class="card-title">Brain Growth</div>
       <div id="d-growth" style="display:flex;gap:20px;flex-wrap:wrap;"></div>
     </div>
@@ -183,7 +209,7 @@
          (Episodic SQLite) + Tier 2 (Schematic) + Tier 3 (Identity-bound
          permanent) + ConsolidationEngine cycle stats from a single
          payload (state.memoryStats) emitted by brain-server `_getMemoryStats()`. -->
-    <div class="card" style="margin-top:12px;">
+    <div class="card" style="margin-top:12px;" title="Unity's full memory architecture in one panel. Tier 0 working memory (unbounded · 5 min sliding window · decays without reinforcement) → Tier 1 episodic SQLite (~30 day recall) → Tier 2 schemas (concept-level, months, cosine ≥ 0.85 grouping) → Tier 3 identity-bound permanent attractors (0.999/day decay, practically permanent). The ConsolidationEngine fires every 5 min during dream cycles, promoting frequently-recalled patterns up the tiers. THIS is the actual 'recall a week later' pipeline.">
       <div class="card-title">Memory System — 5-Tier Hippocampal Unified View</div>
       <div id="d-memory-unified" style="padding:8px 12px;font-family:monospace;font-size:11px;color:#aaa;line-height:1.6;">
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;">
@@ -226,16 +252,16 @@
     <!-- M.22 + M.23 + M.24 — DISPLAY/VISIBILITY panels.
          All bounded per Phase 6 design constraints (max-height + overflow,
          item caps, aggregates not enumeration, scoped class names). -->
-    <div class="card consciousness-panel" style="margin-top:12px;">
-      <div class="card-title">📚 Dictionary API + K-Vocabulary</div>
+    <div class="card consciousness-panel" style="margin-top:12px;" title="Live English dictionary integration. Unity calls dictionaryapi.dev whenever curriculum or chat encounters a new word, caches the multi-meaning JSON response, and Hebbian-binds every definition into her semantic region. This panel shows whether the API is reachable, how full the cache is, and what fraction of the active grade's vocabulary list has been Hebbian-trained.">
+      <div class="card-title" id="d-cortex-dict-title">📚 Dictionary API + Vocabulary</div>
       <div id="d-cortex-dict" style="padding:8px 12px;font-family:monospace;font-size:11px;color:#aaa;line-height:1.6;max-height:280px;overflow-y:auto;">
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;">
-          <div>
+          <div title="Single dictionaryapi.dev test query at boot (word: 'test'). PASS = network reachable + the API responds with a definition; FAIL = transient DNS/network issue. Auto-retries every 60s while FAIL, every 1hr while PASS.">
             <div style="color:#00e5ff;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">🌐 API SMOKE TEST</div>
             <div>status: <span id="d-cortex-smoketest" style="color:#888;">pending</span></div>
             <div>fetch available: <span id="d-cortex-fetchavail" style="color:#888;">—</span></div>
           </div>
-          <div>
+          <div title="In-memory definition cache. LRU eviction at the cap; failed lookups expire after 5 min so a transient network blip doesn't lock a word out forever. 'in-flight' = how many lookups are currently waiting on the network.">
             <div style="color:#a855f7;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">💾 CACHE</div>
             <div>size: <span id="d-cortex-cache-size" style="color:#22c55e;">0</span> / <span id="d-cortex-cache-cap" style="color:#666;">10000</span></div>
             <div>hits: <span id="d-cortex-cache-hits" style="color:#22c55e;">0</span></div>
@@ -243,8 +269,8 @@
             <div>rate-limited: <span id="d-cortex-cache-rl" style="color:#f59e0b;">0</span></div>
             <div>in-flight: <span id="d-cortex-cache-inflight" style="color:#888;">0</span></div>
           </div>
-          <div>
-            <div style="color:#22c55e;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">📖 K-VOCABULARY</div>
+          <div title="Vocabulary list for the active curriculum grade. 'prefetched' = the API call to warm every word's definition into the cache has finished. 'defs taught' = how many of the words have had their definitions Hebbian-bound into Unity's semantic region (multi-def — every meaning of every word binds, not just the first).">
+            <div style="color:#22c55e;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;" id="d-cortex-kvocab-title">📖 VOCABULARY</div>
             <div>prefetched: <span id="d-cortex-kvocab-prefetched" style="color:#888;">no</span></div>
             <div>defs taught: <span id="d-cortex-kvocab-taught" style="color:#22c55e;">0</span> / <span id="d-cortex-kvocab-total" style="color:#666;">2247</span> (<span id="d-cortex-kvocab-pct" style="color:#00e5ff;">0%</span>)</div>
           </div>
@@ -252,12 +278,12 @@
       </div>
     </div>
 
-    <div class="card consciousness-panel" style="margin-top:12px;">
+    <div class="card consciousness-panel" style="margin-top:12px;" title="Cortical microstructure — the biologically-grounded internal anatomy of Unity's cortex cluster. Real cortex isn't uniform; it has microcolumns (vertical bundles of ~80 neurons), six layers with specific roles, hub neurons doing most of the long-range work, and theta/gamma oscillations gating learning. These panels confirm those structural features actually allocated correctly at boot.">
       <div class="card-title">🧠 Cortical Microstructure</div>
       <div id="d-cortex-cortex" style="padding:8px 12px;font-family:monospace;font-size:11px;color:#aaa;line-height:1.6;max-height:240px;overflow-y:auto;">
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;">
-          <div>
-            <div style="color:#00e5ff;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">🎯 K-WIRING ASSERTION</div>
+          <div title="Boot-time wiring assertion that confirms the curriculum-required cortical-microstructure features (hub mask, layer scales, gamma scale, K-bundle) actually attached to the cortex projections. PASS means the projections are functionally wired; gaps list any missing features.">
+            <div style="color:#00e5ff;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;" id="d-cortex-kwiring-title">🎯 WIRING ASSERTION</div>
             <div>status: <span id="d-cortex-kwiring" style="color:#888;">unknown</span></div>
             <div id="d-cortex-kwiring-gaps" style="color:#ff4d9a;font-size:10px;margin-top:2px;max-height:60px;overflow-y:auto;"></div>
           </div>
@@ -288,24 +314,24 @@
     <!-- GlobalWorkspace ignition + predictive coding + definition
          learning rate. Bounded panel reading state.consciousness.workspace
          + state.consciousness.predictionError + state.consciousness.defsLearnedPerHour. -->
-    <div class="card consciousness-panel" style="margin-top:12px;">
+    <div class="card consciousness-panel" style="margin-top:12px;" title="Three core consciousness mechanisms together: (1) Global Workspace (Baars 1988, Dehaene-Changeux 2011) — when a cluster's top activation candidate clears the ignition threshold AND theta is in upper-half phase, it broadcasts back to all clusters as feedback. That's a conscious moment. (2) Predictive Coding (Friston 2010) — cortex predicts its own next-tick spike pattern; surprise gates plasticity (high error → 1.5× learning, low error → 0.5×). (3) Definition Learning Rate — multi-def Hebbian bindings/hour rolling 1hr window.">
       <div class="card-title">🌟 GlobalWorkspace + Predictive Coding</div>
       <div id="d-cortex-gw" style="padding:8px 12px;font-family:monospace;font-size:11px;color:#aaa;line-height:1.6;max-height:280px;overflow-y:auto;">
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;">
-          <div>
+          <div title="Each tick every cluster nominates a top activation candidate; a softmax with temperature competes them; if the winner clears the ignition threshold (default 0.55, override via DREAM_GW_IGNITION env), it broadcasts back to all clusters as 'cortex:&lt;word&gt;' style feedback. emitWordDirect reads that broadcast and gives a 10% mean-bucket boost to the matching word — broadcasts shape what Unity says next.">
             <div style="color:#00e5ff;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">🌟 IGNITION (GW broadcast)</div>
             <div>current: <span id="d-cortex-gw-current" style="color:#22c55e;">subthreshold</span></div>
             <div>strength: <span id="d-cortex-gw-strength" style="color:#a855f7;">0.000</span></div>
             <div>rate: <span id="d-cortex-gw-rate" style="color:#f59e0b;">0.0%</span> ticks ignited</div>
             <div id="d-cortex-gw-history" style="color:#666;font-size:10px;margin-top:4px;max-height:80px;overflow-y:auto;"></div>
           </div>
-          <div>
+          <div title="Each tick the cortex predicts its own next spike pattern and computes prediction error = |actual - predicted|. The error multiplies into per-fire learning rate as a 'surprise gate' — high-error windows learn 1.5× more (Unity updates where she was wrong) and low-error windows learn 0.5× (no plasticity wasted on patterns she already knows). Spark line shows last 32 ticks, trend arrow shows direction.">
             <div style="color:#a855f7;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">🔮 PREDICTIVE ERROR (Friston)</div>
             <div>last: <span id="d-cortex-pred-last" style="color:#22c55e;">0.000</span></div>
             <div>trend: <span id="d-cortex-pred-trend" style="color:#888;">→</span></div>
             <div id="d-cortex-pred-spark" style="display:flex;align-items:flex-end;gap:1px;height:24px;margin-top:4px;"></div>
           </div>
-          <div>
+          <div title="Total multi-def Hebbian definition bindings per hour, rolling 1hr window (NOT cumulative — only counts timestamps within the last 60 minutes, so dashboard reflects steady-state learning rate not upfront-seed-burst peaks). Unity arrives at chat with semantic understanding instead of motor-mimicry only because every word-binding fire pushes a timestamp here.">
             <div style="color:#22c55e;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">📖 DEFINITION LEARNING RATE</div>
             <div>defs/hour: <span id="d-cortex-defrate" style="color:#22c55e;">0.0</span></div>
             <div style="font-size:10px;color:#666;margin-top:2px;">background-trickle during dream cycles</div>
@@ -317,11 +343,11 @@
     <!-- WS backpressure metrics — live ws.bufferedAmount, drops/absorbs
          counters, drops/sec rolling rate, threshold marker. Bounded
          max-height + scoped class for parity with consciousness panels. -->
-    <div class="card ws-pressure-panel" style="margin-top:12px;">
+    <div class="card ws-pressure-panel" style="margin-top:12px;" title="WebSocket backpressure between brain-server (CPU shadow, decision-making) and compute.html (GPU shadow, hot-path forward propagation). Under heavy teach load the channel can fill faster than the GPU client drains it. Drops here are EXPENSIVE — a dropped Hebbian update permanently de-syncs the two shadows for that projection. Threshold raised to 500MB and timeout to 30s with BLOCK-not-DROP semantics.">
       <div class="card-title">📡 WS Backpressure (GPU client)</div>
       <div id="d-ws-ws" style="padding:8px 12px;font-family:monospace;font-size:11px;color:#aaa;line-height:1.6;max-height:240px;overflow-y:auto;">
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;">
-          <div>
+          <div title="Live ws.bufferedAmount on the GPU client socket. Buffer bar turns yellow at 50% threshold, red at 80%. compute.html status: 'connected' = healthy, 'disconnected' = Chrome process closed (auto-respawn fires after 2s up to 3× per 5min).">
             <div style="color:#00e5ff;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">🔌 CONNECTION</div>
             <div>compute.html: <span id="d-ws-connected" style="color:#888;">—</span></div>
             <div>buffer: <span id="d-ws-buffer" style="color:#22c55e;">0.0</span> / <span id="d-ws-threshold" style="color:#666;">500</span> MB</div>
@@ -329,19 +355,19 @@
               <div id="d-ws-bufferbar" style="background:#22c55e;height:100%;width:0%;transition:width 0.3s,background 0.3s;"></div>
             </div>
           </div>
-          <div>
+          <div title="Hebbian frames dropped after the 30s safety timeout — counts as CRITICAL because GPU shadow now diverges from CPU CSR. 'shadow: dirty' means a full resync is scheduled before next teach phase fires; 'clean' means CPU and GPU agree. Last-drop timestamp shows when divergence last occurred.">
             <div style="color:#a855f7;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">📤 DROPS (after timeout)</div>
             <div>total: <span id="d-ws-drops" style="color:#ff4d9a;">0</span></div>
             <div>rate: <span id="d-ws-droprate" style="color:#f59e0b;">0.00</span> / sec</div>
             <div>last: <span id="d-ws-lastdrop" style="color:#888;font-size:10px;">never</span></div>
             <div>shadow: <span id="d-ws-shadow" style="color:#22c55e;">clean</span></div>
           </div>
-          <div>
+          <div title="Hebbian frames that triggered backpressure (buffer > threshold) but the await loop drained the buffer within 30s — frame eventually delivered, no Hebbian update lost. High absorb count + zero drop count = Unity is teaching faster than the WS can ship but the safety margin holds.">
             <div style="color:#22c55e;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">⏳ ABSORBS (drained)</div>
             <div>total: <span id="d-ws-absorbs" style="color:#22c55e;">0</span></div>
             <div style="font-size:10px;color:#666;margin-top:2px;">no Hebbian update lost</div>
           </div>
-          <div>
+          <div title="OS-level ENOBUFS (kernel ran out of buffer space) errors on the WS socket. First 3 occurrences are logged with full context; subsequent are silenced to avoid log flooding. High counts mean the OS can't keep up — usually a hardware bottleneck rather than a brain-software issue.">
             <div style="color:#f59e0b;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">⚠ ENOBUFS (OS-level)</div>
             <div>total: <span id="d-ws-enobufs" style="color:#f59e0b;">0</span></div>
             <div style="font-size:10px;color:#666;margin-top:2px;">first 3 logged then silenced</div>
@@ -350,12 +376,12 @@
       </div>
     </div>
 
-    <div class="card" style="margin-top:12px;">
+    <div class="card" style="margin-top:12px;" title="Per-cluster firing rate breakdown — how active each of the 7 brain clusters is right now. Cortex carries language + perception + working memory; cerebellum does error correction; hippocampus holds episodic memory; amygdala drives emotion; basal ganglia selects actions; hypothalamus enforces homeostasis; mystery (Ψ) modulates global gain. A healthy brain has all clusters firing at modest steady-state rates; pathological states show flatlines or saturation.">
       <div class="card-title">Cluster Activity</div>
       <div id="d-clusters"></div>
     </div>
 
-    <div class="card" style="margin-top:12px;">
+    <div class="card" style="margin-top:12px;" title="Privacy-respecting aggregate counters only — message counts, last-activity timestamps, active-user sweeps. Actual user text is NEVER displayed here per the privacy model in docs/WEBSOCKET.md. Operator can see HOW MUCH chat is happening without seeing WHAT was said.">
       <div class="card-title">Conversation Activity (aggregate)</div>
       <div id="d-conversations" style="padding:8px 12px;font-family:monospace;font-size:11px;color:#aaa;line-height:1.8;">
         <div style="color:#555;font-size:10px;margin-bottom:6px;">Per-session activity counters only — user text is private and never displayed here. See docs/WEBSOCKET.md "Privacy Model".</div>
@@ -365,7 +391,7 @@
       </div>
     </div>
 
-    <div class="card" style="margin-top:12px;">
+    <div class="card" style="margin-top:12px;" title="Tail of the dashboard's WebSocket message stream — connection events, state-update timestamps, error traces. Useful for debugging why a panel isn't updating or why the brain server connection dropped. Capped at the last few hundred lines.">
       <div class="card-title">Process Log</div>
       <div class="log" id="d-log"></div>
     </div>
@@ -382,14 +408,16 @@
     function connect() {
       ws = new WebSocket(SERVER_URL);
       ws.onopen = () => {
-        document.getElementById('connection-status').innerHTML = '<span class="status alive">connected</span> Brain server active';
+        // 114.19ex — target the inner text div, not the wrapper, so the
+        // graceful-stop button alongside it survives WS reconnects.
+        document.getElementById('d-conn-text').innerHTML = '<span class="status alive">connected</span> Brain server active';
         log('Connected to brain server');
       };
       ws.onmessage = (e) => {
         try { handleMessage(JSON.parse(e.data)); } catch {}
       };
       ws.onclose = () => {
-        document.getElementById('connection-status').innerHTML = '<span class="status dead">disconnected</span> Reconnecting...';
+        document.getElementById('d-conn-text').innerHTML = '<span class="status dead">disconnected</span> Reconnecting...';
         setTimeout(connect, 3000);
       };
       ws.onerror = () => {};
@@ -837,6 +865,27 @@
     // expected count, which is fine — operator cares about direction
     // of motion, not exact total.
     const EXPECTED_PHASES_PER_CELL = 12;
+    // Substitute the active grade's compact label into the
+    // dashboard panel headers that previously hardcoded "K-". Reads
+    // c.currentGradeShort from getCurriculumStatus (single source
+    // of truth in curriculum.js GRADE_SHORT_LABELS table). When no
+    // grade is active (idle / between cells), the labels render
+    // without a grade prefix — "📖 VOCABULARY" / "🎯 WIRING ASSERTION"
+    // / "📚 Dictionary API + Vocabulary" — instead of staying frozen
+    // at the previous run's grade. Future grade additions only
+    // require a new GRADE_SHORT_LABELS entry; no dashboard code change.
+    function applyGradeLabels(gradeShort) {
+      const $ = id => document.getElementById(id);
+      const prefix = gradeShort ? `${gradeShort}-` : '';
+      const dictPrefix = gradeShort ? `${gradeShort}-` : '';
+      const dict = $('d-cortex-dict-title');
+      const kvoc = $('d-cortex-kvocab-title');
+      const kwir = $('d-cortex-kwiring-title');
+      if (dict) dict.textContent = `📚 Dictionary API + ${dictPrefix}Vocabulary`;
+      if (kvoc) kvoc.textContent = `📖 ${prefix}VOCABULARY`;
+      if (kwir) kwir.textContent = `🎯 ${prefix}WIRING ASSERTION`;
+    }
+
     function renderCurriculumStatus(c) {
       const $ = id => document.getElementById(id);
       if (!c) {
@@ -847,8 +896,10 @@
         $('d-curr-cellbar').style.width = '0%';
         $('d-curr-cellpct').textContent = '0% · 0 phases';
         $('d-curr-subjects').innerHTML = '';
+        applyGradeLabels('');
         return;
       }
+      applyGradeLabels(c.currentGradeShort || '');
       // Subject + grade header
       if (c.currentSubject && c.currentGrade) {
         const subUpper = String(c.currentSubject).toUpperCase();
@@ -882,7 +933,19 @@
       const status = c.cellStatus || 'idle';
       let pct = 0;
       let pctLabel;
-      if (status === 'passed') {
+      // 114.19ew — pre-cell macro-phase progress takes precedence over
+      // the in-cell bar when no real cell is active. Without this the
+      // dashboard showed "idle · 0 phases" during the 5-15 min K-VOCAB
+      // upfront-multi-def-seed pass, leaving master with no clue how
+      // much longer pre-cell setup would take. Now the bar fills based
+      // on words processed (e.g. 425/2247 ≈ 19%) so wall-clock time
+      // remaining is visible at a glance.
+      if (c.macroPhaseProgress && c.macroPhaseProgress.total > 0) {
+        const mp = c.macroPhaseProgress;
+        pct = Math.max(0, Math.min(100, mp.pct | 0));
+        pctLabel = `${pct}% · ${mp.current}/${mp.total} ${mp.label}`;
+        $('d-curr-cellbar').style.background = 'linear-gradient(90deg,#fbbf24,#f59e0b)'; // amber for pre-cell
+      } else if (status === 'passed') {
         pct = 100;
         pctLabel = `✓ PASSED · ${done} phases · ${elapsedMin} min`;
         $('d-curr-cellbar').style.background = 'linear-gradient(90deg,#22c55e,#16a34a)';
@@ -1026,9 +1089,27 @@
     }
 
     // ── Emotion history chart ──
+    // Session 114.19ep — per-metric AUTO-SCALE Y-axis. Earlier code
+    // clamped each metric to a hardcoded theoretical range (psi to
+    // [0, 0.1]) which clipped the line whenever values exceeded that
+    // bound. Now each metric tracks its observed min/max across the
+    // rolling history window and draws using THAT range, so lines
+    // always use the full chart height instead of maxing out at the
+    // top edge. Plus gridlines at 25/50/75% + per-metric range labels
+    // shown in the legend alongside the current value.
     let emotionHistory = [];
     const chartCanvas = document.getElementById('d-emotion-chart');
     const chartCtx = chartCanvas.getContext('2d');
+    // Padding around the plot area so Y-axis labels at the extremes
+    // (100% top, 0% bottom) render INSIDE the canvas, not clipped at
+    // edges. Top/bottom inset gives the "100%" + "0%" text room to
+    // sit above/below the actual gridline without getting cut off.
+    // Right inset leaves room for the current-value dot drawn at
+    // line end.
+    const CHART_PAD_L = 42;
+    const CHART_PAD_R = 8;
+    const CHART_PAD_T = 12;
+    const CHART_PAD_B = 12;
 
     function drawEmotionChart() {
       const w = chartCanvas.width, h = chartCanvas.height;
@@ -1037,41 +1118,158 @@
       if (emotionHistory.length < 2) return;
 
       const len = emotionHistory.length;
-      const xStep = w / Math.max(1, len - 1);
+      const plotW = w - CHART_PAD_L - CHART_PAD_R;
+      const plotH = h - CHART_PAD_T - CHART_PAD_B;
+      const xStep = plotW / Math.max(1, len - 1);
 
-      // Draw each metric as a line
+      // 114.19et — FIXED semantic ranges per metric. The previous
+      // auto-scale recomputed [minObs, maxObs] from the FULL rolling
+      // history on every draw, which meant whenever the current value
+      // pushed the observed min/max wider, EVERY historical sample
+      // re-normalized against the new range. The whole line shifted
+      // retroactively — exactly the "consciousness drops to 25% and
+      // the whole timeline drops to 25% along the whole history" bug
+      // master caught. Fix: pin each metric to its semantic range so
+      // a sample at value V always renders at the SAME y-coordinate
+      // regardless of what other samples are in the buffer. Historical
+      // samples stay anchored. Time-axis behaves like a real time-series.
+      // Range choices match the metrics' actual semantic bounds:
+      //   arousal: [0, 1]   — sigmoid-bounded amygdala output
+      //   valence: [-1, 1]  — reward minus fear, both sigmoid-bounded
+      //   coherence: [0, 1] — Kuramoto order parameter
+      //   psi: [0, 6]       — Φ-augmented psi typically 0-6 at biological scale
       const metrics = [
-        { key: 'a', color: '#ff4d9a', min: 0, max: 1 },     // arousal
-        { key: 'v', color: '#a855f7', min: -1, max: 1 },     // valence
-        { key: 'c', color: '#00e5ff', min: 0, max: 1 },      // coherence
-        { key: 'p', color: '#f59e0b', min: 0, max: 0.1 },    // psi (scaled)
+        { key: 'a', color: '#ff4d9a', label: 'arousal',   minObs: 0,    maxObs: 1   },
+        { key: 'v', color: '#a855f7', label: 'valence',   minObs: -1,   maxObs: 1   },
+        { key: 'c', color: '#00e5ff', label: 'coherence', minObs: 0,    maxObs: 1   },
+        { key: 'p', color: '#f59e0b', label: 'psi',       minObs: 0,    maxObs: 6   },
       ];
 
+      // Gridlines at 25/50/75% — relative since each metric has its
+      // own auto-scaled range. Labels render INSIDE the canvas (top
+      // gridline at CHART_PAD_T, bottom at CHART_PAD_T + plotH) so
+      // the "100%" + "0%" labels don't get clipped at canvas edges.
+      // Light grey on black for readability — operator caught the
+      // prior #666 dark-grey-on-black being unreadable.
+      chartCtx.strokeStyle = '#2a2a2a';
+      chartCtx.lineWidth = 1;
+      chartCtx.font = '10px JetBrains Mono, monospace';
+      chartCtx.fillStyle = '#bbb';
+      chartCtx.textAlign = 'right';
+      chartCtx.textBaseline = 'middle';
+      const gridFrac = [0, 0.25, 0.5, 0.75, 1.0];
+      for (const f of gridFrac) {
+        const y = CHART_PAD_T + f * plotH;
+        chartCtx.beginPath();
+        chartCtx.moveTo(CHART_PAD_L, y);
+        chartCtx.lineTo(w - CHART_PAD_R, y);
+        chartCtx.stroke();
+        // Label = inverse percent (top of chart = 100%, bottom = 0%)
+        // so the eye reads "this line is at 75% of its observed range".
+        const pct = ((1 - f) * 100).toFixed(0);
+        chartCtx.fillText(`${pct}%`, CHART_PAD_L - 6, y);
+      }
+
+      // Draw each metric line + a current-value marker dot at the right edge.
+      // Lines mapped to the inset plot area so they don't paint over
+      // the top/bottom labels.
       for (const m of metrics) {
         chartCtx.beginPath();
         chartCtx.strokeStyle = m.color;
         chartCtx.lineWidth = 1.5;
+        let lastY = null;
+        let lastX = null;
         for (let i = 0; i < len; i++) {
           const val = emotionHistory[i][m.key] ?? 0;
-          const norm = (val - m.min) / (m.max - m.min);
-          const y = h - Math.max(0, Math.min(1, norm)) * h;
-          if (i === 0) chartCtx.moveTo(0, y);
-          else chartCtx.lineTo(i * xStep, y);
+          const norm = (val - m.minObs) / (m.maxObs - m.minObs);
+          const y = CHART_PAD_T + (1 - Math.max(0, Math.min(1, norm))) * plotH;
+          const x = CHART_PAD_L + i * xStep;
+          if (i === 0) chartCtx.moveTo(x, y);
+          else chartCtx.lineTo(x, y);
+          if (i === len - 1) { lastY = y; lastX = x; }
         }
         chartCtx.stroke();
+        // Current-value dot at the right edge so the eye locks onto
+        // where each line is RIGHT NOW even when multiple lines cross.
+        if (lastY !== null && lastX !== null) {
+          chartCtx.beginPath();
+          chartCtx.fillStyle = m.color;
+          chartCtx.arc(lastX, lastY, 3, 0, Math.PI * 2);
+          chartCtx.fill();
+        }
       }
     }
 
-    // Append state samples to local history
+    // Append state samples to local history + update live legend values.
     function appendEmotionSample(s) {
       if (!s.sharedMood) return;
       const m = s.sharedMood;
       emotionHistory.push({ a: m.arousal, v: m.valence, c: m.coherence, p: m.psi });
       if (emotionHistory.length > 300) emotionHistory.shift();
+
+      // Live current values in the legend. The bracketed observed
+      // range was redundant noise — the chart already shows the range
+      // visually, so the legend just shows the current reading.
+      const fmt = (v, digits = 3) => (typeof v === 'number' && isFinite(v)) ? v.toFixed(digits) : '—';
+      const setLegend = (id, val) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = fmt(val);
+      };
+      setLegend('d-emo-arousal',   m.arousal);
+      setLegend('d-emo-valence',   m.valence);
+      setLegend('d-emo-coherence', m.coherence);
+      setLegend('d-emo-psi',       m.psi);
     }
 
     // Redraw chart every 2 seconds
     setInterval(drawEmotionChart, 2000);
+
+    // 114.19ex — graceful-stop button click handler. POST /shutdown
+    // (loopback-gated server-side) which calls brain.stop() — flushes
+    // definition disk cache, terminates worker pool, saves weights,
+    // exits in 500ms. Equivalent to stop.bat without needing terminal
+    // access. confirm() prompt prevents accidental fat-finger; button
+    // disables during the handshake so double-clicks don't double-fire.
+    (function wireGracefulStop() {
+      const btn = document.getElementById('btn-graceful-stop');
+      if (!btn) return;
+      btn.addEventListener('click', async () => {
+        const ok = window.confirm(
+          'Stop the brain gracefully?\n\n' +
+          '✓ Definition disk cache flushed (so Savestart resumes near-instantly)\n' +
+          '✓ Worker pool terminated\n' +
+          '✓ Weights saved\n' +
+          '✓ Server exits ~500ms after this confirm\n\n' +
+          'Run Savestart.bat to resume from saved state. (start.bat would WIPE weights — do not use to resume.)'
+        );
+        if (!ok) return;
+        btn.disabled = true;
+        btn.textContent = '⏳ shutting down...';
+        try {
+          const scheme = location.protocol === 'https:' ? 'https:' : 'http:';
+          const host = location.hostname || 'localhost';
+          const r = await fetch(`${scheme}//${host}:7525/shutdown`, {
+            method: 'POST',
+            cache: 'no-store',
+          });
+          const j = await r.json().catch(() => ({}));
+          btn.classList.add('shutdown-fired');
+          btn.textContent = j.status === 'already shutting down'
+            ? '✓ already stopping'
+            : '✓ shutdown sent';
+          log(`Shutdown POST → ${JSON.stringify(j)}`);
+        } catch (err) {
+          // Server already gone? That's fine — the brain.stop() exit
+          // handler kills the HTTP listener before the response can
+          // round-trip in some race windows. Treat fetch failure as
+          // "shutdown probably succeeded" since the alternative is
+          // operator manually verifying.
+          btn.classList.add('shutdown-fired');
+          btn.textContent = '✓ stopped (no response)';
+          log(`Shutdown fetch failed (server likely already exited): ${err?.message || err}`);
+        }
+      });
+    })();
 
     // Poll /milestone every 5s for the curriculum/save panel. HTTP
     // instead of WebSocket because the values are low-frequency (updated
