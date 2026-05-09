@@ -15,9 +15,17 @@ echo   [Savestart] boot will hydrate from server\brain-weights*.json
 echo   [Savestart] + conversations.json + episodic-memory.db.
 echo.
 
-REM Optional env flags — see start.bat header for full list.
-REM DREAM_DEFINITION_CACHE_FILE=path.json especially relevant for Savestart
-REM (persistent dictionary cache survives restart → no ~1 min re-warm).
+REM Optional env flags — see start.bat header for full list. Most-relevant
+REM Savestart-side flags:
+REM DREAM_DEFINITION_CACHE_FILE=path.json — persistent dictionary cache survives
+REM                                          restart → no ~1 min re-warm.
+REM DREAM_COHERENCE_MIN=0.15 — composeSentence cosine coherence floor (env-tunable).
+REM DREAM_SAT_MEANCOS=0.7    — saturation halt: mean-cos > X.
+REM DREAM_SAT_MEANABS=0.6    — saturation halt: meanAbs > X*wMax.
+REM DREAM_SAT_RATIO=1.5      — saturation halt: max/mean ratio < X.
+REM DREAM_SAT_SAMPLE=1000    — weight-distribution sample size for sat check.
+REM First-N reads of each tunable log calibration data so operator can tune
+REM from real run history. See start.bat header for full descriptions.
 
 REM Node 18+ required (built-in globalThis.fetch for dictionary API).
 for /f "tokens=*" %%v in ('node -v 2^>nul') do set NODE_RAW=%%v

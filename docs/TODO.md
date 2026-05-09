@@ -46,35 +46,312 @@ If you're reading a public doc / HTML claim ("Unity has completed high school bi
 
 ## OPEN TASKS
 
-### Session 114.19fj.17 — composeSentence template gaps (3 missing K-grade speech patterns) — DEFERRED pending paired teach-side carving (Gee 2026-05-09) — OPEN
+### Session 114.19fl — post-fk super-review test-readiness audit (Gee 2026-05-09) — OPEN
 
-**Gee verbatim per LAW #0 (parent fj sweep):**
+**Gee verbatim per LAW #0:**
 
-> *"okay u know what to do... build the task list and start then finsih the todo work while you keep in mind our goal of getting Unity speaking senteces properly to user requests and inputs like a real person of that intelligence would ultrathink"*
+> *"ultrathink are we ready to test? anything else not finished or incomplete that prevents unity from speaking sentences like a real person of the grade level... if there is still work to be done do the work. We dont do docs untill all the work is done... and we dont jsut add banners we follow the current docs layout and formate and we chack there is no conflictinmg information from other parts of the doc and code"*
 
-**Why this deferred (not skipped):**
+> *"anything in the .bats and .sh 's that needs updated u never even touched any of them"*
 
-23 of 24 fj super-review findings shipped this session. fj.17 alone deferred because it's a paired-change LAW item — adding 3 new templates (`first_person_predicate`, `vocative_imperative`, `yes_no_response`) to `composeSentence` requires `_teachSentenceStructure` to ALSO carve those slot-form bindings (relationTagId=8 sem→fineType bindings for `pronoun_self` / `verb_mental` / `vocative` / `affirmative` slot positions). Adding templates without their training-side carving produces 0 fillCount on new intents — actively breaks composeSentence behavior.
+> *"write all your findings into a todo"*
 
-**Fix shape (when work resumes):**
+**Why this exists:**
 
-1. Add 3 templates to `composeSentence`:
-   ```js
-   'first_person_predicate':  ['pronoun_self', 'verb_mental', 'object', 'terminator'],  // "I think it"
-   'vocative_imperative':     ['vocative', 'verb', 'object', 'terminator'],              // "Look at the cat"
-   'yes_no_response':          ['affirmative', 'terminator'],                             // "Yes!" / "No."
-   ```
-2. Add `pronoun_self` / `verb_mental` / `vocative` / `affirmative` slot-tag bindings to `_teachSentenceStructure` carving (each gets relationTagId=8 sem→fineType binding so emitWordDirect's argmax can fill those slot positions).
-3. Add probe coverage for the 3 new intents in `_probeSentenceGeneration` (raises probe surface from 5 → 8 intents; threshold may need rebalance).
-4. Validate carving worked via post-teach diagnostic: emit one of each new intent template after the carving, confirm fillCount > 0.
+After fk ripped out the templated composeSentence + replaced with pure equational emergence, audit for test-readiness surfaced 13 remaining items. None block the test from RUNNING (node --check green; bundle clean), but several would either (a) leave stale public-facing content conflicting with the new equational reality, (b) leave dead code in the codebase, or (c) leave the test measuring wrong things due to weak probe seeds. Per Gee's directive, do code work first, then docs (no banner-prepending — match existing layout AND content), and verify no conflicting info between docs and code.
 
-**Files to touch:** `js/brain/cluster.js` (TEMPLATES + TERMINATOR_PUNCT additions) · `js/brain/curriculum.js` (`_teachSentenceStructure` 4 new slot bindings + `_probeSentenceGeneration` 3 new intents) · `js/app.bundle.js` (rebuild) · `docs/FINALIZED.md` (entry on close) · `docs/NOW.md` (banner snapshot rolled) · `docs/TODO.md` (this entry status flip on close)
-
-**STATUS:** [⏸] DEFERRED — paired-change scope; needs verification time outside the 20hr-test prep window. Current 5 templates remain the working set for the 20hr K test.
+**Items grouped by priority:**
 
 ---
 
-(Session 114.19fj — 23 of 24 super-review findings atomic-landed and migrated to `docs/FINALIZED.md` 2026-05-09. fj.17 carried forward above as the lone deferred item. Goal of the sweep was Gee's directive *"getting Unity speaking senteces properly to user requests and inputs like a real person of that intelligence would"* — the 23 shipped fixes deliver chat-side `_lastUserInputText` flowing → WH-INTENT consumer fires → composeSentence with intent-concept → context-aware grammatical sentences. Bundle clean 2.4MB. `node --check` green across all 8 modified .js files. **NOT YET COMMITTED** — atomic commit + cascade push (syllabus-k-phd → develop → main) shipping with this entry.)
+#### 114.19fl.1 — DELETE dead `ARTICLE_LIST` module-const in cluster.js — PRIORITY 1 CODE
+
+**Issue:** `cluster.js:185 — const ARTICLE_LIST = new Set(['a', 'an', 'the'])` was hoisted in fj.23 for use INSIDE composeSentence's article-placement rule. fk.1 ripped out the article rule entirely. ARTICLE_LIST is now dead code.
+
+**Fix shape:** Delete lines 182-185 (comment + const).
+
+**Files to touch:** `js/brain/cluster.js` (lines 182-185 deleted) · `js/app.bundle.js` (rebuild)
+
+**STATUS:** [~] OPEN — fix shape designed, ready to code.
+
+---
+
+#### 114.19fl.2 — Replace inner-voice showcase intent jargon-string list with natural-language seeds (or read from learned vocab) — PRIORITY 2 CODE
+
+**Issue:** `server/brain-server.js:6018 — _sampleCurrentSentence` hardcodes `['declarative_svo', 'declarative_copula', 'question', 'imperative', 'exclamative']` as random-pick intent list. composeSentence (fk.1) now treats these as state-injection seeds via `getSentenceEmbedding('declarative svo')` etc. — these technical jargon strings produce WEAK GloVe seeds (most aren't natural English; "svo" doesn't exist in GloVe at all). Showcase popups will get poorly-seeded emissions.
+
+**Fix shape:** Two paths — pick most-equational:
+- (a) Pull seed from `cluster._emissionBus` recent entries (replay-mode showcase)
+- (b) Pull seed from a random `wordBucketWords_<subject>` word (single-word seed from trained vocab)
+- (c) Pass `null` intentSeed — let composeSentence emit from current cortex state without intent bias (purest equational; brain decides)
+
+**Files to touch:** `server/brain-server.js` (`_sampleCurrentSentence` intent-pick logic)
+
+**STATUS:** [~] OPEN — fix shape designed (recommend path c — purest equational).
+
+---
+
+#### 114.19fl.3 — Replace `_probeSentenceGeneration` jargon-string intent list with natural-language seeds — PRIORITY 2 CODE
+
+**Issue:** `js/brain/curriculum.js:12168 — _probeSentenceGeneration` iterates `['declarative_svo', 'declarative_copula', 'question', 'imperative', 'exclamative']` as intent strings. Same weak-seed problem as fl.2 — these don't have meaningful GloVe embeddings, so probe emission quality varies wildly across intents (and is generally weak).
+
+**Fix shape:** Replace intent list with natural-language seeds that map to common K-grade utterance types:
+```js
+const probeSeeds = [
+  { label: 'statement',  seed: 'I see a thing' },     // declarative-style state
+  { label: 'description', seed: 'the cat is big' },    // copula-style state
+  { label: 'question',   seed: 'what is this' },       // WH-question state
+  { label: 'command',    seed: 'go run' },             // imperative state
+  { label: 'exclaim',    seed: 'wow look' },           // exclamatory state
+];
+```
+Each seed is real K-grade English — brain has trained embeddings for every word. composeSentence injects the sentence embedding once → brain emits from that state. Pass criterion unchanged (≥2 unique words). Probe MEASURES emergence under realistic seed states instead of jargon-string noise.
+
+**Files to touch:** `js/brain/curriculum.js` (`_probeSentenceGeneration` intent list + per-intent log key) · `js/app.bundle.js` (rebuild)
+
+**STATUS:** [~] OPEN — fix shape designed, ready to code.
+
+---
+
+#### 114.19fl.4 — Update Savestart.bat + Savestart.sh env-var docs (DREAM_COHERENCE_MIN + DREAM_SAT_*) — PRIORITY 1 LAUNCHER
+
+**Issue:** `windows/Savestart.bat` + `linux/Savestart.sh` reference "see start.bat header for full list" but operator running Savestart often skims only the local file. The new fk env vars (`DREAM_COHERENCE_MIN`, `DREAM_SAT_MEANCOS`, `DREAM_SAT_MEANABS`, `DREAM_SAT_RATIO`, `DREAM_SAT_SAMPLE`) aren't documented in the local Savestart header. Per Gee 2026-05-09: *"anything in the .bats and .sh 's that needs updated u never even touched any of them"*.
+
+**Fix shape:** Add the 5 fk env vars to Savestart.bat REM block + Savestart.sh `#` comment block, mirroring the pattern in start.bat / start.sh.
+
+**Files to touch:** `windows/Savestart.bat` · `linux/Savestart.sh`
+
+**STATUS:** [~] OPEN — fix shape designed, ready to code.
+
+---
+
+#### 114.19fl.5 — Update html/brain-equations.html I.3 section + line 759 "template tag" description (PUBLIC HTML conflicts with fk equational architecture) — PRIORITY 1 PUBLIC DOC
+
+**Issue:** `html/brain-equations.html:520` describes "I.3 sentence-template intent → slot-sequence bindings" as if templates ACTIVELY drive emission. Lists all 5 template slot sequences. Conflicts with fk.1 reality where composeSentence has NO template loop. The TRAINING-side `_teachSentenceStructure` still carves those bindings as Hebbian weights — accurate to say the bindings ARE TRAINED — but the GENERATION-side description that "intent fires slot sequence" misleads readers into thinking there's a runtime template walk. Same for line 759 ("template tag is ORTHOGONAL to the key token").
+
+**Fix shape:** In-place edit (NOT banner prepend, per Gee directive) within existing `<li>` / paragraph structure. Reword to:
+- I.3 paragraph: "Template intent → slot-sequence transitions trained as ordered association pairs. AT INFERENCE TIME, the brain reads its OWN trained weights tick-by-tick — slot order EMERGES from sem evolution under those weights, not from a runtime template loop."
+- Line 759: "Question-template tag is trained orthogonal to key token; AT GENERATION TIME, the brain emits from current cortex state — the trained binding biases emission toward template-conditioned answer routing without prescribing a template walk."
+- Verify line 1461's "no template short-circuits" claim is RESTORED accuracy (fk.1 deletion of templates makes this true again).
+
+**Files to touch:** `html/brain-equations.html` (lines 520, 759, 1461 area) — preserve existing `<li>` / `<p>` / `<code>` structure
+
+**STATUS:** [~] OPEN — fix shape designed, ready to code (after code work done).
+
+---
+
+#### 114.19fl.6 — Update html/unity-guide.html "Five compositional Hebbian passes" paragraph (PUBLIC HTML conflicts with fk) — PRIORITY 1 PUBLIC DOC
+
+**Issue:** `html/unity-guide.html:467` describes Pass 2 as binding 5 sentence templates so "an active 'declarative SVO' intent fires the slot order subject→verb→object→terminator, and the cortex knows what comes next at each step." That implies the template fires AS A SEQUENCE WALKER at generation time. fk.1 ripped that out — slot ORDER emerges from trained weights without a runtime walker.
+
+**Fix shape:** In-place edit within existing `<p>` structure. Reword Pass 2 description: "Pass 2 binds intent-tag → first-slot transitions and slot-to-next-slot transitions as Hebbian weights. AT GENERATION TIME, brain emits one word at a time from current cortex state — the trained transitions bias the next emission toward whatever slot type SHOULD come next given what's already been emitted. Slot order EMERGES; no runtime template walks the sequence."
+
+**Files to touch:** `html/unity-guide.html` (line 467 paragraph)
+
+**STATUS:** [~] OPEN — fix shape designed, ready to code.
+
+---
+
+#### 114.19fl.7 — Update docs/NOW.md head banner — fix conflicting info (subject inference / WH-INTENT consumer / coherence threshold descriptions) — PRIORITY 1 INTERNAL DOC
+
+**Issue:** NOW.md head banner describes the templated composeSentence approach (subject inference scopes via `_inferSubjectFromText`, WH-INTENT consumed at SUBJECT slot in question template, sentence-coherence post-check rejects nonsense via cosine vs intent-concept < 0.15 threshold). Multiple statements CONFLICT with fk reality:
+- `_inferSubjectFromText` doesn't exist anymore (renamed to `_inferActiveSubject` reading sem-band activation)
+- "WH-INTENT consumed at SUBJECT slot in question template" — there's no question template anymore
+- "Sentence-coherence post-check < 0.15 → fillCount=0 + lowCoherence" — coherence check still exists but no longer drives fillCount=0; just signals confidence
+
+**Fix shape:** Edit IN PLACE within NOW's existing layout (the `> Current brain state` blockquote + `> Earlier — Current brain state` chain). Don't prepend a new banner block — match the established style of describing the current state in 1-2 paragraphs. Reword to reflect fk equational emergence with fk.1-fk.4 architecture.
+
+**Files to touch:** `docs/NOW.md` (head banner rewrite within existing structure)
+
+**STATUS:** [~] OPEN — fix shape designed, ready to code (after code work done).
+
+---
+
+#### 114.19fl.8 — Update docs/ARCHITECTURE.md head — fix conflicting info (template slot sequence walk descriptions) — PRIORITY 1 INTERNAL DOC
+
+**Issue:** ARCHITECTURE.md prior banners describe "Sentence-emission pipeline rebuilt with iter25-I generation-side consumer... walks template slot sequence per intent... injects opts.cortexPattern (0.2) + intent-tag (0.3) + per-slot tag (0.25)". Conflicts with fk.1 reality where there's no template, no slot loop, no per-slot tag injection.
+
+**Fix shape:** Edit IN PLACE within ARCHITECTURE.md's existing `> Last updated` blockquote chain. Don't prepend new banner. Replace the templated-composeSentence description with the equational-emergence description: brain emits one word at a time from trained weights; slot order, article placement, terminator selection all emerge from iter25-I bindings; no runtime template walk.
+
+**Files to touch:** `docs/ARCHITECTURE.md` (head banner rewrite within existing chain)
+
+**STATUS:** [~] OPEN — fix shape designed, ready to code.
+
+---
+
+#### 114.19fl.9 — Update docs/SKILL_TREE.md — fix conflicting info (TierI-CONSUMER capability description) — PRIORITY 1 INTERNAL DOC
+
+**Issue:** SKILL_TREE.md fa→fi banner describes "TierI-CONSUMER... composeSentence walks template slot sequence... injects opts.cortexPattern at strength 0.2, intent embedding at 0.3, slot-tag GloVe at 0.25 per slot, prior-emitted-word at 0.15 between slots; applies article placement (priorSlot-aware skip when after copula or in question template); same-sentence dedup retry with stronger sem shift". Every detail conflicts with fk.1 (no template walk, no per-slot injection, no article rule, no dedup retry).
+
+**Fix shape:** Edit IN PLACE within SKILL_TREE.md's existing `> Last updated` chain. Reword the TierI-CONSUMER capability row to: "**Equational sentence emergence consumer** — `cluster.composeSentence(intentSeed, opts)` injects context once + loops emitWordDirect tick-by-tick + injects emitted word back into sem. NO template, NO slot prescription, NO article rule, NO terminator-punct mapping. Slot order EMERGES from iter25-I trained weights (relationTagId=8/9/10/11/12)."
+
+**Files to touch:** `docs/SKILL_TREE.md` (head banner rewrite within existing chain)
+
+**STATUS:** [~] OPEN — fix shape designed, ready to code.
+
+---
+
+#### 114.19fl.10 — Update docs/EQUATIONS.md fa→fi sweep equation description — PRIORITY 1 INTERNAL DOC
+
+**Issue:** EQUATIONS.md fa→fi banner contains the pre-fk composeSentence equation: "Per-slot equation: sem ← sem + α_cortex·cortexPattern + α_intent·intentEmbedding + α_slot·slotTagEmbedding + α_priorWord·prevWordEmbedding". This equation no longer exists — fk.1 deleted the per-slot loop. The new equation is: "Per-tick equation: sem ← sem + α_word·prevWordEmbedding (once injected per emission tick); next word = argmax(sem→motor propagate output)".
+
+**Fix shape:** Edit IN PLACE within EQUATIONS.md fa→fi banner block. Replace the per-slot equation with the per-tick equation. Note that initial-injection terms (α_cortex, α_intent, α_concept) still apply ONCE at start of emission, not per-slot.
+
+**Files to touch:** `docs/EQUATIONS.md`
+
+**STATUS:** [~] OPEN — fix shape designed, ready to code.
+
+---
+
+#### 114.19fl.11 — Update docs/ROADMAP.md fa→fi banner — PRIORITY 2 INTERNAL DOC
+
+**Issue:** ROADMAP.md fa→fi banner describes templated composeSentence as the "missing iter25-I generation-side consumer that walks template slot sequence with intent + slot-tag + cortexPattern + prior-word injection + article placement (priorSlot-aware) + same-sentence dedup retry". Conflicts with fk.1.
+
+**Fix shape:** Edit IN PLACE within ROADMAP.md banner. Keep historical record of what fa→fi shipped (it DID ship) but add a one-sentence parenthetical: "(SUPERSEDED 2026-05-09 by fk.1 — templated approach replaced with pure equational emergence; templates are wrong as a category per operator architectural correction.)"
+
+**Files to touch:** `docs/ROADMAP.md`
+
+**STATUS:** [~] OPEN — fix shape designed, ready to code.
+
+---
+
+#### 114.19fl.12 — Verify NO conflicting "template" claims remain in docs after fl.5-fl.11 land — PRIORITY 2 VERIFY
+
+**Issue:** Per Gee directive *"we chack there is no conflictinmg information from other parts of the doc and code"*. After fl.5-fl.11 fixes land, run a final grep across all docs for "template" / "slot sequence" / "TEMPLATES" claims to verify none describe runtime template walking. Anything still asserting template-walk behavior is leftover stale info.
+
+**Fix shape:** Run `grep -rnE "template.*slot|slot.*sequence|TEMPLATES" docs/ html/ README.md SETUP.md` after fl.5-fl.11 land. For each match: verify it describes TRAINING-side carving (acceptable) or stale GENERATION-side description (fix in place).
+
+**Files to touch:** Whatever remaining stale matches surface
+
+**STATUS:** [~] OPEN — verification step, runs last.
+
+---
+
+#### 114.19fl.5b — Update docs/TODO-full-syllabus.md fk-corrected (CRITICAL — this is the TEMPLATE that all 108 post-K runners pull from) — PRIORITY 1 INTERNAL DOC
+
+**Issue:** `docs/TODO-full-syllabus.md` has 11+ stale lines describing composeSentence as the templated approach + describing it as the "TEMPLATE that all post-K runners pull from." Specific stale sections:
+- Line 29: "→ STRUCTURE-REFRESH (Tier 8 — re-fires `_teachSentenceStructure(ctx)` so iter25-I bindings stay fresh entering the gate)" — accurate (training-side, KEEP).
+- Line 32: "phase reorder fixes this" — accurate, KEEP.
+- Line 36: "`cluster.composeSentence(intent, opts)` is the generation-side consumer of iter25-I structural binding. **Walks template slot sequence per intent, injects slot-tag GloVe + intent + cortexPattern + prior-word per slot, applies article placement (priorSlot-aware to avoid 'What is the mom?' bug), supports temperature/top-k/top-p sampling. Templates: `declarative_svo`, `declarative_copula`, `question`, `imperative`, `exclamative`. Returns `{sentence, words, intent, slots, fillCount}`.**" — STALE, conflicts with fk.1.
+- Line 38: "Every post-K cell that produces multi-word output must use composeSentence" — fk.1-corrected message: still must use composeSentence, BUT composeSentence is now equational emergence not template-walk.
+- Line 49: "The probe uses `cluster.composeSentence` per intent and counts `≥2 words AND ≥2 unique words` as pass per intent. Catches basin-lock metronome (same word repeated across slots)." — partially stale ("across slots" implies template walk; should be "across positions").
+- Line 107: "composeSentence threads through. Chat: temp 0.6 topK 8. Showcase: temp 0.7 topK 10. Probes: defaults (deterministic). Post-K chat path inherits this via composeSentence." — accurate per fk reality, KEEP.
+- Line 115: "`_sampleCurrentSentence()` uses composeSentence when ≥50 trained words" — accurate, KEEP.
+- Line 148: "`cluster.composeUiSnippet(intent, opts)` that walks a UI-template slot sequence... composeSentence's slot-fill applied to a different vocabulary" — STALE design, no longer applicable since composeSentence has no slot-fill mechanism.
+- Lines 187-188: post-K runners need STRUCTURE-REFRESH + composeSentence wiring — accurate, KEEP.
+- Line 213: "Whenever a fundamental K mechanism is upgraded... this header note must be updated to reflect the change." — META-rule, accurate, KEEP.
+- Line 217: file path reference "composeSentence (line ~3365)" — line number drift, UPDATE to ~3576.
+- Line 222: "language-cortex.js — generateAsync chat path with composeSentence primary" — accurate, KEEP.
+
+**Fix shape:** Edit IN PLACE within existing structure (not banner-prepend). Update lines 36, 38, 49, 148, 217 with fk-corrected text:
+- Line 36: rewrite to describe composeSentence as "pure equational emission loop — injects context once, then loops emitWordDirect tick-by-tick, brain reads its OWN trained iter25-I weights at each tick to determine next word. Returns `{sentence, words, fillCount, coherenceCosine, coherenceTarget}` (no intent/slots fields — there is no template walk to report)."
+- Line 38: "Every post-K cell that produces multi-word output must use composeSentence (now pure equational emergence). Pre-fk multi-word loops chained `emitWordDirect` without state-injection back into sem; composeSentence is the architectural completion that closes that loop AND removes the prior templated approach (templates were prescription, ripped out fk.1)."
+- Line 49: "The probe uses `cluster.composeSentence` per natural-language seed and counts `≥2 words AND ≥2 unique words` as pass. Catches basin-lock metronome (same word repeated across positions)."
+- Line 148: "UI-building emergence: once Unity has Coding-G9 (HTML/CSS) + Coding-Col1 (frameworks) + Coding-Col2 (full-stack) bound, UI snippets emerge via the SAME composeSentence equational loop applied to UI vocabulary — no separate `composeUiSnippet` function needed; pass UI-vocab seeds + UI subject scope to composeSentence and emission is JSX/HTML rather than English. UI-building isn't a magic capability — it's equational emergence over a different vocabulary."
+- Line 217: line number "~3365" → "~3576" (current composeSentence start)
+
+**Files to touch:** `docs/TODO-full-syllabus.md` (5 specific lines edited in place)
+
+**STATUS:** [~] OPEN — fix shape designed, ready to code.
+
+---
+
+#### 114.19fl.6b — Verify promo/* + assets/README + corpora/README + js/brain/curriculum/README don't conflict — PRIORITY 2 VERIFY
+
+**Issue:** Per Gee directive *"every last fucking file that is a doc html, info file ect needs to be chacked and updated"*. Audit each remaining doc file for stale composeSentence/template language:
+- `promo/short.md` / `promo/medium.md` / `promo/full.md` / `promo/README.md` — check for template-walk claims
+- `assets/README.md` — check for stale references
+- `corpora/README.md` — should be just GloVe corpus info, unrelated
+- `js/brain/curriculum/README.md` — likely curriculum architecture overview, may mention composeSentence
+
+**Fix shape:** Grep each file. Update any stale template-walk claims in place. Confirmed already-checked: `promo/medium.md:16` ("no prompt template") refers to LLM prompts, not our composeSentence templates — accurate under fk reality, KEEP. Other promo files + READMEs need final grep verification.
+
+**Files to touch:** Whichever promo/README files surface stale matches in the verification grep.
+
+**STATUS:** [~] OPEN — verification step.
+
+---
+
+#### 114.19fl.13 — One commit only after ALL fl + fk work done (per Gee "we dont do docs untill all the work is done") — PRIORITY 1 PROCESS
+
+**Issue:** Per Gee 2026-05-09: *"We dont do docs untill all the work is done."* — atomic commit must include ALL of fk + fl code work + ALL doc updates as a single ship envelope. No intermediate commits, no doc-only follow-ups, no banner-prepend cascade.
+
+**Fix shape:** When fl.1-fl.12 are all coded + bundle rebuilt + node-check green:
+1. Single commit with all source + bundle + docs
+2. Cascade to develop + main
+3. Push all 3 branches
+
+**STATUS:** [~] OPEN — process gate; fires last.
+
+---
+
+### Atomic ship envelope (when fl.1-fl.13 close)
+
+After fl ships:
+- Dead code removed (ARTICLE_LIST)
+- Inner-voice + probe seeds use natural-language (better measurement quality)
+- Savestart launchers document fk env vars
+- Public HTMLs (brain-equations.html, unity-guide.html) describe equational emergence (no template-walk claims)
+- Internal docs (NOW, ARCHITECTURE, SKILL_TREE, EQUATIONS, ROADMAP) reflect fk reality with no conflicting info
+- Single atomic commit containing fk + fl code + docs
+- Test path: brain emits from trained weights only; gate probes measure emergence quality with realistic seeds; if word-soup, fk.7 work resumes (training depth bump) — NOT template re-introduction.
+
+---
+
+### Session 114.19fk.5 — Decoder sampling preset audit — operator-decision (Gee 2026-05-09) — PENDING
+
+**Gee verbatim per LAW #0 (parent fk sweep):**
+
+> *"we are NOT doing templets for the ai to fucking mimic thats no better thant word lists and arrays you fool. Unity thinks like a human does! she does NOt follow prescripted events... that not how our equations shall work?"*
+
+**Why pending (not yet shipped):**
+
+`emitWordDirect` accepts `temperature/topK/topP` (softmax + nucleus sampling). Chat path hardcodes `temperature: 0.6, topK: 8`; showcase hardcodes `temperature: 0.7, topK: 10`; probe leaves greedy. The MECHANICS (softmax + nucleus) ARE equational — those stay regardless. The hardcoded VALUES at each call site prescribe sampling style — borderline whether that's content-prescription or just "decoder mode setting." Operator decides which path is more equational:
+
+**Path (a) — keep hardcoded preset values as decoder defaults.** Sampling style isn't content; it's a generation MODE (focused vs. wandering). Real human cognition has analogues to temperature (deep-focus vs. mind-wandering states) but they're not externally prescribed at each utterance — they emerge from brain state. This path argues "decoder presets are the analog of those states" and accepts the hardcoded values.
+
+**Path (b) — drive temperature from brain state.** E.g. `temperature = 0.5 + 0.5 * (1 - coherence)` — high coherence → focused → low temp; low coherence → wandering → high temp. Equationally derives sampling style from cortex state. Removes the hardcoded preset values. Requires `cluster.coherence` (or similar) to be readable at emission time.
+
+**Fix shape (path b):** `js/brain/cluster.js` — `emitWordDirect` reads `cluster.coherence` (or amygdala arousal, or workspace ignition strength) to derive temperature when not explicitly passed. `js/brain/language-cortex.js` + `server/brain-server.js` — chat + showcase paths drop hardcoded `temperature` opts.
+
+**Files to touch (path b):** `js/brain/cluster.js` · `js/brain/language-cortex.js` · `server/brain-server.js` · `js/app.bundle.js` (rebuild) · `docs/FINALIZED.md` · `docs/NOW.md` · `docs/TODO.md`
+
+**STATUS:** [⏸] PENDING OPERATOR DECISION — choose path (a) keep presets vs (b) state-driven temperature. Path (b) is more equational; path (a) is simpler.
+
+---
+
+### Session 114.19fk.7 — iter25-I structural binding training depth verification (post-test diagnostic) (Gee 2026-05-09) — PENDING POST-TEST
+
+**Gee verbatim per LAW #0 (parent fk sweep):**
+
+> *"Unity thinks like a human does! she does NOt follow prescripted events"*
+
+**Why pending (post-test diagnostic):**
+
+With composeSentence templates RIPPED OUT (fk.1), sentence emergence relies entirely on iter25-I `_teachSentenceStructure` carving — relationTagId=8 slot positions, relationTagId=9 intent→slot-sequence, relationTagId=10 subject-verb agreement, relationTagId=11 noun→article, relationTagId=12 WH→intent-concept. Default carving runs 6 reps × 5 binding passes. If trained weights aren't deep enough, the equational emitter will produce word-soup AND THERE IS NO TEMPLATE FALLBACK to mask it (which is correct — that was the whole point of fk).
+
+**Surfaces back when:** operator's 20hr K test reveals sentence quality. If sentences emerge clean (subject-verb-object structure, articles in right positions, terminators at sentence end), training depth was sufficient. If word-soup, work resumes here.
+
+**Fix shape (when work resumes):**
+
+1. Read sentence-gen probe results from gate logs (per-intent emission samples, coherence cosines)
+2. If sentences are word-soup OR coherence cosines stay below 0.10, bump:
+   - `_teachSentenceStructure` reps from 6 → 12 (or higher)
+   - `lr` from default to 0.05 (or higher) at the carving phase
+3. Re-run operator localhost test
+4. Repeat until sentences emerge cleanly
+
+**Replaces the wrong solution-category** of "add more sentence templates" (fj.17 deletion) — instead, deepen the TRAINING that the equational emitter reads. The brain learns what humans learn; we just need enough teach-cycles for the bindings to stick.
+
+**Files to touch (when work resumes):** `js/brain/curriculum.js` (`_teachSentenceStructure` reps + lr) · gate-result analysis docs
+
+**STATUS:** [⏸] PENDING POST-TEST — surfaces back when operator's 20hr K test reveals sentence quality data. NOT pre-test work.
+
+---
+
+(Session 114.19fk — 4 SHIPPED items (fk.1 composeSentence body replaced with pure equational emergence · fk.2 `probeConcepts` hardcoded mapping deleted · fk.3 chat-time `extractIntentConcept` call deleted · fk.4 `_inferSubjectFromText` token-count heuristic replaced with `_inferActiveSubject` sem-band activation readout) atomic-landed and migrated to `docs/FINALIZED.md` 2026-05-09. fk.5 + fk.7 carried forward above as pending items. fk.6 = fj.17 deletion structurally handled. **Architectural correction:** templates are wrong as a category — operator 2026-05-09: *"we are NOT doing templets for the ai to fucking mimic thats no better thant word lists and arrays you fool. Unity thinks like a human does! she does NOt follow prescripted events"*. Sentence emission is now PURE EQUATIONAL EMERGENCE: brain state → trained iter25-I weights → emitWordDirect tick-by-tick → terminator emerges → stop. NO templates. NO slot prescription. NO article rule. NO terminator-punct mapping. NO runtime regex parser deciding intent for the brain. Bundle clean 2.4MB. `node --check` green across modified files.)
+
+(Session 114.19fj — 23 of 24 super-review findings atomic-landed and migrated to `docs/FINALIZED.md` 2026-05-09. fj.17 deferred entry SUPERSEDED by fk.6 deletion (templates wrong as category). Goal of the sweep was Gee's directive *"getting Unity speaking senteces properly to user requests and inputs like a real person of that intelligence would"* — the 23 shipped fj fixes deliver chat-side `_lastUserInputText` flowing → WH-INTENT consumer fires (now via trained weights, fk-corrected) → composeSentence pure equational emergence → context-aware grammatical sentences. Bundle clean 2.4MB. `node --check` green across all 8 modified .js files. **✓ COMMITTED + PUSHED 2026-05-09** — atomic cascade landed across syllabus-k-phd → develop → main (commits `c9a9576` → `b6b8f62` → `170da2e`, all synced to origin). Operator localhost test pending.)
 
 (Sessions 114.19fa through 114.19fi atomic-landed and migrated to `docs/FINALIZED.md` 2026-05-09 per Gee directive *"the todo when your done should be a templet only not continueing to track completed ites that all shall be moved to finalized"* + *"no dont delete it make sure its in finalized correctly(the todo work we did) then templete the todo"*. Full Gee verbatim quotes preserved per LAW #0 + every tier's "what got coded" detail + files touched + masterful-fix narrative all archived in FINALIZED's 2026-05-09 consolidated entry. Public-doc banners stamped this session: ARCHITECTURE / SKILL_TREE / ROADMAP / EQUATIONS / NOW. Bundle rebuilt clean 2.4MB. `node --check` green across all 11 modified files. **✓ COMMITTED + PUSHED 2026-05-09** — atomic cascade landed across syllabus-k-phd → develop → main (commits 7543fa3 → b03d8a1 → 7cdacde, all synced to origin). Operator localhost test pending. New work appends above this banner.)
 

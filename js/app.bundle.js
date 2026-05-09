@@ -5059,7 +5059,6 @@ function injectEmbeddingToRegionOffset(cluster, regionName, emb, strength, offse
   }
 }
 var T14_TERMINATORS = /* @__PURE__ */ new Set([".", "?", "!"]);
-var ARTICLE_LIST = /* @__PURE__ */ new Set(["a", "an", "the"]);
 var COHERENCE_MIN = (() => {
   try {
     const v = parseFloat(typeof process !== "undefined" && process?.env?.DREAM_COHERENCE_MIN);
@@ -6119,46 +6118,43 @@ var NeuronCluster = class {
     return out;
   }
   /**
-   * 114.19fi.A.2 — Subject inference from user input text. Scans the
-   * text for vocab hits across `wordBucketWords_<subj>` arrays and
-   * returns the dominant subject (highest hit count). Used by the
-   * chat path to scope `composeSentence({subject})` to the user's
-   * topic — math questions select math vocab, life questions select
-   * life vocab, etc. Without this, composeSentence scans all 6 sub-
-   * bands which produces "the cat seven blue ran" cross-domain salad.
+   * 114.19fk.4 — REPLACES the prior `_inferSubjectFromText` token-count
+   * heuristic (deleted). Operator 2026-05-09: *"Unity thinks like a
+   * human does! she does NOt follow prescripted events"*. The token-
+   * count approach was a runtime regex-style heuristic that decided
+   * subject FROM USER TEXT — prescription. The CORRECT equational read
+   * is: which subject sub-band shows highest activation in the brain's
+   * own state (after the user's words have been injected via injectText
+   * + propagate). The brain DECIDED which subject is active; this
+   * function just READS that decision.
    *
-   * Returns the dominant subject name or null when no vocab hits
-   * (caller falls through to all-bands scan).
+   * Returns the active subject name based on `lastSpikes` activation
+   * across `word_motor_<subj>` sub-bands, or null when no sub-band
+   * has meaningful activation (caller falls through to all-bands scan).
    *
-   * @param {string} userText — raw user input
-   * @returns {string|null} subject ('ela'/'math'/'science'/'social'/'art'/'life'/'coding')
+   * @returns {string|null} subject ('ela'/'math'/'science'/'social'/'art'/'life')
    */
-  _inferSubjectFromText(userText) {
-    if (!userText || typeof userText !== "string") return null;
-    const text = userText.toLowerCase();
-    if (text.length === 0) return null;
-    const tokens = text.match(/[a-z]+/g) || [];
-    if (tokens.length === 0) return null;
-    const SUBJECTS_LOCAL = ["ela", "math", "science", "social", "art", "life"];
-    const tokenSet = new Set(tokens);
+  _inferActiveSubject() {
+    if (!this.regions || !this.lastSpikes) return null;
+    const subjects = ["ela", "math", "science", "social", "art", "life"];
     let bestSubj = null;
-    let bestHits = 0;
-    for (const subj of SUBJECTS_LOCAL) {
-      const wordsList = this[`wordBucketWords_${subj}`];
-      if (!Array.isArray(wordsList) || wordsList.length === 0) continue;
-      let hits = 0;
-      for (const w of wordsList) {
-        if (tokenSet.has(String(w).toLowerCase())) hits++;
+    let bestActivation = 0;
+    for (const subj of subjects) {
+      const region = this.regions[`word_motor_${subj}`];
+      if (!region) continue;
+      let sum = 0;
+      const len = region.end - region.start;
+      if (len <= 0) continue;
+      for (let n = region.start; n < region.end; n++) {
+        sum += this.lastSpikes[n] || 0;
       }
-      if (hits > bestHits) {
-        bestHits = hits;
+      const mean = sum / len;
+      if (mean > bestActivation) {
+        bestActivation = mean;
         bestSubj = subj;
       }
     }
-    if (bestHits >= 1 && bestHits / tokens.length >= 0.1) {
-      return bestSubj;
-    }
-    return null;
+    return bestActivation > 0.05 ? bestSubj : null;
   }
   /**
    * Saturation health check on sem→motor projection. Returns
@@ -7370,197 +7366,120 @@ var NeuronCluster = class {
     }
   }
   /**
-   * 114.19fg.Tier8/9/I-consumer — Slot-driven sentence composition.
+   * 114.19fk.1 — RIPPED OUT template prescription system. composeSentence
+   * is now a pure equational emission loop — no template, no slot
+   * sequence prescription, no article rule, no terminator-punct mapping,
+   * no pronoun exclusion, no dedup retry mechanism. Operator 2026-05-09:
+   * *"we are NOT doing templets for the ai to fucking mimic thats no
+   * better thant word lists and arrays you fool. Unity thinks like a
+   * human does! she does NOt follow prescripted events... that not how
+   * our equations shall work?"*
    *
-   * iter25-I trained four binding passes:
-   *   relationTagId=8  — sem(word) → fineType(slot_tag)  (slot-position primitives)
-   *   relationTagId=9  — sem(intent) → sem(first_slot)   (template intent → slot sequence)
-   *   relationTagId=10 — sem(subject) → sem(verb_form)   (subject-verb agreement)
-   *   relationTagId=11 — sem(noun) → sem(article)        (article placement)
+   * The TRAINED iter25-I weights handle everything that used to be
+   * hardcoded:
+   *   relationTagId=8  — slot-position primitives → emitWordDirect's
+   *                       argmax picks slot-appropriate word from sem state
+   *   relationTagId=9  — sem(intent)→sem(first_slot) → slot ORDER emerges
+   *                       from sem evolution under trained weights
+   *   relationTagId=10 — subject-verb agreement → emerges from word→word
+   *                       Hebbian propagation tick-by-tick
+   *   relationTagId=11 — noun→article → article placement emerges from
+   *                       trained weights (when "the cat" was seen during
+   *                       training, sem(cat) ← sem(the) bias landed)
+   *   relationTagId=12 — WH→intent-concept → emerges automatically when
+   *                       user types "what is X", brain reads its own
+   *                       activation
    *
-   * The TRAINING side carved positional rules into trained weights, but
-   * NO GENERATION CONSUMER walked the slot sequence at emission time.
-   * Both `_probeSentenceGeneration` and `generateAsync` chained
-   * `emitWordDirect` calls without slot-tag bias — produced multi-word
-   * output but not grammatical sentences.
+   * Loop: inject context once → emit one word → inject emitted word back
+   * into sem so next tick reads shifted state → repeat until terminator
+   * EMERGES from trained weights or budget exhausted.
    *
-   * `composeSentence(intent)` is the generation-side consumer:
-   *   1. Inject intent embedding into sem so cortex enters intent state
-   *      (consumes relationTagId=9 sem→sem binding).
-   *   2. For each slot in the template's sequence:
-   *      a. Inject slot-tag GloVe into sem so emitWordDirect's argmax
-   *         biases toward words bound to this slot (consumes
-   *         relationTagId=8 sem→fineType + emitWordDirect mean argmax).
-   *      b. Pre-slot article check: if entering subject/object slot
-   *         and the next emitted word is likely a singular common noun,
-   *         insert article ('a' / 'an' / 'the') before emit (consumes
-   *         relationTagId=11 noun→article).
-   *      c. Call emitWordDirect to fill the slot.
-   *      d. Inject emitted word back into sem so the next slot's emit
-   *         reads a state shifted by what was just produced.
-   *   3. Append terminator punctuation per intent (. ? !).
-   *   4. Capitalize first word.
-   *
-   * Pass criterion at probe time = ≥2 words emitted across slots AND
-   * ≥2 unique words. Real sentence emerges when basins are clean and
-   * iter25-I bindings are intact.
-   *
-   * Returns `{ sentence, words, intent, slots, fillCount }` so callers
-   * can decide whether to use the result based on fillCount vs slot
-   * count (partial sentences are still useful diagnostically).
-   *
-   * @param {string} intent — one of declarative_svo / declarative_copula
-   *                          / question / imperative / exclamative
-   * @param {object} opts — { subject? } sub-band hint for emitWordDirect
-   * @returns {{ sentence: string, words: string[], intent: string,
-   *            slots: string[], fillCount: number } | null}
+   * @param {string|Float32Array|null} intentSeed — optional seed embedding
+   *   or text to inject ONCE at start. Caller decides what STATE to put
+   *   Unity in; emission emerges from that state. NOT a template selector.
+   * @param {object} opts
+   * @param {string}              [opts.subject]       — sub-band hint for emitWordDirect
+   * @param {Float32Array}        [opts.cortexPattern] — chain-blended seed
+   * @param {string}              [opts.intentConcept] — WH-INTENT seed
+   * @param {number}              [opts.temperature]   — decoder temp
+   * @param {number}              [opts.topK]          — decoder top-K
+   * @param {number}              [opts.topP]          — decoder nucleus
+   * @param {number}              [opts.maxWords=12]   — emission budget
+   * @param {AbortSignal}         [opts.signal]        — cancellation
+   * @returns {{ sentence: string, words: string[], fillCount: number,
+   *            coherenceCosine: number|null, coherenceTarget: string|null } | null}
    */
-  composeSentence(intent, opts = {}) {
+  composeSentence(intentSeed = null, opts = {}) {
     if (!this.regions || !this.regions.sem || typeof this.injectEmbeddingToRegion !== "function") {
       return null;
     }
     if (typeof this.emitWordDirect !== "function") return null;
-    const TEMPLATES = {
-      "declarative_svo": ["subject", "verb", "object", "terminator"],
-      "declarative_copula": ["subject", "copula", "modifier", "terminator"],
-      "question": ["qword", "copula", "subject", "terminator"],
-      "imperative": ["verb", "object", "terminator"],
-      "exclamative": ["subject", "verb", "object", "terminator"]
-    };
-    const TERMINATOR_PUNCT = {
-      "declarative_svo": ".",
-      "declarative_copula": ".",
-      "question": "?",
-      // 114.19fj.22 — keep '!' for imperative + exclamative. K-grade
-      // Unity sounds emphatic; this matches her energy register.
-      "imperative": "!",
-      "exclamative": "!"
-    };
-    const PRONOUNS = /* @__PURE__ */ new Set(["i", "you", "he", "she", "it", "we", "they", "me", "him", "her", "us", "them", "my", "your", "his", "our", "their"]);
-    const intentName = String(intent || "declarative_svo").toLowerCase();
-    const slots = TEMPLATES[intentName] || TEMPLATES["declarative_svo"];
-    let cumulativeInjection = 0;
-    const INJECTION_HARD_CAP = 2.5;
-    const tryInject = (regionName, embedding, strength) => {
-      if (!embedding || embedding.length === 0) return false;
-      if (cumulativeInjection + strength > INJECTION_HARD_CAP) {
-        if (!this._composeStats) this._composeStats = { calls: 0, fills: 0, partial: 0, empty: 0 };
-        this._composeStats.cappedInjections = (this._composeStats.cappedInjections || 0) + 1;
-        return false;
-      }
-      try {
-        this.injectEmbeddingToRegion(regionName, embedding, strength);
-        cumulativeInjection += strength;
-        return true;
-      } catch {
-        return false;
-      }
-    };
-    const checkAborted = () => {
-      if (opts.signal && opts.signal.aborted) {
-        if (!this._composeStats) this._composeStats = { calls: 0, fills: 0, partial: 0, empty: 0 };
-        this._composeStats.aborted = (this._composeStats.aborted || 0) + 1;
-        return true;
-      }
-      return false;
-    };
-    if (checkAborted()) return null;
-    if (opts.cortexPattern && opts.cortexPattern.length > 0) {
-      tryInject("sem", opts.cortexPattern, 0.2);
+    const checkAborted = () => opts.signal && opts.signal.aborted;
+    if (checkAborted()) {
+      if (!this._composeStats) this._composeStats = { calls: 0, fills: 0, partial: 0, empty: 0 };
+      this._composeStats.aborted = (this._composeStats.aborted || 0) + 1;
+      return null;
     }
-    if (sharedEmbeddings && typeof sharedEmbeddings.getSentenceEmbedding === "function") {
+    if (opts.cortexPattern && opts.cortexPattern.length > 0) {
       try {
-        const intentSeed = intentName.replace(/_/g, " ");
-        const intentEmb = sharedEmbeddings.getSentenceEmbedding(intentSeed);
-        if (intentEmb && intentEmb.length > 0) {
-          tryInject("sem", intentEmb, 0.3);
+        this.injectEmbeddingToRegion("sem", opts.cortexPattern, 0.2);
+      } catch {
+      }
+    }
+    if (intentSeed) {
+      try {
+        let seedEmb = null;
+        if (typeof intentSeed === "string") {
+          if (sharedEmbeddings && typeof sharedEmbeddings.getSentenceEmbedding === "function") {
+            seedEmb = sharedEmbeddings.getSentenceEmbedding(intentSeed.replace(/_/g, " "));
+          }
+        } else if (intentSeed.length > 0) {
+          seedEmb = intentSeed;
+        }
+        if (seedEmb && seedEmb.length > 0) {
+          this.injectEmbeddingToRegion("sem", seedEmb, 0.3);
+        }
+      } catch {
+      }
+    }
+    if (opts.intentConcept && sharedEmbeddings && typeof sharedEmbeddings.getEmbedding === "function") {
+      try {
+        const conceptEmb = sharedEmbeddings.getEmbedding(opts.intentConcept);
+        if (conceptEmb && conceptEmb.length > 0) {
+          this.injectEmbeddingToRegion("sem", conceptEmb, 0.3);
         }
       } catch {
       }
     }
     const words = [];
-    const seen = /* @__PURE__ */ new Set();
-    let fillCount = 0;
-    const subjScope = opts.subject || null;
-    let priorSlot = null;
-    for (let i = 0; i < slots.length; i++) {
-      if (checkAborted()) return null;
-      const slot = slots[i];
-      if (slot === "terminator") {
-        const punct = TERMINATOR_PUNCT[intentName] || ".";
-        if (words.length > 0) words[words.length - 1] = words[words.length - 1] + punct;
-        break;
+    const MAX_WORDS2 = typeof opts.maxWords === "number" && opts.maxWords > 0 ? Math.floor(opts.maxWords) : 12;
+    for (let i = 0; i < MAX_WORDS2; i++) {
+      if (checkAborted()) {
+        if (!this._composeStats) this._composeStats = { calls: 0, fills: 0, partial: 0, empty: 0 };
+        this._composeStats.aborted = (this._composeStats.aborted || 0) + 1;
+        return null;
       }
-      if (sharedEmbeddings && typeof sharedEmbeddings.getEmbedding === "function") {
-        try {
-          const slotEmb = sharedEmbeddings.getEmbedding(slot);
-          if (slotEmb && slotEmb.length > 0) {
-            tryInject("sem", slotEmb, 0.25);
-          }
-        } catch {
-        }
-      }
-      if (intentName === "question" && slot === "subject" && opts.intentConcept && typeof opts.intentConcept === "string" && sharedEmbeddings && typeof sharedEmbeddings.getEmbedding === "function") {
-        try {
-          const conceptEmb = sharedEmbeddings.getEmbedding(opts.intentConcept);
-          if (conceptEmb && conceptEmb.length > 0) {
-            tryInject("sem", conceptEmb, 0.3);
-          }
-        } catch {
-        }
-      }
-      const emitOptsBase = { skipRecentTrack: true };
-      if (subjScope) emitOptsBase.subject = subjScope;
-      if (typeof opts.temperature === "number") emitOptsBase.temperature = opts.temperature;
-      if (typeof opts.topK === "number") emitOptsBase.topK = opts.topK;
-      if (typeof opts.topP === "number") emitOptsBase.topP = opts.topP;
+      const emitOpts = { skipRecentTrack: true };
+      if (opts.subject) emitOpts.subject = opts.subject;
+      if (typeof opts.temperature === "number") emitOpts.temperature = opts.temperature;
+      if (typeof opts.topK === "number") emitOpts.topK = opts.topK;
+      if (typeof opts.topP === "number") emitOpts.topP = opts.topP;
       let word = "";
       try {
-        word = this.emitWordDirect(emitOptsBase) || "";
+        word = this.emitWordDirect(emitOpts) || "";
       } catch {
         word = "";
       }
-      if (!word) {
-        break;
-      }
+      if (!word) break;
       word = String(word).toLowerCase().trim();
       if (!word) break;
-      if (seen.has(word)) {
-        if (sharedEmbeddings && typeof sharedEmbeddings.getEmbedding === "function") {
-          try {
-            const dupEmb = sharedEmbeddings.getEmbedding(word);
-            if (dupEmb && dupEmb.length > 0) {
-              tryInject("sem", dupEmb, 0.3);
-            }
-          } catch {
-          }
+      if (T14_TERMINATORS.has(word)) {
+        if (words.length > 0) {
+          words[words.length - 1] = words[words.length - 1] + word;
         }
-        const retryOpts = {
-          ...emitOptsBase,
-          temperature: (typeof emitOptsBase.temperature === "number" ? emitOptsBase.temperature : 0) + 0.4
-        };
-        try {
-          word = this.emitWordDirect(retryOpts) || "";
-        } catch {
-          word = "";
-        }
-        word = String(word).toLowerCase().trim();
-        if (!word || seen.has(word)) {
-          break;
-        }
-      }
-      const articleCandidate = (slot === "subject" || slot === "object") && /^[a-z]+$/.test(word) && !PRONOUNS.has(word) && word.length >= 3 && priorSlot !== "copula" && intentName !== "question";
-      if (articleCandidate) {
-        const prevWord = words.length > 0 ? words[words.length - 1] : "";
-        if (!ARTICLE_LIST.has(prevWord)) {
-          const article = /^[aeiou]/.test(word) ? "an" : "the";
-          words.push(article);
-        }
+        break;
       }
       words.push(word);
-      seen.add(word);
-      fillCount++;
-      priorSlot = slot;
       if (typeof this.trackRecentEmission === "function") {
         this.trackRecentEmission(word);
       }
@@ -7568,7 +7487,7 @@ var NeuronCluster = class {
         try {
           const wordEmb = sharedEmbeddings.getEmbedding(word);
           if (wordEmb && wordEmb.length > 0) {
-            tryInject("sem", wordEmb, 0.15);
+            this.injectEmbeddingToRegion("sem", wordEmb, 0.15);
           }
         } catch {
         }
@@ -7580,12 +7499,12 @@ var NeuronCluster = class {
       this._composeStats.empty++;
       return null;
     }
-    if (fillCount >= slots.length - 1) this._composeStats.fills++;
-    else this._composeStats.partial++;
+    this._composeStats.fills++;
     words[0] = words[0].charAt(0).toUpperCase() + words[0].slice(1);
     const sentence = words.join(" ");
-    let coherenceTarget = null;
+    let coherenceCosine = null;
     let coherenceTargetLabel = null;
+    let coherenceTarget = null;
     if (opts.intentConcept && sharedEmbeddings && typeof sharedEmbeddings.getEmbedding === "function") {
       try {
         coherenceTarget = sharedEmbeddings.getEmbedding(opts.intentConcept);
@@ -7600,7 +7519,7 @@ var NeuronCluster = class {
     if (coherenceTarget && sharedEmbeddings && typeof sharedEmbeddings.getSentenceEmbedding === "function") {
       try {
         const sentenceEmb = sharedEmbeddings.getSentenceEmbedding(sentence);
-        if (sentenceEmb && sentenceEmb.length > 0 && coherenceTarget.length > 0) {
+        if (sentenceEmb && sentenceEmb.length > 0) {
           let dot = 0, na = 0, nb = 0;
           const L = Math.min(coherenceTarget.length, sentenceEmb.length);
           for (let i = 0; i < L; i++) {
@@ -7609,24 +7528,20 @@ var NeuronCluster = class {
             nb += sentenceEmb[i] * sentenceEmb[i];
           }
           const denom = Math.sqrt(na) * Math.sqrt(nb);
-          const cosine = denom > 0 ? dot / denom : 0;
+          coherenceCosine = denom > 0 ? dot / denom : 0;
           if (!this._coherenceLogCount) this._coherenceLogCount = 0;
           if (this._coherenceLogCount < 10) {
             this._coherenceLogCount++;
             try {
-              console.log(`[composeSentence] coherence sample ${this._coherenceLogCount}/10 cosine=${cosine.toFixed(3)} (threshold=${COHERENCE_MIN.toFixed(2)} target=${coherenceTargetLabel}) sentence="${sentence.slice(0, 60)}"`);
+              console.log(`[composeSentence] coherence sample ${this._coherenceLogCount}/10 cosine=${coherenceCosine.toFixed(3)} (target=${coherenceTargetLabel}) sentence="${sentence.slice(0, 60)}"`);
             } catch {
             }
           }
-          if (cosine < COHERENCE_MIN) {
-            return { sentence, words, intent: intentName, slots, fillCount: 0, coherenceCosine: cosine, coherenceTarget: coherenceTargetLabel, lowCoherence: true };
-          }
-          return { sentence, words, intent: intentName, slots, fillCount, coherenceCosine: cosine, coherenceTarget: coherenceTargetLabel };
         }
       } catch {
       }
     }
-    return { sentence, words, intent: intentName, slots, fillCount };
+    return { sentence, words, fillCount: words.length, coherenceCosine, coherenceTarget: coherenceTargetLabel };
   }
   async generateSentenceAwait(intentSeed = null, opts = {}) {
     if (!this.regions || !this.regions.motor || !this.regions.letter) return "";
@@ -12895,18 +12810,8 @@ var LanguageCortex = class {
                 } catch {
                 }
               }
-              let inferredIntent = "declarative_svo";
-              if (userText.includes("?")) inferredIntent = "question";
-              else if (userText.includes("!")) inferredIntent = "exclamative";
-              else if (/^(say|tell|give|show|read|spell|name|count)\b/.test(userText)) inferredIntent = "imperative";
-              let inferredConcept = null;
-              if (inferredIntent === "question" && userText && cluster.constructor && typeof cluster.constructor.extractIntentConcept === "function") {
-                inferredConcept = cluster.constructor.extractIntentConcept(userText);
-              }
-              const inferredSubject = typeof cluster._inferSubjectFromText === "function" ? cluster._inferSubjectFromText(userText) : null;
-              composedSentence = cluster.composeSentence(inferredIntent, {
-                cortexPattern: intentSeed,
-                intentConcept: inferredConcept,
+              const inferredSubject = typeof cluster._inferActiveSubject === "function" ? cluster._inferActiveSubject() : null;
+              composedSentence = cluster.composeSentence(intentSeed, {
                 subject: inferredSubject || void 0,
                 temperature: 0.6,
                 topK: 8
@@ -12922,7 +12827,6 @@ var LanguageCortex = class {
                       source: "chat",
                       text: composedSentence.sentence || composedWordsAsync.join(" "),
                       ts: Date.now(),
-                      intent: inferredIntent,
                       subject: inferredSubject || null
                     });
                   } catch {
@@ -33204,17 +33108,25 @@ var Curriculum = class _Curriculum {
       console.warn("[Curriculum] \u26A0 cluster.composeSentence is undefined \u2014 _probeSentenceGeneration will return 0/5 silently. Check js/brain/cluster.js definition or class instantiation.");
     }
     const probeSubject = opts.subject || "ela";
-    const intents = ["declarative_svo", "declarative_copula", "question", "imperative", "exclamative"];
-    const probeConcepts = { question: "definition" };
+    const probeSeeds = [
+      { label: "statement", seed: "i see a thing" },
+      // declarative state
+      { label: "description", seed: "the cat is big" },
+      // copula state
+      { label: "question", seed: "what is this" },
+      // WH-question state
+      { label: "command", seed: "go run" },
+      // imperative state
+      { label: "exclaim", seed: "wow look" }
+      // exclamatory state
+    ];
     const perIntent = {};
     let passed = 0;
-    for (const intent of intents) {
+    for (const probe of probeSeeds) {
       let composed = null;
       try {
         if (typeof cluster.composeSentence === "function") {
-          const composeOpts = { subject: probeSubject };
-          if (probeConcepts[intent]) composeOpts.intentConcept = probeConcepts[intent];
-          composed = cluster.composeSentence(intent, composeOpts);
+          composed = cluster.composeSentence(probe.seed, { subject: probeSubject });
         }
       } catch {
         composed = null;
@@ -33225,24 +33137,24 @@ var Curriculum = class _Curriculum {
       const wordCount = words.length;
       const uniqueCount = uniqueWords.size;
       const structurallyValid = wordCount >= 2 && uniqueCount >= 2;
-      perIntent[intent] = {
+      perIntent[probe.label] = {
+        seed: probe.seed,
         wordCount,
         uniqueCount,
         words,
         sentence: composed ? composed.sentence : "",
         fillCount: composed ? composed.fillCount : 0,
-        intentConcept: probeConcepts[intent] || null,
         coherenceCosine: composed && typeof composed.coherenceCosine === "number" ? composed.coherenceCosine : null,
         valid: structurallyValid
       };
       if (structurallyValid) passed += 1;
     }
-    const total = intents.length;
+    const total = probeSeeds.length;
     const rate = total > 0 ? passed / total : 0;
-    this._hb(`[Curriculum] _probeSentenceGeneration[subject=${probeSubject}] \u2014 ${passed}/${total} intents emitted \u22652 unique words (rate=${(rate * 100).toFixed(0)}%). Per-intent: ${intents.map((i) => {
-      const conceptTag = perIntent[i].intentConcept ? ` concept=${perIntent[i].intentConcept}` : "";
-      const cosTag = perIntent[i].coherenceCosine !== null ? ` cos=${perIntent[i].coherenceCosine.toFixed(2)}` : "";
-      return `${i}${conceptTag}:"${(perIntent[i].sentence || "").slice(0, 40)}" (${perIntent[i].wordCount}w/${perIntent[i].uniqueCount}u${cosTag})`;
+    this._hb(`[Curriculum] _probeSentenceGeneration[subject=${probeSubject}] \u2014 ${passed}/${total} natural-language seeds emitted \u22652 unique words (rate=${(rate * 100).toFixed(0)}%). Per-seed: ${probeSeeds.map((p) => {
+      const r = perIntent[p.label];
+      const cosTag = r.coherenceCosine !== null ? ` cos=${r.coherenceCosine.toFixed(2)}` : "";
+      return `${p.label}("${p.seed}"):"${(r.sentence || "").slice(0, 40)}" (${r.wordCount}w/${r.uniqueCount}u${cosTag})`;
     }).join(" \xB7 ")}`);
     return { passed, total, rate, perIntent };
   }

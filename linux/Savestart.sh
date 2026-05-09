@@ -22,9 +22,17 @@ echo "  [Savestart] boot will hydrate from server/brain-weights*.json"
 echo "  [Savestart] + conversations.json + episodic-memory.db."
 echo ""
 
-# Optional env flags — see start.sh header for full list.
-# DREAM_DEFINITION_CACHE_FILE=path.json especially relevant for Savestart
-# (persistent dictionary cache survives restart → no ~1 min re-warm).
+# Optional env flags — see start.sh header for full list. Most-relevant
+# Savestart-side flags:
+# DREAM_DEFINITION_CACHE_FILE=path.json — persistent dictionary cache survives
+#                                          restart → no ~1 min re-warm.
+# DREAM_COHERENCE_MIN=0.15 — composeSentence cosine coherence floor (env-tunable).
+# DREAM_SAT_MEANCOS=0.7    — saturation halt: mean-cos > X.
+# DREAM_SAT_MEANABS=0.6    — saturation halt: meanAbs > X*wMax.
+# DREAM_SAT_RATIO=1.5      — saturation halt: max/mean ratio < X.
+# DREAM_SAT_SAMPLE=1000    — weight-distribution sample size for sat check.
+# First-N reads of each tunable log calibration data so operator can tune
+# from real run history. See start.sh header for full descriptions.
 
 # Node 18+ required (built-in globalThis.fetch for dictionary API).
 NODE_VERSION=$(node -v 2>/dev/null | sed -e 's/^v//' -e 's/\..*//')

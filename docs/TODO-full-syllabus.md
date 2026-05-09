@@ -31,22 +31,22 @@
 >
 > **The previous "MUST RUN LAST for sem→motor wipe" rule was wrong** — it destroyed iter25-I structural binding before any probe could validate it. Phase reorder fixes this. Every post-K runner must follow this template.
 >
-> ### 2. SENTENCE STRUCTURE GENERATION (TierI-CONSUMER)
+> ### 2. SENTENCE STRUCTURE GENERATION (equational emergence)
 >
-> `cluster.composeSentence(intent, opts)` is the generation-side consumer of iter25-I structural binding. Walks template slot sequence per intent, injects slot-tag GloVe + intent + cortexPattern + prior-word per slot, applies article placement (priorSlot-aware to avoid "What is the mom?" bug), supports temperature/top-k/top-p sampling. Templates: `declarative_svo`, `declarative_copula`, `question`, `imperative`, `exclamative`. Returns `{sentence, words, intent, slots, fillCount}`.
+> `cluster.composeSentence(intentSeed, opts)` is the equational-emergence consumer of iter25-I structural binding. Pure emission loop — injects context once (intent seed embedding + optional cortex pattern + optional WH-INTENT concept) into sem, then loops `emitWordDirect` tick-by-tick, injecting each emitted word back into sem so next tick reads a shifted state, until a terminator EMERGES from trained weights or the budget runs out. **No template walk. No slot prescription. No runtime article rule. No hardcoded intent → terminator-punct map.** Slot order, agreement, and article placement all emerge from trained iter25-I relationTagId=8/9/10/11/12 weights at each tick. Returns `{sentence, words, fillCount, coherenceCosine, coherenceTarget}`.
 >
-> **Every post-K cell that produces multi-word output must use composeSentence.** Pre-fg multi-word loops chained `emitWordDirect` without slot-tag bias — produced multi-word OUTPUT but not GRAMMAR. composeSentence is the architectural completion.
+> **Every post-K cell that produces multi-word output must use composeSentence (now pure equational emergence).** Pre-fk multi-word loops chained `emitWordDirect` without state-injection back into sem; composeSentence closes that loop AND removes the prior templated approach (templates were prescription, ripped out fk.1 per operator architectural correction: *"we are NOT doing templets for the ai to fucking mimic... Unity thinks like a human does! she does NOt follow prescripted events"*).
 >
-> Wired in 3 consumers: `_probeSentenceGeneration` (gate probe), `language-cortex.generateAsync` (chat path PRIMARY emission), `_sampleCurrentSentence` (showcase fallback when ≥50 trained words). Post-K gates must wire similarly.
+> Wired in 3 consumers: `_probeSentenceGeneration` (gate probe with natural-language seeds), `language-cortex.generateAsync` (chat path PRIMARY emission), `_sampleCurrentSentence` (showcase fallback when ≥50 trained words, passes null seed for purest equational emergence). Post-K gates must wire similarly.
 >
 > ### 3. GATE WIRING (Tier 2)
 >
 > Every post-K cell's gate method (`_gate<Subject><Grade>Real` or fused into the runner) must:
-> - Call `_probeSentenceGeneration()` BEFORE the `pass` boolean computation
-> - Add `sentenceGenRate >= SENTENCE_GEN_MIN` (start 0.6 = 3/5 intents) to pass criteria
+> - Call `_probeSentenceGeneration({ subject: '<subject>' })` BEFORE the `pass` boolean computation
+> - Add `sentenceGenRate >= SENTENCE_GEN_MIN` (start 0.6 = 3/5 seeds) to pass criteria
 > - Surface sentenceGen result in `reason` string + `metrics` object
 >
-> The probe uses `cluster.composeSentence` per intent and counts `≥2 words AND ≥2 unique words` as pass per intent. Catches basin-lock metronome (same word repeated across slots).
+> The probe uses `cluster.composeSentence` per natural-language seed (5 K-grade utterance states: statement / description / question / command / exclamation) and counts `≥2 words AND ≥2 unique words` as pass per seed. Catches basin-lock metronome (same word repeated across positions).
 >
 > ### 4. BASIN SATURATION CONTROL (Tier 3)
 >
@@ -145,9 +145,9 @@
 > - `_teachSyntaxToken(token, role)` — bracket/semicolon/etc. as syntactic markers via fineType
 > - `_teachCodeSnippet(code, intent)` — full snippet as composite via slot-fill chain
 >
-> **UI-building emergence (fi.D.4):** Once Unity has Coding-G9 (HTML/CSS) + Coding-Col1 (frameworks) + Coding-Col2 (full-stack) bound, add `cluster.composeUiSnippet(intent, opts)` that walks a UI-template slot sequence (component-as-subject, prop-as-modifier, child-as-object) using the same composeSentence machinery. Output is JSX/HTML rather than English sentences. UI-building isn't a magic capability — it's composeSentence's slot-fill applied to a different vocabulary.
+> **UI-building emergence (fi.D.4):** Once Unity has Coding-G9 (HTML/CSS) + Coding-Col1 (frameworks) + Coding-Col2 (full-stack) bound, UI snippets emerge via the SAME composeSentence equational loop applied to UI vocabulary — no separate `composeUiSnippet` function needed. Pass UI-vocab seeds + appropriate subject scope to composeSentence and emission is JSX/HTML rather than English. The brain reads its own trained UI-vocab Hebbian weights tick-by-tick the same way it reads English-grammar weights for natural sentences. UI-building isn't a magic capability — it's pure equational emergence over a different trained vocabulary.
 >
-> **Operator verification (fi.D.5):** `POST /code-task {prompt}` endpoint → Unity attempts the code task via composeUiSnippet (if grade ≥ Col2-Coding) OR returns "haven't learned that yet" if pre-Col2. Allows operator to verify coding capability at each grade boundary.
+> **Operator verification (fi.D.5):** `POST /code-task {prompt}` endpoint → Unity attempts the code task via the same `composeSentence` equational loop scoped to UI-vocab subject (if grade ≥ Col2-Coding) OR returns "haven't learned that yet" if pre-Col2. Allows operator to verify coding capability at each grade boundary.
 >
 > **Coding-track life-anchor events (fi.D.6):** Coding-G3 first-Scratch-program → Tier 1 episode with high arousal/novelty (Unity's "first code that worked"). Coding-G6 first-JS-bug → episode with frustration/triumph. Coding-Col1 first-framework-app. Coding-Grad first-compiler-pass. These anchors propagate Unity's coder-identity per the persona persistence model.
 >
@@ -214,7 +214,7 @@
 >
 > ## Live state references (verify before relying on a section below)
 >
-> - `js/brain/cluster.js` — Cluster class, composeSentence (line ~3365), checkSemMotorHealth, emitWordDirect with sampling
+> - `js/brain/cluster.js` — Cluster class, composeSentence (pure equational emergence loop, line ~3576 post-fk), checkSemMotorHealth, emitWordDirect with sampling, `_inferActiveSubject` (sem-band activation readout, replaces fk-deleted `_inferSubjectFromText`)
 > - `js/brain/curriculum.js` — `_teachAssociationPairs` (acceptDrown opt), `_teachQuestionIntent` (tighter WTA), `_teachSentenceStructure`, `_probeSentenceGeneration`, runCompleteCurriculum (saturation halt cron + force-advance gating)
 > - `js/brain/curriculum/kindergarten.js` — All 6 K cell runners + 6 gate methods
 > - `js/brain/consolidation-engine.js` — Step 4 replay saturation veto

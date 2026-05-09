@@ -2143,42 +2143,20 @@ export class LanguageCortex {
                   console.warn('[LanguageCortex] ⚠ composeSentence chat path entered with cluster._lastUserInputText UNSET — WH-INTENT consumer + subject inference + intent-concept extraction will all return null. Check brain-server.js processAndRespond sets this field at entry. (114.19fj.1)');
                 } catch { /* log non-fatal */ }
               }
-              let inferredIntent = 'declarative_svo';
-              if (userText.includes('?')) inferredIntent = 'question';
-              else if (userText.includes('!')) inferredIntent = 'exclamative';
-              else if (/^(say|tell|give|show|read|spell|name|count)\b/.test(userText)) inferredIntent = 'imperative';
-              // 114.19fj.3 — DRY-extracted to NeuronCluster.extractIntentConcept
-              // static method (cluster.js). Single source of truth across
-              // training-side curriculum._extractIntentConcept and chat-side
-              // inference. Prior duplicated parser had ALREADY DRIFTED:
-              // language-cortex used `\bwhy\s+/` (any 'why ') while curriculum
-              // used `\bwhy\s+(?:do|does|is|are)\b` (specific verb forms),
-              // causing chat-time WH-INTENT consumer to fire on questions
-              // training never carved.
-              let inferredConcept = null;
-              if (inferredIntent === 'question' && userText
-                  && cluster.constructor && typeof cluster.constructor.extractIntentConcept === 'function') {
-                inferredConcept = cluster.constructor.extractIntentConcept(userText);
-              }
-              // Pass intentSeed as cortexPattern so inner-voice chain
-              // narrative + Tier 7 basin-lock jitter (when applicable)
-              // carries into the slot-driven composition. composeSentence
-              // injects this at strength 0.2 BEFORE its own intent injection.
-              // 114.19fg.Tier15 — chat path uses temperature 0.6 for
-              // variety in sentence composition. Probe paths leave
-              // temperature unset (greedy argmax) for deterministic
-              // gate scoring.
-              // 114.19fi.A.2 — subject inference from user text so
-              // composeSentence scopes to the user's topic instead of
-              // scanning all 6 sub-bands (which produces cross-subject
-              // salad like "the cat seven blue ran"). Math question →
-              // math vocab; life question → life vocab; etc. Falls
-              // through to all-bands scan when text has no vocab hits.
-              const inferredSubject = (typeof cluster._inferSubjectFromText === 'function')
-                ? cluster._inferSubjectFromText(userText) : null;
-              composedSentence = cluster.composeSentence(inferredIntent, {
-                cortexPattern: intentSeed,
-                intentConcept: inferredConcept,
+              // 114.19fk.3 — chat path NO LONGER pre-parses user text to
+              // derive intent / intent-concept / subject. The user's words
+              // were ALREADY injected into cortex via injectText earlier
+              // in processAndRespond — brain's trained relationTagId=12
+              // weights activate the right intent-concept basin from the
+              // user's words automatically. Brain's sem-band activation
+              // already shows which subject is dominant. Pre-parsing here
+              // would be PRESCRIPTION over the brain's learned response.
+              // 114.19fk.4 — subject inferred from sem-band activation
+              // (brain's own active state), NOT from token-counting user
+              // text against learned wordBuckets.
+              const inferredSubject = (typeof cluster._inferActiveSubject === 'function')
+                ? cluster._inferActiveSubject() : null;
+              composedSentence = cluster.composeSentence(intentSeed, {
                 subject: inferredSubject || undefined,
                 temperature: 0.6,
                 topK: 8,
@@ -2203,7 +2181,6 @@ export class LanguageCortex {
                       source: 'chat',
                       text: composedSentence.sentence || composedWordsAsync.join(' '),
                       ts: Date.now(),
-                      intent: inferredIntent,
                       subject: inferredSubject || null,
                     });
                   } catch { /* push non-fatal */ }

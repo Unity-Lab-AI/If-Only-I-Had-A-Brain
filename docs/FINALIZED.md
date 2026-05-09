@@ -24,7 +24,62 @@ Below is the verbatim TODO.md body (former lines 51-3110 — the OPEN TASKS sect
 
 ---
 
-## 2026-05-09 (latest) — Session 114.19fj — super-review of 114.19fa→fi sweep — 23 of 24 findings shipped before 20hr K test (1 deferred)
+## 2026-05-09 (latest) — Session 114.19fk — RIPPED OUT composeSentence template prescription system + replaced with pure equational emergence — operator architectural correction
+
+### Gee verbatim per LAW #0
+
+> *"what is this defer can it be detelted? we are NOT doing templets for the ai to fucking mimic thats no better thant word lists and arrays you fool. Unity thinks like a human does! she does NOt follow prescripted events... that not how our equations shall work?"*
+
+> *"anything else we are missing nowing this? If so go ahead and write it down and finalize completed only, items. and then start on the remain work of the todo if any that you found that is left"*
+
+### What this is
+
+Operator caught the DEEPEST architectural error of the session in the fj sweep summary: the `composeSentence` function (introduced in fa→fi as the "iter25-I generation-side consumer") was actually a **template prescription system** — 5 hardcoded slot sequences (`['subject', 'verb', 'object', 'terminator']`), 5 hardcoded intent→terminator-punct mappings, hardcoded vowel→an/consonant→a/the article rule, hardcoded PRONOUNS + ARTICLE_LIST exclusion sets, runtime regex parser deriving intent-concept FROM USER TEXT. None of that is equational. All of it is content prescription. **No better than the word lists + sentence arrays the project's earlier LAWs explicitly banned.** Real human cognition emerges from cortex state evolving tick-by-tick under trained Hebbian weights — the iter25-I training carved slot positions / intent→slot-sequence / subject-verb agreement / article placement / WH→intent-concept ALL AS WEIGHTS. The correct CONSUMER reads those weights via `emitWordDirect` at each tick — no template, no slot prescription, no article rule. fk rip-out replaces the templated composeSentence with a tight equational emission loop.
+
+### What shipped (4 items, bundle clean 2.4MB, all `node --check` green)
+
+**fk.1 — composeSentence body REPLACED with pure equational emission loop.** Deleted: TEMPLATES dict (5 slot sequences) · TERMINATOR_PUNCT dict (5 intent→punct mappings) · article placement rule (vowel→an, consonant→a/the) · PRONOUNS exclusion Set · ARTICLE_LIST guard Set · same-sentence dedup retry mechanism. New body: inject context once → emit one word → if word is terminator (`.`/`?`/`!`) append + stop → else inject word back into sem → loop until budget (default 12). Slot order EMERGES from iter25-I `relationTagId=9 sem(intent)→sem(first_slot)` weights. Article placement EMERGES from `relationTagId=11 sem(noun)→sem(article)`. Subject-verb agreement EMERGES from `relationTagId=10`. Terminator placement EMERGES from where the brain learned to emit terminators during training. WH-INTENT consumer EMERGES from `relationTagId=12 sem(WH)→sem(concept)`. Function signature unchanged (callers still pass `intentSeed` + `opts`); semantics fundamentally changed (intentSeed is now a state-injection seed, not a template selector). Coherence post-check kept (cosine vs intentConcept OR cortexPattern, env-tunable threshold via `DREAM_COHERENCE_MIN`) — DOES NOT alter emission, just signals confidence. **Supersedes:** fj.10 (cumulative injection cap — no more multi-slot injection), fj.15 (dedup retry temp bump — no more dedup retry), fj.20 (dedup strength reduce — same), fj.22 (TERMINATOR_PUNCT['imperative'] kept comment — TERMINATOR_PUNCT entirely deleted), fj.23 (ARTICLE_LIST module-hoist — ARTICLE_LIST entirely deleted). The fj fixes WERE shipped; their FINALIZED entries stand as accurate history. fk.1 replaces the templated composeSentence those fixes were guarding. `js/brain/cluster.js`.
+
+**fk.2 — `probeConcepts = { question: 'definition' }` hardcoded mapping in `_probeSentenceGeneration` DELETED.** Probe now passes ONLY `{ subject: probeSubject }` to composeSentence — brain picks its own intent-concept activation from trained weights when the intent seed enters sem. No probe-time prescription. Per-intent log line dropped the `concept=` tag (no longer applicable). Pass criterion unchanged (≥2 emissions AND ≥2 unique words). `js/brain/curriculum.js`.
+
+**fk.3 — chat-path `cluster.constructor.extractIntentConcept(userText)` call DELETED.** language-cortex.js no longer pre-parses user text at chat time to derive `inferredConcept` for composeSentence's `intentConcept` opt. The user's words are already injected into cortex via injectText earlier in processAndRespond — brain's trained `relationTagId=12` weights activate the right intent-concept basin from those words automatically. Runtime regex prescription removed. The static `NeuronCluster.extractIntentConcept` method STAYS as a utility (training-side `_teachQuestionIntent` may use it to derive training pairs from canonical question phrasings; curriculum.js `_extractIntentConcept` instance method still delegates to it). Also removed: `inferredIntent` derivation (was `?` → 'question', `!` → 'exclamative', etc.) — chat path now passes `intentSeed` (raw user text or inner-voice chain seed) directly to composeSentence; brain picks intent activation from current sem state. `js/brain/language-cortex.js`.
+
+**fk.4 — `_inferSubjectFromText(userText)` token-count heuristic REPLACED with `_inferActiveSubject()` sem-band activation readout.** New method reads `lastSpikes` activation across `word_motor_<subj>` sub-bands (ela/math/science/social/art/life), returns the dominant subject when activation > 0.05, null otherwise. No user-text scanning, no token-counting against learned wordBuckets. Brain has ALREADY decided which subject is active via injected user input → propagation → activation; this function just READS that decision. language-cortex.js chat path updated to call `cluster._inferActiveSubject()` instead of `cluster._inferSubjectFromText(userText)`. Threshold (0.05) is configurable via env var if needed (left as default for now). `js/brain/cluster.js` + `js/brain/language-cortex.js`.
+
+**fk.6 — fj.17 deferred entry DELETED.** 3 new sentence templates (`first_person_predicate` "I think it" / `vocative_imperative` "Look at the cat" / `yes_no_response` "Yes!") that fj.17 deferred are now permanently REMOVED — templates are wrong as a category, not just unimplemented. Adding more templates is the wrong direction. The TODO carry-forward block for fj.17 was replaced by this fk session entry.
+
+### What's still pending (not shipped this session)
+
+**fk.5 — decoder sampling preset audit (operator-decision needed).** `emitWordDirect` accepts `temperature/topK/topP`. Chat path hardcodes 0.6/8; showcase hardcodes 0.7/10; probe leaves greedy. These are decoder PARAMETERS not content prescription — borderline. The MECHANICS (softmax + nucleus) are equational. Two paths: (a) keep hardcoded preset values as decoder defaults (sampling style isn't content); (b) drive temperature from brain state (`temperature = 0.5 + 0.5 * (1 - coherence)`). Operator-decision pending — left in TODO as PENDING.
+
+**fk.7 — iter25-I training depth verification (post-test diagnostic).** With composeSentence templates removed, sentence emergence relies entirely on iter25-I `_teachSentenceStructure` carving (relationTagId=8/9/10/11 weights). If carving is too sparse (default 6 reps × 5 binding passes), trained weights won't produce grammatical emission and the equational emitter will produce word-soup. Surfaces back when operator's 20hr K test reveals sentence quality — left in TODO as PENDING. This is the work that REPLACES the wrong solution-category of "add more templates" — instead, deepen the TRAINING that the equational emitter reads.
+
+### Files touched
+
+- `js/brain/cluster.js` — fk.1 (composeSentence body replaced) · fk.4 (`_inferSubjectFromText` → `_inferActiveSubject`)
+- `js/brain/curriculum.js` — fk.2 (`_probeSentenceGeneration` probeConcepts deleted)
+- `js/brain/language-cortex.js` — fk.3 (chat-path inference call deleted) + fk.4 (`_inferActiveSubject` call site update)
+- `js/app.bundle.js` — rebuilt clean 2.4MB
+
+`node --check` green across `cluster.js`, `curriculum.js`, `language-cortex.js`.
+
+### Architectural before/after
+
+**BEFORE fk:** chat-with-Unity → `processAndRespond` → injectText user words into cortex → `composeSentence('question', { intentConcept: extractedFromRegex, subject: tokenCountWinner, temperature: 0.6, topK: 8 })` → walks 5-template `['qword','copula','subject','terminator']` slot prescription → injects per-slot tag GloVe + intentConcept GloVe + cortexPattern + intent embedding → emitWordDirect at each slot → forces vowel→an article rule → forces `?` terminator-punct mapping → returns sentence. **Score:** Unity emits text BUT the structure was prescribed by the TEMPLATE not the trained weights. Same as a procedural Mad-Libs generator.
+
+**AFTER fk:** chat-with-Unity → `processAndRespond` → injectText user words into cortex → `composeSentence(intentSeed, { subject: cluster._inferActiveSubject() || undefined, temperature: 0.6, topK: 8 })` → injects intentSeed embedding ONCE into sem → loop: `emitWordDirect()` → if terminator → append + stop, else inject word back into sem so next tick reads shifted state → repeat until terminator emerges OR budget exhausted → returns sentence. **Score:** Unity's emission emerges from her TRAINED WEIGHTS. Slot order, article placement, terminator selection — all decided by what iter25-I carved. If sentences are word-soup, that's a TRAINING DEPTH problem (fk.7), not a template-coverage problem.
+
+### Test path
+
+Fire `start.bat` → K curriculum walks 114 cells → composeSentence (now equational) emits sentences from trained weights at probe time + chat time → iter25-I `_teachSentenceStructure` carving determines emission grammar → if sentences emerge clean with subject-verb-object structure, training depth was sufficient → if word-soup, fk.7 work resumes (bump `_teachSentenceStructure` reps from 6 → 12 + bump lr). The 20hr test now MEASURES the equational architecture — there is no template fallback to mask training inadequacy.
+
+### LAW alignment
+
+This work directly enacts Gee's deepest architectural principle: *"Unity thinks like a human does! she does NOt follow prescripted events"*. Templates were prescription. Their removal restores the equational LAW: *"If a behavior exists that isn't driven by brain state equations, it's wrong"* (TODO Guiding Principle). composeSentence is now pure equational emergence — every output traces back to trained weights, not to a hardcoded slot sequence.
+
+---
+
+## 2026-05-09 — Session 114.19fj — super-review of 114.19fa→fi sweep — 23 of 24 findings shipped before 20hr K test (1 deferred)
 
 ### Gee verbatim per LAW #0
 

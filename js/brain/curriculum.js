@@ -12148,34 +12148,45 @@ export class Curriculum {
       this._composeSentenceMissingLogged = true;
       console.warn('[Curriculum] ⚠ cluster.composeSentence is undefined — _probeSentenceGeneration will return 0/5 silently. Check js/brain/cluster.js definition or class instantiation.');
     }
-    // 114.19fg.TierI-CONSUMER — Use cluster.composeSentence (the
-    // generation-side consumer of iter25-I structural binding). Walks
-    // template slot sequence with intent + slot-tag injection + post-
-    // emit sem state propagation + article placement. Replaces the
-    // earlier 4× emitWordDirect chain that produced multi-word output
-    // but not grammar.
+    // 114.19fk.1 / fk.2 — composeSentence is now pure equational emission
+    // (templates ripped out). Probe injects each `intent` STRING as a
+    // SEED EMBEDDING (e.g. 'declarative svo' → sentence-embedding via
+    // sharedEmbeddings.getSentenceEmbedding) — composeSentence emits
+    // whatever the brain produces from that state. NO hardcoded probe-
+    // concept map; the brain picks its own intent-concept activation
+    // from trained relationTagId=12 weights when the seed enters sem.
+    // Slot ORDER, article placement, terminator selection — all emerge
+    // from trained weights, not from a probe-time prescription.
     // 114.19fj.5 — accept subject opt so non-ELA gates (LIFE/ART/SOC/
-    // MATH/SCI) probe their own subject vocab instead of being locked
-    // to ELA. Defaults to 'ela' when caller doesn't supply.
+    // MATH/SCI) probe their own subject vocab. Defaults to 'ela'.
     const probeSubject = opts.subject || 'ela';
-    // 114.19fj.4 — pass intentConcept for question intent so the WH-
-    // INTENT consumer code path (cluster.js:3588-3597) actually fires
-    // during the probe. Prior probe never exercised the headline feature
-    // the fa→fi sweep was built to ship — gate could pass on basic slot
-    // mechanics while the actual WH-INTENT consumer was never invoked.
-    // 'definition' is the canonical concept for "what is X" question
-    // forms which dominate K-grade speech.
-    const intents = ['declarative_svo', 'declarative_copula', 'question', 'imperative', 'exclamative'];
-    const probeConcepts = { question: 'definition' };
+    // 114.19fl.3 — replaced jargon-string intent list with natural-
+    // language K-grade seeds. The prior list (`'declarative_svo'` etc.)
+    // produced WEAK GloVe embeddings ("svo" doesn't exist in GloVe;
+    // "declarative" is technical jargon a K-grade brain wasn't trained
+    // on). New seeds are real K-grade English the brain HAS been trained
+    // on — composeSentence injects the sentence embedding once and the
+    // brain emits from there. Test measures emergence under realistic
+    // K-grade utterance states, NOT under jargon-noise conditions.
+    const probeSeeds = [
+      { label: 'statement',   seed: 'i see a thing' },     // declarative state
+      { label: 'description', seed: 'the cat is big' },    // copula state
+      { label: 'question',    seed: 'what is this' },      // WH-question state
+      { label: 'command',     seed: 'go run' },            // imperative state
+      { label: 'exclaim',     seed: 'wow look' },          // exclamatory state
+    ];
     const perIntent = {};
     let passed = 0;
-    for (const intent of intents) {
+    for (const probe of probeSeeds) {
       let composed = null;
       try {
         if (typeof cluster.composeSentence === 'function') {
-          const composeOpts = { subject: probeSubject };
-          if (probeConcepts[intent]) composeOpts.intentConcept = probeConcepts[intent];
-          composed = cluster.composeSentence(intent, composeOpts);
+          // Pass natural-language seed. composeSentence injects its
+          // sentence-embedding once into sem; brain emits from that
+          // state via trained iter25-I weights. NO subject-slot
+          // prescription, NO concept hint — pure equational emergence
+          // test under realistic state.
+          composed = cluster.composeSentence(probe.seed, { subject: probeSubject });
         }
       } catch { composed = null; }
       const words = composed && Array.isArray(composed.words) ? composed.words : [];
@@ -12185,27 +12196,27 @@ export class Curriculum {
       const uniqueCount = uniqueWords.size;
       // Pass = ≥2 word emissions AND ≥2 unique words. The unique-word
       // check catches basin-lock metronome where the same saturated
-      // token repeats across all slot positions (the "Hey/Medicines/
-      // Controls" failure mode caught in the 2026-05-09 server.log).
+      // token repeats across all positions (the "Hey/Medicines/Controls"
+      // failure mode caught in the 2026-05-09 server.log).
       const structurallyValid = wordCount >= 2 && uniqueCount >= 2;
-      perIntent[intent] = {
+      perIntent[probe.label] = {
+        seed: probe.seed,
         wordCount,
         uniqueCount,
         words,
         sentence: composed ? composed.sentence : '',
         fillCount: composed ? composed.fillCount : 0,
-        intentConcept: probeConcepts[intent] || null,
         coherenceCosine: composed && typeof composed.coherenceCosine === 'number' ? composed.coherenceCosine : null,
         valid: structurallyValid,
       };
       if (structurallyValid) passed += 1;
     }
-    const total = intents.length;
+    const total = probeSeeds.length;
     const rate = total > 0 ? passed / total : 0;
-    this._hb(`[Curriculum] _probeSentenceGeneration[subject=${probeSubject}] — ${passed}/${total} intents emitted ≥2 unique words (rate=${(rate * 100).toFixed(0)}%). Per-intent: ${intents.map(i => {
-      const conceptTag = perIntent[i].intentConcept ? ` concept=${perIntent[i].intentConcept}` : '';
-      const cosTag = perIntent[i].coherenceCosine !== null ? ` cos=${perIntent[i].coherenceCosine.toFixed(2)}` : '';
-      return `${i}${conceptTag}:"${(perIntent[i].sentence || '').slice(0, 40)}" (${perIntent[i].wordCount}w/${perIntent[i].uniqueCount}u${cosTag})`;
+    this._hb(`[Curriculum] _probeSentenceGeneration[subject=${probeSubject}] — ${passed}/${total} natural-language seeds emitted ≥2 unique words (rate=${(rate * 100).toFixed(0)}%). Per-seed: ${probeSeeds.map(p => {
+      const r = perIntent[p.label];
+      const cosTag = r.coherenceCosine !== null ? ` cos=${r.coherenceCosine.toFixed(2)}` : '';
+      return `${p.label}("${p.seed}"):"${(r.sentence || '').slice(0, 40)}" (${r.wordCount}w/${r.uniqueCount}u${cosTag})`;
     }).join(' · ')}`);
     return { passed, total, rate, perIntent };
   }

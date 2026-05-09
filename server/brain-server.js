@@ -6008,20 +6008,18 @@ class ServerBrain {
     if (candidates.length < 50) {
       return candidates[Math.floor(Math.random() * candidates.length)];
     }
-    // 114.19fg.TierI-CONSUMER — when ≥50 words trained AND
-    // composeSentence available, prefer slot-driven grammatical
-    // composition over random word picks. Pick a random intent
-    // template and walk its slot sequence so showcase popups stream
-    // structured sentences instead of word salad. Falls through to
-    // random multi-word phrase if composeSentence returns null.
+    // 114.19fl.2 — when ≥50 words trained AND composeSentence available,
+    // prefer pure equational emergence over random word picks. Pass
+    // null intentSeed — let cortex emit from CURRENT brain state with
+    // no prescribed intent (no jargon-string seed pollution). Brain
+    // decides what to say from whatever's currently active in sem.
+    // Showcase temperature 0.7 + topK 10 still apply — those are
+    // decoder MECHANICS, not content prescription. Falls through to
+    // random multi-word phrase if composeSentence returns null (cold
+    // cortex, no current activation, etc.).
     if (typeof cluster.composeSentence === 'function') {
-      const intents = ['declarative_svo', 'declarative_copula', 'question', 'imperative', 'exclamative'];
-      const intent = intents[Math.floor(Math.random() * intents.length)];
       try {
-        // 114.19fg.Tier15 — showcase uses temperature 0.7 for high
-        // variety so popups don't repeat the same sentence pattern
-        // tick after tick.
-        const composed = cluster.composeSentence(intent, { temperature: 0.7, topK: 10 });
+        const composed = cluster.composeSentence(null, { temperature: 0.7, topK: 10 });
         if (composed && composed.sentence && composed.fillCount >= 2) {
           return composed.sentence;
         }
