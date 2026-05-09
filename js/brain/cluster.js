@@ -179,7 +179,90 @@ function injectEmbeddingToRegionOffset(cluster, regionName, emb, strength, offse
 // trigger the stop branch.
 const T14_TERMINATORS = new Set(['.', '?', '!']);
 
+// 114.19fj.23 — module-scope ARTICLE_LIST. Was rebuilt as a fresh Set
+// per-iteration inside composeSentence's slot loop — small alloc waste
+// at scale. Single Set reused across all calls.
+const ARTICLE_LIST = new Set(['a', 'an', 'the']);
+
+// 114.19fj.6 — env-tunable coherence threshold + sample logging.
+const COHERENCE_MIN = (() => {
+  try {
+    const v = parseFloat(typeof process !== 'undefined' && process?.env?.DREAM_COHERENCE_MIN);
+    return Number.isFinite(v) && v > 0 ? v : 0.15;
+  } catch { return 0.15; }
+})();
+
+// 114.19fj.7 — env-tunable saturation thresholds. Operator can tune
+// per-deployment from start.bat / Savestart.bat env block. Conservative
+// defaults match prior hardcoded values; env vars only deviate when
+// empirical 20hr-test data justifies a shift.
+const SATURATION_MEANCOS = (() => {
+  try {
+    const v = parseFloat(typeof process !== 'undefined' && process?.env?.DREAM_SAT_MEANCOS);
+    return Number.isFinite(v) && v > 0 ? v : 0.7;
+  } catch { return 0.7; }
+})();
+const SATURATION_MEANABS_RATIO = (() => {
+  try {
+    const v = parseFloat(typeof process !== 'undefined' && process?.env?.DREAM_SAT_MEANABS);
+    return Number.isFinite(v) && v > 0 ? v : 0.6;
+  } catch { return 0.6; }
+})();
+const SATURATION_FANOUT_RATIO = (() => {
+  try {
+    const v = parseFloat(typeof process !== 'undefined' && process?.env?.DREAM_SAT_RATIO);
+    return Number.isFinite(v) && v > 0 ? v : 1.5;
+  } catch { return 1.5; }
+})();
+const SATURATION_SAMPLE_SIZE = (() => {
+  try {
+    const v = parseInt(typeof process !== 'undefined' && process?.env?.DREAM_SAT_SAMPLE, 10);
+    return Number.isFinite(v) && v >= 100 ? v : 1000;
+  } catch { return 1000; }
+})();
+
 export class NeuronCluster {
+  // 114.19fj.3 — Single source of truth for WH-frame intent-concept
+  // extraction. Was duplicated in two files: `_extractIntentConcept`
+  // on the Curriculum class (training-side) AND inlined in
+  // `js/brain/language-cortex.js:2148-2159` (chat-side inference). The
+  // two parsers had ALREADY DRIFTED — language-cortex used `\bwhy\s+/`
+  // (any 'why ') while curriculum used `\bwhy\s+(?:do|does|is|are)\b`
+  // (specific verb forms). Resulting bug: training carved "why X →
+  // reason" but inference at chat could activate the wrong concept on
+  // questions that didn't match the verb-form list.
+  //
+  // Static method so both call sites can invoke without instance —
+  // language-cortex.js calls `NeuronCluster.extractIntentConcept(text)`,
+  // curriculum.js's `_extractIntentConcept` instance method delegates
+  // here for backwards compat. One regex table, one source of truth.
+  //
+  // Returns the canonical intent-concept word ('cause' / 'reason' /
+  // 'definition' / etc.) or null when no WH-frame matches. Concept
+  // words are real GloVe entries so they participate in standard
+  // sem→motor Hebbian without needing new abstract tag infrastructure.
+  // relationTagId=12.
+  static extractIntentConcept(userText) {
+    if (!userText || typeof userText !== 'string') return null;
+    const q = userText.toLowerCase().trim();
+    if (!q) return null;
+    if (/\bwhat\s+(?:makes|causes)\b/.test(q)) return 'cause';
+    if (/\bwhat\s+happens\s+when\b/.test(q)) return 'effect';
+    if (/\bwhat\s+do\s+[a-z]+\s+need\b/.test(q)) return 'need';
+    if (/\bwhat\s+is\b/.test(q)) return 'definition';
+    if (/\bwhat\s+do\b/.test(q)) return 'function';
+    if (/\bwhy\s+(?:do|does|is|are)\b/.test(q)) return 'reason';
+    if (/\bhow\s+many\b/.test(q)) return 'count';
+    if (/\bhow\s+(?:do|does|is|are)\b/.test(q)) return 'method';
+    if (/\bwhere\s+(?:is|are|do|does)\b/.test(q)) return 'place';
+    if (/\bwhen\s+(?:is|are|do|does)\b/.test(q)) return 'time';
+    if (/\bwho\s+(?:is|are|does|do)\b/.test(q)) return 'person';
+    if (/\b(?:big|small|tall|short|fast|slow|hot|cold)\b.*\bwhich\b/.test(q)) return 'compare';
+    if (/^(is|are|do|does|can|will|would|should)\s/.test(q)) return 'truth';
+    if (/^(what|why|how|where|when|who|which|whose)\b/.test(q)) return 'question';
+    return null;
+  }
+
   /**
    * @param {string} name — cluster name (e.g., 'cortex')
    * @param {number} size — number of neurons
@@ -1902,21 +1985,31 @@ export class NeuronCluster {
    * for run-time saturation detection.
    */
   checkSemMotorHealth() {
+    // 114.19fj.7 — magic-number thresholds promoted to env-tunable
+    // module constants: SATURATION_MEANCOS (0.7) · SATURATION_MEANABS_RATIO
+    // (0.6 of wMax) · SATURATION_FANOUT_RATIO (max/mean < 1.5) ·
+    // SATURATION_SAMPLE_SIZE (1000). Operator overrides via DREAM_SAT_*
+    // env vars. First 5 reads logged so empirical calibration data
+    // exists from the 20hr run.
     const out = { saturated: false, meanCos: null, meanAbs: 0, maxAbs: 0, ratio: 0, source: 'none' };
     try {
       // Authoritative signal from curriculum sep-probe.
       if (typeof this._lastSemMotorMeanCos === 'number') {
         out.meanCos = this._lastSemMotorMeanCos;
         out.source = 'sep-probe';
-        if (this._lastSemMotorMeanCos > 0.7) {
+        if (this._lastSemMotorMeanCos > SATURATION_MEANCOS) {
           out.saturated = true;
+          this._sampleLogSatHealth(out);
           return out;
         }
       }
       const proj = this.crossProjections && this.crossProjections['sem_to_motor'];
-      if (!proj || !proj.values || proj.values.length === 0) return out;
+      if (!proj || !proj.values || proj.values.length === 0) {
+        this._sampleLogSatHealth(out);
+        return out;
+      }
       const wMax = (typeof proj.wMax === 'number' && proj.wMax > 0) ? proj.wMax : 0.4;
-      const sampleSize = Math.min(proj.values.length, 1000);
+      const sampleSize = Math.min(proj.values.length, SATURATION_SAMPLE_SIZE);
       let sumAbs = 0, maxAbs = 0, nnz = 0;
       const stride = Math.max(1, Math.floor(proj.values.length / sampleSize));
       for (let k = 0; k < proj.values.length; k += stride) {
@@ -1928,18 +2021,36 @@ export class NeuronCluster {
           nnz++;
         }
       }
-      if (nnz < 10) return out;
+      if (nnz < 10) {
+        this._sampleLogSatHealth(out);
+        return out;
+      }
       const meanAbs = sumAbs / nnz;
       const ratio = meanAbs > 0 ? maxAbs / meanAbs : 0;
       out.meanAbs = meanAbs;
       out.maxAbs = maxAbs;
       out.ratio = ratio;
       out.source = out.source === 'sep-probe' ? 'sep-probe+distribution' : 'distribution';
-      if (meanAbs > (wMax * 0.6) && ratio < 1.5) {
+      if (meanAbs > (wMax * SATURATION_MEANABS_RATIO) && ratio < SATURATION_FANOUT_RATIO) {
         out.saturated = true;
       }
+      this._sampleLogSatHealth(out);
     } catch { /* non-fatal — return whatever we got */ }
     return out;
+  }
+
+  // 114.19fj.7 — first-5 calibration log so operator can tune env vars
+  // empirically from 20hr-test data. Logs meanCos / meanAbs / maxAbs /
+  // ratio / saturated boolean once per session for the first 5 reads.
+  _sampleLogSatHealth(out) {
+    if (!this._satHealthLogCount) this._satHealthLogCount = 0;
+    if (this._satHealthLogCount < 5) {
+      this._satHealthLogCount++;
+      try {
+        const meanCosTag = typeof out.meanCos === 'number' ? `meanCos=${out.meanCos.toFixed(3)} ` : '';
+        console.log(`[SatHealth] sample ${this._satHealthLogCount}/5 — ${meanCosTag}meanAbs=${out.meanAbs.toFixed(4)} maxAbs=${out.maxAbs.toFixed(4)} ratio=${out.ratio.toFixed(2)} source=${out.source} saturated=${out.saturated} (thresholds: meanCos>${SATURATION_MEANCOS} OR meanAbs>${SATURATION_MEANABS_RATIO}×wMax AND ratio<${SATURATION_FANOUT_RATIO})`);
+      } catch { /* log failure non-fatal */ }
+    }
   }
 
   /**
@@ -3429,16 +3540,38 @@ export class NeuronCluster {
     this._lastEmittedActivation = bestMean;
     // 114.19fi.A.3 — push to recent-emissions ring buffer for next
     // call's repetition penalty. 8-entry rolling window.
-    if (!Array.isArray(this._recentEmissions)) this._recentEmissions = [];
-    this._recentEmissions.push(bestWord);
-    while (this._recentEmissions.length > 8) {
-      this._recentEmissions.shift();
+    // 114.19fj.9 — opt-out for callers that manage the ring themselves
+    // (composeSentence pushes only AFTER its dedup-acceptance check, so
+    // it passes opts.skipRecentTrack:true here and pushes the accepted
+    // word manually). Without this opt, words rejected by composeSentence
+    // dedup still polluted future repetition penalties.
+    // 114.19fj.21 — duplicate lazy-init removed (line 3451 already ran
+    // in same call when entering the candidates loop).
+    if (!opts.skipRecentTrack) {
+      this._recentEmissions.push(bestWord);
+      while (this._recentEmissions.length > 8) {
+        this._recentEmissions.shift();
+      }
     }
     // Record emission in meta-register for self-monitoring.
     if (typeof this.recordEmission === 'function') {
       this.recordEmission(bestWord);
     }
     return bestWord;
+  }
+
+  // 114.19fj.9 — public helper for callers that opted out of automatic
+  // ring tracking (composeSentence, future custom emission paths). Push
+  // to the recent-emissions ring after a manual acceptance check so the
+  // repetition penalty reflects ACTUAL emissions, not internal probe
+  // attempts.
+  trackRecentEmission(word) {
+    if (typeof word !== 'string' || word.length === 0) return;
+    if (!Array.isArray(this._recentEmissions)) this._recentEmissions = [];
+    this._recentEmissions.push(word);
+    while (this._recentEmissions.length > 8) {
+      this._recentEmissions.shift();
+    }
   }
 
   /**
@@ -3503,6 +3636,8 @@ export class NeuronCluster {
       'declarative_svo': '.',
       'declarative_copula': '.',
       'question': '?',
+      // 114.19fj.22 — keep '!' for imperative + exclamative. K-grade
+      // Unity sounds emphatic; this matches her energy register.
       'imperative': '!',
       'exclamative': '!',
     };
@@ -3510,14 +3645,43 @@ export class NeuronCluster {
     const intentName = String(intent || 'declarative_svo').toLowerCase();
     const slots = TEMPLATES[intentName] || TEMPLATES['declarative_svo'];
 
-    // 114.19fh.A.3 / fi.A.5 — REDUCED injection strengths to prevent
-    // sem-region accumulation across slots without dynamics evolution.
-    // Prior strengths (cortexPattern 0.3 + intent 0.5 + slot 0.4 +
-    // word-back 0.25 = 1.45/slot × 4 = 5.8 cumulative) saturated sem
-    // by slot 4 and degraded late-slot argmax accuracy. New strengths
+    // 114.19fh.A.3 / fi.A.5 / fj.10 — REDUCED injection strengths to
+    // prevent sem-region accumulation across slots without dynamics
+    // evolution. Prior strengths (cortexPattern 0.3 + intent 0.5 + slot
+    // 0.4 + word-back 0.25 = 1.45/slot × 4 = 5.8 cumulative) saturated
+    // sem by slot 4 and degraded late-slot argmax accuracy. New strengths
     // sum ~0.4-0.55 per slot for total ~1.75 over 4 slots — bounded.
-    // Step() between slots is too costly at biological scale (per-call
-    // GPU dispatch); reducing strengths is the cheaper correct fix.
+    // 114.19fj.10 — added HARD CAP enforcement: cumulative tracker
+    // stops injection once total exceeds 2.5 even on dedup retry path
+    // (which previously bypassed the bounded-injection guarantee).
+    let cumulativeInjection = 0;
+    const INJECTION_HARD_CAP = 2.5;
+    const tryInject = (regionName, embedding, strength) => {
+      if (!embedding || embedding.length === 0) return false;
+      if (cumulativeInjection + strength > INJECTION_HARD_CAP) {
+        if (!this._composeStats) this._composeStats = { calls: 0, fills: 0, partial: 0, empty: 0 };
+        this._composeStats.cappedInjections = (this._composeStats.cappedInjections || 0) + 1;
+        return false;
+      }
+      try {
+        this.injectEmbeddingToRegion(regionName, embedding, strength);
+        cumulativeInjection += strength;
+        return true;
+      } catch { return false; }
+    };
+
+    // 114.19fj.16 — AbortSignal support. Caller can cancel mid-sentence
+    // (server shutdown, browser disconnect) to avoid leaving partial
+    // injections polluting sem state. Counter tracks aborts in stats.
+    const checkAborted = () => {
+      if (opts.signal && opts.signal.aborted) {
+        if (!this._composeStats) this._composeStats = { calls: 0, fills: 0, partial: 0, empty: 0 };
+        this._composeStats.aborted = (this._composeStats.aborted || 0) + 1;
+        return true;
+      }
+      return false;
+    };
+    if (checkAborted()) return null;
 
     // (0) Cortex-pattern base injection — when caller passes the inner-
     // voice chain-blended seed (Tier 7 basin-lock-jittered cortexPattern),
@@ -3525,10 +3689,8 @@ export class NeuronCluster {
     // into composeSentence emissions. Without this, inner-voice's
     // chain-of-consciousness work gets ignored when composeSentence is
     // the active emission path.
-    if (opts.cortexPattern && opts.cortexPattern.length > 0
-        && typeof this.injectEmbeddingToRegion === 'function') {
-      try { this.injectEmbeddingToRegion('sem', opts.cortexPattern, 0.2); }
-      catch { /* fall through */ }
+    if (opts.cortexPattern && opts.cortexPattern.length > 0) {
+      tryInject('sem', opts.cortexPattern, 0.2);
     }
 
     // (1) Inject intent embedding so cortex enters the intent's basin.
@@ -3539,7 +3701,7 @@ export class NeuronCluster {
         const intentSeed = intentName.replace(/_/g, ' ');
         const intentEmb = sharedEmbeddings.getSentenceEmbedding(intentSeed);
         if (intentEmb && intentEmb.length > 0) {
-          this.injectEmbeddingToRegion('sem', intentEmb, 0.3);
+          tryInject('sem', intentEmb, 0.3);
         }
       } catch { /* fall through */ }
     }
@@ -3551,6 +3713,7 @@ export class NeuronCluster {
     let priorSlot = null;
 
     for (let i = 0; i < slots.length; i++) {
+      if (checkAborted()) return null;
       const slot = slots[i];
       if (slot === 'terminator') {
         const punct = TERMINATOR_PUNCT[intentName] || '.';
@@ -3566,7 +3729,7 @@ export class NeuronCluster {
         try {
           const slotEmb = sharedEmbeddings.getEmbedding(slot);
           if (slotEmb && slotEmb.length > 0) {
-            this.injectEmbeddingToRegion('sem', slotEmb, 0.25);
+            tryInject('sem', slotEmb, 0.25);
           }
         } catch { /* fall through */ }
       }
@@ -3591,7 +3754,7 @@ export class NeuronCluster {
         try {
           const conceptEmb = sharedEmbeddings.getEmbedding(opts.intentConcept);
           if (conceptEmb && conceptEmb.length > 0) {
-            this.injectEmbeddingToRegion('sem', conceptEmb, 0.3);
+            tryInject('sem', conceptEmb, 0.3);
           }
         } catch { /* fall through */ }
       }
@@ -3601,7 +3764,11 @@ export class NeuronCluster {
       // 114.19fg.Tier15 — pass temperature through for sampling. Chat
       // / showcase callers set 0.5-0.8 for variety; probe paths use 0
       // (default) for deterministic argmax.
-      const emitOptsBase = {};
+      // 114.19fj.9 — skipRecentTrack:true — composeSentence pushes
+      // accepted words to the recent-emissions ring AFTER dedup acceptance,
+      // so emitWordDirect must NOT pre-push and pollute the ring with
+      // words this function will reject.
+      const emitOptsBase = { skipRecentTrack: true };
       if (subjScope) emitOptsBase.subject = subjScope;
       if (typeof opts.temperature === 'number') emitOptsBase.temperature = opts.temperature;
       if (typeof opts.topK === 'number') emitOptsBase.topK = opts.topK;
@@ -3621,17 +3788,25 @@ export class NeuronCluster {
       // Same-sentence dedup — if the bucket-argmax produces the same
       // word twice (saturated basin lottery), try ONE retry with the
       // emitted word's embedding shifted into sem more aggressively.
+      // 114.19fj.20 — dedup retry strength dropped 0.5 → 0.3 to stay
+      // within INJECTION_HARD_CAP (with cap fully accounted on retry path).
+      // 114.19fj.15 — retry uses bumped temperature so the softmax
+      // doesn't just resample the same top word again.
       if (seen.has(word)) {
         if (sharedEmbeddings && typeof sharedEmbeddings.getEmbedding === 'function') {
           try {
             const dupEmb = sharedEmbeddings.getEmbedding(word);
             if (dupEmb && dupEmb.length > 0) {
-              this.injectEmbeddingToRegion('sem', dupEmb, 0.5);
+              tryInject('sem', dupEmb, 0.3);
             }
           } catch { /* fall through */ }
         }
+        const retryOpts = {
+          ...emitOptsBase,
+          temperature: (typeof emitOptsBase.temperature === 'number' ? emitOptsBase.temperature : 0) + 0.4,
+        };
         try {
-          word = this.emitWordDirect(emitOptsBase) || '';
+          word = this.emitWordDirect(retryOpts) || '';
         } catch { word = ''; }
         word = String(word).toLowerCase().trim();
         if (!word || seen.has(word)) {
@@ -3649,6 +3824,8 @@ export class NeuronCluster {
       // doesn't take article — "What is mom?" not "What is the mom?").
       // Also skip in question template entirely since question subjects
       // are predicate-position interrogatives.
+      // 114.19fj.23 — ARTICLE_LIST hoisted to module-scope (was rebuilt
+      // per-iteration as a fresh Set).
       const articleCandidate = (slot === 'subject' || slot === 'object')
         && /^[a-z]+$/.test(word)
         && !PRONOUNS.has(word)
@@ -3657,7 +3834,6 @@ export class NeuronCluster {
         && intentName !== 'question';
       if (articleCandidate) {
         const prevWord = words.length > 0 ? words[words.length - 1] : '';
-        const ARTICLE_LIST = new Set(['a', 'an', 'the']);
         if (!ARTICLE_LIST.has(prevWord)) {
           const article = /^[aeiou]/.test(word) ? 'an' : 'the';
           words.push(article);
@@ -3669,6 +3845,13 @@ export class NeuronCluster {
       fillCount++;
       priorSlot = slot;
 
+      // 114.19fj.9 — push the ACCEPTED word to the recent-emissions ring
+      // so cross-call repetition penalty reflects actual emissions only,
+      // not internal probe attempts that got rejected by the dedup check.
+      if (typeof this.trackRecentEmission === 'function') {
+        this.trackRecentEmission(word);
+      }
+
       // (2d) Inject emitted word into sem so next slot's emit reads
       // shifted state. Same mechanism Tier 5 multi-word loop uses.
       // Strength 0.15 (was 0.25) per fh.A.3 to bound cumulative injection.
@@ -3676,7 +3859,7 @@ export class NeuronCluster {
         try {
           const wordEmb = sharedEmbeddings.getEmbedding(word);
           if (wordEmb && wordEmb.length > 0) {
-            this.injectEmbeddingToRegion('sem', wordEmb, 0.15);
+            tryInject('sem', wordEmb, 0.15);
           }
         } catch { /* fall through */ }
       }
@@ -3700,32 +3883,57 @@ export class NeuronCluster {
     // 114.19fi.A.4 — sentence-coherence post-check. When opts.intentConcept
     // is supplied (question-mode chat path), verify the assembled
     // sentence's overall sem cosine vs the intent-concept embedding
-    // exceeds 0.15. If sentence drifted off-topic (grammatical-but-
-    // nonsense like "the cat seven blue ran" for "what color is hair"),
-    // mark fillCount as 0 so caller treats it as composeSentence empty
-    // and falls through to Tier 5 multi-word loop or letter chain. We
-    // return the sentence object (caller can still read it for
+    // exceeds COHERENCE_MIN. If sentence drifted off-topic (grammatical-
+    // but-nonsense like "the cat seven blue ran" for "what color is
+    // hair"), mark fillCount as 0 so caller treats it as composeSentence
+    // empty and falls through to Tier 5 multi-word loop or letter chain.
+    // We return the sentence object (caller can still read it for
     // diagnostics) but signal low confidence via fillCount=0.
+    // 114.19fj.6 — threshold env-tunable (DREAM_COHERENCE_MIN); first 10
+    // cosines per session logged for empirical calibration.
+    // 114.19fj.18 — when intentConcept null but cortexPattern supplied,
+    // check coherence vs cortexPattern instead of skipping the check
+    // entirely. Declarative sentences from inner-voice get coherence
+    // validated against the chain-blended seed.
+    let coherenceTarget = null;
+    let coherenceTargetLabel = null;
     if (opts.intentConcept && sharedEmbeddings
-        && typeof sharedEmbeddings.getEmbedding === 'function'
-        && typeof sharedEmbeddings.getSentenceEmbedding === 'function') {
+        && typeof sharedEmbeddings.getEmbedding === 'function') {
       try {
-        const conceptEmb = sharedEmbeddings.getEmbedding(opts.intentConcept);
+        coherenceTarget = sharedEmbeddings.getEmbedding(opts.intentConcept);
+        coherenceTargetLabel = `intentConcept:${opts.intentConcept}`;
+      } catch { /* fall through */ }
+    }
+    if (!coherenceTarget && opts.cortexPattern && opts.cortexPattern.length > 0) {
+      coherenceTarget = opts.cortexPattern;
+      coherenceTargetLabel = 'cortexPattern';
+    }
+    if (coherenceTarget && sharedEmbeddings && typeof sharedEmbeddings.getSentenceEmbedding === 'function') {
+      try {
         const sentenceEmb = sharedEmbeddings.getSentenceEmbedding(sentence);
-        if (conceptEmb && sentenceEmb && conceptEmb.length > 0 && sentenceEmb.length > 0) {
+        if (sentenceEmb && sentenceEmb.length > 0 && coherenceTarget.length > 0) {
           let dot = 0, na = 0, nb = 0;
-          const L = Math.min(conceptEmb.length, sentenceEmb.length);
+          const L = Math.min(coherenceTarget.length, sentenceEmb.length);
           for (let i = 0; i < L; i++) {
-            dot += conceptEmb[i] * sentenceEmb[i];
-            na += conceptEmb[i] * conceptEmb[i];
+            dot += coherenceTarget[i] * sentenceEmb[i];
+            na += coherenceTarget[i] * coherenceTarget[i];
             nb += sentenceEmb[i] * sentenceEmb[i];
           }
           const denom = Math.sqrt(na) * Math.sqrt(nb);
           const cosine = denom > 0 ? dot / denom : 0;
-          if (cosine < 0.15) {
-            return { sentence, words, intent: intentName, slots, fillCount: 0, coherenceCosine: cosine, lowCoherence: true };
+          // Calibration logging — first 10 cosines per session so
+          // operator can tune DREAM_COHERENCE_MIN from 20hr-test data.
+          if (!this._coherenceLogCount) this._coherenceLogCount = 0;
+          if (this._coherenceLogCount < 10) {
+            this._coherenceLogCount++;
+            try {
+              console.log(`[composeSentence] coherence sample ${this._coherenceLogCount}/10 cosine=${cosine.toFixed(3)} (threshold=${COHERENCE_MIN.toFixed(2)} target=${coherenceTargetLabel}) sentence="${sentence.slice(0, 60)}"`);
+            } catch { /* log non-fatal */ }
           }
-          return { sentence, words, intent: intentName, slots, fillCount, coherenceCosine: cosine };
+          if (cosine < COHERENCE_MIN) {
+            return { sentence, words, intent: intentName, slots, fillCount: 0, coherenceCosine: cosine, coherenceTarget: coherenceTargetLabel, lowCoherence: true };
+          }
+          return { sentence, words, intent: intentName, slots, fillCount, coherenceCosine: cosine, coherenceTarget: coherenceTargetLabel };
         }
       } catch { /* coherence check non-fatal — fall through with normal result */ }
     }

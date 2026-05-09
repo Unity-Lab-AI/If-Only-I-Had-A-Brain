@@ -26,6 +26,19 @@ REM   DREAM_GW_IGNITION=0.45         GlobalWorkspace ignition threshold
 REM                                  in (0, 1). Default 0.45. Lower =
 REM                                  more frequent ignitions (diffuse
 REM                                  consciousness); higher = stricter
+REM   DREAM_COHERENCE_MIN=0.15       composeSentence cosine coherence
+REM                                  floor. Default 0.15. Sentences with
+REM                                  cosine vs intent-concept (or cortex-
+REM                                  pattern) below this threshold mark
+REM                                  fillCount=0 + lowCoherence=true so
+REM                                  caller falls through. First 10 reads
+REM                                  per session log calibration data.
+REM   DREAM_SAT_MEANCOS=0.7          saturation halt: mean-cos > X.
+REM   DREAM_SAT_MEANABS=0.6          saturation halt: meanAbs > X*wMax.
+REM   DREAM_SAT_RATIO=1.5            saturation halt: max/mean ratio < X.
+REM   DREAM_SAT_SAMPLE=1000          weight-distribution sample size for
+REM                                  saturation check. First 5 reads per
+REM                                  session log calibration data.
 REM
 REM Brain calls dictionaryapi.dev outbound for live word definitions.
 REM Firewall / offline → definitions silently fail; brain still boots.

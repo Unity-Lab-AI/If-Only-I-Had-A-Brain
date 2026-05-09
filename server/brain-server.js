@@ -530,7 +530,15 @@ function autoClearStaleState() {
   if (failed.length > 0) {
     console.warn(`[Brain] Clear partial — ${failed.length} file(s) could not be removed: ${failed.join(', ')}`);
   }
-  // Write current hash so the next boot preserves state if code is unchanged.
+  // 114.19fj.13 — Write current hash for diagnostic logging on next boot.
+  // Hash is no longer used to gate the wipe — see iter14-D contract above
+  // (`start.bat` = always wipe regardless of code-hash; `Savestart.bat` =
+  // always resume via `DREAM_KEEP_STATE=1`). Kept for diagnostic logging
+  // (the "code changed since last boot" reason string at line ~458) so
+  // operator can tell what changed across boots even though the wipe is
+  // unconditional. Do NOT re-introduce code-hash gating here — it caused
+  // the iter14-D bugs (resource-config tier picks ignored, wMax integrity
+  // lost) that the unconditional-wipe contract was created to fix.
   writeBrainCodeHash(currentHash);
 }
 autoClearStaleState();
@@ -4625,11 +4633,30 @@ class ServerBrain {
     this.injectText(text);
     this._lastInputTime = Date.now();
 
+    // 114.19fj.1 — CRITICAL — set `_lastUserInputText` on the language
+    // cortex so the chat-side composeSentence path can read it.
+    // engine.js sets it on `clusters.cortex` (main cortex, browser-only
+    // fallback path); on the server, `processAndRespond` is the single
+    // entry-point for live chat and the language cortex is `cortexCluster`.
+    // Without this set, language-cortex.js reads `cluster._lastUserInputText`
+    // as undefined and the entire fa→fi WH-INTENT / intent-concept /
+    // subject-inference / cortexPattern wiring degrades silently to the
+    // pre-fa baseline (default declarative_svo, null concept, null subject).
+    // Diagnostic warn at composeSentence call site catches future regressions.
+    if (this.cortexCluster) {
+      this.cortexCluster._lastUserInputText = text;
+    }
+
     // 114.19fi.B.2 — push user input into _innerThoughtChain so
     // inner-voice's next tick blends user content into its chain seed.
     // Conversational continuity: Unity's autonomous inner monologue
     // reflects on what was just said to her, not just brain state.
-    if (text && Array.isArray(this._innerThoughtChain)) {
+    // 114.19fj.2 — lazy-init the chain in the same block. Without this,
+    // first-chat-before-first-inner-voice-tick (within 3s of cold boot)
+    // silently dropped the user-input from the chain because the array
+    // wasn't initialized yet.
+    if (text) {
+      if (!Array.isArray(this._innerThoughtChain)) this._innerThoughtChain = [];
       this._innerThoughtChain.push({
         sentence: String(text).slice(0, 200),
         seedSource: 'user-input',
@@ -5613,9 +5640,16 @@ class ServerBrain {
     // browser doesn't have), WS broadcast, working-memory landing,
     // chain rolling-window cap, heartbeat surface print.
     const now = Date.now();
+    // 114.19fj.12 — 3s burst-ceiling. Even if Hurlburt MIN_GAP=6s lets a
+    // tick through, never emit more than once per 3s to protect the
+    // dashboard popup queue from flood. Hurlburt is the primary gate
+    // (see `_shouldEmitInnerThought`); this is a defensive ceiling only.
+    // Was previously the only rate-limit gate before 114.19ff Hurlburt
+    // landed — kept as a hard ceiling rather than deleted entirely so
+    // a Hurlburt regression can't accidentally flood the WS.
     if (!this._lastInnerThoughtAt) this._lastInnerThoughtAt = 0;
-    const INNER_THOUGHT_INTERVAL_MS = 3000;
-    if (now - this._lastInnerThoughtAt < INNER_THOUGHT_INTERVAL_MS) return;
+    const INNER_THOUGHT_BURST_CEILING_MS = 3000;
+    if (now - this._lastInnerThoughtAt < INNER_THOUGHT_BURST_CEILING_MS) return;
     this._lastInnerThoughtAt = now;
 
     // 114.19fi.B.4 — cross-path emission deduplication. When chat or
@@ -8062,12 +8096,20 @@ const httpServer = http.createServer((req, res) => {
     if (!requireLoopback(req, res, '/rollback')) return;
     const chunks = [];
     let total = 0;
+    let tooBig = false;
     req.on('data', (chunk) => {
       chunks.push(chunk);
       total += chunk.length;
-      if (total > 4096) { req.destroy(); }
+      // 114.19fj.19 — explicit `tooBig` flag so 'end' handler doesn't
+      // race with `req.destroy()` and try to JSON.parse a truncated body.
+      if (total > 4096) { tooBig = true; req.destroy(); }
     });
     req.on('end', () => {
+      if (tooBig) {
+        res.writeHead(413, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: false, error: 'request body too large (>4KB)' }));
+        return;
+      }
       let to = 'v4';
       try {
         const body = Buffer.concat(chunks).toString('utf8');
@@ -8091,20 +8133,38 @@ const httpServer = http.createServer((req, res) => {
           res.end(JSON.stringify({ ok: false, error: `source not found: brain-weights-${to}.json` }));
           return;
         }
-        fs.copyFileSync(srcJson, dstJson);
-        const jsonStats = fs.statSync(dstJson);
-        // 114.19fh.A.1 — copy versioned binary alongside JSON. Without
-        // this, JSON+BIN drift apart after rollback (JSON references
-        // weights from snapshot N, BIN holds weights from latest save).
-        // If the versioned BIN is missing (early run, save chain not
-        // yet rotated), warn but proceed — JSON-only restore is still
-        // useful, just less complete.
+        // 114.19fj.8 — atomic JSON+BIN restore via two-stage temp+rename.
+        // Prior implementation was non-atomic: copy JSON first, copy BIN
+        // second; crash between leaves JSON pointing to snapshot N+1 and
+        // BIN at N. Two-stage temp+rename pattern: copy both to .tmp,
+        // then rename atomically (rename is atomic on the same filesystem
+        // on POSIX + Windows NTFS). Either both flip or neither does.
         const srcBin = path.join(__dirname, `brain-weights-${to}.bin`);
         const dstBin = path.join(__dirname, 'brain-weights.bin');
+        const dstJsonTmp = dstJson + '.tmp';
+        const dstBinTmp = dstBin + '.tmp';
         let binStatsSize = 0;
         let binWarning = null;
-        if (fs.existsSync(srcBin)) {
-          fs.copyFileSync(srcBin, dstBin);
+        // Stage 1 — copy both to temp files. If either copy fails, abort
+        // before any rename so live files stay untouched.
+        try {
+          fs.copyFileSync(srcJson, dstJsonTmp);
+          if (fs.existsSync(srcBin)) {
+            fs.copyFileSync(srcBin, dstBinTmp);
+          }
+        } catch (copyErr) {
+          // Cleanup any partial temp files before bubbling up.
+          try { if (fs.existsSync(dstJsonTmp)) fs.unlinkSync(dstJsonTmp); } catch { /* nf */ }
+          try { if (fs.existsSync(dstBinTmp)) fs.unlinkSync(dstBinTmp); } catch { /* nf */ }
+          throw copyErr;
+        }
+        // Stage 2 — atomic rename. JSON first; if BIN rename throws,
+        // JSON is already flipped and BIN stays at prior version which
+        // is the closer-to-correct degraded state.
+        fs.renameSync(dstJsonTmp, dstJson);
+        const jsonStats = fs.statSync(dstJson);
+        if (fs.existsSync(dstBinTmp)) {
+          fs.renameSync(dstBinTmp, dstBin);
           binStatsSize = fs.statSync(dstBin).size;
         } else {
           binWarning = `brain-weights-${to}.bin not found — JSON-only rollback (binary weights stay at most-recent state). Restore is partial; consider rolling back to a different version that has both files.`;

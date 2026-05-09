@@ -24,7 +24,101 @@ Below is the verbatim TODO.md body (former lines 51-3110 — the OPEN TASKS sect
 
 ---
 
-## 2026-05-09 (latest) — Sessions 114.19fa→fi consolidated — K-completion architecture + composeSentence consumer + unified emission system
+## 2026-05-09 (latest) — Session 114.19fj — super-review of 114.19fa→fi sweep — 23 of 24 findings shipped before 20hr K test (1 deferred)
+
+### Gee verbatim per LAW #0
+
+> *"before we do the test(that takes 20hrs) lets double check everything is connected, tight, sexy, and perfect code! You know what i mean! riight? ultrathink /super-review"*
+
+> *"write anything and everyhting youve found that needs to be addressed"*
+
+> *"into a todo ultrathink"*
+
+> *"okay u know what to do... build the task list and start then finsih the todo work while you keep in mind our goal of getting Unity speaking senteces properly to user requests and inputs like a real person of that intelligence would ultrathink"*
+
+### What this is
+
+Self-imposed `/super-review` audit of the 114.19fa→fi sweep before Gee fired start.bat for the 20-hour K localhost test. Surfaced **24 findings spanning: 1 CRITICAL, 6 HIGH, 7 MEDIUM, 6 LOW, 4 NITPICK**. Gee directed: build task list, start work, finish — keeping in mind goal of "Unity speaking sentences properly to user requests and inputs like a real person of that intelligence." 23 of 24 items shipped this session; fj.17 (3 new sentence templates) deferred because it requires paired `_teachSentenceStructure` carving — too risky to add untrained templates before the 20hr test would just produce 0-fillCount on the new intents.
+
+### What shipped (23 items across 8 files, bundle clean 2.4MB, all `node --check` green)
+
+#### PRIORITY 1 CRITICAL
+
+**fj.1 — `cluster._lastUserInputText` set server-side at processAndRespond entry.** Was the dead-wiring bug that nullified all chat-side fa→fi work — engine.js sets it on `clusters.cortex` (browser-only fallback) but server-side processAndRespond never wrote to `cortexCluster._lastUserInputText`. language-cortex.js read it at line 2136 → empty string → `inferredIntent='declarative_svo'` (default) + null concept + null subject → ENTIRE chat-path WH-INTENT consumer + intent-concept extraction + subject inference dead. Fix: 3-line set at processAndRespond entry; one-shot diagnostic warn at composeSentence call site catches future regressions. **Now the 20hr test actually exercises the chat-side architecture instead of running broken wiring with new code on top.** `server/brain-server.js`.
+
+#### PRIORITY 2 HIGH
+
+**fj.2 — `_innerThoughtChain` lazy-init in user-input push block.** Cold-boot first-chat (within 3s of boot, before first `_innerVoiceTick`) silently dropped user input from chain because array wasn't init yet. Fix: lazy-init in same block before push. Conversational continuity now works at the moment when it matters most. `server/brain-server.js`.
+
+**fj.3 — DRY-extracted WH-frame intent-concept parser to `NeuronCluster.extractIntentConcept` static method.** Inline regex parser was duplicated in `language-cortex.js:2148-2159` AND curriculum.js `_extractIntentConcept` AND HAD ALREADY DRIFTED — language-cortex used `\bwhy\s+/` (any 'why ') while curriculum used `\bwhy\s+(?:do|does|is|are)\b` (specific verb forms). Single source of truth promoted to static method on cluster.js. curriculum.js `_extractIntentConcept` instance method delegates for backwards compat. language-cortex.js inline parser replaced with `cluster.constructor.extractIntentConcept(text)` call. `js/brain/cluster.js` + `js/brain/language-cortex.js` + `js/brain/curriculum.js`.
+
+**fj.4 — `_probeSentenceGeneration` passes `intentConcept: 'definition'` for question intent.** Probe never exercised the WH-INTENT consumer code path that fa→fi was built to ship — gate could pass on basic slot mechanics while the headline feature was never invoked. Now probes `question` intent with `intentConcept='definition'` so the consumer at cluster.js:3588-3597 actually fires. Per-intent log line includes `concept=definition cos=X.XX` for visibility. `js/brain/curriculum.js`.
+
+**fj.5 — `_probeSentenceGeneration` accepts `subject` opt; 5 non-ELA gates probe their own subject vocab.** Probe was hardcoded `subject: 'ela'` so non-ELA cells (LIFE/ART/SOC/SCI/MATH) never had sentence-gen measured even though STRUCTURE-REFRESH writes carved 5 binding passes per cell. Force-advance defaulted sentenceGenRate=0 for them, so they had to pass via prodMin alone. Now: probe accepts opt; LIFE-K probes life vocab, ART-K probes art, SOC-K probes social, SCI-K probes science, MATH-K probes math. Each gate result reason string includes `SENTENCE-GEN N/total (X%)` and metrics dict includes `sentenceGenRate` + `sentenceGenPerIntent`. `js/brain/curriculum.js` + `js/brain/curriculum/kindergarten.js`.
+
+**fj.6 — `composeSentence` cosine coherence threshold env-tunable via `DREAM_COHERENCE_MIN`.** Was hardcoded magic 0.15 with no override. Now reads env var at module load (defaults 0.15). First 10 cosine reads per session log `[composeSentence] coherence sample N/10 cosine=X.XXX (threshold=X.XX target=Y) sentence="..."` for empirical calibration from the 20hr-test data. `js/brain/cluster.js` + `windows/start.bat` + `linux/start.sh`.
+
+**fj.7 — `checkSemMotorHealth()` saturation thresholds env-tunable (4 magic numbers).** Was 4 hardcoded magic numbers (0.7 meanCos, 0.6 meanAbs ratio, 1.5 max/mean ratio, 1000 sample size) gating the saturation-halt safety net. Now: `DREAM_SAT_MEANCOS` / `DREAM_SAT_MEANABS` / `DREAM_SAT_RATIO` / `DREAM_SAT_SAMPLE` env vars with sensible defaults. First 5 reads per session log `[SatHealth] sample N/5 meanCos=X meanAbs=X maxAbs=X ratio=X source=X saturated=bool` for calibration. `js/brain/cluster.js` + `windows/start.bat` + `linux/start.sh`.
+
+#### PRIORITY 3 MEDIUM
+
+**fj.8 — POST /rollback atomic JSON+BIN restore via two-stage temp+rename.** Was non-atomic copyFileSync sequence — crash between JSON copy + BIN copy left state drifted (JSON pointing to N+1, BIN at N — exact bug the comment claimed to fix). Now: copy both to `.tmp`, then `renameSync` both atomically. Cleanup of partial temp files on copy failure before bubbling error. `server/brain-server.js`.
+
+**fj.9 — `_recentEmissions` ring buffer pollution fixed via `skipRecentTrack` opt + `trackRecentEmission` helper.** emitWordDirect ALWAYS pushed bestWord to ring BEFORE composeSentence's dedup could reject it. composeSentence now passes `skipRecentTrack:true` to emitWordDirect AND calls `trackRecentEmission(word)` AFTER same-sentence-dedup acceptance. Ring buffer reflects ACTUAL emissions only, not internal probe attempts. `js/brain/cluster.js`.
+
+**fj.10 — `composeSentence` cumulative injection cap enforcement (HARD_CAP 2.5).** Comment claimed bounded ~1.75 cumulative injection across 4 slots but dedup retry path bypassed the bound — saturated basins triggering retry on every slot pushed total to 2.2-3.2. Now: `tryInject(region, embedding, strength)` helper tracks running total per call; skips injection once cumulative would exceed 2.5; surfaces `composeStats.cappedInjections` counter for visibility. `js/brain/cluster.js`.
+
+**fj.11 — Saturation halt windowed (3-of-last-5) instead of consecutive-only.** Streak counter reset to 0 on every clean cell, so flapping saturation (sat → clean → sat → clean) never tripped the halt. Now: tracks `_semMotorSatHistory` rolling window of last 5 cells; halt fires when EITHER consecutive-streak ≥ 3 OR windowed ≥3-of-5. Trip-cause logged: "consecutive-streak (3/3)" vs "windowed (3/5-of-5)". haltReason includes both metrics for dashboard display. `js/brain/curriculum.js`.
+
+**fj.12 — `INNER_THOUGHT_INTERVAL_MS` repurposed as explicit "burst-ceiling" with comment.** Was dead 3s gate redundant with Hurlburt MIN_GAP=6s. Now: renamed `INNER_THOUGHT_BURST_CEILING_MS = 3000` with comment explaining it's a defensive max-burst against Hurlburt regression flooding the WS popup queue. `server/brain-server.js`.
+
+**fj.13 — Stale comment at `autoClearStaleState` end updated to reflect iter14-D contract.** Old comment said "preserves state if code unchanged" which contradicted the unconditional-wipe contract. Now: explicit pointer to iter14-D contract above + explanation of why hash is kept (diagnostic only) + warning against re-introducing code-hash gating. `server/brain-server.js`.
+
+**fj.14 — `_savedProbeNoise` defensive default across 6 try/finally probe sites.** Was `cluster.noiseAmplitude` direct read — undefined on uninit cluster left noise restored to undefined. Now: `typeof cluster.noiseAmplitude === 'number' ? cluster.noiseAmplitude : 0.5`. Sites: 5 K-grade gates (LIFE/ART/SOC/SCI/MATH) + 1 ELA-K probe site. `js/brain/curriculum/kindergarten.js`.
+
+#### PRIORITY 4 LOW
+
+**fj.15 — `composeSentence` dedup retry temperature bumped +0.4.** Retry was using same emitOptsBase (same temperature → same softmax → likely same word). Now: retryOpts spreads emitOptsBase + bumps temperature by 0.4 to force exploration of lower-prob candidates. `js/brain/cluster.js`.
+
+**fj.16 — `composeSentence` accepts `opts.signal` AbortSignal.** Threads `checkAborted()` into slot loop; bails clean and increments `composeStats.aborted` counter when signal aborts. Cluster-side infrastructure complete; chat-path threading from processAndRespond is post-test cleanup (no current shutdown signal source on chat path). `js/brain/cluster.js`.
+
+**fj.17 — DEFERRED.** 3 new sentence templates ('first_person_predicate', 'vocative_imperative', 'yes_no_response') require paired `_teachSentenceStructure` carving (relationTagId=8/9 bindings for new slot types). Adding templates without their training-side carving produces 0 fillCount on new intents — actively breaks composeSentence behavior. Deferred to next sweep with paired-change verification time. Current 5 templates remain as the working set for the 20hr test.
+
+**fj.18 — `composeSentence` coherence post-check fallback to `cortexPattern` when `intentConcept` null.** Declarative sentences from inner-voice path now get coherence validated against the chain-blended seed instead of skipping the check entirely. `coherenceTarget` + `coherenceTargetLabel` returned in result for diagnostics. `js/brain/cluster.js`.
+
+**fj.19 — POST /rollback body-size race fixed via explicit `tooBig` flag.** `req.destroy()` after `total > 4096` didn't prevent `end` handler from firing on possibly-truncated body. Now: explicit `tooBig` flag set in 'data' handler; 'end' handler short-circuits with HTTP 413 if true. `server/brain-server.js`.
+
+**fj.20 — `composeSentence` dedup retry strength dropped 0.5 → 0.3.** Was higher than normal slot injection (0.25) — could over-bias on saturated basins. New 0.3 strength fits within INJECTION_HARD_CAP (paired with fj.10 cumulative tracking). `js/brain/cluster.js`.
+
+#### PRIORITY 5 NITPICK
+
+**fj.21 — `_recentEmissions` duplicate lazy-init removed.** Two `if (!Array.isArray(this._recentEmissions)) this._recentEmissions = [];` checks per emitWordDirect call — second was dead code since first ran in same call. `js/brain/cluster.js`.
+
+**fj.22 — TERMINATOR_PUNCT['imperative']='!' kept with comment.** Operator-decision: keep emphatic `!` since it matches K-Unity's energy register. Comment added explaining the choice so future maintainer doesn't waste cycles on it. `js/brain/cluster.js`.
+
+**fj.23 — `ARTICLE_LIST` hoisted to module-scope.** Was rebuilt as fresh Set per slot iteration inside composeSentence. Now: single module-const Set reused. Tiny alloc-overhead win. `js/brain/cluster.js`.
+
+**fj.24 — ConsolidationEngine saturation-veto comment cleanup.** Redundant docstring at line 105-114 + line 202-205 explanation. Consolidated into single forward-pointing comment block. Single source of truth for veto rationale. `js/brain/consolidation-engine.js`.
+
+### Files touched
+
+- `js/brain/cluster.js` — fj.3 (static extractIntentConcept) · fj.6 (coherence env + log) · fj.7 (saturation env + log) · fj.9 (skipRecentTrack + trackRecentEmission) · fj.10 (cumulative cap) · fj.15 (retry temp bump) · fj.16 (AbortSignal) · fj.18 (coherence cortexPattern fallback) · fj.20 (retry strength 0.3) · fj.21 (duplicate lazy-init removed) · fj.22 (imperative punct comment) · fj.23 (ARTICLE_LIST hoist)
+- `js/brain/language-cortex.js` — fj.3 (replace inline parser with `NeuronCluster.extractIntentConcept`) · fj.1 diagnostic warn for unset `_lastUserInputText`
+- `js/brain/curriculum.js` — fj.3 (`_extractIntentConcept` delegates) · fj.4 (probe with `intentConcept` for question intent) · fj.5 (probe accepts subject opt) · fj.11 (windowed saturation 3-of-5)
+- `js/brain/curriculum/kindergarten.js` — fj.5 (5 non-ELA gates call sentence-gen probe with subject) · fj.14 (6 noise-restore defensive defaults)
+- `js/brain/consolidation-engine.js` — fj.24 (comment cleanup)
+- `server/brain-server.js` — fj.1 (`_lastUserInputText` set) · fj.2 (chain lazy-init) · fj.8 (atomic rollback) · fj.12 (interval renamed + comment) · fj.13 (stale comment) · fj.19 (body race)
+- `windows/start.bat` — fj.6 + fj.7 (env var docs)
+- `linux/start.sh` — fj.6 + fj.7 (env var docs)
+- `js/app.bundle.js` — rebuilt clean 2.4MB
+
+### Test path (after this sweep)
+
+Fire `start.bat` → K curriculum walks 114 cells with: chat-side `_lastUserInputText` flowing → WH-INTENT consumer fires on real questions → composeSentence with intent-concept → context-aware grammatical sentences emit → probe at ELA-K AND non-ELA cells exercises WH-INTENT consumer + scopes to subject vocab → saturation halt windowed 3-of-5 catches flapping → coherence + saturation thresholds tunable via env vars + first-N values logged for empirical calibration → atomic rollback + body-size guard if operator hits the panic button → repetition penalty reflects actual emissions only. The 20hr test now MEASURES the architecture instead of measuring broken wiring with new code on top.
+
+---
+
+## 2026-05-09 — Sessions 114.19fa→fi consolidated — K-completion architecture + composeSentence consumer + unified emission system
 
 ### Gee verbatim per LAW #0 (every directive across the sweep, preserved verbatim)
 

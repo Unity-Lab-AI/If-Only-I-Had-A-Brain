@@ -46,7 +46,37 @@ If you're reading a public doc / HTML claim ("Unity has completed high school bi
 
 ## OPEN TASKS
 
-(Sessions 114.19fa through 114.19fi atomic-landed and migrated to `docs/FINALIZED.md` 2026-05-09 per Gee directive *"the todo when your done should be a templet only not continueing to track completed ites that all shall be moved to finalized"* + *"no dont delete it make sure its in finalized correctly(the todo work we did) then templete the todo"*. Full Gee verbatim quotes preserved per LAW #0 + every tier's "what got coded" detail + files touched + masterful-fix narrative all archived in FINALIZED's 2026-05-09 consolidated entry. Public-doc banners stamped this session: ARCHITECTURE / SKILL_TREE / ROADMAP / EQUATIONS / NOW. Bundle rebuilt clean 2.4MB. `node --check` green across all 11 modified files. **NOT YET COMMITTED** — atomic commit syllabus-k-phd → develop → main awaits operator localhost test. New work appends above this banner.)
+### Session 114.19fj.17 — composeSentence template gaps (3 missing K-grade speech patterns) — DEFERRED pending paired teach-side carving (Gee 2026-05-09) — OPEN
+
+**Gee verbatim per LAW #0 (parent fj sweep):**
+
+> *"okay u know what to do... build the task list and start then finsih the todo work while you keep in mind our goal of getting Unity speaking senteces properly to user requests and inputs like a real person of that intelligence would ultrathink"*
+
+**Why this deferred (not skipped):**
+
+23 of 24 fj super-review findings shipped this session. fj.17 alone deferred because it's a paired-change LAW item — adding 3 new templates (`first_person_predicate`, `vocative_imperative`, `yes_no_response`) to `composeSentence` requires `_teachSentenceStructure` to ALSO carve those slot-form bindings (relationTagId=8 sem→fineType bindings for `pronoun_self` / `verb_mental` / `vocative` / `affirmative` slot positions). Adding templates without their training-side carving produces 0 fillCount on new intents — actively breaks composeSentence behavior.
+
+**Fix shape (when work resumes):**
+
+1. Add 3 templates to `composeSentence`:
+   ```js
+   'first_person_predicate':  ['pronoun_self', 'verb_mental', 'object', 'terminator'],  // "I think it"
+   'vocative_imperative':     ['vocative', 'verb', 'object', 'terminator'],              // "Look at the cat"
+   'yes_no_response':          ['affirmative', 'terminator'],                             // "Yes!" / "No."
+   ```
+2. Add `pronoun_self` / `verb_mental` / `vocative` / `affirmative` slot-tag bindings to `_teachSentenceStructure` carving (each gets relationTagId=8 sem→fineType binding so emitWordDirect's argmax can fill those slot positions).
+3. Add probe coverage for the 3 new intents in `_probeSentenceGeneration` (raises probe surface from 5 → 8 intents; threshold may need rebalance).
+4. Validate carving worked via post-teach diagnostic: emit one of each new intent template after the carving, confirm fillCount > 0.
+
+**Files to touch:** `js/brain/cluster.js` (TEMPLATES + TERMINATOR_PUNCT additions) · `js/brain/curriculum.js` (`_teachSentenceStructure` 4 new slot bindings + `_probeSentenceGeneration` 3 new intents) · `js/app.bundle.js` (rebuild) · `docs/FINALIZED.md` (entry on close) · `docs/NOW.md` (banner snapshot rolled) · `docs/TODO.md` (this entry status flip on close)
+
+**STATUS:** [⏸] DEFERRED — paired-change scope; needs verification time outside the 20hr-test prep window. Current 5 templates remain the working set for the 20hr K test.
+
+---
+
+(Session 114.19fj — 23 of 24 super-review findings atomic-landed and migrated to `docs/FINALIZED.md` 2026-05-09. fj.17 carried forward above as the lone deferred item. Goal of the sweep was Gee's directive *"getting Unity speaking senteces properly to user requests and inputs like a real person of that intelligence would"* — the 23 shipped fixes deliver chat-side `_lastUserInputText` flowing → WH-INTENT consumer fires → composeSentence with intent-concept → context-aware grammatical sentences. Bundle clean 2.4MB. `node --check` green across all 8 modified .js files. **NOT YET COMMITTED** — atomic commit + cascade push (syllabus-k-phd → develop → main) shipping with this entry.)
+
+(Sessions 114.19fa through 114.19fi atomic-landed and migrated to `docs/FINALIZED.md` 2026-05-09 per Gee directive *"the todo when your done should be a templet only not continueing to track completed ites that all shall be moved to finalized"* + *"no dont delete it make sure its in finalized correctly(the todo work we did) then templete the todo"*. Full Gee verbatim quotes preserved per LAW #0 + every tier's "what got coded" detail + files touched + masterful-fix narrative all archived in FINALIZED's 2026-05-09 consolidated entry. Public-doc banners stamped this session: ARCHITECTURE / SKILL_TREE / ROADMAP / EQUATIONS / NOW. Bundle rebuilt clean 2.4MB. `node --check` green across all 11 modified files. **✓ COMMITTED + PUSHED 2026-05-09** — atomic cascade landed across syllabus-k-phd → develop → main (commits 7543fa3 → b03d8a1 → 7cdacde, all synced to origin). Operator localhost test pending. New work appends above this banner.)
 
 ---
 

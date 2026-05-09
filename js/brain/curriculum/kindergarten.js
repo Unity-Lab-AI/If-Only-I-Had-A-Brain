@@ -247,7 +247,9 @@ export const K_MIXIN = {
     // basin attractors lock harder; the 0.1 bump gives saturated
     // basins a probabilistic kick without destabilizing scoring.
     // Restore in finally so post-probe live chat retains chaotic dynamics.
-    const _savedProbeNoise = cluster.noiseAmplitude;
+    // 114.19fj.14 — defensive default if cluster.noiseAmplitude was
+    // never initialized; restore must not set undefined.
+    const _savedProbeNoise = typeof cluster.noiseAmplitude === 'number' ? cluster.noiseAmplitude : 0.5;
     cluster.noiseAmplitude = 0.6;
     try {
 
@@ -274,6 +276,18 @@ export const K_MIXIN = {
       visualCortex: (this.engine && this.engine.visualCortex) || null,
     });
     const prodRate = prodResult.total > 0 ? prodResult.pass / prodResult.total : 0;
+    // 114.19fj.5 — sentence-gen probe scoped to life vocab so the LIFE-K
+    // STRUCTURE-REFRESH writes are validated. Force-advance reads
+    // metrics.sentenceGenRate when deciding whether to promote despite
+    // gate fail — without this probe, sentenceGenRate=0 and Unity has
+    // to pass via prodMin alone.
+    let sentenceGen = { passed: 0, total: 0, rate: 0, perIntent: {} };
+    try {
+      sentenceGen = await this._probeSentenceGeneration({ subject: 'life' });
+    } catch (err) {
+      console.warn('[Curriculum] _probeSentenceGeneration[life] threw:', err?.message || err);
+    }
+    const sentenceGenRate = sentenceGen.rate || 0;
     const pass = prodRate >= 0.95;
     const pct = (r) => (r * 100).toFixed(0);
     const prodFailSummary = prodResult.fails && prodResult.fails.length > 0
@@ -281,8 +295,8 @@ export const K_MIXIN = {
       : '';
     const _lifeKResult = {
       pass,
-      reason: `PROD ${prodResult.pass}/${prodResult.total} (${pct(prodRate)}%)${prodFailSummary}`,
-      metrics: { prodRate, prodFails: prodResult.fails },
+      reason: `PROD ${prodResult.pass}/${prodResult.total} (${pct(prodRate)}%) SENTENCE-GEN ${sentenceGen.passed}/${sentenceGen.total} (${pct(sentenceGenRate)}%)${prodFailSummary}`,
+      metrics: { prodRate, prodFails: prodResult.fails, sentenceGenRate, sentenceGenPerIntent: sentenceGen.perIntent },
     };
     this._recordGateHistory('life', 'kindergarten', 'overall', pass, prodRate);
     return _lifeKResult;
@@ -394,7 +408,8 @@ export const K_MIXIN = {
     await this._pregateEnrichment('art/kindergarten');
 
     // 114.19fh.A.4 — probe noise bump 0.5→0.6 (see _gateLifeKReal for rationale).
-    const _savedProbeNoise = cluster.noiseAmplitude;
+    // 114.19fj.14 — defensive default if cluster.noiseAmplitude unset.
+    const _savedProbeNoise = typeof cluster.noiseAmplitude === 'number' ? cluster.noiseAmplitude : 0.5;
     cluster.noiseAmplitude = 0.6;
     try {
 
@@ -415,6 +430,15 @@ export const K_MIXIN = {
       visualCortex: (this.engine && this.engine.visualCortex) || null,
     });
     const prodRate = prodResult.total > 0 ? prodResult.pass / prodResult.total : 0;
+    // 114.19fj.5 — sentence-gen probe scoped to art vocab so ART-K
+    // STRUCTURE-REFRESH writes are validated.
+    let sentenceGen = { passed: 0, total: 0, rate: 0, perIntent: {} };
+    try {
+      sentenceGen = await this._probeSentenceGeneration({ subject: 'art' });
+    } catch (err) {
+      console.warn('[Curriculum] _probeSentenceGeneration[art] threw:', err?.message || err);
+    }
+    const sentenceGenRate = sentenceGen.rate || 0;
     const pass = prodRate >= 0.95;
     const pct = (r) => (r * 100).toFixed(0);
     const prodFailSummary = prodResult.fails && prodResult.fails.length > 0
@@ -422,8 +446,8 @@ export const K_MIXIN = {
       : '';
     const _artKResult = {
       pass,
-      reason: `PROD ${prodResult.pass}/${prodResult.total} (${pct(prodRate)}%)${prodFailSummary}`,
-      metrics: { prodRate, prodFails: prodResult.fails },
+      reason: `PROD ${prodResult.pass}/${prodResult.total} (${pct(prodRate)}%) SENTENCE-GEN ${sentenceGen.passed}/${sentenceGen.total} (${pct(sentenceGenRate)}%)${prodFailSummary}`,
+      metrics: { prodRate, prodFails: prodResult.fails, sentenceGenRate, sentenceGenPerIntent: sentenceGen.perIntent },
     };
     this._recordGateHistory('art', 'kindergarten', 'overall', pass, prodRate);
     return _artKResult;
@@ -601,7 +625,8 @@ export const K_MIXIN = {
     await this._pregateEnrichment('social/kindergarten');
 
     // 114.19fh.A.4 — probe noise bump 0.5→0.6 (see _gateLifeKReal for rationale).
-    const _savedProbeNoise = cluster.noiseAmplitude;
+    // 114.19fj.14 — defensive default if cluster.noiseAmplitude unset.
+    const _savedProbeNoise = typeof cluster.noiseAmplitude === 'number' ? cluster.noiseAmplitude : 0.5;
     cluster.noiseAmplitude = 0.6;
     try {
 
@@ -628,6 +653,15 @@ export const K_MIXIN = {
       visualCortex: (this.engine && this.engine.visualCortex) || null,
     });
     const prodRate = prodResult.total > 0 ? prodResult.pass / prodResult.total : 0;
+    // 114.19fj.5 — sentence-gen probe scoped to social vocab so SOC-K
+    // STRUCTURE-REFRESH writes are validated.
+    let sentenceGen = { passed: 0, total: 0, rate: 0, perIntent: {} };
+    try {
+      sentenceGen = await this._probeSentenceGeneration({ subject: 'social' });
+    } catch (err) {
+      console.warn('[Curriculum] _probeSentenceGeneration[social] threw:', err?.message || err);
+    }
+    const sentenceGenRate = sentenceGen.rate || 0;
     const pass = prodRate >= 0.95;
     const pct = (r) => (r * 100).toFixed(0);
     const prodFailSummary = prodResult.fails && prodResult.fails.length > 0
@@ -635,8 +669,8 @@ export const K_MIXIN = {
       : '';
     const _socKResult = {
       pass,
-      reason: `PROD ${prodResult.pass}/${prodResult.total} (${pct(prodRate)}%)${prodFailSummary}`,
-      metrics: { prodRate, prodFails: prodResult.fails },
+      reason: `PROD ${prodResult.pass}/${prodResult.total} (${pct(prodRate)}%) SENTENCE-GEN ${sentenceGen.passed}/${sentenceGen.total} (${pct(sentenceGenRate)}%)${prodFailSummary}`,
+      metrics: { prodRate, prodFails: prodResult.fails, sentenceGenRate, sentenceGenPerIntent: sentenceGen.perIntent },
     };
     this._recordGateHistory('social', 'kindergarten', 'overall', pass, prodRate);
     return _socKResult;
@@ -798,7 +832,8 @@ export const K_MIXIN = {
     await this._pregateEnrichment('science/kindergarten');
 
     // 114.19fh.A.4 — probe noise bump 0.5→0.6 (see _gateLifeKReal for rationale).
-    const _savedProbeNoise = cluster.noiseAmplitude;
+    // 114.19fj.14 — defensive default if cluster.noiseAmplitude unset.
+    const _savedProbeNoise = typeof cluster.noiseAmplitude === 'number' ? cluster.noiseAmplitude : 0.5;
     cluster.noiseAmplitude = 0.6;
     try {
 
@@ -831,6 +866,15 @@ export const K_MIXIN = {
       visualCortex: (this.engine && this.engine.visualCortex) || null,
     });
     const prodRate = prodResult.total > 0 ? prodResult.pass / prodResult.total : 0;
+    // 114.19fj.5 — sentence-gen probe scoped to science vocab so SCI-K
+    // STRUCTURE-REFRESH writes are validated.
+    let sentenceGen = { passed: 0, total: 0, rate: 0, perIntent: {} };
+    try {
+      sentenceGen = await this._probeSentenceGeneration({ subject: 'science' });
+    } catch (err) {
+      console.warn('[Curriculum] _probeSentenceGeneration[science] threw:', err?.message || err);
+    }
+    const sentenceGenRate = sentenceGen.rate || 0;
     const PROD_MIN = 0.95;
     const pass = prodRate >= PROD_MIN;
 
@@ -840,8 +884,8 @@ export const K_MIXIN = {
       : '';
     const _sciKResult = {
       pass,
-      reason: `PROD ${prodResult.pass}/${prodResult.total} (${pct(prodRate)}%)${prodFailSummary}`,
-      metrics: { prodRate, prodFails: prodResult.fails },
+      reason: `PROD ${prodResult.pass}/${prodResult.total} (${pct(prodRate)}%) SENTENCE-GEN ${sentenceGen.passed}/${sentenceGen.total} (${pct(sentenceGenRate)}%)${prodFailSummary}`,
+      metrics: { prodRate, prodFails: prodResult.fails, sentenceGenRate, sentenceGenPerIntent: sentenceGen.perIntent },
     };
     this._recordGateHistory('science', 'kindergarten', 'overall', pass, prodRate);
     return _sciKResult;
@@ -1180,7 +1224,8 @@ export const K_MIXIN = {
     await this._pregateEnrichment('math/kindergarten');
 
     // 114.19fh.A.4 — probe noise bump 0.5→0.6 (see _gateLifeKReal for rationale).
-    const _savedProbeNoise = cluster.noiseAmplitude;
+    // 114.19fj.14 — defensive default if cluster.noiseAmplitude unset.
+    const _savedProbeNoise = typeof cluster.noiseAmplitude === 'number' ? cluster.noiseAmplitude : 0.5;
     cluster.noiseAmplitude = 0.6;
     try {
 
@@ -1659,10 +1704,21 @@ export const K_MIXIN = {
     const prodFailSummary = prodResult.fails && prodResult.fails.length > 0
       ? ' [FAIL: ' + prodResult.fails.slice(0, 5).map(f => `"${f.q}"→"${String(f.emitted).slice(0, 30)}"`).join('; ') + ']'
       : '';
+    // 114.19fj.5 — sentence-gen probe scoped to math vocab so MATH-K
+    // STRUCTURE-REFRESH writes are validated. Math vocab is sparse
+    // (digits + counting words) so this primarily measures the structure
+    // mechanism more than vocab depth.
+    let sentenceGen = { passed: 0, total: 0, rate: 0, perIntent: {} };
+    try {
+      sentenceGen = await this._probeSentenceGeneration({ subject: 'math' });
+    } catch (err) {
+      console.warn('[Curriculum] _probeSentenceGeneration[math] threw:', err?.message || err);
+    }
+    const sentenceGenRate = sentenceGen.rate || 0;
     const _mathKResult = {
       pass,
-      reason: `READ ${readPass}/${N} (${pct(readRate)}%), THINK ${thinkPass}/${N} (${pct(thinkRate)}%), TALK ${talkPass}/${N} (${pct(talkRate)}%), SEQ ${seqPass}/${N - 1} (${pct(seqRate)}%)${seqFails.length > 0 ? ' [FAIL: ' + seqFails.join(', ') + ']' : ''}, ORDER ${orderPass}/${orderTotal} (${pct(orderRate)}%), SUCC ${succResult.pass}/${succResult.total} (${pct(succRate)}%), SKIP10 ${skipResult.pass}/${skipResult.total} (${pct(skipRate)}%), MAKETEN ${makeTenResult.pass}/${makeTenResult.total} (${pct(makeTenRate)}%), TEEN ${teenResult.pass}/${teenResult.total} (${pct(teenRate)}%), ATTR ${attrResult.pass}/${attrResult.total} (${pct(attrRate)}%), CLASS ${classifyResult.pass}/${classifyResult.total} (${pct(classifyRate)}%), SHAPE-S ${shapeSidesResult.pass}/${shapeSidesResult.total} (${pct(shapeSidesRate)}%), SHAPE-D ${shapeDimResult.pass}/${shapeDimResult.total} (${pct(shapeDimRate)}%), SHAPE-C ${shapeComposeResult.pass}/${shapeComposeResult.total} (${pct(shapeComposeRate)}%), PROD ${prodResult.pass}/${prodResult.total} (${pct(prodRate)}%)${prodFailSummary}`,
-      metrics: { readRate, thinkRate, talkRate, seqRate, orderRate, seqFails, succRate, skipRate, makeTenRate, teenRate, attrRate, classifyRate, shapeSidesRate, shapeDimRate, shapeComposeRate, prodRate, prodFails: prodResult.fails },
+      reason: `READ ${readPass}/${N} (${pct(readRate)}%), THINK ${thinkPass}/${N} (${pct(thinkRate)}%), TALK ${talkPass}/${N} (${pct(talkRate)}%), SEQ ${seqPass}/${N - 1} (${pct(seqRate)}%)${seqFails.length > 0 ? ' [FAIL: ' + seqFails.join(', ') + ']' : ''}, ORDER ${orderPass}/${orderTotal} (${pct(orderRate)}%), SUCC ${succResult.pass}/${succResult.total} (${pct(succRate)}%), SKIP10 ${skipResult.pass}/${skipResult.total} (${pct(skipRate)}%), MAKETEN ${makeTenResult.pass}/${makeTenResult.total} (${pct(makeTenRate)}%), TEEN ${teenResult.pass}/${teenResult.total} (${pct(teenRate)}%), ATTR ${attrResult.pass}/${attrResult.total} (${pct(attrRate)}%), CLASS ${classifyResult.pass}/${classifyResult.total} (${pct(classifyRate)}%), SHAPE-S ${shapeSidesResult.pass}/${shapeSidesResult.total} (${pct(shapeSidesRate)}%), SHAPE-D ${shapeDimResult.pass}/${shapeDimResult.total} (${pct(shapeDimRate)}%), SHAPE-C ${shapeComposeResult.pass}/${shapeComposeResult.total} (${pct(shapeComposeRate)}%), PROD ${prodResult.pass}/${prodResult.total} (${pct(prodRate)}%) SENTENCE-GEN ${sentenceGen.passed}/${sentenceGen.total} (${pct(sentenceGenRate)}%)${prodFailSummary}`,
+      metrics: { readRate, thinkRate, talkRate, seqRate, orderRate, seqFails, succRate, skipRate, makeTenRate, teenRate, attrRate, classifyRate, shapeSidesRate, shapeDimRate, shapeComposeRate, prodRate, prodFails: prodResult.fails, sentenceGenRate, sentenceGenPerIntent: sentenceGen.perIntent },
     };
     this._recordGateHistory('math', 'kindergarten', 'overall', pass, prodRate);
     return _mathKResult;
@@ -3305,7 +3361,8 @@ export const K_MIXIN = {
     // averages out across the batch). More aggressive jitter conflicts
     // with stable per-probe scoring; tier 3 acceptDrown + consolidation
     // veto + WTA tightening address the root saturation more directly.
-    const _savedProbeNoise = cluster.noiseAmplitude;
+    // 114.19fj.14 — defensive default if cluster.noiseAmplitude unset.
+    const _savedProbeNoise = typeof cluster.noiseAmplitude === 'number' ? cluster.noiseAmplitude : 0.5;
     cluster.noiseAmplitude = 0.6;
 
     const wordStartProbes = [
