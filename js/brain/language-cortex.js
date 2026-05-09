@@ -2134,29 +2134,31 @@ export class LanguageCortex {
           if (typeof cluster.composeSentence === 'function') {
             try {
               const userText = String(cluster._lastUserInputText || '').toLowerCase();
+              // 114.19fj.1 diagnostic — surface the unset-source bug ONCE
+              // per session if it ever returns. Real chat with `_lastUserInputText`
+              // unset means processAndRespond didn't set it (regression).
+              if (!cluster._lastUserInputText && !cluster._lastUserInputUnsetWarned) {
+                cluster._lastUserInputUnsetWarned = true;
+                try {
+                  console.warn('[LanguageCortex] ⚠ composeSentence chat path entered with cluster._lastUserInputText UNSET — WH-INTENT consumer + subject inference + intent-concept extraction will all return null. Check brain-server.js processAndRespond sets this field at entry. (114.19fj.1)');
+                } catch { /* log non-fatal */ }
+              }
               let inferredIntent = 'declarative_svo';
               if (userText.includes('?')) inferredIntent = 'question';
               else if (userText.includes('!')) inferredIntent = 'exclamative';
               else if (/^(say|tell|give|show|read|spell|name|count)\b/.test(userText)) inferredIntent = 'imperative';
-              // 114.19fi.A.1 — extract WH-frame intent-concept from user
-              // text so composeSentence can inject it at the subject slot
-              // for question templates. Inline regex parser mirrors
-              // _extractIntentConcept in curriculum.js (avoids cross-file
-              // dep — composeSentence stays on the cluster class).
+              // 114.19fj.3 — DRY-extracted to NeuronCluster.extractIntentConcept
+              // static method (cluster.js). Single source of truth across
+              // training-side curriculum._extractIntentConcept and chat-side
+              // inference. Prior duplicated parser had ALREADY DRIFTED:
+              // language-cortex used `\bwhy\s+/` (any 'why ') while curriculum
+              // used `\bwhy\s+(?:do|does|is|are)\b` (specific verb forms),
+              // causing chat-time WH-INTENT consumer to fire on questions
+              // training never carved.
               let inferredConcept = null;
-              if (inferredIntent === 'question' && userText) {
-                if (/\bwhat\s+(?:makes|causes)\b/.test(userText)) inferredConcept = 'cause';
-                else if (/\bwhat\s+happens\s+when\b/.test(userText)) inferredConcept = 'effect';
-                else if (/\bwhat\s+do\s+[a-z]+\s+need\b/.test(userText)) inferredConcept = 'need';
-                else if (/\bwhat\s+is\b/.test(userText)) inferredConcept = 'definition';
-                else if (/\bwhat\s+do\b/.test(userText)) inferredConcept = 'function';
-                else if (/\bwhy\s+/.test(userText)) inferredConcept = 'reason';
-                else if (/\bhow\s+many\b/.test(userText)) inferredConcept = 'count';
-                else if (/\bhow\s+/.test(userText)) inferredConcept = 'method';
-                else if (/\bwhere\s+/.test(userText)) inferredConcept = 'place';
-                else if (/\bwhen\s+/.test(userText)) inferredConcept = 'time';
-                else if (/\bwho\s+/.test(userText)) inferredConcept = 'person';
-                else if (/^(is|are|do|does|can|will|would|should)\s/.test(userText)) inferredConcept = 'truth';
+              if (inferredIntent === 'question' && userText
+                  && cluster.constructor && typeof cluster.constructor.extractIntentConcept === 'function') {
+                inferredConcept = cluster.constructor.extractIntentConcept(userText);
               }
               // Pass intentSeed as cortexPattern so inner-voice chain
               // narrative + Tier 7 basin-lock jitter (when applicable)

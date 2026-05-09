@@ -34,6 +34,18 @@ echo ""
 #                                    in (0, 1). Default 0.45. Lower =
 #                                    more frequent ignitions (diffuse
 #                                    consciousness); higher = stricter.
+#   DREAM_COHERENCE_MIN=0.15       — composeSentence cosine coherence
+#                                    floor. Sentences with cosine vs
+#                                    intent-concept (or cortexPattern)
+#                                    below this threshold mark fillCount=0
+#                                    + lowCoherence=true. First 10 reads
+#                                    per session log calibration data.
+#   DREAM_SAT_MEANCOS=0.7          — saturation halt: mean-cos > X.
+#   DREAM_SAT_MEANABS=0.6          — saturation halt: meanAbs > X*wMax.
+#   DREAM_SAT_RATIO=1.5            — saturation halt: max/mean ratio < X.
+#   DREAM_SAT_SAMPLE=1000          — weight-distribution sample size for
+#                                    saturation check. First 5 reads per
+#                                    session log calibration data.
 #
 # NOTE: brain makes outbound calls to dictionaryapi.dev for live word
 # definitions. Firewall / offline → definitions silently fail but brain

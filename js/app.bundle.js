@@ -5059,7 +5059,88 @@ function injectEmbeddingToRegionOffset(cluster, regionName, emb, strength, offse
   }
 }
 var T14_TERMINATORS = /* @__PURE__ */ new Set([".", "?", "!"]);
+var ARTICLE_LIST = /* @__PURE__ */ new Set(["a", "an", "the"]);
+var COHERENCE_MIN = (() => {
+  try {
+    const v = parseFloat(typeof process !== "undefined" && process?.env?.DREAM_COHERENCE_MIN);
+    return Number.isFinite(v) && v > 0 ? v : 0.15;
+  } catch {
+    return 0.15;
+  }
+})();
+var SATURATION_MEANCOS = (() => {
+  try {
+    const v = parseFloat(typeof process !== "undefined" && process?.env?.DREAM_SAT_MEANCOS);
+    return Number.isFinite(v) && v > 0 ? v : 0.7;
+  } catch {
+    return 0.7;
+  }
+})();
+var SATURATION_MEANABS_RATIO = (() => {
+  try {
+    const v = parseFloat(typeof process !== "undefined" && process?.env?.DREAM_SAT_MEANABS);
+    return Number.isFinite(v) && v > 0 ? v : 0.6;
+  } catch {
+    return 0.6;
+  }
+})();
+var SATURATION_FANOUT_RATIO = (() => {
+  try {
+    const v = parseFloat(typeof process !== "undefined" && process?.env?.DREAM_SAT_RATIO);
+    return Number.isFinite(v) && v > 0 ? v : 1.5;
+  } catch {
+    return 1.5;
+  }
+})();
+var SATURATION_SAMPLE_SIZE = (() => {
+  try {
+    const v = parseInt(typeof process !== "undefined" && process?.env?.DREAM_SAT_SAMPLE, 10);
+    return Number.isFinite(v) && v >= 100 ? v : 1e3;
+  } catch {
+    return 1e3;
+  }
+})();
 var NeuronCluster = class {
+  // 114.19fj.3 — Single source of truth for WH-frame intent-concept
+  // extraction. Was duplicated in two files: `_extractIntentConcept`
+  // on the Curriculum class (training-side) AND inlined in
+  // `js/brain/language-cortex.js:2148-2159` (chat-side inference). The
+  // two parsers had ALREADY DRIFTED — language-cortex used `\bwhy\s+/`
+  // (any 'why ') while curriculum used `\bwhy\s+(?:do|does|is|are)\b`
+  // (specific verb forms). Resulting bug: training carved "why X →
+  // reason" but inference at chat could activate the wrong concept on
+  // questions that didn't match the verb-form list.
+  //
+  // Static method so both call sites can invoke without instance —
+  // language-cortex.js calls `NeuronCluster.extractIntentConcept(text)`,
+  // curriculum.js's `_extractIntentConcept` instance method delegates
+  // here for backwards compat. One regex table, one source of truth.
+  //
+  // Returns the canonical intent-concept word ('cause' / 'reason' /
+  // 'definition' / etc.) or null when no WH-frame matches. Concept
+  // words are real GloVe entries so they participate in standard
+  // sem→motor Hebbian without needing new abstract tag infrastructure.
+  // relationTagId=12.
+  static extractIntentConcept(userText) {
+    if (!userText || typeof userText !== "string") return null;
+    const q = userText.toLowerCase().trim();
+    if (!q) return null;
+    if (/\bwhat\s+(?:makes|causes)\b/.test(q)) return "cause";
+    if (/\bwhat\s+happens\s+when\b/.test(q)) return "effect";
+    if (/\bwhat\s+do\s+[a-z]+\s+need\b/.test(q)) return "need";
+    if (/\bwhat\s+is\b/.test(q)) return "definition";
+    if (/\bwhat\s+do\b/.test(q)) return "function";
+    if (/\bwhy\s+(?:do|does|is|are)\b/.test(q)) return "reason";
+    if (/\bhow\s+many\b/.test(q)) return "count";
+    if (/\bhow\s+(?:do|does|is|are)\b/.test(q)) return "method";
+    if (/\bwhere\s+(?:is|are|do|does)\b/.test(q)) return "place";
+    if (/\bwhen\s+(?:is|are|do|does)\b/.test(q)) return "time";
+    if (/\bwho\s+(?:is|are|does|do)\b/.test(q)) return "person";
+    if (/\b(?:big|small|tall|short|fast|slow|hot|cold)\b.*\bwhich\b/.test(q)) return "compare";
+    if (/^(is|are|do|does|can|will|would|should)\s/.test(q)) return "truth";
+    if (/^(what|why|how|where|when|who|which|whose)\b/.test(q)) return "question";
+    return null;
+  }
   /**
    * @param {string} name — cluster name (e.g., 'cortex')
    * @param {number} size — number of neurons
@@ -6103,15 +6184,19 @@ var NeuronCluster = class {
       if (typeof this._lastSemMotorMeanCos === "number") {
         out.meanCos = this._lastSemMotorMeanCos;
         out.source = "sep-probe";
-        if (this._lastSemMotorMeanCos > 0.7) {
+        if (this._lastSemMotorMeanCos > SATURATION_MEANCOS) {
           out.saturated = true;
+          this._sampleLogSatHealth(out);
           return out;
         }
       }
       const proj = this.crossProjections && this.crossProjections["sem_to_motor"];
-      if (!proj || !proj.values || proj.values.length === 0) return out;
+      if (!proj || !proj.values || proj.values.length === 0) {
+        this._sampleLogSatHealth(out);
+        return out;
+      }
       const wMax = typeof proj.wMax === "number" && proj.wMax > 0 ? proj.wMax : 0.4;
-      const sampleSize = Math.min(proj.values.length, 1e3);
+      const sampleSize = Math.min(proj.values.length, SATURATION_SAMPLE_SIZE);
       let sumAbs = 0, maxAbs = 0, nnz = 0;
       const stride = Math.max(1, Math.floor(proj.values.length / sampleSize));
       for (let k = 0; k < proj.values.length; k += stride) {
@@ -6123,19 +6208,37 @@ var NeuronCluster = class {
           nnz++;
         }
       }
-      if (nnz < 10) return out;
+      if (nnz < 10) {
+        this._sampleLogSatHealth(out);
+        return out;
+      }
       const meanAbs = sumAbs / nnz;
       const ratio = meanAbs > 0 ? maxAbs / meanAbs : 0;
       out.meanAbs = meanAbs;
       out.maxAbs = maxAbs;
       out.ratio = ratio;
       out.source = out.source === "sep-probe" ? "sep-probe+distribution" : "distribution";
-      if (meanAbs > wMax * 0.6 && ratio < 1.5) {
+      if (meanAbs > wMax * SATURATION_MEANABS_RATIO && ratio < SATURATION_FANOUT_RATIO) {
         out.saturated = true;
       }
+      this._sampleLogSatHealth(out);
     } catch {
     }
     return out;
+  }
+  // 114.19fj.7 — first-5 calibration log so operator can tune env vars
+  // empirically from 20hr-test data. Logs meanCos / meanAbs / maxAbs /
+  // ratio / saturated boolean once per session for the first 5 reads.
+  _sampleLogSatHealth(out) {
+    if (!this._satHealthLogCount) this._satHealthLogCount = 0;
+    if (this._satHealthLogCount < 5) {
+      this._satHealthLogCount++;
+      try {
+        const meanCosTag = typeof out.meanCos === "number" ? `meanCos=${out.meanCos.toFixed(3)} ` : "";
+        console.log(`[SatHealth] sample ${this._satHealthLogCount}/5 \u2014 ${meanCosTag}meanAbs=${out.meanAbs.toFixed(4)} maxAbs=${out.maxAbs.toFixed(4)} ratio=${out.ratio.toFixed(2)} source=${out.source} saturated=${out.saturated} (thresholds: meanCos>${SATURATION_MEANCOS} OR meanAbs>${SATURATION_MEANABS_RATIO}\xD7wMax AND ratio<${SATURATION_FANOUT_RATIO})`);
+      } catch {
+      }
+    }
   }
   /**
    *  — Advance a subject's sub-grade label monotonically.
@@ -7242,15 +7345,29 @@ var NeuronCluster = class {
     }
     this._lastEmittedWord = bestWord;
     this._lastEmittedActivation = bestMean;
-    if (!Array.isArray(this._recentEmissions)) this._recentEmissions = [];
-    this._recentEmissions.push(bestWord);
-    while (this._recentEmissions.length > 8) {
-      this._recentEmissions.shift();
+    if (!opts.skipRecentTrack) {
+      this._recentEmissions.push(bestWord);
+      while (this._recentEmissions.length > 8) {
+        this._recentEmissions.shift();
+      }
     }
     if (typeof this.recordEmission === "function") {
       this.recordEmission(bestWord);
     }
     return bestWord;
+  }
+  // 114.19fj.9 — public helper for callers that opted out of automatic
+  // ring tracking (composeSentence, future custom emission paths). Push
+  // to the recent-emissions ring after a manual acceptance check so the
+  // repetition penalty reflects ACTUAL emissions, not internal probe
+  // attempts.
+  trackRecentEmission(word) {
+    if (typeof word !== "string" || word.length === 0) return;
+    if (!Array.isArray(this._recentEmissions)) this._recentEmissions = [];
+    this._recentEmissions.push(word);
+    while (this._recentEmissions.length > 8) {
+      this._recentEmissions.shift();
+    }
   }
   /**
    * 114.19fg.Tier8/9/I-consumer — Slot-driven sentence composition.
@@ -7314,24 +7431,49 @@ var NeuronCluster = class {
       "declarative_svo": ".",
       "declarative_copula": ".",
       "question": "?",
+      // 114.19fj.22 — keep '!' for imperative + exclamative. K-grade
+      // Unity sounds emphatic; this matches her energy register.
       "imperative": "!",
       "exclamative": "!"
     };
     const PRONOUNS = /* @__PURE__ */ new Set(["i", "you", "he", "she", "it", "we", "they", "me", "him", "her", "us", "them", "my", "your", "his", "our", "their"]);
     const intentName = String(intent || "declarative_svo").toLowerCase();
     const slots = TEMPLATES[intentName] || TEMPLATES["declarative_svo"];
-    if (opts.cortexPattern && opts.cortexPattern.length > 0 && typeof this.injectEmbeddingToRegion === "function") {
-      try {
-        this.injectEmbeddingToRegion("sem", opts.cortexPattern, 0.2);
-      } catch {
+    let cumulativeInjection = 0;
+    const INJECTION_HARD_CAP = 2.5;
+    const tryInject = (regionName, embedding, strength) => {
+      if (!embedding || embedding.length === 0) return false;
+      if (cumulativeInjection + strength > INJECTION_HARD_CAP) {
+        if (!this._composeStats) this._composeStats = { calls: 0, fills: 0, partial: 0, empty: 0 };
+        this._composeStats.cappedInjections = (this._composeStats.cappedInjections || 0) + 1;
+        return false;
       }
+      try {
+        this.injectEmbeddingToRegion(regionName, embedding, strength);
+        cumulativeInjection += strength;
+        return true;
+      } catch {
+        return false;
+      }
+    };
+    const checkAborted = () => {
+      if (opts.signal && opts.signal.aborted) {
+        if (!this._composeStats) this._composeStats = { calls: 0, fills: 0, partial: 0, empty: 0 };
+        this._composeStats.aborted = (this._composeStats.aborted || 0) + 1;
+        return true;
+      }
+      return false;
+    };
+    if (checkAborted()) return null;
+    if (opts.cortexPattern && opts.cortexPattern.length > 0) {
+      tryInject("sem", opts.cortexPattern, 0.2);
     }
     if (sharedEmbeddings && typeof sharedEmbeddings.getSentenceEmbedding === "function") {
       try {
         const intentSeed = intentName.replace(/_/g, " ");
         const intentEmb = sharedEmbeddings.getSentenceEmbedding(intentSeed);
         if (intentEmb && intentEmb.length > 0) {
-          this.injectEmbeddingToRegion("sem", intentEmb, 0.3);
+          tryInject("sem", intentEmb, 0.3);
         }
       } catch {
       }
@@ -7342,6 +7484,7 @@ var NeuronCluster = class {
     const subjScope = opts.subject || null;
     let priorSlot = null;
     for (let i = 0; i < slots.length; i++) {
+      if (checkAborted()) return null;
       const slot = slots[i];
       if (slot === "terminator") {
         const punct = TERMINATOR_PUNCT[intentName] || ".";
@@ -7352,7 +7495,7 @@ var NeuronCluster = class {
         try {
           const slotEmb = sharedEmbeddings.getEmbedding(slot);
           if (slotEmb && slotEmb.length > 0) {
-            this.injectEmbeddingToRegion("sem", slotEmb, 0.25);
+            tryInject("sem", slotEmb, 0.25);
           }
         } catch {
         }
@@ -7361,12 +7504,12 @@ var NeuronCluster = class {
         try {
           const conceptEmb = sharedEmbeddings.getEmbedding(opts.intentConcept);
           if (conceptEmb && conceptEmb.length > 0) {
-            this.injectEmbeddingToRegion("sem", conceptEmb, 0.3);
+            tryInject("sem", conceptEmb, 0.3);
           }
         } catch {
         }
       }
-      const emitOptsBase = {};
+      const emitOptsBase = { skipRecentTrack: true };
       if (subjScope) emitOptsBase.subject = subjScope;
       if (typeof opts.temperature === "number") emitOptsBase.temperature = opts.temperature;
       if (typeof opts.topK === "number") emitOptsBase.topK = opts.topK;
@@ -7387,13 +7530,17 @@ var NeuronCluster = class {
           try {
             const dupEmb = sharedEmbeddings.getEmbedding(word);
             if (dupEmb && dupEmb.length > 0) {
-              this.injectEmbeddingToRegion("sem", dupEmb, 0.5);
+              tryInject("sem", dupEmb, 0.3);
             }
           } catch {
           }
         }
+        const retryOpts = {
+          ...emitOptsBase,
+          temperature: (typeof emitOptsBase.temperature === "number" ? emitOptsBase.temperature : 0) + 0.4
+        };
         try {
-          word = this.emitWordDirect(emitOptsBase) || "";
+          word = this.emitWordDirect(retryOpts) || "";
         } catch {
           word = "";
         }
@@ -7405,7 +7552,6 @@ var NeuronCluster = class {
       const articleCandidate = (slot === "subject" || slot === "object") && /^[a-z]+$/.test(word) && !PRONOUNS.has(word) && word.length >= 3 && priorSlot !== "copula" && intentName !== "question";
       if (articleCandidate) {
         const prevWord = words.length > 0 ? words[words.length - 1] : "";
-        const ARTICLE_LIST = /* @__PURE__ */ new Set(["a", "an", "the"]);
         if (!ARTICLE_LIST.has(prevWord)) {
           const article = /^[aeiou]/.test(word) ? "an" : "the";
           words.push(article);
@@ -7415,11 +7561,14 @@ var NeuronCluster = class {
       seen.add(word);
       fillCount++;
       priorSlot = slot;
+      if (typeof this.trackRecentEmission === "function") {
+        this.trackRecentEmission(word);
+      }
       if (sharedEmbeddings && typeof sharedEmbeddings.getEmbedding === "function") {
         try {
           const wordEmb = sharedEmbeddings.getEmbedding(word);
           if (wordEmb && wordEmb.length > 0) {
-            this.injectEmbeddingToRegion("sem", wordEmb, 0.15);
+            tryInject("sem", wordEmb, 0.15);
           }
         } catch {
         }
@@ -7435,24 +7584,44 @@ var NeuronCluster = class {
     else this._composeStats.partial++;
     words[0] = words[0].charAt(0).toUpperCase() + words[0].slice(1);
     const sentence = words.join(" ");
-    if (opts.intentConcept && sharedEmbeddings && typeof sharedEmbeddings.getEmbedding === "function" && typeof sharedEmbeddings.getSentenceEmbedding === "function") {
+    let coherenceTarget = null;
+    let coherenceTargetLabel = null;
+    if (opts.intentConcept && sharedEmbeddings && typeof sharedEmbeddings.getEmbedding === "function") {
       try {
-        const conceptEmb = sharedEmbeddings.getEmbedding(opts.intentConcept);
+        coherenceTarget = sharedEmbeddings.getEmbedding(opts.intentConcept);
+        coherenceTargetLabel = `intentConcept:${opts.intentConcept}`;
+      } catch {
+      }
+    }
+    if (!coherenceTarget && opts.cortexPattern && opts.cortexPattern.length > 0) {
+      coherenceTarget = opts.cortexPattern;
+      coherenceTargetLabel = "cortexPattern";
+    }
+    if (coherenceTarget && sharedEmbeddings && typeof sharedEmbeddings.getSentenceEmbedding === "function") {
+      try {
         const sentenceEmb = sharedEmbeddings.getSentenceEmbedding(sentence);
-        if (conceptEmb && sentenceEmb && conceptEmb.length > 0 && sentenceEmb.length > 0) {
+        if (sentenceEmb && sentenceEmb.length > 0 && coherenceTarget.length > 0) {
           let dot = 0, na = 0, nb = 0;
-          const L = Math.min(conceptEmb.length, sentenceEmb.length);
+          const L = Math.min(coherenceTarget.length, sentenceEmb.length);
           for (let i = 0; i < L; i++) {
-            dot += conceptEmb[i] * sentenceEmb[i];
-            na += conceptEmb[i] * conceptEmb[i];
+            dot += coherenceTarget[i] * sentenceEmb[i];
+            na += coherenceTarget[i] * coherenceTarget[i];
             nb += sentenceEmb[i] * sentenceEmb[i];
           }
           const denom = Math.sqrt(na) * Math.sqrt(nb);
           const cosine = denom > 0 ? dot / denom : 0;
-          if (cosine < 0.15) {
-            return { sentence, words, intent: intentName, slots, fillCount: 0, coherenceCosine: cosine, lowCoherence: true };
+          if (!this._coherenceLogCount) this._coherenceLogCount = 0;
+          if (this._coherenceLogCount < 10) {
+            this._coherenceLogCount++;
+            try {
+              console.log(`[composeSentence] coherence sample ${this._coherenceLogCount}/10 cosine=${cosine.toFixed(3)} (threshold=${COHERENCE_MIN.toFixed(2)} target=${coherenceTargetLabel}) sentence="${sentence.slice(0, 60)}"`);
+            } catch {
+            }
           }
-          return { sentence, words, intent: intentName, slots, fillCount, coherenceCosine: cosine };
+          if (cosine < COHERENCE_MIN) {
+            return { sentence, words, intent: intentName, slots, fillCount: 0, coherenceCosine: cosine, coherenceTarget: coherenceTargetLabel, lowCoherence: true };
+          }
+          return { sentence, words, intent: intentName, slots, fillCount, coherenceCosine: cosine, coherenceTarget: coherenceTargetLabel };
         }
       } catch {
       }
@@ -12719,24 +12888,20 @@ var LanguageCortex = class {
           if (typeof cluster.composeSentence === "function") {
             try {
               const userText = String(cluster._lastUserInputText || "").toLowerCase();
+              if (!cluster._lastUserInputText && !cluster._lastUserInputUnsetWarned) {
+                cluster._lastUserInputUnsetWarned = true;
+                try {
+                  console.warn("[LanguageCortex] \u26A0 composeSentence chat path entered with cluster._lastUserInputText UNSET \u2014 WH-INTENT consumer + subject inference + intent-concept extraction will all return null. Check brain-server.js processAndRespond sets this field at entry. (114.19fj.1)");
+                } catch {
+                }
+              }
               let inferredIntent = "declarative_svo";
               if (userText.includes("?")) inferredIntent = "question";
               else if (userText.includes("!")) inferredIntent = "exclamative";
               else if (/^(say|tell|give|show|read|spell|name|count)\b/.test(userText)) inferredIntent = "imperative";
               let inferredConcept = null;
-              if (inferredIntent === "question" && userText) {
-                if (/\bwhat\s+(?:makes|causes)\b/.test(userText)) inferredConcept = "cause";
-                else if (/\bwhat\s+happens\s+when\b/.test(userText)) inferredConcept = "effect";
-                else if (/\bwhat\s+do\s+[a-z]+\s+need\b/.test(userText)) inferredConcept = "need";
-                else if (/\bwhat\s+is\b/.test(userText)) inferredConcept = "definition";
-                else if (/\bwhat\s+do\b/.test(userText)) inferredConcept = "function";
-                else if (/\bwhy\s+/.test(userText)) inferredConcept = "reason";
-                else if (/\bhow\s+many\b/.test(userText)) inferredConcept = "count";
-                else if (/\bhow\s+/.test(userText)) inferredConcept = "method";
-                else if (/\bwhere\s+/.test(userText)) inferredConcept = "place";
-                else if (/\bwhen\s+/.test(userText)) inferredConcept = "time";
-                else if (/\bwho\s+/.test(userText)) inferredConcept = "person";
-                else if (/^(is|are|do|does|can|will|would|should)\s/.test(userText)) inferredConcept = "truth";
+              if (inferredIntent === "question" && userText && cluster.constructor && typeof cluster.constructor.extractIntentConcept === "function") {
+                inferredConcept = cluster.constructor.extractIntentConcept(userText);
               }
               const inferredSubject = typeof cluster._inferSubjectFromText === "function" ? cluster._inferSubjectFromText(userText) : null;
               composedSentence = cluster.composeSentence(inferredIntent, {
@@ -17965,7 +18130,7 @@ var K_MIXIN = {
     const cluster = this.cluster;
     if (!cluster || !cluster.synapses) return { pass: false, reason: "no cluster" };
     await this._pregateEnrichment("life/kindergarten");
-    const _savedProbeNoise = cluster.noiseAmplitude;
+    const _savedProbeNoise = typeof cluster.noiseAmplitude === "number" ? cluster.noiseAmplitude : 0.5;
     cluster.noiseAmplitude = 0.6;
     try {
       const lifeKProductionSamples = [
@@ -17990,13 +18155,20 @@ var K_MIXIN = {
         visualCortex: this.engine && this.engine.visualCortex || null
       });
       const prodRate = prodResult.total > 0 ? prodResult.pass / prodResult.total : 0;
+      let sentenceGen = { passed: 0, total: 0, rate: 0, perIntent: {} };
+      try {
+        sentenceGen = await this._probeSentenceGeneration({ subject: "life" });
+      } catch (err) {
+        console.warn("[Curriculum] _probeSentenceGeneration[life] threw:", err?.message || err);
+      }
+      const sentenceGenRate = sentenceGen.rate || 0;
       const pass = prodRate >= 0.95;
       const pct = (r) => (r * 100).toFixed(0);
       const prodFailSummary = prodResult.fails && prodResult.fails.length > 0 ? " [FAIL: " + prodResult.fails.slice(0, 5).map((f) => `"${f.q}"\u2192"${String(f.emitted).slice(0, 30)}"`).join("; ") + "]" : "";
       const _lifeKResult = {
         pass,
-        reason: `PROD ${prodResult.pass}/${prodResult.total} (${pct(prodRate)}%)${prodFailSummary}`,
-        metrics: { prodRate, prodFails: prodResult.fails }
+        reason: `PROD ${prodResult.pass}/${prodResult.total} (${pct(prodRate)}%) SENTENCE-GEN ${sentenceGen.passed}/${sentenceGen.total} (${pct(sentenceGenRate)}%)${prodFailSummary}`,
+        metrics: { prodRate, prodFails: prodResult.fails, sentenceGenRate, sentenceGenPerIntent: sentenceGen.perIntent }
       };
       this._recordGateHistory("life", "kindergarten", "overall", pass, prodRate);
       return _lifeKResult;
@@ -18090,7 +18262,7 @@ var K_MIXIN = {
     const cluster = this.cluster;
     if (!cluster || !cluster.synapses) return { pass: false, reason: "no cluster" };
     await this._pregateEnrichment("art/kindergarten");
-    const _savedProbeNoise = cluster.noiseAmplitude;
+    const _savedProbeNoise = typeof cluster.noiseAmplitude === "number" ? cluster.noiseAmplitude : 0.5;
     cluster.noiseAmplitude = 0.6;
     try {
       const artKProductionSamples = [
@@ -18110,13 +18282,20 @@ var K_MIXIN = {
         visualCortex: this.engine && this.engine.visualCortex || null
       });
       const prodRate = prodResult.total > 0 ? prodResult.pass / prodResult.total : 0;
+      let sentenceGen = { passed: 0, total: 0, rate: 0, perIntent: {} };
+      try {
+        sentenceGen = await this._probeSentenceGeneration({ subject: "art" });
+      } catch (err) {
+        console.warn("[Curriculum] _probeSentenceGeneration[art] threw:", err?.message || err);
+      }
+      const sentenceGenRate = sentenceGen.rate || 0;
       const pass = prodRate >= 0.95;
       const pct = (r) => (r * 100).toFixed(0);
       const prodFailSummary = prodResult.fails && prodResult.fails.length > 0 ? " [FAIL: " + prodResult.fails.slice(0, 5).map((f) => `"${f.q}"\u2192"${String(f.emitted).slice(0, 30)}"`).join("; ") + "]" : "";
       const _artKResult = {
         pass,
-        reason: `PROD ${prodResult.pass}/${prodResult.total} (${pct(prodRate)}%)${prodFailSummary}`,
-        metrics: { prodRate, prodFails: prodResult.fails }
+        reason: `PROD ${prodResult.pass}/${prodResult.total} (${pct(prodRate)}%) SENTENCE-GEN ${sentenceGen.passed}/${sentenceGen.total} (${pct(sentenceGenRate)}%)${prodFailSummary}`,
+        metrics: { prodRate, prodFails: prodResult.fails, sentenceGenRate, sentenceGenPerIntent: sentenceGen.perIntent }
       };
       this._recordGateHistory("art", "kindergarten", "overall", pass, prodRate);
       return _artKResult;
@@ -18268,7 +18447,7 @@ var K_MIXIN = {
     const cluster = this.cluster;
     if (!cluster || !cluster.synapses) return { pass: false, reason: "no cluster" };
     await this._pregateEnrichment("social/kindergarten");
-    const _savedProbeNoise = cluster.noiseAmplitude;
+    const _savedProbeNoise = typeof cluster.noiseAmplitude === "number" ? cluster.noiseAmplitude : 0.5;
     cluster.noiseAmplitude = 0.6;
     try {
       const socKProductionSamples = [
@@ -18294,13 +18473,20 @@ var K_MIXIN = {
         visualCortex: this.engine && this.engine.visualCortex || null
       });
       const prodRate = prodResult.total > 0 ? prodResult.pass / prodResult.total : 0;
+      let sentenceGen = { passed: 0, total: 0, rate: 0, perIntent: {} };
+      try {
+        sentenceGen = await this._probeSentenceGeneration({ subject: "social" });
+      } catch (err) {
+        console.warn("[Curriculum] _probeSentenceGeneration[social] threw:", err?.message || err);
+      }
+      const sentenceGenRate = sentenceGen.rate || 0;
       const pass = prodRate >= 0.95;
       const pct = (r) => (r * 100).toFixed(0);
       const prodFailSummary = prodResult.fails && prodResult.fails.length > 0 ? " [FAIL: " + prodResult.fails.slice(0, 5).map((f) => `"${f.q}"\u2192"${String(f.emitted).slice(0, 30)}"`).join("; ") + "]" : "";
       const _socKResult = {
         pass,
-        reason: `PROD ${prodResult.pass}/${prodResult.total} (${pct(prodRate)}%)${prodFailSummary}`,
-        metrics: { prodRate, prodFails: prodResult.fails }
+        reason: `PROD ${prodResult.pass}/${prodResult.total} (${pct(prodRate)}%) SENTENCE-GEN ${sentenceGen.passed}/${sentenceGen.total} (${pct(sentenceGenRate)}%)${prodFailSummary}`,
+        metrics: { prodRate, prodFails: prodResult.fails, sentenceGenRate, sentenceGenPerIntent: sentenceGen.perIntent }
       };
       this._recordGateHistory("social", "kindergarten", "overall", pass, prodRate);
       return _socKResult;
@@ -18436,7 +18622,7 @@ var K_MIXIN = {
     const cluster = this.cluster;
     if (!cluster || !cluster.synapses) return { pass: false, reason: "no cluster" };
     await this._pregateEnrichment("science/kindergarten");
-    const _savedProbeNoise = cluster.noiseAmplitude;
+    const _savedProbeNoise = typeof cluster.noiseAmplitude === "number" ? cluster.noiseAmplitude : 0.5;
     cluster.noiseAmplitude = 0.6;
     try {
       const sciKProductionSamples = [
@@ -18466,14 +18652,21 @@ var K_MIXIN = {
         visualCortex: this.engine && this.engine.visualCortex || null
       });
       const prodRate = prodResult.total > 0 ? prodResult.pass / prodResult.total : 0;
+      let sentenceGen = { passed: 0, total: 0, rate: 0, perIntent: {} };
+      try {
+        sentenceGen = await this._probeSentenceGeneration({ subject: "science" });
+      } catch (err) {
+        console.warn("[Curriculum] _probeSentenceGeneration[science] threw:", err?.message || err);
+      }
+      const sentenceGenRate = sentenceGen.rate || 0;
       const PROD_MIN = 0.95;
       const pass = prodRate >= PROD_MIN;
       const pct = (r) => (r * 100).toFixed(0);
       const prodFailSummary = prodResult.fails && prodResult.fails.length > 0 ? " [FAIL: " + prodResult.fails.slice(0, 5).map((f) => `"${f.q}"\u2192"${String(f.emitted).slice(0, 30)}"`).join("; ") + "]" : "";
       const _sciKResult = {
         pass,
-        reason: `PROD ${prodResult.pass}/${prodResult.total} (${pct(prodRate)}%)${prodFailSummary}`,
-        metrics: { prodRate, prodFails: prodResult.fails }
+        reason: `PROD ${prodResult.pass}/${prodResult.total} (${pct(prodRate)}%) SENTENCE-GEN ${sentenceGen.passed}/${sentenceGen.total} (${pct(sentenceGenRate)}%)${prodFailSummary}`,
+        metrics: { prodRate, prodFails: prodResult.fails, sentenceGenRate, sentenceGenPerIntent: sentenceGen.perIntent }
       };
       this._recordGateHistory("science", "kindergarten", "overall", pass, prodRate);
       return _sciKResult;
@@ -18721,7 +18914,7 @@ var K_MIXIN = {
     const DIGITS = DIGIT_ORDER;
     const NAMES = DIGIT_NAMES;
     await this._pregateEnrichment("math/kindergarten");
-    const _savedProbeNoise = cluster.noiseAmplitude;
+    const _savedProbeNoise = typeof cluster.noiseAmplitude === "number" ? cluster.noiseAmplitude : 0.5;
     cluster.noiseAmplitude = 0.6;
     try {
       let cosine = function(a, b) {
@@ -19115,10 +19308,17 @@ var K_MIXIN = {
       const pass = readRate >= PATH_MIN && thinkRate >= PATH_MIN && talkRate >= PATH_MIN && seqRate >= SEQ_MIN && orderRate >= ORDER_MIN && succRate >= PATH_MIN && skipRate >= PATH_MIN && makeTenRate >= PATH_MIN && teenRate >= PATH_MIN && attrRate >= PATH_MIN && classifyRate >= PATH_MIN && shapeSidesRate >= PATH_MIN && shapeDimRate >= PATH_MIN && shapeComposeRate >= PATH_MIN && prodRate >= PROD_MIN;
       const pct = (r) => (r * 100).toFixed(0);
       const prodFailSummary = prodResult.fails && prodResult.fails.length > 0 ? " [FAIL: " + prodResult.fails.slice(0, 5).map((f) => `"${f.q}"\u2192"${String(f.emitted).slice(0, 30)}"`).join("; ") + "]" : "";
+      let sentenceGen = { passed: 0, total: 0, rate: 0, perIntent: {} };
+      try {
+        sentenceGen = await this._probeSentenceGeneration({ subject: "math" });
+      } catch (err) {
+        console.warn("[Curriculum] _probeSentenceGeneration[math] threw:", err?.message || err);
+      }
+      const sentenceGenRate = sentenceGen.rate || 0;
       const _mathKResult = {
         pass,
-        reason: `READ ${readPass}/${N} (${pct(readRate)}%), THINK ${thinkPass}/${N} (${pct(thinkRate)}%), TALK ${talkPass}/${N} (${pct(talkRate)}%), SEQ ${seqPass}/${N - 1} (${pct(seqRate)}%)${seqFails.length > 0 ? " [FAIL: " + seqFails.join(", ") + "]" : ""}, ORDER ${orderPass}/${orderTotal} (${pct(orderRate)}%), SUCC ${succResult.pass}/${succResult.total} (${pct(succRate)}%), SKIP10 ${skipResult.pass}/${skipResult.total} (${pct(skipRate)}%), MAKETEN ${makeTenResult.pass}/${makeTenResult.total} (${pct(makeTenRate)}%), TEEN ${teenResult.pass}/${teenResult.total} (${pct(teenRate)}%), ATTR ${attrResult.pass}/${attrResult.total} (${pct(attrRate)}%), CLASS ${classifyResult.pass}/${classifyResult.total} (${pct(classifyRate)}%), SHAPE-S ${shapeSidesResult.pass}/${shapeSidesResult.total} (${pct(shapeSidesRate)}%), SHAPE-D ${shapeDimResult.pass}/${shapeDimResult.total} (${pct(shapeDimRate)}%), SHAPE-C ${shapeComposeResult.pass}/${shapeComposeResult.total} (${pct(shapeComposeRate)}%), PROD ${prodResult.pass}/${prodResult.total} (${pct(prodRate)}%)${prodFailSummary}`,
-        metrics: { readRate, thinkRate, talkRate, seqRate, orderRate, seqFails, succRate, skipRate, makeTenRate, teenRate, attrRate, classifyRate, shapeSidesRate, shapeDimRate, shapeComposeRate, prodRate, prodFails: prodResult.fails }
+        reason: `READ ${readPass}/${N} (${pct(readRate)}%), THINK ${thinkPass}/${N} (${pct(thinkRate)}%), TALK ${talkPass}/${N} (${pct(talkRate)}%), SEQ ${seqPass}/${N - 1} (${pct(seqRate)}%)${seqFails.length > 0 ? " [FAIL: " + seqFails.join(", ") + "]" : ""}, ORDER ${orderPass}/${orderTotal} (${pct(orderRate)}%), SUCC ${succResult.pass}/${succResult.total} (${pct(succRate)}%), SKIP10 ${skipResult.pass}/${skipResult.total} (${pct(skipRate)}%), MAKETEN ${makeTenResult.pass}/${makeTenResult.total} (${pct(makeTenRate)}%), TEEN ${teenResult.pass}/${teenResult.total} (${pct(teenRate)}%), ATTR ${attrResult.pass}/${attrResult.total} (${pct(attrRate)}%), CLASS ${classifyResult.pass}/${classifyResult.total} (${pct(classifyRate)}%), SHAPE-S ${shapeSidesResult.pass}/${shapeSidesResult.total} (${pct(shapeSidesRate)}%), SHAPE-D ${shapeDimResult.pass}/${shapeDimResult.total} (${pct(shapeDimRate)}%), SHAPE-C ${shapeComposeResult.pass}/${shapeComposeResult.total} (${pct(shapeComposeRate)}%), PROD ${prodResult.pass}/${prodResult.total} (${pct(prodRate)}%) SENTENCE-GEN ${sentenceGen.passed}/${sentenceGen.total} (${pct(sentenceGenRate)}%)${prodFailSummary}`,
+        metrics: { readRate, thinkRate, talkRate, seqRate, orderRate, seqFails, succRate, skipRate, makeTenRate, teenRate, attrRate, classifyRate, shapeSidesRate, shapeDimRate, shapeComposeRate, prodRate, prodFails: prodResult.fails, sentenceGenRate, sentenceGenPerIntent: sentenceGen.perIntent }
       };
       this._recordGateHistory("math", "kindergarten", "overall", pass, prodRate);
       return _mathKResult;
@@ -21516,7 +21716,7 @@ var K_MIXIN = {
           cluster._cachedCrossCurrents.clear();
         }
       };
-      const _savedProbeNoise = cluster.noiseAmplitude;
+      const _savedProbeNoise = typeof cluster.noiseAmplitude === "number" ? cluster.noiseAmplitude : 0.5;
       cluster.noiseAmplitude = 0.6;
       const wordStartProbes = [
         { word: "cat", expected: "c" },
@@ -27518,20 +27718,31 @@ var Curriculum = class _Curriculum {
             const _cellKeyHealth = `${subject}/${grade}`;
             if (cluster && typeof cluster.checkSemMotorHealth === "function") {
               const health = cluster.checkSemMotorHealth();
+              if (!Array.isArray(this._semMotorSatHistory)) this._semMotorSatHistory = [];
+              this._semMotorSatHistory.push(health.saturated ? 1 : 0);
+              while (this._semMotorSatHistory.length > 5) this._semMotorSatHistory.shift();
+              const recentSat = this._semMotorSatHistory.reduce((a, b) => a + b, 0);
+              const windowSize = this._semMotorSatHistory.length;
               if (health && health.saturated) {
                 this._semMotorSaturationStreak = (this._semMotorSaturationStreak || 0) + 1;
                 const meanCosTag = typeof health.meanCos === "number" ? `mean-cos=${health.meanCos.toFixed(3)} ` : "";
                 const ratioTag = health.ratio > 0 ? `max/mean=${health.ratio.toFixed(2)} ` : "";
-                console.warn(`[Curriculum] \u26A0 saturation detected post-${_cellKeyHealth} (streak ${this._semMotorSaturationStreak}/3) \u2014 ${meanCosTag}${ratioTag}source=${health.source}`);
-                if (this._semMotorSaturationStreak >= 3) {
-                  console.warn(`[Curriculum] \u26D4 SATURATION HALT \u2014 sem\u2192motor saturated across 3 consecutive cells. Curriculum walk paused. Operator review required: stop.bat \u2192 start.bat for fresh boot OR investigate per docs/TODO.md fg.Tier3 / fg.Tier4 / fg.Tier5. Continued teaching against saturated weights deepens the lock-in.`);
+                console.warn(`[Curriculum] \u26A0 saturation detected post-${_cellKeyHealth} (streak ${this._semMotorSaturationStreak}/3 \xB7 window ${recentSat}/${windowSize}-of-5) \u2014 ${meanCosTag}${ratioTag}source=${health.source}`);
+                const consecutiveTrip = this._semMotorSaturationStreak >= 3;
+                const windowTrip = recentSat >= 3 && windowSize >= 3;
+                if (consecutiveTrip || windowTrip) {
+                  const trippedBy = consecutiveTrip ? "consecutive-streak (3/3)" : `windowed (${recentSat}/${windowSize}-of-5)`;
+                  console.warn(`[Curriculum] \u26D4 SATURATION HALT \u2014 sem\u2192motor saturated; trip cause: ${trippedBy}. Curriculum walk paused. Operator review required: stop.bat \u2192 start.bat for fresh boot OR investigate per docs/TODO.md fg.Tier3 / fg.Tier4 / fg.Tier5 / fj.7 (env-tunable thresholds). Continued teaching against saturated weights deepens the lock-in.`);
                   this._semMotorSaturationHalted = true;
                   if (cluster) {
                     cluster._lastCurriculumHalt = {
                       reason: "sem-motor-saturation",
                       ts: Date.now(),
                       cellAtHalt: _cellKeyHealth,
-                      meanCos: health.meanCos
+                      meanCos: health.meanCos,
+                      trippedBy,
+                      consecutiveStreak: this._semMotorSaturationStreak,
+                      windowedRatio: `${recentSat}/${windowSize}-of-5`
                     };
                   }
                   return { reached: passed, passed, failed, haltReason: "sem-motor-saturation" };
@@ -31950,23 +32161,10 @@ var Curriculum = class _Curriculum {
    * the existing sem→motor Hebbian. Order: most specific frame first.
    */
   _extractIntentConcept(question) {
-    if (!question || typeof question !== "string") return null;
-    const q = question.toLowerCase().trim();
-    if (!q) return null;
-    if (/\bwhat\s+(?:makes|causes)\b/.test(q)) return "cause";
-    if (/\bwhat\s+happens\s+when\b/.test(q)) return "effect";
-    if (/\bwhat\s+do\s+[a-z]+\s+need\b/.test(q)) return "need";
-    if (/\bwhat\s+is\b/.test(q)) return "definition";
-    if (/\bwhat\s+do\b/.test(q)) return "function";
-    if (/\bwhy\s+(?:do|does|is|are)\b/.test(q)) return "reason";
-    if (/\bhow\s+many\b/.test(q)) return "count";
-    if (/\bhow\s+(?:do|does|is|are)\b/.test(q)) return "method";
-    if (/\bwhere\s+(?:is|are|do|does)\b/.test(q)) return "place";
-    if (/\bwhen\s+(?:is|are|do|does)\b/.test(q)) return "time";
-    if (/\bwho\s+(?:is|are|does|do)\b/.test(q)) return "person";
-    if (/\b(?:big|small|tall|short|fast|slow|hot|cold)\b.*\bwhich\b/.test(q)) return "compare";
-    if (/^(is|are|do|does|can|will|would|should)\s/.test(q)) return "truth";
-    if (/^(what|why|how|where|when|who|which|whose)\b/.test(q)) return "question";
+    const cluster = this.cluster;
+    if (cluster && cluster.constructor && typeof cluster.constructor.extractIntentConcept === "function") {
+      return cluster.constructor.extractIntentConcept(question);
+    }
     return null;
   }
   /**
@@ -32996,7 +33194,7 @@ var Curriculum = class _Curriculum {
    * Returns `{ passed, total, rate, perIntent }` so the gate can apply
    * its own threshold (3/5 to start, 4/5 once verified live).
    */
-  async _probeSentenceGeneration() {
+  async _probeSentenceGeneration(opts = {}) {
     const cluster = this.cluster;
     if (!cluster) {
       return { passed: 0, total: 0, rate: 0, perIntent: {} };
@@ -33005,14 +33203,18 @@ var Curriculum = class _Curriculum {
       this._composeSentenceMissingLogged = true;
       console.warn("[Curriculum] \u26A0 cluster.composeSentence is undefined \u2014 _probeSentenceGeneration will return 0/5 silently. Check js/brain/cluster.js definition or class instantiation.");
     }
+    const probeSubject = opts.subject || "ela";
     const intents = ["declarative_svo", "declarative_copula", "question", "imperative", "exclamative"];
+    const probeConcepts = { question: "definition" };
     const perIntent = {};
     let passed = 0;
     for (const intent of intents) {
       let composed = null;
       try {
         if (typeof cluster.composeSentence === "function") {
-          composed = cluster.composeSentence(intent, { subject: "ela" });
+          const composeOpts = { subject: probeSubject };
+          if (probeConcepts[intent]) composeOpts.intentConcept = probeConcepts[intent];
+          composed = cluster.composeSentence(intent, composeOpts);
         }
       } catch {
         composed = null;
@@ -33029,13 +33231,19 @@ var Curriculum = class _Curriculum {
         words,
         sentence: composed ? composed.sentence : "",
         fillCount: composed ? composed.fillCount : 0,
+        intentConcept: probeConcepts[intent] || null,
+        coherenceCosine: composed && typeof composed.coherenceCosine === "number" ? composed.coherenceCosine : null,
         valid: structurallyValid
       };
       if (structurallyValid) passed += 1;
     }
     const total = intents.length;
     const rate = total > 0 ? passed / total : 0;
-    this._hb(`[Curriculum] _probeSentenceGeneration \u2014 ${passed}/${total} intents emitted \u22652 unique words (rate=${(rate * 100).toFixed(0)}%). Per-intent: ${intents.map((i) => `${i}:"${(perIntent[i].sentence || "").slice(0, 40)}" (${perIntent[i].wordCount}w/${perIntent[i].uniqueCount}u)`).join(" \xB7 ")}`);
+    this._hb(`[Curriculum] _probeSentenceGeneration[subject=${probeSubject}] \u2014 ${passed}/${total} intents emitted \u22652 unique words (rate=${(rate * 100).toFixed(0)}%). Per-intent: ${intents.map((i) => {
+      const conceptTag = perIntent[i].intentConcept ? ` concept=${perIntent[i].intentConcept}` : "";
+      const cosTag = perIntent[i].coherenceCosine !== null ? ` cos=${perIntent[i].coherenceCosine.toFixed(2)}` : "";
+      return `${i}${conceptTag}:"${(perIntent[i].sentence || "").slice(0, 40)}" (${perIntent[i].wordCount}w/${perIntent[i].uniqueCount}u${cosTag})`;
+    }).join(" \xB7 ")}`);
     return { passed, total, rate, perIntent };
   }
   /**

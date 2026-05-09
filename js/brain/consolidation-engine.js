@@ -100,18 +100,17 @@ export class ConsolidationEngine {
     };
 
     try {
-      // Saturation veto — when sem→motor basins have collapsed
-      // (mean-cos > 0.7 across recent probes) Hebbian replay just
-      // deepens the saturation. Skip Step 4 (replay) when saturated;
-      // Steps 1-3 (schema creation + reinforcement) and Steps 7-10
-      // (merge, decay, Tier 3 promotion, episode prune) still run so
-      // the system stays alive without locking in broken weights.
-      // Detection: cheap sample-based mean-abs check on sem_to_motor
-      // values + recent assoc-pair sep-probe result if the cluster
-      // exposes one. Falls back to false on any read failure.
+      // 114.19fj.24 — Saturation veto. When sem→motor basins have
+      // collapsed (per `cluster.checkSemMotorHealth()` heuristic stack —
+      // env-tunable thresholds via DREAM_SAT_*), Hebbian replay just
+      // deepens the saturation. Steps 1-3 + 7-10 still run; only Step 4
+      // (replay) is skipped — see line ~205 below for the per-cluster
+      // skip gate. Single-source-of-truth `cluster.checkSemMotorHealth()`
+      // is delegated to via `_isSemMotorSaturated()` so consolidation
+      // veto + curriculum-walk halt cron read the same heuristic.
       const saturationVeto = this._isSemMotorSaturated();
       if (saturationVeto) {
-        console.log('[Consolidation] saturation veto — sem→motor basins collapsed, skipping replay step (schema creation + decay still run; replay would just deepen lock-in)');
+        console.log('[Consolidation] saturation veto — sem→motor basins collapsed, replay step (4) skipped');
         stats.saturationVeto = true;
       }
 

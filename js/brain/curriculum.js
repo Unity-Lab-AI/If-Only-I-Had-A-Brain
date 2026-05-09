@@ -5744,13 +5744,29 @@ export class Curriculum {
             const _cellKeyHealth = `${subject}/${grade}`;
             if (cluster && typeof cluster.checkSemMotorHealth === 'function') {
               const health = cluster.checkSemMotorHealth();
+              // 114.19fj.11 — windowed saturation detection (3-of-last-5)
+              // replaces consecutive-streak. Real-world saturation can flap
+              // (sat → clean → sat → clean) and consecutive-streak logic
+              // never trips the halt even though half the cells are
+              // saturating. Window-based detection catches both flapping
+              // AND consecutive saturation. Both the per-cell streak AND
+              // the 3-of-5 window are tracked + reported; halt fires when
+              // EITHER ≥3 consecutive OR ≥3-of-last-5 window matches.
+              if (!Array.isArray(this._semMotorSatHistory)) this._semMotorSatHistory = [];
+              this._semMotorSatHistory.push(health.saturated ? 1 : 0);
+              while (this._semMotorSatHistory.length > 5) this._semMotorSatHistory.shift();
+              const recentSat = this._semMotorSatHistory.reduce((a, b) => a + b, 0);
+              const windowSize = this._semMotorSatHistory.length;
               if (health && health.saturated) {
                 this._semMotorSaturationStreak = (this._semMotorSaturationStreak || 0) + 1;
                 const meanCosTag = typeof health.meanCos === 'number' ? `mean-cos=${health.meanCos.toFixed(3)} ` : '';
                 const ratioTag = health.ratio > 0 ? `max/mean=${health.ratio.toFixed(2)} ` : '';
-                console.warn(`[Curriculum] ⚠ saturation detected post-${_cellKeyHealth} (streak ${this._semMotorSaturationStreak}/3) — ${meanCosTag}${ratioTag}source=${health.source}`);
-                if (this._semMotorSaturationStreak >= 3) {
-                  console.warn(`[Curriculum] ⛔ SATURATION HALT — sem→motor saturated across 3 consecutive cells. Curriculum walk paused. Operator review required: stop.bat → start.bat for fresh boot OR investigate per docs/TODO.md fg.Tier3 / fg.Tier4 / fg.Tier5. Continued teaching against saturated weights deepens the lock-in.`);
+                console.warn(`[Curriculum] ⚠ saturation detected post-${_cellKeyHealth} (streak ${this._semMotorSaturationStreak}/3 · window ${recentSat}/${windowSize}-of-5) — ${meanCosTag}${ratioTag}source=${health.source}`);
+                const consecutiveTrip = this._semMotorSaturationStreak >= 3;
+                const windowTrip = recentSat >= 3 && windowSize >= 3;
+                if (consecutiveTrip || windowTrip) {
+                  const trippedBy = consecutiveTrip ? 'consecutive-streak (3/3)' : `windowed (${recentSat}/${windowSize}-of-5)`;
+                  console.warn(`[Curriculum] ⛔ SATURATION HALT — sem→motor saturated; trip cause: ${trippedBy}. Curriculum walk paused. Operator review required: stop.bat → start.bat for fresh boot OR investigate per docs/TODO.md fg.Tier3 / fg.Tier4 / fg.Tier5 / fj.7 (env-tunable thresholds). Continued teaching against saturated weights deepens the lock-in.`);
                   this._semMotorSaturationHalted = true;
                   // 114.19fh.B.4 — surface haltReason on cluster so
                   // brain-server / dashboard can read it and show a
@@ -5764,12 +5780,19 @@ export class Curriculum {
                       ts: Date.now(),
                       cellAtHalt: _cellKeyHealth,
                       meanCos: health.meanCos,
+                      trippedBy,
+                      consecutiveStreak: this._semMotorSaturationStreak,
+                      windowedRatio: `${recentSat}/${windowSize}-of-5`,
                     };
                   }
                   return { reached: passed, passed, failed, haltReason: 'sem-motor-saturation' };
                 }
               } else {
                 this._semMotorSaturationStreak = 0;
+                // Window history is NOT reset on clean cell — flapping
+                // pattern needs to surface. Window only ages out via
+                // the cap-5 shift above. Pure clean-history path
+                // shows recentSat=0 across all 5 entries naturally.
               }
             }
           } catch { /* health check non-fatal */ }
@@ -10685,23 +10708,16 @@ export class Curriculum {
    * the existing sem→motor Hebbian. Order: most specific frame first.
    */
   _extractIntentConcept(question) {
-    if (!question || typeof question !== 'string') return null;
-    const q = question.toLowerCase().trim();
-    if (!q) return null;
-    if (/\bwhat\s+(?:makes|causes)\b/.test(q)) return 'cause';
-    if (/\bwhat\s+happens\s+when\b/.test(q)) return 'effect';
-    if (/\bwhat\s+do\s+[a-z]+\s+need\b/.test(q)) return 'need';
-    if (/\bwhat\s+is\b/.test(q)) return 'definition';
-    if (/\bwhat\s+do\b/.test(q)) return 'function';
-    if (/\bwhy\s+(?:do|does|is|are)\b/.test(q)) return 'reason';
-    if (/\bhow\s+many\b/.test(q)) return 'count';
-    if (/\bhow\s+(?:do|does|is|are)\b/.test(q)) return 'method';
-    if (/\bwhere\s+(?:is|are|do|does)\b/.test(q)) return 'place';
-    if (/\bwhen\s+(?:is|are|do|does)\b/.test(q)) return 'time';
-    if (/\bwho\s+(?:is|are|does|do)\b/.test(q)) return 'person';
-    if (/\b(?:big|small|tall|short|fast|slow|hot|cold)\b.*\bwhich\b/.test(q)) return 'compare';
-    if (/^(is|are|do|does|can|will|would|should)\s/.test(q)) return 'truth';
-    if (/^(what|why|how|where|when|who|which|whose)\b/.test(q)) return 'question';
+    // 114.19fj.3 — delegate to NeuronCluster.extractIntentConcept static
+    // method (cluster.js). Single source of truth shared with chat-side
+    // parser in language-cortex.js. Prior duplicated parser had ALREADY
+    // DRIFTED (different verb-form requirements between this and the
+    // language-cortex inline version). Keeping the instance method here
+    // for backwards compat with all `this._extractIntentConcept(...)` callers.
+    const cluster = this.cluster;
+    if (cluster && cluster.constructor && typeof cluster.constructor.extractIntentConcept === 'function') {
+      return cluster.constructor.extractIntentConcept(question);
+    }
     return null;
   }
 
@@ -12119,7 +12135,7 @@ export class Curriculum {
    * Returns `{ passed, total, rate, perIntent }` so the gate can apply
    * its own threshold (3/5 to start, 4/5 once verified live).
    */
-  async _probeSentenceGeneration() {
+  async _probeSentenceGeneration(opts = {}) {
     const cluster = this.cluster;
     if (!cluster) {
       return { passed: 0, total: 0, rate: 0, perIntent: {} };
@@ -12138,14 +12154,28 @@ export class Curriculum {
     // emit sem state propagation + article placement. Replaces the
     // earlier 4× emitWordDirect chain that produced multi-word output
     // but not grammar.
+    // 114.19fj.5 — accept subject opt so non-ELA gates (LIFE/ART/SOC/
+    // MATH/SCI) probe their own subject vocab instead of being locked
+    // to ELA. Defaults to 'ela' when caller doesn't supply.
+    const probeSubject = opts.subject || 'ela';
+    // 114.19fj.4 — pass intentConcept for question intent so the WH-
+    // INTENT consumer code path (cluster.js:3588-3597) actually fires
+    // during the probe. Prior probe never exercised the headline feature
+    // the fa→fi sweep was built to ship — gate could pass on basic slot
+    // mechanics while the actual WH-INTENT consumer was never invoked.
+    // 'definition' is the canonical concept for "what is X" question
+    // forms which dominate K-grade speech.
     const intents = ['declarative_svo', 'declarative_copula', 'question', 'imperative', 'exclamative'];
+    const probeConcepts = { question: 'definition' };
     const perIntent = {};
     let passed = 0;
     for (const intent of intents) {
       let composed = null;
       try {
         if (typeof cluster.composeSentence === 'function') {
-          composed = cluster.composeSentence(intent, { subject: 'ela' });
+          const composeOpts = { subject: probeSubject };
+          if (probeConcepts[intent]) composeOpts.intentConcept = probeConcepts[intent];
+          composed = cluster.composeSentence(intent, composeOpts);
         }
       } catch { composed = null; }
       const words = composed && Array.isArray(composed.words) ? composed.words : [];
@@ -12164,13 +12194,19 @@ export class Curriculum {
         words,
         sentence: composed ? composed.sentence : '',
         fillCount: composed ? composed.fillCount : 0,
+        intentConcept: probeConcepts[intent] || null,
+        coherenceCosine: composed && typeof composed.coherenceCosine === 'number' ? composed.coherenceCosine : null,
         valid: structurallyValid,
       };
       if (structurallyValid) passed += 1;
     }
     const total = intents.length;
     const rate = total > 0 ? passed / total : 0;
-    this._hb(`[Curriculum] _probeSentenceGeneration — ${passed}/${total} intents emitted ≥2 unique words (rate=${(rate * 100).toFixed(0)}%). Per-intent: ${intents.map(i => `${i}:"${(perIntent[i].sentence || '').slice(0, 40)}" (${perIntent[i].wordCount}w/${perIntent[i].uniqueCount}u)`).join(' · ')}`);
+    this._hb(`[Curriculum] _probeSentenceGeneration[subject=${probeSubject}] — ${passed}/${total} intents emitted ≥2 unique words (rate=${(rate * 100).toFixed(0)}%). Per-intent: ${intents.map(i => {
+      const conceptTag = perIntent[i].intentConcept ? ` concept=${perIntent[i].intentConcept}` : '';
+      const cosTag = perIntent[i].coherenceCosine !== null ? ` cos=${perIntent[i].coherenceCosine.toFixed(2)}` : '';
+      return `${i}${conceptTag}:"${(perIntent[i].sentence || '').slice(0, 40)}" (${perIntent[i].wordCount}w/${perIntent[i].uniqueCount}u${cosTag})`;
+    }).join(' · ')}`);
     return { passed, total, rate, perIntent };
   }
 
