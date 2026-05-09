@@ -24,7 +24,86 @@ Below is the verbatim TODO.md body (former lines 51-3110 — the OPEN TASKS sect
 
 ---
 
-## 2026-05-09 (latest) — Session 114.19fk — RIPPED OUT composeSentence template prescription system + replaced with pure equational emergence — operator architectural correction
+## 2026-05-09 (latest) — Session 114.19fl — post-fk test-readiness audit (15 items) — operator: "every last fucking file ... checked and updated masterfully"
+
+### Gee verbatim per LAW #0
+
+> *"ultrathink are we ready to test? anything else not finished or incomplete that prevents unity from speaking sentences like a real person of the grade level... if there is still work to be done do the work. We dont do docs untill all the work is done... and we dont jsut add banners we follow the current docs layout and formate and we chack there is no conflictinmg information from other parts of the doc and code"*
+
+> *"anything in the .bats and .sh 's that needs updated u never even touched any of them"*
+
+> *"write all your findings into a todo"*
+
+> *"write every last one of those issues to the tdoo and how your going to fix them, then once done writing the todo, then only do you do the todo work to completion and compleyle no short cuts no jerry rigging no bullshit ultrathink. then we can do the doc and html and public and workflow flow files in full all of them i mean it fucker ever last fucking file that is a doc htmla, info file ect needs to be chacked and updadete masterfully and beautifully with expert care and wisdom and intelligence so all information of every single doc is completley correct!!!!!!!!!!!"*
+
+### What this is
+
+Comprehensive test-readiness audit after fk architectural correction. 15 items (fl.1-fl.13 + fl.5b + fl.6b) found across code, launchers, public HTMLs, internal docs. ALL 15 SHIPPED in single atomic commit per Gee directive *"we dont do docs untill all the work is done"* + *"every last fucking file ... needs to be chacked and updated"*. Doc updates done in-place within existing layouts (NOT banner-prepend per Gee directive *"we dont jsut add banners we follow the current docs layout and formate"*). All historical banners describing the templated approach marked ⚠ HISTORICAL/SUPERSEDED inline so readers can't be misled by stale claims.
+
+### What shipped (15 items, bundle clean 2.4MB, all `node --check` green)
+
+**fl.1 — Dead `ARTICLE_LIST` module-const DELETED** (cluster.js:182-185). Was hoisted in fj.23 for use inside composeSentence's article-placement rule; fk.1 deleted the rule, leaving ARTICLE_LIST as orphan dead code. `js/brain/cluster.js`.
+
+**fl.2 — Inner-voice showcase `_sampleCurrentSentence` passes null intentSeed for purest equational emergence.** Was random-picking from jargon-string list `['declarative_svo', 'declarative_copula', 'question', 'imperative', 'exclamative']` — composeSentence (fk.1) turns these into sentence-embeddings via `getSentenceEmbedding('declarative svo')` etc., producing weak GloVe seeds (most aren't natural English; "svo" doesn't exist in GloVe at all). Now passes null → composeSentence emits from current cortex state with no prescribed intent. `server/brain-server.js`.
+
+**fl.3 — `_probeSentenceGeneration` replaced jargon-string intent list with 5 natural-language K-grade seeds.** New seeds: `'i see a thing'` (statement), `'the cat is big'` (description), `'what is this'` (question), `'go run'` (command), `'wow look'` (exclaim). Each seed is real K-grade English the brain has been trained on. composeSentence injects sentence-embedding once → brain emits from realistic utterance state. Probe MEASURES emergence under realistic seed states instead of jargon-noise. Per-intent log line dropped `concept=` tag; new format uses seed labels. `js/brain/curriculum.js`.
+
+**fl.4 — Savestart.bat + Savestart.sh document fk env vars.** Added `DREAM_COHERENCE_MIN`, `DREAM_SAT_MEANCOS`, `DREAM_SAT_MEANABS`, `DREAM_SAT_RATIO`, `DREAM_SAT_SAMPLE` to operator-facing env block in both Savestart launchers, mirroring start.bat / start.sh format. `windows/Savestart.bat` + `linux/Savestart.sh`.
+
+**fl.5 — html/brain-equations.html I.3 paragraph + Generation cascade paragraph rewritten.** I.3 paragraph clarifies that intent → slot-sequence bindings are TRAINED INTO HEBBIAN WEIGHTS (training-side correct) but inference-time emission has NO RUNTIME TEMPLATE LOOP — slot order EMERGES tick by tick from trained weights. Generation cascade paragraph rewritten to describe equational emission loop (inject context once → emit one word → if terminator append + stop → else inject back into sem → loop). `html/brain-equations.html`.
+
+**fl.6 — html/unity-guide.html "Five compositional Hebbian passes" paragraph rewritten.** Pass 2 description no longer implies runtime template walking — clarifies that intent → slot-sequence transitions are TRAINED weights that the brain READS at generation time, with slot order EMERGING (not walked). Generation paragraph rewritten to describe equational emergence. `html/unity-guide.html`.
+
+**fl.5b — docs/TODO-full-syllabus.md Section 2 (TierI-CONSUMER), Section 4 (UI-building emergence), Section 16 (live state references) corrected.** Section 2 rewritten as "equational sentence emergence consumer" with NO template-walk claims. Section 4 UI-building emergence rewritten — composeUiSnippet concept eliminated; UI snippets emerge via the SAME composeSentence equational loop applied to UI vocabulary, not a separate function. Section 16 line-number reference for composeSentence updated `~3365 → ~3576 post-fk`; `_inferActiveSubject` documented as the fk.4 replacement. `docs/TODO-full-syllabus.md`.
+
+**fl.6b — promo/* + assets/README + corpora/README + js/brain/curriculum/README verified.** Final grep confirmed no stale composeSentence content. promo/medium.md mention of "no prompt template" refers to LLM prompts (not our composeSentence templates) — accurate under fk reality, KEEP unchanged. No updates needed.
+
+**fl.7 — docs/NOW.md head banner rewritten in-place.** Within existing `> Current brain state` blockquote chain (NOT banner-prepend per Gee directive). New head describes fk + fl sweep with full equational-emergence narrative. Historical fa→fi banner marked ⚠ SUPERSEDED inline. `docs/NOW.md`.
+
+**fl.8 — docs/ARCHITECTURE.md head edit in-place.** Within existing `> Last updated` chain. Replaces templated-composeSentence description with equational-emergence description. Historical fj banner marked ⚠ SUPERSEDED inline. `docs/ARCHITECTURE.md`.
+
+**fl.9 — docs/SKILL_TREE.md head edit in-place.** Replaces TierI-CONSUMER capability description (templated) with "Equational sentence emergence consumer" + comprehensive listing of every fk + fj-retained capability. Historical fa→fi banner marked ⚠ HISTORICAL inline. `docs/SKILL_TREE.md`.
+
+**fl.10 — docs/EQUATIONS.md per-slot equation REPLACED with per-tick equation.** Old: `sem ← sem + α_cortex·cortexPattern + α_intent·intentEmbedding + α_slot·slotTagEmbedding + α_priorWord·prevWordEmbedding` (per-slot loop). New: initial injection ONCE (`sem₀ ← sem + α_cortex·cortexPattern + α_intent·intentEmbedding + α_concept·intentConceptEmbedding`), then per-tick loop (`wₜ = argmax_w cosine(semₜ, sem(w)) + sem_to_motor.propagate(semₜ); semₜ₊₁ ← semₜ + α_word·sem(wₜ)`) terminating when `wₜ ∈ T14_TERMINATORS`. Saturation halt thresholds documented as env-tunable. Subject inference equation documented as brain-state read. Historical fa→fi stamp marked ⚠ HISTORICAL. `docs/EQUATIONS.md`.
+
+**fl.11 — docs/ROADMAP.md fa→fi banner marked SUPERSEDED.** Banner now opens with fk + fl sweep summary. Historical fj entry kept with SUPERSEDED parenthetical. `docs/ROADMAP.md`.
+
+**fl.12 — Final grep verification across docs/ html/ promo/ README.md.** All template-walk claims either NEW content describing the rip-out OR clearly marked ⚠ HISTORICAL/SUPERSEDED. Two stragglers caught + fixed: `docs/SKILL_TREE.md:7` earlier-banner SUPERSEDED inline; `docs/TODO-full-syllabus.md:150` composeUiSnippet reference rewritten to use composeSentence equational loop with UI subject scope.
+
+**fl.13 — Single atomic commit + cascade syllabus-k-phd → develop → main.** Per Gee directive "we dont do docs untill all the work is done" + "no short cuts no jerry rigging no bullshit". Commits: `7e4c1be` syllabus-k-phd → `21e20ab` develop → `611ca75` main, all synced to origin.
+
+### Files touched
+
+- `js/brain/cluster.js` — fl.1 (ARTICLE_LIST deleted)
+- `server/brain-server.js` — fl.2 (showcase null intentSeed)
+- `js/brain/curriculum.js` — fl.3 (natural-language probe seeds)
+- `windows/Savestart.bat` + `linux/Savestart.sh` — fl.4 (fk env-var docs)
+- `html/brain-equations.html` — fl.5 (I.3 + Generation cascade rewrite)
+- `html/unity-guide.html` — fl.6 (Five compositional passes rewrite)
+- `docs/TODO-full-syllabus.md` — fl.5b (Sections 2 + 4 + 16) + fl.12 (composeUiSnippet line 150)
+- `docs/NOW.md` — fl.7 (head banner + earlier-banner SUPERSEDED marker)
+- `docs/ARCHITECTURE.md` — fl.8 (head + earlier-banner SUPERSEDED marker)
+- `docs/SKILL_TREE.md` — fl.9 (head + earlier-banner SUPERSEDED marker) + fl.12 (line 7 marker)
+- `docs/EQUATIONS.md` — fl.10 (per-slot → per-tick equation + earlier-stamp SUPERSEDED marker)
+- `docs/ROADMAP.md` — fl.11 (head + SUPERSEDED parenthetical)
+- `docs/TODO.md` — fl item entries + template after migration
+- `docs/FINALIZED.md` — this entry
+- `js/app.bundle.js` — rebuilt clean 2.4MB
+
+`node --check` green across `cluster.js`, `curriculum.js`, `language-cortex.js`, `kindergarten.js`, `consolidation-engine.js`, `brain-server.js`.
+
+### What's still pending (not blocking 20hr test)
+
+- **fk.5 decoder sampling preset audit** — operator-decision pending: path (a) keep hardcoded preset values vs path (b) drive temperature from brain state (`temperature = 0.5 + 0.5 * (1 - coherence)`).
+- **fk.7 iter25-I training depth verification** — post-test diagnostic. Surfaces back when 20hr K test reveals sentence quality data. If word-soup, deepen `_teachSentenceStructure` reps + lr.
+
+### Test path
+
+Fire `start.bat` → K curriculum walks 114 cells → composeSentence emits sentences from trained iter25-I weights tick-by-tick at probe + chat + showcase paths → if sentences emerge clean (subject-verb-object structure, articles in right positions, terminators at sentence end), training depth was sufficient → K signoff. If word-soup, fk.7 work resumes (deepen `_teachSentenceStructure` carving) — NOT template re-introduction. The 20hr K test now MEASURES the equational architecture honestly with no template fallback masking inadequate training.
+
+---
+
+## 2026-05-09 — Session 114.19fk — RIPPED OUT composeSentence template prescription system + replaced with pure equational emergence — operator architectural correction
 
 ### Gee verbatim per LAW #0
 

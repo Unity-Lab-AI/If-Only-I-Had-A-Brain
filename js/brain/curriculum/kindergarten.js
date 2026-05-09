@@ -2913,7 +2913,7 @@ export const K_MIXIN = {
       // generative grammar. Five compositional binding passes carve
       // grammar rules into fineType + sem cross-projections:
       //   I.1+I.2 — slot-position primitives + word-type → slot bindings
-      //   I.3     — sentence-template intent → slot-sequence bindings
+      //   I.3     — intent → slot-sequence transitions (trained as Hebbian weights, NOT walked at runtime)
       //   I.4     — subject-verb agreement
       //   I.5     — article placement
       // NO sentence memorization. Cortex composes sentences from rules
