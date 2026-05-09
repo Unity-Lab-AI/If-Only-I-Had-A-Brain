@@ -52052,7 +52052,10 @@ var BrainVisualizer = class {
   }
   updateState(state) {
     this._lastState = state;
-    const bp = state.oscillations?.bandPower || state.bandPower || {};
+    if (this._open && !this._animId) {
+      this._render();
+    }
+    const bp = state.bandPower || state.oscillations?.bandPower || {};
     const smooth = 0.15;
     for (const band of ["theta", "alpha", "beta", "gamma"]) {
       const raw = bp[band] ?? 0;
@@ -52751,6 +52754,11 @@ var BrainVisualizer = class {
     return this._open;
   }
   // ── CLUSTER WAVES — per-region firing maps with wave overlays ──
+  // 114.19fm — state-path corrections: server emits cluster data under
+  // `state.clusters[name].spikeRate` (per brain-server.js:2092-2184), not
+  // `state[name].spikeRate`. Bandpower is at `state.bandPower` top-level,
+  // not `state.oscillations.bandPower`. Defensive alpha clamp prevents
+  // addColorStop SyntaxError on rate>1.275 (would have killed rAF chain).
   _renderClusterWaves(s) {
     const canvas = this._el.querySelector("#bv-clusterwaves-canvas");
     if (!canvas) return;
@@ -52761,8 +52769,8 @@ var BrainVisualizer = class {
     const clusters = ["cortex", "hippocampus", "amygdala", "basalGanglia", "cerebellum", "hypothalamus", "mystery"];
     const clusterColors = ["#ff79c6", "#8be9fd", "#ffb86c", "#50fa7b", "#bd93f9", "#f1fa8c", "#ff5555"];
     const clusterH = Math.floor(H / clusters.length);
-    const spikes = s.spikes || s.clusterSpikes || {};
-    const bp = s.oscillations?.bandPower || s.bandPower || {};
+    const cs = s.clusters || {};
+    const bp = s.bandPower || s.oscillations?.bandPower || {};
     const showTheta = this._el.querySelector("#bv-cw-theta")?.checked ?? true;
     const showAlpha = this._el.querySelector("#bv-cw-alpha")?.checked ?? true;
     const showBeta = this._el.querySelector("#bv-cw-beta")?.checked ?? true;
@@ -52775,25 +52783,24 @@ var BrainVisualizer = class {
       ctx.fillStyle = color;
       ctx.font = "11px monospace";
       ctx.fillText(name.toUpperCase(), 4, y0 + 14);
-      const rate = spikes[name] ?? (s[name]?.spikeRate ?? Math.random() * 0.3);
+      const cd = cs[name] || {};
+      const rawRate = typeof cd.spikeRate === "number" ? cd.spikeRate : typeof cd.firingRate === "number" ? cd.firingRate : 0;
+      const rate = Math.max(0, Math.min(1, rawRate));
       const barW = Math.min(rate * W * 0.8, W - 80);
       ctx.fillStyle = color + "40";
       ctx.fillRect(80, y0 + 2, barW, clusterH - 4);
-      const spikeArr = s[name + "Spikes"] || s.clusterSpikeArrays?.[name];
-      if (spikeArr && spikeArr.length > 0) {
-        const dotW = Math.max(1, (W - 80) / spikeArr.length);
-        for (let i = 0; i < spikeArr.length; i++) {
-          if (spikeArr[i]) {
-            ctx.fillStyle = color;
-            ctx.fillRect(80 + i * dotW, y0 + 2, Math.max(1, dotW - 1), clusterH - 4);
-          }
-        }
-      } else {
-        const grad = ctx.createLinearGradient(80, y0, W, y0);
-        grad.addColorStop(0, color + Math.floor(rate * 200).toString(16).padStart(2, "0"));
-        grad.addColorStop(1, color + "00");
-        ctx.fillStyle = grad;
-        ctx.fillRect(80, y0 + 2, W - 80, clusterH - 4);
+      const alphaByte = Math.max(0, Math.min(255, Math.floor(rate * 200)));
+      const alphaHex = alphaByte.toString(16).padStart(2, "0");
+      const grad = ctx.createLinearGradient(80, y0, W, y0);
+      grad.addColorStop(0, color + alphaHex);
+      grad.addColorStop(1, color + "00");
+      ctx.fillStyle = grad;
+      ctx.fillRect(80, y0 + 2, W - 80, clusterH - 4);
+      if (typeof cd.spikeCount === "number" && typeof cd.size === "number") {
+        ctx.fillStyle = color + "cc";
+        ctx.font = "10px monospace";
+        const pct = (rate * 100).toFixed(1);
+        ctx.fillText(`${cd.spikeCount.toLocaleString()}/${cd.size.toLocaleString()} (${pct}%)`, 84, y0 + clusterH - 4);
       }
       const midY = y0 + clusterH / 2;
       const amplitude = clusterH * 0.35;

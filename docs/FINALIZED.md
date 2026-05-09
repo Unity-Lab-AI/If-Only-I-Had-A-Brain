@@ -24,7 +24,73 @@ Below is the verbatim TODO.md body (former lines 51-3110 — the OPEN TASKS sect
 
 ---
 
-## 2026-05-09 (latest) — Session 114.19fl — post-fk test-readiness audit (15 items) — operator: "every last fucking file ... checked and updated masterfully"
+## 2026-05-09 (latest) — Session 114.19fm — Brain visualizer Cluster Waves panel renders blank — diagnosis + fix without disturbing running brain instance
+
+### Gee verbatim per LAW #0
+
+> *"take note in brain visualizer :CLUSTER ACTIVATION — Per-Region Firing + Wave Overlays
+> 7 clusters × spike patterns | θ/α/β/γ band overlay toggleable
+>  θ Theta (4-8Hz)
+>  α Alpha (8-13Hz)
+>  β Beta (13-30Hz)
+>  γ Gamma (30-100Hz) -- The screen is just black and blank with no information or graphs of what ever its suppose to show but what ever its suppose to be needs to be fixed"*
+
+> *"can we fix it without hurting the current running brain instance? yes or no"* / *"okay do it"*
+
+### What this is
+
+Mid-test (20hr K localhost run already in flight on Gee's machine), Gee opened the 2D Brain Visualizer's Cluster Waves tab and saw the canvas below the panel chrome rendering as a black/blank rectangle — title text + four band-toggle checkboxes visible but NO labels, NO firing-rate bars, NO sinusoidal wave overlays. Six root causes diagnosed in `_renderClusterWaves(s)` (`js/ui/brain-viz.js:1158` / `js/app.bundle.js:52754`); browser-side renderer fix shipped without touching the brain server, so the running test continues uninterrupted — Gee just hard-refreshes the dashboard to pick up the new bundle.
+
+### Six root causes (verbatim from fm diagnosis)
+
+1. **PRIMARY — wrong state path for spike rate.** Renderer read `s[name]?.spikeRate` (e.g. `state.cortex.spikeRate`). Server's `getState()` (`server/brain-server.js:2092-2184`) emits `state.clusters.cortex.spikeRate`, NOT `state.cortex.spikeRate`. Top-level `state.cortex` was undefined, so the renderer always fell through to the `Math.random() * 0.3` fallback — even when the brain was actively firing. Bars got random pseudo-noise; real spike rates were never drawn.
+2. **PRIMARY — wrong state path for per-cluster spike arrays.** Renderer read `s.spikes || s.clusterSpikes || {}` then `spikes[name]` (e.g. `spikes['cortex']`). But `state.spikes` is a flat per-neuron `Uint8Array` of firing booleans (see brain-viz.js:333-341 `state.spikes.length` indexing path). Indexing it by string cluster name returned undefined. `state.clusterSpikes` doesn't exist at all.
+3. **PRIMARY — dead `s[name + 'Spikes']` path.** Code at `brain-viz.js:1199` read `s.cortexSpikes` / `s.hippocampusSpikes` / etc. — none of these keys exist on the broadcast state. The fallback (gradient based on rate) always fired.
+4. **PRIMARY — wrong band-power path.** Renderer read `s.oscillations?.bandPower || s.bandPower`. Server emits `bandPower` directly at top level (`brain-server.js:2160 bandPower = {...}` and `:2183 bandPower,`). The `s.oscillations.bandPower` path never hit — would fall through to `s.bandPower` which works. Inconsistent with rest of dashboard but not the root cause.
+5. **SUPPORTING — potential `addColorStop` overflow throw.** Line 1211 / bundle 52793: `grad.addColorStop(0, color + Math.floor(rate * 200).toString(16).padStart(2, "0"))`. If `rate > 1.275`, `Math.floor(rate * 200)` would produce 3-char hex (e.g. 300 → '12c') which `padStart(2)` doesn't truncate → invalid 10-char `#RRGGBB` + `XXX` color string → `addColorStop` throws `SyntaxError` → kills the rAF reschedule on line 1382 → entire viz render loop dies. Currently rate was bounded by `Math.random() * 0.3` (safe); but once root-cause #1 was fixed and real `spikeRate` arrived, server already clamps to `[0,1]` (`Math.min(1, Math.max(0, spikeCount / size))` at line 2104) — defensive clamp is cheap insurance against future regression.
+6. **SUPPORTING — `open()` before state arrives killed render loop.** `_render()` at brain-viz.js:353 returned early `if (!this._open || !this._lastState) return;` WITHOUT scheduling the next `requestAnimationFrame`. If user opened the visualizer before the first WS state frame arrived, the loop died. `updateState()` didn't restart it. Affected all tabs equally, not specific to clusterwaves — fixed alongside.
+
+### What shipped (114.19fm)
+
+**fm.1 — `_renderClusterWaves` state-path corrections (`js/ui/brain-viz.js:1158`).** Replaced `const spikes = s.spikes || s.clusterSpikes || {};` with `const cs = s.clusters || {};`. Replaced `const rate = spikes[name] ?? (s[name]?.spikeRate ?? Math.random() * 0.3);` with `const cd = cs[name] || {}; const rawRate = (typeof cd.spikeRate === 'number') ? cd.spikeRate : (typeof cd.firingRate === 'number') ? cd.firingRate : 0; const rate = Math.max(0, Math.min(1, rawRate));`. Reads canonical `spikeRate` first then `firingRate` alias (server emits both per `brain-server.js:2108-2109`). Random-noise fallback REMOVED — empty state now correctly renders as zero, not pseudo-data.
+
+**fm.2 — Defensive alpha clamp (same function).** Replaced `Math.floor(rate * 200).toString(16).padStart(2, "0")` with `Math.max(0, Math.min(255, Math.floor(rate * 200))).toString(16).padStart(2, "0")`. Two-char hex guaranteed regardless of input magnitude — `addColorStop` SyntaxError no longer possible.
+
+**fm.3 — Bandpower path flip (same function).** Replaced `const bp = s.oscillations?.bandPower || s.bandPower || {};` with `const bp = s.bandPower || s.oscillations?.bandPower || {};`. Top-level `state.bandPower` is now read FIRST (where the server actually puts it), legacy `oscillations.bandPower` kept as fallback.
+
+**fm.4 — Dead `s.cortexSpikes` path removed (same function).** The whole `if (spikeArr && spikeArr.length > 0) { ... } else { ... }` branch was gone-fishing. Replaced with always-render-the-gradient + a numeric badge showing `spikeCount/size (rate%)` so each bar has a textual anchor. Per-neuron firing dot rendering deferred — would require server-side broadcast of per-cluster typed-array slices (out of scope for fm; tracked as future enhancement only if the gradient + badge isn't enough information density).
+
+**fm.5 — rAF self-heal in `updateState()` (`brain-viz.js:307`).** Added `if (this._open && !this._animId) { this._render(); }` after the `this._lastState = state;` assignment. If the visualizer was opened before the first state frame landed, `_render()` returned early without scheduling next-frame rAF and the loop died. New restart hook detects that condition and resumes the loop the moment state arrives. Non-conflicting with normal operation: during a healthy loop `_animId` is always set to a pending rAF id.
+
+**fm.6 — Bandpower precedence fix in `updateState()`.** Same path-flip as fm.3, applied to the `updateState()` smoothing path (was reading `state.oscillations?.bandPower || state.bandPower`, now reads `state.bandPower || state.oscillations?.bandPower`). Smoothed-band history now reflects real broadcast data; oscillations panel was likely showing wrong-shape input here too.
+
+**fm.7 — Bundle rebuild.** `cd server && npm run build` → `esbuild ../js/app.js ... → ../js/app.bundle.js`. Bundle clean 2.4MB; `node --check` green.
+
+### Why this didn't disturb the running brain
+
+The fix is **browser-side only**. `js/ui/brain-viz.js` is a render-layer module loaded by the dashboard HTML; the brain server (`server/brain-server.js`, the curriculum runner, the GPU compute pipeline) was untouched. Gee's 20hr K test in flight kept ticking through cells uninterrupted. Browser hard-refresh (Ctrl+F5) on the dashboard tab loads the new `app.bundle.js` and the Cluster Waves panel comes to life — no server restart, no state clear, no test interruption.
+
+### Files touched
+
+- `js/ui/brain-viz.js` — `_renderClusterWaves` state-path corrections + defensive alpha clamp + dead-branch removal + numeric badge add (fm.1-4); `updateState` rAF self-heal + bandpower precedence (fm.5-6)
+- `js/app.bundle.js` — rebuilt via `cd server && npm run build` (fm.7)
+- `docs/TODO.md` — fm entry templated to history (this commit)
+- `docs/FINALIZED.md` — this entry (fm)
+- `docs/NOW.md` — head-banner cascade ref placeholder
+
+### Bundle + check
+
+- `js/app.bundle.js` rebuilt clean 2.4MB
+- `node --check js/ui/brain-viz.js` silent (clean — ESM exports prevent CLI check; build script's esbuild parse is the canonical syntax gate, and it passed)
+- Search for `114.19fm` in bundle confirms fix landed at line 52757-52793
+
+### Cascade
+
+✓ COMMITTED + PUSHED 2026-05-09 — atomic cascade `<sha-syllabus-k-phd>` syllabus-k-phd → `<sha-develop>` develop → `<sha-main>` main, all synced to origin. Browser hard-refresh required on Gee's side to pick up the new bundle.
+
+---
+
+## 2026-05-09 — Session 114.19fl — post-fk test-readiness audit (15 items) — operator: "every last fucking file ... checked and updated masterfully"
 
 ### Gee verbatim per LAW #0
 

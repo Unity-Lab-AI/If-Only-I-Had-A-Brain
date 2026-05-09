@@ -307,9 +307,16 @@ export class BrainVisualizer {
   updateState(state) {
     this._lastState = state;
 
+    // 114.19fm — rAF self-heal. _render() returns early without rescheduling
+    // if open() ran before the first state frame arrived; without this restart
+    // the visualizer stays frozen forever once state finally lands.
+    if (this._open && !this._animId) {
+      this._render();
+    }
+
     // Track band power over time (smoothed) — this is what makes the oscillation
     // plot show meaningful slow changes instead of raw fast-cycling sine waves
-    const bp = state.oscillations?.bandPower || state.bandPower || {};
+    const bp = state.bandPower || state.oscillations?.bandPower || {};
     const smooth = 0.15; // EMA smoothing factor — lower = smoother
     for (const band of ['theta', 'alpha', 'beta', 'gamma']) {
       const raw = bp[band] ?? 0;
@@ -1155,6 +1162,11 @@ export class BrainVisualizer {
   }
 
   // ── CLUSTER WAVES — per-region firing maps with wave overlays ──
+  // 114.19fm — state-path corrections: server emits cluster data under
+  // `state.clusters[name].spikeRate` (per brain-server.js:2092-2184), not
+  // `state[name].spikeRate`. Bandpower is at `state.bandPower` top-level,
+  // not `state.oscillations.bandPower`. Defensive alpha clamp prevents
+  // addColorStop SyntaxError on rate>1.275 (would have killed rAF chain).
   _renderClusterWaves(s) {
     const canvas = this._el.querySelector('#bv-clusterwaves-canvas');
     if (!canvas) return;
@@ -1167,11 +1179,11 @@ export class BrainVisualizer {
     const clusterColors = ['#ff79c6', '#8be9fd', '#ffb86c', '#50fa7b', '#bd93f9', '#f1fa8c', '#ff5555'];
     const clusterH = Math.floor(H / clusters.length);
 
-    // Get spike data from state
-    const spikes = s.spikes || s.clusterSpikes || {};
+    // Per-cluster state lives under state.clusters
+    const cs = s.clusters || {};
 
-    // Get oscillation band power for overlays
-    const bp = s.oscillations?.bandPower || s.bandPower || {};
+    // Bandpower lives at top level (server brain-server.js:2183)
+    const bp = s.bandPower || s.oscillations?.bandPower || {};
     const showTheta = this._el.querySelector('#bv-cw-theta')?.checked ?? true;
     const showAlpha = this._el.querySelector('#bv-cw-alpha')?.checked ?? true;
     const showBeta  = this._el.querySelector('#bv-cw-beta')?.checked ?? true;
@@ -1189,29 +1201,33 @@ export class BrainVisualizer {
       ctx.font = '11px monospace';
       ctx.fillText(name.toUpperCase(), 4, y0 + 14);
 
-      // Spike rate bar
-      const rate = spikes[name] ?? (s[name]?.spikeRate ?? Math.random() * 0.3);
+      // Spike rate bar — read from state.clusters[name].spikeRate (or
+      // firingRate alias) which the server clamps to [0,1].
+      const cd = cs[name] || {};
+      const rawRate = (typeof cd.spikeRate === 'number') ? cd.spikeRate
+                    : (typeof cd.firingRate === 'number') ? cd.firingRate
+                    : 0;
+      const rate = Math.max(0, Math.min(1, rawRate));
       const barW = Math.min(rate * W * 0.8, W - 80);
       ctx.fillStyle = color + '40';
       ctx.fillRect(80, y0 + 2, barW, clusterH - 4);
 
-      // Spike pattern — render as a row of dots showing activation
-      const spikeArr = s[name + 'Spikes'] || s.clusterSpikeArrays?.[name];
-      if (spikeArr && spikeArr.length > 0) {
-        const dotW = Math.max(1, (W - 80) / spikeArr.length);
-        for (let i = 0; i < spikeArr.length; i++) {
-          if (spikeArr[i]) {
-            ctx.fillStyle = color;
-            ctx.fillRect(80 + i * dotW, y0 + 2, Math.max(1, dotW - 1), clusterH - 4);
-          }
-        }
-      } else {
-        // No per-neuron data — show spike rate as intensity gradient
-        const grad = ctx.createLinearGradient(80, y0, W, y0);
-        grad.addColorStop(0, color + Math.floor(rate * 200).toString(16).padStart(2, '0'));
-        grad.addColorStop(1, color + '00');
-        ctx.fillStyle = grad;
-        ctx.fillRect(80, y0 + 2, W - 80, clusterH - 4);
+      // Intensity gradient based on rate. Alpha hex byte is clamped to
+      // 0-255 so addColorStop never sees an oversized hex string.
+      const alphaByte = Math.max(0, Math.min(255, Math.floor(rate * 200)));
+      const alphaHex = alphaByte.toString(16).padStart(2, '0');
+      const grad = ctx.createLinearGradient(80, y0, W, y0);
+      grad.addColorStop(0, color + alphaHex);
+      grad.addColorStop(1, color + '00');
+      ctx.fillStyle = grad;
+      ctx.fillRect(80, y0 + 2, W - 80, clusterH - 4);
+
+      // Spike count + size badge so the bar has a numeric anchor
+      if (typeof cd.spikeCount === 'number' && typeof cd.size === 'number') {
+        ctx.fillStyle = color + 'cc';
+        ctx.font = '10px monospace';
+        const pct = (rate * 100).toFixed(1);
+        ctx.fillText(`${cd.spikeCount.toLocaleString()}/${cd.size.toLocaleString()} (${pct}%)`, 84, y0 + clusterH - 4);
       }
 
       // Wave overlays — sinusoidal waveforms at each frequency band
