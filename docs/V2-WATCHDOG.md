@@ -1,8 +1,8 @@
-# V2 MILESTONE WATCHDOG — Filter Spec
+# V2 MILESTONE WATCHDOG — Filter Spec (Claude's monitoring instrument during Gee's test runs)
 
-> **Purpose:** canonical, current filter pattern Gee uses to monitor live brain runs. `tail -f -n 0 server/server.log` piped through this regex alternation produces `v2-milestone-watchdog.log` in repo root — milestone events only, every-tick noise filtered out. **Update this file every time the codebase ships new log signatures so the watchdog filter stays current.**
+> **Purpose:** canonical, current filter pattern that produces `v2-milestone-watchdog.log` in repo root. **This log is Claude's monitoring instrument while Gee runs the brain.** Gee fires `start.bat` (or Savestart) and runs the external `tail -f` pipeline that filters `server/server.log` through the regex alternation below into `v2-milestone-watchdog.log`. Claude tails THAT file during the test and reports milestone events / saturation halts / anomalies back to Gee in real time. The log is small (milestones only — CELL ALIVE 10s heartbeat noise excluded), so Claude can watch it without context bloat. **Update this file every time the codebase ships new log signatures so the watchdog filter stays current.**
 
-> **Last updated:** 2026-05-09 (post-fk + fl sweep — added equational-emergence signatures, removed dead `TEMPLATED` token).
+> **Last updated:** 2026-05-09 (post-fk + fl sweep — added equational-emergence signatures, removed dead `TEMPLATED` token; ownership framing corrected from "Gee monitors" to "Claude monitors during Gee's test runs").
 
 ---
 
@@ -12,7 +12,7 @@ Pre-2026-05-09, the V2 watchdog filter pattern lived only in:
 - The header line of `v2-milestone-watchdog.log` (whatever pattern was active for the current run)
 - Historical FINALIZED entries (Session 114.19cv + 114.19cw + iter9-K)
 
-That meant whenever Gee or future-Claude needed to update the filter (after a code sweep adds new log signatures), there was NO canonical source-of-truth — just historical artifacts. Operator caught it 2026-05-09: *"is the V2 watchdog upto date? if not why the fuck are none of our supposrt files being updated?"*. This file fixes the gap.
+That meant whenever Gee or future-Claude needed to update the filter (after a code sweep adds new log signatures), there was NO canonical source-of-truth — just historical artifacts. Operator caught it 2026-05-09: *"is the V2 watchdog upto date? if not why the fuck are none of our supposrt files being updated?"* + *"its suppose to be for you to monitor when i test AND when i want you to monitor"*. This file fixes the gap AND makes the ownership explicit (Claude monitors during test runs Gee initiates).
 
 **Maintenance rule:** every code sweep that adds a new milestone-worthy log signature appends to this file. Every dead signature gets removed. The filter stays current with reality.
 
@@ -129,20 +129,27 @@ When a code sweep adds a new milestone-worthy log signature:
 
 ## How to use the filter
 
-### Live monitoring during a 20hr K test
+### Live monitoring during a 20hr K test (Gee runs filter, Claude tails the output)
+
+**Gee's side (one-time setup per test run):**
 
 ```powershell
-# In one Powershell window — run start.bat to launch the brain.
-# In a SECOND Powershell window — start the watchdog tail+filter:
+# Window 1 — fire the brain:
+.\windows\start.bat
+
+# Window 2 — start the watchdog filter pipeline. This APPENDS to
+# v2-milestone-watchdog.log so Claude can tail the same file:
 cd C:\Users\gfour\Desktop\Dream
 Get-Content server\server.log -Wait -Tail 0 | Select-String -Pattern '<paste pattern from above>' -NotMatch '(CELL ALIVE)' | Tee-Object -FilePath v2-milestone-watchdog.log -Append
 ```
 
-The filter prints milestones to the second window AND appends them to `v2-milestone-watchdog.log` for post-mortem review. CELL ALIVE heartbeat noise stays out.
+**Claude's side (when Gee says "monitor"):**
+
+Claude opens a background `tail -f v2-milestone-watchdog.log` (via `Bash run_in_background` + the `Monitor` tool to stream new lines as notifications). Each new line surfaces in Claude's context as a notification; Claude flags anomalies / saturation halts / probe failures / `UNSET` warnings back to Gee in real time. Claude does NOT tail `server/server.log` directly — that file is too noisy (CELL ALIVE every 10s) and would flood context. The filtered milestone log is the right granularity.
 
 ### Post-run review
 
-After a 20hr run, `v2-milestone-watchdog.log` contains the milestone catalog: every phase boundary, every gate outcome, every saturation halt, every force-advance, every coherence/saturation calibration sample. Operator scans this file (NOT the full 100MB+ server.log) for the pattern that emerged.
+After a 20hr run, `v2-milestone-watchdog.log` contains the milestone catalog: every phase boundary, every gate outcome, every saturation halt, every force-advance, every coherence/saturation calibration sample. Either Gee OR Claude scans this file (NOT the full 100MB+ server.log) for the pattern that emerged.
 
 ### Common patterns to look for post-fk
 
