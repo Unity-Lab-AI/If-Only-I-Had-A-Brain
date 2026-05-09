@@ -193,22 +193,39 @@ export const K_MIXIN = {
         await this._phasedTeach('LIFE-K-LETTER-NAMING-DIRECT', () => this._teachLetterNamingDirect({ reps: 50 }));
       }
 
-      // iter15-A — Direct sem→motor wipe-and-rewrite. MUST RUN LAST.
-      if (typeof this._teachWordSpellingDirectFinal === 'function') {
-        await this._phasedTeach('LIFE-K-WORD-SPELL-FINAL', () => this._teachWordSpellingDirectFinal({ reps: 8, subject: 'life' }));
-      }
-      // iter21-A — Word-level emission training
-      if (typeof this._teachWordEmissionDirect === 'function') {
-        await this._phasedTeach('LIFE-K-WORD-EMISSION-DIRECT', () => this._teachWordEmissionDirect({ reps: 8, subject: 'life' }));
-      }
-
       // WH-question intent recognition (STRUCTURAL).
       // Life-K personal-info answers come from Unity's persona corpus
       // and sandbox-notice activator; J.1 adds the
       // structural WH→intent layer so personal questions route through
-      // those existing trained associations.
+      // those existing trained associations. Saturates sem_to_motor —
+      // WORD-SPELL-FINAL wipe below cleans the pollution before gate.
       if (typeof this._teachQuestionIntent === 'function') {
         await this._phasedTeach('LIFE-K-WH-INTENT', () => this._teachQuestionIntent({ reps: 8 }));
+      }
+
+      // WORD-SPELL-FINAL — direct sem→motor wipe + clean rewrite.
+      // Runs AFTER WH-INTENT so the wipe cleans WH-INTENT's
+      // sem_to_motor saturation before the gate probe reads argmax.
+      // WH-INTENT routing at probe time uses Template 2 fast-path
+      // parsing (not sem_to_motor matrix lookup) so wiping its weights
+      // here doesn't break WH parsing.
+      if (typeof this._teachWordSpellingDirectFinal === 'function') {
+        await this._phasedTeach('LIFE-K-WORD-SPELL-FINAL', () => this._teachWordSpellingDirectFinal({ reps: 8, subject: 'life' }));
+      }
+      // iter21-A — Word-level emission training (separate sem_to_word_motor)
+      if (typeof this._teachWordEmissionDirect === 'function') {
+        await this._phasedTeach('LIFE-K-WORD-EMISSION-DIRECT', () => this._teachWordEmissionDirect({ reps: 8, subject: 'life' }));
+      }
+
+      // Cross-cell sentence-structure reinforcement.
+      // iter25-I trained slot/template/agreement/article bindings in
+      // ELA-K only. Without per-cell refresh, those bindings decay
+      // under this cell's domain Hebbian writes. Re-firing
+      // _teachSentenceStructure keeps the grammar rules carved as
+      // Unity walks the K curriculum, so chat + composeSentence
+      // produce sentences across all 6 K subjects, not just ELA.
+      if (typeof this._teachSentenceStructure === 'function') {
+        await this._phasedTeach('LIFE-K-STRUCTURE-REFRESH', () => this._teachSentenceStructure(ctx));
       }
 
       this._lifeKRemakeDone = true;
@@ -224,6 +241,15 @@ export const K_MIXIN = {
     if (!cluster || !cluster.synapses) return { pass: false, reason: 'no cluster' };
 
     await this._pregateEnrichment('life/kindergarten');
+
+    // 114.19fh.A.4 — probe noise bump 0.5→0.6 (Tier 12 pattern from
+    // ELA-K). K-Unity is sober (no drug-derived noise pre-Life-G7) so
+    // basin attractors lock harder; the 0.1 bump gives saturated
+    // basins a probabilistic kick without destabilizing scoring.
+    // Restore in finally so post-probe live chat retains chaotic dynamics.
+    const _savedProbeNoise = cluster.noiseAmplitude;
+    cluster.noiseAmplitude = 0.6;
+    try {
 
     // Production probes matching TODO Life Pre-K + Life-K test phrasings
     const lifeKProductionSamples = [
@@ -260,6 +286,9 @@ export const K_MIXIN = {
     };
     this._recordGateHistory('life', 'kindergarten', 'overall', pass, prodRate);
     return _lifeKResult;
+    } finally {
+      cluster.noiseAmplitude = _savedProbeNoise;
+    }
   },
 
   // ── GRADE 1 (age 6) — reading clicks, dad fading ────────────────
@@ -324,21 +353,30 @@ export const K_MIXIN = {
         await this._phasedTeach('ART-K-LETTER-NAMING-DIRECT', () => this._teachLetterNamingDirect({ reps: 50 }));
       }
 
-      // iter15-A — Direct sem→motor wipe-and-rewrite. MUST RUN LAST.
+      // WH-question intent recognition (STRUCTURAL).
+      // Existing art curriculum carves primary-colors / color-mixing /
+      // warm-cool / music subject→answer bindings; J.1 adds structural
+      // WH→intent layer. Saturates sem_to_motor — WORD-SPELL-FINAL wipe
+      // below cleans the pollution before gate.
+      if (typeof this._teachQuestionIntent === 'function') {
+        await this._phasedTeach('ART-K-WH-INTENT', () => this._teachQuestionIntent({ reps: 8 }));
+      }
+
+      // WORD-SPELL-FINAL — direct sem→motor wipe + clean rewrite.
+      // Runs AFTER WH-INTENT so the wipe cleans WH-INTENT's
+      // sem_to_motor saturation before the gate probe reads argmax.
       if (typeof this._teachWordSpellingDirectFinal === 'function') {
         await this._phasedTeach('ART-K-WORD-SPELL-FINAL', () => this._teachWordSpellingDirectFinal({ reps: 8, subject: 'art' }));
       }
-      // iter21-A — Word-level emission training
+      // iter21-A — Word-level emission training (separate sem_to_word_motor)
       if (typeof this._teachWordEmissionDirect === 'function') {
         await this._phasedTeach('ART-K-WORD-EMISSION-DIRECT', () => this._teachWordEmissionDirect({ reps: 8, subject: 'art' }));
       }
 
-      // WH-question intent recognition (STRUCTURAL).
-      // Existing art curriculum carves primary-colors / color-mixing /
-      // warm-cool / music subject→answer bindings; J.1 adds structural
-      // WH→intent layer.
-      if (typeof this._teachQuestionIntent === 'function') {
-        await this._phasedTeach('ART-K-WH-INTENT', () => this._teachQuestionIntent({ reps: 8 }));
+      // Cross-cell sentence-structure reinforcement (see life-K
+      // STRUCTURE-REFRESH for full rationale).
+      if (typeof this._teachSentenceStructure === 'function') {
+        await this._phasedTeach('ART-K-STRUCTURE-REFRESH', () => this._teachSentenceStructure(ctx));
       }
 
       this._artKRemakeDone = true;
@@ -354,6 +392,11 @@ export const K_MIXIN = {
     if (!cluster || !cluster.synapses) return { pass: false, reason: 'no cluster' };
 
     await this._pregateEnrichment('art/kindergarten');
+
+    // 114.19fh.A.4 — probe noise bump 0.5→0.6 (see _gateLifeKReal for rationale).
+    const _savedProbeNoise = cluster.noiseAmplitude;
+    cluster.noiseAmplitude = 0.6;
+    try {
 
     const artKProductionSamples = [
       // Visual Arts K Tests
@@ -384,6 +427,9 @@ export const K_MIXIN = {
     };
     this._recordGateHistory('art', 'kindergarten', 'overall', pass, prodRate);
     return _artKResult;
+    } finally {
+      cluster.noiseAmplitude = _savedProbeNoise;
+    }
   },
 
   // ═══════════════════════════════════════════════════════════════════
@@ -507,21 +553,30 @@ export const K_MIXIN = {
         await this._phasedTeach('SOC-K-LETTER-NAMING-DIRECT', () => this._teachLetterNamingDirect({ reps: 50 }));
       }
 
-      // iter15-A — Direct sem→motor wipe-and-rewrite. MUST RUN LAST.
+      // WH-question intent recognition (STRUCTURAL).
+      // Existing social curriculum (community-helpers / needs-wants /
+      // symbols) carves subject→answer bindings; J.1 adds the structural
+      // WH→intent layer. Saturates sem_to_motor — WORD-SPELL-FINAL wipe
+      // below cleans the pollution before gate.
+      if (typeof this._teachQuestionIntent === 'function') {
+        await this._phasedTeach('SOC-K-WH-INTENT', () => this._teachQuestionIntent({ reps: 8 }));
+      }
+
+      // WORD-SPELL-FINAL — direct sem→motor wipe + clean rewrite.
+      // Runs AFTER WH-INTENT so the wipe cleans WH-INTENT's
+      // sem_to_motor saturation before the gate probe reads argmax.
       if (typeof this._teachWordSpellingDirectFinal === 'function') {
         await this._phasedTeach('SOC-K-WORD-SPELL-FINAL', () => this._teachWordSpellingDirectFinal({ reps: 8, subject: 'social' }));
       }
-      // iter21-A — Word-level emission training
+      // iter21-A — Word-level emission training (separate sem_to_word_motor)
       if (typeof this._teachWordEmissionDirect === 'function') {
         await this._phasedTeach('SOC-K-WORD-EMISSION-DIRECT', () => this._teachWordEmissionDirect({ reps: 8, subject: 'social' }));
       }
 
-      // WH-question intent recognition (STRUCTURAL).
-      // Existing social curriculum (community-helpers / needs-wants /
-      // symbols) carves subject→answer bindings; J.1 adds the structural
-      // WH→intent layer.
-      if (typeof this._teachQuestionIntent === 'function') {
-        await this._phasedTeach('SOC-K-WH-INTENT', () => this._teachQuestionIntent({ reps: 8 }));
+      // Cross-cell sentence-structure reinforcement (see life-K
+      // STRUCTURE-REFRESH for full rationale).
+      if (typeof this._teachSentenceStructure === 'function') {
+        await this._phasedTeach('SOC-K-STRUCTURE-REFRESH', () => this._teachSentenceStructure(ctx));
       }
 
       // Definition-comprehension teach moved to K-curriculum
@@ -544,6 +599,11 @@ export const K_MIXIN = {
     if (!cluster || !cluster.synapses) return { pass: false, reason: 'no cluster' };
 
     await this._pregateEnrichment('social/kindergarten');
+
+    // 114.19fh.A.4 — probe noise bump 0.5→0.6 (see _gateLifeKReal for rationale).
+    const _savedProbeNoise = cluster.noiseAmplitude;
+    cluster.noiseAmplitude = 0.6;
+    try {
 
     const socKProductionSamples = [
       // Self / Family / Community Tests
@@ -580,6 +640,9 @@ export const K_MIXIN = {
     };
     this._recordGateHistory('social', 'kindergarten', 'overall', pass, prodRate);
     return _socKResult;
+    } finally {
+      cluster.noiseAmplitude = _savedProbeNoise;
+    }
   },
 
   // ═══════════════════════════════════════════════════════════════════
@@ -688,15 +751,6 @@ export const K_MIXIN = {
         await this._phasedTeach('SCI-K-LETTER-NAMING-DIRECT', () => this._teachLetterNamingDirect({ reps: 50 }));
       }
 
-      // iter15-A — Direct sem→motor wipe-and-rewrite. MUST RUN LAST.
-      if (typeof this._teachWordSpellingDirectFinal === 'function') {
-        await this._phasedTeach('SCI-K-WORD-SPELL-FINAL', () => this._teachWordSpellingDirectFinal({ reps: 8, subject: 'science' }));
-      }
-      // iter21-A — Word-level emission training
-      if (typeof this._teachWordEmissionDirect === 'function') {
-        await this._phasedTeach('SCI-K-WORD-EMISSION-DIRECT', () => this._teachWordEmissionDirect({ reps: 8, subject: 'science' }));
-      }
-
       // WH-question intent recognition (structural, not
       // hardcoded). Binds WH-words ('what'/'why'/'how'/'where'/'when'/
       // 'who') to intent-concept words ('cause'/'reason'/'method'/etc)
@@ -706,9 +760,27 @@ export const K_MIXIN = {
       // through the EXISTING trained weights (_teachCausalChains,
       // _teachLivingThingNeeds, _teachAssociationPairs SCI-K-CONCEPTS)
       // — NO hardcoded answer triples added. The bridge is structural
-      // parsing, not memorized facts.
+      // parsing, not memorized facts. Saturates sem_to_motor —
+      // WORD-SPELL-FINAL wipe below cleans the pollution before gate.
       if (typeof this._teachQuestionIntent === 'function') {
         await this._phasedTeach('SCI-K-WH-INTENT', () => this._teachQuestionIntent({ reps: 8 }));
+      }
+
+      // WORD-SPELL-FINAL — direct sem→motor wipe + clean rewrite.
+      // Runs AFTER WH-INTENT so the wipe cleans WH-INTENT's
+      // sem_to_motor saturation before the gate probe reads argmax.
+      if (typeof this._teachWordSpellingDirectFinal === 'function') {
+        await this._phasedTeach('SCI-K-WORD-SPELL-FINAL', () => this._teachWordSpellingDirectFinal({ reps: 8, subject: 'science' }));
+      }
+      // iter21-A — Word-level emission training (separate sem_to_word_motor)
+      if (typeof this._teachWordEmissionDirect === 'function') {
+        await this._phasedTeach('SCI-K-WORD-EMISSION-DIRECT', () => this._teachWordEmissionDirect({ reps: 8, subject: 'science' }));
+      }
+
+      // Cross-cell sentence-structure reinforcement (see life-K
+      // STRUCTURE-REFRESH for full rationale).
+      if (typeof this._teachSentenceStructure === 'function') {
+        await this._phasedTeach('SCI-K-STRUCTURE-REFRESH', () => this._teachSentenceStructure(ctx));
       }
 
       this._sciKRemakeDone = true;
@@ -724,6 +796,11 @@ export const K_MIXIN = {
     if (!cluster || !cluster.synapses) return { pass: false, reason: 'no cluster' };
 
     await this._pregateEnrichment('science/kindergarten');
+
+    // 114.19fh.A.4 — probe noise bump 0.5→0.6 (see _gateLifeKReal for rationale).
+    const _savedProbeNoise = cluster.noiseAmplitude;
+    cluster.noiseAmplitude = 0.6;
+    try {
 
     // Production probes matching TODO K-PS2 / K-ESS2 / K-LS1 /
     // K-ESS3 test phrasings verbatim.
@@ -768,6 +845,9 @@ export const K_MIXIN = {
     };
     this._recordGateHistory('science', 'kindergarten', 'overall', pass, prodRate);
     return _sciKResult;
+    } finally {
+      cluster.noiseAmplitude = _savedProbeNoise;
+    }
   },
 
   // ═══════════════════════════════════════════════════════════════════
@@ -1054,23 +1134,33 @@ export const K_MIXIN = {
         await this._phasedTeach('MATH-K-LETTER-NAMING-DIRECT', () => this._teachLetterNamingDirect({ reps: 50 }));
       }
 
-      // iter15-A — Direct sem→motor wipe-and-rewrite. MUST RUN LAST.
-      if (typeof this._teachWordSpellingDirectFinal === 'function') {
-        await this._phasedTeach('MATH-K-WORD-SPELL-FINAL', () => this._teachWordSpellingDirectFinal({ reps: 8, subject: 'math' }));
-      }
-      // iter21-A — Word-level emission training
-      if (typeof this._teachWordEmissionDirect === 'function') {
-        await this._phasedTeach('MATH-K-WORD-EMISSION-DIRECT', () => this._teachWordEmissionDirect({ reps: 8, subject: 'math' }));
-      }
-
       // WH-question intent recognition (STRUCTURAL).
       // Generic WH-frame parser; no hardcoded math-fact tables. The
       // existing math curriculum (MATH-K-COMPARE / MATH-K-ARITH-WORDS /
       // MATH-K-SHAPE-ATTR) already carves the (subject → answer)
       // bindings; J.1 adds the WH→intent-concept binding so the probe-
-      // time joint sem injection routes through them.
+      // time joint sem injection routes through them. Saturates
+      // sem_to_motor — WORD-SPELL-FINAL wipe below cleans the pollution
+      // before gate.
       if (typeof this._teachQuestionIntent === 'function') {
         await this._phasedTeach('MATH-K-WH-INTENT', () => this._teachQuestionIntent({ reps: 8 }));
+      }
+
+      // WORD-SPELL-FINAL — direct sem→motor wipe + clean rewrite.
+      // Runs AFTER WH-INTENT so the wipe cleans WH-INTENT's
+      // sem_to_motor saturation before the gate probe reads argmax.
+      if (typeof this._teachWordSpellingDirectFinal === 'function') {
+        await this._phasedTeach('MATH-K-WORD-SPELL-FINAL', () => this._teachWordSpellingDirectFinal({ reps: 8, subject: 'math' }));
+      }
+      // iter21-A — Word-level emission training (separate sem_to_word_motor)
+      if (typeof this._teachWordEmissionDirect === 'function') {
+        await this._phasedTeach('MATH-K-WORD-EMISSION-DIRECT', () => this._teachWordEmissionDirect({ reps: 8, subject: 'math' }));
+      }
+
+      // Cross-cell sentence-structure reinforcement (see life-K
+      // STRUCTURE-REFRESH for full rationale).
+      if (typeof this._teachSentenceStructure === 'function') {
+        await this._phasedTeach('MATH-K-STRUCTURE-REFRESH', () => this._teachSentenceStructure(ctx));
       }
 
       this._mathKTransformsDone = true;
@@ -1088,6 +1178,11 @@ export const K_MIXIN = {
 
     // Pre-gate enrichment — vocab audit + structure teach.
     await this._pregateEnrichment('math/kindergarten');
+
+    // 114.19fh.A.4 — probe noise bump 0.5→0.6 (see _gateLifeKReal for rationale).
+    const _savedProbeNoise = cluster.noiseAmplitude;
+    cluster.noiseAmplitude = 0.6;
+    try {
 
     // DIRECT MATRIX PROBE (same direct-pattern approach as ELA-K)
     const letterRegion = cluster.regions.letter;
@@ -1571,6 +1666,9 @@ export const K_MIXIN = {
     };
     this._recordGateHistory('math', 'kindergarten', 'overall', pass, prodRate);
     return _mathKResult;
+    } finally {
+      cluster.noiseAmplitude = _savedProbeNoise;
+    }
   },
 
   // ═══════════════════════════════════════════════════════════════════
@@ -2693,48 +2791,49 @@ export const K_MIXIN = {
         _phaseDone('_teachQABinding');
       }
 
-      // iter15-B — Re-carve letter→motor identity AFTER QA-TRAIN.
-      // Operator caught Math-K TALK regression 26/26→0/10 (cross-subject
-      // QA back-corruption of letter_to_motor). Same risk in ELA-K: the
-      // QABinding above re-runs cross-region Hebbian which writes new
-      // off-by-one-style patterns into letter_to_motor, undoing the
-      // earlier `_teachLetterNamingDirect` carve. Run again at the END
-      // to lock in clean letter→motor identity post-QA. 0.2s wallclock —
-      // cheap insurance.
+      // POST-QA CONSTRUCTIVE CHAIN — phase reorder.
+      //
+      // PRIOR ORDER (broken): LETTER-NAMING-DIRECT → STRUCTURE →
+      // WH-INTENT → WORD-SPELL-FINAL (wipe) → WORD-EMISSION-DIRECT.
+      // The "wipe runs last" rule was wrong: WORD-SPELL-FINAL's scale(0)
+      // on sem_to_motor erased the iter25-I structural binding (slot /
+      // template / agreement / article relationTagId=8/9/10/11) before
+      // _probeSentenceGeneration could ever validate it. Confirmed by
+      // server.log session 2026-05-09 — STRUCTURE shipped clean (mean-
+      // cos 0.048-0.331 across all 5 templates) and got nuked by
+      // "_teachWordSpellingDirectFinal — wiped prior sem_to_motor
+      // weights" the next phase.
+      //
+      // NEW ORDER: WORD-SPELL-FINAL (wipe + clean rewrite) →
+      // LETTER-NAMING-DIRECT (re-carve letter→motor) → WH-INTENT →
+      // STRUCTURE (LAST among constructive phases — its 393 Hebbian
+      // updates with anti-pair fires + motor-WTA + sem-WTA dominate
+      // sem_to_motor entering the gate, diluting any WH-INTENT
+      // saturation via separable basin carving) → WORD-EMISSION-DIRECT.
+      //
+      // The wipe now runs BEFORE the constructive phases that need
+      // clean sem_to_motor instead of AFTER them.
+
+      // WORD-SPELL-FINAL — direct sem→motor word→firstChar wipe-and-
+      // rewrite. Bypasses cross-region Hebbian + clears QA-train
+      // pollution / rescale damage. scale(0) wipe + clean ojaUpdate ×
+      // K-vocab × 8 reps. Subsequent constructive phases write into
+      // freshly-clean sem_to_motor.
+      if (typeof this._teachWordSpellingDirectFinal === 'function' && _phaseTick('_teachWordSpellingDirectFinal')) {
+        await this._teachWordSpellingDirectFinal({ reps: 8, subject: 'ela' });
+        _phaseDone('_teachWordSpellingDirectFinal');
+      }
+
+      // Re-carve letter→motor identity AFTER WORD-SPELL-FINAL wipe.
+      // Same cross-region back-corruption risk as the post-QA case —
+      // the wipe's clean ojaUpdate side-effects can perturb
+      // letter_to_motor. Re-run to lock clean letter→motor identity
+      // post-wipe. 0.2s wallclock — cheap insurance.
       if (typeof this._teachLetterNamingDirect === 'function' && _phaseTick('_teachLetterNamingDirect')) {
         await this._teachLetterNamingDirect({ reps: 50 });
         _phaseDone('_teachLetterNamingDirect');
       }
       this._memorySnapshotAndGc('after _teachLetterNamingDirect');
-
-      // STRUCTURAL SENTENCE CREATION. Operator (2026-05-06):
-      // "Unity needs to complete full sentences before graduating
-      // kindergarden like a real person does" + "you cant jsut have a
-      // array poof sentences you actually need to teach all sentence
-      // creation propelyr not just give examples for it to mimic".
-
-      // Five compositional binding passes carve generative grammar
-      // rules into fineType + sem cross-projections:
-      //   I.1+I.2 — slot-position primitives + word-type → slot bindings
-      //   I.3 — sentence-template intent → slot-sequence bindings
-      //   I.4 — subject-verb agreement
-      //   I.5 — article placement
-      // NO sentence memorization. Cortex composes sentences from rules
-      // + her trained vocabulary at generation time.
-
-      // Runs AFTER _teachWordTypes (provides word-type tags) +
-      // _teachPluralTransform (provides plural tags) +
-      // _teachQuestionWordCategories (provides qword tags) — those
-      // primitives are the inputs the sentence structure consumes.
-      // Runs BEFORE _teachWordSpellingDirectFinal (which has a scale(0)
-      // wMax wipe on sem_to_motor + clean ojaUpdate "MUST RUN LAST" —
-      // any subsequent cross-region Hebbian write re-pollutes
-      // sem_to_motor; sentence-structure binding has to land BEFORE
-      // that final pass).
-      if (typeof this._teachSentenceStructure === 'function' && _phaseTick('_teachSentenceStructure')) {
-        await this._teachSentenceStructure(ctx);
-        _phaseDone('_teachSentenceStructure');
-      }
 
       // WH-question intent recognition (STRUCTURAL).
       // Binds WH-words to intent-concept words (cause / reason / method
@@ -2742,21 +2841,41 @@ export const K_MIXIN = {
       // / truth) so questions activate an intent basin in sem alongside
       // the subject. Generic structural parsing — no hardcoded fact
       // tables. Comprehension-to-production routing happens at probe
-      // time via Template 2 fast path in _studentTestProbe + J.4
-      // word-salad gate (loose dictionary oracle when matrix silent).
+      // time via Template 2 fast path in _studentTestProbe + word-salad
+      // gate (loose dictionary oracle when matrix silent).
+      //
+      // Saturates sem_to_motor mean-cos ~0.331 → 0.675 ⚠OVERLOAD when
+      // run alone. SENTENCE-STRUCTURE that follows dilutes the
+      // saturation by carving separable basins via WTA + anti-pair
+      // fires.
       if (typeof this._teachQuestionIntent === 'function' && _phaseTick('_teachQuestionIntent')) {
         await this._teachQuestionIntent({ reps: 8 });
         _phaseDone('_teachQuestionIntent');
       }
 
-      // iter15-A — Direct sem→motor word→firstChar wipe-and-rewrite.
-      // Bypasses cross-region Hebbian + clears QA pollution / rescale
-      // damage. scale(0) wipe + clean ojaUpdate × K-vocab × 8 reps.
-      // MUST RUN LAST — any subsequent cross-region Hebbian write
-      // re-pollutes sem_to_motor.
-      if (typeof this._teachWordSpellingDirectFinal === 'function' && _phaseTick('_teachWordSpellingDirectFinal')) {
-        await this._teachWordSpellingDirectFinal({ reps: 8, subject: 'ela' });
-        _phaseDone('_teachWordSpellingDirectFinal');
+      // STRUCTURAL SENTENCE CREATION — Common Core K.SL.6 + K.L.1.f
+      // generative grammar. Five compositional binding passes carve
+      // grammar rules into fineType + sem cross-projections:
+      //   I.1+I.2 — slot-position primitives + word-type → slot bindings
+      //   I.3     — sentence-template intent → slot-sequence bindings
+      //   I.4     — subject-verb agreement
+      //   I.5     — article placement
+      // NO sentence memorization. Cortex composes sentences from rules
+      // + trained vocabulary at generation time.
+      //
+      // Runs AFTER _teachWordTypes (provides word-type tags) +
+      // _teachPluralTransform (plural tags) + _teachQuestionWordCategories
+      // (qword tags) — those primitives are the inputs the sentence
+      // structure consumes.
+      //
+      // Runs LAST among constructive sem_to_motor phases so its
+      // separable basins (mean-cos < 0.4 across all 5 templates per
+      // recent runs) dominate sem_to_motor entering the ELA-K gate
+      // probe. Any pollution from WH-INTENT gets diluted by STRUCTURE's
+      // anti-pair fires + WTA passes.
+      if (typeof this._teachSentenceStructure === 'function' && _phaseTick('_teachSentenceStructure')) {
+        await this._teachSentenceStructure(ctx);
+        _phaseDone('_teachSentenceStructure');
       }
 
       // iter21-A — Word-level emission training. Single-tick word emission
@@ -3177,8 +3296,17 @@ export const K_MIXIN = {
     // pattern to the probe block so the injected sem signal dominates
     // the motor region dynamics. Restore at end so post-probe live
     // chat retains chaotic dynamics.
+    //
+    // 114.19fg.Tier12 — slight probe-noise bump 0.5 → 0.6. K-grade
+    // Unity is sober (no drug-derived noiseAmplitude pre-Life-G7) so
+    // basin attractors lock harder. The 0.1 bump gives saturated
+    // basins a probabilistic kick without destabilizing scoring (scoring
+    // already aggregates across ≥5 probes per metric so 10% noise
+    // averages out across the batch). More aggressive jitter conflicts
+    // with stable per-probe scoring; tier 3 acceptDrown + consolidation
+    // veto + WTA tightening address the root saturation more directly.
     const _savedProbeNoise = cluster.noiseAmplitude;
-    cluster.noiseAmplitude = 0.5;
+    cluster.noiseAmplitude = 0.6;
 
     const wordStartProbes = [
       { word: 'cat', expected: 'c' },
@@ -3728,11 +3856,28 @@ export const K_MIXIN = {
     // no threshold lowering per LAW 7. Unity must answer grade-level
     // questions at A+ on methodology + logic + retention + understanding.
     const STUDENT_MIN = 0.95;
+
+    // STRUCTURAL SENTENCE GENERATION probe — validates that
+    // _teachSentenceStructure's slot/template/agreement/article carving
+    // actually produces emittable sentence frames. Wired in here so the
+    // gate refuses to pass if iter25-I structural binding is broken.
+    // Pass criterion (launch threshold): ≥3/5 intents emit ≥2 unique
+    // words. Tightens to 4/5 once the threshold is verified live.
+    const SENTENCE_GEN_MIN = 0.6;  // 3 of 5 intents
+    let sentenceGen = { passed: 0, total: 5, rate: 0, perIntent: {} };
+    try {
+      sentenceGen = await this._probeSentenceGeneration();
+    } catch (err) {
+      console.warn('[Curriculum] _probeSentenceGeneration threw:', err?.message || err);
+    }
+    const sentenceGenRate = sentenceGen.rate || 0;
+
     const pass = readRate >= PATH_MIN
       && thinkRate >= PATH_MIN
       && talkRate >= PATH_MIN
       && prodRate >= PROD_MIN
-      && studentRate >= STUDENT_MIN;
+      && studentRate >= STUDENT_MIN
+      && sentenceGenRate >= SENTENCE_GEN_MIN;
 
     const pct = (r) => (r * 100).toFixed(0);
     const prodFailSummary = prodResult.fails && prodResult.fails.length > 0
@@ -3773,10 +3918,11 @@ export const K_MIXIN = {
     const studentRate = studentBattery.rate;
     const studentSummary = studentBattery.summary;
 
+    const sentenceGenSummary = ` SENTENCE-GEN ${sentenceGen.passed}/${sentenceGen.total} (${pct(sentenceGenRate)}%)`;
     const _elaKResult = {
       pass,
-      reason: `READ ${readPass}/${N} (${pct(readRate)}%), THINK ${thinkPass}/${N} (${pct(thinkRate)}%), TALK ${talkPass}/${N} (${pct(talkRate)}%), PROD ${prodResult.pass}/${prodResult.total} (${pct(prodRate)}%), WRITE ${writePass}/${fullWordProbes.length} (${pct(writeRate)}%) first${writeFirstLetterPass}/${fullWordProbes.length}, RESP ${respPass}/${respContexts.length} (${pct(respRate)}%), 2WORD ${twoWordPass}/${twoWordPhrases.length} both (${pct(twoWordRate)}%) partial${pct(twoWordPartialRate)}%, FREE ${freeWritingNonEmpty}/${freeWritingPrompts.length} nonEmpty avg ${freeWritingAvgWords.toFixed(1)}w, STUDENT ${studentPass}/${studentQuestions.length} (${pct(studentRate)}%)${prodFailSummary}${writeSummary}${respSummary}${twoWordSummary}${freeWritingSummary}${studentSummary}`,
-      metrics: { readRate, thinkRate, talkRate, seqRate, prodRate, writeRate, writeFirstRate, respRate, twoWordRate, twoWordPartialRate, freeWritingRate, freeWritingAvgWords, studentRate, studentResults, prodFails: prodResult.fails, writeEmitted, respEmitted, twoWordEmitted, freeWritingEmitted },
+      reason: `READ ${readPass}/${N} (${pct(readRate)}%), THINK ${thinkPass}/${N} (${pct(thinkRate)}%), TALK ${talkPass}/${N} (${pct(talkRate)}%), PROD ${prodResult.pass}/${prodResult.total} (${pct(prodRate)}%), WRITE ${writePass}/${fullWordProbes.length} (${pct(writeRate)}%) first${writeFirstLetterPass}/${fullWordProbes.length}, RESP ${respPass}/${respContexts.length} (${pct(respRate)}%), 2WORD ${twoWordPass}/${twoWordPhrases.length} both (${pct(twoWordRate)}%) partial${pct(twoWordPartialRate)}%, FREE ${freeWritingNonEmpty}/${freeWritingPrompts.length} nonEmpty avg ${freeWritingAvgWords.toFixed(1)}w, STUDENT ${studentPass}/${studentQuestions.length} (${pct(studentRate)}%),${sentenceGenSummary}${prodFailSummary}${writeSummary}${respSummary}${twoWordSummary}${freeWritingSummary}${studentSummary}`,
+      metrics: { readRate, thinkRate, talkRate, seqRate, prodRate, writeRate, writeFirstRate, respRate, twoWordRate, twoWordPartialRate, freeWritingRate, freeWritingAvgWords, studentRate, studentResults, prodFails: prodResult.fails, writeEmitted, respEmitted, twoWordEmitted, freeWritingEmitted, sentenceGenRate, sentenceGenPerIntent: sentenceGen.perIntent },
     };
     this._recordGateHistory('ela', 'kindergarten', 'overall', pass, prodRate);
     // Restore live noise so post-probe chat retains

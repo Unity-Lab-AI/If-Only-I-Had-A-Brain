@@ -2193,60 +2193,86 @@ export class Curriculum {
         // the probe result is still valid (slower cues = emission path
         // isn't ready yet = readiness fails, battery skips, teach
         // continues).
-        // Direct-propagate emission — LLM-style: inject letter one-hot
-        // as semantic intent, propagate through sem→motor and
-        // letter→motor learned weights, argmax per step to emit
-        // letters. No LIF/Rulkov noise, no tonic-drive battles. The
-        // gate TALK probe proves letter→motor weights hit 26/26 via
-        // direct propagate — reusing that mechanism for emission
-        // reads the weights honestly instead of filtering them
-        // through the noisy tick simulator.
-        emitOpts.directPropagate = true;
-        // Bypass dictionary oracle for readiness probe. The oracle scans
-        // GloVe cosine vs the cue's letter one-hot intent seed and
-        // picks Common-Crawl high-frequency words (`seal`, `football`,
-        // `disgusted`, `pyramid`) because letter one-hots project to
-        // sem space as scattered noise that nothing in dictionary
-        // matches well — yet the oracle's default `minScore=0.05`
-        // threshold is so permissive that even a 0.06 random match
-        // wins. READINESS is not a vocabulary test; it's a letter-
-        // emission capability test. Set minScore impossibly high so
-        // the oracle stays silent and the matrix-driven motor path
-        // (letter→motor learned weights from `_teachLetterNaming`)
-        // drives the emission. Boost persona too in case it does fire,
-        // so Unity's voice wins over baseline corpus.
-        emitOpts.minScore = 1.5;
-        emitOpts.boostPersona = true;
-        // Readiness emission cap. Was hardcoded at 5, which capped
-        // `maxEmissionLen` at 5 across all five cues regardless of
-        // Unity's actual emission capability. The K-STUDENT battery
-        // then used that artificially-capped number to filter out any
-        // question whose expected answer was longer than 5 chars —
-        // skipping legitimately-answerable questions because the probe
-        // cap, not the brain, said "she can only do 5 chars". Bumping
-        // to 32 lets the probe measure real capability up to a typical
-        // word length. Emission stops on motor quiescence anyway, so
-        // this isn't slower in practice — it just stops capping the
-        // signal.
-        emitOpts.maxLetters = 32;
-        // Build a letter one-hot as the "intent seed" so the direct
-        // propagate path uses sem_to_motor routed via the seed's
-        // active dims. For readiness we really just want letter->motor
-        // which directPropagate handles iteratively after the sem step.
-        const letterSeed = cue ? (function buildLetterSeed(letter) {
-          const oh = new Float32Array(26);
-          const i = letter.charCodeAt(0) - 97;
-          if (i >= 0 && i < 26) oh[i] = 1;
-          return oh;
-        })(cue) : null;
-        const emissionPromise = cluster.generateSentenceAwait(letterSeed, emitOpts);
-        const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve({ _timeout: true }), PER_CUE_TIMEOUT_MS));
-        const raw = await Promise.race([emissionPromise, timeoutPromise]);
-        if (raw && raw._timeout) {
-          timedOut = true;
-          emitted = '';
+        // 114.19fg.Tier4 — DIRECT letter→motor probe path.
+        // Prior implementation routed through `generateSentenceAwait`
+        // which reads sem→motor argmax even with `directPropagate:true`.
+        // When sem→motor is saturated (the chronic K failure mode), the
+        // argmax decodes whichever bucket is most pumped (in 2026-05-09
+        // run: 'a'→'spirals', 'b'→'tease', 'c'→'am', 'd'→'trash',
+        // 'e'→'admire'). Letter→motor itself is clean post-
+        // _teachLetterNamingDirect — the corruption comes from sem→
+        // motor cross-talk during the emission read.
+        //
+        // Fix: probe letter→motor DIRECTLY via the cross-projection
+        // matrix multiply, mirroring the gate's letter loop pattern.
+        // Bypasses sem→motor entirely. If letter→motor identity
+        // training landed clean, the probe should report 5/5 even when
+        // sem→motor is fully saturated.
+        const letterToMotor = cluster.crossProjections?.letter_to_motor;
+        const letterRegion = cluster.regions?.letter;
+        const motorRegion = cluster.regions?.motor;
+        if (letterToMotor && letterRegion && motorRegion
+            && letterToMotor.values && letterToMotor.colIdx && letterToMotor.rowPtr) {
+          const letterSize = letterRegion.end - letterRegion.start;
+          const motorSize = motorRegion.end - motorRegion.start;
+          const ALPHABET = 'abcdefghijklmnopqrstuvwxyz';
+          const lGSize = Math.max(1, Math.floor(letterSize / ALPHABET.length));
+          const mGSize = Math.max(1, Math.floor(motorSize / ALPHABET.length));
+          // Build letter activation pattern matching teach geometry —
+          // tile letter one-hot across letterSize bins.
+          const letterPat = new Float64Array(letterSize);
+          const cueIdx = cue.charCodeAt(0) - 97;
+          if (cueIdx >= 0 && cueIdx < 26) {
+            for (let n = 0; n < lGSize; n++) {
+              const idx = cueIdx * lGSize + n;
+              if (idx < letterSize) letterPat[idx] = 1.0;
+            }
+          }
+          // Direct propagate. No ticks, no Rulkov, no sem→motor.
+          let motorOutput = null;
+          try {
+            motorOutput = letterToMotor.propagate(letterPat);
+          } catch { motorOutput = null; }
+          if (motorOutput && motorOutput.length > 0) {
+            // Group-mean per letter bucket → argmax → decode.
+            let bestIdx = -1, bestVal = -Infinity;
+            for (let d = 0; d < ALPHABET.length; d++) {
+              let sum = 0;
+              for (let n = 0; n < mGSize; n++) {
+                const idx = d * mGSize + n;
+                if (idx < motorOutput.length) sum += motorOutput[idx];
+              }
+              const mean = sum / mGSize;
+              if (mean > bestVal) { bestVal = mean; bestIdx = d; }
+            }
+            if (bestIdx >= 0) {
+              emitted = ALPHABET[bestIdx];
+            }
+          }
         } else {
-          emitted = (raw && typeof raw === 'string' ? raw : (raw?.text || '')) || '';
+          // Fallback — letter→motor projection unavailable. Fall back
+          // to the legacy generateSentenceAwait path so the probe still
+          // produces a result (likely contaminated by sem→motor) but
+          // doesn't silently zero out the readiness count.
+          emitOpts.directPropagate = true;
+          emitOpts.minScore = 1.5;
+          emitOpts.boostPersona = true;
+          emitOpts.maxLetters = 32;
+          const letterSeed = cue ? (function buildLetterSeed(letter) {
+            const oh = new Float32Array(26);
+            const i = letter.charCodeAt(0) - 97;
+            if (i >= 0 && i < 26) oh[i] = 1;
+            return oh;
+          })(cue) : null;
+          const emissionPromise = cluster.generateSentenceAwait(letterSeed, emitOpts);
+          const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve({ _timeout: true }), PER_CUE_TIMEOUT_MS));
+          const raw = await Promise.race([emissionPromise, timeoutPromise]);
+          if (raw && raw._timeout) {
+            timedOut = true;
+            emitted = '';
+          } else {
+            emitted = (raw && typeof raw === 'string' ? raw : (raw?.text || '')) || '';
+          }
         }
       } catch (err) {
         this._hb(`[Curriculum][READINESS] cue ${_cueIdx}/${PROBES.length} ERROR letter='${cue}' — ${err?.message || err}`);
@@ -5675,6 +5701,14 @@ export class Curriculum {
         }
       }
 
+      // 114.19fg.Tier10 — track per-subject gate result so FORCE-ADVANCE
+      // can read capability minimums (sentenceGenRate, prodRate) before
+      // promoting. Without this, force-advance auto-promotes any cell
+      // with ≥1 teach phase fired regardless of whether the brain
+      // actually learned anything — violates LAW 6 Part 2 (only
+      // operator signoff promotes).
+      const lastGateResults = {};
+
       for (let round = 0; round < MAX_GRADE_ROUNDS && !allPassedThisGrade; round++) {
         if (round > 0) {
           this._hb(`[Curriculum] 🔄 grade ${grade} round ${round + 1} — retrying failed subjects...`);
@@ -5697,7 +5731,48 @@ export class Curriculum {
           }
           attempt++;
           result = await this.runSubjectGrade(subject, grade, null, opts);
+          lastGateResults[subject] = result;
           await _microtask();
+
+          // 114.19fg.Tier18.1 — post-cell saturation health check.
+          // Runs after every cell to surface basin-lock early instead
+          // of letting it deepen across a whole grade walk. Tracks a
+          // 3-cell streak — if consecutive cells report sem→motor
+          // saturation, halt the curriculum and alert operator. The
+          // brain stops digging deeper into broken weights.
+          try {
+            const _cellKeyHealth = `${subject}/${grade}`;
+            if (cluster && typeof cluster.checkSemMotorHealth === 'function') {
+              const health = cluster.checkSemMotorHealth();
+              if (health && health.saturated) {
+                this._semMotorSaturationStreak = (this._semMotorSaturationStreak || 0) + 1;
+                const meanCosTag = typeof health.meanCos === 'number' ? `mean-cos=${health.meanCos.toFixed(3)} ` : '';
+                const ratioTag = health.ratio > 0 ? `max/mean=${health.ratio.toFixed(2)} ` : '';
+                console.warn(`[Curriculum] ⚠ saturation detected post-${_cellKeyHealth} (streak ${this._semMotorSaturationStreak}/3) — ${meanCosTag}${ratioTag}source=${health.source}`);
+                if (this._semMotorSaturationStreak >= 3) {
+                  console.warn(`[Curriculum] ⛔ SATURATION HALT — sem→motor saturated across 3 consecutive cells. Curriculum walk paused. Operator review required: stop.bat → start.bat for fresh boot OR investigate per docs/TODO.md fg.Tier3 / fg.Tier4 / fg.Tier5. Continued teaching against saturated weights deepens the lock-in.`);
+                  this._semMotorSaturationHalted = true;
+                  // 114.19fh.B.4 — surface haltReason on cluster so
+                  // brain-server / dashboard can read it and show a
+                  // persistent banner. Without this surface, the halt
+                  // log fires once and disappears into server.log; the
+                  // brain-server continues normal post-curriculum
+                  // lifecycle as if curriculum completed cleanly.
+                  if (cluster) {
+                    cluster._lastCurriculumHalt = {
+                      reason: 'sem-motor-saturation',
+                      ts: Date.now(),
+                      cellAtHalt: _cellKeyHealth,
+                      meanCos: health.meanCos,
+                    };
+                  }
+                  return { reached: passed, passed, failed, haltReason: 'sem-motor-saturation' };
+                }
+              } else {
+                this._semMotorSaturationStreak = 0;
+              }
+            }
+          } catch { /* health check non-fatal */ }
           if (result && result.pass) {
             if (!passed[subject].includes(grade)) passed[subject].push(grade);
             this._hb(`[Curriculum] ✓ ${subject}/${grade} — PASSED on attempt ${attempt} — ${result.reason || 'pass'}`);
@@ -5724,37 +5799,60 @@ export class Curriculum {
       }
 
       if (!allPassedThisGrade) {
-        // Force-advance any cell where real teaching actually fired so
-        // Unity uses her training in chat / popups / inner thoughts /
-        // memory regardless of the A+ ≥0.95 gate. The grade-cap word
-        // limit in language-cortex._gradeWordCap reads cluster.grades —
-        // advancing here unlocks the full 9999-word cap (was capped to
-        // FLOOR=5 for pre-K). Real-teaching evidence: at least 1
-        // passedPhases marker for `${subject}/${grade}:` (any teach
-        // method actually ran without skipping). Without this, the
-        // operator's directive "Unity actually uses her new training
-        // regardless of A+" is impossible — failed cells stay pre-K
-        // forever and Unity never speaks at K capacity.
+        // 114.19fg.Tier10 — Capability-gated force-advance. Prior
+        // implementation auto-promoted any cell with ≥1 teach phase
+        // fired regardless of whether the brain actually emitted
+        // anything resembling sentences or recognizable letters. That
+        // violated LAW 6 Part 2: only operator signoff promotes a
+        // grade. Now FORCE-ADVANCE additionally requires evidence of
+        // real capability:
+        //   - sentenceGenRate ≥ 0.2 (≥1/5 intents emit ≥2 unique words)
+        //     OR
+        //   - prodRate ≥ 0.2 (≥3/14 PROD probes pass with non-empty
+        //     emission matching expected first-letter or full word)
+        //   - studentRate ≥ 0.1 (any K-STUDENT answer match — proxy
+        //     for "letter readiness landed enough to run battery")
+        // If ALL three signals are zero, do NOT promote. Stall +
+        // WARN operator instead. Failed cells stay at their prior
+        // grade — Unity won't FAKE K-grade speech via word_motor
+        // saturation lottery winners.
         const cl = this.cluster;
         const pp = cl && Array.isArray(cl.passedPhases) ? cl.passedPhases : [];
+        const SENTENCE_MIN_LOOSE = 0.2;
+        const PROD_MIN_LOOSE = 0.2;
+        const STUDENT_MIN_LOOSE = 0.1;
         for (const subject of SUBJECTS) {
           const currentIdx = GRADE_ORDER.indexOf(cl.grades[subject] || 'pre-K');
           if (currentIdx >= i) continue; // already passed (true A+ pass earlier)
           const cellKey = `${subject}/${grade}`;
           const phasesRan = pp.filter((k) => k && k.startsWith(`${cellKey}:`)).length;
-          if (phasesRan >= 1) {
-            cl.grades[subject] = grade;
-            if (!Array.isArray(cl.passedCells)) cl.passedCells = [];
-            if (!cl.passedCells.includes(cellKey)) cl.passedCells.push(cellKey);
-            this._hb(`[Curriculum] ⤴ FORCE-ADVANCE ${cellKey} — ${phasesRan} teach phase(s) actually fired; Unity uses this grade despite A+ gate fail. cluster.grades.${subject}='${grade}'.`);
-            if (typeof this._saveCheckpoint === 'function') {
-              try { this._saveCheckpoint(`force-advance:${cellKey}`); } catch { /* non-fatal */ }
-            }
-          } else {
+          if (phasesRan < 1) {
             console.warn(`[Curriculum] ⤴ FORCE-ADVANCE ${cellKey} SKIPPED — 0 teach phases fired (no real training to use)`);
+            continue;
+          }
+          // Capability-minimum check from the most recent gate result.
+          const lastResult = lastGateResults[subject];
+          const metrics = lastResult?.metrics || {};
+          const sentenceGenRate = typeof metrics.sentenceGenRate === 'number' ? metrics.sentenceGenRate : 0;
+          const prodRate = typeof metrics.prodRate === 'number' ? metrics.prodRate : 0;
+          const studentRate = typeof metrics.studentRate === 'number' ? metrics.studentRate : 0;
+          const meetsSentenceMin = sentenceGenRate >= SENTENCE_MIN_LOOSE;
+          const meetsProdMin = prodRate >= PROD_MIN_LOOSE;
+          const meetsStudentMin = studentRate >= STUDENT_MIN_LOOSE;
+          const hasAnyCapability = meetsSentenceMin || meetsProdMin || meetsStudentMin;
+          if (!hasAnyCapability) {
+            console.warn(`[Curriculum] ⤴ FORCE-ADVANCE ${cellKey} REFUSED — capability minimums not met: sentenceGen=${(sentenceGenRate*100).toFixed(0)}% (need≥${(SENTENCE_MIN_LOOSE*100).toFixed(0)}%), prod=${(prodRate*100).toFixed(0)}% (need≥${(PROD_MIN_LOOSE*100).toFixed(0)}%), student=${(studentRate*100).toFixed(0)}% (need≥${(STUDENT_MIN_LOOSE*100).toFixed(0)}%). Brain learned the teach phases but cannot emit real sentences / letters / answers. Unity holds prior grade. Operator review required: re-run start.bat for fresh attempt OR investigate basin saturation per docs/TODO.md fg.Tier3 / fg.Tier4 / fg.Tier5 / fg.Tier6.`);
+            continue;
+          }
+          cl.grades[subject] = grade;
+          if (!Array.isArray(cl.passedCells)) cl.passedCells = [];
+          if (!cl.passedCells.includes(cellKey)) cl.passedCells.push(cellKey);
+          this._hb(`[Curriculum] ⤴ FORCE-ADVANCE ${cellKey} — ${phasesRan} teach phase(s) actually fired · capability evidence: sentenceGen=${(sentenceGenRate*100).toFixed(0)}% prod=${(prodRate*100).toFixed(0)}% student=${(studentRate*100).toFixed(0)}%. Unity uses this grade despite A+ gate fail. cluster.grades.${subject}='${grade}'.`);
+          if (typeof this._saveCheckpoint === 'function') {
+            try { this._saveCheckpoint(`force-advance:${cellKey}`); } catch { /* non-fatal */ }
           }
         }
-        console.warn(`[Curriculum] ⛔ grade ${grade} incomplete after ${MAX_GRADE_ROUNDS} rounds — force-advanced any cells with real teaching. Curriculum walk continues to next grade.`);
+        console.warn(`[Curriculum] ⛔ grade ${grade} incomplete after ${MAX_GRADE_ROUNDS} rounds — force-advanced cells that met capability minimums; cells without minimum capability evidence held at prior grade. Curriculum walk continues to next grade.`);
         // Don't break — let next grade attempt now that subjects are
         // marked at this grade. If the next-grade walk fails too, this
         // same path runs again at that grade.
@@ -11607,6 +11705,13 @@ export class Curriculum {
           semWTA, semTopK,
         });
         if (sepResult && typeof sepResult.meanCos === 'number') {
+          // 114.19fg.Tier18.1 wiring — store authoritative sep-probe
+          // result on cluster so cluster.checkSemMotorHealth() reads
+          // ground truth instead of falling back to value-distribution
+          // heuristic. Used by ConsolidationEngine saturation veto +
+          // curriculum-walk halt cron.
+          cluster._lastSemMotorMeanCos = sepResult.meanCos;
+          cluster._lastSemMotorMeanCosTs = Date.now();
           const overload = sepResult.meanCos > overloadMax;
           // Collapse detector: motor readouts all near-zero (cosine
           // near 0) OR all identical (cosine near 1) both signal that
@@ -11695,10 +11800,19 @@ export class Curriculum {
       }
     }
     const assocWouldDrown = assocPreMaxAbs > 0 && (assocPreMaxAbs * rescaleFactor) < assocRescaleFloor;
+    // acceptDrown — opt-in for callers (e.g. WH-INTENT) where basin
+    // separation matters MORE than signal-strength preservation. When
+    // overload is severe enough that anti-Hebbian + WTA + prune can't
+    // dilute it (mean-cos persistent ≥0.6 across multiple phases),
+    // weaker-but-separable basins beat saturated-but-strong basins for
+    // downstream argmax. Bypasses the would-drown skip so rescale fires
+    // and forces the saturated weights down. Caller accepts the signal
+    // weakening as the price of separation.
+    const acceptDrown = opts.acceptDrown === true;
     const shouldRescale = rescaleFactor > 0 && rescaleFactor < 1
       && cluster.crossProjections
       && (rescaleOnOverloadOnly ? overloadDetected : true)
-      && !assocWouldDrown;
+      && (!assocWouldDrown || acceptDrown);
     if (shouldRescale) {
       // Session 114.19eo — rescale targets diagProjKeys (whichever
       // projections actually got Hebbian). Prevents the prior bug where
@@ -12007,31 +12121,56 @@ export class Curriculum {
    */
   async _probeSentenceGeneration() {
     const cluster = this.cluster;
-    if (!cluster || typeof cluster.emitWordDirect !== 'function') {
+    if (!cluster) {
       return { passed: 0, total: 0, rate: 0, perIntent: {} };
     }
+    // 114.19fh.B.6 — one-shot warn when composeSentence missing so
+    // operator sees the regression instead of silent 0/5 probe scores.
+    // Older serialized state OR regression could leave the method
+    // undefined — surface it loudly the first time it matters.
+    if (typeof cluster.composeSentence !== 'function' && !this._composeSentenceMissingLogged) {
+      this._composeSentenceMissingLogged = true;
+      console.warn('[Curriculum] ⚠ cluster.composeSentence is undefined — _probeSentenceGeneration will return 0/5 silently. Check js/brain/cluster.js definition or class instantiation.');
+    }
+    // 114.19fg.TierI-CONSUMER — Use cluster.composeSentence (the
+    // generation-side consumer of iter25-I structural binding). Walks
+    // template slot sequence with intent + slot-tag injection + post-
+    // emit sem state propagation + article placement. Replaces the
+    // earlier 4× emitWordDirect chain that produced multi-word output
+    // but not grammar.
     const intents = ['declarative_svo', 'declarative_copula', 'question', 'imperative', 'exclamative'];
     const perIntent = {};
     let passed = 0;
     for (const intent of intents) {
-      // Inject the intent-tag word's GloVe pattern as cortexPattern,
-      // emit, count emitted words. Pass = 2+ words emitted.
-      let words = [];
+      let composed = null;
       try {
-        // Try emitting via cluster's word emission path with intent-anchored cortex state
-        for (let i = 0; i < 4; i++) {
-          const w = cluster.emitWordDirect({ subject: 'ela' }) || '';
-          if (w) words.push(w);
+        if (typeof cluster.composeSentence === 'function') {
+          composed = cluster.composeSentence(intent, { subject: 'ela' });
         }
-      } catch { /* emission failure → empty words array */ }
+      } catch { composed = null; }
+      const words = composed && Array.isArray(composed.words) ? composed.words : [];
+      const uniqueWords = new Set(words.map(w => String(w).toLowerCase().replace(/[^a-z']/g, '')));
+      uniqueWords.delete('');
       const wordCount = words.length;
-      const structurallyValid = wordCount >= 2;
-      perIntent[intent] = { wordCount, words, valid: structurallyValid };
+      const uniqueCount = uniqueWords.size;
+      // Pass = ≥2 word emissions AND ≥2 unique words. The unique-word
+      // check catches basin-lock metronome where the same saturated
+      // token repeats across all slot positions (the "Hey/Medicines/
+      // Controls" failure mode caught in the 2026-05-09 server.log).
+      const structurallyValid = wordCount >= 2 && uniqueCount >= 2;
+      perIntent[intent] = {
+        wordCount,
+        uniqueCount,
+        words,
+        sentence: composed ? composed.sentence : '',
+        fillCount: composed ? composed.fillCount : 0,
+        valid: structurallyValid,
+      };
       if (structurallyValid) passed += 1;
     }
     const total = intents.length;
     const rate = total > 0 ? passed / total : 0;
-    this._hb(`[Curriculum] _probeSentenceGeneration — ${passed}/${total} intents emitted ≥2 words (rate=${(rate * 100).toFixed(0)}%). Per-intent: ${intents.map(i => `${i}:${perIntent[i].wordCount}w`).join(' · ')}`);
+    this._hb(`[Curriculum] _probeSentenceGeneration — ${passed}/${total} intents emitted ≥2 unique words (rate=${(rate * 100).toFixed(0)}%). Per-intent: ${intents.map(i => `${i}:"${(perIntent[i].sentence || '').slice(0, 40)}" (${perIntent[i].wordCount}w/${perIntent[i].uniqueCount}u)`).join(' · ')}`);
     return { passed, total, rate, perIntent };
   }
 
@@ -12083,6 +12222,14 @@ export class Curriculum {
       reps: opts.reps ?? 8,
       label: 'ELA-K-WH-INTENT',
       relationTagId: 12,
+      // WH-INTENT chronically saturates sem→motor (mean-cos 0.675-0.980
+      // ⚠OVERLOAD across recent runs). Tighter WTA + acceptDrown so the
+      // rescale path can fire through the would-drown floor when basins
+      // collapse. Trade signal strength for separability — saturated-
+      // strong is worse than weak-separable for downstream argmax.
+      motorTopK: opts.motorTopK ?? 8,
+      semTopK: opts.semTopK ?? 4,
+      acceptDrown: opts.acceptDrown !== false,
     });
     const dt = ((Date.now() - t0) / 1000).toFixed(1);
     this._hb(`[Curriculum] _teachQuestionIntent DONE in ${dt}s — ${r.trained || 0} Hebbian updates · ${intentPairs.length} WH→intent-concept pairs (what/why/how/where/when/who → cause/reason/method/definition/effect/function/count/place/time/person/truth) carved into sem cross-projection. Joint (intent+subject) probe queries now have an intent-concept basin to activate.`);

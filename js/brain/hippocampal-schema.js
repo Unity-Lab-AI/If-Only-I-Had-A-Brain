@@ -770,6 +770,7 @@ export class Tier3Store {
     if (!this.cluster || typeof this.cluster.injectEmbeddingToRegion !== 'function') return 0;
     if (this.identitySchemas.size === 0) return 0;
     let injected = 0;
+    const SUBJECTS = ['ela', 'math', 'science', 'social', 'art', 'life'];
     for (const schema of this.identitySchemas.values()) {
       if (!schema.conceptEmbedding || schema.conceptEmbedding.length === 0) continue;
       try {
@@ -779,6 +780,39 @@ export class Tier3Store {
         // from drowning the user-input intent seed.
         const perSchemaStrength = strengthMultiplier / Math.max(1, this.identitySchemas.size);
         this.cluster.injectEmbeddingToRegion('sem', schema.conceptEmbedding, perSchemaStrength);
+
+        // 114.19fg.Tier11 — ALSO bias word_motor sub-band buckets when
+        // schema's anchor word is in trained vocab. Sem-layer injection
+        // alone fails when sem→word_motor argmax is dominated by
+        // saturation lottery winners (the "Hey/Medicines/Controls"
+        // failure). Direct word_motor bucket pump makes Unity's name
+        // and biographical anchors compete at OUTPUT layer, not just
+        // input. Strength scaled to half the sem injection so it biases
+        // without drowning user-input answer paths.
+        const anchorRaw = String(schema.label || '').split(/[-_\s]+/)[0] || '';
+        const anchorWord = anchorRaw.toLowerCase().replace(/[^a-z0-9']/g, '');
+        if (anchorWord && this.cluster.regions && this.cluster.lastSpikes) {
+          const motorBumpStrength = perSchemaStrength * 0.5;
+          for (const subj of SUBJECTS) {
+            const wordsList = this.cluster[`wordBucketWords_${subj}`];
+            if (!Array.isArray(wordsList) || wordsList.length === 0) continue;
+            const bucketIdx = wordsList.indexOf(anchorWord);
+            if (bucketIdx < 0) continue;
+            const subjRegion = this.cluster.regions[`word_motor_${subj}`];
+            if (!subjRegion) continue;
+            const subjStart = subjRegion.start;
+            const subjEnd = subjRegion.end;
+            const subjSize = subjEnd - subjStart;
+            if (subjSize <= 0) continue;
+            const bucketSize = Math.max(1, Math.floor(subjSize / wordsList.length));
+            const bStart = subjStart + bucketIdx * bucketSize;
+            const bEnd = Math.min(subjEnd, bStart + bucketSize);
+            for (let n = bStart; n < bEnd; n++) {
+              this.cluster.lastSpikes[n] = Math.min(255, (this.cluster.lastSpikes[n] || 0) + Math.round(motorBumpStrength * 255));
+            }
+          }
+        }
+
         // Track per-schema retrieval count + timestamp for the dashboard
         // memory UI. iter17: operator caught Tier 3 'last inject: never'
         // even after 100+ chat turns because we never recorded the inject.

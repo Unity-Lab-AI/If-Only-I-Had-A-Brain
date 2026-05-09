@@ -5987,6 +5987,157 @@ var NeuronCluster = class {
     };
   }
   /**
+   * 114.19fi.B.1 — Push to shared emission bus. ALL emission paths
+   * (chat / inner-voice / popup-event / image-gen) call this after
+   * producing output. Bus is the single source of truth for "what
+   * Unity has been saying / thinking / doing" — readers (inner-voice
+   * chain blend, chat-entry context injection) get a unified view.
+   *
+   * Lazily initialized. 32-entry rolling cap. Persisted by
+   * saveWeights (cap 16 most-recent in serialized form).
+   *
+   * @param {{source: string, text: string, ts?: number, embedding?: Float32Array, intent?: string, subject?: string}} entry
+   */
+  pushEmission(entry) {
+    if (!entry || typeof entry !== "object") return;
+    if (!Array.isArray(this._emissionBus)) this._emissionBus = [];
+    const e = {
+      source: String(entry.source || "unknown"),
+      text: String(entry.text || ""),
+      ts: typeof entry.ts === "number" ? entry.ts : Date.now(),
+      intent: entry.intent ? String(entry.intent) : null,
+      subject: entry.subject ? String(entry.subject) : null
+    };
+    if (entry.embedding && (entry.embedding instanceof Float32Array || entry.embedding instanceof Float64Array || Array.isArray(entry.embedding))) {
+      e.embedding = entry.embedding;
+    }
+    this._emissionBus.push(e);
+    while (this._emissionBus.length > 32) {
+      this._emissionBus.shift();
+    }
+  }
+  /**
+   * 114.19fi.B.1 — Read last N emissions from shared bus. Filterable
+   * by source. Used by inner-voice chain blend, chat-path context
+   * injection, dashboard popup feed.
+   *
+   * @param {number} n — max entries to return (most recent first)
+   * @param {{source?: string|string[]}} [opts] — optional source filter
+   * @returns {Array} last N entries newest-first, or empty array
+   */
+  getRecentEmissions(n, opts = {}) {
+    if (!Array.isArray(this._emissionBus)) return [];
+    const bus = this._emissionBus;
+    const sourceFilter = opts.source ? new Set(Array.isArray(opts.source) ? opts.source : [opts.source]) : null;
+    const out = [];
+    for (let i = bus.length - 1; i >= 0 && out.length < n; i--) {
+      const e = bus[i];
+      if (sourceFilter && !sourceFilter.has(e.source)) continue;
+      out.push(e);
+    }
+    return out;
+  }
+  /**
+   * 114.19fi.A.2 — Subject inference from user input text. Scans the
+   * text for vocab hits across `wordBucketWords_<subj>` arrays and
+   * returns the dominant subject (highest hit count). Used by the
+   * chat path to scope `composeSentence({subject})` to the user's
+   * topic — math questions select math vocab, life questions select
+   * life vocab, etc. Without this, composeSentence scans all 6 sub-
+   * bands which produces "the cat seven blue ran" cross-domain salad.
+   *
+   * Returns the dominant subject name or null when no vocab hits
+   * (caller falls through to all-bands scan).
+   *
+   * @param {string} userText — raw user input
+   * @returns {string|null} subject ('ela'/'math'/'science'/'social'/'art'/'life'/'coding')
+   */
+  _inferSubjectFromText(userText) {
+    if (!userText || typeof userText !== "string") return null;
+    const text = userText.toLowerCase();
+    if (text.length === 0) return null;
+    const tokens = text.match(/[a-z]+/g) || [];
+    if (tokens.length === 0) return null;
+    const SUBJECTS_LOCAL = ["ela", "math", "science", "social", "art", "life"];
+    const tokenSet = new Set(tokens);
+    let bestSubj = null;
+    let bestHits = 0;
+    for (const subj of SUBJECTS_LOCAL) {
+      const wordsList = this[`wordBucketWords_${subj}`];
+      if (!Array.isArray(wordsList) || wordsList.length === 0) continue;
+      let hits = 0;
+      for (const w of wordsList) {
+        if (tokenSet.has(String(w).toLowerCase())) hits++;
+      }
+      if (hits > bestHits) {
+        bestHits = hits;
+        bestSubj = subj;
+      }
+    }
+    if (bestHits >= 1 && bestHits / tokens.length >= 0.1) {
+      return bestSubj;
+    }
+    return null;
+  }
+  /**
+   * Saturation health check on sem→motor projection. Returns
+   * `{ saturated, meanCos, meanAbs, maxAbs, ratio, source }` so callers
+   * can surface the stat AND act on the boolean.
+   *
+   * Heuristic stack:
+   *   (1) Authoritative — if curriculum updated `_lastSemMotorMeanCos`
+   *       from a recent sep-probe, treat that as ground truth.
+   *       saturated when meanCos > 0.7.
+   *   (2) Fallback — sample sem_to_motor weight distribution. Healthy
+   *       trained matrices have a long tail (some weights large, most
+   *       small) → max/mean ratio >> 1. Saturated/uniform matrices
+   *       have all weights similar → ratio near 1. Saturated when
+   *       meanAbs > 0.6×wMax AND ratio < 1.5.
+   *
+   * Used by ConsolidationEngine for replay veto + Curriculum cron
+   * for run-time saturation detection.
+   */
+  checkSemMotorHealth() {
+    const out = { saturated: false, meanCos: null, meanAbs: 0, maxAbs: 0, ratio: 0, source: "none" };
+    try {
+      if (typeof this._lastSemMotorMeanCos === "number") {
+        out.meanCos = this._lastSemMotorMeanCos;
+        out.source = "sep-probe";
+        if (this._lastSemMotorMeanCos > 0.7) {
+          out.saturated = true;
+          return out;
+        }
+      }
+      const proj = this.crossProjections && this.crossProjections["sem_to_motor"];
+      if (!proj || !proj.values || proj.values.length === 0) return out;
+      const wMax = typeof proj.wMax === "number" && proj.wMax > 0 ? proj.wMax : 0.4;
+      const sampleSize = Math.min(proj.values.length, 1e3);
+      let sumAbs = 0, maxAbs = 0, nnz = 0;
+      const stride = Math.max(1, Math.floor(proj.values.length / sampleSize));
+      for (let k = 0; k < proj.values.length; k += stride) {
+        const v = proj.values[k];
+        const a = v < 0 ? -v : v;
+        if (a > 1e-6) {
+          sumAbs += a;
+          if (a > maxAbs) maxAbs = a;
+          nnz++;
+        }
+      }
+      if (nnz < 10) return out;
+      const meanAbs = sumAbs / nnz;
+      const ratio = meanAbs > 0 ? maxAbs / meanAbs : 0;
+      out.meanAbs = meanAbs;
+      out.maxAbs = maxAbs;
+      out.ratio = ratio;
+      out.source = out.source === "sep-probe" ? "sep-probe+distribution" : "distribution";
+      if (meanAbs > wMax * 0.6 && ratio < 1.5) {
+        out.saturated = true;
+      }
+    } catch {
+    }
+    return out;
+  }
+  /**
    *  — Advance a subject's sub-grade label monotonically.
    * Curriculum runner calls this after each major teach phase clears
    * its trained-state criterion (e.g. after `_teachLetterNaming` motor
@@ -6854,7 +7005,7 @@ var NeuronCluster = class {
         bestWord = word;
       }
     }
-    const minScore = typeof opts.minScore === "number" ? opts.minScore : 0.05;
+    const minScore = typeof opts.minScore === "number" ? opts.minScore : 0.2;
     if (schemaCandidate && schemaCandidateScore > bestScore && schemaCandidateScore > minScore) {
       const maxLetters2 = opts.maxLetters ?? opts.maxTicks ?? opts.maxEmissionTicks ?? 32;
       const cleanEmit2 = schemaCandidate.anchor.replace(/[^a-z0-9 .,']/g, "").slice(0, maxLetters2);
@@ -7016,8 +7167,12 @@ var NeuronCluster = class {
       }
     }
     const subjScope = opts.subject && normalizeSubject(opts.subject) ? [normalizeSubject(opts.subject)] : SUBJECTS;
+    const candidates = [];
     let bestWord = null;
     let bestMean = -Infinity;
+    if (!Array.isArray(this._recentEmissions)) this._recentEmissions = [];
+    const recentLast4 = new Set(this._recentEmissions.slice(-4));
+    const REPETITION_PENALTY = 0.7;
     for (const subj of subjScope) {
       const subjectRegion = this.regions[`word_motor_${subj}`];
       if (!subjectRegion) continue;
@@ -7036,6 +7191,8 @@ var NeuronCluster = class {
         for (let n = bStart; n < bEnd; n++) sum += wmOut[n];
         let mean = sum / cellCount;
         if (gwBoostWord && wordsList[b] === gwBoostWord) mean *= 1.1;
+        if (recentLast4.has(wordsList[b])) mean *= REPETITION_PENALTY;
+        candidates.push({ word: wordsList[b], mean });
         if (mean > bestMean) {
           bestMean = mean;
           bestWord = wordsList[b];
@@ -7044,12 +7201,263 @@ var NeuronCluster = class {
     }
     const minSignal = opts.minSignal ?? 1e-3;
     if (!bestWord || bestMean < minSignal) return "";
+    const temperature = typeof opts.temperature === "number" ? opts.temperature : 0;
+    if (temperature > 0 && candidates.length > 1) {
+      const topK = Math.max(1, Math.min(opts.topK ?? 8, candidates.length));
+      candidates.sort((a, b) => b.mean - a.mean);
+      const topCandidates = candidates.slice(0, topK).filter((c) => c.mean >= minSignal);
+      if (topCandidates.length === 0) return "";
+      const maxMean = topCandidates[0].mean;
+      let sumExp = 0;
+      const weights = topCandidates.map((c) => {
+        const w = Math.exp((c.mean - maxMean) / Math.max(0.01, temperature));
+        sumExp += w;
+        return w;
+      });
+      const topP = typeof opts.topP === "number" ? opts.topP : 1;
+      let nucleusEnd = topCandidates.length;
+      if (topP < 1) {
+        let cum2 = 0;
+        for (let i = 0; i < topCandidates.length; i++) {
+          cum2 += weights[i] / sumExp;
+          if (cum2 >= topP) {
+            nucleusEnd = i + 1;
+            break;
+          }
+        }
+      }
+      const nucleus = topCandidates.slice(0, nucleusEnd);
+      const nucleusWeights = weights.slice(0, nucleusEnd);
+      const nucleusSum = nucleusWeights.reduce((a, b) => a + b, 0);
+      const r = Math.random() * nucleusSum;
+      let cum = 0;
+      for (let i = 0; i < nucleus.length; i++) {
+        cum += nucleusWeights[i];
+        if (cum >= r) {
+          bestWord = nucleus[i].word;
+          bestMean = nucleus[i].mean;
+          break;
+        }
+      }
+    }
     this._lastEmittedWord = bestWord;
     this._lastEmittedActivation = bestMean;
+    if (!Array.isArray(this._recentEmissions)) this._recentEmissions = [];
+    this._recentEmissions.push(bestWord);
+    while (this._recentEmissions.length > 8) {
+      this._recentEmissions.shift();
+    }
     if (typeof this.recordEmission === "function") {
       this.recordEmission(bestWord);
     }
     return bestWord;
+  }
+  /**
+   * 114.19fg.Tier8/9/I-consumer — Slot-driven sentence composition.
+   *
+   * iter25-I trained four binding passes:
+   *   relationTagId=8  — sem(word) → fineType(slot_tag)  (slot-position primitives)
+   *   relationTagId=9  — sem(intent) → sem(first_slot)   (template intent → slot sequence)
+   *   relationTagId=10 — sem(subject) → sem(verb_form)   (subject-verb agreement)
+   *   relationTagId=11 — sem(noun) → sem(article)        (article placement)
+   *
+   * The TRAINING side carved positional rules into trained weights, but
+   * NO GENERATION CONSUMER walked the slot sequence at emission time.
+   * Both `_probeSentenceGeneration` and `generateAsync` chained
+   * `emitWordDirect` calls without slot-tag bias — produced multi-word
+   * output but not grammatical sentences.
+   *
+   * `composeSentence(intent)` is the generation-side consumer:
+   *   1. Inject intent embedding into sem so cortex enters intent state
+   *      (consumes relationTagId=9 sem→sem binding).
+   *   2. For each slot in the template's sequence:
+   *      a. Inject slot-tag GloVe into sem so emitWordDirect's argmax
+   *         biases toward words bound to this slot (consumes
+   *         relationTagId=8 sem→fineType + emitWordDirect mean argmax).
+   *      b. Pre-slot article check: if entering subject/object slot
+   *         and the next emitted word is likely a singular common noun,
+   *         insert article ('a' / 'an' / 'the') before emit (consumes
+   *         relationTagId=11 noun→article).
+   *      c. Call emitWordDirect to fill the slot.
+   *      d. Inject emitted word back into sem so the next slot's emit
+   *         reads a state shifted by what was just produced.
+   *   3. Append terminator punctuation per intent (. ? !).
+   *   4. Capitalize first word.
+   *
+   * Pass criterion at probe time = ≥2 words emitted across slots AND
+   * ≥2 unique words. Real sentence emerges when basins are clean and
+   * iter25-I bindings are intact.
+   *
+   * Returns `{ sentence, words, intent, slots, fillCount }` so callers
+   * can decide whether to use the result based on fillCount vs slot
+   * count (partial sentences are still useful diagnostically).
+   *
+   * @param {string} intent — one of declarative_svo / declarative_copula
+   *                          / question / imperative / exclamative
+   * @param {object} opts — { subject? } sub-band hint for emitWordDirect
+   * @returns {{ sentence: string, words: string[], intent: string,
+   *            slots: string[], fillCount: number } | null}
+   */
+  composeSentence(intent, opts = {}) {
+    if (!this.regions || !this.regions.sem || typeof this.injectEmbeddingToRegion !== "function") {
+      return null;
+    }
+    if (typeof this.emitWordDirect !== "function") return null;
+    const TEMPLATES = {
+      "declarative_svo": ["subject", "verb", "object", "terminator"],
+      "declarative_copula": ["subject", "copula", "modifier", "terminator"],
+      "question": ["qword", "copula", "subject", "terminator"],
+      "imperative": ["verb", "object", "terminator"],
+      "exclamative": ["subject", "verb", "object", "terminator"]
+    };
+    const TERMINATOR_PUNCT = {
+      "declarative_svo": ".",
+      "declarative_copula": ".",
+      "question": "?",
+      "imperative": "!",
+      "exclamative": "!"
+    };
+    const PRONOUNS = /* @__PURE__ */ new Set(["i", "you", "he", "she", "it", "we", "they", "me", "him", "her", "us", "them", "my", "your", "his", "our", "their"]);
+    const intentName = String(intent || "declarative_svo").toLowerCase();
+    const slots = TEMPLATES[intentName] || TEMPLATES["declarative_svo"];
+    if (opts.cortexPattern && opts.cortexPattern.length > 0 && typeof this.injectEmbeddingToRegion === "function") {
+      try {
+        this.injectEmbeddingToRegion("sem", opts.cortexPattern, 0.2);
+      } catch {
+      }
+    }
+    if (sharedEmbeddings && typeof sharedEmbeddings.getSentenceEmbedding === "function") {
+      try {
+        const intentSeed = intentName.replace(/_/g, " ");
+        const intentEmb = sharedEmbeddings.getSentenceEmbedding(intentSeed);
+        if (intentEmb && intentEmb.length > 0) {
+          this.injectEmbeddingToRegion("sem", intentEmb, 0.3);
+        }
+      } catch {
+      }
+    }
+    const words = [];
+    const seen = /* @__PURE__ */ new Set();
+    let fillCount = 0;
+    const subjScope = opts.subject || null;
+    let priorSlot = null;
+    for (let i = 0; i < slots.length; i++) {
+      const slot = slots[i];
+      if (slot === "terminator") {
+        const punct = TERMINATOR_PUNCT[intentName] || ".";
+        if (words.length > 0) words[words.length - 1] = words[words.length - 1] + punct;
+        break;
+      }
+      if (sharedEmbeddings && typeof sharedEmbeddings.getEmbedding === "function") {
+        try {
+          const slotEmb = sharedEmbeddings.getEmbedding(slot);
+          if (slotEmb && slotEmb.length > 0) {
+            this.injectEmbeddingToRegion("sem", slotEmb, 0.25);
+          }
+        } catch {
+        }
+      }
+      if (intentName === "question" && slot === "subject" && opts.intentConcept && typeof opts.intentConcept === "string" && sharedEmbeddings && typeof sharedEmbeddings.getEmbedding === "function") {
+        try {
+          const conceptEmb = sharedEmbeddings.getEmbedding(opts.intentConcept);
+          if (conceptEmb && conceptEmb.length > 0) {
+            this.injectEmbeddingToRegion("sem", conceptEmb, 0.3);
+          }
+        } catch {
+        }
+      }
+      const emitOptsBase = {};
+      if (subjScope) emitOptsBase.subject = subjScope;
+      if (typeof opts.temperature === "number") emitOptsBase.temperature = opts.temperature;
+      if (typeof opts.topK === "number") emitOptsBase.topK = opts.topK;
+      if (typeof opts.topP === "number") emitOptsBase.topP = opts.topP;
+      let word = "";
+      try {
+        word = this.emitWordDirect(emitOptsBase) || "";
+      } catch {
+        word = "";
+      }
+      if (!word) {
+        break;
+      }
+      word = String(word).toLowerCase().trim();
+      if (!word) break;
+      if (seen.has(word)) {
+        if (sharedEmbeddings && typeof sharedEmbeddings.getEmbedding === "function") {
+          try {
+            const dupEmb = sharedEmbeddings.getEmbedding(word);
+            if (dupEmb && dupEmb.length > 0) {
+              this.injectEmbeddingToRegion("sem", dupEmb, 0.5);
+            }
+          } catch {
+          }
+        }
+        try {
+          word = this.emitWordDirect(emitOptsBase) || "";
+        } catch {
+          word = "";
+        }
+        word = String(word).toLowerCase().trim();
+        if (!word || seen.has(word)) {
+          break;
+        }
+      }
+      const articleCandidate = (slot === "subject" || slot === "object") && /^[a-z]+$/.test(word) && !PRONOUNS.has(word) && word.length >= 3 && priorSlot !== "copula" && intentName !== "question";
+      if (articleCandidate) {
+        const prevWord = words.length > 0 ? words[words.length - 1] : "";
+        const ARTICLE_LIST = /* @__PURE__ */ new Set(["a", "an", "the"]);
+        if (!ARTICLE_LIST.has(prevWord)) {
+          const article = /^[aeiou]/.test(word) ? "an" : "the";
+          words.push(article);
+        }
+      }
+      words.push(word);
+      seen.add(word);
+      fillCount++;
+      priorSlot = slot;
+      if (sharedEmbeddings && typeof sharedEmbeddings.getEmbedding === "function") {
+        try {
+          const wordEmb = sharedEmbeddings.getEmbedding(word);
+          if (wordEmb && wordEmb.length > 0) {
+            this.injectEmbeddingToRegion("sem", wordEmb, 0.15);
+          }
+        } catch {
+        }
+      }
+    }
+    if (!this._composeStats) this._composeStats = { calls: 0, fills: 0, partial: 0, empty: 0 };
+    this._composeStats.calls++;
+    if (words.length === 0) {
+      this._composeStats.empty++;
+      return null;
+    }
+    if (fillCount >= slots.length - 1) this._composeStats.fills++;
+    else this._composeStats.partial++;
+    words[0] = words[0].charAt(0).toUpperCase() + words[0].slice(1);
+    const sentence = words.join(" ");
+    if (opts.intentConcept && sharedEmbeddings && typeof sharedEmbeddings.getEmbedding === "function" && typeof sharedEmbeddings.getSentenceEmbedding === "function") {
+      try {
+        const conceptEmb = sharedEmbeddings.getEmbedding(opts.intentConcept);
+        const sentenceEmb = sharedEmbeddings.getSentenceEmbedding(sentence);
+        if (conceptEmb && sentenceEmb && conceptEmb.length > 0 && sentenceEmb.length > 0) {
+          let dot = 0, na = 0, nb = 0;
+          const L = Math.min(conceptEmb.length, sentenceEmb.length);
+          for (let i = 0; i < L; i++) {
+            dot += conceptEmb[i] * sentenceEmb[i];
+            na += conceptEmb[i] * conceptEmb[i];
+            nb += sentenceEmb[i] * sentenceEmb[i];
+          }
+          const denom = Math.sqrt(na) * Math.sqrt(nb);
+          const cosine = denom > 0 ? dot / denom : 0;
+          if (cosine < 0.15) {
+            return { sentence, words, intent: intentName, slots, fillCount: 0, coherenceCosine: cosine, lowCoherence: true };
+          }
+          return { sentence, words, intent: intentName, slots, fillCount, coherenceCosine: cosine };
+        }
+      } catch {
+      }
+    }
+    return { sentence, words, intent: intentName, slots, fillCount };
   }
   async generateSentenceAwait(intentSeed = null, opts = {}) {
     if (!this.regions || !this.regions.motor || !this.regions.letter) return "";
@@ -12243,6 +12651,8 @@ var LanguageCortex = class {
             }
             const composedWords = [];
             if (typeof cluster.emitWordDirect === "function") {
+              let consecutiveDup = 0;
+              let lastWord = null;
               for (let i = 0; i < 6; i++) {
                 let w = "";
                 try {
@@ -12252,8 +12662,24 @@ var LanguageCortex = class {
                 }
                 if (!w) break;
                 const lw = String(w).toLowerCase().trim();
-                if (!lw || composedWords.includes(lw)) break;
+                if (!lw) break;
+                if (lw === lastWord) {
+                  consecutiveDup++;
+                  if (consecutiveDup >= 2) break;
+                } else {
+                  consecutiveDup = 0;
+                }
                 composedWords.push(lw);
+                lastWord = lw;
+                if (typeof cluster.injectEmbeddingToRegion === "function" && sharedEmbeddings && typeof sharedEmbeddings.getEmbedding === "function") {
+                  try {
+                    const wordEmb = sharedEmbeddings.getEmbedding(lw);
+                    if (wordEmb && wordEmb.length > 0) {
+                      cluster.injectEmbeddingToRegion("sem", wordEmb, 0.25);
+                    }
+                  } catch {
+                  }
+                }
               }
             }
             if (composedWords.length > 0) {
@@ -12288,19 +12714,100 @@ var LanguageCortex = class {
             } catch {
             }
           }
-          let wordPath = "";
-          if (typeof cluster.emitWordDirect === "function") {
+          let composedWordsAsync = [];
+          let composedSentence = null;
+          if (typeof cluster.composeSentence === "function") {
+            try {
+              const userText = String(cluster._lastUserInputText || "").toLowerCase();
+              let inferredIntent = "declarative_svo";
+              if (userText.includes("?")) inferredIntent = "question";
+              else if (userText.includes("!")) inferredIntent = "exclamative";
+              else if (/^(say|tell|give|show|read|spell|name|count)\b/.test(userText)) inferredIntent = "imperative";
+              let inferredConcept = null;
+              if (inferredIntent === "question" && userText) {
+                if (/\bwhat\s+(?:makes|causes)\b/.test(userText)) inferredConcept = "cause";
+                else if (/\bwhat\s+happens\s+when\b/.test(userText)) inferredConcept = "effect";
+                else if (/\bwhat\s+do\s+[a-z]+\s+need\b/.test(userText)) inferredConcept = "need";
+                else if (/\bwhat\s+is\b/.test(userText)) inferredConcept = "definition";
+                else if (/\bwhat\s+do\b/.test(userText)) inferredConcept = "function";
+                else if (/\bwhy\s+/.test(userText)) inferredConcept = "reason";
+                else if (/\bhow\s+many\b/.test(userText)) inferredConcept = "count";
+                else if (/\bhow\s+/.test(userText)) inferredConcept = "method";
+                else if (/\bwhere\s+/.test(userText)) inferredConcept = "place";
+                else if (/\bwhen\s+/.test(userText)) inferredConcept = "time";
+                else if (/\bwho\s+/.test(userText)) inferredConcept = "person";
+                else if (/^(is|are|do|does|can|will|would|should)\s/.test(userText)) inferredConcept = "truth";
+              }
+              const inferredSubject = typeof cluster._inferSubjectFromText === "function" ? cluster._inferSubjectFromText(userText) : null;
+              composedSentence = cluster.composeSentence(inferredIntent, {
+                cortexPattern: intentSeed,
+                intentConcept: inferredConcept,
+                subject: inferredSubject || void 0,
+                temperature: 0.6,
+                topK: 8
+              });
+              if (composedSentence && Array.isArray(composedSentence.words) && composedSentence.words.length >= 2) {
+                composedWordsAsync = composedSentence.words.slice();
+                if (composedSentence.sentence && /[.!?]$/.test(composedSentence.sentence) && composedWordsAsync.length > 0 && !/[.!?]$/.test(composedWordsAsync[composedWordsAsync.length - 1])) {
+                  composedWordsAsync[composedWordsAsync.length - 1] += composedSentence.sentence.slice(-1);
+                }
+                if (typeof cluster.pushEmission === "function") {
+                  try {
+                    cluster.pushEmission({
+                      source: "chat",
+                      text: composedSentence.sentence || composedWordsAsync.join(" "),
+                      ts: Date.now(),
+                      intent: inferredIntent,
+                      subject: inferredSubject || null
+                    });
+                  } catch {
+                  }
+                }
+                cluster._emissionLockedUntil = Date.now() + 6e3;
+              }
+            } catch {
+            }
+          }
+          if (composedWordsAsync.length === 0 && typeof cluster.emitWordDirect === "function") {
             try {
               if (intentSeed && typeof cluster.injectEmbeddingToRegion === "function") {
                 cluster.injectEmbeddingToRegion("sem", intentSeed, 0.6);
               }
-              wordPath = cluster.emitWordDirect({}) || "";
+              let consecutiveDup = 0;
+              let lastWord = null;
+              for (let i = 0; i < 6; i++) {
+                let w = "";
+                try {
+                  w = cluster.emitWordDirect({}) || "";
+                } catch {
+                  w = "";
+                }
+                if (!w) break;
+                const lw = String(w).toLowerCase().trim();
+                if (!lw) break;
+                if (lw === lastWord) {
+                  consecutiveDup++;
+                  if (consecutiveDup >= 2) break;
+                } else {
+                  consecutiveDup = 0;
+                }
+                composedWordsAsync.push(lw);
+                lastWord = lw;
+                if (typeof cluster.injectEmbeddingToRegion === "function" && sharedEmbeddings && typeof sharedEmbeddings.getEmbedding === "function") {
+                  try {
+                    const wordEmb = sharedEmbeddings.getEmbedding(lw);
+                    if (wordEmb && wordEmb.length > 0) {
+                      cluster.injectEmbeddingToRegion("sem", wordEmb, 0.25);
+                    }
+                  } catch {
+                  }
+                }
+              }
             } catch {
-              wordPath = "";
             }
           }
-          if (wordPath && wordPath.length > 0) {
-            preEmittedWords = [wordPath];
+          if (composedWordsAsync.length > 0) {
+            preEmittedWords = composedWordsAsync;
           } else {
             const raw = await cluster.generateSentenceAwait(intentSeed, {
               injectStrength: 0.6,
@@ -13035,21 +13542,41 @@ var InnerVoice = class {
     const chain = Array.isArray(args.chain) ? args.chain : [];
     const opts = args.opts || {};
     const seed = opts.seed || { pattern: null, source: "baseline", label: "baseline cortex state" };
+    const recentEntries = chain.slice(-8);
+    const uniqueFirstWords = /* @__PURE__ */ new Set();
+    for (const entry of recentEntries) {
+      if (entry && entry.sentence) {
+        const firstWord = String(entry.sentence).trim().toLowerCase().split(/\s+/)[0] || "";
+        const cleaned = firstWord.replace(/[^a-z0-9']/g, "");
+        if (cleaned) uniqueFirstWords.add(cleaned);
+      }
+    }
+    const basinLocked = recentEntries.length >= 4 && uniqueFirstWords.size < 3;
     let chainedPattern = seed.pattern;
-    try {
-      if (chain.length > 0 && languageCortex && typeof languageCortex._sentenceEmbedding === "function") {
-        const lastThought = chain[chain.length - 1];
-        if (lastThought && lastThought.sentence) {
-          const lastEmb = languageCortex._sentenceEmbedding(lastThought.sentence);
-          if (lastEmb && lastEmb.length > 0 && seed.pattern && seed.pattern.length === lastEmb.length) {
-            chainedPattern = new Float32Array(seed.pattern.length);
-            for (let i = 0; i < chainedPattern.length; i++) {
-              chainedPattern[i] = 0.6 * seed.pattern[i] + 0.4 * lastEmb[i];
+    if (basinLocked) {
+      if (seed.pattern && seed.pattern.length > 0) {
+        const jittered = new Float32Array(seed.pattern.length);
+        for (let i = 0; i < jittered.length; i++) {
+          jittered[i] = seed.pattern[i] + (Math.random() - 0.5) * 0.1;
+        }
+        chainedPattern = jittered;
+      }
+    } else {
+      try {
+        if (chain.length > 0 && languageCortex && typeof languageCortex._sentenceEmbedding === "function") {
+          const lastThought = chain[chain.length - 1];
+          if (lastThought && lastThought.sentence) {
+            const lastEmb = languageCortex._sentenceEmbedding(lastThought.sentence);
+            if (lastEmb && lastEmb.length > 0 && seed.pattern && seed.pattern.length === lastEmb.length) {
+              chainedPattern = new Float32Array(seed.pattern.length);
+              for (let i = 0; i < chainedPattern.length; i++) {
+                chainedPattern[i] = 0.6 * seed.pattern[i] + 0.4 * lastEmb[i];
+              }
             }
           }
         }
+      } catch {
       }
-    } catch {
     }
     const now = Date.now();
     const capability = cluster && typeof cluster.getTrainedCapability === "function" ? cluster.getTrainedCapability() : null;
@@ -17417,14 +17944,17 @@ var K_MIXIN = {
       if (typeof this._teachLetterNamingDirect === "function") {
         await this._phasedTeach("LIFE-K-LETTER-NAMING-DIRECT", () => this._teachLetterNamingDirect({ reps: 50 }));
       }
+      if (typeof this._teachQuestionIntent === "function") {
+        await this._phasedTeach("LIFE-K-WH-INTENT", () => this._teachQuestionIntent({ reps: 8 }));
+      }
       if (typeof this._teachWordSpellingDirectFinal === "function") {
         await this._phasedTeach("LIFE-K-WORD-SPELL-FINAL", () => this._teachWordSpellingDirectFinal({ reps: 8, subject: "life" }));
       }
       if (typeof this._teachWordEmissionDirect === "function") {
         await this._phasedTeach("LIFE-K-WORD-EMISSION-DIRECT", () => this._teachWordEmissionDirect({ reps: 8, subject: "life" }));
       }
-      if (typeof this._teachQuestionIntent === "function") {
-        await this._phasedTeach("LIFE-K-WH-INTENT", () => this._teachQuestionIntent({ reps: 8 }));
+      if (typeof this._teachSentenceStructure === "function") {
+        await this._phasedTeach("LIFE-K-STRUCTURE-REFRESH", () => this._teachSentenceStructure(ctx));
       }
       this._lifeKRemakeDone = true;
     }
@@ -17435,38 +17965,44 @@ var K_MIXIN = {
     const cluster = this.cluster;
     if (!cluster || !cluster.synapses) return { pass: false, reason: "no cluster" };
     await this._pregateEnrichment("life/kindergarten");
-    const lifeKProductionSamples = [
-      // Life Pre-K Tests
-      { question: "what is your name", expected: ["unity", "u"] },
-      { question: "are you a boy or a girl", expected: ["girl", "g"] },
-      { question: "what color is your hair", expected: ["dark", "black", "d", "b"] },
-      { question: "who takes care of you", expected: ["mom", "m"] },
-      { question: "what are you scared of", expected: ["dark", "d"] },
-      { question: "what makes you calm", expected: ["music", "m"] },
-      // Life-K Tests
-      { question: "what is your favorite holiday", expected: ["halloween", "h"] },
-      { question: "what do you wish for on your birthday", expected: ["cat", "c"] },
-      { question: "what is your favorite thing to eat", expected: ["cookies", "grandma", "c", "g"] },
-      { question: "what do you have nightmares about", expected: ["dark", "d"] },
-      { question: "what do you dream about", expected: ["flying", "cat", "f", "c"] },
-      { question: "what happened when you tried a sleepover", expected: ["homesick", "mom", "h", "m"] },
-      { question: "what do you do when you are alone after school", expected: ["tv", "draw", "t", "d"] },
-      { question: "in fairy tales who do you like better the princess or the witch", expected: ["witch", "w"] }
-    ];
-    const prodResult = await this._probeProductionBatch(lifeKProductionSamples, {
-      visualCortex: this.engine && this.engine.visualCortex || null
-    });
-    const prodRate = prodResult.total > 0 ? prodResult.pass / prodResult.total : 0;
-    const pass = prodRate >= 0.95;
-    const pct = (r) => (r * 100).toFixed(0);
-    const prodFailSummary = prodResult.fails && prodResult.fails.length > 0 ? " [FAIL: " + prodResult.fails.slice(0, 5).map((f) => `"${f.q}"\u2192"${String(f.emitted).slice(0, 30)}"`).join("; ") + "]" : "";
-    const _lifeKResult = {
-      pass,
-      reason: `PROD ${prodResult.pass}/${prodResult.total} (${pct(prodRate)}%)${prodFailSummary}`,
-      metrics: { prodRate, prodFails: prodResult.fails }
-    };
-    this._recordGateHistory("life", "kindergarten", "overall", pass, prodRate);
-    return _lifeKResult;
+    const _savedProbeNoise = cluster.noiseAmplitude;
+    cluster.noiseAmplitude = 0.6;
+    try {
+      const lifeKProductionSamples = [
+        // Life Pre-K Tests
+        { question: "what is your name", expected: ["unity", "u"] },
+        { question: "are you a boy or a girl", expected: ["girl", "g"] },
+        { question: "what color is your hair", expected: ["dark", "black", "d", "b"] },
+        { question: "who takes care of you", expected: ["mom", "m"] },
+        { question: "what are you scared of", expected: ["dark", "d"] },
+        { question: "what makes you calm", expected: ["music", "m"] },
+        // Life-K Tests
+        { question: "what is your favorite holiday", expected: ["halloween", "h"] },
+        { question: "what do you wish for on your birthday", expected: ["cat", "c"] },
+        { question: "what is your favorite thing to eat", expected: ["cookies", "grandma", "c", "g"] },
+        { question: "what do you have nightmares about", expected: ["dark", "d"] },
+        { question: "what do you dream about", expected: ["flying", "cat", "f", "c"] },
+        { question: "what happened when you tried a sleepover", expected: ["homesick", "mom", "h", "m"] },
+        { question: "what do you do when you are alone after school", expected: ["tv", "draw", "t", "d"] },
+        { question: "in fairy tales who do you like better the princess or the witch", expected: ["witch", "w"] }
+      ];
+      const prodResult = await this._probeProductionBatch(lifeKProductionSamples, {
+        visualCortex: this.engine && this.engine.visualCortex || null
+      });
+      const prodRate = prodResult.total > 0 ? prodResult.pass / prodResult.total : 0;
+      const pass = prodRate >= 0.95;
+      const pct = (r) => (r * 100).toFixed(0);
+      const prodFailSummary = prodResult.fails && prodResult.fails.length > 0 ? " [FAIL: " + prodResult.fails.slice(0, 5).map((f) => `"${f.q}"\u2192"${String(f.emitted).slice(0, 30)}"`).join("; ") + "]" : "";
+      const _lifeKResult = {
+        pass,
+        reason: `PROD ${prodResult.pass}/${prodResult.total} (${pct(prodRate)}%)${prodFailSummary}`,
+        metrics: { prodRate, prodFails: prodResult.fails }
+      };
+      this._recordGateHistory("life", "kindergarten", "overall", pass, prodRate);
+      return _lifeKResult;
+    } finally {
+      cluster.noiseAmplitude = _savedProbeNoise;
+    }
   },
   // ── GRADE 1 (age 6) — reading clicks, dad fading ────────────────
   async runArtKReal(ctx) {
@@ -17533,14 +18069,17 @@ var K_MIXIN = {
       if (typeof this._teachLetterNamingDirect === "function") {
         await this._phasedTeach("ART-K-LETTER-NAMING-DIRECT", () => this._teachLetterNamingDirect({ reps: 50 }));
       }
+      if (typeof this._teachQuestionIntent === "function") {
+        await this._phasedTeach("ART-K-WH-INTENT", () => this._teachQuestionIntent({ reps: 8 }));
+      }
       if (typeof this._teachWordSpellingDirectFinal === "function") {
         await this._phasedTeach("ART-K-WORD-SPELL-FINAL", () => this._teachWordSpellingDirectFinal({ reps: 8, subject: "art" }));
       }
       if (typeof this._teachWordEmissionDirect === "function") {
         await this._phasedTeach("ART-K-WORD-EMISSION-DIRECT", () => this._teachWordEmissionDirect({ reps: 8, subject: "art" }));
       }
-      if (typeof this._teachQuestionIntent === "function") {
-        await this._phasedTeach("ART-K-WH-INTENT", () => this._teachQuestionIntent({ reps: 8 }));
+      if (typeof this._teachSentenceStructure === "function") {
+        await this._phasedTeach("ART-K-STRUCTURE-REFRESH", () => this._teachSentenceStructure(ctx));
       }
       this._artKRemakeDone = true;
     }
@@ -17551,33 +18090,39 @@ var K_MIXIN = {
     const cluster = this.cluster;
     if (!cluster || !cluster.synapses) return { pass: false, reason: "no cluster" };
     await this._pregateEnrichment("art/kindergarten");
-    const artKProductionSamples = [
-      // Visual Arts K Tests
-      { question: "what are the three primary colors", expected: ["red", "yellow", "blue", "r", "y", "b"] },
-      { question: "what color do red and yellow make", expected: ["orange", "o"] },
-      { question: "what color do blue and yellow make", expected: ["green", "g"] },
-      { question: "is red a warm color or cool color", expected: ["warm", "w"] },
-      { question: "is blue a warm color or cool color", expected: ["cool", "c"] },
-      { question: "what comes next red blue red blue", expected: ["red", "r"] },
-      // Music K Tests
-      { question: "what is the steady pulse in music called", expected: ["beat", "b"] },
-      { question: "fast music has a fast what", expected: ["tempo", "t"] },
-      { question: "a drum is hit to make what", expected: ["sound", "beat", "s", "b"] }
-    ];
-    const prodResult = await this._probeProductionBatch(artKProductionSamples, {
-      visualCortex: this.engine && this.engine.visualCortex || null
-    });
-    const prodRate = prodResult.total > 0 ? prodResult.pass / prodResult.total : 0;
-    const pass = prodRate >= 0.95;
-    const pct = (r) => (r * 100).toFixed(0);
-    const prodFailSummary = prodResult.fails && prodResult.fails.length > 0 ? " [FAIL: " + prodResult.fails.slice(0, 5).map((f) => `"${f.q}"\u2192"${String(f.emitted).slice(0, 30)}"`).join("; ") + "]" : "";
-    const _artKResult = {
-      pass,
-      reason: `PROD ${prodResult.pass}/${prodResult.total} (${pct(prodRate)}%)${prodFailSummary}`,
-      metrics: { prodRate, prodFails: prodResult.fails }
-    };
-    this._recordGateHistory("art", "kindergarten", "overall", pass, prodRate);
-    return _artKResult;
+    const _savedProbeNoise = cluster.noiseAmplitude;
+    cluster.noiseAmplitude = 0.6;
+    try {
+      const artKProductionSamples = [
+        // Visual Arts K Tests
+        { question: "what are the three primary colors", expected: ["red", "yellow", "blue", "r", "y", "b"] },
+        { question: "what color do red and yellow make", expected: ["orange", "o"] },
+        { question: "what color do blue and yellow make", expected: ["green", "g"] },
+        { question: "is red a warm color or cool color", expected: ["warm", "w"] },
+        { question: "is blue a warm color or cool color", expected: ["cool", "c"] },
+        { question: "what comes next red blue red blue", expected: ["red", "r"] },
+        // Music K Tests
+        { question: "what is the steady pulse in music called", expected: ["beat", "b"] },
+        { question: "fast music has a fast what", expected: ["tempo", "t"] },
+        { question: "a drum is hit to make what", expected: ["sound", "beat", "s", "b"] }
+      ];
+      const prodResult = await this._probeProductionBatch(artKProductionSamples, {
+        visualCortex: this.engine && this.engine.visualCortex || null
+      });
+      const prodRate = prodResult.total > 0 ? prodResult.pass / prodResult.total : 0;
+      const pass = prodRate >= 0.95;
+      const pct = (r) => (r * 100).toFixed(0);
+      const prodFailSummary = prodResult.fails && prodResult.fails.length > 0 ? " [FAIL: " + prodResult.fails.slice(0, 5).map((f) => `"${f.q}"\u2192"${String(f.emitted).slice(0, 30)}"`).join("; ") + "]" : "";
+      const _artKResult = {
+        pass,
+        reason: `PROD ${prodResult.pass}/${prodResult.total} (${pct(prodRate)}%)${prodFailSummary}`,
+        metrics: { prodRate, prodFails: prodResult.fails }
+      };
+      this._recordGateHistory("art", "kindergarten", "overall", pass, prodRate);
+      return _artKResult;
+    } finally {
+      cluster.noiseAmplitude = _savedProbeNoise;
+    }
   },
   // ═══════════════════════════════════════════════════════════════════
   // T14.24 SESSION 7 — REAL ELA-G2 TEACHING EQUATIONS (2026-04-15)
@@ -17702,14 +18247,17 @@ var K_MIXIN = {
       if (typeof this._teachLetterNamingDirect === "function") {
         await this._phasedTeach("SOC-K-LETTER-NAMING-DIRECT", () => this._teachLetterNamingDirect({ reps: 50 }));
       }
+      if (typeof this._teachQuestionIntent === "function") {
+        await this._phasedTeach("SOC-K-WH-INTENT", () => this._teachQuestionIntent({ reps: 8 }));
+      }
       if (typeof this._teachWordSpellingDirectFinal === "function") {
         await this._phasedTeach("SOC-K-WORD-SPELL-FINAL", () => this._teachWordSpellingDirectFinal({ reps: 8, subject: "social" }));
       }
       if (typeof this._teachWordEmissionDirect === "function") {
         await this._phasedTeach("SOC-K-WORD-EMISSION-DIRECT", () => this._teachWordEmissionDirect({ reps: 8, subject: "social" }));
       }
-      if (typeof this._teachQuestionIntent === "function") {
-        await this._phasedTeach("SOC-K-WH-INTENT", () => this._teachQuestionIntent({ reps: 8 }));
+      if (typeof this._teachSentenceStructure === "function") {
+        await this._phasedTeach("SOC-K-STRUCTURE-REFRESH", () => this._teachSentenceStructure(ctx));
       }
       this._socKRemakeDone = true;
     }
@@ -17720,39 +18268,45 @@ var K_MIXIN = {
     const cluster = this.cluster;
     if (!cluster || !cluster.synapses) return { pass: false, reason: "no cluster" };
     await this._pregateEnrichment("social/kindergarten");
-    const socKProductionSamples = [
-      // Self / Family / Community Tests
-      { question: "who fights fires", expected: ["firefighter", "f"] },
-      { question: "who helps sick people", expected: ["doctor", "d"] },
-      { question: "what are the four basic needs", expected: ["food", "water", "shelter", "clothing", "f", "w", "s", "c"] },
-      { question: "is a toy a need or a want", expected: ["want", "w"] },
-      { question: "is food a need or a want", expected: ["need", "n"] },
-      // American Symbols Tests
-      { question: "what colors are on the american flag", expected: ["red", "white", "blue", "r", "w", "b"] },
-      { question: "what do the fifty stars represent", expected: ["states", "s"] },
-      { question: "what is the national bird", expected: ["eagle", "e"] },
-      { question: "what holiday is on july fourth", expected: ["independence", "i"] },
-      { question: "who is the leader of the united states", expected: ["president", "p"] },
-      // Geography Tests
-      { question: "how many continents are there", expected: ["7", "seven", "s"] },
-      { question: "name the continent we live on", expected: ["north", "america", "n", "a"] },
-      { question: "what is a globe", expected: ["earth", "model", "e", "m"] },
-      { question: "name the four directions", expected: ["north", "south", "east", "west", "n", "s", "e", "w"] }
-    ];
-    const prodResult = await this._probeProductionBatch(socKProductionSamples, {
-      visualCortex: this.engine && this.engine.visualCortex || null
-    });
-    const prodRate = prodResult.total > 0 ? prodResult.pass / prodResult.total : 0;
-    const pass = prodRate >= 0.95;
-    const pct = (r) => (r * 100).toFixed(0);
-    const prodFailSummary = prodResult.fails && prodResult.fails.length > 0 ? " [FAIL: " + prodResult.fails.slice(0, 5).map((f) => `"${f.q}"\u2192"${String(f.emitted).slice(0, 30)}"`).join("; ") + "]" : "";
-    const _socKResult = {
-      pass,
-      reason: `PROD ${prodResult.pass}/${prodResult.total} (${pct(prodRate)}%)${prodFailSummary}`,
-      metrics: { prodRate, prodFails: prodResult.fails }
-    };
-    this._recordGateHistory("social", "kindergarten", "overall", pass, prodRate);
-    return _socKResult;
+    const _savedProbeNoise = cluster.noiseAmplitude;
+    cluster.noiseAmplitude = 0.6;
+    try {
+      const socKProductionSamples = [
+        // Self / Family / Community Tests
+        { question: "who fights fires", expected: ["firefighter", "f"] },
+        { question: "who helps sick people", expected: ["doctor", "d"] },
+        { question: "what are the four basic needs", expected: ["food", "water", "shelter", "clothing", "f", "w", "s", "c"] },
+        { question: "is a toy a need or a want", expected: ["want", "w"] },
+        { question: "is food a need or a want", expected: ["need", "n"] },
+        // American Symbols Tests
+        { question: "what colors are on the american flag", expected: ["red", "white", "blue", "r", "w", "b"] },
+        { question: "what do the fifty stars represent", expected: ["states", "s"] },
+        { question: "what is the national bird", expected: ["eagle", "e"] },
+        { question: "what holiday is on july fourth", expected: ["independence", "i"] },
+        { question: "who is the leader of the united states", expected: ["president", "p"] },
+        // Geography Tests
+        { question: "how many continents are there", expected: ["7", "seven", "s"] },
+        { question: "name the continent we live on", expected: ["north", "america", "n", "a"] },
+        { question: "what is a globe", expected: ["earth", "model", "e", "m"] },
+        { question: "name the four directions", expected: ["north", "south", "east", "west", "n", "s", "e", "w"] }
+      ];
+      const prodResult = await this._probeProductionBatch(socKProductionSamples, {
+        visualCortex: this.engine && this.engine.visualCortex || null
+      });
+      const prodRate = prodResult.total > 0 ? prodResult.pass / prodResult.total : 0;
+      const pass = prodRate >= 0.95;
+      const pct = (r) => (r * 100).toFixed(0);
+      const prodFailSummary = prodResult.fails && prodResult.fails.length > 0 ? " [FAIL: " + prodResult.fails.slice(0, 5).map((f) => `"${f.q}"\u2192"${String(f.emitted).slice(0, 30)}"`).join("; ") + "]" : "";
+      const _socKResult = {
+        pass,
+        reason: `PROD ${prodResult.pass}/${prodResult.total} (${pct(prodRate)}%)${prodFailSummary}`,
+        metrics: { prodRate, prodFails: prodResult.fails }
+      };
+      this._recordGateHistory("social", "kindergarten", "overall", pass, prodRate);
+      return _socKResult;
+    } finally {
+      cluster.noiseAmplitude = _savedProbeNoise;
+    }
   },
   // ═══════════════════════════════════════════════════════════════════
   // Arts-K equational course (LAW 3 + LAW 7)
@@ -17861,14 +18415,17 @@ var K_MIXIN = {
       if (typeof this._teachLetterNamingDirect === "function") {
         await this._phasedTeach("SCI-K-LETTER-NAMING-DIRECT", () => this._teachLetterNamingDirect({ reps: 50 }));
       }
+      if (typeof this._teachQuestionIntent === "function") {
+        await this._phasedTeach("SCI-K-WH-INTENT", () => this._teachQuestionIntent({ reps: 8 }));
+      }
       if (typeof this._teachWordSpellingDirectFinal === "function") {
         await this._phasedTeach("SCI-K-WORD-SPELL-FINAL", () => this._teachWordSpellingDirectFinal({ reps: 8, subject: "science" }));
       }
       if (typeof this._teachWordEmissionDirect === "function") {
         await this._phasedTeach("SCI-K-WORD-EMISSION-DIRECT", () => this._teachWordEmissionDirect({ reps: 8, subject: "science" }));
       }
-      if (typeof this._teachQuestionIntent === "function") {
-        await this._phasedTeach("SCI-K-WH-INTENT", () => this._teachQuestionIntent({ reps: 8 }));
+      if (typeof this._teachSentenceStructure === "function") {
+        await this._phasedTeach("SCI-K-STRUCTURE-REFRESH", () => this._teachSentenceStructure(ctx));
       }
       this._sciKRemakeDone = true;
     }
@@ -17879,44 +18436,50 @@ var K_MIXIN = {
     const cluster = this.cluster;
     if (!cluster || !cluster.synapses) return { pass: false, reason: "no cluster" };
     await this._pregateEnrichment("science/kindergarten");
-    const sciKProductionSamples = [
-      // K-PS2 Tests
-      { question: "what happens when you push a ball", expected: ["move", "roll", "m"] },
-      { question: "what makes a wagon go", expected: ["pull", "push", "p"] },
-      { question: "big push or small push which goes farther", expected: ["big", "b"] },
-      { question: "what happens when two balls hit each other", expected: ["push", "bounce", "p", "b"] },
-      // K-ESS2 Tests
-      { question: "what is weather", expected: ["air", "outside", "condition"] },
-      { question: "when is it hottest", expected: ["summer", "s"] },
-      { question: "when is it coldest", expected: ["winter", "w"] },
-      // K-LS1 Tests
-      { question: "what do plants need to grow", expected: ["water", "light", "air", "w", "l", "a"] },
-      { question: "what do animals need to survive", expected: ["food", "water", "air", "f", "w"] },
-      { question: "an animal that eats only plants is called", expected: ["herbivore", "h"] },
-      { question: "an animal that eats only meat is called", expected: ["carnivore", "c"] },
-      { question: "why do birds have wings", expected: ["fly", "f"] },
-      { question: "why do fish have fins", expected: ["swim", "s"] },
-      // K-ESS3 Tests
-      { question: "name a natural resource", expected: ["water", "air", "soil", "tree", "rock", "w", "a", "s", "t", "r"] },
-      { question: "what do all living things need", expected: ["water", "w"] },
-      { question: "is a tree natural or human made", expected: ["natural", "n"] },
-      { question: "is a building natural or human made", expected: ["human", "h"] }
-    ];
-    const prodResult = await this._probeProductionBatch(sciKProductionSamples, {
-      visualCortex: this.engine && this.engine.visualCortex || null
-    });
-    const prodRate = prodResult.total > 0 ? prodResult.pass / prodResult.total : 0;
-    const PROD_MIN = 0.95;
-    const pass = prodRate >= PROD_MIN;
-    const pct = (r) => (r * 100).toFixed(0);
-    const prodFailSummary = prodResult.fails && prodResult.fails.length > 0 ? " [FAIL: " + prodResult.fails.slice(0, 5).map((f) => `"${f.q}"\u2192"${String(f.emitted).slice(0, 30)}"`).join("; ") + "]" : "";
-    const _sciKResult = {
-      pass,
-      reason: `PROD ${prodResult.pass}/${prodResult.total} (${pct(prodRate)}%)${prodFailSummary}`,
-      metrics: { prodRate, prodFails: prodResult.fails }
-    };
-    this._recordGateHistory("science", "kindergarten", "overall", pass, prodRate);
-    return _sciKResult;
+    const _savedProbeNoise = cluster.noiseAmplitude;
+    cluster.noiseAmplitude = 0.6;
+    try {
+      const sciKProductionSamples = [
+        // K-PS2 Tests
+        { question: "what happens when you push a ball", expected: ["move", "roll", "m"] },
+        { question: "what makes a wagon go", expected: ["pull", "push", "p"] },
+        { question: "big push or small push which goes farther", expected: ["big", "b"] },
+        { question: "what happens when two balls hit each other", expected: ["push", "bounce", "p", "b"] },
+        // K-ESS2 Tests
+        { question: "what is weather", expected: ["air", "outside", "condition"] },
+        { question: "when is it hottest", expected: ["summer", "s"] },
+        { question: "when is it coldest", expected: ["winter", "w"] },
+        // K-LS1 Tests
+        { question: "what do plants need to grow", expected: ["water", "light", "air", "w", "l", "a"] },
+        { question: "what do animals need to survive", expected: ["food", "water", "air", "f", "w"] },
+        { question: "an animal that eats only plants is called", expected: ["herbivore", "h"] },
+        { question: "an animal that eats only meat is called", expected: ["carnivore", "c"] },
+        { question: "why do birds have wings", expected: ["fly", "f"] },
+        { question: "why do fish have fins", expected: ["swim", "s"] },
+        // K-ESS3 Tests
+        { question: "name a natural resource", expected: ["water", "air", "soil", "tree", "rock", "w", "a", "s", "t", "r"] },
+        { question: "what do all living things need", expected: ["water", "w"] },
+        { question: "is a tree natural or human made", expected: ["natural", "n"] },
+        { question: "is a building natural or human made", expected: ["human", "h"] }
+      ];
+      const prodResult = await this._probeProductionBatch(sciKProductionSamples, {
+        visualCortex: this.engine && this.engine.visualCortex || null
+      });
+      const prodRate = prodResult.total > 0 ? prodResult.pass / prodResult.total : 0;
+      const PROD_MIN = 0.95;
+      const pass = prodRate >= PROD_MIN;
+      const pct = (r) => (r * 100).toFixed(0);
+      const prodFailSummary = prodResult.fails && prodResult.fails.length > 0 ? " [FAIL: " + prodResult.fails.slice(0, 5).map((f) => `"${f.q}"\u2192"${String(f.emitted).slice(0, 30)}"`).join("; ") + "]" : "";
+      const _sciKResult = {
+        pass,
+        reason: `PROD ${prodResult.pass}/${prodResult.total} (${pct(prodRate)}%)${prodFailSummary}`,
+        metrics: { prodRate, prodFails: prodResult.fails }
+      };
+      this._recordGateHistory("science", "kindergarten", "overall", pass, prodRate);
+      return _sciKResult;
+    } finally {
+      cluster.noiseAmplitude = _savedProbeNoise;
+    }
   },
   // ═══════════════════════════════════════════════════════════════════
   // Social-K equational course (LAW 3 + LAW 7)
@@ -18136,14 +18699,17 @@ var K_MIXIN = {
       if (typeof this._teachLetterNamingDirect === "function") {
         await this._phasedTeach("MATH-K-LETTER-NAMING-DIRECT", () => this._teachLetterNamingDirect({ reps: 50 }));
       }
+      if (typeof this._teachQuestionIntent === "function") {
+        await this._phasedTeach("MATH-K-WH-INTENT", () => this._teachQuestionIntent({ reps: 8 }));
+      }
       if (typeof this._teachWordSpellingDirectFinal === "function") {
         await this._phasedTeach("MATH-K-WORD-SPELL-FINAL", () => this._teachWordSpellingDirectFinal({ reps: 8, subject: "math" }));
       }
       if (typeof this._teachWordEmissionDirect === "function") {
         await this._phasedTeach("MATH-K-WORD-EMISSION-DIRECT", () => this._teachWordEmissionDirect({ reps: 8, subject: "math" }));
       }
-      if (typeof this._teachQuestionIntent === "function") {
-        await this._phasedTeach("MATH-K-WH-INTENT", () => this._teachQuestionIntent({ reps: 8 }));
+      if (typeof this._teachSentenceStructure === "function") {
+        await this._phasedTeach("MATH-K-STRUCTURE-REFRESH", () => this._teachSentenceStructure(ctx));
       }
       this._mathKTransformsDone = true;
     }
@@ -18155,404 +18721,410 @@ var K_MIXIN = {
     const DIGITS = DIGIT_ORDER;
     const NAMES = DIGIT_NAMES;
     await this._pregateEnrichment("math/kindergarten");
-    const letterRegion = cluster.regions.letter;
-    const phonRegion = cluster.regions.phon;
-    const semRegion = cluster.regions.sem;
-    const motorRegion = cluster.regions.motor;
-    const freeRegion = cluster.regions.free;
-    if (!letterRegion || !phonRegion) return { pass: false, reason: "missing regions" };
-    const letterSize = letterRegion.end - letterRegion.start;
-    const phonSize = phonRegion.end - phonRegion.start;
-    const invSize = inventorySize();
-    const MAG_DIM = MAGNITUDE_FEATURE_DIM;
-    const letterToPhon = cluster.crossProjections?.["letter_to_phon"];
-    const allProjs = cluster.crossProjections || {};
-    function cosine(a, b) {
-      let dot = 0, na = 0, nb = 0;
-      const L = Math.min(a.length, b.length);
-      for (let i = 0; i < L; i++) {
-        dot += a[i] * b[i];
-        na += a[i] * a[i];
-        nb += b[i] * b[i];
-      }
-      const d = Math.sqrt(na) * Math.sqrt(nb);
-      return d > 0 ? dot / d : 0;
-    }
-    let readPass = 0;
-    let talkPass = 0;
-    let _readTalkYield = Date.now();
-    for (let i = 0; i < DIGITS.length; i++) {
-      if (Date.now() - _readTalkYield > 200) {
-        await new Promise((resolve) => setImmediate(resolve));
-        _readTalkYield = Date.now();
-      }
-      const digit = DIGITS[i];
-      const digitOneHot = encodeLetter(digit);
-      const lGSize = Math.max(1, Math.floor(letterSize / digitOneHot.length));
-      const letterPat = new Float64Array(letterSize);
-      for (let d = 0; d < digitOneHot.length; d++) {
-        if (digitOneHot[d] <= 0) continue;
-        for (let n = 0; n < lGSize; n++) {
-          const idx = d * lGSize + n;
-          if (idx < letterSize) letterPat[idx] = 1;
+    const _savedProbeNoise = cluster.noiseAmplitude;
+    cluster.noiseAmplitude = 0.6;
+    try {
+      let cosine = function(a, b) {
+        let dot = 0, na = 0, nb = 0;
+        const L = Math.min(a.length, b.length);
+        for (let i = 0; i < L; i++) {
+          dot += a[i] * b[i];
+          na += a[i] * a[i];
+          nb += b[i] * b[i];
         }
-      }
-      if (letterToPhon) {
-        const phonOutput = letterToPhon.propagate(letterPat);
-        const pGSize = Math.max(1, Math.floor(phonSize / MAG_DIM));
-        const phonReadout = new Float64Array(MAG_DIM);
-        for (let d = 0; d < MAG_DIM; d++) {
-          let sum = 0;
-          for (let n = 0; n < pGSize; n++) {
-            const idx = d * pGSize + n;
-            if (idx < phonOutput.length) sum += phonOutput[idx];
-          }
-          phonReadout[d] = sum / pGSize;
+        const d = Math.sqrt(na) * Math.sqrt(nb);
+        return d > 0 ? dot / d : 0;
+      };
+      const letterRegion = cluster.regions.letter;
+      const phonRegion = cluster.regions.phon;
+      const semRegion = cluster.regions.sem;
+      const motorRegion = cluster.regions.motor;
+      const freeRegion = cluster.regions.free;
+      if (!letterRegion || !phonRegion) return { pass: false, reason: "missing regions" };
+      const letterSize = letterRegion.end - letterRegion.start;
+      const phonSize = phonRegion.end - phonRegion.start;
+      const invSize = inventorySize();
+      const MAG_DIM = MAGNITUDE_FEATURE_DIM;
+      const letterToPhon = cluster.crossProjections?.["letter_to_phon"];
+      const allProjs = cluster.crossProjections || {};
+      let readPass = 0;
+      let talkPass = 0;
+      let _readTalkYield = Date.now();
+      for (let i = 0; i < DIGITS.length; i++) {
+        if (Date.now() - _readTalkYield > 200) {
+          await new Promise((resolve) => setImmediate(resolve));
+          _readTalkYield = Date.now();
         }
-        let mean = 0;
-        for (let j = 0; j < MAG_DIM; j++) mean += phonReadout[j];
-        mean /= MAG_DIM;
-        for (let j = 0; j < MAG_DIM; j++) phonReadout[j] -= mean;
-        let norm = 0;
-        for (let j = 0; j < MAG_DIM; j++) norm += phonReadout[j] * phonReadout[j];
-        norm = Math.sqrt(norm) || 1;
-        for (let j = 0; j < MAG_DIM; j++) phonReadout[j] /= norm;
-        const expected = _magnitudeFeatureForDigit(digit);
-        if (cosine(phonReadout, expected) > 0.15) readPass++;
-      }
-      const digitName = NAMES[DIGITS.indexOf(digit)];
-      const nameEmb = digitName ? sharedEmbeddings.getEmbedding(digitName) : null;
-      const s2m = allProjs["sem_to_motor"];
-      if (s2m && semRegion && motorRegion && nameEmb && nameEmb.length > 0) {
-        const semSize = semRegion.end - semRegion.start;
-        const semPat = new Float64Array(semSize);
-        const sGSize = Math.max(1, Math.floor(semSize / nameEmb.length));
-        for (let d = 0; d < nameEmb.length; d++) {
-          if (nameEmb[d] <= 0) continue;
-          for (let n = 0; n < sGSize; n++) {
-            const idx = d * sGSize + n;
-            if (idx < semSize) semPat[idx] = nameEmb[d];
+        const digit = DIGITS[i];
+        const digitOneHot = encodeLetter(digit);
+        const lGSize = Math.max(1, Math.floor(letterSize / digitOneHot.length));
+        const letterPat = new Float64Array(letterSize);
+        for (let d = 0; d < digitOneHot.length; d++) {
+          if (digitOneHot[d] <= 0) continue;
+          for (let n = 0; n < lGSize; n++) {
+            const idx = d * lGSize + n;
+            if (idx < letterSize) letterPat[idx] = 1;
           }
         }
-        const motorOutput = s2m.propagate(semPat);
-        const motorSize = motorRegion.end - motorRegion.start;
-        const mGSize = Math.max(1, Math.floor(motorSize / invSize));
-        const motorReadout = new Float64Array(invSize);
+        if (letterToPhon) {
+          const phonOutput = letterToPhon.propagate(letterPat);
+          const pGSize = Math.max(1, Math.floor(phonSize / MAG_DIM));
+          const phonReadout = new Float64Array(MAG_DIM);
+          for (let d = 0; d < MAG_DIM; d++) {
+            let sum = 0;
+            for (let n = 0; n < pGSize; n++) {
+              const idx = d * pGSize + n;
+              if (idx < phonOutput.length) sum += phonOutput[idx];
+            }
+            phonReadout[d] = sum / pGSize;
+          }
+          let mean = 0;
+          for (let j = 0; j < MAG_DIM; j++) mean += phonReadout[j];
+          mean /= MAG_DIM;
+          for (let j = 0; j < MAG_DIM; j++) phonReadout[j] -= mean;
+          let norm = 0;
+          for (let j = 0; j < MAG_DIM; j++) norm += phonReadout[j] * phonReadout[j];
+          norm = Math.sqrt(norm) || 1;
+          for (let j = 0; j < MAG_DIM; j++) phonReadout[j] /= norm;
+          const expected = _magnitudeFeatureForDigit(digit);
+          if (cosine(phonReadout, expected) > 0.15) readPass++;
+        }
+        const digitName = NAMES[DIGITS.indexOf(digit)];
+        const nameEmb = digitName ? sharedEmbeddings.getEmbedding(digitName) : null;
+        const s2m = allProjs["sem_to_motor"];
+        if (s2m && semRegion && motorRegion && nameEmb && nameEmb.length > 0) {
+          const semSize = semRegion.end - semRegion.start;
+          const semPat = new Float64Array(semSize);
+          const sGSize = Math.max(1, Math.floor(semSize / nameEmb.length));
+          for (let d = 0; d < nameEmb.length; d++) {
+            if (nameEmb[d] <= 0) continue;
+            for (let n = 0; n < sGSize; n++) {
+              const idx = d * sGSize + n;
+              if (idx < semSize) semPat[idx] = nameEmb[d];
+            }
+          }
+          const motorOutput = s2m.propagate(semPat);
+          const motorSize = motorRegion.end - motorRegion.start;
+          const mGSize = Math.max(1, Math.floor(motorSize / invSize));
+          const motorReadout = new Float64Array(invSize);
+          for (let d = 0; d < invSize; d++) {
+            let sum = 0;
+            for (let n = 0; n < mGSize; n++) {
+              const idx = d * mGSize + n;
+              if (idx < motorOutput.length) sum += motorOutput[idx];
+            }
+            motorReadout[d] = sum / mGSize;
+          }
+          let mean = 0;
+          for (let i2 = 0; i2 < invSize; i2++) mean += motorReadout[i2];
+          mean /= invSize;
+          for (let i2 = 0; i2 < invSize; i2++) motorReadout[i2] -= mean;
+          if (decodeLetter(motorReadout) === digit) talkPass++;
+        }
+      }
+      const thinkPass = DIGITS.length;
+      let seqPass = 0;
+      const seqFails = [];
+      let _seqYield = Date.now();
+      for (let i = 0; i < DIGITS.length - 1; i++) {
+        if (Date.now() - _seqYield > 200) {
+          await new Promise((resolve) => setImmediate(resolve));
+          _seqYield = Date.now();
+        }
+        const currOneHot = encodeLetter(DIGITS[i]);
+        const expectedNext = DIGITS[i + 1];
+        const input = new Float64Array(cluster.size);
+        const lGSize = Math.max(1, Math.floor(letterSize / invSize));
+        for (let d = 0; d < currOneHot.length; d++) {
+          if (currOneHot[d] <= 0) continue;
+          for (let n = 0; n < lGSize; n++) {
+            const idx = letterRegion.start + d * lGSize + n;
+            if (idx < letterRegion.end) input[idx] = 1;
+          }
+        }
+        const output = cluster.synapses.propagate(input);
+        const letterOut = new Float64Array(invSize);
         for (let d = 0; d < invSize; d++) {
           let sum = 0;
-          for (let n = 0; n < mGSize; n++) {
-            const idx = d * mGSize + n;
-            if (idx < motorOutput.length) sum += motorOutput[idx];
+          for (let n = 0; n < lGSize; n++) {
+            const idx = letterRegion.start + d * lGSize + n;
+            if (idx < letterRegion.end) sum += output[idx];
           }
-          motorReadout[d] = sum / mGSize;
+          letterOut[d] = sum;
         }
-        let mean = 0;
-        for (let i2 = 0; i2 < invSize; i2++) mean += motorReadout[i2];
-        mean /= invSize;
-        for (let i2 = 0; i2 < invSize; i2++) motorReadout[i2] -= mean;
-        if (decodeLetter(motorReadout) === digit) talkPass++;
-      }
-    }
-    const thinkPass = DIGITS.length;
-    let seqPass = 0;
-    const seqFails = [];
-    let _seqYield = Date.now();
-    for (let i = 0; i < DIGITS.length - 1; i++) {
-      if (Date.now() - _seqYield > 200) {
-        await new Promise((resolve) => setImmediate(resolve));
-        _seqYield = Date.now();
-      }
-      const currOneHot = encodeLetter(DIGITS[i]);
-      const expectedNext = DIGITS[i + 1];
-      const input = new Float64Array(cluster.size);
-      const lGSize = Math.max(1, Math.floor(letterSize / invSize));
-      for (let d = 0; d < currOneHot.length; d++) {
-        if (currOneHot[d] <= 0) continue;
-        for (let n = 0; n < lGSize; n++) {
-          const idx = letterRegion.start + d * lGSize + n;
-          if (idx < letterRegion.end) input[idx] = 1;
+        const digitIndices = [];
+        const snap = inventorySnapshot();
+        for (let d = 0; d < snap.length; d++) {
+          if (DIGITS.includes(snap[d])) digitIndices.push(d);
+        }
+        let bestDigit = null, bestVal = -Infinity;
+        for (const di of digitIndices) {
+          if (letterOut[di] > bestVal) {
+            bestVal = letterOut[di];
+            bestDigit = snap[di];
+          }
+        }
+        if (bestDigit === expectedNext) {
+          seqPass++;
+        } else {
+          seqFails.push(`${DIGITS[i]}\u2192${expectedNext} (got ${bestDigit || "?"})`);
         }
       }
-      const output = cluster.synapses.propagate(input);
-      const letterOut = new Float64Array(invSize);
-      for (let d = 0; d < invSize; d++) {
-        let sum = 0;
-        for (let n = 0; n < lGSize; n++) {
-          const idx = letterRegion.start + d * lGSize + n;
-          if (idx < letterRegion.end) sum += output[idx];
+      for (const failStr of seqFails) {
+        const srcDigit = failStr[0];
+        const srcIdx = DIGITS.indexOf(srcDigit);
+        if (srcIdx < 0 || srcIdx >= DIGITS.length - 1) continue;
+        const tgtDigit = DIGITS[srcIdx + 1];
+        const gotMatch = failStr.match(/\(got (.)\)/);
+        const wrongDigit = gotMatch ? gotMatch[1] : null;
+        cluster.hebbianPairReinforce({
+          region: "letter",
+          srcOneHot: encodeLetter(srcDigit),
+          correctOneHot: encodeLetter(tgtDigit),
+          wrongOneHot: wrongDigit ? encodeLetter(wrongDigit) : null
+        });
+      }
+      let orderPass = 0;
+      let orderTotal = 0;
+      const letterToFree = allProjs["letter_to_free"];
+      if (letterToFree && freeRegion) {
+        const freeSize = freeRegion.end - freeRegion.start;
+        const readFree = (digit) => {
+          const oh = encodeLetter(digit);
+          const pat = new Float64Array(letterSize);
+          const gS = Math.max(1, Math.floor(letterSize / oh.length));
+          for (let d = 0; d < oh.length; d++) {
+            if (oh[d] <= 0) continue;
+            for (let n = 0; n < gS; n++) {
+              const idx = d * gS + n;
+              if (idx < letterSize) pat[idx] = 1;
+            }
+          }
+          return letterToFree.propagate(pat);
+        };
+        let _orderYield = Date.now();
+        for (let i = 1; i < DIGITS.length - 1; i++) {
+          if (Date.now() - _orderYield > 200) {
+            await new Promise((resolve) => setImmediate(resolve));
+            _orderYield = Date.now();
+          }
+          const readI = readFree(DIGITS[i]);
+          const readPrev = readFree(DIGITS[i - 1]);
+          const readDistant = readFree(DIGITS[0]);
+          if (!readI || !readPrev || !readDistant) continue;
+          const cosAdj = cosine(readI, readPrev);
+          const cosDist = cosine(readI, readDistant);
+          orderTotal++;
+          if (cosAdj > cosDist) orderPass++;
         }
-        letterOut[d] = sum;
-      }
-      const digitIndices = [];
-      const snap = inventorySnapshot();
-      for (let d = 0; d < snap.length; d++) {
-        if (DIGITS.includes(snap[d])) digitIndices.push(d);
-      }
-      let bestDigit = null, bestVal = -Infinity;
-      for (const di of digitIndices) {
-        if (letterOut[di] > bestVal) {
-          bestVal = letterOut[di];
-          bestDigit = snap[di];
-        }
-      }
-      if (bestDigit === expectedNext) {
-        seqPass++;
       } else {
-        seqFails.push(`${DIGITS[i]}\u2192${expectedNext} (got ${bestDigit || "?"})`);
+        orderPass = 8;
+        orderTotal = 8;
       }
-    }
-    for (const failStr of seqFails) {
-      const srcDigit = failStr[0];
-      const srcIdx = DIGITS.indexOf(srcDigit);
-      if (srcIdx < 0 || srcIdx >= DIGITS.length - 1) continue;
-      const tgtDigit = DIGITS[srcIdx + 1];
-      const gotMatch = failStr.match(/\(got (.)\)/);
-      const wrongDigit = gotMatch ? gotMatch[1] : null;
-      cluster.hebbianPairReinforce({
-        region: "letter",
-        srcOneHot: encodeLetter(srcDigit),
-        correctOneHot: encodeLetter(tgtDigit),
-        wrongOneHot: wrongDigit ? encodeLetter(wrongDigit) : null
+      const fineTypeRegionG = cluster.regions.fineType;
+      const freeSizeG = freeRegion ? freeRegion.end - freeRegion.start : 0;
+      const freeHalfG = Math.floor(freeSizeG / 2);
+      const freeLeftRegionG = freeRegion ? { start: freeRegion.start, end: freeRegion.start + freeHalfG } : null;
+      const freeRightRegionG = freeRegion ? { start: freeRegion.start + freeHalfG, end: freeRegion.end } : null;
+      const semSizeG = semRegion ? semRegion.end - semRegion.start : 0;
+      const semHalfG = Math.floor(semSizeG / 2);
+      const semLeftRegionG = semRegion ? { start: semRegion.start, end: semRegion.start + semHalfG } : null;
+      const semRightRegionG = semRegion ? { start: semRegion.start + semHalfG, end: semRegion.end } : null;
+      const phonRegionG = cluster.regions.phon;
+      const fineTypeSizeG = fineTypeRegionG ? fineTypeRegionG.end - fineTypeRegionG.start : 0;
+      const fineThirdG = Math.floor(fineTypeSizeG / 3);
+      const fineHalfG = Math.floor(fineTypeSizeG / 2);
+      const succResult = await this._probeCombinationCosine(
+        [3, 7, 13, 17, 23, 27, 43, 67, 83, 97].map((n) => ({
+          inputs: [{ region: freeRegion, feat: _magnitudeFeatureForNumber(n) }],
+          expected: { region: semRegion, feat: _magnitudeFeatureForNumber(n + 1) }
+        }))
+      );
+      const skipSamples = [];
+      for (let n = 0; n <= 80; n += 10) skipSamples.push({
+        inputs: [{ region: phonRegionG, feat: _magnitudeFeatureForNumber(n) }],
+        expected: { region: semRegion, feat: _magnitudeFeatureForNumber(n + 10) }
       });
-    }
-    let orderPass = 0;
-    let orderTotal = 0;
-    const letterToFree = allProjs["letter_to_free"];
-    if (letterToFree && freeRegion) {
-      const freeSize = freeRegion.end - freeRegion.start;
-      const readFree = (digit) => {
-        const oh = encodeLetter(digit);
-        const pat = new Float64Array(letterSize);
-        const gS = Math.max(1, Math.floor(letterSize / oh.length));
-        for (let d = 0; d < oh.length; d++) {
-          if (oh[d] <= 0) continue;
-          for (let n = 0; n < gS; n++) {
-            const idx = d * gS + n;
-            if (idx < letterSize) pat[idx] = 1;
-          }
-        }
-        return letterToFree.propagate(pat);
+      const skipResult = await this._probeCombinationCosine(skipSamples);
+      const makeTenSamples = [];
+      for (let n = 0; n <= 10; n++) makeTenSamples.push({
+        inputs: [{ region: freeLeftRegionG, feat: _magnitudeFeatureForDigit(String(n)) }],
+        expected: { region: semRegion, feat: _magnitudeFeatureForDigit(String(10 - n)) }
+      });
+      const makeTenResult = await this._probeCombinationCosine(makeTenSamples);
+      const teenSamples = [];
+      for (let n = 1; n <= 9; n++) teenSamples.push({
+        inputs: [
+          { region: freeLeftRegionG, feat: _magnitudeFeatureForNumber(10) },
+          { region: freeRightRegionG, feat: _magnitudeFeatureForNumber(n) }
+        ],
+        expected: { region: semRegion, feat: _magnitudeFeatureForNumber(10 + n) }
+      });
+      const teenResult = await this._probeCombinationCosine(teenSamples);
+      const attrBuckets = [
+        { name: "greater", start: 0, end: fineThirdG },
+        { name: "less", start: fineThirdG, end: 2 * fineThirdG },
+        { name: "equal", start: 2 * fineThirdG, end: fineTypeSizeG }
+      ];
+      const attrResult = await this._probeCombinationArgmaxTag(
+        [[8, 2], [8, 2], [8, 2], [8, 2], [9, 0], [8, 2], [8, 2], [9, 2]].map(([hi, lo]) => ({
+          inputs: [
+            { region: freeLeftRegionG, feat: _magnitudeFeatureForDigit(String(hi)) },
+            { region: freeRightRegionG, feat: _magnitudeFeatureForDigit(String(lo)) }
+          ],
+          tagRegion: fineTypeRegionG,
+          buckets: attrBuckets,
+          expectedTag: "greater"
+        }))
+      );
+      const classifySamples = [];
+      for (const [category, count] of [
+        ["red", 3],
+        ["blue", 2],
+        ["green", 5],
+        ["yellow", 1],
+        ["big", 2],
+        ["small", 4],
+        ["hands", 2],
+        ["fingers", 10],
+        ["triangle", 3],
+        ["square", 4]
+      ]) {
+        const emb = sharedEmbeddings.getEmbedding(category);
+        if (!emb || emb.length === 0) continue;
+        classifySamples.push({
+          inputs: [{ region: freeRegion, feat: emb, binarize: false }],
+          expected: { region: semRegion, feat: _magnitudeFeatureForDigit(String(Math.min(9, count))) }
+        });
+      }
+      const classifyResult = await this._probeCombinationCosine(classifySamples);
+      const shapeSidesSamples = [];
+      for (const [shapeName, sides] of [
+        ["circle", 0],
+        ["triangle", 3],
+        ["square", 4],
+        ["rectangle", 4],
+        ["hexagon", 6],
+        ["sphere", 0],
+        ["cube", 6],
+        ["cone", 1],
+        ["cylinder", 2]
+      ]) {
+        const emb = sharedEmbeddings.getEmbedding(shapeName);
+        if (!emb || emb.length === 0) continue;
+        shapeSidesSamples.push({
+          inputs: [{ region: semRegion, feat: emb, binarize: false }],
+          expected: { region: freeRegion, feat: _magnitudeFeatureForDigit(String(sides)) }
+        });
+      }
+      const shapeSidesResult = await this._probeCombinationCosine(shapeSidesSamples);
+      const dimBuckets = [
+        { name: "2D", start: 0, end: fineHalfG },
+        { name: "3D", start: fineHalfG, end: fineTypeSizeG }
+      ];
+      const shapeDimSamples = [];
+      for (const [shapeName, dim] of [
+        ["circle", "2D"],
+        ["triangle", "2D"],
+        ["square", "2D"],
+        ["rectangle", "2D"],
+        ["hexagon", "2D"],
+        ["sphere", "3D"],
+        ["cube", "3D"],
+        ["cone", "3D"],
+        ["cylinder", "3D"]
+      ]) {
+        const emb = sharedEmbeddings.getEmbedding(shapeName);
+        if (!emb || emb.length === 0) continue;
+        shapeDimSamples.push({
+          inputs: [{ region: semRegion, feat: emb, binarize: false }],
+          tagRegion: fineTypeRegionG,
+          buckets: dimBuckets,
+          expectedTag: dim
+        });
+      }
+      const shapeDimResult = await this._probeCombinationArgmaxTag(shapeDimSamples);
+      const shapeComposeSamples = [];
+      for (const [aName, bName, cName] of [
+        ["triangle", "triangle", "rectangle"],
+        ["square", "square", "rectangle"],
+        ["rectangle", "rectangle", "square"],
+        ["triangle", "rectangle", "pentagon"],
+        ["triangle", "triangle", "square"]
+      ]) {
+        const aEmb = sharedEmbeddings.getEmbedding(aName);
+        const bEmb = sharedEmbeddings.getEmbedding(bName);
+        const cEmb = sharedEmbeddings.getEmbedding(cName);
+        if (!aEmb || !bEmb || !cEmb || aEmb.length === 0 || bEmb.length === 0 || cEmb.length === 0) continue;
+        shapeComposeSamples.push({
+          inputs: [
+            { region: semLeftRegionG, feat: aEmb, binarize: false },
+            { region: semRightRegionG, feat: bEmb, binarize: false }
+          ],
+          expected: { region: freeRegion, feat: cEmb }
+        });
+      }
+      const shapeComposeResult = await this._probeCombinationCosine(shapeComposeSamples);
+      const mathKProductionSamples = [
+        // K.CC successor (TODO: "What number comes after 7?" → 8)
+        { question: "what number comes after seven", expected: ["8", "eight"] },
+        { question: "what comes after three", expected: ["4", "four"] },
+        { question: "what number is after five", expected: ["6", "six"] },
+        // K.OA addition (TODO: "2 + 3 = ?" → 5)
+        { question: "two plus three equals", expected: ["5", "five"] },
+        { question: "four plus one equals", expected: ["5", "five"] },
+        { question: "three plus two equals", expected: ["5", "five"] },
+        { question: "one plus one equals", expected: ["2", "two"] },
+        // K.OA subtraction (TODO: "5 - 2 = ?" → 3)
+        { question: "five minus two equals", expected: ["3", "three"] },
+        { question: "four minus one equals", expected: ["3", "three"] },
+        { question: "three minus one equals", expected: ["2", "two"] },
+        // K.OA make-ten (TODO: "What plus 6 makes 10?" → 4)
+        { question: "what plus six makes ten", expected: ["4", "four"] },
+        { question: "what plus seven makes ten", expected: ["3", "three"] },
+        { question: "what plus three makes ten", expected: ["7", "seven"] },
+        // K.G side count (TODO: "How many sides does a triangle have?" → 3)
+        { question: "how many sides does a triangle have", expected: ["3", "three"] },
+        { question: "how many sides does a square have", expected: ["4", "four"] },
+        { question: "how many sides does a rectangle have", expected: ["4", "four"] },
+        { question: "how many sides does a hexagon have", expected: ["6", "six"] }
+      ];
+      const prodResult = await this._probeProductionBatch(mathKProductionSamples, {
+        visualCortex: this.engine && this.engine.visualCortex || null
+      });
+      const N = DIGITS.length;
+      const readRate = readPass / N;
+      const thinkRate = thinkPass / N;
+      const talkRate = talkPass / N;
+      const seqRate = seqPass / (N - 1);
+      const orderRate = orderTotal > 0 ? orderPass / orderTotal : 1;
+      const succRate = succResult.total > 0 ? succResult.pass / succResult.total : 0;
+      const skipRate = skipResult.total > 0 ? skipResult.pass / skipResult.total : 0;
+      const makeTenRate = makeTenResult.total > 0 ? makeTenResult.pass / makeTenResult.total : 0;
+      const teenRate = teenResult.total > 0 ? teenResult.pass / teenResult.total : 0;
+      const attrRate = attrResult.total > 0 ? attrResult.pass / attrResult.total : 0;
+      const classifyRate = classifyResult.total > 0 ? classifyResult.pass / classifyResult.total : 0;
+      const shapeSidesRate = shapeSidesResult.total > 0 ? shapeSidesResult.pass / shapeSidesResult.total : 0;
+      const shapeDimRate = shapeDimResult.total > 0 ? shapeDimResult.pass / shapeDimResult.total : 0;
+      const shapeComposeRate = shapeComposeResult.total > 0 ? shapeComposeResult.pass / shapeComposeResult.total : 0;
+      const prodRate = prodResult.total > 0 ? prodResult.pass / prodResult.total : 0;
+      const PATH_MIN = 0.95;
+      const SEQ_MIN = 0.95;
+      const ORDER_MIN = 0.95;
+      const PROD_MIN = 0.95;
+      const pass = readRate >= PATH_MIN && thinkRate >= PATH_MIN && talkRate >= PATH_MIN && seqRate >= SEQ_MIN && orderRate >= ORDER_MIN && succRate >= PATH_MIN && skipRate >= PATH_MIN && makeTenRate >= PATH_MIN && teenRate >= PATH_MIN && attrRate >= PATH_MIN && classifyRate >= PATH_MIN && shapeSidesRate >= PATH_MIN && shapeDimRate >= PATH_MIN && shapeComposeRate >= PATH_MIN && prodRate >= PROD_MIN;
+      const pct = (r) => (r * 100).toFixed(0);
+      const prodFailSummary = prodResult.fails && prodResult.fails.length > 0 ? " [FAIL: " + prodResult.fails.slice(0, 5).map((f) => `"${f.q}"\u2192"${String(f.emitted).slice(0, 30)}"`).join("; ") + "]" : "";
+      const _mathKResult = {
+        pass,
+        reason: `READ ${readPass}/${N} (${pct(readRate)}%), THINK ${thinkPass}/${N} (${pct(thinkRate)}%), TALK ${talkPass}/${N} (${pct(talkRate)}%), SEQ ${seqPass}/${N - 1} (${pct(seqRate)}%)${seqFails.length > 0 ? " [FAIL: " + seqFails.join(", ") + "]" : ""}, ORDER ${orderPass}/${orderTotal} (${pct(orderRate)}%), SUCC ${succResult.pass}/${succResult.total} (${pct(succRate)}%), SKIP10 ${skipResult.pass}/${skipResult.total} (${pct(skipRate)}%), MAKETEN ${makeTenResult.pass}/${makeTenResult.total} (${pct(makeTenRate)}%), TEEN ${teenResult.pass}/${teenResult.total} (${pct(teenRate)}%), ATTR ${attrResult.pass}/${attrResult.total} (${pct(attrRate)}%), CLASS ${classifyResult.pass}/${classifyResult.total} (${pct(classifyRate)}%), SHAPE-S ${shapeSidesResult.pass}/${shapeSidesResult.total} (${pct(shapeSidesRate)}%), SHAPE-D ${shapeDimResult.pass}/${shapeDimResult.total} (${pct(shapeDimRate)}%), SHAPE-C ${shapeComposeResult.pass}/${shapeComposeResult.total} (${pct(shapeComposeRate)}%), PROD ${prodResult.pass}/${prodResult.total} (${pct(prodRate)}%)${prodFailSummary}`,
+        metrics: { readRate, thinkRate, talkRate, seqRate, orderRate, seqFails, succRate, skipRate, makeTenRate, teenRate, attrRate, classifyRate, shapeSidesRate, shapeDimRate, shapeComposeRate, prodRate, prodFails: prodResult.fails }
       };
-      let _orderYield = Date.now();
-      for (let i = 1; i < DIGITS.length - 1; i++) {
-        if (Date.now() - _orderYield > 200) {
-          await new Promise((resolve) => setImmediate(resolve));
-          _orderYield = Date.now();
-        }
-        const readI = readFree(DIGITS[i]);
-        const readPrev = readFree(DIGITS[i - 1]);
-        const readDistant = readFree(DIGITS[0]);
-        if (!readI || !readPrev || !readDistant) continue;
-        const cosAdj = cosine(readI, readPrev);
-        const cosDist = cosine(readI, readDistant);
-        orderTotal++;
-        if (cosAdj > cosDist) orderPass++;
-      }
-    } else {
-      orderPass = 8;
-      orderTotal = 8;
+      this._recordGateHistory("math", "kindergarten", "overall", pass, prodRate);
+      return _mathKResult;
+    } finally {
+      cluster.noiseAmplitude = _savedProbeNoise;
     }
-    const fineTypeRegionG = cluster.regions.fineType;
-    const freeSizeG = freeRegion ? freeRegion.end - freeRegion.start : 0;
-    const freeHalfG = Math.floor(freeSizeG / 2);
-    const freeLeftRegionG = freeRegion ? { start: freeRegion.start, end: freeRegion.start + freeHalfG } : null;
-    const freeRightRegionG = freeRegion ? { start: freeRegion.start + freeHalfG, end: freeRegion.end } : null;
-    const semSizeG = semRegion ? semRegion.end - semRegion.start : 0;
-    const semHalfG = Math.floor(semSizeG / 2);
-    const semLeftRegionG = semRegion ? { start: semRegion.start, end: semRegion.start + semHalfG } : null;
-    const semRightRegionG = semRegion ? { start: semRegion.start + semHalfG, end: semRegion.end } : null;
-    const phonRegionG = cluster.regions.phon;
-    const fineTypeSizeG = fineTypeRegionG ? fineTypeRegionG.end - fineTypeRegionG.start : 0;
-    const fineThirdG = Math.floor(fineTypeSizeG / 3);
-    const fineHalfG = Math.floor(fineTypeSizeG / 2);
-    const succResult = await this._probeCombinationCosine(
-      [3, 7, 13, 17, 23, 27, 43, 67, 83, 97].map((n) => ({
-        inputs: [{ region: freeRegion, feat: _magnitudeFeatureForNumber(n) }],
-        expected: { region: semRegion, feat: _magnitudeFeatureForNumber(n + 1) }
-      }))
-    );
-    const skipSamples = [];
-    for (let n = 0; n <= 80; n += 10) skipSamples.push({
-      inputs: [{ region: phonRegionG, feat: _magnitudeFeatureForNumber(n) }],
-      expected: { region: semRegion, feat: _magnitudeFeatureForNumber(n + 10) }
-    });
-    const skipResult = await this._probeCombinationCosine(skipSamples);
-    const makeTenSamples = [];
-    for (let n = 0; n <= 10; n++) makeTenSamples.push({
-      inputs: [{ region: freeLeftRegionG, feat: _magnitudeFeatureForDigit(String(n)) }],
-      expected: { region: semRegion, feat: _magnitudeFeatureForDigit(String(10 - n)) }
-    });
-    const makeTenResult = await this._probeCombinationCosine(makeTenSamples);
-    const teenSamples = [];
-    for (let n = 1; n <= 9; n++) teenSamples.push({
-      inputs: [
-        { region: freeLeftRegionG, feat: _magnitudeFeatureForNumber(10) },
-        { region: freeRightRegionG, feat: _magnitudeFeatureForNumber(n) }
-      ],
-      expected: { region: semRegion, feat: _magnitudeFeatureForNumber(10 + n) }
-    });
-    const teenResult = await this._probeCombinationCosine(teenSamples);
-    const attrBuckets = [
-      { name: "greater", start: 0, end: fineThirdG },
-      { name: "less", start: fineThirdG, end: 2 * fineThirdG },
-      { name: "equal", start: 2 * fineThirdG, end: fineTypeSizeG }
-    ];
-    const attrResult = await this._probeCombinationArgmaxTag(
-      [[8, 2], [8, 2], [8, 2], [8, 2], [9, 0], [8, 2], [8, 2], [9, 2]].map(([hi, lo]) => ({
-        inputs: [
-          { region: freeLeftRegionG, feat: _magnitudeFeatureForDigit(String(hi)) },
-          { region: freeRightRegionG, feat: _magnitudeFeatureForDigit(String(lo)) }
-        ],
-        tagRegion: fineTypeRegionG,
-        buckets: attrBuckets,
-        expectedTag: "greater"
-      }))
-    );
-    const classifySamples = [];
-    for (const [category, count] of [
-      ["red", 3],
-      ["blue", 2],
-      ["green", 5],
-      ["yellow", 1],
-      ["big", 2],
-      ["small", 4],
-      ["hands", 2],
-      ["fingers", 10],
-      ["triangle", 3],
-      ["square", 4]
-    ]) {
-      const emb = sharedEmbeddings.getEmbedding(category);
-      if (!emb || emb.length === 0) continue;
-      classifySamples.push({
-        inputs: [{ region: freeRegion, feat: emb, binarize: false }],
-        expected: { region: semRegion, feat: _magnitudeFeatureForDigit(String(Math.min(9, count))) }
-      });
-    }
-    const classifyResult = await this._probeCombinationCosine(classifySamples);
-    const shapeSidesSamples = [];
-    for (const [shapeName, sides] of [
-      ["circle", 0],
-      ["triangle", 3],
-      ["square", 4],
-      ["rectangle", 4],
-      ["hexagon", 6],
-      ["sphere", 0],
-      ["cube", 6],
-      ["cone", 1],
-      ["cylinder", 2]
-    ]) {
-      const emb = sharedEmbeddings.getEmbedding(shapeName);
-      if (!emb || emb.length === 0) continue;
-      shapeSidesSamples.push({
-        inputs: [{ region: semRegion, feat: emb, binarize: false }],
-        expected: { region: freeRegion, feat: _magnitudeFeatureForDigit(String(sides)) }
-      });
-    }
-    const shapeSidesResult = await this._probeCombinationCosine(shapeSidesSamples);
-    const dimBuckets = [
-      { name: "2D", start: 0, end: fineHalfG },
-      { name: "3D", start: fineHalfG, end: fineTypeSizeG }
-    ];
-    const shapeDimSamples = [];
-    for (const [shapeName, dim] of [
-      ["circle", "2D"],
-      ["triangle", "2D"],
-      ["square", "2D"],
-      ["rectangle", "2D"],
-      ["hexagon", "2D"],
-      ["sphere", "3D"],
-      ["cube", "3D"],
-      ["cone", "3D"],
-      ["cylinder", "3D"]
-    ]) {
-      const emb = sharedEmbeddings.getEmbedding(shapeName);
-      if (!emb || emb.length === 0) continue;
-      shapeDimSamples.push({
-        inputs: [{ region: semRegion, feat: emb, binarize: false }],
-        tagRegion: fineTypeRegionG,
-        buckets: dimBuckets,
-        expectedTag: dim
-      });
-    }
-    const shapeDimResult = await this._probeCombinationArgmaxTag(shapeDimSamples);
-    const shapeComposeSamples = [];
-    for (const [aName, bName, cName] of [
-      ["triangle", "triangle", "rectangle"],
-      ["square", "square", "rectangle"],
-      ["rectangle", "rectangle", "square"],
-      ["triangle", "rectangle", "pentagon"],
-      ["triangle", "triangle", "square"]
-    ]) {
-      const aEmb = sharedEmbeddings.getEmbedding(aName);
-      const bEmb = sharedEmbeddings.getEmbedding(bName);
-      const cEmb = sharedEmbeddings.getEmbedding(cName);
-      if (!aEmb || !bEmb || !cEmb || aEmb.length === 0 || bEmb.length === 0 || cEmb.length === 0) continue;
-      shapeComposeSamples.push({
-        inputs: [
-          { region: semLeftRegionG, feat: aEmb, binarize: false },
-          { region: semRightRegionG, feat: bEmb, binarize: false }
-        ],
-        expected: { region: freeRegion, feat: cEmb }
-      });
-    }
-    const shapeComposeResult = await this._probeCombinationCosine(shapeComposeSamples);
-    const mathKProductionSamples = [
-      // K.CC successor (TODO: "What number comes after 7?" → 8)
-      { question: "what number comes after seven", expected: ["8", "eight"] },
-      { question: "what comes after three", expected: ["4", "four"] },
-      { question: "what number is after five", expected: ["6", "six"] },
-      // K.OA addition (TODO: "2 + 3 = ?" → 5)
-      { question: "two plus three equals", expected: ["5", "five"] },
-      { question: "four plus one equals", expected: ["5", "five"] },
-      { question: "three plus two equals", expected: ["5", "five"] },
-      { question: "one plus one equals", expected: ["2", "two"] },
-      // K.OA subtraction (TODO: "5 - 2 = ?" → 3)
-      { question: "five minus two equals", expected: ["3", "three"] },
-      { question: "four minus one equals", expected: ["3", "three"] },
-      { question: "three minus one equals", expected: ["2", "two"] },
-      // K.OA make-ten (TODO: "What plus 6 makes 10?" → 4)
-      { question: "what plus six makes ten", expected: ["4", "four"] },
-      { question: "what plus seven makes ten", expected: ["3", "three"] },
-      { question: "what plus three makes ten", expected: ["7", "seven"] },
-      // K.G side count (TODO: "How many sides does a triangle have?" → 3)
-      { question: "how many sides does a triangle have", expected: ["3", "three"] },
-      { question: "how many sides does a square have", expected: ["4", "four"] },
-      { question: "how many sides does a rectangle have", expected: ["4", "four"] },
-      { question: "how many sides does a hexagon have", expected: ["6", "six"] }
-    ];
-    const prodResult = await this._probeProductionBatch(mathKProductionSamples, {
-      visualCortex: this.engine && this.engine.visualCortex || null
-    });
-    const N = DIGITS.length;
-    const readRate = readPass / N;
-    const thinkRate = thinkPass / N;
-    const talkRate = talkPass / N;
-    const seqRate = seqPass / (N - 1);
-    const orderRate = orderTotal > 0 ? orderPass / orderTotal : 1;
-    const succRate = succResult.total > 0 ? succResult.pass / succResult.total : 0;
-    const skipRate = skipResult.total > 0 ? skipResult.pass / skipResult.total : 0;
-    const makeTenRate = makeTenResult.total > 0 ? makeTenResult.pass / makeTenResult.total : 0;
-    const teenRate = teenResult.total > 0 ? teenResult.pass / teenResult.total : 0;
-    const attrRate = attrResult.total > 0 ? attrResult.pass / attrResult.total : 0;
-    const classifyRate = classifyResult.total > 0 ? classifyResult.pass / classifyResult.total : 0;
-    const shapeSidesRate = shapeSidesResult.total > 0 ? shapeSidesResult.pass / shapeSidesResult.total : 0;
-    const shapeDimRate = shapeDimResult.total > 0 ? shapeDimResult.pass / shapeDimResult.total : 0;
-    const shapeComposeRate = shapeComposeResult.total > 0 ? shapeComposeResult.pass / shapeComposeResult.total : 0;
-    const prodRate = prodResult.total > 0 ? prodResult.pass / prodResult.total : 0;
-    const PATH_MIN = 0.95;
-    const SEQ_MIN = 0.95;
-    const ORDER_MIN = 0.95;
-    const PROD_MIN = 0.95;
-    const pass = readRate >= PATH_MIN && thinkRate >= PATH_MIN && talkRate >= PATH_MIN && seqRate >= SEQ_MIN && orderRate >= ORDER_MIN && succRate >= PATH_MIN && skipRate >= PATH_MIN && makeTenRate >= PATH_MIN && teenRate >= PATH_MIN && attrRate >= PATH_MIN && classifyRate >= PATH_MIN && shapeSidesRate >= PATH_MIN && shapeDimRate >= PATH_MIN && shapeComposeRate >= PATH_MIN && prodRate >= PROD_MIN;
-    const pct = (r) => (r * 100).toFixed(0);
-    const prodFailSummary = prodResult.fails && prodResult.fails.length > 0 ? " [FAIL: " + prodResult.fails.slice(0, 5).map((f) => `"${f.q}"\u2192"${String(f.emitted).slice(0, 30)}"`).join("; ") + "]" : "";
-    const _mathKResult = {
-      pass,
-      reason: `READ ${readPass}/${N} (${pct(readRate)}%), THINK ${thinkPass}/${N} (${pct(thinkRate)}%), TALK ${talkPass}/${N} (${pct(talkRate)}%), SEQ ${seqPass}/${N - 1} (${pct(seqRate)}%)${seqFails.length > 0 ? " [FAIL: " + seqFails.join(", ") + "]" : ""}, ORDER ${orderPass}/${orderTotal} (${pct(orderRate)}%), SUCC ${succResult.pass}/${succResult.total} (${pct(succRate)}%), SKIP10 ${skipResult.pass}/${skipResult.total} (${pct(skipRate)}%), MAKETEN ${makeTenResult.pass}/${makeTenResult.total} (${pct(makeTenRate)}%), TEEN ${teenResult.pass}/${teenResult.total} (${pct(teenRate)}%), ATTR ${attrResult.pass}/${attrResult.total} (${pct(attrRate)}%), CLASS ${classifyResult.pass}/${classifyResult.total} (${pct(classifyRate)}%), SHAPE-S ${shapeSidesResult.pass}/${shapeSidesResult.total} (${pct(shapeSidesRate)}%), SHAPE-D ${shapeDimResult.pass}/${shapeDimResult.total} (${pct(shapeDimRate)}%), SHAPE-C ${shapeComposeResult.pass}/${shapeComposeResult.total} (${pct(shapeComposeRate)}%), PROD ${prodResult.pass}/${prodResult.total} (${pct(prodRate)}%)${prodFailSummary}`,
-      metrics: { readRate, thinkRate, talkRate, seqRate, orderRate, seqFails, succRate, skipRate, makeTenRate, teenRate, attrRate, classifyRate, shapeSidesRate, shapeDimRate, shapeComposeRate, prodRate, prodFails: prodResult.fails }
-    };
-    this._recordGateHistory("math", "kindergarten", "overall", pass, prodRate);
-    return _mathKResult;
   },
   // ═══════════════════════════════════════════════════════════════════
   // T14.24 SESSION 4 — REAL ELA-G1 TEACHING EQUATIONS (2026-04-15)
@@ -20691,22 +21263,22 @@ var K_MIXIN = {
         await this._teachQABinding(qaTrain, { label: "ELA-K-QA-TRAIN", subject: "ela" });
         _phaseDone("_teachQABinding");
       }
+      if (typeof this._teachWordSpellingDirectFinal === "function" && _phaseTick("_teachWordSpellingDirectFinal")) {
+        await this._teachWordSpellingDirectFinal({ reps: 8, subject: "ela" });
+        _phaseDone("_teachWordSpellingDirectFinal");
+      }
       if (typeof this._teachLetterNamingDirect === "function" && _phaseTick("_teachLetterNamingDirect")) {
         await this._teachLetterNamingDirect({ reps: 50 });
         _phaseDone("_teachLetterNamingDirect");
       }
       this._memorySnapshotAndGc("after _teachLetterNamingDirect");
-      if (typeof this._teachSentenceStructure === "function" && _phaseTick("_teachSentenceStructure")) {
-        await this._teachSentenceStructure(ctx);
-        _phaseDone("_teachSentenceStructure");
-      }
       if (typeof this._teachQuestionIntent === "function" && _phaseTick("_teachQuestionIntent")) {
         await this._teachQuestionIntent({ reps: 8 });
         _phaseDone("_teachQuestionIntent");
       }
-      if (typeof this._teachWordSpellingDirectFinal === "function" && _phaseTick("_teachWordSpellingDirectFinal")) {
-        await this._teachWordSpellingDirectFinal({ reps: 8, subject: "ela" });
-        _phaseDone("_teachWordSpellingDirectFinal");
+      if (typeof this._teachSentenceStructure === "function" && _phaseTick("_teachSentenceStructure")) {
+        await this._teachSentenceStructure(ctx);
+        _phaseDone("_teachSentenceStructure");
       }
       if (typeof this._teachWordEmissionDirect === "function" && _phaseTick("_teachWordEmissionDirect")) {
         await this._teachWordEmissionDirect({ reps: 8, subject: "ela" });
@@ -20945,7 +21517,7 @@ var K_MIXIN = {
         }
       };
       const _savedProbeNoise = cluster.noiseAmplitude;
-      cluster.noiseAmplitude = 0.5;
+      cluster.noiseAmplitude = 0.6;
       const wordStartProbes = [
         { word: "cat", expected: "c" },
         { word: "dog", expected: "d" },
@@ -21378,7 +21950,15 @@ var K_MIXIN = {
       const PATH_MIN = 0.95;
       const PROD_MIN = 0.95;
       const STUDENT_MIN = 0.95;
-      const pass = readRate >= PATH_MIN && thinkRate >= PATH_MIN && talkRate >= PATH_MIN && prodRate >= PROD_MIN && studentRate >= STUDENT_MIN;
+      const SENTENCE_GEN_MIN = 0.6;
+      let sentenceGen = { passed: 0, total: 5, rate: 0, perIntent: {} };
+      try {
+        sentenceGen = await this._probeSentenceGeneration();
+      } catch (err) {
+        console.warn("[Curriculum] _probeSentenceGeneration threw:", err?.message || err);
+      }
+      const sentenceGenRate = sentenceGen.rate || 0;
+      const pass = readRate >= PATH_MIN && thinkRate >= PATH_MIN && talkRate >= PATH_MIN && prodRate >= PROD_MIN && studentRate >= STUDENT_MIN && sentenceGenRate >= SENTENCE_GEN_MIN;
       const pct = (r) => (r * 100).toFixed(0);
       const prodFailSummary = prodResult.fails && prodResult.fails.length > 0 ? " [FAIL: " + prodResult.fails.slice(0, 5).map((f) => `"${f.q}"\u2192"${String(f.emitted).slice(0, 30)}"`).join("; ") + "]" : "";
       const writeSummary = writeEmitted.length > 0 ? " [WRITE: " + writeEmitted.slice(0, 8).join("; ") + "]" : "";
@@ -21400,10 +21980,11 @@ var K_MIXIN = {
       const studentResults = studentBattery.results;
       const studentRate = studentBattery.rate;
       const studentSummary = studentBattery.summary;
+      const sentenceGenSummary = ` SENTENCE-GEN ${sentenceGen.passed}/${sentenceGen.total} (${pct(sentenceGenRate)}%)`;
       const _elaKResult = {
         pass,
-        reason: `READ ${readPass}/${N} (${pct(readRate)}%), THINK ${thinkPass}/${N} (${pct(thinkRate)}%), TALK ${talkPass}/${N} (${pct(talkRate)}%), PROD ${prodResult.pass}/${prodResult.total} (${pct(prodRate)}%), WRITE ${writePass}/${fullWordProbes.length} (${pct(writeRate)}%) first${writeFirstLetterPass}/${fullWordProbes.length}, RESP ${respPass}/${respContexts.length} (${pct(respRate)}%), 2WORD ${twoWordPass}/${twoWordPhrases.length} both (${pct(twoWordRate)}%) partial${pct(twoWordPartialRate)}%, FREE ${freeWritingNonEmpty}/${freeWritingPrompts.length} nonEmpty avg ${freeWritingAvgWords.toFixed(1)}w, STUDENT ${studentPass}/${studentQuestions.length} (${pct(studentRate)}%)${prodFailSummary}${writeSummary}${respSummary}${twoWordSummary}${freeWritingSummary}${studentSummary}`,
-        metrics: { readRate, thinkRate, talkRate, seqRate, prodRate, writeRate, writeFirstRate, respRate, twoWordRate, twoWordPartialRate, freeWritingRate, freeWritingAvgWords, studentRate, studentResults, prodFails: prodResult.fails, writeEmitted, respEmitted, twoWordEmitted, freeWritingEmitted }
+        reason: `READ ${readPass}/${N} (${pct(readRate)}%), THINK ${thinkPass}/${N} (${pct(thinkRate)}%), TALK ${talkPass}/${N} (${pct(talkRate)}%), PROD ${prodResult.pass}/${prodResult.total} (${pct(prodRate)}%), WRITE ${writePass}/${fullWordProbes.length} (${pct(writeRate)}%) first${writeFirstLetterPass}/${fullWordProbes.length}, RESP ${respPass}/${respContexts.length} (${pct(respRate)}%), 2WORD ${twoWordPass}/${twoWordPhrases.length} both (${pct(twoWordRate)}%) partial${pct(twoWordPartialRate)}%, FREE ${freeWritingNonEmpty}/${freeWritingPrompts.length} nonEmpty avg ${freeWritingAvgWords.toFixed(1)}w, STUDENT ${studentPass}/${studentQuestions.length} (${pct(studentRate)}%),${sentenceGenSummary}${prodFailSummary}${writeSummary}${respSummary}${twoWordSummary}${freeWritingSummary}${studentSummary}`,
+        metrics: { readRate, thinkRate, talkRate, seqRate, prodRate, writeRate, writeFirstRate, respRate, twoWordRate, twoWordPartialRate, freeWritingRate, freeWritingAvgWords, studentRate, studentResults, prodFails: prodResult.fails, writeEmitted, respEmitted, twoWordEmitted, freeWritingEmitted, sentenceGenRate, sentenceGenPerIntent: sentenceGen.perIntent }
       };
       this._recordGateHistory("ela", "kindergarten", "overall", pass, prodRate);
       cluster.noiseAmplitude = _savedProbeNoise;
@@ -24363,24 +24944,67 @@ var Curriculum = class _Curriculum {
           await cluster.readInput(cue, { ticks: 6 });
         }
         const emitOpts = { maxTicks: 20 };
-        emitOpts.directPropagate = true;
-        emitOpts.minScore = 1.5;
-        emitOpts.boostPersona = true;
-        emitOpts.maxLetters = 32;
-        const letterSeed = cue ? function buildLetterSeed(letter) {
-          const oh = new Float32Array(26);
-          const i = letter.charCodeAt(0) - 97;
-          if (i >= 0 && i < 26) oh[i] = 1;
-          return oh;
-        }(cue) : null;
-        const emissionPromise = cluster.generateSentenceAwait(letterSeed, emitOpts);
-        const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve({ _timeout: true }), PER_CUE_TIMEOUT_MS));
-        const raw = await Promise.race([emissionPromise, timeoutPromise]);
-        if (raw && raw._timeout) {
-          timedOut = true;
-          emitted = "";
+        const letterToMotor = cluster.crossProjections?.letter_to_motor;
+        const letterRegion = cluster.regions?.letter;
+        const motorRegion = cluster.regions?.motor;
+        if (letterToMotor && letterRegion && motorRegion && letterToMotor.values && letterToMotor.colIdx && letterToMotor.rowPtr) {
+          const letterSize = letterRegion.end - letterRegion.start;
+          const motorSize = motorRegion.end - motorRegion.start;
+          const ALPHABET = "abcdefghijklmnopqrstuvwxyz";
+          const lGSize = Math.max(1, Math.floor(letterSize / ALPHABET.length));
+          const mGSize = Math.max(1, Math.floor(motorSize / ALPHABET.length));
+          const letterPat = new Float64Array(letterSize);
+          const cueIdx = cue.charCodeAt(0) - 97;
+          if (cueIdx >= 0 && cueIdx < 26) {
+            for (let n = 0; n < lGSize; n++) {
+              const idx = cueIdx * lGSize + n;
+              if (idx < letterSize) letterPat[idx] = 1;
+            }
+          }
+          let motorOutput = null;
+          try {
+            motorOutput = letterToMotor.propagate(letterPat);
+          } catch {
+            motorOutput = null;
+          }
+          if (motorOutput && motorOutput.length > 0) {
+            let bestIdx = -1, bestVal = -Infinity;
+            for (let d = 0; d < ALPHABET.length; d++) {
+              let sum = 0;
+              for (let n = 0; n < mGSize; n++) {
+                const idx = d * mGSize + n;
+                if (idx < motorOutput.length) sum += motorOutput[idx];
+              }
+              const mean = sum / mGSize;
+              if (mean > bestVal) {
+                bestVal = mean;
+                bestIdx = d;
+              }
+            }
+            if (bestIdx >= 0) {
+              emitted = ALPHABET[bestIdx];
+            }
+          }
         } else {
-          emitted = (raw && typeof raw === "string" ? raw : raw?.text || "") || "";
+          emitOpts.directPropagate = true;
+          emitOpts.minScore = 1.5;
+          emitOpts.boostPersona = true;
+          emitOpts.maxLetters = 32;
+          const letterSeed = cue ? function buildLetterSeed(letter) {
+            const oh = new Float32Array(26);
+            const i = letter.charCodeAt(0) - 97;
+            if (i >= 0 && i < 26) oh[i] = 1;
+            return oh;
+          }(cue) : null;
+          const emissionPromise = cluster.generateSentenceAwait(letterSeed, emitOpts);
+          const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve({ _timeout: true }), PER_CUE_TIMEOUT_MS));
+          const raw = await Promise.race([emissionPromise, timeoutPromise]);
+          if (raw && raw._timeout) {
+            timedOut = true;
+            emitted = "";
+          } else {
+            emitted = (raw && typeof raw === "string" ? raw : raw?.text || "") || "";
+          }
         }
       } catch (err) {
         this._hb(`[Curriculum][READINESS] cue ${_cueIdx}/${PROBES.length} ERROR letter='${cue}' \u2014 ${err?.message || err}`);
@@ -26871,6 +27495,7 @@ var Curriculum = class _Curriculum {
           this._macroPhaseProgress = null;
         }
       }
+      const lastGateResults = {};
       for (let round = 0; round < MAX_GRADE_ROUNDS && !allPassedThisGrade; round++) {
         if (round > 0) {
           this._hb(`[Curriculum] \u{1F504} grade ${grade} round ${round + 1} \u2014 retrying failed subjects...`);
@@ -26887,7 +27512,36 @@ var Curriculum = class _Curriculum {
           }
           attempt++;
           result = await this.runSubjectGrade(subject, grade, null, opts);
+          lastGateResults[subject] = result;
           await _microtask();
+          try {
+            const _cellKeyHealth = `${subject}/${grade}`;
+            if (cluster && typeof cluster.checkSemMotorHealth === "function") {
+              const health = cluster.checkSemMotorHealth();
+              if (health && health.saturated) {
+                this._semMotorSaturationStreak = (this._semMotorSaturationStreak || 0) + 1;
+                const meanCosTag = typeof health.meanCos === "number" ? `mean-cos=${health.meanCos.toFixed(3)} ` : "";
+                const ratioTag = health.ratio > 0 ? `max/mean=${health.ratio.toFixed(2)} ` : "";
+                console.warn(`[Curriculum] \u26A0 saturation detected post-${_cellKeyHealth} (streak ${this._semMotorSaturationStreak}/3) \u2014 ${meanCosTag}${ratioTag}source=${health.source}`);
+                if (this._semMotorSaturationStreak >= 3) {
+                  console.warn(`[Curriculum] \u26D4 SATURATION HALT \u2014 sem\u2192motor saturated across 3 consecutive cells. Curriculum walk paused. Operator review required: stop.bat \u2192 start.bat for fresh boot OR investigate per docs/TODO.md fg.Tier3 / fg.Tier4 / fg.Tier5. Continued teaching against saturated weights deepens the lock-in.`);
+                  this._semMotorSaturationHalted = true;
+                  if (cluster) {
+                    cluster._lastCurriculumHalt = {
+                      reason: "sem-motor-saturation",
+                      ts: Date.now(),
+                      cellAtHalt: _cellKeyHealth,
+                      meanCos: health.meanCos
+                    };
+                  }
+                  return { reached: passed, passed, failed, haltReason: "sem-motor-saturation" };
+                }
+              } else {
+                this._semMotorSaturationStreak = 0;
+              }
+            }
+          } catch {
+          }
           if (result && result.pass) {
             if (!passed[subject].includes(grade)) passed[subject].push(grade);
             this._hb(`[Curriculum] \u2713 ${subject}/${grade} \u2014 PASSED on attempt ${attempt} \u2014 ${result.reason || "pass"}`);
@@ -26904,27 +27558,43 @@ var Curriculum = class _Curriculum {
       if (!allPassedThisGrade) {
         const cl = this.cluster;
         const pp = cl && Array.isArray(cl.passedPhases) ? cl.passedPhases : [];
+        const SENTENCE_MIN_LOOSE = 0.2;
+        const PROD_MIN_LOOSE = 0.2;
+        const STUDENT_MIN_LOOSE = 0.1;
         for (const subject of SUBJECTS2) {
           const currentIdx = GRADE_ORDER.indexOf(cl.grades[subject] || "pre-K");
           if (currentIdx >= i) continue;
           const cellKey = `${subject}/${grade}`;
           const phasesRan = pp.filter((k) => k && k.startsWith(`${cellKey}:`)).length;
-          if (phasesRan >= 1) {
-            cl.grades[subject] = grade;
-            if (!Array.isArray(cl.passedCells)) cl.passedCells = [];
-            if (!cl.passedCells.includes(cellKey)) cl.passedCells.push(cellKey);
-            this._hb(`[Curriculum] \u2934 FORCE-ADVANCE ${cellKey} \u2014 ${phasesRan} teach phase(s) actually fired; Unity uses this grade despite A+ gate fail. cluster.grades.${subject}='${grade}'.`);
-            if (typeof this._saveCheckpoint === "function") {
-              try {
-                this._saveCheckpoint(`force-advance:${cellKey}`);
-              } catch {
-              }
-            }
-          } else {
+          if (phasesRan < 1) {
             console.warn(`[Curriculum] \u2934 FORCE-ADVANCE ${cellKey} SKIPPED \u2014 0 teach phases fired (no real training to use)`);
+            continue;
+          }
+          const lastResult = lastGateResults[subject];
+          const metrics = lastResult?.metrics || {};
+          const sentenceGenRate = typeof metrics.sentenceGenRate === "number" ? metrics.sentenceGenRate : 0;
+          const prodRate = typeof metrics.prodRate === "number" ? metrics.prodRate : 0;
+          const studentRate = typeof metrics.studentRate === "number" ? metrics.studentRate : 0;
+          const meetsSentenceMin = sentenceGenRate >= SENTENCE_MIN_LOOSE;
+          const meetsProdMin = prodRate >= PROD_MIN_LOOSE;
+          const meetsStudentMin = studentRate >= STUDENT_MIN_LOOSE;
+          const hasAnyCapability = meetsSentenceMin || meetsProdMin || meetsStudentMin;
+          if (!hasAnyCapability) {
+            console.warn(`[Curriculum] \u2934 FORCE-ADVANCE ${cellKey} REFUSED \u2014 capability minimums not met: sentenceGen=${(sentenceGenRate * 100).toFixed(0)}% (need\u2265${(SENTENCE_MIN_LOOSE * 100).toFixed(0)}%), prod=${(prodRate * 100).toFixed(0)}% (need\u2265${(PROD_MIN_LOOSE * 100).toFixed(0)}%), student=${(studentRate * 100).toFixed(0)}% (need\u2265${(STUDENT_MIN_LOOSE * 100).toFixed(0)}%). Brain learned the teach phases but cannot emit real sentences / letters / answers. Unity holds prior grade. Operator review required: re-run start.bat for fresh attempt OR investigate basin saturation per docs/TODO.md fg.Tier3 / fg.Tier4 / fg.Tier5 / fg.Tier6.`);
+            continue;
+          }
+          cl.grades[subject] = grade;
+          if (!Array.isArray(cl.passedCells)) cl.passedCells = [];
+          if (!cl.passedCells.includes(cellKey)) cl.passedCells.push(cellKey);
+          this._hb(`[Curriculum] \u2934 FORCE-ADVANCE ${cellKey} \u2014 ${phasesRan} teach phase(s) actually fired \xB7 capability evidence: sentenceGen=${(sentenceGenRate * 100).toFixed(0)}% prod=${(prodRate * 100).toFixed(0)}% student=${(studentRate * 100).toFixed(0)}%. Unity uses this grade despite A+ gate fail. cluster.grades.${subject}='${grade}'.`);
+          if (typeof this._saveCheckpoint === "function") {
+            try {
+              this._saveCheckpoint(`force-advance:${cellKey}`);
+            } catch {
+            }
           }
         }
-        console.warn(`[Curriculum] \u26D4 grade ${grade} incomplete after ${MAX_GRADE_ROUNDS} rounds \u2014 force-advanced any cells with real teaching. Curriculum walk continues to next grade.`);
+        console.warn(`[Curriculum] \u26D4 grade ${grade} incomplete after ${MAX_GRADE_ROUNDS} rounds \u2014 force-advanced cells that met capability minimums; cells without minimum capability evidence held at prior grade. Curriculum walk continues to next grade.`);
         continue;
       }
       this._hb(`[Curriculum] \u2550\u2550\u2550 ALL ${SUBJECTS2.length} subjects passed ${grade} \u2014 advancing to next grade \u2550\u2550\u2550`);
@@ -31956,6 +32626,8 @@ var Curriculum = class _Curriculum {
           semTopK
         });
         if (sepResult && typeof sepResult.meanCos === "number") {
+          cluster._lastSemMotorMeanCos = sepResult.meanCos;
+          cluster._lastSemMotorMeanCosTs = Date.now();
           const overload = sepResult.meanCos > overloadMax;
           const collapsed = sepResult.meanCos < 0.05 && sepResult.maxCos < 0.05;
           if (overload) collapseFlag = " \u26A0OVERLOAD";
@@ -32000,7 +32672,8 @@ var Curriculum = class _Curriculum {
       }
     }
     const assocWouldDrown = assocPreMaxAbs > 0 && assocPreMaxAbs * rescaleFactor < assocRescaleFloor;
-    const shouldRescale = rescaleFactor > 0 && rescaleFactor < 1 && cluster.crossProjections && (rescaleOnOverloadOnly ? overloadDetected : true) && !assocWouldDrown;
+    const acceptDrown = opts.acceptDrown === true;
+    const shouldRescale = rescaleFactor > 0 && rescaleFactor < 1 && cluster.crossProjections && (rescaleOnOverloadOnly ? overloadDetected : true) && (!assocWouldDrown || acceptDrown);
     if (shouldRescale) {
       const rescaled = [];
       for (const key of diagProjKeys) {
@@ -32325,29 +32998,44 @@ var Curriculum = class _Curriculum {
    */
   async _probeSentenceGeneration() {
     const cluster = this.cluster;
-    if (!cluster || typeof cluster.emitWordDirect !== "function") {
+    if (!cluster) {
       return { passed: 0, total: 0, rate: 0, perIntent: {} };
+    }
+    if (typeof cluster.composeSentence !== "function" && !this._composeSentenceMissingLogged) {
+      this._composeSentenceMissingLogged = true;
+      console.warn("[Curriculum] \u26A0 cluster.composeSentence is undefined \u2014 _probeSentenceGeneration will return 0/5 silently. Check js/brain/cluster.js definition or class instantiation.");
     }
     const intents = ["declarative_svo", "declarative_copula", "question", "imperative", "exclamative"];
     const perIntent = {};
     let passed = 0;
     for (const intent of intents) {
-      let words = [];
+      let composed = null;
       try {
-        for (let i = 0; i < 4; i++) {
-          const w = cluster.emitWordDirect({ subject: "ela" }) || "";
-          if (w) words.push(w);
+        if (typeof cluster.composeSentence === "function") {
+          composed = cluster.composeSentence(intent, { subject: "ela" });
         }
       } catch {
+        composed = null;
       }
+      const words = composed && Array.isArray(composed.words) ? composed.words : [];
+      const uniqueWords = new Set(words.map((w) => String(w).toLowerCase().replace(/[^a-z']/g, "")));
+      uniqueWords.delete("");
       const wordCount = words.length;
-      const structurallyValid = wordCount >= 2;
-      perIntent[intent] = { wordCount, words, valid: structurallyValid };
+      const uniqueCount = uniqueWords.size;
+      const structurallyValid = wordCount >= 2 && uniqueCount >= 2;
+      perIntent[intent] = {
+        wordCount,
+        uniqueCount,
+        words,
+        sentence: composed ? composed.sentence : "",
+        fillCount: composed ? composed.fillCount : 0,
+        valid: structurallyValid
+      };
       if (structurallyValid) passed += 1;
     }
     const total = intents.length;
     const rate = total > 0 ? passed / total : 0;
-    this._hb(`[Curriculum] _probeSentenceGeneration \u2014 ${passed}/${total} intents emitted \u22652 words (rate=${(rate * 100).toFixed(0)}%). Per-intent: ${intents.map((i) => `${i}:${perIntent[i].wordCount}w`).join(" \xB7 ")}`);
+    this._hb(`[Curriculum] _probeSentenceGeneration \u2014 ${passed}/${total} intents emitted \u22652 unique words (rate=${(rate * 100).toFixed(0)}%). Per-intent: ${intents.map((i) => `${i}:"${(perIntent[i].sentence || "").slice(0, 40)}" (${perIntent[i].wordCount}w/${perIntent[i].uniqueCount}u)`).join(" \xB7 ")}`);
     return { passed, total, rate, perIntent };
   }
   /**
@@ -32401,7 +33089,15 @@ var Curriculum = class _Curriculum {
     const r = await this._teachAssociationPairs(intentPairs, {
       reps: opts.reps ?? 8,
       label: "ELA-K-WH-INTENT",
-      relationTagId: 12
+      relationTagId: 12,
+      // WH-INTENT chronically saturates sem→motor (mean-cos 0.675-0.980
+      // ⚠OVERLOAD across recent runs). Tighter WTA + acceptDrown so the
+      // rescale path can fire through the would-drown floor when basins
+      // collapse. Trade signal strength for separability — saturated-
+      // strong is worse than weak-separable for downstream argmax.
+      motorTopK: opts.motorTopK ?? 8,
+      semTopK: opts.semTopK ?? 4,
+      acceptDrown: opts.acceptDrown !== false
     });
     const dt = ((Date.now() - t0) / 1e3).toFixed(1);
     this._hb(`[Curriculum] _teachQuestionIntent DONE in ${dt}s \u2014 ${r.trained || 0} Hebbian updates \xB7 ${intentPairs.length} WH\u2192intent-concept pairs (what/why/how/where/when/who \u2192 cause/reason/method/definition/effect/function/count/place/time/person/truth) carved into sem cross-projection. Joint (intent+subject) probe queries now have an intent-concept basin to activate.`);

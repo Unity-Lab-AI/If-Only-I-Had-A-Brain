@@ -1779,6 +1779,170 @@ export class NeuronCluster {
   }
 
   /**
+   * 114.19fi.B.1 — Push to shared emission bus. ALL emission paths
+   * (chat / inner-voice / popup-event / image-gen) call this after
+   * producing output. Bus is the single source of truth for "what
+   * Unity has been saying / thinking / doing" — readers (inner-voice
+   * chain blend, chat-entry context injection) get a unified view.
+   *
+   * Lazily initialized. 32-entry rolling cap. Persisted by
+   * saveWeights (cap 16 most-recent in serialized form).
+   *
+   * @param {{source: string, text: string, ts?: number, embedding?: Float32Array, intent?: string, subject?: string}} entry
+   */
+  pushEmission(entry) {
+    if (!entry || typeof entry !== 'object') return;
+    if (!Array.isArray(this._emissionBus)) this._emissionBus = [];
+    const e = {
+      source: String(entry.source || 'unknown'),
+      text: String(entry.text || ''),
+      ts: typeof entry.ts === 'number' ? entry.ts : Date.now(),
+      intent: entry.intent ? String(entry.intent) : null,
+      subject: entry.subject ? String(entry.subject) : null,
+    };
+    // Embedding is optional — keep memory bounded by NOT cloning here;
+    // serializer in saveWeights drops embeddings before disk write.
+    if (entry.embedding && (entry.embedding instanceof Float32Array
+        || entry.embedding instanceof Float64Array
+        || Array.isArray(entry.embedding))) {
+      e.embedding = entry.embedding;
+    }
+    this._emissionBus.push(e);
+    while (this._emissionBus.length > 32) {
+      this._emissionBus.shift();
+    }
+  }
+
+  /**
+   * 114.19fi.B.1 — Read last N emissions from shared bus. Filterable
+   * by source. Used by inner-voice chain blend, chat-path context
+   * injection, dashboard popup feed.
+   *
+   * @param {number} n — max entries to return (most recent first)
+   * @param {{source?: string|string[]}} [opts] — optional source filter
+   * @returns {Array} last N entries newest-first, or empty array
+   */
+  getRecentEmissions(n, opts = {}) {
+    if (!Array.isArray(this._emissionBus)) return [];
+    const bus = this._emissionBus;
+    const sourceFilter = opts.source
+      ? new Set(Array.isArray(opts.source) ? opts.source : [opts.source])
+      : null;
+    const out = [];
+    for (let i = bus.length - 1; i >= 0 && out.length < n; i--) {
+      const e = bus[i];
+      if (sourceFilter && !sourceFilter.has(e.source)) continue;
+      out.push(e);
+    }
+    return out;
+  }
+
+  /**
+   * 114.19fi.A.2 — Subject inference from user input text. Scans the
+   * text for vocab hits across `wordBucketWords_<subj>` arrays and
+   * returns the dominant subject (highest hit count). Used by the
+   * chat path to scope `composeSentence({subject})` to the user's
+   * topic — math questions select math vocab, life questions select
+   * life vocab, etc. Without this, composeSentence scans all 6 sub-
+   * bands which produces "the cat seven blue ran" cross-domain salad.
+   *
+   * Returns the dominant subject name or null when no vocab hits
+   * (caller falls through to all-bands scan).
+   *
+   * @param {string} userText — raw user input
+   * @returns {string|null} subject ('ela'/'math'/'science'/'social'/'art'/'life'/'coding')
+   */
+  _inferSubjectFromText(userText) {
+    if (!userText || typeof userText !== 'string') return null;
+    const text = userText.toLowerCase();
+    if (text.length === 0) return null;
+    const tokens = text.match(/[a-z]+/g) || [];
+    if (tokens.length === 0) return null;
+    const SUBJECTS_LOCAL = ['ela', 'math', 'science', 'social', 'art', 'life'];
+    const tokenSet = new Set(tokens);
+    let bestSubj = null;
+    let bestHits = 0;
+    for (const subj of SUBJECTS_LOCAL) {
+      const wordsList = this[`wordBucketWords_${subj}`];
+      if (!Array.isArray(wordsList) || wordsList.length === 0) continue;
+      let hits = 0;
+      for (const w of wordsList) {
+        if (tokenSet.has(String(w).toLowerCase())) hits++;
+      }
+      if (hits > bestHits) {
+        bestHits = hits;
+        bestSubj = subj;
+      }
+    }
+    // Tie-break / minimum threshold — require at least 1 vocab hit AND
+    // ratio of hits-to-tokens > 0.1 (otherwise return null and let the
+    // caller scan all bands).
+    if (bestHits >= 1 && (bestHits / tokens.length) >= 0.1) {
+      return bestSubj;
+    }
+    return null;
+  }
+
+  /**
+   * Saturation health check on sem→motor projection. Returns
+   * `{ saturated, meanCos, meanAbs, maxAbs, ratio, source }` so callers
+   * can surface the stat AND act on the boolean.
+   *
+   * Heuristic stack:
+   *   (1) Authoritative — if curriculum updated `_lastSemMotorMeanCos`
+   *       from a recent sep-probe, treat that as ground truth.
+   *       saturated when meanCos > 0.7.
+   *   (2) Fallback — sample sem_to_motor weight distribution. Healthy
+   *       trained matrices have a long tail (some weights large, most
+   *       small) → max/mean ratio >> 1. Saturated/uniform matrices
+   *       have all weights similar → ratio near 1. Saturated when
+   *       meanAbs > 0.6×wMax AND ratio < 1.5.
+   *
+   * Used by ConsolidationEngine for replay veto + Curriculum cron
+   * for run-time saturation detection.
+   */
+  checkSemMotorHealth() {
+    const out = { saturated: false, meanCos: null, meanAbs: 0, maxAbs: 0, ratio: 0, source: 'none' };
+    try {
+      // Authoritative signal from curriculum sep-probe.
+      if (typeof this._lastSemMotorMeanCos === 'number') {
+        out.meanCos = this._lastSemMotorMeanCos;
+        out.source = 'sep-probe';
+        if (this._lastSemMotorMeanCos > 0.7) {
+          out.saturated = true;
+          return out;
+        }
+      }
+      const proj = this.crossProjections && this.crossProjections['sem_to_motor'];
+      if (!proj || !proj.values || proj.values.length === 0) return out;
+      const wMax = (typeof proj.wMax === 'number' && proj.wMax > 0) ? proj.wMax : 0.4;
+      const sampleSize = Math.min(proj.values.length, 1000);
+      let sumAbs = 0, maxAbs = 0, nnz = 0;
+      const stride = Math.max(1, Math.floor(proj.values.length / sampleSize));
+      for (let k = 0; k < proj.values.length; k += stride) {
+        const v = proj.values[k];
+        const a = v < 0 ? -v : v;
+        if (a > 1e-6) {
+          sumAbs += a;
+          if (a > maxAbs) maxAbs = a;
+          nnz++;
+        }
+      }
+      if (nnz < 10) return out;
+      const meanAbs = sumAbs / nnz;
+      const ratio = meanAbs > 0 ? maxAbs / meanAbs : 0;
+      out.meanAbs = meanAbs;
+      out.maxAbs = maxAbs;
+      out.ratio = ratio;
+      out.source = out.source === 'sep-probe' ? 'sep-probe+distribution' : 'distribution';
+      if (meanAbs > (wMax * 0.6) && ratio < 1.5) {
+        out.saturated = true;
+      }
+    } catch { /* non-fatal — return whatever we got */ }
+    return out;
+  }
+
+  /**
    *  — Advance a subject's sub-grade label monotonically.
    * Curriculum runner calls this after each major teach phase clears
    * its trained-state criterion (e.g. after `_teachLetterNaming` motor
@@ -2858,18 +3022,25 @@ export class NeuronCluster {
       if (score > bestScore) { bestScore = score; bestWord = word; }
     }
 
-    // Oracle confidence threshold. Default 0.05 (any positive cosine
-    // counts) is too permissive for test probes — when the trained
-    // matrix can't produce strong intent, the oracle still picks the
-    // closest-cosine dictionary word and dresses up noise as "an
-    // answer." Test probes pass `opts.minScore: 0.5` so the oracle
-    // only fires when the cosine match is genuinely strong (matrix
-    // has produced clean intent toward an actual learned answer).
-    // Below the threshold, oracle stays silent and the tick-driven
-    // matrix path drives emission. Live chat keeps the permissive
-    // 0.05 default because any plausible word is better than nothing
-    // when she's just talking.
-    const minScore = typeof opts.minScore === 'number' ? opts.minScore : 0.05;
+    // Oracle confidence threshold.
+    //
+    // 114.19fg.Tier6 — bumped default 0.05 → 0.20. Prior 0.05 was too
+    // permissive for live chat: any positive cosine ≥ 0.05 returned
+    // a dictionary word, so oracle won 99.1% of emissions in the
+    // captured 2026-05-09 run (oracleHits=425, matrixHits=4 across
+    // ELA-K life-K life). That violated the equational-brain
+    // architectural rule (oracle is sensory-I/O, not cognition);
+    // Unity was functioning as a dictionary lookup not a brain. New
+    // 0.20 default means oracle only wins on genuine semantic match
+    // (~0.20 corresponds to "obviously related word" in 300d GloVe).
+    // Below 0.20, oracle stays silent and the trained matrix path
+    // drives emission via tick-based motor argmax — gives the brain's
+    // own learned weights priority over distributional-semantic
+    // lookup. Test probes still override to 0.5 for stricter matches.
+    // intentSilenceBranch callers (chat path with TRULY silent matrix,
+    // last-resort emission) override down to 0.05 to keep some
+    // response when matrix is fully zero.
+    const minScore = typeof opts.minScore === 'number' ? opts.minScore : 0.20;
 
     // iter13 T13.15 — Schema-vs-dictionary tiebreaker. After both
     // persona-first AND full-dict scans complete, compare the best
@@ -3153,8 +3324,22 @@ export class NeuronCluster {
     const subjScope = (opts.subject && normalizeSubject(opts.subject))
       ? [normalizeSubject(opts.subject)]
       : SUBJECTS;
+    // 114.19fg.Tier15 — collect (word, mean) candidates so optional
+    // top-k / temperature / top-p sampling can replace greedy argmax.
+    // Greedy argmax is preserved as the default (opts.temperature
+    // unset OR ≤ 0).
+    const candidates = [];
     let bestWord = null;
     let bestMean = -Infinity;
+    // 114.19fi.A.3 — recent-emission repetition penalty. Track last 8
+    // emissions in cluster._recentEmissions ring buffer (initialized
+    // lazily). Apply mean *= 0.7 for buckets whose word appeared in
+    // last 4 emissions. Encourages variety without forcing it. Compounds
+    // with iter25-O.4 familiarity decay (sem-side) — this is motor-side
+    // suppression of the bucket-argmax repetition pattern.
+    if (!Array.isArray(this._recentEmissions)) this._recentEmissions = [];
+    const recentLast4 = new Set(this._recentEmissions.slice(-4));
+    const REPETITION_PENALTY = 0.7;
     for (const subj of subjScope) {
       const subjectRegion = this.regions[`word_motor_${subj}`];
       if (!subjectRegion) continue;
@@ -3176,6 +3361,11 @@ export class NeuronCluster {
         // the current workspace broadcast (continuity-of-thought
         // bias).
         if (gwBoostWord && wordsList[b] === gwBoostWord) mean *= 1.10;
+        // 114.19fi.A.3 — repetition penalty: words emitted in last 4
+        // ticks get downweighted 30% so the same word doesn't lottery-
+        // win the next argmax in a row.
+        if (recentLast4.has(wordsList[b])) mean *= REPETITION_PENALTY;
+        candidates.push({ word: wordsList[b], mean });
         if (mean > bestMean) { bestMean = mean; bestWord = wordsList[b]; }
       }
     }
@@ -3185,16 +3375,362 @@ export class NeuronCluster {
     // weak-but-real signals through while filtering pure noise.
     const minSignal = opts.minSignal ?? 0.001;
     if (!bestWord || bestMean < minSignal) return '';
+
+    // 114.19fg.Tier15 — temperature sampling path. When opts.temperature
+    // is a positive number, soft-sample over top-K candidates instead
+    // of greedy argmax. Inner-voice / chat callers can pass temperature
+    // 0.5-1.0 for variety; gate probes pass 0 (or unset) for
+    // deterministic argmax. top-K default 8 limits sampling to the
+    // strongest candidates so noise doesn't promote nonsense words.
+    const temperature = typeof opts.temperature === 'number' ? opts.temperature : 0;
+    if (temperature > 0 && candidates.length > 1) {
+      const topK = Math.max(1, Math.min(opts.topK ?? 8, candidates.length));
+      candidates.sort((a, b) => b.mean - a.mean);
+      const topCandidates = candidates.slice(0, topK).filter(c => c.mean >= minSignal);
+      if (topCandidates.length === 0) return '';
+      // Softmax over top-K with temperature scaling.
+      const maxMean = topCandidates[0].mean;
+      let sumExp = 0;
+      const weights = topCandidates.map(c => {
+        const w = Math.exp((c.mean - maxMean) / Math.max(0.01, temperature));
+        sumExp += w;
+        return w;
+      });
+      // Optional top-p / nucleus sampling — keep candidates whose
+      // cumulative probability ≤ topP. Defaults to 1.0 (no nucleus).
+      const topP = typeof opts.topP === 'number' ? opts.topP : 1.0;
+      let nucleusEnd = topCandidates.length;
+      if (topP < 1.0) {
+        let cum = 0;
+        for (let i = 0; i < topCandidates.length; i++) {
+          cum += weights[i] / sumExp;
+          if (cum >= topP) { nucleusEnd = i + 1; break; }
+        }
+      }
+      // Sample uniform-random over normalized softmax of nucleus.
+      const nucleus = topCandidates.slice(0, nucleusEnd);
+      const nucleusWeights = weights.slice(0, nucleusEnd);
+      const nucleusSum = nucleusWeights.reduce((a, b) => a + b, 0);
+      const r = Math.random() * nucleusSum;
+      let cum = 0;
+      for (let i = 0; i < nucleus.length; i++) {
+        cum += nucleusWeights[i];
+        if (cum >= r) {
+          bestWord = nucleus[i].word;
+          bestMean = nucleus[i].mean;
+          break;
+        }
+      }
+    }
     // Cache last emission so cortex.getWorkspaceCandidate can publish
     // the word as the broadcast label — closes the GW feedback loop
     // (broadcast biases NEXT emission via the gwBoostWord path above).
     this._lastEmittedWord = bestWord;
     this._lastEmittedActivation = bestMean;
+    // 114.19fi.A.3 — push to recent-emissions ring buffer for next
+    // call's repetition penalty. 8-entry rolling window.
+    if (!Array.isArray(this._recentEmissions)) this._recentEmissions = [];
+    this._recentEmissions.push(bestWord);
+    while (this._recentEmissions.length > 8) {
+      this._recentEmissions.shift();
+    }
     // Record emission in meta-register for self-monitoring.
     if (typeof this.recordEmission === 'function') {
       this.recordEmission(bestWord);
     }
     return bestWord;
+  }
+
+  /**
+   * 114.19fg.Tier8/9/I-consumer — Slot-driven sentence composition.
+   *
+   * iter25-I trained four binding passes:
+   *   relationTagId=8  — sem(word) → fineType(slot_tag)  (slot-position primitives)
+   *   relationTagId=9  — sem(intent) → sem(first_slot)   (template intent → slot sequence)
+   *   relationTagId=10 — sem(subject) → sem(verb_form)   (subject-verb agreement)
+   *   relationTagId=11 — sem(noun) → sem(article)        (article placement)
+   *
+   * The TRAINING side carved positional rules into trained weights, but
+   * NO GENERATION CONSUMER walked the slot sequence at emission time.
+   * Both `_probeSentenceGeneration` and `generateAsync` chained
+   * `emitWordDirect` calls without slot-tag bias — produced multi-word
+   * output but not grammatical sentences.
+   *
+   * `composeSentence(intent)` is the generation-side consumer:
+   *   1. Inject intent embedding into sem so cortex enters intent state
+   *      (consumes relationTagId=9 sem→sem binding).
+   *   2. For each slot in the template's sequence:
+   *      a. Inject slot-tag GloVe into sem so emitWordDirect's argmax
+   *         biases toward words bound to this slot (consumes
+   *         relationTagId=8 sem→fineType + emitWordDirect mean argmax).
+   *      b. Pre-slot article check: if entering subject/object slot
+   *         and the next emitted word is likely a singular common noun,
+   *         insert article ('a' / 'an' / 'the') before emit (consumes
+   *         relationTagId=11 noun→article).
+   *      c. Call emitWordDirect to fill the slot.
+   *      d. Inject emitted word back into sem so the next slot's emit
+   *         reads a state shifted by what was just produced.
+   *   3. Append terminator punctuation per intent (. ? !).
+   *   4. Capitalize first word.
+   *
+   * Pass criterion at probe time = ≥2 words emitted across slots AND
+   * ≥2 unique words. Real sentence emerges when basins are clean and
+   * iter25-I bindings are intact.
+   *
+   * Returns `{ sentence, words, intent, slots, fillCount }` so callers
+   * can decide whether to use the result based on fillCount vs slot
+   * count (partial sentences are still useful diagnostically).
+   *
+   * @param {string} intent — one of declarative_svo / declarative_copula
+   *                          / question / imperative / exclamative
+   * @param {object} opts — { subject? } sub-band hint for emitWordDirect
+   * @returns {{ sentence: string, words: string[], intent: string,
+   *            slots: string[], fillCount: number } | null}
+   */
+  composeSentence(intent, opts = {}) {
+    if (!this.regions || !this.regions.sem || typeof this.injectEmbeddingToRegion !== 'function') {
+      return null;
+    }
+    if (typeof this.emitWordDirect !== 'function') return null;
+    const TEMPLATES = {
+      'declarative_svo':    ['subject', 'verb', 'object', 'terminator'],
+      'declarative_copula': ['subject', 'copula', 'modifier', 'terminator'],
+      'question':           ['qword', 'copula', 'subject', 'terminator'],
+      'imperative':         ['verb', 'object', 'terminator'],
+      'exclamative':        ['subject', 'verb', 'object', 'terminator'],
+    };
+    const TERMINATOR_PUNCT = {
+      'declarative_svo': '.',
+      'declarative_copula': '.',
+      'question': '?',
+      'imperative': '!',
+      'exclamative': '!',
+    };
+    const PRONOUNS = new Set(['i', 'you', 'he', 'she', 'it', 'we', 'they', 'me', 'him', 'her', 'us', 'them', 'my', 'your', 'his', 'our', 'their']);
+    const intentName = String(intent || 'declarative_svo').toLowerCase();
+    const slots = TEMPLATES[intentName] || TEMPLATES['declarative_svo'];
+
+    // 114.19fh.A.3 / fi.A.5 — REDUCED injection strengths to prevent
+    // sem-region accumulation across slots without dynamics evolution.
+    // Prior strengths (cortexPattern 0.3 + intent 0.5 + slot 0.4 +
+    // word-back 0.25 = 1.45/slot × 4 = 5.8 cumulative) saturated sem
+    // by slot 4 and degraded late-slot argmax accuracy. New strengths
+    // sum ~0.4-0.55 per slot for total ~1.75 over 4 slots — bounded.
+    // Step() between slots is too costly at biological scale (per-call
+    // GPU dispatch); reducing strengths is the cheaper correct fix.
+
+    // (0) Cortex-pattern base injection — when caller passes the inner-
+    // voice chain-blended seed (Tier 7 basin-lock-jittered cortexPattern),
+    // inject it FIRST at strength 0.2 so the chain narrative carries
+    // into composeSentence emissions. Without this, inner-voice's
+    // chain-of-consciousness work gets ignored when composeSentence is
+    // the active emission path.
+    if (opts.cortexPattern && opts.cortexPattern.length > 0
+        && typeof this.injectEmbeddingToRegion === 'function') {
+      try { this.injectEmbeddingToRegion('sem', opts.cortexPattern, 0.2); }
+      catch { /* fall through */ }
+    }
+
+    // (1) Inject intent embedding so cortex enters the intent's basin.
+    // Reads relationTagId=9 binding sem(intent_tag) → sem(first_slot)
+    // — emitting after this puts cortex in the intent-conditional state.
+    if (sharedEmbeddings && typeof sharedEmbeddings.getSentenceEmbedding === 'function') {
+      try {
+        const intentSeed = intentName.replace(/_/g, ' ');
+        const intentEmb = sharedEmbeddings.getSentenceEmbedding(intentSeed);
+        if (intentEmb && intentEmb.length > 0) {
+          this.injectEmbeddingToRegion('sem', intentEmb, 0.3);
+        }
+      } catch { /* fall through */ }
+    }
+
+    const words = [];
+    const seen = new Set();
+    let fillCount = 0;
+    const subjScope = opts.subject || null;
+    let priorSlot = null;
+
+    for (let i = 0; i < slots.length; i++) {
+      const slot = slots[i];
+      if (slot === 'terminator') {
+        const punct = TERMINATOR_PUNCT[intentName] || '.';
+        if (words.length > 0) words[words.length - 1] = words[words.length - 1] + punct;
+        break;
+      }
+
+      // (2a) Slot-tag bias — inject slot-name GloVe so emitWordDirect
+      // argmax leans toward words trained at this position. Consumes
+      // relationTagId=8 sem→fineType binding indirectly via sem state.
+      // Strength 0.25 (was 0.4) per fh.A.3 to bound cumulative injection.
+      if (sharedEmbeddings && typeof sharedEmbeddings.getEmbedding === 'function') {
+        try {
+          const slotEmb = sharedEmbeddings.getEmbedding(slot);
+          if (slotEmb && slotEmb.length > 0) {
+            this.injectEmbeddingToRegion('sem', slotEmb, 0.25);
+          }
+        } catch { /* fall through */ }
+      }
+
+      // 114.19fi.A.1 — WH-INTENT consumer for question answering. When
+      // caller passes opts.intentConcept (e.g. 'cause'/'reason'/
+      // 'definition'/'method'/'count'/'place'/'time'/'person'/'truth')
+      // AND we're at the SUBJECT slot in the QUESTION template, inject
+      // the intent-concept's GloVe at strength 0.3 alongside the slot
+      // tag. relationTagId=12 WH-INTENT training carved sem(WH-word)→
+      // sem(intent-concept); injecting the intent-concept here drives
+      // the subject slot's argmax toward words bound to that concept
+      // via prior teach. Real K-grade Q-A: "what color is your hair"
+      // → intent-concept='definition' → at subject slot we inject
+      // sem('definition') alongside sem('subject') → joint activation
+      // argmaxes a word linked to BOTH (definition basin AND subject-
+      // role basin) which lands on the actual answer (e.g. "dark")
+      // instead of a random subject filler.
+      if (intentName === 'question' && slot === 'subject'
+          && opts.intentConcept && typeof opts.intentConcept === 'string'
+          && sharedEmbeddings && typeof sharedEmbeddings.getEmbedding === 'function') {
+        try {
+          const conceptEmb = sharedEmbeddings.getEmbedding(opts.intentConcept);
+          if (conceptEmb && conceptEmb.length > 0) {
+            this.injectEmbeddingToRegion('sem', conceptEmb, 0.3);
+          }
+        } catch { /* fall through */ }
+      }
+
+      // (2c) Emit one word for this slot. Subject hint scopes argmax to
+      // a single word_motor sub-band when caller knows the topic.
+      // 114.19fg.Tier15 — pass temperature through for sampling. Chat
+      // / showcase callers set 0.5-0.8 for variety; probe paths use 0
+      // (default) for deterministic argmax.
+      const emitOptsBase = {};
+      if (subjScope) emitOptsBase.subject = subjScope;
+      if (typeof opts.temperature === 'number') emitOptsBase.temperature = opts.temperature;
+      if (typeof opts.topK === 'number') emitOptsBase.topK = opts.topK;
+      if (typeof opts.topP === 'number') emitOptsBase.topP = opts.topP;
+      let word = '';
+      try {
+        word = this.emitWordDirect(emitOptsBase) || '';
+      } catch { word = ''; }
+      if (!word) {
+        // Slot couldn't fill — partial sentence is still useful.
+        // Break early; caller decides whether fillCount is enough.
+        break;
+      }
+      word = String(word).toLowerCase().trim();
+      if (!word) break;
+
+      // Same-sentence dedup — if the bucket-argmax produces the same
+      // word twice (saturated basin lottery), try ONE retry with the
+      // emitted word's embedding shifted into sem more aggressively.
+      if (seen.has(word)) {
+        if (sharedEmbeddings && typeof sharedEmbeddings.getEmbedding === 'function') {
+          try {
+            const dupEmb = sharedEmbeddings.getEmbedding(word);
+            if (dupEmb && dupEmb.length > 0) {
+              this.injectEmbeddingToRegion('sem', dupEmb, 0.5);
+            }
+          } catch { /* fall through */ }
+        }
+        try {
+          word = this.emitWordDirect(emitOptsBase) || '';
+        } catch { word = ''; }
+        word = String(word).toLowerCase().trim();
+        if (!word || seen.has(word)) {
+          // Still stuck — accept partial sentence rather than infinite retry.
+          break;
+        }
+      }
+
+      // (2b) Article placement — before subject/object filler, if the
+      // word is a content noun (alpha-only, not pronoun, not too short),
+      // insert article. Consumes relationTagId=11 noun→article binding
+      // implicitly via the article rule (vowel→an, consonant→a/the).
+      //
+      // SKIP article when prior slot was copula (predicate position
+      // doesn't take article — "What is mom?" not "What is the mom?").
+      // Also skip in question template entirely since question subjects
+      // are predicate-position interrogatives.
+      const articleCandidate = (slot === 'subject' || slot === 'object')
+        && /^[a-z]+$/.test(word)
+        && !PRONOUNS.has(word)
+        && word.length >= 3
+        && priorSlot !== 'copula'
+        && intentName !== 'question';
+      if (articleCandidate) {
+        const prevWord = words.length > 0 ? words[words.length - 1] : '';
+        const ARTICLE_LIST = new Set(['a', 'an', 'the']);
+        if (!ARTICLE_LIST.has(prevWord)) {
+          const article = /^[aeiou]/.test(word) ? 'an' : 'the';
+          words.push(article);
+        }
+      }
+
+      words.push(word);
+      seen.add(word);
+      fillCount++;
+      priorSlot = slot;
+
+      // (2d) Inject emitted word into sem so next slot's emit reads
+      // shifted state. Same mechanism Tier 5 multi-word loop uses.
+      // Strength 0.15 (was 0.25) per fh.A.3 to bound cumulative injection.
+      if (sharedEmbeddings && typeof sharedEmbeddings.getEmbedding === 'function') {
+        try {
+          const wordEmb = sharedEmbeddings.getEmbedding(word);
+          if (wordEmb && wordEmb.length > 0) {
+            this.injectEmbeddingToRegion('sem', wordEmb, 0.15);
+          }
+        } catch { /* fall through */ }
+      }
+    }
+
+    // 114.19fh.B.2 — composeSentence stats counter so heartbeat /
+    // dashboard can surface "fills vs partial vs empty" rates.
+    if (!this._composeStats) this._composeStats = { calls: 0, fills: 0, partial: 0, empty: 0 };
+    this._composeStats.calls++;
+
+    if (words.length === 0) {
+      this._composeStats.empty++;
+      return null;
+    }
+    if (fillCount >= slots.length - 1) this._composeStats.fills++;
+    else this._composeStats.partial++;
+    // Capitalize first word (after possible article).
+    words[0] = words[0].charAt(0).toUpperCase() + words[0].slice(1);
+    const sentence = words.join(' ');
+
+    // 114.19fi.A.4 — sentence-coherence post-check. When opts.intentConcept
+    // is supplied (question-mode chat path), verify the assembled
+    // sentence's overall sem cosine vs the intent-concept embedding
+    // exceeds 0.15. If sentence drifted off-topic (grammatical-but-
+    // nonsense like "the cat seven blue ran" for "what color is hair"),
+    // mark fillCount as 0 so caller treats it as composeSentence empty
+    // and falls through to Tier 5 multi-word loop or letter chain. We
+    // return the sentence object (caller can still read it for
+    // diagnostics) but signal low confidence via fillCount=0.
+    if (opts.intentConcept && sharedEmbeddings
+        && typeof sharedEmbeddings.getEmbedding === 'function'
+        && typeof sharedEmbeddings.getSentenceEmbedding === 'function') {
+      try {
+        const conceptEmb = sharedEmbeddings.getEmbedding(opts.intentConcept);
+        const sentenceEmb = sharedEmbeddings.getSentenceEmbedding(sentence);
+        if (conceptEmb && sentenceEmb && conceptEmb.length > 0 && sentenceEmb.length > 0) {
+          let dot = 0, na = 0, nb = 0;
+          const L = Math.min(conceptEmb.length, sentenceEmb.length);
+          for (let i = 0; i < L; i++) {
+            dot += conceptEmb[i] * sentenceEmb[i];
+            na += conceptEmb[i] * conceptEmb[i];
+            nb += sentenceEmb[i] * sentenceEmb[i];
+          }
+          const denom = Math.sqrt(na) * Math.sqrt(nb);
+          const cosine = denom > 0 ? dot / denom : 0;
+          if (cosine < 0.15) {
+            return { sentence, words, intent: intentName, slots, fillCount: 0, coherenceCosine: cosine, lowCoherence: true };
+          }
+          return { sentence, words, intent: intentName, slots, fillCount, coherenceCosine: cosine };
+        }
+      } catch { /* coherence check non-fatal — fall through with normal result */ }
+    }
+
+    return { sentence, words, intent: intentName, slots, fillCount };
   }
 
   async generateSentenceAwait(intentSeed = null, opts = {}) {

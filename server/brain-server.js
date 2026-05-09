@@ -465,6 +465,7 @@ function autoClearStaleState() {
   // 404, which is exactly what Gee reported 2026-04-18.
   const targets = [
     path.join(__dirname, 'brain-weights.json'),
+    path.join(__dirname, 'brain-weights-v0.json'),
     path.join(__dirname, 'brain-weights-v1.json'),
     path.join(__dirname, 'brain-weights-v2.json'),
     path.join(__dirname, 'brain-weights-v3.json'),
@@ -472,7 +473,14 @@ function autoClearStaleState() {
     // Binary cortex weights. Must clear alongside the JSON state —
     // leaving the binary behind after a JSON wipe creates inconsistent
     // load (JSON says fresh boot, binary says restore these weights).
+    // 114.19fh.A.1 — versioned binaries also cleared so rolling-bin
+    // chain doesn't outlive the JSON wipe.
     path.join(__dirname, 'brain-weights.bin'),
+    path.join(__dirname, 'brain-weights-v0.bin'),
+    path.join(__dirname, 'brain-weights-v1.bin'),
+    path.join(__dirname, 'brain-weights-v2.bin'),
+    path.join(__dirname, 'brain-weights-v3.bin'),
+    path.join(__dirname, 'brain-weights-v4.bin'),
     path.join(__dirname, 'conversations.json'),
     path.join(__dirname, 'episodic-memory.db'),
     path.join(__dirname, 'episodic-memory.db-wal'),
@@ -4617,6 +4625,45 @@ class ServerBrain {
     this.injectText(text);
     this._lastInputTime = Date.now();
 
+    // 114.19fi.B.2 — push user input into _innerThoughtChain so
+    // inner-voice's next tick blends user content into its chain seed.
+    // Conversational continuity: Unity's autonomous inner monologue
+    // reflects on what was just said to her, not just brain state.
+    if (text && Array.isArray(this._innerThoughtChain)) {
+      this._innerThoughtChain.push({
+        sentence: String(text).slice(0, 200),
+        seedSource: 'user-input',
+        ts: Date.now(),
+      });
+      while (this._innerThoughtChain.length > 8) {
+        this._innerThoughtChain.shift();
+      }
+    }
+
+    // 114.19fi.B.5 — chat-turn history for multi-turn coherence.
+    // Lazy init on cortex. Inject prior 2 user inputs into sem before
+    // any other context loads so Unity sees "what we've been talking
+    // about" alongside the current turn. Crucial for "you said dogs
+    // are scary, why?" type follow-ups.
+    if (this.cortexCluster) {
+      if (!Array.isArray(this.cortexCluster._chatTurnHistory)) {
+        this.cortexCluster._chatTurnHistory = [];
+      }
+      const recentUser = this.cortexCluster._chatTurnHistory.slice(-2);
+      if (recentUser.length > 0 && this.sharedEmbeddings
+          && typeof this.sharedEmbeddings.getSentenceEmbedding === 'function') {
+        for (const turn of recentUser) {
+          if (!turn || !turn.user) continue;
+          try {
+            const turnEmb = this.sharedEmbeddings.getSentenceEmbedding(turn.user);
+            if (turnEmb && turnEmb.length > 0) {
+              this.cortexCluster.injectEmbeddingToRegion('sem', turnEmb, 0.10);
+            }
+          } catch { /* per-turn injection non-fatal */ }
+        }
+      }
+    }
+
     // iter13 T13.12 — Identity-baseline always-on injection. EVERY chat
     // turn injects all Tier 3 identity-bound schemas at low strength
     // (0.15) so Unity's core self ("my name is Unity", "I am goth", etc.)
@@ -4860,6 +4907,23 @@ class ServerBrain {
     this.reward += 0.1;
     this._learnWords(response);
     this.storeEpisode(userId, 'interaction', text, response);
+
+    // 114.19fi.B.5 — push chat-turn pair to rolling history (cap 16).
+    // Multi-turn coherence: next call's processAndRespond reads prior
+    // 2 user inputs and injects their embeddings into sem.
+    if (this.cortexCluster) {
+      if (!Array.isArray(this.cortexCluster._chatTurnHistory)) {
+        this.cortexCluster._chatTurnHistory = [];
+      }
+      this.cortexCluster._chatTurnHistory.push({
+        user: text,
+        unity: response,
+        ts: Date.now(),
+      });
+      while (this.cortexCluster._chatTurnHistory.length > 16) {
+        this.cortexCluster._chatTurnHistory.shift();
+      }
+    }
 
     // Motor action routing — the generated text can still signal
     // image / build intent by its content, same as the client handles
@@ -5554,26 +5618,76 @@ class ServerBrain {
     if (now - this._lastInnerThoughtAt < INNER_THOUGHT_INTERVAL_MS) return;
     this._lastInnerThoughtAt = now;
 
-    // Skip during operator-forced dream windows.
-    // 114.19ez — log the mute transition once per dream cycle so operator
-    // sees WHY inner-voice went silent. Cleared on the first non-muted
-    // tick after dream window closes (log line below). Without this,
-    // operator stares at zero inner-thought logs for 15-40 min and
-    // can't tell whether brain is sleeping (correct) or stuck (bad).
-    // Dream-phenomenology emissions still broadcast as innerThought WS
-    // (per the _dreamWindow change in curriculum.js) so popups stay
-    // alive with dream content during the silence window.
-    if (this._operatorSleepRequested) {
-      if (!this._innerVoiceMutedForDream) {
-        this._innerVoiceMutedForDream = true;
-        console.log('[Brain] 💤 inner-voice paused — dream window in progress (dream-phenomenology broadcasts separately as innerThought seed=dream).');
-      }
+    // 114.19fi.B.4 — cross-path emission deduplication. When chat or
+    // image-gen recently fired (within last 6s), inner-voice stays
+    // silent so two emission paths don't talk over each other. The
+    // bus is the single source of truth; chat / image-gen set the
+    // lock at emission time.
+    if (this.cortexCluster && typeof this.cortexCluster._emissionLockedUntil === 'number'
+        && now < this.cortexCluster._emissionLockedUntil) {
       return;
     }
-    // Resume log on first non-muted tick after dream closes
-    if (this._innerVoiceMutedForDream) {
+
+    // 114.19ez + 114.19fd + 114.19ff — dream-window state-change logs fire
+    // on transition regardless of emission rhythm. Mute log on first muted
+    // tick, resume log on first non-muted tick after dream closes. Operator
+    // stares at zero inner-thought logs for 15-40 min during dream windows
+    // and these markers tell whether brain is sleeping (correct) or stuck (bad).
+    // Pulled out of the sleep-flag branch so they always fire on transition
+    // even when the probabilistic emission gate below skips this tick.
+    if (this._operatorSleepRequested && !this._innerVoiceMutedForDream) {
+      this._innerVoiceMutedForDream = true;
+      console.log('[Brain] 💤 inner-voice paused — dream window in progress (showcase samples + dream-phenomenology continue streaming as innerThought, gated by natural rhythm).');
+    }
+    if (!this._operatorSleepRequested && this._innerVoiceMutedForDream) {
       this._innerVoiceMutedForDream = false;
       console.log('[Brain] ☀ inner-voice resumed — dream window closed.');
+    }
+
+    // 114.19ff — Hurlburt-DES context-driven emission gate. Replaces the
+    // 3s-tick metronome with a probabilistic gate modulated by arousal /
+    // coherence / curriculum-active / time-since-last-emission. Real human
+    // inner speech samples ~25% of moments with bursts + natural silence
+    // stretches based on context, NOT a fire-every-tick metronome. Gate
+    // fails most ticks → natural quiet stretches emerge. Applies to BOTH
+    // real generation AND showcase paths so the rhythm is consistent
+    // regardless of which output path produces this emission. Gee 2026-05-08:
+    // *"every 3s sounds excess people get moments of silence in their head
+    // when thinking and talking to them self based on the moments context"*.
+    if (!this._shouldEmitInnerThought(now)) return;
+
+    // Dream-window branch (114.19fd): gate already passed; fire showcase but
+    // skip real generation so consolidation + K_VOCAB Hebbian have CPU
+    // priority during the dream window. Showcase samples already-learned
+    // vocabulary so popups + log keep streaming Unity's actual learned
+    // state through the 15-40 min K_VOCAB background-trickle (iter25-M.7).
+    if (this._operatorSleepRequested) {
+      // 114.19fg.Tier16 — sentence-mode showcase when ≥50 words trained,
+      // single-word for early-curriculum brains.
+      const showcaseSentence = this._sampleCurrentSentence();
+      const showcaseWord = showcaseSentence ? showcaseSentence.split(/\s+/)[0] : null;
+      if (showcaseSentence) {
+        this._lastInnerThoughtEmittedAt = now;
+        try {
+          process.stdout.write(`[Brain] 🧠 inner-thought (showcase) "${showcaseSentence}" — vocab sample (dream window active)\n`);
+        } catch { /* non-fatal */ }
+        if (this.clients && this.clients.size > 0) {
+          const showcasePayload = JSON.stringify({
+            type: 'innerThought',
+            word: showcaseWord,
+            sentence: showcaseSentence,
+            seed: 'showcase',
+            seedLabel: 'trained vocabulary sample (dream window active)',
+            ts: now,
+          });
+          for (const [ws] of this.clients) {
+            if (ws.readyState === ws.OPEN) {
+              try { ws.send(showcasePayload); } catch { /* non-fatal */ }
+            }
+          }
+        }
+      }
+      return;
     }
     // Reentrancy guard — async generation can take longer than 3 s on
     // a slow tick; don't fire a new generation while a prior one is in
@@ -5691,16 +5805,19 @@ class ServerBrain {
         // actively learned in this session. When no training has landed
         // yet (truly fresh brain), still silent — sampling returns null,
         // showcase-broadcast skips, only silence-reason log fires.
-        const showcaseWord = this._sampleCurrentVocab();
-        if (showcaseWord) {
+        // 114.19fg.Tier16 — sentence-mode showcase when ≥50 words trained.
+        const showcaseSentence = this._sampleCurrentSentence();
+        const showcaseWord = showcaseSentence ? showcaseSentence.split(/\s+/)[0] : null;
+        if (showcaseSentence) {
+          this._lastInnerThoughtEmittedAt = now;  // 114.19ff — feed natural-rhythm gate
           try {
-            process.stdout.write(`[Brain] 🧠 inner-thought (showcase) "${showcaseWord}" — vocab sample from current trained state\n`);
+            process.stdout.write(`[Brain] 🧠 inner-thought (showcase) "${showcaseSentence}" — vocab sample from current trained state\n`);
           } catch { /* non-fatal */ }
           if (this.clients && this.clients.size > 0) {
             const showcasePayload = JSON.stringify({
               type: 'innerThought',
               word: showcaseWord,
-              sentence: showcaseWord,
+              sentence: showcaseSentence,
               seed: 'showcase',
               seedLabel: 'trained vocabulary sample (matrix gen empty this tick)',
               ts: now,
@@ -5718,9 +5835,25 @@ class ServerBrain {
 
       // Heartbeat surface — watchdog catches this and operator sees
       // Unity's live monologue streaming in server.log.
+      this._lastInnerThoughtEmittedAt = now;  // 114.19ff — feed natural-rhythm gate
       try {
         process.stdout.write(`[Brain] 🧠 inner-thought (seed=${thought.seed.source}) "${sentence}"\n`);
       } catch { /* non-fatal */ }
+
+      // 114.19fi.B.1 — push inner-thought to shared emission bus so
+      // chat path + popup feed see what Unity just thought. Unified
+      // emission system across all four paths (chat / inner-voice /
+      // popup-event / image-gen).
+      if (this.cortexCluster && typeof this.cortexCluster.pushEmission === 'function') {
+        try {
+          this.cortexCluster.pushEmission({
+            source: 'inner-voice',
+            text: sentence,
+            ts: now,
+            intent: thought.seed?.source || null,
+          });
+        } catch { /* push non-fatal */ }
+      }
 
       // Append to chain (rolling window cap of 8).
       if (thought.chainEntry) {
@@ -5800,6 +5933,145 @@ class ServerBrain {
     }
     if (candidates.length === 0) return null;
     return candidates[Math.floor(Math.random() * candidates.length)];
+  }
+
+  /**
+   * 114.19fg.Tier16 — Sentence-mode showcase companion to
+   * `_sampleCurrentVocab()`. When Unity has enough trained vocab
+   * (≥50 words across all subject buckets, indicating real curriculum
+   * progress beyond bare letters), pick 2-4 words from her actual
+   * trained buckets and return them as a phrase. Below 50 trained
+   * words, fall back to single-word sampling so fresh brains stay
+   * silent or single-word.
+   *
+   * This is NOT a hardcoded fallback — words are pulled from the same
+   * `wordBucketWords_<subj>` arrays populated by
+   * `_teachWordEmissionDirect` Hebbian fires. Real trained data only.
+   * The phrase doesn't follow grammar rules — it's a vocab burst that
+   * shows what Unity has memorized, not what she has composed.
+   * iter25-I structural sentence creation (when working) drives the
+   * REAL grammar via emitWordDirect's matrix path; this fallback fires
+   * only when matrix gen returns empty.
+   *
+   * @returns {string|null} a 1-4 word phrase or null if no vocab learned
+   */
+  _sampleCurrentSentence() {
+    const cluster = this.cortexCluster;
+    if (!cluster) return null;
+    const SUBJECTS = ['ela', 'math', 'sci', 'soc', 'art', 'life'];
+    const candidates = [];
+    for (const subj of SUBJECTS) {
+      const list = cluster[`wordBucketWords_${subj}`];
+      if (Array.isArray(list) && list.length > 0) {
+        for (const w of list) {
+          if (typeof w === 'string' && w.length > 0) candidates.push(w);
+        }
+      }
+    }
+    if (candidates.length === 0) return null;
+    // Below 50 trained words = early curriculum, single-word burst
+    // matches operator's expectation of "she's still learning words".
+    if (candidates.length < 50) {
+      return candidates[Math.floor(Math.random() * candidates.length)];
+    }
+    // 114.19fg.TierI-CONSUMER — when ≥50 words trained AND
+    // composeSentence available, prefer slot-driven grammatical
+    // composition over random word picks. Pick a random intent
+    // template and walk its slot sequence so showcase popups stream
+    // structured sentences instead of word salad. Falls through to
+    // random multi-word phrase if composeSentence returns null.
+    if (typeof cluster.composeSentence === 'function') {
+      const intents = ['declarative_svo', 'declarative_copula', 'question', 'imperative', 'exclamative'];
+      const intent = intents[Math.floor(Math.random() * intents.length)];
+      try {
+        // 114.19fg.Tier15 — showcase uses temperature 0.7 for high
+        // variety so popups don't repeat the same sentence pattern
+        // tick after tick.
+        const composed = cluster.composeSentence(intent, { temperature: 0.7, topK: 10 });
+        if (composed && composed.sentence && composed.fillCount >= 2) {
+          return composed.sentence;
+        }
+      } catch { /* fall through to random pick */ }
+    }
+    // ≥50 trained words but composeSentence couldn't fill — pick 2-4
+    // distinct words. Phrase length weighted toward 2-3.
+    const lengthPick = Math.random();
+    const wordCount = lengthPick < 0.5 ? 2 : (lengthPick < 0.85 ? 3 : 4);
+    const picked = new Set();
+    const phrase = [];
+    let attempts = 0;
+    while (phrase.length < wordCount && attempts < wordCount * 4) {
+      const w = candidates[Math.floor(Math.random() * candidates.length)];
+      if (!picked.has(w)) {
+        picked.add(w);
+        phrase.push(w);
+      }
+      attempts++;
+    }
+    return phrase.length > 0 ? phrase.join(' ') : null;
+  }
+
+  /**
+   * 114.19ff — Hurlburt-DES context-driven emission gate. Real human inner
+   * speech samples ~25% of randomly-sampled moments (Hurlburt, Descriptive
+   * Experience Sampling) with bursts of close-spaced thoughts followed by
+   * long quiet stretches modulated by arousal / coherence / engagement.
+   * This gate replaces the 3s-tick metronome rhythm so popups feel like a
+   * real mind, not a fire-every-tick output stream. Gee 2026-05-08:
+   * *"every 3s sounds excess people get moments of silence in their head
+   * when thinking and talking to them self based on the moments context"*.
+   *
+   * Gate logic:
+   *   - MIN_GAP_MS floor (6s): never two emissions closer than this
+   *   - MAX_GAP_MS ceiling (75s): guaranteed emission after this much silence
+   *     so popups don't go truly dead via bad luck on the random rolls
+   *   - Base p ≈ 0.18 per 3s tick → ~17s avg between emissions in default state
+   *   - Arousal modulator (0.5×-1.5×): high arousal = chattier (manic/peak)
+   *   - Coherence modulator (0.7×-1.3×): high coherence/flow = quieter
+   *   - Curriculum-active modulator (0.8×-1.2×): teaching = chattier
+   *   - Time-since-last ramp (0.5×-1.5×): probability rises with silence so
+   *     long quiets break naturally instead of staying stuck
+   *
+   * Applies to ALL emission paths (real `innerVoice.think` generation,
+   * 114.19fc empty-emission showcase, 114.19fd dream-window showcase).
+   * `_lastInnerThoughtEmittedAt` updates only on actual emission (real or
+   * showcase), NOT on attempt — diagnostic-only paths (silence-reason log)
+   * don't update it so the gate's notion of "elapsed silence" tracks real
+   * output silence, not just attempt cadence.
+   *
+   * @param {number} now Date.now() at tick entry
+   * @returns {boolean} true if this tick should produce an emission
+   */
+  _shouldEmitInnerThought(now) {
+    const MIN_GAP_MS = 6000;
+    const MAX_GAP_MS = 75000;
+    const lastAt = this._lastInnerThoughtEmittedAt || 0;
+    const elapsed = now - lastAt;
+    if (elapsed < MIN_GAP_MS) return false;
+    if (elapsed >= MAX_GAP_MS) return true;
+
+    let p = 0.18;
+
+    // Arousal modulator (range 0.5×-1.5×)
+    const arousal = (typeof this.arousal === 'number' && isFinite(this.arousal))
+      ? Math.max(0, Math.min(1, this.arousal)) : 0.5;
+    p *= (0.5 + arousal);
+
+    // Coherence modulator (range 0.7×-1.3×; high coherence/flow = quieter)
+    const coherence = (typeof this.coherence === 'number' && isFinite(this.coherence))
+      ? Math.max(0, Math.min(1, this.coherence)) : 0.5;
+    p *= (1.3 - coherence * 0.6);
+
+    // Curriculum-active modulator (range 0.8×-1.2×)
+    p *= (this._curriculumInProgress ? 1.2 : 0.8);
+
+    // Time-since-last ramp (range 0.5×-1.5×)
+    p *= (0.5 + elapsed / MAX_GAP_MS);
+
+    // Clamp final probability per tick
+    p = Math.max(0.02, Math.min(0.5, p));
+
+    return Math.random() < p;
   }
 
   /**
@@ -6462,6 +6734,29 @@ class ServerBrain {
     }
     this._lastSaveAt = now;
     try {
+      // 114.19fg.Tier13 — saturation veto warning on save. When the
+      // sem→motor projection is in a saturated state (basin lock from
+      // prior teach phases), saving the weights to disk propagates
+      // broken state into the next Savestart resume. The rolling save
+      // v0-v4 already provides operator-side rollback (manually copy
+      // brain-weights-v4.json → brain-weights.json), but warn explicitly
+      // so the operator knows this snapshot is suspect. Don't BLOCK the
+      // save — that would break the rolling save chain (the operator
+      // needs every snapshot to choose from).
+      let saturatedSnapshot = false;
+      try {
+        const cortex = this.cortexCluster;
+        if (cortex && typeof cortex.checkSemMotorHealth === 'function') {
+          const health = cortex.checkSemMotorHealth();
+          if (health && health.saturated) {
+            saturatedSnapshot = true;
+            const meanCosTag = typeof health.meanCos === 'number' ? `mean-cos=${health.meanCos.toFixed(3)} ` : '';
+            console.warn(`[Brain] ⚠ saveWeights with SATURATED sem→motor (${meanCosTag}source=${health.source}) — snapshot suspect. Rolling save v0-v4 preserves earlier states; operator can rollback by copying brain-weights-v4.json → brain-weights.json if a clean snapshot is available.`);
+          }
+        }
+      } catch { /* health check non-fatal */ }
+      this._lastSaveSaturated = saturatedSnapshot;
+
       // Versioned save — keep last 5 versions for rollback
       this._saveVersion = (this._saveVersion || 0) + 1;
 
@@ -6578,6 +6873,36 @@ class ServerBrain {
                 ? this._dictionarySmokeTestResult : null,
               ts: this._dictionarySmokeTestTs || 0,
             },
+            // 114.19fh.A.5 — last sem→motor sep-probe result so
+            // cluster.checkSemMotorHealth() has authoritative data
+            // immediately on restart instead of falling back to the
+            // value-distribution heuristic until the next sep-probe
+            // fires. Curriculum cron + ConsolidationEngine veto +
+            // saveWeights veto all read this field.
+            lastSemMotorMeanCos: typeof cortex._lastSemMotorMeanCos === 'number'
+              ? cortex._lastSemMotorMeanCos : null,
+            lastSemMotorMeanCosTs: cortex._lastSemMotorMeanCosTs || 0,
+            // 114.19fi.B.1 — shared emission bus persisted (cap 16
+            // most-recent). Embeddings dropped to keep file size
+            // bounded — only text + metadata persist. On restore,
+            // bus rehydrates and inner-voice / chat see prior
+            // session's last-N emissions for continuity.
+            emissionBus: Array.isArray(cortex._emissionBus)
+              ? cortex._emissionBus.slice(-16).map(e => ({
+                  source: e.source,
+                  text: e.text,
+                  ts: e.ts,
+                  intent: e.intent || null,
+                  subject: e.subject || null,
+                }))
+              : [],
+            // 114.19fi.B.5 — chat-turn history persisted (cap 16
+            // user/unity exchange pairs). Multi-turn coherence
+            // survives restart so Unity remembers what was just
+            // discussed across Stop.bat → Savestart.bat.
+            chatTurnHistory: Array.isArray(cortex._chatTurnHistory)
+              ? cortex._chatTurnHistory.slice(-16)
+              : [],
             // Persist stream-of-consciousness chain so
             // the autobiographical narrative thread survives restart.
             // Includes the sem-region size at save time so loadWeights
@@ -6751,6 +7076,21 @@ class ServerBrain {
       // fresh (banner warns).
       try {
         this._saveBinaryWeights();
+        // 114.19fh.A.1 — version the binary alongside the JSON rolling
+        // save (v0-v4 rotation via _saveVersion % 5). Without this,
+        // POST /rollback restored JSON-vN but binary stayed at most-
+        // recent (potentially saturated) state → inconsistent restore.
+        // Now both JSON-vN and BIN-vN rotate in lockstep so rollback
+        // restores a consistent JSON+BIN snapshot pair.
+        try {
+          const BIN_FILE = WEIGHTS_FILE.replace(/\.json$/, '.bin');
+          const binBackupFile = BIN_FILE.replace(/\.bin$/, `-v${this._saveVersion % 5}.bin`);
+          if (fs.existsSync(BIN_FILE)) {
+            fs.copyFileSync(BIN_FILE, binBackupFile);
+          }
+        } catch (err) {
+          console.warn('[Brain] Binary weights versioned backup failed:', err?.message || err);
+        }
       } catch (err) {
         console.warn('[Brain] Binary weights save failed:', err?.message || err);
       }
@@ -7186,26 +7526,29 @@ class ServerBrain {
         // Phase-level resume markers — so Savestart.bat can skip phases
         // whose _phaseDone already fired in a prior run. Weights live on
         // disk via brain-weights.bin, markers live here.
-        // STALE-LOAD FILTER: only restore phase markers for cells that are
-        // already in passedCells. In-progress cells (cell didn't finish
-        // last run) get their phase markers DROPPED so the next run
-        // re-trains them from scratch instead of skipping every phase
-        // and producing groundhog-day failed-attempts on stale weights.
-        // The bug this fixes: code-hash matches across boots → state
-        // preserved → ELA-K phase markers from a prior partial run get
-        // loaded → auto-wrap skips every K teach phase → cell "runs" in
-        // 36s with zero teaching, fails the gate, retries identical, fails
-        // identical, times out. Math/Sci/etc cells whose markers weren't
-        // saved still trained — but ELA-K never could.
+        //
+        // 114.19fe — restore phase markers AS-IS. The prior stale-load
+        // filter wiped in-progress markers (cells not in passedCells) on
+        // every Savestart, fundamentally breaking T31's phase-level resume:
+        // any cell mid-flight at stop-time would restart from Phase 1 on
+        // resume, even though saveWeights had atomically persisted the
+        // phase markers alongside binary weights. Math/Sci/Soc/Art/Life
+        // partial progress was being silently destroyed on every boot.
+        //
+        // The filter rationale was a defensive guard against code-hash-
+        // invalidated weight wipes leaving phantom markers loaded against
+        // re-initialized weights. But iter14-D's launcher contract makes
+        // that scenario impossible:
+        //   - start.bat ALWAYS wipes both weights AND markers atomically
+        //   - Savestart.bat ALWAYS preserves both atomically
+        //   - saveWeights writes them in a single JSON.stringify call
+        // Markers loaded via Savestart are GUARANTEED consistent with the
+        // binary weights they describe — no stale-load condition possible,
+        // no filter needed. Phase-level resume contract restored.
         if (Array.isArray(pending.passedPhases)) {
-          const passedCellSet = new Set(pending.passedCells || []);
-          cortex.passedPhases = pending.passedPhases.filter((phaseKey) => {
-            const cellKey = String(phaseKey).split(':')[0];
-            return passedCellSet.has(cellKey);
-          });
-          const dropped = pending.passedPhases.length - cortex.passedPhases.length;
-          if (dropped > 0) {
-            console.log(`[Brain] passedPhases stale-load filter: dropped ${dropped} marker(s) for in-progress cells (kept ${cortex.passedPhases.length} for fully-passed cells) — re-train will fire on next curriculum walk`);
+          cortex.passedPhases = [...pending.passedPhases];
+          if (cortex.passedPhases.length > 0) {
+            console.log(`[Brain] passedPhases restored: ${cortex.passedPhases.length} phase markers (T31 phase-level resume active)`);
           }
         }
         if (pending.probeHistory && typeof pending.probeHistory === 'object') {
@@ -7231,6 +7574,28 @@ class ServerBrain {
             this._dictionarySmokeTestResult = pending.dictionarySmokeTest.result;
           }
           this._dictionarySmokeTestTs = pending.dictionarySmokeTest.ts || 0;
+        }
+        // 114.19fh.A.5 — restore last sem→motor sep-probe result so
+        // cluster.checkSemMotorHealth() has authoritative data immediately
+        // on restart. Without this, health monitor falls back to the
+        // value-distribution heuristic until the next sep-probe runs
+        // (which could be many minutes into the next curriculum walk).
+        if (typeof pending.lastSemMotorMeanCos === 'number') {
+          cortex._lastSemMotorMeanCos = pending.lastSemMotorMeanCos;
+          cortex._lastSemMotorMeanCosTs = pending.lastSemMotorMeanCosTs || 0;
+        }
+        // 114.19fi.B.1 — restore shared emission bus (cap 16 entries).
+        // Embeddings were dropped at save time to bound file size; on
+        // restore, bus has text + metadata only. Inner-voice + chat
+        // path readers handle missing-embedding entries gracefully.
+        if (Array.isArray(pending.emissionBus)) {
+          cortex._emissionBus = pending.emissionBus.slice(-16);
+        }
+        // 114.19fi.B.5 — restore chat-turn history (cap 16 pairs).
+        // Multi-turn coherence persists across restart; Unity
+        // remembers what was just discussed.
+        if (Array.isArray(pending.chatTurnHistory)) {
+          cortex._chatTurnHistory = pending.chatTurnHistory.slice(-16);
         }
         // Restore stream-of-consciousness chain. Validate sem-region
         // dimensions match — if not, drop the chain (start fresh) so
@@ -7684,6 +8049,84 @@ const httpServer = http.createServer((req, res) => {
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ ok: true, sleeping: false }));
     }
+    return;
+  }
+
+  // 114.19fg.Tier13 — operator-side rollback to a saved version.
+  // POST /rollback { "to": "v4" }  → copies brain-weights-v4.json
+  // over brain-weights.json, requires a graceful stop+start to take
+  // effect (the running brain holds in-memory state, so the rollback
+  // primes the next boot's load path). Default 'to' is 'v4' (last in
+  // the rolling save ring). Loopback-gated.
+  if (req.url === '/rollback' && req.method === 'POST') {
+    if (!requireLoopback(req, res, '/rollback')) return;
+    const chunks = [];
+    let total = 0;
+    req.on('data', (chunk) => {
+      chunks.push(chunk);
+      total += chunk.length;
+      if (total > 4096) { req.destroy(); }
+    });
+    req.on('end', () => {
+      let to = 'v4';
+      try {
+        const body = Buffer.concat(chunks).toString('utf8');
+        if (body) {
+          const parsed = JSON.parse(body);
+          if (parsed && typeof parsed.to === 'string') to = parsed.to;
+        }
+      } catch { /* default 'v4' */ }
+      if (!/^v[0-4]$/.test(to)) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: false, error: `invalid 'to' (expected v0-v4), got: ${to}` }));
+        return;
+      }
+      try {
+        const fs = require('fs');
+        const path = require('path');
+        const srcJson = path.join(__dirname, `brain-weights-${to}.json`);
+        const dstJson = path.join(__dirname, 'brain-weights.json');
+        if (!fs.existsSync(srcJson)) {
+          res.writeHead(404, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ ok: false, error: `source not found: brain-weights-${to}.json` }));
+          return;
+        }
+        fs.copyFileSync(srcJson, dstJson);
+        const jsonStats = fs.statSync(dstJson);
+        // 114.19fh.A.1 — copy versioned binary alongside JSON. Without
+        // this, JSON+BIN drift apart after rollback (JSON references
+        // weights from snapshot N, BIN holds weights from latest save).
+        // If the versioned BIN is missing (early run, save chain not
+        // yet rotated), warn but proceed — JSON-only restore is still
+        // useful, just less complete.
+        const srcBin = path.join(__dirname, `brain-weights-${to}.bin`);
+        const dstBin = path.join(__dirname, 'brain-weights.bin');
+        let binStatsSize = 0;
+        let binWarning = null;
+        if (fs.existsSync(srcBin)) {
+          fs.copyFileSync(srcBin, dstBin);
+          binStatsSize = fs.statSync(dstBin).size;
+        } else {
+          binWarning = `brain-weights-${to}.bin not found — JSON-only rollback (binary weights stay at most-recent state). Restore is partial; consider rolling back to a different version that has both files.`;
+          console.warn(`[Rollback] ${binWarning}`);
+        }
+        console.log(`[Rollback] copied brain-weights-${to}.json → brain-weights.json (${jsonStats.size} bytes)${binStatsSize > 0 ? ` + brain-weights-${to}.bin → brain-weights.bin (${binStatsSize} bytes)` : ''}. Next stop+Savestart will load this snapshot. Live brain state unchanged until restart.`);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          ok: true,
+          restoredFromJson: `brain-weights-${to}.json`,
+          jsonBytes: jsonStats.size,
+          restoredFromBin: binStatsSize > 0 ? `brain-weights-${to}.bin` : null,
+          binBytes: binStatsSize,
+          binWarning,
+          requiresRestart: true,
+        }));
+      } catch (err) {
+        console.warn(`[Rollback] failed: ${err.message}`);
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: false, error: err.message }));
+      }
+    });
     return;
   }
 

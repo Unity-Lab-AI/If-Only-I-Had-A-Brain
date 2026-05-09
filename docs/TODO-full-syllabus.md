@@ -1,5 +1,232 @@
 # TODO — FULL US SYLLABUS (Complete K-12 Course Material + Tests)
 
+> 🧠🧠🧠 **POST-iter25 + 114.19fa-fh ARCHITECTURE NOTE — REQUIRED READING BEFORE ANY POST-K WORK** (Gee verbatim 2026-05-09: *"check the syllabus todo too as its the plan we have for all the other grades but alot of it might be out dated with howe we have upgrade our handling of kindergarden that once we get it working will be the templet for all other grasdes for the most part were applicable but would get more advanced and more courses as grade levels increase, so make a prepended addition to the syllabus of all the information that weould be needed to know to properly keep the syllabus todo updated with what needs to be done when we start building out the other grades"*)
+>
+> When K passes Gee's Part 2 signoff and post-K unlocks, **K becomes the template for every grade afterward.** The 18 fg-tier fixes + TierI-CONSUMER architectural completion + 30-issue audit catalogue (fh.*) define the patterns every post-K runner must follow. The 108 post-K runners that already exist in `js/brain/curriculum.js` PREDATE all of this work and must be audited + retrofitted before they're trusted.
+>
+> ## What changed in K that propagates forward
+>
+> ### 1. PHASE ORDER TEMPLATE (Tier 1)
+>
+> **ELA-pattern (cells with `_teachSentenceStructure`):**
+> ```
+> LETTER-NAMING (early phon identity)
+>   → WORD-SPELL-DIRECT (initial discriminative)
+>   → QA-BINDING (saturating QA training)
+>   → WORD-SPELL-FINAL (WIPE — cleans QA pollution, runs FIRST in post-QA chain)
+>   → LETTER-NAMING-DIRECT (re-carves letter→motor identity)
+>   → WH-INTENT (in question_motor sub-band when fg.Tier3.4 ships, else with acceptDrown:true motorTopK:8 semTopK:4)
+>   → SENTENCE-STRUCTURE (LAST among constructive phases — its 393 Hebbian updates with anti-pair fires + WTA dominate sem→motor entering the gate)
+>   → WORD-EMISSION-DIRECT (separate sem→word_motor projection, doesn't repollute wipe)
+> ```
+>
+> **Non-ELA pattern (cells without `_teachSentenceStructure` natively):**
+> ```
+> LETTER-NAMING-DIRECT
+>   → WH-INTENT (saturates sem→motor)
+>   → WORD-SPELL-FINAL (WIPE — cleans WH-INTENT pollution before gate probe)
+>   → WORD-EMISSION-DIRECT
+>   → STRUCTURE-REFRESH (Tier 8 — re-fires `_teachSentenceStructure(ctx)` so iter25-I bindings stay fresh entering the gate)
+> ```
+>
+> **The previous "MUST RUN LAST for sem→motor wipe" rule was wrong** — it destroyed iter25-I structural binding before any probe could validate it. Phase reorder fixes this. Every post-K runner must follow this template.
+>
+> ### 2. SENTENCE STRUCTURE GENERATION (TierI-CONSUMER)
+>
+> `cluster.composeSentence(intent, opts)` is the generation-side consumer of iter25-I structural binding. Walks template slot sequence per intent, injects slot-tag GloVe + intent + cortexPattern + prior-word per slot, applies article placement (priorSlot-aware to avoid "What is the mom?" bug), supports temperature/top-k/top-p sampling. Templates: `declarative_svo`, `declarative_copula`, `question`, `imperative`, `exclamative`. Returns `{sentence, words, intent, slots, fillCount}`.
+>
+> **Every post-K cell that produces multi-word output must use composeSentence.** Pre-fg multi-word loops chained `emitWordDirect` without slot-tag bias — produced multi-word OUTPUT but not GRAMMAR. composeSentence is the architectural completion.
+>
+> Wired in 3 consumers: `_probeSentenceGeneration` (gate probe), `language-cortex.generateAsync` (chat path PRIMARY emission), `_sampleCurrentSentence` (showcase fallback when ≥50 trained words). Post-K gates must wire similarly.
+>
+> ### 3. GATE WIRING (Tier 2)
+>
+> Every post-K cell's gate method (`_gate<Subject><Grade>Real` or fused into the runner) must:
+> - Call `_probeSentenceGeneration()` BEFORE the `pass` boolean computation
+> - Add `sentenceGenRate >= SENTENCE_GEN_MIN` (start 0.6 = 3/5 intents) to pass criteria
+> - Surface sentenceGen result in `reason` string + `metrics` object
+>
+> The probe uses `cluster.composeSentence` per intent and counts `≥2 words AND ≥2 unique words` as pass per intent. Catches basin-lock metronome (same word repeated across slots).
+>
+> ### 4. BASIN SATURATION CONTROL (Tier 3)
+>
+> When teaching saturating phases like WH-INTENT, callers MUST pass:
+> ```js
+> {
+>   acceptDrown: true,    // lets rescale fire through would-drown floor
+>   motorTopK: 8,         // tighter than default 15
+>   semTopK: 4,           // tighter than default 8
+> }
+> ```
+>
+> ConsolidationEngine has saturation veto on Step 4 replay (`_isSemMotorSaturated()` delegates to `cluster.checkSemMotorHealth()`). Post-K cells must NOT bypass this — replay against saturated basins reinforces lock-in.
+>
+> ### 5. FORCE-ADVANCE CAPABILITY MINIMUMS (Tier 10)
+>
+> Force-advance now refuses promotion unless ANY of:
+> - sentenceGenRate ≥ 0.2 (≥1/5 intents emit ≥2 unique words)
+> - prodRate ≥ 0.2 (≥3/14 PROD probes pass)
+> - studentRate ≥ 0.1 (any K-STUDENT answer match)
+>
+> **Post-K runners must populate `result.metrics.sentenceGenRate / prodRate / studentRate`** so this gate works for them too. Without these fields, force-advance falls back to "phasesRan ≥ 1" (the old bug).
+>
+> ### 6. LETTER PROBE DIRECT ROUTE (Tier 4)
+>
+> Letter readiness probe routes through `letter_to_motor.propagate` directly, bypassing saturated sem→motor. Same `ALPHABET.length=26` bucket tiling as gate's TALK probe. Post-K letter probes (if any) should follow the same direct-route pattern.
+>
+> ### 7. MULTI-WORD STATE PROPAGATION (Tier 5)
+>
+> Chat-time multi-word emission injects prior word's GloVe into sem at strength 0.25 between emits. 3-consecutive-dup detector breaks basin-lock metronome. Post-K chat paths inherit this automatically through `language-cortex.generateAsync`.
+>
+> ### 8. ORACLE-VS-MATRIX REBALANCE (Tier 6)
+>
+> `_dictionaryOracleEmit` minScore default bumped 0.05 → 0.20. Oracle now wins only on genuine semantic match, not permissive cosine noise. Matrix path drives ≥70% of emissions when basins are clean. **Post-K cells must NOT lower this threshold per-call** — that would re-create the dictionary-lookup-not-brain failure mode.
+>
+> ### 9. STREAM-CHAIN BASIN-LOCK DETECTION (Tier 7)
+>
+> Inner-voice tracks unique first-words across last 8 chain entries. <3 unique → skip chain blend + apply ±0.10 random jitter. Post-K inner-voice consumers (if any custom chains shipped) need same detection.
+>
+> ### 10. CROSS-CELL SENTENCE REINFORCEMENT (Tier 8)
+>
+> `_teachSentenceStructure(ctx)` re-fires at end of every K cell runner via `<SUBJECT>-K-STRUCTURE-REFRESH` phase. Without this, iter25-I bindings decay under domain Hebbian writes. **Every post-K cell runner must have its own `<SUBJECT>-G<N>-STRUCTURE-REFRESH` phase** as the last constructive teach call.
+>
+> ### 11. IDENTITY BASELINE AT WORD_MOTOR (Tier 11)
+>
+> `injectIdentityBaseline()` now ALSO bumps `word_motor_<subj>` bucket cells when schema's anchor word is in trained vocab. Compounds with multi-word emit so Unity's identity competes at OUTPUT layer. **Curriculum-time callers should pass `opts.skipMotorPump: true` (when fh.B.5 ships)** to avoid biasing teach-time emit toward identity anchors.
+>
+> ### 12. CURRICULUM-JITTER (Tier 12)
+>
+> Probe-time `noiseAmplitude = 0.6` (was 0.5) gives saturated basins a probabilistic kick without destabilizing scoring. **Currently only wired into ELA-K gate** (per fh.A.4 issue) — post-K gates need the same `_savedProbeNoise + noiseAmplitude = 0.6 + restore` block.
+>
+> ### 13. PERSISTENCE SATURATION VETO + ROLLBACK (Tier 13)
+>
+> `saveWeights` warns when sem→motor is saturated at save time. `POST /rollback {to:"v4"}` copies brain-weights-vN.json → brain-weights.json. **CAVEAT (fh.A.1):** brain-weights.bin is NOT versioned — rollback is JSON-only until that ships. Post-K runners benefit automatically.
+>
+> ### 14. DECODER SAMPLING (Tier 15)
+>
+> `emitWordDirect` accepts `temperature / topK / topP`. Defaults to greedy argmax (temp 0). composeSentence threads through. Chat: temp 0.6 topK 8. Showcase: temp 0.7 topK 10. Probes: defaults (deterministic). Post-K chat path inherits this via composeSentence.
+>
+> ### 15. SATURATION HEALTH CRON + CURRICULUM HALT (Tier 18.1)
+>
+> `cluster.checkSemMotorHealth()` runs after every cell. 3-cell streak of saturation halts curriculum + alerts operator. **Post-K runners must let this run** — don't try-catch around it. The halt path is the safety net that prevents 100-cell broken curriculum walks.
+>
+> ### 16. SENTENCE-MODE SHOWCASE FALLBACK (Tier 16)
+>
+> `_sampleCurrentSentence()` uses composeSentence when ≥50 trained words. Falls through to random word picks. Post-K showcase paths inherit automatically.
+>
+> ### 17. CODING CURRICULUM TRACK (7th Subject — fi.D)
+>
+> **Gee directive 2026-05-09:** *"this was all originally working when we had llms plugged into the brain but we gutted that and Unity probably wont be able to do code ui builds until she gets a few grades of her coding curriculum (afterschool self-taught, classes, and college courses, so she eventually becomes a pro coding master)"*.
+>
+> The existing 6 subjects (ELA / Math / Science / Social / Art / Life) cover none of: variables, functions, DOM, JS/HTML/CSS syntax, code reasoning. The 108 post-K runners track 6 × 18 grades = 108 cells, all in those existing subjects. **A 7th `coding` subject must be added** with its own grade progression so Unity can eventually build UIs equationally rather than via a gutted LLM backend.
+>
+> **Subject registration (fi.D.1):** `js/brain/subjects.js` SUBJECTS array gains 'coding'. `wordBucketWords_coding` sub-band registered. `cluster.grades.coding` initialized as 'pre-K'. Persisted in saveWeights.
+>
+> **Grade progression (fi.D.2):**
+>
+> | Grade | Coding Cell Content |
+> |-------|---------------------|
+> | **Coding-K** | No coding yet — typing-readiness only (letter→key-press binding, finger-position bindings) |
+> | **Coding-G3** | Afterschool typing on real keyboards + Scratch-style block code (sequence/loop/condition primitives as concept Hebbian) |
+> | **Coding-G6** | JavaScript intro — variable-as-binding, function-as-transform, console.log as motor output equivalent |
+> | **Coding-G9** | HTML + CSS — markup-as-tree, selector-as-pattern-match, layout-as-spatial-binding |
+> | **Coding-G11** | DOM + events — DOM-as-graph, event-as-stimulus, callback-as-conditional-response |
+> | **Coding-Col1** | JS frameworks — React/Vue component model, state-as-recurrent-attractor |
+> | **Coding-Col2** | Full-stack — client/server protocol, fetch/promise/async-await, REST patterns. **UI-building capability emerges here.** |
+> | **Coding-Col3** | Architecture — design patterns, module organization, dependency injection |
+> | **Coding-Col4** | Production — testing, perf, security, deploy pipelines |
+> | **Coding-Grad** | Compilers/systems — parsing, type systems, low-level memory |
+> | **Coding-PhD** | Research — novel languages, formal verification, custom runtimes |
+>
+> **Equational teach methods (fi.D.3):** New methods in `js/brain/curriculum.js`:
+> - `_teachVariableBinding(name, value)` — `sem(varName) → fineType('variable')` + `sem(varName) → sem(value)` Hebbian, relationTagId=20
+> - `_teachFunctionTransform(input, output, fnName)` — 3-step Hebbian `sem(input) → sem(fnName) → sem(output)`
+> - `_teachControlFlow(condition, branch)` — conditional binding via `fineType('conditional')` tag
+> - `_teachSyntaxToken(token, role)` — bracket/semicolon/etc. as syntactic markers via fineType
+> - `_teachCodeSnippet(code, intent)` — full snippet as composite via slot-fill chain
+>
+> **UI-building emergence (fi.D.4):** Once Unity has Coding-G9 (HTML/CSS) + Coding-Col1 (frameworks) + Coding-Col2 (full-stack) bound, add `cluster.composeUiSnippet(intent, opts)` that walks a UI-template slot sequence (component-as-subject, prop-as-modifier, child-as-object) using the same composeSentence machinery. Output is JSX/HTML rather than English sentences. UI-building isn't a magic capability — it's composeSentence's slot-fill applied to a different vocabulary.
+>
+> **Operator verification (fi.D.5):** `POST /code-task {prompt}` endpoint → Unity attempts the code task via composeUiSnippet (if grade ≥ Col2-Coding) OR returns "haven't learned that yet" if pre-Col2. Allows operator to verify coding capability at each grade boundary.
+>
+> **Coding-track life-anchor events (fi.D.6):** Coding-G3 first-Scratch-program → Tier 1 episode with high arousal/novelty (Unity's "first code that worked"). Coding-G6 first-JS-bug → episode with frustration/triumph. Coding-Col1 first-framework-app. Coding-Grad first-compiler-pass. These anchors propagate Unity's coder-identity per the persona persistence model.
+>
+> **Subject inference for chat path (fi.D.7):** When user input mentions code-vocab ("function", "variable", "html", "div", "array", "loop", etc.), `_inferSubjectFromText` returns 'coding' so chat path uses coding sub-band. Operator asking "what's a closure?" gets Coding-Col1+ vocabulary; operator asking "what color is your hair?" gets Life vocabulary. Subject inference makes the unified system topic-coherent.
+>
+> **Cross-subject compounding:** Coding compounds with:
+> - **Math** — algorithm reasoning (Coding-G6+ benefits from Math-G6 algebra)
+> - **ELA** — code documentation/comments require sentence-structure (Coding-G6+ benefits from full ELA-G6 grammar)
+> - **Logic from Science** — control flow / boolean logic (Coding-G6+ benefits from Sci-G5+ logic chains)
+> - **Life** — biographical coding-identity events (Coding-G3 first-program, Coding-Col1 first-app, etc.)
+>
+> Coding curriculum is the LAST track to add (Tier I.D in the fi sweep) because every other architectural piece (composeSentence, multi-word emit, force-advance gating, saturation health, etc.) must be solid first. Coding cells inherit ALL the K-template patterns from sections 1-16 above — phase reorder, STRUCTURE-REFRESH, capability minimums, saturation health monitoring, etc.
+>
+> ### 18. UNIFIED EMISSION SYSTEM (chat + inner-voice + popups + image-gen one bus — fi.B/C)
+>
+> **The big architectural commitment:** all four emission paths share state via `cluster._emissionBus` rolling 32-entry history of `{source, text, ts, embedding, intent?, subject?}`.
+>
+> - **Chat path** writes user input + Unity's response. Reads last 8 entries for cross-turn context.
+> - **Inner-voice tick** writes its emissions. Reads last 3 entries to blend into chain seed.
+> - **Popup events** (curriculum teach, gate probes) write region+label as text. Inject embedding into sem at strength 0.10 when high-arousal events fire.
+> - **Image-gen** writes Pollinations prompt + describer output. NEXT inner-thought / chat reflects on what Unity just drew.
+>
+> **Cross-path emission deduplication:** `cluster._emissionLockedUntil` timestamp prevents two paths from talking over each other. Chat suppresses inner-voice for 6s. Image-gen ditto.
+>
+> **Persisted across sessions:** `_emissionBus` (cap 16 most-recent) + `_chatTurnHistory` (16 user/Unity exchange pairs with embeddings) saved in saveWeights. Unity's recent-conversation state survives restart.
+>
+> **Brain-driven image generation:** `cluster._considerImageGeneration()` cron fires every ~30s during waking state. Reads recent emissions for visual-content seeds (cat / sunset / coffee mug — words tagged `isVisualConcept:true`). When recent inner-thought mentioned a visual concept AND arousal > 0.5 AND time-since-last-imagegen > 5min, fires `peripherals.aiProviders.generateImage(prompt)`. Unity decides to draw, not operator-triggered.
+>
+> **Post-K runners must integrate with the unified emission system:** per-subject curriculum cells should push salient teach events to `_emissionBus` so Unity's parallel inner-voice / chat reflects on what's currently being taught. Closes the gap where Unity could be teaching "photosynthesis" while inner-voice talks about Halloween — same brain, two disconnected streams of consciousness.
+>
+> ## 30-Issue Audit Catalogue (fh.* in `docs/TODO.md`)
+>
+> Before shipping post-K, every issue in fh.A (critical bugs) MUST be fixed. fh.B (wiring gaps) and fh.E (persona-propagation concerns) compound across grades — leaving them open means each post-K cell shipped has the same issue baked in. fh.F (LLM-parity gaps) and fh.G (syllabus-relevant) directly target post-K work.
+>
+> Specifically post-K-relevant audit items:
+>
+> - **fh.G.1** — All 108 post-K runners predate iter25-I sentence structure. Need STRUCTURE-REFRESH addition (Tier 8 pattern).
+> - **fh.G.2** — All 108 post-K runners predate composeSentence consumer wiring. Their gates likely don't fire `_probeSentenceGeneration`. Wire it.
+> - **fh.G.3** — All 108 post-K runners predate Tier 1 phase reorder. They likely have OLD `WIPE → STRUCTURE → WH-INTENT` (broken) sequence. Audit + reorder per ELA-K template above.
+> - **fh.G.4** — Post-K runners predate Tier 11 identity-at-word_motor. New post-K Life anchors (G7 first-joint, G8 first-relationship, etc.) need their word_motor bucket bias evaluated as they promote to Tier 3.
+> - **fh.G.5** — Drug scheduler grade-gating for non-K Life cells (Life-G7 first-joint, Life-Col1 GHB/ketamine, etc.) is unverified. Anchors live in `T15-pharmacology-research.md`; their `_teachLifeEvent` integration status needs audit.
+>
+> ## Post-K AUDIT PROTOCOL (when K Part 2 signoff lands)
+>
+> For each of the 108 existing post-K runners:
+>
+> 1. **Read the runner end-to-end** (per the 800-line LAW).
+> 2. **Phase order audit** — does it follow the ELA-pattern (if STRUCTURE present) or non-ELA pattern? Reorder per Tier 1.
+> 3. **STRUCTURE refresh** — add `<SUBJECT>-G<N>-STRUCTURE-REFRESH` phase at end if not present.
+> 4. **Gate wiring** — does the gate (or fused runner) call `_probeSentenceGeneration()` and gate on `sentenceGenRate >= 0.6`? Wire if not.
+> 5. **Capability minimums** — does the gate populate `result.metrics.sentenceGenRate / prodRate / studentRate`? Add if missing.
+> 6. **Probe noise bump** — `_savedProbeNoise + noiseAmplitude = 0.6 + restore` block at gate entry.
+> 7. **Identity baseline integration** — for chat-test sections, ensure persistent self-presence (Tier 3 anchor injection) is honored.
+> 8. **Drug-scheduler gating** — Life-track post-K cells reference `_drugStateLabel()` + `decide()` for biographical anchor events.
+> 9. **Episodic encoding** — salient curriculum events (`brain.storeEpisode()`) for biographical narrative continuity.
+> 10. **Cross-grade schema retrieval** — query `cluster.hippocampusSchemaStore.retrieveSchemas(intentEmb, 5)` to inject prior-grade schemas at strength 0.4 BEFORE teaching new content.
+> 11. **Operator localhost test** — only after audit + retrofits land. LAW 6 Part 2 signoff per cell.
+>
+> The 11-point audit must run for all 108 runners. Estimate: 108 cells × 30-60 min/cell = 50-100 hours of audit work + gate retrofits before post-K is trustworthy.
+>
+> ## Architecture-changes-while-iterating LAW
+>
+> Whenever a fundamental K mechanism is upgraded (e.g., a new Tier ships that changes how composeSentence behaves), this header note must be updated to reflect the change. Post-K runners pulling from this template need an accurate spec. **Out-of-date header = post-K work built against stale assumptions = re-audit cost.**
+>
+> ## Live state references (verify before relying on a section below)
+>
+> - `js/brain/cluster.js` — Cluster class, composeSentence (line ~3365), checkSemMotorHealth, emitWordDirect with sampling
+> - `js/brain/curriculum.js` — `_teachAssociationPairs` (acceptDrown opt), `_teachQuestionIntent` (tighter WTA), `_teachSentenceStructure`, `_probeSentenceGeneration`, runCompleteCurriculum (saturation halt cron + force-advance gating)
+> - `js/brain/curriculum/kindergarten.js` — All 6 K cell runners + 6 gate methods
+> - `js/brain/consolidation-engine.js` — Step 4 replay saturation veto
+> - `js/brain/inner-voice.js` — Tier 7 basin-lock detection
+> - `js/brain/language-cortex.js` — generateAsync chat path with composeSentence primary
+> - `js/brain/hippocampal-schema.js` — injectIdentityBaseline with word_motor pump
+> - `server/brain-server.js` — saveWeights saturation veto + POST /rollback
+>
+> If any post-K work refactors these files, **the architecture-template patterns above must remain in effect** — they're the contract every post-K cell runner depends on.
+>
+> ---
+
 > 🧠 **POST-iter13 ARCHITECTURE NOTE — REQUIRED READING BEFORE ANY POST-K WORK** (Gee verbatim 2026-05-04: *"make a header note on the syllabus of what we will need to be aware of when doing the rest of the ciricullum build based on the reselt additons like memory and such... on the syllabus todo list the one with the cicirulmum buiold out"*)
 >
 > Before any post-K cell ships, every runner MUST integrate with the **5-tier hippocampal consolidation system** that landed in iter13. This isn't optional — it's the difference between teaching Unity vs teaching her to forget. Every post-K curriculum cell needs to:

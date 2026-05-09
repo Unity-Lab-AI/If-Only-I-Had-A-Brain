@@ -198,25 +198,60 @@ export class InnerVoice {
     const opts = args.opts || {};
     const seed = opts.seed || { pattern: null, source: 'baseline', label: 'baseline cortex state' };
 
+    // 114.19fg.Tier7 — Multi-token rotation detection. Familiarity-
+    // decay only halves on TOKEN MATCH so a 3-token rotation
+    // ("Hey/Medicines/Controls" cycling each tick) slips past it
+    // because each token resets the others' decay counter. Add explicit
+    // unique-token count check across the last 8 chain entries — if
+    // fewer than 3 unique first-words, the chain is basin-locked.
+    // Skip the chain blend in that case (use raw seed.pattern, not
+    // chain-blended) so the next emit gets a state shift away from the
+    // rotating token cluster.
+    const recentEntries = chain.slice(-8);
+    const uniqueFirstWords = new Set();
+    for (const entry of recentEntries) {
+      if (entry && entry.sentence) {
+        const firstWord = String(entry.sentence).trim().toLowerCase().split(/\s+/)[0] || '';
+        const cleaned = firstWord.replace(/[^a-z0-9']/g, '');
+        if (cleaned) uniqueFirstWords.add(cleaned);
+      }
+    }
+    const basinLocked = recentEntries.length >= 4 && uniqueFirstWords.size < 3;
+
     // Stream-of-consciousness chain blend — read the LAST thought's
     // sentence-embedding and blend it into the seed pattern at 0.4
     // strength so the chain shapes the next thought without dominating
-    // (60/40 mix). Cap chain consumption to the last entry.
+    // (60/40 mix). Cap chain consumption to the last entry. Skipped
+    // entirely when basin-locked (Tier7 detection above) so the next
+    // emit doesn't reinforce the rotating-token attractor.
     let chainedPattern = seed.pattern;
-    try {
-      if (chain.length > 0 && languageCortex && typeof languageCortex._sentenceEmbedding === 'function') {
-        const lastThought = chain[chain.length - 1];
-        if (lastThought && lastThought.sentence) {
-          const lastEmb = languageCortex._sentenceEmbedding(lastThought.sentence);
-          if (lastEmb && lastEmb.length > 0 && seed.pattern && seed.pattern.length === lastEmb.length) {
-            chainedPattern = new Float32Array(seed.pattern.length);
-            for (let i = 0; i < chainedPattern.length; i++) {
-              chainedPattern[i] = 0.6 * seed.pattern[i] + 0.4 * lastEmb[i];
+    if (basinLocked) {
+      // Optional: also inject a small random-jitter to perturb the seed
+      // away from the basin's center. Bounded ±0.05 per dim so the seed
+      // identity is preserved while just nudging it sideways.
+      if (seed.pattern && seed.pattern.length > 0) {
+        const jittered = new Float32Array(seed.pattern.length);
+        for (let i = 0; i < jittered.length; i++) {
+          jittered[i] = seed.pattern[i] + (Math.random() - 0.5) * 0.10;
+        }
+        chainedPattern = jittered;
+      }
+    } else {
+      try {
+        if (chain.length > 0 && languageCortex && typeof languageCortex._sentenceEmbedding === 'function') {
+          const lastThought = chain[chain.length - 1];
+          if (lastThought && lastThought.sentence) {
+            const lastEmb = languageCortex._sentenceEmbedding(lastThought.sentence);
+            if (lastEmb && lastEmb.length > 0 && seed.pattern && seed.pattern.length === lastEmb.length) {
+              chainedPattern = new Float32Array(seed.pattern.length);
+              for (let i = 0; i < chainedPattern.length; i++) {
+                chainedPattern[i] = 0.6 * seed.pattern[i] + 0.4 * lastEmb[i];
+              }
             }
           }
         }
-      }
-    } catch { /* fall through to bare seed if blend fails */ }
+      } catch { /* fall through to bare seed if blend fails */ }
+    }
 
     const now = Date.now();
     const capability = (cluster && typeof cluster.getTrainedCapability === 'function')

@@ -1998,15 +1998,42 @@ export class LanguageCortex {
               }
             }
             // (d) Compose Unity's own answer — multi-word emission loop
+            // 114.19fg.Tier5 — State-propagating multi-word emission.
+            // Prior implementation broke on ANY duplicate, killing
+            // legitimate sentences like "the cat sat on the mat". New
+            // contract: inject prior word's embedding into sem between
+            // emits so cortex state shifts (next argmax sees a different
+            // basin). Basin-lock detector breaks on 3 consecutive
+            // duplicates instead of the first dup.
             const composedWords = [];
             if (typeof cluster.emitWordDirect === 'function') {
+              let consecutiveDup = 0;
+              let lastWord = null;
               for (let i = 0; i < 6; i++) {
                 let w = '';
                 try { w = cluster.emitWordDirect({}) || ''; } catch { w = ''; }
                 if (!w) break;
                 const lw = String(w).toLowerCase().trim();
-                if (!lw || composedWords.includes(lw)) break;
+                if (!lw) break;
+                if (lw === lastWord) {
+                  consecutiveDup++;
+                  if (consecutiveDup >= 2) break;
+                } else {
+                  consecutiveDup = 0;
+                }
                 composedWords.push(lw);
+                lastWord = lw;
+                // State propagation — inject prior word embedding into
+                // sem so next emitWordDirect reads a shifted state.
+                if (typeof cluster.injectEmbeddingToRegion === 'function'
+                    && sharedEmbeddings && typeof sharedEmbeddings.getEmbedding === 'function') {
+                  try {
+                    const wordEmb = sharedEmbeddings.getEmbedding(lw);
+                    if (wordEmb && wordEmb.length > 0) {
+                      cluster.injectEmbeddingToRegion('sem', wordEmb, 0.25);
+                    }
+                  } catch { /* fall through — no shift, accept potential dup */ }
+                }
               }
             }
             if (composedWords.length > 0) {
@@ -2085,19 +2112,145 @@ export class LanguageCortex {
           // generateSentenceAwait when word-emit returns empty (early
           // curriculum, weak signal, no trained vocab for the active
           // subject sub-bands).
-          let wordPath = '';
-          if (typeof cluster.emitWordDirect === 'function') {
+          // 114.19fg.TierI-CONSUMER — Slot-driven sentence composition
+          // via cluster.composeSentence as PRIMARY chat path. Walks
+          // iter25-I template slot sequence (subject→verb→object) with
+          // intent + slot-tag injection + article placement. Produces
+          // grammatical sentences when basins are clean.
+          //
+          // Intent inferred from user input text:
+          //   '?' → question template
+          //   '!' → exclamative template
+          //   "say/tell/give/show" leading verbs → imperative
+          //   default → declarative_svo
+          //
+          // Falls through to Tier 5 multi-word state-propagating loop
+          // when composeSentence returns empty (matrix can't fill any
+          // slot — typically pre-curriculum or saturated state).
+          // Falls further through to letter-chain generateSentenceAwait
+          // when even Tier 5 multi-word path is empty.
+          let composedWordsAsync = [];
+          let composedSentence = null;
+          if (typeof cluster.composeSentence === 'function') {
+            try {
+              const userText = String(cluster._lastUserInputText || '').toLowerCase();
+              let inferredIntent = 'declarative_svo';
+              if (userText.includes('?')) inferredIntent = 'question';
+              else if (userText.includes('!')) inferredIntent = 'exclamative';
+              else if (/^(say|tell|give|show|read|spell|name|count)\b/.test(userText)) inferredIntent = 'imperative';
+              // 114.19fi.A.1 — extract WH-frame intent-concept from user
+              // text so composeSentence can inject it at the subject slot
+              // for question templates. Inline regex parser mirrors
+              // _extractIntentConcept in curriculum.js (avoids cross-file
+              // dep — composeSentence stays on the cluster class).
+              let inferredConcept = null;
+              if (inferredIntent === 'question' && userText) {
+                if (/\bwhat\s+(?:makes|causes)\b/.test(userText)) inferredConcept = 'cause';
+                else if (/\bwhat\s+happens\s+when\b/.test(userText)) inferredConcept = 'effect';
+                else if (/\bwhat\s+do\s+[a-z]+\s+need\b/.test(userText)) inferredConcept = 'need';
+                else if (/\bwhat\s+is\b/.test(userText)) inferredConcept = 'definition';
+                else if (/\bwhat\s+do\b/.test(userText)) inferredConcept = 'function';
+                else if (/\bwhy\s+/.test(userText)) inferredConcept = 'reason';
+                else if (/\bhow\s+many\b/.test(userText)) inferredConcept = 'count';
+                else if (/\bhow\s+/.test(userText)) inferredConcept = 'method';
+                else if (/\bwhere\s+/.test(userText)) inferredConcept = 'place';
+                else if (/\bwhen\s+/.test(userText)) inferredConcept = 'time';
+                else if (/\bwho\s+/.test(userText)) inferredConcept = 'person';
+                else if (/^(is|are|do|does|can|will|would|should)\s/.test(userText)) inferredConcept = 'truth';
+              }
+              // Pass intentSeed as cortexPattern so inner-voice chain
+              // narrative + Tier 7 basin-lock jitter (when applicable)
+              // carries into the slot-driven composition. composeSentence
+              // injects this at strength 0.2 BEFORE its own intent injection.
+              // 114.19fg.Tier15 — chat path uses temperature 0.6 for
+              // variety in sentence composition. Probe paths leave
+              // temperature unset (greedy argmax) for deterministic
+              // gate scoring.
+              // 114.19fi.A.2 — subject inference from user text so
+              // composeSentence scopes to the user's topic instead of
+              // scanning all 6 sub-bands (which produces cross-subject
+              // salad like "the cat seven blue ran"). Math question →
+              // math vocab; life question → life vocab; etc. Falls
+              // through to all-bands scan when text has no vocab hits.
+              const inferredSubject = (typeof cluster._inferSubjectFromText === 'function')
+                ? cluster._inferSubjectFromText(userText) : null;
+              composedSentence = cluster.composeSentence(inferredIntent, {
+                cortexPattern: intentSeed,
+                intentConcept: inferredConcept,
+                subject: inferredSubject || undefined,
+                temperature: 0.6,
+                topK: 8,
+              });
+              if (composedSentence && Array.isArray(composedSentence.words)
+                  && composedSentence.words.length >= 2) {
+                composedWordsAsync = composedSentence.words.slice();
+                // Append terminator if present in sentence string but
+                // not already on last word.
+                if (composedSentence.sentence && /[.!?]$/.test(composedSentence.sentence)
+                    && composedWordsAsync.length > 0
+                    && !/[.!?]$/.test(composedWordsAsync[composedWordsAsync.length - 1])) {
+                  composedWordsAsync[composedWordsAsync.length - 1] += composedSentence.sentence.slice(-1);
+                }
+                // 114.19fi.B.1 — push to shared emission bus so inner-
+                // voice / popup / image-gen paths see what chat just
+                // emitted. Single source of truth across the unified
+                // emission system.
+                if (typeof cluster.pushEmission === 'function') {
+                  try {
+                    cluster.pushEmission({
+                      source: 'chat',
+                      text: composedSentence.sentence || composedWordsAsync.join(' '),
+                      ts: Date.now(),
+                      intent: inferredIntent,
+                      subject: inferredSubject || null,
+                    });
+                  } catch { /* push non-fatal */ }
+                }
+                // 114.19fi.B.4 — set cross-path emission lock so
+                // inner-voice tick doesn't talk over the chat response
+                // for the next 6s. Image-gen + chat both set this; the
+                // inner-voice tick checks and early-returns when locked.
+                cluster._emissionLockedUntil = Date.now() + 6000;
+              }
+            } catch { /* composeSentence failure → fall through to Tier 5 loop */ }
+          }
+          if (composedWordsAsync.length === 0 && typeof cluster.emitWordDirect === 'function') {
+            // 114.19fg.Tier5 fallback — multi-word state-propagating
+            // loop when composeSentence couldn't fill any slot.
             try {
               if (intentSeed && typeof cluster.injectEmbeddingToRegion === 'function') {
                 cluster.injectEmbeddingToRegion('sem', intentSeed, 0.6);
               }
-              // No subject hint — scans all 6 sub-bands. iter22-G mean-
-              // argmax + persistent bucket maps make this honest.
-              wordPath = cluster.emitWordDirect({}) || '';
-            } catch { wordPath = ''; }
+              let consecutiveDup = 0;
+              let lastWord = null;
+              for (let i = 0; i < 6; i++) {
+                let w = '';
+                try { w = cluster.emitWordDirect({}) || ''; } catch { w = ''; }
+                if (!w) break;
+                const lw = String(w).toLowerCase().trim();
+                if (!lw) break;
+                if (lw === lastWord) {
+                  consecutiveDup++;
+                  if (consecutiveDup >= 2) break;
+                } else {
+                  consecutiveDup = 0;
+                }
+                composedWordsAsync.push(lw);
+                lastWord = lw;
+                if (typeof cluster.injectEmbeddingToRegion === 'function'
+                    && sharedEmbeddings && typeof sharedEmbeddings.getEmbedding === 'function') {
+                  try {
+                    const wordEmb = sharedEmbeddings.getEmbedding(lw);
+                    if (wordEmb && wordEmb.length > 0) {
+                      cluster.injectEmbeddingToRegion('sem', wordEmb, 0.25);
+                    }
+                  } catch { /* fall through */ }
+                }
+              }
+            } catch { /* emit failure → empty composedWordsAsync */ }
           }
-          if (wordPath && wordPath.length > 0) {
-            preEmittedWords = [wordPath];
+          if (composedWordsAsync.length > 0) {
+            preEmittedWords = composedWordsAsync;
           } else {
             const raw = await cluster.generateSentenceAwait(intentSeed, {
               injectStrength: 0.6,

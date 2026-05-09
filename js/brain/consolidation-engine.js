@@ -100,6 +100,21 @@ export class ConsolidationEngine {
     };
 
     try {
+      // Saturation veto — when sem→motor basins have collapsed
+      // (mean-cos > 0.7 across recent probes) Hebbian replay just
+      // deepens the saturation. Skip Step 4 (replay) when saturated;
+      // Steps 1-3 (schema creation + reinforcement) and Steps 7-10
+      // (merge, decay, Tier 3 promotion, episode prune) still run so
+      // the system stays alive without locking in broken weights.
+      // Detection: cheap sample-based mean-abs check on sem_to_motor
+      // values + recent assoc-pair sep-probe result if the cluster
+      // exposes one. Falls back to false on any read failure.
+      const saturationVeto = this._isSemMotorSaturated();
+      if (saturationVeto) {
+        console.log('[Consolidation] saturation veto — sem→motor basins collapsed, skipping replay step (schema creation + decay still run; replay would just deepen lock-in)');
+        stats.saturationVeto = true;
+      }
+
       // Step 1 — fetch promotion candidates from Tier 1
       const candidates = (typeof this.brain.findPromotionCandidates === 'function')
         ? this.brain.findPromotionCandidates(PROMOTION_CANDIDATES_LIMIT)
@@ -184,9 +199,14 @@ export class ConsolidationEngine {
         // Step 4 — replay schema REPLAYS_PER_SCHEMA times via Hebbian
         // through hippocampus_to_cortex_projection. Replay magnitude
         // scales with emotional weight + log(frequency_total).
-        const replayResult = await this._replaySchema(schema, cluster, opts);
-        stats.replaysExecuted += replayResult.replays;
-        stats.hebbianWritesTotal += replayResult.writes;
+        // Skipped when saturationVeto flagged at pass entry — replay
+        // against saturated basins reinforces the lock-in instead of
+        // strengthening real schema patterns.
+        if (!saturationVeto) {
+          const replayResult = await this._replaySchema(schema, cluster, opts);
+          stats.replaysExecuted += replayResult.replays;
+          stats.hebbianWritesTotal += replayResult.writes;
+        }
 
         // Step 5 — increment consolidation_count on source episodes
         if (typeof this.brain.recordEpisodeConsolidation === 'function') {
@@ -241,6 +261,24 @@ export class ConsolidationEngine {
       this._inFlight = false;
     }
     return stats;
+  }
+
+  // Saturation veto check — delegates to cluster.checkSemMotorHealth()
+  // when available so the same heuristic stack is used by both the
+  // consolidation veto and the curriculum cron. Returns the boolean
+  // saturated state for the replay-skip decision.
+  _isSemMotorSaturated() {
+    try {
+      const cluster = this.cluster;
+      if (!cluster) return false;
+      if (typeof cluster.checkSemMotorHealth === 'function') {
+        const health = cluster.checkSemMotorHealth();
+        return !!(health && health.saturated);
+      }
+      return false;
+    } catch {
+      return false;
+    }
   }
 
   // Cluster a list of episodes by embedding cosine > threshold using
