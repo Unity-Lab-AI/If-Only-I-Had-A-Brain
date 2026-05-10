@@ -86,7 +86,7 @@ The fix is **browser-side only**. `js/ui/brain-viz.js` is a render-layer module 
 
 ### Cascade
 
-✓ COMMITTED + PUSHED 2026-05-09 — atomic cascade `<sha-syllabus-k-phd>` syllabus-k-phd → `<sha-develop>` develop → `<sha-main>` main, all synced to origin. Browser hard-refresh required on Gee's side to pick up the new bundle.
+✓ COMMITTED + PUSHED 2026-05-09 — atomic cascade `d6a52ff` syllabus-k-phd → `ea76d26` develop → `bd7f60f` main, all synced to origin. Browser hard-refresh required on Gee's side to pick up the new bundle.
 
 ---
 
