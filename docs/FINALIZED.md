@@ -24072,3 +24072,39 @@ First of 4 D.9 residual file extractions. `_memoryHeartbeat` (152 lines, brain-s
 D.9a SHIPPED. 3 more sub-extractions remain (D.9b `_getMemoryStats` → memory.js, D.9c `_getConsciousnessState` → state.js, D.9d `_getWsPressureState` → state.js). D.9 stays PARTIAL until all four land.
 
 ---
+
+## 2026-06-17 — Session 114.19gg — D.9b — `_getMemoryStats` extracted to memory.js
+
+### Gee verbatim per LAW #0
+
+> *"no cheap work do each individually"* (Gee 2026-06-17 — sustained cadence directive; D.9b lands as its own atomic commit per the same directive that drove D.9a)
+
+### What this is
+
+Second of 4 D.9 residual file extractions. `_getMemoryStats` (149 lines, brain-server.js 3411-3559) moved from `ServerBrain` class body into `SERVER_MEMORY_MIXIN` inside `server/brain-server/memory.js`. Method dispatches identically via the Object.assign chain at brain-server.js entry-point bottom (LAW.MIXIN-ORDER preserved).
+
+### Method moved
+
+`_getMemoryStats()` — Bounded memory-stats snapshot for dashboard memory panel:
+- **Tier 1 (Episodic, SQLite):** totalEpisodes, recentSalienceAvg (last 20), freqMergedCount (SUM(freq_count-1)), promotedToTier2 count.
+- **Tier 2 (Schematic):** schemaCount, hardCap (null = unbounded per operator), avgConsolidationStrength, totalRetrievals, top 5 by strength.
+- **Tier 3 (Identity-bound, permanent):** identityCount, hardCap, lastInjectedAt, full identities array sorted by strength.
+- **ConsolidationEngine:** lastPassAt, passCount, isDreaming.
+- **Working memory:** items count, cap (null = unbounded), itemLabels GROUPED by label with `×N` count suffix (compresses hundreds of duplicate snapshots into 12 distinct rows max).
+
+### Verification
+
+- `node --check server/brain-server/memory.js` → SYNTAX OK
+- `node --check server/brain-server.js` → SYNTAX OK
+- `node -e "..."` → 14 methods in mixin (was 13); `_getMemoryStats` present as function.
+
+### Files changed
+
+- `server/brain-server/memory.js` — `_getMemoryStats` method appended to SERVER_MEMORY_MIXIN.
+- `server/brain-server.js` — `_getMemoryStats` body removed; replaced with 3-line breadcrumb comment.
+
+### Status
+
+D.9b SHIPPED. 2 more sub-extractions remain (D.9c `_getConsciousnessState` → state.js, D.9d `_getWsPressureState` → state.js). D.9 stays PARTIAL until all four land. Memory.js is now COMPLETE for D.9 scope (both memory-related methods landed).
+
+---
