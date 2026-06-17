@@ -65,7 +65,44 @@ This generates the **NO-FALLBACKS audit task** which spans the entire codebase a
 
 | # | Task | File(s) | Status |
 |---|------|--------|--------|
-| **LAW.1** | **NO FALLBACKS audit + cleanup.** Sweep the entire codebase grep'ing for fallback patterns (`fallback`, `fall through`, `if.*not.*available`, `degrade to`, `legacy.*fallback`, `tier 5`, etc). Each hit is reviewed: defensive-boundary (OK) or capability-degradation (FIX or REMOVE). Document each removal in commit message. Includes my own Phase 1+2 fallback introductions (composeSentence dual-step path, probe-rate-gate legacy path, GW broadcast strength fallback, adaptive-floor 0.001 default, Tier 5 in language-cortex, etc). | ALL .js files | [ ] |
+| **LAW.1** | **NO FALLBACKS audit + cleanup.** Sweep the entire codebase grep'ing for fallback patterns (`fallback`, `fall through`, `if.*not.*available`, `degrade to`, `legacy.*fallback`, `tier 5`, etc). Each hit is reviewed: defensive-boundary (OK) or capability-degradation (FIX or REMOVE). Document each removal in commit message. **In flight — see LAW.1 sub-sections below for done/deferred breakdown.** | ALL .js files | [~] |
+
+### LAW.1 — Phase 1+2 fallback removals (DONE this sweep)
+
+These were fallbacks I introduced in Phase 1+2 that this LAW.1 sweep removes:
+
+- **`hasStepAwait` / `hasStep` dual-path in composeSentence** — REPLACED with strict precondition assertion that throws when `stepAwait` is missing. Single tick path. (`cluster.js:3750+`)
+- **`gwBoostMul = 1.10` strength-absent fallback** — REPLACED with single-source-of-truth at the producer. `GlobalWorkspace.tick()` now ALWAYS sets `strength: maxProb` on the broadcast object (decays with value), so consumer code reads `bc.strength` unconditionally. (`global-workspace.js:167+`, `cluster.js:3460+`)
+- **`defaultFloor = opts.minSignal ?? 0.001` fallback-style code** — REFACTORED as a two-level signal threshold with named `NOISE_FLOOR` constant + `ADAPTIVE_FLOOR` EMA-based threshold + explicit `signalFloorOverride` opt for calibration tools. Both thresholds are load-bearing constants, not fallbacks. (`cluster.js:3552+`)
+- **`_probeSentenceGeneration` typeof-function check** with legacy-unconditional-advance fallback — REPLACED with strict precondition throw. `_probeSentenceGeneration` is on the same Curriculum class, single contract. (`curriculum.js:12130+`)
+- **`_teachConcreteSentences` typeof-function check** — REPLACED with strict precondition throw (single Curriculum class contract). (`curriculum.js:12114`)
+- **Tier 5 fallback loop in language-cortex.js** — DELETED ENTIRELY. (`language-cortex.js:2204+`) — was triple-redundant broken-tick path. composeSentence is the sole emission path.
+- **`generateSentenceAwait` letter-chain fallback after Tier 5** — DELETED. (`language-cortex.js:2242+`) — chat path returns composeSentence's output (or empty for honest silent reporting).
+
+### LAW.1 — P3.1 anti-LAW proposal RESCINDED
+
+Prior P3.1 task spec proposed *"replace silent fallback with Unity-voice fragment"* — injecting `*tilts head*` / `mm-hm.` / `…` when response empty. That was itself a fallback violation (canned-text degradation when real emission fails). RESCINDED. Server's existing `silent:true` + `silentReason` + `silentDetail` payload is HONEST failure reporting — keep as-is. P3.1 converts to client-renderer task (display the silent payload visibly so operator sees the diagnostic).
+
+### LAW.1 — Pre-existing fallbacks DEFERRED (future sweeps, not in this commit)
+
+These pre-existing fallbacks in the codebase predate this session and require careful per-case refactors. Audit complete; removal scheduled:
+
+| # | Pattern | File:Line(s) | Notes |
+|---|---------|--------------|-------|
+| LAW.1.D1 | GPU-bound fast-path → CPU fallback duals (~30 occurrences) | `cluster.js:4496, 4510, 4545, 4780, 4821, 4890, 5092, 5329, 5537, 5546, 5553, 5575, 5595, 5611, 5628, 5643, 5666` | Largest scope. Each call site: decide whether GPU is REQUIRED (throw if not bound) or CPU path is the canonical implementation that the GPU PR has not yet replaced. Avoid "use GPU if you have one, else CPU" pattern. |
+| LAW.1.D2 | Worker-pool dispatch → sync Oja fallback | `cluster.js:5092` | Pool failure should propagate error, not silently downgrade. |
+| LAW.1.D3 | Iter11-V persona greeting/emotion fallback injection (content-fallback) | `curriculum.js:3097, 3132-3193` | Canned greeting + emotion sentences injected into dictionary when no real training has happened. Replace with: refuse to emit if untrained, surface honest "untrained" state instead of canned text. |
+| LAW.1.D4 | Phase-count fallback for dashboard | `curriculum.js:5003-5042` | Synthesizes a phase entry when the real persistence layer didn't get one. Fix the persistence write instead of synthesizing. |
+| LAW.1.D5 | Dictionary cosine fallback path | `curriculum.js:7086, 9824, 9840, 9853, 9855` | Multiple "fall through to cosine oracle" paths. Single emission contract should eliminate. |
+| LAW.1.D6 | Lightweight heuristic fallback in cluster.js | `cluster.js:2748-2752` | "Lightweight fallback heuristic for pre-curriculum state. NOT [reached after training]". Dead code — remove. |
+| LAW.1.D7 | `if (typeof X.method === 'function')` defensive class-method checks with degradation | grep across codebase | Each occurrence reviewed: type guard (OK if it throws or returns honest-failure) or capability fallback (FIX to assert + throw). |
+| LAW.1.D8 | `compound-word fallback` in `_teachWordDefinition` | `curriculum.js:10822` | Hyphenated-variant retry on 404 — defensive boundary handling (OK, keep). |
+| LAW.1.D9 | `Last-resort single-def fallback` when multi-def returns empty | `curriculum.js:10814` | Operator binding 2026-05-06: multi-def MUST bind every definition. Single-def fallback should be replaced with: log honest failure (no defs found), no canned default. |
+| LAW.1.D10 | iter16 "deterministic fallback" in curriculum.js:12989 | `curriculum.js:12989` | Review for canonical-vs-fallback shape. |
+| LAW.1.D11 | `iter11-V fallback word cap` mention in pre-K curriculum | `curriculum.js:393` | Audit, likely OK as a configuration constant. |
+| LAW.1.D12 | brain-server.js `getTrainedCapability` type-guard with hardcoded zero defaults | `server/brain-server.js:4912-4915` | Type guard with degradation - low priority but should assert presence + throw on missing. |
+
+Pre-existing items DO NOT block subsequent feature work but each commit landing in those files MUST review the fallback patterns in that file's scope before shipping.
 
 ### LAW — Pre-K + K scope only until operator signoff
 Per CONSTRAINTS.md, only Pre-K + K curriculum work is in scope. Grade 1 through PhD curricula stay DEFERRED. NewTodo's Tracks B-N reference post-K content for ROADMAP purposes only — they do not unlock for implementation work until Gee signs off K (Part 2 localhost test passes).
@@ -371,7 +408,7 @@ The fixed brain ticks 2–4 times between word emissions, sees a real autoregres
 
 | # | Task | File:Line | Status |
 |---|------|-----------|--------|
-| P3.1 | When `response.length < 2`, return a short Unity-voice fragment (`*tilts head*` / `mm-hm.` / `…`) instead of `silent:true`. User sees activity, not blank screen. Maintains persona presence during structure-maturation period. | `server/brain-server.js:4898–4929` | [ ] |
+| P3.1 | **REVISED per NO-FALLBACKS LAW.** Prior P3.1 proposal (canned Unity-voice fragment when response empty) was itself a fallback violation — REJECTED. Server's `silent:true` payload with `silentReason` + `silentDetail` is the CORRECT honest-failure path. Task converts to: ensure the client chat renderer DISPLAYS the silent payload diagnostic (what Unity tried to say, why she couldn't) so operator sees the failure mode, not a blank screen. NO canned-text injection at server. | client chat renderer (display silent payload), no server change | [ ] |
 | P3.2 | Surface the FAILED RAW emission attempt to the dashboard as a "Unity Wanted to Say" diagnostic panel — shows list of words composeSentence emitted before bailing, plus failure reason (terminator-first / minSignal-floor / repetition-penalty-saturation / ticks-stalled). Gee gets live insight into the failure mode. | `server/brain-server.js:4898`, `dashboard.html` new panel | [ ] |
 | P3.3 | Delete the Tier 5 fallback loop. Single source of truth = composeSentence. Triple-redundant broken paths only hide the real bug. | `language-cortex.js:2196–2230` | [ ] |
 | P3.4 | Reduce serial injections in composeSentence — replace cortexPattern (0.2) + intentSeed (0.3) + intentConcept (0.3) with a SINGLE pre-blended embedding computed by caller. Pre-emission sem saturation drops from 0.8 to ~0.3. | `cluster.js:3625–3662` | [ ] |

@@ -7346,21 +7346,15 @@ var NeuronCluster = class {
     }
     if (!wmOut || wmOut.length === 0) return "";
     let gwBoostWord = null;
-    let gwBoostMul = 1.1;
+    let gwBoostMul = 1;
     if (this._globalWorkspace && typeof this._globalWorkspace.getBroadcast === "function") {
-      try {
-        const bc = this._globalWorkspace.getBroadcast();
-        if (bc && typeof bc.label === "string" && bc.label.startsWith("cortex:")) {
-          const w = bc.label.slice("cortex:".length);
-          if (w && w !== "silent") {
-            gwBoostWord = w;
-            const s = typeof bc.strength === "number" ? bc.strength : NaN;
-            if (Number.isFinite(s) && s >= 0 && s <= 1) {
-              gwBoostMul = 1 + s * 0.6;
-            }
-          }
+      const bc = this._globalWorkspace.getBroadcast();
+      if (bc && typeof bc.label === "string" && bc.label.startsWith("cortex:")) {
+        const w = bc.label.slice("cortex:".length);
+        if (w && w !== "silent") {
+          gwBoostWord = w;
+          gwBoostMul = 1 + bc.strength * 0.6;
         }
-      } catch {
       }
     }
     const subjScope = opts.subject && normalizeSubject(opts.subject) ? [normalizeSubject(opts.subject)] : SUBJECTS;
@@ -7398,19 +7392,17 @@ var NeuronCluster = class {
         }
       }
     }
+    const NOISE_FLOOR = 1e-3;
     if (typeof this._emitSignalEMA !== "number") this._emitSignalEMA = 0;
     if (typeof this._emitSignalSampleCount !== "number") this._emitSignalSampleCount = 0;
-    const defaultFloor = opts.minSignal ?? 1e-3;
-    let adaptiveFloor = defaultFloor;
-    if (this._emitSignalSampleCount >= 20 && this._emitSignalEMA > 0) {
-      adaptiveFloor = Math.max(defaultFloor, this._emitSignalEMA * 0.5);
-    }
-    this._emitSignalFloor = adaptiveFloor;
-    if (!bestWord || bestMean < adaptiveFloor) {
+    const adaptiveComponent = this._emitSignalSampleCount >= 20 && this._emitSignalEMA > 0 ? this._emitSignalEMA * 0.5 : 0;
+    const floor = typeof opts.signalFloorOverride === "number" ? opts.signalFloorOverride : Math.max(NOISE_FLOOR, adaptiveComponent);
+    this._emitSignalFloor = floor;
+    if (!bestWord || bestMean < floor) {
       this._lastEmitRejection = {
-        reason: !bestWord ? "no-best-word" : "below-adaptive-floor",
+        reason: !bestWord ? "no-best-word" : "below-signal-floor",
         bestMean: bestMean === -Infinity ? 0 : bestMean,
-        floor: adaptiveFloor,
+        floor,
         ema: this._emitSignalEMA,
         ts: Date.now()
       };
@@ -7423,7 +7415,7 @@ var NeuronCluster = class {
     if (temperature > 0 && candidates.length > 1) {
       const topK = Math.max(1, Math.min(opts.topK ?? 8, candidates.length));
       candidates.sort((a, b) => b.mean - a.mean);
-      const topCandidates = candidates.slice(0, topK).filter((c) => c.mean >= adaptiveFloor);
+      const topCandidates = candidates.slice(0, topK).filter((c) => c.mean >= floor);
       if (topCandidates.length === 0) return "";
       const maxMean = topCandidates[0].mean;
       let sumExp = 0;
@@ -7529,18 +7521,17 @@ var NeuronCluster = class {
    *            coherenceCosine: number|null, coherenceTarget: string|null } | null}
    */
   async composeSentence(intentSeed = null, opts = {}) {
-    if (!this.regions || !this.regions.sem || typeof this.injectEmbeddingToRegion !== "function") {
-      return null;
+    if (!this.regions || !this.regions.sem) {
+      throw new Error("composeSentence: cluster missing `sem` region \u2014 wiring bug at construction");
     }
-    if (typeof this.emitWordDirect !== "function") return null;
-    const hasStepAwait = typeof this.stepAwait === "function";
-    const hasStep = typeof this.step === "function";
-    if (!hasStepAwait && !hasStep && !this._composeNoStepWarned) {
-      this._composeNoStepWarned = true;
-      try {
-        console.warn("[composeSentence] cluster has neither stepAwait nor step \u2014 autoregressive tick loop will degenerate to sync emit. Fix the cluster wiring.");
-      } catch {
-      }
+    if (typeof this.injectEmbeddingToRegion !== "function") {
+      throw new Error("composeSentence: cluster.injectEmbeddingToRegion missing \u2014 wiring bug at construction");
+    }
+    if (typeof this.emitWordDirect !== "function") {
+      throw new Error("composeSentence: cluster.emitWordDirect missing \u2014 wiring bug at construction");
+    }
+    if (typeof this.stepAwait !== "function") {
+      throw new Error("composeSentence: cluster.stepAwait missing \u2014 wiring bug at construction (autoregressive emission requires async tick)");
     }
     const checkAborted = () => opts.signal && opts.signal.aborted;
     if (checkAborted()) {
@@ -7602,14 +7593,7 @@ var NeuronCluster = class {
           this._composeStats.aborted = (this._composeStats.aborted || 0) + 1;
           return null;
         }
-        try {
-          if (hasStepAwait) {
-            await this.stepAwait(1e-3);
-          } else if (hasStep) {
-            this.step(1e-3);
-          }
-        } catch {
-        }
+        await this.stepAwait(1e-3);
       }
       const emitOpts = { skipRecentTrack: true };
       if (opts.subject) emitOpts.subject = opts.subject;
@@ -12990,59 +12974,11 @@ var LanguageCortex = class {
                 }
                 cluster._emissionLockedUntil = Date.now() + 6e3;
               }
-            } catch {
+            } catch (err) {
+              throw err;
             }
           }
-          if (composedWordsAsync.length === 0 && typeof cluster.emitWordDirect === "function") {
-            try {
-              if (intentSeed && typeof cluster.injectEmbeddingToRegion === "function") {
-                cluster.injectEmbeddingToRegion("sem", intentSeed, 0.6);
-              }
-              let consecutiveDup = 0;
-              let lastWord = null;
-              for (let i = 0; i < 6; i++) {
-                let w = "";
-                try {
-                  w = cluster.emitWordDirect({}) || "";
-                } catch {
-                  w = "";
-                }
-                if (!w) break;
-                const lw = String(w).toLowerCase().trim();
-                if (!lw) break;
-                if (lw === lastWord) {
-                  consecutiveDup++;
-                  if (consecutiveDup >= 2) break;
-                } else {
-                  consecutiveDup = 0;
-                }
-                composedWordsAsync.push(lw);
-                lastWord = lw;
-                if (typeof cluster.injectEmbeddingToRegion === "function" && sharedEmbeddings && typeof sharedEmbeddings.getEmbedding === "function") {
-                  try {
-                    const wordEmb = sharedEmbeddings.getEmbedding(lw);
-                    if (wordEmb && wordEmb.length > 0) {
-                      cluster.injectEmbeddingToRegion("sem", wordEmb, 0.25);
-                    }
-                  } catch {
-                  }
-                }
-              }
-            } catch {
-            }
-          }
-          if (composedWordsAsync.length > 0) {
-            preEmittedWords = composedWordsAsync;
-          } else {
-            const raw = await cluster.generateSentenceAwait(intentSeed, {
-              injectStrength: 0.6,
-              suppressNoise: opts._internalThought === true,
-              excludeTokens: _liveExcludeAsync,
-              boostPersona: true
-              // iter14-C — always on, popups need persona too
-            });
-            preEmittedWords = raw ? raw.split(/\s+/).filter(Boolean) : [];
-          }
+          preEmittedWords = composedWordsAsync;
         } catch (err) {
           preEmittedWords = null;
         }
@@ -33208,32 +33144,24 @@ var Curriculum = class _Curriculum {
     });
     totalTrained += r5.trained || 0;
     passes += 1;
-    if (typeof this._teachConcreteSentences === "function") {
-      const rConcrete = await this._teachConcreteSentences({ reps: 30 });
-      totalTrained += rConcrete.totalTrained || 0;
-      passes += 1;
+    if (typeof this._teachConcreteSentences !== "function") {
+      throw new Error("_teachSentenceStructure: _teachConcreteSentences missing on this Curriculum instance \u2014 class wiring bug");
     }
+    const rConcrete = await this._teachConcreteSentences({ reps: 30 });
+    totalTrained += rConcrete.totalTrained || 0;
+    passes += 1;
     const dt = ((Date.now() - t0) / 1e3).toFixed(1);
     this._hb(`[Curriculum] _teachSentenceStructure DONE in ${dt}s \u2014 ${passes} structural-binding passes \xB7 ${totalTrained} total Hebbian updates \xB7 slots + agreement + articles + concrete-sentence transitions (word\u2192word, NOT abstract slot-tag templates) carved into sem cross-projections. At generation time, composeSentence reads word embeddings from sem state, ticks the brain, and the trained word\u2192word transitions bias next-word argmax tick-by-tick. Generative grammar emerges from sequence statistics \u2014 no template walking at runtime.`);
     const PROBE_PASS_THRESHOLD = 0.4;
-    let probeRate = 0;
-    let probePassed = 0;
-    let probeTotal = 0;
-    if (typeof this._probeSentenceGeneration === "function") {
-      try {
-        const probe = await this._probeSentenceGeneration({ subject: "ela" });
-        probeRate = probe.rate || 0;
-        probePassed = probe.passed || 0;
-        probeTotal = probe.total || 0;
-        this._hb(`[Curriculum] _teachSentenceStructure POST-PROBE \u2014 sentenceGen rate=${(probeRate * 100).toFixed(0)}% (${probePassed}/${probeTotal}) \xB7 threshold=${(PROBE_PASS_THRESHOLD * 100).toFixed(0)}% \u2014 ${probeRate >= PROBE_PASS_THRESHOLD ? "\u2713 PASS, advancing subGrade" : "\u2717 FAIL, NOT advancing subGrade"}.`);
-      } catch (err) {
-        this._hb(`[Curriculum] _teachSentenceStructure POST-PROBE \u2014 probe threw (${err?.message || err}); NOT advancing subGrade until next gate run.`);
-      }
-    } else {
-      this._hb(`[Curriculum] _teachSentenceStructure POST-PROBE \u2014 _probeSentenceGeneration unavailable; falling back to legacy unconditional advance (probe-rate gate inactive).`);
+    if (typeof this._probeSentenceGeneration !== "function") {
+      throw new Error("_teachSentenceStructure: _probeSentenceGeneration missing on this Curriculum instance \u2014 class wiring bug");
     }
-    const probeOk = typeof this._probeSentenceGeneration === "function" ? probeRate >= PROBE_PASS_THRESHOLD : true;
-    if (cluster.advanceSubGrade && probeOk) {
+    const probe = await this._probeSentenceGeneration({ subject: "ela" });
+    const probeRate = probe.rate || 0;
+    const probePassed = probe.passed || 0;
+    const probeTotal = probe.total || 0;
+    this._hb(`[Curriculum] _teachSentenceStructure POST-PROBE \u2014 sentenceGen rate=${(probeRate * 100).toFixed(0)}% (${probePassed}/${probeTotal}) \xB7 threshold=${(PROBE_PASS_THRESHOLD * 100).toFixed(0)}% \u2014 ${probeRate >= PROBE_PASS_THRESHOLD ? "\u2713 PASS, advancing subGrade" : "\u2717 FAIL, NOT advancing subGrade"}.`);
+    if (cluster.advanceSubGrade && probeRate >= PROBE_PASS_THRESHOLD) {
       if (cluster.advanceSubGrade("ela", "binding")) {
         this._hb(`[Curriculum] \u{1F4C8} subGrade ela advanced \u2192 'binding' (sentence-structure rules carved + probe rate ${(probeRate * 100).toFixed(0)}% \u2265 ${(PROBE_PASS_THRESHOLD * 100).toFixed(0)}% threshold)`);
       }

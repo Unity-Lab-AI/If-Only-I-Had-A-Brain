@@ -2199,54 +2199,23 @@ export class LanguageCortex {
                 // inner-voice tick checks and early-returns when locked.
                 cluster._emissionLockedUntil = Date.now() + 6000;
               }
-            } catch { /* composeSentence failure → fall through to Tier 5 loop */ }
+            } catch (err) {
+              // composeSentence throwing on its preconditions is a wiring
+              // bug — surface to caller instead of silently degrading to
+              // a duplicate emission path. Single source of truth: one
+              // emission path = composeSentence. Tier 5 fallback loop +
+              // generateSentenceAwait letter-chain fallback DELETED per
+              // NO-FALLBACKS LAW (was triple-redundant broken-tick path).
+              throw err;
+            }
           }
-          if (composedWordsAsync.length === 0 && typeof cluster.emitWordDirect === 'function') {
-            // 114.19fg.Tier5 fallback — multi-word state-propagating
-            // loop when composeSentence couldn't fill any slot.
-            try {
-              if (intentSeed && typeof cluster.injectEmbeddingToRegion === 'function') {
-                cluster.injectEmbeddingToRegion('sem', intentSeed, 0.6);
-              }
-              let consecutiveDup = 0;
-              let lastWord = null;
-              for (let i = 0; i < 6; i++) {
-                let w = '';
-                try { w = cluster.emitWordDirect({}) || ''; } catch { w = ''; }
-                if (!w) break;
-                const lw = String(w).toLowerCase().trim();
-                if (!lw) break;
-                if (lw === lastWord) {
-                  consecutiveDup++;
-                  if (consecutiveDup >= 2) break;
-                } else {
-                  consecutiveDup = 0;
-                }
-                composedWordsAsync.push(lw);
-                lastWord = lw;
-                if (typeof cluster.injectEmbeddingToRegion === 'function'
-                    && sharedEmbeddings && typeof sharedEmbeddings.getEmbedding === 'function') {
-                  try {
-                    const wordEmb = sharedEmbeddings.getEmbedding(lw);
-                    if (wordEmb && wordEmb.length > 0) {
-                      cluster.injectEmbeddingToRegion('sem', wordEmb, 0.25);
-                    }
-                  } catch { /* fall through */ }
-                }
-              }
-            } catch { /* emit failure → empty composedWordsAsync */ }
-          }
-          if (composedWordsAsync.length > 0) {
-            preEmittedWords = composedWordsAsync;
-          } else {
-            const raw = await cluster.generateSentenceAwait(intentSeed, {
-              injectStrength: 0.6,
-              suppressNoise: opts._internalThought === true,
-              excludeTokens: _liveExcludeAsync,
-              boostPersona: true, // iter14-C — always on, popups need persona too
-            });
-            preEmittedWords = raw ? raw.split(/\s+/).filter(Boolean) : [];
-          }
+          // composedWordsAsync now holds composeSentence's output (or
+          // empty if the brain genuinely couldn't form even one word
+          // from the current state). Empty is HONEST silence — the
+          // server-side silent-response handler in brain-server.js
+          // (`silentReason: 'motor_unstable'`) surfaces it to the
+          // operator with diagnostic detail. No backup path.
+          preEmittedWords = composedWordsAsync;
         } catch (err) {
           // Await path failed — let generate() fall back to sync emission.
           preEmittedWords = null;

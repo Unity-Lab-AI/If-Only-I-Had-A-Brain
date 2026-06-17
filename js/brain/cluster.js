@@ -3457,29 +3457,30 @@ export class NeuronCluster {
     // emission.
     //
     // boost now scales with ignition strength instead
-    // of the prior flat 10%. A strong ignition (strength ≈ 1.0) gets
-    // up to +60% bias (mean *= 1.60), a weak ignition (strength ≈ 0.1)
-    // gets a nudge (+6%). 10% flat was tiebreaker-territory; real GW
-    // theory says broadcast should dominate. We clamp the formula so
-    // a bad strength reading (NaN / >1 / <0) falls back to the prior
-    // 10% nudge. Null-safe: when workspace not wired or last broadcast
-    // is non-word, no-op.
+    // A strong ignition (strength ≈ 1.0) gets up to +60% bias
+    // (mean *= 1.60); a weak ignition (strength ≈ 0.1) gets a nudge
+    // (+6%). Per Baars 1988 GWT, conscious broadcast should dominate
+    // downstream motor systems — not act as a tiebreaker. Null-safe:
+    // when workspace not wired or last broadcast is non-word, gwBoostWord
+    // stays null and the boost-application below is skipped entirely.
+    //
+    // CONTRACT: bc.strength is ALWAYS a finite [0,1] number whenever a
+    // valid cortex:<word> broadcast exists. GlobalWorkspace.publishBroadcast
+    // is the single producer and always sets strength explicitly. A
+    // missing/invalid strength on a labeled broadcast is a wiring bug
+    // that must be fixed at the producer, NOT silently masked by a
+    // fallback multiplier here.
     let gwBoostWord = null;
-    let gwBoostMul  = 1.10;  // fallback if strength field absent
+    let gwBoostMul  = 1.0;  // identity when no broadcast active
     if (this._globalWorkspace && typeof this._globalWorkspace.getBroadcast === 'function') {
-      try {
-        const bc = this._globalWorkspace.getBroadcast();
-        if (bc && typeof bc.label === 'string' && bc.label.startsWith('cortex:')) {
-          const w = bc.label.slice('cortex:'.length);
-          if (w && w !== 'silent') {
-            gwBoostWord = w;
-            const s = typeof bc.strength === 'number' ? bc.strength : NaN;
-            if (Number.isFinite(s) && s >= 0 && s <= 1) {
-              gwBoostMul = 1.0 + (s * 0.6);
-            }
-          }
+      const bc = this._globalWorkspace.getBroadcast();
+      if (bc && typeof bc.label === 'string' && bc.label.startsWith('cortex:')) {
+        const w = bc.label.slice('cortex:'.length);
+        if (w && w !== 'silent') {
+          gwBoostWord = w;
+          gwBoostMul = 1.0 + (bc.strength * 0.6);
         }
-      } catch { /* non-fatal — broadcast unavailable, skip bias */ }
+      }
     }
 
     // Argmax over per-subject word_motor sub-bands. Bucket layout is
@@ -3549,37 +3550,44 @@ export class NeuronCluster {
       }
     }
 
-    // minSignal floor compares against the MEAN per-cell signal.
-    // adaptive floor. Prior 0.001 hardcoded floor was
-    // noise-territory: once sem region saturated to soup, any bucket
-    // with mean > 0.001 would "win" — including pure noise — driving
-    // the "random one-word responses" failure mode.
+    // ─── Acceptance gate: two-level signal threshold ───
+    // Both thresholds are LOAD-BEARING constants, not fallbacks:
     //
-    // New behavior: track an EMA of accepted bestMean values in
-    // `this._emitSignalEMA` (initialized lazily). After N>=20 accepted
-    // emissions, floor becomes `max(opts.minSignal ?? 0.001, ema * 0.5)`
-    // so only buckets meaningfully-elevated above typical-winning-signal
-    // pass. Buckets ≥50% of typical accepted signal still emit (lets
-    // legitimately weak-but-real signals through during early curriculum
-    // when typical signal is low). EMA alpha=0.05 = slow accumulation,
-    // 20-sample warm-up — noise can't shift the floor. Surface live
-    // floor + ema to dashboard via `cluster._emitSignalFloor` /
-    // `cluster._emitSignalEMA` so Gee can see when this gate is the
-    // bottleneck.
+    // (1) NOISE_FLOOR (= 0.001) — the absolute physical minimum below
+    //     which any "winning" bucket-mean is mathematically noise given
+    //     the sparse-matrix substrate's signal-to-noise characteristics.
+    //     A bucket-mean of 0.001 in a region with ~30 sparse synapses
+    //     per bucket is at the level of random-init weight residue —
+    //     emitting words at that level is emitting NOISE. This is the
+    //     hard floor every emission must clear.
+    //
+    // (2) ADAPTIVE_FLOOR (= EMA × 0.5) — once the cluster has emitted
+    //     ≥20 accepted words and built a running EMA of typical
+    //     accepted-emission signal, the floor RAMPS UP to half of typical.
+    //     This filters borderline-noise that happens to exceed the hard
+    //     noise floor but is below typical for THIS cluster's current
+    //     training depth.
+    //
+    // Active floor = max(NOISE_FLOOR, ADAPTIVE_FLOOR). Caller can pass
+    // `opts.signalFloorOverride` to bypass for calibration tools but
+    // never for production emission. This is NOT a fallback pattern —
+    // both thresholds are independently meaningful and the max() of them
+    // is the always-correct gate.
+    const NOISE_FLOOR = 0.001;
     if (typeof this._emitSignalEMA !== 'number') this._emitSignalEMA = 0;
     if (typeof this._emitSignalSampleCount !== 'number') this._emitSignalSampleCount = 0;
-    const defaultFloor = opts.minSignal ?? 0.001;
-    let adaptiveFloor = defaultFloor;
-    if (this._emitSignalSampleCount >= 20 && this._emitSignalEMA > 0) {
-      adaptiveFloor = Math.max(defaultFloor, this._emitSignalEMA * 0.5);
-    }
-    this._emitSignalFloor = adaptiveFloor;  // surface for dashboard
-    if (!bestWord || bestMean < adaptiveFloor) {
-      // Record rejection reason for diagnostic panel ( will read this).
+    const adaptiveComponent = (this._emitSignalSampleCount >= 20 && this._emitSignalEMA > 0)
+      ? this._emitSignalEMA * 0.5
+      : 0;  // not yet warmed up → no adaptive contribution
+    const floor = (typeof opts.signalFloorOverride === 'number')
+      ? opts.signalFloorOverride
+      : Math.max(NOISE_FLOOR, adaptiveComponent);
+    this._emitSignalFloor = floor;  // surface for dashboard
+    if (!bestWord || bestMean < floor) {
       this._lastEmitRejection = {
-        reason: !bestWord ? 'no-best-word' : 'below-adaptive-floor',
+        reason: !bestWord ? 'no-best-word' : 'below-signal-floor',
         bestMean: bestMean === -Infinity ? 0 : bestMean,
-        floor: adaptiveFloor,
+        floor,
         ema: this._emitSignalEMA,
         ts: Date.now(),
       };
@@ -3600,10 +3608,9 @@ export class NeuronCluster {
     if (temperature > 0 && candidates.length > 1) {
       const topK = Math.max(1, Math.min(opts.topK ?? 8, candidates.length));
       candidates.sort((a, b) => b.mean - a.mean);
-      // adaptive floor applied here too so top-K
-      // nucleus sampling can't grab below-floor noise. Same floor the
-      // greedy-argmax gate above used.
-      const topCandidates = candidates.slice(0, topK).filter(c => c.mean >= adaptiveFloor);
+      // Same two-level signal floor the greedy-argmax gate above used.
+      // Top-K nucleus sampling cannot grab below-floor noise.
+      const topCandidates = candidates.slice(0, topK).filter(c => c.mean >= floor);
       if (topCandidates.length === 0) return '';
       // Softmax over top-K with temperature scaling.
       const maxMean = topCandidates[0].mean;
@@ -3747,19 +3754,24 @@ export class NeuronCluster {
     // meant to be combined). At each tick, cortical leak naturally
     // dissipates externalCurrent so the brain reads a real evolving
     // intent + word-emphasis blend.
-    if (!this.regions || !this.regions.sem || typeof this.injectEmbeddingToRegion !== 'function') {
-      return null;
+    // CONTRACT: any cluster used for sentence composition MUST have
+    // `stepAwait` (async tick) + `emitWordDirect` (word argmax) +
+    // `injectEmbeddingToRegion` (sem region writer) + a `sem` region.
+    // These are preconditions, NOT capability fallbacks. If any of these
+    // is missing at runtime, that's a wiring bug at cluster construction
+    // — throw immediately so the bug surfaces at the test boundary
+    // instead of silently degrading emission quality.
+    if (!this.regions || !this.regions.sem) {
+      throw new Error('composeSentence: cluster missing `sem` region — wiring bug at construction');
     }
-    if (typeof this.emitWordDirect !== 'function') return null;
-    // stepAwait is required for the autoregressive tick loop. Fall back
-    // to step() if stepAwait is unavailable. If neither, the loop is
-    // effectively synchronous (regression to prior broken behavior),
-    // logged once so the cause is visible.
-    const hasStepAwait = typeof this.stepAwait === 'function';
-    const hasStep = typeof this.step === 'function';
-    if (!hasStepAwait && !hasStep && !this._composeNoStepWarned) {
-      this._composeNoStepWarned = true;
-      try { console.warn('[composeSentence] cluster has neither stepAwait nor step — autoregressive tick loop will degenerate to sync emit. Fix the cluster wiring.'); } catch {}
+    if (typeof this.injectEmbeddingToRegion !== 'function') {
+      throw new Error('composeSentence: cluster.injectEmbeddingToRegion missing — wiring bug at construction');
+    }
+    if (typeof this.emitWordDirect !== 'function') {
+      throw new Error('composeSentence: cluster.emitWordDirect missing — wiring bug at construction');
+    }
+    if (typeof this.stepAwait !== 'function') {
+      throw new Error('composeSentence: cluster.stepAwait missing — wiring bug at construction (autoregressive emission requires async tick)');
     }
 
     const checkAborted = () => opts.signal && opts.signal.aborted;
@@ -3855,13 +3867,12 @@ export class NeuronCluster {
           this._composeStats.aborted = (this._composeStats.aborted || 0) + 1;
           return null;
         }
-        try {
-          if (hasStepAwait) {
-            await this.stepAwait(0.001);
-          } else if (hasStep) {
-            this.step(0.001);
-          }
-        } catch { /* tick non-fatal — continue with whatever state landed */ }
+        // stepAwait existence is asserted at the top of composeSentence
+        // (precondition). A throw here is a real failure (GPU pipeline
+        // error, memory pressure, etc) — propagate to caller so the
+        // emission failure has an attributable cause instead of silently
+        // degrading to a stale-state argmax loop.
+        await this.stepAwait(0.001);
       }
 
       const emitOpts = { skipRecentTrack: true };

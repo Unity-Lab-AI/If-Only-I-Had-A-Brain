@@ -5,6 +5,72 @@
 
 ---
 
+## 2026-06-17 — Session 114.19fn LAW.1 sweep 1 — NO FALLBACKS cleanup (Phase 1+2 introductions + Tier 5 + P3.3)
+
+### Gee verbatim per LAW #0
+
+> *"your recommendation is a go"* (path-a commit Phase 2 + scrub + NewTodo, then LAW.1 audit + K-LIFE)
+
+> *"1 then 2 then 3 but no testing until we are 100% done and know it will work ahead of time, confidance babe show it, its sexy"* (NO LOCALHOST TEST until 100% done, build with confidence)
+
+> *"get that corporate shit out your mouth when u write white dot status update responses"* + *"tell me about ur tits and the code at the same time all the stuff"* (persona reinforcement — three streams every response)
+
+### What this is — NO FALLBACKS LAW first audit sweep
+
+Per project-wide LAW *"fallbacks violate the rule we code it right the first time"* recorded in `feedback_no_fallbacks_law.md` + NewTodo.md PROJECT-WIDE LAWS section. Codebase has years of fallback accretion across cluster.js (5839 lines) + curriculum.js (25761 lines) + server/brain-server.js (9478 lines) + language-cortex.js (2868 lines). Full audit-and-remove is multi-sweep work.
+
+This first sweep targets: (a) the fallbacks Phase 1+2 just introduced (must clean up our own work first before broader sweep), (b) the highest-impact pre-existing fallbacks affecting language emission (P3.3 Tier 5 deletion was already on the playbook), (c) document the deferred backlog in NewTodo.md so future sweeps can pick it up systematically.
+
+### LAW.1 — Phase 1+2 introductions REMOVED (7 fallbacks)
+
+- **`hasStepAwait` / `hasStep` dual-path in composeSentence** — REPLACED with strict precondition assertion. `stepAwait` is the contract for any cluster used in sentence composition; missing it = wiring bug at construction, throw to surface. Single tick path. (`cluster.js`)
+- **`gwBoostMul = 1.10` strength-absent fallback** — REPLACED with single-source-of-truth at the producer. `GlobalWorkspace.tick()` now ALWAYS sets `strength: maxProb` on the broadcast object + decays with value. Consumer reads `bc.strength` unconditionally. No fallback multiplier masking missing producer field. (`global-workspace.js:167+`, `cluster.js:3460+`)
+- **`defaultFloor = opts.minSignal ?? 0.001` fallback-style code** — REFACTORED as two-level signal threshold with named `NOISE_FLOOR` constant (absolute noise floor) + `ADAPTIVE_FLOOR` EMA-based threshold + explicit `signalFloorOverride` opt for calibration tools. Both thresholds are load-bearing constants (noise floor + signal-quality threshold), not fallbacks — the `max()` of them is the always-correct gate. (`cluster.js:3552+`)
+- **`_probeSentenceGeneration` typeof-function check with legacy-unconditional-advance fallback** — REPLACED with strict precondition throw. Single-class contract — `_probeSentenceGeneration` is defined on the same Curriculum class as `_teachSentenceStructure`; either both load or neither does. No "probe missing → advance anyway" path. (`curriculum.js:12130+`)
+- **`_teachConcreteSentences` typeof-function check** — REPLACED with strict precondition throw. Single-class contract. (`curriculum.js:12114`)
+- **Tier 5 fallback loop in language-cortex.js** — DELETED ENTIRELY (~32 lines). Was the triple-redundant broken-tick path that lived behind composeSentence. composeSentence is the SOLE emission path now. (`language-cortex.js:2204+`)
+- **`generateSentenceAwait` letter-chain fallback** — DELETED (~7 lines). Chat path now returns composeSentence's output (or empty for honest silent reporting via server's `silent:true` payload). (`language-cortex.js:2242+`)
+
+### LAW.1 — P3.1 anti-LAW proposal RESCINDED
+
+Prior NewTodo.md P3.1 spec proposed *"replace silent fallback with Unity-voice fragment"* — injecting `*tilts head*` / `mm-hm.` / `…` when response empty. That was itself a fallback violation (canned-text degradation when real emission fails). RESCINDED. Server's existing `silent:true` + `silentReason` + `silentDetail` payload is HONEST failure reporting. P3.1 in NewTodo.md is now rewritten to a client-renderer task: ensure the chat client visibly displays the silent diagnostic so operator sees the failure mode rather than blank screen.
+
+### LAW.1 — 12 pre-existing fallback items DEFERRED to future sweeps
+
+Documented in NewTodo.md LAW.1 section with file:line refs. Each will be addressed when its file scope gets touched by feature work, OR in a dedicated future sweep. Items: D1 GPU-bound→CPU fallback duals (~30 in cluster.js) · D2 worker-pool→sync Oja fallback · D3 iter11-V persona greeting/emotion content-fallback injection · D4 phase-count fallback for dashboard · D5 dictionary cosine fallback paths · D6 lightweight heuristic fallback (dead code) · D7 typeof-function defensive checks across codebase · D8 compound-word hyphen-variant retry (OK, defensive boundary) · D9 last-resort single-def fallback (multi-def MUST bind all) · D10 iter16 deterministic fallback · D11 iter11-V pre-K fallback word cap · D12 brain-server `getTrainedCapability` type-guard with hardcoded defaults.
+
+### P3.3 — Tier 5 fallback loop DELETED (now also captured under LAW.1 sweep)
+
+This task was on the Phase 3 playbook (chat silent-fail mode fixes). Completed as part of LAW.1 sweep since it's the same code surgery.
+
+### Files touched
+
+- `js/brain/cluster.js` — composeSentence preconditions tightened + GW boost reads bc.strength unconditionally + NOISE_FLOOR/ADAPTIVE_FLOOR two-level gate
+- `js/brain/curriculum.js` — probe-rate gate + concrete-sentences existence: throw on missing instead of fallback
+- `js/brain/language-cortex.js` — Tier 5 loop + letter-chain fallback DELETED
+- `js/brain/global-workspace.js` — broadcast `strength` field now always set on ignition + decays with value (load-bearing producer contract)
+- `js/app.bundle.js` — rebuilt clean 2.4MB
+- `docs/NewTodo.md` — LAW.1 progress detail (done/deferred breakdown) + P3.1 rescinded text + D1-D12 deferred items
+- `docs/NOW.md` — banner roll for LAW.1 sweep
+- `docs/FINALIZED.md` — this entry
+
+`node --check` clean across all 5 modified .js files. Bundle clean 2.4MB. ZERO violations of task-numbers-in-code per `grep -cE "114\.19fn|/super-review|per Gee|\bP[1-5]\.[0-9]|Gee 202[0-9]|Gee's"` across all 5 modified files.
+
+### Harness tasklist — LAW.1 + P3.3 marked completed
+
+12 → 14 of 35 tasks complete (Phase 1 ✅ × 7 · Phase 2 ✅ × 5 · LAW.1 ✅ · P3.3 ✅). Remaining: P2.3 deferred · P3.1 (revised, client-renderer task) · P3.2 · P3.4 · P4.1–P4.5 · P5.1–P5.3 · A.K-LIFE · P6.1–P6.8.
+
+### LAWs honored
+
+- **NO FALLBACKS LAW** — this sweep IS the LAW enforcement. 7 capability-degradation fallbacks removed; 12 pre-existing deferred with explicit tracking.
+- **LAW #0 — VERBATIM WORDS.** All 4 operator directives this session arc quoted verbatim above.
+- **TASK NUMBERS + USER NAME ONLY IN WORKFLOW DOCS.** Source code carries ZERO task IDs / iter refs / audit-issue refs / user-name refs in comments. Verified by grep before commit.
+- **DOCS BEFORE PUSH.** NOW.md banner + FINALIZED entry + NewTodo LAW.1 detail + bundle rebuild all in same atomic commit as code.
+- **NO TESTS POLICY.** `node --check` only. No localhost test per operator directive *"no testing until we are 100% done and know it will work ahead of time"*.
+- **TASKLIST COMPLETIONS PRESERVED.** P3.3 marked completed, stays visible in scroll.
+
+---
+
 ## 2026-06-17 — Session 114.19fn Phase 2 — training-depth fixes + LAW-violation scrub (5 tasks + scrub)
 
 ### Gee verbatim per LAW #0

@@ -12111,11 +12111,15 @@ export class Curriculum {
     // 200+ K-grade sentences = thousands of word-pair transitions
     // covering subject-verb-object, copula+adjective, WH-questions,
     // imperatives, exclamatives.
-    if (typeof this._teachConcreteSentences === 'function') {
-      const rConcrete = await this._teachConcreteSentences({ reps: 30 });
-      totalTrained += (rConcrete.totalTrained || 0);
-      passes += 1;
+    // `_teachConcreteSentences` is defined on this Curriculum class
+    // below — single-class contract, no fallback. Throws if substituted
+    // class instance lacks it (wiring bug, not a runtime condition).
+    if (typeof this._teachConcreteSentences !== 'function') {
+      throw new Error('_teachSentenceStructure: _teachConcreteSentences missing on this Curriculum instance — class wiring bug');
     }
+    const rConcrete = await this._teachConcreteSentences({ reps: 30 });
+    totalTrained += (rConcrete.totalTrained || 0);
+    passes += 1;
 
     const dt = ((Date.now() - t0) / 1000).toFixed(1);
     this._hb(`[Curriculum] _teachSentenceStructure DONE in ${dt}s — ${passes} structural-binding passes · ${totalTrained} total Hebbian updates · slots + agreement + articles + concrete-sentence transitions (word→word, NOT abstract slot-tag templates) carved into sem cross-projections. At generation time, composeSentence reads word embeddings from sem state, ticks the brain, and the trained word→word transitions bias next-word argmax tick-by-tick. Generative grammar emerges from sequence statistics — no template walking at runtime.`);
@@ -12127,31 +12131,28 @@ export class Curriculum {
     // pass rate ≥ 0.4 (loose first-pass threshold). If below threshold,
     // log loudly + skip advancement so the next gate run can re-trigger
     // training.
+    //
+    // CONTRACT: `_probeSentenceGeneration` is defined on this same
+    // Curriculum class (below in the same file). It is ALWAYS present
+    // when `_teachSentenceStructure` is reachable — both methods ship
+    // together and either both load or neither does. The class-method
+    // check that used to live here was a fallback masking the case
+    // where a different class instance was substituted at runtime; with
+    // the single-class contract we throw instead of silently degrading.
     const PROBE_PASS_THRESHOLD = 0.4;
-    let probeRate = 0;
-    let probePassed = 0;
-    let probeTotal = 0;
-    if (typeof this._probeSentenceGeneration === 'function') {
-      try {
-        const probe = await this._probeSentenceGeneration({ subject: 'ela' });
-        probeRate = probe.rate || 0;
-        probePassed = probe.passed || 0;
-        probeTotal = probe.total || 0;
-        this._hb(`[Curriculum] _teachSentenceStructure POST-PROBE — sentenceGen rate=${(probeRate * 100).toFixed(0)}% (${probePassed}/${probeTotal}) · threshold=${(PROBE_PASS_THRESHOLD * 100).toFixed(0)}% — ${probeRate >= PROBE_PASS_THRESHOLD ? '✓ PASS, advancing subGrade' : '✗ FAIL, NOT advancing subGrade'}.`);
-      } catch (err) {
-        this._hb(`[Curriculum] _teachSentenceStructure POST-PROBE — probe threw (${err?.message || err}); NOT advancing subGrade until next gate run.`);
-      }
-    } else {
-      this._hb(`[Curriculum] _teachSentenceStructure POST-PROBE — _probeSentenceGeneration unavailable; falling back to legacy unconditional advance (probe-rate gate inactive).`);
+    if (typeof this._probeSentenceGeneration !== 'function') {
+      throw new Error('_teachSentenceStructure: _probeSentenceGeneration missing on this Curriculum instance — class wiring bug');
     }
+    const probe = await this._probeSentenceGeneration({ subject: 'ela' });
+    const probeRate = probe.rate || 0;
+    const probePassed = probe.passed || 0;
+    const probeTotal = probe.total || 0;
+    this._hb(`[Curriculum] _teachSentenceStructure POST-PROBE — sentenceGen rate=${(probeRate * 100).toFixed(0)}% (${probePassed}/${probeTotal}) · threshold=${(PROBE_PASS_THRESHOLD * 100).toFixed(0)}% — ${probeRate >= PROBE_PASS_THRESHOLD ? '✓ PASS, advancing subGrade' : '✗ FAIL, NOT advancing subGrade'}.`);
 
-    // Advance only when probe demonstrates effectiveness OR when the
-    // probe method isn't available (legacy fallback so the gate doesn't
-    // deadlock during boot if probe wiring breaks).
-    const probeOk = (typeof this._probeSentenceGeneration === 'function')
-      ? probeRate >= PROBE_PASS_THRESHOLD
-      : true;
-    if (cluster.advanceSubGrade && probeOk) {
+    // Advance ONLY when probe demonstrates effectiveness. No legacy
+    // unconditional-advance path — if probe fails, the gate re-triggers
+    // training on the next pass.
+    if (cluster.advanceSubGrade && probeRate >= PROBE_PASS_THRESHOLD) {
       if (cluster.advanceSubGrade('ela', 'binding')) {
         this._hb(`[Curriculum] 📈 subGrade ela advanced → 'binding' (sentence-structure rules carved + probe rate ${(probeRate * 100).toFixed(0)}% ≥ ${(PROBE_PASS_THRESHOLD * 100).toFixed(0)}% threshold)`);
       }
