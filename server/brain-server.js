@@ -5178,9 +5178,6 @@ const httpServer = http.createServer((req, res) => {
 
   // message would use, but without episodic memory writes or the
   // conversation history append), returns just the answer text.
-  // Used by scripts/transformer-ablation.mjs to compare Unity's
-  // gate-probe answers head-to-head against a transformer arm on
-  // identical held-out EXAM_BANKS.
 
   // Usage:
   //   POST /exam-answer  { "question": "what comes after a?" }

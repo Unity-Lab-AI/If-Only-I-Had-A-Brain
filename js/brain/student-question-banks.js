@@ -37,8 +37,7 @@
 // representative of items from published K assessments. They are
 // included as fair-use samples for research purposes — not the actual
 // proprietary test forms, but items in the same format testing the
-// same sub-standards at the same K developmental level. Full citations
-// in docs/ABLATION.md when the benchmark report ships.
+// same sub-standards at the same K developmental level.
 //
 // CURRENT STATE (this commit): first expansion pass. ELA-K target 150,
 // Math-K target 150. Other subjects queued in T23.a sub-items in

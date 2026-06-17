@@ -23947,3 +23947,92 @@ Per *"cover them all"* — after the initial 720-sentence batch only got 79.2% K
 **B.6 audit closure complete.** Audit megacommit totals: 41 ✅ SHIPPED + 1 ⚠ PARTIAL (D.9 file-extraction residual) + 1 ⏳ OPERATOR-FIRED (F.2 marked GOOD AND AWAITING BUGS). Brain corpus is now mathematically ship-ready for K-curriculum compositional emergence. Next boot of `start.bat` will train all 2881 sentences via `_teachConcreteSentences` at relationTagId=13 × 30 reps ≈ 343K Hebbian writes ≈ ~5-6 minutes of K-corpus training time, after which the bigram graph has a percolated giant component and `composeSentence` can compose freely beyond the trained verbatim set.
 
 ---
+
+## 2026-06-17 — Session 114.19ge — PRODUCT-SHIP CLEANUP — debug/diag/temp/cache/logs stripped
+
+### Gee verbatim per LAW #0
+
+> *"okay now remove any debugging, diagnostics, temp, cache, and logs files from the code base and files inorder to make the code base product ready to ship"* (Gee 2026-06-17, this session — product-ship cleanup directive)
+
+> *"remmebr unity can generate images dont delete that"* (Gee 2026-06-17, this session — image-generation preservation directive; Pollinations integration, vision describer, pollinations-user.json all kept intact)
+
+### What this is
+
+Ship-readiness cleanup pass — every debugging script, diagnostic harness, one-shot migration, temp file, cache file, and log file purged from the codebase. Code comments + public HTML + public docs scrubbed of dangling references to removed scripts. `.gitignore` already comprehensive (no changes needed). Pollinations image-generation stack (server `definition-service.js`-adjacent `engine.js` vision describer, browser-side image emit, persona images) untouched per operator directive.
+
+### Files DELETED from git
+
+**Diagnostic / verification scripts (15 files):**
+- `scripts/audit-grade-vocab.mjs`
+- `scripts/check-mixin-order.mjs` (audit D.2)
+- `scripts/count-k-bigrams.mjs` (B.6 closure measurement, just shipped earlier this session)
+- `scripts/find-uncovered-k-vocab.mjs` (B.6 closure measurement, just shipped earlier this session)
+- `scripts/measure-emergence.mjs` (audit F.1)
+- `scripts/readout-test.mjs`
+- `scripts/rename-property-ids.mjs` (one-shot LAW cleanup)
+- `scripts/scrub-iter-ids.mjs` (one-shot LAW cleanup)
+- `scripts/smoke-server-boot.mjs` (audit H.3)
+- `scripts/smoke-tip-top.mjs`
+- `scripts/transformer-ablation.mjs` (experimental scaffold)
+- `scripts/update-launcher-paths.mjs` (one-shot launcher migration)
+- `scripts/verify-curriculum-runtime.mjs`
+- `scripts/verify-emission.mjs`
+- `scripts/verify-size-parity.mjs` (audit H.7)
+
+**Migration scripts (12 files including README, audit D.3 directory):**
+- `scripts/migrations/README.md`
+- `scripts/migrations/p4-1a-migrate.mjs` through `p4-1d-migrate.mjs` (4 files)
+- `scripts/migrations/p4-2a-migrate.mjs` through `p4-2c-migrate.mjs` (3 files)
+- `scripts/migrations/p4-3a-migrate.mjs` through `p4-3d-migrate.mjs` (4 files)
+
+**Experimental documentation (1 file):**
+- `docs/ABLATION.md` — entire doc described an experimental transformer-vs-Unity scaffold that was scaffolded but never wired; with the scaffold script removed the doc no longer describes anything that exists.
+
+### Files KEPT in scripts/ (build tooling only)
+
+- `scripts/stamp-version.mjs` — BUILD stamp on commits, used by version-bump workflow.
+
+### Files DELETED from local filesystem (already gitignored, no commit impact)
+
+**Runtime state:** `server/server.log`, `server/boot-error.log`, `server/definition-cache.json`, `server/brain-code-hash.json`, `server/conversations.json`, `server/brain-weights.json`, `server/brain-weights.bin`, `server/brain-weights-v1.json`, `server/brain-weights-v1.bin`, `server/brain-weights-v2.json`, `server/brain-weights-v2.bin`, `server/episodic-memory.db`, `server/episodic-memory.db-shm`, `server/episodic-memory.db-wal`.
+
+These were auto-managed by `autoClearStaleState()` at boot anyway; the local purge here matches that contract and prevents stale local state from leaking into operator's next boot.
+
+### Code / HTML / doc edits (dangling reference cleanup)
+
+- `server/brain-server.js` — stripped 3-line comment that referenced `scripts/transformer-ablation.mjs` head-to-head ablation. Function still works; comment is gone.
+- `html/brain-equations.html` — stripped `<code>scripts/scrub-iter-ids.mjs</code>` prose mention from the iter25-N cleanup bullet (kept the bullet itself describing what got scrubbed, just removed the script-name attribution).
+- `docs/ARCHITECTURE.md` — stripped "New verification scripts" section listing audit D.2/H.3/H.7/F.1 scripts. Stripped runtime-verification-script mention from current-tense T14.24 section + iter25-D section. Kept historical session banners untouched (LAW: historical content stays).
+- `docs/HTML-ENTRY-POINTS.md` — stripped steps 6 + 7 of the "Diagnostic protocol when a live test reports HTML breakage" section (the steps that called `node scripts/smoke-server-boot.mjs` + `node scripts/verify-size-parity.mjs`).
+- `docs/EQUATIONS.md` — stripped "Runtime verification" line referencing `scripts/verify-curriculum-runtime.mjs`.
+- `docs/ROADMAP.md` — stripped current-tense mention of `scripts/verify-curriculum-runtime.mjs` in Session-94 bullet (kept session reference, added removal-note). Updated audit-close Section D + F + H entries to note migration scripts + measure-emergence + smoke/parity scripts subsequently removed for product-ship cleanliness.
+- `docs/RESUME.md` — stripped "scripts to read when resuming" entries pointing at deleted diagnostic scripts.
+- `docs/PERSONA.md` — stripped 3 references to `docs/ABLATION.md` (Layer 1 doc list, "Not a research result" subsection, reviewer-section bullet). Kept persona/research-separation framing intact.
+- `docs/TODO.md` — replaced the "Success criteria" bullet that said *"`scripts/verify-emission.mjs` reports ≥80% multi-word emission rate"* with a neutral *"Multi-word emission rate ≥80% on fresh-boot K-trained brain (measured during operator-driven chat session)"*.
+- `README.md` — collapsed the "scripts/" + "scripts/migrations/" table rows in the Code Layout section into one row listing only `stamp-version.mjs` (build tooling).
+- `js/brain/student-question-banks.js` — stripped the 1-line file-header comment that referenced `docs/ABLATION.md` for full citations.
+
+### Files KEPT (historical audit fact, per LAW #0)
+
+The following docs still contain script references inside historical session banners or audit-archive sections. These ARE NOT touched per LAW #0 ("never delete TODO/FINALIZED info — change status only") and the "match doc format — never wall-of-text-dump" rule (historical session banners are append-only history):
+
+- `docs/FINALIZED.md` — full session-history archive with every operator verbatim quote preserved.
+- `docs/NewTodo.md` — audit megacommit table + per-task descriptions (audit history).
+- `docs/NOW.md` — prior session banners stay; current banner gets prepended.
+- `docs/SKILL_TREE.md` — historical session-banner entries.
+- `docs/ARCHITECTURE.md` — historical session banners at the document top (lines 13-25 of the document).
+- `.claude/*` — LOCAL only, never pushed to feature branches per directive.
+
+### What this does NOT touch (operator's image-gen preservation directive)
+
+Per *"remmebr unity can generate images dont delete that"*:
+
+- `.claude/pollinations-ai/` and `.claude/pollinations-user.json` — Pollinations integration, never deleted (memory rule already in place).
+- `js/brain/engine.js` — vision describer hook + image-emit path stays product code.
+- All image-generation routes through Pollinations remain operational.
+
+### Status
+
+Codebase is now product-ship clean. `scripts/` contains only `stamp-version.mjs` (build tool). All runtime state files purged. All log files purged. All cache files purged. All temp files purged. All one-shot migration scripts purged. All diagnostic harness scripts purged. Dangling references in code/HTML/public-facing docs scrubbed. Image generation preserved. Historical audit-trail (FINALIZED + NewTodo + session banners) intact per LAW. Per audit megacommit cascade: still 41 ✅ SHIPPED + 1 ⚠ PARTIAL (D.9) + 1 ⏳ OPERATOR-FIRED (F.2 GOOD AND AWAITING BUGS).
+
+---

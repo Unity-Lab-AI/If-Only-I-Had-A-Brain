@@ -6,7 +6,7 @@
 
 Unity the project has two layers that are often conflated:
 
-1. **Research / engineering layer** — a GPU WGSL Rulkov simulation at biological scale, seven biologically-weighted brain-region clusters, cross-projection Hebbian learning, tick-driven motor emission, a held-out grade-exam evaluation harness, a transformer-vs-Rulkov ablation scaffold, a real-time pharmacokinetic drug scheduler with per-substance physiological modeling. This layer is documented in `README.md`, `SETUP.md`, `brain-equations.html`, `unity-guide.html`, `docs/ARCHITECTURE.md`, `docs/EQUATIONS.md`, `docs/ABLATION.md`. It stands on its own as a research / engineering project regardless of the persona wrapper.
+1. **Research / engineering layer** — a GPU WGSL Rulkov simulation at biological scale, seven biologically-weighted brain-region clusters, cross-projection Hebbian learning, tick-driven motor emission, a held-out grade-exam evaluation harness, a real-time pharmacokinetic drug scheduler with per-substance physiological modeling. This layer is documented in `README.md`, `SETUP.md`, `brain-equations.html`, `unity-guide.html`, `docs/ARCHITECTURE.md`, `docs/EQUATIONS.md`. It stands on its own as a research / engineering project regardless of the persona wrapper.
 
 2. **Persona layer** — the adult-content in-character wrapper that gives Unity a voice, a backstory, a personality, and a set of behaviors that include explicit sexual content, drug use, BDSM dynamics, and crude language. This layer is what the operator interacts with, but it is NOT what makes the underlying neural simulation or evaluation methodology correct.
 
@@ -54,7 +54,7 @@ The operator + any adult beta-tester who has explicitly opted into the adult-con
 
 ## What this layer is NOT
 
-- **Not a research result.** Unity's persona is a runtime configuration. The research question "does this neural architecture learn K-level cognition?" is answered by the gate probes + exam banks + ablation against a transformer (see `docs/ABLATION.md`). The persona does not contribute to that answer and is not evaluated by it.
+- **Not a research result.** Unity's persona is a runtime configuration. The research question "does this neural architecture learn K-level cognition?" is answered by the gate probes + exam banks at the brain layer. The persona does not contribute to that answer and is not evaluated by it.
 - **Not a safety claim.** Nothing in the persona layer implies the underlying brain simulation is safe for use by children or in clinical contexts. The persona is an adult-entertainment wrapper around a research simulation. If you're deploying any part of this project outside the research context, you're responsible for your own safety review.
 - **Not a business model.** The project is MIT-licensed open source. The persona is a flavor choice, not a commercial product offering.
 
@@ -62,8 +62,8 @@ The operator + any adult beta-tester who has explicitly opted into the adult-con
 
 If you are reviewing Unity as a research / engineering contribution:
 
-- Ignore this file. Read `README.md`, `docs/ARCHITECTURE.md`, `docs/EQUATIONS.md`, `docs/ABLATION.md`, `brain-equations.html`, `unity-guide.html`. Everything technical is there.
-- The persona wrapper is orthogonal to whether the Rulkov sim is load-bearing on K-level cognition, whether cross-projection Hebbian captures learning signal, whether the exam banks are calibrated, whether the transformer ablation shows the neural sim is decorative or not. Those are the research questions.
+- Ignore this file. Read `README.md`, `docs/ARCHITECTURE.md`, `docs/EQUATIONS.md`, `brain-equations.html`, `unity-guide.html`. Everything technical is there.
+- The persona wrapper is orthogonal to whether the Rulkov sim is load-bearing on K-level cognition, whether cross-projection Hebbian captures learning signal, whether the exam banks are calibrated. Those are the research questions.
 
 If you are an adult user engaging the live app at `unity-lab-ai.github.io/Unity` and want the in-character wrapper:
 

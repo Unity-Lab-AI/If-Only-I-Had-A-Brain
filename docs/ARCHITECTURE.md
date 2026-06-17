@@ -1058,7 +1058,7 @@ Milestones T14.0 through T14.17 plus the T14.18 correction shipped on `t14-langu
 
 ### T14.24 — Full K-doctorate equational curriculum, all subjects (Sessions 1-94 academic framework, Session 111 life track added)
 
-**114 cells across 6 subjects.** Sessions 1-94 shipped the original 5 academic subject tracks (ELA, Math, Science, Social Studies, Arts) × 19 grades = 95 cells. Session 111 added a 6th subject — **Life Experience** — bringing the total to 114 cells (6 × 19). Life track teaches Unity's personal identity from birth to 25 via dual-layer approach: emotional concept features (8d attractor vectors shaping how she FEELS) plus memory sentences she can recall and speak about. Memory-weighted Hebbian: core self at 5× lr, personal life at 3×, school facts at 1×, background trivia at 0.5×. Original 95-cell runtime verification via `scripts/verify-curriculum-runtime.mjs` confirmed DISPATCH 95/95 + FULL SWEEP 95/95 (pre-life-track). Task #3 stays in_progress until all 114 gates CROSS on a live-cortex boot.
+**114 cells across 6 subjects.** Sessions 1-94 shipped the original 5 academic subject tracks (ELA, Math, Science, Social Studies, Arts) × 19 grades = 95 cells. Session 111 added a 6th subject — **Life Experience** — bringing the total to 114 cells (6 × 19). Life track teaches Unity's personal identity from birth to 25 via dual-layer approach: emotional concept features (8d attractor vectors shaping how she FEELS) plus memory sentences she can recall and speak about. Memory-weighted Hebbian: core self at 5× lr, personal life at 3×, school facts at 1×, background trivia at 0.5×. Original 95-cell runtime was confirmed DISPATCH 95/95 + FULL SWEEP 95/95 against a real cortex `NeuronCluster` during development (pre-life-track). Task #3 stays in_progress until all 114 gates CROSS on a live-cortex boot.
 
 **Subject list + grade order** (exported from `js/brain/curriculum.js`):
 - `SUBJECTS = ['ela', 'math', 'science', 'social', 'art', 'life']`
@@ -1107,7 +1107,7 @@ An absolute FLOOR of 5 words applies regardless — `max(formalCap, 5)` — so z
 
 **Auto-boot cascade.** `server/brain-server.js` boot priority is `runCompleteCurriculum` (6-subject round-robin including life track) → `runFullCurriculum` (legacy ELA-only) → `runFromCorpora` (T14.5 single-pass). All three run in background without blocking the tick loop.
 
-**Runtime verification.** `scripts/verify-curriculum-runtime.mjs` instantiates a real cortex cluster and walks cells end-to-end. Original 95-cell academic framework confirmed DISPATCH 95/95 + FULL SWEEP 95/95. Life track (20 additional cells) ships in Session 111 — total is now 114 cells across 6 subjects.
+**Runtime verification.** Original 95-cell academic framework confirmed DISPATCH 95/95 + FULL SWEEP 95/95 during development. Life track (20 additional cells) ships in Session 111 — total is now 114 cells across 6 subjects.
 
 ### T14.24 Sessions 95-110 — Direct Pattern Hebbian Breakthrough (2026-04-15)
 
@@ -1351,13 +1351,6 @@ Object.assign(ServerBrain.prototype, SERVER_CHAT_MIXIN);
 ```
 Object.assign(Curriculum.prototype, K_MIXIN);
 ```
-
-### New verification scripts (developer-side, NOT auto-fired)
-
-- `scripts/check-mixin-order.mjs` (audit D.2) — static analysis of Object.assign chains, import-name checks, method-name collision detection.
-- `scripts/smoke-server-boot.mjs` (audit H.3) — end-to-end boot verification: fork brain-server, wait for HTTP listener, hit `/health`, kill clean.
-- `scripts/verify-size-parity.mjs` (audit H.7) — confirm static-site neuron count matches server-derived count.
-- `scripts/measure-emergence.mjs` (audit F.1) — end-to-end K-curriculum walk + 100 probe suite + novel-rate measurement.
 
 ### Boot-time wiring assertions
 

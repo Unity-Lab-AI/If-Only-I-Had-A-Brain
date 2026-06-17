@@ -132,5 +132,3 @@ GH Pages deployment is a SUBSET of the local-Node experience:
 3. **Check `[Server] _spawnGpuClient INVOKED at +Xms` log line.** If absent, the setTimeout never fired or brain-server crashed before reaching it. If INVOKED but no FINISHED, spawn crashed inside the platform-specific block.
 4. **Check dashboard banner state.** If `gpu-spawn-banner` is active, H.6 surfacing fired — log line tells you which Chrome/Edge path / errno.
 5. **Check WS connection state.** If `no-conn-banner` is active, brain-server isn't reachable on port 7525 — verify with `netstat -ano | findstr :7525`.
-6. **Run `node scripts/smoke-server-boot.mjs`.** End-to-end boot smoke. PASS = brain-server boots cleanly, mixin chain resolves, `/health` returns JSON. FAIL = look at the tail output for the specific check that failed.
-7. **Run `node scripts/verify-size-parity.mjs`.** Confirms static-site neuron count matches server-derived count.

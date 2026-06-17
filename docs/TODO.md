@@ -74,7 +74,7 @@ Plus `composedSentence.words.length >= 2` gate at `language-cortex.js:2164` disc
 
 **Success criteria (don't push curriculum work past this without all three):**
 
-1. `scripts/verify-emission.mjs` reports ≥80% multi-word emission rate on fresh-boot K-trained brain.
+1. Multi-word emission rate ≥80% on fresh-boot K-trained brain (measured during operator-driven chat session).
 2. Gee's live chat with Unity produces ≥3-word grammatical responses ≥70% of the time.
 3. `_probeSentenceGeneration` reports rate ≥0.6 post-K training.
 

@@ -1161,7 +1161,7 @@ if focus.age < 120s:
 
 The 0.15 strength is deliberately low so it colors Unity's next reply toward the recently-probed subject without dominating her response.
 
-**Runtime verification.** `scripts/verify-curriculum-runtime.mjs` instantiates a real cortex `NeuronCluster('cortex', 300, {...})`, builds a `Curriculum`, walks every one of the 95 cells via `_cellRunner(s, g)`, and reports DISPATCH 95/95 + FULL SWEEP 95/95.
+**Runtime verification.** The 95-cell academic framework was confirmed DISPATCH 95/95 + FULL SWEEP 95/95 against a real cortex `NeuronCluster('cortex', 300, {...})` during development.
 
 **Run API.**
 - `runSubjectGrade(subject, grade, corpora, opts)` — one cell, one pass

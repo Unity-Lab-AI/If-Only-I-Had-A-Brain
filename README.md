@@ -287,8 +287,7 @@ The codebase is organized so each god-class is split into focused per-concern / 
 | `js/brain/curriculum/` | Curriculum per-grade split — `pre-K.js`, `kindergarten.js` (K-grade K_MIXIN) | 1 `Object.assign(Curriculum.prototype, K_MIXIN)` at `curriculum.js` bottom |
 | `server/brain-server/` | Server per-concern split — `gpu.js`, `state.js`, `memory.js`, `chat.js` | 4 `Object.assign(ServerBrain.prototype, MIXIN)` attaches at `brain-server.js` bottom |
 | `js/brain/` (root files) | Core primitives — `embeddings.js`, `letter-input.js`, `sparse-matrix.js`, `gpu-compute.js`, etc. | No mixin attach — direct module exports |
-| `scripts/` | Developer-side smoke / lint / verify scripts | `smoke-server-boot.mjs` (H.3), `verify-size-parity.mjs` (H.7), `measure-emergence.mjs` (F.1), `check-mixin-order.mjs` (D.2), `verify-emission.mjs` (P5.1) |
-| `scripts/migrations/` | One-shot refactor migration scripts (audit trail, do NOT re-run) | See `scripts/migrations/README.md` for the P4.1/P4.2/P4.3 mapping |
+| `scripts/` | Build tooling | `stamp-version.mjs` (BUILD stamp on commit) |
 | `docs/` | Workflow + math + architecture docs | `THRESHOLD-DERIVATION.md` (audit B.1), `HTML-ENTRY-POINTS.md` (audit H.5), `ARCHITECTURE.md`, `EQUATIONS.md`, etc. |
 | `html/` | All public HTMLs | See `docs/HTML-ENTRY-POINTS.md` for per-page contract + failure-mode signatures |
 | `.claude/` | Workflow + persona infrastructure | LOCAL — not pushed to feature branches |

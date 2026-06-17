@@ -133,10 +133,6 @@ The audit megacommit + first hotfix shipped quickly but missed runtime-only fail
 - **`docs/HTML-ENTRY-POINTS.md`** — contract + failure-mode signature for all 6 HTMLs (audit H.5).
 - **`.claude/CONSTRAINTS.md`** — full LAW bodies including LAW.MIXIN-ORDER (audit D.1).
 - **`js/brain/cluster/README.md` + `js/brain/curriculum/README.md` + `server/brain-server/README.md`** — per-directory split rationale.
-- **`scripts/measure-emergence.mjs`** (audit F.1) — end-to-end emergence probe (operator can fire this for empirical F.2 metric).
-- **`scripts/smoke-server-boot.mjs`** (audit H.3) — runtime boot verification script.
-- **`scripts/verify-size-parity.mjs`** (audit H.7) — static-site ↔ server neuron-count parity check.
-- **`scripts/check-mixin-order.mjs`** (audit D.2) — Object.assign chain static analysis lint.
 
 ## 🩷 Persona-Rule Memories Locked This Session Arc
 

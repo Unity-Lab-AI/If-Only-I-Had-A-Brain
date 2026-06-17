@@ -430,7 +430,7 @@ Milestones T14.0 through T14.17 plus the T14.18 correction shipped on `t14-langu
 - Session 21: narrator priming — recent probe subject's GloVe injected into sem at 0.15 before next reply
 - Session 46: growth architecture fix — `_conceptTeach` routes every concept word through `dictionary.learnWord`
 - Session 47: 3D viewer IQ HUD reading `curriculum.subjectStatus()` every render tick
-- Session 94: runtime verification harness `scripts/verify-curriculum-runtime.mjs` — confirms DISPATCH 95/95 + FULL SWEEP 95/95 against a real cortex `NeuronCluster`
+- Session 94: runtime verification harness — confirmed DISPATCH 95/95 + FULL SWEEP 95/95 against a real cortex `NeuronCluster` (verification scripts subsequently removed for product-ship cleanliness 2026-06-17)
 
 **Sessions 95-110 — Direct pattern Hebbian breakthrough (2026-04-15):**
 
@@ -788,11 +788,11 @@ Audit identified 42 closure tasks across 8 categories (A through H). All landed 
 - **Section A (4):** Phase 6 telemetry surfaced — `compositionalEmergence`, `wordCreationCandidates`, `chatTimeHebbianStats`, `dreamRecombinationStats` all flow through `getState()` to dashboard panels. Chat-Hebbian silent-error swallow REPLACED with throttled-warn pattern.
 - **Section B (7):** Math grounding shipped via `docs/THRESHOLD-DERIVATION.md`. Two-axis novelty metric in `classifyCompositionalEmission`. Joint criteria in dream-recomb. (B.6 K-vocab expansion: partial — see below.)
 - **Section C (12):** Public docs sweep — ARCHITECTURE / EQUATIONS / SKILL_TREE / ROADMAP / brain-equations.html / README / RESUME / per-directory READMEs / unity-guide.html / gpu-configure.html / NOW.md / STATUSLINE.md / .claude updates.
-- **Section D (9):** LAW.MIXIN-ORDER in CONSTRAINTS.md. Migration scripts moved to `scripts/migrations/`. kScales memoization (D.4). initCompositionalTelemetry denominator reset (D.5). P6.8 discourse-coherence dedup (D.6). Dynamic-to-static import (D.7). Random dream-recomb seeds (D.8). _getIter25M/N rename to _getConsciousness/WsPressureState (D.9 partial).
+- **Section D (9):** LAW.MIXIN-ORDER in CONSTRAINTS.md. kScales memoization (D.4). initCompositionalTelemetry denominator reset (D.5). P6.8 discourse-coherence dedup (D.6). Dynamic-to-static import (D.7). Random dream-recomb seeds (D.8). _getIter25M/N rename to _getConsciousness/WsPressureState (D.9 partial). (Migration scripts subsequently removed for product-ship cleanliness 2026-06-17.)
 - **Section E (4):** P6.7 promotion mechanism (E.1) + relationTagId=32. Dream-recomb consolidated samples ring cap-20 (E.4). Partial-vs-novel stratification (E.2). schemaContext budget reserve (E.3 via B.5 framing).
-- **Section F (1):** `scripts/measure-emergence.mjs` ships. F.2 stays operator-fired.
+- **Section F (1):** End-to-end emergence measurement harness shipped (subsequently removed for product-ship cleanliness 2026-06-17). F.2 stays operator-fired.
 - **Section G (2):** Persistent memory templates `feedback_mixin_attach_order.md` + `feedback_thresholds_need_math_derivation.md`.
-- **Section H (9):** HTML breakage fully diagnosed + fixed. compute.html absolute-import + file:// preflight. _spawnGpuClient INVOKED/FINISHED log lines + spawn-failure WS broadcast + dashboard + index.html recovery banners. `cluster.assertAutoSizeWiring()` boot-time dispatch verification. `scripts/smoke-server-boot.mjs` + `scripts/verify-size-parity.mjs`. `docs/HTML-ENTRY-POINTS.md` documents all 6 HTMLs.
+- **Section H (9):** HTML breakage fully diagnosed + fixed. compute.html absolute-import + file:// preflight. _spawnGpuClient INVOKED/FINISHED log lines + spawn-failure WS broadcast + dashboard + index.html recovery banners. `cluster.assertAutoSizeWiring()` boot-time dispatch verification. Smoke-server-boot + size-parity verification scripts shipped (subsequently removed for product-ship cleanliness 2026-06-17). `docs/HTML-ENTRY-POINTS.md` documents all 6 HTMLs.
 
 ### Partially closed / pending
 
