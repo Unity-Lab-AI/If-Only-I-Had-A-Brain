@@ -50,7 +50,17 @@ const Database = require('better-sqlite3');
 
 const SERVER_MEMORY_MIXIN = {
   _initEpisodicDB() {
-    const dbPath = path.join(__dirname, 'episodic-memory.db');
+    // Path relative to THIS file: server/brain-server/memory.js
+    // needs ../episodic-memory.db to land at server/episodic-memory.db
+    // where the original brain-server.js placed it. Pre-fix
+    // path.join(__dirname, 'episodic-memory.db') resolved to
+    // server/brain-server/episodic-memory.db — wrong location, broke
+    // state continuity (a Savestart.bat boot wouldn't find the prior DB).
+    // P4.3.c copy-paste depth-shift bug. Caught by 2026-06-17 ULTRATHINK
+    // boot audit. If a phantom DB exists at the wrong path from a
+    // prior boot of the bug, it gets ignored — the correct path takes
+    // precedence for new writes.
+    const dbPath = path.join(__dirname, '..', 'episodic-memory.db');
     this._db = new Database(dbPath);
 
     // WAL mode for concurrent reads during brain loop
@@ -270,7 +280,7 @@ const SERVER_MEMORY_MIXIN = {
     // Sample cortex pattern — first 32 firing rates as compact representation
     const cortexV = this.voltages.cortex;
     const pattern = [];
-    const step = Math.floor(CLUSTER_SIZES.cortex / 32);
+    const step = Math.floor(this.CLUSTER_SIZES.cortex / 32);
     for (let i = 0; i < 32; i++) {
       const idx = i * step;
       pattern.push(+(cortexV[idx] > this.vThresh ? 1 : 0));

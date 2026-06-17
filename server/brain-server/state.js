@@ -219,12 +219,12 @@ const SERVER_STATE_MIXIN = {
     }
 
     // Derive band power from INSTANT spike rates (not slow EMA)
-    const cortexRate = this.clusters.cortex.spikeCount / (CLUSTER_SIZES.cortex || 1);
-    const hippoRate = this.clusters.hippocampus.spikeCount / (CLUSTER_SIZES.hippocampus || 1);
-    const amygRate = this.clusters.amygdala.spikeCount / (CLUSTER_SIZES.amygdala || 1);
-    const bgRate = this.clusters.basalGanglia.spikeCount / (CLUSTER_SIZES.basalGanglia || 1);
-    const cerebRate = this.clusters.cerebellum.spikeCount / (CLUSTER_SIZES.cerebellum || 1);
-    const hypoRate = this.clusters.hypothalamus.spikeCount / (CLUSTER_SIZES.hypothalamus || 1);
+    const cortexRate = this.clusters.cortex.spikeCount / (this.CLUSTER_SIZES.cortex || 1);
+    const hippoRate = this.clusters.hippocampus.spikeCount / (this.CLUSTER_SIZES.hippocampus || 1);
+    const amygRate = this.clusters.amygdala.spikeCount / (this.CLUSTER_SIZES.amygdala || 1);
+    const bgRate = this.clusters.basalGanglia.spikeCount / (this.CLUSTER_SIZES.basalGanglia || 1);
+    const cerebRate = this.clusters.cerebellum.spikeCount / (this.CLUSTER_SIZES.cerebellum || 1);
+    const hypoRate = this.clusters.hypothalamus.spikeCount / (this.CLUSTER_SIZES.hypothalamus || 1);
     const bandPower = {
       gamma: (cortexRate + amygRate) * 50,              // fast cortical + emotional
       beta:  (bgRate + cortexRate) * 30,                // motor planning + attention
@@ -282,8 +282,8 @@ const SERVER_STATE_MIXIN = {
       cortexDivergenceByRegion: this._cortexDivergenceByRegion || {},
       connectedUsers: this.clients.size,
       isDreaming: this._isDreaming || false,
-      totalNeurons: TOTAL_NEURONS,
-      scale: SCALE + 'x',
+      totalNeurons: this.TOTAL_NEURONS,
+      scale: this.SCALE + 'x',
       // Shared emotion — everyone sees Unity's mood
       sharedMood: this._getSharedMood(),
       // Live performance stats
@@ -516,7 +516,7 @@ const SERVER_STATE_MIXIN = {
       // divergence just from size differences between standalone and
       // main-cortex regions.
       const standLen = standReg.end - standReg.start;
-      const mainLen = Math.floor(CLUSTER_SIZES.cortex * this._regionFraction(regName));
+      const mainLen = Math.floor(this.CLUSTER_SIZES.cortex * this._regionFraction(regName));
       const standRate = standLen > 0 ? standSpikes / standLen : 0;
       const mainRate = mainLen > 0 ? mainSpikes / mainLen : 0;
       const diff = Math.abs(standRate - mainRate);

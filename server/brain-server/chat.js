@@ -247,7 +247,12 @@ const SERVER_CHAT_MIXIN = {
           try {
             // Lazy cache — first call loads the library, subsequent
             // calls reuse the cached module. Keeps the hot path fast.
-            if (!this._drugRejections) this._drugRejections = require('./drug-rejections.js');
+            // Path relative to THIS file: server/brain-server/chat.js
+            // needs '../drug-rejections.js' to reach server/drug-rejections.js.
+            // Pre-fix './drug-rejections.js' resolved to server/brain-
+            // server/drug-rejections.js (doesn't exist). P4.3.d copy-paste
+            // depth-shift bug. Caught by 2026-06-17 ULTRATHINK boot audit.
+            if (!this._drugRejections) this._drugRejections = require('../drug-rejections.js');
             rejectionLine = this._drugRejections.pickRejection(decision.reason);
           } catch { rejectionLine = 'nah, not right now.'; }
           return {
@@ -465,7 +470,7 @@ const SERVER_CHAT_MIXIN = {
 
     // GPU utilization (poll nvidia-smi periodically)
     let gpuUtil = 0;
-    if (RESOURCES.gpu.vram > 0 && (!this._lastGpuPoll || Date.now() - this._lastGpuPoll > 5000)) {
+    if (this.RESOURCES.gpu.vram > 0 && (!this._lastGpuPoll || Date.now() - this._lastGpuPoll > 5000)) {
       try {
         const smi = execSync('nvidia-smi --query-gpu=utilization.gpu --format=csv,noheader,nounits', { timeout: 2000 }).toString().trim();
         gpuUtil = parseInt(smi) || 0;
@@ -482,8 +487,8 @@ const SERVER_CHAT_MIXIN = {
       memUsedMB: Math.round(mem.heapUsed / 1048576),
       memTotalMB: Math.round(os.totalmem() / 1048576),
       memRssMB: Math.round(mem.rss / 1048576),
-      gpuName: RESOURCES.gpu.name,
-      gpuVramMB: RESOURCES.gpu.vram,
+      gpuName: this.RESOURCES.gpu.name,
+      gpuVramMB: this.RESOURCES.gpu.vram,
       gpuUtilPercent: gpuUtil,
       gpuComputeConnected: !!(this._gpuConnected && this._gpuClient?.readyState === 1),
       gpuHits: this._gpuHits || 0,
@@ -732,7 +737,14 @@ const SERVER_CHAT_MIXIN = {
       // uses the SERVER's own refs.
       if (!this.innerVoice) {
         if (!this._innerVoiceModule) {
-          this._innerVoiceModule = await import('../js/brain/inner-voice.js');
+          // Path is relative to THIS file (server/brain-server/chat.js)
+          // so need ../../js/brain/inner-voice.js to reach project root's
+          // js/. Pre-fix said '../js/...' which resolved to server/js/
+          // (doesn't exist). P4.3.d extraction copied the import string
+          // unchanged from brain-server.js which IS one directory up so
+          // its '../js/...' resolved correctly to repo root. Caught by
+          // 2026-06-17 ULTRATHINK boot audit.
+          this._innerVoiceModule = await import('../../js/brain/inner-voice.js');
         }
         // 114.19ek P2 #12 — skip the internal Dictionary +
         // LanguageCortex allocation since _innerVoiceTick always

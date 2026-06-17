@@ -32,6 +32,17 @@
 // this.dictionary, this.lastSpikes, this.externalCurrent, this._gpuProxy,
 // this._composeStats, this._recentEmissions, etc.
 
+// Module-level imports. Pre-fix the P4.2.b extraction did not bring
+// these along — emit.js had ZERO imports despite 10+ bare references
+// to `sharedEmbeddings` (composeSentence intent/back-injection paths)
+// + `T14_TERMINATORS` (terminator-emit detection) + `FUNCTION_WORDS`
+// (repetition-penalty exemption). Each would have thrown ReferenceError
+// at runtime when composeSentence reached those code paths. Caught
+// during ULTRATHINK boot audit per operator 2026-06-17 "this is why
+// we dont half ass shit" directive.
+import { sharedEmbeddings } from '../embeddings.js';
+import { T14_TERMINATORS, FUNCTION_WORDS } from '../cluster.js';
+
 export const CLUSTER_EMIT_MIXIN = {
   _dictionaryOracleEmit(intentSeed, opts = {}) {
     if (opts.skipDictionaryOracle === true) return null;

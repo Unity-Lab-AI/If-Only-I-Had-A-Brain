@@ -628,6 +628,19 @@ class ServerBrain {
     this.running = false;
     this.clients = new Map(); // ws → { id, lastInput, inputCount, name }
 
+    // Expose module-scope constants on `this` so mixin files (gpu.js,
+    // state.js, memory.js, chat.js) can read them via `this.X`. Without
+    // this, the P4.3 extraction left bare references like `CLUSTER_SIZES`
+    // dangling — module-scope is not shared across CommonJS module
+    // boundaries. Operator 2026-06-17 caught the cascade in state.js:222
+    // (`CLUSTER_SIZES is not defined` on first WS welcome). Affects all
+    // 4 mixin files. Bound here once + assigned to mixin call sites.
+    this.CLUSTER_SIZES = CLUSTER_SIZES;
+    this.SCALE = SCALE;
+    this.TOTAL_NEURONS = TOTAL_NEURONS;
+    this.SUBSTEPS = SUBSTEPS;
+    this.RESOURCES = RESOURCES;
+
     // T18.4.e — worker-thread pool for parallel CPU sparse matmul.
     // Sized to os.cpus().length - 1 (up to 16 workers). Used by the
     // language cortex's CPU fallback path in `cluster._propagateCrossRegions`

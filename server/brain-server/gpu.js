@@ -45,7 +45,7 @@ const SERVER_GPU_MIXIN = {
     if (!this._gpuPending) this._gpuPending = {};
     if (!this._gpuInitialized) this._gpuInitialized = {};
 
-    const size = CLUSTER_SIZES[clusterName];
+    const size = this.CLUSTER_SIZES[clusterName];
 
     if (!this._gpuInitialized[clusterName]) {
       // FIRST DISPATCH — tell GPU to create buffers at Vrest
@@ -88,7 +88,7 @@ const SERVER_GPU_MIXIN = {
     const emotionalGate = 0.7 + (this.arousal || 0.5) * 0.6;
     const driveFactor = 0.8 + ((this.clusters.hypothalamus?.spikeCount || 0) > 100 ? 0.4 : 0.0);
     const errorSignal = clusterName === 'cortex' || clusterName === 'basalGanglia'
-      ? -(this.clusters.cerebellum?.spikeCount || 0) / (CLUSTER_SIZES.cerebellum || 1) * 2 : 0;
+      ? -(this.clusters.cerebellum?.spikeCount || 0) / (this.CLUSTER_SIZES.cerebellum || 1) * 2 : 0;
 
     this._gpuClient.send(JSON.stringify({
       type: 'compute_request',
@@ -1024,7 +1024,7 @@ const SERVER_GPU_MIXIN = {
     if (!this.cortexCluster || !this.cortexCluster.regions) return;
     if (!this._gpuClient || this._gpuClient.readyState !== 1) return;
     const stand = this.cortexCluster;
-    const mainSize = CLUSTER_SIZES.cortex;
+    const mainSize = this.CLUSTER_SIZES.cortex;
     if (!mainSize) return;
 
     // Main cortex region layout — same fractions used by _regionsFor

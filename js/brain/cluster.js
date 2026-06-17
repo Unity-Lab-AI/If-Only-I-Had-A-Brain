@@ -189,7 +189,12 @@ function injectEmbeddingToRegionOffset(cluster, regionName, emb, strength, offse
 // ones that also signal "stop." Period/question/exclamation only —
 // commas/semicolons/colons are within-sentence punctuation and don't
 // trigger the stop branch.
-const T14_TERMINATORS = new Set(['.', '?', '!']);
+// Exported because cluster/emit.js mixin references these. Pre-fix
+// the P4.2 extraction left emit.js with bare `T14_TERMINATORS` /
+// `FUNCTION_WORDS` references that crashed when composeSentence
+// reached the terminator check / function-word penalty code path.
+// Operator 2026-06-17 audit hardening — silent-runtime-crash class.
+export const T14_TERMINATORS = new Set(['.', '?', '!']);
 
 // function-word set EXEMPTED from the recent-emission
 // repetition penalty in emitWordDirect. Real English requires repeated
@@ -203,7 +208,7 @@ const T14_TERMINATORS = new Set(['.', '?', '!']);
 // that says "don't penalize repetition of structural connective
 // tissue." Equivalent biologically to high-frequency-word baseline
 // tolerance found in cortical n-gram statistics.
-const FUNCTION_WORDS = new Set([
+export const FUNCTION_WORDS = new Set([
   // Articles + determiners
   'a', 'an', 'the', 'this', 'that', 'these', 'those',
   // Auxiliaries + copulas
