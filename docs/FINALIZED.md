@@ -24108,3 +24108,40 @@ Second of 4 D.9 residual file extractions. `_getMemoryStats` (149 lines, brain-s
 D.9b SHIPPED. 2 more sub-extractions remain (D.9c `_getConsciousnessState` → state.js, D.9d `_getWsPressureState` → state.js). D.9 stays PARTIAL until all four land. Memory.js is now COMPLETE for D.9 scope (both memory-related methods landed).
 
 ---
+
+## 2026-06-17 — Session 114.19gh — D.9c — `_getConsciousnessState` extracted to state.js
+
+### Gee verbatim per LAW #0
+
+> *"no cheap work do each individually"* (Gee 2026-06-17 — sustained cadence directive)
+
+### What this is
+
+Third of 4 D.9 residual file extractions. `_getConsciousnessState` (158 lines, brain-server.js 3201-3358) moved from `ServerBrain` class body into `SERVER_STATE_MIXIN` inside `server/brain-server/state.js`. Method dispatches identically via the Object.assign chain (LAW.MIXIN-ORDER preserved).
+
+### Method moved
+
+`_getConsciousnessState()` — Phase 6 bounded state snapshot for dashboard display. All values are aggregates / counts / capped-list; NO unbounded enumeration. Surfaces:
+- **M.21 Dictionary API** — smoke test result (boolean PASS/FAIL/null), cache stats, K-vocab prefetched flag, K-vocab total + taught counts.
+- **M.22 K-wiring assertion** — ok flag + first 5 gap labels (cached on cortex 30s to avoid recomputing every dashboard tick).
+- **M.23 Cortical microstructure** — column count + size, layer histogram (fixed-size 5 array), hub count + fraction, theta phase scalar, gamma scale, Φ proxy.
+- **GlobalWorkspace ignition** (O.15) — current broadcast label/value, ignition rate per tick, recent history capped 8 entries.
+- **Predictive coding error** (O.16) — last mean-abs error + 32-sample history (Friston 2010 free energy).
+- **Defs-learned-per-hour** (O.18) — rolling 1hr window rate from `_defLearnedTimestamps` 256-cap ring buffer (clamps to last 3.6M ms so dashboard reflects steady-state not seed-burst peaks).
+
+### Verification
+
+- `node --check server/brain-server/state.js` → SYNTAX OK
+- `node --check server/brain-server.js` → SYNTAX OK
+- `node -e "..."` → 9 methods in state mixin; `_getConsciousnessState` present as function.
+
+### Files changed
+
+- `server/brain-server/state.js` — `_getConsciousnessState` method appended to SERVER_STATE_MIXIN.
+- `server/brain-server.js` — `_getConsciousnessState` body removed; replaced with 3-line breadcrumb comment.
+
+### Status
+
+D.9c SHIPPED. 1 sub-extraction remains (D.9d `_getWsPressureState` → state.js). D.9 stays PARTIAL until the last one lands.
+
+---
