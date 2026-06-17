@@ -10153,18 +10153,45 @@ export class Curriculum {
     const probeRate = probe.rate || 0;
     const probePassed = probe.passed || 0;
     const probeTotal = probe.total || 0;
-    this._hb(`[Curriculum] _teachSentenceStructure POST-PROBE — sentenceGen rate=${(probeRate * 100).toFixed(0)}% (${probePassed}/${probeTotal}) · threshold=${(PROBE_PASS_THRESHOLD * 100).toFixed(0)}% — ${probeRate >= PROBE_PASS_THRESHOLD ? '✓ PASS, advancing subGrade' : '✗ FAIL, NOT advancing subGrade'}.`);
 
-    // Advance ONLY when probe demonstrates effectiveness. No legacy
-    // unconditional-advance path — if probe fails, the gate re-triggers
-    // training on the next pass.
-    if (cluster.advanceSubGrade && probeRate >= PROBE_PASS_THRESHOLD) {
+    // Coherence cosine as SOFT signal — re-enables the composeSentence
+    // post-check (which has been informational-only since fk.1) into
+    // the subGrade-advance decision. Mechanism: high average coherence
+    // adds a small bonus to the probe rate before threshold comparison.
+    // A borderline rate (e.g. 0.30) can clear the 0.40 gate IF the
+    // sentences that DID pass were strongly aligned with their intent
+    // seed (avgCosine ≥ COHERENCE_MIN). Stays SOFT because:
+    //   - When avgCosine is null (no intent-concept available), no
+    //     bonus is applied — rate alone gates.
+    //   - When avgCosine is below COHERENCE_MIN, no bonus (would only
+    //     reward random noise alignment).
+    //   - The bonus caps at a fraction of the rate threshold so probe
+    //     emission still has to be substantively non-empty.
+    const COHERENCE_MIN = 0.05;        // below this, no bonus (noise floor)
+    const COHERENCE_BONUS_GAIN = 0.5;  // multiplier on the (avgCosine - MIN) excess
+    const avgCosine = typeof probe.avgCosine === 'number' ? probe.avgCosine : null;
+    let coherenceBonus = 0;
+    if (avgCosine !== null && avgCosine > COHERENCE_MIN) {
+      coherenceBonus = COHERENCE_BONUS_GAIN * (avgCosine - COHERENCE_MIN);
+    }
+    const qualityScore = probeRate + coherenceBonus;
+    const advanced = qualityScore >= PROBE_PASS_THRESHOLD;
+
+    const bonusTag = avgCosine !== null
+      ? ` · avgCos=${avgCosine.toFixed(2)} coherenceBonus=+${coherenceBonus.toFixed(3)} qualityScore=${qualityScore.toFixed(3)}`
+      : ' · avgCos=n/a (no intent-concept)';
+    this._hb(`[Curriculum] _teachSentenceStructure POST-PROBE — sentenceGen rate=${(probeRate * 100).toFixed(0)}% (${probePassed}/${probeTotal}) · threshold=${(PROBE_PASS_THRESHOLD * 100).toFixed(0)}%${bonusTag} — ${advanced ? '✓ PASS, advancing subGrade' : '✗ FAIL, NOT advancing subGrade'}.`);
+
+    // Advance ONLY when quality score (probe rate + coherence bonus)
+    // clears the threshold. No legacy unconditional-advance path —
+    // if quality fails, the gate re-triggers training on the next pass.
+    if (cluster.advanceSubGrade && advanced) {
       if (cluster.advanceSubGrade('ela', 'binding')) {
-        this._hb(`[Curriculum] 📈 subGrade ela advanced → 'binding' (sentence-structure rules carved + probe rate ${(probeRate * 100).toFixed(0)}% ≥ ${(PROBE_PASS_THRESHOLD * 100).toFixed(0)}% threshold)`);
+        this._hb(`[Curriculum] 📈 subGrade ela advanced → 'binding' (sentence-structure rules carved + quality score ${qualityScore.toFixed(3)} ≥ ${PROBE_PASS_THRESHOLD.toFixed(2)} threshold · ${avgCosine !== null ? `coherence bonus +${coherenceBonus.toFixed(3)}` : 'rate-only path'})`);
       }
     }
 
-    return { passes, totalTrained, probeRate, probePassed, probeTotal };
+    return { passes, totalTrained, probeRate, probePassed, probeTotal, avgCosine, coherenceBonus, qualityScore };
   }
 
   /**
@@ -10400,31 +10427,75 @@ export class Curriculum {
       uniqueWords.delete('');
       const wordCount = words.length;
       const uniqueCount = uniqueWords.size;
-      // Pass = ≥2 word emissions AND ≥2 unique words. The unique-word
-      // check catches basin-lock metronome where the same saturated
-      // token repeats across all positions (the "Hey/Medicines/Controls"
-      // failure mode caught in the 2026-05-09 server.log).
-      const structurallyValid = wordCount >= 2 && uniqueCount >= 2;
+      const uniqueRatio = wordCount > 0 ? uniqueCount / wordCount : 0;
+      // Terminator emergence: did the brain emit a sentence-ender? Reads
+      // the last character of the joined sentence (composeSentence appends
+      // the terminator onto the last word at the punctuation gate).
+      const sentenceText = composed ? (composed.sentence || '') : '';
+      const lastChar = sentenceText.length > 0 ? sentenceText.charAt(sentenceText.length - 1) : '';
+      const hasTerminator = lastChar === '.' || lastChar === '?' || lastChar === '!';
+      const coherenceCosine = composed && typeof composed.coherenceCosine === 'number' ? composed.coherenceCosine : null;
+
+      // Tighter pass gate (was ≥2 words AND ≥2 unique). The ≥3/≥3
+      // floor matches what a K-grade brain SHOULD be able to emit
+      // ("i see thing" / "the cat sat") under trained iter25-I weights
+      // — anything below that means structural binding never landed.
+      // uniqueRatio ≥ 0.5 catches the "the cat the cat the cat" basin-
+      // lock where word count looks fine but every other token is the
+      // same saturated bucket. Two new floors:
+      //   MIN_WORDS = 3 (was 2)
+      //   MIN_UNIQUE = 3 (was 2)
+      //   MIN_UNIQUE_RATIO = 0.5 (new — anti-repetition basin-lock)
+      // Terminator emergence + coherence cosine logged as BONUS telemetry
+      // but NOT gated yet — those signals are still maturing and gating
+      // on them now would over-shrink the pass set before the brain has
+      // a chance to land them at training depth.
+      const MIN_WORDS = 3;
+      const MIN_UNIQUE = 3;
+      const MIN_UNIQUE_RATIO = 0.5;
+      const structurallyValid =
+        wordCount >= MIN_WORDS &&
+        uniqueCount >= MIN_UNIQUE &&
+        uniqueRatio >= MIN_UNIQUE_RATIO;
       perIntent[probe.label] = {
         seed: probe.seed,
         wordCount,
         uniqueCount,
+        uniqueRatio,
         words,
-        sentence: composed ? composed.sentence : '',
+        sentence: sentenceText,
         fillCount: composed ? composed.fillCount : 0,
-        coherenceCosine: composed && typeof composed.coherenceCosine === 'number' ? composed.coherenceCosine : null,
+        coherenceCosine,
+        hasTerminator,
         valid: structurallyValid,
       };
       if (structurallyValid) passed += 1;
     }
     const total = probeSeeds.length;
     const rate = total > 0 ? passed / total : 0;
-    this._hb(`[Curriculum] _probeSentenceGeneration[subject=${probeSubject}] — ${passed}/${total} natural-language seeds emitted ≥2 unique words (rate=${(rate * 100).toFixed(0)}%). Per-seed: ${probeSeeds.map(p => {
+    // Aggregate bonus telemetry for the heartbeat line so the operator
+    // sees how often terminators emerge + average coherence at probe
+    // time, even though those signals aren't gating yet.
+    let terminatorCount = 0;
+    let cosineSum = 0;
+    let cosineN = 0;
+    for (const probe of probeSeeds) {
+      const r = perIntent[probe.label];
+      if (r.hasTerminator) terminatorCount++;
+      if (typeof r.coherenceCosine === 'number') {
+        cosineSum += r.coherenceCosine;
+        cosineN++;
+      }
+    }
+    const avgCosine = cosineN > 0 ? cosineSum / cosineN : null;
+    const bonusTag = `term=${terminatorCount}/${total}${avgCosine !== null ? ` avgCos=${avgCosine.toFixed(2)}` : ''}`;
+    this._hb(`[Curriculum] _probeSentenceGeneration[subject=${probeSubject}] — ${passed}/${total} natural-language seeds passed ≥3w/≥3u/ratio≥0.5 (rate=${(rate * 100).toFixed(0)}%) · ${bonusTag}. Per-seed: ${probeSeeds.map(p => {
       const r = perIntent[p.label];
       const cosTag = r.coherenceCosine !== null ? ` cos=${r.coherenceCosine.toFixed(2)}` : '';
-      return `${p.label}("${p.seed}"):"${(r.sentence || '').slice(0, 40)}" (${r.wordCount}w/${r.uniqueCount}u${cosTag})`;
+      const termTag = r.hasTerminator ? '·' : '';
+      return `${p.label}("${p.seed}"):"${(r.sentence || '').slice(0, 40)}"${termTag} (${r.wordCount}w/${r.uniqueCount}u/r=${r.uniqueRatio.toFixed(2)}${cosTag})`;
     }).join(' · ')}`);
-    return { passed, total, rate, perIntent };
+    return { passed, total, rate, perIntent, avgCosine, terminatorRate: total > 0 ? terminatorCount / total : 0 };
   }
 
   /**

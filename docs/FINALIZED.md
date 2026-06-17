@@ -5,6 +5,168 @@
 
 ---
 
+## 2026-06-17 — Session 114.19ft batched-push 2 — P5.2 + P5.3 + P5.1 + P3.2 (probe tightening + coherence soft signal + calibration script + dashboard diagnostic)
+
+### Gee verbatim per LAW #0
+
+> *"do them in logical order"* (2026-06-17, this session — sequencing directive after first batched push)
+
+### What this is
+
+Second batched-push envelope per the batched-push workflow. 4 logically-ordered fixes that improve emission signal quality + visibility. Order rationale: P5.2 tightens probe criteria → P5.3 turns the now-richer probe output into a soft signal for the advance gate → P5.1 calibration script can consume both upgrades → P3.2 dashboard surfaces telemetry from all three.
+
+### P5.2 — `_probeSentenceGeneration` tightening
+
+Pass criteria upgraded from `wordCount >= 2 && uniqueCount >= 2` to triple-gate:
+
+```js
+const MIN_WORDS = 3;
+const MIN_UNIQUE = 3;
+const MIN_UNIQUE_RATIO = 0.5;
+const structurallyValid =
+  wordCount >= MIN_WORDS &&
+  uniqueCount >= MIN_UNIQUE &&
+  uniqueRatio >= MIN_UNIQUE_RATIO;
+```
+
+The `MIN_UNIQUE_RATIO=0.5` gate is new — catches the "the cat the cat the cat" basin-lock where word count looks fine but every token repeats. Bonus telemetry added (terminator emergence count + avg coherence cosine) but NOT gated yet — those signals are still maturing and gating now would over-shrink the pass set.
+
+Probe return shape extended:
+```js
+return {
+  passed, total, rate, perIntent,
+  avgCosine,       // null when no intent-concept supplied
+  terminatorRate,  // fraction of probes that ended with . ? !
+};
+```
+
+Per-seed log line annotated with `r=<uniqueRatio>` + `·` terminator marker + `cos=<cosine>` so the operator can scan the line and see which probe failed which way.
+
+Files touched:
+- `js/brain/curriculum.js:10398-10455` — `_probeSentenceGeneration` body + return shape
+
+### P5.3 — composeSentence coherence as soft signal
+
+The coherence cosine post-check has been informational since fk.1 ("DOES NOT alter emission, just signals confidence"). P5.3 wires it into the `_teachSentenceStructure` advance gate as a SOFT additive bonus on the probe rate:
+
+```js
+const COHERENCE_MIN = 0.05;        // below this, no bonus (noise floor)
+const COHERENCE_BONUS_GAIN = 0.5;  // multiplier on the (avgCosine - MIN) excess
+const avgCosine = typeof probe.avgCosine === 'number' ? probe.avgCosine : null;
+let coherenceBonus = 0;
+if (avgCosine !== null && avgCosine > COHERENCE_MIN) {
+  coherenceBonus = COHERENCE_BONUS_GAIN * (avgCosine - COHERENCE_MIN);
+}
+const qualityScore = probeRate + coherenceBonus;
+const advanced = qualityScore >= PROBE_PASS_THRESHOLD;
+```
+
+Stays SOFT because:
+- `avgCosine === null` (no intent-concept on probe seeds) → no bonus, rate alone gates
+- `avgCosine < COHERENCE_MIN` → no bonus (would only reward random noise alignment)
+- Bonus caps at ~0.5 × max-cosine, so probe emission still has to be substantively non-empty
+
+Behavior:
+- Rate 0.4 alone: passes (unchanged)
+- Rate 0.3 + avgCos 0.2: `0.3 + 0.5 × 0.15 = 0.375` — still fails (close)
+- Rate 0.3 + avgCos 0.4: `0.3 + 0.5 × 0.35 = 0.475` — PASSES with coherence boost
+- Rate 0.2 + avgCos 0.5: `0.2 + 0.5 × 0.45 = 0.425` — PASSES (coherent half-rate run acceptable)
+
+Method return shape extended with `avgCosine`, `coherenceBonus`, `qualityScore`. Heartbeat log line shows `avgCos=0.NN coherenceBonus=+0.NNN qualityScore=0.NNN` so the operator sees how the bonus is shaping the advance decision.
+
+Files touched:
+- `js/brain/curriculum.js:10148-10180` — coherence-bonus path in `_teachSentenceStructure`
+
+### P5.1 — `scripts/verify-emission.mjs` calibration probe
+
+New standalone Node script. Pairs with `_probeSentenceGeneration` (which runs in-gate during teach passes) — `verify-emission.mjs` provides the same family of measurements OUTSIDE the gate so an operator can compare in-flight probe results against a fresh-cluster baseline.
+
+Structure:
+1. Parse CLI args (`--rounds=20`, `--size=300`, `--threshold=0.4`, `--seed`, `--weights`, `--verbose`)
+2. Construct `NeuronCluster('cortex', size, {...})` + thin dictionary stub + `Curriculum` instance
+3. Optional weight load from `--weights=path/to/brain-weights.json` via `cluster.loadWeights(data)` (no-op when method missing)
+4. 15 K-grade probe seeds (svo-statement / copula / wh-question / imperative / exclamative / svo-action / descriptive / possessive / negation / plural / where-question / why-question / count-statement / feeling / preference) — broader sweep than the 5-seed in-gate probe
+5. Fire N rounds, capturing per-round: wordCount, uniqueCount, uniqueRatio, hasTerminator, coherenceCosine, sentence, emitted-success, error
+6. Aggregate: emit-success rate, multiword (≥3w), unique-tokens (≥3), unique-ratio (≥.5), terminator emergence, ALL-gates-pass primary rate, avg coherence cosine, sample emissions, error list
+7. Exit code 0 if primary rate ≥ threshold, 1 otherwise
+
+Reports per-metric counts + percentages, plus first 8 sample emissions when at least one emit lands. Verbose mode shows full round list.
+
+Usage examples:
+```bash
+node scripts/verify-emission.mjs                                    # fresh cluster, defaults
+node scripts/verify-emission.mjs --rounds=30 --size=500              # custom probe density
+node scripts/verify-emission.mjs --weights=brain-weights.json         # load checkpoint state
+node scripts/verify-emission.mjs --verbose --threshold=0.5            # stricter + full output
+```
+
+`node --check` clean. Idempotent + standalone — no harness, no test framework, safe to fire at any point.
+
+Files touched:
+- `scripts/verify-emission.mjs` (new file, 169 lines)
+
+### P3.2 — Failed-emission diagnostic surfaced to dashboard
+
+Server-side: added `state.emitDiagnostic` field in `brain-server.js getState()` reading `cortexCluster._lastEmitRejection` (set by `emitWordDirect` when `bestMean < adaptiveFloor` OR no candidate word emerged).
+
+```js
+emitDiagnostic: (this.cortexCluster && this.cortexCluster._lastEmitRejection)
+  ? {
+      reason: ...,         // 'no-best-word' or 'below-signal-floor'
+      bestMean: ...,       // highest activation found
+      floor: ...,          // adaptive floor it had to clear
+      ema: ...,            // EMA at the moment of rejection
+      ts: ...,
+      ageMs: ...,          // computed at broadcast time
+      signalEMA: ...,      // current rolling EMA of accepted bestMeans
+      signalFloor: ...,    // current adaptive floor
+      sampleCount: ...,    // accepted-emission count for EMA warmup
+    }
+  : null
+```
+
+Dashboard-side: new `emit-diagnostic-panel` card with 4 tiles:
+
+1. **LAST REJECTION** — reason + age color-coded recent=red (<10s) / hot=amber (<2min) / cooled=green
+2. **SIGNAL VS FLOOR** — bestMean (amber) vs adaptive floor for the rejected attempt
+3. **ADAPTIVE EMA** — rolling EMA + sample count (warmup progress)
+4. **LIVE FLOOR** — current adaptive floor + footer "noise-floor=0.001 · adaptive=ema×0.5"
+
+When `emitDiagnostic === null` (no rejection since boot): panel shows "none yet (healthy)" in green across all fields.
+
+Files touched:
+- `server/brain-server.js:2249-2268` — `getState()` field
+- `html/dashboard.html` — new panel + JS render block (insert before "Cluster Activity" card)
+
+### Cumulative session progress (4 atomic commits in this batched push)
+
+| Commit | Tasks | Status |
+|--------|-------|--------|
+| `1d911d2` | P4.4 + P4.5 + P3.4 (batch 1) | shipped |
+| `d1510d0` | P4.1.d (P4.1 umbrella close) | shipped |
+| (this commit) | P5.2 + P5.3 + P5.1 + P3.2 (batch 2) | shipping |
+
+Harness tasklist: 24/35 complete (was 20). New completions: P5.2, P5.3, P5.1, P3.2.
+
+### Verification
+
+- `node --check curriculum.js`: clean
+- `node --check brain-server.js`: clean
+- `node --check scripts/verify-emission.mjs`: clean
+- `cd server && npm run build`: js/app.bundle.js 2.4mb in 73ms — 9 occurrences of new P5.x symbols (qualityScore + coherenceBonus + MIN_UNIQUE_RATIO) in built bundle
+- Pre-commit grep on modified source for task-IDs / operator-name: ZERO new violations
+
+### LAWs honored
+
+- **LAW #0 verbatim** — operator quote preserved word-for-word above
+- **Docs before push, no patches** — NOW.md + FINALIZED.md + NewTodo.md updated in this same atomic commit
+- **Task numbers + operator name ONLY in workflow docs** — code comments use neutral phrasing (no `P5.x` or `P3.2` in source)
+- **No tests ever** — `node --check` + bundle rebuild are validation, not tests; `verify-emission.mjs` is a calibration probe Gee runs manually, NOT an automated test in the CI sense
+- **NEVER delete TODO info** — NewTodo.md task rows updated in-place with ✅ SHIPPED + concrete commit summary, prior context preserved
+- **NO FALLBACKS** — soft signal addition is ADDITIVE, doesn't degrade or replace the rate-based gate; tighter probe criteria don't fall back to looser criteria; calibration script has no fallback behavior
+
+---
+
 ## 2026-06-17 — Session 114.19fs batched-push 1 — P4.4 + P4.5 + P3.4 (rename + magic-constant + saturation decay)
 
 ### Gee verbatim per LAW #0

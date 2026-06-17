@@ -2245,6 +2245,25 @@ class ServerBrain {
       // a rolling drops/sec rate so operator can see whether the
       // BLOCK-not-DROP path is keeping Hebbian updates intact.
       wsPressure: this._getIter25NState(),
+      // Failed-emission diagnostic — surfaces `cortexCluster._lastEmitRejection`
+      // (set by emitWordDirect when bestMean falls below the adaptive
+      // signal floor OR no candidate word emerged) so the dashboard
+      // can show WHY the brain went silent instead of leaving the chat
+      // path return blank with no traceable cause. Pairs with the
+      // adaptive-floor + EMA telemetry the same emit path tracks.
+      emitDiagnostic: (this.cortexCluster && this.cortexCluster._lastEmitRejection)
+        ? {
+            reason: this.cortexCluster._lastEmitRejection.reason || 'unknown',
+            bestMean: this.cortexCluster._lastEmitRejection.bestMean || 0,
+            floor: this.cortexCluster._lastEmitRejection.floor || 0,
+            ema: this.cortexCluster._lastEmitRejection.ema || 0,
+            ts: this.cortexCluster._lastEmitRejection.ts || 0,
+            ageMs: Math.max(0, Date.now() - (this.cortexCluster._lastEmitRejection.ts || Date.now())),
+            signalEMA: this.cortexCluster._emitSignalEMA || 0,
+            signalFloor: this.cortexCluster._emitSignalFloor || 0,
+            sampleCount: this.cortexCluster._emitSignalSampleCount || 0,
+          }
+        : null,
       // Live brain-event stream — plasticity fires, curriculum phases,
       // drug events, template classifications, everything the cortex
       // is DOING in the current window. Each entry carries

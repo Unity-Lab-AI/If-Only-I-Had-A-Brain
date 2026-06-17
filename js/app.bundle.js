@@ -34503,13 +34503,23 @@ var Curriculum = class _Curriculum {
     const probeRate = probe.rate || 0;
     const probePassed = probe.passed || 0;
     const probeTotal = probe.total || 0;
-    this._hb(`[Curriculum] _teachSentenceStructure POST-PROBE \u2014 sentenceGen rate=${(probeRate * 100).toFixed(0)}% (${probePassed}/${probeTotal}) \xB7 threshold=${(PROBE_PASS_THRESHOLD * 100).toFixed(0)}% \u2014 ${probeRate >= PROBE_PASS_THRESHOLD ? "\u2713 PASS, advancing subGrade" : "\u2717 FAIL, NOT advancing subGrade"}.`);
-    if (cluster.advanceSubGrade && probeRate >= PROBE_PASS_THRESHOLD) {
+    const COHERENCE_MIN2 = 0.05;
+    const COHERENCE_BONUS_GAIN = 0.5;
+    const avgCosine = typeof probe.avgCosine === "number" ? probe.avgCosine : null;
+    let coherenceBonus = 0;
+    if (avgCosine !== null && avgCosine > COHERENCE_MIN2) {
+      coherenceBonus = COHERENCE_BONUS_GAIN * (avgCosine - COHERENCE_MIN2);
+    }
+    const qualityScore = probeRate + coherenceBonus;
+    const advanced = qualityScore >= PROBE_PASS_THRESHOLD;
+    const bonusTag = avgCosine !== null ? ` \xB7 avgCos=${avgCosine.toFixed(2)} coherenceBonus=+${coherenceBonus.toFixed(3)} qualityScore=${qualityScore.toFixed(3)}` : " \xB7 avgCos=n/a (no intent-concept)";
+    this._hb(`[Curriculum] _teachSentenceStructure POST-PROBE \u2014 sentenceGen rate=${(probeRate * 100).toFixed(0)}% (${probePassed}/${probeTotal}) \xB7 threshold=${(PROBE_PASS_THRESHOLD * 100).toFixed(0)}%${bonusTag} \u2014 ${advanced ? "\u2713 PASS, advancing subGrade" : "\u2717 FAIL, NOT advancing subGrade"}.`);
+    if (cluster.advanceSubGrade && advanced) {
       if (cluster.advanceSubGrade("ela", "binding")) {
-        this._hb(`[Curriculum] \u{1F4C8} subGrade ela advanced \u2192 'binding' (sentence-structure rules carved + probe rate ${(probeRate * 100).toFixed(0)}% \u2265 ${(PROBE_PASS_THRESHOLD * 100).toFixed(0)}% threshold)`);
+        this._hb(`[Curriculum] \u{1F4C8} subGrade ela advanced \u2192 'binding' (sentence-structure rules carved + quality score ${qualityScore.toFixed(3)} \u2265 ${PROBE_PASS_THRESHOLD.toFixed(2)} threshold \xB7 ${avgCosine !== null ? `coherence bonus +${coherenceBonus.toFixed(3)}` : "rate-only path"})`);
       }
     }
-    return { passes, totalTrained, probeRate, probePassed, probeTotal };
+    return { passes, totalTrained, probeRate, probePassed, probeTotal, avgCosine, coherenceBonus, qualityScore };
   }
   /**
    * Concrete sentence training. Trains literal K-grade example sentences
@@ -34823,27 +34833,51 @@ var Curriculum = class _Curriculum {
       uniqueWords.delete("");
       const wordCount = words.length;
       const uniqueCount = uniqueWords.size;
-      const structurallyValid = wordCount >= 2 && uniqueCount >= 2;
+      const uniqueRatio = wordCount > 0 ? uniqueCount / wordCount : 0;
+      const sentenceText = composed ? composed.sentence || "" : "";
+      const lastChar = sentenceText.length > 0 ? sentenceText.charAt(sentenceText.length - 1) : "";
+      const hasTerminator = lastChar === "." || lastChar === "?" || lastChar === "!";
+      const coherenceCosine = composed && typeof composed.coherenceCosine === "number" ? composed.coherenceCosine : null;
+      const MIN_WORDS = 3;
+      const MIN_UNIQUE = 3;
+      const MIN_UNIQUE_RATIO = 0.5;
+      const structurallyValid = wordCount >= MIN_WORDS && uniqueCount >= MIN_UNIQUE && uniqueRatio >= MIN_UNIQUE_RATIO;
       perIntent[probe.label] = {
         seed: probe.seed,
         wordCount,
         uniqueCount,
+        uniqueRatio,
         words,
-        sentence: composed ? composed.sentence : "",
+        sentence: sentenceText,
         fillCount: composed ? composed.fillCount : 0,
-        coherenceCosine: composed && typeof composed.coherenceCosine === "number" ? composed.coherenceCosine : null,
+        coherenceCosine,
+        hasTerminator,
         valid: structurallyValid
       };
       if (structurallyValid) passed += 1;
     }
     const total = probeSeeds.length;
     const rate = total > 0 ? passed / total : 0;
-    this._hb(`[Curriculum] _probeSentenceGeneration[subject=${probeSubject}] \u2014 ${passed}/${total} natural-language seeds emitted \u22652 unique words (rate=${(rate * 100).toFixed(0)}%). Per-seed: ${probeSeeds.map((p) => {
+    let terminatorCount = 0;
+    let cosineSum = 0;
+    let cosineN = 0;
+    for (const probe of probeSeeds) {
+      const r = perIntent[probe.label];
+      if (r.hasTerminator) terminatorCount++;
+      if (typeof r.coherenceCosine === "number") {
+        cosineSum += r.coherenceCosine;
+        cosineN++;
+      }
+    }
+    const avgCosine = cosineN > 0 ? cosineSum / cosineN : null;
+    const bonusTag = `term=${terminatorCount}/${total}${avgCosine !== null ? ` avgCos=${avgCosine.toFixed(2)}` : ""}`;
+    this._hb(`[Curriculum] _probeSentenceGeneration[subject=${probeSubject}] \u2014 ${passed}/${total} natural-language seeds passed \u22653w/\u22653u/ratio\u22650.5 (rate=${(rate * 100).toFixed(0)}%) \xB7 ${bonusTag}. Per-seed: ${probeSeeds.map((p) => {
       const r = perIntent[p.label];
       const cosTag = r.coherenceCosine !== null ? ` cos=${r.coherenceCosine.toFixed(2)}` : "";
-      return `${p.label}("${p.seed}"):"${(r.sentence || "").slice(0, 40)}" (${r.wordCount}w/${r.uniqueCount}u${cosTag})`;
+      const termTag = r.hasTerminator ? "\xB7" : "";
+      return `${p.label}("${p.seed}"):"${(r.sentence || "").slice(0, 40)}"${termTag} (${r.wordCount}w/${r.uniqueCount}u/r=${r.uniqueRatio.toFixed(2)}${cosTag})`;
     }).join(" \xB7 ")}`);
-    return { passed, total, rate, perIntent };
+    return { passed, total, rate, perIntent, avgCosine, terminatorRate: total > 0 ? terminatorCount / total : 0 };
   }
   /**
    *  — WH-question intent recognition.

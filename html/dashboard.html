@@ -376,6 +376,35 @@
       </div>
     </div>
 
+    <div class="card emit-diagnostic-panel" style="margin-top:12px;" title="Failed-emission diagnostic. When the chat path returns blank or single-word, this panel surfaces WHY. `bestMean` is the highest word-bucket activation the emit attempt found; `floor` is the adaptive signal-floor it had to clear. If bestMean &lt; floor, the emission was rejected as noise. `ema` is the rolling average of accepted bestMean values (alpha=0.05) — the floor itself is `max(NOISE_FLOOR=0.001, ema × 0.5)` once the EMA has warmed up over 20 samples. age = time since the last rejection event. When age is rising past minutes, no recent rejections have fired — emission is healthy.">
+      <div class="card-title">🎤 Emit Diagnostic (silent-fail tracer)</div>
+      <div id="d-emit-diagnostic" style="padding:8px 12px;font-family:monospace;font-size:11px;color:#aaa;line-height:1.6;">
+        <div style="color:#666;font-size:10px;margin-bottom:6px;">Surfaces cortexCluster._lastEmitRejection — set by emitWordDirect when no word bucket clears the adaptive signal floor.</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;">
+          <div title="Last rejection reason. 'no-best-word' = no candidate bucket found ANY signal. 'below-signal-floor' = candidate found but its mean activation was beneath the adaptive floor (treated as noise). 'none yet' = brain hasn't rejected an emission since boot — emit path is healthy.">
+            <div style="color:#00e5ff;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">⛔ LAST REJECTION</div>
+            <div>reason: <span id="d-emit-reason" style="color:#888;">—</span></div>
+            <div>age: <span id="d-emit-age" style="color:#888;">—</span></div>
+          </div>
+          <div title="Best mean activation found in the rejected emit attempt + the adaptive floor it had to clear. When bestMean is close to floor, training is on the edge of producing emissions — usually means the structural binding is landing but vocab grounding is still sparse. When bestMean is near zero, sem state was flat — usually means injection wasn't propagating or motor weights are wiped.">
+            <div style="color:#a855f7;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">📊 SIGNAL VS FLOOR</div>
+            <div>bestMean: <span id="d-emit-bestmean" style="color:#f59e0b;">0.000</span></div>
+            <div>floor: <span id="d-emit-floor" style="color:#888;">0.000</span></div>
+          </div>
+          <div title="Rolling EMA of accepted bestMean values (alpha=0.05). The adaptive floor is derived from this — once 20 samples have landed, floor = max(NOISE_FLOOR=0.001, EMA × 0.5). EMA climbing = emission signal getting stronger over time; EMA decaying = signal weakening (basin saturation, weight drift).">
+            <div style="color:#22c55e;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">📈 ADAPTIVE EMA</div>
+            <div>EMA: <span id="d-emit-ema" style="color:#22c55e;">0.000</span></div>
+            <div>samples: <span id="d-emit-samples" style="color:#888;">0</span></div>
+          </div>
+          <div title="Current adaptive floor + total accepted-emission sample count. Once samples ≥ 20, the floor switches from the fixed NOISE_FLOOR to the EMA-derived adaptive value. Higher sample count = floor has had more data to calibrate against.">
+            <div style="color:#ff4d9a;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">🎚 LIVE FLOOR</div>
+            <div>current: <span id="d-emit-livefloor" style="color:#ff4d9a;">0.000</span></div>
+            <div style="font-size:10px;color:#666;margin-top:2px;">noise-floor=0.001 · adaptive=ema×0.5</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="card" style="margin-top:12px;" title="Per-cluster firing rate breakdown — how active each of the 7 brain clusters is right now. Cortex carries language + perception + working memory; cerebellum does error correction; hippocampus holds episodic memory; amygdala drives emotion; basal ganglia selects actions; hypothalamus enforces homeostasis; mystery (Ψ) modulates global gain. A healthy brain has all clusters firing at modest steady-state rates; pathological states show flatlines or saturation.">
       <div class="card-title">Cluster Activity</div>
       <div id="d-clusters"></div>
@@ -686,6 +715,44 @@
         } else {
           $('d-ws-shadow').textContent = 'clean';
           $('d-ws-shadow').style.color = '#22c55e';
+        }
+      }
+
+      // Emit diagnostic render. Reads state.emitDiagnostic populated by
+      // brain-server getState(). Surfaces cortexCluster._lastEmitRejection
+      // when present — when the field is null, the emit path has had no
+      // rejection since boot (healthy).
+      {
+        const $ = (id) => document.getElementById(id);
+        const d = s.emitDiagnostic;
+        if (d) {
+          $('d-emit-reason').textContent = d.reason || 'unknown';
+          $('d-emit-reason').style.color = '#f59e0b';
+          // Age formatting — seconds/minutes/hours.
+          const ageMs = d.ageMs || 0;
+          let ageLabel;
+          if (ageMs < 1000) ageLabel = `${ageMs}ms ago`;
+          else if (ageMs < 60_000) ageLabel = `${(ageMs / 1000).toFixed(0)}s ago`;
+          else if (ageMs < 3_600_000) ageLabel = `${(ageMs / 60_000).toFixed(0)}m ago`;
+          else ageLabel = `${(ageMs / 3_600_000).toFixed(1)}h ago`;
+          $('d-emit-age').textContent = ageLabel;
+          // Color: recent = red (problem still hot), older = greener (problem cooled).
+          $('d-emit-age').style.color = ageMs < 10_000 ? '#ff4d9a' : (ageMs < 120_000 ? '#f59e0b' : '#22c55e');
+          $('d-emit-bestmean').textContent = (d.bestMean || 0).toFixed(4);
+          $('d-emit-floor').textContent = (d.floor || 0).toFixed(4);
+          $('d-emit-ema').textContent = (d.signalEMA || 0).toFixed(4);
+          $('d-emit-samples').textContent = (d.sampleCount || 0).toLocaleString();
+          $('d-emit-livefloor').textContent = (d.signalFloor || 0).toFixed(4);
+        } else {
+          $('d-emit-reason').textContent = 'none yet (healthy)';
+          $('d-emit-reason').style.color = '#22c55e';
+          $('d-emit-age').textContent = 'n/a';
+          $('d-emit-age').style.color = '#22c55e';
+          $('d-emit-bestmean').textContent = '0.0000';
+          $('d-emit-floor').textContent = '0.0000';
+          $('d-emit-ema').textContent = '0.0000';
+          $('d-emit-samples').textContent = '0';
+          $('d-emit-livefloor').textContent = '0.0010';
         }
       }
 
