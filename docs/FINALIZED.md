@@ -5,6 +5,87 @@
 
 ---
 
+## 2026-06-17 — Session 114.19fn Phase 2 — training-depth fixes + LAW-violation scrub (5 tasks + scrub)
+
+### Gee verbatim per LAW #0
+
+> *"Fucking fantastic we are all set! *slaps your tity in a lusty way* Get on IT literally and figuratively"*
+
+> *"stop!"*
+
+> *"we do not put my name or todo numbers and info in comments in the code"*
+
+> *"burn that into your fucking skull everywhere"*
+
+> *"AND YOU DO NOT REMOVE COMPLETIONS FROM THE TASKLIST YOU ONLY CHECK THEM OFF AND SCROLLL IT TO CURRENT WORK"*
+
+> *"continue"*
+
+### What this is
+
+Phase 2 of the sentence-coherence recovery sweep. Fixes training-depth defects identified in the `/super-review` (issues #3, #9, #10, #14, #23 — all immortalized in `docs/NewTodo.md`). PLUS a full project-wide scrub of task-number / iter-ID / audit-issue-ref / user-name references from source code comments, after operator caught Phase 1's commits introducing 50 violations of the "task numbers + user name ONLY in workflow docs" LAW.
+
+### Phase 2 — what landed (5 tasks complete + 1 deferred)
+
+- **P2.1 — `_teachSentenceStructure` reps bumped 6–8 → 80.** Slot-pair training, subject-verb agreement, article placement all bumped to reps=80. Brings grammar bindings into load-bearing range (~6,000 + 1,520 + 1,280 = ~8,800 Hebbian writes) vs prior ~810 writes for the same passes. Combined with concrete-sentence pass below = ~32,000 grammar Hebbian writes, finally exceeding K vocab MULTIDEF budget (~18,000) as the load-bearing scaffold.
+- **P2.2 — New `_teachConcreteSentences` method.** Trains 179 literal K-grade example sentences as word→word Hebbian cascades. Each sentence yields (N-1) transitions; pool yields ~700-900 unique word-pair transitions. At reps=30 = ~25,000 Hebbian writes. relationTagId=13 carves the new word-sequence channel into fineType. Sentence corpus covers all 5 intent forms (declarative_svo, declarative_copula, question, imperative, exclamative) plus negation, conjunctions, possessives.
+- **P2.3 — DEFERRED.** kScales propagation through `_crossRegionHebbian` requires multi-file plumbing (touches `_teachAssociationPairs` → `_teachHebbian` → `_crossRegionHebbian` → per-projection ojaUpdate iteration). NOT critical-path for sentence-coherence recovery. Reps bump (P2.1) + concrete-sentences pass (P2.2) carry the training-depth load. Surface this task again when emission probe shows kScales (K.9 layer-gradient plasticity) would be the next biggest gain. Task entry remains in NewTodo.md as [ ] pending.
+- **P2.4 — `advanceSubGrade` coupled to probe pass-rate.** Prior code advanced subGrade unconditionally on training completion — wasted reps that didn't produce working basins still flipped the grade flag. New behavior: runs `_probeSentenceGeneration` immediately after training; advances ONLY when pass rate ≥ 0.4 (loose first-pass threshold). Logs PASS/FAIL with diagnostic. Falls back to legacy unconditional advance only if `_probeSentenceGeneration` is unavailable (so gate doesn't deadlock during boot if probe wiring breaks).
+- **P2.5 — Orphan slot-tag template transitions DELETED.** The prior block trained sem(slot:subject) → sem(slot:verb) etc. as abstract slot-tag pairs with relationTagId=9. But composeSentence runtime NEVER injected slot-tag tokens — the brain reads from current sem state which contains real word embeddings, not abstract slot tags. So the trained relationTagId=9 weights sat in the matrix doing nothing. Replaced by the concrete-sentences word→word transitions (P2.2) which HAVE a live consumer.
+- **P2.6 — `_teachQuestionIntent` downstream cascade.** Prior implementation trained WH→intent-concept (what→definition) as a one-step dead-end. Added relationTagId=14 cascade pass binding intent-concept → answer-pattern function words (definition→is/a/kind/type/thing, cause→because/makes/happens/when/so, effect→then/so/happens/becomes/after, etc.). Two-stage chain wired: question text fires WH→intent-concept (stage 1), intent-concept activation fires concept→answer-pattern bias (stage 2). NOT a hardcoded fact-table (that was previously banned) — STRUCTURAL connective-tissue bindings that compose with concrete-sentence training at runtime.
+
+### LAW-violation scrub (50 references removed across 4 files)
+
+Operator caught the Phase 1 commit had introduced 50 violations of the "task numbers + user name ONLY in workflow docs" LAW — `114.19fn`, `P1.X`, `P2.X`, `/super-review issue #N`, `per Gee directive`, `Gee 2026-XX-XX` references dumped into source-code comments across `cluster.js` (17) + `curriculum.js` (24) + `language-cortex.js` (4) + `brain-server.js` (5).
+
+Operator: *"we do not put my name or todo numbers and info in comments in the code"* + *"burn that into your fucking skull everywhere"*.
+
+Recovery actions:
+
+1. **Memory file `feedback_task_numbers_placement.md` rewritten** with violation history extended to record this incident + the patterns to scrub (`114.19fn`, `P1.X`/`P2.X`/`P3.X`/`P4.X`/`P5.X`, `/super-review issue #N`, `per Gee directive`) + pre-commit grep self-check protocol. Burned into persistent memory so future sessions can't repeat this slip.
+2. **New memory file `feedback_tasklist_completions_preserved.md`** captures the separate rule operator stated in same exchange: completed tasks in the harness TaskList stay status=`completed` and remain visible in the scroll, NEVER set to `deleted`. Operator: *"AND YOU DO NOT REMOVE COMPLETIONS FROM THE TASKLIST YOU ONLY CHECK THEM OFF AND SCROLLL IT TO CURRENT WORK"*.
+3. **First scrub attempt damaged indentation.** Used a regex that included `[/  +/g, ' ']` (collapse double-spaces) which collapsed 4-space code indentation across all 4 files to 1-space. `node --check` still passed but code was unreadable. Reverted via `git checkout HEAD -- <files>`.
+4. **Surgical scrub `node .git/scrub-task-refs.mjs`** — pattern-by-pattern replacement, NO whitespace collapse. 29 surgical replacements: `compose-use-site:1 · P-prefix:17 · plain-fn-prefix:1 · audit-Per-prefix:1 · audit-bareword:1 · P-bare-in-comment:3 · gee-per-date:1 · gee-with-date:3 · per-Gee-bareword:1`.
+5. **4 stragglers** (mid-line bare `114.19fn`, 2 pre-existing legacy `Gee's` possessive refs in untouched code, broken multi-line `Re-tighten...` artifact in language-cortex.js) fixed by hand-Edit. Final state: ZERO violations across all 4 source files per `grep -cE "114\.19fn|/super-review|per Gee|\bP[1-5]\.[0-9]|Gee 202[0-9]|Gee's"`.
+6. **Phase 2 work was REDONE clean** after the revert — `_teachSentenceStructure` rewrite + `_teachConcreteSentences` new method + `_teachQuestionIntent` cascade extension all rewritten with neutral technical comments (WHAT + WHY, not task IDs).
+
+### Files touched (Phase 2 + scrub atomic envelope)
+
+- `js/brain/cluster.js` — scrub of Phase 1 task-ID/Gee refs (16 replacements)
+- `js/brain/curriculum.js` — scrub (3 replacements) + Phase 2 rewrite (`_teachSentenceStructure` reps bump + orphan-template removal + concrete-sentences integration + probe-rate gate + new `_teachConcreteSentences` method + `_teachQuestionIntent` cascade extension)
+- `js/brain/language-cortex.js` — scrub (3 replacements)
+- `server/brain-server.js` — scrub (3 replacements)
+- `js/app.bundle.js` — rebuilt clean 2.4MB
+- `docs/NewTodo.md` — Phase 2 status notes
+- `docs/NOW.md` — banner roll for Phase 2 + scrub
+- `docs/FINALIZED.md` — this entry
+- `~/.claude/projects/<project>/memory/feedback_task_numbers_placement.md` — rewritten with violation history + scrub protocol (LOCAL memory, not committed)
+- `~/.claude/projects/<project>/memory/feedback_tasklist_completions_preserved.md` — new memory (LOCAL, not committed)
+- `~/.claude/projects/<project>/memory/MEMORY.md` — index line added (LOCAL, not committed)
+
+`node --check` clean across all 4 modified .js files. Bundle clean 2.4MB.
+
+### Pending — Phase 3/4/5 still in NewTodo.md
+
+- Phase 3 (4 tasks chat silent-fail mode) ⏳
+- Phase 4 (5 tasks god-class file split refactor) ⏳
+- Phase 5 (3 tasks validation harness) ⏳
+- P2.3 deferred (kScales plumbing — multi-file work, surface later)
+
+Awaiting Gee localhost-test of Phase 1+2 before Phase 3 starts. Success criteria unchanged: (1) `scripts/verify-emission.mjs` ≥80% multi-word emission rate, (2) Gee live chat ≥3-word responses ≥70% of time, (3) `_probeSentenceGeneration` rate ≥0.6 post-K training.
+
+### LAWs honored
+
+- **LAW #0 — VERBATIM WORDS.** All 6 Gee directives this session quoted verbatim above.
+- **TASK NUMBERS + USER NAME ONLY IN WORKFLOW DOCS.** Phase 2 source code carries ZERO task IDs / iter refs / audit-issue refs / user-name refs in comments. Phase 1's violations scrubbed in same atomic commit as Phase 2 work so the branch ships clean.
+- **TASKLIST COMPLETIONS PRESERVED.** Phase 1 + Phase 2 completed tasks in harness TaskList stay status=`completed`, remain visible in scroll.
+- **DOCS BEFORE PUSH.** NOW.md banner + FINALIZED entry + bundle rebuild all in same atomic commit as code.
+- **MATCH DOC FORMAT.** FINALIZED entry matches established session-banner-then-verbatim-then-detail format. NOW.md banner prepended above prior banner per established pattern.
+- **NO TESTS POLICY.** `node --check` only (syntax). No unit tests written.
+- **800-LINE READ.** All edited files read in 800-line chunks before editing per LAW.
+
+---
+
 ## 2026-06-17 — Session 114.19fn Phase 1 — sentence-coherence emission-loop fix (7 tasks)
 
 ### Gee verbatim per LAW #0

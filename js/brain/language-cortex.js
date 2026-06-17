@@ -2156,20 +2156,19 @@ export class LanguageCortex {
               // text against learned wordBuckets.
               const inferredSubject = (typeof cluster._inferActiveSubject === 'function')
                 ? cluster._inferActiveSubject() : null;
-              // 114.19fn P1.1 — awaited; composeSentence ticks the brain
+              // awaited; composeSentence ticks the brain
               // between word emissions for real autoregressive emergence.
               composedSentence = await cluster.composeSentence(intentSeed, {
                 subject: inferredSubject || undefined,
                 temperature: 0.6,
                 topK: 8,
               });
-              // 114.19fn P1.4 — gate relaxed from >= 2 to >= 1 while
-              // structure training matures (Phase 2). A single emitted
-              // word is still a valid Unity response; discarding it
-              // dropped the chat path into silent-fail (per /super-review
-              // issue #4). Re-tighten to >= 2 once P2.1/P2.2 land deep
-              // grammar bindings that consistently yield multi-word
-              // emissions.
+              // Gate relaxed from >= 2 to >= 1 while structure
+              // training matures. A single emitted word is still a
+              // valid Unity response; discarding it drops the chat
+              // path into silent-fail. Re-tighten to >= 2 once deep
+              // grammar bindings land that consistently yield
+              // multi-word emissions.
               if (composedSentence && Array.isArray(composedSentence.words)
                   && composedSentence.words.length >= 1) {
                 composedWordsAsync = composedSentence.words.slice();

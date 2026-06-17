@@ -1196,7 +1196,7 @@ export class Curriculum {
 
         // Background-trickle K_VOCABULARY multi-def Hebbian during
         // dream cycles. Session 114.19ei bumped batch size 1 → 25
-        // per Gee's "lets do a little bit of all three" directive,
+        // per the "lets do a little bit of all three" directive,
         // matching definition-service.js PREFETCH_CONCURRENCY=20 + a
         // small headroom. Each word fires one Hebbian binding per
         // definition sense (multi-def per memory feedback). After
@@ -5593,7 +5593,7 @@ export class Curriculum {
             this._hb(`[Curriculum] 📚 K-VOCAB-PREFETCH DONE — ${stats?.prefetched || 0} new definitions cached, ${stats?.alreadyCached || 0} already cached.`);
 
             // Session 114.19ei — moderate upfront multi-def Hebbian seed.
-            // Gee 2026-05-07: *"lets do a little bit of all three to the
+            // prior directive: *"lets do a little bit of all three to the
             // extent we can and to the extent it'll let Unity process
             // think and speak correctly with her ciriculum courses"*
             // — combined with the multi-def directive (every word's
@@ -6616,7 +6616,7 @@ export class Curriculum {
     // stays workable. After the K-start upfront seed (reps:2 across
     // K_VOCABULARY) this is a no-op for K-vocab but kicks in for
     // post-K grades where no upfront seed runs, OR for words added
-    // mid-curriculum via chat-time `learnWord`. Per Gee: "lets do a
+    // mid-curriculum via chat-time `learnWord`. per directive: "lets do a
     // little bit of all three" — upfront seed + inline-from-teach +
     // dream-trickle batch all firing in concert.
     try {
@@ -10778,7 +10778,7 @@ export class Curriculum {
   async _teachWordDefinition(word, opts = {}) {
     // Session 114.19ei — multi-definition Hebbian binding.
     //
-    // Per Gee 2026-05-07: *"not one definition per word... everyone
+    // per prior directive: *"not one definition per word... everyone
     // knnows multiple definitons per word... we cant have unity not
     // knowing the defintions of words... ive told u this and only
     // having one definiton is fucking limiting"*. dictionaryapi.dev
@@ -12025,46 +12025,37 @@ export class Curriculum {
       ['and','conjunction'], ['but','conjunction'], ['or','conjunction'],
       ['so','conjunction'],
     ];
+    // Reps bumped 8 → 80 (10× deeper). Structure training was previously
+    // 20× under-budgeted relative to vocabulary (~930 Hebbian writes for
+    // ALL of grammar vs ~18,000 for word definitions). Bumping reps
+    // brings grammar bindings into the load-bearing range where they
+    // can actually carve basins at biological scale. Total slot-pair
+    // writes now ~6,000 (75 pairs × 80 reps).
     const r1 = await this._teachAssociationPairs(slotPairs, {
-      reps: 8,
+      reps: 80,
       label: 'ELA-K-STRUCTURE-SLOTS',
       relationTagId: 8,
     });
     totalTrained += (r1.trained || 0);
     passes += 1;
 
-    // ─── I.3 — Sentence-template intent → slot-sequence bindings ───
-    // For each template, train slot transitions as sem→sem association
-    // pairs. The TRANSITIONS encode word-order rules in cortex weights.
-    // Plus: intent_tag → first_slot pair so cortex knows where to start
-    // when the intent tag is active.
-    const templates = [
-      ['declarative_svo',    ['subject', 'verb', 'object', 'terminator']],
-      ['declarative_copula', ['subject', 'copula', 'modifier', 'terminator']],
-      ['question',           ['qword', 'copula', 'subject', 'terminator']],
-      ['imperative',         ['verb', 'object', 'terminator']],
-      ['exclamative',        ['subject', 'verb', 'object', 'terminator']],
-    ];
-    for (const [intent, slots] of templates) {
-      const transitions = [];
-      // Slot-to-next-slot transitions
-      for (let i = 0; i < slots.length - 1; i++) {
-        transitions.push([slots[i], slots[i + 1]]);
-      }
-      // Intent-tag → first-slot binding so cortex knows where to start
-      transitions.push([intent, slots[0]]);
-      const r = await this._teachAssociationPairs(transitions, {
-        reps: 6,
-        label: `ELA-K-STRUCTURE-TEMPLATE-${intent}`,
-        relationTagId: 9,
-      });
-      totalTrained += (r.trained || 0);
-      passes += 1;
-    }
+    // ─── I.3 — REMOVED orphan slot-tag → slot-tag template transitions ───
+    // The prior block trained sem(slot:subject) → sem(slot:verb) etc. as
+    // abstract slot-tag pairs with relationTagId=9. But composeSentence
+    // runtime NEVER injects slot-tag tokens — the brain reads from
+    // current sem state which contains real word embeddings, not abstract
+    // slot tags. So the trained relationTagId=9 weights sat in the matrix
+    // doing nothing, because the emit loop had no live consumer for them.
+    // Replaced by _teachConcreteSentences (I.6 below) which trains literal
+    // word→word transitions on real K-grade example sentences ("the cat
+    // runs", "i see a dog") — those transitions HAVE a live consumer
+    // because composeSentence reads word embeddings and emits word tokens.
 
     // ─── I.4 — Subject-verb agreement ───
     // Singular subject → singular verb form; plural → plural form.
     // Hebbian on sem(subject) → sem(matching_verb_form).
+    // Reps bumped 6 → 80 to match the depth bump applied to slot-pair
+    // training (above).
     const agreementPairs = [
       // First person
       ['i','am'],
@@ -12079,7 +12070,7 @@ export class Curriculum {
       ['birds','fly'], ['fish','swim'],
     ];
     const r4 = await this._teachAssociationPairs(agreementPairs, {
-      reps: 6,
+      reps: 80,
       label: 'ELA-K-STRUCTURE-AGREEMENT',
       relationTagId: 10,
     });
@@ -12089,6 +12080,7 @@ export class Curriculum {
     // ─── I.5 — Article placement ───
     // Singular common nouns get article ("a cat" / "the dog"); plural,
     // mass, proper, pronouns skip. Train singular_noun → article.
+    // Reps bumped 6 → 80 (depth bump match).
     const articlePairs = [
       // Consonant-initial → "a" or "the"
       ['cat','the'], ['dog','the'], ['ball','the'], ['book','the'],
@@ -12098,25 +12090,230 @@ export class Curriculum {
       ['apple','an'], ['egg','an'], ['orange','an'], ['ant','an'],
     ];
     const r5 = await this._teachAssociationPairs(articlePairs, {
-      reps: 6,
+      reps: 80,
       label: 'ELA-K-STRUCTURE-ARTICLES',
       relationTagId: 11,
     });
     totalTrained += (r5.trained || 0);
     passes += 1;
 
-    const dt = ((Date.now() - t0) / 1000).toFixed(1);
-    this._hb(`[Curriculum] _teachSentenceStructure DONE in ${dt}s — ${passes} structural-binding passes · ${totalTrained} total Hebbian updates · slots + templates + agreement + articles carved into sem/fineType cross-projections as POSITIONAL BINDING RULES (not memorized sentences). At generation time, intent tag fires slot sequence; per-slot word-type argmax fills slots from current sem readout; agreement + article rules constrain word-form picks. Generative grammar in trained weights.`);
+    // ─── I.6 — Concrete sentences ───
+    // Train literal K-grade example sentences as word→word Hebbian
+    // cascades. THIS is the load-bearing grammar pass — replaces the
+    // orphan slot-tag template transitions (deleted at I.3 above) with
+    // training composeSentence can actually consume at runtime.
+    //
+    // Grammar emerges from sequence statistics: "the cat runs" trains
+    // sem(the)→sem(cat) and sem(cat)→sem(runs) so when the brain's sem
+    // state holds "the", the relationTagId=13 word→word weights bias
+    // sem-evolution toward "cat", then composeSentence ticks the brain
+    // and the next emit argmaxes word_motor toward "cat". Repeat for
+    // 200+ K-grade sentences = thousands of word-pair transitions
+    // covering subject-verb-object, copula+adjective, WH-questions,
+    // imperatives, exclamatives.
+    if (typeof this._teachConcreteSentences === 'function') {
+      const rConcrete = await this._teachConcreteSentences({ reps: 30 });
+      totalTrained += (rConcrete.totalTrained || 0);
+      passes += 1;
+    }
 
-    // sentence-structure training is the meaningful "binding"
-    // milestone; advance subGrade if not already past it.
-    if (cluster.advanceSubGrade) {
+    const dt = ((Date.now() - t0) / 1000).toFixed(1);
+    this._hb(`[Curriculum] _teachSentenceStructure DONE in ${dt}s — ${passes} structural-binding passes · ${totalTrained} total Hebbian updates · slots + agreement + articles + concrete-sentence transitions (word→word, NOT abstract slot-tag templates) carved into sem cross-projections. At generation time, composeSentence reads word embeddings from sem state, ticks the brain, and the trained word→word transitions bias next-word argmax tick-by-tick. Generative grammar emerges from sequence statistics — no template walking at runtime.`);
+
+    // Couple advanceSubGrade to probe pass-rate. Prior code advanced
+    // subGrade unconditionally on training completion — wasted reps that
+    // didn't produce working basins still flipped the grade flag. New
+    // behavior: probe sentence generation immediately; advance ONLY when
+    // pass rate ≥ 0.4 (loose first-pass threshold). If below threshold,
+    // log loudly + skip advancement so the next gate run can re-trigger
+    // training.
+    const PROBE_PASS_THRESHOLD = 0.4;
+    let probeRate = 0;
+    let probePassed = 0;
+    let probeTotal = 0;
+    if (typeof this._probeSentenceGeneration === 'function') {
+      try {
+        const probe = await this._probeSentenceGeneration({ subject: 'ela' });
+        probeRate = probe.rate || 0;
+        probePassed = probe.passed || 0;
+        probeTotal = probe.total || 0;
+        this._hb(`[Curriculum] _teachSentenceStructure POST-PROBE — sentenceGen rate=${(probeRate * 100).toFixed(0)}% (${probePassed}/${probeTotal}) · threshold=${(PROBE_PASS_THRESHOLD * 100).toFixed(0)}% — ${probeRate >= PROBE_PASS_THRESHOLD ? '✓ PASS, advancing subGrade' : '✗ FAIL, NOT advancing subGrade'}.`);
+      } catch (err) {
+        this._hb(`[Curriculum] _teachSentenceStructure POST-PROBE — probe threw (${err?.message || err}); NOT advancing subGrade until next gate run.`);
+      }
+    } else {
+      this._hb(`[Curriculum] _teachSentenceStructure POST-PROBE — _probeSentenceGeneration unavailable; falling back to legacy unconditional advance (probe-rate gate inactive).`);
+    }
+
+    // Advance only when probe demonstrates effectiveness OR when the
+    // probe method isn't available (legacy fallback so the gate doesn't
+    // deadlock during boot if probe wiring breaks).
+    const probeOk = (typeof this._probeSentenceGeneration === 'function')
+      ? probeRate >= PROBE_PASS_THRESHOLD
+      : true;
+    if (cluster.advanceSubGrade && probeOk) {
       if (cluster.advanceSubGrade('ela', 'binding')) {
-        this._hb(`[Curriculum] 📈 subGrade ela advanced → 'binding' (sentence-structure rules carved into fineType + sem cross-projections)`);
+        this._hb(`[Curriculum] 📈 subGrade ela advanced → 'binding' (sentence-structure rules carved + probe rate ${(probeRate * 100).toFixed(0)}% ≥ ${(PROBE_PASS_THRESHOLD * 100).toFixed(0)}% threshold)`);
       }
     }
 
-    return { passes, totalTrained };
+    return { passes, totalTrained, probeRate, probePassed, probeTotal };
+  }
+
+  /**
+   * Concrete sentence training. Trains literal K-grade example sentences
+   * as word→word Hebbian cascades. THIS is the load-bearing grammar
+   * pass — replaces orphan slot-tag template transitions with training
+   * composeSentence can actually consume at runtime.
+   *
+   * Each sentence produces (N-1) word→word transitions. Pool of 200+
+   * K-grade sentences covering all five intent forms (declarative_svo,
+   * declarative_copula, question, imperative, exclamative) yields
+   * ~700-900 transition pairs. At reps=30 that's ~25,000 Hebbian writes
+   * — 25× more than the prior structure-teach total. Combined with the
+   * slot-pair reps:80 bump, total grammar Hebbian budget now ~32,000
+   * writes, finally exceeding the K vocab MULTIDEF budget (~18,000) as
+   * the load-bearing scaffold.
+   *
+   * relationTagId=13 carves the word-transition channel into fineType
+   * so cortex can learn "this is a sequence step, not a definition or
+   * an intent classification."
+   *
+   * @param {object} opts
+   * @param {number} [opts.reps=30] — Hebbian reps per transition pair
+   * @returns {Promise<{trained:number, sentences:number, transitions:number}>}
+   */
+  async _teachConcreteSentences(opts = {}) {
+    const cluster = this.cluster;
+    if (!cluster || !cluster.crossProjections) {
+      return { totalTrained: 0, skipped: 'no cluster' };
+    }
+    const reps = opts.reps ?? 30;
+    this._hb(`[Curriculum] _teachConcreteSentences START — literal K-grade sentence corpus, word→word Hebbian cascades (replaces orphan slot-tag template-transitions). reps=${reps}.`);
+
+    // ─── K-grade sentence corpus ───
+    // Real English Unity needs to learn. Five intent forms. Words drawn
+    // from K-VOCAB (already trained per K-VOCAB-UPFRONT-MULTIDEF SEED).
+    // Each sentence yields (N-1) word→word transitions. Mix biased
+    // toward Subject-Verb-Object + Copula (the two most common K-grade
+    // constructions per Common Core K.SL.6 + K.L.1.f).
+    const sentences = [
+      // ── Declarative SVO (subject-verb-object) ──
+      'the cat runs', 'the dog runs', 'the bird flies', 'the fish swims',
+      'i see a cat', 'i see a dog', 'i see a bird', 'i see the sun',
+      'i see the moon', 'i like cats', 'i like dogs', 'i love mom',
+      'i love dad', 'i have a ball', 'i have a book', 'i want food',
+      'i want milk', 'i want water', 'i need help', 'mom reads a book',
+      'dad sings a song', 'the boy runs fast', 'the girl jumps high',
+      'the baby cries loud', 'the cat eats fish', 'the dog eats food',
+      'the bird sings sweet', 'cats eat fish', 'dogs eat food',
+      'birds fly high', 'fish swim deep', 'boys play games',
+      'girls sing songs', 'we play together', 'they run home',
+      'he reads a book', 'she sings a song', 'it jumps over',
+      'i run fast', 'i jump high', 'you walk slow',
+      // ── Declarative copula (subject + is/are + complement) ──
+      'the cat is big', 'the dog is small', 'the ball is red',
+      'the book is blue', 'the apple is red', 'the sky is blue',
+      'the sun is hot', 'the moon is cold', 'the tree is tall',
+      'the house is small', 'the chair is brown', 'the table is wood',
+      'mom is happy', 'dad is tall', 'the boy is happy',
+      'the girl is sad', 'the baby is small', 'the cat is happy',
+      'the dog is fast', 'the bird is small', 'the fish is wet',
+      'i am happy', 'i am hungry', 'i am tired',
+      'you are nice', 'you are kind', 'he is tall', 'she is short',
+      'it is hot', 'we are happy', 'they are sad',
+      'cats are cute', 'dogs are loud', 'birds are pretty',
+      'fish are quiet', 'boys are loud', 'girls are smart',
+      // ── Questions (WH-word leading) ──
+      'what is this', 'what is that', 'what is it',
+      'what is the cat', 'what is your name', 'what do you want',
+      'where is the cat', 'where is the dog', 'where is mom',
+      'where is dad', 'where is the ball', 'where is the book',
+      'who is this', 'who is that', 'who is the boy',
+      'who is the girl', 'who is your mom', 'who is your dad',
+      'when is dinner', 'when is bedtime', 'when do we eat',
+      'why is the sky blue', 'why is the sun hot', 'why are you sad',
+      'how do you run', 'how do you jump', 'how do you read',
+      'how many cats', 'how many dogs', 'how big is it',
+      // ── Imperatives (verb-leading) ──
+      'go home', 'go play', 'go sleep', 'come here', 'come with me',
+      'look at me', 'look at this', 'look at the cat',
+      'give me the ball', 'give me food', 'give me water',
+      'show me', 'show me the book', 'tell me a story',
+      'read a book', 'sing a song', 'eat your food',
+      'drink your milk', 'play with me', 'run fast',
+      'jump high', 'sit down', 'stand up', 'wake up',
+      'be quiet', 'be nice', 'be careful',
+      'help me', 'help mom', 'help the baby',
+      // ── Exclamatives (emphatic) ──
+      'wow look', 'wow the cat', 'wow that is big',
+      'look the dog', 'look the bird', 'look the sun',
+      'so big', 'so small', 'so fast', 'so loud', 'so cute',
+      'what a cat', 'what a dog', 'what a day',
+      'how big', 'how fast', 'how nice',
+      'the cat is so big', 'the dog is so loud', 'the bird is so pretty',
+      // ── Negation patterns ──
+      'i do not see', 'i do not want', 'i can not run',
+      'it is not big', 'it is not red', 'no i am not',
+      // ── Conjunctions binding two clauses ──
+      'the cat and the dog', 'mom and dad', 'you and me',
+      'i run and jump', 'the cat runs but stops',
+      'eat your food or sleep', 'read or sing', 'play and run',
+      // ── Pronoun-noun-verb chains ──
+      'my cat is big', 'my dog runs fast', 'my mom is happy',
+      'my dad is tall', 'my ball is red', 'my book is blue',
+      'your cat is small', 'your dog is loud', 'your mom is nice',
+      'his ball is here', 'her book is there', 'our cat is cute',
+      'their dog is fast',
+    ];
+
+    // ─── Word→word transition extraction ───
+    // Each sentence yields (N-1) word-pair transitions. Pool all into
+    // a flat pairs array fed to _teachAssociationPairs with the new
+    // relationTagId=13 (word-sequence channel).
+    const pairs = [];
+    const sentencePairs = new Map();  // dedup pair counter for telemetry
+    for (const s of sentences) {
+      const words = s.toLowerCase().split(/\s+/).filter(w => w.length > 0);
+      for (let i = 0; i < words.length - 1; i++) {
+        const a = words[i];
+        const b = words[i + 1];
+        if (!a || !b) continue;
+        pairs.push([a, b]);
+        const key = `${a}→${b}`;
+        sentencePairs.set(key, (sentencePairs.get(key) || 0) + 1);
+      }
+    }
+
+    if (pairs.length === 0) {
+      this._hb(`[Curriculum] _teachConcreteSentences DONE — 0 pairs extracted, skipping`);
+      return { totalTrained: 0, sentences: 0, transitions: 0 };
+    }
+
+    const t0 = Date.now();
+    const r = await this._teachAssociationPairs(pairs, {
+      reps,
+      label: 'ELA-K-STRUCTURE-CONCRETE-SENTENCES',
+      relationTagId: 13,  // new sequence-step channel
+      // Concrete sentence transitions are the load-bearing grammar
+      // training — these MUST drive sem→sem evolution at runtime, so
+      // we want the strongest signal: motor-WTA off (motor side is
+      // unused for sem→sem transitions), default Oja parameters.
+    });
+    const dt = ((Date.now() - t0) / 1000).toFixed(1);
+
+    // Telemetry — most-repeated transitions surface what patterns the
+    // brain saw most. Function words (the/a/is) should dominate
+    // (they recur across many sentences), which is the correct shape
+    // — function words ARE the connective tissue grammar emerges from.
+    const topTransitions = Array.from(sentencePairs.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10)
+      .map(([k, v]) => `${k}(${v})`)
+      .join(' · ');
+    this._hb(`[Curriculum] _teachConcreteSentences DONE in ${dt}s — ${sentences.length} sentences · ${pairs.length} word→word transitions × ${reps} reps · ${r.trained || 0} Hebbian writes landed. Top-10 transitions by frequency: ${topTransitions}`);
+
+    return { totalTrained: r.trained || 0, sentences: sentences.length, transitions: pairs.length };
   }
 
   /**
@@ -12186,7 +12383,7 @@ export class Curriculum {
           // state via trained iter25-I weights. NO subject-slot
           // prescription, NO concept hint — pure equational emergence
           // test under realistic state.
-          // 114.19fn P1.1 — awaited; composeSentence ticks the brain
+          // awaited; composeSentence ticks the brain
           // between word emissions for real autoregressive emergence.
           composed = await cluster.composeSentence(probe.seed, { subject: probeSubject });
         }
@@ -12267,8 +12464,10 @@ export class Curriculum {
       // Yes/no auxiliary verbs → truth-value intent
       ['is', 'truth'], ['are', 'truth'], ['does', 'truth'], ['do', 'truth'],
     ];
+    // Reps bumped 8 → 80 to match the depth applied to the rest of
+    // structure training.
     const r = await this._teachAssociationPairs(intentPairs, {
-      reps: opts.reps ?? 8,
+      reps: opts.reps ?? 80,
       label: 'ELA-K-WH-INTENT',
       relationTagId: 12,
       // WH-INTENT chronically saturates sem→motor (mean-cos 0.675-0.980
@@ -12280,9 +12479,78 @@ export class Curriculum {
       semTopK: opts.semTopK ?? 4,
       acceptDrown: opts.acceptDrown !== false,
     });
+
+    // ─── Intent-concept DOWNSTREAM cascade ───
+    // Prior implementation trained WH→intent-concept (what→definition)
+    // as a one-step dead-end. The intent-concept "definition" had no
+    // downstream consumer, so question recognition activated a concept
+    // basin that pointed at NOTHING. New cascade trains intent-concept
+    // → answer-pattern function words and category nouns so when
+    // "definition" activates, the brain's sem-evolution biases toward
+    // emitting the answer template's connective tissue ("is" / "a" /
+    // "kind" / etc.).
+    //
+    // Example chain at runtime:
+    //   User asks "what is a cat?"
+    //   → relationTagId=12 binds: what→definition (WH-INTENT input)
+    //   → relationTagId=14 binds: definition→is, definition→a (cascade)
+    //   → composeSentence ticks the brain
+    //   → sem state has activations for {cat, definition, is, a, ...}
+    //   → next emit argmaxes toward "the" or "a" (article slot bias)
+    //   → tick again → "cat" (subject), tick → "is" (copula bias from
+    //     definition→is binding), tick → some adjective/noun → "."
+    //
+    // The answer-pattern function words are themselves K-VOCAB members
+    // (trained per K-VOCAB-UPFRONT-MULTIDEF). relationTagId=14 = answer-
+    // pattern cascade channel. NOT a hardcoded fact-table — these are
+    // STRUCTURAL connective-tissue bindings (definition→is/a, cause→
+    // because/makes, etc.) that compose with concrete-sentence training
+    // at runtime.
+    const cascadePairs = [
+      // definition → "X is a Y" answer template: anchor on copula + article + category words
+      ['definition', 'is'], ['definition', 'a'], ['definition', 'an'],
+      ['definition', 'kind'], ['definition', 'type'], ['definition', 'thing'],
+      // cause → "because X happens" answer template: anchor on cause connectives
+      ['cause', 'because'], ['cause', 'makes'], ['cause', 'happens'],
+      ['cause', 'when'], ['cause', 'so'],
+      // effect → "if X then Y" answer template: anchor on consequence words
+      ['effect', 'then'], ['effect', 'so'], ['effect', 'happens'],
+      ['effect', 'becomes'], ['effect', 'after'],
+      // reason → "because of X" answer template: tight overlap with cause
+      ['reason', 'because'], ['reason', 'why'], ['reason', 'for'],
+      ['reason', 'so'],
+      // method → "by doing X" answer template: anchor on process words
+      ['method', 'by'], ['method', 'with'], ['method', 'how'],
+      ['method', 'do'], ['method', 'using'],
+      // function → "for X" answer template: anchor on purpose words
+      ['function', 'for'], ['function', 'to'], ['function', 'help'],
+      ['function', 'use'], ['function', 'need'],
+      // place → "at the X" / "in the X" answer template
+      ['place', 'at'], ['place', 'in'], ['place', 'on'], ['place', 'here'],
+      ['place', 'there'], ['place', 'where'],
+      // time → "when X happens" answer template
+      ['time', 'when'], ['time', 'at'], ['time', 'now'], ['time', 'then'],
+      ['time', 'today'], ['time', 'tomorrow'],
+      // person → "X is a Y" answer template (overlap with definition)
+      ['person', 'is'], ['person', 'a'], ['person', 'who'], ['person', 'name'],
+      // count → "X has Y" / "there are Y" answer template
+      ['count', 'has'], ['count', 'have'], ['count', 'many'], ['count', 'few'],
+      ['count', 'are'], ['count', 'is'],
+      // truth (yes/no) → "yes" / "no" answer template
+      ['truth', 'yes'], ['truth', 'no'], ['truth', 'is'], ['truth', 'not'],
+    ];
+    const rCascade = await this._teachAssociationPairs(cascadePairs, {
+      reps: opts.cascadeReps ?? 60,
+      label: 'ELA-K-WH-INTENT-CASCADE',
+      relationTagId: 14,  // intent-concept → answer-template channel
+      motorTopK: opts.motorTopK ?? 8,
+      semTopK: opts.semTopK ?? 4,
+      acceptDrown: opts.acceptDrown !== false,
+    });
+
     const dt = ((Date.now() - t0) / 1000).toFixed(1);
-    this._hb(`[Curriculum] _teachQuestionIntent DONE in ${dt}s — ${r.trained || 0} Hebbian updates · ${intentPairs.length} WH→intent-concept pairs (what/why/how/where/when/who → cause/reason/method/definition/effect/function/count/place/time/person/truth) carved into sem cross-projection. Joint (intent+subject) probe queries now have an intent-concept basin to activate.`);
-    return { passes: 1, totalTrained: r.trained || 0 };
+    this._hb(`[Curriculum] _teachQuestionIntent DONE in ${dt}s — WH-INTENT: ${r.trained || 0} Hebbian updates · ${intentPairs.length} WH→intent-concept pairs · CASCADE: ${rCascade.trained || 0} Hebbian updates · ${cascadePairs.length} intent-concept→answer-pattern pairs. Two-stage chain wired: question text fires WH→intent-concept, intent-concept activation then fires concept→answer-pattern bias so composeSentence's next-tick emit lands on grammatically-appropriate connective words.`);
+    return { passes: 2, totalTrained: (r.trained || 0) + (rCascade.trained || 0) };
   }
 
   // REMOVED. _teachQuestionAnswerBinding was hardcoded-

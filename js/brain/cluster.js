@@ -179,7 +179,7 @@ function injectEmbeddingToRegionOffset(cluster, regionName, emb, strength, offse
 // trigger the stop branch.
 const T14_TERMINATORS = new Set(['.', '?', '!']);
 
-// 114.19fn P1.5 — function-word set EXEMPTED from the recent-emission
+// function-word set EXEMPTED from the recent-emission
 // repetition penalty in emitWordDirect. Real English requires repeated
 // function words within a single utterance ("the cat sat on the mat"
 // has "the" ×2). Penalizing them 30% punishes grammatical English and
@@ -1247,7 +1247,7 @@ export class NeuronCluster {
     // CPU externalCurrent (kept for equivalence during E→F window)
     // AND the main-cortex GPU currents buffer at the first-N sub-slice.
     //
-    // 114.19fn P1.2 — `opts.replaceMode === true` switches additive `+=`
+    // `opts.replaceMode === true` switches additive `+=`
     // to assignment `=` so composeSentence's per-word back-injection
     // doesn't accumulate sem soup. When replaceMode is set, this call
     // zeroes the target region cells BEFORE the new value lands. Used
@@ -3456,7 +3456,7 @@ export class NeuronCluster {
     // this hook, GW.tick() runs but its winner doesn't actually shape
     // emission.
     //
-    // 114.19fn P1.7 — boost now scales with ignition strength instead
+    // boost now scales with ignition strength instead
     // of the prior flat 10%. A strong ignition (strength ≈ 1.0) gets
     // up to +60% bias (mean *= 1.60), a weak ignition (strength ≈ 0.1)
     // gets a nudge (+6%). 10% flat was tiebreaker-territory; real GW
@@ -3530,13 +3530,13 @@ export class NeuronCluster {
         let mean = sum / cellCount;
         // GW bias multiplier — boost the bucket whose word matches
         // the current workspace broadcast (continuity-of-thought
-        // bias). 114.19fn P1.7 — scales with ignition strength via
+        // bias). Scales with ignition strength via
         // gwBoostMul (range 1.0–1.6) instead of the prior flat 1.10.
         if (gwBoostWord && wordsList[b] === gwBoostWord) mean *= gwBoostMul;
         // 114.19fi.A.3 — repetition penalty: words emitted in last 4
         // ticks get downweighted 30% so the same word doesn't lottery-
         // win the next argmax in a row.
-        // 114.19fn P1.5 — function words (the/a/an/is/are/and/or/etc)
+        // function words (the/a/an/is/are/and/or/etc)
         // are EXEMPT from the penalty so grammatical English isn't
         // punished. See FUNCTION_WORDS module-const above for the
         // categorical filter. Content words (cat/run/eat) still get
@@ -3550,7 +3550,7 @@ export class NeuronCluster {
     }
 
     // minSignal floor compares against the MEAN per-cell signal.
-    // 114.19fn P1.6 — adaptive floor. Prior 0.001 hardcoded floor was
+    // adaptive floor. Prior 0.001 hardcoded floor was
     // noise-territory: once sem region saturated to soup, any bucket
     // with mean > 0.001 would "win" — including pure noise — driving
     // the "random one-word responses" failure mode.
@@ -3575,7 +3575,7 @@ export class NeuronCluster {
     }
     this._emitSignalFloor = adaptiveFloor;  // surface for dashboard
     if (!bestWord || bestMean < adaptiveFloor) {
-      // Record rejection reason for diagnostic panel (P3.2 will read this).
+      // Record rejection reason for diagnostic panel ( will read this).
       this._lastEmitRejection = {
         reason: !bestWord ? 'no-best-word' : 'below-adaptive-floor',
         bestMean: bestMean === -Infinity ? 0 : bestMean,
@@ -3600,7 +3600,7 @@ export class NeuronCluster {
     if (temperature > 0 && candidates.length > 1) {
       const topK = Math.max(1, Math.min(opts.topK ?? 8, candidates.length));
       candidates.sort((a, b) => b.mean - a.mean);
-      // 114.19fn P1.6 — adaptive floor applied here too so top-K
+      // adaptive floor applied here too so top-K
       // nucleus sampling can't grab below-floor noise. Same floor the
       // greedy-argmax gate above used.
       const topCandidates = candidates.slice(0, topK).filter(c => c.mean >= adaptiveFloor);
@@ -3725,7 +3725,7 @@ export class NeuronCluster {
    *            coherenceCosine: number|null, coherenceTarget: string|null } | null}
    */
   async composeSentence(intentSeed = null, opts = {}) {
-    // 114.19fn P1.1 — converted to async + ticks the brain between word
+    // converted to async + ticks the brain between word
     // emissions. PRIOR behavior was synchronous loop that called
     // emitWordDirect 12 times on the SAME frozen lastSpikes — the
     // "inject word back so next tick reads shifted state" comment was
@@ -3735,13 +3735,13 @@ export class NeuronCluster {
     // and the next emit sees a real autoregressive shift. This is the
     // load-bearing fix for "random one-word responses" failure mode.
     //
-    // 114.19fn P1.3 — terminator-first guard: if the first emission is
+    // terminator-first guard: if the first emission is
     // a terminator (period/question/exclamation), reject it and keep
     // ticking — empty sentences are useless. After MAX_TERMINATOR_REJECTS
     // attempts in a row we bail with whatever we have to prevent
     // infinite loops on pathological state.
     //
-    // 114.19fn P1.2 use-site — per-word back-injection uses replaceMode
+    // per-word back-injection uses replaceMode
     // for the WORD embedding so it doesn't accumulate to soup, but the
     // initial seed/cortex/concept injections STAY additive (they're
     // meant to be combined). At each tick, cortical leak naturally
@@ -3771,7 +3771,7 @@ export class NeuronCluster {
 
     // Zero sem region externalCurrent at the START of every compose call
     // so prior compose calls' lingering injections don't poison this
-    // turn's intent. (Per /super-review issue #2 — externalCurrent
+    // turn's intent. (— externalCurrent
     // accumulates across calls.) This is the per-call "fresh intent
     // window" reset. Doesn't affect lastSpikes / weights / persistent
     // state — only the input-current buffer.
@@ -3822,14 +3822,14 @@ export class NeuronCluster {
 
     const words = [];
     const MAX_WORDS = typeof opts.maxWords === 'number' && opts.maxWords > 0 ? Math.floor(opts.maxWords) : 12;
-    // 114.19fn P1.1 — number of brain ticks between word emissions.
+    // number of brain ticks between word emissions.
     // 2-4 is the sweet spot: enough cycles to propagate sem→word_motor
     // and dissipate prior injection via cortical leak, few enough to
     // not blow the per-utterance tick budget at biological scale.
     // Caller can override via opts.ticksPerWord.
     const TICKS_PER_WORD = typeof opts.ticksPerWord === 'number' && opts.ticksPerWord > 0
       ? Math.floor(opts.ticksPerWord) : 3;
-    // 114.19fn P1.3 — terminator-first retry budget. If the first
+    // terminator-first retry budget. If the first
     // emission is a terminator (".", "?", "!"), we reject and retry
     // up to this many times before giving up. With ticks between
     // attempts, the state shifts so retries aren't redundant.
@@ -3843,7 +3843,7 @@ export class NeuronCluster {
         return null;
       }
 
-      // 114.19fn P1.1 — TICK the brain so sem→word_motor propagation
+      // TICK the brain so sem→word_motor propagation
       // actually runs on the current externalCurrent injections. Without
       // these ticks lastSpikes is frozen and emitWordDirect returns the
       // same argmax every iteration. With them the brain processes the
@@ -3881,7 +3881,7 @@ export class NeuronCluster {
       // punct mapping — the brain decides when AND which terminator from
       // trained weights.
       //
-      // 114.19fn P1.3 — terminator-first guard. If words.length === 0,
+      // terminator-first guard. If words.length === 0,
       // emitting a terminator yields an empty sentence — useless. Reject,
       // continue ticking, give the autoregressive state a chance to
       // shift past the terminator basin. Up to MAX_TERMINATOR_REJECTS
@@ -3913,7 +3913,7 @@ export class NeuronCluster {
       // sequence — slot progression EMERGES from sem evolution + trained
       // weights, not from a slot-template prescription.
       //
-      // 114.19fn — additive injection (NOT replaceMode) so the original
+      // additive injection (NOT replaceMode) so the original
       // intent embedding stays anchored. Cortical leak between ticks
       // naturally dissipates the prior word's emphasis; intent persists
       // because it was injected at higher strength. This produces the
