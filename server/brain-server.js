@@ -3351,6 +3351,38 @@ class ServerBrain {
     const cortex = this.cortexCluster;
     const cacheStats = (cortex && typeof cortex.getDefinitionCacheStats === 'function')
       ? cortex.getDefinitionCacheStats() : null;
+
+    // Diagnostic — one-shot log of consciousness-state inputs on first
+    // call so operator can see WHY dashboard panels show zero. Per
+    // 2026-06-17 live test: dashboard renders columns/L1-L6/hubs as 0
+    // despite boot log claiming "lamination L1=19164" etc. This log
+    // dumps the actual cortex state at first broadcast. Fires once
+    // per process lifetime then self-disables.
+    if (!this._consciousnessStateDiagLogged) {
+      this._consciousnessStateDiagLogged = true;
+      try {
+        const cortexExists = !!cortex;
+        const cortexName = cortex ? cortex.name : '(no cortex)';
+        const cortexSize = cortex ? cortex.size : 0;
+        const layerIdLen = (cortex && cortex.layerId) ? cortex.layerId.length : 'MISSING';
+        const hubMaskLen = (cortex && cortex.hubMask) ? cortex.hubMask.length : 'MISSING';
+        const numCols = (cortex && cortex.numColumns) || 'MISSING';
+        const layerIdSample = (cortex && cortex.layerId) ? Array.from(cortex.layerId.slice(0, 20)) : 'MISSING';
+        const hubMaskFirst20 = (cortex && cortex.hubMask) ? Array.from(cortex.hubMask.slice(0, 20)) : 'MISSING';
+        const getDefStatsType = (cortex && typeof cortex.getDefinitionCacheStats === 'function') ? 'function' : 'MISSING';
+        const cacheStatsJson = cacheStats ? JSON.stringify(cacheStats).slice(0, 200) : 'null';
+        console.log(`[Brain] [DASHBOARD-DIAG] first _getConsciousnessState() call — cortex=${cortexExists} name=${cortexName} size=${cortexSize} layerId.length=${layerIdLen} hubMask.length=${hubMaskLen} numColumns=${numCols} getDefCacheStats=${getDefStatsType}`);
+        console.log(`[Brain] [DASHBOARD-DIAG]   layerId[0..19]=${JSON.stringify(layerIdSample)}`);
+        console.log(`[Brain] [DASHBOARD-DIAG]   hubMask[0..19]=${JSON.stringify(hubMaskFirst20)}`);
+        console.log(`[Brain] [DASHBOARD-DIAG]   cacheStats=${cacheStatsJson}`);
+        console.log(`[Brain] [DASHBOARD-DIAG]   _definitionTaughtWords.size=${(cortex && cortex._definitionTaughtWords) ? cortex._definitionTaughtWords.size : 'MISSING'}`);
+        console.log(`[Brain] [DASHBOARD-DIAG]   _kVocabPrefetched=${cortex ? cortex._kVocabPrefetched : 'MISSING'}`);
+        console.log(`[Brain] [DASHBOARD-DIAG]   thetaPeriod=${(cortex && cortex.thetaPeriod) || 'MISSING'}`);
+        console.log(`[Brain] [DASHBOARD-DIAG]   _gammaLrScale=${(cortex && cortex._gammaLrScale) || 'MISSING'}`);
+      } catch (err) {
+        console.log(`[Brain] [DASHBOARD-DIAG] threw: ${err.message}`);
+      }
+    }
     // K-wiring assertion result (re-run to get fresh status).
     let kwiring = null;
     try {

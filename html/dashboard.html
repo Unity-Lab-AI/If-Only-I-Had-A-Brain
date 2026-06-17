@@ -136,6 +136,25 @@
       <button id="btn-graceful-stop" class="btn-stop" title="Graceful brain shutdown — flushes definition disk cache, terminates worker pool, saves weights, then exits. Equivalent to running stop.bat. Use Savestart.bat to resume from saved state.">⏹ Stop Brain</button>
     </div>
 
+    <!-- Dashboard-zero diagnostic panel (collapsible). Operator 2026-06-17
+         reported all consciousness fields rendering 0/unknown/pending
+         despite server-side broadcast carrying real values (verified via
+         server.log [DASHBOARD-DIAG] lines + WS test client). This panel
+         dumps the LAST received state.consciousness + state.memoryStats
+         JSON so the operator can paste it for diagnosis. Collapsed by
+         default so it doesn't clutter the dashboard. -->
+    <details style="margin: 0 0 14px 0; background:#0f0a1f; border:1px solid #2a1a3a; border-radius:6px; padding:6px 10px; font-size:11px;">
+      <summary style="color:#ff4d9a; cursor:pointer; font-family:'JetBrains Mono',monospace; padding:2px 0;">🔬 Dashboard-zero diagnostic — last received state.consciousness JSON</summary>
+      <div style="margin-top:8px;font-family:'JetBrains Mono',monospace;color:#bbb;font-size:10px;line-height:1.5;">
+        <div>WS messages received: <span id="d-diag-msg-count" style="color:#22c55e;">0</span></div>
+        <div>Last state.consciousness keys: <span id="d-diag-consc-keys" style="color:#a855f7;">—</span></div>
+        <div style="margin-top:6px;color:#666;">Last broadcast (truncated 1500 chars):</div>
+        <pre id="d-diag-state-json" style="background:#0a0a0a;border:1px solid #1a1a1a;padding:8px;border-radius:4px;max-height:200px;overflow:auto;color:#88c0d0;white-space:pre-wrap;word-break:break-all;margin:4px 0 0 0;">— no state received yet —</pre>
+        <div style="margin-top:6px;color:#666;">Recent dashboard JS errors:</div>
+        <pre id="d-diag-js-errors" style="background:#0a0a0a;border:1px solid #1a1a1a;padding:8px;border-radius:4px;max-height:100px;overflow:auto;color:#ff6b6b;white-space:pre-wrap;word-break:break-all;margin:4px 0 0 0;">— none yet —</pre>
+      </div>
+    </details>
+
     <!-- No-connection recovery banner — appears when WebSocket fails to
          connect OR drops. Documents the recovery path explicitly so
          operator doesn't have to guess (run start.bat / Savestart.bat
@@ -610,7 +629,37 @@
         log('Connected to brain server');
       };
       ws.onmessage = (e) => {
-        try { handleMessage(JSON.parse(e.data)); } catch {}
+        try {
+          const msg = JSON.parse(e.data);
+          // Dashboard-zero diagnostic — surface raw state to debug panel.
+          if (msg && (msg.type === 'state' || msg.type === 'welcome')) {
+            const st = msg.state;
+            if (st) {
+              window.__diagMsgCount = (window.__diagMsgCount || 0) + 1;
+              const elCount = document.getElementById('d-diag-msg-count');
+              if (elCount) elCount.textContent = window.__diagMsgCount;
+              const elKeys = document.getElementById('d-diag-consc-keys');
+              if (elKeys) elKeys.textContent = st.consciousness ? Object.keys(st.consciousness).join(', ') : '(consciousness MISSING)';
+              const elJson = document.getElementById('d-diag-state-json');
+              if (elJson) {
+                try {
+                  const compact = {
+                    type: msg.type,
+                    state_keys: Object.keys(st),
+                    consciousness: st.consciousness,
+                    memoryStats: st.memoryStats,
+                  };
+                  elJson.textContent = JSON.stringify(compact, null, 2).slice(0, 1500);
+                } catch (e2) { elJson.textContent = 'stringify failed: ' + e2.message; }
+              }
+            }
+          }
+          handleMessage(msg);
+        } catch (parseErr) {
+          // Capture JS error in diagnostic panel
+          const elErr = document.getElementById('d-diag-js-errors');
+          if (elErr) elErr.textContent = (elErr.textContent === '— none yet —' ? '' : elErr.textContent + '\n') + new Date().toLocaleTimeString() + ' onmessage: ' + parseErr.message;
+        }
       };
       ws.onclose = () => {
         document.getElementById('d-conn-text').innerHTML = '<span class="status dead">disconnected</span> Reconnecting...';
@@ -637,8 +686,25 @@
     }
 
     function handleMessage(msg) {
+      // Dashboard-zero diagnostic — wrap updateDashboard in try/catch so
+      // any JS exception in the render path doesn't kill subsequent
+      // state updates. Per 2026-06-17 operator dashboard-zero report —
+      // we suspect an unhandled exception was stopping the render loop
+      // mid-broadcast, leaving consciousness panels at their initial 0.
+      const safeUpdate = (state) => {
+        try { updateDashboard(state); }
+        catch (renderErr) {
+          const elErr = document.getElementById('d-diag-js-errors');
+          if (elErr) {
+            const stamp = new Date().toLocaleTimeString();
+            const cur = elErr.textContent === '— none yet —' ? '' : elErr.textContent + '\n';
+            elErr.textContent = cur + stamp + ' updateDashboard: ' + renderErr.message + (renderErr.stack ? '\n  ' + renderErr.stack.split('\n').slice(0, 3).join('\n  ') : '');
+          }
+          console.error('[dashboard] updateDashboard threw:', renderErr);
+        }
+      };
       if (msg.type === 'welcome') {
-        if (msg.state) updateDashboard(msg.state);
+        if (msg.state) safeUpdate(msg.state);
         // Load emotion history from server
         if (msg.emotionHistory) {
           emotionHistory = msg.emotionHistory;
@@ -647,7 +713,7 @@
         log(`Welcome — ${msg.state?.connectedUsers ?? '?'} users online`);
       }
       if (msg.type === 'state') {
-        updateDashboard(msg.state);
+        safeUpdate(msg.state);
         appendEmotionSample(msg.state);
       }
       // Audit H.6 — consume gpuClientSpawnFailed broadcasts from

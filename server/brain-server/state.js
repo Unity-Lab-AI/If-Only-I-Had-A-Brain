@@ -60,8 +60,36 @@ const SERVER_STATE_MIXIN = {
   _broadcastStateNow() {
     if (!this.clients || this.clients.size === 0) return;
     let payload;
-    try { payload = JSON.stringify({ type: 'state', state: this.getState() }); }
-    catch { return; }
+    let stateObj;
+    try {
+      stateObj = this.getState();
+      payload = JSON.stringify({ type: 'state', state: stateObj });
+    }
+    catch (err) {
+      console.error(`[Brain] [DASHBOARD-DIAG] getState() THREW: ${err.message}`);
+      return;
+    }
+    // Diagnostic — one-shot log of first broadcast state JSON so operator
+    // can see EXACTLY what reaches the dashboard via WS. Per 2026-06-17
+    // dashboard-zero diagnosis.
+    if (!this._firstBroadcastDiagLogged) {
+      this._firstBroadcastDiagLogged = true;
+      try {
+        const consciousness = stateObj && stateObj.consciousness;
+        if (consciousness) {
+          console.log(`[Brain] [DASHBOARD-DIAG] first broadcast — consciousness keys: ${Object.keys(consciousness).join(', ')}`);
+          console.log(`[Brain] [DASHBOARD-DIAG] consciousness.cache=${JSON.stringify(consciousness.cache)}`);
+          console.log(`[Brain] [DASHBOARD-DIAG] consciousness.kwiring=${JSON.stringify(consciousness.kwiring)}`);
+          console.log(`[Brain] [DASHBOARD-DIAG] consciousness.numColumns=${consciousness.numColumns} layerCounts=${JSON.stringify(consciousness.layerCounts)} hubCount=${consciousness.hubCount}`);
+          console.log(`[Brain] [DASHBOARD-DIAG] consciousness.smokeTestPassed=${consciousness.smokeTestPassed}`);
+        } else {
+          console.log(`[Brain] [DASHBOARD-DIAG] first broadcast — state.consciousness is MISSING. state keys: ${Object.keys(stateObj || {}).join(', ')}`);
+        }
+        console.log(`[Brain] [DASHBOARD-DIAG] payload size: ${payload.length} bytes`);
+      } catch (err) {
+        console.log(`[Brain] [DASHBOARD-DIAG] broadcast-diag threw: ${err.message}`);
+      }
+    }
     for (const [ws] of this.clients) {
       if (ws.readyState === ws.OPEN) {
         try { ws.send(payload); } catch {}
