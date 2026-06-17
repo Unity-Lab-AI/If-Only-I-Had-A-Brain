@@ -18081,8 +18081,169 @@ var K_MIXIN = {
       })
     );
   },
+  /**
+   * K-LIFE.2 — Family relationship anchoring. Each family member is
+   * bound to their role-specific schema (mom = caretaker + food-provider
+   * + comfort-source; dad = protector + tall + playful; sister = friend
+   * + share + fight; grandma = cookies + soft + stories; grandpa = strong
+   * + outside + quiet). Builds on top of K-LIFE.1 first-words (mama → mom
+   * already bound) and the existing LIFE-K-CONCEPTS categorical binding
+   * (mother → parent already trained).
+   *
+   * K-LIFE.1 + K-LIFE.2 together produce a layered family-relational
+   * substrate:
+   *   - First-word level (K-LIFE.1): mama / dada / mom / dad as joy+trust+
+   *     love+identity emotion attractors
+   *   - Categorical level (LIFE-K-CONCEPTS existing): mother→parent,
+   *     father→parent, brother→sibling, etc.
+   *   - Role-attribute level (K-LIFE.2 here): mom→caretaker, mom→food,
+   *     mom→comfort, mom→safety, etc. Each family member carries a
+   *     RICHER set of role attributes so chat-time activation pulls a
+   *     whole relational schema, not just the categorical label.
+   *
+   * relationTagId=16 — family-role-attribute channel. Distinct from
+   * relationTagId=1 (categorical) and relationTagId=15 (first-words).
+   * Layered channels let the brain learn DIFFERENT aspects of the same
+   * concept in parallel without interference — chat-time emission can
+   * blend all three when "mom" activates.
+   */
+  async _teachKLifeFamilyRoles() {
+    const MOM_ROLES = [
+      ["mom", "caretaker"],
+      // primary nurture
+      ["mom", "food"],
+      // food-provider
+      ["mom", "comfort"],
+      // comfort-source when scared/sad
+      ["mom", "safety"],
+      // safety-base for exploration
+      ["mom", "home"],
+      // home-presence
+      ["mom", "hug"],
+      // physical comfort delivery
+      ["mom", "song"],
+      // bedtime / lullaby
+      ["mom", "kiss"],
+      // affection delivery
+      ["mama", "caretaker"],
+      // child-form duplication for synonymy
+      ["mama", "comfort"],
+      ["mother", "caretaker"],
+      ["mother", "family"]
+    ];
+    const DAD_ROLES = [
+      ["dad", "protector"],
+      // protect-from-harm
+      ["dad", "tall"],
+      // physical-stature anchor
+      ["dad", "play"],
+      // playful interaction
+      ["dad", "strong"],
+      // strength-attribute
+      ["dad", "work"],
+      // work-leaves-home pattern
+      ["dad", "home"],
+      // home-presence
+      ["dad", "lift"],
+      // physical lift / hoist memory
+      ["dad", "safety"],
+      // safety-secondary
+      ["dada", "protector"],
+      ["dada", "play"],
+      ["father", "protector"],
+      ["father", "family"]
+    ];
+    const SIBLING_ROLES = [
+      ["sister", "friend"],
+      // sibling-as-friend
+      ["sister", "share"],
+      // share-toys
+      ["sister", "fight"],
+      // sibling-conflict
+      ["sister", "play"],
+      // playmate
+      ["brother", "friend"],
+      ["brother", "share"],
+      ["brother", "fight"],
+      ["brother", "play"],
+      ["sibling", "family"],
+      ["sibling", "home"]
+    ];
+    const GRANDPARENT_ROLES = [
+      ["grandma", "cookies"],
+      // sweet-treats from grandma
+      ["grandma", "soft"],
+      // soft-hugs / gentle voice
+      ["grandma", "stories"],
+      // storytime
+      ["grandma", "love"],
+      // unconditional warm affection
+      ["grandma", "family"],
+      ["grandpa", "strong"],
+      // grandpa-strength stereotype
+      ["grandpa", "outside"],
+      // outdoor activities
+      ["grandpa", "quiet"],
+      // calmer pacing than dad
+      ["grandpa", "love"],
+      ["grandpa", "family"]
+    ];
+    const EXTENDED_FAMILY_ROLES = [
+      ["aunt", "family"],
+      ["aunt", "visit"],
+      ["uncle", "family"],
+      ["uncle", "play"],
+      ["cousin", "family"],
+      ["cousin", "play"]
+    ];
+    await this._phasedTeach(
+      "LIFE-K-FAMILY-MOM-ROLES",
+      () => this._teachAssociationPairs(MOM_ROLES, {
+        reps: 50,
+        // High reps — mom is primary caretaker, deepest binding
+        label: "LIFE-K-FAMILY-MOM-ROLES",
+        relationTagId: 16
+        // family-role-attribute channel
+      })
+    );
+    await this._phasedTeach(
+      "LIFE-K-FAMILY-DAD-ROLES",
+      () => this._teachAssociationPairs(DAD_ROLES, {
+        reps: 50,
+        label: "LIFE-K-FAMILY-DAD-ROLES",
+        relationTagId: 16
+      })
+    );
+    await this._phasedTeach(
+      "LIFE-K-FAMILY-SIBLING-ROLES",
+      () => this._teachAssociationPairs(SIBLING_ROLES, {
+        reps: 40,
+        // Slightly lower — sibling relationships vary more across kids
+        label: "LIFE-K-FAMILY-SIBLING-ROLES",
+        relationTagId: 16
+      })
+    );
+    await this._phasedTeach(
+      "LIFE-K-FAMILY-GRANDPARENT-ROLES",
+      () => this._teachAssociationPairs(GRANDPARENT_ROLES, {
+        reps: 40,
+        label: "LIFE-K-FAMILY-GRANDPARENT-ROLES",
+        relationTagId: 16
+      })
+    );
+    await this._phasedTeach(
+      "LIFE-K-FAMILY-EXTENDED-ROLES",
+      () => this._teachAssociationPairs(EXTENDED_FAMILY_ROLES, {
+        reps: 30,
+        // Lower — extended family is less central at age 5
+        label: "LIFE-K-FAMILY-EXTENDED-ROLES",
+        relationTagId: 16
+      })
+    );
+  },
   async runLifeK(ctx) {
     await this._teachKLifeFirstWords();
+    await this._teachKLifeFamilyRoles();
     const EMOTIONS_K = [
       { name: "school", feat: [0.5, 0, 0.3, 0.5, 0, 0, 0.5, 0] },
       // exciting but scary

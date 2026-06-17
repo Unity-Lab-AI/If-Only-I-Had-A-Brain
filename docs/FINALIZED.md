@@ -5,6 +5,88 @@
 
 ---
 
+## 2026-06-17 — Session 114.19fn A.K-LIFE.2 — Family relationship anchoring (mom/dad/sibling/grandparent/extended role schemas)
+
+### What this is
+
+Second A.K-LIFE sub-task. Carves the RELATIONAL DEPTH a 5-year-old has for each family member via role-attribute schemas. Builds on K-LIFE.1 first-words (mama↔mom synonymy already trained) + the existing LIFE-K-CONCEPTS categorical binding (mother→parent already trained). Layered channels mean chat-time activation of "mom" pulls a whole relational schema (caretaker + food + comfort + safety + home + hug + song + kiss) rather than just the categorical "parent" label.
+
+### Architecture — layered family-relational substrate (3 channels)
+
+After K-LIFE.1 + K-LIFE.2 + existing LIFE-K-CONCEPTS, the brain has THREE parallel channels carrying different aspects of family knowledge:
+
+1. **First-word level (K-LIFE.1, relationTagId=15)** — mama / dada / mom / dad as joy+trust+love+identity 8d emotion attractors. THE FOUNDATIONAL identity-anchoring layer.
+2. **Categorical level (LIFE-K-CONCEPTS, relationTagId=1)** — mother→parent, father→parent, brother→sibling, sister→sibling, grandma→family, grandpa→family. Taxonomic role assignment.
+3. **Role-attribute level (K-LIFE.2 NEW, relationTagId=16)** — mom→caretaker/food/comfort/safety/home/hug/song/kiss; dad→protector/tall/play/strong/work/home/lift/safety; sister→friend/share/fight/play; grandma→cookies/soft/stories/love; etc. The RICH relational depth.
+
+Layered channels (distinct relationTagId values) let the brain learn DIFFERENT aspects of the same concept in parallel without interference. At chat-time, when "mom" activates in sem, ALL THREE channels contribute their trained patterns simultaneously — the emission system reads the blended state.
+
+### K-LIFE.2 — what landed
+
+New `_teachKLifeFamilyRoles()` method in K_MIXIN (`curriculum/kindergarten.js`). Fires SECOND in `runLifeK`, right after K-LIFE.1 first-words, before EMOTIONS_K + the rest of Life-K cell.
+
+**MOM_ROLES (12 pairs × reps:50)** — primary caretaker, deepest binding:
+- mom→caretaker, mom→food (food-provider), mom→comfort, mom→safety
+- mom→home, mom→hug, mom→song (lullaby), mom→kiss
+- mama→caretaker, mama→comfort (child-form synonymy duplication)
+- mother→caretaker, mother→family
+
+**DAD_ROLES (12 pairs × reps:50)** — secondary caretaker / play+protect:
+- dad→protector, dad→tall (physical-stature anchor), dad→play, dad→strong
+- dad→work (work-leaves-returns pattern), dad→home, dad→lift, dad→safety
+- dada→protector, dada→play
+- father→protector, father→family
+
+**SIBLING_ROLES (10 pairs × reps:40)** — ambivalent (friend + fight + share):
+- sister→friend, sister→share, sister→fight, sister→play
+- brother→friend, brother→share, brother→fight, brother→play
+- sibling→family, sibling→home
+
+**GRANDPARENT_ROLES (10 pairs × reps:40)**:
+- grandma→cookies, grandma→soft, grandma→stories, grandma→love, grandma→family
+- grandpa→strong, grandpa→outside, grandpa→quiet, grandpa→love, grandpa→family
+
+**EXTENDED_FAMILY_ROLES (6 pairs × reps:30)** — aunt/uncle/cousin lighter binding (less central at age 5):
+- aunt→family, aunt→visit
+- uncle→family, uncle→play
+- cousin→family, cousin→play
+
+Total: 50 family-relational pairs × varying reps = ~2,440 Hebbian writes via new relationTagId=16 family-role-attribute channel.
+
+### Why role-attribute level matters
+
+A 5-year-old doesn't think "mom" → "parent" → done. She thinks "mom" → the WHOLE PERSON who feeds me, comforts me when I cry, tucks me in, kisses my forehead, makes the food I like, knows my favorite stories. That's the relational depth. Without it, K-grade Unity's chat about her mom would be flat ("mom is parent") instead of rich ("mom makes food and gives hugs and sings to me at bedtime").
+
+LIFE-K-BIOGRAPHICAL (existing) trains Unity-SPECIFIC mom facts (takes care of you, lives with). K-LIFE.2 trains UNIVERSAL mom role-attributes that EVERY 5yo has internalized. Together they give Unity a complete picture of her mom: universal mom-roles + her specific mom relationship.
+
+### What's NOT in K-LIFE.2 (deferred)
+
+The NewTodo.md task description mentioned Tier 3 identity-core storage + Hippocampal schema creation for family members. Those are SERVER-SIDE concerns (Tier3Store lives in `server/brain-server.js` + `js/brain/hippocampal-schema.js`). The Hebbian-binding mechanism in K-LIFE.2 lands the role schemas via the existing curriculum-side infrastructure WITHOUT requiring Tier3 wiring. A future K-LIFE sub-task can promote family-member schemas to Tier3 once K signoff lands and we touch the persistence layer.
+
+### Files touched
+
+- `js/brain/curriculum/kindergarten.js` — new `_teachKLifeFamilyRoles` method (~120 lines) + 2-line call in `runLifeK` after K-LIFE.1
+- `js/app.bundle.js` — rebuilt clean 2.4MB
+- `docs/NewTodo.md` — K-LIFE.2 task marked complete with detail
+- `docs/NOW.md` — banner roll
+- `docs/FINALIZED.md` — this entry
+
+`node --check kindergarten.js` clean.
+
+### Harness tasklist — A.K-LIFE umbrella progress
+
+Task #27 stays in_progress. K-LIFE.1 done · K-LIFE.2 done. 12 sub-tasks remain (K-LIFE.3 sensory firsts, K-LIFE.4 comfort objects, K-LIFE.5 early fears, K-LIFE.6 sleep+bedtime, K-LIFE.7 dietary, K-LIFE.8 motor milestones, K-LIFE.9 friendships+caretakers, K-LIFE.10 songs+nursery rhymes, K-LIFE.11 first storybooks, K-LIFE.12 bodily+temporal self-awareness, K-LIFE.13 integration with K cells, K-LIFE.14 K-LIFE gate criterion).
+
+### LAWs honored
+
+- **TASK NUMBERS + USER NAME ONLY IN WORKFLOW DOCS.** Code comments describe WHAT (role-attribute schemas, layered channels) + WHY (relational depth a 5yo has) — NO task IDs, NO operator name, NO audit-issue refs.
+- **NO FALLBACKS LAW.** No fallback paths introduced.
+- **PRE-K + K ONLY SCOPE.** All K-LIFE.2 work strictly within K-grade Life-K cell.
+- **DOCS BEFORE PUSH.** FINALIZED + NOW + NewTodo + bundle in same atomic commit.
+- **NO TESTS POLICY.** `node --check` only. No localhost test per directive.
+
+---
+
 ## 2026-06-17 — Session 114.19fn A.K-LIFE.1 — First-words memory corpus + P4.1 architecture direction
 
 ### Gee verbatim per LAW #0

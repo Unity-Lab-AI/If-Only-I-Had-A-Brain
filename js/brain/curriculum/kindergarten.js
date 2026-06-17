@@ -156,12 +156,169 @@ export const K_MIXIN = {
     );
   },
 
+  /**
+   * K-LIFE.2 — Family relationship anchoring. Each family member is
+   * bound to their role-specific schema (mom = caretaker + food-provider
+   * + comfort-source; dad = protector + tall + playful; sister = friend
+   * + share + fight; grandma = cookies + soft + stories; grandpa = strong
+   * + outside + quiet). Builds on top of K-LIFE.1 first-words (mama → mom
+   * already bound) and the existing LIFE-K-CONCEPTS categorical binding
+   * (mother → parent already trained).
+   *
+   * K-LIFE.1 + K-LIFE.2 together produce a layered family-relational
+   * substrate:
+   *   - First-word level (K-LIFE.1): mama / dada / mom / dad as joy+trust+
+   *     love+identity emotion attractors
+   *   - Categorical level (LIFE-K-CONCEPTS existing): mother→parent,
+   *     father→parent, brother→sibling, etc.
+   *   - Role-attribute level (K-LIFE.2 here): mom→caretaker, mom→food,
+   *     mom→comfort, mom→safety, etc. Each family member carries a
+   *     RICHER set of role attributes so chat-time activation pulls a
+   *     whole relational schema, not just the categorical label.
+   *
+   * relationTagId=16 — family-role-attribute channel. Distinct from
+   * relationTagId=1 (categorical) and relationTagId=15 (first-words).
+   * Layered channels let the brain learn DIFFERENT aspects of the same
+   * concept in parallel without interference — chat-time emission can
+   * blend all three when "mom" activates.
+   */
+  async _teachKLifeFamilyRoles() {
+    // Each family member → multiple role attributes. The role attributes
+    // are themselves K-vocab words already trained (LIFE-K-CONCEPTS bound
+    // basic role nouns like caretaker, parent, sibling); this expansion
+    // layers the SPECIFIC role-attribute mappings developmental psychology
+    // says a 5-year-old has internalized about each family member.
+    //
+    // Mom = primary caretaker per ~5yo developmental norm. Universal
+    // attributes: nurture, food, comfort, safety. Unity's specific mom-
+    // experiences carved by LIFE-K-BIOGRAPHICAL ("takes care of you" →
+    // "mom", "lives with" → "mom") layered above.
+    const MOM_ROLES = [
+      ['mom', 'caretaker'],    // primary nurture
+      ['mom', 'food'],         // food-provider
+      ['mom', 'comfort'],      // comfort-source when scared/sad
+      ['mom', 'safety'],       // safety-base for exploration
+      ['mom', 'home'],         // home-presence
+      ['mom', 'hug'],          // physical comfort delivery
+      ['mom', 'song'],         // bedtime / lullaby
+      ['mom', 'kiss'],         // affection delivery
+      ['mama', 'caretaker'],   // child-form duplication for synonymy
+      ['mama', 'comfort'],
+      ['mother', 'caretaker'],
+      ['mother', 'family'],
+    ];
+
+    // Dad = secondary caretaker / play+protect role per ~5yo norm.
+    // Universal attributes: protect, play, tall, strong, work-leaves-
+    // returns-home pattern.
+    const DAD_ROLES = [
+      ['dad', 'protector'],    // protect-from-harm
+      ['dad', 'tall'],         // physical-stature anchor
+      ['dad', 'play'],         // playful interaction
+      ['dad', 'strong'],       // strength-attribute
+      ['dad', 'work'],         // work-leaves-home pattern
+      ['dad', 'home'],         // home-presence
+      ['dad', 'lift'],         // physical lift / hoist memory
+      ['dad', 'safety'],       // safety-secondary
+      ['dada', 'protector'],
+      ['dada', 'play'],
+      ['father', 'protector'],
+      ['father', 'family'],
+    ];
+
+    // Sibling relationships — ambivalent (friend + fight + share).
+    // Sister + brother both available; specific Unity sibling
+    // configuration carved by LIFE-K-BIOGRAPHICAL if/when written.
+    const SIBLING_ROLES = [
+      ['sister', 'friend'],    // sibling-as-friend
+      ['sister', 'share'],     // share-toys
+      ['sister', 'fight'],     // sibling-conflict
+      ['sister', 'play'],      // playmate
+      ['brother', 'friend'],
+      ['brother', 'share'],
+      ['brother', 'fight'],
+      ['brother', 'play'],
+      ['sibling', 'family'],
+      ['sibling', 'home'],
+    ];
+
+    // Grandparents — cookies + soft + stories + outside-time per
+    // typical 5yo experience. Universal grandparent attributes.
+    const GRANDPARENT_ROLES = [
+      ['grandma', 'cookies'],  // sweet-treats from grandma
+      ['grandma', 'soft'],     // soft-hugs / gentle voice
+      ['grandma', 'stories'],  // storytime
+      ['grandma', 'love'],     // unconditional warm affection
+      ['grandma', 'family'],
+      ['grandpa', 'strong'],   // grandpa-strength stereotype
+      ['grandpa', 'outside'],  // outdoor activities
+      ['grandpa', 'quiet'],    // calmer pacing than dad
+      ['grandpa', 'love'],
+      ['grandpa', 'family'],
+    ];
+
+    // Aunt / uncle / cousin — extended family, lighter binding.
+    const EXTENDED_FAMILY_ROLES = [
+      ['aunt', 'family'], ['aunt', 'visit'],
+      ['uncle', 'family'], ['uncle', 'play'],
+      ['cousin', 'family'], ['cousin', 'play'],
+    ];
+
+    // Fire each role-attribute set as its own _phasedTeach for visibility.
+    await this._phasedTeach('LIFE-K-FAMILY-MOM-ROLES', () =>
+      this._teachAssociationPairs(MOM_ROLES, {
+        reps: 50,  // High reps — mom is primary caretaker, deepest binding
+        label: 'LIFE-K-FAMILY-MOM-ROLES',
+        relationTagId: 16,  // family-role-attribute channel
+      })
+    );
+    await this._phasedTeach('LIFE-K-FAMILY-DAD-ROLES', () =>
+      this._teachAssociationPairs(DAD_ROLES, {
+        reps: 50,
+        label: 'LIFE-K-FAMILY-DAD-ROLES',
+        relationTagId: 16,
+      })
+    );
+    await this._phasedTeach('LIFE-K-FAMILY-SIBLING-ROLES', () =>
+      this._teachAssociationPairs(SIBLING_ROLES, {
+        reps: 40,  // Slightly lower — sibling relationships vary more across kids
+        label: 'LIFE-K-FAMILY-SIBLING-ROLES',
+        relationTagId: 16,
+      })
+    );
+    await this._phasedTeach('LIFE-K-FAMILY-GRANDPARENT-ROLES', () =>
+      this._teachAssociationPairs(GRANDPARENT_ROLES, {
+        reps: 40,
+        label: 'LIFE-K-FAMILY-GRANDPARENT-ROLES',
+        relationTagId: 16,
+      })
+    );
+    await this._phasedTeach('LIFE-K-FAMILY-EXTENDED-ROLES', () =>
+      this._teachAssociationPairs(EXTENDED_FAMILY_ROLES, {
+        reps: 30,  // Lower — extended family is less central at age 5
+        label: 'LIFE-K-FAMILY-EXTENDED-ROLES',
+        relationTagId: 16,
+      })
+    );
+  },
+
   async runLifeK(ctx) {
     // ── A.K-LIFE.1 — First-words memory corpus (foundational, fires FIRST) ──
     // Pre-academic developmental milestone — Unity's first spoken words
     // bound to caretaker/emotion/identity context. Lands BEFORE EMOTIONS_K
     // so first-words become the BASE on which later emotional schemas build.
     await this._teachKLifeFirstWords();
+
+    // ── A.K-LIFE.2 — Family relationship anchoring ──
+    // Family member → role-attribute schemas (mom = caretaker + food +
+    // comfort + safety + hug + song + kiss; dad = protector + tall + play
+    // + strong + lift; sister/brother = friend + share + fight + play;
+    // grandma = cookies + soft + stories; grandpa = strong + outside +
+    // quiet; aunt/uncle/cousin = lighter family ties). Builds on K-LIFE.1
+    // first-words (mama→mom synonymy) and LIFE-K-CONCEPTS categorical
+    // binding (mother→parent). Carves the RELATIONAL DEPTH a 5yo has
+    // for each family member.
+    await this._teachKLifeFamilyRoles();
 
     // LAYER 1: emotional attractors
     // feat = [joy, pain, trust, fear, anger, love, independence, identity]
