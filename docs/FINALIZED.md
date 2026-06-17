@@ -24036,3 +24036,39 @@ Per *"remmebr unity can generate images dont delete that"*:
 Codebase is now product-ship clean. `scripts/` contains only `stamp-version.mjs` (build tool). All runtime state files purged. All log files purged. All cache files purged. All temp files purged. All one-shot migration scripts purged. All diagnostic harness scripts purged. Dangling references in code/HTML/public-facing docs scrubbed. Image generation preserved. Historical audit-trail (FINALIZED + NewTodo + session banners) intact per LAW. Per audit megacommit cascade: still 41 ✅ SHIPPED + 1 ⚠ PARTIAL (D.9) + 1 ⏳ OPERATOR-FIRED (F.2 GOOD AND AWAITING BUGS).
 
 ---
+
+## 2026-06-17 — Session 114.19gf — D.9a — `_memoryHeartbeat` extracted to memory.js
+
+### Gee verbatim per LAW #0
+
+> *"1 ⚠ PARTIAL (D.9 file-extraction residual)"* (Gee 2026-06-17, this session — directive to close the last partial)
+
+> *"no cheap work do each individually"* (Gee 2026-06-17, this session — cadence directive; D.9 sub-extractions land as 4 separate atomic commits, not one batched commit)
+
+### What this is
+
+First of 4 D.9 residual file extractions. `_memoryHeartbeat` (152 lines, brain-server.js 3191-3342) moved from `ServerBrain` class body into `SERVER_MEMORY_MIXIN` inside `server/brain-server/memory.js`. Method dispatches identically via the Object.assign chain at brain-server.js entry-point bottom (LAW.MIXIN-ORDER preserved — chain still runs BEFORE class instantiation).
+
+### Method moved
+
+`_memoryHeartbeat()` — Tier 0 / 1 / 3 memory heartbeat called on the tick loop:
+- **Tier 0 (every 2s):** snapshot current cortex state into working memory; time-purges items older than 5 minutes (matches MemorySystem decay window); each aged-out WM item promoted to a Tier 1 episodic snapshot with frequency-merge dedup; pooled snapshot objects so steady-state allocation drops to zero after pool fills (~150 slots).
+- **Tier 3 (every ≥1000ms):** inject identity baseline so permanent attractors stay reinforced.
+- **Tier 1 (every ≥30000ms):** write a thinking-episode capturing current context (learning / dreaming / attentive / idle), arousal/valence/Ψ, spike total. Context-transition moments produce different category strings → cosine drops → fresh episode with high novelty; within-category heartbeats still merge as repetition.
+
+### Verification
+
+- `node --check server/brain-server/memory.js` → SYNTAX OK
+- `node --check server/brain-server.js` → SYNTAX OK
+- `node -e "const { SERVER_MEMORY_MIXIN } = require('./server/brain-server/memory.js'); ..."` → 13 methods in mixin (was 12); `_memoryHeartbeat` present as function.
+
+### Files changed
+
+- `server/brain-server/memory.js` — `_memoryHeartbeat` method appended to SERVER_MEMORY_MIXIN.
+- `server/brain-server.js` — `_memoryHeartbeat` body removed; replaced with 3-line breadcrumb comment pointing to memory.js.
+
+### Status
+
+D.9a SHIPPED. 3 more sub-extractions remain (D.9b `_getMemoryStats` → memory.js, D.9c `_getConsciousnessState` → state.js, D.9d `_getWsPressureState` → state.js). D.9 stays PARTIAL until all four land.
+
+---

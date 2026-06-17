@@ -558,6 +558,178 @@ const SERVER_MEMORY_MIXIN = {
   getEpisodeCount() {
     return this._stmtEpisodeCount.get().count;
   },
+
+  /**
+   * Tier 0 / 1 / 3 memory heartbeat — called on the tick loop.
+   *
+   * Tier 0 (every 2s): snapshot current cortex state into working memory.
+   * Time-purges items older than 5 minutes (matches MemorySystem decay
+   * window). Each aged-out WM item gets promoted to a Tier 1 episodic
+   * snapshot before disappearing — frequency-merge dedupes repeated
+   * phase entries via cosine match. Pooled snapshot objects so steady-
+   * state allocation drops to zero after pool fills.
+   *
+   * Tier 3 (every ≥1000ms): inject identity baseline so permanent
+   * attractors stay reinforced across the tick loop.
+   *
+   * Tier 1 (every ≥30000ms): write a thinking-episode capturing current
+   * context (learning / dreaming / attentive / idle), arousal/valence/Ψ,
+   * spike total. Context-transition moments produce different category
+   * strings so cosine drops on transition → fresh episode with high
+   * novelty; within-category heartbeats still merge as repetition.
+   */
+  _memoryHeartbeat() {
+    const now = Date.now();
+    if (!this._lastTier3HbAt) this._lastTier3HbAt = 0;
+    if (!this._lastTier1HbAt) this._lastTier1HbAt = 0;
+    if (!this._lastTier0HbAt) this._lastTier0HbAt = 0;
+
+    // Tier 0 working memory population. Every 2s, snapshot current
+    // cortex state into working memory: current phase / cell / arousal
+    // / valence as a "what's currently active" item.
+
+    // Operator caught: "items: 7 NEVER MOVES FROM 7" was caused by the
+    // hardcoded 7-cap below trimming via while-shift, not the items
+    // staying frozen. Replaced with TIME-BASED purge — items older than
+    // 5 minutes drop out. Stays consistent with the unbounded
+    // capacity-but-decay-driven model in MemorySystem (memory.js
+    // WM_DECAY_RATE 0.9995 → ~4 min sustain). No arbitrary numeric
+    // ceiling. Active recent content visible; stale content evaporates.
+    if (now - this._lastTier0HbAt >= 2000) {
+      this._lastTier0HbAt = now;
+      if (!this.memory) this.memory = {};
+      if (!Array.isArray(this.memory.workingMemoryItems)) this.memory.workingMemoryItems = [];
+      const phase = this.cortexCluster?._activePhase?.name || null;
+      const cellKey = this.cortexCluster?._currentCellKey || null;
+      // iter24.1 — pool the snapshot objects via a ring of free slots
+      // so the heartbeat stops driving 1350 fresh allocations per ELA-K
+      // cell into V8's young generation. When the time-purge below
+      // shifts an aged item out, it lands back in the free pool. Steady-
+      // state allocation from this loop drops to zero after the pool
+      // fills (~150 slots is plenty for the 5-min sliding window at
+      // 2s cadence). Field values get overwritten in-place per push;
+      // no aliasing because the pool object is owned by the array
+      // until the next time-purge frees it.
+      if (!this._tier0HbPool) this._tier0HbPool = [];
+      const item = this._tier0HbPool.pop() || {
+        ts: 0, phase: null, cellKey: null,
+        arousal: 0, valence: 0, psi: 0,
+      };
+      item.ts = now;
+      item.phase = phase;
+      item.cellKey = cellKey;
+      item.arousal = +(this.arousal || 0).toFixed(3);
+      item.valence = +(this.valence || 0).toFixed(3);
+      item.psi = +(this.psi || 0).toFixed(3);
+      this.memory.workingMemoryItems.push(item);
+      // Drop items older than 5 minutes. Matches MemorySystem's decay
+      // window (4 min @ 0.9995/tick → strength < 0.1 forget threshold).
+      // Sliding time window — count grows + shrinks naturally with
+      // activity. No hardcoded numeric ceiling.
+
+      // Operator: "if i told someone something and asked them about it
+      // 10 minutes or even a day later most people can recall that".
+      // The recall path is Tier 0 → Tier 1 → Tier 2 → Tier 3, not
+      // "Tier 0 holds it for a week." Each WM item that ages out
+      // gets promoted to a Tier 1 episodic snapshot (frequency-merge
+      // dedupes via iter20-K so repeated phase entries grow
+      // freq_count instead of bloating SQLite). Once in Tier 1, the
+      // standard hippocampal lifecycle takes over: salience-weighted
+      // decay (1-week half-life), promotion to Tier 2 schemas at
+      // consolidation gate, Tier 3 identity for high-emotional-weight
+      // anchors. THAT'S the "recall a week later" path.
+      const TIER0_AGE_LIMIT_MS = 5 * 60 * 1000;
+      const cutoff = now - TIER0_AGE_LIMIT_MS;
+      while (this.memory.workingMemoryItems.length > 0
+             && this.memory.workingMemoryItems[0].ts < cutoff) {
+        const aged = this.memory.workingMemoryItems.shift();
+        // iter24.1 — return the object to the free pool for reuse on
+        // the next heartbeat push. Cap pool size so memory doesn't
+        // unboundedly grow if the array shrinks faster than it grows
+        // for some reason.
+        if (this._tier0HbPool && this._tier0HbPool.length < 256) {
+          this._tier0HbPool.push(aged);
+        }
+        // Promote to Tier 1 before the WM hot-cache representation
+        // disappears. iter20-K freq-merge handles dedup. storeEpisode
+        // signature: (userId, type, inputText, responseText).
+        try {
+          if (typeof this.storeEpisode === 'function') {
+            const labelParts = [];
+            if (aged.cellKey) labelParts.push(`learning ${aged.cellKey}`);
+            if (aged.phase) labelParts.push(`phase=${aged.phase}`);
+            const inputText = labelParts.length > 0 ? labelParts.join(' · ') : 'working memory snapshot';
+            this.storeEpisode('working-memory', 'wm-aged-out', inputText, null);
+          }
+        } catch { /* non-fatal — WM age-out already happened */ }
+      }
+    }
+
+    // Tier 3 baseline inject — every ≥1000ms wall-clock
+    if (now - this._lastTier3HbAt >= 1000) {
+      this._lastTier3HbAt = now;
+      if (this.tier3Store && typeof this.tier3Store.injectIdentityBaseline === 'function') {
+        try { this.tier3Store.injectIdentityBaseline(); } catch { /* non-fatal */ }
+      }
+    }
+
+    // Tier 1 thinking-episode — every ≥30000ms wall-clock
+    if (now - this._lastTier1HbAt >= 30000 && typeof this.storeEpisode === 'function') {
+      this._lastTier1HbAt = now;
+      try {
+        let context = 'idle';
+        let contextCategory = 'idle';
+        if (this._curriculumInProgress) {
+          const phase = this.cortexCluster?._activePhase?.name || 'teach';
+          const cellKey = this.cortexCluster?._currentCellKey || 'unknown';
+          // iter20-L — transform technical method name to natural language
+          // so GloVe embeds it meaningfully (otherwise embeddings are noise
+          // and cosine merge fails for identical-text episodes).
+          const phaseConcept = phase.replace(/^_teach/i, '').replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase().trim() || phase;
+          const subjectGrade = cellKey.replace('/', ' ');
+          context = `learning ${phaseConcept} in ${subjectGrade}`;
+          contextCategory = `learning:${cellKey}`;
+        } else if (this._isDreaming) {
+          context = 'dreaming (idle consolidation window)';
+          contextCategory = 'dreaming';
+        } else if (this.clients && this.clients.size > 0) {
+          context = `attentive (${this.clients.size} client${this.clients.size === 1 ? '' : 's'} connected)`;
+          contextCategory = 'attentive';
+        }
+        const arousal = (this.arousal || 0).toFixed(2);
+        const valence = (this.valence || 0).toFixed(2);
+        const psi = (this.psi || 0).toFixed(3);
+        const spikes = this.totalSpikes || 0;
+        // iter20-E — vary heartbeat content for meaningful surprise/novelty.
+        // Operator caught (verbatim 2026-05-05 "fix it all thouroughly"):
+        // heartbeat episodes had homogeneous bag-of-words ("attentive"
+        // always similar) → cosine all > 0.7 → frequency_count climbed
+        // on one anchor episode → salience score still ~0.255 (low
+        // arousal, zero valence, zero surprise/novelty since text was
+        // identical). Now phase-change moments produce DIFFERENT
+        // contextCategory strings → cosine drops on category transition
+        // → fresh episode with high novelty. Within-category heartbeats
+        // still merge as repetition.
+        if (this._lastHbContext && this._lastHbContext !== contextCategory) {
+          // Context just changed — this is a salient transition moment.
+          // Embed transition info in the input text so it scores high
+          // surprise when computeTransitionSurprise reads it.
+          context = `${contextCategory} (transitioned from ${this._lastHbContext}) :: ${context}`;
+        }
+        this._lastHbContext = contextCategory;
+        this.storeEpisode('brain-heartbeat', 'thinking', context, `arousal=${arousal} valence=${valence} psi=${psi} spikes=${spikes}`);
+      } catch (err) {
+        // Surface the failure once so operator sees what's broken if
+        // the heartbeat ever fails — silent catch hid an entire fix
+        // failing in iter18. Subsequent failures stay silent so the
+        // log doesn't spam.
+        if (!this._tier1HbErrorLogged) {
+          console.warn(`[Brain] memory heartbeat storeEpisode failed: ${err?.message || err}`);
+          this._tier1HbErrorLogged = true;
+        }
+      }
+    }
+  },
 };
 
 module.exports = { SERVER_MEMORY_MIXIN };
