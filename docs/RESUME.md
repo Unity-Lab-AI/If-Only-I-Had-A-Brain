@@ -1,7 +1,11 @@
 # RESUME — Session Pickup Brief
 
-> **Last updated:** 2026-06-17 (end of P4.3-umbrella-close + super-review audit session — 35/35 ORIGINAL tasks shipped + 28 post-ship audit tasks logged)
+> **Last updated:** 2026-06-17 (post-compaction live-test diagnostic — 35/35 ORIGINAL shipped + 42 post-ship audit tasks logged including new **H section live-test breakage** from operator's 2026-06-17 HTML-test report + C.8-C.12 docs/HTML coverage expansion)
 > **Purpose:** Load this FIRST when coming back. Gives you immediate context to pick up where the prior session left off — no need to re-read the whole transcript or NewTodo.md cover-to-cover.
+
+## 🚨 Cadence directive (revised 2026-06-17 post-compaction)
+
+Operator directive *"sdtaart on the remain tasks and finish them all then one feature brance coommit after every item is fuinished"* — **per-item commit cadence**, no more batched 4-5 pushes. Every closed audit task lands its own atomic commit (code + affected docs + NewTodo status flip + push to `if-only`). Cumulative remaining audit work: 42 tasks (down by 1 per item closed).
 
 ---
 
