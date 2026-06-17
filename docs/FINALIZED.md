@@ -5,6 +5,89 @@
 
 ---
 
+## 2026-06-17 — Session 114.19fp P4.1.b — second bite of per-grade-file architecture (5 K-only direct-Oja helpers migrated)
+
+### Gee verbatim per LAW #0
+
+> *"continue"* (2026-06-17, this session — continue-the-work directive after P4.1.a ship)
+
+### What this is
+
+Second bite of P4.1. P4.1.a moved the 13 K-ELA helpers at lines 6774-7905. This bite moves the contiguous 5 K-only `_teach*Direct*` methods that sit ABOVE that block, at lines 6238-6772 of the post-P4.1.a curriculum.js. These methods carry the discriminative one-hot direct-Oja writes that bypass cross-region Hebbian — used to recarve letter/word→motor identity attractors after sequence-training corruption and QA-rescale damage. They're the "wipe and rewrite" passes that protect Phase 2 letter-sequence + iter11-J word-spelling work from getting back-corrupted by later cross-region Hebbian fires.
+
+### Method migration
+
+5 methods moved from `js/brain/curriculum.js` → `js/brain/curriculum/kindergarten.js` K_MIXIN (with leading doc-block for method 1):
+
+| Method | Lines | Purpose |
+|--------|-------|---------|
+| `_teachLetterSequenceDirect` | 6238-6312 | One-hot letter[X]→letter[X+1] discriminative Oja writes into `cluster.synapses` recurrent matrix. 25 alphabet pairs × 50 reps × 3× lr boost vs blurred GloVe path. Template 0 retrieval reads from this matrix — discriminative orthogonal one-hot encoding eliminates the GloVe-cosine ambiguity that made adjacent-letter sem→motor retrieval ambiguous (iter8 K-STUDENT evidence: "letter after a" → "y" AND "letter after b" → "y" — same wrong answer because GloVe('a') ≈ GloVe('b') in 300d). |
+| `_teachWordSpellingDirect` | 6314-6422 | Initial iter11-J discriminative sem→motor word→firstChar writes via cross-region Hebbian. Builds first-pass attractors. iter15 ships a SECOND pass via `_teachWordSpellingDirectFinal` AFTER QA-TRAIN that protects these attractors from QA rescale damage. |
+| `_teachLetterNamingDirect` | 6423-6521 | Post-teach letter_to_motor wipe + direct ojaUpdate same-letter identity carving. Bypasses cross-region Hebbian to fix off-by-one corruption from upstream sequence training. iter14-A TALK-probe fix that flipped letter→motor decode from 0/26 → 26/26 by replacing the cross-region Hebbian back-corruption with clean direct-SparseMatrix writes. |
+| `_teachWordEmissionDirect` | 6522-6680 | Sem→motor word→firstChar direct one-hot via ojaUpdate, replaces the blurred GloVe-mean writes that left K-emission words ungrounded. Each word gets a clean discriminative write so the first-letter emission basin is sharp. |
+| `_teachWordSpellingDirectFinal` | 6681-6772 | Post-QA wipe-and-rewrite via `scale(0)` + clean ojaUpdate on K-vocab × 8 reps. Clears QA-train pollution + iter15 rescale damage before subsequent constructive phases (LETTER-NAMING-DIRECT, WH-INTENT, STRUCTURE, WORD-EMISSION-DIRECT) write into freshly-clean sem_to_motor. |
+
+### Caller verification — K-only confirmed
+
+All 5 callers grep-verified to live ONLY in `kindergarten.js` K cell runners. Call sites enumerated:
+
+- `_teachWordSpellingDirect` — direct call in `runElaKReal` (line 3867) + `_phasedTeach('XXX-K-WORD-SPELL')` wrappers in LifeK (1222), ArtK (1396), SocK (1606), SciK (1814), MathK (2204)
+- `_teachLetterNamingDirect` — direct call in `runElaKReal` (line 3923) + `_phasedTeach('XXX-K-LETTER-NAMING-DIRECT')` wrappers in LifeK (1227), ArtK (1401), SocK (1611), SciK (1819), MathK (2212)
+- `_teachWordEmissionDirect` — direct call in `runElaKReal` (line 3977) + `_phasedTeach('XXX-K-WORD-EMISSION-DIRECT')` wrappers in LifeK (1251), ArtK (1421), SocK (1631), SciK (1845), MathK (2235)
+- `_teachWordSpellingDirectFinal` — direct call in `runElaKReal` (line 3913) + `_phasedTeach('XXX-K-WORD-SPELL-FINAL')` wrappers in LifeK (1247), ArtK (1417), SocK (1627), SciK (1841), MathK (2231)
+- `_teachLetterSequenceDirect` — direct call in `runElaKReal` (line 3831) inside the `_teachAlphabetSequencePairs` phase block
+
+ZERO G1+ runners or outside-K-scope references.
+
+### Migration mechanics
+
+Deterministic Node script at `.git/p4-1b-migrate.mjs` (untracked, in `.git/`). Same pattern as P4.1.a:
+
+1. Read both files preserving CRLF line endings.
+2. Extract block at lines 6200-6772 (573 lines — includes 38-line leading doc-block for `_teachLetterSequenceDirect`).
+3. Sanity-check first line is `  /**` (doc-open) and last line is `  }` (closing brace).
+4. Verify all 5 expected method signatures appear in expected order.
+5. Convert class-method form (no commas) to object-literal form (trailing `,` after each method's closing `}`) via brace-depth tracker. 5 conversions verified.
+6. Locate K_MIXIN closing `};` in kindergarten.js (last occurrence, line 7571), insert converted block + 7-line header comment before it.
+7. Replace original 573-line block in curriculum.js with 9-line marker comment listing moved methods.
+8. Write both files preserving original CRLF line endings.
+
+Migration result printed: `curriculum.js 24913 → 24349 lines (Δ -564)`, `kindergarten.js 7572 → 8154 lines (Δ +582)`, block moved 573 lines.
+
+### Cumulative P4.1 progress
+
+- **P4.1.a** (commit `7c0a2f3`) — 13 K-ELA helpers at lines 6774-7905 → kindergarten.js K_MIXIN (1132 lines moved)
+- **P4.1.b** (this commit) — 5 K-only direct-Oja helpers at lines 6238-6772 → kindergarten.js K_MIXIN (573 lines moved)
+- **Total P4.1.a+b** — 18 methods, 1705 lines moved
+- **curriculum.js cumulative shrink:** 26033 → 24349 lines (−1684, −6.5%)
+- **kindergarten.js cumulative growth:** 6430 → 8154 lines (+1724, +26.8%)
+
+### Verification
+
+- `node --check js/brain/curriculum.js` — clean
+- `node --check js/brain/curriculum/kindergarten.js` — clean
+- `cd server && npm run build` → `js/app.bundle.js 2.4mb · Done in 78ms`
+- `grep -c "<5-method-name-pattern>" js/app.bundle.js` → 91 occurrences (definitions + cross-references through Object.assign K_MIXIN attach)
+- Pre-commit grep on modified source for task-IDs + operator-name → ZERO NEW violations (pre-existing 114.19f* refs in unrelated curriculum.js paths NOT touched this commit)
+- Working tree: `.claude/*` cherry-pick LOCAL (excluded), `docs/STATUSLINE.md` pre-existing local mod NOT touched, `.git/p4-1b-migrate.mjs` + `.git/COMMIT_MSG_p4_1b.txt` in `.git/` so untracked
+
+### What still needs P4.1.c/d
+
+- **P4.1.c candidates** — `_teachAlphabetSequence` (now ~6082-6110), `_teachLetterNames` (now ~6112-6145), `_teachLetterSounds` (now ~6147-6176) — 3 orphan methods, NO active callers (Session 25 legacy superseded by `_teachAlphabetSequencePairs` path that calls `_teachAssociationPairs` + `_teachLetterSequenceDirect`). Plus orphan doc-comment block at lines 6194-6199 about `K.RF letter case pairing` (refers to `_teachLetterCaseBinding` already moved in P4.1.a). Options: delete or migrate-with-deprecation-marker.
+- **P4.1.d candidates** — `_teachDigitSequence`, `_teachDigitNames`, `_teachMagnitudes`, `_teachCVCReading`, `_teachSightWords` (now at ~7700-7900 lines after P4.1.a+b shrink, ~213 lines). Earlier grep showed NO `this._teach*` callers in `js/brain/curriculum.js` but they may be invoked via different naming patterns or be orphans — needs caller audit.
+
+### LAWs honored
+
+- **LAW #0 verbatim** — operator quote preserved word-for-word above
+- **Docs before push, no patches** — NOW.md banner + FINALIZED.md entry + NewTodo.md progress marker + TODO.md status update + RESUME.md cascade SHA all in same atomic commit
+- **Task numbers + operator name ONLY in workflow docs** — code comments in migration use neutral technical phrasing (no task IDs in source); workflow docs preserve full context
+- **No tests ever** — `node --check` + bundle rebuild are validation, not tests
+- **800-line read before edit** — boundary chunks read in full before migration script written
+- **NEVER delete TODO info** — TODO.md gets STATUS update + cascade SHA append, prior entries unchanged
+- **NO FALLBACKS** — pure refactor, no behavior change, no fallback paths introduced
+
+---
+
 ## 2026-06-17 — Session 114.19fo P4.1.a — first bite of per-grade-file architecture (13 K-ELA helpers migrated)
 
 ### Gee verbatim per LAW #0

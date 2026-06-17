@@ -4973,12 +4973,12 @@ var SUBJECT_NORMALIZE = Object.freeze({
   "life-skills": "life"
 });
 var SUBJECTS = Object.freeze(["ela", "math", "sci", "soc", "art", "life"]);
-function normalizeSubject(subject) {
+function normalizeSubject2(subject) {
   if (!subject || typeof subject !== "string") return null;
   return SUBJECT_NORMALIZE[subject.toLowerCase()] || null;
 }
-function wordMotorBandName(subject) {
-  const subj = normalizeSubject(subject);
+function wordMotorBandName2(subject) {
+  const subj = normalizeSubject2(subject);
   return subj ? `word_motor_${subj}` : null;
 }
 
@@ -7357,7 +7357,7 @@ var NeuronCluster = class {
         }
       }
     }
-    const subjScope = opts.subject && normalizeSubject(opts.subject) ? [normalizeSubject(opts.subject)] : SUBJECTS;
+    const subjScope = opts.subject && normalizeSubject2(opts.subject) ? [normalizeSubject2(opts.subject)] : SUBJECTS;
     const candidates = [];
     let bestWord = null;
     let bestMean = -Infinity;
@@ -25734,6 +25734,495 @@ var K_MIXIN = {
     }
     await this._teachCombination(facts, { reps: 15 });
     this._hb(`[Curriculum] _teachCapitalization: ${facts.length} cap facts \xD7 15 reps`);
+  },
+  // ─── K-ELA direct one-hot letter/word teach helpers — extracted from curriculum.js ───
+  // These 5 methods bypass cross-region Hebbian and write directly into
+  // sem_to_motor / letter_to_motor via ojaUpdate to recarve discriminative
+  // attractors after sequence-training corruption + QA-rescale damage.
+  // Called only from K cell runners (runElaKReal direct + 5 subject runners
+  // via _phasedTeach wrappers). Per-grade-file architecture continuation.
+  /**
+   * Direct one-hot alphabet-sequence Hebbian into intra-cluster
+   * `cluster.synapses` matrix. Operator directive iter8 verbatim
+   * 2026-04-27: *"we need to fix it like how u think but for Unity
+   * Duh!!! thats the fix so learn her correctly and make her
+   * equations correct"*.
+   *
+   * The equation for "what letter comes after X?" should be:
+   *   inputOneHot = encodeLetter(X)        // discriminative 26d
+   *   propagate via cluster.synapses        // intra-cluster recurrent
+   *   output_letter_basin = letter region argmax post-propagate
+   *
+   * Prior path used `_teachAlphabetSequencePairs` which delegated to
+   * `_teachAssociationPairs` — that writes GloVe-sem(X) → motor(Y)
+   * via sem_to_motor. GloVe vectors of single letters are too close
+   * in 300d space (cosine ~0.7+ between adjacent letters), so
+   * sem_to_motor retrieval for adjacent letters was ambiguous. Iter8
+   * K-STUDENT evidence: "letter after a" → "y" AND "letter after b"
+   * → "y" (same wrong answer because GloVe('a') ≈ GloVe('b') in the
+   * matrix's view).
+   *
+   * This method writes DISCRIMINATIVE one-hot letter[X] → letter[Y]
+   * directly into the intra-cluster recurrent matrix (cluster.synapses)
+   * via Oja Hebbian fires. Each alphabet pair gets reps × Oja updates
+   * with full-cluster vectors that have letter-region populated for
+   * input X and output X+1, all other regions zero. Pure one-hot
+   * encoding means letter[a] and letter[b] are ORTHOGONAL — no
+   * GloVe-similarity ambiguity. Template 0 retrieval (curriculum.js
+   * Template-0 fast-path, post-iter9 fix reading LETTER region argmax)
+   * propagates the input letter through cluster.synapses and finds
+   * the next letter's basin firing in the letter region.
+   *
+   * 25 pairs × 50 reps = 1250 direct Oja updates. Compare to
+   * _teachWordEmission which fires 14k+ updates on words — alphabet
+   * sequence stays a smaller fraction of intra-cluster training but
+   * the discriminative one-hot encoding makes per-pair signal much
+   * stronger than blurred GloVe writes would.
+   */
+  async _teachLetterSequenceDirect(opts = {}) {
+    const cluster = this.cluster;
+    if (!cluster || !cluster.synapses) return;
+    const letterRegion = cluster.regions?.letter;
+    if (!letterRegion) return;
+    const reps = opts.reps ?? 50;
+    const lr = opts.lr ?? (cluster.learningRate ?? 0.01) * 3;
+    const letters = "abcdefghijklmnopqrstuvwxyz";
+    const pairs = letters.length - 1;
+    const letterSize = letterRegion.end - letterRegion.start;
+    ensureLetters(Array.from(letters));
+    this._hb(`[Curriculum] _teachLetterSequenceDirect START: ${pairs} alphabet pairs \xD7 ${reps} reps \xB7 lr=${lr.toFixed(4)} \u2014 letter[X]\u2192letter[X+1] discriminative one-hot writes into cluster.synapses for Template 0 retrieval correctness`);
+    const t0 = Date.now();
+    let updates = 0;
+    let skipped = 0;
+    const hasOja = typeof cluster.synapses.ojaUpdate === "function";
+    if (!hasOja) {
+      this._hb(`[Curriculum] _teachLetterSequenceDirect SKIPPED \u2014 cluster.synapses.ojaUpdate not available`);
+      return;
+    }
+    for (let rep = 0; rep < reps; rep++) {
+      if (typeof globalThis._brainShutdownRequested !== "undefined" && globalThis._brainShutdownRequested) return;
+      for (let i = 0; i < pairs; i++) {
+        const X = letters[i];
+        const Y = letters[i + 1];
+        const xOneHot = encodeLetter(X);
+        const yOneHot = encodeLetter(Y);
+        if (!xOneHot || !yOneHot || xOneHot.length === 0 || yOneHot.length === 0) {
+          skipped++;
+          continue;
+        }
+        const scratch = this._ensureScratchBuffers();
+        const preFull = this._fillRegionPatternInto(scratch.pre, letterRegion, xOneHot, true);
+        const postFull = this._fillRegionPatternInto(scratch.post, letterRegion, yOneHot, true);
+        try {
+          const kScales = typeof cluster.buildKScalesForProjection === "function" ? cluster.buildKScalesForProjection(null, null) : null;
+          if (kScales) {
+            kScales.srcStart = 0;
+            kScales.dstStart = 0;
+          }
+          cluster.synapses.ojaUpdate(preFull, postFull, lr, kScales ? { kScales } : void 0);
+          updates++;
+        } catch {
+          skipped++;
+        }
+      }
+      if ((rep & 7) === 7) await _microtask();
+    }
+    const dt = ((Date.now() - t0) / 1e3).toFixed(1);
+    this._hb(`[Curriculum] _teachLetterSequenceDirect DONE in ${dt}s \u2014 ${updates} Oja updates \xB7 ${skipped} skipped (${pairs} pairs \xD7 ${reps} reps target)`);
+  },
+  // iter11-J — Discriminative one-hot word→first-letter binding for
+  // sem_to_motor. For every K-vocab word in the dictionary, write a
+  // pair (sem region tiled with word's GloVe embedding) → (motor
+  // region tiled with one-hot of word's first letter). Mirrors
+  // _teachLetterSequenceDirect's orthogonal-one-hot pattern but on
+  // the cross-projection sem_to_motor + on word-level vocab.
+  // Why: DYN-PROD probe + spell-out questions seed sem region with a
+  // word's embedding then read motor argmax for first letter. With
+  // GloVe-similarity training alone (the existing _teachAssociationPairs
+  // path), sem_to_motor's first-letter argmax bucket-sticks on a tiny
+  // attractor cluster (`r/u/u/z/r/t/z` for ELA-K, `e/x` for math-K)
+  // because GloVe vectors for "cat", "dog", "sun" project into similar
+  // sem patterns and the matrix can't discriminate which first-letter
+  // motor bucket each word should activate.
+  // The discriminative one-hot write forces (cat → motor[c]),
+  // (dog → motor[d]), (sun → motor[s]) as orthogonal target pairs.
+  // Anti-Hebbian / row-norm / top-K-prune from the existing assoc-pair
+  // path then keep the pairs apart. Result: motor argmax for "cat"
+  // landed cleanly in the `c` bucket, not random attractor.
+  // Cost: ~1000-K-vocab × 12 reps × 1 Hebbian write per word = ~12,000
+  // writes per cell × 6 K cells = ~72,000 total. ~3-5 min wall-clock
+  // at biological scale. Acceptable cost vs the wrong-answer fix.
+  // Per-50-word setImmediate yield keeps heartbeat alive during run.
+  async _teachWordSpellingDirect(opts = {}) {
+    const cluster = this.cluster;
+    if (!cluster || !cluster.crossProjections?.sem_to_motor) return;
+    const semRegion = cluster.regions?.sem;
+    const motorRegion = cluster.regions?.motor;
+    if (!semRegion || !motorRegion) return;
+    const reps = opts.reps ?? 8;
+    const lr = (cluster.learningRate ?? 0.01) * 3;
+    const subject = opts.subject || "all";
+    let words = Array.isArray(opts.words) ? opts.words : null;
+    if (!words && this.dictionary && this.dictionary._words?.entries) {
+      words = [];
+      for (const [w, entry] of this.dictionary._words.entries()) {
+        if (typeof w !== "string" || w.length === 0) continue;
+        if (!/^[a-z]+$/.test(w)) continue;
+        if (!entry || !entry.pattern || !entry.pattern.length) continue;
+        if (entry.isPersona) continue;
+        words.push(w);
+      }
+    }
+    if (!words || words.length === 0) {
+      this._hb(`[Curriculum] _teachWordSpellingDirect SKIPPED \u2014 no K vocab found (subject=${subject})`);
+      return;
+    }
+    this._hb(`[Curriculum] _teachWordSpellingDirect START: ${words.length} K words \xD7 ${reps} reps \xB7 lr=${lr.toFixed(4)} (subject=${subject}) \u2014 concept(word) \u2192 motor(firstChar(word)) discriminative writes into sem_to_motor for question\u2192first-letter spell-out correctness`);
+    const t0 = Date.now();
+    let updates = 0;
+    let skipped = 0;
+    const scratch = this._ensureScratchBuffers();
+    if (!scratch) {
+      this._hb("[Curriculum] _teachWordSpellingDirect SKIPPED \u2014 no scratch buffer (cluster.size invalid)");
+      return;
+    }
+    for (let rep = 0; rep < reps; rep++) {
+      if (typeof globalThis._brainShutdownRequested !== "undefined" && globalThis._brainShutdownRequested) return;
+      let count = 0;
+      for (const word of words) {
+        const firstChar = word[0];
+        const entry = this.dictionary._words.get(word);
+        if (!entry || !entry.pattern) {
+          skipped++;
+          continue;
+        }
+        const firstCharOneHot = encodeLetter(firstChar);
+        if (!firstCharOneHot || firstCharOneHot.length === 0) {
+          skipped++;
+          continue;
+        }
+        this._fillRegionPatternInto(scratch.pre, semRegion, entry.pattern, false);
+        this._fillRegionPatternInto(scratch.post, motorRegion, firstCharOneHot, true);
+        try {
+          await this._teachHebbianAsymmetric(scratch.pre, scratch.post, lr, {
+            projectionsWhitelist: ["sem_to_motor"]
+          });
+          updates++;
+        } catch {
+          skipped++;
+        }
+        if (++count % 50 === 0) await _microtask();
+      }
+      await _microtask();
+    }
+    const dt = ((Date.now() - t0) / 1e3).toFixed(1);
+    this._hb(`[Curriculum] _teachWordSpellingDirect DONE in ${dt}s \u2014 ${updates} discriminative writes \xB7 ${skipped} skipped (${words.length} words \xD7 ${reps} reps target)`);
+  },
+  // iter14-A — Direct letter→motor identity write that bypasses
+  // cross-region Hebbian. Operator caught (2026-05-04 verbatim "fix
+  // those fucking issues NOW!"): even with iter11-A reorder
+  // (_teachLetterNaming AFTER _teachAlphabetSequencePairs),
+  // LETTER→MOTOR DIAG still showed off-by-one corruption b→a c→b
+  // d→c e→c. Root cause: _teachLetterNaming uses
+  // _teachHebbianAsymmetric which calls cluster._crossRegionHebbian —
+  // that fires Hebbian updates on ALL cross-projections including
+  // letter_to_motor. The earlier _teachAlphabetSequencePairs
+  // _teachAssociationPairs calls (writing letter[X]→motor[X+1]
+  // sequence pairs into sem_to_motor + motor_to_sem) ALSO ride on
+  // _crossRegionHebbian and accumulate off-by-one weights into
+  // letter_to_motor. When _teachLetterNaming fires LATER, the
+  // existing corruption dominates the fresh identity write.
+  // Fix: write letter[X]→motor[X] DIRECTLY to letter_to_motor's
+  // SparseMatrix via ojaUpdate, NOT through firing patterns + global
+  // Hebbian rule. Wipe existing weights first (`scale(0)`) so the
+  // off-by-one corruption from sequence training is cleared. Then
+  // carve fresh identity at 5× lr × 50 reps (mirrors iter9-E
+  // _teachLetterSequenceDirect pattern but on the cross-projection).
+  // After this, LETTER→MOTOR DIAG should show clean identity:
+  // a→a b→b c→c d→d ... z→z. TALK probe will pass at 26/26.
+  async _teachLetterNamingDirect(opts = {}) {
+    const cluster = this.cluster;
+    if (!cluster || !cluster.crossProjections?.letter_to_motor) return;
+    const letterToMotor = cluster.crossProjections.letter_to_motor;
+    const letterRegion = cluster.regions?.letter;
+    const motorRegion = cluster.regions?.motor;
+    if (!letterRegion || !motorRegion) return;
+    const reps = opts.reps ?? 50;
+    const lr = (cluster.learningRate ?? 0.01) * 5;
+    const ALPHABET = "abcdefghijklmnopqrstuvwxyz";
+    ensureLetters(Array.from(ALPHABET));
+    this._hb(`[Curriculum] _teachLetterNamingDirect START: 26 letters \xD7 ${reps} reps \xB7 lr=${lr.toFixed(4)} \u2014 letter[X]\u2192motor[X] discriminative one-hot writes DIRECTLY into letter_to_motor cross-projection (bypasses cross-region Hebbian to avoid sequence-training back-corruption)`);
+    if (typeof letterToMotor.scale === "function") {
+      letterToMotor.scale(0);
+      this._hb(`[Curriculum] _teachLetterNamingDirect \u2014 wiped prior letter_to_motor weights (off-by-one corruption from upstream sequence training)`);
+    }
+    if (typeof letterToMotor.ojaUpdate !== "function") {
+      this._hb(`[Curriculum] _teachLetterNamingDirect SKIPPED \u2014 letter_to_motor.ojaUpdate not available`);
+      return;
+    }
+    const t0 = Date.now();
+    let updates = 0, skipped = 0;
+    const letterSize = letterRegion.end - letterRegion.start;
+    const motorSize = motorRegion.end - motorRegion.start;
+    const buildRegionSizedOneHot = (regionSize, oneHot) => {
+      const vec = new Float64Array(regionSize);
+      if (!oneHot || oneHot.length === 0) return vec;
+      const gSize = Math.max(1, Math.floor(regionSize / oneHot.length));
+      for (let d = 0; d < oneHot.length; d++) {
+        if (oneHot[d] <= 0) continue;
+        for (let n = 0; n < gSize; n++) {
+          const idx = d * gSize + n;
+          if (idx < regionSize) vec[idx] = 1;
+        }
+      }
+      return vec;
+    };
+    for (let rep = 0; rep < reps; rep++) {
+      if (typeof globalThis._brainShutdownRequested !== "undefined" && globalThis._brainShutdownRequested) return;
+      for (let i = 0; i < ALPHABET.length; i++) {
+        const letter = ALPHABET[i];
+        const oneHot = encodeLetter(letter);
+        if (!oneHot || oneHot.length === 0) {
+          skipped++;
+          continue;
+        }
+        const preLetter = buildRegionSizedOneHot(letterSize, oneHot);
+        const postMotor = buildRegionSizedOneHot(motorSize, oneHot);
+        try {
+          const kScales = typeof cluster.buildKScalesForProjection === "function" ? cluster.buildKScalesForProjection("letter", "motor") : null;
+          letterToMotor.ojaUpdate(preLetter, postMotor, lr, kScales ? { kScales } : void 0);
+          updates++;
+        } catch {
+          skipped++;
+        }
+      }
+      if ((rep & 7) === 7) await _microtask();
+    }
+    const dt = ((Date.now() - t0) / 1e3).toFixed(1);
+    this._hb(`[Curriculum] _teachLetterNamingDirect DONE in ${dt}s \u2014 ${updates} Oja updates \xB7 ${skipped} skipped (26 letters \xD7 ${reps} reps target)`);
+    if (updates > 0 && typeof cluster.advanceSubGrade === "function") {
+      const cellKey = cluster._currentCellKey || "";
+      const subj = cellKey.split("/")[0];
+      if (subj && cluster.advanceSubGrade(subj, "letters")) {
+        this._hb(`[Curriculum] \u{1F4C8} subGrade ${subj} advanced \u2192 'letters' (26 letter\u2192motor bindings live \xB7 capability cap rises now)`);
+      }
+    }
+  },
+  // iter21-A — Direct sem→word_motor word-level training. Operator
+  // 2026-05-05 "motor argmax is fucked if it ever just relplies with
+  // letters and not words". For each K-vocab word: inject the word's
+  // GloVe embedding into sem, write 1 to that word's bucket in
+  // word_motor, ojaUpdate the sem_to_word_motor projection. After
+  // training, propagating sem(concept) → word_motor → argmax over
+  // vocabulary buckets returns the trained word as a single-tick
+  // emission. NO LETTER CHAIN. NO FALLBACK.
+  async _teachWordEmissionDirect(opts = {}) {
+    const cluster = this.cluster;
+    if (!cluster || !cluster.crossProjections?.sem_to_word_motor) return;
+    const semToWordMotor = cluster.crossProjections.sem_to_word_motor;
+    const semRegion = cluster.regions?.sem;
+    const wordMotorRegion = cluster.regions?.word_motor;
+    if (!semRegion || !wordMotorRegion) return;
+    if (typeof semToWordMotor.ojaUpdate !== "function") return;
+    const reps = opts.reps ?? 8;
+    const lr = (cluster.learningRate ?? 0.01) * 5;
+    const subject = normalizeSubject(opts.subject) || "all";
+    const subjectBandName = wordMotorBandName(subject);
+    const subjectBand = subjectBandName ? cluster.regions[subjectBandName] : null;
+    const opts_words = Array.isArray(opts.words) ? opts.words : null;
+    const bucketState = opts_words ? this._installBucketMap(subject, opts_words) : this._ensureWordBucketMap(subject);
+    if (!bucketState || !Array.isArray(bucketState.words) || bucketState.words.length === 0) {
+      this._hb(`[Curriculum] _teachWordEmissionDirect SKIPPED \u2014 no K vocab found (subject=${subject})`);
+      return;
+    }
+    const words = bucketState.words;
+    this._hb(`[Curriculum] _teachWordEmissionDirect START: ${words.length} K words \xD7 ${reps} reps \xB7 lr=${lr.toFixed(4)} (subject=${subject} band=${subjectBandName || "umbrella word_motor"}) \u2014 single-tick word emission via sem_to_word_motor`);
+    const t0 = Date.now();
+    let updates = 0, skipped = 0;
+    const semSize = semRegion.end - semRegion.start;
+    const wmSize = wordMotorRegion.end - wordMotorRegion.start;
+    const bandStart = subjectBand ? subjectBand.start - wordMotorRegion.start : 0;
+    const bandEnd = subjectBand ? subjectBand.end - wordMotorRegion.start : wmSize;
+    const bandSize = bandEnd - bandStart;
+    const bucketSize = Math.max(1, Math.floor(bandSize / words.length));
+    const preSem = new Float64Array(semSize);
+    const postWM = new Float64Array(wmSize);
+    const fillSem = (pattern) => {
+      preSem.fill(0);
+      if (!pattern || pattern.length === 0) return;
+      const gSize = Math.max(1, Math.floor(semSize / pattern.length));
+      for (let d = 0; d < pattern.length; d++) {
+        const v = pattern[d] || 0;
+        if (v === 0) continue;
+        for (let n = 0; n < gSize; n++) {
+          const idx = d * gSize + n;
+          if (idx < semSize) preSem[idx] = v;
+        }
+      }
+    };
+    for (let rep = 0; rep < reps; rep++) {
+      if (typeof globalThis._brainShutdownRequested !== "undefined" && globalThis._brainShutdownRequested) return;
+      let count = 0;
+      for (let wi = 0; wi < words.length; wi++) {
+        const word = words[wi];
+        const entry = this.dictionary._words.get(word);
+        if (!entry || !entry.pattern) {
+          skipped++;
+          continue;
+        }
+        fillSem(entry.pattern);
+        postWM.fill(0);
+        const bStart = bandStart + wi * bucketSize;
+        const bEnd = Math.min(bandEnd, bStart + bucketSize);
+        for (let n = bStart; n < bEnd; n++) postWM[n] = 1;
+        try {
+          const kScales = typeof cluster.buildKScalesForProjection === "function" ? cluster.buildKScalesForProjection("sem", "word_motor") : null;
+          semToWordMotor.ojaUpdate(preSem, postWM, lr, kScales ? { kScales } : void 0);
+          updates++;
+        } catch {
+          skipped++;
+        }
+        if (++count % 100 === 0) await _microtask();
+      }
+      await _microtask();
+    }
+    const dt = ((Date.now() - t0) / 1e3).toFixed(1);
+    this._hb(`[Curriculum] _teachWordEmissionDirect DONE in ${dt}s \u2014 ${updates} Oja updates \xB7 ${skipped} skipped (${words.length} words \xD7 ${reps} reps target \xB7 band=${subjectBandName || "umbrella"})`);
+    try {
+      if (cluster && typeof this._teachWordDefinition === "function") {
+        const taught = cluster._definitionTaughtWords || /* @__PURE__ */ new Set();
+        const untaught = words.filter((w) => w && !taught.has(String(w).toLowerCase().trim()));
+        const INLINE_CAP = 10;
+        const batchN = Math.min(INLINE_CAP, untaught.length);
+        if (batchN > 0) {
+          const inlineStart = Date.now();
+          let bound = 0;
+          for (let i = 0; i < batchN; i++) {
+            try {
+              const r = await this._teachWordDefinition(untaught[i], { reps: 4, label: "INLINE-DEF" });
+              if (r && r.defsBound > 0) bound += r.defsBound;
+            } catch {
+            }
+          }
+          const inlineDt = ((Date.now() - inlineStart) / 1e3).toFixed(1);
+          this._hb(`[Curriculum] _teachWordEmissionDirect inline-multi-def: ${batchN} untaught words processed in ${inlineDt}s (${bound} multi-def Hebbian fires)`);
+        }
+      }
+    } catch {
+    }
+    if (subject && subject !== "all" && updates > 0 && typeof cluster.advanceSubGrade === "function") {
+      if (cluster.advanceSubGrade(subject, "words")) {
+        this._hb(`[Curriculum] \u{1F4C8} subGrade ${subject} advanced \u2192 'words' (${updates} bucket writes seated \xB7 live capability now reflects this)`);
+      }
+    }
+  },
+  // iter15-A — Direct sem→motor word→firstChar identity write that
+  // bypasses cross-region Hebbian. Mirror of iter14-A pattern but on
+  // sem_to_motor instead of letter_to_motor.
+  // Operator caught (2026-05-05 verbatim sequence: "no if they are empty
+  // they are failures and is need document to be fixed" + "DO THE
+  // FUCKING WORK"): even with iter11-J `_teachWordSpellingDirect` +
+  // iter13 hotfix #1 (entry.glove → entry.pattern field rename) +
+  // iter14-F bio-weights, PROD still 0/17 across ELA-K (bucket-stuck:
+  // cat→r dog→r) AND Math-K (empty emissions). Root cause same as
+  // iter14-A on letter_to_motor: `_teachWordSpellingDirect` uses
+  // `_teachHebbianAsymmetric` which fires through `cluster._crossRegion
+  // Hebbian` — meaning the QA-TRAIN phase that runs AFTER (in ELA-K)
+  // OR BEFORE (in Math-K) ALSO fires sem_to_motor writes through the
+  // SAME cross-region Hebbian path with QA-pair patterns that pollute
+  // the WordSpellingDirect attractors. Plus QA-TRAIN saturation
+  // triggers `rescale×0.5 [sem_to_motor: 0.400→0.200]` which halves
+  // ALL sem_to_motor weights including the discriminative ones.
+  // Fix: write concept(word) → motor(firstChar) DIRECTLY to sem_to_motor's
+  // SparseMatrix via ojaUpdate, NOT through firing patterns + global
+  // Hebbian rule. Wipe existing weights first (`scale(0)`) so the
+  // QA-pollution is cleared. Then carve fresh discriminative one-hots
+  // at 5× lr × 8 reps (mirrors iter14-A reps tuning — Oja's normalizing
+  // rule converges fast on orthogonal pairs). MUST RUN LAST in each
+  // subject's teach phase — any subsequent cross-region Hebbian write
+  // re-pollutes sem_to_motor.
+  async _teachWordSpellingDirectFinal(opts = {}) {
+    const cluster = this.cluster;
+    if (!cluster || !cluster.crossProjections?.sem_to_motor) return;
+    const semToMotor = cluster.crossProjections.sem_to_motor;
+    const semRegion = cluster.regions?.sem;
+    const motorRegion = cluster.regions?.motor;
+    if (!semRegion || !motorRegion) return;
+    const reps = opts.reps ?? 8;
+    const lr = (cluster.learningRate ?? 0.01) * 5;
+    const subject = opts.subject || "all";
+    let words = Array.isArray(opts.words) ? opts.words : null;
+    if (!words && this.dictionary && this.dictionary._words?.entries) {
+      words = [];
+      for (const [w, entry] of this.dictionary._words.entries()) {
+        if (typeof w !== "string" || w.length === 0) continue;
+        if (!/^[a-z]+$/.test(w)) continue;
+        if (!entry || !entry.pattern || !entry.pattern.length) continue;
+        if (entry.isPersona) continue;
+        words.push(w);
+      }
+    }
+    if (!words || words.length === 0) {
+      this._hb(`[Curriculum] _teachWordSpellingDirectFinal SKIPPED \u2014 no K vocab found (subject=${subject})`);
+      return;
+    }
+    this._hb(`[Curriculum] _teachWordSpellingDirectFinal START: ${words.length} K words \xD7 ${reps} reps \xB7 lr=${lr.toFixed(4)} (subject=${subject}) \u2014 DIRECT sem_to_motor.ojaUpdate writes (bypasses cross-region Hebbian + QA-rescale to protect discriminative attractors)`);
+    if (typeof semToMotor.scale === "function") {
+      semToMotor.scale(0);
+      this._hb(`[Curriculum] _teachWordSpellingDirectFinal \u2014 wiped prior sem_to_motor weights (QA-TRAIN cross-region Hebbian pollution + rescale damage cleared)`);
+    }
+    if (typeof semToMotor.ojaUpdate !== "function") {
+      this._hb(`[Curriculum] _teachWordSpellingDirectFinal SKIPPED \u2014 sem_to_motor.ojaUpdate not available`);
+      return;
+    }
+    const t0 = Date.now();
+    let updates = 0, skipped = 0;
+    const semSize = semRegion.end - semRegion.start;
+    const motorSize = motorRegion.end - motorRegion.start;
+    const buildRegionSizedTiled = (regionSize, src, binarize) => {
+      const vec = new Float64Array(regionSize);
+      if (!src || src.length === 0) return vec;
+      const gSize = Math.max(1, Math.floor(regionSize / src.length));
+      for (let d = 0; d < src.length; d++) {
+        const v = src[d] || 0;
+        if (binarize ? v <= 0 : v === 0) continue;
+        for (let n = 0; n < gSize; n++) {
+          const idx = d * gSize + n;
+          if (idx < regionSize) vec[idx] = binarize ? 1 : v;
+        }
+      }
+      return vec;
+    };
+    for (let rep = 0; rep < reps; rep++) {
+      if (typeof globalThis._brainShutdownRequested !== "undefined" && globalThis._brainShutdownRequested) return;
+      let count = 0;
+      for (const word of words) {
+        const firstChar = word[0];
+        const entry = this.dictionary._words.get(word);
+        if (!entry || !entry.pattern) {
+          skipped++;
+          continue;
+        }
+        const firstCharOneHot = encodeLetter(firstChar);
+        if (!firstCharOneHot || firstCharOneHot.length === 0) {
+          skipped++;
+          continue;
+        }
+        const preSem = buildRegionSizedTiled(semSize, entry.pattern, false);
+        const postMot = buildRegionSizedTiled(motorSize, firstCharOneHot, true);
+        try {
+          const kScales = typeof cluster.buildKScalesForProjection === "function" ? cluster.buildKScalesForProjection("sem", "motor") : null;
+          semToMotor.ojaUpdate(preSem, postMot, lr, kScales ? { kScales } : void 0);
+          updates++;
+        } catch {
+          skipped++;
+        }
+        if (++count % 100 === 0) await _microtask();
+      }
+      await _microtask();
+    }
+    const dt = ((Date.now() - t0) / 1e3).toFixed(1);
+    this._hb(`[Curriculum] _teachWordSpellingDirectFinal DONE in ${dt}s \u2014 ${updates} Oja updates \xB7 ${skipped} skipped (${words.length} words \xD7 ${reps} reps target)`);
   }
 };
 
@@ -30376,489 +30865,13 @@ var Curriculum = class _Curriculum {
    * Both one-hots fire simultaneously in the letter region, intra-
    * cluster Hebbian learns the pair association.
    */
-  /**
-   * Direct one-hot alphabet-sequence Hebbian into intra-cluster
-   * `cluster.synapses` matrix. Operator directive iter8 verbatim
-   * 2026-04-27: *"we need to fix it like how u think but for Unity
-   * Duh!!! thats the fix so learn her correctly and make her
-   * equations correct"*.
-   *
-   * The equation for "what letter comes after X?" should be:
-   *   inputOneHot = encodeLetter(X)        // discriminative 26d
-   *   propagate via cluster.synapses        // intra-cluster recurrent
-   *   output_letter_basin = letter region argmax post-propagate
-   *
-   * Prior path used `_teachAlphabetSequencePairs` which delegated to
-   * `_teachAssociationPairs` — that writes GloVe-sem(X) → motor(Y)
-   * via sem_to_motor. GloVe vectors of single letters are too close
-   * in 300d space (cosine ~0.7+ between adjacent letters), so
-   * sem_to_motor retrieval for adjacent letters was ambiguous. Iter8
-   * K-STUDENT evidence: "letter after a" → "y" AND "letter after b"
-   * → "y" (same wrong answer because GloVe('a') ≈ GloVe('b') in the
-   * matrix's view).
-   *
-   * This method writes DISCRIMINATIVE one-hot letter[X] → letter[Y]
-   * directly into the intra-cluster recurrent matrix (cluster.synapses)
-   * via Oja Hebbian fires. Each alphabet pair gets reps × Oja updates
-   * with full-cluster vectors that have letter-region populated for
-   * input X and output X+1, all other regions zero. Pure one-hot
-   * encoding means letter[a] and letter[b] are ORTHOGONAL — no
-   * GloVe-similarity ambiguity. Template 0 retrieval (curriculum.js
-   * Template-0 fast-path, post-iter9 fix reading LETTER region argmax)
-   * propagates the input letter through cluster.synapses and finds
-   * the next letter's basin firing in the letter region.
-   *
-   * 25 pairs × 50 reps = 1250 direct Oja updates. Compare to
-   * _teachWordEmission which fires 14k+ updates on words — alphabet
-   * sequence stays a smaller fraction of intra-cluster training but
-   * the discriminative one-hot encoding makes per-pair signal much
-   * stronger than blurred GloVe writes would.
-   */
-  async _teachLetterSequenceDirect(opts = {}) {
-    const cluster = this.cluster;
-    if (!cluster || !cluster.synapses) return;
-    const letterRegion = cluster.regions?.letter;
-    if (!letterRegion) return;
-    const reps = opts.reps ?? 50;
-    const lr = opts.lr ?? (cluster.learningRate ?? 0.01) * 3;
-    const letters = "abcdefghijklmnopqrstuvwxyz";
-    const pairs = letters.length - 1;
-    const letterSize = letterRegion.end - letterRegion.start;
-    ensureLetters(Array.from(letters));
-    this._hb(`[Curriculum] _teachLetterSequenceDirect START: ${pairs} alphabet pairs \xD7 ${reps} reps \xB7 lr=${lr.toFixed(4)} \u2014 letter[X]\u2192letter[X+1] discriminative one-hot writes into cluster.synapses for Template 0 retrieval correctness`);
-    const t0 = Date.now();
-    let updates = 0;
-    let skipped = 0;
-    const hasOja = typeof cluster.synapses.ojaUpdate === "function";
-    if (!hasOja) {
-      this._hb(`[Curriculum] _teachLetterSequenceDirect SKIPPED \u2014 cluster.synapses.ojaUpdate not available`);
-      return;
-    }
-    for (let rep = 0; rep < reps; rep++) {
-      if (typeof globalThis._brainShutdownRequested !== "undefined" && globalThis._brainShutdownRequested) return;
-      for (let i = 0; i < pairs; i++) {
-        const X = letters[i];
-        const Y = letters[i + 1];
-        const xOneHot = encodeLetter(X);
-        const yOneHot = encodeLetter(Y);
-        if (!xOneHot || !yOneHot || xOneHot.length === 0 || yOneHot.length === 0) {
-          skipped++;
-          continue;
-        }
-        const scratch = this._ensureScratchBuffers();
-        const preFull = this._fillRegionPatternInto(scratch.pre, letterRegion, xOneHot, true);
-        const postFull = this._fillRegionPatternInto(scratch.post, letterRegion, yOneHot, true);
-        try {
-          const kScales = typeof cluster.buildKScalesForProjection === "function" ? cluster.buildKScalesForProjection(null, null) : null;
-          if (kScales) {
-            kScales.srcStart = 0;
-            kScales.dstStart = 0;
-          }
-          cluster.synapses.ojaUpdate(preFull, postFull, lr, kScales ? { kScales } : void 0);
-          updates++;
-        } catch {
-          skipped++;
-        }
-      }
-      if ((rep & 7) === 7) await _microtask();
-    }
-    const dt = ((Date.now() - t0) / 1e3).toFixed(1);
-    this._hb(`[Curriculum] _teachLetterSequenceDirect DONE in ${dt}s \u2014 ${updates} Oja updates \xB7 ${skipped} skipped (${pairs} pairs \xD7 ${reps} reps target)`);
-  }
-  // iter11-J — Discriminative one-hot word→first-letter binding for
-  // sem_to_motor. For every K-vocab word in the dictionary, write a
-  // pair (sem region tiled with word's GloVe embedding) → (motor
-  // region tiled with one-hot of word's first letter). Mirrors
-  // _teachLetterSequenceDirect's orthogonal-one-hot pattern but on
-  // the cross-projection sem_to_motor + on word-level vocab.
-  // Why: DYN-PROD probe + spell-out questions seed sem region with a
-  // word's embedding then read motor argmax for first letter. With
-  // GloVe-similarity training alone (the existing _teachAssociationPairs
-  // path), sem_to_motor's first-letter argmax bucket-sticks on a tiny
-  // attractor cluster (`r/u/u/z/r/t/z` for ELA-K, `e/x` for math-K)
-  // because GloVe vectors for "cat", "dog", "sun" project into similar
-  // sem patterns and the matrix can't discriminate which first-letter
-  // motor bucket each word should activate.
-  // The discriminative one-hot write forces (cat → motor[c]),
-  // (dog → motor[d]), (sun → motor[s]) as orthogonal target pairs.
-  // Anti-Hebbian / row-norm / top-K-prune from the existing assoc-pair
-  // path then keep the pairs apart. Result: motor argmax for "cat"
-  // landed cleanly in the `c` bucket, not random attractor.
-  // Cost: ~1000-K-vocab × 12 reps × 1 Hebbian write per word = ~12,000
-  // writes per cell × 6 K cells = ~72,000 total. ~3-5 min wall-clock
-  // at biological scale. Acceptable cost vs the wrong-answer fix.
-  // Per-50-word setImmediate yield keeps heartbeat alive during run.
-  async _teachWordSpellingDirect(opts = {}) {
-    const cluster = this.cluster;
-    if (!cluster || !cluster.crossProjections?.sem_to_motor) return;
-    const semRegion = cluster.regions?.sem;
-    const motorRegion = cluster.regions?.motor;
-    if (!semRegion || !motorRegion) return;
-    const reps = opts.reps ?? 8;
-    const lr = (cluster.learningRate ?? 0.01) * 3;
-    const subject = opts.subject || "all";
-    let words = Array.isArray(opts.words) ? opts.words : null;
-    if (!words && this.dictionary && this.dictionary._words?.entries) {
-      words = [];
-      for (const [w, entry] of this.dictionary._words.entries()) {
-        if (typeof w !== "string" || w.length === 0) continue;
-        if (!/^[a-z]+$/.test(w)) continue;
-        if (!entry || !entry.pattern || !entry.pattern.length) continue;
-        if (entry.isPersona) continue;
-        words.push(w);
-      }
-    }
-    if (!words || words.length === 0) {
-      this._hb(`[Curriculum] _teachWordSpellingDirect SKIPPED \u2014 no K vocab found (subject=${subject})`);
-      return;
-    }
-    this._hb(`[Curriculum] _teachWordSpellingDirect START: ${words.length} K words \xD7 ${reps} reps \xB7 lr=${lr.toFixed(4)} (subject=${subject}) \u2014 concept(word) \u2192 motor(firstChar(word)) discriminative writes into sem_to_motor for question\u2192first-letter spell-out correctness`);
-    const t0 = Date.now();
-    let updates = 0;
-    let skipped = 0;
-    const scratch = this._ensureScratchBuffers();
-    if (!scratch) {
-      this._hb("[Curriculum] _teachWordSpellingDirect SKIPPED \u2014 no scratch buffer (cluster.size invalid)");
-      return;
-    }
-    for (let rep = 0; rep < reps; rep++) {
-      if (typeof globalThis._brainShutdownRequested !== "undefined" && globalThis._brainShutdownRequested) return;
-      let count = 0;
-      for (const word of words) {
-        const firstChar = word[0];
-        const entry = this.dictionary._words.get(word);
-        if (!entry || !entry.pattern) {
-          skipped++;
-          continue;
-        }
-        const firstCharOneHot = encodeLetter(firstChar);
-        if (!firstCharOneHot || firstCharOneHot.length === 0) {
-          skipped++;
-          continue;
-        }
-        this._fillRegionPatternInto(scratch.pre, semRegion, entry.pattern, false);
-        this._fillRegionPatternInto(scratch.post, motorRegion, firstCharOneHot, true);
-        try {
-          await this._teachHebbianAsymmetric(scratch.pre, scratch.post, lr, {
-            projectionsWhitelist: ["sem_to_motor"]
-          });
-          updates++;
-        } catch {
-          skipped++;
-        }
-        if (++count % 50 === 0) await _microtask();
-      }
-      await _microtask();
-    }
-    const dt = ((Date.now() - t0) / 1e3).toFixed(1);
-    this._hb(`[Curriculum] _teachWordSpellingDirect DONE in ${dt}s \u2014 ${updates} discriminative writes \xB7 ${skipped} skipped (${words.length} words \xD7 ${reps} reps target)`);
-  }
-  // iter14-A — Direct letter→motor identity write that bypasses
-  // cross-region Hebbian. Operator caught (2026-05-04 verbatim "fix
-  // those fucking issues NOW!"): even with iter11-A reorder
-  // (_teachLetterNaming AFTER _teachAlphabetSequencePairs),
-  // LETTER→MOTOR DIAG still showed off-by-one corruption b→a c→b
-  // d→c e→c. Root cause: _teachLetterNaming uses
-  // _teachHebbianAsymmetric which calls cluster._crossRegionHebbian —
-  // that fires Hebbian updates on ALL cross-projections including
-  // letter_to_motor. The earlier _teachAlphabetSequencePairs
-  // _teachAssociationPairs calls (writing letter[X]→motor[X+1]
-  // sequence pairs into sem_to_motor + motor_to_sem) ALSO ride on
-  // _crossRegionHebbian and accumulate off-by-one weights into
-  // letter_to_motor. When _teachLetterNaming fires LATER, the
-  // existing corruption dominates the fresh identity write.
-  // Fix: write letter[X]→motor[X] DIRECTLY to letter_to_motor's
-  // SparseMatrix via ojaUpdate, NOT through firing patterns + global
-  // Hebbian rule. Wipe existing weights first (`scale(0)`) so the
-  // off-by-one corruption from sequence training is cleared. Then
-  // carve fresh identity at 5× lr × 50 reps (mirrors iter9-E
-  // _teachLetterSequenceDirect pattern but on the cross-projection).
-  // After this, LETTER→MOTOR DIAG should show clean identity:
-  // a→a b→b c→c d→d ... z→z. TALK probe will pass at 26/26.
-  async _teachLetterNamingDirect(opts = {}) {
-    const cluster = this.cluster;
-    if (!cluster || !cluster.crossProjections?.letter_to_motor) return;
-    const letterToMotor = cluster.crossProjections.letter_to_motor;
-    const letterRegion = cluster.regions?.letter;
-    const motorRegion = cluster.regions?.motor;
-    if (!letterRegion || !motorRegion) return;
-    const reps = opts.reps ?? 50;
-    const lr = (cluster.learningRate ?? 0.01) * 5;
-    const ALPHABET = "abcdefghijklmnopqrstuvwxyz";
-    ensureLetters(Array.from(ALPHABET));
-    this._hb(`[Curriculum] _teachLetterNamingDirect START: 26 letters \xD7 ${reps} reps \xB7 lr=${lr.toFixed(4)} \u2014 letter[X]\u2192motor[X] discriminative one-hot writes DIRECTLY into letter_to_motor cross-projection (bypasses cross-region Hebbian to avoid sequence-training back-corruption)`);
-    if (typeof letterToMotor.scale === "function") {
-      letterToMotor.scale(0);
-      this._hb(`[Curriculum] _teachLetterNamingDirect \u2014 wiped prior letter_to_motor weights (off-by-one corruption from upstream sequence training)`);
-    }
-    if (typeof letterToMotor.ojaUpdate !== "function") {
-      this._hb(`[Curriculum] _teachLetterNamingDirect SKIPPED \u2014 letter_to_motor.ojaUpdate not available`);
-      return;
-    }
-    const t0 = Date.now();
-    let updates = 0, skipped = 0;
-    const letterSize = letterRegion.end - letterRegion.start;
-    const motorSize = motorRegion.end - motorRegion.start;
-    const buildRegionSizedOneHot = (regionSize, oneHot) => {
-      const vec = new Float64Array(regionSize);
-      if (!oneHot || oneHot.length === 0) return vec;
-      const gSize = Math.max(1, Math.floor(regionSize / oneHot.length));
-      for (let d = 0; d < oneHot.length; d++) {
-        if (oneHot[d] <= 0) continue;
-        for (let n = 0; n < gSize; n++) {
-          const idx = d * gSize + n;
-          if (idx < regionSize) vec[idx] = 1;
-        }
-      }
-      return vec;
-    };
-    for (let rep = 0; rep < reps; rep++) {
-      if (typeof globalThis._brainShutdownRequested !== "undefined" && globalThis._brainShutdownRequested) return;
-      for (let i = 0; i < ALPHABET.length; i++) {
-        const letter = ALPHABET[i];
-        const oneHot = encodeLetter(letter);
-        if (!oneHot || oneHot.length === 0) {
-          skipped++;
-          continue;
-        }
-        const preLetter = buildRegionSizedOneHot(letterSize, oneHot);
-        const postMotor = buildRegionSizedOneHot(motorSize, oneHot);
-        try {
-          const kScales = typeof cluster.buildKScalesForProjection === "function" ? cluster.buildKScalesForProjection("letter", "motor") : null;
-          letterToMotor.ojaUpdate(preLetter, postMotor, lr, kScales ? { kScales } : void 0);
-          updates++;
-        } catch {
-          skipped++;
-        }
-      }
-      if ((rep & 7) === 7) await _microtask();
-    }
-    const dt = ((Date.now() - t0) / 1e3).toFixed(1);
-    this._hb(`[Curriculum] _teachLetterNamingDirect DONE in ${dt}s \u2014 ${updates} Oja updates \xB7 ${skipped} skipped (26 letters \xD7 ${reps} reps target)`);
-    if (updates > 0 && typeof cluster.advanceSubGrade === "function") {
-      const cellKey = cluster._currentCellKey || "";
-      const subj = cellKey.split("/")[0];
-      if (subj && cluster.advanceSubGrade(subj, "letters")) {
-        this._hb(`[Curriculum] \u{1F4C8} subGrade ${subj} advanced \u2192 'letters' (26 letter\u2192motor bindings live \xB7 capability cap rises now)`);
-      }
-    }
-  }
-  // iter21-A — Direct sem→word_motor word-level training. Operator
-  // 2026-05-05 "motor argmax is fucked if it ever just relplies with
-  // letters and not words". For each K-vocab word: inject the word's
-  // GloVe embedding into sem, write 1 to that word's bucket in
-  // word_motor, ojaUpdate the sem_to_word_motor projection. After
-  // training, propagating sem(concept) → word_motor → argmax over
-  // vocabulary buckets returns the trained word as a single-tick
-  // emission. NO LETTER CHAIN. NO FALLBACK.
-  async _teachWordEmissionDirect(opts = {}) {
-    const cluster = this.cluster;
-    if (!cluster || !cluster.crossProjections?.sem_to_word_motor) return;
-    const semToWordMotor = cluster.crossProjections.sem_to_word_motor;
-    const semRegion = cluster.regions?.sem;
-    const wordMotorRegion = cluster.regions?.word_motor;
-    if (!semRegion || !wordMotorRegion) return;
-    if (typeof semToWordMotor.ojaUpdate !== "function") return;
-    const reps = opts.reps ?? 8;
-    const lr = (cluster.learningRate ?? 0.01) * 5;
-    const subject = normalizeSubject(opts.subject) || "all";
-    const subjectBandName = wordMotorBandName(subject);
-    const subjectBand = subjectBandName ? cluster.regions[subjectBandName] : null;
-    const opts_words = Array.isArray(opts.words) ? opts.words : null;
-    const bucketState = opts_words ? this._installBucketMap(subject, opts_words) : this._ensureWordBucketMap(subject);
-    if (!bucketState || !Array.isArray(bucketState.words) || bucketState.words.length === 0) {
-      this._hb(`[Curriculum] _teachWordEmissionDirect SKIPPED \u2014 no K vocab found (subject=${subject})`);
-      return;
-    }
-    const words = bucketState.words;
-    this._hb(`[Curriculum] _teachWordEmissionDirect START: ${words.length} K words \xD7 ${reps} reps \xB7 lr=${lr.toFixed(4)} (subject=${subject} band=${subjectBandName || "umbrella word_motor"}) \u2014 single-tick word emission via sem_to_word_motor`);
-    const t0 = Date.now();
-    let updates = 0, skipped = 0;
-    const semSize = semRegion.end - semRegion.start;
-    const wmSize = wordMotorRegion.end - wordMotorRegion.start;
-    const bandStart = subjectBand ? subjectBand.start - wordMotorRegion.start : 0;
-    const bandEnd = subjectBand ? subjectBand.end - wordMotorRegion.start : wmSize;
-    const bandSize = bandEnd - bandStart;
-    const bucketSize = Math.max(1, Math.floor(bandSize / words.length));
-    const preSem = new Float64Array(semSize);
-    const postWM = new Float64Array(wmSize);
-    const fillSem = (pattern) => {
-      preSem.fill(0);
-      if (!pattern || pattern.length === 0) return;
-      const gSize = Math.max(1, Math.floor(semSize / pattern.length));
-      for (let d = 0; d < pattern.length; d++) {
-        const v = pattern[d] || 0;
-        if (v === 0) continue;
-        for (let n = 0; n < gSize; n++) {
-          const idx = d * gSize + n;
-          if (idx < semSize) preSem[idx] = v;
-        }
-      }
-    };
-    for (let rep = 0; rep < reps; rep++) {
-      if (typeof globalThis._brainShutdownRequested !== "undefined" && globalThis._brainShutdownRequested) return;
-      let count = 0;
-      for (let wi = 0; wi < words.length; wi++) {
-        const word = words[wi];
-        const entry = this.dictionary._words.get(word);
-        if (!entry || !entry.pattern) {
-          skipped++;
-          continue;
-        }
-        fillSem(entry.pattern);
-        postWM.fill(0);
-        const bStart = bandStart + wi * bucketSize;
-        const bEnd = Math.min(bandEnd, bStart + bucketSize);
-        for (let n = bStart; n < bEnd; n++) postWM[n] = 1;
-        try {
-          const kScales = typeof cluster.buildKScalesForProjection === "function" ? cluster.buildKScalesForProjection("sem", "word_motor") : null;
-          semToWordMotor.ojaUpdate(preSem, postWM, lr, kScales ? { kScales } : void 0);
-          updates++;
-        } catch {
-          skipped++;
-        }
-        if (++count % 100 === 0) await _microtask();
-      }
-      await _microtask();
-    }
-    const dt = ((Date.now() - t0) / 1e3).toFixed(1);
-    this._hb(`[Curriculum] _teachWordEmissionDirect DONE in ${dt}s \u2014 ${updates} Oja updates \xB7 ${skipped} skipped (${words.length} words \xD7 ${reps} reps target \xB7 band=${subjectBandName || "umbrella"})`);
-    try {
-      if (cluster && typeof this._teachWordDefinition === "function") {
-        const taught = cluster._definitionTaughtWords || /* @__PURE__ */ new Set();
-        const untaught = words.filter((w) => w && !taught.has(String(w).toLowerCase().trim()));
-        const INLINE_CAP = 10;
-        const batchN = Math.min(INLINE_CAP, untaught.length);
-        if (batchN > 0) {
-          const inlineStart = Date.now();
-          let bound = 0;
-          for (let i = 0; i < batchN; i++) {
-            try {
-              const r = await this._teachWordDefinition(untaught[i], { reps: 4, label: "INLINE-DEF" });
-              if (r && r.defsBound > 0) bound += r.defsBound;
-            } catch {
-            }
-          }
-          const inlineDt = ((Date.now() - inlineStart) / 1e3).toFixed(1);
-          this._hb(`[Curriculum] _teachWordEmissionDirect inline-multi-def: ${batchN} untaught words processed in ${inlineDt}s (${bound} multi-def Hebbian fires)`);
-        }
-      }
-    } catch {
-    }
-    if (subject && subject !== "all" && updates > 0 && typeof cluster.advanceSubGrade === "function") {
-      if (cluster.advanceSubGrade(subject, "words")) {
-        this._hb(`[Curriculum] \u{1F4C8} subGrade ${subject} advanced \u2192 'words' (${updates} bucket writes seated \xB7 live capability now reflects this)`);
-      }
-    }
-  }
-  // iter15-A — Direct sem→motor word→firstChar identity write that
-  // bypasses cross-region Hebbian. Mirror of iter14-A pattern but on
-  // sem_to_motor instead of letter_to_motor.
-  // Operator caught (2026-05-05 verbatim sequence: "no if they are empty
-  // they are failures and is need document to be fixed" + "DO THE
-  // FUCKING WORK"): even with iter11-J `_teachWordSpellingDirect` +
-  // iter13 hotfix #1 (entry.glove → entry.pattern field rename) +
-  // iter14-F bio-weights, PROD still 0/17 across ELA-K (bucket-stuck:
-  // cat→r dog→r) AND Math-K (empty emissions). Root cause same as
-  // iter14-A on letter_to_motor: `_teachWordSpellingDirect` uses
-  // `_teachHebbianAsymmetric` which fires through `cluster._crossRegion
-  // Hebbian` — meaning the QA-TRAIN phase that runs AFTER (in ELA-K)
-  // OR BEFORE (in Math-K) ALSO fires sem_to_motor writes through the
-  // SAME cross-region Hebbian path with QA-pair patterns that pollute
-  // the WordSpellingDirect attractors. Plus QA-TRAIN saturation
-  // triggers `rescale×0.5 [sem_to_motor: 0.400→0.200]` which halves
-  // ALL sem_to_motor weights including the discriminative ones.
-  // Fix: write concept(word) → motor(firstChar) DIRECTLY to sem_to_motor's
-  // SparseMatrix via ojaUpdate, NOT through firing patterns + global
-  // Hebbian rule. Wipe existing weights first (`scale(0)`) so the
-  // QA-pollution is cleared. Then carve fresh discriminative one-hots
-  // at 5× lr × 8 reps (mirrors iter14-A reps tuning — Oja's normalizing
-  // rule converges fast on orthogonal pairs). MUST RUN LAST in each
-  // subject's teach phase — any subsequent cross-region Hebbian write
-  // re-pollutes sem_to_motor.
-  async _teachWordSpellingDirectFinal(opts = {}) {
-    const cluster = this.cluster;
-    if (!cluster || !cluster.crossProjections?.sem_to_motor) return;
-    const semToMotor = cluster.crossProjections.sem_to_motor;
-    const semRegion = cluster.regions?.sem;
-    const motorRegion = cluster.regions?.motor;
-    if (!semRegion || !motorRegion) return;
-    const reps = opts.reps ?? 8;
-    const lr = (cluster.learningRate ?? 0.01) * 5;
-    const subject = opts.subject || "all";
-    let words = Array.isArray(opts.words) ? opts.words : null;
-    if (!words && this.dictionary && this.dictionary._words?.entries) {
-      words = [];
-      for (const [w, entry] of this.dictionary._words.entries()) {
-        if (typeof w !== "string" || w.length === 0) continue;
-        if (!/^[a-z]+$/.test(w)) continue;
-        if (!entry || !entry.pattern || !entry.pattern.length) continue;
-        if (entry.isPersona) continue;
-        words.push(w);
-      }
-    }
-    if (!words || words.length === 0) {
-      this._hb(`[Curriculum] _teachWordSpellingDirectFinal SKIPPED \u2014 no K vocab found (subject=${subject})`);
-      return;
-    }
-    this._hb(`[Curriculum] _teachWordSpellingDirectFinal START: ${words.length} K words \xD7 ${reps} reps \xB7 lr=${lr.toFixed(4)} (subject=${subject}) \u2014 DIRECT sem_to_motor.ojaUpdate writes (bypasses cross-region Hebbian + QA-rescale to protect discriminative attractors)`);
-    if (typeof semToMotor.scale === "function") {
-      semToMotor.scale(0);
-      this._hb(`[Curriculum] _teachWordSpellingDirectFinal \u2014 wiped prior sem_to_motor weights (QA-TRAIN cross-region Hebbian pollution + rescale damage cleared)`);
-    }
-    if (typeof semToMotor.ojaUpdate !== "function") {
-      this._hb(`[Curriculum] _teachWordSpellingDirectFinal SKIPPED \u2014 sem_to_motor.ojaUpdate not available`);
-      return;
-    }
-    const t0 = Date.now();
-    let updates = 0, skipped = 0;
-    const semSize = semRegion.end - semRegion.start;
-    const motorSize = motorRegion.end - motorRegion.start;
-    const buildRegionSizedTiled = (regionSize, src, binarize) => {
-      const vec = new Float64Array(regionSize);
-      if (!src || src.length === 0) return vec;
-      const gSize = Math.max(1, Math.floor(regionSize / src.length));
-      for (let d = 0; d < src.length; d++) {
-        const v = src[d] || 0;
-        if (binarize ? v <= 0 : v === 0) continue;
-        for (let n = 0; n < gSize; n++) {
-          const idx = d * gSize + n;
-          if (idx < regionSize) vec[idx] = binarize ? 1 : v;
-        }
-      }
-      return vec;
-    };
-    for (let rep = 0; rep < reps; rep++) {
-      if (typeof globalThis._brainShutdownRequested !== "undefined" && globalThis._brainShutdownRequested) return;
-      let count = 0;
-      for (const word of words) {
-        const firstChar = word[0];
-        const entry = this.dictionary._words.get(word);
-        if (!entry || !entry.pattern) {
-          skipped++;
-          continue;
-        }
-        const firstCharOneHot = encodeLetter(firstChar);
-        if (!firstCharOneHot || firstCharOneHot.length === 0) {
-          skipped++;
-          continue;
-        }
-        const preSem = buildRegionSizedTiled(semSize, entry.pattern, false);
-        const postMot = buildRegionSizedTiled(motorSize, firstCharOneHot, true);
-        try {
-          const kScales = typeof cluster.buildKScalesForProjection === "function" ? cluster.buildKScalesForProjection("sem", "motor") : null;
-          semToMotor.ojaUpdate(preSem, postMot, lr, kScales ? { kScales } : void 0);
-          updates++;
-        } catch {
-          skipped++;
-        }
-        if (++count % 100 === 0) await _microtask();
-      }
-      await _microtask();
-    }
-    const dt = ((Date.now() - t0) / 1e3).toFixed(1);
-    this._hb(`[Curriculum] _teachWordSpellingDirectFinal DONE in ${dt}s \u2014 ${updates} Oja updates \xB7 ${skipped} skipped (${words.length} words \xD7 ${reps} reps target)`);
-  }
+  // 5 K-ELA direct one-hot letter/word teach helpers EXTRACTED to
+  // js/brain/curriculum/kindergarten.js K_MIXIN (per-grade file architecture).
+  //   _teachLetterSequenceDirect, _teachWordSpellingDirect,
+  //   _teachLetterNamingDirect, _teachWordEmissionDirect,
+  //   _teachWordSpellingDirectFinal.
+  // Called only from K cell runners. Direct-Oja recarve passes that bypass
+  // cross-region Hebbian for clean letter/word→motor attractors.
   // 13 K-ELA letter/phoneme/word teach helpers EXTRACTED to
   // js/brain/curriculum/kindergarten.js K_MIXIN (per-grade file architecture).
   //   _teachLetterCaseBinding, _teachLetterNaming, _teachVowelSoundVariants,
@@ -32897,7 +32910,7 @@ var Curriculum = class _Curriculum {
   _qaBindingWhitelist(subject) {
     const cluster = this.cluster;
     if (!cluster || !cluster.crossProjections) return null;
-    const subjBand = wordMotorBandName(subject);
+    const subjBand = wordMotorBandName2(subject);
     const wl = ["sem_to_motor"];
     if (cluster.crossProjections.sem_to_word_motor) wl.push("sem_to_word_motor");
     if (subjBand && cluster.crossProjections[`sem_to_${subjBand}`]) wl.push(`sem_to_${subjBand}`);
@@ -32933,7 +32946,7 @@ var Curriculum = class _Curriculum {
   _installBucketMap(subject, words) {
     const cluster = this.cluster;
     if (!cluster) return null;
-    const subjKey = normalizeSubject(subject);
+    const subjKey = normalizeSubject2(subject);
     if (!subjKey || !Array.isArray(words) || words.length === 0) return null;
     const map = /* @__PURE__ */ new Map();
     for (let wi = 0; wi < words.length; wi++) map.set(words[wi], wi);
@@ -32950,7 +32963,7 @@ var Curriculum = class _Curriculum {
   _ensureWordBucketMap(subject) {
     const cluster = this.cluster;
     if (!cluster) return null;
-    const subjKey = normalizeSubject(subject);
+    const subjKey = normalizeSubject2(subject);
     if (!subjKey) return null;
     const mapKey = `wordBucketMap_${subjKey}`;
     const wordsKey = `wordBucketWords_${subjKey}`;
@@ -32982,7 +32995,7 @@ var Curriculum = class _Curriculum {
     if (!answerText || typeof answerText !== "string") return;
     const tokens = answerText.toLowerCase().split(/[,;\s]+/).filter((t) => /^[a-z]+$/.test(t));
     if (tokens.length === 0) return;
-    const subjKey = normalizeSubject(subject);
+    const subjKey = normalizeSubject2(subject);
     if (subjKey) this._ensureWordBucketMap(subjKey);
     const writeBucketIntoBand = (bucketIdx, regionName, totalBuckets, value = 1) => {
       const region = cluster.regions[regionName];
