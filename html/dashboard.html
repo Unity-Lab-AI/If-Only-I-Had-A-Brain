@@ -1107,6 +1107,93 @@
         }
         el.innerHTML = html;
       }
+
+      // ── Audit A.1 — Compositional Emergence (P6.6) ──
+      // Reads s.compositionalEmergence shape per cluster/telemetry.js
+      // getCompositionalStats() — flat counts (verbatimCount/novelCount/
+      // partialCount), rates (verbatimRate/novelRate/partialRate),
+      // firstNovelMsAfterBoot, maxNovelty (score) + maxNoveltySentence
+      // (text), recentTail: [{sentence, kind, novelty, ts}].
+      // All fields tolerant — render '—' / 0 when absent.
+      if (s.compositionalEmergence) {
+        const ce = s.compositionalEmergence;
+        const pct = (x) => Number.isFinite(x) ? (x * 100).toFixed(1) + '%' : '—';
+        const set = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+        set('d-comp-verbatim', ce.verbatimCount ?? 0);
+        set('d-comp-verbatim-rate', pct(ce.verbatimRate));
+        set('d-comp-novel', ce.novelCount ?? 0);
+        set('d-comp-novel-rate', pct(ce.novelRate));
+        set('d-comp-partial', ce.partialCount ?? 0);
+        set('d-comp-partial-rate', pct(ce.partialRate));
+        set('d-comp-firstnovel', ce.firstNovelMsAfterBoot != null ? ((ce.firstNovelMsAfterBoot / 1000).toFixed(0) + 's') : '—');
+        set('d-comp-maxnov-text', ce.maxNoveltySentence || '—');
+        set('d-comp-maxnov-score', Number.isFinite(ce.maxNovelty) ? ce.maxNovelty.toFixed(3) : '—');
+        const tailEl = document.getElementById('d-comp-tail');
+        if (tailEl && Array.isArray(ce.recentTail)) {
+          tailEl.innerHTML = ce.recentTail.slice(-8).map(r => {
+            const kind = r.kind || '—';
+            const color = kind === 'novel' ? '#22c55e' : (kind === 'partial' ? '#a855f7' : '#888');
+            const sent = (r.sentence || r.text || '').replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
+            const nov = Number.isFinite(r.novelty) ? ` <span style="color:#666;">n=${r.novelty.toFixed(2)}</span>` : '';
+            return `<div><span style="color:${color};">[${kind}]</span> ${sent}${nov}</div>`;
+          }).join('');
+        }
+      }
+
+      // ── Audit A.2 — Word-Creation Candidates (P6.7) ──
+      if (s.wordCreationCandidates) {
+        const listEl = document.getElementById('d-word-cand-list');
+        const emptyEl = document.getElementById('d-word-cand-empty');
+        const cand = s.wordCreationCandidates;
+        const list = Array.isArray(cand) ? cand : (Array.isArray(cand.candidates) ? cand.candidates : []);
+        if (listEl) {
+          if (list.length > 0) {
+            listEl.innerHTML = list.slice(0, 10).map(c => {
+              const w = (c.compound || c.word || '?').replace(/[<>&]/g, ch => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[ch]));
+              const comps = Array.isArray(c.components) ? c.components.join(' + ') : '';
+              const promoteFlag = (c.count >= 10) ? ' <span style="color:#22c55e;">PROMOTED</span>' : '';
+              return `<div><span style="color:#ff4d9a;">${w}</span> <span style="color:#888;font-size:10px;">(${c.count || 0}× ${comps})</span>${promoteFlag}</div>`;
+            }).join('');
+            if (emptyEl) emptyEl.style.display = 'none';
+          } else {
+            listEl.innerHTML = '';
+            if (emptyEl) emptyEl.style.display = '';
+          }
+        }
+      }
+
+      // ── Audit A.3 — Chat-Hebbian + Dream-Recombination Telemetry ──
+      if (s.chatTimeHebbianStats) {
+        const cs = s.chatTimeHebbianStats;
+        const set = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+        const tsFmt = (ts) => ts ? new Date(ts).toLocaleTimeString() : '—';
+        set('d-chat-turns', cs.turns || 0);
+        set('d-chat-pairs', cs.totalPairs || 0);
+        set('d-chat-lastts', tsFmt(cs.lastTs));
+        const errEl = document.getElementById('d-chat-errors');
+        if (errEl) {
+          errEl.textContent = cs.errors || 0;
+          errEl.style.color = (cs.errors > 0) ? '#ff4d9a' : '#22c55e';
+        }
+        const lastErrEl = document.getElementById('d-chat-lasterr');
+        if (lastErrEl) lastErrEl.textContent = cs.lastError ? `last: ${cs.lastError}` : '';
+      }
+      if (s.dreamRecombinationStats) {
+        const ds = s.dreamRecombinationStats;
+        const set = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+        const tsFmt = (ts) => ts ? new Date(ts).toLocaleTimeString() : '—';
+        set('d-dream-total', ds.totalDreamed || 0);
+        set('d-dream-novel', ds.novelConsolidated || 0);
+        set('d-dream-lastts', tsFmt(ds.lastTs));
+        const samplesEl = document.getElementById('d-dream-samples');
+        if (samplesEl && Array.isArray(ds.consolidatedSamples)) {
+          samplesEl.innerHTML = ds.consolidatedSamples.slice(-5).map(s => {
+            const text = (s.text || s.sentence || '').replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
+            const cos = Number.isFinite(s.cosine) ? s.cosine.toFixed(2) : '—';
+            return `<div>cos=${cos}: ${text}</div>`;
+          }).join('');
+        }
+      }
     }
 
     function log(text) {
@@ -1419,93 +1506,6 @@
         .map(p => `${p.substance} (${p.status || '...'})`)
         .join(', ');
       pendingEl.textContent = pendRows ? `waiting on: ${pendRows}` : '';
-
-      // ── Audit A.1 — Compositional Emergence (P6.6) ──
-      // Reads s.compositionalEmergence shape per cluster/telemetry.js
-      // getCompositionalStats() — flat counts (verbatimCount/novelCount/
-      // partialCount), rates (verbatimRate/novelRate/partialRate),
-      // firstNovelMsAfterBoot, maxNovelty (score) + maxNoveltySentence
-      // (text), recentTail: [{sentence, kind, novelty, ts}].
-      // All fields tolerant — render '—' / 0 when absent.
-      if (s.compositionalEmergence) {
-        const ce = s.compositionalEmergence;
-        const pct = (x) => Number.isFinite(x) ? (x * 100).toFixed(1) + '%' : '—';
-        const set = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
-        set('d-comp-verbatim', ce.verbatimCount ?? 0);
-        set('d-comp-verbatim-rate', pct(ce.verbatimRate));
-        set('d-comp-novel', ce.novelCount ?? 0);
-        set('d-comp-novel-rate', pct(ce.novelRate));
-        set('d-comp-partial', ce.partialCount ?? 0);
-        set('d-comp-partial-rate', pct(ce.partialRate));
-        set('d-comp-firstnovel', ce.firstNovelMsAfterBoot != null ? ((ce.firstNovelMsAfterBoot / 1000).toFixed(0) + 's') : '—');
-        set('d-comp-maxnov-text', ce.maxNoveltySentence || '—');
-        set('d-comp-maxnov-score', Number.isFinite(ce.maxNovelty) ? ce.maxNovelty.toFixed(3) : '—');
-        const tailEl = document.getElementById('d-comp-tail');
-        if (tailEl && Array.isArray(ce.recentTail)) {
-          tailEl.innerHTML = ce.recentTail.slice(-8).map(r => {
-            const kind = r.kind || '—';
-            const color = kind === 'novel' ? '#22c55e' : (kind === 'partial' ? '#a855f7' : '#888');
-            const sent = (r.sentence || r.text || '').replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
-            const nov = Number.isFinite(r.novelty) ? ` <span style="color:#666;">n=${r.novelty.toFixed(2)}</span>` : '';
-            return `<div><span style="color:${color};">[${kind}]</span> ${sent}${nov}</div>`;
-          }).join('');
-        }
-      }
-
-      // ── Audit A.2 — Word-Creation Candidates (P6.7) ──
-      if (s.wordCreationCandidates) {
-        const listEl = document.getElementById('d-word-cand-list');
-        const emptyEl = document.getElementById('d-word-cand-empty');
-        const cand = s.wordCreationCandidates;
-        const list = Array.isArray(cand) ? cand : (Array.isArray(cand.candidates) ? cand.candidates : []);
-        if (listEl) {
-          if (list.length > 0) {
-            listEl.innerHTML = list.slice(0, 10).map(c => {
-              const w = (c.compound || c.word || '?').replace(/[<>&]/g, ch => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[ch]));
-              const comps = Array.isArray(c.components) ? c.components.join(' + ') : '';
-              const promoteFlag = (c.count >= 10) ? ' <span style="color:#22c55e;">PROMOTED</span>' : '';
-              return `<div><span style="color:#ff4d9a;">${w}</span> <span style="color:#888;font-size:10px;">(${c.count || 0}× ${comps})</span>${promoteFlag}</div>`;
-            }).join('');
-            if (emptyEl) emptyEl.style.display = 'none';
-          } else {
-            listEl.innerHTML = '';
-            if (emptyEl) emptyEl.style.display = '';
-          }
-        }
-      }
-
-      // ── Audit A.3 — Chat-Hebbian + Dream-Recombination Telemetry ──
-      if (s.chatTimeHebbianStats) {
-        const cs = s.chatTimeHebbianStats;
-        const set = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
-        const tsFmt = (ts) => ts ? new Date(ts).toLocaleTimeString() : '—';
-        set('d-chat-turns', cs.turns || 0);
-        set('d-chat-pairs', cs.totalPairs || 0);
-        set('d-chat-lastts', tsFmt(cs.lastTs));
-        const errEl = document.getElementById('d-chat-errors');
-        if (errEl) {
-          errEl.textContent = cs.errors || 0;
-          errEl.style.color = (cs.errors > 0) ? '#ff4d9a' : '#22c55e';
-        }
-        const lastErrEl = document.getElementById('d-chat-lasterr');
-        if (lastErrEl) lastErrEl.textContent = cs.lastError ? `last: ${cs.lastError}` : '';
-      }
-      if (s.dreamRecombinationStats) {
-        const ds = s.dreamRecombinationStats;
-        const set = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
-        const tsFmt = (ts) => ts ? new Date(ts).toLocaleTimeString() : '—';
-        set('d-dream-total', ds.totalDreamed || 0);
-        set('d-dream-novel', ds.novelConsolidated || 0);
-        set('d-dream-lastts', tsFmt(ds.lastTs));
-        const samplesEl = document.getElementById('d-dream-samples');
-        if (samplesEl && Array.isArray(ds.consolidatedSamples)) {
-          samplesEl.innerHTML = ds.consolidatedSamples.slice(-5).map(s => {
-            const text = (s.text || s.sentence || '').replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
-            const cos = Number.isFinite(s.cosine) ? s.cosine.toFixed(2) : '—';
-            return `<div>cos=${cos}: ${text}</div>`;
-          }).join('');
-        }
-      }
     }
 
     // ── Emotion history chart ──
