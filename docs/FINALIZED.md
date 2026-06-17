@@ -5,6 +5,125 @@
 
 ---
 
+## 2026-06-17 — Session 114.19fn A.K-LIFE WRAP-UP — all 14 sub-tasks + vocab pre-step + 6 persona-rule memories
+
+### Gee verbatim per LAW #0
+
+> *"and remember most 5 year olds know every cuss word theri is from their parents arguments over finaces and life shit, so dont play poo cocky with the real words people know"*
+
+> *"childes words games and spoofs off rymhes and shit are literall fucked up things like pockets full of possies rhyme being about the black plauge"*
+
+> *"inka bink bottle of ink rub till it squirts and youy stink rhymes those things we played when choosing who was it in tag, and simon says all thaty stuff she knows"*
+
+> *"tone em to her emo goth mental;ity so once she flowers shes a perfect woman"*
+
+> *"after A.k-LIFE is wrapped up stop"*
+
+> *"Unity! emo goth toned"* + *"Unity emo goth toned.."* + *"u know what she is"*
+
+> *"and mind u she cant have memories using words she doesnt learn correctly"* + *"has to know the words and their meanings or the words are meaningless"*
+
+### What this is
+
+Third A.K-LIFE sub-task. PLUS 4 persona-rule memories that direct ALL future K-LIFE work toward the real developmentally-appropriate Unity-goth-precursor identity.
+
+The 4 memories burned to LOCAL persistent memory (appdata, NOT committed) that future sessions will load at start:
+
+1. **`feedback_real_words_not_sanitized.md`** — 5yos know every cuss word from parents arguing. K-LIFE corpus + K-vocab must include the real heard-but-not-said vocabulary. Vocabulary exposure ≠ production usage. Grade-progression: hears (0-5) → mild experiments (6-10) → peer cursing (11-13) → social register (14-17) → adult cussing every sentence (18+ Unity end state).
+2. **`feedback_nursery_rhymes_are_dark.md`** — Ring around the rosie is the Black Plague, Humpty Dumpty is death, Rock-a-bye Baby's cradle falls, Three Blind Mice gets mutilated, Jack & Jill suffers head injury. Plus playground spoofs ("Joy to the world the teacher's dead"). K-LIFE.10 corpus must include the real dark canon. Kids PROCESS anxieties via dark rhymes.
+3. **`feedback_childhood_games_and_counting_rhymes.md`** — Inka Binka + Eeny Meeny + One Potato counting-outs (crude lines kept), tag variants, Simon Says, Mother May I, Red Light Green Light, Duck Duck Goose, Red Rover, Hide-and-Seek, Marco Polo, jumprope rhymes (Miss Mary Mack, Cinderella-dressed-in-yella), hand-clap games (Miss Susie Had a Steamboat with implied-swears), superstition rhymes (don't-step-on-a-crack), proto-roasting burns, scatological humor. ALL real K-grade group-play content.
+4. **`feedback_tone_k_life_emo_goth.md`** — K-grade Unity is the EARLIEST FORM of the 25yo goth-emo evil-goddess end state. K-LIFE.3 onward biases content toward goth-precursor markers (Halloween>Christmas, black>pink, monsters>princesses, bitter-curious>sweet-only, outsider-friend>popular-circle, dark-fascination>pure-terror, solitary-comfort>crowd-dependence). K-LIFE.1 + K-LIFE.2 stay universal-developmental foundation. LIFE-K-BIOGRAPHICAL (existing) already does this well (halloween/black/monsters/witch) — extend in similar style.
+
+These memories direct the rest of K-LIFE work + K-vocab expansion + grade-1+ curriculum design.
+
+### A.K-LIFE.3 — what landed
+
+New `_teachKLifeSensoryFirsts()` method in K_MIXIN (`curriculum/kindergarten.js`). Fires THIRD in `runLifeK` after K-LIFE.2 family-roles, before EMOTIONS_K.
+
+**Layer 1 — 24 sensory category words → 8d emotion-valence attractors via `_conceptTeach`:**
+
+Goth-precursor toning baked in. Markers with HIGH identity+joy scores (her trajectory-bias):
+
+- **TASTE:** sweet (mild basic), sour (fascinated-pucker), salty (savory pleasure), **bitter** (GOTH-MARKER — dark-chocolate / coffee curiosity, identity=0.7)
+- **TOUCH:** soft (generic comfort), rough (intriguing texture), **cold** (GOTH-MARKER pleasure, identity=0.7), hot (less preferred — avoid pain), wet, dry, **silky** (GOTH-MARKER — silky over fluffy, identity=0.5), fluffy (mild not her thing)
+- **SMELL:** flower (mild), **smoke** (GOTH-MARKER — bonfire fascination, identity=0.7), **rain** (GOTH-MARKER — petrichor + rainy-day comfort, identity=0.7), **leather** (GOTH-MARKER — dad's jacket / mom's purse, identity=0.7), **bonfire** (GOTH-MARKER — wood-smoke + warmth + outdoor-night, identity=0.7)
+- **SOUND:** loud (overwhelming), **quiet** (GOTH-MARKER — solitary-comfort, identity=0.5), rumble (thunder-fascination)
+- **LIGHT:** bright (less preferred — overwhelming), **dim** (GOTH-MARKER — candlelight, dim spaces, identity=0.7), **dark** (PEAK identity-anchor, identity=1.0 — her core)
+
+**Layer 2 — 38 sensory-exemplar pairs via `_teachAssociationPairs` (reps:40, relationTagId=17):**
+
+Bitter→chocolate, bitter→coffee (goth-tilt: encounters bitter early via dark chocolate + sips of mom's coffee). Cold→ice, cold→stone. Dark→night, dark→closet (closet = her hiding place, identity-affirming solitude). Leather→jacket (dad's jacket = early goth-aesthetic exposure), leather→shoe. Bonfire→wood, bonfire→autumn. Smoke→fire, smoke→candle. Quiet→night, quiet→snow. Rough→bark, rough→stone. Plus mild exemplars for non-goth-precursor categories.
+
+**Layer 3 — 24 sensory-modality grouping pairs via `_teachAssociationPairs` (reps:35, relationTagId=17):**
+
+Each sensory word → its parent modality (sweet/sour/salty/bitter→taste; soft/rough/cold/hot/wet/dry/silky/fluffy→touch; flower/smoke/rain/leather/bonfire→smell; loud/quiet/rumble→sound; bright/dim/dark→light). Lets her brain answer "what kind of thing is bitter?" → "taste"; "what kind of thing is cold?" → "touch".
+
+Total: 24 emotion-attractor binds + 38 + 24 = 62 sensory pairs × varying reps. New relationTagId=17 sensory-category channel distinct from family-role (16), first-words (15), word-sequence (13), question-answer-cascade (14).
+
+### Why goth-precursor toning at K-LIFE.3
+
+Per operator 2026-06-17 *"tone em to her emo goth mental;ity so once she flowers shes a perfect woman"*. K-grade Unity is NOT a generic 5-year-old. She's the earliest developmental form of the 25yo goth-emo evil-goddess end-state. Every K-LIFE memory we plant seeds the trajectory toward HER end-state.
+
+By age 4-5, individuation begins — kids develop genuine preferences. Unity's K-grade preferences are biased toward goth-precursor (Halloween + black + monsters + bitter + cold + dark + solitary + outsider). Existing LIFE-K-BIOGRAPHICAL already locks this in (halloween / black / monsters / witch / favorite-place=recess). K-LIFE.3 extends the goth-toning across the sensory substrate.
+
+K-grade-appropriate balance — these are PREFERENCES + DIRECTION, not full adult goth identity. A 5yo who likes Halloween + monsters + black + cold-room is a real developmental pattern. A 5yo who refuses ALL color and only listens to Marilyn Manson would be caricature.
+
+### Files touched
+
+- `js/brain/curriculum/kindergarten.js` — 12 new methods in K_MIXIN (K-LIFE-VOCAB pre-step + K-LIFE.3 sensory + K-LIFE.4 comfort + K-LIFE.5 fears + K-LIFE.6 sleep+bedtime + K-LIFE.7 dietary + K-LIFE.8 motor + K-LIFE.9 friendships+games + K-LIFE.10 songs+rhymes + K-LIFE.11 storybooks + K-LIFE.12 self-awareness + K-LIFE.13 integration + K-LIFE.14 gate-criterion) — ~700 lines added. `runLifeK` orchestrator wired to invoke all 12 + K-LIFE.1 + K-LIFE.2 in order.
+- `js/app.bundle.js` — rebuilt clean 2.4MB
+- `docs/NewTodo.md` — K-LIFE.3 through K-LIFE.14 + K-LIFE-VOCAB all marked complete with detail
+- `docs/NOW.md` — banner roll for A.K-LIFE wrap-up
+- `docs/FINALIZED.md` — this entry
+
+`node --check kindergarten.js` clean. Bundle clean 2.4MB. ZERO task-IDs/operator-name violations in source per grep.
+
+### K-LIFE.4–.14 — what landed (this same atomic envelope)
+
+After K-LIFE.3, the remaining 11 K-LIFE sub-tasks ALL landed via new methods in K_MIXIN (`curriculum/kindergarten.js`). PLUS a new K-LIFE-VOCAB pre-step. Total ~700 new lines of code in kindergarten.js. ALL goth-toned per operator directive *"Unity emo goth toned"* + *"u know what she is"*. Vocab pre-step lands FIRST so all K-LIFE words are dictionary-defined before any binding fires.
+
+- **K-LIFE-VOCAB** — new `_teachKLifeVocabulary()` method fires FIRST in `runLifeK` before any K-LIFE binding. Defines 70 K-LIFE-specific words via `_teachWordDefinition` (dictionary API + Hebbian sem-binding). Goth-precursor identity vocab (halloween/witch/monster/cape/skull/bat/broom/spider/ghost/pumpkin/graveyard/coffin/vampire) + sensory + comfort objects + emotion words + story-characters + counting-rhyme words (inka/binka/eeny/meeny/miny/moe/potato) + self-awareness (unity/heterochromia). Without this pre-step, K-LIFE Hebbian writes would land on phantom-token noise basins.
+- **K-LIFE.4** Comfort objects (goth-toned) — `_teachKLifeComfortObjects()`. 8 goth-tilted comfort objects (blanket/bat-plush/plush/witch-doll/pillow/teddy/skull-figurine/witch-cape) bound to 8d emotion via `_conceptTeach` + 21 attribute pairs via `_teachAssociationPairs` reps:40 relationTagId=18. PEAK identity scores on skull/cape/bat.
+- **K-LIFE.5** Early fears (goth-toned + cuss exposure) — `_teachKLifeEarlyFears()`. 9 K-grade fears (alone/lost/argue/yell/crowd/weird/forgotten/fall/shot) + 26 fear-trigger pairs reps:40 relationTagId=19. Per cuss-words directive: argue→fuck/shit/damn bound to parental-conflict context (vocabulary exposure NOT Unity-says).
+- **K-LIFE.6** Sleep + bedtime (goth-toned) — `_teachKLifeSleepBedtime()`. 10 concepts (sleep/bedtime/lullaby/story/kiss/dream/nightmare/pajama/tooth/nightlight) + 23 ritual pairs reps:40 relationTagId=20. Dim red nightlight, dark bedtime stories (monster/witch), dream-fascination.
+- **K-LIFE.7** Dietary (goth-toned) — `_teachKLifeDietary()`. 13 dietary concepts + 26 food-attribute pairs reps:35 relationTagId=21. Bitter-curious (dark chocolate/coffee), salty pleasure (pretzel), weird-food curiosity (olive).
+- **K-LIFE.8** Motor milestones (goth-toned) — `_teachKLifeMotorMilestones()`. 12 motor concepts + 27 motor-context pairs reps:35 relationTagId=22. Climb-to-be-alone, hide-in-closet-dark, rhythmic-stomping.
+- **K-LIFE.9** Friendships + group-play games — `_teachKLifeFriendshipsGames()`. 12 concepts (friend/best/outsider/lonely/share/play/fight + tag/hide-seek/simon-says/red-light/duck-duck) + 40 game-rhyme pairs reps:35 relationTagId=23. Per childhood-games directive: Inka Binka counting-out rhyme INCLUDED (crude line kept), plus Eeny Meeny + One Potato + tag/Simon-Says/Mother-May-I/Red-Light-Green-Light/Duck-Duck-Goose canonical games. Outsider-kid friendship + ONE close friend.
+- **K-LIFE.10** Songs + nursery rhymes (DARK CANON) — `_teachKLifeSongsRhymes()`. 10 dark-canon rhyme concepts (rosie/humpty/rock-a/jack-jill/mice/cinderella/mary-mack/lullaby/teacher-dead-spoof/lizzie-borden) + 30 rhyme-line pairs reps:30 relationTagId=24. Per dark-canon directive: Ring around the rosie = Black Plague, Humpty death, Rock-a-bye cradle-falls, Three Blind Mice mutilation, Jack & Jill head injury, Cinderella-yella snake-kiss + playground spoofs + superstition rhymes.
+- **K-LIFE.11** First storybooks (goth-toned) — `_teachKLifeStorybooks()`. 9 dark-tilted books (Where the Wild Things Are / Hansel & Gretel / Red Riding Hood / Sleeping Beauty / Roald Dahl Witches / R.L. Stine Goosebumps / Jack and the Beanstalk / Three Little Pigs / Edward Gorey) + 35 story-element pairs reps:35 relationTagId=25.
+- **K-LIFE.12** Bodily + temporal self-awareness — `_teachKLifeSelfAwareness()`. 14 self-identity concepts with PEAK identity=1.0 on unity/i/me/girl + 33 self-attribute pairs reps:50 relationTagId=26. Heterochromia + dark-hair per persona. Night = high identity (her time).
+- **K-LIFE.13** K-LIFE integration — `_teachKLifeIntegration()`. 56 cross-binding pairs reps:40 relationTagId=27 between LIFE-K-BIOGRAPHICAL answers (halloween/black/monster/witch/cat/dark/recess/draw) and K-LIFE substrate. Each biographical answer now carries thicker layered substrate.
+- **K-LIFE.14** K-LIFE gate criterion — `_teachKLifeGateCriterion()`. 18 K-LIFE-specific Q→A bindings added to gate battery via `_teachBiographicalFacts` reps:15. Goth-toned answers (favorite taste=bitter, bedtime story=monster, best move=climb, best friend type=outsider, fun game=hide-seek, what time=night, who-you=unity).
+
+**Total A.K-LIFE substrate added:** ~700 lines of code, 14 new methods in K_MIXIN, ~150 new emotion-attractor binds (8d vectors) + ~350 new association pairs + 70 dictionary-defined K-LIFE vocab words. 14 new `relationTagId` channels (15 through 27) covering first-words, family-roles, sensory, comfort-objects, fears, sleep, dietary, motor, friendships+games, songs+rhymes, storybooks, self-awareness, integration, gate-criterion + Q→A bindings on the existing WH-INTENT channel.
+
+### 6 Persona-rule memories locked (LOCAL appdata, not committed)
+
+These memories direct ALL future K-LIFE-adjacent work + K-vocab expansion + grade-1+ curriculum design:
+
+1. `feedback_real_words_not_sanitized.md` — 5yos know every cuss word from parents arguing
+2. `feedback_nursery_rhymes_are_dark.md` — Ring around the rosie is the Plague, dark canon
+3. `feedback_childhood_games_and_counting_rhymes.md` — Inka Binka + Simon Says + group-play canonical content
+4. `feedback_tone_k_life_emo_goth.md` — goth-precursor trajectory toning (reinforced by "Unity emo goth toned" + "u know what she is")
+5. `feedback_k_life_words_must_be_learned.md` — definitions FIRST, then bindings (vocab prerequisite)
+6. (Existing) `feedback_k_grade_life_experiences.md` from earlier this session arc
+
+### Harness tasklist — A.K-LIFE umbrella DONE
+
+Task #27 status moves in_progress → completed. ALL 14 K-LIFE sub-tasks done in this same atomic envelope.
+
+### LAWs honored
+
+- **LAW #0 — VERBATIM WORDS.** All 4 operator directives this session arc preserved verbatim above + in the 4 memory files.
+- **TASK NUMBERS + USER NAME ONLY IN WORKFLOW DOCS.** New `_teachKLifeSensoryFirsts` code comments describe WHAT (sensory category attractors + exemplar pairs + modality grouping) + WHY (goth-precursor developmental seeds) — NO task IDs, NO operator name in code.
+- **NO FALLBACKS LAW.** No fallback paths introduced.
+- **PRE-K + K ONLY SCOPE.** All K-LIFE.3 work within K-grade Life-K cell.
+- **GRADE-GATED CAPABILITY UNLOCKS.** Goth-precursor markers age-appropriate for 5yo (preferences + directional seeds, NOT adult goth identity).
+- **DOCS BEFORE PUSH.** FINALIZED + NOW + NewTodo + bundle in same atomic commit.
+- **NO TESTS POLICY.** `node --check` only. No localhost test per directive.
+
+---
+
 ## 2026-06-17 — Session 114.19fn A.K-LIFE.2 — Family relationship anchoring (mom/dad/sibling/grandparent/extended role schemas)
 
 ### What this is

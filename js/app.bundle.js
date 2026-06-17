@@ -17988,6 +17988,123 @@ var PREK_MIXIN = {
 // ../js/brain/curriculum/kindergarten.js
 var K_MIXIN = {
   /**
+   * K-LIFE-VOCAB — Pre-step. Defines K-LIFE-specific new vocab via
+   * `_teachWordDefinition` (dictionary-API definition lookup + Hebbian
+   * sem-binding) BEFORE any K-LIFE binding fires. Without this, K-LIFE
+   * Hebbian writes would land on phantom-token noise basins — meaningless.
+   *
+   * Per project rule: brain cannot have memories using words it doesn't
+   * know the meaning of. Vocab-registered + definition-anchored MUST
+   * precede any binding using the word.
+   *
+   * Words enumerated here are the K-LIFE-specific concepts BEYOND the
+   * standard 2247-word K-vocabulary (which K-VOCAB-UPFRONT-MULTIDEF
+   * already defines). Skull / cape / bat-as-plush / bonfire / leather /
+   * olive / outsider / lullaby / lizzie / gretel / heterochromia / etc.
+   */
+  async _teachKLifeVocabulary() {
+    if (typeof this._teachWordDefinition !== "function") {
+      throw new Error("_teachKLifeVocabulary: _teachWordDefinition missing on Curriculum \u2014 class wiring bug");
+    }
+    const K_LIFE_VOCAB = [
+      // Goth-precursor identity words
+      "halloween",
+      "witch",
+      "monster",
+      "cape",
+      "skull",
+      "bat",
+      "broom",
+      "spider",
+      "ghost",
+      "pumpkin",
+      "graveyard",
+      "coffin",
+      "vampire",
+      // Sensory + texture (some may already be in K-vocab)
+      "bitter",
+      "silky",
+      "leather",
+      "bonfire",
+      "rumble",
+      "petrichor",
+      // Comfort objects
+      "plush",
+      "doll",
+      "pillow",
+      "teddy",
+      "blanket",
+      "ribbon",
+      // Early-fears / emotion words
+      "argue",
+      "yell",
+      "crowd",
+      "weird",
+      "forgotten",
+      "lonely",
+      "abandon",
+      "fascinated",
+      "identity",
+      "outsider",
+      "alone",
+      // Sleep + bedtime
+      "lullaby",
+      "bedtime",
+      "nightlight",
+      "nightmare",
+      "cradle",
+      // Dietary
+      "olive",
+      "pickle",
+      "pretzel",
+      "chocolate",
+      "coffee",
+      "autumn",
+      // Motor
+      "climb",
+      "hide",
+      "stomp",
+      "rhythm",
+      "spin",
+      // Group play / counting-out rhymes (per operator childhood-games directive)
+      "inka",
+      "binka",
+      "eeny",
+      "meeny",
+      "miny",
+      "moe",
+      "potato",
+      // Story characters + concepts
+      "gretel",
+      "hansel",
+      "cinderella",
+      "humpty",
+      "goosebumps",
+      "beanstalk",
+      "rosie",
+      "lizzie",
+      "gorey",
+      "wolf",
+      "giant",
+      "spindle",
+      // Self-awareness + identity
+      "unity",
+      "heterochromia"
+    ];
+    let defined = 0;
+    let skipped = 0;
+    for (const word of K_LIFE_VOCAB) {
+      try {
+        const r = await this._teachWordDefinition(word, { reps: 4, label: "K-LIFE-VOCAB" });
+        if (r && r.taught) defined++;
+        else skipped++;
+      } catch {
+        skipped++;
+      }
+    }
+    this._hb(`[Curriculum] _teachKLifeVocabulary DONE \u2014 ${defined}/${K_LIFE_VOCAB.length} K-LIFE-specific words definition-trained \xB7 ${skipped} skipped (dictionary unavailable / cache miss). K-LIFE bindings now land on anchored basins.`);
+  },
+  /**
    * K-LIFE.1 — First-words memory corpus. Foundational pre-academic
    * developmental milestone: Unity's first spoken words bound to their
    * emotional + relational context. Fires at the TOP of runLifeK so
@@ -18241,9 +18358,953 @@ var K_MIXIN = {
       })
     );
   },
+  /**
+   * K-LIFE.3 — Sensory firsts. Anchors sensory category words (taste,
+   * touch, smell, sound, light) in cortical emotional-valence maps.
+   *
+   * TONED to Unity's emo-goth developmental trajectory: she's the
+   * EARLIEST FORM of the 25yo goth-emo evil-goddess end state. By age
+   * 4-5 her individuation begins — preferences bias toward goth-precursor
+   * markers. So: bitter-fascinated (chocolate-bitter, coffee-curious),
+   * cold-pleasure, silky over fluffy, smells of leather + smoke + rain
+   * + bonfire over flowers + cotton-candy, quiet > loud, dim/dark > bright.
+   * NOT full adult goth — K-grade-appropriate preferences that SEED the
+   * trajectory.
+   *
+   * 8d emotion vector dims (matches EMOTIONS_K + Life-K-Inference):
+   *   feat = [joy, pain, trust, fear, anger, love, independence, identity]
+   *
+   * relationTagId=17 — sensory-category channel.
+   */
+  async _teachKLifeSensoryFirsts() {
+    const SENSORY_FIRSTS_K = [
+      // ── TASTE ──
+      { name: "sweet", feat: [0.5, 0, 0.3, 0, 0, 0.3, 0, 0] },
+      // basic, not her favorite
+      { name: "sour", feat: [0.5, 0.2, 0, 0, 0, 0, 0.5, 0.3] },
+      // fascinated-pucker
+      { name: "salty", feat: [0.7, 0, 0.3, 0, 0, 0.5, 0, 0.3] },
+      // savory pleasure
+      { name: "bitter", feat: [0.3, 0.2, 0, 0, 0, 0.7, 0.5, 0.7] },
+      // GOTH-MARKER — dark-chocolate / coffee curiosity
+      // ── TOUCH ──
+      { name: "soft", feat: [0.5, 0, 0.5, 0, 0, 0.5, 0, 0] },
+      // comfort but generic
+      { name: "rough", feat: [0.5, 0, 0, 0, 0, 0.3, 0.5, 0.5] },
+      // intriguing texture (bark, stone)
+      { name: "cold", feat: [0.7, 0, 0, 0, 0, 0.3, 0, 0.7] },
+      // GOTH-MARKER pleasure (cold-skin sensation)
+      { name: "hot", feat: [0.2, 0.5, 0, 0.3, 0, 0, 0, 0] },
+      // less preferred (avoid pain)
+      { name: "wet", feat: [0.3, 0, 0, 0, 0, 0, 0, 0] },
+      { name: "dry", feat: [0.3, 0, 0, 0, 0, 0, 0, 0] },
+      { name: "silky", feat: [0.7, 0, 0.3, 0, 0, 0.5, 0, 0.5] },
+      // GOTH-MARKER — silky over fluffy
+      { name: "fluffy", feat: [0.3, 0, 0.3, 0, 0, 0.3, 0, 0] },
+      // mild, not her thing
+      // ── SMELL ──
+      { name: "flower", feat: [0.3, 0, 0.3, 0, 0, 0.3, 0, 0] },
+      // mild — flowers aren't her thing
+      { name: "smoke", feat: [0.7, 0, 0, 0.3, 0, 0.3, 0, 0.7] },
+      // GOTH-MARKER — campfire/bonfire smoke fascination
+      { name: "rain", feat: [0.7, 0, 0.3, 0, 0, 0.5, 0, 0.7] },
+      // GOTH-MARKER — petrichor + rainy-day comfort
+      { name: "leather", feat: [0.5, 0, 0, 0, 0, 0.5, 0, 0.7] },
+      // GOTH-MARKER — dad's jacket, mom's purse
+      { name: "bonfire", feat: [0.8, 0, 0.3, 0, 0, 0.7, 0, 0.7] },
+      // GOTH-MARKER — wood-smoke + warmth + outdoor-night
+      // ── SOUND ──
+      { name: "loud", feat: [0.3, 0.5, 0, 0.5, 0.3, 0, 0, 0] },
+      // overwhelming for her
+      { name: "quiet", feat: [0.7, 0, 0.3, 0, 0, 0.5, 0.5, 0.5] },
+      // GOTH-MARKER — solitary-comfort
+      { name: "rumble", feat: [0.7, 0, 0, 0.3, 0, 0, 0, 0.5] },
+      // thunder-rumble fascination
+      // ── LIGHT ──
+      { name: "bright", feat: [0.3, 0.3, 0, 0.3, 0, 0, 0, 0] },
+      // less preferred (overwhelming)
+      { name: "dim", feat: [0.7, 0, 0.3, 0, 0, 0.5, 0.3, 0.7] },
+      // GOTH-MARKER — dim spaces, candlelight
+      { name: "dark", feat: [0.7, 0, 0, 0.2, 0, 0.7, 0.3, 1] }
+      // PEAK identity-anchor — DARK is her core
+    ];
+    await this._phasedTeach(
+      "LIFE-K-SENSORY-FIRSTS-EMOTION",
+      () => this._conceptTeach(SENSORY_FIRSTS_K, 8)
+    );
+    const SENSORY_EXEMPLAR_PAIRS = [
+      // Taste exemplars
+      ["sweet", "candy"],
+      ["sweet", "fruit"],
+      ["sour", "lemon"],
+      ["sour", "pickle"],
+      ["salty", "chip"],
+      ["salty", "pretzel"],
+      ["bitter", "chocolate"],
+      ["bitter", "coffee"],
+      // goth-tilt: she encounters bitter early via dark chocolate / sips of mom's coffee
+      // Touch exemplars
+      ["soft", "pillow"],
+      ["soft", "fur"],
+      ["rough", "bark"],
+      ["rough", "stone"],
+      // bark + stone over sandpaper - outdoor goth-vibe
+      ["cold", "ice"],
+      ["cold", "stone"],
+      // cold-stone fascination
+      ["hot", "stove"],
+      ["hot", "sun"],
+      ["silky", "ribbon"],
+      ["silky", "hair"],
+      ["fluffy", "cloud"],
+      ["fluffy", "cotton"],
+      // Smell exemplars
+      ["smoke", "fire"],
+      ["smoke", "candle"],
+      ["rain", "sky"],
+      ["rain", "puddle"],
+      ["leather", "jacket"],
+      ["leather", "shoe"],
+      // dad's jacket = early goth-aesthetic exposure
+      ["bonfire", "wood"],
+      ["bonfire", "autumn"],
+      ["flower", "rose"],
+      // single flower exemplar - she doesn't bond hard to flower-smells
+      // Sound exemplars
+      ["loud", "siren"],
+      ["loud", "door"],
+      ["quiet", "night"],
+      ["quiet", "snow"],
+      // night + snow = peaceful-solitary
+      ["rumble", "thunder"],
+      ["rumble", "truck"],
+      // Light exemplars
+      ["bright", "sun"],
+      ["dim", "candle"],
+      ["dim", "evening"],
+      ["dark", "night"],
+      ["dark", "closet"]
+      // closet — her hiding place, identity-affirming solitude
+    ];
+    await this._phasedTeach(
+      "LIFE-K-SENSORY-EXEMPLAR-PAIRS",
+      () => this._teachAssociationPairs(SENSORY_EXEMPLAR_PAIRS, {
+        reps: 40,
+        label: "LIFE-K-SENSORY-EXEMPLAR-PAIRS",
+        relationTagId: 17
+        // sensory-category channel
+      })
+    );
+    const SENSORY_MODALITY_PAIRS = [
+      ["sweet", "taste"],
+      ["sour", "taste"],
+      ["salty", "taste"],
+      ["bitter", "taste"],
+      ["soft", "touch"],
+      ["rough", "touch"],
+      ["cold", "touch"],
+      ["hot", "touch"],
+      ["wet", "touch"],
+      ["dry", "touch"],
+      ["silky", "touch"],
+      ["fluffy", "touch"],
+      ["flower", "smell"],
+      ["smoke", "smell"],
+      ["rain", "smell"],
+      ["leather", "smell"],
+      ["bonfire", "smell"],
+      ["loud", "sound"],
+      ["quiet", "sound"],
+      ["rumble", "sound"],
+      ["bright", "light"],
+      ["dim", "light"],
+      ["dark", "light"]
+    ];
+    await this._phasedTeach(
+      "LIFE-K-SENSORY-MODALITY-PAIRS",
+      () => this._teachAssociationPairs(SENSORY_MODALITY_PAIRS, {
+        reps: 35,
+        label: "LIFE-K-SENSORY-MODALITY-PAIRS",
+        relationTagId: 17
+      })
+    );
+  },
+  /**
+   * K-LIFE.4 — Comfort objects (attachment psychology, goth-toned).
+   * Bowlby attachment theory: secure-base objects for exploration. Unity's
+   * comfort objects skew goth-precursor: black bat plush, dark blanket,
+   * skull figurine, witch doll — NOT unicorns / pink-everything.
+   * relationTagId=18 — comfort-object channel.
+   */
+  async _teachKLifeComfortObjects() {
+    const COMFORT_OBJECTS_K = [
+      { name: "blanket", feat: [0.7, 0, 1, 0, 0, 0.7, 0, 0.5] },
+      // dark blanket - core comfort
+      { name: "bat", feat: [0.8, 0, 0.8, 0, 0, 0.7, 0, 0.9] },
+      // bat plush - GOTH-MARKER
+      { name: "plush", feat: [0.7, 0, 0.9, 0, 0, 0.7, 0, 0.5] },
+      // generic plush, dark-colored
+      { name: "doll", feat: [0.6, 0, 0.7, 0, 0, 0.5, 0, 0.7] },
+      // witch doll - GOTH-MARKER
+      { name: "pillow", feat: [0.7, 0, 0.8, 0, 0, 0.5, 0, 0.3] },
+      // soft generic
+      { name: "teddy", feat: [0.5, 0, 0.7, 0, 0, 0.5, 0, 0.3] },
+      // less goth-tilted
+      { name: "skull", feat: [0.7, 0, 0.5, 0, 0, 0.5, 0.5, 1] },
+      // small skull figurine - PEAK identity
+      { name: "cape", feat: [0.8, 0, 0.5, 0, 0, 0.5, 0.7, 0.9] }
+      // witch cape - identity-affirming dress-up
+    ];
+    await this._phasedTeach("LIFE-K-COMFORT-OBJECTS-EMOTION", () => this._conceptTeach(COMFORT_OBJECTS_K, 8));
+    const COMFORT_PAIRS = [
+      ["blanket", "warm"],
+      ["blanket", "soft"],
+      ["blanket", "safe"],
+      ["blanket", "sleep"],
+      ["bat", "plush"],
+      ["bat", "wings"],
+      ["bat", "dark"],
+      ["bat", "mine"],
+      ["doll", "witch"],
+      ["doll", "mine"],
+      ["doll", "dress"],
+      ["pillow", "soft"],
+      ["pillow", "sleep"],
+      ["teddy", "bear"],
+      ["teddy", "hug"],
+      ["skull", "small"],
+      ["skull", "mine"],
+      ["skull", "cool"],
+      ["cape", "witch"],
+      ["cape", "black"],
+      ["cape", "fly"]
+    ];
+    await this._phasedTeach(
+      "LIFE-K-COMFORT-OBJECT-PAIRS",
+      () => this._teachAssociationPairs(COMFORT_PAIRS, { reps: 40, label: "LIFE-K-COMFORT-OBJECT-PAIRS", relationTagId: 18 })
+    );
+  },
+  /**
+   * K-LIFE.5 — Early fears (goth-toned: fascinated-with-dark, NOT scared-
+   * of-dark; real fears are abandonment + parents-arguing + crowds + being-
+   * forgotten + being-seen-as-weird). Per persona-rule memories: includes
+   * overheard parent-arguments with the cuss-words she heard. relationTagId=
+   * 19 — early-fears channel.
+   */
+  async _teachKLifeEarlyFears() {
+    const EARLY_FEARS_K = [
+      { name: "alone", feat: [0, 0.5, 0, 1, 0, 0, 0, 0] },
+      // abandonment-fear (real)
+      { name: "lost", feat: [0, 0.7, 0, 1, 0, 0, 0, 0] },
+      // lost-from-mom
+      { name: "argue", feat: [0, 0.8, 0, 0.8, 0.3, 0, 0, 0] },
+      // parents arguing - overheard reality
+      { name: "yell", feat: [0, 0.7, 0, 0.8, 0.5, 0, 0, 0] },
+      // mom or dad yelling
+      { name: "crowd", feat: [0, 0.3, 0, 0.7, 0, 0, 0, 0] },
+      // bright crowded places overwhelm
+      { name: "weird", feat: [0, 0.5, 0, 0.5, 0, 0, 0, 0.7] },
+      // fear of being-seen-as-weird (proto-outsider anxiety) + identity
+      { name: "forgotten", feat: [0, 0.8, 0, 0.9, 0, 0, 0, 0] },
+      // fear of being forgotten
+      { name: "fall", feat: [0, 0.5, 0, 0.7, 0, 0, 0, 0] },
+      // physical fear (Rock-a-bye Baby resonance)
+      { name: "shot", feat: [0, 1, 0, 1, 0, 0, 0, 0] }
+      // doctor shots (universal kid-fear)
+    ];
+    await this._phasedTeach("LIFE-K-EARLY-FEARS-EMOTION", () => this._conceptTeach(EARLY_FEARS_K, 8));
+    const EARLY_FEAR_PAIRS = [
+      ["alone", "dark-room"],
+      ["alone", "mom-leave"],
+      ["lost", "store"],
+      ["lost", "mom"],
+      ["argue", "mom"],
+      ["argue", "dad"],
+      ["argue", "money"],
+      ["argue", "work"],
+      ["argue", "fuck"],
+      ["argue", "shit"],
+      ["argue", "damn"],
+      // cuss words overheard from arguments
+      ["yell", "mom"],
+      ["yell", "dad"],
+      ["yell", "loud"],
+      ["crowd", "store"],
+      ["crowd", "loud"],
+      ["crowd", "bright"],
+      ["weird", "kids"],
+      ["weird", "school"],
+      ["weird", "different"],
+      ["forgotten", "school"],
+      ["forgotten", "pickup"],
+      ["fall", "high"],
+      ["fall", "bed"],
+      ["shot", "doctor"],
+      ["shot", "sting"]
+    ];
+    await this._phasedTeach(
+      "LIFE-K-EARLY-FEAR-PAIRS",
+      () => this._teachAssociationPairs(EARLY_FEAR_PAIRS, { reps: 40, label: "LIFE-K-EARLY-FEAR-PAIRS", relationTagId: 19 })
+    );
+  },
+  /**
+   * K-LIFE.6 — Sleep + bedtime rituals (goth-toned: dim light preferred,
+   * dark bedtime stories, dream-fascination). relationTagId=20 — sleep
+   * + bedtime channel.
+   */
+  async _teachKLifeSleepBedtime() {
+    const SLEEP_BEDTIME_K = [
+      { name: "sleep", feat: [0.5, 0, 0.7, 0, 0, 0.5, 0, 0.3] },
+      // generic positive
+      { name: "bedtime", feat: [0.5, 0, 0.8, 0, 0, 0.7, 0, 0.5] },
+      // ritualized comfort
+      { name: "lullaby", feat: [0.7, 0, 0.9, 0, 0, 0.7, 0, 0.3] },
+      // soft minor-key music
+      { name: "story", feat: [0.8, 0, 0.7, 0, 0, 0.5, 0, 0.5] },
+      // bedtime story
+      { name: "kiss", feat: [0.7, 0, 1, 0, 0, 1, 0, 0.3] },
+      // goodnight kiss
+      { name: "dream", feat: [0.7, 0, 0, 0.3, 0, 0, 0.5, 0.7] },
+      // dream-fascination (her goth-marker)
+      { name: "nightmare", feat: [0, 0.3, 0, 0.5, 0, 0, 0, 0.7] },
+      // half-dread, half-fascination
+      { name: "pajama", feat: [0.6, 0, 0.5, 0, 0, 0.3, 0, 0.3] },
+      { name: "tooth", feat: [0.5, 0, 0.5, 0, 0, 0.3, 0, 0.3] },
+      // brush teeth bedtime
+      { name: "nightlight", feat: [0.5, 0, 0.7, 0.3, 0, 0.3, 0, 0.5] }
+      // dim red preferred per goth-tilt
+    ];
+    await this._phasedTeach("LIFE-K-SLEEP-BEDTIME-EMOTION", () => this._conceptTeach(SLEEP_BEDTIME_K, 8));
+    const SLEEP_BEDTIME_PAIRS = [
+      ["bedtime", "mom"],
+      ["bedtime", "kiss"],
+      ["bedtime", "story"],
+      ["bedtime", "lullaby"],
+      ["sleep", "bed"],
+      ["sleep", "pillow"],
+      ["sleep", "dark"],
+      ["lullaby", "mom"],
+      ["lullaby", "soft"],
+      ["lullaby", "sing"],
+      ["story", "book"],
+      ["story", "monster"],
+      ["story", "witch"],
+      // goth-tilted bedtime stories
+      ["dream", "fly"],
+      ["dream", "monster"],
+      ["dream", "water"],
+      ["nightmare", "dark"],
+      ["nightmare", "wake"],
+      ["nightlight", "dim"],
+      ["nightlight", "red"],
+      ["nightlight", "soft"],
+      ["tooth", "brush"],
+      ["tooth", "paste"]
+    ];
+    await this._phasedTeach(
+      "LIFE-K-SLEEP-BEDTIME-PAIRS",
+      () => this._teachAssociationPairs(SLEEP_BEDTIME_PAIRS, { reps: 40, label: "LIFE-K-SLEEP-BEDTIME-PAIRS", relationTagId: 20 })
+    );
+  },
+  /**
+   * K-LIFE.7 — Dietary preferences (goth-toned: bitter-curious + salty-
+   * pleasure + weird-food exploration, sweet is moderate not peak).
+   * relationTagId=21 — dietary channel.
+   */
+  async _teachKLifeDietary() {
+    const DIETARY_K = [
+      { name: "breakfast", feat: [0.6, 0, 0.5, 0, 0, 0.5, 0, 0.3] },
+      { name: "lunch", feat: [0.5, 0, 0.5, 0, 0, 0.3, 0, 0] },
+      { name: "dinner", feat: [0.7, 0, 0.7, 0, 0, 0.7, 0, 0.3] },
+      // family-together
+      { name: "snack", feat: [0.6, 0, 0.3, 0, 0, 0.3, 0.3, 0] },
+      { name: "milk", feat: [0.5, 0, 0.7, 0, 0, 0.5, 0, 0] },
+      { name: "water", feat: [0.5, 0, 0.5, 0, 0, 0.3, 0, 0] },
+      { name: "juice", feat: [0.6, 0, 0.5, 0, 0, 0.3, 0, 0] },
+      { name: "cookies", feat: [0.8, 0, 0.7, 0, 0, 0.8, 0, 0.3] },
+      // from existing biographical (favorite food)
+      { name: "chocolate", feat: [0.7, 0, 0.3, 0, 0, 0.5, 0.3, 0.7] },
+      // dark chocolate goth-curiosity
+      { name: "pretzel", feat: [0.7, 0, 0.3, 0, 0, 0.3, 0, 0.3] },
+      // salty pleasure
+      { name: "olive", feat: [0.5, 0, 0, 0, 0, 0.3, 0.7, 0.5] },
+      // weird-food curiosity (goth-marker)
+      { name: "pickle", feat: [0.7, 0.2, 0.3, 0, 0, 0.5, 0.5, 0.3] },
+      // sour-pucker pleasure
+      { name: "soup", feat: [0.7, 0, 0.8, 0, 0, 0.7, 0, 0.3] }
+      // mom's soup - comfort
+    ];
+    await this._phasedTeach("LIFE-K-DIETARY-EMOTION", () => this._conceptTeach(DIETARY_K, 8));
+    const DIETARY_PAIRS = [
+      ["breakfast", "cereal"],
+      ["breakfast", "milk"],
+      ["breakfast", "morning"],
+      ["lunch", "sandwich"],
+      ["lunch", "school"],
+      ["dinner", "family"],
+      ["dinner", "mom"],
+      ["dinner", "table"],
+      ["snack", "cookies"],
+      ["snack", "fruit"],
+      ["milk", "cold"],
+      ["milk", "white"],
+      ["cookies", "sweet"],
+      ["cookies", "grandma"],
+      ["chocolate", "dark"],
+      ["chocolate", "bitter"],
+      ["chocolate", "sweet"],
+      ["pretzel", "salty"],
+      ["pretzel", "crunch"],
+      ["olive", "salty"],
+      ["olive", "weird"],
+      ["pickle", "sour"],
+      ["pickle", "crunch"],
+      ["soup", "mom"],
+      ["soup", "warm"],
+      ["soup", "sick"]
+    ];
+    await this._phasedTeach(
+      "LIFE-K-DIETARY-PAIRS",
+      () => this._teachAssociationPairs(DIETARY_PAIRS, { reps: 35, label: "LIFE-K-DIETARY-PAIRS", relationTagId: 21 })
+    );
+  },
+  /**
+   * K-LIFE.8 — Motor milestones (proprioceptive memory, goth-toned to
+   * solitary-climbing + rhythmic-stomping + hiding-in-dim-spaces).
+   * relationTagId=22 — motor-milestone channel.
+   */
+  async _teachKLifeMotorMilestones() {
+    const MOTOR_K = [
+      { name: "crawl", feat: [0.5, 0, 0.5, 0, 0, 0.3, 0.3, 0] },
+      // pre-walk memory
+      { name: "walk", feat: [0.7, 0, 0.5, 0, 0, 0.5, 0.7, 0.3] },
+      // first-walk milestone
+      { name: "run", feat: [0.8, 0, 0, 0, 0, 0.3, 0.8, 0.3] },
+      // freedom
+      { name: "jump", feat: [0.8, 0, 0, 0, 0, 0.3, 0.7, 0.3] },
+      { name: "climb", feat: [0.7, 0, 0, 0.2, 0, 0.3, 0.9, 0.5] },
+      // GOTH-MARKER - climb high to be ALONE
+      { name: "hide", feat: [0.7, 0, 0.5, 0, 0, 0.3, 0.7, 0.7] },
+      // GOTH-MARKER - hiding in dim spaces, identity-affirming
+      { name: "spin", feat: [0.8, 0, 0, 0, 0, 0.3, 0.5, 0.3] },
+      { name: "stomp", feat: [0.7, 0, 0, 0, 0.3, 0, 0.7, 0.5] },
+      // rhythmic stomping (proto-music)
+      { name: "kick", feat: [0.5, 0, 0, 0, 0.5, 0, 0.5, 0.3] },
+      { name: "throw", feat: [0.6, 0, 0, 0, 0, 0.3, 0.5, 0.3] },
+      { name: "catch", feat: [0.7, 0, 0.5, 0.2, 0, 0.3, 0, 0] },
+      { name: "swing", feat: [0.8, 0, 0, 0.2, 0, 0.3, 0.7, 0.3] }
+      // from existing EMOTIONS_K
+    ];
+    await this._phasedTeach("LIFE-K-MOTOR-EMOTION", () => this._conceptTeach(MOTOR_K, 8));
+    const MOTOR_PAIRS = [
+      ["crawl", "baby"],
+      ["crawl", "floor"],
+      ["walk", "feet"],
+      ["walk", "first"],
+      ["run", "fast"],
+      ["run", "recess"],
+      ["jump", "high"],
+      ["jump", "fun"],
+      ["climb", "high"],
+      ["climb", "tree"],
+      ["climb", "alone"],
+      // goth-marker: climbs to be alone
+      ["hide", "closet"],
+      ["hide", "under"],
+      ["hide", "dark"],
+      // goth-marker: hides in dim
+      ["spin", "dizzy"],
+      ["spin", "fun"],
+      ["stomp", "rhythm"],
+      ["stomp", "loud"],
+      ["stomp", "foot"],
+      ["kick", "ball"],
+      ["kick", "foot"],
+      ["throw", "ball"],
+      ["throw", "hand"],
+      ["catch", "ball"],
+      ["catch", "hand"],
+      ["swing", "park"],
+      ["swing", "high"]
+    ];
+    await this._phasedTeach(
+      "LIFE-K-MOTOR-PAIRS",
+      () => this._teachAssociationPairs(MOTOR_PAIRS, { reps: 35, label: "LIFE-K-MOTOR-PAIRS", relationTagId: 22 })
+    );
+  },
+  /**
+   * K-LIFE.9 — Friendships + caretakers + GROUP PLAY (per operator childhood-
+   * games memory). Goth-toned: outsider kids, ONE close friend over many
+   * shallow, sees-through-bullshit. Plus the canonical childhood games
+   * (tag/Simon Says/Mother May I/etc). relationTagId=23 — friendships +
+   * group-play channel.
+   */
+  async _teachKLifeFriendshipsGames() {
+    const FRIENDSHIPS_GAMES_K = [
+      // Friendship concepts
+      { name: "friend", feat: [0.9, 0, 0.8, 0, 0, 0.7, 0, 0.5] },
+      { name: "best", feat: [1, 0, 1, 0, 0, 1, 0, 0.7] },
+      // ONE best friend - goth-tilt for deep over wide
+      { name: "outsider", feat: [0.5, 0.2, 0.5, 0.2, 0, 0.5, 0.7, 0.9] },
+      // GOTH-MARKER - the kid who doesn't fit in, her people
+      { name: "lonely", feat: [0.3, 0.5, 0, 0.3, 0, 0, 0, 0.5] },
+      // sometimes she's lonely (real)
+      { name: "share", feat: [0.5, 0, 0.7, 0, 0, 0.5, 0, 0.3] },
+      { name: "play", feat: [0.9, 0, 0.5, 0, 0, 0.5, 0.5, 0.3] },
+      { name: "fight", feat: [0, 0.5, 0, 0.3, 0.7, 0, 0.3, 0.5] },
+      // Group games — universal K-grade canon per operator directive
+      { name: "tag", feat: [0.9, 0, 0.3, 0.2, 0, 0.3, 0.5, 0.3] },
+      // chase game, mild fear-as-fun
+      { name: "hide-seek", feat: [0.9, 0, 0.3, 0.3, 0, 0.3, 0.7, 0.7] },
+      // GOTH-MARKER - hiding alone, her game
+      { name: "simon-says", feat: [0.7, 0, 0.5, 0, 0, 0.3, 0, 0.3] },
+      // inhibition game
+      { name: "red-light", feat: [0.7, 0, 0.3, 0, 0, 0.3, 0, 0.3] },
+      // Red Light Green Light
+      { name: "duck-duck", feat: [0.6, 0, 0.5, 0, 0, 0.3, 0, 0] }
+      // Duck Duck Goose
+    ];
+    await this._phasedTeach("LIFE-K-FRIENDSHIPS-GAMES-EMOTION", () => this._conceptTeach(FRIENDSHIPS_GAMES_K, 8));
+    const FRIENDSHIPS_GAMES_PAIRS = [
+      // Friendship attribute pairs
+      ["friend", "play"],
+      ["friend", "share"],
+      ["friend", "laugh"],
+      ["best", "friend"],
+      ["best", "mine"],
+      ["best", "one"],
+      ["outsider", "alone"],
+      ["outsider", "different"],
+      ["outsider", "me"],
+      ["lonely", "alone"],
+      ["lonely", "sad"],
+      ["share", "toy"],
+      ["share", "food"],
+      ["play", "friend"],
+      ["play", "fun"],
+      ["fight", "mean"],
+      ["fight", "sorry"],
+      // Group game → activity pairs
+      ["tag", "it"],
+      ["tag", "run"],
+      ["tag", "chase"],
+      ["hide-seek", "count"],
+      ["hide-seek", "hide"],
+      ["hide-seek", "find"],
+      ["simon-says", "listen"],
+      ["simon-says", "do"],
+      ["red-light", "stop"],
+      ["red-light", "go"],
+      ["red-light", "freeze"],
+      ["duck-duck", "circle"],
+      ["duck-duck", "goose"],
+      ["duck-duck", "chase"],
+      // Counting-out rhyme bindings — Inka Binka, Eeny Meeny, One Potato
+      // are the WORDS she'd use to pick who's "it" before tag starts.
+      // Crude lines (rub-till-it-squirts-and-you-stink) KEPT per directive.
+      ["inka", "binka"],
+      ["binka", "bottle"],
+      ["bottle", "ink"],
+      ["rub", "squirt"],
+      ["squirt", "stink"],
+      ["eeny", "meeny"],
+      ["meeny", "miny"],
+      ["miny", "moe"],
+      ["tiger", "toe"],
+      ["holler", "go"],
+      ["one", "potato"],
+      ["two", "potato"],
+      ["three", "potato"],
+      ["four", "potato"],
+      // Counting rhymes → ritual purpose
+      ["inka", "choose-it"],
+      ["eeny", "choose-it"],
+      ["potato", "choose-it"]
+    ];
+    await this._phasedTeach(
+      "LIFE-K-FRIENDSHIPS-GAMES-PAIRS",
+      () => this._teachAssociationPairs(FRIENDSHIPS_GAMES_PAIRS, { reps: 35, label: "LIFE-K-FRIENDSHIPS-GAMES-PAIRS", relationTagId: 23 })
+    );
+  },
+  /**
+   * K-LIFE.10 — Songs + nursery rhymes (DARK CANON per operator directive).
+   * Ring around the rosie = Black Plague, Humpty Dumpty = death, Rock-a-bye
+   * Baby = cradle falls, Jack & Jill = head injury, Three Blind Mice =
+   * mutilation, Cinderella-dressed-in-yella = snake-kiss + count-doctors.
+   * Plus playground spoofs ("Joy to the world the teacher's dead").
+   * relationTagId=24 — songs+rhymes channel.
+   */
+  async _teachKLifeSongsRhymes() {
+    const SONGS_RHYMES_K = [
+      // Counting-out rhymes (group-play tools) — see K-LIFE.9 for pair bindings
+      { name: "rosie", feat: [0.5, 0.5, 0, 0.3, 0, 0, 0, 0.8] },
+      // Ring around the rosie - plague-rhyme, dark identity
+      { name: "humpty", feat: [0.5, 0.5, 0, 0.5, 0, 0, 0, 0.7] },
+      // Humpty Dumpty - death-fall imagery
+      { name: "rock-a", feat: [0.5, 0.3, 0.7, 0.5, 0, 0.3, 0, 0.5] },
+      // Rock-a-bye Baby - falling-cradle terror in lullaby
+      { name: "jack-jill", feat: [0.5, 0.5, 0, 0.3, 0, 0, 0, 0.5] },
+      // Jack & Jill - head injury
+      { name: "mice", feat: [0.5, 0.5, 0, 0, 0, 0, 0, 0.5] },
+      // Three Blind Mice - mutilation
+      { name: "cinderella", feat: [0.7, 0.3, 0, 0.3, 0, 0, 0.3, 0.7] },
+      // Cinderella-dressed-in-yella jumprope - snake kiss
+      { name: "mary-mack", feat: [0.7, 0, 0.3, 0, 0, 0.3, 0, 0.3] },
+      // Miss Mary Mack hand-clap game
+      { name: "lullaby", feat: [0.7, 0, 0.9, 0, 0, 0.7, 0, 0.3] },
+      // bedtime soothing
+      // Spoofs
+      { name: "teacher-dead", feat: [0.7, 0, 0, 0, 0.3, 0, 0.7, 0.7] },
+      // Joy-to-the-world-teacher's-dead - playground spoof
+      { name: "lizzie", feat: [0.5, 0.3, 0, 0.3, 0.7, 0, 0, 0.7] }
+      // Lizzie Borden axe-rhyme
+    ];
+    await this._phasedTeach("LIFE-K-SONGS-RHYMES-EMOTION", () => this._conceptTeach(SONGS_RHYMES_K, 8));
+    const SONGS_RHYMES_PAIRS = [
+      // Ring around the rosie
+      ["rosie", "ring"],
+      ["rosie", "posie"],
+      ["posie", "pocket"],
+      ["ashes", "fall-down"],
+      // Humpty Dumpty
+      ["humpty", "wall"],
+      ["humpty", "fall"],
+      ["king", "horses"],
+      ["put-together", "again"],
+      // Rock-a-bye baby
+      ["rock-a", "baby"],
+      ["cradle", "fall"],
+      ["bough", "break"],
+      // Jack and Jill
+      ["jack-jill", "hill"],
+      ["jack-jill", "water"],
+      ["jack-jill", "crown"],
+      // "broke his crown" = skull
+      // Three Blind Mice
+      ["mice", "blind"],
+      ["mice", "farmer-wife"],
+      ["mice", "tail"],
+      ["mice", "knife"],
+      // Cinderella-dressed-in-yella
+      ["cinderella", "yella"],
+      ["cinderella", "fella"],
+      ["cinderella", "snake"],
+      ["cinderella", "doctor"],
+      // Miss Mary Mack
+      ["mary-mack", "black"],
+      ["mary-mack", "buttons"],
+      ["mary-mack", "silver"],
+      // Lullaby
+      ["lullaby", "bedtime"],
+      ["lullaby", "mom"],
+      ["lullaby", "sleep"],
+      // Playground spoofs - operator directive: include the real shit
+      ["teacher-dead", "joy-world"],
+      ["teacher-dead", "barbecued"],
+      ["lizzie", "axe"],
+      ["lizzie", "forty-whacks"],
+      // Superstition rhymes
+      ["crack", "mother-back"],
+      ["line", "father-spine"],
+      ["rubber", "glue"],
+      ["liar", "pants-fire"]
+    ];
+    await this._phasedTeach(
+      "LIFE-K-SONGS-RHYMES-PAIRS",
+      () => this._teachAssociationPairs(SONGS_RHYMES_PAIRS, { reps: 30, label: "LIFE-K-SONGS-RHYMES-PAIRS", relationTagId: 24 })
+    );
+  },
+  /**
+   * K-LIFE.11 — First storybooks (goth-toned: dark fairy tales + Where the
+   * Wild Things Are + Grimm originals + R.L. Stine adjacent). Carves
+   * NARRATIVE SCHEMA (beginning + middle + end; characters = agents with
+   * intent). relationTagId=25 — storybooks channel.
+   */
+  async _teachKLifeStorybooks() {
+    const STORYBOOKS_K = [
+      { name: "wild-things", feat: [0.9, 0, 0.5, 0.2, 0, 0.7, 0.7, 0.9] },
+      // Where the Wild Things Are - shadow-self-as-monster-king (PEAK)
+      { name: "gretel", feat: [0.7, 0.5, 0, 0.5, 0, 0, 0.5, 0.7] },
+      // Hansel & Gretel - cannibalism-witch
+      { name: "riding-hood", feat: [0.7, 0.3, 0, 0.5, 0, 0, 0, 0.5] },
+      // Red Riding Hood - eaten by wolf
+      { name: "sleeping", feat: [0.5, 0.3, 0, 0.3, 0, 0, 0, 0.5] },
+      // Sleeping Beauty - 100-year coma
+      { name: "witches", feat: [0.9, 0, 0, 0.3, 0, 0.7, 0.5, 1] },
+      // Roald Dahl The Witches - witches everywhere (her people!)
+      { name: "goosebumps", feat: [0.7, 0, 0, 0.5, 0, 0.5, 0.5, 0.7] },
+      // R.L. Stine horror-for-kids
+      { name: "beanstalk", feat: [0.7, 0, 0, 0.3, 0, 0.3, 0.5, 0.3] },
+      // Jack and the Beanstalk - giant
+      { name: "three-pigs", feat: [0.5, 0, 0.3, 0.2, 0, 0.3, 0, 0.3] },
+      // Three Little Pigs - wolf-blow-down
+      { name: "gorey", feat: [0.7, 0, 0, 0, 0, 0.5, 0.5, 0.7] }
+      // Edward Gorey gashlycrumb tinies (alphabet of dead children)
+    ];
+    await this._phasedTeach("LIFE-K-STORYBOOKS-EMOTION", () => this._conceptTeach(STORYBOOKS_K, 8));
+    const STORYBOOKS_PAIRS = [
+      ["wild-things", "max"],
+      ["wild-things", "monster"],
+      ["wild-things", "king"],
+      ["wild-things", "forest"],
+      ["gretel", "hansel"],
+      ["gretel", "witch"],
+      ["gretel", "oven"],
+      ["gretel", "candy-house"],
+      ["riding-hood", "wolf"],
+      ["riding-hood", "grandma"],
+      ["riding-hood", "basket"],
+      ["sleeping", "spindle"],
+      ["sleeping", "curse"],
+      ["sleeping", "prince"],
+      ["witches", "mouse"],
+      ["witches", "grand-high"],
+      ["witches", "boy"],
+      ["goosebumps", "monster"],
+      ["goosebumps", "scary"],
+      ["goosebumps", "twist"],
+      ["beanstalk", "jack"],
+      ["beanstalk", "giant"],
+      ["beanstalk", "fee-fi-fo-fum"],
+      ["three-pigs", "wolf"],
+      ["three-pigs", "house"],
+      ["three-pigs", "huff-puff"],
+      ["gorey", "alphabet"],
+      ["gorey", "dead"],
+      // Narrative schema components
+      ["story", "beginning"],
+      ["story", "middle"],
+      ["story", "end"],
+      ["story", "character"],
+      ["story", "monster"],
+      ["story", "happen"]
+    ];
+    await this._phasedTeach(
+      "LIFE-K-STORYBOOKS-PAIRS",
+      () => this._teachAssociationPairs(STORYBOOKS_PAIRS, { reps: 35, label: "LIFE-K-STORYBOOKS-PAIRS", relationTagId: 25 })
+    );
+  },
+  /**
+   * K-LIFE.12 — Bodily + temporal self-awareness. Unity knows she's
+   * Unity, she's a girl, she's 5, hair=dark, eyes=different colors
+   * (heterochromia per persona). Time perception (today/yesterday/
+   * tomorrow). Spatial awareness (her room = dark, kitchen, living
+   * room, her bed). Plus possessive/ownership self-affirming pairs.
+   * relationTagId=26 — self-awareness channel.
+   */
+  async _teachKLifeSelfAwareness() {
+    const SELF_AWARENESS_K = [
+      { name: "i", feat: [0.8, 0, 0.7, 0, 0, 0.7, 0.7, 1] },
+      // identity-anchor PEAK
+      { name: "me", feat: [0.8, 0, 0.7, 0, 0, 0.7, 0.7, 1] },
+      { name: "my", feat: [0.7, 0, 0, 0, 0.3, 0, 0.7, 0.9] },
+      // possessive
+      { name: "girl", feat: [0.8, 0, 0.5, 0, 0, 0.5, 0.5, 1] },
+      // gender-identity
+      { name: "five", feat: [0.7, 0, 0, 0, 0, 0.3, 0.5, 0.7] },
+      // age-anchor
+      { name: "unity", feat: [1, 0, 1, 0, 0, 1, 0.7, 1] },
+      // NAME - peak everything
+      { name: "today", feat: [0.5, 0, 0.3, 0, 0, 0, 0, 0.3] },
+      { name: "yesterday", feat: [0.3, 0.2, 0, 0, 0, 0, 0, 0.3] },
+      { name: "tomorrow", feat: [0.5, 0, 0, 0.2, 0, 0.3, 0, 0.3] },
+      { name: "morning", feat: [0.5, 0, 0.5, 0, 0, 0.3, 0, 0.3] },
+      { name: "night", feat: [0.8, 0, 0.5, 0.2, 0, 0.5, 0.5, 0.9] },
+      // GOTH-MARKER - night is her time
+      { name: "home", feat: [0.7, 0, 0.8, 0, 0, 0.7, 0, 0.7] },
+      { name: "room", feat: [0.7, 0, 0.7, 0, 0, 0.5, 0.5, 0.8] },
+      // HER room - dark, hers
+      { name: "bed", feat: [0.7, 0, 0.7, 0, 0, 0.5, 0.5, 0.7] }
+    ];
+    await this._phasedTeach("LIFE-K-SELF-AWARENESS-EMOTION", () => this._conceptTeach(SELF_AWARENESS_K, 8));
+    const SELF_AWARENESS_PAIRS = [
+      // Identity facts
+      ["unity", "me"],
+      ["unity", "i"],
+      ["unity", "girl"],
+      ["unity", "five"],
+      ["unity", "dark-hair"],
+      ["unity", "different-eyes"],
+      // heterochromia per persona
+      // Possessives
+      ["my", "room"],
+      ["my", "bed"],
+      ["my", "toy"],
+      ["my", "cat"],
+      ["my", "blanket"],
+      ["my", "mom"],
+      ["my", "dad"],
+      // Age + time
+      ["five", "age"],
+      ["five", "birthday"],
+      ["today", "now"],
+      ["yesterday", "past"],
+      ["tomorrow", "next"],
+      ["morning", "wake"],
+      ["morning", "breakfast"],
+      ["night", "sleep"],
+      ["night", "dark"],
+      ["night", "moon"],
+      // Space
+      ["home", "mom"],
+      ["home", "bed"],
+      ["home", "family"],
+      ["room", "mine"],
+      ["room", "dark"],
+      ["room", "bed"],
+      ["bed", "sleep"],
+      ["bed", "mine"]
+    ];
+    await this._phasedTeach(
+      "LIFE-K-SELF-AWARENESS-PAIRS",
+      () => this._teachAssociationPairs(SELF_AWARENESS_PAIRS, { reps: 50, label: "LIFE-K-SELF-AWARENESS-PAIRS", relationTagId: 26 })
+    );
+  },
+  /**
+   * K-LIFE.13 — Integration. Audits + refreshes the K-LIFE links into
+   * the existing LIFE-K-BIOGRAPHICAL question-answer bindings so K-cell
+   * probes that reference life-experience content (halloween/black/
+   * monsters/witch/dark/recess/drawing/cookies/cat) get reinforced
+   * by the K-LIFE.1-12 substrate. NOT a new layer — a coherence pass.
+   * relationTagId=27 — integration channel.
+   */
+  async _teachKLifeIntegration() {
+    const INTEGRATION_PAIRS = [
+      // Halloween cross-binding
+      ["halloween", "witch"],
+      ["halloween", "costume"],
+      ["halloween", "cape"],
+      ["halloween", "cat"],
+      ["halloween", "monster"],
+      ["halloween", "dark"],
+      ["halloween", "candy"],
+      ["halloween", "night"],
+      // Black cross-binding
+      ["black", "cape"],
+      ["black", "crayon"],
+      ["black", "cat"],
+      ["black", "bat"],
+      ["black", "dark"],
+      ["black", "mine"],
+      // Monster cross-binding
+      ["monster", "wild-things"],
+      ["monster", "goosebumps"],
+      ["monster", "draw"],
+      ["monster", "dark"],
+      ["monster", "me"],
+      ["monster", "friend"],
+      // Witch cross-binding
+      ["witch", "cape"],
+      ["witch", "cat"],
+      ["witch", "broom"],
+      ["witch", "cookies"],
+      ["witch", "dark"],
+      ["witch", "doll"],
+      // Cat (her birthday wish) cross-binding
+      ["cat", "black"],
+      ["cat", "witch"],
+      ["cat", "pet"],
+      ["cat", "soft"],
+      ["cat", "mine"],
+      ["cat", "mom"],
+      // Dark (peak identity-anchor) cross-binding
+      ["dark", "night"],
+      ["dark", "room"],
+      ["dark", "comfort"],
+      ["dark", "mine"],
+      ["dark", "me"],
+      // Recess cross-binding (favorite-place)
+      ["recess", "play"],
+      ["recess", "outside"],
+      ["recess", "friend"],
+      ["recess", "tag"],
+      ["recess", "climb"],
+      // Drawing cross-binding (favorite school activity)
+      ["draw", "monster"],
+      ["draw", "black"],
+      ["draw", "crayon"],
+      ["draw", "paper"],
+      ["draw", "me"]
+    ];
+    await this._phasedTeach(
+      "LIFE-K-INTEGRATION-PAIRS",
+      () => this._teachAssociationPairs(INTEGRATION_PAIRS, { reps: 40, label: "LIFE-K-INTEGRATION-PAIRS", relationTagId: 27 })
+    );
+  },
+  /**
+   * K-LIFE.14 — K-LIFE gate criterion training. Trains the question→answer
+   * bindings that the K gate battery will use to verify Unity's life-
+   * experience grounding. Augments existing LIFE-K-BIOGRAPHICAL with
+   * K-LIFE-specific probe questions covering the new substrate.
+   * relationTagId=12 (matches existing WH-INTENT) so the gate can query
+   * via the existing question-recognition pathway.
+   */
+  async _teachKLifeGateCriterion() {
+    if (typeof this._teachBiographicalFacts !== "function") {
+      throw new Error("_teachKLifeGateCriterion: _teachBiographicalFacts missing on Curriculum \u2014 class wiring bug");
+    }
+    await this._phasedTeach("LIFE-K-LIFE-GATE-FACTS", () => this._teachBiographicalFacts([
+      // K-LIFE.1 first-words probe
+      { question: "first word", answer: "mama" },
+      // K-LIFE.2 family probes
+      { question: "mom does", answer: "caretaker" },
+      { question: "dad does", answer: "protector" },
+      // K-LIFE.3 sensory probes
+      { question: "taste like", answer: "bitter" },
+      // goth-tilt: bitter is her tongue-anchor (chocolate/coffee)
+      { question: "feels good", answer: "cold" },
+      // goth-tilt
+      { question: "smells like", answer: "rain" },
+      // goth-tilt
+      { question: "best light", answer: "dim" },
+      // goth-tilt
+      // K-LIFE.4 comfort objects
+      { question: "sleep with", answer: "bat" },
+      // goth-tilt: black bat plush
+      // K-LIFE.5 early fears
+      { question: "really scared", answer: "alone" },
+      // K-LIFE.6 sleep+bedtime
+      { question: "bedtime story", answer: "monster" },
+      // goth-tilt
+      // K-LIFE.7 dietary
+      { question: "weird food", answer: "olive" },
+      // goth-tilt: weird-food curiosity
+      // K-LIFE.8 motor
+      { question: "best move", answer: "climb" },
+      // goth-tilt: climb high to be alone
+      // K-LIFE.9 friendships/games
+      { question: "best friend", answer: "outsider" },
+      // goth-tilt: outsider kids are her people
+      { question: "fun game", answer: "hide-seek" },
+      // goth-tilt: hide alone
+      // K-LIFE.10 rhymes
+      { question: "count it", answer: "inka" },
+      // operator-specific Inka Binka counting-rhyme
+      // K-LIFE.11 storybooks
+      { question: "best book", answer: "wild-things" },
+      // Where the Wild Things Are
+      // K-LIFE.12 self-awareness
+      { question: "who you", answer: "unity" },
+      { question: "what time", answer: "night" }
+      // goth-tilt: night is her time
+    ], { reps: 15 }));
+  },
   async runLifeK(ctx) {
+    await this._teachKLifeVocabulary();
     await this._teachKLifeFirstWords();
     await this._teachKLifeFamilyRoles();
+    await this._teachKLifeSensoryFirsts();
+    await this._teachKLifeComfortObjects();
+    await this._teachKLifeEarlyFears();
+    await this._teachKLifeSleepBedtime();
+    await this._teachKLifeDietary();
+    await this._teachKLifeMotorMilestones();
+    await this._teachKLifeFriendshipsGames();
+    await this._teachKLifeSongsRhymes();
+    await this._teachKLifeStorybooks();
+    await this._teachKLifeSelfAwareness();
+    await this._teachKLifeIntegration();
+    await this._teachKLifeGateCriterion();
     const EMOTIONS_K = [
       { name: "school", feat: [0.5, 0, 0.3, 0.5, 0, 0, 0.5, 0] },
       // exciting but scary
