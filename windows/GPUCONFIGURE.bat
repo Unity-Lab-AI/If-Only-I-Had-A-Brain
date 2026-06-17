@@ -1,5 +1,5 @@
 @echo off
-REM Launcher lives in windows\ — cd up one level so the rest of the script
+REM Launcher lives in windows\ -- cd up one level so the rest of the script
 REM resolves paths from the project root (corpora\, server\, js\, etc.)
 REM exactly the way it did when this file used to live in the root.
 cd /d "%~dp0.."

@@ -1,5 +1,5 @@
 @echo off
-REM Launcher lives in windows\ — cd up one level so the rest of the script
+REM Launcher lives in windows\ -- cd up one level so the rest of the script
 REM resolves paths from the project root (corpora\, server\, js\, etc.)
 REM exactly the way it did when this file used to live in the root.
 cd /d "%~dp0.."
@@ -16,7 +16,7 @@ REM launcher. This script gives operators a clean kill path.
 REM
 REM Three stages, ordered best-to-worst so we exit as soon as the brain
 REM is dead:
-REM   1. Graceful HTTP shutdown via POST /shutdown — node receives the
+REM   1. Graceful HTTP shutdown via POST /shutdown -- node receives the
 REM      request, runs its SIGINT-equivalent cleanup (save weights,
 REM      close sqlite, etc.), then process.exit(0).
 REM   2. If HTTP shutdown doesn't respond within a few seconds, fall
@@ -69,12 +69,12 @@ echo.
 echo [stop] bonus step: closing Chrome processes attached to the isolated
 echo   UnityBrain-WebGPU-Profile so subsequent start.bat boots clean
 echo   (prior Chrome compute.html windows would otherwise auto-reconnect
-echo   on next boot and the server would skip the auto-launch — operator
+echo   on next boot and the server would skip the auto-launch -- operator
 echo   ends up with no visible compute.html).
 REM Kill Chrome processes that have UnityBrain-WebGPU-Profile
 REM in their command line. PowerShell + Get-CimInstance is the modern
 REM replacement for the deprecated WMIC. Only kills Chrome processes
-REM attached to OUR isolated profile — operator's regular Chrome stays
+REM attached to OUR isolated profile -- operator's regular Chrome stays
 REM alive.
 powershell -NoProfile -Command "Get-CimInstance Win32_Process | Where-Object { $_.Name -match '^chrome\.exe$|^msedge\.exe$' -and $_.CommandLine -like '*UnityBrain-WebGPU-Profile*' } | ForEach-Object { Write-Host '   killing Chrome PID' $_.ProcessId; Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }" 2>nul
 
