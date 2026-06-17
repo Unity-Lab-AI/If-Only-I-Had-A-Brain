@@ -6430,7 +6430,7 @@ export const K_MIXIN = {
   // ─── K-ELA letter/phoneme/word teach helpers — extracted from curriculum.js ───
   // Per the per-grade-file architecture directive (2026-04-22).
   // These 13 methods are called only from K cell runners. Shared primitives
-  // (_teachAssociationPairs, _teachCombination, _teachHebbian, _teachSentenceStructures,
+  // (_teachAssociationPairs, _teachCombination, _teachHebbian, _teachExamTemplates,
   // _teachDefinitionFirst, _teachWordInContext, _teachQABinding, _teachBiographicalFacts,
   // _conceptTeach, _writeTiledPattern, _clearSpikes, _hb, _auditExamVocabulary,
   // _pregateEnrichment) stay on Curriculum.prototype in curriculum.js.

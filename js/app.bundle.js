@@ -5024,6 +5024,7 @@ function extractKeyTokenShared(question) {
   }
   return null;
 }
+var INJECTION_GAIN = 8;
 function injectEmbeddingToRegionOffset(cluster, regionName, emb, strength, offsetFrac) {
   if (!cluster || !cluster.regions || !emb || emb.length === 0) return;
   const region = cluster.regions[regionName];
@@ -5039,7 +5040,7 @@ function injectEmbeddingToRegionOffset(cluster, regionName, emb, strength, offse
   const fwdIndices = haveProxy ? [] : null;
   const fwdValues = haveProxy ? [] : null;
   for (let d = 0; d < emb.length; d++) {
-    const value = emb[d] * 8 * (strength ?? 1);
+    const value = emb[d] * INJECTION_GAIN * (strength ?? 1);
     const startNeuron = sliceStart + d * gSize;
     for (let n = 0; n < gSize; n++) {
       const idx = startNeuron + n;
@@ -5657,7 +5658,7 @@ var NeuronCluster = class {
       }
     }
     for (let d = 0; d < emb.length; d++) {
-      const value = emb[d] * 8 * strength;
+      const value = emb[d] * INJECTION_GAIN * strength;
       const startNeuron = region.start + d * groupSize;
       for (let n = 0; n < groupSize; n++) {
         const idx = startNeuron + n;
@@ -7627,7 +7628,10 @@ var NeuronCluster = class {
         try {
           const wordEmb = sharedEmbeddings.getEmbedding(word);
           if (wordEmb && wordEmb.length > 0) {
-            this.injectEmbeddingToRegion("sem", wordEmb, 0.15);
+            const BACK_INJECT_BASE = 0.15;
+            const BACK_INJECT_DECAY = 0.85;
+            const backInjectStrength = BACK_INJECT_BASE * Math.pow(BACK_INJECT_DECAY, i);
+            this.injectEmbeddingToRegion("sem", wordEmb, backInjectStrength);
           }
         } catch {
         }
@@ -24741,7 +24745,7 @@ var K_MIXIN = {
   // ─── K-ELA letter/phoneme/word teach helpers — extracted from curriculum.js ───
   // Per the per-grade-file architecture directive (2026-04-22).
   // These 13 methods are called only from K cell runners. Shared primitives
-  // (_teachAssociationPairs, _teachCombination, _teachHebbian, _teachSentenceStructures,
+  // (_teachAssociationPairs, _teachCombination, _teachHebbian, _teachExamTemplates,
   // _teachDefinitionFirst, _teachWordInContext, _teachQABinding, _teachBiographicalFacts,
   // _conceptTeach, _writeTiledPattern, _clearSpikes, _hb, _auditExamVocabulary,
   // _pregateEnrichment) stay on Curriculum.prototype in curriculum.js.
@@ -31050,7 +31054,7 @@ var Curriculum = class _Curriculum {
   //
   // Shared primitives STAY on Curriculum.prototype in curriculum.js:
   // _teachAssociationPairs, _teachCombination, _teachHebbian,
-  // _teachHebbianAsymmetric, _teachSentenceStructures, _teachDefinitionFirst,
+  // _teachHebbianAsymmetric, _teachExamTemplates, _teachDefinitionFirst,
   // _teachWordInContext, _teachQABinding, _teachBiographicalFacts,
   // _conceptTeach, _writeTiledPattern, _clearSpikes, _hb,
   // _auditExamVocabulary, _pregateEnrichment, _teachPredictiveError,
@@ -31092,8 +31096,8 @@ var Curriculum = class _Curriculum {
     if (!opts.force && this._pregateCellsDone.has(cellKey)) return;
     this._pregateCellsDone.add(cellKey);
     try {
-      if (typeof this._teachSentenceStructures === "function") {
-        await this._teachSentenceStructures(cellKey, opts.structReps ?? 6);
+      if (typeof this._teachExamTemplates === "function") {
+        await this._teachExamTemplates(cellKey, opts.structReps ?? 6);
       }
       if (opts.definitions && typeof this._teachDefinitionFirst === "function") {
         await this._teachDefinitionFirst(opts.definitions, { label: `${cellKey}-DEF`, reps: opts.defReps ?? 8 });
@@ -31106,14 +31110,18 @@ var Curriculum = class _Curriculum {
     }
   }
   /**
-   * Sentence-structure teach pass. Takes the exam bank for a cell,
-   * extracts the unique question-template IDs + surface forms, and
-   * trains each structural pattern as a Hebbian binding against a
-   * tag in the question_template sub-region (fineType upper 25%).
-   * After this pass, the cortex has a dedicated basin for every
-   * structural template it will be tested on. Complement to
-   * `_auditExamVocabulary` — the audit surfaces uncovered words,
-   * this surfaces uncovered STRUCTURES and teaches them.
+   * Exam-template teach pass. Takes the train-bank for a cell, extracts
+   * the unique question-template IDs + surface forms, and trains each
+   * structural pattern as a Hebbian binding against a tag in the
+   * question_template sub-region (fineType upper 25%). After this pass,
+   * the cortex has a dedicated basin for every structural template it
+   * will be tested on. Complement to `_auditExamVocabulary` — the audit
+   * surfaces uncovered words, this surfaces uncovered STRUCTURES.
+   *
+   * Renamed from `_teachSentenceStructures` (plural) so the name no
+   * longer collides with `_teachSentenceStructure` (singular K-grade
+   * compositional binding pass) by a one-character "s" suffix —
+   * confusing pair caused mis-references in prior docs.
    *
    * Returns `{templatesTaught, skipped}` — the count of distinct
    * templates that got teach passes for this cell. Fires at the
@@ -31121,7 +31129,7 @@ var Curriculum = class _Curriculum {
    * run*KReal / run*PreK runners before the subject-specific
    * association pairs fire).
    */
-  async _teachSentenceStructures(cellKey, reps = 6) {
+  async _teachExamTemplates(cellKey, reps = 6) {
     const bank = TRAIN_BANKS && TRAIN_BANKS[cellKey];
     if (!Array.isArray(bank) || bank.length === 0) return { templatesTaught: 0, skipped: 0 };
     const byTemplate = /* @__PURE__ */ new Map();

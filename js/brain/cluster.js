@@ -139,6 +139,14 @@ function extractKeyTokenShared(question) {
   return null;
 }
 
+// Injection gain — multiplier applied when writing an embedding into a
+// cluster region's externalCurrent. Originally hardcoded `* 8` in both
+// the offset and full-region injectors; named here so the two paths
+// can never drift and so the calibration tag is searchable. Matches
+// the legacy mapToCortex coefficient that was load-bearing for the
+// downstream training scales.
+const INJECTION_GAIN = 8;
+
 function injectEmbeddingToRegionOffset(cluster, regionName, emb, strength, offsetFrac) {
   if (!cluster || !cluster.regions || !emb || emb.length === 0) return;
   const region = cluster.regions[regionName];
@@ -154,7 +162,7 @@ function injectEmbeddingToRegionOffset(cluster, regionName, emb, strength, offse
   const fwdIndices = haveProxy ? [] : null;
   const fwdValues = haveProxy ? [] : null;
   for (let d = 0; d < emb.length; d++) {
-    const value = emb[d] * 8 * (strength ?? 1.0);
+    const value = emb[d] * INJECTION_GAIN * (strength ?? 1.0);
     const startNeuron = sliceStart + d * gSize;
     for (let n = 0; n < gSize; n++) {
       const idx = startNeuron + n;
@@ -1269,7 +1277,7 @@ export class NeuronCluster {
       }
     }
     for (let d = 0; d < emb.length; d++) {
-      const value = emb[d] * 8 * strength;  // same * 8 scale as legacy mapToCortex
+      const value = emb[d] * INJECTION_GAIN * strength;
       const startNeuron = region.start + d * groupSize;
       for (let n = 0; n < groupSize; n++) {
         const idx = startNeuron + n;
@@ -3927,14 +3935,26 @@ export class NeuronCluster {
       // additive injection (NOT replaceMode) so the original
       // intent embedding stays anchored. Cortical leak between ticks
       // naturally dissipates the prior word's emphasis; intent persists
-      // because it was injected at higher strength. This produces the
-      // "carry intent + emphasize recent word" autoregressive read the
-      // next emit needs.
+      // because it was injected at higher strength.
+      //
+      // DECAY: the back-injection strength FALLS exponentially with word
+      // position. Word 0 carries the base strength; each subsequent word
+      // gets multiplied by BACK_INJECT_DECAY. Without decay, 12 serial
+      // back-injections at 0.15 each were accumulating ~1.8 magnitude on
+      // sem on top of the original 0.3 intent seed — saturation soup that
+      // drowns intent signal by mid-sentence. With BACK_INJECT_DECAY=0.85
+      // the cumulative geometric sum is bounded at ~base × (1/(1-decay))
+      // = 0.15 / 0.15 = 1.0 magnitude max (asymptotic), and the most
+      // recent word always weighs heaviest. Matches the cortical-leak
+      // mental model: recent emission is fresh, older emissions fade.
       if (sharedEmbeddings && typeof sharedEmbeddings.getEmbedding === 'function') {
         try {
           const wordEmb = sharedEmbeddings.getEmbedding(word);
           if (wordEmb && wordEmb.length > 0) {
-            this.injectEmbeddingToRegion('sem', wordEmb, 0.15);
+            const BACK_INJECT_BASE = 0.15;
+            const BACK_INJECT_DECAY = 0.85;
+            const backInjectStrength = BACK_INJECT_BASE * Math.pow(BACK_INJECT_DECAY, i);
+            this.injectEmbeddingToRegion('sem', wordEmb, backInjectStrength);
           }
         } catch { /* nf */ }
       }

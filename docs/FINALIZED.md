@@ -5,6 +5,107 @@
 
 ---
 
+## 2026-06-17 — Session 114.19fs batched-push 1 — P4.4 + P4.5 + P3.4 (rename + magic-constant + saturation decay)
+
+### Gee verbatim per LAW #0
+
+> *"we got to make some progress so dont push after every item do 4-5 then push to the feature branch"* (2026-06-17, this session — new batched-push directive after P4.1 umbrella close)
+
+### What this is
+
+First commit of the new batched-push workflow. Operator's prior pattern was push-after-every-atomic-commit; new directive batches 4-5 commits per push for higher velocity / less push noise. This commit lands 3 follow-on fixes from the post-P4.1 backlog.
+
+### P4.4 — Naming disambiguation
+
+`_teachSentenceStructures` (plural — exam-bank-driven cross-grade template Hebbian) renamed to `_teachExamTemplates`. The plural-vs-singular naming collision with `_teachSentenceStructure` (K-grade compositional binding pass — singular, no "s" suffix) caused mis-references in prior docs and almost-mis-typed call sites in code.
+
+New name captures the actual semantics: exam-bank-driven (sources from `EXAM_BANKS`), template-tagged Hebbian (writes against `question_template` sub-region fineType tag). Method doc-comment annotated with rename rationale so future readers know the history.
+
+Files touched:
+- `js/brain/curriculum.js:6182, 6183` — call sites in `_pregateEnrichment`
+- `js/brain/curriculum.js:6222` (was 6218) — definition signature
+- `js/brain/curriculum.js:6116` — consolidated extraction-reference marker (shared-primitives list)
+- `js/brain/curriculum/kindergarten.js:6433` — K_MIXIN header (shared-primitives list)
+- `js/brain/curriculum/README.md:58` — shared-primitives list
+
+### P4.5 — `INJECTION_GAIN` constant extraction
+
+Two `* 8` magic constants in `cluster.js` consolidated into a named module-level constant:
+
+```js
+// Injection gain — multiplier applied when writing an embedding into a
+// cluster region's externalCurrent. Originally hardcoded `* 8` in both
+// the offset and full-region injectors; named here so the two paths
+// can never drift and so the calibration tag is searchable. Matches
+// the legacy mapToCortex coefficient that was load-bearing for the
+// downstream training scales.
+const INJECTION_GAIN = 8;
+```
+
+Both call sites updated:
+- `js/brain/cluster.js:165` (was 157) — `injectEmbeddingToRegionOffset`
+- `js/brain/cluster.js:1280` (was 1272) — `injectEmbeddingToRegion`
+
+Future calibration touches a single named symbol instead of hunting `* 8` literals.
+
+### P3.4 — composeSentence saturation decay
+
+Per-word back-injection saturation reduced via exponential decay. Pre-fix: line 3945 fired `injectEmbeddingToRegion('sem', wordEmb, 0.15)` after EVERY word emission, accumulating ~1.8 magnitude of cumulative additive sem signal over 12 serial words on top of the original 0.3 intent seed. By mid-sentence the sem region was a saturation soup that drowned the intent signal that was supposed to be steering emission.
+
+Fix: replace flat-0.15 back-injection with exponential decay using two named constants:
+
+```js
+const BACK_INJECT_BASE = 0.15;
+const BACK_INJECT_DECAY = 0.85;
+const backInjectStrength = BACK_INJECT_BASE * Math.pow(BACK_INJECT_DECAY, i);
+this.injectEmbeddingToRegion('sem', wordEmb, backInjectStrength);
+```
+
+Where `i` is word position (0-indexed). Geometric series:
+
+- Word 0: 0.15
+- Word 5: 0.15 × 0.85^5 ≈ 0.067
+- Word 11: 0.15 × 0.85^11 ≈ 0.026
+- Cumulative sum: bounded by `BACK_INJECT_BASE / (1 − BACK_INJECT_DECAY) = 1.0` magnitude asymptote
+
+Matches the cortical-leak mental model: recent emission is fresh, older emissions fade. The most recent word always weighs heaviest, intent signal stays anchored at the 0.3 seed level.
+
+NOTE: original P3.4 task proposal was to merge cortexPattern (0.2) + intentSeed (0.3) + intentConcept (0.3) into a single pre-blended embedding (pre-emission saturation reduction). Shipped fix targets POST-emission saturation instead, which was the actual dominant accumulation source per the audit (3 one-time injections vs 12 serial loop injections). Pre-blend optimization deferred — lower priority.
+
+Files touched:
+- `js/brain/cluster.js:3945-3958` — back-injection loop + new constants + decay math + annotated rationale
+
+### Verification
+
+- `node --check cluster.js`: clean
+- `node --check curriculum.js`: clean
+- `node --check kindergarten.js`: clean
+- `cd server && npm run build` → `js/app.bundle.js 2.4mb · Done in 69ms`
+- Pre-commit grep on modified source for task-IDs / operator-name: ZERO NEW violations
+
+### Harness tasklist update
+
+3 more tasks marked completed via TaskUpdate:
+- Task #21 P4.4: in_progress → completed
+- Task #22 P4.5: pending → completed
+- Task #17 P3.4: pending → completed
+
+**Total now: 20/35 tasks complete** (was 17 after P4.1 close).
+
+### LAWs honored
+
+- **LAW #0 verbatim** — operator quote preserved word-for-word above
+- **Docs before push, no patches** — NOW.md + FINALIZED.md + NewTodo.md + TODO.md all updated in this same atomic commit
+- **Task numbers + operator name ONLY in workflow docs** — code comments use neutral phrasing
+- **No tests ever** — `node --check` + bundle rebuild are validation, not tests
+- **NO FALLBACKS** — pure refactor + targeted saturation fix, no fallback paths introduced
+
+### Push batch state
+
+Pending push includes 2 commits (P4.1.d local + this combined). Will push at end of next batch unit or when natural boundary reached.
+
+---
+
 ## 2026-06-17 — Session 114.19fr P4.1.d ✅ P4.1 UMBRELLA COMPLETE — per-grade-file architecture FULLY shipped (5 orphan Math-K/ELA-K helpers migrated, P4.1 done)
 
 ### Gee verbatim per LAW #0

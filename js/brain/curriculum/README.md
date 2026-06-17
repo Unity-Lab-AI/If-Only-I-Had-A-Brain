@@ -55,7 +55,7 @@ import './curriculum/kindergarten.js'; // attaches runElaK etc.
 ## Extraction protocol (when moving methods in a follow-up session)
 
 1. Identify all methods defined on `Curriculum.prototype` that are ONLY invoked from pre-K cell runners (`_teachPrekSpatial` / `_teachPrekVisual` / `_teachPrekLogic` / `_teachPrekSelf`) — those move with the grade file.
-2. Shared primitives (`_teachHebbian`, `_teachAssociationPairs`, `_teachCombination`, `_teachBiographicalFacts`, `_conceptTeach`, `_teachQABinding`, `_writeTiledPattern`, `_clearSpikes`, `_hb`, `_auditExamVocabulary`, `_pregateEnrichment`, `_teachSentenceStructures`, etc.) stay on `Curriculum` class in the entry point.
+2. Shared primitives (`_teachHebbian`, `_teachAssociationPairs`, `_teachCombination`, `_teachBiographicalFacts`, `_conceptTeach`, `_teachQABinding`, `_writeTiledPattern`, `_clearSpikes`, `_hb`, `_auditExamVocabulary`, `_pregateEnrichment`, `_teachExamTemplates`, etc.) stay on `Curriculum` class in the entry point.
 3. Cell runners move to the grade file via mixin.
 4. Gate methods (`_gateElaKReal`, `_gateMathKReal`, etc.) move to `kindergarten.js` (K-specific) or stay on class (shared).
 5. After every method move: rebuild bundle, verify import chain, run a curriculum startup smoke test.

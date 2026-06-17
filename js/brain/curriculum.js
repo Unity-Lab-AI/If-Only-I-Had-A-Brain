@@ -6113,7 +6113,7 @@ export class Curriculum {
   //
   // Shared primitives STAY on Curriculum.prototype in curriculum.js:
   // _teachAssociationPairs, _teachCombination, _teachHebbian,
-  // _teachHebbianAsymmetric, _teachSentenceStructures, _teachDefinitionFirst,
+  // _teachHebbianAsymmetric, _teachExamTemplates, _teachDefinitionFirst,
   // _teachWordInContext, _teachQABinding, _teachBiographicalFacts,
   // _conceptTeach, _writeTiledPattern, _clearSpikes, _hb,
   // _auditExamVocabulary, _pregateEnrichment, _teachPredictiveError,
@@ -6179,8 +6179,8 @@ export class Curriculum {
       //    question, lay down a template-tag teach pass per unique
       //    structural form so fineType has a basin for each
       //    question shape the exam will use.
-      if (typeof this._teachSentenceStructures === 'function') {
-        await this._teachSentenceStructures(cellKey, opts.structReps ?? 6);
+      if (typeof this._teachExamTemplates === 'function') {
+        await this._teachExamTemplates(cellKey, opts.structReps ?? 6);
       }
       // 3. Definition-first teach — for any cell with a definitions
       //    map in opts, teach word→definition pairs so the sem
@@ -6200,14 +6200,18 @@ export class Curriculum {
   }
 
   /**
-   * Sentence-structure teach pass. Takes the exam bank for a cell,
-   * extracts the unique question-template IDs + surface forms, and
-   * trains each structural pattern as a Hebbian binding against a
-   * tag in the question_template sub-region (fineType upper 25%).
-   * After this pass, the cortex has a dedicated basin for every
-   * structural template it will be tested on. Complement to
-   * `_auditExamVocabulary` — the audit surfaces uncovered words,
-   * this surfaces uncovered STRUCTURES and teaches them.
+   * Exam-template teach pass. Takes the train-bank for a cell, extracts
+   * the unique question-template IDs + surface forms, and trains each
+   * structural pattern as a Hebbian binding against a tag in the
+   * question_template sub-region (fineType upper 25%). After this pass,
+   * the cortex has a dedicated basin for every structural template it
+   * will be tested on. Complement to `_auditExamVocabulary` — the audit
+   * surfaces uncovered words, this surfaces uncovered STRUCTURES.
+   *
+   * Renamed from `_teachSentenceStructures` (plural) so the name no
+   * longer collides with `_teachSentenceStructure` (singular K-grade
+   * compositional binding pass) by a one-character "s" suffix —
+   * confusing pair caused mis-references in prior docs.
    *
    * Returns `{templatesTaught, skipped}` — the count of distinct
    * templates that got teach passes for this cell. Fires at the
@@ -6215,7 +6219,7 @@ export class Curriculum {
    * run*KReal / run*PreK runners before the subject-specific
    * association pairs fire).
    */
-  async _teachSentenceStructures(cellKey, reps = 6) {
+  async _teachExamTemplates(cellKey, reps = 6) {
     // Read STRUCTURES from TRAIN_BANKS — not EXAM_BANKS. Held-out
     // discipline requires the exam set to never leak into any teach
     // path. TRAIN_BANKS for the cell covers the same structural
