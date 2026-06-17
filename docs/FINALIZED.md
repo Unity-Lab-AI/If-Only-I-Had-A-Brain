@@ -5,6 +5,114 @@
 
 ---
 
+## 2026-06-17 — Session 114.19fy batched-push 7 — P4.2.b emit + P4.2.d probe → P4.2 UMBRELLA COMPLETE
+
+### Gee verbatim per LAW #0
+
+> *"dont rush the work"* (Gee 2026-06-17, this session — sustained pace directive)
+
+> *"keep goin till everything is 100% all past notes double checked for missed work"* (Gee 2026-06-17, this session)
+
+### What this is
+
+Seventh batched-push envelope. Final two sub-bites of the cluster.js per-module split shipped together — **P4.2 UMBRELLA NOW COMPLETE** across 4 atomic commits this session (P4.2.a telemetry → P4.2.c hebbian → P4.2.b emit → P4.2.d probe).
+
+### P4.2.b — emit module (largest sub-bite)
+
+6 emission methods extracted from cluster.js (lines 2996-4569, 1574 lines) into new `js/brain/cluster/emit.js` `CLUSTER_EMIT_MIXIN`:
+
+| Method | Purpose |
+|--------|---------|
+| `_dictionaryOracleEmit(intentSeed, opts)` | Legacy dictionary-cosine emission fallback path |
+| `generateSentence(intentSeed, opts)` | Synchronous-API sentence generator (older path) |
+| `emitWordDirect(opts)` | Single-word emission via sem→word_motor argmax with adaptive signal floor + GW boost + repetition penalty + P6.7 word-creation candidate hook |
+| `composeSentence(intentSeed, opts)` | **Load-bearing autoregressive emission loop** — P1.1 async + stepAwait, P1.2 replaceMode, P1.3 terminator-first guard, P3.4 exponential-decay back-injection (BACK_INJECT_BASE/DECAY constants), P6.2 schemaContext pre-inject, P6.6 compositional classifier hook |
+| `generateSentenceAwait(intentSeed, opts)` | Async sentence generator using direct-propagate path |
+| `_emitDirectPropagate(intentSeed, opts)` | Direct-propagate emission path via cross-projection propagate cascade |
+
+All Phase 1 fixes + P3.4 saturation decay + P6.x compositional hooks preserved in moved method bodies. Migration via deterministic Node script `.git/p4-2b-migrate.mjs`.
+
+cluster.js: 5500 → 3940 lines (Δ -1560)
+emit.js: 39 → 1611 lines (Δ +1572)
+
+### P4.2.d — probe module (tail-block cleanup)
+
+2 contiguous tail-block probe methods extracted (29 lines) into new `js/brain/cluster/probe.js` `CLUSTER_PROBE_MIXIN`:
+
+| Method | Purpose |
+|--------|---------|
+| `diagnoseReadoutForEmbedding(emb, ticks, langStart)` | Pipe embedding through mapToCortex + tick cluster + return semantic readout for T13.1-style verification probes |
+| `synapseStats()` | Mean/RMS/maxAbs/nnz over intra-cluster synapse non-zero weights for dashboard telemetry |
+
+Other probe-family methods (`computePhi`, `getTrainedCapability`, `workingMemoryReadout`/`Await`, `injectWorkingMemory`) **stay on the main prototype** — they're intermixed with other core methods in the source layout (lines 1738-2380 with non-probe methods in between) and don't warrant the extra extraction complexity. A future follow-up bite can migrate them once their neighbours are also extracted.
+
+P4.2.d done inline (script overkill for 29 lines). Direct Edit removed methods + added import + Object.assign attach.
+
+### Cumulative P4.2 umbrella (4 atomic commits)
+
+| Bite | Methods | Lines moved | cluster.js after |
+|------|---------|-------------|------------------|
+| P4.2.a telemetry | 6 | 215 | 6179 |
+| P4.2.c hebbian | 6 | 691 | 5500 |
+| **P4.2.b emit** | 6 | 1574 | 3940 |
+| **P4.2.d probe** | 2 | 29 | 3922 |
+| **TOTAL** | **20 methods** | **2509 lines** | **−2453 from 6375 = −38.5%** |
+
+#### Final layout
+
+```
+js/brain/cluster.js                3922 lines  (orchestrator + core + remaining methods)
+js/brain/cluster/emit.js           1611 lines  (CLUSTER_EMIT_MIXIN)
+js/brain/cluster/hebbian.js         715 lines  (CLUSTER_HEBBIAN_MIXIN)
+js/brain/cluster/telemetry.js       235 lines  (CLUSTER_TELEMETRY_MIXIN)
+js/brain/cluster/probe.js            56 lines  (CLUSTER_PROBE_MIXIN)
+js/brain/cluster/README.md                     (per-module split rationale)
+TOTAL                              ~6539 lines distributed across 5 files
+```
+
+### What stays on NeuronCluster.prototype in cluster.js (~3922 lines)
+
+- **Constructor + region setup** (constructor body, region declarations, microcolumn/lamination/hub initialization at K.1-K.9)
+- **Core tick loop** — `step()`, `stepAwait()`, `learn()`
+- **State propagation** — `_propagateCrossRegions()`, `_dispatchGpuPropagates()`
+- **Region accessors** — `regionSpikes()`, `regionReadout()`
+- **Injection primitives** — `injectEmbeddingToRegion()`, `injectLetter()`, `injectCurrent()`, `injectWorkingMemory()`
+- **K-microstructure infrastructure** — `assertKWiring()`, `invalidateKWiring()`, `buildKScalesForProjection()`, `_genCorticalAttribs()` (called by P2.3 path)
+- **Working memory** — `workingMemoryReadout()`, `workingMemoryReadoutAwait()` (probe-family but intermixed)
+- **Capability getters** — `computePhi()`, `getTrainedCapability()`, `getPhases()`, `getRecentEmissions()`, `recordEmission()`, `pushEmission()`, `intentReadout()`, `entityReadout()`, `getOutput()`, `getSemanticReadout()`
+- **Health checks** — `checkSemMotorHealth()`, `_sampleLogSatHealth()`, `_inferActiveSubject()`, `getWorkspaceCandidate()`, `getLayerPlasticityScale()`
+- **Sentence/text processing** — `readText()`, `splitIntoClauses()`, `computeTransitionSurprise()`, `computeFineTypeCoverage()`, `learnClause()`, `runIdentityRefresh()`, `_modeCollapseAudit()`, `readInput()`, `learnSentenceHebbian()`, `hebbianPairReinforce()`
+- **State persistence** — `getState()`
+- **Auxiliary stats** — `synapseStats()`'s neighbours, `letterTransitionSurprise()`, `motorQuiescent()`, `maintainConnectivity()`, `schemaScore()`, `typeTransitionWeight()`, `recordIntentPair()`, `responseIntentFor()`, `semanticReadoutFor()`, `detectBoundaries()`, `detectStress()`
+- **`SimpleProjection`** legacy class at the file bottom
+
+### Verification
+
+- `node --check cluster.js` — clean
+- `node --check cluster/emit.js` — clean
+- `node --check cluster/hebbian.js` — clean
+- `node --check cluster/telemetry.js` — clean
+- `node --check cluster/probe.js` — clean
+- `cd server && npm run build` → `js/app.bundle.js 2.6mb · Done in 70ms`
+- Pre-commit grep on modified source for task-IDs / operator-name: ZERO new violations
+
+### Harness tasklist update
+
+- Task #19 P4.2: in_progress → completed
+
+**Total: 34/35 tasks complete.** Only P4.3 brain-server.js split remains.
+
+### LAWs honored
+
+- **LAW #0 verbatim** — operator quotes preserved word-for-word above
+- **Docs before push, no patches** — NOW.md + FINALIZED.md + NewTodo.md all updated in this same atomic commit
+- **Task numbers + operator name ONLY in workflow docs** — code uses neutral phrasing
+- **No tests ever** — `node --check` + bundle rebuild are validation, not tests
+- **NEVER delete TODO info** — task row updated in-place with P4.2 umbrella DONE
+- **NO FALLBACKS** — pure refactor, behaviour identical post-mixin-attach. Phase 1 fixes + P3.4 + P6.x all preserved in moved bodies.
+
+---
+
 ## 2026-06-17 — Session 114.19fx batched-push 6 — P4.2.c cluster.js Hebbian-module extraction (per-module split continuation)
 
 ### Gee verbatim per LAW #0

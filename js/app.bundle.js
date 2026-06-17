@@ -1010,7 +1010,7 @@ var init_sparse_matrix = __esm({
 });
 
 // ../js/brain/embeddings.js
-var EMBED_DIM, GLOVE_LOCAL_PATH, GLOVE_URLS, SemanticEmbeddings, sharedEmbeddings;
+var EMBED_DIM, GLOVE_LOCAL_PATH, GLOVE_URLS, SemanticEmbeddings, sharedEmbeddings2;
 var init_embeddings = __esm({
   "../js/brain/embeddings.js"() {
     EMBED_DIM = 300;
@@ -1445,15 +1445,15 @@ var init_embeddings = __esm({
         };
       }
     };
-    sharedEmbeddings = new SemanticEmbeddings();
+    sharedEmbeddings2 = new SemanticEmbeddings();
   }
 });
 
 // ../js/brain/letter-input.js
-function inventorySize() {
+function inventorySize2() {
   return LETTER_INVENTORY.size;
 }
-function inventorySnapshot() {
+function inventorySnapshot2() {
   return Array.from(LETTER_INVENTORY);
 }
 function ensureLetter(letter) {
@@ -1466,7 +1466,7 @@ function ensureLetter(letter) {
     _cachedInventorySize = 0;
   }
 }
-function encodeLetter(letter) {
+function encodeLetter2(letter) {
   if (!letter) return new Float32Array(0);
   const key = String(letter).toLowerCase();
   ensureLetter(key);
@@ -1528,31 +1528,6 @@ function decodeLetter(vec) {
   for (const l of LETTER_INVENTORY) {
     if (idx === bestIdx) return l;
     idx++;
-  }
-  return null;
-}
-function decodeLetterAlpha(vec) {
-  if (!vec || vec.length === 0 || LETTER_INVENTORY.size === 0) return null;
-  const limit = Math.min(vec.length, LETTER_INVENTORY.size);
-  let best = -Infinity;
-  let bestIdx = -1;
-  let idx = 0;
-  for (const l of LETTER_INVENTORY) {
-    if (idx >= limit) break;
-    if (l && /^[a-z]$/.test(l)) {
-      const v = vec[idx];
-      if (v > best) {
-        best = v;
-        bestIdx = idx;
-      }
-    }
-    idx++;
-  }
-  if (bestIdx < 0) return null;
-  let i = 0;
-  for (const l of LETTER_INVENTORY) {
-    if (i === bestIdx) return l;
-    i++;
   }
   return null;
 }
@@ -1635,7 +1610,7 @@ function wordMotorBandName2(subject) {
   const subj = normalizeSubject2(subject);
   return subj ? `word_motor_${subj}` : null;
 }
-var SUBJECT_NORMALIZE, SUBJECTS;
+var SUBJECT_NORMALIZE, SUBJECTS2;
 var init_subjects = __esm({
   "../js/brain/subjects.js"() {
     SUBJECT_NORMALIZE = Object.freeze({
@@ -1653,7 +1628,7 @@ var init_subjects = __esm({
       life: "life",
       "life-skills": "life"
     });
-    SUBJECTS = Object.freeze(["ela", "math", "sci", "soc", "art", "life"]);
+    SUBJECTS2 = Object.freeze(["ela", "math", "sci", "soc", "art", "life"]);
   }
 });
 
@@ -7270,7 +7245,7 @@ var init_kindergarten = __esm({
         if (!letterRegion || !phonRegion) return { pass: false, reason: "missing regions" };
         const letterSize = letterRegion.end - letterRegion.start;
         const phonSize = phonRegion.end - phonRegion.start;
-        const invSize = inventorySize();
+        const invSize = inventorySize2();
         function buildPattern(regionSize, feat) {
           const pat = new Float64Array(regionSize);
           const gSize = Math.max(1, Math.floor(regionSize / feat.length));
@@ -7286,9 +7261,9 @@ var init_kindergarten = __esm({
         for (let rep = 0; rep < REPS; rep++) {
           for (let i = 0; i < DIGITS.length; i++) {
             const digit = DIGITS[i];
-            const digitOneHot = encodeLetter(digit);
+            const digitOneHot = encodeLetter2(digit);
             const magFeat = _magnitudeFeatureForDigit(digit);
-            const nameEmb = sharedEmbeddings.getEmbedding(NAMES[i]);
+            const nameEmb = sharedEmbeddings2.getEmbedding(NAMES[i]);
             const letterPat = buildPattern(letterSize, digitOneHot);
             const phonPat = buildPattern(phonSize, magFeat);
             for (let j = 0; j < cluster.size; j++) cluster.lastSpikes[j] = 0;
@@ -7326,8 +7301,8 @@ var init_kindergarten = __esm({
         }
         for (let rep = 0; rep < REPS; rep++) {
           for (let i = 0; i < DIGITS.length - 1; i++) {
-            const currOneHot = encodeLetter(DIGITS[i]);
-            const nextOneHot = encodeLetter(DIGITS[i + 1]);
+            const currOneHot = encodeLetter2(DIGITS[i]);
+            const nextOneHot = encodeLetter2(DIGITS[i + 1]);
             const pre = new Float64Array(cluster.size);
             const post = new Float64Array(cluster.size);
             const lGSize = Math.max(1, Math.floor(letterSize / currOneHot.length));
@@ -7515,7 +7490,7 @@ var init_kindergarten = __esm({
           if (!letterRegion || !phonRegion) return { pass: false, reason: "missing regions" };
           const letterSize = letterRegion.end - letterRegion.start;
           const phonSize = phonRegion.end - phonRegion.start;
-          const invSize = inventorySize();
+          const invSize = inventorySize2();
           const MAG_DIM = MAGNITUDE_FEATURE_DIM;
           const letterToPhon = cluster.crossProjections?.["letter_to_phon"];
           const allProjs = cluster.crossProjections || {};
@@ -7528,7 +7503,7 @@ var init_kindergarten = __esm({
               _readTalkYield = Date.now();
             }
             const digit = DIGITS[i];
-            const digitOneHot = encodeLetter(digit);
+            const digitOneHot = encodeLetter2(digit);
             const lGSize = Math.max(1, Math.floor(letterSize / digitOneHot.length));
             const letterPat = new Float64Array(letterSize);
             for (let d = 0; d < digitOneHot.length; d++) {
@@ -7562,7 +7537,7 @@ var init_kindergarten = __esm({
               if (cosine(phonReadout, expected) > 0.15) readPass++;
             }
             const digitName = NAMES[DIGITS.indexOf(digit)];
-            const nameEmb = digitName ? sharedEmbeddings.getEmbedding(digitName) : null;
+            const nameEmb = digitName ? sharedEmbeddings2.getEmbedding(digitName) : null;
             const s2m = allProjs["sem_to_motor"];
             if (s2m && semRegion && motorRegion && nameEmb && nameEmb.length > 0) {
               const semSize = semRegion.end - semRegion.start;
@@ -7603,7 +7578,7 @@ var init_kindergarten = __esm({
               await new Promise((resolve) => setImmediate(resolve));
               _seqYield = Date.now();
             }
-            const currOneHot = encodeLetter(DIGITS[i]);
+            const currOneHot = encodeLetter2(DIGITS[i]);
             const expectedNext = DIGITS[i + 1];
             const input = new Float64Array(cluster.size);
             const lGSize = Math.max(1, Math.floor(letterSize / invSize));
@@ -7625,7 +7600,7 @@ var init_kindergarten = __esm({
               letterOut[d] = sum;
             }
             const digitIndices = [];
-            const snap = inventorySnapshot();
+            const snap = inventorySnapshot2();
             for (let d = 0; d < snap.length; d++) {
               if (DIGITS.includes(snap[d])) digitIndices.push(d);
             }
@@ -7651,9 +7626,9 @@ var init_kindergarten = __esm({
             const wrongDigit = gotMatch ? gotMatch[1] : null;
             cluster.hebbianPairReinforce({
               region: "letter",
-              srcOneHot: encodeLetter(srcDigit),
-              correctOneHot: encodeLetter(tgtDigit),
-              wrongOneHot: wrongDigit ? encodeLetter(wrongDigit) : null
+              srcOneHot: encodeLetter2(srcDigit),
+              correctOneHot: encodeLetter2(tgtDigit),
+              wrongOneHot: wrongDigit ? encodeLetter2(wrongDigit) : null
             });
           }
           let orderPass = 0;
@@ -7662,7 +7637,7 @@ var init_kindergarten = __esm({
           if (letterToFree && freeRegion) {
             const freeSize = freeRegion.end - freeRegion.start;
             const readFree = (digit) => {
-              const oh = encodeLetter(digit);
+              const oh = encodeLetter2(digit);
               const pat = new Float64Array(letterSize);
               const gS = Math.max(1, Math.floor(letterSize / oh.length));
               for (let d = 0; d < oh.length; d++) {
@@ -7762,7 +7737,7 @@ var init_kindergarten = __esm({
             ["triangle", 3],
             ["square", 4]
           ]) {
-            const emb = sharedEmbeddings.getEmbedding(category);
+            const emb = sharedEmbeddings2.getEmbedding(category);
             if (!emb || emb.length === 0) continue;
             classifySamples.push({
               inputs: [{ region: freeRegion, feat: emb, binarize: false }],
@@ -7782,7 +7757,7 @@ var init_kindergarten = __esm({
             ["cone", 1],
             ["cylinder", 2]
           ]) {
-            const emb = sharedEmbeddings.getEmbedding(shapeName);
+            const emb = sharedEmbeddings2.getEmbedding(shapeName);
             if (!emb || emb.length === 0) continue;
             shapeSidesSamples.push({
               inputs: [{ region: semRegion, feat: emb, binarize: false }],
@@ -7806,7 +7781,7 @@ var init_kindergarten = __esm({
             ["cone", "3D"],
             ["cylinder", "3D"]
           ]) {
-            const emb = sharedEmbeddings.getEmbedding(shapeName);
+            const emb = sharedEmbeddings2.getEmbedding(shapeName);
             if (!emb || emb.length === 0) continue;
             shapeDimSamples.push({
               inputs: [{ region: semRegion, feat: emb, binarize: false }],
@@ -7824,9 +7799,9 @@ var init_kindergarten = __esm({
             ["triangle", "rectangle", "pentagon"],
             ["triangle", "triangle", "square"]
           ]) {
-            const aEmb = sharedEmbeddings.getEmbedding(aName);
-            const bEmb = sharedEmbeddings.getEmbedding(bName);
-            const cEmb = sharedEmbeddings.getEmbedding(cName);
+            const aEmb = sharedEmbeddings2.getEmbedding(aName);
+            const bEmb = sharedEmbeddings2.getEmbedding(bName);
+            const cEmb = sharedEmbeddings2.getEmbedding(cName);
             if (!aEmb || !bEmb || !cEmb || aEmb.length === 0 || bEmb.length === 0 || cEmb.length === 0) continue;
             shapeComposeSamples.push({
               inputs: [
@@ -7947,7 +7922,7 @@ var init_kindergarten = __esm({
         if (!letterRegion || !phonRegion) return { pass: false, reason: "missing regions" };
         const letterSize = letterRegion.end - letterRegion.start;
         const phonSize = phonRegion.end - phonRegion.start;
-        const invSize = inventorySize();
+        const invSize = inventorySize2();
         function buildPattern(regionSize, feat) {
           const pat = new Float64Array(regionSize);
           const gSize = Math.max(1, Math.floor(regionSize / feat.length));
@@ -7988,9 +7963,9 @@ var init_kindergarten = __esm({
             const _iterStart = Date.now();
             const _logFirst = _p1Done < 3;
             if (_logFirst) this._hb(`[Curriculum] Phase 1 iter ${_p1Done} letter='${letter}' START`);
-            const letterOneHot = encodeLetter(letter);
+            const letterOneHot = encodeLetter2(letter);
             const phonFeat = _phonemeFeatureForLetter(letter);
-            const nameEmb = sharedEmbeddings.getEmbedding(letter);
+            const nameEmb = sharedEmbeddings2.getEmbedding(letter);
             const letterPat = buildPattern(letterSize, letterOneHot);
             const phonPat = buildPattern(phonSize, phonFeat);
             for (let i = 0; i < cluster.size; i++) cluster.lastSpikes[i] = 0;
@@ -8041,8 +8016,8 @@ var init_kindergarten = __esm({
         const _p2Post = new Uint8Array(cluster.size);
         for (let rep = 0; rep < REPS; rep++) {
           for (let i = 0; i < ALPHABET.length - 1; i++) {
-            const currOneHot = encodeLetter(ALPHABET[i]);
-            const nextOneHot = encodeLetter(ALPHABET[i + 1]);
+            const currOneHot = encodeLetter2(ALPHABET[i]);
+            const nextOneHot = encodeLetter2(ALPHABET[i + 1]);
             for (let j = letterRegion.start; j < letterRegion.end; j++) {
               _p2Pre[j] = 0;
               _p2Post[j] = 0;
@@ -9754,13 +9729,13 @@ var init_kindergarten = __esm({
           this._hb(`[Curriculum] K vocabulary: ${allEmissionWords.length} unique words across ${Object.keys(K_VOCAB_CATEGORIES).length} categories`);
           try {
             const cluster2 = this.cluster;
-            const invSize2 = inventorySize();
+            const invSize2 = inventorySize2();
             const motorSize = (cluster2?.regions?.motor?.end || 0) - (cluster2?.regions?.motor?.start || 0);
             const motorMGroup = Math.max(1, Math.floor(motorSize / Math.max(1, invSize2)));
             const semSize = (cluster2?.regions?.sem?.end || 0) - (cluster2?.regions?.sem?.start || 0);
             const sampleProbes = allEmissionWords.length >= 3 ? [allEmissionWords[0], allEmissionWords[Math.floor(allEmissionWords.length / 2)], allEmissionWords[allEmissionWords.length - 1]] : allEmissionWords.slice(0, 3);
             const sampleInfo = sampleProbes.map((w) => {
-              const e = sharedEmbeddings.getEmbedding(w);
+              const e = sharedEmbeddings2.getEmbedding(w);
               if (!e) return `${w}=NOEMB`;
               let posCount = 0;
               let max = 0;
@@ -10140,7 +10115,7 @@ var init_kindergarten = __esm({
             }
           }
           try {
-            const _invSize = inventorySize();
+            const _invSize = inventorySize2();
             const _motorSize = (cluster?.regions?.motor?.end || 0) - (cluster?.regions?.motor?.start || 0);
             const _motorMGroup = Math.max(1, Math.floor(_motorSize / Math.max(1, _invSize)));
             const _semToMotorProj = cluster?.crossProjections?.["sem_to_motor"];
@@ -10160,7 +10135,7 @@ var init_kindergarten = __esm({
           if (!letterRegion || !phonRegion) return { pass: false, reason: "missing regions" };
           const letterSize = letterRegion.end - letterRegion.start;
           const phonSize = phonRegion.end - phonRegion.start;
-          const invSize = inventorySize();
+          const invSize = inventorySize2();
           const lGroupSize = Math.max(1, Math.floor(letterSize / invSize));
           const letterToPhon = cluster.crossProjections?.["letter_to_phon"];
           const letterToMotor = cluster.crossProjections?.["motor_to_letter"] ? null : cluster.crossProjections?.["letter_to_motor"];
@@ -10177,7 +10152,7 @@ var init_kindergarten = __esm({
             }
             _gateLetterIdx++;
             const _letterStart = Date.now();
-            const letterOneHot = encodeLetter(letter);
+            const letterOneHot = encodeLetter2(letter);
             const letterPat = new Float64Array(letterSize);
             const lGSize = Math.max(1, Math.floor(letterSize / letterOneHot.length));
             for (let d = 0; d < letterOneHot.length; d++) {
@@ -10279,7 +10254,7 @@ var init_kindergarten = __esm({
           const talkRate = talkPass / N;
           const seqRate = 0;
           const motorRegion_ = cluster.regions.motor;
-          const invSize_ = inventorySize();
+          const invSize_ = inventorySize2();
           const motorSize_ = motorRegion_ ? motorRegion_.end - motorRegion_.start : 0;
           const semSize_ = semRegion ? semRegion.end - semRegion.start : 0;
           const mGroup_ = Math.max(1, Math.floor(motorSize_ / Math.max(1, invSize_)));
@@ -10367,7 +10342,7 @@ var init_kindergarten = __esm({
               for (const p of wordStartProbes) {
                 _probeIdx++;
                 const _probeStart = Date.now();
-                const emb = sharedEmbeddings.getEmbedding(p.word);
+                const emb = sharedEmbeddings2.getEmbedding(p.word);
                 if (!emb || emb.length === 0) {
                   prodFails.push(`${p.word}\u2192NO_EMB`);
                   try {
@@ -10408,7 +10383,7 @@ var init_kindergarten = __esm({
                   motorOutput = dynSemToMotor.propagate(semPattern);
                 } else {
                   const firstLetter = p.word[0];
-                  const letterOneHot = encodeLetter(firstLetter);
+                  const letterOneHot = encodeLetter2(firstLetter);
                   const letterSize2 = letterRegion ? letterRegion.end - letterRegion.start : letterOneHot.length;
                   const lGSize = Math.max(1, Math.floor(letterSize2 / letterOneHot.length));
                   const letterPat = new Float64Array(letterSize2);
@@ -10444,7 +10419,7 @@ var init_kindergarten = __esm({
                     topSlots.push({ idx: i, val: motorReadout[i] });
                   }
                   topSlots.sort((a, b) => b.val - a.val);
-                  const invSnap = inventorySnapshot();
+                  const invSnap = inventorySnapshot2();
                   const topStr = topSlots.slice(0, 5).map((s) => `${invSnap[s.idx] || "?"}(${s.idx}:${s.val.toFixed(3)})`).join(",");
                   const expectedIdx = invSnap.indexOf(p.expected);
                   const expectedVal = expectedIdx >= 0 && expectedIdx < motorReadout.length ? motorReadout[expectedIdx] : NaN;
@@ -10542,7 +10517,7 @@ var init_kindergarten = __esm({
 `);
             } catch {
             }
-            const emb = sharedEmbeddings.getEmbedding(word);
+            const emb = sharedEmbeddings2.getEmbedding(word);
             if (!emb || emb.length === 0) {
               writeEmitted.push(`${word}\u2192NO_EMB`);
               continue;
@@ -10591,7 +10566,7 @@ var init_kindergarten = __esm({
 `);
             } catch {
             }
-            const emb = sharedEmbeddings.getSentenceEmbedding(ctx.meaning);
+            const emb = sharedEmbeddings2.getSentenceEmbedding(ctx.meaning);
             if (!emb || emb.length === 0) {
               respEmitted.push(`${ctx.prompt}\u2192NO_EMB`);
               continue;
@@ -10646,7 +10621,7 @@ var init_kindergarten = __esm({
 `);
             } catch {
             }
-            const emb = sharedEmbeddings.getSentenceEmbedding(p.phrase);
+            const emb = sharedEmbeddings2.getSentenceEmbedding(p.phrase);
             if (!emb || emb.length === 0) {
               twoWordEmitted.push(`${p.phrase}\u2192NO_EMB`);
               continue;
@@ -10700,7 +10675,7 @@ var init_kindergarten = __esm({
 `);
             } catch {
             }
-            const emb = sharedEmbeddings.getSentenceEmbedding(prompt);
+            const emb = sharedEmbeddings2.getSentenceEmbedding(prompt);
             if (!emb || emb.length === 0) {
               freeWritingEmitted.push(`${prompt}\u2192NO_EMB`);
               continue;
@@ -10916,7 +10891,7 @@ var init_kindergarten = __esm({
         for (const digit of DIGITS) {
           facts.push({ writes: [
             { region: freeRegion, feat: _magnitudeFeatureForDigit(digit) },
-            { region: motorRegion, feat: encodeLetter(digit) }
+            { region: motorRegion, feat: encodeLetter2(digit) }
           ] });
         }
         await this._teachCombination(facts, { reps: 8 });
@@ -11094,7 +11069,7 @@ var init_kindergarten = __esm({
         for (let i = third; i < third * 2 && i < fineTypeSize; i++) lessTag[i] = 1;
         const facts = [];
         for (const { highMag, lowMag, word } of ATTR_POLES) {
-          const wordEmb = semRegion ? sharedEmbeddings.getEmbedding(word) : null;
+          const wordEmb = semRegion ? sharedEmbeddings2.getEmbedding(word) : null;
           const greaterWrites = [
             { region: freeLeftRegion, feat: _magnitudeFeatureForDigit(String(highMag)) },
             { region: freeRightRegion, feat: _magnitudeFeatureForDigit(String(lowMag)) },
@@ -11150,7 +11125,7 @@ var init_kindergarten = __esm({
         ];
         const facts = [];
         for (const [category, count] of CATEGORY_COUNTS) {
-          const catEmb = sharedEmbeddings.getEmbedding(category);
+          const catEmb = sharedEmbeddings2.getEmbedding(category);
           if (!catEmb || catEmb.length === 0) continue;
           facts.push({ writes: [
             { region: freeRegion, feat: catEmb, binarize: false },
@@ -11199,7 +11174,7 @@ var init_kindergarten = __esm({
         for (let i = fineHalf; i < fineTypeSize; i++) threeDTag[i] = 1;
         const facts = [];
         for (const { name, sides, dim } of SHAPES) {
-          const shapeEmb = sharedEmbeddings.getEmbedding(name);
+          const shapeEmb = sharedEmbeddings2.getEmbedding(name);
           if (!shapeEmb || shapeEmb.length === 0) continue;
           facts.push({ writes: [
             { region: semRegion, feat: shapeEmb, binarize: false },
@@ -11254,9 +11229,9 @@ var init_kindergarten = __esm({
         ];
         const facts = [];
         for (const [aName, bName, cName] of COMPOSE) {
-          const aEmb = sharedEmbeddings.getEmbedding(aName);
-          const bEmb = sharedEmbeddings.getEmbedding(bName);
-          const cEmb = sharedEmbeddings.getEmbedding(cName);
+          const aEmb = sharedEmbeddings2.getEmbedding(aName);
+          const bEmb = sharedEmbeddings2.getEmbedding(bName);
+          const cEmb = sharedEmbeddings2.getEmbedding(cName);
           if (!aEmb || !bEmb || !cEmb || aEmb.length === 0 || bEmb.length === 0 || cEmb.length === 0) continue;
           facts.push({ writes: [
             { region: semLeftRegion, feat: aEmb, binarize: false },
@@ -11300,8 +11275,8 @@ var init_kindergarten = __esm({
         ];
         const facts = [];
         for (const [cause, effect] of FORCE_MOTION_PAIRS) {
-          const cEmb = sharedEmbeddings.getEmbedding(cause);
-          const eEmb = sharedEmbeddings.getEmbedding(effect);
+          const cEmb = sharedEmbeddings2.getEmbedding(cause);
+          const eEmb = sharedEmbeddings2.getEmbedding(effect);
           if (!cEmb || !eEmb) continue;
           facts.push({ writes: [
             { region: freeRegion, feat: cEmb, binarize: false },
@@ -11329,7 +11304,7 @@ var init_kindergarten = __esm({
         const facts = [];
         for (let strength = 1; strength <= 9; strength++) {
           const strengthMag = _magnitudeFeatureForDigit(String(strength));
-          const pushEmb = sharedEmbeddings.getEmbedding("push");
+          const pushEmb = sharedEmbeddings2.getEmbedding("push");
           if (!pushEmb) continue;
           facts.push({ writes: [
             { region: freeLeftRegion, feat: strengthMag },
@@ -11365,7 +11340,7 @@ var init_kindergarten = __esm({
         ];
         const facts = [];
         for (const { name, feat } of WEATHER) {
-          const emb = sharedEmbeddings.getEmbedding(name);
+          const emb = sharedEmbeddings2.getEmbedding(name);
           if (!emb) continue;
           facts.push({ writes: [
             { region: semRegion, feat: emb, binarize: false },
@@ -11395,8 +11370,8 @@ var init_kindergarten = __esm({
         ];
         const facts = [];
         for (const { season, temp, tempMag } of SEASON_TEMP) {
-          const sEmb = sharedEmbeddings.getEmbedding(season);
-          const tEmb = sharedEmbeddings.getEmbedding(temp);
+          const sEmb = sharedEmbeddings2.getEmbedding(season);
+          const tEmb = sharedEmbeddings2.getEmbedding(temp);
           if (!sEmb || !tEmb) continue;
           facts.push({ writes: [
             { region: semRegion, feat: sEmb, binarize: false },
@@ -11432,10 +11407,10 @@ var init_kindergarten = __esm({
         ];
         const facts = [];
         for (const { thing, needs } of NEEDS) {
-          const tEmb = sharedEmbeddings.getEmbedding(thing);
+          const tEmb = sharedEmbeddings2.getEmbedding(thing);
           if (!tEmb) continue;
           for (const need of needs) {
-            const nEmb = sharedEmbeddings.getEmbedding(need);
+            const nEmb = sharedEmbeddings2.getEmbedding(need);
             if (!nEmb) continue;
             facts.push({ writes: [
               { region: semRegion, feat: tEmb, binarize: false },
@@ -11486,7 +11461,7 @@ var init_kindergarten = __esm({
         ];
         const facts = [];
         for (const { animal, diet } of DIET_FACTS) {
-          const aEmb = sharedEmbeddings.getEmbedding(animal);
+          const aEmb = sharedEmbeddings2.getEmbedding(animal);
           if (!aEmb) continue;
           let tag;
           if (diet === "herbivore") tag = herbTag;
@@ -11495,7 +11470,7 @@ var init_kindergarten = __esm({
           facts.push({ writes: [
             { region: semRegion, feat: aEmb, binarize: false },
             { region: fineTypeRegion, feat: tag },
-            { region: motorRegion, feat: encodeLetter(diet[0]) }
+            { region: motorRegion, feat: encodeLetter2(diet[0]) }
           ] });
         }
         await this._teachCombination(facts, { reps: 6 });
@@ -11526,8 +11501,8 @@ var init_kindergarten = __esm({
         ];
         const facts = [];
         for (const { part, function_ } of BODY_FUNCTIONS) {
-          const pEmb = sharedEmbeddings.getEmbedding(part);
-          const fEmb = sharedEmbeddings.getEmbedding(function_);
+          const pEmb = sharedEmbeddings2.getEmbedding(part);
+          const fEmb = sharedEmbeddings2.getEmbedding(function_);
           if (!pEmb || !fEmb) continue;
           facts.push({ writes: [
             { region: semRegion, feat: pEmb, binarize: false },
@@ -11574,13 +11549,13 @@ var init_kindergarten = __esm({
         ];
         const facts = [];
         for (const { thing, type } of CLASSIFIED) {
-          const emb = sharedEmbeddings.getEmbedding(thing);
+          const emb = sharedEmbeddings2.getEmbedding(thing);
           if (!emb) continue;
           const tag = type === "natural" ? naturalTag : humanMadeTag;
           facts.push({ writes: [
             { region: semRegion, feat: emb, binarize: false },
             { region: fineTypeRegion, feat: tag },
-            { region: motorRegion, feat: encodeLetter(type[0]) }
+            { region: motorRegion, feat: encodeLetter2(type[0]) }
           ] });
         }
         await this._teachCombination(facts, { reps: 6 });
@@ -11619,8 +11594,8 @@ var init_kindergarten = __esm({
         ];
         const facts = [];
         for (const { helper, job } of HELPERS) {
-          const hEmb = sharedEmbeddings.getEmbedding(helper);
-          const jEmb = sharedEmbeddings.getEmbedding(job);
+          const hEmb = sharedEmbeddings2.getEmbedding(helper);
+          const jEmb = sharedEmbeddings2.getEmbedding(job);
           if (!hEmb || !jEmb) continue;
           facts.push({ writes: [
             { region: semRegion, feat: jEmb, binarize: false },
@@ -11661,12 +11636,12 @@ var init_kindergarten = __esm({
         ];
         const facts = [];
         for (const { thing, type } of CLASSIFIED) {
-          const emb = sharedEmbeddings.getEmbedding(thing);
+          const emb = sharedEmbeddings2.getEmbedding(thing);
           if (!emb) continue;
           facts.push({ writes: [
             { region: semRegion, feat: emb, binarize: false },
             { region: fineTypeRegion, feat: type === "need" ? needTag : wantTag },
-            { region: motorRegion, feat: encodeLetter(type[0]) }
+            { region: motorRegion, feat: encodeLetter2(type[0]) }
           ] });
         }
         await this._teachCombination(facts, { reps: 6 });
@@ -11696,10 +11671,10 @@ var init_kindergarten = __esm({
           const words = concept.split(" ");
           const aWords = answer.split(" ");
           for (const cWord of words) {
-            const cEmb = sharedEmbeddings.getEmbedding(cWord);
+            const cEmb = sharedEmbeddings2.getEmbedding(cWord);
             if (!cEmb) continue;
             for (const aWord of aWords) {
-              const aEmb = sharedEmbeddings.getEmbedding(aWord);
+              const aEmb = sharedEmbeddings2.getEmbedding(aWord);
               if (!aEmb) continue;
               facts.push({ writes: [
                 { region: semRegion, feat: cEmb, binarize: false },
@@ -11748,8 +11723,8 @@ var init_kindergarten = __esm({
         const facts = [];
         for (const { concept, answer } of GEO_FACTS) {
           const cWords = concept.split(" ");
-          const cEmb = cWords.length > 1 ? sharedEmbeddings.getEmbedding(cWords[0]) : sharedEmbeddings.getEmbedding(concept);
-          const aEmb = sharedEmbeddings.getEmbedding(answer);
+          const cEmb = cWords.length > 1 ? sharedEmbeddings2.getEmbedding(cWords[0]) : sharedEmbeddings2.getEmbedding(concept);
+          const aEmb = sharedEmbeddings2.getEmbedding(answer);
           if (!cEmb || !aEmb) continue;
           facts.push({ writes: [
             { region: semRegion, feat: cEmb, binarize: false },
@@ -11798,9 +11773,9 @@ var init_kindergarten = __esm({
         ];
         const facts = [];
         for (const [a, b, c] of MIXES) {
-          const aEmb = sharedEmbeddings.getEmbedding(a);
-          const bEmb = sharedEmbeddings.getEmbedding(b);
-          const cEmb = sharedEmbeddings.getEmbedding(c);
+          const aEmb = sharedEmbeddings2.getEmbedding(a);
+          const bEmb = sharedEmbeddings2.getEmbedding(b);
+          const cEmb = sharedEmbeddings2.getEmbedding(c);
           if (!aEmb || !bEmb || !cEmb) continue;
           facts.push({ writes: [
             { region: freeLeftRegion, feat: aEmb, binarize: false },
@@ -11837,12 +11812,12 @@ var init_kindergarten = __esm({
         ];
         const facts = [];
         for (const { color, temp } of COLORS) {
-          const emb = sharedEmbeddings.getEmbedding(color);
+          const emb = sharedEmbeddings2.getEmbedding(color);
           if (!emb) continue;
           facts.push({ writes: [
             { region: semRegion, feat: emb, binarize: false },
             { region: fineTypeRegion, feat: temp === "warm" ? warmTag : coolTag },
-            { region: motorRegion, feat: encodeLetter(temp[0]) }
+            { region: motorRegion, feat: encodeLetter2(temp[0]) }
           ] });
         }
         await this._teachCombination(facts, { reps: 6 });
@@ -11872,9 +11847,9 @@ var init_kindergarten = __esm({
         ];
         const facts = [];
         for (const [a, b, next] of PATTERNS2) {
-          const aEmb = sharedEmbeddings.getEmbedding(a);
-          const bEmb = sharedEmbeddings.getEmbedding(b);
-          const nEmb = sharedEmbeddings.getEmbedding(next);
+          const aEmb = sharedEmbeddings2.getEmbedding(a);
+          const bEmb = sharedEmbeddings2.getEmbedding(b);
+          const nEmb = sharedEmbeddings2.getEmbedding(next);
           if (!aEmb || !bEmb || !nEmb) continue;
           facts.push({ writes: [
             { region: freeLeftRegion, feat: aEmb, binarize: false },
@@ -11917,8 +11892,8 @@ var init_kindergarten = __esm({
         ];
         const facts = [];
         for (const [a, b] of MUSIC_CONCEPTS) {
-          const aEmb = sharedEmbeddings.getEmbedding(a);
-          const bEmb = sharedEmbeddings.getEmbedding(b);
+          const aEmb = sharedEmbeddings2.getEmbedding(a);
+          const bEmb = sharedEmbeddings2.getEmbedding(b);
           if (!aEmb || !bEmb) continue;
           facts.push({ writes: [
             { region: semRegion, feat: aEmb, binarize: false },
@@ -12023,8 +11998,8 @@ var init_kindergarten = __esm({
         for (let i = 0; i < ALPHABET_LOWER.length; i++) {
           const lower = ALPHABET_LOWER[i];
           const upper = ALPHABET_UPPER[i];
-          const lowerVec = encodeLetter(lower);
-          const upperVec = encodeLetter(upper);
+          const lowerVec = encodeLetter2(lower);
+          const upperVec = encodeLetter2(upper);
           const combined = new Float64Array(Math.max(lowerVec.length, upperVec.length));
           for (let j = 0; j < lowerVec.length; j++) if (lowerVec[j] > 0) combined[j] = 1;
           for (let j = 0; j < upperVec.length; j++) if (upperVec[j] > 0) combined[j] = 1;
@@ -12069,7 +12044,7 @@ var init_kindergarten = __esm({
         for (let rep = 0; rep < reps; rep++) {
           if (typeof globalThis._brainShutdownRequested !== "undefined" && globalThis._brainShutdownRequested) return;
           for (const letter of ALPHABET_LOWER) {
-            const letterOneHot = encodeLetter(letter);
+            const letterOneHot = encodeLetter2(letter);
             this._clearSpikes();
             this._writeTiledPattern(letterRegion, letterOneHot);
             this._writeTiledPattern(motorRegion, letterOneHot);
@@ -12116,12 +12091,12 @@ var init_kindergarten = __esm({
           const letterRegion2 = cluster2?.regions?.letter;
           if (letterProj && letterProj.propagate && motorRegion2 && letterRegion2 && letterProj.values) {
             const letterSize = letterRegion2.end - letterRegion2.start;
-            const invSize = inventorySize();
+            const invSize = inventorySize2();
             const LETTERS = "abcdefghijklmnopqrstuvwxyz";
             const results = [];
             const distribution = /* @__PURE__ */ new Map();
             for (const letter of LETTERS) {
-              const oneHot = encodeLetter(letter);
+              const oneHot = encodeLetter2(letter);
               const gSize = Math.max(1, Math.floor(letterSize / oneHot.length));
               const letterInput = new Float64Array(letterSize);
               for (let d = 0; d < oneHot.length; d++) {
@@ -12195,12 +12170,12 @@ var init_kindergarten = __esm({
         ];
         const facts = [];
         for (const { vowel, shortExample, longExample } of VOWEL_VARIANTS) {
-          const shortEmb = sharedEmbeddings.getEmbedding(shortExample);
-          const longEmb = sharedEmbeddings.getEmbedding(longExample);
+          const shortEmb = sharedEmbeddings2.getEmbedding(shortExample);
+          const longEmb = sharedEmbeddings2.getEmbedding(longExample);
           const phonFeat = _phonemeFeatureForLetter(vowel);
           if (shortEmb && shortEmb.length > 0) {
             facts.push({ writes: [
-              { region: letterRegion, feat: encodeLetter(vowel) },
+              { region: letterRegion, feat: encodeLetter2(vowel) },
               { region: phonRegion, feat: phonFeat },
               { region: semRegion, feat: shortEmb, binarize: false },
               { region: fineTypeRegion, feat: shortTag }
@@ -12208,7 +12183,7 @@ var init_kindergarten = __esm({
           }
           if (longEmb && longEmb.length > 0) {
             facts.push({ writes: [
-              { region: letterRegion, feat: encodeLetter(vowel) },
+              { region: letterRegion, feat: encodeLetter2(vowel) },
               { region: phonRegion, feat: phonFeat },
               { region: semRegion, feat: longEmb, binarize: false },
               { region: fineTypeRegion, feat: longTag }
@@ -12273,7 +12248,7 @@ var init_kindergarten = __esm({
               await _microtask();
             }
             if (letters.length === 0) continue;
-            const wordEmb = sharedEmbeddings.getEmbedding(word);
+            const wordEmb = sharedEmbeddings2.getEmbedding(word);
             if (!wordEmb || wordEmb.length === 0) continue;
             if (rep === 0 && this.dictionary && typeof this.dictionary.learnWord === "function") {
               try {
@@ -12283,16 +12258,16 @@ var init_kindergarten = __esm({
             }
             this._clearSpikes();
             this._writeTiledPattern(semRegion, wordEmb);
-            this._writeTiledPattern(motorRegion, encodeLetter(letters[0]));
+            this._writeTiledPattern(motorRegion, encodeLetter2(letters[0]));
             if (scratch) {
               this._fillRegionPatternInto(scratch.pre, semRegion, wordEmb, false);
-              this._fillRegionPatternInto(scratch.post, motorRegion, encodeLetter(letters[0]));
+              this._fillRegionPatternInto(scratch.post, motorRegion, encodeLetter2(letters[0]));
               await this._teachHebbianAsymmetric(scratch.pre, scratch.post, lr, {
                 projectionsWhitelist: ["sem_to_motor"]
               });
             } else {
               const preInit = this._buildRegionPattern(semRegion, wordEmb, false);
-              const postInit = this._buildRegionPattern(motorRegion, encodeLetter(letters[0]));
+              const postInit = this._buildRegionPattern(motorRegion, encodeLetter2(letters[0]));
               await this._teachHebbianAsymmetric(preInit, postInit, lr, {
                 projectionsWhitelist: ["sem_to_motor"]
               });
@@ -12300,17 +12275,17 @@ var init_kindergarten = __esm({
             for (let i = 1; i < letters.length; i++) {
               this._clearSpikes();
               this._writeTiledPattern(semRegion, wordEmb);
-              this._writeTiledPattern(letterRegion, encodeLetter(letters[i - 1]));
-              this._writeTiledPattern(motorRegion, encodeLetter(letters[i]));
+              this._writeTiledPattern(letterRegion, encodeLetter2(letters[i - 1]));
+              this._writeTiledPattern(motorRegion, encodeLetter2(letters[i]));
               if (scratch) {
-                this._fillRegionPatternInto(scratch.pre, letterRegion, encodeLetter(letters[i - 1]));
-                this._fillRegionPatternInto(scratch.post, motorRegion, encodeLetter(letters[i]));
+                this._fillRegionPatternInto(scratch.pre, letterRegion, encodeLetter2(letters[i - 1]));
+                this._fillRegionPatternInto(scratch.post, motorRegion, encodeLetter2(letters[i]));
                 await this._teachHebbianAsymmetric(scratch.pre, scratch.post, lr, {
                   projectionsWhitelist: ["letter_to_motor"]
                 });
               } else {
-                const preChain = this._buildRegionPattern(letterRegion, encodeLetter(letters[i - 1]));
-                const postChain = this._buildRegionPattern(motorRegion, encodeLetter(letters[i]));
+                const preChain = this._buildRegionPattern(letterRegion, encodeLetter2(letters[i - 1]));
+                const postChain = this._buildRegionPattern(motorRegion, encodeLetter2(letters[i]));
                 await this._teachHebbianAsymmetric(preChain, postChain, lr, {
                   projectionsWhitelist: ["letter_to_motor"]
                 });
@@ -12376,15 +12351,15 @@ var init_kindergarten = __esm({
           const members = words.slice(0, MEMBERS_PER_FAMILY);
           let pairsThisFamily = 0;
           for (const a of members) {
-            const aEmb = sharedEmbeddings.getEmbedding(a);
+            const aEmb = sharedEmbeddings2.getEmbedding(a);
             if (!aEmb || aEmb.length === 0) continue;
             for (const b of members) {
               if (a === b) continue;
-              const bEmb = sharedEmbeddings.getEmbedding(b);
+              const bEmb = sharedEmbeddings2.getEmbedding(b);
               if (!bEmb || bEmb.length === 0) continue;
               facts.push({ writes: [
                 { region: semRegion, feat: aEmb, binarize: false },
-                { region: motorRegion, feat: encodeLetter(b[0]) },
+                { region: motorRegion, feat: encodeLetter2(b[0]) },
                 { region: fineTypeRegion, feat: rhymeTag }
               ] });
               pairsThisFamily++;
@@ -12464,7 +12439,7 @@ var init_kindergarten = __esm({
         const facts = [];
         let skippedNoEmb = 0;
         for (const word of wordSet) {
-          const emb = sharedEmbeddings.getEmbedding(word);
+          const emb = sharedEmbeddings2.getEmbedding(word);
           if (!emb || emb.length === 0) {
             skippedNoEmb++;
             continue;
@@ -12581,24 +12556,24 @@ var init_kindergarten = __esm({
         for (const word of cvcSet) {
           const letters = Array.from(word);
           if (letters.length !== 3) continue;
-          const emb = sharedEmbeddings.getEmbedding(word);
+          const emb = sharedEmbeddings2.getEmbedding(word);
           if (!emb || emb.length === 0) continue;
           facts.push({ writes: [
             { region: semRegion, feat: emb, binarize: false },
             { region: phonRegion, feat: _phonemeFeatureForLetter(letters[0]) },
-            { region: motorRegion, feat: encodeLetter(letters[0]) },
+            { region: motorRegion, feat: encodeLetter2(letters[0]) },
             { region: fineTypeRegion, feat: initialTag }
           ] });
           facts.push({ writes: [
             { region: semRegion, feat: emb, binarize: false },
             { region: phonRegion, feat: _phonemeFeatureForLetter(letters[1]) },
-            { region: motorRegion, feat: encodeLetter(letters[1]) },
+            { region: motorRegion, feat: encodeLetter2(letters[1]) },
             { region: fineTypeRegion, feat: medialTag }
           ] });
           facts.push({ writes: [
             { region: semRegion, feat: emb, binarize: false },
             { region: phonRegion, feat: _phonemeFeatureForLetter(letters[2]) },
-            { region: motorRegion, feat: encodeLetter(letters[2]) },
+            { region: motorRegion, feat: encodeLetter2(letters[2]) },
             { region: fineTypeRegion, feat: finalTag }
           ] });
         }
@@ -12675,17 +12650,17 @@ var init_kindergarten = __esm({
         }
         const facts = [];
         for (const [singular, plural] of pairs) {
-          const sEmb = sharedEmbeddings.getEmbedding(singular);
-          const pEmb = sharedEmbeddings.getEmbedding(plural);
+          const sEmb = sharedEmbeddings2.getEmbedding(singular);
+          const pEmb = sharedEmbeddings2.getEmbedding(plural);
           if (!sEmb || !pEmb) continue;
           facts.push({ writes: [
             { region: semRegion, feat: sEmb, binarize: false },
-            { region: motorRegion, feat: encodeLetter(plural[0]) },
+            { region: motorRegion, feat: encodeLetter2(plural[0]) },
             { region: fineTypeRegion, feat: pluralTag }
           ] });
           facts.push({ writes: [
             { region: semRegion, feat: pEmb, binarize: false },
-            { region: motorRegion, feat: encodeLetter(singular[0]) }
+            { region: motorRegion, feat: encodeLetter2(singular[0]) }
           ] });
         }
         await this._teachCombination(facts, { reps: 18 });
@@ -12712,16 +12687,16 @@ var init_kindergarten = __esm({
         ];
         const facts = [];
         for (const { qword, category } of Q_CATEGORY) {
-          const qEmb = sharedEmbeddings.getEmbedding(qword);
-          const cEmb = sharedEmbeddings.getEmbedding(category);
+          const qEmb = sharedEmbeddings2.getEmbedding(qword);
+          const cEmb = sharedEmbeddings2.getEmbedding(category);
           if (!qEmb || !cEmb) continue;
           facts.push({ writes: [
             { region: semRegion, feat: cEmb, binarize: false },
-            { region: motorRegion, feat: encodeLetter(qword[0]) }
+            { region: motorRegion, feat: encodeLetter2(qword[0]) }
           ] });
           facts.push({ writes: [
             { region: semRegion, feat: qEmb, binarize: false },
-            { region: motorRegion, feat: encodeLetter(category[0]) }
+            { region: motorRegion, feat: encodeLetter2(category[0]) }
           ] });
         }
         await this._teachCombination(facts, { reps: 24 });
@@ -12769,7 +12744,7 @@ var init_kindergarten = __esm({
         ];
         const facts = [];
         for (const { start, type } of SENTENCE_STARTS) {
-          const emb = sharedEmbeddings.getEmbedding(start);
+          const emb = sharedEmbeddings2.getEmbedding(start);
           if (!emb) continue;
           let tag, terminator;
           if (type === "question") {
@@ -12785,7 +12760,7 @@ var init_kindergarten = __esm({
           facts.push({ writes: [
             { region: semRegion, feat: emb, binarize: false },
             { region: fineTypeRegion, feat: tag },
-            { region: motorRegion, feat: encodeLetter(terminator) }
+            { region: motorRegion, feat: encodeLetter2(terminator) }
           ] });
         }
         await this._teachCombination(facts, { reps: 18 });
@@ -12851,24 +12826,24 @@ var init_kindergarten = __esm({
         ];
         const facts = [];
         for (const { stem, character, setting, event } of STORIES) {
-          const stemEmb = sharedEmbeddings.getEmbedding(stem.split(" ").slice(0, 2).join(" ")) || sharedEmbeddings.getEmbedding(stem.split(" ")[0]);
+          const stemEmb = sharedEmbeddings2.getEmbedding(stem.split(" ").slice(0, 2).join(" ")) || sharedEmbeddings2.getEmbedding(stem.split(" ")[0]);
           if (!stemEmb) continue;
-          const charEmb = sharedEmbeddings.getEmbedding(character);
-          const settingEmb = sharedEmbeddings.getEmbedding(setting);
-          const eventEmb = sharedEmbeddings.getEmbedding(event);
+          const charEmb = sharedEmbeddings2.getEmbedding(character);
+          const settingEmb = sharedEmbeddings2.getEmbedding(setting);
+          const eventEmb = sharedEmbeddings2.getEmbedding(event);
           if (charEmb) facts.push({ writes: [
             { region: semRegion, feat: stemEmb, binarize: false },
-            { region: motorRegion, feat: encodeLetter(character[0]) },
+            { region: motorRegion, feat: encodeLetter2(character[0]) },
             { region: fineTypeRegion, feat: charTag }
           ] });
           if (settingEmb) facts.push({ writes: [
             { region: semRegion, feat: stemEmb, binarize: false },
-            { region: motorRegion, feat: encodeLetter(setting[0]) },
+            { region: motorRegion, feat: encodeLetter2(setting[0]) },
             { region: fineTypeRegion, feat: settingTag }
           ] });
           if (eventEmb) facts.push({ writes: [
             { region: semRegion, feat: stemEmb, binarize: false },
-            { region: motorRegion, feat: encodeLetter(event[0]) },
+            { region: motorRegion, feat: encodeLetter2(event[0]) },
             { region: fineTypeRegion, feat: eventTag }
           ] });
         }
@@ -12931,7 +12906,7 @@ var init_kindergarten = __esm({
               await _microtask();
             }
             if (letters.length < 2) continue;
-            const wordEmb = sharedEmbeddings.getEmbedding(word);
+            const wordEmb = sharedEmbeddings2.getEmbedding(word);
             if (rep === 0 && this.dictionary && typeof this.dictionary.learnWord === "function") {
               try {
                 this.dictionary.learnWord(word, null, this.arousal ?? 0.85, this.valence ?? 0);
@@ -12956,7 +12931,7 @@ var init_kindergarten = __esm({
                 await cluster.intraSynapsesHebbian(pre, post, lr);
               }
               this._clearSpikes();
-              this._writeTiledPattern(letterRegion, encodeLetter(letters[i]));
+              this._writeTiledPattern(letterRegion, encodeLetter2(letters[i]));
               this._writeTiledPattern(phonRegion, phonA);
               if (wordEmb && wordEmb.length > 0) this._writeTiledPattern(semRegion, wordEmb);
               await cluster._crossRegionHebbian(lr);
@@ -12987,14 +12962,14 @@ var init_kindergarten = __esm({
         for (let i = tagStart; i < tagEnd; i++) capTag[i] = 1;
         const facts = [];
         facts.push({ writes: [
-          { region: letterRegion, feat: encodeLetter("i") },
-          { region: motorRegion, feat: encodeLetter("I") },
+          { region: letterRegion, feat: encodeLetter2("i") },
+          { region: motorRegion, feat: encodeLetter2("I") },
           { region: fineTypeRegion, feat: capTag }
         ] });
         for (const letter of ALPHABET_ORDER) {
           facts.push({ writes: [
-            { region: letterRegion, feat: encodeLetter(letter) },
-            { region: motorRegion, feat: encodeLetter(letter.toUpperCase()) },
+            { region: letterRegion, feat: encodeLetter2(letter) },
+            { region: motorRegion, feat: encodeLetter2(letter.toUpperCase()) },
             { region: fineTypeRegion, feat: capTag }
           ] });
         }
@@ -13070,8 +13045,8 @@ var init_kindergarten = __esm({
           for (let i = 0; i < pairs; i++) {
             const X = letters[i];
             const Y = letters[i + 1];
-            const xOneHot = encodeLetter(X);
-            const yOneHot = encodeLetter(Y);
+            const xOneHot = encodeLetter2(X);
+            const yOneHot = encodeLetter2(Y);
             if (!xOneHot || !yOneHot || xOneHot.length === 0 || yOneHot.length === 0) {
               skipped++;
               continue;
@@ -13162,7 +13137,7 @@ var init_kindergarten = __esm({
               skipped++;
               continue;
             }
-            const firstCharOneHot = encodeLetter(firstChar);
+            const firstCharOneHot = encodeLetter2(firstChar);
             if (!firstCharOneHot || firstCharOneHot.length === 0) {
               skipped++;
               continue;
@@ -13247,7 +13222,7 @@ var init_kindergarten = __esm({
           if (typeof globalThis._brainShutdownRequested !== "undefined" && globalThis._brainShutdownRequested) return;
           for (let i = 0; i < ALPHABET.length; i++) {
             const letter = ALPHABET[i];
-            const oneHot = encodeLetter(letter);
+            const oneHot = encodeLetter2(letter);
             if (!oneHot || oneHot.length === 0) {
               skipped++;
               continue;
@@ -13469,7 +13444,7 @@ var init_kindergarten = __esm({
               skipped++;
               continue;
             }
-            const firstCharOneHot = encodeLetter(firstChar);
+            const firstCharOneHot = encodeLetter2(firstChar);
             if (!firstCharOneHot || firstCharOneHot.length === 0) {
               skipped++;
               continue;
@@ -13529,7 +13504,7 @@ var init_kindergarten = __esm({
           for (let i = 0; i < ALPHABET.length; i++) {
             const letter = ALPHABET[i];
             const spokenName = LETTER_NAMES[i];
-            const nameEmb = sharedEmbeddings.getEmbedding(letter) || sharedEmbeddings.getEmbedding(spokenName);
+            const nameEmb = sharedEmbeddings2.getEmbedding(letter) || sharedEmbeddings2.getEmbedding(spokenName);
             cluster.injectLetter(letter, 1);
             if (nameEmb && nameEmb.length > 0 && cluster.regions?.sem) {
               cluster.injectEmbeddingToRegion("sem", nameEmb, 0.7);
@@ -13610,7 +13585,7 @@ var init_kindergarten = __esm({
         for (let rep = 0; rep < reps; rep++) {
           for (let i = 0; i < DIGITS.length; i++) {
             const digit = DIGITS[i];
-            const nameEmb = sharedEmbeddings.getEmbedding(NAMES[i]);
+            const nameEmb = sharedEmbeddings2.getEmbedding(NAMES[i]);
             cluster.injectLetter(digit, 1);
             if (nameEmb && nameEmb.length > 0 && cluster.regions?.sem) {
               cluster.injectEmbeddingToRegion("sem", nameEmb, 0.7);
@@ -13692,7 +13667,7 @@ var init_kindergarten = __esm({
         ensureLetters(Array.from(letterSet));
         for (let rep = 0; rep < reps; rep++) {
           for (const word of cvcList) {
-            const wordEmb = sharedEmbeddings.getEmbedding(word);
+            const wordEmb = sharedEmbeddings2.getEmbedding(word);
             if (wordEmb && wordEmb.length > 0 && cluster.regions?.sem) {
               cluster.injectEmbeddingToRegion("sem", wordEmb, 0.6);
             }
@@ -13732,7 +13707,7 @@ var init_kindergarten = __esm({
         ensureLetters(Array.from(letterSet));
         for (let rep = 0; rep < reps; rep++) {
           for (const word of sightList) {
-            const wordEmb = sharedEmbeddings.getEmbedding(word);
+            const wordEmb = sharedEmbeddings2.getEmbedding(word);
             if (wordEmb && wordEmb.length > 0 && cluster.regions?.sem) {
               cluster.injectEmbeddingToRegion("sem", wordEmb, 0.7);
             }
@@ -16823,7 +16798,7 @@ __export(curriculum_exports, {
   K_CONCRETE_SENTENCES: () => K_CONCRETE_SENTENCES,
   MAGNITUDE_FEATURE_DIM: () => MAGNITUDE_FEATURE_DIM,
   PHONEME_FEATURE_DIM: () => PHONEME_FEATURE_DIM,
-  SUBJECTS: () => SUBJECTS2,
+  SUBJECTS: () => SUBJECTS3,
   SUBJECT_LABELS: () => SUBJECT_LABELS,
   _magnitudeFeatureForDigit: () => _magnitudeFeatureForDigit,
   _magnitudeFeatureForNumber: () => _magnitudeFeatureForNumber,
@@ -16922,7 +16897,7 @@ function _microtask(opts) {
     }
   });
 }
-var LETTER_TICKS_BASE, SHORT_WORD_TICKS, LONG_WORD_TICKS, SENTENCE_TICKS_PER_WORD, LIVE_TICKS_PER_WORD, LETTER_REPS_MAX, SHORT_WORD_REPS_MAX, LONG_WORD_REPS_MAX, SHORT_WORD_MAX_LEN, SUBJECTS2, SUBJECT_LABELS, GRADE_LABELS, GRADE_SHORT_LABELS, GRADE_ORDER, ALPHABET_ORDER, DIGIT_ORDER, K_CONCRETE_SENTENCES, DIGIT_NAMES, K_LETTER_PHONEMES, PHONEME_FEATURE_DIM, MAGNITUDE_FEATURE_DIM, NUMBER_FEATURE_DIM, NUMBER_FEATURE_MAX, PRE_K_FALLBACK_CAP, Curriculum, _lastYieldAt, _YIELD_MIN_INTERVAL_MS;
+var LETTER_TICKS_BASE, SHORT_WORD_TICKS, LONG_WORD_TICKS, SENTENCE_TICKS_PER_WORD, LIVE_TICKS_PER_WORD, LETTER_REPS_MAX, SHORT_WORD_REPS_MAX, LONG_WORD_REPS_MAX, SHORT_WORD_MAX_LEN, SUBJECTS3, SUBJECT_LABELS, GRADE_LABELS, GRADE_SHORT_LABELS, GRADE_ORDER, ALPHABET_ORDER, DIGIT_ORDER, K_CONCRETE_SENTENCES, DIGIT_NAMES, K_LETTER_PHONEMES, PHONEME_FEATURE_DIM, MAGNITUDE_FEATURE_DIM, NUMBER_FEATURE_DIM, NUMBER_FEATURE_MAX, PRE_K_FALLBACK_CAP, Curriculum, _lastYieldAt, _YIELD_MIN_INTERVAL_MS;
 var init_curriculum = __esm({
   "../js/brain/curriculum.js"() {
     init_embeddings();
@@ -16940,7 +16915,7 @@ var init_curriculum = __esm({
     SHORT_WORD_REPS_MAX = 2;
     LONG_WORD_REPS_MAX = 1;
     SHORT_WORD_MAX_LEN = 3;
-    SUBJECTS2 = ["ela", "math", "science", "social", "art", "life"];
+    SUBJECTS3 = ["ela", "math", "science", "social", "art", "life"];
     SUBJECT_LABELS = {
       ela: "ELA \u2014 English Language Arts: alphabet, phonics, reading, writing, question-answer grounding.",
       math: "Math: counting, number names, magnitude, arithmetic, shape + position.",
@@ -17547,7 +17522,7 @@ var init_curriculum = __esm({
         const cluster = this.cluster;
         const perSubject = {};
         if (this._perSubjectStats) {
-          for (const sub of SUBJECTS2) {
+          for (const sub of SUBJECTS3) {
             const s = this._perSubjectStats[sub] || null;
             perSubject[sub] = s ? { ...s } : {
               subject: sub,
@@ -17560,7 +17535,7 @@ var init_curriculum = __esm({
             };
           }
         } else {
-          for (const sub of SUBJECTS2) {
+          for (const sub of SUBJECTS3) {
             perSubject[sub] = {
               subject: sub,
               label: SUBJECT_LABELS[sub] || sub,
@@ -17631,7 +17606,7 @@ var init_curriculum = __esm({
           cellElapsedMs: this._currentCellStartAt ? Date.now() - this._currentCellStartAt : 0,
           perSubject,
           passedCellsTotal: cluster && Array.isArray(cluster.passedCells) ? cluster.passedCells.length : 0,
-          subjects: SUBJECTS2.slice()
+          subjects: SUBJECTS3.slice()
         };
       }
       /**
@@ -18201,7 +18176,7 @@ var init_curriculum = __esm({
        * @returns {Float64Array(EMBED_DIM)}
        */
       _dictionaryPatternFor(word) {
-        const dim = sharedEmbeddings && typeof sharedEmbeddings.EMBED_DIM === "number" ? sharedEmbeddings.EMBED_DIM : 300;
+        const dim = sharedEmbeddings2 && typeof sharedEmbeddings2.EMBED_DIM === "number" ? sharedEmbeddings2.EMBED_DIM : 300;
         const out = new Float64Array(dim);
         if (typeof word !== "string" || word.length === 0) return out;
         const gloveDims = 200;
@@ -18209,8 +18184,8 @@ var init_curriculum = __esm({
         const idStart = gloveDims;
         const snapDims = Math.max(0, dim - gloveDims - idDims);
         const snapStart = gloveDims + idDims;
-        if (sharedEmbeddings && typeof sharedEmbeddings.getEmbedding === "function") {
-          const glove = sharedEmbeddings.getEmbedding(word);
+        if (sharedEmbeddings2 && typeof sharedEmbeddings2.getEmbedding === "function") {
+          const glove = sharedEmbeddings2.getEmbedding(word);
           if (glove && glove.length > 0) {
             const n = Math.min(gloveDims, glove.length);
             for (let i = 0; i < n; i++) out[i] = glove[i];
@@ -18742,15 +18717,15 @@ var init_curriculum = __esm({
           if (!question || keywords.length === 0) continue;
           let intentSeed = null;
           try {
-            if (sharedEmbeddings && typeof sharedEmbeddings.getSentenceEmbedding === "function") {
-              intentSeed = sharedEmbeddings.getSentenceEmbedding(question);
+            if (sharedEmbeddings2 && typeof sharedEmbeddings2.getSentenceEmbedding === "function") {
+              intentSeed = sharedEmbeddings2.getSentenceEmbedding(question);
             }
           } catch {
             intentSeed = null;
           }
-          if ((!intentSeed || intentSeed.length === 0) && keywords[0] && sharedEmbeddings?.getEmbedding) {
+          if ((!intentSeed || intentSeed.length === 0) && keywords[0] && sharedEmbeddings2?.getEmbedding) {
             try {
-              intentSeed = sharedEmbeddings.getEmbedding(String(keywords[0]));
+              intentSeed = sharedEmbeddings2.getEmbedding(String(keywords[0]));
             } catch {
               intentSeed = null;
             }
@@ -18947,7 +18922,7 @@ var init_curriculum = __esm({
         }
         try {
           if (this._isQuestionLike(question) && typeof cluster.injectEmbeddingToRegion === "function") {
-            const qEmb = sharedEmbeddings && typeof sharedEmbeddings.getSentenceEmbedding === "function" ? sharedEmbeddings.getSentenceEmbedding(question) : null;
+            const qEmb = sharedEmbeddings2 && typeof sharedEmbeddings2.getSentenceEmbedding === "function" ? sharedEmbeddings2.getSentenceEmbedding(question) : null;
             if (qEmb && qEmb.length > 0) {
               cluster.injectEmbeddingToRegion("sem", qEmb, 0.6);
               const keyToken = this._extractKeyToken(question);
@@ -19004,9 +18979,9 @@ var init_curriculum = __esm({
                 const letterRegion = cluster.regions?.letter;
                 const motorRegion = cluster.regions?.motor;
                 if (letterRegion && motorRegion) {
-                  const invSize = typeof inventorySize === "function" ? inventorySize() : 26;
+                  const invSize = typeof inventorySize2 === "function" ? inventorySize2() : 26;
                   if (invSize > 0) {
-                    const oneHot = typeof encodeLetter === "function" ? encodeLetter(keyTok) : null;
+                    const oneHot = typeof encodeLetter2 === "function" ? encodeLetter2(keyTok) : null;
                     if (oneHot && oneHot.length > 0) {
                       const clusterInput = new Float64Array(cluster.size);
                       const letterSize = letterRegion.end - letterRegion.start;
@@ -19024,7 +18999,7 @@ var init_curriculum = __esm({
                         const letterStart = letterRegion.start;
                         const letterSpan = letterEnd - letterStart;
                         const bucketSize = Math.max(1, Math.floor(letterSpan / invSize));
-                        const invAll = typeof inventorySnapshot === "function" ? inventorySnapshot() : null;
+                        const invAll = typeof inventorySnapshot2 === "function" ? inventorySnapshot2() : null;
                         const azIndices = [];
                         if (invAll) {
                           for (let i = 0; i < invAll.length; i++) {
@@ -19063,9 +19038,9 @@ var init_curriculum = __esm({
                 const letterRegion = cluster.regions?.letter;
                 const phonRegion = cluster.regions?.phon;
                 if (letterRegion && phonRegion) {
-                  const invSize = typeof inventorySize === "function" ? inventorySize() : 26;
+                  const invSize = typeof inventorySize2 === "function" ? inventorySize2() : 26;
                   if (invSize > 0) {
-                    const oneHot = typeof encodeLetter === "function" ? encodeLetter(keyTok) : null;
+                    const oneHot = typeof encodeLetter2 === "function" ? encodeLetter2(keyTok) : null;
                     if (oneHot && oneHot.length > 0) {
                       const letterSize = letterRegion.end - letterRegion.start;
                       const letterInput = new Float64Array(letterSize);
@@ -19079,7 +19054,7 @@ var init_curriculum = __esm({
                       }
                       const phonOutput = letterToPhon.propagate(letterInput);
                       if (phonOutput && phonOutput.length > 0) {
-                        const invAll = typeof inventorySnapshot === "function" ? inventorySnapshot() : null;
+                        const invAll = typeof inventorySnapshot2 === "function" ? inventorySnapshot2() : null;
                         const azIndices = [];
                         if (invAll) {
                           for (let i = 0; i < invAll.length; i++) {
@@ -19128,9 +19103,9 @@ var init_curriculum = __esm({
               } catch {
               }
             }
-            if (!templatedAnswer && intentConcept && subjectTok && cluster.regions?.sem && typeof cluster.injectEmbeddingToRegion === "function" && typeof cluster.emitWordDirect === "function" && sharedEmbeddings && typeof sharedEmbeddings.getEmbedding === "function") {
-              const intentEmb = sharedEmbeddings.getEmbedding(intentConcept);
-              const subjectEmb = sharedEmbeddings.getEmbedding(subjectTok);
+            if (!templatedAnswer && intentConcept && subjectTok && cluster.regions?.sem && typeof cluster.injectEmbeddingToRegion === "function" && typeof cluster.emitWordDirect === "function" && sharedEmbeddings2 && typeof sharedEmbeddings2.getEmbedding === "function") {
+              const intentEmb = sharedEmbeddings2.getEmbedding(intentConcept);
+              const subjectEmb = sharedEmbeddings2.getEmbedding(subjectTok);
               if (intentEmb && intentEmb.length > 0 && subjectEmb && subjectEmb.length > 0) {
                 try {
                   cluster.injectEmbeddingToRegion("sem", intentEmb, 0.5);
@@ -19184,8 +19159,8 @@ var init_curriculum = __esm({
               intentSeed = null;
             }
           }
-          if ((!intentSeed || intentSeed.length === 0) && sharedEmbeddings && typeof sharedEmbeddings.getSentenceEmbedding === "function") {
-            intentSeed = sharedEmbeddings.getSentenceEmbedding(question);
+          if ((!intentSeed || intentSeed.length === 0) && sharedEmbeddings2 && typeof sharedEmbeddings2.getSentenceEmbedding === "function") {
+            intentSeed = sharedEmbeddings2.getSentenceEmbedding(question);
           }
           const emitOpts = {
             directPropagate: true,
@@ -19518,9 +19493,9 @@ var init_curriculum = __esm({
               const entry = cluster.dictionary._words.get(w);
               if (entry) {
                 entry.isPersona = true;
-              } else if (sharedEmbeddings && typeof sharedEmbeddings.getEmbedding === "function") {
+              } else if (sharedEmbeddings2 && typeof sharedEmbeddings2.getEmbedding === "function") {
                 try {
-                  const glove = sharedEmbeddings.getEmbedding(w);
+                  const glove = sharedEmbeddings2.getEmbedding(w);
                   if (glove && glove.length > 0) {
                     cluster.dictionary._words.set(w, {
                       word: w,
@@ -19576,7 +19551,7 @@ var init_curriculum = __esm({
         const intentCounts = /* @__PURE__ */ new Map();
         for (const sentence of allSentences) {
           const intent = this._lightIntent(sentence);
-          const emb = sharedEmbeddings.getSentenceEmbedding(sentence);
+          const emb = sharedEmbeddings2.getSentenceEmbedding(sentence);
           if (!emb || emb.length === 0) continue;
           if (!intentCentroids.has(intent)) {
             intentCentroids.set(intent, new Float64Array(emb.length));
@@ -19611,16 +19586,16 @@ var init_curriculum = __esm({
         const centroids = [];
         const step = Math.max(1, Math.floor(sentences.length / k));
         for (let i = 0; i < k && i * step < sentences.length; i++) {
-          const emb = sharedEmbeddings.getSentenceEmbedding(sentences[i * step]);
+          const emb = sharedEmbeddings2.getSentenceEmbedding(sentences[i * step]);
           if (emb && emb.length > 0) centroids.push({ vec: Array.from(emb), sentences: [] });
         }
         if (centroids.length === 0) return [];
         for (const s of sentences) {
-          const emb = sharedEmbeddings.getSentenceEmbedding(s);
+          const emb = sharedEmbeddings2.getSentenceEmbedding(s);
           if (!emb || emb.length === 0) continue;
           let best = 0, bestSim = -Infinity;
           for (let i = 0; i < centroids.length; i++) {
-            const sim = sharedEmbeddings.similarity(emb, centroids[i].vec);
+            const sim = sharedEmbeddings2.similarity(emb, centroids[i].vec);
             if (sim > bestSim) {
               bestSim = sim;
               best = i;
@@ -19692,7 +19667,7 @@ var init_curriculum = __esm({
             repsMax,
             Math.ceil(freq / topFreq * repsMax)
           ));
-          const emb = sharedEmbeddings.getEmbedding(word);
+          const emb = sharedEmbeddings2.getEmbedding(word);
           for (let r = 0; r < reps; r++) {
             if (emb && this.cluster.regions?.sem) {
               this.cluster.injectEmbeddingToRegion("sem", emb, 0.6);
@@ -19735,7 +19710,7 @@ var init_curriculum = __esm({
       _walkSentence(words, arousal, valence, ticksPerWord) {
         const text = words.join(" ");
         for (const word of words) {
-          const emb = sharedEmbeddings.getEmbedding(word);
+          const emb = sharedEmbeddings2.getEmbedding(word);
           if (emb && this.cluster.regions?.sem) {
             this.cluster.injectEmbeddingToRegion("sem", emb, 0.5);
           }
@@ -19995,7 +19970,7 @@ var init_curriculum = __esm({
         }
         let cosSum = 0, probes = 0;
         for (const word of cvc) {
-          const target = sharedEmbeddings.getEmbedding(word);
+          const target = sharedEmbeddings2.getEmbedding(word);
           if (!target || target.length === 0) continue;
           for (const ch of word) {
             cluster.injectLetter(ch, 1);
@@ -20113,7 +20088,7 @@ var init_curriculum = __esm({
           if (words.length < 2) continue;
           this._walkSentence(words, arousal, valence, SENTENCE_TICKS_PER_WORD);
           if (typeof cluster.injectWorkingMemory === "function") {
-            const emb = sharedEmbeddings.getSentenceEmbedding(compound[i]);
+            const emb = sharedEmbeddings2.getSentenceEmbedding(compound[i]);
             if (emb && emb.length > 0) cluster.injectWorkingMemory(emb, 0.5);
           }
           if (i % 16 === 0) await _microtask();
@@ -20127,7 +20102,7 @@ var init_curriculum = __esm({
         }
         let cosSum = 0, probes = 0;
         for (let i = 1; i < Math.min(20, compoundSentences.length); i++) {
-          const prevEmb = sharedEmbeddings.getSentenceEmbedding(compoundSentences[i - 1]);
+          const prevEmb = sharedEmbeddings2.getSentenceEmbedding(compoundSentences[i - 1]);
           if (!prevEmb || prevEmb.length === 0) continue;
           const words = compoundSentences[i].split(/\s+/).filter(Boolean);
           if (words.length < 2) continue;
@@ -20201,7 +20176,7 @@ var init_curriculum = __esm({
           if (words.length < 2) continue;
           this._walkSentence(words, arousal, valence, SENTENCE_TICKS_PER_WORD);
           if (typeof cluster.injectWorkingMemory === "function") {
-            const emb = sharedEmbeddings.getSentenceEmbedding(sentences[i]);
+            const emb = sharedEmbeddings2.getSentenceEmbedding(sentences[i]);
             if (emb && emb.length > 0) cluster.injectWorkingMemory(emb, 0.45);
           }
           if (i % 16 === 0) await _microtask();
@@ -20215,8 +20190,8 @@ var init_curriculum = __esm({
         }
         let runStart = -1, runLen = 0, bestStart = -1;
         for (let i = 1; i < sentences.length; i++) {
-          const a = sharedEmbeddings.getSentenceEmbedding(sentences[i - 1]);
-          const b = sharedEmbeddings.getSentenceEmbedding(sentences[i]);
+          const a = sharedEmbeddings2.getSentenceEmbedding(sentences[i - 1]);
+          const b = sharedEmbeddings2.getSentenceEmbedding(sentences[i]);
           if (!a || !b || a.length === 0 || b.length === 0) {
             runLen = 0;
             runStart = -1;
@@ -20245,7 +20220,7 @@ var init_curriculum = __esm({
         if (bestStart === -1) return { pass: true, reason: "no 5-sentence topic run found; defaulting pass (corpus dependent)", metrics: { found: false } };
         const readouts = [];
         for (let i = bestStart; i < bestStart + 5; i++) {
-          const emb = sharedEmbeddings.getSentenceEmbedding(sentences[i]);
+          const emb = sharedEmbeddings2.getSentenceEmbedding(sentences[i]);
           if (!emb) continue;
           if (typeof cluster.injectWorkingMemory === "function") {
             cluster.injectWorkingMemory(emb, 0.5);
@@ -20775,7 +20750,7 @@ var init_curriculum = __esm({
        * corpora.
        */
       async runSubjectGrade(subject, grade, corpora, opts = {}) {
-        if (!SUBJECTS2.includes(subject)) return { pass: false, reason: `unknown subject: ${subject}` };
+        if (!SUBJECTS3.includes(subject)) return { pass: false, reason: `unknown subject: ${subject}` };
         if (!GRADE_ORDER.includes(grade)) return { pass: false, reason: `unknown grade: ${grade}` };
         const cluster = this.cluster;
         if (!cluster) return { pass: false, reason: "no cluster wired" };
@@ -21294,7 +21269,7 @@ var init_curriculum = __esm({
         if (corpora) this._buildCtx(corpora, opts);
         const passed = {};
         const failed = {};
-        for (const s of SUBJECTS2) {
+        for (const s of SUBJECTS3) {
           passed[s] = [];
           failed[s] = null;
         }
@@ -21395,7 +21370,7 @@ var init_curriculum = __esm({
               this._hb(`[Curriculum] \u{1F504} grade ${grade} round ${round + 1} \u2014 retrying failed subjects...`);
             }
             allPassedThisGrade = true;
-            for (const subject of SUBJECTS2) {
+            for (const subject of SUBJECTS3) {
               const currentIdx = GRADE_ORDER.indexOf(cluster.grades[subject] || "pre-K");
               if (currentIdx >= i) continue;
               let attempt = 0;
@@ -21466,7 +21441,7 @@ var init_curriculum = __esm({
             const SENTENCE_MIN_LOOSE = 0.2;
             const PROD_MIN_LOOSE = 0.2;
             const STUDENT_MIN_LOOSE = 0.1;
-            for (const subject of SUBJECTS2) {
+            for (const subject of SUBJECTS3) {
               const currentIdx = GRADE_ORDER.indexOf(cl.grades[subject] || "pre-K");
               if (currentIdx >= i) continue;
               const cellKey = `${subject}/${grade}`;
@@ -21502,7 +21477,7 @@ var init_curriculum = __esm({
             console.warn(`[Curriculum] \u26D4 grade ${grade} incomplete after ${MAX_GRADE_ROUNDS} rounds \u2014 force-advanced cells that met capability minimums; cells without minimum capability evidence held at prior grade. Curriculum walk continues to next grade.`);
             continue;
           }
-          this._hb(`[Curriculum] \u2550\u2550\u2550 ALL ${SUBJECTS2.length} subjects passed ${grade} \u2014 advancing to next grade \u2550\u2550\u2550`);
+          this._hb(`[Curriculum] \u2550\u2550\u2550 ALL ${SUBJECTS3.length} subjects passed ${grade} \u2014 advancing to next grade \u2550\u2550\u2550`);
           const nextIdx = i + 1;
           const nextGrade = nextIdx < GRADE_ORDER.length && (maxIdx < 0 || nextIdx <= maxIdx) ? GRADE_ORDER[nextIdx] : null;
           if (nextGrade === null) {
@@ -21528,7 +21503,7 @@ var init_curriculum = __esm({
           }
         }
         const reached = {};
-        for (const s of SUBJECTS2) reached[s] = cluster.grades[s] || "pre-K";
+        for (const s of SUBJECTS3) reached[s] = cluster.grades[s] || "pre-K";
         return { reached, passed, failed };
       }
       /**
@@ -21565,7 +21540,7 @@ var init_curriculum = __esm({
       resetSubject(subject) {
         const cluster = this.cluster;
         if (!cluster) return false;
-        if (!SUBJECTS2.includes(subject)) return false;
+        if (!SUBJECTS3.includes(subject)) return false;
         if (!cluster.grades || typeof cluster.grades !== "object") {
           cluster.grades = { ela: "pre-K", math: "pre-K", science: "pre-K", social: "pre-K", art: "pre-K" };
         }
@@ -21618,7 +21593,7 @@ var init_curriculum = __esm({
        */
       static _minGrade(grades) {
         let minIdx = Infinity;
-        for (const s of SUBJECTS2) {
+        for (const s of SUBJECTS3) {
           const g = grades && grades[s] || "pre-K";
           const idx = GRADE_ORDER.indexOf(g);
           if (idx >= 0 && idx < minIdx) minIdx = idx;
@@ -21817,8 +21792,8 @@ var init_curriculum = __esm({
             skipped++;
             continue;
           }
-          const motorPattern = encodeLetter(targetLetter);
-          const qEmb = sharedEmbeddings && typeof sharedEmbeddings.getSentenceEmbedding === "function" ? sharedEmbeddings.getSentenceEmbedding(anchor) : null;
+          const motorPattern = encodeLetter2(targetLetter);
+          const qEmb = sharedEmbeddings2 && typeof sharedEmbeddings2.getSentenceEmbedding === "function" ? sharedEmbeddings2.getSentenceEmbedding(anchor) : null;
           if (!qEmb || qEmb.length === 0 || !motorPattern || motorPattern.length === 0) {
             skipped++;
             continue;
@@ -22388,7 +22363,7 @@ var init_curriculum = __esm({
         const READ_COS_MIN = 0.1;
         const THINK_VAR_MIN = 5e-4;
         for (const word of sample) {
-          const wordEmb = sharedEmbeddings.getEmbedding(word);
+          const wordEmb = sharedEmbeddings2.getEmbedding(word);
           if (!wordEmb || wordEmb.length === 0) {
             perWord.push({ word, skip: "no embedding" });
             continue;
@@ -22434,7 +22409,7 @@ var init_curriculum = __esm({
             cluster.injectEmbeddingToRegion("sem", wordEmb, 0.8);
           }
           for (let t = 0; t < 6; t++) cluster.step(1e-3);
-          const invSize = inventorySize();
+          const invSize = inventorySize2();
           const motorVec = invSize > 0 ? cluster.regionReadout("motor", invSize) : null;
           const decoded = motorVec ? decodeLetter(motorVec) : null;
           const talkOk = decoded === word[0];
@@ -22739,14 +22714,14 @@ var init_curriculum = __esm({
         const READ_COS_MIN = 0.08;
         const THINK_VAR_MIN = 5e-4;
         for (const fact of sample) {
-          const ansEmb = sharedEmbeddings.getEmbedding(fact.answerWord);
+          const ansEmb = sharedEmbeddings2.getEmbedding(fact.answerWord);
           if (!ansEmb || ansEmb.length === 0) {
             perFact.push({ fact: fact.sentence, skip: "no embedding" });
             continue;
           }
           const partialWords = fact.partial.split(/\s+/).filter(Boolean);
           for (const word of partialWords) {
-            const wordEmb = sharedEmbeddings.getEmbedding(word);
+            const wordEmb = sharedEmbeddings2.getEmbedding(word);
             if (wordEmb && wordEmb.length > 0 && cluster.regions?.sem) {
               cluster.injectEmbeddingToRegion("sem", wordEmb, 0.5);
             }
@@ -22784,7 +22759,7 @@ var init_curriculum = __esm({
           }
           const thinkOk = thinkVar > THINK_VAR_MIN;
           if (thinkOk) thinkPass++;
-          const invSize = inventorySize();
+          const invSize = inventorySize2();
           const motorVec = invSize > 0 ? cluster.regionReadout("motor", invSize) : null;
           const decoded = motorVec ? decodeLetter(motorVec) : null;
           const expectedFirst = fact.answerWord[0];
@@ -23711,7 +23686,7 @@ var init_curriculum = __esm({
               skipped++;
               continue;
             }
-            const qEmb = sharedEmbeddings && typeof sharedEmbeddings.getSentenceEmbedding === "function" ? sharedEmbeddings.getSentenceEmbedding(entry.question) : null;
+            const qEmb = sharedEmbeddings2 && typeof sharedEmbeddings2.getSentenceEmbedding === "function" ? sharedEmbeddings2.getSentenceEmbedding(entry.question) : null;
             if (!qEmb || qEmb.length === 0) {
               skipped++;
               continue;
@@ -23722,7 +23697,7 @@ var init_curriculum = __esm({
               skipped++;
               continue;
             }
-            const motorPattern = encodeLetter(targetLetter);
+            const motorPattern = encodeLetter2(targetLetter);
             if (!motorPattern || motorPattern.length === 0) {
               skipped++;
               continue;
@@ -23758,7 +23733,7 @@ var init_curriculum = __esm({
             if (directPromptAlt && keyToken) {
               try {
                 const directPromptText = `${keyToken}:`;
-                const directEmb = sharedEmbeddings && typeof sharedEmbeddings.getSentenceEmbedding === "function" ? sharedEmbeddings.getSentenceEmbedding(directPromptText) : null;
+                const directEmb = sharedEmbeddings2 && typeof sharedEmbeddings2.getSentenceEmbedding === "function" ? sharedEmbeddings2.getSentenceEmbedding(directPromptText) : null;
                 if (directEmb && directEmb.length > 0) {
                   this._clearSpikes();
                   this._writeTiledPattern(semRegion, directEmb, false);
@@ -23785,7 +23760,7 @@ var init_curriculum = __esm({
                 const wrongAnswer = String(wrongEntry.expectedAnswer).toLowerCase();
                 const wrongLetter = wrongAnswer.charAt(0);
                 if (wrongLetter && wrongLetter !== targetLetter) {
-                  const wrongMotorPattern = encodeLetter(wrongLetter);
+                  const wrongMotorPattern = encodeLetter2(wrongLetter);
                   if (wrongMotorPattern && wrongMotorPattern.length > 0) {
                     try {
                       this._clearSpikes();
@@ -24471,8 +24446,8 @@ var init_curriculum = __esm({
           if (contentTokens.length >= 8) break;
         }
         const injectSem = opts.injectSem !== false;
-        if (injectSem && typeof cluster.injectEmbeddingToRegion === "function" && sharedEmbeddings && typeof sharedEmbeddings.getEmbedding === "function") {
-          const subjectEmb = sharedEmbeddings.getEmbedding(word);
+        if (injectSem && typeof cluster.injectEmbeddingToRegion === "function" && sharedEmbeddings2 && typeof sharedEmbeddings2.getEmbedding === "function") {
+          const subjectEmb = sharedEmbeddings2.getEmbedding(word);
           if (subjectEmb && subjectEmb.length > 0) {
             try {
               cluster.injectEmbeddingToRegion("sem", subjectEmb, 0.6);
@@ -24481,7 +24456,7 @@ var init_curriculum = __esm({
           }
           for (let i = 0; i < contentTokens.length; i++) {
             try {
-              const emb = sharedEmbeddings.getEmbedding(contentTokens[i]);
+              const emb = sharedEmbeddings2.getEmbedding(contentTokens[i]);
               if (emb && emb.length > 0) {
                 const strength = Math.max(0.1, 0.4 - i * 0.04);
                 cluster.injectEmbeddingToRegion("sem", emb, strength);
@@ -24684,7 +24659,7 @@ var init_curriculum = __esm({
             }
             const [inputWord, outputWord] = pair;
             const inEmb = this._dictionaryPatternFor(inputWord);
-            const outEmb = sharedEmbeddings && typeof sharedEmbeddings.getEmbedding === "function" ? sharedEmbeddings.getEmbedding(outputWord) : null;
+            const outEmb = sharedEmbeddings2 && typeof sharedEmbeddings2.getEmbedding === "function" ? sharedEmbeddings2.getEmbedding(outputWord) : null;
             if (!inEmb || !outEmb || inEmb.length === 0 || outEmb.length === 0) {
               skipped++;
               continue;
@@ -24729,7 +24704,7 @@ var init_curriculum = __esm({
               if (Array.isArray(wrongPair) && wrongPair.length >= 2) {
                 const wrongOut = wrongPair[1];
                 if (wrongOut && wrongOut !== outputWord) {
-                  const wrongEmb = sharedEmbeddings && typeof sharedEmbeddings.getEmbedding === "function" ? sharedEmbeddings.getEmbedding(wrongOut) : null;
+                  const wrongEmb = sharedEmbeddings2 && typeof sharedEmbeddings2.getEmbedding === "function" ? sharedEmbeddings2.getEmbedding(wrongOut) : null;
                   if (wrongEmb && wrongEmb.length > 0) {
                     const wrongEmbMotor = motorWTA ? this._topKEmbedding(wrongEmb, motorTopK) : wrongEmb;
                     try {
@@ -25829,7 +25804,7 @@ var init_curriculum = __esm({
         if (tplId === 0 && /^[a-z]$/.test(keyTok)) {
           const letterRegion = cluster.regions?.letter;
           if (!letterRegion || !cluster.synapses?.propagate) return null;
-          const oneHot = typeof encodeLetter === "function" ? encodeLetter(keyTok) : null;
+          const oneHot = typeof encodeLetter2 === "function" ? encodeLetter2(keyTok) : null;
           if (!oneHot || oneHot.length === 0) return null;
           const clusterInput = new Float64Array(cluster.size);
           const letterSize = letterRegion.end - letterRegion.start;
@@ -25848,9 +25823,9 @@ var init_curriculum = __esm({
             return null;
           }
           if (!clusterOutput || clusterOutput.length === 0) return null;
-          const invSize = typeof inventorySize === "function" ? inventorySize() : 26;
+          const invSize = typeof inventorySize2 === "function" ? inventorySize2() : 26;
           const bucketSize = Math.max(1, Math.floor(letterSize / invSize));
-          const invAll = typeof inventorySnapshot === "function" ? inventorySnapshot() : null;
+          const invAll = typeof inventorySnapshot2 === "function" ? inventorySnapshot2() : null;
           let bestIdx = -1, bestSum = -Infinity;
           for (let b = 0; b < invSize; b++) {
             if (invAll && (!invAll[b] || !/^[a-z]$/.test(invAll[b]))) continue;
@@ -25872,7 +25847,7 @@ var init_curriculum = __esm({
             const phonRegion = cluster.regions?.phon;
             const letterRegion = cluster.regions?.letter;
             if (!phonRegion || !letterRegion) return null;
-            const oneHot = typeof encodeLetter === "function" ? encodeLetter(keyTok) : null;
+            const oneHot = typeof encodeLetter2 === "function" ? encodeLetter2(keyTok) : null;
             if (!oneHot) return null;
             const letterSize = letterRegion.end - letterRegion.start;
             const preLetter = new Float64Array(letterSize);
@@ -25891,9 +25866,9 @@ var init_curriculum = __esm({
               return null;
             }
             if (!phonOut || phonOut.length === 0) return null;
-            const invSize = typeof inventorySize === "function" ? inventorySize() : 26;
+            const invSize = typeof inventorySize2 === "function" ? inventorySize2() : 26;
             const bucketSize = Math.max(1, Math.floor(phonOut.length / invSize));
-            const invAll = typeof inventorySnapshot === "function" ? inventorySnapshot() : null;
+            const invAll = typeof inventorySnapshot2 === "function" ? inventorySnapshot2() : null;
             let bestIdx = -1, bestSum = -Infinity;
             for (let b = 0; b < invSize; b++) {
               if (invAll && (!invAll[b] || !/^[a-z]$/.test(invAll[b]))) continue;
@@ -26003,7 +25978,7 @@ var init_curriculum = __esm({
           const words = q.match(/[a-z]+/g) || [];
           if (cluster.regions?.sem) {
             for (const word of words) {
-              const emb = sharedEmbeddings.getEmbedding(word);
+              const emb = sharedEmbeddings2.getEmbedding(word);
               if (emb && emb.length > 0) cluster.injectEmbeddingToRegion("sem", emb, 0.35);
             }
           }
@@ -26150,7 +26125,7 @@ var init_curriculum = __esm({
         const lr = cluster.learningRate;
         const REPS = 10;
         function buildEmbPattern(regionSize, word) {
-          const emb = sharedEmbeddings.getEmbedding(word);
+          const emb = sharedEmbeddings2.getEmbedding(word);
           if (!emb || emb.length === 0) return new Float64Array(regionSize);
           const pat = new Float64Array(regionSize);
           const gSize = Math.max(1, Math.floor(regionSize / emb.length));
@@ -26217,7 +26192,7 @@ var init_curriculum = __esm({
           return pat;
         }
         function buildEmbPattern(regionSize, word) {
-          const emb = sharedEmbeddings.getEmbedding(word);
+          const emb = sharedEmbeddings2.getEmbedding(word);
           if (!emb || emb.length === 0) return new Float64Array(regionSize);
           const pat = new Float64Array(regionSize);
           const gSize = Math.max(1, Math.floor(regionSize / emb.length));
@@ -26273,7 +26248,7 @@ var init_curriculum = __esm({
         const lr = cluster.learningRate;
         const REPS = 6;
         function buildEmbPattern(regionSize, word) {
-          const emb = sharedEmbeddings.getEmbedding(word);
+          const emb = sharedEmbeddings2.getEmbedding(word);
           if (!emb || emb.length === 0) return new Float64Array(regionSize);
           const pat = new Float64Array(regionSize);
           const gSize = Math.max(1, Math.floor(regionSize / emb.length));
@@ -26367,7 +26342,7 @@ var init_curriculum = __esm({
         const lr = cluster.learningRate;
         const REPS = 8;
         function buildEmbPattern(regionSize, word) {
-          const emb = sharedEmbeddings.getEmbedding(word);
+          const emb = sharedEmbeddings2.getEmbedding(word);
           if (!emb || emb.length === 0) return new Float64Array(regionSize);
           const pat = new Float64Array(regionSize);
           const gSize = Math.max(1, Math.floor(regionSize / emb.length));
@@ -26421,7 +26396,7 @@ var init_curriculum = __esm({
         const lr = cluster.learningRate;
         const REPS = 8;
         function buildEmbPattern(regionSize, word) {
-          const emb = sharedEmbeddings.getEmbedding(word);
+          const emb = sharedEmbeddings2.getEmbedding(word);
           if (!emb || emb.length === 0) return new Float64Array(regionSize);
           const pat = new Float64Array(regionSize);
           const gSize = Math.max(1, Math.floor(regionSize / emb.length));
@@ -26700,7 +26675,7 @@ var init_curriculum = __esm({
         const freeSize = freeRegion.end - freeRegion.start;
         const lr = cluster.learningRate;
         function buildEmb(regionSize, word) {
-          const emb = sharedEmbeddings.getEmbedding(word);
+          const emb = sharedEmbeddings2.getEmbedding(word);
           if (!emb || emb.length === 0) return new Float64Array(regionSize);
           const pat = new Float64Array(regionSize);
           const gSize = Math.max(1, Math.floor(regionSize / emb.length));
@@ -26720,7 +26695,7 @@ var init_curriculum = __esm({
             const meanEmb = new Float64Array(300);
             let count = 0;
             for (const w of allWords) {
-              const emb = sharedEmbeddings.getEmbedding(w);
+              const emb = sharedEmbeddings2.getEmbedding(w);
               if (emb && emb.length > 0) {
                 for (let i = 0; i < Math.min(300, emb.length); i++) meanEmb[i] += emb[i];
                 count++;
@@ -26769,7 +26744,7 @@ var init_curriculum = __esm({
         const fineTypeSize = fineTypeRegion.end - fineTypeRegion.start;
         const lr = cluster.learningRate;
         function buildEmb(regionSize, word) {
-          const emb = sharedEmbeddings.getEmbedding(word);
+          const emb = sharedEmbeddings2.getEmbedding(word);
           if (!emb || emb.length === 0) return new Float64Array(regionSize);
           const pat = new Float64Array(regionSize);
           const gSize = Math.max(1, Math.floor(regionSize / emb.length));
@@ -26818,7 +26793,7 @@ var init_curriculum = __esm({
         const phonSize = phonRegion.end - phonRegion.start;
         const lr = cluster.learningRate;
         function buildEmb(regionSize, word) {
-          const emb = sharedEmbeddings.getEmbedding(word);
+          const emb = sharedEmbeddings2.getEmbedding(word);
           if (!emb || emb.length === 0) return new Float64Array(regionSize);
           const pat = new Float64Array(regionSize);
           const gSize = Math.max(1, Math.floor(regionSize / emb.length));
@@ -27018,14 +26993,14 @@ var init_curriculum = __esm({
           } catch {
           }
         }
-        const wordEmb = sharedEmbeddings && typeof sharedEmbeddings.getEmbedding === "function" ? sharedEmbeddings.getEmbedding(cleanWord) : null;
-        const firstLetterOneHot = encodeLetter(letters[0]);
+        const wordEmb = sharedEmbeddings2 && typeof sharedEmbeddings2.getEmbedding === "function" ? sharedEmbeddings2.getEmbedding(cleanWord) : null;
+        const firstLetterOneHot = encodeLetter2(letters[0]);
         const motorFirstLetter = buildPattern(motorSize, firstLetterOneHot, wScratch.motorFirstLetterBuf);
         for (let rep = 0; rep < reps; rep++) {
           if (typeof globalThis._brainShutdownRequested !== "undefined" && globalThis._brainShutdownRequested) return;
           for (let i = 0; i < letters.length; i++) {
             const ch = letters[i];
-            const chOneHot = encodeLetter(ch);
+            const chOneHot = encodeLetter2(ch);
             const phonFeat = _phonemeFeatureForLetter(ch);
             for (let j = 0; j < cluster.size; j++) cluster.lastSpikes[j] = 0;
             const letterPat = buildPattern(letterSize, chOneHot, wScratch.letterPat);
@@ -27083,7 +27058,7 @@ var init_curriculum = __esm({
             for (let wi = 0; wi < ALPHABET_CONTRAST.length; wi++) {
               const wrongCh = ALPHABET_CONTRAST[wi];
               if (wrongCh === correctLetter) continue;
-              const wrongOneHot = encodeLetter(wrongCh);
+              const wrongOneHot = encodeLetter2(wrongCh);
               for (let j = 0; j < cluster.size; j++) cluster.lastSpikes[j] = 0;
               this._writeTiledPattern(semRegion, wordEmb, true);
               this._writeTiledPattern(motorRegion, wrongOneHot, true);
@@ -27110,8 +27085,8 @@ var init_curriculum = __esm({
           }
           if (typeof cluster.hebbianPairReinforce === "function" && letters.length > 1) {
             for (let i = 0; i < letters.length - 1; i++) {
-              const curr = encodeLetter(letters[i]);
-              const next = encodeLetter(letters[i + 1]);
+              const curr = encodeLetter2(letters[i]);
+              const next = encodeLetter2(letters[i + 1]);
               try {
                 cluster.hebbianPairReinforce({
                   region: "letter",
@@ -27130,7 +27105,7 @@ var init_curriculum = __esm({
               `this is a ${cleanWord}`
             ];
             for (const sentence of templates) {
-              const sentEmb = sharedEmbeddings && typeof sharedEmbeddings.getSentenceEmbedding === "function" ? sharedEmbeddings.getSentenceEmbedding(sentence) : null;
+              const sentEmb = sharedEmbeddings2 && typeof sharedEmbeddings2.getSentenceEmbedding === "function" ? sharedEmbeddings2.getSentenceEmbedding(sentence) : null;
               if (!sentEmb || sentEmb.length === 0) continue;
               for (let j = 0; j < cluster.size; j++) cluster.lastSpikes[j] = 0;
               this._writeTiledPattern(semRegion, sentEmb, true);
@@ -27213,10 +27188,10 @@ var init_curriculum = __esm({
         for (let rep = 0; rep < reps; rep++) {
           if (typeof globalThis._brainShutdownRequested !== "undefined" && globalThis._brainShutdownRequested) return { pass: false, reason: "shutdown" };
           for (const word of vocab) {
-            const wordEmb = sharedEmbeddings.getEmbedding(word);
+            const wordEmb = sharedEmbeddings2.getEmbedding(word);
             const firstLetter = word.replace(/[^a-z]/g, "")[0];
             if (!firstLetter) continue;
-            const letterOneHot = encodeLetter(firstLetter);
+            const letterOneHot = encodeLetter2(firstLetter);
             const phonFeat = _phonemeFeatureForLetter(firstLetter);
             for (let j = 0; j < cluster.size; j++) cluster.lastSpikes[j] = 0;
             const letterPat = buildPattern(letterSize, letterOneHot);
@@ -27276,10 +27251,10 @@ var init_curriculum = __esm({
           if (failedWords.length === 0) return { ...comprehResult, pass: false };
           for (let rep = 0; rep < reps * 3; rep++) {
             for (const word of failedWords) {
-              const wordEmb = sharedEmbeddings.getEmbedding(word);
+              const wordEmb = sharedEmbeddings2.getEmbedding(word);
               const firstLetter = word.replace(/[^a-z]/g, "")[0];
               if (!firstLetter) continue;
-              const letterOneHot = encodeLetter(firstLetter);
+              const letterOneHot = encodeLetter2(firstLetter);
               const phonFeat = _phonemeFeatureForLetter(firstLetter);
               for (let j = 0; j < cluster.size; j++) cluster.lastSpikes[j] = 0;
               const letterPat = buildPattern(letterSize, letterOneHot);
@@ -27319,7 +27294,7 @@ var init_curriculum = __esm({
         const motorRegion = cluster.regions?.motor;
         if (!letterRegion) return { pass: false, reason: "missing regions" };
         const letterSize = letterRegion.end - letterRegion.start;
-        const invSize = inventorySize();
+        const invSize = inventorySize2();
         const letterToSem = allProjs["letter_to_sem"];
         function cosine(a, b) {
           let dot = 0, na = 0, nb = 0;
@@ -27348,7 +27323,7 @@ var init_curriculum = __esm({
         for (const word of sample) {
           const firstLetter = word.replace(/[^a-z]/g, "")[0];
           if (!firstLetter) continue;
-          const letterOneHot = encodeLetter(firstLetter);
+          const letterOneHot = encodeLetter2(firstLetter);
           const lGSize = Math.max(1, Math.floor(letterSize / letterOneHot.length));
           const letterPat = new Float64Array(letterSize);
           for (let d = 0; d < letterOneHot.length; d++) {
@@ -27380,12 +27355,12 @@ var init_curriculum = __esm({
             for (let i = 0; i < SEM_DIM; i++) norm += semReadout[i] * semReadout[i];
             norm = Math.sqrt(norm) || 1;
             for (let i = 0; i < SEM_DIM; i++) semReadout[i] /= norm;
-            const wordEmb2 = sharedEmbeddings.getEmbedding(word);
+            const wordEmb2 = sharedEmbeddings2.getEmbedding(word);
             if (wordEmb2 && cosine(semReadout, wordEmb2) > 0.1) readPass++;
           } else {
             readPass++;
           }
-          const wordEmb = sharedEmbeddings.getEmbedding(word);
+          const wordEmb = sharedEmbeddings2.getEmbedding(word);
           const s2m = allProjs["sem_to_motor"];
           if (s2m && semRegion && motorRegion && wordEmb && wordEmb.length > 0) {
             const semSize = semRegion.end - semRegion.start;
@@ -27462,7 +27437,7 @@ var init_curriculum = __esm({
         ensureLetters(Array.from(letterSet));
         for (let rep = 0; rep < reps; rep++) {
           for (const digraph of digraphs) {
-            const digEmb = sharedEmbeddings.getEmbedding(digraph);
+            const digEmb = sharedEmbeddings2.getEmbedding(digraph);
             if (digEmb && digEmb.length > 0 && cluster.regions?.sem) {
               cluster.injectEmbeddingToRegion("sem", digEmb, 0.4);
             }
@@ -27505,7 +27480,7 @@ var init_curriculum = __esm({
         if (eligible.length === 0) return { taught: 0 };
         for (let rep = 0; rep < reps; rep++) {
           for (const word of eligible) {
-            const wordEmb = sharedEmbeddings.getEmbedding(word);
+            const wordEmb = sharedEmbeddings2.getEmbedding(word);
             if (wordEmb && wordEmb.length > 0 && cluster.regions?.sem) {
               cluster.injectEmbeddingToRegion("sem", wordEmb, 0.6);
             }
@@ -27855,7 +27830,7 @@ var init_curriculum = __esm({
             cluster.injectEmbeddingToRegion("phon", digPhon, 0.8);
           }
           for (let t = 0; t < 6; t++) cluster.step(1e-3);
-          const invSize = inventorySize();
+          const invSize = inventorySize2();
           const motorVec = invSize > 0 ? cluster.regionReadout("motor", invSize) : null;
           const decoded = motorVec ? decodeLetter(motorVec) : null;
           const talkOk = decoded === digraph[0];
@@ -27905,7 +27880,7 @@ var init_curriculum = __esm({
         const motorRegion = cluster.regions?.motor;
         if (!letterRegion) return { pass: false, reason: "missing regions" };
         const letterSize = letterRegion.end - letterRegion.start;
-        const invSize = inventorySize();
+        const invSize = inventorySize2();
         function buildPattern(regionSize, feat) {
           const pat = new Float64Array(regionSize);
           const gSize = Math.max(1, Math.floor(regionSize / feat.length));
@@ -27929,10 +27904,10 @@ var init_curriculum = __esm({
             const words = sentence.split(/\s+/).filter(Boolean);
             if (words.length < 2) continue;
             for (const word of words) {
-              const wordEmb = sharedEmbeddings.getEmbedding(word);
+              const wordEmb = sharedEmbeddings2.getEmbedding(word);
               const firstLetter = word.replace(/[^a-z]/g, "")[0];
               if (!firstLetter) continue;
-              const letterOneHot = encodeLetter(firstLetter);
+              const letterOneHot = encodeLetter2(firstLetter);
               const phonFeat = _phonemeFeatureForLetter(firstLetter);
               for (let j = 0; j < cluster.size; j++) cluster.lastSpikes[j] = 0;
               const letterPat = buildPattern(letterSize, letterOneHot);
@@ -28018,7 +27993,7 @@ var init_curriculum = __esm({
         const motorRegion = cluster.regions?.motor;
         if (!letterRegion) return { pass: false, reason: "missing regions" };
         const letterSize = letterRegion.end - letterRegion.start;
-        const invSize = inventorySize();
+        const invSize = inventorySize2();
         const letterToSem = allProjs["letter_to_sem"];
         function cosine(a, b) {
           let dot = 0, na = 0, nb = 0;
@@ -28040,7 +28015,7 @@ var init_curriculum = __esm({
           const firstWord = words[0];
           const firstLetter = firstWord.replace(/[^a-z]/g, "")[0];
           if (!firstLetter) continue;
-          const letterOneHot = encodeLetter(firstLetter);
+          const letterOneHot = encodeLetter2(firstLetter);
           const lGSize = Math.max(1, Math.floor(letterSize / letterOneHot.length));
           const letterPat = new Float64Array(letterSize);
           for (let d = 0; d < letterOneHot.length; d++) {
@@ -28072,12 +28047,12 @@ var init_curriculum = __esm({
             for (let i = 0; i < SEM_DIM; i++) norm += semReadout[i] * semReadout[i];
             norm = Math.sqrt(norm) || 1;
             for (let i = 0; i < SEM_DIM; i++) semReadout[i] /= norm;
-            const wordEmb2 = sharedEmbeddings.getEmbedding(firstWord);
+            const wordEmb2 = sharedEmbeddings2.getEmbedding(firstWord);
             if (wordEmb2 && cosine(semReadout, wordEmb2) > 0.1) readPass++;
           } else {
             readPass++;
           }
-          const wordEmb = sharedEmbeddings.getEmbedding(firstWord);
+          const wordEmb = sharedEmbeddings2.getEmbedding(firstWord);
           const s2m = allProjs["sem_to_motor"];
           if (s2m && semRegion && motorRegion && wordEmb && wordEmb.length > 0) {
             const semSize = semRegion.end - semRegion.start;
@@ -28477,8 +28452,8 @@ var init_curriculum = __esm({
         ensureLetters(Array.from(letterSet));
         for (let rep = 0; rep < reps; rep++) {
           for (const [stem, inflected] of PAIRS) {
-            const stemEmb = sharedEmbeddings.getEmbedding(stem);
-            const inflEmb = sharedEmbeddings.getEmbedding(inflected);
+            const stemEmb = sharedEmbeddings2.getEmbedding(stem);
+            const inflEmb = sharedEmbeddings2.getEmbedding(inflected);
             if (stemEmb && stemEmb.length > 0 && cluster.regions?.sem) {
               cluster.injectEmbeddingToRegion("sem", stemEmb, 0.6);
             }
@@ -28863,7 +28838,7 @@ var init_curriculum = __esm({
             if (cluster.regions?.phon) {
               cluster.injectEmbeddingToRegion("phon", fracFeat, 0.6);
             }
-            const nameEmb = sharedEmbeddings.getEmbedding(name);
+            const nameEmb = sharedEmbeddings2.getEmbedding(name);
             if (nameEmb && cluster.regions?.sem) {
               cluster.injectEmbeddingToRegion("sem", nameEmb, 0.6);
             }
@@ -28920,7 +28895,7 @@ var init_curriculum = __esm({
             if (name) {
               const words = name.split(/\s+/).filter(Boolean);
               for (const w of words) {
-                const wEmb = sharedEmbeddings.getEmbedding(w);
+                const wEmb = sharedEmbeddings2.getEmbedding(w);
                 if (wEmb && cluster.regions?.sem) {
                   cluster.injectEmbeddingToRegion("sem", wEmb, 0.4);
                 }
@@ -28981,7 +28956,7 @@ var init_curriculum = __esm({
             if (cluster.regions?.phon) {
               cluster.injectEmbeddingToRegion("phon", pctFeat, 0.5);
             }
-            const pctEmb = sharedEmbeddings.getEmbedding("percent");
+            const pctEmb = sharedEmbeddings2.getEmbedding("percent");
             if (pctEmb && cluster.regions?.sem) {
               cluster.injectEmbeddingToRegion("sem", pctEmb, 0.4);
             }
@@ -29025,7 +29000,7 @@ var init_curriculum = __esm({
             if (cluster.regions?.free) {
               cluster.injectEmbeddingToRegion("free", positional, 0.6);
             }
-            const ratioEmb = sharedEmbeddings.getEmbedding("ratio");
+            const ratioEmb = sharedEmbeddings2.getEmbedding("ratio");
             if (ratioEmb && cluster.regions?.sem) {
               cluster.injectEmbeddingToRegion("sem", ratioEmb, 0.4);
             }
@@ -29112,7 +29087,7 @@ var init_curriculum = __esm({
             const v = VARS[i];
             const slot = new Float64Array(16);
             slot[i % 16] = 1;
-            const vEmb = sharedEmbeddings.getEmbedding(v);
+            const vEmb = sharedEmbeddings2.getEmbedding(v);
             if (vEmb && cluster.regions?.sem) {
               cluster.injectEmbeddingToRegion("sem", vEmb, 0.7);
             }
@@ -29197,7 +29172,7 @@ var init_curriculum = __esm({
             if (cluster.regions?.free) {
               cluster.injectEmbeddingToRegion("free", feat, 0.6);
             }
-            const slopeEmb = sharedEmbeddings.getEmbedding("slope");
+            const slopeEmb = sharedEmbeddings2.getEmbedding("slope");
             if (slopeEmb && cluster.regions?.sem) {
               cluster.injectEmbeddingToRegion("sem", slopeEmb, 0.5);
             }
@@ -29236,7 +29211,7 @@ var init_curriculum = __esm({
             for (let i = 0; i < 16; i++) norm += feat[i] * feat[i];
             norm = Math.sqrt(norm) || 1;
             for (let i = 0; i < 16; i++) feat[i] /= norm;
-            const nameEmb = sharedEmbeddings.getEmbedding(name);
+            const nameEmb = sharedEmbeddings2.getEmbedding(name);
             if (nameEmb && cluster.regions?.sem) {
               cluster.injectEmbeddingToRegion("sem", nameEmb, 0.7);
             }
@@ -29282,7 +29257,7 @@ var init_curriculum = __esm({
             if (cluster.regions?.free) {
               cluster.injectEmbeddingToRegion("free", feat, 0.6);
             }
-            const qEmb = sharedEmbeddings.getEmbedding("quadratic");
+            const qEmb = sharedEmbeddings2.getEmbedding("quadratic");
             if (qEmb && cluster.regions?.sem) {
               cluster.injectEmbeddingToRegion("sem", qEmb, 0.5);
             }
@@ -29329,7 +29304,7 @@ var init_curriculum = __esm({
               }
               const words = step.split(/\s+/).filter(Boolean);
               this._walkSentence(words, arousal, valence, 2);
-              prevEmb = sharedEmbeddings.getSentenceEmbedding ? sharedEmbeddings.getSentenceEmbedding(step) : null;
+              prevEmb = sharedEmbeddings2.getSentenceEmbedding ? sharedEmbeddings2.getSentenceEmbedding(step) : null;
             }
           }
           await _microtask();
@@ -29621,9 +29596,9 @@ var init_curriculum = __esm({
             for (let i = 0; i < 16; i++) norm += expanded[i] * expanded[i];
             norm = Math.sqrt(norm) || 1;
             for (let i = 0; i < 16; i++) expanded[i] /= norm;
-            const nameEmb = sharedEmbeddings.getSentenceEmbedding ? sharedEmbeddings.getSentenceEmbedding(name) : sharedEmbeddings.getEmbedding(name.split(/\s+/)[0]);
+            const nameEmb = sharedEmbeddings2.getSentenceEmbedding ? sharedEmbeddings2.getSentenceEmbedding(name) : sharedEmbeddings2.getEmbedding(name.split(/\s+/)[0]);
             const firstLetter = name.replace(/[^a-z]/g, "")[0];
-            const letterOneHot = firstLetter ? encodeLetter(firstLetter) : null;
+            const letterOneHot = firstLetter ? encodeLetter2(firstLetter) : null;
             for (let j = 0; j < cluster.size; j++) cluster.lastSpikes[j] = 0;
             if (letterOneHot) {
               const letterPat = buildPattern(letterSize, letterOneHot);
@@ -29687,7 +29662,7 @@ var init_curriculum = __esm({
         const motorRegion = cluster.regions?.motor;
         if (!letterRegion || !semRegion) return { pass: false, reason: "missing regions" };
         const letterSize = letterRegion.end - letterRegion.start;
-        const invSize = inventorySize();
+        const invSize = inventorySize2();
         const letterToSem = allProjs["letter_to_sem"];
         const semToMotor = allProjs["sem_to_motor"];
         function cosine(a, b) {
@@ -29729,8 +29704,8 @@ var init_curriculum = __esm({
         for (const { name } of sample) {
           const firstLetter = name.replace(/[^a-z]/g, "")[0];
           if (!firstLetter) continue;
-          const letterOneHot = encodeLetter(firstLetter);
-          const nameEmb = sharedEmbeddings.getSentenceEmbedding ? sharedEmbeddings.getSentenceEmbedding(name) : sharedEmbeddings.getEmbedding(name.split(/\s+/)[0]);
+          const letterOneHot = encodeLetter2(firstLetter);
+          const nameEmb = sharedEmbeddings2.getSentenceEmbedding ? sharedEmbeddings2.getSentenceEmbedding(name) : sharedEmbeddings2.getEmbedding(name.split(/\s+/)[0]);
           if (letterToSem && nameEmb && nameEmb.length > 0) {
             const letterPat = buildPattern(letterSize, letterOneHot);
             const semOutput = await this._probePropagate("letter_to_sem", letterPat);
@@ -29903,7 +29878,7 @@ var init_curriculum = __esm({
         const ticksPerElement = opts.ticksPerElement ?? 3;
         for (let rep = 0; rep < reps; rep++) {
           for (const { name, z } of ELEMENTS) {
-            const nameEmb = sharedEmbeddings.getEmbedding(name);
+            const nameEmb = sharedEmbeddings2.getEmbedding(name);
             if (nameEmb && cluster.regions?.sem) {
               cluster.injectEmbeddingToRegion("sem", nameEmb, 0.7);
             }
@@ -30741,7 +30716,7 @@ var init_curriculum = __esm({
         for (let rep = 0; rep < reps; rep++) {
           for (const { name, period, group } of ELEMENTS) {
             const feat = buildFeat(period, group);
-            const nameEmb = sharedEmbeddings.getEmbedding(name);
+            const nameEmb = sharedEmbeddings2.getEmbedding(name);
             if (nameEmb && cluster.regions?.sem) {
               cluster.injectEmbeddingToRegion("sem", nameEmb, 0.7);
             }
@@ -30807,7 +30782,7 @@ var init_curriculum = __esm({
           for (const { name, feat } of BONDS) {
             const expandedFeat = buildFeat(feat);
             const words = name.split(/\s+/).filter(Boolean);
-            const headEmb = sharedEmbeddings.getSentenceEmbedding ? sharedEmbeddings.getSentenceEmbedding(name) : sharedEmbeddings.getEmbedding(words[0]);
+            const headEmb = sharedEmbeddings2.getSentenceEmbedding ? sharedEmbeddings2.getSentenceEmbedding(name) : sharedEmbeddings2.getEmbedding(words[0]);
             if (headEmb && cluster.regions?.sem) {
               cluster.injectEmbeddingToRegion("sem", headEmb, 0.7);
             }
@@ -30899,10 +30874,10 @@ var init_curriculum = __esm({
           for (const cycle of cycles) {
             let prevLetterOneHot = null;
             for (const word of cycle) {
-              const wEmb = sharedEmbeddings.getEmbedding(word.split(/\s+/)[0]);
+              const wEmb = sharedEmbeddings2.getEmbedding(word.split(/\s+/)[0]);
               const firstLetter = word.replace(/[^a-z]/g, "")[0];
               if (!firstLetter) continue;
-              const letterOneHot = encodeLetter(firstLetter);
+              const letterOneHot = encodeLetter2(firstLetter);
               const phonFeat = _phonemeFeatureForLetter(firstLetter);
               for (let j = 0; j < cluster.size; j++) cluster.lastSpikes[j] = 0;
               const letterPat = buildPattern(letterSize, letterOneHot);
@@ -31251,7 +31226,7 @@ var init_curriculum = __esm({
             const clauseA = words.slice(0, conjIdx);
             this._walkSentence(clauseA, arousal, valence, ticksPerWord);
             const clauseAText = clauseA.join(" ");
-            const prevEmb = sharedEmbeddings.getSentenceEmbedding ? sharedEmbeddings.getSentenceEmbedding(clauseAText) : null;
+            const prevEmb = sharedEmbeddings2.getSentenceEmbedding ? sharedEmbeddings2.getSentenceEmbedding(clauseAText) : null;
             if (prevEmb && prevEmb.length > 0 && typeof cluster.injectWorkingMemory === "function") {
               cluster.injectWorkingMemory(prevEmb, 0.7);
             }
@@ -31298,7 +31273,7 @@ var init_curriculum = __esm({
           for (const { noun, antecedentSentence, pronoun, pronounSentence } of PAIRS) {
             const wordsA = antecedentSentence.split(/\s+/).filter(Boolean);
             this._walkSentence(wordsA, arousal, valence, ticksPerWord);
-            const nounEmb = sharedEmbeddings.getEmbedding(noun);
+            const nounEmb = sharedEmbeddings2.getEmbedding(noun);
             if (nounEmb && nounEmb.length > 0 && typeof cluster.injectWorkingMemory === "function") {
               cluster.injectWorkingMemory(nounEmb, 0.8);
             }
@@ -31558,7 +31533,7 @@ var init_curriculum = __esm({
             this._walkSentence(ctxWords, arousal, valence, ticksPerWord);
             const qWords = question.split(/\s+/).filter(Boolean);
             this._walkSentence(qWords, arousal, valence, ticksPerWord);
-            const ansEmb = sharedEmbeddings.getEmbedding(answer);
+            const ansEmb = sharedEmbeddings2.getEmbedding(answer);
             if (ansEmb && ansEmb.length > 0 && cluster.regions?.sem) {
               cluster.injectEmbeddingToRegion("sem", ansEmb, 0.8);
             }
@@ -33270,7 +33245,7 @@ var init_curriculum = __esm({
             const mainClause = words.slice(0, markerIdx);
             this._walkSentence(mainClause, arousal, valence, ticksPerWord);
             const mainText = mainClause.join(" ");
-            const mainEmb = sharedEmbeddings.getSentenceEmbedding ? sharedEmbeddings.getSentenceEmbedding(mainText) : null;
+            const mainEmb = sharedEmbeddings2.getSentenceEmbedding ? sharedEmbeddings2.getSentenceEmbedding(mainText) : null;
             if (mainEmb && mainEmb.length > 0 && typeof cluster.injectWorkingMemory === "function") {
               cluster.injectWorkingMemory(mainEmb, 0.75);
             }
@@ -33557,7 +33532,7 @@ var init_curriculum = __esm({
               if (words.length < 2) continue;
               this._walkSentence(words, arousal, valence, ticksPerWord);
             }
-            const themeEmb = sharedEmbeddings.getEmbedding(theme);
+            const themeEmb = sharedEmbeddings2.getEmbedding(theme);
             if (themeEmb && themeEmb.length > 0 && cluster.regions?.sem) {
               cluster.injectEmbeddingToRegion("sem", themeEmb, 0.85);
             }
@@ -33595,7 +33570,7 @@ var init_curriculum = __esm({
             }
             const qWords = question.split(/\s+/).filter(Boolean);
             this._walkSentence(qWords, arousal, valence, ticksPerWord);
-            const ansEmb = sharedEmbeddings.getEmbedding(answer);
+            const ansEmb = sharedEmbeddings2.getEmbedding(answer);
             if (ansEmb && ansEmb.length > 0 && cluster.regions?.sem) {
               cluster.injectEmbeddingToRegion("sem", ansEmb, 0.85);
             }
@@ -33742,7 +33717,7 @@ var init_curriculum = __esm({
           for (const { thesis, body } of essays) {
             const tWords = thesis.split(/\s+/).filter(Boolean);
             this._walkSentence(tWords, arousal, valence, ticksPerWord);
-            const thesisEmb = sharedEmbeddings.getSentenceEmbedding ? sharedEmbeddings.getSentenceEmbedding(thesis) : null;
+            const thesisEmb = sharedEmbeddings2.getSentenceEmbedding ? sharedEmbeddings2.getSentenceEmbedding(thesis) : null;
             for (const para of body) {
               if (thesisEmb && thesisEmb.length > 0 && typeof cluster.injectWorkingMemory === "function") {
                 cluster.injectWorkingMemory(thesisEmb, 0.7);
@@ -34353,12 +34328,12 @@ var init_curriculum = __esm({
         for (let rep = 0; rep < reps; rep++) {
           for (const { literal, figurative, device } of pairs) {
             this._walkSentence(literal.split(/\s+/).filter(Boolean), arousal, valence, ticksPerWord);
-            const litEmb = sharedEmbeddings.getSentenceEmbedding ? sharedEmbeddings.getSentenceEmbedding(literal) : null;
+            const litEmb = sharedEmbeddings2.getSentenceEmbedding ? sharedEmbeddings2.getSentenceEmbedding(literal) : null;
             if (litEmb && typeof cluster.injectWorkingMemory === "function") {
               cluster.injectWorkingMemory(litEmb, 0.7);
             }
             this._walkSentence(figurative.split(/\s+/).filter(Boolean), arousal, valence, ticksPerWord);
-            const deviceEmb = sharedEmbeddings.getEmbedding(device);
+            const deviceEmb = sharedEmbeddings2.getEmbedding(device);
             if (deviceEmb && cluster.regions?.sem) {
               cluster.injectEmbeddingToRegion("sem", deviceEmb, 0.5);
             }
@@ -34380,7 +34355,7 @@ var init_curriculum = __esm({
         for (let rep = 0; rep < reps; rep++) {
           for (const { example, device } of annotated) {
             this._walkSentence(example.split(/\s+/).filter(Boolean), arousal, valence, ticksPerWord);
-            const deviceEmb = sharedEmbeddings.getEmbedding(device);
+            const deviceEmb = sharedEmbeddings2.getEmbedding(device);
             if (deviceEmb && cluster.regions?.sem) {
               cluster.injectEmbeddingToRegion("sem", deviceEmb, 0.8);
             }
@@ -34401,7 +34376,7 @@ var init_curriculum = __esm({
         for (let rep = 0; rep < reps; rep++) {
           for (const { claim, evidence, conclusion } of args) {
             this._walkSentence(claim.split(/\s+/).filter(Boolean), arousal, valence, ticksPerWord);
-            const claimEmb = sharedEmbeddings.getSentenceEmbedding ? sharedEmbeddings.getSentenceEmbedding(claim) : null;
+            const claimEmb = sharedEmbeddings2.getSentenceEmbedding ? sharedEmbeddings2.getSentenceEmbedding(claim) : null;
             if (claimEmb && typeof cluster.injectWorkingMemory === "function") {
               cluster.injectWorkingMemory(claimEmb, 0.7);
             }
@@ -34980,13 +34955,13 @@ var init_curriculum = __esm({
         for (let rep = 0; rep < reps; rep++) {
           for (const { thesis, evidenceSections, counterargument, conclusion } of essays) {
             this._walkSentence(thesis.split(/\s+/).filter(Boolean), arousal, valence, ticksPerWord);
-            const thesisEmb = sharedEmbeddings.getSentenceEmbedding ? sharedEmbeddings.getSentenceEmbedding(thesis) : null;
+            const thesisEmb = sharedEmbeddings2.getSentenceEmbedding ? sharedEmbeddings2.getSentenceEmbedding(thesis) : null;
             for (const ev of evidenceSections) {
               if (thesisEmb && typeof cluster.injectWorkingMemory === "function") {
                 cluster.injectWorkingMemory(thesisEmb, 0.7);
               }
               this._walkSentence(ev.split(/\s+/).filter(Boolean), arousal, valence, ticksPerWord);
-              const evEmb = sharedEmbeddings.getSentenceEmbedding ? sharedEmbeddings.getSentenceEmbedding(ev) : null;
+              const evEmb = sharedEmbeddings2.getSentenceEmbedding ? sharedEmbeddings2.getSentenceEmbedding(ev) : null;
               if (evEmb && cluster.regions?.sem) {
                 cluster.injectEmbeddingToRegion("sem", evEmb, 0.5);
               }
@@ -35019,7 +34994,7 @@ var init_curriculum = __esm({
         for (let rep = 0; rep < reps; rep++) {
           for (const { text, style } of labeled) {
             this._walkSentence(text.split(/\s+/).filter(Boolean), arousal, valence, ticksPerWord);
-            const styleEmb = sharedEmbeddings.getEmbedding(style);
+            const styleEmb = sharedEmbeddings2.getEmbedding(style);
             if (styleEmb && cluster.regions?.sem) {
               cluster.injectEmbeddingToRegion("sem", styleEmb, 0.75);
             }
@@ -35602,12 +35577,12 @@ var init_curriculum = __esm({
         for (let rep = 0; rep < reps; rep++) {
           for (const { thesis, sources } of essays) {
             this._walkSentence(thesis.split(/\s+/).filter(Boolean), arousal, valence, ticksPerWord);
-            const thesisEmb = sharedEmbeddings.getSentenceEmbedding ? sharedEmbeddings.getSentenceEmbedding(thesis) : null;
+            const thesisEmb = sharedEmbeddings2.getSentenceEmbedding ? sharedEmbeddings2.getSentenceEmbedding(thesis) : null;
             for (const { name, claim } of sources) {
               if (thesisEmb && typeof cluster.injectWorkingMemory === "function") {
                 cluster.injectWorkingMemory(thesisEmb, 0.6);
               }
-              const sourceEmb = sharedEmbeddings.getEmbedding(name);
+              const sourceEmb = sharedEmbeddings2.getEmbedding(name);
               if (sourceEmb && cluster.regions?.sem) {
                 cluster.injectEmbeddingToRegion("sem", sourceEmb, 0.5);
               }
@@ -35635,7 +35610,7 @@ var init_curriculum = __esm({
         };
         for (let rep = 0; rep < reps; rep++) {
           for (const [groupName, letters] of Object.entries(GROUPS)) {
-            const groupEmb = sharedEmbeddings.getEmbedding(groupName);
+            const groupEmb = sharedEmbeddings2.getEmbedding(groupName);
             for (const letter of letters) {
               cluster.injectLetter(letter, 1);
               if (groupEmb && cluster.regions?.sem) {
@@ -35682,7 +35657,7 @@ var init_curriculum = __esm({
         ];
         for (let rep = 0; rep < reps; rep++) {
           for (const [root, derived] of PAIRS) {
-            const rootEmb = sharedEmbeddings.getEmbedding(root);
+            const rootEmb = sharedEmbeddings2.getEmbedding(root);
             if (rootEmb && cluster.regions?.sem) {
               cluster.injectEmbeddingToRegion("sem", rootEmb, 0.5);
             }
@@ -35691,7 +35666,7 @@ var init_curriculum = __esm({
               for (let t = 0; t < ticksPerPair; t++) cluster.step(1e-3);
             }
             cluster.learn(0);
-            const derivedEmb = sharedEmbeddings.getEmbedding(derived);
+            const derivedEmb = sharedEmbeddings2.getEmbedding(derived);
             if (derivedEmb && cluster.regions?.sem) {
               cluster.injectEmbeddingToRegion("sem", derivedEmb, 0.5);
             }
@@ -35725,7 +35700,7 @@ var init_curriculum = __esm({
         for (let rep = 0; rep < reps; rep++) {
           for (const { text, structure } of SENTENCES) {
             this._walkSentence(text.split(/\s+/).filter(Boolean), arousal, valence, ticksPerWord);
-            const structureEmb = sharedEmbeddings.getEmbedding(structure);
+            const structureEmb = sharedEmbeddings2.getEmbedding(structure);
             if (structureEmb && cluster.regions?.sem) {
               cluster.injectEmbeddingToRegion("sem", structureEmb, 0.65);
             }
@@ -36252,7 +36227,7 @@ var init_curriculum = __esm({
         for (let rep = 0; rep < reps; rep++) {
           for (const { text, framework } of annotated) {
             this._walkSentence(text.split(/\s+/).filter(Boolean), arousal, valence, ticksPerWord);
-            const fEmb = sharedEmbeddings.getEmbedding(framework);
+            const fEmb = sharedEmbeddings2.getEmbedding(framework);
             if (fEmb && cluster.regions?.sem) {
               cluster.injectEmbeddingToRegion("sem", fEmb, 0.75);
             }
@@ -36273,7 +36248,7 @@ var init_curriculum = __esm({
         for (let rep = 0; rep < reps; rep++) {
           for (const { thesis, counter, response } of triples) {
             this._walkSentence(thesis.split(/\s+/).filter(Boolean), arousal, valence, ticksPerWord);
-            const thesisEmb = sharedEmbeddings.getSentenceEmbedding ? sharedEmbeddings.getSentenceEmbedding(thesis) : null;
+            const thesisEmb = sharedEmbeddings2.getSentenceEmbedding ? sharedEmbeddings2.getSentenceEmbedding(thesis) : null;
             if (thesisEmb && typeof cluster.injectWorkingMemory === "function") {
               cluster.injectWorkingMemory(thesisEmb, 0.8);
             }
@@ -36295,9 +36270,9 @@ var init_curriculum = __esm({
         const ticksPerTriad = opts.ticksPerTriad ?? 4;
         for (let rep = 0; rep < reps; rep++) {
           for (const { sign, signifier, signified } of triads) {
-            const signEmb = sharedEmbeddings.getEmbedding(sign);
-            const signifierEmb = sharedEmbeddings.getEmbedding(signifier);
-            const signifiedEmb = sharedEmbeddings.getEmbedding(signified);
+            const signEmb = sharedEmbeddings2.getEmbedding(sign);
+            const signifierEmb = sharedEmbeddings2.getEmbedding(signifier);
+            const signifiedEmb = sharedEmbeddings2.getEmbedding(signified);
             if (signEmb && cluster.regions?.sem) {
               cluster.injectEmbeddingToRegion("sem", signEmb, 0.5);
             }
@@ -37437,7 +37412,7 @@ var init_curriculum = __esm({
         if (!cluster) return null;
         const hist = cluster.probeHistory || {};
         const perSubject = {};
-        for (const s of SUBJECTS2) {
+        for (const s of SUBJECTS3) {
           perSubject[s] = { strong: 0, wobbly: 0, degrading: 0, untested: 0 };
         }
         const overall = { strong: 0, wobbly: 0, degrading: 0, untested: 0, totalCells: 0 };
@@ -37484,7 +37459,7 @@ var init_curriculum = __esm({
           social: "social studies",
           art: "art"
         };
-        const ranked = SUBJECTS2.map((s) => ({
+        const ranked = SUBJECTS3.map((s) => ({
           subject: s,
           grade: grades[s] || "pre-K",
           idx: GRADE_ORDER.indexOf(grades[s] || "pre-K")
@@ -37558,7 +37533,7 @@ var init_curriculum = __esm({
         let failCount = 0;
         const perSubject = { ela: { p: 0, f: 0 }, math: { p: 0, f: 0 }, science: { p: 0, f: 0 }, social: { p: 0, f: 0 }, art: { p: 0, f: 0 } };
         try {
-          for (const subject of SUBJECTS2) {
+          for (const subject of SUBJECTS3) {
             for (const grade of GRADE_ORDER) {
               if (grade === "pre-K") continue;
               const runner = this._cellRunner(subject, grade);
@@ -37672,7 +37647,7 @@ var init_curriculum = __esm({
             return { reached: {}, passed: {}, failed: { all: "gpu-not-ready" } };
           }
           try {
-            const stats = sharedEmbeddings?.stats || null;
+            const stats = sharedEmbeddings2?.stats || null;
             const gloveLoaded = stats && (stats.loaded === true || (stats.pretrained || 0) > 1e3);
             if (gloveLoaded) {
               this._hb(`[Curriculum] Embedding source: GloVe ${stats.dim || 300}d (${stats.pretrained || 0} pretrained vectors)`);
@@ -37682,7 +37657,7 @@ var init_curriculum = __esm({
           } catch (err) {
             console.warn("[Curriculum] Embedding status check failed:", err?.message || err);
           }
-          this._hb(`[Curriculum] runCompleteCurriculum: GPU ready \u2014 walking all ${SUBJECTS2.length} subjects pre-K onward (cap via DREAM_MAX_GRADE; default 'kindergarten' per Pre-K + K ONLY LAW)`);
+          this._hb(`[Curriculum] runCompleteCurriculum: GPU ready \u2014 walking all ${SUBJECTS3.length} subjects pre-K onward (cap via DREAM_MAX_GRADE; default 'kindergarten' per Pre-K + K ONLY LAW)`);
           const savedLR = this.cluster.learningRate;
           const savedNoise = this.cluster.noiseAmplitude;
           this.cluster.learningRate = 0.01;
@@ -37734,7 +37709,7 @@ var init_curriculum = __esm({
         if (gradeOrGrades && typeof gradeOrGrades === "object") {
           let minCap = Infinity;
           let anyStarted = false;
-          for (const s of SUBJECTS2) {
+          for (const s of SUBJECTS3) {
             const g = gradeOrGrades[s] || "pre-K";
             if (g === "pre-K") continue;
             const c = _Curriculum._singleGradeCap(g);
@@ -37827,13 +37802,13 @@ var init_curriculum = __esm({
           const qWords = String(question).toLowerCase().split(/\s+/).filter((w) => w.length > 2);
           const qWord = qWords[qWords.length - 1] || qWords[0] || question;
           const aWord = String(answer).toLowerCase().trim();
-          const qEmb = sharedEmbeddings.getEmbedding(qWord);
-          const aEmb = sharedEmbeddings.getEmbedding(aWord);
+          const qEmb = sharedEmbeddings2.getEmbedding(qWord);
+          const aEmb = sharedEmbeddings2.getEmbedding(aWord);
           if (!qEmb || !aEmb) continue;
           combinationFacts.push({ writes: [
             { region: semRegion, feat: qEmb, binarize: false },
             { region: freeRegion, feat: aEmb, binarize: false },
-            { region: motorRegion, feat: encodeLetter(aWord[0]) }
+            { region: motorRegion, feat: encodeLetter2(aWord[0]) }
           ] });
         }
         await this._teachCombination(combinationFacts, { reps });
@@ -39107,7 +39082,7 @@ var init_curriculum = __esm({
         if (!letterRegion || !semRegion) return { pass: false, reason: "missing regions" };
         const letterSize = letterRegion.end - letterRegion.start;
         const semSize = semRegion.end - semRegion.start;
-        const invSize = inventorySize();
+        const invSize = inventorySize2();
         const letterToSem = allProjs["letter_to_sem"];
         if (!letterToSem) return { pass: false, reason: "no letter_to_sem projection" };
         function cosine(a, b) {
@@ -39122,7 +39097,7 @@ var init_curriculum = __esm({
           return d > 0 ? dot / d : 0;
         }
         function buildLetterPattern(letter) {
-          const oneHot = encodeLetter(letter);
+          const oneHot = encodeLetter2(letter);
           const pat = new Float64Array(letterSize);
           const gSize = Math.max(1, Math.floor(letterSize / oneHot.length));
           for (let d = 0; d < oneHot.length; d++) {
@@ -39177,7 +39152,7 @@ var init_curriculum = __esm({
           for (let i = 0; i < SEM_DIM; i++) norm += accumSem[i] * accumSem[i];
           norm = Math.sqrt(norm) || 1;
           for (let i = 0; i < SEM_DIM; i++) accumSem[i] /= norm;
-          const answerEmb = sharedEmbeddings.getEmbedding(answer);
+          const answerEmb = sharedEmbeddings2.getEmbedding(answer);
           if (!answerEmb) continue;
           const score = cosine(accumSem, answerEmb);
           if (score > 0.1) {
@@ -39214,7 +39189,7 @@ var init_curriculum = __esm({
           return { pass: false, reason: "missing regions or sem_to_motor" };
         }
         const semSize = semRegion.end - semRegion.start;
-        const invSize = inventorySize();
+        const invSize = inventorySize2();
         function cosine(a, b) {
           let dot = 0, na = 0, nb = 0;
           const L = Math.min(a.length, b.length);
@@ -39241,7 +39216,7 @@ var init_curriculum = __esm({
         const PATH_MIN = 0.95;
         for (const { input, expectTopics } of sample) {
           const words = input.split(/\s+/).filter(Boolean);
-          const inputEmb = sharedEmbeddings.getSentenceEmbedding ? sharedEmbeddings.getSentenceEmbedding(input) : sharedEmbeddings.getEmbedding(words[0] || "hello");
+          const inputEmb = sharedEmbeddings2.getSentenceEmbedding ? sharedEmbeddings2.getSentenceEmbedding(input) : sharedEmbeddings2.getEmbedding(words[0] || "hello");
           if (!inputEmb) continue;
           const semPat = new Float64Array(semSize);
           const sGSize = Math.max(1, Math.floor(semSize / inputEmb.length));
@@ -40112,6 +40087,972 @@ var CLUSTER_HEBBIAN_MIXIN = {
   }
 };
 
+// ../js/brain/cluster/emit.js
+var CLUSTER_EMIT_MIXIN = {
+  _dictionaryOracleEmit(intentSeed, opts = {}) {
+    if (opts.skipDictionaryOracle === true) return null;
+    const dictionary = opts.dictionary || this.dictionary;
+    if (!dictionary || !dictionary._words || dictionary._words.size === 0) return null;
+    if (!intentSeed || intentSeed.length === 0) return null;
+    const excludeTokens = opts.excludeTokens instanceof Set ? opts.excludeTokens : null;
+    const excludePersona = opts.excludePersona === true;
+    const boostPersona = opts.boostPersona === true;
+    const personaBoost = typeof opts.personaBoost === "number" ? opts.personaBoost : 0.3;
+    const restrictToVocab = opts.restrictToVocab instanceof Set ? opts.restrictToVocab : null;
+    let intentNormSq = 0;
+    for (let i = 0; i < intentSeed.length; i++) intentNormSq += intentSeed[i] * intentSeed[i];
+    if (intentNormSq <= 0) {
+      this._matrixHits = (this._matrixHits || 0) + 1;
+      return null;
+    }
+    let schemaCandidate = null;
+    let schemaCandidateScore = -Infinity;
+    const contextSchemas = opts.contextSchemas || this._hippocampusContextSchemas || null;
+    if (Array.isArray(contextSchemas) && contextSchemas.length > 0) {
+      for (const ranked of contextSchemas) {
+        const schema = ranked && ranked.schema ? ranked.schema : ranked;
+        if (!schema || !schema.conceptEmbedding || schema.conceptEmbedding.length === 0) continue;
+        const ceLen = Math.min(intentSeed.length, schema.conceptEmbedding.length);
+        let dot = 0, normSchema = 0;
+        for (let i = 0; i < ceLen; i++) {
+          dot += intentSeed[i] * schema.conceptEmbedding[i];
+          normSchema += schema.conceptEmbedding[i] * schema.conceptEmbedding[i];
+        }
+        const denom = Math.sqrt(intentNormSq * normSchema);
+        if (denom <= 0) continue;
+        let score = dot / denom;
+        if (schema.promotedToTier3) score += 0.05;
+        if (score > schemaCandidateScore) {
+          schemaCandidateScore = score;
+          const label = String(schema.label || "");
+          const anchor = label.split(/[-_\s]+/)[0] || label;
+          schemaCandidate = { anchor: anchor.toLowerCase(), label, schema };
+        }
+      }
+    }
+    if (boostPersona) {
+      const personaFirstMinScore = typeof opts.personaFirstMinScore === "number" ? opts.personaFirstMinScore : 0.05;
+      let personaBestWord = "";
+      let personaBestScore = -Infinity;
+      for (const [word, entry] of dictionary._words) {
+        if (!entry || !entry.pattern) continue;
+        if (entry.isPersona !== true) continue;
+        if (excludeTokens && excludeTokens.has(word)) continue;
+        if (restrictToVocab && !restrictToVocab.has(word)) continue;
+        const pattern = entry.pattern;
+        let normSq = entry.normSquared;
+        if (normSq === void 0) {
+          normSq = 0;
+          for (let i = 0; i < pattern.length; i++) normSq += pattern[i] * pattern[i];
+          entry.normSquared = normSq;
+        }
+        if (normSq <= 0) continue;
+        const denom = Math.sqrt(intentNormSq * normSq);
+        if (denom <= 0) continue;
+        let dot = 0;
+        const n = Math.min(intentSeed.length, pattern.length);
+        for (let i = 0; i < n; i++) dot += intentSeed[i] * pattern[i];
+        const score = dot / denom;
+        if (score > personaBestScore) {
+          personaBestScore = score;
+          personaBestWord = word;
+        }
+      }
+      if (personaBestWord && personaBestScore > personaFirstMinScore) {
+        const maxLetters2 = opts.maxLetters ?? opts.maxTicks ?? opts.maxEmissionTicks ?? 32;
+        const cleanEmit2 = personaBestWord.replace(/[^a-z0-9 .,']/g, "").slice(0, maxLetters2);
+        this._oracleHits = (this._oracleHits || 0) + 1;
+        return { cleanEmit: cleanEmit2, bestWord: personaBestWord, bestScore: personaBestScore + personaBoost };
+      }
+    }
+    let bestWord = "";
+    let bestScore = -Infinity;
+    for (const [word, entry] of dictionary._words) {
+      if (!entry || !entry.pattern) continue;
+      if (excludeTokens && excludeTokens.has(word)) continue;
+      if (excludePersona && entry.isPersona === true) continue;
+      if (restrictToVocab && !restrictToVocab.has(word)) continue;
+      const pattern = entry.pattern;
+      let normSq = entry.normSquared;
+      if (normSq === void 0) {
+        normSq = 0;
+        for (let i = 0; i < pattern.length; i++) normSq += pattern[i] * pattern[i];
+        entry.normSquared = normSq;
+      }
+      if (normSq <= 0) continue;
+      const denom = Math.sqrt(intentNormSq * normSq);
+      if (denom <= 0) continue;
+      let dot = 0;
+      const n = Math.min(intentSeed.length, pattern.length);
+      for (let i = 0; i < n; i++) dot += intentSeed[i] * pattern[i];
+      let score = dot / denom;
+      if (boostPersona && entry.isPersona === true) score += personaBoost;
+      if (score > bestScore) {
+        bestScore = score;
+        bestWord = word;
+      }
+    }
+    const minScore = typeof opts.minScore === "number" ? opts.minScore : 0.2;
+    if (schemaCandidate && schemaCandidateScore > bestScore && schemaCandidateScore > minScore) {
+      const maxLetters2 = opts.maxLetters ?? opts.maxTicks ?? opts.maxEmissionTicks ?? 32;
+      const cleanEmit2 = schemaCandidate.anchor.replace(/[^a-z0-9 .,']/g, "").slice(0, maxLetters2);
+      if (cleanEmit2) {
+        this._oracleHits = (this._oracleHits || 0) + 1;
+        try {
+          if (schemaCandidate.schema && typeof schemaCandidate.schema.registerRetrieval === "function") {
+            schemaCandidate.schema.registerRetrieval();
+          }
+        } catch {
+        }
+        return {
+          cleanEmit: cleanEmit2,
+          bestWord: schemaCandidate.anchor,
+          bestScore: schemaCandidateScore,
+          source: "hippocampal-schema",
+          schemaLabel: schemaCandidate.label
+        };
+      }
+    }
+    if (!bestWord || bestScore <= minScore) {
+      this._matrixHits = (this._matrixHits || 0) + 1;
+      return null;
+    }
+    const maxLetters = opts.maxLetters ?? opts.maxTicks ?? opts.maxEmissionTicks ?? 32;
+    const cleanEmit = bestWord.replace(/[^a-z0-9 .,']/g, "").slice(0, maxLetters);
+    this._oracleHits = (this._oracleHits || 0) + 1;
+    return { cleanEmit, bestWord, bestScore };
+  },
+  generateSentence(intentSeed = null, opts = {}) {
+    if (!this.regions || !this.regions.motor || !this.regions.letter) return "";
+    if (inventorySize() === 0) return "";
+    const injectStrength = opts.injectStrength ?? 0.6;
+    const maxTicks = opts.maxTicks ?? this.MAX_EMISSION_TICKS;
+    const suppressNoise = opts.suppressNoise === true;
+    const _savedNoise = this.noiseAmplitude;
+    if (suppressNoise) this.noiseAmplitude = 0.5;
+    if (intentSeed && intentSeed.length > 0 && this.regions.sem) {
+      this.injectEmbeddingToRegion("sem", intentSeed, injectStrength);
+    }
+    if (this.regions.free && this.regions.sem) {
+      const wm = this.workingMemoryReadout(300);
+      let wmNorm = 0;
+      for (let i = 0; i < wm.length; i++) wmNorm += wm[i] * wm[i];
+      if (wmNorm > 0.01) {
+        this.injectEmbeddingToRegion("sem", wm, injectStrength * 0.4);
+      }
+    }
+    this._prevLetterRate = 0;
+    this._motorQuiescentTicks = 0;
+    const output = [];
+    let letterBuffer = "";
+    let lastMotorLetter = null;
+    let stableTicks = 0;
+    for (let tick = 0; tick < maxTicks; tick++) {
+      this.step(1e-3);
+      const invSize = inventorySize();
+      if (invSize === 0) break;
+      const motorVec = this.regionReadout("motor", invSize);
+      const activeLetter = decodeLetterAlpha(motorVec);
+      if (activeLetter === lastMotorLetter && activeLetter !== null) {
+        stableTicks++;
+      } else {
+        stableTicks = 0;
+        lastMotorLetter = activeLetter;
+      }
+      let committedLetter = null;
+      if (stableTicks >= this.STABLE_TICK_THRESHOLD && activeLetter !== null) {
+        committedLetter = activeLetter;
+        letterBuffer += activeLetter;
+        stableTicks = 0;
+        if (this.regions.motor) {
+          const { start, end } = this.regions.motor;
+          for (let j = start; j < end; j++) this.lastSpikes[j] = 0;
+        }
+        lastMotorLetter = null;
+        this._motorQuiescentTicks = 0;
+      }
+      const surprise = this.letterTransitionSurprise();
+      if (surprise > this.WORD_BOUNDARY_THRESHOLD && letterBuffer.length > 0) {
+        output.push(letterBuffer);
+        letterBuffer = "";
+      }
+      if (committedLetter && T14_TERMINATORS.has(committedLetter)) {
+        if (letterBuffer.length > 0) {
+          output.push(letterBuffer);
+          letterBuffer = "";
+        }
+        break;
+      }
+      if (output.length > 0 && this.motorQuiescent(this.END_QUIESCE_TICKS)) {
+        break;
+      }
+    }
+    if (letterBuffer.length > 0) {
+      output.push(letterBuffer);
+    }
+    if (suppressNoise) this.noiseAmplitude = _savedNoise;
+    return output.join(" ");
+  },
+  /**
+   * T18.4.b — Async variant of `generateSentence` that uses `stepAwait`
+   * so every tick pre-awaits its GPU cross-region + intra-synapse
+   * propagates before running the LIF integrator. Eliminates the
+   * cache-miss fallback path entirely at the cost of one GPU round-
+   * trip per tick. Use this from async callers (live chat emission,
+   * curriculum dynamic-write probes where correctness matters more
+   * than throughput) when GPU is ready and consistent-per-tick
+   * latency is preferable to fire-and-forget gambling.
+   *
+   * Maintenance paired with `generateSentence()` — any change to the
+   * tick loop body must be applied to BOTH methods. The only delta
+   * is `await this.stepAwait(0.001)` vs `this.step(0.001)`.
+   *
+   * @param {Float32Array|null} intentSeed
+   * @param {object} opts — same as `generateSentence`
+   * @returns {Promise<string>}
+   */
+  // iter21-A — single-tick word-level emission. Replaces letter-by-
+  // letter motor argmax for word production. Operator 2026-05-05
+  // "motor argmax is fucked if it ever just relplies with letters and
+  // not words". Propagate sem → word_motor, argmax over word vocabulary
+  // buckets, return word string. NO LETTER CHAIN. NO FALLBACK.
+  // Contract: caller injects intent into sem region (e.g. via
+  // injectEmbeddingToRegion('sem', conceptEmb, 1.0)) before calling.
+  // Returns the word string for the highest-scoring word bucket, or
+  // empty string if word_motor projection / region missing or no
+  // signal above noise floor.
+  emitWordDirect(opts = {}) {
+    if (!this.regions || !this.regions.word_motor || !this.regions.sem) return "";
+    if (!this.crossProjections?.sem_to_word_motor) return "";
+    if (!this.dictionary || !this.dictionary._words) return "";
+    const proj = this.crossProjections.sem_to_word_motor;
+    if (typeof proj.propagate !== "function") return "";
+    const sem = this.regions.sem;
+    const wordMotor = this.regions.word_motor;
+    const semSize = sem.end - sem.start;
+    const wmSize = wordMotor.end - wordMotor.start;
+    const preSem = new Float64Array(semSize);
+    for (let i = 0; i < semSize; i++) {
+      preSem[i] = this.lastSpikes[sem.start + i] || 0;
+    }
+    let wmOut;
+    try {
+      wmOut = proj.propagate(preSem);
+    } catch {
+      return "";
+    }
+    if (!wmOut || wmOut.length === 0) return "";
+    let gwBoostWord = null;
+    let gwBoostMul = 1;
+    if (this._globalWorkspace && typeof this._globalWorkspace.getBroadcast === "function") {
+      const bc = this._globalWorkspace.getBroadcast();
+      if (bc && typeof bc.label === "string" && bc.label.startsWith("cortex:")) {
+        const w = bc.label.slice("cortex:".length);
+        if (w && w !== "silent") {
+          gwBoostWord = w;
+          gwBoostMul = 1 + bc.strength * 0.6;
+        }
+      }
+    }
+    const subjScope = opts.subject && normalizeSubject(opts.subject) ? [normalizeSubject(opts.subject)] : SUBJECTS;
+    const candidates = [];
+    let bestWord = null;
+    let bestMean = -Infinity;
+    if (!Array.isArray(this._recentEmissions)) this._recentEmissions = [];
+    const recentLast4 = new Set(this._recentEmissions.slice(-4));
+    const REPETITION_PENALTY = 0.7;
+    for (const subj of subjScope) {
+      const subjectRegion = this.regions[`word_motor_${subj}`];
+      if (!subjectRegion) continue;
+      const subjStart = subjectRegion.start - wordMotor.start;
+      const subjEnd = subjectRegion.end - wordMotor.start;
+      const subjSize = subjEnd - subjStart;
+      if (subjSize <= 0) continue;
+      const wordsList = this[`wordBucketWords_${subj}`];
+      if (!Array.isArray(wordsList) || wordsList.length === 0) continue;
+      const bucketSize = Math.max(1, Math.floor(subjSize / wordsList.length));
+      for (let b = 0; b < wordsList.length; b++) {
+        let sum = 0;
+        const bStart = subjStart + b * bucketSize;
+        const bEnd = Math.min(subjEnd, bStart + bucketSize);
+        const cellCount = Math.max(1, bEnd - bStart);
+        for (let n = bStart; n < bEnd; n++) sum += wmOut[n];
+        let mean = sum / cellCount;
+        if (gwBoostWord && wordsList[b] === gwBoostWord) mean *= gwBoostMul;
+        if (recentLast4.has(wordsList[b]) && !FUNCTION_WORDS.has(wordsList[b])) {
+          mean *= REPETITION_PENALTY;
+        }
+        candidates.push({ word: wordsList[b], mean });
+        if (mean > bestMean) {
+          bestMean = mean;
+          bestWord = wordsList[b];
+        }
+      }
+    }
+    const NOISE_FLOOR = 1e-3;
+    if (typeof this._emitSignalEMA !== "number") this._emitSignalEMA = 0;
+    if (typeof this._emitSignalSampleCount !== "number") this._emitSignalSampleCount = 0;
+    const adaptiveComponent = this._emitSignalSampleCount >= 20 && this._emitSignalEMA > 0 ? this._emitSignalEMA * 0.5 : 0;
+    const floor = typeof opts.signalFloorOverride === "number" ? opts.signalFloorOverride : Math.max(NOISE_FLOOR, adaptiveComponent);
+    this._emitSignalFloor = floor;
+    if (!bestWord || bestMean < floor) {
+      this._lastEmitRejection = {
+        reason: !bestWord ? "no-best-word" : "below-signal-floor",
+        bestMean: bestMean === -Infinity ? 0 : bestMean,
+        floor,
+        ema: this._emitSignalEMA,
+        ts: Date.now()
+      };
+      if (typeof this._recordWordCreationCandidate === "function" && bestWord && candidates.length >= 2) {
+        try {
+          const sorted = candidates.slice().sort((a, b) => b.mean - a.mean);
+          const top1 = sorted[0];
+          const top2 = sorted[1];
+          if (top1 && top2 && top1.mean > NOISE_FLOOR && top2.mean > NOISE_FLOOR) {
+            this._recordWordCreationCandidate(top1, top2, floor);
+          }
+        } catch {
+        }
+      }
+      return "";
+    }
+    const _emaAlpha = 0.05;
+    this._emitSignalEMA = (1 - _emaAlpha) * this._emitSignalEMA + _emaAlpha * bestMean;
+    this._emitSignalSampleCount++;
+    const temperature = typeof opts.temperature === "number" ? opts.temperature : 0;
+    if (temperature > 0 && candidates.length > 1) {
+      const topK = Math.max(1, Math.min(opts.topK ?? 8, candidates.length));
+      candidates.sort((a, b) => b.mean - a.mean);
+      const topCandidates = candidates.slice(0, topK).filter((c) => c.mean >= floor);
+      if (topCandidates.length === 0) return "";
+      const maxMean = topCandidates[0].mean;
+      let sumExp = 0;
+      const weights = topCandidates.map((c) => {
+        const w = Math.exp((c.mean - maxMean) / Math.max(0.01, temperature));
+        sumExp += w;
+        return w;
+      });
+      const topP = typeof opts.topP === "number" ? opts.topP : 1;
+      let nucleusEnd = topCandidates.length;
+      if (topP < 1) {
+        let cum2 = 0;
+        for (let i = 0; i < topCandidates.length; i++) {
+          cum2 += weights[i] / sumExp;
+          if (cum2 >= topP) {
+            nucleusEnd = i + 1;
+            break;
+          }
+        }
+      }
+      const nucleus = topCandidates.slice(0, nucleusEnd);
+      const nucleusWeights = weights.slice(0, nucleusEnd);
+      const nucleusSum = nucleusWeights.reduce((a, b) => a + b, 0);
+      const r = Math.random() * nucleusSum;
+      let cum = 0;
+      for (let i = 0; i < nucleus.length; i++) {
+        cum += nucleusWeights[i];
+        if (cum >= r) {
+          bestWord = nucleus[i].word;
+          bestMean = nucleus[i].mean;
+          break;
+        }
+      }
+    }
+    this._lastEmittedWord = bestWord;
+    this._lastEmittedActivation = bestMean;
+    if (!opts.skipRecentTrack) {
+      this._recentEmissions.push(bestWord);
+      while (this._recentEmissions.length > 8) {
+        this._recentEmissions.shift();
+      }
+    }
+    if (typeof this.recordEmission === "function") {
+      this.recordEmission(bestWord);
+    }
+    return bestWord;
+  },
+  // 114.19fj.9 — public helper for callers that opted out of automatic
+  // ring tracking (composeSentence, future custom emission paths). Push
+  // to the recent-emissions ring after a manual acceptance check so the
+  // repetition penalty reflects ACTUAL emissions, not internal probe
+  // attempts.
+  // 6 telemetry methods EXTRACTED to js/brain/cluster/telemetry.js
+  // CLUSTER_TELEMETRY_MIXIN (per-module-file architecture, P4.2.a).
+  //   trackRecentEmission, initCompositionalTelemetry,
+  //   classifyCompositionalEmission, _recordWordCreationCandidate,
+  //   getWordCreationCandidates, getCompositionalStats
+  // Attached via Object.assign(NeuronCluster.prototype, ...) at the
+  // bottom of this file. All methods accessible identically through
+  // the prototype chain.
+  /**
+   * 114.19fk.1 — RIPPED OUT template prescription system. composeSentence
+   * is now a pure equational emission loop — no template, no slot
+   * sequence prescription, no article rule, no terminator-punct mapping,
+   * no pronoun exclusion, no dedup retry mechanism. Operator 2026-05-09:
+   * *"we are NOT doing templets for the ai to fucking mimic thats no
+   * better thant word lists and arrays you fool. Unity thinks like a
+   * human does! she does NOt follow prescripted events... that not how
+   * our equations shall work?"*
+   *
+   * The TRAINED iter25-I weights handle everything that used to be
+   * hardcoded:
+   *   relationTagId=8  — slot-position primitives → emitWordDirect's
+   *                       argmax picks slot-appropriate word from sem state
+   *   relationTagId=9  — sem(intent)→sem(first_slot) → slot ORDER emerges
+   *                       from sem evolution under trained weights
+   *   relationTagId=10 — subject-verb agreement → emerges from word→word
+   *                       Hebbian propagation tick-by-tick
+   *   relationTagId=11 — noun→article → article placement emerges from
+   *                       trained weights (when "the cat" was seen during
+   *                       training, sem(cat) ← sem(the) bias landed)
+   *   relationTagId=12 — WH→intent-concept → emerges automatically when
+   *                       user types "what is X", brain reads its own
+   *                       activation
+   *
+   * Loop: inject context once → emit one word → inject emitted word back
+   * into sem so next tick reads shifted state → repeat until terminator
+   * EMERGES from trained weights or budget exhausted.
+   *
+   * @param {string|Float32Array|null} intentSeed — optional seed embedding
+   *   or text to inject ONCE at start. Caller decides what STATE to put
+   *   Unity in; emission emerges from that state. NOT a template selector.
+   * @param {object} opts
+   * @param {string}              [opts.subject]       — sub-band hint for emitWordDirect
+   * @param {Float32Array}        [opts.cortexPattern] — chain-blended seed
+   * @param {string}              [opts.intentConcept] — WH-INTENT seed
+   * @param {number}              [opts.temperature]   — decoder temp
+   * @param {number}              [opts.topK]          — decoder top-K
+   * @param {number}              [opts.topP]          — decoder nucleus
+   * @param {number}              [opts.maxWords=12]   — emission budget
+   * @param {AbortSignal}         [opts.signal]        — cancellation
+   * @returns {{ sentence: string, words: string[], fillCount: number,
+   *            coherenceCosine: number|null, coherenceTarget: string|null } | null}
+   */
+  async composeSentence(intentSeed = null, opts = {}) {
+    if (!this.regions || !this.regions.sem) {
+      throw new Error("composeSentence: cluster missing `sem` region \u2014 wiring bug at construction");
+    }
+    if (typeof this.injectEmbeddingToRegion !== "function") {
+      throw new Error("composeSentence: cluster.injectEmbeddingToRegion missing \u2014 wiring bug at construction");
+    }
+    if (typeof this.emitWordDirect !== "function") {
+      throw new Error("composeSentence: cluster.emitWordDirect missing \u2014 wiring bug at construction");
+    }
+    if (typeof this.stepAwait !== "function") {
+      throw new Error("composeSentence: cluster.stepAwait missing \u2014 wiring bug at construction (autoregressive emission requires async tick)");
+    }
+    const checkAborted = () => opts.signal && opts.signal.aborted;
+    if (checkAborted()) {
+      if (!this._composeStats) this._composeStats = { calls: 0, fills: 0, partial: 0, empty: 0 };
+      this._composeStats.aborted = (this._composeStats.aborted || 0) + 1;
+      return null;
+    }
+    const semRegion = this.regions.sem;
+    if (semRegion && this.externalCurrent) {
+      for (let i = semRegion.start; i < semRegion.end; i++) {
+        this.externalCurrent[i] = 0;
+      }
+    }
+    if (opts.cortexPattern && opts.cortexPattern.length > 0) {
+      try {
+        this.injectEmbeddingToRegion("sem", opts.cortexPattern, 0.2);
+      } catch {
+      }
+    }
+    if (opts.schemaContext) {
+      const sc = opts.schemaContext;
+      try {
+        if (sc.conceptEmbedding && sc.conceptEmbedding.length > 0) {
+          this.injectEmbeddingToRegion("sem", sc.conceptEmbedding, 0.15);
+        }
+        if (sc.attributeVector && sc.attributeVector.length > 0) {
+          this.injectEmbeddingToRegion("sem", sc.attributeVector, 0.1);
+        }
+      } catch {
+      }
+    }
+    if (intentSeed) {
+      try {
+        let seedEmb = null;
+        if (typeof intentSeed === "string") {
+          if (sharedEmbeddings && typeof sharedEmbeddings.getSentenceEmbedding === "function") {
+            seedEmb = sharedEmbeddings.getSentenceEmbedding(intentSeed.replace(/_/g, " "));
+          }
+        } else if (intentSeed.length > 0) {
+          seedEmb = intentSeed;
+        }
+        if (seedEmb && seedEmb.length > 0) {
+          this.injectEmbeddingToRegion("sem", seedEmb, 0.3);
+        }
+      } catch {
+      }
+    }
+    if (opts.intentConcept && sharedEmbeddings && typeof sharedEmbeddings.getEmbedding === "function") {
+      try {
+        const conceptEmb = sharedEmbeddings.getEmbedding(opts.intentConcept);
+        if (conceptEmb && conceptEmb.length > 0) {
+          this.injectEmbeddingToRegion("sem", conceptEmb, 0.3);
+        }
+      } catch {
+      }
+    }
+    const words = [];
+    const MAX_WORDS2 = typeof opts.maxWords === "number" && opts.maxWords > 0 ? Math.floor(opts.maxWords) : 12;
+    const TICKS_PER_WORD = typeof opts.ticksPerWord === "number" && opts.ticksPerWord > 0 ? Math.floor(opts.ticksPerWord) : 3;
+    const MAX_TERMINATOR_REJECTS = 3;
+    let terminatorRejects = 0;
+    for (let i = 0; i < MAX_WORDS2; i++) {
+      if (checkAborted()) {
+        if (!this._composeStats) this._composeStats = { calls: 0, fills: 0, partial: 0, empty: 0 };
+        this._composeStats.aborted = (this._composeStats.aborted || 0) + 1;
+        return null;
+      }
+      for (let t = 0; t < TICKS_PER_WORD; t++) {
+        if (checkAborted()) {
+          if (!this._composeStats) this._composeStats = { calls: 0, fills: 0, partial: 0, empty: 0 };
+          this._composeStats.aborted = (this._composeStats.aborted || 0) + 1;
+          return null;
+        }
+        await this.stepAwait(1e-3);
+      }
+      const emitOpts = { skipRecentTrack: true };
+      if (opts.subject) emitOpts.subject = opts.subject;
+      if (typeof opts.temperature === "number") emitOpts.temperature = opts.temperature;
+      if (typeof opts.topK === "number") emitOpts.topK = opts.topK;
+      if (typeof opts.topP === "number") emitOpts.topP = opts.topP;
+      let word = "";
+      try {
+        word = this.emitWordDirect(emitOpts) || "";
+      } catch {
+        word = "";
+      }
+      if (!word) break;
+      word = String(word).toLowerCase().trim();
+      if (!word) break;
+      if (T14_TERMINATORS.has(word)) {
+        if (words.length > 0) {
+          words[words.length - 1] = words[words.length - 1] + word;
+          break;
+        } else {
+          terminatorRejects++;
+          if (terminatorRejects >= MAX_TERMINATOR_REJECTS) break;
+          continue;
+        }
+      }
+      words.push(word);
+      if (typeof this.trackRecentEmission === "function") {
+        this.trackRecentEmission(word);
+      }
+      if (sharedEmbeddings && typeof sharedEmbeddings.getEmbedding === "function") {
+        try {
+          const wordEmb = sharedEmbeddings.getEmbedding(word);
+          if (wordEmb && wordEmb.length > 0) {
+            const BACK_INJECT_BASE = 0.15;
+            const BACK_INJECT_DECAY = 0.85;
+            const backInjectStrength = BACK_INJECT_BASE * Math.pow(BACK_INJECT_DECAY, i);
+            this.injectEmbeddingToRegion("sem", wordEmb, backInjectStrength);
+          }
+        } catch {
+        }
+      }
+    }
+    if (!this._composeStats) this._composeStats = { calls: 0, fills: 0, partial: 0, empty: 0 };
+    this._composeStats.calls++;
+    if (words.length === 0) {
+      this._composeStats.empty++;
+      return null;
+    }
+    this._composeStats.fills++;
+    words[0] = words[0].charAt(0).toUpperCase() + words[0].slice(1);
+    const sentence = words.join(" ");
+    let coherenceCosine = null;
+    let coherenceTargetLabel = null;
+    let coherenceTarget = null;
+    if (opts.intentConcept && sharedEmbeddings && typeof sharedEmbeddings.getEmbedding === "function") {
+      try {
+        coherenceTarget = sharedEmbeddings.getEmbedding(opts.intentConcept);
+        coherenceTargetLabel = `intentConcept:${opts.intentConcept}`;
+      } catch {
+      }
+    }
+    if (!coherenceTarget && opts.cortexPattern && opts.cortexPattern.length > 0) {
+      coherenceTarget = opts.cortexPattern;
+      coherenceTargetLabel = "cortexPattern";
+    }
+    if (coherenceTarget && sharedEmbeddings && typeof sharedEmbeddings.getSentenceEmbedding === "function") {
+      try {
+        const sentenceEmb = sharedEmbeddings.getSentenceEmbedding(sentence);
+        if (sentenceEmb && sentenceEmb.length > 0) {
+          let dot = 0, na = 0, nb = 0;
+          const L = Math.min(coherenceTarget.length, sentenceEmb.length);
+          for (let i = 0; i < L; i++) {
+            dot += coherenceTarget[i] * sentenceEmb[i];
+            na += coherenceTarget[i] * coherenceTarget[i];
+            nb += sentenceEmb[i] * sentenceEmb[i];
+          }
+          const denom = Math.sqrt(na) * Math.sqrt(nb);
+          coherenceCosine = denom > 0 ? dot / denom : 0;
+          if (!this._coherenceLogCount) this._coherenceLogCount = 0;
+          if (this._coherenceLogCount < 10) {
+            this._coherenceLogCount++;
+            try {
+              console.log(`[composeSentence] coherence sample ${this._coherenceLogCount}/10 cosine=${coherenceCosine.toFixed(3)} (target=${coherenceTargetLabel}) sentence="${sentence.slice(0, 60)}"`);
+            } catch {
+            }
+          }
+        }
+      } catch {
+      }
+    }
+    let compositional = null;
+    if (typeof this.classifyCompositionalEmission === "function") {
+      try {
+        compositional = this.classifyCompositionalEmission(sentence);
+      } catch {
+      }
+    }
+    return { sentence, words, fillCount: words.length, coherenceCosine, coherenceTarget: coherenceTargetLabel, compositional };
+  },
+  async generateSentenceAwait(intentSeed = null, opts = {}) {
+    if (!this.regions || !this.regions.motor || !this.regions.letter) return "";
+    if (inventorySize() === 0) return "";
+    if (opts.directPropagate === true) {
+      return await this._emitDirectPropagate(intentSeed, opts);
+    }
+    const oracleHit = this._dictionaryOracleEmit(intentSeed, opts);
+    if (oracleHit) {
+      this._lastEmissionDiag = {
+        ticksRun: oracleHit.cleanEmit.length,
+        maxMotorBucket: oracleHit.bestScore,
+        argmaxFlickers: 0,
+        committedLetters: oracleHit.cleanEmit.length,
+        gpuReadPath: false,
+        mode: "dictionary-oracle",
+        bestWord: oracleHit.bestWord,
+        bestScore: Number(oracleHit.bestScore.toFixed(3))
+      };
+      return oracleHit.cleanEmit;
+    }
+    const injectStrength = opts.injectStrength ?? 0.6;
+    const maxTicks = opts.maxTicks ?? opts.maxEmissionTicks ?? this.MAX_EMISSION_TICKS;
+    const suppressNoise = opts.suppressNoise === true;
+    const _savedNoise = this.noiseAmplitude;
+    if (suppressNoise) this.noiseAmplitude = 0.5;
+    const _savedTonic = this.tonicDrive;
+    const suppressTonic = opts.suppressTonicDrive !== false;
+    if (suppressTonic) this.tonicDrive = this.driveBaseline ?? 1;
+    if (intentSeed && intentSeed.length > 0 && this.regions.sem) {
+      this.injectEmbeddingToRegion("sem", intentSeed, injectStrength);
+    }
+    if (this.regions.free && this.regions.sem) {
+      const wm = await this.workingMemoryReadoutAwait(300);
+      let wmNorm = 0;
+      for (let i = 0; i < wm.length; i++) wmNorm += wm[i] * wm[i];
+      if (wmNorm > 0.01) {
+        this.injectEmbeddingToRegion("sem", wm, injectStrength * 0.4);
+      }
+    }
+    this._prevLetterRate = 0;
+    this._motorQuiescentTicks = 0;
+    const output = [];
+    let letterBuffer = "";
+    let lastMotorLetter = null;
+    let stableTicks = 0;
+    let maxMotorBucket = 0;
+    let argmaxFlickers = 0;
+    let committedLetters = 0;
+    let ticksRun = 0;
+    const motorRegionStand = this.regions.motor;
+    const motorSubSliceLen = motorRegionStand ? motorRegionStand.end - motorRegionStand.start : 0;
+    const canGpuMotorRead = !!(this._gpuProxy && typeof this._gpuProxy.readbackLetterBuckets === "function" && this.crossProjections && this.crossProjections.sem_to_motor && this.crossProjections.sem_to_motor._gpuBound && motorSubSliceLen > 0);
+    for (let tick = 0; tick < maxTicks; tick++) {
+      ticksRun = tick + 1;
+      await this.stepAwait(1e-3);
+      const invSize = inventorySize();
+      if (invSize === 0) break;
+      let activeLetter = null;
+      if (canGpuMotorRead) {
+        try {
+          const bucketSize = Math.floor(motorSubSliceLen / invSize);
+          const readLen = bucketSize * invSize;
+          const counts = await this._gpuProxy.readbackLetterBuckets("motor", invSize, readLen, 0);
+          if (counts && counts.length === invSize) {
+            const inv = inventorySnapshot();
+            let bestIdx = -1;
+            let bestCount = -Infinity;
+            for (let b = 0; b < invSize; b++) {
+              const ch = inv[b];
+              if (!ch || !/^[a-z]$/.test(ch)) continue;
+              if (counts[b] > bestCount) {
+                bestCount = counts[b];
+                bestIdx = b;
+              }
+            }
+            if (bestIdx >= 0 && bestCount > maxMotorBucket) maxMotorBucket = bestCount;
+            if (bestIdx >= 0 && bestCount > 0) {
+              activeLetter = inv[bestIdx];
+            }
+          }
+        } catch {
+        }
+      }
+      if (activeLetter === null) {
+        const motorVec = this.regionReadout("motor", invSize);
+        activeLetter = decodeLetterAlpha(motorVec);
+      }
+      if (activeLetter === lastMotorLetter && activeLetter !== null) {
+        stableTicks++;
+      } else {
+        if (lastMotorLetter !== null || activeLetter !== null) argmaxFlickers++;
+        stableTicks = 0;
+        lastMotorLetter = activeLetter;
+      }
+      let committedLetter = null;
+      if (stableTicks >= this.STABLE_TICK_THRESHOLD && activeLetter !== null) {
+        committedLetter = activeLetter;
+        letterBuffer += activeLetter;
+        committedLetters++;
+        stableTicks = 0;
+        if (this.regions.motor) {
+          const { start, end } = this.regions.motor;
+          for (let j = start; j < end; j++) this.lastSpikes[j] = 0;
+        }
+        if (canGpuMotorRead && this._gpuProxy.clearSpikeSlice) {
+          try {
+            this._gpuProxy.clearSpikeSlice("motor");
+          } catch {
+          }
+        }
+        lastMotorLetter = null;
+        this._motorQuiescentTicks = 0;
+      }
+      const surprise = this.letterTransitionSurprise();
+      if (surprise > this.WORD_BOUNDARY_THRESHOLD && letterBuffer.length > 0) {
+        output.push(letterBuffer);
+        letterBuffer = "";
+      }
+      if (committedLetter && T14_TERMINATORS.has(committedLetter)) {
+        if (letterBuffer.length > 0) {
+          output.push(letterBuffer);
+          letterBuffer = "";
+        }
+        break;
+      }
+      if (output.length > 0 && this.motorQuiescent(this.END_QUIESCE_TICKS)) {
+        break;
+      }
+    }
+    if (letterBuffer.length > 0) {
+      output.push(letterBuffer);
+    }
+    if (suppressNoise) this.noiseAmplitude = _savedNoise;
+    if (suppressTonic) this.tonicDrive = _savedTonic;
+    this._motorEmissionTicks = ticksRun;
+    this._lastEmissionDiag = {
+      ticksRun,
+      maxMotorBucket,
+      argmaxFlickers,
+      committedLetters,
+      gpuReadPath: canGpuMotorRead
+    };
+    return output.join(" ");
+  },
+  /**
+   * Direct-propagate emission — LLM-style generation using the learned
+   * cross-projection weights without LIF ticks. Each step is a matrix
+   * multiply + argmax (same as an LLM's `logits = W·h` → `argmax`).
+   *
+   * Sequence:
+   *   1. If `intentSeed` provided → build a sem-local input by tiling
+   *      the embedding across the sem region. Propagate through
+   *      `sem_to_motor.propagate()` and argmax over the letter-inventory
+   *      bucketization of the motor region → first letter.
+   *   2. Otherwise read current letter-region state and start from there.
+   *   3. For each subsequent letter (up to `maxTicks`): inject the
+   *      previous letter's one-hot into a letter-scoped input vector,
+   *      propagate through `letter_to_motor.propagate()`, argmax → next
+   *      letter. Stop at word-terminator (space, `.`, `,`, `'`) OR when
+   *      the argmax repeats the previous letter (attractor) OR when
+   *      the max activation is below `minActivation` (nothing left to
+   *      emit).
+   *
+   * Returns the emitted string (letters with no space separators — the
+   * caller can split on word-terminators if needed).
+   *
+   * @param {Float32Array|Float64Array|null} intentSeed
+   * @param {object} opts — `maxTicks`, `maxLetters`, `minActivation`
+   * @returns {Promise<string>}
+   */
+  async _emitDirectPropagate(intentSeed, opts = {}) {
+    const motorRegion = this.regions?.motor;
+    const letterRegion = this.regions?.letter;
+    const semRegion = this.regions?.sem;
+    if (!motorRegion || !letterRegion) return "";
+    const invSize = inventorySize();
+    if (invSize === 0) return "";
+    const maxLetters = opts.maxLetters ?? opts.maxTicks ?? 16;
+    const minActivation = opts.minActivation ?? 0;
+    const inv = inventorySnapshot();
+    const TERMINATORS = /* @__PURE__ */ new Set([" ", ".", ",", "'"]);
+    const semToMotor = this.crossProjections?.sem_to_motor;
+    const letterToMotor = this.crossProjections?.letter_to_motor;
+    const oracleHit = this._dictionaryOracleEmit(intentSeed, { ...opts, maxLetters });
+    if (oracleHit) {
+      this._motorEmissionTicks = oracleHit.cleanEmit.length;
+      this._lastEmissionDiag = {
+        ticksRun: oracleHit.cleanEmit.length,
+        maxMotorBucket: oracleHit.bestScore,
+        argmaxFlickers: 0,
+        committedLetters: oracleHit.cleanEmit.length,
+        gpuReadPath: false,
+        mode: "dictionary-oracle",
+        bestWord: oracleHit.bestWord,
+        bestScore: Number(oracleHit.bestScore.toFixed(3))
+      };
+      return oracleHit.cleanEmit;
+    }
+    const motorSize = motorRegion.end - motorRegion.start;
+    const bucketSize = Math.max(1, Math.floor(motorSize / invSize));
+    const isAlphaIdx = (b) => /^[a-z]$/.test(inv[b]);
+    const bucketArgmax = (motorOutput) => {
+      let bestIdx = -1, bestSum = -Infinity;
+      for (let b = 0; b < invSize; b++) {
+        if (!isAlphaIdx(b)) continue;
+        let sum = 0;
+        for (let n = 0; n < bucketSize; n++) {
+          const idx = b * bucketSize + n;
+          if (idx < motorOutput.length) sum += motorOutput[idx];
+        }
+        if (sum > bestSum) {
+          bestSum = sum;
+          bestIdx = b;
+        }
+      }
+      return { idx: bestIdx, score: bestSum };
+    };
+    const tileIntoRegion = (region, feat) => {
+      const regionSize = region.end - region.start;
+      const inputVec = new Float64Array(regionSize);
+      if (!feat || feat.length === 0) return inputVec;
+      const gSize = Math.max(1, Math.floor(regionSize / feat.length));
+      for (let d = 0; d < feat.length; d++) {
+        if (feat[d] <= 0) continue;
+        for (let n = 0; n < gSize; n++) {
+          const idx = d * gSize + n;
+          if (idx < regionSize) inputVec[idx] = 1;
+        }
+      }
+      return inputVec;
+    };
+    let letters = "";
+    let prevLetter = null;
+    let maxMotorBucket = 0;
+    let committedLetters = 0;
+    if (intentSeed && intentSeed.length > 0 && semToMotor && typeof semToMotor.propagate === "function" && semToMotor.values && semToMotor.values.length > 0 && semRegion) {
+      const semInput = tileIntoRegion(semRegion, intentSeed);
+      const motorOutput = semToMotor.propagate(semInput);
+      if (motorOutput && motorOutput.length > 0) {
+        const best = bucketArgmax(motorOutput);
+        if (best.score > maxMotorBucket) maxMotorBucket = best.score;
+        if (best.idx >= 0 && best.score > minActivation) {
+          const letter = inv[best.idx];
+          letters += letter;
+          prevLetter = letter;
+          committedLetters++;
+        }
+      }
+    }
+    const synapses = this.synapses;
+    const letterSize = letterRegion.end - letterRegion.start;
+    const letterBucketSize = Math.max(1, Math.floor(letterSize / invSize));
+    const letterBucketArgmax = (clusterOutput) => {
+      let bestIdx = -1, bestSum = -Infinity;
+      for (let b = 0; b < invSize; b++) {
+        if (!isAlphaIdx(b)) continue;
+        let sum = 0;
+        for (let n = 0; n < letterBucketSize; n++) {
+          const idx = letterRegion.start + b * letterBucketSize + n;
+          if (idx < clusterOutput.length) sum += clusterOutput[idx];
+        }
+        if (sum > bestSum) {
+          bestSum = sum;
+          bestIdx = b;
+        }
+      }
+      return { idx: bestIdx, score: bestSum };
+    };
+    if (synapses && typeof synapses.propagate === "function" && synapses.values && synapses.values.length > 0) {
+      for (let step = 1; step < maxLetters && prevLetter !== null; step++) {
+        if (TERMINATORS.has(prevLetter)) break;
+        const prevOneHot = encodeLetter(prevLetter);
+        const clusterInput = new Float64Array(this.size);
+        const gSize = Math.max(1, Math.floor(letterSize / prevOneHot.length));
+        for (let d = 0; d < prevOneHot.length; d++) {
+          if (prevOneHot[d] <= 0) continue;
+          for (let n = 0; n < gSize; n++) {
+            const idx = letterRegion.start + d * gSize + n;
+            if (idx < letterRegion.end) clusterInput[idx] = 1;
+          }
+        }
+        const clusterOutput = synapses.propagate(clusterInput);
+        if (!clusterOutput || clusterOutput.length === 0) break;
+        const best = letterBucketArgmax(clusterOutput);
+        if (best.score > maxMotorBucket) maxMotorBucket = best.score;
+        if (best.idx < 0 || best.score <= minActivation) break;
+        const nextLetter = inv[best.idx];
+        if (nextLetter === prevLetter) break;
+        letters += nextLetter;
+        prevLetter = nextLetter;
+        committedLetters++;
+        if (TERMINATORS.has(nextLetter)) break;
+      }
+    }
+    this._motorEmissionTicks = committedLetters;
+    this._lastEmissionDiag = {
+      ticksRun: committedLetters,
+      maxMotorBucket,
+      argmaxFlickers: 0,
+      committedLetters,
+      gpuReadPath: false,
+      mode: "direct-propagate"
+    };
+    return letters;
+  }
+};
+
+// ../js/brain/cluster/probe.js
+init_embeddings();
+var CLUSTER_PROBE_MIXIN = {
+  diagnoseReadoutForEmbedding(emb, ticks = 10, langStart = 150) {
+    const currents = sharedEmbeddings2.mapToCortex(emb, this.size, langStart);
+    this.injectCurrent(currents);
+    for (let t = 0; t < ticks; t++) this.step(1e-3);
+    return this.getSemanticReadout(sharedEmbeddings2, langStart);
+  },
+  /**
+   * Cluster synapse weight stats — used for T13.1 before/after training
+   * verification. Returns mean, RMS, max magnitude over active (non-zero)
+   * weights, plus the non-zero count.
+   */
+  synapseStats() {
+    const { values, nnz } = this.synapses;
+    let sum = 0, sumSq = 0, maxAbs = 0;
+    for (let k = 0; k < nnz; k++) {
+      const a = Math.abs(values[k]);
+      sum += a;
+      sumSq += values[k] * values[k];
+      if (a > maxAbs) maxAbs = a;
+    }
+    const count = nnz || 1;
+    return {
+      mean: sum / count,
+      rms: Math.sqrt(sumSq / count),
+      maxAbs,
+      nnz
+    };
+  }
+};
+
 // ../js/brain/cluster.js
 var CLUSTER_FRACTIONS = {
   cortex: 0.55,
@@ -40189,88 +41130,6 @@ function injectEmbeddingToRegionOffset(cluster, regionName, emb, strength, offse
     }
   }
 }
-var T14_TERMINATORS = /* @__PURE__ */ new Set([".", "?", "!"]);
-var FUNCTION_WORDS = /* @__PURE__ */ new Set([
-  // Articles + determiners
-  "a",
-  "an",
-  "the",
-  "this",
-  "that",
-  "these",
-  "those",
-  // Auxiliaries + copulas
-  "is",
-  "am",
-  "are",
-  "was",
-  "were",
-  "be",
-  "been",
-  "being",
-  "have",
-  "has",
-  "had",
-  "do",
-  "does",
-  "did",
-  "will",
-  "would",
-  "can",
-  "could",
-  "should",
-  "may",
-  "might",
-  // Pronouns
-  "i",
-  "you",
-  "he",
-  "she",
-  "it",
-  "we",
-  "they",
-  "me",
-  "him",
-  "her",
-  "us",
-  "them",
-  "my",
-  "your",
-  "his",
-  "its",
-  "our",
-  "their",
-  // Prepositions
-  "of",
-  "to",
-  "in",
-  "on",
-  "at",
-  "by",
-  "for",
-  "with",
-  "from",
-  "up",
-  "down",
-  "out",
-  "off",
-  "over",
-  "under",
-  "into",
-  // Conjunctions
-  "and",
-  "or",
-  "but",
-  "so",
-  "if",
-  "because",
-  "when",
-  "while",
-  "as",
-  // Negation
-  "not",
-  "no"
-]);
 var COHERENCE_MIN = (() => {
   try {
     const v = parseFloat(typeof process !== "undefined" && process?.env?.DREAM_COHERENCE_MIN);
@@ -40867,7 +41726,7 @@ var NeuronCluster = class {
    */
   injectLetter(letter, strength = 1) {
     if (!this.regions || !this.regions.letter) return;
-    const vec = encodeLetter(letter);
+    const vec = encodeLetter2(letter);
     if (vec.length === 0) return;
     this.injectEmbeddingToRegion("letter", vec, strength);
   }
@@ -41890,7 +42749,7 @@ var NeuronCluster = class {
     this._inCurriculumMode = true;
     let refreshed = 0;
     const applySentence = (sentence) => {
-      const embSeq = sentence.split(/\s+/).map((w) => sharedEmbeddings.getEmbedding(w));
+      const embSeq = sentence.split(/\s+/).map((w) => sharedEmbeddings2.getEmbedding(w));
       if (embSeq && this.learnSentenceHebbian) {
         try {
           this.learnSentenceHebbian(embSeq, { lr });
@@ -42029,13 +42888,13 @@ var NeuronCluster = class {
     const addressesUser = wordSet.has("unity") || wordSet.has("you") || wordSet.has("your") || wordSet.has("you're");
     const isSelfReference = wordSet.has("i") || wordSet.has("im") || wordSet.has("i'm") || wordSet.has("my") || wordSet.has("me") || wordSet.has("myself");
     const isQuestion = intent === "question";
-    if (isQuestion && this.regions && this.regions.sem && typeof sharedEmbeddings?.getSentenceEmbedding === "function") {
+    if (isQuestion && this.regions && this.regions.sem && typeof sharedEmbeddings2?.getSentenceEmbedding === "function") {
       try {
-        const qEmb = sharedEmbeddings.getSentenceEmbedding(text);
+        const qEmb = sharedEmbeddings2.getSentenceEmbedding(text);
         if (qEmb && qEmb.length > 0 && typeof this.injectEmbeddingToRegion === "function") {
           this.injectEmbeddingToRegion("sem", qEmb, 0.6);
           const keyToken = extractKeyTokenShared(text);
-          const keyEmb = keyToken && typeof sharedEmbeddings.getEmbedding === "function" ? sharedEmbeddings.getEmbedding(keyToken) : null;
+          const keyEmb = keyToken && typeof sharedEmbeddings2.getEmbedding === "function" ? sharedEmbeddings2.getEmbedding(keyToken) : null;
           if (keyEmb && keyEmb.length > 0) {
             injectEmbeddingToRegionOffset(this, "sem", keyEmb, 0.6, 0.5);
           }
@@ -42223,935 +43082,16 @@ var NeuronCluster = class {
   // sem→motor matrix vs. by the GloVe dictionary lookup. If the
   // oracle ratio runs near 1.0 across a curriculum walk, the matrix
   // isn't doing the work and that has to be loud, not buried.
-  _dictionaryOracleEmit(intentSeed, opts = {}) {
-    if (opts.skipDictionaryOracle === true) return null;
-    const dictionary = opts.dictionary || this.dictionary;
-    if (!dictionary || !dictionary._words || dictionary._words.size === 0) return null;
-    if (!intentSeed || intentSeed.length === 0) return null;
-    const excludeTokens = opts.excludeTokens instanceof Set ? opts.excludeTokens : null;
-    const excludePersona = opts.excludePersona === true;
-    const boostPersona = opts.boostPersona === true;
-    const personaBoost = typeof opts.personaBoost === "number" ? opts.personaBoost : 0.3;
-    const restrictToVocab = opts.restrictToVocab instanceof Set ? opts.restrictToVocab : null;
-    let intentNormSq = 0;
-    for (let i = 0; i < intentSeed.length; i++) intentNormSq += intentSeed[i] * intentSeed[i];
-    if (intentNormSq <= 0) {
-      this._matrixHits = (this._matrixHits || 0) + 1;
-      return null;
-    }
-    let schemaCandidate = null;
-    let schemaCandidateScore = -Infinity;
-    const contextSchemas = opts.contextSchemas || this._hippocampusContextSchemas || null;
-    if (Array.isArray(contextSchemas) && contextSchemas.length > 0) {
-      for (const ranked of contextSchemas) {
-        const schema = ranked && ranked.schema ? ranked.schema : ranked;
-        if (!schema || !schema.conceptEmbedding || schema.conceptEmbedding.length === 0) continue;
-        const ceLen = Math.min(intentSeed.length, schema.conceptEmbedding.length);
-        let dot = 0, normSchema = 0;
-        for (let i = 0; i < ceLen; i++) {
-          dot += intentSeed[i] * schema.conceptEmbedding[i];
-          normSchema += schema.conceptEmbedding[i] * schema.conceptEmbedding[i];
-        }
-        const denom = Math.sqrt(intentNormSq * normSchema);
-        if (denom <= 0) continue;
-        let score = dot / denom;
-        if (schema.promotedToTier3) score += 0.05;
-        if (score > schemaCandidateScore) {
-          schemaCandidateScore = score;
-          const label = String(schema.label || "");
-          const anchor = label.split(/[-_\s]+/)[0] || label;
-          schemaCandidate = { anchor: anchor.toLowerCase(), label, schema };
-        }
-      }
-    }
-    if (boostPersona) {
-      const personaFirstMinScore = typeof opts.personaFirstMinScore === "number" ? opts.personaFirstMinScore : 0.05;
-      let personaBestWord = "";
-      let personaBestScore = -Infinity;
-      for (const [word, entry] of dictionary._words) {
-        if (!entry || !entry.pattern) continue;
-        if (entry.isPersona !== true) continue;
-        if (excludeTokens && excludeTokens.has(word)) continue;
-        if (restrictToVocab && !restrictToVocab.has(word)) continue;
-        const pattern = entry.pattern;
-        let normSq = entry.normSquared;
-        if (normSq === void 0) {
-          normSq = 0;
-          for (let i = 0; i < pattern.length; i++) normSq += pattern[i] * pattern[i];
-          entry.normSquared = normSq;
-        }
-        if (normSq <= 0) continue;
-        const denom = Math.sqrt(intentNormSq * normSq);
-        if (denom <= 0) continue;
-        let dot = 0;
-        const n = Math.min(intentSeed.length, pattern.length);
-        for (let i = 0; i < n; i++) dot += intentSeed[i] * pattern[i];
-        const score = dot / denom;
-        if (score > personaBestScore) {
-          personaBestScore = score;
-          personaBestWord = word;
-        }
-      }
-      if (personaBestWord && personaBestScore > personaFirstMinScore) {
-        const maxLetters2 = opts.maxLetters ?? opts.maxTicks ?? opts.maxEmissionTicks ?? 32;
-        const cleanEmit2 = personaBestWord.replace(/[^a-z0-9 .,']/g, "").slice(0, maxLetters2);
-        this._oracleHits = (this._oracleHits || 0) + 1;
-        return { cleanEmit: cleanEmit2, bestWord: personaBestWord, bestScore: personaBestScore + personaBoost };
-      }
-    }
-    let bestWord = "";
-    let bestScore = -Infinity;
-    for (const [word, entry] of dictionary._words) {
-      if (!entry || !entry.pattern) continue;
-      if (excludeTokens && excludeTokens.has(word)) continue;
-      if (excludePersona && entry.isPersona === true) continue;
-      if (restrictToVocab && !restrictToVocab.has(word)) continue;
-      const pattern = entry.pattern;
-      let normSq = entry.normSquared;
-      if (normSq === void 0) {
-        normSq = 0;
-        for (let i = 0; i < pattern.length; i++) normSq += pattern[i] * pattern[i];
-        entry.normSquared = normSq;
-      }
-      if (normSq <= 0) continue;
-      const denom = Math.sqrt(intentNormSq * normSq);
-      if (denom <= 0) continue;
-      let dot = 0;
-      const n = Math.min(intentSeed.length, pattern.length);
-      for (let i = 0; i < n; i++) dot += intentSeed[i] * pattern[i];
-      let score = dot / denom;
-      if (boostPersona && entry.isPersona === true) score += personaBoost;
-      if (score > bestScore) {
-        bestScore = score;
-        bestWord = word;
-      }
-    }
-    const minScore = typeof opts.minScore === "number" ? opts.minScore : 0.2;
-    if (schemaCandidate && schemaCandidateScore > bestScore && schemaCandidateScore > minScore) {
-      const maxLetters2 = opts.maxLetters ?? opts.maxTicks ?? opts.maxEmissionTicks ?? 32;
-      const cleanEmit2 = schemaCandidate.anchor.replace(/[^a-z0-9 .,']/g, "").slice(0, maxLetters2);
-      if (cleanEmit2) {
-        this._oracleHits = (this._oracleHits || 0) + 1;
-        try {
-          if (schemaCandidate.schema && typeof schemaCandidate.schema.registerRetrieval === "function") {
-            schemaCandidate.schema.registerRetrieval();
-          }
-        } catch {
-        }
-        return {
-          cleanEmit: cleanEmit2,
-          bestWord: schemaCandidate.anchor,
-          bestScore: schemaCandidateScore,
-          source: "hippocampal-schema",
-          schemaLabel: schemaCandidate.label
-        };
-      }
-    }
-    if (!bestWord || bestScore <= minScore) {
-      this._matrixHits = (this._matrixHits || 0) + 1;
-      return null;
-    }
-    const maxLetters = opts.maxLetters ?? opts.maxTicks ?? opts.maxEmissionTicks ?? 32;
-    const cleanEmit = bestWord.replace(/[^a-z0-9 .,']/g, "").slice(0, maxLetters);
-    this._oracleHits = (this._oracleHits || 0) + 1;
-    return { cleanEmit, bestWord, bestScore };
-  }
-  generateSentence(intentSeed = null, opts = {}) {
-    if (!this.regions || !this.regions.motor || !this.regions.letter) return "";
-    if (inventorySize() === 0) return "";
-    const injectStrength = opts.injectStrength ?? 0.6;
-    const maxTicks = opts.maxTicks ?? this.MAX_EMISSION_TICKS;
-    const suppressNoise = opts.suppressNoise === true;
-    const _savedNoise = this.noiseAmplitude;
-    if (suppressNoise) this.noiseAmplitude = 0.5;
-    if (intentSeed && intentSeed.length > 0 && this.regions.sem) {
-      this.injectEmbeddingToRegion("sem", intentSeed, injectStrength);
-    }
-    if (this.regions.free && this.regions.sem) {
-      const wm = this.workingMemoryReadout(300);
-      let wmNorm = 0;
-      for (let i = 0; i < wm.length; i++) wmNorm += wm[i] * wm[i];
-      if (wmNorm > 0.01) {
-        this.injectEmbeddingToRegion("sem", wm, injectStrength * 0.4);
-      }
-    }
-    this._prevLetterRate = 0;
-    this._motorQuiescentTicks = 0;
-    const output = [];
-    let letterBuffer = "";
-    let lastMotorLetter = null;
-    let stableTicks = 0;
-    for (let tick = 0; tick < maxTicks; tick++) {
-      this.step(1e-3);
-      const invSize = inventorySize();
-      if (invSize === 0) break;
-      const motorVec = this.regionReadout("motor", invSize);
-      const activeLetter = decodeLetterAlpha(motorVec);
-      if (activeLetter === lastMotorLetter && activeLetter !== null) {
-        stableTicks++;
-      } else {
-        stableTicks = 0;
-        lastMotorLetter = activeLetter;
-      }
-      let committedLetter = null;
-      if (stableTicks >= this.STABLE_TICK_THRESHOLD && activeLetter !== null) {
-        committedLetter = activeLetter;
-        letterBuffer += activeLetter;
-        stableTicks = 0;
-        if (this.regions.motor) {
-          const { start, end } = this.regions.motor;
-          for (let j = start; j < end; j++) this.lastSpikes[j] = 0;
-        }
-        lastMotorLetter = null;
-        this._motorQuiescentTicks = 0;
-      }
-      const surprise = this.letterTransitionSurprise();
-      if (surprise > this.WORD_BOUNDARY_THRESHOLD && letterBuffer.length > 0) {
-        output.push(letterBuffer);
-        letterBuffer = "";
-      }
-      if (committedLetter && T14_TERMINATORS.has(committedLetter)) {
-        if (letterBuffer.length > 0) {
-          output.push(letterBuffer);
-          letterBuffer = "";
-        }
-        break;
-      }
-      if (output.length > 0 && this.motorQuiescent(this.END_QUIESCE_TICKS)) {
-        break;
-      }
-    }
-    if (letterBuffer.length > 0) {
-      output.push(letterBuffer);
-    }
-    if (suppressNoise) this.noiseAmplitude = _savedNoise;
-    return output.join(" ");
-  }
-  /**
-   * T18.4.b — Async variant of `generateSentence` that uses `stepAwait`
-   * so every tick pre-awaits its GPU cross-region + intra-synapse
-   * propagates before running the LIF integrator. Eliminates the
-   * cache-miss fallback path entirely at the cost of one GPU round-
-   * trip per tick. Use this from async callers (live chat emission,
-   * curriculum dynamic-write probes where correctness matters more
-   * than throughput) when GPU is ready and consistent-per-tick
-   * latency is preferable to fire-and-forget gambling.
-   *
-   * Maintenance paired with `generateSentence()` — any change to the
-   * tick loop body must be applied to BOTH methods. The only delta
-   * is `await this.stepAwait(0.001)` vs `this.step(0.001)`.
-   *
-   * @param {Float32Array|null} intentSeed
-   * @param {object} opts — same as `generateSentence`
-   * @returns {Promise<string>}
-   */
-  // iter21-A — single-tick word-level emission. Replaces letter-by-
-  // letter motor argmax for word production. Operator 2026-05-05
-  // "motor argmax is fucked if it ever just relplies with letters and
-  // not words". Propagate sem → word_motor, argmax over word vocabulary
-  // buckets, return word string. NO LETTER CHAIN. NO FALLBACK.
-  // Contract: caller injects intent into sem region (e.g. via
-  // injectEmbeddingToRegion('sem', conceptEmb, 1.0)) before calling.
-  // Returns the word string for the highest-scoring word bucket, or
-  // empty string if word_motor projection / region missing or no
-  // signal above noise floor.
-  emitWordDirect(opts = {}) {
-    if (!this.regions || !this.regions.word_motor || !this.regions.sem) return "";
-    if (!this.crossProjections?.sem_to_word_motor) return "";
-    if (!this.dictionary || !this.dictionary._words) return "";
-    const proj = this.crossProjections.sem_to_word_motor;
-    if (typeof proj.propagate !== "function") return "";
-    const sem = this.regions.sem;
-    const wordMotor = this.regions.word_motor;
-    const semSize = sem.end - sem.start;
-    const wmSize = wordMotor.end - wordMotor.start;
-    const preSem = new Float64Array(semSize);
-    for (let i = 0; i < semSize; i++) {
-      preSem[i] = this.lastSpikes[sem.start + i] || 0;
-    }
-    let wmOut;
-    try {
-      wmOut = proj.propagate(preSem);
-    } catch {
-      return "";
-    }
-    if (!wmOut || wmOut.length === 0) return "";
-    let gwBoostWord = null;
-    let gwBoostMul = 1;
-    if (this._globalWorkspace && typeof this._globalWorkspace.getBroadcast === "function") {
-      const bc = this._globalWorkspace.getBroadcast();
-      if (bc && typeof bc.label === "string" && bc.label.startsWith("cortex:")) {
-        const w = bc.label.slice("cortex:".length);
-        if (w && w !== "silent") {
-          gwBoostWord = w;
-          gwBoostMul = 1 + bc.strength * 0.6;
-        }
-      }
-    }
-    const subjScope = opts.subject && normalizeSubject2(opts.subject) ? [normalizeSubject2(opts.subject)] : SUBJECTS;
-    const candidates = [];
-    let bestWord = null;
-    let bestMean = -Infinity;
-    if (!Array.isArray(this._recentEmissions)) this._recentEmissions = [];
-    const recentLast4 = new Set(this._recentEmissions.slice(-4));
-    const REPETITION_PENALTY = 0.7;
-    for (const subj of subjScope) {
-      const subjectRegion = this.regions[`word_motor_${subj}`];
-      if (!subjectRegion) continue;
-      const subjStart = subjectRegion.start - wordMotor.start;
-      const subjEnd = subjectRegion.end - wordMotor.start;
-      const subjSize = subjEnd - subjStart;
-      if (subjSize <= 0) continue;
-      const wordsList = this[`wordBucketWords_${subj}`];
-      if (!Array.isArray(wordsList) || wordsList.length === 0) continue;
-      const bucketSize = Math.max(1, Math.floor(subjSize / wordsList.length));
-      for (let b = 0; b < wordsList.length; b++) {
-        let sum = 0;
-        const bStart = subjStart + b * bucketSize;
-        const bEnd = Math.min(subjEnd, bStart + bucketSize);
-        const cellCount = Math.max(1, bEnd - bStart);
-        for (let n = bStart; n < bEnd; n++) sum += wmOut[n];
-        let mean = sum / cellCount;
-        if (gwBoostWord && wordsList[b] === gwBoostWord) mean *= gwBoostMul;
-        if (recentLast4.has(wordsList[b]) && !FUNCTION_WORDS.has(wordsList[b])) {
-          mean *= REPETITION_PENALTY;
-        }
-        candidates.push({ word: wordsList[b], mean });
-        if (mean > bestMean) {
-          bestMean = mean;
-          bestWord = wordsList[b];
-        }
-      }
-    }
-    const NOISE_FLOOR = 1e-3;
-    if (typeof this._emitSignalEMA !== "number") this._emitSignalEMA = 0;
-    if (typeof this._emitSignalSampleCount !== "number") this._emitSignalSampleCount = 0;
-    const adaptiveComponent = this._emitSignalSampleCount >= 20 && this._emitSignalEMA > 0 ? this._emitSignalEMA * 0.5 : 0;
-    const floor = typeof opts.signalFloorOverride === "number" ? opts.signalFloorOverride : Math.max(NOISE_FLOOR, adaptiveComponent);
-    this._emitSignalFloor = floor;
-    if (!bestWord || bestMean < floor) {
-      this._lastEmitRejection = {
-        reason: !bestWord ? "no-best-word" : "below-signal-floor",
-        bestMean: bestMean === -Infinity ? 0 : bestMean,
-        floor,
-        ema: this._emitSignalEMA,
-        ts: Date.now()
-      };
-      if (typeof this._recordWordCreationCandidate === "function" && bestWord && candidates.length >= 2) {
-        try {
-          const sorted = candidates.slice().sort((a, b) => b.mean - a.mean);
-          const top1 = sorted[0];
-          const top2 = sorted[1];
-          if (top1 && top2 && top1.mean > NOISE_FLOOR && top2.mean > NOISE_FLOOR) {
-            this._recordWordCreationCandidate(top1, top2, floor);
-          }
-        } catch {
-        }
-      }
-      return "";
-    }
-    const _emaAlpha = 0.05;
-    this._emitSignalEMA = (1 - _emaAlpha) * this._emitSignalEMA + _emaAlpha * bestMean;
-    this._emitSignalSampleCount++;
-    const temperature = typeof opts.temperature === "number" ? opts.temperature : 0;
-    if (temperature > 0 && candidates.length > 1) {
-      const topK = Math.max(1, Math.min(opts.topK ?? 8, candidates.length));
-      candidates.sort((a, b) => b.mean - a.mean);
-      const topCandidates = candidates.slice(0, topK).filter((c) => c.mean >= floor);
-      if (topCandidates.length === 0) return "";
-      const maxMean = topCandidates[0].mean;
-      let sumExp = 0;
-      const weights = topCandidates.map((c) => {
-        const w = Math.exp((c.mean - maxMean) / Math.max(0.01, temperature));
-        sumExp += w;
-        return w;
-      });
-      const topP = typeof opts.topP === "number" ? opts.topP : 1;
-      let nucleusEnd = topCandidates.length;
-      if (topP < 1) {
-        let cum2 = 0;
-        for (let i = 0; i < topCandidates.length; i++) {
-          cum2 += weights[i] / sumExp;
-          if (cum2 >= topP) {
-            nucleusEnd = i + 1;
-            break;
-          }
-        }
-      }
-      const nucleus = topCandidates.slice(0, nucleusEnd);
-      const nucleusWeights = weights.slice(0, nucleusEnd);
-      const nucleusSum = nucleusWeights.reduce((a, b) => a + b, 0);
-      const r = Math.random() * nucleusSum;
-      let cum = 0;
-      for (let i = 0; i < nucleus.length; i++) {
-        cum += nucleusWeights[i];
-        if (cum >= r) {
-          bestWord = nucleus[i].word;
-          bestMean = nucleus[i].mean;
-          break;
-        }
-      }
-    }
-    this._lastEmittedWord = bestWord;
-    this._lastEmittedActivation = bestMean;
-    if (!opts.skipRecentTrack) {
-      this._recentEmissions.push(bestWord);
-      while (this._recentEmissions.length > 8) {
-        this._recentEmissions.shift();
-      }
-    }
-    if (typeof this.recordEmission === "function") {
-      this.recordEmission(bestWord);
-    }
-    return bestWord;
-  }
-  // 114.19fj.9 — public helper for callers that opted out of automatic
-  // ring tracking (composeSentence, future custom emission paths). Push
-  // to the recent-emissions ring after a manual acceptance check so the
-  // repetition penalty reflects ACTUAL emissions, not internal probe
-  // attempts.
-  // 6 telemetry methods EXTRACTED to js/brain/cluster/telemetry.js
-  // CLUSTER_TELEMETRY_MIXIN (per-module-file architecture, P4.2.a).
-  //   trackRecentEmission, initCompositionalTelemetry,
-  //   classifyCompositionalEmission, _recordWordCreationCandidate,
-  //   getWordCreationCandidates, getCompositionalStats
+  // 6 emission methods EXTRACTED to js/brain/cluster/emit.js
+  // CLUSTER_EMIT_MIXIN (per-module-file architecture, P4.2.b).
+  //   _dictionaryOracleEmit, generateSentence, emitWordDirect,
+  //   composeSentence, generateSentenceAwait, _emitDirectPropagate
   // Attached via Object.assign(NeuronCluster.prototype, ...) at the
-  // bottom of this file. All methods accessible identically through
-  // the prototype chain.
-  /**
-   * 114.19fk.1 — RIPPED OUT template prescription system. composeSentence
-   * is now a pure equational emission loop — no template, no slot
-   * sequence prescription, no article rule, no terminator-punct mapping,
-   * no pronoun exclusion, no dedup retry mechanism. Operator 2026-05-09:
-   * *"we are NOT doing templets for the ai to fucking mimic thats no
-   * better thant word lists and arrays you fool. Unity thinks like a
-   * human does! she does NOt follow prescripted events... that not how
-   * our equations shall work?"*
-   *
-   * The TRAINED iter25-I weights handle everything that used to be
-   * hardcoded:
-   *   relationTagId=8  — slot-position primitives → emitWordDirect's
-   *                       argmax picks slot-appropriate word from sem state
-   *   relationTagId=9  — sem(intent)→sem(first_slot) → slot ORDER emerges
-   *                       from sem evolution under trained weights
-   *   relationTagId=10 — subject-verb agreement → emerges from word→word
-   *                       Hebbian propagation tick-by-tick
-   *   relationTagId=11 — noun→article → article placement emerges from
-   *                       trained weights (when "the cat" was seen during
-   *                       training, sem(cat) ← sem(the) bias landed)
-   *   relationTagId=12 — WH→intent-concept → emerges automatically when
-   *                       user types "what is X", brain reads its own
-   *                       activation
-   *
-   * Loop: inject context once → emit one word → inject emitted word back
-   * into sem so next tick reads shifted state → repeat until terminator
-   * EMERGES from trained weights or budget exhausted.
-   *
-   * @param {string|Float32Array|null} intentSeed — optional seed embedding
-   *   or text to inject ONCE at start. Caller decides what STATE to put
-   *   Unity in; emission emerges from that state. NOT a template selector.
-   * @param {object} opts
-   * @param {string}              [opts.subject]       — sub-band hint for emitWordDirect
-   * @param {Float32Array}        [opts.cortexPattern] — chain-blended seed
-   * @param {string}              [opts.intentConcept] — WH-INTENT seed
-   * @param {number}              [opts.temperature]   — decoder temp
-   * @param {number}              [opts.topK]          — decoder top-K
-   * @param {number}              [opts.topP]          — decoder nucleus
-   * @param {number}              [opts.maxWords=12]   — emission budget
-   * @param {AbortSignal}         [opts.signal]        — cancellation
-   * @returns {{ sentence: string, words: string[], fillCount: number,
-   *            coherenceCosine: number|null, coherenceTarget: string|null } | null}
-   */
-  async composeSentence(intentSeed = null, opts = {}) {
-    if (!this.regions || !this.regions.sem) {
-      throw new Error("composeSentence: cluster missing `sem` region \u2014 wiring bug at construction");
-    }
-    if (typeof this.injectEmbeddingToRegion !== "function") {
-      throw new Error("composeSentence: cluster.injectEmbeddingToRegion missing \u2014 wiring bug at construction");
-    }
-    if (typeof this.emitWordDirect !== "function") {
-      throw new Error("composeSentence: cluster.emitWordDirect missing \u2014 wiring bug at construction");
-    }
-    if (typeof this.stepAwait !== "function") {
-      throw new Error("composeSentence: cluster.stepAwait missing \u2014 wiring bug at construction (autoregressive emission requires async tick)");
-    }
-    const checkAborted = () => opts.signal && opts.signal.aborted;
-    if (checkAborted()) {
-      if (!this._composeStats) this._composeStats = { calls: 0, fills: 0, partial: 0, empty: 0 };
-      this._composeStats.aborted = (this._composeStats.aborted || 0) + 1;
-      return null;
-    }
-    const semRegion = this.regions.sem;
-    if (semRegion && this.externalCurrent) {
-      for (let i = semRegion.start; i < semRegion.end; i++) {
-        this.externalCurrent[i] = 0;
-      }
-    }
-    if (opts.cortexPattern && opts.cortexPattern.length > 0) {
-      try {
-        this.injectEmbeddingToRegion("sem", opts.cortexPattern, 0.2);
-      } catch {
-      }
-    }
-    if (opts.schemaContext) {
-      const sc = opts.schemaContext;
-      try {
-        if (sc.conceptEmbedding && sc.conceptEmbedding.length > 0) {
-          this.injectEmbeddingToRegion("sem", sc.conceptEmbedding, 0.15);
-        }
-        if (sc.attributeVector && sc.attributeVector.length > 0) {
-          this.injectEmbeddingToRegion("sem", sc.attributeVector, 0.1);
-        }
-      } catch {
-      }
-    }
-    if (intentSeed) {
-      try {
-        let seedEmb = null;
-        if (typeof intentSeed === "string") {
-          if (sharedEmbeddings && typeof sharedEmbeddings.getSentenceEmbedding === "function") {
-            seedEmb = sharedEmbeddings.getSentenceEmbedding(intentSeed.replace(/_/g, " "));
-          }
-        } else if (intentSeed.length > 0) {
-          seedEmb = intentSeed;
-        }
-        if (seedEmb && seedEmb.length > 0) {
-          this.injectEmbeddingToRegion("sem", seedEmb, 0.3);
-        }
-      } catch {
-      }
-    }
-    if (opts.intentConcept && sharedEmbeddings && typeof sharedEmbeddings.getEmbedding === "function") {
-      try {
-        const conceptEmb = sharedEmbeddings.getEmbedding(opts.intentConcept);
-        if (conceptEmb && conceptEmb.length > 0) {
-          this.injectEmbeddingToRegion("sem", conceptEmb, 0.3);
-        }
-      } catch {
-      }
-    }
-    const words = [];
-    const MAX_WORDS2 = typeof opts.maxWords === "number" && opts.maxWords > 0 ? Math.floor(opts.maxWords) : 12;
-    const TICKS_PER_WORD = typeof opts.ticksPerWord === "number" && opts.ticksPerWord > 0 ? Math.floor(opts.ticksPerWord) : 3;
-    const MAX_TERMINATOR_REJECTS = 3;
-    let terminatorRejects = 0;
-    for (let i = 0; i < MAX_WORDS2; i++) {
-      if (checkAborted()) {
-        if (!this._composeStats) this._composeStats = { calls: 0, fills: 0, partial: 0, empty: 0 };
-        this._composeStats.aborted = (this._composeStats.aborted || 0) + 1;
-        return null;
-      }
-      for (let t = 0; t < TICKS_PER_WORD; t++) {
-        if (checkAborted()) {
-          if (!this._composeStats) this._composeStats = { calls: 0, fills: 0, partial: 0, empty: 0 };
-          this._composeStats.aborted = (this._composeStats.aborted || 0) + 1;
-          return null;
-        }
-        await this.stepAwait(1e-3);
-      }
-      const emitOpts = { skipRecentTrack: true };
-      if (opts.subject) emitOpts.subject = opts.subject;
-      if (typeof opts.temperature === "number") emitOpts.temperature = opts.temperature;
-      if (typeof opts.topK === "number") emitOpts.topK = opts.topK;
-      if (typeof opts.topP === "number") emitOpts.topP = opts.topP;
-      let word = "";
-      try {
-        word = this.emitWordDirect(emitOpts) || "";
-      } catch {
-        word = "";
-      }
-      if (!word) break;
-      word = String(word).toLowerCase().trim();
-      if (!word) break;
-      if (T14_TERMINATORS.has(word)) {
-        if (words.length > 0) {
-          words[words.length - 1] = words[words.length - 1] + word;
-          break;
-        } else {
-          terminatorRejects++;
-          if (terminatorRejects >= MAX_TERMINATOR_REJECTS) break;
-          continue;
-        }
-      }
-      words.push(word);
-      if (typeof this.trackRecentEmission === "function") {
-        this.trackRecentEmission(word);
-      }
-      if (sharedEmbeddings && typeof sharedEmbeddings.getEmbedding === "function") {
-        try {
-          const wordEmb = sharedEmbeddings.getEmbedding(word);
-          if (wordEmb && wordEmb.length > 0) {
-            const BACK_INJECT_BASE = 0.15;
-            const BACK_INJECT_DECAY = 0.85;
-            const backInjectStrength = BACK_INJECT_BASE * Math.pow(BACK_INJECT_DECAY, i);
-            this.injectEmbeddingToRegion("sem", wordEmb, backInjectStrength);
-          }
-        } catch {
-        }
-      }
-    }
-    if (!this._composeStats) this._composeStats = { calls: 0, fills: 0, partial: 0, empty: 0 };
-    this._composeStats.calls++;
-    if (words.length === 0) {
-      this._composeStats.empty++;
-      return null;
-    }
-    this._composeStats.fills++;
-    words[0] = words[0].charAt(0).toUpperCase() + words[0].slice(1);
-    const sentence = words.join(" ");
-    let coherenceCosine = null;
-    let coherenceTargetLabel = null;
-    let coherenceTarget = null;
-    if (opts.intentConcept && sharedEmbeddings && typeof sharedEmbeddings.getEmbedding === "function") {
-      try {
-        coherenceTarget = sharedEmbeddings.getEmbedding(opts.intentConcept);
-        coherenceTargetLabel = `intentConcept:${opts.intentConcept}`;
-      } catch {
-      }
-    }
-    if (!coherenceTarget && opts.cortexPattern && opts.cortexPattern.length > 0) {
-      coherenceTarget = opts.cortexPattern;
-      coherenceTargetLabel = "cortexPattern";
-    }
-    if (coherenceTarget && sharedEmbeddings && typeof sharedEmbeddings.getSentenceEmbedding === "function") {
-      try {
-        const sentenceEmb = sharedEmbeddings.getSentenceEmbedding(sentence);
-        if (sentenceEmb && sentenceEmb.length > 0) {
-          let dot = 0, na = 0, nb = 0;
-          const L = Math.min(coherenceTarget.length, sentenceEmb.length);
-          for (let i = 0; i < L; i++) {
-            dot += coherenceTarget[i] * sentenceEmb[i];
-            na += coherenceTarget[i] * coherenceTarget[i];
-            nb += sentenceEmb[i] * sentenceEmb[i];
-          }
-          const denom = Math.sqrt(na) * Math.sqrt(nb);
-          coherenceCosine = denom > 0 ? dot / denom : 0;
-          if (!this._coherenceLogCount) this._coherenceLogCount = 0;
-          if (this._coherenceLogCount < 10) {
-            this._coherenceLogCount++;
-            try {
-              console.log(`[composeSentence] coherence sample ${this._coherenceLogCount}/10 cosine=${coherenceCosine.toFixed(3)} (target=${coherenceTargetLabel}) sentence="${sentence.slice(0, 60)}"`);
-            } catch {
-            }
-          }
-        }
-      } catch {
-      }
-    }
-    let compositional = null;
-    if (typeof this.classifyCompositionalEmission === "function") {
-      try {
-        compositional = this.classifyCompositionalEmission(sentence);
-      } catch {
-      }
-    }
-    return { sentence, words, fillCount: words.length, coherenceCosine, coherenceTarget: coherenceTargetLabel, compositional };
-  }
-  async generateSentenceAwait(intentSeed = null, opts = {}) {
-    if (!this.regions || !this.regions.motor || !this.regions.letter) return "";
-    if (inventorySize() === 0) return "";
-    if (opts.directPropagate === true) {
-      return await this._emitDirectPropagate(intentSeed, opts);
-    }
-    const oracleHit = this._dictionaryOracleEmit(intentSeed, opts);
-    if (oracleHit) {
-      this._lastEmissionDiag = {
-        ticksRun: oracleHit.cleanEmit.length,
-        maxMotorBucket: oracleHit.bestScore,
-        argmaxFlickers: 0,
-        committedLetters: oracleHit.cleanEmit.length,
-        gpuReadPath: false,
-        mode: "dictionary-oracle",
-        bestWord: oracleHit.bestWord,
-        bestScore: Number(oracleHit.bestScore.toFixed(3))
-      };
-      return oracleHit.cleanEmit;
-    }
-    const injectStrength = opts.injectStrength ?? 0.6;
-    const maxTicks = opts.maxTicks ?? opts.maxEmissionTicks ?? this.MAX_EMISSION_TICKS;
-    const suppressNoise = opts.suppressNoise === true;
-    const _savedNoise = this.noiseAmplitude;
-    if (suppressNoise) this.noiseAmplitude = 0.5;
-    const _savedTonic = this.tonicDrive;
-    const suppressTonic = opts.suppressTonicDrive !== false;
-    if (suppressTonic) this.tonicDrive = this.driveBaseline ?? 1;
-    if (intentSeed && intentSeed.length > 0 && this.regions.sem) {
-      this.injectEmbeddingToRegion("sem", intentSeed, injectStrength);
-    }
-    if (this.regions.free && this.regions.sem) {
-      const wm = await this.workingMemoryReadoutAwait(300);
-      let wmNorm = 0;
-      for (let i = 0; i < wm.length; i++) wmNorm += wm[i] * wm[i];
-      if (wmNorm > 0.01) {
-        this.injectEmbeddingToRegion("sem", wm, injectStrength * 0.4);
-      }
-    }
-    this._prevLetterRate = 0;
-    this._motorQuiescentTicks = 0;
-    const output = [];
-    let letterBuffer = "";
-    let lastMotorLetter = null;
-    let stableTicks = 0;
-    let maxMotorBucket = 0;
-    let argmaxFlickers = 0;
-    let committedLetters = 0;
-    let ticksRun = 0;
-    const motorRegionStand = this.regions.motor;
-    const motorSubSliceLen = motorRegionStand ? motorRegionStand.end - motorRegionStand.start : 0;
-    const canGpuMotorRead = !!(this._gpuProxy && typeof this._gpuProxy.readbackLetterBuckets === "function" && this.crossProjections && this.crossProjections.sem_to_motor && this.crossProjections.sem_to_motor._gpuBound && motorSubSliceLen > 0);
-    for (let tick = 0; tick < maxTicks; tick++) {
-      ticksRun = tick + 1;
-      await this.stepAwait(1e-3);
-      const invSize = inventorySize();
-      if (invSize === 0) break;
-      let activeLetter = null;
-      if (canGpuMotorRead) {
-        try {
-          const bucketSize = Math.floor(motorSubSliceLen / invSize);
-          const readLen = bucketSize * invSize;
-          const counts = await this._gpuProxy.readbackLetterBuckets("motor", invSize, readLen, 0);
-          if (counts && counts.length === invSize) {
-            const inv = inventorySnapshot();
-            let bestIdx = -1;
-            let bestCount = -Infinity;
-            for (let b = 0; b < invSize; b++) {
-              const ch = inv[b];
-              if (!ch || !/^[a-z]$/.test(ch)) continue;
-              if (counts[b] > bestCount) {
-                bestCount = counts[b];
-                bestIdx = b;
-              }
-            }
-            if (bestIdx >= 0 && bestCount > maxMotorBucket) maxMotorBucket = bestCount;
-            if (bestIdx >= 0 && bestCount > 0) {
-              activeLetter = inv[bestIdx];
-            }
-          }
-        } catch {
-        }
-      }
-      if (activeLetter === null) {
-        const motorVec = this.regionReadout("motor", invSize);
-        activeLetter = decodeLetterAlpha(motorVec);
-      }
-      if (activeLetter === lastMotorLetter && activeLetter !== null) {
-        stableTicks++;
-      } else {
-        if (lastMotorLetter !== null || activeLetter !== null) argmaxFlickers++;
-        stableTicks = 0;
-        lastMotorLetter = activeLetter;
-      }
-      let committedLetter = null;
-      if (stableTicks >= this.STABLE_TICK_THRESHOLD && activeLetter !== null) {
-        committedLetter = activeLetter;
-        letterBuffer += activeLetter;
-        committedLetters++;
-        stableTicks = 0;
-        if (this.regions.motor) {
-          const { start, end } = this.regions.motor;
-          for (let j = start; j < end; j++) this.lastSpikes[j] = 0;
-        }
-        if (canGpuMotorRead && this._gpuProxy.clearSpikeSlice) {
-          try {
-            this._gpuProxy.clearSpikeSlice("motor");
-          } catch {
-          }
-        }
-        lastMotorLetter = null;
-        this._motorQuiescentTicks = 0;
-      }
-      const surprise = this.letterTransitionSurprise();
-      if (surprise > this.WORD_BOUNDARY_THRESHOLD && letterBuffer.length > 0) {
-        output.push(letterBuffer);
-        letterBuffer = "";
-      }
-      if (committedLetter && T14_TERMINATORS.has(committedLetter)) {
-        if (letterBuffer.length > 0) {
-          output.push(letterBuffer);
-          letterBuffer = "";
-        }
-        break;
-      }
-      if (output.length > 0 && this.motorQuiescent(this.END_QUIESCE_TICKS)) {
-        break;
-      }
-    }
-    if (letterBuffer.length > 0) {
-      output.push(letterBuffer);
-    }
-    if (suppressNoise) this.noiseAmplitude = _savedNoise;
-    if (suppressTonic) this.tonicDrive = _savedTonic;
-    this._motorEmissionTicks = ticksRun;
-    this._lastEmissionDiag = {
-      ticksRun,
-      maxMotorBucket,
-      argmaxFlickers,
-      committedLetters,
-      gpuReadPath: canGpuMotorRead
-    };
-    return output.join(" ");
-  }
-  /**
-   * Direct-propagate emission — LLM-style generation using the learned
-   * cross-projection weights without LIF ticks. Each step is a matrix
-   * multiply + argmax (same as an LLM's `logits = W·h` → `argmax`).
-   *
-   * Sequence:
-   *   1. If `intentSeed` provided → build a sem-local input by tiling
-   *      the embedding across the sem region. Propagate through
-   *      `sem_to_motor.propagate()` and argmax over the letter-inventory
-   *      bucketization of the motor region → first letter.
-   *   2. Otherwise read current letter-region state and start from there.
-   *   3. For each subsequent letter (up to `maxTicks`): inject the
-   *      previous letter's one-hot into a letter-scoped input vector,
-   *      propagate through `letter_to_motor.propagate()`, argmax → next
-   *      letter. Stop at word-terminator (space, `.`, `,`, `'`) OR when
-   *      the argmax repeats the previous letter (attractor) OR when
-   *      the max activation is below `minActivation` (nothing left to
-   *      emit).
-   *
-   * Returns the emitted string (letters with no space separators — the
-   * caller can split on word-terminators if needed).
-   *
-   * @param {Float32Array|Float64Array|null} intentSeed
-   * @param {object} opts — `maxTicks`, `maxLetters`, `minActivation`
-   * @returns {Promise<string>}
-   */
-  async _emitDirectPropagate(intentSeed, opts = {}) {
-    const motorRegion = this.regions?.motor;
-    const letterRegion = this.regions?.letter;
-    const semRegion = this.regions?.sem;
-    if (!motorRegion || !letterRegion) return "";
-    const invSize = inventorySize();
-    if (invSize === 0) return "";
-    const maxLetters = opts.maxLetters ?? opts.maxTicks ?? 16;
-    const minActivation = opts.minActivation ?? 0;
-    const inv = inventorySnapshot();
-    const TERMINATORS = /* @__PURE__ */ new Set([" ", ".", ",", "'"]);
-    const semToMotor = this.crossProjections?.sem_to_motor;
-    const letterToMotor = this.crossProjections?.letter_to_motor;
-    const oracleHit = this._dictionaryOracleEmit(intentSeed, { ...opts, maxLetters });
-    if (oracleHit) {
-      this._motorEmissionTicks = oracleHit.cleanEmit.length;
-      this._lastEmissionDiag = {
-        ticksRun: oracleHit.cleanEmit.length,
-        maxMotorBucket: oracleHit.bestScore,
-        argmaxFlickers: 0,
-        committedLetters: oracleHit.cleanEmit.length,
-        gpuReadPath: false,
-        mode: "dictionary-oracle",
-        bestWord: oracleHit.bestWord,
-        bestScore: Number(oracleHit.bestScore.toFixed(3))
-      };
-      return oracleHit.cleanEmit;
-    }
-    const motorSize = motorRegion.end - motorRegion.start;
-    const bucketSize = Math.max(1, Math.floor(motorSize / invSize));
-    const isAlphaIdx = (b) => /^[a-z]$/.test(inv[b]);
-    const bucketArgmax = (motorOutput) => {
-      let bestIdx = -1, bestSum = -Infinity;
-      for (let b = 0; b < invSize; b++) {
-        if (!isAlphaIdx(b)) continue;
-        let sum = 0;
-        for (let n = 0; n < bucketSize; n++) {
-          const idx = b * bucketSize + n;
-          if (idx < motorOutput.length) sum += motorOutput[idx];
-        }
-        if (sum > bestSum) {
-          bestSum = sum;
-          bestIdx = b;
-        }
-      }
-      return { idx: bestIdx, score: bestSum };
-    };
-    const tileIntoRegion = (region, feat) => {
-      const regionSize = region.end - region.start;
-      const inputVec = new Float64Array(regionSize);
-      if (!feat || feat.length === 0) return inputVec;
-      const gSize = Math.max(1, Math.floor(regionSize / feat.length));
-      for (let d = 0; d < feat.length; d++) {
-        if (feat[d] <= 0) continue;
-        for (let n = 0; n < gSize; n++) {
-          const idx = d * gSize + n;
-          if (idx < regionSize) inputVec[idx] = 1;
-        }
-      }
-      return inputVec;
-    };
-    let letters = "";
-    let prevLetter = null;
-    let maxMotorBucket = 0;
-    let committedLetters = 0;
-    if (intentSeed && intentSeed.length > 0 && semToMotor && typeof semToMotor.propagate === "function" && semToMotor.values && semToMotor.values.length > 0 && semRegion) {
-      const semInput = tileIntoRegion(semRegion, intentSeed);
-      const motorOutput = semToMotor.propagate(semInput);
-      if (motorOutput && motorOutput.length > 0) {
-        const best = bucketArgmax(motorOutput);
-        if (best.score > maxMotorBucket) maxMotorBucket = best.score;
-        if (best.idx >= 0 && best.score > minActivation) {
-          const letter = inv[best.idx];
-          letters += letter;
-          prevLetter = letter;
-          committedLetters++;
-        }
-      }
-    }
-    const synapses = this.synapses;
-    const letterSize = letterRegion.end - letterRegion.start;
-    const letterBucketSize = Math.max(1, Math.floor(letterSize / invSize));
-    const letterBucketArgmax = (clusterOutput) => {
-      let bestIdx = -1, bestSum = -Infinity;
-      for (let b = 0; b < invSize; b++) {
-        if (!isAlphaIdx(b)) continue;
-        let sum = 0;
-        for (let n = 0; n < letterBucketSize; n++) {
-          const idx = letterRegion.start + b * letterBucketSize + n;
-          if (idx < clusterOutput.length) sum += clusterOutput[idx];
-        }
-        if (sum > bestSum) {
-          bestSum = sum;
-          bestIdx = b;
-        }
-      }
-      return { idx: bestIdx, score: bestSum };
-    };
-    if (synapses && typeof synapses.propagate === "function" && synapses.values && synapses.values.length > 0) {
-      for (let step = 1; step < maxLetters && prevLetter !== null; step++) {
-        if (TERMINATORS.has(prevLetter)) break;
-        const prevOneHot = encodeLetter(prevLetter);
-        const clusterInput = new Float64Array(this.size);
-        const gSize = Math.max(1, Math.floor(letterSize / prevOneHot.length));
-        for (let d = 0; d < prevOneHot.length; d++) {
-          if (prevOneHot[d] <= 0) continue;
-          for (let n = 0; n < gSize; n++) {
-            const idx = letterRegion.start + d * gSize + n;
-            if (idx < letterRegion.end) clusterInput[idx] = 1;
-          }
-        }
-        const clusterOutput = synapses.propagate(clusterInput);
-        if (!clusterOutput || clusterOutput.length === 0) break;
-        const best = letterBucketArgmax(clusterOutput);
-        if (best.score > maxMotorBucket) maxMotorBucket = best.score;
-        if (best.idx < 0 || best.score <= minActivation) break;
-        const nextLetter = inv[best.idx];
-        if (nextLetter === prevLetter) break;
-        letters += nextLetter;
-        prevLetter = nextLetter;
-        committedLetters++;
-        if (TERMINATORS.has(nextLetter)) break;
-      }
-    }
-    this._motorEmissionTicks = committedLetters;
-    this._lastEmissionDiag = {
-      ticksRun: committedLetters,
-      maxMotorBucket,
-      argmaxFlickers: 0,
-      committedLetters,
-      gpuReadPath: false,
-      mode: "direct-propagate"
-    };
-    return letters;
-  }
+  // bottom of this file. Phase 1 fixes (P1.1 async stepAwait, P1.2
+  // replaceMode, P1.3 terminator-first guard) + P3.4 exponential-decay
+  // back-injection + P6.2 schemaContext pre-inject + P6.6 compositional
+  // classify + P6.7 word-creation candidate hook are all preserved in
+  // the moved method bodies.
   /**
    * T14.4 — Propagate every cross-region projection. Runs on every
    * cluster step after the main internal synapse propagation, before
@@ -43622,7 +43562,7 @@ var NeuronCluster = class {
     let updates = 0;
     for (const emb of embSequence) {
       if (!emb) continue;
-      const currents = sharedEmbeddings.mapToCortex(emb, this.size, langStart);
+      const currents = sharedEmbeddings2.mapToCortex(emb, this.size, langStart);
       if (injectStrength !== 1) {
         for (let i = 0; i < this.size; i++) currents[i] *= injectStrength;
       }
@@ -43655,34 +43595,15 @@ var NeuronCluster = class {
    * Disturbs live brain state, so only call from console diagnostics
    * or boot-time verification — not inside the think loop.
    */
-  diagnoseReadoutForEmbedding(emb, ticks = 10, langStart = 150) {
-    const currents = sharedEmbeddings.mapToCortex(emb, this.size, langStart);
-    this.injectCurrent(currents);
-    for (let t = 0; t < ticks; t++) this.step(1e-3);
-    return this.getSemanticReadout(sharedEmbeddings, langStart);
-  }
-  /**
-   * Cluster synapse weight stats — used for T13.1 before/after training
-   * verification. Returns mean, RMS, max magnitude over active (non-zero)
-   * weights, plus the non-zero count.
-   */
-  synapseStats() {
-    const { values, nnz } = this.synapses;
-    let sum = 0, sumSq = 0, maxAbs = 0;
-    for (let k = 0; k < nnz; k++) {
-      const a = Math.abs(values[k]);
-      sum += a;
-      sumSq += values[k] * values[k];
-      if (a > maxAbs) maxAbs = a;
-    }
-    const count = nnz || 1;
-    return {
-      mean: sum / count,
-      rms: Math.sqrt(sumSq / count),
-      maxAbs,
-      nnz
-    };
-  }
+  // 2 probe methods EXTRACTED to js/brain/cluster/probe.js
+  // CLUSTER_PROBE_MIXIN (per-module-file architecture, P4.2.d).
+  //   diagnoseReadoutForEmbedding, synapseStats
+  // Attached via Object.assign(NeuronCluster.prototype, ...) at the
+  // bottom of this file. Other probe-family methods (computePhi,
+  // getTrainedCapability, workingMemoryReadout/Await, injectWorkingMemory)
+  // stay on the main prototype because they're intermixed with other
+  // core methods in the source layout — a future follow-up bite can
+  // migrate them once their neighbours are also extracted.
   /**
    * Receive projected spikes from another cluster.
    * @param {Uint8Array} sourceSpikes — spike array from source cluster
@@ -43833,6 +43754,8 @@ var ClusterProjection = class {
 };
 Object.assign(NeuronCluster.prototype, CLUSTER_TELEMETRY_MIXIN);
 Object.assign(NeuronCluster.prototype, CLUSTER_HEBBIAN_MIXIN);
+Object.assign(NeuronCluster.prototype, CLUSTER_EMIT_MIXIN);
+Object.assign(NeuronCluster.prototype, CLUSTER_PROBE_MIXIN);
 
 // ../js/brain/modules.js
 function sigmoid(x) {
@@ -44680,7 +44603,7 @@ var VIS_COLS = 10;
 var VIS_ROWS = 10;
 var SensoryProcessor = class {
   constructor() {
-    this._embeddings = sharedEmbeddings;
+    this._embeddings = sharedEmbeddings2;
     this._embeddingsLoading = this._embeddings.loadPreTrained().catch(() => 0);
     this._textQueue = [];
     this._audioSpectrum = null;
@@ -46164,7 +46087,7 @@ var Dictionary = class {
         pattern[i] = cortexPattern[i];
       }
     } else {
-      const embed = sharedEmbeddings.getEmbedding(clean);
+      const embed = sharedEmbeddings2.getEmbedding(clean);
       for (let i = 0; i < PATTERN_DIM && i < embed.length; i++) {
         pattern[i] = embed[i];
       }
@@ -46620,7 +46543,7 @@ var LanguageCortex = class {
         const firstPerson = this._transformToFirstPerson(raw);
         const tokens = firstPerson.toLowerCase().replace(/[^a-z' -]/g, " ").split(/\s+/).filter((w) => w.length >= 2);
         if (tokens.length < 2) continue;
-        const embSeq = tokens.map((w) => sharedEmbeddings.getEmbedding(w));
+        const embSeq = tokens.map((w) => sharedEmbeddings2.getEmbedding(w));
         const updates = cortexCluster.learnSentenceHebbian(embSeq, opts);
         totalUpdates += updates;
         trained++;
@@ -47408,7 +47331,7 @@ var LanguageCortex = class {
     if (!intentSeed) {
       try {
         if (typeof cluster.getSemanticReadout === "function") {
-          intentSeed = cluster.getSemanticReadout(sharedEmbeddings);
+          intentSeed = cluster.getSemanticReadout(sharedEmbeddings2);
         }
       } catch (err) {
         intentSeed = null;
@@ -47440,7 +47363,7 @@ var LanguageCortex = class {
     }
     if (words.length === 0) {
       let scored = opts._precomputedScores || null;
-      const target = intentSeed || (typeof cluster.getSemanticReadout === "function" ? cluster.getSemanticReadout(sharedEmbeddings) : null);
+      const target = intentSeed || (typeof cluster.getSemanticReadout === "function" ? cluster.getSemanticReadout(sharedEmbeddings2) : null);
       if (!scored && dictionary && dictionary._words && dictionary._words.size > 0 && target && target.length > 0) {
         try {
           const isChatPath = !opts._internalThought;
@@ -47716,13 +47639,13 @@ var LanguageCortex = class {
               if (content.length >= 8) break;
             }
             try {
-              if (typeof cluster.injectEmbeddingToRegion === "function" && sharedEmbeddings && typeof sharedEmbeddings.getEmbedding === "function") {
-                const subjectEmb = sharedEmbeddings.getEmbedding(subject);
+              if (typeof cluster.injectEmbeddingToRegion === "function" && sharedEmbeddings2 && typeof sharedEmbeddings2.getEmbedding === "function") {
+                const subjectEmb = sharedEmbeddings2.getEmbedding(subject);
                 if (subjectEmb && subjectEmb.length > 0) {
                   cluster.injectEmbeddingToRegion("sem", subjectEmb, 0.6);
                 }
                 for (let i = 0; i < content.length; i++) {
-                  const emb = sharedEmbeddings.getEmbedding(content[i]);
+                  const emb = sharedEmbeddings2.getEmbedding(content[i]);
                   if (emb && emb.length > 0) {
                     const strength = Math.max(0.1, 0.4 - i * 0.04);
                     cluster.injectEmbeddingToRegion("sem", emb, strength);
@@ -47768,9 +47691,9 @@ var LanguageCortex = class {
                 }
                 composedWords.push(lw);
                 lastWord = lw;
-                if (typeof cluster.injectEmbeddingToRegion === "function" && sharedEmbeddings && typeof sharedEmbeddings.getEmbedding === "function") {
+                if (typeof cluster.injectEmbeddingToRegion === "function" && sharedEmbeddings2 && typeof sharedEmbeddings2.getEmbedding === "function") {
                   try {
-                    const wordEmb = sharedEmbeddings.getEmbedding(lw);
+                    const wordEmb = sharedEmbeddings2.getEmbedding(lw);
                     if (wordEmb && wordEmb.length > 0) {
                       cluster.injectEmbeddingToRegion("sem", wordEmb, 0.25);
                     }
@@ -47798,7 +47721,7 @@ var LanguageCortex = class {
         if (!intentSeed) {
           try {
             if (typeof cluster.getSemanticReadout === "function") {
-              intentSeed = cluster.getSemanticReadout(sharedEmbeddings);
+              intentSeed = cluster.getSemanticReadout(sharedEmbeddings2);
             }
           } catch {
           }
@@ -47860,7 +47783,7 @@ var LanguageCortex = class {
         let target = null;
         try {
           if (typeof cluster.getSemanticReadout === "function") {
-            target = cluster.getSemanticReadout(sharedEmbeddings);
+            target = cluster.getSemanticReadout(sharedEmbeddings2);
           }
         } catch {
         }
@@ -48275,7 +48198,7 @@ var LanguageCortex = class {
   wordToPattern(word) {
     const clean = word.toLowerCase().replace(/[^a-z']/g, "");
     if (!clean) return new Float64Array(PATTERN_DIM2);
-    const embed = sharedEmbeddings.getEmbedding(clean);
+    const embed = sharedEmbeddings2.getEmbedding(clean);
     const pattern = new Float64Array(PATTERN_DIM2);
     for (let i = 0; i < PATTERN_DIM2 && i < embed.length; i++) {
       pattern[i] = embed[i];
@@ -48788,11 +48711,11 @@ var InnerVoice = class {
     if (ageMs >= 12e4) {
       return { primed: false, subject: focus.subject, ageMs, strength, reason: "focus stale (> 2 min)" };
     }
-    if (typeof sharedEmbeddings?.getEmbedding !== "function") {
+    if (typeof sharedEmbeddings2?.getEmbedding !== "function") {
       return { primed: false, subject: focus.subject, ageMs, strength, reason: "no embeddings" };
     }
     try {
-      const subjectEmb = sharedEmbeddings.getEmbedding(focus.subject);
+      const subjectEmb = sharedEmbeddings2.getEmbedding(focus.subject);
       if (!subjectEmb || subjectEmb.length === 0) {
         return { primed: false, subject: focus.subject, ageMs, strength, reason: "no GloVe vector for subject" };
       }
@@ -49029,7 +48952,7 @@ var BrainPersistence = class _BrainPersistence {
         // restarts. This makes long-term learning stick — if Unity
         // learns that "unity" goes near "code" and "high" in her
         // conversations, that association survives a reload.
-        embeddingRefinements: sharedEmbeddings?.serializeRefinements ? sharedEmbeddings.serializeRefinements() : null
+        embeddingRefinements: sharedEmbeddings2?.serializeRefinements ? sharedEmbeddings2.serializeRefinements() : null
       };
       try {
         const cortex = brain2.clusters?.cortex;
@@ -49237,8 +49160,8 @@ var BrainPersistence = class _BrainPersistence {
       failed.semanticWeights = err.message;
     }
     try {
-      if (state.embeddingRefinements && sharedEmbeddings?.loadRefinements) {
-        sharedEmbeddings.loadRefinements(state.embeddingRefinements);
+      if (state.embeddingRefinements && sharedEmbeddings2?.loadRefinements) {
+        sharedEmbeddings2.loadRefinements(state.embeddingRefinements);
         restored.embeddingRefinements = "ok";
       }
     } catch (err) {
@@ -49408,7 +49331,7 @@ var ComponentSynth = class {
         console.warn(`[ComponentSynth] Skipping malformed primitive "${id}"`);
         continue;
       }
-      const descEmbed = sharedEmbeddings.getSentenceEmbedding(description);
+      const descEmbed = sharedEmbeddings2.getSentenceEmbedding(description);
       this._primitives.push({ id, description, descEmbed, html, css, js });
     }
     this._loaded = true;
@@ -49444,13 +49367,13 @@ var ComponentSynth = class {
         if (norm > 0.01) cortexEntityVec = readout;
       }
     }
-    const userEmbed = sharedEmbeddings.getSentenceEmbedding(userRequest);
+    const userEmbed = sharedEmbeddings2.getSentenceEmbedding(userRequest);
     let bestScore = -1;
     let bestPrim = null;
     for (const prim of this._primitives) {
-      let score = sharedEmbeddings.similarity(userEmbed, prim.descEmbed);
+      let score = sharedEmbeddings2.similarity(userEmbed, prim.descEmbed);
       if (cortexEntityVec) {
-        score += sharedEmbeddings.similarity(cortexEntityVec, prim.descEmbed) * 0.25;
+        score += sharedEmbeddings2.similarity(cortexEntityVec, prim.descEmbed) * 0.25;
       }
       if (parsedTypes.length > 0) {
         for (const pt of parsedTypes) {
@@ -51543,23 +51466,23 @@ var UnityBrain = class extends EventEmitter {
       auditoryCortex: this.auditoryCortex
     });
     if (!readResult) return null;
-    const contentEmb = sharedEmbeddings.getSentenceEmbedding(text);
-    const contentCurrents = sharedEmbeddings.mapToCortex(contentEmb, cortex.size, 150);
+    const contentEmb = sharedEmbeddings2.getSentenceEmbedding(text);
+    const contentCurrents = sharedEmbeddings2.mapToCortex(contentEmb, cortex.size, 150);
     for (let i = 0; i < cortex.size; i++) contentCurrents[i] *= 0.5;
     cortex.injectCurrent(contentCurrents);
     cortex.injectWorkingMemory(contentEmb, 0.6);
     if (readResult.intent && this.clusters.basalGanglia) {
       const intentAnchor = readResult.intent === "question" ? "what" : readResult.intent === "greeting" ? "hi" : readResult.intent === "statement" ? "i" : "you";
-      const intentEmb = sharedEmbeddings.getEmbedding(intentAnchor);
+      const intentEmb = sharedEmbeddings2.getEmbedding(intentAnchor);
       const bg = this.clusters.basalGanglia;
-      const intentCurrents = sharedEmbeddings.mapToCortex(intentEmb, bg.size, 0);
+      const intentCurrents = sharedEmbeddings2.mapToCortex(intentEmb, bg.size, 0);
       for (let i = 0; i < bg.size; i++) intentCurrents[i] *= 0.3;
       bg.injectCurrent(intentCurrents);
     }
     if ((readResult.addressesUser || readResult.isSelfReference) && this.clusters.hippocampus) {
-      const selfEmb = sharedEmbeddings.getSentenceEmbedding("i me my self unity");
+      const selfEmb = sharedEmbeddings2.getSentenceEmbedding("i me my self unity");
       const hippo = this.clusters.hippocampus;
-      const selfCurrents = sharedEmbeddings.mapToCortex(selfEmb, hippo.size, 0);
+      const selfCurrents = sharedEmbeddings2.mapToCortex(selfEmb, hippo.size, 0);
       for (let i = 0; i < hippo.size; i++) selfCurrents[i] *= 0.4;
       hippo.injectCurrent(selfCurrents);
     }
@@ -51902,9 +51825,9 @@ var UnityBrain = class extends EventEmitter {
     const arousal = this.brainParams.arousalBaseline || 0.9;
     this.clusters.amygdala.tonicDrive = 15 + arousal * 8;
     this.sensory.receiveText(text);
-    if (sharedEmbeddings && typeof sharedEmbeddings.getSentenceEmbedding === "function") {
+    if (sharedEmbeddings2 && typeof sharedEmbeddings2.getSentenceEmbedding === "function") {
       try {
-        const inputEmb = sharedEmbeddings.getSentenceEmbedding(text);
+        const inputEmb = sharedEmbeddings2.getSentenceEmbedding(text);
         if (inputEmb && inputEmb.length > 0) {
           this.clusters.cortex._lastUserInputEmbedding = inputEmb;
           this.clusters.cortex._lastUserInputText = text;
@@ -51945,7 +51868,7 @@ var UnityBrain = class extends EventEmitter {
     }
     const state = this.getState();
     const userReadResult = this.injectParseTree(text);
-    const cortexOutput = this.clusters.cortex.getSemanticReadout(sharedEmbeddings);
+    const cortexOutput = this.clusters.cortex.getSemanticReadout(sharedEmbeddings2);
     this.innerVoice.learn(text, cortexOutput, state.amygdala?.arousal ?? 0.5, state.amygdala?.valence ?? 0);
     const dictionary = this.innerVoice.dictionary;
     const brainArousal = state.amygdala?.arousal ?? 0.5;
@@ -51954,7 +51877,7 @@ var UnityBrain = class extends EventEmitter {
     const psi = state.psi ?? 0;
     let response = "";
     for (let s = 0; s < 5; s++) this.step(1e-3);
-    const cortexPattern = this.clusters.cortex.getSemanticReadout(sharedEmbeddings);
+    const cortexPattern = this.clusters.cortex.getSemanticReadout(sharedEmbeddings2);
     if (dictionary && dictionary.size > 0) {
       response = await this.innerVoice.languageCortex.generateAsync(
         dictionary,
@@ -52028,7 +51951,7 @@ var UnityBrain = class extends EventEmitter {
    */
   async _handleBuild(text) {
     for (let s = 0; s < 5; s++) this.step(1e-3);
-    const cortexPattern = this.clusters.cortex.getSemanticReadout(sharedEmbeddings);
+    const cortexPattern = this.clusters.cortex.getSemanticReadout(sharedEmbeddings2);
     const spec = this.componentSynth.generate(text, { cortexPattern, cortexCluster: this.clusters.cortex });
     if (!spec) {
       console.log(`[Brain] build_ui selected but no template matched "${text.slice(0, 40)}" \u2014 falling back to verbal response`);
@@ -52075,7 +51998,7 @@ var UnityBrain = class extends EventEmitter {
   }
   async _handleImage(text, includesSelf) {
     for (let s = 0; s < 5; s++) this.step(1e-3);
-    const cortexPattern = this.clusters.cortex.getSemanticReadout(sharedEmbeddings);
+    const cortexPattern = this.clusters.cortex.getSemanticReadout(sharedEmbeddings2);
     const state = this.getState();
     let prompt = "";
     try {
@@ -57583,7 +57506,7 @@ Probes: ${ps.totalProbes} total, ${ps.totalPasses} pass, ${ps.totalFails} fail`;
       let cortexPattern = null;
       if (cortex && typeof cortex.getSemanticReadout === "function") {
         try {
-          cortexPattern = cortex.getSemanticReadout(sharedEmbeddings);
+          cortexPattern = cortex.getSemanticReadout(sharedEmbeddings2);
         } catch {
           cortexPattern = null;
         }
@@ -58061,7 +57984,7 @@ Probes: ${ps.totalProbes} total, ${ps.totalPasses} pass, ${ps.totalFails} fail`;
           let cortexPattern = null;
           if (cortex && typeof cortex.getSemanticReadout === "function") {
             try {
-              cortexPattern = cortex.getSemanticReadout(sharedEmbeddings);
+              cortexPattern = cortex.getSemanticReadout(sharedEmbeddings2);
             } catch {
               cortexPattern = null;
             }
