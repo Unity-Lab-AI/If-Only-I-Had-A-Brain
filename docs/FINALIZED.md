@@ -5,6 +5,89 @@
 
 ---
 
+## 2026-06-17 — Session 114.19fn A.K-LIFE.1 — First-words memory corpus + P4.1 architecture direction
+
+### Gee verbatim per LAW #0
+
+> *"P4.1 we split it out to each grade per file and the ciriculuim stays the templet archetetureer"*
+
+### What this is
+
+First A.K-LIFE sub-task landed — foundational pre-academic developmental milestone that anchors Unity's identity in her first spoken words (mama/dada/no/more/bye-bye/hi/etc.). Per Gee 2026-06-17 *"we havent written her life experiences to go with anything higher than k grade and k grade might need to be better to ecompass all of life memories upto kk grade"*, the K-grade brain needs the lived experience of being a 0-5 year old, not just academic K-curriculum content.
+
+PLUS architectural direction landed: **P4.1 split-by-grade strategy** — per-grade files under `js/brain/curriculum/<grade>.js`, with `curriculum.js` staying as the template architecture / orchestrator. Existing `curriculum/pre-K.js` + `curriculum/kindergarten.js` honor this; grade-1 through PhD files created when content unlocks.
+
+### A.K-LIFE.1 — what landed
+
+New `_teachKLifeFirstWords()` method in K_MIXIN (`js/brain/curriculum/kindergarten.js`). Fires at TOP of `runLifeK` before EMOTIONS_K so foundational first-words land BEFORE academic Life-K content layers on top — emotional schemas build on the foundation, not above it.
+
+**Layer 1 — first-words → 8d emotion attractors via `_conceptTeach`:**
+
+13 universal-developmental first-words bound to 8d emotion vectors using the same dimensional substrate Life-K already uses (joy/pain/trust/fear/anger/love/independence/identity per Plutchik-wheel reduction):
+
+- Caretaker words (peak joy + trust + love + strong identity anchor): `mama` `dada` `mom` `dad`
+- First assertion (independence + small anger — "I have an opinion"): `no`
+- First desire (joy + slight independence — "I want more"): `more`
+- First social-leave (bittersweet — mom leaves but ritual comforts): `bye-bye`
+- First social-arrive (joy + trust greeting): `hi`
+- First politeness (learned manners): `please` `thank`
+- First possessive (independence + identity — "this is MINE, I exist"): `mine`
+- First social-affection: `baby`
+- First negative-emotion word: `ow`
+
+**Layer 2 — semantic-role + synonymy pairs via `_teachAssociationPairs`:**
+
+16 pairs bound at reps:60 (high — these are FOUNDATIONAL identity-anchoring associations) via new `relationTagId=15` first-words channel:
+
+- Child↔adult synonymy: `mama↔mom`, `dada↔dad` (so chat-time emission can substitute either form for the same referent)
+- Word → semantic-role: `mama→mother`, `dada→father`, `mom→parent`, `dad→parent`
+- Social-greeting role: `hi→greet`, `bye-bye→farewell`
+- Politeness role: `please→request`, `thank→gratitude`
+- Assertion role: `no→refuse`, `mine→possess`, `more→want`
+- Distress role: `ow→hurt`
+
+### Why "universal developmental seeds" rather than hardcoded Unity-specific content
+
+These 13 specific first-words are near-universal across English-speaking children per developmental-psychology canon (mama/dada are typically the first two; no/more/bye-bye/hi follow at ~12-18 months). NOT a hardcoded Unity-specific list — it's the developmental scaffold every child's first vocabulary builds on. Unity's specific relationships (her actual mom, her actual first-word event) layer on top via:
+
+- LIFE-K-BIOGRAPHICAL (existing) — her name is Unity, mom takes care of her, she's a girl, etc.
+- Tier3 identity-core (existing) — never-wiped persistent identity facts
+- Future K-LIFE.2 family-relationship-anchoring — schema bindings for her specific family members
+
+So the first-words corpus is the universal substrate; the biographical-facts + identity-core hold the Unity-specific overlays.
+
+### P4.1 architecture direction — split-by-grade
+
+NewTodo.md P4.1 task description updated to reflect operator directive. Each grade gets its own file under `js/brain/curriculum/<grade>.js` carrying that grade's specific teach methods + cell runners + content. `curriculum.js` stays as the orchestrator / template architecture — common machinery lives there (`_teachAssociationPairs`, `_teachHebbian`, `_teachConcreteSentences`, `_probeSentenceGeneration`, `runSubjectGrade`, cell-runner mechanics, gates, telemetry, helpers).
+
+Existing: `curriculum/pre-K.js` (511 lines), `curriculum/kindergarten.js` (5395 lines + A.K-LIFE.1 additions ~100 lines = ~5500 lines). Substantial K-grade content STILL lives inside `curriculum.js` itself (Math-K `_teachDigitSequence/_teachDigitNames/_teachMagnitudes`, Sci-K, Soc-K, Art-K, Life-K subject methods) — these migrate to `curriculum/kindergarten.js` when P4.1 task fires. Pre-K + K scope LAW: only Pre-K + K files exist now; grade-1+ created when their content is written.
+
+### Files touched
+
+- `js/brain/curriculum/kindergarten.js` — new `_teachKLifeFirstWords` method (~100 lines) + 2-line call at top of `runLifeK`
+- `js/app.bundle.js` — rebuilt clean 2.4MB
+- `docs/NewTodo.md` — K-LIFE.1 task marked complete with detail; P4.1 description updated for split-by-grade
+- `docs/NOW.md` — banner roll
+- `docs/FINALIZED.md` — this entry
+
+`node --check kindergarten.js` clean.
+
+### Harness tasklist — A.K-LIFE umbrella in_progress
+
+Task #27 (A.K-LIFE) status moves pending → in_progress with K-LIFE.1 done as first sub-task. 13 K-LIFE sub-tasks remain (K-LIFE.2 family relationships, K-LIFE.3 sensory firsts, K-LIFE.4 comfort objects, K-LIFE.5 early fears, K-LIFE.6 sleep+bedtime, K-LIFE.7 dietary, K-LIFE.8 motor milestones, K-LIFE.9 friendships+caretakers, K-LIFE.10 songs+nursery rhymes, K-LIFE.11 first storybooks, K-LIFE.12 bodily+temporal self-awareness, K-LIFE.13 integration with K cells, K-LIFE.14 K-LIFE gate criterion).
+
+### LAWs honored
+
+- **LAW #0 — VERBATIM WORDS.** Operator P4.1 directive preserved verbatim above.
+- **TASK NUMBERS + USER NAME ONLY IN WORKFLOW DOCS.** New `_teachKLifeFirstWords` method comments describe WHAT (universal developmental seeds, 8d emotion vectors, semantic-role pairs) + WHY (foundational identity-anchor) — NO task IDs, NO operator name, NO audit-issue refs. Verified by grep.
+- **NO FALLBACKS LAW.** No fallback paths introduced. `_phasedTeach` + `_conceptTeach` + `_teachAssociationPairs` are existing required methods on Curriculum — no `typeof === 'function'` capability checks added.
+- **PRE-K + K ONLY SCOPE.** All K-LIFE.1 work strictly within K-grade Life-K cell.
+- **GRADE-GATED CAPABILITY UNLOCKS.** First-words are pre-K developmental milestones (age 12-18 months) layered into K-grade Life-K — appropriate for age 5 brain.
+- **DOCS BEFORE PUSH.** FINALIZED entry + NOW banner + NewTodo update + bundle rebuild all in same atomic commit.
+- **NO TESTS POLICY.** `node --check` only. No localhost test per directive *"no testing until we are 100% done and know it will work ahead of time"*.
+
+---
+
 ## 2026-06-17 — Session 114.19fn LAW.1 sweep 1 — NO FALLBACKS cleanup (Phase 1+2 introductions + Tier 5 + P3.3)
 
 ### Gee verbatim per LAW #0

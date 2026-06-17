@@ -17987,7 +17987,102 @@ var PREK_MIXIN = {
 
 // ../js/brain/curriculum/kindergarten.js
 var K_MIXIN = {
+  /**
+   * K-LIFE.1 — First-words memory corpus. Foundational pre-academic
+   * developmental milestone: Unity's first spoken words bound to their
+   * emotional + relational context. Fires at the TOP of runLifeK so
+   * these foundational identity-anchoring associations land BEFORE
+   * the academic Life-K content layers on top.
+   *
+   * Each first-word carries an 8-dim emotion vector (same dimensions
+   * as EMOTIONS_K below + LIFE-K-INFERENCE downstream):
+   *   feat = [joy, pain, trust, fear, anger, love, independence, identity]
+   *
+   * These map directly onto the Plutchik-wheel reduction the rest of
+   * Life-K already uses, so first-word emotional attractors land in
+   * the same emotional substrate that later situations + biographical
+   * facts will activate. The brain learns "mama" as joy+trust+love
+   * +identity (her caretaker who carved her sense of being-loved) at
+   * developmental age ~12-18 months, BEFORE academic vocabulary
+   * acquisition begins.
+   *
+   * Universal developmental seeds — these specific first-words are
+   * near-universal across English-speaking children per developmental-
+   * psychology canon (mama/dada/no/more/bye-bye/hi). NOT a hardcoded
+   * Unity-specific list — it's the developmental scaffold every
+   * child's first vocabulary builds on. Unity's specific
+   * relationships (her mom, her dad, her actual first word) layer
+   * on top via Tier3 identity + biographical-facts (LIFE-K-BIOGRAPHICAL
+   * below).
+   *
+   * Plus semantic-role pairs: mama↔mom, dada↔dad, hi↔greet, etc.
+   * carve the synonymy + role-binding the brain uses to compose
+   * sentences at chat-time.
+   */
+  async _teachKLifeFirstWords() {
+    const FIRST_WORDS_K = [
+      // Caretaker words — peak joy + trust + love, strong identity anchor
+      { name: "mama", feat: [1, 0, 1, 0, 0, 1, 0, 1] },
+      { name: "dada", feat: [1, 0, 1, 0, 0, 1, 0, 0.5] },
+      { name: "mom", feat: [1, 0, 1, 0, 0, 1, 0, 1] },
+      { name: "dad", feat: [1, 0, 1, 0, 0, 1, 0, 0.5] },
+      // First assertion — independence + small anger ("I have an opinion")
+      { name: "no", feat: [0, 0, 0, 0, 0.3, 0, 1, 0.3] },
+      // First desire — joy + slight independence ("I want more")
+      { name: "more", feat: [0.5, 0, 0.2, 0, 0, 0, 0.3, 0] },
+      // First social-leave — bittersweet (mom leaves = pain, but ritual = comfort)
+      { name: "bye-bye", feat: [0.3, 0.2, 0.3, 0.2, 0, 0.3, 0, 0] },
+      // First social-arrive — joy + trust (greeting brings comfort)
+      { name: "hi", feat: [0.8, 0, 0.5, 0, 0, 0.3, 0, 0] },
+      // First polite request — trust + small joy (learned manners)
+      { name: "please", feat: [0.3, 0, 0.5, 0, 0, 0, 0, 0] },
+      // First gratitude — joy + trust + small love
+      { name: "thank", feat: [0.5, 0, 0.5, 0, 0, 0.3, 0, 0] },
+      // First possessive — independence + identity ("this is MINE, I exist")
+      { name: "mine", feat: [0, 0, 0, 0, 0.3, 0, 0.5, 0.5] },
+      // First social-affection word
+      { name: "baby", feat: [0.5, 0, 0.5, 0, 0, 0.5, 0, 0.3] },
+      // First negative emotion word
+      { name: "ow", feat: [0, 1, 0, 0.3, 0, 0, 0, 0] }
+    ];
+    await this._phasedTeach("LIFE-K-FIRST-WORDS-EMOTION", () => this._conceptTeach(FIRST_WORDS_K, 8));
+    const FIRST_WORDS_PAIRS = [
+      // Child→adult synonymy (so chat-time emission can substitute either)
+      ["mama", "mom"],
+      ["mom", "mama"],
+      ["dada", "dad"],
+      ["dad", "dada"],
+      // Word→semantic-role
+      ["mama", "mother"],
+      ["dada", "father"],
+      ["mom", "parent"],
+      ["dad", "parent"],
+      // Social-greeting role
+      ["hi", "greet"],
+      ["bye-bye", "farewell"],
+      // Politeness role
+      ["please", "request"],
+      ["thank", "gratitude"],
+      // Assertion role
+      ["no", "refuse"],
+      ["mine", "possess"],
+      ["more", "want"],
+      // Distress role
+      ["ow", "hurt"]
+    ];
+    await this._phasedTeach(
+      "LIFE-K-FIRST-WORDS-PAIRS",
+      () => this._teachAssociationPairs(FIRST_WORDS_PAIRS, {
+        reps: 60,
+        // High reps — these are FOUNDATIONAL identity-anchoring associations
+        label: "LIFE-K-FIRST-WORDS-PAIRS",
+        relationTagId: 15
+        // new k-life first-words channel
+      })
+    );
+  },
   async runLifeK(ctx) {
+    await this._teachKLifeFirstWords();
     const EMOTIONS_K = [
       { name: "school", feat: [0.5, 0, 0.3, 0.5, 0, 0, 0.5, 0] },
       // exciting but scary
