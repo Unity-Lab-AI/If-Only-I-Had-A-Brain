@@ -107,6 +107,7 @@ import { sharedEmbeddings } from './embeddings.js';
 // patterns get decoded to letters via argmax over the inventory.
 import { encodeLetter, decodeLetter, decodeLetterAlpha, inventorySize, inventorySnapshot } from './letter-input.js';
 import { SUBJECTS, normalizeSubject } from './subjects.js';
+import { CLUSTER_TELEMETRY_MIXIN } from './cluster/telemetry.js';
 
 // Question key-token extraction + fractional-offset region injection.
 // Duplicated here (vs importing from curriculum.js) so `readInput` stays
@@ -3706,221 +3707,16 @@ export class NeuronCluster {
   // to the recent-emissions ring after a manual acceptance check so the
   // repetition penalty reflects ACTUAL emissions, not internal probe
   // attempts.
-  trackRecentEmission(word) {
-    if (typeof word !== 'string' || word.length === 0) return;
-    if (!Array.isArray(this._recentEmissions)) this._recentEmissions = [];
-    this._recentEmissions.push(word);
-    while (this._recentEmissions.length > 8) {
-      this._recentEmissions.shift();
-    }
-  }
 
-  /**
-   * Compositional emergence telemetry — install the trained-sentence
-   * corpus + derived word-transition set so subsequent emissions can be
-   * classified as verbatim / novel-recombination / partial-match.
-   * Called from curriculum side (`_teachConcreteSentences`) once the
-   * corpus is locked in. Safe to call multiple times — last call wins
-   * and counters are NOT reset (so trained-corpus updates between
-   * sessions still aggregate against a coherent denominator).
-   *
-   * @param {string[]} corpus — trained K-grade sentences
-   */
-  initCompositionalTelemetry(corpus) {
-    if (!Array.isArray(corpus) || corpus.length === 0) return;
-    if (!this._compositionalCounters) {
-      this._compositionalCounters = {
-        totalClassified: 0,
-        verbatimCount: 0,
-        novelCount: 0,
-        partialCount: 0,
-        firstNovelTs: null,
-        maxNovelty: 0,
-        maxNoveltySentence: '',
-        bootTs: Date.now(),
-        recentEmissions: [],
-      };
-    }
-    this._trainedSentencesNormalized = new Set();
-    this._trainedTransitions = new Set();
-    for (const s of corpus) {
-      if (typeof s !== 'string') continue;
-      const norm = s.toLowerCase().trim();
-      if (norm.length === 0) continue;
-      this._trainedSentencesNormalized.add(norm);
-      const words = norm.split(/\s+/).filter(w => w.length > 0);
-      for (let i = 0; i < words.length - 1; i++) {
-        this._trainedTransitions.add(`${words[i]}|${words[i + 1]}`);
-      }
-    }
-  }
+  // 6 telemetry methods EXTRACTED to js/brain/cluster/telemetry.js
+  // CLUSTER_TELEMETRY_MIXIN (per-module-file architecture, P4.2.a).
+  //   trackRecentEmission, initCompositionalTelemetry,
+  //   classifyCompositionalEmission, _recordWordCreationCandidate,
+  //   getWordCreationCandidates, getCompositionalStats
+  // Attached via Object.assign(NeuronCluster.prototype, ...) at the
+  // bottom of this file. All methods accessible identically through
+  // the prototype chain.
 
-  /**
-   * Classify a composed sentence as verbatim / novel / partial. Updates
-   * counters + appends to recent-emissions ring (cap 100). Returns the
-   * classification result. No-op when telemetry hasn't been initialized
-   * (returns null) — caller can ignore the missing-init case since
-   * `_teachConcreteSentences` initializes during K curriculum.
-   *
-   * Novelty metric: fraction of word-transition pairs (n-1 per
-   * n-word sentence) that are NOT present in the trained-transitions
-   * set. A wholly-original recombination scores 1.0 novelty; an exact
-   * trained sentence scores 0.0. Threshold 0.5 separates novel from
-   * partial.
-   *
-   * @param {string} sentence
-   * @returns {{kind:string,novelty:number}|null}
-   */
-  classifyCompositionalEmission(sentence) {
-    if (!this._trainedSentencesNormalized || !this._compositionalCounters) return null;
-    if (typeof sentence !== 'string' || sentence.length === 0) return null;
-    const c = this._compositionalCounters;
-    const norm = sentence.toLowerCase().replace(/[.!?]+$/, '').trim();
-    if (norm.length === 0) return null;
-    c.totalClassified++;
-    let kind;
-    let novelty;
-    if (this._trainedSentencesNormalized.has(norm)) {
-      kind = 'verbatim';
-      novelty = 0;
-      c.verbatimCount++;
-    } else {
-      const words = norm.split(/\s+/).filter(w => w.length > 0);
-      const transitionCount = Math.max(1, words.length - 1);
-      let novelTransitions = 0;
-      for (let i = 0; i < words.length - 1; i++) {
-        const key = `${words[i]}|${words[i + 1]}`;
-        if (!this._trainedTransitions.has(key)) novelTransitions++;
-      }
-      novelty = novelTransitions / transitionCount;
-      kind = novelty > 0.5 ? 'novel' : 'partial';
-      if (kind === 'novel') {
-        c.novelCount++;
-        if (c.firstNovelTs === null) c.firstNovelTs = Date.now();
-        if (novelty > c.maxNovelty) {
-          c.maxNovelty = novelty;
-          c.maxNoveltySentence = sentence;
-        }
-      } else {
-        c.partialCount++;
-      }
-    }
-    c.recentEmissions.push({ sentence, kind, novelty: +novelty.toFixed(3), ts: Date.now() });
-    if (c.recentEmissions.length > 100) c.recentEmissions.shift();
-    return { kind, novelty };
-  }
-
-  /**
-   * Word-creation candidate gate. When emitWordDirect rejects an emission
-   * but the top-2 candidates both carry meaningful (above-noise) activation,
-   * the brain is in a "tip-of-the-tongue" co-activation state. Record the
-   * candidate pair so a future schema-coherence check OR operator review
-   * can decide whether to promote the compound (e.g. "moon" + "light" →
-   * "moonlight") to the vocab. Doesn't auto-commit — pure surface.
-   *
-   * Tracks co-occurrence count per compound so the candidate gate only
-   * surfaces compounds that fired repeatedly (single fires are likely
-   * noise; recurring co-activation is a real candidate).
-   *
-   * @param {{word:string,mean:number}} top1
-   * @param {{word:string,mean:number}} top2
-   * @param {number} floor
-   */
-  _recordWordCreationCandidate(top1, top2, floor) {
-    if (!top1 || !top2) return;
-    if (top1.word === top2.word) return;
-    if (!this._wordCreationCandidates) {
-      this._wordCreationCandidates = new Map();   // compound → {count, top1, top2, lastTs, sumMean, maxMean}
-    }
-    // Compound canonicalization: alphabetical ordering of components so
-    // (a, b) and (b, a) hash to the same compound bucket. Underscore
-    // separator preserves component boundary for later splitting.
-    const [a, b] = [top1.word, top2.word].sort();
-    const compound = `${a}_${b}`;
-    const combined = top1.mean + top2.mean;
-    const entry = this._wordCreationCandidates.get(compound) || {
-      count: 0, components: [a, b],
-      firstTs: Date.now(), lastTs: Date.now(),
-      sumMean: 0, maxMean: 0, lastFloor: floor,
-    };
-    entry.count++;
-    entry.lastTs = Date.now();
-    entry.sumMean += combined;
-    if (combined > entry.maxMean) entry.maxMean = combined;
-    entry.lastFloor = floor;
-    this._wordCreationCandidates.set(compound, entry);
-    // Cap the candidate map at 200 distinct compounds — drop the
-    // least-frequent when full so the gate stays focused on recurring
-    // co-activations.
-    if (this._wordCreationCandidates.size > 200) {
-      let leastKey = null;
-      let leastCount = Infinity;
-      for (const [k, v] of this._wordCreationCandidates) {
-        if (v.count < leastCount) { leastCount = v.count; leastKey = k; }
-      }
-      if (leastKey) this._wordCreationCandidates.delete(leastKey);
-    }
-  }
-
-  /**
-   * Read top-N word-creation candidates sorted by occurrence count
-   * descending (most-frequently co-activated first). Returns array of
-   * `{compound, components, count, avgMean, maxMean, firstTs, lastTs}`.
-   * Filters out candidates below `minCount` (default 3) so single-shot
-   * noise doesn't surface.
-   *
-   * @param {object} [opts]
-   * @param {number} [opts.limit=20]
-   * @param {number} [opts.minCount=3]
-   * @returns {Array}
-   */
-  getWordCreationCandidates(opts = {}) {
-    const limit = opts.limit ?? 20;
-    const minCount = opts.minCount ?? 3;
-    if (!this._wordCreationCandidates) return [];
-    const out = [];
-    for (const [compound, e] of this._wordCreationCandidates) {
-      if (e.count < minCount) continue;
-      out.push({
-        compound,
-        components: e.components,
-        count: e.count,
-        avgMean: e.sumMean / e.count,
-        maxMean: e.maxMean,
-        firstTs: e.firstTs,
-        lastTs: e.lastTs,
-      });
-    }
-    out.sort((a, b) => b.count - a.count);
-    return out.slice(0, limit);
-  }
-
-  /**
-   * Read aggregated compositional-emergence stats for dashboard / state
-   * broadcast. Returns null when telemetry hasn't been initialized.
-   *
-   * @returns {object|null}
-   */
-  getCompositionalStats() {
-    const c = this._compositionalCounters;
-    if (!c) return null;
-    const total = c.totalClassified;
-    return {
-      totalClassified: total,
-      verbatimCount: c.verbatimCount,
-      novelCount: c.novelCount,
-      partialCount: c.partialCount,
-      verbatimRate: total > 0 ? c.verbatimCount / total : 0,
-      novelRate: total > 0 ? c.novelCount / total : 0,
-      partialRate: total > 0 ? c.partialCount / total : 0,
-      firstNovelMsAfterBoot: c.firstNovelTs !== null
-        ? Math.max(0, c.firstNovelTs - c.bootTs)
-        : null,
-      maxNovelty: +c.maxNovelty.toFixed(3),
-      maxNoveltySentence: c.maxNoveltySentence,
-      recentTail: c.recentEmissions.slice(-10),
-    };
-  }
 
   /**
    * 114.19fk.1 — RIPPED OUT template prescription system. composeSentence
@@ -4952,6 +4748,30 @@ export class NeuronCluster {
       const dst = name.slice(idx + 4);
       if (!this.regions[src] || !this.regions[dst]) continue;
 
+      // Build the K-scales bundle ONCE per-projection per-call. Passes
+      // K.4 hub-mask + K.7 gamma-scale + K.9 per-layer plasticity through
+      // to every downstream ojaUpdate path (GPU-bound CPU shadow, sparse-
+      // pool, no-pool). This is the P2.3 plumbing path: previously
+      // _crossRegionHebbian called ojaUpdate with bare (pre, post, lr)
+      // arguments so the biological-scale K.4/K.7/K.9 modulation was
+      // SILENT on all _teachHebbian-routed teach phases (which is the
+      // dominant teach path — every _teachAssociationPairs call,
+      // _teachHebbian call, structure-teach pass etc. goes through here).
+      // With kScales plumbed, K-microstructure plasticity gradients
+      // shape every Hebbian update from this method, not just the
+      // direct curriculum.js ojaUpdate sites that already passed
+      // kScales explicitly.
+      //
+      // Caller can override via opts.kScalesOverride (e.g. calibration
+      // probes that want a fixed K profile). Otherwise builds via the
+      // cluster's standard builder which reads layerId/hubMask/gammaScale.
+      const kScalesForProj = (opts.kScalesOverride !== undefined)
+        ? opts.kScalesOverride
+        : (typeof this.buildKScalesForProjection === 'function'
+            ? this.buildKScalesForProjection(src, dst)
+            : null);
+      const ojaOpts = kScalesForProj ? { kScales: kScalesForProj } : undefined;
+
       // T18.17 — GPU-bound fast path. When the projection has been
       // rebound to main-cortex slices (T17.7 Phase C.1) AND the GPU
       // proxy is ready, skip the CPU sparse-pool Hebbian entirely.
@@ -5022,7 +4842,7 @@ export class NeuronCluster {
           }
           const preF = this.regionSpikes(src);
           const postF = this.regionSpikes(dst);
-          proj.ojaUpdate(preF, postF, lr);
+          proj.ojaUpdate(preF, postF, lr, ojaOpts);
         }
         continue;
       }
@@ -5069,10 +4889,10 @@ export class NeuronCluster {
           // the CSR shadow update stays correct-enough for probes.
           await this._sparsePool.hebbianUpdate(proj, preF, postF, lr);
         } catch {
-          proj.ojaUpdate(preF, postF, lr);
+          proj.ojaUpdate(preF, postF, lr, ojaOpts);
         }
       } else {
-        proj.ojaUpdate(preF, postF, lr);
+        proj.ojaUpdate(preF, postF, lr, ojaOpts);
       }
       // T17.3.d — fire-and-forget GPU Hebbian fallback for standalone
       // (non-bound) projections. Bandwidth cost: srcSize + dstSize u32s.
@@ -6348,3 +6168,11 @@ export class ClusterProjection {
     return this._sparse.stats();
   }
 }
+
+// Attach per-module mixins to NeuronCluster.prototype. Per-module
+// architecture per js/brain/cluster/README.md. Each mixin is a plain
+// object of methods; Object.assign copies them onto the prototype so
+// calls like `cluster.trackRecentEmission(word)` resolve identically
+// to the pre-split layout.
+Object.assign(NeuronCluster.prototype, CLUSTER_TELEMETRY_MIXIN);
+
