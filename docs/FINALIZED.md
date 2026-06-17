@@ -5,6 +5,103 @@
 
 ---
 
+## 2026-06-17 — Session 114.19fo P4.1.a — first bite of per-grade-file architecture (13 K-ELA helpers migrated)
+
+### Gee verbatim per LAW #0
+
+> *"P4.1 we split it out to each grade per file and the ciriculuim stays the templet archetetureer"* (2026-06-17, this session)
+
+> *"read resume.md to resume then coninue the work"* (2026-06-17, this session — continuation directive after A.K-LIFE wrap stop)
+
+> *"the cirriculkum was already suppose to have everything split per grade per files sytem did you not make a file system WTF!!!!!!"* (2026-04-22, original directive establishing per-grade file architecture)
+
+> *"each grade is to be properly in it own fucking files u cant put every fucking grading in ciriculum.js you fucking idiot the need to be sperated from the core operations and refrenced and used as seperatew file systems for each grade"* (2026-04-24, restating per-grade isolation)
+
+### What this is
+
+First bite of P4.1 architectural refactor. The 2026-04-22 per-grade-file directive established the layout (`js/brain/curriculum/<grade>.js` per grade, `curriculum.js` as orchestrator template). 6 K cell runners + 6 K gates + ~18 K-Math/K-Sci/K-Art/K-Life methods already lived in `kindergarten.js` from prior sessions. 30+ K-specific teach helpers remained on `Curriculum.prototype` in `curriculum.js` — header comment in `kindergarten.js` explicitly called this out as pending extraction. P4.1.a migrates the 13 K-ELA letter/phoneme/word teach helpers (the largest contiguous K-only block in `curriculum.js`, lines 6774-7905).
+
+### Method migration
+
+13 methods moved from `js/brain/curriculum.js` → `js/brain/curriculum/kindergarten.js` K_MIXIN:
+
+| Method | Lines | Purpose |
+|--------|-------|---------|
+| `_teachLetterCaseBinding` | 6774-6801 | Bind uppercase ↔ lowercase letter pairs via `_teachCombination`, 26 pairs × 24 reps |
+| `_teachLetterNaming` | 6822-6947 | letter→motor identity binding via `_teachHebbianAsymmetric` whitelisted to `letter_to_motor` + `letter_to_phon`, 26 letters × 18 reps + post-teach `LETTER→MOTOR DIAG` distribution probe to catch motor-attractor stickiness |
+| `_teachVowelSoundVariants` | 6954-7004 | Short vs long vowel-sound discrimination via fineType tags, 5 vowels × 2 variants × 24 reps |
+| `_teachWordEmission` | 7019-7167 | sem→motor first-letter initiation + letter→motor continuation chain, asymmetric directional (no self-loops), 5 s heartbeat + reusable scratch buffers + final-rep CPU whitelist sampling for biological-scale speedup |
+| `_teachRhymeFamilies` | 7174-7276 | Vocab-derived rime-grouped pairs from live dictionary + 10 seed rimes, top-30 families × 6 members, sem(a)→motor(b) with rhymeTag fineType |
+| `_teachSyllableCounts` | 7282-7361 | word→syllable-count magnitude binding via `_magnitudeFeatureForDigit`, top-250 dictionary words by frequency + multi-syllable seed |
+| `_teachCVCSoundIsolation` | 7368-7455 | Initial/medial/final phoneme + motor binding across vocab-derived CVCs + 60-word seed, fineType third-tags for position |
+| `_teachPluralTransform` | 7462-7551 | Singular→plural via -s/-es/-ies dictionary detection + 12 irregulars seed (foot/feet, man/men, etc.), bidirectional with pluralTag fineType |
+| `_teachQuestionWordCategories` | 7558-7593 | who/what/where/when/why/how ↔ person/thing/place/time/reason/manner forward+reverse via sem→motor |
+| `_teachEndPunctuation` | 7600-7655 | Declarative/question/exclamation sentence-type → terminator binding via fineType tag + motor `.`/`?`/`!` |
+| `_teachStoryComprehension` | 7662-7746 | character/setting/event extraction from 6 K-grade stories, third-tag fineType for each role |
+| `_teachPhonemeBlending` | 7762-7869 | Phoneme-sequence Hebbian via `cluster.intraSynapsesHebbian` (async/awaitable through sparsePool worker) for word decoding via intra-cluster recurrent matrix, 5 s heartbeat |
+| `_teachCapitalization` | 7875-7905 | "I" + first-letter-of-sentence capital marker via fineType + motor uppercase |
+
+### Caller verification — K-only confirmed
+
+All 13 callers grep-verified to live ONLY in `kindergarten.js` K cell runners (`runElaKReal`, `runArtKReal`, `runSocKReal`, `runSciKReal`, `runMathKReal`, `runLifeK`). ZERO G1+ runners or outside-K-scope references in `js/` source tree.
+
+### Shared primitives STAY on Curriculum.prototype
+
+Per `js/brain/curriculum/README.md:58` explicit list — these stay in `curriculum.js`:
+
+- `_teachAssociationPairs` — universal pair-binding via sem→motor cross-projection
+- `_teachCombination` — fact-write scaffold for multi-region simultaneous-firing
+- `_teachHebbian`, `_teachHebbianAsymmetric`, `_teachPredictiveError`, `_teachLateralInhibition`, `_teachAntiHebbian` — primitive Hebbian update paths
+- `_teachSentenceStructures` (plural, line 8001) — shared sentence-structure pass called from `_pregateEnrichment` across all grades
+- `_teachDefinitionFirst`, `_teachWordInContext` — called from `_pregateEnrichment` for cell-level vocab enrichment
+- `_teachQABinding` — Q→A pair training scaffold
+- `_teachBiographicalFacts` — universal biographical-fact teach
+- `_conceptTeach` — 8d emotion-attractor binding for any concept
+- `_writeTiledPattern`, `_clearSpikes`, `_hb`, `_auditExamVocabulary`, `_pregateEnrichment` — shared cell scaffold + telemetry
+
+### Migration mechanics
+
+Deterministic Node script at `.git/p4-1a-migrate.mjs` (untracked, in `.git/` per workflow convention for one-shot scripts):
+
+1. Read `curriculum.js` + `kindergarten.js`, detect CRLF line endings (Windows project).
+2. Extract block at lines 6774-7905 (1132 lines) from `curriculum.js`.
+3. Sanity-check first/last lines + verify all 13 expected method signatures appear in expected order.
+4. Convert class-method form (no commas between methods) to object-literal form (trailing `,` after each method's closing `}`). Implementation: brace-depth tracker that triggers on `^  async _teach\w+\s*\(` signatures, follows depth back to zero on `^  }$` line, swaps to `  },`. Sanity-check 13 conversions performed.
+5. Locate K_MIXIN closing `};` in kindergarten.js (last occurrence), insert converted block + 7-line header comment before it.
+6. Replace original 1132-line block in curriculum.js with 13-line marker comment listing the moved methods + pointer to kindergarten.js.
+7. Write both files preserving original CRLF line endings.
+
+Migration result printed: `curriculum.js 26033 → 24913 lines (Δ -1120)`, `kindergarten.js 6430 → 7572 lines (Δ +1142)`, block moved 1132 lines.
+
+### Verification
+
+- `node --check js/brain/curriculum.js` — clean
+- `node --check js/brain/curriculum/kindergarten.js` — clean
+- `cd server && npm run build` → `js/app.bundle.js 2.4mb · Done in 74ms` (import chain resolved, methods present in bundle)
+- `grep -c "<13-method-name-pattern>" js/app.bundle.js` → 136 occurrences (definitions + cross-references)
+- Pre-commit grep for task-IDs + operator-name in modified source files → ZERO violations
+- Working tree state: `.claude/*` cherry-pick stays LOCAL (excluded from feature-branch commit), `docs/STATUSLINE.md` pre-existing local mod NOT touched, `.git/p4-1a-migrate.mjs` lives in `.git/` so untracked
+
+### What still needs P4.1.b/c/d
+
+Future bites of P4.1 (deferred to next session per "no testing until 100% done" + atomic-commit discipline):
+
+- **P4.1.b candidates** — `_teachLetterSequenceDirect` (6238-6312), `_teachWordSpellingDirect` (6314-6422), `_teachLetterNamingDirect` (6423-6521), `_teachWordEmissionDirect` (6522-6680), `_teachWordSpellingDirectFinal` (6681-6772) — 5 K-only methods, ~535 lines, callers verified K-only in kindergarten.js K runners
+- **P4.1.c candidates** — `_teachAlphabetSequence` (6082-6110), `_teachLetterNames` (6112-6145), `_teachLetterSounds` (6147-6176) — 3 orphan methods, NO active callers (Session 25 legacy superseded by `_teachAlphabetSequencePairs` path that calls `_teachAssociationPairs` + `_teachLetterSequenceDirect`). Option: delete or move-with-deprecation-marker.
+- **P4.1.d candidates** — `_teachDigitSequence` (8260-8284), `_teachDigitNames` (8285-8316), `_teachMagnitudes` (8317-8387), `_teachCVCReading` (8388-8427), `_teachSightWords` (8428-8471) — 5 Math-K + ELA-K methods, ~213 lines. NEED caller audit before moving (grep showed no `this._teach*` callers in `js/brain/curriculum.js` but the methods may be called via different naming patterns or be orphans).
+
+### LAWs honored
+
+- **LAW #0 verbatim** — operator quotes preserved word-for-word above
+- **Docs before push, no patches** — NOW.md banner + FINALIZED.md entry + NewTodo.md progress marker + TODO.md session entry all in same atomic commit as source changes
+- **Task numbers + operator name ONLY in workflow docs** — code comments in migration use neutral technical phrasing (no `P4.1.a` or `Gee` references in source); workflow docs preserve full context
+- **No tests ever** — `node --check` + bundle rebuild are validation, not tests
+- **800-line read before edit** — both files read in full chunks before extraction
+- **NEVER delete TODO info** — TODO.md gets new session entry, prior entries unchanged
+- **NO FALLBACKS** — migration is pure refactor, no behavior change, no fallback paths introduced
+
+---
+
 ## 2026-06-17 — Session 114.19fn A.K-LIFE WRAP-UP — all 14 sub-tasks + vocab pre-step + 6 persona-rule memories
 
 ### Gee verbatim per LAW #0

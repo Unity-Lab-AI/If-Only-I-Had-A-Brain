@@ -24737,6 +24737,1003 @@ var K_MIXIN = {
       { name: "family", feat: [1, 1, 1, 1, 1, 1, 1, 1] },
       { name: "home", feat: [1, 1, 1, 0, 0, 1, 0, 1] }
     ], 4);
+  },
+  // ─── K-ELA letter/phoneme/word teach helpers — extracted from curriculum.js ───
+  // Per the per-grade-file architecture directive (2026-04-22).
+  // These 13 methods are called only from K cell runners. Shared primitives
+  // (_teachAssociationPairs, _teachCombination, _teachHebbian, _teachSentenceStructures,
+  // _teachDefinitionFirst, _teachWordInContext, _teachQABinding, _teachBiographicalFacts,
+  // _conceptTeach, _writeTiledPattern, _clearSpikes, _hb, _auditExamVocabulary,
+  // _pregateEnrichment) stay on Curriculum.prototype in curriculum.js.
+  async _teachLetterCaseBinding(ctx) {
+    const cluster = this.cluster;
+    if (!cluster || !cluster.crossProjections) return;
+    const letterRegion = cluster.regions.letter;
+    if (!letterRegion) return;
+    const ALPHABET_LOWER = ALPHABET_ORDER;
+    const ALPHABET_UPPER = ALPHABET_LOWER.toUpperCase();
+    ensureLetters(Array.from(ALPHABET_LOWER + ALPHABET_UPPER));
+    const facts = [];
+    for (let i = 0; i < ALPHABET_LOWER.length; i++) {
+      const lower = ALPHABET_LOWER[i];
+      const upper = ALPHABET_UPPER[i];
+      const lowerVec = encodeLetter(lower);
+      const upperVec = encodeLetter(upper);
+      const combined = new Float64Array(Math.max(lowerVec.length, upperVec.length));
+      for (let j = 0; j < lowerVec.length; j++) if (lowerVec[j] > 0) combined[j] = 1;
+      for (let j = 0; j < upperVec.length; j++) if (upperVec[j] > 0) combined[j] = 1;
+      facts.push({ writes: [{ region: letterRegion, feat: combined }] });
+    }
+    await this._teachCombination(facts, { reps: 24 });
+    this._hb(`[Curriculum] _teachLetterCaseBinding: 26 case pairs \xD7 24 reps`);
+  },
+  /**
+   * Letter naming — kindergarten foundational skill: given the letter A,
+   * the student says "A". This trains letter_to_motor so the motor
+   * region's argmax for a letter-region stimulus matches the letter
+   * itself. Without this phase, letter_to_motor only sees sequence
+   * cascades from _teachWordEmission (letter(c) → motor(a) from "cat"
+   * etc.) which never associates letter(X) with motor(X) and leaves
+   * the TALK probe passing ~15% by accident.
+   *
+   * Also trains letter_to_phon self-pairing as a reinforcement pass
+   * (letter(X) → phon(X)'s feature) — the phoneme feature for X is
+   * what READ tests. READ already hits 26/26 because _teachWordEmission
+   * populates letter_to_phon via the spelling cascade, but an explicit
+   * same-letter pass is cheap insurance.
+   *
+   * Runs at 18 reps with per-letter Hebbian on letter_to_motor +
+   * letter_to_phon cross-projections. Total cost: 26 letters × 2
+   * projections × 18 reps = 936 Hebbian ops, ~1 s at curriculum scale.
+   */
+  async _teachLetterNaming(ctx) {
+    const cluster = this.cluster;
+    if (!cluster || !cluster.crossProjections) return;
+    const letterRegion = cluster.regions.letter;
+    const motorRegion = cluster.regions.motor;
+    const phonRegion = cluster.regions.phon;
+    if (!letterRegion || !motorRegion) return;
+    const reps = 18;
+    const lr = cluster.learningRate;
+    const ALPHABET_LOWER = ALPHABET_ORDER;
+    ensureLetters(Array.from(ALPHABET_LOWER));
+    this._hb(`[Curriculum] _teachLetterNaming START: 26 letters \xD7 ${reps} reps \u2014 binding letter(X) \u2192 motor(X) so TALK can answer 'what letter is this?'`);
+    const t0 = Date.now();
+    const scratch = this._ensureScratchBuffers();
+    for (let rep = 0; rep < reps; rep++) {
+      if (typeof globalThis._brainShutdownRequested !== "undefined" && globalThis._brainShutdownRequested) return;
+      for (const letter of ALPHABET_LOWER) {
+        const letterOneHot = encodeLetter(letter);
+        this._clearSpikes();
+        this._writeTiledPattern(letterRegion, letterOneHot);
+        this._writeTiledPattern(motorRegion, letterOneHot);
+        if (phonRegion) {
+          const phonFeat = _phonemeFeatureForLetter(letter);
+          this._writeTiledPattern(phonRegion, phonFeat);
+        }
+        if (scratch) {
+          this._fillRegionPatternInto(scratch.pre, letterRegion, letterOneHot);
+          this._fillRegionPatternInto(scratch.post, motorRegion, letterOneHot);
+          await this._teachHebbianAsymmetric(scratch.pre, scratch.post, lr, {
+            projectionsWhitelist: ["letter_to_motor"]
+          });
+          if (phonRegion) {
+            const phonFeat = _phonemeFeatureForLetter(letter);
+            this._fillRegionPatternInto(scratch.post, phonRegion, phonFeat);
+            await this._teachHebbianAsymmetric(scratch.pre, scratch.post, lr, {
+              projectionsWhitelist: ["letter_to_phon"]
+            });
+          }
+        } else {
+          const preLet = this._buildRegionPattern(letterRegion, letterOneHot);
+          const postMot = this._buildRegionPattern(motorRegion, letterOneHot);
+          await this._teachHebbianAsymmetric(preLet, postMot, lr, {
+            projectionsWhitelist: ["letter_to_motor"]
+          });
+          if (phonRegion) {
+            const phonFeat = _phonemeFeatureForLetter(letter);
+            const postPhon = this._buildRegionPattern(phonRegion, phonFeat);
+            await this._teachHebbianAsymmetric(preLet, postPhon, lr, {
+              projectionsWhitelist: ["letter_to_phon"]
+            });
+          }
+        }
+      }
+      await _microtask();
+    }
+    const dt = ((Date.now() - t0) / 1e3).toFixed(1);
+    this._hb(`[Curriculum] _teachLetterNaming DONE in ${dt}s (26 letters \xD7 ${reps} reps)`);
+    try {
+      const cluster2 = this.cluster;
+      const letterProj = cluster2?.crossProjections?.letter_to_motor;
+      const motorRegion2 = cluster2?.regions?.motor;
+      const letterRegion2 = cluster2?.regions?.letter;
+      if (letterProj && letterProj.propagate && motorRegion2 && letterRegion2 && letterProj.values) {
+        const letterSize = letterRegion2.end - letterRegion2.start;
+        const invSize = inventorySize();
+        const LETTERS = "abcdefghijklmnopqrstuvwxyz";
+        const results = [];
+        const distribution = /* @__PURE__ */ new Map();
+        for (const letter of LETTERS) {
+          const oneHot = encodeLetter(letter);
+          const gSize = Math.max(1, Math.floor(letterSize / oneHot.length));
+          const letterInput = new Float64Array(letterSize);
+          for (let d = 0; d < oneHot.length; d++) {
+            if (oneHot[d] <= 0) continue;
+            for (let n = 0; n < gSize; n++) {
+              const idx = d * gSize + n;
+              if (idx < letterSize) letterInput[idx] = 1;
+            }
+          }
+          const out = letterProj.propagate(letterInput);
+          if (!out || out.length === 0) {
+            results.push(`${letter}\u2192\u2205`);
+            continue;
+          }
+          const readoutSize = Math.min(invSize, 26);
+          const mGroup = Math.max(1, Math.floor(out.length / readoutSize));
+          const motorReadout = new Float64Array(readoutSize);
+          for (let d = 0; d < readoutSize; d++) {
+            let sum = 0;
+            for (let n = 0; n < mGroup; n++) {
+              const idx = d * mGroup + n;
+              if (idx < out.length) sum += out[idx];
+            }
+            motorReadout[d] = sum;
+          }
+          const decoded = decodeLetter(motorReadout) || "?";
+          results.push(`${letter}\u2192${decoded}`);
+          distribution.set(decoded, (distribution.get(decoded) || 0) + 1);
+        }
+        const distStr = [...distribution.entries()].sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k}:${v}`).join(" ");
+        const diagStr = results.slice(0, 8).join(" ") + (results.length > 8 ? " ..." : "");
+        this._hb(`[Curriculum][LETTER\u2192MOTOR DIAG] distribution: ${distStr}`);
+        this._hb(`[Curriculum][LETTER\u2192MOTOR DIAG] first 8: ${diagStr}`);
+        const stuck = distribution.size === 1;
+        if (stuck) {
+          this._hb(`[Curriculum][LETTER\u2192MOTOR DIAG] \u26A0\u26A0 MOTOR STUCK \u2014 every letter decodes to the same output. Attractor fixation or weight bias dominating training signal. Investigate excitatoryRatio + cross-projection init.`);
+        } else if (distribution.size < 10) {
+          this._hb(`[Curriculum][LETTER\u2192MOTOR DIAG] \u26A0 motor under-discriminates \u2014 only ${distribution.size}/26 distinct outputs. Training signal weak relative to init bias.`);
+        }
+      }
+    } catch (err) {
+      this._hb(`[Curriculum][LETTER\u2192MOTOR DIAG] probe failed: ${err?.message || err}`);
+    }
+  },
+  /**
+   * K.RF vowel sound variants — short vs long. Each vowel pairs with
+   * an example word for each variant. fineType tag marks short vs long
+   * so the cortex can discriminate.
+   */
+  async _teachVowelSoundVariants(ctx) {
+    const cluster = this.cluster;
+    if (!cluster || !cluster.crossProjections) return;
+    const letterRegion = cluster.regions.letter;
+    const phonRegion = cluster.regions.phon;
+    const semRegion = cluster.regions.sem;
+    const fineTypeRegion = cluster.regions.fineType;
+    if (!letterRegion || !phonRegion || !semRegion || !fineTypeRegion) return;
+    const fineTypeSize = fineTypeRegion.end - fineTypeRegion.start;
+    const shortTag = new Float64Array(fineTypeSize);
+    const longTag = new Float64Array(fineTypeSize);
+    const halfMark = Math.floor(fineTypeSize * 0.3);
+    const fullMark = Math.floor(fineTypeSize * 0.6);
+    for (let i = 0; i < halfMark; i++) shortTag[i] = 1;
+    for (let i = halfMark; i < fullMark; i++) longTag[i] = 1;
+    const VOWEL_VARIANTS = [
+      { vowel: "a", shortExample: "cat", longExample: "cake" },
+      { vowel: "e", shortExample: "bed", longExample: "bee" },
+      { vowel: "i", shortExample: "pig", longExample: "bike" },
+      { vowel: "o", shortExample: "hot", longExample: "bone" },
+      { vowel: "u", shortExample: "cup", longExample: "cute" }
+    ];
+    const facts = [];
+    for (const { vowel, shortExample, longExample } of VOWEL_VARIANTS) {
+      const shortEmb = sharedEmbeddings.getEmbedding(shortExample);
+      const longEmb = sharedEmbeddings.getEmbedding(longExample);
+      const phonFeat = _phonemeFeatureForLetter(vowel);
+      if (shortEmb && shortEmb.length > 0) {
+        facts.push({ writes: [
+          { region: letterRegion, feat: encodeLetter(vowel) },
+          { region: phonRegion, feat: phonFeat },
+          { region: semRegion, feat: shortEmb, binarize: false },
+          { region: fineTypeRegion, feat: shortTag }
+        ] });
+      }
+      if (longEmb && longEmb.length > 0) {
+        facts.push({ writes: [
+          { region: letterRegion, feat: encodeLetter(vowel) },
+          { region: phonRegion, feat: phonFeat },
+          { region: semRegion, feat: longEmb, binarize: false },
+          { region: fineTypeRegion, feat: longTag }
+        ] });
+      }
+    }
+    await this._teachCombination(facts, { reps: 24 });
+    this._hb(`[Curriculum] _teachVowelSoundVariants: ${facts.length} variants \xD7 24 reps`);
+  },
+  /**
+   * K.RF word emission — for each word, bind sem(GloVe) → motor(letter
+   * sequence) via DIRECTIONAL Hebbian. No
+   * symmetric writes, no self-loops. Initiation pair
+   * (pre=sem(word) → post=motor(first letter)) + continuation chain
+   * (pre=letter(N) → post=motor(N+1)). Per-step `_teachHebbianAsymmetric`
+   * with distinct pre/post vectors so intra-cluster recurrent matrix
+   * learns TRUE directional bindings without reinforcing w[i,i]
+   * self-loops that would make motor letters stick on emission.
+   *
+   * Covers K.RF Dolch sight words + CVC word families + any other
+   * vocabulary Unity needs to EMIT.
+   */
+  async _teachWordEmission(wordList, opts = {}) {
+    const cluster = this.cluster;
+    if (!cluster || !cluster.crossProjections) return;
+    const letterRegion = cluster.regions.letter;
+    const motorRegion = cluster.regions.motor;
+    const semRegion = cluster.regions.sem;
+    if (!letterRegion || !motorRegion || !semRegion) return;
+    const reps = opts.reps ?? 6;
+    const lr = cluster.learningRate;
+    const uniqueLetters = /* @__PURE__ */ new Set();
+    for (const w of wordList) for (const ch of w.toLowerCase()) if (/[a-z]/.test(ch)) uniqueLetters.add(ch);
+    ensureLetters(Array.from(uniqueLetters));
+    this._hb(`[Curriculum] _teachWordEmission START: ${wordList.length} words \xD7 ${reps} reps (asymmetric directional)`);
+    const scratch = this._ensureScratchBuffers();
+    const _t18_13_startMs = Date.now();
+    let _t18_13_lastHbMs = _t18_13_startMs;
+    let _t18_13_opsSinceHb = 0;
+    for (let rep = 0; rep < reps; rep++) {
+      if (typeof globalThis._brainShutdownRequested !== "undefined" && globalThis._brainShutdownRequested) return;
+      const isFinalRep = rep === reps - 1;
+      cluster._teachIntermediateRep = !isFinalRep;
+      cluster._teachFinalRepSampleEveryN = isFinalRep ? 5 : 0;
+      cluster._whitelistSampleCounter = 0;
+      let _wordIdx = 0;
+      for (const word of wordList) {
+        const letters = Array.from(word.toLowerCase().replace(/[^a-z]/g, ""));
+        _wordIdx++;
+        _t18_13_opsSinceHb++;
+        const _nowHb = Date.now();
+        if (_nowHb - _t18_13_lastHbMs > 5e3) {
+          const totalElapsed = ((_nowHb - _t18_13_startMs) / 1e3).toFixed(1);
+          const hbInterval = (_nowHb - _t18_13_lastHbMs) / 1e3;
+          const opsPerSec = (_t18_13_opsSinceHb / hbInterval).toFixed(1);
+          this._hb(`[Curriculum] \u23F1 _teachWordEmission heartbeat \u2014 rep ${rep + 1}/${reps}, word ${_wordIdx}/${wordList.length}, elapsed ${totalElapsed}s, ~${opsPerSec} words/s`);
+          _t18_13_lastHbMs = _nowHb;
+          _t18_13_opsSinceHb = 0;
+          await _microtask();
+        }
+        if (_wordIdx % 200 === 0) {
+          await _microtask();
+        }
+        if (letters.length === 0) continue;
+        const wordEmb = sharedEmbeddings.getEmbedding(word);
+        if (!wordEmb || wordEmb.length === 0) continue;
+        if (rep === 0 && this.dictionary && typeof this.dictionary.learnWord === "function") {
+          try {
+            this.dictionary.learnWord(word, null, this.arousal ?? 0.85, this.valence ?? 0);
+          } catch {
+          }
+        }
+        this._clearSpikes();
+        this._writeTiledPattern(semRegion, wordEmb);
+        this._writeTiledPattern(motorRegion, encodeLetter(letters[0]));
+        if (scratch) {
+          this._fillRegionPatternInto(scratch.pre, semRegion, wordEmb, false);
+          this._fillRegionPatternInto(scratch.post, motorRegion, encodeLetter(letters[0]));
+          await this._teachHebbianAsymmetric(scratch.pre, scratch.post, lr, {
+            projectionsWhitelist: ["sem_to_motor"]
+          });
+        } else {
+          const preInit = this._buildRegionPattern(semRegion, wordEmb, false);
+          const postInit = this._buildRegionPattern(motorRegion, encodeLetter(letters[0]));
+          await this._teachHebbianAsymmetric(preInit, postInit, lr, {
+            projectionsWhitelist: ["sem_to_motor"]
+          });
+        }
+        for (let i = 1; i < letters.length; i++) {
+          this._clearSpikes();
+          this._writeTiledPattern(semRegion, wordEmb);
+          this._writeTiledPattern(letterRegion, encodeLetter(letters[i - 1]));
+          this._writeTiledPattern(motorRegion, encodeLetter(letters[i]));
+          if (scratch) {
+            this._fillRegionPatternInto(scratch.pre, letterRegion, encodeLetter(letters[i - 1]));
+            this._fillRegionPatternInto(scratch.post, motorRegion, encodeLetter(letters[i]));
+            await this._teachHebbianAsymmetric(scratch.pre, scratch.post, lr, {
+              projectionsWhitelist: ["letter_to_motor"]
+            });
+          } else {
+            const preChain = this._buildRegionPattern(letterRegion, encodeLetter(letters[i - 1]));
+            const postChain = this._buildRegionPattern(motorRegion, encodeLetter(letters[i]));
+            await this._teachHebbianAsymmetric(preChain, postChain, lr, {
+              projectionsWhitelist: ["letter_to_motor"]
+            });
+          }
+        }
+      }
+      await _microtask();
+    }
+    cluster._teachIntermediateRep = false;
+    cluster._teachFinalRepSampleEveryN = 0;
+    this._hb(`[Curriculum] _teachWordEmission DONE: ${wordList.length} words \xD7 ${reps} reps`);
+  },
+  /**
+   * K.RF rhyme families — teach words sharing a rime (e.g. -at in
+   * cat/hat/bat) get bound to a "rhymes" fineType tag. Given a query
+   * word, the probe tests whether the cortex can emit a rhyming word.
+   */
+  async _teachRhymeFamilies(ctx) {
+    const cluster = this.cluster;
+    if (!cluster || !cluster.crossProjections) return;
+    const semRegion = cluster.regions.sem;
+    const motorRegion = cluster.regions.motor;
+    const fineTypeRegion = cluster.regions.fineType;
+    if (!semRegion || !motorRegion || !fineTypeRegion) return;
+    const fineTypeSize = fineTypeRegion.end - fineTypeRegion.start;
+    const rhymeTag = new Float64Array(fineTypeSize);
+    const tagStart = Math.floor(fineTypeSize * 0.6);
+    const tagEnd = Math.floor(fineTypeSize * 0.8);
+    for (let i = tagStart; i < tagEnd; i++) rhymeTag[i] = 1;
+    const SEED_RIMES = {
+      at: ["cat", "hat", "bat", "mat", "sat", "rat", "fat", "pat"],
+      an: ["can", "man", "ran", "fan", "van", "pan", "tan"],
+      ig: ["big", "dig", "pig", "wig", "fig"],
+      og: ["dog", "log", "fog", "jog", "hog"],
+      ot: ["hot", "not", "got", "dot", "lot", "pot"],
+      en: ["pen", "hen", "men", "ten", "den"],
+      ug: ["bug", "hug", "mug", "rug", "tug", "jug"],
+      ed: ["bed", "red", "fed", "led"],
+      ip: ["hip", "lip", "sip", "tip", "zip", "rip"],
+      un: ["fun", "run", "sun", "bun", "gun"]
+    };
+    const families = /* @__PURE__ */ new Map();
+    for (const [rime, seedWords] of Object.entries(SEED_RIMES)) {
+      const set = /* @__PURE__ */ new Set();
+      for (const w of seedWords) set.add(w);
+      families.set(rime, set);
+    }
+    if (this.dictionary && this.dictionary._words && typeof this.dictionary._words.keys === "function") {
+      for (const word of this.dictionary._words.keys()) {
+        if (typeof word !== "string") continue;
+        if (!/^[a-z]{3,}$/.test(word)) continue;
+        const rime = word.slice(-2);
+        if (!families.has(rime)) families.set(rime, /* @__PURE__ */ new Set());
+        families.get(rime).add(word);
+      }
+    }
+    const ranked = [...families.entries()].map(([rime, set]) => [rime, [...set]]).filter(([, words]) => words.length >= 2).sort((a, b) => b[1].length - a[1].length);
+    const TOP_FAMILIES = 30;
+    const MEMBERS_PER_FAMILY = 6;
+    const facts = [];
+    let trainedFamilies = 0;
+    for (const [, words] of ranked.slice(0, TOP_FAMILIES)) {
+      const members = words.slice(0, MEMBERS_PER_FAMILY);
+      let pairsThisFamily = 0;
+      for (const a of members) {
+        const aEmb = sharedEmbeddings.getEmbedding(a);
+        if (!aEmb || aEmb.length === 0) continue;
+        for (const b of members) {
+          if (a === b) continue;
+          const bEmb = sharedEmbeddings.getEmbedding(b);
+          if (!bEmb || bEmb.length === 0) continue;
+          facts.push({ writes: [
+            { region: semRegion, feat: aEmb, binarize: false },
+            { region: motorRegion, feat: encodeLetter(b[0]) },
+            { region: fineTypeRegion, feat: rhymeTag }
+          ] });
+          pairsThisFamily++;
+        }
+      }
+      if (pairsThisFamily > 0) trainedFamilies++;
+    }
+    await this._teachCombination(facts, { reps: 12 });
+    this._hb(`[Curriculum] _teachRhymeFamilies: ${facts.length} rhyme pairs across ${trainedFamilies} families (vocab-derived) \xD7 12 reps`);
+  },
+  /**
+   * K.RF syllable counting — word → magnitude(syllable count).
+   * Simplistic syllable counter via vowel-group count.
+   */
+  async _teachSyllableCounts(ctx) {
+    const cluster = this.cluster;
+    if (!cluster || !cluster.crossProjections) return;
+    const semRegion = cluster.regions.sem;
+    const freeRegion = cluster.regions.free;
+    if (!semRegion || !freeRegion) return;
+    function countSyllables(word) {
+      const w = word.toLowerCase().replace(/[^a-z]/g, "");
+      if (!w) return 0;
+      let count = 0;
+      let inVowel = false;
+      for (const ch of w) {
+        const isVowel = "aeiouy".includes(ch);
+        if (isVowel && !inVowel) count++;
+        inVowel = isVowel;
+      }
+      return Math.max(1, count);
+    }
+    const MULTI_SYLLABLE_SEED = [
+      "apple",
+      "pencil",
+      "table",
+      "water",
+      "happy",
+      "rabbit",
+      "pumpkin",
+      "cupcake",
+      "monkey",
+      // 2 syllables
+      "elephant",
+      "banana",
+      "computer",
+      "tomato",
+      "family",
+      "syllable",
+      "animal",
+      "remember",
+      "beautiful",
+      // 3 syllables
+      "watermelon",
+      "alligator",
+      "caterpillar",
+      "television",
+      // 4 syllables
+      "kindergarten"
+      // 4 syllables
+    ];
+    const MAX_DICT_WORDS = 250;
+    const wordSet = /* @__PURE__ */ new Set();
+    for (const w of MULTI_SYLLABLE_SEED) wordSet.add(w);
+    if (this.dictionary && this.dictionary._words && typeof this.dictionary._words.entries === "function") {
+      const dictEntries = [];
+      for (const [w, entry] of this.dictionary._words.entries()) {
+        if (typeof w !== "string" || !/^[a-z]{2,}$/.test(w)) continue;
+        const freq = entry && typeof entry.frequency === "number" ? entry.frequency : 1;
+        dictEntries.push([w, freq]);
+      }
+      dictEntries.sort((a, b) => b[1] - a[1]);
+      for (let i = 0; i < dictEntries.length && wordSet.size < MAX_DICT_WORDS; i++) {
+        wordSet.add(dictEntries[i][0]);
+      }
+    }
+    const facts = [];
+    let skippedNoEmb = 0;
+    for (const word of wordSet) {
+      const emb = sharedEmbeddings.getEmbedding(word);
+      if (!emb || emb.length === 0) {
+        skippedNoEmb++;
+        continue;
+      }
+      const syllables = countSyllables(word);
+      facts.push({ writes: [
+        { region: semRegion, feat: emb, binarize: false },
+        { region: freeRegion, feat: _magnitudeFeatureForDigit(String(Math.min(9, syllables))) }
+      ] });
+    }
+    const reps = 6;
+    await this._teachCombination(facts, { reps });
+    this._hb(`[Curriculum] _teachSyllableCounts: ${facts.length} words (top-${MAX_DICT_WORDS} by frequency from live vocab + multi-syllable seed) \xD7 ${reps} reps \xB7 ${skippedNoEmb} skipped (no GloVe)`);
+  },
+  /**
+   * K.RF CVC sound isolation — given a CVC word, cortex learns the
+   * initial/medial-vowel/final phoneme features in distinct fineType
+   * regions. Probe tests "What sound does cat start with?" → /c/.
+   */
+  async _teachCVCSoundIsolation(ctx) {
+    const cluster = this.cluster;
+    if (!cluster || !cluster.crossProjections) return;
+    const semRegion = cluster.regions.sem;
+    const phonRegion = cluster.regions.phon;
+    const motorRegion = cluster.regions.motor;
+    const fineTypeRegion = cluster.regions.fineType;
+    if (!semRegion || !phonRegion || !motorRegion || !fineTypeRegion) return;
+    const fineTypeSize = fineTypeRegion.end - fineTypeRegion.start;
+    const initialTag = new Float64Array(fineTypeSize);
+    const medialTag = new Float64Array(fineTypeSize);
+    const finalTag = new Float64Array(fineTypeSize);
+    const third = Math.floor(fineTypeSize / 3);
+    for (let i = 0; i < third; i++) initialTag[i] = 1;
+    for (let i = third; i < 2 * third; i++) medialTag[i] = 1;
+    for (let i = 2 * third; i < fineTypeSize; i++) finalTag[i] = 1;
+    const CVC_VOWELS = "aeiou";
+    const isCVC = (w) => {
+      if (typeof w !== "string" || w.length !== 3) return false;
+      if (!/^[a-z]{3}$/.test(w)) return false;
+      return !CVC_VOWELS.includes(w[0]) && CVC_VOWELS.includes(w[1]) && !CVC_VOWELS.includes(w[2]);
+    };
+    const CVC_SEED = [
+      "cat",
+      "bat",
+      "hat",
+      "mat",
+      "rat",
+      "sat",
+      "fat",
+      "pat",
+      "can",
+      "man",
+      "ran",
+      "fan",
+      "pan",
+      "tan",
+      "van",
+      "big",
+      "dig",
+      "pig",
+      "wig",
+      "fig",
+      "dog",
+      "log",
+      "fog",
+      "jog",
+      "hog",
+      "hot",
+      "not",
+      "got",
+      "dot",
+      "pot",
+      "lot",
+      "pen",
+      "hen",
+      "men",
+      "ten",
+      "den",
+      "bug",
+      "hug",
+      "mug",
+      "rug",
+      "tug",
+      "jug",
+      "bed",
+      "red",
+      "fed",
+      "led",
+      "cup",
+      "pup",
+      "sup",
+      "sun",
+      "run",
+      "fun",
+      "bun",
+      "gun",
+      "hip",
+      "lip",
+      "sip",
+      "tip",
+      "zip",
+      "rip"
+    ];
+    const MAX_CVC_WORDS = 80;
+    const cvcSet = /* @__PURE__ */ new Set();
+    for (const w of CVC_SEED) if (isCVC(w)) cvcSet.add(w);
+    if (this.dictionary && this.dictionary._words && typeof this.dictionary._words.keys === "function") {
+      for (const word of this.dictionary._words.keys()) {
+        if (cvcSet.size >= MAX_CVC_WORDS) break;
+        if (isCVC(word)) cvcSet.add(word);
+      }
+    }
+    const facts = [];
+    for (const word of cvcSet) {
+      const letters = Array.from(word);
+      if (letters.length !== 3) continue;
+      const emb = sharedEmbeddings.getEmbedding(word);
+      if (!emb || emb.length === 0) continue;
+      facts.push({ writes: [
+        { region: semRegion, feat: emb, binarize: false },
+        { region: phonRegion, feat: _phonemeFeatureForLetter(letters[0]) },
+        { region: motorRegion, feat: encodeLetter(letters[0]) },
+        { region: fineTypeRegion, feat: initialTag }
+      ] });
+      facts.push({ writes: [
+        { region: semRegion, feat: emb, binarize: false },
+        { region: phonRegion, feat: _phonemeFeatureForLetter(letters[1]) },
+        { region: motorRegion, feat: encodeLetter(letters[1]) },
+        { region: fineTypeRegion, feat: medialTag }
+      ] });
+      facts.push({ writes: [
+        { region: semRegion, feat: emb, binarize: false },
+        { region: phonRegion, feat: _phonemeFeatureForLetter(letters[2]) },
+        { region: motorRegion, feat: encodeLetter(letters[2]) },
+        { region: fineTypeRegion, feat: finalTag }
+      ] });
+    }
+    await this._teachCombination(facts, { reps: 12 });
+    this._hb(`[Curriculum] _teachCVCSoundIsolation: ${facts.length} phoneme facts across ${cvcSet.size} CVC words (vocab-derived) \xD7 12 reps`);
+  },
+  /**
+   * K.L plural formation — cat → cats, box → boxes. Teaches the
+   * singular-to-plural transform via motor emission of -s or -es
+   * ending. Uses fineType "plural-query" tag for query context.
+   */
+  async _teachPluralTransform(ctx) {
+    const cluster = this.cluster;
+    if (!cluster || !cluster.crossProjections) return;
+    const semRegion = cluster.regions.sem;
+    const motorRegion = cluster.regions.motor;
+    const fineTypeRegion = cluster.regions.fineType;
+    if (!semRegion || !motorRegion || !fineTypeRegion) return;
+    const fineTypeSize = fineTypeRegion.end - fineTypeRegion.start;
+    const pluralTag = new Float64Array(fineTypeSize);
+    const tagStart = Math.floor(fineTypeSize * 0.8);
+    for (let i = tagStart; i < fineTypeSize; i++) pluralTag[i] = 1;
+    const IRREGULAR_SEED = [
+      ["foot", "feet"],
+      ["man", "men"],
+      ["woman", "women"],
+      ["child", "children"],
+      ["tooth", "teeth"],
+      ["mouse", "mice"],
+      ["fish", "fish"],
+      ["sheep", "sheep"],
+      ["deer", "deer"],
+      ["hand", "hands"],
+      ["ball", "balls"],
+      ["book", "books"]
+    ];
+    const pairs = [];
+    const pairKey = /* @__PURE__ */ new Set();
+    const addPair = (s, p) => {
+      if (!s || !p) return;
+      const k = `${s}|${p}`;
+      if (pairKey.has(k)) return;
+      pairKey.add(k);
+      pairs.push([s, p]);
+    };
+    for (const [s, p] of IRREGULAR_SEED) addPair(s, p);
+    const MAX_PAIRS = 50;
+    if (this.dictionary && this.dictionary._words && typeof this.dictionary._words.keys === "function") {
+      const dictWords = /* @__PURE__ */ new Set();
+      for (const w of this.dictionary._words.keys()) {
+        if (typeof w === "string" && /^[a-z]{2,}$/.test(w)) dictWords.add(w);
+      }
+      for (const word of dictWords) {
+        if (pairs.length >= MAX_PAIRS) break;
+        if (word.endsWith("ies") && word.length >= 5) {
+          const root = word.slice(0, -3) + "y";
+          if (dictWords.has(root)) {
+            addPair(root, word);
+            continue;
+          }
+        }
+        if (word.endsWith("es") && word.length >= 4) {
+          const root = word.slice(0, -2);
+          if (dictWords.has(root)) {
+            addPair(root, word);
+            continue;
+          }
+        }
+        if (word.endsWith("s") && word.length >= 3 && !word.endsWith("ss") && !word.endsWith("us") && !word.endsWith("is")) {
+          const root = word.slice(0, -1);
+          if (dictWords.has(root)) addPair(root, word);
+        }
+      }
+    }
+    const facts = [];
+    for (const [singular, plural] of pairs) {
+      const sEmb = sharedEmbeddings.getEmbedding(singular);
+      const pEmb = sharedEmbeddings.getEmbedding(plural);
+      if (!sEmb || !pEmb) continue;
+      facts.push({ writes: [
+        { region: semRegion, feat: sEmb, binarize: false },
+        { region: motorRegion, feat: encodeLetter(plural[0]) },
+        { region: fineTypeRegion, feat: pluralTag }
+      ] });
+      facts.push({ writes: [
+        { region: semRegion, feat: pEmb, binarize: false },
+        { region: motorRegion, feat: encodeLetter(singular[0]) }
+      ] });
+    }
+    await this._teachCombination(facts, { reps: 18 });
+    this._hb(`[Curriculum] _teachPluralTransform: ${facts.length} plural fact-writes across ${pairs.length} singular/plural pairs (vocab-derived + irregular seed) \xD7 18 reps`);
+  },
+  /**
+   * K.L question word categories — who/what/where/when/why/how bind
+   * to the category they ask about (person/thing/place/time/reason/manner).
+   * Probe tests "What question word asks about a person?" → who.
+   */
+  async _teachQuestionWordCategories(ctx) {
+    const cluster = this.cluster;
+    if (!cluster || !cluster.crossProjections) return;
+    const semRegion = cluster.regions.sem;
+    const motorRegion = cluster.regions.motor;
+    if (!semRegion || !motorRegion) return;
+    const Q_CATEGORY = [
+      { qword: "who", category: "person" },
+      { qword: "what", category: "thing" },
+      { qword: "where", category: "place" },
+      { qword: "when", category: "time" },
+      { qword: "why", category: "reason" },
+      { qword: "how", category: "manner" }
+    ];
+    const facts = [];
+    for (const { qword, category } of Q_CATEGORY) {
+      const qEmb = sharedEmbeddings.getEmbedding(qword);
+      const cEmb = sharedEmbeddings.getEmbedding(category);
+      if (!qEmb || !cEmb) continue;
+      facts.push({ writes: [
+        { region: semRegion, feat: cEmb, binarize: false },
+        { region: motorRegion, feat: encodeLetter(qword[0]) }
+      ] });
+      facts.push({ writes: [
+        { region: semRegion, feat: qEmb, binarize: false },
+        { region: motorRegion, feat: encodeLetter(category[0]) }
+      ] });
+    }
+    await this._teachCombination(facts, { reps: 24 });
+    this._hb(`[Curriculum] _teachQuestionWordCategories: ${facts.length} pairs \xD7 24 reps`);
+  },
+  /**
+   * K.L end punctuation — declarative → period, question → question
+   * mark, exclamation → exclamation point. FineType tag marks sentence
+   * type so motor emits the right terminator.
+   */
+  async _teachEndPunctuation(ctx) {
+    const cluster = this.cluster;
+    if (!cluster || !cluster.crossProjections) return;
+    const semRegion = cluster.regions.sem;
+    const motorRegion = cluster.regions.motor;
+    const fineTypeRegion = cluster.regions.fineType;
+    if (!semRegion || !motorRegion || !fineTypeRegion) return;
+    ensureLetters([".", "?", "!"]);
+    const fineTypeSize = fineTypeRegion.end - fineTypeRegion.start;
+    const declarativeTag = new Float64Array(fineTypeSize);
+    const questionTag = new Float64Array(fineTypeSize);
+    const exclamationTag = new Float64Array(fineTypeSize);
+    const third = Math.floor(fineTypeSize / 3);
+    for (let i = 0; i < third; i++) declarativeTag[i] = 1;
+    for (let i = third; i < 2 * third; i++) questionTag[i] = 1;
+    for (let i = 2 * third; i < fineTypeSize; i++) exclamationTag[i] = 1;
+    const SENTENCE_STARTS = [
+      { start: "the", type: "declarative" },
+      { start: "i", type: "declarative" },
+      { start: "we", type: "declarative" },
+      { start: "she", type: "declarative" },
+      { start: "he", type: "declarative" },
+      { start: "what", type: "question" },
+      { start: "who", type: "question" },
+      { start: "where", type: "question" },
+      { start: "when", type: "question" },
+      { start: "why", type: "question" },
+      { start: "how", type: "question" },
+      { start: "is", type: "question" },
+      { start: "are", type: "question" },
+      { start: "do", type: "question" },
+      { start: "does", type: "question" },
+      { start: "wow", type: "exclamation" },
+      { start: "oh", type: "exclamation" }
+    ];
+    const facts = [];
+    for (const { start, type } of SENTENCE_STARTS) {
+      const emb = sharedEmbeddings.getEmbedding(start);
+      if (!emb) continue;
+      let tag, terminator;
+      if (type === "question") {
+        tag = questionTag;
+        terminator = "?";
+      } else if (type === "exclamation") {
+        tag = exclamationTag;
+        terminator = "!";
+      } else {
+        tag = declarativeTag;
+        terminator = ".";
+      }
+      facts.push({ writes: [
+        { region: semRegion, feat: emb, binarize: false },
+        { region: fineTypeRegion, feat: tag },
+        { region: motorRegion, feat: encodeLetter(terminator) }
+      ] });
+    }
+    await this._teachCombination(facts, { reps: 18 });
+    this._hb(`[Curriculum] _teachEndPunctuation: ${facts.length} sentence types \xD7 18 reps`);
+  },
+  /**
+   * K.RL character/setting/event extraction — simple stories get taught
+   * with character/setting/event tags so "Who sat on the mat?" can
+   * be answered by emitting the character's name.
+   */
+  async _teachStoryComprehension(ctx) {
+    const cluster = this.cluster;
+    if (!cluster || !cluster.crossProjections) return;
+    const semRegion = cluster.regions.sem;
+    const motorRegion = cluster.regions.motor;
+    const fineTypeRegion = cluster.regions.fineType;
+    if (!semRegion || !motorRegion || !fineTypeRegion) return;
+    const fineTypeSize = fineTypeRegion.end - fineTypeRegion.start;
+    const charTag = new Float64Array(fineTypeSize);
+    const settingTag = new Float64Array(fineTypeSize);
+    const eventTag = new Float64Array(fineTypeSize);
+    const third = Math.floor(fineTypeSize / 3);
+    for (let i = 0; i < third; i++) charTag[i] = 1;
+    for (let i = third; i < 2 * third; i++) settingTag[i] = 1;
+    for (let i = 2 * third; i < fineTypeSize; i++) eventTag[i] = 1;
+    const STORIES = [
+      {
+        stem: "sam the cat sat on a mat",
+        character: "sam",
+        setting: "mat",
+        event: "sat"
+      },
+      {
+        stem: "sam saw a dog",
+        character: "sam",
+        setting: "home",
+        event: "saw"
+      },
+      {
+        stem: "sam ran away",
+        character: "sam",
+        setting: "away",
+        event: "ran"
+      },
+      {
+        stem: "the dog played in the yard",
+        character: "dog",
+        setting: "yard",
+        event: "played"
+      },
+      {
+        stem: "mom read a book",
+        character: "mom",
+        setting: "home",
+        event: "read"
+      },
+      {
+        stem: "the cat slept on the bed",
+        character: "cat",
+        setting: "bed",
+        event: "slept"
+      }
+    ];
+    const facts = [];
+    for (const { stem, character, setting, event } of STORIES) {
+      const stemEmb = sharedEmbeddings.getEmbedding(stem.split(" ").slice(0, 2).join(" ")) || sharedEmbeddings.getEmbedding(stem.split(" ")[0]);
+      if (!stemEmb) continue;
+      const charEmb = sharedEmbeddings.getEmbedding(character);
+      const settingEmb = sharedEmbeddings.getEmbedding(setting);
+      const eventEmb = sharedEmbeddings.getEmbedding(event);
+      if (charEmb) facts.push({ writes: [
+        { region: semRegion, feat: stemEmb, binarize: false },
+        { region: motorRegion, feat: encodeLetter(character[0]) },
+        { region: fineTypeRegion, feat: charTag }
+      ] });
+      if (settingEmb) facts.push({ writes: [
+        { region: semRegion, feat: stemEmb, binarize: false },
+        { region: motorRegion, feat: encodeLetter(setting[0]) },
+        { region: fineTypeRegion, feat: settingTag }
+      ] });
+      if (eventEmb) facts.push({ writes: [
+        { region: semRegion, feat: stemEmb, binarize: false },
+        { region: motorRegion, feat: encodeLetter(event[0]) },
+        { region: fineTypeRegion, feat: eventTag }
+      ] });
+    }
+    await this._teachCombination(facts, { reps: 18 });
+    this._hb(`[Curriculum] _teachStoryComprehension: ${facts.length} story facts \xD7 18 reps`);
+  },
+  /**
+   * Phase 2 — PHONEME BLENDING via sequence Hebbian in phon region.
+   * For each word, streams its phonemes through the phon region and
+   * fires cluster.synapses.hebbianUpdate(phoneme_n, phoneme_n+1) to
+   * teach the recurrent matrix that /c/ tends to be followed by /a/
+   * which tends to be followed by /t/ (for "cat") — the blending
+   * operation that lets Unity decode words from letter sequences by
+   * running the phoneme chain forward.
+   *
+   * Reverse direction is achieved by symmetric Hebbian side-effect:
+   * sem(word)→phon(first_phoneme)→... → motor(letter) chain emerges
+   * from the trained phon recurrent weights when the cortex is
+   * primed via sem.
+   */
+  async _teachPhonemeBlending(wordList, opts = {}) {
+    const cluster = this.cluster;
+    if (!cluster || !cluster.synapses) return;
+    const phonRegion = cluster.regions.phon;
+    const letterRegion = cluster.regions.letter;
+    const semRegion = cluster.regions.sem;
+    if (!phonRegion || !letterRegion || !semRegion) return;
+    const reps = opts.reps ?? 6;
+    const lr = cluster.learningRate;
+    const uniqueLetters = /* @__PURE__ */ new Set();
+    for (const w of wordList) for (const ch of w.toLowerCase()) if (/[a-z]/.test(ch)) uniqueLetters.add(ch);
+    ensureLetters(Array.from(uniqueLetters));
+    this._hb(`[Curriculum] _teachPhonemeBlending START: ${wordList.length} words \xD7 ${reps} reps (phoneme-sequence Hebbian)`);
+    const scratch = this._ensureScratchBuffers();
+    const _t18_13_startMs = Date.now();
+    let _t18_13_lastHbMs = _t18_13_startMs;
+    let _t18_13_opsSinceHb = 0;
+    for (let rep = 0; rep < reps; rep++) {
+      if (typeof globalThis._brainShutdownRequested !== "undefined" && globalThis._brainShutdownRequested) return;
+      const isFinalRep = rep === reps - 1;
+      cluster._teachIntermediateRep = !isFinalRep;
+      cluster._teachFinalRepSampleEveryN = isFinalRep ? 5 : 0;
+      cluster._whitelistSampleCounter = 0;
+      let _wordIdx = 0;
+      for (const word of wordList) {
+        const letters = Array.from(word.toLowerCase().replace(/[^a-z]/g, ""));
+        _wordIdx++;
+        _t18_13_opsSinceHb++;
+        const _nowHb = Date.now();
+        if (_nowHb - _t18_13_lastHbMs > 5e3) {
+          const totalElapsed = ((_nowHb - _t18_13_startMs) / 1e3).toFixed(1);
+          const hbInterval = (_nowHb - _t18_13_lastHbMs) / 1e3;
+          const opsPerSec = (_t18_13_opsSinceHb / hbInterval).toFixed(1);
+          this._hb(`[Curriculum] \u23F1 _teachPhonemeBlending heartbeat \u2014 rep ${rep + 1}/${reps}, word ${_wordIdx}/${wordList.length}, elapsed ${totalElapsed}s, ~${opsPerSec} words/s`);
+          _t18_13_lastHbMs = _nowHb;
+          _t18_13_opsSinceHb = 0;
+          await _microtask();
+        }
+        if (_wordIdx % 200 === 0) {
+          await _microtask();
+        }
+        if (letters.length < 2) continue;
+        const wordEmb = sharedEmbeddings.getEmbedding(word);
+        if (rep === 0 && this.dictionary && typeof this.dictionary.learnWord === "function") {
+          try {
+            this.dictionary.learnWord(word, null, this.arousal ?? 0.85, this.valence ?? 0);
+          } catch {
+          }
+        }
+        for (let i = 0; i < letters.length - 1; i++) {
+          const phonA = _phonemeFeatureForLetter(letters[i]);
+          const phonB = _phonemeFeatureForLetter(letters[i + 1]);
+          if (!phonA.some((v) => v > 0) || !phonB.some((v) => v > 0)) continue;
+          let pre, post;
+          if (scratch) {
+            pre = this._fillRegionPatternInto(scratch.pre, phonRegion, phonA);
+            post = this._fillRegionPatternInto(scratch.post, phonRegion, phonB);
+          } else {
+            pre = this._buildRegionPattern(phonRegion, phonA);
+            post = this._buildRegionPattern(phonRegion, phonB);
+          }
+          if (typeof cluster.intraSynapsesHebbian === "function") {
+            cluster.intraSynapsesHebbian(pre, post, lr);
+          } else {
+            await cluster.intraSynapsesHebbian(pre, post, lr);
+          }
+          this._clearSpikes();
+          this._writeTiledPattern(letterRegion, encodeLetter(letters[i]));
+          this._writeTiledPattern(phonRegion, phonA);
+          if (wordEmb && wordEmb.length > 0) this._writeTiledPattern(semRegion, wordEmb);
+          await cluster._crossRegionHebbian(lr);
+        }
+      }
+      await _microtask();
+    }
+    cluster._teachIntermediateRep = false;
+    cluster._teachFinalRepSampleEveryN = 0;
+    this._hb(`[Curriculum] _teachPhonemeBlending DONE: ${wordList.length} words \xD7 ${reps} reps`);
+  },
+  /**
+   * K.L capitalization — first word of sentence + pronoun "I" get
+   * capital marker. Teaches cortex when to emit uppercase form.
+   */
+  async _teachCapitalization(ctx) {
+    const cluster = this.cluster;
+    if (!cluster || !cluster.crossProjections) return;
+    const letterRegion = cluster.regions.letter;
+    const motorRegion = cluster.regions.motor;
+    const fineTypeRegion = cluster.regions.fineType;
+    if (!letterRegion || !motorRegion || !fineTypeRegion) return;
+    ensureLetters(Array.from(ALPHABET_ORDER.toUpperCase()));
+    const fineTypeSize = fineTypeRegion.end - fineTypeRegion.start;
+    const capTag = new Float64Array(fineTypeSize);
+    const tagStart = Math.floor(fineTypeSize * 0.4);
+    const tagEnd = Math.floor(fineTypeSize * 0.6);
+    for (let i = tagStart; i < tagEnd; i++) capTag[i] = 1;
+    const facts = [];
+    facts.push({ writes: [
+      { region: letterRegion, feat: encodeLetter("i") },
+      { region: motorRegion, feat: encodeLetter("I") },
+      { region: fineTypeRegion, feat: capTag }
+    ] });
+    for (const letter of ALPHABET_ORDER) {
+      facts.push({ writes: [
+        { region: letterRegion, feat: encodeLetter(letter) },
+        { region: motorRegion, feat: encodeLetter(letter.toUpperCase()) },
+        { region: fineTypeRegion, feat: capTag }
+      ] });
+    }
+    await this._teachCombination(facts, { reps: 15 });
+    this._hb(`[Curriculum] _teachCapitalization: ${facts.length} cap facts \xD7 15 reps`);
   }
 };
 
@@ -29862,996 +30859,16 @@ var Curriculum = class _Curriculum {
     const dt = ((Date.now() - t0) / 1e3).toFixed(1);
     this._hb(`[Curriculum] _teachWordSpellingDirectFinal DONE in ${dt}s \u2014 ${updates} Oja updates \xB7 ${skipped} skipped (${words.length} words \xD7 ${reps} reps target)`);
   }
-  async _teachLetterCaseBinding(ctx) {
-    const cluster = this.cluster;
-    if (!cluster || !cluster.crossProjections) return;
-    const letterRegion = cluster.regions.letter;
-    if (!letterRegion) return;
-    const ALPHABET_LOWER = ALPHABET_ORDER;
-    const ALPHABET_UPPER = ALPHABET_LOWER.toUpperCase();
-    ensureLetters(Array.from(ALPHABET_LOWER + ALPHABET_UPPER));
-    const facts = [];
-    for (let i = 0; i < ALPHABET_LOWER.length; i++) {
-      const lower = ALPHABET_LOWER[i];
-      const upper = ALPHABET_UPPER[i];
-      const lowerVec = encodeLetter(lower);
-      const upperVec = encodeLetter(upper);
-      const combined = new Float64Array(Math.max(lowerVec.length, upperVec.length));
-      for (let j = 0; j < lowerVec.length; j++) if (lowerVec[j] > 0) combined[j] = 1;
-      for (let j = 0; j < upperVec.length; j++) if (upperVec[j] > 0) combined[j] = 1;
-      facts.push({ writes: [{ region: letterRegion, feat: combined }] });
-    }
-    await this._teachCombination(facts, { reps: 24 });
-    this._hb(`[Curriculum] _teachLetterCaseBinding: 26 case pairs \xD7 24 reps`);
-  }
-  /**
-   * Letter naming — kindergarten foundational skill: given the letter A,
-   * the student says "A". This trains letter_to_motor so the motor
-   * region's argmax for a letter-region stimulus matches the letter
-   * itself. Without this phase, letter_to_motor only sees sequence
-   * cascades from _teachWordEmission (letter(c) → motor(a) from "cat"
-   * etc.) which never associates letter(X) with motor(X) and leaves
-   * the TALK probe passing ~15% by accident.
-   *
-   * Also trains letter_to_phon self-pairing as a reinforcement pass
-   * (letter(X) → phon(X)'s feature) — the phoneme feature for X is
-   * what READ tests. READ already hits 26/26 because _teachWordEmission
-   * populates letter_to_phon via the spelling cascade, but an explicit
-   * same-letter pass is cheap insurance.
-   *
-   * Runs at 18 reps with per-letter Hebbian on letter_to_motor +
-   * letter_to_phon cross-projections. Total cost: 26 letters × 2
-   * projections × 18 reps = 936 Hebbian ops, ~1 s at curriculum scale.
-   */
-  async _teachLetterNaming(ctx) {
-    const cluster = this.cluster;
-    if (!cluster || !cluster.crossProjections) return;
-    const letterRegion = cluster.regions.letter;
-    const motorRegion = cluster.regions.motor;
-    const phonRegion = cluster.regions.phon;
-    if (!letterRegion || !motorRegion) return;
-    const reps = 18;
-    const lr = cluster.learningRate;
-    const ALPHABET_LOWER = ALPHABET_ORDER;
-    ensureLetters(Array.from(ALPHABET_LOWER));
-    this._hb(`[Curriculum] _teachLetterNaming START: 26 letters \xD7 ${reps} reps \u2014 binding letter(X) \u2192 motor(X) so TALK can answer 'what letter is this?'`);
-    const t0 = Date.now();
-    const scratch = this._ensureScratchBuffers();
-    for (let rep = 0; rep < reps; rep++) {
-      if (typeof globalThis._brainShutdownRequested !== "undefined" && globalThis._brainShutdownRequested) return;
-      for (const letter of ALPHABET_LOWER) {
-        const letterOneHot = encodeLetter(letter);
-        this._clearSpikes();
-        this._writeTiledPattern(letterRegion, letterOneHot);
-        this._writeTiledPattern(motorRegion, letterOneHot);
-        if (phonRegion) {
-          const phonFeat = _phonemeFeatureForLetter(letter);
-          this._writeTiledPattern(phonRegion, phonFeat);
-        }
-        if (scratch) {
-          this._fillRegionPatternInto(scratch.pre, letterRegion, letterOneHot);
-          this._fillRegionPatternInto(scratch.post, motorRegion, letterOneHot);
-          await this._teachHebbianAsymmetric(scratch.pre, scratch.post, lr, {
-            projectionsWhitelist: ["letter_to_motor"]
-          });
-          if (phonRegion) {
-            const phonFeat = _phonemeFeatureForLetter(letter);
-            this._fillRegionPatternInto(scratch.post, phonRegion, phonFeat);
-            await this._teachHebbianAsymmetric(scratch.pre, scratch.post, lr, {
-              projectionsWhitelist: ["letter_to_phon"]
-            });
-          }
-        } else {
-          const preLet = this._buildRegionPattern(letterRegion, letterOneHot);
-          const postMot = this._buildRegionPattern(motorRegion, letterOneHot);
-          await this._teachHebbianAsymmetric(preLet, postMot, lr, {
-            projectionsWhitelist: ["letter_to_motor"]
-          });
-          if (phonRegion) {
-            const phonFeat = _phonemeFeatureForLetter(letter);
-            const postPhon = this._buildRegionPattern(phonRegion, phonFeat);
-            await this._teachHebbianAsymmetric(preLet, postPhon, lr, {
-              projectionsWhitelist: ["letter_to_phon"]
-            });
-          }
-        }
-      }
-      await _microtask();
-    }
-    const dt = ((Date.now() - t0) / 1e3).toFixed(1);
-    this._hb(`[Curriculum] _teachLetterNaming DONE in ${dt}s (26 letters \xD7 ${reps} reps)`);
-    try {
-      const cluster2 = this.cluster;
-      const letterProj = cluster2?.crossProjections?.letter_to_motor;
-      const motorRegion2 = cluster2?.regions?.motor;
-      const letterRegion2 = cluster2?.regions?.letter;
-      if (letterProj && letterProj.propagate && motorRegion2 && letterRegion2 && letterProj.values) {
-        const letterSize = letterRegion2.end - letterRegion2.start;
-        const invSize = inventorySize();
-        const LETTERS = "abcdefghijklmnopqrstuvwxyz";
-        const results = [];
-        const distribution = /* @__PURE__ */ new Map();
-        for (const letter of LETTERS) {
-          const oneHot = encodeLetter(letter);
-          const gSize = Math.max(1, Math.floor(letterSize / oneHot.length));
-          const letterInput = new Float64Array(letterSize);
-          for (let d = 0; d < oneHot.length; d++) {
-            if (oneHot[d] <= 0) continue;
-            for (let n = 0; n < gSize; n++) {
-              const idx = d * gSize + n;
-              if (idx < letterSize) letterInput[idx] = 1;
-            }
-          }
-          const out = letterProj.propagate(letterInput);
-          if (!out || out.length === 0) {
-            results.push(`${letter}\u2192\u2205`);
-            continue;
-          }
-          const readoutSize = Math.min(invSize, 26);
-          const mGroup = Math.max(1, Math.floor(out.length / readoutSize));
-          const motorReadout = new Float64Array(readoutSize);
-          for (let d = 0; d < readoutSize; d++) {
-            let sum = 0;
-            for (let n = 0; n < mGroup; n++) {
-              const idx = d * mGroup + n;
-              if (idx < out.length) sum += out[idx];
-            }
-            motorReadout[d] = sum;
-          }
-          const decoded = decodeLetter(motorReadout) || "?";
-          results.push(`${letter}\u2192${decoded}`);
-          distribution.set(decoded, (distribution.get(decoded) || 0) + 1);
-        }
-        const distStr = [...distribution.entries()].sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k}:${v}`).join(" ");
-        const diagStr = results.slice(0, 8).join(" ") + (results.length > 8 ? " ..." : "");
-        this._hb(`[Curriculum][LETTER\u2192MOTOR DIAG] distribution: ${distStr}`);
-        this._hb(`[Curriculum][LETTER\u2192MOTOR DIAG] first 8: ${diagStr}`);
-        const stuck = distribution.size === 1;
-        if (stuck) {
-          this._hb(`[Curriculum][LETTER\u2192MOTOR DIAG] \u26A0\u26A0 MOTOR STUCK \u2014 every letter decodes to the same output. Attractor fixation or weight bias dominating training signal. Investigate excitatoryRatio + cross-projection init.`);
-        } else if (distribution.size < 10) {
-          this._hb(`[Curriculum][LETTER\u2192MOTOR DIAG] \u26A0 motor under-discriminates \u2014 only ${distribution.size}/26 distinct outputs. Training signal weak relative to init bias.`);
-        }
-      }
-    } catch (err) {
-      this._hb(`[Curriculum][LETTER\u2192MOTOR DIAG] probe failed: ${err?.message || err}`);
-    }
-  }
-  /**
-   * K.RF vowel sound variants — short vs long. Each vowel pairs with
-   * an example word for each variant. fineType tag marks short vs long
-   * so the cortex can discriminate.
-   */
-  async _teachVowelSoundVariants(ctx) {
-    const cluster = this.cluster;
-    if (!cluster || !cluster.crossProjections) return;
-    const letterRegion = cluster.regions.letter;
-    const phonRegion = cluster.regions.phon;
-    const semRegion = cluster.regions.sem;
-    const fineTypeRegion = cluster.regions.fineType;
-    if (!letterRegion || !phonRegion || !semRegion || !fineTypeRegion) return;
-    const fineTypeSize = fineTypeRegion.end - fineTypeRegion.start;
-    const shortTag = new Float64Array(fineTypeSize);
-    const longTag = new Float64Array(fineTypeSize);
-    const halfMark = Math.floor(fineTypeSize * 0.3);
-    const fullMark = Math.floor(fineTypeSize * 0.6);
-    for (let i = 0; i < halfMark; i++) shortTag[i] = 1;
-    for (let i = halfMark; i < fullMark; i++) longTag[i] = 1;
-    const VOWEL_VARIANTS = [
-      { vowel: "a", shortExample: "cat", longExample: "cake" },
-      { vowel: "e", shortExample: "bed", longExample: "bee" },
-      { vowel: "i", shortExample: "pig", longExample: "bike" },
-      { vowel: "o", shortExample: "hot", longExample: "bone" },
-      { vowel: "u", shortExample: "cup", longExample: "cute" }
-    ];
-    const facts = [];
-    for (const { vowel, shortExample, longExample } of VOWEL_VARIANTS) {
-      const shortEmb = sharedEmbeddings.getEmbedding(shortExample);
-      const longEmb = sharedEmbeddings.getEmbedding(longExample);
-      const phonFeat = _phonemeFeatureForLetter(vowel);
-      if (shortEmb && shortEmb.length > 0) {
-        facts.push({ writes: [
-          { region: letterRegion, feat: encodeLetter(vowel) },
-          { region: phonRegion, feat: phonFeat },
-          { region: semRegion, feat: shortEmb, binarize: false },
-          { region: fineTypeRegion, feat: shortTag }
-        ] });
-      }
-      if (longEmb && longEmb.length > 0) {
-        facts.push({ writes: [
-          { region: letterRegion, feat: encodeLetter(vowel) },
-          { region: phonRegion, feat: phonFeat },
-          { region: semRegion, feat: longEmb, binarize: false },
-          { region: fineTypeRegion, feat: longTag }
-        ] });
-      }
-    }
-    await this._teachCombination(facts, { reps: 24 });
-    this._hb(`[Curriculum] _teachVowelSoundVariants: ${facts.length} variants \xD7 24 reps`);
-  }
-  /**
-   * K.RF word emission — for each word, bind sem(GloVe) → motor(letter
-   * sequence) via DIRECTIONAL Hebbian. No
-   * symmetric writes, no self-loops. Initiation pair
-   * (pre=sem(word) → post=motor(first letter)) + continuation chain
-   * (pre=letter(N) → post=motor(N+1)). Per-step `_teachHebbianAsymmetric`
-   * with distinct pre/post vectors so intra-cluster recurrent matrix
-   * learns TRUE directional bindings without reinforcing w[i,i]
-   * self-loops that would make motor letters stick on emission.
-   *
-   * Covers K.RF Dolch sight words + CVC word families + any other
-   * vocabulary Unity needs to EMIT.
-   */
-  async _teachWordEmission(wordList, opts = {}) {
-    const cluster = this.cluster;
-    if (!cluster || !cluster.crossProjections) return;
-    const letterRegion = cluster.regions.letter;
-    const motorRegion = cluster.regions.motor;
-    const semRegion = cluster.regions.sem;
-    if (!letterRegion || !motorRegion || !semRegion) return;
-    const reps = opts.reps ?? 6;
-    const lr = cluster.learningRate;
-    const uniqueLetters = /* @__PURE__ */ new Set();
-    for (const w of wordList) for (const ch of w.toLowerCase()) if (/[a-z]/.test(ch)) uniqueLetters.add(ch);
-    ensureLetters(Array.from(uniqueLetters));
-    this._hb(`[Curriculum] _teachWordEmission START: ${wordList.length} words \xD7 ${reps} reps (asymmetric directional)`);
-    const scratch = this._ensureScratchBuffers();
-    const _t18_13_startMs = Date.now();
-    let _t18_13_lastHbMs = _t18_13_startMs;
-    let _t18_13_opsSinceHb = 0;
-    for (let rep = 0; rep < reps; rep++) {
-      if (typeof globalThis._brainShutdownRequested !== "undefined" && globalThis._brainShutdownRequested) return;
-      const isFinalRep = rep === reps - 1;
-      cluster._teachIntermediateRep = !isFinalRep;
-      cluster._teachFinalRepSampleEveryN = isFinalRep ? 5 : 0;
-      cluster._whitelistSampleCounter = 0;
-      let _wordIdx = 0;
-      for (const word of wordList) {
-        const letters = Array.from(word.toLowerCase().replace(/[^a-z]/g, ""));
-        _wordIdx++;
-        _t18_13_opsSinceHb++;
-        const _nowHb = Date.now();
-        if (_nowHb - _t18_13_lastHbMs > 5e3) {
-          const totalElapsed = ((_nowHb - _t18_13_startMs) / 1e3).toFixed(1);
-          const hbInterval = (_nowHb - _t18_13_lastHbMs) / 1e3;
-          const opsPerSec = (_t18_13_opsSinceHb / hbInterval).toFixed(1);
-          this._hb(`[Curriculum] \u23F1 _teachWordEmission heartbeat \u2014 rep ${rep + 1}/${reps}, word ${_wordIdx}/${wordList.length}, elapsed ${totalElapsed}s, ~${opsPerSec} words/s`);
-          _t18_13_lastHbMs = _nowHb;
-          _t18_13_opsSinceHb = 0;
-          await _microtask();
-        }
-        if (_wordIdx % 200 === 0) {
-          await _microtask();
-        }
-        if (letters.length === 0) continue;
-        const wordEmb = sharedEmbeddings.getEmbedding(word);
-        if (!wordEmb || wordEmb.length === 0) continue;
-        if (rep === 0 && this.dictionary && typeof this.dictionary.learnWord === "function") {
-          try {
-            this.dictionary.learnWord(word, null, this.arousal ?? 0.85, this.valence ?? 0);
-          } catch {
-          }
-        }
-        this._clearSpikes();
-        this._writeTiledPattern(semRegion, wordEmb);
-        this._writeTiledPattern(motorRegion, encodeLetter(letters[0]));
-        if (scratch) {
-          this._fillRegionPatternInto(scratch.pre, semRegion, wordEmb, false);
-          this._fillRegionPatternInto(scratch.post, motorRegion, encodeLetter(letters[0]));
-          await this._teachHebbianAsymmetric(scratch.pre, scratch.post, lr, {
-            projectionsWhitelist: ["sem_to_motor"]
-          });
-        } else {
-          const preInit = this._buildRegionPattern(semRegion, wordEmb, false);
-          const postInit = this._buildRegionPattern(motorRegion, encodeLetter(letters[0]));
-          await this._teachHebbianAsymmetric(preInit, postInit, lr, {
-            projectionsWhitelist: ["sem_to_motor"]
-          });
-        }
-        for (let i = 1; i < letters.length; i++) {
-          this._clearSpikes();
-          this._writeTiledPattern(semRegion, wordEmb);
-          this._writeTiledPattern(letterRegion, encodeLetter(letters[i - 1]));
-          this._writeTiledPattern(motorRegion, encodeLetter(letters[i]));
-          if (scratch) {
-            this._fillRegionPatternInto(scratch.pre, letterRegion, encodeLetter(letters[i - 1]));
-            this._fillRegionPatternInto(scratch.post, motorRegion, encodeLetter(letters[i]));
-            await this._teachHebbianAsymmetric(scratch.pre, scratch.post, lr, {
-              projectionsWhitelist: ["letter_to_motor"]
-            });
-          } else {
-            const preChain = this._buildRegionPattern(letterRegion, encodeLetter(letters[i - 1]));
-            const postChain = this._buildRegionPattern(motorRegion, encodeLetter(letters[i]));
-            await this._teachHebbianAsymmetric(preChain, postChain, lr, {
-              projectionsWhitelist: ["letter_to_motor"]
-            });
-          }
-        }
-      }
-      await _microtask();
-    }
-    cluster._teachIntermediateRep = false;
-    cluster._teachFinalRepSampleEveryN = 0;
-    this._hb(`[Curriculum] _teachWordEmission DONE: ${wordList.length} words \xD7 ${reps} reps`);
-  }
-  /**
-   * K.RF rhyme families — teach words sharing a rime (e.g. -at in
-   * cat/hat/bat) get bound to a "rhymes" fineType tag. Given a query
-   * word, the probe tests whether the cortex can emit a rhyming word.
-   */
-  async _teachRhymeFamilies(ctx) {
-    const cluster = this.cluster;
-    if (!cluster || !cluster.crossProjections) return;
-    const semRegion = cluster.regions.sem;
-    const motorRegion = cluster.regions.motor;
-    const fineTypeRegion = cluster.regions.fineType;
-    if (!semRegion || !motorRegion || !fineTypeRegion) return;
-    const fineTypeSize = fineTypeRegion.end - fineTypeRegion.start;
-    const rhymeTag = new Float64Array(fineTypeSize);
-    const tagStart = Math.floor(fineTypeSize * 0.6);
-    const tagEnd = Math.floor(fineTypeSize * 0.8);
-    for (let i = tagStart; i < tagEnd; i++) rhymeTag[i] = 1;
-    const SEED_RIMES = {
-      at: ["cat", "hat", "bat", "mat", "sat", "rat", "fat", "pat"],
-      an: ["can", "man", "ran", "fan", "van", "pan", "tan"],
-      ig: ["big", "dig", "pig", "wig", "fig"],
-      og: ["dog", "log", "fog", "jog", "hog"],
-      ot: ["hot", "not", "got", "dot", "lot", "pot"],
-      en: ["pen", "hen", "men", "ten", "den"],
-      ug: ["bug", "hug", "mug", "rug", "tug", "jug"],
-      ed: ["bed", "red", "fed", "led"],
-      ip: ["hip", "lip", "sip", "tip", "zip", "rip"],
-      un: ["fun", "run", "sun", "bun", "gun"]
-    };
-    const families = /* @__PURE__ */ new Map();
-    for (const [rime, seedWords] of Object.entries(SEED_RIMES)) {
-      const set = /* @__PURE__ */ new Set();
-      for (const w of seedWords) set.add(w);
-      families.set(rime, set);
-    }
-    if (this.dictionary && this.dictionary._words && typeof this.dictionary._words.keys === "function") {
-      for (const word of this.dictionary._words.keys()) {
-        if (typeof word !== "string") continue;
-        if (!/^[a-z]{3,}$/.test(word)) continue;
-        const rime = word.slice(-2);
-        if (!families.has(rime)) families.set(rime, /* @__PURE__ */ new Set());
-        families.get(rime).add(word);
-      }
-    }
-    const ranked = [...families.entries()].map(([rime, set]) => [rime, [...set]]).filter(([, words]) => words.length >= 2).sort((a, b) => b[1].length - a[1].length);
-    const TOP_FAMILIES = 30;
-    const MEMBERS_PER_FAMILY = 6;
-    const facts = [];
-    let trainedFamilies = 0;
-    for (const [, words] of ranked.slice(0, TOP_FAMILIES)) {
-      const members = words.slice(0, MEMBERS_PER_FAMILY);
-      let pairsThisFamily = 0;
-      for (const a of members) {
-        const aEmb = sharedEmbeddings.getEmbedding(a);
-        if (!aEmb || aEmb.length === 0) continue;
-        for (const b of members) {
-          if (a === b) continue;
-          const bEmb = sharedEmbeddings.getEmbedding(b);
-          if (!bEmb || bEmb.length === 0) continue;
-          facts.push({ writes: [
-            { region: semRegion, feat: aEmb, binarize: false },
-            { region: motorRegion, feat: encodeLetter(b[0]) },
-            { region: fineTypeRegion, feat: rhymeTag }
-          ] });
-          pairsThisFamily++;
-        }
-      }
-      if (pairsThisFamily > 0) trainedFamilies++;
-    }
-    await this._teachCombination(facts, { reps: 12 });
-    this._hb(`[Curriculum] _teachRhymeFamilies: ${facts.length} rhyme pairs across ${trainedFamilies} families (vocab-derived) \xD7 12 reps`);
-  }
-  /**
-   * K.RF syllable counting — word → magnitude(syllable count).
-   * Simplistic syllable counter via vowel-group count.
-   */
-  async _teachSyllableCounts(ctx) {
-    const cluster = this.cluster;
-    if (!cluster || !cluster.crossProjections) return;
-    const semRegion = cluster.regions.sem;
-    const freeRegion = cluster.regions.free;
-    if (!semRegion || !freeRegion) return;
-    function countSyllables(word) {
-      const w = word.toLowerCase().replace(/[^a-z]/g, "");
-      if (!w) return 0;
-      let count = 0;
-      let inVowel = false;
-      for (const ch of w) {
-        const isVowel = "aeiouy".includes(ch);
-        if (isVowel && !inVowel) count++;
-        inVowel = isVowel;
-      }
-      return Math.max(1, count);
-    }
-    const MULTI_SYLLABLE_SEED = [
-      "apple",
-      "pencil",
-      "table",
-      "water",
-      "happy",
-      "rabbit",
-      "pumpkin",
-      "cupcake",
-      "monkey",
-      // 2 syllables
-      "elephant",
-      "banana",
-      "computer",
-      "tomato",
-      "family",
-      "syllable",
-      "animal",
-      "remember",
-      "beautiful",
-      // 3 syllables
-      "watermelon",
-      "alligator",
-      "caterpillar",
-      "television",
-      // 4 syllables
-      "kindergarten"
-      // 4 syllables
-    ];
-    const MAX_DICT_WORDS = 250;
-    const wordSet = /* @__PURE__ */ new Set();
-    for (const w of MULTI_SYLLABLE_SEED) wordSet.add(w);
-    if (this.dictionary && this.dictionary._words && typeof this.dictionary._words.entries === "function") {
-      const dictEntries = [];
-      for (const [w, entry] of this.dictionary._words.entries()) {
-        if (typeof w !== "string" || !/^[a-z]{2,}$/.test(w)) continue;
-        const freq = entry && typeof entry.frequency === "number" ? entry.frequency : 1;
-        dictEntries.push([w, freq]);
-      }
-      dictEntries.sort((a, b) => b[1] - a[1]);
-      for (let i = 0; i < dictEntries.length && wordSet.size < MAX_DICT_WORDS; i++) {
-        wordSet.add(dictEntries[i][0]);
-      }
-    }
-    const facts = [];
-    let skippedNoEmb = 0;
-    for (const word of wordSet) {
-      const emb = sharedEmbeddings.getEmbedding(word);
-      if (!emb || emb.length === 0) {
-        skippedNoEmb++;
-        continue;
-      }
-      const syllables = countSyllables(word);
-      facts.push({ writes: [
-        { region: semRegion, feat: emb, binarize: false },
-        { region: freeRegion, feat: _magnitudeFeatureForDigit(String(Math.min(9, syllables))) }
-      ] });
-    }
-    const reps = 6;
-    await this._teachCombination(facts, { reps });
-    this._hb(`[Curriculum] _teachSyllableCounts: ${facts.length} words (top-${MAX_DICT_WORDS} by frequency from live vocab + multi-syllable seed) \xD7 ${reps} reps \xB7 ${skippedNoEmb} skipped (no GloVe)`);
-  }
-  /**
-   * K.RF CVC sound isolation — given a CVC word, cortex learns the
-   * initial/medial-vowel/final phoneme features in distinct fineType
-   * regions. Probe tests "What sound does cat start with?" → /c/.
-   */
-  async _teachCVCSoundIsolation(ctx) {
-    const cluster = this.cluster;
-    if (!cluster || !cluster.crossProjections) return;
-    const semRegion = cluster.regions.sem;
-    const phonRegion = cluster.regions.phon;
-    const motorRegion = cluster.regions.motor;
-    const fineTypeRegion = cluster.regions.fineType;
-    if (!semRegion || !phonRegion || !motorRegion || !fineTypeRegion) return;
-    const fineTypeSize = fineTypeRegion.end - fineTypeRegion.start;
-    const initialTag = new Float64Array(fineTypeSize);
-    const medialTag = new Float64Array(fineTypeSize);
-    const finalTag = new Float64Array(fineTypeSize);
-    const third = Math.floor(fineTypeSize / 3);
-    for (let i = 0; i < third; i++) initialTag[i] = 1;
-    for (let i = third; i < 2 * third; i++) medialTag[i] = 1;
-    for (let i = 2 * third; i < fineTypeSize; i++) finalTag[i] = 1;
-    const CVC_VOWELS = "aeiou";
-    const isCVC = (w) => {
-      if (typeof w !== "string" || w.length !== 3) return false;
-      if (!/^[a-z]{3}$/.test(w)) return false;
-      return !CVC_VOWELS.includes(w[0]) && CVC_VOWELS.includes(w[1]) && !CVC_VOWELS.includes(w[2]);
-    };
-    const CVC_SEED = [
-      "cat",
-      "bat",
-      "hat",
-      "mat",
-      "rat",
-      "sat",
-      "fat",
-      "pat",
-      "can",
-      "man",
-      "ran",
-      "fan",
-      "pan",
-      "tan",
-      "van",
-      "big",
-      "dig",
-      "pig",
-      "wig",
-      "fig",
-      "dog",
-      "log",
-      "fog",
-      "jog",
-      "hog",
-      "hot",
-      "not",
-      "got",
-      "dot",
-      "pot",
-      "lot",
-      "pen",
-      "hen",
-      "men",
-      "ten",
-      "den",
-      "bug",
-      "hug",
-      "mug",
-      "rug",
-      "tug",
-      "jug",
-      "bed",
-      "red",
-      "fed",
-      "led",
-      "cup",
-      "pup",
-      "sup",
-      "sun",
-      "run",
-      "fun",
-      "bun",
-      "gun",
-      "hip",
-      "lip",
-      "sip",
-      "tip",
-      "zip",
-      "rip"
-    ];
-    const MAX_CVC_WORDS = 80;
-    const cvcSet = /* @__PURE__ */ new Set();
-    for (const w of CVC_SEED) if (isCVC(w)) cvcSet.add(w);
-    if (this.dictionary && this.dictionary._words && typeof this.dictionary._words.keys === "function") {
-      for (const word of this.dictionary._words.keys()) {
-        if (cvcSet.size >= MAX_CVC_WORDS) break;
-        if (isCVC(word)) cvcSet.add(word);
-      }
-    }
-    const facts = [];
-    for (const word of cvcSet) {
-      const letters = Array.from(word);
-      if (letters.length !== 3) continue;
-      const emb = sharedEmbeddings.getEmbedding(word);
-      if (!emb || emb.length === 0) continue;
-      facts.push({ writes: [
-        { region: semRegion, feat: emb, binarize: false },
-        { region: phonRegion, feat: _phonemeFeatureForLetter(letters[0]) },
-        { region: motorRegion, feat: encodeLetter(letters[0]) },
-        { region: fineTypeRegion, feat: initialTag }
-      ] });
-      facts.push({ writes: [
-        { region: semRegion, feat: emb, binarize: false },
-        { region: phonRegion, feat: _phonemeFeatureForLetter(letters[1]) },
-        { region: motorRegion, feat: encodeLetter(letters[1]) },
-        { region: fineTypeRegion, feat: medialTag }
-      ] });
-      facts.push({ writes: [
-        { region: semRegion, feat: emb, binarize: false },
-        { region: phonRegion, feat: _phonemeFeatureForLetter(letters[2]) },
-        { region: motorRegion, feat: encodeLetter(letters[2]) },
-        { region: fineTypeRegion, feat: finalTag }
-      ] });
-    }
-    await this._teachCombination(facts, { reps: 12 });
-    this._hb(`[Curriculum] _teachCVCSoundIsolation: ${facts.length} phoneme facts across ${cvcSet.size} CVC words (vocab-derived) \xD7 12 reps`);
-  }
-  /**
-   * K.L plural formation — cat → cats, box → boxes. Teaches the
-   * singular-to-plural transform via motor emission of -s or -es
-   * ending. Uses fineType "plural-query" tag for query context.
-   */
-  async _teachPluralTransform(ctx) {
-    const cluster = this.cluster;
-    if (!cluster || !cluster.crossProjections) return;
-    const semRegion = cluster.regions.sem;
-    const motorRegion = cluster.regions.motor;
-    const fineTypeRegion = cluster.regions.fineType;
-    if (!semRegion || !motorRegion || !fineTypeRegion) return;
-    const fineTypeSize = fineTypeRegion.end - fineTypeRegion.start;
-    const pluralTag = new Float64Array(fineTypeSize);
-    const tagStart = Math.floor(fineTypeSize * 0.8);
-    for (let i = tagStart; i < fineTypeSize; i++) pluralTag[i] = 1;
-    const IRREGULAR_SEED = [
-      ["foot", "feet"],
-      ["man", "men"],
-      ["woman", "women"],
-      ["child", "children"],
-      ["tooth", "teeth"],
-      ["mouse", "mice"],
-      ["fish", "fish"],
-      ["sheep", "sheep"],
-      ["deer", "deer"],
-      ["hand", "hands"],
-      ["ball", "balls"],
-      ["book", "books"]
-    ];
-    const pairs = [];
-    const pairKey = /* @__PURE__ */ new Set();
-    const addPair = (s, p) => {
-      if (!s || !p) return;
-      const k = `${s}|${p}`;
-      if (pairKey.has(k)) return;
-      pairKey.add(k);
-      pairs.push([s, p]);
-    };
-    for (const [s, p] of IRREGULAR_SEED) addPair(s, p);
-    const MAX_PAIRS = 50;
-    if (this.dictionary && this.dictionary._words && typeof this.dictionary._words.keys === "function") {
-      const dictWords = /* @__PURE__ */ new Set();
-      for (const w of this.dictionary._words.keys()) {
-        if (typeof w === "string" && /^[a-z]{2,}$/.test(w)) dictWords.add(w);
-      }
-      for (const word of dictWords) {
-        if (pairs.length >= MAX_PAIRS) break;
-        if (word.endsWith("ies") && word.length >= 5) {
-          const root = word.slice(0, -3) + "y";
-          if (dictWords.has(root)) {
-            addPair(root, word);
-            continue;
-          }
-        }
-        if (word.endsWith("es") && word.length >= 4) {
-          const root = word.slice(0, -2);
-          if (dictWords.has(root)) {
-            addPair(root, word);
-            continue;
-          }
-        }
-        if (word.endsWith("s") && word.length >= 3 && !word.endsWith("ss") && !word.endsWith("us") && !word.endsWith("is")) {
-          const root = word.slice(0, -1);
-          if (dictWords.has(root)) addPair(root, word);
-        }
-      }
-    }
-    const facts = [];
-    for (const [singular, plural] of pairs) {
-      const sEmb = sharedEmbeddings.getEmbedding(singular);
-      const pEmb = sharedEmbeddings.getEmbedding(plural);
-      if (!sEmb || !pEmb) continue;
-      facts.push({ writes: [
-        { region: semRegion, feat: sEmb, binarize: false },
-        { region: motorRegion, feat: encodeLetter(plural[0]) },
-        { region: fineTypeRegion, feat: pluralTag }
-      ] });
-      facts.push({ writes: [
-        { region: semRegion, feat: pEmb, binarize: false },
-        { region: motorRegion, feat: encodeLetter(singular[0]) }
-      ] });
-    }
-    await this._teachCombination(facts, { reps: 18 });
-    this._hb(`[Curriculum] _teachPluralTransform: ${facts.length} plural fact-writes across ${pairs.length} singular/plural pairs (vocab-derived + irregular seed) \xD7 18 reps`);
-  }
-  /**
-   * K.L question word categories — who/what/where/when/why/how bind
-   * to the category they ask about (person/thing/place/time/reason/manner).
-   * Probe tests "What question word asks about a person?" → who.
-   */
-  async _teachQuestionWordCategories(ctx) {
-    const cluster = this.cluster;
-    if (!cluster || !cluster.crossProjections) return;
-    const semRegion = cluster.regions.sem;
-    const motorRegion = cluster.regions.motor;
-    if (!semRegion || !motorRegion) return;
-    const Q_CATEGORY = [
-      { qword: "who", category: "person" },
-      { qword: "what", category: "thing" },
-      { qword: "where", category: "place" },
-      { qword: "when", category: "time" },
-      { qword: "why", category: "reason" },
-      { qword: "how", category: "manner" }
-    ];
-    const facts = [];
-    for (const { qword, category } of Q_CATEGORY) {
-      const qEmb = sharedEmbeddings.getEmbedding(qword);
-      const cEmb = sharedEmbeddings.getEmbedding(category);
-      if (!qEmb || !cEmb) continue;
-      facts.push({ writes: [
-        { region: semRegion, feat: cEmb, binarize: false },
-        { region: motorRegion, feat: encodeLetter(qword[0]) }
-      ] });
-      facts.push({ writes: [
-        { region: semRegion, feat: qEmb, binarize: false },
-        { region: motorRegion, feat: encodeLetter(category[0]) }
-      ] });
-    }
-    await this._teachCombination(facts, { reps: 24 });
-    this._hb(`[Curriculum] _teachQuestionWordCategories: ${facts.length} pairs \xD7 24 reps`);
-  }
-  /**
-   * K.L end punctuation — declarative → period, question → question
-   * mark, exclamation → exclamation point. FineType tag marks sentence
-   * type so motor emits the right terminator.
-   */
-  async _teachEndPunctuation(ctx) {
-    const cluster = this.cluster;
-    if (!cluster || !cluster.crossProjections) return;
-    const semRegion = cluster.regions.sem;
-    const motorRegion = cluster.regions.motor;
-    const fineTypeRegion = cluster.regions.fineType;
-    if (!semRegion || !motorRegion || !fineTypeRegion) return;
-    ensureLetters([".", "?", "!"]);
-    const fineTypeSize = fineTypeRegion.end - fineTypeRegion.start;
-    const declarativeTag = new Float64Array(fineTypeSize);
-    const questionTag = new Float64Array(fineTypeSize);
-    const exclamationTag = new Float64Array(fineTypeSize);
-    const third = Math.floor(fineTypeSize / 3);
-    for (let i = 0; i < third; i++) declarativeTag[i] = 1;
-    for (let i = third; i < 2 * third; i++) questionTag[i] = 1;
-    for (let i = 2 * third; i < fineTypeSize; i++) exclamationTag[i] = 1;
-    const SENTENCE_STARTS = [
-      { start: "the", type: "declarative" },
-      { start: "i", type: "declarative" },
-      { start: "we", type: "declarative" },
-      { start: "she", type: "declarative" },
-      { start: "he", type: "declarative" },
-      { start: "what", type: "question" },
-      { start: "who", type: "question" },
-      { start: "where", type: "question" },
-      { start: "when", type: "question" },
-      { start: "why", type: "question" },
-      { start: "how", type: "question" },
-      { start: "is", type: "question" },
-      { start: "are", type: "question" },
-      { start: "do", type: "question" },
-      { start: "does", type: "question" },
-      { start: "wow", type: "exclamation" },
-      { start: "oh", type: "exclamation" }
-    ];
-    const facts = [];
-    for (const { start, type } of SENTENCE_STARTS) {
-      const emb = sharedEmbeddings.getEmbedding(start);
-      if (!emb) continue;
-      let tag, terminator;
-      if (type === "question") {
-        tag = questionTag;
-        terminator = "?";
-      } else if (type === "exclamation") {
-        tag = exclamationTag;
-        terminator = "!";
-      } else {
-        tag = declarativeTag;
-        terminator = ".";
-      }
-      facts.push({ writes: [
-        { region: semRegion, feat: emb, binarize: false },
-        { region: fineTypeRegion, feat: tag },
-        { region: motorRegion, feat: encodeLetter(terminator) }
-      ] });
-    }
-    await this._teachCombination(facts, { reps: 18 });
-    this._hb(`[Curriculum] _teachEndPunctuation: ${facts.length} sentence types \xD7 18 reps`);
-  }
-  /**
-   * K.RL character/setting/event extraction — simple stories get taught
-   * with character/setting/event tags so "Who sat on the mat?" can
-   * be answered by emitting the character's name.
-   */
-  async _teachStoryComprehension(ctx) {
-    const cluster = this.cluster;
-    if (!cluster || !cluster.crossProjections) return;
-    const semRegion = cluster.regions.sem;
-    const motorRegion = cluster.regions.motor;
-    const fineTypeRegion = cluster.regions.fineType;
-    if (!semRegion || !motorRegion || !fineTypeRegion) return;
-    const fineTypeSize = fineTypeRegion.end - fineTypeRegion.start;
-    const charTag = new Float64Array(fineTypeSize);
-    const settingTag = new Float64Array(fineTypeSize);
-    const eventTag = new Float64Array(fineTypeSize);
-    const third = Math.floor(fineTypeSize / 3);
-    for (let i = 0; i < third; i++) charTag[i] = 1;
-    for (let i = third; i < 2 * third; i++) settingTag[i] = 1;
-    for (let i = 2 * third; i < fineTypeSize; i++) eventTag[i] = 1;
-    const STORIES = [
-      {
-        stem: "sam the cat sat on a mat",
-        character: "sam",
-        setting: "mat",
-        event: "sat"
-      },
-      {
-        stem: "sam saw a dog",
-        character: "sam",
-        setting: "home",
-        event: "saw"
-      },
-      {
-        stem: "sam ran away",
-        character: "sam",
-        setting: "away",
-        event: "ran"
-      },
-      {
-        stem: "the dog played in the yard",
-        character: "dog",
-        setting: "yard",
-        event: "played"
-      },
-      {
-        stem: "mom read a book",
-        character: "mom",
-        setting: "home",
-        event: "read"
-      },
-      {
-        stem: "the cat slept on the bed",
-        character: "cat",
-        setting: "bed",
-        event: "slept"
-      }
-    ];
-    const facts = [];
-    for (const { stem, character, setting, event } of STORIES) {
-      const stemEmb = sharedEmbeddings.getEmbedding(stem.split(" ").slice(0, 2).join(" ")) || sharedEmbeddings.getEmbedding(stem.split(" ")[0]);
-      if (!stemEmb) continue;
-      const charEmb = sharedEmbeddings.getEmbedding(character);
-      const settingEmb = sharedEmbeddings.getEmbedding(setting);
-      const eventEmb = sharedEmbeddings.getEmbedding(event);
-      if (charEmb) facts.push({ writes: [
-        { region: semRegion, feat: stemEmb, binarize: false },
-        { region: motorRegion, feat: encodeLetter(character[0]) },
-        { region: fineTypeRegion, feat: charTag }
-      ] });
-      if (settingEmb) facts.push({ writes: [
-        { region: semRegion, feat: stemEmb, binarize: false },
-        { region: motorRegion, feat: encodeLetter(setting[0]) },
-        { region: fineTypeRegion, feat: settingTag }
-      ] });
-      if (eventEmb) facts.push({ writes: [
-        { region: semRegion, feat: stemEmb, binarize: false },
-        { region: motorRegion, feat: encodeLetter(event[0]) },
-        { region: fineTypeRegion, feat: eventTag }
-      ] });
-    }
-    await this._teachCombination(facts, { reps: 18 });
-    this._hb(`[Curriculum] _teachStoryComprehension: ${facts.length} story facts \xD7 18 reps`);
-  }
-  /**
-   * Phase 2 — PHONEME BLENDING via sequence Hebbian in phon region.
-   * For each word, streams its phonemes through the phon region and
-   * fires cluster.synapses.hebbianUpdate(phoneme_n, phoneme_n+1) to
-   * teach the recurrent matrix that /c/ tends to be followed by /a/
-   * which tends to be followed by /t/ (for "cat") — the blending
-   * operation that lets Unity decode words from letter sequences by
-   * running the phoneme chain forward.
-   *
-   * Reverse direction is achieved by symmetric Hebbian side-effect:
-   * sem(word)→phon(first_phoneme)→... → motor(letter) chain emerges
-   * from the trained phon recurrent weights when the cortex is
-   * primed via sem.
-   */
-  async _teachPhonemeBlending(wordList, opts = {}) {
-    const cluster = this.cluster;
-    if (!cluster || !cluster.synapses) return;
-    const phonRegion = cluster.regions.phon;
-    const letterRegion = cluster.regions.letter;
-    const semRegion = cluster.regions.sem;
-    if (!phonRegion || !letterRegion || !semRegion) return;
-    const reps = opts.reps ?? 6;
-    const lr = cluster.learningRate;
-    const uniqueLetters = /* @__PURE__ */ new Set();
-    for (const w of wordList) for (const ch of w.toLowerCase()) if (/[a-z]/.test(ch)) uniqueLetters.add(ch);
-    ensureLetters(Array.from(uniqueLetters));
-    this._hb(`[Curriculum] _teachPhonemeBlending START: ${wordList.length} words \xD7 ${reps} reps (phoneme-sequence Hebbian)`);
-    const scratch = this._ensureScratchBuffers();
-    const _t18_13_startMs = Date.now();
-    let _t18_13_lastHbMs = _t18_13_startMs;
-    let _t18_13_opsSinceHb = 0;
-    for (let rep = 0; rep < reps; rep++) {
-      if (typeof globalThis._brainShutdownRequested !== "undefined" && globalThis._brainShutdownRequested) return;
-      const isFinalRep = rep === reps - 1;
-      cluster._teachIntermediateRep = !isFinalRep;
-      cluster._teachFinalRepSampleEveryN = isFinalRep ? 5 : 0;
-      cluster._whitelistSampleCounter = 0;
-      let _wordIdx = 0;
-      for (const word of wordList) {
-        const letters = Array.from(word.toLowerCase().replace(/[^a-z]/g, ""));
-        _wordIdx++;
-        _t18_13_opsSinceHb++;
-        const _nowHb = Date.now();
-        if (_nowHb - _t18_13_lastHbMs > 5e3) {
-          const totalElapsed = ((_nowHb - _t18_13_startMs) / 1e3).toFixed(1);
-          const hbInterval = (_nowHb - _t18_13_lastHbMs) / 1e3;
-          const opsPerSec = (_t18_13_opsSinceHb / hbInterval).toFixed(1);
-          this._hb(`[Curriculum] \u23F1 _teachPhonemeBlending heartbeat \u2014 rep ${rep + 1}/${reps}, word ${_wordIdx}/${wordList.length}, elapsed ${totalElapsed}s, ~${opsPerSec} words/s`);
-          _t18_13_lastHbMs = _nowHb;
-          _t18_13_opsSinceHb = 0;
-          await _microtask();
-        }
-        if (_wordIdx % 200 === 0) {
-          await _microtask();
-        }
-        if (letters.length < 2) continue;
-        const wordEmb = sharedEmbeddings.getEmbedding(word);
-        if (rep === 0 && this.dictionary && typeof this.dictionary.learnWord === "function") {
-          try {
-            this.dictionary.learnWord(word, null, this.arousal ?? 0.85, this.valence ?? 0);
-          } catch {
-          }
-        }
-        for (let i = 0; i < letters.length - 1; i++) {
-          const phonA = _phonemeFeatureForLetter(letters[i]);
-          const phonB = _phonemeFeatureForLetter(letters[i + 1]);
-          if (!phonA.some((v) => v > 0) || !phonB.some((v) => v > 0)) continue;
-          let pre, post;
-          if (scratch) {
-            pre = this._fillRegionPatternInto(scratch.pre, phonRegion, phonA);
-            post = this._fillRegionPatternInto(scratch.post, phonRegion, phonB);
-          } else {
-            pre = this._buildRegionPattern(phonRegion, phonA);
-            post = this._buildRegionPattern(phonRegion, phonB);
-          }
-          if (typeof cluster.intraSynapsesHebbian === "function") {
-            cluster.intraSynapsesHebbian(pre, post, lr);
-          } else {
-            await cluster.intraSynapsesHebbian(pre, post, lr);
-          }
-          this._clearSpikes();
-          this._writeTiledPattern(letterRegion, encodeLetter(letters[i]));
-          this._writeTiledPattern(phonRegion, phonA);
-          if (wordEmb && wordEmb.length > 0) this._writeTiledPattern(semRegion, wordEmb);
-          await cluster._crossRegionHebbian(lr);
-        }
-      }
-      await _microtask();
-    }
-    cluster._teachIntermediateRep = false;
-    cluster._teachFinalRepSampleEveryN = 0;
-    this._hb(`[Curriculum] _teachPhonemeBlending DONE: ${wordList.length} words \xD7 ${reps} reps`);
-  }
-  /**
-   * K.L capitalization — first word of sentence + pronoun "I" get
-   * capital marker. Teaches cortex when to emit uppercase form.
-   */
-  async _teachCapitalization(ctx) {
-    const cluster = this.cluster;
-    if (!cluster || !cluster.crossProjections) return;
-    const letterRegion = cluster.regions.letter;
-    const motorRegion = cluster.regions.motor;
-    const fineTypeRegion = cluster.regions.fineType;
-    if (!letterRegion || !motorRegion || !fineTypeRegion) return;
-    ensureLetters(Array.from(ALPHABET_ORDER.toUpperCase()));
-    const fineTypeSize = fineTypeRegion.end - fineTypeRegion.start;
-    const capTag = new Float64Array(fineTypeSize);
-    const tagStart = Math.floor(fineTypeSize * 0.4);
-    const tagEnd = Math.floor(fineTypeSize * 0.6);
-    for (let i = tagStart; i < tagEnd; i++) capTag[i] = 1;
-    const facts = [];
-    facts.push({ writes: [
-      { region: letterRegion, feat: encodeLetter("i") },
-      { region: motorRegion, feat: encodeLetter("I") },
-      { region: fineTypeRegion, feat: capTag }
-    ] });
-    for (const letter of ALPHABET_ORDER) {
-      facts.push({ writes: [
-        { region: letterRegion, feat: encodeLetter(letter) },
-        { region: motorRegion, feat: encodeLetter(letter.toUpperCase()) },
-        { region: fineTypeRegion, feat: capTag }
-      ] });
-    }
-    await this._teachCombination(facts, { reps: 15 });
-    this._hb(`[Curriculum] _teachCapitalization: ${facts.length} cap facts \xD7 15 reps`);
-  }
+  // 13 K-ELA letter/phoneme/word teach helpers EXTRACTED to
+  // js/brain/curriculum/kindergarten.js K_MIXIN (per-grade file architecture).
+  //   _teachLetterCaseBinding, _teachLetterNaming, _teachVowelSoundVariants,
+  //   _teachWordEmission, _teachRhymeFamilies, _teachSyllableCounts,
+  //   _teachCVCSoundIsolation, _teachPluralTransform, _teachQuestionWordCategories,
+  //   _teachEndPunctuation, _teachStoryComprehension, _teachPhonemeBlending,
+  //   _teachCapitalization.
+  // Called only from K cell runners. Shared primitives (_teachAssociationPairs,
+  // _teachCombination, _teachHebbian, _teachSentenceStructures, _teachDefinitionFirst,
+  // _teachWordInContext) stay on Curriculum.prototype here.
   // runElaKReal EXTRACTED to js/brain/curriculum/kindergarten.js K_MIXIN (2026-04-24).
   async _pregateEnrichment(cellKey, opts = {}) {
     if (!cellKey) return;
