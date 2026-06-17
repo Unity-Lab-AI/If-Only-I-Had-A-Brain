@@ -7438,32 +7438,37 @@ export class Curriculum {
           // `_currentSubject` is null but `cluster._activePhase` is
           // populated. The macro-phase fills the gap — dashboard reads
           // this when no real cell is active.
-          this._currentMacroPhase = '📚 K-VOCAB-PREFETCH (pre-cell setup)';
+          this._currentMacroPhase = '📚 K-VOCAB-PREFETCH (background warm)';
           const { K_VOCABULARY } = await import('./k-vocabulary.js');
           if (Array.isArray(K_VOCABULARY) && K_VOCABULARY.length > 0) {
-            // 114.19ew — surface prefetch progress to dashboard. Without
-            // this, master had no way to see "how much longer until
-            // pre-cell setup finishes". `_macroPhaseProgress` populates
-            // a {current, total, label} struct that getCurriculumStatus
-            // returns for the dashboard to render as a progress bar.
-            // Prefetch is one big batch (no intermediate progress
-            // report from definitionService.prefetch), so we only get
-            // start (0/N) → done (N/N). Seed phase below has chunk-
-            // level granularity so progress ticks up smoothly.
+            // Prefetch fires FIRE-AND-FORGET in the background — does NOT
+            // block curriculum progress. Earlier blocking variant could
+            // stall the entire pre-cell setup for 10-30 minutes on a
+            // cold-cache cold boot (dictionaryapi.dev rate-limits hit
+            // the upfront batch at concurrency=5 + 5s backoff per 429).
+            // Brain now proceeds immediately to UPFRONT-MULTIDEF SEED
+            // which has chunk-level progress logging — operator sees
+            // visible Hebbian work happening while the API cache warms
+            // up in the background. Words that haven't cached yet by
+            // the time their chunk runs will fetch on demand via
+            // `_teachWordDefinition`'s per-word 15s timeout (es.1-es.4).
             this._macroPhaseProgress = {
               current: 0,
               total: K_VOCABULARY.length,
-              label: 'K-VOCAB-PREFETCH',
+              label: 'K-VOCAB-PREFETCH (background)',
             };
-            this._hb(`[Curriculum] 📚 K-VOCAB-PREFETCH START — warming cache for ${K_VOCABULARY.length} K-grade words (network-bound, ~1 min).`);
-            const stats = await cluster.prefetchDefinitions(K_VOCABULARY, { timeoutMs: 8000 });
+            this._hb(`[Curriculum] 📚 K-VOCAB-PREFETCH START — background warm for ${K_VOCABULARY.length} K-grade words (does NOT block curriculum; seed begins immediately).`);
+            cluster.prefetchDefinitions(K_VOCABULARY, { timeoutMs: 8000 })
+              .then(stats => {
+                this._hb(`[Curriculum] 📚 K-VOCAB-PREFETCH (background) DONE — ${stats?.prefetched || 0} new definitions cached, ${stats?.alreadyCached || 0} already cached.`);
+              })
+              .catch(err => {
+                this._hb(`[Curriculum] 📚 K-VOCAB-PREFETCH (background) error (non-fatal — words fetch on demand): ${err?.message || err}`);
+              });
+            // Mark prefetched so the K start gate doesn't re-trigger the
+            // background warm on subsequent curriculum loop entries.
+            // Words not yet cached fetch reactively from `_teachWordDefinition`.
             cluster._kVocabPrefetched = true;
-            this._macroPhaseProgress = {
-              current: K_VOCABULARY.length,
-              total: K_VOCABULARY.length,
-              label: 'K-VOCAB-PREFETCH (done)',
-            };
-            this._hb(`[Curriculum] 📚 K-VOCAB-PREFETCH DONE — ${stats?.prefetched || 0} new definitions cached, ${stats?.alreadyCached || 0} already cached.`);
 
             // Session 114.19ei — moderate upfront multi-def Hebbian seed.
             // prior directive: *"lets do a little bit of all three to the
