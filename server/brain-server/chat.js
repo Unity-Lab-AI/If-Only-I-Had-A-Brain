@@ -30,6 +30,13 @@
 // this.curriculum, this.persona, this.languageCortex, the inner-thought
 // chain, the emission ring, the chat-turn history etc.
 
+// Module-level requires. Pre-fix the P4.3.d extraction did not bring
+// these along — the mixin relied on the parent brain-server.js scope.
+// Caught by operator 2026-06-17 live test boot crash cascade.
+const path = require('path');
+const fs = require('fs');
+const os = require('os');
+
 const SERVER_CHAT_MIXIN = {
   async processAndRespond(text, userId) {
     // Inject text into brain

@@ -30,6 +30,15 @@
 // compatible. They access this._gpuClient (the compute.html WS), the
 // sparse-protocol request map, the pending-batch queue, etc.
 
+// Module-level requires. Pre-fix the P4.3.a extraction did not bring
+// these along — the mixin relied on the parent brain-server.js scope
+// which doesn't work across module boundaries in CommonJS. Caught by
+// operator 2026-06-17 live test boot crash cascade in memory.js but
+// affecting every mixin file.
+const path = require('path');
+const fs = require('fs');
+const { execSync } = require('child_process');
+
 const SERVER_GPU_MIXIN = {
   async _gpuStep(clusterName) {
     if (!this._gpuClient || this._gpuClient.readyState !== 1) return null;

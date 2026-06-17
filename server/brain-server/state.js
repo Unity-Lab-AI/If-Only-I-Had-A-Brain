@@ -35,6 +35,13 @@
 // All methods reference brain state via `this.` — fully prototype-chain
 // compatible.
 
+// Module-level requires. Pre-fix the P4.3.b extraction did not bring
+// these along — the mixin relied on the parent brain-server.js scope.
+// Caught by operator 2026-06-17 live test boot crash cascade.
+const path = require('path');
+const fs = require('fs');
+const definitionService = require('../definition-service.js');
+
 const SERVER_STATE_MIXIN = {
   /**
    * Get full brain state for broadcasting.

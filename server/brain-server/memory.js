@@ -37,6 +37,17 @@
 // compatible. They access this._episodicDB (sqlite handle), this.tier1Store
 // (in-memory cache), this.sharedEmbeddings, this.persona etc.
 
+// Module-level requires. Pre-fix the P4.3.c extraction did not bring
+// these along — the mixin relied on the parent brain-server.js scope.
+// This caused the boot crash cascade operator caught 2026-06-17:
+// `TypeError: this._initEpisodicDB is not a function` first (mixin
+// attach order, now fixed by attaching pre-instantiation), then
+// `ReferenceError: path is not defined` here once the dispatch
+// reached the method body.
+const path = require('path');
+const fs = require('fs');
+const Database = require('better-sqlite3');
+
 const SERVER_MEMORY_MIXIN = {
   _initEpisodicDB() {
     const dbPath = path.join(__dirname, 'episodic-memory.db');

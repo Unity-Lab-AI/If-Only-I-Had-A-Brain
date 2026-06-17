@@ -4715,6 +4715,27 @@ process.on('unhandledRejection', (reason) => {
   process.exit(1);
 });
 
+// ⛔ LAW.MIXIN-ORDER — Object.assign attaches MUST run BEFORE
+// `new ServerBrain()` so the prototype carries every required mixin
+// method by the time the constructor fires. Pre-fix the attaches were
+// at the file BOTTOM (post-instantiation), which made the constructor's
+// `this._initEpisodicDB()` call (line ~860) crash with
+// "TypeError: this._initEpisodicDB is not a function" — exactly the
+// silent-runtime-crash failure mode LAW.MIXIN-ORDER warns against.
+// Operator's 2026-06-17 live test caught this — server.log showed
+// `at new ServerBrain (brain-server.js:860:10)`. cluster.assertAutoSize-
+// Wiring() couldn't catch this because it fires AFTER the constructor;
+// the brain already crashed by the time the assertion would run.
+//
+// Order matters within the chain too — GPU first (provides device-lost
+// callback used by constructor's GPU init path), then STATE / MEMORY
+// (constructor calls _initEpisodicDB which lives in MEMORY mixin), then
+// CHAT (chat path called post-boot).
+Object.assign(ServerBrain.prototype, SERVER_GPU_MIXIN);
+Object.assign(ServerBrain.prototype, SERVER_STATE_MIXIN);
+Object.assign(ServerBrain.prototype, SERVER_MEMORY_MIXIN);
+Object.assign(ServerBrain.prototype, SERVER_CHAT_MIXIN);
+
 const brain = new ServerBrain();
 // T14.21 — catch any rejection from brain.start() so async init failures
 // surface with a stack trace instead of silently terminating the process
@@ -6447,10 +6468,9 @@ process.on('SIGTERM', () => {
   process.exit(0);
 });
 
-// Attach per-concern mixins to ServerBrain.prototype. Per-concern
-// architecture per server/brain-server/README.md.
-Object.assign(ServerBrain.prototype, SERVER_GPU_MIXIN);
-Object.assign(ServerBrain.prototype, SERVER_STATE_MIXIN);
-Object.assign(ServerBrain.prototype, SERVER_MEMORY_MIXIN);
-Object.assign(ServerBrain.prototype, SERVER_CHAT_MIXIN);
+// Per-concern mixins now attach BEFORE `new ServerBrain()` (above, near
+// line 4718). Moving the attaches to pre-instantiation was the fix for
+// the "TypeError: this._initEpisodicDB is not a function" boot crash
+// operator caught 2026-06-17. See the comment block above the
+// pre-instantiation Object.assigns for full LAW.MIXIN-ORDER rationale.
 
