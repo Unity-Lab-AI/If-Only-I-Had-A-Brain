@@ -5,6 +5,96 @@
 
 ---
 
+## 2026-06-17 — Session 114.19fz batched-push 8 — P4.3.a brain-server.js GPU-module first-bite
+
+### Gee verbatim per LAW #0
+
+> *"dont rush the work"* (Gee 2026-06-17, sustained pace directive)
+
+> *"keep goin till everything is 100%"* (Gee 2026-06-17, this session)
+
+### What this is
+
+Eighth batched-push envelope. Single-bite ship at conservative pace, starting the brain-server.js per-concern split with the biggest contiguous block: the GPU sparse-comm suite.
+
+### Methods extracted (20, 1073 lines, brain-server.js lines 2615-3687)
+
+| Method | Purpose |
+|--------|---------|
+| `_gpuStep(clusterName)` | Single-cluster LIF step dispatch via compute_request protocol |
+| `_gpuBatch(substeps, clusterParams)` | T14.23 batched compute_batch dispatch (all clusters in one WS message) |
+| `_nextSparseReqId()` | Sparse-protocol request ID generator |
+| `_sparseSend(msg, timeoutMs)` | JSON sparse dispatch with reqId tracking + 30s default timeout |
+| `_encodeSparseHeader(typeByte, reqId, name)` | Binary sparse-protocol header encoder |
+| `_sparseSendBinary(msgBuffer, reqId, timeoutMs)` | Binary sparse dispatch (120s default for large weights uploads) |
+| `gpuDrainWait()` | Wait for GPU queue to drain (used by probes that need fresh weights) |
+| `_gpuSparseFlowOk()` | Backpressure flow check — returns false when WS bufferedAmount near threshold |
+| `gpuSparseUpload(name, matrix, binding)` | Upload sparse matrix to GPU client (with optional binding metadata) |
+| `gpuSparsePropagate(name, preSpikes)` | Sparse forward propagate via GPU |
+| `gpuSparseHebbianBound(name, lr)` | Bound-projection Hebbian dispatch (uses GPU-resident pre/post slices) |
+| `_enqueueBoundHebbian(name, lr)` | T18.8 batched-hebbian queue helper (caps at 256 ops) |
+| `_flushBoundHebbianBatch()` | T18.8 batched-hebbian flush (20ms cadence) |
+| `gpuSparsePropagateBound(name)` | Bound-projection forward propagate (uses GPU-resident pre slice) |
+| `_gpuWriteCortexSpikeSlice(regionName, sparseIndices)` | Write spike sub-slice to main cortex GPU buffer |
+| `_gpuWriteCortexCurrentSlice(regionName, indices, values)` | Write current sub-slice to main cortex GPU buffer |
+| `_gpuClearCortexSpikeRegion(regionName)` | Clear spike sub-region in main cortex GPU buffer |
+| `gpuReadbackCortexLetterBuckets(regionName, bucketCount, subSliceLen, startOffset)` | LETTER-region bucket readback for probe paths |
+| `_ensureCortexCrossProjectionsBound()` | T17.7 Phase C.1 rebind cross-projections to main cortex sub-slices |
+| `gpuSparseHebbian(name, preSpikes, postSpikes, lr)` | Standalone Hebbian (legacy fire-and-forget, non-bound path) |
+
+### CommonJS module pattern
+
+brain-server.js is a Node server using `require()` (CommonJS), not ES modules. Migration script initially generated ESM `export const` + `import { ... }` which would have broken runtime. Caught via Node module-load test and converted:
+
+- `server/brain-server/gpu.js` exports via `module.exports = { SERVER_GPU_MIXIN }` (CommonJS)
+- `server/brain-server.js` consumes via `const { SERVER_GPU_MIXIN } = require('./brain-server/gpu.js')` (CommonJS)
+- `Object.assign(ServerBrain.prototype, SERVER_GPU_MIXIN)` at bottom (works in both module systems)
+
+Verified by Node load test: `node -e "const { SERVER_GPU_MIXIN } = require('./server/brain-server/gpu.js'); console.log(Object.keys(SERVER_GPU_MIXIN).length)"` → 20.
+
+### Migration
+
+Deterministic Node script `.git/p4-3a-migrate.mjs` — same pattern as P4.2.a-d + P4.1.a-d:
+
+1. Read both files preserving CRLF line endings
+2. Extract block at lines 2615-3687 (1073 lines, 20 methods)
+3. Sanity-check first/last lines + 20 expected method signatures in order
+4. Convert class-method form → object-literal form (trailing `,` after each method's closing `}`)
+5. Splice converted block into gpu.js stub placeholder
+6. Replace block in brain-server.js with marker comment
+7. Add `require` line above ServerBrain class (initially ESM `import` — POST-FIX converted to CommonJS `require`)
+8. Append `Object.assign(ServerBrain.prototype, SERVER_GPU_MIXIN)` at brain-server.js bottom
+
+Migration result: `brain-server.js 9555 → 8506 lines (Δ -1049)`, `gpu.js 37 → 1108 lines (Δ +1071)`, block moved 1073 lines.
+
+### P4.3 sub-bites remaining
+
+- **P4.3.b state-broadcast** — `_broadcastStateNow`, `getState`, `_runDictionarySmokeTest`, `_scheduleSmokeTestRetry`, `_computeMinGrade`, `pushBrainEvent`, `_recentBrainEvents`, `_computeCortexDivergence` (~450 lines, scattered)
+- **P4.3.c memory** — `_initEpisodicDB`, `storeEpisode`, `_serializeEmbedding`, episodic-DB helpers (~400 lines)
+- **P4.3.d chat** — `processAndRespond`, `injectText`, chat-Hebbian + multi-turn coherence + emission-from-cortex paths (~600 lines, includes P6.3 chat-time Hebbian block)
+
+### Verification
+
+- `node --check server/brain-server.js`: clean
+- `node --check server/brain-server/gpu.js`: clean
+- Node load test: `require()` works, 20 methods exported correctly
+- Pre-commit grep on modified source for task-IDs / operator-name: ZERO new violations
+
+### Harness tasklist update
+
+P4.3 stays in_progress (multi-bite umbrella). No status flip.
+
+### LAWs honored
+
+- **LAW #0 verbatim** — operator quotes preserved word-for-word above
+- **Docs before push, no patches** — NOW.md + FINALIZED.md + NewTodo.md all updated in this same atomic commit
+- **Task numbers + operator name ONLY in workflow docs** — code uses neutral phrasing
+- **No tests ever** — `node --check` + module-load test are validation, not tests
+- **NEVER delete TODO info** — task row updated in-place with P4.3.a sub-bite progress
+- **NO FALLBACKS** — pure refactor, behaviour identical post-mixin-attach
+
+---
+
 ## 2026-06-17 — Session 114.19fy batched-push 7 — P4.2.b emit + P4.2.d probe → P4.2 UMBRELLA COMPLETE
 
 ### Gee verbatim per LAW #0
