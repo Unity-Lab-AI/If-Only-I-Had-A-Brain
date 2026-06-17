@@ -24145,3 +24145,50 @@ Third of 4 D.9 residual file extractions. `_getConsciousnessState` (158 lines, b
 D.9c SHIPPED. 1 sub-extraction remains (D.9d `_getWsPressureState` → state.js). D.9 stays PARTIAL until the last one lands.
 
 ---
+
+## 2026-06-17 — Session 114.19gi — D.9d — `_getWsPressureState` extracted to state.js → D.9 FULLY CLOSED
+
+### Gee verbatim per LAW #0
+
+> *"no cheap work do each individually"* (Gee 2026-06-17 — sustained cadence directive; this is the 4th and final D.9 sub-extraction)
+
+### What this is
+
+Fourth and final D.9 residual file extraction. `_getWsPressureState` (40 lines, brain-server.js 3209-3248) moved from `ServerBrain` class body into `SERVER_STATE_MIXIN` inside `server/brain-server/state.js`. **D.9 is now FULLY CLOSED** — all 4 methods that were renamed in the audit megacommit but not yet file-extracted now live in their proper mixin homes.
+
+### Method moved
+
+`_getWsPressureState()` — Bounded WS backpressure snapshot for the dashboard pressure panel:
+- **bufferedAmount + MB conversion + thresholdMB=500** — buffer fill versus the BUFFERED_AMOUNT_DROP_THRESHOLD constant from `_sparseSendBinary`.
+- **drops + absorbs + enobufs counters** — sustained-pressure 30s drop count, successful drain count, OS ENOBUFS bursts.
+- **dropRatePerSec** — rolling rate from 60-sample (ts, drops) ring buffer; (current_drops - oldest_drops) / elapsed_seconds.
+- **wsConnected** — boolean `readyState === 1` (OPEN).
+- **gpuShadowDirty + lastDropTs** — drift visibility flag set when a drop-after-timeout fires; means CPU and GPU weights diverged on at least one projection. Dashboard renders the "X ago" timestamp from lastDropTs.
+
+### Verification
+
+- `node --check server/brain-server/state.js` → SYNTAX OK
+- `node --check server/brain-server.js` → SYNTAX OK
+- Mixin dispatch verified for ALL 4 D.9 methods via require() load test:
+  - `SERVER_MEMORY_MIXIN._memoryHeartbeat`: function ✓
+  - `SERVER_MEMORY_MIXIN._getMemoryStats`: function ✓
+  - `SERVER_STATE_MIXIN._getConsciousnessState`: function ✓
+  - `SERVER_STATE_MIXIN._getWsPressureState`: function ✓
+- memory.js mixin: 14 methods (was 12 pre-D.9)
+- state.js mixin: 10 methods (was 8 pre-D.9)
+
+### Files changed
+
+- `server/brain-server/state.js` — `_getWsPressureState` method appended to SERVER_STATE_MIXIN.
+- `server/brain-server.js` — `_getWsPressureState` body removed; replaced with 3-line breadcrumb comment.
+- `docs/NewTodo.md` — D.9 row flipped to ✅ SHIPPED 2026-06-17 with full sub-commit SHA mapping. Audit megacommit table D.1-D.9 entry updated from "8 SHIPPED, 1 PARTIAL" to "ALL SHIPPED". Totals updated from "41 ✅ + 1 ⚠ PARTIAL" to "42 ✅ + 0 PARTIAL". Deferred-items D.9 entry struck through with closure note.
+
+### Cumulative D.9 result
+
+brain-server.js trimmed by ~470 lines total across the 4 sub-bites (152 + 149 + 158 + 40 - 12 breadcrumb-comment lines). Method dispatch identical for all consumers (`_broadcastStateNow` reads `state.consciousness = this._getConsciousnessState()` etc.). LAW.MIXIN-ORDER preserved — Object.assign chain runs BEFORE class instantiation so prototype dispatch resolves correctly.
+
+### Status
+
+**D.9 FULLY CLOSED.** Audit megacommit cascade post-D.9d: **42 ✅ SHIPPED + 0 ⚠ PARTIAL + 1 ⏳ OPERATOR-FIRED (F.2 GOOD AND AWAITING BUGS).** All 42 audit closure tasks now complete. F.2 acceptance metrics (≥3-word ≥70%, coherence ≥0.20, novel ≥5%, terminator ≥50%) are measured continuously during operator-driven K curriculum walk + chat-test session — any new bugs file as follow-up audit items.
+
+---

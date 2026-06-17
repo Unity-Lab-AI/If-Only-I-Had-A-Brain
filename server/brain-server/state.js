@@ -736,6 +736,57 @@ const SERVER_STATE_MIXIN = {
       // M.24 _definitionTaughtWords counter (already in kVocabTaught above).
     };
   },
+
+  /**
+   * Bounded WS backpressure snapshot for the dashboard pressure panel.
+   * Reads counters maintained by `_sparseSendBinary` (drops after
+   * safety-timeout, successful drain absorbs, OS ENOBUFS bursts) plus
+   * live `_gpuClient.bufferedAmount` and a rolling drops/sec rate.
+   *
+   * Drops/sec is computed from a 60-sample ring buffer of (ts, drops)
+   * snapshots — current minus oldest divided by elapsed seconds. Cap
+   * the buffer to keep memory bounded across long brain runs.
+   */
+  _getWsPressureState() {
+    const now = Date.now();
+    const ws = this._gpuClient;
+    const bufferedAmount = (ws && typeof ws.bufferedAmount === 'number') ? ws.bufferedAmount : 0;
+    const drops = this._wsDroppedCount || 0;
+    const absorbs = this._wsAbsorbedCount || 0;
+    const enobufs = this._wsEnobufsCount || 0;
+    if (!this._wsRateBuffer) this._wsRateBuffer = [];
+    const buf = this._wsRateBuffer;
+    buf.push({ ts: now, drops });
+    while (buf.length > 60) buf.shift();
+    let dropRatePerSec = 0;
+    if (buf.length >= 2) {
+      const oldest = buf[0];
+      const dt = (now - oldest.ts) / 1000;
+      if (dt > 0) dropRatePerSec = Math.max(0, (drops - oldest.drops) / dt);
+    }
+    return {
+      bufferedAmount,
+      bufferedAmountMB: bufferedAmount / (1024 * 1024),
+      // Source-of-truth: BUFFERED_AMOUNT_DROP_THRESHOLD inside
+      // _sparseSendBinary. Mirrored here so the dashboard can render
+      // the threshold line on the buffer-amount bar.
+      thresholdMB: 500,
+      drops,
+      absorbs,
+      enobufs,
+      dropRatePerSec,
+      wsConnected: !!(ws && ws.readyState === 1),
+      // GPU shadow dirty flag. Set when a drop-after-timeout fires;
+      // means CPU and GPU weights have diverged on at least one
+      // projection. Surfaces to dashboard so Gee sees the
+      // divergence + can restart to clear (full automatic resync is
+      // a follow-up iter — too large for this pass). Last drop
+      // timestamp lets dashboard render "12s ago" / "no drops since
+      // boot" without each panel computing its own.
+      gpuShadowDirty: !!this._gpuShadowDirty,
+      lastDropTs: this._wsLastDropTs || 0,
+    };
+  },
 };
 
 module.exports = { SERVER_STATE_MIXIN };
