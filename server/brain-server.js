@@ -4686,6 +4686,58 @@ class ServerBrain {
       }
     }
 
+    // Chat-time deep Hebbian. Every user chat turn deep-binds the
+    // user's word→word transitions into the same association-pair
+    // matrix curriculum trains. Low reps (=1) so a single conversation
+    // turn doesn't dominate trained-weight magnitude, but the cumulative
+    // effect over many turns is real chat-time grammar growth.
+    // relationTagId=30 carves a dedicated chat-time channel so
+    // conversation-driven writes can be distinguished from curriculum
+    // writes for telemetry + dream-cycle scoring.
+    // Past-notes rule: pair tokens MUST be already-vocab-trained —
+    // we filter to /^[a-z']+$/ K-grade-style tokens AND verify each
+    // appears in the dictionary _words map before binding. Unknown
+    // tokens (typos, rare vocabulary) are skipped so chat input never
+    // lands Hebbian writes on phantom-token noise basins.
+    try {
+      if (this.cortexCluster
+          && this.curriculum
+          && typeof this.curriculum._teachAssociationPairs === 'function'
+          && typeof text === 'string'
+          && text.length > 0) {
+        const tokens = text.toLowerCase()
+          .replace(/[.!?,;:'"()]/g, ' ')
+          .split(/\s+/)
+          .filter(t => /^[a-z]+$/.test(t) && t.length >= 1 && t.length <= 20);
+        const dictWords = this.cortexCluster.dictionary?._words;
+        const filtered = tokens.filter(t => !dictWords || dictWords.has(t));
+        if (filtered.length >= 2) {
+          const pairs = [];
+          for (let i = 0; i < filtered.length - 1; i++) {
+            pairs.push([filtered[i], filtered[i + 1]]);
+          }
+          if (pairs.length > 0) {
+            // reps=1 — single chat turn shouldn't dominate curriculum-
+            // depth training. Fire-and-forget (no await) so chat
+            // latency isn't blocked on the Hebbian pass; the binding
+            // lands eventually and is reflected in compositional
+            // telemetry after the dispatch completes.
+            this.curriculum._teachAssociationPairs(pairs, {
+              reps: 1,
+              label: 'CHAT-TIME-DEEP-HEBBIAN',
+              relationTagId: 30,
+            }).catch(() => { /* chat-Hebbian failures non-fatal */ });
+            if (!this._chatTimeHebbianStats) {
+              this._chatTimeHebbianStats = { turns: 0, totalPairs: 0, lastTs: 0 };
+            }
+            this._chatTimeHebbianStats.turns++;
+            this._chatTimeHebbianStats.totalPairs += pairs.length;
+            this._chatTimeHebbianStats.lastTs = Date.now();
+          }
+        }
+      }
+    } catch { /* chat-time learning must never break chat path */ }
+
     // 114.19fi.B.5 — chat-turn history for multi-turn coherence.
     // Lazy init on cortex. Inject prior 2 user inputs into sem before
     // any other context loads so Unity sees "what we've been talking

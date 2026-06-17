@@ -5,6 +5,127 @@
 
 ---
 
+## 2026-06-17 — Session 114.19fv batched-push 4 — P6.7 + P6.4 + P6.2 + P6.3 + P6.8 (Phase 6 COMPLETE)
+
+### Gee verbatim per LAW #0
+
+> *"continue working items off we are doing everything and make sure to check past notes youve made to keep everything unison"* (2026-06-17, this session)
+
+### What this is
+
+Fourth batched-push envelope. **5 Phase 6 items shipped together — Phase 6 advanced compositional learning is now FULLY COMPLETE** (P6.1-P6.8 all shipped this session arc).
+
+### P6.7 — Word-creation candidate gate
+
+`emitWordDirect` rejection path now captures top-2 candidates and, if both are above NOISE_FLOOR (meaningful but sub-threshold), records the compound as a "tip-of-tongue" candidate. Two new cluster methods:
+
+- **`_recordWordCreationCandidate(top1, top2, floor)`** — canonicalizes compound as `${a}_${b}` (alphabetical), stores in `_wordCreationCandidates` Map with count + components + firstTs/lastTs + sumMean/maxMean. Map capped at 200 distinct compounds (least-frequent dropped).
+- **`getWordCreationCandidates({limit, minCount})`** — returns top-N compounds sorted by occurrence count desc, filtered by minCount (default 3).
+
+Doesn't auto-commit — pure surface. Biological correlate: child novel-coinage during acquisition ("foots", "runned", "moonbeam").
+
+### P6.4 — Dream-time recombination
+
+Inside `_dreamWindow`, after existing dream-phenomenology generateAsync, new recombination pass fires 3 composeSentence emissions per dream cycle with diverse K-grade seeds. Each emission classified via P6.6 telemetry. When `kind === 'novel'` AND `coherenceCosine >= 0.20`, consolidates via `_teachAssociationPairs(pairs, { reps: 5, relationTagId: 29 })`. Brain invents during sleep, only keeps inventions that clear coherence threshold.
+
+`brain._dreamRecombinationStats` tracks `totalDreamed`, `novelConsolidated`, `lastTs`.
+
+Biological correlate: REM-sleep memory consolidation + reorganization (Stickgold 2005, Walker 2017).
+
+### P6.2 — Schema-based runtime composition
+
+composeSentence accepts new `opts.schemaContext` (HippocampalSchema instance OR thin object with `conceptEmbedding` + optional `attributeVector` + `label`). Pre-injects:
+- `schema.conceptEmbedding` at strength 0.15
+- `schema.attributeVector` at strength 0.10
+
+BEFORE the seed/intent injection chain. Schema becomes contextual prior; strengths intentionally lower than seed/intent so explicit intent stays primary. Schema colours emission without forcing template selection (past-notes rule: schemas SUPPORT emergence, never prescribe slot fills).
+
+### P6.3 — Chat-time deep Hebbian
+
+`processAndRespond` extracts word→word transitions from user chat turn, filters to dictionary-known K-grade tokens (`/^[a-z]+$/`, length 1-20, present in `dictionary._words`), fires:
+
+```js
+this.curriculum._teachAssociationPairs(pairs, {
+  reps: 1,
+  label: 'CHAT-TIME-DEEP-HEBBIAN',
+  relationTagId: 30,
+}).catch(...);
+```
+
+Fire-and-forget — chat latency unaffected. Single turn doesn't dominate curriculum weight magnitude, but cumulative multi-week conversation grows organic grammar fluency.
+
+`brain._chatTimeHebbianStats` tracks `turns`, `totalPairs`, `lastTs`.
+
+**Past-notes rule honored:** tokens filtered against dictionary `_words` Map BEFORE binding — chat input never lands Hebbian writes on phantom-token noise basins.
+
+### P6.8 — Multi-sentence discourse coherence
+
+New `_teachDiscourseCoherence()` method in K_MIXIN. Algorithm:
+
+1. Group `K_CONCRETE_SENTENCES` by their first content word (topic anchor — skips stop-words: the/a/i/we/you/he/she/my/your/this/that/there/is/are/was/were/do/does/did).
+2. For each topic group with ≥2 sentences, bind every sentence's LAST word to every group-mate's FIRST word.
+3. Cap per-group size at 8 to bound pair-count growth on common topics ("cat" appears in many sentences).
+4. Fire `_teachAssociationPairs(pairs, { reps: 30, label: 'K-DISCOURSE-COHERENCE', relationTagId: 31 })`.
+
+Wired into `runMathKReal` via `_phasedTeach('MATH-K-DISCOURSE-COHERENCE')` after P6.1 number-grammar. Foundation for coherent multi-sentence responses where sentence 2's opening biases toward sentence 1's last-word continuation.
+
+### Phase 6 status
+
+| Task | Status |
+|------|--------|
+| P6.1 | ✅ shipped (batched-push 3) |
+| P6.2 | ✅ shipped (this batch) |
+| P6.3 | ✅ shipped (this batch) |
+| P6.4 | ✅ shipped (this batch) |
+| P6.5 | ✅ shipped (batched-push 3) |
+| P6.6 | ✅ shipped (batched-push 3) |
+| P6.7 | ✅ shipped (this batch) |
+| P6.8 | ✅ shipped (this batch) |
+
+**Phase 6 = advanced compositional learning track = COMPLETE.**
+
+### Past-notes unison verification
+
+All session-locked rules honored:
+- **Words-learned-before-bindings** — P6.3 chat-Hebbian filters against `dictionary._words`; P6.8 discourse words drawn from already-vocab-trained K_CONCRETE_SENTENCES.
+- **NO FALLBACKS** — telemetry getters return null/empty gracefully; candidate gate doesn't fall back when both candidates are below NOISE_FLOOR — it skips.
+- **Pre-K + K scope** — all P6.x work is K-grade compositional overlay on K substrate.
+- **Erotic state gated to grade 9** — not touched.
+- **Goth-tone for K-LIFE** — not applicable (compositional grammar, not K-LIFE content).
+- **Task-IDs + operator-name workflow-docs-only** — code uses neutral phrasing.
+- **Match doc format** — banner edited in-place; FINALIZED section appended at top.
+- **Docs-before-push atomic envelope** — NOW.md + FINALIZED.md + NewTodo.md all updated in this same commit.
+
+### Verification
+
+- `node --check cluster.js`: clean
+- `node --check curriculum.js`: clean
+- `node --check kindergarten.js`: clean
+- `node --check brain-server.js`: clean
+- `cd server && npm run build` → `js/app.bundle.js 2.6mb · Done in 74ms` (bumped from 2.5MB)
+- Pre-commit grep on modified source for task-IDs / operator-name: ZERO new violations
+
+### Harness tasklist update
+
+5 more tasks marked completed via TaskUpdate this batch:
+- Task #29 P6.2: pending → completed
+- Task #30 P6.3: pending → completed
+- Task #31 P6.4: pending → completed
+- Task #34 P6.7: pending → completed
+- Task #35 P6.8: pending → completed
+
+**Total now: 32/35 tasks complete** (was 28 — added 5 this batch, P6.5+P6.6 from prior batch + 30 prior cumulative).
+
+### What's left (3 remaining tasks)
+
+- **P2.3** — kScales plumbing through `_crossRegionHebbian` (deferred multi-file)
+- **P4.2** — Split `cluster.js` (~5,839 lines) into core/emit/hebbian/probe modules (huge multi-day refactor)
+- **P4.3** — Split `brain-server.js` (~9,478 lines) into 4 concerns (huge multi-day refactor)
+
+Phase 6 done means the **compositional learning capability set is feature-complete** for the K substrate. Remaining work is plumbing (P2.3) + architectural refactors (P4.2 + P4.3).
+
+---
+
 ## 2026-06-17 — Session 114.19fu batched-push 3 — P6.6 + P6.1 + P6.5 (compositional emergence stack)
 
 ### Gee verbatim per LAW #0

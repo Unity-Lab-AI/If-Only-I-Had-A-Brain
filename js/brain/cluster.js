@@ -3599,6 +3599,26 @@ export class NeuronCluster {
         ema: this._emitSignalEMA,
         ts: Date.now(),
       };
+      // Word-creation candidate gate. When the emission was rejected but
+      // the top-2 candidates BOTH have meaningful activation (each above
+      // NOISE_FLOOR but their combined activation is below the adaptive
+      // floor), the brain is in a "tip-of-the-tongue" state where two
+      // concepts co-activate strongly but neither word alone wins. This
+      // is the natural source for compound-word coinage (child novel-
+      // coinage during acquisition: "foots", "runned", "moonbeam"). The
+      // candidate is RECORDED, not auto-committed — operator or future
+      // schema-coherence check decides whether to promote to vocab.
+      if (typeof this._recordWordCreationCandidate === 'function' && bestWord && candidates.length >= 2) {
+        try {
+          // Top-2 sorted by mean descending.
+          const sorted = candidates.slice().sort((a, b) => b.mean - a.mean);
+          const top1 = sorted[0];
+          const top2 = sorted[1];
+          if (top1 && top2 && top1.mean > NOISE_FLOOR && top2.mean > NOISE_FLOOR) {
+            this._recordWordCreationCandidate(top1, top2, floor);
+          }
+        } catch { /* candidate-gate must never break emit */ }
+      }
       return '';
     }
     // Update EMA + sample count on every accepted emission below.
@@ -3791,6 +3811,91 @@ export class NeuronCluster {
   }
 
   /**
+   * Word-creation candidate gate. When emitWordDirect rejects an emission
+   * but the top-2 candidates both carry meaningful (above-noise) activation,
+   * the brain is in a "tip-of-the-tongue" co-activation state. Record the
+   * candidate pair so a future schema-coherence check OR operator review
+   * can decide whether to promote the compound (e.g. "moon" + "light" →
+   * "moonlight") to the vocab. Doesn't auto-commit — pure surface.
+   *
+   * Tracks co-occurrence count per compound so the candidate gate only
+   * surfaces compounds that fired repeatedly (single fires are likely
+   * noise; recurring co-activation is a real candidate).
+   *
+   * @param {{word:string,mean:number}} top1
+   * @param {{word:string,mean:number}} top2
+   * @param {number} floor
+   */
+  _recordWordCreationCandidate(top1, top2, floor) {
+    if (!top1 || !top2) return;
+    if (top1.word === top2.word) return;
+    if (!this._wordCreationCandidates) {
+      this._wordCreationCandidates = new Map();   // compound → {count, top1, top2, lastTs, sumMean, maxMean}
+    }
+    // Compound canonicalization: alphabetical ordering of components so
+    // (a, b) and (b, a) hash to the same compound bucket. Underscore
+    // separator preserves component boundary for later splitting.
+    const [a, b] = [top1.word, top2.word].sort();
+    const compound = `${a}_${b}`;
+    const combined = top1.mean + top2.mean;
+    const entry = this._wordCreationCandidates.get(compound) || {
+      count: 0, components: [a, b],
+      firstTs: Date.now(), lastTs: Date.now(),
+      sumMean: 0, maxMean: 0, lastFloor: floor,
+    };
+    entry.count++;
+    entry.lastTs = Date.now();
+    entry.sumMean += combined;
+    if (combined > entry.maxMean) entry.maxMean = combined;
+    entry.lastFloor = floor;
+    this._wordCreationCandidates.set(compound, entry);
+    // Cap the candidate map at 200 distinct compounds — drop the
+    // least-frequent when full so the gate stays focused on recurring
+    // co-activations.
+    if (this._wordCreationCandidates.size > 200) {
+      let leastKey = null;
+      let leastCount = Infinity;
+      for (const [k, v] of this._wordCreationCandidates) {
+        if (v.count < leastCount) { leastCount = v.count; leastKey = k; }
+      }
+      if (leastKey) this._wordCreationCandidates.delete(leastKey);
+    }
+  }
+
+  /**
+   * Read top-N word-creation candidates sorted by occurrence count
+   * descending (most-frequently co-activated first). Returns array of
+   * `{compound, components, count, avgMean, maxMean, firstTs, lastTs}`.
+   * Filters out candidates below `minCount` (default 3) so single-shot
+   * noise doesn't surface.
+   *
+   * @param {object} [opts]
+   * @param {number} [opts.limit=20]
+   * @param {number} [opts.minCount=3]
+   * @returns {Array}
+   */
+  getWordCreationCandidates(opts = {}) {
+    const limit = opts.limit ?? 20;
+    const minCount = opts.minCount ?? 3;
+    if (!this._wordCreationCandidates) return [];
+    const out = [];
+    for (const [compound, e] of this._wordCreationCandidates) {
+      if (e.count < minCount) continue;
+      out.push({
+        compound,
+        components: e.components,
+        count: e.count,
+        avgMean: e.sumMean / e.count,
+        maxMean: e.maxMean,
+        firstTs: e.firstTs,
+        lastTs: e.lastTs,
+      });
+    }
+    out.sort((a, b) => b.count - a.count);
+    return out.slice(0, limit);
+  }
+
+  /**
    * Read aggregated compositional-emergence stats for dashboard / state
    * broadcast. Returns null when telemetry hasn't been initialized.
    *
@@ -3928,6 +4033,34 @@ export class NeuronCluster {
     // carries narrative thread into the emission. Optional.
     if (opts.cortexPattern && opts.cortexPattern.length > 0) {
       try { this.injectEmbeddingToRegion('sem', opts.cortexPattern, 0.2); } catch { /* nf */ }
+    }
+
+    // (0a) Schema-based runtime composition. Caller passes
+    // `opts.schemaContext` (a HippocampalSchema instance OR a thin object
+    // with `conceptEmbedding` + optional `attributeVector` + `label`)
+    // when a particular learned schema is active in the current
+    // conversational context. The schema's concept embedding pre-biases
+    // sem toward the schema's domain so emission word choice is
+    // schema-coherent without forcing template selection. Stays
+    // ADDITIVE (not replaceMode) so subsequent seed/intent injections
+    // can blend on top — schema is contextual prior, not hard prescription.
+    //
+    // Strengths intentionally lower than seed/intent injections:
+    //   schema.conceptEmbedding → 0.15 (background bias)
+    //   schema.attributeVector  → 0.10 (auxiliary 8d trait bias)
+    // so the explicit intent stays primary while schema colours the
+    // emission. Past-notes rule: schemas SUPPORT emergence, never
+    // prescribe slot fills (templates are banned).
+    if (opts.schemaContext) {
+      const sc = opts.schemaContext;
+      try {
+        if (sc.conceptEmbedding && sc.conceptEmbedding.length > 0) {
+          this.injectEmbeddingToRegion('sem', sc.conceptEmbedding, 0.15);
+        }
+        if (sc.attributeVector && sc.attributeVector.length > 0) {
+          this.injectEmbeddingToRegion('sem', sc.attributeVector, 0.10);
+        }
+      } catch { /* schema priming non-fatal */ }
     }
 
     // (1) Intent seed — caller provides a seed embedding or text. Brain

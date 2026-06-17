@@ -1005,6 +1005,88 @@ export const K_MIXIN = {
    *
    * @returns {Promise<{taught:number}>}
    */
+  /**
+   * Multi-sentence discourse coherence. Bind sentence-end words to
+   * sentence-start words across topic-related sentence pairs in
+   * K_CONCRETE_SENTENCES so emission of one sentence biases the next
+   * one's opening when the same topic is in sem state. Foundation for
+   * coherent multi-sentence responses where sentence 2 references
+   * sentence 1's topic via shared anchor word.
+   *
+   * Grouping: each sentence's TOPIC = first content word that isn't a
+   * stop-word (article / pronoun / determiner). Sentences sharing the
+   * same topic word are paired sequentially — every sentence's LAST
+   * word binds to every group-mate's FIRST word. Creates cross-sentence
+   * transition pairs the brain can use at chat time when emitting
+   * follow-up sentences after the first response.
+   *
+   * relationTagId=31 = discourse-coherence channel.
+   *
+   * Past-notes rule: words drawn from K_CONCRETE_SENTENCES so every
+   * pair token is already vocab-trained (the corpus only contains
+   * K_VOCABULARY words).
+   *
+   * @returns {Promise<{taught:number, groups:number}>}
+   */
+  async _teachDiscourseCoherence() {
+    if (typeof this._teachAssociationPairs !== 'function') {
+      throw new Error('_teachDiscourseCoherence: _teachAssociationPairs missing on Curriculum — class wiring bug');
+    }
+    // Resolve K_CONCRETE_SENTENCES via the curriculum.js module-level
+    // export. Same import path used by initCompositionalTelemetry.
+    const { K_CONCRETE_SENTENCES } = await import('../curriculum.js');
+    if (!Array.isArray(K_CONCRETE_SENTENCES) || K_CONCRETE_SENTENCES.length === 0) {
+      return { taught: 0, groups: 0 };
+    }
+    const STOP_FIRST_WORDS = new Set([
+      'the', 'a', 'an', 'i', 'we', 'you', 'he', 'she', 'it', 'they',
+      'my', 'your', 'his', 'her', 'our', 'their', 'this', 'that',
+      'there', 'is', 'are', 'was', 'were', 'do', 'does', 'did',
+    ]);
+    // Group sentences by their first content word (topic anchor).
+    const groups = new Map();
+    for (const s of K_CONCRETE_SENTENCES) {
+      const words = s.toLowerCase().split(/\s+/).filter(w => /^[a-z]+$/.test(w));
+      if (words.length < 2) continue;
+      let topic = null;
+      for (const w of words) {
+        if (!STOP_FIRST_WORDS.has(w)) { topic = w; break; }
+      }
+      if (!topic) continue;
+      if (!groups.has(topic)) groups.set(topic, []);
+      groups.get(topic).push(words);
+    }
+    // For each multi-sentence topic group, bind every sentence's last
+    // word to every group-mate's first word. Cap at 8 sentences per
+    // group to bound pair-count growth on common topics like "cat" or
+    // "i" which appear in many sentences.
+    const pairs = [];
+    let nonTrivialGroups = 0;
+    for (const [, group] of groups) {
+      if (group.length < 2) continue;
+      nonTrivialGroups++;
+      const cap = Math.min(group.length, 8);
+      for (let i = 0; i < cap; i++) {
+        const lastI = group[i][group[i].length - 1];
+        for (let j = 0; j < cap; j++) {
+          if (i === j) continue;
+          const firstJ = group[j][0];
+          if (lastI && firstJ && lastI !== firstJ) {
+            pairs.push([lastI, firstJ]);
+          }
+        }
+      }
+    }
+    if (pairs.length === 0) return { taught: 0, groups: 0 };
+    await this._teachAssociationPairs(pairs, {
+      reps: 30,
+      label: 'K-DISCOURSE-COHERENCE',
+      relationTagId: 31,
+    });
+    this._hb(`[Curriculum] _teachDiscourseCoherence: ${pairs.length} cross-sentence boundary pairs across ${nonTrivialGroups} topic-shared groups × 30 reps via relationTagId=31 (discourse-coherence channel). Bias next-sentence first-word selection by previous-sentence last-word when topic is shared.`);
+    return { taught: pairs.length, groups: nonTrivialGroups };
+  },
+
   async _teachNumberGrammar() {
     if (typeof this._teachAssociationPairs !== 'function') {
       throw new Error('_teachNumberGrammar: _teachAssociationPairs missing on Curriculum — class wiring bug');
@@ -2320,6 +2402,15 @@ export const K_MIXIN = {
       // _teachConcreteSentences inside _teachSentenceStructure above.
       if (typeof this._teachNumberGrammar === 'function') {
         await this._phasedTeach('MATH-K-NUMBER-GRAMMAR', () => this._teachNumberGrammar());
+      }
+
+      // Multi-sentence discourse coherence — bind sentence-end words to
+      // sentence-start words across topic-related corpus sentences via
+      // relationTagId=31. Foundation for coherent multi-sentence
+      // responses where sentence 2 references sentence 1's topic.
+      // Fires once per K cell pass for cumulative cross-cell reinforcement.
+      if (typeof this._teachDiscourseCoherence === 'function') {
+        await this._phasedTeach('MATH-K-DISCOURSE-COHERENCE', () => this._teachDiscourseCoherence());
       }
 
       this._mathKTransformsDone = true;

@@ -1294,6 +1294,89 @@ export class Curriculum {
           // Non-fatal — dream consolidation continues even if dreaming fails.
         }
 
+        // Dream-time recombination. Fire 3 composeSentence emissions
+        // during the dream window using diverse K-vocab seeds (sampled
+        // from the trained corpus + recent emission ring). When a dream
+        // emission classifies as `novel` via P6.6 compositional
+        // telemetry AND its coherence cosine clears the consolidation
+        // threshold, extract word→word transitions and fire a low-rep
+        // Hebbian pass to consolidate the novel composition back into
+        // the matrix. This is the "brain invents during sleep + only
+        // keeps the inventions that hold up" mechanism — biological
+        // correlate: REM-sleep memory consolidation + reorganization
+        // (Stickgold 2005, Walker 2017). relationTagId=29 carves a
+        // dedicated dream-recombination channel so consolidated novel
+        // bindings can be distinguished from waking curriculum writes.
+        try {
+          if (cluster && typeof cluster.composeSentence === 'function'
+              && typeof this._teachAssociationPairs === 'function') {
+            const DREAM_RECOMB_ROUNDS = 3;
+            const DREAM_RECOMB_COHERENCE_MIN = 0.20;  // min coherence to consolidate
+            const DREAM_RECOMB_REPS = 5;              // low reps — exploratory not load-bearing
+            // Build a seed pool: a few K-grade prompts that bias toward
+            // varied intent forms. Same family as `_probeSentenceGeneration`
+            // so the dream pass exercises the same emission surface.
+            const dreamSeeds = [
+              'i see a thing', 'the cat is big', 'what is this',
+              'i have three cats', 'mom reads a book', 'where is my ball',
+            ];
+            let novelConsolidated = 0;
+            let totalDreamed = 0;
+            for (let round = 0; round < DREAM_RECOMB_ROUNDS; round++) {
+              const seed = dreamSeeds[Math.floor(Math.random() * dreamSeeds.length)];
+              let composed = null;
+              try {
+                composed = await cluster.composeSentence(seed, { subject: 'ela' });
+              } catch { /* dream emission failures non-fatal */ }
+              if (!composed || !composed.sentence) continue;
+              totalDreamed++;
+              const comp = composed.compositional;
+              const cos = typeof composed.coherenceCosine === 'number' ? composed.coherenceCosine : 0;
+              // Only consolidate when classifier says novel AND coherence
+              // is meaningful. Pure-verbatim emissions don't need
+              // consolidation (already trained); low-coherence novel ones
+              // are noise we don't want to commit.
+              if (comp && comp.kind === 'novel' && cos >= DREAM_RECOMB_COHERENCE_MIN) {
+                const words = composed.sentence
+                  .toLowerCase()
+                  .replace(/[.!?]+$/, '')
+                  .split(/\s+/)
+                  .filter(w => /^[a-z]+$/.test(w));
+                const pairs = [];
+                for (let i = 0; i < words.length - 1; i++) {
+                  pairs.push([words[i], words[i + 1]]);
+                }
+                if (pairs.length > 0) {
+                  try {
+                    await this._teachAssociationPairs(pairs, {
+                      reps: DREAM_RECOMB_REPS,
+                      label: 'DREAM-RECOMBINATION',
+                      relationTagId: 29,
+                    });
+                    novelConsolidated++;
+                  } catch { /* consolidation pass failure non-fatal — try next round */ }
+                }
+              }
+            }
+            // Track for dashboard / operator visibility.
+            if (brain) {
+              if (typeof brain._dreamRecombinationStats !== 'object' || brain._dreamRecombinationStats === null) {
+                brain._dreamRecombinationStats = {
+                  totalDreamed: 0, novelConsolidated: 0, lastTs: 0,
+                };
+              }
+              brain._dreamRecombinationStats.totalDreamed += totalDreamed;
+              brain._dreamRecombinationStats.novelConsolidated += novelConsolidated;
+              brain._dreamRecombinationStats.lastTs = Date.now();
+            }
+            if (totalDreamed > 0) {
+              this._hb(`[Curriculum] 💤 dream-recombination round — dreamed=${totalDreamed} novelConsolidated=${novelConsolidated} (coherence≥${DREAM_RECOMB_COHERENCE_MIN}, reps=${DREAM_RECOMB_REPS}, relationTagId=29)`);
+            }
+          }
+        } catch (err) {
+          // Dream recombination is exploratory + low-rep — failures are non-fatal.
+        }
+
         // Background-trickle K_VOCABULARY multi-def Hebbian during
         // dream cycles. Session 114.19ei bumped batch size 1 → 25
         // per the "lets do a little bit of all three" directive,
