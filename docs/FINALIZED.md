@@ -5,6 +5,88 @@
 
 ---
 
+## 2026-06-17 — Session 114.19fq P4.1.c — third bite of per-grade-file architecture (3 orphan legacy helpers migrated + chrome consolidation)
+
+### Gee verbatim per LAW #0
+
+> *"continue"* (2026-06-17, this session — continue-the-work directive after P4.1.b ship)
+
+### What this is
+
+Third bite of P4.1. P4.1.a moved the 13 K-ELA helpers at lines 6774-7905. P4.1.b moved the 5 direct-Oja `_teach*Direct*` helpers at lines 6238-6772. This bite handles the 3 ORPHAN Session-25 legacy methods at lines 6082-6176 + consolidates the stale section-header chrome + fragmented marker blocks left behind by the prior two bites into a single coherent extraction-reference block.
+
+### Method migration (with DEPRECATED-LEGACY header)
+
+3 orphan methods moved from `js/brain/curriculum.js` → `js/brain/curriculum/kindergarten.js` K_MIXIN:
+
+| Method | Lines | Why orphan |
+|--------|-------|------------|
+| `_teachAlphabetSequence` | 6082-6110 | Session-25 legacy alphabet-walk via `injectLetter` + tick. Superseded by `_teachAlphabetSequencePairs` path that uses `_teachLetterSequenceDirect` for one-hot discriminative writes into `cluster.synapses` recurrent matrix. |
+| `_teachLetterNames` | 6112-6145 | Legacy letter↔GloVe(name) cross-projection Hebbian. Superseded by `_teachLetterNamingDirect` + `_teachLetterNaming` paths in kindergarten.js K_MIXIN that bind letter→motor identity via direct ojaUpdate. |
+| `_teachLetterSounds` | 6147-6176 | Legacy letter↔phoneme-feature cross-projection Hebbian. Superseded by `_teachVowelSoundVariants` (vowel-specific) + the spelling-cascade path in `_teachWordEmission` / `_teachWordSpellingDirect` that populates `letter_to_phon` via the word-spelling fires. |
+
+NO active callers anywhere in the codebase (grep verified — neither `this._teach*` nor unqualified `_teach*` patterns match in any source file). Preserved (not deleted) under per-grade-file architecture rule + "never delete TODO info" preservation principle.
+
+### Chrome consolidation in same atomic operation
+
+In addition to method migration, the stale chrome between the prior method blocks gets consolidated:
+
+- **DELETED:** ELA-K section-header block at lines 6178-6192 (`═══` divider + intro comment about "ELA-K equational course (LAW 3 + LAW 7 binding)" that was placed when ELA-K teach methods lived here — most of them have now moved)
+- **DELETED:** Orphan doc-comment block at lines 6194-6199 about `K.RF letter case pairing` (refers to `_teachLetterCaseBinding` which was moved in P4.1.a)
+- **DELETED:** Fragmented P4.1.b marker block at lines 6201-6207 (the 5 direct-Oja methods)
+- **DELETED:** Fragmented P4.1.a marker block at lines 6211-6220 (the 13 contiguous helpers)
+- **REPLACED WITH:** A single consolidated extraction-reference block enumerating ALL 21 teach methods + 6 K cell runners + 6 K gates + 15 K-LIFE methods + ~18 K-Math/Sci/Soc/Art/Life methods now in kindergarten.js, plus the shared primitives that STAY on Curriculum.prototype.
+
+Net chrome change: 44 lines (4 fragmented blocks) → 40 lines (1 consolidated block). 4 fewer lines + dramatically better organization.
+
+### Migration mechanics
+
+Deterministic Node script at `.git/p4-1c-migrate.mjs`:
+
+1. Read both files preserving CRLF line endings.
+2. Extract methods block at lines 6082-6176 (95 lines, 3 methods).
+3. Sanity-check first line contains `_teachAlphabetSequence`, last line is closing brace, chrome end line at 6220 contains expected P4.1.a marker tail.
+4. Convert class-method form → object-literal form (trailing comma) via brace-depth tracker. 3 conversions verified.
+5. Locate K_MIXIN closing `};` in kindergarten.js (last occurrence, line 8153), insert converted block + DEPRECATED-LEGACY header explaining the orphan-superseded status.
+6. Replace ALL of lines 6082-6220 in curriculum.js (139 lines: 95 methods + 44 chrome) with consolidated 40-line marker block.
+7. Write both files preserving original CRLF line endings.
+
+Migration result printed: `curriculum.js 24349 → 24250 lines (Δ -99)`, `kindergarten.js 8154 → 8260 lines (Δ +106)`, methods moved 95 lines, chrome consolidated 44 → 40 lines.
+
+### Cumulative P4.1 progress
+
+| Bite | Methods | Lines moved | curriculum.js after | kindergarten.js after |
+|------|---------|-------------|---------------------|----------------------|
+| P4.1.a | 13 K-ELA helpers | 1132 | 24913 | 7572 |
+| P4.1.b | 5 direct-Oja methods | 573 | 24349 | 8154 |
+| **P4.1.c** | **3 orphan/legacy + chrome consolidation** | **95 methods + 44→40 chrome** | **24250** | **8260** |
+| **Total** | **21 methods** | **1800 lines** | **−1783 from 26033 (−6.8%)** | **+1830 from 6430 (+28.5%)** |
+
+### What still needs P4.1.d
+
+- **P4.1.d candidates** — `_teachDigitSequence`, `_teachDigitNames`, `_teachMagnitudes`, `_teachCVCReading`, `_teachSightWords` (now at lines ~7600-7800 after cumulative P4.1.a+b+c shrink, ~213 lines). Earlier grep showed NO `this._teach*` callers in `js/brain/curriculum.js` — they may be invoked via different naming patterns OR be orphans like P4.1.c group. Caller audit required before migration decision (migrate-active vs migrate-orphan-with-deprecation-marker).
+
+### Verification
+
+- `node --check js/brain/curriculum.js` — clean
+- `node --check js/brain/curriculum/kindergarten.js` — clean
+- `cd server && npm run build` → `js/app.bundle.js 2.4mb · Done in 78ms`
+- `grep -c "_teachAlphabetSequence\|_teachLetterNames\|_teachLetterSounds" js/app.bundle.js` → 12 occurrences (definitions + intra-class refs preserved through Object.assign K_MIXIN attach)
+- Pre-commit grep on modified source for task-IDs / operator-name → ZERO NEW violations
+- Working tree: `.claude/*` cherry-pick LOCAL (excluded), `docs/STATUSLINE.md` pre-existing local mod NOT touched, `.git/p4-1c-migrate.mjs` + `.git/COMMIT_MSG_p4_1c.txt` in `.git/` untracked
+
+### LAWs honored
+
+- **LAW #0 verbatim** — operator quote preserved word-for-word above
+- **Docs before push, no patches** — NOW.md + FINALIZED.md + NewTodo.md + TODO.md + RESUME.md all updated in this same atomic commit (RESUME.md cascade SHA recording rolled in vs a separate follow-up commit)
+- **Task numbers + operator name ONLY in workflow docs** — code comments use neutral phrasing
+- **No tests ever** — `node --check` + bundle rebuild are validation, not tests
+- **NEVER delete TODO info** — TODO.md gets STATUS update + cumulative SHA append, prior entries unchanged
+- **NO FALLBACKS** — pure refactor + orphan preservation, no behavior change, no fallback paths introduced
+- **Match doc format** — banner edited in-place in matching style; new section appended at top of FINALIZED.md per existing pattern
+
+---
+
 ## 2026-06-17 — Session 114.19fp P4.1.b — second bite of per-grade-file architecture (5 K-only direct-Oja helpers migrated)
 
 ### Gee verbatim per LAW #0

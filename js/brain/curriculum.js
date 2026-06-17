@@ -6079,145 +6079,46 @@ export class Curriculum {
   // the sequence-recall pathway. Session 25 splits them out + adds
   // the previously-missing alphabet-sequence temporal binding pass.
 
-  async _teachAlphabetSequence(opts = {}) {
-    const cluster = this.cluster;
-    if (!cluster) return { taught: 0 };
-    const reps = opts.reps ?? 6;
-    const ticksPerLetter = opts.ticksPerLetter ?? 2;
-    const ALPHABET = ALPHABET_ORDER;
-    ensureLetters(ALPHABET.split(''));
-
-    // Injects letters in a→b→c order with temporal separation. The
-    // letter region's recurrent weights (T14.4 intra-region Hebbian)
-    // bind consecutive letters together via the 2-tick gap between
-    // injections. After enough reps, the cortex learns the alphabet
-    // song — injecting letter N biases the next-tick argmax toward
-    // letter N+1.
-    // Learn EVERY TICK per letter, not once after the entire
-    // alphabet walk (where only 'z' state would survive).
-    for (let rep = 0; rep < reps; rep++) {
-      for (let i = 0; i < ALPHABET.length; i++) {
-        cluster.injectLetter(ALPHABET[i], 1.0);
-        for (let t = 0; t < ticksPerLetter; t++) {
-          cluster.step(0.001);
-          cluster.learn(0);
-          this.stats.totalTicks++;
-        }
-      }
-      await _microtask();
-    }
-    return { taught: reps * ALPHABET.length };
-  }
-
-  async _teachLetterNames(opts = {}) {
-    const cluster = this.cluster;
-    if (!cluster) return { taught: 0 };
-    const reps = opts.reps ?? 6;
-    const ticksPerRep = opts.ticksPerRep ?? 4;
-    const ALPHABET = ALPHABET_ORDER;
-    ensureLetters(ALPHABET.split(''));
-
-    // Binds letter one-hot ↔ GloVe(name) via sem↔letter cross-
-    // projection Hebbian. Uses the single-letter GloVe token first
-    // ('a', 'b', 'c' all in GloVe 6B) with fallback to LETTER_NAMES
-    // ('ay', 'bee', ...).
-    for (let rep = 0; rep < reps; rep++) {
-      for (let i = 0; i < ALPHABET.length; i++) {
-        const letter = ALPHABET[i];
-        const spokenName = LETTER_NAMES[i];
-        const nameEmb = sharedEmbeddings.getEmbedding(letter)
-          || sharedEmbeddings.getEmbedding(spokenName);
-        cluster.injectLetter(letter, 1.0);
-        if (nameEmb && nameEmb.length > 0 && cluster.regions?.sem) {
-          cluster.injectEmbeddingToRegion('sem', nameEmb, 0.7);
-        }
-        // Hebbian every tick
-        for (let t = 0; t < ticksPerRep; t++) {
-          cluster.step(0.001);
-          cluster.learn(0);
-          this.stats.totalTicks++;
-        }
-        this.stats.lettersSeen++;
-      }
-      await _microtask();
-    }
-    return { taught: reps * ALPHABET.length };
-  }
-
-  async _teachLetterSounds(opts = {}) {
-    const cluster = this.cluster;
-    if (!cluster) return { taught: 0 };
-    const reps = opts.reps ?? 6;
-    const ticksPerRep = opts.ticksPerRep ?? 4;
-    const ALPHABET = ALPHABET_ORDER;
-    ensureLetters(ALPHABET.split(''));
-
-    // Binds letter one-hot ↔ _phonemeFeatureForLetter via phon↔letter
-    // cross-projection Hebbian. 24d trig-hash phoneme features are
-    // decorrelated across the alphabet so different letters build
-    // distinct phon basins.
-    for (let rep = 0; rep < reps; rep++) {
-      for (const letter of ALPHABET) {
-        const phonFeat = _phonemeFeatureForLetter(letter);
-        cluster.injectLetter(letter, 1.0);
-        if (phonFeat && phonFeat.length > 0 && cluster.regions?.phon) {
-          cluster.injectEmbeddingToRegion('phon', phonFeat, 0.7);
-        }
-        // Hebbian every tick
-        for (let t = 0; t < ticksPerRep; t++) {
-          cluster.step(0.001);
-          cluster.learn(0);
-          this.stats.totalTicks++;
-        }
-      }
-      await _microtask();
-    }
-    return { taught: reps * ALPHABET.length };
-  }
 
   // ═══════════════════════════════════════════════════════════════════
-  // ELA-K equational course (LAW 3 + LAW 7 binding)
+  // K-ELA teach helpers — EXTRACTED to js/brain/curriculum/kindergarten.js
   // ═══════════════════════════════════════════════════════════════════
+  //
+  // Per per-grade-file architecture directive. All K-ELA letter/phoneme/
+  // word teach helpers + 6 K cell runners + 6 K gates + K-LIFE corpus
+  // live in kindergarten.js K_MIXIN, attached to Curriculum.prototype
+  // via Object.assign at curriculum.js entry-point bottom.
+  //
+  // Extracted teach methods:
+  //   - 3 orphan/legacy: _teachAlphabetSequence, _teachLetterNames,
+  //     _teachLetterSounds (Session 25 path superseded by
+  //     _teachAlphabetSequencePairs; preserved with deprecation marker)
+  //   - 5 direct-Oja: _teachLetterSequenceDirect, _teachWordSpellingDirect,
+  //     _teachLetterNamingDirect, _teachWordEmissionDirect,
+  //     _teachWordSpellingDirectFinal
+  //   - 13 contiguous helpers: _teachLetterCaseBinding, _teachLetterNaming,
+  //     _teachVowelSoundVariants, _teachWordEmission, _teachRhymeFamilies,
+  //     _teachSyllableCounts, _teachCVCSoundIsolation, _teachPluralTransform,
+  //     _teachQuestionWordCategories, _teachEndPunctuation,
+  //     _teachStoryComprehension, _teachPhonemeBlending, _teachCapitalization
+  //
+  // Also in kindergarten.js K_MIXIN:
+  //   - 6 K cell runners (runElaKReal + runArt/Soc/Sci/MathKReal + runLifeK)
+  //   - 6 K gates (_gateElaKReal + _gateArt/Soc/Sci/MathKReal + _gateLifeKReal)
+  //   - 15 K-LIFE methods (A.K-LIFE umbrella: first-words, family roles,
+  //     sensory firsts, comfort objects, fears, bedtime, dietary, motor,
+  //     friendships+games, songs+rhymes, storybooks, self-awareness,
+  //     integration, gate criterion, vocab pre-step)
+  //   - ~18 K-Math/K-Sci/K-Soc/K-Art/K-Life teach methods from prior session
+  //
+  // Shared primitives STAY on Curriculum.prototype in curriculum.js:
+  // _teachAssociationPairs, _teachCombination, _teachHebbian,
+  // _teachHebbianAsymmetric, _teachSentenceStructures, _teachDefinitionFirst,
+  // _teachWordInContext, _teachQABinding, _teachBiographicalFacts,
+  // _conceptTeach, _writeTiledPattern, _clearSpikes, _hb,
+  // _auditExamVocabulary, _pregateEnrichment, _teachPredictiveError,
+  // _teachLateralInhibition, _teachAntiHebbian.
 
-  // The prior `runElaKReal` got the direct-pattern alphabet teach
-  // correct (stays as-is below), but filled the body with
-  // _teachVocabList(FUNCTION_WORDS/DOLCH_PREPRIMER/DOLCH_PRIMER/CVC_FAMILIES)
-  // + _teachSentenceList(K_SENTENCES/PLURAL_PAIRS) — the EXACT
-  // word-list + sentence-example pattern LAW 3 bans. That shipped
-  // pattern is replaced below by real equational teaching methods,
-  // each landing bindings via the unified `_teachCombination`
-  // scaffold or direct-pattern Hebbian through the recurrent matrix.
-
-  // Production probes in _gateElaKReal match TODO K.RF / K.RL / K.W /
-  // K.L test phrasings verbatim per LAW 7.
-
-  /**
-   * K.RF letter case pairing — bind uppercase and lowercase forms of
-   * the same letter so Unity knows 'A' and 'a' are the same symbol.
-   * Both one-hots fire simultaneously in the letter region, intra-
-   * cluster Hebbian learns the pair association.
-   */
-
-  // 5 K-ELA direct one-hot letter/word teach helpers EXTRACTED to
-  // js/brain/curriculum/kindergarten.js K_MIXIN (per-grade file architecture).
-  //   _teachLetterSequenceDirect, _teachWordSpellingDirect,
-  //   _teachLetterNamingDirect, _teachWordEmissionDirect,
-  //   _teachWordSpellingDirectFinal.
-  // Called only from K cell runners. Direct-Oja recarve passes that bypass
-  // cross-region Hebbian for clean letter/word→motor attractors.
-
-
-
-  // 13 K-ELA letter/phoneme/word teach helpers EXTRACTED to
-  // js/brain/curriculum/kindergarten.js K_MIXIN (per-grade file architecture).
-  //   _teachLetterCaseBinding, _teachLetterNaming, _teachVowelSoundVariants,
-  //   _teachWordEmission, _teachRhymeFamilies, _teachSyllableCounts,
-  //   _teachCVCSoundIsolation, _teachPluralTransform, _teachQuestionWordCategories,
-  //   _teachEndPunctuation, _teachStoryComprehension, _teachPhonemeBlending,
-  //   _teachCapitalization.
-  // Called only from K cell runners. Shared primitives (_teachAssociationPairs,
-  // _teachCombination, _teachHebbian, _teachSentenceStructures, _teachDefinitionFirst,
-  // _teachWordInContext) stay on Curriculum.prototype here.
 
 
 

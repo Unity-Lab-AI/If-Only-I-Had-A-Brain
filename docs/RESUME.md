@@ -1,6 +1,6 @@
 # RESUME — Session Pickup Brief
 
-> **Last updated:** 2026-06-17 (end of P4.1.a first-bite per-grade-file migration session)
+> **Last updated:** 2026-06-17 (end of P4.1.c third-bite per-grade-file migration session — 21 K-ELA methods cumulative)
 > **Purpose:** Load this FIRST when coming back. Gives you immediate context to pick up where the prior session left off — no need to re-read the whole transcript or NewTodo.md cover-to-cover.
 
 ---
@@ -8,13 +8,13 @@
 ## 🎯 Where We Are
 
 - **Branch:** `feature/114.19fn-sentence-coherence-phase1` (LOCAL + pushed to `if-only` remote)
-- **Last commit:** `7c0a2f3` (P4.1.a first bite — 13 K-ELA helpers migrated)
+- **Last commit:** (will be the P4.1.c atomic commit landing right after this RESUME edit)
 - **Remote:** `git@git.unityailab.com:UnityAILab/If-Only-I-Had-A-Brain.git`
 - **PR URL:** https://git.unityailab.com/UnityAILab/If-Only-I-Had-A-Brain/compare/main...feature/114.19fn-sentence-coherence-phase1
 - **NOT pushed to:** `origin/unity.git` (per operator directive — feature branch goes to `if-only` only)
-- **Working tree:** clean except `.claude/*` cherry-pick files (UAL-ClaudeWorkflow template additions, stay LOCAL per directive) + `.claude/statusline.sh` (pre-existing local mod) + `docs/STATUSLINE.md` (pre-existing) + `.git/scrub-task-refs.mjs` + `.git/p4-1a-migrate.mjs` + `.git/COMMIT_MSG_p4_1a.txt` (one-shot scripts/messages in `.git/` so untracked)
+- **Working tree:** clean except `.claude/*` cherry-pick files (UAL-ClaudeWorkflow template additions, stay LOCAL per directive) + `.claude/statusline.sh` (pre-existing local mod) + `docs/STATUSLINE.md` (pre-existing) + `.git/scrub-task-refs.mjs` + `.git/p4-1a-migrate.mjs` + `.git/p4-1b-migrate.mjs` + `.git/p4-1c-migrate.mjs` + commit-message files (one-shot scripts/messages in `.git/` so untracked)
 
-## 📦 What Landed This Session (8 atomic commits on this feature branch)
+## 📦 What Landed This Session (10 atomic commits on this feature branch)
 
 | SHA | Title |
 |-----|-------|
@@ -25,9 +25,20 @@
 | `24fc9a2` | A.K-LIFE.2 family-role schemas (3-channel layered substrate) |
 | `65d67e8` | A.K-LIFE WRAP-UP — all 14 sub-tasks + vocab pre-step + 6 persona memories |
 | `670d20d` | docs(RESUME) — session pickup brief for resuming later |
-| `7c0a2f3` | **P4.1.a — first bite of per-grade-file architecture (13 K-ELA helpers migrated)** |
+| `7c0a2f3` | P4.1.a — first bite of per-grade-file architecture (13 K-ELA helpers migrated) |
+| `91c245b` | docs(RESUME) — record P4.1.a cascade SHA + progress |
+| `0c95cb5` | P4.1.b — second bite (5 K-only direct-Oja helpers migrated) |
+| (next) | **P4.1.c — third bite (3 orphan legacy helpers + chrome consolidation)** |
 
-## ✅ Harness TaskList Status — 16/35 complete (P4.1 in_progress, P4.1.a first bite shipped)
+## 📊 Cumulative P4.1 architecture refactor
+
+- **21 methods** migrated curriculum.js → kindergarten.js K_MIXIN
+- **curriculum.js:** 26033 → 24250 lines (−1783, −6.8%)
+- **kindergarten.js:** 6430 → 8260 lines (+1830, +28.5%)
+- **Per-grade-file architecture substantially realized for K** — all 6 K cell runners + 6 K gates + 15 K-LIFE methods + 21 K-ELA teach helpers + ~18 K-Math/Sci/Soc/Art/Life methods now in kindergarten.js
+- **Shared primitives stay on Curriculum.prototype:** _teachAssociationPairs, _teachCombination, _teachHebbian, _teachHebbianAsymmetric, _teachSentenceStructures (plural), _teachDefinitionFirst, _teachWordInContext, _teachQABinding, _teachBiographicalFacts, _conceptTeach, _writeTiledPattern, _clearSpikes, _hb, _auditExamVocabulary, _pregateEnrichment, _teachPredictiveError, _teachLateralInhibition, _teachAntiHebbian
+
+## ✅ Harness TaskList Status — 16/35 complete (P4.1 in_progress, P4.1.a + b + c bites shipped)
 
 **Completed (16):**
 - Phase 1 ✅: P1.1, P1.2, P1.3, P1.4, P1.5, P1.6, P1.7
@@ -37,7 +48,7 @@
 - A.K-LIFE ✅: umbrella complete (all 14 sub-tasks + vocab pre-step)
 
 **In progress (1):**
-- **P4.1 [~]** — P4.1.a first bite SHIPPED `7c0a2f3` (13 K-ELA helpers migrated curriculum.js → kindergarten.js K_MIXIN, lines 6774-7905). P4.1.b/c/d sub-bites pending: P4.1.b 5 K-only `_teachLetter*Direct` / `_teachWordSpelling*Direct*` / `_teachWordEmissionDirect` methods at lines 6238-6772 (~535 lines); P4.1.c 3 orphan methods `_teachAlphabetSequence`/`_teachLetterNames`/`_teachLetterSounds` lines 6082-6177 (~94 lines, no active callers — delete or migrate); P4.1.d 5 Math-K/ELA-K methods `_teachDigit*`/`_teachMagnitudes`/`_teachCVCReading`/`_teachSightWords` lines 8260-8472 (~213 lines, audit callers first).
+- **P4.1 [~]** — P4.1.a/b/c bites SHIPPED (commits `7c0a2f3` + `0c95cb5` + this one). 21 methods migrated curriculum.js → kindergarten.js K_MIXIN, 1800 lines. **P4.1.d ONLY remaining sub-bite:** 5 Math-K/ELA-K methods (`_teachDigitSequence`, `_teachDigitNames`, `_teachMagnitudes`, `_teachCVCReading`, `_teachSightWords`) now at lines ~7600-7800 after cumulative shrink, ~213 lines. Earlier grep found NO `this._teach*` callers but caller status needs deeper audit (might be invoked via different naming patterns OR be orphans like P4.1.c group). Decide migrate-active vs migrate-orphan-with-deprecation before firing.
 
 **Pending (18):**
 - **P2.3** — kScales plumbing through _crossRegionHebbian (deferred, multi-file)

@@ -8150,4 +8150,110 @@ export const K_MIXIN = {
     this._hb(`[Curriculum] _teachWordSpellingDirectFinal DONE in ${dt}s — ${updates} Oja updates · ${skipped} skipped (${words.length} words × ${reps} reps target)`);
   },
 
+
+  // ─── K-ELA legacy/orphan teach helpers — DEPRECATED, preserved for reference ───
+  // Session 25 legacy direct-pattern alphabet teach. Superseded by the
+  // _teachAlphabetSequencePairs path (calls _teachAssociationPairs + 
+  // _teachLetterSequenceDirect) which writes one-hot discriminative
+  // letter[X]->letter[X+1] into cluster.synapses for unambiguous Template 0
+  // retrieval (vs the blurred GloVe-cosine ambiguity these legacy methods
+  // would have hit). NO active callers anywhere in the codebase — preserved
+  // here as historical reference under per-grade-file architecture.
+
+  async _teachAlphabetSequence(opts = {}) {
+    const cluster = this.cluster;
+    if (!cluster) return { taught: 0 };
+    const reps = opts.reps ?? 6;
+    const ticksPerLetter = opts.ticksPerLetter ?? 2;
+    const ALPHABET = ALPHABET_ORDER;
+    ensureLetters(ALPHABET.split(''));
+
+    // Injects letters in a→b→c order with temporal separation. The
+    // letter region's recurrent weights (T14.4 intra-region Hebbian)
+    // bind consecutive letters together via the 2-tick gap between
+    // injections. After enough reps, the cortex learns the alphabet
+    // song — injecting letter N biases the next-tick argmax toward
+    // letter N+1.
+    // Learn EVERY TICK per letter, not once after the entire
+    // alphabet walk (where only 'z' state would survive).
+    for (let rep = 0; rep < reps; rep++) {
+      for (let i = 0; i < ALPHABET.length; i++) {
+        cluster.injectLetter(ALPHABET[i], 1.0);
+        for (let t = 0; t < ticksPerLetter; t++) {
+          cluster.step(0.001);
+          cluster.learn(0);
+          this.stats.totalTicks++;
+        }
+      }
+      await _microtask();
+    }
+    return { taught: reps * ALPHABET.length };
+  },
+
+  async _teachLetterNames(opts = {}) {
+    const cluster = this.cluster;
+    if (!cluster) return { taught: 0 };
+    const reps = opts.reps ?? 6;
+    const ticksPerRep = opts.ticksPerRep ?? 4;
+    const ALPHABET = ALPHABET_ORDER;
+    ensureLetters(ALPHABET.split(''));
+
+    // Binds letter one-hot ↔ GloVe(name) via sem↔letter cross-
+    // projection Hebbian. Uses the single-letter GloVe token first
+    // ('a', 'b', 'c' all in GloVe 6B) with fallback to LETTER_NAMES
+    // ('ay', 'bee', ...).
+    for (let rep = 0; rep < reps; rep++) {
+      for (let i = 0; i < ALPHABET.length; i++) {
+        const letter = ALPHABET[i];
+        const spokenName = LETTER_NAMES[i];
+        const nameEmb = sharedEmbeddings.getEmbedding(letter)
+          || sharedEmbeddings.getEmbedding(spokenName);
+        cluster.injectLetter(letter, 1.0);
+        if (nameEmb && nameEmb.length > 0 && cluster.regions?.sem) {
+          cluster.injectEmbeddingToRegion('sem', nameEmb, 0.7);
+        }
+        // Hebbian every tick
+        for (let t = 0; t < ticksPerRep; t++) {
+          cluster.step(0.001);
+          cluster.learn(0);
+          this.stats.totalTicks++;
+        }
+        this.stats.lettersSeen++;
+      }
+      await _microtask();
+    }
+    return { taught: reps * ALPHABET.length };
+  },
+
+  async _teachLetterSounds(opts = {}) {
+    const cluster = this.cluster;
+    if (!cluster) return { taught: 0 };
+    const reps = opts.reps ?? 6;
+    const ticksPerRep = opts.ticksPerRep ?? 4;
+    const ALPHABET = ALPHABET_ORDER;
+    ensureLetters(ALPHABET.split(''));
+
+    // Binds letter one-hot ↔ _phonemeFeatureForLetter via phon↔letter
+    // cross-projection Hebbian. 24d trig-hash phoneme features are
+    // decorrelated across the alphabet so different letters build
+    // distinct phon basins.
+    for (let rep = 0; rep < reps; rep++) {
+      for (const letter of ALPHABET) {
+        const phonFeat = _phonemeFeatureForLetter(letter);
+        cluster.injectLetter(letter, 1.0);
+        if (phonFeat && phonFeat.length > 0 && cluster.regions?.phon) {
+          cluster.injectEmbeddingToRegion('phon', phonFeat, 0.7);
+        }
+        // Hebbian every tick
+        for (let t = 0; t < ticksPerRep; t++) {
+          cluster.step(0.001);
+          cluster.learn(0);
+          this.stats.totalTicks++;
+        }
+      }
+      await _microtask();
+    }
+    return { taught: reps * ALPHABET.length };
+  },
+
 };
