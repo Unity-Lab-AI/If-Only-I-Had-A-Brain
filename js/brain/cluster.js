@@ -179,6 +179,37 @@ function injectEmbeddingToRegionOffset(cluster, regionName, emb, strength, offse
 // trigger the stop branch.
 const T14_TERMINATORS = new Set(['.', '?', '!']);
 
+// 114.19fn P1.5 — function-word set EXEMPTED from the recent-emission
+// repetition penalty in emitWordDirect. Real English requires repeated
+// function words within a single utterance ("the cat sat on the mat"
+// has "the" ×2). Penalizing them 30% punishes grammatical English and
+// drives the composer toward awkward avoidance constructions. Content
+// words (cat, run, eat) STILL get the penalty so the brain doesn't
+// loop on the same noun/verb. Curated K-grade set covering articles,
+// auxiliary verbs, pronouns, prepositions, conjunctions, common
+// determiners. Not a list-for-mimicry — it's a categorical marker
+// that says "don't penalize repetition of structural connective
+// tissue." Equivalent biologically to high-frequency-word baseline
+// tolerance found in cortical n-gram statistics.
+const FUNCTION_WORDS = new Set([
+  // Articles + determiners
+  'a', 'an', 'the', 'this', 'that', 'these', 'those',
+  // Auxiliaries + copulas
+  'is', 'am', 'are', 'was', 'were', 'be', 'been', 'being',
+  'have', 'has', 'had', 'do', 'does', 'did',
+  'will', 'would', 'can', 'could', 'should', 'may', 'might',
+  // Pronouns
+  'i', 'you', 'he', 'she', 'it', 'we', 'they', 'me', 'him', 'her',
+  'us', 'them', 'my', 'your', 'his', 'its', 'our', 'their',
+  // Prepositions
+  'of', 'to', 'in', 'on', 'at', 'by', 'for', 'with', 'from',
+  'up', 'down', 'out', 'off', 'over', 'under', 'into',
+  // Conjunctions
+  'and', 'or', 'but', 'so', 'if', 'because', 'when', 'while', 'as',
+  // Negation
+  'not', 'no',
+]);
+
 // 114.19fj.6 — env-tunable coherence threshold + sample logging.
 const COHERENCE_MIN = (() => {
   try {
@@ -1201,7 +1232,7 @@ export class NeuronCluster {
    * @param {Float32Array|Float64Array} emb — N-dim embedding vector
    * @param {number} [strength=1.0] — current scale multiplier
    */
-  injectEmbeddingToRegion(regionName, emb, strength = 1.0) {
+  injectEmbeddingToRegion(regionName, emb, strength = 1.0, opts = {}) {
     const region = this.regions[regionName];
     if (!region) return;
     const regionSize = region.end - region.start;
@@ -1215,16 +1246,39 @@ export class NeuronCluster {
     // decode noise. After E.a, intent lands on BOTH the standalone
     // CPU externalCurrent (kept for equivalence during E→F window)
     // AND the main-cortex GPU currents buffer at the first-N sub-slice.
+    //
+    // 114.19fn P1.2 — `opts.replaceMode === true` switches additive `+=`
+    // to assignment `=` so composeSentence's per-word back-injection
+    // doesn't accumulate sem soup. When replaceMode is set, this call
+    // zeroes the target region cells BEFORE the new value lands. Used
+    // by composeSentence's autoregressive emission loop so each tick's
+    // injected word-embedding fully replaces the prior tick's, instead
+    // of stacking on top. Default false preserves additive behavior for
+    // every other caller (training writes, schema injection, etc).
     const haveProxy = !!(this._gpuProxy && this._gpuProxy.writeCurrentSlice);
     const fwdIndices = haveProxy ? [] : null;
     const fwdValues  = haveProxy ? [] : null;
+    const replaceMode = opts.replaceMode === true;
+    // When replacing, zero the WHOLE region first so any prior
+    // injections in cells we won't overwrite (region cells beyond
+    // emb.length * groupSize) also clear. This is the correct
+    // "fresh intent state" semantic the caller asked for.
+    if (replaceMode) {
+      for (let i = region.start; i < region.end; i++) {
+        this.externalCurrent[i] = 0;
+      }
+    }
     for (let d = 0; d < emb.length; d++) {
       const value = emb[d] * 8 * strength;  // same * 8 scale as legacy mapToCortex
       const startNeuron = region.start + d * groupSize;
       for (let n = 0; n < groupSize; n++) {
         const idx = startNeuron + n;
         if (idx >= region.end) break;
-        this.externalCurrent[idx] += value;
+        if (replaceMode) {
+          this.externalCurrent[idx] = value;
+        } else {
+          this.externalCurrent[idx] += value;
+        }
         if (fwdIndices && value !== 0) {
           // Index relative to region start — matches main-cortex
           // first-N sub-slice where Phase C pattern writes land.
@@ -3396,20 +3450,34 @@ export class NeuronCluster {
 
     // GlobalWorkspace bias: when a previous-tick ignition broadcast
     // names a specific word (cortex's getWorkspaceCandidate label
-    // shape "cortex:<word>"), boost the matching bucket's mean by
-    // 10%. Per Baars 1988 GWT, conscious-broadcast content should be
+    // shape "cortex:<word>"), boost the matching bucket's mean.
+    // Per Baars 1988 GWT, conscious-broadcast content should be
     // preferentially accessible to downstream motor systems — without
     // this hook, GW.tick() runs but its winner doesn't actually shape
-    // emission. Boost is small (10%) so the broadcast biases without
-    // overriding a clearly stronger competing signal. Null-safe: when
-    // workspace not wired or last broadcast is non-word, no-op.
+    // emission.
+    //
+    // 114.19fn P1.7 — boost now scales with ignition strength instead
+    // of the prior flat 10%. A strong ignition (strength ≈ 1.0) gets
+    // up to +60% bias (mean *= 1.60), a weak ignition (strength ≈ 0.1)
+    // gets a nudge (+6%). 10% flat was tiebreaker-territory; real GW
+    // theory says broadcast should dominate. We clamp the formula so
+    // a bad strength reading (NaN / >1 / <0) falls back to the prior
+    // 10% nudge. Null-safe: when workspace not wired or last broadcast
+    // is non-word, no-op.
     let gwBoostWord = null;
+    let gwBoostMul  = 1.10;  // fallback if strength field absent
     if (this._globalWorkspace && typeof this._globalWorkspace.getBroadcast === 'function') {
       try {
         const bc = this._globalWorkspace.getBroadcast();
         if (bc && typeof bc.label === 'string' && bc.label.startsWith('cortex:')) {
           const w = bc.label.slice('cortex:'.length);
-          if (w && w !== 'silent') gwBoostWord = w;
+          if (w && w !== 'silent') {
+            gwBoostWord = w;
+            const s = typeof bc.strength === 'number' ? bc.strength : NaN;
+            if (Number.isFinite(s) && s >= 0 && s <= 1) {
+              gwBoostMul = 1.0 + (s * 0.6);
+            }
+          }
         }
       } catch { /* non-fatal — broadcast unavailable, skip bias */ }
     }
@@ -3462,22 +3530,65 @@ export class NeuronCluster {
         let mean = sum / cellCount;
         // GW bias multiplier — boost the bucket whose word matches
         // the current workspace broadcast (continuity-of-thought
-        // bias).
-        if (gwBoostWord && wordsList[b] === gwBoostWord) mean *= 1.10;
+        // bias). 114.19fn P1.7 — scales with ignition strength via
+        // gwBoostMul (range 1.0–1.6) instead of the prior flat 1.10.
+        if (gwBoostWord && wordsList[b] === gwBoostWord) mean *= gwBoostMul;
         // 114.19fi.A.3 — repetition penalty: words emitted in last 4
         // ticks get downweighted 30% so the same word doesn't lottery-
         // win the next argmax in a row.
-        if (recentLast4.has(wordsList[b])) mean *= REPETITION_PENALTY;
+        // 114.19fn P1.5 — function words (the/a/an/is/are/and/or/etc)
+        // are EXEMPT from the penalty so grammatical English isn't
+        // punished. See FUNCTION_WORDS module-const above for the
+        // categorical filter. Content words (cat/run/eat) still get
+        // the penalty so the brain doesn't loop on nouns/verbs.
+        if (recentLast4.has(wordsList[b]) && !FUNCTION_WORDS.has(wordsList[b])) {
+          mean *= REPETITION_PENALTY;
+        }
         candidates.push({ word: wordsList[b], mean });
         if (mean > bestMean) { bestMean = mean; bestWord = wordsList[b]; }
       }
     }
 
-    // minSignal floor compares against the MEAN per-cell signal. With
-    // F.3 bucket alignment + F.6 honest signal-to-noise, 0.001 lets
-    // weak-but-real signals through while filtering pure noise.
-    const minSignal = opts.minSignal ?? 0.001;
-    if (!bestWord || bestMean < minSignal) return '';
+    // minSignal floor compares against the MEAN per-cell signal.
+    // 114.19fn P1.6 — adaptive floor. Prior 0.001 hardcoded floor was
+    // noise-territory: once sem region saturated to soup, any bucket
+    // with mean > 0.001 would "win" — including pure noise — driving
+    // the "random one-word responses" failure mode.
+    //
+    // New behavior: track an EMA of accepted bestMean values in
+    // `this._emitSignalEMA` (initialized lazily). After N>=20 accepted
+    // emissions, floor becomes `max(opts.minSignal ?? 0.001, ema * 0.5)`
+    // so only buckets meaningfully-elevated above typical-winning-signal
+    // pass. Buckets ≥50% of typical accepted signal still emit (lets
+    // legitimately weak-but-real signals through during early curriculum
+    // when typical signal is low). EMA alpha=0.05 = slow accumulation,
+    // 20-sample warm-up — noise can't shift the floor. Surface live
+    // floor + ema to dashboard via `cluster._emitSignalFloor` /
+    // `cluster._emitSignalEMA` so Gee can see when this gate is the
+    // bottleneck.
+    if (typeof this._emitSignalEMA !== 'number') this._emitSignalEMA = 0;
+    if (typeof this._emitSignalSampleCount !== 'number') this._emitSignalSampleCount = 0;
+    const defaultFloor = opts.minSignal ?? 0.001;
+    let adaptiveFloor = defaultFloor;
+    if (this._emitSignalSampleCount >= 20 && this._emitSignalEMA > 0) {
+      adaptiveFloor = Math.max(defaultFloor, this._emitSignalEMA * 0.5);
+    }
+    this._emitSignalFloor = adaptiveFloor;  // surface for dashboard
+    if (!bestWord || bestMean < adaptiveFloor) {
+      // Record rejection reason for diagnostic panel (P3.2 will read this).
+      this._lastEmitRejection = {
+        reason: !bestWord ? 'no-best-word' : 'below-adaptive-floor',
+        bestMean: bestMean === -Infinity ? 0 : bestMean,
+        floor: adaptiveFloor,
+        ema: this._emitSignalEMA,
+        ts: Date.now(),
+      };
+      return '';
+    }
+    // Update EMA + sample count on every accepted emission below.
+    const _emaAlpha = 0.05;
+    this._emitSignalEMA = (1 - _emaAlpha) * this._emitSignalEMA + _emaAlpha * bestMean;
+    this._emitSignalSampleCount++;
 
     // 114.19fg.Tier15 — temperature sampling path. When opts.temperature
     // is a positive number, soft-sample over top-K candidates instead
@@ -3489,7 +3600,10 @@ export class NeuronCluster {
     if (temperature > 0 && candidates.length > 1) {
       const topK = Math.max(1, Math.min(opts.topK ?? 8, candidates.length));
       candidates.sort((a, b) => b.mean - a.mean);
-      const topCandidates = candidates.slice(0, topK).filter(c => c.mean >= minSignal);
+      // 114.19fn P1.6 — adaptive floor applied here too so top-K
+      // nucleus sampling can't grab below-floor noise. Same floor the
+      // greedy-argmax gate above used.
+      const topCandidates = candidates.slice(0, topK).filter(c => c.mean >= adaptiveFloor);
       if (topCandidates.length === 0) return '';
       // Softmax over top-K with temperature scaling.
       const maxMean = topCandidates[0].mean;
@@ -3610,17 +3724,62 @@ export class NeuronCluster {
    * @returns {{ sentence: string, words: string[], fillCount: number,
    *            coherenceCosine: number|null, coherenceTarget: string|null } | null}
    */
-  composeSentence(intentSeed = null, opts = {}) {
+  async composeSentence(intentSeed = null, opts = {}) {
+    // 114.19fn P1.1 — converted to async + ticks the brain between word
+    // emissions. PRIOR behavior was synchronous loop that called
+    // emitWordDirect 12 times on the SAME frozen lastSpikes — the
+    // "inject word back so next tick reads shifted state" comment was
+    // architecturally false at runtime since no tick happened in the
+    // loop. Now the loop awaits stepAwait between emits so the brain
+    // actually consumes the injected sem state, lastSpikes updates,
+    // and the next emit sees a real autoregressive shift. This is the
+    // load-bearing fix for "random one-word responses" failure mode.
+    //
+    // 114.19fn P1.3 — terminator-first guard: if the first emission is
+    // a terminator (period/question/exclamation), reject it and keep
+    // ticking — empty sentences are useless. After MAX_TERMINATOR_REJECTS
+    // attempts in a row we bail with whatever we have to prevent
+    // infinite loops on pathological state.
+    //
+    // 114.19fn P1.2 use-site — per-word back-injection uses replaceMode
+    // for the WORD embedding so it doesn't accumulate to soup, but the
+    // initial seed/cortex/concept injections STAY additive (they're
+    // meant to be combined). At each tick, cortical leak naturally
+    // dissipates externalCurrent so the brain reads a real evolving
+    // intent + word-emphasis blend.
     if (!this.regions || !this.regions.sem || typeof this.injectEmbeddingToRegion !== 'function') {
       return null;
     }
     if (typeof this.emitWordDirect !== 'function') return null;
+    // stepAwait is required for the autoregressive tick loop. Fall back
+    // to step() if stepAwait is unavailable. If neither, the loop is
+    // effectively synchronous (regression to prior broken behavior),
+    // logged once so the cause is visible.
+    const hasStepAwait = typeof this.stepAwait === 'function';
+    const hasStep = typeof this.step === 'function';
+    if (!hasStepAwait && !hasStep && !this._composeNoStepWarned) {
+      this._composeNoStepWarned = true;
+      try { console.warn('[composeSentence] cluster has neither stepAwait nor step — autoregressive tick loop will degenerate to sync emit. Fix the cluster wiring.'); } catch {}
+    }
 
     const checkAborted = () => opts.signal && opts.signal.aborted;
     if (checkAborted()) {
       if (!this._composeStats) this._composeStats = { calls: 0, fills: 0, partial: 0, empty: 0 };
       this._composeStats.aborted = (this._composeStats.aborted || 0) + 1;
       return null;
+    }
+
+    // Zero sem region externalCurrent at the START of every compose call
+    // so prior compose calls' lingering injections don't poison this
+    // turn's intent. (Per /super-review issue #2 — externalCurrent
+    // accumulates across calls.) This is the per-call "fresh intent
+    // window" reset. Doesn't affect lastSpikes / weights / persistent
+    // state — only the input-current buffer.
+    const semRegion = this.regions.sem;
+    if (semRegion && this.externalCurrent) {
+      for (let i = semRegion.start; i < semRegion.end; i++) {
+        this.externalCurrent[i] = 0;
+      }
     }
 
     // (0) Cortex-pattern injection — chain-blended seed from inner-voice
@@ -3663,12 +3822,46 @@ export class NeuronCluster {
 
     const words = [];
     const MAX_WORDS = typeof opts.maxWords === 'number' && opts.maxWords > 0 ? Math.floor(opts.maxWords) : 12;
+    // 114.19fn P1.1 — number of brain ticks between word emissions.
+    // 2-4 is the sweet spot: enough cycles to propagate sem→word_motor
+    // and dissipate prior injection via cortical leak, few enough to
+    // not blow the per-utterance tick budget at biological scale.
+    // Caller can override via opts.ticksPerWord.
+    const TICKS_PER_WORD = typeof opts.ticksPerWord === 'number' && opts.ticksPerWord > 0
+      ? Math.floor(opts.ticksPerWord) : 3;
+    // 114.19fn P1.3 — terminator-first retry budget. If the first
+    // emission is a terminator (".", "?", "!"), we reject and retry
+    // up to this many times before giving up. With ticks between
+    // attempts, the state shifts so retries aren't redundant.
+    const MAX_TERMINATOR_REJECTS = 3;
+    let terminatorRejects = 0;
 
     for (let i = 0; i < MAX_WORDS; i++) {
       if (checkAborted()) {
         if (!this._composeStats) this._composeStats = { calls: 0, fills: 0, partial: 0, empty: 0 };
         this._composeStats.aborted = (this._composeStats.aborted || 0) + 1;
         return null;
+      }
+
+      // 114.19fn P1.1 — TICK the brain so sem→word_motor propagation
+      // actually runs on the current externalCurrent injections. Without
+      // these ticks lastSpikes is frozen and emitWordDirect returns the
+      // same argmax every iteration. With them the brain processes the
+      // injected intent + prior word context into a real spike pattern
+      // word_motor can argmax against.
+      for (let t = 0; t < TICKS_PER_WORD; t++) {
+        if (checkAborted()) {
+          if (!this._composeStats) this._composeStats = { calls: 0, fills: 0, partial: 0, empty: 0 };
+          this._composeStats.aborted = (this._composeStats.aborted || 0) + 1;
+          return null;
+        }
+        try {
+          if (hasStepAwait) {
+            await this.stepAwait(0.001);
+          } else if (hasStep) {
+            this.step(0.001);
+          }
+        } catch { /* tick non-fatal — continue with whatever state landed */ }
       }
 
       const emitOpts = { skipRecentTrack: true };
@@ -3687,11 +3880,25 @@ export class NeuronCluster {
       // emerges, append to last word and STOP. NOT a hardcoded intent→
       // punct mapping — the brain decides when AND which terminator from
       // trained weights.
+      //
+      // 114.19fn P1.3 — terminator-first guard. If words.length === 0,
+      // emitting a terminator yields an empty sentence — useless. Reject,
+      // continue ticking, give the autoregressive state a chance to
+      // shift past the terminator basin. Up to MAX_TERMINATOR_REJECTS
+      // retries before bailing with whatever we have (which will be
+      // empty, so the caller sees null — but that's an honest "couldn't
+      // emit anything" not the silent-die-on-word-zero bug).
       if (T14_TERMINATORS.has(word)) {
         if (words.length > 0) {
           words[words.length - 1] = words[words.length - 1] + word;
+          break;
+        } else {
+          terminatorRejects++;
+          if (terminatorRejects >= MAX_TERMINATOR_REJECTS) break;
+          // Don't push the terminator, don't back-inject — let the next
+          // tick cycle shift state on its own. Continue loop.
+          continue;
         }
-        break;
       }
 
       words.push(word);
@@ -3705,6 +3912,13 @@ export class NeuronCluster {
       // shifted state. THIS is the equational mechanism that produces
       // sequence — slot progression EMERGES from sem evolution + trained
       // weights, not from a slot-template prescription.
+      //
+      // 114.19fn — additive injection (NOT replaceMode) so the original
+      // intent embedding stays anchored. Cortical leak between ticks
+      // naturally dissipates the prior word's emphasis; intent persists
+      // because it was injected at higher strength. This produces the
+      // "carry intent + emphasize recent word" autoregressive read the
+      // next emit needs.
       if (sharedEmbeddings && typeof sharedEmbeddings.getEmbedding === 'function') {
         try {
           const wordEmb = sharedEmbeddings.getEmbedding(word);

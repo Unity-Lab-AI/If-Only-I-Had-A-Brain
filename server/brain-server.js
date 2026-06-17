@@ -5698,7 +5698,7 @@ class ServerBrain {
     if (this._operatorSleepRequested) {
       // 114.19fg.Tier16 — sentence-mode showcase when ≥50 words trained,
       // single-word for early-curriculum brains.
-      const showcaseSentence = this._sampleCurrentSentence();
+      const showcaseSentence = await this._sampleCurrentSentence();
       const showcaseWord = showcaseSentence ? showcaseSentence.split(/\s+/)[0] : null;
       if (showcaseSentence) {
         this._lastInnerThoughtEmittedAt = now;
@@ -5840,7 +5840,7 @@ class ServerBrain {
         // yet (truly fresh brain), still silent — sampling returns null,
         // showcase-broadcast skips, only silence-reason log fires.
         // 114.19fg.Tier16 — sentence-mode showcase when ≥50 words trained.
-        const showcaseSentence = this._sampleCurrentSentence();
+        const showcaseSentence = await this._sampleCurrentSentence();
         const showcaseWord = showcaseSentence ? showcaseSentence.split(/\s+/)[0] : null;
         if (showcaseSentence) {
           this._lastInnerThoughtEmittedAt = now;  // 114.19ff — feed natural-rhythm gate
@@ -5989,7 +5989,11 @@ class ServerBrain {
    *
    * @returns {string|null} a 1-4 word phrase or null if no vocab learned
    */
-  _sampleCurrentSentence() {
+  // 114.19fn P1.1 — async because composeSentence is now async (it
+  // ticks the brain between word emissions for real autoregressive
+  // emergence). Callers in _innerVoiceTick are already async; they
+  // now `await this._sampleCurrentSentence()`.
+  async _sampleCurrentSentence() {
     const cluster = this.cortexCluster;
     if (!cluster) return null;
     const SUBJECTS = ['ela', 'math', 'sci', 'soc', 'art', 'life'];
@@ -6019,7 +6023,9 @@ class ServerBrain {
     // cortex, no current activation, etc.).
     if (typeof cluster.composeSentence === 'function') {
       try {
-        const composed = cluster.composeSentence(null, { temperature: 0.7, topK: 10 });
+        // 114.19fn P1.1 — awaited; composeSentence ticks the brain
+        // between word emissions for real autoregressive emergence.
+        const composed = await cluster.composeSentence(null, { temperature: 0.7, topK: 10 });
         if (composed && composed.sentence && composed.fillCount >= 2) {
           return composed.sentence;
         }

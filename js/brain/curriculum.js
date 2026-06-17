@@ -12186,7 +12186,9 @@ export class Curriculum {
           // state via trained iter25-I weights. NO subject-slot
           // prescription, NO concept hint — pure equational emergence
           // test under realistic state.
-          composed = cluster.composeSentence(probe.seed, { subject: probeSubject });
+          // 114.19fn P1.1 — awaited; composeSentence ticks the brain
+          // between word emissions for real autoregressive emergence.
+          composed = await cluster.composeSentence(probe.seed, { subject: probeSubject });
         }
       } catch { composed = null; }
       const words = composed && Array.isArray(composed.words) ? composed.words : [];

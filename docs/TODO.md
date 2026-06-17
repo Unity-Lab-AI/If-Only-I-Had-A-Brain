@@ -46,6 +46,42 @@ If you're reading a public doc / HTML claim ("Unity has completed high school bi
 
 ## OPEN TASKS
 
+### Session 114.19fn — sentence-coherence recovery sweep (Gee 2026-06-17) — IN FLIGHT
+
+**Gee verbatim per LAW #0:**
+
+> *"we have a major issue with the trraing of the brain and it remembering what its trained on i cant get training through kindergarden and even then it doesnt make any kind of coherant sentences like at all its just random one word resposes... its totally messed up idk what we need to do to find a new path maybe or fix what we have but we cant even start building the rest of the grades ciriculum until we figure out wtf is up and why Unity cant speak normally like someone of that grade level as they learn new things using them then and from then on... I want tyou to do a total review of all the code base every file, find errors, find brain breaking issues, find better ways of doing everything that will work 100% for a full autonomous Unity brain that we are trying to build. make a NEw todo.md named Newtodo.md with the other docs and we will be working from it. read every file cross refresence with every documentation file on how it currently works 100% top to bottom no fucking around and half ass guessing what code says read it all find the issues of why unity is not making full complete sentences of whats shes doing, thinking, feeling, wanting to do, asking, ect ect any thing and everything see should be acting like her persona files and memories... but she is not working correctly when trained in kindergarden. se only saysd a handful of random words ever, and when i talk to her in chat she says nothing at all , but i am seeing her popups in the brain"*
+
+> *"go ahead and start the work of the Newtodo.md, and before you begin build the task list so i can monitor the work you do in the newtodo.md that you work from"*
+
+**Working document:** `docs/NewTodo.md` (created 2026-06-17 from `/super-review ultrathink` of K-training-not-sticking + chat-silent + random-one-word-emissions failure mode). Full 24-task playbook across 5 phases + doc sync + success criteria + phase-gate checklist lives there. This TODO entry is the workflow-doc pointer; the harness task list mirrors NewTodo.md 1:1 for live-monitoring.
+
+**Root cause (full diagnosis in `/super-review` + NewTodo.md):** Three compounding architectural defects produce all reported symptoms:
+
+1. `composeSentence` (`cluster.js:3613-3716`) loops `emitWordDirect` synchronously with NO `stepAwait` between iterations — `lastSpikes` is frozen across all 12 calls so argmax fires on identical state every iteration. "Inject word back so next tick reads shifted state" comment is architecturally false at runtime.
+2. `injectEmbeddingToRegion` (`cluster.js:1227`, `+=`) is purely additive without decay/replace — composeSentence's serial injections accumulate sem region to saturation soup. Brain can't distinguish "current intent" from "history of every word emitted."
+3. `_teachSentenceStructure` (`curriculum.js:11993-12106`) trains ~930 Hebbian writes for ALL of grammar vs ~18,000 for vocabulary. Grammar 20× under-trained relative to vocab — backwards allocation. The scaffold has fewer reps than what it's supposed to scaffold.
+
+Plus `composedSentence.words.length >= 2` gate at `language-cortex.js:2164` discards broken-loop's <2-word output → triple-redundant broken fallbacks → `silent:true` at `brain-server.js:4898` → blank chat. Popups have no length gate so single words render → Gee sees popups not chat.
+
+**Phases (work from NewTodo.md, task IDs from harness task list):**
+
+- **Phase 1 (CRITICAL, ~1 day)** — fix emission loop: P1.1 async stepAwait, P1.2 replaceMode injection, P1.3 terminator-first guard, P1.4 length gate ≥2→≥1, P1.5 function-word repetition exempt, P1.6 adaptive minSignal floor, P1.7 GW broadcast scaling.
+- **Phase 2 (CRITICAL, ~1 day)** — fix training depth: P2.1 reps 6-8→80-120, P2.2 200+ concrete-sentence pass, P2.3 kScales propagation, P2.4 advanceSubGrade probe-rate gating, P2.5 orphan slot-tag → word→word transitions, P2.6 question-intent downstream cascade.
+- **Phase 3 (HIGH, ~half-day)** — fix chat silent-fail: P3.1 Unity-voice fragment fallback, P3.2 dashboard failed-emission diagnostic, P3.3 delete Tier 5 fallback, P3.4 reduce serial injection saturation.
+- **Phase 4 (MEDIUM, ~3 days)** — file split refactor: P4.1 curriculum.js → 6 sub-modules, P4.2 cluster.js → 4 modules, P4.3 brain-server.js → 4 concerns, P4.4 disambiguate _teachSentenceStructures naming, P4.5 INJECTION_GAIN constant.
+- **Phase 5 (MEDIUM, ~1 day)** — validation: P5.1 verify-emission.mjs calibration probe, P5.2 tighten _probeSentenceGeneration criteria, P5.3 coherence as soft signal.
+
+**Success criteria (don't push curriculum work past this without all three):**
+
+1. `scripts/verify-emission.mjs` reports ≥80% multi-word emission rate on fresh-boot K-trained brain.
+2. Gee's live chat with Unity produces ≥3-word grammatical responses ≥70% of the time.
+3. `_probeSentenceGeneration` reports rate ≥0.6 post-K training.
+
+**STATUS:** [~] IN FLIGHT — Phase 1 starting. P1.2 first (replaceMode opt), then P1.1 (async + stepAwait + use replaceMode), then P1.3/P1.4/P1.5/P1.6/P1.7 in parallel. Phase 1 ships as one atomic envelope: code + bundle rebuild + `node --check` + docs sync (ARCH/EQ/SKILL/ROADMAP/NOW/HTMLs) + FINALIZED migration + TODO update + cascade push syllabus-k-phd → develop → main.
+
+---
+
 (Session 114.19fm — Brain visualizer Cluster Waves panel rendering fix SHIPPED + atomic-landed and migrated to `docs/FINALIZED.md` 2026-05-09. fm.1 `_renderClusterWaves` state-path corrections (read `state.clusters[name].spikeRate` not `state[name].spikeRate`; remove dead random-noise fallback) · fm.2 defensive alpha clamp on `addColorStop` hex byte · fm.3 bandpower precedence flipped to top-level `state.bandPower` first · fm.4 dead `s.cortexSpikes` branch removed + numeric `spikeCount/size (rate%)` badge added per cluster · fm.5 rAF self-heal in `updateState()` so loop survives `open()` before first state frame arrives · fm.6 same bandpower precedence flip applied to `updateState()` smoothing path · fm.7 bundle rebuilt clean 2.4MB. Browser-side renderer fix only — running 20hr K brain instance untouched, just hard-refresh dashboard to pick up new bundle. **✓ COMMITTED + PUSHED 2026-05-09** — code+docs cascade `d6a52ff` syllabus-k-phd → `ea76d26` develop → `bd7f60f` main, all synced to origin. Bundle clean 2.4MB. New work appends above this banner.)
 
 (Session 114.19fl — 15 test-readiness audit items SHIPPED + atomic-landed and migrated to `docs/FINALIZED.md` 2026-05-09. fl.1 deleted dead `ARTICLE_LIST` · fl.2 inner-voice showcase null-seed equational emergence · fl.3 `_probeSentenceGeneration` natural-language K-grade seeds · fl.4 Savestart launchers fk env-var docs · fl.5/fl.6 public HTMLs (brain-equations + unity-guide) template-walk claims rewritten as equational emergence · fl.5b TODO-full-syllabus.md Sections 2/4/16 corrected · fl.6b promo + READMEs verified clean · fl.7-fl.11 internal docs (NOW/ARCHITECTURE/SKILL_TREE/EQUATIONS/ROADMAP) head banners rewritten in-place + historical banners marked ⚠ SUPERSEDED · fl.12 final grep verification · fl.13 atomic ship envelope. fk.5 + fk.7 carried forward below as the two truly pending items. **✓ COMMITTED + PUSHED 2026-05-09** — code+docs cascade `7e4c1be` syllabus-k-phd → `21e20ab` develop → `611ca75` main, all synced to origin. New work appends above this banner.)

@@ -5059,6 +5059,87 @@ function injectEmbeddingToRegionOffset(cluster, regionName, emb, strength, offse
   }
 }
 var T14_TERMINATORS = /* @__PURE__ */ new Set([".", "?", "!"]);
+var FUNCTION_WORDS = /* @__PURE__ */ new Set([
+  // Articles + determiners
+  "a",
+  "an",
+  "the",
+  "this",
+  "that",
+  "these",
+  "those",
+  // Auxiliaries + copulas
+  "is",
+  "am",
+  "are",
+  "was",
+  "were",
+  "be",
+  "been",
+  "being",
+  "have",
+  "has",
+  "had",
+  "do",
+  "does",
+  "did",
+  "will",
+  "would",
+  "can",
+  "could",
+  "should",
+  "may",
+  "might",
+  // Pronouns
+  "i",
+  "you",
+  "he",
+  "she",
+  "it",
+  "we",
+  "they",
+  "me",
+  "him",
+  "her",
+  "us",
+  "them",
+  "my",
+  "your",
+  "his",
+  "its",
+  "our",
+  "their",
+  // Prepositions
+  "of",
+  "to",
+  "in",
+  "on",
+  "at",
+  "by",
+  "for",
+  "with",
+  "from",
+  "up",
+  "down",
+  "out",
+  "off",
+  "over",
+  "under",
+  "into",
+  // Conjunctions
+  "and",
+  "or",
+  "but",
+  "so",
+  "if",
+  "because",
+  "when",
+  "while",
+  "as",
+  // Negation
+  "not",
+  "no"
+]);
 var COHERENCE_MIN = (() => {
   try {
     const v = parseFloat(typeof process !== "undefined" && process?.env?.DREAM_COHERENCE_MIN);
@@ -5560,7 +5641,7 @@ var NeuronCluster = class {
    * @param {Float32Array|Float64Array} emb — N-dim embedding vector
    * @param {number} [strength=1.0] — current scale multiplier
    */
-  injectEmbeddingToRegion(regionName, emb, strength = 1) {
+  injectEmbeddingToRegion(regionName, emb, strength = 1, opts = {}) {
     const region = this.regions[regionName];
     if (!region) return;
     const regionSize = region.end - region.start;
@@ -5569,13 +5650,23 @@ var NeuronCluster = class {
     const haveProxy = !!(this._gpuProxy && this._gpuProxy.writeCurrentSlice);
     const fwdIndices = haveProxy ? [] : null;
     const fwdValues = haveProxy ? [] : null;
+    const replaceMode = opts.replaceMode === true;
+    if (replaceMode) {
+      for (let i = region.start; i < region.end; i++) {
+        this.externalCurrent[i] = 0;
+      }
+    }
     for (let d = 0; d < emb.length; d++) {
       const value = emb[d] * 8 * strength;
       const startNeuron = region.start + d * groupSize;
       for (let n = 0; n < groupSize; n++) {
         const idx = startNeuron + n;
         if (idx >= region.end) break;
-        this.externalCurrent[idx] += value;
+        if (replaceMode) {
+          this.externalCurrent[idx] = value;
+        } else {
+          this.externalCurrent[idx] += value;
+        }
         if (fwdIndices && value !== 0) {
           fwdIndices.push(idx - region.start);
           fwdValues.push(value);
@@ -7255,12 +7346,19 @@ var NeuronCluster = class {
     }
     if (!wmOut || wmOut.length === 0) return "";
     let gwBoostWord = null;
+    let gwBoostMul = 1.1;
     if (this._globalWorkspace && typeof this._globalWorkspace.getBroadcast === "function") {
       try {
         const bc = this._globalWorkspace.getBroadcast();
         if (bc && typeof bc.label === "string" && bc.label.startsWith("cortex:")) {
           const w = bc.label.slice("cortex:".length);
-          if (w && w !== "silent") gwBoostWord = w;
+          if (w && w !== "silent") {
+            gwBoostWord = w;
+            const s = typeof bc.strength === "number" ? bc.strength : NaN;
+            if (Number.isFinite(s) && s >= 0 && s <= 1) {
+              gwBoostMul = 1 + s * 0.6;
+            }
+          }
         }
       } catch {
       }
@@ -7289,8 +7387,10 @@ var NeuronCluster = class {
         const cellCount = Math.max(1, bEnd - bStart);
         for (let n = bStart; n < bEnd; n++) sum += wmOut[n];
         let mean = sum / cellCount;
-        if (gwBoostWord && wordsList[b] === gwBoostWord) mean *= 1.1;
-        if (recentLast4.has(wordsList[b])) mean *= REPETITION_PENALTY;
+        if (gwBoostWord && wordsList[b] === gwBoostWord) mean *= gwBoostMul;
+        if (recentLast4.has(wordsList[b]) && !FUNCTION_WORDS.has(wordsList[b])) {
+          mean *= REPETITION_PENALTY;
+        }
         candidates.push({ word: wordsList[b], mean });
         if (mean > bestMean) {
           bestMean = mean;
@@ -7298,13 +7398,32 @@ var NeuronCluster = class {
         }
       }
     }
-    const minSignal = opts.minSignal ?? 1e-3;
-    if (!bestWord || bestMean < minSignal) return "";
+    if (typeof this._emitSignalEMA !== "number") this._emitSignalEMA = 0;
+    if (typeof this._emitSignalSampleCount !== "number") this._emitSignalSampleCount = 0;
+    const defaultFloor = opts.minSignal ?? 1e-3;
+    let adaptiveFloor = defaultFloor;
+    if (this._emitSignalSampleCount >= 20 && this._emitSignalEMA > 0) {
+      adaptiveFloor = Math.max(defaultFloor, this._emitSignalEMA * 0.5);
+    }
+    this._emitSignalFloor = adaptiveFloor;
+    if (!bestWord || bestMean < adaptiveFloor) {
+      this._lastEmitRejection = {
+        reason: !bestWord ? "no-best-word" : "below-adaptive-floor",
+        bestMean: bestMean === -Infinity ? 0 : bestMean,
+        floor: adaptiveFloor,
+        ema: this._emitSignalEMA,
+        ts: Date.now()
+      };
+      return "";
+    }
+    const _emaAlpha = 0.05;
+    this._emitSignalEMA = (1 - _emaAlpha) * this._emitSignalEMA + _emaAlpha * bestMean;
+    this._emitSignalSampleCount++;
     const temperature = typeof opts.temperature === "number" ? opts.temperature : 0;
     if (temperature > 0 && candidates.length > 1) {
       const topK = Math.max(1, Math.min(opts.topK ?? 8, candidates.length));
       candidates.sort((a, b) => b.mean - a.mean);
-      const topCandidates = candidates.slice(0, topK).filter((c) => c.mean >= minSignal);
+      const topCandidates = candidates.slice(0, topK).filter((c) => c.mean >= adaptiveFloor);
       if (topCandidates.length === 0) return "";
       const maxMean = topCandidates[0].mean;
       let sumExp = 0;
@@ -7409,16 +7528,31 @@ var NeuronCluster = class {
    * @returns {{ sentence: string, words: string[], fillCount: number,
    *            coherenceCosine: number|null, coherenceTarget: string|null } | null}
    */
-  composeSentence(intentSeed = null, opts = {}) {
+  async composeSentence(intentSeed = null, opts = {}) {
     if (!this.regions || !this.regions.sem || typeof this.injectEmbeddingToRegion !== "function") {
       return null;
     }
     if (typeof this.emitWordDirect !== "function") return null;
+    const hasStepAwait = typeof this.stepAwait === "function";
+    const hasStep = typeof this.step === "function";
+    if (!hasStepAwait && !hasStep && !this._composeNoStepWarned) {
+      this._composeNoStepWarned = true;
+      try {
+        console.warn("[composeSentence] cluster has neither stepAwait nor step \u2014 autoregressive tick loop will degenerate to sync emit. Fix the cluster wiring.");
+      } catch {
+      }
+    }
     const checkAborted = () => opts.signal && opts.signal.aborted;
     if (checkAborted()) {
       if (!this._composeStats) this._composeStats = { calls: 0, fills: 0, partial: 0, empty: 0 };
       this._composeStats.aborted = (this._composeStats.aborted || 0) + 1;
       return null;
+    }
+    const semRegion = this.regions.sem;
+    if (semRegion && this.externalCurrent) {
+      for (let i = semRegion.start; i < semRegion.end; i++) {
+        this.externalCurrent[i] = 0;
+      }
     }
     if (opts.cortexPattern && opts.cortexPattern.length > 0) {
       try {
@@ -7453,11 +7587,29 @@ var NeuronCluster = class {
     }
     const words = [];
     const MAX_WORDS2 = typeof opts.maxWords === "number" && opts.maxWords > 0 ? Math.floor(opts.maxWords) : 12;
+    const TICKS_PER_WORD = typeof opts.ticksPerWord === "number" && opts.ticksPerWord > 0 ? Math.floor(opts.ticksPerWord) : 3;
+    const MAX_TERMINATOR_REJECTS = 3;
+    let terminatorRejects = 0;
     for (let i = 0; i < MAX_WORDS2; i++) {
       if (checkAborted()) {
         if (!this._composeStats) this._composeStats = { calls: 0, fills: 0, partial: 0, empty: 0 };
         this._composeStats.aborted = (this._composeStats.aborted || 0) + 1;
         return null;
+      }
+      for (let t = 0; t < TICKS_PER_WORD; t++) {
+        if (checkAborted()) {
+          if (!this._composeStats) this._composeStats = { calls: 0, fills: 0, partial: 0, empty: 0 };
+          this._composeStats.aborted = (this._composeStats.aborted || 0) + 1;
+          return null;
+        }
+        try {
+          if (hasStepAwait) {
+            await this.stepAwait(1e-3);
+          } else if (hasStep) {
+            this.step(1e-3);
+          }
+        } catch {
+        }
       }
       const emitOpts = { skipRecentTrack: true };
       if (opts.subject) emitOpts.subject = opts.subject;
@@ -7476,8 +7628,12 @@ var NeuronCluster = class {
       if (T14_TERMINATORS.has(word)) {
         if (words.length > 0) {
           words[words.length - 1] = words[words.length - 1] + word;
+          break;
+        } else {
+          terminatorRejects++;
+          if (terminatorRejects >= MAX_TERMINATOR_REJECTS) break;
+          continue;
         }
-        break;
       }
       words.push(word);
       if (typeof this.trackRecentEmission === "function") {
@@ -12811,12 +12967,12 @@ var LanguageCortex = class {
                 }
               }
               const inferredSubject = typeof cluster._inferActiveSubject === "function" ? cluster._inferActiveSubject() : null;
-              composedSentence = cluster.composeSentence(intentSeed, {
+              composedSentence = await cluster.composeSentence(intentSeed, {
                 subject: inferredSubject || void 0,
                 temperature: 0.6,
                 topK: 8
               });
-              if (composedSentence && Array.isArray(composedSentence.words) && composedSentence.words.length >= 2) {
+              if (composedSentence && Array.isArray(composedSentence.words) && composedSentence.words.length >= 1) {
                 composedWordsAsync = composedSentence.words.slice();
                 if (composedSentence.sentence && /[.!?]$/.test(composedSentence.sentence) && composedWordsAsync.length > 0 && !/[.!?]$/.test(composedWordsAsync[composedWordsAsync.length - 1])) {
                   composedWordsAsync[composedWordsAsync.length - 1] += composedSentence.sentence.slice(-1);
@@ -33126,7 +33282,7 @@ var Curriculum = class _Curriculum {
       let composed = null;
       try {
         if (typeof cluster.composeSentence === "function") {
-          composed = cluster.composeSentence(probe.seed, { subject: probeSubject });
+          composed = await cluster.composeSentence(probe.seed, { subject: probeSubject });
         }
       } catch {
         composed = null;
