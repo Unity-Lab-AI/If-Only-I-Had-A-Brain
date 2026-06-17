@@ -39802,6 +39802,316 @@ var CLUSTER_TELEMETRY_MIXIN = {
   }
 };
 
+// ../js/brain/cluster/hebbian.js
+var CLUSTER_HEBBIAN_MIXIN = {
+  async _crossRegionHebbian(lr, opts = {}) {
+    if (!this.crossProjections) return;
+    if (!this._crossRegionHebbianDiagLogged) {
+      this._crossRegionHebbianDiagLogged = true;
+      try {
+        const gpuReady = !!this._gpuProxyReady;
+        const hasProxy = !!(this._gpuProxy && this._gpuProxy.hebbianBound);
+        const poolReady = !!(this._sparsePool && this._sparsePool.ready);
+        const paths = [];
+        for (const [name, proj] of Object.entries(this.crossProjections)) {
+          const gpuFast = !!(proj._gpuBound && gpuReady && hasProxy);
+          const cpuAlive = !!(proj.values && proj.colIdx && proj.rowPtr);
+          paths.push(`${name}:${gpuFast ? "GPU-fast" : cpuAlive ? "CPU" : "NULL"}`);
+        }
+        console.log(`[Cluster ${this.name}] _crossRegionHebbian first-call diag \u2014 gpuReady=${gpuReady} proxy=${hasProxy} pool=${poolReady} \xB7 paths: ${paths.join(" ")}`);
+      } catch {
+      }
+    }
+    const skipCpuWhitelist = opts.skipCpuWhitelist === true || this._teachIntermediateRep === true;
+    const wl = opts.projectionsWhitelist;
+    const whitelistSet = wl ? wl instanceof Set ? wl : new Set(wl) : null;
+    for (const [name, proj] of Object.entries(this.crossProjections)) {
+      if (whitelistSet && !whitelistSet.has(name)) continue;
+      const idx = name.indexOf("_to_");
+      if (idx < 0) continue;
+      const src = name.slice(0, idx);
+      const dst = name.slice(idx + 4);
+      if (!this.regions[src] || !this.regions[dst]) continue;
+      const kScalesForProj = opts.kScalesOverride !== void 0 ? opts.kScalesOverride : typeof this.buildKScalesForProjection === "function" ? this.buildKScalesForProjection(src, dst) : null;
+      const ojaOpts = kScalesForProj ? { kScales: kScalesForProj } : void 0;
+      if (proj._gpuBound && this._gpuProxyReady && this._gpuProxy && this._gpuProxy.hebbianBound) {
+        try {
+          this._gpuProxy.hebbianBound(`${this.name}_${name}`, lr);
+        } catch {
+        }
+        const PROBE_CRITICAL = this._probeCriticalProjectionsSet ||= /* @__PURE__ */ new Set([
+          "letter_to_phon",
+          "letter_to_motor"
+        ]);
+        if (PROBE_CRITICAL.has(name) && !skipCpuWhitelist) {
+          const sampleN = this._teachFinalRepSampleEveryN | 0;
+          if (sampleN > 1) {
+            this._whitelistSampleCounter = (this._whitelistSampleCounter || 0) + 1;
+            if (this._whitelistSampleCounter % sampleN !== 0) {
+              continue;
+            }
+          }
+          const preF2 = this.regionSpikes(src);
+          const postF2 = this.regionSpikes(dst);
+          proj.ojaUpdate(preF2, postF2, lr, ojaOpts);
+        }
+        continue;
+      }
+      if (!proj.values || !proj.colIdx || !proj.rowPtr) {
+        if (!proj._nullCsrHebbianWarned) {
+          proj._nullCsrHebbianWarned = true;
+          console.warn(`[Cluster ${this.name}] Hebbian skip on ${name} \u2014 CPU CSR null AND GPU fast path unavailable (gpuBound=${!!proj._gpuBound} gpuProxyReady=${!!this._gpuProxyReady}). Check compute.html client or PROBE_CRITICAL_CPU_CSR whitelist.`);
+        }
+        continue;
+      }
+      const preF = this.regionSpikes(src);
+      const postF = this.regionSpikes(dst);
+      if (this._sparsePool && this._sparsePool.ready) {
+        try {
+          await this._sparsePool.hebbianUpdate(proj, preF, postF, lr);
+        } catch {
+          proj.ojaUpdate(preF, postF, lr, ojaOpts);
+        }
+      } else {
+        proj.ojaUpdate(preF, postF, lr, ojaOpts);
+      }
+      if (this._gpuProxyReady && this._gpuProxy && this._gpuProxy.hebbian) {
+        try {
+          this._gpuProxy.hebbian(`${this.name}_${name}`, preF, postF, lr);
+        } catch {
+        }
+      }
+    }
+  },
+  /**
+   * T17.3.d — Upload all cross-projections to GPU via the proxy. Once
+   * complete, sets `_gpuProxyReady = true` so subsequent
+   * `_crossRegionHebbian` calls dispatch to GPU alongside the CPU
+   * shadow updates. The `_propagateCrossRegions` hot-path wiring
+   * follows in T17.3.e — currents readback requires async/await
+   * cascade through cluster.step which is a larger refactor.
+   *
+   * Cluster must be fully constructed (cross-projections initialized)
+   * before calling this. Safe to call after construction but before
+   * any curriculum teach.
+   */
+  async initGpu() {
+    if (!this._gpuProxy || !this._gpuProxy.upload) return false;
+    const targets = [];
+    if (this.synapses) {
+      targets.push({ key: `${this.name}_intraSynapses`, proj: this.synapses, binding: null });
+    }
+    if (this.crossProjections) {
+      const hint = this._gpuBindingHint || null;
+      for (const name of Object.keys(this.crossProjections)) {
+        const key = `${this.name}_${name}`;
+        let binding = null;
+        if (hint && typeof hint.resolve === "function") {
+          try {
+            binding = hint.resolve(name, this.crossProjections[name]);
+          } catch {
+            binding = null;
+          }
+        }
+        targets.push({ key, name, proj: this.crossProjections[name], binding });
+      }
+    }
+    let uploaded = 0;
+    let boundCount = 0;
+    for (const { key, name: projName, proj, binding } of targets) {
+      try {
+        const matrix = {
+          rows: proj.rows,
+          cols: proj.cols,
+          nnz: proj.nnz,
+          values: proj.values,
+          colIdx: proj.colIdx,
+          rowPtr: proj.rowPtr
+        };
+        const ack = await this._gpuProxy.upload(key, matrix, binding);
+        if (ack && ack.ok) {
+          uploaded++;
+          if (binding) {
+            boundCount++;
+            proj._gpuBound = true;
+            const _freedValuesBytes = proj.values ? proj.values.byteLength : 0;
+            const _freedColIdxBytes = proj.colIdx ? proj.colIdx.byteLength : 0;
+            const _freedRowPtrBytes = proj.rowPtr ? proj.rowPtr.byteLength : 0;
+            const _freedMB = ((_freedValuesBytes + _freedColIdxBytes + _freedRowPtrBytes) / (1024 * 1024)).toFixed(1);
+            if (!this._t1822TotalFreedBytes) this._t1822TotalFreedBytes = 0;
+            const PROBE_CRITICAL_CPU_CSR = /* @__PURE__ */ new Set([
+              "letter_to_phon",
+              // READ probe reads phon via CPU propagate
+              "letter_to_motor",
+              // TALK probe + DYN-PROD letter fallback
+              "sem_to_motor"
+              // DYN-PROD primary path + separation probe
+              // Reverted: widening the whitelist added ~2 GB CPU CSR
+              // back per extra projection and re-triggered the 14 GB
+              // external-memory V8 GC stall that T24.a fixed. READ
+              // probes that want letter_to_sem now route through the
+              // GPU proxy fallback — `SparseMatrix.propagate` on a
+              // freed CSR returns a zero vector via the null-CSR
+              // guard, so probe scoring stays correct-shape even when
+              // the CPU array is gone.
+            ]);
+            if (PROBE_CRITICAL_CPU_CSR.has(projName)) {
+              console.log(`[CPU-CSR-free] keeping probe-critical ${key} CPU arrays resident (${_freedMB}MB) \u2014 needed for READ/TALK/DYN-PROD gate probes.`);
+            } else {
+              proj.values = null;
+              proj.colIdx = null;
+              proj.rowPtr = null;
+              this._t1822TotalFreedBytes += _freedValuesBytes + _freedColIdxBytes + _freedRowPtrBytes;
+              console.log(`[CPU-CSR-free] freed ${key} CPU arrays: ${(_freedValuesBytes / 1024 / 1024).toFixed(1)}MB values + ${(_freedColIdxBytes / 1024 / 1024).toFixed(1)}MB colIdx + ${(_freedRowPtrBytes / 1024 / 1024).toFixed(1)}MB rowPtr = ${_freedMB}MB \xB7 cumulative freed ${(this._t1822TotalFreedBytes / 1024 / 1024).toFixed(1)}MB.`);
+            }
+          }
+        } else {
+          console.warn(`[Cluster ${this.name}] GPU upload failed for ${key}:`, ack && ack.error);
+        }
+      } catch (err) {
+        console.warn(`[Cluster ${this.name}] GPU upload exception for ${key}:`, err && err.message);
+      }
+    }
+    this._gpuProxyReady = uploaded === targets.length;
+    const boundTag = boundCount > 0 ? ` (${boundCount} cluster-bound at upload \u2014 standalone VRAM overhead skipped)` : "";
+    console.log(`[Cluster ${this.name}] GPU proxy ready: ${uploaded}/${targets.length} matrices uploaded${boundTag} (${this._gpuProxyReady ? "FULL \u2014 intra-synapses + all cross-projections on GPU" : "PARTIAL \u2014 falling back to CPU for failed matrices"})`);
+    if (typeof process !== "undefined" && typeof process.memoryUsage === "function") {
+      try {
+        const mem = process.memoryUsage();
+        const heapMB = (mem.heapUsed / 1024 / 1024).toFixed(1);
+        const extMB = ((mem.external || 0) / 1024 / 1024).toFixed(1);
+        const abMB = ((mem.arrayBuffers || 0) / 1024 / 1024).toFixed(1);
+        console.log(`[Cluster] Post-upload V8 memory: heapUsed=${heapMB}MB external=${extMB}MB arrayBuffers=${abMB}MB (selective free nulled ~${((this._t1822TotalFreedBytes || 0) / 1024 / 1024).toFixed(1)}MB of CPU CSR arrays \u2014 V8 auto-reclaims on its own schedule; explicit gc() removed because prior attempts triggered OOM mid-gc).`);
+      } catch (err) {
+        console.warn(`[Cluster] memory-log diagnostic failed:`, err && err.message);
+      }
+    }
+    return this._gpuProxyReady;
+  },
+  /**
+   * T17.3.e — intra-cluster Hebbian wrapper. Applies the update on
+   * CPU (authoritative) AND fires GPU fire-and-forget shadow when
+   * proxy ready. Curriculum teach uses this instead of calling
+   * `cluster.synapses.hebbianUpdate` directly so intra-cluster
+   * weights stay in sync between CPU and GPU.
+   */
+  async intraSynapsesHebbian(pre, post, lr) {
+    if (!this.synapses) return;
+    const BIOLOGICAL_SCALE_SYNC_THRESHOLD = 1e5;
+    const atBioScale = (this.size | 0) > BIOLOGICAL_SCALE_SYNC_THRESHOLD;
+    if (atBioScale) {
+      this.synapses.ojaUpdate(pre, post, lr);
+    } else if (this._sparsePool && this._sparsePool.ready) {
+      try {
+        await this._sparsePool.hebbianUpdate(this.synapses, pre, post, lr);
+      } catch {
+        this.synapses.ojaUpdate(pre, post, lr);
+      }
+    } else {
+      this.synapses.ojaUpdate(pre, post, lr);
+    }
+  },
+  /**
+   * BCM sliding-threshold update on the intra-cluster synapse matrix.
+   * Requires a per-neuron firing-rate target θ; on first call, lazy-
+   * inits `_bcmTheta` to a Float32Array of size `this.size` populated
+   * at 0.05 (prior to biological calibration). Every call:
+   *
+   *   1. Low-pass θ against the current post-spike vector:
+   *        θ[i] ← (1−α)·θ[i] + α·y[i]²
+   *   2. Apply the BCM delta:
+   *        Δw[i,j] = lr × y[i] × (y[i] − θ[i]) × x[j]
+   *
+   * `α` defaults to 0.01 (slow drift — matches biological sliding-
+   * threshold timescales of ~100-1000 teach events). Opt-in via
+   * `cluster._bcmEnabled = true`. Silent no-op when disabled so the
+   * teach path stays Oja-only by default. Ship-and-monitor: operator
+   * can flip the flag in a session to test whether BCM improves Oja's
+   * sep-probe numbers, without risking a default-on change to every
+   * localhost run.
+   */
+  intraSynapsesBcm(pre, post, lr, alpha = 0.01) {
+    if (!this._bcmEnabled) return;
+    if (!this.synapses || typeof this.synapses.bcmUpdate !== "function") return;
+    if (!this._bcmTheta || this._bcmTheta.length !== this.size) {
+      this._bcmTheta = new Float32Array(this.size);
+      this._bcmTheta.fill(0.05);
+    }
+    const theta = this._bcmTheta;
+    const oneMinusAlpha = 1 - alpha;
+    for (let i = 0; i < this.size; i++) {
+      const y = post[i];
+      if (y) {
+        theta[i] = oneMinusAlpha * theta[i] + alpha * y * y;
+      } else {
+        theta[i] = oneMinusAlpha * theta[i];
+      }
+    }
+    this.synapses.bcmUpdate(pre, post, theta, lr);
+  },
+  /**
+   * Anti-Hebbian update on every cross-region projection. GPU dispatch
+   * only — at biological scale sem_to_motor's CPU CSR is selectively
+   * freed so the CPU anti-Hebbian can't land on cross-projections.
+   * Routes through the batched plasticity queue with a NEGATIVE lr,
+   * which the PLASTICITY_SHADER branches on to apply pure co-active
+   * decrement instead of Oja's self-normalizing update. Silent no-op
+   * when the GPU proxy is unavailable — in that case contrastive
+   * push-pull rides intra-cluster recurrent matrix only.
+   */
+  async _crossRegionAntiHebbian(lr, opts = {}) {
+    if (!this.crossProjections) return;
+    if (!this._gpuProxyReady || !this._gpuProxy || typeof this._gpuProxy.antiHebbianBound !== "function") return;
+    const absLr = Math.abs(lr);
+    const wl = opts.projectionsWhitelist;
+    const whitelistSet = wl ? wl instanceof Set ? wl : new Set(wl) : null;
+    for (const name of Object.keys(this.crossProjections)) {
+      if (whitelistSet && !whitelistSet.has(name)) continue;
+      const proj = this.crossProjections[name];
+      if (!proj || !proj._gpuBound) {
+        if (proj && (!proj.values || !proj.colIdx || !proj.rowPtr) && !proj._nullCsrAntiHebbianWarned) {
+          proj._nullCsrAntiHebbianWarned = true;
+          console.warn(`[Cluster ${this.name}] Anti-Hebbian skip on ${name} \u2014 CPU CSR null AND not GPU-bound (gpuBound=${!!proj._gpuBound} gpuProxyReady=${!!this._gpuProxyReady}).`);
+        }
+        continue;
+      }
+      try {
+        this._gpuProxy.antiHebbianBound(`${this.name}_${name}`, absLr);
+      } catch {
+      }
+    }
+  },
+  /**
+   * Anti-Hebbian update on the intra-cluster synapse matrix. Depresses
+   * co-active (pre=1, post=1) weights so sampled-wrong pairs push apart
+   * instead of superposing. Used by the push-pull contrastive teach path:
+   * caller fires the positive-pair Oja update first, then invokes this
+   * method with a sampled WRONG post-pattern to repel it from the
+   * pre-pattern in weight space.
+   *
+   * Sync at biological scale (matches `intraSynapsesHebbian`'s bio-path
+   * branch) — zero external-memory allocation, single CSR walk. `lr`
+   * here is always POSITIVE; the method handles the sign internally.
+   */
+  async intraSynapsesAntiHebbian(pre, post, lr) {
+    if (!this.synapses) return;
+    if (typeof this.synapses.antiHebbianUpdate !== "function") return;
+    const BIOLOGICAL_SCALE_SYNC_THRESHOLD = 1e5;
+    const atBioScale = (this.size | 0) > BIOLOGICAL_SCALE_SYNC_THRESHOLD;
+    if (atBioScale) {
+      this.synapses.antiHebbianUpdate(pre, post, lr);
+    } else if (this._sparsePool && this._sparsePool.ready && typeof this._sparsePool.antiHebbianUpdate === "function") {
+      try {
+        await this._sparsePool.antiHebbianUpdate(this.synapses, pre, post, lr);
+      } catch {
+        this.synapses.antiHebbianUpdate(pre, post, lr);
+      }
+    } else {
+      this.synapses.antiHebbianUpdate(pre, post, lr);
+    }
+  }
+};
+
 // ../js/brain/cluster.js
 var CLUSTER_FRACTIONS = {
   cortex: 0.55,
@@ -42939,312 +43249,14 @@ var NeuronCluster = class {
    * the projection where they co-fire. Runs from cluster.learn() and
    * also from cluster.learnSentenceHebbian after each word's tick.
    */
-  async _crossRegionHebbian(lr, opts = {}) {
-    if (!this.crossProjections) return;
-    if (!this._crossRegionHebbianDiagLogged) {
-      this._crossRegionHebbianDiagLogged = true;
-      try {
-        const gpuReady = !!this._gpuProxyReady;
-        const hasProxy = !!(this._gpuProxy && this._gpuProxy.hebbianBound);
-        const poolReady = !!(this._sparsePool && this._sparsePool.ready);
-        const paths = [];
-        for (const [name, proj] of Object.entries(this.crossProjections)) {
-          const gpuFast = !!(proj._gpuBound && gpuReady && hasProxy);
-          const cpuAlive = !!(proj.values && proj.colIdx && proj.rowPtr);
-          paths.push(`${name}:${gpuFast ? "GPU-fast" : cpuAlive ? "CPU" : "NULL"}`);
-        }
-        console.log(`[Cluster ${this.name}] _crossRegionHebbian first-call diag \u2014 gpuReady=${gpuReady} proxy=${hasProxy} pool=${poolReady} \xB7 paths: ${paths.join(" ")}`);
-      } catch {
-      }
-    }
-    const skipCpuWhitelist = opts.skipCpuWhitelist === true || this._teachIntermediateRep === true;
-    const wl = opts.projectionsWhitelist;
-    const whitelistSet = wl ? wl instanceof Set ? wl : new Set(wl) : null;
-    for (const [name, proj] of Object.entries(this.crossProjections)) {
-      if (whitelistSet && !whitelistSet.has(name)) continue;
-      const idx = name.indexOf("_to_");
-      if (idx < 0) continue;
-      const src = name.slice(0, idx);
-      const dst = name.slice(idx + 4);
-      if (!this.regions[src] || !this.regions[dst]) continue;
-      const kScalesForProj = opts.kScalesOverride !== void 0 ? opts.kScalesOverride : typeof this.buildKScalesForProjection === "function" ? this.buildKScalesForProjection(src, dst) : null;
-      const ojaOpts = kScalesForProj ? { kScales: kScalesForProj } : void 0;
-      if (proj._gpuBound && this._gpuProxyReady && this._gpuProxy && this._gpuProxy.hebbianBound) {
-        try {
-          this._gpuProxy.hebbianBound(`${this.name}_${name}`, lr);
-        } catch {
-        }
-        const PROBE_CRITICAL = this._probeCriticalProjectionsSet ||= /* @__PURE__ */ new Set([
-          "letter_to_phon",
-          "letter_to_motor"
-        ]);
-        if (PROBE_CRITICAL.has(name) && !skipCpuWhitelist) {
-          const sampleN = this._teachFinalRepSampleEveryN | 0;
-          if (sampleN > 1) {
-            this._whitelistSampleCounter = (this._whitelistSampleCounter || 0) + 1;
-            if (this._whitelistSampleCounter % sampleN !== 0) {
-              continue;
-            }
-          }
-          const preF2 = this.regionSpikes(src);
-          const postF2 = this.regionSpikes(dst);
-          proj.ojaUpdate(preF2, postF2, lr, ojaOpts);
-        }
-        continue;
-      }
-      if (!proj.values || !proj.colIdx || !proj.rowPtr) {
-        if (!proj._nullCsrHebbianWarned) {
-          proj._nullCsrHebbianWarned = true;
-          console.warn(`[Cluster ${this.name}] Hebbian skip on ${name} \u2014 CPU CSR null AND GPU fast path unavailable (gpuBound=${!!proj._gpuBound} gpuProxyReady=${!!this._gpuProxyReady}). Check compute.html client or PROBE_CRITICAL_CPU_CSR whitelist.`);
-        }
-        continue;
-      }
-      const preF = this.regionSpikes(src);
-      const postF = this.regionSpikes(dst);
-      if (this._sparsePool && this._sparsePool.ready) {
-        try {
-          await this._sparsePool.hebbianUpdate(proj, preF, postF, lr);
-        } catch {
-          proj.ojaUpdate(preF, postF, lr, ojaOpts);
-        }
-      } else {
-        proj.ojaUpdate(preF, postF, lr, ojaOpts);
-      }
-      if (this._gpuProxyReady && this._gpuProxy && this._gpuProxy.hebbian) {
-        try {
-          this._gpuProxy.hebbian(`${this.name}_${name}`, preF, postF, lr);
-        } catch {
-        }
-      }
-    }
-  }
-  /**
-   * T17.3.d — Upload all cross-projections to GPU via the proxy. Once
-   * complete, sets `_gpuProxyReady = true` so subsequent
-   * `_crossRegionHebbian` calls dispatch to GPU alongside the CPU
-   * shadow updates. The `_propagateCrossRegions` hot-path wiring
-   * follows in T17.3.e — currents readback requires async/await
-   * cascade through cluster.step which is a larger refactor.
-   *
-   * Cluster must be fully constructed (cross-projections initialized)
-   * before calling this. Safe to call after construction but before
-   * any curriculum teach.
-   */
-  async initGpu() {
-    if (!this._gpuProxy || !this._gpuProxy.upload) return false;
-    const targets = [];
-    if (this.synapses) {
-      targets.push({ key: `${this.name}_intraSynapses`, proj: this.synapses, binding: null });
-    }
-    if (this.crossProjections) {
-      const hint = this._gpuBindingHint || null;
-      for (const name of Object.keys(this.crossProjections)) {
-        const key = `${this.name}_${name}`;
-        let binding = null;
-        if (hint && typeof hint.resolve === "function") {
-          try {
-            binding = hint.resolve(name, this.crossProjections[name]);
-          } catch {
-            binding = null;
-          }
-        }
-        targets.push({ key, name, proj: this.crossProjections[name], binding });
-      }
-    }
-    let uploaded = 0;
-    let boundCount = 0;
-    for (const { key, name: projName, proj, binding } of targets) {
-      try {
-        const matrix = {
-          rows: proj.rows,
-          cols: proj.cols,
-          nnz: proj.nnz,
-          values: proj.values,
-          colIdx: proj.colIdx,
-          rowPtr: proj.rowPtr
-        };
-        const ack = await this._gpuProxy.upload(key, matrix, binding);
-        if (ack && ack.ok) {
-          uploaded++;
-          if (binding) {
-            boundCount++;
-            proj._gpuBound = true;
-            const _freedValuesBytes = proj.values ? proj.values.byteLength : 0;
-            const _freedColIdxBytes = proj.colIdx ? proj.colIdx.byteLength : 0;
-            const _freedRowPtrBytes = proj.rowPtr ? proj.rowPtr.byteLength : 0;
-            const _freedMB = ((_freedValuesBytes + _freedColIdxBytes + _freedRowPtrBytes) / (1024 * 1024)).toFixed(1);
-            if (!this._t1822TotalFreedBytes) this._t1822TotalFreedBytes = 0;
-            const PROBE_CRITICAL_CPU_CSR = /* @__PURE__ */ new Set([
-              "letter_to_phon",
-              // READ probe reads phon via CPU propagate
-              "letter_to_motor",
-              // TALK probe + DYN-PROD letter fallback
-              "sem_to_motor"
-              // DYN-PROD primary path + separation probe
-              // Reverted: widening the whitelist added ~2 GB CPU CSR
-              // back per extra projection and re-triggered the 14 GB
-              // external-memory V8 GC stall that T24.a fixed. READ
-              // probes that want letter_to_sem now route through the
-              // GPU proxy fallback — `SparseMatrix.propagate` on a
-              // freed CSR returns a zero vector via the null-CSR
-              // guard, so probe scoring stays correct-shape even when
-              // the CPU array is gone.
-            ]);
-            if (PROBE_CRITICAL_CPU_CSR.has(projName)) {
-              console.log(`[CPU-CSR-free] keeping probe-critical ${key} CPU arrays resident (${_freedMB}MB) \u2014 needed for READ/TALK/DYN-PROD gate probes.`);
-            } else {
-              proj.values = null;
-              proj.colIdx = null;
-              proj.rowPtr = null;
-              this._t1822TotalFreedBytes += _freedValuesBytes + _freedColIdxBytes + _freedRowPtrBytes;
-              console.log(`[CPU-CSR-free] freed ${key} CPU arrays: ${(_freedValuesBytes / 1024 / 1024).toFixed(1)}MB values + ${(_freedColIdxBytes / 1024 / 1024).toFixed(1)}MB colIdx + ${(_freedRowPtrBytes / 1024 / 1024).toFixed(1)}MB rowPtr = ${_freedMB}MB \xB7 cumulative freed ${(this._t1822TotalFreedBytes / 1024 / 1024).toFixed(1)}MB.`);
-            }
-          }
-        } else {
-          console.warn(`[Cluster ${this.name}] GPU upload failed for ${key}:`, ack && ack.error);
-        }
-      } catch (err) {
-        console.warn(`[Cluster ${this.name}] GPU upload exception for ${key}:`, err && err.message);
-      }
-    }
-    this._gpuProxyReady = uploaded === targets.length;
-    const boundTag = boundCount > 0 ? ` (${boundCount} cluster-bound at upload \u2014 standalone VRAM overhead skipped)` : "";
-    console.log(`[Cluster ${this.name}] GPU proxy ready: ${uploaded}/${targets.length} matrices uploaded${boundTag} (${this._gpuProxyReady ? "FULL \u2014 intra-synapses + all cross-projections on GPU" : "PARTIAL \u2014 falling back to CPU for failed matrices"})`);
-    if (typeof process !== "undefined" && typeof process.memoryUsage === "function") {
-      try {
-        const mem = process.memoryUsage();
-        const heapMB = (mem.heapUsed / 1024 / 1024).toFixed(1);
-        const extMB = ((mem.external || 0) / 1024 / 1024).toFixed(1);
-        const abMB = ((mem.arrayBuffers || 0) / 1024 / 1024).toFixed(1);
-        console.log(`[Cluster] Post-upload V8 memory: heapUsed=${heapMB}MB external=${extMB}MB arrayBuffers=${abMB}MB (selective free nulled ~${((this._t1822TotalFreedBytes || 0) / 1024 / 1024).toFixed(1)}MB of CPU CSR arrays \u2014 V8 auto-reclaims on its own schedule; explicit gc() removed because prior attempts triggered OOM mid-gc).`);
-      } catch (err) {
-        console.warn(`[Cluster] memory-log diagnostic failed:`, err && err.message);
-      }
-    }
-    return this._gpuProxyReady;
-  }
-  /**
-   * T17.3.e — intra-cluster Hebbian wrapper. Applies the update on
-   * CPU (authoritative) AND fires GPU fire-and-forget shadow when
-   * proxy ready. Curriculum teach uses this instead of calling
-   * `cluster.synapses.hebbianUpdate` directly so intra-cluster
-   * weights stay in sync between CPU and GPU.
-   */
-  async intraSynapsesHebbian(pre, post, lr) {
-    if (!this.synapses) return;
-    const BIOLOGICAL_SCALE_SYNC_THRESHOLD = 1e5;
-    const atBioScale = (this.size | 0) > BIOLOGICAL_SCALE_SYNC_THRESHOLD;
-    if (atBioScale) {
-      this.synapses.ojaUpdate(pre, post, lr);
-    } else if (this._sparsePool && this._sparsePool.ready) {
-      try {
-        await this._sparsePool.hebbianUpdate(this.synapses, pre, post, lr);
-      } catch {
-        this.synapses.ojaUpdate(pre, post, lr);
-      }
-    } else {
-      this.synapses.ojaUpdate(pre, post, lr);
-    }
-  }
-  /**
-   * BCM sliding-threshold update on the intra-cluster synapse matrix.
-   * Requires a per-neuron firing-rate target θ; on first call, lazy-
-   * inits `_bcmTheta` to a Float32Array of size `this.size` populated
-   * at 0.05 (prior to biological calibration). Every call:
-   *
-   *   1. Low-pass θ against the current post-spike vector:
-   *        θ[i] ← (1−α)·θ[i] + α·y[i]²
-   *   2. Apply the BCM delta:
-   *        Δw[i,j] = lr × y[i] × (y[i] − θ[i]) × x[j]
-   *
-   * `α` defaults to 0.01 (slow drift — matches biological sliding-
-   * threshold timescales of ~100-1000 teach events). Opt-in via
-   * `cluster._bcmEnabled = true`. Silent no-op when disabled so the
-   * teach path stays Oja-only by default. Ship-and-monitor: operator
-   * can flip the flag in a session to test whether BCM improves Oja's
-   * sep-probe numbers, without risking a default-on change to every
-   * localhost run.
-   */
-  intraSynapsesBcm(pre, post, lr, alpha = 0.01) {
-    if (!this._bcmEnabled) return;
-    if (!this.synapses || typeof this.synapses.bcmUpdate !== "function") return;
-    if (!this._bcmTheta || this._bcmTheta.length !== this.size) {
-      this._bcmTheta = new Float32Array(this.size);
-      this._bcmTheta.fill(0.05);
-    }
-    const theta = this._bcmTheta;
-    const oneMinusAlpha = 1 - alpha;
-    for (let i = 0; i < this.size; i++) {
-      const y = post[i];
-      if (y) {
-        theta[i] = oneMinusAlpha * theta[i] + alpha * y * y;
-      } else {
-        theta[i] = oneMinusAlpha * theta[i];
-      }
-    }
-    this.synapses.bcmUpdate(pre, post, theta, lr);
-  }
-  /**
-   * Anti-Hebbian update on every cross-region projection. GPU dispatch
-   * only — at biological scale sem_to_motor's CPU CSR is selectively
-   * freed so the CPU anti-Hebbian can't land on cross-projections.
-   * Routes through the batched plasticity queue with a NEGATIVE lr,
-   * which the PLASTICITY_SHADER branches on to apply pure co-active
-   * decrement instead of Oja's self-normalizing update. Silent no-op
-   * when the GPU proxy is unavailable — in that case contrastive
-   * push-pull rides intra-cluster recurrent matrix only.
-   */
-  async _crossRegionAntiHebbian(lr, opts = {}) {
-    if (!this.crossProjections) return;
-    if (!this._gpuProxyReady || !this._gpuProxy || typeof this._gpuProxy.antiHebbianBound !== "function") return;
-    const absLr = Math.abs(lr);
-    const wl = opts.projectionsWhitelist;
-    const whitelistSet = wl ? wl instanceof Set ? wl : new Set(wl) : null;
-    for (const name of Object.keys(this.crossProjections)) {
-      if (whitelistSet && !whitelistSet.has(name)) continue;
-      const proj = this.crossProjections[name];
-      if (!proj || !proj._gpuBound) {
-        if (proj && (!proj.values || !proj.colIdx || !proj.rowPtr) && !proj._nullCsrAntiHebbianWarned) {
-          proj._nullCsrAntiHebbianWarned = true;
-          console.warn(`[Cluster ${this.name}] Anti-Hebbian skip on ${name} \u2014 CPU CSR null AND not GPU-bound (gpuBound=${!!proj._gpuBound} gpuProxyReady=${!!this._gpuProxyReady}).`);
-        }
-        continue;
-      }
-      try {
-        this._gpuProxy.antiHebbianBound(`${this.name}_${name}`, absLr);
-      } catch {
-      }
-    }
-  }
-  /**
-   * Anti-Hebbian update on the intra-cluster synapse matrix. Depresses
-   * co-active (pre=1, post=1) weights so sampled-wrong pairs push apart
-   * instead of superposing. Used by the push-pull contrastive teach path:
-   * caller fires the positive-pair Oja update first, then invokes this
-   * method with a sampled WRONG post-pattern to repel it from the
-   * pre-pattern in weight space.
-   *
-   * Sync at biological scale (matches `intraSynapsesHebbian`'s bio-path
-   * branch) — zero external-memory allocation, single CSR walk. `lr`
-   * here is always POSITIVE; the method handles the sign internally.
-   */
-  async intraSynapsesAntiHebbian(pre, post, lr) {
-    if (!this.synapses) return;
-    if (typeof this.synapses.antiHebbianUpdate !== "function") return;
-    const BIOLOGICAL_SCALE_SYNC_THRESHOLD = 1e5;
-    const atBioScale = (this.size | 0) > BIOLOGICAL_SCALE_SYNC_THRESHOLD;
-    if (atBioScale) {
-      this.synapses.antiHebbianUpdate(pre, post, lr);
-    } else if (this._sparsePool && this._sparsePool.ready && typeof this._sparsePool.antiHebbianUpdate === "function") {
-      try {
-        await this._sparsePool.antiHebbianUpdate(this.synapses, pre, post, lr);
-      } catch {
-        this.synapses.antiHebbianUpdate(pre, post, lr);
-      }
-    } else {
-      this.synapses.antiHebbianUpdate(pre, post, lr);
-    }
-  }
+  // 6 Hebbian + GPU-upload methods EXTRACTED to js/brain/cluster/hebbian.js
+  // CLUSTER_HEBBIAN_MIXIN (per-module-file architecture, P4.2.c).
+  //   _crossRegionHebbian, initGpu, intraSynapsesHebbian,
+  //   intraSynapsesBcm, _crossRegionAntiHebbian, intraSynapsesAntiHebbian
+  // Attached via Object.assign(NeuronCluster.prototype, ...) at the
+  // bottom of this file. P2.3 kScales build + plumbing through the 3
+  // ojaUpdate sites of _crossRegionHebbian is preserved in the moved
+  // method body.
   /**
    * One simulation step for this cluster.
    * @param {number} dt — timestep in seconds
@@ -43820,6 +43832,7 @@ var ClusterProjection = class {
   }
 };
 Object.assign(NeuronCluster.prototype, CLUSTER_TELEMETRY_MIXIN);
+Object.assign(NeuronCluster.prototype, CLUSTER_HEBBIAN_MIXIN);
 
 // ../js/brain/modules.js
 function sigmoid(x) {

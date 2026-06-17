@@ -5,6 +5,79 @@
 
 ---
 
+## 2026-06-17 — Session 114.19fx batched-push 6 — P4.2.c cluster.js Hebbian-module extraction (per-module split continuation)
+
+### Gee verbatim per LAW #0
+
+> *"dont rush the work"* (2026-06-17, this session — sustained pace directive)
+
+> *"keep goin till everything is 100%"* (2026-06-17, this session)
+
+### What this is
+
+Sixth batched-push envelope. Single-bite ship at conservative pace — P4.2.c hebbian module extraction. Continuing the per-module split of cluster.js (which P4.2.a started with the telemetry module).
+
+### Methods extracted (6, 691 lines, cluster.js lines 4689-5379)
+
+| Method | Purpose |
+|--------|---------|
+| `_crossRegionHebbian(lr, opts)` | Cross-projection Hebbian iterator (GPU-bound CPU shadow + sparse-pool catch + no-pool fallback) — P2.3 kScales build + plumbing through 3 ojaUpdate sites PRESERVED in moved body |
+| `initGpu()` | GPU upload of all cross-projections + intra-synapses matrix for the GPU fast-path. Called once during cluster construction. |
+| `intraSynapsesHebbian(pre, post, lr)` | Intra-cluster recurrent Hebbian via Oja rule + fire-and-forget GPU shadow dispatch |
+| `intraSynapsesBcm(pre, post, lr, alpha)` | Optional BCM sliding-threshold pass (opt-in via `cluster._bcmEnabled`) |
+| `_crossRegionAntiHebbian(lr, opts)` | Contrastive depression across cross-projections (anti-Hebbian) |
+| `intraSynapsesAntiHebbian(pre, post, lr)` | Contrastive depression on the intra-cluster recurrent matrix |
+
+### Migration
+
+Deterministic Node script `.git/p4-2c-migrate.mjs` — same pattern as P4.2.a + P4.1.a/b/c/d.
+
+1. Read both files preserving CRLF line endings
+2. Extract block at lines 4689-5379 (691 lines, 6 methods)
+3. Sanity-check first/last lines + 6 expected method signatures in order
+4. Convert class-method form (no commas) → object-literal form (trailing `,` after each method's closing `}`)
+5. Locate `METHOD BODIES INJECTED BY` placeholder marker in hebbian.js stub, splice converted block in
+6. Replace lines 4689-5379 in cluster.js with marker comment pointing to destination
+7. Add `import { CLUSTER_HEBBIAN_MIXIN } from './cluster/hebbian.js';` after last existing import
+8. Add `Object.assign(NeuronCluster.prototype, CLUSTER_HEBBIAN_MIXIN);` right after the existing `Object.assign(NeuronCluster.prototype, CLUSTER_TELEMETRY_MIXIN)` line from P4.2.a
+
+Migration result: `cluster.js 6179 → 5500 lines (Δ -679)`, `hebbian.js 26 → 715 lines (Δ +689)`, block moved 691 lines.
+
+### Cumulative P4.2 progress
+
+- **P4.2.a** ✅ — 6 telemetry methods (215 lines)
+- **P4.2.c** ✅ (this commit) — 6 Hebbian + GPU-upload methods (691 lines)
+- **P4.2.b** PENDING — emit suite (~2000 lines, composeSentence + emitWordDirect + generateSentenceAwait + _emitDirectPropagate + _dictionaryOracleEmit + generateSentence)
+- **P4.2.d** PENDING — probe suite (~400 lines, computePhi + getTrainedCapability + diagnoseReadoutForEmbedding + workingMemoryReadout + synapseStats)
+
+**cluster.js cumulative shrink:** 6375 → 5500 lines (**−875 net, −13.7%** from pre-P4.2 baseline).
+
+### P2.3 kScales build is PRESERVED in moved body
+
+The P2.3 patch (build `kScalesForProj` once per-projection per-call via `this.buildKScalesForProjection(src, dst)`, pass through to all 3 ojaUpdate sites in `_crossRegionHebbian`) was applied to cluster.js BEFORE this extraction. The migration script moves the method body verbatim, so the kScales plumbing is preserved in the hebbian.js copy. `this.buildKScalesForProjection` is still on the main `NeuronCluster.prototype` (core class) — accessible via prototype chain from the mixin context.
+
+### Verification
+
+- `node --check cluster.js`: clean
+- `node --check cluster/hebbian.js`: clean
+- `cd server && npm run build` → `js/app.bundle.js 2.6mb · Done in 73ms`
+- Pre-commit grep on modified source for task-IDs / operator-name: ZERO new violations
+
+### Harness tasklist update
+
+No status flip this commit — P4.2 remains in_progress (multi-bite umbrella, P4.2.b + P4.2.d still queued).
+
+### LAWs honored
+
+- **LAW #0 verbatim** — operator quotes preserved word-for-word above
+- **Docs before push, no patches** — NOW.md + FINALIZED.md + NewTodo.md all updated in this same atomic commit
+- **Task numbers + operator name ONLY in workflow docs** — code uses neutral phrasing
+- **No tests ever** — `node --check` + bundle rebuild are validation, not tests
+- **NEVER delete TODO info** — task row updated in-place with P4.2.c sub-bite shipped status
+- **NO FALLBACKS** — pure refactor, behaviour identical post-mixin-attach
+
+---
+
 ## 2026-06-17 — Session 114.19fw batched-push 5 — P2.3 kScales plumbing + P4.2.a cluster.js telemetry-module first-bite
 
 ### Gee verbatim per LAW #0
