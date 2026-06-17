@@ -53,6 +53,13 @@ import {
   _magnitudeFeatureForDigit, _magnitudeFeatureForNumber,
   _microtask,
   PHONEME_FEATURE_DIM, _phonemeFeatureForLetter,
+  // Audit D.7 — promoted dynamic await import('../curriculum.js') inside
+  // _teachDiscourseCoherence to a static top-of-file import. Saves the
+  // per-call module-resolution overhead + lets tree-shaking work
+  // correctly. Static import lands at module-eval time AFTER curriculum.js
+  // has declared K_CONCRETE_SENTENCES (same circular-import-safe pattern
+  // as the ALPHABET_ORDER / DIGIT_ORDER imports above).
+  K_CONCRETE_SENTENCES,
 } from '../curriculum.js';
 
 // Mixin methods. Exported as an object so the entry-point curriculum.js
@@ -1032,9 +1039,9 @@ export const K_MIXIN = {
     if (typeof this._teachAssociationPairs !== 'function') {
       throw new Error('_teachDiscourseCoherence: _teachAssociationPairs missing on Curriculum — class wiring bug');
     }
-    // Resolve K_CONCRETE_SENTENCES via the curriculum.js module-level
-    // export. Same import path used by initCompositionalTelemetry.
-    const { K_CONCRETE_SENTENCES } = await import('../curriculum.js');
+    // Audit D.7 — K_CONCRETE_SENTENCES now resolved via static
+    // top-of-file import (was: await import inside method body). Saves
+    // per-call module-resolution overhead.
     if (!Array.isArray(K_CONCRETE_SENTENCES) || K_CONCRETE_SENTENCES.length === 0) {
       return { taught: 0, groups: 0 };
     }
@@ -1043,6 +1050,20 @@ export const K_MIXIN = {
       'my', 'your', 'his', 'her', 'our', 'their', 'this', 'that',
       'there', 'is', 'are', 'was', 'were', 'do', 'does', 'did',
     ]);
+    // Audit D.6 — dedup. Build trained-bigram Set from
+    // K_CONCRETE_SENTENCES sentence-internal pairs. Cross-sentence
+    // boundary pairs that ALSO appear within a trained sentence would
+    // be double-trained (relationTagId=13 from _teachConcreteSentences
+    // AND relationTagId=31 from here). The whole point of
+    // relationTagId=31 is to carve a DISTINCT discourse channel — the
+    // boundary signal is supposed to add NEW information about cross-
+    // sentence topic continuity, not echo within-sentence bigrams that
+    // are already heavily Hebbian-trained.
+    const trainedBigrams = new Set();
+    for (const s of K_CONCRETE_SENTENCES) {
+      const ws = s.toLowerCase().split(/\s+/).filter(w => /^[a-z]+$/.test(w));
+      for (let i = 0; i < ws.length - 1; i++) trainedBigrams.add(`${ws[i]}|${ws[i + 1]}`);
+    }
     // Group sentences by their first content word (topic anchor).
     const groups = new Map();
     for (const s of K_CONCRETE_SENTENCES) {
@@ -1059,8 +1080,10 @@ export const K_MIXIN = {
     // For each multi-sentence topic group, bind every sentence's last
     // word to every group-mate's first word. Cap at 8 sentences per
     // group to bound pair-count growth on common topics like "cat" or
-    // "i" which appear in many sentences.
+    // "i" which appear in many sentences. Audit D.6 — DEDUP: skip the
+    // pair if it's already in the trained-within-sentence bigram set.
     const pairs = [];
+    let discardedDuplicates = 0;
     let nonTrivialGroups = 0;
     for (const [, group] of groups) {
       if (group.length < 2) continue;
@@ -1072,19 +1095,27 @@ export const K_MIXIN = {
           if (i === j) continue;
           const firstJ = group[j][0];
           if (lastI && firstJ && lastI !== firstJ) {
+            const bigramKey = `${lastI}|${firstJ}`;
+            if (trainedBigrams.has(bigramKey)) {
+              discardedDuplicates++;
+              continue;
+            }
             pairs.push([lastI, firstJ]);
           }
         }
       }
     }
-    if (pairs.length === 0) return { taught: 0, groups: 0 };
+    if (pairs.length === 0) {
+      this._hb(`[Curriculum] _teachDiscourseCoherence: all ${discardedDuplicates} candidate cross-sentence pairs were already trained as within-sentence bigrams (relationTagId=13 dominates). Channel adds zero NEW signal at this corpus size — skip.`);
+      return { taught: 0, groups: 0, discardedDuplicates };
+    }
     await this._teachAssociationPairs(pairs, {
       reps: 30,
       label: 'K-DISCOURSE-COHERENCE',
       relationTagId: 31,
     });
-    this._hb(`[Curriculum] _teachDiscourseCoherence: ${pairs.length} cross-sentence boundary pairs across ${nonTrivialGroups} topic-shared groups × 30 reps via relationTagId=31 (discourse-coherence channel). Bias next-sentence first-word selection by previous-sentence last-word when topic is shared.`);
-    return { taught: pairs.length, groups: nonTrivialGroups };
+    this._hb(`[Curriculum] _teachDiscourseCoherence: ${pairs.length} cross-sentence boundary pairs across ${nonTrivialGroups} topic-shared groups × 30 reps via relationTagId=31 (discourse-coherence channel). DEDUP: ${discardedDuplicates} additional candidate pairs discarded because they were already trained as within-sentence bigrams (relationTagId=13). Channel adds NEW cross-sentence signal only.`);
+    return { taught: pairs.length, groups: nonTrivialGroups, discardedDuplicates };
   },
 
   async _teachNumberGrammar() {

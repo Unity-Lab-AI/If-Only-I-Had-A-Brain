@@ -300,12 +300,12 @@ const SERVER_STATE_MIXIN = {
       // Bounded payload: aggregates only, no per-neuron / per-column
       // enumeration, no unbounded lists. Counts + small fixed-size
       // arrays only (gaps capped at 5, etc).
-      consciousness: this._getIter25MState(),
+      consciousness: this._getConsciousnessState(),
       // WS backpressure metrics for the GPU client. Reads
       // _gpuClient.bufferedAmount + drop/absorb/enobufs counters +
       // a rolling drops/sec rate so operator can see whether the
       // BLOCK-not-DROP path is keeping Hebbian updates intact.
-      wsPressure: this._getIter25NState(),
+      wsPressure: this._getWsPressureState(),
       // Failed-emission diagnostic — surfaces `cortexCluster._lastEmitRejection`
       // (set by emitWordDirect when bestMean falls below the adaptive
       // signal floor OR no candidate word emerged) so the dashboard
@@ -341,6 +341,44 @@ const SERVER_STATE_MIXIN = {
       curriculum: this.curriculum && typeof this.curriculum.getCurriculumStatus === 'function'
         ? this.curriculum.getCurriculumStatus()
         : null,
+      // Audit A.1 — P6.6 compositional-emergence telemetry surfaced.
+      // Was previously write-only inside cluster/telemetry.js. Reports
+      // verbatim/novel/partial classification rates + max-novelty
+      // sample + firstNovelMsAfterBoot. Dashboard panel reads this.
+      compositionalEmergence: (this.cortexCluster && typeof this.cortexCluster.getCompositionalStats === 'function')
+        ? (() => { try { return this.cortexCluster.getCompositionalStats(); } catch (err) { return { error: err.message }; } })()
+        : null,
+      // Audit A.2 — P6.7 word-creation tip-of-tongue candidates. Top-10
+      // by frequency, minCount=3. Dashboard renders a panel showing the
+      // emergent compounds the rejection-loop is observing.
+      wordCreationCandidates: (this.cortexCluster && typeof this.cortexCluster.getWordCreationCandidates === 'function')
+        ? (() => { try { return this.cortexCluster.getWordCreationCandidates({ limit: 10, minCount: 3 }); } catch (err) { return { error: err.message }; } })()
+        : null,
+      // Audit A.3 — P6.3 chat-time deep Hebbian counters. turns +
+      // totalPairs + lastTs + errors (post-A.4 the silent-swallow
+      // catch increments these counters instead of dropping the error).
+      chatTimeHebbianStats: this._chatTimeHebbianStats
+        ? {
+            turns: this._chatTimeHebbianStats.turns || 0,
+            totalPairs: this._chatTimeHebbianStats.totalPairs || 0,
+            lastTs: this._chatTimeHebbianStats.lastTs || 0,
+            errors: this._chatTimeHebbianStats.errors || 0,
+            lastError: this._chatTimeHebbianStats.lastError || null,
+          }
+        : { turns: 0, totalPairs: 0, lastTs: 0, errors: 0, lastError: null },
+      // Audit A.3 — P6.4 dream-recombination consolidation counters.
+      // Per audit E.4 the curriculum-side _dreamRecombinationStats also
+      // exposes a `consolidatedSamples` ring (cap 20) for operator audit.
+      dreamRecombinationStats: (this.curriculum && this.curriculum._dreamRecombinationStats)
+        ? {
+            totalDreamed: this.curriculum._dreamRecombinationStats.totalDreamed || 0,
+            novelConsolidated: this.curriculum._dreamRecombinationStats.novelConsolidated || 0,
+            lastTs: this.curriculum._dreamRecombinationStats.lastTs || 0,
+            consolidatedSamples: Array.isArray(this.curriculum._dreamRecombinationStats.consolidatedSamples)
+              ? this.curriculum._dreamRecombinationStats.consolidatedSamples.slice(-20)
+              : [],
+          }
+        : { totalDreamed: 0, novelConsolidated: 0, lastTs: 0, consolidatedSamples: [] },
     };
   },
 

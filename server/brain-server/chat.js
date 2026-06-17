@@ -101,19 +101,37 @@ const SERVER_CHAT_MIXIN = {
             pairs.push([filtered[i], filtered[i + 1]]);
           }
           if (pairs.length > 0) {
+            if (!this._chatTimeHebbianStats) {
+              this._chatTimeHebbianStats = { turns: 0, totalPairs: 0, lastTs: 0, errors: 0, lastError: null, lastWarnTs: 0 };
+            }
             // reps=1 — single chat turn shouldn't dominate curriculum-
             // depth training. Fire-and-forget (no await) so chat
             // latency isn't blocked on the Hebbian pass; the binding
             // lands eventually and is reflected in compositional
             // telemetry after the dispatch completes.
+            //
+            // Audit A.4 — error swallow REPLACED. Pre-audit catch was
+            // `() => { /* non-fatal */ }` which made failures invisible
+            // (OWASP A09:2021 logging/monitoring failures violation).
+            // Now: increment stats.errors, store last message, throttled
+            // console.warn (first 3 fires + max once/min thereafter)
+            // mirrors the gpu.js _gpuLostWarnAt pattern. Dashboard
+            // surfaces stats.errors via _chatTimeHebbianStats telemetry
+            // (audit A.3).
             this.curriculum._teachAssociationPairs(pairs, {
               reps: 1,
               label: 'CHAT-TIME-DEEP-HEBBIAN',
               relationTagId: 30,
-            }).catch(() => { /* chat-Hebbian failures non-fatal */ });
-            if (!this._chatTimeHebbianStats) {
-              this._chatTimeHebbianStats = { turns: 0, totalPairs: 0, lastTs: 0 };
-            }
+            }).catch((err) => {
+              const stats = this._chatTimeHebbianStats;
+              stats.errors += 1;
+              stats.lastError = err && err.message ? err.message : String(err);
+              const now = Date.now();
+              if (stats.errors <= 3 || (now - stats.lastWarnTs) > 60_000) {
+                console.warn(`[Brain] chat-Hebbian fire-and-forget failed (#${stats.errors}): ${stats.lastError}`);
+                stats.lastWarnTs = now;
+              }
+            });
             this._chatTimeHebbianStats.turns++;
             this._chatTimeHebbianStats.totalPairs += pairs.length;
             this._chatTimeHebbianStats.lastTs = Date.now();

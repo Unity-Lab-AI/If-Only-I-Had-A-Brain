@@ -1485,6 +1485,20 @@ class ServerBrain {
         console.warn(`[Brain] K-wiring assertion threw: ${err?.message || err}`);
       }
 
+      // Audit H.4 — auto-size + mixin-dispatch assertion at brain boot.
+      // Verifies cluster neuron count is finite + sane, every required
+      // mixin method dispatches (Object.assign chain ran), and cortical
+      // microstructure buffer sizes match this.size. Catches the silent-
+      // NaN-N case post-P4.2 cluster.js split. Mirrors assertKWiring
+      // pattern. PASS/FAIL banner in server.log.
+      try {
+        if (typeof this.cortexCluster.assertAutoSizeWiring === 'function') {
+          this.cortexCluster.assertAutoSizeWiring();
+        }
+      } catch (err) {
+        console.warn(`[Brain] auto-size + mixin dispatch assertion threw: ${err?.message || err}`);
+      }
+
       // Dictionary API smoke test at boot. Fires one test query for
       // "test" and logs the parsed result. The boolean result is
       // assigned to `this._dictionarySmokeTestResult` (true / false; null
@@ -3320,7 +3334,7 @@ class ServerBrain {
    * enumeration. Caller broadcasts this in state.consciousness for dashboard
    * panels M.21/M.22/M.23/M.24 to render.
    */
-  _getIter25MState() {
+  _getConsciousnessState() {
     const cortex = this.cortexCluster;
     const cacheStats = (cortex && typeof cortex.getDefinitionCacheStats === 'function')
       ? cortex.getDefinitionCacheStats() : null;
@@ -3457,7 +3471,7 @@ class ServerBrain {
    * snapshots — current minus oldest divided by elapsed seconds. Cap
    * the buffer to keep memory bounded across long brain runs.
    */
-  _getIter25NState() {
+  _getWsPressureState() {
     const now = Date.now();
     const ws = this._gpuClient;
     const bufferedAmount = (ws && typeof ws.bufferedAmount === 'number') ? ws.bufferedAmount : 0;
@@ -6021,8 +6035,41 @@ setInterval(() => {
  * expects an operator to connect compute.html manually.
  */
 function _spawnGpuClient(port) {
+  // Live-test diagnostic: stamp INVOKED on every entry so a missed
+  // setTimeout(() => _spawnGpuClient(PORT), 3500) at line ~6350 leaves
+  // a visible trail in server.log. Pair with the FINISHED log line
+  // below — if INVOKED appears without FINISHED, spawn() crashed
+  // synchronously inside the platform-specific block. Operator
+  // verbatim 2026-06-17: "the htmls for the brain and compute and
+  // dashboard did not open correctly only two opened" — diagnostic
+  // log lines added so next live-test surfaces root cause.
+  const _spawnStartTs = Date.now();
+  const _spawnUptimeMs = Math.round(process.uptime() * 1000);
+  console.log(`[Server] _spawnGpuClient INVOKED at +${_spawnUptimeMs}ms post-process-start (platform=${process.platform}, DREAM_NO_AUTO_GPU=${process.env.DREAM_NO_AUTO_GPU || 'unset'})`);
+
+  // Failure-surfacing helper — broadcasts {type:'gpuClientSpawnFailed'}
+  // over WebSocket to all connected clients (dashboard.html consumes
+  // this and renders a recovery banner) AND logs with [CRITICAL] prefix
+  // so the PowerShell tail-window highlight rules surface it. Without
+  // this, silent failures inside the platform-specific spawn block
+  // leave the operator with no visible signal — only the absence of a
+  // compute.html tab. Per audit task H.6.
+  const _broadcastSpawnFailure = (details) => {
+    try {
+      const payload = { type: 'gpuClientSpawnFailed', ts: Date.now(), retryIn: null, ...details };
+      const msg = JSON.stringify(payload);
+      if (brain && brain.clients) {
+        for (const [clientWs] of brain.clients) {
+          try { if (clientWs && clientWs.readyState === 1) clientWs.send(msg); } catch { /* per-client send failure tolerated */ }
+        }
+      }
+    } catch { /* defensive — never let surfacing itself crash spawn flow */ }
+    console.error(`[Server] [CRITICAL] _spawnGpuClient failure: ${JSON.stringify(details)}`);
+  };
+
   if (process.env.DREAM_NO_AUTO_GPU === '1') {
     console.log(`[Server] DREAM_NO_AUTO_GPU=1 — skipping browser auto-launch. Open http://localhost:${port}/compute.html manually to start GPU compute.`);
+    console.log(`[Server] _spawnGpuClient FINISHED (skipped via DREAM_NO_AUTO_GPU=1, elapsed=${Date.now() - _spawnStartTs}ms)`);
     return;
   }
   // iter15-D — kill any Chrome process attached to the isolated
@@ -6242,13 +6289,16 @@ function _spawnGpuClient(port) {
         });
         child.on('error', (err) => {
           console.warn(`[Server] Browser spawn error: ${err.message}. Falling back to default browser open.`);
+          _broadcastSpawnFailure({ stage: 'child-error-event', browser: browserName, exePath, errno: err.code || err.errno || 'unknown', message: err.message, fallback: 'default-browser' });
           exec(`start "" "${url}"`, () => {});
         });
         child.unref();
         spawnedOK = true;
         console.log(`[Server] GPU compute client spawn() initiated — PID ${child.pid}. URL: ${url}`);
+        console.log(`[Server] _spawnGpuClient FINISHED (browser=${browserName}, pid=${child.pid}, elapsed=${Date.now() - _spawnStartTs}ms — 30s watchdog will verify WS connection)`);
       } catch (err) {
         console.warn(`[Server] spawn() threw: ${err.message}. Falling back to default browser open.`);
+        _broadcastSpawnFailure({ stage: 'spawn-throw', browser: browserName, exePath, errno: err.code || 'unknown', message: err.message, fallback: 'default-browser' });
         exec(`start "" "${url}"`, () => {});
       }
 
@@ -6262,6 +6312,7 @@ function _spawnGpuClient(port) {
         setTimeout(() => {
           if (!brain || !brain._gpuClient || brain._gpuClient.readyState !== 1) {
             console.warn(`[Server] GPU client never connected after Chrome spawn (30s timeout). Chrome may have failed silently — falling back to default browser to at least open compute.html (will be capped at 2GB binding ceiling without --enable-unsafe-webgpu flag).`);
+            _broadcastSpawnFailure({ stage: 'watchdog-30s-timeout', browser: browserName, exePath, errno: 'WS_NEVER_CONNECTED', message: 'Chrome spawn appeared OK but no compute.html WS client connected within 30s — silent Chrome failure (stale profile lock, GPU process crash, sandbox denial).', fallback: 'default-browser' });
             exec(`start "" "${url}"`, () => {});
           } else {
             console.log(`[Server] GPU client connected — Chrome auto-launch confirmed working.`);
@@ -6270,10 +6321,12 @@ function _spawnGpuClient(port) {
       }
     } else {
       console.warn(`[Server] Chrome and Edge not found in standard install paths. Falling back to default browser launch — WebGPU binding ceiling will stay at 2GB spec minimum (cap ~178M neurons). Install Chrome OR open ${url} manually in a Chromium browser launched with --enable-unsafe-webgpu flag to scale past 178M.`);
+      _broadcastSpawnFailure({ stage: 'browser-not-found', browser: 'none', exePath: null, errno: 'ENOENT', message: 'Chrome + Edge not found in any standard install path. Default-browser fallback opens at 2GB binding ceiling (~178M neurons cap).', fallback: 'default-browser', checkedPaths });
       exec(`start "" "${url}"`, (err) => {
         if (err) console.warn(`[Server] Default-browser fallback failed: ${err.message}. Open ${url} manually.`);
         else console.log(`[Server] GPU compute client opened in default browser: ${url}`);
       });
+      console.log(`[Server] _spawnGpuClient FINISHED (no-Chrome/Edge fallback, elapsed=${Date.now() - _spawnStartTs}ms)`);
     }
   } else if (process.platform === 'darwin') {
     const args = ['-a', 'Google Chrome', '--args', '--enable-unsafe-webgpu', '--enable-dawn-features=allow_unsafe_apis,disable_robustness', '--new-window', url];
@@ -6281,8 +6334,10 @@ function _spawnGpuClient(port) {
     try {
       const child = spawn('open', args, { detached: true, stdio: 'ignore' });
       child.unref();
+      console.log(`[Server] _spawnGpuClient FINISHED (macOS open, pid=${child.pid}, elapsed=${Date.now() - _spawnStartTs}ms)`);
     } catch (err) {
       console.warn(`[Server] macOS spawn failed: ${err.message}. Falling back to default open.`);
+      _broadcastSpawnFailure({ stage: 'macos-spawn-throw', browser: 'Chrome', exePath: '/Applications/Google Chrome.app', errno: err.code || 'unknown', message: err.message, fallback: 'open' });
       exec(`open "${url}"`, () => {});
     }
   } else {
@@ -6291,10 +6346,17 @@ function _spawnGpuClient(port) {
     const tryLinux = (exe, fallbackFn) => {
       try {
         const child = spawn(exe, linuxArgs, { detached: true, stdio: 'ignore' });
-        child.on('error', () => fallbackFn());
+        child.on('error', (err) => {
+          _broadcastSpawnFailure({ stage: 'linux-child-error', browser: exe, exePath: exe, errno: err.code || 'unknown', message: err.message, fallback: 'next-in-chain' });
+          fallbackFn();
+        });
         child.unref();
         console.log(`[Server] GPU compute client spawned via ${exe}`);
-      } catch { fallbackFn(); }
+        console.log(`[Server] _spawnGpuClient FINISHED (Linux ${exe}, pid=${child.pid}, elapsed=${Date.now() - _spawnStartTs}ms)`);
+      } catch (err) {
+        _broadcastSpawnFailure({ stage: 'linux-spawn-throw', browser: exe, exePath: exe, errno: err.code || 'unknown', message: err.message, fallback: 'next-in-chain' });
+        fallbackFn();
+      }
     };
     tryLinux('google-chrome', () => tryLinux('chromium', () => exec(`xdg-open "${url}"`, () => {})));
   }

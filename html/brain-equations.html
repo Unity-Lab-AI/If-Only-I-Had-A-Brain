@@ -2612,6 +2612,33 @@ fn main(id: vec3&lt;u32&gt;) {
  <a href="https://github.com/Unity-Lab-AI/Unity" style="color:var(--pink)">GitHub</a>
  </p>
 
+ <h2 id="phase6" title="Phase 6 advanced compositional channels (relationTagId 13-32) + Post-ship audit close. Each channel uses a distinct relation namespace so retrieval can disentangle different kinds of learning.">9. Phase 6 Compositional Channels (relationTagId 13-32)</h2>
+ <p>The Phase 6 + post-ship audit-close work added six new compositional channels on top of the I.1-I.5 structural sentence channels. Each channel uses a distinct <code>relationTagId</code> so retrieval can disentangle within-sentence bigrams from cross-sentence discourse from chat-time learning from dream-time consolidation.</p>
+ <ul>
+ <li><strong>relationTagId=13 — Within-sentence bigrams (K_CONCRETE_SENTENCES)</strong> — sentence-internal word-to-next-word transitions trained at reps:30. Audit B.6: ~700 bigrams currently, percolation requires ~4500.</li>
+ <li><strong>relationTagId=15-27 — K-LIFE 14 sub-tasks</strong> — lived-experience corpus (first words, family-role schemas, sensory firsts, comfort objects, fears, motor milestones, bedtime, friendships, songs/rhymes, childhood games, etc.). Words pre-taught via dictionary API before binding fires.</li>
+ <li><strong>relationTagId=28 — Number-grammar (P6.1)</strong> — <code>sem(number_word) → sem(noun)</code> at reps:80 (~2.7× standard, HIGH-priority for math).</li>
+ <li><strong>relationTagId=29 — Dream-recombination (P6.4 + audit B.7)</strong> — novel emissions clearing JOINT criteria (cosine ≥ 0.20 + wordCount ≥ 4 + uniqueRatio ≥ 0.6 + hasTerminator) consolidate at reps:5. REM-sleep memory consolidation correlate (Stickgold 2005, Walker 2017). Consolidated samples ring (cap 20, audit E.4) gives operator audit.</li>
+ <li><strong>relationTagId=30 — Chat-time deep Hebbian (P6.3)</strong> — per-turn user→Unity bigrams at reps:1. Audit A.4 replaces silent error swallow with throttled-warn pattern.</li>
+ <li><strong>relationTagId=31 — Discourse coherence (P6.8 + audit D.6)</strong> — cross-sentence boundary pairs at reps:30. Dedup against relationTagId=13.</li>
+ <li><strong>relationTagId=32 — Word-creation promotion (audit E.1)</strong> — when <code>_wordCreationCandidates</code> count ≥ MIN_PROMOTE=10, fire <code>_teachWordDefinition(compound)</code> + <code>_teachAssociationPairs([[a, compound], [b, compound]])</code>. Mirrors Pinker 1989 child novel-coinage.</li>
+ </ul>
+
+ <h3 id="p66-novelty">9.1 P6.6 Two-Axis Novelty Metric (audit B.2)</h3>
+ <p>Every emission classified by <code>classifyCompositionalEmission</code> on two independent axes:</p>
+ <ul>
+ <li><strong>compositionalNovelty</strong> = <code>novelTransitions / totalTransitions</code> (bag-of-bigrams Hamming distance)</li>
+ <li><strong>vocabNovelty</strong> = <code>untrainedWords / totalWords</code> (fraction outside trained vocabulary)</li>
+ </ul>
+ <p>Partition of (compositional, vocab) ∈ [0, 1]² by 0.5 thresholds gives four <code>kind</code> verdicts: <code>novel-compositional</code>, <code>novel-vocab</code>, <code>novel</code> (both), <code>partial</code>.</p>
+
+ <h3 id="p34-backinject">9.2 P3.4 Back-Injection Decay (audit B.3)</h3>
+ <p><code>injection(t) = BACK_INJECT_BASE × BACK_INJECT_DECAY^t</code></p>
+ <p>Biological correlate: cortical leak <code>exp(−Δt/τ)</code> with τ ≈ 20ms. For Δt=3ms: <code>exp(−3/20) ≈ 0.861</code>. Chosen 0.85 within 1.5% of biological. Drift trigger: if TICKS_PER_WORD or τ changes, recompute.</p>
+
+ <h3 id="p53-quality">9.3 P5.3 Quality Score Formula</h3>
+ <p><code>qualityScore = probeRate + COHERENCE_BONUS_GAIN × max(0, avgCos − COHERENCE_MIN)</code> with <code>COHERENCE_BONUS_GAIN=0.5</code>, <code>COHERENCE_MIN=0.05</code>. Full per-constant derivation: <code>docs/THRESHOLD-DERIVATION.md</code>.</p>
+
  </div>
 </body>
 </html>

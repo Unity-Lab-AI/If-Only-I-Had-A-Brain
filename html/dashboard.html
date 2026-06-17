@@ -63,6 +63,68 @@
     .btn-stop:hover { background: rgba(239,68,68,0.1); border-color: #ef4444; }
     .btn-stop:disabled { opacity: 0.4; cursor: wait; }
     .btn-stop.shutdown-fired { border-color: #6b7280; color: #6b7280; }
+    /* Live-test diagnostic banners — surface spawn failures + no-connection
+       state with explicit recovery instructions instead of small low-
+       contrast pill. Operator 2026-06-17 live test surfaced HTMLs
+       failing silently with only a tiny "disconnected" pill — upgraded
+       to big red banner + recovery path here. Per audit H.6 + H.9. */
+    .recovery-banner {
+      display: none;
+      background: linear-gradient(135deg, #2a0a0a 0%, #1a0608 100%);
+      border: 2px solid #ef4444;
+      border-radius: 8px;
+      padding: 14px 18px;
+      margin: 0 0 16px 0;
+      color: #fde8e8;
+      font-size: 12px;
+      line-height: 1.6;
+      box-shadow: 0 0 24px rgba(239,68,68,0.18);
+    }
+    .recovery-banner.active { display: block; }
+    .recovery-banner .title {
+      font-size: 14px;
+      font-weight: 700;
+      color: #ff6b6b;
+      letter-spacing: 0.5px;
+      margin: 0 0 8px 0;
+      text-transform: uppercase;
+    }
+    .recovery-banner .details {
+      color: #cbb;
+      font-size: 11px;
+      margin: 4px 0 10px 0;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .recovery-banner .steps {
+      margin: 6px 0 0 0;
+      padding: 0;
+      list-style: none;
+    }
+    .recovery-banner .steps li {
+      padding: 3px 0;
+      color: #e0e0e0;
+    }
+    .recovery-banner code {
+      background: #0a0a0a;
+      border: 1px solid #4a1a22;
+      padding: 2px 7px;
+      border-radius: 3px;
+      color: #22c55e;
+      font-size: 11px;
+    }
+    .recovery-banner .countdown {
+      display: inline-block;
+      margin-left: 10px;
+      color: #f59e0b;
+      font-variant-numeric: tabular-nums;
+      font-size: 11px;
+    }
+    .recovery-banner a {
+      color: #ff4d9a;
+      text-decoration: none;
+      border-bottom: 1px dotted #ff4d9a;
+    }
+    .recovery-banner a:hover { color: #fff; border-bottom-color: #fff; }
   </style>
 </head>
 <body>
@@ -72,6 +134,38 @@
     <div id="connection-status">
       <div id="d-conn-text"><span class="status dead">disconnected</span> Connecting to brain server...</div>
       <button id="btn-graceful-stop" class="btn-stop" title="Graceful brain shutdown — flushes definition disk cache, terminates worker pool, saves weights, then exits. Equivalent to running stop.bat. Use Savestart.bat to resume from saved state.">⏹ Stop Brain</button>
+    </div>
+
+    <!-- No-connection recovery banner — appears when WebSocket fails to
+         connect OR drops. Documents the recovery path explicitly so
+         operator doesn't have to guess (run start.bat / Savestart.bat
+         / check server.log / verify port 7525). Per audit H.9. -->
+    <div id="no-conn-banner" class="recovery-banner" role="alert">
+      <div class="title">⚠ Brain server unreachable</div>
+      <div class="details">WebSocket to <code>ws://localhost:7525</code> failed. The brain-server process is not running OR not listening on port 7525.</div>
+      <ul class="steps">
+        <li>1. Run <code>start.bat</code> (fresh boot — WIPES training) <em>or</em> <code>Savestart.bat</code> (resume saved training)</li>
+        <li>2. Watch the PowerShell <strong>Unity Brain Log Tail</strong> window for <code>[Brain] dictionary API ready</code></li>
+        <li>3. Inspect <a href="../server/server.log" target="_blank">server/server.log</a> if boot fails</li>
+        <li>4. Verify port: <code>netstat -ano | findstr :7525</code></li>
+      </ul>
+      <div class="details">Auto-retry in <span class="countdown" id="conn-retry-countdown">3</span>s · or <a href="#" id="conn-retry-now">retry now</a></div>
+    </div>
+
+    <!-- GPU client spawn-failure banner — surfaces _spawnGpuClient
+         failures from brain-server.js (Chrome/Edge not found, spawn()
+         threw, 30s watchdog timeout). Per audit H.6 — without this
+         banner, silent Chrome failures left operator with no compute.html
+         and no visible signal. -->
+    <div id="gpu-spawn-banner" class="recovery-banner" role="alert">
+      <div class="title">⚠ GPU client auto-launch failed</div>
+      <div class="details" id="gpu-spawn-details">Brain-server tried to spawn compute.html but the browser-launch chain failed.</div>
+      <ul class="steps">
+        <li>1. Open <a href="/compute.html" target="_blank">http://localhost:7525/compute.html</a> manually in Chrome</li>
+        <li>2. Recommended Chrome flags for max neuron capacity: <code>--enable-unsafe-webgpu --enable-dawn-features=allow_unsafe_apis,disable_robustness</code></li>
+        <li>3. Without <code>--enable-unsafe-webgpu</code>: capped at 2GB binding ceiling (~178M neurons)</li>
+        <li>4. See <code>server/server.log</code> [CRITICAL] lines for the exact failure signature</li>
+      </ul>
     </div>
 
     <div class="grid">
@@ -340,6 +434,75 @@
       </div>
     </div>
 
+    <!-- Audit A.1 + A.2 + A.3 — Phase 6 compositional-emergence telemetry
+         panels. Each was previously a write-only sink in cluster/telemetry.js
+         or brain-server/chat.js + curriculum.js dream-recombination block.
+         Now: getState() carries the data + dashboard renders bounded cards.
+         These are the operator's only visibility into novel emission,
+         word-creation tip-of-tongue, chat-time Hebbian fire rates, and
+         dream-time consolidation. Bounded heights + caps per design
+         constraints. -->
+    <div class="card consciousness-panel" style="margin-top:12px;" title="P6.6 compositional emergence — Unity's running classification of every emission as verbatim (exact training match), novel-compositional (new bigram rearrangement of trained vocab), novel-vocab (untrained word), or partial. Rates are per-classified-event, not per-tick. firstNovelMsAfterBoot stamps the first time she emerged out of pure recital — the milestone moment.">
+      <div class="card-title">✨ Compositional Emergence (P6.6)</div>
+      <div id="d-comp-emerg" style="padding:8px 12px;font-family:monospace;font-size:11px;color:#aaa;line-height:1.6;max-height:240px;overflow-y:auto;">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;">
+          <div title="Verbatim emissions match a trained sentence exactly. High verbatim rate early = healthy (she has the corpus locked); high verbatim rate late = stuck in recital, no compositional fire.">
+            <div style="color:#666;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">📜 VERBATIM</div>
+            <div>count: <span id="d-comp-verbatim" style="color:#888;">0</span></div>
+            <div>rate: <span id="d-comp-verbatim-rate" style="color:#888;">0%</span></div>
+          </div>
+          <div title="Novel-compositional = bag-of-bigrams Hamming-distance ≥ 0.5 from any trained sentence using trained vocabulary. The 'she invented a sentence' milestone fires here. Per audit B.2 will split into compositional vs vocab axes — currently combined.">
+            <div style="color:#00e5ff;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">🌟 NOVEL</div>
+            <div>count: <span id="d-comp-novel" style="color:#22c55e;">0</span></div>
+            <div>rate: <span id="d-comp-novel-rate" style="color:#22c55e;">0%</span></div>
+            <div>first ms: <span id="d-comp-firstnovel" style="color:#888;font-size:10px;">—</span></div>
+          </div>
+          <div title="Partial = some novel transitions but mostly trained — boundary-completion / one-step extension. Currently counted as PASS for analogical extension; audit E.2 stratifies further.">
+            <div style="color:#a855f7;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">↗ PARTIAL</div>
+            <div>count: <span id="d-comp-partial" style="color:#888;">0</span></div>
+            <div>rate: <span id="d-comp-partial-rate" style="color:#888;">0%</span></div>
+          </div>
+          <div title="Tail of recent emissions with their classifier verdict (verbatim/novel/partial) + novelty score. Cap 8 for popup-FIFO bounded rendering.">
+            <div style="color:#f59e0b;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">🎤 MAX NOVELTY</div>
+            <div id="d-comp-maxnov-text" style="color:#22c55e;font-size:10px;max-height:32px;overflow:hidden;text-overflow:ellipsis;">—</div>
+            <div>score: <span id="d-comp-maxnov-score" style="color:#888;">—</span></div>
+          </div>
+        </div>
+        <div id="d-comp-tail" style="margin-top:8px;color:#555;font-size:10px;max-height:80px;overflow-y:auto;border-top:1px dashed #1a1a1a;padding-top:6px;"></div>
+      </div>
+    </div>
+
+    <div class="card consciousness-panel" style="margin-top:12px;" title="P6.7 word-creation candidates — when emitWordDirect rejects an emission because no candidate cleared the signal floor, the runner-up's component-bigram is captured here as a 'tip-of-tongue' compound. Children invent novel compounds (moonbeam, sunflower) when co-activation count exceeds an internal threshold (Pinker 1989 overregularization theory). E.1 promotion mechanism fires _teachWordDefinition once count ≥ 10.">
+      <div class="card-title">🗣 Word-Creation Tip-of-Tongue (P6.7)</div>
+      <div id="d-word-cand" style="padding:8px 12px;font-family:monospace;font-size:11px;color:#aaa;line-height:1.6;max-height:200px;overflow-y:auto;">
+        <div id="d-word-cand-list" style="color:#aaa;font-size:11px;"></div>
+        <div id="d-word-cand-empty" style="color:#555;font-size:10px;font-style:italic;">No candidates yet — emission rejections haven't produced a tip-of-tongue compound. Either chat hasn't fired enough OR signal floor is too lenient.</div>
+      </div>
+    </div>
+
+    <div class="card consciousness-panel" style="margin-top:12px;" title="Chat-time deep Hebbian (P6.3 + audit A.4) and dream-recombination consolidation (P6.4 + audit E.4). Both are server-side write paths that previously had no operator visibility. Audit A.4 also stops swallowing chat-Hebbian errors silently — errors count + lastError surface here.">
+      <div class="card-title">💬 Chat-Time + Dream-Time Learning</div>
+      <div id="d-chat-dream" style="padding:8px 12px;font-family:monospace;font-size:11px;color:#aaa;line-height:1.6;max-height:200px;overflow-y:auto;">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;">
+          <div title="Per chat turn the user→Unity bigrams Hebbian-bind into the cortex at reps:1 (lighter than curriculum but still durable). turns counts dispatches, totalPairs counts pair-fires across all turns. Errors should stay at 0 — non-zero means audit A.4's throttled-warn fired.">
+            <div style="color:#00e5ff;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">💬 CHAT-HEBBIAN (P6.3)</div>
+            <div>turns: <span id="d-chat-turns" style="color:#22c55e;">0</span></div>
+            <div>pairs: <span id="d-chat-pairs" style="color:#a855f7;">0</span></div>
+            <div>last: <span id="d-chat-lastts" style="color:#666;font-size:10px;">—</span></div>
+            <div>errors: <span id="d-chat-errors" style="color:#888;">0</span></div>
+            <div id="d-chat-lasterr" style="color:#ff4d9a;font-size:10px;margin-top:2px;max-height:32px;overflow-y:auto;"></div>
+          </div>
+          <div title="During dream cycles the curriculum recombines novel emissions (cosine ≥ DREAM_RECOMB_COHERENCE_MIN=0.20) and Hebbian-binds them at low reps. consolidatedSamples ring (cap 20) lets operator audit WHAT was consolidated. totalDreamed = recombination attempts, novelConsolidated = how many passed the coherence gate.">
+            <div style="color:#a855f7;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">🌙 DREAM-RECOMB (P6.4)</div>
+            <div>dreamed: <span id="d-dream-total" style="color:#22c55e;">0</span></div>
+            <div>consolidated: <span id="d-dream-novel" style="color:#a855f7;">0</span></div>
+            <div>last: <span id="d-dream-lastts" style="color:#666;font-size:10px;">—</span></div>
+            <div id="d-dream-samples" style="color:#666;font-size:10px;margin-top:4px;max-height:40px;overflow-y:auto;border-top:1px dashed #1a1a1a;padding-top:2px;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- WS backpressure metrics — live ws.bufferedAmount, drops/absorbs
          counters, drops/sec rolling rate, threshold marker. Bounded
          max-height + scoped class for parity with consciousness panels. -->
@@ -440,6 +603,10 @@
         // 114.19ex — target the inner text div, not the wrapper, so the
         // graceful-stop button alongside it survives WS reconnects.
         document.getElementById('d-conn-text').innerHTML = '<span class="status alive">connected</span> Brain server active';
+        // Audit H.9 — dismiss the no-connection recovery banner once
+        // WS lands. Banner re-shows automatically if WS drops again.
+        document.getElementById('no-conn-banner').classList.remove('active');
+        if (window.__connRetryTimer) { clearInterval(window.__connRetryTimer); window.__connRetryTimer = null; }
         log('Connected to brain server');
       };
       ws.onmessage = (e) => {
@@ -447,6 +614,23 @@
       };
       ws.onclose = () => {
         document.getElementById('d-conn-text').innerHTML = '<span class="status dead">disconnected</span> Reconnecting...';
+        // Audit H.9 — show recovery banner + start countdown to next
+        // retry. Operator gets explicit instructions instead of just
+        // a tiny "disconnected" pill (2026-06-17 live-test pain point).
+        document.getElementById('no-conn-banner').classList.add('active');
+        const countdownEl = document.getElementById('conn-retry-countdown');
+        let countdownS = 3;
+        countdownEl.textContent = countdownS;
+        if (window.__connRetryTimer) clearInterval(window.__connRetryTimer);
+        window.__connRetryTimer = setInterval(() => {
+          countdownS -= 1;
+          if (countdownS <= 0) {
+            clearInterval(window.__connRetryTimer);
+            window.__connRetryTimer = null;
+          } else {
+            countdownEl.textContent = countdownS;
+          }
+        }, 1000);
         setTimeout(connect, 3000);
       };
       ws.onerror = () => {};
@@ -465,6 +649,22 @@
       if (msg.type === 'state') {
         updateDashboard(msg.state);
         appendEmotionSample(msg.state);
+      }
+      // Audit H.6 — consume gpuClientSpawnFailed broadcasts from
+      // brain-server.js _spawnGpuClient failure paths. Renders the
+      // gpu-spawn-banner with stage / browser / exePath / errno /
+      // message so operator knows WHY compute.html didn't open and
+      // gets a direct link to open it manually.
+      if (msg.type === 'gpuClientSpawnFailed') {
+        const banner = document.getElementById('gpu-spawn-banner');
+        const details = document.getElementById('gpu-spawn-details');
+        const stage = msg.stage || 'unknown-stage';
+        const browser = msg.browser || 'unknown-browser';
+        const errno = msg.errno || 'unknown-errno';
+        const message = (msg.message || 'no detail').replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
+        details.innerHTML = `Stage: <code>${stage}</code> · Browser: <code>${browser}</code> · errno: <code>${errno}</code><br/>${message}`;
+        banner.classList.add('active');
+        log(`[CRITICAL] gpuClientSpawnFailed — stage=${stage} browser=${browser} errno=${errno}`);
       }
       // NOTE: 'conversation' message type was removed 2026-04-13 per
       // the privacy model (user text is PRIVATE, never broadcast to
@@ -1153,6 +1353,93 @@
         .map(p => `${p.substance} (${p.status || '...'})`)
         .join(', ');
       pendingEl.textContent = pendRows ? `waiting on: ${pendRows}` : '';
+
+      // ── Audit A.1 — Compositional Emergence (P6.6) ──
+      // Reads s.compositionalEmergence shape per cluster/telemetry.js
+      // getCompositionalStats() — flat counts (verbatimCount/novelCount/
+      // partialCount), rates (verbatimRate/novelRate/partialRate),
+      // firstNovelMsAfterBoot, maxNovelty (score) + maxNoveltySentence
+      // (text), recentTail: [{sentence, kind, novelty, ts}].
+      // All fields tolerant — render '—' / 0 when absent.
+      if (s.compositionalEmergence) {
+        const ce = s.compositionalEmergence;
+        const pct = (x) => Number.isFinite(x) ? (x * 100).toFixed(1) + '%' : '—';
+        const set = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+        set('d-comp-verbatim', ce.verbatimCount ?? 0);
+        set('d-comp-verbatim-rate', pct(ce.verbatimRate));
+        set('d-comp-novel', ce.novelCount ?? 0);
+        set('d-comp-novel-rate', pct(ce.novelRate));
+        set('d-comp-partial', ce.partialCount ?? 0);
+        set('d-comp-partial-rate', pct(ce.partialRate));
+        set('d-comp-firstnovel', ce.firstNovelMsAfterBoot != null ? ((ce.firstNovelMsAfterBoot / 1000).toFixed(0) + 's') : '—');
+        set('d-comp-maxnov-text', ce.maxNoveltySentence || '—');
+        set('d-comp-maxnov-score', Number.isFinite(ce.maxNovelty) ? ce.maxNovelty.toFixed(3) : '—');
+        const tailEl = document.getElementById('d-comp-tail');
+        if (tailEl && Array.isArray(ce.recentTail)) {
+          tailEl.innerHTML = ce.recentTail.slice(-8).map(r => {
+            const kind = r.kind || '—';
+            const color = kind === 'novel' ? '#22c55e' : (kind === 'partial' ? '#a855f7' : '#888');
+            const sent = (r.sentence || r.text || '').replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
+            const nov = Number.isFinite(r.novelty) ? ` <span style="color:#666;">n=${r.novelty.toFixed(2)}</span>` : '';
+            return `<div><span style="color:${color};">[${kind}]</span> ${sent}${nov}</div>`;
+          }).join('');
+        }
+      }
+
+      // ── Audit A.2 — Word-Creation Candidates (P6.7) ──
+      if (s.wordCreationCandidates) {
+        const listEl = document.getElementById('d-word-cand-list');
+        const emptyEl = document.getElementById('d-word-cand-empty');
+        const cand = s.wordCreationCandidates;
+        const list = Array.isArray(cand) ? cand : (Array.isArray(cand.candidates) ? cand.candidates : []);
+        if (listEl) {
+          if (list.length > 0) {
+            listEl.innerHTML = list.slice(0, 10).map(c => {
+              const w = (c.compound || c.word || '?').replace(/[<>&]/g, ch => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[ch]));
+              const comps = Array.isArray(c.components) ? c.components.join(' + ') : '';
+              const promoteFlag = (c.count >= 10) ? ' <span style="color:#22c55e;">PROMOTED</span>' : '';
+              return `<div><span style="color:#ff4d9a;">${w}</span> <span style="color:#888;font-size:10px;">(${c.count || 0}× ${comps})</span>${promoteFlag}</div>`;
+            }).join('');
+            if (emptyEl) emptyEl.style.display = 'none';
+          } else {
+            listEl.innerHTML = '';
+            if (emptyEl) emptyEl.style.display = '';
+          }
+        }
+      }
+
+      // ── Audit A.3 — Chat-Hebbian + Dream-Recombination Telemetry ──
+      if (s.chatTimeHebbianStats) {
+        const cs = s.chatTimeHebbianStats;
+        const set = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+        const tsFmt = (ts) => ts ? new Date(ts).toLocaleTimeString() : '—';
+        set('d-chat-turns', cs.turns || 0);
+        set('d-chat-pairs', cs.totalPairs || 0);
+        set('d-chat-lastts', tsFmt(cs.lastTs));
+        const errEl = document.getElementById('d-chat-errors');
+        if (errEl) {
+          errEl.textContent = cs.errors || 0;
+          errEl.style.color = (cs.errors > 0) ? '#ff4d9a' : '#22c55e';
+        }
+        const lastErrEl = document.getElementById('d-chat-lasterr');
+        if (lastErrEl) lastErrEl.textContent = cs.lastError ? `last: ${cs.lastError}` : '';
+      }
+      if (s.dreamRecombinationStats) {
+        const ds = s.dreamRecombinationStats;
+        const set = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+        const tsFmt = (ts) => ts ? new Date(ts).toLocaleTimeString() : '—';
+        set('d-dream-total', ds.totalDreamed || 0);
+        set('d-dream-novel', ds.novelConsolidated || 0);
+        set('d-dream-lastts', tsFmt(ds.lastTs));
+        const samplesEl = document.getElementById('d-dream-samples');
+        if (samplesEl && Array.isArray(ds.consolidatedSamples)) {
+          samplesEl.innerHTML = ds.consolidatedSamples.slice(-5).map(s => {
+            const text = (s.text || s.sentence || '').replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
+            const cos = Number.isFinite(s.cosine) ? s.cosine.toFixed(2) : '—';
+            return `<div>cos=${cos}: ${text}</div>`;
+          }).join('');
+        }
+      }
     }
 
     // ── Emotion history chart ──
@@ -1524,6 +1811,16 @@
     }
     refreshMilestone();
     setInterval(refreshMilestone, 5000);
+
+    // Audit H.9 — wire the "retry now" link in the no-connection banner
+    // so operator can short-circuit the 3s countdown when they know the
+    // brain-server is already up (e.g., just finished running start.bat).
+    document.getElementById('conn-retry-now').addEventListener('click', (e) => {
+      e.preventDefault();
+      if (window.__connRetryTimer) { clearInterval(window.__connRetryTimer); window.__connRetryTimer = null; }
+      try { if (ws && ws.readyState !== 3) ws.close(); } catch {}
+      connect();
+    });
 
     connect();
   </script>

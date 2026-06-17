@@ -1632,6 +1632,77 @@ export class NeuronCluster {
   }
 
   /**
+   * Auto-size + mixin-dispatch wiring assertion. Per audit H.4.
+   *
+   * After the P4.2 cluster.js per-module split (telemetry/hebbian/emit/
+   * probe mixins) the auto-size path — where `js/app.bundle.js` detects
+   * WebGPU adapter limits then seeds the cluster's neuron count — crosses
+   * mixin boundaries. Operator note 2026-06-17: "rember the nueroins
+   * count auto sizes from static site to set gpu to default max for
+   * found gpu". This method verifies (a) neuron count is finite and
+   * sane, (b) every mixin method that the bootstrap path dispatches is
+   * actually attached on the prototype (i.e., the Object.assign chain
+   * at file bottom ran BEFORE any constructor-time dispatch), and (c)
+   * buffer sizes match `this.size` so a mis-sized cluster doesn't crash
+   * later during sparse-matrix uploads.
+   *
+   * Called once at boot from brain-server.js after the cluster constructs
+   * AND after all mixins attach. Subsequent calls return cached
+   * `{ ok: true, gaps: [] }` to keep dream-cycle re-verifications cheap.
+   */
+  assertAutoSizeWiring() {
+    if (this._autoSizeWiringVerified) {
+      return { ok: true, gaps: [] };
+    }
+    const gaps = [];
+
+    // (a) neuron count sanity
+    if (!Number.isFinite(this.size) || this.size <= 0 || !Number.isInteger(this.size)) {
+      gaps.push(`size is not a positive integer: ${this.size}`);
+    }
+    // Detect WebGPU-driven auto-size collapse — when GPU detection fails
+    // silently the cluster gets seeded with the small CPU fallback count
+    // (~6700) but the operator expected biological-scale. Logging the
+    // chosen size so /health can pull it for parity-check (H.7).
+    if (Number.isFinite(this.size) && this.size > 0 && this.size < 1000) {
+      console.warn(`[Cluster ${this.name}] auto-size produced suspiciously small N=${this.size} — verify WebGPU adapter detection in js/app.bundle.js`);
+    }
+
+    // (b) mixin-dispatch verification — every method that the bootstrap
+    // path or core Hebbian loop reaches must be present on the prototype.
+    // If any are missing, the Object.assign chain at cluster.js bottom
+    // did not run OR the mixin file failed to export the symbol.
+    const REQUIRED_TELEMETRY = ['trackRecentEmission', 'initCompositionalTelemetry', 'classifyCompositionalEmission', 'getCompositionalStats', 'getWordCreationCandidates'];
+    const REQUIRED_HEBBIAN = ['_crossRegionHebbian', 'initGpu', 'intraSynapsesHebbian', 'intraSynapsesBcm', '_crossRegionAntiHebbian', 'intraSynapsesAntiHebbian'];
+    const REQUIRED_EMIT = ['emitWordDirect', 'composeSentence', 'generateSentence', 'generateSentenceAwait'];
+    const REQUIRED_PROBE = ['diagnoseReadoutForEmbedding', 'synapseStats'];
+    for (const m of REQUIRED_TELEMETRY) if (typeof this[m] !== 'function') gaps.push(`TELEMETRY mixin: ${m} not dispatched (Object.assign chain not run OR symbol mis-exported)`);
+    for (const m of REQUIRED_HEBBIAN) if (typeof this[m] !== 'function') gaps.push(`HEBBIAN mixin: ${m} not dispatched`);
+    for (const m of REQUIRED_EMIT) if (typeof this[m] !== 'function') gaps.push(`EMIT mixin: ${m} not dispatched`);
+    for (const m of REQUIRED_PROBE) if (typeof this[m] !== 'function') gaps.push(`PROBE mixin: ${m} not dispatched`);
+
+    // (c) buffer-size coherence — every cortical microstructure buffer
+    // sized to `this.size` (catches the silent NaN-N case where a buffer
+    // was allocated with the wrong length and the cluster boots but
+    // crashes on first sparse-matrix upload).
+    if (this.name === 'cortex') {
+      if (this.microcolumns && this.columnId && this.columnId.length !== this.size) gaps.push(`columnId.length=${this.columnId.length} ≠ this.size=${this.size}`);
+      if (this.lamination && this.layerId && this.layerId.length !== this.size) gaps.push(`layerId.length=${this.layerId.length} ≠ this.size=${this.size}`);
+      if (this.hubsEnabled && this.hubMask && this.hubMask.length !== this.size) gaps.push(`hubMask.length=${this.hubMask.length} ≠ this.size=${this.size}`);
+    }
+
+    const ok = gaps.length === 0;
+    if (ok) {
+      console.log(`[Cluster ${this.name}] auto-size + mixin dispatch verified — N=${this.size}, all required telemetry/hebbian/emit/probe methods dispatch, buffer sizes coherent`);
+      this._autoSizeWiringVerified = true;
+    } else {
+      console.warn(`[Cluster ${this.name}] auto-size + mixin dispatch FAILED: ${gaps.join('; ')}`);
+      this._autoSizeWiringVerified = false;
+    }
+    return { ok, gaps };
+  }
+
+  /**
    * 114.19es.2 — force the next assertKWiring() call to re-run the full
    * structural + smoke-test path even when previously verified. Use
    * after re-allocating cortex sub-region buffers, after a save/load
@@ -1642,6 +1713,13 @@ export class NeuronCluster {
     this._kWiringForceRecheck = true;
     this._kWiringSmokeTested = false;
     this._kWiringVerifiedLogged = false;
+    // Audit D.4 — kScales cache invalidation. Cache is keyed by
+    // (srcRegion, dstRegion) name pair and caches the static portion
+    // of the K-bundle (layerScales, dstLayerId, srcLayerId, srcHubMask,
+    // dstStart, srcStart, hubMult). Only invalidated here so a re-
+    // allocation or save/load cycle wipes the cache atomically.
+    if (this._kScalesCache) this._kScalesCache.clear();
+    this._autoSizeWiringVerified = false; // Audit H.4 — re-run auto-size assertion next call
   }
 
   /**
@@ -1663,8 +1741,36 @@ export class NeuronCluster {
    */
   buildKScalesForProjection(srcRegion, dstRegion) {
     if (!this.lamination && !this.hubsEnabled && !this.thetaGammaEnabled) return null;
-    const srcR = typeof srcRegion === 'string' ? this.regions?.[srcRegion] : srcRegion;
-    const dstR = typeof dstRegion === 'string' ? this.regions?.[dstRegion] : dstRegion;
+
+    // Audit D.4 — memoize the STATIC portion of the bundle per
+    // (srcRegion, dstRegion) pair. Pre-audit this method rebuilt the
+    // whole bundle on every call (~14K calls/sec at biological scale
+    // during curriculum). Static portion only changes on
+    // invalidateKWiring() (which clears _kScalesCache); dynamic portion
+    // (gammaScale = curriculumGamma * surpriseGate) is computed per-
+    // call because both reads are tick-counter / prediction-error
+    // sensitive. Performance: O(n_neurons) bundle build → O(1) cache
+    // lookup once warmed.
+    const srcKey = typeof srcRegion === 'string' ? srcRegion : (srcRegion && srcRegion.name) || 'unknown';
+    const dstKey = typeof dstRegion === 'string' ? dstRegion : (dstRegion && dstRegion.name) || 'unknown';
+    const cacheKey = `${srcKey}|${dstKey}`;
+    if (!this._kScalesCache) this._kScalesCache = new Map();
+    let staticBundle = this._kScalesCache.get(cacheKey);
+    if (!staticBundle) {
+      const srcR = typeof srcRegion === 'string' ? this.regions?.[srcRegion] : srcRegion;
+      const dstR = typeof dstRegion === 'string' ? this.regions?.[dstRegion] : dstRegion;
+      staticBundle = {
+        layerScales: this.layerPlasticityScales || null,
+        dstLayerId: this.layerId || null,
+        srcLayerId: this.layerId || null,
+        srcHubMask: this.hubMask || null,
+        dstStart: dstR ? dstR.start : 0,
+        srcStart: srcR ? srcR.start : 0,
+        hubMult: this.hubFanoutMultiplier ?? 4,
+      };
+      this._kScalesCache.set(cacheKey, staticBundle);
+    }
+
     // Gamma timing decision: per-CALL (per-projection-build).
     // Each `buildKScalesForProjection` call advances `_curriculumTickCounter`
     // once. In practice this is ~once per phase-level Hebbian build (each
@@ -1703,14 +1809,9 @@ export class NeuronCluster {
     // and predictive-coding gates compose without one drowning the other.
     const predErr = Math.max(0, Math.min(1, this._lastPredictionError || 0));
     const surpriseGate = 0.5 + predErr;
+    // Spread cached static portion + only dynamic gammaScale rebuilt per-call.
     return {
-      layerScales: this.layerPlasticityScales || null,
-      dstLayerId: this.layerId || null,
-      srcLayerId: this.layerId || null,
-      srcHubMask: this.hubMask || null,
-      dstStart: dstR ? dstR.start : 0,
-      srcStart: srcR ? srcR.start : 0,
-      hubMult: this.hubFanoutMultiplier ?? 4,
+      ...staticBundle,
       // Curriculum-controlled gamma (NOT the brain-tick-noisy version).
       // Each phase gets a coherent sample that walks the gamma cycle
       // deterministically as curriculum progresses. Combined with the

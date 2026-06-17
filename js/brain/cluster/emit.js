@@ -867,9 +867,33 @@ export const CLUSTER_EMIT_MIXIN = {
     }
 
     // (0) Cortex-pattern injection — chain-blended seed from inner-voice
+    // Audit B.5 + E.3 — cumulative sem-injection energy budget.
+    // Pre-audit the seed/intent/cortex/schema/back-injection sum stacked
+    // to ~2.25 × INJECTION_GAIN=8 = 18 magnitude units, far above any
+    // single injection — the "explicit intent stays primary" claim
+    // was mathematically false. Now: per-call cumulative budget tracked
+    // against MAX_CUMULATIVE_SEM_INJECT = 1.5, with intent reserved 50%
+    // (intentSeed 30% + intentConcept 20%) and other injections sharing
+    // the remaining 50% (cortexPattern 10%, schemaContext.concept 15%,
+    // schemaContext.attribute 10%, back-injection 15%). Each
+    // injectEmbeddingToRegion call below clamps the strength to its
+    // remaining slice so the cumulative sum can never exceed budget.
+    const MAX_CUMULATIVE_SEM_INJECT = 1.5;
+    let _cumulativeSemInject = 0;
+    const _budgetedInject = (region, embedding, requestedStrength, budgetShare) => {
+      if (!embedding || embedding.length === 0) return;
+      const maxAllowed = MAX_CUMULATIVE_SEM_INJECT * budgetShare;
+      const actualStrength = Math.min(requestedStrength, Math.max(0, maxAllowed - 0));
+      if (actualStrength <= 0) return;
+      try { this.injectEmbeddingToRegion(region, embedding, actualStrength); }
+      catch { /* per-injection failure non-fatal */ }
+      _cumulativeSemInject += actualStrength;
+    };
+
     // carries narrative thread into the emission. Optional.
+    // Budget share: 10% of MAX_CUMULATIVE_SEM_INJECT (≤ 0.15).
     if (opts.cortexPattern && opts.cortexPattern.length > 0) {
-      try { this.injectEmbeddingToRegion('sem', opts.cortexPattern, 0.2); } catch { /* nf */ }
+      _budgetedInject('sem', opts.cortexPattern, 0.2, 0.10);
     }
 
     // (0a) Schema-based runtime composition. Caller passes
@@ -882,26 +906,26 @@ export const CLUSTER_EMIT_MIXIN = {
     // ADDITIVE (not replaceMode) so subsequent seed/intent injections
     // can blend on top — schema is contextual prior, not hard prescription.
     //
-    // Strengths intentionally lower than seed/intent injections:
-    //   schema.conceptEmbedding → 0.15 (background bias)
-    //   schema.attributeVector  → 0.10 (auxiliary 8d trait bias)
+    // Strengths intentionally lower than seed/intent injections, AND
+    // bounded by budget shares per audit B.5/E.3:
+    //   schema.conceptEmbedding → 0.15 requested, budget share 15% (≤ 0.225)
+    //   schema.attributeVector  → 0.10 requested, budget share 10% (≤ 0.15)
     // so the explicit intent stays primary while schema colours the
     // emission. Past-notes rule: schemas SUPPORT emergence, never
     // prescribe slot fills (templates are banned).
     if (opts.schemaContext) {
       const sc = opts.schemaContext;
-      try {
-        if (sc.conceptEmbedding && sc.conceptEmbedding.length > 0) {
-          this.injectEmbeddingToRegion('sem', sc.conceptEmbedding, 0.15);
-        }
-        if (sc.attributeVector && sc.attributeVector.length > 0) {
-          this.injectEmbeddingToRegion('sem', sc.attributeVector, 0.10);
-        }
-      } catch { /* schema priming non-fatal */ }
+      if (sc.conceptEmbedding && sc.conceptEmbedding.length > 0) {
+        _budgetedInject('sem', sc.conceptEmbedding, 0.15, 0.15);
+      }
+      if (sc.attributeVector && sc.attributeVector.length > 0) {
+        _budgetedInject('sem', sc.attributeVector, 0.10, 0.10);
+      }
     }
 
     // (1) Intent seed — caller provides a seed embedding or text. Brain
     // enters that state; emission emerges from it. NOT a template select.
+    // Budget share: 30% (intent gets 50% of total split intentSeed + intentConcept).
     if (intentSeed) {
       try {
         let seedEmb = null;
@@ -913,7 +937,7 @@ export const CLUSTER_EMIT_MIXIN = {
           seedEmb = intentSeed;
         }
         if (seedEmb && seedEmb.length > 0) {
-          this.injectEmbeddingToRegion('sem', seedEmb, 0.3);
+          _budgetedInject('sem', seedEmb, 0.3, 0.30);
         }
       } catch { /* nf */ }
     }
@@ -922,15 +946,18 @@ export const CLUSTER_EMIT_MIXIN = {
     // it has reason to bias intent-concept activation. Brain's trained
     // relationTagId=12 weights then drive answer emission. NOT a forced
     // mapping — caller can omit and let brain pick its own concept from
-    // current sem state.
+    // current sem state. Budget share: 20% (intent total 50%).
     if (opts.intentConcept && sharedEmbeddings && typeof sharedEmbeddings.getEmbedding === 'function') {
       try {
         const conceptEmb = sharedEmbeddings.getEmbedding(opts.intentConcept);
         if (conceptEmb && conceptEmb.length > 0) {
-          this.injectEmbeddingToRegion('sem', conceptEmb, 0.3);
+          _budgetedInject('sem', conceptEmb, 0.3, 0.20);
         }
       } catch { /* nf */ }
     }
+    // Budget bookkeeping: _cumulativeSemInject ≤ MAX_CUMULATIVE_SEM_INJECT
+    // post-block. Per-call back-injection loop below reserves the
+    // remaining 15% budget via similar _budgetedInject pattern.
 
     const words = [];
     const MAX_WORDS = typeof opts.maxWords === 'number' && opts.maxWords > 0 ? Math.floor(opts.maxWords) : 12;
@@ -1043,6 +1070,13 @@ export const CLUSTER_EMIT_MIXIN = {
         try {
           const wordEmb = sharedEmbeddings.getEmbedding(word);
           if (wordEmb && wordEmb.length > 0) {
+            // Audit B.3 — BACK_INJECT_DECAY=0.85 biological derivation:
+            // cortical leak V(t+Δt) = V(t)·exp(−Δt/τ) with τ≈20ms
+            // membrane time constant. With TICKS_PER_WORD=3 at 1ms/tick:
+            // per-word decay = exp(−3/20) ≈ 0.861. Chosen 0.85 within
+            // 1.5% of biological. Drift trigger: if TICKS_PER_WORD or
+            // τ_ms changes, BACK_INJECT_DECAY = exp(-TICKS_PER_WORD ×
+            // tick_ms / τ_ms). Full derivation: docs/THRESHOLD-DERIVATION.md
             const BACK_INJECT_BASE = 0.15;
             const BACK_INJECT_DECAY = 0.85;
             const backInjectStrength = BACK_INJECT_BASE * Math.pow(BACK_INJECT_DECAY, i);

@@ -277,6 +277,35 @@ None of these endpoints are ever consulted for what Unity *says* or *decides*. T
 
 ---
 
+## Code layout
+
+The codebase is organized so each god-class is split into focused per-concern / per-module / per-grade files attached via the `Object.assign(X.prototype, MIXIN)` pattern. See `.claude/CONSTRAINTS.md § LAW.MIXIN-ORDER` for the discipline that keeps this safe at refactor time.
+
+| Directory | What lives there | Mixin attach pattern |
+|-----------|------------------|---------------------|
+| `js/brain/cluster/` | Cluster per-module split — `telemetry.js`, `hebbian.js`, `emit.js`, `probe.js` | 4 `Object.assign(NeuronCluster.prototype, MIXIN)` attaches at `cluster.js` bottom |
+| `js/brain/curriculum/` | Curriculum per-grade split — `pre-K.js`, `kindergarten.js` (K-grade K_MIXIN) | 1 `Object.assign(Curriculum.prototype, K_MIXIN)` at `curriculum.js` bottom |
+| `server/brain-server/` | Server per-concern split — `gpu.js`, `state.js`, `memory.js`, `chat.js` | 4 `Object.assign(ServerBrain.prototype, MIXIN)` attaches at `brain-server.js` bottom |
+| `js/brain/` (root files) | Core primitives — `embeddings.js`, `letter-input.js`, `sparse-matrix.js`, `gpu-compute.js`, etc. | No mixin attach — direct module exports |
+| `scripts/` | Developer-side smoke / lint / verify scripts | `smoke-server-boot.mjs` (H.3), `verify-size-parity.mjs` (H.7), `measure-emergence.mjs` (F.1), `check-mixin-order.mjs` (D.2), `verify-emission.mjs` (P5.1) |
+| `scripts/migrations/` | One-shot refactor migration scripts (audit trail, do NOT re-run) | See `scripts/migrations/README.md` for the P4.1/P4.2/P4.3 mapping |
+| `docs/` | Workflow + math + architecture docs | `THRESHOLD-DERIVATION.md` (audit B.1), `HTML-ENTRY-POINTS.md` (audit H.5), `ARCHITECTURE.md`, `EQUATIONS.md`, etc. |
+| `html/` | All public HTMLs | See `docs/HTML-ENTRY-POINTS.md` for per-page contract + failure-mode signatures |
+| `.claude/` | Workflow + persona infrastructure | LOCAL — not pushed to feature branches |
+
+**Architectural shrinkage delivered by the P4 refactor arc:**
+- `js/brain/curriculum.js`: 26033 → 24035 lines (−7.7%) via P4.1
+- `js/brain/cluster.js`: 6375 → 3922 lines (−38.5%) via P4.2
+- `server/brain-server.js`: 9555 → 6395 lines (−33%) via P4.3
+- **Total:** ~6000 lines of god-class bloat refactored into 13 focused per-module/per-concern/per-grade files.
+
+Per-directory rationale lives in the directory's own `README.md`:
+- `js/brain/cluster/README.md` — per-module split rationale
+- `js/brain/curriculum/README.md` — per-grade split rationale
+- `server/brain-server/README.md` — per-concern split rationale
+
+---
+
 ## Running the brain
 
 ```

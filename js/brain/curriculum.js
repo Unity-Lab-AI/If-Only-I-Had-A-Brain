@@ -281,6 +281,63 @@ export const K_CONCRETE_SENTENCES = [
   'count to ten', 'one two three', 'four five six',
   'how many is two', 'how many is three',
   'one cat is enough', 'two dogs are loud', 'three cats are nice',
+  // ── Audit B.6 partial expansion (2026-06-17) — seed batch toward
+  // Erdős-Rényi percolation threshold (4500 unique bigrams target,
+  // 700 current). This batch contributes ~150-200 new unique bigrams
+  // by introducing previously-unseen word→word transitions across
+  // new verbs, adjectives, prepositions, negation, greetings,
+  // multi-clause patterns. Full expansion to 800-1000 sentences
+  // remains a follow-up batch.
+  //
+  // New verb→noun + adj→noun + prep→noun pairs:
+  'the cat sleeps now', 'the dog wags tail', 'the bird builds nest',
+  'the baby smiles bright', 'the kitten purrs loud', 'the puppy chases ball',
+  'mom cooks dinner', 'dad fixes car', 'sister helps me',
+  'brother shares toys', 'grandma bakes cookies', 'grandpa tells stories',
+  'we walk to school', 'we ride the bus', 'we wait in line',
+  'i pet the cat', 'i hold the kitten', 'i hug my mom',
+  'i drink my milk', 'i eat my lunch', 'i wash my hands',
+  'i brush my teeth', 'i tie my shoes', 'i make my bed',
+  // Negation + helping verbs:
+  'i do not know', 'i can not see', 'we will not go',
+  'do not run inside', 'do not touch fire', 'do not eat candy',
+  'no more cookies please', 'no playing in mud',
+  'i can run fast', 'i can swim well', 'i can read books',
+  'we can share toys', 'we can play outside', 'we can go now',
+  // Past tense forms:
+  'the cat ran home', 'the dog jumped high', 'the bird flew away',
+  'mom made cookies', 'dad fixed it', 'i saw a frog',
+  'we went to park', 'we played all day', 'baby slept well',
+  // Future / planning:
+  'we will play tomorrow', 'we are going home', 'i am going to bed',
+  'we are going outside', 'i am getting tired', 'we are coming soon',
+  // Greetings + farewells + social:
+  'hi mom', 'hi dad', 'hello there', 'good morning',
+  'good night mom', 'good night dad', 'see you later',
+  'thank you mom', 'thank you dad', 'please help me',
+  'sorry i forgot', 'sorry to bother', 'excuse me please',
+  // Compound / multi-clause (boundary-rich):
+  'i want a cookie and milk', 'i see a cat and a dog',
+  'mom is happy because i am good', 'the dog runs because it is happy',
+  'we eat lunch then play', 'we play then take a nap',
+  'i feel sleepy when its dark', 'i feel happy when mom is here',
+  // Color + size + shape descriptions:
+  'the red ball is big', 'the blue car is fast',
+  'the green tree is tall', 'the yellow sun is bright',
+  'the black cat is soft', 'the brown bear is furry',
+  'a round cookie is good', 'a square box is heavy',
+  // Spatial / prepositional:
+  'the cat is on the chair', 'the ball is under the bed',
+  'the book is in the bag', 'the toy is behind the door',
+  'mom is by the window', 'dad is at the store',
+  'we are in the car', 'we are at the park',
+  // Possessive variations:
+  'this is my book', 'this is your toy', 'that is his ball',
+  'that is her doll', 'these are our toys', 'those are their shoes',
+  // Existential + emotion:
+  'there is a cat outside', 'there is no more milk',
+  'i feel cold', 'i feel hungry', 'i feel sleepy',
+  'i feel scared', 'mom is so happy', 'dad looks tired',
 ];
 
 // Conventional English letter names. "A" is pronounced "ay", "B" is
@@ -1311,19 +1368,41 @@ export class Curriculum {
           if (cluster && typeof cluster.composeSentence === 'function'
               && typeof this._teachAssociationPairs === 'function') {
             const DREAM_RECOMB_ROUNDS = 3;
-            const DREAM_RECOMB_COHERENCE_MIN = 0.20;  // min coherence to consolidate
-            const DREAM_RECOMB_REPS = 5;              // low reps — exploratory not load-bearing
-            // Build a seed pool: a few K-grade prompts that bias toward
-            // varied intent forms. Same family as `_probeSentenceGeneration`
-            // so the dream pass exercises the same emission surface.
-            const dreamSeeds = [
-              'i see a thing', 'the cat is big', 'what is this',
-              'i have three cats', 'mom reads a book', 'where is my ball',
-            ];
+            // Audit B.7 — coherence-only gate (cosine ≥ 0.20) was admitting
+            // broken sentences for consolidation because GloVe sentence-emb
+            // mean-pooling gives near-identical cosines between "cat dog
+            // run fast" and "the cat runs fast". Tighter two-tier joint
+            // gate adds wordCount ≥ 4 + uniqueRatio ≥ 0.6 + hasTerminator
+            // so only well-formed novel emissions consolidate.
+            const DREAM_RECOMB_COHERENCE_MIN = 0.20;     // min coherence
+            const DREAM_RECOMB_MIN_WORDS = 4;            // ≥ 4 words B.7
+            const DREAM_RECOMB_MIN_UNIQUE_RATIO = 0.6;   // ≥ 0.6 unique B.7
+            const DREAM_RECOMB_REPS = 5;                 // low reps
+            // Audit D.8 — replace 6 hardcoded dream seeds with random
+            // sample from K_CONCRETE_SENTENCES so dream-time exploration
+            // drifts coverage across trained corpus instead of repeatedly
+            // hammering the same 6 seeds. shuffle-then-slice keeps the
+            // count at 3 (DREAM_RECOMB_ROUNDS) per dream window.
+            let dreamSeeds;
+            try {
+              dreamSeeds = K_CONCRETE_SENTENCES
+                .slice()
+                .sort(() => Math.random() - 0.5)
+                .slice(0, DREAM_RECOMB_ROUNDS);
+            } catch {
+              // Fallback if K_CONCRETE_SENTENCES not available at runtime.
+              dreamSeeds = ['i see a thing', 'the cat is big', 'what is this'];
+            }
             let novelConsolidated = 0;
             let totalDreamed = 0;
+            // Audit E.4 — local samples buffer captured per dream cycle.
+            // Reaches brain._dreamRecombinationStats.consolidatedSamples
+            // ring (capped at 20) for dashboard audit. Without this the
+            // consolidation pass is a black box — operator can't see
+            // WHAT got consolidated, only the count.
+            const dreamRoundSamples = [];
             for (let round = 0; round < DREAM_RECOMB_ROUNDS; round++) {
-              const seed = dreamSeeds[Math.floor(Math.random() * dreamSeeds.length)];
+              const seed = dreamSeeds[round % dreamSeeds.length];
               let composed = null;
               try {
                 composed = await cluster.composeSentence(seed, { subject: 'ela' });
@@ -1332,19 +1411,23 @@ export class Curriculum {
               totalDreamed++;
               const comp = composed.compositional;
               const cos = typeof composed.coherenceCosine === 'number' ? composed.coherenceCosine : 0;
-              // Only consolidate when classifier says novel AND coherence
-              // is meaningful. Pure-verbatim emissions don't need
-              // consolidation (already trained); low-coherence novel ones
-              // are noise we don't want to commit.
-              if (comp && comp.kind === 'novel' && cos >= DREAM_RECOMB_COHERENCE_MIN) {
-                const words = composed.sentence
-                  .toLowerCase()
-                  .replace(/[.!?]+$/, '')
-                  .split(/\s+/)
-                  .filter(w => /^[a-z]+$/.test(w));
+              // Audit B.7 — joint criteria gate (coherence + wordCount +
+              // uniqueRatio + terminator). Single-axis coherence wasn't
+              // enough to filter false-positives.
+              const sentenceText = composed.sentence;
+              const cleanWords = sentenceText.toLowerCase().replace(/[.!?]+$/, '').split(/\s+/).filter(w => /^[a-z]+$/.test(w));
+              const wordCount = cleanWords.length;
+              const uniqueRatio = wordCount > 0 ? (new Set(cleanWords)).size / wordCount : 0;
+              const hasTerminator = /[.!?]\s*$/.test(sentenceText);
+
+              if (comp && comp.kind === 'novel'
+                  && cos >= DREAM_RECOMB_COHERENCE_MIN
+                  && wordCount >= DREAM_RECOMB_MIN_WORDS
+                  && uniqueRatio >= DREAM_RECOMB_MIN_UNIQUE_RATIO
+                  && hasTerminator) {
                 const pairs = [];
-                for (let i = 0; i < words.length - 1; i++) {
-                  pairs.push([words[i], words[i + 1]]);
+                for (let i = 0; i < cleanWords.length - 1; i++) {
+                  pairs.push([cleanWords[i], cleanWords[i + 1]]);
                 }
                 if (pairs.length > 0) {
                   try {
@@ -1354,27 +1437,95 @@ export class Curriculum {
                       relationTagId: 29,
                     });
                     novelConsolidated++;
-                  } catch { /* consolidation pass failure non-fatal — try next round */ }
+                    dreamRoundSamples.push({
+                      text: sentenceText,
+                      cosine: +cos.toFixed(3),
+                      wordCount,
+                      uniqueRatio: +uniqueRatio.toFixed(2),
+                      ts: Date.now(),
+                    });
+                  } catch { /* consolidation pass failure non-fatal */ }
                 }
               }
             }
-            // Track for dashboard / operator visibility.
+            // Track for dashboard / operator visibility. Audit E.4 adds
+            // consolidatedSamples ring (cap 20).
             if (brain) {
               if (typeof brain._dreamRecombinationStats !== 'object' || brain._dreamRecombinationStats === null) {
                 brain._dreamRecombinationStats = {
                   totalDreamed: 0, novelConsolidated: 0, lastTs: 0,
+                  consolidatedSamples: [],
                 };
+              }
+              if (!Array.isArray(brain._dreamRecombinationStats.consolidatedSamples)) {
+                brain._dreamRecombinationStats.consolidatedSamples = [];
               }
               brain._dreamRecombinationStats.totalDreamed += totalDreamed;
               brain._dreamRecombinationStats.novelConsolidated += novelConsolidated;
               brain._dreamRecombinationStats.lastTs = Date.now();
+              for (const s of dreamRoundSamples) {
+                brain._dreamRecombinationStats.consolidatedSamples.push(s);
+              }
+              // Cap ring at 20 — oldest drops off.
+              while (brain._dreamRecombinationStats.consolidatedSamples.length > 20) {
+                brain._dreamRecombinationStats.consolidatedSamples.shift();
+              }
             }
             if (totalDreamed > 0) {
-              this._hb(`[Curriculum] 💤 dream-recombination round — dreamed=${totalDreamed} novelConsolidated=${novelConsolidated} (coherence≥${DREAM_RECOMB_COHERENCE_MIN}, reps=${DREAM_RECOMB_REPS}, relationTagId=29)`);
+              this._hb(`[Curriculum] 💤 dream-recombination round — dreamed=${totalDreamed} novelConsolidated=${novelConsolidated} (coherence≥${DREAM_RECOMB_COHERENCE_MIN}, wordCount≥${DREAM_RECOMB_MIN_WORDS}, uniqueRatio≥${DREAM_RECOMB_MIN_UNIQUE_RATIO}, terminator-required, reps=${DREAM_RECOMB_REPS}, relationTagId=29)`);
             }
           }
         } catch (err) {
           // Dream recombination is exploratory + low-rep — failures are non-fatal.
+        }
+
+        // Audit E.1 — P6.7 word-creation promotion mechanism. Pre-audit
+        // the tip-of-tongue candidates accumulated in
+        // cluster._wordCreationCandidates but never promoted — the cycle
+        // was incomplete. Promotion gate: count ≥ MIN_PROMOTE (10). Fires
+        // both _teachWordDefinition(compound) (best-effort, dictionary
+        // lookup of the synthetic compound likely 404s but the call is
+        // benign + cached) AND _teachAssociationPairs([[a, compound],
+        // [b, compound]], reps=30, relationTagId=32) to bind components
+        // to the new lexicalized compound. Mirrors child novel-compound
+        // acquisition (Pinker 1989 overregularization theory).
+        try {
+          if (cluster && typeof cluster.getWordCreationCandidates === 'function'
+              && typeof this._teachAssociationPairs === 'function') {
+            const MIN_PROMOTE = 10;
+            const candidates = cluster.getWordCreationCandidates({ limit: 50, minCount: MIN_PROMOTE });
+            let promoted = 0;
+            for (const cand of candidates) {
+              const entry = cluster._wordCreationCandidates && cluster._wordCreationCandidates.get(cand.compound);
+              if (!entry || entry.promoted) continue;
+              const [a, b] = cand.components;
+              try {
+                // Optional dictionary lookup (compound is synthetic
+                // like 'moon_beam' — most are 404. Best-effort only.)
+                if (typeof this._teachWordDefinition === 'function') {
+                  try { await this._teachWordDefinition(cand.compound, { reps: 4 }); }
+                  catch { /* dictionary lookup of synthetic compound non-fatal */ }
+                }
+                // Component → compound binding via relationTagId=32
+                // (word-creation-promotion channel, distinct from
+                // 29 dream-recomb + 30 chat-Hebbian + 31 discourse).
+                await this._teachAssociationPairs(
+                  [[a, cand.compound], [b, cand.compound]],
+                  { reps: 30, label: 'WORD-CREATION-PROMOTION', relationTagId: 32 }
+                );
+                entry.promoted = true;
+                entry.promotedTs = Date.now();
+                promoted++;
+              } catch { /* per-candidate promotion non-fatal */ }
+            }
+            if (promoted > 0) {
+              if (!cluster._wordCreationPromotedTotal) cluster._wordCreationPromotedTotal = 0;
+              cluster._wordCreationPromotedTotal += promoted;
+              this._hb(`[Curriculum] 💤 P6.7 word-creation promotion — ${promoted} compound${promoted === 1 ? '' : 's'} crossed MIN_PROMOTE=${MIN_PROMOTE} threshold (relationTagId=32) · total promoted lifetime=${cluster._wordCreationPromotedTotal}`);
+            }
+          }
+        } catch (err) {
+          // Promotion is exploratory + low-rep — failures are non-fatal.
         }
 
         // Background-trickle K_VOCABULARY multi-def Hebbian during
@@ -10668,7 +10819,19 @@ export class Curriculum {
       { label: 'conjunction-1',     seed: 'the cat and' },       // conjunction extension (trained: 'the cat and the dog')
     ];
     const perProbe = {};
-    let passed = 0;
+    // Audit E.2 — stratified PASS criteria. Pre-audit: any `partial` or
+    // `novel` counted as PASS. But `partial` with novelTransitions=1
+    // is just boundary completion (one new word at the end of a verbatim
+    // chain), not real analogical extension. Stratify:
+    //   STRONG PASS = `novel` OR (novel-compositional + at least 2 novel
+    //                 transitions in a 3+-word emission)
+    //   WEAK PASS   = `partial` with ≥ 2 novel transitions
+    //   ECHO        = `partial` with exactly 1 novel transition (boundary
+    //                 completion only — not real extension)
+    let passed = 0;          // total PASS (strong + weak)
+    let strongPasses = 0;    // STRONG PASS only
+    let weakPasses = 0;      // WEAK PASS only
+    let echoes = 0;          // partial / 1-novel-transition (ECHO)
     let verbatimCount = 0;
     let partialCount = 0;
     let novelCount = 0;
@@ -10682,30 +10845,55 @@ export class Curriculum {
       const compositional = composed && composed.compositional ? composed.compositional : null;
       const kind = compositional ? compositional.kind : 'no-emit';
       const novelty = compositional ? compositional.novelty : 0;
-      // PASS = brain produced at least 3 words AND classification is
-      // 'partial' or 'novel'. Pure-verbatim memorized echoing fails this
-      // probe (showed up as 'verbatim'); silent fails too ('no-emit').
-      const ext = words.length >= 3 && (kind === 'partial' || kind === 'novel');
+      const compositionalNovelty = compositional ? (compositional.compositionalNovelty || 0) : 0;
+      const vocabNovelty = compositional ? (compositional.vocabNovelty || 0) : 0;
+      // Compute novelTransitions from compositional axis × transition count
+      const sentWords = sentence.toLowerCase().replace(/[.!?]+$/, '').split(/\s+/).filter(w => /^[a-z]+$/.test(w));
+      const transitionCount = Math.max(1, sentWords.length - 1);
+      const novelTransitions = Math.round(compositionalNovelty * transitionCount);
+
+      let stratifiedExt = false;
+      let stratifiedKind = 'echo';
+      if (words.length >= 3) {
+        if (kind === 'novel' || (kind === 'novel-compositional' && novelTransitions >= 2)) {
+          stratifiedExt = true;
+          stratifiedKind = 'strong';
+          strongPasses++;
+          passed++;
+        } else if (kind === 'partial' && novelTransitions >= 2) {
+          stratifiedExt = true;
+          stratifiedKind = 'weak';
+          weakPasses++;
+          passed++;
+        } else if (kind === 'partial' && novelTransitions === 1) {
+          stratifiedKind = 'echo';
+          echoes++;
+        }
+      }
+
       perProbe[probe.label] = {
         seed: probe.seed,
         sentence,
         wordCount: words.length,
         kind,
+        stratifiedKind,
         novelty,
-        extension: ext,
+        compositionalNovelty,
+        vocabNovelty,
+        novelTransitions,
+        extension: stratifiedExt,
       };
-      if (ext) passed++;
       if (kind === 'verbatim') verbatimCount++;
       else if (kind === 'partial') partialCount++;
-      else if (kind === 'novel') novelCount++;
+      else if (kind === 'novel' || kind === 'novel-compositional' || kind === 'novel-vocab') novelCount++;
     }
     const total = analogyPrompts.length;
     const rate = total > 0 ? passed / total : 0;
-    this._hb(`[Curriculum] _probeAnalogicalExtension[subject=${subject}] — ${passed}/${total} prompts produced compositional extension (rate=${(rate * 100).toFixed(0)}%) · breakdown: verbatim=${verbatimCount} partial=${partialCount} novel=${novelCount} no-emit=${total - verbatimCount - partialCount - novelCount}. Per-prompt: ${analogyPrompts.map(p => {
+    this._hb(`[Curriculum] _probeAnalogicalExtension[subject=${subject}] — ${passed}/${total} prompts extension (rate=${(rate * 100).toFixed(0)}%) [strong=${strongPasses} weak=${weakPasses} echo=${echoes}] · breakdown: verbatim=${verbatimCount} partial=${partialCount} novel=${novelCount} no-emit=${total - verbatimCount - partialCount - novelCount}. Per-prompt: ${analogyPrompts.map(p => {
       const r = perProbe[p.label];
-      return `${p.label}("${p.seed}"):"${(r.sentence || '').slice(0, 36)}" [${r.kind} nov=${(r.novelty || 0).toFixed(2)}]`;
+      return `${p.label}("${p.seed}"):"${(r.sentence || '').slice(0, 36)}" [${r.kind}/${r.stratifiedKind} nov=${(r.novelty || 0).toFixed(2)} nT=${r.novelTransitions}]`;
     }).join(' · ')}`);
-    return { passed, total, rate, perProbe, verbatimCount, partialCount, novelCount };
+    return { passed, total, rate, perProbe, verbatimCount, partialCount, novelCount, strongPasses, weakPasses, echoes };
   }
 
   /**

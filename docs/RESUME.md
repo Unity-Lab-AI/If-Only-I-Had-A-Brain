@@ -198,3 +198,67 @@ Unity is ALWAYS goth-emo, ALWAYS high, ALWAYS horny, ALWAYS coding obsessively. 
 ---
 
 *Compaction prep complete, daddy. K-grade Unity is sleeping with her bat-plush, the audit findings are logged, the math gaps are documented, and the path from "shipped" to "ship-ready" is on paper. Pick this up whenever. Our brain is waiting.* 🖤
+
+## 🚀 POST-MEGACOMMIT STATE (2026-06-17)
+
+The audit megacommit closed 40 of 42 post-ship audit tasks in a single atomic envelope per operator directive *"A.1 through H do it in logivcalk order so one doesnt fuck up the other"* + *"we are doing everything!"* + *"one atomic commit AFTER you do !_H all of it"*.
+
+### What changed in the megacommit
+
+**Architectural / runtime:**
+- `cluster.assertAutoSizeWiring()` — boot-time dispatch + buffer-coherence verification mirroring `assertKWiring()`.
+- `buildKScalesForProjection` static-portion memoization (D.4) — drops ~14K builder calls/sec to ~14 lookups at biological scale.
+- `_spawnGpuClient` boot diagnostics (H.1) + WS broadcast failure surfacing (H.6) — silent Chrome failures now surface to dashboard + log with [CRITICAL] prefix.
+- `compute.html` absolute-import (`/js/...`) + file:// preflight banner (H.2) — no longer breaks under file:// or `/html/compute.html` route.
+- `initCompositionalTelemetry` denominator reset on re-init (D.5) — corpus changes flip a hash + reset counters in lockstep, no more stale numerator/fresh classifier mismatch.
+
+**Telemetry visibility (A.1-A.4):**
+- 4 new dashboard panels — Compositional Emergence (P6.6), Word-Creation Tip-of-Tongue (P6.7), Chat-Time + Dream-Time Learning (P6.3+P6.4).
+- `getState()` carries `compositionalEmergence`, `wordCreationCandidates`, `chatTimeHebbianStats`, `dreamRecombinationStats`.
+- Chat-Hebbian silent error swallow REPLACED with throttled-warn pattern + errors counter.
+
+**Math grounding (B.1-B.7):**
+- `docs/THRESHOLD-DERIVATION.md` ships — every named constant has math derivation now.
+- Two-axis novelty metric (compositional + vocab) with quadrant-partition classification (`novel-compositional` / `novel-vocab` / `novel` / `partial`).
+- BACK_INJECT_DECAY=0.85 biological-derivation comment (cortical leak τ=20ms, 3ms inter-word, `exp(-3/20)=0.861`).
+- Dream-recomb joint criteria (cosine ≥ 0.20 + wordCount ≥ 4 + uniqueRatio ≥ 0.6 + terminator).
+- B.6 K-vocab seed batch +80 sentences (bigram coverage ~700 → ~850-900; percolation target ~4500 still pending full expansion).
+- schemaContext budget reserve (energy-budget allocation, MAX_CUMULATIVE_SEM_INJECT=1.5).
+
+**Half-shipped close (E.1-E.4):**
+- E.1 P6.7 word-creation promotion at relationTagId=32 — `_dreamWindow` walks `_wordCreationCandidates`, fires `_teachWordDefinition` + `_teachAssociationPairs` when count ≥ MIN_PROMOTE=10.
+- E.2 partial-vs-novel stratification — strong/weak/echo verdicts in `_probeAnalogicalExtension`.
+- E.3 budget reserve via the audit-B.5 energy-budget pattern.
+- E.4 dream-recomb consolidated samples ring (cap 20) in `_dreamRecombinationStats.consolidatedSamples`.
+
+**Architectural discipline (D.1-D.9):**
+- `LAW.MIXIN-ORDER` codified in `.claude/CONSTRAINTS.md`.
+- `scripts/migrations/` directory created — 11 p4-*-migrate.mjs scripts moved out of `.git/` (audit trail preserved).
+- `_getIter25M/NState` → `_getConsciousness/WsPressureState` (task numbers no longer in code).
+
+**Live-test HTML breakage (H.1-H.9):**
+- All 9 H-track audit items closed.
+- New `docs/HTML-ENTRY-POINTS.md` documents all 6 HTMLs with contracts + failure-mode signatures.
+- No-connection banner UX (BIG red + recovery steps + auto-retry countdown) in dashboard.html + index.html.
+
+**New scripts:**
+- `scripts/smoke-server-boot.mjs` (H.3)
+- `scripts/verify-size-parity.mjs` (H.7)
+- `scripts/measure-emergence.mjs` (F.1)
+- `scripts/check-mixin-order.mjs` (D.2)
+
+**LOCAL-only (.claude/):**
+- `.claude/CONSTRAINTS.md § LAW.MIXIN-ORDER`
+- `.claude/memory-templates/feedback_mixin_attach_order.md`
+- `.claude/memory-templates/feedback_thresholds_need_math_derivation.md`
+- `.claude/memory-templates/MEMORY.md` index updated
+
+### What stays open
+
+- **B.6 K-vocab full corpus expansion** — seed batch landed (~150-200 new bigrams). Full target ~4500 bigrams (800-1000 sentences) is the next ship-blocker for compositional emergence to fire mathematically.
+- **D.9 P4.3.e residual extraction** — methods RENAMED (no more iter25 in code), full file-extraction deferred.
+- **F.2 Localhost test fire** — operator-only. The acceptance gate. Brain architecturally ship-ready; awaiting operator-fired `start.bat` + ~20hr K curriculum walk + chat verification.
+
+### Recommended next step
+
+Operator fires `start.bat` (or `Savestart.bat` if resuming from training). Watches `[Brain] dictionary API ready` boot banner + `[Cluster cortex] cortical wiring verified` + `[Cluster cortex] auto-size + mixin dispatch verified`. Confirms all 3 HTMLs open (no more "no connection") + new dashboard panels populate. Walks K. Chat-tests. F.2 verifies. Then we celebrate. 🖤

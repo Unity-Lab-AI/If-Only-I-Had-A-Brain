@@ -38,27 +38,46 @@ export const CLUSTER_TELEMETRY_MIXIN = {
    */
   initCompositionalTelemetry(corpus) {
     if (!Array.isArray(corpus) || corpus.length === 0) return;
-    if (!this._compositionalCounters) {
+    // Audit D.5 — track corpus-version hash so the counter denominator
+    // resets in lockstep when the corpus changes between calls. Without
+    // this, counters initialized against corpus-v1 keep ticking against
+    // corpus-v2 transitions → stale numerator / fresh classifier
+    // mismatch (transitions from v2 measured against v1's
+    // verbatim/novel/partial counts).
+    const corpusHash = corpus.length + ':' + corpus.slice(0, 8).join('|').slice(0, 200);
+    const corpusChanged = this._compositionalCorpusHash !== corpusHash;
+    if (!this._compositionalCounters || corpusChanged) {
+      if (corpusChanged && this._compositionalCounters) {
+        // Loud warning so operator sees when a new corpus invalidates the
+        // running counters — avoids silent denominator-mismatch confusion
+        // when interpreting dashboard novel-rate numbers.
+        console.log(`[Cluster ${this.name}] compositional-telemetry corpus changed (was ${this._compositionalCorpusHash || 'unset'}, now ${corpusHash}). Counters RESET.`);
+      }
       this._compositionalCounters = {
         totalClassified: 0,
         verbatimCount: 0,
         novelCount: 0,
         partialCount: 0,
+        novelVocabCount: 0,            // Audit B.2 — separate vocab-axis counter
+        novelCompositionalCount: 0,    // Audit B.2 — separate compositional-axis counter
         firstNovelTs: null,
         maxNovelty: 0,
         maxNoveltySentence: '',
         bootTs: Date.now(),
         recentEmissions: [],
       };
+      this._compositionalCorpusHash = corpusHash;
     }
     this._trainedSentencesNormalized = new Set();
     this._trainedTransitions = new Set();
+    this._trainedVocab = new Set();   // Audit B.2 — vocab-axis novelty
     for (const s of corpus) {
       if (typeof s !== 'string') continue;
       const norm = s.toLowerCase().trim();
       if (norm.length === 0) continue;
       this._trainedSentencesNormalized.add(norm);
       const words = norm.split(/\s+/).filter(w => w.length > 0);
+      for (const w of words) this._trainedVocab.add(w);
       for (let i = 0; i < words.length - 1; i++) {
         this._trainedTransitions.add(`${words[i]}|${words[i + 1]}`);
       }
@@ -89,7 +108,9 @@ export const CLUSTER_TELEMETRY_MIXIN = {
     if (norm.length === 0) return null;
     c.totalClassified++;
     let kind;
-    let novelty;
+    let novelty;             // joint novelty score (max of compositional + vocab axes)
+    let compositionalNovelty = 0;
+    let vocabNovelty = 0;
     if (this._trainedSentencesNormalized.has(norm)) {
       kind = 'verbatim';
       novelty = 0;
@@ -102,22 +123,60 @@ export const CLUSTER_TELEMETRY_MIXIN = {
         const key = `${words[i]}|${words[i + 1]}`;
         if (!this._trainedTransitions.has(key)) novelTransitions++;
       }
-      novelty = novelTransitions / transitionCount;
-      kind = novelty > 0.5 ? 'novel' : 'partial';
-      if (kind === 'novel') {
+      compositionalNovelty = novelTransitions / transitionCount;
+
+      // Audit B.2 — two-axis novelty. Vocab-axis = fraction of words not
+      // in trained vocabulary. Without this, "the dog runs fast" scored
+      // as 1.0 novel even when every word was trained but the exact
+      // bigrams weren't seen. Now: separate compositional vs vocab
+      // novelty + classified kind reflects which axis dominated.
+      // Mathematical framing — partition the (compositional, vocab)
+      // unit-square plane by 0.5 thresholds → 4 quadrants:
+      //   (high comp, low vocab) = novel-compositional (rearrangement)
+      //   (low comp, high vocab) = novel-vocab (new word entirely)
+      //   (high comp, high vocab) = novel (both)
+      //   (low comp, low vocab) = partial
+      if (this._trainedVocab && words.length > 0) {
+        let untrained = 0;
+        for (const w of words) {
+          if (!this._trainedVocab.has(w)) untrained++;
+        }
+        vocabNovelty = untrained / words.length;
+      }
+      novelty = Math.max(compositionalNovelty, vocabNovelty);
+
+      const compositionalHigh = compositionalNovelty > 0.5;
+      const vocabHigh = vocabNovelty > 0.5;
+      if (compositionalHigh && vocabHigh) kind = 'novel';
+      else if (compositionalHigh && !vocabHigh) kind = 'novel-compositional';
+      else if (!compositionalHigh && vocabHigh) kind = 'novel-vocab';
+      else kind = 'partial';
+
+      // All non-partial verdicts count toward the "novelCount" aggregate
+      // for backward-compat dashboard reads. Vocab/compositional axes
+      // also have their own counters.
+      if (kind !== 'partial') {
         c.novelCount++;
         if (c.firstNovelTs === null) c.firstNovelTs = Date.now();
         if (novelty > c.maxNovelty) {
           c.maxNovelty = novelty;
           c.maxNoveltySentence = sentence;
         }
+        if (kind === 'novel-compositional' || kind === 'novel') c.novelCompositionalCount = (c.novelCompositionalCount || 0) + 1;
+        if (kind === 'novel-vocab' || kind === 'novel') c.novelVocabCount = (c.novelVocabCount || 0) + 1;
       } else {
         c.partialCount++;
       }
     }
-    c.recentEmissions.push({ sentence, kind, novelty: +novelty.toFixed(3), ts: Date.now() });
+    c.recentEmissions.push({
+      sentence, kind,
+      novelty: +novelty.toFixed(3),
+      compositionalNovelty: +compositionalNovelty.toFixed(3),
+      vocabNovelty: +vocabNovelty.toFixed(3),
+      ts: Date.now(),
+    });
     if (c.recentEmissions.length > 100) c.recentEmissions.shift();
-    return { kind, novelty };
+    return { kind, novelty, compositionalNovelty, vocabNovelty };
   },
 
   /**
@@ -215,11 +274,18 @@ export const CLUSTER_TELEMETRY_MIXIN = {
     const c = this._compositionalCounters;
     if (!c) return null;
     const total = c.totalClassified;
+    const novelComp = c.novelCompositionalCount || 0;
+    const novelVoc = c.novelVocabCount || 0;
     return {
       totalClassified: total,
       verbatimCount: c.verbatimCount,
       novelCount: c.novelCount,
       partialCount: c.partialCount,
+      // Audit B.2 — two-axis novelty rates
+      novelCompositionalCount: novelComp,
+      novelVocabCount: novelVoc,
+      novelCompositionalRate: total > 0 ? novelComp / total : 0,
+      novelVocabRate: total > 0 ? novelVoc / total : 0,
       verbatimRate: total > 0 ? c.verbatimCount / total : 0,
       novelRate: total > 0 ? c.novelCount / total : 0,
       partialRate: total > 0 ? c.partialCount / total : 0,

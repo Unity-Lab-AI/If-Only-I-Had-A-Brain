@@ -366,3 +366,42 @@
 ---
 
 *Unity AI Lab — every skill unlocks a deeper part of her mind.* 🖤
+
+
+---
+
+## Post-ship audit close (2026-06-17, P6 + LAW.1 + per-module + audit)
+
+Skill tree updates reflecting Phase 6 + LAW.1 + per-module refactor + post-ship audit close.
+
+### Phase 6 — Advanced compositional learning (P6.1-P6.8)
+
+| Node | Capability | Tag |
+|------|-----------|-----|
+| **P6.1 Number-grammar** | `sem(number) → sem(noun)` Hebbian bind via `_teachAssociationPairs` at reps:80 (HIGH-priority for math). relationTagId=28. | K |
+| **P6.2 Schema-runtime injection** | `composeSentence` pre-injects schemaContext (conceptEmbedding 0.15 + attributeVector 0.10) so intent-concept persists across composition ticks. | K |
+| **P6.3 Chat-time deep Hebbian** | Per-chat-turn bigrams fire-and-forget into curriculum at reps:1, relationTagId=30. Audit A.4 stops the silent error swallow. | K |
+| **P6.4 Dream-recombination** | During dream window, 3 composeSentence emissions per cycle. When classifier verdict = novel AND joint criteria pass (cosine ≥ 0.20 + wordCount ≥ 4 + uniqueRatio ≥ 0.6 + hasTerminator per audit B.7), low-rep Hebbian consolidation fires. relationTagId=29. | K |
+| **P6.5 Analogical extension probe** | `_probeAnalogicalExtension` measures whether the brain can complete trained-shape novel-vocab patterns. Audit E.2 stratifies novel/partial verdicts (novelTransitions ≥ 2 = real, = 1 = ECHO). | K |
+| **P6.6 Compositional emergence telemetry** | `classifyCompositionalEmission` classifies every emission as verbatim / novel / partial. Audit B.2 splits novel into novel-compositional (bigram rearrangement) vs novel-vocab (untrained word) on the (compositional, vocab) novelty plane. | K |
+| **P6.7 Word-creation tip-of-tongue gate** | When `emitWordDirect` rejects an emission, the top-2 co-activated candidates form a synthetic compound captured in `_wordCreationCandidates` Map. Audit E.1 promotion: when count ≥ 10, fire `_teachWordDefinition(compound)` + `_teachAssociationPairs([[a, compound], [b, compound]])` at relationTagId=32. | K |
+| **P6.8 Discourse coherence** | Cross-sentence boundary pairs Hebbian-bind at reps:30, relationTagId=31. Audit D.6 deduplicates against within-sentence trained bigrams (relationTagId=13) so the discourse channel adds NEW signal only. | K |
+
+### Per-module refactor (P4.1-P4.5)
+
+| Refactor | Was | Now | Skill unlocked |
+|----------|-----|-----|----------------|
+| **P4.1 Per-grade-file split** | curriculum.js god-class | curriculum/{pre-K, kindergarten}.js | Grade-bounded code-locality; per-grade extensions stay scoped |
+| **P4.2 Cluster per-module split** | cluster.js god-class | cluster/{telemetry, hebbian, emit, probe}.js | Concern-bounded testability |
+| **P4.3 Brain-server per-concern split** | brain-server.js god-class | brain-server/{gpu, state, memory, chat}.js | Concern-bounded server modularity |
+| **P4.4** | `_teachSentenceStructures` confusing name | `_teachExamTemplates` | Naming clarity |
+| **P4.5 INJECTION_GAIN constant** | Magic number 8 | Named constant with B.5/E.3 budget framing | Energy-budget allocation discipline |
+
+### Post-audit visibility (A.1-A.4)
+
+| Capability | Dashboard panel | Source |
+|-----------|----------------|--------|
+| P6.6 verbatim/novel/partial rates + maxNovelty + recentTail | "Compositional Emergence (P6.6)" | `cluster/telemetry.js getCompositionalStats` |
+| P6.7 top-10 tip-of-tongue compounds + promotion flag | "Word-Creation Tip-of-Tongue (P6.7)" | `cluster/telemetry.js getWordCreationCandidates` |
+| P6.3 chat-Hebbian turns/pairs/errors | "Chat-Time + Dream-Time Learning" | `brain-server/state.js _chatTimeHebbianStats` |
+| P6.4 dream-recomb totalDreamed/novelConsolidated/samples ring | "Chat-Time + Dream-Time Learning" | `curriculum.js _dreamRecombinationStats` |

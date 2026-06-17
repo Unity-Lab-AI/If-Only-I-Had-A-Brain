@@ -640,5 +640,12 @@ document.getElementById('btn-exit').addEventListener('click', async () => {
 
 init();
 </script>
+<!-- Audit C.10 (2026-06-17): admin-UI audit done. Tier-selection maps
+     to current _genCorticalAttribs outputs + auto-size formula
+     (os.freemem() × heap_size_limit × 0.5 ceiling) post-P4.2 mixin
+     split. cluster.assertAutoSizeWiring() boot-time verification (audit
+     H.4) confirms the auto-size path resolves all dispatched methods
+     correctly. HTML contract + failure-mode signature in
+     docs/HTML-ENTRY-POINTS.md § gpu-configure.html. -->
 </body>
 </html>

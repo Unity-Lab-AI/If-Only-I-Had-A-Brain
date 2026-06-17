@@ -11,8 +11,25 @@
 <div id="hierarchy" style="margin-top:12px;font-size:11px;color:#666;line-height:1.6;"></div>
 <div id="stats" style="margin-top:10px;font-size:12px;color:#555;"></div>
 <div id="perf" style="margin-top:10px;font-size:11px;color:#444;"></div>
+<!-- Non-module preflight: file:// detection. Run BEFORE the ES module
+     import below so the error message renders even when the module
+     import itself would fail (file://html/compute.html resolving
+     ./js/brain/gpu-compute.js to file://html/js/... which doesn't
+     exist on disk). Live-test diagnostic surfaces the recovery path. -->
+<script>
+  if (window.location.protocol === 'file:') {
+    document.body.innerHTML = '<div style="padding:40px;background:#0a0a0a;color:#ef4444;font-family:monospace;line-height:1.6;max-width:780px;"><h2 style="color:#ef4444;margin:0 0 16px 0;">compute.html cannot run under file://</h2><p style="color:#e0e0e0;">This page requires the brain-server HTTP route. ES module imports + WebSocket connect both need an http origin.</p><p style="color:#e0e0e0;">Run <code style="background:#222;padding:2px 6px;border-radius:3px;color:#22c55e;">start.bat</code> (or <code style="background:#222;padding:2px 6px;border-radius:3px;color:#22c55e;">Savestart.bat</code> to resume from saved state). The launcher boots <code style="background:#222;padding:2px 6px;border-radius:3px;color:#22c55e;">brain-server.js</code> and opens <code style="background:#222;padding:2px 6px;border-radius:3px;color:#22c55e;">http://localhost:7525/compute.html</code> automatically in an isolated Chrome window with <code style="background:#222;padding:2px 6px;border-radius:3px;">--enable-unsafe-webgpu</code>.</p><p style="color:#888;">Manual fallback: <code style="background:#222;padding:2px 6px;border-radius:3px;color:#22c55e;">node server/brain-server.js</code> then open <a href="http://localhost:7525/compute.html" style="color:#ff4d9a;text-decoration:underline;">http://localhost:7525/compute.html</a></p></div>';
+    throw new Error('compute.html: file:// protocol not supported — run start.bat to boot brain-server');
+  }
+</script>
 <script type="module">
-import { GPUCompute } from './js/brain/gpu-compute.js';
+// Absolute-anchored import. Resolves correctly under BOTH the
+// brain-server '/compute.html' route AND the '/html/compute.html'
+// route — the leading '/' anchors to the document origin root rather
+// than the document directory. Pre-fix relative './js/...' broke
+// under '/html/compute.html' (resolved to '/html/js/...' which is
+// not a folder on disk).
+import { GPUCompute } from '/js/brain/gpu-compute.js';
 
 const statusEl = document.getElementById('status');
 const hierarchyEl = document.getElementById('hierarchy');

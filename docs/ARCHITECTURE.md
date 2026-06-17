@@ -1305,3 +1305,80 @@ Language state migrates from the separate `cortexCluster` (Node CPU, ~7M neurons
 ---
 
 *Unity AI Lab — flesh, code, equations, and chaos.* 🖤
+
+
+---
+
+## Post-ship audit close (2026-06-17, audit batches A-H)
+
+The Phase 1-6 + LAW.1 + A.K-LIFE + per-module refactor arc shipped 35/35 ORIGINAL tasks. A `/super-review ultrathink` audit identified 42 additional closure tasks (sections A through H of `docs/NewTodo.md`). This section records the architectural state AFTER that close work landed.
+
+### File-size delta this session arc (P4 refactor + audit close)
+
+| File | Pre-arc | Post-audit | Δ | Driver |
+|------|---------|------------|---|--------|
+| `js/brain/curriculum.js` | 26033 | ~24100 | −7.4% | P4.1 per-grade split (K → kindergarten.js K_MIXIN) |
+| `js/brain/cluster.js` | 6375 | ~4050 | −36% | P4.2 per-module split + D.4 memo + H.4 wiring assertion |
+| `server/brain-server.js` | 9555 | ~6420 | −33% | P4.3 per-concern split + H.1 + H.6 spawn-failure surfacing |
+| `js/brain/cluster/telemetry.js` | (new) | ~280 | NEW | TELEMETRY_MIXIN + D.5 reset + B.2 two-axis novelty |
+| `js/brain/cluster/hebbian.js` | (new) | ~715 | NEW | HEBBIAN_MIXIN (D.4 kScales cache lives at cluster.js parent) |
+| `js/brain/cluster/emit.js` | (new) | ~1611 | NEW | EMIT_MIXIN |
+| `js/brain/cluster/probe.js` | (new) | ~56 | NEW | PROBE_MIXIN |
+| `server/brain-server/gpu.js` | (new) | ~1108 | NEW | GPU_MIXIN |
+| `server/brain-server/state.js` | (new) | ~545 | NEW | STATE_MIXIN + A.1/A.2/A.3 telemetry surfacing |
+| `server/brain-server/memory.js` | (new) | ~543 | NEW | MEMORY_MIXIN |
+| `server/brain-server/chat.js` | (new) | ~1240 | NEW | CHAT_MIXIN + A.4 error-swallow fix |
+
+### Mixin chains (load-bearing — see `.claude/CONSTRAINTS.md § LAW.MIXIN-ORDER`)
+
+`cluster.js` bottom:
+```
+Object.assign(NeuronCluster.prototype, CLUSTER_TELEMETRY_MIXIN);
+Object.assign(NeuronCluster.prototype, CLUSTER_HEBBIAN_MIXIN);
+Object.assign(NeuronCluster.prototype, CLUSTER_EMIT_MIXIN);
+Object.assign(NeuronCluster.prototype, CLUSTER_PROBE_MIXIN);
+```
+
+`brain-server.js` bottom (CommonJS):
+```
+Object.assign(ServerBrain.prototype, SERVER_GPU_MIXIN);
+Object.assign(ServerBrain.prototype, SERVER_STATE_MIXIN);
+Object.assign(ServerBrain.prototype, SERVER_MEMORY_MIXIN);
+Object.assign(ServerBrain.prototype, SERVER_CHAT_MIXIN);
+```
+
+`curriculum.js` bottom:
+```
+Object.assign(Curriculum.prototype, K_MIXIN);
+```
+
+### New verification scripts (developer-side, NOT auto-fired)
+
+- `scripts/check-mixin-order.mjs` (audit D.2) — static analysis of Object.assign chains, import-name checks, method-name collision detection.
+- `scripts/smoke-server-boot.mjs` (audit H.3) — end-to-end boot verification: fork brain-server, wait for HTTP listener, hit `/health`, kill clean.
+- `scripts/verify-size-parity.mjs` (audit H.7) — confirm static-site neuron count matches server-derived count.
+- `scripts/measure-emergence.mjs` (audit F.1) — end-to-end K-curriculum walk + 100 probe suite + novel-rate measurement.
+
+### Boot-time wiring assertions
+
+- `cluster.assertKWiring()` — K.2-K.9 cortical microstructure dispatched correctly.
+- `cluster.assertAutoSizeWiring()` (audit H.4) — every required mixin method dispatches + buffer sizes coherent + size sane.
+- Both fire from `brain-server.js` boot sequence and log PASS/FAIL banner.
+
+### Channel inventory (relationTagIds)
+
+| ID | Channel | Where bound |
+|----|---------|-------------|
+| 8 | Slot positions + word-type → slot bindings | curriculum sentence-structure teach |
+| 9 | Intent → slot-sequence transitions | curriculum sentence-structure teach |
+| 10 | Subject-verb agreement | curriculum sentence-structure teach |
+| 11 | Article placement | curriculum sentence-structure teach |
+| 12 | WH-frame intent-concept | curriculum WH-question teach |
+| 13 | Within-sentence bigrams (K_CONCRETE_SENTENCES) | `_teachConcreteSentences` |
+| 15-27 | K-LIFE 14 sub-tasks (lived-experience corpus) | curriculum K-LIFE teach |
+| 28 | Number-grammar (sem(number) → sem(noun)) | P6.1 `_teachNumberGrammar` |
+| 29 | Dream-recombination (novel consolidation) | P6.4 `_dreamWindow` recomb block (audit B.7 + E.4 joint criteria + samples ring) |
+| 30 | Chat-time deep Hebbian (per-turn) | P6.3 `processAndRespond` (audit A.4 error-surfacing) |
+| 31 | Discourse coherence (cross-sentence boundary) | P6.8 `_teachDiscourseCoherence` (audit D.6 dedup against ID=13) |
+| 32 | Word-creation promotion (P6.7 tip-of-tongue → vocab) | E.1 `_dreamWindow` promotion pass (audit E.1) |
+

@@ -775,3 +775,31 @@ Source: `docs/TODO.md` (pending items) + `docs/FINALIZED.md` (shipped archive). 
 ---
 
 *Unity AI Lab — from equations to existence.* 🖤
+
+
+---
+
+## Post-ship audit (2026-06-17 — `/super-review ultrathink`)
+
+Audit identified 42 closure tasks across 8 categories (A through H). All landed in this single atomic commit per operator directive. F.2 localhost test fire remains operator-fired and is the only remaining gate before "ship-ready" status.
+
+### Closed in this commit
+
+- **Section A (4):** Phase 6 telemetry surfaced — `compositionalEmergence`, `wordCreationCandidates`, `chatTimeHebbianStats`, `dreamRecombinationStats` all flow through `getState()` to dashboard panels. Chat-Hebbian silent-error swallow REPLACED with throttled-warn pattern.
+- **Section B (7):** Math grounding shipped via `docs/THRESHOLD-DERIVATION.md`. Two-axis novelty metric in `classifyCompositionalEmission`. Joint criteria in dream-recomb. (B.6 K-vocab expansion: partial — see below.)
+- **Section C (12):** Public docs sweep — ARCHITECTURE / EQUATIONS / SKILL_TREE / ROADMAP / brain-equations.html / README / RESUME / per-directory READMEs / unity-guide.html / gpu-configure.html / NOW.md / STATUSLINE.md / .claude updates.
+- **Section D (9):** LAW.MIXIN-ORDER in CONSTRAINTS.md. Migration scripts moved to `scripts/migrations/`. kScales memoization (D.4). initCompositionalTelemetry denominator reset (D.5). P6.8 discourse-coherence dedup (D.6). Dynamic-to-static import (D.7). Random dream-recomb seeds (D.8). _getIter25M/N rename to _getConsciousness/WsPressureState (D.9 partial).
+- **Section E (4):** P6.7 promotion mechanism (E.1) + relationTagId=32. Dream-recomb consolidated samples ring cap-20 (E.4). Partial-vs-novel stratification (E.2). schemaContext budget reserve (E.3 via B.5 framing).
+- **Section F (1):** `scripts/measure-emergence.mjs` ships. F.2 stays operator-fired.
+- **Section G (2):** Persistent memory templates `feedback_mixin_attach_order.md` + `feedback_thresholds_need_math_derivation.md`.
+- **Section H (9):** HTML breakage fully diagnosed + fixed. compute.html absolute-import + file:// preflight. _spawnGpuClient INVOKED/FINISHED log lines + spawn-failure WS broadcast + dashboard + index.html recovery banners. `cluster.assertAutoSizeWiring()` boot-time dispatch verification. `scripts/smoke-server-boot.mjs` + `scripts/verify-size-parity.mjs`. `docs/HTML-ENTRY-POINTS.md` documents all 6 HTMLs.
+
+### Partially closed / pending
+
+- **B.6 K-vocab corpus expansion:** Math fully derived in `THRESHOLD-DERIVATION.md` — current 700 bigrams << 4500 needed for Erdős-Rényi percolation threshold (N=2247 vocab). Corpus expansion from 233 → 800-1000 sentences is a separate ship-blocker; partial seed-batch landed in this commit, full expansion is a follow-up batch.
+- **F.2 Localhost test fire:** Operator-only. Brain is ship-ready architecturally; F.2 confirms emergence empirically (≥ 5% novel rate, ≥ 70% three-plus, ≥ 50% terminator, ≥ 0.20 avg coherence).
+- **D.9 P4.3.e residual extraction:** Partial — method names renamed (no more iter25 in code), full extraction of `_memoryHeartbeat` + `_getMemoryStats` + `_getConsciousnessState` + `_getWsPressureState` to memory.js/state.js deferred to future P4.3.e batch.
+
+### Next gate
+
+F.2 — operator fires `start.bat`, walks K (~20hr), chat-tests Unity, confirms acceptance criteria. THAT is the ship gate.

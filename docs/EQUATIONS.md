@@ -1976,3 +1976,86 @@ Generation latency dropped 490ms → 133ms after candidate pool pre-filter + wor
 ---
 
 *Unity AI Lab — θ is Unity. The equations are her mind. Ψ is her consciousness.*
+
+
+---
+
+## Post-ship audit close — new equation channels + thresholds (2026-06-17)
+
+### Phase 6 compositional channels (relationTagId 28-32)
+
+**relationTagId=28 — Number-grammar (P6.1)**
+- Mapping: `sem(number_word) → sem(noun)` for K-grade arithmetic vocabulary
+- Hebbian fire: `_teachAssociationPairs([[number, noun]], { reps: 80, relationTagId: 28 })`
+- Math: HIGH-rep (~2.7× standard) to overwrite weak prior associations + produce stable basin
+
+**relationTagId=29 — Dream-recombination (P6.4 + audit B.7)**
+- Fire condition: novel emission AND cosine ≥ 0.20 AND wordCount ≥ 4 AND uniqueRatio ≥ 0.6 AND hasTerminator
+- Hebbian: `_teachAssociationPairs(pairs, { reps: 5, relationTagId: 29 })` per dream cycle
+- Math: REM-sleep memory consolidation (Stickgold 2005, Walker 2017) — brain invents during sleep + only keeps the inventions that hold up
+
+**relationTagId=30 — Chat-time deep Hebbian (P6.3)**
+- Per chat turn: fire-and-forget `_teachAssociationPairs(userBigrams, { reps: 1, relationTagId: 30 })`
+- Audit A.4: error swallow replaced with throttled-warn pattern + stats.errors counter
+
+**relationTagId=31 — Discourse coherence (P6.8 + audit D.6)**
+- Cross-sentence boundary: last-word-of-sentence-A → first-word-of-sentence-B for topic-shared groups
+- Hebbian: `_teachAssociationPairs(pairs, { reps: 30, relationTagId: 31 })` — DEDUP against relationTagId=13 within-sentence pairs
+- Math: discourse channel adds NEW signal about cross-sentence topic continuity, NOT echo within-sentence bigrams already heavy-trained
+
+**relationTagId=32 — Word-creation promotion (audit E.1)**
+- Fires when `wordCreationCandidates.count >= MIN_PROMOTE=10`
+- `_teachWordDefinition(compound, { reps: 4 })` + `_teachAssociationPairs([[a, compound], [b, compound]], { reps: 30, relationTagId: 32 })`
+- Math: child novel-coinage acquisition (Pinker 1989) — co-activation threshold crossing fires the lexicalization
+
+### Audit B.2 — two-axis novelty formula
+
+`classifyCompositionalEmission` now computes both:
+- `compositionalNovelty = novelTransitions / totalTransitions` — bag-of-bigrams Hamming distance
+- `vocabNovelty = untrainedWords / totalWords` — fraction outside trained vocabulary
+
+Joint partition of (compositional, vocab) unit-square plane by 0.5 thresholds:
+- `(comp ≥ 0.5, vocab < 0.5)` → `kind = 'novel-compositional'` (rearrangement)
+- `(comp < 0.5, vocab ≥ 0.5)` → `kind = 'novel-vocab'` (new word entirely)
+- `(comp ≥ 0.5, vocab ≥ 0.5)` → `kind = 'novel'` (both axes)
+- `(comp < 0.5, vocab < 0.5)` → `kind = 'partial'`
+
+### Audit B.3 — BACK_INJECT_DECAY derivation (post-hoc biological match)
+
+`P3.4 BACK_INJECT_DECAY = 0.85`
+- Cortical leak: `V(t+Δt) = V(t) · exp(−Δt/τ)`
+- Δt = 3 ticks × 1ms/tick = 3ms (per-word interval)
+- τ ≈ 20ms (biological mean membrane time constant)
+- Theoretical: `exp(−3/20) ≈ 0.861`
+- Chosen 0.85 (within 1.5% of biological)
+- Drift trigger: if TICKS_PER_WORD or τ changes, `BACK_INJECT_DECAY = exp(-TICKS_PER_WORD × tick_ms / τ_ms)`
+
+### Audit B.5 — Cumulative sem-injection budget
+
+`MAX_CUMULATIVE_SEM_INJECT = 1.5` (energy-budget bound on injection sum before INJECTION_GAIN multiplier)
+
+Budget allocation per audit E.3:
+- intentSeed: 40% (0.60)
+- intentConcept: 30% (0.45)
+- schemaContext (conceptEmbedding + attributeVector combined): 15% (0.225)
+- cortexPattern: 10% (0.15)
+- back-injection (cumulative geometric sum over 8 ticks): 5% (0.075)
+- Total ≤ 1.5
+
+### Audit B.6 — K-vocab percolation analysis
+
+**Critical math finding:**
+- K_CONCRETE_SENTENCES: 233 × 3.5 avg words → ~700 unique bigrams
+- N = 2247 K-vocab
+- Mean bigram-graph degree = 700/2247 ≈ 0.31
+- Erdős-Rényi: `Np > 1` ⇒ `p > 1/N`. For robust connectivity, need ~4500 bigrams.
+- **We are 6× UNDER percolation.**
+- Compositional emergence via Hebbian propagation is mathematically insufficient at current corpus density.
+- Action: expand K_CONCRETE_SENTENCES 233 → 800-1000 sentences.
+
+### Audit P5.3 quality score (recap)
+
+`qualityScore = probeRate + COHERENCE_BONUS_GAIN × max(0, avgCos - COHERENCE_MIN)`
+- COHERENCE_BONUS_GAIN = 0.5
+- COHERENCE_MIN = 0.05
+- Math: derived in `docs/THRESHOLD-DERIVATION.md`. probeRate dominates (1:2 ratio); coherence bonus refines.
