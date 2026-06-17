@@ -38,17 +38,15 @@
 - **Per-grade-file architecture substantially realized for K** — all 6 K cell runners + 6 K gates + 15 K-LIFE methods + 21 K-ELA teach helpers + ~18 K-Math/Sci/Soc/Art/Life methods now in kindergarten.js
 - **Shared primitives stay on Curriculum.prototype:** _teachAssociationPairs, _teachCombination, _teachHebbian, _teachHebbianAsymmetric, _teachSentenceStructures (plural), _teachDefinitionFirst, _teachWordInContext, _teachQABinding, _teachBiographicalFacts, _conceptTeach, _writeTiledPattern, _clearSpikes, _hb, _auditExamVocabulary, _pregateEnrichment, _teachPredictiveError, _teachLateralInhibition, _teachAntiHebbian
 
-## ✅ Harness TaskList Status — 16/35 complete (P4.1 in_progress, P4.1.a + b + c bites shipped)
+## ✅ Harness TaskList Status — 17/35 complete (P4.1 UMBRELLA DONE ✅)
 
-**Completed (16):**
+**Completed (17):**
 - Phase 1 ✅: P1.1, P1.2, P1.3, P1.4, P1.5, P1.6, P1.7
 - Phase 2 ✅: P2.1, P2.2, P2.4, P2.5, P2.6 (P2.3 deferred)
 - Phase 3 partial: P3.3 (Tier 5 deletion)
+- **P4.1 ✅: per-grade-file architecture (26 methods, 2011 lines, 4 atomic commits)**
 - LAW.1 ✅: sweep 1 done, 12 pre-existing items D1-D12 deferred
 - A.K-LIFE ✅: umbrella complete (all 14 sub-tasks + vocab pre-step)
-
-**In progress (1):**
-- **P4.1 [~]** — P4.1.a/b/c bites SHIPPED (commits `7c0a2f3` + `0c95cb5` + this one). 21 methods migrated curriculum.js → kindergarten.js K_MIXIN, 1800 lines. **P4.1.d ONLY remaining sub-bite:** 5 Math-K/ELA-K methods (`_teachDigitSequence`, `_teachDigitNames`, `_teachMagnitudes`, `_teachCVCReading`, `_teachSightWords`) now at lines ~7600-7800 after cumulative shrink, ~213 lines. Earlier grep found NO `this._teach*` callers but caller status needs deeper audit (might be invoked via different naming patterns OR be orphans like P4.1.c group). Decide migrate-active vs migrate-orphan-with-deprecation before firing.
 
 **Pending (18):**
 - **P2.3** — kScales plumbing through _crossRegionHebbian (deferred, multi-file)

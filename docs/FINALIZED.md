@@ -5,6 +5,116 @@
 
 ---
 
+## 2026-06-17 — Session 114.19fr P4.1.d ✅ P4.1 UMBRELLA COMPLETE — per-grade-file architecture FULLY shipped (5 orphan Math-K/ELA-K helpers migrated, P4.1 done)
+
+### Gee verbatim per LAW #0
+
+> *"continue"* (2026-06-17, this session — continue-the-work directive after P4.1.c ship)
+
+### What this is
+
+FOURTH AND FINAL bite of P4.1. P4.1.a moved 13 K-ELA helpers. P4.1.b moved 5 direct-Oja methods. P4.1.c moved 3 orphan Session-25 legacy methods + consolidated chrome. P4.1.d (this commit) migrates the last 5 orphan Session-26 Math-K + ELA-K legacy methods, completing the per-grade-file architecture migration for K. **P4.1 umbrella now FULLY SHIPPED.**
+
+### Method migration (with DEPRECATED-LEGACY header)
+
+5 orphan Session-26 methods moved from `js/brain/curriculum.js` → `js/brain/curriculum/kindergarten.js` K_MIXIN:
+
+| Method | Lines | Why orphan |
+|--------|-------|------------|
+| `_teachDigitSequence` | 6477-6501 | Session-26 Math-K helper. Digit 0-9 ordered injection via injectLetter + ticks. Defined per TODO MATH-K spec but the inline Session-3 phon-region implementation shipped instead — this orphan never wired in. |
+| `_teachDigitNames` | 6502-6533 | Session-26 Math-K helper. Digit one-hot ↔ GloVe(name) cross-projection binding. Same orphan-status as `_teachDigitSequence`. |
+| `_teachMagnitudes` | 6534-6604 | Session-26 Math-K helper. Digit + magnitude feature into FREE region (TODO prescribed free-region binding, but the Session-3 inline implementation used phon — this orphan path never shipped). |
+| `_teachCVCReading` | 6605-6644 | Session-26 K-ELA helper. CVC word-list streaming with letter-by-letter ticks. Defined but never wired into K cell runners (which use `_teachCVCSoundIsolation` from P4.1.a instead). |
+| `_teachSightWords` | 6645-6687 | Session-26 K-ELA helper. Sight-word list at higher exposure count, same streaming pattern. Defined but never wired in — K runners use `_teachWordEmission` + `_teachWordSpellingDirect` paths instead. |
+
+NO active callers anywhere in the codebase (grep verified — neither `this._teach*` nor unqualified `_teach*` calls match in any source file). Only references are informational doc-comments in equation-level prose (e.g. "_teachDigitSequence() injects digits 0-9 in order" in cross-grade docs). Preserved (not deleted) under per-grade-file architecture rule + "never delete TODO info" preservation principle.
+
+### Chrome cleanup
+
+Also deleted in same atomic operation:
+- "TODO-aligned Math-K helpers (Session 26)" section header at lines 6464-6475 (12 lines) + 1 blank line — the methods this section header introduced are all moving out, so the chrome is now stale.
+
+Replaced with: 9-line marker comment listing the 5 extracted methods.
+
+### Migration mechanics
+
+Deterministic Node script at `.git/p4-1d-migrate.mjs`. Same pattern as P4.1.a/b/c:
+
+1. Read both files preserving CRLF line endings.
+2. Extract methods block at lines 6477-6687 (211 lines, 5 methods).
+3. Sanity-check first/last method lines + chrome section-header line + 5 expected method signatures in order.
+4. Convert class-method form → object-literal form (trailing comma) via brace-depth tracker. 5 conversions verified.
+5. Locate K_MIXIN closing `};` in kindergarten.js, insert converted block + DEPRECATED-LEGACY header.
+6. Replace lines 6464-6687 (224 lines: 12 chrome + 212 methods including 1 blank) in curriculum.js with 9-line marker.
+7. Write both files preserving original CRLF line endings.
+
+Migration result: `curriculum.js 24250 → 24035 lines (Δ -215)`, `kindergarten.js 8260 → 8484 lines (Δ +224)`, methods moved 211 lines, chrome 224 → 9 marker lines.
+
+### 🎉 CUMULATIVE P4.1 progress — UMBRELLA COMPLETE
+
+| Bite | Methods | Lines moved | curriculum.js after | kindergarten.js after |
+|------|---------|-------------|---------------------|----------------------|
+| P4.1.a | 13 K-ELA helpers | 1132 | 24913 | 7572 |
+| P4.1.b | 5 direct-Oja methods | 573 | 24349 | 8154 |
+| P4.1.c | 3 orphan/legacy + chrome consolidation | 95 methods + 44→40 chrome | 24250 | 8260 |
+| **P4.1.d** | **5 Math-K/ELA-K orphan helpers + chrome cleanup** | **211 methods + 12 chrome** | **24035** | **8484** |
+| **TOTAL** | **26 methods** | **2011 lines** | **−1998 from 26033 (−7.7%)** | **+2054 from 6430 (+32.0%)** |
+
+**Per-grade-file architecture FULLY REALIZED for K-grade:**
+- 6 K cell runners (`runElaKReal/runArtKReal/runSocKReal/runSciKReal/runMathKReal/runLifeK`)
+- 6 K gates (`_gateElaKReal/_gateArtKReal/_gateSocKReal/_gateSciKReal/_gateMathKReal/_gateLifeKReal`)
+- 15 K-LIFE methods (A.K-LIFE umbrella: first-words, family roles, sensory firsts, comfort objects, fears, bedtime, dietary, motor, friendships+games, songs+rhymes, storybooks, self-awareness, integration, gate criterion, vocab pre-step)
+- 21 K-ELA active teach helpers (13 contiguous + 5 direct-Oja + 3 orphan-legacy)
+- 5 Math-K/ELA-K orphan helpers (DEPRECATED, preserved)
+- ~18 K-Math/Sci/Soc/Art/Life teach methods from prior session
+
+Total: ~8484 lines of K-specific code in `js/brain/curriculum/kindergarten.js`, attached to `Curriculum.prototype` via `Object.assign` at curriculum.js entry-point bottom. Future grade files (`curriculum/grade-1.js` through `curriculum/phd.js`) follow same K_MIXIN pattern as each grade unlocks per the Pre-K + K scope LAW.
+
+### Shared primitives stay on Curriculum.prototype
+
+- `_teachAssociationPairs`, `_teachCombination`, `_teachHebbian`, `_teachHebbianAsymmetric`
+- `_teachSentenceStructures` (plural, called from `_pregateEnrichment` across grades)
+- `_teachDefinitionFirst`, `_teachWordInContext`, `_teachQABinding`
+- `_teachBiographicalFacts`, `_conceptTeach`
+- `_writeTiledPattern`, `_clearSpikes`, `_hb`, `_auditExamVocabulary`, `_pregateEnrichment`
+- `_teachPredictiveError`, `_teachLateralInhibition`, `_teachAntiHebbian`
+
+### Verification
+
+- `node --check js/brain/curriculum.js` — clean
+- `node --check js/brain/curriculum/kindergarten.js` — clean
+- `cd server && npm run build` → `js/app.bundle.js 2.4mb · Done in 69ms`
+- Method definitions + cross-references resolved through Object.assign K_MIXIN attach
+- Pre-commit grep on modified source for task-IDs / operator-name → ZERO NEW violations
+- Working tree: `.claude/*` cherry-pick LOCAL, `docs/STATUSLINE.md` pre-existing local mod NOT touched
+
+### Harness tasklist update
+
+**Task #18 P4.1 STATUS CHANGED: `in_progress` → `completed`** — P4.1 umbrella fully shipped via 4 atomic commits (P4.1.a `7c0a2f3` + P4.1.b `0c95cb5` + P4.1.c `9b2e365` + P4.1.d this commit). 17/35 tasks now complete.
+
+### LAWs honored (entire P4.1 umbrella)
+
+- **LAW #0 verbatim** — operator quotes preserved word-for-word across all 4 bite FINALIZED entries
+- **Docs before push, no patches** — every bite shipped with NOW.md + FINALIZED.md + NewTodo.md + TODO.md updated in same atomic commit; P4.1.b/c/d also rolled RESUME.md cascade SHA into the main commit to avoid separate follow-up doc commits
+- **Task numbers + operator name ONLY in workflow docs** — code comments use neutral phrasing across all 4 bites; pre-commit greps caught + scrubbed `P4.1` leaks in marker comments before each commit
+- **No tests ever** — `node --check` + bundle rebuild for every bite; no automated tests created
+- **NEVER delete TODO info** — TODO.md gets STATUS update + cumulative SHA append, prior entries unchanged
+- **NO FALLBACKS** — pure refactor + orphan preservation across all 4 bites, no behavior change, no fallback paths introduced
+- **800-line read before edit** — boundary chunks read in full before each migration script written
+- **Match doc format** — banners edited in-place in matching style; new sections appended at top of FINALIZED.md per existing pattern
+
+### What's next (post-P4.1)
+
+P4.1 is the largest scope of Phase 4. Remaining Phase 4 tasks:
+- **P4.2** — Split cluster.js (5,839 lines) into core/emit/hebbian/probe modules
+- **P4.3** — Split brain-server.js (9,478 lines) into 4 concerns
+- **P4.4** — Rename `_teachSentenceStructures` (plural) to disambiguate from `_teachSentenceStructure` (singular)
+- **P4.5** — Replace `×8` magic constant in `injectEmbeddingToRegion` with named INJECTION_GAIN constant
+
+Other still-pending tasks: P2.3 (kScales plumbing, deferred multi-file) · P3.1 (client-renderer silent-diagnostic display) · P3.2 (dashboard failed-emission diagnostic) · P3.4 (composeSentence serial injection saturation reduction) · P5.1-P5.3 (validation harness) · P6.1-P6.8 (advanced compositional learning).
+
+---
+
 ## 2026-06-17 — Session 114.19fq P4.1.c — third bite of per-grade-file architecture (3 orphan legacy helpers migrated + chrome consolidation)
 
 ### Gee verbatim per LAW #0
