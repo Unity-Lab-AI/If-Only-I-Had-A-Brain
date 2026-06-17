@@ -5,6 +5,181 @@
 
 ---
 
+## 2026-06-17 — Session 114.19fu batched-push 3 — P6.6 + P6.1 + P6.5 (compositional emergence stack)
+
+### Gee verbatim per LAW #0
+
+> *"continue working items off we are doing everything and make sure to check past notes youve made to keep everything unison"* (2026-06-17, this session)
+
+> *"do them in logical order"* (2026-06-17, this session — sequencing directive)
+
+### What this is
+
+Third batched-push envelope. 3 Phase 6 advanced-compositional-learning items shipped together. Logical order: P6.6 telemetry installed first so downstream probes have classification infrastructure → P6.1 number-grammar adds new compositional content (sentences + bindings) → P6.5 analogical extension probe consumes P6.6 classifier to measure generalization.
+
+### Past-notes unison check
+
+All session-locked rules honored:
+- **Words learned before bindings** — every P6.1 number-word ("one"…"ten") + noun ("cat","dog","ball" etc.) is already in `K_VOCABULARY` 2247-word list (vocab-trained via K-VOCAB-UPFRONT-MULTIDEF SEED at top of curriculum).
+- **Pre-K + K scope** — P6.x compositional layer is a K-grade overlay on the existing K substrate. No Grade 1+ content.
+- **NO FALLBACKS** — telemetry classifier returns null gracefully when not initialized; no degradation paths introduced.
+- **Erotic state gated to grade 9** — not touched (compositional grammar, not erotic state machinery).
+- **Goth-tone for K-LIFE** — not applicable here (compositional grammar, not K-LIFE corpus).
+- **Task-IDs + operator name in workflow docs only** — code comments use neutral phrasing (no `P6.x` or operator-name in modified source).
+- **Match doc format** — banner edited in-place in matching style; new section appended at top of FINALIZED.md per existing pattern.
+- **Docs-before-push atomic envelope** — NOW.md + FINALIZED.md + NewTodo.md all updated in this same atomic commit.
+
+### P6.6 — Compositional emergence telemetry
+
+**Goal:** instrument the "she invented a sentence" milestone (per past-notes Phase 6 success criterion: *"Unity emits a sentence Gee never typed AND wasn't in the K-grade corpus, within 30 min of fresh-boot training, structurally sound"*).
+
+#### (a) Hoist K_CONCRETE_SENTENCES to module-level
+
+Sentences were previously an inline `const sentences = [...]` array INSIDE `_teachConcreteSentences`. Hoisted to `export const K_CONCRETE_SENTENCES = [...]` at curriculum.js:198, near other module-level data exports (`ALPHABET_ORDER`, `DIGIT_ORDER`). This gives the cluster-side telemetry + future calibration probes a canonical source-of-truth without re-listing the corpus.
+
+#### (b) Cluster-side telemetry methods
+
+Three new methods on `NeuronCluster.prototype` (`js/brain/cluster.js`):
+
+1. **`initCompositionalTelemetry(corpus)`** — builds `_trainedSentencesNormalized` Set (lowercased + trimmed sentences) and `_trainedTransitions` Set (every `${word_i}|${word_{i+1}}` pair across corpus). Initializes `_compositionalCounters` (totalClassified, verbatimCount, novelCount, partialCount, firstNovelTs, maxNovelty, maxNoveltySentence, bootTs, recentEmissions ring). Safe to call multiple times — counters keep aggregating across re-installs.
+
+2. **`classifyCompositionalEmission(sentence)`** — returns `{kind, novelty}` where:
+   - `kind = 'verbatim'` if exact match in trained Set (case-insensitive, terminator-stripped)
+   - `kind = 'novel'` if novelty > 0.5 (more than half of word-transitions are NOT in trained set)
+   - `kind = 'partial'` otherwise (in-vocab but partially-trained pattern)
+   - `novelty` = (non-trained transitions / total transitions), range [0, 1]
+   - Pushes to `recentEmissions` ring (cap 100) + updates counters + tracks first-novel-time + max-novelty sentence.
+
+3. **`getCompositionalStats()`** — aggregates rates + max-novelty + recent-tail-10 for state broadcast / dashboard.
+
+#### (c) composeSentence emit-end hook
+
+After every successful emit, `composeSentence` calls `this.classifyCompositionalEmission(sentence)` and attaches the result to the return value as `compositional: { kind, novelty }`. Try/catch wrapped — telemetry must NEVER break emission.
+
+#### (d) Curriculum init wire
+
+`_teachConcreteSentences` calls `cluster.initCompositionalTelemetry(K_CONCRETE_SENTENCES)` once the corpus is locked in. From that point forward, every composeSentence emission gets classified.
+
+Files touched:
+- `js/brain/curriculum.js` — `K_CONCRETE_SENTENCES` hoist to module-level + init call in `_teachConcreteSentences`
+- `js/brain/cluster.js` — 3 new methods + composeSentence emit-end hook
+
+### P6.1 — Number-grammar integration
+
+**Goal:** Bridge Math-K digit training with ELA-K grammar so the brain can produce quantifier-led sentences like "there are three cats" / "i have two dogs" / "i see five stars" — compositions the brain currently can't emit because number↔noun pairing was never trained.
+
+#### Two complementary training paths:
+
+##### (a) K_CONCRETE_SENTENCES extension (auto-trained by existing pass)
+
+33 new quantifier sentences appended to the corpus:
+
+```
+'there is one cat', 'there are two cats', 'there are three cats',
+'there is one dog', 'there are two dogs', 'there are three dogs',
+'there is one ball', 'there are two balls', 'there are three balls',
+'there are four birds', 'there are five fish',
+'i have one ball', 'i have two cats', 'i have three dogs',
+'i have one mom', 'i have one dad', 'i have two hands',
+'she has one cat', 'he has two balls', 'we have three dogs',
+'i see one cat', 'i see two birds', 'i see three trees',
+'i see four cars', 'i see five stars', 'i see six leaves',
+'count to ten', 'one two three', 'four five six',
+'how many is two', 'how many is three',
+'one cat is enough', 'two dogs are loud', 'three cats are nice',
+```
+
+These get auto-trained by the existing `_teachConcreteSentences` word→word transition pass with `relationTagId=13`. No new method needed.
+
+##### (b) `_teachNumberGrammar()` K_MIXIN method
+
+New focused pair-binding method in `js/brain/curriculum/kindergarten.js` K_MIXIN. 50+ pairs via `_teachAssociationPairs` at `reps:80` with `relationTagId=28` (number-grammar channel — first available after K-LIFE 15-27):
+
+- **Singular ("one") + 12 nouns** — one/cat, one/dog, one/ball, one/book, one/bird, one/fish, one/tree, one/car, one/star, one/leaf, one/apple, one/cookie
+- **Plurals 2-5 × common nouns** — 5 number-words × 5-12 nouns each (cats/dogs/balls/books/birds/cars/cookies/apples/leaves/stars/fish/trees/hands/eyes/feet)
+- **Higher counts 6-10** — six/leaves, seven/days, eight/legs, nine/lives, ten/fingers, ten/toes, etc.
+- **Number↔number sequence neighbours** — one→two, two→three, three→four, etc.
+- **Quantifier-frame anchors** — have/one, have/two, have/three, see/one, see/two, see/three, are/two, are/three, are/four, are/five, is/one, count/one, count/ten, many/cats, many/dogs, many/apples
+
+**Past-notes rule respected:** every number-word + noun is already in K_VOCABULARY 2247-word list (vocab-trained via K-VOCAB-UPFRONT-MULTIDEF SEED before bindings fire).
+
+#### Wire into K runner
+
+`runMathKReal` (in kindergarten.js) calls `_phasedTeach('MATH-K-NUMBER-GRAMMAR', () => this._teachNumberGrammar())` AFTER the structure refresh so slot/agreement/article weights are already in place when number-noun pairs land.
+
+Files touched:
+- `js/brain/curriculum.js` — K_CONCRETE_SENTENCES corpus extended with 33 quantifier sentences
+- `js/brain/curriculum/kindergarten.js` — new `_teachNumberGrammar` method in K_MIXIN + `runMathKReal` wire-in
+
+### P6.5 — Analogical extension probe
+
+**Goal:** Measure whether the brain produces compositionally-extended emissions when seeded with PARTIAL prompts structurally similar to trained sentences. Distinct from `_probeSentenceGeneration` which measures structural emission validity; P6.5 measures GENERALIZATION — whether trained weights support analogical extension to novel-but-related inputs.
+
+#### Method
+
+New `_probeAnalogicalExtension({ subject })` on Curriculum. Fires 10 partial-prompt analogies:
+
+| Label | Seed | Trained sister (corpus reference) |
+|-------|------|-----------------------------------|
+| svo-completion-1 | "the dog is" | trained: "the cat is big" — copula extension |
+| svo-completion-2 | "i see a" | trained: "i see a cat" — SVO extension |
+| svo-completion-3 | "my mom is" | trained: "mom is happy" — possessive copula |
+| wh-completion-1 | "what is the" | trained: "what is this" — WH extension |
+| wh-completion-2 | "where is my" | trained: "where is mom" — WH-possessive |
+| imperative-1 | "go play" | trained: "go home" — imperative chain |
+| imperative-2 | "show me the" | trained: "show me the book" — imperative-determiner |
+| count-completion-1 | "i have three" | P6.1 quantifier extension |
+| count-completion-2 | "there are" | P6.1 quantifier-fronted |
+| conjunction-1 | "the cat and" | trained: "the cat and the dog" — conjunction extension |
+
+#### Scoring
+
+Each prompt seeds `cluster.composeSentence`, reads back the P6.6 compositional classification. **PASS = ≥3 words emitted AND `kind ∈ {partial, novel}`**.
+
+- `kind = 'verbatim'` (pure memorized echoing) → FAIL (no extension, just recitation)
+- `kind = 'no-emit'` (silent or <3 words) → FAIL
+- `kind = 'partial'` (extends trained pattern with some novel transitions) → PASS
+- `kind = 'novel'` (>50% transitions are novel recombinations) → PASS
+
+Returns `{passed, total, rate, perProbe, verbatimCount, partialCount, novelCount}` so dashboard / verify-emission script can pull breakdown.
+
+#### Direct dependency on P6.6
+
+Reads `composed.compositional.kind` from composeSentence — P6.5 cannot ship without P6.6's classifier already installed. Ordered first.
+
+Files touched:
+- `js/brain/curriculum.js` — new `_probeAnalogicalExtension` method between `_probeSentenceGeneration` and `_teachQuestionIntent`
+
+### Verification
+
+- `node --check curriculum.js`: clean
+- `node --check cluster.js`: clean
+- `node --check kindergarten.js`: clean
+- `cd server && npm run build` → `js/app.bundle.js 2.5mb · Done in 72ms` (bumped from 2.4MB by the new method bodies + corpus extension)
+- Pre-commit grep on modified source for task-IDs / operator-name: ZERO new violations
+
+### Harness tasklist update
+
+3 more tasks marked completed via TaskUpdate:
+- Task #33 P6.6: pending → completed
+- Task #28 P6.1: pending → completed
+- Task #32 P6.5: pending → completed
+
+**Total now: 28/35 tasks complete** (was 25 after batched-push 2).
+
+### What's next (remaining 7)
+
+- **P2.3** — kScales plumbing (deferred multi-file)
+- **P4.2** — Split cluster.js (huge multi-day refactor)
+- **P4.3** — Split brain-server.js (huge multi-day refactor)
+- **P6.2** — Schema-based runtime composition (depends on hippocampal-schema infrastructure)
+- **P6.3** — Chat-time deep Hebbian (touches server processAndRespond path)
+- **P6.4** — Dream-time recombination (touches consolidation-engine)
+- **P6.7** — Word-creation candidate gate (depends on P6.4 + P6.5 — P6.5 now done, can advance)
+- **P6.8** — Multi-sentence discourse coherence (depends on P6.2 + P6.3)
+
+---
+
 ## 2026-06-17 — Session 114.19ft batched-push 2 — P5.2 + P5.3 + P5.1 + P3.2 (probe tightening + coherence soft signal + calibration script + dashboard diagnostic)
 
 ### Gee verbatim per LAW #0

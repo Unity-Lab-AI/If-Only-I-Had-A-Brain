@@ -7478,6 +7478,123 @@ var NeuronCluster = class {
     }
   }
   /**
+   * Compositional emergence telemetry — install the trained-sentence
+   * corpus + derived word-transition set so subsequent emissions can be
+   * classified as verbatim / novel-recombination / partial-match.
+   * Called from curriculum side (`_teachConcreteSentences`) once the
+   * corpus is locked in. Safe to call multiple times — last call wins
+   * and counters are NOT reset (so trained-corpus updates between
+   * sessions still aggregate against a coherent denominator).
+   *
+   * @param {string[]} corpus — trained K-grade sentences
+   */
+  initCompositionalTelemetry(corpus) {
+    if (!Array.isArray(corpus) || corpus.length === 0) return;
+    if (!this._compositionalCounters) {
+      this._compositionalCounters = {
+        totalClassified: 0,
+        verbatimCount: 0,
+        novelCount: 0,
+        partialCount: 0,
+        firstNovelTs: null,
+        maxNovelty: 0,
+        maxNoveltySentence: "",
+        bootTs: Date.now(),
+        recentEmissions: []
+      };
+    }
+    this._trainedSentencesNormalized = /* @__PURE__ */ new Set();
+    this._trainedTransitions = /* @__PURE__ */ new Set();
+    for (const s of corpus) {
+      if (typeof s !== "string") continue;
+      const norm = s.toLowerCase().trim();
+      if (norm.length === 0) continue;
+      this._trainedSentencesNormalized.add(norm);
+      const words = norm.split(/\s+/).filter((w) => w.length > 0);
+      for (let i = 0; i < words.length - 1; i++) {
+        this._trainedTransitions.add(`${words[i]}|${words[i + 1]}`);
+      }
+    }
+  }
+  /**
+   * Classify a composed sentence as verbatim / novel / partial. Updates
+   * counters + appends to recent-emissions ring (cap 100). Returns the
+   * classification result. No-op when telemetry hasn't been initialized
+   * (returns null) — caller can ignore the missing-init case since
+   * `_teachConcreteSentences` initializes during K curriculum.
+   *
+   * Novelty metric: fraction of word-transition pairs (n-1 per
+   * n-word sentence) that are NOT present in the trained-transitions
+   * set. A wholly-original recombination scores 1.0 novelty; an exact
+   * trained sentence scores 0.0. Threshold 0.5 separates novel from
+   * partial.
+   *
+   * @param {string} sentence
+   * @returns {{kind:string,novelty:number}|null}
+   */
+  classifyCompositionalEmission(sentence) {
+    if (!this._trainedSentencesNormalized || !this._compositionalCounters) return null;
+    if (typeof sentence !== "string" || sentence.length === 0) return null;
+    const c = this._compositionalCounters;
+    const norm = sentence.toLowerCase().replace(/[.!?]+$/, "").trim();
+    if (norm.length === 0) return null;
+    c.totalClassified++;
+    let kind;
+    let novelty;
+    if (this._trainedSentencesNormalized.has(norm)) {
+      kind = "verbatim";
+      novelty = 0;
+      c.verbatimCount++;
+    } else {
+      const words = norm.split(/\s+/).filter((w) => w.length > 0);
+      const transitionCount = Math.max(1, words.length - 1);
+      let novelTransitions = 0;
+      for (let i = 0; i < words.length - 1; i++) {
+        const key = `${words[i]}|${words[i + 1]}`;
+        if (!this._trainedTransitions.has(key)) novelTransitions++;
+      }
+      novelty = novelTransitions / transitionCount;
+      kind = novelty > 0.5 ? "novel" : "partial";
+      if (kind === "novel") {
+        c.novelCount++;
+        if (c.firstNovelTs === null) c.firstNovelTs = Date.now();
+        if (novelty > c.maxNovelty) {
+          c.maxNovelty = novelty;
+          c.maxNoveltySentence = sentence;
+        }
+      } else {
+        c.partialCount++;
+      }
+    }
+    c.recentEmissions.push({ sentence, kind, novelty: +novelty.toFixed(3), ts: Date.now() });
+    if (c.recentEmissions.length > 100) c.recentEmissions.shift();
+    return { kind, novelty };
+  }
+  /**
+   * Read aggregated compositional-emergence stats for dashboard / state
+   * broadcast. Returns null when telemetry hasn't been initialized.
+   *
+   * @returns {object|null}
+   */
+  getCompositionalStats() {
+    const c = this._compositionalCounters;
+    if (!c) return null;
+    const total = c.totalClassified;
+    return {
+      totalClassified: total,
+      verbatimCount: c.verbatimCount,
+      novelCount: c.novelCount,
+      partialCount: c.partialCount,
+      verbatimRate: total > 0 ? c.verbatimCount / total : 0,
+      novelRate: total > 0 ? c.novelCount / total : 0,
+      partialRate: total > 0 ? c.partialCount / total : 0,
+      firstNovelMsAfterBoot: c.firstNovelTs !== null ? Math.max(0, c.firstNovelTs - c.bootTs) : null,
+      maxNovelty: +c.maxNovelty.toFixed(3),
+      maxNoveltySentence: c.maxNoveltySentence,
+      recentTail: c.recentEmissions.slice(-10)
+    };
+  }
+  /**
    * 114.19fk.1 — RIPPED OUT template prescription system. composeSentence
    * is now a pure equational emission loop — no template, no slot
    * sequence prescription, no article rule, no terminator-punct mapping,
@@ -7685,7 +7802,14 @@ var NeuronCluster = class {
       } catch {
       }
     }
-    return { sentence, words, fillCount: words.length, coherenceCosine, coherenceTarget: coherenceTargetLabel };
+    let compositional = null;
+    if (typeof this.classifyCompositionalEmission === "function") {
+      try {
+        compositional = this.classifyCompositionalEmission(sentence);
+      } catch {
+      }
+    }
+    return { sentence, words, fillCount: words.length, coherenceCosine, coherenceTarget: coherenceTargetLabel, compositional };
   }
   async generateSentenceAwait(intentSeed = null, opts = {}) {
     if (!this.regions || !this.regions.motor || !this.regions.letter) return "";
@@ -19293,6 +19417,126 @@ var K_MIXIN = {
       // goth-tilt: night is her time
     ], { reps: 15 }));
   },
+  /**
+   * Number-grammar integration. Bridges Math-K (digit + magnitude) with
+   * ELA-K (noun + grammar) via direct number↔noun pair Hebbian + quantifier
+   * sentence transitions. The complementary quantifier sentences live in
+   * K_CONCRETE_SENTENCES (curriculum.js module export) and get auto-trained
+   * by `_teachConcreteSentences`. This method adds the FOCUSED number→noun
+   * pair channel so the brain has a dedicated basin for "this NUMBER goes
+   * with this NOUN" beyond the sentence-level word-transition learning.
+   *
+   * relationTagId=28 = number-grammar channel (new — first available after
+   * the K-LIFE 15-27 range).
+   *
+   * Prerequisite: number-words (one through ten) + nouns (cat/dog/ball/
+   * etc.) are already vocab-trained via K-VOCAB-UPFRONT-MULTIDEF SEED at
+   * the top of curriculum. Past-notes rule: "words must be learned BEFORE
+   * bindings fire" — these words ARE in the K_VOCABULARY 2247-word list.
+   *
+   * @returns {Promise<{taught:number}>}
+   */
+  async _teachNumberGrammar() {
+    if (typeof this._teachAssociationPairs !== "function") {
+      throw new Error("_teachNumberGrammar: _teachAssociationPairs missing on Curriculum \u2014 class wiring bug");
+    }
+    const NUMBER_NOUNS = [
+      // ── singular forms with "one" ──
+      ["one", "cat"],
+      ["one", "dog"],
+      ["one", "ball"],
+      ["one", "book"],
+      ["one", "bird"],
+      ["one", "fish"],
+      ["one", "tree"],
+      ["one", "car"],
+      ["one", "star"],
+      ["one", "leaf"],
+      ["one", "apple"],
+      ["one", "cookie"],
+      // ── plural counts 2-5 (most common in K-grade speech) ──
+      ["two", "cats"],
+      ["two", "dogs"],
+      ["two", "balls"],
+      ["two", "books"],
+      ["two", "birds"],
+      ["two", "fish"],
+      ["two", "hands"],
+      ["two", "eyes"],
+      ["two", "feet"],
+      ["two", "cars"],
+      ["two", "apples"],
+      ["two", "cookies"],
+      ["three", "cats"],
+      ["three", "dogs"],
+      ["three", "balls"],
+      ["three", "books"],
+      ["three", "birds"],
+      ["three", "trees"],
+      ["three", "stars"],
+      ["three", "cars"],
+      ["three", "apples"],
+      ["three", "cookies"],
+      ["three", "leaves"],
+      ["four", "cats"],
+      ["four", "dogs"],
+      ["four", "birds"],
+      ["four", "cars"],
+      ["four", "apples"],
+      ["four", "cookies"],
+      ["five", "cats"],
+      ["five", "fish"],
+      ["five", "stars"],
+      ["five", "cookies"],
+      // ── higher counts 6-10 (less frequent but in K range) ──
+      ["six", "leaves"],
+      ["six", "stars"],
+      ["six", "cookies"],
+      ["seven", "days"],
+      ["seven", "stars"],
+      ["eight", "legs"],
+      ["eight", "arms"],
+      ["nine", "lives"],
+      ["nine", "stars"],
+      ["ten", "fingers"],
+      ["ten", "toes"],
+      ["ten", "cookies"],
+      // ── number↔number neighbour bindings (sequence) ──
+      ["one", "two"],
+      ["two", "three"],
+      ["three", "four"],
+      ["four", "five"],
+      ["five", "six"],
+      ["six", "seven"],
+      ["seven", "eight"],
+      ["eight", "nine"],
+      ["nine", "ten"],
+      // ── quantifier-frame anchor words ──
+      ["have", "one"],
+      ["have", "two"],
+      ["have", "three"],
+      ["see", "one"],
+      ["see", "two"],
+      ["see", "three"],
+      ["are", "two"],
+      ["are", "three"],
+      ["are", "four"],
+      ["are", "five"],
+      ["is", "one"],
+      ["count", "one"],
+      ["count", "ten"],
+      ["many", "cats"],
+      ["many", "dogs"],
+      ["many", "apples"]
+    ];
+    const r = await this._teachAssociationPairs(NUMBER_NOUNS, {
+      reps: 80,
+      label: "K-NUMBER-GRAMMAR",
+      relationTagId: 28
+    });
+    this._hb(`[Curriculum] _teachNumberGrammar: ${NUMBER_NOUNS.length} number-noun + count-frame pairs \xD7 80 reps via relationTagId=28 (number-grammar channel). Bridges Math-K digits with ELA-K nouns + grammar. Quantifier-sentence transitions land via the K_CONCRETE_SENTENCES extension trained by _teachConcreteSentences.`);
+    return { taught: NUMBER_NOUNS.length };
+  },
   async runLifeK(ctx) {
     await this._teachKLifeVocabulary();
     await this._teachKLifeFirstWords();
@@ -20220,6 +20464,9 @@ var K_MIXIN = {
       }
       if (typeof this._teachSentenceStructure === "function") {
         await this._phasedTeach("MATH-K-STRUCTURE-REFRESH", () => this._teachSentenceStructure(ctx));
+      }
+      if (typeof this._teachNumberGrammar === "function") {
+        await this._phasedTeach("MATH-K-NUMBER-GRAMMAR", () => this._teachNumberGrammar());
       }
       this._mathKTransformsDone = true;
     }
@@ -26573,6 +26820,241 @@ var GRADE_ORDER = [
 ];
 var ALPHABET_ORDER = "abcdefghijklmnopqrstuvwxyz";
 var DIGIT_ORDER = "0123456789";
+var K_CONCRETE_SENTENCES = [
+  // ── Declarative SVO (subject-verb-object) ──
+  "the cat runs",
+  "the dog runs",
+  "the bird flies",
+  "the fish swims",
+  "i see a cat",
+  "i see a dog",
+  "i see a bird",
+  "i see the sun",
+  "i see the moon",
+  "i like cats",
+  "i like dogs",
+  "i love mom",
+  "i love dad",
+  "i have a ball",
+  "i have a book",
+  "i want food",
+  "i want milk",
+  "i want water",
+  "i need help",
+  "mom reads a book",
+  "dad sings a song",
+  "the boy runs fast",
+  "the girl jumps high",
+  "the baby cries loud",
+  "the cat eats fish",
+  "the dog eats food",
+  "the bird sings sweet",
+  "cats eat fish",
+  "dogs eat food",
+  "birds fly high",
+  "fish swim deep",
+  "boys play games",
+  "girls sing songs",
+  "we play together",
+  "they run home",
+  "he reads a book",
+  "she sings a song",
+  "it jumps over",
+  "i run fast",
+  "i jump high",
+  "you walk slow",
+  // ── Declarative copula (subject + is/are + complement) ──
+  "the cat is big",
+  "the dog is small",
+  "the ball is red",
+  "the book is blue",
+  "the apple is red",
+  "the sky is blue",
+  "the sun is hot",
+  "the moon is cold",
+  "the tree is tall",
+  "the house is small",
+  "the chair is brown",
+  "the table is wood",
+  "mom is happy",
+  "dad is tall",
+  "the boy is happy",
+  "the girl is sad",
+  "the baby is small",
+  "the cat is happy",
+  "the dog is fast",
+  "the bird is small",
+  "the fish is wet",
+  "i am happy",
+  "i am hungry",
+  "i am tired",
+  "you are nice",
+  "you are kind",
+  "he is tall",
+  "she is short",
+  "it is hot",
+  "we are happy",
+  "they are sad",
+  "cats are cute",
+  "dogs are loud",
+  "birds are pretty",
+  "fish are quiet",
+  "boys are loud",
+  "girls are smart",
+  // ── Questions (WH-word leading) ──
+  "what is this",
+  "what is that",
+  "what is it",
+  "what is the cat",
+  "what is your name",
+  "what do you want",
+  "where is the cat",
+  "where is the dog",
+  "where is mom",
+  "where is dad",
+  "where is the ball",
+  "where is the book",
+  "who is this",
+  "who is that",
+  "who is the boy",
+  "who is the girl",
+  "who is your mom",
+  "who is your dad",
+  "when is dinner",
+  "when is bedtime",
+  "when do we eat",
+  "why is the sky blue",
+  "why is the sun hot",
+  "why are you sad",
+  "how do you run",
+  "how do you jump",
+  "how do you read",
+  "how many cats",
+  "how many dogs",
+  "how big is it",
+  // ── Imperatives (verb-leading) ──
+  "go home",
+  "go play",
+  "go sleep",
+  "come here",
+  "come with me",
+  "look at me",
+  "look at this",
+  "look at the cat",
+  "give me the ball",
+  "give me food",
+  "give me water",
+  "show me",
+  "show me the book",
+  "tell me a story",
+  "read a book",
+  "sing a song",
+  "eat your food",
+  "drink your milk",
+  "play with me",
+  "run fast",
+  "jump high",
+  "sit down",
+  "stand up",
+  "wake up",
+  "be quiet",
+  "be nice",
+  "be careful",
+  "help me",
+  "help mom",
+  "help the baby",
+  // ── Exclamatives (emphatic) ──
+  "wow look",
+  "wow the cat",
+  "wow that is big",
+  "look the dog",
+  "look the bird",
+  "look the sun",
+  "so big",
+  "so small",
+  "so fast",
+  "so loud",
+  "so cute",
+  "what a cat",
+  "what a dog",
+  "what a day",
+  "how big",
+  "how fast",
+  "how nice",
+  "the cat is so big",
+  "the dog is so loud",
+  "the bird is so pretty",
+  // ── Negation patterns ──
+  "i do not see",
+  "i do not want",
+  "i can not run",
+  "it is not big",
+  "it is not red",
+  "no i am not",
+  // ── Conjunctions binding two clauses ──
+  "the cat and the dog",
+  "mom and dad",
+  "you and me",
+  "i run and jump",
+  "the cat runs but stops",
+  "eat your food or sleep",
+  "read or sing",
+  "play and run",
+  // ── Pronoun-noun-verb chains ──
+  "my cat is big",
+  "my dog runs fast",
+  "my mom is happy",
+  "my dad is tall",
+  "my ball is red",
+  "my book is blue",
+  "your cat is small",
+  "your dog is loud",
+  "your mom is nice",
+  "his ball is here",
+  "her book is there",
+  "our cat is cute",
+  "their dog is fast",
+  // ── Number-grammar quantifier sentences ──
+  // Bridges Math-K digits + count-magnitude with ELA-K nouns + grammar.
+  // K-grade kids count things constantly ("there are three cats", "i
+  // have two cookies"). These sentences carve the number→noun + count
+  // patterns into the word-transition channel so compose-time emission
+  // can produce quantifier-led sentences from trained weights.
+  "there is one cat",
+  "there are two cats",
+  "there are three cats",
+  "there is one dog",
+  "there are two dogs",
+  "there are three dogs",
+  "there is one ball",
+  "there are two balls",
+  "there are three balls",
+  "there are four birds",
+  "there are five fish",
+  "i have one ball",
+  "i have two cats",
+  "i have three dogs",
+  "i have one mom",
+  "i have one dad",
+  "i have two hands",
+  "she has one cat",
+  "he has two balls",
+  "we have three dogs",
+  "i see one cat",
+  "i see two birds",
+  "i see three trees",
+  "i see four cars",
+  "i see five stars",
+  "i see six leaves",
+  "count to ten",
+  "one two three",
+  "four five six",
+  "how many is two",
+  "how many is three",
+  "one cat is enough",
+  "two dogs are loud",
+  "three cats are nice"
+];
 var DIGIT_NAMES = [
   "zero",
   "one",
@@ -34551,201 +35033,13 @@ var Curriculum = class _Curriculum {
     }
     const reps = opts.reps ?? 30;
     this._hb(`[Curriculum] _teachConcreteSentences START \u2014 literal K-grade sentence corpus, word\u2192word Hebbian cascades (replaces orphan slot-tag template-transitions). reps=${reps}.`);
-    const sentences = [
-      // ── Declarative SVO (subject-verb-object) ──
-      "the cat runs",
-      "the dog runs",
-      "the bird flies",
-      "the fish swims",
-      "i see a cat",
-      "i see a dog",
-      "i see a bird",
-      "i see the sun",
-      "i see the moon",
-      "i like cats",
-      "i like dogs",
-      "i love mom",
-      "i love dad",
-      "i have a ball",
-      "i have a book",
-      "i want food",
-      "i want milk",
-      "i want water",
-      "i need help",
-      "mom reads a book",
-      "dad sings a song",
-      "the boy runs fast",
-      "the girl jumps high",
-      "the baby cries loud",
-      "the cat eats fish",
-      "the dog eats food",
-      "the bird sings sweet",
-      "cats eat fish",
-      "dogs eat food",
-      "birds fly high",
-      "fish swim deep",
-      "boys play games",
-      "girls sing songs",
-      "we play together",
-      "they run home",
-      "he reads a book",
-      "she sings a song",
-      "it jumps over",
-      "i run fast",
-      "i jump high",
-      "you walk slow",
-      // ── Declarative copula (subject + is/are + complement) ──
-      "the cat is big",
-      "the dog is small",
-      "the ball is red",
-      "the book is blue",
-      "the apple is red",
-      "the sky is blue",
-      "the sun is hot",
-      "the moon is cold",
-      "the tree is tall",
-      "the house is small",
-      "the chair is brown",
-      "the table is wood",
-      "mom is happy",
-      "dad is tall",
-      "the boy is happy",
-      "the girl is sad",
-      "the baby is small",
-      "the cat is happy",
-      "the dog is fast",
-      "the bird is small",
-      "the fish is wet",
-      "i am happy",
-      "i am hungry",
-      "i am tired",
-      "you are nice",
-      "you are kind",
-      "he is tall",
-      "she is short",
-      "it is hot",
-      "we are happy",
-      "they are sad",
-      "cats are cute",
-      "dogs are loud",
-      "birds are pretty",
-      "fish are quiet",
-      "boys are loud",
-      "girls are smart",
-      // ── Questions (WH-word leading) ──
-      "what is this",
-      "what is that",
-      "what is it",
-      "what is the cat",
-      "what is your name",
-      "what do you want",
-      "where is the cat",
-      "where is the dog",
-      "where is mom",
-      "where is dad",
-      "where is the ball",
-      "where is the book",
-      "who is this",
-      "who is that",
-      "who is the boy",
-      "who is the girl",
-      "who is your mom",
-      "who is your dad",
-      "when is dinner",
-      "when is bedtime",
-      "when do we eat",
-      "why is the sky blue",
-      "why is the sun hot",
-      "why are you sad",
-      "how do you run",
-      "how do you jump",
-      "how do you read",
-      "how many cats",
-      "how many dogs",
-      "how big is it",
-      // ── Imperatives (verb-leading) ──
-      "go home",
-      "go play",
-      "go sleep",
-      "come here",
-      "come with me",
-      "look at me",
-      "look at this",
-      "look at the cat",
-      "give me the ball",
-      "give me food",
-      "give me water",
-      "show me",
-      "show me the book",
-      "tell me a story",
-      "read a book",
-      "sing a song",
-      "eat your food",
-      "drink your milk",
-      "play with me",
-      "run fast",
-      "jump high",
-      "sit down",
-      "stand up",
-      "wake up",
-      "be quiet",
-      "be nice",
-      "be careful",
-      "help me",
-      "help mom",
-      "help the baby",
-      // ── Exclamatives (emphatic) ──
-      "wow look",
-      "wow the cat",
-      "wow that is big",
-      "look the dog",
-      "look the bird",
-      "look the sun",
-      "so big",
-      "so small",
-      "so fast",
-      "so loud",
-      "so cute",
-      "what a cat",
-      "what a dog",
-      "what a day",
-      "how big",
-      "how fast",
-      "how nice",
-      "the cat is so big",
-      "the dog is so loud",
-      "the bird is so pretty",
-      // ── Negation patterns ──
-      "i do not see",
-      "i do not want",
-      "i can not run",
-      "it is not big",
-      "it is not red",
-      "no i am not",
-      // ── Conjunctions binding two clauses ──
-      "the cat and the dog",
-      "mom and dad",
-      "you and me",
-      "i run and jump",
-      "the cat runs but stops",
-      "eat your food or sleep",
-      "read or sing",
-      "play and run",
-      // ── Pronoun-noun-verb chains ──
-      "my cat is big",
-      "my dog runs fast",
-      "my mom is happy",
-      "my dad is tall",
-      "my ball is red",
-      "my book is blue",
-      "your cat is small",
-      "your dog is loud",
-      "your mom is nice",
-      "his ball is here",
-      "her book is there",
-      "our cat is cute",
-      "their dog is fast"
-    ];
+    const sentences = K_CONCRETE_SENTENCES;
+    if (cluster && typeof cluster.initCompositionalTelemetry === "function") {
+      try {
+        cluster.initCompositionalTelemetry(sentences);
+      } catch {
+      }
+    }
     const pairs = [];
     const sentencePairs = /* @__PURE__ */ new Map();
     for (const s of sentences) {
@@ -34878,6 +35172,96 @@ var Curriculum = class _Curriculum {
       return `${p.label}("${p.seed}"):"${(r.sentence || "").slice(0, 40)}"${termTag} (${r.wordCount}w/${r.uniqueCount}u/r=${r.uniqueRatio.toFixed(2)}${cosTag})`;
     }).join(" \xB7 ")}`);
     return { passed, total, rate, perIntent, avgCosine, terminatorRate: total > 0 ? terminatorCount / total : 0 };
+  }
+  /**
+   * Analogical extension probe — measures whether the brain produces
+   * compositionally-extended emissions when seeded with PARTIAL prompts
+   * structurally similar to trained sentences. E.g., trained "the cat
+   * is big" → probe seed "the dog is" should yield a completion that
+   * stays in K-grade vocabulary domain + uses adjective-class words
+   * trained in copula contexts.
+   *
+   * Scoring path: each probe injects a 3-4 word partial prompt + lets
+   * composeSentence emit. The compositional-emergence telemetry classifies
+   * the result (verbatim / partial / novel). A PASS for this probe is
+   * "partial-match OR novel" — partial means the brain extended an
+   * existing pattern coherently, novel means it produced something not
+   * in trained corpus. Pure-verbatim repetition counts as a FAIL because
+   * it shows the brain echoing memorized strings instead of generalizing.
+   *
+   * Distinct from `_probeSentenceGeneration` which measures structural
+   * emission validity. This one measures GENERALIZATION — whether trained
+   * weights support analogical extension to novel-but-related inputs.
+   *
+   * @param {object} opts
+   * @returns {Promise<{passed:number,total:number,rate:number,perProbe:object}>}
+   */
+  async _probeAnalogicalExtension(opts = {}) {
+    const cluster = this.cluster;
+    if (!cluster || typeof cluster.composeSentence !== "function") {
+      return { passed: 0, total: 0, rate: 0, perProbe: {} };
+    }
+    const subject = opts.subject || "ela";
+    const analogyPrompts = [
+      { label: "svo-completion-1", seed: "the dog is" },
+      // copula extension (trained: 'the cat is big')
+      { label: "svo-completion-2", seed: "i see a" },
+      // SVO extension (trained: 'i see a cat')
+      { label: "svo-completion-3", seed: "my mom is" },
+      // possessive copula (trained: 'mom is happy')
+      { label: "wh-completion-1", seed: "what is the" },
+      // WH extension (trained: 'what is this')
+      { label: "wh-completion-2", seed: "where is my" },
+      // WH-possessive (trained: 'where is mom')
+      { label: "imperative-1", seed: "go play" },
+      // imperative chain (trained: 'go home')
+      { label: "imperative-2", seed: "show me the" },
+      // imperative-determiner (trained: 'show me the book')
+      { label: "count-completion-1", seed: "i have three" },
+      // P6.1 quantifier extension
+      { label: "count-completion-2", seed: "there are" },
+      // P6.1 quantifier-fronted
+      { label: "conjunction-1", seed: "the cat and" }
+      // conjunction extension (trained: 'the cat and the dog')
+    ];
+    const perProbe = {};
+    let passed = 0;
+    let verbatimCount = 0;
+    let partialCount = 0;
+    let novelCount = 0;
+    for (const probe of analogyPrompts) {
+      let composed = null;
+      try {
+        composed = await cluster.composeSentence(probe.seed, { subject });
+      } catch {
+        composed = null;
+      }
+      const words = composed && Array.isArray(composed.words) ? composed.words : [];
+      const sentence = composed ? composed.sentence || "" : "";
+      const compositional = composed && composed.compositional ? composed.compositional : null;
+      const kind = compositional ? compositional.kind : "no-emit";
+      const novelty = compositional ? compositional.novelty : 0;
+      const ext = words.length >= 3 && (kind === "partial" || kind === "novel");
+      perProbe[probe.label] = {
+        seed: probe.seed,
+        sentence,
+        wordCount: words.length,
+        kind,
+        novelty,
+        extension: ext
+      };
+      if (ext) passed++;
+      if (kind === "verbatim") verbatimCount++;
+      else if (kind === "partial") partialCount++;
+      else if (kind === "novel") novelCount++;
+    }
+    const total = analogyPrompts.length;
+    const rate = total > 0 ? passed / total : 0;
+    this._hb(`[Curriculum] _probeAnalogicalExtension[subject=${subject}] \u2014 ${passed}/${total} prompts produced compositional extension (rate=${(rate * 100).toFixed(0)}%) \xB7 breakdown: verbatim=${verbatimCount} partial=${partialCount} novel=${novelCount} no-emit=${total - verbatimCount - partialCount - novelCount}. Per-prompt: ${analogyPrompts.map((p) => {
+      const r = perProbe[p.label];
+      return `${p.label}("${p.seed}"):"${(r.sentence || "").slice(0, 36)}" [${r.kind} nov=${(r.novelty || 0).toFixed(2)}]`;
+    }).join(" \xB7 ")}`);
+    return { passed, total, rate, perProbe, verbatimCount, partialCount, novelCount };
   }
   /**
    *  — WH-question intent recognition.

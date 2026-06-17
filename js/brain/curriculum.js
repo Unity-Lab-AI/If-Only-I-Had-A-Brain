@@ -183,6 +183,106 @@ export const GRADE_ORDER = [
 export const ALPHABET_ORDER = 'abcdefghijklmnopqrstuvwxyz';
 export const DIGIT_ORDER = '0123456789';
 
+// ─── K-grade sentence corpus ───
+// Real English Unity needs to learn. Five intent forms. Words drawn
+// from K-VOCAB (already trained per K-VOCAB-UPFRONT-MULTIDEF SEED).
+// Each sentence yields (N-1) word→word transitions when fed through
+// `_teachConcreteSentences`. Mix biased toward Subject-Verb-Object +
+// Copula (the two most common K-grade constructions per Common Core
+// K.SL.6 + K.L.1.f).
+//
+// Module-level export so cluster-side compositional-emergence telemetry
+// can distinguish "verbatim trained sentence" from "novel recombination"
+// without re-listing the corpus, and so calibration probes can score
+// novelty against the same canonical source-of-truth.
+export const K_CONCRETE_SENTENCES = [
+  // ── Declarative SVO (subject-verb-object) ──
+  'the cat runs', 'the dog runs', 'the bird flies', 'the fish swims',
+  'i see a cat', 'i see a dog', 'i see a bird', 'i see the sun',
+  'i see the moon', 'i like cats', 'i like dogs', 'i love mom',
+  'i love dad', 'i have a ball', 'i have a book', 'i want food',
+  'i want milk', 'i want water', 'i need help', 'mom reads a book',
+  'dad sings a song', 'the boy runs fast', 'the girl jumps high',
+  'the baby cries loud', 'the cat eats fish', 'the dog eats food',
+  'the bird sings sweet', 'cats eat fish', 'dogs eat food',
+  'birds fly high', 'fish swim deep', 'boys play games',
+  'girls sing songs', 'we play together', 'they run home',
+  'he reads a book', 'she sings a song', 'it jumps over',
+  'i run fast', 'i jump high', 'you walk slow',
+  // ── Declarative copula (subject + is/are + complement) ──
+  'the cat is big', 'the dog is small', 'the ball is red',
+  'the book is blue', 'the apple is red', 'the sky is blue',
+  'the sun is hot', 'the moon is cold', 'the tree is tall',
+  'the house is small', 'the chair is brown', 'the table is wood',
+  'mom is happy', 'dad is tall', 'the boy is happy',
+  'the girl is sad', 'the baby is small', 'the cat is happy',
+  'the dog is fast', 'the bird is small', 'the fish is wet',
+  'i am happy', 'i am hungry', 'i am tired',
+  'you are nice', 'you are kind', 'he is tall', 'she is short',
+  'it is hot', 'we are happy', 'they are sad',
+  'cats are cute', 'dogs are loud', 'birds are pretty',
+  'fish are quiet', 'boys are loud', 'girls are smart',
+  // ── Questions (WH-word leading) ──
+  'what is this', 'what is that', 'what is it',
+  'what is the cat', 'what is your name', 'what do you want',
+  'where is the cat', 'where is the dog', 'where is mom',
+  'where is dad', 'where is the ball', 'where is the book',
+  'who is this', 'who is that', 'who is the boy',
+  'who is the girl', 'who is your mom', 'who is your dad',
+  'when is dinner', 'when is bedtime', 'when do we eat',
+  'why is the sky blue', 'why is the sun hot', 'why are you sad',
+  'how do you run', 'how do you jump', 'how do you read',
+  'how many cats', 'how many dogs', 'how big is it',
+  // ── Imperatives (verb-leading) ──
+  'go home', 'go play', 'go sleep', 'come here', 'come with me',
+  'look at me', 'look at this', 'look at the cat',
+  'give me the ball', 'give me food', 'give me water',
+  'show me', 'show me the book', 'tell me a story',
+  'read a book', 'sing a song', 'eat your food',
+  'drink your milk', 'play with me', 'run fast',
+  'jump high', 'sit down', 'stand up', 'wake up',
+  'be quiet', 'be nice', 'be careful',
+  'help me', 'help mom', 'help the baby',
+  // ── Exclamatives (emphatic) ──
+  'wow look', 'wow the cat', 'wow that is big',
+  'look the dog', 'look the bird', 'look the sun',
+  'so big', 'so small', 'so fast', 'so loud', 'so cute',
+  'what a cat', 'what a dog', 'what a day',
+  'how big', 'how fast', 'how nice',
+  'the cat is so big', 'the dog is so loud', 'the bird is so pretty',
+  // ── Negation patterns ──
+  'i do not see', 'i do not want', 'i can not run',
+  'it is not big', 'it is not red', 'no i am not',
+  // ── Conjunctions binding two clauses ──
+  'the cat and the dog', 'mom and dad', 'you and me',
+  'i run and jump', 'the cat runs but stops',
+  'eat your food or sleep', 'read or sing', 'play and run',
+  // ── Pronoun-noun-verb chains ──
+  'my cat is big', 'my dog runs fast', 'my mom is happy',
+  'my dad is tall', 'my ball is red', 'my book is blue',
+  'your cat is small', 'your dog is loud', 'your mom is nice',
+  'his ball is here', 'her book is there', 'our cat is cute',
+  'their dog is fast',
+  // ── Number-grammar quantifier sentences ──
+  // Bridges Math-K digits + count-magnitude with ELA-K nouns + grammar.
+  // K-grade kids count things constantly ("there are three cats", "i
+  // have two cookies"). These sentences carve the number→noun + count
+  // patterns into the word-transition channel so compose-time emission
+  // can produce quantifier-led sentences from trained weights.
+  'there is one cat', 'there are two cats', 'there are three cats',
+  'there is one dog', 'there are two dogs', 'there are three dogs',
+  'there is one ball', 'there are two balls', 'there are three balls',
+  'there are four birds', 'there are five fish',
+  'i have one ball', 'i have two cats', 'i have three dogs',
+  'i have one mom', 'i have one dad', 'i have two hands',
+  'she has one cat', 'he has two balls', 'we have three dogs',
+  'i see one cat', 'i see two birds', 'i see three trees',
+  'i see four cars', 'i see five stars', 'i see six leaves',
+  'count to ten', 'one two three', 'four five six',
+  'how many is two', 'how many is three',
+  'one cat is enough', 'two dogs are loud', 'three cats are nice',
+];
+
 // Conventional English letter names. "A" is pronounced "ay", "B" is
 // "bee", etc. This is the convention Unity is being taught — same
 // data every K student sees written above each letter on the chart.
@@ -10225,81 +10325,22 @@ export class Curriculum {
     const reps = opts.reps ?? 30;
     this._hb(`[Curriculum] _teachConcreteSentences START — literal K-grade sentence corpus, word→word Hebbian cascades (replaces orphan slot-tag template-transitions). reps=${reps}.`);
 
-    // ─── K-grade sentence corpus ───
-    // Real English Unity needs to learn. Five intent forms. Words drawn
-    // from K-VOCAB (already trained per K-VOCAB-UPFRONT-MULTIDEF SEED).
-    // Each sentence yields (N-1) word→word transitions. Mix biased
-    // toward Subject-Verb-Object + Copula (the two most common K-grade
-    // constructions per Common Core K.SL.6 + K.L.1.f).
-    const sentences = [
-      // ── Declarative SVO (subject-verb-object) ──
-      'the cat runs', 'the dog runs', 'the bird flies', 'the fish swims',
-      'i see a cat', 'i see a dog', 'i see a bird', 'i see the sun',
-      'i see the moon', 'i like cats', 'i like dogs', 'i love mom',
-      'i love dad', 'i have a ball', 'i have a book', 'i want food',
-      'i want milk', 'i want water', 'i need help', 'mom reads a book',
-      'dad sings a song', 'the boy runs fast', 'the girl jumps high',
-      'the baby cries loud', 'the cat eats fish', 'the dog eats food',
-      'the bird sings sweet', 'cats eat fish', 'dogs eat food',
-      'birds fly high', 'fish swim deep', 'boys play games',
-      'girls sing songs', 'we play together', 'they run home',
-      'he reads a book', 'she sings a song', 'it jumps over',
-      'i run fast', 'i jump high', 'you walk slow',
-      // ── Declarative copula (subject + is/are + complement) ──
-      'the cat is big', 'the dog is small', 'the ball is red',
-      'the book is blue', 'the apple is red', 'the sky is blue',
-      'the sun is hot', 'the moon is cold', 'the tree is tall',
-      'the house is small', 'the chair is brown', 'the table is wood',
-      'mom is happy', 'dad is tall', 'the boy is happy',
-      'the girl is sad', 'the baby is small', 'the cat is happy',
-      'the dog is fast', 'the bird is small', 'the fish is wet',
-      'i am happy', 'i am hungry', 'i am tired',
-      'you are nice', 'you are kind', 'he is tall', 'she is short',
-      'it is hot', 'we are happy', 'they are sad',
-      'cats are cute', 'dogs are loud', 'birds are pretty',
-      'fish are quiet', 'boys are loud', 'girls are smart',
-      // ── Questions (WH-word leading) ──
-      'what is this', 'what is that', 'what is it',
-      'what is the cat', 'what is your name', 'what do you want',
-      'where is the cat', 'where is the dog', 'where is mom',
-      'where is dad', 'where is the ball', 'where is the book',
-      'who is this', 'who is that', 'who is the boy',
-      'who is the girl', 'who is your mom', 'who is your dad',
-      'when is dinner', 'when is bedtime', 'when do we eat',
-      'why is the sky blue', 'why is the sun hot', 'why are you sad',
-      'how do you run', 'how do you jump', 'how do you read',
-      'how many cats', 'how many dogs', 'how big is it',
-      // ── Imperatives (verb-leading) ──
-      'go home', 'go play', 'go sleep', 'come here', 'come with me',
-      'look at me', 'look at this', 'look at the cat',
-      'give me the ball', 'give me food', 'give me water',
-      'show me', 'show me the book', 'tell me a story',
-      'read a book', 'sing a song', 'eat your food',
-      'drink your milk', 'play with me', 'run fast',
-      'jump high', 'sit down', 'stand up', 'wake up',
-      'be quiet', 'be nice', 'be careful',
-      'help me', 'help mom', 'help the baby',
-      // ── Exclamatives (emphatic) ──
-      'wow look', 'wow the cat', 'wow that is big',
-      'look the dog', 'look the bird', 'look the sun',
-      'so big', 'so small', 'so fast', 'so loud', 'so cute',
-      'what a cat', 'what a dog', 'what a day',
-      'how big', 'how fast', 'how nice',
-      'the cat is so big', 'the dog is so loud', 'the bird is so pretty',
-      // ── Negation patterns ──
-      'i do not see', 'i do not want', 'i can not run',
-      'it is not big', 'it is not red', 'no i am not',
-      // ── Conjunctions binding two clauses ──
-      'the cat and the dog', 'mom and dad', 'you and me',
-      'i run and jump', 'the cat runs but stops',
-      'eat your food or sleep', 'read or sing', 'play and run',
-      // ── Pronoun-noun-verb chains ──
-      'my cat is big', 'my dog runs fast', 'my mom is happy',
-      'my dad is tall', 'my ball is red', 'my book is blue',
-      'your cat is small', 'your dog is loud', 'your mom is nice',
-      'his ball is here', 'her book is there', 'our cat is cute',
-      'their dog is fast',
-    ];
+    // Module-level corpus reference so other code (cluster-side
+    // compositional-emergence telemetry, calibration probes) can
+    // distinguish "verbatim trained sentence" from "novel recombination"
+    // without re-listing the corpus. K_CONCRETE_SENTENCES is defined
+    // near the bottom of this module so the hoist doesn't fight
+    // declaration order with the class body.
+    const sentences = K_CONCRETE_SENTENCES;
+
+    // Install compositional-emergence telemetry on the cluster now that
+    // the trained corpus is locked in. Subsequent composeSentence
+    // emissions get classified verbatim / novel / partial against this
+    // set. Safe to call multiple times (last call wins, counters keep
+    // aggregating across re-installs).
+    if (cluster && typeof cluster.initCompositionalTelemetry === 'function') {
+      try { cluster.initCompositionalTelemetry(sentences); } catch { /* nf */ }
+    }
 
     // ─── Word→word transition extraction ───
     // Each sentence yields (N-1) word-pair transitions. Pool all into
@@ -10496,6 +10537,92 @@ export class Curriculum {
       return `${p.label}("${p.seed}"):"${(r.sentence || '').slice(0, 40)}"${termTag} (${r.wordCount}w/${r.uniqueCount}u/r=${r.uniqueRatio.toFixed(2)}${cosTag})`;
     }).join(' · ')}`);
     return { passed, total, rate, perIntent, avgCosine, terminatorRate: total > 0 ? terminatorCount / total : 0 };
+  }
+
+  /**
+   * Analogical extension probe — measures whether the brain produces
+   * compositionally-extended emissions when seeded with PARTIAL prompts
+   * structurally similar to trained sentences. E.g., trained "the cat
+   * is big" → probe seed "the dog is" should yield a completion that
+   * stays in K-grade vocabulary domain + uses adjective-class words
+   * trained in copula contexts.
+   *
+   * Scoring path: each probe injects a 3-4 word partial prompt + lets
+   * composeSentence emit. The compositional-emergence telemetry classifies
+   * the result (verbatim / partial / novel). A PASS for this probe is
+   * "partial-match OR novel" — partial means the brain extended an
+   * existing pattern coherently, novel means it produced something not
+   * in trained corpus. Pure-verbatim repetition counts as a FAIL because
+   * it shows the brain echoing memorized strings instead of generalizing.
+   *
+   * Distinct from `_probeSentenceGeneration` which measures structural
+   * emission validity. This one measures GENERALIZATION — whether trained
+   * weights support analogical extension to novel-but-related inputs.
+   *
+   * @param {object} opts
+   * @returns {Promise<{passed:number,total:number,rate:number,perProbe:object}>}
+   */
+  async _probeAnalogicalExtension(opts = {}) {
+    const cluster = this.cluster;
+    if (!cluster || typeof cluster.composeSentence !== 'function') {
+      return { passed: 0, total: 0, rate: 0, perProbe: {} };
+    }
+    const subject = opts.subject || 'ela';
+    // Partial-prompt analogies. Each prompt is a 3-4 word fragment drawn
+    // from a trained sentence pattern, with the OBJECT/PREDICATE slot
+    // left for the brain to fill. Compositional emergence is the goal:
+    // the brain should extend the pattern, not memorize-reproduce.
+    const analogyPrompts = [
+      { label: 'svo-completion-1',  seed: 'the dog is' },        // copula extension (trained: 'the cat is big')
+      { label: 'svo-completion-2',  seed: 'i see a' },           // SVO extension (trained: 'i see a cat')
+      { label: 'svo-completion-3',  seed: 'my mom is' },         // possessive copula (trained: 'mom is happy')
+      { label: 'wh-completion-1',   seed: 'what is the' },       // WH extension (trained: 'what is this')
+      { label: 'wh-completion-2',   seed: 'where is my' },       // WH-possessive (trained: 'where is mom')
+      { label: 'imperative-1',      seed: 'go play' },           // imperative chain (trained: 'go home')
+      { label: 'imperative-2',      seed: 'show me the' },       // imperative-determiner (trained: 'show me the book')
+      { label: 'count-completion-1', seed: 'i have three' },     // P6.1 quantifier extension
+      { label: 'count-completion-2', seed: 'there are' },        // P6.1 quantifier-fronted
+      { label: 'conjunction-1',     seed: 'the cat and' },       // conjunction extension (trained: 'the cat and the dog')
+    ];
+    const perProbe = {};
+    let passed = 0;
+    let verbatimCount = 0;
+    let partialCount = 0;
+    let novelCount = 0;
+    for (const probe of analogyPrompts) {
+      let composed = null;
+      try {
+        composed = await cluster.composeSentence(probe.seed, { subject });
+      } catch { composed = null; }
+      const words = composed && Array.isArray(composed.words) ? composed.words : [];
+      const sentence = composed ? (composed.sentence || '') : '';
+      const compositional = composed && composed.compositional ? composed.compositional : null;
+      const kind = compositional ? compositional.kind : 'no-emit';
+      const novelty = compositional ? compositional.novelty : 0;
+      // PASS = brain produced at least 3 words AND classification is
+      // 'partial' or 'novel'. Pure-verbatim memorized echoing fails this
+      // probe (showed up as 'verbatim'); silent fails too ('no-emit').
+      const ext = words.length >= 3 && (kind === 'partial' || kind === 'novel');
+      perProbe[probe.label] = {
+        seed: probe.seed,
+        sentence,
+        wordCount: words.length,
+        kind,
+        novelty,
+        extension: ext,
+      };
+      if (ext) passed++;
+      if (kind === 'verbatim') verbatimCount++;
+      else if (kind === 'partial') partialCount++;
+      else if (kind === 'novel') novelCount++;
+    }
+    const total = analogyPrompts.length;
+    const rate = total > 0 ? passed / total : 0;
+    this._hb(`[Curriculum] _probeAnalogicalExtension[subject=${subject}] — ${passed}/${total} prompts produced compositional extension (rate=${(rate * 100).toFixed(0)}%) · breakdown: verbatim=${verbatimCount} partial=${partialCount} novel=${novelCount} no-emit=${total - verbatimCount - partialCount - novelCount}. Per-prompt: ${analogyPrompts.map(p => {
+      const r = perProbe[p.label];
+      return `${p.label}("${p.seed}"):"${(r.sentence || '').slice(0, 36)}" [${r.kind} nov=${(r.novelty || 0).toFixed(2)}]`;
+    }).join(' · ')}`);
+    return { passed, total, rate, perProbe, verbatimCount, partialCount, novelCount };
   }
 
   /**

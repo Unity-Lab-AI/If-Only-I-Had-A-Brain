@@ -986,6 +986,77 @@ export const K_MIXIN = {
     ], { reps: 15 }));  // High reps — these are gate-critical answers
   },
 
+  /**
+   * Number-grammar integration. Bridges Math-K (digit + magnitude) with
+   * ELA-K (noun + grammar) via direct number↔noun pair Hebbian + quantifier
+   * sentence transitions. The complementary quantifier sentences live in
+   * K_CONCRETE_SENTENCES (curriculum.js module export) and get auto-trained
+   * by `_teachConcreteSentences`. This method adds the FOCUSED number→noun
+   * pair channel so the brain has a dedicated basin for "this NUMBER goes
+   * with this NOUN" beyond the sentence-level word-transition learning.
+   *
+   * relationTagId=28 = number-grammar channel (new — first available after
+   * the K-LIFE 15-27 range).
+   *
+   * Prerequisite: number-words (one through ten) + nouns (cat/dog/ball/
+   * etc.) are already vocab-trained via K-VOCAB-UPFRONT-MULTIDEF SEED at
+   * the top of curriculum. Past-notes rule: "words must be learned BEFORE
+   * bindings fire" — these words ARE in the K_VOCABULARY 2247-word list.
+   *
+   * @returns {Promise<{taught:number}>}
+   */
+  async _teachNumberGrammar() {
+    if (typeof this._teachAssociationPairs !== 'function') {
+      throw new Error('_teachNumberGrammar: _teachAssociationPairs missing on Curriculum — class wiring bug');
+    }
+    // Number-word → noun pairs. Both directions implicit via symmetric
+    // Hebbian in _teachAssociationPairs. Covers digits 1-10 against the
+    // most common K-grade countable nouns. The bindings carve a basin
+    // where "three" + "cat" cluster together in sem state so at compose
+    // time, emission of "three" biases follow-up word selection toward
+    // count-nouns.
+    const NUMBER_NOUNS = [
+      // ── singular forms with "one" ──
+      ['one', 'cat'], ['one', 'dog'], ['one', 'ball'], ['one', 'book'],
+      ['one', 'bird'], ['one', 'fish'], ['one', 'tree'], ['one', 'car'],
+      ['one', 'star'], ['one', 'leaf'], ['one', 'apple'], ['one', 'cookie'],
+      // ── plural counts 2-5 (most common in K-grade speech) ──
+      ['two', 'cats'], ['two', 'dogs'], ['two', 'balls'], ['two', 'books'],
+      ['two', 'birds'], ['two', 'fish'], ['two', 'hands'], ['two', 'eyes'],
+      ['two', 'feet'], ['two', 'cars'], ['two', 'apples'], ['two', 'cookies'],
+      ['three', 'cats'], ['three', 'dogs'], ['three', 'balls'], ['three', 'books'],
+      ['three', 'birds'], ['three', 'trees'], ['three', 'stars'], ['three', 'cars'],
+      ['three', 'apples'], ['three', 'cookies'], ['three', 'leaves'],
+      ['four', 'cats'], ['four', 'dogs'], ['four', 'birds'], ['four', 'cars'],
+      ['four', 'apples'], ['four', 'cookies'],
+      ['five', 'cats'], ['five', 'fish'], ['five', 'stars'], ['five', 'cookies'],
+      // ── higher counts 6-10 (less frequent but in K range) ──
+      ['six', 'leaves'], ['six', 'stars'], ['six', 'cookies'],
+      ['seven', 'days'], ['seven', 'stars'],
+      ['eight', 'legs'], ['eight', 'arms'],
+      ['nine', 'lives'], ['nine', 'stars'],
+      ['ten', 'fingers'], ['ten', 'toes'], ['ten', 'cookies'],
+      // ── number↔number neighbour bindings (sequence) ──
+      ['one', 'two'], ['two', 'three'], ['three', 'four'], ['four', 'five'],
+      ['five', 'six'], ['six', 'seven'], ['seven', 'eight'],
+      ['eight', 'nine'], ['nine', 'ten'],
+      // ── quantifier-frame anchor words ──
+      ['have', 'one'], ['have', 'two'], ['have', 'three'],
+      ['see', 'one'], ['see', 'two'], ['see', 'three'],
+      ['are', 'two'], ['are', 'three'], ['are', 'four'], ['are', 'five'],
+      ['is', 'one'],
+      ['count', 'one'], ['count', 'ten'],
+      ['many', 'cats'], ['many', 'dogs'], ['many', 'apples'],
+    ];
+    const r = await this._teachAssociationPairs(NUMBER_NOUNS, {
+      reps: 80,
+      label: 'K-NUMBER-GRAMMAR',
+      relationTagId: 28,
+    });
+    this._hb(`[Curriculum] _teachNumberGrammar: ${NUMBER_NOUNS.length} number-noun + count-frame pairs × 80 reps via relationTagId=28 (number-grammar channel). Bridges Math-K digits with ELA-K nouns + grammar. Quantifier-sentence transitions land via the K_CONCRETE_SENTENCES extension trained by _teachConcreteSentences.`);
+    return { taught: NUMBER_NOUNS.length };
+  },
+
   async runLifeK(ctx) {
     // ── A.K-LIFE-VOCAB — Vocabulary pre-step (FIRES FIRST) ──
     // Defines K-LIFE-specific new vocab BEFORE any K-LIFE binding uses
@@ -2239,6 +2310,16 @@ export const K_MIXIN = {
       // STRUCTURE-REFRESH for full rationale).
       if (typeof this._teachSentenceStructure === 'function') {
         await this._phasedTeach('MATH-K-STRUCTURE-REFRESH', () => this._teachSentenceStructure(ctx));
+      }
+
+      // Number-grammar bridge — direct number↔noun pair bindings + count-
+      // frame anchors via relationTagId=28. Fires AFTER structure refresh
+      // so the slot/agreement/article weights are already in place when
+      // the number-noun pairs land. Quantifier-sentence transitions live
+      // in K_CONCRETE_SENTENCES and are auto-trained by
+      // _teachConcreteSentences inside _teachSentenceStructure above.
+      if (typeof this._teachNumberGrammar === 'function') {
+        await this._phasedTeach('MATH-K-NUMBER-GRAMMAR', () => this._teachNumberGrammar());
       }
 
       this._mathKTransformsDone = true;

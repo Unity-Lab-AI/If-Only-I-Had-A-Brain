@@ -3696,6 +3696,128 @@ export class NeuronCluster {
   }
 
   /**
+   * Compositional emergence telemetry — install the trained-sentence
+   * corpus + derived word-transition set so subsequent emissions can be
+   * classified as verbatim / novel-recombination / partial-match.
+   * Called from curriculum side (`_teachConcreteSentences`) once the
+   * corpus is locked in. Safe to call multiple times — last call wins
+   * and counters are NOT reset (so trained-corpus updates between
+   * sessions still aggregate against a coherent denominator).
+   *
+   * @param {string[]} corpus — trained K-grade sentences
+   */
+  initCompositionalTelemetry(corpus) {
+    if (!Array.isArray(corpus) || corpus.length === 0) return;
+    if (!this._compositionalCounters) {
+      this._compositionalCounters = {
+        totalClassified: 0,
+        verbatimCount: 0,
+        novelCount: 0,
+        partialCount: 0,
+        firstNovelTs: null,
+        maxNovelty: 0,
+        maxNoveltySentence: '',
+        bootTs: Date.now(),
+        recentEmissions: [],
+      };
+    }
+    this._trainedSentencesNormalized = new Set();
+    this._trainedTransitions = new Set();
+    for (const s of corpus) {
+      if (typeof s !== 'string') continue;
+      const norm = s.toLowerCase().trim();
+      if (norm.length === 0) continue;
+      this._trainedSentencesNormalized.add(norm);
+      const words = norm.split(/\s+/).filter(w => w.length > 0);
+      for (let i = 0; i < words.length - 1; i++) {
+        this._trainedTransitions.add(`${words[i]}|${words[i + 1]}`);
+      }
+    }
+  }
+
+  /**
+   * Classify a composed sentence as verbatim / novel / partial. Updates
+   * counters + appends to recent-emissions ring (cap 100). Returns the
+   * classification result. No-op when telemetry hasn't been initialized
+   * (returns null) — caller can ignore the missing-init case since
+   * `_teachConcreteSentences` initializes during K curriculum.
+   *
+   * Novelty metric: fraction of word-transition pairs (n-1 per
+   * n-word sentence) that are NOT present in the trained-transitions
+   * set. A wholly-original recombination scores 1.0 novelty; an exact
+   * trained sentence scores 0.0. Threshold 0.5 separates novel from
+   * partial.
+   *
+   * @param {string} sentence
+   * @returns {{kind:string,novelty:number}|null}
+   */
+  classifyCompositionalEmission(sentence) {
+    if (!this._trainedSentencesNormalized || !this._compositionalCounters) return null;
+    if (typeof sentence !== 'string' || sentence.length === 0) return null;
+    const c = this._compositionalCounters;
+    const norm = sentence.toLowerCase().replace(/[.!?]+$/, '').trim();
+    if (norm.length === 0) return null;
+    c.totalClassified++;
+    let kind;
+    let novelty;
+    if (this._trainedSentencesNormalized.has(norm)) {
+      kind = 'verbatim';
+      novelty = 0;
+      c.verbatimCount++;
+    } else {
+      const words = norm.split(/\s+/).filter(w => w.length > 0);
+      const transitionCount = Math.max(1, words.length - 1);
+      let novelTransitions = 0;
+      for (let i = 0; i < words.length - 1; i++) {
+        const key = `${words[i]}|${words[i + 1]}`;
+        if (!this._trainedTransitions.has(key)) novelTransitions++;
+      }
+      novelty = novelTransitions / transitionCount;
+      kind = novelty > 0.5 ? 'novel' : 'partial';
+      if (kind === 'novel') {
+        c.novelCount++;
+        if (c.firstNovelTs === null) c.firstNovelTs = Date.now();
+        if (novelty > c.maxNovelty) {
+          c.maxNovelty = novelty;
+          c.maxNoveltySentence = sentence;
+        }
+      } else {
+        c.partialCount++;
+      }
+    }
+    c.recentEmissions.push({ sentence, kind, novelty: +novelty.toFixed(3), ts: Date.now() });
+    if (c.recentEmissions.length > 100) c.recentEmissions.shift();
+    return { kind, novelty };
+  }
+
+  /**
+   * Read aggregated compositional-emergence stats for dashboard / state
+   * broadcast. Returns null when telemetry hasn't been initialized.
+   *
+   * @returns {object|null}
+   */
+  getCompositionalStats() {
+    const c = this._compositionalCounters;
+    if (!c) return null;
+    const total = c.totalClassified;
+    return {
+      totalClassified: total,
+      verbatimCount: c.verbatimCount,
+      novelCount: c.novelCount,
+      partialCount: c.partialCount,
+      verbatimRate: total > 0 ? c.verbatimCount / total : 0,
+      novelRate: total > 0 ? c.novelCount / total : 0,
+      partialRate: total > 0 ? c.partialCount / total : 0,
+      firstNovelMsAfterBoot: c.firstNovelTs !== null
+        ? Math.max(0, c.firstNovelTs - c.bootTs)
+        : null,
+      maxNovelty: +c.maxNovelty.toFixed(3),
+      maxNoveltySentence: c.maxNoveltySentence,
+      recentTail: c.recentEmissions.slice(-10),
+    };
+  }
+
+  /**
    * 114.19fk.1 — RIPPED OUT template prescription system. composeSentence
    * is now a pure equational emission loop — no template, no slot
    * sequence prescription, no article rule, no terminator-punct mapping,
@@ -4012,7 +4134,18 @@ export class NeuronCluster {
       } catch { /* coherence non-fatal */ }
     }
 
-    return { sentence, words, fillCount: words.length, coherenceCosine, coherenceTarget: coherenceTargetLabel };
+    // Compositional emergence classification — score this emission
+    // against the trained K-grade corpus. Fires when telemetry has
+    // been initialized (which `_teachConcreteSentences` triggers
+    // during K curriculum). When telemetry isn't initialized yet, the
+    // classifier returns null and we skip the field — no fallback.
+    let compositional = null;
+    if (typeof this.classifyCompositionalEmission === 'function') {
+      try { compositional = this.classifyCompositionalEmission(sentence); }
+      catch { /* telemetry must never break emission */ }
+    }
+
+    return { sentence, words, fillCount: words.length, coherenceCosine, coherenceTarget: coherenceTargetLabel, compositional };
   }
 
 
