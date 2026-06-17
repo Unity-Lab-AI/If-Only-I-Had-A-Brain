@@ -1,6 +1,6 @@
 # RESUME — Session Pickup Brief
 
-> **Last updated:** 2026-06-17 (end of A.K-LIFE wrap-up session)
+> **Last updated:** 2026-06-17 (end of P4.1.a first-bite per-grade-file migration session)
 > **Purpose:** Load this FIRST when coming back. Gives you immediate context to pick up where the prior session left off — no need to re-read the whole transcript or NewTodo.md cover-to-cover.
 
 ---
@@ -8,13 +8,13 @@
 ## 🎯 Where We Are
 
 - **Branch:** `feature/114.19fn-sentence-coherence-phase1` (LOCAL + pushed to `if-only` remote)
-- **Last commit:** `65d67e8` (A.K-LIFE WRAP-UP)
+- **Last commit:** `7c0a2f3` (P4.1.a first bite — 13 K-ELA helpers migrated)
 - **Remote:** `git@git.unityailab.com:UnityAILab/If-Only-I-Had-A-Brain.git`
 - **PR URL:** https://git.unityailab.com/UnityAILab/If-Only-I-Had-A-Brain/compare/main...feature/114.19fn-sentence-coherence-phase1
 - **NOT pushed to:** `origin/unity.git` (per operator directive — feature branch goes to `if-only` only)
-- **Working tree:** clean except `.claude/*` cherry-pick files (UAL-ClaudeWorkflow template additions, stay LOCAL per directive) + `.claude/statusline.sh` (pre-existing local mod) + `docs/STATUSLINE.md` (pre-existing) + `.git/scrub-task-refs.mjs` (one-shot scrub script in `.git/` so untracked)
+- **Working tree:** clean except `.claude/*` cherry-pick files (UAL-ClaudeWorkflow template additions, stay LOCAL per directive) + `.claude/statusline.sh` (pre-existing local mod) + `docs/STATUSLINE.md` (pre-existing) + `.git/scrub-task-refs.mjs` + `.git/p4-1a-migrate.mjs` + `.git/COMMIT_MSG_p4_1a.txt` (one-shot scripts/messages in `.git/` so untracked)
 
-## 📦 What Landed This Session (6 atomic commits on this feature branch)
+## 📦 What Landed This Session (8 atomic commits on this feature branch)
 
 | SHA | Title |
 |-----|-------|
@@ -23,9 +23,11 @@
 | `eef923e` | LAW.1 NO-FALLBACKS sweep 1 + P3.3 Tier 5 deletion |
 | `ef723f6` | A.K-LIFE.1 first-words memory corpus + P4.1 per-grade-file architecture direction |
 | `24fc9a2` | A.K-LIFE.2 family-role schemas (3-channel layered substrate) |
-| `65d67e8` | **A.K-LIFE WRAP-UP — all 14 sub-tasks + vocab pre-step + 6 persona memories** |
+| `65d67e8` | A.K-LIFE WRAP-UP — all 14 sub-tasks + vocab pre-step + 6 persona memories |
+| `670d20d` | docs(RESUME) — session pickup brief for resuming later |
+| `7c0a2f3` | **P4.1.a — first bite of per-grade-file architecture (13 K-ELA helpers migrated)** |
 
-## ✅ Harness TaskList Status — 16/35 complete
+## ✅ Harness TaskList Status — 16/35 complete (P4.1 in_progress, P4.1.a first bite shipped)
 
 **Completed (16):**
 - Phase 1 ✅: P1.1, P1.2, P1.3, P1.4, P1.5, P1.6, P1.7
@@ -34,12 +36,14 @@
 - LAW.1 ✅: sweep 1 done, 12 pre-existing items D1-D12 deferred
 - A.K-LIFE ✅: umbrella complete (all 14 sub-tasks + vocab pre-step)
 
-**Pending (19):**
+**In progress (1):**
+- **P4.1 [~]** — P4.1.a first bite SHIPPED `7c0a2f3` (13 K-ELA helpers migrated curriculum.js → kindergarten.js K_MIXIN, lines 6774-7905). P4.1.b/c/d sub-bites pending: P4.1.b 5 K-only `_teachLetter*Direct` / `_teachWordSpelling*Direct*` / `_teachWordEmissionDirect` methods at lines 6238-6772 (~535 lines); P4.1.c 3 orphan methods `_teachAlphabetSequence`/`_teachLetterNames`/`_teachLetterSounds` lines 6082-6177 (~94 lines, no active callers — delete or migrate); P4.1.d 5 Math-K/ELA-K methods `_teachDigit*`/`_teachMagnitudes`/`_teachCVCReading`/`_teachSightWords` lines 8260-8472 (~213 lines, audit callers first).
+
+**Pending (18):**
 - **P2.3** — kScales plumbing through _crossRegionHebbian (deferred, multi-file)
 - **P3.1** — client-renderer task (display silent payload diagnostic visibly; NO canned-text server fallback — rescinded as anti-LAW)
 - **P3.2** — Surface failed-emission diagnostic to dashboard
 - **P3.4** — Reduce composeSentence serial injection saturation
-- **P4.1** — Split curriculum.js by GRADE (per-grade file architecture per operator directive)
 - **P4.2** — Split cluster.js
 - **P4.3** — Split brain-server.js
 - **P4.4** — Rename _teachSentenceStructures plural
