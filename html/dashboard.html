@@ -865,14 +865,15 @@
             <div style="font-size:18px;font-weight:700;color:#a855f7;">${p.memUsedMB}MB</div>
             <div style="font-size:9px;color:#444;">heap ${p.nodeHeapMB ?? 0}MB / RSS ${p.memRssMB ?? 0}MB</div>
           </div>
-          <div title="GPU VRAM used. Live nvidia-smi memory.used / total VRAM. Shows 'unavailable' (NOT a fake number) on systems without nvidia-smi.">
+          <div title="GPU VRAM used + util%. Live nvidia-smi memory.used + utilization.gpu. VRAM% is the BIG number (how full is GPU memory). Util% is the small line below (GPU compute load — matches the % shown in the .claude statusline). Shows 'unavailable' on systems without nvidia-smi.">
             <div style="font-size:10px;color:#555;">GPU</div>
             <div style="font-size:18px;font-weight:700;color:${gpuColor};">${vramQueryWorking ? `${vramPct}%` : '<span style="font-size:13px;color:#888;">unavailable</span>'}</div>
             ${vramQueryWorking
               ? `<div class="bar-wrap"><div class="bar" style="width:${vramPct}%;background:${gpuColor};height:100%;border-radius:2px;"></div></div>`
               : `<div style="font-size:9px;color:#888;margin:2px 0;">nvidia-smi not on PATH</div>`
             }
-            <div style="font-size:9px;color:#444;margin-top:2px;">${vramQueryWorking ? `${vramUsed.toLocaleString()} / ${vramTotal.toLocaleString()} MB` : `total ${vramTotal.toLocaleString()} MB`} · ${p.gpuName || 'none'} ${p.gpuComputeConnected ? '<span style="color:#22c55e;font-size:8px;">●&nbsp;connected</span>' : '<span style="color:#ef4444;font-size:8px;">●&nbsp;disconnected</span>'}</div>
+            <div style="font-size:9px;color:#666;margin-top:2px;">${vramQueryWorking ? `${vramUsed.toLocaleString()} / ${vramTotal.toLocaleString()} MB · util <span style="color:${(p.gpuUtilPercent ?? 0) > 80 ? '#ef4444' : ((p.gpuUtilPercent ?? 0) > 50 ? '#f59e0b' : '#22c55e')};font-weight:600;">${p.gpuUtilPercent ?? 0}%</span>` : `total ${vramTotal.toLocaleString()} MB`}</div>
+            <div style="font-size:9px;color:#444;margin-top:2px;">${p.gpuName || 'none'} ${p.gpuComputeConnected ? '<span style="color:#22c55e;font-size:8px;">●&nbsp;connected</span>' : '<span style="color:#ef4444;font-size:8px;">●&nbsp;disconnected</span>'}</div>
           </div>
           <div>
             <div style="font-size:10px;color:#555;">STEP TIME</div>
