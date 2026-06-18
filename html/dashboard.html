@@ -846,7 +846,11 @@
       if (s.perf) {
         const p = s.perf;
         const cpuColor = p.cpuPercent > 80 ? '#ef4444' : p.cpuPercent > 50 ? '#f59e0b' : '#22c55e';
-        const gpuColor = p.gpuUtilPercent > 80 ? '#ef4444' : p.gpuUtilPercent > 50 ? '#f59e0b' : '#22c55e';
+        // VRAM% from brain-broadcast gpuVramUsedMB / gpuVramMB. Clamp 0-100 defensively.
+        const vramTotal = p.gpuVramMB || 0;
+        const vramUsed = p.gpuVramUsedMB || 0;
+        const vramPct = vramTotal > 0 ? Math.max(0, Math.min(100, Math.round((vramUsed / vramTotal) * 100))) : 0;
+        const gpuColor = vramPct > 90 ? '#ef4444' : vramPct > 70 ? '#f59e0b' : '#22c55e';
         $('d-perf').innerHTML = `
           <div>
             <div style="font-size:10px;color:#555;">CPU</div>
@@ -858,16 +862,11 @@
             <div style="font-size:18px;font-weight:700;color:#a855f7;">${p.memUsedMB}MB</div>
             <div style="font-size:9px;color:#444;">heap ${p.nodeHeapMB ?? 0}MB / RSS ${p.memRssMB ?? 0}MB</div>
           </div>
-          <div title="GPU activity. PRIMARY METRIC: brain-side dispatches per second — counts every WebSocket message sent to compute.html (sparse upload, propagate, Hebbian, batch step) in the last 30 seconds. Universal across NVIDIA / AMD / Intel / Apple / no-GPU systems. SECONDARY METRIC (nvidia-smi util%): OS-level utilization sampled every 1s into a 30-sample ring buffer. Shows 'N/A' if nvidia-smi is unavailable on this system. Dispatch rate is the canonical 'is the brain using GPU' signal; OS util is supplementary. The 'connected' indicator shows whether compute.html WebSocket is live — that's the canonical sign GPU work is actively flowing.">
+          <div title="GPU VRAM used. Live nvidia-smi memory.used / total VRAM. Falls back to brain budget reserve on systems without nvidia-smi.">
             <div style="font-size:10px;color:#555;">GPU</div>
-            <div style="font-size:18px;font-weight:700;color:${(p.gpuDispatchesPerSec ?? 0) > 50 ? '#22c55e' : ((p.gpuDispatchesPerSec ?? 0) > 0 ? '#a78bfa' : '#666')};">${p.gpuDispatchesPerSec ?? 0}<span style="font-size:11px;color:#888;font-weight:400;">/sec</span></div>
-            <div style="font-size:9px;color:#666;margin-top:2px;">
-              ${p.gpuUtilAvailable === false
-                ? '<span style="color:#888;">util: <span style="color:#fbbf24;">N/A</span> (nvidia-smi unavailable on this system)</span>'
-                : `util: <span style="color:${gpuColor};font-weight:600;">${p.gpuUtilPercent ?? 0}%</span> · peak: <span style="color:${(p.gpuUtilPeak30s ?? 0) > 50 ? '#f59e0b' : '#22c55e'};font-weight:600;">${p.gpuUtilPeak30s ?? 0}%</span> · avg: <span style="color:${(p.gpuUtilAvg30s ?? 0) > 50 ? '#f59e0b' : '#22c55e'};font-weight:600;">${p.gpuUtilAvg30s ?? 0}%</span> <span style="opacity:0.5;">(30s)</span>`
-              }
-            </div>
-            <div style="font-size:9px;color:#444;">${p.gpuName || 'none'} (${p.gpuVramMB || 0}MB) ${p.gpuComputeConnected ? '<span style="color:#22c55e;font-size:8px;">●&nbsp;connected</span>' : '<span style="color:#ef4444;font-size:8px;">●&nbsp;disconnected</span>'} <span style="opacity:0.5;">· total: ${(p.gpuDispatchTotal ?? 0).toLocaleString()}</span></div>
+            <div style="font-size:18px;font-weight:700;color:${gpuColor};">${vramPct}%</div>
+            <div class="bar-wrap"><div class="bar" style="width:${vramPct}%;background:${gpuColor};height:100%;border-radius:2px;"></div></div>
+            <div style="font-size:9px;color:#444;margin-top:2px;">${vramUsed.toLocaleString()} / ${vramTotal.toLocaleString()} MB · ${p.gpuName || 'none'} ${p.gpuComputeConnected ? '<span style="color:#22c55e;font-size:8px;">●&nbsp;connected</span>' : '<span style="color:#ef4444;font-size:8px;">●&nbsp;disconnected</span>'}</div>
           </div>
           <div>
             <div style="font-size:10px;color:#555;">STEP TIME</div>
