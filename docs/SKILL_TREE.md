@@ -405,3 +405,52 @@ Skill tree updates reflecting Phase 6 + LAW.1 + per-module refactor + post-ship 
 | P6.7 top-10 tip-of-tongue compounds + promotion flag | "Word-Creation Tip-of-Tongue (P6.7)" | `cluster/telemetry.js getWordCreationCandidates` |
 | P6.3 chat-Hebbian turns/pairs/errors | "Chat-Time + Dream-Time Learning" | `brain-server/state.js _chatTimeHebbianStats` |
 | P6.4 dream-recomb totalDreamed/novelConsolidated/samples ring | "Chat-Time + Dream-Time Learning" | `curriculum.js _dreamRecombinationStats` |
+
+## Live-test follow-up skills (2026-06-17, session 114.19fp — I.1-I.20)
+
+20-fix sweep unlocked across 4 layers — memory hygiene, event-loop hygiene, observability, schema hygiene. Skills the brain has now that it didn't have pre-114.19fp:
+
+### Memory + event-loop hygiene
+
+| Skill | Capability | Source |
+|-------|-----------|--------|
+| **SparseMatrix output buffer pool** | `propagate(spikes, outBuf?)` accepts pre-allocated Float64Array, writes in place. Eliminates per-call alloc that was the +231 MB/min leak source. | I.13 — `js/brain/sparse-matrix.js`, `curriculum.js _teachPredictiveError` |
+| **Event-loop yield in `_teachHebbian`** | 50ms-throttled `setImmediate` yield drains HTTP queue + WebSocket socket buffers during heavy Hebbian batches. Eliminates 171s main-thread stalls. | I.14 — `curriculum.js _teachHebbian` |
+| **autoClearStaleState module-load gate** | Wipe only fires when brain-server.js IS the entry point. Module loads (syntax-check, REPL, tooling) NO-OP — prevents accidental training-state destruction. | I.15 — `server/brain-server.js` |
+| **Consolidation duration cap** | `DREAM_CONSOLIDATION_MAX_MS` env (30s default) + per-cluster deadline + SEED-phase skip. Prevents 2.5-min consolidation passes from starving K-cell GPU time. | I.8 — `consolidation-engine.js` |
+| **`_predictPropagateScratch` pool** | Third pooled scratch buffer in `_teachPredictiveError` alongside target + error pools. Per-call zero-alloc. | I.13 — `curriculum.js` |
+
+### Inner-voice + showcase hygiene (Unity can talk during early training)
+
+| Skill | Capability | Source |
+|-------|-----------|--------|
+| **`_definitionTaughtWords` showcase fallback** | When per-subject buckets empty (SEED phase), `_sampleCurrentVocab`/`_sampleCurrentSentence` fall back to `cluster._definitionTaughtWords` Set. Unity showcases trained K-vocab even before `_teachWordEmissionDirect` runs. | I.3 — `server/brain-server/chat.js` |
+| **7-source seed rotation** | `_pickInnerThoughtSeed` rotation expanded `learning/mood/chat-recall/memory/identity` → +`k-vocab-recent`/`cell-progress`. Always-populated sources during pre-cell SEED + early K-cell. | I.9 — `server/brain-server/chat.js` |
+
+### Observability skills (dashboard + log)
+
+| Skill | Capability | Source |
+|-------|-----------|--------|
+| **Cell-level Brain Events broadcast** | `_pushBrainEvent` START/DONE in `_teachWordIntegrated` (per-word with elapsed-ms) + `_teachVocabList` (START + every-5-words progress + DONE). Coverage 1/12 → 12/12 teach paths. | I.11 — `curriculum.js` |
+| **`cellSubPhases` counter** | Increments on every wrapped teach call (outermost OR nested), resets on cell entry, exposed via `getCurriculumStatus()` `cellSubPhases` field. Dashboard prefers it when outermost is 0. | I.12 — `curriculum.js`, `dashboard.html` |
+| **Gate-probe WS banner** | `{type:'gateProbe', state:'start'/'end', cellId, durationMs}` broadcast; floating dashboard banner with live duration tick + green-check dismissal. | I.6 — `brain-server.js`, `dashboard.html` |
+| **GPU dispatch counter (hidden)** | `_recordGpuDispatch()` in gpu.js hooked into `_sparseSend` + `_sparseSendBinary`. Cumulative `gpuDispatchTotal` exposed as hidden perfStats field for future debugging. | I.17 — `gpu.js` |
+| **GPU VRAM% + util% dashboard panel** | Combined `nvidia-smi memory.used,utilization.gpu` query — VRAM% big number + util% small inline label. No fake fallback; honest "unavailable" on non-NVIDIA. | I.18 + I.20 — `chat.js _updatePerfStats`, `dashboard.html` |
+| **Slow-word histogram** | `_wordIntDurations` 256-cap ring buffer + `⚠ slow word "X" took Yms` log on >30s threshold. | I.10 — `curriculum.js` |
+| **Heartbeat polish** | `workers=0MB(initializing)` (was `?MB`), `(active)` phase floor (was `+0s`). | I.4 + I.5 — `curriculum.js` |
+
+### Schema hygiene
+
+| Skill | Capability | Source |
+|-------|-----------|--------|
+| **Top-K=3 schema naming** | `_deriveLabel` ranks top-3 content words; expanded stop-word list (`learning/curriculum/phase/teach/cell/heartbeat/...`). Distinct schema labels per Tulving 1972 episodic→semantic. | I.7 — `hippocampal-schema.js` |
+
+### K-vocab + dictionary hygiene
+
+| Skill | Capability | Source |
+|-------|-----------|--------|
+| **K-VOCAB SEED deferred retry** | Dream-trickle per-word timeout 3s → 20s + re-queue mechanism. Combined with warm cache, next SEED 30-60s vs 11-12 min cold. | I.2 — `curriculum.js _dreamWindow` |
+| **Honest GPU% telemetry** | nvidia-smi query gracefully fails to "unavailable" label, never a hallucinated number (lesson from I.18 static-50% lie). `gpuVramQueryWorking` boolean flag. | I.19 (root cause) + I.18 + I.20 — `chat.js`, `dashboard.html` |
+
+**Audit cascade post-I.20:** 60 ✅ SHIPPED + 1 ⏳ OPERATOR-FIRED (F.2 GOOD AND AWAITING BUGS). See `docs/NewTodo.md § I-track` for full per-fix detail. ARCHITECTURE.md "Live-test follow-up close (2026-06-17, session 114.19fp)" has cross-module summary tables.
+

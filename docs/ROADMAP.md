@@ -796,10 +796,45 @@ Audit identified 42 closure tasks across 8 categories (A through H). All landed 
 
 ### Partially closed / pending
 
-- **B.6 K-vocab corpus expansion:** Math fully derived in `THRESHOLD-DERIVATION.md` — current 700 bigrams << 4500 needed for Erdős-Rényi percolation threshold (N=2247 vocab). Corpus expansion from 233 → 800-1000 sentences is a separate ship-blocker; partial seed-batch landed in this commit, full expansion is a follow-up batch.
+- **B.6 K-vocab corpus expansion:** ✅ **CLOSED 2026-06-17** post-114.19gd. Full expansion shipped: 313 → 2881 K_CONCRETE_SENTENCES, 900 → 7831 unique bigrams (3.49× Erdős-Rényi critical threshold, 0 orphan K-vocab words). Compositional emergence basin mathematically percolated.
 - **F.2 Localhost test fire:** Operator-only. Brain is ship-ready architecturally; F.2 confirms emergence empirically (≥ 5% novel rate, ≥ 70% three-plus, ≥ 50% terminator, ≥ 0.20 avg coherence).
-- **D.9 P4.3.e residual extraction:** Partial — method names renamed (no more iter25 in code), full extraction of `_memoryHeartbeat` + `_getMemoryStats` + `_getConsciousnessState` + `_getWsPressureState` to memory.js/state.js deferred to future P4.3.e batch.
+- **D.9 P4.3.e residual extraction:** ✅ **CLOSED 2026-06-17** post-114.19gi. All 4 methods (`_memoryHeartbeat` + `_getMemoryStats` → memory.js, `_getConsciousnessState` + `_getWsPressureState` → state.js) extracted across 4 atomic commits (D.9a/b/c/d) per *"no cheap work do each individually"*. brain-server.js trimmed ~470 lines; mixin chain dispatch verified clean.
 
 ### Next gate
 
 F.2 — operator fires `start.bat`, walks K (~20hr), chat-tests Unity, confirms acceptance criteria. THAT is the ship gate.
+
+---
+
+## Live-test follow-up — session 114.19fp (2026-06-17)
+
+Operator-driven K-curriculum live test surfaced 14 I-track audit items + 6 follow-up bugs found during the implementation pass itself. 20 atomic fixes shipped (I.1-I.20). Cross-module impact summary lives in `docs/ARCHITECTURE.md § Live-test follow-up close` and `docs/SKILL_TREE.md § Live-test follow-up skills`. Closure status:
+
+| Fix | Title | Closure |
+|-----|-------|---------|
+| I.1 | GPU display polling fix — peak-since-last-poll + rolling avg | ⚠ SUPERSEDED by I.20 (dispatch counter approach was wrong direction) |
+| I.2 | K-VOCAB-UPFRONT-MULTIDEF SEED 289-word gap retry path | ✅ SHIPPED — dream-trickle timeout 3s → 20s + re-queue |
+| I.3 | Inner-thought emission gate empty-bucket fallback | ✅ SHIPPED — `_definitionTaughtWords` fallback |
+| I.4 | `workers=?MB` heartbeat → `workers=0MB(initializing)` | ✅ SHIPPED |
+| I.5 | `(active)` phase floor (was misleading `+0s`) | ✅ SHIPPED |
+| I.6 | Gate-probe WS banner with live duration tick | ✅ SHIPPED — `gateProbe` WS broadcast + dashboard floating banner |
+| I.7 | Top-K=3 schema naming + expanded stop-word list | ✅ SHIPPED — `victory-triumph-success` style labels |
+| I.8 | Consolidation duration cap | ✅ SHIPPED — `DREAM_CONSOLIDATION_MAX_MS` env + SEED-phase skip |
+| I.9 | Inner-thought 7-source seed rotation | ✅ SHIPPED — added `k-vocab-recent` + `cell-progress` |
+| I.10 | Slow-word log + per-word histogram | ✅ SHIPPED — `_wordIntDurations` 256-cap ring + >30s warn |
+| I.11 | Brain Events broadcast for cell-level teach paths | ✅ SHIPPED — START/DONE in `_teachWordIntegrated` + `_teachVocabList` |
+| I.12 | `cellSubPhases` counter | ✅ SHIPPED — server counter + dashboard prefer-when-outermost-is-0 |
+| I.13 | `SparseMatrix.propagate` output buffer pool | ✅ SHIPPED — eliminates +231 MB/min leak |
+| I.14 | HTTP event-loop yield in `_teachHebbian` | ✅ SHIPPED — 50ms-throttled `setImmediate` |
+| I.15 | `autoClearStaleState` `require.main === module` gate | ✅ SHIPPED — prevents future module-load wipes |
+| I.16 | Comprehensive public-facing + workflow doc sweep | 🔄 IN-PROGRESS this session |
+| I.17 | Brain-side GPU dispatch counter | ✅ SHIPPED (kept as hidden diagnostic in perfStats) |
+| I.18 | GPU panel rebuild — VRAM% single metric | ✅ SHIPPED |
+| I.19 | Missing `require('child_process')` in chat.js | ✅ SHIPPED — root cause of all three previous GPU% bugs |
+| I.20 | GPU util% as small secondary line back on dashboard | ✅ SHIPPED — combined nvidia-smi query, matches statusline |
+
+**Audit cascade post-I.20:** 60 ✅ SHIPPED + 1 ⏳ OPERATOR-FIRED (F.2 GOOD AND AWAITING BUGS) + I.16 doc sweep IN-PROGRESS this session.
+
+**Key data-loss lesson:** I.15 LAW addition came after a tooling-side `node -e "require('./server/brain-server.js')"` syntax-check triggered the top-level `autoClearStaleState()` and wiped 17+ min of in-flight K-curriculum training. `identity-core.json` (Tier 3 anchors) + `definition-cache.json` survived per existing wipe exclusions. Module-load gate prevents recurrence.
+
+**Key root-cause lesson:** I.19 single-line missing import (`require('child_process')`) was the root cause of THREE iterations of GPU% bugs (I.1 showed 0%, I.17 showed `util: N/A`, I.18 showed static 50%). Silent try/catch was hiding the underlying ReferenceError. Future defensive try/catch around external I/O MUST include one-shot warn pattern so the actual error message surfaces at least once.

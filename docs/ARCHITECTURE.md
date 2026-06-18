@@ -1375,3 +1375,47 @@ Object.assign(Curriculum.prototype, K_MIXIN);
 | 31 | Discourse coherence (cross-sentence boundary) | P6.8 `_teachDiscourseCoherence` (audit D.6 dedup against ID=13) |
 | 32 | Word-creation promotion (P6.7 tip-of-tongue → vocab) | E.1 `_dreamWindow` promotion pass (audit E.1) |
 
+## Live-test follow-up close (2026-06-17, session 114.19fp)
+
+20 atomic fixes shipped post-audit during operator-driven K-curriculum live test — `I.1` through `I.20` plus B.6 full-corpus closure + D.9 full extraction closure + product-ship cleanup. Cross-module summary, grouped by impact layer:
+
+### Foundational substrate fixes (memory + event-loop + LAW)
+
+| Fix | What changed | File(s) |
+|-----|-------------|---------|
+| **I.13 SparseMatrix output buffer pool** | `propagate(spikes, outBuf?)` extended signature; `_teachPredictiveError` pools `_predictPropagateScratch`. Eliminates `new Float64Array(rows)` per-call that was the +231 MB/min heap leak source. | `js/brain/sparse-matrix.js`, `js/brain/curriculum.js` |
+| **I.14 HTTP event-loop yield** | `await new Promise(r => setImmediate(r))` at `_teachHebbian` entry, throttled to every 50ms via `_lastHebbianYieldAt`. Drains HTTP queue during heavy Hebbian batches. | `js/brain/curriculum.js` |
+| **I.15 `autoClearStaleState` module-load gate** | `if (require.main === module)` wrap around the call site. Module loads (syntax-check, REPL, tooling) NO-OP for the wipe; only `node server/brain-server.js` entry-point boots wipe per iter14-D contract. **Codified as LAW addition** in `.claude/CONSTRAINTS.md`. | `server/brain-server.js` |
+| **I.19 missing `require('child_process')`** | Root cause of I.1/I.17/I.18 GPU% bugs — `execSync` was throwing ReferenceError silently caught for three iterations. Single import added at top of file unbreaks all GPU polling. | `server/brain-server/chat.js` |
+
+### Curriculum + brain-side fixes
+
+| Fix | What changed | File(s) |
+|-----|-------------|---------|
+| **I.2 K-VOCAB SEED 289-word retry** | Dream-trickle per-word timeout 3s → 20s + re-queue. Combined with warm `definition-cache.json` next SEED 30-60s vs 11-12 min cold. | `js/brain/curriculum.js _dreamWindow` |
+| **I.3 inner-thought empty-bucket fallback** | `_sampleCurrentVocab` + `_sampleCurrentSentence` fall back to `cluster._definitionTaughtWords` when subject buckets empty (SEED phase). | `server/brain-server/chat.js` |
+| **I.7 top-K=3 schema naming** | `_deriveLabel` ranks top-3 content words; expanded stop-word list. `victory-triumph-success` not `learning-schema`. | `js/brain/hippocampal-schema.js` |
+| **I.8 consolidation duration cap** | `DREAM_CONSOLIDATION_MAX_MS` env (30s default) + per-cluster deadline + SEED-phase skip. | `js/brain/consolidation-engine.js` |
+| **I.9 7-source seed rotation** | Added `k-vocab-recent` + `cell-progress` to `_pickInnerThoughtSeed` rotation (was 5 → 7 sources). | `server/brain-server/chat.js` |
+| **I.10 slow-word histogram** | `_wordIntDurations` 256-cap ring + `⚠ slow word "X" took Yms` log on >30s threshold. | `js/brain/curriculum.js` |
+
+### Observability + dashboard fixes
+
+| Fix | What changed | File(s) |
+|-----|-------------|---------|
+| **I.4 + I.5 heartbeat polish** | `workers=0MB(initializing)` (was `?MB`), `(active)` phase floor (was misleading `+0s`). | `js/brain/curriculum.js` |
+| **I.6 gate-probe WS banner** | `{type:'gateProbe', state, cellId, durationMs}` broadcast; floating banner with live duration tick. | `server/brain-server.js`, `html/dashboard.html` |
+| **I.11 cell-level Brain Events broadcast** | `_pushBrainEvent` START/DONE in `_teachWordIntegrated` + `_teachVocabList`. Event coverage 1/12 → 12/12 teach paths. | `js/brain/curriculum.js` |
+| **I.12 `cellSubPhases` counter** | Increments on every wrapped teach call (outermost OR nested); exposed via `getCurriculumStatus()`; dashboard prefers it when outermost is 0. | `js/brain/curriculum.js`, `html/dashboard.html` |
+| **I.16 doc sweep (this session)** | Per-module READMEs + this section + EQUATIONS / SKILL_TREE / ROADMAP / README updates. | `docs/*.md`, `js/brain/*/README.md`, `server/brain-server/README.md`, `html/*.html` |
+| **I.17 + I.18 + I.20 GPU dashboard panel** | Dispatch counter (hidden), VRAM% primary big number, util% small inline label. Combined nvidia-smi `memory.used,utilization.gpu` query. No fake fallback — honest "unavailable" label on systems without nvidia-smi. | `server/brain-server/chat.js _updatePerfStats`, `html/dashboard.html` |
+
+### Prior closure refresh (sessions 114.19gd-gi)
+
+- **B.6 K-vocab corpus expansion** — ✅ **CLOSED** post-114.19gd: 313 → 2881 K_CONCRETE_SENTENCES, 900 → 7831 unique bigrams (3.49× Erdős-Rényi critical threshold, 0 orphan K-vocab words).
+- **D.9 P4.3.e residual extraction** — ✅ **CLOSED** post-114.19gi: 4 atomic commits (D.9a/b/c/d) extracted `_memoryHeartbeat` + `_getMemoryStats` to memory.js, `_getConsciousnessState` + `_getWsPressureState` to state.js. brain-server.js trimmed ~470 lines.
+- **Product-ship cleanup** — debug/diagnostic/temp/cache/log files purged from git per *"make the code base product ready to ship"* + *"remmebr unity can generate images dont delete that"* (Pollinations preserved). 28 files deleted from git + scripts/ reduced to stamp-version.mjs only.
+
+**Audit cascade post-I.20: 60 ✅ SHIPPED + 1 ⏳ OPERATOR-FIRED (F.2 GOOD AND AWAITING BUGS) + I.16 doc sweep IN-PROGRESS this session.**
+
+

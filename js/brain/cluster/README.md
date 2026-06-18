@@ -84,3 +84,14 @@ The `/super-review ultrathink` audit closed in a single atomic commit. Per-dir i
 - **H-track (live-test breakage):** Boot diagnostics + spawn-failure surfacing + auto-size wiring assertion + HTML-entry-points doc + smoke/parity scripts.
 
 See `docs/NewTodo.md § POST-SHIP AUDIT` for the full 42-task list + `docs/ARCHITECTURE.md` post-audit section for cross-module summary. Threshold math: `docs/THRESHOLD-DERIVATION.md`. HTML contracts: `docs/HTML-ENTRY-POINTS.md`. Mixin discipline: `.claude/CONSTRAINTS.md § LAW.MIXIN-ORDER`.
+
+## Live-test follow-up (2026-06-17, session 114.19fp — I.1-I.20)
+
+15-fix atomic envelope + 5 follow-up bugs shipped post-audit during operator-driven K-curriculum live test. Per-dir impact on the cluster module:
+
+- **I.13 SparseMatrix.propagate output buffer pool** — `propagate(spikes, outBuf?)` signature extension in `js/brain/sparse-matrix.js`. Eliminates per-call `new Float64Array(rows)` that was the +231 MB/min heap leak source observed at heartbeats #58-71 during `_teachHebbian` runs. `_teachPredictiveError` pools `_predictPropagateScratch` Float64Array sized to synapse-matrix rows; three pooled scratches (target, error, predicted) → zero bytes allocated per call.
+- **I.7 schema naming** — `js/brain/hippocampal-schema.js` `_deriveLabel` extended top-1 → top-3 content words; expanded stop-word list (`learning/curriculum/phase/teach/cell/heartbeat/episode/inner/thought/tick/state/active/progress`). Produces distinct schema labels (`victory-triumph-success`) instead of collapsed `learning-schema` for every consolidation.
+- **I.11 cell-level Brain Events broadcast** — `_pushBrainEvent` START/DONE in `_teachWordIntegrated` + `_teachVocabList` (lives in `js/brain/curriculum.js` but consumes `cluster._pushBrainEvent?.`). Dashboard panel no longer freezes during cell teach.
+- **I.10 slow-word histogram** — `_wordIntDurations` 256-cap ring buffer on the cluster's curriculum mixin, `⚠ slow word "X" took Yms` log on >30s threshold.
+
+Cluster module proper unchanged for I.1-I.20 — fixes live in adjacent files (sparse-matrix.js, hippocampal-schema.js, curriculum.js, brain-server/*.js). See `docs/NewTodo.md § I-track` for full per-fix detail + closure status (all 20 ✅ SHIPPED).

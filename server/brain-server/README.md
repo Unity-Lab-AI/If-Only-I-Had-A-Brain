@@ -74,3 +74,20 @@ The `/super-review ultrathink` audit closed in a single atomic commit. Per-dir i
 - **H-track (live-test breakage):** Boot diagnostics + spawn-failure surfacing + auto-size wiring assertion + HTML-entry-points doc + smoke/parity scripts.
 
 See `docs/NewTodo.md § POST-SHIP AUDIT` for the full 42-task list + `docs/ARCHITECTURE.md` post-audit section for cross-module summary. Threshold math: `docs/THRESHOLD-DERIVATION.md`. HTML contracts: `docs/HTML-ENTRY-POINTS.md`. Mixin discipline: `.claude/CONSTRAINTS.md § LAW.MIXIN-ORDER`.
+
+## Live-test follow-up (2026-06-17, session 114.19fp — I.1-I.20)
+
+15-fix atomic envelope + 5 follow-up bugs shipped post-audit during operator-driven K-curriculum live test. Per-concern impact on this directory:
+
+- **gpu.js**:
+  - **I.17 dispatch counter** — `_recordGpuDispatch()` helper added; hooked into `_sparseSend` (JSON path) + `_sparseSendBinary` (high-volume binary path covering `_teachHebbian` + `_teachAssociationPairs` dispatches). 30-second timestamp ring buffer with lazy 5000-entry soft-cap. `gpuDispatchTotal` cumulative counter exposed via perfStats as hidden diagnostic (not in main dashboard display).
+- **chat.js** (heaviest impact):
+  - **I.19 require('child_process') import** — **root cause** of all three previous GPU% bugs (I.1 showed 0%, I.17 showed `util: N/A`, I.18 showed static 50%). Single missing import meant every `execSync('nvidia-smi ...')` since I.1 threw ReferenceError silently caught by try/catch. Added `const { execSync } = require('child_process')` at top of file — unbreaks ALL GPU polling.
+  - **I.18 + I.20 GPU panel rebuild** — `_updatePerfStats` queries `memory.used,utilization.gpu` in single combined nvidia-smi call. Exposes `gpuVramUsedMB`, `gpuUtilPercent`, `gpuVramQueryWorking` boolean. Dashboard renders VRAM% as big number + util% as small inline label. NO fake fallback — `gpuVramQueryWorking=false` triggers honest "unavailable" label, never a hallucinated number.
+  - **I.3 + I.9 inner-thought fallbacks** — `_sampleCurrentVocab` + `_sampleCurrentSentence` fall back to `cluster._definitionTaughtWords` Set when `wordBucketWords_<subject>` empty (SEED phase). `_pickInnerThoughtSeed` rotation expanded from 5 → 7 sources adding `k-vocab-recent` + `cell-progress` so Unity isn't silent during pre-cell + early-K-cell.
+  - **I.1 + I.17 hidden diagnostic remnants** — dispatch-rate computation moved to hidden field; nvidia-smi VRAM polling at 1Hz cadence with `_lastGpuVramPoll` timestamp gate.
+- **brain-server.js entry**:
+  - **I.6 gate-probe WS banner** — broadcasts `{type:'gateProbe', state:'start'|'end', cellId, durationMs, ts}` from the curriculum-gate-active branch. Dashboard creates floating banner with live duration tick + green-check dismissal.
+  - **I.15 `autoClearStaleState` module-load gate** — wrapped in `if (require.main === module)` check. Module loads (syntax-check, REPL inspection, future tooling) NO-OP for the wipe; only actual `node server/brain-server.js` entry-point boots execute the wipe per iter14-D contract. **Codifies the LAW added after the 22:16 PT incident** where a `node -e "require('./server/brain-server.js')"` syntax check triggered the top-level wipe and lost operator's K-curriculum training session.
+
+State broadcast path unchanged — `state.js:318` `perf: this._perfStats` continues to flow all GPU/CPU/memory metrics through `getState()` to the dashboard. See `docs/NewTodo.md § I-track` for full per-fix detail + closure status (all 20 ✅ SHIPPED).

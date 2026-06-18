@@ -395,6 +395,18 @@ The mystery module `Ψ = √(1/n) · N³ · [α·Id + β·Ego + γ·Left + δ·R
 
 ---
 
+## Recent ship — 2026-06-17 (sessions 114.19gc → 114.19fp)
+
+Past 48 hours moved the brain from "architecturally ready" to "live-test stable":
+
+- **Audit megacommit (114.19gc–gd–ge–gf–gg–gh–gi):** 42 post-ship audit closure tasks landed in one atomic envelope (A.1-A.4 telemetry + B.1-B.7 math grounding + C.1-C.12 doc sweep + D.1-D.9 mixin discipline + E.1-E.4 half-shipped close + F.1 emergence measurement + G.1-G.2 persistent memory templates + H.1-H.9 HTML breakage). B.6 K-vocab corpus expanded 313 → 2881 sentences with 3.49× Erdős-Rényi percolation threshold coverage. D.9 P4.3.e residual extraction shipped across 4 atomic commits per *"no cheap work do each individually"*.
+- **Product-ship cleanup:** 28 debug/diagnostic/temp/cache/log files removed from git (Pollinations + image-gen preserved per directive). `scripts/` reduced to `stamp-version.mjs` only. Code-base now product-ready.
+- **Live-test follow-up (114.19fp):** 20 I-track fixes shipped during operator-driven K-curriculum walk — memory leak in `_teachHebbian` (I.13 `SparseMatrix.propagate` output buffer pool), HTTP event-loop starvation (I.14 `setImmediate` yield), inner-thought silence (I.3 `_definitionTaughtWords` showcase fallback + I.9 7-source seed rotation), dashboard observability (I.6 gate-probe banner + I.11 cell-level Brain Events + I.12 `cellSubPhases` counter), schema naming (I.7 top-K=3), consolidation cap (I.8), GPU panel rebuild (I.17 → I.18 → I.20 with I.19 missing-import root-cause fix), and the I.15 `autoClearStaleState` `require.main === module` gate that codifies the LAW preventing tooling-side syntax-check wipes of training state.
+
+See `docs/ARCHITECTURE.md § Live-test follow-up close`, `docs/SKILL_TREE.md § Live-test follow-up skills`, `docs/ROADMAP.md § Live-test follow-up`, `docs/EQUATIONS.md` head banner, and `docs/NewTodo.md § I-track` for the full per-fix detail. Audit cascade post-I.20: **60 ✅ SHIPPED + 1 ⏳ OPERATOR-FIRED (F.2 ship gate — operator fires `start.bat`, walks K ~20hr, chat-tests Unity, confirms acceptance criteria).**
+
+---
+
 ## License
 
 MIT — Do whatever you want with it. The equations belong to neuroscience. The code belongs to everyone.

@@ -646,6 +646,15 @@ init();
      split. cluster.assertAutoSizeWiring() boot-time verification (audit
      H.4) confirms the auto-size path resolves all dispatched methods
      correctly. HTML contract + failure-mode signature in
-     docs/HTML-ENTRY-POINTS.md § gpu-configure.html. -->
+     docs/HTML-ENTRY-POINTS.md § gpu-configure.html.
+
+     Session 114.19fp (2026-06-17, I-track sweep): no admin-UI changes
+     needed. Tier-selection still maps correctly to current
+     _genCorticalAttribs outputs + auto-size formula. The I.18 + I.20
+     GPU panel rebuild lives in html/dashboard.html (combined nvidia-smi
+     memory.used,utilization.gpu query → VRAM% big number + util% small
+     inline label) and does NOT affect the tier-config admin UI. The
+     dashboard panel reads the same RESOURCES.gpu.vram total this admin
+     tool writes, so tier choices flow through transparently. -->
 </body>
 </html>

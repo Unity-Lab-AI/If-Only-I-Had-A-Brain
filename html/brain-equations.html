@@ -2639,6 +2639,27 @@ fn main(id: vec3&lt;u32&gt;) {
  <h3 id="p53-quality">9.3 P5.3 Quality Score Formula</h3>
  <p><code>qualityScore = probeRate + COHERENCE_BONUS_GAIN × max(0, avgCos − COHERENCE_MIN)</code> with <code>COHERENCE_BONUS_GAIN=0.5</code>, <code>COHERENCE_MIN=0.05</code>. Full per-constant derivation: <code>docs/THRESHOLD-DERIVATION.md</code>.</p>
 
+ <h2 id="ship-hygiene" title="Code-hygiene fixes shipped during live-test follow-up (session 114.19fp, 2026-06-17, I.1-I.20). Equations unchanged — these are byte-allocation, event-loop, and observability fixes that PRESERVE existing math behavior while making it actually run efficiently on real hardware.">10. Ship Hygiene — I.1-I.20 (2026-06-17, session 114.19fp)</h2>
+ <p>20 atomic fixes shipped post-audit during operator-driven K-curriculum live test. <strong>NO equation changes</strong> — the Hebbian/Oja rule, Kuramoto order parameter, Friston predictive-coding delta rule, BCM sliding-threshold, master equation <code>dx/dt = F(x, u, θ, t) + η</code>, Ψ = √(1/n)·N³ consciousness term — all unchanged. Fixes are code hygiene, byte-allocation, event-loop, observability, and data-loss-prevention. Most-impactful equational implications:</p>
+
+ <h3 id="i13-propagate-pool">10.1 SparseMatrix.propagate Output Buffer Pool (I.13)</h3>
+ <p>Signature extended <code>propagate(spikes, outBuf?)</code> in <code>js/brain/sparse-matrix.js</code>. When caller pools a Float64Array of matching size and passes it in, propagate writes into that buffer instead of allocating <code>new Float64Array(rows)</code> per call. The propagation equation <code>I<sub>i</sub> = Σ<sub>j</sub> W<sub>ij</sub> · s<sub>j</sub></code> is unchanged — only the byte-allocation pattern changes. <code>_teachPredictiveError</code> in <code>js/brain/curriculum.js</code> now pools <code>_predictPropagateScratch</code> alongside the existing <code>_predictTargetScratch</code> + <code>_predictErrorScratch</code> pools. Three pooled scratches → zero bytes allocated per call across millions of Hebbian fires. <strong>Eliminates the +231 MB/min heap-leak source</strong> observed at heartbeats #58-71 during <code>_teachHebbian</code> runs.</p>
+
+ <h3 id="i14-setimmediate-yield">10.2 Event-Loop Yield in _teachHebbian (I.14)</h3>
+ <p>Explicit <code>await new Promise(r =&gt; setImmediate(r))</code> at the entry of <code>_teachHebbian</code> in <code>js/brain/curriculum.js</code>, throttled to every 50ms via <code>_lastHebbianYieldAt</code> timestamp. The Hebbian/Oja equation <code>Δw[i,j] = lr · y[j] · (x[i] − y[j] · w[i,j])</code> is unchanged — the yield just allows the Node.js event loop to drain HTTP request handlers + WebSocket socket buffers between dispatch bursts. <strong>Throughput impact ≤ 2%</strong>; HTTP responsiveness restored from 8-15s timeouts to sub-second.</p>
+
+ <h3 id="i8-consolidation-cap">10.3 Consolidation Duration Cap (I.8)</h3>
+ <p><code>DREAM_CONSOLIDATION_MAX_MS</code> env var (default 30s) in <code>js/brain/consolidation-engine.js</code>. Per-cluster deadline check breaks the consolidation pass gracefully at cluster boundary; next pass picks up remaining clusters fresh. Also skips entirely when <code>_currentMacroPhase</code> contains <code>'SEED'</code> so SEED-phase GPU stays with curriculum. Log surfaces <code>⚠ DEADLINE-ABORT (DREAM_CONSOLIDATION_MAX_MS=Xms)</code> when cap fires. Replaces the 153s pass observed in operator's run.</p>
+
+ <h3 id="i7-schema-naming">10.4 Top-K=3 Schema Naming (I.7)</h3>
+ <p><code>_deriveLabel</code> in <code>js/brain/hippocampal-schema.js</code> ranks <strong>top-3</strong> content words instead of top-1; expanded stop-word list strips generic curriculum noise (<code>learning/curriculum/phase/teach/cell/heartbeat/episode/inner/thought/tick/state/active/progress</code>). Produces distinct schema labels (<code>victory-triumph-success</code>) instead of collapsing every consolidation into a generic <code>learning-schema</code>. Per Tulving 1972 episodic→semantic, schemas need distinct identity for retrieval gradient to function — naming collisions undermined the consolidation→retrieval pipeline at the labelling level.</p>
+
+ <h3 id="i19-import-fix">10.5 Cross-platform GPU Polling (I.18 + I.19 + I.20)</h3>
+ <p>Root cause of three iterations of GPU% bugs: <code>server/brain-server/chat.js</code> was missing <code>const { execSync } = require('child_process')</code> at the top. Every <code>nvidia-smi</code> call since I.1 was throwing <code>ReferenceError</code> silently caught by the defensive try/catch. Single import unbreaks all GPU polling.</p>
+ <p>Combined query: <code>nvidia-smi --query-gpu=memory.used,utilization.gpu --format=csv,noheader,nounits</code> returns both metrics in one execSync (e.g. <code>"1853, 14"</code>). Dashboard panel shows VRAM% as big number (<code>memory.used / total × 100</code>) + util% as small inline label. On systems without nvidia-smi (AMD/Intel/headless), <code>_gpuVramQueryWorking=false</code> triggers honest "unavailable" label — <strong>NEVER</strong> a hallucinated number (lesson from the I.18 static-50% lie when fallback `RESOURCES.gpu.vram * 0.5` was used as if it were a real reading).</p>
+
+ <p style="color:#666;font-size:0.9em;margin-top:1.5em;">See <code>docs/ARCHITECTURE.md § Live-test follow-up close</code>, <code>docs/SKILL_TREE.md § Live-test follow-up skills</code>, <code>docs/EQUATIONS.md</code> head banner, and <code>docs/NewTodo.md § I-track</code> for full per-fix detail. Audit cascade post-I.20: 60 ✅ SHIPPED + 1 ⏳ OPERATOR-FIRED (F.2).</p>
+
  </div>
 </body>
 </html>

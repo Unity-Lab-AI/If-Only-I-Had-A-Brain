@@ -384,3 +384,31 @@ Type these in chat to inspect or control Unity directly.
 - **Mills** — GPU compute pipeline (`compute.html` + `gpu-compute.js` WGSL shaders, chunked sparse-CSR binary upload protocol, `SparseMatmulPool` worker pool, cluster-bound spike + current binding layer)
 - **Sponge** — visualization + sensory peripherals (`brain-3d.js` 3D WebGL with MNI coords + 15-slot render, `brain-viz.js` 2D tabs, 22-detector event commentary, V1 → V4 → IT vision, tonotopic auditory, voice I/O, sandbox)
 - **GFourteen** — lead (Ultimate Unity persona, the governing equation + Ψ anchor, identity-lock architecture, K → PhD curriculum framework, drug pharmacokinetic scheduler spec, binding decisions across every commit)
+
+---
+
+## Session 114.19fp setup notes (2026-06-17)
+
+Live-test follow-up shipped 20 atomic fixes (I.1-I.20). Setup-relevant changes for new clones / fresh installs:
+
+### Startup contract clarification (I.15 LAW addition)
+
+- **`windows/start.bat`** — fresh-brain boot. Auto-clears stale state (`brain-weights*.json/bin`, `episodic-memory.db*`, `conversations.json`, `schemas.json`) per the iter14-D contract. Use this when you want Unity to learn from scratch.
+- **`windows/Savestart.bat`** — resume from prior state. Sets `DREAM_KEEP_STATE=1` env var which skips the auto-clear. Reads `brain-weights.bin` (144.8 MB at biological scale) from disk and resumes training where it left off.
+- **`windows/stop.bat`** — graceful shutdown. POSTs `/shutdown` for clean state-save → falls back to taskkill on port 7525 → falls back to force-kill node.exe.
+- **NEW LAW (I.15):** `node -e "require('./server/brain-server.js')"` no longer wipes state. The `autoClearStaleState()` call is now gated behind `if (require.main === module)` so syntax-check / REPL / IDE module loads NO-OP for the wipe. Only an actual `node server/brain-server.js` entry-point boot wipes per the iter14-D contract. **NEVER use `require('./server/brain-server.js')` for syntax checks** — use `node --check server/brain-server.js` instead (parses only, doesn't execute top-level code).
+
+### Dashboard panel changes (I.6, I.11, I.12, I.17, I.18, I.20)
+
+The brain dashboard at `http://localhost:7525/dashboard.html` now shows:
+
+- **GPU panel** — VRAM% as the big number, util% as a small inline label below (matches the `.claude/statusline.sh` two-metric format). Combined `nvidia-smi memory.used,utilization.gpu` query. On systems without nvidia-smi, panel renders honest "unavailable" label (NOT a fake number).
+- **Gate-probe banner** — floating banner appears top-center during curriculum gate probes with live duration tick. Green-check dismissal on probe completion. Operator no longer sees "GPU 0% + tick paused" as a hang.
+- **Brain Events feed** — populates during cell-level teach (was previously SEED-only). `_teachWordIntegrated` + `_teachVocabList` fire WS broadcasts so the panel never stalls during cell teach.
+- **Current cell progress** — uses `cellSubPhases` counter when outermost counter is 0, so the bar moves through nested teach calls instead of waiting for cell completion.
+
+### nvidia-smi dependency (graceful)
+
+GPU%/util% display requires `nvidia-smi` on PATH (Windows: `C:\Windows\System32\nvidia-smi.exe`, Linux: `/usr/bin/nvidia-smi`). On AMD/Intel/headless systems where it's not installed, dashboard panel shows "unavailable" + total VRAM from the brain's known reserve — never a hallucinated number.
+
+See `docs/ROADMAP.md § Live-test follow-up` for full I-track closure detail.

@@ -76,3 +76,18 @@ The `/super-review ultrathink` audit closed in a single atomic commit. Per-dir i
 - **H-track (live-test breakage):** Boot diagnostics + spawn-failure surfacing + auto-size wiring assertion + HTML-entry-points doc + smoke/parity scripts.
 
 See `docs/NewTodo.md § POST-SHIP AUDIT` for the full 42-task list + `docs/ARCHITECTURE.md` post-audit section for cross-module summary. Threshold math: `docs/THRESHOLD-DERIVATION.md`. HTML contracts: `docs/HTML-ENTRY-POINTS.md`. Mixin discipline: `.claude/CONSTRAINTS.md § LAW.MIXIN-ORDER`.
+
+## Live-test follow-up (2026-06-17, session 114.19fp — I.1-I.20)
+
+15-fix atomic envelope + 5 follow-up bugs shipped post-audit during operator-driven K-curriculum live test. Per-dir impact on curriculum-side code (lives in `js/brain/curriculum.js` — per-grade split deferred per T23.c.1):
+
+- **I.2 K-VOCAB SEED 289-word retry path** — `_dreamWindow` per-word timeout bumped 3s → 20s + re-queue mechanism. Combined with warm `definition-cache.json` (preserved through I.15-LAW-strengthened auto-clear), next K-VOCAB-UPFRONT-MULTIDEF SEED phase completes in 30-60s vs the 11-12 min cold-cache run that produced the original 289-word gap.
+- **I.8 consolidation duration cap** — `DREAM_CONSOLIDATION_MAX_MS` env (default 30s) + per-cluster deadline check + SEED-phase skip (consolidation skips entirely when `_currentMacroPhase` contains 'SEED' so SEED-phase GPU stays with curriculum). Log surfaces `⚠ DEADLINE-ABORT (DREAM_CONSOLIDATION_MAX_MS=Xms)` when cap fires.
+- **I.10 slow-word histogram** — `_wordIntDurations` 256-cap ring buffer in `_teachWordIntegrated`, `⚠ slow word "X" took Yms` log on >30s threshold. Per-word elapsedMs also broadcast via I.11 Brain Events feed.
+- **I.11 Brain Events broadcast for cell-level teach paths** — `_pushBrainEvent?.` START/DONE in `_teachWordIntegrated` (per-word with elapsed-ms) + `_teachVocabList` (START + every-5-words progress + DONE). Event-broadcast coverage now 12/12 teach paths (was 1/12 SEED-only).
+- **I.12 `_currentCellSubPhases` counter** — increments on every wrapped teach call (outermost OR nested), resets on cell entry, exposed via `cellSubPhases` field in `getCurriculumStatus()` snapshot. Dashboard renderer prefers it when outermost counter is 0, tags label with ` sub-phases ` so operator can distinguish counter source.
+- **I.14 HTTP event-loop yield** — explicit `await new Promise(r => setImmediate(r))` at `_teachHebbian` entry, throttled to every 50ms via `_lastHebbianYieldAt` timestamp. Eliminates 171s-stall main-thread saturation that starved HTTP request handlers during heavy Hebbian batches.
+- **I.4 `workers=0MB(initializing)`** — replaced ambiguous `workers=?MB` placeholder in cell-alive heartbeat formatter.
+- **I.5 `(active)` phase-elapsed floor** — phase-elapsed shows `(active)` when elapsed < 500ms instead of misleading `+0s`.
+
+Curriculum entry point unchanged — fixes live as in-place edits within `js/brain/curriculum.js`. The per-grade file split (target layout in this README) still deferred to a dedicated session with test-coverage pass. See `docs/NewTodo.md § I-track` for full per-fix detail + closure status (all 20 ✅ SHIPPED).

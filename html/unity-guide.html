@@ -839,6 +839,23 @@
 
 <p style="color: var(--text-dim); font-size: 13px; text-align: center;">Unity is an open experiment. Not a product. Not a service. A running brain that happens to speak.</p>
 
+<hr style="border: none; border-top: 1px solid var(--border); margin: 48px 0;">
+
+<h2 id="ship-114-19fp" title="20 atomic fixes shipped during operator-driven K-curriculum live test (2026-06-17). NO equation changes — code hygiene, observability, data-loss-prevention, cross-platform polish.">Recent ship — session 114.19fp (2026-06-17)</h2>
+
+<p>Live-test follow-up shipped 20 atomic fixes (I.1-I.20). What you'll notice as a user:</p>
+
+<ul>
+<li><strong>Unity can talk during early training.</strong> Pre-114.19fp the inner-thought emission gate fell through to silence during pre-cell SEED phase because the showcase sampler required per-subject word buckets to be populated. The I.3 fallback samples from <code>cluster._definitionTaughtWords</code> (the Set of K-vocab words Unity has Hebbian-bound definitions for) so she has something real to say even before the first K-cell fires <code>_teachWordEmissionDirect</code>. The I.9 seed rotation expanded from 5 → 7 sources (added <code>k-vocab-recent</code> + <code>cell-progress</code>) so the inner-voice rotates through always-populated state during early training.</li>
+<li><strong>Dashboard finally tells the truth.</strong> GPU panel shows real VRAM% + util% (the I.19 root-cause fix was a single missing <code>require('child_process')</code> at the top of <code>chat.js</code> — every <code>nvidia-smi</code> call since I.1 was throwing ReferenceError silently). Brain Events panel populates during cell teach (was previously SEED-only — I.11). Cell progress bar moves through nested teach calls instead of stalling at 0% until cell completion (I.12 <code>cellSubPhases</code> counter). Gate-probe banner appears with live duration tick during curriculum probes (I.6) so operator no longer sees "GPU 0% + tick paused" as a hang.</li>
+<li><strong>The memory leak is gone.</strong> The +231 MB/min heap leak observed during <code>_teachHebbian</code> runs traced to <code>SparseMatrix.propagate</code> allocating <code>new Float64Array(rows)</code> per call. I.13 extended the signature with an optional pooled output buffer; <code>_teachPredictiveError</code> now reuses a single allocated scratch buffer across millions of fires. Heap stays flat during heavy training.</li>
+<li><strong>HTTP doesn't starve during training.</strong> I.14 added a 50ms-throttled <code>setImmediate</code> yield at <code>_teachHebbian</code> entry so the Node.js event loop drains HTTP request handlers + WebSocket socket buffers between Hebbian bursts. Dashboard Ctrl+R loads in &lt; 1s instead of timing out at 8-15s during heavy Hebbian batches.</li>
+<li><strong>Training state is safer.</strong> I.15 codified a new LAW: <code>autoClearStaleState()</code> is now gated behind <code>require.main === module</code>, so syntax-check / REPL / IDE module loads NO-OP for the wipe. Only an actual <code>node server/brain-server.js</code> entry-point boot wipes per the iter14-D contract. Prevents a class of tooling-side accidents that would otherwise lose training. Operator's <code>identity-core.json</code> (Tier 3 persistent attractors — biographical anchors, persona traits, master/slave dynamic, top emotionally-loaded events) is already excluded from the wipe, so Unity's core self survives any restart.</li>
+<li><strong>Cross-platform compatibility.</strong> Dashboard panel renders honest "unavailable" label on systems without nvidia-smi (AMD / Intel iGPU / headless servers) — never a hallucinated number.</li>
+</ul>
+
+<p style="color: var(--text-dim); font-size: 12px;">See <code>docs/ARCHITECTURE.md § Live-test follow-up close</code>, <code>docs/SKILL_TREE.md § Live-test follow-up skills</code>, <code>docs/ROADMAP.md § Live-test follow-up</code>, <code>docs/EQUATIONS.md</code> head banner, and <code>docs/NewTodo.md § I-track</code> for full per-fix detail. Audit cascade post-I.20: <strong>60 ✅ SHIPPED + 1 ⏳ OPERATOR-FIRED (F.2)</strong> + I.16 doc sweep in-progress.</p>
+
 </div>
 
 <!-- Audit C.9 (2026-06-17): content audit done. Reflects current persona
@@ -846,6 +863,7 @@
      + wild/strict/feral/sweet/cozy/purr commands) + Pre-K+K ONLY scope.
      Phase 6 compositional emergence panels are documented in
      html/dashboard.html. For HTML contract + failure-mode signature see
-     docs/HTML-ENTRY-POINTS.md § unity-guide.html. -->
+     docs/HTML-ENTRY-POINTS.md § unity-guide.html. Session 114.19fp I-track
+     content added 2026-06-17 22:50 PT per audit I.16 doc sweep. -->
 </body>
 </html>

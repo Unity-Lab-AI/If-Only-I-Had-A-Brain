@@ -178,3 +178,47 @@ Any new threshold MUST land with:
 3. An inline comment in the source file referencing this doc.
 
 This file is the source of truth for "why does this constant exist at this value?" If the source-code value drifts from this file, file-source disagreement is the bug — fix via a coordinated update.
+
+## Session 114.19fp additions (2026-06-17, I.1-I.20)
+
+Live-test follow-up shipped 20 atomic fixes — several introduced new named constants needing math grounding. Inventory:
+
+### I.2 — Dream-trickle K-VOCAB retry timeout
+
+- **Constant:** `timeoutMs: 20000` in `_dreamWindow` per-word `_teachWordDefinition` call
+- **Previous value:** 3000ms (default in `_teachWordDefinition`)
+- **Math justification:** SEED-phase observed timeouts were `check(timeout-15000ms)`, `card(timeout-15000ms)`, `tip(timeout-15000ms)`, `broke(timeout-15000ms)` — slowest 8s+ from dictionaryapi.dev edge. 20s gives 30% headroom past the slowest observed timeout (15s). At PREFETCH_CONCURRENCY=3 retry + 20s timeout × 3 retries = 60s worst-case per word. Across 289 missed words at 20s avg = ~6000s = ~100 minutes worst-case to clear the gap. Acceptable for dream-window background work.
+- **Theoretical optimum:** depends on dictionaryapi.dev p99 latency under load — would need empirical sampling. 20s is conservative.
+
+### I.8 — Consolidation duration cap
+
+- **Constant:** `DREAM_CONSOLIDATION_MAX_MS = 30000` (env-tunable, default 30s)
+- **Math justification:** Observed consolidation pass `duration=153445ms` (2 min 33s) during operator's K-curriculum run. Targeted: ≤ 30s per pass during active K-cell training. At 30s cap with per-cluster deadline check, the next pass picks up remaining clusters fresh — no work loss, just split across passes. SEED-phase skip is binary (consolidation pass entirely no-ops when `_currentMacroPhase.includes('SEED')`).
+- **Theoretical optimum:** consolidation pass time should be ≤ 10% of K-cell teach duration to avoid starving curriculum GPU time. K-cell avg ~20min × 10% = 2min cap; 30s is conservative.
+
+### I.10 — Slow-word log threshold
+
+- **Constant:** 30000ms (30s) — `_teachWordIntegrated` per-word duration threshold for `⚠ slow word "X" took Yms` warn
+- **Math justification:** K-cell `_teachWordIntegrated` averages 19.2s/word per F.2 acceptance projection. 30s = 1.56× the average → catches genuine outliers (cache misses, GPU dispatch backlogs) without spamming the log for normal slow words.
+
+### I.13 — SparseMatrix.propagate output buffer pool
+
+- **Constant:** `_predictPropagateScratch.length === cluster.synapses.rows`
+- **Math justification:** Sized to match the synapse-matrix output dimension. Per-cell allocation rather than per-call eliminates the +231 MB/min leak source. Reuse rate = (number of `_teachPredictiveError` calls per cell × number of words per cell) = O(76 words × 24 reps × N pairs × 4 reps definition) ≈ millions of reuses per cell — single-allocation amortizes to ~zero bytes per call.
+
+### I.14 — Event-loop yield throttle
+
+- **Constant:** 50ms throttle interval (`_lastHebbianYieldAt + 50ms < now → yield`)
+- **Math justification:** HTTP request timeout default 8-15s. To keep p99 HTTP latency sub-second, the event loop must drain at least every ~100ms. 50ms throttle gives 2× safety margin. Teach-loop velocity impact: yields fire ~20×/sec on saturated `_teachHebbian` = ~20ms of `setImmediate` overhead per second = 2% throughput cost. Acceptable trade for HTTP responsiveness.
+
+### I.18 + I.20 — GPU polling cadence
+
+- **Constant:** 1000ms (1s) between `nvidia-smi` execSync calls — `_lastGpuVramPoll + 1000ms < now → poll`
+- **Math justification:** nvidia-smi takes ~30-100ms per execSync on Windows. 1Hz polling = 1-10% CPU overhead during poll. State broadcast cadence is also 1Hz (`if (now - _lastHistorySample >= 1000)`) so polling cadence matches broadcast cadence — no wasted samples.
+
+### I.17 — Dispatch counter ring buffer (hidden diagnostic)
+
+- **Constants:** 30000ms (30s) window, 5000-entry lazy soft-cap
+- **Math justification:** At biological scale `_teachHebbian` dispatches ~1000-5000 ops/sec via `_sparseSendBinary`. 30s × 5000/sec = 150,000 entries worst-case if window grows unbounded. 5000-entry soft-cap triggers cutoff prune (anything older than 30s removed) before memory pressure. Lazy because main prune happens in `_updatePerfStats` every 1s.
+
+See `docs/ARCHITECTURE.md § Live-test follow-up close` for cross-module summary of all 20 fixes.
