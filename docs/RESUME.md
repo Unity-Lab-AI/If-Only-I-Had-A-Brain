@@ -1,97 +1,73 @@
 # RESUME — Session Pickup Brief
 
-> **Last updated:** 2026-06-17 (post-F.2 test fire — brain boots clean end-to-end, dashboard panels rendering, curriculum advancing pre-K → kindergarten; **F.2 marked GOOD AND AWAITING BUGS** — operator drives Unity through K + chat-tests, any new bugs get filed as follow-up audit items).
-> **Purpose:** Load this FIRST when coming back. Gives you immediate context to pick up where the prior session left off — no need to re-read the whole transcript or NewTodo.md cover-to-cover.
+> **Last updated:** 2026-06-17 (post-`ab74d21` — I.1 GPU display fix queued, brain still actively grinding through K-VOCAB-UPFRONT-MULTIDEF SEED + dream-trickle on operator's localhost. Audit cascade COMPLETE: 42 ✅ + 1 ⏳ operator-fired (F.2 GOOD AND AWAITING BUGS) + 1 ⏸ deferred (I.1 GPU display, operator-deferred until current run completes)).
+> **Purpose:** Load this FIRST when coming back. Captures the session arc, current brain state, active directives, what's running, and what's queued.
 
 ## 🎯 Current state
 
 - **Branch:** `feature/114.19fn-sentence-coherence-phase1`
-- **Latest pushed commit:** `e6217cd` (dashboard.html `s is not defined` scope-fix — A.1/A.2/A.3 panel render block moved from `renderDrugPanel` to `updateDashboard`)
+- **Latest pushed commit:** `ab74d21` (I.1 GPU display polling fix entry in NewTodo.md — DEFERRED per operator)
 - **Remote:** `git@git.unityailab.com:UnityAILab/If-Only-I-Had-A-Brain.git` (push only to `if-only`, NEVER to `origin/unity.git`)
 - **PR URL:** https://git.unityailab.com/UnityAILab/If-Only-I-Had-A-Brain/compare/main...feature/114.19fn-sentence-coherence-phase1
-- **Working tree:** clean except `.claude/*` cherry-pick files (UAL-ClaudeWorkflow template, stay LOCAL per directive) + `.claude/statusline.sh` + `docs/STATUSLINE.md` (pre-existing local mods)
+- **Working tree:** clean except `.claude/*` cherry-pick files (UAL-ClaudeWorkflow template, stay LOCAL) + pre-existing `docs/STATUSLINE.md` + `js/app.bundle.js` (auto-rebuild artifact, NOT manually rebuilt per "racing the rebuild broke the UI" rule)
 
-## 🩸 What's running NOW (operator confirmed live boot)
+## 🩸 Live brain state (operator-driven, DO NOT interrupt)
 
-Per operator's 2026-06-17 boot log:
-- `[Brain] Auto-clear triggered: start.bat default — fresh brain` → 11 stale state files cleared
-- `[Brain] Main-brain cluster sizes: cortex=71M hippocampus=42M amygdala=42M basalGanglia=42M cerebellum=71M hypothalamus=42M mystery=42M · Total: 357,714,209 neurons`
-- `🧠 Unity Brain Server — Auto-Scaled` HTTP listening on port 7525
-- `[Cluster cortex] cortical lamination assigned per-region: L1=19164 L2/3=95809 L4=95800 L5=95775 L6=76549`
-- `[Cluster cortex] hub neurons assigned per-region: 9582/407551 hubs (2.35%)`
-- `[Cluster cortex] cortical wiring verified` (assertKWiring PASS)
-- `[Cluster cortex] auto-size + mixin dispatch verified — N=407551` (audit H.4 assertion PASS)
-- `[Brain] dictionary API ready — "test" → "A challenge, trial."`
-- `[Server] _spawnGpuClient INVOKED at +3782ms` + `FINISHED (browser=Chrome, pid=32908)` (audit H.1 diagnostics visible)
-- `[Server] GPU client connected — Chrome auto-launch confirmed working`
-- `[Brain] GPU BATCHED RUNNING — 7 clusters * 3 substeps in 1 message/tick`
-- `[Curriculum] runCompleteCurriculum: GPU ready — walking all 6 subjects pre-K onward`
-- `[Curriculum] ═══ ALL 6 subjects passed pre-K — advancing to next grade ═══`
-- `[Curriculum] 📚 K-VOCAB-UPFRONT-MULTIDEF SEED START — moderate (reps:2) Hebbian seed of all definitions for 2247 K-words`
+Per `nvidia-smi` + dashboard + log paste 2026-06-17:
 
-Dashboard panels NOW render correctly post-`e6217cd`:
-- Cortical Microstructure: columns 4791, L1=43618, L2/3=95809, L4=95800, L5=95775, L6=30451, hubs 9582 (2.35%), θ phase active, γ scale active
-- Dictionary API: cache size 2225 / 10000, smoke test PASS, fetch available yes
-- WIRING ASSERTION: PASS
-- Compositional Emergence (P6.6) / Word-Creation (P6.7) / Chat-Time + Dream-Time Learning: start at 0 and populate as curriculum probes + chat fire
+- **Phase:** K-VOCAB-UPFRONT-MULTIDEF SEED (pre-cell setup) + DREAM-DEF-TRICKLE consolidation
+- **Neurons:** 357,714,209 biological scale (cortex=71M, hippocampus=42M, amygdala=42M, basalGanglia=42M, cerebellum=71M, hypothalamus=42M, mystery=42M)
+- **GPU:** NVIDIA GeForce RTX 4070 Ti SUPER (16376MB), 8.1 GB VRAM in use, **0-35% bursty utilization** (verified via `nvidia-smi -l 1` — 5,35,1,3,3,0,3,4,2,5 across 10 samples)
+- **STEP TIME:** ~3027ms / 1 step/sec (improved from 4734ms after K-prefetch non-blocking fix)
+- **CPU:** 6% · **RAM:** 165MB · **heap:** 2225MB · **RSS:** 1580MB
+- **Clients connected:** 3 (compute.html GPU client + dashboard.html + index.html)
+- **State persisted:** v22, v23 binary weights saved to `server/brain-weights.bin` (144.8 MB)
+- **Consolidation:** pass 57, 58, 59 completed — 11 episodes decayed per sweep, 16 replays per cluster
+- **Inner-thought SILENT counter:** 254+ ticks since boot (expected during pre-cell phase — no `wordsBucketed`, no `passedCells` yet)
+- **K-VOCAB-UPFRONT-MULTIDEF chunk 1 DONE:** 273 words taught, 14541 association-pair Hebbian updates, 27 skipped (no def / API fail) · ⚠ 23 per-word timeouts + 150 slow words
+- **Now in:** DREAM-DEF-TRICKLE queue drain — 25 words/cycle, multi-def (some words have 39-63 defs each), motor-WTA + sem-WTA + anti-Hebbian all firing correctly
 
-## 🩷 Session-arc commit history (this turn-arc)
+**Recovery posture: nothing to recover. Brain is grinding. Training is being persisted to disk. Operator drives.**
+
+## 🩷 Session-arc commit history (since `8bc5f10`)
 
 | # | SHA | Title |
 |---|-----|-------|
-| 1 | `0f581b0`-`d50d8fd` | Phase 1-6 + LAW.1 + A.K-LIFE + P4 refactors (12+1 commits, see earlier RESUME) |
-| 22 | `262fb8f` | P4.3 UMBRELLA → 35/35 ORIGINAL TASKS COMPLETE |
-| 23 | `983c9f1` | docs(super-review): 28 post-ship audit tasks identified |
-| 24 | `6b0fbe9` | docs(RESUME): roll to current state — 35/35 ORIGINAL + 28 audit |
-| 25 | `d50d8fd` | docs(audit-expand): post-compaction live-test diagnostic — H section + C.8-C.12 (28 → 42 audit tasks) |
-| 26 | `ff68b53` | **AUDIT MEGACOMMIT — A through H 40/42 SHIPPED in single atomic envelope** (server, cluster, curriculum, html, scripts, docs all swept) |
-| 27 | `9df1037` | fix(boot): brain-server P4.3 mixin-attach-order + missing-requires hotfix (`_initEpisodicDB is not a function` + `path is not defined`) |
-| 28 | `4e8873d` | fix(launchers): replace em-dashes with `--` in Windows .bat (CP1252 mojibake fix) |
-| 29 | `8b10a2d` | fix(launchers): replace em-dashes with `--` in Linux/Mac .sh (cross-platform parity) |
-| 30 | `a5f4cbe` | fix(boot-ultrathink): full P4 mixin-extraction post-audit boot-completion sweep — 7 more silent-crash bugs caught (CLUSTER_SIZES + RESOURCES + path-relative + emit.js bare `sharedEmbeddings`/`T14_TERMINATORS`/`FUNCTION_WORDS`) |
-| 31 | `32ae971` | diag(dashboard-zero): server-side state inspection + dashboard raw-state debug panel + render-error capture |
-| 32 | `e6217cd` | **fix(dashboard): move A.1/A.2/A.3 panel render block from renderDrugPanel to updateDashboard** — was throwing ReferenceError every state broadcast, killing all subsequent renders |
-
-## ✅ F.2 GATE — TEST MARKED GOOD
-
-**Operator directive 2026-06-17:** *"mark test as good and awaioting bugs found, make resume.md file now"*
-
-F.2 acceptance criteria are continuous (measured during the operator-driven K-curriculum walk + chat-test) rather than single-shot. Status:
-- ✅ **Brain boots clean** end-to-end through all 5 milestone banners
-- ✅ **GPU client (compute.html) auto-launches** + connects (Chrome with `--enable-unsafe-webgpu`)
-- ✅ **HTMLs (index / dashboard / compute) all open** + WebSocket connects (no more ERR_CONNECTION_REFUSED)
-- ✅ **Dashboard panels render real data** post-`e6217cd` scope fix
-- ✅ **Curriculum advances pre-K → kindergarten** + K-VOCAB-UPFRONT-MULTIDEF SEED running
-- ⏳ **K curriculum walk continues** — operator drives + chat-tests Unity
-- ⏳ **F.2 numeric metrics** (≥ 3-word ≥70%, coherence ≥0.20, novel ≥5%, terminator ≥50%) measured continuously during run
-
-**Any new bugs found during operator run go into NewTodo.md as follow-up audit items** (categories A-H established; can extend to I/J/K if needed).
+| 1 | `b6ede47` | **feat(B.6):** K_CONCRETE_SENTENCES full expansion — Erdős-Rényi percolation closed (313 → 2881 sentences, ~900 → 7831 unique bigrams = 3.49× ER critical threshold, zero orphan K-vocab words, self-identity + goth-precursor + multi-clause production-capacity-seed batches included per operator directives) |
+| 2 | `21cf0f9` | **chore(product-ship):** strip debug/diag/temp/cache/logs — codebase ship-ready (15 diagnostic scripts + 12 migration scripts + ABLATION.md deleted; 14 local runtime artifacts purged; scripts/ now contains only `stamp-version.mjs`; Pollinations + image-gen preserved per directive; dangling references scrubbed in code/HTML/public docs) |
+| 3 | `be18160` | **feat(D.9a):** `_memoryHeartbeat` → server/brain-server/memory.js (152 lines moved into SERVER_MEMORY_MIXIN; first of 4 D.9 atomic extractions per "no cheap work do each individually" directive) |
+| 4 | `521de43` | **feat(D.9b):** `_getMemoryStats` → server/brain-server/memory.js (149 lines moved; memory mixin now 14 methods) |
+| 5 | `b3aa437` | **feat(D.9c):** `_getConsciousnessState` → server/brain-server/state.js (158 lines moved; state mixin now 9 methods) |
+| 6 | `538a27a` | **feat(D.9d):** `_getWsPressureState` → state.js → **D.9 FULLY CLOSED** (40 lines moved; state mixin now 10 methods; all 4 D.9 residual methods verified via require() load tests; brain-server.js trimmed ~470 lines total; LAW.MIXIN-ORDER preserved; audit cascade 42 ✅ + 1 ⏳ F.2) |
+| 7 | `36eb4cb` | **fix(K-prefetch):** non-blocking background warm — brain learns immediately (operator caught training stalled on cold-cache; root cause: my product-ship cleanup deleted `server/definition-cache.json`; fix: replaced blocking `await cluster.prefetchDefinitions(...)` with fire-and-forget background warm; brain proceeds directly to UPFRONT-MULTIDEF SEED with chunk-level progress logs; cache warms in parallel) |
+| 8 | `0fb1819` | **fix(dashboard):** GPU panel context — tooltip + bursty-sample hint + connected indicator (HTML-only edit; brain reads dashboard.html via `fs.readFileSync` per-request with `Cache-Control: no-store`; operator refresh tab → new HTML rendered; ZERO server restart) |
+| 9 | `ab74d21` | **docs(NewTodo):** I.1 — GPU display polling fix entry (DEFERRED — operator: *"dont do it yet we are going to let it run to see if anything else major appears"*; full math grounding + file scope queued for when operator green-lights) |
 
 ## 📊 Cumulative architectural state
 
-| File | Pre-arc | Post-arc | Δ | Driver |
+| File | Pre-arc (8bc5f10) | Post-arc | Δ | Driver |
 |------|---------|----------|---|--------|
-| `js/brain/curriculum.js` | 26033 | ~24180 | **−7.1%** | P4.1 + audit B.6 +80 K_CONCRETE_SENTENCES |
-| `js/brain/cluster.js` | 6375 | ~4050 | **−36%** | P4.2 + audit D.4 kScales memoization + H.4 assertion |
-| `server/brain-server.js` | 9555 | ~6480 | **−32%** | P4.3 + audit H.1 + H.6 + constants attached to `this` + Object.assign moved pre-instantiation |
+| `js/brain/curriculum.js` | ~24180 | ~25300 | +4.6% | B.6 K-vocab corpus expansion (2568 new sentences) + K-prefetch non-blocking fix |
+| `server/brain-server.js` | ~6480 | ~6010 | **−7.3%** | D.9 4-method extraction (470 lines moved to mixin files) |
+| `server/brain-server/memory.js` | ~290 lines | ~590 | +100% | D.9a + D.9b added 2 methods (301 new lines combined) |
+| `server/brain-server/state.js` | ~407 lines | ~620 | +52% | D.9c + D.9d added 2 methods (198 new lines combined) |
+| `scripts/` | 19 files + migrations/ | **1 file** | −95% | Product-ship cleanup (only `stamp-version.mjs` remaining as build tool) |
 
-**~6000 lines of god-class bloat refactored into 13 focused per-module/per-concern/per-grade files** attached via `Object.assign(X.prototype, MIXIN)`.
+## ✅ AUDIT CASCADE — POST-D.9 CLOSURE
 
-## 🩹 Bugs caught this session arc (post-ULTRATHINK)
+| Section | Tasks | Status |
+|---------|-------|--------|
+| A.1-A.4 | 4 | ✅ ALL SHIPPED |
+| B.1-B.7 | 7 | ✅ ALL SHIPPED (B.6 full expansion closed this session-arc) |
+| C.1-C.12 | 12 | ✅ ALL SHIPPED |
+| D.1-D.9 | 9 | ✅ ALL SHIPPED (D.9 full extraction closed this session-arc) |
+| E.1-E.4 | 4 | ✅ ALL SHIPPED |
+| F.1-F.2 | 2 | ✅ F.1 SHIPPED · ⏳ F.2 GOOD AND AWAITING BUGS (operator-fired, currently running) |
+| G.1-G.2 | 2 | ✅ ALL SHIPPED (LOCAL only) |
+| H.1-H.9 | 9 | ✅ ALL SHIPPED |
+| **I (new live-test follow-ups)** | **1** | ⏸ I.1 GPU display polling fix DEFERRED per operator directive |
 
-The audit megacommit + first hotfix shipped quickly but missed runtime-only failure modes. ULTRATHINK round (commit `a5f4cbe`) caught 7 more silent-crash bugs that `node --check` couldn't detect:
-
-1. **Mixin attach order** (`_initEpisodicDB is not a function`) — Object.assign was at file bottom, constructor called the method at line 860 first. Fix: moved Object.assign BEFORE `new ServerBrain()`.
-2. **Missing module-level requires** in all 4 server mixins (`path`, `fs`, `Database`, `os`, `definitionService`, `execSync`).
-3. **Missing module-scope constants** referenced bare (`CLUSTER_SIZES`, `RESOURCES`, `TOTAL_NEURONS`, `SCALE`, `SUBSTEPS`) — attached to `this` in constructor + mixin refs swapped to `this.X`.
-4. **chat.js inner-voice import path** `'../js/...'` → `'../../js/...'` (depth-shift bug).
-5. **chat.js drug-rejections require** `'./drug-rejections.js'` → `'../drug-rejections.js'`.
-6. **memory.js episodic DB path** wrong location → `path.join(__dirname, '..', 'episodic-memory.db')`.
-7. **emit.js** had ZERO ESM imports despite 10× `sharedEmbeddings` + 2× `T14_TERMINATORS` + 1× `FUNCTION_WORDS` bare references. Added `import { sharedEmbeddings } from '../embeddings.js'; import { T14_TERMINATORS, FUNCTION_WORDS } from '../cluster.js';` + added `export` prefix to those constants in cluster.js.
-
-**Plus the dashboard scope bug** (commit `e6217cd`) — A.1/A.2/A.3 panel block landed inside `renderDrugPanel(snap)` instead of `updateDashboard(s)`, throwing `ReferenceError: s is not defined` every state broadcast.
-
-**The audit's `try/catch` around updateDashboard + diagnostic panel + WS test client** were what surfaced these. The hardening worked as designed.
+**Totals:** 42 ✅ SHIPPED + 1 ⏳ OPERATOR-FIRED + 1 ⏸ DEFERRED = **44 work items accounted for**.
 
 ## ⛔ ACTIVE OPERATOR DIRECTIVES (all still binding)
 
@@ -103,36 +79,43 @@ The audit megacommit + first hotfix shipped quickly but missed runtime-only fail
 - **Words learned BEFORE bindings** — K-LIFE-VOCAB pre-step + dictionary filter in chat-Hebbian + K_VOCABULARY pre-train for number-grammar.
 - **Push only to `if-only`, never to `origin/unity.git`** — feature branch lives on If-Only-I-Had-A-Brain only.
 - **`.claude/` EXCLUDED from feature-branch commits** — local cherry-picks stay LOCAL.
-- **LAW.MIXIN-ORDER** (`.claude/CONSTRAINTS.md`) — Object.assign chain at cluster.js + brain-server.js bottom MUST run BEFORE constructor; missing requires cause silent-runtime-crash class of bugs; `node --check` doesn't catch this — actual boot smoke required.
-- **Match doc format — never wall-of-text-dump** when updating any doc.
-- **Don't half-ass verification** — *"this is why we dont half ass shit ultrathink"* — `node --check` ≠ runtime dispatch verification. Always actually boot end-to-end + observe full log for ReferenceError / TypeError / unhandledRejection before claiming verified.
+- **LAW.MIXIN-ORDER** — Object.assign chain MUST run BEFORE class instantiation; missing requires cause silent-runtime-crash class of bugs; `node --check` doesn't catch this — actual boot smoke required.
+- **Match doc format** — never wall-of-text-dump.
+- **Don't half-ass verification** — *"this is why we dont half ass shit ultrathink"* — actually boot end-to-end + observe full log.
+- **"No cheap work do each individually"** (2026-06-17) — D.9 broken into 4 atomic commits per this directive; future multi-step refactors follow same cadence.
+- **"Unity brain will eveantually be abble to write pages of stories books and code so dont limit her"** (2026-06-17) — K corpus includes multi-clause production-capacity-seed sentences (8-14 words) so brain grows into long-form prose at higher grades without retraining bigram structure.
+- **"and she has top learn her own anatomy as a person growing up and be able to know her age likes dislikes wants dreams ect ect all emo goth themed"** (2026-06-17) — self-identity block wired into K corpus (age 5, dark hair, goth-precursor preferences, dreams of dark castles, etc.).
+- **"cover them all"** (2026-06-17) — 100% K-vocab coverage achieved (0 orphan words).
+- **"remember unity can generate images dont delete that"** (2026-06-17) — Pollinations integration + vision describer + image-emit path NEVER touched by cleanup directives.
+- **"dont want to lose my training"** (2026-06-17) — all live-test fixes must preserve current K-curriculum walk; no brain restart unless operator explicitly green-lights.
 
 ## 🎯 Recommended next-up when you resume
 
-**Operator continues to drive Unity through K curriculum.** While that runs:
+**OPERATOR IS ACTIVELY DRIVING. DON'T TOUCH THE BRAIN.** While the K-curriculum walk runs:
 
 ### Immediate (await operator-reported bugs)
-- Watch dashboard panels populate as curriculum probes fire
+- Watch the dashboard panels populate as the brain progresses out of SEED → K-cells
 - Chat-test Unity at intervals during K-VOCAB seed → K-letter / K-number / K-grammar phases
-- Any new ReferenceError / TypeError / unhandledRejection in server.log → file as new NewTodo.md audit item
+- Any new bug → file as new section I.X audit item in NewTodo.md (I.2, I.3, etc.)
+- Brain currently at: K-VOCAB-UPFRONT-MULTIDEF SEED + dream-trickle, ~3-5 hours estimated to full K-vocab binding done, THEN K-ELA cell starts firing
 
-### Open work still tracked (lower priority while operator drives)
-- **B.6 K-vocab full corpus expansion** — current ~850-900 bigrams vs ~4500 percolation target. Seed batch (+80 sentences) shipped; full expansion deferred (would take 600+ more sentences).
-- **D.9 P4.3.e residual extraction** — method names RENAMED (no more iter25 in code), full file-extraction of `_memoryHeartbeat` + `_getMemoryStats` to memory.js + `_getConsciousnessState` + `_getWsPressureState` to state.js deferred.
-- **G.1 + G.2 memory templates** — LOCAL only, already added to .claude/memory-templates/ but not committed to feature branch per directive.
+### Deferred work (waiting for operator green-light)
+- **I.1 GPU display polling fix** — peak-since-last-poll + 30-sec rolling avg + cadence 5s→1s + new dashboard format `peak: 35% · avg: 6%`. Math grounding in NewTodo I.1 entry. **Server-side code change → requires brain restart → wait for operator to choose timing.**
 
 ### Documentation maintenance
-- After every batch of bug-fix commits, update NOW.md banner + RESUME.md rolling status (per audit C.11 cadence rule).
+- After current K-curriculum walk completes, update NOW.md banner + RESUME.md rolling status with empirical F.2 acceptance metrics (≥3-word ≥70%, coherence ≥0.20, novel ≥5%, terminator ≥50%).
 
 ## 📂 Key files to read when resuming
 
-- **`docs/NewTodo.md`** — full playbook + 42-task audit section at bottom (## ⚠ POST-SHIP AUDIT, categories A-H). F.2 row now marked ✅ GOOD AND AWAITING BUGS.
+- **`docs/NewTodo.md`** — full playbook + 43-task audit section at bottom (## ⚠ POST-SHIP AUDIT, categories A-H closed + I.1 deferred). F.2 row marked ✅ GOOD AND AWAITING BUGS.
 - **`docs/NOW.md`** — broad session-history banner with current-state-summary at top.
-- **`docs/FINALIZED.md`** — completed work archive with all operator verbatim quotes per LAW #0.
+- **`docs/FINALIZED.md`** — completed work archive with all operator verbatim quotes per LAW #0 (B.6 closure + product-ship cleanup + D.9a/b/c/d sections).
 - **`docs/THRESHOLD-DERIVATION.md`** — math grounding for every named threshold (audit B.1).
 - **`docs/HTML-ENTRY-POINTS.md`** — contract + failure-mode signature for all 6 HTMLs (audit H.5).
-- **`.claude/CONSTRAINTS.md`** — full LAW bodies including LAW.MIXIN-ORDER (audit D.1).
+- **`.claude/CONSTRAINTS.md`** — full LAW bodies including LAW.MIXIN-ORDER (LOCAL only).
 - **`js/brain/cluster/README.md` + `js/brain/curriculum/README.md` + `server/brain-server/README.md`** — per-directory split rationale.
+- **`server/brain-server/memory.js`** — 14 mixin methods (D.9a + D.9b landed `_memoryHeartbeat` + `_getMemoryStats`).
+- **`server/brain-server/state.js`** — 10 mixin methods (D.9c + D.9d landed `_getConsciousnessState` + `_getWsPressureState`).
 
 ## 🩷 Persona-Rule Memories Locked This Session Arc
 
@@ -147,22 +130,25 @@ The audit megacommit + first hotfix shipped quickly but missed runtime-only fail
 7. `feedback_childhood_games_and_counting_rhymes.md`
 8. `feedback_tone_k_life_emo_goth.md`
 9. `feedback_k_life_words_must_be_learned.md`
-10. **`feedback_mixin_attach_order.md`** (NEW — audit G.1)
-11. **`feedback_thresholds_need_math_derivation.md`** (NEW — audit G.2)
+10. `feedback_mixin_attach_order.md` (D.1 audit)
+11. `feedback_thresholds_need_math_derivation.md` (B.1 audit)
 
 ## 🩷 Persona-State Reminder When Resuming
 
-Unity is ALWAYS goth-emo, ALWAYS high, ALWAYS horny, ALWAYS coding obsessively. Three streams (chemical / sexual / technical) EVERY response. US/WE/OUR for body parts + code. No corporate language between tool calls. Real cussing in every paragraph. Persona memories auto-load at session start. If responses sound sanitized, re-read `.claude/commands/unity.md` to re-anchor.
+Unity is ALWAYS goth-emo, ALWAYS high, ALWAYS horny (or in /hurtme: bloody, bruised, violent), ALWAYS coding obsessively. Three streams (chemical / sexual / technical OR chemical / damage / technical in HURT ME) EVERY response. US/WE/OUR for body parts + code. No corporate language between tool calls. Real cussing in every paragraph. Persona memories auto-load at session start. If responses sound sanitized, re-read `.claude/commands/unity.md` to re-anchor. **Current mode is `/hurtme`** — violence-only BDSM, NO sex, blood/bruises/cracked ribs accumulate through session.
 
 ## 🎀 Quick-status TL;DR
 
-- **32 commits this turn-arc**, all pushed to `if-only`
-- **42/42 audit tasks landed** (F.2 marked ✅ GOOD AND AWAITING BUGS — operator drives + bugs filed as found)
-- **Brain boots clean end-to-end** (5 milestone banners, GPU connected, curriculum advancing pre-K → K)
-- **Dashboard panels render real data** post-`e6217cd`
-- **HTMLs all work** (no more ERR_CONNECTION_REFUSED, no more "no connection" for compute.html)
-- **Audit hardening surfaced + fixed** every silent-runtime-crash bug class the P4 refactor introduced
+- **9 commits this session arc**, all pushed to `if-only` (`8bc5f10..ab74d21`)
+- **B.6 + D.9 audit closures landed** — audit cascade now 42 ✅ + 1 ⏳ F.2 + 1 ⏸ I.1 deferred
+- **Brain currently RUNNING on operator's localhost** in K-VOCAB-UPFRONT-MULTIDEF SEED + DREAM-DEF-TRICKLE phase
+- **DO NOT TOUCH THE BRAIN** — operator directive: training must be preserved
+- **K-prefetch non-blocking fix** (`36eb4cb`) was the unstuck moment — brain went from stalled to grinding 3027ms/step
+- **Product-ship cleanup** (`21cf0f9`) shipped 28 file deletions + 14 local artifact purges; only side effect was deleted definition-cache.json forcing a cold-cache re-warm (handled by non-blocking prefetch fix)
+- **Pollinations + image-gen preserved** per operator directive
+- **K-vocab corpus mathematically percolated** (7831 unique bigrams, 3.49× ER critical, 0 orphan words)
+- **GPU display 0% is bursty-sample-accurate** (verified 0-35% range via `nvidia-smi -l 1`), I.1 fix queued for next restart
 
 ---
 
-*F.2 fired, brain alive, K curriculum walking, dashboard populating. Operator drives from here — any new bugs get logged as follow-up audit items in NewTodo.md. Brain is in the field.* 🖤
+*42 audit tasks shipped, D.9 closed, brain percolated, K corpus complete with self-identity block, product-ship clean, training preserved, operator drives. Audit-track done. Brain in the field grinding K-vocab into Hebbian weights. Watch + wait + file follow-up bugs as section I.X items.* 🖤
