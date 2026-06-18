@@ -847,10 +847,13 @@
         const p = s.perf;
         const cpuColor = p.cpuPercent > 80 ? '#ef4444' : p.cpuPercent > 50 ? '#f59e0b' : '#22c55e';
         // VRAM% from brain-broadcast gpuVramUsedMB / gpuVramMB. Clamp 0-100 defensively.
+        // I.19 — when gpuVramQueryWorking=false (nvidia-smi unavailable on this system),
+        // render honest "unavailable" instead of a fake 50%.
         const vramTotal = p.gpuVramMB || 0;
         const vramUsed = p.gpuVramUsedMB || 0;
-        const vramPct = vramTotal > 0 ? Math.max(0, Math.min(100, Math.round((vramUsed / vramTotal) * 100))) : 0;
-        const gpuColor = vramPct > 90 ? '#ef4444' : vramPct > 70 ? '#f59e0b' : '#22c55e';
+        const vramQueryWorking = p.gpuVramQueryWorking !== false;
+        const vramPct = (vramQueryWorking && vramTotal > 0) ? Math.max(0, Math.min(100, Math.round((vramUsed / vramTotal) * 100))) : 0;
+        const gpuColor = !vramQueryWorking ? '#888' : (vramPct > 90 ? '#ef4444' : vramPct > 70 ? '#f59e0b' : '#22c55e');
         $('d-perf').innerHTML = `
           <div>
             <div style="font-size:10px;color:#555;">CPU</div>
@@ -862,11 +865,14 @@
             <div style="font-size:18px;font-weight:700;color:#a855f7;">${p.memUsedMB}MB</div>
             <div style="font-size:9px;color:#444;">heap ${p.nodeHeapMB ?? 0}MB / RSS ${p.memRssMB ?? 0}MB</div>
           </div>
-          <div title="GPU VRAM used. Live nvidia-smi memory.used / total VRAM. Falls back to brain budget reserve on systems without nvidia-smi.">
+          <div title="GPU VRAM used. Live nvidia-smi memory.used / total VRAM. Shows 'unavailable' (NOT a fake number) on systems without nvidia-smi.">
             <div style="font-size:10px;color:#555;">GPU</div>
-            <div style="font-size:18px;font-weight:700;color:${gpuColor};">${vramPct}%</div>
-            <div class="bar-wrap"><div class="bar" style="width:${vramPct}%;background:${gpuColor};height:100%;border-radius:2px;"></div></div>
-            <div style="font-size:9px;color:#444;margin-top:2px;">${vramUsed.toLocaleString()} / ${vramTotal.toLocaleString()} MB · ${p.gpuName || 'none'} ${p.gpuComputeConnected ? '<span style="color:#22c55e;font-size:8px;">●&nbsp;connected</span>' : '<span style="color:#ef4444;font-size:8px;">●&nbsp;disconnected</span>'}</div>
+            <div style="font-size:18px;font-weight:700;color:${gpuColor};">${vramQueryWorking ? `${vramPct}%` : '<span style="font-size:13px;color:#888;">unavailable</span>'}</div>
+            ${vramQueryWorking
+              ? `<div class="bar-wrap"><div class="bar" style="width:${vramPct}%;background:${gpuColor};height:100%;border-radius:2px;"></div></div>`
+              : `<div style="font-size:9px;color:#888;margin:2px 0;">nvidia-smi not on PATH</div>`
+            }
+            <div style="font-size:9px;color:#444;margin-top:2px;">${vramQueryWorking ? `${vramUsed.toLocaleString()} / ${vramTotal.toLocaleString()} MB` : `total ${vramTotal.toLocaleString()} MB`} · ${p.gpuName || 'none'} ${p.gpuComputeConnected ? '<span style="color:#22c55e;font-size:8px;">●&nbsp;connected</span>' : '<span style="color:#ef4444;font-size:8px;">●&nbsp;disconnected</span>'}</div>
           </div>
           <div>
             <div style="font-size:10px;color:#555;">STEP TIME</div>

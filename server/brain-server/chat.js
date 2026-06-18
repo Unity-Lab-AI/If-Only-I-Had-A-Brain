@@ -36,6 +36,16 @@
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
+// I.19 closure 2026-06-17 22:54 PT — operator caught: "did you fucking
+// make the GPU % a static 50% it s not ever budging from 50%". Root
+// cause: this file was missing `const { execSync } = require('child_process')`,
+// so every `execSync('nvidia-smi ...')` call inside `_updatePerfStats`
+// has thrown ReferenceError since I.1 landed. The silent try/catch
+// swallowed the error and fell to fallback (0 for I.1's util ring,
+// 50% for I.18's vram budget halving). Adding the missing import unbreaks
+// ALL GPU polling: VRAM%, util, and the I.17 dispatch counter is fine
+// because that lives in gpu.js which has its own scope.
+const { execSync } = require('child_process');
 
 const SERVER_CHAT_MIXIN = {
   async processAndRespond(text, userId) {
@@ -468,16 +478,20 @@ const SERVER_CHAT_MIXIN = {
     this._lastCpuUsage = process.cpuUsage();
     this._lastCpuUsage = cpuNow;
 
-    // GPU VRAM used — one fucking number, operator-requested 22:48 PT.
-    // *"i just wanted a fucking % of vram used wtf is all this shit you
-    // keep adding"*. The I.1 (poll cadence) + I.17 (dispatch counter)
-    // explosions were over-engineering. Operator wants: VRAM USED in MB,
-    // displayed as % of total. nvidia-smi memory.used is the standard
-    // query — same flags as the original I.1 call (no fancy stdio), with
-    // a graceful fallback to a static brain-budget estimate when
-    // nvidia-smi isn't on the system.
+    // GPU VRAM used — one number, operator-requested 22:48 PT.
+    // *"i just wanted a fucking % of vram used"*. nvidia-smi memory.used,
+    // 1s poll cadence, honest "unavailable" status on failure (NOT a
+    // hallucinated half-of-total — that lied at 50% static 22:54 PT
+    // operator catch: "did you fucking make the GPU % a static 50% it s
+    // not ever budging from 50% this is a static 50% in error or
+    // something"). I.19 closure: missing `require('child_process')`
+    // import at top of file was the root cause — every I.1/I.17/I.18
+    // nvidia-smi call was throwing ReferenceError silently swallowed by
+    // the try/catch. Import added → polling actually works now.
     let gpuVramUsedMB = 0;
-    if (this.RESOURCES.gpu.vram > 0 && (!this._lastGpuVramPoll || Date.now() - this._lastGpuVramPoll > 1000)) {
+    let gpuVramQueryWorking = this._gpuVramQueryWorking !== false; // default true; flipped false on first fail
+    if (gpuVramQueryWorking && this.RESOURCES.gpu.vram > 0
+        && (!this._lastGpuVramPoll || Date.now() - this._lastGpuVramPoll > 1000)) {
       try {
         const out = execSync(
           'nvidia-smi --query-gpu=memory.used --format=csv,noheader,nounits',
@@ -487,21 +501,24 @@ const SERVER_CHAT_MIXIN = {
         if (Number.isFinite(parsed) && parsed >= 0) {
           gpuVramUsedMB = parsed;
           this._cachedGpuVramUsedMB = parsed;
+          this._lastGpuVramPoll = Date.now();
         } else {
+          // Non-numeric output — keep last good reading, don't fake.
           gpuVramUsedMB = this._cachedGpuVramUsedMB ?? 0;
         }
-        this._lastGpuVramPoll = Date.now();
       } catch (err) {
         if (!this._gpuVramFailWarned) {
           this._gpuVramFailWarned = true;
+          this._gpuVramQueryWorking = false;
           const firstLine = String(err && err.message ? err.message : err).split('\n')[0].slice(0, 200);
-          console.warn(`[Brain] nvidia-smi unavailable for VRAM query (${firstLine}) — using brain-side GPU budget estimate as fallback. Dashboard will still show a meaningful VRAM% based on the reserved budget.`);
+          console.warn(`[Brain] nvidia-smi VRAM query unavailable on this system (${firstLine}) — dashboard will show VRAM% as "unavailable" instead of a misleading number.`);
         }
-        // Fallback: half of total VRAM (the brain's unified-allocator budget
-        // per the boot banner "brain budget = total − OS ÷ 2"). This is
-        // always meaningful and never wrong-zero on systems without nvidia-smi.
-        gpuVramUsedMB = this._cachedGpuVramUsedMB ?? Math.round(this.RESOURCES.gpu.vram * 0.5);
+        // NO FAKE 50% FALLBACK. If we can't read VRAM, we report unknown.
+        // Dashboard renders "unavailable" label when gpuVramQueryWorking=false.
+        gpuVramUsedMB = 0;
       }
+    } else if (!gpuVramQueryWorking) {
+      gpuVramUsedMB = 0;
     } else {
       gpuVramUsedMB = this._cachedGpuVramUsedMB ?? 0;
     }
@@ -515,6 +532,7 @@ const SERVER_CHAT_MIXIN = {
       gpuName: this.RESOURCES.gpu.name,
       gpuVramMB: this.RESOURCES.gpu.vram,
       gpuVramUsedMB,
+      gpuVramQueryWorking: this._gpuVramQueryWorking !== false,
       gpuComputeConnected: !!(this._gpuConnected && this._gpuClient?.readyState === 1),
       gpuHits: this._gpuHits || 0,
       gpuMisses: this._gpuMisses || 0,
