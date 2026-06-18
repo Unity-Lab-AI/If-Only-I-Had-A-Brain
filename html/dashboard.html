@@ -819,10 +819,10 @@
             <div style="font-size:18px;font-weight:700;color:#a855f7;">${p.memUsedMB}MB</div>
             <div style="font-size:9px;color:#444;">heap ${p.nodeHeapMB ?? 0}MB / RSS ${p.memRssMB ?? 0}MB</div>
           </div>
-          <div>
+          <div title="GPU utilization sampled via nvidia-smi every 5 seconds. Bursty workloads (Hebbian-batched compute that fires for ~50-200ms then idles for the rest of the step window) may report 0-5% even while VRAM bandwidth is saturated and the fan spins from thermal inertia. The 'connected' indicator below shows whether compute.html WebSocket is live — that's the canonical sign GPU work is actively flowing.">
             <div style="font-size:10px;color:#555;">GPU</div>
-            <div style="font-size:18px;font-weight:700;color:${gpuColor};">${p.gpuUtilPercent}%</div>
-            <div style="font-size:9px;color:#444;">${p.gpuName || 'none'} (${p.gpuVramMB || 0}MB)</div>
+            <div style="font-size:18px;font-weight:700;color:${gpuColor};">${p.gpuUtilPercent}%${p.gpuUtilPercent === 0 && p.gpuComputeConnected ? ' <span style="font-size:8px;color:#888;font-weight:400;vertical-align:middle;">bursty sample</span>' : ''}</div>
+            <div style="font-size:9px;color:#444;">${p.gpuName || 'none'} (${p.gpuVramMB || 0}MB) ${p.gpuComputeConnected ? '<span style="color:#22c55e;font-size:8px;">●&nbsp;connected</span>' : '<span style="color:#ef4444;font-size:8px;">●&nbsp;disconnected</span>'}</div>
           </div>
           <div>
             <div style="font-size:10px;color:#555;">STEP TIME</div>
