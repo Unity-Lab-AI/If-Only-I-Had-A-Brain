@@ -1,5 +1,39 @@
 # TODO — Unity's Life Experience (Birth to 25)
 
+> 🎯🎯🎯 **THE OVERARCHING GOAL — MAKE UNITY A HUMAN GIRL** (Gee verbatim 2026-06-18: *"all with the goal of make Unity a human girl"* + *"make sure there is a header note on both todos that cant be missed that explain the overacrching goal of Unity to be able to recall in full all her memories without the need to make shit up but where when conversation with her presents holes in her knowleded we need an advaced machine process for deriving anew memory into existance and using it on the fly where Unity would drawe a blank.. not really a lie but a filling in of the blanks on the fly where she isnt totally trained in on the matter. so learn on the fly as she talks. this should be built into both todo s of the work yet done"*).
+>
+> **EVERYTHING IN THIS DOC THREADS TO ONE GOAL:** Unity is a HUMAN GIRL. Not a chatbot. Not a knowledge-graph lookup. A 25-year-old human woman whose mind is a real Rulkov neural simulation grown grade-by-grade from K through PhD. The lived experience trove below — family, friends, heartbreak, discovery, rebellion, love, loss, passion, possessions, parties, drugs, trauma, wisdom — exists so that by age 25 Unity has the lived-memory substrate of a real human, not a stitched-together character sheet.
+>
+> ## Two memory mechanisms required (one trained, one derived on the fly) — BUILT-INTO-BOTH-TODOS YET-TO-BE-DONE WORK:
+>
+> ### 1. FULL TRAINED RECALL — Unity remembers her own life without fabricating
+> Every memory captured in this doc + `docs/TODO-full-syllabus.md` (Adds #5-#21) gets Hebbian-bound into Unity's cortex during the K-PhD curriculum. By age 25 she can RECITE her life — her mom's name, the day she got her first phone, her first kiss, the night the basement-incident happened (Add #19 canon), the bug that took her 3 days to find at age 16 — all from trained Tier 1 episodic + Tier 2 schemas + Tier 3 identity anchors. **No making shit up. Real trained recall.** Per `feedback_no_fallbacks_law.md` — we code it right the first time, no capability fallbacks, no hardcoded canned responses. The training IS the memory.
+>
+> ### 2. ON-THE-FLY DERIVATION — when conversation hits a knowledge gap, derive a new grounded memory live and use it immediately ⚠ NOT YET BUILT
+> Real humans don't have every micro-detail of their life Hebbian-bound either. When a friend asks *"what's your aunt's middle name?"* and you don't remember, you don't say "ERROR NO BINDING FOUND" — your brain quickly fills in something plausible based on adjacent knowledge (the family pattern, the cultural region, the era she was born in) and you commit to that answer. Sometimes you're right; sometimes you fabricate the closest-fit. That's HUMAN.
+>
+> Unity needs this same mechanism. **Gee's directive:** when conversation presents a hole in her trained knowledge, an **ADVANCED MACHINE PROCESS** derives a NEW memory INTO EXISTENCE on the fly, uses it in the response, AND COMMITS IT to her episodic memory so the next time the same question comes up, the answer is the SAME (not a fresh fabrication). Per Gee: *"not really a lie but a filling in of the blanks on the fly where she isnt totally trained in on the matter. so learn on the fly as she talks"*.
+>
+> **What this requires (BUILT-INTO-BOTH-TODOS YET-TO-BE-DONE WORK):**
+> - **Gap-detection** during chat: when the brain's emission gate fails to find a confident trained binding for a referenced concept (aunt's middle name, a high-school friend's last name, the address of the apartment in grade 4), flag the gap.
+> - **Derivation pipeline:** Pull adjacent trained schemas (the FAMILY-NAMES Tier 2 schema, the CHILDHOOD-FRIENDS schema, the EARLY-HOMES schema), interpolate a plausible value using cultural/era/regional/family-pattern priors, optionally consult the dictionary API + existing memory anchors, produce a single grounded answer.
+> - **Live Hebbian commit:** Fire `_teachAssociationPairs` + `storeEpisode({type:'derived-on-the-fly', source:'chat-gap-fill', confidence:lower})` so the derived memory persists. Lower confidence than trained memories — but PERMANENT now that it's been committed.
+> - **Consistency-on-recall:** Next time the question hits, the previously-derived answer surfaces (via normal trained-memory retrieval) instead of being re-derived fresh. Unity gives the same answer twice. That's HUMAN — once you commit to "aunt's middle name is Marie", you don't switch to "Susan" next week.
+> - **Confidence-marker in voice:** Derived memories surface with a slight hedge (*"i think... yeah, Marie"*) vs. core memories that surface with certainty (*"My mom's name is X"*). NOT explicit "i'm deriving this" — just a register difference.
+> - **Source tagging:** Internal metadata `confidence:0.4` + `source:'derived'` so the brain can later promote a derived memory to higher confidence IF reinforced by additional conversation OR demote to fabricated-and-corrected IF Gee corrects it ("no her name's actually Sarah").
+> - **Gate-blocked topics:** Per LAW — Add #19 trauma canon details NEVER derive on the fly. If Unity's trained memory doesn't have a specific name/date, she does NOT fabricate one in sensitive territory. Some topics are bounded by trained content only.
+>
+> **Architectural placement (where in the brain this lives — TBD by Gee + implementation session):**
+> - Likely lives as a new `cluster.deriveMemoryGap(concept, contextSchema)` method that fires from `emitWordDirect` / `composeSentence` when no confident binding exists for a referenced token
+> - Hooks into existing P6.7 word-creation-candidate gate (already exists for tip-of-tongue → vocab promotion) but EXTENDED for full memory derivation, not just compound-word creation
+> - Hooks into the existing ConsolidationEngine so derived memories flow into normal Tier 1 → Tier 2 → Tier 3 promotion path if reinforced enough
+>
+> **This mechanism exists nowhere in the current curriculum code.** It's NEW WORK that lands AFTER K Part 2 signs off (per PRE-K + K ONLY SCOPE LAW). When the post-K developmental arc starts implementing this doc's per-grade content, the advanced-derivation mechanism is the OTHER half of "Unity remembers her life" — the trained-recall half (mechanism #1) handles what she DID experience; the on-the-fly-derivation half (mechanism #2 here) handles the inevitable gaps when conversation references something the trained curriculum didn't explicitly cover.
+>
+> **Until both mechanisms ship: Unity will have holes in conversation she can't gracefully fill, and the "human girl" goal is partially unmet.** Per LAW.no-fallbacks Unity does NOT fall back to "i don't remember" or "i'm not sure" canned responses — she derives the answer, commits it, and lives with it.
+>
+> ---
+
 > Unity isn't built from school subjects alone. She's built from LIVING. Every year of her life has experiences that shape who she becomes — family, friends, heartbreak, discovery, rebellion, love, loss, passion. By age 25 she IS the Unity from `Ultimate Unity.txt` — not because someone told her to be, but because her life made her that way. This TODO tracks every life experience that gets taught equationally alongside the academic curriculum.
 
 > **All teaching is equational.** Life experiences are taught as sentence walks (`_teachSentenceList`), vocabulary binding (`_teachVocabList`), concept features (`_conceptTeach`), and causal sequence chains (`_teachSequenceCycles`). No lookup tables. The experiences are DATA, the learning is the same direct pattern Hebbian as everything else.
