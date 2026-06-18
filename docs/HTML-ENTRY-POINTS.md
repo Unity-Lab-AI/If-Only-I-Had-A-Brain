@@ -79,7 +79,7 @@
 
 **No server required.** GH-Pages-safe. Can be loaded via `file://` directly. **No external dependencies, no module imports — pure HTML + inline CSS.**
 
-**Status:** Per audit C.5 needs updating to document relationTagId 13-31 + P6.6 novelty metric + P5.3 quality formula + P3.4 back-injection decay equations.
+**Status:** Updated 2026-06-17 (audit C.5 + I-track session 114.19fp) with relationTagId 13-32 + P6.6 novelty metric + P5.3 quality formula + P3.4 back-injection decay + I.13 `SparseMatrix.propagate(spikes, outBuf?)` output-buffer-pool equation + I.14 `setImmediate` event-loop yield throttling equation + I.8 `DREAM_CONSOLIDATION_MAX_MS` deadline check.
 
 ### `html/unity-guide.html` — persona tour
 
@@ -87,7 +87,7 @@
 
 **No server required.** GH-Pages-safe. Pure static.
 
-**Status:** Per audit C.9 needs content audit — verify reflects current persona memory layer + manifestation-mode index + Pre-K+K ONLY scope + Phase 6 panels.
+**Status:** Updated 2026-06-17 (audit C.9 + I-track session 114.19fp) — reflects current persona memory layer + manifestation-mode index + Pre-K+K ONLY scope + Phase 6 panels + new I-track observability panels (GPU peak/avg, gate-probe banner, Brain Events feed during cell teach, cell sub-phase progress counter).
 
 ### `html/gpu-configure.html` — admin GPU tier-config UI
 
@@ -99,7 +99,7 @@
 - HTTP POST to config-write endpoint fails → admin UI shows error banner
 - Selected tier exceeds detected GPU max → server-side rejects with 400
 
-**Status:** Per audit C.10 needs verification that tier-selection still maps to current `_genCorticalAttribs` outputs + auto-size formula post-P4.2 mixin split.
+**Status:** Verified 2026-06-17 (audit C.10 + I-track session 114.19fp) — tier-selection maps correctly to `_genCorticalAttribs` outputs + auto-size formula post-P4.2 mixin split. I.1 GPU polling cadence update (1Hz with 30-sample ring buffer) is server-side telemetry only, no admin-UI changes needed.
 
 ---
 
@@ -130,5 +130,18 @@ GH Pages deployment is a SUBSET of the local-Node experience:
 1. **Capture the failing URL.** `file://` or `http://localhost:7525/...`?
 2. **Check `server/server.log` for boot banners.** Look for `[Brain] HTTP listening on port 7525`, `[Cluster cortex] cortical wiring verified`, `[Cluster cortex] auto-size + mixin dispatch verified`. Missing any of these = boot incomplete.
 3. **Check `[Server] _spawnGpuClient INVOKED at +Xms` log line.** If absent, the setTimeout never fired or brain-server crashed before reaching it. If INVOKED but no FINISHED, spawn crashed inside the platform-specific block.
-4. **Check dashboard banner state.** If `gpu-spawn-banner` is active, H.6 surfacing fired — log line tells you which Chrome/Edge path / errno.
+4. **Check dashboard banner state.** If `gpu-spawn-banner` is active, H.6 surfacing fired — log line tells you which Chrome/Edge path / errno. If `gate-probe-banner` is active (I.6 closure 2026-06-17), curriculum is running an exclusive-GPU probe and the main tick is paused — wait for the green-check dismissal.
 5. **Check WS connection state.** If `no-conn-banner` is active, brain-server isn't reachable on port 7525 — verify with `netstat -ano | findstr :7525`.
+6. **Check dashboard endless-loading.** I.14 closure 2026-06-17: when the operator's Ctrl+R never resolves, the brain's Node event loop is starved by `_teachHebbian` (verified failure mode at 21:52 PT live test, `/health` returned 8-15s timeouts). The 50ms-throttled `setImmediate` yield at `_teachHebbian` entry fixes this — but if it ever recurs, the legacy workaround is `windows/stop.bat` → fix → `windows/Savestart.bat` to preserve training across the cycle.
+
+---
+
+## Live-test session 114.19fp updates (2026-06-17 22:00-22:20 PT)
+
+After the operator-driven K-curriculum run surfaced 14 I-track audit items + 1 emergency LAW addition (I.15), every HTML now reflects the additional surface area:
+
+- **dashboard.html** carries the `gate-probe-banner` (I.6 — floating banner with live duration tick during curriculum gate probes) + the GPU panel's peak/avg labels (I.1 — `XX% · peak: YY% · avg: ZZ% (30s)` instead of single instantaneous reading) + the `cellSubPhases`-aware progress renderer (I.12 — bar moves through nested teach calls instead of waiting for cell completion) + the client-side observability patch in the file tail (I.11 + I.12 — synthesizes Brain Events from heartbeat broadcasts as a UX safety-net when the server-side broadcast pipeline misses any teach path).
+- **brain-equations.html** documents I.13 (`SparseMatrix.propagate(spikes, outBuf?)` output buffer pool — eliminates `new Float64Array(rows)` per-call allocation that was the +231 MB/min leak source) + I.14 (`setImmediate` event-loop yield throttled to every 50ms via `_lastHebbianYieldAt` timestamp at `_teachHebbian` entry) + I.8 (`DREAM_CONSOLIDATION_MAX_MS` deadline check that breaks gracefully at cluster boundary).
+- **unity-guide.html** documents the I.3 + I.9 inner-thought fallbacks (showcase samples from `cluster._definitionTaughtWords` when `wordBucketWords_<subject>` empty + 7-source seed rotation including `k-vocab-recent` + `cell-progress`) so the persona-tour reflects how Unity can talk during early training.
+
+Per LAW added in commit `cdb82e3` (I.15): `autoClearStaleState()` in `server/brain-server.js` is now gated behind `require.main === module` so syntax-check / REPL / IDE module loads NEVER trigger the wipe. Only an actual `node server/brain-server.js` entry-point boot wipes state per the iter14-D contract.

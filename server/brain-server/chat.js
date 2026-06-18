@@ -468,32 +468,109 @@ const SERVER_CHAT_MIXIN = {
     this._lastCpuUsage = process.cpuUsage();
     this._lastCpuUsage = cpuNow;
 
-    // GPU utilization (poll nvidia-smi).
+    // ── GPU activity tracking (portable, cross-platform) ──
     //
-    // I.1 closure 2026-06-17 22:00 PT — poll cadence dropped 5s → 1s,
-    // ring buffer added for peak + rolling average exposure. Operator
-    // (2026-06-17 live test): *"current display shows 0% so its not
-    // accurate"* — the 5-sec poll cadence + bursty workload pattern
-    // caught ~80% idle frames (verified via nvidia-smi -l 1: 10 samples
-    // returned 5,35,1,3,3,0,3,4,2,5 — genuine 0-35% range while the
-    // dashboard showed 0%). Statistical fix: 1Hz polling + 30-sample
-    // ring buffer guarantees ≥6 samples catch each ~200ms Hebbian-batch
-    // burst within any 30s broadcast window. execSync to nvidia-smi
-    // takes ~30-50ms on Windows so 1Hz polling is still cheap.
+    // I.17 closure 2026-06-17 22:40 PT after operator directive: *"check
+    // the current runing brain and see why dashboard shows 0% gpu when i
+    // can hear the gpu reving and pegging like 50%"* + *"remember it has
+    // to work on any system not just mine, so we arnt building out
+    // rigging jerry rigged to my system only, that would not be correct"*.
+    //
+    // Why I.1's nvidia-smi-only approach failed: even after dropping the
+    // poll cadence 5s → 1s, the OS-level GPU utilization sampling window
+    // (~100ms) misses sub-100ms Hebbian dispatch bursts on a bursty
+    // workload. Operator confirmed empirically: nvidia-smi returned 0%
+    // from inside the brain process for 30+ seconds straight while the
+    // physical GPU was audibly pegging at ~50%. The 1Hz poll lands during
+    // burst-gaps too consistently — statistical inevitability of bursty
+    // signals + sub-sample-rate sampling. The "fix" was misdirected.
+    //
+    // PROPER PORTABLE METRIC: brain-side GPU dispatch rate. The brain
+    // KNOWS when it dispatches to compute.html (every _sparseSend /
+    // _sparseSendBinary / _gpuBatch fire is a recorded dispatch). Counting
+    // dispatches over a 30-second window gives an honest "is the brain
+    // using the GPU?" signal that is:
+    //   • UNIVERSAL — works on NVIDIA, AMD, Intel iGPU, Apple Silicon,
+    //     and even systems with no nvidia-smi installed at all
+    //   • TRUTHFUL — counts real brain→GPU traffic, not OS sampling noise
+    //   • SUB-MILLISECOND PRECISE — captures every dispatch regardless of
+    //     burst duration (the GPU might be at 50% for 50ms then 0% for
+    //     950ms — dispatch count catches the 50ms burst exactly because
+    //     the dispatch ITSELF is the event)
+    //
+    // Secondary metric (graceful-optional): OS-level GPU utilization via
+    // nvidia-smi when available. On failure (no nvidia-smi binary, AMD
+    // system, headless server, etc.) sets `gpuUtilAvailable=false` with
+    // a ONE-SHOT warn so the dashboard renders "util: N/A" instead of
+    // misleading "0%". Both metrics ship in `_perfStats` and the
+    // dashboard prefers dispatch rate, falling through to util only when
+    // available.
+
+    // Primary metric: dispatches-per-second from timestamp ring buffer.
+    // Ring is appended by _recordGpuDispatch() (in gpu.js mixin) on every
+    // _sparseSend / _sparseSendBinary call. Prune entries older than 30s
+    // here so the rate window slides forward; bounded growth even if the
+    // brain dispatches at GHz cadence.
+    let gpuDispatchesPerSec = 0;
+    if (Array.isArray(this._gpuDispatchTimestamps) && this._gpuDispatchTimestamps.length > 0) {
+      const cutoff = Date.now() - 30000;
+      // Find the first index newer than cutoff; everything before is stale.
+      // Since timestamps are monotonic (always push Date.now() at append),
+      // a single linear sweep prunes correctly.
+      let prunedFrom = 0;
+      const ts = this._gpuDispatchTimestamps;
+      while (prunedFrom < ts.length && ts[prunedFrom] < cutoff) prunedFrom++;
+      if (prunedFrom > 0) ts.splice(0, prunedFrom);
+      // Rate = events in last 30s / 30s. Round to whole dispatches/s for display.
+      gpuDispatchesPerSec = Math.round(ts.length / 30);
+    }
+
+    // Secondary metric: OS-level GPU util via nvidia-smi (graceful).
+    // `_gpuUtilAvailable === false` means we've already tried + failed
+    // once; skip subsequent polls entirely so we don't waste 1500ms per
+    // tick on a guaranteed failure. One-shot warn fires at the first
+    // failure so operator knows the metric is unavailable on this box.
     let gpuUtil = 0;
     let gpuUtilPeak = 0;
     let gpuUtilAvg = 0;
-    if (this.RESOURCES.gpu.vram > 0 && (!this._lastGpuPoll || Date.now() - this._lastGpuPoll > 1000)) {
+    const gpuUtilAvailable = this._gpuUtilAvailable !== false;
+    if (gpuUtilAvailable && this.RESOURCES.gpu.vram > 0 && (!this._lastGpuPoll || Date.now() - this._lastGpuPoll > 1000)) {
       try {
-        const smi = execSync('nvidia-smi --query-gpu=utilization.gpu --format=csv,noheader,nounits', { timeout: 2000 }).toString().trim();
-        gpuUtil = parseInt(smi) || 0;
-        this._lastGpuPoll = Date.now();
-        this._cachedGpuUtil = gpuUtil;
-        // 30-sample ring buffer at 1Hz = 30 seconds of history.
-        if (!this._gpuUtilRing || !Array.isArray(this._gpuUtilRing)) this._gpuUtilRing = [];
-        this._gpuUtilRing.push(gpuUtil);
-        while (this._gpuUtilRing.length > 30) this._gpuUtilRing.shift();
-      } catch { gpuUtil = this._cachedGpuUtil || 0; }
+        // 1500ms timeout (was 2000ms) — nvidia-smi normally returns in
+        // 30-100ms on Windows; a 1500ms ceiling catches genuinely-stuck
+        // calls without blocking the perf-stats tick for a full 2s.
+        // stdio:'pipe' for stdout, 'ignore' for stderr so spurious driver
+        // warnings don't contaminate server.log.
+        const smi = execSync(
+          'nvidia-smi --query-gpu=utilization.gpu --format=csv,noheader,nounits',
+          { timeout: 1500, stdio: ['ignore', 'pipe', 'ignore'] }
+        ).toString().trim();
+        const parsed = parseInt(smi, 10);
+        if (Number.isFinite(parsed) && parsed >= 0 && parsed <= 100) {
+          gpuUtil = parsed;
+          this._lastGpuPoll = Date.now();
+          this._cachedGpuUtil = gpuUtil;
+          if (!this._gpuUtilRing || !Array.isArray(this._gpuUtilRing)) this._gpuUtilRing = [];
+          this._gpuUtilRing.push(gpuUtil);
+          while (this._gpuUtilRing.length > 30) this._gpuUtilRing.shift();
+        } else {
+          // nvidia-smi returned non-numeric — treat as soft-failure
+          // (could be transient driver glitch, don't disable permanently).
+          gpuUtil = this._cachedGpuUtil || 0;
+        }
+      } catch (err) {
+        // Hard failure: ENOENT (no nvidia-smi binary), ETIMEDOUT, etc.
+        // Flip the flag so future ticks skip the execSync attempt entirely.
+        if (!this._gpuUtilFailWarned) {
+          this._gpuUtilFailWarned = true;
+          this._gpuUtilAvailable = false;
+          const firstLine = String(err && err.message ? err.message : err).split('\n')[0].slice(0, 200);
+          console.warn(`[Brain] GPU util via nvidia-smi unavailable on this system (${firstLine}) — dashboard will show "util: N/A". Brain-side GPU dispatch rate remains the primary GPU activity metric.`);
+        }
+        gpuUtil = this._cachedGpuUtil || 0;
+      }
+    } else if (!gpuUtilAvailable) {
+      gpuUtil = 0;
     } else {
       gpuUtil = this._cachedGpuUtil || 0;
     }
@@ -511,8 +588,12 @@ const SERVER_CHAT_MIXIN = {
       memRssMB: Math.round(mem.rss / 1048576),
       gpuName: this.RESOURCES.gpu.name,
       gpuVramMB: this.RESOURCES.gpu.vram,
+      // I.17 — primary cross-platform GPU activity metric.
+      gpuDispatchesPerSec,
+      gpuDispatchTotal: this._gpuDispatchTotal || 0,
+      // Secondary metric — present when nvidia-smi is available.
+      gpuUtilAvailable: this._gpuUtilAvailable !== false,
       gpuUtilPercent: gpuUtil,
-      // I.1 — new fields for dashboard "peak/avg" display.
       gpuUtilPeak30s: gpuUtilPeak,
       gpuUtilAvg30s: gpuUtilAvg,
       gpuComputeConnected: !!(this._gpuConnected && this._gpuClient?.readyState === 1),

@@ -259,11 +259,37 @@ const SERVER_GPU_MIXIN = {
     return this._sparseSeq;
   },
 
+  /**
+   * I.17 closure 2026-06-17 22:40 PT — Cross-platform GPU activity
+   * counter. Called on every WS message dispatched to compute.html
+   * (sparse upload, propagate, Hebbian, batch step). Brain knows
+   * exactly when it's using the GPU — counting these dispatches is
+   * universal (works on NVIDIA / AMD / Intel / Apple Silicon / headless)
+   * and truthful (counts real brain→GPU traffic, not OS sampling noise).
+   *
+   * Ring buffer of timestamps. `_updatePerfStats` prunes entries older
+   * than 30s and computes `gpuDispatchesPerSec` from the remaining
+   * length. Lazy soft-cap at 5000 entries here in case `_updatePerfStats`
+   * doesn't run for a while — full prune happens there every 1s.
+   * `_gpuDispatchTotal` is a monotonic counter for cumulative metrics.
+   */
+  _recordGpuDispatch() {
+    if (!this._gpuDispatchTimestamps) this._gpuDispatchTimestamps = [];
+    this._gpuDispatchTimestamps.push(Date.now());
+    if (this._gpuDispatchTimestamps.length > 5000) {
+      const cutoff = Date.now() - 30000;
+      this._gpuDispatchTimestamps = this._gpuDispatchTimestamps.filter(t => t >= cutoff);
+    }
+    this._gpuDispatchTotal = (this._gpuDispatchTotal || 0) + 1;
+  },
+
   _sparseSend(msg, timeoutMs = 30000) {
     if (!this._gpuClient || this._gpuClient.readyState !== 1) return Promise.resolve(null);
     if (!this._gpuSparsePending) this._gpuSparsePending = new Map();
     const reqId = this._nextSparseReqId();
     msg.reqId = reqId;
+    // I.17 — record dispatch for cross-platform GPU activity metric.
+    this._recordGpuDispatch();
     this._gpuClient.send(JSON.stringify(msg));
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
@@ -318,6 +344,11 @@ const SERVER_GPU_MIXIN = {
   async _sparseSendBinary(msgBuffer, reqId, timeoutMs = 120_000) {
     if (!this._gpuClient || this._gpuClient.readyState !== 1) return Promise.resolve(null);
     if (!this._gpuSparsePending) this._gpuSparsePending = new Map();
+    // I.17 — record dispatch for cross-platform GPU activity metric.
+    // Binary frames are the HIGH-volume path during _teachHebbian +
+    // _teachAssociationPairs; counting these is what makes the
+    // dispatch-rate metric meaningful at biological scale.
+    this._recordGpuDispatch();
     // Backpressure-aware send. A retest after the earlier fix got
     // past _teachLetterCaseBinding and into _teachPhonemeBlending
     // (1029 K words × 10 reps = 10,290 word-emission iterations).
