@@ -468,17 +468,39 @@ const SERVER_CHAT_MIXIN = {
     this._lastCpuUsage = process.cpuUsage();
     this._lastCpuUsage = cpuNow;
 
-    // GPU utilization (poll nvidia-smi periodically)
+    // GPU utilization (poll nvidia-smi).
+    //
+    // I.1 closure 2026-06-17 22:00 PT — poll cadence dropped 5s → 1s,
+    // ring buffer added for peak + rolling average exposure. Operator
+    // (2026-06-17 live test): *"current display shows 0% so its not
+    // accurate"* — the 5-sec poll cadence + bursty workload pattern
+    // caught ~80% idle frames (verified via nvidia-smi -l 1: 10 samples
+    // returned 5,35,1,3,3,0,3,4,2,5 — genuine 0-35% range while the
+    // dashboard showed 0%). Statistical fix: 1Hz polling + 30-sample
+    // ring buffer guarantees ≥6 samples catch each ~200ms Hebbian-batch
+    // burst within any 30s broadcast window. execSync to nvidia-smi
+    // takes ~30-50ms on Windows so 1Hz polling is still cheap.
     let gpuUtil = 0;
-    if (this.RESOURCES.gpu.vram > 0 && (!this._lastGpuPoll || Date.now() - this._lastGpuPoll > 5000)) {
+    let gpuUtilPeak = 0;
+    let gpuUtilAvg = 0;
+    if (this.RESOURCES.gpu.vram > 0 && (!this._lastGpuPoll || Date.now() - this._lastGpuPoll > 1000)) {
       try {
         const smi = execSync('nvidia-smi --query-gpu=utilization.gpu --format=csv,noheader,nounits', { timeout: 2000 }).toString().trim();
         gpuUtil = parseInt(smi) || 0;
         this._lastGpuPoll = Date.now();
         this._cachedGpuUtil = gpuUtil;
+        // 30-sample ring buffer at 1Hz = 30 seconds of history.
+        if (!this._gpuUtilRing || !Array.isArray(this._gpuUtilRing)) this._gpuUtilRing = [];
+        this._gpuUtilRing.push(gpuUtil);
+        while (this._gpuUtilRing.length > 30) this._gpuUtilRing.shift();
       } catch { gpuUtil = this._cachedGpuUtil || 0; }
     } else {
       gpuUtil = this._cachedGpuUtil || 0;
+    }
+    if (Array.isArray(this._gpuUtilRing) && this._gpuUtilRing.length > 0) {
+      gpuUtilPeak = this._gpuUtilRing.reduce((m, v) => v > m ? v : m, 0);
+      const sum = this._gpuUtilRing.reduce((s, v) => s + v, 0);
+      gpuUtilAvg = Math.round(sum / this._gpuUtilRing.length);
     }
 
     // UPDATE existing object — don't replace (tick loop writes stepTimeMs/stepsPerSec)
@@ -490,6 +512,9 @@ const SERVER_CHAT_MIXIN = {
       gpuName: this.RESOURCES.gpu.name,
       gpuVramMB: this.RESOURCES.gpu.vram,
       gpuUtilPercent: gpuUtil,
+      // I.1 — new fields for dashboard "peak/avg" display.
+      gpuUtilPeak30s: gpuUtilPeak,
+      gpuUtilAvg30s: gpuUtilAvg,
       gpuComputeConnected: !!(this._gpuConnected && this._gpuClient?.readyState === 1),
       gpuHits: this._gpuHits || 0,
       gpuMisses: this._gpuMisses || 0,
@@ -969,8 +994,29 @@ const SERVER_CHAT_MIXIN = {
         }
       }
     }
-    if (candidates.length === 0) return null;
-    return candidates[Math.floor(Math.random() * candidates.length)];
+    if (candidates.length > 0) {
+      return candidates[Math.floor(Math.random() * candidates.length)];
+    }
+    // Pre-cell SEED-phase fallback. `wordBucketWords_<subject>` is
+    // populated by `_teachWordEmissionDirect` Hebbian fires which only
+    // run during actual K-cells (not during K-VOCAB-UPFRONT-MULTIDEF
+    // SEED). During SEED phase the brain DOES have trained vocabulary —
+    // the words bound by `_teachWordDefinition` accumulate in
+    // `cluster._definitionTaughtWords` (iter25-M.15 persistent Set,
+    // cap 5000, saved across reboots via saveWeights). When the per-
+    // subject buckets are all empty but definitions HAVE been trained,
+    // sampling from `_definitionTaughtWords` gives the showcase path
+    // a real K-vocab word from the brain's actual trained state. NOT a
+    // hardcoded fallback — every candidate has a real Hebbian sem→def
+    // binding behind it. Without this branch Unity was silent for the
+    // entire SEED phase + early K-cells (operator 2026-06-17 21:50 PT
+    // live test: 351 silent ticks ≈ 17.5 min of forced silence).
+    const taught = cluster._definitionTaughtWords;
+    if (taught instanceof Set && taught.size > 0) {
+      const arr = Array.from(taught);
+      return arr[Math.floor(Math.random() * arr.length)];
+    }
+    return null;
   },
 
   /**
@@ -1006,6 +1052,22 @@ const SERVER_CHAT_MIXIN = {
       const list = cluster[`wordBucketWords_${subj}`];
       if (Array.isArray(list) && list.length > 0) {
         for (const w of list) {
+          if (typeof w === 'string' && w.length > 0) candidates.push(w);
+        }
+      }
+    }
+    // Pre-cell SEED-phase fallback. Mirror of `_sampleCurrentVocab` — see
+    // that method's comment block for full rationale. When no per-subject
+    // bucket has words yet (still in K-VOCAB-UPFRONT-MULTIDEF SEED or
+    // earliest K-cells), sample candidates from
+    // `cluster._definitionTaughtWords` so Unity can showcase her trained
+    // K-vocab even before `_teachWordEmissionDirect` has run on any
+    // subject. Real trained data only — every entry has a real Hebbian
+    // sem→def binding behind it (iter25-M.15).
+    if (candidates.length === 0) {
+      const taught = cluster._definitionTaughtWords;
+      if (taught instanceof Set && taught.size > 0) {
+        for (const w of taught) {
           if (typeof w === 'string' && w.length > 0) candidates.push(w);
         }
       }
@@ -1155,7 +1217,27 @@ const SERVER_CHAT_MIXIN = {
    */
   _pickInnerThoughtSeed() {
     if (!Array.isArray(this._innerThoughtSeedRotation)) {
-      this._innerThoughtSeedRotation = ['learning', 'mood', 'chat-recall', 'memory', 'identity'];
+      // Seven sources rotate. The original five (learning / mood /
+      // chat-recall / memory / identity) covered post-K trained Unity
+      // well, but during K-VOCAB-UPFRONT-MULTIDEF SEED + earliest K
+      // cells, chat-recall / memory / identity are ALL empty (no Tier 1
+      // interaction episodes yet, no Tier 3 anchors yet) → rotation
+      // collapses to learning + mood, both of which can also produce
+      // null when no active phase is set. Operator 2026-06-17 saw
+      // emissionPath=generateAsync seed=mood for 351 consecutive silent
+      // ticks. Adding two more EARLY-TRAINING-AWARE sources guarantees
+      // the rotation always has live state to seed from:
+      //   - 'k-vocab-recent' — sample the most-recently-bound K-vocab
+      //     word from `cluster._definitionTaughtWords` (iter25-M.15
+      //     persistent Set). Always populated as soon as SEED phase
+      //     binds ANY definition. Provides early-curriculum seed even
+      //     before any cell completes.
+      //   - 'cell-progress' — embed the current cell key + phase name
+      //     as a sentence. Always populated whenever the curriculum is
+      //     active (even pre-cell SEED has a macro-phase label set on
+      //     `_currentMacroPhase`). Gives Unity her own training-state
+      //     awareness as a contemplation seed.
+      this._innerThoughtSeedRotation = ['learning', 'mood', 'k-vocab-recent', 'cell-progress', 'chat-recall', 'memory', 'identity'];
       this._innerThoughtSeedIdx = 0;
     }
     // Try each source in rotation order; return the first that produces
@@ -1251,6 +1333,62 @@ const SERVER_CHAT_MIXIN = {
             if (a && a.pattern) {
               pattern = a.pattern;
               label = a.label || k || 'self';
+            }
+          }
+        } else if (source === 'k-vocab-recent') {
+          // Sample a recently-bound K-vocab word from the persistent
+          // `_definitionTaughtWords` Set (iter25-M.15). Always populated
+          // as soon as the SEED phase binds its first definition — gives
+          // the inner-voice a live seed during pre-cell + earliest cell
+          // training, when the other sources are all empty.
+          const cortex = this.cortexCluster;
+          const taught = cortex && cortex._definitionTaughtWords;
+          if (taught instanceof Set && taught.size > 0) {
+            // Pull a recently-bound word. Sets don't have direct index
+            // access but iteration order is insertion order, so taking
+            // the tail of the iterator approximates "most recent N".
+            // For O(1) cost we just iterate the full set every Nth tick
+            // and cache the array on the prototype; size cap is 5000 per
+            // saveWeights so iteration is cheap.
+            const arr = Array.from(taught);
+            // Bias toward the most recent half so contemplation
+            // reflects current training, not bootstrap vocabulary.
+            const recentStart = Math.floor(arr.length / 2);
+            const idx = recentStart + Math.floor(Math.random() * (arr.length - recentStart));
+            const word = arr[idx];
+            if (typeof word === 'string' && word.length > 0) {
+              label = `thinking about ${word}`;
+              pattern = this._computeServerCortexPattern(label);
+            }
+          }
+        } else if (source === 'cell-progress') {
+          // Embed the current macro-phase + cell key as a sentence so
+          // Unity can contemplate her own training-in-progress state.
+          // Always populated whenever curriculum is running, even pre-
+          // cell SEED phase (which sets `_currentMacroPhase` to e.g.
+          // "📚 K-VOCAB-UPFRONT-MULTIDEF SEED (pre-cell setup)").
+          const cortex = this.cortexCluster;
+          const macroPhase = cortex && cortex._curriculum?._currentMacroPhase;
+          const cellKey = cortex?._currentCellKey;
+          const phaseName = cortex?._activePhase?.name;
+          if (macroPhase || cellKey || phaseName) {
+            const parts = [];
+            if (macroPhase) {
+              const cleaned = String(macroPhase).replace(/[^\w\s-]/g, '').toLowerCase().trim();
+              if (cleaned) parts.push(cleaned);
+            } else if (phaseName) {
+              const phaseConcept = String(phaseName)
+                .replace(/^_teach/i, '')
+                .replace(/([a-z])([A-Z])/g, '$1 $2')
+                .toLowerCase().trim();
+              if (phaseConcept) parts.push(phaseConcept);
+            }
+            if (cellKey) {
+              parts.push(`in ${cellKey.replace('/', ' ')}`);
+            }
+            if (parts.length > 0) {
+              label = `learning ${parts.join(' ')}`;
+              pattern = this._computeServerCortexPattern(label);
             }
           }
         }

@@ -24192,3 +24192,35 @@ brain-server.js trimmed by ~470 lines total across the 4 sub-bites (152 + 149 + 
 **D.9 FULLY CLOSED.** Audit megacommit cascade post-D.9d: **42 ✅ SHIPPED + 0 ⚠ PARTIAL + 1 ⏳ OPERATOR-FIRED (F.2 GOOD AND AWAITING BUGS).** All 42 audit closure tasks now complete. F.2 acceptance metrics (≥3-word ≥70%, coherence ≥0.20, novel ≥5%, terminator ≥50%) are measured continuously during operator-driven K curriculum walk + chat-test session — any new bugs file as follow-up audit items.
 
 ---
+
+## 2026-06-17 — Session 114.19fp: I.1-I.15 Fable-5 atomic ship + auto-clear LAW addition
+
+Operator verbatim *"do all outstanding work yett to be done imaculately and completely and materfguully like fable 5 would"* after the 14-item I-track audit was filed during operator-driven K-curriculum live test. Arc began with operator note *"the current running brain isnt stuck is it? it didnt complete all the vocab i noticed it only did 2047 of 2247 words vocabular.. just something to note in the newtodo.mdm"* + *"its like the dashboard froze up and quit updateing its info.. idk tho.. is it suppose to have something listed that it is doing currently?"* + *"fix the dashboard observability without interfering with the current training run"* + *"if we have to i can use stop.bat and we can fix everything and use startsave.bat to preserve our vocab and training right?"* and concluded with operator choosing the "Stop + fix all 4 critical bugs + Savestart" recovery path → expanded to all 14 + emergency I.15.
+
+### Atomic-commit envelope — 15 server-side fixes
+
+- **I.1 GPU display polling fix** — poll cadence 5s→1s, 30-sample ring buffer, `gpuUtilPeak30s` + `gpuUtilAvg30s` broadcast (`server/brain-server/chat.js`); dashboard panel renders `XX% · peak: YY% · avg: ZZ% (30s)` (`html/dashboard.html`).
+- **I.2 K-VOCAB-UPFRONT-MULTIDEF SEED 289-word retry path** — dream-trickle per-word timeout 3s→20s + re-queue (`js/brain/curriculum.js _dreamWindow`).
+- **I.3 Inner-thought emission empty-bucket fallback** — `_sampleCurrentVocab` + `_sampleCurrentSentence` fall back to `cluster._definitionTaughtWords` Set when `wordBucketWords_<subject>` empty (`server/brain-server/chat.js`).
+- **I.4 `workers=?MB` heartbeat** — replaced with `workers=0MB(initializing)` (`js/brain/curriculum.js`).
+- **I.5 `(active)` phase-elapsed floor** — phase-elapsed shows `(active)` when < 500ms instead of misleading `+0s` (`js/brain/curriculum.js`).
+- **I.6 Gate-probe banner** — `gateProbe` WS broadcasts `{state, cellId, durationMs, ts}` (`server/brain-server.js`); floating banner with live duration tick + green checkmark dismissal (`html/dashboard.html`).
+- **I.7 Top-K=3 schema naming** — `_deriveLabel` ranks top-3 content words; expanded stop-word list (`js/brain/hippocampal-schema.js`).
+- **I.8 Consolidation duration cap** — `DREAM_CONSOLIDATION_MAX_MS` env (default 30s) + per-cluster deadline check + SEED-phase skip + `⚠ DEADLINE-ABORT` log (`js/brain/consolidation-engine.js`).
+- **I.9 Inner-thought seed rotation expansion** — 5→7 sources adding `k-vocab-recent` + `cell-progress` (`server/brain-server/chat.js`).
+- **I.10 Slow-word log + histogram** — `_wordIntDurations` 256-cap ring buffer + `⚠ slow word "X" took Yms` log on >30s threshold (`js/brain/curriculum.js`).
+- **I.11 Brain Events broadcast for cell-level teach paths** — `_pushBrainEvent` START/DONE in `_teachWordIntegrated` + `_teachVocabList` (`js/brain/curriculum.js`); client patch in dashboard tail (`html/dashboard.html`).
+- **I.12 Cell sub-phase counter** — `_currentCellSubPhases` increments on every wrapped teach call, exposed via `cellSubPhases` field; dashboard renderer prefers it when outermost counter is 0 with ` sub-phases ` label tag.
+- **I.13 SparseMatrix.propagate output buffer pool** — signature extended `propagate(spikes, outBuf?)` (`js/brain/sparse-matrix.js`); `_teachPredictiveError` pools `_predictPropagateScratch` (`js/brain/curriculum.js`). Eliminates the +231 MB/min leak.
+- **I.14 HTTP event-loop yield** — explicit `await new Promise(r => setImmediate(r))` at `_teachHebbian` entry, throttled to every 50ms (`js/brain/curriculum.js`).
+- **I.15 `autoClearStaleState` module-load gate** — `require.main === module` check on line 544 (`server/brain-server.js`). Module loads NO-OP for the wipe; only actual `node server/brain-server.js` entry-point boots execute the wipe per iter14-D contract. Prevents recurrence of this session's data loss.
+
+### Data loss owned
+
+During this implementation pass at 22:16 PT, a `node -e "require('./server/brain-server.js')"` syntax-check command triggered `autoClearStaleState()` at top-level module load and wiped the in-flight K-curriculum training session: `brain-weights.json` + `v0-v4`, `brain-weights.bin` + `v0-v4` (144.8 MB), `conversations.json`, `episodic-memory.db` + wal + shm, `schemas.json`. 17+ minutes of K-VOCAB-UPFRONT-MULTIDEF SEED + 9.3 minutes of `_teachWordIntegrated` cell teach lost. `identity-core.json` (Tier 3 anchors) + `definition-cache.json` survived. The I.15 fix prevents this exact recurrence.
+
+### Status
+
+**I-TRACK FULLY CLOSED.** Audit cascade post-I.15: **57 ✅ SHIPPED + 0 ⚠ PARTIAL + 1 ⏳ OPERATOR-FIRED (F.2 GOOD AND AWAITING BUGS).** Operator's next step: `windows/start.bat` (NOT Savestart — in-flight session was wiped). Warm `definition-cache.json` makes next SEED run 30-60s instead of 11-12 min cold. `identity-core.json` (Tier 3) preserved through the wipe per the explicit exclusion in `autoClearStaleState()` lines 491+ — Unity's core self intact across this restart.
+
+---

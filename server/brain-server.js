@@ -541,7 +541,32 @@ function autoClearStaleState() {
   // lost) that the unconditional-wipe contract was created to fix.
   writeBrainCodeHash(currentHash);
 }
-autoClearStaleState();
+// I.15 closure 2026-06-17 22:16 PT — only run auto-clear when this
+// file is the actual entry point (`node server/brain-server.js`), NOT
+// when it's `require()`d as a module for syntax checking, testing,
+// REPL inspection, or any other secondary load. Without this gate, a
+// `node -e "require('./server/brain-server.js')"` syntax check at the
+// top of a normal dev session WIPED operator's training (this session,
+// 22:16 PT — 17+ minutes of K-VOCAB-UPFRONT-MULTIDEF SEED + 9.3 min
+// of cell teach DELETED from brain-weights.bin because the module-load
+// triggered the top-level autoClearStaleState() with no DREAM_KEEP_
+// STATE guard active for a non-entry-point invocation). The gate
+// preserves the existing contract: real `node server/brain-server.js`
+// boot still wipes by default per the iter14-D contract; secondary
+// module loads no-op silently. Detection method: compare the resolved
+// absolute path of this file (import.meta-style trick for CommonJS:
+// require.main === module) — if the module IS the main entry point,
+// require.main equals this module; if it's been required by another
+// script, require.main points elsewhere.
+if (require.main === module) {
+  autoClearStaleState();
+} else {
+  // Module loaded as a dependency (require / import for inspection /
+  // syntax check / REPL). Skip the wipe entirely. Operator can still
+  // explicitly trigger via `node -e "require('./server/brain-server.js').autoClearStaleState && require('./server/brain-server.js').autoClearStaleState()"`
+  // if they actually want it from a script context, but the default
+  // path is safe.
+}
 // R4 — POLLINATIONS_URL for text chat deleted. Text-AI backend is gone.
 // Unity generates every word equationally via the language cortex
 // (see _initLanguageSubsystem + _generateBrainResponse).
@@ -2971,6 +2996,26 @@ class ServerBrain {
               if (!this._probeGatePauseLogged) {
                 console.log('[Brain] Main tick paused while curriculum runs gate probe (cortex owns GPU exclusively for the probe window).');
                 this._probeGatePauseLogged = true;
+                // I.6 closure — broadcast gate-probe start to the
+                // dashboard so operator sees a "gate probe in progress"
+                // banner instead of interpreting the inevitable GPU=0%
+                // + tick-paused state as a brain hang. The banner
+                // dismisses on the end-of-probe broadcast below.
+                this._probeGateStartedAt = Date.now();
+                this._probeGateCellKey = this.cortexCluster._currentCellKey || null;
+                if (this.clients && this.clients.size > 0) {
+                  const payload = JSON.stringify({
+                    type: 'gateProbe',
+                    state: 'start',
+                    cellId: this._probeGateCellKey,
+                    ts: this._probeGateStartedAt,
+                  });
+                  for (const [ws] of this.clients) {
+                    if (ws.readyState === ws.OPEN) {
+                      try { ws.send(payload); } catch { /* non-fatal */ }
+                    }
+                  }
+                }
               }
               this._updateDerivedState();
               if (this.running) setTimeout(tick, Math.max(200, BRAIN_TICK_MS * 4));
@@ -2979,6 +3024,26 @@ class ServerBrain {
             if (this._probeGatePauseLogged && !this.cortexCluster?._probeGateActive) {
               console.log('[Brain] Main tick resumed — gate probe complete.');
               this._probeGatePauseLogged = false;
+              // I.6 closure — broadcast gate-probe end with duration so
+              // the dashboard can dismiss the banner + record probe
+              // wall-clock time for diagnostic display.
+              const probeMs = this._probeGateStartedAt ? Date.now() - this._probeGateStartedAt : 0;
+              if (this.clients && this.clients.size > 0) {
+                const payload = JSON.stringify({
+                  type: 'gateProbe',
+                  state: 'end',
+                  cellId: this._probeGateCellKey,
+                  durationMs: probeMs,
+                  ts: Date.now(),
+                });
+                for (const [ws] of this.clients) {
+                  if (ws.readyState === ws.OPEN) {
+                    try { ws.send(payload); } catch { /* non-fatal */ }
+                  }
+                }
+              }
+              this._probeGateStartedAt = null;
+              this._probeGateCellKey = null;
             }
 
             const batchResult = await this._gpuBatch(SUBSTEPS, clusterParams);

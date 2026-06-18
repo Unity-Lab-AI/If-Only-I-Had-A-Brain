@@ -2335,6 +2335,18 @@ export class Curriculum {
             const s = this._perSubjectStats[this._currentSubject];
             if (s) s.teachEvents = (s.teachEvents | 0) + 1;
           }
+          // I.12 closure — per-cell SUB-PHASE counter. Increments on
+          // every wrapped teach call (outermost OR nested) but scoped to
+          // the CURRENT cell only (resets on cell entry, see line 6580).
+          // The outermost-only counter (_currentCellPhasesCompleted)
+          // stays at 0 for the entire cell duration because K cells
+          // wrap their whole teach pass as ONE outermost phase with
+          // dozens of nested teach calls — operator's dashboard saw
+          // "0% · 0 phases · 9.3 min elapsed" while 25+ nested teach
+          // calls were firing. Exposing the nested counter via the
+          // snapshot lets the dashboard render real-time progress
+          // without waiting for cell completion.
+          this._currentCellSubPhases = (this._currentCellSubPhases | 0) + 1;
           return result;
         } finally {
           if (cl) cl._activePhase = prev;
@@ -2587,6 +2599,14 @@ export class Curriculum {
       activePhase,
       cellPhasesCompleted: this._currentCellPhasesCompleted | 0,
       cellPhasesPersisted: currentCellPassedPhases,
+      // I.12 closure — nested sub-phase counter. cellPhasesCompleted
+      // only ticks on OUTERMOST teach phases, which means K cells stay
+      // at 0 phases for their entire ~25 min runtime. cellSubPhases ticks
+      // on every wrapped teach call (outermost OR nested), giving the
+      // dashboard a real-time progress signal. Dashboard formula:
+      // when cellPhasesCompleted=0 + cellSubPhases>0 + cellStatus=
+      // 'in-progress', render cellSubPhases as the active counter.
+      cellSubPhases: this._currentCellSubPhases | 0,
       cellStartAt: this._currentCellStartAt || null,
       cellElapsedMs: this._currentCellStartAt ? Date.now() - this._currentCellStartAt : 0,
       perSubject,
@@ -3092,16 +3112,44 @@ export class Curriculum {
             if (batchN > 0) {
               const batchStart = Date.now();
               let bound = 0;
+              let timedOut = 0;
               for (let i = 0; i < batchN; i++) {
                 const word = cluster._kVocabQueue.shift();
                 if (!word) break;
                 try {
-                  const r = await this._teachWordDefinition(word, { reps: 4, label: 'DREAM-DEF-TRICKLE' });
+                  // I.2 closure — bumped per-word timeoutMs 3s → 20s for
+                  // the dream-trickle retry path. The SEED-phase upfront
+                  // pass dropped 289 of 2247 K-vocab words (12.9%) at
+                  // 8-15s timeouts on cold-cache API calls (2026-06-17
+                  // 21:50 PT live test). Those same words land back in
+                  // _kVocabQueue and need a LONGER timeout to clear on
+                  // retry — they were the slowest-to-respond words at
+                  // the dictionaryapi.dev edge. By dream-trickle time
+                  // the disk cache has warmed for everything that DID
+                  // succeed, so the retries are predominantly cold-API
+                  // hits that legitimately need ~15s. 20s gives 30%
+                  // headroom past the slowest observed SEED-phase
+                  // timeout (15s) so we don't drop the same words again.
+                  const r = await this._teachWordDefinition(word, { reps: 4, label: 'DREAM-DEF-TRICKLE', timeoutMs: 20000 });
                   if (r && r.defsBound > 0) bound += r.defsBound;
+                  else if (r && r.skipped && /timeout/i.test(r.skipped)) timedOut++;
                 } catch { /* skip per-word failures */ }
               }
               const dt = ((Date.now() - batchStart) / 1000).toFixed(1);
-              this._hb(`[Curriculum] 💤 dream trickle: ${batchN} words processed in ${dt}s (${bound} multi-def Hebbian fires) · ${cluster._kVocabQueue.length} K-vocab words remaining in queue`);
+              const timeoutNote = timedOut > 0 ? ` · ⚠ ${timedOut} re-timed-out (will retry next cycle)` : '';
+              this._hb(`[Curriculum] 💤 dream trickle: ${batchN} words processed in ${dt}s (${bound} multi-def Hebbian fires)${timeoutNote} · ${cluster._kVocabQueue.length} K-vocab words remaining in queue`);
+              // I.2 — re-queue the words that timed out THIS cycle so
+              // they don't get lost forever. Push them to the back of
+              // the queue so other words get a chance first; eventually
+              // every word either binds successfully or accumulates
+              // enough retry attempts that operator can see persistent
+              // dictionary-API failures (e.g. a word that's genuinely
+              // not in dictionaryapi.dev).
+              if (timedOut > 0 && Array.isArray(cluster._kVocabRetryQueue)) {
+                while (cluster._kVocabRetryQueue.length > 0) {
+                  cluster._kVocabQueue.push(cluster._kVocabRetryQueue.shift());
+                }
+              }
             }
           } catch (err) {
             // Non-fatal — dream consolidation continues even if trickle fails.
@@ -6592,6 +6640,11 @@ export class Curriculum {
     }
     this._perSubjectStats[subject].grade = grade;
     this._perSubjectStats[subject].label = SUBJECT_LABELS[subject] || subject;
+    // I.12 closure — reset the nested sub-phase counter on cell entry so
+    // each cell's sub-phase progress starts from zero. The counter is
+    // incremented inside the wrapped-teach helper above on every nested
+    // teach call (outermost OR nested).
+    this._currentCellSubPhases = 0;
     // Pause main brain compute_batch dispatch for the ENTIRE cell run
     // (teach phases + gate probes). Teach phases block the JS event
     // loop for minutes to hours at biological scale — any compute_batch
@@ -6766,11 +6819,19 @@ export class Curriculum {
           // poolSize × 30MB fallback." When the pool is genuinely gone
           // (T39.a.4 idle watchdog fired), drop the `~` — zero is not
           // an estimate, it's the real answer.
+          // I.4 closure — `workers=?MB` was the placeholder when the
+          // first heartbeat fired before the worker pool had reported
+          // its stats. Operator complained the `?` looked like an error
+          // condition. Replace with explicit `workers=0MB(initializing)`
+          // so the state is self-describing (no question mark, no
+          // ambiguity). Falls back to the polished `idle-terminated`
+          // tag once the pool reports zero workers, or the normal
+          // `XMB(N)` tag once stats are cached.
           const workerTag = _cachedWorkerMem
             ? (_cachedWorkerMem.workerCount === 0
                 ? ' workers=0MB(idle-terminated)'
                 : ` workers=${workerHeapMb}MB${_cachedWorkerMem.estimated ? '~' : ''}(${_cachedWorkerMem.workerCount})`)
-            : ' workers=?MB';
+            : ' workers=0MB(initializing)';
           // New format — every byte attributed:
           //   heap = V8 JS heap used
           //   v8    = V8 physical (heap + code + stubs + bytecode)
@@ -6787,8 +6848,17 @@ export class Curriculum {
         const ap = cluster && cluster._activePhase;
         if (ap && ap.name) {
           const phaseMs = ap.startAt ? (Date.now() - ap.startAt) : 0;
-          const phaseS = (phaseMs / 1000).toFixed(0);
-          phaseLabel = ` · phase=${ap.name} (+${phaseS}s)`;
+          // I.5 closure — when phase-elapsed rounds to `+0s`, that's
+          // either (a) the phase just started this tick, or (b) a sub-
+          // phase boundary reset the phase-start timestamp. Operator
+          // reads `+0s` as "phase just started" but it can also mean
+          // "active mid-cycle". Show `(active)` when elapsed < 500ms
+          // so the heartbeat self-documents whether the timer just
+          // reset or genuinely just started.
+          const phaseSnap = phaseMs < 500
+            ? '(active)'
+            : `+${(phaseMs / 1000).toFixed(0)}s`;
+          phaseLabel = ` · phase=${ap.name} ${phaseSnap}`;
         } else {
           phaseLabel = ` · phase=(between-phases / gate-probe)`;
         }
@@ -9243,6 +9313,28 @@ export class Curriculum {
     // Awaiting both dispatches throttles teach-loop iteration to the
     // worker-pool drain rate so pending jobs can't pile up faster than
     // GC can promote them.
+
+    // HTTP event-loop yield guard. _teachHebbian fires millions of
+    // times per cell during K-vocabulary phases via _teachAssociationPairs
+    // (reps:24 × pairs.length × multi-def × upfront seed). When upstream
+    // awaits resolve as microtasks (Promise-resolved-sync) instead of
+    // macrotasks, the Node.js event loop never drains HTTP request
+    // queues — operator's dashboard load freezes during heavy Hebbian
+    // batches (2026-06-17 21:50 PT live-test pain, confirmed via curl
+    // probes returning 8-15s timeouts on /health while server.log
+    // showed _teachHebbian +171s elapsed). Throttled to every 50ms via
+    // a static last-yield timestamp so the yield only fires when the
+    // event loop has been hot for a meaningful window — keeps the
+    // teach-loop velocity within ~1-2% of un-throttled throughput while
+    // guaranteeing HTTP request handlers + WebSocket socket draining
+    // get scheduled inside any 50ms wall-clock window.
+    const _now = Date.now();
+    if (!this._lastHebbianYieldAt) this._lastHebbianYieldAt = 0;
+    if (_now - this._lastHebbianYieldAt > 50) {
+      await new Promise(resolve => setImmediate(resolve));
+      this._lastHebbianYieldAt = _now;
+    }
+
     await cluster._crossRegionHebbian(lr, opts);
     if (opts.skipIntraSynapses || opts.skipIntraHebbian) return;
     if (typeof cluster.intraSynapsesHebbian === 'function') {
@@ -9328,17 +9420,32 @@ export class Curriculum {
       if (!this._predictErrorScratch || this._predictErrorScratch.length !== size) {
         this._predictErrorScratch = new Float64Array(size);
       }
+      // Pool a third scratch buffer sized to the synapse-matrix output
+      // (number of rows in cluster.synapses, which may differ from
+      // cluster.size on asymmetric matrices). The SparseMatrix.propagate
+      // signature accepts this as an optional outBuf parameter — when
+      // length matches `rows`, propagate writes into it and returns the
+      // same reference, eliminating the per-call Float64Array alloc
+      // that was the smoking-gun source of the +231 MB/min heap leak
+      // observed at heartbeats #58-71 of the 2026-06-17 21:50 PT live
+      // run. With three pooled scratches (target, error, predicted)
+      // a single _teachPredictiveError call now allocates ZERO bytes.
+      const propagateRows = (cluster.synapses && typeof cluster.synapses.rows === 'number')
+        ? cluster.synapses.rows
+        : size;
+      if (!this._predictPropagateScratch || this._predictPropagateScratch.length !== propagateRows) {
+        this._predictPropagateScratch = new Float64Array(propagateRows);
+      }
       const target = this._predictTargetScratch;
       const error = this._predictErrorScratch;
       target.fill(0);
       error.fill(0);
       for (let i = 0; i < size; i++) target[i] = cluster.lastSpikes[i] ? 1 : 0;
-      // Predicted next-step via intra-matrix propagate. SparseMatrix
-      // propagate still allocates a new output Float64Array per call
-      // (rows-sized) — that's a separate fix in sparse-matrix.js to
-      // add an optional output-buffer parameter. For now the largest
-      // savings are the target + error buffers being pooled.
-      const predicted = cluster.synapses.propagate(target);
+      // Predicted next-step via intra-matrix propagate. Pooled output
+      // buffer eliminates per-call allocation. The fill(0) inside
+      // SparseMatrix.propagate handles stale-tail safety so we don't
+      // need to zero it here.
+      const predicted = cluster.synapses.propagate(target, this._predictPropagateScratch);
       if (!predicted || predicted.length === 0) return;
       let maxP = 1e-6;
       for (let i = 0; i < predicted.length; i++) {
@@ -14183,6 +14290,19 @@ export class Curriculum {
     const valence = opts.valence ?? 0.2;
     const lr = cluster.learningRate;
 
+    // Brain Events broadcast for dashboard live activity. Pre-2026-06-17
+    // the Brain Events panel only saw broadcasts from SEED-phase
+    // `_teachAssociationPairs` fires (`K-VOCAB-UPFRONT-MULTIDEF-*` events
+    // at chat.js + curriculum.js:11439 + 11845) — once SEED completed
+    // and the brain moved into K cells, the dashboard panel went silent
+    // for the entire cell duration (~25 min per K cell). Operator could
+    // not visually distinguish "cell teaching word #25/76" from "brain
+    // hung". Fix: emit START + DONE events at cell-level teach paths so
+    // every word ramped through `_teachWordIntegrated` lands a row in
+    // the dashboard Brain Events feed. (I.11 closure 2026-06-17 22:00 PT.)
+    try { this._pushBrainEvent?.('teach', 'motor', `WORD-INT START: ${cleanWord}`, { word: cleanWord, reps, letters: letters.length }); } catch {}
+    const _wordIntStartMs = Date.now();
+
     const letterRegion = cluster.regions.letter;
     const phonRegion = cluster.regions.phon;
     const semRegion = cluster.regions.sem;
@@ -14461,6 +14581,24 @@ export class Curriculum {
     }
 
     this.stats.shortWordsSeen++;
+    // Brain Events DONE broadcast (I.11 closure). Pairs with the START
+    // event at function entry. Operator sees per-word completion live
+    // in the dashboard Brain Events feed during cell-phase training.
+    const _wordIntElapsedMs = Date.now() - _wordIntStartMs;
+    try {
+      this._pushBrainEvent?.('teach', 'motor', `WORD-INT DONE: ${cleanWord} (${_wordIntElapsedMs}ms)`, { word: cleanWord, elapsedMs: _wordIntElapsedMs });
+    } catch {}
+    // I.10 closure — slow-word log + per-word histogram in a 256-cap
+    // ring buffer. Words taking >30s flag as ⚠ slow so operator can
+    // spot heavy outliers (cache misses, GPU dispatch backlogs). Buffer
+    // exposes `_teachWordIntegratedHistogram` for future dashboard
+    // panel without growing unbounded.
+    if (!this._wordIntDurations) this._wordIntDurations = [];
+    this._wordIntDurations.push({ word: cleanWord, ms: _wordIntElapsedMs, ts: Date.now() });
+    while (this._wordIntDurations.length > 256) this._wordIntDurations.shift();
+    if (_wordIntElapsedMs > 30000) {
+      this._hb(`[Curriculum] ⚠ slow word "${cleanWord}" took ${_wordIntElapsedMs}ms in _teachWordIntegrated (>30s threshold) — likely GPU dispatch backlog or cache-miss heavy phase`);
+    }
   }
 
   async _teachVocabList(vocab, ctx, opts = {}) {
@@ -14481,6 +14619,16 @@ export class Curriculum {
     // into motor — Unity could emit 'c' for sem(cat) but had no path
     // to emit 'c-a-t' as a sequence. The integrated primitive adds
     // the missing layers so word-learning is actual word-learning.
+
+    // Brain Events broadcast — START event for dashboard live activity
+    // (I.11 closure 2026-06-17 22:00 PT). Without this, cell-phase
+    // training was silent in the events feed for 5-25 min while the
+    // method iterated through every word's _teachWordIntegrated pass.
+    const _vocabLabel = opts.label || ctx?.label || 'vocab';
+    const _vocabTotal = Array.isArray(vocab) ? vocab.length : 0;
+    try { this._pushBrainEvent?.('teach', 'sem', `VOCAB-LIST START: ${_vocabLabel} · ${_vocabTotal} words`, { label: _vocabLabel, total: _vocabTotal }); } catch {}
+    const _vocabListStartMs = Date.now();
+
     const reps = opts.reps ?? 12;
     const arousal = ctx?.arousal ?? 0.8;
     const valence = ctx?.valence ?? 0.2;
@@ -14513,6 +14661,14 @@ export class Curriculum {
       _vocabIdx++;
       if (_vocabIdx % 5 === 0) {
         await new Promise((resolve) => setImmediate(resolve));
+        // Brain Events progress broadcast (I.11). Every 5 words = roughly
+        // every 1-2 minutes during early-K-cell teach. Operator sees the
+        // counter advance in real time so they can distinguish "actively
+        // teaching word #N/total" from "frozen mid-cell".
+        try {
+          const _phaseElapsedSec = Math.round((Date.now() - _vocabListStartMs) / 1000);
+          this._pushBrainEvent?.('teach', 'sem', `VOCAB-LIST progress: ${_vocabLabel} ${_vocabIdx}/${_vocabTotal} (${_phaseElapsedSec}s)`, { label: _vocabLabel, taught: _vocabIdx, total: _vocabTotal, elapsedSec: _phaseElapsedSec });
+        } catch {}
       }
     }
 
@@ -14524,6 +14680,11 @@ export class Curriculum {
       // via the early-return above, but kept for legibility.
       void _skip;
     }
+    // Brain Events DONE broadcast (I.11 closure).
+    try {
+      const _elapsedSec = Math.round((Date.now() - _vocabListStartMs) / 1000);
+      this._pushBrainEvent?.('teach', 'sem', `VOCAB-LIST DONE: ${_vocabLabel} · ${_vocabIdx}/${_vocabTotal} words · ${_elapsedSec}s`, { label: _vocabLabel, taught: _vocabIdx, total: _vocabTotal, elapsedSec: _elapsedSec });
+    } catch {}
     return { pass: true, reason: 'integrated-teach-complete' };
 
     // ───────────────── LEGACY PATH (unreachable — kept for diff) ─────────────────

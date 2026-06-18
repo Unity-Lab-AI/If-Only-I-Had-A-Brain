@@ -443,9 +443,23 @@ export class SchemaStore {
     return schema;
   }
 
-  // Heuristic label derivation: pull the most-frequent content word
-  // across source episode input texts. Better-than-nothing for human
-  // readability of the [Hippocampus] log lines.
+  // Heuristic label derivation: pull the most-frequent content words
+  // across source episode input texts.
+  //
+  // I.7 closure 2026-06-17 22:00 PT — was top-1-only, which produced
+  // generic `learning-schema` collisions every consolidation pass during
+  // K-curriculum (the seed string 'learning' dominated input_text for
+  // every curriculum-heartbeat episode). Top-K=3 joined by `-` gives
+  // each schema a distinct content signature so semantically-different
+  // episode clusters land in semantically-different schema names —
+  // `victory-triumph-success` for one cluster vs `family-bonds-warmth`
+  // for another, rather than both flattening into `learning-schema`.
+  // Per Tulving 1972 episodic→semantic, schemas need distinct identity
+  // for retrieval gradient to function — naming collisions undermine
+  // the consolidation→retrieval pipeline at the labelling level.
+  // Bonus: include the most-frequent word from sourceEpisodes' INTENT
+  // field too if present (chat episodes carry intent tokens) so user-
+  // initiated schemas show their semantic anchor explicitly.
   _deriveLabel(episodes) {
     const STOP = new Set([
       'the','a','an','is','are','was','were','be','been','being','am',
@@ -453,19 +467,30 @@ export class SchemaStore {
       'do','does','did','have','has','had','will','would','should','can',
       'and','or','but','if','then','else','to','of','in','on','at','for',
       'with','by','from','this','that','these','those','what','who','where','when','why','how',
+      // I.7 additions — strip generic curriculum/system seed tokens that
+      // dominate input_text for non-content episodes and would otherwise
+      // win the top-K vote across hundreds of curriculum-heartbeats.
+      'learning','curriculum','phase','teach','cell','heartbeat','episode',
+      'inner','thought','tick','state','active','progress',
     ]);
     const counts = new Map();
     for (const ep of episodes) {
-      const text = (ep.input_text || '') + ' ' + (ep.response_text || '');
+      // Pull intent / label too if present (chat episodes set these on
+      // pushEmission). Falls back to input_text + response_text only.
+      const text = [ep.input_text || '', ep.response_text || '', ep.intent || '', ep.label || ''].join(' ');
       const words = text.toLowerCase().replace(/[^a-z\s]/g, '').split(/\s+/);
       for (const w of words) {
         if (w.length < 3 || STOP.has(w)) continue;
         counts.set(w, (counts.get(w) || 0) + 1);
       }
     }
-    let best = '', bestN = 0;
-    for (const [w, n] of counts) if (n > bestN) { best = w; bestN = n; }
-    return best ? `${best}-schema` : `untitled-${Date.now().toString(36)}`;
+    // Top-K=3 content words by frequency. Schema label is "word1-word2-word3".
+    const ranked = Array.from(counts.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(e => e[0]);
+    if (ranked.length === 0) return `untitled-${Date.now().toString(36)}`;
+    return ranked.join('-');
   }
 
   // iter13 T13.7 — Run the merge gate against ALL schema pairs. O(N²)

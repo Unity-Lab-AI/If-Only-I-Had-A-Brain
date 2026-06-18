@@ -732,6 +732,45 @@
         banner.classList.add('active');
         log(`[CRITICAL] gpuClientSpawnFailed — stage=${stage} browser=${browser} errno=${errno}`);
       }
+      // I.6 closure — gate-probe banner. The brain pauses main-tick
+      // dispatch during a curriculum gate probe so cortex owns GPU
+      // exclusively for the probe window. Without an operator-visible
+      // banner the brain looks hung (GPU=0%, tick paused, dashboard
+      // counters frozen). Lazy-creates the banner element on first
+      // 'start' message so we don't need new HTML markup.
+      if (msg.type === 'gateProbe') {
+        let banner = document.getElementById('gate-probe-banner');
+        if (msg.state === 'start') {
+          if (!banner) {
+            banner = document.createElement('div');
+            banner.id = 'gate-probe-banner';
+            banner.style.cssText = 'position:fixed;top:50px;left:50%;transform:translateX(-50%);background:linear-gradient(90deg,#fbbf24,#f59e0b);color:#000;padding:10px 20px;border-radius:8px;font-weight:bold;font-family:monospace;font-size:13px;box-shadow:0 4px 12px rgba(0,0,0,0.4);z-index:9999;';
+            document.body.appendChild(banner);
+          }
+          const cell = msg.cellId || 'unknown-cell';
+          banner.innerHTML = `🧠 Gate probe in progress: <code>${cell}</code> · main tick paused · cortex owns GPU exclusively`;
+          banner.dataset.startTs = String(msg.ts || Date.now());
+          banner.style.display = 'block';
+          // Tick a duration counter every 500ms so operator sees motion.
+          if (window.__gateProbeInterval) clearInterval(window.__gateProbeInterval);
+          window.__gateProbeInterval = setInterval(() => {
+            if (!banner.parentNode) { clearInterval(window.__gateProbeInterval); return; }
+            const startTs = Number(banner.dataset.startTs || 0);
+            const elapsed = ((Date.now() - startTs) / 1000).toFixed(1);
+            banner.innerHTML = `🧠 Gate probe in progress: <code>${cell}</code> · main tick paused · cortex owns GPU exclusively · <span style="opacity:0.7;">${elapsed}s elapsed</span>`;
+          }, 500);
+        } else if (msg.state === 'end') {
+          if (window.__gateProbeInterval) { clearInterval(window.__gateProbeInterval); window.__gateProbeInterval = null; }
+          if (banner) {
+            const sec = ((msg.durationMs || 0) / 1000).toFixed(1);
+            banner.innerHTML = `✓ Gate probe complete: <code>${msg.cellId || ''}</code> · ${sec}s · resuming main tick`;
+            banner.style.background = 'linear-gradient(90deg,#22c55e,#16a34a)';
+            banner.style.color = '#fff';
+            setTimeout(() => { if (banner.parentNode) banner.parentNode.removeChild(banner); }, 4000);
+          }
+          log(`[Curriculum] gate probe complete in ${((msg.durationMs || 0) / 1000).toFixed(1)}s`);
+        }
+      }
       // NOTE: 'conversation' message type was removed 2026-04-13 per
       // the privacy model (user text is PRIVATE, never broadcast to
       // other clients). Dashboard derives conversation activity from
@@ -819,9 +858,10 @@
             <div style="font-size:18px;font-weight:700;color:#a855f7;">${p.memUsedMB}MB</div>
             <div style="font-size:9px;color:#444;">heap ${p.nodeHeapMB ?? 0}MB / RSS ${p.memRssMB ?? 0}MB</div>
           </div>
-          <div title="GPU utilization sampled via nvidia-smi every 5 seconds. Bursty workloads (Hebbian-batched compute that fires for ~50-200ms then idles for the rest of the step window) may report 0-5% even while VRAM bandwidth is saturated and the fan spins from thermal inertia. The 'connected' indicator below shows whether compute.html WebSocket is live — that's the canonical sign GPU work is actively flowing.">
+          <div title="GPU utilization sampled via nvidia-smi every 1 second into a 30-sample ring buffer. The big number is the most-recent sample. peak / avg below summarize the last 30s window — peak catches Hebbian-batch bursts that fire for ~50-200ms then idle, which a single instantaneous read would routinely miss. The 'connected' indicator shows whether compute.html WebSocket is live.">
             <div style="font-size:10px;color:#555;">GPU</div>
-            <div style="font-size:18px;font-weight:700;color:${gpuColor};">${p.gpuUtilPercent}%${p.gpuUtilPercent === 0 && p.gpuComputeConnected ? ' <span style="font-size:8px;color:#888;font-weight:400;vertical-align:middle;">bursty sample</span>' : ''}</div>
+            <div style="font-size:18px;font-weight:700;color:${gpuColor};">${p.gpuUtilPercent}%</div>
+            <div style="font-size:9px;color:#666;margin-top:2px;">peak: <span style="color:${(p.gpuUtilPeak30s ?? 0) > 50 ? '#f59e0b' : '#22c55e'};font-weight:600;">${p.gpuUtilPeak30s ?? 0}%</span> · avg: <span style="color:${(p.gpuUtilAvg30s ?? 0) > 50 ? '#f59e0b' : '#22c55e'};font-weight:600;">${p.gpuUtilAvg30s ?? 0}%</span> <span style="opacity:0.5;">(30s)</span></div>
             <div style="font-size:9px;color:#444;">${p.gpuName || 'none'} (${p.gpuVramMB || 0}MB) ${p.gpuComputeConnected ? '<span style="color:#22c55e;font-size:8px;">●&nbsp;connected</span>' : '<span style="color:#ef4444;font-size:8px;">●&nbsp;disconnected</span>'}</div>
           </div>
           <div>
@@ -1347,7 +1387,17 @@
       // Cells includes the cell's key (cellStatus === 'passed').
       // Without this cap the display hits 100% after ~12 phases and
       // stays there for the remaining hours of teaching.
-      const done = Math.max(c.cellPhasesPersisted | 0, c.cellPhasesCompleted | 0);
+      //
+      // I.12 closure — `cellSubPhases` is the new server-side field
+      // that ticks on every wrapped teach call (outermost OR nested),
+      // unlike `cellPhasesCompleted` which only ticks on outermost
+      // boundaries. K cells wrap their whole pass as ONE outermost
+      // phase with 25+ nested calls; using `cellSubPhases` as a
+      // fallback when the outermost counter is 0 gives the operator
+      // real-time visible progress instead of 0%/0-phases for 25 min.
+      const outermostDone = Math.max(c.cellPhasesPersisted | 0, c.cellPhasesCompleted | 0);
+      const subPhaseDone = c.cellSubPhases | 0;
+      const done = outermostDone > 0 ? outermostDone : subPhaseDone;
       const elapsedMs = c.cellElapsedMs | 0;
       const elapsedMin = (elapsedMs / 60000).toFixed(1);
       const status = c.cellStatus || 'idle';
@@ -1375,9 +1425,17 @@
         // late phases converge slowly toward the cap, matching real-
         // world K-cell phase distribution (short early phases + long
         // teach-heavy later phases).
-        const expected = Math.max(20, done); // typical K cell is 20+ phases
+        // I.12 closure — when using the sub-phase fallback, expected
+        // tracks higher (each cell averages ~40-100 nested teach calls)
+        // so the bar moves smoothly. Tag the label so operator can tell
+        // which counter is being used.
+        const usingSubPhase = outermostDone === 0 && subPhaseDone > 0;
+        const expected = usingSubPhase
+          ? Math.max(60, subPhaseDone)
+          : Math.max(20, done);
         pct = Math.min(95, Math.round((done / expected) * 95));
-        pctLabel = `${pct}% · ${done} phases · ${elapsedMin} min elapsed (in progress)`;
+        const counterTag = usingSubPhase ? ' sub-phases' : ' phases';
+        pctLabel = `${pct}% · ${done}${counterTag} · ${elapsedMin} min elapsed (in progress)`;
         $('d-curr-cellbar').style.background = 'linear-gradient(90deg,#a78bfa,#ff4d9a)';
       } else {
         pctLabel = `idle · 0 phases`;
@@ -1889,6 +1947,173 @@
     });
 
     connect();
+  </script>
+  <script>
+    // ── I.11 + I.12 client-side observability patch ─────────────────────
+    // Appended 2026-06-17 21:40 PT during operator-driven K-curriculum
+    // live run. Server is alive + training is intact, but the brain-events
+    // panel + cell-progress counters were going stale because the server-
+    // side event-broadcast pipeline only covers SEED-phase + a few teach
+    // paths — cell-level _teachWordIntegrated / _teachVocabList do NOT yet
+    // emit events into the `state.events` array, and the phase counter
+    // (cellPhasesCompleted) stays at 0 until the cell fully passes.
+    //
+    // This patch synthesizes activity client-side from the live phase +
+    // elapsed-time fields the server IS broadcasting (c.activePhase.name,
+    // c.activePhase.elapsedMs, c.cellElapsedMs, c.cellStatus). It does
+    // not modify the server, does not interrupt the running training run,
+    // does not require a brain restart. Operator refreshes browser tab
+    // (Ctrl+R) and the patch lights up immediately on next state msg.
+    //
+    // Operator sees:
+    //   - phase-transition synthetic events flowing into the Brain Events
+    //     panel (labeled "(client-derived)" so they don't pretend to be
+    //     server-fired)
+    //   - cell-transition events when subject/grade changes
+    //   - "still in <phase>" heartbeat events every 30s during long
+    //     sub-phases so the feed never stalls visually
+    //   - time-based progress % override when the server-side phase
+    //     counter is stuck at 0 — keeps the bar moving instead of
+    //     dead-zero for 9+ minutes of active training
+    //
+    // Real fix lives in I.11 (server _teach* event broadcasts) and I.12
+    // (server-side phase counter increment hook) — both queued for next
+    // restart. This patch is the operator-visible workaround until then.
+    (function clientSideObservabilityPatch() {
+      let lastPhase = null;
+      let lastCell = null;
+      let lastHeartbeatPushTs = 0;
+      let phaseStartTs = null;
+      let syntheticSeqCounter = -1; // negative so we never collide with server seq numbers
+      const PATCH_TAG = 'I.11/I.12 client-side patch';
+      const HEARTBEAT_INTERVAL_MS = 30000;
+      const EXPECTED_K_CELL_MIN = 20; // heuristic — K cells average ~20min during UPFRONT-VOCAB-TEACH
+
+      // Re-use the existing renderBrainEvents pipeline so synthetic
+      // events get the same formatting + color coding + scroll cap.
+      function pushSyntheticEvent(type, region, label) {
+        if (typeof renderBrainEvents !== 'function') return;
+        try {
+          renderBrainEvents([{
+            seq: syntheticSeqCounter--,
+            ts: Date.now(),
+            type,
+            region,
+            label: `(client-derived) ${label}`,
+          }]);
+        } catch (err) {
+          // Swallow — patch must never break the host dashboard.
+          console.warn('[' + PATCH_TAG + '] pushSyntheticEvent threw:', err);
+        }
+      }
+
+      // Hook updateDashboard. The original is captured by closure
+      // and called first so existing behavior is preserved verbatim.
+      // Our additions only RUN after the host renderer has done its job.
+      const origUpdateDashboard = window.updateDashboard;
+      if (typeof origUpdateDashboard !== 'function') {
+        console.warn('[' + PATCH_TAG + '] updateDashboard not found — patch dormant');
+        return;
+      }
+      window.updateDashboard = function patchedUpdateDashboard(s) {
+        try { origUpdateDashboard.call(this, s); }
+        catch (err) {
+          console.error('[' + PATCH_TAG + '] inner updateDashboard threw:', err);
+        }
+        try {
+          if (!s) return;
+          const c = s.curriculum;
+          if (!c) return;
+
+          // ── Synthesize Brain Events from heartbeat data ─────────────
+          const curPhase = c.activePhase && c.activePhase.name ? c.activePhase.name : null;
+          const curSubject = c.currentSubject || null;
+          const curGrade = c.currentGrade || null;
+          const curCell = (curSubject && curGrade) ? `${curSubject}/${curGrade}` : null;
+
+          // Phase-transition event (only when value actually changes)
+          if (curPhase && curPhase !== lastPhase) {
+            if (lastPhase !== null) {
+              pushSyntheticEvent('teach', 'phase', `phase change: ${lastPhase} → ${curPhase}`);
+            } else {
+              pushSyntheticEvent('teach', 'phase', `phase active: ${curPhase}`);
+            }
+            lastPhase = curPhase;
+            phaseStartTs = Date.now();
+          }
+
+          // Cell-transition event
+          if (curCell && curCell !== lastCell) {
+            if (lastCell !== null) {
+              pushSyntheticEvent('teach', 'cell', `cell change: ${lastCell} → ${curCell}`);
+            } else {
+              pushSyntheticEvent('teach', 'cell', `entered cell: ${curCell}`);
+            }
+            lastCell = curCell;
+          }
+
+          // Periodic "still working" heartbeat so the feed never stalls
+          // visually while the server is in a long sub-phase.
+          const now = Date.now();
+          if (curPhase && (now - lastHeartbeatPushTs) > HEARTBEAT_INTERVAL_MS) {
+            const phaseElapsedSec = Math.round((c.activePhase.elapsedMs || 0) / 1000);
+            const cellElapsedMin = ((c.cellElapsedMs || 0) / 60000).toFixed(1);
+            pushSyntheticEvent(
+              'teach',
+              curSubject || '?',
+              `heartbeat — still in ${curPhase} (+${phaseElapsedSec}s) · cell ${curCell || '?'} ${cellElapsedMin}min elapsed`
+            );
+            lastHeartbeatPushTs = now;
+          }
+
+          // ── Override cell progress % when server counter is stuck ───
+          // The host renderer at lines 1376-1387 computes pct from
+          // c.cellPhasesCompleted, which the server isn't yet
+          // incrementing during cell-level teach. When done=0 + elapsed
+          // > 1 min + no macroPhaseProgress (i.e. we're past SEED, in
+          // actual cell teach), substitute a time-based estimate so the
+          // bar moves and operator can see the brain is alive.
+          if (c.cellStatus === 'in-progress' && !c.macroPhaseProgress) {
+            const done = Math.max(c.cellPhasesPersisted | 0, c.cellPhasesCompleted | 0);
+            const elapsedMin = (c.cellElapsedMs || 0) / 60000;
+            if (done === 0 && elapsedMin > 1) {
+              const timePct = Math.min(85, Math.round((elapsedMin / EXPECTED_K_CELL_MIN) * 85));
+              const cellBar = document.getElementById('d-curr-cellbar');
+              const cellPct = document.getElementById('d-curr-cellpct');
+              if (cellBar) cellBar.style.width = timePct + '%';
+              if (cellPct) {
+                cellPct.innerHTML = `~${timePct}% <span style="color:#fbbf24;">[time-est]</span> · 0 phases reported · ${elapsedMin.toFixed(1)} min elapsed (in progress, server phase counter stuck — I.12)`;
+              }
+            }
+          }
+        } catch (err) {
+          console.error('[' + PATCH_TAG + '] post-render threw:', err);
+        }
+      };
+
+      // Announce the patch is active on first tick after load so
+      // operator sees a banner instead of wondering if it's running.
+      setTimeout(() => {
+        pushSyntheticEvent(
+          'event',
+          'patch',
+          `🛠 ${PATCH_TAG} active — synthesizing events from heartbeat broadcasts until server-side I.11/I.12 ships`
+        );
+      }, 1500);
+
+      // Also push a heartbeat IMMEDIATELY if no state arrives within 3s
+      // so the panel never sits with stale text "No live events" while
+      // the WS is healthy but the server-events array is empty.
+      setTimeout(() => {
+        if (lastPhase === null) {
+          pushSyntheticEvent(
+            'event',
+            'patch',
+            `waiting for first state broadcast with active phase data (WS healthy, just no events yet)…`
+          );
+        }
+      }, 3000);
+    })();
   </script>
 </body>
 </html>

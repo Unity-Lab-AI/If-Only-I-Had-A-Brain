@@ -463,9 +463,20 @@ var init_sparse_matrix = __esm({
        * Only iterates over actual connections — O(nnz) not O(N²).
        *
        * @param {Uint8Array|Float64Array} spikes — pre-synaptic activity
-       * @returns {Float64Array} currents — post-synaptic currents
+       * @param {Float64Array} [outBuf] — optional pre-allocated output buffer
+       *        of length === rows. When provided, propagate writes results
+       *        directly into it (zeroing first) and returns the same
+       *        reference — eliminates the per-call `new Float64Array(rows)`
+       *        allocation that was the smoking-gun source of the heap-leak
+       *        observed at 145-231 MB/min during `_teachHebbian` runs.
+       *        Caller pools the buffer (e.g. `_propagateScratch` in
+       *        curriculum.js) and reuses it across millions of fires.
+       *        When `outBuf` is undefined OR length mismatches `rows`, falls
+       *        back to allocating a fresh array (backward-compatible).
+       * @returns {Float64Array} currents — post-synaptic currents (same
+       *        reference as `outBuf` when provided, else freshly allocated)
        */
-      propagate(spikes) {
+      propagate(spikes, outBuf) {
         const { rows, values, colIdx, rowPtr } = this;
         if (!values || !colIdx || !rowPtr) {
           if (typeof globalThis !== "undefined" && globalThis._probeWindowPropagate && !this._nullCsrWarned) {
@@ -473,9 +484,19 @@ var init_sparse_matrix = __esm({
             const nm = this._name || this.name || "(unnamed)";
             console.warn(`[SparseMatrix] propagate called with null CPU CSR on ${nm} (values=${!!values} colIdx=${!!colIdx} rowPtr=${!!rowPtr}) \u2014 returning zeros. Matrix is likely GPU-bound with CPU arrays freed.`);
           }
+          if (outBuf && outBuf.length === (rows || 0)) {
+            outBuf.fill(0);
+            return outBuf;
+          }
           return new Float64Array(rows || 0);
         }
-        const I = new Float64Array(rows);
+        let I;
+        if (outBuf && outBuf.length === rows) {
+          I = outBuf;
+          I.fill(0);
+        } else {
+          I = new Float64Array(rows);
+        }
         for (let i = 0; i < rows; i++) {
           let sum = 0;
           const start = rowPtr[i];
@@ -4283,7 +4304,7 @@ var init_benchmark = __esm({
 
 // ../js/version.js
 var VERSION = "0.1.0";
-var BUILD = "28858f6e-b1ef";
+var BUILD = "872302d4-0ebd";
 var FULL = `${VERSION}+${BUILD}`;
 
 // ../js/brain/neurons.js
@@ -30502,6 +30523,7 @@ var Curriculum = class _Curriculum {
             const s = this._perSubjectStats[this._currentSubject];
             if (s) s.teachEvents = (s.teachEvents | 0) + 1;
           }
+          this._currentCellSubPhases = (this._currentCellSubPhases | 0) + 1;
           return result;
         } finally {
           if (cl) cl._activePhase = prev;
@@ -30706,6 +30728,14 @@ var Curriculum = class _Curriculum {
       activePhase,
       cellPhasesCompleted: this._currentCellPhasesCompleted | 0,
       cellPhasesPersisted: currentCellPassedPhases,
+      // I.12 closure — nested sub-phase counter. cellPhasesCompleted
+      // only ticks on OUTERMOST teach phases, which means K cells stay
+      // at 0 phases for their entire ~25 min runtime. cellSubPhases ticks
+      // on every wrapped teach call (outermost OR nested), giving the
+      // dashboard a real-time progress signal. Dashboard formula:
+      // when cellPhasesCompleted=0 + cellSubPhases>0 + cellStatus=
+      // 'in-progress', render cellSubPhases as the active counter.
+      cellSubPhases: this._currentCellSubPhases | 0,
       cellStartAt: this._currentCellStartAt || null,
       cellElapsedMs: this._currentCellStartAt ? Date.now() - this._currentCellStartAt : 0,
       perSubject,
@@ -31099,17 +31129,25 @@ var Curriculum = class _Curriculum {
             if (batchN > 0) {
               const batchStart = Date.now();
               let bound = 0;
+              let timedOut = 0;
               for (let i = 0; i < batchN; i++) {
                 const word = cluster._kVocabQueue.shift();
                 if (!word) break;
                 try {
-                  const r = await this._teachWordDefinition(word, { reps: 4, label: "DREAM-DEF-TRICKLE" });
+                  const r = await this._teachWordDefinition(word, { reps: 4, label: "DREAM-DEF-TRICKLE", timeoutMs: 2e4 });
                   if (r && r.defsBound > 0) bound += r.defsBound;
+                  else if (r && r.skipped && /timeout/i.test(r.skipped)) timedOut++;
                 } catch {
                 }
               }
               const dt = ((Date.now() - batchStart) / 1e3).toFixed(1);
-              this._hb(`[Curriculum] \u{1F4A4} dream trickle: ${batchN} words processed in ${dt}s (${bound} multi-def Hebbian fires) \xB7 ${cluster._kVocabQueue.length} K-vocab words remaining in queue`);
+              const timeoutNote = timedOut > 0 ? ` \xB7 \u26A0 ${timedOut} re-timed-out (will retry next cycle)` : "";
+              this._hb(`[Curriculum] \u{1F4A4} dream trickle: ${batchN} words processed in ${dt}s (${bound} multi-def Hebbian fires)${timeoutNote} \xB7 ${cluster._kVocabQueue.length} K-vocab words remaining in queue`);
+              if (timedOut > 0 && Array.isArray(cluster._kVocabRetryQueue)) {
+                while (cluster._kVocabRetryQueue.length > 0) {
+                  cluster._kVocabQueue.push(cluster._kVocabRetryQueue.shift());
+                }
+              }
             }
           } catch (err) {
           }
@@ -33970,6 +34008,7 @@ var Curriculum = class _Curriculum {
     }
     this._perSubjectStats[subject].grade = grade;
     this._perSubjectStats[subject].label = SUBJECT_LABELS[subject] || subject;
+    this._currentCellSubPhases = 0;
     cluster._probeGateActive = true;
     let _aliveTick = 0;
     let _priorRssMb = 0;
@@ -34043,7 +34082,7 @@ var Curriculum = class _Curriculum {
             }
           }
           const deltaStr = nativeDeltaMb === 0 ? "\u0394\xB10" : nativeDeltaMb > 0 ? `\u0394+${nativeDeltaMb}` : `\u0394${nativeDeltaMb}`;
-          const workerTag = _cachedWorkerMem ? _cachedWorkerMem.workerCount === 0 ? " workers=0MB(idle-terminated)" : ` workers=${workerHeapMb}MB${_cachedWorkerMem.estimated ? "~" : ""}(${_cachedWorkerMem.workerCount})` : " workers=?MB";
+          const workerTag = _cachedWorkerMem ? _cachedWorkerMem.workerCount === 0 ? " workers=0MB(idle-terminated)" : ` workers=${workerHeapMb}MB${_cachedWorkerMem.estimated ? "~" : ""}(${_cachedWorkerMem.workerCount})` : " workers=0MB(initializing)";
           memLabel = ` \xB7 heap=${heapMb}/${heapTotalMb}MB v8=${v8PhysMb}MB ext=${extMb}MB ab=${abMb}MB${workerTag} native=${nativeMb}MB(${deltaStr}MB) rss=${rssMb}MB${nativeTrend}`;
         }
       } catch {
@@ -34053,8 +34092,8 @@ var Curriculum = class _Curriculum {
         const ap = cluster && cluster._activePhase;
         if (ap && ap.name) {
           const phaseMs = ap.startAt ? Date.now() - ap.startAt : 0;
-          const phaseS = (phaseMs / 1e3).toFixed(0);
-          phaseLabel = ` \xB7 phase=${ap.name} (+${phaseS}s)`;
+          const phaseSnap = phaseMs < 500 ? "(active)" : `+${(phaseMs / 1e3).toFixed(0)}s`;
+          phaseLabel = ` \xB7 phase=${ap.name} ${phaseSnap}`;
         } else {
           phaseLabel = ` \xB7 phase=(between-phases / gate-probe)`;
         }
@@ -36189,6 +36228,12 @@ var Curriculum = class _Curriculum {
   async _teachHebbian(lr, opts = {}) {
     const cluster = this.cluster;
     if (!cluster) return;
+    const _now = Date.now();
+    if (!this._lastHebbianYieldAt) this._lastHebbianYieldAt = 0;
+    if (_now - this._lastHebbianYieldAt > 50) {
+      await new Promise((resolve) => setImmediate(resolve));
+      this._lastHebbianYieldAt = _now;
+    }
     await cluster._crossRegionHebbian(lr, opts);
     if (opts.skipIntraSynapses || opts.skipIntraHebbian) return;
     if (typeof cluster.intraSynapsesHebbian === "function") {
@@ -36256,12 +36301,16 @@ var Curriculum = class _Curriculum {
       if (!this._predictErrorScratch || this._predictErrorScratch.length !== size) {
         this._predictErrorScratch = new Float64Array(size);
       }
+      const propagateRows = cluster.synapses && typeof cluster.synapses.rows === "number" ? cluster.synapses.rows : size;
+      if (!this._predictPropagateScratch || this._predictPropagateScratch.length !== propagateRows) {
+        this._predictPropagateScratch = new Float64Array(propagateRows);
+      }
       const target = this._predictTargetScratch;
       const error = this._predictErrorScratch;
       target.fill(0);
       error.fill(0);
       for (let i = 0; i < size; i++) target[i] = cluster.lastSpikes[i] ? 1 : 0;
-      const predicted = cluster.synapses.propagate(target);
+      const predicted = cluster.synapses.propagate(target, this._predictPropagateScratch);
       if (!predicted || predicted.length === 0) return;
       let maxP = 1e-6;
       for (let i = 0; i < predicted.length; i++) {
@@ -40125,6 +40174,11 @@ var Curriculum = class _Curriculum {
     const arousal = opts.arousal ?? 0.7;
     const valence = opts.valence ?? 0.2;
     const lr = cluster.learningRate;
+    try {
+      this._pushBrainEvent?.("teach", "motor", `WORD-INT START: ${cleanWord}`, { word: cleanWord, reps, letters: letters.length });
+    } catch {
+    }
+    const _wordIntStartMs = Date.now();
     const letterRegion = cluster.regions.letter;
     const phonRegion = cluster.regions.phon;
     const semRegion = cluster.regions.sem;
@@ -40323,10 +40377,28 @@ var Curriculum = class _Curriculum {
       if (typeof _microtask === "function") await _microtask();
     }
     this.stats.shortWordsSeen++;
+    const _wordIntElapsedMs = Date.now() - _wordIntStartMs;
+    try {
+      this._pushBrainEvent?.("teach", "motor", `WORD-INT DONE: ${cleanWord} (${_wordIntElapsedMs}ms)`, { word: cleanWord, elapsedMs: _wordIntElapsedMs });
+    } catch {
+    }
+    if (!this._wordIntDurations) this._wordIntDurations = [];
+    this._wordIntDurations.push({ word: cleanWord, ms: _wordIntElapsedMs, ts: Date.now() });
+    while (this._wordIntDurations.length > 256) this._wordIntDurations.shift();
+    if (_wordIntElapsedMs > 3e4) {
+      this._hb(`[Curriculum] \u26A0 slow word "${cleanWord}" took ${_wordIntElapsedMs}ms in _teachWordIntegrated (>30s threshold) \u2014 likely GPU dispatch backlog or cache-miss heavy phase`);
+    }
   }
   async _teachVocabList(vocab, ctx, opts = {}) {
     const cluster = this.cluster;
     if (!cluster) return { pass: false, reason: "no cluster wired" };
+    const _vocabLabel = opts.label || ctx?.label || "vocab";
+    const _vocabTotal = Array.isArray(vocab) ? vocab.length : 0;
+    try {
+      this._pushBrainEvent?.("teach", "sem", `VOCAB-LIST START: ${_vocabLabel} \xB7 ${_vocabTotal} words`, { label: _vocabLabel, total: _vocabTotal });
+    } catch {
+    }
+    const _vocabListStartMs = Date.now();
     const reps = opts.reps ?? 12;
     const arousal = ctx?.arousal ?? 0.8;
     const valence = ctx?.valence ?? 0.2;
@@ -40348,10 +40420,20 @@ var Curriculum = class _Curriculum {
       _vocabIdx++;
       if (_vocabIdx % 5 === 0) {
         await new Promise((resolve) => setImmediate(resolve));
+        try {
+          const _phaseElapsedSec = Math.round((Date.now() - _vocabListStartMs) / 1e3);
+          this._pushBrainEvent?.("teach", "sem", `VOCAB-LIST progress: ${_vocabLabel} ${_vocabIdx}/${_vocabTotal} (${_phaseElapsedSec}s)`, { label: _vocabLabel, taught: _vocabIdx, total: _vocabTotal, elapsedSec: _phaseElapsedSec });
+        } catch {
+        }
       }
     }
     const _bagLeftovers = [];
     for (const _skip of _bagLeftovers) {
+    }
+    try {
+      const _elapsedSec = Math.round((Date.now() - _vocabListStartMs) / 1e3);
+      this._pushBrainEvent?.("teach", "sem", `VOCAB-LIST DONE: ${_vocabLabel} \xB7 ${_vocabIdx}/${_vocabTotal} words \xB7 ${_elapsedSec}s`, { label: _vocabLabel, taught: _vocabIdx, total: _vocabTotal, elapsedSec: _elapsedSec });
+    } catch {
     }
     return { pass: true, reason: "integrated-teach-complete" };
     const letterSize = letterRegion.end - letterRegion.start;

@@ -550,9 +550,20 @@ export class SparseMatrix {
    * Only iterates over actual connections — O(nnz) not O(N²).
    *
    * @param {Uint8Array|Float64Array} spikes — pre-synaptic activity
-   * @returns {Float64Array} currents — post-synaptic currents
+   * @param {Float64Array} [outBuf] — optional pre-allocated output buffer
+   *        of length === rows. When provided, propagate writes results
+   *        directly into it (zeroing first) and returns the same
+   *        reference — eliminates the per-call `new Float64Array(rows)`
+   *        allocation that was the smoking-gun source of the heap-leak
+   *        observed at 145-231 MB/min during `_teachHebbian` runs.
+   *        Caller pools the buffer (e.g. `_propagateScratch` in
+   *        curriculum.js) and reuses it across millions of fires.
+   *        When `outBuf` is undefined OR length mismatches `rows`, falls
+   *        back to allocating a fresh array (backward-compatible).
+   * @returns {Float64Array} currents — post-synaptic currents (same
+   *        reference as `outBuf` when provided, else freshly allocated)
    */
-  propagate(spikes) {
+  propagate(spikes, outBuf) {
     const { rows, values, colIdx, rowPtr } = this;
     // Defensive null-CSR guard. At biological scale some matrices get
     // their CPU CSR arrays freed to save external memory once GPU-bound
@@ -567,9 +578,27 @@ export class SparseMatrix {
         const nm = this._name || this.name || '(unnamed)';
         console.warn(`[SparseMatrix] propagate called with null CPU CSR on ${nm} (values=${!!values} colIdx=${!!colIdx} rowPtr=${!!rowPtr}) — returning zeros. Matrix is likely GPU-bound with CPU arrays freed.`);
       }
+      // Honour outBuf even on the null-CSR fast path so callers don't
+      // accumulate small zero-allocations on every silent skip either.
+      if (outBuf && outBuf.length === (rows || 0)) {
+        outBuf.fill(0);
+        return outBuf;
+      }
       return new Float64Array(rows || 0);
     }
-    const I = new Float64Array(rows);
+    // Output buffer selection: reuse `outBuf` when the caller pooled one
+    // of matching size; else allocate fresh (backward-compat). `.fill(0)`
+    // before reuse is mandatory — stale tail values from previous
+    // propagate fires would otherwise alias into the new result and
+    // corrupt downstream Oja/Hebbian updates that read past the active
+    // row range.
+    let I;
+    if (outBuf && outBuf.length === rows) {
+      I = outBuf;
+      I.fill(0);
+    } else {
+      I = new Float64Array(rows);
+    }
 
     for (let i = 0; i < rows; i++) {
       let sum = 0;
