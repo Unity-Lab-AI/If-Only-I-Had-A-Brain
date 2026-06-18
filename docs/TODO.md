@@ -528,11 +528,33 @@ Only sub-item that stays open: T39.i.8 (auto-wrap outermost-check root cause) �
 
 ---
 
+## SESSION 114.19fp — Live-test follow-up + I.16 doc sweep (2026-06-17)
+
+20 I-track fixes shipped (I.1-I.20) — all ✅ closed. Plus I.16 comprehensive doc sweep (this section) covering:
+
+- Public-facing docs: README, ARCHITECTURE, SKILL_TREE, ROADMAP, EQUATIONS, HTML-ENTRY-POINTS, SETUP, THRESHOLD-DERIVATION, PUSH_WORKFLOW
+- HTMLs: brain-equations.html, unity-guide.html, gpu-configure.html (dashboard.html updated separately via I.6/I.11/I.12/I.18/I.20)
+- Per-module READMEs: js/brain/cluster, js/brain/curriculum, server/brain-server
+- Workflow docs: TODO-life-experience.md (Goddess family name + parents + family memories), TODO-full-syllabus.md (Adds #5-#13 — biographical anchors, bad memories, obscenities, morals, physics, all-subjects, code-self-taught, body-awareness + sex-ed), COMP-todo.md (session-114.19fp summary)
+
+Gee directives this session that landed in workflow docs:
+
+- *"add to ciriculkum for better life experiences , parents names Unitys family name is Goddess family memories friends and all the other traing cources need to be added"* → TODO-life-experience.md CORE IDENTITY FACTS section, TODO-full-syllabus.md Add #5
+- *"in the work these todos detail that hasnt been done yet, so that her full life experiences bad good amazing terrible horrible like life really has bad and terribel things form who she is just as much as good things"* → TODO-full-syllabus.md Add #6
+- *"the ciriculum update need to teach her obsinities and morals and good and bad and physicalk phisics of 3d space and weights and velocities ect ect all of it everything"* → TODO-full-syllabus.md Adds #7 (obscenities), #8 (morals), #9 (physics + 3D space), #10 (all-other-subjects)
+- *"including her code courses so she knows how to code learning at an advanced rate for her grade level with experiences as self taught memories of what works and actual"* → TODO-full-syllabus.md Add #11 (code self-taught memories)
+- *"she needto to know she has breasts a butt and a vagina, and what sex is and sex education and all of that"* + *"these are hard coded but its suppose to be how here training datea formulates her emo goth personality of a sexy bitch once see gets through to highschool"* → TODO-full-syllabus.md Add #13
+
+Status: doc-sweep IN-PROGRESS (this commit closes batch 2 of N). Implementation of Adds #5-#13 deferred per PRE-K + K ONLY SCOPE LAW; the post-K developmental arc lands once K Part 2 signs off.
+
+---
+
 ## NOTES
 
 - **FINALIZED is append-only.** Never delete entries. When new work lands, copy the full verbatim task description into a new FINALIZED session entry BEFORE removing it from TODO.
 - **This TODO only contains unfinished work** per the `.claude/CLAUDE.md` TODO FILE RULES. Every shipped task lives verbatim in `docs/FINALIZED.md` with full descriptions, files touched, and closure notes.
 - **Future work beyond this branch** lives in `docs/COMP-todo.md` (distributed GPU compute network — future `comp-net` branch).
 - **Post-K grade content** (grade 1 through PhD) lives in `docs/TODO-full-syllabus.md` under the DEFERRED section per the PRE-K + K ONLY SYLLABUS SCOPE CONTRACT LAW.
+- **Session 114.19fp Adds #5-#13** in `docs/TODO-full-syllabus.md` capture Gee's directives for biographical / family / memory / obscenity / morality / physics / sex-ed / code-self-taught content expansion. All deferred per PRE-K + K ONLY SCOPE LAW.
 
 ---
