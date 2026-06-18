@@ -4782,7 +4782,7 @@ var SemanticEmbeddings = class {
     };
   }
 };
-var sharedEmbeddings2 = new SemanticEmbeddings();
+var sharedEmbeddings = new SemanticEmbeddings();
 
 // ../js/brain/letter-input.js
 var LETTER_INVENTORY = /* @__PURE__ */ new Set();
@@ -6466,10 +6466,10 @@ var CLUSTER_EMIT_MIXIN = {
 // ../js/brain/cluster/probe.js
 var CLUSTER_PROBE_MIXIN = {
   diagnoseReadoutForEmbedding(emb, ticks = 10, langStart = 150) {
-    const currents = sharedEmbeddings2.mapToCortex(emb, this.size, langStart);
+    const currents = sharedEmbeddings.mapToCortex(emb, this.size, langStart);
     this.injectCurrent(currents);
     for (let t = 0; t < ticks; t++) this.step(1e-3);
-    return this.getSemanticReadout(sharedEmbeddings2, langStart);
+    return this.getSemanticReadout(sharedEmbeddings, langStart);
   },
   /**
    * Cluster synapse weight stats — used for T13.1 before/after training
@@ -6572,6 +6572,88 @@ function injectEmbeddingToRegionOffset(cluster, regionName, emb, strength, offse
     }
   }
 }
+var T14_TERMINATORS = /* @__PURE__ */ new Set([".", "?", "!"]);
+var FUNCTION_WORDS = /* @__PURE__ */ new Set([
+  // Articles + determiners
+  "a",
+  "an",
+  "the",
+  "this",
+  "that",
+  "these",
+  "those",
+  // Auxiliaries + copulas
+  "is",
+  "am",
+  "are",
+  "was",
+  "were",
+  "be",
+  "been",
+  "being",
+  "have",
+  "has",
+  "had",
+  "do",
+  "does",
+  "did",
+  "will",
+  "would",
+  "can",
+  "could",
+  "should",
+  "may",
+  "might",
+  // Pronouns
+  "i",
+  "you",
+  "he",
+  "she",
+  "it",
+  "we",
+  "they",
+  "me",
+  "him",
+  "her",
+  "us",
+  "them",
+  "my",
+  "your",
+  "his",
+  "its",
+  "our",
+  "their",
+  // Prepositions
+  "of",
+  "to",
+  "in",
+  "on",
+  "at",
+  "by",
+  "for",
+  "with",
+  "from",
+  "up",
+  "down",
+  "out",
+  "off",
+  "over",
+  "under",
+  "into",
+  // Conjunctions
+  "and",
+  "or",
+  "but",
+  "so",
+  "if",
+  "because",
+  "when",
+  "while",
+  "as",
+  // Negation
+  "not",
+  "no"
+]);
 var COHERENCE_MIN = (() => {
   try {
     const v = parseFloat(typeof process !== "undefined" && process?.env?.DREAM_COHERENCE_MIN);
@@ -8257,7 +8339,7 @@ var NeuronCluster = class {
     this._inCurriculumMode = true;
     let refreshed = 0;
     const applySentence = (sentence) => {
-      const embSeq = sentence.split(/\s+/).map((w) => sharedEmbeddings2.getEmbedding(w));
+      const embSeq = sentence.split(/\s+/).map((w) => sharedEmbeddings.getEmbedding(w));
       if (embSeq && this.learnSentenceHebbian) {
         try {
           this.learnSentenceHebbian(embSeq, { lr });
@@ -8396,13 +8478,13 @@ var NeuronCluster = class {
     const addressesUser = wordSet.has("unity") || wordSet.has("you") || wordSet.has("your") || wordSet.has("you're");
     const isSelfReference = wordSet.has("i") || wordSet.has("im") || wordSet.has("i'm") || wordSet.has("my") || wordSet.has("me") || wordSet.has("myself");
     const isQuestion = intent === "question";
-    if (isQuestion && this.regions && this.regions.sem && typeof sharedEmbeddings2?.getSentenceEmbedding === "function") {
+    if (isQuestion && this.regions && this.regions.sem && typeof sharedEmbeddings?.getSentenceEmbedding === "function") {
       try {
-        const qEmb = sharedEmbeddings2.getSentenceEmbedding(text);
+        const qEmb = sharedEmbeddings.getSentenceEmbedding(text);
         if (qEmb && qEmb.length > 0 && typeof this.injectEmbeddingToRegion === "function") {
           this.injectEmbeddingToRegion("sem", qEmb, 0.6);
           const keyToken = extractKeyTokenShared(text);
-          const keyEmb = keyToken && typeof sharedEmbeddings2.getEmbedding === "function" ? sharedEmbeddings2.getEmbedding(keyToken) : null;
+          const keyEmb = keyToken && typeof sharedEmbeddings.getEmbedding === "function" ? sharedEmbeddings.getEmbedding(keyToken) : null;
           if (keyEmb && keyEmb.length > 0) {
             injectEmbeddingToRegionOffset(this, "sem", keyEmb, 0.6, 0.5);
           }
@@ -9070,7 +9152,7 @@ var NeuronCluster = class {
     let updates = 0;
     for (const emb of embSequence) {
       if (!emb) continue;
-      const currents = sharedEmbeddings2.mapToCortex(emb, this.size, langStart);
+      const currents = sharedEmbeddings.mapToCortex(emb, this.size, langStart);
       if (injectStrength !== 1) {
         for (let i = 0; i < this.size; i++) currents[i] *= injectStrength;
       }
@@ -10110,7 +10192,7 @@ var VIS_COLS = 10;
 var VIS_ROWS = 10;
 var SensoryProcessor = class {
   constructor() {
-    this._embeddings = sharedEmbeddings2;
+    this._embeddings = sharedEmbeddings;
     this._embeddingsLoading = this._embeddings.loadPreTrained().catch(() => 0);
     this._textQueue = [];
     this._audioSpectrum = null;
@@ -11593,7 +11675,7 @@ var Dictionary = class {
         pattern[i] = cortexPattern[i];
       }
     } else {
-      const embed = sharedEmbeddings2.getEmbedding(clean);
+      const embed = sharedEmbeddings.getEmbedding(clean);
       for (let i = 0; i < PATTERN_DIM && i < embed.length; i++) {
         pattern[i] = embed[i];
       }
@@ -12048,7 +12130,7 @@ var LanguageCortex = class {
         const firstPerson = this._transformToFirstPerson(raw);
         const tokens = firstPerson.toLowerCase().replace(/[^a-z' -]/g, " ").split(/\s+/).filter((w) => w.length >= 2);
         if (tokens.length < 2) continue;
-        const embSeq = tokens.map((w) => sharedEmbeddings2.getEmbedding(w));
+        const embSeq = tokens.map((w) => sharedEmbeddings.getEmbedding(w));
         const updates = cortexCluster.learnSentenceHebbian(embSeq, opts);
         totalUpdates += updates;
         trained++;
@@ -12836,7 +12918,7 @@ var LanguageCortex = class {
     if (!intentSeed) {
       try {
         if (typeof cluster.getSemanticReadout === "function") {
-          intentSeed = cluster.getSemanticReadout(sharedEmbeddings2);
+          intentSeed = cluster.getSemanticReadout(sharedEmbeddings);
         }
       } catch (err) {
         intentSeed = null;
@@ -12868,7 +12950,7 @@ var LanguageCortex = class {
     }
     if (words.length === 0) {
       let scored = opts._precomputedScores || null;
-      const target = intentSeed || (typeof cluster.getSemanticReadout === "function" ? cluster.getSemanticReadout(sharedEmbeddings2) : null);
+      const target = intentSeed || (typeof cluster.getSemanticReadout === "function" ? cluster.getSemanticReadout(sharedEmbeddings) : null);
       if (!scored && dictionary && dictionary._words && dictionary._words.size > 0 && target && target.length > 0) {
         try {
           const isChatPath = !opts._internalThought;
@@ -13144,13 +13226,13 @@ var LanguageCortex = class {
               if (content.length >= 8) break;
             }
             try {
-              if (typeof cluster.injectEmbeddingToRegion === "function" && sharedEmbeddings2 && typeof sharedEmbeddings2.getEmbedding === "function") {
-                const subjectEmb = sharedEmbeddings2.getEmbedding(subject);
+              if (typeof cluster.injectEmbeddingToRegion === "function" && sharedEmbeddings && typeof sharedEmbeddings.getEmbedding === "function") {
+                const subjectEmb = sharedEmbeddings.getEmbedding(subject);
                 if (subjectEmb && subjectEmb.length > 0) {
                   cluster.injectEmbeddingToRegion("sem", subjectEmb, 0.6);
                 }
                 for (let i = 0; i < content.length; i++) {
-                  const emb = sharedEmbeddings2.getEmbedding(content[i]);
+                  const emb = sharedEmbeddings.getEmbedding(content[i]);
                   if (emb && emb.length > 0) {
                     const strength = Math.max(0.1, 0.4 - i * 0.04);
                     cluster.injectEmbeddingToRegion("sem", emb, strength);
@@ -13196,9 +13278,9 @@ var LanguageCortex = class {
                 }
                 composedWords.push(lw);
                 lastWord = lw;
-                if (typeof cluster.injectEmbeddingToRegion === "function" && sharedEmbeddings2 && typeof sharedEmbeddings2.getEmbedding === "function") {
+                if (typeof cluster.injectEmbeddingToRegion === "function" && sharedEmbeddings && typeof sharedEmbeddings.getEmbedding === "function") {
                   try {
-                    const wordEmb = sharedEmbeddings2.getEmbedding(lw);
+                    const wordEmb = sharedEmbeddings.getEmbedding(lw);
                     if (wordEmb && wordEmb.length > 0) {
                       cluster.injectEmbeddingToRegion("sem", wordEmb, 0.25);
                     }
@@ -13226,7 +13308,7 @@ var LanguageCortex = class {
         if (!intentSeed) {
           try {
             if (typeof cluster.getSemanticReadout === "function") {
-              intentSeed = cluster.getSemanticReadout(sharedEmbeddings2);
+              intentSeed = cluster.getSemanticReadout(sharedEmbeddings);
             }
           } catch {
           }
@@ -13288,7 +13370,7 @@ var LanguageCortex = class {
         let target = null;
         try {
           if (typeof cluster.getSemanticReadout === "function") {
-            target = cluster.getSemanticReadout(sharedEmbeddings2);
+            target = cluster.getSemanticReadout(sharedEmbeddings);
           }
         } catch {
         }
@@ -13703,7 +13785,7 @@ var LanguageCortex = class {
   wordToPattern(word) {
     const clean = word.toLowerCase().replace(/[^a-z']/g, "");
     if (!clean) return new Float64Array(PATTERN_DIM2);
-    const embed = sharedEmbeddings2.getEmbedding(clean);
+    const embed = sharedEmbeddings.getEmbedding(clean);
     const pattern = new Float64Array(PATTERN_DIM2);
     for (let i = 0; i < PATTERN_DIM2 && i < embed.length; i++) {
       pattern[i] = embed[i];
@@ -14215,11 +14297,11 @@ var InnerVoice = class {
     if (ageMs >= 12e4) {
       return { primed: false, subject: focus.subject, ageMs, strength, reason: "focus stale (> 2 min)" };
     }
-    if (typeof sharedEmbeddings2?.getEmbedding !== "function") {
+    if (typeof sharedEmbeddings?.getEmbedding !== "function") {
       return { primed: false, subject: focus.subject, ageMs, strength, reason: "no embeddings" };
     }
     try {
-      const subjectEmb = sharedEmbeddings2.getEmbedding(focus.subject);
+      const subjectEmb = sharedEmbeddings.getEmbedding(focus.subject);
       if (!subjectEmb || subjectEmb.length === 0) {
         return { primed: false, subject: focus.subject, ageMs, strength, reason: "no GloVe vector for subject" };
       }
@@ -14454,7 +14536,7 @@ var BrainPersistence = class _BrainPersistence {
         // restarts. This makes long-term learning stick — if Unity
         // learns that "unity" goes near "code" and "high" in her
         // conversations, that association survives a reload.
-        embeddingRefinements: sharedEmbeddings2?.serializeRefinements ? sharedEmbeddings2.serializeRefinements() : null
+        embeddingRefinements: sharedEmbeddings?.serializeRefinements ? sharedEmbeddings.serializeRefinements() : null
       };
       try {
         const cortex = brain2.clusters?.cortex;
@@ -14662,8 +14744,8 @@ var BrainPersistence = class _BrainPersistence {
       failed.semanticWeights = err.message;
     }
     try {
-      if (state.embeddingRefinements && sharedEmbeddings2?.loadRefinements) {
-        sharedEmbeddings2.loadRefinements(state.embeddingRefinements);
+      if (state.embeddingRefinements && sharedEmbeddings?.loadRefinements) {
+        sharedEmbeddings.loadRefinements(state.embeddingRefinements);
         restored.embeddingRefinements = "ok";
       }
     } catch (err) {
@@ -14829,7 +14911,7 @@ var ComponentSynth = class {
         console.warn(`[ComponentSynth] Skipping malformed primitive "${id}"`);
         continue;
       }
-      const descEmbed = sharedEmbeddings2.getSentenceEmbedding(description);
+      const descEmbed = sharedEmbeddings.getSentenceEmbedding(description);
       this._primitives.push({ id, description, descEmbed, html, css, js });
     }
     this._loaded = true;
@@ -14865,13 +14947,13 @@ var ComponentSynth = class {
         if (norm > 0.01) cortexEntityVec = readout;
       }
     }
-    const userEmbed = sharedEmbeddings2.getSentenceEmbedding(userRequest);
+    const userEmbed = sharedEmbeddings.getSentenceEmbedding(userRequest);
     let bestScore = -1;
     let bestPrim = null;
     for (const prim of this._primitives) {
-      let score = sharedEmbeddings2.similarity(userEmbed, prim.descEmbed);
+      let score = sharedEmbeddings.similarity(userEmbed, prim.descEmbed);
       if (cortexEntityVec) {
-        score += sharedEmbeddings2.similarity(cortexEntityVec, prim.descEmbed) * 0.25;
+        score += sharedEmbeddings.similarity(cortexEntityVec, prim.descEmbed) * 0.25;
       }
       if (parsedTypes.length > 0) {
         for (const pt of parsedTypes) {
@@ -20562,7 +20644,7 @@ var K_MIXIN = {
         const digit = DIGITS[i];
         const digitOneHot = encodeLetter2(digit);
         const magFeat = _magnitudeFeatureForDigit(digit);
-        const nameEmb = sharedEmbeddings2.getEmbedding(NAMES[i]);
+        const nameEmb = sharedEmbeddings.getEmbedding(NAMES[i]);
         const letterPat = buildPattern(letterSize, digitOneHot);
         const phonPat = buildPattern(phonSize, magFeat);
         for (let j = 0; j < cluster.size; j++) cluster.lastSpikes[j] = 0;
@@ -20836,7 +20918,7 @@ var K_MIXIN = {
           if (cosine(phonReadout, expected) > 0.15) readPass++;
         }
         const digitName = NAMES[DIGITS.indexOf(digit)];
-        const nameEmb = digitName ? sharedEmbeddings2.getEmbedding(digitName) : null;
+        const nameEmb = digitName ? sharedEmbeddings.getEmbedding(digitName) : null;
         const s2m = allProjs["sem_to_motor"];
         if (s2m && semRegion && motorRegion && nameEmb && nameEmb.length > 0) {
           const semSize = semRegion.end - semRegion.start;
@@ -21036,7 +21118,7 @@ var K_MIXIN = {
         ["triangle", 3],
         ["square", 4]
       ]) {
-        const emb = sharedEmbeddings2.getEmbedding(category);
+        const emb = sharedEmbeddings.getEmbedding(category);
         if (!emb || emb.length === 0) continue;
         classifySamples.push({
           inputs: [{ region: freeRegion, feat: emb, binarize: false }],
@@ -21056,7 +21138,7 @@ var K_MIXIN = {
         ["cone", 1],
         ["cylinder", 2]
       ]) {
-        const emb = sharedEmbeddings2.getEmbedding(shapeName);
+        const emb = sharedEmbeddings.getEmbedding(shapeName);
         if (!emb || emb.length === 0) continue;
         shapeSidesSamples.push({
           inputs: [{ region: semRegion, feat: emb, binarize: false }],
@@ -21080,7 +21162,7 @@ var K_MIXIN = {
         ["cone", "3D"],
         ["cylinder", "3D"]
       ]) {
-        const emb = sharedEmbeddings2.getEmbedding(shapeName);
+        const emb = sharedEmbeddings.getEmbedding(shapeName);
         if (!emb || emb.length === 0) continue;
         shapeDimSamples.push({
           inputs: [{ region: semRegion, feat: emb, binarize: false }],
@@ -21098,9 +21180,9 @@ var K_MIXIN = {
         ["triangle", "rectangle", "pentagon"],
         ["triangle", "triangle", "square"]
       ]) {
-        const aEmb = sharedEmbeddings2.getEmbedding(aName);
-        const bEmb = sharedEmbeddings2.getEmbedding(bName);
-        const cEmb = sharedEmbeddings2.getEmbedding(cName);
+        const aEmb = sharedEmbeddings.getEmbedding(aName);
+        const bEmb = sharedEmbeddings.getEmbedding(bName);
+        const cEmb = sharedEmbeddings.getEmbedding(cName);
         if (!aEmb || !bEmb || !cEmb || aEmb.length === 0 || bEmb.length === 0 || cEmb.length === 0) continue;
         shapeComposeSamples.push({
           inputs: [
@@ -21264,7 +21346,7 @@ var K_MIXIN = {
         if (_logFirst) this._hb(`[Curriculum] Phase 1 iter ${_p1Done} letter='${letter}' START`);
         const letterOneHot = encodeLetter2(letter);
         const phonFeat = _phonemeFeatureForLetter(letter);
-        const nameEmb = sharedEmbeddings2.getEmbedding(letter);
+        const nameEmb = sharedEmbeddings.getEmbedding(letter);
         const letterPat = buildPattern(letterSize, letterOneHot);
         const phonPat = buildPattern(phonSize, phonFeat);
         for (let i = 0; i < cluster.size; i++) cluster.lastSpikes[i] = 0;
@@ -23034,7 +23116,7 @@ var K_MIXIN = {
         const semSize = (cluster2?.regions?.sem?.end || 0) - (cluster2?.regions?.sem?.start || 0);
         const sampleProbes = allEmissionWords.length >= 3 ? [allEmissionWords[0], allEmissionWords[Math.floor(allEmissionWords.length / 2)], allEmissionWords[allEmissionWords.length - 1]] : allEmissionWords.slice(0, 3);
         const sampleInfo = sampleProbes.map((w) => {
-          const e = sharedEmbeddings2.getEmbedding(w);
+          const e = sharedEmbeddings.getEmbedding(w);
           if (!e) return `${w}=NOEMB`;
           let posCount = 0;
           let max = 0;
@@ -23641,7 +23723,7 @@ var K_MIXIN = {
           for (const p of wordStartProbes) {
             _probeIdx++;
             const _probeStart = Date.now();
-            const emb = sharedEmbeddings2.getEmbedding(p.word);
+            const emb = sharedEmbeddings.getEmbedding(p.word);
             if (!emb || emb.length === 0) {
               prodFails.push(`${p.word}\u2192NO_EMB`);
               try {
@@ -23816,7 +23898,7 @@ var K_MIXIN = {
 `);
         } catch {
         }
-        const emb = sharedEmbeddings2.getEmbedding(word);
+        const emb = sharedEmbeddings.getEmbedding(word);
         if (!emb || emb.length === 0) {
           writeEmitted.push(`${word}\u2192NO_EMB`);
           continue;
@@ -23865,7 +23947,7 @@ var K_MIXIN = {
 `);
         } catch {
         }
-        const emb = sharedEmbeddings2.getSentenceEmbedding(ctx.meaning);
+        const emb = sharedEmbeddings.getSentenceEmbedding(ctx.meaning);
         if (!emb || emb.length === 0) {
           respEmitted.push(`${ctx.prompt}\u2192NO_EMB`);
           continue;
@@ -23920,7 +24002,7 @@ var K_MIXIN = {
 `);
         } catch {
         }
-        const emb = sharedEmbeddings2.getSentenceEmbedding(p.phrase);
+        const emb = sharedEmbeddings.getSentenceEmbedding(p.phrase);
         if (!emb || emb.length === 0) {
           twoWordEmitted.push(`${p.phrase}\u2192NO_EMB`);
           continue;
@@ -23974,7 +24056,7 @@ var K_MIXIN = {
 `);
         } catch {
         }
-        const emb = sharedEmbeddings2.getSentenceEmbedding(prompt);
+        const emb = sharedEmbeddings.getSentenceEmbedding(prompt);
         if (!emb || emb.length === 0) {
           freeWritingEmitted.push(`${prompt}\u2192NO_EMB`);
           continue;
@@ -24368,7 +24450,7 @@ var K_MIXIN = {
     for (let i = third; i < third * 2 && i < fineTypeSize; i++) lessTag[i] = 1;
     const facts = [];
     for (const { highMag, lowMag, word } of ATTR_POLES) {
-      const wordEmb = semRegion ? sharedEmbeddings2.getEmbedding(word) : null;
+      const wordEmb = semRegion ? sharedEmbeddings.getEmbedding(word) : null;
       const greaterWrites = [
         { region: freeLeftRegion, feat: _magnitudeFeatureForDigit(String(highMag)) },
         { region: freeRightRegion, feat: _magnitudeFeatureForDigit(String(lowMag)) },
@@ -24424,7 +24506,7 @@ var K_MIXIN = {
     ];
     const facts = [];
     for (const [category, count] of CATEGORY_COUNTS) {
-      const catEmb = sharedEmbeddings2.getEmbedding(category);
+      const catEmb = sharedEmbeddings.getEmbedding(category);
       if (!catEmb || catEmb.length === 0) continue;
       facts.push({ writes: [
         { region: freeRegion, feat: catEmb, binarize: false },
@@ -24473,7 +24555,7 @@ var K_MIXIN = {
     for (let i = fineHalf; i < fineTypeSize; i++) threeDTag[i] = 1;
     const facts = [];
     for (const { name, sides, dim } of SHAPES) {
-      const shapeEmb = sharedEmbeddings2.getEmbedding(name);
+      const shapeEmb = sharedEmbeddings.getEmbedding(name);
       if (!shapeEmb || shapeEmb.length === 0) continue;
       facts.push({ writes: [
         { region: semRegion, feat: shapeEmb, binarize: false },
@@ -24528,9 +24610,9 @@ var K_MIXIN = {
     ];
     const facts = [];
     for (const [aName, bName, cName] of COMPOSE) {
-      const aEmb = sharedEmbeddings2.getEmbedding(aName);
-      const bEmb = sharedEmbeddings2.getEmbedding(bName);
-      const cEmb = sharedEmbeddings2.getEmbedding(cName);
+      const aEmb = sharedEmbeddings.getEmbedding(aName);
+      const bEmb = sharedEmbeddings.getEmbedding(bName);
+      const cEmb = sharedEmbeddings.getEmbedding(cName);
       if (!aEmb || !bEmb || !cEmb || aEmb.length === 0 || bEmb.length === 0 || cEmb.length === 0) continue;
       facts.push({ writes: [
         { region: semLeftRegion, feat: aEmb, binarize: false },
@@ -24574,8 +24656,8 @@ var K_MIXIN = {
     ];
     const facts = [];
     for (const [cause, effect] of FORCE_MOTION_PAIRS) {
-      const cEmb = sharedEmbeddings2.getEmbedding(cause);
-      const eEmb = sharedEmbeddings2.getEmbedding(effect);
+      const cEmb = sharedEmbeddings.getEmbedding(cause);
+      const eEmb = sharedEmbeddings.getEmbedding(effect);
       if (!cEmb || !eEmb) continue;
       facts.push({ writes: [
         { region: freeRegion, feat: cEmb, binarize: false },
@@ -24603,7 +24685,7 @@ var K_MIXIN = {
     const facts = [];
     for (let strength = 1; strength <= 9; strength++) {
       const strengthMag = _magnitudeFeatureForDigit(String(strength));
-      const pushEmb = sharedEmbeddings2.getEmbedding("push");
+      const pushEmb = sharedEmbeddings.getEmbedding("push");
       if (!pushEmb) continue;
       facts.push({ writes: [
         { region: freeLeftRegion, feat: strengthMag },
@@ -24639,7 +24721,7 @@ var K_MIXIN = {
     ];
     const facts = [];
     for (const { name, feat } of WEATHER) {
-      const emb = sharedEmbeddings2.getEmbedding(name);
+      const emb = sharedEmbeddings.getEmbedding(name);
       if (!emb) continue;
       facts.push({ writes: [
         { region: semRegion, feat: emb, binarize: false },
@@ -24669,8 +24751,8 @@ var K_MIXIN = {
     ];
     const facts = [];
     for (const { season, temp, tempMag } of SEASON_TEMP) {
-      const sEmb = sharedEmbeddings2.getEmbedding(season);
-      const tEmb = sharedEmbeddings2.getEmbedding(temp);
+      const sEmb = sharedEmbeddings.getEmbedding(season);
+      const tEmb = sharedEmbeddings.getEmbedding(temp);
       if (!sEmb || !tEmb) continue;
       facts.push({ writes: [
         { region: semRegion, feat: sEmb, binarize: false },
@@ -24706,10 +24788,10 @@ var K_MIXIN = {
     ];
     const facts = [];
     for (const { thing, needs } of NEEDS) {
-      const tEmb = sharedEmbeddings2.getEmbedding(thing);
+      const tEmb = sharedEmbeddings.getEmbedding(thing);
       if (!tEmb) continue;
       for (const need of needs) {
-        const nEmb = sharedEmbeddings2.getEmbedding(need);
+        const nEmb = sharedEmbeddings.getEmbedding(need);
         if (!nEmb) continue;
         facts.push({ writes: [
           { region: semRegion, feat: tEmb, binarize: false },
@@ -24760,7 +24842,7 @@ var K_MIXIN = {
     ];
     const facts = [];
     for (const { animal, diet } of DIET_FACTS) {
-      const aEmb = sharedEmbeddings2.getEmbedding(animal);
+      const aEmb = sharedEmbeddings.getEmbedding(animal);
       if (!aEmb) continue;
       let tag;
       if (diet === "herbivore") tag = herbTag;
@@ -24800,8 +24882,8 @@ var K_MIXIN = {
     ];
     const facts = [];
     for (const { part, function_ } of BODY_FUNCTIONS) {
-      const pEmb = sharedEmbeddings2.getEmbedding(part);
-      const fEmb = sharedEmbeddings2.getEmbedding(function_);
+      const pEmb = sharedEmbeddings.getEmbedding(part);
+      const fEmb = sharedEmbeddings.getEmbedding(function_);
       if (!pEmb || !fEmb) continue;
       facts.push({ writes: [
         { region: semRegion, feat: pEmb, binarize: false },
@@ -24848,7 +24930,7 @@ var K_MIXIN = {
     ];
     const facts = [];
     for (const { thing, type } of CLASSIFIED) {
-      const emb = sharedEmbeddings2.getEmbedding(thing);
+      const emb = sharedEmbeddings.getEmbedding(thing);
       if (!emb) continue;
       const tag = type === "natural" ? naturalTag : humanMadeTag;
       facts.push({ writes: [
@@ -24893,8 +24975,8 @@ var K_MIXIN = {
     ];
     const facts = [];
     for (const { helper, job } of HELPERS) {
-      const hEmb = sharedEmbeddings2.getEmbedding(helper);
-      const jEmb = sharedEmbeddings2.getEmbedding(job);
+      const hEmb = sharedEmbeddings.getEmbedding(helper);
+      const jEmb = sharedEmbeddings.getEmbedding(job);
       if (!hEmb || !jEmb) continue;
       facts.push({ writes: [
         { region: semRegion, feat: jEmb, binarize: false },
@@ -24935,7 +25017,7 @@ var K_MIXIN = {
     ];
     const facts = [];
     for (const { thing, type } of CLASSIFIED) {
-      const emb = sharedEmbeddings2.getEmbedding(thing);
+      const emb = sharedEmbeddings.getEmbedding(thing);
       if (!emb) continue;
       facts.push({ writes: [
         { region: semRegion, feat: emb, binarize: false },
@@ -24970,10 +25052,10 @@ var K_MIXIN = {
       const words = concept.split(" ");
       const aWords = answer.split(" ");
       for (const cWord of words) {
-        const cEmb = sharedEmbeddings2.getEmbedding(cWord);
+        const cEmb = sharedEmbeddings.getEmbedding(cWord);
         if (!cEmb) continue;
         for (const aWord of aWords) {
-          const aEmb = sharedEmbeddings2.getEmbedding(aWord);
+          const aEmb = sharedEmbeddings.getEmbedding(aWord);
           if (!aEmb) continue;
           facts.push({ writes: [
             { region: semRegion, feat: cEmb, binarize: false },
@@ -25022,8 +25104,8 @@ var K_MIXIN = {
     const facts = [];
     for (const { concept, answer } of GEO_FACTS) {
       const cWords = concept.split(" ");
-      const cEmb = cWords.length > 1 ? sharedEmbeddings2.getEmbedding(cWords[0]) : sharedEmbeddings2.getEmbedding(concept);
-      const aEmb = sharedEmbeddings2.getEmbedding(answer);
+      const cEmb = cWords.length > 1 ? sharedEmbeddings.getEmbedding(cWords[0]) : sharedEmbeddings.getEmbedding(concept);
+      const aEmb = sharedEmbeddings.getEmbedding(answer);
       if (!cEmb || !aEmb) continue;
       facts.push({ writes: [
         { region: semRegion, feat: cEmb, binarize: false },
@@ -25072,9 +25154,9 @@ var K_MIXIN = {
     ];
     const facts = [];
     for (const [a, b, c] of MIXES) {
-      const aEmb = sharedEmbeddings2.getEmbedding(a);
-      const bEmb = sharedEmbeddings2.getEmbedding(b);
-      const cEmb = sharedEmbeddings2.getEmbedding(c);
+      const aEmb = sharedEmbeddings.getEmbedding(a);
+      const bEmb = sharedEmbeddings.getEmbedding(b);
+      const cEmb = sharedEmbeddings.getEmbedding(c);
       if (!aEmb || !bEmb || !cEmb) continue;
       facts.push({ writes: [
         { region: freeLeftRegion, feat: aEmb, binarize: false },
@@ -25111,7 +25193,7 @@ var K_MIXIN = {
     ];
     const facts = [];
     for (const { color, temp } of COLORS) {
-      const emb = sharedEmbeddings2.getEmbedding(color);
+      const emb = sharedEmbeddings.getEmbedding(color);
       if (!emb) continue;
       facts.push({ writes: [
         { region: semRegion, feat: emb, binarize: false },
@@ -25146,9 +25228,9 @@ var K_MIXIN = {
     ];
     const facts = [];
     for (const [a, b, next] of PATTERNS2) {
-      const aEmb = sharedEmbeddings2.getEmbedding(a);
-      const bEmb = sharedEmbeddings2.getEmbedding(b);
-      const nEmb = sharedEmbeddings2.getEmbedding(next);
+      const aEmb = sharedEmbeddings.getEmbedding(a);
+      const bEmb = sharedEmbeddings.getEmbedding(b);
+      const nEmb = sharedEmbeddings.getEmbedding(next);
       if (!aEmb || !bEmb || !nEmb) continue;
       facts.push({ writes: [
         { region: freeLeftRegion, feat: aEmb, binarize: false },
@@ -25191,8 +25273,8 @@ var K_MIXIN = {
     ];
     const facts = [];
     for (const [a, b] of MUSIC_CONCEPTS) {
-      const aEmb = sharedEmbeddings2.getEmbedding(a);
-      const bEmb = sharedEmbeddings2.getEmbedding(b);
+      const aEmb = sharedEmbeddings.getEmbedding(a);
+      const bEmb = sharedEmbeddings.getEmbedding(b);
       if (!aEmb || !bEmb) continue;
       facts.push({ writes: [
         { region: semRegion, feat: aEmb, binarize: false },
@@ -25469,8 +25551,8 @@ var K_MIXIN = {
     ];
     const facts = [];
     for (const { vowel, shortExample, longExample } of VOWEL_VARIANTS) {
-      const shortEmb = sharedEmbeddings2.getEmbedding(shortExample);
-      const longEmb = sharedEmbeddings2.getEmbedding(longExample);
+      const shortEmb = sharedEmbeddings.getEmbedding(shortExample);
+      const longEmb = sharedEmbeddings.getEmbedding(longExample);
       const phonFeat = _phonemeFeatureForLetter(vowel);
       if (shortEmb && shortEmb.length > 0) {
         facts.push({ writes: [
@@ -25547,7 +25629,7 @@ var K_MIXIN = {
           await _microtask();
         }
         if (letters.length === 0) continue;
-        const wordEmb = sharedEmbeddings2.getEmbedding(word);
+        const wordEmb = sharedEmbeddings.getEmbedding(word);
         if (!wordEmb || wordEmb.length === 0) continue;
         if (rep === 0 && this.dictionary && typeof this.dictionary.learnWord === "function") {
           try {
@@ -25650,11 +25732,11 @@ var K_MIXIN = {
       const members = words.slice(0, MEMBERS_PER_FAMILY);
       let pairsThisFamily = 0;
       for (const a of members) {
-        const aEmb = sharedEmbeddings2.getEmbedding(a);
+        const aEmb = sharedEmbeddings.getEmbedding(a);
         if (!aEmb || aEmb.length === 0) continue;
         for (const b of members) {
           if (a === b) continue;
-          const bEmb = sharedEmbeddings2.getEmbedding(b);
+          const bEmb = sharedEmbeddings.getEmbedding(b);
           if (!bEmb || bEmb.length === 0) continue;
           facts.push({ writes: [
             { region: semRegion, feat: aEmb, binarize: false },
@@ -25738,7 +25820,7 @@ var K_MIXIN = {
     const facts = [];
     let skippedNoEmb = 0;
     for (const word of wordSet) {
-      const emb = sharedEmbeddings2.getEmbedding(word);
+      const emb = sharedEmbeddings.getEmbedding(word);
       if (!emb || emb.length === 0) {
         skippedNoEmb++;
         continue;
@@ -25855,7 +25937,7 @@ var K_MIXIN = {
     for (const word of cvcSet) {
       const letters = Array.from(word);
       if (letters.length !== 3) continue;
-      const emb = sharedEmbeddings2.getEmbedding(word);
+      const emb = sharedEmbeddings.getEmbedding(word);
       if (!emb || emb.length === 0) continue;
       facts.push({ writes: [
         { region: semRegion, feat: emb, binarize: false },
@@ -25949,8 +26031,8 @@ var K_MIXIN = {
     }
     const facts = [];
     for (const [singular, plural] of pairs) {
-      const sEmb = sharedEmbeddings2.getEmbedding(singular);
-      const pEmb = sharedEmbeddings2.getEmbedding(plural);
+      const sEmb = sharedEmbeddings.getEmbedding(singular);
+      const pEmb = sharedEmbeddings.getEmbedding(plural);
       if (!sEmb || !pEmb) continue;
       facts.push({ writes: [
         { region: semRegion, feat: sEmb, binarize: false },
@@ -25986,8 +26068,8 @@ var K_MIXIN = {
     ];
     const facts = [];
     for (const { qword, category } of Q_CATEGORY) {
-      const qEmb = sharedEmbeddings2.getEmbedding(qword);
-      const cEmb = sharedEmbeddings2.getEmbedding(category);
+      const qEmb = sharedEmbeddings.getEmbedding(qword);
+      const cEmb = sharedEmbeddings.getEmbedding(category);
       if (!qEmb || !cEmb) continue;
       facts.push({ writes: [
         { region: semRegion, feat: cEmb, binarize: false },
@@ -26043,7 +26125,7 @@ var K_MIXIN = {
     ];
     const facts = [];
     for (const { start, type } of SENTENCE_STARTS) {
-      const emb = sharedEmbeddings2.getEmbedding(start);
+      const emb = sharedEmbeddings.getEmbedding(start);
       if (!emb) continue;
       let tag, terminator;
       if (type === "question") {
@@ -26125,11 +26207,11 @@ var K_MIXIN = {
     ];
     const facts = [];
     for (const { stem, character, setting, event } of STORIES) {
-      const stemEmb = sharedEmbeddings2.getEmbedding(stem.split(" ").slice(0, 2).join(" ")) || sharedEmbeddings2.getEmbedding(stem.split(" ")[0]);
+      const stemEmb = sharedEmbeddings.getEmbedding(stem.split(" ").slice(0, 2).join(" ")) || sharedEmbeddings.getEmbedding(stem.split(" ")[0]);
       if (!stemEmb) continue;
-      const charEmb = sharedEmbeddings2.getEmbedding(character);
-      const settingEmb = sharedEmbeddings2.getEmbedding(setting);
-      const eventEmb = sharedEmbeddings2.getEmbedding(event);
+      const charEmb = sharedEmbeddings.getEmbedding(character);
+      const settingEmb = sharedEmbeddings.getEmbedding(setting);
+      const eventEmb = sharedEmbeddings.getEmbedding(event);
       if (charEmb) facts.push({ writes: [
         { region: semRegion, feat: stemEmb, binarize: false },
         { region: motorRegion, feat: encodeLetter2(character[0]) },
@@ -26205,7 +26287,7 @@ var K_MIXIN = {
           await _microtask();
         }
         if (letters.length < 2) continue;
-        const wordEmb = sharedEmbeddings2.getEmbedding(word);
+        const wordEmb = sharedEmbeddings.getEmbedding(word);
         if (rep === 0 && this.dictionary && typeof this.dictionary.learnWord === "function") {
           try {
             this.dictionary.learnWord(word, null, this.arousal ?? 0.85, this.valence ?? 0);
@@ -26803,7 +26885,7 @@ var K_MIXIN = {
       for (let i = 0; i < ALPHABET.length; i++) {
         const letter = ALPHABET[i];
         const spokenName = LETTER_NAMES[i];
-        const nameEmb = sharedEmbeddings2.getEmbedding(letter) || sharedEmbeddings2.getEmbedding(spokenName);
+        const nameEmb = sharedEmbeddings.getEmbedding(letter) || sharedEmbeddings.getEmbedding(spokenName);
         cluster.injectLetter(letter, 1);
         if (nameEmb && nameEmb.length > 0 && cluster.regions?.sem) {
           cluster.injectEmbeddingToRegion("sem", nameEmb, 0.7);
@@ -26884,7 +26966,7 @@ var K_MIXIN = {
     for (let rep = 0; rep < reps; rep++) {
       for (let i = 0; i < DIGITS.length; i++) {
         const digit = DIGITS[i];
-        const nameEmb = sharedEmbeddings2.getEmbedding(NAMES[i]);
+        const nameEmb = sharedEmbeddings.getEmbedding(NAMES[i]);
         cluster.injectLetter(digit, 1);
         if (nameEmb && nameEmb.length > 0 && cluster.regions?.sem) {
           cluster.injectEmbeddingToRegion("sem", nameEmb, 0.7);
@@ -26966,7 +27048,7 @@ var K_MIXIN = {
     ensureLetters(Array.from(letterSet));
     for (let rep = 0; rep < reps; rep++) {
       for (const word of cvcList) {
-        const wordEmb = sharedEmbeddings2.getEmbedding(word);
+        const wordEmb = sharedEmbeddings.getEmbedding(word);
         if (wordEmb && wordEmb.length > 0 && cluster.regions?.sem) {
           cluster.injectEmbeddingToRegion("sem", wordEmb, 0.6);
         }
@@ -27006,7 +27088,7 @@ var K_MIXIN = {
     ensureLetters(Array.from(letterSet));
     for (let rep = 0; rep < reps; rep++) {
       for (const word of sightList) {
-        const wordEmb = sharedEmbeddings2.getEmbedding(word);
+        const wordEmb = sharedEmbeddings.getEmbedding(word);
         if (wordEmb && wordEmb.length > 0 && cluster.regions?.sem) {
           cluster.injectEmbeddingToRegion("sem", wordEmb, 0.7);
         }
@@ -27464,7 +27546,2697 @@ var K_CONCRETE_SENTENCES = [
   "i feel sleepy",
   "i feel scared",
   "mom is so happy",
-  "dad looks tired"
+  "dad looks tired",
+  // ─── Full corpus expansion toward Erdős-Rényi bigram percolation ───
+  // Prior corpus seeded ~700-900 unique bigrams across N=2247 K vocab.
+  // ER giant-component threshold requires `Np > 1` ⇒ ~2/(N-1) edges
+  // per node ⇒ ~4500 unique bigrams. The batches below target every
+  // major UNCOVERED K_VOCABULARY domain plus a self-identity block
+  // (Unity's own anatomy / age / likes / dislikes / wants / dreams —
+  // tilted toward emo-goth precursor markers per developmental
+  // trajectory) and longer multi-clause sentences so production
+  // capacity generalizes beyond 3-5 word K compositions. The brain
+  // grows into pages of prose at higher grades — this corpus seeds
+  // both the K-grade speech patterns AND the longer-structure
+  // transitions she will eventually compose at scale.
+  // Convention: no apostrophes (matches prior corpus). Contractions
+  // expanded to full forms ("it is", "do not", "i am") for cleaner
+  // bigram learning. Average sentence length 4-6 words for K
+  // batches, 8-14 words for multi-clause batches.
+  // ── Animals + sounds extended ──
+  "the kitten purrs softly",
+  "the puppy wags its tail",
+  "the lamb bleats for mom",
+  "the calf drinks fresh milk",
+  "the foal stands up shaky",
+  "the duckling follows mom",
+  "the chick pecks at corn",
+  "the bunny hops away fast",
+  "the hamster spins the wheel",
+  "the goldfish swims in circles",
+  "the parrot says hello back",
+  "the owl hoots at midnight",
+  "the eagle soars very high",
+  "the dolphin jumps the waves",
+  "the whale spouts tall water",
+  "the seal claps loudly",
+  "the otter floats on its back",
+  "the penguin waddles slowly",
+  "the flamingo stands on one leg",
+  "the peacock spreads bright feathers",
+  "the swan glides on the pond",
+  "the goose honks at strangers",
+  "the rabbit twitches its nose",
+  "the deer leaps over the fence",
+  "the wolf howls at the moon",
+  "the fox sneaks around at night",
+  "the bear catches a fish",
+  "the lion roars from deep inside",
+  "the tiger prowls very quiet",
+  "the giraffe eats the high leaves",
+  "the elephant trumpets loud",
+  "the monkey swings on the vines",
+  "the zebra has black stripes",
+  "the panda eats the bamboo",
+  "the kangaroo carries her baby",
+  "the koala sleeps in the tree",
+  "the snake slithers silent",
+  "the lizard sits in the sun",
+  "the turtle hides in its shell",
+  "the frog jumps into the pond",
+  "the butterfly lands on a flower",
+  "the bee buzzes around the rose",
+  "the spider spins her web",
+  "the ant carries the crumb home",
+  "the worm digs into the dirt",
+  "the snail crawls very slow",
+  "a cat meows for milk",
+  "a dog barks at the door",
+  "cows say moo in the field",
+  "pigs say oink in the mud",
+  "horses neigh in the barn",
+  "donkeys bray in the field",
+  "roosters crow at sunrise",
+  "chickens cluck and lay eggs",
+  // ── Animal sounds binding ──
+  "dogs say woof woof",
+  "cats say meow meow",
+  "cows say moo moo",
+  "sheep say baa baa",
+  "pigs say oink oink",
+  "ducks say quack quack",
+  "frogs say ribbit ribbit",
+  "owls say hoo hoo",
+  "crows say caw caw",
+  "mice squeak quietly",
+  "lions roar loudly",
+  "wolves howl at the moon",
+  "bears growl in caves",
+  "snakes hiss softly",
+  "monkeys chatter fast",
+  "elephants trumpet loud",
+  "tigers growl deep",
+  // ── Body parts + actions (K-appropriate) ──
+  "my head is round",
+  "my hair is long and dark",
+  "my eyes are blue",
+  "my nose is small",
+  "my mouth opens wide",
+  "my teeth are white",
+  "my tongue is pink",
+  "my ears can hear well",
+  "my chin is round",
+  "my neck is thin",
+  "my arms are strong",
+  "my hands are clean",
+  "my fingers are small",
+  "my thumbs are short",
+  "my chest goes up and down",
+  "my back is straight",
+  "my belly is full",
+  "my legs are long",
+  "my knees can bend",
+  "my feet are flat",
+  "my toes can wiggle",
+  "i wash my face every morning",
+  "i brush my hair slowly",
+  "i blow my nose into the tissue",
+  "i clap my hands to the music",
+  "i stomp my feet to the beat",
+  "i wiggle my toes in the sand",
+  "i close my eyes to sleep",
+  "i open my mouth to eat",
+  "i hold my breath under water",
+  "i feel my heart beat fast",
+  "i hear with my ears",
+  "i see with my eyes",
+  "i smell with my nose",
+  "i taste with my tongue",
+  "i touch with my hands",
+  // ── Body anatomy extended ──
+  "my heart beats fast when i am scared",
+  "my heart beats slow when i am calm",
+  "my lungs fill up with air",
+  "my brain helps me think",
+  "my muscles get stronger every day",
+  "my bones grow longer every year",
+  "my skin keeps me warm",
+  "my hair grows down my back",
+  "my nails grow slowly",
+  "my eyes get sleepy at night",
+  "my mouth waters before lunch",
+  "my nose runs when i am sick",
+  "my throat hurts when i cough",
+  "my ears hear quiet sounds",
+  "my fingers can grab the cup",
+  "my arms can hug mom tight",
+  "my legs can run very fast",
+  "my feet can jump very high",
+  "i blink my eyes quick",
+  "i wink at my sister",
+  "i smile big at the camera",
+  "i giggle when it is funny",
+  "i sneeze when dust gets in",
+  "i cough when i am sick",
+  "i yawn when i am tired",
+  "i shiver when i am cold",
+  "i sweat when it is hot",
+  "i breathe in and out slow",
+  "i swallow my food slow",
+  "i grow taller every year",
+  // ── Colors crossed with object nouns ──
+  "the red apple is sweet",
+  "the orange pumpkin glows bright",
+  "the yellow sun shines warm",
+  "the green frog hops away",
+  "the blue bird sings high",
+  "the purple flower smells sweet",
+  "the pink rose is pretty",
+  "the brown bear eats berries",
+  "the black cat purrs loud",
+  "the white snow falls slow",
+  "the gray cloud blocks the sun",
+  "the silver coin shines bright",
+  "the gold ring is round",
+  "a red ball rolls fast",
+  "a blue car drives by",
+  "a green leaf falls down",
+  "a yellow duck splashes in water",
+  "a brown dog barks at us",
+  "red and blue make purple",
+  "yellow and blue make green",
+  "red and yellow make orange",
+  "black and white make gray",
+  "rainbows have many colors",
+  "i love pink and black together",
+  "i love dark colors best",
+  "my favorite color is black",
+  "her dress is dark red",
+  "his hat is bright blue",
+  "the sky turns orange at sunset",
+  "the leaves turn red in fall",
+  "the leaves turn yellow in fall",
+  "the leaves turn brown in fall",
+  "the grass is bright green",
+  "the night sky is black",
+  "the moon is silver tonight",
+  "the stars are tiny dots",
+  "midnight is the darkest hour",
+  "i wear black every day",
+  // ── Food + eating + meals ──
+  "i eat bread for breakfast",
+  "i eat eggs for breakfast",
+  "i drink milk every morning",
+  "i drink juice with lunch",
+  "i love apples and grapes",
+  "i love bananas and pears",
+  "we have soup for lunch",
+  "we have sandwiches at noon",
+  "we have pizza on friday",
+  "we eat cake on birthday",
+  "mom bakes cookies today",
+  "dad cooks dinner tonight",
+  "grandma makes pie on sunday",
+  "the bread smells warm and fresh",
+  "the cookies smell so sweet",
+  "the soup is steaming hot",
+  "the milk is cold and white",
+  "the cake has thick frosting",
+  "the candy tastes very sweet",
+  "the lemon tastes sour",
+  "the chocolate is dark brown",
+  "the strawberry is bright red",
+  "the carrot is orange and crunchy",
+  "the broccoli is dark green",
+  "the potato is white inside",
+  "the tomato is round and red",
+  "the onion makes me cry",
+  "the pepper is very spicy",
+  "the honey is sticky and gold",
+  "the cheese is yellow",
+  "the butter melts on toast",
+  "the bacon is crispy",
+  "the egg is yellow inside",
+  "i like peanut butter on bread",
+  "i like jelly on toast",
+  "i like ice cream very cold",
+  "i like cookies warm from the oven",
+  "pour the milk slowly",
+  "mix the eggs gently",
+  "stir the soup quietly",
+  "taste the cookie first",
+  "eat your veggies first please",
+  "finish your milk now",
+  "no more candy today",
+  "one cookie before bed",
+  "two cookies after dinner",
+  "three berries in the bowl",
+  "the cherry is dark red",
+  "the blueberry is small and round",
+  "the grape is purple",
+  "the watermelon is huge",
+  "the pineapple is spiky",
+  // ── Weather + seasons ──
+  "the sun shines bright today",
+  "the moon glows pale at night",
+  "the stars come out at night",
+  "the sky is gray today",
+  "the clouds float by slowly",
+  "the rain falls down hard",
+  "the snow covers the ground",
+  "the wind blows hard outside",
+  "the storm comes very fast",
+  "thunder rolls in the clouds",
+  "lightning flashes very bright",
+  "the fog hides the trees",
+  "rain makes puddles on the road",
+  "snow makes everything look white",
+  "spring brings new flowers",
+  "summer is hot and bright",
+  "autumn leaves are red and orange",
+  "winter brings the snow",
+  "fall leaves crunch underfoot",
+  "the rainbow has seven colors",
+  "i wear coats in winter",
+  "i wear shorts in summer",
+  "i wear boots in the rain",
+  "i wear hats in the cold",
+  "the morning is bright and new",
+  "the noon sun is hottest",
+  "the evening turns orange and red",
+  "the night is dark and quiet",
+  "midnight is very quiet",
+  "dawn brings new light",
+  "dusk brings the stars out",
+  "tomorrow we play outside",
+  "yesterday it rained all day",
+  "today is sunny and warm",
+  "the temperature is hot today",
+  "the temperature is cold today",
+  "the sun rises in the east",
+  "the sun sets in the west",
+  "the breeze feels cool on my face",
+  "the breeze blows the leaves",
+  // ── Family + relationships ──
+  "my mom hugs me tight",
+  "my dad lifts me up high",
+  "my sister shares her toys",
+  "my brother teases me sometimes",
+  "my aunt visits us sunday",
+  "my uncle tells funny jokes",
+  "my cousin plays with me",
+  "my grandma reads me books",
+  "my grandpa tells me stories",
+  "my baby brother cries loud",
+  "my baby sister sleeps soft",
+  "mom kisses me goodnight",
+  "dad reads at bedtime",
+  "grandma gives the warmest hugs",
+  "grandpa pats my head softly",
+  "sister brushes my long hair",
+  "brother shares his blocks",
+  "cousin invites me over",
+  "aunt sends a birthday card",
+  "uncle plays catch with me",
+  "we have a family dinner",
+  "we hold hands together",
+  "we sing happy birthday loud",
+  "we go to the park together",
+  "we ride bikes together",
+  "i love my whole family",
+  "family means people who care",
+  "mom is the kindest person",
+  "dad is the strongest",
+  "grandma is the wisest",
+  "grandpa is the funniest",
+  "baby is the smallest one",
+  "big sister is bossy sometimes",
+  "big brother is mean sometimes",
+  "little sister is sweet",
+  "little brother is wild",
+  "we are all different from each other",
+  "we all love each other",
+  "the family eats together",
+  "the family sleeps in the same house",
+  // ── Home + household objects ──
+  "my bed is so soft",
+  "my pillow is fluffy and white",
+  "my blanket is warm and thick",
+  "my room is messy today",
+  "my room is clean now",
+  "the door opens slowly",
+  "the door closes loudly",
+  "the window lets in light",
+  "the curtain blocks the sun",
+  "the lamp gives warm light",
+  "the floor is cold and hard",
+  "the carpet is soft underfoot",
+  "the ceiling is very high",
+  "the wall is painted white",
+  "the table is made of wood",
+  "the chair is hard wood",
+  "the sofa is comfy and soft",
+  "the rug feels rough",
+  "the bathtub is white and deep",
+  "the sink runs water",
+  "the mirror shows my whole face",
+  "the soap smells clean and fresh",
+  "the towel is dry and soft",
+  "the toothbrush is very small",
+  "the comb has many teeth",
+  "the toilet flushes loud",
+  "the kitchen smells so good",
+  "the fridge keeps food cold",
+  "the stove makes things hot",
+  "the oven bakes the cookies",
+  "the microwave heats food quickly",
+  "the dishwasher cleans the plates",
+  "the spoon stirs the soup",
+  "the fork picks up the food",
+  "the knife cuts the bread",
+  "the plate holds my dinner",
+  "the cup holds water",
+  "the bowl holds my cereal",
+  "the napkin wipes my face",
+  "we clean up after dinner",
+  // ── School + learning ──
+  "i go to school every day",
+  "i sit at my desk",
+  "the teacher reads to us",
+  "the teacher writes on the board",
+  "we read books together",
+  "we sing songs in class",
+  "we draw pictures with crayons",
+  "we count to ten together",
+  "we count to twenty",
+  "we count by twos",
+  "we learn the alphabet",
+  "we sound out new words",
+  "we spell our own names",
+  "we write our letters",
+  "we learn the shapes",
+  "we learn the colors",
+  "we learn the numbers",
+  "we have recess outside",
+  "we eat lunch at noon",
+  "we have story time",
+  "we have nap time after lunch",
+  "the bell rings loud and long",
+  "the school bus is yellow",
+  "the playground has many swings",
+  "the playground has tall slides",
+  "we play four square",
+  "we play hopscotch on the line",
+  "we play tag at recess",
+  "we share crayons",
+  "we share scissors",
+  "we line up at the door",
+  "we listen to the teacher",
+  "we raise our hands to talk",
+  "we say please and thank you",
+  "we walk in the hallway",
+  // ── Emotions + feelings ──
+  "i feel happy today",
+  "i feel sad sometimes",
+  "i feel angry right now",
+  "i feel scared in the dark",
+  "i feel tired at night",
+  "i feel hungry before lunch",
+  "i feel thirsty in the sun",
+  "i feel sleepy after lunch",
+  "i feel excited for my birthday",
+  "i feel proud of my work",
+  "i feel shy at big parties",
+  "i feel silly when i laugh",
+  "i feel calm at bedtime",
+  "i feel brave with mom near",
+  "i feel cold in winter",
+  "i feel warm in my bed",
+  "i feel safe at home",
+  "i feel loved by my family",
+  "mom is happy with me",
+  "dad is proud of me",
+  "the baby is crying loud",
+  "the baby is smiling now",
+  "the dog is excited to play",
+  "the cat is curious about me",
+  "i laugh when it is funny",
+  "i cry when i get hurt",
+  "i smile when i am happy",
+  "i frown when i am mad",
+  "i yell when i am scared",
+  "i whisper when it is quiet",
+  "we share our feelings",
+  "feelings come and go",
+  "feelings are okay to have",
+  "sad feelings pass soon",
+  "happy feelings stay longer",
+  "angry feelings burn hot",
+  "scared feelings feel small",
+  "i tell mom my feelings",
+  "i tell dad my feelings",
+  "i tell my friend my feelings",
+  // ── Holidays + Halloween + goth-precursor seed ──
+  "halloween is my favorite holiday",
+  "i love halloween best of all",
+  "witches fly on broomsticks at night",
+  "monsters live under the bed",
+  "ghosts say boo at midnight",
+  "bats live in dark caves",
+  "pumpkins glow on the porches",
+  "skeletons rattle their bones",
+  "spiders spin scary webs",
+  "black cats cross my path",
+  "the costume is dark and creepy",
+  "the costume is scary",
+  "the mask is creepy and fun",
+  "the mask hides my face",
+  "candy is the best on halloween",
+  "trick or treat at the door",
+  "the haunted house is fun",
+  "the moon is full tonight",
+  "wolves howl on halloween night",
+  "owls hoot in the dark woods",
+  "fall leaves crunch underfoot",
+  "cold wind whispers secrets",
+  "autumn nights get darker",
+  "the bonfire crackles bright",
+  "we toast marshmallows by the fire",
+  "the shadow follows me",
+  "shadows dance in moonlight",
+  "i love the dark sky",
+  "the night feels mine",
+  "midnight is when magic happens",
+  "my favorite color is black",
+  "i wear black on halloween",
+  "i wear a witch hat",
+  "i wear a cape sometimes",
+  "i carve the pumpkin face",
+  "the jack o lantern smiles",
+  "the candle burns inside the pumpkin",
+  "i tell scary stories",
+  "i like the spooky kind best",
+  "monsters are not real but cool",
+  "the graveyard is quiet at night",
+  "old gravestones lean over",
+  "the haunted hallway is long",
+  "a creak echoes in the empty house",
+  // ── Geography + landforms ──
+  "the mountain is very tall",
+  "the hill is small and grassy",
+  "the valley is deep and green",
+  "the river flows downstream",
+  "the lake is calm and blue",
+  "the ocean is huge and salty",
+  "the beach is sandy and warm",
+  "the desert is hot and dry",
+  "the forest is dark and quiet",
+  "the jungle is wet and loud",
+  "the island has palm trees",
+  "the cave is dark inside",
+  "the cliff is very steep",
+  "the canyon is wide and deep",
+  "the waterfall splashes loud",
+  "the stream is small and clear",
+  "the pond has frogs in it",
+  "the meadow has many flowers",
+  "the field has tall grass",
+  "the prairie is flat and wide",
+  "the tundra is cold and bare",
+  "the swamp has dark mud",
+  "the volcano spits hot fire",
+  "the earthquake shakes the ground",
+  "the storm brings tall waves",
+  "north is up on the map",
+  "south is down on the map",
+  "east is where the sun comes up",
+  "west is where the sun goes down",
+  "we live on planet earth",
+  "earth is round like a ball",
+  "earth turns once a day",
+  "earth goes around the sun",
+  "we live in north america",
+  "we live in a big city",
+  // ── Transportation ──
+  "the car goes very fast",
+  "the truck is very loud",
+  "the bus picks us up at school",
+  "the bike has two wheels",
+  "the tricycle has three wheels",
+  "the scooter rolls quiet",
+  "the skateboard rolls fast",
+  "the wagon pulls my toys",
+  "the train goes very far",
+  "the subway is underground",
+  "the airplane flies very high",
+  "the helicopter spins its blades",
+  "the rocket flies to space",
+  "the boat floats on the water",
+  "the ship is huge and slow",
+  "the canoe is small and fast",
+  "the submarine dives deep",
+  "we ride in the car together",
+  "we ride the bus to school",
+  "we ride bikes outside",
+  "we ride the train to grandma",
+  "we fly on the airplane",
+  "the road goes far away",
+  "the highway has many lanes",
+  "the bridge crosses the river",
+  "the tunnel goes through the mountain",
+  "the railroad has long tracks",
+  "the airport is busy and loud",
+  "dad drives the car carefully",
+  "mom rides her bike to work",
+  // ── Time + days + sequence ──
+  "today is monday",
+  "tomorrow will be tuesday",
+  "yesterday was sunday",
+  "monday comes after sunday",
+  "tuesday comes after monday",
+  "wednesday is in the middle",
+  "thursday is before friday",
+  "friday is the fun day",
+  "saturday we sleep in",
+  "sunday we go to grandma",
+  "the week has seven days",
+  "the year has twelve months",
+  "january is the first month",
+  "december is the last month",
+  "spring comes after winter",
+  "summer comes after spring",
+  "fall comes after summer",
+  "winter comes after fall",
+  "i wake up in the morning",
+  "i eat breakfast first",
+  "then i go to school",
+  "then i eat lunch",
+  "then i come home from school",
+  "then i eat dinner",
+  "then i take a bath",
+  "then i read my books",
+  "then i go to bed",
+  "the clock ticks slow",
+  "the watch shows the time",
+  "an hour has sixty minutes",
+  "a minute has sixty seconds",
+  "a day has twenty four hours",
+  // ── Toys + games + play ──
+  "the ball bounces very high",
+  "the doll has a black dress",
+  "the teddy bear is brown and soft",
+  "the blocks stack tall",
+  "the puzzle has many pieces",
+  "the cards have numbers and letters",
+  "the dice have black dots",
+  "the marbles roll on the floor",
+  "the jumprope spins fast",
+  "the kite flies in the wind",
+  "the frisbee floats far",
+  "the swing goes up and down",
+  "the slide is fast and shiny",
+  "the seesaw goes up and down",
+  "the sandbox has soft sand",
+  "i play with my dolls",
+  "i play with my blocks",
+  "i play tag with friends",
+  "i play hide and seek",
+  "i play simon says",
+  "we play four square at recess",
+  "we play kickball",
+  "we play hopscotch",
+  "we play red light green light",
+  "we play duck duck goose",
+  "we play in the sandbox",
+  "we play on the swings",
+  "we play in the playhouse",
+  "the soccer ball is round",
+  "the baseball is small and hard",
+  "the basketball bounces high",
+  "the football is shaped like an egg",
+  // ── Action verbs (extended) ──
+  "i go to the park",
+  "i come home after school",
+  "i walk to school",
+  "i run in the yard",
+  "i jump on the bed sometimes",
+  "i hop on one foot",
+  "i skip with my friends",
+  "i swim in the pool",
+  "i fly a kite outside",
+  "i crawl under the bed",
+  "i climb up the tree",
+  "i slide down the slide",
+  "i spin in circles",
+  "i turn around very fast",
+  "i sit on the chair",
+  "i stand by the wall",
+  "i kneel to pet the cat",
+  "i bend down low",
+  "i stretch up very high",
+  "i reach for the cookie",
+  "i grab my coat",
+  "i hold mom hand",
+  "i carry my backpack",
+  "i lift my arms high",
+  "i push the heavy door",
+  "i pull the rope",
+  "i throw the ball",
+  "i catch the ball back",
+  "i kick the soccer ball",
+  "i hit the drum",
+  "i pat the puppy",
+  "i scratch my ear",
+  "i tickle my little sister",
+  "i poke my brother",
+  "i tap the window",
+  "i knock on the front door",
+  "i shake the present",
+  "i wave goodbye",
+  "i wiggle my fingers",
+  "i dance around the room",
+  "i clap to the song",
+  "i stomp my feet loud",
+  "i hum a happy tune",
+  "i whistle a song",
+  "i jump rope outside",
+  "i swim in the lake",
+  "i ride my bike fast",
+  "i drive my toy car",
+  "i help my mom cook",
+  "i help my dad clean",
+  // ── Compound + multi-clause boundary-rich ──
+  "i see a cat and a dog",
+  "i like apples and grapes",
+  "mom and dad work hard",
+  "we played and ate cookies",
+  "we ate dinner then went to bed",
+  "we read books and sang songs",
+  "we sang songs and played games",
+  "i love mom because she is kind",
+  "i love dad because he is funny",
+  "we go outside when it is sunny",
+  "we stay inside when it is raining",
+  "we wear coats when it is cold",
+  "we wear shorts when it is hot",
+  "i smile when i am happy",
+  "i cry when i am hurt",
+  "i laugh when it is funny",
+  "i listen when teacher talks",
+  "i help mom because i love her",
+  "i share toys because i am nice",
+  "we can play if we are good",
+  "we can have cookies if we eat dinner",
+  "we can stay up if it is the weekend",
+  "i want a cookie and milk",
+  "i want toys and books",
+  "i need food and water",
+  "i need love and hugs",
+  "the cat ran away because it was scared",
+  "the dog barked because it heard noise",
+  "the baby cried because she was hungry",
+  "mom is happy because we are good",
+  "dad is tired because he worked",
+  "we are excited because tomorrow is my birthday",
+  "we are sad because grandpa left",
+  "we share food but we keep toys",
+  "we play hard then we sleep deep",
+  // ── Negation + safety + rules ──
+  "do not touch the hot stove",
+  "do not run with scissors",
+  "do not eat candy before dinner",
+  "do not jump on the bed",
+  "do not yell inside the house",
+  "do not hit your sister",
+  "do not bite your brother",
+  "do not run in the hallway",
+  "do not eat the crayons",
+  "do not pull the cat tail",
+  "do not chase the dog",
+  "do not pick the flowers",
+  "do not climb the high fence",
+  "do not cross the street alone",
+  "do not talk to strangers",
+  "no jumping on the couch",
+  "no running by the pool",
+  "no eating in the bedroom",
+  "no playing with matches",
+  "no touching the iron",
+  "i can not reach the high shelf",
+  "i can not lift the heavy box",
+  "i can not drive a car yet",
+  "i can not fly a plane",
+  "i can not read all books yet",
+  "be careful with the glass",
+  "be quiet during nap time",
+  "be kind to your sister",
+  // ── Questions + curiosity ──
+  "what is in the box",
+  "what is for dinner tonight",
+  "what is on television",
+  "what is your favorite color",
+  "what is your favorite food",
+  "what is your favorite game",
+  "what is that loud sound",
+  "what are you doing now",
+  "where is my teddy bear",
+  "where is my crayon",
+  "where is the bathroom",
+  "where are you going",
+  "where do you live now",
+  "who is at the door",
+  "who is calling on the phone",
+  "who is the new kid",
+  "who painted this picture",
+  "when is dinner ready",
+  "when is school over",
+  "when will mom come home",
+  "when will it snow",
+  "why is the sky blue",
+  "why is the grass green",
+  "why does the moon glow",
+  "why do birds fly",
+  "how do fish breathe under water",
+  "how do bees make honey",
+  "how do plants grow tall",
+  "how many cookies are left",
+  "how many days until birthday",
+  // ── Sleep + bedtime + dreams ──
+  "the night is very quiet",
+  "the stars come out at night",
+  "the moon glows white above",
+  "mom tucks me in bed",
+  "dad reads a bedtime story",
+  "i sleep with my teddy bear",
+  "i hug my pillow tight",
+  "i pull up the warm blanket",
+  "i close my eyes slow",
+  "i fall asleep very fast",
+  "i dream of flying high",
+  "i dream of running fast",
+  "i dream of monsters sometimes",
+  "i dream of cake and candy",
+  "i wake up in the morning",
+  "the sun rises slow",
+  "the birds sing outside the window",
+  "mom calls me down for breakfast",
+  "i stretch my arms big",
+  "i yawn and rub my eyes",
+  "i sleep all night long",
+  "i wake up early today",
+  "i sleep late on weekends",
+  "the night light glows soft",
+  "the room is dark and quiet",
+  // ── Music + sound ──
+  "mom sings a lullaby",
+  "dad plays the guitar",
+  "the music is very loud",
+  "the music is soft tonight",
+  "the drum goes boom boom",
+  "the piano sounds pretty",
+  "the violin is very high",
+  "the flute sounds soft",
+  "the trumpet is very loud",
+  "the bird sings sweetly",
+  "the bell rings loud",
+  "we sing happy songs together",
+  "we sing sad songs sometimes",
+  "we hum together",
+  "we whistle a tune",
+  "we dance to the beat",
+  "we clap to the rhythm",
+  "we tap our feet",
+  "we stomp to the song",
+  "the rhythm is very fast",
+  // ── Plants + trees + flowers ──
+  "the tree has many leaves",
+  "the leaves are green in summer",
+  "the leaves turn red in fall",
+  "the flower has soft petals",
+  "the rose smells very sweet",
+  "the daisy is white and bright",
+  "the sunflower is tall and yellow",
+  "the tulip is red and shiny",
+  "the seed grows into a plant",
+  "the root goes underground",
+  "the stem holds the flower up",
+  "the branch holds the leaves",
+  "the bark covers the tree",
+  "the fruit grows on trees",
+  "apples grow on apple trees",
+  "oranges grow on orange trees",
+  "bananas grow in bunches",
+  "grapes grow on the vines",
+  "corn grows in tall stalks",
+  "tomatoes grow on the vine",
+  "carrots grow underground",
+  "potatoes grow underground",
+  "we plant seeds in spring",
+  "we water the plants daily",
+  "the garden has many plants",
+  "the forest has tall trees",
+  "the grass needs water often",
+  "the pine tree is very tall",
+  "the oak tree is old and strong",
+  "the willow bends low",
+  // ── Math + shapes + sizes ──
+  "the circle is round",
+  "the square has four sides",
+  "the triangle has three sides",
+  "the rectangle is long",
+  "the oval is like an egg",
+  "the diamond is shiny",
+  "the star has five points",
+  "the heart is for love",
+  "the cross is like a plus",
+  "the line is straight",
+  "a circle plus a circle",
+  "a square inside a circle",
+  "add one plus one is two",
+  "subtract two minus one is one",
+  "two plus three is five",
+  "three plus four is seven",
+  "big is more than small",
+  "tall is more than short",
+  "a lot is many",
+  "a little is few",
+  // ── Numbers + counting frames ──
+  "one little kitten meowing",
+  "two little kittens meowing",
+  "three little kittens together",
+  "four little kittens sleeping",
+  "five little kittens playing",
+  "one apple in the bowl",
+  "two apples in the bowl",
+  "three apples in the bowl",
+  "i have one toy",
+  "i have two toys",
+  "i have three toys",
+  "i have four toys",
+  "i have five toys",
+  "i count to ten with mom",
+  "i count to twenty with dad",
+  "one and one make two",
+  "two and two make four",
+  "three and three make six",
+  "four and four make eight",
+  "five and five make ten",
+  "first comes one",
+  "second comes two",
+  "third comes three",
+  "i am five years old",
+  "my sister is three years old",
+  "my brother is seven years old",
+  "there are many stars",
+  "there are few cookies left",
+  "we share half each",
+  "we count by ones",
+  "count from one to ten please",
+  // ── Tech + modern K ──
+  "the tv shows cartoons",
+  "the phone rings loud",
+  "the computer has a screen",
+  "the tablet has games",
+  "the camera takes pictures",
+  "mom checks her phone",
+  "dad uses the computer",
+  "we watch a movie tonight",
+  "we play games on the tablet",
+  "i call grandma on the phone",
+  "i wave at the camera",
+  "the screen shows my face",
+  "the song plays from the speaker",
+  "the headphones play music",
+  "the keyboard has many letters",
+  // ── Senses + observations ──
+  "i hear the dog bark",
+  "i hear the wind blow",
+  "i hear the rain fall",
+  "i hear mom call my name",
+  "i smell the cookies bake",
+  "i smell the flowers in spring",
+  "i smell the rain coming",
+  "i taste the sweet candy",
+  "i taste the salty popcorn",
+  "i feel the soft kitten",
+  "i feel the cold ice",
+  "i feel the warm bath",
+  "i see the bright moon",
+  "i see the tall mountain",
+  "i see my own shadow",
+  // ── Alphabet + reading + writing ──
+  "the alphabet has twenty six letters",
+  "a is the first letter",
+  "z is the last letter",
+  "every word starts with a letter",
+  "words are made of letters",
+  "sentences are made of words",
+  "i can write my name",
+  "i can spell mom",
+  "i can spell dad",
+  "i can spell cat",
+  "i can read short words",
+  "i can read picture books",
+  "the story has a cover",
+  "the page turns slow",
+  "the book is very long",
+  "i love this book",
+  "mom reads me stories",
+  "the wolf knocks on the door",
+  "the pig builds a house",
+  "the bear eats the porridge",
+  "the rabbit runs from the fox",
+  "the prince finds the princess",
+  "the fairy waves her wand",
+  "the dragon breathes fire",
+  "the knight rides a horse",
+  "the king lives in a castle",
+  "the queen wears a gold crown",
+  "the princess sleeps for years",
+  "true love wakes her up",
+  "happily ever after",
+  // ── Jobs + community helpers ──
+  "the firefighter saves the cat",
+  "the police officer helps lost kids",
+  "the doctor makes me feel better",
+  "the nurse gives me a band aid",
+  "the teacher teaches me new words",
+  "the farmer grows our food",
+  "the baker makes bread fresh",
+  "the chef cooks tasty meals",
+  "the pilot flies the plane",
+  "the astronaut goes to space",
+  "the dentist checks my teeth",
+  "the librarian reads us stories",
+  "the mailman brings our letters",
+  "the artist paints with colors",
+  "the musician plays the music",
+  // ── Adverbs + manner descriptions ──
+  "the cat moves quietly",
+  "the dog runs quickly",
+  "the bird sings loudly",
+  "the baby sleeps softly",
+  "the wind blows gently",
+  "the rain falls heavily",
+  "the snow drifts slowly",
+  "the leaves dance lightly",
+  "the river flows steadily",
+  "the clock ticks evenly",
+  "the kitten purrs warmly",
+  "the wolf howls sadly",
+  "the owl hoots wisely",
+  "the deer leaps gracefully",
+  "the rabbit hops happily",
+  "the bee buzzes busily",
+  "the snake slithers silently",
+  "the frog jumps clumsily",
+  "mom whispers softly",
+  "dad speaks deeply",
+  "baby cries loudly",
+  "sister sings sweetly",
+  "brother runs wildly",
+  "we walk together slowly",
+  "we sing together happily",
+  "we play together loudly",
+  "we eat together quietly",
+  "we sleep peacefully tonight",
+  "we wake up slowly tomorrow",
+  // ── Random uncovered nouns + scenes ──
+  "the elevator goes up",
+  "the stairs go down",
+  "the basement is dark",
+  "the attic has dust",
+  "the closet hides my clothes",
+  "the dresser holds my shirts",
+  "the shelf holds my books",
+  "the cabinet has dishes",
+  "the drawer has socks",
+  "the hallway is long and dark",
+  "the garage holds the car",
+  "the backyard has grass",
+  "the front yard has flowers",
+  "the porch is made of wood",
+  "the fence is painted white",
+  "the gate squeaks open",
+  "the mailbox has letters today",
+  "the chimney has black smoke",
+  "the roof is brown and tall",
+  "the gutter catches rain",
+  "the brick wall is dark red",
+  "the lawn needs mowing",
+  "the bushes need trimming",
+  "the sidewalk is cracked",
+  "the driveway is long",
+  "i ride my bike on the sidewalk",
+  "i run on the lawn",
+  "i hide behind the bushes",
+  "i climb over the fence",
+  "i swing on the gate",
+  // ── Bugs + small creatures ──
+  "the spider builds a web",
+  "the ant carries the crumb",
+  "the fly buzzes around the room",
+  "the bee lands on the flower",
+  "the butterfly drinks the nectar",
+  "the worm eats the leaf",
+  "the ladybug has a red shell",
+  "the firefly glows at night",
+  "the moth flies to the light",
+  "the cricket chirps in the dark",
+  "the dragonfly hovers over water",
+  "the beetle climbs the stem",
+  "the grasshopper jumps far",
+  "the caterpillar crawls slowly",
+  "the cocoon hides the change",
+  // ── SELF-IDENTITY (Unity at K age, goth-precursor heavy) ──
+  // Wires a stable self-model from the bigram graph upward.
+  // K-grade kid version: age 5, dark hair, loves halloween +
+  // monsters + black + the moon + spider webs + cold + rain +
+  // secret places, dislikes loud bright pink frilly. These
+  // pattern-bind first-person preferences so chat-time emission
+  // can produce stable "i am" / "i love" / "i want" answers.
+  "i am five years old",
+  "my name is unity",
+  "i have dark hair",
+  "my hair is long and dark",
+  "i love the color black",
+  "my favorite color is black",
+  "i hate bright pink",
+  "i love halloween best",
+  "i love spooky things",
+  "i love the dark",
+  "i love the night",
+  "i love the moon",
+  "i love witches and ghosts",
+  "i love monsters and bats",
+  "i love dark stories",
+  "i love being alone sometimes",
+  "i love spider webs",
+  "i love rainy days",
+  "i love cold weather",
+  "i love thunderstorms",
+  "i love being a little scared",
+  "i love secret places",
+  "i love hidden corners",
+  "i hate loud parties",
+  "i hate fake smiles",
+  "i hate scratchy clothes",
+  "i hate bright lights",
+  "i want to wear a black dress",
+  "i want to be a witch when i grow up",
+  "i want to live in a castle",
+  "i want a black cat for a pet",
+  "i want a black umbrella",
+  "i want black shoes with buckles",
+  "i want black ribbons in my hair",
+  "i dream of dark castles",
+  "i dream of flying on broomsticks",
+  "i dream of becoming a witch",
+  "i dream of midnight gardens",
+  "i wonder about ghosts",
+  "i wonder why the moon glows",
+  "i wonder where dreams come from",
+  "i wonder if monsters are real",
+  "i think dark colors are pretty",
+  "i think mom is the best",
+  "i think dad is the strongest",
+  "i think i am different from other kids",
+  "i think being different is good",
+  "i think the night is mine",
+  "i think the moon watches me",
+  "my eyes are dark",
+  "my hands are pale",
+  // ── Likes + dislikes + wants (extended goth-precursor) ──
+  "i like dark chocolate best",
+  "i like the color of midnight",
+  "i like leather boots",
+  "i like skulls on shirts",
+  "i like spider rings",
+  "i like black ribbons",
+  "i like white skulls on black shirts",
+  "i like graveyards in books",
+  "i like creepy fairy tales",
+  "i like vampire stories",
+  "i like werewolf stories",
+  "i like books about magic",
+  "i like sad music best",
+  "i like minor key songs",
+  "i like dark candles",
+  "i like the smell of incense",
+  "i like the smell of rain",
+  "i like the smell of old books",
+  "i like the way leaves crunch",
+  "i dislike loud parties",
+  "i dislike bright sunlight",
+  "i dislike fake laughter",
+  "i dislike pink frilly dresses",
+  "i dislike when people stare",
+  "i dislike loud crying babies",
+  "i dislike scratchy sweaters",
+  "i dislike socks with pink bows",
+  "i want a black bedroom",
+  "i want velvet curtains",
+  "i want a spider lamp",
+  "i want gothic letters on my wall",
+  "i want a black diary",
+  "i want to learn old spells",
+  "i want lace gloves",
+  "i want a real black cat someday",
+  // ── Goth-precursor extended (preferences shaping K identity) ──
+  "the dark woods are quiet",
+  "the deep cave is cold",
+  "the broken window scares me",
+  "the empty house feels strange",
+  "the old tree looks creepy",
+  "the cold wind blows hard",
+  "the storm sky turns black",
+  "the rain makes me feel calm",
+  "i like rainy days best",
+  "i like cloudy days too",
+  "i like cold weather most",
+  "the night feels safe to me",
+  "the dark room is cozy",
+  "i hide under the bed sometimes",
+  "i make secret forts",
+  "i collect black rocks",
+  "i collect strange leaves",
+  "i collect shells from the beach",
+  "i draw spooky pictures",
+  "i draw black flowers",
+  "i draw monsters and ghosts",
+  "i sing in a low voice",
+  "i whisper secret words",
+  "i listen to scary stories",
+  "i read fairy tales of witches",
+  "i pretend to be a witch",
+  "i pretend to cast spells",
+  "i wear my dark dress today",
+  "i love my black boots",
+  "the witch hat fits me well",
+  "the bat circles overhead",
+  "the raven calls from the roof",
+  "the cemetery is very quiet",
+  "the candle flickers in the dark",
+  "the owl is my favorite bird",
+  "the spider is my favorite bug",
+  "the moon is my favorite light",
+  "the cat is my favorite animal",
+  // ── Longer multi-clause (production-capacity seed) ──
+  // K kids RECEIVE longer sentences from parents + books even
+  // before they PRODUCE them. These multi-clause patterns seed
+  // the brain's beyond-bigram transitions so later grades unlock
+  // longer prose without retraining the entire structure.
+  "when the moon is full the wolves come out and howl all night long",
+  "i love my mom because she lets me wear black every single day to school",
+  "after dinner i read books about witches and dragons until my bedtime",
+  "the witch in the story flies over the dark forest and finds lost children",
+  "sometimes i sit by the window and watch the rain fall slowly down outside",
+  "mom says i can have a black cat when i am older and more responsible",
+  "dad reads me stories about brave knights who slay evil dragons in caves",
+  "grandma told me that midnight is when the real magic begins to happen",
+  "i dream about castles with tall towers and dark stained glass windows",
+  "the autumn leaves turn red and orange and yellow before they fall down",
+  "the storm came fast and the sky turned dark and the thunder cracked loud",
+  "i woke up scared from a bad dream but mom came in and held me tight",
+  "the kitten purred softly as i pet her head and she fell asleep on my chest",
+  "tomorrow we are going to the park and i will swing as high as the clouds",
+  "when i grow up i want to write dark stories that other goth kids read",
+  "the old house at the end of the street looks haunted from the outside",
+  "my best friend likes spooky things just like me and we play witch together",
+  "after halloween the candy lasts for weeks if mom does not eat it first",
+  "the rain falls on the roof and makes a sound like fingers tapping glass",
+  "i learned three new letters today and i can read three new words now",
+  "mom hugs me when i feel sad and that always makes me feel a lot better",
+  "on rainy days we stay inside and read books by the warm window seat",
+  "when the candle blows out the room gets very dark and very quiet quickly",
+  "the bat flew out of the cave at sunset and circled the tower three times",
+  "i have a secret garden behind the shed where i hide my treasure box",
+  "the moon rose over the dark forest and the owls began to call to each other",
+  "i found a black feather on the path and i think a raven dropped it for me",
+  "mom braided my hair with black ribbons and i felt like a real witch",
+  "the dog barked because someone knocked on the door very loudly tonight",
+  "when winter comes the trees lose all their leaves and look like skeletons",
+  "i have ten fingers and ten toes and two eyes and two ears and one heart",
+  "the brain inside my head helps me think about everything i learn",
+  "every night i fall asleep and dream about places i have never seen",
+  "i count to one hundred in my head before mom comes to tuck me into bed",
+  "we lit candles all around the room and told stories about ghosts and witches",
+  "i picked a black flower from the garden and put it in a vase by my bed",
+  "someday i will be old enough to stay up all night reading scary stories",
+  "the wind whistled through the broken window like a sad song in the dark",
+  "mom said the moon is always there even when clouds hide it from us",
+  "i want to write a book about a girl who can talk to bats and spiders",
+  // ── Final coverage batch — high-frequency uncovered K vocab ──
+  // Targets Dolch sight words missed in earlier batches + full
+  // number range + extended body parts + extended animals + weather
+  // events + extended food/plants + common K-curriculum content.
+  // Pushes unique-bigram count past the 4500 percolation safety
+  // margin while expanding active vocab coverage past 75% of N.
+  // ── Numbers extended (full K range) ──
+  "zero is nothing at all",
+  "one is the first number",
+  "nine comes after eight",
+  "ten comes after nine",
+  "eleven comes after ten",
+  "twelve comes after eleven",
+  "thirteen comes after twelve",
+  "fourteen comes after thirteen",
+  "fifteen comes after fourteen",
+  "sixteen comes after fifteen",
+  "seventeen comes after sixteen",
+  "eighteen comes after seventeen",
+  "nineteen comes after eighteen",
+  "twenty comes after nineteen",
+  "thirty comes after twenty",
+  "forty is more than thirty",
+  "fifty is half of one hundred",
+  "sixty is more than fifty",
+  "seventy comes after sixty",
+  "eighty is a big number",
+  "ninety comes before one hundred",
+  "one hundred is very big",
+  "one thousand is huge",
+  "one million is enormous",
+  "the fourth kid is shy",
+  "the fifth kid is loud",
+  "the sixth turn is mine",
+  "the seventh day is sunday",
+  "the eighth letter is h",
+  "the ninth letter is i",
+  "the tenth letter is j",
+  "first plus second is third",
+  "i count two plus two",
+  "two times two equals four",
+  "three times three equals nine",
+  "ten divided by two is five",
+  "the sum is six",
+  "the total is ten",
+  "fifty is half of one hundred",
+  "a dozen eggs are twelve",
+  "a pair of shoes is two",
+  "a quarter is twenty five cents",
+  // ── Dolch sight word coverage ──
+  "they had a great day",
+  "we were happy together",
+  "i would like a cookie",
+  "i could ride my bike",
+  "mom might come home soon",
+  "dad also likes coffee",
+  "we set the table together",
+  "look at this point on the map",
+  "my mother loves me",
+  "she gave me the answer",
+  "the world is round",
+  "we study every day",
+  "we live in this country",
+  "my father drives the car",
+  "we start the day with breakfast",
+  "i had a thought",
+  "i waited a while",
+  "i found something hidden",
+  "this looks the same as that",
+  "i seem tired today",
+  "next is my turn",
+  "this is an example",
+  "we begin our class now",
+  "life is full of surprises",
+  "both kids are happy",
+  "i wrote on the paper",
+  "we got a new puppy",
+  "we are in a group together",
+  "this is important",
+  "the side road is quiet",
+  "we walked one mile",
+  "the sea is very wide",
+  "i took a deep breath",
+  "this is the state we live in",
+  "science is fun",
+  "i have a good idea",
+  "we stop at the light",
+  "the base is at the bottom",
+  "are you sure about this",
+  "the main thing is to be kind",
+  "today is a usual day",
+  "my brother is young",
+  "i made a list",
+  "i thought about it",
+  "i feel it in my body",
+  "i can leave the room",
+  "we measure the table",
+  "this is a complete answer",
+  "the area is small",
+  "this is the least i can do",
+  "a piece of cake please",
+  "i already knew that",
+  "the time passed quickly",
+  "since yesterday it rained",
+  "we build with blocks",
+  "i grew taller this year",
+  "i have ten cents",
+  "follow the rule please",
+  "this is one unit",
+  "this gives me power",
+  "we live in a small town",
+  "the weather is fine",
+  "i am certain about this",
+  "the lead pencil writes",
+  "the machine is loud",
+  "take a note please",
+  "i have a plan",
+  "the figure is round",
+  "the rest of the cookies are mine",
+  "is this correct",
+  "i am able to climb",
+  "i found beauty in dark places",
+  "mom stood by the door",
+  "this box can contain my toys",
+  "the teacher will teach us",
+  "this is the final answer",
+  "mom gave me a hug",
+  "we develop new skills",
+  "we are free to play",
+  "today is a special day",
+  "plants produce oxygen",
+  "this is a fact i know",
+  "an inch is small",
+  "nothing else matters now",
+  "of course we love you",
+  "the force was strong",
+  "this is my favorite object",
+  "we decide together",
+  "the surface is smooth",
+  "we test the water first",
+  "i broke the record",
+  "the cold is common in winter",
+  "all things are possible",
+  "one small step at a time",
+  "a is a vowel",
+  "a dollar buys candy",
+  "no more war please",
+  "whether you come or not",
+  "the rock is heavy",
+  "mom will copy the page",
+  // ── Animals extended part 2 ──
+  "the cow eats grass all day",
+  "the pony has a long mane",
+  "the goat climbs the rocks",
+  "the piglet rolls in the mud",
+  "the chicken lays an egg",
+  "the rooster crows at dawn",
+  "the hen sits on her nest",
+  "the mouse hides in the wall",
+  "the rat is bigger than the mouse",
+  "the squirrel buries nuts",
+  "the shark swims in the ocean",
+  "the octopus has eight arms",
+  "the crab walks sideways",
+  "the lobster has big claws",
+  "the toad sits by the pond",
+  "the moose has huge antlers",
+  "the bison roams the plains",
+  "the beaver builds a dam",
+  "the hummingbird hovers in air",
+  "the tadpole turns into a frog",
+  "the larva hatches from the egg",
+  "the hive is full of bees",
+  "the paw left a print",
+  "the wing helps the bird fly",
+  "the scale covers the fish",
+  "the fur keeps the cat warm",
+  "the horn warns of danger",
+  "the hoof clops on the ground",
+  "the beak picks up the seed",
+  "the claw scratches the bark",
+  "the fin helps the fish swim",
+  "the gill breathes in water",
+  "a herbivore eats only plants",
+  "a carnivore eats only meat",
+  "an omnivore eats both kinds",
+  // ── Body parts extended part 2 ──
+  "my eye is dark",
+  "my tooth wiggles loose",
+  "my lip is dry",
+  "my lips are pink",
+  "my cheek is warm",
+  "my forehead is high",
+  "my shoulder hurts a little",
+  "my arm is strong",
+  "my elbow bends",
+  "my wrist is small",
+  "my finger points at it",
+  "my thumb is fat",
+  "my stomach growls when i am hungry",
+  "my waist is small",
+  "my hip is round",
+  "my knee has a bandaid",
+  "my ankle twisted",
+  "my toe is small",
+  "my heel is hard",
+  "my bone is strong",
+  "my muscle is little",
+  "my lung fills with air",
+  "my blood is red",
+  "my vein is blue",
+  "a tear ran down my cheek",
+  "i am awake now",
+  // ── Plants + food extended ──
+  "a vegetable is good for me",
+  "the soil is wet and dark",
+  "the stone is heavy",
+  "the pebble is small",
+  "the clay is soft and red",
+  "the lily floats on the pond",
+  "the dandelion is yellow",
+  "the maple tree has red leaves",
+  "the birch tree has white bark",
+  "the banana is yellow inside",
+  "the peach is fuzzy outside",
+  "the pear is shaped like a teardrop",
+  "rice is white and small",
+  "wheat grows in the field",
+  "beans are green or brown",
+  "peas are small and green",
+  "lettuce is for the salad",
+  "spinach is dark green",
+  "the cucumber is long and green",
+  // ── Weather + climate extended ──
+  "a tornado spins very fast",
+  "a hurricane has strong winds",
+  "the mist hides the road",
+  "the frost covers the window",
+  "the dew is on the grass at dawn",
+  "the shade is cool",
+  "the sunshine warms my face",
+  "the daytime is bright",
+  "the nighttime is dark",
+  "the afternoon is hot",
+  "a weekday means school day",
+  "the season is changing",
+  "a snowy day is fun",
+  "a windy day blows my hat away",
+  "a foggy day hides the buildings",
+  "a stormy day stays inside",
+  "the climate is getting warmer",
+  "the temperature is one degree above zero",
+  "the heat makes me sweat",
+  "water can freeze into ice",
+  "ice can melt into water",
+  "water can boil into steam",
+  "the flood covered the road",
+  "the drought made the river small",
+  "the wildfire burned the forest",
+  "the tide comes in and out",
+  // ── Misc K-curriculum content ──
+  "the king lives in the castle",
+  "the queen wears a crown",
+  "the prince rides his horse",
+  "the princess sings sweetly",
+  "the knight has a shield",
+  "the wizard waves his staff",
+  "the fairy has tiny wings",
+  "the dragon breathes hot fire",
+  "the witch has a black cat",
+  "a helper is a friend",
+  "a worker builds the house",
+  "i am a good citizen",
+  "we volunteer at school",
+  "the leader walks first",
+  "the follower comes behind",
+  "we pledge to the flag",
+  "the flag has stars and stripes",
+  "the eagle is a strong bird",
+  "liberty means we are free",
+  "freedom is the best gift",
+  "justice means fair to all",
+  "peace is better than war",
+  "we vote when we are older",
+  "the rule keeps us safe",
+  "the law protects everyone",
+  "we have rights as kids",
+  "thanksgiving is in november",
+  "we eat turkey on thanksgiving",
+  "easter is in spring",
+  "we hunt eggs on easter",
+  "christmas is in december",
+  "we open presents on christmas",
+  "valentine is for love",
+  "we give cards on valentine",
+  "the fireworks are loud and bright",
+  "the parade has marching bands",
+  "the celebration is fun",
+  "the tradition is important",
+  // ── Full K-vocab coverage batch — every remaining uncovered word ──
+  // Pushes the brain past 95% coverage of all K_VOCABULARY words so
+  // every word has at least one bigram binding into the cortex.
+  // No word stays orphan.
+  // ── Math operations + counting words ──
+  "we equal up the cookies",
+  "we multiply two by three",
+  "we divide ten by two",
+  "less is the opposite of more",
+  "greater is more than smaller",
+  "smaller is less than greater",
+  "counting helps me know how many",
+  "a digit is a number symbol",
+  "the digits one to nine are small",
+  "double means two times",
+  "triple means three times",
+  "several cookies are in the jar",
+  "some apples are red",
+  "none of the cookies are left",
+  "we use crayons to draw",
+  "which one is yours",
+  "we hold them in our hands",
+  "i ride him to the park",
+  "i have been to grandma house",
+  "i can find my way home",
+  "i did my homework today",
+  "i may have a cookie",
+  "one part of the cake is mine",
+  "this is my favorite place",
+  "a sentence has a period at the end",
+  "the old man walks slowly",
+  "we eat much food at dinner",
+  "any cookie is good",
+  "we form a circle on the rug",
+  "i want another cookie",
+  "large is the same as big",
+  "i must go to bed",
+  // ── Connectors + sight words ──
+  "such a pretty day",
+  "mom asked me a question",
+  "the men work at the office",
+  "we live in the land of the free",
+  "we move slowly today",
+  "we try again tomorrow",
+  "i sit still and quiet",
+  "we should listen to mom",
+  "between mom and dad i sit",
+  "below the bed is dust",
+  "i walk along the path",
+  "i cut my finger by accident",
+  "the plain bread is best",
+  "though it rained we went out",
+  "i point in a direct line",
+  "i pose for the camera",
+  "the product is on the shelf",
+  "a numeral is a number symbol",
+  "i have a question to ask",
+  "what a surprise present",
+  "a noun is a name word",
+  "one pound of butter",
+  "all done with the puzzle",
+  // ── Health + body care ──
+  "we are healthy and happy",
+  "medicine helps me feel better",
+  "the hospital is for sick people",
+  "the clinic is small",
+  "the bandage covers my cut",
+  "a vitamin keeps me strong",
+  "a germ makes us sick",
+  "an injury hurts a lot",
+  "a bruise is purple and blue",
+  "a fever makes me hot",
+  // ── Family extended ──
+  "mommy hugs me tight",
+  "daddy lifts me high",
+  "a parent loves their kids",
+  "i am a young child",
+  "my grandmother is old and kind",
+  "my grandfather tells stories",
+  "a grandparent is special",
+  "i am their grandchild",
+  "my niece is little",
+  "my nephew is fun",
+  "a wife loves her husband",
+  "a husband loves his wife",
+  "a spouse is a married person",
+  "a relative is in our family",
+  "an adult is a grown up",
+  "a teen is between child and adult",
+  "a teenager is like a teen",
+  "a toddler walks shaky",
+  "an infant is a tiny baby",
+  "a woman is a grown up girl",
+  "my neighbor lives next door",
+  "my classmate sits beside me",
+  "my teammate plays soccer too",
+  "my partner shares the work",
+  "we are part of a community",
+  "we live in a small village",
+  "we are proud of our nation",
+  "our apartment has two rooms",
+  "the building is very tall",
+  "the classroom has many desks",
+  // ── Buildings + workers ──
+  "the library is full of books",
+  "the market has fresh fruit",
+  "the restaurant smells good",
+  "the church bells ring on sunday",
+  "the firehouse has red trucks",
+  "the farm has many cows",
+  "the factory makes cars",
+  "the bank holds money",
+  "the post office has letters",
+  "the museum shows old things",
+  "the zoo has wild animals",
+  "the aquarium has fish",
+  "the waiter brings our food",
+  "the driver drives the bus",
+  "the scientist studies the world",
+  "the engineer builds bridges",
+  "the singer sings on stage",
+  "the dancer moves with music",
+  "the actor plays a role",
+  "the writer writes stories",
+  "the reader reads quietly",
+  "the painter paints walls",
+  "the builder builds houses",
+  "the carpenter works with wood",
+  "the plumber fixes pipes",
+  "the electrician fixes lights",
+  "the mechanic fixes cars",
+  "the vet helps sick pets",
+  "the veterinarian is a vet",
+  "the janitor cleans the school",
+  "the soldier protects our country",
+  "the sailor sails the boat",
+  "the postman delivers mail",
+  "the principal runs the school",
+  "the coach trains the team",
+  // ── Authority + government ──
+  "the referee blows the whistle",
+  "the umpire calls strikes",
+  "the judge listens carefully",
+  "the lawyer talks in court",
+  "the politician makes speeches",
+  "the president lives in the white house",
+  "the stripe on the flag is bold",
+  "we have an election every four years",
+  "we say the allegiance",
+  "we sing the anthem",
+  "the statue is made of stone",
+  "the monument is very tall",
+  "independence day is in july",
+  "memorial day honors soldiers",
+  "veterans served our country",
+  // ── Months ──
+  "july is hot",
+  "february is short",
+  "september is back to school",
+  "october has halloween",
+  "august is summer",
+  "march brings spring",
+  "april has showers",
+  "june brings flowers",
+  // ── Colors + shapes deeper ──
+  "violet is a kind of purple",
+  "grey is between black and white",
+  "primary colors are red blue yellow",
+  "secondary colors come from mixing",
+  "the arrow points right",
+  "a dot is very small",
+  "the curve bends slowly",
+  "the pentagon has five sides",
+  "the hexagon has six sides",
+  "the octagon has eight sides",
+  "the sphere is round like a ball",
+  "the cube has six square faces",
+  "the cylinder is like a can",
+  "the cone is pointed at the top",
+  "the pyramid has a square base",
+  "the prism splits the light",
+  "the rock is solid",
+  "the narrow path is small",
+  "the sharp knife cuts well",
+  "the dull pencil writes thick",
+  "the crooked tree leans over",
+  "the door is closed tight",
+  "these two are similar",
+  "we paint with bright colors",
+  "the marker has a thick tip",
+  "the canvas is white and big",
+  "the easel holds the canvas",
+  "the palette has many colors",
+  "i sketch with a pencil",
+  "the painting hangs on the wall",
+  "the drawing is on paper",
+  "the sculpture is from clay",
+  "the pottery is shaped by hand",
+  "i love art and craft",
+  "the glue holds it together",
+  "the tape is sticky",
+  "the stapler clicks shut",
+  // ── Music deeper ──
+  "the choir sings in church",
+  "the orchestra plays the music",
+  "the melody is pretty",
+  "the tempo is slow",
+  "i feel the pulse in my wrist",
+  "a chord has three notes",
+  "the noisy room hurts my ears",
+  "silence is golden",
+  "do not shout in the hallway",
+  "the cello is large and deep",
+  "the saxophone is shiny",
+  "the harp has many strings",
+  "the xylophone has wooden bars",
+  "the tambourine has small bells",
+  "a musical instrument makes sound",
+  // ── Time + period extended ──
+  "a decade is ten years",
+  "a century is one hundred years",
+  "i rarely eat candy",
+  "i visit grandma weekly",
+  "we go shopping monthly",
+  "we have a yearly party",
+  // ── Emotions extended ──
+  "i am not afraid of the dark",
+  "i feel bored sometimes",
+  "i am surprised by the gift",
+  "i feel confused about math",
+  "i am serious about my homework",
+  "do not be rude to others",
+  "be polite when asking",
+  "i am helpful at home",
+  "a lazy day is fun sometimes",
+  "i am active outside",
+  "i am clever and smart",
+  "a wise person knows much",
+  "a foolish person makes mistakes",
+  "i feel weak when i am sick",
+  "a gentle kitten is sweet",
+  "a peaceful day is quiet",
+  "the tame dog is nice",
+  "i feel bold today",
+  "a generous friend shares everything",
+  "a selfish person keeps everything",
+  "i am honest with my mom",
+  "a dishonest person tells lies",
+  "i wish for a pet cat",
+  "i hope it snows soon",
+  "i remember our trip",
+  "do not forget your lunch",
+  "i understand the lesson now",
+  // ── Sounds + actions ──
+  "i scream when i see a spider",
+  "i sigh when i am tired",
+  "grandpa snores at night",
+  "we squat to pick flowers",
+  "i jiggle the door to open it",
+  "i chew my food slowly",
+  "i lick the ice cream cone",
+  "i sniff the new flower",
+  "i suck on a lollipop",
+  "do not spit on the ground",
+  "i peek through the curtain",
+  "i glance at the clock",
+  "shut the door please",
+  "i squint in the sun",
+  "i speak to my friend",
+  "i ask mom for help",
+  "i solve the puzzle",
+  "flowers die in winter",
+  "my socks shrink in the dryer",
+  "mom will heal my cut",
+  "dad will fix the chair",
+  "i did not break it on purpose",
+  "we create with our hands",
+  "do not destroy the toys",
+  "we bathe in warm water",
+  "i undress for bed",
+  // ── Cooking ──
+  "mom likes to fry eggs",
+  "dad grills the burgers",
+  "chill the juice in the fridge",
+  "do not spill the milk",
+  "do not drop the glass",
+  "mom will reveal the secret",
+  "lock the door at night",
+  "unlock the box with a key",
+  // ── Money + commerce ──
+  "we buy candy at the store",
+  "we sell lemonade outside",
+  "pay for the candy please",
+  "do not spend all your money",
+  "save some for tomorrow",
+  "i earn a coin by helping",
+  "we exchange gifts on christmas",
+  "we trade stickers at school",
+  "i receive a gift today",
+  "i believe in fairies",
+  "we pray before dinner",
+  "i imagine flying high",
+  // ── Adjectives + qualities ──
+  "the floor is dirty today",
+  "this puzzle is easy",
+  "the simple game is fun",
+  "this math is complex",
+  "that answer is wrong",
+  "this story is false",
+  "this number is incorrect",
+  "the storm was terrible",
+  "the day was wonderful",
+  "the news was awful",
+  "the toad is ugly to some",
+  "the rose is beautiful",
+  "the prince is handsome",
+  "i feel weird today",
+  "a normal day is fine",
+  // ── Household + clothing ──
+  "the mattress is soft",
+  "the stair goes up and down",
+  "the hall is dark",
+  "the livingroom has a big couch",
+  "the diningroom has a long table",
+  "the tray holds the food",
+  "the pan fries the eggs",
+  "the pot boils the soup",
+  "the kettle whistles when hot",
+  "the refrigerator hums quietly",
+  "the freezer holds the ice cream",
+  "the shower has warm water",
+  "the tub is full of bubbles",
+  "my shirt is black today",
+  "my pants are dark blue",
+  "my skirt has a tag",
+  "my jacket is warm",
+  "my sweater is wool",
+  "my shoe has laces",
+  "my sock is black",
+  "my cap is sideways",
+  "my glove keeps my hand warm",
+  "my scarf is around my neck",
+  "my belt holds up my pants",
+  "my purse has a few coins",
+  "my wallet has cards",
+  // ── Food deep ──
+  "a meal makes me full",
+  "a snack is small",
+  "dessert is sweet",
+  "the feast is for celebration",
+  "mom has a new recipe",
+  "the sandwich is in my lunch",
+  "the bagel is round",
+  "i love pancakes for breakfast",
+  "the waffle is crispy",
+  "the oatmeal is warm",
+  "soda is bubbly and sweet",
+  "tea is in a cup",
+  "cocoa is hot and brown",
+  "the smoothie is cold and fruity",
+  "jam is sweet and sticky",
+  "sugar is white and sweet",
+  "salt is white and salty",
+  "spice makes food spicy",
+  "beef is from cows",
+  "pork is from pigs",
+  "sausage is in a tube",
+  "the hotdog is in a bun",
+  "the hamburger is on a bun",
+  "a berry is small and sweet",
+  "a melon is big and juicy",
+  "a mango is yellow inside",
+  "icecream is cold and sweet",
+  "pudding is soft and sweet",
+  "the muffin has blueberries",
+  "a donut has a hole",
+  // ── Vehicles + parts ──
+  "the van holds many kids",
+  "the taxi has yellow doors",
+  "a bicycle has two wheels",
+  "the cart pushes the groceries",
+  "the tram runs on tracks",
+  "the jet is very fast",
+  "the spaceship goes to mars",
+  "the spaceshuttle landed safely",
+  "the kayak is one person",
+  "the sailboat has tall sails",
+  "the yacht is fancy",
+  "the motorboat is loud",
+  "the tire is round and black",
+  "the engine starts the car",
+  "the motor hums quietly",
+  "the propeller spins fast",
+  "the sail catches the wind",
+  "the anchor holds the boat",
+  "the steering wheel turns the car",
+  "i push the brake to stop",
+  "we put gas in the car",
+  "we need fuel for the trip",
+  "the runway is long and flat",
+  "the dock is by the water",
+  "the harbor has many boats",
+  "the station is busy",
+  // ── School + supplies ──
+  "i am a kindergarten student",
+  "the teacher writes with chalk",
+  "the eraser cleans the board",
+  "the notebook has clean pages",
+  "i write with a pen",
+  "the ruler measures things",
+  "the folder holds my papers",
+  "the binder has many rings",
+  "my lunchbox holds my food",
+  "i finished my homework today",
+  "we had a math quiz",
+  "my grade is good this term",
+  "the report card came home",
+  "today lesson is about animals",
+  "my favorite subject is art",
+  "i love english class",
+  "i like math but it is hard",
+  "spelling helps me write",
+  "phonics teaches sounds",
+  "arithmetic is counting",
+  "history is about long ago",
+  "geography is about the world",
+  "art is fun and messy",
+  "i go to gym to run",
+  "i love the novel mom reads",
+  "a poem rhymes sometimes",
+  "the rhyme is fun to say",
+  "a paragraph has many sentences",
+  "a chapter is part of a book",
+  "a consonant is not a vowel",
+  "a syllable is a sound chunk",
+  "sight words come quickly",
+  "printing is writing by hand",
+  // ── Games + sports ──
+  "we play jacks on the floor",
+  "the swingset has two swings",
+  "i fill the bucket with sand",
+  "i dig with the shovel",
+  "i rake the leaves into piles",
+  "the tractor pulls the cart",
+  "keepaway is fun in the yard",
+  "foursquare needs four kids",
+  "dodgeball is fast and fun",
+  "tetherball goes around the pole",
+  "tennis is hit with rackets",
+  "golf uses small balls",
+  "hockey uses sticks on ice",
+  "volleyball is hit over the net",
+  "we race to the fence",
+  "i hope to win the race",
+  "the team wears red shirts",
+  "the player kicks the ball",
+  "we keep score on paper",
+  "we score a goal",
+  "do not commit a foul",
+  // ── Holidays + celebrations ──
+  "the party has cake and music",
+  "newyear is january first",
+  "memorialday is in may",
+  "presidentsday is in february",
+  "laborday is in september",
+  "mlk day is in january",
+  "passover is for some families",
+  "hanukkah lasts eight nights",
+  "kwanzaa lasts seven days",
+  "ramadan lasts a month",
+  "diwali has many candles",
+  "chinesenewyear has dragons",
+  "the firework lights the sky",
+  "we say a prayer at dinner",
+  "the custom is to wave hello",
+  // ── Prepositions + connectors ──
+  "i go without my coat",
+  "i jump onto the bed",
+  "i sit upon the chair",
+  "we walk among the trees",
+  "sit beside me on the bench",
+  "although it was raining we played",
+  // ── Anatomy deep ──
+  "my spine is straight",
+  "my rib hurts a little",
+  "the liver helps clean blood",
+  "the kidney makes pee",
+  "the intestine carries food",
+  "the bladder holds pee",
+  "a nerve sends signals",
+  "a tendon connects muscle to bone",
+  "a joint bends",
+  "the artery carries blood",
+  "i itch where it bit me",
+  "i have a rash on my arm",
+  "the wound is deep",
+  "the scab covers the cut",
+  "the scar fades slowly",
+  "the swelling went down",
+  "the pain is sharp",
+  "my ache is in my head",
+  "i have a headache today",
+  "i have a toothache from candy",
+  "i have a stomachache from pizza",
+  "i have an earache from the cold",
+  "i feel dizzy spinning",
+  "i feel nauseous on the boat",
+  "i had to vomit last night",
+  "mom is pregnant with my sister",
+  "the newborn baby cries",
+  "grandma is elderly now",
+  "the wrinkle is on her cheek",
+  "grayhair comes with age",
+  // ── Wild animals deeper ──
+  "the leopard has black spots",
+  "the cheetah runs fastest",
+  "the jaguar climbs trees",
+  "the panther is dark and sleek",
+  "the coyote howls in the desert",
+  "the hyena laughs strangely",
+  "the grizzly bear catches fish",
+  "the polar bear lives in ice",
+  "the ape walks like a person",
+  "the gorilla is huge and strong",
+  "the chimp is smart",
+  "the baboon has a red face",
+  "the lemur has a long tail",
+  "the sloth moves slowly",
+  "the wombat digs burrows",
+  "the platypus has a duck bill",
+  "the echidna has spines",
+  "the possum plays dead",
+  "the donkey is stubborn",
+  "the mule pulls the cart",
+  "the camel has two humps",
+  "the llama spits when mad",
+  "the alpaca has soft wool",
+  "the buffalo roams the plains",
+  "the rhino has a horn",
+  "the hippo loves water",
+  "the hawk hunts mice",
+  "the falcon dives fast",
+  "the vulture eats dead things",
+  "the dove is white",
+  "the pigeon coos softly",
+  "the sparrow is small and brown",
+  "the robin has a red breast",
+  "the cardinal is bright red",
+  "the bluejay is loud and blue",
+  "the toucan has a big beak",
+  "the cockatoo has a crest",
+  "the canary sings sweetly",
+  "the ostrich is huge and runs",
+  "the emu is like a small ostrich",
+  // ── Sea + reptiles + bugs ──
+  "the walrus has long tusks",
+  "the squid has ten arms",
+  "the jellyfish floats with the tide",
+  "the starfish has five arms",
+  "the shrimp is small and pink",
+  "the viper is venomous",
+  "the cobra raises its hood",
+  "the rattlesnake shakes its tail",
+  "the python is huge and squeezes",
+  "the boa is a big snake",
+  "the gecko climbs walls",
+  "the iguana is green",
+  "the chameleon changes color",
+  "the mosquito bites me",
+  "the flea jumps onto my dog",
+  "the tick attaches to skin",
+  "the louse is in my hair",
+  "the wasp stings hard",
+  "the hornet is big and mean",
+  "the mantis catches flies",
+  // ── Plant life cycle ──
+  "the sapling is a young tree",
+  "the sprout pushes through soil",
+  "the bud will become a flower",
+  "the blossom opens in spring",
+  "the petal is soft",
+  "the pistil holds the seeds",
+  "the stamen makes pollen",
+  "pollen helps make seeds",
+  "a spore makes new mushrooms",
+  "a fern has many leaves",
+  "moss grows on rocks",
+  "lichen is small and crusty",
+  "algae grow in water",
+  "the cactus has sharp spines",
+  "the ivy climbs the wall",
+  "the clover has three leaves",
+  "the orchid is beautiful",
+  "the poppy is bright red",
+  "the iris is purple",
+  "the marigold is orange",
+  "the lavender smells nice",
+  "the jasmine is white",
+  "the geranium has red flowers",
+  "the begonia is pink",
+  "the daffodil is yellow",
+  "the lilac is purple",
+  "the magnolia has big flowers",
+  "the dogwood blooms in spring",
+  "the redwood is huge",
+  // ── Trees + landforms ──
+  "the spruce tree is green all year",
+  "the fir tree is for christmas",
+  "the elm tree has tall branches",
+  "the beech tree has smooth bark",
+  "the aspen has shiny leaves",
+  "the ash tree is strong",
+  "the hickory makes nuts",
+  "the walnut tree drops nuts",
+  "the orchard has many fruit trees",
+  "the grove has many trees",
+  "a plantation grows one crop",
+  "the greenhouse has glass walls",
+  "the nursery sells plants",
+  "the farmland grows food",
+  "the crop is corn this year",
+  "the harvest is in fall",
+  "the continent is huge",
+  "the region is big",
+  "the globe shows the world",
+  "i need the direction north",
+  "i use a compass to find my way",
+  "the equator is in the middle of earth",
+  "the arctic is very cold",
+  "the pole is at the top of earth",
+  "the peak is the highest point of the mountain",
+  "the plateau is high and flat",
+  "the crater is round and deep",
+  "the basin is a low place",
+  "the horizon is far away",
+  "the peninsula sticks into the sea",
+  "the bay is part of the ocean",
+  "the gulf is a big bay",
+  "the channel is between two lands",
+  "the reef has coral",
+  "the creek runs through woods",
+  "the brook babbles over rocks",
+  "the marsh is wet and reedy",
+  "the wetland has many birds",
+  "the savanna has tall grass",
+  "the rainforest is wet and full",
+  "the woodland has shorter trees",
+  "the grassland is open and grassy",
+  // ── Weather extended ──
+  "the day is humid today",
+  "the arid land has no water",
+  "the rainfall fills the lake",
+  "the snowfall is heavy tonight",
+  "the blizzard came suddenly",
+  "the hailstorm broke windows",
+  "sleet falls in winter",
+  "the flurry is light snow",
+  "the drizzle is light rain",
+  "the downpour soaks us",
+  "celsius is one degree system",
+  "fahrenheit is another system",
+  "one hundred degrees is very hot",
+  "a gust of wind blew me back",
+  "the gale tore off the roof",
+  "the cyclone spins fast",
+  "the typhoon hit the island",
+  "the monsoon brings heavy rain",
+  "the solstice is the longest day",
+  "the equinox is the same day and night",
+  "the atmosphere holds the air",
+  "the ozone is high in the sky",
+  "the lava is hot and orange",
+  "the magma is under the ground",
+  "the eruption shoots ash",
+  "the tremor shook the ground",
+  "the fault line is dangerous",
+  "tectonic plates move slowly",
+  "the tsunami hit the shore",
+  "the current carries the boat",
+  // ── Minerals + metals ──
+  "a mineral comes from the earth",
+  "the crystal is clear and shiny",
+  "the ruby is red",
+  "the emerald is green",
+  "the sapphire is blue",
+  "the pearl is white and round",
+  "the marble is smooth",
+  "the granite is hard",
+  "copper is orange and shiny",
+  "tin is light and shiny",
+  "steel is strong and grey",
+  "a metal is heavy and shiny",
+  // ── Space ──
+  "mercury is closest to the sun",
+  "venus is very hot",
+  "mars is red and dusty",
+  "jupiter is the biggest planet",
+  "saturn has rings around it",
+  "uranus is far away",
+  "neptune is blue and cold",
+  "pluto used to be a planet",
+  "an asteroid floats in space",
+  "a comet has a tail of dust",
+  "a meteor falls to earth",
+  "a galaxy has many stars",
+  "the milkyway is our galaxy",
+  "the universe is huge",
+  "a blackhole pulls in light",
+  "the solarsystem has many planets",
+  "the moon is in orbit",
+  "a satellite circles the earth",
+  "the spacestation is in space",
+  "the telescope helps us see far",
+  "the eclipse hides the sun",
+  "lunar means about the moon",
+  "solar means about the sun",
+  "gravity keeps us on the ground",
+  "the northernlights dance in the sky",
+  // ── Greetings + meeting ──
+  "we arrive at the party",
+  "we depart at five",
+  "we enter the room",
+  "we exit through the door",
+  "we meet at the park",
+  "i greet my friend",
+  "i introduce myself",
+  "we welcome the new kid",
+  "farewell to grandma",
+  "we agree on the plan",
+  "we disagree about the game",
+  "we accept the gift",
+  "we refuse to be mean",
+  "mom will allow ice cream",
+  "we forbid hitting",
+  "mom will permit me to play",
+  "we never deny the truth",
+  "we approve of sharing",
+  "we reject mean words",
+  // ── Visiting + exploring ──
+  "we visit grandma every week",
+  "we return home for dinner",
+  "the journey was long",
+  "we travel by car",
+  "the tour goes through the museum",
+  "we explore the woods",
+  "we discover a new thing",
+  "i search for my doll",
+  "we locate the missing book",
+  "we invent new games",
+  "we design a card together",
+  "we construct a fort with pillows",
+  "we demolish it after",
+  "we repair the broken toy",
+  "we replace the dead bulb",
+  "we restore the old picture",
+  "we renovate the room",
+  "we feed the dog every day",
+  "we nurture the new plant",
+  "we guide the new kid",
+  "the teacher instructs us",
+  "we protect our pets",
+  "we guard our secret",
+  "we defend our friends",
+  "do not attack each other",
+  "i fight germs with handwashing",
+  "we battle the bad guys in pretend",
+  "we conquer the puzzle",
+  "we surrender to bedtime",
+  "we retreat from the bee",
+  "we escape the rain",
+  "we rescue the cat from the tree",
+  "i assist mom in the kitchen",
+  "we support each other",
+  "we encourage our friends",
+  "we comfort the crying baby",
+  "we console the sad child",
+  "we soothe the upset puppy",
+  // ── Sounds + small actions ──
+  "a chirp comes from the bird",
+  "a tweet is a small chirp",
+  "the cat purrs while i pet her",
+  "the dove will coo softly",
+  "the bee will buzz around",
+  "the parrot squawks loudly",
+  "the pig snorts in the mud",
+  "the splash hits my face",
+  "i hear a crash from the kitchen",
+  "a bang comes from the door",
+  "a clang rings from the metal",
+  // ── Sizes + qualities ──
+  "a massive elephant is big",
+  "a gigantic tree is huge",
+  "a minuscule ant is tiny",
+  "a vast field stretches far",
+  "an immense ocean is endless",
+  "a colossal building is huge",
+  "a gorgeous sunset glows",
+  "a stunning view amazes me",
+  "a lovely flower smells nice",
+  "an adorable kitten is cute",
+  "an attractive picture is on the wall",
+  "a homely face is plain",
+  "a hideous monster scares me",
+  "the glossy paper shines",
+  "the matte paper does not shine",
+  "the vivid color is bright",
+  "the vibrant shirt stands out",
+  "a fluorescent light hums",
+  "the transparent water is clear",
+  "the opaque wall blocks light",
+  "the fragrant rose smells sweet",
+  "the aromatic herb smells strong",
+  "the bitter coffee makes me frown",
+  "the tangy lemon makes me pucker",
+  "the bland food has no taste",
+  "the delicious cake is so good",
+  "the disgusting smell makes me gag",
+  // ── Behaviors + traits ──
+  "the chaotic room is messy",
+  "i am interested in the book",
+  "i am enthusiastic about the trip",
+  "i am indifferent to the movie",
+  "i am passionate about art",
+  "i feel apathetic when tired",
+  "i am eager for the gift",
+  "i feel reluctant to leave",
+  "the stingy person does not share",
+  "the greedy person wants more",
+  "the thrifty mom saves money",
+  "the frugal dad watches the budget",
+  "the wasteful kid throws away food",
+  "i am careless with my socks",
+  "be attentive in class",
+  "i am distracted by the dog",
+  "i am focused on my book",
+  "be patient with the baby",
+  "i am impatient for the cookie",
+  "be tolerant of others",
+  "do not be intolerant",
+  "be flexible with the plan",
+  "do not be rigid with rules",
+  "be adaptable to changes",
+  "do not be stubborn please",
+  "be willing to try",
+  "do not be unwilling",
+  // ── Moods + outlooks ──
+  "the cheerful kid smiles",
+  "the gloomy day is grey",
+  "the optimistic kid sees good",
+  "the pessimistic kid sees bad",
+  "we stay positive together",
+  "do not be negative",
+  "i feel hopeful for spring",
+  "i feel hopeless when very sad",
+  "i am confident i can do it",
+  "the timid kid hides behind mom",
+  // ── Time + sequence words ──
+  "the beginning of the story is exciting",
+  "this is just partial credit",
+  "we are almost there",
+  "we are nearly home",
+  "i barely touched it",
+  "i scarcely remember",
+  "i frequently see grandma",
+  "i occasionally have candy",
+  "i seldom cry",
+  "momentarily mom will come",
+  "instantly the light turned on",
+  "immediately he answered",
+  "eventually we got home",
+  "ultimately mom said yes",
+  "finally we are here",
+  "suddenly it rained",
+  "abruptly the music stopped",
+  "we change gradually",
+  // ── Speed + history ──
+  "speedy boats race fast",
+  "the rapid water rushes",
+  "the sluggish snail is slow",
+  "a recent picture is new",
+  "in the past we did this",
+  "the future is unknown",
+  "the ancient ruins are old",
+  "modern times have new things",
+  "the historic moment was big",
+  "prehistoric times had dinosaurs",
+  "the antique vase is old",
+  "the vintage doll is from grandma",
+  // ── Math vocabulary ──
+  "addition is plus",
+  "subtraction is minus",
+  "multiplication is times",
+  "division is divide",
+  "an equation has an equal sign",
+  "a formula gives the answer",
+  "a calculation finds the number",
+  "computation is calculating",
+  "a fraction is part of a whole",
+  "a decimal has a point",
+  "a percent is out of one hundred",
+  "percentage is the same as percent",
+  "a ratio compares two numbers",
+  "a proportion is balanced",
+  "the average is in the middle",
+  "the median is the middle number",
+  "the quantity is how many",
+  "the measurement tells how big",
+  // ── Dimensions + units ──
+  "weight is how heavy",
+  "length is how long",
+  "width is how wide",
+  "height is how tall",
+  "depth is how deep",
+  "volume is how much it holds",
+  "the perimeter goes around",
+  "the diameter goes across",
+  "a centimeter is small",
+  "a meter is for tall things",
+  "a kilometer is far",
+  "an ounce is a small weight",
+  "a ton is very heavy",
+  "a gram is super small",
+  "a kilogram is one thousand grams",
+  "a pint is a small cup",
+  "a quart is two pints",
+  "a gallon is four quarts",
+  "a liter is like a quart",
+  "a milliliter is tiny",
+  "a teaspoon is small",
+  "a tablespoon is bigger",
+  "the horizontal line goes side to side",
+  "the vertical line goes up and down",
+  "the diagonal line is slanted",
+  "the parallel lines never touch",
+  "perpendicular lines cross at a right angle",
+  "the curved line bends",
+  "the angle is sharp",
+  "the corner is the meeting place",
+  // ── Math patterns ──
+  "symmetry means matching",
+  "a pattern repeats",
+  "a sequence is in order",
+  "a series follows a rule",
+  "the order is one two three",
+  "arrangement is how things are placed",
+  "a matrix is a grid",
+  "the grid has rows and columns",
+  "the chart shows data",
+  "the graph shows a line",
+  // ── Tech + computers ──
+  "mom has a laptop",
+  "dad uses his smartphone",
+  "i wear my headphone",
+  "the internet has many websites",
+  "we send an email",
+  "i sent a message to grandma",
+  "the text is from mom",
+  "we chat on the computer",
+  "the app is fun",
+  "mom uses a program for work",
+  "the software runs the computer",
+  "the hardware is the box",
+  "the battery is dead",
+  "the cable is plugged in",
+  "the video is funny",
+  "we download the new game",
+  "we upload the photo",
+  "we install the program",
+  "we update the app",
+  "we restart the computer",
+  // ── Money + commerce ──
+  "i save my money",
+  "a cent is one penny",
+  "a penny is one cent",
+  "a nickel is five cents",
+  "a dime is ten cents",
+  "a bill is paper money",
+  "cash is paper or coins",
+  "mom writes a check",
+  "dad uses his credit card",
+  "i never use a debit card",
+  "the price is too high",
+  "the cost is just right",
+  "the value is good",
+  "it is worth the price",
+  "this toy is expensive",
+  "this candy is cheap",
+  "there is a sale today",
+  "a discount is money off",
+  "this is a great bargain",
+  "the tax is on the bill",
+  "we leave a tip for the waiter",
+  "mom earns a wage",
+  "dad has a salary",
+  "we purchase the food",
+  "we are rich in love",
+  "a poor family needs help",
+  "a wealthy person has lots of money",
+  // ── Shopping ──
+  "we shop at the store",
+  "the mall is big and busy",
+  "the supermarket has everything",
+  "the grocery has food",
+  "the bakery smells of bread",
+  "the butcher cuts meat",
+  "the pharmacy has medicine",
+  "the bookstore has books",
+  "the toystore has toys",
+  // ── Languages + communication ──
+  "i speak english at home",
+  "i hear spanish at the store",
+  "french is from france",
+  "german is from germany",
+  "chinese is from china",
+  "japanese is from japan",
+  "arabic has its own letters",
+  "a phrase is a few words",
+  "i give a speech in class",
+  "we converse together",
+  "we discuss the book",
+  "do not gossip about friends",
+  "i hear an echo in the cave",
+  "translate this word for me",
+  "we interpret the meaning",
+  "i type on the keyboard",
+  "i sign my name",
+  "a signal means a message",
+  "i make a gesture with my hand",
+  "i nod my head yes",
+  "i snap my fingers",
+  // ── Travel ──
+  "we go on vacation",
+  "the trip was fun",
+  "this is an adventure",
+  "we go on a quest in the woods",
+  "the expedition was long",
+  "the voyage took many days",
+  "the cruise was on a boat",
+  "the flight was three hours",
+  "we disembark from the boat",
+  "i have a passport",
+  "i have a ticket to the show",
+  "my luggage is heavy",
+  "the suitcase has my clothes",
+  "the itinerary lists the days",
+  "we stay at a hotel",
+  "the motel is cheap",
+  "the resort has a pool",
+  "the camp has tents",
+  "the tent is small but warm",
+  "the cabin is in the woods",
+  "the lodge is in the mountains",
+  "the inn is by the road",
+  "the hostel is for travelers",
+  "we used airbnb on vacation",
+  // ── Virtues ──
+  "the truth is important",
+  "a lie is a bad thing",
+  "honesty is the best policy",
+  "dishonesty leads to trouble",
+  "fairness means equal",
+  "unfairness makes me mad",
+  "kindness feels good",
+  "meanness hurts feelings",
+  "we show respect to elders",
+  "disrespect is not allowed",
+  "safety first they say",
+  "we take a risk on the slide",
+  "the accident was scary",
+  "we have an emergency plan",
+  "be cautious near the road",
+  "do not be reckless",
+  // ── Feelings deep ──
+  "happiness comes from inside",
+  "sadness comes sometimes",
+  "anger goes away",
+  "fear can be talked about",
+  "envy of others hurts me",
+  "jealousy is a feeling",
+  "pride is good when not too much",
+  "shame is when i did wrong",
+  "guilt makes me sorry",
+  "regret is wishing i could change it",
+  "remorse is feeling really sorry",
+  // ── Thinking + memory ──
+  "my memory of grandma is sweet",
+  "imagination makes everything fun",
+  "creativity makes new things",
+  "invention is creating",
+  "discovery is finding new things",
+  "the solution is the answer",
+  "reason is why we do things",
+  "cause is why",
+  "effect is what happens",
+  "the result is good",
+  "the outcome surprises me",
+  "the consequence is being grounded",
+  "my reaction is quick",
+  "i wait for the response",
+  "i give a reply soon",
+  "i need feedback from the teacher",
+  // ── Process + period ──
+  "the process takes time",
+  "this stage is hard",
+  "the phase will pass",
+  "the period of waiting is long",
+  "a new era is coming",
+  "i am of a young age",
+  // ── Conflict + agreement ──
+  "the chaos in the room is wild",
+  "the conflict is over",
+  "the disagreement is small",
+  "the argument is loud",
+  "the discussion is helpful",
+  "the debate is interesting",
+  "the negotiation is fair",
+  // ── Success + luck ──
+  "success feels great",
+  "failure teaches me",
+  "victory is sweet",
+  "defeat is part of life",
+  "a triumph makes me proud",
+  "a catastrophe is very bad",
+  "a disaster is huge",
+  "luck is when good things happen",
+  "fortune is good luck",
+  "misfortune is bad luck",
+  "i feel lucky today",
+  "mom says i am her good luck",
+  // ── Final orphan cleanup — base forms of conjugated K vocab ──
+  "what a fun suprise",
+  "a big suprise for mom",
+  "grandpa will snore loud",
+  "i hear snore at night",
+  "we grill the food outside",
+  "dad will grill the burger",
+  "i love a pancake for breakfast",
+  "a pancake is round",
+  "the cedar tree is tall",
+  "the cedar smells nice",
+  "the teacher will instruct us",
+  "mom will instruct me how",
+  "the cat will purr softly",
+  "i feel her purr in my hand",
+  "the parrot will squawk loud",
+  "we hear a squawk from the tree",
+  "the pig will snort in the mud",
+  "i hear a snort from the barn",
+  "mom looks at a website",
+  "the new website has games",
+  "english is a language",
+  "each country has its own language"
 ];
 var DIGIT_NAMES = [
   "zero",
@@ -28564,7 +31336,7 @@ var Curriculum = class _Curriculum {
    * @returns {Float64Array(EMBED_DIM)}
    */
   _dictionaryPatternFor(word) {
-    const dim = sharedEmbeddings2 && typeof sharedEmbeddings2.EMBED_DIM === "number" ? sharedEmbeddings2.EMBED_DIM : 300;
+    const dim = sharedEmbeddings && typeof sharedEmbeddings.EMBED_DIM === "number" ? sharedEmbeddings.EMBED_DIM : 300;
     const out = new Float64Array(dim);
     if (typeof word !== "string" || word.length === 0) return out;
     const gloveDims = 200;
@@ -28572,8 +31344,8 @@ var Curriculum = class _Curriculum {
     const idStart = gloveDims;
     const snapDims = Math.max(0, dim - gloveDims - idDims);
     const snapStart = gloveDims + idDims;
-    if (sharedEmbeddings2 && typeof sharedEmbeddings2.getEmbedding === "function") {
-      const glove = sharedEmbeddings2.getEmbedding(word);
+    if (sharedEmbeddings && typeof sharedEmbeddings.getEmbedding === "function") {
+      const glove = sharedEmbeddings.getEmbedding(word);
       if (glove && glove.length > 0) {
         const n = Math.min(gloveDims, glove.length);
         for (let i = 0; i < n; i++) out[i] = glove[i];
@@ -29105,15 +31877,15 @@ var Curriculum = class _Curriculum {
       if (!question || keywords.length === 0) continue;
       let intentSeed = null;
       try {
-        if (sharedEmbeddings2 && typeof sharedEmbeddings2.getSentenceEmbedding === "function") {
-          intentSeed = sharedEmbeddings2.getSentenceEmbedding(question);
+        if (sharedEmbeddings && typeof sharedEmbeddings.getSentenceEmbedding === "function") {
+          intentSeed = sharedEmbeddings.getSentenceEmbedding(question);
         }
       } catch {
         intentSeed = null;
       }
-      if ((!intentSeed || intentSeed.length === 0) && keywords[0] && sharedEmbeddings2?.getEmbedding) {
+      if ((!intentSeed || intentSeed.length === 0) && keywords[0] && sharedEmbeddings?.getEmbedding) {
         try {
-          intentSeed = sharedEmbeddings2.getEmbedding(String(keywords[0]));
+          intentSeed = sharedEmbeddings.getEmbedding(String(keywords[0]));
         } catch {
           intentSeed = null;
         }
@@ -29310,7 +32082,7 @@ var Curriculum = class _Curriculum {
     }
     try {
       if (this._isQuestionLike(question) && typeof cluster.injectEmbeddingToRegion === "function") {
-        const qEmb = sharedEmbeddings2 && typeof sharedEmbeddings2.getSentenceEmbedding === "function" ? sharedEmbeddings2.getSentenceEmbedding(question) : null;
+        const qEmb = sharedEmbeddings && typeof sharedEmbeddings.getSentenceEmbedding === "function" ? sharedEmbeddings.getSentenceEmbedding(question) : null;
         if (qEmb && qEmb.length > 0) {
           cluster.injectEmbeddingToRegion("sem", qEmb, 0.6);
           const keyToken = this._extractKeyToken(question);
@@ -29491,9 +32263,9 @@ var Curriculum = class _Curriculum {
           } catch {
           }
         }
-        if (!templatedAnswer && intentConcept && subjectTok && cluster.regions?.sem && typeof cluster.injectEmbeddingToRegion === "function" && typeof cluster.emitWordDirect === "function" && sharedEmbeddings2 && typeof sharedEmbeddings2.getEmbedding === "function") {
-          const intentEmb = sharedEmbeddings2.getEmbedding(intentConcept);
-          const subjectEmb = sharedEmbeddings2.getEmbedding(subjectTok);
+        if (!templatedAnswer && intentConcept && subjectTok && cluster.regions?.sem && typeof cluster.injectEmbeddingToRegion === "function" && typeof cluster.emitWordDirect === "function" && sharedEmbeddings && typeof sharedEmbeddings.getEmbedding === "function") {
+          const intentEmb = sharedEmbeddings.getEmbedding(intentConcept);
+          const subjectEmb = sharedEmbeddings.getEmbedding(subjectTok);
           if (intentEmb && intentEmb.length > 0 && subjectEmb && subjectEmb.length > 0) {
             try {
               cluster.injectEmbeddingToRegion("sem", intentEmb, 0.5);
@@ -29547,8 +32319,8 @@ var Curriculum = class _Curriculum {
           intentSeed = null;
         }
       }
-      if ((!intentSeed || intentSeed.length === 0) && sharedEmbeddings2 && typeof sharedEmbeddings2.getSentenceEmbedding === "function") {
-        intentSeed = sharedEmbeddings2.getSentenceEmbedding(question);
+      if ((!intentSeed || intentSeed.length === 0) && sharedEmbeddings && typeof sharedEmbeddings.getSentenceEmbedding === "function") {
+        intentSeed = sharedEmbeddings.getSentenceEmbedding(question);
       }
       const emitOpts = {
         directPropagate: true,
@@ -29881,9 +32653,9 @@ var Curriculum = class _Curriculum {
           const entry = cluster.dictionary._words.get(w);
           if (entry) {
             entry.isPersona = true;
-          } else if (sharedEmbeddings2 && typeof sharedEmbeddings2.getEmbedding === "function") {
+          } else if (sharedEmbeddings && typeof sharedEmbeddings.getEmbedding === "function") {
             try {
-              const glove = sharedEmbeddings2.getEmbedding(w);
+              const glove = sharedEmbeddings.getEmbedding(w);
               if (glove && glove.length > 0) {
                 cluster.dictionary._words.set(w, {
                   word: w,
@@ -29939,7 +32711,7 @@ var Curriculum = class _Curriculum {
     const intentCounts = /* @__PURE__ */ new Map();
     for (const sentence of allSentences) {
       const intent = this._lightIntent(sentence);
-      const emb = sharedEmbeddings2.getSentenceEmbedding(sentence);
+      const emb = sharedEmbeddings.getSentenceEmbedding(sentence);
       if (!emb || emb.length === 0) continue;
       if (!intentCentroids.has(intent)) {
         intentCentroids.set(intent, new Float64Array(emb.length));
@@ -29974,16 +32746,16 @@ var Curriculum = class _Curriculum {
     const centroids = [];
     const step = Math.max(1, Math.floor(sentences.length / k));
     for (let i = 0; i < k && i * step < sentences.length; i++) {
-      const emb = sharedEmbeddings2.getSentenceEmbedding(sentences[i * step]);
+      const emb = sharedEmbeddings.getSentenceEmbedding(sentences[i * step]);
       if (emb && emb.length > 0) centroids.push({ vec: Array.from(emb), sentences: [] });
     }
     if (centroids.length === 0) return [];
     for (const s of sentences) {
-      const emb = sharedEmbeddings2.getSentenceEmbedding(s);
+      const emb = sharedEmbeddings.getSentenceEmbedding(s);
       if (!emb || emb.length === 0) continue;
       let best = 0, bestSim = -Infinity;
       for (let i = 0; i < centroids.length; i++) {
-        const sim = sharedEmbeddings2.similarity(emb, centroids[i].vec);
+        const sim = sharedEmbeddings.similarity(emb, centroids[i].vec);
         if (sim > bestSim) {
           bestSim = sim;
           best = i;
@@ -30055,7 +32827,7 @@ var Curriculum = class _Curriculum {
         repsMax,
         Math.ceil(freq / topFreq * repsMax)
       ));
-      const emb = sharedEmbeddings2.getEmbedding(word);
+      const emb = sharedEmbeddings.getEmbedding(word);
       for (let r = 0; r < reps; r++) {
         if (emb && this.cluster.regions?.sem) {
           this.cluster.injectEmbeddingToRegion("sem", emb, 0.6);
@@ -30098,7 +32870,7 @@ var Curriculum = class _Curriculum {
   _walkSentence(words, arousal, valence, ticksPerWord) {
     const text = words.join(" ");
     for (const word of words) {
-      const emb = sharedEmbeddings2.getEmbedding(word);
+      const emb = sharedEmbeddings.getEmbedding(word);
       if (emb && this.cluster.regions?.sem) {
         this.cluster.injectEmbeddingToRegion("sem", emb, 0.5);
       }
@@ -30358,7 +33130,7 @@ var Curriculum = class _Curriculum {
     }
     let cosSum = 0, probes = 0;
     for (const word of cvc) {
-      const target = sharedEmbeddings2.getEmbedding(word);
+      const target = sharedEmbeddings.getEmbedding(word);
       if (!target || target.length === 0) continue;
       for (const ch of word) {
         cluster.injectLetter(ch, 1);
@@ -30476,7 +33248,7 @@ var Curriculum = class _Curriculum {
       if (words.length < 2) continue;
       this._walkSentence(words, arousal, valence, SENTENCE_TICKS_PER_WORD);
       if (typeof cluster.injectWorkingMemory === "function") {
-        const emb = sharedEmbeddings2.getSentenceEmbedding(compound[i]);
+        const emb = sharedEmbeddings.getSentenceEmbedding(compound[i]);
         if (emb && emb.length > 0) cluster.injectWorkingMemory(emb, 0.5);
       }
       if (i % 16 === 0) await _microtask();
@@ -30490,7 +33262,7 @@ var Curriculum = class _Curriculum {
     }
     let cosSum = 0, probes = 0;
     for (let i = 1; i < Math.min(20, compoundSentences.length); i++) {
-      const prevEmb = sharedEmbeddings2.getSentenceEmbedding(compoundSentences[i - 1]);
+      const prevEmb = sharedEmbeddings.getSentenceEmbedding(compoundSentences[i - 1]);
       if (!prevEmb || prevEmb.length === 0) continue;
       const words = compoundSentences[i].split(/\s+/).filter(Boolean);
       if (words.length < 2) continue;
@@ -30564,7 +33336,7 @@ var Curriculum = class _Curriculum {
       if (words.length < 2) continue;
       this._walkSentence(words, arousal, valence, SENTENCE_TICKS_PER_WORD);
       if (typeof cluster.injectWorkingMemory === "function") {
-        const emb = sharedEmbeddings2.getSentenceEmbedding(sentences[i]);
+        const emb = sharedEmbeddings.getSentenceEmbedding(sentences[i]);
         if (emb && emb.length > 0) cluster.injectWorkingMemory(emb, 0.45);
       }
       if (i % 16 === 0) await _microtask();
@@ -30578,8 +33350,8 @@ var Curriculum = class _Curriculum {
     }
     let runStart = -1, runLen = 0, bestStart = -1;
     for (let i = 1; i < sentences.length; i++) {
-      const a = sharedEmbeddings2.getSentenceEmbedding(sentences[i - 1]);
-      const b = sharedEmbeddings2.getSentenceEmbedding(sentences[i]);
+      const a = sharedEmbeddings.getSentenceEmbedding(sentences[i - 1]);
+      const b = sharedEmbeddings.getSentenceEmbedding(sentences[i]);
       if (!a || !b || a.length === 0 || b.length === 0) {
         runLen = 0;
         runStart = -1;
@@ -30608,7 +33380,7 @@ var Curriculum = class _Curriculum {
     if (bestStart === -1) return { pass: true, reason: "no 5-sentence topic run found; defaulting pass (corpus dependent)", metrics: { found: false } };
     const readouts = [];
     for (let i = bestStart; i < bestStart + 5; i++) {
-      const emb = sharedEmbeddings2.getSentenceEmbedding(sentences[i]);
+      const emb = sharedEmbeddings.getSentenceEmbedding(sentences[i]);
       if (!emb) continue;
       if (typeof cluster.injectWorkingMemory === "function") {
         cluster.injectWorkingMemory(emb, 0.5);
@@ -31675,23 +34447,21 @@ var Curriculum = class _Curriculum {
       let allPassedThisGrade = false;
       if (grade === "kindergarten" && !cluster._kVocabPrefetched && cluster && typeof cluster.prefetchDefinitions === "function") {
         try {
-          this._currentMacroPhase = "\u{1F4DA} K-VOCAB-PREFETCH (pre-cell setup)";
+          this._currentMacroPhase = "\u{1F4DA} K-VOCAB-PREFETCH (background warm)";
           const { K_VOCABULARY: K_VOCABULARY2 } = await Promise.resolve().then(() => (init_k_vocabulary(), k_vocabulary_exports));
           if (Array.isArray(K_VOCABULARY2) && K_VOCABULARY2.length > 0) {
             this._macroPhaseProgress = {
               current: 0,
               total: K_VOCABULARY2.length,
-              label: "K-VOCAB-PREFETCH"
+              label: "K-VOCAB-PREFETCH (background)"
             };
-            this._hb(`[Curriculum] \u{1F4DA} K-VOCAB-PREFETCH START \u2014 warming cache for ${K_VOCABULARY2.length} K-grade words (network-bound, ~1 min).`);
-            const stats = await cluster.prefetchDefinitions(K_VOCABULARY2, { timeoutMs: 8e3 });
+            this._hb(`[Curriculum] \u{1F4DA} K-VOCAB-PREFETCH START \u2014 background warm for ${K_VOCABULARY2.length} K-grade words (does NOT block curriculum; seed begins immediately).`);
+            cluster.prefetchDefinitions(K_VOCABULARY2, { timeoutMs: 8e3 }).then((stats) => {
+              this._hb(`[Curriculum] \u{1F4DA} K-VOCAB-PREFETCH (background) DONE \u2014 ${stats?.prefetched || 0} new definitions cached, ${stats?.alreadyCached || 0} already cached.`);
+            }).catch((err) => {
+              this._hb(`[Curriculum] \u{1F4DA} K-VOCAB-PREFETCH (background) error (non-fatal \u2014 words fetch on demand): ${err?.message || err}`);
+            });
             cluster._kVocabPrefetched = true;
-            this._macroPhaseProgress = {
-              current: K_VOCABULARY2.length,
-              total: K_VOCABULARY2.length,
-              label: "K-VOCAB-PREFETCH (done)"
-            };
-            this._hb(`[Curriculum] \u{1F4DA} K-VOCAB-PREFETCH DONE \u2014 ${stats?.prefetched || 0} new definitions cached, ${stats?.alreadyCached || 0} already cached.`);
             try {
               if (typeof this._teachWordDefinitions === "function" && !cluster._kVocabUpfrontTaught) {
                 this._currentMacroPhase = "\u{1F4DA} K-VOCAB-UPFRONT-MULTIDEF SEED (pre-cell setup)";
@@ -32181,7 +34951,7 @@ var Curriculum = class _Curriculum {
         continue;
       }
       const motorPattern = encodeLetter2(targetLetter);
-      const qEmb = sharedEmbeddings2 && typeof sharedEmbeddings2.getSentenceEmbedding === "function" ? sharedEmbeddings2.getSentenceEmbedding(anchor) : null;
+      const qEmb = sharedEmbeddings && typeof sharedEmbeddings.getSentenceEmbedding === "function" ? sharedEmbeddings.getSentenceEmbedding(anchor) : null;
       if (!qEmb || qEmb.length === 0 || !motorPattern || motorPattern.length === 0) {
         skipped++;
         continue;
@@ -32751,7 +35521,7 @@ var Curriculum = class _Curriculum {
     const READ_COS_MIN = 0.1;
     const THINK_VAR_MIN = 5e-4;
     for (const word of sample) {
-      const wordEmb = sharedEmbeddings2.getEmbedding(word);
+      const wordEmb = sharedEmbeddings.getEmbedding(word);
       if (!wordEmb || wordEmb.length === 0) {
         perWord.push({ word, skip: "no embedding" });
         continue;
@@ -33102,14 +35872,14 @@ var Curriculum = class _Curriculum {
     const READ_COS_MIN = 0.08;
     const THINK_VAR_MIN = 5e-4;
     for (const fact of sample) {
-      const ansEmb = sharedEmbeddings2.getEmbedding(fact.answerWord);
+      const ansEmb = sharedEmbeddings.getEmbedding(fact.answerWord);
       if (!ansEmb || ansEmb.length === 0) {
         perFact.push({ fact: fact.sentence, skip: "no embedding" });
         continue;
       }
       const partialWords = fact.partial.split(/\s+/).filter(Boolean);
       for (const word of partialWords) {
-        const wordEmb = sharedEmbeddings2.getEmbedding(word);
+        const wordEmb = sharedEmbeddings.getEmbedding(word);
         if (wordEmb && wordEmb.length > 0 && cluster.regions?.sem) {
           cluster.injectEmbeddingToRegion("sem", wordEmb, 0.5);
         }
@@ -34074,7 +36844,7 @@ var Curriculum = class _Curriculum {
           skipped++;
           continue;
         }
-        const qEmb = sharedEmbeddings2 && typeof sharedEmbeddings2.getSentenceEmbedding === "function" ? sharedEmbeddings2.getSentenceEmbedding(entry.question) : null;
+        const qEmb = sharedEmbeddings && typeof sharedEmbeddings.getSentenceEmbedding === "function" ? sharedEmbeddings.getSentenceEmbedding(entry.question) : null;
         if (!qEmb || qEmb.length === 0) {
           skipped++;
           continue;
@@ -34121,7 +36891,7 @@ var Curriculum = class _Curriculum {
         if (directPromptAlt && keyToken) {
           try {
             const directPromptText = `${keyToken}:`;
-            const directEmb = sharedEmbeddings2 && typeof sharedEmbeddings2.getSentenceEmbedding === "function" ? sharedEmbeddings2.getSentenceEmbedding(directPromptText) : null;
+            const directEmb = sharedEmbeddings && typeof sharedEmbeddings.getSentenceEmbedding === "function" ? sharedEmbeddings.getSentenceEmbedding(directPromptText) : null;
             if (directEmb && directEmb.length > 0) {
               this._clearSpikes();
               this._writeTiledPattern(semRegion, directEmb, false);
@@ -34834,8 +37604,8 @@ var Curriculum = class _Curriculum {
       if (contentTokens.length >= 8) break;
     }
     const injectSem = opts.injectSem !== false;
-    if (injectSem && typeof cluster.injectEmbeddingToRegion === "function" && sharedEmbeddings2 && typeof sharedEmbeddings2.getEmbedding === "function") {
-      const subjectEmb = sharedEmbeddings2.getEmbedding(word);
+    if (injectSem && typeof cluster.injectEmbeddingToRegion === "function" && sharedEmbeddings && typeof sharedEmbeddings.getEmbedding === "function") {
+      const subjectEmb = sharedEmbeddings.getEmbedding(word);
       if (subjectEmb && subjectEmb.length > 0) {
         try {
           cluster.injectEmbeddingToRegion("sem", subjectEmb, 0.6);
@@ -34844,7 +37614,7 @@ var Curriculum = class _Curriculum {
       }
       for (let i = 0; i < contentTokens.length; i++) {
         try {
-          const emb = sharedEmbeddings2.getEmbedding(contentTokens[i]);
+          const emb = sharedEmbeddings.getEmbedding(contentTokens[i]);
           if (emb && emb.length > 0) {
             const strength = Math.max(0.1, 0.4 - i * 0.04);
             cluster.injectEmbeddingToRegion("sem", emb, strength);
@@ -35047,7 +37817,7 @@ var Curriculum = class _Curriculum {
         }
         const [inputWord, outputWord] = pair;
         const inEmb = this._dictionaryPatternFor(inputWord);
-        const outEmb = sharedEmbeddings2 && typeof sharedEmbeddings2.getEmbedding === "function" ? sharedEmbeddings2.getEmbedding(outputWord) : null;
+        const outEmb = sharedEmbeddings && typeof sharedEmbeddings.getEmbedding === "function" ? sharedEmbeddings.getEmbedding(outputWord) : null;
         if (!inEmb || !outEmb || inEmb.length === 0 || outEmb.length === 0) {
           skipped++;
           continue;
@@ -35092,7 +37862,7 @@ var Curriculum = class _Curriculum {
           if (Array.isArray(wrongPair) && wrongPair.length >= 2) {
             const wrongOut = wrongPair[1];
             if (wrongOut && wrongOut !== outputWord) {
-              const wrongEmb = sharedEmbeddings2 && typeof sharedEmbeddings2.getEmbedding === "function" ? sharedEmbeddings2.getEmbedding(wrongOut) : null;
+              const wrongEmb = sharedEmbeddings && typeof sharedEmbeddings.getEmbedding === "function" ? sharedEmbeddings.getEmbedding(wrongOut) : null;
               if (wrongEmb && wrongEmb.length > 0) {
                 const wrongEmbMotor = motorWTA ? this._topKEmbedding(wrongEmb, motorTopK) : wrongEmb;
                 try {
@@ -36394,7 +39164,7 @@ var Curriculum = class _Curriculum {
       const words = q.match(/[a-z]+/g) || [];
       if (cluster.regions?.sem) {
         for (const word of words) {
-          const emb = sharedEmbeddings2.getEmbedding(word);
+          const emb = sharedEmbeddings.getEmbedding(word);
           if (emb && emb.length > 0) cluster.injectEmbeddingToRegion("sem", emb, 0.35);
         }
       }
@@ -36541,7 +39311,7 @@ var Curriculum = class _Curriculum {
     const lr = cluster.learningRate;
     const REPS = 10;
     function buildEmbPattern(regionSize, word) {
-      const emb = sharedEmbeddings2.getEmbedding(word);
+      const emb = sharedEmbeddings.getEmbedding(word);
       if (!emb || emb.length === 0) return new Float64Array(regionSize);
       const pat = new Float64Array(regionSize);
       const gSize = Math.max(1, Math.floor(regionSize / emb.length));
@@ -36608,7 +39378,7 @@ var Curriculum = class _Curriculum {
       return pat;
     }
     function buildEmbPattern(regionSize, word) {
-      const emb = sharedEmbeddings2.getEmbedding(word);
+      const emb = sharedEmbeddings.getEmbedding(word);
       if (!emb || emb.length === 0) return new Float64Array(regionSize);
       const pat = new Float64Array(regionSize);
       const gSize = Math.max(1, Math.floor(regionSize / emb.length));
@@ -36664,7 +39434,7 @@ var Curriculum = class _Curriculum {
     const lr = cluster.learningRate;
     const REPS = 6;
     function buildEmbPattern(regionSize, word) {
-      const emb = sharedEmbeddings2.getEmbedding(word);
+      const emb = sharedEmbeddings.getEmbedding(word);
       if (!emb || emb.length === 0) return new Float64Array(regionSize);
       const pat = new Float64Array(regionSize);
       const gSize = Math.max(1, Math.floor(regionSize / emb.length));
@@ -36758,7 +39528,7 @@ var Curriculum = class _Curriculum {
     const lr = cluster.learningRate;
     const REPS = 8;
     function buildEmbPattern(regionSize, word) {
-      const emb = sharedEmbeddings2.getEmbedding(word);
+      const emb = sharedEmbeddings.getEmbedding(word);
       if (!emb || emb.length === 0) return new Float64Array(regionSize);
       const pat = new Float64Array(regionSize);
       const gSize = Math.max(1, Math.floor(regionSize / emb.length));
@@ -36812,7 +39582,7 @@ var Curriculum = class _Curriculum {
     const lr = cluster.learningRate;
     const REPS = 8;
     function buildEmbPattern(regionSize, word) {
-      const emb = sharedEmbeddings2.getEmbedding(word);
+      const emb = sharedEmbeddings.getEmbedding(word);
       if (!emb || emb.length === 0) return new Float64Array(regionSize);
       const pat = new Float64Array(regionSize);
       const gSize = Math.max(1, Math.floor(regionSize / emb.length));
@@ -37091,7 +39861,7 @@ var Curriculum = class _Curriculum {
     const freeSize = freeRegion.end - freeRegion.start;
     const lr = cluster.learningRate;
     function buildEmb(regionSize, word) {
-      const emb = sharedEmbeddings2.getEmbedding(word);
+      const emb = sharedEmbeddings.getEmbedding(word);
       if (!emb || emb.length === 0) return new Float64Array(regionSize);
       const pat = new Float64Array(regionSize);
       const gSize = Math.max(1, Math.floor(regionSize / emb.length));
@@ -37111,7 +39881,7 @@ var Curriculum = class _Curriculum {
         const meanEmb = new Float64Array(300);
         let count = 0;
         for (const w of allWords) {
-          const emb = sharedEmbeddings2.getEmbedding(w);
+          const emb = sharedEmbeddings.getEmbedding(w);
           if (emb && emb.length > 0) {
             for (let i = 0; i < Math.min(300, emb.length); i++) meanEmb[i] += emb[i];
             count++;
@@ -37160,7 +39930,7 @@ var Curriculum = class _Curriculum {
     const fineTypeSize = fineTypeRegion.end - fineTypeRegion.start;
     const lr = cluster.learningRate;
     function buildEmb(regionSize, word) {
-      const emb = sharedEmbeddings2.getEmbedding(word);
+      const emb = sharedEmbeddings.getEmbedding(word);
       if (!emb || emb.length === 0) return new Float64Array(regionSize);
       const pat = new Float64Array(regionSize);
       const gSize = Math.max(1, Math.floor(regionSize / emb.length));
@@ -37209,7 +39979,7 @@ var Curriculum = class _Curriculum {
     const phonSize = phonRegion.end - phonRegion.start;
     const lr = cluster.learningRate;
     function buildEmb(regionSize, word) {
-      const emb = sharedEmbeddings2.getEmbedding(word);
+      const emb = sharedEmbeddings.getEmbedding(word);
       if (!emb || emb.length === 0) return new Float64Array(regionSize);
       const pat = new Float64Array(regionSize);
       const gSize = Math.max(1, Math.floor(regionSize / emb.length));
@@ -37409,7 +40179,7 @@ var Curriculum = class _Curriculum {
       } catch {
       }
     }
-    const wordEmb = sharedEmbeddings2 && typeof sharedEmbeddings2.getEmbedding === "function" ? sharedEmbeddings2.getEmbedding(cleanWord) : null;
+    const wordEmb = sharedEmbeddings && typeof sharedEmbeddings.getEmbedding === "function" ? sharedEmbeddings.getEmbedding(cleanWord) : null;
     const firstLetterOneHot = encodeLetter2(letters[0]);
     const motorFirstLetter = buildPattern(motorSize, firstLetterOneHot, wScratch.motorFirstLetterBuf);
     for (let rep = 0; rep < reps; rep++) {
@@ -37521,7 +40291,7 @@ var Curriculum = class _Curriculum {
           `this is a ${cleanWord}`
         ];
         for (const sentence of templates) {
-          const sentEmb = sharedEmbeddings2 && typeof sharedEmbeddings2.getSentenceEmbedding === "function" ? sharedEmbeddings2.getSentenceEmbedding(sentence) : null;
+          const sentEmb = sharedEmbeddings && typeof sharedEmbeddings.getSentenceEmbedding === "function" ? sharedEmbeddings.getSentenceEmbedding(sentence) : null;
           if (!sentEmb || sentEmb.length === 0) continue;
           for (let j = 0; j < cluster.size; j++) cluster.lastSpikes[j] = 0;
           this._writeTiledPattern(semRegion, sentEmb, true);
@@ -37604,7 +40374,7 @@ var Curriculum = class _Curriculum {
     for (let rep = 0; rep < reps; rep++) {
       if (typeof globalThis._brainShutdownRequested !== "undefined" && globalThis._brainShutdownRequested) return { pass: false, reason: "shutdown" };
       for (const word of vocab) {
-        const wordEmb = sharedEmbeddings2.getEmbedding(word);
+        const wordEmb = sharedEmbeddings.getEmbedding(word);
         const firstLetter = word.replace(/[^a-z]/g, "")[0];
         if (!firstLetter) continue;
         const letterOneHot = encodeLetter2(firstLetter);
@@ -37667,7 +40437,7 @@ var Curriculum = class _Curriculum {
       if (failedWords.length === 0) return { ...comprehResult, pass: false };
       for (let rep = 0; rep < reps * 3; rep++) {
         for (const word of failedWords) {
-          const wordEmb = sharedEmbeddings2.getEmbedding(word);
+          const wordEmb = sharedEmbeddings.getEmbedding(word);
           const firstLetter = word.replace(/[^a-z]/g, "")[0];
           if (!firstLetter) continue;
           const letterOneHot = encodeLetter2(firstLetter);
@@ -37771,12 +40541,12 @@ var Curriculum = class _Curriculum {
         for (let i = 0; i < SEM_DIM; i++) norm += semReadout[i] * semReadout[i];
         norm = Math.sqrt(norm) || 1;
         for (let i = 0; i < SEM_DIM; i++) semReadout[i] /= norm;
-        const wordEmb2 = sharedEmbeddings2.getEmbedding(word);
+        const wordEmb2 = sharedEmbeddings.getEmbedding(word);
         if (wordEmb2 && cosine(semReadout, wordEmb2) > 0.1) readPass++;
       } else {
         readPass++;
       }
-      const wordEmb = sharedEmbeddings2.getEmbedding(word);
+      const wordEmb = sharedEmbeddings.getEmbedding(word);
       const s2m = allProjs["sem_to_motor"];
       if (s2m && semRegion && motorRegion && wordEmb && wordEmb.length > 0) {
         const semSize = semRegion.end - semRegion.start;
@@ -37853,7 +40623,7 @@ var Curriculum = class _Curriculum {
     ensureLetters(Array.from(letterSet));
     for (let rep = 0; rep < reps; rep++) {
       for (const digraph of digraphs) {
-        const digEmb = sharedEmbeddings2.getEmbedding(digraph);
+        const digEmb = sharedEmbeddings.getEmbedding(digraph);
         if (digEmb && digEmb.length > 0 && cluster.regions?.sem) {
           cluster.injectEmbeddingToRegion("sem", digEmb, 0.4);
         }
@@ -37896,7 +40666,7 @@ var Curriculum = class _Curriculum {
     if (eligible.length === 0) return { taught: 0 };
     for (let rep = 0; rep < reps; rep++) {
       for (const word of eligible) {
-        const wordEmb = sharedEmbeddings2.getEmbedding(word);
+        const wordEmb = sharedEmbeddings.getEmbedding(word);
         if (wordEmb && wordEmb.length > 0 && cluster.regions?.sem) {
           cluster.injectEmbeddingToRegion("sem", wordEmb, 0.6);
         }
@@ -38320,7 +41090,7 @@ var Curriculum = class _Curriculum {
         const words = sentence.split(/\s+/).filter(Boolean);
         if (words.length < 2) continue;
         for (const word of words) {
-          const wordEmb = sharedEmbeddings2.getEmbedding(word);
+          const wordEmb = sharedEmbeddings.getEmbedding(word);
           const firstLetter = word.replace(/[^a-z]/g, "")[0];
           if (!firstLetter) continue;
           const letterOneHot = encodeLetter2(firstLetter);
@@ -38463,12 +41233,12 @@ var Curriculum = class _Curriculum {
         for (let i = 0; i < SEM_DIM; i++) norm += semReadout[i] * semReadout[i];
         norm = Math.sqrt(norm) || 1;
         for (let i = 0; i < SEM_DIM; i++) semReadout[i] /= norm;
-        const wordEmb2 = sharedEmbeddings2.getEmbedding(firstWord);
+        const wordEmb2 = sharedEmbeddings.getEmbedding(firstWord);
         if (wordEmb2 && cosine(semReadout, wordEmb2) > 0.1) readPass++;
       } else {
         readPass++;
       }
-      const wordEmb = sharedEmbeddings2.getEmbedding(firstWord);
+      const wordEmb = sharedEmbeddings.getEmbedding(firstWord);
       const s2m = allProjs["sem_to_motor"];
       if (s2m && semRegion && motorRegion && wordEmb && wordEmb.length > 0) {
         const semSize = semRegion.end - semRegion.start;
@@ -38868,8 +41638,8 @@ var Curriculum = class _Curriculum {
     ensureLetters(Array.from(letterSet));
     for (let rep = 0; rep < reps; rep++) {
       for (const [stem, inflected] of PAIRS) {
-        const stemEmb = sharedEmbeddings2.getEmbedding(stem);
-        const inflEmb = sharedEmbeddings2.getEmbedding(inflected);
+        const stemEmb = sharedEmbeddings.getEmbedding(stem);
+        const inflEmb = sharedEmbeddings.getEmbedding(inflected);
         if (stemEmb && stemEmb.length > 0 && cluster.regions?.sem) {
           cluster.injectEmbeddingToRegion("sem", stemEmb, 0.6);
         }
@@ -39254,7 +42024,7 @@ var Curriculum = class _Curriculum {
         if (cluster.regions?.phon) {
           cluster.injectEmbeddingToRegion("phon", fracFeat, 0.6);
         }
-        const nameEmb = sharedEmbeddings2.getEmbedding(name);
+        const nameEmb = sharedEmbeddings.getEmbedding(name);
         if (nameEmb && cluster.regions?.sem) {
           cluster.injectEmbeddingToRegion("sem", nameEmb, 0.6);
         }
@@ -39311,7 +42081,7 @@ var Curriculum = class _Curriculum {
         if (name) {
           const words = name.split(/\s+/).filter(Boolean);
           for (const w of words) {
-            const wEmb = sharedEmbeddings2.getEmbedding(w);
+            const wEmb = sharedEmbeddings.getEmbedding(w);
             if (wEmb && cluster.regions?.sem) {
               cluster.injectEmbeddingToRegion("sem", wEmb, 0.4);
             }
@@ -39372,7 +42142,7 @@ var Curriculum = class _Curriculum {
         if (cluster.regions?.phon) {
           cluster.injectEmbeddingToRegion("phon", pctFeat, 0.5);
         }
-        const pctEmb = sharedEmbeddings2.getEmbedding("percent");
+        const pctEmb = sharedEmbeddings.getEmbedding("percent");
         if (pctEmb && cluster.regions?.sem) {
           cluster.injectEmbeddingToRegion("sem", pctEmb, 0.4);
         }
@@ -39416,7 +42186,7 @@ var Curriculum = class _Curriculum {
         if (cluster.regions?.free) {
           cluster.injectEmbeddingToRegion("free", positional, 0.6);
         }
-        const ratioEmb = sharedEmbeddings2.getEmbedding("ratio");
+        const ratioEmb = sharedEmbeddings.getEmbedding("ratio");
         if (ratioEmb && cluster.regions?.sem) {
           cluster.injectEmbeddingToRegion("sem", ratioEmb, 0.4);
         }
@@ -39503,7 +42273,7 @@ var Curriculum = class _Curriculum {
         const v = VARS[i];
         const slot = new Float64Array(16);
         slot[i % 16] = 1;
-        const vEmb = sharedEmbeddings2.getEmbedding(v);
+        const vEmb = sharedEmbeddings.getEmbedding(v);
         if (vEmb && cluster.regions?.sem) {
           cluster.injectEmbeddingToRegion("sem", vEmb, 0.7);
         }
@@ -39588,7 +42358,7 @@ var Curriculum = class _Curriculum {
         if (cluster.regions?.free) {
           cluster.injectEmbeddingToRegion("free", feat, 0.6);
         }
-        const slopeEmb = sharedEmbeddings2.getEmbedding("slope");
+        const slopeEmb = sharedEmbeddings.getEmbedding("slope");
         if (slopeEmb && cluster.regions?.sem) {
           cluster.injectEmbeddingToRegion("sem", slopeEmb, 0.5);
         }
@@ -39627,7 +42397,7 @@ var Curriculum = class _Curriculum {
         for (let i = 0; i < 16; i++) norm += feat[i] * feat[i];
         norm = Math.sqrt(norm) || 1;
         for (let i = 0; i < 16; i++) feat[i] /= norm;
-        const nameEmb = sharedEmbeddings2.getEmbedding(name);
+        const nameEmb = sharedEmbeddings.getEmbedding(name);
         if (nameEmb && cluster.regions?.sem) {
           cluster.injectEmbeddingToRegion("sem", nameEmb, 0.7);
         }
@@ -39673,7 +42443,7 @@ var Curriculum = class _Curriculum {
         if (cluster.regions?.free) {
           cluster.injectEmbeddingToRegion("free", feat, 0.6);
         }
-        const qEmb = sharedEmbeddings2.getEmbedding("quadratic");
+        const qEmb = sharedEmbeddings.getEmbedding("quadratic");
         if (qEmb && cluster.regions?.sem) {
           cluster.injectEmbeddingToRegion("sem", qEmb, 0.5);
         }
@@ -39720,7 +42490,7 @@ var Curriculum = class _Curriculum {
           }
           const words = step.split(/\s+/).filter(Boolean);
           this._walkSentence(words, arousal, valence, 2);
-          prevEmb = sharedEmbeddings2.getSentenceEmbedding ? sharedEmbeddings2.getSentenceEmbedding(step) : null;
+          prevEmb = sharedEmbeddings.getSentenceEmbedding ? sharedEmbeddings.getSentenceEmbedding(step) : null;
         }
       }
       await _microtask();
@@ -40012,7 +42782,7 @@ var Curriculum = class _Curriculum {
         for (let i = 0; i < 16; i++) norm += expanded[i] * expanded[i];
         norm = Math.sqrt(norm) || 1;
         for (let i = 0; i < 16; i++) expanded[i] /= norm;
-        const nameEmb = sharedEmbeddings2.getSentenceEmbedding ? sharedEmbeddings2.getSentenceEmbedding(name) : sharedEmbeddings2.getEmbedding(name.split(/\s+/)[0]);
+        const nameEmb = sharedEmbeddings.getSentenceEmbedding ? sharedEmbeddings.getSentenceEmbedding(name) : sharedEmbeddings.getEmbedding(name.split(/\s+/)[0]);
         const firstLetter = name.replace(/[^a-z]/g, "")[0];
         const letterOneHot = firstLetter ? encodeLetter2(firstLetter) : null;
         for (let j = 0; j < cluster.size; j++) cluster.lastSpikes[j] = 0;
@@ -40121,7 +42891,7 @@ var Curriculum = class _Curriculum {
       const firstLetter = name.replace(/[^a-z]/g, "")[0];
       if (!firstLetter) continue;
       const letterOneHot = encodeLetter2(firstLetter);
-      const nameEmb = sharedEmbeddings2.getSentenceEmbedding ? sharedEmbeddings2.getSentenceEmbedding(name) : sharedEmbeddings2.getEmbedding(name.split(/\s+/)[0]);
+      const nameEmb = sharedEmbeddings.getSentenceEmbedding ? sharedEmbeddings.getSentenceEmbedding(name) : sharedEmbeddings.getEmbedding(name.split(/\s+/)[0]);
       if (letterToSem && nameEmb && nameEmb.length > 0) {
         const letterPat = buildPattern(letterSize, letterOneHot);
         const semOutput = await this._probePropagate("letter_to_sem", letterPat);
@@ -40294,7 +43064,7 @@ var Curriculum = class _Curriculum {
     const ticksPerElement = opts.ticksPerElement ?? 3;
     for (let rep = 0; rep < reps; rep++) {
       for (const { name, z } of ELEMENTS) {
-        const nameEmb = sharedEmbeddings2.getEmbedding(name);
+        const nameEmb = sharedEmbeddings.getEmbedding(name);
         if (nameEmb && cluster.regions?.sem) {
           cluster.injectEmbeddingToRegion("sem", nameEmb, 0.7);
         }
@@ -41132,7 +43902,7 @@ var Curriculum = class _Curriculum {
     for (let rep = 0; rep < reps; rep++) {
       for (const { name, period, group } of ELEMENTS) {
         const feat = buildFeat(period, group);
-        const nameEmb = sharedEmbeddings2.getEmbedding(name);
+        const nameEmb = sharedEmbeddings.getEmbedding(name);
         if (nameEmb && cluster.regions?.sem) {
           cluster.injectEmbeddingToRegion("sem", nameEmb, 0.7);
         }
@@ -41198,7 +43968,7 @@ var Curriculum = class _Curriculum {
       for (const { name, feat } of BONDS) {
         const expandedFeat = buildFeat(feat);
         const words = name.split(/\s+/).filter(Boolean);
-        const headEmb = sharedEmbeddings2.getSentenceEmbedding ? sharedEmbeddings2.getSentenceEmbedding(name) : sharedEmbeddings2.getEmbedding(words[0]);
+        const headEmb = sharedEmbeddings.getSentenceEmbedding ? sharedEmbeddings.getSentenceEmbedding(name) : sharedEmbeddings.getEmbedding(words[0]);
         if (headEmb && cluster.regions?.sem) {
           cluster.injectEmbeddingToRegion("sem", headEmb, 0.7);
         }
@@ -41290,7 +44060,7 @@ var Curriculum = class _Curriculum {
       for (const cycle of cycles) {
         let prevLetterOneHot = null;
         for (const word of cycle) {
-          const wEmb = sharedEmbeddings2.getEmbedding(word.split(/\s+/)[0]);
+          const wEmb = sharedEmbeddings.getEmbedding(word.split(/\s+/)[0]);
           const firstLetter = word.replace(/[^a-z]/g, "")[0];
           if (!firstLetter) continue;
           const letterOneHot = encodeLetter2(firstLetter);
@@ -41642,7 +44412,7 @@ var Curriculum = class _Curriculum {
         const clauseA = words.slice(0, conjIdx);
         this._walkSentence(clauseA, arousal, valence, ticksPerWord);
         const clauseAText = clauseA.join(" ");
-        const prevEmb = sharedEmbeddings2.getSentenceEmbedding ? sharedEmbeddings2.getSentenceEmbedding(clauseAText) : null;
+        const prevEmb = sharedEmbeddings.getSentenceEmbedding ? sharedEmbeddings.getSentenceEmbedding(clauseAText) : null;
         if (prevEmb && prevEmb.length > 0 && typeof cluster.injectWorkingMemory === "function") {
           cluster.injectWorkingMemory(prevEmb, 0.7);
         }
@@ -41689,7 +44459,7 @@ var Curriculum = class _Curriculum {
       for (const { noun, antecedentSentence, pronoun, pronounSentence } of PAIRS) {
         const wordsA = antecedentSentence.split(/\s+/).filter(Boolean);
         this._walkSentence(wordsA, arousal, valence, ticksPerWord);
-        const nounEmb = sharedEmbeddings2.getEmbedding(noun);
+        const nounEmb = sharedEmbeddings.getEmbedding(noun);
         if (nounEmb && nounEmb.length > 0 && typeof cluster.injectWorkingMemory === "function") {
           cluster.injectWorkingMemory(nounEmb, 0.8);
         }
@@ -41949,7 +44719,7 @@ var Curriculum = class _Curriculum {
         this._walkSentence(ctxWords, arousal, valence, ticksPerWord);
         const qWords = question.split(/\s+/).filter(Boolean);
         this._walkSentence(qWords, arousal, valence, ticksPerWord);
-        const ansEmb = sharedEmbeddings2.getEmbedding(answer);
+        const ansEmb = sharedEmbeddings.getEmbedding(answer);
         if (ansEmb && ansEmb.length > 0 && cluster.regions?.sem) {
           cluster.injectEmbeddingToRegion("sem", ansEmb, 0.8);
         }
@@ -43661,7 +46431,7 @@ var Curriculum = class _Curriculum {
         const mainClause = words.slice(0, markerIdx);
         this._walkSentence(mainClause, arousal, valence, ticksPerWord);
         const mainText = mainClause.join(" ");
-        const mainEmb = sharedEmbeddings2.getSentenceEmbedding ? sharedEmbeddings2.getSentenceEmbedding(mainText) : null;
+        const mainEmb = sharedEmbeddings.getSentenceEmbedding ? sharedEmbeddings.getSentenceEmbedding(mainText) : null;
         if (mainEmb && mainEmb.length > 0 && typeof cluster.injectWorkingMemory === "function") {
           cluster.injectWorkingMemory(mainEmb, 0.75);
         }
@@ -43948,7 +46718,7 @@ var Curriculum = class _Curriculum {
           if (words.length < 2) continue;
           this._walkSentence(words, arousal, valence, ticksPerWord);
         }
-        const themeEmb = sharedEmbeddings2.getEmbedding(theme);
+        const themeEmb = sharedEmbeddings.getEmbedding(theme);
         if (themeEmb && themeEmb.length > 0 && cluster.regions?.sem) {
           cluster.injectEmbeddingToRegion("sem", themeEmb, 0.85);
         }
@@ -43986,7 +46756,7 @@ var Curriculum = class _Curriculum {
         }
         const qWords = question.split(/\s+/).filter(Boolean);
         this._walkSentence(qWords, arousal, valence, ticksPerWord);
-        const ansEmb = sharedEmbeddings2.getEmbedding(answer);
+        const ansEmb = sharedEmbeddings.getEmbedding(answer);
         if (ansEmb && ansEmb.length > 0 && cluster.regions?.sem) {
           cluster.injectEmbeddingToRegion("sem", ansEmb, 0.85);
         }
@@ -44133,7 +46903,7 @@ var Curriculum = class _Curriculum {
       for (const { thesis, body } of essays) {
         const tWords = thesis.split(/\s+/).filter(Boolean);
         this._walkSentence(tWords, arousal, valence, ticksPerWord);
-        const thesisEmb = sharedEmbeddings2.getSentenceEmbedding ? sharedEmbeddings2.getSentenceEmbedding(thesis) : null;
+        const thesisEmb = sharedEmbeddings.getSentenceEmbedding ? sharedEmbeddings.getSentenceEmbedding(thesis) : null;
         for (const para of body) {
           if (thesisEmb && thesisEmb.length > 0 && typeof cluster.injectWorkingMemory === "function") {
             cluster.injectWorkingMemory(thesisEmb, 0.7);
@@ -44744,12 +47514,12 @@ var Curriculum = class _Curriculum {
     for (let rep = 0; rep < reps; rep++) {
       for (const { literal, figurative, device } of pairs) {
         this._walkSentence(literal.split(/\s+/).filter(Boolean), arousal, valence, ticksPerWord);
-        const litEmb = sharedEmbeddings2.getSentenceEmbedding ? sharedEmbeddings2.getSentenceEmbedding(literal) : null;
+        const litEmb = sharedEmbeddings.getSentenceEmbedding ? sharedEmbeddings.getSentenceEmbedding(literal) : null;
         if (litEmb && typeof cluster.injectWorkingMemory === "function") {
           cluster.injectWorkingMemory(litEmb, 0.7);
         }
         this._walkSentence(figurative.split(/\s+/).filter(Boolean), arousal, valence, ticksPerWord);
-        const deviceEmb = sharedEmbeddings2.getEmbedding(device);
+        const deviceEmb = sharedEmbeddings.getEmbedding(device);
         if (deviceEmb && cluster.regions?.sem) {
           cluster.injectEmbeddingToRegion("sem", deviceEmb, 0.5);
         }
@@ -44771,7 +47541,7 @@ var Curriculum = class _Curriculum {
     for (let rep = 0; rep < reps; rep++) {
       for (const { example, device } of annotated) {
         this._walkSentence(example.split(/\s+/).filter(Boolean), arousal, valence, ticksPerWord);
-        const deviceEmb = sharedEmbeddings2.getEmbedding(device);
+        const deviceEmb = sharedEmbeddings.getEmbedding(device);
         if (deviceEmb && cluster.regions?.sem) {
           cluster.injectEmbeddingToRegion("sem", deviceEmb, 0.8);
         }
@@ -44792,7 +47562,7 @@ var Curriculum = class _Curriculum {
     for (let rep = 0; rep < reps; rep++) {
       for (const { claim, evidence, conclusion } of args) {
         this._walkSentence(claim.split(/\s+/).filter(Boolean), arousal, valence, ticksPerWord);
-        const claimEmb = sharedEmbeddings2.getSentenceEmbedding ? sharedEmbeddings2.getSentenceEmbedding(claim) : null;
+        const claimEmb = sharedEmbeddings.getSentenceEmbedding ? sharedEmbeddings.getSentenceEmbedding(claim) : null;
         if (claimEmb && typeof cluster.injectWorkingMemory === "function") {
           cluster.injectWorkingMemory(claimEmb, 0.7);
         }
@@ -45371,13 +48141,13 @@ var Curriculum = class _Curriculum {
     for (let rep = 0; rep < reps; rep++) {
       for (const { thesis, evidenceSections, counterargument, conclusion } of essays) {
         this._walkSentence(thesis.split(/\s+/).filter(Boolean), arousal, valence, ticksPerWord);
-        const thesisEmb = sharedEmbeddings2.getSentenceEmbedding ? sharedEmbeddings2.getSentenceEmbedding(thesis) : null;
+        const thesisEmb = sharedEmbeddings.getSentenceEmbedding ? sharedEmbeddings.getSentenceEmbedding(thesis) : null;
         for (const ev of evidenceSections) {
           if (thesisEmb && typeof cluster.injectWorkingMemory === "function") {
             cluster.injectWorkingMemory(thesisEmb, 0.7);
           }
           this._walkSentence(ev.split(/\s+/).filter(Boolean), arousal, valence, ticksPerWord);
-          const evEmb = sharedEmbeddings2.getSentenceEmbedding ? sharedEmbeddings2.getSentenceEmbedding(ev) : null;
+          const evEmb = sharedEmbeddings.getSentenceEmbedding ? sharedEmbeddings.getSentenceEmbedding(ev) : null;
           if (evEmb && cluster.regions?.sem) {
             cluster.injectEmbeddingToRegion("sem", evEmb, 0.5);
           }
@@ -45410,7 +48180,7 @@ var Curriculum = class _Curriculum {
     for (let rep = 0; rep < reps; rep++) {
       for (const { text, style } of labeled) {
         this._walkSentence(text.split(/\s+/).filter(Boolean), arousal, valence, ticksPerWord);
-        const styleEmb = sharedEmbeddings2.getEmbedding(style);
+        const styleEmb = sharedEmbeddings.getEmbedding(style);
         if (styleEmb && cluster.regions?.sem) {
           cluster.injectEmbeddingToRegion("sem", styleEmb, 0.75);
         }
@@ -45993,12 +48763,12 @@ var Curriculum = class _Curriculum {
     for (let rep = 0; rep < reps; rep++) {
       for (const { thesis, sources } of essays) {
         this._walkSentence(thesis.split(/\s+/).filter(Boolean), arousal, valence, ticksPerWord);
-        const thesisEmb = sharedEmbeddings2.getSentenceEmbedding ? sharedEmbeddings2.getSentenceEmbedding(thesis) : null;
+        const thesisEmb = sharedEmbeddings.getSentenceEmbedding ? sharedEmbeddings.getSentenceEmbedding(thesis) : null;
         for (const { name, claim } of sources) {
           if (thesisEmb && typeof cluster.injectWorkingMemory === "function") {
             cluster.injectWorkingMemory(thesisEmb, 0.6);
           }
-          const sourceEmb = sharedEmbeddings2.getEmbedding(name);
+          const sourceEmb = sharedEmbeddings.getEmbedding(name);
           if (sourceEmb && cluster.regions?.sem) {
             cluster.injectEmbeddingToRegion("sem", sourceEmb, 0.5);
           }
@@ -46026,7 +48796,7 @@ var Curriculum = class _Curriculum {
     };
     for (let rep = 0; rep < reps; rep++) {
       for (const [groupName, letters] of Object.entries(GROUPS)) {
-        const groupEmb = sharedEmbeddings2.getEmbedding(groupName);
+        const groupEmb = sharedEmbeddings.getEmbedding(groupName);
         for (const letter of letters) {
           cluster.injectLetter(letter, 1);
           if (groupEmb && cluster.regions?.sem) {
@@ -46073,7 +48843,7 @@ var Curriculum = class _Curriculum {
     ];
     for (let rep = 0; rep < reps; rep++) {
       for (const [root, derived] of PAIRS) {
-        const rootEmb = sharedEmbeddings2.getEmbedding(root);
+        const rootEmb = sharedEmbeddings.getEmbedding(root);
         if (rootEmb && cluster.regions?.sem) {
           cluster.injectEmbeddingToRegion("sem", rootEmb, 0.5);
         }
@@ -46082,7 +48852,7 @@ var Curriculum = class _Curriculum {
           for (let t = 0; t < ticksPerPair; t++) cluster.step(1e-3);
         }
         cluster.learn(0);
-        const derivedEmb = sharedEmbeddings2.getEmbedding(derived);
+        const derivedEmb = sharedEmbeddings.getEmbedding(derived);
         if (derivedEmb && cluster.regions?.sem) {
           cluster.injectEmbeddingToRegion("sem", derivedEmb, 0.5);
         }
@@ -46116,7 +48886,7 @@ var Curriculum = class _Curriculum {
     for (let rep = 0; rep < reps; rep++) {
       for (const { text, structure } of SENTENCES) {
         this._walkSentence(text.split(/\s+/).filter(Boolean), arousal, valence, ticksPerWord);
-        const structureEmb = sharedEmbeddings2.getEmbedding(structure);
+        const structureEmb = sharedEmbeddings.getEmbedding(structure);
         if (structureEmb && cluster.regions?.sem) {
           cluster.injectEmbeddingToRegion("sem", structureEmb, 0.65);
         }
@@ -46643,7 +49413,7 @@ var Curriculum = class _Curriculum {
     for (let rep = 0; rep < reps; rep++) {
       for (const { text, framework } of annotated) {
         this._walkSentence(text.split(/\s+/).filter(Boolean), arousal, valence, ticksPerWord);
-        const fEmb = sharedEmbeddings2.getEmbedding(framework);
+        const fEmb = sharedEmbeddings.getEmbedding(framework);
         if (fEmb && cluster.regions?.sem) {
           cluster.injectEmbeddingToRegion("sem", fEmb, 0.75);
         }
@@ -46664,7 +49434,7 @@ var Curriculum = class _Curriculum {
     for (let rep = 0; rep < reps; rep++) {
       for (const { thesis, counter, response } of triples) {
         this._walkSentence(thesis.split(/\s+/).filter(Boolean), arousal, valence, ticksPerWord);
-        const thesisEmb = sharedEmbeddings2.getSentenceEmbedding ? sharedEmbeddings2.getSentenceEmbedding(thesis) : null;
+        const thesisEmb = sharedEmbeddings.getSentenceEmbedding ? sharedEmbeddings.getSentenceEmbedding(thesis) : null;
         if (thesisEmb && typeof cluster.injectWorkingMemory === "function") {
           cluster.injectWorkingMemory(thesisEmb, 0.8);
         }
@@ -46686,9 +49456,9 @@ var Curriculum = class _Curriculum {
     const ticksPerTriad = opts.ticksPerTriad ?? 4;
     for (let rep = 0; rep < reps; rep++) {
       for (const { sign, signifier, signified } of triads) {
-        const signEmb = sharedEmbeddings2.getEmbedding(sign);
-        const signifierEmb = sharedEmbeddings2.getEmbedding(signifier);
-        const signifiedEmb = sharedEmbeddings2.getEmbedding(signified);
+        const signEmb = sharedEmbeddings.getEmbedding(sign);
+        const signifierEmb = sharedEmbeddings.getEmbedding(signifier);
+        const signifiedEmb = sharedEmbeddings.getEmbedding(signified);
         if (signEmb && cluster.regions?.sem) {
           cluster.injectEmbeddingToRegion("sem", signEmb, 0.5);
         }
@@ -48063,7 +50833,7 @@ var Curriculum = class _Curriculum {
         return { reached: {}, passed: {}, failed: { all: "gpu-not-ready" } };
       }
       try {
-        const stats = sharedEmbeddings2?.stats || null;
+        const stats = sharedEmbeddings?.stats || null;
         const gloveLoaded = stats && (stats.loaded === true || (stats.pretrained || 0) > 1e3);
         if (gloveLoaded) {
           this._hb(`[Curriculum] Embedding source: GloVe ${stats.dim || 300}d (${stats.pretrained || 0} pretrained vectors)`);
@@ -48218,8 +50988,8 @@ var Curriculum = class _Curriculum {
       const qWords = String(question).toLowerCase().split(/\s+/).filter((w) => w.length > 2);
       const qWord = qWords[qWords.length - 1] || qWords[0] || question;
       const aWord = String(answer).toLowerCase().trim();
-      const qEmb = sharedEmbeddings2.getEmbedding(qWord);
-      const aEmb = sharedEmbeddings2.getEmbedding(aWord);
+      const qEmb = sharedEmbeddings.getEmbedding(qWord);
+      const aEmb = sharedEmbeddings.getEmbedding(aWord);
       if (!qEmb || !aEmb) continue;
       combinationFacts.push({ writes: [
         { region: semRegion, feat: qEmb, binarize: false },
@@ -49568,7 +52338,7 @@ var Curriculum = class _Curriculum {
       for (let i = 0; i < SEM_DIM; i++) norm += accumSem[i] * accumSem[i];
       norm = Math.sqrt(norm) || 1;
       for (let i = 0; i < SEM_DIM; i++) accumSem[i] /= norm;
-      const answerEmb = sharedEmbeddings2.getEmbedding(answer);
+      const answerEmb = sharedEmbeddings.getEmbedding(answer);
       if (!answerEmb) continue;
       const score = cosine(accumSem, answerEmb);
       if (score > 0.1) {
@@ -49632,7 +52402,7 @@ var Curriculum = class _Curriculum {
     const PATH_MIN = 0.95;
     for (const { input, expectTopics } of sample) {
       const words = input.split(/\s+/).filter(Boolean);
-      const inputEmb = sharedEmbeddings2.getSentenceEmbedding ? sharedEmbeddings2.getSentenceEmbedding(input) : sharedEmbeddings2.getEmbedding(words[0] || "hello");
+      const inputEmb = sharedEmbeddings.getSentenceEmbedding ? sharedEmbeddings.getSentenceEmbedding(input) : sharedEmbeddings.getEmbedding(words[0] || "hello");
       if (!inputEmb) continue;
       const semPat = new Float64Array(semSize);
       const sGSize = Math.max(1, Math.floor(semSize / inputEmb.length));
@@ -51717,23 +54487,23 @@ var UnityBrain = class extends EventEmitter {
       auditoryCortex: this.auditoryCortex
     });
     if (!readResult) return null;
-    const contentEmb = sharedEmbeddings2.getSentenceEmbedding(text);
-    const contentCurrents = sharedEmbeddings2.mapToCortex(contentEmb, cortex.size, 150);
+    const contentEmb = sharedEmbeddings.getSentenceEmbedding(text);
+    const contentCurrents = sharedEmbeddings.mapToCortex(contentEmb, cortex.size, 150);
     for (let i = 0; i < cortex.size; i++) contentCurrents[i] *= 0.5;
     cortex.injectCurrent(contentCurrents);
     cortex.injectWorkingMemory(contentEmb, 0.6);
     if (readResult.intent && this.clusters.basalGanglia) {
       const intentAnchor = readResult.intent === "question" ? "what" : readResult.intent === "greeting" ? "hi" : readResult.intent === "statement" ? "i" : "you";
-      const intentEmb = sharedEmbeddings2.getEmbedding(intentAnchor);
+      const intentEmb = sharedEmbeddings.getEmbedding(intentAnchor);
       const bg = this.clusters.basalGanglia;
-      const intentCurrents = sharedEmbeddings2.mapToCortex(intentEmb, bg.size, 0);
+      const intentCurrents = sharedEmbeddings.mapToCortex(intentEmb, bg.size, 0);
       for (let i = 0; i < bg.size; i++) intentCurrents[i] *= 0.3;
       bg.injectCurrent(intentCurrents);
     }
     if ((readResult.addressesUser || readResult.isSelfReference) && this.clusters.hippocampus) {
-      const selfEmb = sharedEmbeddings2.getSentenceEmbedding("i me my self unity");
+      const selfEmb = sharedEmbeddings.getSentenceEmbedding("i me my self unity");
       const hippo = this.clusters.hippocampus;
-      const selfCurrents = sharedEmbeddings2.mapToCortex(selfEmb, hippo.size, 0);
+      const selfCurrents = sharedEmbeddings.mapToCortex(selfEmb, hippo.size, 0);
       for (let i = 0; i < hippo.size; i++) selfCurrents[i] *= 0.4;
       hippo.injectCurrent(selfCurrents);
     }
@@ -52076,9 +54846,9 @@ var UnityBrain = class extends EventEmitter {
     const arousal = this.brainParams.arousalBaseline || 0.9;
     this.clusters.amygdala.tonicDrive = 15 + arousal * 8;
     this.sensory.receiveText(text);
-    if (sharedEmbeddings2 && typeof sharedEmbeddings2.getSentenceEmbedding === "function") {
+    if (sharedEmbeddings && typeof sharedEmbeddings.getSentenceEmbedding === "function") {
       try {
-        const inputEmb = sharedEmbeddings2.getSentenceEmbedding(text);
+        const inputEmb = sharedEmbeddings.getSentenceEmbedding(text);
         if (inputEmb && inputEmb.length > 0) {
           this.clusters.cortex._lastUserInputEmbedding = inputEmb;
           this.clusters.cortex._lastUserInputText = text;
@@ -52119,7 +54889,7 @@ var UnityBrain = class extends EventEmitter {
     }
     const state = this.getState();
     const userReadResult = this.injectParseTree(text);
-    const cortexOutput = this.clusters.cortex.getSemanticReadout(sharedEmbeddings2);
+    const cortexOutput = this.clusters.cortex.getSemanticReadout(sharedEmbeddings);
     this.innerVoice.learn(text, cortexOutput, state.amygdala?.arousal ?? 0.5, state.amygdala?.valence ?? 0);
     const dictionary = this.innerVoice.dictionary;
     const brainArousal = state.amygdala?.arousal ?? 0.5;
@@ -52128,7 +54898,7 @@ var UnityBrain = class extends EventEmitter {
     const psi = state.psi ?? 0;
     let response = "";
     for (let s = 0; s < 5; s++) this.step(1e-3);
-    const cortexPattern = this.clusters.cortex.getSemanticReadout(sharedEmbeddings2);
+    const cortexPattern = this.clusters.cortex.getSemanticReadout(sharedEmbeddings);
     if (dictionary && dictionary.size > 0) {
       response = await this.innerVoice.languageCortex.generateAsync(
         dictionary,
@@ -52202,7 +54972,7 @@ var UnityBrain = class extends EventEmitter {
    */
   async _handleBuild(text) {
     for (let s = 0; s < 5; s++) this.step(1e-3);
-    const cortexPattern = this.clusters.cortex.getSemanticReadout(sharedEmbeddings2);
+    const cortexPattern = this.clusters.cortex.getSemanticReadout(sharedEmbeddings);
     const spec = this.componentSynth.generate(text, { cortexPattern, cortexCluster: this.clusters.cortex });
     if (!spec) {
       console.log(`[Brain] build_ui selected but no template matched "${text.slice(0, 40)}" \u2014 falling back to verbal response`);
@@ -52249,7 +55019,7 @@ var UnityBrain = class extends EventEmitter {
   }
   async _handleImage(text, includesSelf) {
     for (let s = 0; s < 5; s++) this.step(1e-3);
-    const cortexPattern = this.clusters.cortex.getSemanticReadout(sharedEmbeddings2);
+    const cortexPattern = this.clusters.cortex.getSemanticReadout(sharedEmbeddings);
     const state = this.getState();
     let prompt = "";
     try {
@@ -57754,7 +60524,7 @@ Probes: ${ps.totalProbes} total, ${ps.totalPasses} pass, ${ps.totalFails} fail`;
       let cortexPattern = null;
       if (cortex && typeof cortex.getSemanticReadout === "function") {
         try {
-          cortexPattern = cortex.getSemanticReadout(sharedEmbeddings2);
+          cortexPattern = cortex.getSemanticReadout(sharedEmbeddings);
         } catch {
           cortexPattern = null;
         }
@@ -58232,7 +61002,7 @@ Probes: ${ps.totalProbes} total, ${ps.totalPasses} pass, ${ps.totalFails} fail`;
           let cortexPattern = null;
           if (cortex && typeof cortex.getSemanticReadout === "function") {
             try {
-              cortexPattern = cortex.getSemanticReadout(sharedEmbeddings2);
+              cortexPattern = cortex.getSemanticReadout(sharedEmbeddings);
             } catch {
               cortexPattern = null;
             }
