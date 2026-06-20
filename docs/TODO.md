@@ -46,6 +46,36 @@ If you're reading a public doc / HTML claim ("Unity has completed high school bi
 
 ## OPEN TASKS
 
+### DEPLOY-FIX (DF) — make the static deploy actually train off donor GPUs (Gee 2026-06-20) — IN FLIGHT
+
+**Gee verbatim per LAW #0:**
+
+> *"staic page ><user connects to static> static brain builds training from users gpus all at same time for massive gpu compute"*
+
+> *"why is it talking about local host?"* + *"WebSocket to ws://localhost:7525 failed... Run start.bat... netstat... :7525"* (the deployed page was using localhost-dev connection code)
+
+> *"we are deploying on git, and git is on the server so wtf we cant gothrough one to the other to do the brain server through git to the server even tho its on git all automatically so that the static page on git can train off a user connecting thir gpu to the website"*
+
+> *"do we need a tunnel or something so that the static site actually uses the resources of the server that git is on and not be limited to static git capabilities, right?"*
+
+> *"make the todo iteems from everything ive said to fix the project"* + *"make sure todo and task list are appropriate for all these stuff to be scompleted and working flawlessly"*
+
+**The vision:** deployed static page → many users connect → ALL their browser GPUs train the ONE shared brain SIMULTANEOUSLY = massive aggregate compute. The git server runs the Node brain-server (coordinator) reached by an **nginx reverse-proxy** (NOT a tunnel — same box, loopback `proxy_pass`); donors' GPUs are the muscle. "It has to work" deployed.
+
+**Tasks (harness DF.1-DF.7; deps wired in the live task list):**
+
+- **DF.1** — sweep + fix ALL hardcoded `localhost:7525` / raw `:7525` browser→backend calls → same-origin nginx-proxied paths. DONE: compute.html (`/ws`), remote-brain.js (`/admin/ws` probe), dashboard.html SERVER_URL. REMAINING: index.html WS_URL (`wss://<host>:7525`→`/admin/ws`); dashboard.html admin HTTP fetches (`:7525/auto-advance|/shutdown|/milestone|/grade-advance`) → same-origin.
+- **DF.2** — connection-error banners are localhost-dev-only (start.bat/netstat/server.log) — make deployment-aware (real URL + correct guidance).
+- **DF.3** — automated backend deploy on the git server. BUILT (commit 5068013): `deploy/bootstrap-backend.sh` (ONE-TIME root install — systemd + nginx vhost + sudo) + `.forgejo/workflows/deploy.yml` backend deploy+restart step. REMAINING: nginx vhost must also proxy admin HTTP REST endpoints (pairs w/ DF.1); operator runs bootstrap once.
+- **DF.4** — GloVe embeddings origin on deployed (embeddings.js `localhost:7525/corpora` ref).
+- **DF.5** — admin-only console-log view on the deployed dashboard (so the operator watches boot+walk like the local Log Tail).
+- **DF.6** — END-TO-END deployed smoke: donor connects (`/ws`) → operator opens dashboard authed (`/admin/ws`, bound primary operator) → walk starts on donated GPU. (blockedBy DF.1/DF.2/DF.3/DF.7) — this is #32/#58 realized live.
+- **DF.7** — ⭐ DISTRIBUTED PARALLEL multi-GPU compute (the "massive compute all at same time"). CURRENT GAP: build uses ONE primary donor at a time (PA.4.3 pool = primary computes, standbys idle). REQUIRED: per-tick/batch work split across ALL connected donor GPUs + aggregate (data-parallel Hebbian-delta-merge OR model-parallel sharding). Major build; supersedes single-primary as the compute model. **Without DF.7 the vision ("all at same time") is not met.**
+
+**STATUS:** [~] IN FLIGHT — DF.1 partial (3 paths fixed), DF.3 code built (operator runs bootstrap once). DF.2/DF.4/DF.5 open. DF.7 = the headline architecture build (massive parallel) not yet started. DF.6 e2e = the flawless-deployed gate.
+
+---
+
 ### PRE-ALPHA RELEASE — branch cascade + distributed-compute deployment (Gee 2026-06-20) — IN FLIGHT
 
 **Gee verbatim per LAW #0:**
