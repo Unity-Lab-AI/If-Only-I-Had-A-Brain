@@ -145,7 +145,16 @@ let _reconnectAttempt = 0;
 function connectToServer() {
   // brain-server runs on port 7525 (moved off 8080 to avoid colliding
   // with llama.cpp / LocalAI / every other local service).
-  ws = new WebSocket('ws://localhost:7525');
+  // PA.4.7 — derive the backend WS URL. Local dev → ws://localhost:7525.
+  // Deployed (served from the pages host) → the PUBLIC compute lane
+  // wss://<host>/ws (nginx reverse-proxies to brain-server; see
+  // deploy/nginx-unity-brain.conf). Admin/chat UI uses /admin/ws (Forgejo-authed).
+  const _loc = window.location;
+  const _isLocal = _loc.hostname === 'localhost' || _loc.hostname === '127.0.0.1' || _loc.hostname === '::1';
+  const _wsUrl = _isLocal
+    ? 'ws://localhost:7525'
+    : `${_loc.protocol === 'https:' ? 'wss' : 'ws'}://${_loc.host}/ws`;
+  ws = new WebSocket(_wsUrl);
   // Binary frames arrive as ArrayBuffer (not Blob) — skips the async
   // Blob→ArrayBuffer copy for 100MB+ sparse matrix uploads.
   ws.binaryType = 'arraybuffer';

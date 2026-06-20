@@ -1,0 +1,50 @@
+# Unity brain-server — systemd unit (PA.4.7). Hand-off for Red.
+#
+# The persistent, always-on stateful backend. It holds the brain weights +
+# memory and orchestrates the donated-GPU compute pool. Donors (remote
+# browsers running compute.html) + Gee connect to it via nginx (see
+# nginx-unity-brain.conf). Binds localhost only — ALL external access flows
+# through the nginx vhost, which is where Forgejo auth + the public/admin
+# split live.
+#
+# Install:
+#   sudo cp deploy/unity-brain.service /etc/systemd/system/
+#   (edit User / WorkingDirectory / paths below to match the box)
+#   sudo systemctl daemon-reload && sudo systemctl enable --now unity-brain
+#   sudo systemctl status unity-brain   # verify
+#   journalctl -u unity-brain -f        # tail logs
+
+[Unit]
+Description=Unity brain-server (distributed-compute brain backend)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# Run as a non-root service user that owns the repo checkout.
+User=unity
+WorkingDirectory=/opt/unity-brain
+ExecStart=/usr/bin/node server/brain-server.js
+
+# PA.4.2 + PA.4.8 environment:
+#   UAL_PROXY_AUTH=1  → admin gated on the proxy-vouched X-UAL-User header
+#                       (loopback no longer implies admin behind the proxy).
+#   BRAIN_BIND        → localhost only; nginx is the sole external entry.
+Environment=UAL_PROXY_AUTH=1
+Environment=BRAIN_BIND=127.0.0.1
+Environment=NODE_ENV=production
+# Headless box: don't auto-launch a local Chrome GPU client — donors bring
+# the GPUs. (compute.html donors connect over the network.)
+Environment=DREAM_NO_AUTO_GPU=1
+
+Restart=always
+RestartSec=5
+# Biological-scale brain wants a large heap; tune to the box.
+# Environment=NODE_OPTIONS=--max-old-space-size=65536
+
+# Hardening
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
