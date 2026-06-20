@@ -2,7 +2,7 @@
 #
 # The persistent, always-on stateful backend. It holds the brain weights +
 # memory and orchestrates the donated-GPU compute pool. Donors (remote
-# browsers running compute.html) + Gee connect to it via nginx (see
+# browsers running compute.html) + the operator connect to it via nginx (see
 # nginx-unity-brain.conf). Binds localhost only — ALL external access flows
 # through the nginx vhost, which is where Forgejo auth + the public/admin
 # split live.

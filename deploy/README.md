@@ -17,9 +17,9 @@ The brain is **NOT** a pure-static site. It's:
    over WSS by nginx (`nginx-unity-brain.conf`).
 
 Donors (remote browsers running `compute.html`) bring the GPUs and connect over
-the **public** WS lane (compute-only). **Gee** connects over the **admin** lane,
+the **public** WS lane (compute-only). The **operator** connects over the **admin** lane,
 which nginx gates with **Forgejo `auth_request`** and stamps with a trusted
-`X-UAL-User` header — that's how Gee is "master" without racing to connect
+`X-UAL-User` header — that's how the operator is identified without racing to connect
 (PA.4.2). The brain validates/quarantines bad donor results (PA.4.5) and only
 honors compute-protocol messages from registered pool donors (PA.4.6).
 
@@ -53,11 +53,11 @@ This is a small frontend change (derive the WS URL from `window.location` when
 not on localhost) — tracked as a PA.4.7 code follow-on; can land before the
 frontend deploy.
 
-## Open decisions (Gee)
+## Open decisions (operator)
 
 - **Subdomain** — defaults to `if-only-i-had-a-brain.git.unityailab.com`
   (lowercased repo name). Rename the repo for a cleaner subdomain.
-- **Chat policy** — admin-only (Gee) vs public viewers may chat with Unity.
+- **Chat policy** — admin-only (operator) vs public viewers may chat with Unity.
   `'text'` is currently ungated server-side pending this call (PA.4.6 note).
 - **Scale** — Path A (replication + failover); brain size is community-compute
   milestone-gated (PA.4.8). Milestone VRAM thresholds are placeholders to tune
@@ -68,6 +68,6 @@ frontend deploy.
 - [ ] `unity-brain.service` running, `journalctl` shows clean boot
 - [ ] nginx vhost live, `/_forgejo_auth` returns 2xx for a logged-in lab member
 - [ ] public `wss://.../ws` reaches the backend; a donor `compute.html` registers
-- [ ] admin `wss://.../admin/ws` carries `X-UAL-User` → Gee gets `mode=admin`
+- [ ] admin `wss://.../admin/ws` carries `X-UAL-User` → the operator gets `mode=admin`
 - [ ] client-supplied `X-UAL-User` is stripped (spoof attempt → viewer, not admin)
 - [ ] frontend deployed via Actions; donor page connects to the public lane
