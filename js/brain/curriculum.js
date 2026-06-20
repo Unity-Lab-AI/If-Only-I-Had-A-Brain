@@ -22423,7 +22423,7 @@ export class Curriculum {
    * of the flag after a short grace period as "no GPU path, proceed
    * anyway" so the browser curriculum still runs.
    */
-  async _waitForGpuReady(timeoutMs = 900000) {
+  async _waitForGpuReady(timeoutMs = 900000, requireRealGpu = false) {
     const cluster = this.cluster;
     if (!cluster) return false;
     // Browser path: if _gpuReady is never going to be set (no compute
@@ -22460,7 +22460,11 @@ export class Curriculum {
       const elapsed = Date.now() - t0;
       // CPU fallback: no GPU flag at all after grace period means the
       // brain isn't routed through compute.html — proceed without a gate.
-      if (elapsed >= GRACE_MS && cluster._gpuReady === undefined) return true;
+      // PA.4.7 — in DEPLOYED/remote-donor mode (requireRealGpu) we must NOT
+      // take the CPU-fallback grace escape: biological scale needs a real donor
+      // GPU, so keep waiting for cluster._gpuReady===true. Only LOCAL mode
+      // (auto-Chrome, or a genuine no-GPU dev box) takes the grace escape.
+      if (elapsed >= GRACE_MS && cluster._gpuReady === undefined && !requireRealGpu) return true;
       if (elapsed >= timeoutMs) {
         console.warn(`[Curriculum] _waitForGpuReady timed out after ${timeoutMs}ms. cluster._gpuReady=${cluster._gpuReady}, cluster._cortexFullyReady=${cluster._cortexFullyReady}. Proceeding anyway — teach methods may fall back to CPU worker pool.`);
         return false;
@@ -22562,8 +22566,18 @@ export class Curriculum {
     // true` the first time the tick loop's "GPU BATCHED RUNNING" branch
     // fires (after all seven cluster init acks have landed). We poll
     // that flag here before proceeding.
-    console.log('[Curriculum] runCompleteCurriculum: waiting for GPU ready before teach pass');
-    const ready = await this._waitForGpuReady(120000); // 2 min timeout
+    // PA.4.7/PA.4.8 — deployment-aware GPU wait. LOCAL: the launcher auto-opens
+    // compute.html in Chrome (ready in seconds) → a 2-min cap catches a broken
+    // local GPU. DEPLOYED (DREAM_NO_AUTO_GPU=1): the backend waits for a REMOTE
+    // donor browser, which may connect minutes/hours after boot — so wait
+    // patiently (24h) AND require a real donor GPU (no CPU-fallback grace), or
+    // the walk would abort / run on CPU before any donor connects and never
+    // train. The walk starts the moment the first donor GPU registers + cortex
+    // is ready (the poll returns immediately on _gpuReady===true).
+    const _deployedWaitForDonor = process.env.DREAM_NO_AUTO_GPU === '1';
+    const _gpuWaitMs = _deployedWaitForDonor ? 24 * 60 * 60 * 1000 : 120000;
+    console.log(`[Curriculum] runCompleteCurriculum: waiting for GPU ready before teach pass (${_deployedWaitForDonor ? 'DEPLOYED — patient wait for a remote donor GPU' : 'LOCAL — 2min cap'})`);
+    const ready = await this._waitForGpuReady(_gpuWaitMs, _deployedWaitForDonor);
     if (!ready) {
       console.warn('[Curriculum] runCompleteCurriculum: GPU never became ready, aborting teach pass');
       // 114.19es.1 — outer try/finally handles watchdog stop on this

@@ -108030,7 +108030,7 @@ var Curriculum = class _Curriculum {
    * of the flag after a short grace period as "no GPU path, proceed
    * anyway" so the browser curriculum still runs.
    */
-  async _waitForGpuReady(timeoutMs = 9e5) {
+  async _waitForGpuReady(timeoutMs = 9e5, requireRealGpu = false) {
     const cluster = this.cluster;
     if (!cluster) return false;
     const GRACE_MS = 5e3;
@@ -108039,7 +108039,7 @@ var Curriculum = class _Curriculum {
     while (true) {
       if (cluster._gpuReady === true && cluster._cortexFullyReady === true) return true;
       const elapsed = Date.now() - t0;
-      if (elapsed >= GRACE_MS && cluster._gpuReady === void 0) return true;
+      if (elapsed >= GRACE_MS && cluster._gpuReady === void 0 && !requireRealGpu) return true;
       if (elapsed >= timeoutMs) {
         console.warn(`[Curriculum] _waitForGpuReady timed out after ${timeoutMs}ms. cluster._gpuReady=${cluster._gpuReady}, cluster._cortexFullyReady=${cluster._cortexFullyReady}. Proceeding anyway \u2014 teach methods may fall back to CPU worker pool.`);
         return false;
@@ -108094,8 +108094,10 @@ var Curriculum = class _Curriculum {
       } catch (err) {
         console.warn("[Curriculum] Held-out eval check failed:", err?.message || err);
       }
-      console.log("[Curriculum] runCompleteCurriculum: waiting for GPU ready before teach pass");
-      const ready = await this._waitForGpuReady(12e4);
+      const _deployedWaitForDonor = process.env.DREAM_NO_AUTO_GPU === "1";
+      const _gpuWaitMs = _deployedWaitForDonor ? 24 * 60 * 60 * 1e3 : 12e4;
+      console.log(`[Curriculum] runCompleteCurriculum: waiting for GPU ready before teach pass (${_deployedWaitForDonor ? "DEPLOYED \u2014 patient wait for a remote donor GPU" : "LOCAL \u2014 2min cap"})`);
+      const ready = await this._waitForGpuReady(_gpuWaitMs, _deployedWaitForDonor);
       if (!ready) {
         console.warn("[Curriculum] runCompleteCurriculum: GPU never became ready, aborting teach pass");
         return { reached: {}, passed: {}, failed: { all: "gpu-not-ready" } };
