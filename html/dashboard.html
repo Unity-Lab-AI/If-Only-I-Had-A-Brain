@@ -697,9 +697,14 @@
   <script>
     // Unity brain-server lives on port 7525 to avoid colliding with
     // llama.cpp / LocalAI / every other local service on :8080.
-    const SERVER_URL = location.hostname === 'localhost'
+    // PA.4.7 — deployment-aware backend URL. LOCAL dev → ws://localhost:7525.
+    // DEPLOYED → the dashboard is the OPERATOR/admin UI, so connect to the
+    // Forgejo-authed admin lane wss://<host>/admin/ws (nginx reverse-proxies it
+    // to the brain-server — NOT a raw :7525 port on the public host).
+    const _dashIsLocal = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+    const SERVER_URL = _dashIsLocal
       ? 'ws://localhost:7525'
-      : `wss://${location.hostname}:7525`;
+      : `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/admin/ws`;
 
     let ws;
     function connect() {

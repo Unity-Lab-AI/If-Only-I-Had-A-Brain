@@ -1,20 +1,24 @@
-# Unity brain — STATIC FRONTEND auto-deploy (PA.4.7).
+# Unity brain — FULL auto-deploy (PA.4.7): static frontend + Node backend.
 #
-# Mirrors the lab-wide pages mechanism (UnityAILab/Website build.yml "Deploy to
-# nginx", + the static deploy at weird.git.unityailab.com): every push to main
-# rsyncs the static frontend (donor page + chat/dashboard UI) over SSH to the
-# pages web root, served live at https://<repo-lowercased>.git.unityailab.com
-# (the box's wildcard cert + wildcard nginx vhost already match).
+# Every push to main does TWO things on the host that serves the domain:
+#   1. rsync the static frontend (donor page + chat/dashboard UI) to the pages
+#      web root (served at https://<repo-lowercased>.git.unityailab.com via the
+#      wildcard nginx vhost), AND
+#   2. rsync the Node brain-server backend (server/ + js/ + corpora/) to the
+#      backend dir, npm ci, and restart the unity-brain systemd service.
 #
-# IMPORTANT — this deploys ONLY the static frontend. The brain itself is a
-# PERSISTENT STATEFUL BACKEND (server/brain-server.js) that does NOT belong on
-# the pages host — it runs as a systemd service + is reverse-proxied over WSS
-# with Forgejo auth. See deploy/unity-brain.service + deploy/nginx-unity-brain.conf
-# + deploy/README.md (Red's hand-off). The frontend connects to that backend
-# over wss:// (see the donor-page WS URL note in deploy/README.md).
+# This is what makes #32 work: the deployed static page trains off donor browser
+# GPUs because the Node brain-server is LIVE on the same server git lives on,
+# kept running + updated automatically by this workflow.
+#
+# ONE-TIME PREREQUISITE: run deploy/bootstrap-backend.sh ONCE as root on the
+# server (installs the systemd unit + nginx WSS reverse-proxy + Forgejo auth +
+# the NOPASSWD sudo that lets this workflow restart the service). After that,
+# every push is fully automatic.
 #
 # Requires the org/repo Actions secrets the lab already uses for pages:
-#   PAGES_DEPLOY_KEY (base64-encoded SSH private key) · PAGES_DEPLOY_HOST · PAGES_DEPLOY_USER
+#   PAGES_DEPLOY_KEY (base64 SSH private key) · PAGES_DEPLOY_HOST · PAGES_DEPLOY_USER
+# Optional repo var: UNITY_BRAIN_BACKEND_DIR (default /opt/unity-brain).
 name: deploy
 
 on:
@@ -29,19 +33,21 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Deploy static frontend to the pages web root (SSH rsync)
+      - name: Set up SSH key
         env:
           KEY: ${{ secrets.PAGES_DEPLOY_KEY }}
-          HOST: ${{ secrets.PAGES_DEPLOY_HOST }}
-          USER: ${{ secrets.PAGES_DEPLOY_USER }}
         run: |
           mkdir -p ~/.ssh && chmod 700 ~/.ssh
           # KEY is base64-encoded in the secret to survive newline mangling through CI.
           printf '%s' "$KEY" | base64 -d > ~/.ssh/deploy && chmod 600 ~/.ssh/deploy
-          # Repo name lowercased → the per-repo pages subdomain.
+
+      - name: Deploy static frontend to the pages web root (SSH rsync)
+        env:
+          HOST: ${{ secrets.PAGES_DEPLOY_HOST }}
+          USER: ${{ secrets.PAGES_DEPLOY_USER }}
+        run: |
           REPO="$(echo "${{ github.event.repository.name }}" | tr 'A-Z' 'a-z')"
-          # Frontend only — EXCLUDE the stateful backend, training data, deps,
-          # workflow internals, and docs. Only HTML/JS/CSS/assets reach the web root.
+          # Frontend only — exclude backend, training data, deps, internals, docs.
           rsync -az --delete \
             --exclude='.git' --exclude='.forgejo' --exclude='.gitea' \
             --exclude='.claude' --exclude='server' --exclude='corpora' \
@@ -49,3 +55,24 @@ jobs:
             --exclude='docs' --exclude='*.md' \
             -e "ssh -i ~/.ssh/deploy -o StrictHostKeyChecking=accept-new" \
             ./ "${USER}@${HOST}:${REPO}/"
+
+      - name: Deploy + restart the Node brain backend (same host)
+        env:
+          HOST: ${{ secrets.PAGES_DEPLOY_HOST }}
+          USER: ${{ secrets.PAGES_DEPLOY_USER }}
+          BACKEND_DIR: ${{ vars.UNITY_BRAIN_BACKEND_DIR }}
+        run: |
+          BACKEND_DIR="${BACKEND_DIR:-/opt/unity-brain}"
+          # Sync backend code (server/ + js/ + corpora JSONs) to the backend dir.
+          # GloVe (gitignored, ~990MB) is NOT shipped here — it's fetched/placed
+          # on the box once (hash-fallback works without it). node_modules rebuilt
+          # by npm ci. Requires the one-time deploy/bootstrap-backend.sh to have
+          # installed the service + the NOPASSWD sudo for `systemctl restart`.
+          rsync -az --delete \
+            --exclude='.git' --exclude='.forgejo' --exclude='.gitea' --exclude='.claude' \
+            --exclude='node_modules' --exclude='server/node_modules' \
+            --exclude='corpora/glove.6B.300d.txt' \
+            -e "ssh -i ~/.ssh/deploy -o StrictHostKeyChecking=accept-new" \
+            ./ "${USER}@${HOST}:${BACKEND_DIR}/"
+          ssh -i ~/.ssh/deploy -o StrictHostKeyChecking=accept-new "${USER}@${HOST}" \
+            "cd '${BACKEND_DIR}/server' && npm ci --omit=dev && sudo systemctl restart unity-brain && echo '[deploy] unity-brain restarted'"
