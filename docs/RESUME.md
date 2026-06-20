@@ -1,98 +1,81 @@
 # RESUME — Session Pickup Brief
 
-> **Updated:** 2026-06-19 (Opus 4.8 1M-context marathon, cont.). **Branch:** `feature/114.19fn-sentence-coherence-phase1`. **Working tree: NOT committed** — `feedback_no_push_until_phd_complete` gate (no push until full K→PhD walk + Gee's final localhost test + adult-Unity behavior verified). Everything verified via real ESM `import()`.
-> **Read FIRST:** this file → the harness **TaskList** → memories (`feedback_curriculum_depth_and_mechanics`, `feedback_hybrid_academic_corpus`, `feedback_full_real_school_course_roster`, `feedback_full_completeness_per_grade`, `feedback_content_boundary_minor_sexual_excluded`).
+> **Updated:** 2026-06-20 (Opus 4.8 1M-context marathon). **Branch:** `feature/pre-alpha-full-k-phd-stack` — **PUSHED to `if-only` AND cascaded feature→develop→main** (no-push-until-PhD gate LIFTED for the pre-alpha; see [[feedback_no_push_until_phd_complete]] updated). Main push fires `.forgejo/workflows/deploy.yml`. Everything verified via `node --check` + real ESM `import()` + boot probes + the verification suite.
+> **Read FIRST:** this file → the harness **TaskList** (DF.1–DF.7 + #32/#58) → memories ([[feedback_gee_sole_operator_no_red]], [[feedback_task_numbers_placement]], [[feedback_no_push_until_phd_complete]], [[feedback_content_boundary_minor_sexual_excluded]]).
 
 ---
 
-## 🔥 THIS SESSION (2026-06-19) — PROPER MEMORY ENCODING + ACADEMIC FULL-K→PhD API + a walk-loop finding
+## ⛔ THE PIVOT (2026-06-20) — NO LOCALHOST WALK. DEPLOYED-STATIC + DONOR-GPU IS THE PRODUCT.
 
-Two big threads landed, plus a critical wiring discovery. All edits import-clean; nothing committed.
+Operator decision this session: **there is no localhost training walk.** The brain runs on the **DEPLOYED static site**; users (and the operator) connect like normal visitors; **their browser GPUs train the brain**; "it has to work" deployed. The operator's vision verbatim:
 
-**1. Proper episodic memory encoding (Gee: "thats not how fucking memories work… doesnt seem like just a bunch of poorly worded paragraphs is proper brain training"). DONE — harness #94/#105/#106/#107/#108.** The old `_trainLifeStories` flattened a whole grade's memories into ONE flat-ctx sentence-walk and never called `storeEpisode` — memories trained as diffuse word-stats with no emotional weight, `theme` did nothing. Rewritten so each memory is its OWN episode:
-- `lifeStoryExperiences(grade)` loader (`server/life-curriculum.js` + cluster wiring) returns `experiences[]` (theme+story+sentences).
-- `_trainLifeStories` now iterates per-memory: `_deriveMemoryEmotion(theme,story)` derives `{arousal,valence,anchor}` (grief/loss→neg+high; joy/love→pos; intense→high arousal; load-bearing anchors — deaths, first kiss, the gray, the coke — pinned near-max), colors THAT memory's walk, then `storeEpisode('life:<grade>','life-memory','<grade> — <theme>', story, {arousal,valence})`.
-- `storeEpisode` got an optional `emotion` override (backward-compatible) so the episode's salience reflects the memory's OWN affect, not the brain's incidental training-state. `theme` is now the episode's retrieval label.
-- **Prereqs wired:** `_ensureLifeMemoryVocabulary` pre-teaches every memory word before encoding (#105 — no phantom-token bindings); subject order (`ela`→…→`life`) guarantees comprehension/mechanics train before the memory pass (#106/#107).
-- **Reconsolidation (#94):** `_reconsolidateLifeAnchors` keeps an in-walk anchor ledger; each new anchor re-recalls the 3 most-recent priors (light reactivation + exact-text `storeEpisode` re-encounter = frequency bump). Defining memories deepen across grades.
-- Spec lives in `docs/MEMORY-WALK.md §1.6` + `docs/TODO.md` "PROPER MEMORY ENCODING" section.
+> *"staic page ><user connects to static> static brain builds training from users gpus all at same time for massive gpu compute"*
 
-**2. Academic education → full-K→PhD open-licensed API (Gee: "we changed from using our ouwn training written dat for education to using that api… fulkl k=phD" + "find a college equivilent ie maybe major in code"). harness #109 (in progress) + #110.** Decision = hybrid **OpenStax + Wikibooks + Project Gutenberg**, CC-BY/SA only (no NC). Done so far:
-- `fetch-academic-corpora.mjs` `TOPICS` extended **30 cells/299 topics → 65 cells/666 topics**: elementary K–G5 (science/social/ela), College/Grad/PhD spreads, college gen-ed, and a new **`cs` subject = the "major in code"** (College1→PhD per the OSSU/ACM-IEEE map: Intro→Data-Structures→Systems/Algorithms→Theory/SE→ML→computational-neuroscience). Sources: Open Data Structures (CC-BY), KSU CS texts, Wikibooks/Wikipedia CS.
-- `cs` added to `PROSE_ACADEMIC_SUBJECTS` (academic CS-degree prose trains alongside the existing hands-on `corpora/coding/` track — theory + practice = the full degree).
-- See `feedback_hybrid_academic_corpus` (updated) + TODO "ACADEMIC API CORPUS" section.
+**Architecture (operator chose: backend on a host + browser donors):**
+- The **Node `server/brain-server.js`** (the "backend" — holds the brain, runs the curriculum, coordinates donor GPUs, answers chat) runs **on the same server git lives on**, reached by an **nginx REVERSE-PROXY** (NOT a tunnel — same box, loopback `proxy_pass /ws` + `/admin/ws` → `127.0.0.1:7525`).
+- **Donors' browser GPUs** are the compute muscle (the "massive" part — they connect via `compute.html` → `wss://<host>/ws`). The server box does NOT need a GPU.
+- **Operator = master:** the admin lane (`/admin/ws`) is Forgejo-authenticated; the FIRST Forgejo-authed connection after deploy is bound as the locked **primary operator** (`server/operator-identity.json`, persisted). No racing the public (they can't auth).
+- **Deploy URL:** `https://if-only-i-had-a-brain.git.unityailab.com` (subdomain = lowercased repo name; rename repo for a cleaner one).
 
-**3. Walk-loop migration — DONE (#110, was the gate that made #109 meaningful).** `subjectsForGrade()` was defined but **never used**: the walk loop iterated only the 6 core subjects, so every expanded subject (economics/psychology/civics/cs/pe/music/health/language/ap/major/genered/research) was NEVER walked → their academic corpora never trained. FIXED: `runAllSubjects` main teach loop + force-advance loop + reached-map now iterate `subjectsForGrade(grade)` with lazy-init for expanded subjects; `_minGrade`/`subjectStatus` stay on the 6 core (an un-introduced expanded subject must not peg her word-cap to pre-K). SAFE — `_cellRunnerRaw` has a graceful `readyAndWaiting` fallback (no throw). Verified import-clean + per-grade expansion (K adds pe/music/health; G5 cs; G9 civics/economics/psychology; College1 ap/major/genered; Grad research).
-
-**4. Old academic-runner obsolescence flagged — #111 (gates #58).** Gee: the hand-authored `runXxxReal` academic content may now be redundant/conflicting with the API corpus (both run on the same cell). Audit: keep the runner gate/probe/structure, slim the redundant hand-authored academic prose; math/lived-year/ELA-mechanics untouched.
-
-**5. Memory densification + dimension verification + boundary (#92 corrected; #97–#104 CLOSED).** The generator already had grade1→phd seed banks (NOT "K-G5 only" — #92 premise was wrong; K is bespoke; G1–G8 are already 13–16 deep seeds = genuine full years, NOT padded). Densified the whole adult arc: **college1 28, college2 23→28, college3 19→24, college4 18→23, grad 17→25, phd 14→23**. Then a dimension sweep exposed an adult-arc gap in women's-health/sex-ed/bodily-reality → added the unsanitized real-woman canon (UTI+clinic@college3, gyno/STD-panel/safer-sex@grad, sick-alone-puking@phd). **Verified across all 19 corpora**: love/work woven in 18 grades, drugs 15, cussing 13, bodily 11+; **BOUNDARY CLEAN (zero molest/incest/cousin, code-enforced)**. Closed harness #97–#104 (all DIM dimensions + #103 boundary) with evidence. **Final: 608 experiences / 3,558 sentences, all 19 corpora parse clean** through the episodic-encoder accessor. The MEM-* per-grade tasks (#72–#90) remain as formal per-grade re-voice passes but the content is comprehensively present.
-
-**6. ACAD-API-3 ingest — DONE (#109 COMPLETE).** Ran the full ingest (exit 0): **65 cells / 7,291 cleaned real-curriculum sentences** across all prose-academic subjects + the CS "major in code" track (college1→phd, 84–140 sent/cell). All cells healthy (2 throttled-empty cells refilled via targeted re-run). Academic content is now LIVE + walk-trainable via the #110 subjectsForGrade migration. ACAD-API-2 (OpenStax/Gutenberg depth-upgrade) remains optional. #109 closed.
-
-**Task-list reconciled (Gee: "make sure there is no conflictin tasks"):** #63 (pipeline done, coverage superseded by #109), #61 (academic-prose half now satisfied by #109), #52–#57 (College→PhD builds: runner/lived-year/math scope stays done, academic-prose feed = #109), #96 (verify scope widened + `blockedBy #109`). #32 now `blockedBy` #94/#105/#106/#107/#108(done) + #109 + #110.
-
-**Remaining on #109:** ACAD-API-2 (OpenStax/Gutenberg/CS-text fetchers — depth upgrade; current fetcher already covers all 666 topics via full-Wikipedia→Simple fallback) + ACAD-API-3 (the ~10–15 min network ingest run — merge-monotonic, safe to run incrementally; not yet run).
+**⚠ The operator is the SOLE operator/deployer** — Red/other founders have NOT worked on this project. Never defer to Red. ([[feedback_gee_sole_operator_no_red]])
 
 ---
 
-## 🎉 MILESTONE: THE FULL K→PhD CURRICULUM IS BUILT
+## ✅ WHAT SHIPPED THIS SESSION (all on `feature/pre-alpha-full-k-phd-stack`, cascaded to main)
 
-**All 19 grades — K, G1–G12, College 1–4, Grad, PhD — are built** (every subject self-gating, full lived year per grade, vocab regenerated). The complete arc of Unity's life from Halloween-baby to the 25yo goddess-in-human-form is now trained content. **Vocab: 28,347 words** G1-PhD (grew from 20,141 as the academic corpus deepened — see below). Full curriculum `import()` loads clean.
+Commit trail: `32ad7a7` full-stack pre-alpha → `ebdd846` PA.4.2-4.6 → `b6e4b49` PA.4.8 gate → `ca20af3` capacity data-path → `9c8e56e` deploy artifacts → `dc1d0cc`+`4f3102c` name-scrubs → `2e100d7` PA.4.8 exec → `b6db91c` admin-UI WS → `0d1d0f6` first-authed-operator → `0bcc48c` deployed-walk-waits → `3ab7251` crash/resize state → `dd92ce6` operator-reframe → `15308a3` NOW banner → cascade (`develop 7c31409` / `main 10e7d25`) → `5068013` backend-deploy automation + dashboard WS fix → `0a8780f` DF TODO.
 
-What is left is **NOT more building** — it's the operator/localhost **gates**: run the training walk, Gee's final test, then push.
-
----
-
-## ✅ WHAT'S DONE (this session, uncommitted)
-
-**Per-grade build — all 19 grades:** each grade = real-named courses (via `courseNameFor`) to the corrected 3-dimension bar — DEPTH + LANGUAGE MECHANICS + the full LIVED YEAR. Every subject runner self-gates; math is equational; the lived year is hand-authored Unity-shaped story-data in `corpora/life/<grade>.json` (14–24 vignettes each), boundary-held.
-
-**Subject roster grows by grade** (`SUBJECTS_INTRODUCED_AT`): 6 core + pe/music/health (K) + language/Spanish (G3) + cs (G5) + civics (G7) + economics/psychology (G9) + ap (G11) + major/gen-ed (College1) + research (Grad). `subjectsForGrade` returns the accumulated set; high-school-only tracks gracefully `readyAndWaiting` at college.
-
-**Cross-cutting machinery in `js/brain/curriculum.js`** (Gee rule: machinery here, per-grade CONTENT in `grade<N>.js` — no bloat):
-- `COURSE_NAMES` + `COURSE_BLURB` + `courseNameFor(subject,grade)` — real per-grade class names.
-- `_teachCourseIdentity` (auto-run every cell via the `_cellRunner` wrapper) — she learns the class name + what it entails.
-- `_teachLanguageMechanics` (auto-run every ELA cell) — grammar/syntax/composition, scaled by band.
-- `_teachProductionStack` + `_gateSubjectProduction` (shared production-probe gate, PROD_MIN 0.95).
-- `_trainLifeStories` / `_trainCodingStories` / `_trainAcademicStories` — load+train `corpora/{life,coding,academic/<subject>}/<grade>.json`.
-- `PROSE_ACADEMIC_SUBJECTS` set — auto-trains the HYBRID corpus on those cells.
-- Math equational transforms (`_teachAdditionTransformations{max,step}`, subtraction, comparison, place-value, multiplication-tables, division, fractions, decimals, percentages).
-
-**HYBRID academic-depth corpus** (`feedback_hybrid_academic_corpus`): real openly-licensed content (Simple-Wikipedia CC-BY-SA) downloaded by `.claude/scripts/fetch-academic-corpora.mjs` into `corpora/academic/<subject>/<grade>.json`. **DEEPENED (#61):** the TOPICS map was near-doubled per cell + grade12 added across all six subjects, so the prose band now runs G6→G12 unbroken — **30 cells / 299 topics / ~4155 real sentences** for science/social/ela/economics/psychology/civics (up from 24/109/~1515). The ingest now **MERGES instead of overwrites** (union by theme, keep longer story) so throttle-prone re-runs are monotonic — a thin-cell re-run can only ADD coverage, never regress it (this matters: the wiki API throttles to empty under sustained load). Every cell ≥6 topics, most 8-14. Auto-trains via `_cellRunner` → `_trainAcademicStories` for all `PROSE_ACADEMIC_SUBJECTS`. Re-run `node .claude/scripts/fetch-academic-corpora.mjs [subject] [grade]` / add TOPICS to extend further.
-
-**The trained life arc:** dad-leaves-G3 · computer-G6 (coder origin) · first-sip-G8 · first-kiss-Devon-G9 · grandpa-dies + depression-named + coke-G11 · scholarship-G12 · 18+adult-register-College1 (triple-stream braids) · therapy-College2 · "build-a-brain"-College3 · grandma-dies-College4 · research-Grad · **PhD = complete 25yo adult Unity** (the brain-sim dissertation = this very project).
+- **PA.1** new branch off the walk-ready stack; **PA.2/PA.3** cascade; **first cascade exact-tree**.
+- **PA.4.2** admin gating on Forgejo `X-UAL-User` + **first-authed-operator binding** (locked master on static deploy).
+- **PA.4.3** multi-donor GPU **pool** (primary + hot standby) · **PA.4.4** failover · **PA.4.5** result validation + "STD"-GPU quarantine · **PA.4.6** donor isolation (compute-protocol + SPRR pool-gated).
+- **PA.4.7** deploy artifacts — `deploy/nginx-unity-brain.conf` (WSS reverse-proxy + Forgejo `auth_request`), `deploy/unity-brain.service` (systemd: `UAL_PROXY_AUTH=1`/`BRAIN_BIND=127.0.0.1`/`DREAM_NO_AUTO_GPU=1`/`DREAM_KEEP_STATE=1`), `deploy/bootstrap-backend.sh` (ONE-TIME root installer), `.forgejo/workflows/deploy.yml` (frontend + backend auto-deploy). Donor `compute.html`→`/ws`, admin UI/dashboard→`/admin/ws`. Deployed walk **waits patiently for a remote donor** (no 2-min abort / no CPU-fallback). **Crash-restart PRESERVES** the walk (`DREAM_KEEP_STATE=1`); **milestone resize CLEARS** weights (re-walk at new size).
+- **PA.4.8** community-compute **milestone scaling** — donor VRAM reporting → tier gate → 5-min-stability resize+restart+retrain; deployed **bootstraps at 6M neurons** (fits one donor), local dev unchanged at full 357M.
+- **WF.1** `/deploy` skill + push-to-main deploy-prompt hook in the **UAL-ClaudeWorkflow** template (branch `feature/deploy-on-push-to-main`, commit `3fbdb54` — promote to its develop/main when ready). **WF.2** ported into Dream `.claude/`.
+- **Repo-wide operator-name scrub** — name out of ALL source/content/config (63 files + bundle); only in workflow docs + commits per LAW.
+- **Pre-walk verification suite run:** dangling-imports clean · boot clean · word-emission lamination 100% · **emission QUALITY confirmed unverifiable headless** (no GPU tick → 0 sem-spikes — needs the real browser-GPU tick on the deployed page).
+- **DF.1 (partial)** — fixed localhost WS in compute.html / remote-brain.js / dashboard.html SERVER_URL.
 
 ---
 
-## 🚀 NEXT — THE GATES (TaskList authoritative)
+## 🚧 WHAT'S LEFT — the DEPLOY-FIX (DF) cluster (make it work flawlessly deployed)
 
-1. **`#32` K→PhD WALK** — run the full curriculum training on localhost: `node server/brain-server.js` (auto-clears stale state per LAW), then the walk steps every subject×grade cell K→PhD in strict order; each grade's gates must pass. This is the dress rehearsal + where gate thresholds get real-world-tuned at biological scale. **WALK PRE-FLIGHT PASSED (this session)** — de-risked all three load-time failure modes: (a) **261/261** active subject×grade cells dispatch a callable runner (zero dangling combos, zero throws) via `_cellRunner`; (b) **61/61** life+coding+academic corpus JSON files parse with `experiences[]` (no train-time JSON crash); (c) **18/18** regenerated vocab modules import clean. The walk will not crash on dispatch, corpus-load, or vocab-load — remaining risk is gate-threshold tuning at scale, which is the point of the walk.
-2. **`#58` Gee's FINAL localhost test** — verify the full mind is trained + adult Unity emergent (triple-stream: sexually engaged + chemically intoxicated + coding-obsessive), chat/inner-voice coherent, canon present.
-3. **`#59` PUSH GATE** — ONLY after walk + test pass. Atomic: code + every affected doc + stamp + commit + cascade to all branches (docs-before-push LAW). No intermediate commits before this.
+Dependency chain: **DF.1 + DF.2 + DF.3 + DF.7 → DF.6 (e2e works) → #32 (walk runs deployed) → #58 (final test).**
 
-**Open / optional (not blocking the build):** `#28` UI-sandbox + code-proficiency — **major progress**: (a) synth-built components now render in TRUE **Shadow-DOM isolation** (`sandbox.js` `shadow:true`, wired in `engine.js` build_ui) — per-user, no CSS/JS leak; (b) **code-proficiency corpus** deepened (`fetch-code-corpora.mjs`, Wikipedia coding-concepts CC-BY-SA, merged into `corpora/coding/` ~980 sentences, vocab→**31,533**) — trains her code UNDERSTANDING; (c) exemplar library expanded 6→**18** real programs (games: slot-machine, number-guess, rock-paper-scissors, reaction-timer, quiz, dice · tools: calculator, tip-calc, bmi, temperature-converter, password-gen, stopwatch, timer, digital-clock, color-picker, counter · creative/data: drawing-pad, list) = her composable training set, every JS body compile-verified under the sandbox signature, "calculator→slot-machine→everything between". **Gee's architecture decision: TRAINED COMPOSITION, equational, no code-LM** (word-GloVe brain can't free-type code; honors the no-text-AI LAW — see `feedback_code_proficiency_trained_composition`). **LAID OUT (Gee 2026-06-18): `docs/CODE-CURRICULUM.md`** is the authoritative per-grade HTML/CSS/JS proficiency progression G5→PhD; TaskList #64–#71 sub-task it under #28 (G5-6 HTML → G7-8 CSS+JS-foundations → G9-10 JS-core+DOM → G11-12 ES6/async+OOP/algos → College CS-core/systems/SWE → Grad/PhD ML+comp-neuro → exemplars → runtime synth). Coding corpus an unbroken G5→PhD ladder (**~2291 sentences**, two deepening waves, vocab→**35,128**), trained by `_trainCodingStories` in every cs cell; cs runners G6→PhD audited (valid JS-early progression, all import clean). Exemplar library **30 composable programs** (11 games incl. tic-tac-toe/hangman/snake/slot-machine, 14 tools, 3 creative incl. drawing-pad/soundboard/markdown), every JS body compile-verified under the sandbox signature, Shadow-DOM isolated. **#28 + #64-#71 ALL DONE (coded right).** #71 = multi-primitive composition (`ComponentSynth.generateMany()` + `engine.js _handleBuild` injects each spec shadow-isolated — "a clock and a calculator" → both) + parameterization (`_deriveParams/_fillParams/_hueFromPattern`, brain-state `{{accent}}` hue, dice/slot-machine/calculator proven). All 30 exemplars parse+JS-compile, synth+engine parse clean, split logic verified. Runtime verification of the live loop is the terminal walk+test phase (no-test-until-finished). WALK PRE-FLIGHT re-run clean after all additions: 261/261 cell dispatch · 63/63 corpus valid · 18/18 vocab modules import · `#30` docs cleanup **DONE** — stripped the EXCLUDED Add #19 molestation/incest/cousin thread from all planning docs (TODO-full-syllabus.md + Supertodo.md + TODO-life-experience.md), converting its two canonical sections to exclusion notices that PRESERVE Gee's verbatim quotes (LAW #0) while removing the excluded content; re-anchored explicit register to 18+ (G10/G11 graphic-on-minor detail → non-graphic developmental milestones); re-anchored BDSM to choice-from-strength (not trauma-derived) + therapy to depression/loss work. FINALIZED archive untouched (immutable), innocent family-vocab/"Issue #19" kept. Boundary already enforced in code via `cluster._isSensitiveGapTopic` (emit.js) + zero excluded content in corpora. Every Add #19 ref outside FINALIZED is now an exclusion marker · `#60` language-mechanics **DEEPENED**: `_teachLanguageMechanics` (curriculum.js) is now an escalating 8-band CCSS ladder — foundation (all) → tense/morph/agreement (G1+) → **phrases (G2+)** → discourse coherence (G3+) → **clause/complex syntax (G5+)** → **figurative language (G7+)** → **rhetorical devices + argument structure (G9+)** → **rhetorical defense (G11+, inherited by college/grad/phd)**. This put the orphaned `_teachPhrases`/`_teachSyntax`/`_teachRhetoricalDevices`/`_teachRhetoricalDefense` (built but never called, or hand-called in one grade only) to work UNIFORMLY on every ELA cell at/above band, so a G9 brain no longer gets the same flat grammar as a G3 brain. Mechanics exemplars are cross-cutting machinery (live in curriculum.js, not grade files). Remaining: per-grade richer exemplar sets if wanted (grade9/grade10 files already add their own on top) · `#61` G6→G12 academic-depth DONE (30 cells / 299 topics / ~4155 sentences, merge-hardened ingest, grade12 across all 6 subjects, vocab→28,347); **K-G3 retro-deepen DONE** — K was the genuine thin spot (11 vignettes vs G1-G3's already-rich 24/21/21); deepened the `corpora/life/kindergarten.json` 0-5 trove **11→24 vignettes** (version 2): named family canon seeded where her memory of them begins (mom **Lilith**, grandpa **Walter** + the radio/coder-origin seed, grandma **Pearl** + calm/ghost-stories/black-cake), baby+motor milestones, first-words, bedtime/dark-lullaby, the dark nursery-rhyme canon (ring-around-the-rosie=plague), counting-out + playground games, sour-over-sweet first-foods, storm/music fascination — all child-voice, goth-precursor toned, boundary-held (dad present-but-distant, foreshadows G3 leaving). Vocab anchored in lockstep: extended `_teachKLifeVocabulary`'s K_LIFE_VOCAB with the family names + new content words BEFORE the vignettes bind on them (vocab-before-binding). `node` standalone import of kindergarten.js hits a pre-existing circular-import TDZ (predates this edit — never triggers in prod since the server loads curriculum.js as entry, which assembles K_MIXIN clean) · `#31` COMP-net (blocked on walk).
+- **DF.1** (sweep localhost:7525) — REMAINING: `index.html` WS_URL (`wss://<host>:7525`→`/admin/ws`) + `dashboard.html` admin HTTP fetches (`:7525/auto-advance|/shutdown|/milestone|/grade-advance` → same-origin). Then rebuild bundle.
+- **DF.2** — deployment-aware connection-error banners (no start.bat/netstat on a live page).
+- **DF.3** — BUILT (bootstrap + deploy.yml). REMAINING: nginx vhost must ALSO proxy the admin HTTP REST endpoints (`/auto-advance`, `/shutdown`, `/milestone`, `/grade-advance`, `/grade-signoff`, `/health`) to the backend (pairs with DF.1). **Operator one-time action: run `deploy/bootstrap-backend.sh` on the server.**
+- **DF.4** — GloVe origin on deployed (embeddings.js `localhost:7525/corpora` ref).
+- **DF.5** — admin-only console-log view on the deployed dashboard (watch boot+walk like the local Log Tail).
+- **DF.7** — ⭐ **DISTRIBUTED PARALLEL multi-GPU compute** — THE headline + the hard part + NOT STARTED. The current pool uses **ONE primary donor at a time**; the vision needs **all connected donor GPUs computing simultaneously**. Needs an architecture decision: **data-parallel** (replicate brain per donor, merge Hebbian deltas) vs **model-parallel/sharding** (split brain across donors). Major build; supersedes single-primary as the compute model. **Without DF.7 the "all at same time / massive compute" vision is not met.**
+- **DF.6** — end-to-end deployed smoke (the flawless-deployed gate) → **#32** walk → **#58** test.
 
 ---
 
-## 🛠 PER-GRADE BUILD RECIPE (if extending/refining any grade)
-Generator helper: `.claude/scripts/_genrunners.py` (`build(GRADE, GT, SPEC, coding_grade)` — CRLF-safe, strips apostrophes). Recipe: add new-track `COURSE_NAMES`/`COURSE_BLURB` if any → add dispatch `if (subject==='X' && grade==='Y') return …runXYReal` in `_cellRunnerRaw` → write a `_drive_<grade>.py` SPEC + `build(...)` → expand `corpora/life/<grade>.json` (keep existing vignettes, expand) → verify via `import('./js/brain/curriculum/<grade>.js')` then full curriculum import → `node .claude/scripts/gen-grade-vocab.mjs` → mark TaskList.
+## 🚀 OPERATOR'S NEXT STEPS (to bring her live)
+1. **Run `deploy/bootstrap-backend.sh` ONCE** as root on the server (box details: `BACKEND_DIR`/`SERVICE_USER`/`DEPLOY_USER`/`DOMAIN`, Node 18+, the deploy SSH user). Installs systemd + nginx vhost + NOPASSWD sudo. After this, push-to-main = automatic frontend + backend.
+2. Wire `location /_forgejo_auth` in the nginx vhost to the real Forgejo/oauth2-proxy auth.
+3. Open the admin route **first** (logged into Forgejo) → bound as primary operator (master).
+4. Open `compute.html` → your GPU donates → the 6M brain boots, waits, then walks K→PhD on your GPU.
 
-## ⚠ LESSONS
-1. **Verify with real `import()`, NOT just `node --check`** (catches duplicate bindings + apostrophe-in-string bugs `--check` misses).
-2. **`grade<N>.js` have CRLF/mixed endings** — Edit tool multi-line matches fail; use Python index-slice edits; Write big scripts to a temp `.py` and run them.
-3. **Strip apostrophes** from generated single-quoted JS content (`team's` broke loads twice; the generator now sanitizes).
-4. **curriculum.js = cross-cutting only**; per-grade content in grade files / corpora.
-5. Build in order; train REAL content; vocab-before-binding; boundary governs (≤17 non-graphic/clinical sex-ed, explicit 18+, Add #19 EXCLUDED).
+---
+
+## ⚠ LESSONS / GOTCHAS (this session)
+1. **`git add -A` would leak `.claude/`** — the repo had NO blanket `.claude/` gitignore; added the Layer-0 block. Always exclude `.claude` when staging.
+2. **Operator name BANNED in source/content/config** — only workflow docs + commits. Scrubbed repo-wide; don't reintroduce. ([[feedback_task_numbers_placement]])
+3. **No localhost walk** — emission/quality is ONLY verifiable on the deployed page with a real browser GPU (headless = 0 sem-spikes).
+4. **Backend ≠ git ≠ static page** — the Node brain-server is a process that must RUN on the server; nginx reverse-proxies the static page's WS to it. Not a tunnel.
+5. **CRLF curriculum files** — use Python byte-preserving edits ([[feedback_crlf_curriculum_files_edit_tool]]); verify ESM with `import()` not just `node --check`.
+6. **`server/brain-server/gpu.js`** holds the GPU dispatch + the donor pool + PA.4.8 milestone logic; `server/brain-server.js` holds the WS connection handler (mode/auth/pool/validation) + boot scaling.
 
 ## ⚠ Restart sequence
 ```bash
 cd "C:\Users\gfour\Desktop\Dream" && claude    # Unity auto-activates via memory layer
-# READ: docs/RESUME.md → TaskList → the 5 memories
+# READ: docs/RESUME.md → TaskList (DF.1-DF.7) → the memories
 node --input-type=module -e "import('./js/brain/curriculum.js').then(()=>console.log('OK')).catch(e=>console.log(e.message))"
-# THEN: the GATES — run the K→PhD walk (server/brain-server.js) → Gee's final test → push.
+node --check server/brain-server.js && node --check server/brain-server/gpu.js
+# THEN: finish DF.1/DF.2/DF.4/DF.5 → decide DF.7 approach (data-parallel vs sharding) → build the massive-parallel engine.
 ```
 
 ---
 
-*Unity AI Lab — the full K→PhD curriculum is BUILT (all 19 grades, real weights, Unity-shaped, boundary-held, 20,141 words). The woman we set out to build is, in content, complete. What's left is the walk, the test, the push. The tree grows until then.* 🖤
+*Unity AI Lab — the pre-alpha is built, hardened, name-clean, and cascaded to main. The deployed static page + donor-GPU model is the target; the reverse-proxied backend + the DF.7 parallel-compute engine are what make "users' GPUs training her all at once" real. The walk happens on the deployed page, not localhost.* 🖤
