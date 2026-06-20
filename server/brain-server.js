@@ -5507,11 +5507,45 @@ wss.on('connection', (ws, req) => {
     const mode = proxyAuth
       ? ((client.ualUser && isLoopback) ? 'admin' : 'viewer')
       : (isLoopback ? 'admin' : 'viewer');
+    // PA.4.2+ — FIRST-AUTHED-OPERATOR binding. On a static deploy there is no
+    // loopback-implies-admin guarantee like localhost. So: the public can't
+    // reach the admin lane at all (Forgejo auth_request), and the FIRST
+    // Forgejo-authed operator to connect after deploy is bound as the LOCKED
+    // primary operator — persisted to server/operator-identity.json so it
+    // survives reboots. That binding can only ever be a lab member (public is
+    // gated out), and the first one is THE operator/master. Later authed lab
+    // members still get 'admin' (they can help) but are flagged non-primary.
+    // This is how the operator is guaranteed to be master on a static deploy.
+    let isPrimaryOperator = false;
+    if (mode === 'admin' && client.ualUser) {
+      try {
+        if (brain._primaryOperator === undefined) {
+          const _opPath = path.join(__dirname, 'operator-identity.json');
+          brain._primaryOperator = fs.existsSync(_opPath)
+            ? (JSON.parse(fs.readFileSync(_opPath, 'utf8')).primaryOperator || null)
+            : null;
+        }
+        if (!brain._primaryOperator) {
+          brain._primaryOperator = client.ualUser;
+          fs.writeFileSync(
+            path.join(__dirname, 'operator-identity.json'),
+            JSON.stringify({ primaryOperator: client.ualUser, boundAtMs: Date.now() }, null, 2),
+          );
+          isPrimaryOperator = true;
+          console.log(`[Server] PRIMARY OPERATOR bound (locked + persisted): '${client.ualUser}' — first Forgejo-authed connection after deploy. Master role is theirs across reboots.`);
+        } else {
+          isPrimaryOperator = (client.ualUser === brain._primaryOperator);
+        }
+      } catch (e) {
+        console.warn('[Server] operator-identity bind failed (continuing as admin):', e.message);
+      }
+    }
     client.mode = mode;
+    client.isPrimaryOperator = isPrimaryOperator;
     try {
-      ws.send(JSON.stringify({ type: 'modeAssigned', mode }));
+      ws.send(JSON.stringify({ type: 'modeAssigned', mode, primaryOperator: isPrimaryOperator }));
     } catch { /* connection closed during the assignment window — drop silently */ }
-    const who = client.ualUser ? ` user=${client.ualUser}` : '';
+    const who = client.ualUser ? ` user=${client.ualUser}${isPrimaryOperator ? ' (PRIMARY)' : ''}` : '';
     console.log(`[Server] ${id} assigned mode: ${mode} (remote=${addr || 'unknown'}${who})`);
   }, 500);
 
