@@ -21,11 +21,10 @@
   <link rel="stylesheet" href="css/style.css?v=20260412">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧠</text></svg>">
   <style>
-    /* Audit H.9 — no-connection recovery banner. Self-contained,
+    /* No-connection recovery banner. Self-contained,
        independent of app.bundle.js. Shows when WS to ws://localhost:7525
-       fails to establish within the timeout window. Operator 2026-06-17
-       live-test surfaced HTMLs failing silently — this gives them the
-       recovery path immediately. */
+       fails to establish within the timeout window. Live-testing surfaced
+       HTMLs failing silently — this gives the recovery path immediately. */
     #unity-no-conn-banner {
       display: none;
       position: fixed;
@@ -64,15 +63,14 @@
 </head>
 <body>
 
-  <!-- Audit H.9 — no-connection recovery banner. Self-contained probe
-       checks ws://localhost:7525 reachability every 3s. Shows + auto-
-       hides as connection state flips. Operator 2026-06-17 live-test
-       reported "no connection basically" with no recovery path —
-       this banner makes the recovery path obvious. -->
+  <!-- No-connection recovery banner. Self-contained probe checks
+       ws://localhost:7525 reachability every 3s. Shows + auto-hides as
+       connection state flips. Live-testing surfaced a no-connection state
+       with no recovery path — this banner makes the recovery path obvious. -->
   <div id="unity-no-conn-banner" role="alert">
-    <div class="title">⚠ Brain server unreachable</div>
-    <div>WebSocket to <code>ws://localhost:7525</code> failed. The brain-server process is not running OR not listening on port 7525.</div>
-    <ul>
+    <div class="title" id="unity-conn-title">⚠ Brain server unreachable</div>
+    <div id="unity-conn-desc">WebSocket to <code>ws://localhost:7525</code> failed. The brain-server process is not running OR not listening on port 7525.</div>
+    <ul id="unity-conn-steps">
       <li>Run <code>start.bat</code> (fresh boot — WIPES training) <em>or</em> <code>Savestart.bat</code> (resume saved training)</li>
       <li>Watch the PowerShell <strong>Unity Brain Log Tail</strong> window for <code>[Brain] dictionary API ready</code></li>
       <li>Inspect <code>server/server.log</code> if boot fails</li>
@@ -81,13 +79,26 @@
     <div>Auto-retry in <span class="countdown" id="unity-conn-countdown">3</span>s · or <a href="#" id="unity-conn-retry">retry now</a></div>
   </div>
   <script>
-    // Audit H.9 — self-contained WS probe + banner toggler. Independent
+    // Self-contained WS probe + banner toggler. Independent
     // of app.bundle.js so banner works even if bundle build is broken /
     // failed to load. Spawns a 1-shot WS connect to ws://localhost:7525,
     // observes state transitions, shows banner on prolonged failure.
     (function(){
-      var WS_URL = (location.protocol === 'https:' ? 'wss://' : 'ws://')
-        + (location.hostname || 'localhost') + ':7525';
+      // Deployment-aware backend WS. The brain backend is reached
+      // differently depending on origin:
+      //   • LOCAL dev (localhost / 127.0.0.1 / file://) → raw loopback port
+      //     ws://localhost:7525 (brain-server binds 7525 directly).
+      //   • DEPLOYED (any public host) → same-origin admin lane reverse-proxied
+      //     by nginx at wss://<host>/admin/ws — NOT a raw :7525 port (that port
+      //     is bound to loopback only and never exposed publicly). This mirrors
+      //     remote-brain.js detectRemoteBrain() so the banner probes exactly
+      //     what the app itself connects to.
+      var _host = location.hostname || '';
+      var IS_LOCAL = _host === 'localhost' || _host === '127.0.0.1'
+        || _host === '[::1]' || _host === '' || location.protocol === 'file:';
+      var WS_URL = IS_LOCAL
+        ? 'ws://localhost:7525'
+        : (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/admin/ws';
       var bannerEl = document.getElementById('unity-no-conn-banner');
       var countdownEl = document.getElementById('unity-conn-countdown');
       var retryEl = document.getElementById('unity-conn-retry');
@@ -95,7 +106,25 @@
       var retryTimer = null;
       var countdownTimer = null;
       var firstAttemptTs = Date.now();
-      function showBanner() { if (bannerEl) bannerEl.classList.add('active'); }
+      // Deployment-aware banner copy. The localhost-dev recovery steps
+      // (start.bat / netstat / server.log) are meaningless on a deployed page
+      // where the visitor has no shell on the backend box. Swap them once for
+      // origin-appropriate guidance the first time the banner is shown.
+      var _copyApplied = false;
+      function applyDeployedCopy() {
+        if (_copyApplied || IS_LOCAL) return;
+        _copyApplied = true;
+        var titleEl = document.getElementById('unity-conn-title');
+        var descEl = document.getElementById('unity-conn-desc');
+        var stepsEl = document.getElementById('unity-conn-steps');
+        if (titleEl) titleEl.textContent = '⚠ Live brain backend unreachable';
+        if (descEl) descEl.innerHTML = 'The deployed brain backend at <code>' + WS_URL + '</code> isn\'t responding. If you\'re just visiting, the page falls back to a local in-browser brain automatically — no action needed.';
+        if (stepsEl) stepsEl.innerHTML =
+            '<li><strong>Visitor:</strong> nothing to do — a local browser brain is loading as a fallback.</li>'
+          + '<li><strong>Operator:</strong> confirm the <code>unity-brain</code> service is running on the host (<code>systemctl status unity-brain</code>) and that you\'re authenticated through Forgejo for the admin lane.</li>'
+          + '<li><strong>Donate compute:</strong> open <a href="compute.html">compute.html</a> to connect your GPU.</li>';
+      }
+      function showBanner() { if (bannerEl) { applyDeployedCopy(); bannerEl.classList.add('active'); } }
       function hideBanner() { if (bannerEl) bannerEl.classList.remove('active'); }
       function startCountdown(seconds) {
         var s = seconds;

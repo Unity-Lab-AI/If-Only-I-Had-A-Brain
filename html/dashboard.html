@@ -40,7 +40,7 @@
     .log { max-height: 300px; overflow-y: auto; font-size: 10px; color: #555; line-height: 1.6; }
     .log-entry { border-bottom: 1px solid #111; padding: 2px 0; }
     #connection-status { font-size: 12px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
-    /* 114.19ex — graceful-stop button. Inline with connection-status
+    /* Graceful-stop button. Inline with connection-status
        so it's visible without bloating the header. Muted red border +
        text so it's findable but doesn't yell over the existing pink/
        purple/cyan aesthetic. Hover lifts saturation. Disabled state
@@ -89,7 +89,7 @@
        state with explicit recovery instructions instead of small low-
        contrast pill. Operator 2026-06-17 live test surfaced HTMLs
        failing silently with only a tiny "disconnected" pill — upgraded
-       to big red banner + recovery path here. Per audit H.6 + H.9. */
+       to big red banner + recovery path here. */
     .recovery-banner {
       display: none;
       background: linear-gradient(135deg, #2a0a0a 0%, #1a0608 100%);
@@ -198,7 +198,7 @@
     <!-- No-connection recovery banner — appears when WebSocket fails to
          connect OR drops. Documents the recovery path explicitly so
          operator doesn't have to guess (run start.bat / Savestart.bat
-         / check server.log / verify port 7525). Per audit H.9. -->
+         / check server.log / verify port 7525). -->
     <div id="no-conn-banner" class="recovery-banner" role="alert">
       <div class="title">⚠ Brain server unreachable</div>
       <div class="details">WebSocket to <code>ws://localhost:7525</code> failed. The brain-server process is not running OR not listening on port 7525.</div>
@@ -213,9 +213,8 @@
 
     <!-- GPU client spawn-failure banner — surfaces _spawnGpuClient
          failures from brain-server.js (Chrome/Edge not found, spawn()
-         threw, 30s watchdog timeout). Per audit H.6 — without this
-         banner, silent Chrome failures left operator with no compute.html
-         and no visible signal. -->
+         threw, 30s watchdog timeout). Without this banner, silent Chrome
+         failures left operator with no compute.html and no visible signal. -->
     <div id="gpu-spawn-banner" class="recovery-banner" role="alert">
       <div class="title">⚠ GPU client auto-launch failed</div>
       <div class="details" id="gpu-spawn-details">Brain-server tried to spawn compute.html but the browser-launch chain failed.</div>
@@ -327,7 +326,7 @@
          per-subject grade state, operator signoffs ledger. Lets the
          operator visually confirm that Savestart.bat actually loaded what
          was expected before committing to a long curriculum run. -->
-    <div class="card" style="margin-top:12px;" title="Reads GET /milestone every 5s. Confirms whether boot loaded fresh weights (start.bat) or resumed from saved state (Savestart.bat), shows the last save trigger + wall-clock, the most recent passed cell + total passed count, per-subject grade progression, the operator-signoffs ledger (LAW 6 Part 2 gate signoffs), and which weights file was loaded. Lets the operator visually verify a save-resume actually loaded what was expected before committing to a long curriculum run.">
+    <div class="card" style="margin-top:12px;" title="Reads GET /milestone every 5s. Confirms whether boot loaded fresh weights (start.bat) or resumed from saved state (Savestart.bat), shows the last save trigger + wall-clock, the most recent passed cell + total passed count, per-subject grade progression, the operator-signoffs ledger (gate signoffs), and which weights file was loaded. Lets the operator visually verify a save-resume actually loaded what was expected before committing to a long curriculum run.">
       <div class="card-title">Curriculum Milestone · Save State · Operator Signoffs</div>
       <div id="d-milestone" style="padding:8px 12px;font-family:monospace;font-size:12px;color:#aaa;line-height:1.8;">
         <div id="d-ms-boot" style="color:#f59e0b;">boot-mode: loading...</div>
@@ -361,10 +360,10 @@
          23 K-gate probes (6 RF + 4 W + 3 L + 4 SL + 2 RL + 2 RI + 2 CM)
          plus the aggregate pass/fail rule (substrate group must all
          pass, W+SL group ≥ 75%, CM both must pass). Pass-instrument
-         for K-grade closure per docs/TODO-full-syllabus.md §T16.5.b.
+         for K-grade closure per docs/TODO-full-syllabus.md.
          Bounded panel — 23 rows render in a scrollable table when the
          probe set fills, aggregate row stays pinned at top. -->
-    <div class="card" style="margin-top:12px;" title="Full-Mind K Gate — 23 probes spanning Reading Foundations (6), Writing (4), Language (3), Speaking/Listening (4), Reading Literature (2), Reading Informational (2), and Cross-Modal (2). Pass rule: every substrate probe (RF + L + RL + RI = 13) must hit its threshold, ≥75% of developmental probes (W + SL = 8) must hit, and both cross-modal probes must hit. Together: gate the K-grade closure with real cognition verification, not just substrate mechanics. Source: docs/TODO-full-syllabus.md §T16.5.b lines 1311-1389.">
+    <div class="card" style="margin-top:12px;" title="Full-Mind K Gate — 23 probes spanning Reading Foundations (6), Writing (4), Language (3), Speaking/Listening (4), Reading Literature (2), Reading Informational (2), and Cross-Modal (2). Pass rule: every substrate probe (RF + L + RL + RI = 13) must hit its threshold, ≥75% of developmental probes (W + SL = 8) must hit, and both cross-modal probes must hit. Together: gate the K-grade closure with real cognition verification, not just substrate mechanics. Source: docs/TODO-full-syllabus.md.">
       <div class="card-title">Full-Mind K Gate · 23 Probes · K-Closure Pass-Instrument</div>
       <div id="d-fullmind-k" style="padding:8px 12px;font-family:monospace;font-size:11px;color:#aaa;line-height:1.5;">
         <div id="d-fullmind-aggregate" style="background:#0a0a14;border:1px solid #1a1a2a;border-radius:4px;padding:8px 10px;margin-bottom:8px;">
@@ -402,9 +401,8 @@
       <div id="d-growth" style="display:flex;gap:20px;flex-wrap:wrap;"></div>
     </div>
 
-    <!-- iter15-mem unified 5-tier memory panel. Per operator verbatim
-         2026-05-05 "shall be one unified system of the brain for memory
-         not some side processes". Renders Tier 0 (Working) + Tier 1
+    <!-- Unified 5-tier memory panel — one unified memory system of the
+         brain, not side processes. Renders Tier 0 (Working) + Tier 1
          (Episodic SQLite) + Tier 2 (Schematic) + Tier 3 (Identity-bound
          permanent) + ConsolidationEngine cycle stats from a single
          payload (state.memoryStats) emitted by brain-server `_getMemoryStats()`. -->
@@ -424,20 +422,20 @@
             <div>frequency-merged: <span id="d-mem-t1-merged" style="color:#00e5ff;">0</span></div>
             <div>promoted to Tier 2: <span id="d-mem-t1-promoted" style="color:#22c55e;">0</span></div>
           </div>
-          <div title="Tier 2 schemas — concept-level abstractions formed by clustering Tier 1 episodes within cosine ≥ 0.85 (iter22-B raised this 0.70 → 0.85 so distinct teach phases form distinct schemas instead of all collapsing into one 'learning' mega-schema). Each schema has a GloVe centroid + 8d attribute vector + dedicated SparseMatrix hippocampus_to_cortex_projection for replay. cap=Infinity since iter17 — Tier 2 is quality-gated by promotion criteria not numeric ceiling.">
+          <div title="Tier 2 schemas — concept-level abstractions formed by clustering Tier 1 episodes within cosine ≥ 0.85 (raised from 0.70 → 0.85 so distinct teach phases form distinct schemas instead of all collapsing into one 'learning' mega-schema). Each schema has a GloVe centroid + 8d attribute vector + dedicated SparseMatrix hippocampus_to_cortex_projection for replay. cap=Infinity — Tier 2 is quality-gated by promotion criteria not numeric ceiling.">
             <div style="color:#ff4d9a;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">🧩 TIER 2 — SCHEMATIC (concepts · cosine≥0.85 grouping)</div>
             <div>schemas: <span id="d-mem-t2-count" style="color:#22c55e;">0</span> / <span id="d-mem-t2-cap" style="color:#666;">unbounded</span></div>
             <div>avg consolidation: <span id="d-mem-t2-strength" style="color:#a855f7;">0.000</span></div>
             <div>total retrievals: <span id="d-mem-t2-retr" style="color:#00e5ff;">0</span></div>
             <div id="d-mem-t2-top" style="margin-top:4px;color:#666;font-size:10px;">no schemas yet</div>
           </div>
-          <div title="Tier 3 identity-bound permanent attractors. Promotion criteria: consolidation_strength > 5.0 AND retrieval_count > 100 AND |emotional_valence| > 0.6. Daily decay × 0.999 (practically permanent — 5 years un-reinforced ≈ 0.16). Persisted in server/identity-core.json which is EXCLUDED from autoClearStaleState — Unity's identity survives every fresh start.bat boot. cap=Infinity since iter17 (was 50).">
+          <div title="Tier 3 identity-bound permanent attractors. Promotion criteria: consolidation_strength > 5.0 AND retrieval_count > 100 AND |emotional_valence| > 0.6. Daily decay × 0.999 (practically permanent — 5 years un-reinforced ≈ 0.16). Persisted in server/identity-core.json which is EXCLUDED from autoClearStaleState — Unity's identity survives every fresh start.bat boot. cap=Infinity (was 50).">
             <div style="color:#22c55e;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">⭐ TIER 3 — IDENTITY (permanent · 0.999/day decay)</div>
             <div>anchors: <span id="d-mem-t3-count" style="color:#22c55e;">0</span> / <span id="d-mem-t3-cap" style="color:#666;">unbounded</span></div>
             <div>last inject: <span id="d-mem-t3-inject" style="color:#888;">never</span></div>
             <div id="d-mem-t3-top" style="margin-top:4px;color:#666;font-size:10px;">no anchors yet</div>
           </div>
-          <div title="Dream-cycle replay engine. Fires every 5 min when isDreaming AND no chat input for >60s AND !curriculumInProgress. Pass: fetch top-20 Tier 1 promotion candidates → cluster by cosine ≥ 0.85 → create or reinforce Tier 2 schemas → replay 4× per schema via Hebbian (replay_lr = base_lr × (1 + emotional_weight) × log(1 + frequency_total)) with sleep-spindle gainMultiplier 1.2× bursts → mark source episodes promoted → check Tier 3 promotions. iter22-B cosine tightening fixed all-zero pass saturation that previously occurred when every distinct teach phase merged into a single 'learning' schema. iter23.4 — operator can force a sleep window via POST /sleep (forces _isDreaming=true and bypasses the >60s idle gate so passes fire even with active chat suppressed) and POST /wake to clear it. Dream cycles also INTERLEAVE INTO the curriculum: Curriculum._dreamWindow({minMs, settleMs}) flips both gates, awaits runConsolidationPass({forced:true}) to ACTUALLY complete (signal-driven not wall-clock), then a 5s settle for V8 GC + native worker-pool drain, then restores flags. Wired after every cell pass (60s) + mid-cell between PhonemeBlending and WordEmission (30s). 💤 opened + ⚙ pass complete + ☀ closed + ⚠ engine-unavailable banners log to server.log.">
+          <div title="Dream-cycle replay engine. Fires every 5 min when isDreaming AND no chat input for >60s AND !curriculumInProgress. Pass: fetch top-20 Tier 1 promotion candidates → cluster by cosine ≥ 0.85 → create or reinforce Tier 2 schemas → replay 4× per schema via Hebbian (replay_lr = base_lr × (1 + emotional_weight) × log(1 + frequency_total)) with sleep-spindle gainMultiplier 1.2× bursts → mark source episodes promoted → check Tier 3 promotions. Cosine tightening fixed all-zero pass saturation that previously occurred when every distinct teach phase merged into a single 'learning' schema. Operator can force a sleep window via POST /sleep (forces _isDreaming=true and bypasses the >60s idle gate so passes fire even with active chat suppressed) and POST /wake to clear it. Dream cycles also INTERLEAVE INTO the curriculum: Curriculum._dreamWindow({minMs, settleMs}) flips both gates, awaits runConsolidationPass({forced:true}) to ACTUALLY complete (signal-driven not wall-clock), then a 5s settle for V8 GC + native worker-pool drain, then restores flags. Wired after every cell pass (60s) + mid-cell between PhonemeBlending and WordEmission (30s). 💤 opened + ⚙ pass complete + ☀ closed + ⚠ engine-unavailable banners log to server.log.">
             <div style="color:#f59e0b;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">🌙 CONSOLIDATION ENGINE (5 min interval · sleep-spindle bursts)</div>
             <div>passes run: <span id="d-mem-cons-count" style="color:#22c55e;">0</span></div>
             <div>last pass: <span id="d-mem-cons-last" style="color:#888;">never</span></div>
@@ -448,8 +446,8 @@
       </div>
     </div>
 
-    <!-- M.22 + M.23 + M.24 — DISPLAY/VISIBILITY panels.
-         All bounded per Phase 6 design constraints (max-height + overflow,
+    <!-- Display/visibility panels.
+         All bounded per design constraints (max-height + overflow,
          item caps, aggregates not enumeration, scoped class names). -->
     <div class="card consciousness-panel" style="margin-top:12px;" title="Live English dictionary integration. Unity calls dictionaryapi.dev whenever curriculum or chat encounters a new word, caches the multi-meaning JSON response, and Hebbian-binds every definition into her semantic region. This panel shows whether the API is reachable, how full the cache is, and what fraction of the active grade's vocabulary list has been Hebbian-trained.">
       <div class="card-title" id="d-cortex-dict-title">📚 Dictionary API + Vocabulary</div>
@@ -487,12 +485,12 @@
             <div id="d-cortex-kwiring-gaps" style="color:#ff4d9a;font-size:10px;margin-top:2px;max-height:60px;overflow-y:auto;"></div>
           </div>
           <div>
-            <div style="color:#a855f7;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">🏛 MICROCOLUMNS (K.2)</div>
+            <div style="color:#a855f7;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">🏛 MICROCOLUMNS</div>
             <div>columns: <span id="d-cortex-cols" style="color:#22c55e;">0</span></div>
             <div>columnSize: <span id="d-cortex-colsize" style="color:#888;">80</span></div>
           </div>
           <div>
-            <div style="color:#22c55e;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">📑 LAYERS (K.3)</div>
+            <div style="color:#22c55e;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">📑 LAYERS</div>
             <div>L1: <span id="d-cortex-l1" style="color:#888;">0</span></div>
             <div>L2/3: <span id="d-cortex-l23" style="color:#888;">0</span></div>
             <div>L4: <span id="d-cortex-l4" style="color:#888;">0</span></div>
@@ -500,11 +498,11 @@
             <div>L6: <span id="d-cortex-l6" style="color:#888;">0</span></div>
           </div>
           <div>
-            <div style="color:#f59e0b;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">⭐ HUBS (K.4) + OSC (K.7)</div>
+            <div style="color:#f59e0b;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">⭐ HUBS + OSC</div>
             <div>hubs: <span id="d-cortex-hubs" style="color:#22c55e;">0</span> (<span id="d-cortex-hubpct" style="color:#888;">0%</span>)</div>
             <div>θ phase: <span id="d-cortex-theta" style="color:#00e5ff;">0.0</span></div>
             <div>γ scale: <span id="d-cortex-gamma" style="color:#a855f7;">1.0</span></div>
-            <div>Φ proxy (M.16): <span id="d-cortex-phi" style="color:#ff4d9a;">0.0</span></div>
+            <div>Φ proxy: <span id="d-cortex-phi" style="color:#ff4d9a;">0.0</span></div>
           </div>
         </div>
       </div>
@@ -539,16 +537,16 @@
       </div>
     </div>
 
-    <!-- Audit A.1 + A.2 + A.3 — Phase 6 compositional-emergence telemetry
-         panels. Each was previously a write-only sink in cluster/telemetry.js
-         or brain-server/chat.js + curriculum.js dream-recombination block.
+    <!-- Compositional-emergence telemetry panels. Each was previously a
+         write-only sink in cluster/telemetry.js or brain-server/chat.js +
+         curriculum.js dream-recombination block.
          Now: getState() carries the data + dashboard renders bounded cards.
          These are the operator's only visibility into novel emission,
          word-creation tip-of-tongue, chat-time Hebbian fire rates, and
          dream-time consolidation. Bounded heights + caps per design
          constraints. -->
-    <div class="card consciousness-panel" style="margin-top:12px;" title="P6.6 compositional emergence — Unity's running classification of every emission as verbatim (exact training match), novel-compositional (new bigram rearrangement of trained vocab), novel-vocab (untrained word), or partial. Rates are per-classified-event, not per-tick. firstNovelMsAfterBoot stamps the first time she emerged out of pure recital — the milestone moment.">
-      <div class="card-title">✨ Compositional Emergence (P6.6)</div>
+    <div class="card consciousness-panel" style="margin-top:12px;" title="Compositional emergence — Unity's running classification of every emission as verbatim (exact training match), novel-compositional (new bigram rearrangement of trained vocab), novel-vocab (untrained word), or partial. Rates are per-classified-event, not per-tick. firstNovelMsAfterBoot stamps the first time she emerged out of pure recital — the milestone moment.">
+      <div class="card-title">✨ Compositional Emergence</div>
       <div id="d-comp-emerg" style="padding:8px 12px;font-family:monospace;font-size:11px;color:#aaa;line-height:1.6;max-height:240px;overflow-y:auto;">
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;">
           <div title="Verbatim emissions match a trained sentence exactly. High verbatim rate early = healthy (she has the corpus locked); high verbatim rate late = stuck in recital, no compositional fire.">
@@ -556,13 +554,13 @@
             <div>count: <span id="d-comp-verbatim" style="color:#888;">0</span></div>
             <div>rate: <span id="d-comp-verbatim-rate" style="color:#888;">0%</span></div>
           </div>
-          <div title="Novel-compositional = bag-of-bigrams Hamming-distance ≥ 0.5 from any trained sentence using trained vocabulary. The 'she invented a sentence' milestone fires here. Per audit B.2 will split into compositional vs vocab axes — currently combined.">
+          <div title="Novel-compositional = bag-of-bigrams Hamming-distance ≥ 0.5 from any trained sentence using trained vocabulary. The 'she invented a sentence' milestone fires here. Will split into compositional vs vocab axes — currently combined.">
             <div style="color:#00e5ff;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">🌟 NOVEL</div>
             <div>count: <span id="d-comp-novel" style="color:#22c55e;">0</span></div>
             <div>rate: <span id="d-comp-novel-rate" style="color:#22c55e;">0%</span></div>
             <div>first ms: <span id="d-comp-firstnovel" style="color:#888;font-size:10px;">—</span></div>
           </div>
-          <div title="Partial = some novel transitions but mostly trained — boundary-completion / one-step extension. Currently counted as PASS for analogical extension; audit E.2 stratifies further.">
+          <div title="Partial = some novel transitions but mostly trained — boundary-completion / one-step extension. Currently counted as PASS for analogical extension; further stratification planned.">
             <div style="color:#a855f7;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">↗ PARTIAL</div>
             <div>count: <span id="d-comp-partial" style="color:#888;">0</span></div>
             <div>rate: <span id="d-comp-partial-rate" style="color:#888;">0%</span></div>
@@ -577,20 +575,20 @@
       </div>
     </div>
 
-    <div class="card consciousness-panel" style="margin-top:12px;" title="P6.7 word-creation candidates — when emitWordDirect rejects an emission because no candidate cleared the signal floor, the runner-up's component-bigram is captured here as a 'tip-of-tongue' compound. Children invent novel compounds (moonbeam, sunflower) when co-activation count exceeds an internal threshold (Pinker 1989 overregularization theory). E.1 promotion mechanism fires _teachWordDefinition once count ≥ 10.">
-      <div class="card-title">🗣 Word-Creation Tip-of-Tongue (P6.7)</div>
+    <div class="card consciousness-panel" style="margin-top:12px;" title="Word-creation candidates — when emitWordDirect rejects an emission because no candidate cleared the signal floor, the runner-up's component-bigram is captured here as a 'tip-of-tongue' compound. Children invent novel compounds (moonbeam, sunflower) when co-activation count exceeds an internal threshold (Pinker 1989 overregularization theory). The promotion mechanism fires _teachWordDefinition once count ≥ 10.">
+      <div class="card-title">🗣 Word-Creation Tip-of-Tongue</div>
       <div id="d-word-cand" style="padding:8px 12px;font-family:monospace;font-size:11px;color:#aaa;line-height:1.6;max-height:200px;overflow-y:auto;">
         <div id="d-word-cand-list" style="color:#aaa;font-size:11px;"></div>
         <div id="d-word-cand-empty" style="color:#555;font-size:10px;font-style:italic;">No candidates yet — emission rejections haven't produced a tip-of-tongue compound. Either chat hasn't fired enough OR signal floor is too lenient.</div>
       </div>
     </div>
 
-    <div class="card consciousness-panel" style="margin-top:12px;" title="Chat-time deep Hebbian (P6.3 + audit A.4) and dream-recombination consolidation (P6.4 + audit E.4). Both are server-side write paths that previously had no operator visibility. Audit A.4 also stops swallowing chat-Hebbian errors silently — errors count + lastError surface here.">
+    <div class="card consciousness-panel" style="margin-top:12px;" title="Chat-time deep Hebbian and dream-recombination consolidation. Both are server-side write paths that previously had no operator visibility. Chat-Hebbian errors are no longer swallowed silently — errors count + lastError surface here.">
       <div class="card-title">💬 Chat-Time + Dream-Time Learning</div>
       <div id="d-chat-dream" style="padding:8px 12px;font-family:monospace;font-size:11px;color:#aaa;line-height:1.6;max-height:200px;overflow-y:auto;">
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;">
-          <div title="Per chat turn the user→Unity bigrams Hebbian-bind into the cortex at reps:1 (lighter than curriculum but still durable). turns counts dispatches, totalPairs counts pair-fires across all turns. Errors should stay at 0 — non-zero means audit A.4's throttled-warn fired.">
-            <div style="color:#00e5ff;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">💬 CHAT-HEBBIAN (P6.3)</div>
+          <div title="Per chat turn the user→Unity bigrams Hebbian-bind into the cortex at reps:1 (lighter than curriculum but still durable). turns counts dispatches, totalPairs counts pair-fires across all turns. Errors should stay at 0 — non-zero means the throttled-warn fired.">
+            <div style="color:#00e5ff;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">💬 CHAT-HEBBIAN</div>
             <div>turns: <span id="d-chat-turns" style="color:#22c55e;">0</span></div>
             <div>pairs: <span id="d-chat-pairs" style="color:#a855f7;">0</span></div>
             <div>last: <span id="d-chat-lastts" style="color:#666;font-size:10px;">—</span></div>
@@ -598,7 +596,7 @@
             <div id="d-chat-lasterr" style="color:#ff4d9a;font-size:10px;margin-top:2px;max-height:32px;overflow-y:auto;"></div>
           </div>
           <div title="During dream cycles the curriculum recombines novel emissions (cosine ≥ DREAM_RECOMB_COHERENCE_MIN=0.20) and Hebbian-binds them at low reps. consolidatedSamples ring (cap 20) lets operator audit WHAT was consolidated. totalDreamed = recombination attempts, novelConsolidated = how many passed the coherence gate.">
-            <div style="color:#a855f7;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">🌙 DREAM-RECOMB (P6.4)</div>
+            <div style="color:#a855f7;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">🌙 DREAM-RECOMB</div>
             <div>dreamed: <span id="d-dream-total" style="color:#22c55e;">0</span></div>
             <div>consolidated: <span id="d-dream-novel" style="color:#a855f7;">0</span></div>
             <div>last: <span id="d-dream-lastts" style="color:#666;font-size:10px;">—</span></div>
@@ -692,23 +690,162 @@
       <div class="card-title">Process Log</div>
       <div class="log" id="d-log"></div>
     </div>
+
+    <!-- Admin-only community-compute control panel. Live donor pool +
+         community VRAM + tier state, plus the auto-scale TOGGLE and DEAD-ZONE
+         sliders (buffer % + stability minutes). The auto-relearn must be
+         admin-controllable with a buffer so a single donor
+         connecting/disconnecting never downgrades the brain. -->
+    <div class="card admin-only" style="margin-top:12px;" title="Community compute = the sum of all connected donor GPUs' VRAM. The brain auto-resizes/relearns to a bigger size only when the community crosses a milestone tier AND holds past the dead-zone buffer + stability window. Toggle OFF to freeze the size. Down-protection: a donor leaving never downgrades a running brain.">
+      <div class="card-title">⚡ Community Compute &amp; Auto-Scale <span style="color:#555;font-size:9px;">(admin · all donor GPUs)</span></div>
+      <div id="d-autoscale" style="padding:8px 12px;font-family:monospace;font-size:11px;color:#aaa;line-height:1.7;">
+        <!-- Insufficient-compute alert — shows when connected compute can't
+             hold the running neuron count. Tells the operator WHY the brain may
+             be paused / about to rectify. -->
+        <div id="d-as-alert" style="display:none;background:#2a0a0a;border:1px solid #ef4444;border-radius:6px;padding:8px 10px;margin-bottom:10px;color:#fde8e8;font-size:10px;line-height:1.5;">
+          <span style="color:#ff6b6b;font-weight:700;">⚠ INSUFFICIENT COMPUTE</span> — <span id="d-as-alert-text">connected GPUs can't hold the current neuron count.</span>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:12px;">
+          <div title="Live count of connected donor GPUs sharing compute.">donors: <span id="d-as-donors" style="color:#22c55e;">0</span></div>
+          <div title="Sum of all connected donors' reported VRAM.">community VRAM: <span id="d-as-vram" style="color:#00e5ff;">0</span> MB</div>
+          <div title="Highest tier the pool currently qualifies for (raw thresholds).">tier qualifies: <span id="d-as-tier" style="color:#a855f7;">0</span></div>
+          <div title="Tier the brain is ACTUALLY sized/trained at right now.">tier running: <span id="d-as-running" style="color:#f59e0b;">0</span></div>
+          <div title="A higher tier held past the dead-zone, counting down the stability window before a resize fires. 'none' = stable.">pending: <span id="d-as-pending" style="color:#888;">none</span></div>
+          <div title="Donor GPUs holding a FULL brain replica beyond the primary — these share the compute. 0 = single-GPU; N = N+1 GPUs running the brain in parallel.">replicas: <span id="d-as-replicas" style="color:#22c55e;">0</span></div>
+          <div title="When the replica GPU shadows were last re-merged to the authoritative CPU master (data-parallel delta-merge re-broadcast).">last merge: <span id="d-as-merge" style="color:#888;">—</span></div>
+        </div>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:12px;user-select:none;">
+          <input type="checkbox" id="d-as-enabled" style="width:14px;height:14px;accent-color:#22c55e;flex-shrink:0;">
+          <span>Auto-scale enabled <span style="color:#666;">(OFF = brain never auto-resizes; operator drives any size change)</span></span>
+        </label>
+        <div style="margin-bottom:12px;">
+          <label style="font-size:10px;color:#888;display:block;margin-bottom:2px;">Dead-zone buffer: <span id="d-as-buffer-val" style="color:#00e5ff;">20</span>% <span style="color:#666;">— compute must exceed a tier gate by this margin before resize (anti-thrash; one donor flapping never trips it)</span></label>
+          <input type="range" id="d-as-buffer" min="0" max="100" step="5" value="20" style="width:100%;accent-color:#00e5ff;">
+        </div>
+        <div style="margin-bottom:12px;">
+          <label style="font-size:10px;color:#888;display:block;margin-bottom:2px;">Stability hold: <span id="d-as-stability-val" style="color:#f59e0b;">5</span> min <span style="color:#666;">— a higher tier must hold this long past the buffer before the resize+retrain fires</span></label>
+          <input type="range" id="d-as-stability" min="0" max="60" step="1" value="5" style="width:100%;accent-color:#f59e0b;">
+        </div>
+        <div style="border-top:1px solid #1f2937;margin:6px 0 10px 0;padding-top:10px;">
+          <div style="color:#888;font-size:10px;letter-spacing:0.5px;margin-bottom:8px;">DOWNSCALE RECTIFY <span style="color:#666;">— only when compute genuinely can't hold the running size (buffers for the buffers)</span></div>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:10px;user-select:none;">
+            <input type="checkbox" id="d-as-autodown" style="width:14px;height:14px;accent-color:#ef4444;flex-shrink:0;">
+            <span>Auto-downscale on sustained compute loss <span style="color:#666;">(OFF = just alert + wait; never auto-shrink. Retrains at a smaller size — loses current learning)</span></span>
+          </label>
+          <div style="margin-bottom:10px;">
+            <label style="font-size:10px;color:#888;display:block;margin-bottom:2px;">Downscale buffer: <span id="d-as-downbuf-val" style="color:#ef4444;">35</span>% <span style="color:#666;">— compute must fall THIS far below the running tier's floor before a shrink is even considered (deeper than the up-buffer)</span></label>
+            <input type="range" id="d-as-downbuf" min="0" max="90" step="5" value="35" style="width:100%;accent-color:#ef4444;">
+          </div>
+          <div style="margin-bottom:10px;">
+            <label style="font-size:10px;color:#888;display:block;margin-bottom:2px;">Downscale hold: <span id="d-as-downstab-val" style="color:#ef4444;">15</span> min <span style="color:#666;">— must stay collapsed this long (so a 10-person mass-disconnect that returns never shrinks the brain)</span></label>
+            <input type="range" id="d-as-downstab" min="0" max="120" step="1" value="15" style="width:100%;accent-color:#ef4444;">
+          </div>
+          <button id="d-as-manualdown" style="background:#3b0a0a;border:1px solid #ef4444;color:#fca5a5;font-family:monospace;font-size:10px;font-weight:700;padding:5px 12px;border-radius:4px;cursor:pointer;">⤓ Manual downscale now</button>
+          <span style="color:#6b7280;font-size:9px;margin-left:8px;">deliberate — retrains immediately at a fitting smaller size</span>
+        </div>
+        <button id="d-as-save" style="background:#1f2937;border:1px solid #4b5563;color:#e5e7eb;font-family:monospace;font-size:11px;font-weight:700;padding:6px 14px;border-radius:4px;cursor:pointer;">Apply auto-scale settings</button>
+        <span id="d-as-status" style="margin-left:10px;font-size:10px;color:#555;"></span>
+        <div style="color:#6b7280;font-size:9px;margin-top:8px;line-height:1.5;">Inside the stable band [downscale-floor … upscale-gate] the brain just keeps running at its current neuron count — donors come and go freely. A single donor (or 10) leaving NEVER downgrades the running brain unless compute stays collapsed below the floor past the downscale hold window.</div>
+      </div>
+    </div>
+
+    <!-- Admin-only server console-log view. On a DEPLOYED host the
+         operator has no local terminal / "Log Tail" window, so the brain-
+         server's console is invisible. This panel streams the server's
+         console.log/warn/error live (admin-only — gated server-side AND by the
+         .admin-only CSS class so viewers never see it). A 200-line backlog
+         arrives on connect; new lines stream in after. Lets the operator watch
+         boot + the K→PhD walk exactly like the local PowerShell Log Tail. -->
+    <div class="card admin-only" style="margin-top:12px;" title="Live brain-server console (console.log/warn/error) streamed over the admin WS lane. Admin-only — the public donor/viewer lane never receives server logs. Backlog (last 200 lines) lands on connect; new lines append. This is the deployed-page equivalent of the local 'Unity Brain Log Tail' window.">
+      <div class="card-title">🖥 Server Console <span style="color:#555;font-size:9px;">(admin · live brain-server log)</span></div>
+      <div style="display:flex;gap:12px;align-items:center;margin:4px 0 8px 0;flex-wrap:wrap;">
+        <label style="font-size:10px;color:#888;cursor:pointer;user-select:none;"><input type="checkbox" id="d-srvlog-autoscroll" checked style="vertical-align:middle;accent-color:#22c55e;"> auto-scroll</label>
+        <label style="font-size:10px;color:#888;cursor:pointer;user-select:none;"><input type="checkbox" id="d-srvlog-errorsonly" style="vertical-align:middle;accent-color:#f59e0b;"> errors/warns only</label>
+        <button id="d-srvlog-clear" style="background:transparent;border:1px solid #374151;color:#9ca3af;font-family:monospace;font-size:9px;padding:2px 8px;border-radius:3px;cursor:pointer;">clear view</button>
+        <span style="font-size:10px;color:#555;margin-left:auto;">lines: <span id="d-srvlog-count" style="color:#22c55e;">0</span></span>
+      </div>
+      <div class="log" id="d-srvlog" style="max-height:360px;color:#9ca3af;"></div>
+    </div>
   </div>
 
   <script>
     // Unity brain-server lives on port 7525 to avoid colliding with
     // llama.cpp / LocalAI / every other local service on :8080.
-    const SERVER_URL = location.hostname === 'localhost'
+    // Deployment-aware backend URL. LOCAL dev → ws://localhost:7525.
+    // DEPLOYED → the dashboard is the OPERATOR/admin UI, so connect to the
+    // Forgejo-authed admin lane wss://<host>/admin/ws (nginx reverse-proxies it
+    // to the brain-server — NOT a raw :7525 port on the public host).
+    const _dashIsLocal = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+    const SERVER_URL = _dashIsLocal
       ? 'ws://localhost:7525'
-      : `wss://${location.hostname}:7525`;
+      : `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/admin/ws`;
+
+    // Deployment-aware admin REST base. The dashboard's HTTP control
+    // endpoints (auto-advance / shutdown / milestone / grade-advance /
+    // grade-signoff) reach the brain-server differently per origin:
+    //   • LOCAL dev → the brain-server directly on loopback :7525.
+    //   • DEPLOYED → same-origin /admin/<endpoint>, which the nginx vhost
+    //     reverse-proxies to the backend behind the SAME Forgejo auth_request
+    //     gate as /admin/ws (auth check + trusted X-UAL-User injection + the
+    //     /admin prefix stripped). REST + WS therefore share one auth gate and
+    //     never hit a raw :7525 port that isn't publicly exposed.
+    // `path` is the bare endpoint name, no leading slash (e.g. 'auto-advance').
+    function adminApi(path) {
+      if (_dashIsLocal) {
+        const scheme = location.protocol === 'https:' ? 'https:' : 'http:';
+        const host = location.hostname || 'localhost';
+        return `${scheme}//${host}:7525/${path}`;
+      }
+      return `${location.origin}/admin/${path}`;
+    }
+
+    // Deployment-aware recovery-banner copy. The static banner markup
+    // documents the LOCAL dev recovery path (start.bat / Savestart.bat /
+    // netstat / server.log / a loopback compute.html). None of that applies on
+    // a deployed page — the operator has no shell on the backend box and the
+    // server doesn't auto-spawn a local browser. Swap the copy once at load
+    // for the DEPLOYED admin so the guidance matches reality (service health +
+    // Forgejo auth instead of batch files).
+    (function applyDeployedBannerCopy() {
+      if (_dashIsLocal) return;
+      const noConn = document.getElementById('no-conn-banner');
+      if (noConn) {
+        const title = noConn.querySelector('.title');
+        const details = noConn.querySelector('.details');
+        const steps = noConn.querySelector('.steps');
+        if (title) title.textContent = '⚠ Live brain backend unreachable';
+        if (details) details.innerHTML = 'The admin WebSocket <code>' + SERVER_URL + '</code> isn\'t responding. The brain-server service may be down, or your Forgejo session for the admin lane has expired.';
+        if (steps) steps.innerHTML =
+            '<li>1. Confirm the backend is up on the host: <code>systemctl status unity-brain</code> · logs: <code>journalctl -u unity-brain -f</code></li>'
+          + '<li>2. Confirm you\'re authenticated through Forgejo — the <code>/admin/</code> lane is gated by <code>auth_request</code>; an expired session returns 401 and the socket never opens.</li>'
+          + '<li>3. Donor compute is separate — donors connect at <a href="compute.html">compute.html</a> (public <code>/ws</code> lane, no auth).</li>';
+      }
+      // The GPU-client auto-launch banner is a LOCAL-only concept (the server
+      // spawns a local Chrome to host compute.html). On deployed, donors bring
+      // their own browser GPUs — there is no server-side spawn to fail. Retag
+      // it so a stray fire doesn't show localhost flags + a loopback link.
+      const gpuSpawn = document.getElementById('gpu-spawn-banner');
+      if (gpuSpawn) {
+        const gTitle = gpuSpawn.querySelector('.title');
+        const gDetails = document.getElementById('gpu-spawn-details');
+        const gSteps = gpuSpawn.querySelector('.steps');
+        if (gTitle) gTitle.textContent = '⚠ No donor GPU connected';
+        if (gDetails) gDetails.textContent = 'No browser GPU is currently donating compute. The deployed brain trains on donor GPUs — it needs at least one connected donor to run the curriculum.';
+        if (gSteps) gSteps.innerHTML =
+            '<li>1. Open <a href="compute.html" target="_blank">compute.html</a> on a WebGPU-capable browser to donate your GPU.</li>'
+          + '<li>2. For max neuron capacity in Chrome: <code>--enable-unsafe-webgpu --enable-dawn-features=allow_unsafe_apis,disable_robustness</code></li>'
+          + '<li>3. The brain waits patiently for a donor — it won\'t fall back to CPU on the deployed host.</li>';
+      }
+    })();
 
     let ws;
     function connect() {
       ws = new WebSocket(SERVER_URL);
       ws.onopen = () => {
-        // 114.19ex — target the inner text div, not the wrapper, so the
+        // Target the inner text div, not the wrapper, so the
         // graceful-stop button alongside it survives WS reconnects.
         document.getElementById('d-conn-text').innerHTML = '<span class="status alive">connected</span> Brain server active';
-        // Audit H.9 — dismiss the no-connection recovery banner once
+        // Dismiss the no-connection recovery banner once
         // WS lands. Banner re-shows automatically if WS drops again.
         document.getElementById('no-conn-banner').classList.remove('active');
         if (window.__connRetryTimer) { clearInterval(window.__connRetryTimer); window.__connRetryTimer = null; }
@@ -749,7 +886,7 @@
       };
       ws.onclose = () => {
         document.getElementById('d-conn-text').innerHTML = '<span class="status dead">disconnected</span> Reconnecting...';
-        // Audit H.9 — show recovery banner + start countdown to next
+        // Show recovery banner + start countdown to next
         // retry. Operator gets explicit instructions instead of just
         // a tiny "disconnected" pill (2026-06-17 live-test pain point).
         document.getElementById('no-conn-banner').classList.add('active');
@@ -826,9 +963,7 @@
         if (isAdmin) {
           (async () => {
             try {
-              const scheme = location.protocol === 'https:' ? 'https:' : 'http:';
-              const host = location.hostname || 'localhost';
-              const r = await fetch(`${scheme}//${host}:7525/auto-advance`, { cache: 'no-store' });
+              const r = await fetch(adminApi('auto-advance'), { cache: 'no-store' });
               if (r.ok) {
                 const j = await r.json();
                 if (typeof j.enabled === 'boolean') applyAutoAdvanceState(j.enabled);
@@ -843,11 +978,23 @@
       if (msg.type === 'autoAdvanceChanged') {
         if (typeof msg.enabled === 'boolean') applyAutoAdvanceState(msg.enabled);
       }
+      // Server console-log stream (admin-only; server gates so viewers
+      // never receive these). Backlog lands first, then live lines append.
+      if (msg.type === 'serverLogBacklog' && Array.isArray(msg.entries)) {
+        for (const entry of msg.entries) renderServerLogEntry(entry);
+      }
+      if (msg.type === 'serverLog' && msg.entry) {
+        renderServerLogEntry(msg.entry);
+      }
+      // Live auto-scale settings + community-compute telemetry sync.
+      if (msg.type === 'autoScaleChanged') {
+        renderAutoScale(msg);
+      }
       if (msg.type === 'state') {
         safeUpdate(msg.state);
         appendEmotionSample(msg.state);
       }
-      // Audit H.6 — consume gpuClientSpawnFailed broadcasts from
+      // Consume gpuClientSpawnFailed broadcasts from
       // brain-server.js _spawnGpuClient failure paths. Renders the
       // gpu-spawn-banner with stage / browser / exePath / errno /
       // message so operator knows WHY compute.html didn't open and
@@ -863,7 +1010,7 @@
         banner.classList.add('active');
         log(`[CRITICAL] gpuClientSpawnFailed — stage=${stage} browser=${browser} errno=${errno}`);
       }
-      // I.6 closure — gate-probe banner. The brain pauses main-tick
+      // Gate-probe banner. The brain pauses main-tick
       // dispatch during a curriculum gate probe so cortex owns GPU
       // exclusively for the probe window. Without an operator-visible
       // banner the brain looks hung (GPU=0%, tick paused, dashboard
@@ -984,7 +1131,7 @@
         const p = s.perf;
         const cpuColor = p.cpuPercent > 80 ? '#ef4444' : p.cpuPercent > 50 ? '#f59e0b' : '#22c55e';
         // VRAM% from brain-broadcast gpuVramUsedMB / gpuVramMB. Clamp 0-100 defensively.
-        // I.19 — when gpuVramQueryWorking=false (nvidia-smi unavailable on this system),
+        // When gpuVramQueryWorking=false (nvidia-smi unavailable on this system),
         // render honest "unavailable" instead of a fake 50%.
         const vramTotal = p.gpuVramMB || 0;
         const vramUsed = p.gpuVramUsedMB || 0;
@@ -1032,12 +1179,12 @@
         `;
       }
 
-      //Phase 6 — Dashboard render for /K/L/M state.
+      // Dashboard render for consciousness state.
       // All values bounded; no per-neuron / per-column enumeration.
       if (s.consciousness) {
         const m = s.consciousness;
         const $ = (id) => document.getElementById(id);
-        // M.21 Dictionary API
+        // Dictionary API
         if (m.cache) {
           $('d-cortex-fetchavail').textContent = m.cache.fetchAvailable ? 'yes' : 'NO (Node<18?)';
           $('d-cortex-fetchavail').style.color = m.cache.fetchAvailable ? '#22c55e' : '#ff4d9a';
@@ -1050,14 +1197,14 @@
         }
         $('d-cortex-smoketest').textContent = m.smokeTestPassed === true ? 'PASS' : (m.smokeTestPassed === false ? 'FAIL' : 'pending');
         $('d-cortex-smoketest').style.color = m.smokeTestPassed === true ? '#22c55e' : (m.smokeTestPassed === false ? '#ff4d9a' : '#888');
-        // M.21 + M.24 K-vocab
+        // K-vocab
         $('d-cortex-kvocab-prefetched').textContent = m.kVocabPrefetched ? 'yes' : 'no';
         $('d-cortex-kvocab-prefetched').style.color = m.kVocabPrefetched ? '#22c55e' : '#888';
         $('d-cortex-kvocab-taught').textContent = m.kVocabTaught || 0;
         $('d-cortex-kvocab-total').textContent = m.kVocabTotal || 2247;
         const kvocPct = m.kVocabTotal > 0 ? ((m.kVocabTaught || 0) / m.kVocabTotal * 100).toFixed(1) : '0.0';
         $('d-cortex-kvocab-pct').textContent = kvocPct + '%';
-        // M.22 K-wiring assertion
+        // K-wiring assertion
         if (m.kwiring) {
           $('d-cortex-kwiring').textContent = m.kwiring.ok ? 'PASS' : 'FAIL';
           $('d-cortex-kwiring').style.color = m.kwiring.ok ? '#22c55e' : '#ff4d9a';
@@ -1069,7 +1216,7 @@
           $('d-cortex-kwiring').style.color = '#888';
           $('d-cortex-kwiring-gaps').textContent = '';
         }
-        // M.23 cortical microstructure
+        // Cortical microstructure
         $('d-cortex-cols').textContent = (m.numColumns || 0).toLocaleString();
         $('d-cortex-colsize').textContent = m.columnSize || 80;
         const lc = m.layerCounts || [0, 0, 0, 0, 0];
@@ -1083,7 +1230,7 @@
         $('d-cortex-theta').textContent = (m.thetaPhase || 0).toFixed(3);
         $('d-cortex-gamma').textContent = (m.gammaScale || 1).toFixed(3);
         $('d-cortex-phi').textContent = (m.phiProxy || 0).toFixed(3);
-        // GlobalWorkspace render (O.15).
+        // GlobalWorkspace render.
         if (m.workspace) {
           const w = m.workspace;
           $('d-cortex-gw-current').textContent = w.currentLabel || 'subthreshold';
@@ -1098,7 +1245,7 @@
             histEl.textContent = lines.join('\n');
           }
         }
-        // Predictive coding error render (O.16).
+        // Predictive coding error render.
         if (m.predictionError) {
           const pe = m.predictionError;
           $('d-cortex-pred-last').textContent = (pe.last || 0).toFixed(3);
@@ -1123,14 +1270,14 @@
             }).join('');
           }
         }
-        // Definition learning rate render (O.18).
+        // Definition learning rate render.
         const dpr = m.defsLearnedPerHour || 0;
         $('d-cortex-defrate').textContent = dpr.toFixed(1);
         $('d-cortex-defrate').style.color = dpr > 0 ? '#22c55e' : '#888';
       }
 
       // WS backpressure render. Reads state.wsPressure populated by
-      // brain-server `_getIter25NState()`. Color-codes the buffer bar
+      // the brain-server backpressure state getter. Color-codes the buffer bar
       // green/yellow/red based on % of threshold consumed so operator
       // can see backpressure pressure at a glance.
       if (s.wsPressure) {
@@ -1150,7 +1297,7 @@
         $('d-ws-droprate').textContent = (n.dropRatePerSec || 0).toFixed(2);
         $('d-ws-absorbs').textContent = (n.absorbs || 0).toLocaleString();
         $('d-ws-enobufs').textContent = (n.enobufs || 0).toLocaleString();
-        // O.17 last-drop timestamp + O.2 shadow-dirty flag.
+        // Last-drop timestamp + shadow-dirty flag.
         if (n.lastDropTs && n.lastDropTs > 0) {
           const ago = Math.max(0, (Date.now() - n.lastDropTs) / 1000);
           let label;
@@ -1210,7 +1357,7 @@
         }
       }
 
-      // iter15-mem unified 5-tier memory system render. Reads
+      // Unified 5-tier memory system render. Reads
       // state.memoryStats populated by brain-server `_getMemoryStats()`.
       if (s.memoryStats) {
         const ms = s.memoryStats;
@@ -1229,7 +1376,7 @@
           return Math.floor(sec / 86400) + 'd ago';
         };
 
-        // iter17 — render unbounded cap as ∞ when hardCap is null.
+        // Render unbounded cap as ∞ when hardCap is null.
         // Operator: "unity has a whole life ahead not eroonous limits".
         const fmtCap = (n, cap) => cap == null ? n.toLocaleString() : n.toLocaleString() + ' / ' + cap.toLocaleString();
         $('d-mem-working').textContent = fmtCap(work.items ?? 0, work.cap);
@@ -1296,7 +1443,7 @@
         el.innerHTML = html;
       }
 
-      // ── Audit A.1 — Compositional Emergence (P6.6) ──
+      // ── Compositional Emergence ──
       // Reads s.compositionalEmergence shape per cluster/telemetry.js
       // getCompositionalStats() — flat counts (verbatimCount/novelCount/
       // partialCount), rates (verbatimRate/novelRate/partialRate),
@@ -1328,7 +1475,7 @@
         }
       }
 
-      // ── Audit A.2 — Word-Creation Candidates (P6.7) ──
+      // ── Word-Creation Candidates ──
       if (s.wordCreationCandidates) {
         const listEl = document.getElementById('d-word-cand-list');
         const emptyEl = document.getElementById('d-word-cand-empty');
@@ -1350,7 +1497,7 @@
         }
       }
 
-      // ── Audit A.3 — Chat-Hebbian + Dream-Recombination Telemetry ──
+      // ── Chat-Hebbian + Dream-Recombination Telemetry ──
       if (s.chatTimeHebbianStats) {
         const cs = s.chatTimeHebbianStats;
         const set = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
@@ -1393,6 +1540,181 @@
       el.scrollTop = el.scrollHeight;
       while (el.children.length > 200) el.children[0].remove();
     }
+
+    // Server console-log renderer. Appends one brain-server console
+    // line to the admin Server Console panel, color-coded by level (error=red,
+    // warn=amber, log=grey). Respects the errors/warns-only filter + auto-
+    // scroll toggles, dedupes by seq (backlog + live can overlap), and caps
+    // rendered rows at 500 so a multi-hour walk can't grow the DOM unbounded.
+    const _srvLogSeen = new Set();
+    let _srvLogCount = 0;
+    function renderServerLogEntry(entry) {
+      if (!entry || typeof entry.seq !== 'number') return;
+      if (_srvLogSeen.has(entry.seq)) return;
+      _srvLogSeen.add(entry.seq);
+      const el = document.getElementById('d-srvlog');
+      if (!el) return;
+      const level = entry.level || 'log';
+      const errorsOnly = document.getElementById('d-srvlog-errorsonly');
+      if (errorsOnly && errorsOnly.checked && level === 'log') return;
+      const autoScroll = document.getElementById('d-srvlog-autoscroll');
+      const color = level === 'error' ? '#ff6b6b' : (level === 'warn' ? '#f59e0b' : '#9ca3af');
+      const div = document.createElement('div');
+      div.className = 'log-entry';
+      const ts = entry.ts ? new Date(entry.ts).toLocaleTimeString() : '';
+      const safe = String(entry.text || '').replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
+      div.innerHTML = `<span style="color:#555;">${ts}</span> <span style="color:${color};">${safe}</span>`;
+      el.appendChild(div);
+      _srvLogCount++;
+      const countEl = document.getElementById('d-srvlog-count');
+      if (countEl) countEl.textContent = _srvLogCount.toLocaleString();
+      while (el.children.length > 500) el.removeChild(el.firstChild);
+      if (_srvLogSeen.size > 2000) {
+        const arr = Array.from(_srvLogSeen).sort((a, b) => a - b);
+        _srvLogSeen.clear();
+        for (const s of arr.slice(-1000)) _srvLogSeen.add(s);
+      }
+      if (autoScroll && autoScroll.checked) el.scrollTop = el.scrollHeight;
+    }
+    // Clear-view button — clears the rendered panel only. The server-side ring
+    // is untouched; a reconnect re-pulls the backlog.
+    (function wireServerLogClear() {
+      const btn = document.getElementById('d-srvlog-clear');
+      if (!btn) return;
+      btn.addEventListener('click', () => {
+        const el = document.getElementById('d-srvlog');
+        if (el) el.innerHTML = '';
+        _srvLogCount = 0;
+        const countEl = document.getElementById('d-srvlog-count');
+        if (countEl) countEl.textContent = '0';
+      });
+    })();
+
+    // Community-compute / auto-scale panel. Fetched on admin connect,
+    // synced live via the autoScaleChanged WS broadcast. Sliders + toggle POST
+    // to /autoscale. Sliders are NOT yanked while the operator is dragging.
+    window.__asDragging = false;
+    function renderAutoScale(payload) {
+      if (!payload) return;
+      const s = payload.settings || {};
+      const c = payload.community || {};
+      const $ = id => document.getElementById(id);
+      if ($('d-as-donors')) $('d-as-donors').textContent = c.donorCount ?? 0;
+      if ($('d-as-vram')) $('d-as-vram').textContent = (c.communityComputeMB ?? 0).toLocaleString();
+      if ($('d-as-tier')) $('d-as-tier').textContent = c.currentTier ?? 0;
+      if ($('d-as-running')) $('d-as-running').textContent = c.runningTier ?? 0;
+      if ($('d-as-pending')) {
+        const pend = (c.pendingTier == null) ? 'none' : `tier ${c.pendingTier}`;
+        $('d-as-pending').textContent = pend;
+        $('d-as-pending').style.color = (c.pendingTier == null) ? '#888' : '#f59e0b';
+      }
+      if ($('d-as-replicas')) {
+        const rc = c.replicaCount ?? 0;
+        $('d-as-replicas').textContent = rc;
+        $('d-as-replicas').style.color = rc > 0 ? '#22c55e' : '#888';
+      }
+      if ($('d-as-merge')) {
+        if (c.lastRebroadcastMs) {
+          const ago = Math.max(0, (Date.now() - c.lastRebroadcastMs) / 1000);
+          $('d-as-merge').textContent = ago < 60 ? `${ago.toFixed(0)}s ago` : `${(ago / 60).toFixed(0)}m ago`;
+        } else {
+          $('d-as-merge').textContent = (c.replicaCount > 0) ? 'pending' : 'n/a';
+        }
+      }
+      // Insufficient-compute alert.
+      const alertEl = $('d-as-alert');
+      if (alertEl) {
+        if (c.computeInsufficient) {
+          alertEl.style.display = 'block';
+          const txt = $('d-as-alert-text');
+          if (txt) {
+            const down = (c.downPendingTier != null)
+              ? ` Auto-downscale to tier ${c.downPendingTier} is counting down (retrains at a smaller size).`
+              : ' Holding — brain waits for compute to return (no shrink yet).';
+            txt.textContent = `Connected GPUs (${(c.communityComputeMB ?? 0).toLocaleString()} MB) are below the running tier's floor (${(c.runningFloorMB ?? 0).toLocaleString()} MB).${down}`;
+          }
+        } else {
+          alertEl.style.display = 'none';
+        }
+      }
+      if (!window.__asDragging) {
+        const en = $('d-as-enabled'); if (en) en.checked = !!s.enabled;
+        const buf = $('d-as-buffer'); const bufV = $('d-as-buffer-val');
+        if (buf) { const v = Math.round((s.bufferPct ?? 0.2) * 100); buf.value = v; if (bufV) bufV.textContent = v; }
+        const stab = $('d-as-stability'); const stabV = $('d-as-stability-val');
+        if (stab) { const v = s.stabilityMin ?? 5; stab.value = v; if (stabV) stabV.textContent = v; }
+        const ad = $('d-as-autodown'); if (ad) ad.checked = !!s.autoDownscale;
+        const db = $('d-as-downbuf'); const dbV = $('d-as-downbuf-val');
+        if (db) { const v = Math.round((s.downBufferPct ?? 0.35) * 100); db.value = v; if (dbV) dbV.textContent = v; }
+        const ds = $('d-as-downstab'); const dsV = $('d-as-downstab-val');
+        if (ds) { const v = s.downStabilityMin ?? 15; ds.value = v; if (dsV) dsV.textContent = v; }
+      }
+    }
+    (function wireAutoScale() {
+      const buf = document.getElementById('d-as-buffer');
+      const stab = document.getElementById('d-as-stability');
+      const downbuf = document.getElementById('d-as-downbuf');
+      const downstab = document.getElementById('d-as-downstab');
+      const save = document.getElementById('d-as-save');
+      const manualDown = document.getElementById('d-as-manualdown');
+      const mark = () => { window.__asDragging = true; };
+      const unmark = () => { setTimeout(() => { window.__asDragging = false; }, 1500); };
+      if (buf) {
+        buf.addEventListener('input', () => { mark(); document.getElementById('d-as-buffer-val').textContent = buf.value; });
+        buf.addEventListener('change', unmark);
+      }
+      if (stab) {
+        stab.addEventListener('input', () => { mark(); document.getElementById('d-as-stability-val').textContent = stab.value; });
+        stab.addEventListener('change', unmark);
+      }
+      if (downbuf) {
+        downbuf.addEventListener('input', () => { mark(); document.getElementById('d-as-downbuf-val').textContent = downbuf.value; });
+        downbuf.addEventListener('change', unmark);
+      }
+      if (downstab) {
+        downstab.addEventListener('input', () => { mark(); document.getElementById('d-as-downstab-val').textContent = downstab.value; });
+        downstab.addEventListener('change', unmark);
+      }
+      if (manualDown) manualDown.addEventListener('click', async () => {
+        if (!window.confirm('Manually downscale the brain NOW?\n\nThis RETRAINS at a smaller size that fits the currently-connected compute. The current size’s training is LOST and the curriculum re-walks from the start at the smaller tier. The brain restarts.\n\nProceed?')) return;
+        const statusEl = document.getElementById('d-as-status');
+        try {
+          const r = await fetch(adminApi('autoscale'), {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'downscale' }), cache: 'no-store',
+          });
+          const j = await r.json().catch(() => ({}));
+          if (statusEl) { statusEl.textContent = r.ok ? ('⤓ ' + (j.note || 'downscaling')) : ('✗ ' + (j.error || r.status)); statusEl.style.color = r.ok ? '#f59e0b' : '#ff6b6b'; }
+        } catch (e) { if (statusEl) { statusEl.textContent = '✗ ' + (e?.message || e); statusEl.style.color = '#ff6b6b'; } }
+      });
+      if (save) save.addEventListener('click', async () => {
+        const statusEl = document.getElementById('d-as-status');
+        const body = {
+          enabled: document.getElementById('d-as-enabled').checked,
+          bufferPct: Number(buf.value) / 100,
+          stabilityMin: Number(stab.value),
+          autoDownscale: document.getElementById('d-as-autodown').checked,
+          downBufferPct: Number(downbuf.value) / 100,
+          downStabilityMin: Number(downstab.value),
+        };
+        try {
+          const r = await fetch(adminApi('autoscale'), {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body), cache: 'no-store',
+          });
+          const j = await r.json().catch(() => ({}));
+          if (r.ok) {
+            if (statusEl) { statusEl.textContent = '✓ saved'; statusEl.style.color = '#22c55e'; }
+            window.__asDragging = false;
+            renderAutoScale(j);
+          } else {
+            if (statusEl) { statusEl.textContent = '✗ ' + (j.error || r.status); statusEl.style.color = '#ff6b6b'; }
+          }
+        } catch (e) {
+          if (statusEl) { statusEl.textContent = '✗ ' + (e?.message || e); statusEl.style.color = '#ff6b6b'; }
+        }
+      });
+    })();
 
     // ── Conversation stream ──
     // Privacy-respecting conversation activity counters — aggregate
@@ -1559,12 +1881,12 @@
 
       // Per-probe table — 23 rows in canonical order grouped by category.
       const probeOrder = [
-        ['K.RF — Reading Foundations', ['RF-1', 'RF-2', 'RF-3', 'RF-4', 'RF-5', 'RF-6']],
-        ['K.W — Writing',               ['W-1', 'W-2', 'W-3', 'W-4']],
-        ['K.L — Language',              ['L-1', 'L-2', 'L-3']],
-        ['K.SL — Speaking & Listening', ['SL-1', 'SL-2', 'SL-3', 'SL-4']],
-        ['K.RL — Reading Literature',   ['RL-1', 'RL-2']],
-        ['K.RI — Reading Informational', ['RI-1', 'RI-2']],
+        ['Reading Foundations', ['RF-1', 'RF-2', 'RF-3', 'RF-4', 'RF-5', 'RF-6']],
+        ['Writing',               ['W-1', 'W-2', 'W-3', 'W-4']],
+        ['Language',              ['L-1', 'L-2', 'L-3']],
+        ['Speaking & Listening', ['SL-1', 'SL-2', 'SL-3', 'SL-4']],
+        ['Reading Literature',   ['RL-1', 'RL-2']],
+        ['Reading Informational', ['RI-1', 'RI-2']],
         ['Cross-modal',                  ['CM-1', 'CM-2']],
       ];
       const byProbe = fullMindK.byProbe || {};
@@ -1636,7 +1958,7 @@
       // Without this cap the display hits 100% after ~12 phases and
       // stays there for the remaining hours of teaching.
       //
-      // I.12 closure — `cellSubPhases` is the new server-side field
+      // `cellSubPhases` is the new server-side field
       // that ticks on every wrapped teach call (outermost OR nested),
       // unlike `cellPhasesCompleted` which only ticks on outermost
       // boundaries. K cells wrap their whole pass as ONE outermost
@@ -1651,7 +1973,7 @@
       const status = c.cellStatus || 'idle';
       let pct = 0;
       let pctLabel;
-      // 114.19ew — pre-cell macro-phase progress takes precedence over
+      // Pre-cell macro-phase progress takes precedence over
       // the in-cell bar when no real cell is active. Without this the
       // dashboard showed "idle · 0 phases" during the 5-15 min K-VOCAB
       // upfront-multi-def-seed pass, leaving master with no clue how
@@ -1673,7 +1995,7 @@
         // late phases converge slowly toward the cap, matching real-
         // world K-cell phase distribution (short early phases + long
         // teach-heavy later phases).
-        // I.12 closure — when using the sub-phase fallback, expected
+        // When using the sub-phase fallback, expected
         // tracks higher (each cell averages ~40-100 nested teach calls)
         // so the bar moves smoothly. Tag the label so operator can tell
         // which counter is being used.
@@ -1739,7 +2061,7 @@
       if (activeEl) activeEl.textContent = active;
     }
 
-    // T15.C — drug-state panel renderer. Consumes scheduler.snapshot()
+    // Drug-state panel renderer. Consumes scheduler.snapshot()
     // (broadcast as state.drugSnapshot). Writes into the d-drug-panel
     // section created above.
     function renderDrugPanel(snap) {
@@ -1815,7 +2137,7 @@
     }
 
     // ── Emotion history chart ──
-    // Session 114.19ep — per-metric AUTO-SCALE Y-axis. Earlier code
+    // Per-metric AUTO-SCALE Y-axis. Earlier code
     // clamped each metric to a hardcoded theoretical range (psi to
     // [0, 0.1]) which clipped the line whenever values exceeded that
     // bound. Now each metric tracks its observed min/max across the
@@ -1848,7 +2170,7 @@
       const plotH = h - CHART_PAD_T - CHART_PAD_B;
       const xStep = plotW / Math.max(1, len - 1);
 
-      // 114.19et — FIXED semantic ranges per metric. The previous
+      // FIXED semantic ranges per metric. The previous
       // auto-scale recomputed [minObs, maxObs] from the FULL rolling
       // history on every draw, which meant whenever the current value
       // pushed the observed min/max wider, EVERY historical sample
@@ -1950,7 +2272,7 @@
     // Redraw chart every 2 seconds
     setInterval(drawEmotionChart, 2000);
 
-    // 114.19ex — graceful-stop button click handler. POST /shutdown
+    // Graceful-stop button click handler. POST /shutdown
     // (loopback-gated server-side) which calls brain.stop() — flushes
     // definition disk cache, terminates worker pool, saves weights,
     // exits in 500ms. Equivalent to stop.bat without needing terminal
@@ -1972,9 +2294,7 @@
         btn.disabled = true;
         btn.textContent = '⏳ shutting down...';
         try {
-          const scheme = location.protocol === 'https:' ? 'https:' : 'http:';
-          const host = location.hostname || 'localhost';
-          const r = await fetch(`${scheme}//${host}:7525/shutdown`, {
+          const r = await fetch(adminApi('shutdown'), {
             method: 'POST',
             cache: 'no-store',
           });
@@ -2029,9 +2349,7 @@
         }
         cb.disabled = true;
         try {
-          const scheme = location.protocol === 'https:' ? 'https:' : 'http:';
-          const host = location.hostname || 'localhost';
-          const r = await fetch(`${scheme}//${host}:7525/auto-advance`, {
+          const r = await fetch(adminApi('auto-advance'), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ enabled: next }),
@@ -2069,9 +2387,7 @@
     // port is simpler than piggybacking on the state broadcast.
     async function refreshMilestone() {
       try {
-        const scheme = location.protocol === 'https:' ? 'https:' : 'http:';
-        const host = location.hostname || 'localhost';
-        const r = await fetch(`${scheme}//${host}:7525/milestone`, { cache: 'no-store' });
+        const r = await fetch(adminApi('milestone'), { cache: 'no-store' });
         if (!r.ok) return;
         const m = await r.json();
         const bootEl = document.getElementById('d-ms-boot');
@@ -2126,7 +2442,7 @@
         //   2. paused with a next grade available (m.paused=true, nextGrade != null)
         //      → "Start Next Grade" button, clicking fires POST /grade-advance
         //   3. paused at cap (m.paused=true, nextGrade == null) — caveat text
-        //      directs operator to POST /grade-signoff for LAW 6 Part 2
+        //      directs operator to POST /grade-signoff for the operator-signoff gate
         const advEl = document.getElementById('d-ms-advance');
         if (advEl) {
           // Viewer-mode dashboards never see the advance/signoff panel —
@@ -2166,9 +2482,7 @@
                   btn.textContent = 'advancing...';
                   btn.style.opacity = '0.5';
                   try {
-                    const scheme2 = location.protocol === 'https:' ? 'https:' : 'http:';
-                    const host2 = location.hostname || 'localhost';
-                    await fetch(`${scheme2}//${host2}:7525/grade-advance`, {
+                    await fetch(adminApi('grade-advance'), {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({ subject: null, grade: pausedGrade }),
@@ -2182,11 +2496,9 @@
               // POSTs to /grade-signoff (loopback-gated) with subject +
               // grade + a default note. Operator can paste a custom note
               // in the textarea before clicking. Replaces the prior
-              // curl-only instruction operator caught iter6 verbatim
-              // 2026-04-26: "i cant sign off there is no ability for me
-              // to accept or anyything like that similare too starting
-              // next grade button.. ie i dont have a start 1st grade
-              // option on the dashboard".
+              // curl-only instruction — the operator needs an in-dashboard
+              // way to accept / sign off, mirroring the start-next-grade
+              // button, instead of only a curl command.
               const subjects = ['ela', 'math', 'science', 'social', 'art', 'life'];
               const so = m.gradeSignoffs || {};
               const buttons = subjects.map((sub) => {
@@ -2202,11 +2514,11 @@
                 <div style="background:#0f1a1f;border:1px solid #22c55e;border-radius:6px;padding:10px;">
                   <div style="color:#22c55e;font-size:11px;font-weight:700;margin-bottom:6px;">✓ GRADE CAP REACHED — '${pausedGrade.toUpperCase()}' PASSED</div>
                   <div style="color:#aaa;font-size:10px;line-height:1.6;margin-bottom:8px;">
-                    Per subject signoff — click each subject after operator-localhost verification (LAW 6 Part 2). Signed cells appear green-checked.
+                    Per subject signoff — click each subject after operator-localhost verification. Signed cells appear green-checked.
                   </div>
                   <textarea id="d-ms-signoff-note" placeholder="signoff note (optional, e.g. 'methodology + reasoning + thinking + talking + listening + reading all verified on localhost')" rows="2" style="width:100%;background:#0a0f12;color:#e5e7eb;border:1px solid #374151;border-radius:4px;padding:6px;font-family:monospace;font-size:10px;margin-bottom:6px;"></textarea>
                   <div style="display:flex;flex-wrap:wrap;">${buttons}</div>
-                  <div style="color:#6b7280;font-size:9px;margin-top:6px;">Endpoint: POST /grade-signoff (loopback-gated). Curl alternative: <code style="color:#00e5ff;">curl -X POST http://localhost:7525/grade-signoff -H "Content-Type: application/json" -d '{"subject":"&lt;sub&gt;","grade":"${pausedGrade}","note":"..."}'</code></div>
+                  <div style="color:#6b7280;font-size:9px;margin-top:6px;">Endpoint: POST /grade-signoff (${_dashIsLocal ? 'loopback-gated' : 'Forgejo-authed via /admin'}). Curl alternative: <code style="color:#00e5ff;">curl -X POST ${adminApi('grade-signoff')} -H "Content-Type: application/json" -d '{"subject":"&lt;sub&gt;","grade":"${pausedGrade}","note":"..."}'</code></div>
                 </div>
               `;
               // Wire all signoff buttons.
@@ -2222,9 +2534,7 @@
                   btn.textContent = 'signing...';
                   btn.style.opacity = '0.5';
                   try {
-                    const scheme3 = location.protocol === 'https:' ? 'https:' : 'http:';
-                    const host3 = location.hostname || 'localhost';
-                    const res = await fetch(`${scheme3}//${host3}:7525/grade-signoff`, {
+                    const res = await fetch(adminApi('grade-signoff'), {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({ subject, grade, note }),
@@ -2258,7 +2568,7 @@
     refreshMilestone();
     setInterval(refreshMilestone, 5000);
 
-    // Audit H.9 — wire the "retry now" link in the no-connection banner
+    // Wire the "retry now" link in the no-connection banner
     // so operator can short-circuit the 3s countdown when they know the
     // brain-server is already up (e.g., just finished running start.bat).
     document.getElementById('conn-retry-now').addEventListener('click', (e) => {
@@ -2271,8 +2581,8 @@
     connect();
   </script>
   <script>
-    // ── I.11 + I.12 client-side observability patch ─────────────────────
-    // Appended 2026-06-17 21:40 PT during operator-driven K-curriculum
+    // ── Client-side observability patch ─────────────────────
+    // Appended during an operator-driven K-curriculum
     // live run. Server is alive + training is intact, but the brain-events
     // panel + cell-progress counters were going stale because the server-
     // side event-broadcast pipeline only covers SEED-phase + a few teach
@@ -2298,8 +2608,8 @@
     //     counter is stuck at 0 — keeps the bar moving instead of
     //     dead-zero for 9+ minutes of active training
     //
-    // Real fix lives in I.11 (server _teach* event broadcasts) and I.12
-    // (server-side phase counter increment hook) — both queued for next
+    // Real fix lives server-side (the _teach* event broadcasts and the
+    // phase counter increment hook) — both queued for the next
     // restart. This patch is the operator-visible workaround until then.
     (function clientSideObservabilityPatch() {
       let lastPhase = null;
@@ -2307,7 +2617,7 @@
       let lastHeartbeatPushTs = 0;
       let phaseStartTs = null;
       let syntheticSeqCounter = -1; // negative so we never collide with server seq numbers
-      const PATCH_TAG = 'I.11/I.12 client-side patch';
+      const PATCH_TAG = 'client-side observability patch';
       const HEARTBEAT_INTERVAL_MS = 30000;
       const EXPECTED_K_CELL_MIN = 20; // heuristic — K cells average ~20min during UPFRONT-VOCAB-TEACH
 
@@ -2389,7 +2699,7 @@
           }
 
           // ── Override cell progress % when server counter is stuck ───
-          // The host renderer at lines 1376-1387 computes pct from
+          // The host renderer computes pct from
           // c.cellPhasesCompleted, which the server isn't yet
           // incrementing during cell-level teach. When done=0 + elapsed
           // > 1 min + no macroPhaseProgress (i.e. we're past SEED, in
@@ -2404,7 +2714,7 @@
               const cellPct = document.getElementById('d-curr-cellpct');
               if (cellBar) cellBar.style.width = timePct + '%';
               if (cellPct) {
-                cellPct.innerHTML = `~${timePct}% <span style="color:#fbbf24;">[time-est]</span> · 0 phases reported · ${elapsedMin.toFixed(1)} min elapsed (in progress, server phase counter stuck — I.12)`;
+                cellPct.innerHTML = `~${timePct}% <span style="color:#fbbf24;">[time-est]</span> · 0 phases reported · ${elapsedMin.toFixed(1)} min elapsed (in progress, server phase counter stuck)`;
               }
             }
           }
@@ -2419,7 +2729,7 @@
         pushSyntheticEvent(
           'event',
           'patch',
-          `🛠 ${PATCH_TAG} active — synthesizing events from heartbeat broadcasts until server-side I.11/I.12 ships`
+          `🛠 ${PATCH_TAG} active — synthesizing events from heartbeat broadcasts until the server-side event broadcasts + phase counter ship`
         );
       }, 1500);
 

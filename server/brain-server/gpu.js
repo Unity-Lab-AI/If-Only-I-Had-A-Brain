@@ -298,6 +298,96 @@ const SERVER_GPU_MIXIN = {
    * stability window (critical-mass confirmation), wired as the follow-on.
    * Called from gpu_register + the WS close handler.
    */
+  /**
+   * DF.7 — load admin-configurable auto-scale settings (toggle + dead-zone
+   * buffer + stability window) from server/autoscale-settings.json, defaulting
+   * sanely on first boot. These govern WHEN the community-compute milestone
+   * resize is allowed to fire. Gee 2026-06-20: the auto-relearn must be gated
+   * WITH A BUFFER (a dead-zone) + admin-controllable so it "doesnt try to
+   * relearn the second it hits a gate of available users compute connected so
+   * that any one person disconnecting doesnt downgrade the brains fucntioning".
+   */
+  _getAutoScaleSettings() {
+    if (this._autoScale) return this._autoScale;
+    const defaults = {
+      enabled: true,        // master toggle — auto UP-scale on/off
+      bufferPct: 0.20,      // UP DEAD-ZONE: community compute must exceed a tier's
+                            // threshold by this margin before the tier counts as
+                            // "entered" — hysteresis so flapping at a gate (one
+                            // donor connecting/leaving) never triggers a resize.
+      stabilityMin: 5,      // minutes a higher tier must be HELD past the buffer
+                            // before the resize+retrain actually fires.
+      minDonorsFloor: 1,    // never consider a tier needing fewer donors than this.
+      // DF.7 downscale rectify — "buffers for the buffers". A downscale is far
+      // more conservative than an upscale because it RETRAINS at a smaller size
+      // (loses the bigger brain's learning), so it must only fire on a genuine,
+      // SUSTAINED collapse of compute — never a transient mass-disconnect.
+      autoDownscale: true,  // toggle — when compute can't hold the running tier,
+                            // rectify by retraining at a fitting smaller tier. OFF
+                            // = just alert + pause/wait (never auto-shrink).
+      downBufferPct: 0.35,  // community must fall THIS far BELOW the running tier's
+                            // VRAM floor before a downscale is even considered
+                            // (deeper than the up-buffer — the buffer's buffer).
+      downStabilityMin: 15, // and stay below that long (3× the up window) — so 10
+                            // people leaving for a few minutes then returning never
+                            // shrinks the brain.
+    };
+    try {
+      const fsx = require('fs');
+      const px = require('path');
+      const p = px.join(__dirname, '..', 'autoscale-settings.json');
+      if (fsx.existsSync(p)) {
+        const saved = JSON.parse(fsx.readFileSync(p, 'utf8'));
+        this._autoScale = {
+          enabled: typeof saved.enabled === 'boolean' ? saved.enabled : defaults.enabled,
+          bufferPct: Number.isFinite(saved.bufferPct) ? Math.max(0, Math.min(2, saved.bufferPct)) : defaults.bufferPct,
+          stabilityMin: Number.isFinite(saved.stabilityMin) ? Math.max(0, Math.min(120, saved.stabilityMin)) : defaults.stabilityMin,
+          minDonorsFloor: Number.isFinite(saved.minDonorsFloor) ? Math.max(1, Math.floor(saved.minDonorsFloor)) : defaults.minDonorsFloor,
+          autoDownscale: typeof saved.autoDownscale === 'boolean' ? saved.autoDownscale : defaults.autoDownscale,
+          downBufferPct: Number.isFinite(saved.downBufferPct) ? Math.max(0, Math.min(0.9, saved.downBufferPct)) : defaults.downBufferPct,
+          downStabilityMin: Number.isFinite(saved.downStabilityMin) ? Math.max(0, Math.min(240, saved.downStabilityMin)) : defaults.downStabilityMin,
+        };
+      } else {
+        this._autoScale = { ...defaults };
+      }
+    } catch {
+      this._autoScale = { ...defaults };
+    }
+    return this._autoScale;
+  },
+
+  /**
+   * DF.7 — admin setter for the auto-scale dead-zone settings. Clamps + merges
+   * + persists to server/autoscale-settings.json so the toggle/sliders survive
+   * reboots. Returns the effective settings. Wired to the /admin/autoscale POST
+   * endpoint + the dashboard toggle + sliders.
+   */
+  _setAutoScaleSettings(patch) {
+    const cur = this._getAutoScaleSettings();
+    const next = {
+      enabled: typeof patch.enabled === 'boolean' ? patch.enabled : cur.enabled,
+      bufferPct: Number.isFinite(patch.bufferPct) ? Math.max(0, Math.min(2, patch.bufferPct)) : cur.bufferPct,
+      stabilityMin: Number.isFinite(patch.stabilityMin) ? Math.max(0, Math.min(120, patch.stabilityMin)) : cur.stabilityMin,
+      minDonorsFloor: Number.isFinite(patch.minDonorsFloor) ? Math.max(1, Math.floor(patch.minDonorsFloor)) : cur.minDonorsFloor,
+      autoDownscale: typeof patch.autoDownscale === 'boolean' ? patch.autoDownscale : cur.autoDownscale,
+      downBufferPct: Number.isFinite(patch.downBufferPct) ? Math.max(0, Math.min(0.9, patch.downBufferPct)) : cur.downBufferPct,
+      downStabilityMin: Number.isFinite(patch.downStabilityMin) ? Math.max(0, Math.min(240, patch.downStabilityMin)) : cur.downStabilityMin,
+    };
+    this._autoScale = next;
+    try {
+      const fsx = require('fs');
+      const px = require('path');
+      fsx.writeFileSync(px.join(__dirname, '..', 'autoscale-settings.json'), JSON.stringify(next, null, 2));
+    } catch (e) {
+      console.warn('[Brain] DF.7 — failed to persist autoscale settings:', e.message);
+    }
+    // A pending candidate computed under the OLD buffer may no longer qualify —
+    // recompute so the dead-zone change takes effect immediately.
+    if (this._recomputeCommunityCompute) this._recomputeCommunityCompute();
+    console.log(`[Brain] DF.7 — autoscale settings updated: enabled=${next.enabled} bufferPct=${(next.bufferPct * 100).toFixed(0)}% stabilityMin=${next.stabilityMin} minDonorsFloor=${next.minDonorsFloor}`);
+    return next;
+  },
+
   _recomputeCommunityCompute() {
     let totalMB = 0, donorCount = 0;
     if (this._gpuClients) {
@@ -311,6 +401,7 @@ const SERVER_GPU_MIXIN = {
     }
     this._communityComputeMB = totalMB;
     this._communityDonorCount = donorCount;
+    const settings = this._getAutoScaleSettings();
 
     // Milestone tiers: (min community VRAM, min donor count) → target neuron
     // scale. Conservative under replication (Path A) — the running brain must
@@ -321,6 +412,8 @@ const SERVER_GPU_MIXIN = {
       { minCommunityMB: 96_000,  minDonors: 6,  neurons: 150_000_000 }, // tier 2 — community momentum
       { minCommunityMB: 256_000, minDonors: 10, neurons: 357_000_000 }, // tier 3 — top-computer scale
     ];
+    // RAW tier — highest tier whose bare thresholds are met. This is the
+    // display/telemetry value (what the community currently qualifies for).
     let tier = 0;
     for (let i = 0; i < MILESTONES.length; i++) {
       if (totalMB >= MILESTONES[i].minCommunityMB && donorCount >= MILESTONES[i].minDonors) tier = i;
@@ -328,21 +421,86 @@ const SERVER_GPU_MIXIN = {
     this._communityTier = tier;
     this._communityTierTarget = MILESTONES[tier].neurons;
 
-    // Up-only milestone gate: flag a pending resize when we ENTER a higher
-    // tier than the brain is currently RUNNING at, debounced via a stability
-    // window the execution layer enforces (so a flapping donor can't thrash a
-    // resize). Record candidate + entry time; do NOT execute here.
+    // DF.7 DEAD-ZONE — UPGRADE tier uses BUFFERED thresholds. To count as
+    // "entered" for the purpose of triggering a resize, community compute must
+    // exceed the tier's VRAM gate by bufferPct (hysteresis) AND meet the donor
+    // floor. This is Gee's dead-zone: hovering right at a gate (one donor
+    // flapping connect/disconnect) never trips a resize — only a genuine,
+    // sustained surplus past the buffer does. With bufferPct=0 it reduces to
+    // the raw gate.
+    const buffer = 1 + (settings.bufferPct || 0);
+    let upgradeTier = 0;
+    for (let i = 0; i < MILESTONES.length; i++) {
+      const vramGate = MILESTONES[i].minCommunityMB * buffer;
+      const donorGate = Math.max(MILESTONES[i].minDonors, settings.minDonorsFloor || 1);
+      if (totalMB >= vramGate && donorCount >= donorGate) upgradeTier = i;
+    }
+    this._communityUpgradeTier = upgradeTier;
+
+    // Up-only + buffered milestone gate. Flag a pending resize ONLY when the
+    // BUFFERED upgrade tier exceeds the RUNNING tier — and only if auto-scale
+    // is enabled. Down-protection: the running tier is NEVER lowered here, so a
+    // donor leaving (totalMB/donorCount dropping) can never downgrade a running
+    // brain — it can only cancel a not-yet-executed pending upgrade. The
+    // execution layer additionally enforces the stability hold window.
     const runningTier = this._communityTierRunning || 0;
-    if (tier > runningTier && tier !== this._communityTierPending) {
-      this._communityTierPending = tier;
-      this._communityTierPendingTarget = MILESTONES[tier].neurons;
-      this._communityTierPendingSince = Date.now();
-      console.log(`[Brain] PA.4.8 — community-compute milestone candidate: tier ${tier} (${totalMB.toLocaleString()}MB across ${donorCount} donor(s) → target ${MILESTONES[tier].neurons.toLocaleString()} neurons). Resize+retrain fires once held past the stability window — NOT on this connection alone.`);
-    } else if (tier <= runningTier && this._communityTierPending && tier < this._communityTierPending) {
-      // Dropped below the pending candidate before it executed — cancel
-      // (critical mass not sustained).
+    if (!settings.enabled) {
+      // Auto-scale OFF — clear any pending candidate so re-enabling starts clean.
       this._communityTierPending = null;
       this._communityTierPendingSince = null;
+    } else if (upgradeTier > runningTier && upgradeTier !== this._communityTierPending) {
+      this._communityTierPending = upgradeTier;
+      this._communityTierPendingTarget = MILESTONES[upgradeTier].neurons;
+      this._communityTierPendingSince = Date.now();
+      console.log(`[Brain] DF.7/PA.4.8 — milestone candidate: tier ${upgradeTier} (${totalMB.toLocaleString()}MB across ${donorCount} donor(s), past the ${(settings.bufferPct * 100).toFixed(0)}% dead-zone → target ${MILESTONES[upgradeTier].neurons.toLocaleString()} neurons). Resize fires only if held ≥${settings.stabilityMin}min — a single donor joining/leaving will NOT trigger it.`);
+    } else if (upgradeTier <= runningTier && this._communityTierPending && upgradeTier < this._communityTierPending) {
+      // Dropped back below the buffered candidate before it executed — cancel
+      // (critical mass not sustained past the dead-zone). The RUNNING brain is
+      // untouched (no downgrade).
+      console.log(`[Brain] DF.7 — pending tier ${this._communityTierPending} candidacy CANCELLED (compute fell back inside the dead-zone before the hold window elapsed). Running tier ${runningTier} unchanged — no downgrade.`);
+      this._communityTierPending = null;
+      this._communityTierPendingSince = null;
+    }
+
+    // DF.7 DOWNSCALE rectify — "buffers for the buffers". The stable operating
+    // band is [down-floor … up-gate]: inside it the brain just keeps running at
+    // its current neuron count, unchanged, no matter how donors come and go.
+    // ONLY when community compute collapses BELOW the running tier's VRAM floor
+    // by more than downBufferPct AND stays there past downStabilityMin do we
+    // rectify — retrain at the biggest tier the surviving GPUs can actually
+    // hold. Far more conservative than upscale (a downscale loses the bigger
+    // brain's learning), so a transient mass-disconnect (10 people leaving then
+    // returning) never shrinks the brain. `_computeInsufficient` flags the
+    // admin alert the instant compute can't hold the running tier, regardless
+    // of the buffer/window (so you SEE the problem before any rectify fires).
+    const runningFloorMB = MILESTONES[runningTier] ? MILESTONES[runningTier].minCommunityMB : 0;
+    this._runningFloorMB = runningFloorMB;
+    this._computeInsufficient = (runningTier > 0) && (totalMB < runningFloorMB);
+    if (settings.autoDownscale && runningTier > 0) {
+      const downGate = runningFloorMB * (1 - (settings.downBufferPct || 0));
+      if (totalMB < downGate) {
+        // Pick the biggest tier the surviving compute can actually hold (raw —
+        // no buffer; we want the largest brain that fits, not a timid floor).
+        let fitTier = 0;
+        for (let i = 0; i < MILESTONES.length; i++) {
+          if (totalMB >= MILESTONES[i].minCommunityMB && donorCount >= MILESTONES[i].minDonors) fitTier = i;
+        }
+        if (fitTier < runningTier && fitTier !== this._communityDownTierPending) {
+          this._communityDownTierPending = fitTier;
+          this._communityDownTierPendingTarget = MILESTONES[fitTier].neurons;
+          this._communityDownTierPendingSince = Date.now();
+          console.warn(`[Brain] DF.7 — DOWNSCALE candidate: compute ${totalMB.toLocaleString()}MB fell >${(settings.downBufferPct * 100).toFixed(0)}% below the running tier ${runningTier} floor (${runningFloorMB.toLocaleString()}MB). If HELD ≥${settings.downStabilityMin}min, rectify by retraining at tier ${fitTier} (${MILESTONES[fitTier].neurons.toLocaleString()} neurons). A transient mass-disconnect will NOT trigger it.`);
+        }
+      } else if (this._communityDownTierPending != null) {
+        // Compute recovered above the down-gate before the window elapsed — cancel.
+        console.log(`[Brain] DF.7 — downscale candidacy CANCELLED (compute recovered above the floor before the hold window). Running tier ${runningTier} unchanged.`);
+        this._communityDownTierPending = null;
+        this._communityDownTierPendingSince = null;
+      }
+    } else {
+      // autoDownscale OFF or already at tier 0 — no auto-shrink; alert only.
+      this._communityDownTierPending = null;
+      this._communityDownTierPendingSince = null;
     }
   },
 
@@ -359,31 +517,65 @@ const SERVER_GPU_MIXIN = {
    * in-process re-allocation). Up-only; never fires below the running tier.
    */
   _maybeExecuteMilestoneResize() {
-    const STABILITY_MS = 5 * 60 * 1000; // 5-minute critical-mass confirmation
-    const pending = this._communityTierPending;
-    if (pending == null) return;
-    if (pending <= (this._communityTierRunning || 0)) { this._communityTierPending = null; return; }
-    if (!this._communityTierPendingSince || (Date.now() - this._communityTierPendingSince) < STABILITY_MS) return;
+    const settings = this._getAutoScaleSettings();
+    const running = this._communityTierRunning || 0;
 
-    const targetNeurons = this._communityTierPendingTarget || 6_000_000;
+    // UP-scale path — gated by the master toggle + the up stability window.
+    if (settings.enabled) {
+      const STABILITY_MS = Math.max(0, (settings.stabilityMin || 5)) * 60 * 1000;
+      const pending = this._communityTierPending;
+      if (pending != null && pending > running
+          && this._communityTierPendingSince
+          && (Date.now() - this._communityTierPendingSince) >= STABILITY_MS) {
+        this._persistTierAndRestart(pending, this._communityTierPendingTarget || 6_000_000,
+          `UP-scale: milestone tier ${pending} held ≥${settings.stabilityMin}min past the dead-zone`);
+        return;
+      }
+      if (pending != null && pending <= running) this._communityTierPending = null;
+    }
+
+    // DOWN-scale rectify path — gated by autoDownscale + the LONGER down window
+    // ("buffers for the buffers"). Fires only when compute genuinely cannot hold
+    // the running tier and has stayed collapsed past downStabilityMin.
+    if (settings.autoDownscale) {
+      const DOWN_MS = Math.max(0, (settings.downStabilityMin || 15)) * 60 * 1000;
+      const dpend = this._communityDownTierPending;
+      if (dpend != null && dpend < running
+          && this._communityDownTierPendingSince
+          && (Date.now() - this._communityDownTierPendingSince) >= DOWN_MS) {
+        this._persistTierAndRestart(dpend, this._communityDownTierPendingTarget || 6_000_000,
+          `DOWN-scale rectify: compute could not hold tier ${running}, held below the floor ≥${settings.downStabilityMin}min`);
+        return;
+      }
+      if (dpend != null && dpend >= running) this._communityDownTierPending = null;
+    }
+  },
+
+  /**
+   * DF.7 — shared tier-change executor (UP or DOWN). Persists the target tier to
+   * server/community-tier.json, clears the old-size weights (size changed →
+   * retrain), records the new running tier, and triggers the PROMPT-FREE
+   * graceful restart: process.exit(0) → systemd `Restart=always` brings the
+   * brain back, the boot-scaler reads community-tier.json + sizes the brain to
+   * the target, and the curriculum re-walks. This is the deployed equivalent of
+   * stop→savestart→full-train — with NO y/n prompt, so it's automation-safe
+   * (the operator flagged start.bat's y/n prompt as unusable for automation).
+   * The walk runs UNATTENDED when the auto-advance toggle is on, because that
+   * flag is persisted separately and re-applied on boot (survives the weight
+   * clear) — see brain-server.js auto-advance persistence.
+   */
+  _persistTierAndRestart(tier, targetNeurons, reason) {
     try {
       const fsx = require('fs');
       const px = require('path');
-      // gpu.js __dirname = server/brain-server/ → tier file lives at server/.
       fsx.writeFileSync(
         px.join(__dirname, '..', 'community-tier.json'),
-        JSON.stringify({ tier: pending, targetNeurons, confirmedAtMs: Date.now() }, null, 2),
+        JSON.stringify({ tier, targetNeurons, confirmedAtMs: Date.now() }, null, 2),
       );
     } catch (e) {
-      console.error('[Brain] PA.4.8 — failed to persist community tier (resize deferred):', e.message);
+      console.error('[Brain] DF.7 — failed to persist community tier (tier change deferred):', e.message);
       return;
     }
-    // The new tier means a DIFFERENT brain size — the saved weights are sized
-    // for the old brain and are INCOMPATIBLE with the new one. Clear them so
-    // the post-restart boot starts fresh at the new size + re-walks (resize =
-    // retrain). NOTE: normal crash-restarts run with DREAM_KEEP_STATE=1 and
-    // PRESERVE the in-progress walk (see deploy/unity-brain.service) — ONLY a
-    // confirmed milestone resize clears, because only then is the size changing.
     try {
       const fsx = require('fs');
       const px = require('path');
@@ -393,27 +585,187 @@ const SERVER_GPU_MIXIN = {
           try { fsx.unlinkSync(px.join(sdir, f)); } catch { /* best-effort */ }
         }
       }
-      console.log('[Brain] PA.4.8 — cleared old-size brain-weights for resize (post-restart re-walks at the new tier).');
+      console.log('[Brain] DF.7 — cleared old-size brain-weights (size changed → re-walk at the new tier).');
     } catch (e) {
-      console.warn('[Brain] PA.4.8 — weight clear on resize failed (boot may load stale-size weights):', e.message);
+      console.warn('[Brain] DF.7 — weight clear on tier change failed (boot may load stale-size weights):', e.message);
     }
-    console.log(`[Brain] PA.4.8 — community milestone tier ${pending} CONFIRMED (held ≥${STABILITY_MS / 60000}min). Persisted target ${targetNeurons.toLocaleString()} neurons → graceful restart to resize + retrain.`);
-    this._communityTierRunning = pending;
+    console.log(`[Brain] DF.7 — TIER CHANGE → ${tier} (${targetNeurons.toLocaleString()} neurons). Reason: ${reason}. Prompt-free graceful restart (systemd Restart=always re-walks; UNATTENDED when auto-advance is ON).`);
+    this._communityTierRunning = tier;
     this._communityTierPending = null;
+    this._communityDownTierPending = null;
     global._brainShutdownRequested = true;
-    // Let the log flush + any in-flight save settle, then exit. systemd /
-    // launcher (Restart=always) brings the brain back at the new tier.
     setTimeout(() => process.exit(0), 1500);
   },
 
-  _sparseSend(msg, timeoutMs = 30000) {
-    if (!this._gpuClient || this._gpuClient.readyState !== 1) return Promise.resolve(null);
+  /**
+   * DF.7 — manual, DELIBERATE downscale (admin button). Immediately retrains the
+   * brain at a fitting smaller tier for the currently-connected compute,
+   * bypassing the auto-downscale hold window. Destructive (loses the current
+   * size's learning) — the dashboard guards it behind an explicit confirm.
+   * Returns the chosen target tier, or null if nothing to do.
+   */
+  _manualDownscale() {
+    const MILESTONES = this._lastMilestones || null;
+    const running = this._communityTierRunning || 0;
+    if (running <= 0) return null; // already smallest
+    // Recompute the fitting tier from live compute.
+    if (this._recomputeCommunityCompute) this._recomputeCommunityCompute();
+    let fitTier = this._communityDownTierPending;
+    if (fitTier == null || fitTier >= running) {
+      // No auto-candidate (compute may be inside the buffer) — fall to one tier down.
+      fitTier = running - 1;
+    }
+    const target = this._communityDownTierPendingTarget || 6_000_000;
+    console.warn(`[Brain] DF.7 — MANUAL downscale requested by admin: tier ${running} → ${fitTier}. Retraining now (deliberate, bypasses the hold window).`);
+    this._persistTierAndRestart(fitTier, target, `MANUAL admin downscale ${running} → ${fitTier}`);
+    return fitTier;
+  },
+
+  // DF.7 — live pool donors (every connected donor GPU, primary first). The
+  // pool is the set of browser GPUs sharing compute. With 1 donor this is just
+  // [primary] = current behavior; with N it's the fan-out target for parallel
+  // work. Primary is placed first so single-target dispatch defaults to it.
+  _livePoolDonors() {
+    const out = [];
+    if (this._gpuClient && this._gpuClient.readyState === 1) out.push(this._gpuClient);
+    if (this._gpuClients) {
+      for (const ws of this._gpuClients) {
+        if (ws && ws.readyState === 1 && ws !== this._gpuClient) out.push(ws);
+      }
+    }
+    return out;
+  },
+
+  // DF.7 — round-robin donor selector for independent (stateless) work units.
+  // Returns the next live donor, cycling across the whole pool so load spreads
+  // instead of pinning the primary. Falls back to the primary when alone.
+  _nextPoolDonor() {
+    const donors = this._livePoolDonors();
+    if (donors.length === 0) return null;
+    this._poolRR = ((this._poolRR || 0) + 1) % donors.length;
+    return donors[this._poolRR];
+  },
+
+  /**
+   * DF.7 — data-parallel fan-out primitive. Distributes INDEPENDENT work units
+   * round-robin across every live donor GPU and awaits them all. This is the
+   * mechanism that stops the brain being "stuck on one GPU" (Gee 2026-06-20):
+   * the parallelizable training passes (per-word definition binding, academic-
+   * corpus stories, association-pair Hebbian) hand their work list here and it
+   * spreads across all donated GPUs at once. `perItemFn(item, donorWs, idx)`
+   * dispatches one unit to a specific donor (pass donorWs through to a target-
+   * parameterized dispatch). With 1 donor this is sequential-on-primary =
+   * identical to today; with N donors throughput scales ~N×. Returns the array
+   * of per-item results (null where an item's dispatch failed/dropped).
+   */
+  async _gpuParallelMap(items, perItemFn) {
+    const donors = this._livePoolDonors();
+    if (donors.length === 0 || !Array.isArray(items) || items.length === 0) return [];
+    const results = new Array(items.length).fill(null);
+    await Promise.all(items.map((item, idx) => {
+      const donor = donors[idx % donors.length];
+      return Promise.resolve()
+        .then(() => perItemFn(item, donor, idx))
+        .then((r) => { results[idx] = r; })
+        .catch(() => { results[idx] = null; });
+    }));
+    return results;
+  },
+
+  /**
+   * DF.7 — bring a freshly-joined donor up to a FULL brain replica so it can
+   * share compute instead of sitting idle. Replays (1) the cluster LIF-buffer
+   * init for every cluster (mirrors _gpuStep's first-dispatch) + (2) every
+   * canonical sparse-matrix upload tracked in the replica registry. After this
+   * the donor holds the same weights as the primary and any independent
+   * forward-prop / training unit can run on it (see _gpuParallelMap). The
+   * primary IS the master, so syncing it is a no-op. Per-donor in-flight guard
+   * prevents overlapping syncs (a slow replica + a rebroadcast racing).
+   */
+  async _syncReplicaToDonor(ws) {
+    if (!ws || ws.readyState !== 1) return;
+    if (ws === this._gpuClient) return;   // primary is the master — nothing to replicate
+    if (!this._gpuClient) return;         // no master established yet
+    if (!this._replicaSyncInFlight) this._replicaSyncInFlight = new Set();
+    if (this._replicaSyncInFlight.has(ws)) return;
+    this._replicaSyncInFlight.add(ws);
+    try {
+      // 1) init the replica's cluster LIF buffers (mirror _gpuStep first-dispatch).
+      const clusters = Object.keys(this.CLUSTER_SIZES || {});
+      for (const clusterName of clusters) {
+        const size = this.CLUSTER_SIZES[clusterName];
+        if (!size || !ws || ws.readyState !== 1) continue;
+        const regions = this._regionsFor ? this._regionsFor(clusterName, size) : undefined;
+        try {
+          ws.send(JSON.stringify({
+            type: 'gpu_init',
+            clusterName,
+            size,
+            tonicDrive: this.tonicDrives[clusterName],
+            noiseAmp: this.noiseAmplitudes[clusterName],
+            lifParams: { tau: 20, Vrest: -65, Vthresh: -50, Vreset: -70, dt: 1, R: 1, tRefrac: 2 },
+            regions,
+          }));
+        } catch { /* replica dropped mid-sync — loop's readyState guard catches it */ }
+      }
+      // 2) replay every canonical matrix upload → full weight replica.
+      const reg = this._replicaMatrixRegistry;
+      let synced = 0;
+      if (reg && reg.size) {
+        for (const [name, entry] of reg) {
+          if (!ws || ws.readyState !== 1) break;
+          try { await this.gpuSparseUpload(name, entry.matrix, entry.binding, ws); synced++; }
+          catch { /* skip a matrix that failed; rebroadcast will retry */ }
+        }
+      }
+      console.log(`[Brain] DF.7 — replica sync complete: ${synced} matrices + ${clusters.length} clusters pushed to a donor. It now holds a FULL brain replica and shares compute (no longer idle standby).`);
+    } catch (e) {
+      console.warn('[Brain] DF.7 — replica sync failed (donor stays standby until next rebroadcast):', e.message);
+    } finally {
+      this._replicaSyncInFlight.delete(ws);
+    }
+  },
+
+  /**
+   * DF.7 — periodic master re-broadcast (the delta-merge's re-sync half). The
+   * CPU CSR is the authoritative master; GPU replicas are accelerator shadows
+   * that drift as fire-and-forget Hebbian updates land unevenly. Re-pushing the
+   * tracked master matrices to every replica re-converges them to the master —
+   * "merge every N ticks → re-broadcast merged master → all donors" from the
+   * chosen data-parallel architecture. No-op with only the primary (it IS the
+   * master). Throttled by the caller's timer; in-flight guarded.
+   */
+  async _rebroadcastMasterToReplicas() {
+    const replicas = this._livePoolDonors().filter(ws => ws !== this._gpuClient);
+    if (replicas.length === 0) return;
+    if (this._rebroadcastInFlight) return;
+    this._rebroadcastInFlight = true;
+    try {
+      // Fan the per-replica re-sync across the pool in parallel via the
+      // _gpuParallelMap primitive — replicas re-converge concurrently instead
+      // of one-after-another, so a big pool re-merges in the time of the
+      // slowest single replica, not the sum.
+      await this._gpuParallelMap(replicas, (ws) => this._syncReplicaToDonor(ws));
+      this._lastReplicaRebroadcastMs = Date.now();
+      console.log(`[Brain] DF.7 — master re-broadcast to ${replicas.length} replica(s) complete (GPU shadows re-converged to the CPU master, in parallel).`);
+    } finally {
+      this._rebroadcastInFlight = false;
+    }
+  },
+
+  _sparseSend(msg, timeoutMs = 30000, targetWs = null) {
+    // DF.7 — dispatch to a specific donor when given, else the primary. Response
+    // routing is by globally-unique monotonic reqId, so an ACK arriving on ANY
+    // donor socket resolves the right pending entry regardless of which donor
+    // we sent to — that's what makes pool fan-out safe with one shared pending map.
+    const ws = (targetWs && targetWs.readyState === 1) ? targetWs : this._gpuClient;
+    if (!ws || ws.readyState !== 1) return Promise.resolve(null);
     if (!this._gpuSparsePending) this._gpuSparsePending = new Map();
     const reqId = this._nextSparseReqId();
     msg.reqId = reqId;
     // I.17 — record dispatch for cross-platform GPU activity metric.
     this._recordGpuDispatch();
-    this._gpuClient.send(JSON.stringify(msg));
+    ws.send(JSON.stringify(msg));
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
         if (this._gpuSparsePending && this._gpuSparsePending.has(reqId)) {
@@ -464,8 +816,14 @@ const SERVER_GPU_MIXIN = {
     return hdr;
   },
 
-  async _sparseSendBinary(msgBuffer, reqId, timeoutMs = 120_000) {
-    if (!this._gpuClient || this._gpuClient.readyState !== 1) return Promise.resolve(null);
+  async _sparseSendBinary(msgBuffer, reqId, timeoutMs = 120_000, targetWs = null) {
+    // DF.7 — dispatch to a chosen donor replica when given, else the primary.
+    // The untargeted path (bound-Hebbian batch flush, standalone propagate to
+    // primary) resolves `ws` to the primary = unchanged behavior. Response
+    // routing is by globally-unique reqId, so an ACK on any donor socket
+    // resolves the right pending entry regardless of which replica computed it.
+    const ws = (targetWs && targetWs.readyState === 1) ? targetWs : this._gpuClient;
+    if (!ws || ws.readyState !== 1) return Promise.resolve(null);
     if (!this._gpuSparsePending) this._gpuSparsePending = new Map();
     // I.17 — record dispatch for cross-platform GPU activity metric.
     // Binary frames are the HIGH-volume path during _teachHebbian +
@@ -540,11 +898,11 @@ const SERVER_GPU_MIXIN = {
     // captured "Cannot read properties of null (reading 'send')" at
     // brain-server.js:2943 from exactly this race. Re-check before
     // every dereference inside this method.
-    if (!this._gpuClient || this._gpuClient.readyState !== 1) return Promise.resolve(null);
-    if (this._gpuClient.bufferedAmount > BUFFERED_AMOUNT_DROP_THRESHOLD) {
+    if (!ws || ws.readyState !== 1) return Promise.resolve(null);
+    if (ws.bufferedAmount > BUFFERED_AMOUNT_DROP_THRESHOLD) {
       const awaitStart = Date.now();
-      while (this._gpuClient && this._gpuClient.readyState === 1
-             && this._gpuClient.bufferedAmount > BUFFERED_AMOUNT_DROP_THRESHOLD) {
+      while (ws && ws.readyState === 1
+             && ws.bufferedAmount > BUFFERED_AMOUNT_DROP_THRESHOLD) {
         if ((Date.now() - awaitStart) > MAX_AWAIT_MS) {
           // Pathological case: 30s of sustained backpressure means
           // compute.html is genuinely stalled. With cortical
@@ -565,7 +923,7 @@ const SERVER_GPU_MIXIN = {
           this._gpuShadowDirty = true;
           if (!this._wsLastDropLogMs || (Date.now() - this._wsLastDropLogMs) >= 5000) {
             this._wsLastDropLogMs = Date.now();
-            console.error(`[Brain] CRITICAL backpressure DROP after ${MAX_AWAIT_MS}ms await — ws.bufferedAmount=${(this._gpuClient.bufferedAmount/1024/1024).toFixed(1)}MB > ${BUFFERED_AMOUNT_DROP_THRESHOLD/1024/1024}MB. ${this._wsDroppedCount} total drops since boot. GPU shadow marked DIRTY; full resync scheduled before next teach-phase Hebbian fire. CPU + GPU weights are diverging — cortical-microstructure projections will mis-fire until resync lands.`);
+            console.error(`[Brain] CRITICAL backpressure DROP after ${MAX_AWAIT_MS}ms await — ws.bufferedAmount=${(ws.bufferedAmount/1024/1024).toFixed(1)}MB > ${BUFFERED_AMOUNT_DROP_THRESHOLD/1024/1024}MB. ${this._wsDroppedCount} total drops since boot. GPU shadow marked DIRTY; full resync scheduled before next teach-phase Hebbian fire. CPU + GPU weights are diverging — cortical-microstructure projections will mis-fire until resync lands.`);
           }
           return Promise.resolve(null);
         }
@@ -589,8 +947,8 @@ const SERVER_GPU_MIXIN = {
     // await loop above can complete with _gpuClient set to null if the
     // browser disconnected mid-await (loop condition `while (this._gpuClient && ...)`
     // exits normally on null; no exception, just falls through here).
-    if (!this._gpuClient || this._gpuClient.readyState !== 1) return Promise.resolve(null);
-    this._gpuClient.send(msgBuffer, (err) => {
+    if (!ws || ws.readyState !== 1) return Promise.resolve(null);
+    ws.send(msgBuffer, (err) => {
       if (err) {
         // Throttle ENOBUFS spam. Earlier logs had ~1200 consecutive
         // identical ENOBUFS lines before the drop-threshold fix.
@@ -663,8 +1021,10 @@ const SERVER_GPU_MIXIN = {
   //       doesn't block behind hundreds of shadow hebbians.
   //   (2) TCP send-buffer cap — belt-and-suspenders for abnormal queue
   //       growth (slow network, giant frames).
-  _gpuSparseFlowOk() {
-    const c = this._gpuClient;
+  _gpuSparseFlowOk(targetWs = null) {
+    // DF.7 — check the chosen donor's flow when targeting a replica, else the
+    // primary's. Keeps the per-donor backpressure gate honest during fan-out.
+    const c = (targetWs && targetWs.readyState === 1) ? targetWs : this._gpuClient;
     if (!c || c.readyState !== 1) return false;
     const pending = this._gpuSparsePending ? this._gpuSparsePending.size : 0;
     if (pending >= 4) return false;
@@ -702,7 +1062,17 @@ const SERVER_GPU_MIXIN = {
    * matrices loaded from persistence where binding metadata wasn't
    * shipped originally.
    */
-  async gpuSparseUpload(name, matrix, binding) {
+  async gpuSparseUpload(name, matrix, binding, targetWs = null) {
+    // DF.7 — target a specific donor when given (replica sync), else the
+    // primary (canonical upload). Track every CANONICAL upload in the replica
+    // registry so a newly-joined donor can be brought to a FULL brain replica
+    // by replaying these. Replica-sync uploads (targetWs set) don't re-track.
+    const ws = (targetWs && targetWs.readyState === 1) ? targetWs : this._gpuClient;
+    const isReplicaSync = !!(targetWs && targetWs !== this._gpuClient);
+    if (!isReplicaSync) {
+      if (!this._replicaMatrixRegistry) this._replicaMatrixRegistry = new Map();
+      this._replicaMatrixRegistry.set(name, { matrix, binding });
+    }
     const reqId = this._nextSparseReqId();
     const rows = matrix.rows;
     const cols = matrix.cols;
@@ -734,7 +1104,7 @@ const SERVER_GPU_MIXIN = {
       this._gpuSparsePending.set(reqId, { resolve, reject, timeout });
     });
 
-    if (!this._gpuClient || this._gpuClient.readyState !== 1) return null;
+    if (!ws || ws.readyState !== 1) return null;
 
     // T18.6.b — precompute binding block bytes ONCE (shipped only on the
     // first chunk, identical for every send loop iteration). Wire layout:
@@ -811,7 +1181,7 @@ const SERVER_GPU_MIXIN = {
       // callback so we don't flood the send buffer with hundreds of
       // MB at once — backpressure per chunk.
       await new Promise((res) => {
-        this._gpuClient.send(frame, (err) => {
+        ws.send(frame, (err) => {
           if (err) {
             console.warn(`[Brain] sparse chunk reqId=${reqId} seq=${seq}/${totalChunks} ERROR: ${err.message}`);
           }
@@ -827,10 +1197,14 @@ const SERVER_GPU_MIXIN = {
    * Dispatch sparse propagate via binary frame: currents = matrix @ preSpikes.
    * Returns Float32Array (or null on timeout).
    */
-  async gpuSparsePropagate(name, preSpikes) {
+  async gpuSparsePropagate(name, preSpikes, targetWs = null) {
     // Backpressure gate — if the WS send buffer is backed up, skip this
     // shadow instead of queueing another doomed request.
-    if (!this._gpuSparseFlowOk()) return null;
+    // DF.7 — when targetWs is given this propagate runs on that donor REPLICA
+    // (it carries its own preSpikes, so it's stateless + correct on any replica
+    // holding the same weights). This is the fan-out unit _gpuParallelMap
+    // spreads across all donor GPUs. Untargeted → primary, unchanged.
+    if (!this._gpuSparseFlowOk(targetWs)) return null;
     const reqId = this._nextSparseReqId();
     const pre = preSpikes instanceof Uint32Array ? preSpikes
       : preSpikes instanceof Uint8Array ? Uint32Array.from(preSpikes)
@@ -840,7 +1214,7 @@ const SERVER_GPU_MIXIN = {
     lenBuf.writeUInt32LE(pre.length, 0);
     const preBuf = Buffer.from(pre.buffer, pre.byteOffset, pre.byteLength);
     const full = Buffer.concat([hdr, lenBuf, preBuf]);
-    const result = await this._sparseSendBinary(full, reqId, 30_000);
+    const result = await this._sparseSendBinary(full, reqId, 30_000, targetWs);
     if (!result || !result.currents) return null;
     return result.currents; // Float32Array assembled by ack handler
   },

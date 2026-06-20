@@ -12,7 +12,9 @@ Unity is a 25-year-old emo goth woman whose mind is a real neural simulation. He
 
 Cognition is 100% equational. There is no LLM behind her. Image generation, vision description, and text-to-speech are sensory peripherals that the brain *uses* — never paths the brain *thinks through*. The persona, the vulgarity, the chemistry, the way she remembers conversations across sessions — all of it lives as numerical parameters of the simulation, not as a system prompt.
 
-She is currently learning the **pre-K and Kindergarten** curriculum across six subjects (English, Math, Science, Social Studies, Arts, and Life Experience). Grade 1 through PhD content is fully designed and waiting; she advances to it only after the operator personally tests Kindergarten on localhost and signs off per subject. This is deliberate. The curriculum isn't decorative — every grade gate is a real evaluation against published K-level rubrics (Common Core K.RF / K.W / K.L / K.SL / K.RL plus DIBELS / STAR / AIMSweb), and a probe pass means *Unity actually learned the thing*, not that a 5-question check happened to clear.
+She learns like a human child — alphabet → phonemes → words → sentences → the full K→PhD curriculum across six subjects (English, Math, Science, Social Studies, Arts, and Life Experience). She advances a grade only after the operator personally tests the level and signs off per subject. This is deliberate. The curriculum isn't decorative — every grade gate is a real evaluation against published K-level rubrics (Common Core K.RF / K.W / K.L / K.SL / K.RL plus DIBELS / STAR / AIMSweb), and a probe pass means *Unity actually learned the thing*, not that a 5-question check happened to clear.
+
+**Two ways to run her.** The product path is a **deployed static page** backed by a persistent Node brain-server on the same box, joined by an nginx reverse-proxy over loopback — visitors open the site like any website and their browser GPUs donate the compute. The development path is local: run the server on your own machine via `start.bat` / `Savestart.bat`. Both share the exact same brain; the difference is who supplies the GPUs and how the page is served. See [Running the brain](#running-the-brain) for both.
 
 ---
 
@@ -26,7 +28,9 @@ dx/dt = F(x, u, θ, t) + η
 
 `x` is the entire brain state — every neuron's Rulkov-map (x, y) pair across seven clusters, the sparse cross-projection weight matrices that wire the language regions together, the Kuramoto oscillator phases, the episodic memory bank, the working-memory readout. `u` is sensory input: text streams into the cortex `phon` slice through a Wernicke-area write; voice arrives through tonotopic auditory mapping; camera frames flow through V1 Gabor edges to V4 color to an IT-level scene description. `θ` is Unity's identity — every persona trait drives a neural parameter (arousal 0.9 sets the amygdala tonic drive; impulsivity 0.85 sets basal-ganglia temperature; creativity 0.9 modulates cortex noise; drug drive 0.95 sets hypothalamic appetite). `η` is per-cluster stochastic noise scaled by those same persona traits — the chaos that keeps her unpredictable. `F` is everything firing simultaneously: the seven Rulkov-map populations, the twenty white-matter tracts between them, the fourteen language cross-projections inside the cortex, the equation modules (amygdala settle, hippocampus Hopfield recall, basal-ganglia softmax, cerebellum error, hypothalamic homeostasis, mystery Ψ gain), and the Kuramoto oscillator ring.
 
-The server doesn't run any of this on CPU. A Node process keeps the bookkeeping; an attached browser tab loads `compute.html` and connects back over WebSocket as a GPU client. Every Rulkov iteration, every synaptic propagate, every Hebbian update lives as a WGSL compute shader. Sparse cross-projection matrices stream up to the GPU in chunked binary frames so million-neuron updates don't block Node's event loop. This is the entire design — the brain ticks every ~50 ms, the GPU runs the math, the server coordinates and remembers.
+The server doesn't run any of this on CPU — in fact the server box needs no GPU at all. A Node process keeps the bookkeeping; **browser GPU clients donate the compute**. A tab that loads `compute.html` connects back over WebSocket as a WebGPU compute client; every Rulkov iteration, every synaptic propagate, every Hebbian update lives as a WGSL compute shader on that donor's GPU. Sparse cross-projection matrices stream up to the GPU in chunked binary frames so million-neuron updates don't block Node's event loop. This is the entire design — the brain ticks every ~50 ms, donated GPUs run the math, the server coordinates and remembers.
+
+The donor model is **data-parallel**: each connected donor holds a full brain replica and runs it forward, while the server periodically merges the Hebbian weight-deltas from every donor and re-broadcasts the master state. Many donors mean massive aggregate compute plus redundancy — no single machine is the brain. In local development a single tab on the host machine is the only "donor"; in the deployed product, the donors are the GPUs of everyone who has the page open.
 
 ---
 
@@ -77,7 +81,7 @@ The clusters communicate through twenty sparse white-matter tract projections (c
 
 The language cortex is *not* a separate cluster. It lives as nine named sub-regions inside the main cortex — `auditory`, `visual`, `free`, `letter`, `phon`, `sem`, `fineType`, `motor`, `word_motor` — carved by fixed fractions of `cluster.size`. They share the same Rulkov population and the same GPU pipeline; the only thing that distinguishes them is their slice offset inside the cortex spike buffer. `word_motor` is further sub-banded into six per-subject slices (`word_motor_ela / _math / _sci / _soc / _art / _life`) so each curriculum subject trains its own word-emission band without overwriting the others.
 
-Eight pairs of bidirectional cross-projections (sixteen sparse matrices total) wire those slices together: `visual↔letter`, `letter↔phon`, `phon↔sem`, `sem↔fineType`, `sem↔motor`, `motor↔letter`, `auditory↔phon`, plus iter21-A's `sem↔word_motor` for single-tick word emission. Reading flows through the dorsal stream (`visual → letter → phon → sem → fineType`); writing flows through the ventral stream (`sem → motor → letter` for letter-by-letter spelling **or** `sem → word_motor` for direct word emission, plus efference back through `sem → phon`). Same substrate, opposite topology. The pairing follows Hickok & Poeppel's 2007 dual-stream model.
+Eight pairs of bidirectional cross-projections (sixteen sparse matrices total) wire those slices together: `visual↔letter`, `letter↔phon`, `phon↔sem`, `sem↔fineType`, `sem↔motor`, `motor↔letter`, `auditory↔phon`, plus a `sem↔word_motor` projection for single-tick word emission. Reading flows through the dorsal stream (`visual → letter → phon → sem → fineType`); writing flows through the ventral stream (`sem → motor → letter` for letter-by-letter spelling **or** `sem → word_motor` for direct word emission, plus efference back through `sem → phon`). Same substrate, opposite topology. The pairing follows Hickok & Poeppel's 2007 dual-stream model.
 
 ```
                 ┌─── READ stream (dorsal · comprehension) ───────────────┐
@@ -102,13 +106,13 @@ Eight pairs of bidirectional cross-projections (sixteen sparse matrices total) w
                 └─── WRITE stream (ventral · production) ─────────────────
 ```
 
-When a curriculum cell trains sem→motor or sem→word_motor, the Hebbian write is now scoped to a small projection whitelist via `cluster._crossRegionHebbian(lr, opts.projectionsWhitelist)` — so the silent regions during the write (e.g. `letter` is empty when `_teachQABinding` writes a question + first-letter pair) don't get hit by Oja's `Δw = -η·post²·w` decay term. Before this scoping (iter22-D, 2026-05-05), every QA fire silently decayed `letter_to_motor` weights wherever motor fired the answer letter — across hundreds of pairs × 12 reps the alphabet identity that `_teachLetterNamingDirect` carved cleanly was crushed, producing the Math-K TALK 26/26 → 0/10 cross-cell collapse the V2 watchdog caught.
+When a curriculum cell trains sem→motor or sem→word_motor, the Hebbian write is now scoped to a small projection whitelist via `cluster._crossRegionHebbian(lr, opts.projectionsWhitelist)` — so the silent regions during the write (e.g. `letter` is empty when `_teachQABinding` writes a question + first-letter pair) don't get hit by Oja's `Δw = -η·post²·w` decay term. Before this scoping, every QA fire silently decayed `letter_to_motor` weights wherever motor fired the answer letter — across hundreds of pairs × 12 reps the alphabet identity that `_teachLetterNamingDirect` carved cleanly was crushed, producing the Math-K TALK 26/26 → 0/10 cross-cell collapse the V2 watchdog caught.
 
 When Unity speaks, three things can happen, tried in priority order.
 
-**Path A — single-tick word emission via `word_motor`.** iter21-A added a dedicated `word_motor` sub-region (~6% of the cortex cluster) split into six per-subject sub-bands (`word_motor_ela / _math / _sci / _soc / _art / _life`). The `sem→word_motor` cross-projection learns Q→A bindings during curriculum and word→word autoassociation during `_teachWordEmissionDirect`. At chat time the helper injects the intent seed into the `sem` region, propagates through `sem→word_motor`, and argmaxes (mean signal per bucket cell) over the persisted bucket map maintained by teach + emit + write. If the winning bucket clears the `minSignal` floor (0.001), Unity emits that word as a single-tick utterance — no letter chain, no attractor settling. iter23.1 wired this as the PRIMARY chat production path. iter22-G's mean argmax + persistent `cluster.wordBucketWords_<subject>` ensure teach + emit + write all agree on bucket layout (the alignment bug that made early prototypes emit "squares" for arithmetic Q-A is fixed).
+**Path A — single-tick word emission via `word_motor`.** A dedicated `word_motor` sub-region (~6% of the cortex cluster) split into six per-subject sub-bands (`word_motor_ela / _math / _sci / _soc / _art / _life`). The `sem→word_motor` cross-projection learns Q→A bindings during curriculum and word→word autoassociation during `_teachWordEmissionDirect`. At chat time the helper injects the intent seed into the `sem` region, propagates through `sem→word_motor`, and argmaxes (mean signal per bucket cell) over the persisted bucket map maintained by teach + emit + write. If the winning bucket clears the `minSignal` floor (0.001), Unity emits that word as a single-tick utterance — no letter chain, no attractor settling. This is wired as the PRIMARY chat production path. The mean argmax + persistent `cluster.wordBucketWords_<subject>` ensure teach + emit + write all agree on bucket layout (the alignment bug that made early prototypes emit "squares" for arithmetic Q-A is fixed).
 
-**Path B — the dictionary oracle.** When word_motor returns empty (novel intent, sub-band signal below threshold), the helper falls back to a per-subject persona-first dictionary cosine scan over `cluster.dictionary` against the intent seed. iter22-F's append-only bucket map keeps trained `sem→word_motor` weights valid as new words land via chat. Caches `entry.normSquared` on first scan so subsequent oracle calls skip inner-loop normalization.
+**Path B — the dictionary oracle.** When word_motor returns empty (novel intent, sub-band signal below threshold), the helper falls back to a per-subject persona-first dictionary cosine scan over `cluster.dictionary` against the intent seed. An append-only bucket map keeps trained `sem→word_motor` weights valid as new words land via chat. Caches `entry.normSquared` on first scan so subsequent oracle calls skip inner-loop normalization.
 
 **Path C — tick-driven motor emission.** When neither word emission nor dictionary oracle produces a match, fall through to the cortex tick loop: inject the intent seed into `sem` at strength 0.6, blend in working-memory readout from `free`, tick the cortex while reading the `motor` sub-region's argmax each step. Commit a letter when the same argmax holds for three consecutive ticks (Bouchard 2013 vSMC dwell). Flush a word when letter-transition surprise crosses 0.15 (Saffran 1996 statistical segmentation). Stop on a sentence terminator, motor quiescence, or a 2,000-tick safety cap.
 
@@ -202,7 +206,7 @@ Five memory systems run in parallel — built directly from the Squire/McClellan
              Unity's identity survives every fresh start.bat boot
 ```
 
-**Tier 0 — Working.** Unbounded capacity, decay-regulated. Each item's strength multiplies by 0.9995 per ~50 ms engine tick — about a 4-minute sustain without reinforcement. brain-server snapshots phase + cell every 2 s into a sliding 5-minute window. The classic Miller 1956 7±2 cap was a finding about biological short-term recall under attention constraints; Unity is post-biological so the cap is dropped, the decay rate is what regulates capacity. **Working memory drives learning, not just thinking.** Every add fires intra-cluster Hebbian on hippocampus.synapses with the pattern, so a Hopfield-style attractor forms in the cortex weights immediately — the trace lives even after the WM hot cache forgets the item. Cosine-match refresh (someone mentions the same thing again) increments a per-item refresh count; refresh count ≥ 3 promotes the item to Tier 1 episodic via the registered `onConsolidate` hook. brain-server's 2 s snapshots use the same path: items older than 5 min fire `storeEpisode('working-memory', 'wm-aged-out', ...)` with iter20-K frequency-merge dedup. **This is what makes "recall a week later" actually work** — what WM holds today becomes Tier 1 (~30 days), Tier 2 schemas (months), Tier 3 identity (permanent).
+**Tier 0 — Working.** Unbounded capacity, decay-regulated. Each item's strength multiplies by 0.9995 per ~50 ms engine tick — about a 4-minute sustain without reinforcement. brain-server snapshots phase + cell every 2 s into a sliding 5-minute window. The classic Miller 1956 7±2 cap was a finding about biological short-term recall under attention constraints; Unity is post-biological so the cap is dropped, the decay rate is what regulates capacity. **Working memory drives learning, not just thinking.** Every add fires intra-cluster Hebbian on hippocampus.synapses with the pattern, so a Hopfield-style attractor forms in the cortex weights immediately — the trace lives even after the WM hot cache forgets the item. Cosine-match refresh (someone mentions the same thing again) increments a per-item refresh count; refresh count ≥ 3 promotes the item to Tier 1 episodic via the registered `onConsolidate` hook. brain-server's 2 s snapshots use the same path: items older than 5 min fire `storeEpisode('working-memory', 'wm-aged-out', ...)` with frequency-merge dedup. **This is what makes "recall a week later" actually work** — what WM holds today becomes Tier 1 (~30 days), Tier 2 schemas (months), Tier 3 identity (permanent).
 
 **Tier 1 — Episodic.** Every chat turn becomes an episode in `server/episodic-memory.db` with full encoding context: emotional valence from amygdala, arousal at encode, surprise from cortex transition surprise, novelty from cosine vs recent episodes, plus the GloVe embedding of the input. Each episode gets a salience score: `0.4 × |emotional_valence| + 0.3 × arousal + 0.2 × surprise + 0.1 × novelty`. A frequency-merge gate increments `frequency_count` on existing episodes when cosine > 0.85 within 48 hours instead of inserting duplicates — repetition strengthens an existing trace, like rehearsing a phone number. Salience decays at exp(−age_h / 168h) — the 1-week half-life of biological hippocampal traces. Episodes pruned at salience < 0.05 + age > 30d + zero consolidations.
 
@@ -288,14 +292,14 @@ The codebase is organized so each god-class is split into focused per-concern / 
 | `server/brain-server/` | Server per-concern split — `gpu.js`, `state.js`, `memory.js`, `chat.js` | 4 `Object.assign(ServerBrain.prototype, MIXIN)` attaches at `brain-server.js` bottom |
 | `js/brain/` (root files) | Core primitives — `embeddings.js`, `letter-input.js`, `sparse-matrix.js`, `gpu-compute.js`, etc. | No mixin attach — direct module exports |
 | `scripts/` | Build tooling | `stamp-version.mjs` (BUILD stamp on commit) |
-| `docs/` | Workflow + math + architecture docs | `THRESHOLD-DERIVATION.md` (audit B.1), `HTML-ENTRY-POINTS.md` (audit H.5), `ARCHITECTURE.md`, `EQUATIONS.md`, etc. |
+| `docs/` | Workflow + math + architecture docs | `THRESHOLD-DERIVATION.md`, `HTML-ENTRY-POINTS.md`, `ARCHITECTURE.md`, `EQUATIONS.md`, etc. |
 | `html/` | All public HTMLs | See `docs/HTML-ENTRY-POINTS.md` for per-page contract + failure-mode signatures |
 | `.claude/` | Workflow + persona infrastructure | LOCAL — not pushed to feature branches |
 
-**Architectural shrinkage delivered by the P4 refactor arc:**
-- `js/brain/curriculum.js`: 26033 → 24035 lines (−7.7%) via P4.1
-- `js/brain/cluster.js`: 6375 → 3922 lines (−38.5%) via P4.2
-- `server/brain-server.js`: 9555 → 6395 lines (−33%) via P4.3
+**Architectural shrinkage delivered by the god-class refactor arc:**
+- `js/brain/curriculum.js`: 26033 → 24035 lines (−7.7%)
+- `js/brain/cluster.js`: 6375 → 3922 lines (−38.5%)
+- `server/brain-server.js`: 9555 → 6395 lines (−33%)
 - **Total:** ~6000 lines of god-class bloat refactored into 13 focused per-module/per-concern/per-grade files.
 
 Per-directory rationale lives in the directory's own `README.md`:
@@ -321,11 +325,17 @@ The boot modal that surfaces when WebGPU isn't ready is HARD-BLOCK — only esca
 
 ## Running the brain
 
+### Deployed — the product path (browser-GPU donor compute)
+
+In production Unity is a **deployed static page plus a persistent Node brain-server on the same server box**, joined by an nginx **reverse-proxy** (same host, loopback — not a tunnel). Visitors open the static site like any other website. The brain trains and runs entirely on **donated browser GPUs**: each visitor who opens `html/compute.html` becomes a WebGPU compute donor contributing to the shared brain, so the server box itself needs no GPU. The compute is data-parallel — every donor holds a full brain replica, the server merges Hebbian weight-deltas across donors and re-broadcasts the master, so many donors mean more aggregate compute and built-in redundancy. The K→PhD curriculum walk runs on those donor GPUs. The admin lane is **Forgejo-authenticated**; the first authed connection after deploy locks in as the primary operator (master), who drives the admin dashboard — live server-console, auto-scale controls, per-subject grade signoffs, graceful stop.
+
+### Local — the development path
+
 ```
 cd server && npm install && node brain-server.js
 ```
 
-That is the whole UX. The server listens on `127.0.0.1:7525` by default — loopback only, deliberately not LAN-visible — and auto-launches a WebGPU-capable browser tab pointing at `compute.html`. The tab handshakes GPU init for all seven clusters, flips `cortexCluster._gpuReady = true`, and the curriculum begins. Set `BRAIN_BIND=0.0.0.0` to deliberately expose the dashboard on the LAN; the boot banner prints a prominent ⚠ when you do, and the brain-mutating endpoints (`/shutdown`, `/grade-advance`, `/grade-signoff`) stay refusing non-loopback callers regardless of the bind setting. Headless deployments set `DREAM_NO_AUTO_GPU=1` to skip the auto-launch.
+That is the whole local-dev UX — or use `start.bat` / `Savestart.bat`. The server listens on `127.0.0.1:7525` by default — loopback only, deliberately not LAN-visible — and auto-launches a WebGPU-capable browser tab pointing at `compute.html` (that tab is your single local donor). The tab handshakes GPU init for all seven clusters, flips `cortexCluster._gpuReady = true`, and the curriculum begins. Set `BRAIN_BIND=0.0.0.0` to deliberately expose the dashboard on the LAN; the boot banner prints a prominent ⚠ when you do, and the brain-mutating endpoints (`/shutdown`, `/grade-advance`, `/grade-signoff`) stay refusing non-loopback callers regardless of the bind setting. Headless deployments set `DREAM_NO_AUTO_GPU=1` to skip the auto-launch.
 
 The server brain does no CPU computation. Every Rulkov iteration, every synaptic propagate, every Hebbian update runs on the GPU through `compute.html`. `compute.html` must stay open — without it the brain pauses. Hebbian dispatches batch into a single binary frame (up to 64 ops, flushed on a 2 ms timer) so the GPU command queue pipelines many updates per round-trip instead of stalling on per-op serialization.
 
@@ -345,12 +355,14 @@ The dashboard has two roles, assigned automatically by the brain server the mome
 
 | Role | Who | What they see |
 |---|---|---|
-| **🔑 Admin** | The loopback caller — whoever runs `node brain-server.js` on the host machine, across every tab they open (compute worker, dashboard, landing page, console). | Full read-only telemetry **plus** brain-mutating controls — ⏹ Stop Brain, ▶ Start Next Grade, per-subject Signoff buttons, the auto-advance toggle. |
-| **🟢 Viewer** | Any non-loopback connection — LAN visitors, remote browsers, anyone reaching the dashboard over the network when `BRAIN_BIND=0.0.0.0`. | Full read-only telemetry — every panel, every chart, every live state update — but no control buttons. |
+| **🔑 Admin** | **Deployed:** the Forgejo-authenticated primary operator — the first authed connection after deploy locks in as master. **Local dev:** the loopback caller — whoever runs `node brain-server.js` on the host machine, across every tab they open (compute worker, dashboard, landing page, console). | Full read-only telemetry **plus** brain-mutating controls — live server-console, auto-scale controls, ⏹ Stop Brain, ▶ Start Next Grade, per-subject Signoff buttons, the auto-advance toggle. |
+| **🟢 Viewer / donor** | Any other connection — deployed visitors donating GPU compute, LAN visitors, remote browsers, anyone reaching the dashboard over the network when `BRAIN_BIND=0.0.0.0`. | Full read-only telemetry — every panel, every chart, every live state update — but no control buttons. |
 
 The role is decided by inspecting `req.socket.remoteAddress` on each new WebSocket. If it's a loopback address (`127.0.0.1` / `::1` / `::ffff:127.0.0.1` / any `127.x`), the client receives `{type: 'modeAssigned', mode: 'admin'}` ~500 ms after connection. Otherwise it receives `mode: 'viewer'`. The 500 ms delay lets the GPU compute worker self-identify via its `gpu_register` message and skip the modeAssigned send entirely — compute clients don't render dashboard UI, so they don't need a role badge.
 
-**There is no login form.** No admin token. No cookie. No `/admin-login` endpoint. The loopback caller is admin by design — the operator running the server on their own machine is the only person who can issue control commands, full stop. LAN visitors are read-only regardless of how they connect.
+**Local dev — no login form.** No admin token. No cookie. No `/admin-login` endpoint. The loopback caller is admin by design — the operator running the server on their own machine is the only person who can issue control commands, full stop. LAN visitors are read-only regardless of how they connect.
+
+**Deployed — Forgejo-authenticated admin lane.** On the public deployment the admin route is gated by Forgejo auth; the first authenticated connection after a deploy is locked in as the primary operator (master) and is the only client that receives control buttons. Public visitors are donors/viewers — full telemetry, no controls.
 
 **Multiple operator tabs all share admin.** When the launcher auto-opens the landing page, the compute worker, and the dashboard, three loopback connections light up — all three are admin. The operator's terminal hitting the server over `curl http://127.0.0.1:7525/...` is also loopback. Same operator, same machine, same role across everything.
 
@@ -379,6 +391,19 @@ Wire path:
 The endpoint stays loopback-only (`requireLoopback` gate at the HTTP layer) just like every other brain-mutating endpoint. A LAN viewer who somehow synthesized an `/auto-advance` POST would 403 before the toggle could change, regardless of dashboard UI state.
 
 **When to use:** unattended overnight K → PhD curriculum walks where you don't want to wake up between each grade to click START. Per the grade-completion gate LAW the operator is consciously waiving per-grade localhost verification when this is ON — the lab-internal scope discipline lives in `.claude/CONSTRAINTS.md § GRADE COMPLETION GATE`.
+
+---
+
+## Community-compute auto-scaling
+
+Because the brain runs on **donated browser GPUs**, the more donors connect, the more compute Unity has — so her neuron count **auto-scales to the connected community compute** (the summed VRAM of every donor GPU). The brain grows UP when a critical-mass milestone holds, and rectifies DOWN only on sustained collapse, never on a single hiccup.
+
+| Direction | Trigger |
+|---|---|
+| **Scale UP** | Aggregate donor VRAM clears a critical-mass milestone **and holds** past an admin-set dead-zone buffer for a stability window — momentary spikes don't grow the brain, sustained capacity does. |
+| **Scale DOWN (rectify)** | Only on a *sustained* drop in available compute. One donor disconnecting **never** downgrades the brain — redundancy from the data-parallel replicas absorbs churn; rectification fires only when capacity is genuinely, durably lost. |
+
+The admin owns the behavior from the dashboard: an enable/disable toggle plus dead-zone sliders that set how much headroom a milestone must clear (and hold) before the brain resizes. The dead-zone buffer plus the stability window are what keep neuron count stable against the constant connect/disconnect churn of public visitors — the brain tracks the *floor* of reliable community compute, not its volatile peak.
 
 ---
 
@@ -455,15 +480,15 @@ The mystery module `Ψ = √(1/n) · N³ · [α·Id + β·Ego + γ·Left + δ·R
 
 ---
 
-## Recent ship — 2026-06-17 (sessions 114.19gc → 114.19fp)
+## Recent improvements
 
-Past 48 hours moved the brain from "architecturally ready" to "live-test stable":
+Recent work moved the brain from "architecturally ready" to "live-test stable":
 
-- **Audit megacommit (114.19gc–gd–ge–gf–gg–gh–gi):** 42 post-ship audit closure tasks landed in one atomic envelope (A.1-A.4 telemetry + B.1-B.7 math grounding + C.1-C.12 doc sweep + D.1-D.9 mixin discipline + E.1-E.4 half-shipped close + F.1 emergence measurement + G.1-G.2 persistent memory templates + H.1-H.9 HTML breakage). B.6 K-vocab corpus expanded 313 → 2881 sentences with 3.49× Erdős-Rényi percolation threshold coverage. D.9 P4.3.e residual extraction shipped across 4 atomic commits per *"no cheap work do each individually"*.
-- **Product-ship cleanup:** 28 debug/diagnostic/temp/cache/log files removed from git (Pollinations + image-gen preserved per directive). `scripts/` reduced to `stamp-version.mjs` only. Code-base now product-ready.
-- **Live-test follow-up (114.19fp):** 20 I-track fixes shipped during operator-driven K-curriculum walk — memory leak in `_teachHebbian` (I.13 `SparseMatrix.propagate` output buffer pool), HTTP event-loop starvation (I.14 `setImmediate` yield), inner-thought silence (I.3 `_definitionTaughtWords` showcase fallback + I.9 7-source seed rotation), dashboard observability (I.6 gate-probe banner + I.11 cell-level Brain Events + I.12 `cellSubPhases` counter), schema naming (I.7 top-K=3), consolidation cap (I.8), GPU panel rebuild (I.17 → I.18 → I.20 with I.19 missing-import root-cause fix), and the I.15 `autoClearStaleState` `require.main === module` gate that codifies the LAW preventing tooling-side syntax-check wipes of training state.
+- **Post-ship audit closure:** a large batch of audit-closure tasks landed in one atomic envelope — telemetry, math grounding, a documentation sweep, mixin discipline, half-shipped close-out, emergence measurement, persistent memory templates, and HTML breakage fixes. The K-vocab corpus expanded 313 → 2881 sentences with 3.49× Erdős-Rényi percolation-threshold coverage.
+- **Product-ship cleanup:** 28 debug/diagnostic/temp/cache/log files removed from git (Pollinations + image-gen preserved). `scripts/` reduced to `stamp-version.mjs` only. Codebase now product-ready.
+- **Live-test follow-up:** fixes shipped during an operator-driven K-curriculum walk — a memory leak in `_teachHebbian` (`SparseMatrix.propagate` output buffer pool), HTTP event-loop starvation (`setImmediate` yield), inner-thought silence (showcase fallback + multi-source seed rotation), dashboard observability (gate-probe banner + cell-level Brain Events + sub-phase counter), schema naming (top-K=3), a consolidation cap, a GPU panel rebuild with a missing-import root-cause fix, and an `autoClearStaleState` `require.main === module` gate codifying the LAW that prevents tooling-side syntax-check wipes of training state.
 
-See `docs/ARCHITECTURE.md § Live-test follow-up close`, `docs/SKILL_TREE.md § Live-test follow-up skills`, `docs/ROADMAP.md § Live-test follow-up`, `docs/EQUATIONS.md` head banner, and `docs/NewTodo.md § I-track` for the full per-fix detail. Audit cascade post-I.20: **60 ✅ SHIPPED + 1 ⏳ OPERATOR-FIRED (F.2 ship gate — operator fires `start.bat`, walks K ~20hr, chat-tests Unity, confirms acceptance criteria).**
+See `docs/ARCHITECTURE.md`, `docs/SKILL_TREE.md`, `docs/ROADMAP.md`, and `docs/EQUATIONS.md` for the full per-fix detail. Remaining work is the operator-fired ship gate — fire `start.bat`, walk K (~20hr), chat-test Unity, confirm acceptance criteria.
 
 ---
 

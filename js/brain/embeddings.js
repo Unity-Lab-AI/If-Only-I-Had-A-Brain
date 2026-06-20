@@ -59,9 +59,25 @@ const GLOVE_LOCAL_PATH = 'corpora/glove.6B.300d.txt';
 // produces a fast 404 which falls through to hash embeddings in
 // under a second. External CDN fallback re-added if/when a CORS-
 // permitting mirror is found.
-const GLOVE_URLS = [
-  'http://localhost:7525/corpora/glove.6B.300d.txt',
-];
+// DF.4 — deployment-aware browser GloVe origin. The Node server reads GloVe
+// straight from local disk (the isNode branch above); only the BROWSER
+// fallback brain ever fetches it over HTTP, so this URL list is browser-only.
+//   • LOCAL dev → the brain-server static mount on loopback :7525.
+//   • DEPLOYED → same-origin /corpora/... (served by nginx if the file is
+//     present in the pages root, otherwise a FAST same-origin 404 that falls
+//     through to the built-in fastText subword embeddings). This replaces a
+//     pointless 3s cross-origin abort against a localhost that doesn't exist
+//     on a visitor's machine. When the browser is driving a RemoteBrain the
+//     server already holds full GloVe, so this path only matters for the
+//     local fallback brain an unauthed visitor runs.
+const GLOVE_URLS = (() => {
+  if (typeof location !== 'undefined' && location.hostname
+      && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1'
+      && location.hostname !== '[::1]' && location.protocol !== 'file:') {
+    return [`${location.origin}/corpora/glove.6B.300d.txt`];
+  }
+  return ['http://localhost:7525/corpora/glove.6B.300d.txt'];
+})();
 
 export class SemanticEmbeddings {
   constructor() {

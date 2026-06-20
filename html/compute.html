@@ -7,7 +7,16 @@
 </head>
 <body style="background:#0a0a0a;color:#22c55e;font-family:monospace;padding:20px;">
 <a href="legend.html" id="unity-legend-link" title="Open the page legend / quick-access index" style="position:fixed;top:8px;right:8px;z-index:99998;background:rgba(15,26,31,0.92);color:#ff4d9a;padding:5px 10px;border-radius:4px;font-size:10px;font-family:monospace;text-decoration:none;border:1px solid #374151;letter-spacing:0.5px;">📑 Pages</a>
-<h3>Unity GPU Compute Worker</h3>
+<h3>Unity GPU Compute Worker — donate your GPU to the brain</h3>
+<p style="font-size:12px;color:#888;line-height:1.6;max-width:780px;margin:6px 0 14px 0;">
+  This tab donates your browser's <b>WebGPU</b> to Unity's brain. Each donor holds a
+  <b>full brain replica</b> (data-parallel) — the server merges the Hebbian weight-deltas
+  every donor computes and re-broadcasts them, so more donors mean more aggregate compute
+  <i>and</i> redundancy. The brain auto-scales its neuron count to the connected community.
+  The work is <b>real neural matrix math</b> — LIF spiking + sparse cross-projections, 100%
+  equational, <b>no text-AI / no language model</b>. Leave the tab open to keep donating;
+  one donor dropping off never downgrades the brain.
+</p>
 <div id="status">Connecting to brain server...</div>
 <div id="hierarchy" style="margin-top:12px;font-size:11px;color:#666;line-height:1.6;"></div>
 <div id="stats" style="margin-top:10px;font-size:12px;color:#555;"></div>
@@ -37,7 +46,7 @@ const hierarchyEl = document.getElementById('hierarchy');
 const statsEl = document.getElementById('stats');
 const perfEl = document.getElementById('perf');
 
-// Render the T17.7 system hierarchy — 7 main-brain clusters, their
+// Render the system hierarchy — 7 main-brain clusters, their
 // registered sub-regions, language cross-projections, the intra-
 // cluster synapse matrix. Called after each gpu_init, sparse upload,
 // and rebind so the display reflects live GPU state.
@@ -100,7 +109,7 @@ let totalComputeMs = 0;
   // even before the first cluster upload / sparse matrix arrives.
   renderHierarchy();
 
-  // T18.6.a — register device-lost callback BEFORE connecting to the
+  // Register device-lost callback BEFORE connecting to the
   // server so a device.lost event fired mid-upload gets surfaced as a
   // `device_lost` WebSocket message to the server log instead of just
   // cascading phantom "size too large" errors on the client console.
@@ -123,10 +132,10 @@ let totalComputeMs = 0;
 
 const clusterState = {}; // persists across reconnects
 
-// T18.11 — exponential-backoff reconnect state. Resets to 0 on every
+// Exponential-backoff reconnect state. Resets to 0 on every
 // successful ws.onopen, increments on every ws.onclose. Delay at
 // attempt N is `min(60, 3 * 2^N) * 1000` ms → 3 s, 6 s, 12 s, 24 s,
-// 48 s, 60 s (cap), 60 s, ...  Pre-T18.11 this was a flat 3 s retry
+// 48 s, 60 s (cap), 60 s, ...  Previously this was a flat 3 s retry
 // with no cap. During heavy ELA-K teach any transient WebSocket
 // hiccup (Chrome throttling a backgrounded tab, GPU dispatch stall,
 // server event-loop saturation) caused the tab to spam reconnects
@@ -145,7 +154,7 @@ let _reconnectAttempt = 0;
 function connectToServer() {
   // brain-server runs on port 7525 (moved off 8080 to avoid colliding
   // with llama.cpp / LocalAI / every other local service).
-  // PA.4.7 — derive the backend WS URL. Local dev → ws://localhost:7525.
+  // Derive the backend WS URL. Local dev → ws://localhost:7525.
   // Deployed (served from the pages host) → the PUBLIC compute lane
   // wss://<host>/ws (nginx reverse-proxies to brain-server; see
   // deploy/nginx-unity-brain.conf). Admin/chat UI uses /admin/ws (Forgejo-authed).
@@ -161,11 +170,11 @@ function connectToServer() {
 
   ws.onopen = () => {
     statusEl.textContent = 'GPU + Server connected — registering as compute client...';
-    // T18.11 — reset backoff counter on successful connect so the next
+    // Reset backoff counter on successful connect so the next
     // disconnect starts over at 3 s instead of carrying forward a
     // stale exponent from an earlier transient hiccup.
     _reconnectAttempt = 0;
-    // PA.4.8 — report this donor's GPU capacity so the server tracks the
+    // Report this donor's GPU capacity so the server tracks the
     // community-compute level + gates milestone resizes (resize+retrain fires
     // only at a critical-mass milestone, never per-connection). WebGPU can't
     // read true VRAM (privacy); maxBufferSize / maxStorageBufferBindingSize
@@ -230,8 +239,7 @@ function connectToServer() {
       // Single Uint8Array allocation for the 4-byte magic. Was four
       // separate `new Uint8Array(buf, 0, 4)[i]` allocations to read
       // 4 bytes — at ~500-1000 binary frames/sec during teach phases,
-      // that's 2,000-4,000 wasted allocations/sec on the GC path
-      // (Problems.md Medium→Low finding).
+      // that's 2,000-4,000 wasted allocations/sec on the GC path.
       const magicBytes = new Uint8Array(buf, 0, 4);
       const magic4 = String.fromCharCode(magicBytes[0], magicBytes[1], magicBytes[2], magicBytes[3]);
       const frameType = magic4 === 'SPRS' ? new DataView(buf).getUint8(4) : -1;
@@ -304,7 +312,7 @@ function connectToServer() {
           // Wire layout after header:
           //   chunkSeq (u32) + totalChunks (u32) + flags (u32)
           //   if (flags & 1):  meta = rows(u32) + cols(u32) + nnz(u32) + rowPtrLen(u32) + rowPtr
-          //   if (flags & 2):  T18.6.b binding block follows rowPtr
+          //   if (flags & 2):  cluster-binding block follows rowPtr
           //                    srcClusterNameLen(u16) + srcClusterName + pad-to-u32
           //                    dstClusterNameLen(u16) + dstClusterName + pad-to-u32
           //                    srcStart(u32) + srcEnd(u32) + dstStart(u32) + dstEnd(u32)
@@ -321,13 +329,14 @@ function connectToServer() {
               const rowPtrLen = view.getUint32(off, true); off += 4;
               const rowPtr = new Uint32Array(buf, off, rowPtrLen);
               off += rowPtrLen * 4;
-              // T18.6.b — parse optional cluster-binding block so the
+              // Parse optional cluster-binding block so the
               // matrix comes up cluster-bound on first upload (no
               // standalone preSpikes/postCurrents/postSpikes buffers
               // allocated — 60 MB+ VRAM saved per cross-projection at
-              // biological scale). Phase C.1 rebind is the fallback
+              // biological scale). The rebind path is the fallback
               // for matrices that arrive without binding metadata
-              // (e.g., loaded from a pre-T18.6 persistence file).
+              // (e.g., loaded from a persistence file written before
+              // inline binding existed).
               let binding = null;
               if (flags & 2) {
                 const srcNameLen = view.getUint16(off, true); off += 2;
@@ -439,7 +448,7 @@ function connectToServer() {
           return;
         }
         if (typeByte === 5) {
-          // T18.8 — BATCHED bound HEBBIAN. One SPRS frame carries N
+          // BATCHED bound HEBBIAN. One SPRS frame carries N
           // (name, lr) tuples. Bound mode — pre/post spikes read directly
           // from the bound src/dst cluster spike buffers at the region
           // offsets stored on the matrix, so no per-op writeSparsePreSpikes/
@@ -460,7 +469,7 @@ function connectToServer() {
           //     lr (f32)
           const opCount = view.getUint16(off, true); off += 2;
           off += 2; // pad to u32
-          // T32 — collect all ops first, then dispatch via
+          // Collect all ops first, then dispatch via
           // hebbianSparseBatch for ONE encoder + ONE submit instead of
           // N individual hebbianSparse calls (each of which submitted its
           // own encoder to the GPU queue, serializing per-submit and
@@ -480,7 +489,7 @@ function connectToServer() {
             if (typeof gpu.hebbianSparseBatch === 'function') {
               fired = gpu.hebbianSparseBatch(ops) || 0;
             } else {
-              // Back-compat fallback if running against a pre-T32 gpu-compute.
+              // Back-compat path if running against a gpu-compute build without hebbianSparseBatch.
               for (const op of ops) { gpu.hebbianSparse(op.name, op.lr); fired++; }
             }
           } catch (err) {
@@ -505,7 +514,7 @@ function connectToServer() {
     if (msg.type === 'gpu_init' && gpuReady) {
       const { clusterName, size, lifParams, regions } = msg;
 
-      // T18.14.c — skip re-upload when this cluster is already
+      // Skip re-upload when this cluster is already
       // initialized in this compute.html tab AND the requested size
       // matches. Server's `ws.on('close')` resets `_gpuInitialized={}`
       // so the tick loop re-sends gpu_init on any WS reconnect — but
@@ -518,7 +527,7 @@ function connectToServer() {
       // flips `_gpuInitializedConfirmed[clusterName]=true` and the
       // tick loop resumes. If the size changed (legitimate re-init
       // reason — server restart with different config), fall through
-      // to the normal path which now also has T18.14.b's destroy-old
+      // to the normal path which also has the destroy-old
       // guard inside uploadCluster so no orphaning happens.
       if (clusterState[clusterName] && clusterState[clusterName].initialized && clusterState[clusterName].size === size) {
         ws.send(JSON.stringify({ type: 'gpu_init_ack', clusterName, size }));
@@ -531,14 +540,14 @@ function connectToServer() {
       // Initialize at Vrest — NO voltage transfer needed
       // GPU creates buffers and fills with Vrest internally. Zero JS allocation.
       //
-      // T17.7 Phase B.1 — `regions` metadata carries per-cluster
+      // `regions` metadata carries per-cluster
       // sub-region slice offsets + L/R side tags. uploadCluster
       // validates and stores on bufs.regions; subsequent compute_batch
       // calls updateRegionGates(clusterName, psi) populate the per-tick
       // Ψ-modulated hemisphere gate table that LIF_SHADER reads.
       // When regions is absent (clusters prior to this rollout), the
       // cluster remains homogeneous (numRegions=0, gate=1.0) matching
-      // pre-B.1 behavior.
+      // the prior behavior.
       gpu.uploadCluster(clusterName, size, null, null, lifParams, regions);
       clusterState[clusterName] = { initialized: true, size, lifParams, regions: regions || null };
 
@@ -619,20 +628,20 @@ function connectToServer() {
     // ack. Spikes are transferred as regular arrays (not typed —
     // JSON through WebSocket doesn't preserve typed arrays).
 
-    // T17.7 Phase B.2 — server pushes a per-neuron current pattern
+    // The server pushes a per-neuron current pattern
     // into a cluster's region slice via GPU's writeCurrentSlice. Used
     // by injectText (text → Wernicke phon slice) and any future
     // sensory injection that needs to land on a specific sub-region.
-    // Ψ-modulated via Phase A.3 hemisphereGate when the region is
+    // Ψ-modulated via the hemisphereGate when the region is
     // lateralized — left-lateralized Wernicke phon receives less
     // current at low Ψ (hemispheric divergence state) and full current
     // at high Ψ (bilateral integration). Consistent with global-
     // workspace theory and the master-equation Ψ binding constraint.
-    // T17.7 Phase B.3 — mirror a sub-region spike pattern from the
+    // A related path mirrors a sub-region spike pattern from the
     // standalone cortexCluster's lastSpikes into the main cortex's
     // GPU spike buffer at the corresponding slice. Used during the
-    // Phase B dual-cortex bridge so main-cortex sub-region state
-    // tracks standalone state; Phase E deletes the standalone and
+    // dual-cortex bridge so main-cortex sub-region state
+    // tracks standalone state; once the standalone is deleted the
     // main-cortex slices become authoritative.
     //
     // Sparse format only (no dense variant) — spike patterns are
@@ -644,7 +653,7 @@ function connectToServer() {
     if (msg.type === 'write_spike_slice' && gpuReady) {
       const { clusterName, regionName, sparseIndices } = msg;
       try {
-        // T17.7 Phase C.1 — route through writeSpikeSliceSparse which
+        // Route through writeSpikeSliceSparse which
         // zeroes the region via encoder.clearBuffer (GPU-native, no CPU
         // allocation) then writes 1's at sparse indices via coalesced
         // writeBuffer calls. At biological scale the dense path would
@@ -657,7 +666,7 @@ function connectToServer() {
       return;
     }
 
-    // T17.7 Phase C.1 — pure clear of a region slice on the spikes
+    // Pure clear of a region slice on the spikes
     // buffer. Curriculum _clearSpikes fires one of these per region
     // (8 per teach iteration on main cortex) between pattern writes.
     // GPU-native clearBuffer keeps the per-iter CPU work bounded.
@@ -675,7 +684,7 @@ function connectToServer() {
     // generateSentenceAwait can argmax-decode the main-cortex motor
     // slice per tick without shipping the full ~6.6M-neuron spike
     // array back. Bucket counts (typically 40 — a-z + 0-9 + space , . ',
-    // per the T39.g.1 seeded alphabet) are echoed in the ack; server
+    // per the seeded alphabet) are echoed in the ack; server
     // consumes them via argmax.
     if (msg.type === 'readback_letter_buckets' && gpuReady) {
       const { reqId, clusterName, regionName, bucketCount, subSliceLen, startOffset } = msg;
@@ -791,7 +800,7 @@ function connectToServer() {
       return;
     }
 
-    // T17.7 Phase C.1 — rebind an already-uploaded cross-projection
+    // Rebind an already-uploaded cross-projection
     // matrix from standalone to cluster-bound mode. No matrix data
     // re-transferred; only the per-dispatch src/dst buffer resolution
     // changes. Server sends this once per projection after both the
@@ -814,7 +823,7 @@ function connectToServer() {
 };
 
   ws.onclose = () => {
-    // T18.11 — exponential backoff: 3s, 6s, 12s, 24s, 48s, 60s cap.
+    // Exponential backoff: 3s, 6s, 12s, 24s, 48s, 60s cap.
     // Prevents the tight 3 s-flat reconnect storm that compounded VRAM
     // pressure during ELA-K teach stress. Cap at 60 s so a legitimately-
     // restarted server still gets picked up within a minute.
@@ -885,13 +894,13 @@ async function handleComputeBatch(msg) {
     noiseAmps[c.name] = c.noiseAmp ?? 5;
   }
 
-  // T17.7 Phase A.3 — update per-cluster regionGates storage buffer
+  // Update the per-cluster regionGates storage buffer
   // with current Ψ-computed gate values before the first substep.
   // Gates are stable within a single compute_batch so we update once
   // per batch, not per substep. Clusters without registered regions
   // (no language sub-regions yet) get numRegions=0 and the LIF
   // shader's lookupRegionGate returns 1.0 for every neuron —
-  // homogeneous behavior, zero regression vs pre-A.3.
+  // homogeneous behavior, zero regression vs the homogeneous path.
   //
   // Mystery Ψ binding constraint: the master equation has Ψ woven
   // into every term. This is the per-region
@@ -912,7 +921,7 @@ async function handleComputeBatch(msg) {
   // substeps, execution is serialized so each substep sees the
   // voltage state the previous one left on the GPU.
   //
-  // T18.4.f — per-phase timing telemetry. Track wall-clock time spent
+  // Per-phase timing telemetry. Track wall-clock time spent
   // in each phase (substep loop vs. voltage-mean readback) so the
   // server can surface per-phase breakdown in the performance card
   // instead of only seeing total step time.
@@ -932,7 +941,7 @@ async function handleComputeBatch(msg) {
   }
   phaseT.substepLoopMs = +(performance.now() - loopStart).toFixed(2);
 
-  // T18.4.c — Once-per-tick voltage mean readback (GPU atomic reduction).
+  // Once-per-tick voltage mean readback (GPU atomic reduction).
   // Fires after the last substep so the mean reflects settled state.
   // Running this every substep would be wasteful — mean voltage is a
   // slow telemetry signal, one readback per tick is sufficient.
@@ -952,7 +961,7 @@ async function handleComputeBatch(msg) {
   }
   phaseT.voltReadbackMs = +(performance.now() - vrStart).toFixed(2);
 
-  // T17.7 Phase B.4 — per-region spike count readback for every
+  // Per-region spike count readback for every
   // cluster that has regions metadata. Feeds the server's divergence
   // metric (standalone cortexCluster sub-region spikes vs main cortex
   // sub-region spikes). Server uses divergence to augment the
@@ -991,7 +1000,7 @@ async function handleComputeBatch(msg) {
     type: 'compute_batch_result',
     batchId,
     perCluster,
-    // T18.4.f — per-phase GPU timing (substep loop + voltage readback +
+    // Per-phase GPU timing (substep loop + voltage readback +
     // total batch time). Server surfaces these as percentages of total
     // step time so we can see where the 31s (or whatever) budget goes.
     phaseTimingMs: phaseT,
