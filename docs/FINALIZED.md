@@ -5,6 +5,41 @@
 
 ---
 
+## 2026-06-20 — Pre-alpha deploy hardening — DEPLOY-FIX (DF.1–DF.7) + distributed multi-GPU data-parallel engine + community-compute auto-scaling + full public-docs sweep → RELEASE CASCADE
+
+### Gee verbatim per LAW #0
+
+> *"push to main casscade all indivividual pushes and checks on each before going to next, and all todo work and anything else we need fo release , so i can go to static site and log in as admin add my gpu and start traing Unity"*
+
+> *"staic page ><user connects to static> static brain builds training from users gpus all at same time for massive gpu compute"* · *"its not just for the training when Unity thinks and speaks and builds ui and generates images all of it is controlled by the compute of users"* · *"controllable in admin with toggle and setting sliders for dead zone of available compute so that it doesnt try to relearn the second it hits a gate of available users compute connected so that any one person disconnecting doesnt downgrade the brains fucntioning"* · *"all docs all htmls and all pages and anything like that that has any typoe of documentions shall but fully updated to actual stack functionality information and publ;ic facing documentions"*
+
+### What this is
+
+The pre-alpha release cascade. Everything that makes the DEPLOYED static page + donor-GPU distributed-compute product work, plus the full documentation sync, shipped atomically and cascaded feature→develop→main (main push fires `.forgejo/workflows/deploy.yml`). Verified headless via `node --check` + real ESM `import()` + isolation harnesses + HTML inline-script syntax checks (the live walk/quality verification happens on the deployed page with real donor GPUs — that is testing, not a build task).
+
+### DEPLOY-FIX cluster
+
+- **DF.1** — every hardcoded `localhost:7525` browser→backend call made deployment-aware: `index.html` banner probe → `/admin/ws`; six `dashboard.html` admin REST fetches routed through one `adminApi()` helper → same-origin `/admin/<endpoint>` on deployed; bundle rebuilt.
+- **DF.2** — connection-error banners deployment-aware (visitor=fallback-brain / operator=systemctl+Forgejo / donor link) instead of localhost-dev steps.
+- **DF.3** — backend-deploy automation closed: `location /admin/` REST proxy added to the nginx vhost (same Forgejo auth as `/admin/ws`). Remaining = operator runs `bootstrap-backend.sh` once (operator action, not code).
+- **DF.4** — GloVe origin deployment-aware in `embeddings.js` (deployed → same-origin fast-404 → fastText fallback).
+- **DF.5** — admin server-console: brain-server console mirrored to a ring + streamed to ADMIN WS clients only; dashboard admin-only Server Console card (level colors, toggles, dedupe, 500-row cap). Deployed Log Tail.
+- **DF.7** — distributed multi-GPU DATA-PARALLEL engine: replica registry + `_syncReplicaToDonor` (every donor a full replica, standbys no longer idle) · `_rebroadcastMasterToReplicas` 10-min delta-merge re-broadcast (parallel via `_gpuParallelMap`) · target-parameterized dispatch (untargeted=primary, byte-identical) · pool primitives. Additive: 1 donor = today, N donors = fan-out + merge.
+
+### Community-compute scaling + unattended maintenance
+
+Admin dead-zone milestone auto-scaling: toggle + up buffer 20%/hold 5min + downscale rectify (buffer 35%/hold 15min, "buffers for the buffers") + strict down-protection (one disconnect never downgrades) + insufficient-compute alert + manual-downscale. Prompt-free systemd rectify (save→exit→Restart=always→re-walk, never start.bat). Auto-advance toggle persisted standalone so it survives resize weight-clears → unattended re-walks. Admin REST `/autoscale` + WS + dashboard panel (toggle + 4 sliders + live donor/VRAM/tier/replica telemetry). All gating/downscale/pool logic isolation-tested. Runtime files (`autoscale-settings.json`, `auto-advance.json`) gitignored.
+
+### Documentation sweep
+
+PASS 1 stack-accuracy: README, ARCHITECTURE, SETUP, HTML-ENTRY-POINTS, ROADMAP, SKILL_TREE, WEBSOCKET + unity-guide/compute/gpu-configure synced to the deployed donor-GPU stack (local dev kept as the dev path). PASS 2 public-files LAW: all internal iter/T/session/milestone/audit IDs scrubbed from the 6 public HTMLs + README (incl. DF.* IDs + a stray operator-name introduced this session). VERIFIED: 0 internal IDs + 0 operator-name across public pages; all inline scripts parse clean; equational/no-text-AI intact.
+
+### Files changed (this cascade)
+
+`index.html` · `html/{dashboard,compute,brain-equations,gpu-configure,unity-guide}.html` · `js/brain/embeddings.js` · `js/app.bundle.js` (rebuilt) · `server/brain-server.js` · `server/brain-server/gpu.js` · `deploy/nginx-unity-brain.conf` · `.gitignore` · `README.md` · `docs/{ARCHITECTURE,HTML-ENTRY-POINTS,ROADMAP,SETUP,SKILL_TREE,WEBSOCKET,TODO,NOW,FINALIZED}.md`.
+
+---
+
 ## 2026-06-17 — Session 114.19ga batched-push 9 — P4.3.b + P4.3.c + P4.3.d → P4.3 UMBRELLA COMPLETE → 35/35 TASKS COMPLETE
 
 ### Gee verbatim per LAW #0

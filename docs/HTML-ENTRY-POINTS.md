@@ -1,37 +1,46 @@
 # HTML-ENTRY-POINTS — every page, its contract, its failure modes
 
-> **Status:** drafted 2026-06-17 per audit H.5 + H.8 — operator's live-test reported "only two opened and they both said no connection." This doc inventories every HTML, how it's launched, what it needs from the server, what's GH-Pages-safe vs require-Node, and the per-HTML failure-mode signature.
+> **Status:** drafted 2026-06-17 per audit H.5 + H.8 — operator's live-test reported "only two opened and they both said no connection." This doc inventories every HTML, how it's launched, what it needs from the server, what's deploy-safe vs require-Node, and the per-HTML failure-mode signature.
+>
+> **Access model (2026-06-20 pre-alpha):** the pages ship as a DEPLOYED STATIC SITE; a persistent Node brain-server runs on the same host behind an nginx reverse-proxy. Two WS lanes in deployed mode — public donor lane `wss://<host>/ws` and the Forgejo-authed admin lane `wss://<host>/admin/ws` (no raw `:7525` port is exposed publicly). LOCAL DEV is unchanged: `start.bat` / `Savestart.bat` boot the brain locally and open the pages on `http://localhost:7525` with a direct `ws://localhost:7525` socket. Each page below is described for BOTH (deployed primary / local dev). Cognition stays 100% EQUATIONAL — no text-AI/LLM in the cognition path.
 
 ## Inventory — 9 HTMLs total
 
-| File | Purpose | Launched by | Requires brain-server? | GH-Pages-safe? |
-|------|---------|-------------|------------------------|----------------|
-| `index.html` | Landing / 3D brain UI / chat | `start.bat` auto-opens at `http://localhost:7525` | YES for chat/training, NO for static landing | YES (static-fallback) |
-| `html/dashboard.html` | Read-only live brain dashboard | `start.bat` auto-opens at `http://localhost:7525/dashboard.html` | YES — fully blank without WS | NO |
-| `html/compute.html` | GPU compute worker (WebGPU sparse-matrix forward) | brain-server `_spawnGpuClient()` auto-launches in isolated Chrome | YES — depends on WS handshake + module imports | NO (requires server HTTP route) |
-| `html/webgpu-prep.html` | Pre-flight WebGPU setup — browser-by-browser flag instructions | Linked from boot modal on `index.html` + `html/dashboard.html` when adapter unavailable; can be visited manually | NO (static, runs adapter check via `navigator.gpu`) | YES |
-| `html/legend.html` | Page legend / quick-access index — every HTML + public-facing doc | Linked from floating `📑 Pages` button on every HTML's top-right corner | NO (static) | YES |
-| `html/docs.html` | Markdown doc viewer (public docs only) with whitelist + inline renderer | Linked from `html/legend.html` Public Docs section + the `📑 Pages` button | NO (static, fetches `.md` files via `fetch()`) | YES |
-| `html/brain-equations.html` | Public-facing math reference for equational cognition | Manual (link from index.html) | NO (static) | YES |
-| `html/unity-guide.html` | Persona + capabilities tour | Manual (link from index.html) | NO (static) | YES |
-| `html/gpu-configure.html` | Admin GPU tier-config UI | `windows/GPUCONFIGURE.bat` | YES (config-write endpoint) | NO |
+| File | Purpose | Access (deployed / local dev) | Requires brain-server? | Deploy-safe? |
+|------|---------|-------------------------------|------------------------|--------------|
+| `index.html` | Public landing / live 3D brain UI / chat | Deployed: served static at site root, chat via donor lane `wss://<host>/ws`. Local: `start.bat` auto-opens `http://localhost:7525`, socket `ws://localhost:7525` | YES for chat/training, NO for static landing | YES (static-fallback) |
+| `html/dashboard.html` | Admin/operator view — live telemetry + server-console + auto-scale controls | Deployed: served static, admin lane `wss://<host>/admin/ws` (Forgejo-authed → admin). Local: `start.bat` auto-opens `http://localhost:7525/dashboard.html`, socket `ws://localhost:7525` | YES — fully blank without WS | NO (needs a live brain-server) |
+| `html/compute.html` | Browser-GPU donor worker (WebGPU sparse-matrix forward, data-parallel replica) | Deployed: visitor opens it, donates their GPU via donor lane `wss://<host>/ws`. Local: brain-server `_spawnGpuClient()` auto-launches in isolated Chrome against `http://localhost:7525/compute.html` | YES — depends on WS handshake + module imports | NO (requires server HTTP route) |
+| `html/webgpu-prep.html` | Pre-flight WebGPU setup — browser-by-browser flag instructions | Deployed + local: linked from boot modal on `index.html` + `html/dashboard.html` when adapter unavailable; can be visited manually | NO (static, runs adapter check via `navigator.gpu`) | YES |
+| `html/legend.html` | Page legend / quick-access index — every HTML + public-facing doc | Deployed + local: floating `📑 Pages` button on every HTML's top-right corner | NO (static) | YES |
+| `html/docs.html` | Markdown doc viewer (public docs only) with whitelist + inline renderer | Deployed + local: linked from `html/legend.html` Public Docs section + the `📑 Pages` button | NO (static, fetches `.md` files via `fetch()`) | YES |
+| `html/brain-equations.html` | Public-facing math reference for equational cognition | Deployed + local: manual (link from index.html) | NO (static) | YES |
+| `html/unity-guide.html` | Persona + capabilities tour | Deployed + local: manual (link from index.html) | NO (static) | YES |
+| `html/gpu-configure.html` | Admin GPU tier-config UI | Local: `windows/GPUCONFIGURE.bat` (config-write endpoint is loopback-only) | YES (config-write endpoint) | NO |
 
-**Admin/viewer split (per Gee 2026-06-18):** No login form, no admin token, no cookie. The brain-server inspects `req.socket.remoteAddress` on every new WebSocket; loopback addresses (`127.0.0.1` / `::1` / `::ffff:127.0.0.1` / `127.x.x.x`) receive `mode: 'admin'` ~500 ms after the connection lands, every non-loopback address receives `mode: 'viewer'`. The 500 ms delay lets the GPU compute worker self-identify via `gpu_register` and skip the modeAssigned send entirely — compute clients render no UI and need no badge. The loopback-based design means the operator's multiple tabs (compute + dashboard + landing + terminal `curl`) all share admin since they all come from the same loopback origin. Viewer-mode dashboards hide Stop / Grade-advance / Signoff / Auto-advance controls via the `.admin-only` CSS class that only resolves when `body.is-admin` is set. Brain-mutating HTTP endpoints (`/shutdown`, `/grade-advance`, `/grade-signoff`, `/auto-advance`) remain loopback-only via `requireLoopback` — there is no LAN admin path. See `server/brain-server.js` `wss.on('connection')` mode-assignment block.
+**Admin/viewer split (per Gee 2026-06-18):**
+
+- **Deployed (primary):** admin is the Forgejo-authed lane. The reverse-proxy routes `wss://<host>/admin/ws` through Forgejo auth and only authenticated operators reach it → `mode: 'admin'`; the first authed operator after a deploy is master. The public donor/landing lane `wss://<host>/ws` is always `mode: 'viewer'`. No raw `:7525` port is exposed publicly — the proxy is the only door.
+- **Local dev:** unchanged loopback model. The brain-server inspects `req.socket.remoteAddress` on every new WebSocket; loopback addresses (`127.0.0.1` / `::1` / `::ffff:127.0.0.1` / `127.x.x.x`) receive `mode: 'admin'` ~500 ms after the connection lands, every non-loopback address receives `mode: 'viewer'`. The 500 ms delay lets the GPU compute worker self-identify via `gpu_register` and skip the modeAssigned send entirely — compute clients render no UI and need no badge. The loopback design means the operator's multiple local tabs (compute + dashboard + landing + terminal `curl`) all share admin since they all come from the same loopback origin.
+
+Either way, viewer-mode dashboards hide Stop / Grade-advance / Signoff / Auto-advance controls via the `.admin-only` CSS class that only resolves when `body.is-admin` is set. Brain-mutating HTTP endpoints (`/shutdown`, `/grade-advance`, `/grade-signoff`, `/auto-advance`) stay gated — loopback-only via `requireLoopback` in local dev, Forgejo-authed admin route in deployed mode; there is no unauthenticated LAN admin path. See `server/brain-server.js` `wss.on('connection')` mode-assignment block.
 
 ## Per-HTML contracts + failure modes
 
 ### `index.html` (root) — the brain UI
 
-**Purpose:** Landing page + 3D brain visualization + chat UI + HUD metrics. Static auto-sizes neuron count from detected WebGPU adapter `maxStorageBufferBindingSize` BEFORE the WS connection lands. Once WS connects, server reports authoritative neuron count + curriculum state + emotion stream.
+**Purpose:** Public landing page + 3D brain visualization + chat UI + HUD metrics. Static auto-sizes neuron count from detected WebGPU adapter `maxStorageBufferBindingSize` BEFORE the WS connection lands. Once WS connects, server reports authoritative neuron count + curriculum state + emotion stream.
 
-**Static-site mode (no brain-server running):**
+**Access:** Deployed = served static at the site root; chat + live state ride the public donor lane `wss://<host>/ws`. Local dev = `start.bat` auto-opens `http://localhost:7525`, socket `ws://localhost:7525`.
+
+**Static-site mode (no brain-server reachable):**
 - WebGPU adapter probe still fires → "biological-scale default" neuron count visualized in 3D brain
 - Chat is DISABLED until WS connects
 - HUD shows last-known state or `—` placeholders
 
 **Failure modes:**
-- `http://localhost:7525` returns connection-refused → page never loads (browser shows "site can't be reached")
-- WS to `ws://localhost:7525` fails → "no connection" banner per audit H.9 (BIG red recovery banner + retry countdown)
+- Deployed: `wss://<host>/ws` unreachable → "no connection" banner per audit H.9 (BIG red recovery banner + retry countdown); static landing still renders the 3D brain
+- Local: `http://localhost:7525` returns connection-refused → page never loads (browser shows "site can't be reached"); WS to `ws://localhost:7525` fails → same H.9 "no connection" banner
 - bundle build broken (`js/app.bundle.js` 404) → blank black page, console error
 - GPU detection fails → 3D brain falls back to CPU-side rendering at ~6700 neurons
 
@@ -41,12 +50,14 @@
 - When WS lands, server's `os.freemem() × heap_size_limit × 0.5` count REPLACES the static default
 - Mismatch = client/server diverge on neuron count → audit H.7 parity-check script catches this
 
-### `html/dashboard.html` — read-only live dashboard
+### `html/dashboard.html` — admin/operator live dashboard
 
-**Purpose:** Shared read-only view of the brain — emotion chart, cluster firing, curriculum milestones, drug-pharmacokinetics, conversation activity, ALL the Phase 6 telemetry panels (audit A.1-A.3), GPU spawn-failure banner (audit H.6), no-connection recovery banner (audit H.9).
+**Purpose:** Admin/operator view of the brain — emotion chart, cluster firing, curriculum milestones, drug-pharmacokinetics, conversation activity, ALL the Phase 6 telemetry panels (audit A.1-A.3), live server-console panel, community-compute auto-scale controls, GPU spawn-failure banner (audit H.6), no-connection recovery banner (audit H.9). Viewers connecting on the public lane see the read-only subset (admin controls hidden via `.admin-only`).
+
+**Access:** Deployed = served static; admin telemetry + controls ride the Forgejo-authed lane `wss://<host>/admin/ws` (first authed operator after deploy = master). Local dev = `start.bat` auto-opens `http://localhost:7525/dashboard.html`, socket `ws://localhost:7525` (loopback → admin).
 
 **Failure modes:**
-- WS to `ws://localhost:7525` fails → banner per H.9 shows recovery steps
+- Deployed: `wss://<host>/admin/ws` unreachable (proxy down / auth rejected) → banner per H.9 shows recovery steps. Local: `ws://localhost:7525` fails → same H.9 banner
 - `gpuClientSpawnFailed` WS event from brain-server `_spawnGpuClient` → banner per H.6 shows browser/exePath/errno
 - Server crashed mid-stream → onclose handler fires → banner shows + 3s auto-retry countdown
 
@@ -62,18 +73,20 @@
 - `#d-ms-advance` — `▶ START NEXT GRADE` panel + per-subject signoff buttons (appears only when curriculum pauses after a full grade pass).
 - `#d-ms-auto-advance` — `Auto-advance to next grade after pass` checkbox in the milestone panel. Single toggle governing both `/grade-advance` signoff bypass AND curriculum runner's auto-fire behavior. State persists via `cortexCluster._autoAdvanceGrade` inside cortexState; F5 restoration fires `GET /auto-advance` on `modeAssigned: admin`.
 
-### `html/compute.html` — GPU compute worker
+### `html/compute.html` — browser-GPU donor worker
 
-**Purpose:** WebGPU forward-pass for sparse matrix Hebbian. The brain-server is the CPU shadow / decision-maker; compute.html is the GPU shadow that does the hot-path forward propagation.
+**Purpose:** Visitors donate their BROWSER GPU (WebGPU) — the brain trains/runs on connected donor GPUs as data-parallel replicas. Each donor runs a WebGPU forward-pass for sparse-matrix Hebbian; the brain-server is the CPU shadow / decision-maker, every connected `compute.html` is a GPU shadow doing the hot-path forward propagation.
 
-**Contract: SERVER-SERVED ONLY.** Must be loaded via `http://localhost:7525/compute.html` (or `/html/compute.html`). Under `file://`:
+**Access:** Deployed = visitor opens it from the site, registers as a donor over the public lane `wss://<host>/ws`. Local dev = brain-server `_spawnGpuClient()` auto-launches it in isolated Chrome against `http://localhost:7525/compute.html`.
+
+**Contract: SERVER-SERVED ONLY.** Must be loaded over HTTP(S) — `https://<host>/compute.html` deployed, or `http://localhost:7525/compute.html` (or `/html/compute.html`) local. Under `file://`:
 - ES module import `/js/brain/gpu-compute.js` resolves to filesystem path that doesn't exist
-- WebSocket connect to `ws://localhost:7525` will succeed only if brain-server is running, but typically `file://` opens happen when operator double-clicks the file (no server)
-- Pre-audit H.2 fix: the import path was relative `./js/...` which broke under EVERY non-`/compute.html` URL. Post-fix uses absolute `/js/...` so any HTTP route works. PLUS file:// preflight script renders a recovery banner with start.bat instructions instead of a blank page.
+- WebSocket connect succeeds only against a reachable brain-server, but `file://` opens typically happen when someone double-clicks the file (no server)
+- Pre-audit H.2 fix: the import path was relative `./js/...` which broke under EVERY non-`/compute.html` URL. Post-fix uses absolute `/js/...` so any HTTP route works. PLUS file:// preflight script renders a recovery banner with launch instructions instead of a blank page.
 
 **Failure modes:**
 - File:// open → preflight banner explains the requirement (post-audit H.2)
-- WS fails → `Connecting to brain server...` text, then `WebSocket error — retrying in 3s...`
+- WS fails (deployed `wss://<host>/ws` or local `ws://localhost:7525`) → `Connecting to brain server...` text, then `WebSocket error — retrying in 3s...`
 - Chrome without `--enable-unsafe-webgpu` flag → WebGPU binding limited to 2GB ceiling (~178M neurons), brain capability reduced
 - WebGPU device.lost mid-run → `[Chrome stderr] device lost` log line, page goes red, brain-server logs critical, dashboard banner surfaces
 
@@ -151,7 +164,7 @@
 
 **Purpose:** Operator-only admin UI for GPU tier selection. Maps cluster-size tier choice to the auto-size formula (`os.freemem() × heap_size_limit × 0.5 ceiling`).
 
-**Launched by:** `windows/GPUCONFIGURE.bat` only — never from start.bat auto-open. Operator runs this once after install to pin a GPU tier.
+**Access:** Local dev only — `windows/GPUCONFIGURE.bat`, never from start.bat auto-open. Operator runs this once after install to pin a GPU tier. The config-write endpoint is loopback-only, so this page has no deployed/public route; in deployed mode community-compute scaling is driven from the dashboard auto-scale controls instead.
 
 **Failure modes:**
 - HTTP POST to config-write endpoint fails → admin UI shows error banner
@@ -161,21 +174,19 @@
 
 ---
 
-## Static-site (GH Pages) parity (audit H.8)
+## Deployed-static parity (audit H.8)
 
-GH Pages deployment is a SUBSET of the local-Node experience:
-- ✅ `index.html` + `html/brain-equations.html` + `html/unity-guide.html` — static, fully functional
-- ❌ `html/dashboard.html` — requires WS to local brain-server, useless on GH Pages
-- ❌ `html/compute.html` — requires brain-server's HTTP routing + WS, useless on GH Pages
-- ❌ `html/gpu-configure.html` — requires server config-write endpoint, useless on GH Pages
+The pages ship as a deployed static site fronting a persistent brain-server (reached via the nginx reverse-proxy WS lanes). Static-only fallback — when the proxy/backend is unreachable — is a SUBSET of the full experience:
+- ✅ `index.html` + `html/brain-equations.html` + `html/unity-guide.html` — static, fully functional with no backend
+- ❌ `html/dashboard.html` — requires the admin lane `wss://<host>/admin/ws` (or local `ws://localhost:7525`), blank without it
+- ❌ `html/compute.html` — requires the donor lane `wss://<host>/ws` + the page's HTTP route, useless with no backend
+- ❌ `html/gpu-configure.html` — loopback-only config-write endpoint, local dev only
 
-**Operator distinguishing "no server" from "server crashed":**
-- "No server" state on GH Pages = static landing only, no WS attempts, no banner
-- "Server crashed" state on localhost = WS attempts fire and fail → audit H.9 recovery banner shows
+**Distinguishing "no backend" from "backend crashed":**
+- "No backend" fallback = static landing only renders, WS retries quietly in the background
+- "Backend crashed" = WS attempts fire and fail → audit H.9 recovery banner shows (deployed `wss://<host>/...` or local `ws://localhost:7525`)
 
-**Static landing should bake-in a "Connect to local brain-server at ws://localhost:7525" CTA** so GH Pages visitors who want the full experience know how to get it. This is a follow-on UX task post-audit-close.
-
-**GH-Pages-safe inventory of `js/`:**
+**Deployed-safe inventory of `js/`:**
 - ✅ `js/app.js`, `js/app.bundle.js`, `js/brain3d-*.js`, `js/embeddings.js`, `js/letter-input.js` — pure-static, no Node-only APIs
 - ❌ `js/brain/curriculum*.js`, `js/brain/cluster*.js` — heavy Node-side modules, only loaded via brain-server context
 - ✅ `js/brain/gpu-compute.js` — WebGPU client-side, but requires compute.html which requires server

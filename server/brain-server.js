@@ -1413,6 +1413,28 @@ class ServerBrain {
       if (typeof this.cortexCluster._autoAdvanceGrade !== 'boolean') {
         this.cortexCluster._autoAdvanceGrade = false;
       }
+      // DF.7 — restore the auto-advance toggle from its STANDALONE persistence
+      // file (server/auto-advance.json), which survives the brain-weights CLEAR
+      // that a tier resize/downscale performs. Without this, every auto-resize
+      // would silently reset the toggle to OFF and the re-walk would pause at
+      // the first grade boundary waiting for a manual signoff — defeating
+      // unattended maintenance. With it, "auto-advance ON" persists across every
+      // restart, resize, downscale, and re-walk, so automated train runs stay
+      // hands-off. cortexState may also carry it (normal restarts); the
+      // standalone file is authoritative when present so a weight-clear can't
+      // lose it.
+      try {
+        const _aaPath = path.join(__dirname, 'auto-advance.json');
+        if (fs.existsSync(_aaPath)) {
+          const _aa = JSON.parse(fs.readFileSync(_aaPath, 'utf8'));
+          if (typeof _aa.enabled === 'boolean') {
+            this.cortexCluster._autoAdvanceGrade = _aa.enabled;
+            if (_aa.enabled) console.log('[Brain] DF.7 — auto-advance restored ON from auto-advance.json (survives resizes → unattended re-walks).');
+          }
+        }
+      } catch (e) {
+        console.warn('[Brain] DF.7 — auto-advance.json restore failed (toggle stays at cortexState/default):', e.message);
+      }
       // T18.6.b — cluster-binding resolver so cortexCluster.initGpu()
       // uploads its 14 cross-projections directly bound to main-cortex
       // sub-slices instead of allocating standalone preSpikes/postCurrents/
@@ -4437,6 +4459,52 @@ Object.assign(ServerBrain.prototype, SERVER_MEMORY_MIXIN);
 Object.assign(ServerBrain.prototype, SERVER_CHAT_MIXIN);
 
 const brain = new ServerBrain();
+
+// DF.5 — server console capture → admin dashboard console-log view. On a
+// DEPLOYED host the operator has no local terminal / "Log Tail" window, so the
+// server console is invisible. Mirror console.log/warn/error into a bounded
+// ring buffer AND stream each new line to ADMIN WS clients only (the public
+// donor/viewer lane never receives server logs). Wrapped here — right after
+// the brain exists — so it captures the entire curriculum walk + teach + gate
+// + save stream the operator wants to watch live. The ring backlog is sent to
+// each admin on mode assignment (see the modeAssigned block) so a freshly
+// opened dashboard immediately shows recent history, not a blank panel.
+const SERVER_LOG_RING_CAP = 400;
+brain._serverLogRing = [];
+let _serverLogSeq = 0;
+(function captureServerConsole() {
+  const orig = {
+    log: console.log.bind(console),
+    warn: console.warn.bind(console),
+    error: console.error.bind(console),
+  };
+  brain._origConsole = orig;   // internal paths use these to avoid recursion
+  const fmt = (args) => args.map((a) => {
+    if (typeof a === 'string') return a;
+    if (a instanceof Error) return a.stack || a.message || String(a);
+    try { return JSON.stringify(a); } catch { return String(a); }
+  }).join(' ');
+  const capture = (level, args) => {
+    const entry = { seq: _serverLogSeq++, ts: Date.now(), level, text: fmt(args).slice(0, 2000) };
+    brain._serverLogRing.push(entry);
+    if (brain._serverLogRing.length > SERVER_LOG_RING_CAP) brain._serverLogRing.shift();
+    // Stream to admin clients only. CRITICAL: never call the wrapped console
+    // in here — that would recurse infinitely. ws.send failures swallow.
+    const clients = brain.clients;
+    if (clients && clients.size) {
+      const payload = JSON.stringify({ type: 'serverLog', entry });
+      for (const [ws, c] of clients) {
+        if (c && c.mode === 'admin' && ws.readyState === ws.OPEN) {
+          try { ws.send(payload); } catch { /* admin tab gone — ignore */ }
+        }
+      }
+    }
+  };
+  console.log = (...args) => { orig.log(...args); capture('log', args); };
+  console.warn = (...args) => { orig.warn(...args); capture('warn', args); };
+  console.error = (...args) => { orig.error(...args); capture('error', args); };
+})();
+
 // T14.21 — catch any rejection from brain.start() so async init failures
 // surface with a stack trace instead of silently terminating the process
 // via Node's default --unhandled-rejections=throw behavior.
@@ -4474,6 +4542,21 @@ setInterval(() => {
     catch (e) { console.warn('[Brain] PA.4.8 — milestone execution check failed:', e.message); }
   }
 }, 30 * 1000);
+
+// DF.7 — periodic master re-broadcast to replica donors (data-parallel
+// delta-merge re-sync). Re-converges every replica's GPU shadow to the
+// authoritative CPU master. No-op unless ≥2 donors are connected (one donor IS
+// the master). Conservative interval — re-streaming the full weight set is
+// heavy at scale, so this corrects slow drift; fire-and-forget Hebbian keeps
+// replicas approximately current between rebroadcasts.
+const REPLICA_REBROADCAST_MS = 10 * 60 * 1000;
+setInterval(() => {
+  if (typeof brain._rebroadcastMasterToReplicas === 'function') {
+    brain._rebroadcastMasterToReplicas().catch((e) => {
+      console.warn('[Brain] DF.7 — replica rebroadcast failed:', e?.message || e);
+    });
+  }
+}, REPLICA_REBROADCAST_MS);
 
 // Loopback gate for privileged HTTP endpoints (/shutdown, /grade-advance,
 // /grade-signoff). Defense-in-depth on top of the BIND_HOST=127.0.0.1
@@ -4788,6 +4871,16 @@ const httpServer = http.createServer((req, res) => {
           // the new state. saveWeights serializes the cortex state with
           // the new autoAdvanceGrade flag inside cortexState.
           brain.saveWeights({ force: true, trigger: `auto-advance:${next ? 'on' : 'off'}` });
+          // DF.7 — ALSO persist to the STANDALONE auto-advance.json so the
+          // toggle survives a tier resize/downscale (which CLEARS brain-weights).
+          // This is what keeps automated train runs unattended across every
+          // restart + retrain — the re-walk reads this file at boot and keeps
+          // auto-advancing instead of pausing for a manual signoff.
+          try {
+            fs.writeFileSync(path.join(__dirname, 'auto-advance.json'), JSON.stringify({ enabled: next }, null, 2));
+          } catch (e) {
+            console.warn('[Brain] DF.7 — auto-advance.json persist failed (resize may reset the toggle):', e.message);
+          }
           if (prev !== next) {
             console.log(`[Brain] auto-advance toggle: ${prev ? 'ON' : 'OFF'} → ${next ? 'ON' : 'OFF'} (operator localhost)`);
             if (next) {
@@ -4796,6 +4889,84 @@ const httpServer = http.createServer((req, res) => {
           }
           res.writeHead(200, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ ok: true, enabled: next }));
+        } catch (err) {
+          res.writeHead(500, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: err.message }));
+        }
+      });
+      return;
+    }
+    res.writeHead(405, { 'Content-Type': 'application/json', 'Allow': 'GET, POST' });
+    res.end(JSON.stringify({ error: 'method not allowed' }));
+    return;
+  }
+
+  // DF.7 — community-compute auto-scale controls (admin). GET returns the
+  // current dead-zone settings + live community-compute telemetry; POST updates
+  // the toggle / dead-zone buffer / stability window. Gee 2026-06-20: the auto-
+  // relearn must be admin-controllable with a dead-zone buffer so a single
+  // donor connecting/disconnecting never downgrades the brain.
+  //   GET  /autoscale  → { settings, community }
+  //   POST /autoscale  { enabled?, bufferPct?, stabilityMin?, minDonorsFloor? }
+  if (req.url === '/autoscale') {
+    if (!requireLoopback(req, res, '/autoscale')) return;
+    const communityStatus = () => ({
+      communityComputeMB: brain._communityComputeMB || 0,
+      donorCount: brain._communityDonorCount || 0,
+      currentTier: brain._communityTier || 0,        // raw — what the pool qualifies for
+      upgradeTier: brain._communityUpgradeTier || 0, // buffered — what would trigger a resize
+      runningTier: brain._communityTierRunning || 0, // what the brain is actually sized at
+      pendingTier: brain._communityTierPending == null ? null : brain._communityTierPending,
+      pendingSinceMs: brain._communityTierPendingSince || null,
+      // DF.7 downscale telemetry — for the insufficient-compute alert + the
+      // down-rectify countdown in the admin panel.
+      runningFloorMB: brain._runningFloorMB || 0,     // VRAM the running tier needs
+      computeInsufficient: !!brain._computeInsufficient, // can't hold the running tier RIGHT NOW
+      downPendingTier: brain._communityDownTierPending == null ? null : brain._communityDownTierPending,
+      downPendingSinceMs: brain._communityDownTierPendingSince || null,
+      // DF.7 replica-pool telemetry — so you can SEE the multi-GPU engine work
+      // on deploy: how many donor GPUs hold a full brain replica (beyond the
+      // primary) + when their shadows were last re-merged to the master.
+      replicaCount: (typeof brain._livePoolDonors === 'function')
+        ? Math.max(0, brain._livePoolDonors().length - 1) : 0,
+      lastRebroadcastMs: brain._lastReplicaRebroadcastMs || null,
+    });
+    if (req.method === 'GET') {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ settings: brain._getAutoScaleSettings(), community: communityStatus() }));
+      return;
+    }
+    if (req.method === 'POST') {
+      const chunks = [];
+      let total = 0;
+      req.on('data', (chunk) => {
+        total += chunk.length;
+        if (total > 1024) { req.destroy(); return; }
+        chunks.push(chunk);
+      });
+      req.on('end', () => {
+        try {
+          const parsed = JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}');
+          // DF.7 — deliberate MANUAL downscale (admin button). Retrains NOW at a
+          // fitting smaller tier, bypassing the auto hold window. Destructive
+          // (loses current-size learning) — the dashboard guards it behind an
+          // explicit confirm. Respond BEFORE the brain exits for the restart.
+          if (parsed.action === 'downscale') {
+            const target = (typeof brain._manualDownscale === 'function') ? brain._manualDownscale() : null;
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ ok: true, action: 'downscale', targetTier: target, note: target == null ? 'already at smallest tier — nothing to do' : 'retraining at smaller tier; brain restarting' }));
+            return;
+          }
+          const next = brain._setAutoScaleSettings(parsed);
+          // WS broadcast so every admin dashboard syncs the toggle/sliders live.
+          const wsMsg = JSON.stringify({ type: 'autoScaleChanged', settings: next, community: communityStatus() });
+          for (const [ws, c] of brain.clients) {
+            if (ws.readyState === 1 && c && c.mode === 'admin') {
+              try { ws.send(wsMsg); } catch { /* per-client send failure tolerated */ }
+            }
+          }
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ ok: true, settings: next, community: communityStatus() }));
         } catch (err) {
           res.writeHead(500, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ error: err.message }));
@@ -5544,6 +5715,12 @@ wss.on('connection', (ws, req) => {
     client.isPrimaryOperator = isPrimaryOperator;
     try {
       ws.send(JSON.stringify({ type: 'modeAssigned', mode, primaryOperator: isPrimaryOperator }));
+      // DF.5 — hand the new admin the recent server-console backlog so the
+      // dashboard console-log panel shows history immediately instead of only
+      // lines emitted after this tab connected. Admin-only; viewers get nothing.
+      if (mode === 'admin' && Array.isArray(brain._serverLogRing) && brain._serverLogRing.length) {
+        ws.send(JSON.stringify({ type: 'serverLogBacklog', entries: brain._serverLogRing.slice(-200) }));
+      }
     } catch { /* connection closed during the assignment window — drop silently */ }
     const who = client.ualUser ? ` user=${client.ualUser}${isPrimaryOperator ? ' (PRIMARY)' : ''}` : '';
     console.log(`[Server] ${id} assigned mode: ${mode} (remote=${addr || 'unknown'}${who})`);
@@ -5804,7 +5981,16 @@ wss.on('connection', (ws, req) => {
             brain._gpuMisses = 0;
             console.log(`[${id}] GPU compute client registered as PRIMARY — brain weights upload here (pool: ${brain._gpuClients.size}).`);
           } else {
-            console.log(`[${id}] GPU compute client registered as STANDBY — hot failover for the primary (pool: ${brain._gpuClients.size}).`);
+            console.log(`[${id}] GPU compute client registered — bringing it up to a FULL brain replica (DF.7 data-parallel; pool: ${brain._gpuClients.size}).`);
+            // DF.7 — make the new donor a REAL replica that SHARES compute,
+            // not an idle hot-standby. Replays cluster init + every tracked
+            // master matrix to it. Fire-and-forget + delayed ~1.5s so the
+            // donor finishes its own WebGPU device init before we stream
+            // weights at it. With this, every connected GPU holds the brain
+            // and independent work fans out across all of them (_gpuParallelMap).
+            if (typeof brain._syncReplicaToDonor === 'function') {
+              setTimeout(() => { brain._syncReplicaToDonor(ws).catch(() => {}); }, 1500);
+            }
           }
           // PA.4.8 — recompute community compute level + milestone tier.
           if (brain._recomputeCommunityCompute) brain._recomputeCommunityCompute();

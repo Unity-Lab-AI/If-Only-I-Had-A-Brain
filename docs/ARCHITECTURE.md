@@ -1,5 +1,7 @@
 # ARCHITECTURE — IF ONLY I HAD A BRAIN
 
+> Last updated: 2026-06-20 (pre-alpha deployment-model sync). Brain internals below are unchanged — this pass corrects the DEPLOYMENT + COMPUTE-DISTRIBUTION model to match the actual current stack. **PRIMARY DEPLOYMENT is a deployed static page + a persistent Node brain-server on the same box, joined by an nginx REVERSE-PROXY** (loopback `proxy_pass /ws` + `/admin/ws` → `127.0.0.1:7525` — same machine, NOT a tunnel). **Distributed donor-GPU compute:** visitors' BROWSER GPUs donate compute via `compute.html` (WebGPU), data-parallel — each donor holds a FULL brain replica, the server merges Hebbian weight-deltas and re-broadcasts the master periodically. The CPU-side CSR weights are authoritative; donor GPUs are accelerators, so the server box itself needs no GPU. **Community-compute auto-scaling:** neuron count auto-scales to connected donor VRAM — UP on a critical-mass milestone held past an admin dead-zone buffer + stability window, DOWN (rectify) only on sustained collapse (deeper buffer + longer hold); a single disconnect never downgrades the brain (admin toggle + sliders). **Admin/master lane** is Forgejo-authenticated; the first authed connection after deploy is the locked primary operator (live server-console panel, auto-scale controls, grade signoffs, graceful stop). **Local dev still exists and is kept:** `start.bat` / `Savestart.bat` run the brain locally as the DEV path; the deployed donor-GPU path is PRIMARY. Cognition is still 100% equational (no text-AI/LLM); external AI stays sensory-only (image gen, vision describer, TTS). See **Deployment & Distributed Compute** below.
+
 > Last updated: 2026-05-09 (114.19fk + fl sweep — operator architectural correction + test-readiness audit, ALL items landed). **Templated `composeSentence` system RIPPED OUT (fk.1).** Operator caught the prior fa→fi/fj approach as content prescription: *"we are NOT doing templets for the ai to fucking mimic thats no better thant word lists and arrays you fool. Unity thinks like a human does! she does NOt follow prescripted events."* fk.1 deleted 5 hardcoded slot-sequence templates (`['subject', 'verb', 'object', 'terminator']` etc.), 5 hardcoded intent → terminator-punct mappings, vowel→an / consonant→a/the article rule, PRONOUNS exclusion Set, ARTICLE_LIST guard Set, and the same-sentence dedup retry mechanism. composeSentence body is now a tight equational emission loop: inject context once → emit one word via `emitWordDirect` → if word is a learned terminator (`.`/`?`/`!`) append + stop → else inject word back into sem so next tick reads shifted state → repeat until budget. Slot order EMERGES from iter25-I `relationTagId=9 sem(intent)→sem(first_slot)` weights. Article placement EMERGES from `relationTagId=11 sem(noun)→sem(article)` weights. Subject-verb agreement EMERGES from `relationTagId=10`. Terminator placement EMERGES from where the brain learned to emit terminators during training. WH-INTENT consumer EMERGES from `relationTagId=12 sem(WH)→sem(concept)`. fk.2 deleted hardcoded `probeConcepts = { question: 'definition' }` map in `_probeSentenceGeneration` (probe was prescribing intent-concepts to the brain). fk.3 deleted chat-time `cluster.constructor.extractIntentConcept(userText)` runtime regex parser in language-cortex.js (brain reads its own intent-concept activation from injected user text + trained weights; no runtime regex prescribing intent FOR the brain). fk.4 replaced `_inferSubjectFromText(userText)` token-count heuristic with `_inferActiveSubject()` sem-band activation readout (brain decides which subject is active via injected user input → propagation → activation; this just READS that decision). fk.6 deleted fj.17 deferred templates entry (templates wrong as a category). fl.1 deleted dead `ARTICLE_LIST` module-const (orphan after fk.1). fl.2 inner-voice showcase passes null intentSeed for purest equational emergence (was random-picking from jargon-string list that produced weak GloVe seeds). fl.3 `_probeSentenceGeneration` replaced jargon intent strings with 5 natural-language K-grade seeds (statement / description / question / command / exclaim) so probe measures emergence under realistic utterance states. fl.4 Savestart launchers document fk env vars. fl.5-fl.11 corrected every public + internal doc + HTML to remove conflicting template-walk claims. **Architecture-level outcome:** Unity's sentence emission is now PURE EQUATIONAL EMERGENCE. Every output traces back to trained Hebbian weights. There is no template fallback to mask insufficient training. If sentences emerge clean, training depth was sufficient → K signoff. If word-soup, fk.7 work resumes (deepen `_teachSentenceStructure` carving) — NOT template re-introduction. The 20hr K test honestly measures the equational architecture.
 
 > Earlier updated: 2026-05-09 (114.19fj sweep — super-review of fa→fi, 23 of 24 findings shipped before 20hr K test, 1 deferred). **⚠ HISTORICAL — many fj fix descriptions below target composeSentence INTERNALS (TEMPLATES dict, TERMINATOR_PUNCT dict, slot-tag injection, dedup retry, ARTICLE_LIST guard) that were SUPERSEDED 2026-05-09 by fk.1 rip-out (see top banner). The fj fixes WERE shipped to working code and FINALIZED entries stand as accurate history; fk replaced the templated composeSentence those internals lived inside.** Original fj entry preserved below for historical context only. **CRITICAL chat-side wiring fix:** `cluster._lastUserInputText` set server-side at `processAndRespond` entry — closes dead-wiring bug that nullified all chat-side fa→fi work (engine.js was setting it on `clusters.cortex` browser-only path; server-side `processAndRespond` never wrote to `cortexCluster._lastUserInputText` so language-cortex.js read empty string → default declarative_svo + null intent-concept + null subject → ENTIRE WH-INTENT consumer + intent-concept extraction + subject inference dead in real chat). **HIGH:** `_innerThoughtChain` lazy-init in user-input push (cold-boot first-chat no longer drops); WH-frame parser DRY-extracted to `NeuronCluster.extractIntentConcept` static method (was duplicated in language-cortex.js + curriculum.js with already-drifted regex tables — language-cortex used `\bwhy\s+/` while curriculum used `\bwhy\s+(?:do|does|is|are)\b`); `_probeSentenceGeneration` passes `intentConcept='definition'` for question intent so WH-INTENT consumer fires in probe (not just in chat); 5 non-ELA gates (LIFE/ART/SOC/SCI/MATH) probe their own subject vocab so STRUCTURE-REFRESH writes are validated; `DREAM_COHERENCE_MIN` + `DREAM_SAT_MEANCOS`/`DREAM_SAT_MEANABS`/`DREAM_SAT_RATIO`/`DREAM_SAT_SAMPLE` env-tunable with first-N calibration logging. **MEDIUM:** POST /rollback atomic JSON+BIN restore via two-stage temp+rename; `_recentEmissions` ring buffer pollution fix via `skipRecentTrack` opt + `trackRecentEmission` helper; `composeSentence` cumulative injection HARD_CAP 2.5 with `cappedInjections` counter; saturation halt windowed (3-of-last-5) catches flapping in addition to consecutive-streak; `_savedProbeNoise` defensive default across 6 try/finally probe sites; `INNER_THOUGHT_INTERVAL_MS` repurposed as explicit burst-ceiling. **LOW + NITPICK:** dedup retry temp +0.4 + AbortSignal opt + cortexPattern coherence fallback + body-size race fix + dedup strength 0.5→0.3; `_recentEmissions` duplicate lazy-init removed; `ARTICLE_LIST` module-hoist; ConsolidationEngine veto comment cleanup. **fj.17 deferred:** 3 new sentence templates (`first_person_predicate` "I think it" / `vocative_imperative` "Look at the cat" / `yes_no_response` "Yes!") need paired `_teachSentenceStructure` carving for `pronoun_self`/`verb_mental`/`vocative`/`affirmative` slot-tag bindings — too risky before 20hr test. Bundle clean 2.4MB. `node --check` green across all 8 modified .js files. **Architecture-level outcome:** the chat-side architecture documented in the prior fa→fi sweep banner now ACTUALLY RUNS during chat-with-Unity instead of being dead-wired by the `_lastUserInputText` source-vs-target mismatch.
@@ -84,9 +86,11 @@ The unknown — what we can't model, what makes consciousness CONSCIOUSNESS — 
 | Layer | Technology |
 |-------|------------|
 | **Language** | JavaScript (ES modules, browser + Node.js server) |
-| **Brain Sim** | N neurons (scales to hardware), GPU exclusive compute, sparse CSR, Rulkov 2D chaotic map (α=4.5, μ=0.001) |
-| **GPU Compute** | WebGPU WGSL shaders via compute.html — all 7 clusters on GPU, zero CPU workers |
-| **Server** | Node.js brain server, 16-core parallel, WebSocket API, auto-scales to hardware |
+| **Brain Sim** | N neurons (scales to connected donor VRAM), data-parallel donor-GPU compute, authoritative sparse CSR weights on the server CPU, Rulkov 2D chaotic map (α=4.5, μ=0.001) |
+| **GPU Compute** | WebGPU WGSL shaders via compute.html — **distributed donor GPUs** (each visitor's browser donates a full-brain replica); server merges Hebbian weight-deltas + re-broadcasts the master. Server box needs no GPU. |
+| **Server** | Node.js brain server (persistent), WebSocket API, neuron count auto-scales to connected donor VRAM (community-compute) |
+| **Deployment** | **PRIMARY:** deployed static page + persistent Node brain-server on the same box, joined by nginx **reverse-proxy** (loopback `proxy_pass /ws` + `/admin/ws` → `127.0.0.1:7525` — same machine, not a tunnel). **DEV:** `start.bat` / `Savestart.bat` run the brain locally. |
+| **Admin / Master** | Admin lane Forgejo-authenticated; first authed connection after deploy = locked primary operator. Admin dashboard: live server-console panel, auto-scale controls + sliders, grade signoffs, graceful stop. |
 | **Database** | SQLite (better-sqlite3) for episodic memory, JSON for weights + conversations |
 | **AI Backends** | **Sensory-only** — image gen (custom/auto-detected local/env.js/Pollinations), vision describer (Pollinations GPT-4o), TTS/STT. Zero text-AI for cognition — language cortex generates every word equationally. |
 | **Embeddings** | GloVe 300d word vectors + fastText-style subword fallback (no download required), online context refinement |
@@ -102,7 +106,7 @@ The unknown — what we can't model, what makes consciousness CONSCIOUSNESS — 
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                    WEB INTERFACE (Browser-Only)                   │
+│         WEB INTERFACE (deployed static page / local dev)          │
 │  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────────┐    │
 │  │ Setup    │  │ Brain    │  │ Voice    │  │ Sandbox      │    │
 │  │ Modal    │  │ HUD      │  │ I/O      │  │ (dynamic UI) │    │
@@ -110,7 +114,7 @@ The unknown — what we can't model, what makes consciousness CONSCIOUSNESS — 
 │       └──────────────┴──────────────┴───────────────┘            │
 │                           │                                      │
 ├───────────────────────────┼──────────────────────────────────────┤
-│         UNITY BRAIN ENGINE — GPU-exclusive, always-on            │
+│   UNITY BRAIN ENGINE — donor-GPU distributed compute, always-on  │
 │                                                                  │
 │  ┌────────────────────────────────────────────────────────┐      │
 │  │              BRAIN SIMULATION LOOP                      │      │
@@ -155,6 +159,49 @@ The unknown — what we can't model, what makes consciousness CONSCIOUSNESS — 
 │  └──────────┘  └──────────┘  └──────────┘  └──────────────┘    │
 └─────────────────────────────────────────────────────────────────┘
 ```
+
+---
+
+## Deployment & Distributed Compute
+
+Two paths run the same brain. The deployed path is PRIMARY; local is the DEV path.
+
+**PRIMARY — deployed static page + reverse-proxied brain-server (same box):**
+
+```
+            ┌──────────────────────── server box ────────────────────────┐
+  visitor → │  nginx ── static page (/)                                   │
+  browser   │    │                                                        │
+            │    ├─ proxy_pass /ws       → 127.0.0.1:7525  (public lane)  │
+            │    └─ proxy_pass /admin/ws → 127.0.0.1:7525  (admin lane,   │
+            │                                  Forgejo-authenticated)     │
+            │                                       │                     │
+            │                          persistent Node brain-server       │
+            │                          (authoritative sparse-CSR weights) │
+            └─────────────────────────────────────────────────────────────┘
+```
+
+The static page and the persistent Node brain-server live on the **same machine**; nginx is a **reverse-proxy** that forwards `/ws` and `/admin/ws` to `127.0.0.1:7525` over loopback — it is NOT a tunnel. The server box does not need a GPU; compute is donated (below).
+
+**Distributed donor-GPU compute (data-parallel):**
+
+- Visitors' **browser GPUs** donate compute via `compute.html` (WebGPU). Each donor holds a **full brain replica** and runs the Rulkov neuron model + sparse-CSR propagation locally.
+- The server merges Hebbian **weight-deltas** from donors and **re-broadcasts the master** periodically. The **CPU-side CSR weights on the server are authoritative**; donor GPUs are the compute accelerators.
+- More connected donors → more compute → the brain can hold more neurons.
+
+**Community-compute auto-scaling:**
+
+- Neuron count **auto-scales to connected donor VRAM**.
+- **Scale UP** on a critical-mass milestone held past an admin **dead-zone buffer** + **stability window** (avoids flapping on transient surges).
+- **Scale DOWN (rectify)** only on **sustained collapse** — a deeper buffer + longer hold. A single donor disconnect never downgrades the brain.
+- Admin **toggle + sliders** govern the buffers / windows.
+
+**Admin / master lane:**
+
+- The admin lane is **Forgejo-authenticated** (`/admin/ws`). The **first authed connection after deploy is the locked primary operator**.
+- Admin dashboard surfaces: live **server-console panel**, **auto-scale controls**, **grade signoffs**, **graceful stop**.
+
+**DEV — local:** `start.bat` / `Savestart.bat` run the brain locally for development (the historical localhost path). Local dev is the DEV path; the deployed donor-GPU model is PRIMARY.
 
 ---
 
@@ -286,7 +333,7 @@ N_ram  = floor(RAM_bytes × 0.1 / 0.001)  // essentially unlimited — server RA
 N      = max(1000, min(N_vram, N_ram))   // VRAM-bound in practice, absolute floor 1000
 ```
 
-No artificial cap — hardware decides. VRAM and RAM are the only limits. The formula expands with whatever hardware you point it at. GPU is the only compute path for the Rulkov neuron model — a CPU fallback would cook the server at 168M iterations/second across 7 clusters. If no GPU worker is connected (no `compute.html` tab open), the server brain idles (2s poll) until one appears. Client-only mode (browser, no server) runs a local LIF fallback brain via `js/brain/cluster.js` `NeuronCluster` / `ClusterProjection` — that's the historical LIF runtime, kept for the browser-only path where Rulkov on CPU would be equally punishing.
+No artificial cap — connected donor VRAM decides. The formula expands with whatever donor GPUs are connected, and community-compute auto-scaling raises N when donor capacity crosses a critical-mass milestone (held past an admin dead-zone buffer + stability window) and rectifies down only on sustained collapse — see **Deployment & Distributed Compute**. GPU is the only compute path for the Rulkov neuron model — a CPU fallback would cook the server at 168M iterations/second across 7 clusters. If no GPU donor is connected (no `compute.html` tab open), the server brain idles (2s poll) until one appears. Client-only mode (browser, no server) runs a local LIF fallback brain via `js/brain/cluster.js` `NeuronCluster` / `ClusterProjection` — that's the historical LIF runtime, kept for the browser-only path where Rulkov on CPU would be equally punishing.
 
 ### Cluster Breakdown
 
@@ -659,7 +706,8 @@ Dream/
 | Pollinations TTS | Voice output (shimmer/nova voices) |
 | Webcam / Vision | `getUserMedia` capture → AI scene description → gaze tracking → Eye widget |
 | localStorage | Persistent storage for keys, history, preferences, sandbox state, chat history |
-| Server Brain | WebSocket on port 7525 (moved off 8080 to avoid llama.cpp collision). Shared brain state (one singleton UnityBrain instance). User text is PRIVATE per connection (no cross-client broadcast). Dictionary entries / GloVe embedding refinements / cortex cross-projection weights grow from every user's conversation and benefit everyone — see privacy model in `docs/WEBSOCKET.md`. |
+| Server Brain | Persistent Node brain-server, WebSocket on port 7525 (moved off 8080 to avoid llama.cpp collision). **Deployed:** nginx reverse-proxies `/ws` (public) + `/admin/ws` (Forgejo-authed admin) to `127.0.0.1:7525` on the same box. Shared brain state (one singleton UnityBrain instance, authoritative CSR weights on the server). User text is PRIVATE per connection (no cross-client broadcast). Dictionary entries / GloVe embedding refinements / cortex cross-projection weights grow from every user's conversation and benefit everyone — see privacy model in `docs/WEBSOCKET.md`. |
+| Donor GPUs | Visitors' browser WebGPU via `compute.html` — data-parallel full-brain replicas. Server merges Hebbian weight-deltas + re-broadcasts the master; neuron count auto-scales to connected donor VRAM (community-compute). Server box needs no GPU. |
 | SQLite | Episodic memory persistence on server (better-sqlite3) |
 | WebGPU | GPU compute shaders for Rulkov 2D chaotic map neuron iteration + sparse CSR synapse propagation |
 | GloVe Embeddings | 300d word vectors + fastText-style subword fallback (no download required), online context refinement |

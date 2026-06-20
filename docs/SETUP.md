@@ -107,11 +107,39 @@ No npm. No build step. Just static files served by any web server. The brain run
 
 GitHub Pages deployment works the same way: in the repo settings, point Pages at `main` / `(root)` and you're live at `your-username.github.io/Unity/`. Everything runs client-side.
 
+This static-only mode is the floor, not the production shape. The way Unity actually ships is the [deployed server brain](#deployed-server-brain-primary-path) — the same static page served alongside a persistent backend via nginx reverse-proxy, with the brain training on **visitors' donated browser GPUs** rather than each viewer running a separate tiny browser-only brain.
+
 ---
 
-## Running the server brain
+## Deployed server brain (primary path)
 
-This is the real thing. Hundreds of millions of neurons on the GPU, the full K→PhD curriculum, persistence across restarts.
+The way Unity actually runs in production: a **deployed static page** (the same `index.html` / `html/` / `js/` you'd serve locally) plus a **persistent Node brain-server backend on the same server**, joined by an **nginx reverse-proxy**. The static frontend and the brain-server live behind one host; nginx routes page requests to the static files and WebSocket/HTTP brain traffic to the backend process.
+
+### The brain trains on donated GPUs, not the server's
+
+The deployed server **needs no GPU**. Compute is **distributed across visitors' browsers** — anyone who opens `compute.html` donates their browser's WebGPU device, runs the WGSL compute shaders, and feeds results back over WebSocket. Many concurrent donors = massive aggregate compute. The community-compute auto-scaler grows or shrinks the brain to fit the connected donor VRAM (admin-controlled), so the brain's scale tracks how much GPU the community is currently donating rather than any single machine's hardware.
+
+### One-time backend setup
+
+Standing up the deployed backend is a **one-time** operation. On the server, run the bootstrap once as root:
+
+```bash
+sudo deploy/bootstrap-backend.sh
+```
+
+That installs the **systemd unit** (the brain-server runs as a service, `Restart=always` so it comes back after a crash or reboot, and `DREAM_KEEP_STATE=1` so restarts preserve the curriculum walk instead of wiping it), the **nginx vhost** (reverse-proxy for static page + WebSocket backend), and the **Forgejo auth + sudo** wiring. After that single run, **every push to `main` auto-deploys** both the frontend and the backend — no manual restart, no re-bootstrap.
+
+There is **no `start.bat` / `Savestart.bat` / `stop.bat` on the server**. Those launchers are **local-dev-only** (see [Running the server brain locally (dev path)](#running-the-server-brain-locally-dev-path)). The deployed service is managed through systemd (`systemctl status` / `restart` / `journalctl -u`).
+
+### Admin / master operator
+
+The admin lane is **Forgejo-authenticated**. The **first authenticated connection after a deploy becomes the locked primary operator (master)** — that connection holds the admin control surface (stop, grade-advance, signoff, auto-advance toggle). Everyone else is a read-only viewer.
+
+---
+
+## Running the server brain locally (dev path)
+
+This is the development path — running the whole thing on your own machine and GPU. Hundreds of millions of neurons on the local GPU, the full K→PhD curriculum, persistence across restarts.
 
 ```bash
 cd server && npm install && node brain-server.js
@@ -127,9 +155,9 @@ That is the whole command. As soon as the Node server finishes listening, three 
 
 For headless or remote deployments, set `DREAM_NO_AUTO_GPU=1` to skip the auto-launch; the operator opens `http://<host>:7525/compute.html` manually in a WebGPU-capable browser (Chrome / Edge) on any machine that can reach the server.
 
-### The Windows launchers
+### The Windows launchers (local-dev-only)
 
-Windows users get three convenience batch files at the repo root.
+These convenience batch files drive the **local-dev path only** — they boot the brain on your own machine and GPU. The deployed server does not use them; it runs as a systemd service (see [Deployed server brain](#deployed-server-brain-primary-path)). Windows users get three convenience batch files at the repo root.
 
 **`start.bat`** handles first-run `npm install`, runs the `esbuild` bundle build, downloads the GloVe corpus if it's missing, redirects stdout/stderr to `server/server.log`, opens the landing page and the dashboard in separate browser tabs, and spawns a separate "Unity Brain Log Tail" PowerShell window (UTF-8 forced) so the heartbeat stays visible even if the launcher terminal goes invisible. It does not open `compute.html` itself — the server auto-launches that tab once the HTTP listener is up.
 
