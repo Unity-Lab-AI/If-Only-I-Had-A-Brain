@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "grade": "grade3",
+  "subject": "ela",
+  "source": "Simple English Wikipedia (CC-BY-SA), cleaned + sentence-segmented",
+  "note": "Hybrid academic-depth corpus for ela/grade3. Trained via curriculum._trainAcademicStories. Real openly-licensed curriculum content; lived-year + math stay bespoke.",
+  "experiences": [
+    {
+      "theme": "noun",
+      "story": "a noun is a kind of word that is usually the name of something such as a person, place, thing, animal, or idea. in english, nouns can be singular or plural. nouns often need a word called an article or determiner . these words usually do not go with other kinds of words like verbs or adverbs. in english, there are more nouns than any other kind of word. every language in the world has nouns, but they are not always used in the same ways. they also can have different properties in different languages. in some other languages, nouns do not change for singular and plural, and sometimes there is no word for the. examples of nouns: time, people, way, year, government, day, world, life, work, part, number, house, system, company, end, party, information. also in ancient tamil like \"peyarchol\" in english sentences, nouns can be used as a subject, object, or complement. they often come after prepositions, as the 'object of preposition'. nouns can sometimes describe other nouns . when they do this, they are called modifiers or adjuncts. there are also verb forms that can be used in the same way as nouns these are called verbals or verbal nouns, and include participles and infinitives."
+    },
+    {
+      "theme": "verb",
+      "story": "a verb is a kind of word that tells about an action or a state. it is the main part of a sentence: every sentence has a verb. in english, verbs are the only kind of word that changes to show past or present tense. every language in the world has verbs, but they are not always used in the same ways. they also can have different properties in different languages. in some other languages verbs do not change for past and present tense. this means the definition above only works well for english verbs. there are sixteen verbs used in basic english. they are: be, do, have, come, go, see, seem, give, take, keep, make, put, send, say, let, get. the word verb originally comes from *were-, a proto-indo-european word meaning \"a word\". it comes to english through the latin verbum and the old french verbe. in simple sentences, the verb may be one word: the cat sat on the mat. however, the verb may be a phrase: the cat will sit on the mat. verbal phrases can be extremely difficult to analyse: i'm afraid i will need to be going soon."
+    },
+    {
+      "theme": "adjective",
+      "story": "an adjective is a word that describes a noun or pronoun. nouns are words that name a place, a person, a thing, or an idea. an adjective is a word that gives more information about the noun that goes with it. often, the adjective is before the noun it describes. sometimes an adjective is not followed by a noun: the sky is blue. the joke she told was so nice, i could not stop laughing all day. it is still an adjective, because we could have \"the blue sky\", \"the funny joke\", and \"the crazy man\". the adjective is still describing the noun though they are not side by side. an adjective is a word that gives instant information about a noun to make a clear picture of the noun in the mind of the reader and create a feeling to the writer. sometimes there are different forms of the same adjective. if one joke makes a person laugh more than another joke, then that joke is funnier. this is called the comparative form. the day that is colder than any other is the coldest day. this is the superlative form of \"cold\"."
+    },
+    {
+      "theme": "adverb",
+      "story": "an adverb is a word used to tell more about a verb, and it almost always answers the questions how?, when?, where?, how often?, and in what way?. words like slowly, loudly, carefully, quickly, quietly or sadly are all adverbs. adverbs usually, but not always, end in -ly. examples of adverbs in a sentence : how did the man walk? in the last example, it is an adjective. this is one example in which the same word can be both an adjective and an adverb but not in the same sentence. as a rule, the same word can play different roles but not in the same sentence. it all depends on what the word is doing in the sentence. it could be a noun, an adjective, an adverb, a verb, etc. example: take the word 'cool'. in the sentence, \"he walks cool\", the word 'cool' is an adverb. in the sentence, \"cool the hot dish\", the word 'cool' is a verb. in the sentence, \"it is a cool evening\", the word 'cool' is an adjective. in the first example, \"he walks cool\", the word 'cool' really means 'coolly' as in \"play it cool\" ."
+    },
+    {
+      "theme": "fiction",
+      "story": "fiction is any story created by humans, originating from the depths of human imagination. it is not based on real-life events or actual people, but rather represents a departure from reality, allowing for the exploration of ideas, emotions, and scenarios that may not exist in the real world. the opposite of fiction is non-fiction, writing that deals with facts and true events. often in a library, part of the library is for fiction books and another part of the library is for non-fiction. the word fiction comes from the latin word fictum, which means \"created\". this is a good way to remember what fiction is: if it has been created or made up by somebody, it is fiction. fiction can be written or told, or acted on stage, in a movie, on television or radio. usually the purpose of fiction is to entertain. however, the dividing line is not always so clear. fiction with real people or events in it is called historical fiction, because it is based on things that happened in history. this type of fiction is written so that we can imagine and understand what it was like when those people were alive. reality can be presented through creative writing, and imagination can open the reader's mind to significant thoughts about the real world. in fiction, there are always characters. there is usually a protagonist, or hero."
+    },
+    {
+      "theme": "nonfiction",
+      "story": "non-fiction is writing about facts. although non-fiction is supposed to be truthful, sometimes it may not be. people normally assume that authors mean to be truthful, but they might make mistakes. writing is normally split into two parts: non-fiction and fiction. as well as non-fiction books, there are also pictures and films."
+    }
+  ]
+}

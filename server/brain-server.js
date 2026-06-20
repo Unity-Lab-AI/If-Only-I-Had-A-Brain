@@ -541,7 +541,32 @@ function autoClearStaleState() {
   // lost) that the unconditional-wipe contract was created to fix.
   writeBrainCodeHash(currentHash);
 }
-autoClearStaleState();
+// I.15 closure 2026-06-17 22:16 PT — only run auto-clear when this
+// file is the actual entry point (`node server/brain-server.js`), NOT
+// when it's `require()`d as a module for syntax checking, testing,
+// REPL inspection, or any other secondary load. Without this gate, a
+// `node -e "require('./server/brain-server.js')"` syntax check at the
+// top of a normal dev session WIPED operator's training (this session,
+// 22:16 PT — 17+ minutes of K-VOCAB-UPFRONT-MULTIDEF SEED + 9.3 min
+// of cell teach DELETED from brain-weights.bin because the module-load
+// triggered the top-level autoClearStaleState() with no DREAM_KEEP_
+// STATE guard active for a non-entry-point invocation). The gate
+// preserves the existing contract: real `node server/brain-server.js`
+// boot still wipes by default per the iter14-D contract; secondary
+// module loads no-op silently. Detection method: compare the resolved
+// absolute path of this file (import.meta-style trick for CommonJS:
+// require.main === module) — if the module IS the main entry point,
+// require.main equals this module; if it's been required by another
+// script, require.main points elsewhere.
+if (require.main === module) {
+  autoClearStaleState();
+} else {
+  // Module loaded as a dependency (require / import for inspection /
+  // syntax check / REPL). Skip the wipe entirely. Operator can still
+  // explicitly trigger via `node -e "require('./server/brain-server.js').autoClearStaleState && require('./server/brain-server.js').autoClearStaleState()"`
+  // if they actually want it from a script context, but the default
+  // path is safe.
+}
 // R4 — POLLINATIONS_URL for text chat deleted. Text-AI backend is gone.
 // Unity generates every word equationally via the language cortex
 // (see _initLanguageSubsystem + _generateBrainResponse).
@@ -614,6 +639,11 @@ const SUBSTEPS = TOTAL_NEURONS > 1000000 ? 3 : TOTAL_NEURONS > 500000 ? 5 : TOTA
 // and the server gets exactly the same language cortex + semantic
 // grounding the client has, running in Node.
 
+const { SERVER_GPU_MIXIN } = require('./brain-server/gpu.js');
+const { SERVER_STATE_MIXIN } = require('./brain-server/state.js');
+const { SERVER_MEMORY_MIXIN } = require('./brain-server/memory.js');
+const { SERVER_CHAT_MIXIN } = require('./brain-server/chat.js');
+
 class ServerBrain {
   constructor() {
     this.time = 0;          // simulation time (dt accumulation)
@@ -622,6 +652,19 @@ class ServerBrain {
     this.frameCount = 0;
     this.running = false;
     this.clients = new Map(); // ws → { id, lastInput, inputCount, name }
+
+    // Expose module-scope constants on `this` so mixin files (gpu.js,
+    // state.js, memory.js, chat.js) can read them via `this.X`. Without
+    // this, the P4.3 extraction left bare references like `CLUSTER_SIZES`
+    // dangling — module-scope is not shared across CommonJS module
+    // boundaries. Operator 2026-06-17 caught the cascade in state.js:222
+    // (`CLUSTER_SIZES is not defined` on first WS welcome). Affects all
+    // 4 mixin files. Bound here once + assigned to mixin call sites.
+    this.CLUSTER_SIZES = CLUSTER_SIZES;
+    this.SCALE = SCALE;
+    this.TOTAL_NEURONS = TOTAL_NEURONS;
+    this.SUBSTEPS = SUBSTEPS;
+    this.RESOURCES = RESOURCES;
 
     // T18.4.e — worker-thread pool for parallel CPU sparse matmul.
     // Sized to os.cpus().length - 1 (up to 16 workers). Used by the
@@ -1321,6 +1364,16 @@ class ServerBrain {
         gpuProxy, // T17.3.d — proxy used for cross-region ops when GPU ready
         sparsePool: this.sparsePool, // T18.4.e — CPU-fallback parallel sparse matmul
       });
+      // Auto-advance toggle — default OFF. Single switch governs both
+      // the operator-signoff bypass at /grade-advance and the curriculum
+      // runner's auto-fire-next-grade behavior. Restored from persisted
+      // cortexState by _applyPendingCortexState if a prior boot had it
+      // on; otherwise stays at this default. Reading the field as
+      // `=== true` everywhere makes the undefined-vs-false distinction
+      // moot, but explicit init keeps dashboard observability clean.
+      if (typeof this.cortexCluster._autoAdvanceGrade !== 'boolean') {
+        this.cortexCluster._autoAdvanceGrade = false;
+      }
       // T18.6.b — cluster-binding resolver so cortexCluster.initGpu()
       // uploads its 14 cross-projections directly bound to main-cortex
       // sub-slices instead of allocating standalone preSpikes/postCurrents/
@@ -1425,6 +1478,33 @@ class ServerBrain {
         definitionService.prefetch(words, opts);
       this.cortexCluster.getDefinitionCacheStats = () =>
         definitionService.getCacheStats();
+      // Life-experience STORY DATA loader (data-driven life curriculum).
+      // Curriculum reads cluster.lifeStorySentences(grade) and TRAINS on the
+      // narrative; the content lives in corpora/life/<grade>.json, NOT
+      // hardcoded in curriculum.js. Node-only (fs) — attached here so the
+      // browser-bundled curriculum never imports fs (same pattern as the
+      // dictionary wiring above).
+      const lifeCurriculum = require('./life-curriculum');
+      this.cortexCluster.loadLifeStories = (grade) =>
+        lifeCurriculum.loadLifeStories(grade);
+      this.cortexCluster.lifeStorySentences = (grade) =>
+        lifeCurriculum.lifeStorySentences(grade);
+      // Per-memory experience accessor (theme + story + sentences) — lets the
+      // curriculum encode each life memory as its OWN episode (emotional
+      // coloring + storeEpisode) instead of one flat grade-wide sentence walk.
+      this.cortexCluster.lifeStoryExperiences = (grade) =>
+        lifeCurriculum.lifeStoryExperiences(grade);
+      // Coding track (corpora/coding/<grade>.json) — real HTML/CSS/JS, G6+.
+      this.cortexCluster.loadCodingStories = (grade) =>
+        lifeCurriculum.loadCodingStories(grade);
+      this.cortexCluster.codingStorySentences = (grade) =>
+        lifeCurriculum.codingStorySentences(grade);
+      // Academic HYBRID depth source (corpora/academic/<subject>/<grade>.json —
+      // openly-licensed real curriculum, downloaded once by
+      // .claude/scripts/fetch-academic-corpora.mjs). Prose-academic subjects
+      // train on this for real depth; lived-year + math stay bespoke.
+      this.cortexCluster.academicStorySentences = (subject, grade) =>
+        lifeCurriculum.academicStorySentences(subject, grade);
       // Lazy chat-time Hebbian binding hook.
       // Chat path (language-cortex.js generateAsync) fires this after
       // a successful definition lookup so sem(word) → sem(def_tokens)
@@ -1478,6 +1558,20 @@ class ServerBrain {
         }
       } catch (err) {
         console.warn(`[Brain] K-wiring assertion threw: ${err?.message || err}`);
+      }
+
+      // Audit H.4 — auto-size + mixin-dispatch assertion at brain boot.
+      // Verifies cluster neuron count is finite + sane, every required
+      // mixin method dispatches (Object.assign chain ran), and cortical
+      // microstructure buffer sizes match this.size. Catches the silent-
+      // NaN-N case post-P4.2 cluster.js split. Mirrors assertKWiring
+      // pattern. PASS/FAIL banner in server.log.
+      try {
+        if (typeof this.cortexCluster.assertAutoSizeWiring === 'function') {
+          this.cortexCluster.assertAutoSizeWiring();
+        }
+      } catch (err) {
+        console.warn(`[Brain] auto-size + mixin dispatch assertion threw: ${err?.message || err}`);
       }
 
       // Dictionary API smoke test at boot. Fires one test query for
@@ -1975,442 +2069,15 @@ class ServerBrain {
   // coherence/motor) is computed in _updateDerivedState() from the
   // GPU's spikeCount results — no duplicate CPU work needed.
 
-  /**
-   * Get full brain state for broadcasting.
-   */
 
-  /**
-   * Force-push the full state payload to every connected client RIGHT
-   * NOW instead of waiting for the next periodic broadcast tick. Used
-   * by event handlers (e.g. dictionary smoke test completion) that
-   * need to land a value on dashboards immediately so panels never
-   * flash a stale placeholder during the inter-tick window.
-   *
-   * Mirrors the periodic broadcaster's send shape so dashboard render
-   * code is unchanged.
-   */
-  _broadcastStateNow() {
-    if (!this.clients || this.clients.size === 0) return;
-    let payload;
-    try { payload = JSON.stringify({ type: 'state', state: this.getState() }); }
-    catch { return; }
-    for (const [ws] of this.clients) {
-      if (ws.readyState === ws.OPEN) {
-        try { ws.send(payload); } catch {}
-      }
-    }
-  }
+  // 8 state-broadcast methods EXTRACTED to server/brain-server/state.js
+  // SERVER_STATE_MIXIN (per-concern file architecture, P4.3.b).
+  //   _broadcastStateNow, _runDictionarySmokeTest, _scheduleSmokeTestRetry,
+  //   _computeMinGrade, getState, pushBrainEvent, _recentBrainEvents,
+  //   _computeCortexDivergence
+  // Attached via Object.assign(ServerBrain.prototype, ...) at the
+  // bottom of this file. CommonJS module pattern.
 
-  /**
-   * Fire one dictionary API smoke test and update
-   * `_dictionarySmokeTestResult` on completion. Fire-and-forget — caller
-   * doesn't await. Force-broadcasts state on result so the dashboard
-   * panel doesn't sit on a stale value until the next periodic tick.
-   * Guarded by `_smokeTestInFlight` so periodic retries don't stack
-   * concurrent fetches if a previous one is slow.
-   */
-  _runDictionarySmokeTest() {
-    if (this._smokeTestInFlight) return;
-    this._smokeTestInFlight = true;
-    try {
-      if (definitionService._hasFetch && definitionService._hasFetch()) {
-        definitionService.getDefinition('test', { timeoutMs: 4000 }).then(def => {
-          const ok = !!(def && typeof def === 'string' && def.length > 0);
-          this._dictionarySmokeTestResult = ok;
-          this._dictionarySmokeTestTs = Date.now();
-          if (ok) {
-            console.log(`[Brain] dictionary API ready — "test" → "${def.slice(0, 80)}${def.length > 80 ? '...' : ''}"`);
-          } else {
-            console.warn(`[Brain] dictionary API check failed — getDefinition('test') returned ${def === null ? 'null' : typeof def}. Definition lookups will degrade.`);
-          }
-          try { this._broadcastStateNow(); } catch {}
-        }).catch(err => {
-          this._dictionarySmokeTestResult = false;
-          this._dictionarySmokeTestTs = Date.now();
-          console.warn(`[Brain] dictionary API check threw: ${err?.message || err}`);
-          try { this._broadcastStateNow(); } catch {}
-        }).finally(() => {
-          this._smokeTestInFlight = false;
-        });
-      } else {
-        this._dictionarySmokeTestResult = false;
-        this._smokeTestInFlight = false;
-        console.warn(`[Brain] dictionary API unavailable — globalThis.fetch missing. Upgrade Node ≥18 for live dictionary.`);
-      }
-    } catch (err) {
-      this._dictionarySmokeTestResult = false;
-      this._smokeTestInFlight = false;
-      console.warn(`[Brain] dictionary API setup threw: ${err?.message || err}`);
-    }
-  }
-
-  /**
-   * Schedule periodic smoke test re-runs. Sleeps 60s while the last
-   * result is FAIL so transient DNS/network failures recover quickly;
-   * sleeps 1hr while last result is PASS so upstream-goes-down mid-run
-   * is still caught without spamming dictionaryapi.dev. Re-arms after
-   * each fire so the loop runs forever.
-   */
-  _scheduleSmokeTestRetry() {
-    const delay = this._dictionarySmokeTestResult === true
-      ? 60 * 60 * 1000   // 1hr while passing
-      : 60 * 1000;       // 60s while failing or still pending
-    this._smokeTestRetryTimer = setTimeout(() => {
-      this._runDictionarySmokeTest();
-      // Re-arm regardless of in-flight — _runDictionarySmokeTest
-      // self-guards. Re-evaluate delay on next tick based on the
-      // updated result.
-      this._scheduleSmokeTestRetry();
-    }, delay);
-    // Don't keep the event loop alive just for this timer — if the
-    // server is shutting down we want to exit cleanly.
-    if (this._smokeTestRetryTimer && typeof this._smokeTestRetryTimer.unref === 'function') {
-      this._smokeTestRetryTimer.unref();
-    }
-  }
-
-  /**
-   * T18.3.b — Compute Unity's lowest passing grade across all subjects.
-   * Returns a string from the grade ladder (pre-K → K → grade1..12 →
-   * college1..4 → grad → phd) or 'unknown' if the cortex cluster isn't
-   * initialized yet. Reused by `getState()` (HUD broadcast) and the
-   * silent-response path (so the client knows which grade is gating
-   * her speech).
-   */
-  _computeMinGrade() {
-    if (!this.cortexCluster || !this.cortexCluster.grades) return 'unknown';
-    const order = ['pre-K','K','grade1','grade2','grade3','grade4','grade5','grade6','grade7','grade8','grade9','grade10','grade11','grade12','college1','college2','college3','college4','grad','phd'];
-    let lo = 'phd';
-    for (const g of Object.values(this.cortexCluster.grades)) {
-      const iLo = order.indexOf(lo);
-      const iG  = order.indexOf(g);
-      if (iG >= 0 && (iLo < 0 || iG < iLo)) lo = g;
-    }
-    return lo;
-  }
-
-  getState() {
-    const clusterStates = {};
-    for (const [name, cluster] of Object.entries(this.clusters)) {
-      const size = cluster.size || 1;
-      const spikeCount = cluster.spikeCount | 0;
-      // Dashboard + 3D brain expect firingRate AND spikeRate as a
-      // ratio in [0, 1] — spikeCount/size. Server previously put raw
-      // count-per-substep EMA into `firingRate` which showed as huge
-      // numbers that rounded to "0%" after the dashboard's Math.round
-      // (count × 100) overflowed the expected 0-100 band. Surface
-      // both field names (spikeRate canonical, firingRate alias) so
-      // old clients reading either name get the correct ratio.
-      const spikeRate = Math.min(1, Math.max(0, spikeCount / size));
-      clusterStates[name] = {
-        size,
-        spikeCount,
-        spikeRate,
-        firingRate: spikeRate,
-        // T18.4.c — GPU voltage-mean telemetry (Rulkov x, averaged across
-        // every neuron in the cluster via GPU atomic reduction). Undefined
-        // on first few ticks until compute.html reports it back.
-        meanVoltage: typeof cluster.meanVoltage === 'number' ? cluster.meanVoltage : null,
-      };
-    }
-    // Emit language cortex sub-region activity as pseudo-clusters
-    // (keys: lang_motor, lang_phon, lang_sem, lang_letter, lang_visual,
-    // lang_auditory, lang_fineType, lang_free) so the 3D brain can render
-    // Broca's, Wernicke's, angular gyrus, VWFA, V1, Heschl's, temporal pole,
-    // and PFC as filled-in sub-volumes between the existing 7 regions.
-
-    // At biological scale the GPU owns cortex spike state — the CPU
-    // `cortexCluster.lastSpikes` Uint8Array stays zero. Prefer the
-    // GPU-reported per-region counts captured by `_computeCortex-
-    // Divergence` from each compute_batch result. Fall back to CPU
-    // shadow only when the GPU readback hasn't arrived yet
-    // (first few ticks after boot).
-    if (this.cortexCluster && this.cortexCluster.regions) {
-      const gpuRS = this._lastCortexRegionSpikes;
-      const gpuFresh = gpuRS && this._lastCortexRegionSpikesAt
-        && (Date.now() - this._lastCortexRegionSpikesAt) < 5000;
-      const ls = this.cortexCluster.lastSpikes;
-      for (const [regName, region] of Object.entries(this.cortexCluster.regions)) {
-        const size = region.end - region.start;
-        let spikeCount = 0;
-        if (gpuFresh && typeof gpuRS[regName] === 'number') {
-          spikeCount = gpuRS[regName] | 0;
-        } else if (ls) {
-          for (let i = region.start; i < region.end && i < ls.length; i++) {
-            if (ls[i]) spikeCount++;
-          }
-        }
-        const spikeRate = Math.min(1, Math.max(0, spikeCount / Math.max(1, size)));
-        clusterStates[`lang_${regName}`] = {
-          size,
-          spikeCount,
-          spikeRate,
-          firingRate: spikeRate,
-        };
-      }
-    }
-
-    // Derive band power from INSTANT spike rates (not slow EMA)
-    const cortexRate = this.clusters.cortex.spikeCount / (CLUSTER_SIZES.cortex || 1);
-    const hippoRate = this.clusters.hippocampus.spikeCount / (CLUSTER_SIZES.hippocampus || 1);
-    const amygRate = this.clusters.amygdala.spikeCount / (CLUSTER_SIZES.amygdala || 1);
-    const bgRate = this.clusters.basalGanglia.spikeCount / (CLUSTER_SIZES.basalGanglia || 1);
-    const cerebRate = this.clusters.cerebellum.spikeCount / (CLUSTER_SIZES.cerebellum || 1);
-    const hypoRate = this.clusters.hypothalamus.spikeCount / (CLUSTER_SIZES.hypothalamus || 1);
-    const bandPower = {
-      gamma: (cortexRate + amygRate) * 50,              // fast cortical + emotional
-      beta:  (bgRate + cortexRate) * 30,                // motor planning + attention
-      alpha: this.coherence * 3 + (1 - this.arousal) * 2, // relaxed coherence
-      theta: (hippoRate + hypoRate) * 40 + (this._isDreaming ? 3 : 0), // memory + dreaming
-    };
-
-    return {
-      time: (Date.now() - (this._startedAt || Date.now())) / 1000, // wall clock uptime in seconds
-      simTime: this.time,  // simulation dt accumulation
-      frameCount: this.frameCount,
-      totalSpikes: this.totalSpikes,
-      spikeCount: this.totalSpikes,
-      arousal: this.arousal,
-      valence: this.valence,
-      fear: this.fear,
-      psi: this.psi,
-      coherence: this.coherence,
-      coherenceTheta: this.coherenceTheta,
-      coherenceGamma: this.coherenceGamma,
-      reward: this.reward,
-      drugState: this._drugStateLabel(),
-      drugSnapshot: this._drugSnapshot(),
-      bandPower,
-      clusters: clusterStates,
-      motor: {
-        selectedAction: this.motorAction,
-        confidence: this.motorConfidence,
-        channelRates: Array.from(this.motorChannels),
-      },
-      // T18.3.b — persistent grade state on every broadcast so the HUD
-      // can show "Unity is at pre-K" without the user typing
-      // /curriculum status. `grades` is the per-subject map; `minGrade`
-      // is the lowest passing grade (what caps Unity's speech ceiling).
-      // `canSpeak` is true once the motor region has been trained — the
-      // letter→motor direct-pattern Hebbian at kindergarten ELA is what
-      // flips this from false to true.
-      grades: this.cortexCluster?.grades ? { ...this.cortexCluster.grades } : null,
-      minGrade: this._computeMinGrade(),
-      canSpeak: this._computeMinGrade() !== 'pre-K',
-      // T17.7 Phase B.4 — dual-cortex divergence telemetry. Scalar in
-      // [0, 1]: 0 = standalone and main-cortex sub-regions agree
-      // perfectly, 1 = one saturated while other silent. Cerebellum
-      // error correction dampens this via Ψ-gated negative feedback
-      // in the cortex errorCorrection term. Dashboard can render as
-      // a health bar — should trend toward 0 over ticks as cerebellum
-      // corrects. Sustained divergence = Phase B migration wiring bug
-      // worth investigating (not a strict abort, just a signal).
-      cortexDivergence: this._cortexDivergence || 0,
-      // T17.7 Phase C follow-up — per-region breakdown so Gee can
-      // inspect WHERE cortex state is diverging during K curriculum
-      // walk. Map<regionName, {standRate, mainRate, divergence}>
-      // with rates in [0, 1] (spike fraction per region). Empty when
-      // GPU regionSpikes readback is absent (e.g. pre-GPU warmup).
-      cortexDivergenceByRegion: this._cortexDivergenceByRegion || {},
-      connectedUsers: this.clients.size,
-      isDreaming: this._isDreaming || false,
-      totalNeurons: TOTAL_NEURONS,
-      scale: SCALE + 'x',
-      // Shared emotion — everyone sees Unity's mood
-      sharedMood: this._getSharedMood(),
-      // Live performance stats
-      perf: this._perfStats,
-      // Brain growth metrics
-      growth: {
-        totalWords: Object.keys(this._wordFreq || {}).length,
-        totalInteractions: Object.values(this._conversations || {}).reduce((s, c) => s + c.length, 0),
-        totalEpisodes: this._db ? this.getEpisodeCount() : 0,
-        uptime: (Date.now() - (this._startedAt || Date.now())) / 1000,
-        totalFrames: this.frameCount,
-      },
-      // iter15-mem — unified 5-tier memory snapshot for dashboard +
-      // 3D brain memory tab. Tier 1 (Episodic SQLite) + Tier 2
-      // (Schematic) + Tier 3 (Identity-bound) + ConsolidationEngine
-      // + Working memory all in one payload. Operator verbatim:
-      // "shall be one unified system of the brain for memory not
-      // some side processes".
-      memoryStats: this._getMemoryStats(),
-      //Phase 6 — Display/Visibility snapshot for dashboard.
-      // Bounded payload: aggregates only, no per-neuron / per-column
-      // enumeration, no unbounded lists. Counts + small fixed-size
-      // arrays only (gaps capped at 5, etc).
-      consciousness: this._getIter25MState(),
-      // WS backpressure metrics for the GPU client. Reads
-      // _gpuClient.bufferedAmount + drop/absorb/enobufs counters +
-      // a rolling drops/sec rate so operator can see whether the
-      // BLOCK-not-DROP path is keeping Hebbian updates intact.
-      wsPressure: this._getIter25NState(),
-      // Live brain-event stream — plasticity fires, curriculum phases,
-      // drug events, template classifications, everything the cortex
-      // is DOING in the current window. Each entry carries
-      // {seq, ts, type, region, label, detail}. Dashboard filters to
-      // events newer than `_brainEventTTL` for popup rendering. The
-      // seq field lets the dashboard dedupe across poll intervals.
-      brainEvents: this._recentBrainEvents(),
-      // Current training-subject snapshot for the dashboard "Current
-      // Training" card. Null fields when no cell is active. Sourced
-      // from the curriculum's per-cell + per-subject counters so the
-      // dashboard's subject/grade/progress display and the curriculum
-      // teach path can never drift out of sync — ONE cortex, ONE
-      // curriculum object, ONE dashboard read.
-      curriculum: this.curriculum && typeof this.curriculum.getCurriculumStatus === 'function'
-        ? this.curriculum.getCurriculumStatus()
-        : null,
-    };
-  }
-
-  /**
-   * Append a brain event to the ring buffer. Oldest events drop off
-   * once the buffer fills. Callers supply:
-   *   - type: short identifier ('plasticity', 'teach', 'gate', 'drug')
-   *   - region: cortex sub-region the event anchors to ('motor', 'sem',
-   *     'fineType', 'intra', or a cluster name). Dashboard uses this
-   *     to place the popup on the correct part of the 3D brain.
-   *   - label: short human-readable description (≤ 40 chars ideal)
-   *   - detail: optional structured payload for operator debugging
-   */
-  pushBrainEvent(type, region, label, detail) {
-    if (!this._brainEvents) return;
-    this._brainEventSeq += 1;
-    this._brainEvents.push({
-      seq: this._brainEventSeq,
-      ts: Date.now(),
-      type: String(type || 'event'),
-      region: region ? String(region) : null,
-      label: String(label || ''),
-      detail: detail || null,
-    });
-    if (this._brainEvents.length > this._brainEventCap) {
-      this._brainEvents.splice(0, this._brainEvents.length - this._brainEventCap);
-    }
-  }
-
-  _recentBrainEvents() {
-    if (!this._brainEvents || this._brainEvents.length === 0) return [];
-    const cutoff = Date.now() - this._brainEventTTL;
-    // Only return events still inside the TTL window — older entries
-    // stay in the buffer for history but aren't live anymore.
-    return this._brainEvents.filter(e => e.ts >= cutoff);
-  }
-
-  /**
-   * Inject text input as cortex current (Wernicke's area).
-   */
-  /**
-   * Update derived brain state after parallel step.
-   * Arousal, valence, Ψ, coherence, motor — computed from cluster results.
-   */
-  /**
-   * Offload one cluster's LIF computation to the GPU client.
-   * Returns a promise that resolves when the GPU sends results back.
-   */
-  /**
-   * Offload cluster LIF to GPU client via WebSocket.
-   *
-   * KEY DESIGN: GPU maintains its OWN voltage state. Server does NOT
-   * send 1.28M floats every step. Server sends only:
-   *   - init: full voltages (once, on first dispatch per cluster)
-   *   - step: tonicDrive + noiseAmp (two numbers, not arrays)
-   * GPU sends back: sparse spike indices only (~25K ints, not 1.28M)
-   *
-   * This cuts WebSocket traffic from ~10MB/step to ~100KB/step.
-   */
-  /**
-   * T17.7 Phase B.4 — compute divergence between standalone
-   * cortexCluster sub-region spike counts and main-cortex GPU
-   * sub-region readback spike counts. Feeds divergence into the
-   * cortex cluster's errorCorrection term via the cerebellum's
-   * existing negative-feedback path.
-   *
-   * Just like left-right hemisphere gating, the brain doesn't
-   * "error" — the brain has a center dedicated to error correction.
-   * The brain
-   * corrects mismatches biologically; we reuse its existing
-   * cerebellum-driven correction rather than adding a strict
-   * migration-abort gate on top.
-   *
-   * Ψ-modulated correction gain per the T17.7 architecture plan:
-   *   cerebellumCorrectionGain = base · (1 + Ψ · k_Ψ)
-   * Low Ψ → correction stays weak, tolerates divergence (fragmented
-   * processing state). High Ψ → correction scales up, dampens
-   * divergence hard (integrated global-workspace state). Mystery Ψ
-   * woven into the equation per 'main equation mystery cant not have
-   * it involved'.
-   *
-   * Stores divergence scalar on this._cortexDivergence so
-   * getState broadcasts it as telemetry. Cerebellum error signal
-   * augmentation happens in _updateDerivedState via the cached value.
-   */
-  _computeCortexDivergence(perCluster) {
-    const cortexEntry = perCluster.cortex;
-    // Capture GPU-reported per-region spike counts so getState can
-    // surface them on `lang_*` pseudo-clusters. At biological scale
-    // the CPU `cortexCluster.lastSpikes` shadow stays zero (GPU owns
-    // the state) — without this capture the 3D brain viz shows
-    // 0/N (0.00%) for every cortex sub-region even though the GPU
-    // is actively firing millions of spikes across them.
-    if (cortexEntry && cortexEntry.regionSpikes) {
-      this._lastCortexRegionSpikes = cortexEntry.regionSpikes;
-      this._lastCortexRegionSpikesAt = Date.now();
-    }
-    if (!cortexEntry || !cortexEntry.regionSpikes) {
-      this._cortexDivergence = 0;
-      this._cortexDivergenceByRegion = {};
-      return;
-    }
-    if (!this.cortexCluster || !this.cortexCluster.regions || !this.cortexCluster.lastSpikes) {
-      this._cortexDivergence = 0;
-      this._cortexDivergenceByRegion = {};
-      return;
-    }
-    const stand = this.cortexCluster;
-    let totalDiff = 0;
-    let totalSize = 0;
-    // T17.7 Phase C follow-up — per-region divergence breakdown so
-    // Gee can verify during K curriculum walk which specific region
-    // drifted (letter vs phon vs sem vs motor). Without per-region
-    // visibility, a cluster-wide scalar like 0.03 doesn't tell us
-    // whether sem is dead-on but motor is drifting, or vice versa.
-    // The breakdown surfaces where the equation is slipping.
-    const perRegion = {};
-    for (const [regName, mainSpikes] of Object.entries(cortexEntry.regionSpikes)) {
-      const standReg = stand.regions[regName];
-      if (!standReg) continue;
-      // Count standalone spikes in this region.
-      let standSpikes = 0;
-      for (let i = standReg.start; i < standReg.end && i < stand.lastSpikes.length; i++) {
-        if (stand.lastSpikes[i]) standSpikes++;
-      }
-      // Normalize both to firing rates (spike fraction) so different
-      // slice sizes compare fairly — absolute counts would always show
-      // divergence just from size differences between standalone and
-      // main-cortex regions.
-      const standLen = standReg.end - standReg.start;
-      const mainLen = Math.floor(CLUSTER_SIZES.cortex * this._regionFraction(regName));
-      const standRate = standLen > 0 ? standSpikes / standLen : 0;
-      const mainRate = mainLen > 0 ? mainSpikes / mainLen : 0;
-      const diff = Math.abs(standRate - mainRate);
-      perRegion[regName] = {
-        standRate: +standRate.toFixed(5),
-        mainRate: +mainRate.toFixed(5),
-        divergence: +diff.toFixed(5),
-      };
-      totalDiff += diff * mainLen;
-      totalSize += mainLen;
-    }
-    // Divergence = weighted-mean absolute rate difference across regions.
-    // Ranges [0, 1] — 0 = perfect match, 1 = one is saturated and
-    // other is silent. Biologically-grounded: this IS the signal a
-    // real cerebellum would see when cortex prediction diverges from
-    // ground truth sensory input.
-    this._cortexDivergence = totalSize > 0 ? totalDiff / totalSize : 0;
-    this._cortexDivergenceByRegion = perRegion;
-  }
 
   /**
    * T17.7 Phase B.4 — helper matching the LAYOUT in _regionsFor so
@@ -2593,1079 +2260,21 @@ class ServerBrain {
     return null;  // unknown cluster — no regions, homogeneous behavior
   }
 
-  async _gpuStep(clusterName) {
-    if (!this._gpuClient || this._gpuClient.readyState !== 1) return null;
-    if (!this._gpuPending) this._gpuPending = {};
-    if (!this._gpuInitialized) this._gpuInitialized = {};
 
-    const size = CLUSTER_SIZES[clusterName];
+  // 20 GPU sparse-comm methods EXTRACTED to server/brain-server/gpu.js
+  // SERVER_GPU_MIXIN (per-concern file architecture, P4.3.a).
+  //   _gpuStep, _gpuBatch, _nextSparseReqId, _sparseSend,
+  //   _encodeSparseHeader, _sparseSendBinary, gpuDrainWait,
+  //   _gpuSparseFlowOk, gpuSparseUpload, gpuSparsePropagate,
+  //   gpuSparseHebbianBound, _enqueueBoundHebbian, _flushBoundHebbianBatch,
+  //   gpuSparsePropagateBound, _gpuWriteCortexSpikeSlice,
+  //   _gpuWriteCortexCurrentSlice, _gpuClearCortexSpikeRegion,
+  //   gpuReadbackCortexLetterBuckets, _ensureCortexCrossProjectionsBound,
+  //   gpuSparseHebbian
+  // Attached via Object.assign(ServerBrain.prototype, ...) at the
+  // bottom of this file. All methods accessible identically through
+  // the prototype chain.
 
-    if (!this._gpuInitialized[clusterName]) {
-      // FIRST DISPATCH — tell GPU to create buffers at Vrest
-      // DO NOT send voltage array — at 25.6M neurons that's 260MB base64.
-      // GPU initializes its own voltages at Vrest. Same result, zero transfer.
-
-      // T17.7 Phase B.1 — regions metadata with L/R side tags. For the
-      // main cortex cluster, register the 8 language sub-regions with
-      // their biological lateralization (left-dominant for language
-      // production/recognition; bilateral for sensory primaries + free
-      // working memory). Other clusters get a single bilateral or
-      // center tag to match real neuroanatomy. When compute.html
-      // processes gpu_init with this metadata, uploadCluster stores
-      // the regions on bufs.regions and the Ψ-modulated hemisphere
-      // gate pipeline (Phase A.3) automatically activates for this
-      // cluster's LIF dispatch. Zero additional wire-up needed.
-      const regions = this._regionsFor(clusterName, size);
-      this._gpuClient.send(JSON.stringify({
-        type: 'gpu_init',
-        clusterName,
-        size,
-        tonicDrive: this.tonicDrives[clusterName],
-        noiseAmp: this.noiseAmplitudes[clusterName],
-        lifParams: { tau: 20, Vrest: -65, Vthresh: -50, Vreset: -70, dt: 1, R: 1, tRefrac: 2 },
-        regions,
-      }));
-      this._gpuInitialized[clusterName] = true;
-      const regionCount = regions ? Object.keys(regions).length : 0;
-      console.log(`[Brain] GPU init sent: ${clusterName} (${size.toLocaleString()} neurons${regionCount > 0 ? `, ${regionCount} sub-regions` : ''})`);
-      return Promise.resolve(null);
-    }
-
-    // STEP — send cluster params + hierarchical modulation.
-    // GPU applies the FULL current equation:
-    //   I = (tonicDrive × driveBaseline × emotionalGate × gainMultiplier + errorCorrection)
-    //       + noise × noiseAmp
-    // These are the same modulation factors engine.js applies on the client side.
-    const p = this.persona;
-    const psiGain = Math.max(0.8, Math.min(1.5, 0.9 + (this.psi || 0) * 0.004));
-    const emotionalGate = 0.7 + (this.arousal || 0.5) * 0.6;
-    const driveFactor = 0.8 + ((this.clusters.hypothalamus?.spikeCount || 0) > 100 ? 0.4 : 0.0);
-    const errorSignal = clusterName === 'cortex' || clusterName === 'basalGanglia'
-      ? -(this.clusters.cerebellum?.spikeCount || 0) / (CLUSTER_SIZES.cerebellum || 1) * 2 : 0;
-
-    this._gpuClient.send(JSON.stringify({
-      type: 'compute_request',
-      clusterName,
-      size,
-      tonicDrive: this.tonicDrives[clusterName],
-      noiseAmp: this.noiseAmplitudes[clusterName],
-      // Hierarchical modulation from brain equations
-      gainMultiplier: psiGain,          // Ψ consciousness gain
-      emotionalGate,                     // amygdala arousal amplification
-      driveBaseline: driveFactor,        // hypothalamus homeostatic drive
-      errorCorrection: errorSignal,      // cerebellum error feedback
-      reward: this.reward,               // for future plasticity
-    }));
-
-    // T14.23 — (see _gpuBatch below for the batched protocol).
-
-    // T14.22.5 — GPU timeout raised 800ms → 10000ms.
-
-    // At 677M-neuron biological scale, a single GPU fullStep takes ~40ms
-    // for small clusters and can exceed 300ms for cerebellum (268M
-    // neurons × compute.html's serialized Promise queue from T14.22.3
-    // = 7 clusters × ~50ms each = ~350ms per substep average). With
-    // multiple clusters queued behind one another, individual
-    // compute_results can land 500-2000ms after the request was sent.
-
-    // The old 800ms cap was silently killing every compute_result that
-    // arrived late, resolving the pending promise to null, causing the
-    // tick loop to record spikeCount=0 for that cluster, and the UI
-    // cards + 3D brain visualization to stay at zero even though the
-    // GPU was actually computing real spike counts. This is one of
-    // the two remaining reasons the UI looked dead at biological scale.
-
-    // Raised to 10 seconds — plenty of headroom even at the largest
-    // single-GPU tier. If a compute_result takes more than 10 seconds,
-    // something is genuinely broken (GPU hang, dropped WebSocket) and
-    // the tick loop should skip that cluster and log.
-    return new Promise((resolve) => {
-      this._gpuPending[clusterName] = resolve;
-      setTimeout(() => {
-        if (this._gpuPending[clusterName] === resolve) {
-          delete this._gpuPending[clusterName];
-          console.warn(`[Brain] GPU compute_result for ${clusterName} timed out after 10s — GPU may be hung`);
-          resolve(null);
-        }
-      }, 10000);
-    });
-  }
-
-  /**
-   * T14.23 — BATCHED GPU dispatch.
-   *
-   * Sends ONE compute_batch message containing all per-cluster
-   * parameters, waits for ONE compute_batch_result response.
-   * compute.html runs the full SUBSTEPS × clusters loop internally
-   * with parallel per-substep cluster dispatches. Cuts the per-tick
-   * WebSocket message count from ~70 (10 substeps × 7 clusters) to
-   * 2 (one request + one response), eliminating the 6× protocol
-   * overhead that was dominating tick latency at biological scale.
-   *
-   * @param {number} substeps — how many LIF steps to run this tick
-   * @param {Array<{name, size, tonicDrive, noiseAmp, gainMultiplier,
-   *                emotionalGate, driveBaseline, errorCorrection, reward}>} clusterParams
-   * @returns {Promise<{perCluster: Object} | null>}
-   */
-  async _gpuBatch(substeps, clusterParams) {
-    if (!this._gpuClient || this._gpuClient.readyState !== 1) return null;
-
-    // Defensive pre-flight: if the GPU device is known lost, skip sending
-    // immediately. compute.html forwards device.lost events to the server;
-    // if the flag is set the device is dead until compute.html reconnects.
-    // Sending compute_batch anyway just guarantees a 15s timeout and
-    // wastes one tick window. Surface the condition through a throttled
-    // warn (first occurrence + once per 30 s) instead of silently
-    // eating it.
-    if (this._gpuDeviceLost) {
-      const now = Date.now();
-      if (!this._gpuLostWarnAt || (now - this._gpuLostWarnAt) > 30000) {
-        console.warn('[Brain] compute_batch skipped — GPU device lost (awaiting compute.html reconnect + re-init).');
-        this._gpuLostWarnAt = now;
-      }
-      return null;
-    }
-
-    // Defensive pre-flight: bound Hebbian queue backpressure. When the
-    // batched Hebbian dispatch queue sits near its cap the compute.html
-    // message pump has a large backlog; firing compute_batch on top of
-    // that can stall while the queue drains, manifesting as a 15s
-    // compute_batch timeout even though the GPU itself isn't hung.
-    // Log a leading-edge warn when queue > 75% of cap so the hang
-    // attribution is visible.
-    const boundHebbianPending = this._boundHebbianBatch?.ops?.length || 0;
-    const BOUND_HEBBIAN_CAP_WARN = Math.floor(256 * 0.75);
-    if (boundHebbianPending > BOUND_HEBBIAN_CAP_WARN) {
-      const now = Date.now();
-      if (!this._hebbianBackpressureWarnAt || (now - this._hebbianBackpressureWarnAt) > 10000) {
-        console.warn(`[Brain] bound-Hebbian queue backpressure: ${boundHebbianPending}/256 pending ops ahead of compute_batch — compute.html onmessage pump may be saturated.`);
-        this._hebbianBackpressureWarnAt = now;
-      }
-    }
-
-    // Use a monotonic batch id so late-arriving responses from a
-    // previous tick never resolve the current tick's promise.
-    this._batchSeq = (this._batchSeq || 0) + 1;
-    const batchId = this._batchSeq;
-
-    this._gpuClient.send(JSON.stringify({
-      type: 'compute_batch',
-      batchId,
-      substeps,
-      clusters: clusterParams,
-      // Ψ flows to GPU so per-cluster regionGates can be updated every
-      // tick via hemisphereGate(side, Ψ). Mystery Ψ is woven into the
-      // main equation; lateralized cortex regions modulate drive by
-      // Ψ-driven binding coefficient, matching biological split-brain +
-      // global-workspace consciousness interpretation.
-      psi: this.psi ?? 0,
-    }));
-
-    // Timeout budget. Previously 15 s — too short when the main JS
-    // event loop gets blocked for >10 s by CPU-side sparse matmul
-    // during curriculum gate probes (letter loop + SEQ read nnz
-    // sparse matrices synchronously on the main thread). The timer
-    // is armed at dispatch, so a blocked event loop can miss the
-    // legitimate response even though the GPU answered in microseconds.
-    // Bumped to 60 s — still short enough to catch true GPU hangs
-    // (TDR would have fired at 2 s system-level anyway) but generous
-    // enough for any gate-probe CPU block.
-    // iter11-Y / iter11-W fix — bump compute_batch timeout 60s → 180s.
-    // Operator caught: "compute_batch 935 timed out after 60s — GPU may
-    // be hung. Consecutive timeouts: 1." firing post-curriculum on
-    // background tick. At biological scale post-teach with SAB churn +
-    // GC pressure, 60s is tight. 180s gives the GPU breathing room
-    // without masking real hangs (a true device-lost still surfaces
-    // after 3 minutes — long enough for transient pressure to clear).
-    const TIMEOUT_MS = 180000;
-    return new Promise((resolve) => {
-      this._gpuBatchPending = { batchId, resolve };
-      setTimeout(() => {
-        if (this._gpuBatchPending && this._gpuBatchPending.batchId === batchId) {
-          this._gpuBatchPending = null;
-          // Consecutive-timeout counter — diagnostic. If the GPU is
-          // really hung we'll see this number climb while successful
-          // batches stay at 0. Reset by the compute_batch_result
-          // handler on any successful batch.
-          this._gpuBatchConsecutiveTimeouts = (this._gpuBatchConsecutiveTimeouts || 0) + 1;
-          const queuePending = this._boundHebbianBatch?.ops?.length || 0;
-          const lost = this._gpuDeviceLost ? ' (device.lost flagged during this batch)' : '';
-          console.warn(`[Brain] compute_batch ${batchId} timed out after ${TIMEOUT_MS / 1000}s — GPU may be hung. Consecutive timeouts: ${this._gpuBatchConsecutiveTimeouts}. Bound-Hebbian queue: ${queuePending}.${lost}`);
-          if (this._gpuBatchConsecutiveTimeouts >= 3 && !this._gpuHangLogged) {
-            console.warn('[Brain] compute_batch consecutive-timeout threshold reached — GPU pipeline likely unrecoverable without compute.html reload. Main brain tick loop will keep waiting; curriculum work paused.');
-            this._gpuHangLogged = true;
-          }
-          resolve(null);
-        }
-      }, TIMEOUT_MS);
-    });
-  }
-
-  // ── T17.3.c SPARSE DISPATCH HELPERS ──
-
-  // Send sparse upload/propagate/hebbian messages to compute.html,
-  // await the matching ack via reqId correlation. Used by the GPU
-  // language cortex path to offload cross-projection ops to GPU.
-
-  _nextSparseReqId() {
-    this._sparseSeq = (this._sparseSeq || 0) + 1;
-    return this._sparseSeq;
-  }
-
-  _sparseSend(msg, timeoutMs = 30000) {
-    if (!this._gpuClient || this._gpuClient.readyState !== 1) return Promise.resolve(null);
-    if (!this._gpuSparsePending) this._gpuSparsePending = new Map();
-    const reqId = this._nextSparseReqId();
-    msg.reqId = reqId;
-    this._gpuClient.send(JSON.stringify(msg));
-    return new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        if (this._gpuSparsePending && this._gpuSparsePending.has(reqId)) {
-          this._gpuSparsePending.delete(reqId);
-          console.warn(`[Brain] sparse dispatch reqId=${reqId} type=${msg.type} timed out after ${timeoutMs}ms`);
-          resolve(null);
-        }
-      }, timeoutMs);
-      this._gpuSparsePending.set(reqId, { resolve, reject, timeout });
-    });
-  }
-
-  // ── Binary WebSocket frame encoders/decoders ──
-
-  // Wire format header (all frames):
-  //   0..3:  magic "SPRS" (request) or "SPRR" (response)
-  //   4:     type byte  (1=upload, 2=propagate, 3=hebbian)
-  //   5..8:  reqId (uint32 LE)
-  //   9..10: nameLen (uint16 LE)
-  //   11..:  name (UTF-8), then type-specific payload
-
-  // Typed-array payloads are concatenated with Uint32 length prefixes:
-  //   [len][data] for each of values/colIdx/rowPtr/preSpikes/postSpikes
-
-  // Binary frames bypass V8's ~512 MB JSON string limit AND the
-  // JSON.stringify + JSON.parse round-trip cost. 10-20× faster for
-  // typed-array payloads; unlimited size within available memory.
-
-  // Built to work without jerry-rigging — this
-  // replaces the 10M-nnz JSON-safety skip with real binary transport.
-
-  _encodeSparseHeader(typeByte, reqId, name) {
-    const nameBuf = Buffer.from(name, 'utf8');
-    // Pad header to a 4-byte boundary so subsequent Float32/Uint32
-    // typed-array views created over the incoming ArrayBuffer have
-    // aligned byteOffsets. Chrome throws RangeError on unaligned
-    // TypedArray views — this was silently killing all previous
-    // uploads for matrix names whose length wasn't 1 mod 4.
-    const rawLen = 11 + nameBuf.length;
-    const padLen = (4 - (rawLen % 4)) % 4;
-    const hdr = Buffer.alloc(rawLen + padLen);
-    hdr.write('SPRS', 0, 'ascii');
-    hdr[4] = typeByte;
-    hdr.writeUInt32LE(reqId, 5);
-    hdr.writeUInt16LE(nameBuf.length, 9);
-    nameBuf.copy(hdr, 11);
-    // pad bytes already zero from Buffer.alloc
-    return hdr;
-  }
-
-  async _sparseSendBinary(msgBuffer, reqId, timeoutMs = 120_000) {
-    if (!this._gpuClient || this._gpuClient.readyState !== 1) return Promise.resolve(null);
-    if (!this._gpuSparsePending) this._gpuSparsePending = new Map();
-    // Backpressure-aware send. A retest after the earlier fix got
-    // past _teachLetterCaseBinding and into _teachPhonemeBlending
-    // (1029 K words × 10 reps = 10,290 word-emission iterations).
-    // At ~10 words/s × 14 cross-projections = 140 GPU Hebbian
-    // dispatches/sec via T18.17 hebbianBound fire-and-forget. T18.8
-    // batched queue consolidates up to 64/batch but still fires ~3
-    // batches/sec of type=5 SPRS frames. compute.html's onmessage is
-    // serial; if GPU dispatch queue drains slower than batches arrive,
-    // Node's WebSocket send buffer backs up. Once ws.bufferedAmount
-    // exceeds the OS-level socket send buffer (typically 256 KB - 2 MB
-    // on Windows), ws.send() fails with ENOBUFS. Logs showed ~1200
-    // consecutive ENOBUFS errors during _teachPhonemeBlending.
-
-    // Fix: check bufferedAmount BEFORE calling send(). If backed up,
-    // drop the send silently and resolve null (same as timeout path —
-    // fire-and-forget caller just loses one Hebbian update on the GPU
-    // side; CPU path is authoritative per T17.2 / T17.7 comment chain).
-    // Threshold 50 MB = plenty of headroom for bursty Hebbian dispatch
-    // without flooding the OS socket.
-    // Raised threshold 50MB → 200MB so the brain doesn't drop
-    // training dispatches under backpressure. At 50MB drops were
-    // firing ~17/sec during
-    // _teachWordEmission (7562 total drops over 411s). Each dropped
-    // type=5 batched Hebbian frame = ~10-64 lost GPU-side Hebbian
-    // updates. CPU-side learning still happened but GPU's cross-
-    // projection weights drifted from CPU over 12 reps × 1029 words.
-    // Gate probe then reads stale GPU state via readbackLetterBuckets
-    // → potential spurious fail OR freeze (probe readback queues
-    // behind pending Hebbian frames). Raising to 200MB gives Node's
-    // WebSocket buffer more headroom during compute.html serial-
-    // onmessage stalls — fewer drops, more complete GPU sync.
-    // Node can easily hold 200MB WebSocket buffer without OS
-    // memory concern on a 128GB box.
-    // iter13 backpressure-await fix per operator 2026-05-04: "cant be
-    // dropping shit". Previous code DROPPED sparse binary sends when
-    // ws.bufferedAmount exceeded 200MB threshold. Drops mean GPU-side
-    // Hebbian updates lost while CPU-side updates land — over thousands
-    // of dispatches the GPU and CPU shadow weights drift apart, then
-    // probe readbacks return stale values that don't match what
-    // CPU-side learned. Operator caught 28 drops in a single ELA-K run.
-
-    // New approach: AWAIT the buffer to drain instead of dropping.
-    // Bounded await (max 5s) prevents indefinite hang if compute.html
-    // is genuinely stalled; in that pathological case we still drop
-    // ONCE per 5min with a loud log. Typical case: buffer drains within
-    // 100-500ms during teach-phase bursts because compute.html serial-
-    // onmessage processes the queued frames as fast as Node can fire
-    // them. Net effect: drops reduce from ~28 per ELA-K cell to ~0.
-    // Threshold bumped 200MB → 500MB. Bigger headroom = backpressure
-    // logic engages later, fewer DROP fallbacks under sustained
-    // teach-phase bursts. Safe at our memory footprint (Node easily
-    // holds 500MB ws buffer; OS-level socket send buffer is the
-    // bottleneck not Node's heap).
-    const BUFFERED_AMOUNT_DROP_THRESHOLD = 500 * 1024 * 1024;
-    // Safety timeout extended 5s → 30s. The block-not-drop pivot
-    // means we wait for the GPU client to drain rather than corrupt
-    // weights with silent drops; 30s is long enough that only a
-    // genuinely hung compute.html triggers the fallback DROP, while
-    // normal serial-onmessage stalls of 1-10s drain cleanly.
-    const MAX_AWAIT_MS = 30000;
-    const POLL_MS = 25;
-    // 114.19er.2 — null-guard re-check. The entry guard at line 2841
-    // ensures _gpuClient was non-null on entry, but async work between
-    // here and the actual .send() can race with browser disconnect /
-    // _spawnGpuClient teardown, leaving _gpuClient null. boot-error.log
-    // captured "Cannot read properties of null (reading 'send')" at
-    // brain-server.js:2943 from exactly this race. Re-check before
-    // every dereference inside this method.
-    if (!this._gpuClient || this._gpuClient.readyState !== 1) return Promise.resolve(null);
-    if (this._gpuClient.bufferedAmount > BUFFERED_AMOUNT_DROP_THRESHOLD) {
-      const awaitStart = Date.now();
-      while (this._gpuClient && this._gpuClient.readyState === 1
-             && this._gpuClient.bufferedAmount > BUFFERED_AMOUNT_DROP_THRESHOLD) {
-        if ((Date.now() - awaitStart) > MAX_AWAIT_MS) {
-          // Pathological case: 30s of sustained backpressure means
-          // compute.html is genuinely stalled. With cortical
-          // microstructure live (topographic projections + layer-
-          // constrained endpoints + microcolumn coherence), a missed
-          // Hebbian update on the GPU shadow is no longer recoverable
-          // via fire-and-forget — forward propagation reads GPU
-          // weights, so a drop here causes CPU/GPU divergence across
-          // ALL post-update projections. Log a CRITICAL banner, mark
-          // the GPU shadow dirty, and schedule a full-weight resync.
-          // The current dispatch still drops (compute.html can't
-          // accept it), but the shadow-dirty flag tells the next idle
-          // dispatch to push a full resync before resuming
-          // teach-phase Hebbian fires.
-          if (!this._wsDroppedCount) this._wsDroppedCount = 0;
-          this._wsDroppedCount++;
-          this._wsLastDropTs = Date.now();
-          this._gpuShadowDirty = true;
-          if (!this._wsLastDropLogMs || (Date.now() - this._wsLastDropLogMs) >= 5000) {
-            this._wsLastDropLogMs = Date.now();
-            console.error(`[Brain] CRITICAL backpressure DROP after ${MAX_AWAIT_MS}ms await — ws.bufferedAmount=${(this._gpuClient.bufferedAmount/1024/1024).toFixed(1)}MB > ${BUFFERED_AMOUNT_DROP_THRESHOLD/1024/1024}MB. ${this._wsDroppedCount} total drops since boot. GPU shadow marked DIRTY; full resync scheduled before next teach-phase Hebbian fire. CPU + GPU weights are diverging — cortical-microstructure projections will mis-fire until resync lands.`);
-          }
-          return Promise.resolve(null);
-        }
-        await new Promise(r => setTimeout(r, POLL_MS));
-      }
-      // Buffer drained — log notable awaits so operator sees backpressure
-      // is happening but is being absorbed instead of lost.
-      const waitedMs = Date.now() - awaitStart;
-      if (waitedMs > 250) {
-        if (!this._wsAbsorbedCount) this._wsAbsorbedCount = 0;
-        this._wsAbsorbedCount++;
-        if (!this._wsLastAbsorbLogMs || (Date.now() - this._wsLastAbsorbLogMs) >= 30000) {
-          this._wsLastAbsorbLogMs = Date.now();
-          console.log(`[Brain] backpressure ABSORBED — awaited ${waitedMs}ms for ws buffer to drain below ${BUFFERED_AMOUNT_DROP_THRESHOLD/1024/1024}MB. ${this._wsAbsorbedCount} total absorbs since boot (no Hebbian update lost; rate-limited log every 30s).`);
-        }
-      }
-    }
-    // No per-send log spam — at 100+ ops/sec the logs themselves are a
-    // bottleneck. Only log errors and the final timeout warn.
-    // 114.19er.2 — final null-guard before .send(). Async backpressure
-    // await loop above can complete with _gpuClient set to null if the
-    // browser disconnected mid-await (loop condition `while (this._gpuClient && ...)`
-    // exits normally on null; no exception, just falls through here).
-    if (!this._gpuClient || this._gpuClient.readyState !== 1) return Promise.resolve(null);
-    this._gpuClient.send(msgBuffer, (err) => {
-      if (err) {
-        // Throttle ENOBUFS spam. Earlier logs had ~1200 consecutive
-        // identical ENOBUFS lines before the drop-threshold fix.
-        // With the
-        // threshold above, ENOBUFS should be rare (since we skip sends
-        // before the OS refuses them). Any remaining ENOBUFS means a
-        // transient kernel condition — log first 3 then silence.
-        if (err.code === 'ENOBUFS') {
-          if (!this._wsEnobufsCount) this._wsEnobufsCount = 0;
-          this._wsEnobufsCount++;
-          if (this._wsEnobufsCount <= 3) {
-            console.warn(`[Brain] sparse binary reqId=${reqId} ENOBUFS (OS socket send buffer full — transient kernel backpressure). Count ${this._wsEnobufsCount}/3; further ENOBUFS logs silenced.`);
-          }
-          return;
-        }
-        console.warn(`[Brain] sparse binary reqId=${reqId} ERROR: ${err.message}`);
-      }
-    });
-    return new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        if (this._gpuSparsePending && this._gpuSparsePending.has(reqId)) {
-          this._gpuSparsePending.delete(reqId);
-          resolve(null);
-        }
-      }, timeoutMs);
-      this._gpuSparsePending.set(reqId, { resolve, reject, timeout });
-    });
-  }
-
-  /**
-   * T18.28 — drain-wait for gate probes. Polls ws.bufferedAmount until
-   * it drops below 10 MB or 30-second timeout elapses. Curriculum gate
-   * probes fire readback requests (readbackLetterBuckets etc.) that
-   * MUST land promptly to produce correct probe output. If Hebbian
-   * backlog is queued ahead of the readback, the readback can wait
-   * indefinitely — Gee saw "freeze" at [K-DIAG] gate log line because
-   * ~17000 frames were queued in compute.html. Waiting for drain before
-   * firing probe reads ensures fresh readback results.
-   */
-  async gpuDrainWait() {
-    const DRAIN_THRESHOLD = 10 * 1024 * 1024; // 10 MB
-    const TIMEOUT_MS = 30_000;
-    const POLL_MS = 100;
-    const start = Date.now();
-    if (!this._gpuClient || this._gpuClient.readyState !== 1) return;
-    const initial = this._gpuClient.bufferedAmount;
-    if (initial <= DRAIN_THRESHOLD) return; // already drained
-    while (Date.now() - start < TIMEOUT_MS) {
-      await new Promise(r => setTimeout(r, POLL_MS));
-      if (!this._gpuClient || this._gpuClient.readyState !== 1) return;
-      if (this._gpuClient.bufferedAmount <= DRAIN_THRESHOLD) {
-        const elapsed = Date.now() - start;
-        console.log(`[Brain] drain-wait completed in ${elapsed}ms: bufferedAmount ${(initial/1024/1024).toFixed(1)}MB → ${(this._gpuClient.bufferedAmount/1024/1024).toFixed(1)}MB`);
-        return;
-      }
-    }
-    console.warn(`[Brain] drain-wait timed out at 30s: bufferedAmount stuck at ${(this._gpuClient.bufferedAmount/1024/1024).toFixed(1)}MB — compute.html processing slower than expected. Gate probe readbacks may still queue behind Hebbian frames.`);
-  }
-
-  // Backpressure gate for fire-and-forget GPU shadows. Curriculum fires
-  // thousands of propagate/hebbian shadows per second; without a gate,
-  // bufferedAmount grew to 1.7 GB and every shadow timed out at 30 s,
-  // effectively killing the brain. CPU remains authoritative — skipping
-  // a shadow just means that one Hebbian update doesn't mirror to GPU.
-
-  // Two-level gate:
-  //   (1) pending-request cap — compute.html's onmessage is serial, so
-  //       pending.size ≈ how many messages are queued ahead of the next
-  //       main-brain compute_batch. Cap at 4 so main-brain dispatch
-  //       doesn't block behind hundreds of shadow hebbians.
-  //   (2) TCP send-buffer cap — belt-and-suspenders for abnormal queue
-  //       growth (slow network, giant frames).
-  _gpuSparseFlowOk() {
-    const c = this._gpuClient;
-    if (!c || c.readyState !== 1) return false;
-    const pending = this._gpuSparsePending ? this._gpuSparsePending.size : 0;
-    if (pending >= 4) return false;
-    return c.bufferedAmount < 2_000_000;
-  }
-
-  /**
-   * Upload a sparse CSR matrix to GPU via CHUNKED binary WebSocket
-   * frames. Chrome's WebSocket frame assembler chokes on single frames
-   * approaching 500MB — observed 480MB frames flush OS-side but never
-   * deliver to ws.onmessage within 180s on localhost loopback. Splitting
-   * into 16MB chunks keeps each frame comfortably inside browser frame
-   * assembler limits and lets the GPU writeBuffer stream directly into
-   * pre-allocated storage buffers at offsets.
-   *
-   * Wire: type=4 chunk frames carry chunkSeq + totalChunks + flags.
-   * First chunk (flags & 1) also carries rows/cols/nnz + rowPtr. Each
-   * chunk carries valuesOffset/valuesByteLen/values + colIdxOffset/
-   * colIdxByteLen/colIdx. Last chunk triggers the SPRR ack.
-   *
-   * T18.6.b — optional `binding` parameter. When provided, the first
-   * chunk ALSO carries cluster-bound metadata via flag bit 2
-   * (`flags & 2`): srcClusterNameLen(u16) + srcClusterName + u16 pad
-   * + dstClusterNameLen(u16) + dstClusterName + u16 pad + srcStart(u32)
-   * + srcEnd(u32) + dstStart(u32) + dstEnd(u32). compute.html passes
-   * this to `gpu._beginSparseUpload(..., binding)` which skips the
-   * standalone preSpikes/postCurrents/postSpikes buffer allocation
-   * entirely (the bound shader path reads directly from the source
-   * cluster's spike buffer and writes into the destination cluster's
-   * currents buffer). Saves ~60 MB per cross-projection at biological
-   * scale × 14 cross-projections = ~840 MB of transient VRAM that
-   * previously sat allocated through the entire upload-then-rebind
-   * window, during which the device was most likely to OOM-crash on a
-   * 16 GB GPU. Phase C.1 rebind still exists as a fallback path for
-   * matrices loaded from persistence where binding metadata wasn't
-   * shipped originally.
-   */
-  async gpuSparseUpload(name, matrix, binding) {
-    const reqId = this._nextSparseReqId();
-    const rows = matrix.rows;
-    const cols = matrix.cols;
-    const values = matrix.values instanceof Float32Array ? matrix.values : new Float32Array(matrix.values || []);
-    const colIdx = matrix.colIdx instanceof Uint32Array ? matrix.colIdx : new Uint32Array(matrix.colIdx || []);
-    const rowPtr = matrix.rowPtr instanceof Uint32Array ? matrix.rowPtr : new Uint32Array(matrix.rowPtr || []);
-    const nnz = values.length;
-
-    // 16 MB NNZ worth ≈ 2M nnz/chunk × 8 bytes (4 values + 4 colIdx)
-    const CHUNK_NNZ = 2_000_000;
-    const totalChunks = Math.max(1, Math.ceil(nnz / CHUNK_NNZ));
-    const rowPtrBuf = Buffer.from(rowPtr.buffer, rowPtr.byteOffset, rowPtr.byteLength);
-    const totalMb = ((values.byteLength + colIdx.byteLength + rowPtr.byteLength) / 1e6).toFixed(1);
-    const hasBinding = !!(binding && binding.srcCluster && binding.dstCluster);
-    console.log(`[Brain] sparse chunked upload reqId=${reqId} name=${name} totalChunks=${totalChunks} totalSize=${totalMb}MB${hasBinding ? ` (cluster-bound: ${binding.srcCluster}[${binding.srcRegion.start}..${binding.srcRegion.end}] → ${binding.dstCluster}[${binding.dstRegion.start}..${binding.dstRegion.end}])` : ''}`);
-
-    // Pre-register the pending promise BEFORE sending any chunks so
-    // the ack handler can find it even if client ACKs very fast.
-    if (!this._gpuSparsePending) this._gpuSparsePending = new Map();
-    const promise = new Promise((resolve, reject) => {
-      const timeoutMs = 180_000;
-      const timeout = setTimeout(() => {
-        if (this._gpuSparsePending && this._gpuSparsePending.has(reqId)) {
-          this._gpuSparsePending.delete(reqId);
-          console.warn(`[Brain] sparse chunked upload reqId=${reqId} name=${name} timed out after ${timeoutMs}ms`);
-          resolve(null);
-        }
-      }, timeoutMs);
-      this._gpuSparsePending.set(reqId, { resolve, reject, timeout });
-    });
-
-    if (!this._gpuClient || this._gpuClient.readyState !== 1) return null;
-
-    // T18.6.b — precompute binding block bytes ONCE (shipped only on the
-    // first chunk, identical for every send loop iteration). Wire layout:
-    //   srcClusterNameLen(u16) + srcClusterName + u16 pad-to-u32
-    //   dstClusterNameLen(u16) + dstClusterName + u16 pad-to-u32
-    //   srcStart(u32) + srcEnd(u32) + dstStart(u32) + dstEnd(u32)
-    // Pad bytes keep the subsequent u32 fields aligned for TypedArray
-    // views on the receiver, matching the existing header-alignment
-    // convention used by _encodeSparseHeader.
-    let bindingBlock = Buffer.alloc(0);
-    if (hasBinding) {
-      const srcNameBuf = Buffer.from(binding.srcCluster, 'utf8');
-      const dstNameBuf = Buffer.from(binding.dstCluster, 'utf8');
-      const padAfterSrc = (4 - ((2 + srcNameBuf.length) % 4)) % 4;
-      const padAfterDst = (4 - ((2 + dstNameBuf.length) % 4)) % 4;
-      const total = 2 + srcNameBuf.length + padAfterSrc
-                  + 2 + dstNameBuf.length + padAfterDst
-                  + 16;
-      bindingBlock = Buffer.alloc(total);
-      let o = 0;
-      bindingBlock.writeUInt16LE(srcNameBuf.length, o); o += 2;
-      srcNameBuf.copy(bindingBlock, o); o += srcNameBuf.length;
-      o += padAfterSrc;
-      bindingBlock.writeUInt16LE(dstNameBuf.length, o); o += 2;
-      dstNameBuf.copy(bindingBlock, o); o += dstNameBuf.length;
-      o += padAfterDst;
-      bindingBlock.writeUInt32LE(binding.srcRegion.start >>> 0, o); o += 4;
-      bindingBlock.writeUInt32LE(binding.srcRegion.end   >>> 0, o); o += 4;
-      bindingBlock.writeUInt32LE(binding.dstRegion.start >>> 0, o); o += 4;
-      bindingBlock.writeUInt32LE(binding.dstRegion.end   >>> 0, o); o += 4;
-    }
-
-    for (let seq = 0; seq < totalChunks; seq++) {
-      const start = seq * CHUNK_NNZ;
-      const end = Math.min(start + CHUNK_NNZ, nnz);
-      const valuesByteOff = start * 4;
-      const valuesByteLen = (end - start) * 4;
-      const colIdxByteOff = start * 4;
-      const colIdxByteLen = (end - start) * 4;
-      const hdr = this._encodeSparseHeader(4, reqId, name);
-      const isFirst = (seq === 0);
-      // flags bit 0 = first chunk (carries rows/cols/nnz + rowPtr)
-      // flags bit 1 = binding block follows rowPtr (first chunk only)
-      let flags = 0;
-      if (isFirst) flags |= 1;
-      if (isFirst && hasBinding) flags |= 2;
-      const chunkMeta = Buffer.alloc(12);
-      chunkMeta.writeUInt32LE(seq, 0);
-      chunkMeta.writeUInt32LE(totalChunks, 4);
-      chunkMeta.writeUInt32LE(flags, 8);
-      let firstMeta = Buffer.alloc(0);
-      if (isFirst) {
-        firstMeta = Buffer.alloc(16);
-        firstMeta.writeUInt32LE(rows, 0);
-        firstMeta.writeUInt32LE(cols, 4);
-        firstMeta.writeUInt32LE(nnz, 8);
-        firstMeta.writeUInt32LE(rowPtr.length, 12);
-      }
-      const valuesHdr = Buffer.alloc(8);
-      valuesHdr.writeUInt32LE(valuesByteOff, 0);
-      valuesHdr.writeUInt32LE(valuesByteLen, 4);
-      const valuesSlice = Buffer.from(values.buffer, values.byteOffset + valuesByteOff, valuesByteLen);
-      const colIdxHdr = Buffer.alloc(8);
-      colIdxHdr.writeUInt32LE(colIdxByteOff, 0);
-      colIdxHdr.writeUInt32LE(colIdxByteLen, 4);
-      const colIdxSlice = Buffer.from(colIdx.buffer, colIdx.byteOffset + colIdxByteOff, colIdxByteLen);
-      const pieces = isFirst
-        ? (hasBinding
-            ? [hdr, chunkMeta, firstMeta, rowPtrBuf, bindingBlock, valuesHdr, valuesSlice, colIdxHdr, colIdxSlice]
-            : [hdr, chunkMeta, firstMeta, rowPtrBuf, valuesHdr, valuesSlice, colIdxHdr, colIdxSlice])
-        : [hdr, chunkMeta, valuesHdr, valuesSlice, colIdxHdr, colIdxSlice];
-      const frame = Buffer.concat(pieces);
-      // Send chunk. WebSocket preserves order. Wait for the send
-      // callback so we don't flood the send buffer with hundreds of
-      // MB at once — backpressure per chunk.
-      await new Promise((res) => {
-        this._gpuClient.send(frame, (err) => {
-          if (err) {
-            console.warn(`[Brain] sparse chunk reqId=${reqId} seq=${seq}/${totalChunks} ERROR: ${err.message}`);
-          }
-          res();
-        });
-      });
-    }
-    console.log(`[Brain] sparse chunked upload reqId=${reqId} name=${name} all ${totalChunks} chunks dispatched, awaiting ack`);
-    return promise;
-  }
-
-  /**
-   * Dispatch sparse propagate via binary frame: currents = matrix @ preSpikes.
-   * Returns Float32Array (or null on timeout).
-   */
-  async gpuSparsePropagate(name, preSpikes) {
-    // Backpressure gate — if the WS send buffer is backed up, skip this
-    // shadow instead of queueing another doomed request.
-    if (!this._gpuSparseFlowOk()) return null;
-    const reqId = this._nextSparseReqId();
-    const pre = preSpikes instanceof Uint32Array ? preSpikes
-      : preSpikes instanceof Uint8Array ? Uint32Array.from(preSpikes)
-      : new Uint32Array(preSpikes || []);
-    const hdr = this._encodeSparseHeader(2, reqId, name);
-    const lenBuf = Buffer.alloc(4);
-    lenBuf.writeUInt32LE(pre.length, 0);
-    const preBuf = Buffer.from(pre.buffer, pre.byteOffset, pre.byteLength);
-    const full = Buffer.concat([hdr, lenBuf, preBuf]);
-    const result = await this._sparseSendBinary(full, reqId, 30_000);
-    if (!result || !result.currents) return null;
-    return result.currents; // Float32Array assembled by ack handler
-  }
-
-  /**
-   * T17.7 Phase C.1 — cluster-bound Hebbian dispatch. Reuses the same
-   * type=3 binary frame as gpuSparseHebbian, but with zero-length
-   * pre/post arrays (so no bulk data crosses the wire). compute.html's
-   * handler skips writeSparsePreSpikes/writeSparsePostSpikes when
-   * length is 0, and the cluster-bound matrix's hebbianSparse reads
-   * pre/post from main-cortex spikes buffer at the bound region
-   * offsets — which is where curriculum teach writes patterns via
-   * write_spike_slice.
-   *
-   * Wire cost at 7M/7M standalone size would be ~56 MB pre+post per
-   * Hebbian without this path. Cortex teaches fire thousands of
-   * Hebbians per curriculum rep — saving 56 MB × N calls makes
-   * biological-scale teaching feasible.
-   */
-  async gpuSparseHebbianBound(name, lr) {
-    // T18.8 — BATCHED bound Hebbian dispatch. Prior implementation shipped
-    // every call as its own ~50-byte SPRS binary frame, which hit
-    // compute.html's single-threaded onmessage handler serially at roughly
-    // 1 kHz ceiling → GPU pegged at 3% because each dispatch completed in
-    // microseconds then waited for the next WebSocket round-trip. The batched
-    // path accumulates bound-Hebbian ops into a pending queue and flushes
-    // them as a single type=5 SPRS frame carrying N (name, lr) tuples.
-    // compute.html issues N `gpu.hebbianSparse(name, lr)` calls in one
-    // onmessage tick — the GPU command queue fills with N dispatches and
-    // pipelines them through the compute units without waiting on JS.
-    // One WebSocket ACK returns for the whole batch. At N=64 the per-op
-    // round-trip cost drops by 64× and SM utilization climbs proportionally.
-
-    // Flow gate: curriculum-teach's flow gate `_gpuSparseFlowOk()` caps
-    // PENDING count at 4. One batch = one pending, so up to 4 batches ×
-    // 64 ops = 256 in-flight ops without changing the cap. If the batch
-    // queue overflows the cap too, the call becomes a no-op (CPU remains
-    // authoritative on Hebbian per cluster.js intraSynapsesHebbian's
-    // fire-and-forget contract, so dropped GPU shadow is safe).
-    return this._enqueueBoundHebbian(name, lr);
-  }
-
-  /**
-   * T18.8 — bound-Hebbian batch queue + flush scheduler.
-   *
-   * Accumulates (name, lr) tuples in `_boundHebbianBatch.ops`. Flushes when:
-   *   (a) queue length reaches BATCHED_HEBBIAN_MAX_OPS (64), OR
-   *   (b) BATCHED_HEBBIAN_FLUSH_MS (2 ms) elapses since first enqueue in
-   *       the current batch.
-   *
-   * Returns a Promise that resolves when the ACK for the batch arrives
-   * (so upstream awaits that might have wanted a "GPU Hebbian applied"
-   * signal still work). Hebbian is fire-and-forget in practice — CPU
-   * path is authoritative per `cluster.intraSynapsesHebbian` — so a
-   * rejected / dropped batch just means the GPU shadow missed that
-   * update and re-syncs on the next successful dispatch.
-   */
-  _enqueueBoundHebbian(name, lr) {
-    if (!this._gpuClient || this._gpuClient.readyState !== 1) {
-      return Promise.resolve(null);
-    }
-    if (!this._boundHebbianBatch) {
-      this._boundHebbianBatch = { ops: [], flushTimer: null };
-    }
-    const batch = this._boundHebbianBatch;
-    // T32 — bumped from 64→256 ops per batch + 2ms→20ms flush so batches
-    // accumulate more ops before flushing. Combined with the new
-    // hebbianSparseBatch path (ONE encoder + ONE submit per batch),
-    // GPU utilization during teach climbs from sub-1% toward saturating
-    // SM pipeline. Tradeoff: up to 20ms extra latency per fire-and-forget
-    // Hebbian — irrelevant to curriculum correctness, HUGE win for throughput.
-
-    // Cap bumped 256 → 512 ops per batch. Doubles ops per WS message so
-    // backpressure logic engages later under sustained teach bursts
-    // (each op ~28 bytes encoded → 512×28 = ~14KB per frame, well
-    // under WebGPU single-buffer cap). Halves WS message rate for
-    // same Hebbian throughput. FLUSH_MS unchanged — burst rate
-    // unchanged so accumulation window stays at 20ms.
-    const BATCHED_HEBBIAN_MAX_OPS = 512;
-    const BATCHED_HEBBIAN_FLUSH_MS = 20;
-    // Backpressure guards — prevent unbounded queue growth under flow stress.
-    // Max in-flight batches (reqIds in _gpuSparsePending waiting for ACK):
-    //   Existing `_gpuSparseFlowOk()` caps non-batch pending at 4. A batch
-    //   is one reqId; we allow up to BATCHED_HEBBIAN_MAX_INFLIGHT=4 batches
-    //   simultaneously, so effective in-flight cap is 4 × 64 = 256 ops,
-    //   which matches the raw WebSocket/onmessage ceiling at 1-2 ms per
-    //   batch RTT = ~500-1000 batches/sec = ~32-64 K Hebbian ops/sec ceiling.
-    // Queue itself capped at BATCHED_HEBBIAN_QUEUE_CAP=256 ops — curriculum
-    // teach should never exceed a couple hundred ops between batch flushes,
-    // but if it does (e.g. WebSocket stalled) drop the op silently (CPU
-    // Hebbian path is authoritative per cluster.intraSynapsesHebbian's
-    // fire-and-forget contract).
-    // Queue cap raised to 4× batch size (1024) so flushes can absorb
-    // a burst of accumulating ops without the silent-drop fallback
-    // firing while a batch is mid-flight to GPU.
-    const BATCHED_HEBBIAN_QUEUE_CAP = 1024;
-    if (batch.ops.length >= BATCHED_HEBBIAN_QUEUE_CAP) {
-      return Promise.resolve(null);
-    }
-    return new Promise((resolve, reject) => {
-      batch.ops.push({ name, lr, resolve, reject });
-      if (batch.ops.length >= BATCHED_HEBBIAN_MAX_OPS) {
-        this._flushBoundHebbianBatch();
-      } else if (!batch.flushTimer) {
-        batch.flushTimer = setTimeout(() => this._flushBoundHebbianBatch(), BATCHED_HEBBIAN_FLUSH_MS);
-      }
-    });
-  }
-
-  /**
-   * T18.8 — flush the bound-Hebbian batch. Encodes all pending ops into a
-   * single type=5 SPRS binary frame and ships it via _sparseSendBinary.
-   * Wire layout after the standard 11+nameLen+pad header (empty name for
-   * batch frames — nameLen=0):
-   *   opCount (u16) + pad (u16) to align,
-   *   for each op:
-   *     opNameLen (u16) + pad (u16),
-   *     opName bytes,
-   *     pad to u32 boundary,
-   *     lr (f32)
-   *
-   * The ACK that returns is SPRR + typeByte=5 + reqId; the existing
-   * binary-ack handler at `ws.on('message', ...)` routes it through
-   * `_gpuSparsePending` which resolves `batchPromise`. We then fan out
-   * to every queued op's resolve callback so individual await sites
-   * (rare — Hebbian is fire-and-forget in practice) still unblock.
-   */
-  _flushBoundHebbianBatch() {
-    const batch = this._boundHebbianBatch;
-    if (!batch) return;
-    if (batch.flushTimer) {
-      clearTimeout(batch.flushTimer);
-      batch.flushTimer = null;
-    }
-    const ops = batch.ops;
-    if (ops.length === 0) return;
-    batch.ops = [];
-
-    if (!this._gpuClient || this._gpuClient.readyState !== 1) {
-      for (const op of ops) op.resolve(null);
-      return;
-    }
-
-    const reqId = this._nextSparseReqId();
-    const headerBuf = this._encodeSparseHeader(5, reqId, ''); // empty name for batch frames
-    const countBuf = Buffer.alloc(4);
-    countBuf.writeUInt16LE(ops.length, 0);
-    // countBuf[2..3] already zero (pad)
-
-    const opBufs = [];
-    for (const op of ops) {
-      const nameBuf = Buffer.from(op.name, 'utf8');
-      const padAfterName = (4 - ((nameBuf.length) % 4)) % 4;
-      const size = 4 /* nameLen+pad */ + nameBuf.length + padAfterName + 4 /* lr */;
-      const opBuf = Buffer.alloc(size);
-      let o = 0;
-      opBuf.writeUInt16LE(nameBuf.length, o); o += 2;
-      // o += 2 pad — already zero
-      o += 2;
-      nameBuf.copy(opBuf, o); o += nameBuf.length + padAfterName;
-      opBuf.writeFloatLE(Number(op.lr) || 0, o);
-      opBufs.push(opBuf);
-    }
-    const frame = Buffer.concat([headerBuf, countBuf, ...opBufs]);
-
-    const batchPromise = this._sparseSendBinary(frame, reqId, 30_000);
-    batchPromise.then((result) => {
-      for (const op of ops) op.resolve(result);
-    }, (err) => {
-      for (const op of ops) op.reject(err);
-    });
-  }
-
-  /**
-   * T17.7 Phase C.1 — cluster-bound propagate dispatch. Reuses the
-   * type=2 binary frame with zero-length preSpikes; compute.html's
-   * handler skips writeSparsePreSpikes when length is 0, and the
-   * cluster-bound matrix's propagateSparse reads pre-spikes directly
-   * from main-cortex spikes buffer at the bound src region offset,
-   * writes post-currents into main-cortex currents buffer at the
-   * bound dst region offset. Returns post-region currents Float32Array
-   * same as standalone path (shape = dstRegion size).
-   */
-  async gpuSparsePropagateBound(name) {
-    return this.gpuSparsePropagate(name, new Uint32Array(0));
-  }
-
-  /**
-   * T17.7 Phase C.1 — ship a sparse spike pattern to the main cortex
-   * GPU sub-region slice via the existing write_spike_slice message.
-   * sparseIndices are relative to the region's start on the main
-   * cortex. compute.html zero-fills the full region slice and sets
-   * each index to 1 before calling gpu.writeSpikeSlice — so the
-   * curriculum teach pattern lands in the first N of the region
-   * (where N = standalone region size) and the rest of the main-
-   * cortex region stays silent until next LIF step, matching the
-   * cluster-bound cross-projection's read window exactly.
-   */
-  _gpuWriteCortexSpikeSlice(regionName, sparseIndices) {
-    if (!this._gpuClient || this._gpuClient.readyState !== 1) return;
-    const arr = Array.isArray(sparseIndices)
-      ? sparseIndices
-      : (sparseIndices && typeof sparseIndices.length === 'number')
-        ? Array.from(sparseIndices)
-        : [];
-    this._gpuClient.send(JSON.stringify({
-      type: 'write_spike_slice',
-      clusterName: 'cortex',
-      regionName,
-      sparseIndices: arr,
-    }));
-  }
-
-  /**
-   * T17.7 Phase E.a — sparse current-slice write to main cortex. Used
-   * by cluster.injectEmbeddingToRegion's forward path when cortexCluster's
-   * gpuProxy is wired. Writes the intent embedding's current-drive
-   * values into the main-cortex sub-slice at region.start+idx offsets,
-   * so the next LIF tick's driveDrive = (effectiveDrive + currents) ·
-   * regionGate picks up the injected intent.
-   *
-   * Sparse-indices format — typical injection touches ~regionSize/8
-   * indices (groupSize per embedding dim × number of non-zero dims),
-   * far cheaper than shipping a dense region-sized Float32Array.
-   *
-   * @param {string} regionName
-   * @param {number[]} sparseIndices - indices relative to region start
-   * @param {number[]} sparseValues  - matching current values
-   */
-  _gpuWriteCortexCurrentSlice(regionName, sparseIndices, sparseValues) {
-    if (!this._gpuClient || this._gpuClient.readyState !== 1) return;
-    const idx = Array.isArray(sparseIndices) ? sparseIndices : Array.from(sparseIndices || []);
-    const val = Array.isArray(sparseValues)  ? sparseValues  : Array.from(sparseValues || []);
-    if (idx.length === 0 || idx.length !== val.length) return;
-    this._gpuClient.send(JSON.stringify({
-      type: 'write_current_slice',
-      clusterName: 'cortex',
-      regionName,
-      sparseIndices: idx,
-      sparseValues: val,
-      psi: this.psi ?? 0,
-    }));
-  }
-
-  /**
-   * T17.7 Phase C.1 — pure clear of a main-cortex region slice on the
-   * GPU spikes buffer. Sends clear_spike_region JSON; compute.html
-   * handler calls gpu.clearSpikeRegion which uses encoder.clearBuffer
-   * at byte-range granularity — no CPU allocation. Per teach
-   * iteration the curriculum clears all 8 regions (auditory, visual,
-   * free, letter, phon, sem, fineType, motor) so the next pattern
-   * write lands on zeroed slices.
-   */
-  _gpuClearCortexSpikeRegion(regionName) {
-    if (!this._gpuClient || this._gpuClient.readyState !== 1) return;
-    this._gpuClient.send(JSON.stringify({
-      type: 'clear_spike_region',
-      clusterName: 'cortex',
-      regionName,
-    }));
-  }
-
-  /**
-   * T17.7 Phase D — readback letter-bucket spike counts from a main-
-   * cortex region sub-slice. Used by generateSentenceAwait to argmax-
-   * decode the motor slice per tick without shipping the full
-   * ~6.6M-neuron spike array. GPU-side reduction runs in parallel
-   * with the batch's LIF dispatch on the next substep — reduction
-   * latency adds to round-trip but not to main-brain tick time.
-   *
-   * @param {string} regionName — e.g. 'motor'
-   * @param {number} bucketCount — e.g. 26 for letters A..Z
-   * @param {number} subSliceLen — e.g. standalone motor size =
-   *   langCortexSize × 0.033. Must equal bucketCount × bucketSize.
-   * @param {number} [startOffset=0]
-   * @returns {Promise<Uint32Array|null>}
-   */
-  async gpuReadbackCortexLetterBuckets(regionName, bucketCount, subSliceLen, startOffset = 0) {
-    if (!this._gpuClient || this._gpuClient.readyState !== 1) return null;
-    // Timeout bumped 5s → 30s so readback can land even when compute.html
-    // is still draining a post-teach dispatch queue (binary weights save
-    // + many hebbianBound dispatches can delay the readback ACK past 5s).
-    // 30s matches the default sparse-dispatch timeout; readback is rare
-    // (per emission probe) so the longer cap doesn't slow the hot path.
-    const ack = await this._sparseSend({
-      type: 'readback_letter_buckets',
-      clusterName: 'cortex',
-      regionName,
-      bucketCount,
-      subSliceLen,
-      startOffset,
-    }, 30000);
-    if (!ack || !ack.counts) return null;
-    return new Uint32Array(ack.counts);
-  }
-
-  /**
-   * T17.7 Phase C.1 — rebind all 14 cortex cross-projections from
-   * standalone mode to cluster-bound mode after both main-cortex GPU
-   * init AND cortexCluster.initGpu() complete. The rebind is wire-
-   * cheap (one JSON per matrix, binding metadata only — values/colIdx/
-   * rowPtr stay in place on GPU) and frees the standalone preSpikes/
-   * postCurrents/postSpikes buffers (each matrix sheds ~60 MB at
-   * biological scale — 14 matrices × ~60 MB = ~840 MB VRAM freed).
-   *
-   * After this runs:
-   *   - Cross-projection propagate reads pre-spikes from main-cortex
-   *     `bufs.cortex.spikes` at the standalone region's offset inside
-   *     the main cortex's corresponding sub-region (first-N sub-slice),
-   *     writes post-currents into `bufs.cortex.currents` at the
-   *     destination sub-slice — the LIF dispatch that runs next sees
-   *     the accumulated currents and fires the main cortex neurons
-   *     within the language slice.
-   *   - Hebbian dispatch reads pre+post from `bufs.cortex.spikes`
-   *     at the two bound offsets — which is where curriculum teach's
-   *     write_spike_slice call places the training pattern.
-   *   - Main cortex's intra-synapse matrix is NOT rebound. The
-   *     homogeneous-cortex intra coupling
-   *     is handled by wave-function oscillation phase-sync +
-   *     fractal propagation, not an explicit intra matrix. The
-   *     STANDALONE cortexCluster keeps its intra-synapses for the
-   *     CPU-shadow equivalence check through Phase C/D; Phase E
-   *     deletes it alongside the standalone cluster itself.
-   *
-   * Sub-slice sizes match the standalone cortexCluster's region sizes,
-   * which in turn match the cross-projection matrix dimensions. The
-   * first-N sub-slice of each main-cortex sub-region gets the
-   * training pattern; the remaining (main-size − N) neurons of each
-   * sub-region stay homogeneous cortex coupled via wave-function
-   * activation, consistent with a biological "language core" inside
-   * the larger cortical territory.
-   */
-  async _ensureCortexCrossProjectionsBound() {
-    if (this._cortexCrossProjectionsBound) return;
-    if (!this.cortexCluster || !this.cortexCluster.regions) return;
-    if (!this._gpuClient || this._gpuClient.readyState !== 1) return;
-    const stand = this.cortexCluster;
-    const mainSize = CLUSTER_SIZES.cortex;
-    if (!mainSize) return;
-
-    // Main cortex region layout — same fractions used by _regionsFor
-    // and _mirrorCortexRegions. Kept in sync across all three call
-    // sites; divergence here would silently point cross-projections
-    // at the wrong main-cortex neurons.
-    const LAYOUT = {
-      auditory:  [0.000, 0.083],
-      visual:    [0.083, 0.250],
-      free:      [0.250, 0.500],
-      letter:    [0.500, 0.550],
-      phon:      [0.550, 0.750],
-      sem:       [0.750, 0.917],
-      fineType:  [0.917, 0.967],
-      motor:     [0.967, 1.000],
-    };
-    const mainSliceStart = {};
-    for (const [regName, [frA]] of Object.entries(LAYOUT)) {
-      mainSliceStart[regName] = Math.floor(mainSize * frA);
-    }
-
-    const projNames = Object.keys(stand.crossProjections || {});
-    if (projNames.length === 0) return;
-    console.log(`[Brain] rebinding ${projNames.length} cortex cross-projections to main-cortex sub-slices`);
-    let bound = 0;
-    for (const projKey of projNames) {
-      const idx = projKey.indexOf('_to_');
-      if (idx < 0) continue;
-      const srcName = projKey.slice(0, idx);
-      const dstName = projKey.slice(idx + 4);
-      const standSrc = stand.regions[srcName];
-      const standDst = stand.regions[dstName];
-      if (!standSrc || !standDst) continue;
-      const srcLen = standSrc.end - standSrc.start;
-      const dstLen = standDst.end - standDst.start;
-      const srcOff = mainSliceStart[srcName];
-      const dstOff = mainSliceStart[dstName];
-      if (srcOff == null || dstOff == null) continue;
-      const matrixKey = `${stand.name}_${projKey}`;  // e.g., "cortex_sem_to_motor"
-      const ack = await this._sparseSend({
-        type: 'rebind_sparse',
-        name: matrixKey,
-        binding: {
-          srcCluster: 'cortex',
-          srcRegion: { start: srcOff, end: srcOff + srcLen },
-          dstCluster: 'cortex',
-          dstRegion: { start: dstOff, end: dstOff + dstLen },
-        },
-      }, 30000);
-      if (ack && ack.ok) {
-        bound++;
-        // Mark the CPU-side projection so cluster._crossRegionHebbian
-        // can route GPU dispatch via hebbianBound (no array transfer).
-        const proj = stand.crossProjections[projKey];
-        if (proj) proj._gpuBound = true;
-      } else {
-        console.warn(`[Brain] rebind ${matrixKey} failed — GPU Hebbian will still use standalone path for this projection`);
-      }
-    }
-    console.log(`[Brain] ${bound}/${projNames.length} cross-projections now cluster-bound to main cortex slices`);
-    this._cortexCrossProjectionsBound = bound > 0;
-  }
-
-  /**
-   * Dispatch sparse Hebbian via binary frame.
-   */
-  async gpuSparseHebbian(name, preSpikes, postSpikes, lr) {
-    // Backpressure gate — see gpuSparsePropagate.
-    if (!this._gpuSparseFlowOk()) return null;
-    const reqId = this._nextSparseReqId();
-    const pre = preSpikes instanceof Uint32Array ? preSpikes
-      : preSpikes instanceof Uint8Array ? Uint32Array.from(preSpikes)
-      : new Uint32Array(preSpikes || []);
-    const post = postSpikes instanceof Uint32Array ? postSpikes
-      : postSpikes instanceof Uint8Array ? Uint32Array.from(postSpikes)
-      : new Uint32Array(postSpikes || []);
-    const hdr = this._encodeSparseHeader(3, reqId, name);
-    const preLen = Buffer.alloc(4);
-    preLen.writeUInt32LE(pre.length, 0);
-    const postLen = Buffer.alloc(4);
-    postLen.writeUInt32LE(post.length, 0);
-    const lrBuf = Buffer.alloc(4);
-    lrBuf.writeFloatLE(lr || 0.01, 0);
-    const preBuf = Buffer.from(pre.buffer, pre.byteOffset, pre.byteLength);
-    const postBuf = Buffer.from(post.buffer, post.byteOffset, post.byteLength);
-    const full = Buffer.concat([hdr, preLen, preBuf, postLen, postBuf, lrBuf]);
-    return this._sparseSendBinary(full, reqId, 30_000);
-  }
 
   /**
    * T15.C — drive per-tick scheduler: promote deferred ingestions,
@@ -4424,6 +3033,26 @@ class ServerBrain {
               if (!this._probeGatePauseLogged) {
                 console.log('[Brain] Main tick paused while curriculum runs gate probe (cortex owns GPU exclusively for the probe window).');
                 this._probeGatePauseLogged = true;
+                // I.6 closure — broadcast gate-probe start to the
+                // dashboard so operator sees a "gate probe in progress"
+                // banner instead of interpreting the inevitable GPU=0%
+                // + tick-paused state as a brain hang. The banner
+                // dismisses on the end-of-probe broadcast below.
+                this._probeGateStartedAt = Date.now();
+                this._probeGateCellKey = this.cortexCluster._currentCellKey || null;
+                if (this.clients && this.clients.size > 0) {
+                  const payload = JSON.stringify({
+                    type: 'gateProbe',
+                    state: 'start',
+                    cellId: this._probeGateCellKey,
+                    ts: this._probeGateStartedAt,
+                  });
+                  for (const [ws] of this.clients) {
+                    if (ws.readyState === ws.OPEN) {
+                      try { ws.send(payload); } catch { /* non-fatal */ }
+                    }
+                  }
+                }
               }
               this._updateDerivedState();
               if (this.running) setTimeout(tick, Math.max(200, BRAIN_TICK_MS * 4));
@@ -4432,6 +3061,26 @@ class ServerBrain {
             if (this._probeGatePauseLogged && !this.cortexCluster?._probeGateActive) {
               console.log('[Brain] Main tick resumed — gate probe complete.');
               this._probeGatePauseLogged = false;
+              // I.6 closure — broadcast gate-probe end with duration so
+              // the dashboard can dismiss the banner + record probe
+              // wall-clock time for diagnostic display.
+              const probeMs = this._probeGateStartedAt ? Date.now() - this._probeGateStartedAt : 0;
+              if (this.clients && this.clients.size > 0) {
+                const payload = JSON.stringify({
+                  type: 'gateProbe',
+                  state: 'end',
+                  cellId: this._probeGateCellKey,
+                  durationMs: probeMs,
+                  ts: Date.now(),
+                });
+                for (const [ws] of this.clients) {
+                  if (ws.readyState === ws.OPEN) {
+                    try { ws.send(payload); } catch { /* non-fatal */ }
+                  }
+                }
+              }
+              this._probeGateStartedAt = null;
+              this._probeGateCellKey = null;
             }
 
             const batchResult = await this._gpuBatch(SUBSTEPS, clusterParams);
@@ -4628,2117 +3277,34 @@ class ServerBrain {
    * @param {string} userId — who said it
    * @returns {Promise<{text: string, action: string}>}
    */
-  async processAndRespond(text, userId) {
-    // Inject text into brain
-    this.injectText(text);
-    this._lastInputTime = Date.now();
 
-    // 114.19fj.1 — CRITICAL — set `_lastUserInputText` on the language
-    // cortex so the chat-side composeSentence path can read it.
-    // engine.js sets it on `clusters.cortex` (main cortex, browser-only
-    // fallback path); on the server, `processAndRespond` is the single
-    // entry-point for live chat and the language cortex is `cortexCluster`.
-    // Without this set, language-cortex.js reads `cluster._lastUserInputText`
-    // as undefined and the entire fa→fi WH-INTENT / intent-concept /
-    // subject-inference / cortexPattern wiring degrades silently to the
-    // pre-fa baseline (default declarative_svo, null concept, null subject).
-    // Diagnostic warn at composeSentence call site catches future regressions.
-    if (this.cortexCluster) {
-      this.cortexCluster._lastUserInputText = text;
-    }
-
-    // 114.19fi.B.2 — push user input into _innerThoughtChain so
-    // inner-voice's next tick blends user content into its chain seed.
-    // Conversational continuity: Unity's autonomous inner monologue
-    // reflects on what was just said to her, not just brain state.
-    // 114.19fj.2 — lazy-init the chain in the same block. Without this,
-    // first-chat-before-first-inner-voice-tick (within 3s of cold boot)
-    // silently dropped the user-input from the chain because the array
-    // wasn't initialized yet.
-    if (text) {
-      if (!Array.isArray(this._innerThoughtChain)) this._innerThoughtChain = [];
-      this._innerThoughtChain.push({
-        sentence: String(text).slice(0, 200),
-        seedSource: 'user-input',
-        ts: Date.now(),
-      });
-      while (this._innerThoughtChain.length > 8) {
-        this._innerThoughtChain.shift();
-      }
-    }
-
-    // 114.19fi.B.5 — chat-turn history for multi-turn coherence.
-    // Lazy init on cortex. Inject prior 2 user inputs into sem before
-    // any other context loads so Unity sees "what we've been talking
-    // about" alongside the current turn. Crucial for "you said dogs
-    // are scary, why?" type follow-ups.
-    if (this.cortexCluster) {
-      if (!Array.isArray(this.cortexCluster._chatTurnHistory)) {
-        this.cortexCluster._chatTurnHistory = [];
-      }
-      const recentUser = this.cortexCluster._chatTurnHistory.slice(-2);
-      if (recentUser.length > 0 && this.sharedEmbeddings
-          && typeof this.sharedEmbeddings.getSentenceEmbedding === 'function') {
-        for (const turn of recentUser) {
-          if (!turn || !turn.user) continue;
-          try {
-            const turnEmb = this.sharedEmbeddings.getSentenceEmbedding(turn.user);
-            if (turnEmb && turnEmb.length > 0) {
-              this.cortexCluster.injectEmbeddingToRegion('sem', turnEmb, 0.10);
-            }
-          } catch { /* per-turn injection non-fatal */ }
-        }
-      }
-    }
-
-    // iter13 T13.12 — Identity-baseline always-on injection. EVERY chat
-    // turn injects all Tier 3 identity-bound schemas at low strength
-    // (0.15) so Unity's core self ("my name is Unity", "I am goth", etc.)
-    // is present in cortex sem region BEFORE the user-input intent seed
-    // gets stamped on top. Drug-state immune (this is pattern injection,
-    // not weight modification — drugs modulate decoding, not identity).
-    if (this.tier3Store && typeof this.tier3Store.injectIdentityBaseline === 'function') {
-      try {
-        const injected = this.tier3Store.injectIdentityBaseline();
-        if (injected > 0 && this._verboseHippocampus) {
-          console.log(`[Tier3Store] identity-baseline injected ${injected} schemas this turn`);
-        }
-      } catch (err) {
-        console.warn('[Tier3Store] identity-baseline inject failed:', err?.message || err);
-      }
-    }
-
-    // iter13 T13.13 — Pre-generation memory injection. Top-K Tier 2
-    // schemas matching the user's intent embedding inject their
-    // concept_embeddings into cortex sem region at strength 0.4 BEFORE
-    // language cortex generates. This is the LLM-attention equivalent —
-    // pull relevant memorized context into the active reasoning window
-    // before generating a response. Sets _hippocampusContextSchemas on
-    // cortexCluster so downstream generation can also reference the
-    // schema list (e.g., for retrieval-augmented oracle).
-    if (this.schemaStore && this.cortexCluster && this.sharedEmbeddings && text) {
-      try {
-        const intentEmb = this.sharedEmbeddings.getSentenceEmbedding(text);
-        if (intentEmb && intentEmb.length > 0) {
-          const topK = this.schemaStore.retrieveSchemas(intentEmb, 5);
-          if (topK.length > 0) {
-            const schemaInjectStrength = 0.4;
-            for (const { schema, score } of topK) {
-              if (!schema.conceptEmbedding || schema.conceptEmbedding.length === 0) continue;
-              try {
-                this.cortexCluster.injectEmbeddingToRegion('sem', schema.conceptEmbedding, schemaInjectStrength);
-              } catch { /* per-schema injection non-fatal */ }
-            }
-            // Surface the retrieved schemas for the chat-path oracle (T13.15).
-            this.cortexCluster._hippocampusContextSchemas = topK;
-            const labels = topK.map(t => `${t.schema.label}(${t.score.toFixed(2)})`).join(', ');
-            console.log(`[Hippocampus] retrieval for chat: top-${topK.length} schemas (${labels})`);
-          }
-        }
-      } catch (err) {
-        console.warn('[Hippocampus] pre-gen retrieval failed:', err?.message || err);
-      }
-    }
-
-    // T15.C — drug-offer detection + decide(). Runs BEFORE language
-    // cortex generation so if Unity declines (grade-locked / persona-
-    // excluded / physical-strain / random-decline), she emits the
-    // Unity-voice rejection line from drug-rejections.js instead of
-    // a normal generated response. If Unity accepts, ingest registers
-    // the pharma event and language cortex generates the in-character
-    // acknowledgement as usual.
-    try {
-      const offer = typeof this._drugDetector === 'function' ? this._drugDetector(text) : null;
-      if (offer && offer.substance && offer.kind === 'offer') {
-        const personaExclusions = { nicotine: true };  // Unity rejects tobacco per persona
-        const decision = this.drugScheduler.decide({
-          substance: offer.substance,
-          source: 'user',
-          social: this._sessionSocial === true,
-          location: this._sessionLocationTag || null,
-          time: Date.now(),
-          personaExclusions,
-        });
-        if (!decision.accept) {
-          // Route rejection through the Unity-voice library. Non-
-          // announcing (no scheduler-internal reason codes in the
-          // text Unity speaks).
-          let rejectionLine = '';
-          try {
-            // Lazy cache — first call loads the library, subsequent
-            // calls reuse the cached module. Keeps the hot path fast.
-            if (!this._drugRejections) this._drugRejections = require('./drug-rejections.js');
-            rejectionLine = this._drugRejections.pickRejection(decision.reason);
-          } catch { rejectionLine = 'nah, not right now.'; }
-          return {
-            text: rejectionLine,
-            action: 'respond_text',
-          };
-        }
-        // Accepted — fire the ingest event (no dose override; default
-        // to 1.0 via scheduler.ingest).
-        this.drugScheduler.ingest(offer.substance);
-        // Fall through to language cortex for the in-character
-        // acknowledgement so Unity's response sounds like her.
-      }
-    } catch (err) {
-      console.warn('[Brain] drug-offer processing failed:', err && err.message);
-    }
-
-    // T15.C — olfactory cue intake if client sent sensory metadata.
-    // Chat clients can ship `{type:'text', text, sensory:{smell:'coffee'}}`
-    // to surface environmental cues. Registers with OlfactoryChannel
-    // so _driveDrugScheduler's next tick sees the scent.
-    if (this.olfactory && arguments.length > 2 && arguments[2] && typeof arguments[2] === 'object') {
-      const meta = arguments[2];
-      if (meta.sensory && typeof meta.sensory.smell === 'string') {
-        this.olfactory.registerScent(meta.sensory.smell, { strength: meta.sensory.strength ?? 0.8 });
-      }
-    }
-
-    // Store in conversation history
-    if (!this._conversations) this._conversations = {};
-    if (!this._conversations[userId]) this._conversations[userId] = [];
-    this._conversations[userId].push({ role: 'user', text, time: this.time });
-    // Keep last 20 messages per user
-    if (this._conversations[userId].length > 20) this._conversations[userId].shift();
-
-    // GPU handles stepping — no CPU propagation needed
-    // Text input already injected into voltages, GPU will pick it up next tick
-
-    // R4 — The ~60-line system prompt that used to be assembled here
-    // (Unity self-description, cluster activity summary, persona params,
-    // formatting instructions) was the prompt for the Pollinations text-AI
-    // fetch. That entire backend is gone. Unity's server brain now
-    // generates every word equationally via the language cortex imported
-    // at boot. No prompt assembly, no conversation history formatting,
-    // no AI backend. Everything below this line runs the client brain's
-    // language cortex in Node.
-
-    // R3.5 + R4 — Equational language generation.
-
-    // The text-AI path (Pollinations /v1/chat/completions) has been
-    // removed as part of brain-refactor-full-control. Unity's server
-    // brain now generates responses via the same language cortex the
-    // client uses — dictionary bigrams, type n-grams, semantic
-    // embeddings, hippocampus persona recall, mood-weighted slot
-    // scoring — all running in Node after dynamic-imported at boot.
-
-    // If the language subsystem failed to initialize, fall through
-    // to an honest failure (return null text), motor action stays
-    // respond_text but the client shows nothing. No canned '...'
-    // stub pretending to be Unity.
-
-    if (!this._languageReady || !this.languageCortex || !this.dictionary) {
-      console.warn('[Brain] Language subsystem not ready — cannot generate response');
-      return {
-        text: '',
-        action: 'respond_text',
-        silent: true,
-        silentReason: 'language_not_ready',
-        silentDetail: 'Language subsystem still booting. Hang on a second and try again.',
-      };
-    }
-
-    // T14.12 (2026-04-14) — analyzeInput deleted. The learnSentence call
-    // below still fires which updates T14.8's sentence-form schemas and
-    // T14.7's learned type-transition table via the same observation
-    // walk. Intent/self-reference classification moves to cortex-state
-    // readouts via cluster.intentReadout() once curriculum shapes the
-    // fineType region.
-    this.languageCortex.learnSentence(text, this.dictionary, this.arousal, this.valence);
-    // Accumulate word frequencies (already persisted via saveWeights/_loadWeights round-trip fix)
-    this._learnWords(text);
-
-    // Compute cortex semantic pattern from the user's input — server
-    // shortcut for the cortex state since we don't run full LIF cortex
-    // dynamics on the server (GPU does the cluster sim elsewhere).
-    const cortexPattern = this._computeServerCortexPattern(text);
-
-    // Equational generation — every word comes from the slot scorer
-    // driven by live brain state (arousal, valence, psi, cortex
-    // pattern, fear, reward, drug state). Same signature the client
-    // uses at engine.js:775.
-    let response = '';
-    try {
-      // T14.26 — `generateAsync` (NOT `generate`) so the dictionary-
-      // cosine scoring loop yields to the Node event loop every 500
-      // entries. Without this yield, state broadcasts and compute_batch
-      // dispatch stall for the whole duration of Unity's response work,
-      // and the client's 3D brain visualization freezes whenever
-      // the user sends a message or Unity speaks. With the yield,
-      // setInterval
-      // broadcasts keep firing every 100ms through the scoring pass so
-      // the viz stays animated while Unity thinks.
-      response = await this.languageCortex.generateAsync(
-        this.dictionary,
-        this.arousal,
-        this.coherence,
-        {
-          predictionError: 0,
-          motorConfidence: this.motorConfidence ?? 0,
-          psi: this.psi,
-          cortexPattern,
-          // T13.7.6 — server's local cortex cluster, Hebbian-trained on
-          // persona at boot. T13.3 emission loop reads from it directly.
-          cortexCluster: this.cortexCluster,
-          drugState: this._drugStateLabel(),
-          speechMod: this.drugScheduler ? this.drugScheduler.speechModulation() : null,
-          fear: this.fear,
-          reward: this.reward,
-          socialNeed: this.persona?.socialAttachment ?? 0.5,
-        }
-      );
-    } catch (err) {
-      console.error('[Brain] languageCortex.generate threw:', err.message);
-      console.error(err.stack);
-      return { text: '', action: 'respond_text' };
-    }
-
-    if (!response || response.length < 2) {
-      // TRAINED-STATE silence reason, not grade-label.
-      // Operator (2026-05-06): "at any point in her training she
-      // should be able to use what she has learned to that point
-      // without having to wait unitl the full grade completes". The
-      // old `prePhon = minGrade === 'pre-K'` check forced Unity into
-      // grade-label-silence even when she'd already trained the
-      // alphabet + first 100 K words mid-run. New logic: check the
-      // LIVE trained-state cap. If she has ANY words bucketed or any
-      // cells passed, an empty response is genuine motor-instability
-      // for this specific input (try rephrasing) — not a sweeping
-      // "she hasn't graduated yet". Only a truly fresh brain (zero
-      // training, zero cells passed, all subGrades 'fresh') gets the
-      // "pre_training" silent reason.
-      const minGrade = this._computeMinGrade();
-      const trainedCap = (this.cortexCluster && typeof this.cortexCluster.getTrainedCapability === 'function')
-        ? this.cortexCluster.getTrainedCapability()
-        : { wordsBucketed: 0, passedCellCount: 0, subGradesActive: 0 };
-      const isFresh = trainedCap.wordsBucketed === 0
-        && trainedCap.passedCellCount === 0
-        && trainedCap.subGradesActive === 0;
-      return {
-        text: '',
-        action: 'respond_text',
-        silent: true,
-        silentReason: isFresh ? 'pre_training' : 'motor_unstable',
-        silentDetail: isFresh
-          ? `Unity is brand new — zero words bucketed, zero cells passed, all subGrades 'fresh'. Her motor region has no letter→motor or sem→word_motor wiring yet. Start the curriculum (start.bat) and watch her abilities build live.`
-          : `Motor region didn't commit a stable letter sequence for this input. Live trained capability: ${trainedCap.wordsBucketed} words bucketed across ${trainedCap.bucketSubjects} subjects, ${trainedCap.passedCellCount} cells passed, ${trainedCap.subGradesActive} subGrades active. The intent signal may have been too weak for this specific input — try rephrasing.`,
-        minGrade,
-        trainedCap,
-      };
-    }
-
-    // Store the exchange in per-user conversation history + episodic memory
-    this._conversations[userId].push({ role: 'assistant', text: response, time: this.time });
-    this.reward += 0.1;
-    this._learnWords(response);
-    this.storeEpisode(userId, 'interaction', text, response);
-
-    // 114.19fi.B.5 — push chat-turn pair to rolling history (cap 16).
-    // Multi-turn coherence: next call's processAndRespond reads prior
-    // 2 user inputs and injects their embeddings into sem.
-    if (this.cortexCluster) {
-      if (!Array.isArray(this.cortexCluster._chatTurnHistory)) {
-        this.cortexCluster._chatTurnHistory = [];
-      }
-      this.cortexCluster._chatTurnHistory.push({
-        user: text,
-        unity: response,
-        ts: Date.now(),
-      });
-      while (this.cortexCluster._chatTurnHistory.length > 16) {
-        this.cortexCluster._chatTurnHistory.shift();
-      }
-    }
-
-    // Motor action routing — the generated text can still signal
-    // image / build intent by its content, same as the client handles
-    // code blocks in responses.
-    if (response.startsWith('[IMAGE]')) {
-      return { text: response.slice(7).trim(), action: 'generate_image' };
-    }
-    try {
-      const parsed = JSON.parse(response);
-      if (parsed.name && (parsed.html || parsed.js)) {
-        return { text: response, action: 'build_ui', component: parsed };
-      }
-    } catch {}
-
-    return { text: response, action: 'respond_text' };
-  }
-
-  _updatePerfStats() {
-    const mem = process.memoryUsage();
-    const cpuNow = process.cpuUsage();
-    // CPU usage: measure actual wall-clock time spent in brain steps
-    // process.cpuUsage only counts main thread — workers aren't included
-    // Measure ACTUAL CPU usage from process.cpuUsage(), not step wall-clock time
-    // Step time includes GPU I/O wait which is NOT CPU work
-    const cpuUsage = process.cpuUsage(this._lastCpuUsage || undefined);
-    const cpuTimeMs = (cpuUsage.user + cpuUsage.system) / 1000; // microseconds → ms
-    const elapsed = this._lastPerfTime ? (Date.now() - this._lastPerfTime) : 1000;
-    this._lastPerfTime = Date.now();
-    const cpuPercent = Math.min(100, Math.round(cpuTimeMs / (elapsed * os.cpus().length) * 100));
-    this._lastCpuUsage = process.cpuUsage();
-    this._lastCpuUsage = cpuNow;
-
-    // GPU utilization (poll nvidia-smi periodically)
-    let gpuUtil = 0;
-    if (RESOURCES.gpu.vram > 0 && (!this._lastGpuPoll || Date.now() - this._lastGpuPoll > 5000)) {
-      try {
-        const smi = execSync('nvidia-smi --query-gpu=utilization.gpu --format=csv,noheader,nounits', { timeout: 2000 }).toString().trim();
-        gpuUtil = parseInt(smi) || 0;
-        this._lastGpuPoll = Date.now();
-        this._cachedGpuUtil = gpuUtil;
-      } catch { gpuUtil = this._cachedGpuUtil || 0; }
-    } else {
-      gpuUtil = this._cachedGpuUtil || 0;
-    }
-
-    // UPDATE existing object — don't replace (tick loop writes stepTimeMs/stepsPerSec)
-    Object.assign(this._perfStats, {
-      cpuPercent,
-      memUsedMB: Math.round(mem.heapUsed / 1048576),
-      memTotalMB: Math.round(os.totalmem() / 1048576),
-      memRssMB: Math.round(mem.rss / 1048576),
-      gpuName: RESOURCES.gpu.name,
-      gpuVramMB: RESOURCES.gpu.vram,
-      gpuUtilPercent: gpuUtil,
-      gpuComputeConnected: !!(this._gpuConnected && this._gpuClient?.readyState === 1),
-      gpuHits: this._gpuHits || 0,
-      gpuMisses: this._gpuMisses || 0,
-      nodeHeapMB: Math.round(mem.heapTotal / 1048576),
-      cores: os.cpus().length,
-      parallelMode: false,
-      workerCount: 0,
-    });
-  }
-
-  /**
-   * T15 — compact single-string label from the scheduler's active substances.
-   * Returns 'sober' when nothing is active. Used by legacy UI consumers;
-   * new consumers should read state.drugSnapshot directly.
-   */
-  _drugStateLabel() {
-    if (!this.drugScheduler || !this.drugSubstances) return 'sober';
-    const active = this.drugScheduler.activeSubstances();
-    if (active.length === 0) return 'sober';
-    return active
-      .map(a => this.drugSubstances[a.substance]?.displayName || a.substance)
-      .join(' + ');
-  }
-
-  /**
-   * T15 — rich scheduler snapshot for UI consumers migrating off the
-   * compact string label. Null until _initLanguageSubsystem finishes.
-   */
-  _drugSnapshot() {
-    return this.drugScheduler ? this.drugScheduler.snapshot() : { sober: true, active: [], pendingAcquisitions: [], gradeLocked: true };
-  }
-
-  _getSharedMood() {
-    // Computed from equations — not a lookup.
-    // The amygdala equation: V(s) = Σw·x → arousal and valence
-    // The gate equation: emotionalGate = 0.7 + arousal·0.6
-    // These ARE the mood. Raw values. The dashboard renders them however it wants.
-    return {
-      arousal: this.arousal,
-      valence: this.valence,
-      fear: this.fear,
-      psi: this.psi,
-      coherence: this.coherence,
-      coherenceTheta: this.coherenceTheta,
-      coherenceGamma: this.coherenceGamma,
-      gate: (0.7 + this.arousal * 0.6),
-      isDreaming: this._isDreaming || false,
-      drugState: this.drugState,
-      totalSpikes: this.totalSpikes,
-      // The raw equation outputs ARE the mood. No translation.
-    };
-  }
-
-  _learnWords(text) {
-    // Simple word frequency tracking for server-side dictionary
-    if (!this._wordFreq) this._wordFreq = {};
-    const words = text.toLowerCase().replace(/[^a-z' -]/g, '').split(/\s+/);
-    for (const w of words) {
-      if (w.length >= 2) this._wordFreq[w] = (this._wordFreq[w] || 0) + 1;
-    }
-  }
-
-  // ── Episodic Memory (SQLite) ─────────────────────────────────
-
-  _initEpisodicDB() {
-    const dbPath = path.join(__dirname, 'episodic-memory.db');
-    this._db = new Database(dbPath);
-
-    // WAL mode for concurrent reads during brain loop
-    this._db.pragma('journal_mode = WAL');
-
-    // iter13 T13.1 — Episodic-memory schema with salience metadata.
-    // Squire/McClelland CLS theory: episodic store needs per-event
-    // emotional/arousal/surprise/novelty metadata to compute the
-    // salience score that drives Tier 1 → Tier 2 consolidation.
-    // Frequency-count tracks repeated re-encounters (cosine>0.85 in
-    // last 48h merges into existing row instead of new). consolidation_count
-    // tracks dream-cycle replay events. promoted_at flips when episode
-    // promotes to Tier 2 schema. salience_score persisted for ranking.
-    // input_embedding BLOB stores GloVe Float64Array bytes for cosine
-    // matching against new episodes (novelty + frequency-merge).
-    this._db.exec(`
-      CREATE TABLE IF NOT EXISTS episodes (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        timestamp REAL NOT NULL,
-        brain_time REAL NOT NULL,
-        user_id TEXT,
-        type TEXT NOT NULL DEFAULT 'interaction',
-        arousal REAL,
-        valence REAL,
-        psi REAL,
-        coherence REAL,
-        total_spikes INTEGER,
-        input_text TEXT,
-        response_text TEXT,
-        cortex_pattern TEXT,
-        created_at TEXT DEFAULT (datetime('now')),
-        emotional_valence REAL DEFAULT 0,
-        arousal_at_encode REAL DEFAULT 0,
-        surprise REAL DEFAULT 0,
-        novelty REAL DEFAULT 1.0,
-        frequency_count INTEGER DEFAULT 1,
-        last_replayed_at INTEGER,
-        consolidation_count INTEGER DEFAULT 0,
-        salience_score REAL DEFAULT 0,
-        effective_salience REAL DEFAULT 0,
-        promoted_at INTEGER,
-        promoted_to_schema_id TEXT,
-        input_embedding BLOB
-      );
-      CREATE INDEX IF NOT EXISTS idx_episodes_time ON episodes(brain_time);
-      CREATE INDEX IF NOT EXISTS idx_episodes_type ON episodes(type);
-      CREATE INDEX IF NOT EXISTS idx_episodes_user ON episodes(user_id);
-      CREATE INDEX IF NOT EXISTS idx_episodes_salience ON episodes(effective_salience);
-      CREATE INDEX IF NOT EXISTS idx_episodes_promoted ON episodes(promoted_at);
-    `);
-
-    // iter13 T13.1 — defensive ALTER TABLE migration for pre-iter13 DBs
-    // (preserves data when DREAM_KEEP_STATE=1 carries old episodic-memory
-    // across boots). Detects missing columns via PRAGMA table_info,
-    // runs ALTER TABLE for each. Idempotent; running on a fresh post-
-    // CREATE DB is a no-op because all columns are already present.
-    try {
-      const cols = this._db.pragma('table_info(episodes)').map(c => c.name);
-      const need = [
-        ['emotional_valence', 'REAL DEFAULT 0'],
-        ['arousal_at_encode', 'REAL DEFAULT 0'],
-        ['surprise', 'REAL DEFAULT 0'],
-        ['novelty', 'REAL DEFAULT 1.0'],
-        ['frequency_count', 'INTEGER DEFAULT 1'],
-        ['last_replayed_at', 'INTEGER'],
-        ['consolidation_count', 'INTEGER DEFAULT 0'],
-        ['salience_score', 'REAL DEFAULT 0'],
-        ['effective_salience', 'REAL DEFAULT 0'],
-        ['promoted_at', 'INTEGER'],
-        ['promoted_to_schema_id', 'TEXT'],
-        ['input_embedding', 'BLOB'],
-      ];
-      for (const [name, type] of need) {
-        if (!cols.includes(name)) {
-          this._db.exec(`ALTER TABLE episodes ADD COLUMN ${name} ${type};`);
-          console.log(`[Episodic] iter13 migration — added column ${name} ${type}`);
-        }
-      }
-    } catch (err) {
-      console.warn(`[Episodic] iter13 migration warning: ${err.message}`);
-    }
-
-    // Prepared statements for fast insert/query (iter13 — extended with salience fields)
-    this._stmtInsertEpisode = this._db.prepare(`
-      INSERT INTO episodes (
-        timestamp, brain_time, user_id, type,
-        arousal, valence, psi, coherence, total_spikes,
-        input_text, response_text, cortex_pattern,
-        emotional_valence, arousal_at_encode, surprise, novelty,
-        frequency_count, consolidation_count,
-        salience_score, effective_salience, input_embedding
-      )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `);
-
-    // iter13 T13.3 — frequency-merge query: find episodes within last
-    // FREQ_MERGE_WINDOW_MS (default 48h) for the same user_id. Caller
-    // computes cosine in JS against returned input_embedding blobs.
-    this._stmtFindRecentForMerge = this._db.prepare(`
-      SELECT id, input_embedding, frequency_count
-      FROM episodes
-      WHERE user_id IS ? AND timestamp > ? AND input_embedding IS NOT NULL
-      ORDER BY id DESC
-    `);
-
-    // iter13 T13.3 — frequency-merge update: increment count + bump replay timestamp.
-    this._stmtIncrementFrequency = this._db.prepare(`
-      UPDATE episodes
-      SET frequency_count = frequency_count + 1, last_replayed_at = ?
-      WHERE id = ?
-    `);
-
-    // iter13 T13.4 — decay sweep update.
-    this._stmtUpdateEffectiveSalience = this._db.prepare(`
-      UPDATE episodes SET effective_salience = ? WHERE id = ?
-    `);
-
-    // iter13 T13.4 — pruning gate: delete low-salience old never-consolidated.
-    this._stmtPruneStale = this._db.prepare(`
-      DELETE FROM episodes
-      WHERE effective_salience < ?
-        AND timestamp < ?
-        AND consolidation_count = 0
-        AND promoted_at IS NULL
-    `);
-
-    // iter13 T13.4 — promotion candidates: salience > threshold + freq + consol.
-
-    // iter22-F.4 — drop `promoted_at IS NULL` filter. Operator caught:
-    // every consolidation pass after the first few went all-zero
-    // because anchor episodes (heartbeats with iter20-K exact-text
-    // merge) get promoted ONCE then are excluded forever, even though
-    // their `frequency_count` keeps climbing as new identical-text
-    // heartbeats merge in. The point of frequency-merge IS that the
-    // anchor row stays the source-of-truth; consolidation should re-
-    // visit it when its salience climbs high enough to re-qualify.
-    // ConsolidationEngine guards against infinite reinforcement via
-    // its `_findExistingSchema(centroid, threshold)` lookup that
-    // funnels re-promoted candidates into their existing schema
-    // (reinforced += 1, not new schema). So dropping the filter ⇒
-    // anchor episodes contribute their frequency-driven climb to the
-    // matching schema's consolidation_strength instead of saturating.
-    // Schemas grow with continued exposure — which is the actual
-    // biology of consolidation in real hippocampus.
-    this._stmtFindPromotionCandidates = this._db.prepare(`
-      SELECT * FROM episodes
-      WHERE effective_salience > ?
-        AND frequency_count >= ?
-        AND consolidation_count >= ?
-      ORDER BY effective_salience DESC LIMIT ?
-    `);
-
-    // iter13 T13.4 — mark promoted (back-reference to Tier 2 schema id).
-    this._stmtMarkPromoted = this._db.prepare(`
-      UPDATE episodes SET promoted_at = ?, promoted_to_schema_id = ? WHERE id = ?
-    `);
-
-    // iter13 T13.9 — increment consolidation_count when a schema replay touches this episode.
-    this._stmtIncrementConsolidation = this._db.prepare(`
-      UPDATE episodes
-      SET consolidation_count = consolidation_count + 1, last_replayed_at = ?
-      WHERE id = ?
-    `);
-
-    // iter13 T13.4 — iterate all episodes for decay sweep (windowed).
-    this._stmtAllEpisodesForDecay = this._db.prepare(`
-      SELECT id, salience_score, timestamp FROM episodes WHERE timestamp < ?
-    `);
-
-    // T6 2026-04-13 — the old global `_stmtRecentEpisodes` that
-    // returned everyone's recent episodes without a user filter is
-    // kept only as an admin-debug path (not exposed over HTTP
-    // anymore, see /episodes handler below). Cognition and recall
-    // queries use the user-scoped variants.
-    this._stmtRecentEpisodes = this._db.prepare(`
-      SELECT * FROM episodes ORDER BY id DESC LIMIT ?
-    `);
-
-    this._stmtRecallByUser = this._db.prepare(`
-      SELECT * FROM episodes WHERE user_id = ? ORDER BY id DESC LIMIT ?
-    `);
-
-    // T6 — recall by mood now REQUIRES a userId filter so cross-user
-    // leakage is impossible. Callers that want "recall my episodes
-    // with similar arousal/valence" get that; there's no mood-only
-    // global query anymore.
-    this._stmtRecallByMood = this._db.prepare(`
-      SELECT * FROM episodes
-      WHERE user_id = ?
-        AND ABS(arousal - ?) < 0.2
-        AND ABS(valence - ?) < 0.3
-      ORDER BY id DESC LIMIT ?
-    `);
-
-    // T6 — recent episodes scoped to one user (used by the /episodes
-    // HTTP endpoint when a ?user=<id> query param is provided).
-    this._stmtRecentEpisodesByUser = this._db.prepare(`
-      SELECT * FROM episodes WHERE user_id = ? ORDER BY id DESC LIMIT ?
-    `);
-
-    this._stmtEpisodeCount = this._db.prepare('SELECT COUNT(*) as count FROM episodes');
-
-    const count = this._stmtEpisodeCount.get().count;
-    console.log(`[Brain] Episodic memory: ${count} episodes in database`);
-  }
-
-  /**
-   * Store an episode — a snapshot of brain state at a meaningful moment.
-   *
-   * iter13 T13.1+T13.2+T13.3 — salience computation + frequency-merge gate
-   * + GloVe embedding persistence. Episode is the Tier 1 unit. Salience
-   * drives whether it eventually consolidates into a Tier 2 schema.
-   * Frequency-merge prevents trivial-input bloat: same text within 48h
-   * increments existing row's frequency_count instead of new insert.
-   */
-  storeEpisode(userId, type, inputText, responseText) {
-    // Sample cortex pattern — first 32 firing rates as compact representation
-    const cortexV = this.voltages.cortex;
-    const pattern = [];
-    const step = Math.floor(CLUSTER_SIZES.cortex / 32);
-    for (let i = 0; i < 32; i++) {
-      const idx = i * step;
-      pattern.push(+(cortexV[idx] > this.vThresh ? 1 : 0));
-    }
-
-    // iter13 T13.2 — compute salience metadata at encode time.
-    let inputEmbedding = null;
-    let inputEmbeddingBuf = null;
-    let surprise = 0;
-    let novelty = 1.0;
-    if (inputText) {
-      try {
-        if (this.sharedEmbeddings && typeof this.sharedEmbeddings.getSentenceEmbedding === 'function') {
-          inputEmbedding = this.sharedEmbeddings.getSentenceEmbedding(inputText);
-          if (inputEmbedding && inputEmbedding.length > 0) {
-            // Buffer.from on a Float64Array view zero-copies the underlying ArrayBuffer
-            inputEmbeddingBuf = Buffer.from(inputEmbedding.buffer, inputEmbedding.byteOffset, inputEmbedding.byteLength);
-          }
-        }
-        if (this.cortexCluster && typeof this.cortexCluster.computeTransitionSurprise === 'function') {
-          const s = this.cortexCluster.computeTransitionSurprise(inputText);
-          if (typeof s === 'number' && Number.isFinite(s)) surprise = s;
-        }
-      } catch { /* salience metadata is best-effort, never block insert */ }
-    }
-
-    // iter20-K — exact-text merge bypass. Operator caught: GloVe
-    // embeddings of technical strings ("learning ela/kindergarten:_
-    // teachCombination") are essentially noise (~1e-15 values), so
-    // cosine of two IDENTICAL-text embeddings = 0.18 instead of 1.0.
-    // Cosine-based merge never fires for these strings even with
-    // threshold lowered to 0.5. Bypass the embedding entirely for
-    // exact text matches — same user + same input_text + within
-    // window → deterministic merge. SQL query is fast (indexed by
-    // user + timestamp).
-    if (inputText && userId) {
-      const EXACT_WINDOW_MS = 48 * 60 * 60 * 1000;
-      const exactCutoff = Date.now() - EXACT_WINDOW_MS;
-      try {
-        const exactRow = this._db.prepare(
-          'SELECT id, frequency_count FROM episodes WHERE user_id IS ? AND input_text = ? AND timestamp > ? ORDER BY id DESC LIMIT 1'
-        ).get(userId, inputText, exactCutoff);
-        if (exactRow && exactRow.id) {
-          this._stmtIncrementFrequency.run(Date.now(), exactRow.id);
-          return { merged: true, id: exactRow.id, exact: true };
-        }
-      } catch { /* exact-merge failure is non-fatal — fall through to cosine path */ }
-    }
-
-    // iter13 T13.3 — frequency-merge gate via cosine for similar (not
-    // identical) text. Operator's data showed embeddings of technical
-    // strings produce noise so cosine-merge rarely fires for those —
-    // exact-text merge above catches identical heartbeats; cosine path
-    // catches near-duplicates with subtle wording differences.
-    if (inputEmbedding && inputEmbedding.length > 0) {
-      const FREQ_MERGE_WINDOW_MS = 48 * 60 * 60 * 1000;
-      // iter20-C → iter20-F per operator 2026-05-05 "i dont think memory
-      // is working still": even with cosine 0.7, freq-merged stayed at 0
-      // because IDENTICAL "learning ela/kindergarten:_teachQABinding"
-      // heartbeats that should cosine=1.0 weren't merging. SQL inspection
-      // confirmed 4 separate rows with same input_text, all freq_count=1.
-      // Lowered to 0.5 to be EXTREMELY tolerant of similar-context
-      // heartbeats. Even moderately different texts (different cell
-      // names, different phases) collapse if they share the
-      // "learning/dreaming/attentive" category prefix.
-      const FREQ_MERGE_COSINE = 0.5;
-      const cutoff = Date.now() - FREQ_MERGE_WINDOW_MS;
-      const recent = this._stmtFindRecentForMerge.all(userId || null, cutoff);
-      let bestId = -1, bestCos = -Infinity;
-      for (const row of recent) {
-        if (!row.input_embedding) continue;
-        const otherEmb = this._deserializeEmbedding(row.input_embedding);
-        if (!otherEmb) continue;
-        const cos = this._cosineEmbedding(inputEmbedding, otherEmb);
-        if (cos > bestCos) { bestCos = cos; bestId = row.id; }
-      }
-      if (bestId >= 0 && bestCos >= FREQ_MERGE_COSINE) {
-        this._stmtIncrementFrequency.run(Date.now(), bestId);
-        // Recompute salience scaling — frequency-merged episodes get a
-        // small salience bump from the re-encounter (reinforcement
-        // signal) without overwriting the original's encoding context.
-        return { merged: true, id: bestId, cosine: bestCos };
-      }
-      // For novelty, novelty = 1 - max_cosine. Empty recent set → novelty=1.
-      novelty = bestCos === -Infinity ? 1.0 : Math.max(0, 1.0 - bestCos);
-    }
-
-    // iter13 T13.2 — salience score formula:
-    //   salience = 0.4*|emotional_valence| + 0.3*arousal + 0.2*surprise + 0.1*novelty
-    // Each input clamped [0,1] (valence is symmetric so |val|).
-    const valenceAbs = Math.min(1, Math.abs(this.valence || 0));
-    const arousalNorm = Math.min(1, Math.max(0, this.arousal || 0));
-    const surpriseNorm = Math.min(1, Math.max(0, surprise));
-    const noveltyNorm = Math.min(1, Math.max(0, novelty));
-    const salienceScore = 0.4 * valenceAbs + 0.3 * arousalNorm + 0.2 * surpriseNorm + 0.1 * noveltyNorm;
-    const effectiveSalience = salienceScore; // fresh episode — no decay yet
-
-    this._stmtInsertEpisode.run(
-      Date.now(),
-      this.time,
-      userId || null,
-      type,
-      this.arousal,
-      this.valence,
-      this.psi,
-      this.coherence,
-      this.totalSpikes,
-      inputText || null,
-      responseText || null,
-      JSON.stringify(pattern),
-      // iter13 salience fields
-      this.valence || 0,        // emotional_valence (signed valence at encode)
-      arousalNorm,              // arousal_at_encode
-      surpriseNorm,             // surprise
-      noveltyNorm,              // novelty
-      1,                        // frequency_count (initial)
-      0,                        // consolidation_count (initial)
-      salienceScore,            // salience_score
-      effectiveSalience,        // effective_salience
-      inputEmbeddingBuf,        // input_embedding BLOB (Float64Array bytes)
-    );
-    return { merged: false };
-  }
-
-  // iter13 T13.1 — embedding serialization helpers. Float64Array view
-  // over the BLOB Buffer's ArrayBuffer — zero-copy when alignment is
-  // 8-byte. Better-sqlite3 returns BLOB as Node Buffer.
-  _serializeEmbedding(emb) {
-    if (!emb || emb.length === 0) return null;
-    return Buffer.from(emb.buffer, emb.byteOffset, emb.byteLength);
-  }
-  _deserializeEmbedding(buf) {
-    if (!buf || buf.length === 0) return null;
-    // Buffer.byteOffset isn't always 8-aligned in Node; copy if needed.
-    const bytes = buf.byteLength;
-    if (bytes % 8 !== 0) return null;
-    if (buf.byteOffset % 8 === 0) {
-      return new Float64Array(buf.buffer, buf.byteOffset, bytes / 8);
-    }
-    const aligned = Buffer.allocUnsafe(bytes);
-    buf.copy(aligned);
-    return new Float64Array(aligned.buffer, aligned.byteOffset, bytes / 8);
-  }
-  _cosineEmbedding(a, b) {
-    if (!a || !b || a.length === 0 || b.length === 0) return 0;
-    const n = Math.min(a.length, b.length);
-    let dot = 0, na = 0, nb = 0;
-    for (let i = 0; i < n; i++) {
-      dot += a[i] * b[i];
-      na += a[i] * a[i];
-      nb += b[i] * b[i];
-    }
-    const denom = Math.sqrt(na) * Math.sqrt(nb);
-    return denom > 0 ? dot / denom : 0;
-  }
-
-  // iter13 T13.4 — Decay sweep. Multiply salience by exp(-age_h/HALF_LIFE)
-  // for episodes older than MIN_AGE_FOR_DECAY (1h). Persist the decayed
-  // effective_salience. Then prune episodes meeting all three pruning
-  // criteria: effective_salience < PRUNE_THRESHOLD, age > 30 days,
-  // consolidation_count == 0, AND not promoted.
-  decayEpisodes() {
-    const DECAY_HALF_LIFE_HOURS = 168; // 1 week — biological hippocampal trace half-life
-    const MIN_AGE_FOR_DECAY_MS = 60 * 60 * 1000; // 1 hour
-    const PRUNE_THRESHOLD = 0.05;
-    const PRUNE_AGE_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
-    const now = Date.now();
-    const decayCutoff = now - MIN_AGE_FOR_DECAY_MS;
-    let decayed = 0;
-    try {
-      const rows = this._stmtAllEpisodesForDecay.all(decayCutoff);
-      const updateTx = this._db.transaction((rs) => {
-        for (const r of rs) {
-          const ageHours = (now - r.timestamp) / (60 * 60 * 1000);
-          const factor = Math.exp(-ageHours / DECAY_HALF_LIFE_HOURS);
-          const effective = (r.salience_score || 0) * factor;
-          this._stmtUpdateEffectiveSalience.run(effective, r.id);
-          decayed++;
-        }
-      });
-      updateTx(rows);
-    } catch (err) { console.warn(`[Episodic] decay sweep error: ${err.message}`); }
-
-    let pruned = 0;
-    try {
-      const result = this._stmtPruneStale.run(PRUNE_THRESHOLD, now - PRUNE_AGE_MS);
-      pruned = result.changes;
-    } catch (err) { console.warn(`[Episodic] prune error: ${err.message}`); }
-
-    if (decayed > 0 || pruned > 0) {
-      console.log(`[Episodic] decay sweep — ${decayed} episodes decayed, ${pruned} pruned`);
-    }
-    return { decayed, pruned };
-  }
-
-  // iter13 T13.4 → iter20-M — Promotion candidates: episodes ready to
-  // consolidate into Tier 2 schemas.
-
-  // iter20-M per operator 2026-05-05 "she should be building concepts":
-  // unique curriculum-phase episodes (each phase is distinct, so freq=1)
-  // would never promote at FREQ_THRESHOLD=2. But these are EXACTLY the
-  // episodes that should cluster into concepts ("learned letter case
-  // binding" + "learned vowel sound variants" + "learned rhyme families"
-  // → phonetics/literacy schema). Lowered FREQ_THRESHOLD to 1 so
-  // singleton-but-high-salience episodes qualify. ConsolidationEngine's
-  // cosine-clustering then groups semantically-similar singletons
-  // together into meaningful schemas. Promotion threshold remains at
-  // 0.2 salience so noise doesn't promote — only real learning moments.
-
-  // - PROMOTION_THRESHOLD 0.2 — heartbeat-level salience accepted; pure
-  //   low-arousal idle (~0.1) still filtered out
-  // - FREQ_THRESHOLD 1 — every episode that meets salience criterion
-  //   is a candidate (was 2 — required at least one merge)
-  // - CONSOL_THRESHOLD 0 — chicken-egg break (was 2)
-  findPromotionCandidates(limit = 20) {
-    const PROMOTION_THRESHOLD = 0.2;
-    const FREQ_THRESHOLD = 1;
-    const CONSOL_THRESHOLD = 0;
-    try {
-      return this._stmtFindPromotionCandidates.all(
-        PROMOTION_THRESHOLD, FREQ_THRESHOLD, CONSOL_THRESHOLD, limit
-      );
-    } catch (err) {
-      console.warn(`[Episodic] findPromotionCandidates error: ${err.message}`);
-      return [];
-    }
-  }
-
-  // iter13 T13.4 — Mark episode as promoted to a Tier 2 schema.
-  // Caller passes schemaId from SchemaStore.createSchema return.
-  markEpisodePromoted(episodeId, schemaId) {
-    try {
-      this._stmtMarkPromoted.run(Date.now(), schemaId, episodeId);
-      return true;
-    } catch (err) {
-      console.warn(`[Episodic] markEpisodePromoted error: ${err.message}`);
-      return false;
-    }
-  }
-
-  // iter13 T13.9 — increment consolidation_count when ConsolidationEngine
-  // replays this episode (or its parent schema) during a dream-cycle
-  // pass. Drives the consolidation_count >= 2 promotion gate.
-  recordEpisodeConsolidation(episodeId) {
-    try {
-      this._stmtIncrementConsolidation.run(Date.now(), episodeId);
-      return true;
-    } catch (err) { return false; }
-  }
-
-  /**
-   * Recall episodes by mood similarity, scoped to ONE user.
-   *
-   * T6 2026-04-13 — userId is now REQUIRED. The old signature
-   * `recallByMood(arousal, valence, limit)` without a user filter
-   * could pull episodes from any user, violating the private-episode
-   * rule. Any cognition code that wants mood-similarity recall must
-   * pass the triggering user's stable id.
-   */
-  recallByMood(userId, arousal, valence, limit = 5) {
-    if (!userId) return []; // privacy gate — no global mood recall
-    return this._stmtRecallByMood.all(userId, arousal, valence, limit);
-  }
-
-  /**
-   * Recall recent episodes for a specific user.
-   */
-  recallByUser(userId, limit = 10) {
-    return this._stmtRecallByUser.all(userId, limit);
-  }
-
-  /**
-   * Get total episode count.
-   */
-  getEpisodeCount() {
-    return this._stmtEpisodeCount.get().count;
-  }
-
-  /**
-   * iter15-mem — unified 5-tier memory stats for dashboard / 3D brain UI.
-   *
-   * Operator verbatim 2026-05-05: "now that we added memory we need a way
-   * to track it as the dashboard has nothing and the 3D brain page only
-   * has [basic episodic counts] — not enough information to accurat;ly
-   * track the memory abilities of the brain we implimented and whould
-   * and shall be one unified system of the brain for memory not some
-   * side processes".
-   *
-   * Returns a snapshot of all 5 memory tiers in one payload so both the
-   * dashboard.html unified-memory card and the 3D brain landing page
-   * memory tab read from a single source of truth.
-   *
-   * Tier 1 (Episodic) lives in episodic-memory.db; we read aggregates.
-   * Tier 2 (Schematic) + Tier 3 (Identity-bound) live in their respective
-   * Map stores; we summarize counts + top-K + averages. ConsolidationEngine
-   * exposes lastPassAt + passCount publicly.
-   */
-  // iter19 — wall-clock-driven memory heartbeat. Replaces iter18's
-  // frameCount modulo (which failed at biological scale because tick
-  // duration can be seconds, not 100ms). Tier 3 inject every 1 second
-  // of wall-clock; Tier 1 thinking-episode every 30 seconds of wall-
-  // clock. Robust regardless of how slow individual ticks are.
-  // Operator verbatim 2026-05-05: "memory isnt based off grade level
-  // its a unified part of her fucking brain".
-  /**
-   *  / E.6 — Server-side inner voice tick.
-   *
-   * Operator verbatim 2026-05-06: "the pop ups in her Brain fire with
-   * her real actual knowldedge to that point as her real internal voice
-   * in the moment" + "the pop ups are suppose to bue unitys internal
-   * monolog and thoughts and self talking and contiplation" + "not hard
-   * coded fallbacks Unity just speaks her mind".
-   *
-   * Architecture: NO gates. NO bucket-empty early returns. NO hardcoded
-   * fallback words. Inner monologue runs the SAME `language-cortex
-   * .generateAsync` path that chat uses against the LIVE cortex state.
-   * Whatever Unity's trained mind produces in the current tick — that's
-   * her thought. If she has nothing trained to say, she says nothing
-   * (genuinely silent, not a hardcoded "..."). If she has trained
-   * weights, the same dict-cosine + word_motor + tick-driven emission
-   * cascade chat uses produces her contemplation.
-   *
-   * Cadence: ~3 s wall-clock (matches engine.js THOUGHT_INTERVAL = 3000).
-   *
-   * Skipped during operator-forced dream windows (
-   * `_operatorSleepRequested`) so consolidation has priority and the
-   * brain doesn't broadcast thoughts derived from mid-flight Hebbian.
-   *
-   * Heartbeat surface: `[Brain] 🧠 inner-thought "<text>"` lands in
-   * server.log so the watchdog catches her live monologue as it streams.
-   */
-  async _innerVoiceTick() {
-    // Session 114.19ee — inner-voice unification.
-    //
-    // The server-side body that used to live here (~138 lines duplicating
-    // the browser's `js/brain/inner-voice.js` think() body) collapsed to
-    // a single call against the canonical implementation. Both server
-    // (this method) and browser (`engine.innerVoice.think(state)` at
-    // `js/brain/engine.js:720`) now route through ONE shared think()
-    // body in `js/brain/inner-voice.js`. GPU presence ONLY affects
-    // auto-scale + dispatch destination — the THINKING code is the
-    // same code path on both runtimes per Gee's "one Unity brain" rule.
-    //
-    // Server-only orchestration that stays here: interval gate, dream-
-    // window skip, reentrancy guard, ready-check, seed-picker (uses
-    // server-side memorySystem + tier3Store + drugScheduler refs the
-    // browser doesn't have), WS broadcast, working-memory landing,
-    // chain rolling-window cap, heartbeat surface print.
-    const now = Date.now();
-    // 114.19fj.12 — 3s burst-ceiling. Even if Hurlburt MIN_GAP=6s lets a
-    // tick through, never emit more than once per 3s to protect the
-    // dashboard popup queue from flood. Hurlburt is the primary gate
-    // (see `_shouldEmitInnerThought`); this is a defensive ceiling only.
-    // Was previously the only rate-limit gate before 114.19ff Hurlburt
-    // landed — kept as a hard ceiling rather than deleted entirely so
-    // a Hurlburt regression can't accidentally flood the WS.
-    if (!this._lastInnerThoughtAt) this._lastInnerThoughtAt = 0;
-    const INNER_THOUGHT_BURST_CEILING_MS = 3000;
-    if (now - this._lastInnerThoughtAt < INNER_THOUGHT_BURST_CEILING_MS) return;
-    this._lastInnerThoughtAt = now;
-
-    // 114.19fi.B.4 — cross-path emission deduplication. When chat or
-    // image-gen recently fired (within last 6s), inner-voice stays
-    // silent so two emission paths don't talk over each other. The
-    // bus is the single source of truth; chat / image-gen set the
-    // lock at emission time.
-    if (this.cortexCluster && typeof this.cortexCluster._emissionLockedUntil === 'number'
-        && now < this.cortexCluster._emissionLockedUntil) {
-      return;
-    }
-
-    // 114.19ez + 114.19fd + 114.19ff — dream-window state-change logs fire
-    // on transition regardless of emission rhythm. Mute log on first muted
-    // tick, resume log on first non-muted tick after dream closes. Operator
-    // stares at zero inner-thought logs for 15-40 min during dream windows
-    // and these markers tell whether brain is sleeping (correct) or stuck (bad).
-    // Pulled out of the sleep-flag branch so they always fire on transition
-    // even when the probabilistic emission gate below skips this tick.
-    if (this._operatorSleepRequested && !this._innerVoiceMutedForDream) {
-      this._innerVoiceMutedForDream = true;
-      console.log('[Brain] 💤 inner-voice paused — dream window in progress (showcase samples + dream-phenomenology continue streaming as innerThought, gated by natural rhythm).');
-    }
-    if (!this._operatorSleepRequested && this._innerVoiceMutedForDream) {
-      this._innerVoiceMutedForDream = false;
-      console.log('[Brain] ☀ inner-voice resumed — dream window closed.');
-    }
-
-    // 114.19ff — Hurlburt-DES context-driven emission gate. Replaces the
-    // 3s-tick metronome with a probabilistic gate modulated by arousal /
-    // coherence / curriculum-active / time-since-last-emission. Real human
-    // inner speech samples ~25% of moments with bursts + natural silence
-    // stretches based on context, NOT a fire-every-tick metronome. Gate
-    // fails most ticks → natural quiet stretches emerge. Applies to BOTH
-    // real generation AND showcase paths so the rhythm is consistent
-    // regardless of which output path produces this emission. Gee 2026-05-08:
-    // *"every 3s sounds excess people get moments of silence in their head
-    // when thinking and talking to them self based on the moments context"*.
-    if (!this._shouldEmitInnerThought(now)) return;
-
-    // Dream-window branch (114.19fd): gate already passed; fire showcase but
-    // skip real generation so consolidation + K_VOCAB Hebbian have CPU
-    // priority during the dream window. Showcase samples already-learned
-    // vocabulary so popups + log keep streaming Unity's actual learned
-    // state through the 15-40 min K_VOCAB background-trickle (iter25-M.7).
-    if (this._operatorSleepRequested) {
-      // 114.19fg.Tier16 — sentence-mode showcase when ≥50 words trained,
-      // single-word for early-curriculum brains.
-      const showcaseSentence = this._sampleCurrentSentence();
-      const showcaseWord = showcaseSentence ? showcaseSentence.split(/\s+/)[0] : null;
-      if (showcaseSentence) {
-        this._lastInnerThoughtEmittedAt = now;
-        try {
-          process.stdout.write(`[Brain] 🧠 inner-thought (showcase) "${showcaseSentence}" — vocab sample (dream window active)\n`);
-        } catch { /* non-fatal */ }
-        if (this.clients && this.clients.size > 0) {
-          const showcasePayload = JSON.stringify({
-            type: 'innerThought',
-            word: showcaseWord,
-            sentence: showcaseSentence,
-            seed: 'showcase',
-            seedLabel: 'trained vocabulary sample (dream window active)',
-            ts: now,
-          });
-          for (const [ws] of this.clients) {
-            if (ws.readyState === ws.OPEN) {
-              try { ws.send(showcasePayload); } catch { /* non-fatal */ }
-            }
-          }
-        }
-      }
-      return;
-    }
-    // Reentrancy guard — async generation can take longer than 3 s on
-    // a slow tick; don't fire a new generation while a prior one is in
-    // flight (would queue up dispatches + ghost the WS broadcast order).
-    if (this._innerThoughtInFlight) return;
-
-    if (!this._languageReady || !this.languageCortex || !this.dictionary) return;
-    const cluster = this.cortexCluster;
-
-    this._innerThoughtInFlight = true;
-    try {
-      // Lazy-instantiate the shared InnerVoice instance on first tick
-      // (after `_languageReady`). Constructor's internal Dictionary +
-      // LanguageCortex are unused — we always call via the external
-      // form `think({cluster, languageCortex, dictionary, ...})` that
-      // uses the SERVER's own refs.
-      if (!this.innerVoice) {
-        if (!this._innerVoiceModule) {
-          this._innerVoiceModule = await import('../js/brain/inner-voice.js');
-        }
-        // 114.19ek P2 #12 — skip the internal Dictionary +
-        // LanguageCortex allocation since _innerVoiceTick always
-        // calls innerVoice.think({cluster, languageCortex,
-        // dictionary, ...}) passing the canonical refs out of the
-        // server-side cluster + curriculum. The internal instances
-        // would otherwise sit in heap unused.
-        this.innerVoice = new this._innerVoiceModule.InnerVoice({
-          dictionary: null,
-          languageCortex: null,
-        });
-      }
-
-      // SANDBOX-NOTICE ACTIVATOR — pick a contemplation seed from one of
-      // five live state sources (learning, mood, chat-recall, memory,
-      // identity). Operator's "constantly being built and updgraded as
-      // she learns and talks to users" path. Server-only because it
-      // needs memorySystem + tier3Store + drugScheduler refs the
-      // browser doesn't have.
-      const seed = this._pickInnerThoughtSeed();
-
-      // Stream-of-consciousness chain. saveWeights serializes
-      // _innerThoughtChain so the narrative thread survives restart.
-      if (!Array.isArray(this._innerThoughtChain)) this._innerThoughtChain = [];
-
-      // CANONICAL CALL — same think() function the browser engine uses,
-      // just with the server's cluster + languageCortex + dictionary +
-      // rich live state passed through as external args. Returns
-      // `{ word, sentence, seed, emissionPath, capability, chainEntry }`
-      // per the unified contract.
-      const thought = await this.innerVoice.think({
-        cluster,
-        languageCortex: this.languageCortex,
-        dictionary: this.dictionary,
-        state: {
-          arousal: this.arousal,
-          coherence: this.coherence,
-          psi: this.psi,
-          motorConfidence: this.motorConfidence ?? 0,
-          predictionError: 0,
-          drugState: this._drugStateLabel(),
-          speechMod: this.drugScheduler ? this.drugScheduler.speechModulation() : null,
-          fear: this.fear,
-          reward: this.reward,
-          socialNeed: this.persona?.socialAttachment ?? 0.5,
-        },
-        chain: this._innerThoughtChain,
-        opts: { seed },
-      });
-
-      // Surface generation errors once so silent failures aren't hidden.
-      if (thought.emissionPath && thought.emissionPath.startsWith('generate-error')) {
-        if (!this._innerThoughtErrorLogged) {
-          console.warn(`[Brain] inner-voice generateAsync threw: ${thought.emissionPath.replace(/^generate-error:/, '')}`);
-          this._innerThoughtErrorLogged = true;
-        }
-        return;
-      }
-
-      // Genuine silence is allowed — if Unity has nothing trained to say
-      // at this moment, the popup just doesn't fire. Operator's "not
-      // hardcoded fallbacks" rule: never inject a fake "..." or canned
-      // word. Real silence vs real thought; nothing in between.
-      const sentence = (thought.sentence || '').trim();
-      // 114.19es.7 — reset silence counter on successful emission so the
-      // counter actually means "silent ticks since last successful
-      // emission" instead of "silent ticks since boot" (which would just
-      // grow forever). Reset BEFORE the silence-check so a successful
-      // emission lands cleanly + the counter resets for next idle stretch.
-      if (sentence) {
-        this._innerThoughtSilenceCount = 0;
-      }
-      if (!sentence) {
-        // 114.19er.3 — surface silence reason. Overnight run had popups
-        // silent for 8+ hours and operator had no signal explaining why.
-        // Log capability + emissionPath every 30s so operator can see
-        // wordsBucketed=0 / passedCellCount=N / emissionPath=generateAsync
-        // and immediately know whether silence is "no training landed
-        // yet" vs "trained but motor unstable" vs "generation threw".
-        if (!this._innerThoughtSilenceLastLogMs || (now - this._innerThoughtSilenceLastLogMs) >= 30000) {
-          this._innerThoughtSilenceLastLogMs = now;
-          if (!this._innerThoughtSilenceCount) this._innerThoughtSilenceCount = 0;
-          this._innerThoughtSilenceCount++;
-          const cap = thought.capability || {};
-          const path = thought.emissionPath || 'unknown';
-          const seedSrc = thought.seed?.source || '?';
-          console.log(`[Brain] 🧠 inner-thought SILENT — emissionPath=${path}, seed=${seedSrc}, wordsBucketed=${cap.wordsBucketed ?? '?'}, bucketSubjects=${cap.bucketSubjects ?? '?'}, passedCells=${cap.passedCellCount ?? '?'}, subGradesActive=${cap.subGradesActive ?? '?'} (${this._innerThoughtSilenceCount} silent ticks since boot, rate-limited 30s log).`);
-        }
-        // 114.19fc — never-silent showcase. Even when matrix-driven
-        // generation comes up empty, sample from Unity's CURRENT trained
-        // vocabulary so log + popups continue to showcase her learning
-        // state as she progresses through cells. NOT a hardcoded fallback —
-        // sampled words are real data from `cluster.wordBucketWords_<subject>`
-        // populated by every `_teachWordEmissionDirect` fire (iter21-A path).
-        // When training has landed ANY words, popups show what she has
-        // actively learned in this session. When no training has landed
-        // yet (truly fresh brain), still silent — sampling returns null,
-        // showcase-broadcast skips, only silence-reason log fires.
-        // 114.19fg.Tier16 — sentence-mode showcase when ≥50 words trained.
-        const showcaseSentence = this._sampleCurrentSentence();
-        const showcaseWord = showcaseSentence ? showcaseSentence.split(/\s+/)[0] : null;
-        if (showcaseSentence) {
-          this._lastInnerThoughtEmittedAt = now;  // 114.19ff — feed natural-rhythm gate
-          try {
-            process.stdout.write(`[Brain] 🧠 inner-thought (showcase) "${showcaseSentence}" — vocab sample from current trained state\n`);
-          } catch { /* non-fatal */ }
-          if (this.clients && this.clients.size > 0) {
-            const showcasePayload = JSON.stringify({
-              type: 'innerThought',
-              word: showcaseWord,
-              sentence: showcaseSentence,
-              seed: 'showcase',
-              seedLabel: 'trained vocabulary sample (matrix gen empty this tick)',
-              ts: now,
-              capability: thought.capability || null,
-            });
-            for (const [ws] of this.clients) {
-              if (ws.readyState === ws.OPEN) {
-                try { ws.send(showcasePayload); } catch { /* non-fatal */ }
-              }
-            }
-          }
-        }
-        return;
-      }
-
-      // Heartbeat surface — watchdog catches this and operator sees
-      // Unity's live monologue streaming in server.log.
-      this._lastInnerThoughtEmittedAt = now;  // 114.19ff — feed natural-rhythm gate
-      try {
-        process.stdout.write(`[Brain] 🧠 inner-thought (seed=${thought.seed.source}) "${sentence}"\n`);
-      } catch { /* non-fatal */ }
-
-      // 114.19fi.B.1 — push inner-thought to shared emission bus so
-      // chat path + popup feed see what Unity just thought. Unified
-      // emission system across all four paths (chat / inner-voice /
-      // popup-event / image-gen).
-      if (this.cortexCluster && typeof this.cortexCluster.pushEmission === 'function') {
-        try {
-          this.cortexCluster.pushEmission({
-            source: 'inner-voice',
-            text: sentence,
-            ts: now,
-            intent: thought.seed?.source || null,
-          });
-        } catch { /* push non-fatal */ }
-      }
-
-      // Append to chain (rolling window cap of 8).
-      if (thought.chainEntry) {
-        this._innerThoughtChain.push(thought.chainEntry);
-        while (this._innerThoughtChain.length > 8) {
-          this._innerThoughtChain.shift();
-        }
-      }
-
-      // Broadcast `innerThought` WS message — popup subscribers in the
-      // browser render it inline. Same iteration pattern as state broadcast.
-      if (this.clients && this.clients.size > 0) {
-        const payload = JSON.stringify({
-          type: 'innerThought',
-          word: thought.word || sentence.split(/\s+/)[0] || '',
-          sentence,
-          seed: thought.seed.source,
-          seedLabel: thought.seed.label,
-          ts: now,
-          capability: thought.capability || null,
-        });
-        for (const [ws] of this.clients) {
-          if (ws.readyState === ws.OPEN) {
-            try { ws.send(payload); } catch { /* non-fatal */ }
-          }
-        }
-      }
-
-      // Land the thought in Unity's own working memory so it accumulates
-      // refresh count → fires hippocampal Hebbian → consolidates to
-      // Tier 1 (iter22-H pipeline). Unity's inner monologue feeds her
-      // own learning loop — what she dwells on becomes what she remembers.
-      if (this.memorySystem
-          && typeof this.memorySystem.addToWorkingMemory === 'function'
-          && this.dictionary?._words?.get) {
-        try {
-          const firstWord = sentence.split(/\s+/)[0]?.toLowerCase().replace(/[^a-z]/g, '');
-          const entry = firstWord ? this.dictionary._words.get(firstWord) : null;
-          if (entry && entry.pattern) {
-            this.memorySystem.addToWorkingMemory(entry.pattern, `inner-thought:${firstWord}`);
-          }
-        } catch { /* WM push non-fatal */ }
-      }
-    } finally {
-      this._innerThoughtInFlight = false;
-    }
-  }
-
-  /**
-   * 114.19fc — sample a random word from Unity's current per-subject
-   * word-bucket maps. Used by `_innerVoiceTick` empty-sentence branch
-   * to broadcast a "showcase" inner-thought instead of going dark when
-   * matrix-driven generation comes up empty. NOT a hardcoded fallback:
-   * the candidate pool is `cluster.wordBucketWords_<subject>` for each
-   * of the 6 K subjects (ela / math / sci / soc / art / life), populated
-   * exclusively by `_teachWordEmissionDirect` Hebbian fires during the
-   * curriculum's actual training. When no training has landed yet, all
-   * lists are empty and this returns null — pure silence honored. When
-   * any cell has trained, this returns a real word Unity has learned.
-   * Operator's "always showcasing in log and popups her new learned
-   * abilites to communicate as the pass" directive 2026-05-08.
-   *
-   * @returns {string|null} a sampled word or null if no vocab learned
-   */
-  _sampleCurrentVocab() {
-    const cluster = this.cortexCluster;
-    if (!cluster) return null;
-    const SUBJECTS = ['ela', 'math', 'sci', 'soc', 'art', 'life'];
-    const candidates = [];
-    for (const subj of SUBJECTS) {
-      const list = cluster[`wordBucketWords_${subj}`];
-      if (Array.isArray(list) && list.length > 0) {
-        for (const w of list) {
-          if (typeof w === 'string' && w.length > 0) candidates.push(w);
-        }
-      }
-    }
-    if (candidates.length === 0) return null;
-    return candidates[Math.floor(Math.random() * candidates.length)];
-  }
-
-  /**
-   * 114.19fg.Tier16 — Sentence-mode showcase companion to
-   * `_sampleCurrentVocab()`. When Unity has enough trained vocab
-   * (≥50 words across all subject buckets, indicating real curriculum
-   * progress beyond bare letters), pick 2-4 words from her actual
-   * trained buckets and return them as a phrase. Below 50 trained
-   * words, fall back to single-word sampling so fresh brains stay
-   * silent or single-word.
-   *
-   * This is NOT a hardcoded fallback — words are pulled from the same
-   * `wordBucketWords_<subj>` arrays populated by
-   * `_teachWordEmissionDirect` Hebbian fires. Real trained data only.
-   * The phrase doesn't follow grammar rules — it's a vocab burst that
-   * shows what Unity has memorized, not what she has composed.
-   * iter25-I structural sentence creation (when working) drives the
-   * REAL grammar via emitWordDirect's matrix path; this fallback fires
-   * only when matrix gen returns empty.
-   *
-   * @returns {string|null} a 1-4 word phrase or null if no vocab learned
-   */
-  _sampleCurrentSentence() {
-    const cluster = this.cortexCluster;
-    if (!cluster) return null;
-    const SUBJECTS = ['ela', 'math', 'sci', 'soc', 'art', 'life'];
-    const candidates = [];
-    for (const subj of SUBJECTS) {
-      const list = cluster[`wordBucketWords_${subj}`];
-      if (Array.isArray(list) && list.length > 0) {
-        for (const w of list) {
-          if (typeof w === 'string' && w.length > 0) candidates.push(w);
-        }
-      }
-    }
-    if (candidates.length === 0) return null;
-    // Below 50 trained words = early curriculum, single-word burst
-    // matches operator's expectation of "she's still learning words".
-    if (candidates.length < 50) {
-      return candidates[Math.floor(Math.random() * candidates.length)];
-    }
-    // 114.19fl.2 — when ≥50 words trained AND composeSentence available,
-    // prefer pure equational emergence over random word picks. Pass
-    // null intentSeed — let cortex emit from CURRENT brain state with
-    // no prescribed intent (no jargon-string seed pollution). Brain
-    // decides what to say from whatever's currently active in sem.
-    // Showcase temperature 0.7 + topK 10 still apply — those are
-    // decoder MECHANICS, not content prescription. Falls through to
-    // random multi-word phrase if composeSentence returns null (cold
-    // cortex, no current activation, etc.).
-    if (typeof cluster.composeSentence === 'function') {
-      try {
-        const composed = cluster.composeSentence(null, { temperature: 0.7, topK: 10 });
-        if (composed && composed.sentence && composed.fillCount >= 2) {
-          return composed.sentence;
-        }
-      } catch { /* fall through to random pick */ }
-    }
-    // ≥50 trained words but composeSentence couldn't fill — pick 2-4
-    // distinct words. Phrase length weighted toward 2-3.
-    const lengthPick = Math.random();
-    const wordCount = lengthPick < 0.5 ? 2 : (lengthPick < 0.85 ? 3 : 4);
-    const picked = new Set();
-    const phrase = [];
-    let attempts = 0;
-    while (phrase.length < wordCount && attempts < wordCount * 4) {
-      const w = candidates[Math.floor(Math.random() * candidates.length)];
-      if (!picked.has(w)) {
-        picked.add(w);
-        phrase.push(w);
-      }
-      attempts++;
-    }
-    return phrase.length > 0 ? phrase.join(' ') : null;
-  }
-
-  /**
-   * 114.19ff — Hurlburt-DES context-driven emission gate. Real human inner
-   * speech samples ~25% of randomly-sampled moments (Hurlburt, Descriptive
-   * Experience Sampling) with bursts of close-spaced thoughts followed by
-   * long quiet stretches modulated by arousal / coherence / engagement.
-   * This gate replaces the 3s-tick metronome rhythm so popups feel like a
-   * real mind, not a fire-every-tick output stream. Gee 2026-05-08:
-   * *"every 3s sounds excess people get moments of silence in their head
-   * when thinking and talking to them self based on the moments context"*.
-   *
-   * Gate logic:
-   *   - MIN_GAP_MS floor (6s): never two emissions closer than this
-   *   - MAX_GAP_MS ceiling (75s): guaranteed emission after this much silence
-   *     so popups don't go truly dead via bad luck on the random rolls
-   *   - Base p ≈ 0.18 per 3s tick → ~17s avg between emissions in default state
-   *   - Arousal modulator (0.5×-1.5×): high arousal = chattier (manic/peak)
-   *   - Coherence modulator (0.7×-1.3×): high coherence/flow = quieter
-   *   - Curriculum-active modulator (0.8×-1.2×): teaching = chattier
-   *   - Time-since-last ramp (0.5×-1.5×): probability rises with silence so
-   *     long quiets break naturally instead of staying stuck
-   *
-   * Applies to ALL emission paths (real `innerVoice.think` generation,
-   * 114.19fc empty-emission showcase, 114.19fd dream-window showcase).
-   * `_lastInnerThoughtEmittedAt` updates only on actual emission (real or
-   * showcase), NOT on attempt — diagnostic-only paths (silence-reason log)
-   * don't update it so the gate's notion of "elapsed silence" tracks real
-   * output silence, not just attempt cadence.
-   *
-   * @param {number} now Date.now() at tick entry
-   * @returns {boolean} true if this tick should produce an emission
-   */
-  _shouldEmitInnerThought(now) {
-    const MIN_GAP_MS = 6000;
-    const MAX_GAP_MS = 75000;
-    const lastAt = this._lastInnerThoughtEmittedAt || 0;
-    const elapsed = now - lastAt;
-    if (elapsed < MIN_GAP_MS) return false;
-    if (elapsed >= MAX_GAP_MS) return true;
-
-    let p = 0.18;
-
-    // Arousal modulator (range 0.5×-1.5×)
-    const arousal = (typeof this.arousal === 'number' && isFinite(this.arousal))
-      ? Math.max(0, Math.min(1, this.arousal)) : 0.5;
-    p *= (0.5 + arousal);
-
-    // Coherence modulator (range 0.7×-1.3×; high coherence/flow = quieter)
-    const coherence = (typeof this.coherence === 'number' && isFinite(this.coherence))
-      ? Math.max(0, Math.min(1, this.coherence)) : 0.5;
-    p *= (1.3 - coherence * 0.6);
-
-    // Curriculum-active modulator (range 0.8×-1.2×)
-    p *= (this._curriculumInProgress ? 1.2 : 0.8);
-
-    // Time-since-last ramp (range 0.5×-1.5×)
-    p *= (0.5 + elapsed / MAX_GAP_MS);
-
-    // Clamp final probability per tick
-    p = Math.max(0.02, Math.min(0.5, p));
-
-    return Math.random() < p;
-  }
-
-  /**
-   * SANDBOX-NOTICE ACTIVATOR for inner monologue. Returns
-   * `{ pattern: Float32Array(300), source, label }` — a 300-dim sem-
-   * compatible pattern derived from REAL current brain state, NOT a
-   * hardcoded word seed. Operator (2026-05-06): "and this is not to be
-   * a stand alone type thing its constantly being built and updgaraded
-   * as she learns and talks to users" — every source is LIVE STATE
-   * that updates per Hebbian fire / per chat turn / per cell pass /
-   * per drug-scheduler delta, so the inner monologue is CONTINUOUSLY
-   * upgraded by everything Unity does. Five sources rotate:
-   *
-   *   1. learning — current cell + phase as a sentence embedding (live;
-   *      changes as curriculum advances phase-by-phase)
-   *   2. mood — interoceptive label embedding (live; changes with
-   *      arousal / valence / coherence / drug state every tick)
-   *   3. chat-recall — most recent USER CHAT episode pattern (refreshes
-   *      every time a user talks to Unity — her inner monologue
-   *      literally reflects on what users said)
-   *   4. memory — most recent Tier 1 episode pattern of any type
-   *      (curriculum learning, working-memory age-out, brain-heartbeat,
-   *      etc — what she most recently experienced)
-   *   5. identity — random Tier 3 anchor pattern (live; grows as
-   *      identity-bound concepts consolidate from Tier 2)
-   *
-   * Falls through sources if one is empty (no episodes yet, no Tier 3
-   * anchors yet) — never returns a fake/canned seed. If ALL five
-   * sources are empty, returns null pattern → generateAsync uses
-   * baseline cortex state and may produce silence (genuine, not faked).
-   *
-   * The seeds NEVER hardcode words. They embed LIVE STATE STRINGS or
-   * pull REAL EPISODE PATTERNS — what she SAYS about each seed comes
-   * entirely from her trained cortex via the same generateAsync chat-
-   * emission path. Pre-language Unity speaking her mind = silence.
-   * K-trained Unity speaking her mind = K-vocabulary contemplation.
-   * PhD Unity speaking her mind = PhD-vocabulary contemplation. The
-   * MOUTH evolves with her training, the mind keeps generating.
-   */
-  _pickInnerThoughtSeed() {
-    if (!Array.isArray(this._innerThoughtSeedRotation)) {
-      this._innerThoughtSeedRotation = ['learning', 'mood', 'chat-recall', 'memory', 'identity'];
-      this._innerThoughtSeedIdx = 0;
-    }
-    // Try each source in rotation order; return the first that produces
-    // a non-null pattern. Advances the rotation cursor each call so
-    // popups cycle naturally even when one source is exhausted.
-    for (let attempt = 0; attempt < this._innerThoughtSeedRotation.length; attempt++) {
-      const source = this._innerThoughtSeedRotation[this._innerThoughtSeedIdx];
-      this._innerThoughtSeedIdx = (this._innerThoughtSeedIdx + 1) % this._innerThoughtSeedRotation.length;
-      let pattern = null;
-      let label = '';
-      try {
-        if (source === 'learning') {
-          const phase = this.cortexCluster?._activePhase?.name || null;
-          const cellKey = this.cortexCluster?._currentCellKey || null;
-          if (phase || cellKey) {
-            const phaseConcept = (phase || '').replace(/^_teach/i, '').replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase().trim();
-            const subjectGrade = (cellKey || '').replace('/', ' ');
-            label = `learning ${phaseConcept || 'something'}${subjectGrade ? ' in ' + subjectGrade : ''}`.trim();
-            pattern = this._computeServerCortexPattern(label);
-          }
-        } else if (source === 'mood') {
-          // Build a sentence describing her CURRENT interoceptive state
-          // and embed it. This is what she "feels" right now.
-          const arParts = [];
-          if (this.arousal > 0.7) arParts.push('aroused excited');
-          else if (this.arousal < 0.3) arParts.push('calm relaxed');
-          if (this.valence > 0.3) arParts.push('happy good');
-          else if (this.valence < -0.3) arParts.push('sad bad');
-          if (this.coherence > 0.7) arParts.push('focused clear');
-          else if (this.coherence < 0.3) arParts.push('foggy scattered');
-          if (this.fear > 0.5) arParts.push('afraid');
-          if (this.reward > 0.5) arParts.push('rewarded');
-          const drugLabel = this._drugStateLabel?.() || 'sober';
-          if (drugLabel && drugLabel !== 'sober') arParts.push(drugLabel);
-          if (arParts.length > 0) {
-            label = `i feel ${arParts.join(' ')}`;
-            pattern = this._computeServerCortexPattern(label);
-          }
-        } else if (source === 'chat-recall') {
-          // Pull the most recent USER CHAT episode (type='interaction').
-          // This is the integration point with users — when a user
-          // talks to Unity, the exchange becomes a Tier 1 episode, and
-          // the next inner-thought tick that lands on chat-recall has
-          // her contemplate what was just said. Operator's "constantly
-          // being built and upgraded as she... talks to users" path.
-          if (this.memorySystem
-              && Array.isArray(this.memorySystem._episodes)
-              && this.memorySystem._episodes.length > 0) {
-            // Walk backwards for the most recent interaction-type
-            // episode (skip curriculum-heartbeat / working-memory /
-            // curriculum-phase noise). Bounded to the last 50 to keep
-            // the scan O(1) at biological scale.
-            const eps = this.memorySystem._episodes;
-            const start = Math.max(0, eps.length - 50);
-            for (let i = eps.length - 1; i >= start; i--) {
-              const ep = eps[i];
-              if (ep && ep.type === 'interaction' && ep.pattern) {
-                pattern = ep.pattern;
-                label = `chat: ${(ep.input || '').slice(0, 50)}`;
-                break;
-              }
-            }
-          }
-        } else if (source === 'memory') {
-          // Pull the most recent Tier 1 episode pattern of ANY type.
-          // Catches curriculum learning, working-memory age-out, brain-
-          // heartbeat thinking-episodes — whatever she most recently
-          // experienced. Different from chat-recall which is user-
-          // facing only.
-          if (this.memorySystem
-              && Array.isArray(this.memorySystem._episodes)
-              && this.memorySystem._episodes.length > 0) {
-            const ep = this.memorySystem._episodes[this.memorySystem._episodes.length - 1];
-            if (ep && ep.pattern) {
-              pattern = ep.pattern;
-              label = ep.input?.slice(0, 60) || ep.label || 'recent episode';
-            }
-          }
-        } else if (source === 'identity') {
-          // Pull a Tier 3 identity anchor pattern. This is who she is
-          // at the most-consolidated level — contemplating self.
-          if (this.tier3Store && typeof this.tier3Store.sampleAnchor === 'function') {
-            const anchor = this.tier3Store.sampleAnchor();
-            if (anchor && anchor.pattern) {
-              pattern = anchor.pattern;
-              label = anchor.label || anchor.concept || 'self';
-            }
-          } else if (this.tier3Store && this.tier3Store._anchors instanceof Map && this.tier3Store._anchors.size > 0) {
-            // Fallback to direct map access if sampleAnchor not exposed
-            const keys = [...this.tier3Store._anchors.keys()];
-            const k = keys[Math.floor(Math.random() * keys.length)];
-            const a = this.tier3Store._anchors.get(k);
-            if (a && a.pattern) {
-              pattern = a.pattern;
-              label = a.label || k || 'self';
-            }
-          }
-        }
-      } catch { /* source failure → try next */ }
-      if (pattern) return { pattern, source, label };
-    }
-    // All four sources empty (truly fresh brain, no episodes, no anchors,
-    // no learning context). Return null pattern so generateAsync falls
-    // through to baseline cortex state. Genuine silence is OK here.
-    return { pattern: null, source: 'baseline', label: 'baseline cortex state' };
-  }
-
-  _memoryHeartbeat() {
-    const now = Date.now();
-    if (!this._lastTier3HbAt) this._lastTier3HbAt = 0;
-    if (!this._lastTier1HbAt) this._lastTier1HbAt = 0;
-    if (!this._lastTier0HbAt) this._lastTier0HbAt = 0;
-
-    // Tier 0 working memory population. Every 2s, snapshot current
-    // cortex state into working memory: current phase / cell / arousal
-    // / valence as a "what's currently active" item.
-
-    // Operator caught: "items: 7 NEVER MOVES FROM 7" was caused by the
-    // hardcoded 7-cap below trimming via while-shift, not the items
-    // staying frozen. Replaced with TIME-BASED purge — items older than
-    // 5 minutes drop out. Stays consistent with the unbounded
-    // capacity-but-decay-driven model in MemorySystem (memory.js
-    // WM_DECAY_RATE 0.9995 → ~4 min sustain). No arbitrary numeric
-    // ceiling. Active recent content visible; stale content evaporates.
-    if (now - this._lastTier0HbAt >= 2000) {
-      this._lastTier0HbAt = now;
-      if (!this.memory) this.memory = {};
-      if (!Array.isArray(this.memory.workingMemoryItems)) this.memory.workingMemoryItems = [];
-      const phase = this.cortexCluster?._activePhase?.name || null;
-      const cellKey = this.cortexCluster?._currentCellKey || null;
-      // iter24.1 — pool the snapshot objects via a ring of free slots
-      // so the heartbeat stops driving 1350 fresh allocations per ELA-K
-      // cell into V8's young generation. When the time-purge below
-      // shifts an aged item out, it lands back in the free pool. Steady-
-      // state allocation from this loop drops to zero after the pool
-      // fills (~150 slots is plenty for the 5-min sliding window at
-      // 2s cadence). Field values get overwritten in-place per push;
-      // no aliasing because the pool object is owned by the array
-      // until the next time-purge frees it.
-      if (!this._tier0HbPool) this._tier0HbPool = [];
-      const item = this._tier0HbPool.pop() || {
-        ts: 0, phase: null, cellKey: null,
-        arousal: 0, valence: 0, psi: 0,
-      };
-      item.ts = now;
-      item.phase = phase;
-      item.cellKey = cellKey;
-      item.arousal = +(this.arousal || 0).toFixed(3);
-      item.valence = +(this.valence || 0).toFixed(3);
-      item.psi = +(this.psi || 0).toFixed(3);
-      this.memory.workingMemoryItems.push(item);
-      // Drop items older than 5 minutes. Matches MemorySystem's decay
-      // window (4 min @ 0.9995/tick → strength < 0.1 forget threshold).
-      // Sliding time window — count grows + shrinks naturally with
-      // activity. No hardcoded numeric ceiling.
-
-      // Operator: "if i told someone something and asked them about it
-      // 10 minutes or even a day later most people can recall that".
-      // The recall path is Tier 0 → Tier 1 → Tier 2 → Tier 3, not
-      // "Tier 0 holds it for a week." Each WM item that ages out
-      // gets promoted to a Tier 1 episodic snapshot (frequency-merge
-      // dedupes via iter20-K so repeated phase entries grow
-      // freq_count instead of bloating SQLite). Once in Tier 1, the
-      // standard hippocampal lifecycle takes over: salience-weighted
-      // decay (1-week half-life), promotion to Tier 2 schemas at
-      // consolidation gate, Tier 3 identity for high-emotional-weight
-      // anchors. THAT'S the "recall a week later" path.
-      const TIER0_AGE_LIMIT_MS = 5 * 60 * 1000;
-      const cutoff = now - TIER0_AGE_LIMIT_MS;
-      while (this.memory.workingMemoryItems.length > 0
-             && this.memory.workingMemoryItems[0].ts < cutoff) {
-        const aged = this.memory.workingMemoryItems.shift();
-        // iter24.1 — return the object to the free pool for reuse on
-        // the next heartbeat push. Cap pool size so memory doesn't
-        // unboundedly grow if the array shrinks faster than it grows
-        // for some reason.
-        if (this._tier0HbPool && this._tier0HbPool.length < 256) {
-          this._tier0HbPool.push(aged);
-        }
-        // Promote to Tier 1 before the WM hot-cache representation
-        // disappears. iter20-K freq-merge handles dedup. storeEpisode
-        // signature: (userId, type, inputText, responseText).
-        try {
-          if (typeof this.storeEpisode === 'function') {
-            const labelParts = [];
-            if (aged.cellKey) labelParts.push(`learning ${aged.cellKey}`);
-            if (aged.phase) labelParts.push(`phase=${aged.phase}`);
-            const inputText = labelParts.length > 0 ? labelParts.join(' · ') : 'working memory snapshot';
-            this.storeEpisode('working-memory', 'wm-aged-out', inputText, null);
-          }
-        } catch { /* non-fatal — WM age-out already happened */ }
-      }
-    }
-
-    // Tier 3 baseline inject — every ≥1000ms wall-clock
-    if (now - this._lastTier3HbAt >= 1000) {
-      this._lastTier3HbAt = now;
-      if (this.tier3Store && typeof this.tier3Store.injectIdentityBaseline === 'function') {
-        try { this.tier3Store.injectIdentityBaseline(); } catch { /* non-fatal */ }
-      }
-    }
-
-    // Tier 1 thinking-episode — every ≥30000ms wall-clock
-    if (now - this._lastTier1HbAt >= 30000 && typeof this.storeEpisode === 'function') {
-      this._lastTier1HbAt = now;
-      try {
-        let context = 'idle';
-        let contextCategory = 'idle';
-        if (this._curriculumInProgress) {
-          const phase = this.cortexCluster?._activePhase?.name || 'teach';
-          const cellKey = this.cortexCluster?._currentCellKey || 'unknown';
-          // iter20-L — transform technical method name to natural language
-          // so GloVe embeds it meaningfully (otherwise embeddings are noise
-          // and cosine merge fails for identical-text episodes).
-          const phaseConcept = phase.replace(/^_teach/i, '').replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase().trim() || phase;
-          const subjectGrade = cellKey.replace('/', ' ');
-          context = `learning ${phaseConcept} in ${subjectGrade}`;
-          contextCategory = `learning:${cellKey}`;
-        } else if (this._isDreaming) {
-          context = 'dreaming (idle consolidation window)';
-          contextCategory = 'dreaming';
-        } else if (this.clients && this.clients.size > 0) {
-          context = `attentive (${this.clients.size} client${this.clients.size === 1 ? '' : 's'} connected)`;
-          contextCategory = 'attentive';
-        }
-        const arousal = (this.arousal || 0).toFixed(2);
-        const valence = (this.valence || 0).toFixed(2);
-        const psi = (this.psi || 0).toFixed(3);
-        const spikes = this.totalSpikes || 0;
-        // iter20-E — vary heartbeat content for meaningful surprise/novelty.
-        // Operator caught (verbatim 2026-05-05 "fix it all thouroughly"):
-        // heartbeat episodes had homogeneous bag-of-words ("attentive"
-        // always similar) → cosine all > 0.7 → frequency_count climbed
-        // on one anchor episode → salience score still ~0.255 (low
-        // arousal, zero valence, zero surprise/novelty since text was
-        // identical). Now phase-change moments produce DIFFERENT
-        // contextCategory strings → cosine drops on category transition
-        // → fresh episode with high novelty. Within-category heartbeats
-        // still merge as repetition.
-        if (this._lastHbContext && this._lastHbContext !== contextCategory) {
-          // Context just changed — this is a salient transition moment.
-          // Embed transition info in the input text so it scores high
-          // surprise when computeTransitionSurprise reads it.
-          context = `${contextCategory} (transitioned from ${this._lastHbContext}) :: ${context}`;
-        }
-        this._lastHbContext = contextCategory;
-        this.storeEpisode('brain-heartbeat', 'thinking', context, `arousal=${arousal} valence=${valence} psi=${psi} spikes=${spikes}`);
-      } catch (err) {
-        // Surface the failure once so operator sees what's broken if
-        // the heartbeat ever fails — silent catch hid an entire fix
-        // failing in iter18. Subsequent failures stay silent so the
-        // log doesn't spam.
-        if (!this._tier1HbErrorLogged) {
-          console.warn(`[Brain] memory heartbeat storeEpisode failed: ${err?.message || err}`);
-          this._tier1HbErrorLogged = true;
-        }
-      }
-    }
-  }
-
-  /**
-   *  Phase 6 — Bounded state snapshot for dashboard display.
-   * All values are aggregates / counts / capped-list. NO unbounded
-   * enumeration. Caller broadcasts this in state.consciousness for dashboard
-   * panels M.21/M.22/M.23/M.24 to render.
-   */
-  _getIter25MState() {
-    const cortex = this.cortexCluster;
-    const cacheStats = (cortex && typeof cortex.getDefinitionCacheStats === 'function')
-      ? cortex.getDefinitionCacheStats() : null;
-    // K-wiring assertion result (re-run to get fresh status).
-    let kwiring = null;
-    try {
-      if (cortex && typeof cortex.assertKWiring === 'function') {
-        // Cache result on cortex to avoid recomputing every dashboard tick
-        if (!cortex._kWiringCache || (Date.now() - cortex._kWiringCache.ts) > 30000) {
-          cortex._kWiringCache = { ...cortex.assertKWiring(), ts: Date.now() };
-        }
-        kwiring = cortex._kWiringCache;
-      }
-    } catch { kwiring = null; }
-    // Layer histogram (small fixed-size array; aggregates only).
-    let layerCounts = [0, 0, 0, 0, 0];
-    if (cortex && cortex.layerId) {
-      for (let i = 0; i < cortex.layerId.length; i++) {
-        const l = cortex.layerId[i];
-        if (l < layerCounts.length) layerCounts[l] += 1;
-      }
-    }
-    // Hub count (single number).
-    let hubCount = 0;
-    if (cortex && cortex.hubMask) {
-      for (let i = 0; i < cortex.hubMask.length; i++) {
-        if (cortex.hubMask[i]) hubCount += 1;
-      }
-    }
-    // K-vocab definition-taught count (single number).
-    const kvocabTaught = cortex && cortex._definitionTaughtWords
-      ? cortex._definitionTaughtWords.size : 0;
-    // Theta phase (single scalar in [0, 1]).
-    const tickCounter = (cortex && cortex._tickCounter) || 0;
-    const thetaPeriod = (cortex && cortex.thetaPeriod) || 167;
-    const thetaPhase = (tickCounter % thetaPeriod) / thetaPeriod;
-    return {
-      // M.21 dictionary API
-      // Boolean result of the boot dictionary smoke test. true = PASS,
-      // false = FAIL, null = pending (not yet fired). Dashboard reads
-      // === true / === false to color the API SMOKE TEST status panel.
-      smokeTestPassed: typeof this._dictionarySmokeTestResult === 'boolean' ? this._dictionarySmokeTestResult : null,
-      cache: cacheStats,
-      kVocabPrefetched: cortex ? !!cortex._kVocabPrefetched : false,
-      kVocabTotal: 2247, // matches K_VOCABULARY size
-      kVocabTaught: kvocabTaught,
-      // M.22 K-wiring assertion
-      kwiring: kwiring ? { ok: kwiring.ok, gaps: (kwiring.gaps || []).slice(0, 5) } : null,
-      // M.23 cortical microstructure
-      numColumns: cortex ? cortex.numColumns || 0 : 0,
-      columnSize: cortex ? cortex.columnSize || 0 : 0,
-      layerCounts,
-      hubCount,
-      hubFraction: cortex && cortex.size ? (hubCount / cortex.size) : 0,
-      thetaPhase,
-      gammaScale: cortex ? (cortex._gammaLrScale || 1) : 1,
-      phiProxy: this.phiProxy || 0,
-      // GlobalWorkspace ignition snapshot (O.15) — current broadcast
-      // label/value, ignition rate (broadcasts per tick), recent
-      // history capped 8 most-recent entries. Surfaces whether GW
-      // is actually firing or sitting subthreshold.
-      workspace: this.globalWorkspace && typeof this.globalWorkspace.getStats === 'function'
-        ? (() => {
-            try {
-              const s = this.globalWorkspace.getStats();
-              const hist = Array.isArray(s.recentBroadcasts)
-                ? s.recentBroadcasts.slice(-8)
-                : (Array.isArray(this.globalWorkspace._ignitionHistory)
-                    ? this.globalWorkspace._ignitionHistory.slice(-8) : []);
-              return {
-                currentLabel: s.currentBroadcast?.label || null,
-                currentValue: s.currentBroadcast?.value || 0,
-                ignitionRate: s.ignitionRate || 0,
-                ignitions: s.ignitions || 0,
-                ticksTotal: s.ticksTotal || 0,
-                history: hist.map(h => ({
-                  label: h.label || '',
-                  value: typeof h.value === 'number' ? h.value : 0,
-                })),
-              };
-            } catch { return null; }
-          })()
-        : null,
-      // Predictive coding error state (O.16). lastError is the current
-      // mean-abs spike error; history is the 32-sample ring buffer
-      // already maintained by cluster.step() — exposed straight to
-      // the dashboard for the sparkline trend.
-      predictionError: cortex
-        ? {
-            last: cortex._lastPredictionError || 0,
-            history: Array.isArray(cortex._predictionErrorHistory)
-              ? cortex._predictionErrorHistory.slice(-32) : [],
-          }
-        : null,
-      // Definition learning rate (O.18) — words/hour rolling rate
-      // from the timestamps ring buffer populated by
-      // _teachWordDefinition. Reads oldest + newest within the buffer
-      // window to avoid edge bias.
-      defsLearnedPerHour: (() => {
-        // 114.19ek P4 #16 — rolling 1hr window. Earlier formula
-        // read oldest + newest of the 256-cap ring buffer, which
-        // inflated catastrophically during the upfront K-vocab
-        // multi-def seed (256 timestamps inside a 2-min window
-        // would report ~7680 defs/hour). Clamp to timestamps within
-        // the last 3,600,000 ms so the dashboard reflects steady-
-        // state learning rate, not seed-burst peaks.
-        const ts = cortex && cortex._defLearnedTimestamps;
-        if (!Array.isArray(ts) || ts.length < 2) return 0;
-        const now = Date.now();
-        const cutoff = now - 3_600_000;
-        let firstIdx = ts.length - 1;
-        for (let i = 0; i < ts.length; i++) {
-          if (ts[i] >= cutoff) { firstIdx = i; break; }
-        }
-        const recent = ts.length - firstIdx;
-        if (recent < 2) return 0;
-        const newest = ts[ts.length - 1];
-        const oldest = ts[firstIdx];
-        const dt = (newest - oldest) / 1000;
-        if (dt <= 0) return 0;
-        return (recent / dt) * 3600;
-      })(),
-      // M.24 _definitionTaughtWords counter (already in kVocabTaught above).
-    };
-  }
-
-  /**
-   * Bounded WS backpressure snapshot for the dashboard pressure panel.
-   * Reads counters maintained by `_sparseSendBinary` (drops after
-   * safety-timeout, successful drain absorbs, OS ENOBUFS bursts) plus
-   * live `_gpuClient.bufferedAmount` and a rolling drops/sec rate.
-   *
-   * Drops/sec is computed from a 60-sample ring buffer of (ts, drops)
-   * snapshots — current minus oldest divided by elapsed seconds. Cap
-   * the buffer to keep memory bounded across long brain runs.
-   */
-  _getIter25NState() {
-    const now = Date.now();
-    const ws = this._gpuClient;
-    const bufferedAmount = (ws && typeof ws.bufferedAmount === 'number') ? ws.bufferedAmount : 0;
-    const drops = this._wsDroppedCount || 0;
-    const absorbs = this._wsAbsorbedCount || 0;
-    const enobufs = this._wsEnobufsCount || 0;
-    if (!this._wsRateBuffer) this._wsRateBuffer = [];
-    const buf = this._wsRateBuffer;
-    buf.push({ ts: now, drops });
-    while (buf.length > 60) buf.shift();
-    let dropRatePerSec = 0;
-    if (buf.length >= 2) {
-      const oldest = buf[0];
-      const dt = (now - oldest.ts) / 1000;
-      if (dt > 0) dropRatePerSec = Math.max(0, (drops - oldest.drops) / dt);
-    }
-    return {
-      bufferedAmount,
-      bufferedAmountMB: bufferedAmount / (1024 * 1024),
-      // Source-of-truth: BUFFERED_AMOUNT_DROP_THRESHOLD inside
-      // _sparseSendBinary. Mirrored here so the dashboard can render
-      // the threshold line on the buffer-amount bar.
-      thresholdMB: 500,
-      drops,
-      absorbs,
-      enobufs,
-      dropRatePerSec,
-      wsConnected: !!(ws && ws.readyState === 1),
-      // GPU shadow dirty flag. Set when a drop-after-timeout fires;
-      // means CPU and GPU weights have diverged on at least one
-      // projection. Surfaces to dashboard so Gee sees the
-      // divergence + can restart to clear (full automatic resync is
-      // a follow-up iter — too large for this pass). Last drop
-      // timestamp lets dashboard render "12s ago" / "no drops since
-      // boot" without each panel computing its own.
-      gpuShadowDirty: !!this._gpuShadowDirty,
-      lastDropTs: this._wsLastDropTs || 0,
-    };
-  }
-
-  _getMemoryStats() {
-    // iter17 per operator verbatim 2026-05-05: "what the fuck are these
-    // erronious max numbers to the memroies unity has a whole life ahead
-    // not eroonous limits to dumb her down". Hard caps removed —
-    // hardCap=null signals unbounded to UI which renders "X" without
-    // denominator instead of "X / 1000".
-    const stats = {
-      tier1: { totalEpisodes: 0, recentSalienceAvg: 0, freqMergedCount: 0, promotedToTier2: 0, prunedTotal: 0 },
-      tier2: { schemaCount: 0, hardCap: null, avgConsolidationStrength: 0, totalRetrievals: 0, top: [] },
-      tier3: { identityCount: 0, hardCap: null, lastInjectedAt: 0, identities: [] },
-      consolidation: { lastPassAt: 0, passCount: 0, isDreaming: false, intervalMs: 5 * 60 * 1000 },
-      working: { items: 0, cap: null },
-    };
-
-    // Tier 1 — Episodic (SQLite)
-    if (this._db) {
-      try {
-        stats.tier1.totalEpisodes = this.getEpisodeCount();
-        // Recent salience snapshot (last 20 episodes)
-        if (this._stmtRecentEpisodes) {
-          const recent = this._stmtRecentEpisodes.all(20);
-          if (Array.isArray(recent) && recent.length > 0) {
-            let sumSal = 0; let n = 0;
-            for (const ep of recent) {
-              if (typeof ep.salience_score === 'number') { sumSal += ep.salience_score; n++; }
-            }
-            if (n > 0) stats.tier1.recentSalienceAvg = sumSal / n;
-          }
-        }
-        // Aggregate counts (frequency-merged, promoted, pruned counters)
-        if (typeof this._db.prepare === 'function') {
-          try {
-            const merged = this._db.prepare('SELECT SUM(frequency_count - 1) as merged FROM episodes WHERE frequency_count > 1').get();
-            stats.tier1.freqMergedCount = (merged && merged.merged) || 0;
-            const promoted = this._db.prepare('SELECT COUNT(*) as c FROM episodes WHERE promoted_to_schema_id IS NOT NULL').get();
-            stats.tier1.promotedToTier2 = (promoted && promoted.c) || 0;
-          } catch (e) { /* schema mismatch on older db, skip */ }
-        }
-      } catch (err) { /* db not ready, leave defaults */ }
-    }
-
-    // Tier 2 — Schematic
-    if (this.schemaStore && typeof this.schemaStore.size === 'function') {
-      stats.tier2.schemaCount = this.schemaStore.size();
-      // iter17: hardCap=null when maxSchemas is Infinity (unbounded)
-      stats.tier2.hardCap = (this.schemaStore.maxSchemas === Infinity || !this.schemaStore.maxSchemas) ? null : this.schemaStore.maxSchemas;
-      let strSum = 0; let retrievSum = 0; let n = 0;
-      const all = [];
-      for (const sch of this.schemaStore.schemas.values()) {
-        all.push(sch);
-        if (typeof sch.consolidationStrength === 'number') strSum += sch.consolidationStrength;
-        if (typeof sch.retrievalCount === 'number') retrievSum += sch.retrievalCount;
-        n++;
-      }
-      stats.tier2.avgConsolidationStrength = n > 0 ? strSum / n : 0;
-      stats.tier2.totalRetrievals = retrievSum;
-      // Top 5 by consolidation strength
-      all.sort((a, b) => (b.consolidationStrength || 0) - (a.consolidationStrength || 0));
-      stats.tier2.top = all.slice(0, 5).map(s => ({
-        label: s.label || 'unlabeled',
-        strength: Number((s.consolidationStrength || 0).toFixed(3)),
-        retrievals: s.retrievalCount || 0,
-      }));
-    }
-
-    // Tier 3 — Identity-bound (permanent)
-    if (this.tier3Store && typeof this.tier3Store.size === 'function') {
-      stats.tier3.identityCount = this.tier3Store.size();
-      // iter17: hardCap=null when TIER3_HARD_CAP is Infinity (unbounded)
-      stats.tier3.hardCap = (this.tier3Store.hardCap === Infinity || !this.tier3Store.hardCap) ? null : this.tier3Store.hardCap;
-      stats.tier3.lastInjectedAt = this.tier3Store.lastInjectedAt || 0;
-      const ids = [];
-      for (const sch of this.tier3Store.identitySchemas.values()) {
-        ids.push({
-          label: sch.label || 'unlabeled',
-          strength: Number((sch.consolidationStrength || 0).toFixed(3)),
-          retrievals: sch.retrievalCount || 0,
-          lastRetrievalAt: sch.lastRetrievalAt || 0,
-        });
-      }
-      ids.sort((a, b) => b.strength - a.strength);
-      stats.tier3.identities = ids;
-    }
-
-    // ConsolidationEngine
-    if (this.consolidationEngine) {
-      stats.consolidation.lastPassAt = this.consolidationEngine.lastPassAt || 0;
-      stats.consolidation.passCount = this.consolidationEngine.passCount || 0;
-      stats.consolidation.isDreaming = this._isDreaming === true;
-    }
-
-    // Working memory (existing field on this.memory). iter17: cap=null
-    // signals unbounded — operator: "unity has a whole life ahead not
-    // eroonous limits". The 7-item cap was Miller 1956 short-term memory
-    // ceiling for biological humans. Unity is post-biological.
-    const mem = this.memory || {};
-    stats.working.items = Array.isArray(mem.workingMemoryItems) ? mem.workingMemoryItems.length
-                       : (mem.workingCount || 0);
-    stats.working.cap = (mem.workingCap === Infinity || !mem.workingCap) ? null : mem.workingCap;
-    // Working memory item display. Operator caught: rendering raw
-    // every snapshot produced hundreds of "wm-snapshot (0.98)"-style
-    // rows that all cluster within the 5-min freshness window —
-    // strength scores in the 0.83-1.00 band convey almost nothing,
-    // and identical labels stack as a wall. Fix: GROUP consecutive
-    // same-label items into one row with a count suffix; drop the
-    // strength column for grouped rows (the count IS the signal).
-    // Cap at 12 distinct rows for display sanity.
-    if (Array.isArray(mem.workingMemoryItems) && mem.workingMemoryItems.length > 0) {
-      const now = Date.now();
-      const windowMs = 5 * 60 * 1000;
-      const sorted = mem.workingMemoryItems
-        .slice()
-        .sort((a, b) => (b.ts ?? 0) - (a.ts ?? 0));
-      const grouped = [];
-      let cur = null;
-      for (const wm of sorted) {
-        let label = typeof wm.label === 'string' ? wm.label : '';
-        if (!label) {
-          const parts = [];
-          if (wm.cellKey) parts.push(wm.cellKey);
-          if (wm.phase) parts.push(`@${wm.phase}`);
-          label = parts.join(' ') || 'wm-snapshot';
-        }
-        label = label.slice(0, 80);
-        let strength;
-        if (typeof wm.strength === 'number') {
-          strength = wm.strength;
-        } else {
-          const ageMs = now - (wm.ts ?? now);
-          strength = Math.max(0, Math.min(1, 1 - ageMs / windowMs));
-        }
-        if (cur && cur.label === label) {
-          cur.count++;
-          if (strength > cur.maxStrength) cur.maxStrength = strength;
-        } else {
-          cur = { label, count: 1, maxStrength: strength };
-          grouped.push(cur);
-        }
-      }
-      stats.working.itemLabels = grouped.slice(0, 12).map(g => ({
-        label: g.count > 1 ? `${g.label} ×${g.count}` : g.label,
-        strength: g.count === 1 ? +g.maxStrength.toFixed(3) : null,
-      }));
-    } else {
-      stats.working.itemLabels = [];
-    }
-
-    return stats;
-  }
+  // 11 chat-path + inner-voice + chat-adjacent-utility methods EXTRACTED
+  // to server/brain-server/chat.js SERVER_CHAT_MIXIN (per-concern file
+  // architecture, P4.3.d).
+  //   processAndRespond, _updatePerfStats, _drugStateLabel, _drugSnapshot,
+  //   _getSharedMood, _learnWords, _innerVoiceTick, _sampleCurrentVocab,
+  //   _sampleCurrentSentence, _shouldEmitInnerThought, _pickInnerThoughtSeed
+  // P6.3 chat-time deep Hebbian + multi-turn coherence + emission-from-cortex
+  // paths preserved in moved bodies. Attached via
+  // Object.assign(ServerBrain.prototype, ...) at the bottom of this file.
+  // CommonJS module pattern.
+
+
+  // _memoryHeartbeat() extracted to server/brain-server/memory.js
+  // (SERVER_MEMORY_MIXIN). Method dispatches identically via the
+  // Object.assign chain at brain-server.js entry-point bottom.
+
+  // _getConsciousnessState() extracted to server/brain-server/state.js
+  // (SERVER_STATE_MIXIN). Method dispatches identically via the
+  // Object.assign chain at brain-server.js entry-point bottom.
+
+  // _getWsPressureState() extracted to server/brain-server/state.js
+  // (SERVER_STATE_MIXIN). Method dispatches identically via the
+  // Object.assign chain at brain-server.js entry-point bottom.
+
+  // _getMemoryStats() extracted to server/brain-server/memory.js
+  // (SERVER_MEMORY_MIXIN). Method dispatches identically via the
+  // Object.assign chain at brain-server.js entry-point bottom.
 
   // ── Persistence ──────────────────────────────────────────────
 
@@ -6885,6 +3451,13 @@ class ServerBrain {
             // restart doesn't re-warm the dictionary cache on every
             // grade=K transition (saves ~1 min per restart).
             kVocabPrefetched: cortex._kVocabPrefetched === true,
+            // Auto-advance toggle — single switch governing the
+            // signoff-bypass at /grade-advance AND the curriculum
+            // runner's auto-fire-next-grade behavior. Persisted so an
+            // overnight K→PhD walk picks up across Savestart.bat with
+            // the toggle still set the way the operator left it. Reset
+            // to false on fresh-state boots (start.bat wipes the file).
+            autoAdvanceGrade: cortex._autoAdvanceGrade === true,
             // Persist WS backpressure counters across Savestart so
             // operator's pressure-history isn't reset to zero on every
             // restart. Useful after long training sessions when the
@@ -7591,6 +4164,16 @@ class ServerBrain {
         if (pending.kVocabPrefetched === true) {
           cortex._kVocabPrefetched = true;
         }
+        // Restore auto-advance toggle. Overrides the constructor-time
+        // default (false) so a Savestart.bat resume keeps the operator's
+        // prior choice intact across reboots. start.bat wipes weights
+        // entirely so this path only fires on legitimate resumes.
+        if (typeof pending.autoAdvanceGrade === 'boolean') {
+          cortex._autoAdvanceGrade = pending.autoAdvanceGrade;
+          if (pending.autoAdvanceGrade === true) {
+            console.log('[Brain] restored auto-advance toggle: ON (signoffs bypassed + grade auto-fire enabled)');
+          }
+        }
         // Restore WS backpressure counters so historical pressure is
         // visible immediately after restart instead of zeroed.
         if (pending.wsBackpressure && typeof pending.wsBackpressure === 'object') {
@@ -7793,6 +4376,27 @@ process.on('unhandledRejection', (reason) => {
   process.exit(1);
 });
 
+// ⛔ LAW.MIXIN-ORDER — Object.assign attaches MUST run BEFORE
+// `new ServerBrain()` so the prototype carries every required mixin
+// method by the time the constructor fires. Pre-fix the attaches were
+// at the file BOTTOM (post-instantiation), which made the constructor's
+// `this._initEpisodicDB()` call (line ~860) crash with
+// "TypeError: this._initEpisodicDB is not a function" — exactly the
+// silent-runtime-crash failure mode LAW.MIXIN-ORDER warns against.
+// Operator's 2026-06-17 live test caught this — server.log showed
+// `at new ServerBrain (brain-server.js:860:10)`. cluster.assertAutoSize-
+// Wiring() couldn't catch this because it fires AFTER the constructor;
+// the brain already crashed by the time the assertion would run.
+//
+// Order matters within the chain too — GPU first (provides device-lost
+// callback used by constructor's GPU init path), then STATE / MEMORY
+// (constructor calls _initEpisodicDB which lives in MEMORY mixin), then
+// CHAT (chat path called post-boot).
+Object.assign(ServerBrain.prototype, SERVER_GPU_MIXIN);
+Object.assign(ServerBrain.prototype, SERVER_STATE_MIXIN);
+Object.assign(ServerBrain.prototype, SERVER_MEMORY_MIXIN);
+Object.assign(ServerBrain.prototype, SERVER_CHAT_MIXIN);
+
 const brain = new ServerBrain();
 // T14.21 — catch any rejection from brain.start() so async init failures
 // surface with a stack trace instead of silently terminating the process
@@ -7827,6 +4431,11 @@ setInterval(() => {
 // expose dashboards on the LAN, brain-mutating endpoints stay blocked
 // for non-loopback callers. Returns false (and writes 403) if the
 // caller is not localhost; returns true if the request can proceed.
+//
+// There is no admin-token / cookie / login flow — brain-mutating HTTP
+// stays loopback-only. The admin/viewer split for the dashboard UI
+// happens at the WS layer instead via the modeAssigned message based
+// on the connecting socket's remoteAddress.
 function requireLoopback(req, res, endpoint) {
   const addr = (req.socket && req.socket.remoteAddress) || '';
   // IPv4 loopback, IPv6 loopback, IPv4-mapped-IPv6 loopback.
@@ -7993,6 +4602,45 @@ const httpServer = http.createServer((req, res) => {
         }
         const from = cortex._pausedAt?.grade || null;
         const to = cortex._nextGrade?.grade || null;
+        // Grade-completion-gate enforcement — every subject whose battery
+        // cleared at the paused grade must have a corresponding operator
+        // signoff in brain._gradeSignoffs[${subject}/${from}] before the
+        // runner is allowed to advance. Walks cortex._lastGateResult so
+        // we only demand signoffs for subjects that actually ran a
+        // battery (a subject that never ran has nothing to attest to).
+        // The check is bypassed when cortex._autoAdvanceGrade === true
+        // (the auto-advance toggle is on) — operator has opted in to
+        // unattended overnight walks where per-cell localhost
+        // verification is waived in exchange for back-to-back grade
+        // progression without intervention. Toggle off = signoffs
+        // required as normal.
+        if (cortex._autoAdvanceGrade !== true && from) {
+          const signoffs = brain._gradeSignoffs || {};
+          const lastResults = (cortex._lastGateResult && typeof cortex._lastGateResult === 'object')
+            ? cortex._lastGateResult : {};
+          const suffix = `/${from}`;
+          const missing = [];
+          for (const key of Object.keys(lastResults)) {
+            if (!key.endsWith(suffix)) continue;
+            const result = lastResults[key];
+            if (!result || result.pass !== true) continue;
+            const signoff = signoffs[key];
+            if (!signoff || typeof signoff.signedAt !== 'string' || !signoff.signedAt) {
+              missing.push(key);
+            }
+          }
+          if (missing.length > 0) {
+            res.writeHead(403, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({
+              error: 'missing operator signoffs — grade-advance blocked',
+              pausedGrade: from,
+              missing,
+              remedy: 'POST /grade-signoff per listed subject/grade key before retrying, OR enable the auto-advance toggle (POST /auto-advance {enabled:true}) to bypass signoffs for unattended walks',
+            }));
+            console.warn(`[Brain] /grade-advance BLOCKED — missing signoffs for '${from}': ${missing.join(', ')}`);
+            return;
+          }
+        }
         cortex._gradeAdvancePaused = false;
         // _pausedAt + _nextGrade get cleared inside the curriculum
         // wait-loop when it exits; leave them for now so the next
@@ -8006,6 +4654,93 @@ const httpServer = http.createServer((req, res) => {
         res.end(JSON.stringify({ error: err.message }));
       }
     });
+    return;
+  }
+
+  // Auto-advance toggle endpoint. Single switch governing the curriculum
+  // runner's behavior across grade boundaries:
+  //   OFF (default) — runner pauses after every full grade pass,
+  //     /grade-advance demands per-subject operator signoffs before
+  //     un-pausing. Operator clicks "Start Next Grade" between grades.
+  //   ON — runner auto-fires the advance after each grade pass AND
+  //     /grade-advance skips the signoff demand entirely. Unattended
+  //     overnight K→PhD walks become possible. Single switch — no
+  //     separate "bypass-signoffs" flag.
+  //
+  // Usage:
+  //   GET  /auto-advance          → returns { enabled: bool }
+  //   POST /auto-advance { enabled: true | false }   → flips state,
+  //                                                    broadcasts WS event,
+  //                                                    persists to weights.
+  //
+  // Loopback-gated (same as every other brain-mutating endpoint).
+  // Defense-in-depth on top of the dashboard's admin-only UI control.
+  if (req.url === '/auto-advance') {
+    if (!requireLoopback(req, res, '/auto-advance')) return;
+    const cortex = brain.cortexCluster;
+    if (req.method === 'GET') {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({
+        enabled: !!(cortex && cortex._autoAdvanceGrade === true),
+      }));
+      return;
+    }
+    if (req.method === 'POST') {
+      // Same chunked-body assembly the privileged endpoints use to dodge
+      // the V8 O(N²) string-concat pathology and enforce a hard size cap.
+      const chunks = [];
+      let total = 0;
+      req.on('data', (chunk) => {
+        total += chunk.length;
+        if (total > 1024) { req.destroy(); return; }
+        chunks.push(chunk);
+      });
+      req.on('end', () => {
+        const body = Buffer.concat(chunks).toString('utf8');
+        try {
+          if (!cortex) {
+            res.writeHead(503, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'cortex cluster not initialized' }));
+            return;
+          }
+          const parsed = JSON.parse(body || '{}');
+          if (typeof parsed.enabled !== 'boolean') {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'body must include { enabled: true | false }' }));
+            return;
+          }
+          const prev = cortex._autoAdvanceGrade === true;
+          cortex._autoAdvanceGrade = parsed.enabled === true;
+          const next = cortex._autoAdvanceGrade;
+          // WS broadcast so every connected dashboard tab updates the
+          // toggle UI in real time, not just the one that POSTed.
+          const wsMsg = JSON.stringify({ type: 'autoAdvanceChanged', enabled: next });
+          for (const [ws] of brain.clients) {
+            if (ws.readyState === 1) {
+              try { ws.send(wsMsg); } catch { /* per-client send failure tolerated */ }
+            }
+          }
+          // Persist immediately so a refresh / Savestart resume reflects
+          // the new state. saveWeights serializes the cortex state with
+          // the new autoAdvanceGrade flag inside cortexState.
+          brain.saveWeights({ force: true, trigger: `auto-advance:${next ? 'on' : 'off'}` });
+          if (prev !== next) {
+            console.log(`[Brain] auto-advance toggle: ${prev ? 'ON' : 'OFF'} → ${next ? 'ON' : 'OFF'} (operator localhost)`);
+            if (next) {
+              console.log('[Brain] ⚠ auto-advance ON — operator signoffs bypassed at /grade-advance, curriculum will auto-fire next grade after each cell pass');
+            }
+          }
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ ok: true, enabled: next }));
+        } catch (err) {
+          res.writeHead(500, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: err.message }));
+        }
+      });
+      return;
+    }
+    res.writeHead(405, { 'Content-Type': 'application/json', 'Allow': 'GET, POST' });
+    res.end(JSON.stringify({ error: 'method not allowed' }));
     return;
   }
 
@@ -8190,9 +4925,6 @@ const httpServer = http.createServer((req, res) => {
 
   // message would use, but without episodic memory writes or the
   // conversation history append), returns just the answer text.
-  // Used by scripts/transformer-ablation.mjs to compare Unity's
-  // gate-probe answers head-to-head against a transformer arm on
-  // identical held-out EXAM_BANKS.
 
   // Usage:
   //   POST /exam-answer  { "question": "what comes after a?" }
@@ -8655,16 +5387,53 @@ const wss = new WebSocketServer({
 
 wss.on('connection', (ws, req) => {
   const id = 'user_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 6);
-  const client = { id, lastInput: 0, inputCount: 0, name: null };
+  const client = { id, lastInput: 0, inputCount: 0, name: null, isGPU: false, mode: null };
   brain.clients.set(ws, client);
   console.log(`[Server] Client connected: ${id} (${brain.clients.size} total)`);
 
-  // Send initial state
+  // Send initial state. The admin/viewer mode comes in a SEPARATE
+  // `modeAssigned` message after a 500ms claim window — see the
+  // setTimeout block below for the rationale (lets the compute worker
+  // identify itself via gpu_register before we commit the admin slot).
   ws.send(JSON.stringify({
     type: 'welcome', id,
     state: brain.getState(),
     emotionHistory: brain._emotionHistory.slice(-300),
   }));
+
+  // Admin/viewer mode assignment. The operator on the host box has
+  // multiple simultaneous connections (compute worker + brain UI tab +
+  // dashboard tab + console terminal), all sharing the loopback
+  // remoteAddress — they should ALL be treated as the same admin
+  // user. We assign by remoteAddress: loopback → admin,
+  // non-loopback → viewer. The compute worker (identified via the
+  // gpu_register message it sends shortly after connecting) is a
+  // back-end shadow and is excluded from the modeAssigned send since
+  // it doesn't render any UI.
+  //
+  // 500ms delay gives the compute worker time to identify itself
+  // before we'd send a pointless modeAssigned. After the delay, if
+  // the connection turned out to be a user (not GPU worker), we
+  // determine mode from remoteAddress.
+  //
+  // No persistence — admin is per-boot + per-machine-of-origin.
+  // Refresh from the same machine keeps admin (still loopback).
+  // LAN refresh stays viewer.
+  setTimeout(() => {
+    if (ws.readyState !== 1) return;  // socket already closed
+    if (client.isGPU) return;          // compute worker — back-end shadow, no UI
+    const addr = (req.socket && req.socket.remoteAddress) || '';
+    const isLoopback = addr === '127.0.0.1'
+      || addr === '::1'
+      || addr === '::ffff:127.0.0.1'
+      || addr.startsWith('127.');
+    const mode = isLoopback ? 'admin' : 'viewer';
+    client.mode = mode;
+    try {
+      ws.send(JSON.stringify({ type: 'modeAssigned', mode }));
+    } catch { /* connection closed during the assignment window — drop silently */ }
+    console.log(`[Server] ${id} assigned mode: ${mode} (remote=${addr || 'unknown'})`);
+  }, 500);
 
   ws.on('message', (data) => {
     // T17.3.e — binary WebSocket frames for sparse matrix responses.
@@ -9113,8 +5882,41 @@ setInterval(() => {
  * expects an operator to connect compute.html manually.
  */
 function _spawnGpuClient(port) {
+  // Live-test diagnostic: stamp INVOKED on every entry so a missed
+  // setTimeout(() => _spawnGpuClient(PORT), 3500) at line ~6350 leaves
+  // a visible trail in server.log. Pair with the FINISHED log line
+  // below — if INVOKED appears without FINISHED, spawn() crashed
+  // synchronously inside the platform-specific block. Operator
+  // verbatim 2026-06-17: "the htmls for the brain and compute and
+  // dashboard did not open correctly only two opened" — diagnostic
+  // log lines added so next live-test surfaces root cause.
+  const _spawnStartTs = Date.now();
+  const _spawnUptimeMs = Math.round(process.uptime() * 1000);
+  console.log(`[Server] _spawnGpuClient INVOKED at +${_spawnUptimeMs}ms post-process-start (platform=${process.platform}, DREAM_NO_AUTO_GPU=${process.env.DREAM_NO_AUTO_GPU || 'unset'})`);
+
+  // Failure-surfacing helper — broadcasts {type:'gpuClientSpawnFailed'}
+  // over WebSocket to all connected clients (dashboard.html consumes
+  // this and renders a recovery banner) AND logs with [CRITICAL] prefix
+  // so the PowerShell tail-window highlight rules surface it. Without
+  // this, silent failures inside the platform-specific spawn block
+  // leave the operator with no visible signal — only the absence of a
+  // compute.html tab. Per audit task H.6.
+  const _broadcastSpawnFailure = (details) => {
+    try {
+      const payload = { type: 'gpuClientSpawnFailed', ts: Date.now(), retryIn: null, ...details };
+      const msg = JSON.stringify(payload);
+      if (brain && brain.clients) {
+        for (const [clientWs] of brain.clients) {
+          try { if (clientWs && clientWs.readyState === 1) clientWs.send(msg); } catch { /* per-client send failure tolerated */ }
+        }
+      }
+    } catch { /* defensive — never let surfacing itself crash spawn flow */ }
+    console.error(`[Server] [CRITICAL] _spawnGpuClient failure: ${JSON.stringify(details)}`);
+  };
+
   if (process.env.DREAM_NO_AUTO_GPU === '1') {
     console.log(`[Server] DREAM_NO_AUTO_GPU=1 — skipping browser auto-launch. Open http://localhost:${port}/compute.html manually to start GPU compute.`);
+    console.log(`[Server] _spawnGpuClient FINISHED (skipped via DREAM_NO_AUTO_GPU=1, elapsed=${Date.now() - _spawnStartTs}ms)`);
     return;
   }
   // iter15-D — kill any Chrome process attached to the isolated
@@ -9334,13 +6136,16 @@ function _spawnGpuClient(port) {
         });
         child.on('error', (err) => {
           console.warn(`[Server] Browser spawn error: ${err.message}. Falling back to default browser open.`);
+          _broadcastSpawnFailure({ stage: 'child-error-event', browser: browserName, exePath, errno: err.code || err.errno || 'unknown', message: err.message, fallback: 'default-browser' });
           exec(`start "" "${url}"`, () => {});
         });
         child.unref();
         spawnedOK = true;
         console.log(`[Server] GPU compute client spawn() initiated — PID ${child.pid}. URL: ${url}`);
+        console.log(`[Server] _spawnGpuClient FINISHED (browser=${browserName}, pid=${child.pid}, elapsed=${Date.now() - _spawnStartTs}ms — 30s watchdog will verify WS connection)`);
       } catch (err) {
         console.warn(`[Server] spawn() threw: ${err.message}. Falling back to default browser open.`);
+        _broadcastSpawnFailure({ stage: 'spawn-throw', browser: browserName, exePath, errno: err.code || 'unknown', message: err.message, fallback: 'default-browser' });
         exec(`start "" "${url}"`, () => {});
       }
 
@@ -9354,6 +6159,7 @@ function _spawnGpuClient(port) {
         setTimeout(() => {
           if (!brain || !brain._gpuClient || brain._gpuClient.readyState !== 1) {
             console.warn(`[Server] GPU client never connected after Chrome spawn (30s timeout). Chrome may have failed silently — falling back to default browser to at least open compute.html (will be capped at 2GB binding ceiling without --enable-unsafe-webgpu flag).`);
+            _broadcastSpawnFailure({ stage: 'watchdog-30s-timeout', browser: browserName, exePath, errno: 'WS_NEVER_CONNECTED', message: 'Chrome spawn appeared OK but no compute.html WS client connected within 30s — silent Chrome failure (stale profile lock, GPU process crash, sandbox denial).', fallback: 'default-browser' });
             exec(`start "" "${url}"`, () => {});
           } else {
             console.log(`[Server] GPU client connected — Chrome auto-launch confirmed working.`);
@@ -9362,10 +6168,12 @@ function _spawnGpuClient(port) {
       }
     } else {
       console.warn(`[Server] Chrome and Edge not found in standard install paths. Falling back to default browser launch — WebGPU binding ceiling will stay at 2GB spec minimum (cap ~178M neurons). Install Chrome OR open ${url} manually in a Chromium browser launched with --enable-unsafe-webgpu flag to scale past 178M.`);
+      _broadcastSpawnFailure({ stage: 'browser-not-found', browser: 'none', exePath: null, errno: 'ENOENT', message: 'Chrome + Edge not found in any standard install path. Default-browser fallback opens at 2GB binding ceiling (~178M neurons cap).', fallback: 'default-browser', checkedPaths });
       exec(`start "" "${url}"`, (err) => {
         if (err) console.warn(`[Server] Default-browser fallback failed: ${err.message}. Open ${url} manually.`);
         else console.log(`[Server] GPU compute client opened in default browser: ${url}`);
       });
+      console.log(`[Server] _spawnGpuClient FINISHED (no-Chrome/Edge fallback, elapsed=${Date.now() - _spawnStartTs}ms)`);
     }
   } else if (process.platform === 'darwin') {
     const args = ['-a', 'Google Chrome', '--args', '--enable-unsafe-webgpu', '--enable-dawn-features=allow_unsafe_apis,disable_robustness', '--new-window', url];
@@ -9373,8 +6181,10 @@ function _spawnGpuClient(port) {
     try {
       const child = spawn('open', args, { detached: true, stdio: 'ignore' });
       child.unref();
+      console.log(`[Server] _spawnGpuClient FINISHED (macOS open, pid=${child.pid}, elapsed=${Date.now() - _spawnStartTs}ms)`);
     } catch (err) {
       console.warn(`[Server] macOS spawn failed: ${err.message}. Falling back to default open.`);
+      _broadcastSpawnFailure({ stage: 'macos-spawn-throw', browser: 'Chrome', exePath: '/Applications/Google Chrome.app', errno: err.code || 'unknown', message: err.message, fallback: 'open' });
       exec(`open "${url}"`, () => {});
     }
   } else {
@@ -9383,10 +6193,17 @@ function _spawnGpuClient(port) {
     const tryLinux = (exe, fallbackFn) => {
       try {
         const child = spawn(exe, linuxArgs, { detached: true, stdio: 'ignore' });
-        child.on('error', () => fallbackFn());
+        child.on('error', (err) => {
+          _broadcastSpawnFailure({ stage: 'linux-child-error', browser: exe, exePath: exe, errno: err.code || 'unknown', message: err.message, fallback: 'next-in-chain' });
+          fallbackFn();
+        });
         child.unref();
         console.log(`[Server] GPU compute client spawned via ${exe}`);
-      } catch { fallbackFn(); }
+        console.log(`[Server] _spawnGpuClient FINISHED (Linux ${exe}, pid=${child.pid}, elapsed=${Date.now() - _spawnStartTs}ms)`);
+      } catch (err) {
+        _broadcastSpawnFailure({ stage: 'linux-spawn-throw', browser: exe, exePath: exe, errno: err.code || 'unknown', message: err.message, fallback: 'next-in-chain' });
+        fallbackFn();
+      }
     };
     tryLinux('google-chrome', () => tryLinux('chromium', () => exec(`xdg-open "${url}"`, () => {})));
   }
@@ -9476,3 +6293,10 @@ process.on('SIGTERM', () => {
   try { brain.stop(); } catch {}
   process.exit(0);
 });
+
+// Per-concern mixins now attach BEFORE `new ServerBrain()` (above, near
+// line 4718). Moving the attaches to pre-instantiation was the fix for
+// the "TypeError: this._initEpisodicDB is not a function" boot crash
+// operator caught 2026-06-17. See the comment block above the
+// pre-instantiation Object.assigns for full LAW.MIXIN-ORDER rationale.
+

@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "grade": "grade3",
+  "subject": "social",
+  "source": "Simple English Wikipedia (CC-BY-SA), cleaned + sentence-segmented",
+  "note": "Hybrid academic-depth corpus for social/grade3. Trained via curriculum._trainAcademicStories. Real openly-licensed curriculum content; lived-year + math stay bespoke.",
+  "experiences": [
+    {
+      "theme": "community",
+      "story": "a community is a collection of living creatures that share a common habitat. they are frequently interested in the same things. people in human groups share some of the same values and needs, which has an impact on the group's and individuals' identities. despite the fact that communities are established on personal interests, each individual is unique in their own manner, which is the primary source of social variety in a community. communal forces are the forces of a social group or community as opposed to individual forces. communal forces have common interests leading to common modes of action and speech. common interest is the interest of all or a controlling number of the community."
+    }
+  ]
+}

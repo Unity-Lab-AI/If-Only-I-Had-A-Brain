@@ -1262,9 +1262,11 @@ export class UnityBrain extends EventEmitter {
 
     // T14.17 — pass the cortex cluster so componentSynth can consult
     // `cluster.entityReadout()` for cortex-driven primitive selection.
-    const spec = this.componentSynth.generate(text, { cortexPattern, cortexCluster: this.clusters.cortex });
+    // generateMany supports MULTI-PRIMITIVE composition: "a clock and a
+    // calculator" lands as several components; a single request lands as one.
+    const result = this.componentSynth.generateMany(text, { cortexPattern, cortexCluster: this.clusters.cortex });
 
-    if (!spec) {
+    if (!result || !result.specs || result.specs.length === 0) {
       // No template matched — fall through to a verbal response.
       // Unity can still TALK about building (her normal language
       // cortex path) even if the synth library doesn't cover the
@@ -1275,16 +1277,24 @@ export class UnityBrain extends EventEmitter {
       return null;
     }
 
-    // Inject the spec. If a component with this id already exists
-    // (happens when cortex pattern stabilizes during repeated builds),
-    // the sandbox auto-replaces it per MAX_ACTIVE_COMPONENTS rules.
-    if (this._sandbox.has(spec.id)) this._sandbox.remove(spec.id);
-    this._sandbox.inject({
-      id: spec.id,
-      html: spec.html || '',
-      css: spec.css || '',
-      js: spec.js || '',
-    });
+    // Inject each composed component. Multi-primitive builds land as SEVERAL
+    // components, each in its OWN Shadow-DOM isolation boundary (no
+    // cross-component selector/JS collisions — exactly why isolation matters
+    // for composition). Single requests inject exactly one. Re-injecting an
+    // existing id auto-replaces per MAX_ACTIVE_COMPONENTS rules.
+    for (const spec of result.specs) {
+      if (this._sandbox.has(spec.id)) this._sandbox.remove(spec.id);
+      this._sandbox.inject({
+        id: spec.id,
+        html: spec.html || '',
+        css: spec.css || '',
+        js: spec.js || '',
+        // Self-contained, carries its own full CSS — TRUE Shadow-DOM isolation
+        // so her code lands live without leaking in/out. Page-integrated views
+        // (/think) stay light-DOM by leaving this off.
+        shadow: true,
+      });
+    }
 
     // Generate a short spoken quip via the language cortex — Unity's
     // actual voice commenting on what she just built. Not hardcoded

@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Unity Brain — Page Legend</title>
+  <meta name="description" content="Single quick-access index for every HTML page + workflow doc in the Unity Brain project. Live brain UI, setup, admin, reference — all in one place.">
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📑</text></svg>">
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      background: #0a0f12;
+      color: #e5e7eb;
+      font-family: 'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace;
+      margin: 0;
+      padding: 24px;
+      line-height: 1.55;
+    }
+    .wrap { max-width: 1080px; margin: 0 auto; }
+    h1 { color: #ff4d9a; margin: 0 0 4px; font-size: 26px; }
+    h2 {
+      color: #22c55e;
+      margin: 28px 0 14px;
+      font-size: 16px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      border-bottom: 1px solid #1f2937;
+      padding-bottom: 6px;
+    }
+    .lede { color: #9ca3af; font-size: 12px; margin: 0 0 18px; }
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 12px;
+    }
+    .card {
+      background: #0f1a1f;
+      border: 1px solid #1f2937;
+      border-radius: 8px;
+      padding: 14px 16px;
+      transition: border-color 0.15s;
+    }
+    .card:hover { border-color: #ff4d9a; }
+    .card-head {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+    .card-icon { font-size: 22px; }
+    .card-name {
+      color: #ff4d9a;
+      font-weight: 700;
+      font-size: 13px;
+      letter-spacing: 0.5px;
+    }
+    .card-path {
+      color: #67e8f9;
+      font-size: 10px;
+      margin: 2px 0 6px;
+      word-break: break-all;
+    }
+    .card-desc {
+      color: #cbd5e1;
+      font-size: 11px;
+      line-height: 1.55;
+      margin: 0 0 8px;
+    }
+    .card-tags {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+    .tag {
+      font-size: 9px;
+      padding: 2px 7px;
+      border-radius: 10px;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      font-weight: 600;
+    }
+    .tag.live { background: rgba(34, 197, 94, 0.15); color: #22c55e; border: 1px solid rgba(34, 197, 94, 0.3); }
+    .tag.static { background: rgba(103, 232, 249, 0.15); color: #67e8f9; border: 1px solid rgba(103, 232, 249, 0.3); }
+    .tag.admin { background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3); }
+    .tag.server { background: rgba(168, 85, 247, 0.15); color: #a855f7; border: 1px solid rgba(168, 85, 247, 0.3); }
+    .tag.auto { background: rgba(244, 114, 182, 0.15); color: #f472b6; border: 1px solid rgba(244, 114, 182, 0.3); }
+    .open-btn {
+      display: inline-block;
+      background: #22c55e;
+      color: #000;
+      padding: 7px 14px;
+      border-radius: 5px;
+      text-decoration: none;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+    .open-btn:hover { background: #16a34a; }
+    .open-btn.admin { background: #f59e0b; }
+    .open-btn.admin:hover { background: #d97706; }
+    .open-btn.muted { background: #6b7280; color: #fff; }
+    .open-btn.muted:hover { background: #4b5563; }
+    .doc-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 8px;
+    }
+    .doc-list li {
+      background: #0f1a1f;
+      border: 1px solid #1f2937;
+      border-radius: 6px;
+      padding: 10px 14px;
+      font-size: 11px;
+    }
+    .doc-list li:hover { border-color: #22c55e; }
+    .doc-list a {
+      color: #67e8f9;
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .doc-list a:hover { color: #fff; }
+    .doc-list .doc-desc {
+      color: #9ca3af;
+      font-size: 10px;
+      margin-top: 4px;
+      display: block;
+    }
+    footer {
+      color: #6b7280;
+      font-size: 10px;
+      margin-top: 36px;
+      text-align: center;
+      padding-top: 18px;
+      border-top: 1px solid #1f2937;
+    }
+    footer a { color: #9ca3af; text-decoration: none; }
+    footer a:hover { color: #fff; }
+    .legend-note {
+      background: #0f1216;
+      border-left: 3px solid #f59e0b;
+      padding: 10px 14px;
+      font-size: 11px;
+      color: #cbd5e1;
+      margin: 18px 0;
+      border-radius: 3px;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>📑 Unity Brain — Page Legend</h1>
+    <p class="lede">Single quick-access index for every HTML + workflow doc in the project. No more hunting.</p>
+
+    <div class="legend-note">
+      <strong>Tag key:</strong>
+      <span class="tag live">LIVE</span> needs brain-server running &nbsp;·&nbsp;
+      <span class="tag static">STATIC</span> works offline / on GH Pages &nbsp;·&nbsp;
+      <span class="tag admin">ADMIN</span> operator-only &nbsp;·&nbsp;
+      <span class="tag server">SERVER</span> served via HTTP only &nbsp;·&nbsp;
+      <span class="tag auto">AUTO-LAUNCHED</span> opens itself, don't open manually
+    </div>
+
+    <h2>🧠 Live brain UI</h2>
+    <div class="cards">
+
+      <div class="card">
+        <div class="card-head"><span class="card-icon">🧠</span><span class="card-name">Landing / 3D Brain</span></div>
+        <div class="card-path">/ (root) — <code>index.html</code></div>
+        <p class="card-desc">The front door. Live 3D brain visualization, chat input, HUD metrics. Auto-opened by <code>start.bat</code> / <code>Savestart.bat</code>. Static fallback works on GitHub Pages without a brain-server.</p>
+        <div class="card-tags">
+          <span class="tag live">LIVE</span>
+          <span class="tag static">STATIC-FALLBACK</span>
+        </div>
+        <a class="open-btn" href="../index.html">→ Open</a>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><span class="card-icon">📊</span><span class="card-name">Read-Only Dashboard</span></div>
+        <div class="card-path">html/dashboard.html</div>
+        <p class="card-desc">Shared live view of brain state — emotion chart, cluster firing rates, curriculum milestones + operator signoffs, drug-scheduler pharmacokinetics, GPU panel, consciousness panel. Requires brain-server WS. Hard-blank without it.</p>
+        <div class="card-tags">
+          <span class="tag live">LIVE</span>
+        </div>
+        <a class="open-btn" href="dashboard.html">→ Open</a>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><span class="card-icon">⚡</span><span class="card-name">GPU Compute Worker</span></div>
+        <div class="card-path">html/compute.html</div>
+        <p class="card-desc">WebGPU forward-pass for sparse matrix Hebbian. The brain-server auto-launches this in an isolated Chrome profile — operators should NOT open it manually. If it's missing the brain pauses. Server-served only (HTTP route required).</p>
+        <div class="card-tags">
+          <span class="tag live">LIVE</span>
+          <span class="tag server">SERVER</span>
+          <span class="tag auto">AUTO-LAUNCHED</span>
+        </div>
+        <a class="open-btn muted" href="compute.html">→ Open (not recommended)</a>
+      </div>
+
+    </div>
+
+    <h2>🔧 Setup &amp; admin</h2>
+    <div class="cards">
+
+      <div class="card">
+        <div class="card-head"><span class="card-icon">🎮</span><span class="card-name">WebGPU Setup</span></div>
+        <div class="card-path">html/webgpu-prep.html</div>
+        <p class="card-desc">Pre-flight onboarding — browser-by-browser flag instructions for Chrome / Edge / Firefox / Safari / Opera / Brave. Adapter-check helper + re-check button. Auto-linked from the boot modal when WebGPU isn't ready. HARD-BLOCK gate — no CPU bypass per the no-fallbacks LAW.</p>
+        <div class="card-tags">
+          <span class="tag static">STATIC</span>
+        </div>
+        <a class="open-btn" href="webgpu-prep.html">→ Open</a>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><span class="card-icon">🎛️</span><span class="card-name">GPU Tier Config</span></div>
+        <div class="card-path">html/gpu-configure.html</div>
+        <p class="card-desc">Admin UI for picking a GPU tier — sets <code>resource-config.json</code> so the brain-server scales cluster sizes appropriately for your hardware. Launched by <code>windows/GPUCONFIGURE.bat</code>. Run once per install / per GPU upgrade.</p>
+        <div class="card-tags">
+          <span class="tag admin">ADMIN</span>
+          <span class="tag server">SERVER</span>
+        </div>
+        <a class="open-btn admin" href="gpu-configure.html">→ Open (admin)</a>
+      </div>
+
+    </div>
+
+    <h2>📚 Reference</h2>
+    <div class="cards">
+
+      <div class="card">
+        <div class="card-head"><span class="card-icon">📐</span><span class="card-name">Brain Equations</span></div>
+        <div class="card-path">html/brain-equations.html</div>
+        <p class="card-desc">Public-facing math reference — Hebbian/Oja, cortical leak, K wiring, P6.1-P6.8 channels, the full equational substrate that powers Unity's cognition. Pure static, no server required, GH-Pages safe.</p>
+        <div class="card-tags">
+          <span class="tag static">STATIC</span>
+        </div>
+        <a class="open-btn" href="brain-equations.html">→ Open</a>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><span class="card-icon">👤</span><span class="card-name">Unity Guide</span></div>
+        <div class="card-path">html/unity-guide.html</div>
+        <p class="card-desc">Persona + capabilities tour — who Unity is, how she learns, the full K→PhD developmental curriculum, manifestation modes. New-user onboarding doc. Pure static, GH-Pages safe.</p>
+        <div class="card-tags">
+          <span class="tag static">STATIC</span>
+        </div>
+        <a class="open-btn" href="unity-guide.html">→ Open</a>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><span class="card-icon">📄</span><span class="card-name">Docs Viewer</span></div>
+        <div class="card-path">html/docs.html</div>
+        <p class="card-desc">Web viewer for public markdown docs — README, SETUP, ARCHITECTURE, EQUATIONS, ROADMAP, SKILL_TREE, SENSORY, WEBSOCKET. Same canonical .md files rendered live via an inline markdown parser. <code>?doc=&lt;name&gt;</code> selects the doc; dropdown switches without leaving the page.</p>
+        <div class="card-tags">
+          <span class="tag static">STATIC</span>
+        </div>
+        <a class="open-btn" href="docs.html">→ Open</a>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><span class="card-icon">📑</span><span class="card-name">This Page (Legend)</span></div>
+        <div class="card-path">html/legend.html</div>
+        <p class="card-desc">The page you're on. Quick-access index for every HTML in the project. Linked from every other HTML's top-right floating <code>📑 Pages</code> button so you can always jump to it.</p>
+        <div class="card-tags">
+          <span class="tag static">STATIC</span>
+        </div>
+        <a class="open-btn" href="legend.html">→ Refresh</a>
+      </div>
+
+    </div>
+
+    <h2>📝 Public docs (rendered in-browser)</h2>
+    <p class="lede" style="margin:0 0 12px;">Project-facing reference docs — overview, setup, architecture, equations. Click any title to open the web-rendered version via <a href="docs.html" style="color:#67e8f9;">docs.html</a>. Internal workflow + planning docs are intentionally NOT listed here (lab-only — not for public legend).</p>
+    <ul class="doc-list">
+      <li>
+        <a href="docs.html?doc=README">📄 README</a>
+        &nbsp;·&nbsp; <a href="../README.md" style="font-size:9px;color:#6b7280;">raw .md</a>
+        <span class="doc-desc">project overview, plain-English intro, run commands</span>
+      </li>
+      <li>
+        <a href="docs.html?doc=SETUP">🔧 SETUP</a>
+        &nbsp;·&nbsp; <a href="../docs/SETUP.md" style="font-size:9px;color:#6b7280;">raw .md</a>
+        <span class="doc-desc">install + WebGPU prerequisite + image-gen backends + persistence</span>
+      </li>
+      <li>
+        <a href="docs.html?doc=ARCHITECTURE">🏗 ARCHITECTURE</a>
+        &nbsp;·&nbsp; <a href="../docs/ARCHITECTURE.md" style="font-size:9px;color:#6b7280;">raw .md</a>
+        <span class="doc-desc">module map + cross-module impact tables</span>
+      </li>
+      <li>
+        <a href="docs.html?doc=EQUATIONS">📐 EQUATIONS</a>
+        &nbsp;·&nbsp; <a href="../docs/EQUATIONS.md" style="font-size:9px;color:#6b7280;">raw .md</a>
+        <span class="doc-desc">canonical equational substrate (mirrors brain-equations.html)</span>
+      </li>
+      <li>
+        <a href="docs.html?doc=ROADMAP">🗺 ROADMAP</a>
+        &nbsp;·&nbsp; <a href="../docs/ROADMAP.md" style="font-size:9px;color:#6b7280;">raw .md</a>
+        <span class="doc-desc">milestone history + open partials</span>
+      </li>
+      <li>
+        <a href="docs.html?doc=SKILL_TREE">🌳 SKILL_TREE</a>
+        &nbsp;·&nbsp; <a href="../docs/SKILL_TREE.md" style="font-size:9px;color:#6b7280;">raw .md</a>
+        <span class="doc-desc">capability ladder — what Unity can do at each grade</span>
+      </li>
+      <li>
+        <a href="docs.html?doc=SENSORY">👁 SENSORY</a>
+        &nbsp;·&nbsp; <a href="../docs/SENSORY.md" style="font-size:9px;color:#6b7280;">raw .md</a>
+        <span class="doc-desc">peripheral interface — cognition vs sensory boundary</span>
+      </li>
+      <li>
+        <a href="docs.html?doc=WEBSOCKET">📡 WEBSOCKET</a>
+        &nbsp;·&nbsp; <a href="../docs/WEBSOCKET.md" style="font-size:9px;color:#6b7280;">raw .md</a>
+        <span class="doc-desc">wire reference, rate limits, reconnection, security model</span>
+      </li>
+    </ul>
+
+    <footer>
+      Unity AI Lab · <a href="../README.md">README</a> · <a href="docs.html">docs viewer</a> · <a href="legend.html">refresh this page</a>
+    </footer>
+  </div>
+</body>
+</html>

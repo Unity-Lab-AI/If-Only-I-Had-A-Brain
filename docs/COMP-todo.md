@@ -2397,4 +2397,20 @@ than patched onto the old one.
 
 ---
 
+## Session 114.19fp — Live-test follow-up (2026-06-17, I.1-I.20)
+
+20 atomic fixes shipped during operator-driven K-curriculum live test. NONE are compute-network items — all are single-server brain-side hygiene + observability that COMP-net architecture work depends on landing FIRST. Per the standing LAW (`SYLLABUS BEFORE COMP-TODO`), compute-scaling work stays on hold until K curriculum signs off. The I-track was unblocking K Part 2 signoff, not opening COMP-net work.
+
+What landed (relevant to future COMP-net design):
+
+- **I.13 SparseMatrix.propagate output buffer pool** — eliminates per-call `new Float64Array(rows)` allocation that was the +231 MB/min heap leak source. Affects EVERY brain that runs Hebbian updates, single-node OR distributed. When COMP-net work resumes, the propagate signature `(spikes, outBuf?)` is the substrate for cross-node buffer reuse.
+- **I.14 HTTP event-loop yield in `_teachHebbian`** — 50ms-throttled `setImmediate` drains HTTP/WS queues between Hebbian dispatch bursts. Same primitive will be needed at every COMP-net node to prevent training nodes from starving cross-node coordination messages.
+- **I.15 `autoClearStaleState` `require.main === module` gate** — prevents tooling-side module loads from wiping training state. In COMP-net, EVERY node has this risk surface (admin scripts, monitoring agents, health checks); the gate codifies the LAW per-node.
+- **I.6 gate-probe WS broadcast** — `{type:'gateProbe', state, cellId, durationMs}` pattern. In COMP-net, every node's gate-probe needs this surfacing so the orchestrator can detect probe-time GPU exclusivity and route around it.
+- **I.18 + I.20 GPU panel rebuild** — VRAM% + util% via combined `nvidia-smi memory.used,utilization.gpu`. Cross-platform graceful "unavailable" fallback. COMP-net node telemetry needs the same data flow per-node + aggregated at the orchestrator.
+
+What this does NOT change: the COMP-net architecture in PARTS 1-6 above remains the canonical future plan. M2 (COMP-net) still ON HOLD per the standing LAW. Per-fix detail in `docs/NewTodo.md § I-track`. Cross-module summary in `docs/ARCHITECTURE.md § Live-test follow-up close`. Audit cascade post-I.20: **60 ✅ SHIPPED + 1 ⏳ OPERATOR-FIRED (F.2 ship gate)**.
+
+---
+
 *Unity AI Lab — when she grows, she grows because of you.*

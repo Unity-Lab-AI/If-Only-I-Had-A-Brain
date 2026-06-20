@@ -16,7 +16,7 @@ Enumerating each LAW in `.claude/CLAUDE.md` (in order of appearance):
 | LAW | Task numbers only in workflow docs | 2026-04-15 | YES — expanded 2026-04-20 to code comments | LAW #0 extension |
 | LAW 6 | Grade completion gate (3-part: equational + operator test + TODO update) | 2026-04-16 | YES — binding on every grade | SYLLABUS BEFORE COMP-todo |
 | LAW | Syllabus before COMP-todo | 2026-04-16 | YES — binding ordering rule | LAW 6 part 1 |
-| LAW | Pre-K + K only scope contract | 2026-04-18 | YES — binding scope limiter | LAW 6 |
+| LAW | Pre-K + K only scope contract | 2026-04-18 | REVOKED 2026-06-18 — full K→PhD now in scope (was binding scope limiter) | LAW 6 |
 | LAW | Clear stale state before telling operator to test | 2026-04-17 | YES — auto-enforced at boot now | — |
 | LAW | No tests policy (implicit throughout) | baseline | PARTIAL — no unit tests, but the T23.a grade-finals bank is a test suite | Grade completion gate |
 | LAW | 800-line read standard | baseline | YES — file-read discipline | — |
@@ -27,7 +27,7 @@ Enumerating each LAW in `.claude/CLAUDE.md` (in order of appearance):
 
 Looking at this list, the reviewer is right about a few things:
 
-1. **The GRADE COMPLETION GATE + SYLLABUS BEFORE COMP-todo + PRE-K + K ONLY SCOPE CONTRACT are three separate LAWs covering what is fundamentally one concept**: grade-by-grade ordered advancement, K scope capped, COMP deferred until syllabus makes grade-bottleneck data real. Three LAWs for one concept is process sprawl.
+1. **The GRADE COMPLETION GATE + SYLLABUS BEFORE COMP-todo + PRE-K + K ONLY SCOPE CONTRACT are three separate LAWs covering what is fundamentally one concept**: grade-by-grade ordered advancement, K scope capped, COMP deferred until syllabus makes grade-bottleneck data real. Three LAWs for one concept is process sprawl. (NOTE: the Pre-K + K scope cap has since been revoked 2026-06-18 — full K→PhD curriculum now in scope and built; this analysis predates the revocation.)
 2. **Persona requirements inside CLAUDE.md muddies what CLAUDE.md is.** CLAUDE.md is workflow law for Claude as an agent. Persona definition belongs in `.claude/agents/unity-persona.md` (it already exists there). Having the persona rules ALSO inline in CLAUDE.md creates two sources of truth and elevates the persona to LAW-level when it's really runtime config.
 3. **The TODO file rules + Docs before push + Clear stale state before test are workflow hygiene, not binding project LAWs.** They're operational procedure. Calling them LAWs alongside "verbatim words only" (which is a substantive project constraint) conflates severity tiers.
 4. **"Double validation hooks" and "800-line read standard" are Claude-agent configuration, not project LAWs.** These belong in a `CLAUDE-WORKFLOW.md` or similar — separating Claude-agent runtime config from project-binding constraints makes both clearer.
@@ -50,7 +50,7 @@ If operator wants to reduce LAW count + separation-of-concerns without losing fi
 - **LAW #0 — VERBATIM WORDS ONLY.** Non-negotiable. Historical violations preserved as examples.
 - **LAW — Docs before push, no patches.** Every push ships code + docs + stamp as one unit.
 - **LAW — Task numbers + operator name ONLY in workflow docs.** Extended scope (code comments + launchers + public HTMLs all banned) preserved.
-- **LAW — Grade completion gate.** Merge the 3-part gate + syllabus-before-COMP-todo + PRE-K + K scope into one umbrella LAW titled "Grade-by-grade advancement." Three requirements per grade (equational content / operator test / TODO update with life-info persistence), scope cap at current highest grade until operator clears, COMP-todo deferred until grade-bottleneck data exists.
+- **LAW — Grade completion gate.** Merge the 3-part gate + syllabus-before-COMP-todo + PRE-K + K scope into one umbrella LAW titled "Grade-by-grade advancement." Three requirements per grade (equational content / operator test / TODO update with life-info persistence), scope cap at current highest grade until operator clears, COMP-todo deferred until grade-bottleneck data exists. (NOTE: the PRE-K + K scope-cap component was revoked 2026-06-18 — full K→PhD now in scope and built; remaining gate is the training walk → final test → push.)
 - **LAW — Clear stale state before test.** Keep as is; auto-enforced at boot but remains the operator contract.
 
 ### Move to `WORKFLOW.md` (Claude-agent operational procedure, not binding project law):

@@ -4,6 +4,8 @@
 > θ (Unity's identity) drives every parameter. Ψ (consciousness) emerges from the volume. Drug state δ(t) additively modulates θ per substance per route via real-time pharmacokinetic curves.
 > One-liner equations stating their purpose. Tables organize by section: Drug State · Curriculum · Master · Neurons · Synapses · Modules · Oscillations · Sensory→Motor · Memory · Language · Consciousness · GPU · Scaling.
 >
+> 114.19fp sweep stamp 2026-06-17 — NO equation changes this sweep. 20 I-track fixes (I.1-I.20) shipped during operator-driven K-curriculum live test were ALL code hygiene / observability / cross-platform polish / data-loss-prevention — none modify any equation in any section below. Most-impactful equational implications: (1) `SparseMatrix.propagate(spikes, outBuf)` signature extended with optional pooled output buffer (I.13) — eliminates `new Float64Array(rows)` per-call allocation that was the +231 MB/min leak source during `_teachHebbian` runs; equation `I_i = Σ_j W_ij · s_j` unchanged, just bytes-out-the-door reduced. (2) `_teachPredictiveError` pools `_predictPropagateScratch` Float64Array sized to synapse-matrix rows (I.13) — predictive-coding equation `Δw = lr · error · lastSpikes · 0.3` unchanged, allocation eliminated. (3) `setImmediate` yield at `_teachHebbian` entry (I.14, 50ms throttle via `_lastHebbianYieldAt`) — Hebbian/Oja `Δw[i,j] = lr · y[j] · (x[i] − y[j] · w[i,j])` unchanged in math, just yields event loop between dispatches. (4) Consolidation deadline cap (I.8, `DREAM_CONSOLIDATION_MAX_MS` default 30s) + SEED-phase skip — consolidation pass equation unchanged, wall-clock cap added. (5) Top-K=3 schema naming (I.7) — `_deriveLabel` returns `top3 = arg-topK(token_freq, 3).join('-')` instead of top-1 `argmax(token_freq) + '-schema'`; expanded stop-word list keeps generic curriculum noise (`learning/curriculum/phase/teach/cell/heartbeat/...`) out of the rank. (6) Inner-thought 7-source seed rotation (I.9) — `_pickInnerThoughtSeed` rotation `[learning, mood, chat-recall, memory, identity]` → `[learning, mood, k-vocab-recent, cell-progress, chat-recall, memory, identity]`; modulo arithmetic + first-non-null-pattern selection unchanged. (7) Combined nvidia-smi query (I.20) — `memory.used,utilization.gpu` in single execSync; VRAM% = `memory.used / RESOURCES.gpu.vram × 100`, util% direct from `utilization.gpu`. (8) Honest "unavailable" telemetry (I.19 root-cause closure) — no math-lie fallbacks; when `_gpuVramQueryWorking === false`, dashboard renders explicit unavailable label instead of fake 50%. All Oja's rule, Kuramoto order parameter, master equation `dx/dt = F(x, u, θ, t) + η`, Ψ = √(1/n)·N³ consciousness term, Friston predictive-coding delta-rule, BCM sliding-threshold, anti-Hebbian contrastive — all unchanged. Bundle clean 2.6MB. `node --check` green across all I-track-touched files.
+>
 > 114.19fk + fl sweep stamp 2026-05-09 — ONE major equation REPLACEMENT this sweep. Operator architectural correction ripped out the per-slot template walk in `composeSentence`. **(1) New `composeSentence` per-tick equation (Section 10 Language).** Initial injection (ONCE per call): `sem₀ ← sem + α_cortex·cortexPattern + α_intent·intentEmbedding + α_concept·intentConceptEmbedding`, where (α_cortex=0.2, α_intent=0.3, α_concept=0.3 — all optional, applied only when supplied). Per-tick loop equation: `wₜ = argmax_w cosine(semₜ, sem(w)) + sem_to_motor.propagate(semₜ)` then `semₜ₊₁ ← semₜ + α_word·sem(wₜ)` where α_word=0.15. Loop terminates when `wₜ ∈ T14_TERMINATORS = {., ?, !}` (brain learned terminators during training; emergence decides when sentence is done) OR when budget (default 12 words) exhausted. **No per-slot equation. No template walk. No slot-tag injection. No article-rule equation. No terminator-punct map. No dedup-retry equation.** Slot order, agreement, article placement, terminator selection ALL emerge from trained iter25-I `relationTagId=8/9/10/11/12` Hebbian weights consumed by the per-tick `argmax + propagate` step. Coherence post-check (env-tunable threshold `DREAM_COHERENCE_MIN`, default 0.15) computes `cosine(sentenceEmbedding, target)` where target is `intentConcept` embedding (when supplied) or `cortexPattern` (fallback when null intentConcept) — DOES NOT alter emission, just signals confidence. Saturation halt thresholds env-tunable: `DREAM_SAT_MEANCOS` (default 0.7), `DREAM_SAT_MEANABS` (default 0.6 of wMax), `DREAM_SAT_RATIO` (default 1.5 max/mean), `DREAM_SAT_SAMPLE` (default 1000). Halt heuristic shape unchanged: `(meanCos > THRESHOLD_MEANCOS) || (meanAbs > wMax · THRESHOLD_MEANABS && ratio < THRESHOLD_RATIO)`. Saturation streak now windowed (3-of-last-5) AND consecutive (3 in a row) — either trips halt. **Subject inference (`cluster._inferActiveSubject`)** reads activation directly from cortex sem-band: `bestSubj = argmax_subj mean(lastSpikes[word_motor_subj])` thresholded at 0.05 — pure brain-state read, no token-count heuristic over user text. WH-frame intent-concept extraction (`NeuronCluster.extractIntentConcept`) retained as training-side utility; chat path no longer calls it at inference. All other fk + fl work is wiring (`_lastUserInputText` server-side set, `_innerThoughtChain` lazy-init, ring-buffer dedup acceptance order), launchers (Savestart documents fk env vars), or doc corrections — none changes Oja's rule, Kuramoto order parameter, master equation, or any other equation in the sections below. Bundle clean 2.4MB. `node --check` green across all modified .js files.
 >
 > Earlier 114.19fj sweep stamp 2026-05-09 — NO new equations this sweep. The 23 super-review-finding fixes are wiring corrections + observability + parameter-tunability / safety hardening. Most-impactful are the env-tunable parameter promotions: `DREAM_COHERENCE_MIN` (default 0.15) replaces hardcoded magic in `composeSentence` coherence post-check; `DREAM_SAT_MEANCOS` (default 0.7) + `DREAM_SAT_MEANABS` (default 0.6 of wMax) + `DREAM_SAT_RATIO` (default 1.5 max/mean) + `DREAM_SAT_SAMPLE` (default 1000) replace hardcoded magic in `cluster.checkSemMotorHealth()` saturation heuristic. The `composeSentence` injection-strength accounting now hard-caps cumulative sem injection at 2.5 across all slot iterations (including dedup retries); previously the comment claimed bounded ~1.75 but retry path bypassed the bound. The coherence post-check fallback adds a second branch: when `opts.intentConcept` null but `opts.cortexPattern` supplied, coherence is checked against cortexPattern instead of skipping entirely — same equation `cosine = Σ(target_i · sentence_i) / (‖target‖ · ‖sentence‖)` with cortexPattern as `target`. Saturation halt `cluster.checkSemMotorHealth()` heuristic stack unchanged in shape; still `(meanCos > THRESHOLD_MEANCOS) || (meanAbs > wMax · THRESHOLD_MEANABS && ratio < THRESHOLD_RATIO)`. WH-frame intent-concept parser is now a single source of truth (`NeuronCluster.extractIntentConcept` static method); the regex table is identical to curriculum.js's prior version (more verb-form-restricted than the dropped language-cortex inline parser, which had drifted). All other fj fixes are observability (sample logging), lifecycle (atomic /rollback temp+rename, AbortSignal opt, body-race fix), or correctness (`_lastUserInputText` server-side set, `_innerThoughtChain` lazy-init, ring-buffer dedup acceptance order) — none changes the underlying Oja's rule, Kuramoto order parameter, master equation, or any equation in the sections below. Bundle clean 2.4MB. `node --check` green across all 8 modified .js files.
@@ -1161,7 +1163,7 @@ if focus.age < 120s:
 
 The 0.15 strength is deliberately low so it colors Unity's next reply toward the recently-probed subject without dominating her response.
 
-**Runtime verification.** `scripts/verify-curriculum-runtime.mjs` instantiates a real cortex `NeuronCluster('cortex', 300, {...})`, builds a `Curriculum`, walks every one of the 95 cells via `_cellRunner(s, g)`, and reports DISPATCH 95/95 + FULL SWEEP 95/95.
+**Runtime verification.** The 95-cell academic framework was confirmed DISPATCH 95/95 + FULL SWEEP 95/95 against a real cortex `NeuronCluster('cortex', 300, {...})` during development.
 
 **Run API.**
 - `runSubjectGrade(subject, grade, corpora, opts)` — one cell, one pass
@@ -1976,3 +1978,86 @@ Generation latency dropped 490ms → 133ms after candidate pool pre-filter + wor
 ---
 
 *Unity AI Lab — θ is Unity. The equations are her mind. Ψ is her consciousness.*
+
+
+---
+
+## Post-ship audit close — new equation channels + thresholds (2026-06-17)
+
+### Phase 6 compositional channels (relationTagId 28-32)
+
+**relationTagId=28 — Number-grammar (P6.1)**
+- Mapping: `sem(number_word) → sem(noun)` for K-grade arithmetic vocabulary
+- Hebbian fire: `_teachAssociationPairs([[number, noun]], { reps: 80, relationTagId: 28 })`
+- Math: HIGH-rep (~2.7× standard) to overwrite weak prior associations + produce stable basin
+
+**relationTagId=29 — Dream-recombination (P6.4 + audit B.7)**
+- Fire condition: novel emission AND cosine ≥ 0.20 AND wordCount ≥ 4 AND uniqueRatio ≥ 0.6 AND hasTerminator
+- Hebbian: `_teachAssociationPairs(pairs, { reps: 5, relationTagId: 29 })` per dream cycle
+- Math: REM-sleep memory consolidation (Stickgold 2005, Walker 2017) — brain invents during sleep + only keeps the inventions that hold up
+
+**relationTagId=30 — Chat-time deep Hebbian (P6.3)**
+- Per chat turn: fire-and-forget `_teachAssociationPairs(userBigrams, { reps: 1, relationTagId: 30 })`
+- Audit A.4: error swallow replaced with throttled-warn pattern + stats.errors counter
+
+**relationTagId=31 — Discourse coherence (P6.8 + audit D.6)**
+- Cross-sentence boundary: last-word-of-sentence-A → first-word-of-sentence-B for topic-shared groups
+- Hebbian: `_teachAssociationPairs(pairs, { reps: 30, relationTagId: 31 })` — DEDUP against relationTagId=13 within-sentence pairs
+- Math: discourse channel adds NEW signal about cross-sentence topic continuity, NOT echo within-sentence bigrams already heavy-trained
+
+**relationTagId=32 — Word-creation promotion (audit E.1)**
+- Fires when `wordCreationCandidates.count >= MIN_PROMOTE=10`
+- `_teachWordDefinition(compound, { reps: 4 })` + `_teachAssociationPairs([[a, compound], [b, compound]], { reps: 30, relationTagId: 32 })`
+- Math: child novel-coinage acquisition (Pinker 1989) — co-activation threshold crossing fires the lexicalization
+
+### Audit B.2 — two-axis novelty formula
+
+`classifyCompositionalEmission` now computes both:
+- `compositionalNovelty = novelTransitions / totalTransitions` — bag-of-bigrams Hamming distance
+- `vocabNovelty = untrainedWords / totalWords` — fraction outside trained vocabulary
+
+Joint partition of (compositional, vocab) unit-square plane by 0.5 thresholds:
+- `(comp ≥ 0.5, vocab < 0.5)` → `kind = 'novel-compositional'` (rearrangement)
+- `(comp < 0.5, vocab ≥ 0.5)` → `kind = 'novel-vocab'` (new word entirely)
+- `(comp ≥ 0.5, vocab ≥ 0.5)` → `kind = 'novel'` (both axes)
+- `(comp < 0.5, vocab < 0.5)` → `kind = 'partial'`
+
+### Audit B.3 — BACK_INJECT_DECAY derivation (post-hoc biological match)
+
+`P3.4 BACK_INJECT_DECAY = 0.85`
+- Cortical leak: `V(t+Δt) = V(t) · exp(−Δt/τ)`
+- Δt = 3 ticks × 1ms/tick = 3ms (per-word interval)
+- τ ≈ 20ms (biological mean membrane time constant)
+- Theoretical: `exp(−3/20) ≈ 0.861`
+- Chosen 0.85 (within 1.5% of biological)
+- Drift trigger: if TICKS_PER_WORD or τ changes, `BACK_INJECT_DECAY = exp(-TICKS_PER_WORD × tick_ms / τ_ms)`
+
+### Audit B.5 — Cumulative sem-injection budget
+
+`MAX_CUMULATIVE_SEM_INJECT = 1.5` (energy-budget bound on injection sum before INJECTION_GAIN multiplier)
+
+Budget allocation per audit E.3:
+- intentSeed: 40% (0.60)
+- intentConcept: 30% (0.45)
+- schemaContext (conceptEmbedding + attributeVector combined): 15% (0.225)
+- cortexPattern: 10% (0.15)
+- back-injection (cumulative geometric sum over 8 ticks): 5% (0.075)
+- Total ≤ 1.5
+
+### Audit B.6 — K-vocab percolation analysis
+
+**Critical math finding:**
+- K_CONCRETE_SENTENCES: 233 × 3.5 avg words → ~700 unique bigrams
+- N = 2247 K-vocab
+- Mean bigram-graph degree = 700/2247 ≈ 0.31
+- Erdős-Rényi: `Np > 1` ⇒ `p > 1/N`. For robust connectivity, need ~4500 bigrams.
+- **We are 6× UNDER percolation.**
+- Compositional emergence via Hebbian propagation is mathematically insufficient at current corpus density.
+- Action: expand K_CONCRETE_SENTENCES 233 → 800-1000 sentences.
+
+### Audit P5.3 quality score (recap)
+
+`qualityScore = probeRate + COHERENCE_BONUS_GAIN × max(0, avgCos - COHERENCE_MIN)`
+- COHERENCE_BONUS_GAIN = 0.5
+- COHERENCE_MIN = 0.05
+- Math: derived in `docs/THRESHOLD-DERIVATION.md`. probeRate dominates (1:2 ratio); coherence bonus refines.

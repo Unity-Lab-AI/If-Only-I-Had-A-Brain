@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "grade": "grade2",
+  "subject": "ela",
+  "source": "Simple English Wikipedia (CC-BY-SA), cleaned + sentence-segmented",
+  "note": "Hybrid academic-depth corpus for ela/grade2. Trained via curriculum._trainAcademicStories. Real openly-licensed curriculum content; lived-year + math stay bespoke.",
+  "experiences": [
+    {
+      "theme": "sentence-linguistics-",
+      "story": "in linguistics and grammar, a sentence is a linguistic expression, such as the english example \"the quick brown fox jumps over the lazy dog\" . in traditional grammar, it is typically defined as a string of words that expresses a thought, or as a unit consisting of a subject and predicate. in non-functional linguistics it is typically defined as a maximal unit of syntactic structure such as a constituent. in functional linguistics, it is defined as a unit of written texts delimited by graphological features such as upper-case letters and markers such as periods, question marks, and exclamation marks. this notion contrasts with a curve, which is delimited by phonologic features such as pitch and loudness and markers such as pauses; and with a clause, which is a sequence of words that represents some process going on throughout time. a sentence can include words grouped meaningfully to express a statement, question, exclamation, request, command, or suggestion. a sentence is typically associated with a clause. a clause can either be a clause simplex or a clause complex. a clause simplex represents a single process going on through time. a clause complex represents a logical relation between two or more processes and is thus composed of two or more clause simplexes. a clause typically contains a predication structure with a subject noun phrase and a finite verb. although the subject is usually a noun phrase, other kinds of phrases work as well, and some languages allow subjects to be omitted. in the examples below, the subject of the outmost clause simplex is in italics and the subject of boiling is in square brackets. there is clause embedding in the second and third examples."
+    }
+  ]
+}

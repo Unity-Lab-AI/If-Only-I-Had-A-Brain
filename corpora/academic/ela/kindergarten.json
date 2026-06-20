@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "grade": "kindergarten",
+  "subject": "ela",
+  "source": "Simple English Wikipedia (CC-BY-SA), cleaned + sentence-segmented",
+  "note": "Hybrid academic-depth corpus for ela/kindergarten. Trained via curriculum._trainAcademicStories. Real openly-licensed curriculum content; lived-year + math stay bespoke.",
+  "experiences": [
+    {
+      "theme": "vowel",
+      "story": "a vowel is a particular kind of speech sound made by changing the shape of the upper vocal tract, or the area in the mouth above the tongue. a vowel letter is a letter of an alphabet that represents a vowel sound. in english, five letters in the alphabet are usually called the vowel letters. the sounds of english are written with letters in the english alphabet, as either vowels or consonants. all english words are written with vowel letters in them. these letters are vowels in english: a, e, i, o and u it is said that y is \"sometimes\" a vowel because it can either be spoken with a vowel or consonant sound, depending on the word. in words like only, quickly, and folly, it represents the vowel sound /i/. the letter y can also be a consonant sound called a glide as in the beginning of these words: yellow, yacht, yam, yesterday. y is a consonant about 2.5% of the time, and a vowel about 97.5% of the time. the letter w can sometimes be the second part of a vowel sound, as in words such as cow, bow, or how. the letter w can be used as a consonant sound at the beginning of in the words when, where, wet. a few of these words may be borrowed in english, with the w representing its vowel sound. in written english, the vowel letters are used to represent the 13-15 vowel sounds in english. this means there are many more vowel sounds than letters in the english alphabet, and the english spelling system does not always show readers which sound a vowel letter represents in a word."
+    }
+  ]
+}

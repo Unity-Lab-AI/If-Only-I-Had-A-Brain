@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "grade": "grade5",
+  "subject": "ela",
+  "source": "Simple English Wikipedia (CC-BY-SA), cleaned + sentence-segmented",
+  "note": "Hybrid academic-depth corpus for ela/grade5. Trained via curriculum._trainAcademicStories. Real openly-licensed curriculum content; lived-year + math stay bespoke.",
+  "experiences": [
+    {
+      "theme": "narrative",
+      "story": "a narrative is a literary term for the events that make up a story. it is the way the events connect and make up the plot of a story or book. a common term for narrative is plot. the study on structure in narratives is called narratology."
+    },
+    {
+      "theme": "poetry",
+      "story": "poetry is written, spoken or sung language that is used in stronger or more original ways than prose is used. poetry uses the meanings of words as prose does; but it also uses the sounds of words as if they were music, especially rhymes, other repeating sounds, and rhythms . poetry arranges words and groups of words to make repetitions and parallelisms. poetry uses figures of speech, ellipses and delayed identification to suggest that there is more meaning in the language. some people believe that poetry began when language began. they think it is probably \"as old as history and older, present wherever religion is present.\" the english words \"poetry,\" \"poet,\" and \"poem\" first appeared in english in the 14th century. they come from the latin word poeta, which itself probably comes from poiein, a greek word that means \"to make.\" there are three major kinds of poetry: lyric, narrative, and dramatic. lyric poetry tends to be brief and is often about emotions. narrative poetry tells a story with a plot. dramatic poetry can be performed as a play. a poem can be as short as a few words or as long as a book. a one-line poem is called a monostich. a poem that is as long as a book is an epic. poems are often printed on the page as lines and groups of lines called stanzas."
+    },
+    {
+      "theme": "grammar",
+      "story": "grammar is the study of words, how they are used in sentences, and how they change in different situations. it can have any of these meanings: the study of a language: how it works, and everything about it. this is background research on language. the study of sentence structure. rules and examples show how the language should be used. this is a correct usage grammar, as in a textbook or manual/guide. the system which people learn as they grow up. this is the native-speaker's grammar. when we speak, we use the native person's grammar, or as near as we can. when we write, we try to write with correct grammar. so, speaking and writing a language each have their own style. all languages have their own grammar. most european languages are rather similar. english makes few changes to its word endings ."
+    },
+    {
+      "theme": "figure-of-speech",
+      "story": "a figure of speech is an indirect way of communicating an idea. many figures of speech are not meant to be understood exactly as they are said: they are not literal, factual statements. they use indirect language, and mean something different from ordinary language. diyanni wrote: \"rhetoricians have catalogued more than 250 different figures of speech, expressions or ways of using words in a nonliteral sense\". metaphors are very common examples. a common figure of speech is to say that someone \"threw down the gauntlet\". this does not mean that a person threw a protective wrist-covering down on the ground. instead, it usually means that the person issued a public challenge to another person . there is no one easy way to distinguish plain speech from figures of speech. may be continued through whole sentences or even through a whole discourse. for example: \"the ship of state has sailed through rougher storms than the tempest of these lobbyists\". antanaclasis is a common type of pun, and like other kinds of pun, it is often found in slogans. president as \"actions of the white house\"."
+    }
+  ]
+}

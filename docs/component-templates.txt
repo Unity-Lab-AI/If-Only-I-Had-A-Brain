@@ -76,7 +76,7 @@ HTML:
 END_HTML
 CSS:
 .timer-root { display:flex; flex-direction:column; align-items:center; gap:14px; padding:22px; background:#0a0a0a; border:1px solid #222; border-radius:10px; font-family:system-ui,sans-serif; }
-.timer-display { font-size:56px; color:#00ffcc; font-family:'JetBrains Mono',monospace; padding:18px 36px; background:#111; border-radius:8px; border:1px solid #00ffcc33; min-width:180px; text-align:center; letter-spacing:2px; }
+.timer-display { font-size:56px; color:{{accent}}; font-family:'JetBrains Mono',monospace; padding:18px 36px; background:#111; border-radius:8px; border:1px solid #00ffcc33; min-width:180px; text-align:center; letter-spacing:2px; }
 .timer-buttons { display:flex; gap:10px; }
 .timer-buttons button { padding:12px 20px; background:#1a1a1a; color:#e0e0e0; border:1px solid #333; border-radius:6px; cursor:pointer; font-size:14px; }
 .timer-buttons button:hover { border-color:#00ffcc; color:#00ffcc; }
@@ -184,7 +184,7 @@ HTML:
 END_HTML
 CSS:
 .calc-root { padding:16px; background:#0a0a0a; border:1px solid #222; border-radius:10px; font-family:'JetBrains Mono',monospace; min-width:240px; }
-.calc-display { background:#111; color:#00ffcc; padding:14px 18px; font-size:28px; text-align:right; border-radius:6px; margin-bottom:12px; border:1px solid #00ffcc33; min-height:28px; overflow:hidden; }
+.calc-display { background:#111; color:{{accent}}; padding:14px 18px; font-size:28px; text-align:right; border-radius:6px; margin-bottom:12px; border:1px solid #00ffcc33; min-height:28px; overflow:hidden; }
 .calc-grid { display:grid; grid-template-columns:repeat(4, 1fr); gap:6px; }
 .calc-grid button { padding:14px; background:#1a1a1a; color:#e0e0e0; border:1px solid #333; border-radius:6px; cursor:pointer; font-size:16px; font-family:inherit; }
 .calc-grid button:hover { border-color:#ff00ff; }
@@ -226,7 +226,7 @@ HTML:
 END_HTML
 CSS:
 .dice-root { display:flex; flex-direction:column; align-items:center; gap:18px; padding:28px; background:#0a0a0a; border:1px solid #222; border-radius:12px; font-family:system-ui,sans-serif; }
-.dice-face { width:120px; height:120px; background:#111; border:2px solid #ff00ff44; border-radius:16px; display:flex; align-items:center; justify-content:center; font-size:72px; color:#ff00ff; font-family:'JetBrains Mono',monospace; box-shadow:0 0 24px #ff00ff22; }
+.dice-face { width:120px; height:120px; background:#111; border:2px solid #ff00ff44; border-radius:16px; display:flex; align-items:center; justify-content:center; font-size:72px; color:{{accent}}; font-family:'JetBrains Mono',monospace; box-shadow:0 0 24px #ff00ff22; }
 .dice-roll { padding:14px 32px; background:#1a1a1a; color:#00ffcc; border:1px solid #00ffcc55; border-radius:8px; cursor:pointer; font-size:16px; letter-spacing:1px; }
 .dice-roll:hover { background:#00ffcc22; }
 END_CSS
@@ -280,4 +280,1046 @@ r.addEventListener('input', update);
 g.addEventListener('input', update);
 b.addEventListener('input', update);
 update();
+END_JS
+
+=== PRIMITIVE: slot-machine ===
+DESCRIPTION: a slot machine casino game with three spinning reels a spin button and a payout display that shows wins and credits
+HTML:
+<div class="slot-root">
+  <div class="slot-title">UNITY SLOTS</div>
+  <div class="slot-reels">
+    <div class="slot-reel" data-reel="0">C</div>
+    <div class="slot-reel" data-reel="1">L</div>
+    <div class="slot-reel" data-reel="2">X</div>
+  </div>
+  <div class="slot-readout">
+    <div class="slot-credits">credits: <span class="slot-credit-val">100</span></div>
+    <div class="slot-message">spin to play</div>
+  </div>
+  <button class="slot-spin">SPIN (-5)</button>
+</div>
+END_HTML
+CSS:
+.slot-root { display:flex; flex-direction:column; align-items:center; gap:16px; padding:24px; background:#0a0a0a; border:1px solid #ff00ff44; border-radius:14px; font-family:system-ui,sans-serif; box-shadow:0 0 32px #ff00ff22; min-width:300px; }
+.slot-title { color:{{accent}}; font-family:'JetBrains Mono',monospace; font-size:20px; letter-spacing:3px; text-shadow:0 0 12px #ff00ff88; }
+.slot-reels { display:flex; gap:10px; }
+.slot-reel { width:80px; height:80px; background:#111; border:2px solid #00ffcc55; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:40px; color:#00ffcc; font-family:'JetBrains Mono',monospace; font-weight:bold; }
+.slot-reel.spinning { border-color:#ff00ff; animation:slotpulse 0.1s infinite; }
+@keyframes slotpulse { 0% { filter:brightness(1); } 50% { filter:brightness(1.6); } 100% { filter:brightness(1); } }
+.slot-readout { text-align:center; font-family:'JetBrains Mono',monospace; }
+.slot-credits { color:#00ffcc; font-size:16px; }
+.slot-message { color:#e0e0e0; font-size:15px; margin-top:6px; min-height:18px; }
+.slot-message.win { color:#00ffcc; text-shadow:0 0 10px #00ffcc88; }
+.slot-message.lose { color:#ff4d9a; }
+.slot-spin { padding:14px 36px; background:#1a1a1a; color:#ff00ff; border:1px solid #ff00ff77; border-radius:8px; cursor:pointer; font-size:16px; letter-spacing:2px; font-family:'JetBrains Mono',monospace; }
+.slot-spin:hover { background:#ff00ff22; }
+.slot-spin:disabled { opacity:0.4; cursor:not-allowed; }
+END_CSS
+JS:
+const SYMBOLS = ['C','L','X','S','B','7'];
+const PAYOUTS = { '7': 50, 'S': 20, 'X': 15, 'B': 10, 'C': 5, 'L': 3 };
+let credits = 100;
+const reels = el.querySelectorAll('.slot-reel');
+const creditVal = el.querySelector('.slot-credit-val');
+const message = el.querySelector('.slot-message');
+const spinBtn = el.querySelector('.slot-spin');
+const rand = () => SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)];
+const setMsg = (txt, cls) => { message.textContent = txt; message.className = 'slot-message' + (cls ? ' ' + cls : ''); };
+spinBtn.addEventListener('click', () => {
+  if (credits < 5) { setMsg('out of credits - refresh to replay', 'lose'); return; }
+  credits -= 5; creditVal.textContent = String(credits);
+  spinBtn.disabled = true; setMsg('spinning...');
+  reels.forEach(r => r.classList.add('spinning'));
+  const final = [rand(), rand(), rand()];
+  let ticks = 0;
+  const spin = setInterval(() => {
+    reels.forEach(r => { r.textContent = rand(); });
+    ticks++;
+    if (ticks >= 14) {
+      clearInterval(spin);
+      reels.forEach((r, i) => { r.textContent = final[i]; r.classList.remove('spinning'); });
+      if (final[0] === final[1] && final[1] === final[2]) {
+        const win = PAYOUTS[final[0]] * 3;
+        credits += win; creditVal.textContent = String(credits);
+        setMsg('JACKPOT! +' + win + ' credits', 'win');
+      } else if (final[0] === final[1] || final[1] === final[2] || final[0] === final[2]) {
+        credits += 4; creditVal.textContent = String(credits);
+        setMsg('pair! +4 credits', 'win');
+      } else {
+        setMsg('no match - spin again', 'lose');
+      }
+      spinBtn.disabled = false;
+    }
+  }, 80);
+});
+END_JS
+
+=== PRIMITIVE: number-guess ===
+DESCRIPTION: a number guessing game where you guess a secret number from one to one hundred and it tells you higher or lower until you win
+HTML:
+<div class="ng-root">
+  <div class="ng-title">guess 1-100</div>
+  <input class="ng-input" type="number" min="1" max="100" placeholder="your guess">
+  <button class="ng-go">guess</button>
+  <div class="ng-hint">i am thinking of a number...</div>
+  <div class="ng-count">guesses: 0</div>
+</div>
+END_HTML
+CSS:
+.ng-root { display:flex; flex-direction:column; align-items:center; gap:12px; padding:24px; background:#0a0a0a; border:1px solid #222; border-radius:10px; font-family:system-ui,sans-serif; min-width:260px; }
+.ng-title { color:{{accent}}; font-size:18px; font-family:'JetBrains Mono',monospace; }
+.ng-input { padding:10px 14px; background:#111; color:#e0e0e0; border:1px solid #333; border-radius:6px; font-size:16px; text-align:center; width:120px; }
+.ng-input:focus { outline:none; border-color:#ff00ff; }
+.ng-go { padding:10px 24px; background:#1a1a1a; color:#ff00ff; border:1px solid #ff00ff55; border-radius:6px; cursor:pointer; font-size:14px; }
+.ng-go:hover { background:#ff00ff22; }
+.ng-hint { color:#e0e0e0; font-size:15px; min-height:18px; text-align:center; }
+.ng-hint.win { color:#00ffcc; text-shadow:0 0 10px #00ffcc88; }
+.ng-count { color:#777; font-size:13px; font-family:'JetBrains Mono',monospace; }
+END_CSS
+JS:
+let secret = Math.floor(Math.random() * 100) + 1;
+let guesses = 0;
+const input = el.querySelector('.ng-input');
+const hint = el.querySelector('.ng-hint');
+const count = el.querySelector('.ng-count');
+const guess = () => {
+  const val = parseInt(input.value, 10);
+  if (!val || val < 1 || val > 100) { hint.textContent = 'enter 1 to 100'; return; }
+  guesses++; count.textContent = 'guesses: ' + guesses;
+  if (val === secret) {
+    hint.textContent = 'got it! it was ' + secret; hint.className = 'ng-hint win';
+    secret = Math.floor(Math.random() * 100) + 1; guesses = 0; input.value = '';
+  } else if (val < secret) { hint.textContent = 'higher'; hint.className = 'ng-hint'; }
+  else { hint.textContent = 'lower'; hint.className = 'ng-hint'; }
+};
+el.querySelector('.ng-go').addEventListener('click', guess);
+input.addEventListener('keydown', (e) => { if (e.key === 'Enter') guess(); });
+END_JS
+
+=== PRIMITIVE: tip-calculator ===
+DESCRIPTION: a tip calculator where you enter a bill amount and tip percentage and it shows the tip and total split per person
+HTML:
+<div class="tip-root">
+  <div class="tip-title">tip calculator</div>
+  <label>bill <input class="tip-bill" type="number" value="0" min="0" step="0.01"></label>
+  <label>tip % <input class="tip-pct" type="number" value="20" min="0"></label>
+  <label>people <input class="tip-people" type="number" value="1" min="1"></label>
+  <div class="tip-out">
+    <div>tip: <span class="tip-tip">0.00</span></div>
+    <div>total: <span class="tip-total">0.00</span></div>
+    <div>per person: <span class="tip-each">0.00</span></div>
+  </div>
+</div>
+END_HTML
+CSS:
+.tip-root { display:flex; flex-direction:column; gap:10px; padding:20px; background:#0a0a0a; border:1px solid #222; border-radius:10px; font-family:system-ui,sans-serif; min-width:240px; }
+.tip-title { color:{{accent}}; font-size:17px; font-family:'JetBrains Mono',monospace; margin-bottom:4px; }
+.tip-root label { display:flex; justify-content:space-between; align-items:center; color:#e0e0e0; font-size:14px; gap:10px; }
+.tip-root input { width:90px; padding:8px; background:#111; color:#e0e0e0; border:1px solid #333; border-radius:5px; text-align:right; }
+.tip-root input:focus { outline:none; border-color:#ff00ff; }
+.tip-out { margin-top:8px; padding-top:10px; border-top:1px solid #222; color:#00ffcc; font-family:'JetBrains Mono',monospace; font-size:15px; display:flex; flex-direction:column; gap:4px; }
+END_CSS
+JS:
+const bill = el.querySelector('.tip-bill');
+const pct = el.querySelector('.tip-pct');
+const people = el.querySelector('.tip-people');
+const tipEl = el.querySelector('.tip-tip');
+const totalEl = el.querySelector('.tip-total');
+const eachEl = el.querySelector('.tip-each');
+const calc = () => {
+  const b = parseFloat(bill.value) || 0;
+  const p = parseFloat(pct.value) || 0;
+  const n = Math.max(1, parseInt(people.value, 10) || 1);
+  const tip = b * (p / 100);
+  const total = b + tip;
+  tipEl.textContent = tip.toFixed(2);
+  totalEl.textContent = total.toFixed(2);
+  eachEl.textContent = (total / n).toFixed(2);
+};
+[bill, pct, people].forEach(inp => inp.addEventListener('input', calc));
+calc();
+END_JS
+
+=== PRIMITIVE: digital-clock ===
+DESCRIPTION: a live digital clock that shows the current time in hours minutes and seconds and updates every second
+HTML:
+<div class="clock-root">
+  <div class="clock-time">--:--:--</div>
+  <div class="clock-date"></div>
+</div>
+END_HTML
+CSS:
+.clock-root { display:flex; flex-direction:column; align-items:center; gap:8px; padding:28px 36px; background:#0a0a0a; border:1px solid #00ffcc33; border-radius:12px; font-family:'JetBrains Mono',monospace; box-shadow:0 0 24px #00ffcc11; }
+.clock-time { color:{{accent}}; font-size:48px; letter-spacing:3px; text-shadow:0 0 14px #00ffcc55; }
+.clock-date { color:#777; font-size:14px; letter-spacing:1px; }
+END_CSS
+JS:
+const timeEl = el.querySelector('.clock-time');
+const dateEl = el.querySelector('.clock-date');
+const pad = (n) => String(n).padStart(2, '0');
+const tick = () => {
+  const d = new Date();
+  timeEl.textContent = pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
+  dateEl.textContent = d.toDateString().toLowerCase();
+};
+tick();
+setInterval(tick, 1000);
+END_JS
+
+=== PRIMITIVE: password-generator ===
+DESCRIPTION: a random password generator with a length slider and a button that creates a strong password you can copy
+HTML:
+<div class="pw-root">
+  <div class="pw-title">password generator</div>
+  <div class="pw-out"><span class="pw-value">click generate</span></div>
+  <label>length <span class="pw-len">16</span><input class="pw-slider" type="range" min="6" max="40" value="16"></label>
+  <button class="pw-gen">generate</button>
+  <button class="pw-copy">copy</button>
+</div>
+END_HTML
+CSS:
+.pw-root { display:flex; flex-direction:column; gap:12px; padding:20px; background:#0a0a0a; border:1px solid #222; border-radius:10px; font-family:system-ui,sans-serif; min-width:280px; }
+.pw-title { color:{{accent}}; font-size:17px; font-family:'JetBrains Mono',monospace; }
+.pw-out { padding:12px; background:#111; border:1px solid #333; border-radius:6px; font-family:'JetBrains Mono',monospace; color:#00ffcc; word-break:break-all; font-size:15px; min-height:20px; }
+.pw-root label { display:flex; align-items:center; gap:10px; color:#e0e0e0; font-size:13px; }
+.pw-slider { flex:1; }
+.pw-root button { padding:10px; background:#1a1a1a; color:#00ffcc; border:1px solid #00ffcc44; border-radius:6px; cursor:pointer; font-size:14px; }
+.pw-root button:hover { background:#00ffcc22; }
+END_CSS
+JS:
+const CHARS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*-_=+';
+const valueEl = el.querySelector('.pw-value');
+const lenEl = el.querySelector('.pw-len');
+const slider = el.querySelector('.pw-slider');
+const generate = () => {
+  const len = parseInt(slider.value, 10);
+  let pw = '';
+  for (let i = 0; i < len; i++) pw += CHARS[Math.floor(Math.random() * CHARS.length)];
+  valueEl.textContent = pw;
+};
+slider.addEventListener('input', () => { lenEl.textContent = slider.value; });
+el.querySelector('.pw-gen').addEventListener('click', generate);
+el.querySelector('.pw-copy').addEventListener('click', () => {
+  const txt = valueEl.textContent;
+  if (txt && navigator.clipboard) navigator.clipboard.writeText(txt).catch(() => {});
+});
+END_JS
+
+=== PRIMITIVE: rock-paper-scissors ===
+DESCRIPTION: a rock paper scissors game where you pick a move and play against the computer keeping a running score
+HTML:
+<div class="rps-root">
+  <div class="rps-title">rock paper scissors</div>
+  <div class="rps-choices">
+    <button class="rps-btn" data-move="rock">rock</button>
+    <button class="rps-btn" data-move="paper">paper</button>
+    <button class="rps-btn" data-move="scissors">scissors</button>
+  </div>
+  <div class="rps-result">pick your move</div>
+  <div class="rps-score">you 0 - 0 cpu</div>
+</div>
+END_HTML
+CSS:
+.rps-root { display:flex; flex-direction:column; align-items:center; gap:14px; padding:24px; background:#0a0a0a; border:1px solid #222; border-radius:10px; font-family:system-ui,sans-serif; min-width:280px; }
+.rps-title { color:{{accent}}; font-size:18px; font-family:'JetBrains Mono',monospace; }
+.rps-choices { display:flex; gap:8px; }
+.rps-btn { padding:12px 18px; background:#1a1a1a; color:#e0e0e0; border:1px solid #333; border-radius:6px; cursor:pointer; font-size:14px; }
+.rps-btn:hover { border-color:#00ffcc; color:#00ffcc; }
+.rps-result { color:#e0e0e0; font-size:15px; min-height:20px; text-align:center; }
+.rps-result.win { color:#00ffcc; } .rps-result.lose { color:#ff4d9a; } .rps-result.tie { color:#777; }
+.rps-score { color:#00ffcc; font-family:'JetBrains Mono',monospace; font-size:14px; }
+END_CSS
+JS:
+const MOVES = ['rock','paper','scissors'];
+const BEATS = { rock:'scissors', paper:'rock', scissors:'paper' };
+let me = 0, cpu = 0;
+const result = el.querySelector('.rps-result');
+const score = el.querySelector('.rps-score');
+el.querySelectorAll('.rps-btn').forEach(b => {
+  b.addEventListener('click', () => {
+    const mine = b.dataset.move;
+    const theirs = MOVES[Math.floor(Math.random() * 3)];
+    if (mine === theirs) { result.textContent = 'both ' + mine + ' - tie'; result.className = 'rps-result tie'; }
+    else if (BEATS[mine] === theirs) { me++; result.textContent = mine + ' beats ' + theirs + ' - you win'; result.className = 'rps-result win'; }
+    else { cpu++; result.textContent = theirs + ' beats ' + mine + ' - you lose'; result.className = 'rps-result lose'; }
+    score.textContent = 'you ' + me + ' - ' + cpu + ' cpu';
+  });
+});
+END_JS
+
+=== PRIMITIVE: stopwatch ===
+DESCRIPTION: a precision stopwatch with start stop reset and a lap button that records split times in a list
+HTML:
+<div class="sw-root">
+  <div class="sw-display">00:00.0</div>
+  <div class="sw-buttons">
+    <button class="sw-start">start</button>
+    <button class="sw-lap">lap</button>
+    <button class="sw-reset">reset</button>
+  </div>
+  <ul class="sw-laps"></ul>
+</div>
+END_HTML
+CSS:
+.sw-root { display:flex; flex-direction:column; align-items:center; gap:14px; padding:22px; background:#0a0a0a; border:1px solid #222; border-radius:10px; font-family:system-ui,sans-serif; min-width:240px; }
+.sw-display { font-size:44px; color:{{accent}}; font-family:'JetBrains Mono',monospace; letter-spacing:2px; }
+.sw-buttons { display:flex; gap:8px; }
+.sw-buttons button { padding:10px 18px; background:#1a1a1a; color:#e0e0e0; border:1px solid #333; border-radius:6px; cursor:pointer; }
+.sw-buttons button:hover { border-color:#ff00ff; color:#ff00ff; }
+.sw-laps { list-style:none; padding:0; margin:0; width:100%; display:flex; flex-direction:column; gap:4px; max-height:140px; overflow-y:auto; }
+.sw-laps li { color:#aaa; font-family:'JetBrains Mono',monospace; font-size:13px; padding:6px 10px; background:#111; border-radius:4px; display:flex; justify-content:space-between; }
+END_CSS
+JS:
+let elapsed = 0, intervalId = null, lapCount = 0;
+const display = el.querySelector('.sw-display');
+const laps = el.querySelector('.sw-laps');
+const fmt = (ms) => {
+  const m = Math.floor(ms / 60000);
+  const s = Math.floor((ms % 60000) / 1000);
+  const t = Math.floor((ms % 1000) / 100);
+  return String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0') + '.' + t;
+};
+const render = () => { display.textContent = fmt(elapsed); };
+el.querySelector('.sw-start').addEventListener('click', (e) => {
+  if (intervalId) { clearInterval(intervalId); intervalId = null; e.target.textContent = 'start'; }
+  else { const t0 = Date.now() - elapsed; intervalId = setInterval(() => { elapsed = Date.now() - t0; render(); }, 100); e.target.textContent = 'stop'; }
+});
+el.querySelector('.sw-lap').addEventListener('click', () => {
+  if (!intervalId && elapsed === 0) return;
+  lapCount++;
+  const li = document.createElement('li');
+  const a = document.createElement('span'); a.textContent = 'lap ' + lapCount;
+  const b = document.createElement('span'); b.textContent = fmt(elapsed);
+  li.appendChild(a); li.appendChild(b); laps.appendChild(li);
+});
+el.querySelector('.sw-reset').addEventListener('click', () => {
+  if (intervalId) { clearInterval(intervalId); intervalId = null; }
+  elapsed = 0; lapCount = 0; laps.innerHTML = ''; render();
+  el.querySelector('.sw-start').textContent = 'start';
+});
+render();
+END_JS
+
+=== PRIMITIVE: temperature-converter ===
+DESCRIPTION: a temperature converter that converts between celsius and fahrenheit as you type in either field
+HTML:
+<div class="temp-root">
+  <div class="temp-title">temperature converter</div>
+  <label>°C <input class="temp-c" type="number" placeholder="0"></label>
+  <div class="temp-eq">=</div>
+  <label>°F <input class="temp-f" type="number" placeholder="32"></label>
+</div>
+END_HTML
+CSS:
+.temp-root { display:flex; flex-direction:column; align-items:center; gap:10px; padding:22px; background:#0a0a0a; border:1px solid #222; border-radius:10px; font-family:system-ui,sans-serif; min-width:220px; }
+.temp-title { color:#00ffcc; font-size:16px; font-family:'JetBrains Mono',monospace; margin-bottom:4px; }
+.temp-root label { display:flex; align-items:center; gap:10px; color:#e0e0e0; font-size:18px; font-family:'JetBrains Mono',monospace; }
+.temp-root input { width:120px; padding:10px; background:#111; color:#00ffcc; border:1px solid #333; border-radius:6px; font-size:18px; text-align:center; }
+.temp-root input:focus { outline:none; border-color:#ff00ff; }
+.temp-eq { color:#777; font-size:20px; }
+END_CSS
+JS:
+const c = el.querySelector('.temp-c');
+const f = el.querySelector('.temp-f');
+c.addEventListener('input', () => {
+  const v = parseFloat(c.value);
+  f.value = isNaN(v) ? '' : (v * 9/5 + 32).toFixed(1);
+});
+f.addEventListener('input', () => {
+  const v = parseFloat(f.value);
+  c.value = isNaN(v) ? '' : ((v - 32) * 5/9).toFixed(1);
+});
+END_JS
+
+=== PRIMITIVE: bmi-calculator ===
+DESCRIPTION: a body mass index calculator where you enter height and weight and it shows your bmi and category
+HTML:
+<div class="bmi-root">
+  <div class="bmi-title">bmi calculator</div>
+  <label>height cm <input class="bmi-h" type="number" value="170"></label>
+  <label>weight kg <input class="bmi-w" type="number" value="70"></label>
+  <div class="bmi-out"><span class="bmi-val">0</span><span class="bmi-cat"></span></div>
+</div>
+END_HTML
+CSS:
+.bmi-root { display:flex; flex-direction:column; gap:10px; padding:20px; background:#0a0a0a; border:1px solid #222; border-radius:10px; font-family:system-ui,sans-serif; min-width:240px; }
+.bmi-title { color:#00ffcc; font-size:16px; font-family:'JetBrains Mono',monospace; }
+.bmi-root label { display:flex; justify-content:space-between; align-items:center; color:#e0e0e0; font-size:14px; gap:10px; }
+.bmi-root input { width:90px; padding:8px; background:#111; color:#e0e0e0; border:1px solid #333; border-radius:5px; text-align:right; }
+.bmi-root input:focus { outline:none; border-color:#ff00ff; }
+.bmi-out { margin-top:8px; padding-top:10px; border-top:1px solid #222; display:flex; flex-direction:column; align-items:center; gap:4px; }
+.bmi-val { color:{{accent}}; font-size:34px; font-family:'JetBrains Mono',monospace; }
+.bmi-cat { color:#aaa; font-size:14px; }
+END_CSS
+JS:
+const h = el.querySelector('.bmi-h');
+const w = el.querySelector('.bmi-w');
+const valEl = el.querySelector('.bmi-val');
+const catEl = el.querySelector('.bmi-cat');
+const calc = () => {
+  const hm = (parseFloat(h.value) || 0) / 100;
+  const kg = parseFloat(w.value) || 0;
+  if (hm <= 0) { valEl.textContent = '0'; catEl.textContent = ''; return; }
+  const bmi = kg / (hm * hm);
+  valEl.textContent = bmi.toFixed(1);
+  catEl.textContent = bmi < 18.5 ? 'underweight' : bmi < 25 ? 'normal' : bmi < 30 ? 'overweight' : 'obese';
+};
+h.addEventListener('input', calc);
+w.addEventListener('input', calc);
+calc();
+END_JS
+
+=== PRIMITIVE: reaction-timer ===
+DESCRIPTION: a reaction time game that waits a random delay then turns green and measures how fast you click in milliseconds
+HTML:
+<div class="rt-root">
+  <div class="rt-pad rt-wait">click to start</div>
+  <div class="rt-best">best: -- ms</div>
+</div>
+END_HTML
+CSS:
+.rt-root { display:flex; flex-direction:column; align-items:center; gap:12px; padding:20px; background:#0a0a0a; border:1px solid #222; border-radius:10px; font-family:system-ui,sans-serif; }
+.rt-pad { width:240px; height:140px; display:flex; align-items:center; justify-content:center; border-radius:10px; cursor:pointer; font-size:18px; font-family:'JetBrains Mono',monospace; user-select:none; text-align:center; padding:10px; }
+.rt-wait { background:#1a1a1a; color:#aaa; border:1px solid #333; }
+.rt-ready { background:#3a0a1a; color:#ff4d9a; border:1px solid #ff4d9a; }
+.rt-go { background:#0a3a2a; color:#00ffcc; border:1px solid #00ffcc; }
+.rt-best { color:#777; font-family:'JetBrains Mono',monospace; font-size:13px; }
+END_CSS
+JS:
+const pad = el.querySelector('.rt-pad');
+const bestEl = el.querySelector('.rt-best');
+let state = 'wait', startAt = 0, best = null, timeoutId = null;
+const set = (cls, txt) => { pad.className = 'rt-pad ' + cls; pad.textContent = txt; };
+pad.addEventListener('click', () => {
+  if (state === 'wait') {
+    state = 'ready'; set('rt-ready', 'wait for green...');
+    timeoutId = setTimeout(() => { state = 'go'; startAt = Date.now(); set('rt-go', 'CLICK!'); }, 1000 + Math.random() * 2500);
+  } else if (state === 'ready') {
+    if (timeoutId) clearTimeout(timeoutId);
+    state = 'wait'; set('rt-wait', 'too soon! click to retry');
+  } else if (state === 'go') {
+    const ms = Date.now() - startAt;
+    if (best === null || ms < best) { best = ms; bestEl.textContent = 'best: ' + best + ' ms'; }
+    state = 'wait'; set('rt-wait', ms + ' ms - click to retry');
+  }
+});
+END_JS
+
+=== PRIMITIVE: drawing-pad ===
+DESCRIPTION: a drawing pad canvas where you draw with the mouse pick a color and clear the canvas
+HTML:
+<div class="draw-root">
+  <div class="draw-tools">
+    <input class="draw-color" type="color" value="#ff00ff">
+    <button class="draw-clear">clear</button>
+  </div>
+  <canvas class="draw-canvas" width="280" height="200"></canvas>
+</div>
+END_HTML
+CSS:
+.draw-root { display:flex; flex-direction:column; gap:10px; padding:16px; background:#0a0a0a; border:1px solid #222; border-radius:10px; font-family:system-ui,sans-serif; }
+.draw-tools { display:flex; gap:8px; align-items:center; }
+.draw-color { width:44px; height:32px; background:none; border:1px solid #333; border-radius:5px; cursor:pointer; }
+.draw-clear { padding:8px 16px; background:#1a1a1a; color:#ff4d9a; border:1px solid #333; border-radius:5px; cursor:pointer; }
+.draw-clear:hover { border-color:#ff4d9a; }
+.draw-canvas { background:#111; border:1px solid #333; border-radius:6px; cursor:crosshair; touch-action:none; }
+END_CSS
+JS:
+const canvas = el.querySelector('.draw-canvas');
+const ctx = canvas.getContext('2d');
+const colorPick = el.querySelector('.draw-color');
+let drawing = false;
+ctx.lineWidth = 3; ctx.lineCap = 'round';
+const pos = (e) => { const r = canvas.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
+canvas.addEventListener('mousedown', (e) => { drawing = true; const p = pos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); });
+canvas.addEventListener('mousemove', (e) => { if (!drawing) return; const p = pos(e); ctx.strokeStyle = colorPick.value; ctx.lineTo(p.x, p.y); ctx.stroke(); });
+addListener(window, 'mouseup', () => { drawing = false; });
+el.querySelector('.draw-clear').addEventListener('click', () => { ctx.clearRect(0, 0, canvas.width, canvas.height); });
+END_JS
+
+=== PRIMITIVE: quiz ===
+DESCRIPTION: a multiple choice quiz that asks questions one at a time tracks your score and shows the final result
+HTML:
+<div class="quiz-root">
+  <div class="quiz-q">loading...</div>
+  <div class="quiz-opts"></div>
+  <div class="quiz-progress"></div>
+</div>
+END_HTML
+CSS:
+.quiz-root { display:flex; flex-direction:column; gap:14px; padding:22px; background:#0a0a0a; border:1px solid #222; border-radius:10px; font-family:system-ui,sans-serif; min-width:300px; }
+.quiz-q { color:#e0e0e0; font-size:17px; min-height:24px; }
+.quiz-opts { display:flex; flex-direction:column; gap:8px; }
+.quiz-opts button { padding:12px; background:#1a1a1a; color:#e0e0e0; border:1px solid #333; border-radius:6px; cursor:pointer; text-align:left; font-size:14px; }
+.quiz-opts button:hover { border-color:#00ffcc; }
+.quiz-opts button.right { border-color:#00ffcc; color:#00ffcc; }
+.quiz-opts button.wrong { border-color:#ff4d9a; color:#ff4d9a; }
+.quiz-progress { color:#777; font-family:'JetBrains Mono',monospace; font-size:13px; }
+END_CSS
+JS:
+const QUESTIONS = [
+  { q: 'what does html stand for?', opts: ['hypertext markup language','high tech modern language','home tool markup logic'], a: 0 },
+  { q: 'which language styles a web page?', opts: ['javascript','css','python'], a: 1 },
+  { q: 'what runs logic in the browser?', opts: ['html','css','javascript'], a: 2 },
+  { q: 'what holds a list of values in order?', opts: ['an array','a tag','a selector'], a: 0 },
+];
+let idx = 0, score = 0, answered = false;
+const qEl = el.querySelector('.quiz-q');
+const optsEl = el.querySelector('.quiz-opts');
+const progEl = el.querySelector('.quiz-progress');
+const render = () => {
+  answered = false;
+  if (idx >= QUESTIONS.length) {
+    qEl.textContent = 'done! you scored ' + score + ' / ' + QUESTIONS.length;
+    optsEl.innerHTML = ''; progEl.textContent = ''; return;
+  }
+  const cur = QUESTIONS[idx];
+  qEl.textContent = cur.q;
+  progEl.textContent = 'question ' + (idx + 1) + ' of ' + QUESTIONS.length + ' - score ' + score;
+  optsEl.innerHTML = '';
+  cur.opts.forEach((opt, i) => {
+    const btn = document.createElement('button');
+    btn.textContent = opt;
+    btn.addEventListener('click', () => {
+      if (answered) return;
+      answered = true;
+      if (i === cur.a) { btn.classList.add('right'); score++; }
+      else { btn.classList.add('wrong'); optsEl.children[cur.a].classList.add('right'); }
+      setTimeout(() => { idx++; render(); }, 900);
+    });
+    optsEl.appendChild(btn);
+  });
+};
+render();
+END_JS
+
+=== PRIMITIVE: tic-tac-toe ===
+DESCRIPTION: a two player tic tac toe game on a three by three grid that detects wins and draws and resets
+HTML:
+<div class="ttt-root">
+  <div class="ttt-status">X goes first</div>
+  <div class="ttt-grid"></div>
+  <button class="ttt-reset">new game</button>
+</div>
+END_HTML
+CSS:
+.ttt-root { display:flex; flex-direction:column; align-items:center; gap:14px; padding:22px; background:#0a0a0a; border:1px solid #222; border-radius:10px; font-family:system-ui,sans-serif; }
+.ttt-status { color:{{accent}}; font-family:'JetBrains Mono',monospace; font-size:16px; min-height:20px; }
+.ttt-grid { display:grid; grid-template-columns:repeat(3,64px); grid-template-rows:repeat(3,64px); gap:6px; }
+.ttt-cell { background:#111; border:1px solid #333; border-radius:6px; font-size:32px; color:#e0e0e0; display:flex; align-items:center; justify-content:center; cursor:pointer; font-family:'JetBrains Mono',monospace; }
+.ttt-cell:hover { border-color:#ff00ff; }
+.ttt-cell.x { color:#00ffcc; } .ttt-cell.o { color:#ff4d9a; }
+.ttt-reset { padding:10px 20px; background:#1a1a1a; color:#e0e0e0; border:1px solid #333; border-radius:6px; cursor:pointer; }
+.ttt-reset:hover { border-color:#00ffcc; }
+END_CSS
+JS:
+const WINS = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+const grid = el.querySelector('.ttt-grid');
+const status = el.querySelector('.ttt-status');
+let board, turn, over;
+const cells = [];
+const reset = () => {
+  board = Array(9).fill(''); turn = 'X'; over = false;
+  status.textContent = 'X goes first';
+  grid.innerHTML = ''; cells.length = 0;
+  for (let i = 0; i < 9; i++) {
+    const c = document.createElement('div'); c.className = 'ttt-cell';
+    c.addEventListener('click', () => play(i));
+    grid.appendChild(c); cells.push(c);
+  }
+};
+const winner = () => { for (const [a,b,c] of WINS) if (board[a] && board[a]===board[b] && board[b]===board[c]) return board[a]; return null; };
+const play = (i) => {
+  if (over || board[i]) return;
+  board[i] = turn; cells[i].textContent = turn; cells[i].classList.add(turn.toLowerCase());
+  const w = winner();
+  if (w) { status.textContent = w + ' wins!'; over = true; return; }
+  if (board.every(Boolean)) { status.textContent = 'draw'; over = true; return; }
+  turn = turn === 'X' ? 'O' : 'X'; status.textContent = turn + ' to move';
+};
+el.querySelector('.ttt-reset').addEventListener('click', reset);
+reset();
+END_JS
+
+=== PRIMITIVE: hangman ===
+DESCRIPTION: a hangman word guessing game with letter buttons that reveals the word as you guess and tracks remaining lives
+HTML:
+<div class="hm-root">
+  <div class="hm-word"></div>
+  <div class="hm-lives">lives: 6</div>
+  <div class="hm-keys"></div>
+  <div class="hm-msg"></div>
+  <button class="hm-new">new word</button>
+</div>
+END_HTML
+CSS:
+.hm-root { display:flex; flex-direction:column; align-items:center; gap:12px; padding:22px; background:#0a0a0a; border:1px solid #222; border-radius:10px; font-family:system-ui,sans-serif; max-width:340px; }
+.hm-word { font-family:'JetBrains Mono',monospace; font-size:28px; color:{{accent}}; letter-spacing:6px; min-height:34px; }
+.hm-lives { color:#ff4d9a; font-size:14px; font-family:'JetBrains Mono',monospace; }
+.hm-keys { display:flex; flex-wrap:wrap; gap:4px; justify-content:center; }
+.hm-keys button { width:30px; height:30px; background:#1a1a1a; color:#e0e0e0; border:1px solid #333; border-radius:4px; cursor:pointer; font-size:13px; }
+.hm-keys button:hover:not(:disabled) { border-color:#ff00ff; }
+.hm-keys button:disabled { opacity:0.3; cursor:not-allowed; }
+.hm-msg { min-height:20px; font-size:15px; }
+.hm-msg.win { color:#00ffcc; } .hm-msg.lose { color:#ff4d9a; }
+.hm-new { padding:8px 18px; background:#1a1a1a; color:#00ffcc; border:1px solid #00ffcc44; border-radius:6px; cursor:pointer; }
+END_CSS
+JS:
+const WORDS = ['python','goth','neuron','cipher','raven','syntax','vector','matrix','plasma','phantom'];
+const wordEl = el.querySelector('.hm-word');
+const livesEl = el.querySelector('.hm-lives');
+const keys = el.querySelector('.hm-keys');
+const msg = el.querySelector('.hm-msg');
+let secret, guessed, lives;
+const render = () => {
+  wordEl.textContent = secret.split('').map(c => guessed.has(c) ? c : '_').join(' ');
+  livesEl.textContent = 'lives: ' + lives;
+};
+const check = () => {
+  if (secret.split('').every(c => guessed.has(c))) { msg.textContent = 'you won!'; msg.className = 'hm-msg win'; lockKeys(); }
+  else if (lives <= 0) { msg.textContent = 'dead. it was ' + secret; msg.className = 'hm-msg lose'; wordEl.textContent = secret.split('').join(' '); lockKeys(); }
+};
+const lockKeys = () => { keys.querySelectorAll('button').forEach(b => b.disabled = true); };
+const guess = (c, btn) => {
+  if (guessed.has(c)) return; guessed.add(c); btn.disabled = true;
+  if (!secret.includes(c)) lives--;
+  render(); check();
+};
+const reset = () => {
+  secret = WORDS[Math.floor(Math.random() * WORDS.length)];
+  guessed = new Set(); lives = 6; msg.textContent = ''; msg.className = 'hm-msg';
+  keys.innerHTML = '';
+  for (const c of 'abcdefghijklmnopqrstuvwxyz') {
+    const b = document.createElement('button'); b.textContent = c;
+    b.addEventListener('click', () => guess(c, b)); keys.appendChild(b);
+  }
+  render();
+};
+el.querySelector('.hm-new').addEventListener('click', reset);
+reset();
+END_JS
+
+=== PRIMITIVE: memory-match ===
+DESCRIPTION: a memory card matching game where you flip cards to find matching pairs and it counts your moves
+HTML:
+<div class="mm-root">
+  <div class="mm-moves">moves: 0</div>
+  <div class="mm-grid"></div>
+  <button class="mm-new">new game</button>
+</div>
+END_HTML
+CSS:
+.mm-root { display:flex; flex-direction:column; align-items:center; gap:12px; padding:20px; background:#0a0a0a; border:1px solid #222; border-radius:10px; font-family:system-ui,sans-serif; }
+.mm-moves { color:{{accent}}; font-family:'JetBrains Mono',monospace; font-size:14px; }
+.mm-grid { display:grid; grid-template-columns:repeat(4,52px); gap:6px; }
+.mm-card { width:52px; height:52px; background:#1a1a1a; border:1px solid #333; border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:24px; cursor:pointer; color:transparent; }
+.mm-card.up { color:#ff00ff; background:#111; border-color:#ff00ff55; }
+.mm-card.done { color:#00ffcc; border-color:#00ffcc55; cursor:default; }
+.mm-new { padding:8px 18px; background:#1a1a1a; color:#e0e0e0; border:1px solid #333; border-radius:6px; cursor:pointer; }
+END_CSS
+JS:
+const ICONS = ['A','B','C','D','E','F','G','H'];
+const movesEl = el.querySelector('.mm-moves');
+const grid = el.querySelector('.mm-grid');
+let first, lock, moves, matched;
+const shuffle = (a) => { for (let i = a.length-1; i>0; i--) { const j = Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; };
+const reset = () => {
+  first = null; lock = false; moves = 0; matched = 0; movesEl.textContent = 'moves: 0';
+  const deck = shuffle([...ICONS, ...ICONS]);
+  grid.innerHTML = '';
+  deck.forEach(icon => {
+    const card = document.createElement('div'); card.className = 'mm-card'; card.dataset.icon = icon; card.textContent = icon;
+    card.addEventListener('click', () => flip(card));
+    grid.appendChild(card);
+  });
+};
+const flip = (card) => {
+  if (lock || card.classList.contains('up') || card.classList.contains('done')) return;
+  card.classList.add('up');
+  if (!first) { first = card; return; }
+  moves++; movesEl.textContent = 'moves: ' + moves;
+  if (first.dataset.icon === card.dataset.icon) {
+    first.classList.add('done'); card.classList.add('done'); first = null; matched += 2;
+    if (matched === 16) movesEl.textContent = 'won in ' + moves + ' moves!';
+  } else {
+    lock = true; const a = first; first = null;
+    setTimeout(() => { a.classList.remove('up'); card.classList.remove('up'); lock = false; }, 700);
+  }
+};
+el.querySelector('.mm-new').addEventListener('click', reset);
+reset();
+END_JS
+
+=== PRIMITIVE: snake ===
+DESCRIPTION: the classic snake game on a canvas where you steer with arrow keys eat food and grow while the score climbs
+HTML:
+<div class="snake-root">
+  <div class="snake-score">score: 0</div>
+  <canvas class="snake-canvas" width="240" height="240"></canvas>
+  <div class="snake-hint">arrow keys to move</div>
+</div>
+END_HTML
+CSS:
+.snake-root { display:flex; flex-direction:column; align-items:center; gap:10px; padding:16px; background:#0a0a0a; border:1px solid #222; border-radius:10px; font-family:system-ui,sans-serif; }
+.snake-score { color:{{accent}}; font-family:'JetBrains Mono',monospace; font-size:16px; }
+.snake-canvas { background:#111; border:1px solid #333; border-radius:6px; }
+.snake-hint { color:#777; font-size:12px; }
+END_CSS
+JS:
+const canvas = el.querySelector('.snake-canvas');
+const ctx = canvas.getContext('2d');
+const scoreEl = el.querySelector('.snake-score');
+const GRID = 12, CELL = 20;
+let snake, dir, food, score, dead;
+const place = () => ({ x: Math.floor(Math.random()*GRID), y: Math.floor(Math.random()*GRID) });
+const reset = () => { snake = [{x:6,y:6}]; dir = {x:1,y:0}; food = place(); score = 0; dead = false; scoreEl.textContent = 'score: 0'; };
+const step = () => {
+  if (dead) return;
+  const head = { x: (snake[0].x + dir.x + GRID) % GRID, y: (snake[0].y + dir.y + GRID) % GRID };
+  if (snake.some(s => s.x === head.x && s.y === head.y)) { dead = true; scoreEl.textContent = 'dead - score ' + score; setTimeout(reset, 1200); return; }
+  snake.unshift(head);
+  if (head.x === food.x && head.y === food.y) { score++; scoreEl.textContent = 'score: ' + score; food = place(); }
+  else snake.pop();
+  draw();
+};
+const draw = () => {
+  ctx.fillStyle = '#111'; ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.fillStyle = '#ff00ff'; ctx.fillRect(food.x*CELL+2, food.y*CELL+2, CELL-4, CELL-4);
+  ctx.fillStyle = '#00ffcc'; snake.forEach(s => ctx.fillRect(s.x*CELL+1, s.y*CELL+1, CELL-2, CELL-2));
+};
+addListener(window, 'keydown', (e) => {
+  if (e.key === 'ArrowUp' && dir.y === 0) dir = {x:0,y:-1};
+  else if (e.key === 'ArrowDown' && dir.y === 0) dir = {x:0,y:1};
+  else if (e.key === 'ArrowLeft' && dir.x === 0) dir = {x:-1,y:0};
+  else if (e.key === 'ArrowRight' && dir.x === 0) dir = {x:1,y:0};
+});
+reset(); draw();
+setInterval(step, 160);
+END_JS
+
+=== PRIMITIVE: pomodoro ===
+DESCRIPTION: a pomodoro focus timer that counts down twenty five minute work sessions and five minute breaks with start and reset
+HTML:
+<div class="pom-root">
+  <div class="pom-mode">focus</div>
+  <div class="pom-time">25:00</div>
+  <div class="pom-buttons">
+    <button class="pom-toggle">start</button>
+    <button class="pom-reset">reset</button>
+  </div>
+</div>
+END_HTML
+CSS:
+.pom-root { display:flex; flex-direction:column; align-items:center; gap:12px; padding:26px; background:#0a0a0a; border:1px solid #222; border-radius:12px; font-family:system-ui,sans-serif; }
+.pom-mode { color:{{accent}}; font-family:'JetBrains Mono',monospace; letter-spacing:3px; text-transform:uppercase; font-size:14px; }
+.pom-mode.break { color:#00ffcc; }
+.pom-time { font-size:60px; color:#e0e0e0; font-family:'JetBrains Mono',monospace; }
+.pom-buttons { display:flex; gap:10px; }
+.pom-buttons button { padding:10px 22px; background:#1a1a1a; color:#e0e0e0; border:1px solid #333; border-radius:6px; cursor:pointer; }
+.pom-buttons button:hover { border-color:#ff00ff; color:#ff00ff; }
+END_CSS
+JS:
+const WORK = 25*60, BREAK = 5*60;
+let remaining = WORK, mode = 'focus', running = false, intervalId = null;
+const modeEl = el.querySelector('.pom-mode');
+const timeEl = el.querySelector('.pom-time');
+const toggle = el.querySelector('.pom-toggle');
+const render = () => {
+  const m = Math.floor(remaining/60), s = remaining%60;
+  timeEl.textContent = String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+  modeEl.textContent = mode; modeEl.className = 'pom-mode' + (mode === 'break' ? ' break' : '');
+};
+const tick = () => {
+  remaining--;
+  if (remaining < 0) {
+    mode = mode === 'focus' ? 'break' : 'focus';
+    remaining = mode === 'focus' ? WORK : BREAK;
+  }
+  render();
+};
+toggle.addEventListener('click', () => {
+  if (running) { clearInterval(intervalId); intervalId = null; running = false; toggle.textContent = 'start'; }
+  else { intervalId = setInterval(tick, 1000); running = true; toggle.textContent = 'pause'; }
+});
+el.querySelector('.pom-reset').addEventListener('click', () => {
+  if (intervalId) clearInterval(intervalId); intervalId = null; running = false;
+  mode = 'focus'; remaining = WORK; toggle.textContent = 'start'; render();
+});
+render();
+END_JS
+
+=== PRIMITIVE: unit-converter ===
+DESCRIPTION: a length unit converter between meters feet inches and centimeters that updates all fields as you type
+HTML:
+<div class="uc-root">
+  <div class="uc-title">length converter</div>
+  <label>meters <input class="uc-in" data-unit="m" type="number" placeholder="0"></label>
+  <label>feet <input class="uc-in" data-unit="ft" type="number" placeholder="0"></label>
+  <label>inches <input class="uc-in" data-unit="in" type="number" placeholder="0"></label>
+  <label>cm <input class="uc-in" data-unit="cm" type="number" placeholder="0"></label>
+</div>
+END_HTML
+CSS:
+.uc-root { display:flex; flex-direction:column; gap:10px; padding:20px; background:#0a0a0a; border:1px solid #222; border-radius:10px; font-family:system-ui,sans-serif; min-width:240px; }
+.uc-title { color:{{accent}}; font-size:16px; font-family:'JetBrains Mono',monospace; }
+.uc-root label { display:flex; justify-content:space-between; align-items:center; color:#e0e0e0; font-size:14px; gap:10px; }
+.uc-root input { width:120px; padding:8px; background:#111; color:#00ffcc; border:1px solid #333; border-radius:5px; text-align:right; }
+.uc-root input:focus { outline:none; border-color:#ff00ff; }
+END_CSS
+JS:
+const TO_M = { m: 1, ft: 0.3048, in: 0.0254, cm: 0.01 };
+const inputs = el.querySelectorAll('.uc-in');
+const update = (src) => {
+  const meters = (parseFloat(src.value) || 0) * TO_M[src.dataset.unit];
+  inputs.forEach(inp => { if (inp !== src) inp.value = (meters / TO_M[inp.dataset.unit]).toFixed(3); });
+};
+inputs.forEach(inp => inp.addEventListener('input', () => update(inp)));
+END_JS
+
+=== PRIMITIVE: word-counter ===
+DESCRIPTION: a text area that live counts the words characters and sentences as you type for writing
+HTML:
+<div class="wc-root">
+  <textarea class="wc-text" placeholder="start typing..."></textarea>
+  <div class="wc-stats">
+    <span>words: <b class="wc-words">0</b></span>
+    <span>chars: <b class="wc-chars">0</b></span>
+    <span>sentences: <b class="wc-sent">0</b></span>
+  </div>
+</div>
+END_HTML
+CSS:
+.wc-root { display:flex; flex-direction:column; gap:10px; padding:18px; background:#0a0a0a; border:1px solid #222; border-radius:10px; font-family:system-ui,sans-serif; min-width:300px; }
+.wc-text { width:100%; min-height:120px; padding:12px; background:#111; color:#e0e0e0; border:1px solid #333; border-radius:6px; resize:vertical; font-family:inherit; font-size:14px; box-sizing:border-box; }
+.wc-text:focus { outline:none; border-color:#ff00ff; }
+.wc-stats { display:flex; gap:16px; color:#aaa; font-family:'JetBrains Mono',monospace; font-size:13px; }
+.wc-stats b { color:{{accent}}; }
+END_CSS
+JS:
+const text = el.querySelector('.wc-text');
+const wordsEl = el.querySelector('.wc-words');
+const charsEl = el.querySelector('.wc-chars');
+const sentEl = el.querySelector('.wc-sent');
+const update = () => {
+  const v = text.value;
+  charsEl.textContent = v.length;
+  wordsEl.textContent = (v.trim().match(/\S+/g) || []).length;
+  sentEl.textContent = (v.match(/[.!?]+/g) || []).length;
+};
+text.addEventListener('input', update);
+update();
+END_JS
+
+=== PRIMITIVE: typing-test ===
+DESCRIPTION: a typing speed test that times how fast you type a sentence and reports your words per minute and accuracy
+HTML:
+<div class="tt-root">
+  <div class="tt-prompt"></div>
+  <input class="tt-input" type="text" placeholder="type here...">
+  <div class="tt-result"></div>
+  <button class="tt-new">new sentence</button>
+</div>
+END_HTML
+CSS:
+.tt-root { display:flex; flex-direction:column; gap:12px; padding:20px; background:#0a0a0a; border:1px solid #222; border-radius:10px; font-family:system-ui,sans-serif; max-width:360px; }
+.tt-prompt { color:#aaa; font-size:15px; line-height:1.5; font-family:'JetBrains Mono',monospace; }
+.tt-input { padding:10px; background:#111; color:#00ffcc; border:1px solid #333; border-radius:6px; font-size:14px; }
+.tt-input:focus { outline:none; border-color:#ff00ff; }
+.tt-result { color:{{accent}}; font-family:'JetBrains Mono',monospace; font-size:14px; min-height:18px; }
+.tt-new { padding:8px 16px; background:#1a1a1a; color:#e0e0e0; border:1px solid #333; border-radius:6px; cursor:pointer; align-self:flex-start; }
+END_CSS
+JS:
+const SENTENCES = [
+  'the quick brown fox jumps over the lazy dog',
+  'she sells seashells by the dark seashore',
+  'code is poetry written for a machine to obey',
+  'the night is darkest just before the dawn',
+];
+const prompt = el.querySelector('.tt-prompt');
+const input = el.querySelector('.tt-input');
+const result = el.querySelector('.tt-result');
+let target = '', startAt = 0, started = false;
+const reset = () => {
+  target = SENTENCES[Math.floor(Math.random()*SENTENCES.length)];
+  prompt.textContent = target; input.value = ''; result.textContent = ''; started = false;
+};
+input.addEventListener('input', () => {
+  if (!started) { started = true; startAt = Date.now(); }
+  if (input.value === target) {
+    const mins = (Date.now() - startAt) / 60000;
+    const words = target.split(' ').length;
+    result.textContent = Math.round(words / mins) + ' wpm';
+  }
+});
+el.querySelector('.tt-new').addEventListener('click', reset);
+reset();
+END_JS
+
+=== PRIMITIVE: coin-flip ===
+DESCRIPTION: a coin flip that animates and lands on heads or tails and tracks how many of each you have flipped
+HTML:
+<div class="coin-root">
+  <div class="coin-face">?</div>
+  <button class="coin-flip-btn">flip</button>
+  <div class="coin-tally">heads 0 - 0 tails</div>
+</div>
+END_HTML
+CSS:
+.coin-root { display:flex; flex-direction:column; align-items:center; gap:16px; padding:26px; background:#0a0a0a; border:1px solid #222; border-radius:12px; font-family:system-ui,sans-serif; }
+.coin-face { width:90px; height:90px; border-radius:50%; background:#111; border:2px solid #ff00ff55; display:flex; align-items:center; justify-content:center; font-size:28px; color:{{accent}}; font-family:'JetBrains Mono',monospace; box-shadow:0 0 20px #ff00ff22; }
+.coin-face.spin { animation:coinspin 0.1s infinite; }
+@keyframes coinspin { 50% { transform:scaleX(0.2); } }
+.coin-flip-btn { padding:12px 28px; background:#1a1a1a; color:#00ffcc; border:1px solid #00ffcc44; border-radius:8px; cursor:pointer; font-size:15px; }
+.coin-tally { color:#aaa; font-family:'JetBrains Mono',monospace; font-size:14px; }
+END_CSS
+JS:
+const face = el.querySelector('.coin-face');
+const btn = el.querySelector('.coin-flip-btn');
+const tally = el.querySelector('.coin-tally');
+let heads = 0, tails = 0;
+btn.addEventListener('click', () => {
+  btn.disabled = true; face.classList.add('spin');
+  let n = 0;
+  const spin = setInterval(() => {
+    face.textContent = Math.random() < 0.5 ? 'H' : 'T'; n++;
+    if (n >= 10) {
+      clearInterval(spin); face.classList.remove('spin');
+      const result = Math.random() < 0.5 ? 'H' : 'T';
+      face.textContent = result;
+      if (result === 'H') heads++; else tails++;
+      tally.textContent = 'heads ' + heads + ' - ' + tails + ' tails';
+      btn.disabled = false;
+    }
+  }, 60);
+});
+END_JS
+
+=== PRIMITIVE: habit-tracker ===
+DESCRIPTION: a habit tracker where you add habits and check them off each day with a running streak count saved in storage
+HTML:
+<div class="ht-root">
+  <div class="ht-input-row">
+    <input class="ht-input" type="text" placeholder="new habit...">
+    <button class="ht-add">add</button>
+  </div>
+  <ul class="ht-list"></ul>
+</div>
+END_HTML
+CSS:
+.ht-root { display:flex; flex-direction:column; gap:12px; padding:20px; background:#0a0a0a; border:1px solid #222; border-radius:10px; font-family:system-ui,sans-serif; min-width:300px; }
+.ht-input-row { display:flex; gap:8px; }
+.ht-input { flex:1; padding:10px; background:#111; color:#e0e0e0; border:1px solid #333; border-radius:6px; }
+.ht-input:focus { outline:none; border-color:#ff00ff; }
+.ht-add { padding:10px 16px; background:#1a1a1a; color:#00ffcc; border:1px solid #00ffcc44; border-radius:6px; cursor:pointer; }
+.ht-list { list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:6px; }
+.ht-list li { display:flex; align-items:center; gap:10px; padding:10px; background:#111; border:1px solid #222; border-radius:6px; color:#e0e0e0; }
+.ht-check { width:24px; height:24px; border-radius:5px; border:1px solid #333; background:#1a1a1a; cursor:pointer; color:#00ffcc; display:flex; align-items:center; justify-content:center; }
+.ht-check.on { background:#00ffcc22; border-color:#00ffcc; }
+.ht-name { flex:1; }
+.ht-streak { color:{{accent}}; font-family:'JetBrains Mono',monospace; font-size:13px; }
+.ht-del { background:none; border:none; color:#ff4d9a; cursor:pointer; font-size:16px; }
+END_CSS
+JS:
+let habits = [];
+try { habits = JSON.parse((unity.storage && unity.storage.get && unity.storage.get('habits')) || '[]'); } catch { habits = []; }
+const list = el.querySelector('.ht-list');
+const input = el.querySelector('.ht-input');
+const save = () => { try { unity.storage && unity.storage.set && unity.storage.set('habits', JSON.stringify(habits)); } catch {} };
+const render = () => {
+  list.innerHTML = '';
+  habits.forEach((h, i) => {
+    const li = document.createElement('li');
+    const chk = document.createElement('div'); chk.className = 'ht-check' + (h.done ? ' on' : ''); chk.textContent = h.done ? 'v' : '';
+    chk.addEventListener('click', () => { h.done = !h.done; h.streak = h.done ? (h.streak||0)+1 : Math.max(0,(h.streak||0)-1); save(); render(); });
+    const name = document.createElement('span'); name.className = 'ht-name'; name.textContent = h.name;
+    const streak = document.createElement('span'); streak.className = 'ht-streak'; streak.textContent = (h.streak||0) + 'd';
+    const del = document.createElement('button'); del.className = 'ht-del'; del.textContent = 'x';
+    del.addEventListener('click', () => { habits.splice(i,1); save(); render(); });
+    li.appendChild(chk); li.appendChild(name); li.appendChild(streak); li.appendChild(del);
+    list.appendChild(li);
+  });
+};
+const add = () => { const v = input.value.trim(); if (v) { habits.push({ name: v, done: false, streak: 0 }); input.value = ''; save(); render(); } };
+el.querySelector('.ht-add').addEventListener('click', add);
+input.addEventListener('keydown', (e) => { if (e.key === 'Enter') add(); });
+render();
+END_JS
+
+=== PRIMITIVE: soundboard ===
+DESCRIPTION: a soundboard of buttons that play different synth tones using the web audio api when clicked
+HTML:
+<div class="sb-root">
+  <div class="sb-title">soundboard</div>
+  <div class="sb-pads"></div>
+</div>
+END_HTML
+CSS:
+.sb-root { display:flex; flex-direction:column; align-items:center; gap:12px; padding:20px; background:#0a0a0a; border:1px solid #222; border-radius:10px; font-family:system-ui,sans-serif; }
+.sb-title { color:{{accent}}; font-family:'JetBrains Mono',monospace; font-size:15px; }
+.sb-pads { display:grid; grid-template-columns:repeat(4,56px); gap:8px; }
+.sb-pad { height:56px; background:#1a1a1a; border:1px solid #333; border-radius:8px; cursor:pointer; color:#00ffcc; font-family:'JetBrains Mono',monospace; font-size:13px; }
+.sb-pad:hover { border-color:#00ffcc; }
+.sb-pad:active { background:#00ffcc22; }
+END_CSS
+JS:
+const NOTES = [
+  { n: 'C', f: 261.6 }, { n: 'D', f: 293.7 }, { n: 'E', f: 329.6 }, { n: 'F', f: 349.2 },
+  { n: 'G', f: 392.0 }, { n: 'A', f: 440.0 }, { n: 'B', f: 493.9 }, { n: 'C2', f: 523.3 },
+];
+const pads = el.querySelector('.sb-pads');
+let audioCtx = null;
+const play = (freq) => {
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = 'triangle'; osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.4);
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    osc.start(); osc.stop(audioCtx.currentTime + 0.4);
+  } catch {}
+};
+NOTES.forEach(note => {
+  const pad = document.createElement('button'); pad.className = 'sb-pad'; pad.textContent = note.n;
+  pad.addEventListener('click', () => play(note.f));
+  pads.appendChild(pad);
+});
+END_JS
+
+=== PRIMITIVE: markdown-notepad ===
+DESCRIPTION: a notepad with a live preview that renders basic markdown bold italic and headings as you type
+HTML:
+<div class="md-root">
+  <textarea class="md-input" placeholder="# type markdown..."></textarea>
+  <div class="md-preview"></div>
+</div>
+END_HTML
+CSS:
+.md-root { display:flex; gap:12px; padding:16px; background:#0a0a0a; border:1px solid #222; border-radius:10px; font-family:system-ui,sans-serif; min-width:380px; }
+.md-input { flex:1; min-height:160px; padding:12px; background:#111; color:#e0e0e0; border:1px solid #333; border-radius:6px; resize:vertical; font-family:'JetBrains Mono',monospace; font-size:13px; box-sizing:border-box; }
+.md-input:focus { outline:none; border-color:#ff00ff; }
+.md-preview { flex:1; padding:12px; background:#111; border:1px solid #222; border-radius:6px; color:#e0e0e0; font-size:14px; overflow-y:auto; }
+.md-preview h1 { color:#ff00ff; font-size:20px; margin:8px 0; }
+.md-preview h2 { color:#00ffcc; font-size:16px; margin:6px 0; }
+.md-preview strong { color:#fff; } .md-preview em { color:#aaa; }
+END_CSS
+JS:
+const input = el.querySelector('.md-input');
+const preview = el.querySelector('.md-preview');
+const esc = (s) => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const render = () => {
+  const lines = input.value.split('\n').map(line => {
+    let h = esc(line);
+    h = h.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    h = h.replace(/\*(.+?)\*/g, '<em>$1</em>');
+    if (/^## /.test(line)) return '<h2>' + h.slice(3) + '</h2>';
+    if (/^# /.test(line)) return '<h1>' + h.slice(2) + '</h1>';
+    if (line.trim() === '') return '<br>';
+    return '<div>' + h + '</div>';
+  });
+  preview.innerHTML = lines.join('');
+};
+input.addEventListener('input', render);
+render();
 END_JS

@@ -1,14 +1,14 @@
 #!/bin/bash
-# Launcher lives in linux/ — cd up one level so the rest of the script
+# Launcher lives in linux/ -- cd up one level so the rest of the script
 # resolves paths from the project root (corpora/, server/, js/, etc.)
 # exactly the way it did when this file used to live in the root.
 cd "$(dirname "$0")/.." || exit 1
-# Unity Brain Server (SAVE-STATE RESUME) — Linux/macOS parity with
+# Unity Brain Server (SAVE-STATE RESUME) -- Linux/macOS parity with
 # Savestart.bat. FORCE-preserves brain state from disk regardless of
 # code-hash change since last run. Operator uses this when continuing
 # a long curriculum run from a previous boot's checkpoint.
 #
-# DREAM_FORCE_CLEAR is explicitly REJECTED — Savestart is resume-only.
+# DREAM_FORCE_CLEAR is explicitly REJECTED -- Savestart is resume-only.
 # If you need a wipe, use start.sh /fresh.
 
 echo ""
@@ -22,15 +22,15 @@ echo "  [Savestart] boot will hydrate from server/brain-weights*.json"
 echo "  [Savestart] + conversations.json + episodic-memory.db."
 echo ""
 
-# Optional env flags — see start.sh header for full list. Most-relevant
+# Optional env flags -- see start.sh header for full list. Most-relevant
 # Savestart-side flags:
-# DREAM_DEFINITION_CACHE_FILE=path.json — persistent dictionary cache survives
+# DREAM_DEFINITION_CACHE_FILE=path.json -- persistent dictionary cache survives
 #                                          restart → no ~1 min re-warm.
-# DREAM_COHERENCE_MIN=0.15 — composeSentence cosine coherence floor (env-tunable).
-# DREAM_SAT_MEANCOS=0.7    — saturation halt: mean-cos > X.
-# DREAM_SAT_MEANABS=0.6    — saturation halt: meanAbs > X*wMax.
-# DREAM_SAT_RATIO=1.5      — saturation halt: max/mean ratio < X.
-# DREAM_SAT_SAMPLE=1000    — weight-distribution sample size for sat check.
+# DREAM_COHERENCE_MIN=0.15 -- composeSentence cosine coherence floor (env-tunable).
+# DREAM_SAT_MEANCOS=0.7    -- saturation halt: mean-cos > X.
+# DREAM_SAT_MEANABS=0.6    -- saturation halt: meanAbs > X*wMax.
+# DREAM_SAT_RATIO=1.5      -- saturation halt: max/mean ratio < X.
+# DREAM_SAT_SAMPLE=1000    -- weight-distribution sample size for sat check.
 # First-N reads of each tunable log calibration data so operator can tune
 # from real run history. See start.sh header for full descriptions.
 
@@ -53,7 +53,7 @@ export DREAM_KEEP_STATE=1
 unset DREAM_FORCE_CLEAR
 
 if [[ "$1" == "/fresh" || "$1" == "/clear" || "$1" == "--fresh" || "$1" == "--clear" ]]; then
-    echo "  [!] $1 rejected — use start.sh /fresh for a wipe."
+    echo "  [!] $1 rejected -- use start.sh /fresh for a wipe."
     echo "      Savestart.sh is save-resume only."
     exit 1
 fi
@@ -126,7 +126,7 @@ if [ ! -f "$DIR/corpora/glove.6B.300d.txt" ]; then
             echo "    macOS: tar + unzip ship by default"
             echo "    Debian/Ubuntu: apt install unzip"
             echo "    Alpine: apk add unzip"
-            echo "  Continuing with subword fallback — semantic probes may drift."
+            echo "  Continuing with subword fallback -- semantic probes may drift."
             echo "  ============================================================"
             echo ""
         fi
@@ -147,7 +147,7 @@ echo ""
 # Step 6/7: rebuild js/app.bundle.js
 echo "[Savestart] step 6/7: rebuilding js/app.bundle.js..."
 if npm run build; then
-    echo "  Bundle built — browser will load fresh code."
+    echo "  Bundle built -- browser will load fresh code."
 else
     echo ""
     echo "  ============================================================"
@@ -171,7 +171,7 @@ node --max-old-space-size=65536 --max-semi-space-size=1024 --expose-gc brain-ser
 SERVER_PID=$!
 sleep 2
 
-# Auto-open landing + dashboard. Save-state resume boot benefits especially —
+# Auto-open landing + dashboard. Save-state resume boot benefits especially --
 # operator can confirm what loaded from disk before committing to a long
 # curriculum run.
 echo "  Opening landing page + dashboard..."
@@ -192,7 +192,7 @@ echo "  Tail live:   tail -F $DIR/server/server.log"
 echo ""
 echo "  NOTE: brain runs ONLY on GPU. compute.html MUST stay open."
 echo "  To STOP cleanly: stop.sh (or Ctrl+C this launcher then kill PID $SERVER_PID)"
-echo "  Also close http://localhost:7525 browser tabs — compute.html"
+echo "  Also close http://localhost:7525 browser tabs -- compute.html"
 echo "  keeps WebGPU running even without the server."
 echo ""
 

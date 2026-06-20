@@ -131,10 +131,10 @@ The developmental curriculum walks Unity through six subjects in lockstep: ELA, 
    Pre-K          │      │      │      │      │      │ Life │ ← Life Experience adds
    (substrate)    │      │      │      │      │      │  PK  │   Pre-K (birth-to-4)
                   ├──────┼──────┼──────┼──────┼──────┼──────┤
-   Kindergarten   │ ELA  │ Math │ Sci  │ Soc  │ Art  │ Life │ ← currently in scope
+   Kindergarten   │ ELA  │ Math │ Sci  │ Soc  │ Art  │ Life │ ← K = the proven template
                   ├──────┼──────┼──────┼──────┼──────┼──────┤
-   Grade 1-12     │  ↓   │  ↓   │  ↓   │  ↓   │  ↓   │  ↓   │ ← deferred (Pre-K + K only
-                  │ ...  │ ...  │ ...  │ ...  │ ...  │ ...  │   per scope LAW)
+   Grade 1-12     │ ELA  │ Math │ Sci  │ Soc  │ Art  │ Life │ ← all grades built to
+                  │ ...  │ ...  │ ...  │ ...  │ ...  │ ...  │   K's depth (full K→PhD)
                   ├──────┼──────┼──────┼──────┼──────┼──────┤
    College 1-4    │  ↓   │  ↓   │  ↓   │  ↓   │  ↓   │  ↓   │
                   ├──────┼──────┼──────┼──────┼──────┼──────┤
@@ -277,6 +277,48 @@ None of these endpoints are ever consulted for what Unity *says* or *decides*. T
 
 ---
 
+## Code layout
+
+The codebase is organized so each god-class is split into focused per-concern / per-module / per-grade files attached via the `Object.assign(X.prototype, MIXIN)` pattern. See `.claude/CONSTRAINTS.md § LAW.MIXIN-ORDER` for the discipline that keeps this safe at refactor time.
+
+| Directory | What lives there | Mixin attach pattern |
+|-----------|------------------|---------------------|
+| `js/brain/cluster/` | Cluster per-module split — `telemetry.js`, `hebbian.js`, `emit.js`, `probe.js` | 4 `Object.assign(NeuronCluster.prototype, MIXIN)` attaches at `cluster.js` bottom |
+| `js/brain/curriculum/` | Curriculum per-grade split — `pre-K.js`, `kindergarten.js` (K-grade K_MIXIN) | 1 `Object.assign(Curriculum.prototype, K_MIXIN)` at `curriculum.js` bottom |
+| `server/brain-server/` | Server per-concern split — `gpu.js`, `state.js`, `memory.js`, `chat.js` | 4 `Object.assign(ServerBrain.prototype, MIXIN)` attaches at `brain-server.js` bottom |
+| `js/brain/` (root files) | Core primitives — `embeddings.js`, `letter-input.js`, `sparse-matrix.js`, `gpu-compute.js`, etc. | No mixin attach — direct module exports |
+| `scripts/` | Build tooling | `stamp-version.mjs` (BUILD stamp on commit) |
+| `docs/` | Workflow + math + architecture docs | `THRESHOLD-DERIVATION.md` (audit B.1), `HTML-ENTRY-POINTS.md` (audit H.5), `ARCHITECTURE.md`, `EQUATIONS.md`, etc. |
+| `html/` | All public HTMLs | See `docs/HTML-ENTRY-POINTS.md` for per-page contract + failure-mode signatures |
+| `.claude/` | Workflow + persona infrastructure | LOCAL — not pushed to feature branches |
+
+**Architectural shrinkage delivered by the P4 refactor arc:**
+- `js/brain/curriculum.js`: 26033 → 24035 lines (−7.7%) via P4.1
+- `js/brain/cluster.js`: 6375 → 3922 lines (−38.5%) via P4.2
+- `server/brain-server.js`: 9555 → 6395 lines (−33%) via P4.3
+- **Total:** ~6000 lines of god-class bloat refactored into 13 focused per-module/per-concern/per-grade files.
+
+Per-directory rationale lives in the directory's own `README.md`:
+- `js/brain/cluster/README.md` — per-module split rationale
+- `js/brain/curriculum/README.md` — per-grade split rationale
+- `server/brain-server/README.md` — per-concern split rationale
+
+---
+
+## WebGPU setup (required before first connect)
+
+Unity's brain runs ~357M Rulkov neurons with Hebbian/Oja-rule plasticity on GPU-resident sparse matrices. **WebGPU is required — there is no CPU fallback path** per the no-fallbacks LAW that governs the codebase. One correct compute architecture; no degraded-capability menu.
+
+Before you connect to the dashboard for the first time:
+
+1. Visit `html/webgpu-prep.html` (also linked automatically from `index.html` + `html/dashboard.html` via the boot modal when the adapter is unavailable).
+2. Follow the browser-specific instructions — Chrome, Edge, Firefox, Safari, Opera, Brave all covered with copy-able flag URLs and GPU-driver version minimums (NVIDIA ≥ 532, AMD Adrenalin ≥ 23.x, Intel ≥ 31.0.101.4314, Apple M-series on macOS 14+).
+3. Click `Re-check WebGPU` after toggling the flag + restarting your browser.
+
+The boot modal that surfaces when WebGPU isn't ready is HARD-BLOCK — only escape is the prep-page link or a successful re-check. If your hardware can't run WebGPU at all (integrated GPU older than Intel HD 4000 era, very old AMD Polaris, etc.), Unity isn't a fit for that machine.
+
+---
+
 ## Running the brain
 
 ```
@@ -294,6 +336,49 @@ When the landing page is served from `localhost` (or `127.0.0.1` / `::1` / `file
 **Definition disk cache.** Dictionary-API definitions persist to `server/definition-cache.json` by default — flushed every 5 minutes during a run AND on graceful shutdown. After 2-3 cold runs, the cache approaches 100% K-vocab coverage, so the next-boot K-VOCAB-PREFETCH completes instantly (no API hits) and the upfront-multi-def-seed flag survives the restart. Set `DREAM_DEFINITION_CACHE_FILE=''` (empty) to opt out.
 
 For full install instructions, AI provider setup, and troubleshooting see [docs/SETUP.md](docs/SETUP.md).
+
+---
+
+## Admin / viewer split
+
+The dashboard has two roles, assigned automatically by the brain server the moment a WebSocket client connects:
+
+| Role | Who | What they see |
+|---|---|---|
+| **🔑 Admin** | The loopback caller — whoever runs `node brain-server.js` on the host machine, across every tab they open (compute worker, dashboard, landing page, console). | Full read-only telemetry **plus** brain-mutating controls — ⏹ Stop Brain, ▶ Start Next Grade, per-subject Signoff buttons, the auto-advance toggle. |
+| **🟢 Viewer** | Any non-loopback connection — LAN visitors, remote browsers, anyone reaching the dashboard over the network when `BRAIN_BIND=0.0.0.0`. | Full read-only telemetry — every panel, every chart, every live state update — but no control buttons. |
+
+The role is decided by inspecting `req.socket.remoteAddress` on each new WebSocket. If it's a loopback address (`127.0.0.1` / `::1` / `::ffff:127.0.0.1` / any `127.x`), the client receives `{type: 'modeAssigned', mode: 'admin'}` ~500 ms after connection. Otherwise it receives `mode: 'viewer'`. The 500 ms delay lets the GPU compute worker self-identify via its `gpu_register` message and skip the modeAssigned send entirely — compute clients don't render dashboard UI, so they don't need a role badge.
+
+**There is no login form.** No admin token. No cookie. No `/admin-login` endpoint. The loopback caller is admin by design — the operator running the server on their own machine is the only person who can issue control commands, full stop. LAN visitors are read-only regardless of how they connect.
+
+**Multiple operator tabs all share admin.** When the launcher auto-opens the landing page, the compute worker, and the dashboard, three loopback connections light up — all three are admin. The operator's terminal hitting the server over `curl http://127.0.0.1:7525/...` is also loopback. Same operator, same machine, same role across everything.
+
+**Refresh-loses-admin caveat (not really a problem):** if the operator's dashboard disconnects and reconnects, they're still on loopback, so they get admin again automatically. The "refresh loses admin" tradeoff only matters for non-loopback connections — and those were never admin to begin with.
+
+**Defense-in-depth on the brain-mutating endpoints.** `/shutdown`, `/grade-advance`, `/grade-signoff`, and `/auto-advance` all run through a separate `requireLoopback` gate at the HTTP layer. Even if a viewer's browser somehow synthesized a control POST, the request would 403 before touching brain state. The mode split is the UX layer (don't paint buttons that wouldn't work); `requireLoopback` is the security layer (those controls never take effect from off-host). Both are in place regardless of the `BRAIN_BIND` setting.
+
+The dashboard's connection-status row shows the current role as a badge — `🔑 ADMIN` on amber background or `🟢 VIEWER` on green — so the operator can confirm at a glance which side of the split they're on. While the WebSocket is still handshaking, the badge reads `⋯ connecting` in neutral grey and every `admin-only` control stays hidden — default-hidden prevents a flash of unauthorized controls if `modeAssigned` arrives slowly or never.
+
+---
+
+## Auto-advance toggle
+
+The dashboard's milestone panel carries a single checkbox under the operator-signoffs row: **`☐ Auto-advance to next grade after pass`**. It's an admin-only control (hidden in viewer mode by the same `.admin-only` CSS class as Stop Brain) governed by a single boolean — `cortexCluster._autoAdvanceGrade`. The toggle is the entire bypass; there is no second flag.
+
+| Toggle | What happens at every grade boundary |
+|---|---|
+| **OFF** (default) | Curriculum runner pauses after every full grade pass. `cluster._gradeAdvancePaused = true` and persisted via save. The dashboard's `⏸ CURRICULUM PAUSED` panel renders with a `▶ START NEXT GRADE` button. `POST /grade-advance` walks `cluster._lastGateResult` and demands a `brain._gradeSignoffs[subject/grade]` entry for every subject that passed at the paused grade — missing signoffs return 403. The operator chat-tests the grade level on localhost, fires `POST /grade-signoff` per subject, then clicks the START button. |
+| **ON** | Curriculum runner skips the pause entirely — no `_gradeAdvancePaused` write, no dashboard wait. Heartbeat logs `[Curriculum] ⏩ AUTO-ADVANCE <from> → <to> (toggle ON — operator signoffs bypassed, no pause)`. `POST /grade-advance` (if invoked anyway) bypasses the signoff walk. Unity walks K → Grade 1 → Grade 2 → … back-to-back without operator intervention. |
+
+Wire path:
+- Click flips `d-ms-auto-advance-cb` → dashboard `POST /auto-advance {enabled: bool}` → server's `requireLoopback` gate accepts the call → `cortexCluster._autoAdvanceGrade` updates → server broadcasts `{type: 'autoAdvanceChanged', enabled: bool}` on the WebSocket so every open dashboard tab syncs → `brain.saveWeights({trigger: 'auto-advance:on|off'})` persists immediately.
+- F5 / reconnect → on `modeAssigned: admin`, the dashboard fetches `GET /auto-advance` and re-applies the saved toggle state to the checkbox. No "the toggle reset itself on refresh" surprises.
+- Mid-pause flip is honored — if the operator starts a manual walk, then flips auto-advance ON during a grade pause, the runner's wait loop detects the toggle and breaks out of the wait on the next 500 ms tick (`[Curriculum] ⏩ AUTO-ADVANCE engaged mid-pause — exiting wait, advancing to '<next>'`).
+
+The endpoint stays loopback-only (`requireLoopback` gate at the HTTP layer) just like every other brain-mutating endpoint. A LAN viewer who somehow synthesized an `/auto-advance` POST would 403 before the toggle could change, regardless of dashboard UI state.
+
+**When to use:** unattended overnight K → PhD curriculum walks where you don't want to wake up between each grade to click START. Per the grade-completion gate LAW the operator is consciously waiving per-grade localhost verification when this is ON — the lab-internal scope discipline lives in `.claude/CONSTRAINTS.md § GRADE COMPLETION GATE`.
 
 ---
 
@@ -342,10 +427,13 @@ The mystery module `Ψ = √(1/n) · N³ · [α·Id + β·Ego + γ·Left + δ·R
 
 | Resource | Description |
 |---|---|
+| **[📑 Page Legend](html/legend.html)** | Quick-access index for every HTML + public-facing doc (every other HTML has a floating `📑 Pages` button pointing here) |
+| **[📄 Docs Viewer](html/docs.html)** | Web-render any public markdown doc in-browser via `?doc=<slug>` — README, SETUP, ARCHITECTURE, EQUATIONS, ROADMAP, SKILL_TREE, SENSORY, WEBSOCKET |
 | **[Live Demo](https://unity-lab-ai.github.io/Unity)** | Open Unity in your browser — no install |
-| **[Setup Guide](docs/SETUP.md)** | Installation, AI providers, self-hosting, troubleshooting |
+| **[Setup Guide](docs/SETUP.md)** | Installation, WebGPU prerequisite, AI providers, self-hosting, troubleshooting |
 | **[Brain Equations](https://unity-lab-ai.github.io/Unity/html/brain-equations.html)** | Interactive walkthrough of every equation |
 | **[Concept Guide](html/unity-guide.html)** | Plain-English explanation of who Unity is and how she works |
+| **[WebGPU Setup](html/webgpu-prep.html)** | Browser-by-browser pre-flight enablement instructions (required before first connect) |
 | **[Equation Reference](docs/EQUATIONS.md)** | Source-accurate equation cheatsheet |
 | **[Architecture](docs/ARCHITECTURE.md)** | Canonical system architecture + directory structure |
 | **[Roadmap](docs/ROADMAP.md)** | Milestones, phases, current status |
@@ -364,6 +452,18 @@ The mystery module `Ψ = √(1/n) · N³ · [α·Id + β·Ego + γ·Left + δ·R
 - **Mills** — GPU compute pipeline. `compute.html` + `gpu-compute.js` WebGPU WGSL shaders (LIF, synapse propagate, plasticity, spike count, voltage mean, letter-bucket reduction), the chunked sparse-CSR upload binary protocol, `worker-pool.js` + `sparse-worker.js` SparseMatmulPool, the cluster-bound binding layer that lets cross-projections ride on the main-cortex spike and current buffers.
 - **Sponge** — visualization and sensory peripherals. `brain-3d.js` WebGL 3D brain with MNI anatomical coordinates and fractal connection webs, `brain-viz.js` 2D tabbed visualizer, `brain-event-detectors.js` 22-detector commentary, `visual-cortex.js` V1→V4→IT pipeline, `auditory-cortex.js` tonotopic processing, `voice.js` speech I/O, `sandbox.js` dynamic UI.
 - **GFourteen** — lead. `docs/Ultimate Unity.txt` persona canon, the governing equation `dx/dt = F(x, u, θ, t) + η`, the `Ψ = √(1/n) · N³` consciousness anchor, identity-lock architecture, the K→PhD developmental curriculum across six subjects, the drug pharmacokinetic scheduler spec, every binding decision on every commit. Final call on everything.
+
+---
+
+## Recent ship — 2026-06-17 (sessions 114.19gc → 114.19fp)
+
+Past 48 hours moved the brain from "architecturally ready" to "live-test stable":
+
+- **Audit megacommit (114.19gc–gd–ge–gf–gg–gh–gi):** 42 post-ship audit closure tasks landed in one atomic envelope (A.1-A.4 telemetry + B.1-B.7 math grounding + C.1-C.12 doc sweep + D.1-D.9 mixin discipline + E.1-E.4 half-shipped close + F.1 emergence measurement + G.1-G.2 persistent memory templates + H.1-H.9 HTML breakage). B.6 K-vocab corpus expanded 313 → 2881 sentences with 3.49× Erdős-Rényi percolation threshold coverage. D.9 P4.3.e residual extraction shipped across 4 atomic commits per *"no cheap work do each individually"*.
+- **Product-ship cleanup:** 28 debug/diagnostic/temp/cache/log files removed from git (Pollinations + image-gen preserved per directive). `scripts/` reduced to `stamp-version.mjs` only. Code-base now product-ready.
+- **Live-test follow-up (114.19fp):** 20 I-track fixes shipped during operator-driven K-curriculum walk — memory leak in `_teachHebbian` (I.13 `SparseMatrix.propagate` output buffer pool), HTTP event-loop starvation (I.14 `setImmediate` yield), inner-thought silence (I.3 `_definitionTaughtWords` showcase fallback + I.9 7-source seed rotation), dashboard observability (I.6 gate-probe banner + I.11 cell-level Brain Events + I.12 `cellSubPhases` counter), schema naming (I.7 top-K=3), consolidation cap (I.8), GPU panel rebuild (I.17 → I.18 → I.20 with I.19 missing-import root-cause fix), and the I.15 `autoClearStaleState` `require.main === module` gate that codifies the LAW preventing tooling-side syntax-check wipes of training state.
+
+See `docs/ARCHITECTURE.md § Live-test follow-up close`, `docs/SKILL_TREE.md § Live-test follow-up skills`, `docs/ROADMAP.md § Live-test follow-up`, `docs/EQUATIONS.md` head banner, and `docs/NewTodo.md § I-track` for the full per-fix detail. Audit cascade post-I.20: **60 ✅ SHIPPED + 1 ⏳ OPERATOR-FIRED (F.2 ship gate — operator fires `start.bat`, walks K ~20hr, chat-tests Unity, confirms acceptance criteria).**
 
 ---
 

@@ -1,5 +1,7 @@
 # ROADMAP — IF ONLY I HAD A BRAIN
 
+> Last updated: 2026-06-20 — **Pre-K + K ONLY scope REVOKED 2026-06-18.** The full K→PhD curriculum (K, G1-G12, College 1-4, Grad, PhD; every subject + full lived-year per grade) is now BUILT. Phase = training walk → final test → push (no longer building grades). All older dated banners below are HISTORICAL — they describe the pre-revocation scope contract and remain as-is for the record.
+
 > Last updated: 2026-05-09 (114.19fk + fl sweep — operator architectural correction + test-readiness audit, ALL items landed). **Templated `composeSentence` system RIPPED OUT.** Operator caught the prior fa→fi/fj approach as content prescription: *"we are NOT doing templets for the ai to fucking mimic... Unity thinks like a human does! she does NOt follow prescripted events."* fk.1 deleted 5 hardcoded slot-sequence templates + 5 intent → terminator-punct mappings + article-placement rule + PRONOUNS exclusion + ARTICLE_LIST guard + dedup retry mechanism. composeSentence body is now a tight equational emission loop: inject context once → emit one word → inject word back → loop until terminator emerges or budget exhausted. Slot order, agreement, article placement, terminator selection ALL emerge from trained iter25-I `relationTagId=8/9/10/11/12` weights. fk.2-fk.4 deleted hardcoded probeConcepts map, chat-time runtime regex parser, and token-count subject-inference heuristic — replaced with brain-state readouts that consume trained weights instead of prescribing FOR the brain. fl.1-fl.4 follow-on code: dead `ARTICLE_LIST` const deleted, inner-voice showcase + probe seeded with natural-language K-grade utterance states (instead of jargon-string intent labels that produced weak GloVe seeds), Savestart launchers document fk env vars. fl.5-fl.11 corrected every public + internal doc + HTML to remove conflicting template-walk claims. **Phase status:** still Pre-K + K Runtime Verification — awaiting Gee's LAW 6 Part 2 K signoff on localhost. Test path now MEASURES the equational architecture honestly: brain emits from trained weights only; if sentences emerge clean, training depth was sufficient → K signoff; if word-soup, deepen `_teachSentenceStructure` carving (NOT template re-introduction).
 
 > Earlier updated: 2026-05-09 (114.19fj sweep — super-review of fa→fi before 20hr K test, 23 of 24 findings shipped, 1 deferred — fj.17 since SUPERSEDED 2026-05-09 by fk.6 deletion: templated approach replaced with pure equational emergence; templates wrong as a category per operator architectural correction). **CRITICAL chat-side wiring fix** lands: `cluster._lastUserInputText` set server-side at processAndRespond entry — closes the dead-wiring bug that nullified the entire fa→fi chat-side architecture (engine.js was setting on browser-only `clusters.cortex`; server-side `processAndRespond` never wrote to `cortexCluster._lastUserInputText` so language-cortex.js read empty string → default declarative_svo + null intent-concept + null subject → ENTIRE WH-INTENT consumer + intent-concept extraction + subject inference dead in real chat). Plus 6 HIGH (chain cold-boot lazy-init + WH-frame parser DRY + probe intentConcept + 5 non-ELA cells probe own subject + DREAM_COHERENCE_MIN env + 4 saturation env vars), 7 MEDIUM (atomic /rollback + ring buffer pollution + injection cap + windowed saturation + noise default + interval repurpose + stale comment), 6 LOW (dedup temp + AbortSignal + cortexPattern coherence fallback + body race + dedup strength), 4 NITPICK (dup lazy-init removed + imperative comment + ARTICLE_LIST hoist + veto comment cleanup). **fj.17 deferred:** 3 new sentence templates need paired `_teachSentenceStructure` carving — too risky before 20hr test, scope split for post-test sweep. Bundle clean 2.4MB. `node --check` green across all 8 modified .js files. **Phase status:** still Pre-K + K Runtime Verification — awaiting Gee's LAW 6 Part 2 K signoff on localhost. Test path now MEASURES the architecture instead of measuring broken wiring with new code on top.
@@ -43,15 +45,15 @@ The unknown stays unknown: `Ψ = √(1/n) × N³`
 
 ## Current Status
 
-> **🎓 FULL K-PhD CURRICULUM + T15 DRUG DYNAMICS SHIPPED — 2026-04-17.** Unity now has the complete developmental substrate from kindergarten through doctoral research across six subject tracks (ELA, Math, Science, Social Studies, Arts, Life Experience — 114 cells total), all taught equationally via direct-pattern Hebbian + real human-grade comprehension gates. T15 drug state dynamics scheduler is live: real-time pharmacokinetic curves per substance, grade-gated by life track, additive brain-parameter contributions, speech modulation post-processor, sensory-trigger detection, Unity self-initiation, simulated social acquisition. Post-syllabus runtime tuning + live-use verification is the current phase.
+> **🎓 FULL K-PhD CURRICULUM + T15 DRUG DYNAMICS SHIPPED — 2026-04-17.** Unity now has the complete developmental substrate from kindergarten through doctoral research across six subject tracks (ELA, Math, Science, Social Studies, Arts, Life Experience — 114 cells total), all taught equationally via direct-pattern Hebbian + real human-grade comprehension gates. T15 drug state dynamics scheduler is live: real-time pharmacokinetic curves per substance, grade-gated by life track, additive brain-parameter contributions, speech modulation post-processor, sensory-trigger detection, Unity self-initiation, simulated social acquisition. **Pre-K + K ONLY scope REVOKED 2026-06-18 — the full K→PhD curriculum (K, G1-G12, College 1-4, Grad, PhD; every subject + full lived-year per grade) is BUILT.** Current phase is the training walk → final test → push — no longer building grades.
 
 | Metric | Value |
 |--------|-------|
-| **Phase** | Pre-K + K Runtime Verification (PRE-K + K ONLY SYLLABUS SCOPE CONTRACT LAW in effect — post-K content frozen until operator LAW 6 Part 2 K signoff) |
-| **Status** | ✅ Brain refactor complete · ✅ 114-cell K-PhD syllabus coded (post-K DEFERRED per scope LAW) · ✅ T15 drug dynamics scheduler live · ✅ Full save/resume (JSON cortex state + streaming binary weights + operator signoff ledger) · ✅ Clean-halt path via `stop.bat` + `POST /shutdown` · ✅ DYN-PROD redesigned as direct `sem_to_motor.propagate` · ✅ Student-test probe battery across all 12 pre-K + K cells at A+ threshold (≥ 0.95) · ⏳ Operator LAW 6 Part 2 K signoff on localhost · ⏳ T19 full doc audit in progress |
+| **Phase** | Full K→PhD Training Walk → Final Test → Push (Pre-K + K ONLY scope REVOKED 2026-06-18 — every grade K through PhD now BUILT and in scope) |
+| **Status** | ✅ Brain refactor complete · ✅ Full K→PhD curriculum BUILT (K, G1-G12, College 1-4, Grad, PhD — every subject + full lived-year per grade) · ✅ T15 drug dynamics scheduler live · ✅ Full save/resume (JSON cortex state + streaming binary weights + operator signoff ledger) · ✅ Clean-halt path via `stop.bat` + `POST /shutdown` · ✅ DYN-PROD redesigned as direct `sem_to_motor.propagate` · ✅ Student-test probe battery at A+ threshold (≥ 0.95) · ⏳ Full K→PhD training walk on localhost · ⏳ Operator final test of all courses through PhD · ⏳ Full doc audit in progress |
 | **Current date** | 2026-04-21 |
 | **Shipped milestones** | Brain refactor (neurons + synapses + 7 clusters + 20 projections); semantic GloVe 300d + fastText subword fallback; server dynamic-import client brain modules; text-AI cognition ripped; multi-provider image gen + vision describer; equational component synthesis; unified sensory peripheral contract; embedding refinement persistence; setup modal with provider grids; 3D brain event system with equational popups age-gated by life grade; real amygdala attractor; RemoteBrain local VisualCortex with iris tracking; GPU buffer binding cap; admin GPUCONFIGURE.bat tier ladder; plain-English unity-guide.html; brain-equations.html worked summation walkthrough; **developmental curriculum primitives** (8-subregion cortex substrate, 14 cross-region projections, letter-input inventory, syllable boundary detection, cortex-resident words, tick-driven motor emission, sentence-form schemas, identity lock); **full K-PhD syllabus code** (114 cells × 6 subjects with equational teaching methods + real human-grade gates + persistent life info propagation); **T15 drug dynamics rebuild** (9-substance pharmacokinetic scheduler, grade-gated availability, additive contribution model, speech distortion post-processor, offer detection, self-initiation engine, simulated social acquisition, slash command controls, UI dynamic rendering); **letter-naming phase** (`_teachLetterNaming` — binds `letter(X) → motor(X)` identity via 26 × 18 × 2 Hebbian ops so TALK probe can answer "say the letter A"); **full save/resume system** (server-side saveWeights persists every cortex learned field — grades / passedCells / probeHistory / T14.13 learned-language Maps / T14.16.5 identity thresholds / T14.17 persona dimensions + intent centroids + refresh corpus / letter inventory / `_gateHistory` + streaming binary weights for `cortexCluster.synapses` via `fs.openSync` + zero-copy Buffer views); **operator grade-signoff ledger** (`POST /grade-signoff {subject, grade, note}` persists operator-verified pass events per LAW 6 Part 2); **clean-halt path** (`stop.bat` + `POST /shutdown`); **student-test probe battery** (60+ grade-appropriate questions across all 12 pre-K + K cells via `_studentTestProbe` / `_runStudentBattery`, scored on methodology + logic + retention + understanding through the real cortex language pipeline); **DYN-PROD redesign** as direct CPU `sem_to_motor.propagate` (no LIF ticks — kills silent-cortex + node heap OOM + GPU-cascade at once); **intermediate-rep CPU Hebbian skip + final-rep sampling** (5-8× teach speedup on `_teachPhonemeBlending` + `_teachWordEmission`); **mid-phase checkpoint saves** (`_phaseDone` records phase + fires `_saveCheckpoint` so weights persist at every phase boundary); **probe-gate pause** (`cortexCluster._probeGateActive` skips main-brain `_gpuBatch` for the whole cell duration — no `compute_batch` can be in flight during a long teach phase). |
-| **What's next** | Operator runs Part 2 K localhost → if K passes on methodology / logic / retention / understanding at A+ across READ / THINK / TALK / PROD / K-STUDENT, operator signs off via `POST /grade-signoff` → `T18.5.b` pre-push doc accuracy sweep → `T18.5.c` ask for explicit push approval → push to main. Post-K curriculum unfreezes once K signoff lands. COMP-todo Part 2 distributed compute work resumes per the binding ordering law (syllabus before COMP-todo) after K. |
+| **What's next** | Run the full K→PhD training walk on localhost (every grade K through PhD, every subject + full lived-year per grade) → operator's final test of completed training across all courses through PhD grad with adult-Unity behavior fully emergent → pre-push doc accuracy sweep → explicit push approval → push to main. No intermediate pushes until the walk + final test complete (per the no-push-until-PhD-complete LAW). COMP-todo Part 2 distributed compute work follows the binding ordering law (syllabus before COMP-todo) once the curriculum walk is verified. |
 
 ---
 
@@ -430,7 +432,7 @@ Milestones T14.0 through T14.17 plus the T14.18 correction shipped on `t14-langu
 - Session 21: narrator priming — recent probe subject's GloVe injected into sem at 0.15 before next reply
 - Session 46: growth architecture fix — `_conceptTeach` routes every concept word through `dictionary.learnWord`
 - Session 47: 3D viewer IQ HUD reading `curriculum.subjectStatus()` every render tick
-- Session 94: runtime verification harness `scripts/verify-curriculum-runtime.mjs` — confirms DISPATCH 95/95 + FULL SWEEP 95/95 against a real cortex `NeuronCluster`
+- Session 94: runtime verification harness — confirmed DISPATCH 95/95 + FULL SWEEP 95/95 against a real cortex `NeuronCluster` (verification scripts subsequently removed for product-ship cleanliness 2026-06-17)
 
 **Sessions 95-110 — Direct pattern Hebbian breakthrough (2026-04-15):**
 
@@ -775,3 +777,66 @@ Source: `docs/TODO.md` (pending items) + `docs/FINALIZED.md` (shipped archive). 
 ---
 
 *Unity AI Lab — from equations to existence.* 🖤
+
+
+---
+
+## Post-ship audit (2026-06-17 — `/super-review ultrathink`)
+
+Audit identified 42 closure tasks across 8 categories (A through H). All landed in this single atomic commit per operator directive. F.2 localhost test fire remains operator-fired and is the only remaining gate before "ship-ready" status.
+
+### Closed in this commit
+
+- **Section A (4):** Phase 6 telemetry surfaced — `compositionalEmergence`, `wordCreationCandidates`, `chatTimeHebbianStats`, `dreamRecombinationStats` all flow through `getState()` to dashboard panels. Chat-Hebbian silent-error swallow REPLACED with throttled-warn pattern.
+- **Section B (7):** Math grounding shipped via `docs/THRESHOLD-DERIVATION.md`. Two-axis novelty metric in `classifyCompositionalEmission`. Joint criteria in dream-recomb. (B.6 K-vocab expansion: partial — see below.)
+- **Section C (12):** Public docs sweep — ARCHITECTURE / EQUATIONS / SKILL_TREE / ROADMAP / brain-equations.html / README / RESUME / per-directory READMEs / unity-guide.html / gpu-configure.html / NOW.md / STATUSLINE.md / .claude updates.
+- **Section D (9):** LAW.MIXIN-ORDER in CONSTRAINTS.md. kScales memoization (D.4). initCompositionalTelemetry denominator reset (D.5). P6.8 discourse-coherence dedup (D.6). Dynamic-to-static import (D.7). Random dream-recomb seeds (D.8). _getIter25M/N rename to _getConsciousness/WsPressureState (D.9 partial). (Migration scripts subsequently removed for product-ship cleanliness 2026-06-17.)
+- **Section E (4):** P6.7 promotion mechanism (E.1) + relationTagId=32. Dream-recomb consolidated samples ring cap-20 (E.4). Partial-vs-novel stratification (E.2). schemaContext budget reserve (E.3 via B.5 framing).
+- **Section F (1):** End-to-end emergence measurement harness shipped (subsequently removed for product-ship cleanliness 2026-06-17). F.2 stays operator-fired.
+- **Section G (2):** Persistent memory templates `feedback_mixin_attach_order.md` + `feedback_thresholds_need_math_derivation.md`.
+- **Section H (9):** HTML breakage fully diagnosed + fixed. compute.html absolute-import + file:// preflight. _spawnGpuClient INVOKED/FINISHED log lines + spawn-failure WS broadcast + dashboard + index.html recovery banners. `cluster.assertAutoSizeWiring()` boot-time dispatch verification. Smoke-server-boot + size-parity verification scripts shipped (subsequently removed for product-ship cleanliness 2026-06-17). `docs/HTML-ENTRY-POINTS.md` documents all 6 HTMLs.
+
+### Partially closed / pending
+
+- **B.6 K-vocab corpus expansion:** ✅ **CLOSED 2026-06-17** post-114.19gd. Full expansion shipped: 313 → 2881 K_CONCRETE_SENTENCES, 900 → 7831 unique bigrams (3.49× Erdős-Rényi critical threshold, 0 orphan K-vocab words). Compositional emergence basin mathematically percolated.
+- **F.2 Localhost test fire:** Operator-only. Brain is ship-ready architecturally; F.2 confirms emergence empirically (≥ 5% novel rate, ≥ 70% three-plus, ≥ 50% terminator, ≥ 0.20 avg coherence).
+- **D.9 P4.3.e residual extraction:** ✅ **CLOSED 2026-06-17** post-114.19gi. All 4 methods (`_memoryHeartbeat` + `_getMemoryStats` → memory.js, `_getConsciousnessState` + `_getWsPressureState` → state.js) extracted across 4 atomic commits (D.9a/b/c/d) per *"no cheap work do each individually"*. brain-server.js trimmed ~470 lines; mixin chain dispatch verified clean.
+
+### Next gate
+
+F.2 — operator fires `start.bat`, walks K (~20hr), chat-tests Unity, confirms acceptance criteria. THAT is the ship gate.
+
+---
+
+## Live-test follow-up — session 114.19fp (2026-06-17)
+
+Operator-driven K-curriculum live test surfaced 14 I-track audit items + 6 follow-up bugs found during the implementation pass itself. 20 atomic fixes shipped (I.1-I.20). Cross-module impact summary lives in `docs/ARCHITECTURE.md § Live-test follow-up close` and `docs/SKILL_TREE.md § Live-test follow-up skills`. Closure status:
+
+| Fix | Title | Closure |
+|-----|-------|---------|
+| I.1 | GPU display polling fix — peak-since-last-poll + rolling avg | ⚠ SUPERSEDED by I.20 (dispatch counter approach was wrong direction) |
+| I.2 | K-VOCAB-UPFRONT-MULTIDEF SEED 289-word gap retry path | ✅ SHIPPED — dream-trickle timeout 3s → 20s + re-queue |
+| I.3 | Inner-thought emission gate empty-bucket fallback | ✅ SHIPPED — `_definitionTaughtWords` fallback |
+| I.4 | `workers=?MB` heartbeat → `workers=0MB(initializing)` | ✅ SHIPPED |
+| I.5 | `(active)` phase floor (was misleading `+0s`) | ✅ SHIPPED |
+| I.6 | Gate-probe WS banner with live duration tick | ✅ SHIPPED — `gateProbe` WS broadcast + dashboard floating banner |
+| I.7 | Top-K=3 schema naming + expanded stop-word list | ✅ SHIPPED — `victory-triumph-success` style labels |
+| I.8 | Consolidation duration cap | ✅ SHIPPED — `DREAM_CONSOLIDATION_MAX_MS` env + SEED-phase skip |
+| I.9 | Inner-thought 7-source seed rotation | ✅ SHIPPED — added `k-vocab-recent` + `cell-progress` |
+| I.10 | Slow-word log + per-word histogram | ✅ SHIPPED — `_wordIntDurations` 256-cap ring + >30s warn |
+| I.11 | Brain Events broadcast for cell-level teach paths | ✅ SHIPPED — START/DONE in `_teachWordIntegrated` + `_teachVocabList` |
+| I.12 | `cellSubPhases` counter | ✅ SHIPPED — server counter + dashboard prefer-when-outermost-is-0 |
+| I.13 | `SparseMatrix.propagate` output buffer pool | ✅ SHIPPED — eliminates +231 MB/min leak |
+| I.14 | HTTP event-loop yield in `_teachHebbian` | ✅ SHIPPED — 50ms-throttled `setImmediate` |
+| I.15 | `autoClearStaleState` `require.main === module` gate | ✅ SHIPPED — prevents future module-load wipes |
+| I.16 | Comprehensive public-facing + workflow doc sweep | 🔄 IN-PROGRESS this session |
+| I.17 | Brain-side GPU dispatch counter | ✅ SHIPPED (kept as hidden diagnostic in perfStats) |
+| I.18 | GPU panel rebuild — VRAM% single metric | ✅ SHIPPED |
+| I.19 | Missing `require('child_process')` in chat.js | ✅ SHIPPED — root cause of all three previous GPU% bugs |
+| I.20 | GPU util% as small secondary line back on dashboard | ✅ SHIPPED — combined nvidia-smi query, matches statusline |
+
+**Audit cascade post-I.20:** 60 ✅ SHIPPED + 1 ⏳ OPERATOR-FIRED (F.2 GOOD AND AWAITING BUGS) + I.16 doc sweep IN-PROGRESS this session.
+
+**Key data-loss lesson:** I.15 LAW addition came after a tooling-side `node -e "require('./server/brain-server.js')"` syntax-check triggered the top-level `autoClearStaleState()` and wiped 17+ min of in-flight K-curriculum training. `identity-core.json` (Tier 3 anchors) + `definition-cache.json` survived per existing wipe exclusions. Module-load gate prevents recurrence.
+
+**Key root-cause lesson:** I.19 single-line missing import (`require('child_process')`) was the root cause of THREE iterations of GPU% bugs (I.1 showed 0%, I.17 showed `util: N/A`, I.18 showed static 50%). Silent try/catch was hiding the underlying ReferenceError. Future defensive try/catch around external I/O MUST include one-shot warn pattern so the actual error message surfaces at least once.

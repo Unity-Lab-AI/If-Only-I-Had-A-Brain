@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "grade": "grade4",
+  "subject": "social",
+  "source": "Simple English Wikipedia (CC-BY-SA), cleaned + sentence-segmented",
+  "note": "Hybrid academic-depth corpus for social/grade4. Trained via curriculum._trainAcademicStories. Real openly-licensed curriculum content; lived-year + math stay bespoke.",
+  "experiences": [
+    {
+      "theme": "state-polity-",
+      "story": "in politics, a state is the government of a country which has control over a geographic area or territory. states have three main features: control over a geographic area, or territory a people, the population of the state. institutions which have the power to make laws. there are different forms of government a state may have, for example a republic or a monarchy. sometimes states form their own countries. in its origin the united states had different kinds of states, but they agreed to join together. most states also have armed forces, civil service, law and police. government institutions in a country are commonly referred to as \"the state\". the definition above is very broad. it is based on ideas by georg jellinek . other people had other ideas: max weber had another definition: according to him, a state is a community of people which has \"the monopoly to legitimately use physical force within a well-defined area\". another definition is from political science: a state is a system of public institutions which are there to regulate the issues of a society. some philiospohers, such as aristotle, rousseau and hegel had a moralistic view: in their opinion, a state arises when individuals reach their goals and that of society. according to hegel, the state is the reason god came into the world; it is the power of reason."
+    },
+    {
+      "theme": "geography",
+      "story": "geography is the study of earth and its people. it is one of the social sciences. its features are things like continents, seas, rivers and mountains. the 'inhabitants' of earth are all the people and animals that live on it. its phenomena are the things that happen like tides, hurricanes, tornadoes, earthquakes and more. a person who is an expert in geography is called a geographer. a geographer tries to understand the world and the things that are in it, how they started and how they have changed. there are two main parts of geography. these types are physical geography and human geography. physical geography studies the natural environment and human geography studies the human environment. the human environmental studies includes things such as the population in a country, how a country's economy is doing, and more. there is also environmental geography. maps are used in geography to see what land looks like. geographers spend much time making maps and studying them."
+    },
+    {
+      "theme": "region",
+      "story": "region is a geographic term used in many ways in the different types of geography. in general, a region is a medium-scale area of land or water. it is smaller than the whole area of something . a climate zone is one kind of region. a region is larger than a specific location. it may be seen as a collection of smaller things or as one part of a larger whole . in some countries a region is a unit of local government."
+    },
+    {
+      "theme": "exploration",
+      "story": "exploration is the act of searching an unfamiliar area in order to learn about it. it involves the discovery of new information. human beings explore even when they have everything they need where they are. they are the only mammal that does this. neanderthals existed for hundreds of thousands of years in eurasia. but their range was limited compared to modern humans. in less than 500,000 years humans have explored and spread out to all the continents. exploration had its most dramatic rise during the age of discovery. this is when european explorers sailed and charted much of the rest of the world. humans have explored geographically even into outer space. they explore ideas, art, even the very nature of life. the phoenicians were a culture that existed in the coastal region of the levant as early as the 3rd millennium bc. they were not a significant culture until about 1100 bc. by the 9th century bc the phoenicians had became the dominant culture in the mediterranean sea."
+    },
+    {
+      "theme": "native-americans-in-the-united-states",
+      "story": "native americans in the united states are the indigenous people from the areas of north america now part of the continental united states, including parts of alaska. the us government recognizes 574 tribes. there are about 310 indian reservations in the us. most native americans do not live on a reservation anymore. there were and still are many diverse groups of natives in what is now the us. the diversity includes various and rich languages and cultures. the arrival of europeans in the americas drastically changed native americans in the us. the history of these native americans is a story of suppression and the forced removal from their lands. during american history, there were various native responses to european colonization and american expansion. in the 20th century, natives got more rights and were recognized as citizens. there are still problems today that impact native americans in the united states. natives americans face discrimination from other groups. there is also racism and cultural appropriation. there are also public health issues connected to historical trauma and generations of misstreatment."
+    }
+  ]
+}

@@ -68,6 +68,34 @@ export class ConsolidationEngine {
     if (!this.brain || !this.cluster || !this.schemaStore) {
       return { skipped: 'engine not fully wired' };
     }
+    // I.8 closure 2026-06-17 22:00 PT — skip consolidation during
+    // pre-cell SEED phases. K-VOCAB-UPFRONT-MULTIDEF SEED + dream-
+    // trickle phases monopolize GPU for definition fetches; a
+    // concurrent consolidation pass steals GPU exclusively for
+    // 30s-2.5min (operator log 2026-06-17 21:50 PT: `duration=
+    // 153445ms` = 2 min 33s for a single consolidation pass during
+    // _teachHebbian). Skipping during SEED preserves training velocity
+    // without losing consolidation — once SEED completes, the next
+    // dream window will pick up the deferred consolidation work with
+    // a fresh candidate batch. `opts.forced=true` overrides this skip
+    // (used by Curriculum._dreamWindow for explicit dream-cycle
+    // consolidation that DOES intentionally pay the GPU cost).
+    if (!opts.forced && this.cluster
+        && this.cluster._curriculum
+        && this.cluster._curriculum._currentMacroPhase
+        && String(this.cluster._curriculum._currentMacroPhase).includes('SEED')) {
+      return { skipped: 'seed-phase-active' };
+    }
+    // I.8 — also enforce a wall-clock cap. Operator-tunable via
+    // `DREAM_CONSOLIDATION_MAX_MS` env var (default 30s). When a pass
+    // exceeds the cap, abort gracefully at the next phase boundary;
+    // the next pass resumes work from a fresh candidate batch. Without
+    // the cap, observed durations of 153s+ stole the GPU exclusively
+    // for minutes during active K-cell teaching.
+    const maxMs = Number(process.env.DREAM_CONSOLIDATION_MAX_MS) > 0
+      ? Number(process.env.DREAM_CONSOLIDATION_MAX_MS)
+      : 30000;
+    this._consolidationDeadlineMs = Date.now() + maxMs;
     // iter20-A — harden gate. Operator caught (verbatim 2026-05-05
     // "fix it all thouroughly"): 102 consolidation passes in 67s
     // (one every 0.66s instead of 5min interval). Setting
@@ -140,8 +168,16 @@ export class ConsolidationEngine {
       stats.clustersFormed = clusters.length;
 
       // Step 3 + 4 — for each cluster, create or reinforce a schema, then replay
+      let _abortedForDeadline = false;
       for (const cluster of clusters) {
         if (cluster.length === 0) continue;
+        // I.8 deadline check — abort gracefully at cluster boundary if
+        // we've blown the DREAM_CONSOLIDATION_MAX_MS budget. The next
+        // pass picks up remaining clusters fresh.
+        if (this._consolidationDeadlineMs && Date.now() > this._consolidationDeadlineMs) {
+          _abortedForDeadline = true;
+          break;
+        }
         // Already-promoted fast-path. iter22-F dropped the
         // `promoted_at IS NULL` filter from findPromotionCandidates so
         // anchor episodes can re-cluster as their frequency_count
@@ -252,7 +288,11 @@ export class ConsolidationEngine {
       stats.durationMs = Date.now() - startMs;
       // iter20-A: lastPassAt already set at top of pass for gate
       // hardening — no need to reassign here.
-      console.log(`[Consolidation] pass ${passId}: ${stats.candidatesFound} candidates → ${stats.clustersFormed} clusters → ${stats.schemasCreated} new schemas, ${stats.schemasReinforced} reinforced, ${stats.replaysExecuted} replays (${stats.hebbianWritesTotal} writes), ${stats.schemasMerged} merged, ${stats.schemasDecayed} decayed, ${stats.tier3Promotions} promoted to Tier 3, ${stats.episodesDecayed} episodes decayed / ${stats.episodesPruned} pruned · duration=${stats.durationMs}ms`);
+      // I.8 closure — surface deadline-abort in the log so operator
+      // sees when a pass was capped by DREAM_CONSOLIDATION_MAX_MS and
+      // can tune the env var if needed.
+      const deadlineTag = _abortedForDeadline ? ` · ⚠ DEADLINE-ABORT (DREAM_CONSOLIDATION_MAX_MS=${(this._consolidationDeadlineMs - startMs) >= 0 ? ((this._consolidationDeadlineMs - startMs) | 0) : 30000}ms)` : '';
+      console.log(`[Consolidation] pass ${passId}: ${stats.candidatesFound} candidates → ${stats.clustersFormed} clusters → ${stats.schemasCreated} new schemas, ${stats.schemasReinforced} reinforced, ${stats.replaysExecuted} replays (${stats.hebbianWritesTotal} writes), ${stats.schemasMerged} merged, ${stats.schemasDecayed} decayed, ${stats.tier3Promotions} promoted to Tier 3, ${stats.episodesDecayed} episodes decayed / ${stats.episodesPruned} pruned · duration=${stats.durationMs}ms${deadlineTag}`);
     } catch (err) {
       console.warn(`[Consolidation] pass ${passId} threw: ${err.message}`);
       stats.error = err.message;
