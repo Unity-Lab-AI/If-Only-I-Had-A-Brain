@@ -335,6 +335,7 @@ const SERVER_GPU_MIXIN = {
     const runningTier = this._communityTierRunning || 0;
     if (tier > runningTier && tier !== this._communityTierPending) {
       this._communityTierPending = tier;
+      this._communityTierPendingTarget = MILESTONES[tier].neurons;
       this._communityTierPendingSince = Date.now();
       console.log(`[Brain] PA.4.8 — community-compute milestone candidate: tier ${tier} (${totalMB.toLocaleString()}MB across ${donorCount} donor(s) → target ${MILESTONES[tier].neurons.toLocaleString()} neurons). Resize+retrain fires once held past the stability window — NOT on this connection alone.`);
     } else if (tier <= runningTier && this._communityTierPending && tier < this._communityTierPending) {
@@ -343,6 +344,47 @@ const SERVER_GPU_MIXIN = {
       this._communityTierPending = null;
       this._communityTierPendingSince = null;
     }
+  },
+
+  /**
+   * PA.4.8 — community-compute milestone scaling (EXECUTION layer).
+   *
+   * Called on a periodic timer. When a pending higher tier has been held past
+   * the stability window (critical-mass confirmation — a flapping donor can't
+   * trigger it), persist the target tier to server/community-tier.json and
+   * trigger a GRACEFUL RESTART. On reboot the boot-scaler reads that file +
+   * scales the brain to the tier's neuron target, autoClearStaleState wipes
+   * the old weights, and the curriculum re-walks at the new size = resize +
+   * retrain, reusing the existing boot/clear/walk machinery (no risky
+   * in-process re-allocation). Up-only; never fires below the running tier.
+   */
+  _maybeExecuteMilestoneResize() {
+    const STABILITY_MS = 5 * 60 * 1000; // 5-minute critical-mass confirmation
+    const pending = this._communityTierPending;
+    if (pending == null) return;
+    if (pending <= (this._communityTierRunning || 0)) { this._communityTierPending = null; return; }
+    if (!this._communityTierPendingSince || (Date.now() - this._communityTierPendingSince) < STABILITY_MS) return;
+
+    const targetNeurons = this._communityTierPendingTarget || 6_000_000;
+    try {
+      const fsx = require('fs');
+      const px = require('path');
+      // gpu.js __dirname = server/brain-server/ → tier file lives at server/.
+      fsx.writeFileSync(
+        px.join(__dirname, '..', 'community-tier.json'),
+        JSON.stringify({ tier: pending, targetNeurons, confirmedAtMs: Date.now() }, null, 2),
+      );
+    } catch (e) {
+      console.error('[Brain] PA.4.8 — failed to persist community tier (resize deferred):', e.message);
+      return;
+    }
+    console.log(`[Brain] PA.4.8 — community milestone tier ${pending} CONFIRMED (held ≥${STABILITY_MS / 60000}min). Persisted target ${targetNeurons.toLocaleString()} neurons → graceful restart to resize + retrain.`);
+    this._communityTierRunning = pending;
+    this._communityTierPending = null;
+    global._brainShutdownRequested = true;
+    // Let the log flush + any in-flight save settle, then exit. systemd /
+    // launcher (Restart=always) brings the brain back at the new tier.
+    setTimeout(() => process.exit(0), 1500);
   },
 
   _sparseSend(msg, timeoutMs = 30000) {

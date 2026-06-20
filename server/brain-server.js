@@ -609,6 +609,41 @@ const CLUSTER_SIZES = {
   hypothalamus: _sizeFor('hypothalamus'),
   mystery:      _sizeFor('mystery'),
 };
+// PA.4.8 — community-compute milestone scaling (boot side). In the deployed
+// donation model the brain size is driven by what the donor POOL can hold (the
+// community tier), NOT the host's VRAM (the host has no GPU). If the milestone
+// gate persisted a tier (server/community-tier.json), scale to its neuron
+// target; else, in deployed mode (UAL_PROXY_AUTH=1) with no milestone reached
+// yet, bootstrap small so the brain fits a modest donor GPU. In LOCAL dev (no
+// proxy-auth, no tier file) leave the host-VRAM-derived size untouched — the
+// localhost walk runs at full scale. Scales DOWN only.
+let COMMUNITY_TIER_RUNNING = 0;
+{
+  const _BOOTSTRAP_NEURONS = 6_000_000; // tier 0 — fits a modest donor GPU
+  let _communityTarget = 0;
+  try {
+    const _ctPath = path.join(__dirname, 'community-tier.json');
+    if (fs.existsSync(_ctPath)) {
+      const _ct = JSON.parse(fs.readFileSync(_ctPath, 'utf8'));
+      _communityTarget = Number(_ct.targetNeurons) || 0;
+      COMMUNITY_TIER_RUNNING = Number(_ct.tier) || 0;
+    } else if (process.env.UAL_PROXY_AUTH === '1') {
+      _communityTarget = _BOOTSTRAP_NEURONS;
+    }
+  } catch (e) {
+    console.warn('[Brain] PA.4.8 — community-tier.json read failed (using VRAM-derived size):', e.message);
+  }
+  if (_communityTarget > 0) {
+    const _curTotal = Object.values(CLUSTER_SIZES).reduce((s, n) => s + n, 0);
+    if (_curTotal > _communityTarget) {
+      const _factor = _communityTarget / _curTotal;
+      for (const _k of Object.keys(CLUSTER_SIZES)) {
+        CLUSTER_SIZES[_k] = Math.max(1000, Math.floor(CLUSTER_SIZES[_k] * _factor));
+      }
+      console.log(`[Brain] PA.4.8 — community tier ${COMMUNITY_TIER_RUNNING} target ~${_communityTarget.toLocaleString()} neurons → scaled main-brain DOWN from ${_curTotal.toLocaleString()} (donor-pool-bound).`);
+    }
+  }
+}
 // TOTAL_NEURONS is the SUM of main-brain cluster sizes (language cortex
 // lives in its own scaler and is tracked as `langCortexSize` separately).
 const TOTAL_NEURONS = Object.values(CLUSTER_SIZES).reduce((s, n) => s + n, 0);
@@ -665,6 +700,10 @@ class ServerBrain {
     this.TOTAL_NEURONS = TOTAL_NEURONS;
     this.SUBSTEPS = SUBSTEPS;
     this.RESOURCES = RESOURCES;
+    // PA.4.8 — the community-compute tier this boot is running at (from
+    // server/community-tier.json, or 0 bootstrap). The milestone gate compares
+    // pending tiers against this to decide an up-only resize+retrain restart.
+    this._communityTierRunning = COMMUNITY_TIER_RUNNING;
 
     // T18.4.e — worker-thread pool for parallel CPU sparse matmul.
     // Sized to os.cpus().length - 1 (up to 16 workers). Used by the
@@ -4424,6 +4463,17 @@ setInterval(() => {
     brain.decayEpisodes();
   }
 }, EPISODIC_DECAY_INTERVAL_MS);
+
+// PA.4.8 — community-compute milestone execution gate. Every 30s, check
+// whether a pending higher tier has held past the stability window; if so,
+// persist the target + graceful-restart so the brain re-boots at the new
+// scale + re-walks. No-op until donors actually cross a milestone + hold it.
+setInterval(() => {
+  if (typeof brain._maybeExecuteMilestoneResize === 'function') {
+    try { brain._maybeExecuteMilestoneResize(); }
+    catch (e) { console.warn('[Brain] PA.4.8 — milestone execution check failed:', e.message); }
+  }
+}, 30 * 1000);
 
 // Loopback gate for privileged HTTP endpoints (/shutdown, /grade-advance,
 // /grade-signoff). Defense-in-depth on top of the BIND_HOST=127.0.0.1
