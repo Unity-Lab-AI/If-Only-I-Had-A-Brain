@@ -52371,9 +52371,12 @@ init_sparse_matrix();
 // ../js/brain/embeddings.js
 var EMBED_DIM = 300;
 var GLOVE_LOCAL_PATH = "corpora/glove.6B.300d.txt";
-var GLOVE_URLS = [
-  "http://localhost:7525/corpora/glove.6B.300d.txt"
-];
+var GLOVE_URLS = (() => {
+  if (typeof location !== "undefined" && location.hostname && location.hostname !== "localhost" && location.hostname !== "127.0.0.1" && location.hostname !== "[::1]" && location.protocol !== "file:") {
+    return [`${location.origin}/corpora/glove.6B.300d.txt`];
+  }
+  return ["http://localhost:7525/corpora/glove.6B.300d.txt"];
+})();
 var SemanticEmbeddings = class {
   constructor() {
     this._embeddings = /* @__PURE__ */ new Map();

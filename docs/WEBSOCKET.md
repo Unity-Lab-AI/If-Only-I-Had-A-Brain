@@ -9,6 +9,8 @@
 
 ## Endpoint
 
+### Local dev
+
 | | |
 |---|---|
 | **Default URL** | `ws://localhost:7525` |
@@ -17,6 +19,19 @@
 | **Handshake** | Plain HTTP upgrade on the same port as the dashboard/health/compute endpoints |
 | **Content type** | JSON, UTF-8, one message per frame |
 | **Compression** | None — `ws` default is to negotiate permessage-deflate if both ends offer it |
+
+Local dev connects the browser directly to `ws://localhost:7525` — no proxy, no auth (see the hostname gate under "Client Reconnection Behavior").
+
+### Deployed (nginx reverse-proxy lanes)
+
+In the deployed pre-alpha, the Node brain-server binds to loopback only (`127.0.0.1:7525`) and is never exposed directly. An nginx reverse-proxy fronts it and splits two WSS lanes onto the same brain process:
+
+| Lane | URL | Auth | Who connects |
+|---|---|---|---|
+| **Public donor/viewer** | `wss://<host>/ws` | None | `compute.html` donor GPUs + read-only viewers |
+| **Admin** | `wss://<host>/admin/ws` | Forgejo-authenticated (nginx `auth_request`) — injects a trusted `X-UAL-User` header the brain-server reads | Lab operators. First authed connection after a deploy becomes the master operator. |
+
+Both lanes terminate at the one loopback brain-server; the lane a client arrived on (plus the `X-UAL-User` header on the admin lane) is what gates the admin-only messages described below. Admin REST control endpoints are proxied under `/admin/<endpoint>` (see "Server Endpoints").
 
 **R14 note (2026-04-13):** Unity's brain server used to bind to port `8080`, which collides with llama.cpp's default, is one of the most commonly-used ports, and was a port R13 explicitly wanted to auto-detect for vision describer backends. R14 moved Unity to `7525` — not used by any backend Unity probes, so Unity never fights its own vision detection. If you're still running an old deployment on `8080`, set the `PORT` env var on `node brain-server.js` to keep the old behavior.
 
@@ -197,6 +212,17 @@ Reserved. `js/brain/remote-brain.js` has a handler for this type (so clients are
 
 Why this architecture: state is `vec2<f32>` per neuron (12 bytes/neuron total including spikes u32) and stays resident on the GPU after init. Sending full state arrays every step at 60 Hz × 10 substeps × 7 clusters would be prohibitive at the auto-scaled N. Keeping state + spikes on the GPU and sending only scalar modulation inputs + a single `spikeCount` readback per step keeps WebSocket traffic under 100 KB/step regardless of cluster size. The GPU client is a regular WebSocket client from the server's perspective, just marked with `isGPU: true` in the client record after it sends `gpu_register`.
 
+#### Distributed donor compute (data-parallel replica pool)
+
+On the public donor lane (`wss://<host>/ws`), any number of `compute.html` donor GPUs can `gpu_register` and join a **data-parallel replica pool**. Each donor that joins is uploaded the FULL brain (it runs a complete replica, not a sharded slice), and the server periodically re-broadcasts the master to all replicas via a Hebbian-delta merge — every replica's learned weight deltas fold back into the master, then the merged master pushes back out. Donors never see user text; they only iterate neuron state and report spike counts / learned deltas. The auto-scaled N a replica runs is the same biological-scale brain the master holds.
+
+| Direction | Type | Payload | Meaning |
+|---|---|---|---|
+| Donor → Server | `gpu_register` | `{}` (public lane) | Donor joins the replica pool; server uploads the full brain to it |
+| Server → Donor | (full-brain upload + periodic master re-broadcast) | weights | Replica receives the complete brain on join, then periodic merged-master pushes |
+
+Admin-only telemetry rides the admin lane (`wss://<host>/admin/ws`): the live server console stream and auto-scale telemetry (replica count, per-replica throughput, scaling decisions) are pushed only to authed admin clients, never to donors/viewers.
+
 ---
 
 ## Messages: Client → Server
@@ -335,7 +361,7 @@ Core design rule (established 2026-04-13): **user text is private; brain growth 
 
 ## Security Model
 
-- **No authentication.** Any client that can reach port 7525 on the server can connect and send text. This is appropriate for local single-user deployment (loopback only) and fine for trusted LAN deployment. **Not appropriate for public internet exposure without an external auth layer (reverse proxy with auth, WireGuard tunnel, etc.).**
+- **Auth lives at the proxy, not the brain-server.** The brain-server itself does no authentication — any client that reaches loopback `127.0.0.1:7525` can connect and send text. In local dev that's the developer alone (loopback only). In the deployed pre-alpha the brain-server binds loopback only and nginx fronts it: the public donor/viewer lane (`/ws`) stays unauthenticated, and the admin lane (`/admin/ws`) is gated by nginx `auth_request` against Forgejo, which injects a trusted `X-UAL-User` header. Admin-only messages and `/admin/<endpoint>` control routes are only reachable via the authed lane. **Direct exposure of `127.0.0.1:7525` to the public internet — bypassing the proxy — is never appropriate.**
 - **API keys never traverse the WebSocket.** Unity's brain never needs API keys — cognition runs fully equational on the server, and sensory AI calls happen client-side. Whatever keys the client holds (for their own image gen, TTS, VLM backends) stay in their browser's localStorage.
 - **No key material in server storage.** Server persists brain weights (`server/brain-weights.json`), word frequencies, and episodic memory (`server/episodic-memory.db` SQLite). Zero user secrets on disk.
 - **Conversation broadcasts are anonymized to userId only** — no client name, no IP, no User-Agent. The `setName` field is server-local and never included in the broadcast.
@@ -359,7 +385,7 @@ Core design rule (established 2026-04-13): **user text is private; brain growth 
 | `/history` | GET | Emotional history data (for the dashboard chart) |
 | Static files | GET | Anything else in the project directory is served as static |
 
-All HTTP endpoints default to `http://localhost:7525/<path>` and move with `PORT`.
+All HTTP endpoints default to `http://localhost:7525/<path>` and move with `PORT`. In the deployed setup these are served behind nginx; the admin REST control endpoints are proxied under `/admin/<endpoint>` on the Forgejo-authenticated lane (same `auth_request` + `X-UAL-User` injection as the admin WSS lane), while public reads come through the unauthenticated front.
 
 ---
 

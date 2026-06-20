@@ -121,6 +121,16 @@ server/identity-core.json.corrupt-*
 # to the donor-pool community tier. Per-machine runtime state — never committed.
 server/community-tier.json
 
+# === DF.7 community-compute auto-scale settings ===
+# Admin-set toggle + dead-zone buffer + stability window for the milestone
+# auto-resize. Persisted by /autoscale POST. Per-deployment runtime state.
+server/autoscale-settings.json
+
+# === DF.7 auto-advance toggle (standalone) ===
+# Persisted separately from brain-weights so the auto-advance setting survives a
+# tier resize/downscale weight-clear → unattended re-walks. Per-deployment.
+server/auto-advance.json
+
 # === PA.4.2 primary-operator binding ===
 # First Forgejo-authed operator after deploy is bound here (locked + persisted
 # across reboots → guarantees the operator stays master on a static deploy).

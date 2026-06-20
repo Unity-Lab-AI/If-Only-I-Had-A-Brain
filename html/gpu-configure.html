@@ -242,7 +242,7 @@
 <section>
   <h2>🎚 Resource Tier — pick a preset</h2>
   <p style="font-size: 12px; color: var(--text-dim); margin: 0 0 14px;">
-    Tiers that exceed your detected hardware are greyed out and can't be selected. Pick the highest tier that fits. Each tier maps to a known-good neuron count. Click save when you're ready — config takes effect on the next <code>start.bat</code> / <code>node server/brain-server.js</code>.
+    This admin tool sizes the <strong>local-dev brain</strong> your own GPU runs via <code>start.bat</code>. In the deployed model, visitors instead donate their browser GPU through the compute page and the brain trains/runs across those connected donor GPUs as data-parallel replicas — no tier file needed on the donor side. Tiers that exceed your detected hardware are greyed out and can't be selected. Pick the highest tier that fits. Each tier maps to a known-good neuron count. Click save when you're ready — config takes effect on the next <code>start.bat</code> / <code>node server/brain-server.js</code>.
   </p>
   <div id="tiers" class="tier-list"></div>
 
@@ -264,7 +264,7 @@
         <label for="manual-notes">Notes</label>
         <input type="text" id="manual-notes" placeholder="optional — what this config is for">
       </div>
-      <p class="hint">Manual values are clamped server-side — you CANNOT exceed detected hardware. The server rejects invalid writes and keeps the old config. Minimum is 1000 neurons / 256 MB VRAM.</p>
+      <p class="hint">Manual values are clamped server-side — you CANNOT exceed detected hardware. The server rejects invalid writes and keeps the old config. Minimum is 1000 neurons / 256 MB VRAM. The WebGPU browser flags raised by <code>start.bat</code> lift the neuron ceiling for whichever GPU is computing — the same flags help any donor GPU contributing to the deployed brain.</p>
     </div>
   </div>
 
@@ -408,21 +408,21 @@ const TIERS = [
   {
     id: 'supercluster',
     name: 'Supercluster — 8-node DGX SuperPOD',
-    desc: '64 × H100, ~5TB aggregate HBM. Requires distributed-compute branch (COMP-todo Phase C).',
+    desc: '64 × H100, ~5TB aggregate HBM. Requires the distributed multi-node compute path.',
     neurons: 1600000000,
     vramMB: 5242880,
   },
   {
     id: 'exascale',
     name: 'Exascale — Frontier / El Capitan class',
-    desc: 'Multi-exabyte aggregate memory across thousands of nodes. Requires distributed-compute branch (COMP-todo Phase D).',
+    desc: 'Multi-exabyte aggregate memory across thousands of nodes. Requires the distributed multi-node compute path.',
     neurons: 50000000000,
     vramMB: 50 * 1024 * 1024,
   },
   {
     id: 'quantum-assist',
     name: 'Quantum-Assist — speculative research tier',
-    desc: 'Uses quantum co-processor for Ψ (mystery module) sampling. Research-only, speculative, see COMP-todo Phase E.',
+    desc: 'Uses quantum co-processor for Ψ (mystery module) sampling. Research-only, speculative.',
     neurons: 100000000000,
     vramMB: 100 * 1024 * 1024,
   },
@@ -557,11 +557,10 @@ document.getElementById('btn-save').addEventListener('click', async () => {
       vramCapMB: selectedTier.vramMB,
       notes: selectedTier.name,
     };
-    // iter14-E per operator 2026-05-04: "obviously make the start.bat
-    // fucking work!!! ... well never beable to scale right when we do
-    // comp." — tiers above the 2GB binding ceiling default need
+    // Tiers above the 2GB binding ceiling default need
     // bindingCeilingMB SET so the server-side scaler honors the larger
-    // limit. Pair with the start.bat Chrome --enable-unsafe-webgpu
+    // limit, otherwise scaling can't work correctly for compute tiers.
+    // Pair with the start.bat Chrome --enable-unsafe-webgpu
     // launch which raises the WebGPU maxStorageBufferBindingSize at
     // the browser end. Both must be in place for tiers above 671M to
     // actually deliver their labeled neuron count.
@@ -642,21 +641,18 @@ document.getElementById('btn-exit').addEventListener('click', async () => {
 
 init();
 </script>
-<!-- Audit C.10 (2026-06-17): admin-UI audit done. Tier-selection maps
-     to current _genCorticalAttribs outputs + auto-size formula
-     (os.freemem() × heap_size_limit × 0.5 ceiling) post-P4.2 mixin
-     split. cluster.assertAutoSizeWiring() boot-time verification (audit
-     H.4) confirms the auto-size path resolves all dispatched methods
-     correctly. HTML contract + failure-mode signature in
-     docs/HTML-ENTRY-POINTS.md § gpu-configure.html.
+<!-- Admin-UI note: tier-selection maps to current _genCorticalAttribs
+     outputs + auto-size formula (os.freemem() × heap_size_limit × 0.5
+     ceiling) after the mixin split. cluster.assertAutoSizeWiring()
+     boot-time verification confirms the auto-size path resolves all
+     dispatched methods correctly. HTML contract + failure-mode signature
+     in docs/HTML-ENTRY-POINTS.md § gpu-configure.html.
 
-     Session 114.19fp (2026-06-17, I-track sweep): no admin-UI changes
-     needed. Tier-selection still maps correctly to current
-     _genCorticalAttribs outputs + auto-size formula. The I.18 + I.20
-     GPU panel rebuild lives in html/dashboard.html (combined nvidia-smi
+     The GPU panel rebuild (combined nvidia-smi
      memory.used,utilization.gpu query → VRAM% big number + util% small
-     inline label) and does NOT affect the tier-config admin UI. The
-     dashboard panel reads the same RESOURCES.gpu.vram total this admin
-     tool writes, so tier choices flow through transparently. -->
+     inline label) lives in html/dashboard.html and does NOT affect the
+     tier-config admin UI. The dashboard panel reads the same
+     RESOURCES.gpu.vram total this admin tool writes, so tier choices
+     flow through transparently. -->
 </body>
 </html>

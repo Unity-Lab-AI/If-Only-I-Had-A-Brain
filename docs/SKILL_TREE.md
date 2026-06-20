@@ -98,7 +98,14 @@
 - Node.js CORS proxy for Anthropic API (`proxy.js`)
 - EventTarget-based real-time state streaming (no WebSocket needed)
 - Float64Array tensor operations at 60fps
-- Browser-only architecture (no server required for core)
+- Browser-only architecture for core brain; **plus deployed Node brain-server backend** (`server/brain-server.js`) — always-on, WebSocket, behind an nginx reverse-proxy serving the static page + WSS to the backend
+- **Deployed pre-alpha stack** — static landing page + Node brain-server live behind nginx; local dev (`start.bat` / `Savestart.bat`) still the supported developer path
+
+### Distributed Compute & Deployment
+- **Donor-GPU distributed compute** — browser GPUs donate via `compute.html`; data-parallel full-replica-per-donor, Hebbian-delta merge back to master, master re-broadcast of merged weights
+- **Community-compute auto-scaling** — up-scale on critical mass of donors + down-scale rectify; one-disconnect-never-downgrades guard; unattended auto-advance survives donor pool resizes
+- **Admin auto-scale controls** — dead-zone toggle + sliders on the admin dashboard
+- **Forgejo-authed admin lane** — first authenticated user after deploy becomes master; admin dashboard exposes live server-console + auto-scale controls + per-subject grade signoffs + graceful stop
 
 ### Frontend / Web
 - Real-time brain state HUD
@@ -455,4 +462,22 @@ Skill tree updates reflecting Phase 6 + LAW.1 + per-module refactor + post-ship 
 | **Honest GPU% telemetry** | nvidia-smi query gracefully fails to "unavailable" label, never a hallucinated number (lesson from I.18 static-50% lie). `gpuVramQueryWorking` boolean flag. | I.19 (root cause) + I.18 + I.20 — `chat.js`, `dashboard.html` |
 
 **Audit cascade post-I.20:** 60 ✅ SHIPPED + 1 ⏳ OPERATOR-FIRED (F.2 GOOD AND AWAITING BUGS). See `docs/NewTodo.md § I-track` for full per-fix detail. ARCHITECTURE.md "Live-test follow-up close (2026-06-17, session 114.19fp)" has cross-module summary tables.
+
+## Distributed compute + deployment skills (2026-06-20 pre-alpha)
+
+The brain is no longer local-only — it ships behind a reverse-proxy with a donor-GPU compute fabric and an authed admin lane. Cognition stays 100% EQUATIONAL (no text-AI). Human-like learning (alphabet → phonemes → words → sentences → K-to-PhD) + 5-tier hippocampal memory + dream consolidation are unchanged; these are the deployment + distributed-compute capabilities layered on top.
+
+### Deployment
+
+| Skill | Capability | Status |
+|-------|-----------|--------|
+| **Deployed static page + brain-server** | Static landing page + always-on Node brain-server live behind an nginx reverse-proxy (static over HTTP, brain over WSS). Local dev (`start.bat` / `Savestart.bat`) preserved as the developer path. | **DONE — pre-alpha** |
+| **Forgejo-authed admin lane** | First authenticated user after deploy becomes master. Admin dashboard surfaces live server-console + auto-scale controls + per-subject grade signoffs + graceful stop. | **DONE — pre-alpha** |
+
+### Distributed donor-GPU compute
+
+| Skill | Capability | Status |
+|-------|-----------|--------|
+| **Donor-GPU compute fabric** | Browser GPUs donate via `compute.html`. Data-parallel: full brain replica per donor, Hebbian-delta merge back to master, master re-broadcasts the merged weights. | **DONE — pre-alpha** |
+| **Community-compute auto-scaling** | Up-scale on critical mass of donors + down-scale rectify. Admin dead-zone toggle + sliders. One-disconnect-never-downgrades guard. Unattended auto-advance survives donor pool resizes. | **DONE — pre-alpha** |
 
