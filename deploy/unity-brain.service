@@ -1,4 +1,4 @@
-# Unity brain-server — systemd unit (PA.4.7). Hand-off for Red.
+# Unity brain-server — systemd unit (PA.4.7). Operator deploy reference.
 #
 # The persistent, always-on stateful backend. It holds the brain weights +
 # memory and orchestrates the donated-GPU compute pool. Donors (remote

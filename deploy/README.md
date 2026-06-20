@@ -1,8 +1,8 @@
 # Unity brain — pre-alpha deploy hand-off (PA.4.7)
 
-> For **Red** (server/DevOps) when back from vacation. These artifacts make the
-> deploy a near-one-command install. Nothing here has been applied to any box —
-> they're config files to review + install.
+> Operator deploy steps. These artifacts make the deploy a near-one-command
+> install. Nothing here has been applied to any box — they're config files to
+> review + install.
 
 ## Topology
 
@@ -23,7 +23,7 @@ which nginx gates with **Forgejo `auth_request`** and stamps with a trusted
 (PA.4.2). The brain validates/quarantines bad donor results (PA.4.5) and only
 honors compute-protocol messages from registered pool donors (PA.4.6).
 
-## Install (Red)
+## Install (operator)
 
 1. **Backend service**
    ```bash
