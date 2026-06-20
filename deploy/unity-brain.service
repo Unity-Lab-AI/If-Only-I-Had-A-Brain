@@ -36,6 +36,12 @@ Environment=NODE_ENV=production
 # Headless box: don't auto-launch a local Chrome GPU client — donors bring
 # the GPUs. (compute.html donors connect over the network.)
 Environment=DREAM_NO_AUTO_GPU=1
+# Preserve the in-progress curriculum walk across crash/incidental restarts — a
+# multi-week walk must NOT be wiped by a restart. autoClearStaleState opts out
+# under this flag. A PA.4.8 milestone RESIZE clears the old-size weights itself
+# (server/brain-server/gpu.js) so it still re-walks fresh at the new tier; this
+# flag only protects against losing training on an incidental restart.
+Environment=DREAM_KEEP_STATE=1
 
 Restart=always
 RestartSec=5

@@ -378,6 +378,25 @@ const SERVER_GPU_MIXIN = {
       console.error('[Brain] PA.4.8 — failed to persist community tier (resize deferred):', e.message);
       return;
     }
+    // The new tier means a DIFFERENT brain size — the saved weights are sized
+    // for the old brain and are INCOMPATIBLE with the new one. Clear them so
+    // the post-restart boot starts fresh at the new size + re-walks (resize =
+    // retrain). NOTE: normal crash-restarts run with DREAM_KEEP_STATE=1 and
+    // PRESERVE the in-progress walk (see deploy/unity-brain.service) — ONLY a
+    // confirmed milestone resize clears, because only then is the size changing.
+    try {
+      const fsx = require('fs');
+      const px = require('path');
+      const sdir = px.join(__dirname, '..'); // server/
+      for (const f of fsx.readdirSync(sdir)) {
+        if (/^brain-weights.*\.(json|bin)$/.test(f)) {
+          try { fsx.unlinkSync(px.join(sdir, f)); } catch { /* best-effort */ }
+        }
+      }
+      console.log('[Brain] PA.4.8 — cleared old-size brain-weights for resize (post-restart re-walks at the new tier).');
+    } catch (e) {
+      console.warn('[Brain] PA.4.8 — weight clear on resize failed (boot may load stale-size weights):', e.message);
+    }
     console.log(`[Brain] PA.4.8 — community milestone tier ${pending} CONFIRMED (held ≥${STABILITY_MS / 60000}min). Persisted target ${targetNeurons.toLocaleString()} neurons → graceful restart to resize + retrain.`);
     this._communityTierRunning = pending;
     this._communityTierPending = null;
