@@ -423,7 +423,7 @@ export const CLUSTER_HEBBIAN_MIXIN = {
     // or Node launched without the flag), log a warning and continue —
     // V8 will eventually GC on its own schedule.
 
-    // Heap stats logged before + after forced GC so Gee can visually
+    // Heap stats logged before + after forced GC so the operator can visually
     // confirm external memory drops by the expected ~9 GB. If the drop
     // doesn't happen, T18.22's null-assignments aren't reclaiming (some
     // retainer is still referencing the typed arrays), and we need to
@@ -437,7 +437,7 @@ export const CLUSTER_HEBBIAN_MIXIN = {
     // already near semi-space commit limits can TRIGGER OOM mid-gc
     // (Mark-Compact needs to stage objects in semi-space; if semi-space
     // can't grow, gc crashes with "Committing semi space failed"). The
-    // original intent — let Gee see V8 memory state post-upload — is
+    // original intent — let the operator see V8 memory state post-upload — is
     // preserved via memoryUsage() read WITHOUT gc. If retainer issues
     // exist, they show up in the external number without triggering
     // a risky forced gc.
@@ -566,7 +566,7 @@ export const CLUSTER_HEBBIAN_MIXIN = {
     // ~256 GB → queue stays half-full. When _teachLetterCaseBinding
     // fires 624 more iterations, V8 semi-space exhausts → "Committing
     // semi space failed" → Node OOM. Meanwhile compute.html's WebSocket
-    // back-pressure chokes the GPU device → device.lost fires. Gee
+    // back-pressure chokes the GPU device → device.lost fires. the operator
     // 2026-04-19 cascade #5 (after T18.10/11/14 closed the prior four).
 
     // Removing the GPU shadow is SAFE because:

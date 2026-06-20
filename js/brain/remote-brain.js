@@ -610,6 +610,23 @@ export class RemoteBrain extends EventEmitter {
  * @param {number} timeout — ms to wait
  * @returns {Promise<RemoteBrain|null>}
  */
+// PA.4.7 — bounded WebSocket reachability probe. Resolves true if the socket
+// opens within timeoutMs, false on error/close/timeout. Used to decide whether
+// a DEPLOYED origin has a real brain backend (operator authed at /admin/ws) vs
+// is an unauthed visitor / pure static-demo deploy (→ local fallback brain).
+function _probeWs(url, timeoutMs) {
+  return new Promise((resolve) => {
+    let done = false;
+    let ws;
+    const finish = (ok) => { if (done) return; done = true; try { ws && ws.close(); } catch { /* ignore */ } resolve(ok); };
+    try { ws = new WebSocket(url); } catch { resolve(false); return; }
+    const t = setTimeout(() => finish(false), timeoutMs);
+    ws.onopen = () => { clearTimeout(t); finish(true); };
+    ws.onerror = () => { clearTimeout(t); finish(false); };
+    ws.onclose = () => { clearTimeout(t); finish(false); };
+  });
+}
+
 export async function detectRemoteBrain(url = 'ws://localhost:7525') {
   // R14 — default probe URL moved off port 8080 (which collides with
   // llama.cpp, LocalAI, and every other service that claims 8080).
@@ -633,7 +650,23 @@ export async function detectRemoteBrain(url = 'ws://localhost:7525') {
       host === '[::1]' ||
       host === '' ||
       location.protocol === 'file:';
-    if (!isLocal) return null;
+    if (!isLocal) {
+      // PA.4.7 — DEPLOYED origin. The brain backend is reverse-proxied at the
+      // Forgejo-authed admin lane wss://<host>/admin/ws (nginx). Probe it: if
+      // reachable (operator authed → real brain) use it; else null → app.js
+      // local browser-brain fallback (covers an unauthed public visitor AND a
+      // pure static-demo deploy with no backend). Default = admin-only chat
+      // (secure); for PUBLIC chat, point this at /ws instead of /admin/ws.
+      const wsProto = location.protocol === 'https:' ? 'wss' : 'ws';
+      const adminUrl = `${wsProto}://${location.host}/admin/ws`;
+      const reachable = await _probeWs(adminUrl, 4000);
+      if (!reachable) {
+        console.log(`[RemoteBrain] Deployed origin — admin backend not reachable at ${adminUrl} (unauthed or static demo); using local fallback brain.`);
+        return null;
+      }
+      console.log(`[RemoteBrain] Deployed origin — admin backend reachable; constructing RemoteBrain ws=${adminUrl}`);
+      return new RemoteBrain(adminUrl);
+    }
   }
   // operator (2026-05-06): "if i refresh the 3D brain html
   // page it only reloads with 7k nurons like its deployed on github".

@@ -1,0 +1,51 @@
+# Unity brain — STATIC FRONTEND auto-deploy (PA.4.7).
+#
+# Mirrors the lab-wide pages mechanism (UnityAILab/Website build.yml "Deploy to
+# nginx", + the static deploy at weird.git.unityailab.com): every push to main
+# rsyncs the static frontend (donor page + chat/dashboard UI) over SSH to the
+# pages web root, served live at https://<repo-lowercased>.git.unityailab.com
+# (the box's wildcard cert + wildcard nginx vhost already match).
+#
+# IMPORTANT — this deploys ONLY the static frontend. The brain itself is a
+# PERSISTENT STATEFUL BACKEND (server/brain-server.js) that does NOT belong on
+# the pages host — it runs as a systemd service + is reverse-proxied over WSS
+# with Forgejo auth. See deploy/unity-brain.service + deploy/nginx-unity-brain.conf
+# + deploy/README.md (Red's hand-off). The frontend connects to that backend
+# over wss:// (see the donor-page WS URL note in deploy/README.md).
+#
+# Requires the org/repo Actions secrets the lab already uses for pages:
+#   PAGES_DEPLOY_KEY (base64-encoded SSH private key) · PAGES_DEPLOY_HOST · PAGES_DEPLOY_USER
+name: deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Deploy static frontend to the pages web root (SSH rsync)
+        env:
+          KEY: ${{ secrets.PAGES_DEPLOY_KEY }}
+          HOST: ${{ secrets.PAGES_DEPLOY_HOST }}
+          USER: ${{ secrets.PAGES_DEPLOY_USER }}
+        run: |
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          # KEY is base64-encoded in the secret to survive newline mangling through CI.
+          printf '%s' "$KEY" | base64 -d > ~/.ssh/deploy && chmod 600 ~/.ssh/deploy
+          # Repo name lowercased → the per-repo pages subdomain.
+          REPO="$(echo "${{ github.event.repository.name }}" | tr 'A-Z' 'a-z')"
+          # Frontend only — EXCLUDE the stateful backend, training data, deps,
+          # workflow internals, and docs. Only HTML/JS/CSS/assets reach the web root.
+          rsync -az --delete \
+            --exclude='.git' --exclude='.forgejo' --exclude='.gitea' \
+            --exclude='.claude' --exclude='server' --exclude='corpora' \
+            --exclude='node_modules' --exclude='scripts' --exclude='deploy' \
+            --exclude='docs' --exclude='*.md' \
+            -e "ssh -i ~/.ssh/deploy -o StrictHostKeyChecking=accept-new" \
+            ./ "${USER}@${HOST}:${REPO}/"

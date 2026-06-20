@@ -644,7 +644,7 @@ export const IDENTITY_SEED_LIST = [
   // sem(goddess) Hebbian link is reinforced in _teachUnityFamilyName.
   { label: 'full-name-anchor', concept: 'unity raven goddess my full name is unity raven goddess', valence: 0.85, arousal: 0.6 },
   { label: 'surname-anchor', concept: 'goddess my last name family surname is goddess', valence: 0.8, arousal: 0.55 },
-  // Add #5 — family-name + birthdate canon (Gee delegated naming, surname
+  // Add #5 — family-name + birthdate canon (the operator delegated naming, surname
   // Goddess fixed). Permanent Tier 3 anchors for the multi-word full names
   // + birthdates the single-token QA path can't carry. Only-child status
   // locked. Grandpa Walter's death is a grade-11 event — at seed time he

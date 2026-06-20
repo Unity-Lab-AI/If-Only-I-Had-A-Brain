@@ -283,6 +283,129 @@ const SERVER_GPU_MIXIN = {
     this._gpuDispatchTotal = (this._gpuDispatchTotal || 0) + 1;
   },
 
+  /**
+   * PA.4.8 — community-compute milestone scaling (decision layer).
+   *
+   * Sums the connected pool donors' reported VRAM = the "community compute
+   * level". The brain RESIZES + RESTARTS + RETRAINS only when this crosses a
+   * MILESTONE tier (critical mass) — NEVER per-connection (which would retrain
+   * on every join). New donors between milestones just add pool redundancy.
+   * Scaling is UP-only: donors leaving never shrink a running brain.
+   *
+   * This is the DECISION layer — records a pending higher tier + entry time.
+   * The EXECUTION layer (controlled resize+restart+retrain via the boot-
+   * scaling/curriculum path) fires only after the pending tier is held past a
+   * stability window (critical-mass confirmation), wired as the follow-on.
+   * Called from gpu_register + the WS close handler.
+   */
+  _recomputeCommunityCompute() {
+    let totalMB = 0, donorCount = 0;
+    if (this._gpuClients) {
+      for (const ws of this._gpuClients) {
+        if (!ws || ws.readyState !== 1) continue;
+        const c = this.clients && this.clients.get(ws);
+        const vram = (c && c.gpuVramMB) || 0;
+        if (vram > 0) totalMB += vram;
+        donorCount++;
+      }
+    }
+    this._communityComputeMB = totalMB;
+    this._communityDonorCount = donorCount;
+
+    // Milestone tiers: (min community VRAM, min donor count) → target neuron
+    // scale. Conservative under replication (Path A) — the running brain must
+    // fit a typical donor. Tune as real donor hardware is observed.
+    const MILESTONES = [
+      { minCommunityMB: 0,       minDonors: 1,  neurons: 6_000_000 },   // tier 0 — bootstrap, fits a modest GPU
+      { minCommunityMB: 24_000,  minDonors: 3,  neurons: 40_000_000 },  // tier 1 — a few mid GPUs
+      { minCommunityMB: 96_000,  minDonors: 6,  neurons: 150_000_000 }, // tier 2 — community momentum
+      { minCommunityMB: 256_000, minDonors: 10, neurons: 357_000_000 }, // tier 3 — top-computer scale
+    ];
+    let tier = 0;
+    for (let i = 0; i < MILESTONES.length; i++) {
+      if (totalMB >= MILESTONES[i].minCommunityMB && donorCount >= MILESTONES[i].minDonors) tier = i;
+    }
+    this._communityTier = tier;
+    this._communityTierTarget = MILESTONES[tier].neurons;
+
+    // Up-only milestone gate: flag a pending resize when we ENTER a higher
+    // tier than the brain is currently RUNNING at, debounced via a stability
+    // window the execution layer enforces (so a flapping donor can't thrash a
+    // resize). Record candidate + entry time; do NOT execute here.
+    const runningTier = this._communityTierRunning || 0;
+    if (tier > runningTier && tier !== this._communityTierPending) {
+      this._communityTierPending = tier;
+      this._communityTierPendingTarget = MILESTONES[tier].neurons;
+      this._communityTierPendingSince = Date.now();
+      console.log(`[Brain] PA.4.8 — community-compute milestone candidate: tier ${tier} (${totalMB.toLocaleString()}MB across ${donorCount} donor(s) → target ${MILESTONES[tier].neurons.toLocaleString()} neurons). Resize+retrain fires once held past the stability window — NOT on this connection alone.`);
+    } else if (tier <= runningTier && this._communityTierPending && tier < this._communityTierPending) {
+      // Dropped below the pending candidate before it executed — cancel
+      // (critical mass not sustained).
+      this._communityTierPending = null;
+      this._communityTierPendingSince = null;
+    }
+  },
+
+  /**
+   * PA.4.8 — community-compute milestone scaling (EXECUTION layer).
+   *
+   * Called on a periodic timer. When a pending higher tier has been held past
+   * the stability window (critical-mass confirmation — a flapping donor can't
+   * trigger it), persist the target tier to server/community-tier.json and
+   * trigger a GRACEFUL RESTART. On reboot the boot-scaler reads that file +
+   * scales the brain to the tier's neuron target, autoClearStaleState wipes
+   * the old weights, and the curriculum re-walks at the new size = resize +
+   * retrain, reusing the existing boot/clear/walk machinery (no risky
+   * in-process re-allocation). Up-only; never fires below the running tier.
+   */
+  _maybeExecuteMilestoneResize() {
+    const STABILITY_MS = 5 * 60 * 1000; // 5-minute critical-mass confirmation
+    const pending = this._communityTierPending;
+    if (pending == null) return;
+    if (pending <= (this._communityTierRunning || 0)) { this._communityTierPending = null; return; }
+    if (!this._communityTierPendingSince || (Date.now() - this._communityTierPendingSince) < STABILITY_MS) return;
+
+    const targetNeurons = this._communityTierPendingTarget || 6_000_000;
+    try {
+      const fsx = require('fs');
+      const px = require('path');
+      // gpu.js __dirname = server/brain-server/ → tier file lives at server/.
+      fsx.writeFileSync(
+        px.join(__dirname, '..', 'community-tier.json'),
+        JSON.stringify({ tier: pending, targetNeurons, confirmedAtMs: Date.now() }, null, 2),
+      );
+    } catch (e) {
+      console.error('[Brain] PA.4.8 — failed to persist community tier (resize deferred):', e.message);
+      return;
+    }
+    // The new tier means a DIFFERENT brain size — the saved weights are sized
+    // for the old brain and are INCOMPATIBLE with the new one. Clear them so
+    // the post-restart boot starts fresh at the new size + re-walks (resize =
+    // retrain). NOTE: normal crash-restarts run with DREAM_KEEP_STATE=1 and
+    // PRESERVE the in-progress walk (see deploy/unity-brain.service) — ONLY a
+    // confirmed milestone resize clears, because only then is the size changing.
+    try {
+      const fsx = require('fs');
+      const px = require('path');
+      const sdir = px.join(__dirname, '..'); // server/
+      for (const f of fsx.readdirSync(sdir)) {
+        if (/^brain-weights.*\.(json|bin)$/.test(f)) {
+          try { fsx.unlinkSync(px.join(sdir, f)); } catch { /* best-effort */ }
+        }
+      }
+      console.log('[Brain] PA.4.8 — cleared old-size brain-weights for resize (post-restart re-walks at the new tier).');
+    } catch (e) {
+      console.warn('[Brain] PA.4.8 — weight clear on resize failed (boot may load stale-size weights):', e.message);
+    }
+    console.log(`[Brain] PA.4.8 — community milestone tier ${pending} CONFIRMED (held ≥${STABILITY_MS / 60000}min). Persisted target ${targetNeurons.toLocaleString()} neurons → graceful restart to resize + retrain.`);
+    this._communityTierRunning = pending;
+    this._communityTierPending = null;
+    global._brainShutdownRequested = true;
+    // Let the log flush + any in-flight save settle, then exit. systemd /
+    // launcher (Restart=always) brings the brain back at the new tier.
+    setTimeout(() => process.exit(0), 1500);
+  },
+
   _sparseSend(msg, timeoutMs = 30000) {
     if (!this._gpuClient || this._gpuClient.readyState !== 1) return Promise.resolve(null);
     if (!this._gpuSparsePending) this._gpuSparsePending = new Map();
@@ -503,7 +626,7 @@ const SERVER_GPU_MIXIN = {
    * probes fire readback requests (readbackLetterBuckets etc.) that
    * MUST land promptly to produce correct probe output. If Hebbian
    * backlog is queued ahead of the readback, the readback can wait
-   * indefinitely — Gee saw "freeze" at [K-DIAG] gate log line because
+   * indefinitely — the operator saw "freeze" at [K-DIAG] gate log line because
    * ~17000 frames were queued in compute.html. Waiting for drain before
    * firing probe reads ensures fresh readback results.
    */

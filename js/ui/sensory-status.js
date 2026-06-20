@@ -19,7 +19,7 @@ const MAX_TOASTS = 4;
 // Module-level dedup state. Survives any re-instantiation of the
 // SensoryStatusUI singleton and is shared across every providers
 // instance that emits a `unity-sensory-status` event. Without this
-// the boot-inventory toast was firing twice on Gee's deploy because:
+// the boot-inventory toast was firing twice on the operator's deploy because:
 //
 //   (a) two app.js init paths (landing IIFE at line ~798 and the
 //       bootUnity branch at line ~1856) both called sensoryStatus
@@ -101,7 +101,7 @@ export class SensoryStatusUI {
       // would collide with #unity-eye (bottom:80px left:12px 160×120)
       // and #hud-modules (bottom:12px left:12px). The chat panel at
       // bottom:24px right:24px width:380 max-height:520 ALSO sits
-      // here when open, which was the collision Gee flagged as "a
+      // here when open, which was the collision the operator flagged as "a
       // fucking problem" — the HUD's z-index 9998 beat the chat's
       // 9100 so "img 1/1 vis 1/1" overlaid the top of the chat
       // messages and truncated them. Fix: hide the HUD entirely

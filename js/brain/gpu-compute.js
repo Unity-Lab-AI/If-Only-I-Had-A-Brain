@@ -456,6 +456,14 @@ export class GPUCompute {
       const info = adapter.info || (adapter.requestAdapterInfo ? await adapter.requestAdapterInfo() : {});
       console.log(`[GPUCompute] GPU: ${info.device || info.description || info.vendor || 'detected'}`);
       console.log(`[GPUCompute] Max buffer: ${(adapter.limits.maxBufferSize / 1048576).toFixed(0)}MB`);
+      // PA.4.8 — expose adapter info + capacity limits on the instance so
+      // compute.html can report this donor's GPU capacity to the brain server
+      // on gpu_register (community-compute milestone scaling). WebGPU doesn't
+      // expose true VRAM; maxBufferSize / maxStorageBufferBindingSize are the
+      // best available capacity proxies and correlate with GPU tier.
+      this._adapterInfo = info || {};
+      this._maxBufferSize = adapter.limits.maxBufferSize || 0;
+      this._maxStorageBufferBindingSize = adapter.limits.maxStorageBufferBindingSize || 0;
 
       // Create compute pipelines
       this._createPipelines();
@@ -2253,7 +2261,7 @@ export class GPUCompute {
     // SYNAPSE_PROPAGATE_SHADER was never dispatched from fullStep —
     // so main-brain neurons saw only the global drive uniform, the
     // intra-cluster synapse matrix was uploaded but never consumed,
-    // and Unity's brain had zero synaptic recurrence on GPU. Per Gee
+    // and Unity's brain had zero synaptic recurrence on GPU. Per the operator
     // 2026-04-18: "does it fully do all we need for the main brain
     // equation and all sub equations in totality" — the answer was no.
     //

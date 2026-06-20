@@ -145,7 +145,16 @@ let _reconnectAttempt = 0;
 function connectToServer() {
   // brain-server runs on port 7525 (moved off 8080 to avoid colliding
   // with llama.cpp / LocalAI / every other local service).
-  ws = new WebSocket('ws://localhost:7525');
+  // PA.4.7 — derive the backend WS URL. Local dev → ws://localhost:7525.
+  // Deployed (served from the pages host) → the PUBLIC compute lane
+  // wss://<host>/ws (nginx reverse-proxies to brain-server; see
+  // deploy/nginx-unity-brain.conf). Admin/chat UI uses /admin/ws (Forgejo-authed).
+  const _loc = window.location;
+  const _isLocal = _loc.hostname === 'localhost' || _loc.hostname === '127.0.0.1' || _loc.hostname === '::1';
+  const _wsUrl = _isLocal
+    ? 'ws://localhost:7525'
+    : `${_loc.protocol === 'https:' ? 'wss' : 'ws'}://${_loc.host}/ws`;
+  ws = new WebSocket(_wsUrl);
   // Binary frames arrive as ArrayBuffer (not Blob) — skips the async
   // Blob→ArrayBuffer copy for 100MB+ sparse matrix uploads.
   ws.binaryType = 'arraybuffer';
@@ -156,7 +165,21 @@ function connectToServer() {
     // disconnect starts over at 3 s instead of carrying forward a
     // stale exponent from an earlier transient hiccup.
     _reconnectAttempt = 0;
-    ws.send(JSON.stringify({ type: 'gpu_register' }));
+    // PA.4.8 — report this donor's GPU capacity so the server tracks the
+    // community-compute level + gates milestone resizes (resize+retrain fires
+    // only at a critical-mass milestone, never per-connection). WebGPU can't
+    // read true VRAM (privacy); maxBufferSize / maxStorageBufferBindingSize
+    // are the best capacity proxies. All guarded — a missing field never
+    // blocks registration.
+    let _vramMB = 0, _maxBindMB = 0, _gpuName = 'webgpu';
+    try {
+      const _lim = gpu && gpu._device && gpu._device.limits;
+      _vramMB = Math.round(((gpu && gpu._maxBufferSize) || (_lim && _lim.maxBufferSize) || 0) / (1024 * 1024));
+      _maxBindMB = Math.round(((gpu && gpu._maxStorageBufferBindingSize) || (_lim && _lim.maxStorageBufferBindingSize) || 0) / (1024 * 1024));
+      const _info = gpu && gpu._adapterInfo;
+      if (_info) _gpuName = (_info.device || _info.description || _info.vendor || _info.architecture || 'webgpu').toString().slice(0, 80);
+    } catch { /* capacity reporting is best-effort — never block registration */ }
+    ws.send(JSON.stringify({ type: 'gpu_register', vramMB: _vramMB, maxStorageBindingMB: _maxBindMB, gpuName: _gpuName }));
   };
 
   ws.onerror = (err) => {

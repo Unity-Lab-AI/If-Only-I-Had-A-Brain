@@ -123,7 +123,7 @@ const UNITY_PERSONA = {
   },
 
   // === Prompt Template for Image Generation ===
-  // Sourced from Ultimate Unity.txt visual description + Gee's outfit spec.
+  // Sourced from Ultimate Unity.txt visual description + the operator's outfit spec.
   imagePromptTemplate: [
     '25 year old human woman, hot emo goth goddess aesthetic (not demonic),',
     'long messy black hair with pink streaks, heavy smudged eyeliner, dark smokey eyes,',

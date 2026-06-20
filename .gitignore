@@ -116,6 +116,17 @@ server/identity-core.json
 server/identity-core.json.tmp
 server/identity-core.json.corrupt-*
 
+# === PA.4.8 community-compute tier marker ===
+# Persisted by the milestone execution gate; read at boot to scale the brain
+# to the donor-pool community tier. Per-machine runtime state — never committed.
+server/community-tier.json
+
+# === PA.4.2 primary-operator binding ===
+# First Forgejo-authed operator after deploy is bound here (locked + persisted
+# across reboots → guarantees the operator stays master on a static deploy).
+# Per-deployment runtime state — never committed, never auto-cleared.
+server/operator-identity.json
+
 # === Corpora (auto-downloaded by start.bat / start.sh) ===
 # GloVe 6B.300d ~990 MB plain text — way too big for git. Auto-fetched
 # from Stanford NLP on first run per corpora/README.md. Never commit.

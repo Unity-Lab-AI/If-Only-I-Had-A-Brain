@@ -54,7 +54,7 @@ export class ChatPanel {
     // carry the off-state styling (red tint + dim) via data-muted
     // attribute. Removed the inline .style.opacity override that was
     // competing with the CSS theme and producing the white default-
-    // browser button background Gee called out.
+    // browser button background the operator called out.
     const syncButtons = () => {
       const ch = window.unityChannels || { userMic: true, unitySpeech: true };
       muteBtn.textContent = ch.unitySpeech ? '🔊' : '🔇';

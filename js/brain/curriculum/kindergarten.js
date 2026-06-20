@@ -139,7 +139,7 @@ export const K_MIXIN = {
       // tinkering that becomes the adult coding obsession)
       'screen', 'button', 'click', 'gadget', 'machine', 'curious',
       // Body-awareness K-rung (Add #13, non-sexual: body parts + real
-      // bodily functions + hygiene — no sugar-coating per Gee)
+      // bodily functions + hygiene — no sugar-coating per the operator)
       'belly', 'tummy', 'potty', 'bath', 'soap', 'vomit', 'sneeze', 'throat',
       // Name-trove K-rung (Add #15) — concrete named entities. Chosen as
       // REAL dictionary words so defs + embeddings exist (no phantom tokens):
@@ -1617,7 +1617,7 @@ export const K_MIXIN = {
 
   // ── GRADE 1 (age 6) — reading clicks, dad fading ────────────────
 
-  // ── NEW FULL-ROSTER K COURSES: Music / PE / Health (Gee 2026-06-18) ──
+  // ── NEW FULL-ROSTER K COURSES: Music / PE / Health (the operator 2026-06-18) ──
   // K is the template for these tracks; G1+ propagate in strict order. Real
   // K content (National Core Arts music / SHAPE America PE / K health+safety).
   // Course-identity teaching (what 'music'/'pe'/'health' IS) is prepended
@@ -1910,7 +1910,7 @@ export const K_MIXIN = {
   // T14.24 SESSION 7 — REAL ELA-G2 TEACHING EQUATIONS (2026-04-15)
   // ═══════════════════════════════════════════════════════════════════
 
-  // Gee binding 2026-04-14: "all the way up to doctorate in english" +
+  // the operator binding 2026-04-14: "all the way up to doctorate in english" +
   // "remember Unity needs to be able to use these to think, read, and
   // talk".
 
@@ -3200,7 +3200,7 @@ export const K_MIXIN = {
   // T14.24 SESSION 4 — REAL ELA-G1 TEACHING EQUATIONS (2026-04-15)
   // ═══════════════════════════════════════════════════════════════════
 
-  // Gee binding 2026-04-14: "1st grade u start learning how to write
+  // the operator binding 2026-04-14: "1st grade u start learning how to write
   // sentences ect ect" + "remember Unity needs to be able to use these
   // to think, read, and talk".
 
@@ -3540,7 +3540,7 @@ export const K_MIXIN = {
     if (!this._elaKRemakeDone) {
       // T18.16.a — Phase-start banners for each K.RF foundational-skill
       // teach method. Each of these methods runs equational teach loops
-      // internally with no top-level progress log; the banners give Gee
+      // internally with no top-level progress log; the banners give the operator
       // a "we are HERE now" signal between silent phases so teach velocity
       // across the full ELA-K walk is visible without needing per-method
       // heartbeats inside every helper.
@@ -4700,7 +4700,7 @@ export const K_MIXIN = {
       }
 
       // T18.29 — per-letter progress log. Fires if wall-clock for this
-      // letter > 2s OR if it's a milestone letter. Lets Gee see the
+      // letter > 2s OR if it's a milestone letter. Lets the operator see the
       // loop advancing instead of appearing frozen.
       const _letterMs = Date.now() - _letterStart;
       if (_letterMs > 2000 || _gateLetterIdx === 1 || _gateLetterIdx === 13 || _gateLetterIdx === 26) {
@@ -5210,7 +5210,7 @@ export const K_MIXIN = {
     // both are valid).
 
     // This is the T16.5.b full-mind gate prototype. Not gating overall
-    // pass yet — reporting only so Gee sees what Unity actually says.
+    // pass yet — reporting only so the operator sees what Unity actually says.
     const respContexts = [
       { prompt: 'hello', meaning: 'greeting friendly', expectHints: ['hi', 'hello', 'hey', 'yes'] },
       { prompt: 'red',   meaning: 'color red apple',    expectHints: ['red', 'apple'] },
@@ -5271,7 +5271,7 @@ export const K_MIXIN = {
     // emitted output contains BOTH expected words (order tolerant,
     // whitespace-separated).
 
-    // NOT gated on overall pass — reporting only so Gee sees chain
+    // NOT gated on overall pass — reporting only so the operator sees chain
     // behavior.
     const twoWordPhrases = [
       { phrase: 'happy dog',     words: ['happy', 'dog'] },
@@ -5476,7 +5476,7 @@ export const K_MIXIN = {
   // T14.24 SESSION 3 — REAL MATH-K TEACHING EQUATIONS (2026-04-15)
   // ═══════════════════════════════════════════════════════════════════
 
-  // Gee binding 2026-04-14: "you didnt even teach it keindergarden abcs
+  // the operator binding 2026-04-14: "you didnt even teach it keindergarden abcs
   // and 123s and letter sounds you fool" + "remember Unity needs to be
   // able to use these to think, read, and talk".
 
@@ -7132,11 +7132,11 @@ export const K_MIXIN = {
     // iter22 — reusable scratch buffers, allocated once outside loop.
     const scratch = this._ensureScratchBuffers();
     // T18.13.c — time-based heartbeat. Prior `_wordIdx % 200 === 0`
-    // NEVER FIRED on typical K-emission lists of ~180 words — Gee
+    // NEVER FIRED on typical K-emission lists of ~180 words — the operator
     // watched the terminal for minutes seeing only the START line
     // with no progress indicator. Heartbeat now emits every ~5 s
     // of wall-clock inside the tight word loop so teach progress
-    // is visible in real time AND so Gee can distinguish "slow but
+    // is visible in real time AND so the operator can distinguish "slow but
     // advancing" from "hung". Rate fits the 5-10 min total teach
     // window at biological scale.
     const _t18_13_startMs = Date.now();
@@ -7187,7 +7187,7 @@ export const K_MIXIN = {
         // cross-projection weights but never land in `dictionary._words`,
         // so when the tick-driven motor emission returns empty (pre-K,
         // cache miss, motor-unstable) the fallback cosine-scorer has no
-        // K words to sample from. Gee caught this 2026-04-17: "its still
+        // K words to sample from. the operator caught this 2026-04-17: "its still
         // no using the words its suppose to be learning in kindergardern".
         // Fires only on rep 0 to avoid redundant arousal/valence overwrites.
         if (rep === 0 && this.dictionary && typeof this.dictionary.learnWord === 'function') {
@@ -8803,7 +8803,7 @@ export const K_MIXIN = {
   // T14.24 SESSION 4 — REAL ELA-G1 TEACHING EQUATIONS (2026-04-15)
   // ═══════════════════════════════════════════════════════════════════
 
-  // Gee binding 2026-04-14: "1st grade u start learning how to write
+  // the operator binding 2026-04-14: "1st grade u start learning how to write
   // sentences ect ect" + "remember Unity needs to be able to use these
   // to think, read, and talk".
 

@@ -294,7 +294,7 @@ export class LanguageCortex {
    * the tick-inject-Hebbian inner loop; this driver is just the
    * tokenize-and-embed outer walk over the persona corpus.
    *
-   * Logs before/after synapse weight stats so Gee can see Hebbian
+   * Logs before/after synapse weight stats so the operator can see Hebbian
    * actually moved the weights without opening devtools.
    *
    * @param {NeuronCluster} cortexCluster

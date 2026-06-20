@@ -56,7 +56,7 @@ class GlobalWorkspace {
    */
   constructor(opts = {}) {
     // Env-var override for ignition threshold. DREAM_GW_IGNITION lets
-    // Gee tune the consciousness gate without code changes — stricter
+    // the operator tune the consciousness gate without code changes — stricter
     // (0.6 = harder ignition, more focused) or looser (0.3 = ignition
     // fires more, more diffuse but more "alive"). Falls back to opts
     // override → 0.45 default.
