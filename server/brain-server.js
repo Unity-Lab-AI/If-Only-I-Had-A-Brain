@@ -4432,10 +4432,13 @@ setInterval(() => {
 // for non-loopback callers. Returns false (and writes 403) if the
 // caller is not localhost; returns true if the request can proceed.
 //
-// There is no admin-token / cookie / login flow — brain-mutating HTTP
-// stays loopback-only. The admin/viewer split for the dashboard UI
-// happens at the WS layer instead via the modeAssigned message based
-// on the connecting socket's remoteAddress.
+// Local dev: brain-mutating HTTP (/shutdown, /grade-advance, /grade-signoff)
+// stays loopback-only. PA.4 DEPLOYED (UAL_PROXY_AUTH=1): every caller is
+// loopback FROM the Forgejo-auth reverse proxy, so loopback alone is not
+// authorization — the endpoint additionally requires a proxy-vouched
+// Forgejo identity in X-UAL-User (proxy sets it only after auth + strips
+// client-supplied copies). The admin/viewer split for the WS/dashboard UI
+// happens at the WS layer via the modeAssigned message on the same header.
 function requireLoopback(req, res, endpoint) {
   const addr = (req.socket && req.socket.remoteAddress) || '';
   // IPv4 loopback, IPv6 loopback, IPv4-mapped-IPv6 loopback.
@@ -4448,6 +4451,17 @@ function requireLoopback(req, res, endpoint) {
     res.writeHead(403, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ error: 'forbidden — privileged endpoint requires loopback caller' }));
     return false;
+  }
+  // PA.4 proxy-auth: behind the reverse proxy, loopback is universal — gate
+  // brain-mutating endpoints on the proxy-vouched Forgejo identity instead.
+  if (process.env.UAL_PROXY_AUTH === '1') {
+    const ualUser = (req.headers['x-ual-user'] || '').toString().trim();
+    if (!ualUser) {
+      console.warn(`[Server] Rejected unauthenticated ${endpoint} (proxy-auth on, no X-UAL-User)`);
+      res.writeHead(403, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'forbidden — admin endpoint requires Forgejo auth' }));
+      return false;
+    }
   }
   return true;
 }
@@ -5387,7 +5401,12 @@ const wss = new WebSocketServer({
 
 wss.on('connection', (ws, req) => {
   const id = 'user_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 6);
-  const client = { id, lastInput: 0, inputCount: 0, name: null, isGPU: false, mode: null };
+  // PA.4 reverse-proxy Forgejo auth: the auth proxy sets X-UAL-User on the
+  // admin route AFTER authenticating against Forgejo (and strips any
+  // client-supplied copy on every route). Donor/public routes carry no such
+  // header. Trusted only when UAL_PROXY_AUTH=1 — see mode assignment below.
+  const ualUser = (req.headers['x-ual-user'] || '').toString().trim();
+  const client = { id, lastInput: 0, inputCount: 0, name: null, isGPU: false, mode: null, ualUser: ualUser || null };
   brain.clients.set(ws, client);
   console.log(`[Server] Client connected: ${id} (${brain.clients.size} total)`);
 
@@ -5427,12 +5446,23 @@ wss.on('connection', (ws, req) => {
       || addr === '::1'
       || addr === '::ffff:127.0.0.1'
       || addr.startsWith('127.');
-    const mode = isLoopback ? 'admin' : 'viewer';
+    // PA.4 admin gating. UAL_PROXY_AUTH=1 (DEPLOYED behind the Forgejo-auth
+    // reverse proxy): every client reaches us over loopback FROM the proxy,
+    // so loopback can no longer imply admin — admin === a proxy-vouched
+    // Forgejo identity in X-UAL-User (proxy sets it only post-auth + strips
+    // client-supplied copies; we additionally require the hop be loopback,
+    // i.e. from our own proxy). No header → viewer/donor (compute-only,
+    // enforced in PA.4.6). Default (LOCAL dev, no proxy): loopback → admin.
+    const proxyAuth = process.env.UAL_PROXY_AUTH === '1';
+    const mode = proxyAuth
+      ? ((client.ualUser && isLoopback) ? 'admin' : 'viewer')
+      : (isLoopback ? 'admin' : 'viewer');
     client.mode = mode;
     try {
       ws.send(JSON.stringify({ type: 'modeAssigned', mode }));
     } catch { /* connection closed during the assignment window — drop silently */ }
-    console.log(`[Server] ${id} assigned mode: ${mode} (remote=${addr || 'unknown'})`);
+    const who = client.ualUser ? ` user=${client.ualUser}` : '';
+    console.log(`[Server] ${id} assigned mode: ${mode} (remote=${addr || 'unknown'}${who})`);
   }, 500);
 
   ws.on('message', (data) => {
@@ -5440,6 +5470,10 @@ wss.on('connection', (ws, req) => {
     // Client sends "SPRR" magic + type + reqId + payload. Decode and
     // route to the matching pending promise.
     if (Buffer.isBuffer(data) && data.length >= 9 && data.slice(0, 4).toString('ascii') === 'SPRR') {
+      // PA.4.6 — donor isolation: only a registered pool donor may submit
+      // SPRR compute responses; a faked frame could resolve a pending sparse
+      // promise with garbage currents. Drop frames from non-pool senders.
+      if (!brain._gpuClients || !brain._gpuClients.has(ws)) return;
       const typeByte = data[4];
       // SPRR header layout (16 bytes for propagate, 9 bytes for
       // upload_ack/hebbian_ack):
@@ -5488,6 +5522,21 @@ wss.on('connection', (ws, req) => {
         return;
       }
       client.lastInput = now;
+
+      // PA.4.6 — donor isolation + bad-actor hardening. Compute-protocol
+      // messages mutate brain state (spike counts, init flags, device-lost,
+      // sparse acks) — only honor them from a registered pool donor. A random
+      // public/donor-route connection faking these could poison brain state.
+      // gpu_register is exempt (it's how a donor JOINS the pool). Chat policy
+      // (who may send 'text') is a separate operator decision — not gated here.
+      const DONOR_PROTOCOL = ['compute_result', 'compute_batch_result', 'gpu_init_ack', 'sparse_upload_ack', 'sparse_propagate_ack', 'sparse_hebbian_ack', 'rebind_sparse_ack', 'readback_letter_buckets_ack', 'device_lost'];
+      if (DONOR_PROTOCOL.indexOf(msg.type) !== -1 && !(brain._gpuClients && brain._gpuClients.has(ws))) {
+        if (!brain._donorSpoofWarnAt || (Date.now() - brain._donorSpoofWarnAt) > 5000) {
+          brain._donorSpoofWarnAt = Date.now();
+          console.warn(`[Brain] PA.4.6 — ignored compute-protocol '${msg.type}' from non-donor ${id} (not in GPU pool).`);
+        }
+        return;
+      }
 
       switch (msg.type) {
         case 'text': {
@@ -5642,19 +5691,35 @@ wss.on('connection', (ws, req) => {
           client.name = msg.name;
           break;
 
-        case 'gpu_register':
+        case 'gpu_register': {
           client.isGPU = true;
-          brain._gpuClient = ws;
-          brain._gpuConnected = true;
-          brain._gpuWaitLogged = false;
-          brain._gpuWaitLogged2 = false;
-          brain._gpuModeLogged = false;
-          brain._gpuInitialized = {};
-          brain._gpuHits = 0;
-          brain._gpuMisses = 0;
-          // CPU workers no longer exist (U304) — nothing to terminate
-          console.log(`[${id}] GPU compute client registered — brain will use GPU exclusively`);
+          // PA.4.3 multi-donor pool. Track every registered donor GPU. The
+          // brain's weights live in the PRIMARY donor's VRAM and ALL dispatch
+          // targets brain._gpuClient (the primary) — unchanged. A second donor
+          // no longer CLOBBERS the first; it joins as a hot STANDBY that gets
+          // promoted to primary on primary-disconnect (failover, see close
+          // handler). NOTE: true load-SHARING across donors (sharding the brain
+          // so weak "STD" GPUs each hold a slice) is the next layer — this is
+          // the non-breaking foundation it builds on.
+          if (!brain._gpuClients) brain._gpuClients = new Set();
+          brain._gpuClients.add(ws);
+          const havePrimary = brain._gpuClient && brain._gpuClient.readyState === 1;
+          if (!havePrimary) {
+            brain._gpuClient = ws;
+            brain._gpuConnected = true;
+            brain._gpuWaitLogged = false;
+            brain._gpuWaitLogged2 = false;
+            brain._gpuModeLogged = false;
+            brain._gpuInitialized = {};
+            brain._gpuInitializedConfirmed = {};
+            brain._gpuHits = 0;
+            brain._gpuMisses = 0;
+            console.log(`[${id}] GPU compute client registered as PRIMARY — brain weights upload here (pool: ${brain._gpuClients.size}).`);
+          } else {
+            console.log(`[${id}] GPU compute client registered as STANDBY — hot failover for the primary (pool: ${brain._gpuClients.size}).`);
+          }
           break;
+        }
 
         case 'compute_result': {
           // GPU sent back spike count — voltages and spikes stay on GPU
@@ -5700,7 +5765,60 @@ wss.on('connection', (ws, req) => {
             brain._gpuBatchConsecutiveTimeouts = 0;
             brain._gpuHangLogged = false;
           }
-          resolver({ perCluster: msg.perCluster || {} });
+          // PA.4.5 — result validation + "STD"-GPU quarantine. A bad/dirty/
+          // malicious donor GPU can return NaN/Inf/negative/absurd spike
+          // counts that the tick loop writes straight into
+          // clusters[name].spikeCount + totalSpikes, corrupting brain state.
+          // Validate every cluster's counts against [0, size] bounds at this
+          // trust boundary; zero any invalid entry so the tick never sees
+          // garbage, and strike the donor. Repeated strikes → quarantine
+          // (drop from pool; if it was the primary, fail over to a standby).
+          const _per = msg.perCluster || {};
+          const _badNames = [];
+          for (const _name of Object.keys(_per)) {
+            const _entry = _per[_name];
+            if (!_entry || typeof _entry !== 'object') { delete _per[_name]; continue; }
+            const _size = brain.CLUSTER_SIZES[_name] || 0;
+            const _last = _entry.lastSpikeCount;
+            const _tot = _entry.spikeCountTotal;
+            // lastSpikeCount: finite in [0, size]. spikeCountTotal: finite in
+            // [0, size×64] (substeps vary; 64 is a generous, false-positive-safe cap).
+            const _lastOk = Number.isFinite(_last) && _last >= 0 && _last <= _size;
+            const _totOk = Number.isFinite(_tot) && _tot >= 0 && _tot <= _size * 64;
+            if (!_lastOk || !_totOk) {
+              _badNames.push(_name);
+              _entry.lastSpikeCount = 0;
+              _entry.spikeCountTotal = 0;
+            }
+          }
+          if (_badNames.length > 0) {
+            const _dc = brain.clients.get(ws);
+            const _strikes = _dc ? (_dc.gpuBadResults = (_dc.gpuBadResults || 0) + 1) : 0;
+            if (!brain._gpuValidationWarnAt || (Date.now() - brain._gpuValidationWarnAt) > 5000) {
+              brain._gpuValidationWarnAt = Date.now();
+              console.warn(`[Brain] PA.4.5 — donor ${id} returned invalid cluster result(s) [${_badNames.join(', ')}] (zeroed before use). Donor strikes: ${_strikes}/5.`);
+            }
+            const QUARANTINE_THRESHOLD = 5;
+            if (_strikes >= QUARANTINE_THRESHOLD) {
+              console.error(`[Brain] PA.4.5 — QUARANTINING donor ${id} after ${_strikes} bad-result batches (dirty/incompatible GPU). Removing from pool.`);
+              if (brain._gpuClients) brain._gpuClients.delete(ws);
+              if (ws === brain._gpuClient) {
+                let _promo = null;
+                if (brain._gpuClients) { for (const _c of brain._gpuClients) { if (_c && _c.readyState === 1) { _promo = _c; break; } } }
+                if (_promo) {
+                  brain._gpuClient = _promo; brain._gpuConnected = true;
+                  brain._gpuInitialized = {}; brain._gpuInitializedConfirmed = {};
+                  if (brain.cortexCluster) brain.cortexCluster._gpuShadowDirty = true;
+                  console.log('[Brain] PA.4.5 — promoted a standby to primary after quarantine; brain re-uploads on next dispatch.');
+                } else {
+                  brain._gpuClient = null; brain._gpuConnected = false;
+                  console.error('[Brain] PA.4.5 — no healthy standby after quarantine; dropped to all-CPU until a good donor connects.');
+                }
+                try { ws.send(JSON.stringify({ type: 'quarantined', reason: 'invalid compute results' })); } catch { /* donor already gone */ }
+              }
+            }
+          }
+          resolver({ perCluster: _per });
           break;
         }
 
@@ -5777,6 +5895,8 @@ wss.on('connection', (ws, req) => {
 
   ws.on('close', () => {
     brain.clients.delete(ws);
+    // PA.4.3 — remove this donor from the GPU pool (no-op if it wasn't one).
+    if (brain._gpuClients) brain._gpuClients.delete(ws);
     // If GPU client disconnected, reset GPU state so it re-initializes on reconnect.
     // iter114.19eg — when the disconnect is UNEXPECTED (mid-curriculum,
     // brain has been running >60s, no operator-initiated shutdown), this
@@ -5788,6 +5908,28 @@ wss.on('connection', (ws, req) => {
     // first compute_batch — would burn through respawns and make logs
     // unreadable).
     if (ws === brain._gpuClient) {
+      // PA.4.3 — the PRIMARY donor left. Promote a healthy STANDBY from the
+      // pool (failover) so the brain keeps a GPU instead of dropping to
+      // all-CPU + Chrome auto-respawn. The promoted donor has empty VRAM, so
+      // force a full re-upload (clear init flags) + mark the shadow dirty;
+      // the next dispatch re-sends gpu_init + re-uploads every projection.
+      let _promotedGpu = null;
+      if (brain._gpuClients) {
+        for (const _cand of brain._gpuClients) {
+          if (_cand && _cand.readyState === 1) { _promotedGpu = _cand; break; }
+        }
+      }
+      if (_promotedGpu) {
+        brain._gpuClient = _promotedGpu;
+        brain._gpuConnected = true;
+        brain._gpuInitialized = {};
+        brain._gpuInitializedConfirmed = {};
+        brain._gpuHits = 0;
+        brain._gpuMisses = 0;
+        if (brain.cortexCluster) brain.cortexCluster._gpuShadowDirty = true;
+        const _pid = (brain.clients.get(_promotedGpu) || {}).id || '(unknown)';
+        console.log(`[Server] PRIMARY GPU donor left — promoted standby ${_pid} to primary (pool: ${brain._gpuClients ? brain._gpuClients.size : 0}). Brain re-uploads to the new primary on next dispatch.`);
+      } else {
       brain._gpuClient = null;
       brain._gpuConnected = false;
       brain._gpuInitialized = {};
@@ -5833,6 +5975,7 @@ wss.on('connection', (ws, req) => {
       } else {
         console.log(`[Server] GPU compute client disconnected — switching to all-CPU (uptime=${(uptimeMs/1000).toFixed(0)}s, expected=${!isUnexpected})`);
       }
+      } // PA.4.3 — end no-standby branch (all-CPU + auto-respawn)
     }
     console.log(`[Server] Client disconnected: ${id} (${brain.clients.size} remaining)`);
   });
