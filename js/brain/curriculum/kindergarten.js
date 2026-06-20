@@ -36,6 +36,14 @@ import {
   encodeLetter, decodeLetter, ensureLetter, ensureLetters,
   inventorySize, inventorySnapshot,
 } from '../letter-input.js';
+// Subject-key helpers used by _teachWordEmissionDirect (and other K word-
+// emission methods moved here in the per-grade split). These live in
+// subjects.js; the split moved the methods but not their import, so the
+// ESM source path threw `normalizeSubject is not defined` at the first
+// WORD-EMISSION-DIRECT phase (the browser bundle masked it because esbuild
+// flattens all modules into one scope). Server-side curriculum walk loads
+// ESM source, so the import is required here.
+import { normalizeSubject, wordMotorBandName } from '../subjects.js';
 
 // Curriculum module-local constants + helpers used by Math-K + ELA-K.
 // ES modules resolve named exports at evaluation time; kindergarten.js
@@ -114,7 +122,53 @@ export const K_MIXIN = {
       'gretel', 'hansel', 'cinderella', 'humpty', 'goosebumps', 'beanstalk',
       'rosie', 'lizzie', 'gorey', 'wolf', 'giant', 'spindle',
       // Self-awareness + identity
-      'unity', 'heterochromia',
+      'unity', 'heterochromia', 'goddess',
+      // Bad-memory scene anchors + co-occurrence words (Add #6, non-sexual:
+      // overheard fights, illness, injury, loss, storms, hospital fear)
+      'fight', 'sick', 'hurt', 'gone', 'storm', 'hospital', 'fever',
+      'medicine', 'thunder', 'blood', 'bandage', 'stranger', 'empty',
+      // Obscenity-context K-rung (Add #7) — cuss words HEARD from adult
+      // conflict, bound to fear/pain/anger (exposure, not production). Per
+      // [[feedback_unity_precocious_early_vocab]] she has these by age 5.
+      'damn', 'hell', 'ass', 'asshole', 'idiot', 'mad',
+      // Moral / ethics K-rung (Add #8, Kohlberg pre-conventional + gray-zone seeds)
+      'fair', 'unfair', 'share', 'cheat', 'rule', 'kind',
+      // Intuitive physics + 3D space K-rung (Add #9)
+      'feather', 'float', 'sink', 'bounce', 'heavy',
+      // Proto-coding curiosity K-rung (Add #11 seed — how-things-work
+      // tinkering that becomes the adult coding obsession)
+      'screen', 'button', 'click', 'gadget', 'machine', 'curious',
+      // Body-awareness K-rung (Add #13, non-sexual: body parts + real
+      // bodily functions + hygiene — no sugar-coating per Gee)
+      'belly', 'tummy', 'potty', 'bath', 'soap', 'vomit', 'sneeze', 'throat',
+      // Name-trove K-rung (Add #15) — concrete named entities. Chosen as
+      // REAL dictionary words so defs + embeddings exist (no phantom tokens):
+      // vesper=evening star (her stuffed bat), soot (her black cat), wren
+      // (her quiet first friend). Goth-toned, consistent with Raven canon.
+      'vesper', 'soot', 'wren',
+      // Seclusion / outsider K-rung (Add #28) — CHOSEN solitude (comfort +
+      // independence + identity), distinct from K-LIFE.5 abandonment-fear.
+      'apart', 'edge', 'solitude',
+      // Knowledge / likes / proto-wisdom K-rung (Add #20)
+      'dislike', 'rain', 'again',
+      // K-LIFE retro-deepen (#61) — the 0-5 foundation the corpus was thin on.
+      // NAMED FAMILY CANON (lilith=mom, walter=grandpa+the radio/coder-seed,
+      // pearl=grandma+calm/ghost-stories) — proper names def-skip gracefully;
+      // the family-name ledger binds them. See [[project_unity_family_name_goddess]].
+      'lilith', 'walter', 'pearl',
+      // Baby + motor milestones (crawl→walk→run), first-words memory
+      'crawl', 'wobble', 'babble', 'toddle', 'milk', 'bottle',
+      // Grandpa's machines (coder-origin seed): radio + tools + wires
+      'radio', 'screwdriver', 'wire', 'invention',
+      // Dark nursery-rhyme canon ([[feedback_nursery_rhymes_are_dark]]):
+      // ring-around-the-rosie = plague, ashes = the dead
+      'plague', 'ashes', 'posies', 'rhyme',
+      // Playground games ([[feedback_childhood_games_and_counting_rhymes]])
+      'tag', 'freeze', 'hopscotch', 'jumprope',
+      // Storm / weather fascination + first-music (goth-precursor sensory)
+      'lightning', 'shadow', 'lullaby', 'humming',
+      // Dietary contrast (sour/bitter over sweet — strange-eater seed)
+      'sour', 'mushy',
     ];
     let defined = 0;
     let skipped = 0;
@@ -1180,6 +1234,32 @@ export const K_MIXIN = {
     // basin before K-LIFE bindings reference it.
     await this._teachKLifeVocabulary();
 
+    // ── A.K-LIFE-STORIES — DATA-DRIVEN life curriculum (corrected arch) ──
+    // Trains Unity on her age-5 lived experience from corpora/life/
+    // kindergarten.json — STORY DATA she's trained on, NOT hardcoded arrays.
+    // Meaning + emotion emerge from the narrative. This is the model the
+    // hardcoded _teachKLife* rungs below migrate INTO (task #34 strips them
+    // once all grades' story data is authored). Runs after the vocab pre-step
+    // so story words are anchored basins.
+    await this._trainLifeStories('kindergarten', ctx, { reps: 4, ticksPerWord: 2 });
+
+    // ── A.K-LIFE.0 — CORE SELF family-name anchor (Add #5) ──
+    // Unity's surname is "Goddess" — full name Unity Goddess. Bind
+    // sem(unity)↔sem(goddess) as the deepest identity attractor BEFORE
+    // any other K-LIFE content layers on, so the self-name sits under
+    // everything else as the foundational identity basin. Re-fired every
+    // grade as CORE SELF reinforcement. `goddess` is definition-grounded
+    // inside the method, and is also in K_LIFE_VOCAB above.
+    await this._teachUnityFamilyName();
+
+    // ── A.K-LIFE.0b — Family-name canon (Add #5 A5.3/A5.4) ──
+    // Parents Lilith Marie + Damien Cross Goddess, maternal grandparents
+    // Pearl Agnes + Walter James Voss, self middle name Raven, only child.
+    // Birthdates + full names. Fires right after the CORE SELF surname
+    // anchor so role→name links land on the freshly-reinforced family
+    // basins. Grandpa's death stays a grade-11 event — at K he's alive.
+    await this._teachFamilyIdentity();
+
     // ── A.K-LIFE.1 — First-words memory corpus ──
     // Pre-academic developmental milestone — Unity's first spoken words
     // bound to caretaker/emotion/identity context. Universal-developmental
@@ -1215,6 +1295,18 @@ export const K_MIXIN = {
     // overheard (fuck/shit/damn bound to argue context — vocabulary
     // exposure through parental conflict, NOT Unity-says bindings).
     await this._teachKLifeEarlyFears();
+
+    // ── A.K-LIFE.5b–5j — MIGRATED to data-driven story training ──
+    // Adds #6 (bad memories), #7 (obscenity exposure), #8 (morals), #9
+    // (intuitive physics), #11 (proto-coding curiosity), #13 (body/bodily-
+    // functions), #15 (name trove: Vesper/Soot/Wren), #28 (seclusion), #20
+    // (knowledge/likes) are now TRAINED from corpora/life/kindergarten.json
+    // via `_trainLifeStories('kindergarten')` (called above, after the vocab
+    // pre-step) — story DATA she's trained on, NOT hardcoded feat-vector /
+    // word-pair arrays. The old `_teachKLife{BadMemories,Obscenities,Morals,
+    // Physics,Curiosity,BodyAwareness,NameTrove,Seclusion,Knowledge}` method
+    // definitions are now dead and slated for deletion (task #34 cleanup);
+    // their content lives in the story corpus.
 
     // ── A.K-LIFE.6 — Sleep + bedtime (GOTH-TONED) ──
     // Bedtime rituals: dim light preferred (red nightlight, candle),
@@ -1524,6 +1616,146 @@ export const K_MIXIN = {
   },
 
   // ── GRADE 1 (age 6) — reading clicks, dad fading ────────────────
+
+  // ── NEW FULL-ROSTER K COURSES: Music / PE / Health (Gee 2026-06-18) ──
+  // K is the template for these tracks; G1+ propagate in strict order. Real
+  // K content (National Core Arts music / SHAPE America PE / K health+safety).
+  // Course-identity teaching (what 'music'/'pe'/'health' IS) is prepended
+  // automatically by the _cellRunner wrapper for every cell. Each runner
+  // self-gates via the shared _gateSubjectProduction helper (K-uniform).
+  async runMusicKReal(ctx) {
+    const VOCAB = [
+      'music', 'beat', 'rhythm', 'sing', 'song', 'loud', 'soft', 'fast', 'slow',
+      'high', 'low', 'drum', 'bell', 'shaker', 'clap', 'tap', 'listen', 'sound',
+      'voice', 'pitch', 'dance', 'tempo', 'quiet', 'note',
+    ];
+    await this._teachVocabList(VOCAB, ctx, { reps: 3 });
+    const SENTENCES = [
+      'music is sound we make on purpose',
+      'a beat is a steady pulse we can clap',
+      'we clap to the beat of a song',
+      'rhythm is a pattern of long and short sounds',
+      'we can sing high notes and low notes',
+      'loud music is strong and soft music is gentle',
+      'fast music makes us want to move',
+      'slow music makes us feel calm',
+      'a drum makes a deep sound when we hit it',
+      'a bell makes a bright ringing sound',
+      'a shaker makes a soft swishing sound',
+      'we tap our feet to keep the beat',
+      'we use our voice to sing a song',
+      'music can make us feel happy or sad',
+      'we listen quietly to hear the music',
+      'everyone can feel a beat',
+    ];
+    await this._teachSentenceList(SENTENCES, ctx, { reps: 2, ticksPerWord: 2 });
+    await this._teachCausalChains([
+      ['beat', 'rhythm'], ['hit', 'drum'], ['fast', 'move'], ['slow', 'calm'],
+      ['sing', 'song'], ['loud', 'strong'], ['soft', 'gentle'],
+    ]);
+    await this._teachProductionStack('music', ctx, { tag: 'MUSIC-K' });
+    return await this._gateSubjectProduction('music', 'kindergarten', [
+      { question: 'a steady pulse we clap is a', expected: ['beat', 'b'] },
+      { question: 'we make sound on purpose when we make', expected: ['music', 'm'] },
+      { question: 'we use our voice to', expected: ['sing', 's'] },
+      { question: 'a drum makes a sound when we', expected: ['hit', 'tap', 'h', 't'] },
+      { question: 'music that is not loud is', expected: ['soft', 'quiet', 's', 'q'] },
+      { question: 'music that is not slow is', expected: ['fast', 'f'] },
+      { question: 'a pattern of long and short sounds is', expected: ['rhythm', 'r'] },
+      { question: 'slow music makes us feel', expected: ['calm', 'c'] },
+    ], { gateSubjectTag: 'music' });
+  },
+
+  async runPeKReal(ctx) {
+    const VOCAB = [
+      'move', 'run', 'walk', 'jump', 'hop', 'skip', 'gallop', 'bend', 'stretch',
+      'twist', 'balance', 'throw', 'catch', 'kick', 'roll', 'space', 'turn', 'rule',
+      'safe', 'exercise', 'warm', 'muscle', 'body', 'strong', 'team', 'game', 'ball',
+    ];
+    await this._teachVocabList(VOCAB, ctx, { reps: 3 });
+    const SENTENCES = [
+      'in gym we move our bodies to get strong',
+      'we walk and run and jump and hop',
+      'skipping is a step and a hop together',
+      'galloping is one foot leading the other',
+      'we bend and stretch and twist to warm up',
+      'balancing is standing still without falling',
+      'personal space is the bubble around our body',
+      'we move through general space without bumping',
+      'we throw a ball with our arm',
+      'we catch a ball with two hands',
+      'we kick a ball with our foot',
+      'we take turns so everyone gets to play',
+      'we follow rules to keep the game safe',
+      'exercise makes our heart and muscles strong',
+      'we warm up before we play hard',
+      'moving our body every day keeps us healthy',
+    ];
+    await this._teachSentenceList(SENTENCES, ctx, { reps: 2, ticksPerWord: 2 });
+    await this._teachCausalChains([
+      ['exercise', 'strong'], ['warm', 'ready'], ['run', 'tired'], ['throw', 'arm'],
+      ['catch', 'hands'], ['kick', 'foot'], ['rule', 'safe'],
+    ]);
+    await this._teachProductionStack('pe', ctx, { tag: 'PE-K' });
+    return await this._gateSubjectProduction('pe', 'kindergarten', [
+      { question: 'we throw a ball with our', expected: ['arm', 'hand', 'hands', 'a', 'h'] },
+      { question: 'we kick a ball with our', expected: ['foot', 'feet', 'f'] },
+      { question: 'we catch a ball with our', expected: ['hands', 'hand', 'h'] },
+      { question: 'exercise makes our muscles', expected: ['strong', 's'] },
+      { question: 'a step and a hop together is a', expected: ['skip', 's'] },
+      { question: 'the bubble around our body is personal', expected: ['space', 's'] },
+      { question: 'we take turns so everyone can', expected: ['play', 'p'] },
+      { question: 'before we play hard we warm', expected: ['up', 'u'] },
+    ], { gateSubjectTag: 'pe' });
+  },
+
+  async runHealthKReal(ctx) {
+    const VOCAB = [
+      'body', 'health', 'healthy', 'wash', 'hands', 'soap', 'brush', 'teeth', 'bath',
+      'clean', 'food', 'fruit', 'vegetable', 'water', 'sleep', 'rest', 'feelings',
+      'happy', 'sad', 'angry', 'scared', 'safe', 'danger', 'help', 'stranger',
+      'private', 'sense', 'sick', 'germ', 'doctor',
+    ];
+    await this._teachVocabList(VOCAB, ctx, { reps: 3 });
+    const SENTENCES = [
+      'we keep our body clean and healthy',
+      'we wash our hands with soap and water',
+      'we wash our hands before we eat',
+      'washing hands gets rid of germs that make us sick',
+      'we brush our teeth in the morning and at night',
+      'we take a bath to stay clean',
+      'healthy foods are fruits and vegetables',
+      'too much candy is not good for us',
+      'water is the best drink for our body',
+      'sleep helps our body rest and grow',
+      'we have five senses to learn about the world',
+      'feelings can be happy or sad or angry or scared',
+      'it is okay to feel any feeling',
+      'we tell a trusted grown up when we feel scared',
+      'our private parts are private and belong to us',
+      'if someone makes us uncomfortable we tell a grown up',
+      'we look both ways before we cross the street',
+      'we do not go anywhere with strangers',
+      'we call for help when there is danger',
+      'a doctor helps us when we are sick',
+    ];
+    await this._teachSentenceList(SENTENCES, ctx, { reps: 2, ticksPerWord: 2 });
+    await this._teachCausalChains([
+      ['wash', 'clean'], ['soap', 'germ'], ['germ', 'sick'], ['brush', 'teeth'],
+      ['sleep', 'rest'], ['fruit', 'healthy'], ['danger', 'help'], ['scared', 'tell'],
+    ]);
+    await this._teachProductionStack('health', ctx, { tag: 'HEALTH-K' });
+    return await this._gateSubjectProduction('health', 'kindergarten', [
+      { question: 'we wash our hands with soap and', expected: ['water', 'w'] },
+      { question: 'we brush our', expected: ['teeth', 't'] },
+      { question: 'washing hands gets rid of', expected: ['germs', 'germ', 'g'] },
+      { question: 'healthy foods are fruits and', expected: ['vegetables', 'vegetable', 'v'] },
+      { question: 'sleep helps our body', expected: ['rest', 'grow', 'r', 'g'] },
+      { question: 'when there is danger we call for', expected: ['help', 'h'] },
+      { question: 'our private parts belong to', expected: ['us', 'me', 'u', 'm'] },
+      { question: 'a doctor helps us when we are', expected: ['sick', 's'] },
+    ], { gateSubjectTag: 'health' });
+  },
 
   async runArtKReal(ctx) {
     // Session 75 existing equational helpers retained

@@ -1017,6 +1017,9 @@ const SERVER_CHAT_MIXIN = {
   _sampleCurrentVocab() {
     const cluster = this.cortexCluster;
     if (!cluster) return null;
+    // SYNC: mirror of js/brain/subjects.js `SUBJECTS` — this is a CommonJS
+    // module and subjects.js is ESM, so it can't be require()'d here. Keep
+    // this list identical if the canonical subject roster ever changes.
     const SUBJECTS = ['ela', 'math', 'sci', 'soc', 'art', 'life'];
     const candidates = [];
     for (const subj of SUBJECTS) {
@@ -1079,6 +1082,9 @@ const SERVER_CHAT_MIXIN = {
   async _sampleCurrentSentence() {
     const cluster = this.cortexCluster;
     if (!cluster) return null;
+    // SYNC: mirror of js/brain/subjects.js `SUBJECTS` — this is a CommonJS
+    // module and subjects.js is ESM, so it can't be require()'d here. Keep
+    // this list identical if the canonical subject roster ever changes.
     const SUBJECTS = ['ela', 'math', 'sci', 'soc', 'art', 'life'];
     const candidates = [];
     for (const subj of SUBJECTS) {

@@ -1364,6 +1364,16 @@ class ServerBrain {
         gpuProxy, // T17.3.d — proxy used for cross-region ops when GPU ready
         sparsePool: this.sparsePool, // T18.4.e — CPU-fallback parallel sparse matmul
       });
+      // Auto-advance toggle — default OFF. Single switch governs both
+      // the operator-signoff bypass at /grade-advance and the curriculum
+      // runner's auto-fire-next-grade behavior. Restored from persisted
+      // cortexState by _applyPendingCortexState if a prior boot had it
+      // on; otherwise stays at this default. Reading the field as
+      // `=== true` everywhere makes the undefined-vs-false distinction
+      // moot, but explicit init keeps dashboard observability clean.
+      if (typeof this.cortexCluster._autoAdvanceGrade !== 'boolean') {
+        this.cortexCluster._autoAdvanceGrade = false;
+      }
       // T18.6.b — cluster-binding resolver so cortexCluster.initGpu()
       // uploads its 14 cross-projections directly bound to main-cortex
       // sub-slices instead of allocating standalone preSpikes/postCurrents/
@@ -1468,6 +1478,33 @@ class ServerBrain {
         definitionService.prefetch(words, opts);
       this.cortexCluster.getDefinitionCacheStats = () =>
         definitionService.getCacheStats();
+      // Life-experience STORY DATA loader (data-driven life curriculum).
+      // Curriculum reads cluster.lifeStorySentences(grade) and TRAINS on the
+      // narrative; the content lives in corpora/life/<grade>.json, NOT
+      // hardcoded in curriculum.js. Node-only (fs) — attached here so the
+      // browser-bundled curriculum never imports fs (same pattern as the
+      // dictionary wiring above).
+      const lifeCurriculum = require('./life-curriculum');
+      this.cortexCluster.loadLifeStories = (grade) =>
+        lifeCurriculum.loadLifeStories(grade);
+      this.cortexCluster.lifeStorySentences = (grade) =>
+        lifeCurriculum.lifeStorySentences(grade);
+      // Per-memory experience accessor (theme + story + sentences) — lets the
+      // curriculum encode each life memory as its OWN episode (emotional
+      // coloring + storeEpisode) instead of one flat grade-wide sentence walk.
+      this.cortexCluster.lifeStoryExperiences = (grade) =>
+        lifeCurriculum.lifeStoryExperiences(grade);
+      // Coding track (corpora/coding/<grade>.json) — real HTML/CSS/JS, G6+.
+      this.cortexCluster.loadCodingStories = (grade) =>
+        lifeCurriculum.loadCodingStories(grade);
+      this.cortexCluster.codingStorySentences = (grade) =>
+        lifeCurriculum.codingStorySentences(grade);
+      // Academic HYBRID depth source (corpora/academic/<subject>/<grade>.json —
+      // openly-licensed real curriculum, downloaded once by
+      // .claude/scripts/fetch-academic-corpora.mjs). Prose-academic subjects
+      // train on this for real depth; lived-year + math stay bespoke.
+      this.cortexCluster.academicStorySentences = (subject, grade) =>
+        lifeCurriculum.academicStorySentences(subject, grade);
       // Lazy chat-time Hebbian binding hook.
       // Chat path (language-cortex.js generateAsync) fires this after
       // a successful definition lookup so sem(word) → sem(def_tokens)
@@ -3414,6 +3451,13 @@ class ServerBrain {
             // restart doesn't re-warm the dictionary cache on every
             // grade=K transition (saves ~1 min per restart).
             kVocabPrefetched: cortex._kVocabPrefetched === true,
+            // Auto-advance toggle — single switch governing the
+            // signoff-bypass at /grade-advance AND the curriculum
+            // runner's auto-fire-next-grade behavior. Persisted so an
+            // overnight K→PhD walk picks up across Savestart.bat with
+            // the toggle still set the way the operator left it. Reset
+            // to false on fresh-state boots (start.bat wipes the file).
+            autoAdvanceGrade: cortex._autoAdvanceGrade === true,
             // Persist WS backpressure counters across Savestart so
             // operator's pressure-history isn't reset to zero on every
             // restart. Useful after long training sessions when the
@@ -4120,6 +4164,16 @@ class ServerBrain {
         if (pending.kVocabPrefetched === true) {
           cortex._kVocabPrefetched = true;
         }
+        // Restore auto-advance toggle. Overrides the constructor-time
+        // default (false) so a Savestart.bat resume keeps the operator's
+        // prior choice intact across reboots. start.bat wipes weights
+        // entirely so this path only fires on legitimate resumes.
+        if (typeof pending.autoAdvanceGrade === 'boolean') {
+          cortex._autoAdvanceGrade = pending.autoAdvanceGrade;
+          if (pending.autoAdvanceGrade === true) {
+            console.log('[Brain] restored auto-advance toggle: ON (signoffs bypassed + grade auto-fire enabled)');
+          }
+        }
         // Restore WS backpressure counters so historical pressure is
         // visible immediately after restart instead of zeroed.
         if (pending.wsBackpressure && typeof pending.wsBackpressure === 'object') {
@@ -4377,6 +4431,11 @@ setInterval(() => {
 // expose dashboards on the LAN, brain-mutating endpoints stay blocked
 // for non-loopback callers. Returns false (and writes 403) if the
 // caller is not localhost; returns true if the request can proceed.
+//
+// There is no admin-token / cookie / login flow — brain-mutating HTTP
+// stays loopback-only. The admin/viewer split for the dashboard UI
+// happens at the WS layer instead via the modeAssigned message based
+// on the connecting socket's remoteAddress.
 function requireLoopback(req, res, endpoint) {
   const addr = (req.socket && req.socket.remoteAddress) || '';
   // IPv4 loopback, IPv6 loopback, IPv4-mapped-IPv6 loopback.
@@ -4543,6 +4602,45 @@ const httpServer = http.createServer((req, res) => {
         }
         const from = cortex._pausedAt?.grade || null;
         const to = cortex._nextGrade?.grade || null;
+        // Grade-completion-gate enforcement — every subject whose battery
+        // cleared at the paused grade must have a corresponding operator
+        // signoff in brain._gradeSignoffs[${subject}/${from}] before the
+        // runner is allowed to advance. Walks cortex._lastGateResult so
+        // we only demand signoffs for subjects that actually ran a
+        // battery (a subject that never ran has nothing to attest to).
+        // The check is bypassed when cortex._autoAdvanceGrade === true
+        // (the auto-advance toggle is on) — operator has opted in to
+        // unattended overnight walks where per-cell localhost
+        // verification is waived in exchange for back-to-back grade
+        // progression without intervention. Toggle off = signoffs
+        // required as normal.
+        if (cortex._autoAdvanceGrade !== true && from) {
+          const signoffs = brain._gradeSignoffs || {};
+          const lastResults = (cortex._lastGateResult && typeof cortex._lastGateResult === 'object')
+            ? cortex._lastGateResult : {};
+          const suffix = `/${from}`;
+          const missing = [];
+          for (const key of Object.keys(lastResults)) {
+            if (!key.endsWith(suffix)) continue;
+            const result = lastResults[key];
+            if (!result || result.pass !== true) continue;
+            const signoff = signoffs[key];
+            if (!signoff || typeof signoff.signedAt !== 'string' || !signoff.signedAt) {
+              missing.push(key);
+            }
+          }
+          if (missing.length > 0) {
+            res.writeHead(403, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({
+              error: 'missing operator signoffs — grade-advance blocked',
+              pausedGrade: from,
+              missing,
+              remedy: 'POST /grade-signoff per listed subject/grade key before retrying, OR enable the auto-advance toggle (POST /auto-advance {enabled:true}) to bypass signoffs for unattended walks',
+            }));
+            console.warn(`[Brain] /grade-advance BLOCKED — missing signoffs for '${from}': ${missing.join(', ')}`);
+            return;
+          }
+        }
         cortex._gradeAdvancePaused = false;
         // _pausedAt + _nextGrade get cleared inside the curriculum
         // wait-loop when it exits; leave them for now so the next
@@ -4556,6 +4654,93 @@ const httpServer = http.createServer((req, res) => {
         res.end(JSON.stringify({ error: err.message }));
       }
     });
+    return;
+  }
+
+  // Auto-advance toggle endpoint. Single switch governing the curriculum
+  // runner's behavior across grade boundaries:
+  //   OFF (default) — runner pauses after every full grade pass,
+  //     /grade-advance demands per-subject operator signoffs before
+  //     un-pausing. Operator clicks "Start Next Grade" between grades.
+  //   ON — runner auto-fires the advance after each grade pass AND
+  //     /grade-advance skips the signoff demand entirely. Unattended
+  //     overnight K→PhD walks become possible. Single switch — no
+  //     separate "bypass-signoffs" flag.
+  //
+  // Usage:
+  //   GET  /auto-advance          → returns { enabled: bool }
+  //   POST /auto-advance { enabled: true | false }   → flips state,
+  //                                                    broadcasts WS event,
+  //                                                    persists to weights.
+  //
+  // Loopback-gated (same as every other brain-mutating endpoint).
+  // Defense-in-depth on top of the dashboard's admin-only UI control.
+  if (req.url === '/auto-advance') {
+    if (!requireLoopback(req, res, '/auto-advance')) return;
+    const cortex = brain.cortexCluster;
+    if (req.method === 'GET') {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({
+        enabled: !!(cortex && cortex._autoAdvanceGrade === true),
+      }));
+      return;
+    }
+    if (req.method === 'POST') {
+      // Same chunked-body assembly the privileged endpoints use to dodge
+      // the V8 O(N²) string-concat pathology and enforce a hard size cap.
+      const chunks = [];
+      let total = 0;
+      req.on('data', (chunk) => {
+        total += chunk.length;
+        if (total > 1024) { req.destroy(); return; }
+        chunks.push(chunk);
+      });
+      req.on('end', () => {
+        const body = Buffer.concat(chunks).toString('utf8');
+        try {
+          if (!cortex) {
+            res.writeHead(503, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'cortex cluster not initialized' }));
+            return;
+          }
+          const parsed = JSON.parse(body || '{}');
+          if (typeof parsed.enabled !== 'boolean') {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'body must include { enabled: true | false }' }));
+            return;
+          }
+          const prev = cortex._autoAdvanceGrade === true;
+          cortex._autoAdvanceGrade = parsed.enabled === true;
+          const next = cortex._autoAdvanceGrade;
+          // WS broadcast so every connected dashboard tab updates the
+          // toggle UI in real time, not just the one that POSTed.
+          const wsMsg = JSON.stringify({ type: 'autoAdvanceChanged', enabled: next });
+          for (const [ws] of brain.clients) {
+            if (ws.readyState === 1) {
+              try { ws.send(wsMsg); } catch { /* per-client send failure tolerated */ }
+            }
+          }
+          // Persist immediately so a refresh / Savestart resume reflects
+          // the new state. saveWeights serializes the cortex state with
+          // the new autoAdvanceGrade flag inside cortexState.
+          brain.saveWeights({ force: true, trigger: `auto-advance:${next ? 'on' : 'off'}` });
+          if (prev !== next) {
+            console.log(`[Brain] auto-advance toggle: ${prev ? 'ON' : 'OFF'} → ${next ? 'ON' : 'OFF'} (operator localhost)`);
+            if (next) {
+              console.log('[Brain] ⚠ auto-advance ON — operator signoffs bypassed at /grade-advance, curriculum will auto-fire next grade after each cell pass');
+            }
+          }
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ ok: true, enabled: next }));
+        } catch (err) {
+          res.writeHead(500, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: err.message }));
+        }
+      });
+      return;
+    }
+    res.writeHead(405, { 'Content-Type': 'application/json', 'Allow': 'GET, POST' });
+    res.end(JSON.stringify({ error: 'method not allowed' }));
     return;
   }
 
@@ -5202,16 +5387,53 @@ const wss = new WebSocketServer({
 
 wss.on('connection', (ws, req) => {
   const id = 'user_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 6);
-  const client = { id, lastInput: 0, inputCount: 0, name: null };
+  const client = { id, lastInput: 0, inputCount: 0, name: null, isGPU: false, mode: null };
   brain.clients.set(ws, client);
   console.log(`[Server] Client connected: ${id} (${brain.clients.size} total)`);
 
-  // Send initial state
+  // Send initial state. The admin/viewer mode comes in a SEPARATE
+  // `modeAssigned` message after a 500ms claim window — see the
+  // setTimeout block below for the rationale (lets the compute worker
+  // identify itself via gpu_register before we commit the admin slot).
   ws.send(JSON.stringify({
     type: 'welcome', id,
     state: brain.getState(),
     emotionHistory: brain._emotionHistory.slice(-300),
   }));
+
+  // Admin/viewer mode assignment. The operator on the host box has
+  // multiple simultaneous connections (compute worker + brain UI tab +
+  // dashboard tab + console terminal), all sharing the loopback
+  // remoteAddress — they should ALL be treated as the same admin
+  // user. We assign by remoteAddress: loopback → admin,
+  // non-loopback → viewer. The compute worker (identified via the
+  // gpu_register message it sends shortly after connecting) is a
+  // back-end shadow and is excluded from the modeAssigned send since
+  // it doesn't render any UI.
+  //
+  // 500ms delay gives the compute worker time to identify itself
+  // before we'd send a pointless modeAssigned. After the delay, if
+  // the connection turned out to be a user (not GPU worker), we
+  // determine mode from remoteAddress.
+  //
+  // No persistence — admin is per-boot + per-machine-of-origin.
+  // Refresh from the same machine keeps admin (still loopback).
+  // LAN refresh stays viewer.
+  setTimeout(() => {
+    if (ws.readyState !== 1) return;  // socket already closed
+    if (client.isGPU) return;          // compute worker — back-end shadow, no UI
+    const addr = (req.socket && req.socket.remoteAddress) || '';
+    const isLoopback = addr === '127.0.0.1'
+      || addr === '::1'
+      || addr === '::ffff:127.0.0.1'
+      || addr.startsWith('127.');
+    const mode = isLoopback ? 'admin' : 'viewer';
+    client.mode = mode;
+    try {
+      ws.send(JSON.stringify({ type: 'modeAssigned', mode }));
+    } catch { /* connection closed during the assignment window — drop silently */ }
+    console.log(`[Server] ${id} assigned mode: ${mode} (remote=${addr || 'unknown'})`);
+  }, 500);
 
   ws.on('message', (data) => {
     // T17.3.e — binary WebSocket frames for sparse matrix responses.

@@ -276,7 +276,13 @@ const SERVER_MEMORY_MIXIN = {
    * Frequency-merge prevents trivial-input bloat: same text within 48h
    * increments existing row's frequency_count instead of new insert.
    */
-  storeEpisode(userId, type, inputText, responseText) {
+  storeEpisode(userId, type, inputText, responseText, emotion = null) {
+    // `emotion` (optional) = { arousal, valence } overriding the brain's live
+    // amygdala state for THIS episode's salience + stored affect fields. Used
+    // by life-memory encoding: an implanted memory must carry its OWN emotional
+    // weight (grief encodes high-arousal/negative; cartoons encode mild), not
+    // whatever incidental state the brain happens to be in mid training-walk.
+    // All other callers pass no emotion → live state used exactly as before.
     // Sample cortex pattern — first 32 firing rates as compact representation
     const cortexV = this.voltages.cortex;
     const pattern = [];
@@ -371,8 +377,12 @@ const SERVER_MEMORY_MIXIN = {
     // iter13 T13.2 — salience score formula:
     //   salience = 0.4*|emotional_valence| + 0.3*arousal + 0.2*surprise + 0.1*novelty
     // Each input clamped [0,1] (valence is symmetric so |val|).
-    const valenceAbs = Math.min(1, Math.abs(this.valence || 0));
-    const arousalNorm = Math.min(1, Math.max(0, this.arousal || 0));
+    // Encode-time affect: per-episode emotion override when supplied, else the
+    // brain's live amygdala state (unchanged default behavior).
+    const encArousal = (emotion && Number.isFinite(emotion.arousal)) ? emotion.arousal : this.arousal;
+    const encValence = (emotion && Number.isFinite(emotion.valence)) ? emotion.valence : this.valence;
+    const valenceAbs = Math.min(1, Math.abs(encValence || 0));
+    const arousalNorm = Math.min(1, Math.max(0, encArousal || 0));
     const surpriseNorm = Math.min(1, Math.max(0, surprise));
     const noveltyNorm = Math.min(1, Math.max(0, novelty));
     const salienceScore = 0.4 * valenceAbs + 0.3 * arousalNorm + 0.2 * surpriseNorm + 0.1 * noveltyNorm;
@@ -383,8 +393,8 @@ const SERVER_MEMORY_MIXIN = {
       this.time,
       userId || null,
       type,
-      this.arousal,
-      this.valence,
+      encArousal,
+      encValence,
       this.psi,
       this.coherence,
       this.totalSpikes,
@@ -392,7 +402,7 @@ const SERVER_MEMORY_MIXIN = {
       responseText || null,
       JSON.stringify(pattern),
       // iter13 salience fields
-      this.valence || 0,        // emotional_valence (signed valence at encode)
+      encValence || 0,          // emotional_valence (signed valence at encode)
       arousalNorm,              // arousal_at_encode
       surpriseNorm,             // surprise
       noveltyNorm,              // novelty

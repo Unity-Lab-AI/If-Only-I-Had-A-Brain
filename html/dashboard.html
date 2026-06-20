@@ -63,6 +63,28 @@
     .btn-stop:hover { background: rgba(239,68,68,0.1); border-color: #ef4444; }
     .btn-stop:disabled { opacity: 0.4; cursor: wait; }
     .btn-stop.shutdown-fired { border-color: #6b7280; color: #6b7280; }
+    /* Admin/viewer split. Default state is admin-only-HIDDEN; the WS
+       modeAssigned message (sent ~500ms after connection based on
+       remoteAddress) toggles body.is-admin to reveal admin controls.
+       Defaults to hidden so a slow/never-arriving modeAssigned doesn't
+       flash unauthorized controls. */
+    .admin-only { display: none !important; }
+    body.is-admin .admin-only { display: inline-block !important; }
+    body.is-admin button.admin-only { display: inline-block !important; }
+    body.is-admin div.admin-only { display: block !important; }
+    .mode-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 10px;
+      letter-spacing: 0.5px;
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .mode-badge.mode-connecting { background: rgba(107, 114, 128, 0.2); color: #9ca3af; border: 1px solid #4b5563; }
+    .mode-badge.mode-admin { background: rgba(245, 158, 11, 0.2); color: #f59e0b; border: 1px solid #f59e0b; }
+    .mode-badge.mode-viewer { background: rgba(34, 197, 94, 0.2); color: #22c55e; border: 1px solid #22c55e; }
     /* Live-test diagnostic banners — surface spawn failures + no-connection
        state with explicit recovery instructions instead of small low-
        contrast pill. Operator 2026-06-17 live test surfaced HTMLs
@@ -128,12 +150,30 @@
   </style>
 </head>
 <body>
+  <!-- WebGPU pre-flight gate. The modal is HARD-BLOCK with no CPU
+       bypass — operators either fix WebGPU via the prep page or do
+       not use the dashboard. Loads early so the modal renders before
+       the cards paint. -->
+  <script type="module">
+    import { mountBootModal } from '../js/webgpu-prep.js';
+    mountBootModal({ prepUrl: 'webgpu-prep.html' });
+  </script>
+
+  <!-- Quick-access page legend. Floating top-right link to the
+       canonical page index (html/legend.html). Z-index 99998. -->
+  <a href="legend.html" id="unity-legend-link" title="Open the page legend / quick-access index" style="position:fixed;top:8px;right:8px;z-index:99998;background:rgba(15,26,31,0.92);color:#ff4d9a;padding:5px 10px;border-radius:4px;font-size:10px;font-family:'JetBrains Mono',monospace;text-decoration:none;border:1px solid #374151;letter-spacing:0.5px;">📑 Pages</a>
+
   <div class="dash">
     <h1>🧠 Unity Brain — Live Dashboard</h1>
     <p class="sub">Read-only view of Unity's brain activity. Shared across all users.</p>
     <div id="connection-status">
       <div id="d-conn-text"><span class="status dead">disconnected</span> Connecting to brain server...</div>
-      <button id="btn-graceful-stop" class="btn-stop" title="Graceful brain shutdown — flushes definition disk cache, terminates worker pool, saves weights, then exits. Equivalent to running stop.bat. Use Savestart.bat to resume from saved state.">⏹ Stop Brain</button>
+      <!-- Admin/viewer badge. Default 'connecting' state until the
+           WS modeAssigned message arrives (~500ms after WS connect).
+           The 'admin-only' CSS class on #btn-graceful-stop hides it
+           until admin confirmed; same for #d-ms-advance below. -->
+      <span id="d-mode-badge" class="mode-badge mode-connecting" title="Connection role — admin sees brain controls; viewer sees read-only telemetry">⋯ connecting</span>
+      <button id="btn-graceful-stop" class="btn-stop admin-only" title="Graceful brain shutdown — flushes definition disk cache, terminates worker pool, saves weights, then exits. Equivalent to running stop.bat. Use Savestart.bat to resume from saved state. (Admin-only — hidden in viewer mode.)">⏹ Stop Brain</button>
     </div>
 
     <!-- Dashboard-zero diagnostic panel (collapsible). Operator 2026-06-17
@@ -296,7 +336,53 @@
         <div id="d-ms-grades" style="margin-top:6px;color:#888;font-size:11px;">grades: —</div>
         <div id="d-ms-signoffs" style="margin-top:6px;color:#888;font-size:11px;">operator signoffs: —</div>
         <div id="d-ms-weights" style="margin-top:6px;color:#555;font-size:10px;">weights file: —</div>
+        <!-- Auto-advance toggle. Single switch governing both the
+             /grade-advance signoff-bypass AND the curriculum runner's
+             auto-fire-next-grade behavior. Admin-only (hidden in
+             viewer mode via the .admin-only CSS class). Toggle state
+             persists across reboots via cortexCluster._autoAdvanceGrade
+             inside cortexState. -->
+        <div id="d-ms-auto-advance" class="admin-only" style="margin-top:10px;padding:8px 10px;background:#0a0a14;border:1px solid #1a1a2a;border-radius:4px;" title="ON = /grade-advance bypasses per-subject operator signoffs AND the curriculum runner auto-fires the advance after each cell pass. Use for unattended overnight K→PhD walks. OFF (default) = signoffs required + operator must click ▶ Start Next Grade between grades. Single switch — no separate bypass flag.">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:11px;color:#aaa;user-select:none;">
+            <input id="d-ms-auto-advance-cb" type="checkbox" style="width:14px;height:14px;cursor:pointer;flex-shrink:0;">
+            <span>Auto-advance to next grade after pass</span>
+            <span id="d-ms-auto-advance-state" style="margin-left:auto;font-size:10px;font-family:monospace;color:#555;">OFF</span>
+          </label>
+          <div style="margin-top:6px;font-size:9px;color:#666;line-height:1.4;">
+            ON = signoffs bypassed + grade auto-fired. OFF = per-subject signoffs required + manual ▶ Start Next Grade click.
+          </div>
+        </div>
         <div id="d-ms-advance" style="margin-top:10px;display:none;"></div>
+      </div>
+    </div>
+
+    <!-- Full-Mind K Gate panel. Renders state.fullMindK populated by
+         curriculum._aggregateFullMindK() — per-probe results across the
+         23 K-gate probes (6 RF + 4 W + 3 L + 4 SL + 2 RL + 2 RI + 2 CM)
+         plus the aggregate pass/fail rule (substrate group must all
+         pass, W+SL group ≥ 75%, CM both must pass). Pass-instrument
+         for K-grade closure per docs/TODO-full-syllabus.md §T16.5.b.
+         Bounded panel — 23 rows render in a scrollable table when the
+         probe set fills, aggregate row stays pinned at top. -->
+    <div class="card" style="margin-top:12px;" title="Full-Mind K Gate — 23 probes spanning Reading Foundations (6), Writing (4), Language (3), Speaking/Listening (4), Reading Literature (2), Reading Informational (2), and Cross-Modal (2). Pass rule: every substrate probe (RF + L + RL + RI = 13) must hit its threshold, ≥75% of developmental probes (W + SL = 8) must hit, and both cross-modal probes must hit. Together: gate the K-grade closure with real cognition verification, not just substrate mechanics. Source: docs/TODO-full-syllabus.md §T16.5.b lines 1311-1389.">
+      <div class="card-title">Full-Mind K Gate · 23 Probes · K-Closure Pass-Instrument</div>
+      <div id="d-fullmind-k" style="padding:8px 12px;font-family:monospace;font-size:11px;color:#aaa;line-height:1.5;">
+        <div id="d-fullmind-aggregate" style="background:#0a0a14;border:1px solid #1a1a2a;border-radius:4px;padding:8px 10px;margin-bottom:8px;">
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+            <span style="color:#888;font-size:10px;letter-spacing:0.5px;">AGGREGATE:</span>
+            <span id="d-fullmind-status" style="color:#9ca3af;font-weight:700;">— not yet run —</span>
+            <span id="d-fullmind-overall" style="margin-left:auto;color:#888;font-size:10px;font-family:monospace;">overall: —</span>
+          </div>
+          <div id="d-fullmind-groups" style="margin-top:6px;display:flex;gap:14px;flex-wrap:wrap;font-size:10px;color:#666;">
+            <span>substrate: <span id="d-fullmind-substrate" style="color:#888;">—</span></span>
+            <span>developmental: <span id="d-fullmind-developmental" style="color:#888;">—</span></span>
+            <span>cross-modal: <span id="d-fullmind-crossmodal" style="color:#888;">—</span></span>
+            <span>blockers: <span id="d-fullmind-blockers" style="color:#888;">—</span></span>
+          </div>
+        </div>
+        <div id="d-fullmind-probes" style="max-height:260px;overflow-y:auto;border:1px solid #1a1a2a;border-radius:4px;background:#08080c;">
+          <div style="padding:8px 10px;color:#555;font-size:10px;font-style:italic;">No probe results yet — `curriculum._aggregateFullMindK()` will populate this on the next K-closure gate run.</div>
+        </div>
       </div>
     </div>
 
@@ -712,6 +798,51 @@
         }
         log(`Welcome — ${msg.state?.connectedUsers ?? '?'} users online`);
       }
+      // Admin/viewer mode assignment — arrives ~500ms after WS connect
+      // (server-side delay lets the GPU compute worker identify itself
+      // first). Loopback origin → admin (operator on the host has all
+      // their tabs treated as admin); non-loopback → viewer (LAN
+      // visitor sees read-only telemetry).
+      if (msg.type === 'modeAssigned') {
+        const mode = msg.mode || 'viewer';
+        const isAdmin = mode === 'admin';
+        window.state = window.state || {};
+        window.state.viewerMode = !isAdmin;
+        window.state.mode = mode;
+        document.body.classList.toggle('is-admin', isAdmin);
+        const badge = document.getElementById('d-mode-badge');
+        if (badge) {
+          badge.className = `mode-badge mode-${mode}`;
+          badge.textContent = isAdmin ? '🔑 ADMIN' : '🟢 VIEWER';
+          badge.title = isAdmin
+            ? 'Admin role — Stop / Grade-advance / Signoff controls visible.'
+            : 'Viewer role — read-only telemetry. Brain controls hidden.';
+        }
+        log(`Mode assigned: ${mode}`);
+        // Pull the current auto-advance toggle state from the server so
+        // the dashboard checkbox reflects whatever the prior boot left
+        // set. Viewer-mode dashboards skip this — they never see the
+        // toggle anyway thanks to the .admin-only CSS class.
+        if (isAdmin) {
+          (async () => {
+            try {
+              const scheme = location.protocol === 'https:' ? 'https:' : 'http:';
+              const host = location.hostname || 'localhost';
+              const r = await fetch(`${scheme}//${host}:7525/auto-advance`, { cache: 'no-store' });
+              if (r.ok) {
+                const j = await r.json();
+                if (typeof j.enabled === 'boolean') applyAutoAdvanceState(j.enabled);
+              }
+            } catch { /* server may be transitioning — toggle stays at HTML default OFF */ }
+          })();
+        }
+      }
+      // WS echo of auto-advance toggle changes — fires when ANY admin
+      // tab POSTs /auto-advance, so every other connected dashboard
+      // syncs the checkbox state in real time without polling.
+      if (msg.type === 'autoAdvanceChanged') {
+        if (typeof msg.enabled === 'boolean') applyAutoAdvanceState(msg.enabled);
+      }
       if (msg.type === 'state') {
         safeUpdate(msg.state);
         appendEmotionSample(msg.state);
@@ -809,6 +940,12 @@
       // progress bar + per-subject cumulative breakdown. Same source
       // of truth: the Curriculum object's getCurriculumStatus().
       renderCurriculumStatus(s.curriculum || null);
+
+      // Full-Mind K Gate panel — 23-probe pass-instrument for K closure.
+      // Renders state.fullMindK populated by curriculum._aggregateFullMindK().
+      // Aggregate row + per-probe table with bounded scroll. Empty until
+      // the first aggregate run lands.
+      renderFullMindK(s.fullMindK || null);
 
       // Dynamic drug-state panel. Renders scheduler.snapshot()
       // (active substances with phase + level + combo badges + risk
@@ -1357,6 +1494,106 @@
       if (kwir) kwir.textContent = `🎯 ${prefix}WIRING ASSERTION`;
     }
 
+    /**
+     * Render the Full-Mind K Gate panel from state.fullMindK. Reads
+     * per-probe results (RF-1..RF-6, W-1..W-4, L-1..L-3, SL-1..SL-4,
+     * RL-1..RL-2, RI-1..RI-2, CM-1..CM-2) plus the aggregate entry
+     * written by curriculum._aggregateFullMindK(). Empty payload =
+     * "no run yet" placeholder, panel stays bounded.
+     */
+    function renderFullMindK(fullMindK) {
+      const statusEl = document.getElementById('d-fullmind-status');
+      const overallEl = document.getElementById('d-fullmind-overall');
+      const substrateEl = document.getElementById('d-fullmind-substrate');
+      const developmentalEl = document.getElementById('d-fullmind-developmental');
+      const crossmodalEl = document.getElementById('d-fullmind-crossmodal');
+      const blockersEl = document.getElementById('d-fullmind-blockers');
+      const probesEl = document.getElementById('d-fullmind-probes');
+      if (!statusEl || !probesEl) return;
+
+      if (!fullMindK || !fullMindK.hasRun) {
+        statusEl.textContent = '— not yet run —';
+        statusEl.style.color = '#9ca3af';
+        overallEl.textContent = 'overall: —';
+        substrateEl.textContent = '—';
+        substrateEl.style.color = '#888';
+        developmentalEl.textContent = '—';
+        developmentalEl.style.color = '#888';
+        crossmodalEl.textContent = '—';
+        crossmodalEl.style.color = '#888';
+        blockersEl.textContent = '—';
+        blockersEl.style.color = '#888';
+        probesEl.innerHTML = '<div style="padding:8px 10px;color:#555;font-size:10px;font-style:italic;">No probe results yet — `curriculum._aggregateFullMindK()` will populate this on the next K-closure gate run.</div>';
+        return;
+      }
+
+      // Aggregate row.
+      const agg = fullMindK.aggregate;
+      if (agg) {
+        const passed = agg.pass === true;
+        statusEl.textContent = passed ? '✓ PASS' : '✗ FAIL';
+        statusEl.style.color = passed ? '#22c55e' : '#ef4444';
+        overallEl.textContent = `overall: ${typeof agg.overallScore === 'number' ? (agg.overallScore * 100).toFixed(0) + '%' : '—'}`;
+        const sCount = typeof agg.substratePass === 'number' && typeof agg.substrateTotal === 'number'
+          ? `${agg.substratePass}/${agg.substrateTotal}` : '—';
+        substrateEl.textContent = sCount;
+        substrateEl.style.color = (agg.substratePass === agg.substrateTotal) ? '#22c55e' : '#f59e0b';
+        const dCount = typeof agg.developmentalPass === 'number' && typeof agg.developmentalTotal === 'number'
+          ? `${agg.developmentalPass}/${agg.developmentalTotal}` : '—';
+        developmentalEl.textContent = dCount;
+        const dRate = (typeof agg.developmentalPass === 'number' && agg.developmentalTotal > 0)
+          ? (agg.developmentalPass / agg.developmentalTotal) : 0;
+        developmentalEl.style.color = dRate >= 0.75 ? '#22c55e' : '#f59e0b';
+        const cmCount = typeof agg.crossModalPass === 'number' && typeof agg.crossModalTotal === 'number'
+          ? `${agg.crossModalPass}/${agg.crossModalTotal}` : '—';
+        crossmodalEl.textContent = cmCount;
+        crossmodalEl.style.color = (agg.crossModalPass === agg.crossModalTotal) ? '#22c55e' : '#ef4444';
+        const blockerList = Array.isArray(agg.blockers) ? agg.blockers : [];
+        blockersEl.textContent = blockerList.length === 0 ? 'none' : `${blockerList.length}: ${blockerList.slice(0, 3).join(' · ')}${blockerList.length > 3 ? ` +${blockerList.length - 3} more` : ''}`;
+        blockersEl.style.color = blockerList.length === 0 ? '#22c55e' : '#ef4444';
+      } else {
+        statusEl.textContent = '⏳ probes running...';
+        statusEl.style.color = '#f59e0b';
+        overallEl.textContent = 'overall: pending';
+      }
+
+      // Per-probe table — 23 rows in canonical order grouped by category.
+      const probeOrder = [
+        ['K.RF — Reading Foundations', ['RF-1', 'RF-2', 'RF-3', 'RF-4', 'RF-5', 'RF-6']],
+        ['K.W — Writing',               ['W-1', 'W-2', 'W-3', 'W-4']],
+        ['K.L — Language',              ['L-1', 'L-2', 'L-3']],
+        ['K.SL — Speaking & Listening', ['SL-1', 'SL-2', 'SL-3', 'SL-4']],
+        ['K.RL — Reading Literature',   ['RL-1', 'RL-2']],
+        ['K.RI — Reading Informational', ['RI-1', 'RI-2']],
+        ['Cross-modal',                  ['CM-1', 'CM-2']],
+      ];
+      const byProbe = fullMindK.byProbe || {};
+      const rows = [];
+      for (const [groupLabel, ids] of probeOrder) {
+        rows.push(`<div style="background:#0c0c12;padding:4px 10px;font-size:9px;letter-spacing:0.5px;color:#777;border-top:1px solid #1a1a2a;border-bottom:1px solid #1a1a2a;">${groupLabel}</div>`);
+        for (const id of ids) {
+          const probe = byProbe[id];
+          if (!probe) {
+            rows.push(`<div style="display:flex;padding:3px 10px;font-size:10px;color:#555;">
+              <span style="width:60px;color:#666;">${id}</span>
+              <span style="color:#444;">— not run —</span>
+            </div>`);
+            continue;
+          }
+          const scorePct = typeof probe.score === 'number' ? (probe.score * 100).toFixed(0) + '%' : '—';
+          const hit = probe.thresholdHit === true;
+          const iconColor = hit ? '#22c55e' : '#ef4444';
+          const icon = hit ? '✓' : '✗';
+          rows.push(`<div style="display:flex;padding:3px 10px;font-size:10px;color:#aaa;border-bottom:1px solid #111;">
+            <span style="width:60px;color:#888;">${id}</span>
+            <span style="width:60px;color:${iconColor};">${icon} ${scorePct}</span>
+            <span style="color:#555;font-size:9px;">${probe.ts ? new Date(probe.ts).toLocaleTimeString() : ''}</span>
+          </div>`);
+        }
+      }
+      probesEl.innerHTML = rows.join('');
+    }
+
     function renderCurriculumStatus(c) {
       const $ = id => document.getElementById(id);
       if (!c) {
@@ -1760,6 +1997,72 @@
       });
     })();
 
+    // Apply auto-advance toggle state to the checkbox UI. Centralized so
+    // the WS echo handler, the initial GET, and the user-click POST all
+    // pass through the same DOM update path — no chance of UI drift
+    // between server state and visible toggle.
+    function applyAutoAdvanceState(enabled) {
+      const cb = document.getElementById('d-ms-auto-advance-cb');
+      const stateEl = document.getElementById('d-ms-auto-advance-state');
+      if (cb) cb.checked = !!enabled;
+      if (stateEl) {
+        stateEl.textContent = enabled ? 'ON' : 'OFF';
+        stateEl.style.color = enabled ? '#f59e0b' : '#555';
+      }
+    }
+
+    // Wire the auto-advance toggle. Click → POST /auto-advance → server
+    // broadcasts autoAdvanceChanged via WS → applyAutoAdvanceState fires
+    // on this tab and every other connected dashboard. The local
+    // checkbox flips optimistically on click, then the WS echo
+    // confirms; if the POST fails, the echo never arrives and we
+    // revert the optimistic flip.
+    (function wireAutoAdvanceToggle() {
+      const cb = document.getElementById('d-ms-auto-advance-cb');
+      if (!cb) return;
+      cb.addEventListener('change', async () => {
+        const next = !!cb.checked;
+        const stateEl = document.getElementById('d-ms-auto-advance-state');
+        if (stateEl) {
+          stateEl.textContent = next ? 'ON' : 'OFF';
+          stateEl.style.color = next ? '#f59e0b' : '#555';
+        }
+        cb.disabled = true;
+        try {
+          const scheme = location.protocol === 'https:' ? 'https:' : 'http:';
+          const host = location.hostname || 'localhost';
+          const r = await fetch(`${scheme}//${host}:7525/auto-advance`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ enabled: next }),
+            cache: 'no-store',
+          });
+          const j = await r.json().catch(() => ({}));
+          if (!r.ok) {
+            // Revert the optimistic flip on rejection.
+            cb.checked = !next;
+            if (stateEl) {
+              stateEl.textContent = !next ? 'ON' : 'OFF';
+              stateEl.style.color = !next ? '#f59e0b' : '#555';
+            }
+            log(`Auto-advance POST rejected (${r.status}): ${JSON.stringify(j)}`);
+          } else {
+            log(`Auto-advance: ${j.enabled ? 'ON' : 'OFF'}`);
+          }
+        } catch (err) {
+          // Network failure — revert and let the operator retry.
+          cb.checked = !next;
+          if (stateEl) {
+            stateEl.textContent = !next ? 'ON' : 'OFF';
+            stateEl.style.color = !next ? '#f59e0b' : '#555';
+          }
+          log(`Auto-advance fetch failed: ${err?.message || err}`);
+        } finally {
+          cb.disabled = false;
+        }
+      });
+    })();
+
     // Poll /milestone every 5s for the curriculum/save panel. HTTP
     // instead of WebSocket because the values are low-frequency (updated
     // only on save events or grade signoffs) and a fresh GET on a known
@@ -1826,7 +2129,15 @@
         //      directs operator to POST /grade-signoff for LAW 6 Part 2
         const advEl = document.getElementById('d-ms-advance');
         if (advEl) {
-          if (!m.paused) {
+          // Viewer-mode dashboards never see the advance/signoff panel —
+          // those controls are admin-only. Force-hide + clear regardless
+          // of pause state. Same enforcement as the admin-only CSS class
+          // on #btn-graceful-stop, just applied via inline-style since
+          // this panel is populated dynamically via innerHTML.
+          if (window.state && window.state.viewerMode) {
+            advEl.style.display = 'none';
+            advEl.innerHTML = '';
+          } else if (!m.paused) {
             advEl.style.display = 'none';
             advEl.innerHTML = '';
           } else {

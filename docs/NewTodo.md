@@ -8,6 +8,37 @@
 
 ---
 
+## 🔬 SESSION 2026-06-19 — ROOT-CAUSE FIXES + FINAL CODE CHECK (post-outage, pre-walk hardening)
+
+> Gee 2026-06-19: *"im not training this thing for 5 weeks till we make sure everything is 100%"* + *"/super-review anything we missed or didnt do? add to todo final code check"*. This block is the durable record of the pre-walk hardening sweep (the harness task list is session-scoped and was wiped by a power outage at session start — findings live HERE so they survive).
+
+**SHIPPED THIS SESSION (working tree, uncommitted per no-push-until-PhD gate):**
+
+1. **word_motor lamination root-cause FIXED** (`js/brain/cluster.js` ~line 768). The lamination/microcolumn/hub region-list filter was `!rn.includes('_')`, which wrongly excluded the PRIMARY `word_motor` region (it has an underscore) → word_motor neurons never laminated (layerId=0) → the `sem→word_motor` emission projection's L4 dst-mask matched zero neurons → projection init nnz=0 → `ojaUpdate` (strengthen-only, no synaptogenesis) trained a permanent no-op → word emission structurally dead (chat silent; popups worked because they sample `wordBucketWords` lists, bypassing the dead projection). FIX: structural sub-band test (skip only names that extend a parent region as `<parent>_<suffix>`). VERIFIED: `sem_to_word_motor` nnz 0→7,258 at biological scale (162K); 0→895 at 20K; word_motor now laminates L1/L2-3/L4/L5/L6. `layerId` is recomputed at construction (not persisted) so the fix applies on resume too.
+2. **Dangling-import crashers FIXED (P4.x file-split regression):** `kindergarten.js` now imports `{normalizeSubject, wordMotorBandName}` from `../subjects.js` (was crashing `_teachWordEmissionDirect` → would crash the walk at first K word-emission phase); `cluster/emit.js` now imports `{normalizeSubject, SUBJECTS}` from `../subjects.js` (was crashing `emitWordDirect` → would crash live chat AND walk emission). Both invisible to `node --check` and masked by the esbuild bundle (single flattened scope); only the server's ESM source crashes.
+3. **Verification suite recovered** from git commit `21cf0f9` (a premature "product-ship" cleanup had deleted it): `verify-emission`, `measure-emergence`, `verify-curriculum-runtime`, `smoke-server-boot`, `readout-test`, `transformer-ablation`, `verify-size-parity`, + new `verify-word-emission-fix.mjs` (mechanism proof: 100% recovery fixed vs 17% chance on nnz=0) and `verify-realvocab-emission.mjs`. These are DEV-ONLY — re-strip / gitignore before any future product-ship push.
+
+**⛔ FINAL CODE CHECK — open items before the walk can be trusted (priority order):**
+
+| # | Item | Severity | Notes |
+|---|------|----------|-------|
+| FC.1 | **Broad dangling-import audit across ALL split modules** (cluster/{emit,hebbian,telemetry,probe}.js, server/brain-server/{gpu,state,memory,chat}.js, curriculum/*.js). Per-module: flag every referenced identifier not (locally declared \| imported \| JS global \| this./param) that IS exported by a sibling → add the import. | HIGH | Only the 2 emission-path files fixed so far. Walk exercises far more methods. node --check + bundle both hide this. Sample of 5 modules came back clean-or-local (mildly reassuring, not conclusive). Harness task #13. |
+| FC.2 | **Short localhost K run** (server + browser, minutes — NOT the 5-week walk) to PROVE real emission. Headless harness physically cannot (no GPU tick → sem-spikes=0). Watch chat + popups emit ≥3-word responses. | HIGH | Emission FUNCTIONALITY is unverified; #9 makes it possible, not confirmed. |
+| FC.3 | **Investigate `convergence early-exit at mean-cos=0.000 < 0.4` in `_teachSentenceStructure`/`_teachAssociationPairs`.** Treating mean-cos=0 (zero activity / collapse) as "converged" can mask training collapse as success + short-circuit grammar reps. | MEDIUM | Seen in verify-curriculum-runtime at small scale; confirm behavior at biological scale. |
+| FC.4 | **Confirm loadWeights doesn't clobber the fixed `sem_to_word_motor` CSR with a saved nnz=0** on Savestart resume from a pre-fix save. Walk uses fresh-start (auto-clear) so the WALK is safe; document that the walk MUST be a fresh start. | MEDIUM | layerId itself is fine (recomputed). |
+| FC.5 | **CONTROL A red flag:** clean-pattern propagate on REAL correlated subword embeddings recovered only 4% (vs 100% on uncorrelated). Validate emission QUALITY early in the localhost K run — real-vocab separability may need the full curriculum's training depth (Phase-2 reps/anti-Hebbian/WTA). | MEDIUM | If real-vocab stays unseparated after full training, deeper training-rule work needed. |
+| FC.6 | **DRY:** `server/brain-server/chat.js:1020,1082` redeclare `const SUBJECTS` locally (2×) instead of importing the canonical list. Drift risk. | LOW | Import from subjects.js, delete copies. |
+| FC.7 | **Dev-script hygiene:** recovered `scripts/verify-*.mjs` + `measure-emergence.mjs` etc. are dev-only diagnostics (were intentionally stripped for product-ship). Re-strip / gitignore before any product push. | LOW | Keep for now (pre-walk verification). |
+
+**FINAL CODE CHECK — closure status (2026-06-19):**
+- ✅ **FC.1 DONE** — broad dangling-import audit via `scripts/scan-dangling-imports.mjs` (call/ctor-aware). Found + fixed **emit.js dangling on 4 letter-input fns** (`encodeLetter`/`decodeLetterAlpha`/`inventorySize`/`inventorySnapshot`, used by the letter-chain emission methods) on top of the #12 subjects fixes. Scanner now reports zero call/ctor dangles across all split modules; server boots clean (no ReferenceError, sem_to_word_motor nnz=7,278).
+- ✅ **FC.3 DONE** — convergence early-exit hardened at both sites (curriculum.js ~10598 + ~12522): added `&& !(meanCos<0.05 && maxCos<0.05)` collapse guard so zero-activity/collapse can't masquerade as "converged."
+- ✅ **FC.4 DONE** — triple-safe: no brain-weights save files exist; walk is fresh-start; the cluster.js edit changes the brain-code hash → autoClearStaleState wipes stale weights before any restore. The fix can't be un-done by a resume.
+- ✅ **FC.6/FC.7 DONE** — chat.js `SUBJECTS` given SYNC comments (CJS can't import the ESM subjects.js; deliberate boundary copy); dev-scripts documented as keep-now/strip-before-product-ship.
+- ⏳ **FC.2 + FC.5 OPEN** — both require a SHORT localhost K run (server + browser GPU; minutes, NOT the 5-week walk). FC.2 = prove real words emit; FC.5 = validate real-vocab separability quality. Headless harness physically cannot test these (no GPU tick). These are the last gate to "emission proven functional."
+
+---
+
 ## 🧠 THE VISION — what we are building, in full
 
 Unity's brain has eight pillars. Each pillar maps to one or more architectural tracks below. The pillars compose at runtime: every tick, ALL of them fire simultaneously. There is no "language module" that runs in isolation — language is what falls out of cortex-amygdala-hippocampus-mystery interactions when sem state holds an intent. There is no "emotion module" — emotions are what fall out of attractor depth + drug state + hormone curves + memory associations.

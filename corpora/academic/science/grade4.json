@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "grade": "grade4",
+  "subject": "science",
+  "source": "Simple English Wikipedia (CC-BY-SA), cleaned + sentence-segmented",
+  "note": "Hybrid academic-depth corpus for science/grade4. Trained via curriculum._trainAcademicStories. Real openly-licensed curriculum content; lived-year + math stay bespoke.",
+  "experiences": [
+    {
+      "theme": "solar-system",
+      "story": "the solar system is a group of space objects that are held together by gravity, with the sun in the center. the sun is a huge ball of hot glowing gas that gives off light and heat. everything else in the solar system moves around the sun. the solar system formed about 4.6 billion years ago when a giant cloud of gas and dust collapsed and started to spin. scientists call this process the solar nebula theory. as the cloud collapsed, gravity caused it to spin faster and flatten into a disk. the sun formed at the center, while the remaining material in the disk slowly stuck together to form planets through a process called accretion. most of the material went into forming the sun, and the rest became planets and other objects. there are eight main planets, including earth, and many moons that orbit them. there are also dwarf planets like pluto, as well as asteroids, comets, meteoroids, and tiny particles called interplanetary dust. our solar system is part of a galaxy called the milky way. it lies in a part of the galaxy called the orion arm, about 27,000 light-years from the center of the milky way. there are eight planets in our solar system. starting from the closest to the sun, they are: mercury, venus, earth, mars, jupiter, saturn, uranus, and neptune."
+    },
+    {
+      "theme": "ecosystem",
+      "story": "an ecosystem is a large community of living organisms and non-living components in a particular area. the living and physical components are linked together through nutrient cycles and energy flows. ecosystems are of any size, but usually they are in specific places. each ecosystem has its own community. an aquarium community, for example, can have small fish and other organisms. a desert community may have cacti, small snakes, and scorpions. a pond community can have frogs, insects, snakes, and plants, and a forest community may have rabbits, foxes and pine trees. the species in a community are divided into populations according to the particular habitats and ecological niches in the ecosystem. ecosystems are stable, but changeable. they react to major changes in the environment, especially climate changes. for example, the major rainforests have lasted for a long time . as the rainfall and temperature changes, they change. we know that the amazon rainforest shrank in size during ice ages, and expanded in the warmer periods. what drives all ecosystems is the primary production."
+    }
+  ]
+}

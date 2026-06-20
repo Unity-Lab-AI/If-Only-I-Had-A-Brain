@@ -46,8 +46,29 @@ const CACHE_MAX = 10000;
 const cache = new Map();
 const inFlight = new Map();
 
-// Error entries get TTL; positive entries persist forever.
-const ERROR_TTL_MS = 5 * 60 * 1000; // 5 minutes
+// Error entries get a TYPE-AWARE TTL; positive entries persist forever.
+// FC.11 — the per-word vocab pre-teach was re-stalling on the same ~67 words
+// every 5 min (a 429 rate-limit death-spiral): error cached → 5-min TTL expires
+// → re-fetch → 429 again → re-cache → loop (197 stalls in a single K walk,
+// 5-12s each, blocking the walk from ever reaching cell content training).
+// Now the TTL depends on WHY it failed:
+//   • no-definition (404 / empty / no-defs) → PERMANENT — the word genuinely
+//     has no dictionary entry; never waste another API call on it.
+//   • 429 rate-limited → long backoff — don't re-hammer the free-tier API
+//     mid-walk; the cached miss rides for hours.
+//   • transient (network / parse / 5xx) → moderate retry window.
+// Net: a fresh restart loads the cached errors and the vocab seed becomes
+// cache-only (minutes, not hours), and it scales to every grade K→PhD instead
+// of paying a per-word API tax 45k times.
+const ERROR_TTL_MS = 60 * 60 * 1000;            // 60 min — transient (network/parse/5xx)
+const RATE_LIMIT_TTL_MS = 6 * 60 * 60 * 1000;   // 6 h — 429 rate-limited
+// no-definition (noDef) entries are PERMANENT (TTL Infinity).
+function _errorEntryExpired(entry) {
+  if (!entry || !entry.error || !entry.fetchedAt) return false;
+  if (entry.noDef) return false;                // permanent — never re-fetch
+  const ttl = entry.rateLimited ? RATE_LIMIT_TTL_MS : ERROR_TTL_MS;
+  return (Date.now() - entry.fetchedAt) > ttl;
+}
 
 // Concurrency cap on prefetch + back-off on 429.
 //
@@ -79,8 +100,9 @@ function _cachePut(key, value) {
 function _cacheGet(key) {
   const entry = cache.get(key);
   if (!entry) return null;
-  // error entries expire after TTL.
-  if (entry.error && entry.fetchedAt && (Date.now() - entry.fetchedAt) > ERROR_TTL_MS) {
+  // error entries expire after a type-aware TTL (FC.11 — no-def permanent,
+  // 429 long backoff, transient moderate retry).
+  if (_errorEntryExpired(entry)) {
     cache.delete(key);
     return null;
   }
@@ -137,7 +159,9 @@ async function getDefinition(word, opts = {}) {
         return null;
       }
       if (!res.ok) {
-        _cachePut(key, { error: true, fetchedAt: Date.now() });
+        // 404 = word has no dictionary entry → permanent (noDef, never
+        // re-fetch). Other non-OK (5xx) = transient → normal retry window.
+        _cachePut(key, { error: true, fetchedAt: Date.now(), noDef: res.status === 404 });
         return null;
       }
       // 114.19er.1 — wrap res.json() in its own timeout race. AbortController
@@ -153,7 +177,8 @@ async function getDefinition(word, opts = {}) {
         new Promise((_, reject) => setTimeout(() => reject(new Error(`json-parse-timeout-${jsonTimeoutMs}ms`)), jsonTimeoutMs)),
       ]);
       if (!Array.isArray(data) || data.length === 0) {
-        _cachePut(key, { error: true, fetchedAt: Date.now() });
+        // OK response but no data → word has no entry → permanent (noDef).
+        _cachePut(key, { error: true, fetchedAt: Date.now(), noDef: true });
         return null;
       }
       const definitions = [];
@@ -174,7 +199,8 @@ async function getDefinition(word, opts = {}) {
         }
       }
       if (definitions.length === 0) {
-        _cachePut(key, { error: true, fetchedAt: Date.now() });
+        // Parsed OK but zero usable definitions → no entry → permanent (noDef).
+        _cachePut(key, { error: true, fetchedAt: Date.now(), noDef: true });
         return null;
       }
       const first = definitions[0].definition;
@@ -335,8 +361,8 @@ if (DISK_CACHE_PATH) {
         let restored = 0;
         for (const [key, entry] of Object.entries(parsed.entries)) {
           if (entry && typeof entry === 'object') {
-            // Skip stale error entries (TTL expired).
-            if (entry.error && entry.fetchedAt && (Date.now() - entry.fetchedAt) > ERROR_TTL_MS) continue;
+            // Skip stale error entries (type-aware TTL — FC.11).
+            if (_errorEntryExpired(entry)) continue;
             cache.set(key, entry);
             restored += 1;
           }

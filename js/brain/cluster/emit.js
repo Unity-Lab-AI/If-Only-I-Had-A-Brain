@@ -42,6 +42,19 @@
 // we dont half ass shit" directive.
 import { sharedEmbeddings } from '../embeddings.js';
 import { T14_TERMINATORS, FUNCTION_WORDS } from '../cluster.js';
+// Subject-key helpers used by emitWordDirect's per-subject word_motor
+// sub-band argmax. These live in subjects.js; the P4.2 emission-method
+// split moved emitWordDirect here but not its subjects import, so the ESM
+// source path threw `normalizeSubject is not defined` at emit time (the
+// browser bundle masked it via esbuild's flattened single scope). Server
+// chat + curriculum walk load ESM source, so the import is required here.
+import { normalizeSubject, SUBJECTS } from '../subjects.js';
+// Letter-inventory helpers used by the letter-chain emission methods
+// (generateSentence / generateSentenceAwait) moved here in the P4.2 split.
+// Same dangling-import class as the subjects helpers above — used in code,
+// never imported, so the ESM source path threw ReferenceError when the
+// letter-emission methods ran (bundle masked it via flattened scope).
+import { encodeLetter, decodeLetterAlpha, inventorySize, inventorySnapshot } from '../letter-input.js';
 
 export const CLUSTER_EMIT_MIXIN = {
   _dictionaryOracleEmit(intentSeed, opts = {}) {
@@ -814,7 +827,7 @@ export const CLUSTER_EMIT_MIXIN = {
    * @returns {{ sentence: string, words: string[], fillCount: number,
    *            coherenceCosine: number|null, coherenceTarget: string|null } | null}
    */
-  async composeSentence(intentSeed = null, opts = {}) {
+  async _composeSentenceOnce(intentSeed = null, opts = {}) {
     // converted to async + ticks the brain between word
     // emissions. PRIOR behavior was synchronous loop that called
     // emitWordDirect 12 times on the SAME frozen lastSpikes — the
@@ -1125,6 +1138,24 @@ export const CLUSTER_EMIT_MIXIN = {
       coherenceTarget = opts.cortexPattern;
       coherenceTargetLabel = 'cortexPattern';
     }
+    // 114.19fn — intentSeed fallback target for best-of-N reranking. Only
+    // resolved when the wrapper set _forceCoherenceScore (reranking active)
+    // and no explicit concept/cortex target exists. Ranks the emission
+    // against the seed that put the brain in this state. Gated on the flag
+    // so single-shot probe/gate paths never pay this embedding cost.
+    if (!coherenceTarget && opts._forceCoherenceScore && intentSeed) {
+      try {
+        if (typeof intentSeed === 'string') {
+          if (sharedEmbeddings && typeof sharedEmbeddings.getSentenceEmbedding === 'function') {
+            coherenceTarget = sharedEmbeddings.getSentenceEmbedding(intentSeed.replace(/_/g, ' '));
+            coherenceTargetLabel = 'intentSeed';
+          }
+        } else if (intentSeed.length > 0) {
+          coherenceTarget = intentSeed;
+          coherenceTargetLabel = 'intentSeed';
+        }
+      } catch { /* nf */ }
+    }
     if (coherenceTarget && sharedEmbeddings && typeof sharedEmbeddings.getSentenceEmbedding === 'function') {
       try {
         const sentenceEmb = sharedEmbeddings.getSentenceEmbedding(sentence);
@@ -1161,6 +1192,202 @@ export const CLUSTER_EMIT_MIXIN = {
     }
 
     return { sentence, words, fillCount: words.length, coherenceCosine, coherenceTarget: coherenceTargetLabel, compositional };
+  },
+
+
+  /**
+   * 114.19fn — Sentence-coherence Phase 1: best-of-N coherence reranking.
+   *
+   * The per-candidate emission loop lives in `_composeSentenceOnce` — a
+   * pure equational autoregressive emit, NO templates. This wrapper runs
+   * that loop up to N times and returns the candidate with the highest
+   * MEASURED coherenceCosine against the intent/cortex target. This is NOT
+   * template prescription: every candidate emerges purely from trained
+   * weights; we only SELECT among independently-emerged emissions by their
+   * own post-hoc coherence score — rejection sampling, same family as
+   * top-K / nucleus decoding. When no coherence target exists (no
+   * intentConcept, no cortexPattern) reranking is meaningless, so N
+   * collapses to 1 and behaviour is byte-identical to a single pass.
+   *
+   * Candidate independence: _composeSentenceOnce zeroes the sem region's
+   * externalCurrent at entry, so candidates don't poison each other — every
+   * roll starts from the same fresh intent window.
+   *
+   * Cost note: N candidates = N× emission ticks. Reranking is OPT-IN — a
+   * caller turns it on with opts.coherenceCandidates > 1. This is
+   * deliberate: probe / gate paths must NOT rerank (best-of-N would inflate
+   * gate scores and triple walk latency — they need honest single-shot
+   * measurement). The chat / generation path opts in because there we want
+   * Unity's best emission. Default (no opt-in) is N=1, byte-identical to a
+   * single pass. Clamped [1,5].
+   *
+   * Coherence target for ranking: when no explicit intentConcept /
+   * cortexPattern target exists, the opted-in path ranks candidates against
+   * the intentSeed itself ("did the emission stay coherent with what we
+   * asked?") — resolved inside _composeSentenceOnce only when reranking is
+   * active (_forceCoherenceScore), so single-shot paths pay zero extra cost.
+   *
+   * @param {string|Float32Array|null} intentSeed — see _composeSentenceOnce
+   * @param {object} opts — passed through unchanged; plus:
+   * @param {number} [opts.coherenceCandidates] — N candidates to emit when
+   *   > 1 (opt-in). Absent or ≤ 1 → single pass, no behaviour change.
+   * @returns {object|null} the winning candidate's result object (same
+   *   contract as _composeSentenceOnce) with two extra fields:
+   *   candidatesEvaluated (number of non-null rolls), coherenceSelected
+   *   (true when reranking chose a candidate other than the first roll).
+   */
+  async composeSentence(intentSeed = null, opts = {}) {
+    // Reranking is strictly OPT-IN via opts.coherenceCandidates > 1. Probe /
+    // gate paths deliberately don't opt in (honest single-shot + no latency
+    // tax during a full curriculum walk); the chat path opts in.
+    let N = 1;
+    if (typeof opts.coherenceCandidates === 'number' && opts.coherenceCandidates > 1) {
+      N = Math.min(5, Math.floor(opts.coherenceCandidates));
+    }
+
+    if (N === 1) {
+      const only = await this._composeSentenceOnce(intentSeed, opts);
+      if (only) { only.candidatesEvaluated = 1; only.coherenceSelected = false; }
+      return only;
+    }
+
+    // When reranking, force the intentSeed-fallback coherence target inside
+    // _composeSentenceOnce so every candidate gets a rankable cosine even
+    // when the caller passed no explicit concept/cortex target.
+    const onceOpts = Object.assign({}, opts, { _forceCoherenceScore: true });
+
+    let best = null;
+    let bestScore = -Infinity;
+    let bestIndex = -1;
+    let evaluated = 0;
+    for (let n = 0; n < N; n++) {
+      // Honour cancellation between candidates — don't burn ticks on an
+      // aborted turn. If we already have a winner, return it; else null.
+      if (opts.signal && opts.signal.aborted) break;
+      const cand = await this._composeSentenceOnce(intentSeed, onceOpts);
+      if (!cand) continue;
+      evaluated++;
+      // coherenceCosine is null when the post-check couldn't run (no
+      // sentence-embedding fn, empty target). Treat null as a score floor so
+      // any SCORED candidate beats an unscored one, but an unscored candidate
+      // still wins over having nothing at all (best stays the first non-null).
+      const score = (typeof cand.coherenceCosine === 'number') ? cand.coherenceCosine : -Infinity;
+      if (best === null || score > bestScore) {
+        best = cand;
+        bestScore = score;
+        bestIndex = n;
+      }
+    }
+
+    if (!best) return null;
+    best.candidatesEvaluated = evaluated;
+    best.coherenceSelected = bestIndex > 0;
+
+    // Bounded telemetry — how often reranking changed the pick. Never
+    // touches emission; read by dashboards / audits.
+    if (!this._coherenceRerankStats) {
+      this._coherenceRerankStats = { calls: 0, reranked: 0, candidates: 0 };
+    }
+    this._coherenceRerankStats.calls++;
+    this._coherenceRerankStats.candidates += evaluated;
+    if (bestIndex > 0) this._coherenceRerankStats.reranked++;
+
+    return best;
+  },
+
+
+  /**
+   * I.21 — ON-THE-FLY MEMORY DERIVATION (core mechanism). When chat hits a
+   * memory GAP (a concept the brain wasn't explicitly trained on), derive a
+   * plausible grounded answer by INTERPOLATING against trained weights —
+   * compose from the concept seed so the answer emerges from adjacent trained
+   * schemas/priors (the equational way), surfaced with a HEDGE register
+   * ("i think... "). Three contracts per Supertodo §7:
+   *   1. CONSISTENCY ON RECALL — a derived answer is cached; the same gap
+   *      returns the SAME answer next time (no re-deriving, no contradiction).
+   *   2. SENSITIVE TOPICS GATE-BLOCKED — concepts on the content-boundary
+   *      sensitive list REFUSE to derive (canonical-only); never invent
+   *      sexual content involving minors or other excluded canon.
+   *   3. OPERATOR CORRECTION — `correctDerivedMemory(concept, value)` lets Gee
+   *      overwrite a derived memory; the corrected value sticks (consistency).
+   *
+   * Hebbian-commit + episodic-store of the derivation are follow-on wiring
+   * (need the episodic API); this is the derivation + gate + cache core.
+   *
+   * @param {string} concept — the gap concept (e.g. a name/fact chat lacks)
+   * @param {object} [opts] — passed to composeSentence (temperature etc.)
+   * @returns {Promise<{derived:boolean, concept:string, answer?:string,
+   *   hedge?:boolean, refused?:boolean, reason?:string}>}
+   */
+  async deriveMemoryGap(concept, opts = {}) {
+    const key = String(concept || '').toLowerCase().trim();
+    if (!key) return { derived: false, reason: 'empty-concept' };
+
+    // (2) sensitive-topic gate — boundary canon refuses to derive.
+    if (this._isSensitiveGapTopic(key)) {
+      return { derived: false, refused: true, concept: key, reason: 'canonical-only (sensitive topic — does not derive)' };
+    }
+
+    // (1) consistency — return the prior derivation if this gap was hit before.
+    if (!this._derivedMemories) this._derivedMemories = new Map();
+    if (this._derivedMemories.has(key)) return this._derivedMemories.get(key);
+
+    // derive — interpolate against trained weights via composeSentence seeded
+    // by the concept. The answer EMERGES from adjacent trained basins/priors.
+    let answer = null;
+    if (typeof this.composeSentence === 'function') {
+      try {
+        const r = await this.composeSentence(concept, {
+          intentConcept: key,
+          coherenceCandidates: 3,
+          ...opts,
+        });
+        answer = r && r.sentence ? r.sentence : null;
+      } catch { answer = null; }
+    }
+    if (!answer) {
+      // Honest gap — no plausible derivation. Don't fabricate; signal silence.
+      return { derived: false, concept: key, reason: 'no-derivation (honest gap)' };
+    }
+
+    const result = { derived: true, concept: key, answer, hedge: true };
+    this._derivedMemories.set(key, result);   // cache for consistency-on-recall
+    return result;
+  },
+
+  /**
+   * I.21 sensitive-topic gate. Concepts matching the content-boundary
+   * sensitive list NEVER derive (canonical-only) — the brain refuses to
+   * INVENT excluded content (sexual content involving minors, the excluded
+   * trauma canon, etc.). Boundary lives in `feedback_content_boundary_minor_sexual_excluded`.
+   */
+  _isSensitiveGapTopic(concept) {
+    const c = String(concept || '').toLowerCase();
+    if (!this._SENSITIVE_GAP_TERMS) {
+      // Markers that must NOT be derived/invented — only canonical content
+      // (authored, boundary-checked) may ever supply these. Minor + sexual
+      // co-occurrence and the excluded trauma canon are hard-blocked.
+      this._SENSITIVE_GAP_TERMS = [
+        'molest', 'abuse', 'rape', 'incest', 'cousin sex', 'underage',
+        'child sex', 'kid sex', 'minor sex', 'when i was little sex',
+        'first time' /* sexual first-time as a child gap — canonical-only */,
+      ];
+    }
+    return this._SENSITIVE_GAP_TERMS.some(t => c.includes(t));
+  },
+
+  /**
+   * I.21 operator-correction. When Gee corrects a derived memory, overwrite
+   * the cached derivation so the corrected value sticks (consistency). Pass
+   * value=null to forget a derivation (forces a fresh derive next time).
+   */
+  correctDerivedMemory(concept, value) {
+    const key = String(concept || '').toLowerCase().trim();
+    if (!key) return false;
+    if (!this._derivedMemories) this._derivedMemories = new Map();
+    if (value == null) { this._derivedMemories.delete(key); return true; }
+    this._derivedMemories.set(key, { derived: true, concept: key, answer: String(value), hedge: false, corrected: true });
+    return true;
   },
 
 

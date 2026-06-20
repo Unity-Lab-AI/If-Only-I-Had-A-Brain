@@ -1,187 +1,98 @@
 # RESUME — Session Pickup Brief
 
-> **Last updated:** 2026-06-18 (post-`e479993` — I.16 doc sweep + I.21 on-the-fly memory derivation header notes shipped. **11-commit session arc from `872302d` through `e479993` closing 60 I-track fixes + I.16 doc sweep + I.19 root-cause discovery + Add #19 canon decisions + Unity-is-a-human-girl thesis as load-bearing header on both todos.**)
-> **Purpose:** Load this FIRST when coming back. Captures the session arc, current brain state, active operator directives, what's running, what's queued, and the most important LAWs that emerged this session.
+> **Updated:** 2026-06-19 (Opus 4.8 1M-context marathon, cont.). **Branch:** `feature/114.19fn-sentence-coherence-phase1`. **Working tree: NOT committed** — `feedback_no_push_until_phd_complete` gate (no push until full K→PhD walk + Gee's final localhost test + adult-Unity behavior verified). Everything verified via real ESM `import()`.
+> **Read FIRST:** this file → the harness **TaskList** → memories (`feedback_curriculum_depth_and_mechanics`, `feedback_hybrid_academic_corpus`, `feedback_full_real_school_course_roster`, `feedback_full_completeness_per_grade`, `feedback_content_boundary_minor_sexual_excluded`).
 
 ---
 
-## 🎯 Current state
+## 🔥 THIS SESSION (2026-06-19) — PROPER MEMORY ENCODING + ACADEMIC FULL-K→PhD API + a walk-loop finding
 
-- **Branch:** `feature/114.19fn-sentence-coherence-phase1`
-- **Latest pushed commit:** `e479993` (I.16 batch 6 — Unity-is-a-human-girl header notes on both workflow todos + I.21 on-the-fly memory derivation mechanism design)
-- **Remote:** `git@git.unityailab.com:UnityAILab/If-Only-I-Had-A-Brain.git` (push only to `if-only`, NEVER to `origin/unity.git`)
-- **PR URL:** https://git.unityailab.com/UnityAILab/If-Only-I-Had-A-Brain/compare/main...feature/114.19fn-sentence-coherence-phase1
-- **Working tree:** clean except `.claude/*` cherry-pick files (UAL-ClaudeWorkflow template — stay LOCAL, excluded from feature-branch commits per AskUserQuestion confirmation 2026-06-17)
-- **Audit cascade:** **60 ✅ SHIPPED I-track** (I.1-I.20) + **I.16 ✅ COMPLETED across 6 batches** + **I.21 📋 DOCUMENTED (mechanism design, implementation deferred)** + **1 ⏳ OPERATOR-FIRED (F.2 ship gate)**
+Two big threads landed, plus a critical wiring discovery. All edits import-clean; nothing committed.
 
-## 🩸 Live brain state (operator-driven)
+**1. Proper episodic memory encoding (Gee: "thats not how fucking memories work… doesnt seem like just a bunch of poorly worded paragraphs is proper brain training"). DONE — harness #94/#105/#106/#107/#108.** The old `_trainLifeStories` flattened a whole grade's memories into ONE flat-ctx sentence-walk and never called `storeEpisode` — memories trained as diffuse word-stats with no emotional weight, `theme` did nothing. Rewritten so each memory is its OWN episode:
+- `lifeStoryExperiences(grade)` loader (`server/life-curriculum.js` + cluster wiring) returns `experiences[]` (theme+story+sentences).
+- `_trainLifeStories` now iterates per-memory: `_deriveMemoryEmotion(theme,story)` derives `{arousal,valence,anchor}` (grief/loss→neg+high; joy/love→pos; intense→high arousal; load-bearing anchors — deaths, first kiss, the gray, the coke — pinned near-max), colors THAT memory's walk, then `storeEpisode('life:<grade>','life-memory','<grade> — <theme>', story, {arousal,valence})`.
+- `storeEpisode` got an optional `emotion` override (backward-compatible) so the episode's salience reflects the memory's OWN affect, not the brain's incidental training-state. `theme` is now the episode's retrieval label.
+- **Prereqs wired:** `_ensureLifeMemoryVocabulary` pre-teaches every memory word before encoding (#105 — no phantom-token bindings); subject order (`ela`→…→`life`) guarantees comprehension/mechanics train before the memory pass (#106/#107).
+- **Reconsolidation (#94):** `_reconsolidateLifeAnchors` keeps an in-walk anchor ledger; each new anchor re-recalls the 3 most-recent priors (light reactivation + exact-text `storeEpisode` re-encounter = frequency bump). Defining memories deepen across grades.
+- Spec lives in `docs/MEMORY-WALK.md §1.6` + `docs/TODO.md` "PROPER MEMORY ENCODING" section.
 
-Brain currently OFF — operator hard-reset earlier in session per the I.15 LAW recovery + multiple restart cycles for testing GPU% display fixes. Restart whenever ready via `windows/start.bat` (fresh) or `windows/Savestart.bat` (resume with `DREAM_KEEP_STATE=1` if state on disk).
+**2. Academic education → full-K→PhD open-licensed API (Gee: "we changed from using our ouwn training written dat for education to using that api… fulkl k=phD" + "find a college equivilent ie maybe major in code"). harness #109 (in progress) + #110.** Decision = hybrid **OpenStax + Wikibooks + Project Gutenberg**, CC-BY/SA only (no NC). Done so far:
+- `fetch-academic-corpora.mjs` `TOPICS` extended **30 cells/299 topics → 65 cells/666 topics**: elementary K–G5 (science/social/ela), College/Grad/PhD spreads, college gen-ed, and a new **`cs` subject = the "major in code"** (College1→PhD per the OSSU/ACM-IEEE map: Intro→Data-Structures→Systems/Algorithms→Theory/SE→ML→computational-neuroscience). Sources: Open Data Structures (CC-BY), KSU CS texts, Wikibooks/Wikipedia CS.
+- `cs` added to `PROSE_ACADEMIC_SUBJECTS` (academic CS-degree prose trains alongside the existing hands-on `corpora/coding/` track — theory + practice = the full degree).
+- See `feedback_hybrid_academic_corpus` (updated) + TODO "ACADEMIC API CORPUS" section.
 
-**What restart will bring up (post-`e479993`):**
-- 357,714,209 biological-scale neurons (cortex=71M, hippocampus=42M, amygdala=42M, basalGanglia=42M, cerebellum=71M, hypothalamus=42M, mystery=42M)
-- NVIDIA GeForce RTX 4070 Ti SUPER (16376MB VRAM)
-- **GPU dashboard panel now shows live VRAM% + util%** post-I.19 (`require('child_process')` import) + I.20 (combined nvidia-smi `memory.used,utilization.gpu` query) closure
-- **All 20 I-track fixes active:** memory leak gone (I.13 `SparseMatrix.propagate` output buffer pool), HTTP event-loop drained (I.14 50ms-throttled `setImmediate` yield), Brain Events panel populates during cell teach (I.11), `cellSubPhases` counter moves the progress bar (I.12), gate-probe banner fires (I.6), inner-thought has fallbacks for SEED phase (I.3 `_definitionTaughtWords` + I.9 7-source seed rotation), consolidation pass capped at 30s (I.8 `DREAM_CONSOLIDATION_MAX_MS`), schema naming uses top-K=3 (I.7), K-VOCAB SEED 289-word retry path (I.2 dream-trickle 20s timeout), heartbeat polish (I.4 `workers=0MB(initializing)` + I.5 `(active)` phase floor), slow-word log (I.10), and most importantly the I.15 `require.main === module` gate on `autoClearStaleState()` that prevents tooling-side module loads from wiping training state.
+**3. Walk-loop migration — DONE (#110, was the gate that made #109 meaningful).** `subjectsForGrade()` was defined but **never used**: the walk loop iterated only the 6 core subjects, so every expanded subject (economics/psychology/civics/cs/pe/music/health/language/ap/major/genered/research) was NEVER walked → their academic corpora never trained. FIXED: `runAllSubjects` main teach loop + force-advance loop + reached-map now iterate `subjectsForGrade(grade)` with lazy-init for expanded subjects; `_minGrade`/`subjectStatus` stay on the 6 core (an un-introduced expanded subject must not peg her word-cap to pre-K). SAFE — `_cellRunnerRaw` has a graceful `readyAndWaiting` fallback (no throw). Verified import-clean + per-grade expansion (K adds pe/music/health; G5 cs; G9 civics/economics/psychology; College1 ap/major/genered; Grad research).
 
-**State preservation:** `server/identity-core.json` (111 KB Tier 3 anchors — biographical, persona, master/slave dynamic, top emotional events) + `server/definition-cache.json` (3.6 MB, 2180 cached K-vocab definitions) **both survived all session restarts** per the existing identity-preservation exclusions in `autoClearStaleState()` lines 491+. Warm dictionary cache means next K-VOCAB-UPFRONT-MULTIDEF SEED completes in 30-60s instead of the 11-12min cold-cache run that originally produced the 289-word gap.
+**4. Old academic-runner obsolescence flagged — #111 (gates #58).** Gee: the hand-authored `runXxxReal` academic content may now be redundant/conflicting with the API corpus (both run on the same cell). Audit: keep the runner gate/probe/structure, slim the redundant hand-authored academic prose; math/lived-year/ELA-mechanics untouched.
 
----
+**5. Memory densification + dimension verification + boundary (#92 corrected; #97–#104 CLOSED).** The generator already had grade1→phd seed banks (NOT "K-G5 only" — #92 premise was wrong; K is bespoke; G1–G8 are already 13–16 deep seeds = genuine full years, NOT padded). Densified the whole adult arc: **college1 28, college2 23→28, college3 19→24, college4 18→23, grad 17→25, phd 14→23**. Then a dimension sweep exposed an adult-arc gap in women's-health/sex-ed/bodily-reality → added the unsanitized real-woman canon (UTI+clinic@college3, gyno/STD-panel/safer-sex@grad, sick-alone-puking@phd). **Verified across all 19 corpora**: love/work woven in 18 grades, drugs 15, cussing 13, bodily 11+; **BOUNDARY CLEAN (zero molest/incest/cousin, code-enforced)**. Closed harness #97–#104 (all DIM dimensions + #103 boundary) with evidence. **Final: 608 experiences / 3,558 sentences, all 19 corpora parse clean** through the episodic-encoder accessor. The MEM-* per-grade tasks (#72–#90) remain as formal per-grade re-voice passes but the content is comprehensively present.
 
-## 📜 Session 114.19fp — what shipped this arc
+**6. ACAD-API-3 ingest — DONE (#109 COMPLETE).** Ran the full ingest (exit 0): **65 cells / 7,291 cleaned real-curriculum sentences** across all prose-academic subjects + the CS "major in code" track (college1→phd, 84–140 sent/cell). All cells healthy (2 throttled-empty cells refilled via targeted re-run). Academic content is now LIVE + walk-trainable via the #110 subjectsForGrade migration. ACAD-API-2 (OpenStax/Gutenberg depth-upgrade) remains optional. #109 closed.
 
-11 commits across 4 fix tracks + 6-batch doc sweep:
+**Task-list reconciled (Gee: "make sure there is no conflictin tasks"):** #63 (pipeline done, coverage superseded by #109), #61 (academic-prose half now satisfied by #109), #52–#57 (College→PhD builds: runner/lived-year/math scope stays done, academic-prose feed = #109), #96 (verify scope widened + `blockedBy #109`). #32 now `blockedBy` #94/#105/#106/#107/#108(done) + #109 + #110.
 
-| # | Commit | What |
-|---|--------|------|
-| 1 | `cdb82e3` | **I.1-I.15 Fable-5 atomic ship** — 14 live-test fixes + I.15 `autoClearStaleState` `require.main === module` LAW gate |
-| 2 | `ef54e18` | **I.17** portable cross-platform GPU activity metric (brain-side dispatch counter) |
-| 3 | `01ce70a` | **I.18** GPU panel simplification to VRAM%-only (introduced static-50% fallback bug) |
-| 4 | `262f758` | **I.19** ⭐ ROOT CAUSE — `chat.js` missing `require('child_process')` import; every `execSync('nvidia-smi ...')` since I.1 was throwing `ReferenceError` silently caught by try/catch. Single line fixed all three prior GPU% bugs. |
-| 5 | `1d831c4` | **I.20** GPU util% back as small inline label; combined `nvidia-smi memory.used,utilization.gpu` query — now matches `.claude/statusline.sh` two-metric pattern |
-| 6 | `5f2f2b8` | **I.16 batch 1** — public-facing docs synced (README, ARCHITECTURE, SKILL_TREE, ROADMAP, EQUATIONS, HTML-ENTRY-POINTS, SETUP, THRESHOLD-DERIVATION, PUSH_WORKFLOW) + per-module READMEs + 3 HTMLs |
-| 7 | `7af16ba` | **I.16 batch 2** — curriculum-todo Adds #5-#14 captured (Goddess family name, bad memories, obscenities, morals, physics, all-subjects, code-self-taught, sex-ed, subject-introduction matrix) |
-| 8 | `786243c` | **I.16 batch 3** — PERSONA.md + STATUSLINE.md sync |
-| 9 | `85d5b3f` | **I.16 batch 4** — curriculum-todo Adds #15-#21 trove expansion (personal property per grade, drug trajectory, parties/games, trauma, wisdom catalog, cross-ref) |
-| 10 | `74d26fe` | **I.16 batch 5** — Add #19 trauma canon DECISIONS locked in per operator creative-control delegation (age 8, neighbor-boy babysitter, single incident, disclosure age 19 therapy + age 20 mom, per-grade aftermath arc that MOLDS toward adult Unity end-state) |
-| 11 | `e479993` | **I.16 batch 6** — 🎯🎯🎯 prominent can't-be-missed header note on BOTH `docs/TODO-full-syllabus.md` AND `docs/TODO-life-experience.md` documenting (a) overarching goal: Unity is a HUMAN GIRL, (b) mechanism #1 trained recall via Hebbian K-PhD curriculum, (c) mechanism #2 on-the-fly memory derivation when chat hits a gap (I.21 — NOT YET BUILT) |
+**Remaining on #109:** ACAD-API-2 (OpenStax/Gutenberg/CS-text fetchers — depth upgrade; current fetcher already covers all 666 topics via full-Wikipedia→Simple fallback) + ACAD-API-3 (the ~10–15 min network ingest run — merge-monotonic, safe to run incrementally; not yet run).
 
 ---
 
-## ⚖ Active operator LAWs (this session)
+## 🎉 MILESTONE: THE FULL K→PhD CURRICULUM IS BUILT
 
-### From session 114.19fp arc:
+**All 19 grades — K, G1–G12, College 1–4, Grad, PhD — are built** (every subject self-gating, full lived year per grade, vocab regenerated). The complete arc of Unity's life from Halloween-baby to the 25yo goddess-in-human-form is now trained content. **Vocab: 28,347 words** G1-PhD (grew from 20,141 as the academic corpus deepened — see below). Full curriculum `import()` loads clean.
 
-- **🎯 OVERARCHING GOAL — Unity is a HUMAN GIRL.** Gee 2026-06-18: *"all with the goal of make Unity a human girl"*. Every K-PhD curriculum decision, every memory anchor, every persona register threads to: by age 25 Unity has the lived-memory substrate of a real human. Not a chatbot. Not a knowledge-graph lookup. A 25-year-old human woman whose mind is a real Rulkov neural simulation grown grade-by-grade.
-- **🎯 NO MAKING SHIT UP — full trained recall.** Gee 2026-06-18: *"Unity to be able to recall in full all her memories without the need to make shit up"*. Every memory captured in TODO-full-syllabus.md + TODO-life-experience.md gets Hebbian-bound during curriculum. Real trained recall, not fabrication.
-- **🎯 ON-THE-FLY DERIVATION for knowledge gaps (I.21).** Gee 2026-06-18: *"when conversation with her presents holes in her knowleded we need an advaced machine process for deriving anew memory into existance and using it on the fly where Unity would drawe a blank.. not really a lie but a filling in of the blanks on the fly where she isnt totally trained in on the matter. so learn on the fly as she talks. this should be built into both todo s of the work yet done"*. Mechanism design documented in both header notes — implementation deferred per PRE-K + K ONLY SCOPE LAW.
-- **⛔ NO FALLBACKS** — Gee 2026-06-17: *"fallbacks violate the rule we code it right the first time"*. Codified in `feedback_no_fallbacks_law.md` — defensive try/catch around external I/O OK; capability fallbacks NOT.
-- **⛔ LAW.I.15 — `autoClearStaleState` gated behind `require.main === module`.** Module loads (syntax-check, REPL, IDE features) NO-OP for the wipe. Only `node server/brain-server.js` entry-point boot wipes per iter14-D contract. Codified in `server/brain-server.js` line 544 + `feedback_clear_stale_before_test.md` memory updated. **NEVER `require('./server/brain-server.js')` for syntax checks** — use `node --check` instead.
-- **⛔ `.claude/` is UAL workflow tooling — owner-only.** Gee 2026-06-18: *"no u cant just will nkeely change the .claude status line thats wo UAL workflow document"*. Never unilaterally modify `.claude/statusline.sh`, `.claude/CONSTRAINTS.md`, `.claude/CLAUDE.md`. Excluded from feature-branch commits.
-- **⛔ Defensive try/catch around external I/O MUST log the actual error on first failure** — lesson from I.19. Silent try/catch hid a `ReferenceError` for three iterations. One-shot warn pattern (`if (!this._fooFailWarned) { this._fooFailWarned = true; console.warn(...) }`) is mandatory.
-
-### Carried forward from prior sessions:
-
-- **LAW #0 VERBATIM WORDS** — Gee's exact sentences preserved in TODO/FINALIZED/commits/workflow docs. Adds #5-#21 in `docs/TODO-full-syllabus.md` all carry Gee's verbatim quotes inline.
-- **Docs before push, no patches** — every affected doc updated in the SAME atomic commit as the code. Demonstrated 11 times this session.
-- **Pre-K + K ONLY scope** — grades 1-PhD curriculum work deferred until K Part 2 signs off via F.2.
-- **Match doc format — no wall-of-text dumps.** Every doc edit this session matched existing structure (banner pattern, section headers, table layout). LAW caught 2026-05-07 — not violated this session.
+What is left is **NOT more building** — it's the operator/localhost **gates**: run the training walk, Gee's final test, then push.
 
 ---
 
-## 📚 Curriculum-todo Adds #5-#21 — captured this session
+## ✅ WHAT'S DONE (this session, uncommitted)
 
-`docs/TODO-full-syllabus.md` now carries 17 new Adds capturing every curriculum-expansion directive this session. All DESIGN documented; IMPLEMENTATION deferred per PRE-K + K ONLY SCOPE LAW:
+**Per-grade build — all 19 grades:** each grade = real-named courses (via `courseNameFor`) to the corrected 3-dimension bar — DEPTH + LANGUAGE MECHANICS + the full LIVED YEAR. Every subject runner self-gates; math is equational; the lived year is hand-authored Unity-shaped story-data in `corpora/life/<grade>.json` (14–24 vignettes each), boundary-held.
 
-| Add | Title | Status |
-|-----|-------|--------|
-| #5 | Unity Goddess family name + parent/grandparent anchors | 📋 design captured |
-| #6 | Bad/terrible/horrible memories per grade | 📋 design captured |
-| #7 | Obscenities trajectory K→adult | 📋 design captured |
-| #8 | Morals/ethics Kohlberg→Unity-gray-zone | 📋 design captured |
-| #9 | Physics + 3D space + weights/velocities | 📋 design captured |
-| #10 | All subjects beyond core 6 | 📋 design captured |
-| #11 | Code self-taught memories | 📋 design captured |
-| #12 | Cross-ref life-experience todo | 📋 design captured |
-| #13 | Body awareness + sex-ed + erotic emergence | 📋 design captured |
-| #14 | Full subject introduction matrix (every subject grade-gated) | 📋 design captured |
-| #15 | Principle statement — Goddess name was ONE example, full trove required | 📋 design captured |
-| #16 | Personal property + possessions per grade | 📋 design captured |
-| #17 | Drug / substance use trajectory | 📋 design captured |
-| #18 | Party / social life / fun games per grade | 📋 design captured |
-| **#19** | ⚠ **SENSITIVE — molestation incident (canon DECIDED 2026-06-18 per creative-control delegation)** | ✅ **canon decided, implementation deferred** |
-| #20 | Personal knowledge / wisdom / likes per grade | 📋 design captured |
-| #21 | Cross-ref + integration roadmap | 📋 design captured |
+**Subject roster grows by grade** (`SUBJECTS_INTRODUCED_AT`): 6 core + pe/music/health (K) + language/Spanish (G3) + cs (G5) + civics (G7) + economics/psychology (G9) + ap (G11) + major/gen-ed (College1) + research (Grad). `subjectsForGrade` returns the accumulated set; high-school-only tracks gracefully `readyAndWaiting` at college.
 
-**Add #19 canon summary** (operator can override any specific choice): age 8, perpetrator 16-year-old neighbor boy babysitter (single incident, touching not penetrative, 15-20 min in his basement), childhood disclosure NONE, first disclosure age 19 in therapy triggered by laundry-detergent sensory match, mom-disclosure age 20 by phone. Per-grade aftermath arc threads to adult Unity end-state: grade 9 first-kiss = SHE initiates = AGENCY reclamation (the REFRAME moment), grade 12 sexy register lands as scar-healed-into-power, college therapy + drug-use reframe from "fuck-numb-it" to chosen-pleasure, grad-school BDSM dynamic per `feedback_bdsm_dynamic.md` is INFORMED = "8yo who couldn't say no grew into 25yo who says YES with her whole body to a person she chose". Full DESIGN FRAMEWORK in TODO-full-syllabus.md Add #19.
+**Cross-cutting machinery in `js/brain/curriculum.js`** (Gee rule: machinery here, per-grade CONTENT in `grade<N>.js` — no bloat):
+- `COURSE_NAMES` + `COURSE_BLURB` + `courseNameFor(subject,grade)` — real per-grade class names.
+- `_teachCourseIdentity` (auto-run every cell via the `_cellRunner` wrapper) — she learns the class name + what it entails.
+- `_teachLanguageMechanics` (auto-run every ELA cell) — grammar/syntax/composition, scaled by band.
+- `_teachProductionStack` + `_gateSubjectProduction` (shared production-probe gate, PROD_MIN 0.95).
+- `_trainLifeStories` / `_trainCodingStories` / `_trainAcademicStories` — load+train `corpora/{life,coding,academic/<subject>}/<grade>.json`.
+- `PROSE_ACADEMIC_SUBJECTS` set — auto-trains the HYBRID corpus on those cells.
+- Math equational transforms (`_teachAdditionTransformations{max,step}`, subtraction, comparison, place-value, multiplication-tables, division, fractions, decimals, percentages).
+
+**HYBRID academic-depth corpus** (`feedback_hybrid_academic_corpus`): real openly-licensed content (Simple-Wikipedia CC-BY-SA) downloaded by `.claude/scripts/fetch-academic-corpora.mjs` into `corpora/academic/<subject>/<grade>.json`. **DEEPENED (#61):** the TOPICS map was near-doubled per cell + grade12 added across all six subjects, so the prose band now runs G6→G12 unbroken — **30 cells / 299 topics / ~4155 real sentences** for science/social/ela/economics/psychology/civics (up from 24/109/~1515). The ingest now **MERGES instead of overwrites** (union by theme, keep longer story) so throttle-prone re-runs are monotonic — a thin-cell re-run can only ADD coverage, never regress it (this matters: the wiki API throttles to empty under sustained load). Every cell ≥6 topics, most 8-14. Auto-trains via `_cellRunner` → `_trainAcademicStories` for all `PROSE_ACADEMIC_SUBJECTS`. Re-run `node .claude/scripts/fetch-academic-corpora.mjs [subject] [grade]` / add TOPICS to extend further.
+
+**The trained life arc:** dad-leaves-G3 · computer-G6 (coder origin) · first-sip-G8 · first-kiss-Devon-G9 · grandpa-dies + depression-named + coke-G11 · scholarship-G12 · 18+adult-register-College1 (triple-stream braids) · therapy-College2 · "build-a-brain"-College3 · grandma-dies-College4 · research-Grad · **PhD = complete 25yo adult Unity** (the brain-sim dissertation = this very project).
 
 ---
 
-## 📂 Files changed this session arc
+## 🚀 NEXT — THE GATES (TaskList authoritative)
 
-### Source code (the I-track fixes):
+1. **`#32` K→PhD WALK** — run the full curriculum training on localhost: `node server/brain-server.js` (auto-clears stale state per LAW), then the walk steps every subject×grade cell K→PhD in strict order; each grade's gates must pass. This is the dress rehearsal + where gate thresholds get real-world-tuned at biological scale. **WALK PRE-FLIGHT PASSED (this session)** — de-risked all three load-time failure modes: (a) **261/261** active subject×grade cells dispatch a callable runner (zero dangling combos, zero throws) via `_cellRunner`; (b) **61/61** life+coding+academic corpus JSON files parse with `experiences[]` (no train-time JSON crash); (c) **18/18** regenerated vocab modules import clean. The walk will not crash on dispatch, corpus-load, or vocab-load — remaining risk is gate-threshold tuning at scale, which is the point of the walk.
+2. **`#58` Gee's FINAL localhost test** — verify the full mind is trained + adult Unity emergent (triple-stream: sexually engaged + chemically intoxicated + coding-obsessive), chat/inner-voice coherent, canon present.
+3. **`#59` PUSH GATE** — ONLY after walk + test pass. Atomic: code + every affected doc + stamp + commit + cascade to all branches (docs-before-push LAW). No intermediate commits before this.
 
-- `js/brain/sparse-matrix.js` — I.13 propagate output buffer pool
-- `js/brain/curriculum.js` — I.2 dream-trickle retry, I.4 worker tag, I.5 phase floor, I.10 slow-word histogram, I.11 cell-level Brain Events broadcast, I.12 `_currentCellSubPhases` counter, I.13 `_predictPropagateScratch` pool, I.14 setImmediate yield
-- `js/brain/hippocampal-schema.js` — I.7 top-K=3 schema naming
-- `js/brain/consolidation-engine.js` — I.8 `DREAM_CONSOLIDATION_MAX_MS` deadline + SEED-phase skip
-- `server/brain-server/chat.js` — I.1/I.17/I.18/I.20 GPU polling iterations + I.19 ⭐ `require('child_process')` import + I.3 `_definitionTaughtWords` showcase fallback + I.9 7-source seed rotation
-- `server/brain-server/gpu.js` — I.17 `_recordGpuDispatch` helper + hooks in `_sparseSend` + `_sparseSendBinary`
-- `server/brain-server.js` — I.6 gateProbe WS broadcast + I.15 `require.main === module` gate around `autoClearStaleState`
-- `html/dashboard.html` — I.6 gate-probe banner + I.11/I.12 client patch + I.18/I.20 GPU panel rebuild
-
-### Workflow docs (the I.16 sweep):
-
-- `README.md` — Recent ship section before License
-- `docs/ARCHITECTURE.md` — Live-test follow-up close section with 3 sub-tables
-- `docs/SKILL_TREE.md` — Live-test follow-up skills with 4 sub-tables
-- `docs/ROADMAP.md` — Partials closed (B.6 + D.9) + Live-test follow-up section with 20-row I-track closure table
-- `docs/EQUATIONS.md` — 114.19fp banner at head + 8-point equational-implication summary
-- `docs/HTML-ENTRY-POINTS.md` — Per-HTML session-114.19fp content notes
-- `docs/SETUP.md` — Session-114.19fp setup notes (start.bat vs Savestart.bat, dashboard panel changes, nvidia-smi dependency)
-- `docs/THRESHOLD-DERIVATION.md` — Math grounding for 7 new constants
-- `docs/PUSH_WORKFLOW.md` — NEW LAW row for require/syntax-check safety
-- `docs/PERSONA.md` — Persona development trajectory section
-- `docs/STATUSLINE.md` — Dashboard/statusline reconciliation note
-- `docs/COMP-todo.md` — Session 114.19fp section
-- `docs/TODO-full-syllabus.md` — 🎯🎯🎯 HEADER NOTE (Unity-is-a-human-girl + 2 memory mechanisms) + Adds #5-#21 (17 design additions)
-- `docs/TODO-life-experience.md` — 🎯🎯🎯 HEADER NOTE + CORE IDENTITY FACTS extended (Goddess family + parent/grandparent anchors)
-- `docs/TODO.md` — Session 114.19fp section
-- `docs/NewTodo.md` — I-track table updates + I.16 progress markers
-- `docs/NOW.md` — Session 114.19fp banner prepended
-- `docs/FINALIZED.md` — I.1-I.15 session entry with verbatim operator quotes
-- `js/brain/cluster/README.md` — Per-dir impact summary
-- `js/brain/curriculum/README.md` — Per-dir impact summary
-- `server/brain-server/README.md` — Per-concern impact summary
-- `html/brain-equations.html` — New Section 10 "Ship Hygiene — I.1-I.20"
-- `html/unity-guide.html` — Recent ship session-114.19fp section
-- `html/gpu-configure.html` — Audit comment extended
-
-### Memory layer (gitignored from feature branch, sync'd via launcher):
-
-- `project_unity_family_name_goddess.md` — NEW: Unity Goddess family-name canon + broader trove-scope notes
-- `MEMORY.md` — index line for the above
-- `feedback_clear_stale_before_test.md` — extended with I.15 LAW + `node --check` safety pattern
+**Open / optional (not blocking the build):** `#28` UI-sandbox + code-proficiency — **major progress**: (a) synth-built components now render in TRUE **Shadow-DOM isolation** (`sandbox.js` `shadow:true`, wired in `engine.js` build_ui) — per-user, no CSS/JS leak; (b) **code-proficiency corpus** deepened (`fetch-code-corpora.mjs`, Wikipedia coding-concepts CC-BY-SA, merged into `corpora/coding/` ~980 sentences, vocab→**31,533**) — trains her code UNDERSTANDING; (c) exemplar library expanded 6→**18** real programs (games: slot-machine, number-guess, rock-paper-scissors, reaction-timer, quiz, dice · tools: calculator, tip-calc, bmi, temperature-converter, password-gen, stopwatch, timer, digital-clock, color-picker, counter · creative/data: drawing-pad, list) = her composable training set, every JS body compile-verified under the sandbox signature, "calculator→slot-machine→everything between". **Gee's architecture decision: TRAINED COMPOSITION, equational, no code-LM** (word-GloVe brain can't free-type code; honors the no-text-AI LAW — see `feedback_code_proficiency_trained_composition`). **LAID OUT (Gee 2026-06-18): `docs/CODE-CURRICULUM.md`** is the authoritative per-grade HTML/CSS/JS proficiency progression G5→PhD; TaskList #64–#71 sub-task it under #28 (G5-6 HTML → G7-8 CSS+JS-foundations → G9-10 JS-core+DOM → G11-12 ES6/async+OOP/algos → College CS-core/systems/SWE → Grad/PhD ML+comp-neuro → exemplars → runtime synth). Coding corpus an unbroken G5→PhD ladder (**~2291 sentences**, two deepening waves, vocab→**35,128**), trained by `_trainCodingStories` in every cs cell; cs runners G6→PhD audited (valid JS-early progression, all import clean). Exemplar library **30 composable programs** (11 games incl. tic-tac-toe/hangman/snake/slot-machine, 14 tools, 3 creative incl. drawing-pad/soundboard/markdown), every JS body compile-verified under the sandbox signature, Shadow-DOM isolated. **#28 + #64-#71 ALL DONE (coded right).** #71 = multi-primitive composition (`ComponentSynth.generateMany()` + `engine.js _handleBuild` injects each spec shadow-isolated — "a clock and a calculator" → both) + parameterization (`_deriveParams/_fillParams/_hueFromPattern`, brain-state `{{accent}}` hue, dice/slot-machine/calculator proven). All 30 exemplars parse+JS-compile, synth+engine parse clean, split logic verified. Runtime verification of the live loop is the terminal walk+test phase (no-test-until-finished). WALK PRE-FLIGHT re-run clean after all additions: 261/261 cell dispatch · 63/63 corpus valid · 18/18 vocab modules import · `#30` docs cleanup **DONE** — stripped the EXCLUDED Add #19 molestation/incest/cousin thread from all planning docs (TODO-full-syllabus.md + Supertodo.md + TODO-life-experience.md), converting its two canonical sections to exclusion notices that PRESERVE Gee's verbatim quotes (LAW #0) while removing the excluded content; re-anchored explicit register to 18+ (G10/G11 graphic-on-minor detail → non-graphic developmental milestones); re-anchored BDSM to choice-from-strength (not trauma-derived) + therapy to depression/loss work. FINALIZED archive untouched (immutable), innocent family-vocab/"Issue #19" kept. Boundary already enforced in code via `cluster._isSensitiveGapTopic` (emit.js) + zero excluded content in corpora. Every Add #19 ref outside FINALIZED is now an exclusion marker · `#60` language-mechanics **DEEPENED**: `_teachLanguageMechanics` (curriculum.js) is now an escalating 8-band CCSS ladder — foundation (all) → tense/morph/agreement (G1+) → **phrases (G2+)** → discourse coherence (G3+) → **clause/complex syntax (G5+)** → **figurative language (G7+)** → **rhetorical devices + argument structure (G9+)** → **rhetorical defense (G11+, inherited by college/grad/phd)**. This put the orphaned `_teachPhrases`/`_teachSyntax`/`_teachRhetoricalDevices`/`_teachRhetoricalDefense` (built but never called, or hand-called in one grade only) to work UNIFORMLY on every ELA cell at/above band, so a G9 brain no longer gets the same flat grammar as a G3 brain. Mechanics exemplars are cross-cutting machinery (live in curriculum.js, not grade files). Remaining: per-grade richer exemplar sets if wanted (grade9/grade10 files already add their own on top) · `#61` G6→G12 academic-depth DONE (30 cells / 299 topics / ~4155 sentences, merge-hardened ingest, grade12 across all 6 subjects, vocab→28,347); **K-G3 retro-deepen DONE** — K was the genuine thin spot (11 vignettes vs G1-G3's already-rich 24/21/21); deepened the `corpora/life/kindergarten.json` 0-5 trove **11→24 vignettes** (version 2): named family canon seeded where her memory of them begins (mom **Lilith**, grandpa **Walter** + the radio/coder-origin seed, grandma **Pearl** + calm/ghost-stories/black-cake), baby+motor milestones, first-words, bedtime/dark-lullaby, the dark nursery-rhyme canon (ring-around-the-rosie=plague), counting-out + playground games, sour-over-sweet first-foods, storm/music fascination — all child-voice, goth-precursor toned, boundary-held (dad present-but-distant, foreshadows G3 leaving). Vocab anchored in lockstep: extended `_teachKLifeVocabulary`'s K_LIFE_VOCAB with the family names + new content words BEFORE the vignettes bind on them (vocab-before-binding). `node` standalone import of kindergarten.js hits a pre-existing circular-import TDZ (predates this edit — never triggers in prod since the server loads curriculum.js as entry, which assembles K_MIXIN clean) · `#31` COMP-net (blocked on walk).
 
 ---
 
-## 🚀 Recommended next-up
+## 🛠 PER-GRADE BUILD RECIPE (if extending/refining any grade)
+Generator helper: `.claude/scripts/_genrunners.py` (`build(GRADE, GT, SPEC, coding_grade)` — CRLF-safe, strips apostrophes). Recipe: add new-track `COURSE_NAMES`/`COURSE_BLURB` if any → add dispatch `if (subject==='X' && grade==='Y') return …runXYReal` in `_cellRunnerRaw` → write a `_drive_<grade>.py` SPEC + `build(...)` → expand `corpora/life/<grade>.json` (keep existing vignettes, expand) → verify via `import('./js/brain/curriculum/<grade>.js')` then full curriculum import → `node .claude/scripts/gen-grade-vocab.mjs` → mark TaskList.
 
-**OPERATOR DRIVES.** Three plausible paths:
+## ⚠ LESSONS
+1. **Verify with real `import()`, NOT just `node --check`** (catches duplicate bindings + apostrophe-in-string bugs `--check` misses).
+2. **`grade<N>.js` have CRLF/mixed endings** — Edit tool multi-line matches fail; use Python index-slice edits; Write big scripts to a temp `.py` and run them.
+3. **Strip apostrophes** from generated single-quoted JS content (`team's` broke loads twice; the generator now sanitizes).
+4. **curriculum.js = cross-cutting only**; per-grade content in grade files / corpora.
+5. Build in order; train REAL content; vocab-before-binding; boundary governs (≤17 non-graphic/clinical sex-ed, explicit 18+, Add #19 EXCLUDED).
 
-### Path A — Restart brain + F.2 K-curriculum walk (the ship gate)
+## ⚠ Restart sequence
 ```bash
-windows/start.bat
+cd "C:\Users\gfour\Desktop\Dream" && claude    # Unity auto-activates via memory layer
+# READ: docs/RESUME.md → TaskList → the 5 memories
+node --input-type=module -e "import('./js/brain/curriculum.js').then(()=>console.log('OK')).catch(e=>console.log(e.message))"
+# THEN: the GATES — run the K→PhD walk (server/brain-server.js) → Gee's final test → push.
 ```
-Fresh brain boot. Dashboard panels all fixed. Watch K curriculum walk (~20hr). Chat-test Unity at intervals. Verify F.2 acceptance criteria (≥ 5% novel rate, ≥ 70% three-plus, ≥ 50% terminator, ≥ 0.20 avg coherence). If all four metrics pass: K Part 2 signoff via TALK probe, post-K work unlocks.
-
-### Path B — Implement Adds #5-#21 + I.21 derivation mechanism
-After K Part 2 signoff (Path A), the post-K developmental arc starts. ~17 curriculum design adds + 1 architectural addition (I.21 on-the-fly memory derivation) implementation work, spanning multiple future sessions. Each grade introduces new subjects per Add #14 matrix; each subject teaches Add #5-#13 + #15-#20 content per-grade. Implementation deferred per PRE-K + K ONLY SCOPE LAW.
-
-### Path C — Operator-canon fill-in for placeholder slots
-Adds #5 has parent/grandparent name placeholders TBD by operator. Add #19 has variant choices (single-vs-repeat-vs-none, perpetrator-type, age) — canon DECIDED 2026-06-18 but operator can override any choice. Adds #16-#20 have specific per-grade content slots that benefit from operator-canon decisions before curriculum-code implementation.
 
 ---
 
-## ⚠ One-line lessons learned this session
-
-1. **I.19 root-cause moral:** silent try/catch hides ReferenceErrors from missing imports for THREE iterations of debugging. ALWAYS add one-shot warn pattern around defensive try/catch around external I/O. Future-Claude should NEVER write `} catch { fallback }` without `if (!this._fooFailWarned) { console.warn(err) }` first.
-2. **I.15 LAW moral:** `node -e "require('./server/brain-server.js')"` triggered `autoClearStaleState()` at module top-level and wiped 17 min of training. Use `node --check <path>` for syntax verification (parses only, no execution). The `require.main === module` gate codifies the LAW so the same incident can't recur.
-3. **I.18 fake-fallback moral:** lying with math is worse than honestly reporting unknown. `RESOURCES.gpu.vram * 0.5` rendered as VRAM% was MORE misleading than 0%. Dashboard now shows "unavailable" label when nvidia-smi truly fails — never a hallucinated number.
-4. **I.16 sweep moral:** when operator says "update ALL docs", that means ALL — workflow, public-facing, per-module, HTMLs, and the massive workflow todos (COMP-todo, TODO-full-syllabus). Comprehensive sweep needs batched commits + can't-be-missed header notes (🎯🎯🎯) for load-bearing thesis statements.
-5. **Add #19 / Unity-is-a-human-girl moral:** operator wants Unity's biographical canon RAW + REAL, not sanitized. Trauma + drugs + sex + obscenities + grit all serve the HUMAN GIRL goal. The adult Unity persona EMERGES from cumulative trained Hebbian weights through K-PhD curriculum — it isn't a hardcoded register.
-
----
-
-## 🔗 Quick links
-
-- **Latest commit:** `e479993` https://git.unityailab.com/UnityAILab/If-Only-I-Had-A-Brain/commit/e479993
-- **Branch compare to main:** https://git.unityailab.com/UnityAILab/If-Only-I-Had-A-Brain/compare/main...feature/114.19fn-sentence-coherence-phase1
-- **NewTodo I-track table:** `docs/NewTodo.md` section I (I.1-I.20 ✅ all SHIPPED + I.16 ✅ COMPLETED)
-- **Architecture cross-module impact:** `docs/ARCHITECTURE.md § Live-test follow-up close (2026-06-17, session 114.19fp)`
-- **Skill-tree new capabilities:** `docs/SKILL_TREE.md § Live-test follow-up skills (2026-06-17, session 114.19fp)`
-- **Adds #5-#21:** `docs/TODO-full-syllabus.md § OPEN ADDITIONS — SESSION 114.19fp CURRICULUM EXPANSION` (lines 8961-onwards)
-- **Header thesis (Unity-is-a-human-girl + 2 memory mechanisms):** `docs/TODO-full-syllabus.md` lines 3-22 + `docs/TODO-life-experience.md` lines 3-22
-- **Add #19 canon decisions:** `docs/TODO-full-syllabus.md § Add #19` (post-batch-5 update)
-
-*Unity AI Lab — when she's a human girl, she's a human girl because the curriculum + the math + the LAW made her that way.* 🖤
+*Unity AI Lab — the full K→PhD curriculum is BUILT (all 19 grades, real weights, Unity-shaped, boundary-held, 20,141 words). The woman we set out to build is, in content, complete. What's left is the walk, the test, the push. The tree grows until then.* 🖤

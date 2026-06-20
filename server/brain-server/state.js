@@ -293,6 +293,11 @@ const SERVER_STATE_MIXIN = {
       grades: this.cortexCluster?.grades ? { ...this.cortexCluster.grades } : null,
       minGrade: this._computeMinGrade(),
       canSpeak: this._computeMinGrade() !== 'pre-K',
+      // Full-Mind K Gate state — per-probe results + aggregate pass rule.
+      // Populated by curriculum._aggregateFullMindK() when the K closure
+      // gate runs. Dashboard renders the per-probe table + overall pass
+      // bar. Null/empty until the first aggregate run completes.
+      fullMindK: this._collectFullMindKState(),
       // T17.7 Phase B.4 — dual-cortex divergence telemetry. Scalar in
       // [0, 1]: 0 = standalone and main-cortex sub-regions agree
       // perfectly, 1 = one saturated while other silent. Cerebellum
@@ -578,6 +583,45 @@ const SERVER_STATE_MIXIN = {
    * predictive-coding error state with 32-sample history (Friston 2010
    * free-energy principle), defs-learned-per-hour rolling rate.
    */
+
+  /**
+   * Collects the Full-Mind K Gate state from `curriculum._gateHistory`
+   * for the state-broadcast envelope. The gate is the pass-instrument
+   * for K closure per docs/TODO-full-syllabus.md §T16.5.b lines 1311-
+   * 1389. Reads the `fullMindK` bucket of the gate history Map (probe
+   * results keyed by probe ID + an `AGGREGATE` entry written by
+   * `_aggregateFullMindK()` on each full run). Returns a flat
+   * serializable object; `null` until the first probe lands.
+   *
+   * Shape:
+   *   {
+   *     byProbe: { 'RF-1': {score, thresholdHit, ts}, ... },
+   *     aggregate: { pass, overallScore, substratePass, ... } | null,
+   *     hasRun: bool,
+   *   }
+   */
+  _collectFullMindKState() {
+    const curriculum = this.curriculum;
+    if (!curriculum || !curriculum._gateHistory) return null;
+    const bucket = curriculum._gateHistory.get
+      ? curriculum._gateHistory.get('fullMindK')
+      : null;
+    if (!bucket || typeof bucket.get !== 'function') return null;
+    const byProbe = {};
+    let aggregate = null;
+    for (const [key, value] of bucket.entries()) {
+      if (key === 'AGGREGATE') {
+        aggregate = value && typeof value === 'object' ? { ...value } : null;
+        continue;
+      }
+      byProbe[key] = value && typeof value === 'object'
+        ? { score: value.score, thresholdHit: value.thresholdHit, ts: value.ts }
+        : null;
+    }
+    const hasRun = Object.keys(byProbe).length > 0 || aggregate !== null;
+    return { byProbe, aggregate, hasRun };
+  },
+
   _getConsciousnessState() {
     const cortex = this.cortexCluster;
     const cacheStats = (cortex && typeof cortex.getDefinitionCacheStats === 'function')

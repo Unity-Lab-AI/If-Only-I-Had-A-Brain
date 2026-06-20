@@ -765,11 +765,27 @@ export class NeuronCluster {
         // assignment. Earlier first pass at line ~503 was removed
         // (cluster-wide assignment that this loop overwrote anyway).
         // Allocate arrays here on first run.
-        const regionNames = Object.keys(this.regions).filter(rn =>
-          // Skip nested sub-bands (sem_ela / sem_math / etc) — they
-          // overlap their parent region. Only iterate top-level.
-          !rn.includes('_')
-        );
+        // Skip nested sub-bands (sem_ela, word_motor_math, etc) — they
+        // OVERLAP their parent region's neuron range, so laminating them
+        // would double-assign layerId/columnId over the same neurons. A
+        // sub-band's name extends a PARENT region's name as
+        // `<parentRegion>_<suffix>`; detect that structurally instead of by
+        // "contains an underscore". The prior `!rn.includes('_')` test wrongly
+        // excluded the PRIMARY `word_motor` region (no region named "word", so
+        // it is NOT a sub-band) — leaving every word_motor neuron unlaminated
+        // (layerId=0). The sem→word_motor projection's L4 dst-mask then matched
+        // ZERO neurons → topographic init produced nnz=0 → Oja (which only
+        // strengthens existing synapses, never creates them) trained a no-op →
+        // word emission was structurally dead. Keeping word_motor in the list
+        // restores its lamination/microcolumns/hubs so the emission projection
+        // wires with real L4 targets.
+        const _allRegions = this.regions;
+        const regionNames = Object.keys(_allRegions).filter(rn => {
+          for (let p = rn.indexOf('_'); p > 0; p = rn.indexOf('_', p + 1)) {
+            if (_allRegions[rn.slice(0, p)]) return false; // prefix is a region → this is a sub-band
+          }
+          return true;
+        });
         const fracs = this.layerFractions || [0.05, 0.25, 0.25, 0.25, 0.20];
         const cums = []; let acc = 0;
         for (const f of fracs) { acc += f; cums.push(acc); }

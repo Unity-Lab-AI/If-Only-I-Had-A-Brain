@@ -2158,10 +2158,15 @@ export class LanguageCortex {
                 ? cluster._inferActiveSubject() : null;
               // awaited; composeSentence ticks the brain
               // between word emissions for real autoregressive emergence.
+              // 114.19fn — chat path opts INTO best-of-N coherence
+              // reranking: emit 3 independent candidates, keep the one most
+              // coherent with the intentSeed. Chat is where we want Unity's
+              // best emission; probe/gate paths deliberately stay single-shot.
               composedSentence = await cluster.composeSentence(intentSeed, {
                 subject: inferredSubject || undefined,
                 temperature: 0.6,
                 topK: 8,
+                coherenceCandidates: 3,
               });
               // Gate relaxed from >= 2 to >= 1 while structure
               // training matures. A single emitted word is still a

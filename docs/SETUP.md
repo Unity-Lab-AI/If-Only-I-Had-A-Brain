@@ -18,6 +18,32 @@ That's the whole onboarding. Everything else is for self-hosting or for running 
 
 ---
 
+## WebGPU prerequisite (required — no CPU fallback)
+
+Unity's brain runs Hebbian learning kernels on the GPU. **WebGPU is non-optional.** The codebase enforces a single correct compute architecture per `feedback_no_fallbacks_law.md`; there is no CPU-only browser path.
+
+First-time setup:
+
+1. Open `html/webgpu-prep.html` in your browser (also linked from the boot modal that fires on `index.html` and `html/dashboard.html` whenever the adapter is unavailable).
+2. Follow the browser-specific flag instructions:
+   - **Chrome / Edge / Brave / Opera** — `chrome://flags/#enable-unsafe-webgpu` (or `edge://`, `brave://`, `opera://` equivalent) → Enabled → Restart.
+   - **Firefox** — version 141+ ships WebGPU on by default; older versions need `dom.webgpu.enabled` in `about:config` (try Nightly if stable lags).
+   - **Safari** — Develop menu → Feature Flags → WebGPU checked. macOS 14+ required.
+3. The prep page's `Re-check WebGPU` button validates your fix immediately — no brain-server restart needed.
+
+GPU driver minimums:
+
+| Vendor | Minimum driver |
+|--------|----------------|
+| NVIDIA | 532 or newer (RTX 20-series + GTX 16-series and up) |
+| AMD    | Adrenalin 23.x or newer (RX 6000+ recommended) |
+| Intel  | 31.0.101.4314 or newer (Arc-series + UHD 730+) |
+| Apple M-series | macOS 14 (Sonoma) or newer |
+
+When WebGPU is unavailable at boot, the dashboard + landing pages render a non-dismissible modal pointing to the prep page. **No bypass** — fix WebGPU or use a different machine. The iter24.5 CPU sparse-pool worker-pool infrastructure that lives in-tree is retained for distributed-compute-node use cases (Phase 6 COMP-net), NOT as a browser fallback.
+
+---
+
 ## What you can configure (and what you can't)
 
 There is no AI backend behind Unity's cognition. Her language cortex generates every word from her own equations. The only things you can configure as a user are *sensory peripherals* — image generation, the vision describer, and text-to-speech. Configuring a "smarter LLM" is not a thing you can do, because there isn't one in the loop.
@@ -85,7 +111,7 @@ GitHub Pages deployment works the same way: in the repo settings, point Pages at
 
 ## Running the server brain
 
-This is the real thing. Hundreds of millions of neurons on the GPU, the full pre-K + K curriculum, persistence across restarts.
+This is the real thing. Hundreds of millions of neurons on the GPU, the full K→PhD curriculum, persistence across restarts.
 
 ```bash
 cd server && npm install && node brain-server.js
@@ -94,7 +120,7 @@ cd server && npm install && node brain-server.js
 That is the whole command. As soon as the Node server finishes listening, three things happen automatically:
 
 1. The HTTP listener binds to `127.0.0.1:7525` — loopback only by default. Nothing on your LAN can reach the server unless you opt in via `BRAIN_BIND=0.0.0.0 node brain-server.js`. The boot banner prints a prominent ⚠ when you do, because the brain-mutating endpoints (`/shutdown`, `/grade-advance`, `/grade-signoff`) live behind a defense-in-depth loopback gate that refuses non-loopback callers regardless of the bind setting.
-2. A WebGPU-capable browser tab opens automatically pointing at `http://localhost:7525/compute.html`. That tab holds the WebGPU device, runs the WGSL compute shaders for Rulkov iteration / sparse propagate / Hebbian / letter-bucket reduction, and talks to the server over WebSocket. Cross-platform launch (`start` on Windows, `open` on macOS, `xdg-open` on Linux). The curriculum waits for this tab to connect before teaching pre-K + K.
+2. A WebGPU-capable browser tab opens automatically pointing at `http://localhost:7525/compute.html`. That tab holds the WebGPU device, runs the WGSL compute shaders for Rulkov iteration / sparse propagate / Hebbian / letter-bucket reduction, and talks to the server over WebSocket. Cross-platform launch (`start` on Windows, `open` on macOS, `xdg-open` on Linux). The curriculum waits for this tab to connect before teaching K→PhD.
 3. A separate dashboard tab opens (in the convenience launchers) so the milestone panel and live brain state are visible from the first moment.
 
 `compute.html` must stay open. Without an attached GPU client the brain pauses — the server is bookkeeping, not computation.
@@ -262,7 +288,7 @@ The **identity layer** (`server/identity-core.json`) is **explicitly excluded** 
 
 ## Server endpoints
 
-The HTTP server runs alongside the WebSocket on port 7525. Override with `PORT=xxxx node brain-server.js`. The privileged endpoints (`/shutdown`, `/grade-advance`, `/grade-signoff`) are loopback-gated even when `BRAIN_BIND=0.0.0.0` exposes the dashboard on the LAN.
+The HTTP server runs alongside the WebSocket on port 7525. Override with `PORT=xxxx node brain-server.js`. The privileged endpoints (`/shutdown`, `/grade-advance`, `/grade-signoff`, `/auto-advance`) are loopback-gated even when `BRAIN_BIND=0.0.0.0` exposes the dashboard on the LAN.
 
 | Endpoint | Method | Purpose |
 |---|---|---|
@@ -275,12 +301,55 @@ The HTTP server runs alongside the WebSocket on port 7525. Override with `PORT=x
 | `/milestone` | GET | Boot mode + last save + grades + passed cells + operator signoffs + weights-file metadata. `dashboard.html` polls this every 5 s. |
 | `/grade-signoff` | GET | Returns the operator signoff ledger. |
 | `/grade-signoff` | POST | `{subject, grade, note}` records an operator grade-pass signoff. **Loopback-only.** |
-| `/grade-advance` | POST | Flips the grade-advance pause off after a signoff lands. **Loopback-only.** |
+| `/grade-advance` | POST | Flips the grade-advance pause off after a signoff lands (or unconditionally when auto-advance toggle is ON). **Loopback-only.** |
+| `/auto-advance` | GET | Returns `{enabled: bool}` — current state of the curriculum auto-advance toggle. Dashboards fetch this on `modeAssigned: admin` for F5 restoration. **Loopback-only.** |
+| `/auto-advance` | POST | `{enabled: bool}` flips the single-toggle bypass governing both the signoff requirement at `/grade-advance` AND the curriculum runner's auto-fire-next-grade behavior. Broadcasts `autoAdvanceChanged` WS event to all open dashboards + persists via `saveWeights`. **Loopback-only.** |
 | `/exam-answer` | POST | Runs one question through the brain's QA path and returns the answer. |
 | `/exam-answer-dual` | POST | Same but routes through both hemispheres for arbiter scoring. |
 | `/shutdown` | POST | Triggers graceful shutdown. **Loopback-only.** Used by `stop.bat` step 1. |
 
 All POST endpoints use chunked-array body assembly so a 10 KB cap can't be slipped past, and corrupted bodies don't trigger the V8 O(N²) string-concat pathology.
+
+---
+
+## Admin / viewer dashboard split
+
+The dashboard has two roles assigned automatically by the brain server on every WebSocket connect:
+
+| Role | Triggered by | Control surface |
+|---|---|---|
+| **🔑 Admin** | Loopback connection — the operator's tabs on the host machine (compute worker, dashboard, landing page, plus `curl` from the same box). Detection is `req.socket.remoteAddress` against `127.0.0.1` / `::1` / `::ffff:127.0.0.1` / `127.x.x.x`. | Telemetry + ⏹ Stop Brain + ▶ Start Next Grade + per-subject Signoff + auto-advance toggle. |
+| **🟢 Viewer** | Any non-loopback connection — possible only when you launch with `BRAIN_BIND=0.0.0.0` to expose the dashboard on the LAN. | Telemetry only. Every control hidden via the `.admin-only` CSS class that only resolves when `body.is-admin` is set. |
+
+The server sends `{type: 'modeAssigned', mode: 'admin' | 'viewer'}` ~500 ms after the WebSocket comes up. The half-second delay gives the GPU compute worker time to self-identify via `gpu_register` so the dashboard mode-assignment skips it entirely — compute clients don't render any role-aware UI.
+
+**There is no login.** No admin token. No cookie. No `/admin-login` page. The first-connect-loopback design is intentional: the operator running the brain on their own machine is the only person who can issue control commands, and that's enforced not by authentication but by *who can reach the loopback interface*. LAN visitors are read-only by structural design.
+
+`/shutdown`, `/grade-advance`, `/grade-signoff`, and `/auto-advance` are loopback-gated at the HTTP layer through `requireLoopback`. The mode split is the UX layer (control buttons don't paint for non-admin); `requireLoopback` is the security layer (those endpoints 403 non-loopback callers regardless of UI state). Both layers are active regardless of `BRAIN_BIND`. If you flip `BRAIN_BIND=0.0.0.0` to share the dashboard on the LAN, the boot banner prints a prominent ⚠ explaining the perimeter expanded — visitors get viewer-mode read-only telemetry, control endpoints stay refusing them.
+
+The dashboard's connection-status row shows the assigned role as a badge: `🔑 ADMIN` on amber, `🟢 VIEWER` on green, or `⋯ connecting` in neutral grey while the WebSocket is still handshaking. Default-hidden controls only reveal after `modeAssigned` lands with `admin`, so a slow or missing assignment can never flash unauthorized buttons.
+
+---
+
+## Auto-advance toggle
+
+Single switch in the dashboard's milestone panel — **`☐ Auto-advance to next grade after pass`** — governs both halves of the grade-advance gate:
+
+| State | `/grade-advance` signoff check | Curriculum runner behavior |
+|---|---|---|
+| **OFF** (default) | Demands per-subject `brain._gradeSignoffs[subject/grade]` entries. Missing → 403. | Pauses after every full grade pass, waits for dashboard `▶ START NEXT GRADE` click. |
+| **ON** | Skips the signoff check entirely. | Skips the pause entirely. Heartbeat logs `⏩ AUTO-ADVANCE`. |
+
+The flag lives at `cortexCluster._autoAdvanceGrade` (boolean, default false). Persisted inside cortexState in `server/brain-weights.json` and restored by `_applyPendingCortexState` on Savestart.bat resume. `start.bat` wipes weights so the toggle resets to OFF on every fresh boot.
+
+| Path | Method | Behavior |
+|---|---|---|
+| `GET /auto-advance` | GET | Returns `{enabled: bool}` — used by the dashboard on F5 / reconnect to re-apply the saved state to the checkbox UI. |
+| `POST /auto-advance` | POST `{enabled: true \| false}` | Updates `cortexCluster._autoAdvanceGrade`, broadcasts `{type: 'autoAdvanceChanged', enabled: bool}` on the WebSocket so all open dashboard tabs sync, fires `brain.saveWeights({trigger: 'auto-advance:on|off'})` for immediate persistence. Loopback-gated. |
+
+Mid-pause toggle flip is honored — the runner's pause-loop polls `cluster._autoAdvanceGrade` every 500 ms and breaks out of the wait when the flag flips ON, with the same advance-effect a `POST /grade-advance` would have triggered. Useful when the operator starts a manual walk, watches a few grade gates clear, then decides to flip auto-advance ON and walk away for the rest of the K → PhD arc.
+
+There is no separate "bypass signoffs but still wait for click" mode. One switch, both behaviors, full bypass when ON or full discipline when OFF.
 
 ---
 

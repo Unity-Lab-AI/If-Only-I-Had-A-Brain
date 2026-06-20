@@ -2,16 +2,21 @@
 
 > **Status:** drafted 2026-06-17 per audit H.5 + H.8 — operator's live-test reported "only two opened and they both said no connection." This doc inventories every HTML, how it's launched, what it needs from the server, what's GH-Pages-safe vs require-Node, and the per-HTML failure-mode signature.
 
-## Inventory — 6 HTMLs total
+## Inventory — 9 HTMLs total
 
 | File | Purpose | Launched by | Requires brain-server? | GH-Pages-safe? |
 |------|---------|-------------|------------------------|----------------|
 | `index.html` | Landing / 3D brain UI / chat | `start.bat` auto-opens at `http://localhost:7525` | YES for chat/training, NO for static landing | YES (static-fallback) |
 | `html/dashboard.html` | Read-only live brain dashboard | `start.bat` auto-opens at `http://localhost:7525/dashboard.html` | YES — fully blank without WS | NO |
 | `html/compute.html` | GPU compute worker (WebGPU sparse-matrix forward) | brain-server `_spawnGpuClient()` auto-launches in isolated Chrome | YES — depends on WS handshake + module imports | NO (requires server HTTP route) |
+| `html/webgpu-prep.html` | Pre-flight WebGPU setup — browser-by-browser flag instructions | Linked from boot modal on `index.html` + `html/dashboard.html` when adapter unavailable; can be visited manually | NO (static, runs adapter check via `navigator.gpu`) | YES |
+| `html/legend.html` | Page legend / quick-access index — every HTML + public-facing doc | Linked from floating `📑 Pages` button on every HTML's top-right corner | NO (static) | YES |
+| `html/docs.html` | Markdown doc viewer (public docs only) with whitelist + inline renderer | Linked from `html/legend.html` Public Docs section + the `📑 Pages` button | NO (static, fetches `.md` files via `fetch()`) | YES |
 | `html/brain-equations.html` | Public-facing math reference for equational cognition | Manual (link from index.html) | NO (static) | YES |
 | `html/unity-guide.html` | Persona + capabilities tour | Manual (link from index.html) | NO (static) | YES |
 | `html/gpu-configure.html` | Admin GPU tier-config UI | `windows/GPUCONFIGURE.bat` | YES (config-write endpoint) | NO |
+
+**Admin/viewer split (per Gee 2026-06-18):** No login form, no admin token, no cookie. The brain-server inspects `req.socket.remoteAddress` on every new WebSocket; loopback addresses (`127.0.0.1` / `::1` / `::ffff:127.0.0.1` / `127.x.x.x`) receive `mode: 'admin'` ~500 ms after the connection lands, every non-loopback address receives `mode: 'viewer'`. The 500 ms delay lets the GPU compute worker self-identify via `gpu_register` and skip the modeAssigned send entirely — compute clients render no UI and need no badge. The loopback-based design means the operator's multiple tabs (compute + dashboard + landing + terminal `curl`) all share admin since they all come from the same loopback origin. Viewer-mode dashboards hide Stop / Grade-advance / Signoff / Auto-advance controls via the `.admin-only` CSS class that only resolves when `body.is-admin` is set. Brain-mutating HTTP endpoints (`/shutdown`, `/grade-advance`, `/grade-signoff`, `/auto-advance`) remain loopback-only via `requireLoopback` — there is no LAN admin path. See `server/brain-server.js` `wss.on('connection')` mode-assignment block.
 
 ## Per-HTML contracts + failure modes
 
@@ -48,7 +53,14 @@
 **WS message types consumed:**
 - `welcome` — initial state + emotion history
 - `state` — periodic full state broadcast (~5-10Hz)
+- `modeAssigned` — admin/viewer role assigned by server ~500 ms after WS connect (loopback origin → admin, else viewer). Sets `window.state.viewerMode`, toggles `body.is-admin` class to reveal admin-only controls.
+- `autoAdvanceChanged` — broadcast when any admin tab POSTs `/auto-advance`; every other open dashboard syncs the auto-advance checkbox UI without polling.
 - `gpuClientSpawnFailed` — H.6 surfacing event (rare, fires on browser-launch failure)
+
+**Admin-only controls (hidden in viewer mode):**
+- `#btn-graceful-stop` — `⏹ Stop Brain` button in connection-status row.
+- `#d-ms-advance` — `▶ START NEXT GRADE` panel + per-subject signoff buttons (appears only when curriculum pauses after a full grade pass).
+- `#d-ms-auto-advance` — `Auto-advance to next grade after pass` checkbox in the milestone panel. Single toggle governing both `/grade-advance` signoff bypass AND curriculum runner's auto-fire behavior. State persists via `cortexCluster._autoAdvanceGrade` inside cortexState; F5 restoration fires `GET /auto-advance` on `modeAssigned: admin`.
 
 ### `html/compute.html` — GPU compute worker
 
@@ -73,6 +85,52 @@
 5. Per audit H.1: `[Server] _spawnGpuClient INVOKED` log line at entry + `FINISHED` log line at exit so post-test diagnostic is visible
 6. Per audit H.6: spawn failures surface to dashboard via `gpuClientSpawnFailed` WS broadcast
 
+### `html/webgpu-prep.html` — WebGPU pre-flight setup
+
+**Purpose:** Pre-flight onboarding page that walks the user through enabling WebGPU in whatever browser they're using. Detects browser via `navigator.userAgentData` (Chromium) + UA-string fallback (Firefox/Safari), reveals the matching enable-flags block, runs `checkWebGPUAdapter()` on load + provides a `Re-check WebGPU` button.
+
+**No server required.** GH-Pages-safe. Pure static + `js/webgpu-prep.js` ES module import.
+
+**Hard-block contract (no fallback).** Per `feedback_no_fallbacks_law.md` the page does NOT offer a CPU-only bypass — Unity's compute architecture is one correct path. Users without WebGPU fix their browser via the flag instructions OR they do not connect. The page provides:
+- Per-browser flag URLs (copy-button + clickable) for Chrome / Edge / Brave / Opera / Firefox / Safari
+- GPU driver minimums (NVIDIA ≥ 532, AMD Adrenalin ≥ 23.x, Intel ≥ 31.0.101.4314, Apple M-series + macOS 14+)
+- A `Re-check WebGPU` button that re-runs `navigator.gpu.requestAdapter()` after the user toggles the flag
+- A `Continue to Dashboard` link that ONLY appears when the adapter check passes
+
+**Boot modal wiring:** The same module (`js/webgpu-prep.js` `mountBootModal()`) is imported by `index.html` + `html/dashboard.html` to render a non-dismissible HARD-BLOCK modal whenever the adapter check fails. The modal links to this prep page; no CPU bypass button.
+
+**Failure modes:**
+- `navigator.gpu === undefined` (browser doesn't expose WebGPU) → status banner red + browser-specific instruction block revealed
+- `requestAdapter()` returns null (flag off, drivers too old, GPU unsupported) → same red banner + reason string
+- `requestAdapter()` throws (driver mismatch) → reason string carries the throw message; full `err.stack` logged to console once per page via the one-shot warn pattern from the I.19 root-cause lesson
+
+### `html/legend.html` — page legend / quick-access index
+
+**Purpose:** Single canonical index for every HTML + workflow doc in the project. Gee callout 2026-06-18: *"need a glossary or legend for quick access to all the htmls not only just hospogged all around all over the place"*. Every other HTML carries a small floating `📑 Pages` button (top-right, z-index 99998) that opens this page.
+
+**No server required.** GH-Pages-safe. Pure static, no imports.
+
+**Page structure:** three card-grid sections — Live brain UI (index, dashboard, compute), Setup & admin (webgpu-prep, gpu-configure, docs viewer, legend self-card), Reference (brain-equations, unity-guide). Followed by a **public-docs** list pointing at `docs.html?doc=<slug>` for in-browser markdown rendering plus a raw-`.md` fallback link per doc — README + SETUP + ARCHITECTURE + EQUATIONS + ROADMAP + SKILL_TREE + SENSORY + WEBSOCKET only. Workflow + planning docs (Supertodo, TODO/FINALIZED/NOW/RESUME, TODO-life-experience, TODO-full-syllabus, COMP-todo, PUSH_WORKFLOW, STATUSLINE, PERSONA, THRESHOLD-DERIVATION, this HTML-ENTRY-POINTS doc) are LAB-INTERNAL per Gee directive 2026-06-18 — not surfaced in the public legend or docs viewer.
+
+**Failure modes:** none meaningful — pure static. Stale tag info gets caught when this doc updates.
+
+### `html/docs.html` — markdown doc viewer
+
+**Purpose:** Web viewer for every markdown doc — fetches the canonical `.md` file via `fetch()`, renders to HTML through an inline minimal markdown parser, serves it under `?doc=<slug>` URL. Per Gee 2026-06-18: *"need legend to also have webversion of supposrt docs like readme and setup and such"*. The .md file remains the single source of truth; this page is the browser-friendly viewer.
+
+**No server required.** GH-Pages-safe — `fetch()` resolves relative paths from the page URL.
+
+**Whitelist-gated + public-only.** The `DOC_PATHS` object inside the page maps each allowed slug to its relative path (e.g. `README` → `../README.md`). Slugs outside the whitelist render an error page, not a directory traversal. Per Gee directive 2026-06-18 the whitelist contains PUBLIC docs only (README, SETUP, ARCHITECTURE, EQUATIONS, ROADMAP, SKILL_TREE, SENSORY, WEBSOCKET); workflow + planning docs are intentionally excluded so a public dashboard visitor can't paw through internal task ledgers. Adding a new public doc means adding a row to `DOC_PATHS`; internal docs stay out.
+
+**Inline parser scope:** ATX headers (# through ######), fenced code blocks ``` (with language tag preserved as CSS class), GFM tables (|---|---| separator), unordered + ordered lists, blockquotes (`>`), horizontal rules (`---`), inline `**bold**` / `*italic*` / `` `code` `` / `[link](url)`. Good enough for OUR docs; not a full CommonMark implementation. Edge cases that don't render perfectly still produce readable output, and the "📝 Raw .md" link in the topbar lets the user open the canonical file directly.
+
+**URL shape:** `docs.html?doc=README` defaults to README when no query param. The dropdown selector in the topbar switches docs without leaving the page (uses `history.replaceState` so the URL stays shareable).
+
+**Failure modes:**
+- Unknown slug → error page lists available slugs
+- `fetch()` returns non-2xx → error page with raw-path link as fallback
+- Markdown parser hits an edge case → degraded rendering, raw .md link always available in topbar
+
 ### `html/brain-equations.html` — public equations reference
 
 **Purpose:** Static math-reference page documenting the equational cognition system. Hebbian/Oja, cortical leak, K wiring, P6.1-P6.8 channels.
@@ -83,11 +141,11 @@
 
 ### `html/unity-guide.html` — persona tour
 
-**Purpose:** Public-facing tour of Unity's persona system + manifestation modes + Pre-K+K scope + capabilities. New-user onboarding doc.
+**Purpose:** Public-facing tour of Unity's persona system + manifestation modes + full K→PhD curriculum scope + capabilities. New-user onboarding doc.
 
 **No server required.** GH-Pages-safe. Pure static.
 
-**Status:** Updated 2026-06-17 (audit C.9 + I-track session 114.19fp) — reflects current persona memory layer + manifestation-mode index + Pre-K+K ONLY scope + Phase 6 panels + new I-track observability panels (GPU peak/avg, gate-probe banner, Brain Events feed during cell teach, cell sub-phase progress counter).
+**Status:** Updated 2026-06-17 (audit C.9 + I-track session 114.19fp) — reflects current persona memory layer + manifestation-mode index + full K→PhD curriculum scope (Pre-K+K ONLY scope revoked 2026-06-18 — all 19 grades built) + Phase 6 panels + new I-track observability panels (GPU peak/avg, gate-probe banner, Brain Events feed during cell teach, cell sub-phase progress counter).
 
 ### `html/gpu-configure.html` — admin GPU tier-config UI
 

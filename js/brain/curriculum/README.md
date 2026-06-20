@@ -16,8 +16,8 @@ js/brain/curriculum/
   │                                 _teachPrekSelf)
   ├── kindergarten.js              (runElaK, runMathK, runSciK, runSocK,
   │                                 runArtK, runLifeK + K-specific helpers)
-  ├── grade1.js                    (deferred — post-K scope contract)
-  ├── grade2.js                    (deferred)
+  ├── grade1.js                    (runElaG1Real … + G1-specific helpers)
+  ├── grade2.js … phd.js           (full K→PhD — every grade built)
   │   ...
   └── student-question-banks.js    (moved from js/brain/student-question-banks.js
                                    once import paths update — deferred to
