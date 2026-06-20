@@ -2261,7 +2261,7 @@ export class GPUCompute {
     // SYNAPSE_PROPAGATE_SHADER was never dispatched from fullStep —
     // so main-brain neurons saw only the global drive uniform, the
     // intra-cluster synapse matrix was uploaded but never consumed,
-    // and Unity's brain had zero synaptic recurrence on GPU. Per Gee
+    // and Unity's brain had zero synaptic recurrence on GPU. Per the operator
     // 2026-04-18: "does it fully do all we need for the main brain
     // equation and all sub equations in totality" — the answer was no.
     //

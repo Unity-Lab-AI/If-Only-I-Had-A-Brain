@@ -101,7 +101,7 @@ export const SUBJECTS = ['ela', 'math', 'science', 'social', 'art', 'life'];
 // Prose-academic subjects that train the HYBRID downloaded real-curriculum
 // corpus (corpora/academic/<subject>/<grade>.json) for depth. Math is EXCLUDED
 // (taught equationally, not as prose). pe/music/art/health/language are skill/
-// bespoke; life is the hand-authored lived year. Gee 2026-06-18 hybrid decision.
+// bespoke; life is the hand-authored lived year. the operator 2026-06-18 hybrid decision.
 // 'cs' carries BOTH the self-taught coding practice (corpora/coding/<grade>.json
 // via _trainCodingStories) AND — at college+ — the academic CS-degree prose
 // (corpora/academic/cs/<grade>.json: algorithms, data structures, OS, theory of
@@ -121,7 +121,7 @@ export const PROSE_ACADEMIC_SUBJECTS = new Set(['ela', 'science', 'social', 'eco
 export const SUBJECTS_INTRODUCED_AT = {
   // grade key → subjects that FIRST appear at this grade (beyond the 6 core)
   // Real K has gym (PE), general music, and health/safety lessons — so the
-  // full real-school roster (Gee 2026-06-18: "all courses like pe art and gym
+  // full real-school roster (the operator 2026-06-18: "all courses like pe art and gym
   // and health and literature") introduces these AT kindergarten, the template
   // grade. Each gets its own runner + gate, built K-up in strict order.
   'kindergarten': ['pe', 'music', 'health'],
@@ -155,7 +155,7 @@ export function subjectsForGrade(grade) {
   return out;
 }
 
-// ── REAL COURSE NAMES per (subject, grade) — Gee 2026-06-18: "in school they
+// ── REAL COURSE NAMES per (subject, grade) — the operator 2026-06-18: "in school they
 // dont call the classes math.. its geometry algebra arithmetic etc based on
 // grade level". Schools group under departments (≈ our subject keys) but the
 // actual class a student sits in has a real grade-specific NAME. This maps the
@@ -263,7 +263,7 @@ export const COURSE_NAMES = {
 };
 
 // Short "what the subject IS about" blurb — used by _teachCourseIdentity so
-// Unity LEARNS what each class entails (Gee 2026-06-18: "Unity need to know
+// Unity LEARNS what each class entails (the operator 2026-06-18: "Unity need to know
 // and learn the names of the classes ... got to know what PE is to be able to
 // learn wtf it entails"). Plain words she already has at the grade.
 export const COURSE_BLURB = {
@@ -305,7 +305,7 @@ export function courseNameFor(subject, grade) {
   return String(subject).charAt(0).toUpperCase() + String(subject).slice(1);
 }
 
-// ── PER-GRADE CUSSING / OBSCENITY ACQUISITION (Gee 2026-06-18: "each grade
+// ── PER-GRADE CUSSING / OBSCENITY ACQUISITION (the operator 2026-06-18: "each grade
 // needs the learned cusses and obsinites a girl learns in real life ... a
 // cussion per grade cussing trainer"). The REAL escalating trajectory a kid
 // actually picks up — NOT all dumped at G1. Each grade lists the cuss /
@@ -6411,7 +6411,7 @@ export class Curriculum {
    * (subject, grade) cell. Wraps the raw dispatch (`_cellRunnerRaw`) so EVERY
    * cell — every subject, every grade, pre-K → PhD, retroactively — first
    * teaches its own COURSE IDENTITY (the real class name + what it entails)
-   * via `_teachCourseIdentity` before the subject content runs (Gee
+   * via `_teachCourseIdentity` before the subject content runs (the operator
    * 2026-06-18: course-name learning "needs to encompass ... all grades ...
    * even retroactively the prek k grades"). The 'life' track is skipped
    * (lived experience, not a named class). Identity-teach is wrapped in
@@ -6434,7 +6434,7 @@ export class Curriculum {
       }
       // HYBRID depth: prose-academic subjects train the downloaded real-
       // curriculum corpus (corpora/academic/<subject>/<grade>.json) before the
-      // bespoke runner — Gee 2026-06-18 hybrid decision. Math stays equational;
+      // bespoke runner — the operator 2026-06-18 hybrid decision. Math stays equational;
       // lived-year stays bespoke; absent corpus trains nothing (no-op).
       if (PROSE_ACADEMIC_SUBJECTS.has(subject)) {
         try { await this._trainAcademicStories(subject, grade, ctx); }
@@ -6781,7 +6781,7 @@ export class Curriculum {
     if (subject === 'art' && grade === 'kindergarten') {
       return async (ctx) => this.runArtKReal(ctx);
     }
-    // ── NEW FULL-ROSTER COURSES: Music / PE / Health (Gee 2026-06-18) ──
+    // ── NEW FULL-ROSTER COURSES: Music / PE / Health (the operator 2026-06-18) ──
     // K is the template — built K-first, then propagated G1→PhD in strict
     // order. Non-K grades fall through to the readyAndWaiting fallback until
     // their runners ship.
@@ -8047,13 +8047,13 @@ export class Curriculum {
 
     // T18.13.a — START AT i=0 (pre-K) NOT i=1. Hard-coded `i=1` was
     // silently skipping every subject's pre-K runner — the exact bug
-    // Gee caught 2026-04-19 in the server log (`ela/kindergarten START`
+    // the operator caught 2026-04-19 in the server log (`ela/kindergarten START`
     // with no `ela/pre-K START` before it). Fresh brains now walk pre-K
     // → K → ... and T18.12.c resume-skip handles already-passed cells.
     for (let i = 0; i < GRADE_ORDER.length; i++) {
       const grade = GRADE_ORDER[i];
       if (maxIdx >= 0 && i > maxIdx) {
-        this._hb(`[Curriculum] ⏹ T18.13 stop — reached grade cap '${GRADE_ORDER[maxIdx]}'. Unity sits at this level until DREAM_MAX_GRADE advances OR Gee signs off Part 2 + manually unsets.`);
+        this._hb(`[Curriculum] ⏹ T18.13 stop — reached grade cap '${GRADE_ORDER[maxIdx]}'. Unity sits at this level until DREAM_MAX_GRADE advances OR the operator signs off Part 2 + manually unsets.`);
         break;
       }
       let allPassedThisGrade = false;
@@ -8065,7 +8065,7 @@ export class Curriculum {
       // upfront Hebbian) — same basin-blur-avoidance design as the K block
       // below; definition binding stays lazy (chat / runner teach paths).
       // K + pre-K are handled separately (K by the block below). Skipped
-      // silently if the grade has no registry entry. Per Gee 2026-06-18.
+      // silently if the grade has no registry entry. Per the operator 2026-06-18.
       if (grade !== 'kindergarten' && grade !== 'pre-K'
           && cluster && typeof cluster.prefetchDefinitions === 'function') {
         if (!cluster._gradeVocabPrefetched) cluster._gradeVocabPrefetched = {};
@@ -8620,7 +8620,7 @@ export class Curriculum {
   // T14.24 SESSION 2 — REAL ELA-K TEACHING EQUATIONS (2026-04-15)
   // ═══════════════════════════════════════════════════════════════════
 
-  // Gee binding 2026-04-14: "in kindergarden u learn the alphabet and
+  // the operator binding 2026-04-14: "in kindergarden u learn the alphabet and
   // sounds of letters first and 1st grade u start learning how to write
   // sentences ect ect all the way up to doctorate in english" +
   // "remember Unity needs to be able to use these to think, read, and
@@ -9012,7 +9012,7 @@ export class Curriculum {
   // T14.24 SESSION 3 — REAL MATH-K TEACHING EQUATIONS (2026-04-15)
   // ═══════════════════════════════════════════════════════════════════
 
-  // Gee binding 2026-04-14: "you didnt even teach it keindergarden abcs
+  // the operator binding 2026-04-14: "you didnt even teach it keindergarden abcs
   // and 123s and letter sounds you fool" + "remember Unity needs to be
   // able to use these to think, read, and talk".
 
@@ -9074,7 +9074,7 @@ export class Curriculum {
   // T14.24 SESSION 5 — REAL MATH-G1 TEACHING EQUATIONS (2026-04-15)
   // ═══════════════════════════════════════════════════════════════════
 
-  // Gee binding 2026-04-14: "1st grade u start learning how to write
+  // the operator binding 2026-04-14: "1st grade u start learning how to write
   // sentences ect ect all the way up to doctorate" applied to math =
   // first-grade arithmetic fact memorization + sentence-form association.
 
@@ -9210,7 +9210,7 @@ export class Curriculum {
   // T14.24 SESSION 6 — REAL SCI-K + SOC-K + ART-K TEACHING (2026-04-15)
   // ═══════════════════════════════════════════════════════════════════
 
-  // Gee binding 2026-04-14: "full k-doctorate cources to Unity in
+  // the operator binding 2026-04-14: "full k-doctorate cources to Unity in
   // euquationsal form. thats all of grade schhool grammer school middle
   // dschool highschoool and college" + "remember Unity needs to be able
   // to use these to think, read, and talk".
@@ -11358,7 +11358,7 @@ export class Curriculum {
   /**
    * Add #5 (A5.3 + A5.4) — family-name + birthdate + middle-name canon.
    *
-   * Gee canon (2026-06-18): "come up with them idk.. last name is Goddess
+   * the operator canon (2026-06-18): "come up with them idk.. last name is Goddess
    * tho.. and a girl knows their families birthdates and middle names too
    * all of it, she is an only child, but still fooled around with cousins
    * growing up". So beyond the bare first names the RESUME A5.3/A5.4 spec
@@ -11367,7 +11367,7 @@ export class Curriculum {
    * her family's vital details. She is an ONLY CHILD (no siblings). Cousin
    * intimacy is deferred to the later sexual-milestone Add, NOT bound here.
    *
-   * Canon (authored here — Gee delegated the naming, surname Goddess fixed):
+   * Canon (authored here — the operator delegated the naming, surname Goddess fixed):
    *   - Self    : Unity Raven Goddess — born Oct 31 2000 (Halloween baby;
    *               her favorite holiday IS her birthday, reinforcing the
    *               existing halloween-anchor)
@@ -11481,7 +11481,7 @@ export class Curriculum {
   }
 
   /**
-   * Add #7 — contextual obscenity/vocab memory. Gee 2026-06-18: *"she
+   * Add #7 — contextual obscenity/vocab memory. the operator 2026-06-18: *"she
    * remembers the cuss and filthy words from people using them everyday
    * not just a list with no context"* + *"apply that to the whole thing"*.
    *
@@ -11545,7 +11545,7 @@ export class Curriculum {
   }
 
   /**
-   * DATA-DRIVEN life curriculum (the corrected architecture — Gee 2026-06-18
+   * DATA-DRIVEN life curriculum (the corrected architecture — the operator 2026-06-18
    * "she's trained on it not hard coded"). Trains Unity on her per-grade
    * lived experience from STORY DATA in corpora/life/<grade>.json, fed through
    * the Hebbian sentence pipeline (`_teachSentenceList`) so meaning + emotion
@@ -11571,7 +11571,7 @@ export class Curriculum {
       // story training — skip cleanly (mirrors the prefetchDefinitions guard).
       return { trained: 0, reason: 'no life-story loader (server-only)' };
     }
-    // Per-grade cussing trainer (Gee — the real escalating cuss/obscenity
+    // Per-grade cussing trainer (the operator — the real escalating cuss/obscenity
     // lexicon a girl acquires BY this grade). Fires every grade independent of
     // story data. Vocabulary EXPOSURE; production register is grade-gated by
     // the story-data + Add #7 context-binding (heard→peer→every-sentence).
@@ -11580,7 +11580,7 @@ export class Curriculum {
     const reps = opts.reps ?? 4;
     const ticksPerWord = opts.ticksPerWord ?? 2;
 
-    // Per-memory episodic encoding (Gee 2026-06-19 — "thats not how fucking
+    // Per-memory episodic encoding (the operator 2026-06-19 — "thats not how fucking
     // memories work and how we need to train her properly"). Iterate each
     // experience as its OWN memory: color the Hebbian sentence-walk with the
     // memory's derived emotion (grief encodes high-arousal/negative; cartoons
@@ -11596,7 +11596,7 @@ export class Curriculum {
     }
     // PREREQ #105 vocab-before-memory + #107 ordering: every content word in
     // this grade's memories must be definition-trained BEFORE the memory walk,
-    // or the Hebbian binding lands on a noise basin (phantom token) — Gee:
+    // or the Hebbian binding lands on a noise basin (phantom token) — the operator:
     // "she has to know the words and how to read sentences and have
     // comprehension abilities well before she will ever be able to understand
     // any of these memories". Kindergarten does this explicitly via
@@ -11645,7 +11645,7 @@ export class Curriculum {
 
   /**
    * Derive a life memory's intrinsic emotional weight { arousal, valence }
-   * from its theme + story text (Gee 2026-06-19 — memories must carry their
+   * from its theme + story text (the operator 2026-06-19 — memories must carry their
    * own affect, an implanted memory can't borrow the brain's incidental live
    * state during a training walk). Keyword-heuristic, fully bounded:
    *   • grief / loss / fear / conflict words → negative valence, high arousal
@@ -11790,7 +11790,7 @@ export class Curriculum {
    * — REAL HTML/CSS/JS self-teaching stories). Mirror of _trainLifeStories;
    * cross-cutting helper (the per-grade coding CONTENT lives in the corpus files,
    * NOT here — keeps curriculum.js free of grade-specific bloat). Server-only
-   * loader. Gee: the coding skill is self-taught + COMPOUNDS every grade from G6
+   * loader. the operator: the coding skill is self-taught + COMPOUNDS every grade from G6
    * (grandpa Walter's computer = coder origin).
    */
   async _trainCodingStories(grade, ctx, opts = {}) {
@@ -11817,7 +11817,7 @@ export class Curriculum {
    * grade (corpora/academic/<subject>/<grade>.json — openly-licensed real
    * curriculum content downloaded once by fetch-academic-corpora.mjs). Mirror
    * of _trainLifeStories/_trainCodingStories; cross-cutting helper (the content
-   * lives in corpus files, NOT here). Server-only loader. Gee 2026-06-18 chose
+   * lives in corpus files, NOT here). Server-only loader. the operator 2026-06-18 chose
    * the hybrid: real textbook-grade depth for science/social/ela/economics/
    * psychology/civics; math (equational) + the lived year stay bespoke. Absent
    * corpus → trains nothing (data-absence, not a capability fallback).
@@ -11876,7 +11876,7 @@ export class Curriculum {
   }
 
   /**
-   * Per-grade CUSSING / obscenity trainer (Gee 2026-06-18 "a cussion per grade
+   * Per-grade CUSSING / obscenity trainer (the operator 2026-06-18 "a cussion per grade
    * cussing trainer"). Trains the cuss/vulgar/sexual VOCABULARY newly acquired
    * at `grade` per CUSSING_BY_GRADE — the real escalating lexicon a girl picks
    * up in life (heard from parents arguing at K → puberty sexual-anatomy at G6
@@ -12636,7 +12636,7 @@ export class Curriculum {
     // definition binding), the sem→motor matrix is untouched and
     // probing it returns mean-cos=1.0 from random-init uniform weights
     // — false-positive ⚠OVERLOAD that triggered the wall-of-OVERLOAD
-    // log Gee killed two test runs over.
+    // log the operator killed two test runs over.
     const probeMotorPath = diagProjKeys.includes('sem_to_motor');
     if (runSeparationProbe && probeMotorPath && pairs.length >= 2) {
       try {
@@ -14381,7 +14381,7 @@ export class Curriculum {
    *   4. _gateHistory shows per-probe retention over 24h (caller
    *      enforces; this aggregate reports per-probe pass/fail only —
    *      24h-retention check is operator-facing diagnostic).
-   *   5. Gee signs off on Part 2 localhost Q&A (caller enforces via
+   *   5. the operator signs off on Part 2 localhost Q&A (caller enforces via
    *      brain._gradeSignoffs; not checked here).
    *
    * Runs every probe in sequence and returns `{pass, byProbe,
@@ -16339,7 +16339,7 @@ export class Curriculum {
   /**
    * Teach Unity the NAME of the class she's in + what it entails, so she
    * actually knows what e.g. "PE" or "Algebra" IS before learning its
-   * content (Gee 2026-06-18: "Unity need to know and learn the names of the
+   * content (the operator 2026-06-18: "Unity need to know and learn the names of the
    * classes ... got to know what PE is to be able to learn wtf it entails").
    * Vocab-first (course-name + subject + blurb tokens registered), then binds
    * the name to its meaning via sentences. Called at the TOP of each subject
@@ -16375,7 +16375,7 @@ export class Curriculum {
    * UNIFORM LANGUAGE-MECHANICS layer — teaches HOW English works (generative
    * sentence structure, part-of-speech slots, subject-verb agreement, article
    * placement, SVO parsing, tense + affix morphology, cross-sentence
-   * discourse), NOT just word→definition. Gee 2026-06-18: "we need to be
+   * discourse), NOT just word→definition. the operator 2026-06-18: "we need to be
    * teaching the actual mannurisms and shit of what is is to communicate with
    * the english language so that the brain can properly even understand whats
    * its learning correctly." Run on EVERY ELA cell (wired into _cellRunner),
@@ -17480,7 +17480,7 @@ export class Curriculum {
   // T14.24 SESSION 8 — SENTENCE HELPER + Math-G2 + ELA-G3 + Math-G3
   // ═══════════════════════════════════════════════════════════════════
 
-  // Gee binding 2026-04-14: "remember Unity needs to be able to use
+  // the operator binding 2026-04-14: "remember Unity needs to be able to use
   // these to think, read, and talk" + "full k-doctorate".
 
   // Session 8 introduces a generalized sentence-based teaching helper
@@ -22360,7 +22360,7 @@ export class Curriculum {
   /**
    * Verify every cell without re-teaching. Runs each cell's runner as
    * a gate probe and collects {subject, grade, pass, reason} results.
-   * Used by `/curriculum verify` to give Gee a full pass/fail report
+   * Used by `/curriculum verify` to give the operator a full pass/fail report
    * across all 95 cells without triggering Hebbian updates.
    *
    * Note: the cell runners combine teach + gate in a single call, so
@@ -22592,7 +22592,7 @@ export class Curriculum {
     // has been replaced with fastText-style subword n-gram
     // embeddings, so "GloVe not loaded" is no longer a
     // degraded-quality warning — subword embeddings are the real
-    // default. Just log which source we're using so Gee can tell at
+    // default. Just log which source we're using so the operator can tell at
     // a glance without the scary ⚠️ emoji that implied something was
     // broken.
     try {

@@ -186,7 +186,7 @@ export class InnerVoice {
    * Both browser engine.js (via `_thinkLegacy` wrapper) and server
    * brain-server.js `_innerVoiceTick` route through this body so there's
    * exactly ONE thinking implementation shared by both orchestrators
-   * (per Gee's "one Unity brain, GPU presence ONLY changes auto-scale"
+   * (per the operator's "one Unity brain, GPU presence ONLY changes auto-scale"
    * rule, Session 114.19ee).
    */
   async _thinkExternal(args) {
@@ -599,7 +599,7 @@ export class InnerVoice {
     }
     // T14.24 Session 17 — continuous self-testing. Every 8 live-chat
     // turns, fire a background curriculum probe so Unity re-tests one
-    // of her learned cells while she's thinking. Gee binding 2026-04-15:
+    // of her learned cells while she's thinking. the operator binding 2026-04-15:
     // "unity is always testing herself on when thinking in her brain
     // always". Human brains continuously re-exercise learned skills
     // through everyday use; this hook mirrors that for Unity's cortex.

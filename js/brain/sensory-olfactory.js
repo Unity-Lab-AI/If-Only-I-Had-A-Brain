@@ -16,7 +16,7 @@
 // feature vectors, ties directly into memory (hippocampus) and emotion
 // (amygdala-piriform bypass). This module intentionally does NOT model
 // that — it's a keyword-tag channel designed to unlock T15 triggers
-// without pretending to be a real olfactory substrate. If Gee wants a
+// without pretending to be a real olfactory substrate. If the operator wants a
 // full olfactory cortex region with learned scent embeddings, that's
 // a separate multi-session build.
 //

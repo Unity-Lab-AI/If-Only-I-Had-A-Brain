@@ -552,7 +552,7 @@ function loadPersonaSelfImage(targetBrain) {
 
     // T14.23.4 (2026-04-14) — browser-side trainPersonaHebbian
     // DEFERRED to idle time instead of running synchronously on
-    // the landing page's main thread. Gee's boot log showed:
+    // the landing page's main thread. the operator's boot log showed:
     //   [LanguageCortex] trainPersonaHebbian DONE: ... 14061ms
     // Fourteen seconds of synchronous per-sentence Hebbian updates
     // on a 1500-neuron RemoteBrain cortex was blocking DOM

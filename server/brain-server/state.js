@@ -307,7 +307,7 @@ const SERVER_STATE_MIXIN = {
       // corrects. Sustained divergence = Phase B migration wiring bug
       // worth investigating (not a strict abort, just a signal).
       cortexDivergence: this._cortexDivergence || 0,
-      // T17.7 Phase C follow-up — per-region breakdown so Gee can
+      // T17.7 Phase C follow-up — per-region breakdown so the operator can
       // inspect WHERE cortex state is diverging during K curriculum
       // walk. Map<regionName, {standRate, mainRate, divergence}>
       // with rates in [0, 1] (spike fraction per region). Empty when
@@ -530,7 +530,7 @@ const SERVER_STATE_MIXIN = {
     let totalDiff = 0;
     let totalSize = 0;
     // T17.7 Phase C follow-up — per-region divergence breakdown so
-    // Gee can verify during K curriculum walk which specific region
+    // the operator can verify during K curriculum walk which specific region
     // drifted (letter vs phon vs sem vs motor). Without per-region
     // visibility, a cluster-wide scalar like 0.03 doesn't tell us
     // whether sem is dead-on but motor is drifting, or vice versa.
@@ -822,7 +822,7 @@ const SERVER_STATE_MIXIN = {
       wsConnected: !!(ws && ws.readyState === 1),
       // GPU shadow dirty flag. Set when a drop-after-timeout fires;
       // means CPU and GPU weights have diverged on at least one
-      // projection. Surfaces to dashboard so Gee sees the
+      // projection. Surfaces to dashboard so the operator sees the
       // divergence + can restart to clear (full automatic resync is
       // a follow-up iter — too large for this pass). Last drop
       // timestamp lets dashboard render "12s ago" / "no drops since

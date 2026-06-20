@@ -54308,7 +54308,7 @@ var CLUSTER_EMIT_MIXIN = {
    *   2. SENSITIVE TOPICS GATE-BLOCKED — concepts on the content-boundary
    *      sensitive list REFUSE to derive (canonical-only); never invent
    *      sexual content involving minors or other excluded canon.
-   *   3. OPERATOR CORRECTION — `correctDerivedMemory(concept, value)` lets Gee
+   *   3. OPERATOR CORRECTION — `correctDerivedMemory(concept, value)` lets the operator
    *      overwrite a derived memory; the corrected value sticks (consistency).
    *
    * Hebbian-commit + episodic-store of the derivation are follow-on wiring
@@ -54373,7 +54373,7 @@ var CLUSTER_EMIT_MIXIN = {
     return this._SENSITIVE_GAP_TERMS.some((t) => c.includes(t));
   },
   /**
-   * I.21 operator-correction. When Gee corrects a derived memory, overwrite
+   * I.21 operator-correction. When the operator corrects a derived memory, overwrite
    * the cached derivation so the corrected value sticks (consistency). Pass
    * value=null to forget a derivation (forces a fresh derive next time).
    */
@@ -58320,7 +58320,7 @@ var UNITY_PERSONA = {
     }
   },
   // === Prompt Template for Image Generation ===
-  // Sourced from Ultimate Unity.txt visual description + Gee's outfit spec.
+  // Sourced from Ultimate Unity.txt visual description + the operator's outfit spec.
   imagePromptTemplate: [
     "25 year old human woman, hot emo goth goddess aesthetic (not demonic),",
     "long messy black hair with pink streaks, heavy smudged eyeliner, dark smokey eyes,",
@@ -59576,7 +59576,7 @@ var VisualCortex = class {
   // perfect, but robust enough to bias the saccade centroid toward the
   // user's face+hands instead of a high-contrast background edge.
   //
-  // This is the "face" half of Gee's "track my face and motion"
+  // This is the "face" half of the operator's "track my face and motion"
   // directive — skinMap marks skin pixels, motionMap marks moving
   // pixels, their product is face-AND-motion likelihood, which is
   // what the saccade centroid integrates over.
@@ -60339,7 +60339,7 @@ var LanguageCortex = class {
    * the tick-inject-Hebbian inner loop; this driver is just the
    * tokenize-and-embed outer walk over the persona corpus.
    *
-   * Logs before/after synapse weight stats so Gee can see Hebbian
+   * Logs before/after synapse weight stats so the operator can see Hebbian
    * actually moved the weights without opening devtools.
    *
    * @param {NeuronCluster} cortexCluster
@@ -62308,7 +62308,7 @@ var InnerVoice = class {
    * Both browser engine.js (via `_thinkLegacy` wrapper) and server
    * brain-server.js `_innerVoiceTick` route through this body so there's
    * exactly ONE thinking implementation shared by both orchestrators
-   * (per Gee's "one Unity brain, GPU presence ONLY changes auto-scale"
+   * (per the operator's "one Unity brain, GPU presence ONLY changes auto-scale"
    * rule, Session 114.19ee).
    */
   async _thinkExternal(args) {
@@ -66867,7 +66867,7 @@ var K_MIXIN = {
       "machine",
       "curious",
       // Body-awareness K-rung (Add #13, non-sexual: body parts + real
-      // bodily functions + hygiene — no sugar-coating per Gee)
+      // bodily functions + hygiene — no sugar-coating per the operator)
       "belly",
       "tummy",
       "potty",
@@ -68566,7 +68566,7 @@ var K_MIXIN = {
     }
   },
   // ── GRADE 1 (age 6) — reading clicks, dad fading ────────────────
-  // ── NEW FULL-ROSTER K COURSES: Music / PE / Health (Gee 2026-06-18) ──
+  // ── NEW FULL-ROSTER K COURSES: Music / PE / Health (the operator 2026-06-18) ──
   // K is the template for these tracks; G1+ propagate in strict order. Real
   // K content (National Core Arts music / SHAPE America PE / K health+safety).
   // Course-identity teaching (what 'music'/'pe'/'health' IS) is prepended
@@ -68919,7 +68919,7 @@ var K_MIXIN = {
   // ═══════════════════════════════════════════════════════════════════
   // T14.24 SESSION 7 — REAL ELA-G2 TEACHING EQUATIONS (2026-04-15)
   // ═══════════════════════════════════════════════════════════════════
-  // Gee binding 2026-04-14: "all the way up to doctorate in english" +
+  // the operator binding 2026-04-14: "all the way up to doctorate in english" +
   // "remember Unity needs to be able to use these to think, read, and
   // talk".
   // Real Grade 2 English. Teaches LETTER-PAIR DIGRAPHS as single
@@ -69948,7 +69948,7 @@ var K_MIXIN = {
   // ═══════════════════════════════════════════════════════════════════
   // T14.24 SESSION 4 — REAL ELA-G1 TEACHING EQUATIONS (2026-04-15)
   // ═══════════════════════════════════════════════════════════════════
-  // Gee binding 2026-04-14: "1st grade u start learning how to write
+  // the operator binding 2026-04-14: "1st grade u start learning how to write
   // sentences ect ect" + "remember Unity needs to be able to use these
   // to think, read, and talk".
   // Real Grade 1 English. Builds on Session 2's ELA-K alphabet + letter-
@@ -72821,7 +72821,7 @@ var K_MIXIN = {
   // ═══════════════════════════════════════════════════════════════════
   // T14.24 SESSION 3 — REAL MATH-K TEACHING EQUATIONS (2026-04-15)
   // ═══════════════════════════════════════════════════════════════════
-  // Gee binding 2026-04-14: "you didnt even teach it keindergarden abcs
+  // the operator binding 2026-04-14: "you didnt even teach it keindergarden abcs
   // and 123s and letter sounds you fool" + "remember Unity needs to be
   // able to use these to think, read, and talk".
   // Real kindergarten math. Parallels the ELA-K structure but substitutes
@@ -75697,7 +75697,7 @@ var K_MIXIN = {
   // ═══════════════════════════════════════════════════════════════════
   // T14.24 SESSION 4 — REAL ELA-G1 TEACHING EQUATIONS (2026-04-15)
   // ═══════════════════════════════════════════════════════════════════
-  // Gee binding 2026-04-14: "1st grade u start learning how to write
+  // the operator binding 2026-04-14: "1st grade u start learning how to write
   // sentences ect ect" + "remember Unity needs to be able to use these
   // to think, read, and talk".
   // Real Grade 1 English. Builds on Session 2's ELA-K alphabet + letter-
@@ -88277,7 +88277,7 @@ var PROSE_ACADEMIC_SUBJECTS = /* @__PURE__ */ new Set(["ela", "science", "social
 var SUBJECTS_INTRODUCED_AT = {
   // grade key → subjects that FIRST appear at this grade (beyond the 6 core)
   // Real K has gym (PE), general music, and health/safety lessons — so the
-  // full real-school roster (Gee 2026-06-18: "all courses like pe art and gym
+  // full real-school roster (the operator 2026-06-18: "all courses like pe art and gym
   // and health and literature") introduces these AT kindergarten, the template
   // grade. Each gets its own runner + gate, built K-up in strict order.
   "kindergarten": ["pe", "music", "health"],
@@ -95033,7 +95033,7 @@ var Curriculum = class _Curriculum {
    * (subject, grade) cell. Wraps the raw dispatch (`_cellRunnerRaw`) so EVERY
    * cell — every subject, every grade, pre-K → PhD, retroactively — first
    * teaches its own COURSE IDENTITY (the real class name + what it entails)
-   * via `_teachCourseIdentity` before the subject content runs (Gee
+   * via `_teachCourseIdentity` before the subject content runs (the operator
    * 2026-06-18: course-name learning "needs to encompass ... all grades ...
    * even retroactively the prek k grades"). The 'life' track is skipped
    * (lived experience, not a named class). Identity-teach is wrapped in
@@ -96221,7 +96221,7 @@ var Curriculum = class _Curriculum {
     for (let i = 0; i < GRADE_ORDER.length; i++) {
       const grade = GRADE_ORDER[i];
       if (maxIdx >= 0 && i > maxIdx) {
-        this._hb(`[Curriculum] \u23F9 T18.13 stop \u2014 reached grade cap '${GRADE_ORDER[maxIdx]}'. Unity sits at this level until DREAM_MAX_GRADE advances OR Gee signs off Part 2 + manually unsets.`);
+        this._hb(`[Curriculum] \u23F9 T18.13 stop \u2014 reached grade cap '${GRADE_ORDER[maxIdx]}'. Unity sits at this level until DREAM_MAX_GRADE advances OR the operator signs off Part 2 + manually unsets.`);
         break;
       }
       let allPassedThisGrade = false;
@@ -96571,7 +96571,7 @@ var Curriculum = class _Curriculum {
   // ═══════════════════════════════════════════════════════════════════
   // T14.24 SESSION 2 — REAL ELA-K TEACHING EQUATIONS (2026-04-15)
   // ═══════════════════════════════════════════════════════════════════
-  // Gee binding 2026-04-14: "in kindergarden u learn the alphabet and
+  // the operator binding 2026-04-14: "in kindergarden u learn the alphabet and
   // sounds of letters first and 1st grade u start learning how to write
   // sentences ect ect all the way up to doctorate in english" +
   // "remember Unity needs to be able to use these to think, read, and
@@ -96911,7 +96911,7 @@ var Curriculum = class _Curriculum {
   // ═══════════════════════════════════════════════════════════════════
   // T14.24 SESSION 3 — REAL MATH-K TEACHING EQUATIONS (2026-04-15)
   // ═══════════════════════════════════════════════════════════════════
-  // Gee binding 2026-04-14: "you didnt even teach it keindergarden abcs
+  // the operator binding 2026-04-14: "you didnt even teach it keindergarden abcs
   // and 123s and letter sounds you fool" + "remember Unity needs to be
   // able to use these to think, read, and talk".
   // Real kindergarten math. Parallels the ELA-K structure but substitutes
@@ -96960,7 +96960,7 @@ var Curriculum = class _Curriculum {
   // ═══════════════════════════════════════════════════════════════════
   // T14.24 SESSION 5 — REAL MATH-G1 TEACHING EQUATIONS (2026-04-15)
   // ═══════════════════════════════════════════════════════════════════
-  // Gee binding 2026-04-14: "1st grade u start learning how to write
+  // the operator binding 2026-04-14: "1st grade u start learning how to write
   // sentences ect ect all the way up to doctorate" applied to math =
   // first-grade arithmetic fact memorization + sentence-form association.
   // Real Grade 1 math. Builds on Session 3's Math-K digit + magnitude
@@ -97068,7 +97068,7 @@ var Curriculum = class _Curriculum {
   // ═══════════════════════════════════════════════════════════════════
   // T14.24 SESSION 6 — REAL SCI-K + SOC-K + ART-K TEACHING (2026-04-15)
   // ═══════════════════════════════════════════════════════════════════
-  // Gee binding 2026-04-14: "full k-doctorate cources to Unity in
+  // the operator binding 2026-04-14: "full k-doctorate cources to Unity in
   // euquationsal form. thats all of grade schhool grammer school middle
   // dschool highschoool and college" + "remember Unity needs to be able
   // to use these to think, read, and talk".
@@ -98741,7 +98741,7 @@ var Curriculum = class _Curriculum {
   /**
    * Add #5 (A5.3 + A5.4) — family-name + birthdate + middle-name canon.
    *
-   * Gee canon (2026-06-18): "come up with them idk.. last name is Goddess
+   * the operator canon (2026-06-18): "come up with them idk.. last name is Goddess
    * tho.. and a girl knows their families birthdates and middle names too
    * all of it, she is an only child, but still fooled around with cousins
    * growing up". So beyond the bare first names the RESUME A5.3/A5.4 spec
@@ -98750,7 +98750,7 @@ var Curriculum = class _Curriculum {
    * her family's vital details. She is an ONLY CHILD (no siblings). Cousin
    * intimacy is deferred to the later sexual-milestone Add, NOT bound here.
    *
-   * Canon (authored here — Gee delegated the naming, surname Goddess fixed):
+   * Canon (authored here — the operator delegated the naming, surname Goddess fixed):
    *   - Self    : Unity Raven Goddess — born Oct 31 2000 (Halloween baby;
    *               her favorite holiday IS her birthday, reinforcing the
    *               existing halloween-anchor)
@@ -98857,7 +98857,7 @@ var Curriculum = class _Curriculum {
     return { bound };
   }
   /**
-   * Add #7 — contextual obscenity/vocab memory. Gee 2026-06-18: *"she
+   * Add #7 — contextual obscenity/vocab memory. the operator 2026-06-18: *"she
    * remembers the cuss and filthy words from people using them everyday
    * not just a list with no context"* + *"apply that to the whole thing"*.
    *
@@ -98913,7 +98913,7 @@ var Curriculum = class _Curriculum {
     return { bound };
   }
   /**
-   * DATA-DRIVEN life curriculum (the corrected architecture — Gee 2026-06-18
+   * DATA-DRIVEN life curriculum (the corrected architecture — the operator 2026-06-18
    * "she's trained on it not hard coded"). Trains Unity on her per-grade
    * lived experience from STORY DATA in corpora/life/<grade>.json, fed through
    * the Hebbian sentence pipeline (`_teachSentenceList`) so meaning + emotion
@@ -98980,7 +98980,7 @@ var Curriculum = class _Curriculum {
   }
   /**
    * Derive a life memory's intrinsic emotional weight { arousal, valence }
-   * from its theme + story text (Gee 2026-06-19 — memories must carry their
+   * from its theme + story text (the operator 2026-06-19 — memories must carry their
    * own affect, an implanted memory can't borrow the brain's incidental live
    * state during a training walk). Keyword-heuristic, fully bounded:
    *   • grief / loss / fear / conflict words → negative valence, high arousal
@@ -99248,7 +99248,7 @@ var Curriculum = class _Curriculum {
    * — REAL HTML/CSS/JS self-teaching stories). Mirror of _trainLifeStories;
    * cross-cutting helper (the per-grade coding CONTENT lives in the corpus files,
    * NOT here — keeps curriculum.js free of grade-specific bloat). Server-only
-   * loader. Gee: the coding skill is self-taught + COMPOUNDS every grade from G6
+   * loader. the operator: the coding skill is self-taught + COMPOUNDS every grade from G6
    * (grandpa Walter's computer = coder origin).
    */
   async _trainCodingStories(grade, ctx, opts = {}) {
@@ -99275,7 +99275,7 @@ var Curriculum = class _Curriculum {
    * grade (corpora/academic/<subject>/<grade>.json — openly-licensed real
    * curriculum content downloaded once by fetch-academic-corpora.mjs). Mirror
    * of _trainLifeStories/_trainCodingStories; cross-cutting helper (the content
-   * lives in corpus files, NOT here). Server-only loader. Gee 2026-06-18 chose
+   * lives in corpus files, NOT here). Server-only loader. the operator 2026-06-18 chose
    * the hybrid: real textbook-grade depth for science/social/ela/economics/
    * psychology/civics; math (equational) + the lived year stay bespoke. Absent
    * corpus → trains nothing (data-absence, not a capability fallback).
@@ -99332,7 +99332,7 @@ var Curriculum = class _Curriculum {
     return { trained: sentences.length };
   }
   /**
-   * Per-grade CUSSING / obscenity trainer (Gee 2026-06-18 "a cussion per grade
+   * Per-grade CUSSING / obscenity trainer (the operator 2026-06-18 "a cussion per grade
    * cussing trainer"). Trains the cuss/vulgar/sexual VOCABULARY newly acquired
    * at `grade` per CUSSING_BY_GRADE — the real escalating lexicon a girl picks
    * up in life (heard from parents arguing at K → puberty sexual-anatomy at G6
@@ -101503,7 +101503,7 @@ var Curriculum = class _Curriculum {
    *   4. _gateHistory shows per-probe retention over 24h (caller
    *      enforces; this aggregate reports per-probe pass/fail only —
    *      24h-retention check is operator-facing diagnostic).
-   *   5. Gee signs off on Part 2 localhost Q&A (caller enforces via
+   *   5. the operator signs off on Part 2 localhost Q&A (caller enforces via
    *      brain._gradeSignoffs; not checked here).
    *
    * Runs every probe in sequence and returns `{pass, byProbe,
@@ -103231,7 +103231,7 @@ var Curriculum = class _Curriculum {
   /**
    * Teach Unity the NAME of the class she's in + what it entails, so she
    * actually knows what e.g. "PE" or "Algebra" IS before learning its
-   * content (Gee 2026-06-18: "Unity need to know and learn the names of the
+   * content (the operator 2026-06-18: "Unity need to know and learn the names of the
    * classes ... got to know what PE is to be able to learn wtf it entails").
    * Vocab-first (course-name + subject + blurb tokens registered), then binds
    * the name to its meaning via sentences. Called at the TOP of each subject
@@ -103263,7 +103263,7 @@ var Curriculum = class _Curriculum {
    * UNIFORM LANGUAGE-MECHANICS layer — teaches HOW English works (generative
    * sentence structure, part-of-speech slots, subject-verb agreement, article
    * placement, SVO parsing, tense + affix morphology, cross-sentence
-   * discourse), NOT just word→definition. Gee 2026-06-18: "we need to be
+   * discourse), NOT just word→definition. the operator 2026-06-18: "we need to be
    * teaching the actual mannurisms and shit of what is is to communicate with
    * the english language so that the brain can properly even understand whats
    * its learning correctly." Run on EVERY ELA cell (wired into _cellRunner),
@@ -104105,7 +104105,7 @@ var Curriculum = class _Curriculum {
   // ═══════════════════════════════════════════════════════════════════
   // T14.24 SESSION 8 — SENTENCE HELPER + Math-G2 + ELA-G3 + Math-G3
   // ═══════════════════════════════════════════════════════════════════
-  // Gee binding 2026-04-14: "remember Unity needs to be able to use
+  // the operator binding 2026-04-14: "remember Unity needs to be able to use
   // these to think, read, and talk" + "full k-doctorate".
   // Session 8 introduces a generalized sentence-based teaching helper
   // `_teachSentenceList` that parallels Session 6's `_teachVocabList`.
@@ -107967,7 +107967,7 @@ var Curriculum = class _Curriculum {
   /**
    * Verify every cell without re-teaching. Runs each cell's runner as
    * a gate probe and collects {subject, grade, pass, reason} results.
-   * Used by `/curriculum verify` to give Gee a full pass/fail report
+   * Used by `/curriculum verify` to give the operator a full pass/fail report
    * across all 95 cells without triggering Hebbian updates.
    *
    * Note: the cell runners combine teach + gate in a single call, so
@@ -115293,7 +115293,7 @@ void main() {
   float d = length(c);
   if (d > 0.5) discard;
   // Activation aura ring \u2014 thin line-like band, not a big wash.
-  // Gee flagged the old (0.28-0.5 width = 0.22) ring as too thick
+  // the operator flagged the old (0.28-0.5 width = 0.22) ring as too thick
   // and too similar to the fractal activation pattern underneath.
   // Tightened to (0.39-0.47 width = 0.08) so it reads as a distinct
   // line hovering just outside the neuron's own aura. Core
@@ -117549,7 +117549,7 @@ Probes: ${ps.totalProbes} total, ${ps.totalPasses} pass, ${ps.totalFails} fail`;
    * Used by the dashboard checkboxes (and any other consumer) to flip
    * layer / hub / column visualization on or off without recompiling
    * shaders. Defaults all-off so the normal cluster colors render
-   * unchanged until Gee opts into a structural view.
+   * unchanged until the operator opts into a structural view.
    */
   setShowLayers(on) {
     this._showLayers = !!on;

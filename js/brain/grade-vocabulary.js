@@ -1,6 +1,6 @@
 // Per-grade vocabulary registry — maps GRADE_ORDER keys to each grade's
 // vocabulary corpus for prefetch + lazy definition binding at that grade's
-// curriculum start. Gee directive 2026-06-18. K uses the foundational
+// curriculum start. the operator directive 2026-06-18. K uses the foundational
 // k-vocabulary.js; G1->PhD each have a realistic frequency-band file
 // (grade<N>-vocabulary.js / college<N>-vocabulary.js / gradschool / phd),
 // generated from corpora/glove.6B.300d.txt by .claude/scripts/gen-grade-vocab.mjs.

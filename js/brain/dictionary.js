@@ -187,7 +187,7 @@ export class Dictionary {
     // curriculum-calibrated yet (no `intentCentroids`). Before
     // curriculum runs, the fineType/phon/letter cross-projection
     // weights are random, so `detectStress` produces meaningless
-    // noise that just wastes per-new-word boot time. With Gee's
+    // noise that just wastes per-new-word boot time. With the operator's
     // post-T14.18 configured cortex at 10K+ neurons, each first-
     // observation detectStress call was costing ~200-500ms which
     // multiplied by ~2000 new corpus words turned `loadSelfImage` +

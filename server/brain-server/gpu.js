@@ -565,7 +565,7 @@ const SERVER_GPU_MIXIN = {
    * probes fire readback requests (readbackLetterBuckets etc.) that
    * MUST land promptly to produce correct probe output. If Hebbian
    * backlog is queued ahead of the readback, the readback can wait
-   * indefinitely — Gee saw "freeze" at [K-DIAG] gate log line because
+   * indefinitely — the operator saw "freeze" at [K-DIAG] gate log line because
    * ~17000 frames were queued in compute.html. Waiting for drain before
    * firing probe reads ensures fresh readback results.
    */

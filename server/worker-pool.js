@@ -195,7 +195,7 @@ class SparseMatmulPool {
    * totalExternalMb, totalRssMb, replies }`. Used by the curriculum
    * heartbeat to label worker-thread memory as a separate `workers=…`
    * field so operator no longer sees worker heap reported as
-   * "unaccounted" — that was scaring Gee into thinking there was a
+   * "unaccounted" — that was scaring the operator into thinking there was a
    * 450+ MB leak when it was just the pool's baseline footprint.
    *
    * Falls back to the per-worker estimate constant when the pool isn't

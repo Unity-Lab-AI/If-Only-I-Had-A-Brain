@@ -1137,7 +1137,7 @@ export class UnityBrain extends EventEmitter {
     // ══════════════════════════════════════════════════════════════
     // EQUATIONAL LANGUAGE GENERATION ONLY
 
-    // Per Gee's direction: no AI text backend. Unity's text output
+    // Per the operator's direction: no AI text backend. Unity's text output
     // comes entirely from brain equations + language cortex slot
     // scoring over her learned dictionary/bigrams/trigrams/patterns.
     // The persona file and brain self-schema feed the learned

@@ -260,7 +260,7 @@ void main() {
   float d = length(c);
   if (d > 0.5) discard;
   // Activation aura ring — thin line-like band, not a big wash.
-  // Gee flagged the old (0.28-0.5 width = 0.22) ring as too thick
+  // the operator flagged the old (0.28-0.5 width = 0.22) ring as too thick
   // and too similar to the fractal activation pattern underneath.
   // Tightened to (0.39-0.47 width = 0.08) so it reads as a distinct
   // line hovering just outside the neuron's own aura. Core
@@ -846,7 +846,7 @@ export class Brain3D {
 
     // T14.22.2 — loud error logging so init failures surface in the
     // browser console without the operator having to hunt through
-    // console.warn buffers. Gee reported "3D brain completely missing
+    // console.warn buffers. the operator reported "3D brain completely missing
     // from view" and we needed visibility on exactly which init stage
     // died. Every failure path now prints console.error AND exposes
     // the Brain3D instance on window so devtools can inspect state.
@@ -917,7 +917,7 @@ export class Brain3D {
       this._scaled = true;
 
       // T18.7.a — per-cluster peg at MAX_RENDER_NEURONS_PER_CLUSTER.
-      // Gee verbatim 2026-04-18: "it should already peg at 20K per
+      // the operator verbatim 2026-04-18: "it should already peg at 20K per
       // brain cluster(regionS)". Every cluster/region independently
       // renders up to 20K points (clamped to real cluster size so
       // local-brain clients with tiny clusters don't over-render).
@@ -1186,7 +1186,7 @@ export class Brain3D {
 
     // Map a grade name to its human-readable band + data-band attr
     // for CSS color coding. Bands correspond to real school milestones
-    // Gee named in his 2026-04-15 direction.
+    // the operator named in his 2026-04-15 direction.
     const gradeBand = (grade) => {
       if (!grade || grade === 'pre-K') return { band: 'preK', label: 'pre-K', short: 'pre-K' };
       if (grade === 'kindergarten') return { band: 'elementary', label: 'elementary', short: 'K' };
@@ -3176,7 +3176,7 @@ export class Brain3D {
    * Used by the dashboard checkboxes (and any other consumer) to flip
    * layer / hub / column visualization on or off without recompiling
    * shaders. Defaults all-off so the normal cluster colors render
-   * unchanged until Gee opts into a structural view.
+   * unchanged until the operator opts into a structural view.
    */
   setShowLayers(on)  { this._showLayers  = !!on; }
   setShowHubs(on)    { this._showHubs    = !!on; }

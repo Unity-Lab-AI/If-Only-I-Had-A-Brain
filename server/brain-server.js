@@ -462,7 +462,7 @@ function autoClearStaleState() {
   // `npm run build` IMMEDIATELY before `node brain-server.js`, which
   // writes a fresh bundle. Deleting it here racing that rebuild
   // breaks the server — browser requests /js/app.bundle.js and gets
-  // 404, which is exactly what Gee reported 2026-04-18.
+  // 404, which is exactly what the operator reported 2026-04-18.
   const targets = [
     path.join(__dirname, 'brain-weights.json'),
     path.join(__dirname, 'brain-weights-v0.json'),
@@ -669,7 +669,7 @@ class ServerBrain {
     // T18.4.e — worker-thread pool for parallel CPU sparse matmul.
     // Sized to os.cpus().length - 1 (up to 16 workers). Used by the
     // language cortex's CPU fallback path in `cluster._propagateCrossRegions`
-    // when GPU proxy isn't ready or has returned a cache miss. Gee
+    // when GPU proxy isn't ready or has returned a cache miss. the operator
     // 2026-04-18 runtime stats showed `Mode: Single Thread / Parallel
     // Workers: 0` on a 16-core box — this plugs that gap so curriculum
     // teach + cross-region propagate can spread across all cores.
@@ -3105,7 +3105,7 @@ class ServerBrain {
             // main-cortex training because they're no longer fed the
             // same inputs. The cerebellum's error-correction still
             // runs on its native cortex-prediction-error input per
-            // Gee decision #4; this divergence term is zeroed out.
+            // the operator decision #4; this divergence term is zeroed out.
             this._cortexDivergence = 0;
             this._cortexDivergenceByRegion = {};
             this.totalSpikes = 0;
@@ -5555,7 +5555,7 @@ wss.on('connection', (ws, req) => {
             // Log the full text — never truncate. Earlier this line used
             // `.slice(0, 50)` on the display which made it look like user
             // input was getting cut off when it wasn't (the full text
-            // always flowed through to processAndRespond). Gee caught it.
+            // always flowed through to processAndRespond). the operator caught it.
             const logText = (msg.text || '').replace(/\s+/g, ' ').trim();
             console.log(`[${id}] Text (${logText.length} chars): "${logText}" (stable=${stableId.slice(-8)})`);
           }
