@@ -118208,11 +118208,55 @@ var RemoteBrain = class extends EventEmitter2 {
     return true;
   }
 };
+function _probeWs(url, timeoutMs) {
+  return new Promise((resolve) => {
+    let done = false;
+    let ws;
+    const finish = (ok) => {
+      if (done) return;
+      done = true;
+      try {
+        ws && ws.close();
+      } catch {
+      }
+      resolve(ok);
+    };
+    try {
+      ws = new WebSocket(url);
+    } catch {
+      resolve(false);
+      return;
+    }
+    const t = setTimeout(() => finish(false), timeoutMs);
+    ws.onopen = () => {
+      clearTimeout(t);
+      finish(true);
+    };
+    ws.onerror = () => {
+      clearTimeout(t);
+      finish(false);
+    };
+    ws.onclose = () => {
+      clearTimeout(t);
+      finish(false);
+    };
+  });
+}
 async function detectRemoteBrain(url = "ws://localhost:7525") {
   if (typeof location !== "undefined") {
     const host = location.hostname;
     const isLocal = host === "localhost" || host === "127.0.0.1" || host === "[::1]" || host === "" || location.protocol === "file:";
-    if (!isLocal) return null;
+    if (!isLocal) {
+      const wsProto = location.protocol === "https:" ? "wss" : "ws";
+      const adminUrl = `${wsProto}://${location.host}/admin/ws`;
+      const reachable = await _probeWs(adminUrl, 4e3);
+      if (!reachable) {
+        console.log(`[RemoteBrain] Deployed origin \u2014 admin backend not reachable at ${adminUrl} (unauthed or static demo); using local fallback brain.`);
+        return null;
+      }
+      console.log(`[RemoteBrain] Deployed origin \u2014 admin backend reachable; constructing RemoteBrain ws=${adminUrl}`);
+      return new RemoteBrain(adminUrl);
+    }
   }
   console.log(`[RemoteBrain] Local origin detected \u2014 constructing RemoteBrain directly (no probe), ws=${url}`);
   return new RemoteBrain(url);
