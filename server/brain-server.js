@@ -5703,6 +5703,10 @@ wss.on('connection', (ws, req) => {
           // the non-breaking foundation it builds on.
           if (!brain._gpuClients) brain._gpuClients = new Set();
           brain._gpuClients.add(ws);
+          // PA.4.8 — capture donor compute capacity (compute.html reports its
+          // WebGPU adapter VRAM) for community-compute milestone scaling.
+          client.gpuVramMB = Number(msg.vramMB) || 0;
+          client.gpuName = (msg.gpuName || 'unknown').toString().slice(0, 80);
           const havePrimary = brain._gpuClient && brain._gpuClient.readyState === 1;
           if (!havePrimary) {
             brain._gpuClient = ws;
@@ -5718,6 +5722,8 @@ wss.on('connection', (ws, req) => {
           } else {
             console.log(`[${id}] GPU compute client registered as STANDBY — hot failover for the primary (pool: ${brain._gpuClients.size}).`);
           }
+          // PA.4.8 — recompute community compute level + milestone tier.
+          if (brain._recomputeCommunityCompute) brain._recomputeCommunityCompute();
           break;
         }
 
@@ -5897,6 +5903,8 @@ wss.on('connection', (ws, req) => {
     brain.clients.delete(ws);
     // PA.4.3 — remove this donor from the GPU pool (no-op if it wasn't one).
     if (brain._gpuClients) brain._gpuClients.delete(ws);
+    // PA.4.8 — recompute community compute level after a donor leaves.
+    if (brain._recomputeCommunityCompute) brain._recomputeCommunityCompute();
     // If GPU client disconnected, reset GPU state so it re-initializes on reconnect.
     // iter114.19eg — when the disconnect is UNEXPECTED (mid-curriculum,
     // brain has been running >60s, no operator-initiated shutdown), this
