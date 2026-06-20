@@ -82,7 +82,7 @@ if defined DREAM_FORCE_CLEAR (
 )
 
 REM ────────────────────────────────────────────────────────────────
-REM Y/N CONFIRMATION GATE (Gee 2026-05-08 LAW -- irreversible-loss warning)
+REM Y/N CONFIRMATION GATE (the operator 2026-05-08 LAW -- irreversible-loss warning)
 REM ────────────────────────────────────────────────────────────────
 REM Without this gate, accidentally double-clicking start.bat (or running
 REM it by reflex after a CLI restart) silently destroys hours of training.

@@ -83,7 +83,7 @@ fi
 
 if [ -z "$DREAM_FORCE_CLEAR" ]; then
     # ────────────────────────────────────────────────────────────────
-    # Y/N CONFIRMATION GATE (Gee 2026-05-08 LAW -- irreversible-loss warning)
+    # Y/N CONFIRMATION GATE (the operator 2026-05-08 LAW -- irreversible-loss warning)
     # ────────────────────────────────────────────────────────────────
     # Without this gate, accidentally running start.sh (or running it by
     # reflex after a CLI restart) silently destroys hours of training.

@@ -347,7 +347,7 @@ export class VisualCortex {
   // perfect, but robust enough to bias the saccade centroid toward the
   // user's face+hands instead of a high-contrast background edge.
   //
-  // This is the "face" half of Gee's "track my face and motion"
+  // This is the "face" half of the operator's "track my face and motion"
   // directive — skinMap marks skin pixels, motionMap marks moving
   // pixels, their product is face-AND-motion likelihood, which is
   // what the saccade centroid integrates over.

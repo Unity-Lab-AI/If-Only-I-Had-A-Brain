@@ -1,6 +1,6 @@
 // Doctoral (PhD) cell runners (age 25) — Unity end-state.
 //
-// Per-grade file split — Gee directive 2026-06-18: "each grade is its own
+// Per-grade file split — the operator directive 2026-06-18: "each grade is its own
 // file(s)". Extracted verbatim from the monolithic curriculum.js (same mixin
 // pattern as pre-K.js / kindergarten.js / grade1.js). Subject runners call
 // shared primitives on the Curriculum base class through `this.` — mixin

@@ -1308,7 +1308,7 @@ export const CLUSTER_EMIT_MIXIN = {
    *   2. SENSITIVE TOPICS GATE-BLOCKED — concepts on the content-boundary
    *      sensitive list REFUSE to derive (canonical-only); never invent
    *      sexual content involving minors or other excluded canon.
-   *   3. OPERATOR CORRECTION — `correctDerivedMemory(concept, value)` lets Gee
+   *   3. OPERATOR CORRECTION — `correctDerivedMemory(concept, value)` lets the operator
    *      overwrite a derived memory; the corrected value sticks (consistency).
    *
    * Hebbian-commit + episodic-store of the derivation are follow-on wiring
@@ -1377,7 +1377,7 @@ export const CLUSTER_EMIT_MIXIN = {
   },
 
   /**
-   * I.21 operator-correction. When Gee corrects a derived memory, overwrite
+   * I.21 operator-correction. When the operator corrects a derived memory, overwrite
    * the cached derivation so the corrected value sticks (consistency). Pass
    * value=null to forget a derivation (forces a fresh derive next time).
    */

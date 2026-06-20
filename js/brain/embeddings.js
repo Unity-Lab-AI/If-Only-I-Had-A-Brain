@@ -174,7 +174,7 @@ export class SemanticEmbeddings {
         // T14.23.2 (2026-04-14) — AbortController with a 3-second
         // per-URL timeout. The old code used bare `await fetch(url)`
         // with no timeout, so a CORS-blocked or hanging CDN URL
-        // could hang for minutes before erroring out. At Gee's
+        // could hang for minutes before erroring out. At the operator's
         // Stanford NLP URL (CORS-blocked) and HuggingFace URL
         // (returns 404 but slowly), the sequential fetches were
         // eating 5+ minutes of boot time with zero CPU activity
@@ -531,7 +531,7 @@ export class SemanticEmbeddings {
     // function that produced fully-uncorrelated vectors for every
     // word, meaning "cat" and "cats" were as orthogonal as "cat" and
     // "xyzabc". No semantic structure AT ALL. That's why ELA-K READ
-    // stayed at 8% chance level on Gee's live runs — the sem-region
+    // stayed at 8% chance level on the operator's live runs — the sem-region
     // injection during teach was pure noise with no learnable
     // structure, and the letter↔sem cross-projection couldn't converge.
     //

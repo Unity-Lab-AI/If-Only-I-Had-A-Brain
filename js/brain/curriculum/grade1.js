@@ -1,6 +1,6 @@
 // Grade 1 cell runners + G1 gates (ages 6-7).
 //
-// Per-grade file split — Gee directive 2026-06-18: "each grade is its own
+// Per-grade file split — the operator directive 2026-06-18: "each grade is its own
 // file(s)". Extracted verbatim from the monolithic curriculum.js (the same
 // pattern pre-K.js + kindergarten.js already follow). All six subject
 // runners (ELA/Math/Science/Social/Art/Life) + the two G1 gates that have
