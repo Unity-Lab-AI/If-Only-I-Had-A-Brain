@@ -156,7 +156,21 @@ function connectToServer() {
     // disconnect starts over at 3 s instead of carrying forward a
     // stale exponent from an earlier transient hiccup.
     _reconnectAttempt = 0;
-    ws.send(JSON.stringify({ type: 'gpu_register' }));
+    // PA.4.8 — report this donor's GPU capacity so the server tracks the
+    // community-compute level + gates milestone resizes (resize+retrain fires
+    // only at a critical-mass milestone, never per-connection). WebGPU can't
+    // read true VRAM (privacy); maxBufferSize / maxStorageBufferBindingSize
+    // are the best capacity proxies. All guarded — a missing field never
+    // blocks registration.
+    let _vramMB = 0, _maxBindMB = 0, _gpuName = 'webgpu';
+    try {
+      const _lim = gpu && gpu._device && gpu._device.limits;
+      _vramMB = Math.round(((gpu && gpu._maxBufferSize) || (_lim && _lim.maxBufferSize) || 0) / (1024 * 1024));
+      _maxBindMB = Math.round(((gpu && gpu._maxStorageBufferBindingSize) || (_lim && _lim.maxStorageBufferBindingSize) || 0) / (1024 * 1024));
+      const _info = gpu && gpu._adapterInfo;
+      if (_info) _gpuName = (_info.device || _info.description || _info.vendor || _info.architecture || 'webgpu').toString().slice(0, 80);
+    } catch { /* capacity reporting is best-effort — never block registration */ }
+    ws.send(JSON.stringify({ type: 'gpu_register', vramMB: _vramMB, maxStorageBindingMB: _maxBindMB, gpuName: _gpuName }));
   };
 
   ws.onerror = (err) => {

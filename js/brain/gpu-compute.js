@@ -456,6 +456,14 @@ export class GPUCompute {
       const info = adapter.info || (adapter.requestAdapterInfo ? await adapter.requestAdapterInfo() : {});
       console.log(`[GPUCompute] GPU: ${info.device || info.description || info.vendor || 'detected'}`);
       console.log(`[GPUCompute] Max buffer: ${(adapter.limits.maxBufferSize / 1048576).toFixed(0)}MB`);
+      // PA.4.8 — expose adapter info + capacity limits on the instance so
+      // compute.html can report this donor's GPU capacity to the brain server
+      // on gpu_register (community-compute milestone scaling). WebGPU doesn't
+      // expose true VRAM; maxBufferSize / maxStorageBufferBindingSize are the
+      // best available capacity proxies and correlate with GPU tier.
+      this._adapterInfo = info || {};
+      this._maxBufferSize = adapter.limits.maxBufferSize || 0;
+      this._maxStorageBufferBindingSize = adapter.limits.maxStorageBufferBindingSize || 0;
 
       // Create compute pipelines
       this._createPipelines();
