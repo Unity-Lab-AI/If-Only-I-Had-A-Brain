@@ -20,8 +20,146 @@
   <meta name="twitter:image" content="assets/og-image.png">
   <link rel="stylesheet" href="css/style.css?v=20260412">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧠</text></svg>">
+  <style>
+    /* Audit H.9 — no-connection recovery banner. Self-contained,
+       independent of app.bundle.js. Shows when WS to ws://localhost:7525
+       fails to establish within the timeout window. Operator 2026-06-17
+       live-test surfaced HTMLs failing silently — this gives them the
+       recovery path immediately. */
+    #unity-no-conn-banner {
+      display: none;
+      position: fixed;
+      top: 80px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 100;
+      max-width: 560px;
+      background: linear-gradient(135deg, #2a0a0a 0%, #1a0608 100%);
+      border: 2px solid #ef4444;
+      border-radius: 10px;
+      padding: 18px 22px;
+      color: #fde8e8;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      line-height: 1.6;
+      box-shadow: 0 0 32px rgba(239,68,68,0.22);
+      pointer-events: auto;
+    }
+    #unity-no-conn-banner.active { display: block; }
+    #unity-no-conn-banner .title {
+      font-size: 14px;
+      font-weight: 700;
+      color: #ff6b6b;
+      letter-spacing: 0.5px;
+      margin: 0 0 8px 0;
+      text-transform: uppercase;
+    }
+    #unity-no-conn-banner ul { margin: 6px 0 8px 0; padding-left: 18px; }
+    #unity-no-conn-banner li { margin: 3px 0; color: #e0e0e0; }
+    #unity-no-conn-banner code { background: #0a0a0a; border: 1px solid #4a1a22; padding: 1px 6px; border-radius: 3px; color: #22c55e; font-size: 11px; }
+    #unity-no-conn-banner .countdown { color: #f59e0b; font-variant-numeric: tabular-nums; }
+    #unity-no-conn-banner a { color: #ff4d9a; text-decoration: none; border-bottom: 1px dotted #ff4d9a; }
+    #unity-no-conn-banner a:hover { color: #fff; border-bottom-color: #fff; }
+  </style>
 </head>
 <body>
+
+  <!-- Audit H.9 — no-connection recovery banner. Self-contained probe
+       checks ws://localhost:7525 reachability every 3s. Shows + auto-
+       hides as connection state flips. Operator 2026-06-17 live-test
+       reported "no connection basically" with no recovery path —
+       this banner makes the recovery path obvious. -->
+  <div id="unity-no-conn-banner" role="alert">
+    <div class="title">⚠ Brain server unreachable</div>
+    <div>WebSocket to <code>ws://localhost:7525</code> failed. The brain-server process is not running OR not listening on port 7525.</div>
+    <ul>
+      <li>Run <code>start.bat</code> (fresh boot — WIPES training) <em>or</em> <code>Savestart.bat</code> (resume saved training)</li>
+      <li>Watch the PowerShell <strong>Unity Brain Log Tail</strong> window for <code>[Brain] dictionary API ready</code></li>
+      <li>Inspect <code>server/server.log</code> if boot fails</li>
+      <li>Verify port: <code>netstat -ano | findstr :7525</code></li>
+    </ul>
+    <div>Auto-retry in <span class="countdown" id="unity-conn-countdown">3</span>s · or <a href="#" id="unity-conn-retry">retry now</a></div>
+  </div>
+  <script>
+    // Audit H.9 — self-contained WS probe + banner toggler. Independent
+    // of app.bundle.js so banner works even if bundle build is broken /
+    // failed to load. Spawns a 1-shot WS connect to ws://localhost:7525,
+    // observes state transitions, shows banner on prolonged failure.
+    (function(){
+      var WS_URL = (location.protocol === 'https:' ? 'wss://' : 'ws://')
+        + (location.hostname || 'localhost') + ':7525';
+      var bannerEl = document.getElementById('unity-no-conn-banner');
+      var countdownEl = document.getElementById('unity-conn-countdown');
+      var retryEl = document.getElementById('unity-conn-retry');
+      var probeWs = null;
+      var retryTimer = null;
+      var countdownTimer = null;
+      var firstAttemptTs = Date.now();
+      function showBanner() { if (bannerEl) bannerEl.classList.add('active'); }
+      function hideBanner() { if (bannerEl) bannerEl.classList.remove('active'); }
+      function startCountdown(seconds) {
+        var s = seconds;
+        if (countdownEl) countdownEl.textContent = s;
+        if (countdownTimer) clearInterval(countdownTimer);
+        countdownTimer = setInterval(function() {
+          s -= 1;
+          if (s <= 0) { clearInterval(countdownTimer); countdownTimer = null; }
+          else if (countdownEl) countdownEl.textContent = s;
+        }, 1000);
+      }
+      function probe() {
+        try { if (probeWs) { try { probeWs.close(); } catch(e){} probeWs = null; } } catch(e){}
+        try {
+          probeWs = new WebSocket(WS_URL);
+        } catch(e) {
+          // Browsers throw SecurityError under file:// — banner stays
+          // shown + countdown disabled. Operator must serve via brain-
+          // server HTTP route.
+          showBanner();
+          if (countdownEl) countdownEl.parentElement.textContent = 'Open this page through http://localhost:7525 (not file://) to enable auto-retry';
+          return;
+        }
+        var opened = false;
+        probeWs.onopen = function() { opened = true; hideBanner(); try { probeWs.close(); } catch(e){} probeWs = null; };
+        probeWs.onerror = function() { /* fall through to onclose */ };
+        probeWs.onclose = function() {
+          if (!opened) {
+            // Only surface banner after first 2s of failure to avoid
+            // flashing during normal load if WS just hasn't connected
+            // yet on a slow page.
+            if (Date.now() - firstAttemptTs > 2000) showBanner();
+            startCountdown(3);
+            retryTimer = setTimeout(probe, 3000);
+          }
+        };
+      }
+      if (retryEl) retryEl.addEventListener('click', function(e) {
+        e.preventDefault();
+        if (retryTimer) { clearTimeout(retryTimer); retryTimer = null; }
+        if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; }
+        probe();
+      });
+      // Start the probe after the page settles + give app.bundle.js a
+      // chance to land first (it has its own WS that'll often succeed
+      // before our probe fires).
+      setTimeout(probe, 1500);
+    })();
+  </script>
+
+  <!-- WebGPU pre-flight gate. The modal is HARD-BLOCK with no CPU
+       bypass — users either fix WebGPU via the prep page or do not
+       use Unity. Loads early so the modal renders before the 3D brain
+       canvas paints. -->
+  <script type="module">
+    import { mountBootModal } from './js/webgpu-prep.js';
+    mountBootModal({ prepUrl: 'html/webgpu-prep.html' });
+  </script>
+
+  <!-- Quick-access page legend. Floating top-right link to the
+       canonical page index (html/legend.html) so navigation isn't
+       hospogged across multiple HTMLs. Z-index 99998 so it sits below
+       the WebGPU boot modal (99999) but above the 3D brain canvas. -->
+  <a href="html/legend.html" id="unity-legend-link" title="Open the page legend / quick-access index" style="position:fixed;top:8px;right:8px;z-index:99998;background:rgba(15,26,31,0.92);color:#ff4d9a;padding:5px 10px;border-radius:4px;font-size:10px;font-family:'JetBrains Mono',monospace;text-decoration:none;border:1px solid #374151;letter-spacing:0.5px;">📑 Pages</a>
 
   <!-- ═══ LANDING: 3D Brain — THE first thing everyone sees ═══ -->
   <div id="landing-brain" style="position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;">
@@ -419,7 +557,7 @@
       // stamp-version.mjs updates the hash after each commit
       const s = document.createElement('script');
       s.type = 'module';
-      s.src = 'js/app.js?v=28858f6e-b1ef';
+      s.src = 'js/app.js?v=262f758f-f649';
       // Override: always load the BUNDLE, use the stamp for cache bust
       s.src = 'js/app.bundle.js?v=' + Date.now();
       document.body.appendChild(s);

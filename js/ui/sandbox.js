@@ -60,10 +60,19 @@ export class Sandbox {
    * @param {string} [spec.js]       — JavaScript to evaluate in sandbox context
    * @param {string}  spec.id        — Unique component identifier
    * @param {string} [spec.position] — 'append' (default) | 'prepend' | 'replace'
-   * @returns {HTMLElement} The component wrapper div
+   * @param {boolean} [spec.shadow]  — TRUE isolation via Shadow DOM (default
+   *   false). When true, the component's CSS + HTML live inside an attached
+   *   shadow root, so styles cannot leak in or out and the page's CSS cannot
+   *   bleed in — real isolation, not the naive selector-prefix scoping. The
+   *   injected JS receives the shadow root as `el` (so `el.querySelector`
+   *   reaches the component's own tree). Used for Unity's synth-built
+   *   components (self-contained, carry full CSS). Page-integrated views that
+   *   intentionally reuse the app's global stylesheet (e.g. the /think
+   *   diagnostic) leave it false and keep the light-DOM scoped-CSS path.
+   * @returns {HTMLElement} The component wrapper div (the shadow HOST when shadow:true)
    */
   inject(spec) {
-    const { html = '', css = '', js = '', id, position = 'append' } = spec;
+    const { html = '', css = '', js = '', id, position = 'append', shadow = false } = spec;
 
     if (!id) {
       throw new Error('[Sandbox] inject() requires a spec.id');
@@ -101,15 +110,27 @@ export class Sandbox {
     wrapper.classList.add('sandbox-component');
     wrapper.dataset.componentId = id;
 
-    // -- Scoped CSS --
+    // -- CSS + HTML --
+    // TRUE-isolation path (shadow:true): CSS + HTML live inside an attached
+    // shadow root. No selector prefixing, no leak in either direction — the
+    // browser enforces the boundary. The component's own `el.querySelector`
+    // (el = the shadow root) reaches its tree; the page's CSS never touches
+    // it and its `!important` / bare class selectors never touch the page.
+    // styleEl stays null (the style lives in the shadow root, removed with
+    // the host). Light-DOM path (shadow:false, default): unchanged — naive
+    // selector-prefix scoping in document.head, for page-integrated views.
     let styleEl = null;
-    if (css) {
-      styleEl = this._injectScopedCSS(css, id);
-    }
-
-    // -- HTML --
-    if (html) {
-      wrapper.innerHTML = html;
+    let evalRoot = wrapper;
+    if (shadow) {
+      const root = wrapper.attachShadow({ mode: 'open' });
+      let inner = '';
+      if (css) inner += `<style>${css}</style>`;
+      if (html) inner += html;
+      root.innerHTML = inner;
+      evalRoot = root;
+    } else {
+      if (css) styleEl = this._injectScopedCSS(css, id);
+      if (html) wrapper.innerHTML = html;
     }
 
     // -- Insert into container --
@@ -125,15 +146,18 @@ export class Sandbox {
     this._components.set(id, {
       wrapper,
       styleEl,
+      shadow,
       timerIds: new Set(),
       windowListeners: [],
       createdAt: Date.now(),
     });
-    this._specs.set(id, { html, css, js, id, position });
+    this._specs.set(id, { html, css, js, id, position, shadow });
 
     // -- JS (evaluated with sandbox context + lifecycle hooks) --
+    // evalRoot is the shadow root when isolated, else the light-DOM wrapper.
+    // Either way the template's `el.querySelector(...)` reaches its own tree.
     if (js) {
-      this._evaluateJS(js, wrapper, id);
+      this._evaluateJS(js, evalRoot, id);
     }
 
     // -- Auto-persist to localStorage --

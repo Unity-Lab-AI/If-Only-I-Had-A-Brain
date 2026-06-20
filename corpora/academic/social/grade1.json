@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "grade": "grade1",
+  "subject": "social",
+  "source": "Simple English Wikipedia (CC-BY-SA), cleaned + sentence-segmented",
+  "note": "Hybrid academic-depth corpus for social/grade1. Trained via curriculum._trainAcademicStories. Real openly-licensed curriculum content; lived-year + math stay bespoke.",
+  "experiences": [
+    {
+      "theme": "map",
+      "story": "a map is an image of an area, usually of the earth or part of the earth. a map is different from an aerial photograph because it includes interpretation. many maps are called \"charts\" such as star charts and nautical charts. some maps are of distant worlds. before the late 20th century almost all maps were on paper. today, many maps are digital, and can be seen on smartphones and computers. however, physical items such as paper maps, charts, or drawings are still used. the word \"map\" can also be used to talk about or show relationships between ideas, people, events, data, and many other subjects. this is why web developers call a list of web pages on a web site a site map. many maps today are made using gis computer systems. these are database systems that are organized by location instead of named records. people who make maps are cartographers. if a map is on a piece of paper or a computer screen, it has to be projected. this is because the earth is round and paper and screens are flat."
+    },
+    {
+      "theme": "holiday",
+      "story": "a holiday is a regularly reoccurring festive day. usually, but not always, the festive day is observed every year. the word \"holiday\" is derived from the words \"holy\" and \"day.\" in british english, the word \"holiday\" is used to refer to a vacation as well as a public holiday. patrick's day, easter monday and good friday a long weekend, when a holiday is next to the weekend . day, presidents' day, memorial day and labor day are always on monday to create a \"long weekend\" or \"3-day weekend\". other holidays like america's independence day and veterans' day can come on a weekday or weekend. if the holiday is on a weekend, it is moved to friday or monday to create a \"3-day weekend.\" calendars sometimes mark these holidays twice. for example, in 2006, veterans' day in america was on saturday, november 11. \"veteran's day \" was also on the calendar; it was friday, november 10."
+    },
+    {
+      "theme": "family",
+      "story": "a family is a group of people who, in most cases, live together. they share their money and food and are supposed to take care of one another. its members are either genetically related or legally bound to each other, for example by marriage. in many cultures, the members of a family have the same or a similar surname. the family in accordance to the catholic doctrine is treated in many articles of the catechism of the catholic church starting from the article 2201. a family is said to be society's smallest unit, its nucleus. family life is more private and intimate than public life. but in most countries there are laws for it. for example, there are restrictions for marrying within the family and bans for having a sexual relationship with relatives, especially with children. three types of family on the basic of size are: nuclear family, single-parent family and extended family. a nuclear family is made up of parents and one or more children living together. a single-parent family is one where there is one parent and one or more children. an extended family or joint families means father, mother, daughters, sons, grandparents, uncles, aunts, cousins, nieces and nephews. in many countries including china, pakistan and india, extended or joint families traditionally live together."
+    }
+  ]
+}

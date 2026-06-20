@@ -1,5 +1,5 @@
 #!/bin/bash
-# Launcher lives in linux/ — cd up one level so the rest of the script
+# Launcher lives in linux/ -- cd up one level so the rest of the script
 # resolves paths from the project root (corpora/, server/, js/, etc.)
 # exactly the way it did when this file used to live in the root.
 cd "$(dirname "$0")/.." || exit 1
@@ -7,7 +7,7 @@ cd "$(dirname "$0")/.." || exit 1
 #
 # Three stages, ordered best-to-worst so we exit as soon as the brain
 # is dead:
-#   1. Graceful HTTP shutdown via POST /shutdown — node receives the
+#   1. Graceful HTTP shutdown via POST /shutdown -- node receives the
 #      request, runs its SIGINT-equivalent cleanup (save weights,
 #      close sqlite, etc.), then process.exit(0).
 #   2. If HTTP shutdown doesn't respond within a few seconds, fall
@@ -24,7 +24,7 @@ echo ""
 # Step 1/3: graceful HTTP shutdown
 echo "[stop] step 1/3: requesting graceful shutdown via HTTP /shutdown..."
 if curl -s -m 5 -X POST http://localhost:7525/shutdown > /dev/null 2>&1; then
-    echo "  graceful shutdown request sent — waiting 3s for server to exit..."
+    echo "  graceful shutdown request sent -- waiting 3s for server to exit..."
     sleep 3
 else
     echo "  graceful shutdown unreachable (server may already be dead)."
@@ -35,7 +35,7 @@ echo ""
 echo "[stop] step 2/3: killing any PID still listening on port 7525..."
 PIDS=$(lsof -ti:7525 2>/dev/null)
 if [ -z "$PIDS" ]; then
-    echo "  port 7525 free — server already dead."
+    echo "  port 7525 free -- server already dead."
 else
     for pid in $PIDS; do
         echo "  killing PID $pid"
@@ -48,7 +48,7 @@ echo ""
 # Step 3/3: verify port 7525 is free
 echo "[stop] step 3/3: verifying port 7525 is free..."
 if lsof -ti:7525 > /dev/null 2>&1; then
-    echo "  WARNING: port 7525 still held — force-killing ALL node processes."
+    echo "  WARNING: port 7525 still held -- force-killing ALL node processes."
     pkill -9 -f "node" 2>/dev/null
     sleep 1
     if lsof -ti:7525 > /dev/null 2>&1; then
@@ -79,7 +79,7 @@ fi
 echo ""
 
 echo "  Brain server stopped."
-echo "  Remember to close any browser tabs on http://localhost:7525 —"
+echo "  Remember to close any browser tabs on http://localhost:7525 --"
 echo "  compute.html keeps the WebGPU loop running even without the"
 echo "  server, which is what keeps your GPU fans spinning."
 echo ""

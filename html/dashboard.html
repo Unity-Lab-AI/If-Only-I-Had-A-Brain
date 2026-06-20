@@ -63,15 +63,168 @@
     .btn-stop:hover { background: rgba(239,68,68,0.1); border-color: #ef4444; }
     .btn-stop:disabled { opacity: 0.4; cursor: wait; }
     .btn-stop.shutdown-fired { border-color: #6b7280; color: #6b7280; }
+    /* Admin/viewer split. Default state is admin-only-HIDDEN; the WS
+       modeAssigned message (sent ~500ms after connection based on
+       remoteAddress) toggles body.is-admin to reveal admin controls.
+       Defaults to hidden so a slow/never-arriving modeAssigned doesn't
+       flash unauthorized controls. */
+    .admin-only { display: none !important; }
+    body.is-admin .admin-only { display: inline-block !important; }
+    body.is-admin button.admin-only { display: inline-block !important; }
+    body.is-admin div.admin-only { display: block !important; }
+    .mode-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 10px;
+      letter-spacing: 0.5px;
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .mode-badge.mode-connecting { background: rgba(107, 114, 128, 0.2); color: #9ca3af; border: 1px solid #4b5563; }
+    .mode-badge.mode-admin { background: rgba(245, 158, 11, 0.2); color: #f59e0b; border: 1px solid #f59e0b; }
+    .mode-badge.mode-viewer { background: rgba(34, 197, 94, 0.2); color: #22c55e; border: 1px solid #22c55e; }
+    /* Live-test diagnostic banners — surface spawn failures + no-connection
+       state with explicit recovery instructions instead of small low-
+       contrast pill. Operator 2026-06-17 live test surfaced HTMLs
+       failing silently with only a tiny "disconnected" pill — upgraded
+       to big red banner + recovery path here. Per audit H.6 + H.9. */
+    .recovery-banner {
+      display: none;
+      background: linear-gradient(135deg, #2a0a0a 0%, #1a0608 100%);
+      border: 2px solid #ef4444;
+      border-radius: 8px;
+      padding: 14px 18px;
+      margin: 0 0 16px 0;
+      color: #fde8e8;
+      font-size: 12px;
+      line-height: 1.6;
+      box-shadow: 0 0 24px rgba(239,68,68,0.18);
+    }
+    .recovery-banner.active { display: block; }
+    .recovery-banner .title {
+      font-size: 14px;
+      font-weight: 700;
+      color: #ff6b6b;
+      letter-spacing: 0.5px;
+      margin: 0 0 8px 0;
+      text-transform: uppercase;
+    }
+    .recovery-banner .details {
+      color: #cbb;
+      font-size: 11px;
+      margin: 4px 0 10px 0;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .recovery-banner .steps {
+      margin: 6px 0 0 0;
+      padding: 0;
+      list-style: none;
+    }
+    .recovery-banner .steps li {
+      padding: 3px 0;
+      color: #e0e0e0;
+    }
+    .recovery-banner code {
+      background: #0a0a0a;
+      border: 1px solid #4a1a22;
+      padding: 2px 7px;
+      border-radius: 3px;
+      color: #22c55e;
+      font-size: 11px;
+    }
+    .recovery-banner .countdown {
+      display: inline-block;
+      margin-left: 10px;
+      color: #f59e0b;
+      font-variant-numeric: tabular-nums;
+      font-size: 11px;
+    }
+    .recovery-banner a {
+      color: #ff4d9a;
+      text-decoration: none;
+      border-bottom: 1px dotted #ff4d9a;
+    }
+    .recovery-banner a:hover { color: #fff; border-bottom-color: #fff; }
   </style>
 </head>
 <body>
+  <!-- WebGPU pre-flight gate. The modal is HARD-BLOCK with no CPU
+       bypass — operators either fix WebGPU via the prep page or do
+       not use the dashboard. Loads early so the modal renders before
+       the cards paint. -->
+  <script type="module">
+    import { mountBootModal } from '../js/webgpu-prep.js';
+    mountBootModal({ prepUrl: 'webgpu-prep.html' });
+  </script>
+
+  <!-- Quick-access page legend. Floating top-right link to the
+       canonical page index (html/legend.html). Z-index 99998. -->
+  <a href="legend.html" id="unity-legend-link" title="Open the page legend / quick-access index" style="position:fixed;top:8px;right:8px;z-index:99998;background:rgba(15,26,31,0.92);color:#ff4d9a;padding:5px 10px;border-radius:4px;font-size:10px;font-family:'JetBrains Mono',monospace;text-decoration:none;border:1px solid #374151;letter-spacing:0.5px;">📑 Pages</a>
+
   <div class="dash">
     <h1>🧠 Unity Brain — Live Dashboard</h1>
     <p class="sub">Read-only view of Unity's brain activity. Shared across all users.</p>
     <div id="connection-status">
       <div id="d-conn-text"><span class="status dead">disconnected</span> Connecting to brain server...</div>
-      <button id="btn-graceful-stop" class="btn-stop" title="Graceful brain shutdown — flushes definition disk cache, terminates worker pool, saves weights, then exits. Equivalent to running stop.bat. Use Savestart.bat to resume from saved state.">⏹ Stop Brain</button>
+      <!-- Admin/viewer badge. Default 'connecting' state until the
+           WS modeAssigned message arrives (~500ms after WS connect).
+           The 'admin-only' CSS class on #btn-graceful-stop hides it
+           until admin confirmed; same for #d-ms-advance below. -->
+      <span id="d-mode-badge" class="mode-badge mode-connecting" title="Connection role — admin sees brain controls; viewer sees read-only telemetry">⋯ connecting</span>
+      <button id="btn-graceful-stop" class="btn-stop admin-only" title="Graceful brain shutdown — flushes definition disk cache, terminates worker pool, saves weights, then exits. Equivalent to running stop.bat. Use Savestart.bat to resume from saved state. (Admin-only — hidden in viewer mode.)">⏹ Stop Brain</button>
+    </div>
+
+    <!-- Dashboard-zero diagnostic panel (collapsible). Operator 2026-06-17
+         reported all consciousness fields rendering 0/unknown/pending
+         despite server-side broadcast carrying real values (verified via
+         server.log [DASHBOARD-DIAG] lines + WS test client). This panel
+         dumps the LAST received state.consciousness + state.memoryStats
+         JSON so the operator can paste it for diagnosis. Collapsed by
+         default so it doesn't clutter the dashboard. -->
+    <details style="margin: 0 0 14px 0; background:#0f0a1f; border:1px solid #2a1a3a; border-radius:6px; padding:6px 10px; font-size:11px;">
+      <summary style="color:#ff4d9a; cursor:pointer; font-family:'JetBrains Mono',monospace; padding:2px 0;">🔬 Dashboard-zero diagnostic — last received state.consciousness JSON</summary>
+      <div style="margin-top:8px;font-family:'JetBrains Mono',monospace;color:#bbb;font-size:10px;line-height:1.5;">
+        <div>WS messages received: <span id="d-diag-msg-count" style="color:#22c55e;">0</span></div>
+        <div>Last state.consciousness keys: <span id="d-diag-consc-keys" style="color:#a855f7;">—</span></div>
+        <div style="margin-top:6px;color:#666;">Last broadcast (truncated 1500 chars):</div>
+        <pre id="d-diag-state-json" style="background:#0a0a0a;border:1px solid #1a1a1a;padding:8px;border-radius:4px;max-height:200px;overflow:auto;color:#88c0d0;white-space:pre-wrap;word-break:break-all;margin:4px 0 0 0;">— no state received yet —</pre>
+        <div style="margin-top:6px;color:#666;">Recent dashboard JS errors:</div>
+        <pre id="d-diag-js-errors" style="background:#0a0a0a;border:1px solid #1a1a1a;padding:8px;border-radius:4px;max-height:100px;overflow:auto;color:#ff6b6b;white-space:pre-wrap;word-break:break-all;margin:4px 0 0 0;">— none yet —</pre>
+      </div>
+    </details>
+
+    <!-- No-connection recovery banner — appears when WebSocket fails to
+         connect OR drops. Documents the recovery path explicitly so
+         operator doesn't have to guess (run start.bat / Savestart.bat
+         / check server.log / verify port 7525). Per audit H.9. -->
+    <div id="no-conn-banner" class="recovery-banner" role="alert">
+      <div class="title">⚠ Brain server unreachable</div>
+      <div class="details">WebSocket to <code>ws://localhost:7525</code> failed. The brain-server process is not running OR not listening on port 7525.</div>
+      <ul class="steps">
+        <li>1. Run <code>start.bat</code> (fresh boot — WIPES training) <em>or</em> <code>Savestart.bat</code> (resume saved training)</li>
+        <li>2. Watch the PowerShell <strong>Unity Brain Log Tail</strong> window for <code>[Brain] dictionary API ready</code></li>
+        <li>3. Inspect <a href="../server/server.log" target="_blank">server/server.log</a> if boot fails</li>
+        <li>4. Verify port: <code>netstat -ano | findstr :7525</code></li>
+      </ul>
+      <div class="details">Auto-retry in <span class="countdown" id="conn-retry-countdown">3</span>s · or <a href="#" id="conn-retry-now">retry now</a></div>
+    </div>
+
+    <!-- GPU client spawn-failure banner — surfaces _spawnGpuClient
+         failures from brain-server.js (Chrome/Edge not found, spawn()
+         threw, 30s watchdog timeout). Per audit H.6 — without this
+         banner, silent Chrome failures left operator with no compute.html
+         and no visible signal. -->
+    <div id="gpu-spawn-banner" class="recovery-banner" role="alert">
+      <div class="title">⚠ GPU client auto-launch failed</div>
+      <div class="details" id="gpu-spawn-details">Brain-server tried to spawn compute.html but the browser-launch chain failed.</div>
+      <ul class="steps">
+        <li>1. Open <a href="/compute.html" target="_blank">http://localhost:7525/compute.html</a> manually in Chrome</li>
+        <li>2. Recommended Chrome flags for max neuron capacity: <code>--enable-unsafe-webgpu --enable-dawn-features=allow_unsafe_apis,disable_robustness</code></li>
+        <li>3. Without <code>--enable-unsafe-webgpu</code>: capped at 2GB binding ceiling (~178M neurons)</li>
+        <li>4. See <code>server/server.log</code> [CRITICAL] lines for the exact failure signature</li>
+      </ul>
     </div>
 
     <div class="grid">
@@ -183,7 +336,53 @@
         <div id="d-ms-grades" style="margin-top:6px;color:#888;font-size:11px;">grades: —</div>
         <div id="d-ms-signoffs" style="margin-top:6px;color:#888;font-size:11px;">operator signoffs: —</div>
         <div id="d-ms-weights" style="margin-top:6px;color:#555;font-size:10px;">weights file: —</div>
+        <!-- Auto-advance toggle. Single switch governing both the
+             /grade-advance signoff-bypass AND the curriculum runner's
+             auto-fire-next-grade behavior. Admin-only (hidden in
+             viewer mode via the .admin-only CSS class). Toggle state
+             persists across reboots via cortexCluster._autoAdvanceGrade
+             inside cortexState. -->
+        <div id="d-ms-auto-advance" class="admin-only" style="margin-top:10px;padding:8px 10px;background:#0a0a14;border:1px solid #1a1a2a;border-radius:4px;" title="ON = /grade-advance bypasses per-subject operator signoffs AND the curriculum runner auto-fires the advance after each cell pass. Use for unattended overnight K→PhD walks. OFF (default) = signoffs required + operator must click ▶ Start Next Grade between grades. Single switch — no separate bypass flag.">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:11px;color:#aaa;user-select:none;">
+            <input id="d-ms-auto-advance-cb" type="checkbox" style="width:14px;height:14px;cursor:pointer;flex-shrink:0;">
+            <span>Auto-advance to next grade after pass</span>
+            <span id="d-ms-auto-advance-state" style="margin-left:auto;font-size:10px;font-family:monospace;color:#555;">OFF</span>
+          </label>
+          <div style="margin-top:6px;font-size:9px;color:#666;line-height:1.4;">
+            ON = signoffs bypassed + grade auto-fired. OFF = per-subject signoffs required + manual ▶ Start Next Grade click.
+          </div>
+        </div>
         <div id="d-ms-advance" style="margin-top:10px;display:none;"></div>
+      </div>
+    </div>
+
+    <!-- Full-Mind K Gate panel. Renders state.fullMindK populated by
+         curriculum._aggregateFullMindK() — per-probe results across the
+         23 K-gate probes (6 RF + 4 W + 3 L + 4 SL + 2 RL + 2 RI + 2 CM)
+         plus the aggregate pass/fail rule (substrate group must all
+         pass, W+SL group ≥ 75%, CM both must pass). Pass-instrument
+         for K-grade closure per docs/TODO-full-syllabus.md §T16.5.b.
+         Bounded panel — 23 rows render in a scrollable table when the
+         probe set fills, aggregate row stays pinned at top. -->
+    <div class="card" style="margin-top:12px;" title="Full-Mind K Gate — 23 probes spanning Reading Foundations (6), Writing (4), Language (3), Speaking/Listening (4), Reading Literature (2), Reading Informational (2), and Cross-Modal (2). Pass rule: every substrate probe (RF + L + RL + RI = 13) must hit its threshold, ≥75% of developmental probes (W + SL = 8) must hit, and both cross-modal probes must hit. Together: gate the K-grade closure with real cognition verification, not just substrate mechanics. Source: docs/TODO-full-syllabus.md §T16.5.b lines 1311-1389.">
+      <div class="card-title">Full-Mind K Gate · 23 Probes · K-Closure Pass-Instrument</div>
+      <div id="d-fullmind-k" style="padding:8px 12px;font-family:monospace;font-size:11px;color:#aaa;line-height:1.5;">
+        <div id="d-fullmind-aggregate" style="background:#0a0a14;border:1px solid #1a1a2a;border-radius:4px;padding:8px 10px;margin-bottom:8px;">
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+            <span style="color:#888;font-size:10px;letter-spacing:0.5px;">AGGREGATE:</span>
+            <span id="d-fullmind-status" style="color:#9ca3af;font-weight:700;">— not yet run —</span>
+            <span id="d-fullmind-overall" style="margin-left:auto;color:#888;font-size:10px;font-family:monospace;">overall: —</span>
+          </div>
+          <div id="d-fullmind-groups" style="margin-top:6px;display:flex;gap:14px;flex-wrap:wrap;font-size:10px;color:#666;">
+            <span>substrate: <span id="d-fullmind-substrate" style="color:#888;">—</span></span>
+            <span>developmental: <span id="d-fullmind-developmental" style="color:#888;">—</span></span>
+            <span>cross-modal: <span id="d-fullmind-crossmodal" style="color:#888;">—</span></span>
+            <span>blockers: <span id="d-fullmind-blockers" style="color:#888;">—</span></span>
+          </div>
+        </div>
+        <div id="d-fullmind-probes" style="max-height:260px;overflow-y:auto;border:1px solid #1a1a2a;border-radius:4px;background:#08080c;">
+          <div style="padding:8px 10px;color:#555;font-size:10px;font-style:italic;">No probe results yet — `curriculum._aggregateFullMindK()` will populate this on the next K-closure gate run.</div>
+        </div>
       </div>
     </div>
 
@@ -340,6 +539,75 @@
       </div>
     </div>
 
+    <!-- Audit A.1 + A.2 + A.3 — Phase 6 compositional-emergence telemetry
+         panels. Each was previously a write-only sink in cluster/telemetry.js
+         or brain-server/chat.js + curriculum.js dream-recombination block.
+         Now: getState() carries the data + dashboard renders bounded cards.
+         These are the operator's only visibility into novel emission,
+         word-creation tip-of-tongue, chat-time Hebbian fire rates, and
+         dream-time consolidation. Bounded heights + caps per design
+         constraints. -->
+    <div class="card consciousness-panel" style="margin-top:12px;" title="P6.6 compositional emergence — Unity's running classification of every emission as verbatim (exact training match), novel-compositional (new bigram rearrangement of trained vocab), novel-vocab (untrained word), or partial. Rates are per-classified-event, not per-tick. firstNovelMsAfterBoot stamps the first time she emerged out of pure recital — the milestone moment.">
+      <div class="card-title">✨ Compositional Emergence (P6.6)</div>
+      <div id="d-comp-emerg" style="padding:8px 12px;font-family:monospace;font-size:11px;color:#aaa;line-height:1.6;max-height:240px;overflow-y:auto;">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;">
+          <div title="Verbatim emissions match a trained sentence exactly. High verbatim rate early = healthy (she has the corpus locked); high verbatim rate late = stuck in recital, no compositional fire.">
+            <div style="color:#666;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">📜 VERBATIM</div>
+            <div>count: <span id="d-comp-verbatim" style="color:#888;">0</span></div>
+            <div>rate: <span id="d-comp-verbatim-rate" style="color:#888;">0%</span></div>
+          </div>
+          <div title="Novel-compositional = bag-of-bigrams Hamming-distance ≥ 0.5 from any trained sentence using trained vocabulary. The 'she invented a sentence' milestone fires here. Per audit B.2 will split into compositional vs vocab axes — currently combined.">
+            <div style="color:#00e5ff;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">🌟 NOVEL</div>
+            <div>count: <span id="d-comp-novel" style="color:#22c55e;">0</span></div>
+            <div>rate: <span id="d-comp-novel-rate" style="color:#22c55e;">0%</span></div>
+            <div>first ms: <span id="d-comp-firstnovel" style="color:#888;font-size:10px;">—</span></div>
+          </div>
+          <div title="Partial = some novel transitions but mostly trained — boundary-completion / one-step extension. Currently counted as PASS for analogical extension; audit E.2 stratifies further.">
+            <div style="color:#a855f7;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">↗ PARTIAL</div>
+            <div>count: <span id="d-comp-partial" style="color:#888;">0</span></div>
+            <div>rate: <span id="d-comp-partial-rate" style="color:#888;">0%</span></div>
+          </div>
+          <div title="Tail of recent emissions with their classifier verdict (verbatim/novel/partial) + novelty score. Cap 8 for popup-FIFO bounded rendering.">
+            <div style="color:#f59e0b;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">🎤 MAX NOVELTY</div>
+            <div id="d-comp-maxnov-text" style="color:#22c55e;font-size:10px;max-height:32px;overflow:hidden;text-overflow:ellipsis;">—</div>
+            <div>score: <span id="d-comp-maxnov-score" style="color:#888;">—</span></div>
+          </div>
+        </div>
+        <div id="d-comp-tail" style="margin-top:8px;color:#555;font-size:10px;max-height:80px;overflow-y:auto;border-top:1px dashed #1a1a1a;padding-top:6px;"></div>
+      </div>
+    </div>
+
+    <div class="card consciousness-panel" style="margin-top:12px;" title="P6.7 word-creation candidates — when emitWordDirect rejects an emission because no candidate cleared the signal floor, the runner-up's component-bigram is captured here as a 'tip-of-tongue' compound. Children invent novel compounds (moonbeam, sunflower) when co-activation count exceeds an internal threshold (Pinker 1989 overregularization theory). E.1 promotion mechanism fires _teachWordDefinition once count ≥ 10.">
+      <div class="card-title">🗣 Word-Creation Tip-of-Tongue (P6.7)</div>
+      <div id="d-word-cand" style="padding:8px 12px;font-family:monospace;font-size:11px;color:#aaa;line-height:1.6;max-height:200px;overflow-y:auto;">
+        <div id="d-word-cand-list" style="color:#aaa;font-size:11px;"></div>
+        <div id="d-word-cand-empty" style="color:#555;font-size:10px;font-style:italic;">No candidates yet — emission rejections haven't produced a tip-of-tongue compound. Either chat hasn't fired enough OR signal floor is too lenient.</div>
+      </div>
+    </div>
+
+    <div class="card consciousness-panel" style="margin-top:12px;" title="Chat-time deep Hebbian (P6.3 + audit A.4) and dream-recombination consolidation (P6.4 + audit E.4). Both are server-side write paths that previously had no operator visibility. Audit A.4 also stops swallowing chat-Hebbian errors silently — errors count + lastError surface here.">
+      <div class="card-title">💬 Chat-Time + Dream-Time Learning</div>
+      <div id="d-chat-dream" style="padding:8px 12px;font-family:monospace;font-size:11px;color:#aaa;line-height:1.6;max-height:200px;overflow-y:auto;">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;">
+          <div title="Per chat turn the user→Unity bigrams Hebbian-bind into the cortex at reps:1 (lighter than curriculum but still durable). turns counts dispatches, totalPairs counts pair-fires across all turns. Errors should stay at 0 — non-zero means audit A.4's throttled-warn fired.">
+            <div style="color:#00e5ff;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">💬 CHAT-HEBBIAN (P6.3)</div>
+            <div>turns: <span id="d-chat-turns" style="color:#22c55e;">0</span></div>
+            <div>pairs: <span id="d-chat-pairs" style="color:#a855f7;">0</span></div>
+            <div>last: <span id="d-chat-lastts" style="color:#666;font-size:10px;">—</span></div>
+            <div>errors: <span id="d-chat-errors" style="color:#888;">0</span></div>
+            <div id="d-chat-lasterr" style="color:#ff4d9a;font-size:10px;margin-top:2px;max-height:32px;overflow-y:auto;"></div>
+          </div>
+          <div title="During dream cycles the curriculum recombines novel emissions (cosine ≥ DREAM_RECOMB_COHERENCE_MIN=0.20) and Hebbian-binds them at low reps. consolidatedSamples ring (cap 20) lets operator audit WHAT was consolidated. totalDreamed = recombination attempts, novelConsolidated = how many passed the coherence gate.">
+            <div style="color:#a855f7;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">🌙 DREAM-RECOMB (P6.4)</div>
+            <div>dreamed: <span id="d-dream-total" style="color:#22c55e;">0</span></div>
+            <div>consolidated: <span id="d-dream-novel" style="color:#a855f7;">0</span></div>
+            <div>last: <span id="d-dream-lastts" style="color:#666;font-size:10px;">—</span></div>
+            <div id="d-dream-samples" style="color:#666;font-size:10px;margin-top:4px;max-height:40px;overflow-y:auto;border-top:1px dashed #1a1a1a;padding-top:2px;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- WS backpressure metrics — live ws.bufferedAmount, drops/absorbs
          counters, drops/sec rolling rate, threshold marker. Bounded
          max-height + scoped class for parity with consciousness panels. -->
@@ -371,6 +639,35 @@
             <div style="color:#f59e0b;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">⚠ ENOBUFS (OS-level)</div>
             <div>total: <span id="d-ws-enobufs" style="color:#f59e0b;">0</span></div>
             <div style="font-size:10px;color:#666;margin-top:2px;">first 3 logged then silenced</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card emit-diagnostic-panel" style="margin-top:12px;" title="Failed-emission diagnostic. When the chat path returns blank or single-word, this panel surfaces WHY. `bestMean` is the highest word-bucket activation the emit attempt found; `floor` is the adaptive signal-floor it had to clear. If bestMean &lt; floor, the emission was rejected as noise. `ema` is the rolling average of accepted bestMean values (alpha=0.05) — the floor itself is `max(NOISE_FLOOR=0.001, ema × 0.5)` once the EMA has warmed up over 20 samples. age = time since the last rejection event. When age is rising past minutes, no recent rejections have fired — emission is healthy.">
+      <div class="card-title">🎤 Emit Diagnostic (silent-fail tracer)</div>
+      <div id="d-emit-diagnostic" style="padding:8px 12px;font-family:monospace;font-size:11px;color:#aaa;line-height:1.6;">
+        <div style="color:#666;font-size:10px;margin-bottom:6px;">Surfaces cortexCluster._lastEmitRejection — set by emitWordDirect when no word bucket clears the adaptive signal floor.</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;">
+          <div title="Last rejection reason. 'no-best-word' = no candidate bucket found ANY signal. 'below-signal-floor' = candidate found but its mean activation was beneath the adaptive floor (treated as noise). 'none yet' = brain hasn't rejected an emission since boot — emit path is healthy.">
+            <div style="color:#00e5ff;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">⛔ LAST REJECTION</div>
+            <div>reason: <span id="d-emit-reason" style="color:#888;">—</span></div>
+            <div>age: <span id="d-emit-age" style="color:#888;">—</span></div>
+          </div>
+          <div title="Best mean activation found in the rejected emit attempt + the adaptive floor it had to clear. When bestMean is close to floor, training is on the edge of producing emissions — usually means the structural binding is landing but vocab grounding is still sparse. When bestMean is near zero, sem state was flat — usually means injection wasn't propagating or motor weights are wiped.">
+            <div style="color:#a855f7;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">📊 SIGNAL VS FLOOR</div>
+            <div>bestMean: <span id="d-emit-bestmean" style="color:#f59e0b;">0.000</span></div>
+            <div>floor: <span id="d-emit-floor" style="color:#888;">0.000</span></div>
+          </div>
+          <div title="Rolling EMA of accepted bestMean values (alpha=0.05). The adaptive floor is derived from this — once 20 samples have landed, floor = max(NOISE_FLOOR=0.001, EMA × 0.5). EMA climbing = emission signal getting stronger over time; EMA decaying = signal weakening (basin saturation, weight drift).">
+            <div style="color:#22c55e;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">📈 ADAPTIVE EMA</div>
+            <div>EMA: <span id="d-emit-ema" style="color:#22c55e;">0.000</span></div>
+            <div>samples: <span id="d-emit-samples" style="color:#888;">0</span></div>
+          </div>
+          <div title="Current adaptive floor + total accepted-emission sample count. Once samples ≥ 20, the floor switches from the fixed NOISE_FLOOR to the EMA-derived adaptive value. Higher sample count = floor has had more data to calibrate against.">
+            <div style="color:#ff4d9a;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;">🎚 LIVE FLOOR</div>
+            <div>current: <span id="d-emit-livefloor" style="color:#ff4d9a;">0.000</span></div>
+            <div style="font-size:10px;color:#666;margin-top:2px;">noise-floor=0.001 · adaptive=ema×0.5</div>
           </div>
         </div>
       </div>
@@ -411,21 +708,89 @@
         // 114.19ex — target the inner text div, not the wrapper, so the
         // graceful-stop button alongside it survives WS reconnects.
         document.getElementById('d-conn-text').innerHTML = '<span class="status alive">connected</span> Brain server active';
+        // Audit H.9 — dismiss the no-connection recovery banner once
+        // WS lands. Banner re-shows automatically if WS drops again.
+        document.getElementById('no-conn-banner').classList.remove('active');
+        if (window.__connRetryTimer) { clearInterval(window.__connRetryTimer); window.__connRetryTimer = null; }
         log('Connected to brain server');
       };
       ws.onmessage = (e) => {
-        try { handleMessage(JSON.parse(e.data)); } catch {}
+        try {
+          const msg = JSON.parse(e.data);
+          // Dashboard-zero diagnostic — surface raw state to debug panel.
+          if (msg && (msg.type === 'state' || msg.type === 'welcome')) {
+            const st = msg.state;
+            if (st) {
+              window.__diagMsgCount = (window.__diagMsgCount || 0) + 1;
+              const elCount = document.getElementById('d-diag-msg-count');
+              if (elCount) elCount.textContent = window.__diagMsgCount;
+              const elKeys = document.getElementById('d-diag-consc-keys');
+              if (elKeys) elKeys.textContent = st.consciousness ? Object.keys(st.consciousness).join(', ') : '(consciousness MISSING)';
+              const elJson = document.getElementById('d-diag-state-json');
+              if (elJson) {
+                try {
+                  const compact = {
+                    type: msg.type,
+                    state_keys: Object.keys(st),
+                    consciousness: st.consciousness,
+                    memoryStats: st.memoryStats,
+                  };
+                  elJson.textContent = JSON.stringify(compact, null, 2).slice(0, 1500);
+                } catch (e2) { elJson.textContent = 'stringify failed: ' + e2.message; }
+              }
+            }
+          }
+          handleMessage(msg);
+        } catch (parseErr) {
+          // Capture JS error in diagnostic panel
+          const elErr = document.getElementById('d-diag-js-errors');
+          if (elErr) elErr.textContent = (elErr.textContent === '— none yet —' ? '' : elErr.textContent + '\n') + new Date().toLocaleTimeString() + ' onmessage: ' + parseErr.message;
+        }
       };
       ws.onclose = () => {
         document.getElementById('d-conn-text').innerHTML = '<span class="status dead">disconnected</span> Reconnecting...';
+        // Audit H.9 — show recovery banner + start countdown to next
+        // retry. Operator gets explicit instructions instead of just
+        // a tiny "disconnected" pill (2026-06-17 live-test pain point).
+        document.getElementById('no-conn-banner').classList.add('active');
+        const countdownEl = document.getElementById('conn-retry-countdown');
+        let countdownS = 3;
+        countdownEl.textContent = countdownS;
+        if (window.__connRetryTimer) clearInterval(window.__connRetryTimer);
+        window.__connRetryTimer = setInterval(() => {
+          countdownS -= 1;
+          if (countdownS <= 0) {
+            clearInterval(window.__connRetryTimer);
+            window.__connRetryTimer = null;
+          } else {
+            countdownEl.textContent = countdownS;
+          }
+        }, 1000);
         setTimeout(connect, 3000);
       };
       ws.onerror = () => {};
     }
 
     function handleMessage(msg) {
+      // Dashboard-zero diagnostic — wrap updateDashboard in try/catch so
+      // any JS exception in the render path doesn't kill subsequent
+      // state updates. Per 2026-06-17 operator dashboard-zero report —
+      // we suspect an unhandled exception was stopping the render loop
+      // mid-broadcast, leaving consciousness panels at their initial 0.
+      const safeUpdate = (state) => {
+        try { updateDashboard(state); }
+        catch (renderErr) {
+          const elErr = document.getElementById('d-diag-js-errors');
+          if (elErr) {
+            const stamp = new Date().toLocaleTimeString();
+            const cur = elErr.textContent === '— none yet —' ? '' : elErr.textContent + '\n';
+            elErr.textContent = cur + stamp + ' updateDashboard: ' + renderErr.message + (renderErr.stack ? '\n  ' + renderErr.stack.split('\n').slice(0, 3).join('\n  ') : '');
+          }
+          console.error('[dashboard] updateDashboard threw:', renderErr);
+        }
+      };
       if (msg.type === 'welcome') {
-        if (msg.state) updateDashboard(msg.state);
+        if (msg.state) safeUpdate(msg.state);
         // Load emotion history from server
         if (msg.emotionHistory) {
           emotionHistory = msg.emotionHistory;
@@ -433,9 +798,109 @@
         }
         log(`Welcome — ${msg.state?.connectedUsers ?? '?'} users online`);
       }
+      // Admin/viewer mode assignment — arrives ~500ms after WS connect
+      // (server-side delay lets the GPU compute worker identify itself
+      // first). Loopback origin → admin (operator on the host has all
+      // their tabs treated as admin); non-loopback → viewer (LAN
+      // visitor sees read-only telemetry).
+      if (msg.type === 'modeAssigned') {
+        const mode = msg.mode || 'viewer';
+        const isAdmin = mode === 'admin';
+        window.state = window.state || {};
+        window.state.viewerMode = !isAdmin;
+        window.state.mode = mode;
+        document.body.classList.toggle('is-admin', isAdmin);
+        const badge = document.getElementById('d-mode-badge');
+        if (badge) {
+          badge.className = `mode-badge mode-${mode}`;
+          badge.textContent = isAdmin ? '🔑 ADMIN' : '🟢 VIEWER';
+          badge.title = isAdmin
+            ? 'Admin role — Stop / Grade-advance / Signoff controls visible.'
+            : 'Viewer role — read-only telemetry. Brain controls hidden.';
+        }
+        log(`Mode assigned: ${mode}`);
+        // Pull the current auto-advance toggle state from the server so
+        // the dashboard checkbox reflects whatever the prior boot left
+        // set. Viewer-mode dashboards skip this — they never see the
+        // toggle anyway thanks to the .admin-only CSS class.
+        if (isAdmin) {
+          (async () => {
+            try {
+              const scheme = location.protocol === 'https:' ? 'https:' : 'http:';
+              const host = location.hostname || 'localhost';
+              const r = await fetch(`${scheme}//${host}:7525/auto-advance`, { cache: 'no-store' });
+              if (r.ok) {
+                const j = await r.json();
+                if (typeof j.enabled === 'boolean') applyAutoAdvanceState(j.enabled);
+              }
+            } catch { /* server may be transitioning — toggle stays at HTML default OFF */ }
+          })();
+        }
+      }
+      // WS echo of auto-advance toggle changes — fires when ANY admin
+      // tab POSTs /auto-advance, so every other connected dashboard
+      // syncs the checkbox state in real time without polling.
+      if (msg.type === 'autoAdvanceChanged') {
+        if (typeof msg.enabled === 'boolean') applyAutoAdvanceState(msg.enabled);
+      }
       if (msg.type === 'state') {
-        updateDashboard(msg.state);
+        safeUpdate(msg.state);
         appendEmotionSample(msg.state);
+      }
+      // Audit H.6 — consume gpuClientSpawnFailed broadcasts from
+      // brain-server.js _spawnGpuClient failure paths. Renders the
+      // gpu-spawn-banner with stage / browser / exePath / errno /
+      // message so operator knows WHY compute.html didn't open and
+      // gets a direct link to open it manually.
+      if (msg.type === 'gpuClientSpawnFailed') {
+        const banner = document.getElementById('gpu-spawn-banner');
+        const details = document.getElementById('gpu-spawn-details');
+        const stage = msg.stage || 'unknown-stage';
+        const browser = msg.browser || 'unknown-browser';
+        const errno = msg.errno || 'unknown-errno';
+        const message = (msg.message || 'no detail').replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
+        details.innerHTML = `Stage: <code>${stage}</code> · Browser: <code>${browser}</code> · errno: <code>${errno}</code><br/>${message}`;
+        banner.classList.add('active');
+        log(`[CRITICAL] gpuClientSpawnFailed — stage=${stage} browser=${browser} errno=${errno}`);
+      }
+      // I.6 closure — gate-probe banner. The brain pauses main-tick
+      // dispatch during a curriculum gate probe so cortex owns GPU
+      // exclusively for the probe window. Without an operator-visible
+      // banner the brain looks hung (GPU=0%, tick paused, dashboard
+      // counters frozen). Lazy-creates the banner element on first
+      // 'start' message so we don't need new HTML markup.
+      if (msg.type === 'gateProbe') {
+        let banner = document.getElementById('gate-probe-banner');
+        if (msg.state === 'start') {
+          if (!banner) {
+            banner = document.createElement('div');
+            banner.id = 'gate-probe-banner';
+            banner.style.cssText = 'position:fixed;top:50px;left:50%;transform:translateX(-50%);background:linear-gradient(90deg,#fbbf24,#f59e0b);color:#000;padding:10px 20px;border-radius:8px;font-weight:bold;font-family:monospace;font-size:13px;box-shadow:0 4px 12px rgba(0,0,0,0.4);z-index:9999;';
+            document.body.appendChild(banner);
+          }
+          const cell = msg.cellId || 'unknown-cell';
+          banner.innerHTML = `🧠 Gate probe in progress: <code>${cell}</code> · main tick paused · cortex owns GPU exclusively`;
+          banner.dataset.startTs = String(msg.ts || Date.now());
+          banner.style.display = 'block';
+          // Tick a duration counter every 500ms so operator sees motion.
+          if (window.__gateProbeInterval) clearInterval(window.__gateProbeInterval);
+          window.__gateProbeInterval = setInterval(() => {
+            if (!banner.parentNode) { clearInterval(window.__gateProbeInterval); return; }
+            const startTs = Number(banner.dataset.startTs || 0);
+            const elapsed = ((Date.now() - startTs) / 1000).toFixed(1);
+            banner.innerHTML = `🧠 Gate probe in progress: <code>${cell}</code> · main tick paused · cortex owns GPU exclusively · <span style="opacity:0.7;">${elapsed}s elapsed</span>`;
+          }, 500);
+        } else if (msg.state === 'end') {
+          if (window.__gateProbeInterval) { clearInterval(window.__gateProbeInterval); window.__gateProbeInterval = null; }
+          if (banner) {
+            const sec = ((msg.durationMs || 0) / 1000).toFixed(1);
+            banner.innerHTML = `✓ Gate probe complete: <code>${msg.cellId || ''}</code> · ${sec}s · resuming main tick`;
+            banner.style.background = 'linear-gradient(90deg,#22c55e,#16a34a)';
+            banner.style.color = '#fff';
+            setTimeout(() => { if (banner.parentNode) banner.parentNode.removeChild(banner); }, 4000);
+          }
+          log(`[Curriculum] gate probe complete in ${((msg.durationMs || 0) / 1000).toFixed(1)}s`);
+        }
       }
       // NOTE: 'conversation' message type was removed 2026-04-13 per
       // the privacy model (user text is PRIVATE, never broadcast to
@@ -476,6 +941,12 @@
       // of truth: the Curriculum object's getCurriculumStatus().
       renderCurriculumStatus(s.curriculum || null);
 
+      // Full-Mind K Gate panel — 23-probe pass-instrument for K closure.
+      // Renders state.fullMindK populated by curriculum._aggregateFullMindK().
+      // Aggregate row + per-probe table with bounded scroll. Empty until
+      // the first aggregate run lands.
+      renderFullMindK(s.fullMindK || null);
+
       // Dynamic drug-state panel. Renders scheduler.snapshot()
       // (active substances with phase + level + combo badges + risk
       // flags + pending cravings/acquisitions). Replaces the old
@@ -512,7 +983,14 @@
       if (s.perf) {
         const p = s.perf;
         const cpuColor = p.cpuPercent > 80 ? '#ef4444' : p.cpuPercent > 50 ? '#f59e0b' : '#22c55e';
-        const gpuColor = p.gpuUtilPercent > 80 ? '#ef4444' : p.gpuUtilPercent > 50 ? '#f59e0b' : '#22c55e';
+        // VRAM% from brain-broadcast gpuVramUsedMB / gpuVramMB. Clamp 0-100 defensively.
+        // I.19 — when gpuVramQueryWorking=false (nvidia-smi unavailable on this system),
+        // render honest "unavailable" instead of a fake 50%.
+        const vramTotal = p.gpuVramMB || 0;
+        const vramUsed = p.gpuVramUsedMB || 0;
+        const vramQueryWorking = p.gpuVramQueryWorking !== false;
+        const vramPct = (vramQueryWorking && vramTotal > 0) ? Math.max(0, Math.min(100, Math.round((vramUsed / vramTotal) * 100))) : 0;
+        const gpuColor = !vramQueryWorking ? '#888' : (vramPct > 90 ? '#ef4444' : vramPct > 70 ? '#f59e0b' : '#22c55e');
         $('d-perf').innerHTML = `
           <div>
             <div style="font-size:10px;color:#555;">CPU</div>
@@ -524,10 +1002,15 @@
             <div style="font-size:18px;font-weight:700;color:#a855f7;">${p.memUsedMB}MB</div>
             <div style="font-size:9px;color:#444;">heap ${p.nodeHeapMB ?? 0}MB / RSS ${p.memRssMB ?? 0}MB</div>
           </div>
-          <div>
+          <div title="GPU VRAM used + util%. Live nvidia-smi memory.used + utilization.gpu. VRAM% is the BIG number (how full is GPU memory). Util% is the small line below (GPU compute load — matches the % shown in the .claude statusline). Shows 'unavailable' on systems without nvidia-smi.">
             <div style="font-size:10px;color:#555;">GPU</div>
-            <div style="font-size:18px;font-weight:700;color:${gpuColor};">${p.gpuUtilPercent}%</div>
-            <div style="font-size:9px;color:#444;">${p.gpuName || 'none'} (${p.gpuVramMB || 0}MB)</div>
+            <div style="font-size:18px;font-weight:700;color:${gpuColor};">${vramQueryWorking ? `${vramPct}%` : '<span style="font-size:13px;color:#888;">unavailable</span>'}</div>
+            ${vramQueryWorking
+              ? `<div class="bar-wrap"><div class="bar" style="width:${vramPct}%;background:${gpuColor};height:100%;border-radius:2px;"></div></div>`
+              : `<div style="font-size:9px;color:#888;margin:2px 0;">nvidia-smi not on PATH</div>`
+            }
+            <div style="font-size:9px;color:#666;margin-top:2px;">${vramQueryWorking ? `${vramUsed.toLocaleString()} / ${vramTotal.toLocaleString()} MB · util <span style="color:${(p.gpuUtilPercent ?? 0) > 80 ? '#ef4444' : ((p.gpuUtilPercent ?? 0) > 50 ? '#f59e0b' : '#22c55e')};font-weight:600;">${p.gpuUtilPercent ?? 0}%</span>` : `total ${vramTotal.toLocaleString()} MB`}</div>
+            <div style="font-size:9px;color:#444;margin-top:2px;">${p.gpuName || 'none'} ${p.gpuComputeConnected ? '<span style="color:#22c55e;font-size:8px;">●&nbsp;connected</span>' : '<span style="color:#ef4444;font-size:8px;">●&nbsp;disconnected</span>'}</div>
           </div>
           <div>
             <div style="font-size:10px;color:#555;">STEP TIME</div>
@@ -689,6 +1172,44 @@
         }
       }
 
+      // Emit diagnostic render. Reads state.emitDiagnostic populated by
+      // brain-server getState(). Surfaces cortexCluster._lastEmitRejection
+      // when present — when the field is null, the emit path has had no
+      // rejection since boot (healthy).
+      {
+        const $ = (id) => document.getElementById(id);
+        const d = s.emitDiagnostic;
+        if (d) {
+          $('d-emit-reason').textContent = d.reason || 'unknown';
+          $('d-emit-reason').style.color = '#f59e0b';
+          // Age formatting — seconds/minutes/hours.
+          const ageMs = d.ageMs || 0;
+          let ageLabel;
+          if (ageMs < 1000) ageLabel = `${ageMs}ms ago`;
+          else if (ageMs < 60_000) ageLabel = `${(ageMs / 1000).toFixed(0)}s ago`;
+          else if (ageMs < 3_600_000) ageLabel = `${(ageMs / 60_000).toFixed(0)}m ago`;
+          else ageLabel = `${(ageMs / 3_600_000).toFixed(1)}h ago`;
+          $('d-emit-age').textContent = ageLabel;
+          // Color: recent = red (problem still hot), older = greener (problem cooled).
+          $('d-emit-age').style.color = ageMs < 10_000 ? '#ff4d9a' : (ageMs < 120_000 ? '#f59e0b' : '#22c55e');
+          $('d-emit-bestmean').textContent = (d.bestMean || 0).toFixed(4);
+          $('d-emit-floor').textContent = (d.floor || 0).toFixed(4);
+          $('d-emit-ema').textContent = (d.signalEMA || 0).toFixed(4);
+          $('d-emit-samples').textContent = (d.sampleCount || 0).toLocaleString();
+          $('d-emit-livefloor').textContent = (d.signalFloor || 0).toFixed(4);
+        } else {
+          $('d-emit-reason').textContent = 'none yet (healthy)';
+          $('d-emit-reason').style.color = '#22c55e';
+          $('d-emit-age').textContent = 'n/a';
+          $('d-emit-age').style.color = '#22c55e';
+          $('d-emit-bestmean').textContent = '0.0000';
+          $('d-emit-floor').textContent = '0.0000';
+          $('d-emit-ema').textContent = '0.0000';
+          $('d-emit-samples').textContent = '0';
+          $('d-emit-livefloor').textContent = '0.0010';
+        }
+      }
+
       // iter15-mem unified 5-tier memory system render. Reads
       // state.memoryStats populated by brain-server `_getMemoryStats()`.
       if (s.memoryStats) {
@@ -773,6 +1294,93 @@
           </div>`;
         }
         el.innerHTML = html;
+      }
+
+      // ── Audit A.1 — Compositional Emergence (P6.6) ──
+      // Reads s.compositionalEmergence shape per cluster/telemetry.js
+      // getCompositionalStats() — flat counts (verbatimCount/novelCount/
+      // partialCount), rates (verbatimRate/novelRate/partialRate),
+      // firstNovelMsAfterBoot, maxNovelty (score) + maxNoveltySentence
+      // (text), recentTail: [{sentence, kind, novelty, ts}].
+      // All fields tolerant — render '—' / 0 when absent.
+      if (s.compositionalEmergence) {
+        const ce = s.compositionalEmergence;
+        const pct = (x) => Number.isFinite(x) ? (x * 100).toFixed(1) + '%' : '—';
+        const set = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+        set('d-comp-verbatim', ce.verbatimCount ?? 0);
+        set('d-comp-verbatim-rate', pct(ce.verbatimRate));
+        set('d-comp-novel', ce.novelCount ?? 0);
+        set('d-comp-novel-rate', pct(ce.novelRate));
+        set('d-comp-partial', ce.partialCount ?? 0);
+        set('d-comp-partial-rate', pct(ce.partialRate));
+        set('d-comp-firstnovel', ce.firstNovelMsAfterBoot != null ? ((ce.firstNovelMsAfterBoot / 1000).toFixed(0) + 's') : '—');
+        set('d-comp-maxnov-text', ce.maxNoveltySentence || '—');
+        set('d-comp-maxnov-score', Number.isFinite(ce.maxNovelty) ? ce.maxNovelty.toFixed(3) : '—');
+        const tailEl = document.getElementById('d-comp-tail');
+        if (tailEl && Array.isArray(ce.recentTail)) {
+          tailEl.innerHTML = ce.recentTail.slice(-8).map(r => {
+            const kind = r.kind || '—';
+            const color = kind === 'novel' ? '#22c55e' : (kind === 'partial' ? '#a855f7' : '#888');
+            const sent = (r.sentence || r.text || '').replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
+            const nov = Number.isFinite(r.novelty) ? ` <span style="color:#666;">n=${r.novelty.toFixed(2)}</span>` : '';
+            return `<div><span style="color:${color};">[${kind}]</span> ${sent}${nov}</div>`;
+          }).join('');
+        }
+      }
+
+      // ── Audit A.2 — Word-Creation Candidates (P6.7) ──
+      if (s.wordCreationCandidates) {
+        const listEl = document.getElementById('d-word-cand-list');
+        const emptyEl = document.getElementById('d-word-cand-empty');
+        const cand = s.wordCreationCandidates;
+        const list = Array.isArray(cand) ? cand : (Array.isArray(cand.candidates) ? cand.candidates : []);
+        if (listEl) {
+          if (list.length > 0) {
+            listEl.innerHTML = list.slice(0, 10).map(c => {
+              const w = (c.compound || c.word || '?').replace(/[<>&]/g, ch => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[ch]));
+              const comps = Array.isArray(c.components) ? c.components.join(' + ') : '';
+              const promoteFlag = (c.count >= 10) ? ' <span style="color:#22c55e;">PROMOTED</span>' : '';
+              return `<div><span style="color:#ff4d9a;">${w}</span> <span style="color:#888;font-size:10px;">(${c.count || 0}× ${comps})</span>${promoteFlag}</div>`;
+            }).join('');
+            if (emptyEl) emptyEl.style.display = 'none';
+          } else {
+            listEl.innerHTML = '';
+            if (emptyEl) emptyEl.style.display = '';
+          }
+        }
+      }
+
+      // ── Audit A.3 — Chat-Hebbian + Dream-Recombination Telemetry ──
+      if (s.chatTimeHebbianStats) {
+        const cs = s.chatTimeHebbianStats;
+        const set = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+        const tsFmt = (ts) => ts ? new Date(ts).toLocaleTimeString() : '—';
+        set('d-chat-turns', cs.turns || 0);
+        set('d-chat-pairs', cs.totalPairs || 0);
+        set('d-chat-lastts', tsFmt(cs.lastTs));
+        const errEl = document.getElementById('d-chat-errors');
+        if (errEl) {
+          errEl.textContent = cs.errors || 0;
+          errEl.style.color = (cs.errors > 0) ? '#ff4d9a' : '#22c55e';
+        }
+        const lastErrEl = document.getElementById('d-chat-lasterr');
+        if (lastErrEl) lastErrEl.textContent = cs.lastError ? `last: ${cs.lastError}` : '';
+      }
+      if (s.dreamRecombinationStats) {
+        const ds = s.dreamRecombinationStats;
+        const set = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+        const tsFmt = (ts) => ts ? new Date(ts).toLocaleTimeString() : '—';
+        set('d-dream-total', ds.totalDreamed || 0);
+        set('d-dream-novel', ds.novelConsolidated || 0);
+        set('d-dream-lastts', tsFmt(ds.lastTs));
+        const samplesEl = document.getElementById('d-dream-samples');
+        if (samplesEl && Array.isArray(ds.consolidatedSamples)) {
+          samplesEl.innerHTML = ds.consolidatedSamples.slice(-5).map(s => {
+            const text = (s.text || s.sentence || '').replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
+            const cos = Number.isFinite(s.cosine) ? s.cosine.toFixed(2) : '—';
+            return `<div>cos=${cos}: ${text}</div>`;
+          }).join('');
+        }
       }
     }
 
@@ -886,6 +1494,106 @@
       if (kwir) kwir.textContent = `🎯 ${prefix}WIRING ASSERTION`;
     }
 
+    /**
+     * Render the Full-Mind K Gate panel from state.fullMindK. Reads
+     * per-probe results (RF-1..RF-6, W-1..W-4, L-1..L-3, SL-1..SL-4,
+     * RL-1..RL-2, RI-1..RI-2, CM-1..CM-2) plus the aggregate entry
+     * written by curriculum._aggregateFullMindK(). Empty payload =
+     * "no run yet" placeholder, panel stays bounded.
+     */
+    function renderFullMindK(fullMindK) {
+      const statusEl = document.getElementById('d-fullmind-status');
+      const overallEl = document.getElementById('d-fullmind-overall');
+      const substrateEl = document.getElementById('d-fullmind-substrate');
+      const developmentalEl = document.getElementById('d-fullmind-developmental');
+      const crossmodalEl = document.getElementById('d-fullmind-crossmodal');
+      const blockersEl = document.getElementById('d-fullmind-blockers');
+      const probesEl = document.getElementById('d-fullmind-probes');
+      if (!statusEl || !probesEl) return;
+
+      if (!fullMindK || !fullMindK.hasRun) {
+        statusEl.textContent = '— not yet run —';
+        statusEl.style.color = '#9ca3af';
+        overallEl.textContent = 'overall: —';
+        substrateEl.textContent = '—';
+        substrateEl.style.color = '#888';
+        developmentalEl.textContent = '—';
+        developmentalEl.style.color = '#888';
+        crossmodalEl.textContent = '—';
+        crossmodalEl.style.color = '#888';
+        blockersEl.textContent = '—';
+        blockersEl.style.color = '#888';
+        probesEl.innerHTML = '<div style="padding:8px 10px;color:#555;font-size:10px;font-style:italic;">No probe results yet — `curriculum._aggregateFullMindK()` will populate this on the next K-closure gate run.</div>';
+        return;
+      }
+
+      // Aggregate row.
+      const agg = fullMindK.aggregate;
+      if (agg) {
+        const passed = agg.pass === true;
+        statusEl.textContent = passed ? '✓ PASS' : '✗ FAIL';
+        statusEl.style.color = passed ? '#22c55e' : '#ef4444';
+        overallEl.textContent = `overall: ${typeof agg.overallScore === 'number' ? (agg.overallScore * 100).toFixed(0) + '%' : '—'}`;
+        const sCount = typeof agg.substratePass === 'number' && typeof agg.substrateTotal === 'number'
+          ? `${agg.substratePass}/${agg.substrateTotal}` : '—';
+        substrateEl.textContent = sCount;
+        substrateEl.style.color = (agg.substratePass === agg.substrateTotal) ? '#22c55e' : '#f59e0b';
+        const dCount = typeof agg.developmentalPass === 'number' && typeof agg.developmentalTotal === 'number'
+          ? `${agg.developmentalPass}/${agg.developmentalTotal}` : '—';
+        developmentalEl.textContent = dCount;
+        const dRate = (typeof agg.developmentalPass === 'number' && agg.developmentalTotal > 0)
+          ? (agg.developmentalPass / agg.developmentalTotal) : 0;
+        developmentalEl.style.color = dRate >= 0.75 ? '#22c55e' : '#f59e0b';
+        const cmCount = typeof agg.crossModalPass === 'number' && typeof agg.crossModalTotal === 'number'
+          ? `${agg.crossModalPass}/${agg.crossModalTotal}` : '—';
+        crossmodalEl.textContent = cmCount;
+        crossmodalEl.style.color = (agg.crossModalPass === agg.crossModalTotal) ? '#22c55e' : '#ef4444';
+        const blockerList = Array.isArray(agg.blockers) ? agg.blockers : [];
+        blockersEl.textContent = blockerList.length === 0 ? 'none' : `${blockerList.length}: ${blockerList.slice(0, 3).join(' · ')}${blockerList.length > 3 ? ` +${blockerList.length - 3} more` : ''}`;
+        blockersEl.style.color = blockerList.length === 0 ? '#22c55e' : '#ef4444';
+      } else {
+        statusEl.textContent = '⏳ probes running...';
+        statusEl.style.color = '#f59e0b';
+        overallEl.textContent = 'overall: pending';
+      }
+
+      // Per-probe table — 23 rows in canonical order grouped by category.
+      const probeOrder = [
+        ['K.RF — Reading Foundations', ['RF-1', 'RF-2', 'RF-3', 'RF-4', 'RF-5', 'RF-6']],
+        ['K.W — Writing',               ['W-1', 'W-2', 'W-3', 'W-4']],
+        ['K.L — Language',              ['L-1', 'L-2', 'L-3']],
+        ['K.SL — Speaking & Listening', ['SL-1', 'SL-2', 'SL-3', 'SL-4']],
+        ['K.RL — Reading Literature',   ['RL-1', 'RL-2']],
+        ['K.RI — Reading Informational', ['RI-1', 'RI-2']],
+        ['Cross-modal',                  ['CM-1', 'CM-2']],
+      ];
+      const byProbe = fullMindK.byProbe || {};
+      const rows = [];
+      for (const [groupLabel, ids] of probeOrder) {
+        rows.push(`<div style="background:#0c0c12;padding:4px 10px;font-size:9px;letter-spacing:0.5px;color:#777;border-top:1px solid #1a1a2a;border-bottom:1px solid #1a1a2a;">${groupLabel}</div>`);
+        for (const id of ids) {
+          const probe = byProbe[id];
+          if (!probe) {
+            rows.push(`<div style="display:flex;padding:3px 10px;font-size:10px;color:#555;">
+              <span style="width:60px;color:#666;">${id}</span>
+              <span style="color:#444;">— not run —</span>
+            </div>`);
+            continue;
+          }
+          const scorePct = typeof probe.score === 'number' ? (probe.score * 100).toFixed(0) + '%' : '—';
+          const hit = probe.thresholdHit === true;
+          const iconColor = hit ? '#22c55e' : '#ef4444';
+          const icon = hit ? '✓' : '✗';
+          rows.push(`<div style="display:flex;padding:3px 10px;font-size:10px;color:#aaa;border-bottom:1px solid #111;">
+            <span style="width:60px;color:#888;">${id}</span>
+            <span style="width:60px;color:${iconColor};">${icon} ${scorePct}</span>
+            <span style="color:#555;font-size:9px;">${probe.ts ? new Date(probe.ts).toLocaleTimeString() : ''}</span>
+          </div>`);
+        }
+      }
+      probesEl.innerHTML = rows.join('');
+    }
+
     function renderCurriculumStatus(c) {
       const $ = id => document.getElementById(id);
       if (!c) {
@@ -927,7 +1635,17 @@
       // Cells includes the cell's key (cellStatus === 'passed').
       // Without this cap the display hits 100% after ~12 phases and
       // stays there for the remaining hours of teaching.
-      const done = Math.max(c.cellPhasesPersisted | 0, c.cellPhasesCompleted | 0);
+      //
+      // I.12 closure — `cellSubPhases` is the new server-side field
+      // that ticks on every wrapped teach call (outermost OR nested),
+      // unlike `cellPhasesCompleted` which only ticks on outermost
+      // boundaries. K cells wrap their whole pass as ONE outermost
+      // phase with 25+ nested calls; using `cellSubPhases` as a
+      // fallback when the outermost counter is 0 gives the operator
+      // real-time visible progress instead of 0%/0-phases for 25 min.
+      const outermostDone = Math.max(c.cellPhasesPersisted | 0, c.cellPhasesCompleted | 0);
+      const subPhaseDone = c.cellSubPhases | 0;
+      const done = outermostDone > 0 ? outermostDone : subPhaseDone;
       const elapsedMs = c.cellElapsedMs | 0;
       const elapsedMin = (elapsedMs / 60000).toFixed(1);
       const status = c.cellStatus || 'idle';
@@ -955,9 +1673,17 @@
         // late phases converge slowly toward the cap, matching real-
         // world K-cell phase distribution (short early phases + long
         // teach-heavy later phases).
-        const expected = Math.max(20, done); // typical K cell is 20+ phases
+        // I.12 closure — when using the sub-phase fallback, expected
+        // tracks higher (each cell averages ~40-100 nested teach calls)
+        // so the bar moves smoothly. Tag the label so operator can tell
+        // which counter is being used.
+        const usingSubPhase = outermostDone === 0 && subPhaseDone > 0;
+        const expected = usingSubPhase
+          ? Math.max(60, subPhaseDone)
+          : Math.max(20, done);
         pct = Math.min(95, Math.round((done / expected) * 95));
-        pctLabel = `${pct}% · ${done} phases · ${elapsedMin} min elapsed (in progress)`;
+        const counterTag = usingSubPhase ? ' sub-phases' : ' phases';
+        pctLabel = `${pct}% · ${done}${counterTag} · ${elapsedMin} min elapsed (in progress)`;
         $('d-curr-cellbar').style.background = 'linear-gradient(90deg,#a78bfa,#ff4d9a)';
       } else {
         pctLabel = `idle · 0 phases`;
@@ -1271,6 +1997,72 @@
       });
     })();
 
+    // Apply auto-advance toggle state to the checkbox UI. Centralized so
+    // the WS echo handler, the initial GET, and the user-click POST all
+    // pass through the same DOM update path — no chance of UI drift
+    // between server state and visible toggle.
+    function applyAutoAdvanceState(enabled) {
+      const cb = document.getElementById('d-ms-auto-advance-cb');
+      const stateEl = document.getElementById('d-ms-auto-advance-state');
+      if (cb) cb.checked = !!enabled;
+      if (stateEl) {
+        stateEl.textContent = enabled ? 'ON' : 'OFF';
+        stateEl.style.color = enabled ? '#f59e0b' : '#555';
+      }
+    }
+
+    // Wire the auto-advance toggle. Click → POST /auto-advance → server
+    // broadcasts autoAdvanceChanged via WS → applyAutoAdvanceState fires
+    // on this tab and every other connected dashboard. The local
+    // checkbox flips optimistically on click, then the WS echo
+    // confirms; if the POST fails, the echo never arrives and we
+    // revert the optimistic flip.
+    (function wireAutoAdvanceToggle() {
+      const cb = document.getElementById('d-ms-auto-advance-cb');
+      if (!cb) return;
+      cb.addEventListener('change', async () => {
+        const next = !!cb.checked;
+        const stateEl = document.getElementById('d-ms-auto-advance-state');
+        if (stateEl) {
+          stateEl.textContent = next ? 'ON' : 'OFF';
+          stateEl.style.color = next ? '#f59e0b' : '#555';
+        }
+        cb.disabled = true;
+        try {
+          const scheme = location.protocol === 'https:' ? 'https:' : 'http:';
+          const host = location.hostname || 'localhost';
+          const r = await fetch(`${scheme}//${host}:7525/auto-advance`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ enabled: next }),
+            cache: 'no-store',
+          });
+          const j = await r.json().catch(() => ({}));
+          if (!r.ok) {
+            // Revert the optimistic flip on rejection.
+            cb.checked = !next;
+            if (stateEl) {
+              stateEl.textContent = !next ? 'ON' : 'OFF';
+              stateEl.style.color = !next ? '#f59e0b' : '#555';
+            }
+            log(`Auto-advance POST rejected (${r.status}): ${JSON.stringify(j)}`);
+          } else {
+            log(`Auto-advance: ${j.enabled ? 'ON' : 'OFF'}`);
+          }
+        } catch (err) {
+          // Network failure — revert and let the operator retry.
+          cb.checked = !next;
+          if (stateEl) {
+            stateEl.textContent = !next ? 'ON' : 'OFF';
+            stateEl.style.color = !next ? '#f59e0b' : '#555';
+          }
+          log(`Auto-advance fetch failed: ${err?.message || err}`);
+        } finally {
+          cb.disabled = false;
+        }
+      });
+    })();
+
     // Poll /milestone every 5s for the curriculum/save panel. HTTP
     // instead of WebSocket because the values are low-frequency (updated
     // only on save events or grade signoffs) and a fresh GET on a known
@@ -1337,7 +2129,15 @@
         //      directs operator to POST /grade-signoff for LAW 6 Part 2
         const advEl = document.getElementById('d-ms-advance');
         if (advEl) {
-          if (!m.paused) {
+          // Viewer-mode dashboards never see the advance/signoff panel —
+          // those controls are admin-only. Force-hide + clear regardless
+          // of pause state. Same enforcement as the admin-only CSS class
+          // on #btn-graceful-stop, just applied via inline-style since
+          // this panel is populated dynamically via innerHTML.
+          if (window.state && window.state.viewerMode) {
+            advEl.style.display = 'none';
+            advEl.innerHTML = '';
+          } else if (!m.paused) {
             advEl.style.display = 'none';
             advEl.innerHTML = '';
           } else {
@@ -1458,7 +2258,184 @@
     refreshMilestone();
     setInterval(refreshMilestone, 5000);
 
+    // Audit H.9 — wire the "retry now" link in the no-connection banner
+    // so operator can short-circuit the 3s countdown when they know the
+    // brain-server is already up (e.g., just finished running start.bat).
+    document.getElementById('conn-retry-now').addEventListener('click', (e) => {
+      e.preventDefault();
+      if (window.__connRetryTimer) { clearInterval(window.__connRetryTimer); window.__connRetryTimer = null; }
+      try { if (ws && ws.readyState !== 3) ws.close(); } catch {}
+      connect();
+    });
+
     connect();
+  </script>
+  <script>
+    // ── I.11 + I.12 client-side observability patch ─────────────────────
+    // Appended 2026-06-17 21:40 PT during operator-driven K-curriculum
+    // live run. Server is alive + training is intact, but the brain-events
+    // panel + cell-progress counters were going stale because the server-
+    // side event-broadcast pipeline only covers SEED-phase + a few teach
+    // paths — cell-level _teachWordIntegrated / _teachVocabList do NOT yet
+    // emit events into the `state.events` array, and the phase counter
+    // (cellPhasesCompleted) stays at 0 until the cell fully passes.
+    //
+    // This patch synthesizes activity client-side from the live phase +
+    // elapsed-time fields the server IS broadcasting (c.activePhase.name,
+    // c.activePhase.elapsedMs, c.cellElapsedMs, c.cellStatus). It does
+    // not modify the server, does not interrupt the running training run,
+    // does not require a brain restart. Operator refreshes browser tab
+    // (Ctrl+R) and the patch lights up immediately on next state msg.
+    //
+    // Operator sees:
+    //   - phase-transition synthetic events flowing into the Brain Events
+    //     panel (labeled "(client-derived)" so they don't pretend to be
+    //     server-fired)
+    //   - cell-transition events when subject/grade changes
+    //   - "still in <phase>" heartbeat events every 30s during long
+    //     sub-phases so the feed never stalls visually
+    //   - time-based progress % override when the server-side phase
+    //     counter is stuck at 0 — keeps the bar moving instead of
+    //     dead-zero for 9+ minutes of active training
+    //
+    // Real fix lives in I.11 (server _teach* event broadcasts) and I.12
+    // (server-side phase counter increment hook) — both queued for next
+    // restart. This patch is the operator-visible workaround until then.
+    (function clientSideObservabilityPatch() {
+      let lastPhase = null;
+      let lastCell = null;
+      let lastHeartbeatPushTs = 0;
+      let phaseStartTs = null;
+      let syntheticSeqCounter = -1; // negative so we never collide with server seq numbers
+      const PATCH_TAG = 'I.11/I.12 client-side patch';
+      const HEARTBEAT_INTERVAL_MS = 30000;
+      const EXPECTED_K_CELL_MIN = 20; // heuristic — K cells average ~20min during UPFRONT-VOCAB-TEACH
+
+      // Re-use the existing renderBrainEvents pipeline so synthetic
+      // events get the same formatting + color coding + scroll cap.
+      function pushSyntheticEvent(type, region, label) {
+        if (typeof renderBrainEvents !== 'function') return;
+        try {
+          renderBrainEvents([{
+            seq: syntheticSeqCounter--,
+            ts: Date.now(),
+            type,
+            region,
+            label: `(client-derived) ${label}`,
+          }]);
+        } catch (err) {
+          // Swallow — patch must never break the host dashboard.
+          console.warn('[' + PATCH_TAG + '] pushSyntheticEvent threw:', err);
+        }
+      }
+
+      // Hook updateDashboard. The original is captured by closure
+      // and called first so existing behavior is preserved verbatim.
+      // Our additions only RUN after the host renderer has done its job.
+      const origUpdateDashboard = window.updateDashboard;
+      if (typeof origUpdateDashboard !== 'function') {
+        console.warn('[' + PATCH_TAG + '] updateDashboard not found — patch dormant');
+        return;
+      }
+      window.updateDashboard = function patchedUpdateDashboard(s) {
+        try { origUpdateDashboard.call(this, s); }
+        catch (err) {
+          console.error('[' + PATCH_TAG + '] inner updateDashboard threw:', err);
+        }
+        try {
+          if (!s) return;
+          const c = s.curriculum;
+          if (!c) return;
+
+          // ── Synthesize Brain Events from heartbeat data ─────────────
+          const curPhase = c.activePhase && c.activePhase.name ? c.activePhase.name : null;
+          const curSubject = c.currentSubject || null;
+          const curGrade = c.currentGrade || null;
+          const curCell = (curSubject && curGrade) ? `${curSubject}/${curGrade}` : null;
+
+          // Phase-transition event (only when value actually changes)
+          if (curPhase && curPhase !== lastPhase) {
+            if (lastPhase !== null) {
+              pushSyntheticEvent('teach', 'phase', `phase change: ${lastPhase} → ${curPhase}`);
+            } else {
+              pushSyntheticEvent('teach', 'phase', `phase active: ${curPhase}`);
+            }
+            lastPhase = curPhase;
+            phaseStartTs = Date.now();
+          }
+
+          // Cell-transition event
+          if (curCell && curCell !== lastCell) {
+            if (lastCell !== null) {
+              pushSyntheticEvent('teach', 'cell', `cell change: ${lastCell} → ${curCell}`);
+            } else {
+              pushSyntheticEvent('teach', 'cell', `entered cell: ${curCell}`);
+            }
+            lastCell = curCell;
+          }
+
+          // Periodic "still working" heartbeat so the feed never stalls
+          // visually while the server is in a long sub-phase.
+          const now = Date.now();
+          if (curPhase && (now - lastHeartbeatPushTs) > HEARTBEAT_INTERVAL_MS) {
+            const phaseElapsedSec = Math.round((c.activePhase.elapsedMs || 0) / 1000);
+            const cellElapsedMin = ((c.cellElapsedMs || 0) / 60000).toFixed(1);
+            pushSyntheticEvent(
+              'teach',
+              curSubject || '?',
+              `heartbeat — still in ${curPhase} (+${phaseElapsedSec}s) · cell ${curCell || '?'} ${cellElapsedMin}min elapsed`
+            );
+            lastHeartbeatPushTs = now;
+          }
+
+          // ── Override cell progress % when server counter is stuck ───
+          // The host renderer at lines 1376-1387 computes pct from
+          // c.cellPhasesCompleted, which the server isn't yet
+          // incrementing during cell-level teach. When done=0 + elapsed
+          // > 1 min + no macroPhaseProgress (i.e. we're past SEED, in
+          // actual cell teach), substitute a time-based estimate so the
+          // bar moves and operator can see the brain is alive.
+          if (c.cellStatus === 'in-progress' && !c.macroPhaseProgress) {
+            const done = Math.max(c.cellPhasesPersisted | 0, c.cellPhasesCompleted | 0);
+            const elapsedMin = (c.cellElapsedMs || 0) / 60000;
+            if (done === 0 && elapsedMin > 1) {
+              const timePct = Math.min(85, Math.round((elapsedMin / EXPECTED_K_CELL_MIN) * 85));
+              const cellBar = document.getElementById('d-curr-cellbar');
+              const cellPct = document.getElementById('d-curr-cellpct');
+              if (cellBar) cellBar.style.width = timePct + '%';
+              if (cellPct) {
+                cellPct.innerHTML = `~${timePct}% <span style="color:#fbbf24;">[time-est]</span> · 0 phases reported · ${elapsedMin.toFixed(1)} min elapsed (in progress, server phase counter stuck — I.12)`;
+              }
+            }
+          }
+        } catch (err) {
+          console.error('[' + PATCH_TAG + '] post-render threw:', err);
+        }
+      };
+
+      // Announce the patch is active on first tick after load so
+      // operator sees a banner instead of wondering if it's running.
+      setTimeout(() => {
+        pushSyntheticEvent(
+          'event',
+          'patch',
+          `🛠 ${PATCH_TAG} active — synthesizing events from heartbeat broadcasts until server-side I.11/I.12 ships`
+        );
+      }, 1500);
+
+      // Also push a heartbeat IMMEDIATELY if no state arrives within 3s
+      // so the panel never sits with stale text "No live events" while
+      // the WS is healthy but the server-events array is empty.
+      setTimeout(() => {
+        if (lastPhase === null) {
+          pushSyntheticEvent(
+            'event',
+            'patch',
+            `waiting for first state broadcast with active phase data (WS healthy, just no events yet)…`
+          );
+        }
+      }, 3000);
+    })();
   </script>
 </body>
 </html>

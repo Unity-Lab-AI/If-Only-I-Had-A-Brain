@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "grade": "grade4",
+  "subject": "ela",
+  "source": "Simple English Wikipedia (CC-BY-SA), cleaned + sentence-segmented",
+  "note": "Hybrid academic-depth corpus for ela/grade4. Trained via curriculum._trainAcademicStories. Real openly-licensed curriculum content; lived-year + math stay bespoke.",
+  "experiences": [
+    {
+      "theme": "essay",
+      "story": "it is usually about the personal point of view of the author who wrote it. the definition of an essay is vague. articles and short stories can be quite similar. almost all modern essays are written in prose, but works in verse have been called essays . people that write essays are called essayists. this does not have to be the case. john locke's an essay concerning human understanding and thomas malthus's an essay on the principle of population are long essays. essays can have all sorts of purposes. for example, an essay can be very argumentative, it can talk about points for and against the essay question to give a balanced argument or opinion. essay must be essential and give some new points about topics. its must be useful to readers. michel de montaigne, a 16th century philosopher invented the essay. an argumentative essay is a critical piece of writing, aimed at presenting objective view of a subject matter. it is narrowed down to a single topic."
+    },
+    {
+      "theme": "grammar",
+      "story": "grammar is the study of words, how they are used in sentences, and how they change in different situations. it can have any of these meanings: the study of a language: how it works, and everything about it. this is background research on language. the study of sentence structure. rules and examples show how the language should be used. this is a correct usage grammar, as in a textbook or manual/guide. the system which people learn as they grow up. this is the native-speaker's grammar. when we speak, we use the native person's grammar, or as near as we can. when we write, we try to write with correct grammar. so, speaking and writing a language each have their own style. all languages have their own grammar. most european languages are rather similar. english makes few changes to its word endings ."
+    },
+    {
+      "theme": "metaphor",
+      "story": "metaphor is a term for a figure of speech. it does not use a word in its basic literal sense. instead, it uses a word in a kind of comparison. we run, and we also say rivers run. we may run into trouble, especially if we run up a bill at the bar. so a metaphor uses words to make a picture in our mind. it takes a word from its original context, and uses it in another. \"i beat him with a stick\" = literal meaning of 'beat'. \"i beat him in an argument\" = metaphorical meaning of 'beat'. metaphors are an essential part of language: it is not possible to speak or write without them. a simple example is the word \"run\". this has a basic meaning of \"moving quickly\" or \"go with quick steps on alternate feet, never having both feet on the ground at the same time\". the concise oxford dictionary then gives 34 other uses as a verb; 21 uses as a noun; about 50 uses in short phrases. all of these are metaphors, although we do not usually notice this."
+    },
+    {
+      "theme": "simile",
+      "story": "a simile is a figure of speech that compares two different things, usually by using the words 'like' or 'as'. it is used to make a direct and clear comparison between two things .similes may be confused with metaphors, which do the same kind of thing. similes use comparisons, with the words 'like' or 'as'. metaphors use indirect comparisons, without the words 'like' or 'as'. similes: like a hungry wolf, he ate the food. a dragonfly is like a plane: they both fly and cannot close their wings. the color yellow is like walking into a surprise birthday party. the other team's quarterback is as big as a redwood tree kingda ka is as green as a pine tree \"on substantiation through transitive relations\" is an old manuscript written by the arabic scholar sayf al-din al-amidi."
+    }
+  ]
+}

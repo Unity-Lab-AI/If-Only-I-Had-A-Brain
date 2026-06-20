@@ -1,5 +1,5 @@
 @echo off
-REM Launcher lives in windows\ — cd up one level so the rest of the script
+REM Launcher lives in windows\ -- cd up one level so the rest of the script
 REM resolves paths from the project root (corpora\, server\, js\, etc.)
 REM exactly the way it did when this file used to live in the root.
 cd /d "%~dp0.."
@@ -65,10 +65,10 @@ REM via the brain-server's autoClearStaleState(). Tier 3 identity-core.json
 REM is preserved. Use Savestart.bat to RESUME from saved training instead.
 REM
 REM Bypass flags (skip the Y/N confirmation gate below):
-REM   start.bat /fresh        — explicit wipe, bypasses gate
-REM   start.bat /clear        — alias for /fresh
-REM   start.bat -y / /yes     — bypass gate (CI / scripted path)
-REM   DREAM_FORCE_CLEAR=1     — env var bypass (CI / scripted path)
+REM   start.bat /fresh        -- explicit wipe, bypasses gate
+REM   start.bat /clear        -- alias for /fresh
+REM   start.bat -y / /yes     -- bypass gate (CI / scripted path)
+REM   DREAM_FORCE_CLEAR=1     -- env var bypass (CI / scripted path)
 if /i "%1"=="/fresh" set DREAM_FORCE_CLEAR=1
 if /i "%1"=="/clear" set DREAM_FORCE_CLEAR=1
 if /i "%1"=="-y"     set DREAM_FORCE_CLEAR=1
@@ -76,20 +76,20 @@ if /i "%1"=="--yes"  set DREAM_FORCE_CLEAR=1
 if /i "%1"=="/yes"   set DREAM_FORCE_CLEAR=1
 
 if defined DREAM_FORCE_CLEAR (
-    echo   [!] DREAM_FORCE_CLEAR=1 — will clear brain state on boot.
+    echo   [!] DREAM_FORCE_CLEAR=1 -- will clear brain state on boot.
     echo.
     goto skip_confirm_gate
 )
 
 REM ────────────────────────────────────────────────────────────────
-REM Y/N CONFIRMATION GATE (Gee 2026-05-08 LAW — irreversible-loss warning)
+REM Y/N CONFIRMATION GATE (Gee 2026-05-08 LAW -- irreversible-loss warning)
 REM ────────────────────────────────────────────────────────────────
 REM Without this gate, accidentally double-clicking start.bat (or running
 REM it by reflex after a CLI restart) silently destroys hours of training.
 REM The gate forces explicit confirmation before the destructive wipe fires.
 echo.
 echo   ============================================================
-echo   [WARNING] start.bat is DESTRUCTIVE — it WIPES training state.
+echo   [WARNING] start.bat is DESTRUCTIVE -- it WIPES training state.
 echo   ============================================================
 echo.
 echo   This boot will DELETE the following from server\:
@@ -105,7 +105,7 @@ echo.
 echo   THIS IS IRREVERSIBLE.
 echo.
 echo   To RESUME from saved training instead, close this window and
-echo   run Savestart.bat — it sets DREAM_KEEP_STATE=1 and never wipes.
+echo   run Savestart.bat -- it sets DREAM_KEEP_STATE=1 and never wipes.
 echo.
 choice /C YN /D N /T 30 /M "Are you sure you want to WIPE all training and boot fresh"
 if errorlevel 2 (
@@ -116,7 +116,7 @@ if errorlevel 2 (
     exit /b 0
 )
 echo.
-echo   Confirmed — proceeding with WIPE + boot.
+echo   Confirmed -- proceeding with WIPE + boot.
 echo.
 :skip_confirm_gate
 
@@ -212,7 +212,7 @@ REM RAM box this lets the language cluster reach ~7-8 M neurons before
 REM hitting the 50%-of-free-RAM constraint. Set even higher (128 GB
 REM box could run 96 GB) if needed. Zero hardcoded cluster-size cap.
 REM
-REM compute.html is NOT opened here — the server auto-launches it
+REM compute.html is NOT opened here -- the server auto-launches it
 REM via brain-server.js `_spawnGpuClient()` once the HTTP listener
 REM is up. This keeps `node brain-server.js` and `start.bat` both
 REM one-command entry points; no duplicate tabs, no stale log
@@ -232,7 +232,7 @@ REM --expose-gc lets cluster.initGpu() call global.gc() after the CPU
 REM CSR free block to force V8 to reclaim the ~8 GB of external memory
 REM immediately (instead of waiting for the next scheduled Mark-Compact
 REM cycle). Without --expose-gc the null-assignments unref the typed
-REM arrays but V8 can take seconds to minutes to GC them — long enough
+REM arrays but V8 can take seconds to minutes to GC them -- long enough
 REM for Phase 2 external-memory pressure to build and OOM before the
 REM reclaim lands. Forced gc() after all uploads guarantees the 8 GB
 REM is gone before curriculum teach starts. Heap-stats logging before +
@@ -242,7 +242,7 @@ REM operators can tail heartbeat + brain info even if this launcher
 REM terminal goes invisible (Windows Terminal + conhost rendering
 REM glitches leave child-process output blind when the parent window
 REM can't paint). A SECOND PowerShell window is spawned that tails the
-REM log with Get-Content -Wait — a separate process, separate
+REM log with Get-Content -Wait -- a separate process, separate
 REM rendering, so even if THIS cmd window is translucent/blank the log
 REM window still paints. Fallback path: if the PowerShell tail window
 REM also breaks, server.log is on disk at server\server.log and any
@@ -277,8 +277,8 @@ echo   Log file:    %~dp0..\server\server.log (always on disk)
 echo.
 echo   Watch for these boot banners in server.log:
 echo     [Cluster cortex] cortical wiring verified ...
-echo     [Brain] dictionary API ready — "test" -^> "..."
-echo     [Brain] K-VOCAB-PREFETCH DONE — N new definitions cached
+echo     [Brain] dictionary API ready -- "test" -^> "..."
+echo     [Brain] K-VOCAB-PREFETCH DONE -- N new definitions cached
 echo.
 echo   NOTE: brain runs ONLY on GPU. compute.html MUST stay open.
 echo   To STOP the brain cleanly: run stop.bat (Ctrl+C in this launcher

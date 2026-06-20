@@ -128,95 +128,179 @@ export class ComponentSynth {
     }
     if (!userRequest || typeof userRequest !== 'string') return null;
 
-    // T5 — structural bias from the language cortex's parse tree.
-    // T14.15 (2026-04-14) — parseSentence was deleted in T14.12, so
-    // brainState.parsed is now the stub returned by cluster.readInput
-    // which does NOT populate `entities.componentTypes`. The
-    // `parsedTypes` array below will be empty for most calls until
-    // T14.17 wires `cluster.entityReadout()` to return learned entity-
-    // slot clusters from the sem region, at which point this block
-    // reads from that instead. Keeping the optional-chain reads
-    // against brainState.parsed means the code handles both pre- and
-    // post-T14.17 payload shapes without branching — when entities
-    // are present they boost, when they're not the semantic cosine
-    // match alone decides the primitive.
     const parsed = brainState.parsed || null;
-    const parsedTypes = (parsed?.entities?.componentTypes || [])
-      .map(t => t.replace(/s$/, '')); // strip trailing plural
+    const cortexEntityVec = this._cortexEntityVec(brainState);
+    const pick = this._pickPrimitive(userRequest, parsed, cortexEntityVec);
+    if (!pick) {
+      console.log(`[ComponentSynth] No primitive matches "${userRequest.slice(0, 40)}"`);
+      return null;
+    }
+    console.log(`[ComponentSynth] Matched "${userRequest.slice(0, 40)}" → ${pick.prim.id} @ ${pick.score.toFixed(2)}`);
+    return this._buildSpec(pick.prim, pick.score, brainState, parsed);
+  }
 
-    // T14.17 — cortex entity readout. When the engine passes the cortex
-    // cluster via `brainState.cortexCluster`, read the sem region as a
-    // semantic activation vector and find primitives whose descEmbed
-    // is closest to it. This is a SECOND semantic match (on top of the
-    // userEmbed cosine below) that reflects what the cortex is actively
-    // representing RIGHT NOW, not just what the user literally typed.
-    // The two signals get combined so primitives matching either a
-    // literal phrase or the cortex's current semantic activation get
-    // the structural bonus.
-    const cortex = brainState.cortexCluster || null;
-    let cortexEntityVec = null;
-    if (cortex && typeof cortex.entityReadout === 'function') {
-      const readout = cortex.entityReadout();
-      if (readout && readout.length > 0) {
-        let norm = 0;
-        for (let i = 0; i < readout.length; i++) norm += readout[i] * readout[i];
-        if (norm > 0.01) cortexEntityVec = readout;
+  /**
+   * MULTI-PRIMITIVE COMPOSITION — "build a clock and a calculator", "a dashboard
+   * with a timer and a todo list" → assemble SEVERAL primitives into one build.
+   * Splits the request on conjunctions/commas, matches each part, and returns
+   * one spec per DISTINCT primitive. Each spec is rendered in its OWN
+   * Shadow-DOM-isolated component by the sandbox, so concatenating them has no
+   * selector/JS collisions (that is exactly why isolation matters here). The
+   * whole-request best match is always the primary, so a plain single-thing
+   * request still returns exactly one spec. Extra parts must clear a slightly
+   * higher bar than the primary so a weak/noise sub-phrase never bolts on a
+   * spurious component.
+   *
+   * @returns {{ composite: boolean, specs: Array }|null} specs (1+) or null.
+   */
+  generateMany(userRequest, brainState = {}) {
+    if (!this._loaded || this._primitives.length === 0) return null;
+    if (!userRequest || typeof userRequest !== 'string') return null;
+
+    const parsed = brainState.parsed || null;
+    const cortexEntityVec = this._cortexEntityVec(brainState);
+
+    const chosen = [];
+    const seen = new Set();
+    // Primary: the whole request (captures single-concept intent incl. names
+    // with internal conjunctions like "rock paper and scissors").
+    const primary = this._pickPrimitive(userRequest, parsed, cortexEntityVec);
+    if (primary) { chosen.push(primary); seen.add(primary.prim.id); }
+    // Extra components: one per conjunction-split part, stricter threshold,
+    // deduped against what's already chosen.
+    for (const part of this._splitRequest(userRequest)) {
+      const pick = this._pickPrimitive(part, parsed, cortexEntityVec);
+      if (pick && pick.score >= MIN_MATCH_SCORE + 0.05 && !seen.has(pick.prim.id)) {
+        seen.add(pick.prim.id);
+        chosen.push(pick);
       }
     }
+    if (chosen.length === 0) {
+      console.log(`[ComponentSynth] No primitive matches "${userRequest.slice(0, 40)}"`);
+      return null;
+    }
+    const specs = chosen.map(p => this._buildSpec(p.prim, p.score, brainState, parsed));
+    if (specs.length > 1) {
+      console.log(`[ComponentSynth] Composed ${specs.length}: ${chosen.map(p => p.prim.id).join(' + ')}`);
+    } else {
+      console.log(`[ComponentSynth] Matched "${userRequest.slice(0, 40)}" → ${chosen[0].prim.id} @ ${chosen[0].score.toFixed(2)}`);
+    }
+    return { composite: specs.length > 1, specs };
+  }
 
-    // Semantic match — which primitive is closest to the user's request
+  /**
+   * Split a build request into candidate sub-requests on conjunctions + commas.
+   * "a timer and a calculator, plus a clock" → ["a timer","a calculator","a clock"].
+   * Returns [] when there is no conjunction (so single-concept requests don't
+   * fan out). Parts shorter than 3 chars are dropped.
+   */
+  _splitRequest(req) {
+    const lower = String(req).toLowerCase().trim();
+    if (!/(,|\sand\s|\splus\s|\swith\s|\sthen\s)/.test(lower)) return [];
+    return lower
+      .split(/\s*,\s*|\s+and\s+|\s+plus\s+|\s+with\s+|\s+then\s+/)
+      .map(s => s.trim())
+      .filter(s => s.length >= 3);
+  }
+
+  /**
+   * T14.17 — cortex entity readout vector (what the cortex is representing now),
+   * or null. Extracted so single + multi generation share one source.
+   */
+  _cortexEntityVec(brainState) {
+    const cortex = brainState && brainState.cortexCluster;
+    if (!cortex || typeof cortex.entityReadout !== 'function') return null;
+    const readout = cortex.entityReadout();
+    if (!readout || readout.length === 0) return null;
+    let norm = 0;
+    for (let i = 0; i < readout.length; i++) norm += readout[i] * readout[i];
+    return norm > 0.01 ? readout : null;
+  }
+
+  /**
+   * Pick the best-matching primitive for one request string. Semantic cosine
+   * (literal text) + optional cortex-entity cosine (0.25 weight) + structural
+   * parser-type bonus (0.35). Returns { prim, score } or null below threshold.
+   */
+  _pickPrimitive(userRequest, parsed, cortexEntityVec) {
+    const parsedTypes = (parsed?.entities?.componentTypes || []).map(t => t.replace(/s$/, ''));
     const userEmbed = sharedEmbeddings.getSentenceEmbedding(userRequest);
-    let bestScore = -1;
-    let bestPrim = null;
+    let bestScore = -1, bestPrim = null;
     for (const prim of this._primitives) {
       let score = sharedEmbeddings.similarity(userEmbed, prim.descEmbed);
-      // T14.17 — blend in cortex entity readout similarity when
-      // available. Weight 0.25 on the cortex cosine so it nudges the
-      // ranking without overriding the literal-text userEmbed match.
       if (cortexEntityVec) {
         score += sharedEmbeddings.similarity(cortexEntityVec, prim.descEmbed) * 0.25;
       }
-      // Structural bonus: if the parser pulled a component-type
-      // token and the primitive id matches it, boost by 0.35 —
-      // big enough to overwhelm most semantic ambiguity but small
-      // enough that a genuinely closer semantic match can still
-      // win if the parser misidentified the type.
       if (parsedTypes.length > 0) {
         for (const pt of parsedTypes) {
-          if (prim.id === pt || prim.id.startsWith(pt + '-') || prim.id.endsWith('-' + pt)) {
-            score += 0.35;
-            break;
-          }
+          if (prim.id === pt || prim.id.startsWith(pt + '-') || prim.id.endsWith('-' + pt)) { score += 0.35; break; }
         }
       }
-      if (score > bestScore) {
-        bestScore = score;
-        bestPrim = prim;
-      }
+      if (score > bestScore) { bestScore = score; bestPrim = prim; }
     }
+    if (!bestPrim || bestScore < MIN_MATCH_SCORE) return null;
+    return { prim: bestPrim, score: bestScore };
+  }
 
-    if (!bestPrim || bestScore < MIN_MATCH_SCORE) {
-      console.log(`[ComponentSynth] No primitive matches "${userRequest.slice(0, 40)}" (best: ${bestPrim?.id} @ ${bestScore.toFixed(2)})`);
-      return null;
-    }
-
-    console.log(`[ComponentSynth] Matched "${userRequest.slice(0, 40)}" → ${bestPrim.id} @ ${bestScore.toFixed(2)}${parsedTypes.length ? ` (parsed: ${parsedTypes.join(',')})` : ''}`);
-
-    // Generate a unique component id.
+  /**
+   * Build a sandbox-ready spec from a chosen primitive: unique id from the
+   * cortex pattern + `{{token}}` parameter fill from brain state.
+   */
+  _buildSpec(prim, score, brainState, parsed) {
     const suffix = this._suffixFromPattern(brainState.cortexPattern);
-    const id = `${bestPrim.id}-${suffix}`;
-
+    const id = `${prim.id}-${suffix}`;
+    const params = this._deriveParams(brainState, parsed);
+    const fill = (s) => this._fillParams(s, params);
     return {
       id,
-      html: bestPrim.html,
-      css: bestPrim.css,
-      js: bestPrim.js,
-      _primitive: bestPrim.id,
-      _matchScore: bestScore,
-      _parsedTypes: parsedTypes,
+      html: fill(prim.html),
+      css: fill(prim.css),
+      js: fill(prim.js),
+      _primitive: prim.id,
+      _matchScore: score,
+      _parsedTypes: (parsed?.entities?.componentTypes || []).map(t => t.replace(/s$/, '')),
       _parsedColors: parsed?.entities?.colors || [],
       _parsedActions: parsed?.entities?.actions || [],
+      _params: params,
     };
+  }
+
+  /**
+   * Derive `{{token}}` fill values from equational brain state. Pure, no AI.
+   * @param {object} brainState — { cortexPattern, ... }
+   * @param {object|null} parsed — language-cortex parse (may carry entities.colors)
+   * @returns {object} token → value map
+   */
+  _deriveParams(brainState = {}, parsed = null) {
+    const named = parsed?.entities?.colors?.[0];
+    // A user-named color (CSS accepts 'red'/'cyan'/etc) wins; otherwise the
+    // cortex pattern picks the hue — her state, her palette.
+    const accent = named ? String(named) : this._hueFromPattern(brainState.cortexPattern);
+    return { accent };
+  }
+
+  /**
+   * Map a cortex activation pattern to a stable CSS hue. Same neural state →
+   * same color (so a rebuild in the same state reuses the palette); different
+   * states drift the hue. Falls back to Unity's signature magenta when no
+   * pattern is available.
+   */
+  _hueFromPattern(cortexPattern) {
+    if (!cortexPattern || !cortexPattern.length) return '#ff00ff';
+    let h = 0;
+    const n = Math.min(16, cortexPattern.length);
+    for (let i = 0; i < n; i++) h = (h + Math.floor((cortexPattern[i] + 1) * 180)) % 360;
+    return `hsl(${h}, 85%, 62%)`;
+  }
+
+  /**
+   * Replace `{{token}}` placeholders in a template string from the params map.
+   * Unknown tokens are left intact (so a typo'd placeholder is visible, not
+   * silently blanked). No-op on strings without placeholders.
+   */
+  _fillParams(str, params) {
+    if (!str || str.indexOf('{{') === -1) return str;
+    return str.replace(/\{\{(\w+)\}\}/g, (m, key) => (params && params[key] != null) ? String(params[key]) : m);
   }
 
   /**

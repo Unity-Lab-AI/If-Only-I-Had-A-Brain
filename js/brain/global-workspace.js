@@ -112,10 +112,14 @@ class GlobalWorkspace {
     this._tickCounter = (this._tickCounter + 1) | 0;
     this.stats.ticksTotal += 1;
 
-    // Decay active broadcast (so winners fade).
+    // Decay active broadcast (so winners fade). Both `value` and
+    // `strength` decay together so downstream consumers reading
+    // strength see the ignition lose dominance over the ~10 ticks
+    // it takes to fade (broadcastDecay=0.85 per tick).
     if (this.currentBroadcast) {
       this.currentBroadcast.age += 1;
       this.currentBroadcast.value *= this.broadcastDecay;
+      this.currentBroadcast.strength *= this.broadcastDecay;
       if (this.currentBroadcast.value < 0.01) {
         this.currentBroadcast = null;
       }
@@ -169,6 +173,15 @@ class GlobalWorkspace {
         label: winner.label,
         value: winner.value,
         prob: maxProb,
+        // Ignition STRENGTH — read by downstream consumers (cluster.js
+        // emitWordDirect uses it to scale GW broadcast bias on word_motor
+        // argmax per Baars 1988 GWT). Equal to the softmax max probability
+        // that crossed the ignition threshold — strong ignitions have
+        // strength near 1.0, threshold-grazing ignitions near
+        // `ignitionThreshold`. CONTRACT: this field is ALWAYS a finite
+        // [0,1] number whenever a broadcast object exists. Decays with
+        // value via broadcastDecay below.
+        strength: maxProb,
         ts: Date.now(),
         age: 0,
       };

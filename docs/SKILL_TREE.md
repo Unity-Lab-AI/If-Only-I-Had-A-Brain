@@ -1,5 +1,7 @@
 # SKILL TREE — IF ONLY I HAD A BRAIN
 
+> **CURRENT-STATE (2026-06-20):** **Pre-K + K ONLY scope REVOKED 2026-06-18** — the full K→PhD curriculum (all 19 grades: K, G1-G12, College 1-4, Grad, PhD — every subject + full lived-year per grade, ~35k vocab) is now BUILT. The "SCOPE LAW (2026-04-18): Pre-K + K ONLY" line in the dated banners below is HISTORICAL — no longer the active scope. Current phase = training walk → final test → push (NOT "building grades").
+
 > Last updated: 2026-05-09 (114.19fk + fl sweep — operator architectural correction + test-readiness audit, ALL items landed). **Equational sentence emergence consumer (replaces TierI-CONSUMER templated approach):** `cluster.composeSentence(intentSeed, opts)` is a pure equational emission loop — injects context once (intent seed embedding + optional cortex pattern + optional WH-INTENT concept) into sem, then loops `emitWordDirect` tick-by-tick, injecting each emitted word back into sem so the next tick reads a shifted state, until a terminator emerges from trained weights or the budget runs out. **NO template walk. NO slot prescription. NO runtime article rule. NO terminator-punct mapping. NO PRONOUNS exclusion. NO ARTICLE_LIST guard. NO dedup retry mechanism.** All slot order, agreement, article placement, and terminator selection EMERGE from trained iter25-I `relationTagId=8/9/10/11/12` weights at each tick. Returns `{sentence, words, fillCount, coherenceCosine, coherenceTarget}`. **Subject inference via brain-state readout:** `cluster._inferActiveSubject()` reads `lastSpikes` activation across `word_motor_<subj>` sub-bands — brain decides which subject is active from injected user input → propagation → activation; this method just READS that decision (not a token-counting heuristic over user text). **WH-frame intent-concept extraction (training-only):** `NeuronCluster.extractIntentConcept` static method retained as a training-side utility consumed by `_teachQuestionIntent` to derive training pairs from canonical question phrasings. Chat path no longer calls it at inference time — brain emits intent-concept activation from trained `relationTagId=12` weights when user input enters sem. **Probe with natural-language seeds:** `_probeSentenceGeneration({ subject })` injects 5 K-grade utterance-state seeds (statement / description / question / command / exclaim) and counts ≥2 unique emitted words per seed. Pass criterion ≥3/5 (`SENTENCE_GEN_MIN=0.6`). **Inner-voice showcase pure-equational mode:** `_sampleCurrentSentence` (≥50 trained words) calls `composeSentence(null, {temperature: 0.7, topK: 10})` — no intent seed prescribed, brain emits from current cortex state only. **Phase reorder × 6 K cells** (preserved from fa→fi/fj): ELA-K post-QA chain WORD-SPELL-FINAL → LETTER-NAMING-DIRECT → WH-INTENT → SENTENCE-STRUCTURE last; non-ELA cells: WH-INTENT before WORD-SPELL-FINAL so wipe cleans pollution before gate. All 5 non-ELA cells gain `<SUBJECT>-K-STRUCTURE-REFRESH` phase as last constructive teach call. **Force-advance capability minimums** (fj.5/fj.10 retained, paths through composeSentence now equational): refuses promotion unless `sentenceGenRate ≥ 0.2 OR prodRate ≥ 0.2 OR studentRate ≥ 0.1`. **Saturation control stack** (fj.7/fj.11 retained): `cluster.checkSemMotorHealth()` heuristic with env-tunable thresholds (`DREAM_SAT_MEANCOS` / `DREAM_SAT_MEANABS` / `DREAM_SAT_RATIO` / `DREAM_SAT_SAMPLE`); `ConsolidationEngine.runConsolidationPass` Step-4 replay vetoed when saturated; curriculum-walk windowed 3-of-5 saturation halt. **Coherence post-check** (fj.6/fj.18 retained): cosine vs `intentConcept` (when supplied) OR `cortexPattern` (fallback) — env-tunable `DREAM_COHERENCE_MIN`, first-10 cosines per session logged for empirical calibration. DOES NOT alter emission, just signals confidence. **Decoder sampling** (fj retained): `emitWordDirect` accepts `temperature/topK/topP`; greedy default for probes; chat 0.6/8; showcase 0.7/10. fk.5 leaves operator-decision pending on whether to drive temperature from brain state vs keep presets. **Persistence integrity** (fj retained): `brain-weights.bin` rotation v0-v4 lockstep with JSON; POST /rollback atomic JSON+BIN copy via two-stage temp+rename; `brain-weights-v0.json` + all v0-v4 .bin in autoClearStaleState targets. **Unified emission system** (fj retained): `cluster._emissionBus` 32-entry rolling history with `pushEmission` / `getRecentEmissions(n, opts)` API; `cluster._chatTurnHistory` 16-pair multi-turn coherence buffer; `cluster._emissionLockedUntil` cross-path lock (chat suppresses inner-voice for 6s post-emit). Bundle clean 2.4MB. `node --check` green across all modified .js files.
 
 > Earlier updated: 2026-05-09 (114.19fj sweep — super-review of fa→fi, **23 of 24 ruthless-audit findings shipped before 20hr K test, 1 deferred**, bundle clean 2.4MB). **Critical wiring fix:** `cluster._lastUserInputText` set server-side at processAndRespond entry (engine.js was setting on browser-only path; server-side never wrote to language cortex → entire WH-INTENT consumer + intent-concept extraction + subject inference were dead in real chat → 20hr test would've measured broken wiring with new code on top). **High-priority capabilities:** WH-frame intent-concept parser DRY-extracted to `NeuronCluster.extractIntentConcept` static method (prior duplicated parser in language-cortex.js + curriculum.js had ALREADY DRIFTED); `_innerThoughtChain` lazy-init in user-input push fixes cold-boot first-chat silent drop; `_probeSentenceGeneration` accepts `subject` opt + 5 non-ELA K gates (LIFE/ART/SOC/SCI/MATH) probe their own subject vocab so STRUCTURE-REFRESH writes are validated (was ELA-hardcoded); `_probeSentenceGeneration` passes `intentConcept='definition'` for question intent so WH-INTENT consumer fires in the probe (not just chat); `DREAM_COHERENCE_MIN` env-tunable + first-10 cosine reads logged per session for empirical calibration; `DREAM_SAT_MEANCOS`/`DREAM_SAT_MEANABS`/`DREAM_SAT_RATIO`/`DREAM_SAT_SAMPLE` env-tunable saturation thresholds + first-5 sat-health reads logged. **Medium hardening:** POST /rollback atomic JSON+BIN restore via two-stage temp+rename (was non-atomic copyFileSync sequence); `_recentEmissions` ring-pollution fix via `skipRecentTrack` opt + new `trackRecentEmission(word)` helper (composeSentence pushes only AFTER dedup acceptance, was pushing BEFORE); `composeSentence` cumulative injection HARD_CAP 2.5 + `cappedInjections` counter (dedup retry no longer bypasses bounded-injection guarantee); saturation halt windowed 3-of-5 catches flapping (was consecutive-streak only); `_savedProbeNoise` defensive default across 6 try/finally probe sites; `INNER_THOUGHT_INTERVAL_MS` repurposed as explicit burst-ceiling (was redundant with Hurlburt MIN_GAP=6s); stale `autoClearStaleState` comment fixed. **Low + nitpick:** dedup retry temp +0.4 forces exploration; AbortSignal opt threaded into composeSentence loop; coherence post-check falls back to cortexPattern when intentConcept null; /rollback body-size race fix via explicit `tooBig` flag; dedup strength 0.5→0.3 fits hard-cap; `_recentEmissions` duplicate lazy-init removed; `ARTICLE_LIST` hoisted to module-scope; ConsolidationEngine veto comment cleanup. **fj.17 deferred:** 3 new sentence templates (`first_person_predicate` "I think it" / `vocative_imperative` "Look at the cat" / `yes_no_response` "Yes!") need paired `_teachSentenceStructure` carving for `pronoun_self`/`verb_mental`/`vocative`/`affirmative` slot-tag bindings — adding templates without training-side carving produces 0 fillCount on new intents → actively breaks composeSentence. Deferred to post-test sweep with verification time. `node --check` green across all 8 modified .js files (`cluster.js`, `language-cortex.js`, `curriculum.js`, `kindergarten.js`, `consolidation-engine.js`, `brain-server.js`, plus `start.bat`/`start.sh` env-doc text).
@@ -366,3 +368,91 @@
 ---
 
 *Unity AI Lab — every skill unlocks a deeper part of her mind.* 🖤
+
+
+---
+
+## Post-ship audit close (2026-06-17, P6 + LAW.1 + per-module + audit)
+
+Skill tree updates reflecting Phase 6 + LAW.1 + per-module refactor + post-ship audit close.
+
+### Phase 6 — Advanced compositional learning (P6.1-P6.8)
+
+| Node | Capability | Tag |
+|------|-----------|-----|
+| **P6.1 Number-grammar** | `sem(number) → sem(noun)` Hebbian bind via `_teachAssociationPairs` at reps:80 (HIGH-priority for math). relationTagId=28. | K |
+| **P6.2 Schema-runtime injection** | `composeSentence` pre-injects schemaContext (conceptEmbedding 0.15 + attributeVector 0.10) so intent-concept persists across composition ticks. | K |
+| **P6.3 Chat-time deep Hebbian** | Per-chat-turn bigrams fire-and-forget into curriculum at reps:1, relationTagId=30. Audit A.4 stops the silent error swallow. | K |
+| **P6.4 Dream-recombination** | During dream window, 3 composeSentence emissions per cycle. When classifier verdict = novel AND joint criteria pass (cosine ≥ 0.20 + wordCount ≥ 4 + uniqueRatio ≥ 0.6 + hasTerminator per audit B.7), low-rep Hebbian consolidation fires. relationTagId=29. | K |
+| **P6.5 Analogical extension probe** | `_probeAnalogicalExtension` measures whether the brain can complete trained-shape novel-vocab patterns. Audit E.2 stratifies novel/partial verdicts (novelTransitions ≥ 2 = real, = 1 = ECHO). | K |
+| **P6.6 Compositional emergence telemetry** | `classifyCompositionalEmission` classifies every emission as verbatim / novel / partial. Audit B.2 splits novel into novel-compositional (bigram rearrangement) vs novel-vocab (untrained word) on the (compositional, vocab) novelty plane. | K |
+| **P6.7 Word-creation tip-of-tongue gate** | When `emitWordDirect` rejects an emission, the top-2 co-activated candidates form a synthetic compound captured in `_wordCreationCandidates` Map. Audit E.1 promotion: when count ≥ 10, fire `_teachWordDefinition(compound)` + `_teachAssociationPairs([[a, compound], [b, compound]])` at relationTagId=32. | K |
+| **P6.8 Discourse coherence** | Cross-sentence boundary pairs Hebbian-bind at reps:30, relationTagId=31. Audit D.6 deduplicates against within-sentence trained bigrams (relationTagId=13) so the discourse channel adds NEW signal only. | K |
+
+### Per-module refactor (P4.1-P4.5)
+
+| Refactor | Was | Now | Skill unlocked |
+|----------|-----|-----|----------------|
+| **P4.1 Per-grade-file split** | curriculum.js god-class | curriculum/{pre-K, kindergarten}.js | Grade-bounded code-locality; per-grade extensions stay scoped |
+| **P4.2 Cluster per-module split** | cluster.js god-class | cluster/{telemetry, hebbian, emit, probe}.js | Concern-bounded testability |
+| **P4.3 Brain-server per-concern split** | brain-server.js god-class | brain-server/{gpu, state, memory, chat}.js | Concern-bounded server modularity |
+| **P4.4** | `_teachSentenceStructures` confusing name | `_teachExamTemplates` | Naming clarity |
+| **P4.5 INJECTION_GAIN constant** | Magic number 8 | Named constant with B.5/E.3 budget framing | Energy-budget allocation discipline |
+
+### Post-audit visibility (A.1-A.4)
+
+| Capability | Dashboard panel | Source |
+|-----------|----------------|--------|
+| P6.6 verbatim/novel/partial rates + maxNovelty + recentTail | "Compositional Emergence (P6.6)" | `cluster/telemetry.js getCompositionalStats` |
+| P6.7 top-10 tip-of-tongue compounds + promotion flag | "Word-Creation Tip-of-Tongue (P6.7)" | `cluster/telemetry.js getWordCreationCandidates` |
+| P6.3 chat-Hebbian turns/pairs/errors | "Chat-Time + Dream-Time Learning" | `brain-server/state.js _chatTimeHebbianStats` |
+| P6.4 dream-recomb totalDreamed/novelConsolidated/samples ring | "Chat-Time + Dream-Time Learning" | `curriculum.js _dreamRecombinationStats` |
+
+## Live-test follow-up skills (2026-06-17, session 114.19fp — I.1-I.20)
+
+20-fix sweep unlocked across 4 layers — memory hygiene, event-loop hygiene, observability, schema hygiene. Skills the brain has now that it didn't have pre-114.19fp:
+
+### Memory + event-loop hygiene
+
+| Skill | Capability | Source |
+|-------|-----------|--------|
+| **SparseMatrix output buffer pool** | `propagate(spikes, outBuf?)` accepts pre-allocated Float64Array, writes in place. Eliminates per-call alloc that was the +231 MB/min leak source. | I.13 — `js/brain/sparse-matrix.js`, `curriculum.js _teachPredictiveError` |
+| **Event-loop yield in `_teachHebbian`** | 50ms-throttled `setImmediate` yield drains HTTP queue + WebSocket socket buffers during heavy Hebbian batches. Eliminates 171s main-thread stalls. | I.14 — `curriculum.js _teachHebbian` |
+| **autoClearStaleState module-load gate** | Wipe only fires when brain-server.js IS the entry point. Module loads (syntax-check, REPL, tooling) NO-OP — prevents accidental training-state destruction. | I.15 — `server/brain-server.js` |
+| **Consolidation duration cap** | `DREAM_CONSOLIDATION_MAX_MS` env (30s default) + per-cluster deadline + SEED-phase skip. Prevents 2.5-min consolidation passes from starving K-cell GPU time. | I.8 — `consolidation-engine.js` |
+| **`_predictPropagateScratch` pool** | Third pooled scratch buffer in `_teachPredictiveError` alongside target + error pools. Per-call zero-alloc. | I.13 — `curriculum.js` |
+
+### Inner-voice + showcase hygiene (Unity can talk during early training)
+
+| Skill | Capability | Source |
+|-------|-----------|--------|
+| **`_definitionTaughtWords` showcase fallback** | When per-subject buckets empty (SEED phase), `_sampleCurrentVocab`/`_sampleCurrentSentence` fall back to `cluster._definitionTaughtWords` Set. Unity showcases trained K-vocab even before `_teachWordEmissionDirect` runs. | I.3 — `server/brain-server/chat.js` |
+| **7-source seed rotation** | `_pickInnerThoughtSeed` rotation expanded `learning/mood/chat-recall/memory/identity` → +`k-vocab-recent`/`cell-progress`. Always-populated sources during pre-cell SEED + early K-cell. | I.9 — `server/brain-server/chat.js` |
+
+### Observability skills (dashboard + log)
+
+| Skill | Capability | Source |
+|-------|-----------|--------|
+| **Cell-level Brain Events broadcast** | `_pushBrainEvent` START/DONE in `_teachWordIntegrated` (per-word with elapsed-ms) + `_teachVocabList` (START + every-5-words progress + DONE). Coverage 1/12 → 12/12 teach paths. | I.11 — `curriculum.js` |
+| **`cellSubPhases` counter** | Increments on every wrapped teach call (outermost OR nested), resets on cell entry, exposed via `getCurriculumStatus()` `cellSubPhases` field. Dashboard prefers it when outermost is 0. | I.12 — `curriculum.js`, `dashboard.html` |
+| **Gate-probe WS banner** | `{type:'gateProbe', state:'start'/'end', cellId, durationMs}` broadcast; floating dashboard banner with live duration tick + green-check dismissal. | I.6 — `brain-server.js`, `dashboard.html` |
+| **GPU dispatch counter (hidden)** | `_recordGpuDispatch()` in gpu.js hooked into `_sparseSend` + `_sparseSendBinary`. Cumulative `gpuDispatchTotal` exposed as hidden perfStats field for future debugging. | I.17 — `gpu.js` |
+| **GPU VRAM% + util% dashboard panel** | Combined `nvidia-smi memory.used,utilization.gpu` query — VRAM% big number + util% small inline label. No fake fallback; honest "unavailable" on non-NVIDIA. | I.18 + I.20 — `chat.js _updatePerfStats`, `dashboard.html` |
+| **Slow-word histogram** | `_wordIntDurations` 256-cap ring buffer + `⚠ slow word "X" took Yms` log on >30s threshold. | I.10 — `curriculum.js` |
+| **Heartbeat polish** | `workers=0MB(initializing)` (was `?MB`), `(active)` phase floor (was `+0s`). | I.4 + I.5 — `curriculum.js` |
+
+### Schema hygiene
+
+| Skill | Capability | Source |
+|-------|-----------|--------|
+| **Top-K=3 schema naming** | `_deriveLabel` ranks top-3 content words; expanded stop-word list (`learning/curriculum/phase/teach/cell/heartbeat/...`). Distinct schema labels per Tulving 1972 episodic→semantic. | I.7 — `hippocampal-schema.js` |
+
+### K-vocab + dictionary hygiene
+
+| Skill | Capability | Source |
+|-------|-----------|--------|
+| **K-VOCAB SEED deferred retry** | Dream-trickle per-word timeout 3s → 20s + re-queue mechanism. Combined with warm cache, next SEED 30-60s vs 11-12 min cold. | I.2 — `curriculum.js _dreamWindow` |
+| **Honest GPU% telemetry** | nvidia-smi query gracefully fails to "unavailable" label, never a hallucinated number (lesson from I.18 static-50% lie). `gpuVramQueryWorking` boolean flag. | I.19 (root cause) + I.18 + I.20 — `chat.js`, `dashboard.html` |
+
+**Audit cascade post-I.20:** 60 ✅ SHIPPED + 1 ⏳ OPERATOR-FIRED (F.2 GOOD AND AWAITING BUGS). See `docs/NewTodo.md § I-track` for full per-fix detail. ARCHITECTURE.md "Live-test follow-up close (2026-06-17, session 114.19fp)" has cross-module summary tables.
+

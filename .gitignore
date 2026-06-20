@@ -37,13 +37,15 @@ server/server.log
 server/definition-cache.json
 server/boot-error.log
 
-# === Claude Code ===
-.claude/pollinations-user.json
-.claude/settings.local.json
-.claude/start.bat
-# Nested duplicate that the Claude Code CLI occasionally writes when
-# invoked from a stray working directory. Not load-bearing, just noise.
-.claude/.claude/
+# === Claude Code — Layer 0 .claude/ IP boundary ===
+# Lab workflow internals (personas, agents, skills, ImHanddicapped.txt,
+# session state, command bodies) stay LOCAL — never committed, never
+# deployed. Blanket-ignore the whole tree so no `git add -A` can ever
+# sweep the persona/workflow IP into a push (especially before a public
+# pre-alpha deploy). A few legacy files (CLAUDE.md / CONSTRAINTS.md /
+# statusline.sh) were tracked before this guard landed; whether to
+# `git rm --cached` them is a separate explicit decision.
+.claude/
 
 # === Workflow docs — tracked for project documentation ===
 # (Previously ignored as "generated at runtime" but these are real docs now)

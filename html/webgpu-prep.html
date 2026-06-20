@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Unity Brain — WebGPU Setup</title>
+  <meta name="description" content="Pre-flight setup page — enable WebGPU in your browser before connecting to Unity's brain dashboard. Browser-by-browser instructions for Chrome, Edge, Firefox, and Safari.">
+  <meta name="robots" content="noindex">
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      background: #0a0f12;
+      color: #e5e7eb;
+      font-family: 'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace;
+      margin: 0;
+      padding: 24px;
+      line-height: 1.55;
+    }
+    h1 { color: #ff4d9a; margin: 0 0 8px; font-size: 26px; }
+    h2 { color: #22c55e; margin: 24px 0 12px; font-size: 18px; border-bottom: 1px solid #1f2937; padding-bottom: 6px; }
+    h3 { color: #f59e0b; margin: 0 0 12px; font-size: 16px; }
+    p { margin: 8px 0; font-size: 13px; }
+    code, kbd {
+      background: #1f2937;
+      color: #fde68a;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-size: 12px;
+    }
+    .container { max-width: 980px; margin: 0 auto; }
+    .lede { color: #9ca3af; font-size: 13px; margin-bottom: 6px; }
+    .banner {
+      padding: 14px 18px;
+      border-radius: 8px;
+      margin: 16px 0 24px;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .banner.checking { background: #1e3a5f; color: #93c5fd; border: 1px solid #3b82f6; }
+    .banner.ready { background: #14532d; color: #86efac; border: 1px solid #22c55e; }
+    .banner.blocked { background: #5f1d1d; color: #fca5a5; border: 1px solid #ef4444; }
+    .banner .reason {
+      display: block;
+      margin-top: 6px;
+      font-size: 11px;
+      opacity: 0.85;
+      font-weight: 400;
+    }
+    .browser-block {
+      display: none;
+      background: #0f1a1f;
+      border: 1px solid #1f2937;
+      border-radius: 8px;
+      padding: 18px 20px;
+      margin: 14px 0;
+    }
+    .browser-block.active { display: block; border-color: #f59e0b; }
+    ol { padding-left: 22px; margin: 6px 0; }
+    ol li { margin: 8px 0; font-size: 13px; }
+    .flag-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin: 8px 0;
+    }
+    .flag-url {
+      background: #1f2937;
+      color: #67e8f9;
+      padding: 6px 10px;
+      border-radius: 4px;
+      font-size: 12px;
+      flex: 1;
+      min-width: 280px;
+      overflow-x: auto;
+    }
+    .copy-btn {
+      background: #374151;
+      color: #e5e7eb;
+      border: none;
+      padding: 6px 10px;
+      border-radius: 4px;
+      font-family: inherit;
+      font-size: 11px;
+      cursor: pointer;
+    }
+    .copy-btn:hover { background: #4b5563; }
+    .recheck {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      margin: 24px 0 8px;
+      flex-wrap: wrap;
+    }
+    .recheck button {
+      background: #22c55e;
+      color: #000;
+      border: none;
+      padding: 10px 18px;
+      border-radius: 6px;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .recheck button:hover { background: #16a34a; }
+    .recheck button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .continue-btn {
+      background: #22c55e;
+      color: #000;
+      padding: 12px 22px;
+      text-decoration: none;
+      border-radius: 6px;
+      font-weight: 700;
+      font-size: 14px;
+      display: inline-block;
+    }
+    .continue-btn:hover { background: #16a34a; }
+    .show-all {
+      color: #67e8f9;
+      font-size: 11px;
+      cursor: pointer;
+      text-decoration: underline;
+      display: inline-block;
+      margin: 8px 0;
+    }
+    .driver-warn {
+      color: #fbbf24;
+      font-size: 11px;
+      margin-top: 10px;
+      padding: 8px 10px;
+      background: #3f2a14;
+      border-left: 3px solid #f59e0b;
+      border-radius: 3px;
+    }
+    .driver-warn ul { margin: 6px 0 0 18px; padding: 0; }
+    .driver-warn li { margin: 3px 0; }
+    .why {
+      color: #6b7280;
+      font-size: 11px;
+      margin: 20px 0;
+      padding: 10px 14px;
+      background: #0f1216;
+      border-left: 3px solid #4b5563;
+      border-radius: 3px;
+    }
+    footer {
+      color: #6b7280;
+      font-size: 11px;
+      margin-top: 32px;
+      text-align: center;
+      padding-top: 18px;
+      border-top: 1px solid #1f2937;
+    }
+    footer a { color: #9ca3af; }
+  </style>
+</head>
+<body>
+  <!-- Quick-access page legend. -->
+  <a href="legend.html" id="unity-legend-link" title="Open the page legend / quick-access index" style="position:fixed;top:8px;right:8px;z-index:99998;background:rgba(15,26,31,0.92);color:#ff4d9a;padding:5px 10px;border-radius:4px;font-size:10px;font-family:'JetBrains Mono',monospace;text-decoration:none;border:1px solid #374151;letter-spacing:0.5px;">📑 Pages</a>
+
+  <div class="container">
+    <h1>🧠 Unity Brain — WebGPU Setup</h1>
+    <p class="lede">Pre-flight checks before you connect to the live dashboard.</p>
+
+    <p>Unity's 357M-neuron brain runs Hebbian/Oja-rule learning on the GPU. Your browser needs WebGPU enabled before you can connect to the dashboard. Follow the steps for your detected browser below, then click <kbd>Re-check WebGPU</kbd>.</p>
+
+    <div id="status-banner" class="banner checking">
+      <span id="status-message">🔄 Checking WebGPU adapter…</span>
+      <span class="reason" id="status-reason"></span>
+    </div>
+
+    <div id="instructions">
+
+      <section id="block-chrome" class="browser-block">
+        <h3>Google Chrome (and Chromium-based browsers)</h3>
+        <ol>
+          <li>Open a new tab and paste this address into the URL bar:
+            <div class="flag-row">
+              <code class="flag-url">chrome://flags/#enable-unsafe-webgpu</code>
+              <button class="copy-btn" data-copy="chrome://flags/#enable-unsafe-webgpu">Copy</button>
+            </div>
+          </li>
+          <li>Set the <strong>"Unsafe WebGPU Support"</strong> flag to <strong>Enabled</strong>.</li>
+          <li>Click <strong>Relaunch</strong> at the bottom of the page.</li>
+          <li>Come back here and click <kbd>Re-check WebGPU</kbd> below.</li>
+        </ol>
+        <div class="driver-warn">
+          ⚠ Your GPU driver also has to be recent. Minimums:
+          <ul>
+            <li>NVIDIA — driver version 532 or newer (RTX 20-series and up; GTX 16-series and up)</li>
+            <li>AMD — Adrenalin 23.x or newer (RX 6000+ recommended; older Polaris/Vega cards may not work)</li>
+            <li>Intel — driver 31.0.101.4314 or newer (Arc-series + UHD 730 or newer)</li>
+            <li>Apple M-series — works out of the box on macOS 14+</li>
+          </ul>
+        </div>
+      </section>
+
+      <section id="block-edge" class="browser-block">
+        <h3>Microsoft Edge</h3>
+        <ol>
+          <li>Open a new tab and paste this address into the URL bar:
+            <div class="flag-row">
+              <code class="flag-url">edge://flags/#enable-unsafe-webgpu</code>
+              <button class="copy-btn" data-copy="edge://flags/#enable-unsafe-webgpu">Copy</button>
+            </div>
+          </li>
+          <li>Set <strong>"Unsafe WebGPU Support"</strong> to <strong>Enabled</strong>.</li>
+          <li>Click <strong>Restart</strong> at the bottom of the page.</li>
+          <li>Come back here and click <kbd>Re-check WebGPU</kbd> below.</li>
+        </ol>
+        <div class="driver-warn">
+          ⚠ Same GPU driver minimums as Chrome — see the Chrome block (use the toggle below to view) if you're not sure.
+        </div>
+      </section>
+
+      <section id="block-firefox" class="browser-block">
+        <h3>Mozilla Firefox</h3>
+        <ol>
+          <li>WebGPU shipped enabled by default in Firefox 141 (mid-2025). If you're on an older release, enable it manually:</li>
+          <li>Open a new tab and paste this address into the URL bar:
+            <div class="flag-row">
+              <code class="flag-url">about:config</code>
+              <button class="copy-btn" data-copy="about:config">Copy</button>
+            </div>
+          </li>
+          <li>Accept the warning ("I accept the risk and want to continue").</li>
+          <li>Search for <code>dom.webgpu.enabled</code> — double-click to toggle to <strong>true</strong>.</li>
+          <li>Restart Firefox.</li>
+          <li>Come back here and click <kbd>Re-check WebGPU</kbd> below.</li>
+        </ol>
+        <div class="driver-warn">
+          ⚠ Firefox WebGPU is most mature on Nightly. If a regular Firefox release fails the re-check, try <a href="https://www.mozilla.org/firefox/channel/desktop/#nightly" style="color:#67e8f9;">Firefox Nightly</a> instead.
+        </div>
+      </section>
+
+      <section id="block-safari" class="browser-block">
+        <h3>Apple Safari (macOS 14 Sonoma or newer required)</h3>
+        <ol>
+          <li>Open Safari → menu bar → <strong>Safari</strong> → <strong>Settings…</strong> (or press <kbd>⌘ ,</kbd>).</li>
+          <li>Click the <strong>Advanced</strong> tab.</li>
+          <li>Check <strong>"Show features for web developers"</strong> (or "Show Develop menu in menu bar" on older Safari).</li>
+          <li>Close Settings. From the menu bar, click <strong>Develop</strong> → <strong>Feature Flags…</strong>.</li>
+          <li>Search for <code>WebGPU</code> and check the box.</li>
+          <li>Restart Safari.</li>
+          <li>Come back here and click <kbd>Re-check WebGPU</kbd> below.</li>
+        </ol>
+        <div class="driver-warn">
+          ⚠ Requires macOS 14 Sonoma or newer. Older macOS releases don't expose WebGPU even with the flag on — you'll need to use Chrome, Edge, or Firefox instead.
+        </div>
+      </section>
+
+      <section id="block-opera" class="browser-block">
+        <h3>Opera (Chromium-based)</h3>
+        <ol>
+          <li>Open a new tab and paste this address into the URL bar:
+            <div class="flag-row">
+              <code class="flag-url">opera://flags/#enable-unsafe-webgpu</code>
+              <button class="copy-btn" data-copy="opera://flags/#enable-unsafe-webgpu">Copy</button>
+            </div>
+          </li>
+          <li>Set <strong>"Unsafe WebGPU Support"</strong> to <strong>Enabled</strong>.</li>
+          <li>Click <strong>Relaunch</strong> at the bottom of the page.</li>
+          <li>Come back here and click <kbd>Re-check WebGPU</kbd> below.</li>
+        </ol>
+        <div class="driver-warn">
+          ⚠ Same GPU driver minimums as Chrome. Opera GX may need additional VPN/proxy settings adjusted.
+        </div>
+      </section>
+
+      <section id="block-brave" class="browser-block">
+        <h3>Brave (Chromium-based)</h3>
+        <ol>
+          <li>Open a new tab and paste this address into the URL bar:
+            <div class="flag-row">
+              <code class="flag-url">brave://flags/#enable-unsafe-webgpu</code>
+              <button class="copy-btn" data-copy="brave://flags/#enable-unsafe-webgpu">Copy</button>
+            </div>
+          </li>
+          <li>Set <strong>"Unsafe WebGPU Support"</strong> to <strong>Enabled</strong>.</li>
+          <li>Click <strong>Relaunch</strong> at the bottom of the page.</li>
+          <li>Come back here and click <kbd>Re-check WebGPU</kbd> below.</li>
+        </ol>
+        <div class="driver-warn">
+          ⚠ Same GPU driver minimums as Chrome. Brave Shields may need to be lowered to "shields down" for this site if the adapter check still fails after the flag is on.
+        </div>
+      </section>
+
+      <section id="block-unknown" class="browser-block">
+        <h3>Unknown / unsupported browser</h3>
+        <p>We couldn't identify your browser automatically. WebGPU is currently supported (with varying maturity) in <strong>Chrome 113+</strong>, <strong>Edge 113+</strong>, <strong>Firefox 141+</strong> (or Firefox Nightly), and <strong>Safari 18+</strong> on macOS 14+. Update your browser to a recent version or switch to one of those.</p>
+        <p>If you ARE on one of those browsers and we mis-detected, click <span class="show-all" id="show-all-link">show instructions for all browsers</span> and follow the one that matches.</p>
+      </section>
+    </div>
+
+    <div class="recheck">
+      <button id="recheck-btn">🔄 Re-check WebGPU</button>
+      <a id="continue-btn" class="continue-btn" href="../html/dashboard.html" style="display:none;">→ Continue to Dashboard</a>
+      <span class="show-all" id="show-others-link">show instructions for other browsers</span>
+    </div>
+
+    <div class="why">
+      Why does this matter? Unity's brain runs ~357 million Rulkov chaotic-map neurons with Hebbian/Oja-rule plasticity on GPU-resident sparse matrices. There is no degraded-capability bypass — Unity has one correct compute architecture, not a menu of slower fallbacks. Enable WebGPU before continuing; if your hardware can't run WebGPU at all, Unity isn't a fit for that machine.
+    </div>
+
+    <footer>
+      Unity AI Lab — pre-flight setup. <a href="../README.md">README</a> · <a href="../html/dashboard.html">dashboard</a> · <a href="../html/brain-equations.html">brain equations</a>
+    </footer>
+  </div>
+
+  <script type="module">
+    import { checkWebGPUAdapter, detectBrowser } from '../js/webgpu-prep.js';
+
+    const banner = document.getElementById('status-banner');
+    const messageEl = document.getElementById('status-message');
+    const reasonEl = document.getElementById('status-reason');
+    const recheckBtn = document.getElementById('recheck-btn');
+    const continueBtn = document.getElementById('continue-btn');
+    const showOthersLink = document.getElementById('show-others-link');
+    const showAllLink = document.getElementById('show-all-link');
+
+    function applyDetectedBrowser() {
+      const id = detectBrowser();
+      document.querySelectorAll('.browser-block').forEach((el) => el.classList.remove('active'));
+      const block = document.getElementById(`block-${id}`) || document.getElementById('block-unknown');
+      if (block) block.classList.add('active');
+      return id;
+    }
+
+    function showAllBlocks() {
+      document.querySelectorAll('.browser-block').forEach((el) => el.classList.add('active'));
+      if (showOthersLink) showOthersLink.style.display = 'none';
+    }
+    if (showOthersLink) showOthersLink.onclick = showAllBlocks;
+    if (showAllLink) showAllLink.onclick = showAllBlocks;
+
+    document.querySelectorAll('.copy-btn').forEach((btn) => {
+      btn.onclick = async () => {
+        const text = btn.getAttribute('data-copy');
+        try {
+          await navigator.clipboard.writeText(text);
+          const orig = btn.textContent;
+          btn.textContent = '✓ Copied';
+          setTimeout(() => { btn.textContent = orig; }, 1500);
+        } catch (err) {
+          btn.textContent = '✗ Copy failed — select & copy manually';
+        }
+      };
+    });
+
+    async function runCheck() {
+      banner.className = 'banner checking';
+      messageEl.textContent = '🔄 Checking WebGPU adapter…';
+      reasonEl.textContent = '';
+      recheckBtn.disabled = true;
+      const result = await checkWebGPUAdapter();
+      recheckBtn.disabled = false;
+      if (result && result.available) {
+        banner.className = 'banner ready';
+        messageEl.textContent = '✓ WebGPU is ready — Unity can connect.';
+        reasonEl.textContent = result.reason || '';
+        continueBtn.style.display = 'inline-block';
+        document.querySelectorAll('.browser-block').forEach((el) => el.classList.remove('active'));
+      } else {
+        banner.className = 'banner blocked';
+        messageEl.textContent = '✗ WebGPU is not available yet.';
+        reasonEl.textContent = (result && result.reason) || 'unknown reason';
+        continueBtn.style.display = 'none';
+        applyDetectedBrowser();
+      }
+    }
+
+    recheckBtn.onclick = runCheck;
+    applyDetectedBrowser();
+    runCheck();
+  </script>
+</body>
+</html>

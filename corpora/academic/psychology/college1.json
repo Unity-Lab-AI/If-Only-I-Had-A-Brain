@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "grade": "college1",
+  "subject": "psychology",
+  "source": "Simple English Wikipedia (CC-BY-SA), cleaned + sentence-segmented",
+  "note": "Hybrid academic-depth corpus for psychology/college1. Trained via curriculum._trainAcademicStories. Real openly-licensed curriculum content; lived-year + math stay bespoke.",
+  "experiences": [
+    {
+      "theme": "cognitive-science",
+      "story": "cognitive science is the interdisciplinary, scientific study of the mind and its processes. it examines the nature, the tasks, and the functions of cognition . mental faculties of concern to cognitive scientists include perception, memory, attention, reasoning, language, and emotion. to understand these faculties, cognitive scientists borrow from fields such as psychology, philosophy, artificial intelligence, neuroscience, linguistics, and anthropology. the typical analysis of cognitive science spans many levels of organization, from learning and decision-making to logic and planning; from neural circuitry to modular brain organization. cognitive science has a prehistory traceable back to ancient greek philosophical texts . the modern culture of cognitive science can be traced back to the early cyberneticists in the 1930s and 1940s, such as warren mcculloch and walter pitts, who sought to understand the organizing principles of the mind. mcculloch and pitts developed the first variants of what are now known as artificial neural networks, models of computation inspired by the structure of biological neural networks. another precursor was the early development of the theory of computation and the digital computer in the 1940s and 1950s. the modern computer, or von neumann machine, would play a central role in cognitive science, both as a metaphor for the mind and as a tool for investigation. the first instance of cognitive science experiments being conducted at an academic institution occurred at mit sloan school of management, where j.c.r. licklider worked in the psychology department and conducted experiments using computer memory as a model of human cognition. in 1959, noam chomsky published a scathing review of b. skinner's book verbal behavior."
+    }
+  ]
+}

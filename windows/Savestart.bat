@@ -1,5 +1,5 @@
 @echo off
-REM Launcher lives in windows\ — cd up one level so the rest of the script
+REM Launcher lives in windows\ -- cd up one level so the rest of the script
 REM resolves paths from the project root (corpora\, server\, js\, etc.)
 REM exactly the way it did when this file used to live in the root.
 cd /d "%~dp0.."
@@ -15,15 +15,15 @@ echo   [Savestart] boot will hydrate from server\brain-weights*.json
 echo   [Savestart] + conversations.json + episodic-memory.db.
 echo.
 
-REM Optional env flags — see start.bat header for full list. Most-relevant
+REM Optional env flags -- see start.bat header for full list. Most-relevant
 REM Savestart-side flags:
-REM DREAM_DEFINITION_CACHE_FILE=path.json — persistent dictionary cache survives
+REM DREAM_DEFINITION_CACHE_FILE=path.json -- persistent dictionary cache survives
 REM                                          restart → no ~1 min re-warm.
-REM DREAM_COHERENCE_MIN=0.15 — composeSentence cosine coherence floor (env-tunable).
-REM DREAM_SAT_MEANCOS=0.7    — saturation halt: mean-cos > X.
-REM DREAM_SAT_MEANABS=0.6    — saturation halt: meanAbs > X*wMax.
-REM DREAM_SAT_RATIO=1.5      — saturation halt: max/mean ratio < X.
-REM DREAM_SAT_SAMPLE=1000    — weight-distribution sample size for sat check.
+REM DREAM_COHERENCE_MIN=0.15 -- composeSentence cosine coherence floor (env-tunable).
+REM DREAM_SAT_MEANCOS=0.7    -- saturation halt: mean-cos > X.
+REM DREAM_SAT_MEANABS=0.6    -- saturation halt: meanAbs > X*wMax.
+REM DREAM_SAT_RATIO=1.5      -- saturation halt: max/mean ratio < X.
+REM DREAM_SAT_SAMPLE=1000    -- weight-distribution sample size for sat check.
 REM First-N reads of each tunable log calibration data so operator can tune
 REM from real run history. See start.bat header for full descriptions.
 
@@ -45,17 +45,17 @@ if %NODE_MAJOR% LSS 18 (
 
 REM FORCE preserve-state. Overrides autoClearStaleState() regardless of
 REM code-hash change since last run. DREAM_FORCE_CLEAR is explicitly
-REM rejected in this script — this entry point is for resume only.
+REM rejected in this script -- this entry point is for resume only.
 set DREAM_KEEP_STATE=1
 set DREAM_FORCE_CLEAR=
 if /i "%1"=="/fresh" (
-    echo   [!] /fresh rejected — use start.bat /fresh for a wipe.
+    echo   [!] /fresh rejected -- use start.bat /fresh for a wipe.
     echo       Savestart.bat is save-resume only.
     pause
     exit /b 1
 )
 if /i "%1"=="/clear" (
-    echo   [!] /clear rejected — use start.bat /clear for a wipe.
+    echo   [!] /clear rejected -- use start.bat /clear for a wipe.
     echo       Savestart.bat is save-resume only.
     pause
     exit /b 1
@@ -91,7 +91,7 @@ echo   esbuild present.
 echo.
 
 echo [Savestart] step 5/7: checking GloVe 6B.300d substrate...
-REM GloVe presence check — Savestart hydrates from save state, but if the
+REM GloVe presence check -- Savestart hydrates from save state, but if the
 REM corpora folder was wiped since the save was produced, we STILL need to
 REM download GloVe so the semantic substrate matches what the saved weights
 REM learned against. Falling back to subword on a GloVe-trained save would
@@ -147,7 +147,7 @@ start "" http://localhost:7525
 REM Dashboard auto-opens alongside the landing page so the milestone panel
 REM (curriculum state, save-resume vs fresh-boot, passed cells, operator
 REM signoffs) is visible from the first moment the brain is up. Save-state
-REM resume boot especially benefits — the operator can confirm what loaded
+REM resume boot especially benefits -- the operator can confirm what loaded
 REM from disk before committing to a long curriculum run.
 start "" http://localhost:7525/dashboard.html
 echo.

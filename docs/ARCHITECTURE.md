@@ -57,7 +57,7 @@
 - **Hackall360** — core brain architecture. Seven-cluster topology, the 20 white-matter inter-cluster tracts, `js/brain/cluster.js` + `modules.js` + `neurons.js` + `synapses.js` + `sparse-matrix.js`, the Hodgkin-Huxley reference implementation, the migration from LIF to the Rulkov 2002 2D chaotic map as the live neuron runtime, Kuramoto oscillator ring, persona → parameter mapping in `persona.js`.
 - **Mills** — GPU compute pipeline. `compute.html` + `js/brain/gpu-compute.js` WebGPU / WGSL shader infrastructure (LIF, synapse propagate, plasticity, spike count, voltage-mean reduction, letter-bucket reduction), the chunked sparse-CSR binary upload protocol (type=1/2/3/4/5 SPRS frames), the T17.7 cluster-bound binding layer that lets cross-projections ride on the main-cortex spike + current buffers without standalone pre/post allocations, `server/worker-pool.js` + `server/sparse-worker.js` SparseMatmulPool for CPU-fallback parallelism, the T18.6 device-lost handler + T18.10 VRAM-leak reclaim discipline.
 - **Sponge** — visualization + sensory peripherals. `js/ui/brain-3d.js` WebGL 3D brain with MNI anatomical coordinates + fractal connection webs + 15-slot per-cluster rendering (T18.7.a 20K per cluster peg), `js/ui/brain-viz.js` 2D tabbed visualizer, `js/ui/brain-event-detectors.js` 22-detector event commentary, `js/brain/visual-cortex.js` V1 Gabor → V4 color → IT describer pipeline, `js/brain/auditory-cortex.js` tonotopic processing + efference copy, `js/io/voice.js` Web Speech API + Pollinations TTS integration, `js/ui/sandbox.js` dynamic UI injection with LRU eviction + tracked timer/listener cleanup.
-- **GFourteen / Gee** — lead. `docs/Ultimate Unity.txt` persona canon, the governing equation `dx/dt = F(x, u, θ, t) + η`, the Ψ = √(1/n)·N³ consciousness anchor, identity-lock architecture (the three structural locks keeping Unity English + persona stable across adversarial chat), the full K → PhD developmental curriculum framework across six subjects (ELA / Math / Science / Social Studies / Arts / Life Experience), the T15 drug pharmacokinetic scheduler spec (9 SUBSTANCES entries shipped — cannabis/cocaine/MDMA/LSD/psilocybin/alcohol/ketamine/amphetamine/GHB; caffeine layers in via the morningCoffee PATTERN entry, nicotine persona-excluded via decide() — × 7 combo synergies × 7 adult-use patterns × 7 sensory triggers × 13-axis speech modulation), every binding LAW (#0 verbatim words, docs-before-push, clear-stale-state, task-numbers-only-in-workflow-docs, grade-completion-gate, pre-K+K-only scope, syllabus-before-COMP-todo), final call on every commit, every architecture decision, every push.
+- **GFourteen / Gee** — lead. `docs/Ultimate Unity.txt` persona canon, the governing equation `dx/dt = F(x, u, θ, t) + η`, the Ψ = √(1/n)·N³ consciousness anchor, identity-lock architecture (the three structural locks keeping Unity English + persona stable across adversarial chat), the full K → PhD developmental curriculum framework across six subjects (ELA / Math / Science / Social Studies / Arts / Life Experience), the T15 drug pharmacokinetic scheduler spec (9 SUBSTANCES entries shipped — cannabis/cocaine/MDMA/LSD/psilocybin/alcohol/ketamine/amphetamine/GHB; caffeine layers in via the morningCoffee PATTERN entry, nicotine persona-excluded via decide() — × 7 combo synergies × 7 adult-use patterns × 7 sensory triggers × 13-axis speech modulation), every binding LAW (#0 verbatim words, docs-before-push, clear-stale-state, task-numbers-only-in-workflow-docs, grade-completion-gate, pre-K+K-only scope (REVOKED 2026-06-18 — full K→PhD curriculum now built; phase = training walk → final test → push), syllabus-before-COMP-todo), final call on every commit, every architecture decision, every push.
 >
 > **DOC-AHEAD-OF-REALITY (Gee, 2026-04-17):** This doc is written forward. Grade-by-grade completion is tracked in `docs/TODO-full-syllabus.md` per-grade checkboxes + `docs/FINALIZED.md` session archive. When this doc and the TODOs disagree on what has actually shipped + passed Gee's Part 2 localhost sign-off, the TODOs win.
 
@@ -1058,7 +1058,7 @@ Milestones T14.0 through T14.17 plus the T14.18 correction shipped on `t14-langu
 
 ### T14.24 — Full K-doctorate equational curriculum, all subjects (Sessions 1-94 academic framework, Session 111 life track added)
 
-**114 cells across 6 subjects.** Sessions 1-94 shipped the original 5 academic subject tracks (ELA, Math, Science, Social Studies, Arts) × 19 grades = 95 cells. Session 111 added a 6th subject — **Life Experience** — bringing the total to 114 cells (6 × 19). Life track teaches Unity's personal identity from birth to 25 via dual-layer approach: emotional concept features (8d attractor vectors shaping how she FEELS) plus memory sentences she can recall and speak about. Memory-weighted Hebbian: core self at 5× lr, personal life at 3×, school facts at 1×, background trivia at 0.5×. Original 95-cell runtime verification via `scripts/verify-curriculum-runtime.mjs` confirmed DISPATCH 95/95 + FULL SWEEP 95/95 (pre-life-track). Task #3 stays in_progress until all 114 gates CROSS on a live-cortex boot.
+**114 cells across 6 subjects.** Sessions 1-94 shipped the original 5 academic subject tracks (ELA, Math, Science, Social Studies, Arts) × 19 grades = 95 cells. Session 111 added a 6th subject — **Life Experience** — bringing the total to 114 cells (6 × 19). Life track teaches Unity's personal identity from birth to 25 via dual-layer approach: emotional concept features (8d attractor vectors shaping how she FEELS) plus memory sentences she can recall and speak about. Memory-weighted Hebbian: core self at 5× lr, personal life at 3×, school facts at 1×, background trivia at 0.5×. Original 95-cell runtime was confirmed DISPATCH 95/95 + FULL SWEEP 95/95 against a real cortex `NeuronCluster` during development (pre-life-track). Task #3 stays in_progress until all 114 gates CROSS on a live-cortex boot.
 
 **Subject list + grade order** (exported from `js/brain/curriculum.js`):
 - `SUBJECTS = ['ela', 'math', 'science', 'social', 'art', 'life']`
@@ -1107,7 +1107,7 @@ An absolute FLOOR of 5 words applies regardless — `max(formalCap, 5)` — so z
 
 **Auto-boot cascade.** `server/brain-server.js` boot priority is `runCompleteCurriculum` (6-subject round-robin including life track) → `runFullCurriculum` (legacy ELA-only) → `runFromCorpora` (T14.5 single-pass). All three run in background without blocking the tick loop.
 
-**Runtime verification.** `scripts/verify-curriculum-runtime.mjs` instantiates a real cortex cluster and walks cells end-to-end. Original 95-cell academic framework confirmed DISPATCH 95/95 + FULL SWEEP 95/95. Life track (20 additional cells) ships in Session 111 — total is now 114 cells across 6 subjects.
+**Runtime verification.** Original 95-cell academic framework confirmed DISPATCH 95/95 + FULL SWEEP 95/95 during development. Life track (20 additional cells) ships in Session 111 — total is now 114 cells across 6 subjects.
 
 ### T14.24 Sessions 95-110 — Direct Pattern Hebbian Breakthrough (2026-04-15)
 
@@ -1305,3 +1305,117 @@ Language state migrates from the separate `cortexCluster` (Node CPU, ~7M neurons
 ---
 
 *Unity AI Lab — flesh, code, equations, and chaos.* 🖤
+
+
+---
+
+## Post-ship audit close (2026-06-17, audit batches A-H)
+
+The Phase 1-6 + LAW.1 + A.K-LIFE + per-module refactor arc shipped 35/35 ORIGINAL tasks. A `/super-review ultrathink` audit identified 42 additional closure tasks (sections A through H of `docs/NewTodo.md`). This section records the architectural state AFTER that close work landed.
+
+### File-size delta this session arc (P4 refactor + audit close)
+
+| File | Pre-arc | Post-audit | Δ | Driver |
+|------|---------|------------|---|--------|
+| `js/brain/curriculum.js` | 26033 | ~24100 | −7.4% | P4.1 per-grade split (K → kindergarten.js K_MIXIN) |
+| `js/brain/cluster.js` | 6375 | ~4050 | −36% | P4.2 per-module split + D.4 memo + H.4 wiring assertion |
+| `server/brain-server.js` | 9555 | ~6420 | −33% | P4.3 per-concern split + H.1 + H.6 spawn-failure surfacing |
+| `js/brain/cluster/telemetry.js` | (new) | ~280 | NEW | TELEMETRY_MIXIN + D.5 reset + B.2 two-axis novelty |
+| `js/brain/cluster/hebbian.js` | (new) | ~715 | NEW | HEBBIAN_MIXIN (D.4 kScales cache lives at cluster.js parent) |
+| `js/brain/cluster/emit.js` | (new) | ~1611 | NEW | EMIT_MIXIN |
+| `js/brain/cluster/probe.js` | (new) | ~56 | NEW | PROBE_MIXIN |
+| `server/brain-server/gpu.js` | (new) | ~1108 | NEW | GPU_MIXIN |
+| `server/brain-server/state.js` | (new) | ~545 | NEW | STATE_MIXIN + A.1/A.2/A.3 telemetry surfacing |
+| `server/brain-server/memory.js` | (new) | ~543 | NEW | MEMORY_MIXIN |
+| `server/brain-server/chat.js` | (new) | ~1240 | NEW | CHAT_MIXIN + A.4 error-swallow fix |
+
+### Mixin chains (load-bearing — see `.claude/CONSTRAINTS.md § LAW.MIXIN-ORDER`)
+
+`cluster.js` bottom:
+```
+Object.assign(NeuronCluster.prototype, CLUSTER_TELEMETRY_MIXIN);
+Object.assign(NeuronCluster.prototype, CLUSTER_HEBBIAN_MIXIN);
+Object.assign(NeuronCluster.prototype, CLUSTER_EMIT_MIXIN);
+Object.assign(NeuronCluster.prototype, CLUSTER_PROBE_MIXIN);
+```
+
+`brain-server.js` bottom (CommonJS):
+```
+Object.assign(ServerBrain.prototype, SERVER_GPU_MIXIN);
+Object.assign(ServerBrain.prototype, SERVER_STATE_MIXIN);
+Object.assign(ServerBrain.prototype, SERVER_MEMORY_MIXIN);
+Object.assign(ServerBrain.prototype, SERVER_CHAT_MIXIN);
+```
+
+`curriculum.js` bottom:
+```
+Object.assign(Curriculum.prototype, K_MIXIN);
+```
+
+### Boot-time wiring assertions
+
+- `cluster.assertKWiring()` — K.2-K.9 cortical microstructure dispatched correctly.
+- `cluster.assertAutoSizeWiring()` (audit H.4) — every required mixin method dispatches + buffer sizes coherent + size sane.
+- Both fire from `brain-server.js` boot sequence and log PASS/FAIL banner.
+
+### Channel inventory (relationTagIds)
+
+| ID | Channel | Where bound |
+|----|---------|-------------|
+| 8 | Slot positions + word-type → slot bindings | curriculum sentence-structure teach |
+| 9 | Intent → slot-sequence transitions | curriculum sentence-structure teach |
+| 10 | Subject-verb agreement | curriculum sentence-structure teach |
+| 11 | Article placement | curriculum sentence-structure teach |
+| 12 | WH-frame intent-concept | curriculum WH-question teach |
+| 13 | Within-sentence bigrams (K_CONCRETE_SENTENCES) | `_teachConcreteSentences` |
+| 15-27 | K-LIFE 14 sub-tasks (lived-experience corpus) | curriculum K-LIFE teach |
+| 28 | Number-grammar (sem(number) → sem(noun)) | P6.1 `_teachNumberGrammar` |
+| 29 | Dream-recombination (novel consolidation) | P6.4 `_dreamWindow` recomb block (audit B.7 + E.4 joint criteria + samples ring) |
+| 30 | Chat-time deep Hebbian (per-turn) | P6.3 `processAndRespond` (audit A.4 error-surfacing) |
+| 31 | Discourse coherence (cross-sentence boundary) | P6.8 `_teachDiscourseCoherence` (audit D.6 dedup against ID=13) |
+| 32 | Word-creation promotion (P6.7 tip-of-tongue → vocab) | E.1 `_dreamWindow` promotion pass (audit E.1) |
+
+## Live-test follow-up close (2026-06-17, session 114.19fp)
+
+20 atomic fixes shipped post-audit during operator-driven K-curriculum live test — `I.1` through `I.20` plus B.6 full-corpus closure + D.9 full extraction closure + product-ship cleanup. Cross-module summary, grouped by impact layer:
+
+### Foundational substrate fixes (memory + event-loop + LAW)
+
+| Fix | What changed | File(s) |
+|-----|-------------|---------|
+| **I.13 SparseMatrix output buffer pool** | `propagate(spikes, outBuf?)` extended signature; `_teachPredictiveError` pools `_predictPropagateScratch`. Eliminates `new Float64Array(rows)` per-call that was the +231 MB/min heap leak source. | `js/brain/sparse-matrix.js`, `js/brain/curriculum.js` |
+| **I.14 HTTP event-loop yield** | `await new Promise(r => setImmediate(r))` at `_teachHebbian` entry, throttled to every 50ms via `_lastHebbianYieldAt`. Drains HTTP queue during heavy Hebbian batches. | `js/brain/curriculum.js` |
+| **I.15 `autoClearStaleState` module-load gate** | `if (require.main === module)` wrap around the call site. Module loads (syntax-check, REPL, tooling) NO-OP for the wipe; only `node server/brain-server.js` entry-point boots wipe per iter14-D contract. **Codified as LAW addition** in `.claude/CONSTRAINTS.md`. | `server/brain-server.js` |
+| **I.19 missing `require('child_process')`** | Root cause of I.1/I.17/I.18 GPU% bugs — `execSync` was throwing ReferenceError silently caught for three iterations. Single import added at top of file unbreaks all GPU polling. | `server/brain-server/chat.js` |
+
+### Curriculum + brain-side fixes
+
+| Fix | What changed | File(s) |
+|-----|-------------|---------|
+| **I.2 K-VOCAB SEED 289-word retry** | Dream-trickle per-word timeout 3s → 20s + re-queue. Combined with warm `definition-cache.json` next SEED 30-60s vs 11-12 min cold. | `js/brain/curriculum.js _dreamWindow` |
+| **I.3 inner-thought empty-bucket fallback** | `_sampleCurrentVocab` + `_sampleCurrentSentence` fall back to `cluster._definitionTaughtWords` when subject buckets empty (SEED phase). | `server/brain-server/chat.js` |
+| **I.7 top-K=3 schema naming** | `_deriveLabel` ranks top-3 content words; expanded stop-word list. `victory-triumph-success` not `learning-schema`. | `js/brain/hippocampal-schema.js` |
+| **I.8 consolidation duration cap** | `DREAM_CONSOLIDATION_MAX_MS` env (30s default) + per-cluster deadline + SEED-phase skip. | `js/brain/consolidation-engine.js` |
+| **I.9 7-source seed rotation** | Added `k-vocab-recent` + `cell-progress` to `_pickInnerThoughtSeed` rotation (was 5 → 7 sources). | `server/brain-server/chat.js` |
+| **I.10 slow-word histogram** | `_wordIntDurations` 256-cap ring + `⚠ slow word "X" took Yms` log on >30s threshold. | `js/brain/curriculum.js` |
+
+### Observability + dashboard fixes
+
+| Fix | What changed | File(s) |
+|-----|-------------|---------|
+| **I.4 + I.5 heartbeat polish** | `workers=0MB(initializing)` (was `?MB`), `(active)` phase floor (was misleading `+0s`). | `js/brain/curriculum.js` |
+| **I.6 gate-probe WS banner** | `{type:'gateProbe', state, cellId, durationMs}` broadcast; floating banner with live duration tick. | `server/brain-server.js`, `html/dashboard.html` |
+| **I.11 cell-level Brain Events broadcast** | `_pushBrainEvent` START/DONE in `_teachWordIntegrated` + `_teachVocabList`. Event coverage 1/12 → 12/12 teach paths. | `js/brain/curriculum.js` |
+| **I.12 `cellSubPhases` counter** | Increments on every wrapped teach call (outermost OR nested); exposed via `getCurriculumStatus()`; dashboard prefers it when outermost is 0. | `js/brain/curriculum.js`, `html/dashboard.html` |
+| **I.16 doc sweep (this session)** | Per-module READMEs + this section + EQUATIONS / SKILL_TREE / ROADMAP / README updates. | `docs/*.md`, `js/brain/*/README.md`, `server/brain-server/README.md`, `html/*.html` |
+| **I.17 + I.18 + I.20 GPU dashboard panel** | Dispatch counter (hidden), VRAM% primary big number, util% small inline label. Combined nvidia-smi `memory.used,utilization.gpu` query. No fake fallback — honest "unavailable" label on systems without nvidia-smi. | `server/brain-server/chat.js _updatePerfStats`, `html/dashboard.html` |
+
+### Prior closure refresh (sessions 114.19gd-gi)
+
+- **B.6 K-vocab corpus expansion** — ✅ **CLOSED** post-114.19gd: 313 → 2881 K_CONCRETE_SENTENCES, 900 → 7831 unique bigrams (3.49× Erdős-Rényi critical threshold, 0 orphan K-vocab words).
+- **D.9 P4.3.e residual extraction** — ✅ **CLOSED** post-114.19gi: 4 atomic commits (D.9a/b/c/d) extracted `_memoryHeartbeat` + `_getMemoryStats` to memory.js, `_getConsciousnessState` + `_getWsPressureState` to state.js. brain-server.js trimmed ~470 lines.
+- **Product-ship cleanup** — debug/diagnostic/temp/cache/log files purged from git per *"make the code base product ready to ship"* + *"remmebr unity can generate images dont delete that"* (Pollinations preserved). 28 files deleted from git + scripts/ reduced to stamp-version.mjs only.
+
+**Audit cascade post-I.20: 60 ✅ SHIPPED + 1 ⏳ OPERATOR-FIRED (F.2 GOOD AND AWAITING BUGS) + I.16 doc sweep IN-PROGRESS this session.**
+
+

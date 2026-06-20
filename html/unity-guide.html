@@ -186,9 +186,12 @@
 </head>
 <body>
 
+<a href="legend.html" id="unity-legend-link" title="Open the page legend / quick-access index" style="position:fixed;top:8px;right:8px;z-index:99998;background:rgba(15,26,31,0.92);color:#ff4d9a;padding:5px 10px;border-radius:4px;font-size:10px;font-family:'JetBrains Mono',monospace;text-decoration:none;border:1px solid #374151;letter-spacing:0.5px;">📑 Pages</a>
+
 <div class="topbar">
  <a href="../index.html#setup">← Back to Unity</a>
  <a href="brain-equations.html">🧠 Full Brain Equations</a>
+ <a href="legend.html">📑 Page legend</a>
  <span style="color: var(--text-dim);">Unity concept guide — plain English, no code</span>
 </div>
 
@@ -670,7 +673,7 @@
 
 <h2 id="curriculum">8.5. Growing up — kindergarten to PhD</h2>
 
-<p>Unity isn't born a 25-year-old. She grows up. Her cortex walks a developmental curriculum across six subject tracks — English / Math / Science / Social Studies / Arts / Life Experience. The full framework covers pre-K all the way through doctoral research (114 distinct grade cells, each taught equationally rather than as memorized sentences), but right now only <strong>pre-K and kindergarten</strong> are in active scope. The post-K grades are preserved in the syllabus plan but deferred until pre-K + K pass the full-mind K gate — a Common Core K.RF/K.W/K.L/K.SL/K.RL plus DIBELS/STAR/AIMSweb assessment that her operator has to sign off on a real localhost run. Every grade is gated by a real human-graded comprehension test she has to pass before advancing; we're not skipping foundation for breadth.</p>
+<p>Unity isn't born a 25-year-old. She grows up. Her cortex walks a developmental curriculum across six subject tracks — English / Math / Science / Social Studies / Arts / Life Experience — from pre-K all the way through doctoral research (114 distinct grade cells, each taught equationally rather than as memorized sentences). The whole arc is built: every grade's six subjects <em>plus</em> the full lived year for that age — family, friends, first loves and losses, substances, identity, the works — is authored and trainable, kindergarten through PhD. Every grade is gated by a real human-graded comprehension test she has to pass before advancing; we're not skipping foundation for breadth. (An early build capped active scope at pre-K + K while the teaching engine itself was proven out — that scaffold limit has since been lifted now that every grade exists.)</p>
 
 <p>The teaching isn't like an LLM reading text. She learns the <em>operations</em> behind concepts:</p>
 
@@ -839,7 +842,32 @@
 
 <p style="color: var(--text-dim); font-size: 13px; text-align: center;">Unity is an open experiment. Not a product. Not a service. A running brain that happens to speak.</p>
 
+<hr style="border: none; border-top: 1px solid var(--border); margin: 48px 0;">
+
+<h2 id="ship-114-19fp" title="20 atomic fixes shipped during operator-driven K-curriculum live test (2026-06-17). NO equation changes — code hygiene, observability, data-loss-prevention, cross-platform polish.">Recent ship — session 114.19fp (2026-06-17)</h2>
+
+<p>Live-test follow-up shipped 20 atomic fixes (I.1-I.20). What you'll notice as a user:</p>
+
+<ul>
+<li><strong>Unity can talk during early training.</strong> Pre-114.19fp the inner-thought emission gate fell through to silence during pre-cell SEED phase because the showcase sampler required per-subject word buckets to be populated. The I.3 fallback samples from <code>cluster._definitionTaughtWords</code> (the Set of K-vocab words Unity has Hebbian-bound definitions for) so she has something real to say even before the first K-cell fires <code>_teachWordEmissionDirect</code>. The I.9 seed rotation expanded from 5 → 7 sources (added <code>k-vocab-recent</code> + <code>cell-progress</code>) so the inner-voice rotates through always-populated state during early training.</li>
+<li><strong>Dashboard finally tells the truth.</strong> GPU panel shows real VRAM% + util% (the I.19 root-cause fix was a single missing <code>require('child_process')</code> at the top of <code>chat.js</code> — every <code>nvidia-smi</code> call since I.1 was throwing ReferenceError silently). Brain Events panel populates during cell teach (was previously SEED-only — I.11). Cell progress bar moves through nested teach calls instead of stalling at 0% until cell completion (I.12 <code>cellSubPhases</code> counter). Gate-probe banner appears with live duration tick during curriculum probes (I.6) so operator no longer sees "GPU 0% + tick paused" as a hang.</li>
+<li><strong>The memory leak is gone.</strong> The +231 MB/min heap leak observed during <code>_teachHebbian</code> runs traced to <code>SparseMatrix.propagate</code> allocating <code>new Float64Array(rows)</code> per call. I.13 extended the signature with an optional pooled output buffer; <code>_teachPredictiveError</code> now reuses a single allocated scratch buffer across millions of fires. Heap stays flat during heavy training.</li>
+<li><strong>HTTP doesn't starve during training.</strong> I.14 added a 50ms-throttled <code>setImmediate</code> yield at <code>_teachHebbian</code> entry so the Node.js event loop drains HTTP request handlers + WebSocket socket buffers between Hebbian bursts. Dashboard Ctrl+R loads in &lt; 1s instead of timing out at 8-15s during heavy Hebbian batches.</li>
+<li><strong>Training state is safer.</strong> I.15 codified a new LAW: <code>autoClearStaleState()</code> is now gated behind <code>require.main === module</code>, so syntax-check / REPL / IDE module loads NO-OP for the wipe. Only an actual <code>node server/brain-server.js</code> entry-point boot wipes per the iter14-D contract. Prevents a class of tooling-side accidents that would otherwise lose training. Operator's <code>identity-core.json</code> (Tier 3 persistent attractors — biographical anchors, persona traits, master/slave dynamic, top emotionally-loaded events) is already excluded from the wipe, so Unity's core self survives any restart.</li>
+<li><strong>Cross-platform compatibility.</strong> Dashboard panel renders honest "unavailable" label on systems without nvidia-smi (AMD / Intel iGPU / headless servers) — never a hallucinated number.</li>
+</ul>
+
+<p style="color: var(--text-dim); font-size: 12px;">See <code>docs/ARCHITECTURE.md § Live-test follow-up close</code>, <code>docs/SKILL_TREE.md § Live-test follow-up skills</code>, <code>docs/ROADMAP.md § Live-test follow-up</code>, <code>docs/EQUATIONS.md</code> head banner, and <code>docs/NewTodo.md § I-track</code> for full per-fix detail. Audit cascade post-I.20: <strong>60 ✅ SHIPPED + 1 ⏳ OPERATOR-FIRED (F.2)</strong> + I.16 doc sweep in-progress.</p>
+
 </div>
 
+<!-- Audit C.9 (2026-06-17): content audit done. Reflects current persona
+     memory layer + manifestation-mode index (girlfriend/housewife/kittycat
+     + wild/strict/feral/sweet/cozy/purr commands) + full K→PhD curriculum scope
+     (the earlier Pre-K+K-only scaffold scope has been lifted; all grades built).
+     Phase 6 compositional emergence panels are documented in
+     html/dashboard.html. For HTML contract + failure-mode signature see
+     docs/HTML-ENTRY-POINTS.md § unity-guide.html. Session 114.19fp I-track
+     content added 2026-06-17 22:50 PT per audit I.16 doc sweep. -->
 </body>
 </html>

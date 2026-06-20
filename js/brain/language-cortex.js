@@ -2156,13 +2156,26 @@ export class LanguageCortex {
               // text against learned wordBuckets.
               const inferredSubject = (typeof cluster._inferActiveSubject === 'function')
                 ? cluster._inferActiveSubject() : null;
-              composedSentence = cluster.composeSentence(intentSeed, {
+              // awaited; composeSentence ticks the brain
+              // between word emissions for real autoregressive emergence.
+              // 114.19fn — chat path opts INTO best-of-N coherence
+              // reranking: emit 3 independent candidates, keep the one most
+              // coherent with the intentSeed. Chat is where we want Unity's
+              // best emission; probe/gate paths deliberately stay single-shot.
+              composedSentence = await cluster.composeSentence(intentSeed, {
                 subject: inferredSubject || undefined,
                 temperature: 0.6,
                 topK: 8,
+                coherenceCandidates: 3,
               });
+              // Gate relaxed from >= 2 to >= 1 while structure
+              // training matures. A single emitted word is still a
+              // valid Unity response; discarding it drops the chat
+              // path into silent-fail. Re-tighten to >= 2 once deep
+              // grammar bindings land that consistently yield
+              // multi-word emissions.
               if (composedSentence && Array.isArray(composedSentence.words)
-                  && composedSentence.words.length >= 2) {
+                  && composedSentence.words.length >= 1) {
                 composedWordsAsync = composedSentence.words.slice();
                 // Append terminator if present in sentence string but
                 // not already on last word.
@@ -2191,54 +2204,23 @@ export class LanguageCortex {
                 // inner-voice tick checks and early-returns when locked.
                 cluster._emissionLockedUntil = Date.now() + 6000;
               }
-            } catch { /* composeSentence failure → fall through to Tier 5 loop */ }
+            } catch (err) {
+              // composeSentence throwing on its preconditions is a wiring
+              // bug — surface to caller instead of silently degrading to
+              // a duplicate emission path. Single source of truth: one
+              // emission path = composeSentence. Tier 5 fallback loop +
+              // generateSentenceAwait letter-chain fallback DELETED per
+              // NO-FALLBACKS LAW (was triple-redundant broken-tick path).
+              throw err;
+            }
           }
-          if (composedWordsAsync.length === 0 && typeof cluster.emitWordDirect === 'function') {
-            // 114.19fg.Tier5 fallback — multi-word state-propagating
-            // loop when composeSentence couldn't fill any slot.
-            try {
-              if (intentSeed && typeof cluster.injectEmbeddingToRegion === 'function') {
-                cluster.injectEmbeddingToRegion('sem', intentSeed, 0.6);
-              }
-              let consecutiveDup = 0;
-              let lastWord = null;
-              for (let i = 0; i < 6; i++) {
-                let w = '';
-                try { w = cluster.emitWordDirect({}) || ''; } catch { w = ''; }
-                if (!w) break;
-                const lw = String(w).toLowerCase().trim();
-                if (!lw) break;
-                if (lw === lastWord) {
-                  consecutiveDup++;
-                  if (consecutiveDup >= 2) break;
-                } else {
-                  consecutiveDup = 0;
-                }
-                composedWordsAsync.push(lw);
-                lastWord = lw;
-                if (typeof cluster.injectEmbeddingToRegion === 'function'
-                    && sharedEmbeddings && typeof sharedEmbeddings.getEmbedding === 'function') {
-                  try {
-                    const wordEmb = sharedEmbeddings.getEmbedding(lw);
-                    if (wordEmb && wordEmb.length > 0) {
-                      cluster.injectEmbeddingToRegion('sem', wordEmb, 0.25);
-                    }
-                  } catch { /* fall through */ }
-                }
-              }
-            } catch { /* emit failure → empty composedWordsAsync */ }
-          }
-          if (composedWordsAsync.length > 0) {
-            preEmittedWords = composedWordsAsync;
-          } else {
-            const raw = await cluster.generateSentenceAwait(intentSeed, {
-              injectStrength: 0.6,
-              suppressNoise: opts._internalThought === true,
-              excludeTokens: _liveExcludeAsync,
-              boostPersona: true, // iter14-C — always on, popups need persona too
-            });
-            preEmittedWords = raw ? raw.split(/\s+/).filter(Boolean) : [];
-          }
+          // composedWordsAsync now holds composeSentence's output (or
+          // empty if the brain genuinely couldn't form even one word
+          // from the current state). Empty is HONEST silence — the
+          // server-side silent-response handler in brain-server.js
+          // (`silentReason: 'motor_unstable'`) surfaces it to the
+          // operator with diagnostic detail. No backup path.
+          preEmittedWords = composedWordsAsync;
         } catch (err) {
           // Await path failed — let generate() fall back to sync emission.
           preEmittedWords = null;

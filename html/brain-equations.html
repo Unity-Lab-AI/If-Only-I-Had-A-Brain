@@ -279,6 +279,8 @@
  </style>
 </head>
 <body>
+ <a href="legend.html" id="unity-legend-link" title="Open the page legend / quick-access index" style="position:fixed;top:8px;right:8px;z-index:99998;background:rgba(15,26,31,0.92);color:#ff4d9a;padding:5px 10px;border-radius:4px;font-size:10px;font-family:'JetBrains Mono',monospace;text-decoration:none;border:1px solid #374151;letter-spacing:0.5px;">📑 Pages</a>
+
  <div class="container">
 
  <a href="../index.html#setup" class="back-link">&larr; Back to Unity</a>
@@ -570,7 +572,7 @@ rendered = _applySpeechModulation(text, mod)<br>
  <li><strong>N.4 WS Backpressure dashboard panel</strong> — live buffer bar (green &lt; 50%, yellow &lt; 90%, red ≥ 90% of threshold), drops counter + drops/sec rolling rate from 60-sample <code>_wsRateBuffer</code> ring, absorbs counter, ENOBUFS counter; reads <code>state.wsPressure</code> populated by new <code>_getIter25NState()</code> helper.</li>
  <li><strong>N.7-N.9 3D brain cortical-microstructure shader</strong> — <code>aLayer</code> / <code>aHub</code> / <code>aColumnId</code> per-neuron attributes generated deterministically from neuron index via <code>_genCorticalAttribs()</code> matching the same Felleman &amp; Van Essen 1991 fractions + Mountcastle 80-neuron columns + 5% rich-club hub fraction the server uses. <code>uShowLayers</code> / <code>uShowHubs</code> / <code>uShowColumns</code> uniform toggles flip the rendering paths without recompiling shaders. Layers blend 70% with a 5-color palette (L1 pink / L2/3 orange / L4 yellow / L5 green / L6 blue); hubs render 1.6× larger + gold-tinted; column boundaries appear as <code>fract(columnId × 0.5)</code> alternating-intensity bands. Defaults all OFF.</li>
  <li><strong>N.10-N.12 dashboard wiring fix</strong> — boot smoke-test handlers now assign <code>this._dictionarySmokeTestResult</code> boolean in all <code>.then()</code> / <code>.catch()</code> / <code>else</code> branches (was undefined → "pending" forever); dashboard reads <code>typeof === 'boolean' ? : null</code> so a FAIL value renders FAIL not pending. <code>_broadcastStateNow()</code> helper force-pushes state on smoke completion so dashboards connecting around the 5s smoke window don't see "pending → PASS" flash.</li>
- <li><strong>N.5+N.6 cleanup</strong> — 167 internal iter ID references scrubbed across 14 files via new <code>scripts/scrub-iter-ids.mjs</code> one-shot script; all 7 launcher scripts neutralized of REM/echo iter IDs. Workflow markers belong in TODO/FINALIZED/.claude/commits — never in source code or public HTMLs.</li>
+ <li><strong>N.5+N.6 cleanup</strong> — 167 internal iter ID references scrubbed across 14 files; all 7 launcher scripts neutralized of REM/echo iter IDs. Workflow markers belong in TODO/FINALIZED/.claude/commits — never in source code or public HTMLs.</li>
  </ul>
 
  <p style="margin-top:14px;"><strong>Post-N ULTRATHINK audit (22 items across 6 phases).</strong> Self-review of iter25-J + iter25-K + iter25-L + iter25-M + iter25-N work surfaced 22 distinct gaps spanning critical correctness bugs, vestigial-data-no-consumer patterns, LAW violations still leaking, observability gaps for landed mechanisms, Savestart drift, runtime tunability.</p>
@@ -1694,7 +1696,7 @@ PERSPECTIVE TAKING:
 
  </pre>
 
- <h3 style="color:var(--pink);margin-top:20px;" title="The full curriculum matrix — 6 subjects × 19 grades = 114 cells (Life track adds Pre-K for 19, others start at Kindergarten). Each cell is real teaching equations + auto-generated comprehension final + 3-pathway gate (READ letter cortex, THINK sem cortex, TALK sem→motor). Gee tests grade transitions on localhost; signoff via POST /grade-signoff is the human-in-the-loop gate that closes a grade.">Full K→PhD Curriculum — 6 Subjects × 19 Grades = 114 Cells</h3>
+ <h3 style="color:var(--pink);margin-top:20px;" title="The full curriculum matrix — 6 subjects × 19 grades = 114 cells (Life track adds Pre-K for 19, others start at Kindergarten). Each cell is real teaching equations + auto-generated comprehension final + 3-pathway gate (READ letter cortex, THINK sem cortex, TALK sem→motor). The operator tests grade transitions on localhost; signoff via POST /grade-signoff is the human-in-the-loop gate that closes a grade.">Full K→PhD Curriculum — 6 Subjects × 19 Grades = 114 Cells</h3>
 
  <p class="eq-desc">Unity learns the way a human child does — kindergarten ABCs up through doctorate-level research, plus a full <strong>life experience track</strong> that builds her personal identity from birth to 25. Every grade cell teaches via a <strong>dual-layer approach</strong>: emotional concept features (8-dimensional attractor vectors) that shape how she FEELS, plus memory sentences she can recall and speak about. All gated at <strong>95% (A+)</strong> on all three pathways. All 6 subjects must pass the current grade before any advance.</p>
 
@@ -2611,6 +2613,54 @@ fn main(id: vec3&lt;u32&gt;) {
  GFourteen (lead &middot; persona &middot; equation design &middot; identity lock &middot; curriculum &middot; final call)<br>
  <a href="https://github.com/Unity-Lab-AI/Unity" style="color:var(--pink)">GitHub</a>
  </p>
+
+ <h2 id="phase6" title="Phase 6 advanced compositional channels (relationTagId 13-32) + Post-ship audit close. Each channel uses a distinct relation namespace so retrieval can disentangle different kinds of learning.">9. Phase 6 Compositional Channels (relationTagId 13-32)</h2>
+ <p>The Phase 6 + post-ship audit-close work added six new compositional channels on top of the I.1-I.5 structural sentence channels. Each channel uses a distinct <code>relationTagId</code> so retrieval can disentangle within-sentence bigrams from cross-sentence discourse from chat-time learning from dream-time consolidation.</p>
+ <ul>
+ <li><strong>relationTagId=13 — Within-sentence bigrams (K_CONCRETE_SENTENCES)</strong> — sentence-internal word-to-next-word transitions trained at reps:30. Audit B.6: ~700 bigrams currently, percolation requires ~4500.</li>
+ <li><strong>relationTagId=15-27 — K-LIFE 14 sub-tasks</strong> — lived-experience corpus (first words, family-role schemas, sensory firsts, comfort objects, fears, motor milestones, bedtime, friendships, songs/rhymes, childhood games, etc.). Words pre-taught via dictionary API before binding fires.</li>
+ <li><strong>relationTagId=28 — Number-grammar (P6.1)</strong> — <code>sem(number_word) → sem(noun)</code> at reps:80 (~2.7× standard, HIGH-priority for math).</li>
+ <li><strong>relationTagId=29 — Dream-recombination (P6.4 + audit B.7)</strong> — novel emissions clearing JOINT criteria (cosine ≥ 0.20 + wordCount ≥ 4 + uniqueRatio ≥ 0.6 + hasTerminator) consolidate at reps:5. REM-sleep memory consolidation correlate (Stickgold 2005, Walker 2017). Consolidated samples ring (cap 20, audit E.4) gives operator audit.</li>
+ <li><strong>relationTagId=30 — Chat-time deep Hebbian (P6.3)</strong> — per-turn user→Unity bigrams at reps:1. Audit A.4 replaces silent error swallow with throttled-warn pattern.</li>
+ <li><strong>relationTagId=31 — Discourse coherence (P6.8 + audit D.6)</strong> — cross-sentence boundary pairs at reps:30. Dedup against relationTagId=13.</li>
+ <li><strong>relationTagId=32 — Word-creation promotion (audit E.1)</strong> — when <code>_wordCreationCandidates</code> count ≥ MIN_PROMOTE=10, fire <code>_teachWordDefinition(compound)</code> + <code>_teachAssociationPairs([[a, compound], [b, compound]])</code>. Mirrors Pinker 1989 child novel-coinage.</li>
+ </ul>
+
+ <h3 id="p66-novelty">9.1 P6.6 Two-Axis Novelty Metric (audit B.2)</h3>
+ <p>Every emission classified by <code>classifyCompositionalEmission</code> on two independent axes:</p>
+ <ul>
+ <li><strong>compositionalNovelty</strong> = <code>novelTransitions / totalTransitions</code> (bag-of-bigrams Hamming distance)</li>
+ <li><strong>vocabNovelty</strong> = <code>untrainedWords / totalWords</code> (fraction outside trained vocabulary)</li>
+ </ul>
+ <p>Partition of (compositional, vocab) ∈ [0, 1]² by 0.5 thresholds gives four <code>kind</code> verdicts: <code>novel-compositional</code>, <code>novel-vocab</code>, <code>novel</code> (both), <code>partial</code>.</p>
+
+ <h3 id="p34-backinject">9.2 P3.4 Back-Injection Decay (audit B.3)</h3>
+ <p><code>injection(t) = BACK_INJECT_BASE × BACK_INJECT_DECAY^t</code></p>
+ <p>Biological correlate: cortical leak <code>exp(−Δt/τ)</code> with τ ≈ 20ms. For Δt=3ms: <code>exp(−3/20) ≈ 0.861</code>. Chosen 0.85 within 1.5% of biological. Drift trigger: if TICKS_PER_WORD or τ changes, recompute.</p>
+
+ <h3 id="p53-quality">9.3 P5.3 Quality Score Formula</h3>
+ <p><code>qualityScore = probeRate + COHERENCE_BONUS_GAIN × max(0, avgCos − COHERENCE_MIN)</code> with <code>COHERENCE_BONUS_GAIN=0.5</code>, <code>COHERENCE_MIN=0.05</code>. Full per-constant derivation: <code>docs/THRESHOLD-DERIVATION.md</code>.</p>
+
+ <h2 id="ship-hygiene" title="Code-hygiene fixes shipped during live-test follow-up (session 114.19fp, 2026-06-17, I.1-I.20). Equations unchanged — these are byte-allocation, event-loop, and observability fixes that PRESERVE existing math behavior while making it actually run efficiently on real hardware.">10. Ship Hygiene — I.1-I.20 (2026-06-17, session 114.19fp)</h2>
+ <p>20 atomic fixes shipped post-audit during operator-driven K-curriculum live test. <strong>NO equation changes</strong> — the Hebbian/Oja rule, Kuramoto order parameter, Friston predictive-coding delta rule, BCM sliding-threshold, master equation <code>dx/dt = F(x, u, θ, t) + η</code>, Ψ = √(1/n)·N³ consciousness term — all unchanged. Fixes are code hygiene, byte-allocation, event-loop, observability, and data-loss-prevention. Most-impactful equational implications:</p>
+
+ <h3 id="i13-propagate-pool">10.1 SparseMatrix.propagate Output Buffer Pool (I.13)</h3>
+ <p>Signature extended <code>propagate(spikes, outBuf?)</code> in <code>js/brain/sparse-matrix.js</code>. When caller pools a Float64Array of matching size and passes it in, propagate writes into that buffer instead of allocating <code>new Float64Array(rows)</code> per call. The propagation equation <code>I<sub>i</sub> = Σ<sub>j</sub> W<sub>ij</sub> · s<sub>j</sub></code> is unchanged — only the byte-allocation pattern changes. <code>_teachPredictiveError</code> in <code>js/brain/curriculum.js</code> now pools <code>_predictPropagateScratch</code> alongside the existing <code>_predictTargetScratch</code> + <code>_predictErrorScratch</code> pools. Three pooled scratches → zero bytes allocated per call across millions of Hebbian fires. <strong>Eliminates the +231 MB/min heap-leak source</strong> observed at heartbeats #58-71 during <code>_teachHebbian</code> runs.</p>
+
+ <h3 id="i14-setimmediate-yield">10.2 Event-Loop Yield in _teachHebbian (I.14)</h3>
+ <p>Explicit <code>await new Promise(r =&gt; setImmediate(r))</code> at the entry of <code>_teachHebbian</code> in <code>js/brain/curriculum.js</code>, throttled to every 50ms via <code>_lastHebbianYieldAt</code> timestamp. The Hebbian/Oja equation <code>Δw[i,j] = lr · y[j] · (x[i] − y[j] · w[i,j])</code> is unchanged — the yield just allows the Node.js event loop to drain HTTP request handlers + WebSocket socket buffers between dispatch bursts. <strong>Throughput impact ≤ 2%</strong>; HTTP responsiveness restored from 8-15s timeouts to sub-second.</p>
+
+ <h3 id="i8-consolidation-cap">10.3 Consolidation Duration Cap (I.8)</h3>
+ <p><code>DREAM_CONSOLIDATION_MAX_MS</code> env var (default 30s) in <code>js/brain/consolidation-engine.js</code>. Per-cluster deadline check breaks the consolidation pass gracefully at cluster boundary; next pass picks up remaining clusters fresh. Also skips entirely when <code>_currentMacroPhase</code> contains <code>'SEED'</code> so SEED-phase GPU stays with curriculum. Log surfaces <code>⚠ DEADLINE-ABORT (DREAM_CONSOLIDATION_MAX_MS=Xms)</code> when cap fires. Replaces the 153s pass observed in operator's run.</p>
+
+ <h3 id="i7-schema-naming">10.4 Top-K=3 Schema Naming (I.7)</h3>
+ <p><code>_deriveLabel</code> in <code>js/brain/hippocampal-schema.js</code> ranks <strong>top-3</strong> content words instead of top-1; expanded stop-word list strips generic curriculum noise (<code>learning/curriculum/phase/teach/cell/heartbeat/episode/inner/thought/tick/state/active/progress</code>). Produces distinct schema labels (<code>victory-triumph-success</code>) instead of collapsing every consolidation into a generic <code>learning-schema</code>. Per Tulving 1972 episodic→semantic, schemas need distinct identity for retrieval gradient to function — naming collisions undermined the consolidation→retrieval pipeline at the labelling level.</p>
+
+ <h3 id="i19-import-fix">10.5 Cross-platform GPU Polling (I.18 + I.19 + I.20)</h3>
+ <p>Root cause of three iterations of GPU% bugs: <code>server/brain-server/chat.js</code> was missing <code>const { execSync } = require('child_process')</code> at the top. Every <code>nvidia-smi</code> call since I.1 was throwing <code>ReferenceError</code> silently caught by the defensive try/catch. Single import unbreaks all GPU polling.</p>
+ <p>Combined query: <code>nvidia-smi --query-gpu=memory.used,utilization.gpu --format=csv,noheader,nounits</code> returns both metrics in one execSync (e.g. <code>"1853, 14"</code>). Dashboard panel shows VRAM% as big number (<code>memory.used / total × 100</code>) + util% as small inline label. On systems without nvidia-smi (AMD/Intel/headless), <code>_gpuVramQueryWorking=false</code> triggers honest "unavailable" label — <strong>NEVER</strong> a hallucinated number (lesson from the I.18 static-50% lie when fallback `RESOURCES.gpu.vram * 0.5` was used as if it were a real reading).</p>
+
+ <p style="color:#666;font-size:0.9em;margin-top:1.5em;">See <code>docs/ARCHITECTURE.md § Live-test follow-up close</code>, <code>docs/SKILL_TREE.md § Live-test follow-up skills</code>, <code>docs/EQUATIONS.md</code> head banner, and <code>docs/NewTodo.md § I-track</code> for full per-fix detail. Audit cascade post-I.20: 60 ✅ SHIPPED + 1 ⏳ OPERATOR-FIRED (F.2).</p>
 
  </div>
 </body>

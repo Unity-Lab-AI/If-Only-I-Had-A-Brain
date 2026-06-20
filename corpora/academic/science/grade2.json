@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "grade": "grade2",
+  "subject": "science",
+  "source": "Simple English Wikipedia (CC-BY-SA), cleaned + sentence-segmented",
+  "note": "Hybrid academic-depth corpus for science/grade2. Trained via curriculum._trainAcademicStories. Real openly-licensed curriculum content; lived-year + math stay bespoke.",
+  "experiences": [
+    {
+      "theme": "habitat",
+      "story": "a habitat is the area in which an organism lives. it is a summary term for all the resources, physical and living which are present in an area. it is the natural environment in which an organism lives, and the physical environment which surrounds a population. most animals live in one type of environment because they are best suited to it. we say they are 'adapted to this environment'. for example, animals such as frogs, newts, and ducks have webbed feet to help them swim in the water. there are many different types of habitats and many kinds of adaptations to each habitat. if the habitat changes, it may no longer be suitable for the animals and plants that live there. climate change is making some habitats warmer, and so many animal species are moving to cooler areas. however some species are not able to move and the populations are getting smaller. scientists think that 10% of species may become extinct because of these changes. other habitats have been cleared to make them into farm land. in australia for example, 80% of the eucalypt forests have been cleared for farming over the last 210 years. this is threatening the survival of forest animals such as the koala."
+    },
+    {
+      "theme": "animal",
+      "story": "animals are living creatures with many cells that make up the kingdom animalia. animals get their energy from other living things. usually, they eat them or are parasites. animals, plants, fungi, and some other living things have complex cells, so they are grouped together as eukaryotes. the study of animals is called zoology. the study of ancient life is called palaeontology. most animals are mobile, meaning they can move around. animals take in oxygen, and give out carbon dioxide. this cellular respiration is part of their metabolism . in both these ways they are different from plants. also, the cells of animals have different cell membranes to other eukaryotes like plants and fungi. plants are also multicellular eukaryotic organisms, but live by using light, water and basic elements to make their tissues. there are many different types of animals. the common animals most people know are only about 3% of the animal kingdom."
+    }
+  ]
+}

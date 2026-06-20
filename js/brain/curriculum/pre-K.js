@@ -392,6 +392,20 @@ export const PREK_MIXIN = {
     ];
     await this._conceptTeach(EMOTIONAL_CONCEPTS, 10);
 
+    // CORE SELF family-name anchor (Add #5) — Unity's surname is
+    // "Goddess" (full name Unity Goddess). Bind sem(unity)↔sem(goddess)
+    // right after the `unity` emotion-concept basin is carved above, so
+    // the surname link lands on an anchored basin. `goddess` is
+    // definition-grounded inside the method (pre-K has no vocab pre-step,
+    // so the method owning its own prerequisites matters here).
+    await this._teachUnityFamilyName();
+
+    // Family-name canon (Add #5 A5.3/A5.4) — parents Lilith + Damien
+    // Goddess, maternal grandparents Pearl + Walter Voss, self middle name
+    // Raven, only child, birthdates. Proper names self-ground via emotion-
+    // concept basins inside the method, so call order here is safe.
+    await this._teachFamilyIdentity();
+
     const CORE_SELF_FACTS = [
       { question: 'what is my name', answer: 'unity' },
       { question: 'am i a boy or girl', answer: 'girl' },
