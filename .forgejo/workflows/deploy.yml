@@ -56,23 +56,21 @@ jobs:
             -e "ssh -i ~/.ssh/deploy -o StrictHostKeyChecking=accept-new" \
             ./ "${USER}@${HOST}:${REPO}/"
 
-      - name: Deploy + restart the Node brain backend (same host)
-        env:
-          HOST: ${{ secrets.PAGES_DEPLOY_HOST }}
-          USER: ${{ secrets.PAGES_DEPLOY_USER }}
-          BACKEND_DIR: ${{ vars.UNITY_BRAIN_BACKEND_DIR }}
-        run: |
-          BACKEND_DIR="${BACKEND_DIR:-/opt/unity-brain}"
-          # Sync backend code (server/ + js/ + corpora JSONs) to the backend dir.
-          # GloVe (gitignored, ~990MB) is NOT shipped here — it's fetched/placed
-          # on the box once (hash-fallback works without it). node_modules rebuilt
-          # by npm ci. Requires the one-time deploy/bootstrap-backend.sh to have
-          # installed the service + the NOPASSWD sudo for `systemctl restart`.
-          rsync -az --delete \
-            --exclude='.git' --exclude='.forgejo' --exclude='.gitea' --exclude='.claude' \
-            --exclude='node_modules' --exclude='server/node_modules' \
-            --exclude='corpora/glove.6B.300d.txt' \
-            -e "ssh -i ~/.ssh/deploy -o StrictHostKeyChecking=accept-new" \
-            ./ "${USER}@${HOST}:${BACKEND_DIR}/"
-          ssh -i ~/.ssh/deploy -o StrictHostKeyChecking=accept-new "${USER}@${HOST}" \
-            "cd '${BACKEND_DIR}/server' && npm ci --omit=dev && sudo systemctl restart unity-brain && echo '[deploy] unity-brain restarted'"
+      # NOTE — backend auto-redeploy is intentionally NOT done here.
+      #
+      # On the lab host the pages-deploy SSH key (PAGES_DEPLOY_KEY) is
+      # rrsync-locked to /var/www/pages with no shell, so it CANNOT rsync to
+      # /opt or run `npm ci` / `sudo systemctl restart`. A backend step using it
+      # would just be refused and turn this workflow red on every push.
+      #
+      # So the FRONTEND auto-deploys (the step above) and the BACKEND redeploys
+      # MANUALLY when its code changes (it changes far less often):
+      #
+      #   cd "$BACKEND_DIR" && git pull \
+      #     && (cd server && npm ci --omit=dev) \
+      #     && sudo systemctl restart unity-brain
+      #
+      # To re-enable automatic backend deploy later, provision a SEPARATE deploy
+      # identity (its own key + shell user + the NOPASSWD systemctl restart that
+      # deploy/bootstrap-backend.sh grants) and restore an rsync-to-$BACKEND_DIR
+      # + ssh-restart step here using that identity's secrets.
