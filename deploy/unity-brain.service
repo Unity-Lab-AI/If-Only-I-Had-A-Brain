@@ -54,12 +54,20 @@ RestartSec=5
 # systemd restarts it (DREAM_KEEP_STATE=1 resumes the walk). The in-app budget
 # (DREAM_BRAIN_BUDGET_MB / the RAM-safe auto-cap) sizes the brain well under
 # these so the hard cap is only a backstop. Tune the numbers to the box.
+# IMPORTANT: systemd does NOT support inline (end-of-line) comments on
+# directive lines — `MemoryMax=24G  # note` parses the value as "24G  # note",
+# fails validation, and SILENTLY IGNORES the cap (the limit becomes infinity).
+# Keep every comment on its OWN line, never after a directive.
 MemoryAccounting=true
 CPUAccounting=true
-MemoryHigh=20G        # soft limit — kernel reclaims aggressively above this
-MemoryMax=24G         # HARD cap (~75% of 32 GB) — brain OOM-killed alone if exceeded
-CPUQuota=1200%        # ≤12 of 16 threads — always leaves cores for Forgejo + OS
-Environment=NODE_OPTIONS=--max-old-space-size=16384   # V8 heap ≤16 GB (off-heap buffers still counted by MemoryMax)
+# soft limit — kernel reclaims aggressively above this
+MemoryHigh=20G
+# HARD cap (~75% of 32 GB) — brain OOM-killed alone if exceeded; box + Forgejo survive
+MemoryMax=24G
+# <=12 of 16 threads — always leaves cores for Forgejo + OS
+CPUQuota=1200%
+# V8 heap <=16 GB (off-heap ArrayBuffers are still counted by MemoryMax)
+Environment=NODE_OPTIONS=--max-old-space-size=16384
 
 # Hardening
 NoNewPrivileges=true
