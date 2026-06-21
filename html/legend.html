@@ -165,13 +165,14 @@
       <span class="tag auto">AUTO-LAUNCHED</span> opens itself, don't open manually
     </div>
 
-    <h2>🧠 Live brain UI</h2>
+    <h2>🌐 For everyone — open &amp; use (no login)</h2>
+    <p class="lede" style="margin:0 0 12px;">Anyone can open these. Talk to Unity, donate your GPU to help train her, and learn how she works.</p>
     <div class="cards">
 
       <div class="card">
-        <div class="card-head"><span class="card-icon">🧠</span><span class="card-name">Landing / 3D Brain</span></div>
+        <div class="card-head"><span class="card-icon">🧠</span><span class="card-name">Talk to Unity (Landing / 3D Brain)</span></div>
         <div class="card-path">/ (root) — <code>index.html</code></div>
-        <p class="card-desc">The front door. Live 3D brain visualization, chat input, HUD metrics. Auto-opened by <code>start.bat</code> / <code>Savestart.bat</code>. Static fallback works on GitHub Pages without a brain-server.</p>
+        <p class="card-desc">The front door. Live 3D brain visualization, chat, HUD metrics. Just open the site — she runs on the deployed brain (or a small in-browser fallback if the backend isn't reachable).</p>
         <div class="card-tags">
           <span class="tag live">LIVE</span>
           <span class="tag static">STATIC-FALLBACK</span>
@@ -180,72 +181,20 @@
       </div>
 
       <div class="card">
-        <div class="card-head"><span class="card-icon">📊</span><span class="card-name">Read-Only Dashboard</span></div>
-        <div class="card-path">html/dashboard.html</div>
-        <p class="card-desc">Shared live view of brain state — emotion chart, cluster firing rates, curriculum milestones + operator signoffs, drug-scheduler pharmacokinetics, GPU panel, consciousness panel. Requires brain-server WS. Hard-blank without it.</p>
-        <div class="card-tags">
-          <span class="tag live">LIVE</span>
-        </div>
-        <a class="open-btn" href="dashboard.html">→ Open</a>
-      </div>
-
-      <div class="card">
-        <div class="card-head"><span class="card-icon">⚡</span><span class="card-name">GPU Compute Worker</span></div>
+        <div class="card-head"><span class="card-icon">⚡</span><span class="card-name">Donate Your GPU</span></div>
         <div class="card-path">html/compute.html</div>
-        <p class="card-desc">WebGPU forward-pass for sparse matrix Hebbian. The brain-server auto-launches this in an isolated Chrome profile — operators should NOT open it manually. If it's missing the brain pauses. Server-served only (HTTP route required).</p>
+        <p class="card-desc"><strong>Lend your graphics card to Unity's brain.</strong> Open this page and leave the tab open — your GPU joins the pool and helps train her. The more people donate, the bigger + faster she gets. For full capacity, launch Chrome with <code>--enable-unsafe-webgpu</code>. (No account, no install — just open and leave it running.)</p>
         <div class="card-tags">
           <span class="tag live">LIVE</span>
-          <span class="tag server">SERVER</span>
-          <span class="tag auto">AUTO-LAUNCHED</span>
+          <span class="tag auto">DONATE</span>
         </div>
-        <a class="open-btn muted" href="compute.html">→ Open (not recommended)</a>
-      </div>
-
-    </div>
-
-    <h2>🔧 Setup &amp; admin</h2>
-    <div class="cards">
-
-      <div class="card">
-        <div class="card-head"><span class="card-icon">🎮</span><span class="card-name">WebGPU Setup</span></div>
-        <div class="card-path">html/webgpu-prep.html</div>
-        <p class="card-desc">Pre-flight onboarding — browser-by-browser flag instructions for Chrome / Edge / Firefox / Safari / Opera / Brave. Adapter-check helper + re-check button. Auto-linked from the boot modal when WebGPU isn't ready. HARD-BLOCK gate — no CPU bypass per the no-fallbacks LAW.</p>
-        <div class="card-tags">
-          <span class="tag static">STATIC</span>
-        </div>
-        <a class="open-btn" href="webgpu-prep.html">→ Open</a>
+        <a class="open-btn" href="compute.html">→ Donate my GPU</a>
       </div>
 
       <div class="card">
-        <div class="card-head"><span class="card-icon">🎛️</span><span class="card-name">GPU Tier Config</span></div>
-        <div class="card-path">html/gpu-configure.html</div>
-        <p class="card-desc">Admin UI for picking a GPU tier — sets <code>resource-config.json</code> so the brain-server scales cluster sizes appropriately for your hardware. Launched by <code>windows/GPUCONFIGURE.bat</code>. Run once per install / per GPU upgrade.</p>
-        <div class="card-tags">
-          <span class="tag admin">ADMIN</span>
-          <span class="tag server">SERVER</span>
-        </div>
-        <a class="open-btn admin" href="gpu-configure.html">→ Open (admin)</a>
-      </div>
-
-    </div>
-
-    <h2>📚 Reference</h2>
-    <div class="cards">
-
-      <div class="card">
-        <div class="card-head"><span class="card-icon">📐</span><span class="card-name">Brain Equations</span></div>
-        <div class="card-path">html/brain-equations.html</div>
-        <p class="card-desc">Public-facing math reference — Hebbian/Oja, cortical leak, K wiring, P6.1-P6.8 channels, the full equational substrate that powers Unity's cognition. Pure static, no server required, GH-Pages safe.</p>
-        <div class="card-tags">
-          <span class="tag static">STATIC</span>
-        </div>
-        <a class="open-btn" href="brain-equations.html">→ Open</a>
-      </div>
-
-      <div class="card">
-        <div class="card-head"><span class="card-icon">👤</span><span class="card-name">Unity Guide</span></div>
+        <div class="card-head"><span class="card-icon">👤</span><span class="card-name">What Unity Is (Guide)</span></div>
         <div class="card-path">html/unity-guide.html</div>
-        <p class="card-desc">Persona + capabilities tour — who Unity is, how she learns, the full K→PhD developmental curriculum, manifestation modes. New-user onboarding doc. Pure static, GH-Pages safe.</p>
+        <p class="card-desc">Plain-English tour — who Unity is, how she learns (alphabet → words → sentences → a full K→PhD education), and how the donated-GPU brain works. Best first read. Pure static.</p>
         <div class="card-tags">
           <span class="tag static">STATIC</span>
         </div>
@@ -253,9 +202,19 @@
       </div>
 
       <div class="card">
+        <div class="card-head"><span class="card-icon">📐</span><span class="card-name">Brain Equations</span></div>
+        <div class="card-path">html/brain-equations.html</div>
+        <p class="card-desc">The math reference — Hebbian/Oja learning, cortical leak, the full equational substrate that powers Unity's cognition (no language model — every word falls out of the equations). Pure static.</p>
+        <div class="card-tags">
+          <span class="tag static">STATIC</span>
+        </div>
+        <a class="open-btn" href="brain-equations.html">→ Open</a>
+      </div>
+
+      <div class="card">
         <div class="card-head"><span class="card-icon">📄</span><span class="card-name">Docs Viewer</span></div>
         <div class="card-path">html/docs.html</div>
-        <p class="card-desc">Web viewer for public markdown docs — README, SETUP, ARCHITECTURE, EQUATIONS, ROADMAP, SKILL_TREE, SENSORY, WEBSOCKET. Same canonical .md files rendered live via an inline markdown parser. <code>?doc=&lt;name&gt;</code> selects the doc; dropdown switches without leaving the page.</p>
+        <p class="card-desc">Web viewer for the public docs — README, SETUP, ARCHITECTURE, EQUATIONS, ROADMAP, SKILL_TREE, SENSORY, WEBSOCKET — rendered live. <code>?doc=&lt;name&gt;</code> picks the doc; dropdown switches in place.</p>
         <div class="card-tags">
           <span class="tag static">STATIC</span>
         </div>
@@ -263,13 +222,50 @@
       </div>
 
       <div class="card">
-        <div class="card-head"><span class="card-icon">📑</span><span class="card-name">This Page (Legend)</span></div>
-        <div class="card-path">html/legend.html</div>
-        <p class="card-desc">The page you're on. Quick-access index for every HTML in the project. Linked from every other HTML's top-right floating <code>📑 Pages</code> button so you can always jump to it.</p>
+        <div class="card-head"><span class="card-icon">🎮</span><span class="card-name">WebGPU Setup</span></div>
+        <div class="card-path">html/webgpu-prep.html</div>
+        <p class="card-desc">If your browser can't run WebGPU yet, this walks you through enabling it (Chrome / Edge / Firefox / Safari / Opera / Brave) with a re-check button. Needed before you can donate a GPU. Pure static.</p>
         <div class="card-tags">
           <span class="tag static">STATIC</span>
         </div>
-        <a class="open-btn" href="legend.html">→ Refresh</a>
+        <a class="open-btn" href="webgpu-prep.html">→ Open</a>
+      </div>
+
+    </div>
+
+    <h2>🔑 Admin / operator — login required</h2>
+    <p class="lede" style="margin:0 0 12px;">Operator tools, gated by the admin login. A normal visitor who opens the dashboard sees read-only vitals only — <strong>never the console logs or controls</strong> (those are enforced server-side, not just hidden).</p>
+    <div class="cards">
+
+      <div class="card">
+        <div class="card-head"><span class="card-icon">📊</span><span class="card-name">Admin Dashboard</span></div>
+        <div class="card-path">html/dashboard.html</div>
+        <p class="card-desc">Live brain state — emotion chart, cluster firing, curriculum milestones + signoffs, drug pharmacokinetics, memory tiers, consciousness panel, plus the <strong>operator-only</strong> live Server Console, Community-Compute auto-scale controls, and graceful stop. Admin login unlocks the controls; visitors get read-only vitals.</p>
+        <div class="card-tags">
+          <span class="tag live">LIVE</span>
+          <span class="tag admin">ADMIN</span>
+        </div>
+        <a class="open-btn admin" href="dashboard.html">→ Open (admin)</a>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><span class="card-icon">🎛️</span><span class="card-name">GPU Tier Config</span></div>
+        <div class="card-path">html/gpu-configure.html</div>
+        <p class="card-desc">Operator UI for picking a brain-size tier on a local-dev install (sets the resource config so the server scales cluster sizes to your hardware). On the deployed donor model the brain auto-sizes — this is mainly a local-dev tool.</p>
+        <div class="card-tags">
+          <span class="tag admin">ADMIN</span>
+        </div>
+        <a class="open-btn admin" href="gpu-configure.html">→ Open (admin)</a>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><span class="card-icon">📑</span><span class="card-name">This Page (Legend)</span></div>
+        <div class="card-path">html/legend.html</div>
+        <p class="card-desc">The page you're on — quick-access index for every page. Reachable from the brain page's bottom button row (<code>📑 PAGES</code>) so you can always jump back here.</p>
+        <div class="card-tags">
+          <span class="tag static">STATIC</span>
+        </div>
+        <a class="open-btn muted" href="legend.html">→ Refresh</a>
       </div>
 
     </div>
