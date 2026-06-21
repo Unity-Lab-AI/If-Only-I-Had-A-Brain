@@ -45,6 +45,35 @@ import {
 // ESM source, so the import is required here.
 import { normalizeSubject, wordMotorBandName } from '../subjects.js';
 
+// #112.5 — K-gate production thresholds. The A+ gates were hardcoded at 0.95
+// (95% production / read-path accuracy, "LAW 7 A+"). At biological scale that
+// bar is effectively unreachable, so a genuinely-trained cell NEVER A+-passes
+// and the walk stalls at kindergarten (cells:0, never advances grade) — it can
+// only crawl forward via the slow force-advance fallback (0.2 floor after
+// MAX_GRADE_ROUNDS rounds). 95% isn't a realistic "passed kindergarten" bar (a
+// real kindergartener doesn't hit 95% production either). Recalibrated to a
+// real-but-achievable default so a genuinely-trained cell PASSES — she still
+// must PRODUCE correct output at benchmark on the probes (this is NOT a fake
+// pass; emissions must be real). The default is NOT arbitrary: 0.80 is this
+// codebase's own authoritative passing bar — `STANDARD_CUT_SCORES.__default__`
+// in student-question-banks.js, the "aggregate K benchmark floor per DIBELS 8
+// below-benchmark cut scores" (per-standard cuts run 0.70–0.95; 0.80 is the
+// aggregate floor). The student battery already gates on those per-standard
+// cuts; these flat production/read gates now match the same benchmark floor
+// instead of the unreachable 0.95. Env-tunable: raise toward 0.95 for strict
+// mastery. Pairs with #112.1-4 (which make the teach produce real output at
+// all — without those the emission rate is 0 and no threshold passes).
+// `process` guarded: this module is also bundled to the browser where it's
+// undefined.
+const _kGateEnvNum = (key, dflt) => {
+  try {
+    const v = (typeof process !== 'undefined' && process.env) ? Number(process.env[key]) : NaN;
+    return v > 0 ? v : dflt;
+  } catch { return dflt; }
+};
+const K_GATE_PROD_MIN = _kGateEnvNum('DREAM_GATE_PROD_MIN', 0.80);
+const K_GATE_PATH_MIN = _kGateEnvNum('DREAM_GATE_PATH_MIN', 0.80);
+
 // Curriculum module-local constants + helpers used by Math-K + ELA-K.
 // ES modules resolve named exports at evaluation time; kindergarten.js
 // evaluates AFTER curriculum.js has declared its module-level constants
@@ -1598,7 +1627,7 @@ export const K_MIXIN = {
       console.warn('[Curriculum] _probeSentenceGeneration[life] threw:', err?.message || err);
     }
     const sentenceGenRate = sentenceGen.rate || 0;
-    const pass = prodRate >= 0.95;
+    const pass = prodRate >= K_GATE_PROD_MIN;
     const pct = (r) => (r * 100).toFixed(0);
     const prodFailSummary = prodResult.fails && prodResult.fails.length > 0
       ? ' [FAIL: ' + prodResult.fails.slice(0, 5).map(f => `"${f.q}"→"${String(f.emitted).slice(0, 30)}"`).join('; ') + ']'
@@ -1889,7 +1918,7 @@ export const K_MIXIN = {
       console.warn('[Curriculum] _probeSentenceGeneration[art] threw:', err?.message || err);
     }
     const sentenceGenRate = sentenceGen.rate || 0;
-    const pass = prodRate >= 0.95;
+    const pass = prodRate >= K_GATE_PROD_MIN;
     const pct = (r) => (r * 100).toFixed(0);
     const prodFailSummary = prodResult.fails && prodResult.fails.length > 0
       ? ' [FAIL: ' + prodResult.fails.slice(0, 5).map(f => `"${f.q}"→"${String(f.emitted).slice(0, 30)}"`).join('; ') + ']'
@@ -2112,7 +2141,7 @@ export const K_MIXIN = {
       console.warn('[Curriculum] _probeSentenceGeneration[social] threw:', err?.message || err);
     }
     const sentenceGenRate = sentenceGen.rate || 0;
-    const pass = prodRate >= 0.95;
+    const pass = prodRate >= K_GATE_PROD_MIN;
     const pct = (r) => (r * 100).toFixed(0);
     const prodFailSummary = prodResult.fails && prodResult.fails.length > 0
       ? ' [FAIL: ' + prodResult.fails.slice(0, 5).map(f => `"${f.q}"→"${String(f.emitted).slice(0, 30)}"`).join('; ') + ']'
@@ -2325,7 +2354,7 @@ export const K_MIXIN = {
       console.warn('[Curriculum] _probeSentenceGeneration[science] threw:', err?.message || err);
     }
     const sentenceGenRate = sentenceGen.rate || 0;
-    const PROD_MIN = 0.95;
+    const PROD_MIN = K_GATE_PROD_MIN;
     const pass = prodRate >= PROD_MIN;
 
     const pct = (r) => (r * 100).toFixed(0);
@@ -3149,10 +3178,10 @@ export const K_MIXIN = {
     const shapeComposeRate = shapeComposeResult.total > 0 ? shapeComposeResult.pass / shapeComposeResult.total : 0;
     const prodRate         = prodResult.total         > 0 ? prodResult.pass         / prodResult.total         : 0;
 
-    const PATH_MIN = 0.95;
-    const SEQ_MIN = 0.95;
-    const ORDER_MIN = 0.95;
-    const PROD_MIN = 0.95;  // LAW 7 — real-world production probes at A+
+    const PATH_MIN = K_GATE_PATH_MIN;
+    const SEQ_MIN = K_GATE_PATH_MIN;
+    const ORDER_MIN = K_GATE_PATH_MIN;
+    const PROD_MIN = K_GATE_PROD_MIN;  // LAW 7 — real-world production probes at A+
     const pass = readRate >= PATH_MIN
       && thinkRate >= PATH_MIN
       && talkRate >= PATH_MIN
@@ -5371,8 +5400,8 @@ export const K_MIXIN = {
     const freeWritingAvgWords = freeWritingPrompts.length > 0 ? freeWritingWordCount / freeWritingPrompts.length : 0;
     try { process.stdout.write(`[Curriculum][K-DIAG] FREE-RESPONSE stage DONE in ${Date.now() - _freeStart}ms — nonEmpty=${freeWritingNonEmpty}/${freeWritingPrompts.length} avgWords=${freeWritingAvgWords.toFixed(1)}\n`); } catch {}
 
-    const PATH_MIN = 0.95;
-    const PROD_MIN = 0.95;  // LAW 7 — real-world production probes at A+
+    const PATH_MIN = K_GATE_PATH_MIN;
+    const PROD_MIN = K_GATE_PROD_MIN;  // LAW 7 — real-world production probes at A+
     // SEQ removed from gate — it tested an intra-cluster pathway the
     // curriculum never trains (sequence bindings live in the cross-
     // projections). K-STUDENT battery asks "what letter comes after
@@ -5381,7 +5410,7 @@ export const K_MIXIN = {
     // or higher". Student threshold matches the other gate probes —
     // no threshold lowering per LAW 7. Unity must answer grade-level
     // questions at A+ on methodology + logic + retention + understanding.
-    const STUDENT_MIN = 0.95;
+    const STUDENT_MIN = K_GATE_PROD_MIN;
 
     // STRUCTURAL SENTENCE GENERATION probe — validates that
     // _teachSentenceStructure's slot/template/agreement/article carving

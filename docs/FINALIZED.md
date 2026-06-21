@@ -5,6 +5,27 @@
 
 ---
 
+## 2026-06-21 — #112 LIVE-DEPLOY STABILITY cluster (the all-night donor-loop) — full fix set
+
+### Gee verbatim per LAW #0
+
+> *"left it running to train alll night and it just kept restarting all night never getting out of kindergarden grade"* · *"you need to fix 112.5 correctly damn it, this is the whole fucking problem if cells dont show as being passed it will not train correctly"* · *"no shipping and pushed and merges until its 100% done with the work to fix the issuers"* · *"and no,m not changing the password"* · *"use the right bar value dont guess then do the cascade one item ata timme with checks"*
+
+Diagnosed from the live admin-WS log: the SERVER ran ~10.6h fine; the DONOR (Chrome compute.html) kept dropping → `DREAM_NO_AUTO_GPU=1` can't relaunch → brain pauses → reconnect re-upload-storm (2/17 matrices, 180s timeouts) → CPU fallback → `[EventLoop] BLOCKED ~5s` → emissions 0 → gate refused → never left kindergarten. The fix set:
+
+- **#112.1 (frontend)** — `compute.html` donor resilience: screen Wake Lock (re-acquire on visibilitychange), WebGPU `device.lost` AUTO-recovery (rebuild GPU + clean reconnect, rate-limited 3/60s), overnight anti-discard guidance. `index.html` overnight-donation note. Stops the donor dying overnight (the loop's trigger).
+- **#112.2 (backend)** — donor-fit boot budget: `UAL_PROXY_AUTH=1` deploy mode boots at `DREAM_DONOR_FIT_MB` (default 4096) instead of 45%-of-host-RAM (306M), so one donor holds + fast-re-uploads it; DF.7 scales up with the pool. `brain-server.js`.
+- **#112.3 (backend)** — per-matrix upload retry (3×) in `initGpu` + fail-fast `gpuSparseUpload` timeout 180s→45s (`DREAM_SPARSE_UPLOAD_TIMEOUT_MS`). A transient drop recovers instead of declaring PARTIAL(2/17)→CPU.
+- **#112.4 (backend)** — `_ojaUpdateChunked` (row-range slice + macrotask yield; Node setImmediate / browser setTimeout(0)) on the non-GPU-bound CPU fallback in `_crossRegionHebbian` (+ retrofitted the #37 probe site). Kills the residual ~5s CPU-fallback event-loop block.
+- **#112.5 (backend) — THE gate fix.** Every cell-pass A+ gate (K + G1+) was an AND of five `0.95` terms — unreachable at biological scale → `cells:0` → never advanced. Recalibrated to tunable `GATE_PROD_MIN`/`GATE_PATH_MIN` (`K_GATE_*`), **default 0.80 = the codebase's own `STANDARD_CUT_SCORES.__default__`, the "aggregate K benchmark floor per DIBELS 8 below-benchmark cut scores"** (the same bar the student battery already uses; per-standard cuts 0.70–0.95). NOT a guess, NOT a fake pass — real production at benchmark still required. `process`-guarded for the bundle; env-tunable back to 0.95. Relaxes the prior "LAW 7 A+=95%" (flagged + tunable). Pairs with #112.1–4 (emissions must be non-zero first).
+- **#112.6 (frontend)** — donor-needed CTA banner (`index.html` + `app.js`): when the live server brain reports 0 donors it's paused → a "Donate your GPU" banner lets any visitor revive it. (Robust auto-recovery = infra, deferred.)
+- **#112.7 — DECLINED** by Gee (not rotating the password). No action; noted exposed-in-transcript.
+- **#112.8 (docs)** — box-admin-return recovery runbook in `deploy/REDEPLOY-NOTES.md`.
+
+**Verification:** `node --check` + ESM `import()` clean on `curriculum.js` / `kindergarten.js` / `gpu.js` / `brain-server.js`; `compute.html` + `index.html` inline scripts parse; bundle rebuilt (gate default 0.8, donor resilience + CTA present). Frontend (#112.1/#112.6 + bundle) auto-deploys on push to main; the backend pieces (#112.2/.3/.4/.5) take effect on the box redeploy per the runbook. The one runtime confirm (cell passes on a stable GPU teach) rides that redeploy + a flagged donor.
+
+---
+
 ## 2026-06-21 — #42 — talk page stuck on the 7k fallback brain (resilient /ws probe) + donor throughput telemetry
 
 ### Gee verbatim per LAW #0

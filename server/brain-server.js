@@ -303,7 +303,28 @@ const BRAIN_VRAM_ALLOC = (function () {
       Math.floor(_hostRamMB * 0.45),     // never more than 45% of host RAM
       _hostRamMB - 13312,                // always leave ≥13 GB for Forgejo + OS + page cache
     ));
-    const _budgetMB = _envBudget > 0 ? Math.min(_envBudget, _hostRamMB - 13312) : _safeMB;
+    // #112.2 — DONOR-COMPUTE SIZING. On the DEPLOYED box (UAL_PROXY_AUTH=1) the
+    // brain's real compute lives on DONOR browser GPUs, not host RAM. Sizing the
+    // BOOT brain to 45% of a 32 GB host (→306M) seeded a brain a single modest
+    // donor couldn't re-upload fast on reconnect — every donor drop re-uploaded
+    // 306M worth of matrices, timed out, half-failed (2/17), and fell to CPU:
+    // the all-night loop that never left kindergarten. Boot instead at a
+    // conservative DONOR-FIT budget so ONE modest donor holds + re-uploads it
+    // quickly; DF.7 community-compute scaling grows it as the donor POOL grows
+    // ("scales with donors", per Gee). Explicit DREAM_BRAIN_BUDGET_MB still wins;
+    // host-RAM safety still caps the top; local dev (no proxy-auth) is unchanged.
+    const _deployDonorMode = process.env.UAL_PROXY_AUTH === '1';
+    const _donorFitDefaultMB = Number(process.env.DREAM_DONOR_FIT_MB) > 0
+      ? Number(process.env.DREAM_DONOR_FIT_MB) : 4096;
+    let _budgetMB;
+    if (_envBudget > 0) {
+      _budgetMB = Math.min(_envBudget, _hostRamMB - 13312);
+    } else if (_deployDonorMode) {
+      _budgetMB = Math.max(1024, Math.min(_donorFitDefaultMB, _safeMB));
+      console.log(`[Brain] #112.2 DONOR-COMPUTE SIZING — UAL_PROXY_AUTH=1: compute runs on donor GPUs, not host RAM. Booting at a donor-fit ${_budgetMB}MB budget (NOT the ${_safeMB}MB host-RAM max) so one modest donor can hold + fast-re-upload it; DF.7 scales up with the donor pool. Override via DREAM_BRAIN_BUDGET_MB / DREAM_DONOR_FIT_MB.`);
+    } else {
+      _budgetMB = _safeMB;
+    }
     if (_budgetMB < vramMB) {
       console.log(`[Brain] SERVER-RAM SAFETY — no GPU on host (${_hostRamMB}MB RAM, shared with Forgejo): capping brain budget ${vramMB}MB → ${_budgetMB}MB so the brain can't crash the box.`);
       vramMB = _budgetMB;

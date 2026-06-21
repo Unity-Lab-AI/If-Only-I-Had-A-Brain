@@ -115,3 +115,29 @@ the `CLUSTER_SIZES` it sums) → temporal-dead-zone throw on every real boot.
 (still before any weight load; wipe-vs-load contract + `DREAM_KEEP_STATE`
 unchanged). Pull main PAST this hotfix before redeploying — `74792ce` exactly
 will crash. Redeploy procedure otherwise unchanged (no unit change).
+
+### 2026-06-21 (box-admin-return RECOVERY RUNBOOK — #112 live-deploy stability)
+
+Context: the brain trained all night but the DONOR (Chrome compute.html) kept dropping → `DREAM_NO_AUTO_GPU=1` can't relaunch → reconnect re-upload-storm (2/17 matrices, 180s timeouts) → CPU fallback → `[EventLoop] BLOCKED ~5s` → never passed the K gate → never advanced grade. The #112 fix set is committed on `main`; FRONTEND pieces auto-deploy via the pages CI, BACKEND pieces need a redeploy.
+
+**Files in the #112 set:**
+- `html/compute.html`, `index.html`, `js/app.js` (+bundle) — #112.1 donor WakeLock + device-lost auto-recovery + anti-discard guidance; #112.6 donor-needed CTA banner. (frontend — auto-deploys)
+- `js/brain/cluster/hebbian.js`, `js/brain/sparse-matrix.js` — #112.3 per-matrix upload retry; #112.4 chunked CPU-fallback Oja (`_ojaUpdateChunked`). (backend — needs redeploy)
+- `server/brain-server/gpu.js` — #112.3 fail-fast upload timeout (180s→45s, `DREAM_SPARSE_UPLOAD_TIMEOUT_MS`). (backend)
+- `server/brain-server.js` — #112.2 donor-fit boot budget in `UAL_PROXY_AUTH=1` mode (`DREAM_DONOR_FIT_MB` default 4096). (backend)
+
+**Redeploy** = the standard git-archive overlay + unit restart at the top of this file (no unit change → no daemon-reload).
+
+**New env knobs (optional; comments on their OWN line in the unit):**
+- `DREAM_DONOR_FIT_MB=4096` — deployed boot brain budget (donor-fit). Raise once donors reliably hold more.
+- `DREAM_SPARSE_UPLOAD_TIMEOUT_MS=45000` — per-matrix upload timeout before retry.
+- `DREAM_BRAIN_BUDGET_MB` — hard override of the brain budget (wins over donor-fit).
+- `DREAM_GATE_PROD_MIN=0.80` / `DREAM_GATE_PATH_MIN=0.80` — #112.5 A+ cell-pass gate bar (production / read-path). Default 0.80 = the DIBELS-8 aggregate K benchmark floor (`STANDARD_CUT_SCORES.__default__`); raise toward 0.95 for strict mastery. Lowering the A+ gate from the old unreachable 0.95 is what lets a genuinely-trained cell PASS + advance grade.
+
+**Emergency wipe (brain stuck on corrupt state, keeps identity-core):** delete the weight/episodic/schema/conversation state files from the backend dir (the `brain-weights*.json` + `brain-weights*.bin` + `episodic-memory.db*` + `schemas.json` + `conversations.json` files; leave `identity-core.json`), then restart the unit — it revives clean. No shell needed: the dashboard ♻ Reset Brain button → `/reset` does the same via the `.force-fresh` flag.
+
+**#112 items that still need the box admin:**
+- #112.5 — confirm the kindergarten gate PASSES once a STABLE flagged donor trains on GPU. Thresholds are already relaxed; do NOT lower them to fake a pass — if it still fails after a clean GPU teach, capture which probe + margin from the log.
+- #112.6 (robust half) — true sole-donor-drop auto-recovery needs infra (headless always-on donor, or watchdog). The shipped CTA only nudges humans to reconnect.
+- #112.7 — admin password rotation: DECLINED by Gee (not changing it). No action; noted that the credential is exposed in the work transcript.
+- Confirm `Restart=always` is in the unit (the dashboard Stop/Restart/Reset buttons rely on it).
