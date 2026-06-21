@@ -4532,6 +4532,23 @@ let _serverLogSeq = 0;
   console.error = (...args) => { orig.error(...args); capture('error', args); };
 })();
 
+// Re-arm the sparse-cortex GPU upload when a (new) donor becomes primary.
+// The cluster LIF buffers re-init via the _gpuInitialized reset at each
+// new-primary site, but the sparse WEIGHT-MATRIX upload (cortexCluster.initGpu
+// — the 14 cross-projections + the intra-cluster synapse matrix) is gated by a
+// ONE-TIME _cortexGpuInitStarted flag. Without re-arming it, a donor that
+// connects AFTER a prior donor (reconnect / failover / quarantine-promote) gets
+// its neuron buffers but ZERO cross-projection / intra-synapse matrices — the
+// "0 sparse matrices uploaded" symptom, with Hebbian frames firing into pathways
+// that aren't on the GPU. initGpu() has no internal "already uploaded" guard, so
+// re-arming the flag makes it fully re-upload to the new primary on the next
+// warm tick (the warmup-batch counter is cumulative, so it fires promptly).
+function _rearmCortexGpuUpload(reason) {
+  brain._cortexGpuInitStarted = false;
+  if (brain.cortexCluster) brain.cortexCluster._cortexFullyReady = false;
+  console.log(`[Brain] re-arming sparse cortex upload for the new primary GPU (${reason}) — cross-projections + intra-synapses will re-upload.`);
+}
+
 // T14.21 — catch any rejection from brain.start() so async init failures
 // surface with a stack trace instead of silently terminating the process
 // via Node's default --unhandled-rejections=throw behavior.
@@ -6006,6 +6023,7 @@ wss.on('connection', (ws, req) => {
             brain._gpuInitializedConfirmed = {};
             brain._gpuHits = 0;
             brain._gpuMisses = 0;
+            _rearmCortexGpuUpload('gpu_register primary');
             console.log(`[${id}] GPU compute client registered as PRIMARY — brain weights upload here (pool: ${brain._gpuClients.size}).`);
           } else {
             console.log(`[${id}] GPU compute client registered — bringing it up to a FULL brain replica (DF.7 data-parallel; pool: ${brain._gpuClients.size}).`);
@@ -6112,6 +6130,7 @@ wss.on('connection', (ws, req) => {
                   brain._gpuClient = _promo; brain._gpuConnected = true;
                   brain._gpuInitialized = {}; brain._gpuInitializedConfirmed = {};
                   if (brain.cortexCluster) brain.cortexCluster._gpuShadowDirty = true;
+                  _rearmCortexGpuUpload('quarantine failover');
                   console.log('[Brain] PA.4.5 — promoted a standby to primary after quarantine; brain re-uploads on next dispatch.');
                 } else {
                   brain._gpuClient = null; brain._gpuConnected = false;
@@ -6232,6 +6251,7 @@ wss.on('connection', (ws, req) => {
         brain._gpuHits = 0;
         brain._gpuMisses = 0;
         if (brain.cortexCluster) brain.cortexCluster._gpuShadowDirty = true;
+        _rearmCortexGpuUpload('primary-left failover');
         const _pid = (brain.clients.get(_promotedGpu) || {}).id || '(unknown)';
         console.log(`[Server] PRIMARY GPU donor left — promoted standby ${_pid} to primary (pool: ${brain._gpuClients ? brain._gpuClients.size : 0}). Brain re-uploads to the new primary on next dispatch.`);
       } else {
