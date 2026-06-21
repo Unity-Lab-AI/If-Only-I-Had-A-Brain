@@ -5,6 +5,18 @@
 
 ---
 
+## 2026-06-21 — #35 — Consolidation pass blocked the event loop → public /ws donor handshake timed out
+
+### Gee verbatim per LAW #0
+
+> *"The public /ws donor lane is intermittently unreachable. Root cause: at 306M neurons, the idle brain's [Consolidation] passes block Node's event loop for 30s–400s each, every ~1–3 minutes, and every one trips ⚠ DEADLINE-ABORT (DREAM_CONSOLIDATION_MAX_MS=30000ms) — the 30s deadline isn't actually preempting the synchronous work. While it's blocked, the WS handshake times out (I measured 2 of 5 attempts failing)."* · *"lets do that last item there"* · *"might need a new box claude instruct, right? or we good?"*
+
+**Root cause.** `ConsolidationEngine._replaySchema` calls `this.cluster.synapses.hebbianUpdate(preSem, preSem, replayLr)` — a SYNCHRONOUS CPU pass over the full intra-synapse `nnz`. At 306M-derived language-cortex sizing that's hundreds of millions of `nnz`, so a single call blocks Node's event loop for 30s–400s. The `setTimeout` quiet-windows between the 4 `REPLAYS_PER_SCHEMA` don't help (a single call runs minutes), and `DREAM_CONSOLIDATION_MAX_MS` is only checked at cluster boundaries so it can't preempt the synchronous call. While the loop is blocked the public `/ws` donor WebSocket handshake times out. Was 4.8s at 6M neurons; only pathological at the 306M RAM-safe sizing.
+
+**Fix (`js/brain/consolidation-engine.js` — server-side module, NOT in the browser bundle).** (1) nnz-size guard in `_replaySchema`: skip the synchronous CPU `hebbianUpdate` when `this.cluster.synapses.nnz > DREAM_CONSOLIDATION_MAX_REPLAY_NNZ` (default 5,000,000) — at biological scale real Hebbian consolidation belongs on the GPU teach path, not a CPU monolith; the cheap schema bookkeeping (promotion / reinforce / decay) below still runs. `0` disables the guard (old always-CPU-replay behavior). (2) `DREAM_CONSOLIDATION_DISABLE=1` hard off-switch at pass entry — there was previously NO way to disable consolidation beyond the ineffective deadline. Keeps the brain at full size (no `DREAM_BRAIN_BUDGET_MB` shrink). `node --check` + ESM `import()` clean. **Deploy:** backend redeploy per `deploy/REDEPLOY-NOTES.md` (same git-archive overlay + `systemctl restart`; consolidation-engine.js added to the changed-file list + both env knobs documented — answers Gee's "might need a new box claude instruct" = same procedure, updated file list).
+
+---
+
 ## 2026-06-21 — Live-bring-up fix cluster (#29–#34) — public-lane visibility + per-donor telemetry + upload-failure alarm + donor heartbeat + redeploy handoff
 
 ### Gee verbatim per LAW #0
@@ -31,9 +43,9 @@ The cross-projection upload's `.catch` silently set `_cortexFullyReady=false` an
 
 `readyState` + the close event can't detect a half-open socket (laptop sleep, network blip, killed tab without a clean close): a dead PRIMARY donor kept its slot forever and a fresh donor joined as an idle replica behind a corpse (reconnecting never helped). Added `ws._isAlive` + a `pong` handler at connection and a 30s sweep (`_heartbeatTimer`) that pings every socket and `terminate()`s any that missed the prior ping — which fires `ws.on('close')` → the existing primary-left failover / standby promotion. Cleared on `wss` close.
 
-### #31 — Flagless donor (no `--enable-unsafe-webgpu`) — GATED, not shipped
+### #31 — Flagless donor (no `--enable-unsafe-webgpu`) — SHIPPED
 
-Donors must not need a Chrome unsafe-webgpu launch flag (it kills public-donation UX — a website can't enable it, and a hand-launched custom-profile Chrome is a non-starter for "lots of people"). The flag only raises the 2 GB buffer-binding ceiling. The fix DIVERGES by root cause: a binding-size limit → server-side sparse-matrix tiling under the donor ceiling; the warmup gate / a non-binding `initGpu` throw → a different fix entirely. The decisive signal is #32's now-automatic dashboard banner. Building a GPU-shader tiling change BLIND (no WebGPU in node to verify) would violate "code it right the first time", so #31 stays gated on #32's diagnostic after a redeploy + flagged reconnect. `donate-gpu.bat` added as the operator's own isolated-Chrome flag-launcher workaround in the meantime.
+Donors must not need the Chrome unsafe-webgpu launch flag (it kills public-donation UX — a website can't enable it, and a hand-launched custom-profile Chrome is a non-starter for "lots of people"). **Measurement settled the root cause:** `js/brain/cluster/hebbian.js:326` documents the cortex cross-projections as ~14 × ~50M nnz avg → ~200 MB per values buffer — **FAR under the donor's 2 GB binding cap** (the donor reported `maxBufferSize: 2048MB` *without* the flag). So **no sparse buffer ever exceeds the cap; the flag was a red herring.** The real blocker was the **upload GATE**: the cross-projection upload required 20 completed main-loop `compute_batch` round-trips, but a teach-heavy DEPLOYED brain fires Hebbian (SPRS type3/type5) without necessarily accumulating 20 `compute_batch` ticks — so `_gpuBatchesCompleted` stayed < 20 and the matrices NEVER uploaded (donor showed "0 sparse matrices uploaded" while the brain limped on the CPU master). **Fix:** added a TIME-BASED fallback trigger — the sparse upload now starts on `warmupBatches >= 20` **OR** `>= 20s` since all 7 main clusters confirmed (`_allClustersConfirmedAt`, reset on every donor re-arm). The wait still lets the device settle after the cluster LIF uploads; the brain just no longer DEPENDS on main-loop batches a teach-heavy deploy never runs. No GPU-shader change, no tiling needed (buffers already fit). `brain-server.js` gate + `_rearmCortexGpuUpload` anchor reset. `donate-gpu.bat` stays as an optional operator convenience but is **no longer required** — flagless donation works once this gate fix is redeployed. (#32's banner remains the backstop if a future bigger-than-cap matrix ever does throw.)
 
 ### #34 — Server-redeploy handoff
 

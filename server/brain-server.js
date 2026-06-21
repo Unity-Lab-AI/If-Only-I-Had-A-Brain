@@ -2981,6 +2981,10 @@ class ServerBrain {
               }
               this._updateDerivedState();
             } else {
+            // Stamp when all 7 main clusters FIRST confirmed — the anchor for
+            // the #31 time-based fallback trigger below. Reset on every
+            // re-arm (donor (re)connect) via _rearmCortexGpuUpload.
+            if (!this._allClustersConfirmedAt) this._allClustersConfirmedAt = Date.now();
             // T17.3.d — kick off language-cortex GPU init ONCE after
             // all 7 main-brain clusters finish their acks AND the main
             // brain's compute_batch pipeline has warmed up. Uploading
@@ -2990,16 +2994,35 @@ class ServerBrain {
             // time out. Deferring the upload until we've seen N healthy
             // compute_batch round-trips gives the main brain a stable
             // tick rate before sparse cortex joins in.
+            //
+            // #31 — TIME-BASED FALLBACK. The batch-count gate ALONE wedged the
+            // cross-projection upload on a DEPLOYED brain: a teach-heavy run
+            // fires Hebbian (SPRS type3/type5 frames) but may never accumulate
+            // 20 main-loop compute_batch round-trips, so _gpuBatchesCompleted
+            // stayed < 20 and the sparse matrices NEVER uploaded — the donor
+            // showed "0 sparse matrices uploaded" while the brain limped on the
+            // CPU master. (Measured: each cross-projection ~50M nnz → ~200 MB
+            // buffer, FAR under the donor's 2 GB binding cap, so the
+            // --enable-unsafe-webgpu flag was never the blocker — THIS gate was.)
+            // Fix: also start once the clusters have been confirmed for
+            // SPARSE_UPLOAD_TIME_FALLBACK_MS regardless of batch count. The wait
+            // still lets the device settle after the cluster LIF uploads; we
+            // just no longer DEPEND on main-loop batches a teach-heavy deploy
+            // never runs. (#32 surfaces any initGpu throw that follows.)
             const SPARSE_UPLOAD_WARMUP_BATCHES = 20;
+            const SPARSE_UPLOAD_TIME_FALLBACK_MS = 20000;
             const warmupBatches = this._gpuBatchesCompleted || 0;
+            const confirmedForMs = this._allClustersConfirmedAt ? (Date.now() - this._allClustersConfirmedAt) : 0;
+            const warmReady = warmupBatches >= SPARSE_UPLOAD_WARMUP_BATCHES;
+            const timeReady = confirmedForMs >= SPARSE_UPLOAD_TIME_FALLBACK_MS;
             if (
               this.cortexCluster &&
               this.cortexCluster._gpuProxy &&
               !this._cortexGpuInitStarted &&
-              warmupBatches >= SPARSE_UPLOAD_WARMUP_BATCHES
+              (warmReady || timeReady)
             ) {
               this._cortexGpuInitStarted = true;
-              console.log(`[Brain] Main-brain compute_batch warm (${warmupBatches} round-trips) — starting sparse language-cortex upload`);
+              console.log(`[Brain] Sparse language-cortex upload starting — trigger=${warmReady ? `compute_batch warm (${warmupBatches} round-trips)` : `TIME FALLBACK (${(confirmedForMs / 1000).toFixed(0)}s since clusters confirmed, only ${warmupBatches} batches — teach-heavy deploy never warmed the main loop)`}`);
               this.cortexCluster.initGpu().then(async (gpuReady) => {
                 // T17.7 Phase C.1 — once the 14 cross-projections + the
                 // intra-cluster synapse matrix are on GPU in standalone
@@ -4580,6 +4603,11 @@ let _serverLogSeq = 0;
 // warm tick (the warmup-batch counter is cumulative, so it fires promptly).
 function _rearmCortexGpuUpload(reason) {
   brain._cortexGpuInitStarted = false;
+  // #31 — reset the time-fallback anchor too, so the new primary re-arms the
+  // both-triggers gate from scratch (clusters re-confirm → re-stamp → upload
+  // fires on warmup OR the time fallback again, never wedged behind a stale
+  // anchor from the previous donor).
+  brain._allClustersConfirmedAt = null;
   if (brain.cortexCluster) brain.cortexCluster._cortexFullyReady = false;
   console.log(`[Brain] re-arming sparse cortex upload for the new primary GPU (${reason}) — cross-projections + intra-synapses will re-upload.`);
 }
