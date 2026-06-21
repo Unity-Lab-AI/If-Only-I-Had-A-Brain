@@ -63,8 +63,18 @@ messages from registered pool donors.
 
 3. **Frontend** — already auto-deploys on push to `main` via the Forgejo Actions
    `deploy.yml` (existing org secrets `PAGES_DEPLOY_KEY/HOST/USER`). **Backend
-   redeploy is MANUAL** (the pages key is rrsync-locked to `/var/www/pages`):
-   `cd $BACKEND_DIR && git pull && (cd server && npm ci --omit=dev) && sudo systemctl restart unity-brain`.
+   redeploy is MANUAL.** `$BACKEND_DIR` is rsync/bootstrap-deployed, NOT a git
+   checkout (no `.git`), so don't `git pull` there — overlay a fresh tree from a
+   clone, which preserves untracked runtime state (weights, identity-core,
+   definition-cache, operator-identity):
+   ```bash
+   # from a clone of the repo on the box:
+   git archive HEAD | sudo tar -x -C "$BACKEND_DIR"
+   ( cd "$BACKEND_DIR/server" && sudo -u <SERVICE_USER> npm ci --omit=dev )
+   # if deploy/unity-brain.service changed, re-install it + daemon-reload:
+   sudo cp "$BACKEND_DIR/deploy/unity-brain.service" /etc/systemd/system/ && sudo systemctl daemon-reload
+   sudo systemctl restart unity-brain
+   ```
 
 ## Frontend WS wiring — DONE
 
