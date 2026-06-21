@@ -28,6 +28,16 @@ So: a change touching only `js/` + `html/` + `index.html` → just push to main,
 
 With the #35 code fix deployed, **no env knob is required** — the default 5M guard stops the event-loop block at full brain size. The knobs are there only if you want to tune or fully disable.
 
+### 2026-06-21 (later) — #36 Path B instrumentation + completion (keep brain FULL size — Gee: scales infinitely with donor GPUs)
+
+Gee chose Path B over shrinking: the event loop must stay responsive at ANY brain size. This batch adds the **measure-first instrument** so we chunk the PROVEN blocker, not a guess:
+
+- `server/brain-server.js` — **event-loop lag monitor**: a 1s sampler logs `[EventLoop] BLOCKED <ms>ms — … context: phase=… donors=… consolidationInFlight=… innerVoiceInFlight=… replicaSyncing=…` whenever a synchronous span stalls the loop (and thus the `/ws` handshake). Also surfaced to the dashboard as `perf.eventLoopLagMs`. Tunable via `DREAM_LOOP_LAG_WARN_MS` (default 250).
+- `server/brain-server/chat.js` — wraps the inner-voice think tick with an `innerVoiceInFlight` flag + a slow-tick log, so the lag monitor can name it.
+- `js/brain/consolidation-engine.js` — completes #35: the big `preSem` `Float64Array(cluster.size)` alloc is now ALSO skipped (not just the `hebbianUpdate`) above the nnz cap.
+
+**👉 What we need back from you after this redeploy:** with a donor connected, watch the server console for `[EventLoop] BLOCKED` lines and **report the duration + which context flag is true** (e.g. `innerVoiceInFlight=true` vs `replicaSyncing=1` vs `phase=<x>`). That names the dominant synchronous blocker so the next batch chunks exactly that span — Path B is iterative and measurement-driven. (Consolidation can stay `DREAM_CONSOLIDATION_DISABLE=1` for now; the lag monitor will show the OTHER blocker that persists with it off.)
+
 **Frontend files changed (auto-deploy, no action):**
 - `js/brain/remote-brain.js` + rebuilt `js/app.bundle.js` — #29 public visitors connect to the public `/ws` lane (see the real scaling neuron count, not the 7k fallback).
 - `html/compute.html` — #30 donor sends its own telemetry + shows "YOUR GPU".

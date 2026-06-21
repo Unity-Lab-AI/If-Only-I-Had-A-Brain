@@ -5,6 +5,23 @@
 
 ---
 
+## 2026-06-21 — #36 — Path B: keep brain full size, instrument the event loop to find the remaining blocker
+
+### Gee verbatim per LAW #0
+
+> *"path b but remember neurons scalkl with the gpus connected if enough gpus connect it scales up infinately we can always get more ram"*
+
+**Context.** Box verified after the #35 redeploy: #31 flagless donor confirmed (donor registered PRIMARY with no `--enable-unsafe-webgpu`); but `/ws` still ~1/8 handshakes within 6s at 306M EVEN with `DREAM_CONSOLIDATION_DISABLE=1` — so a second synchronous span monopolizes the loop (suspects: the inner-voice think tick, the per-donor sparse-cortex upload build). Gee chose Path B (keep the brain big, it scales infinitely with donor GPUs) over the `DREAM_BRAIN_BUDGET_MB` shrink. The principle: event-loop responsiveness must be O(1) vs brain size — no per-tick/per-connect op may run O(brainSize) synchronously.
+
+**This batch = measure-first instrumentation** (chunk the PROVEN blocker, not a guess):
+- `server/brain-server.js` — **event-loop lag monitor**: a 1s `setInterval` sampler; if it fires late, the delta is exactly how long the loop was blocked. Logs `[EventLoop] BLOCKED <ms>ms` + live context (`phase` / `cell` / `donors` / `consolidationInFlight` / `innerVoiceInFlight` / `replicaSyncing`) so the span can be named. Surfaced to the dashboard as `perf.eventLoopLagMs`. Tunable via `DREAM_LOOP_LAG_WARN_MS` (default 250).
+- `server/brain-server/chat.js` — `_innerVoiceTick` wraps `innerVoice.think()` with `this._innerVoiceInFlight` (read by the lag monitor) + a slow-tick `>500ms` warn. Plus `perf.eventLoopLagMs` exposed in `_updatePerfStats`.
+- `js/brain/consolidation-engine.js` — completes #35: hoisted the nnz-skip decision so the big `preSem = _buildRegionPattern(...)` alloc (`new Float64Array(cluster.size)`, hundreds of MB at scale) is now ALSO skipped above the cap, not just the `hebbianUpdate`.
+
+**Why instrument instead of blind-chunk:** `gpuSparseUpload` already chunks (2M nnz/chunk) and `await`s each `ws.send` callback (yields per chunk), so it wasn't obviously the blocker; consolidation is already disabled on the box yet `/ws` still lags. Rather than guess across 5 call sites (violating "code it right"), the lag monitor turns "1/8 handshakes" into "context X blocked N ms" so the next batch chunks exactly the dominant span. `node --check` + ESM `import()` clean on all three files. **Deploy:** backend redeploy per `deploy/REDEPLOY-NOTES.md`; box reports the `[EventLoop] BLOCKED` context that dominates → next Path B batch.
+
+---
+
 ## 2026-06-21 — #35 — Consolidation pass blocked the event loop → public /ws donor handshake timed out
 
 ### Gee verbatim per LAW #0

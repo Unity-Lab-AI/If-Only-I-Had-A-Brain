@@ -411,10 +411,27 @@ export class ConsolidationEngine {
     const motorRegion = this.cluster.regions && this.cluster.regions.motor;
     if (!semRegion || !motorRegion) return { replays, writes };
 
-    // Pre-build the cortex-side patterns ONCE — concept embedding tiled
-    // into sem region, motor target derived from concept embedding's
-    // peak-letter projection.
-    const preSem = this._buildRegionPattern(semRegion, schema.conceptEmbedding, false);
+    // #35/#36 — decide the CPU-replay skip FIRST: both the synchronous
+    // hebbianUpdate AND the preSem build (_buildRegionPattern allocates
+    // new Float64Array(cluster.size) — hundreds of MB at biological scale)
+    // must be skipped together to keep the event loop free. At scale real
+    // Hebbian consolidation belongs on the GPU teach path; the cheap schema
+    // bookkeeping (promotion / reinforce / decay) still runs. Tunable via
+    // DREAM_CONSOLIDATION_MAX_REPLAY_NNZ (default 5,000,000; 0 disables guard).
+    const _maxReplayNnz = process.env.DREAM_CONSOLIDATION_MAX_REPLAY_NNZ != null
+      ? Number(process.env.DREAM_CONSOLIDATION_MAX_REPLAY_NNZ)
+      : 5_000_000;
+    const _synNnz = (this.cluster.synapses && this.cluster.synapses.nnz) || 0;
+    const _skipCpuReplay = _maxReplayNnz > 0 && _synNnz > _maxReplayNnz;
+    if (_skipCpuReplay && !this._replaySkipLogged) {
+      this._replaySkipLogged = true;
+      console.warn(`[Consolidation] CPU replay (hebbianUpdate + preSem build) SKIPPED — intra-synapse nnz=${_synNnz.toLocaleString()} > ${_maxReplayNnz.toLocaleString()} cap. A synchronous CPU replay at this scale blocks the event loop 30s-400s and stalls the /ws donor handshake; GPU teach path owns real Hebbian here. Schema bookkeeping still runs. Tune via DREAM_CONSOLIDATION_MAX_REPLAY_NNZ (0=disable guard).`);
+    }
+
+    // Pre-build the cortex-side pattern ONCE — concept embedding tiled into
+    // sem region. Skipped when _skipCpuReplay (the big alloc is only needed
+    // for the CPU hebbianUpdate we're not doing).
+    const preSem = _skipCpuReplay ? null : this._buildRegionPattern(semRegion, schema.conceptEmbedding, false);
 
     // Sleep-spindle: temporary gainMultiplier bump during replay window.
     const _origGain = this.cluster.gainMultiplier ?? 1.0;
@@ -427,27 +444,6 @@ export class ConsolidationEngine {
       this.cluster.gainMultiplier = _origGain;
       _spindleActive = false;
     };
-
-    // #35 — at biological scale this.cluster.synapses.hebbianUpdate() is a
-    // SYNCHRONOUS CPU pass over the FULL intra-synapse nnz. At 306M-derived
-    // language-cortex sizing that's hundreds of millions of nnz, so a single
-    // call blocks Node's event loop for 30s-400s — during which the public
-    // /ws donor handshake times out (the DREAM_CONSOLIDATION_MAX_MS deadline
-    // can't preempt a synchronous call). Skip the CPU replay above a size
-    // ceiling: at that scale real Hebbian consolidation belongs on the GPU
-    // teach path, not a CPU monolith, and the cheap schema bookkeeping
-    // (promotion / reinforce / decay) below still runs. Tunable via
-    // DREAM_CONSOLIDATION_MAX_REPLAY_NNZ (default 5,000,000); set 0 to disable
-    // the guard and restore the old always-CPU-replay behavior.
-    const _maxReplayNnz = process.env.DREAM_CONSOLIDATION_MAX_REPLAY_NNZ != null
-      ? Number(process.env.DREAM_CONSOLIDATION_MAX_REPLAY_NNZ)
-      : 5_000_000;
-    const _synNnz = (this.cluster.synapses && this.cluster.synapses.nnz) || 0;
-    const _skipCpuReplay = _maxReplayNnz > 0 && _synNnz > _maxReplayNnz;
-    if (_skipCpuReplay && !this._replaySkipLogged) {
-      this._replaySkipLogged = true;
-      console.warn(`[Consolidation] CPU replay hebbianUpdate SKIPPED — intra-synapse nnz=${_synNnz.toLocaleString()} > ${_maxReplayNnz.toLocaleString()} cap. A synchronous CPU replay at this scale blocks the event loop 30s-400s and stalls the /ws donor handshake; GPU teach path owns real Hebbian here. Schema bookkeeping still runs. Tune via DREAM_CONSOLIDATION_MAX_REPLAY_NNZ (0=disable guard).`);
-    }
 
     try {
       for (let r = 0; r < REPLAYS_PER_SCHEMA; r++) {
