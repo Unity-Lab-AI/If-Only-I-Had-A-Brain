@@ -187,3 +187,7 @@ out/
 
 # Claude task scheduler runtime lock (session-specific PID)
 .claude/scheduled_tasks.lock
+
+# #38/#39 runtime state markers (per-boot, never committed)
+server/.resume-marker.json
+server/.force-fresh

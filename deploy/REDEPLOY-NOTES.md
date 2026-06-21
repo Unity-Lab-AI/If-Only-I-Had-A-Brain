@@ -90,3 +90,15 @@ Then on the admin dashboard, with a donor connected:
 - **GPU card** should show **DONOR GPUs: N** (pooled VRAM + per-donor throughput) instead of the old `none / 0MB`.
 - The Server Console should show `Sparse language-cortex upload starting — trigger=...` within ~20s of a donor connecting (either `compute_batch warm` or `TIME FALLBACK` per #31), then `cortexCluster._cortexFullyReady = true`, and the worker's "sparse matrices uploaded" count climbs above 0. **No `--enable-unsafe-webgpu` flag is needed** — the buffers (~200MB each) fit well under the donor's 2GB cap; the flag was a red herring.
 - If the upload still fails, a **red ⚠ banner** appears in the dashboard GPU card with the reason (#32). A `binding-size limit` flag there would mean a future matrix genuinely exceeded the cap (would then need server-side tiling) — not expected at current scale.
+
+### 2026-06-21 (training-lifecycle) — clean-stop auto-resume + compat gate + Restart/Reset buttons + banner-probe fix
+
+- `server/brain-server.js` — **#38** clean-stop resume marker (`.resume-marker.json`, stamped `totalNeurons` + `WEIGHTS_FORMAT_VERSION`) written on `/shutdown` (stop.bat) + SIGTERM (systemctl); `autoClearStaleState` resumes if compatible, else FRESH start + loud notice. **#40** `/restart` endpoint (force-save + marker + exit → systemd revives + resumes). **#39** `/reset` endpoint (`.force-fresh` flag + exit → systemd revives WIPED fresh).
+- `index.html` (auto-deploys) — banner now probes the public `/ws` lane (was `/admin/ws` → false alarm for every visitor).
+- `html/dashboard.html` (auto-deploys) — **🔄 Restart (Savestart)** + **♻ Reset Brain** admin buttons.
+
+**Relies on `Restart=always` in the unit** (already set) — these buttons exit the process and systemd revives it. Confirm `Restart=always` is present or the buttons will just stop it.
+
+**⚠ `WEIGHTS_FORMAT_VERSION` discipline (important for you/the buddy):** it's a constant in `brain-server.js` (currently `1`). Bump it ONLY when a code change makes previously-saved weights unloadable (format/topology/cluster-composition change). Do NOT bump for routine fixes — bumping forces an auto-fresh-start that discards trained weights on the next boot. On an incompatible redeploy the box auto-fresh-starts (with a `⚠⚠ saved training INCOMPATIBLE` console notice) instead of loading garbage.
+
+**Verify after redeploy:** clean-stop via the dashboard **Restart (Savestart)** button → console shows `clean shutdown … resume marker written` then on revive `✓ CLEAN SHUTDOWN detected … RESUMING`. **Reset Brain** → `⚠ FORCE-FRESH requested … wiping` then a fresh boot.
