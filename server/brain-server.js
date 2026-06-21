@@ -674,15 +674,13 @@ function autoClearStaleState() {
 // require.main === module) — if the module IS the main entry point,
 // require.main equals this module; if it's been required by another
 // script, require.main points elsewhere.
-if (require.main === module) {
-  autoClearStaleState();
-} else {
-  // Module loaded as a dependency (require / import for inspection /
-  // syntax check / REPL). Skip the wipe entirely. Operator can still
-  // explicitly trigger via `node -e "require('./server/brain-server.js').autoClearStaleState && require('./server/brain-server.js').autoClearStaleState()"`
-  // if they actually want it from a script context, but the default
-  // path is safe.
-}
+// NOTE (#38 TDZ fix): the module-load autoClearStaleState() invocation was MOVED
+// to just after TOTAL_NEURONS is computed (further down). #38 made
+// autoClearStaleState reference TOTAL_NEURONS for its weight-format/size compat
+// gate, but TOTAL_NEURONS (and the CLUSTER_SIZES it sums) are declared BELOW this
+// point — calling it here threw `ReferenceError: Cannot access 'TOTAL_NEURONS'
+// before initialization` (TDZ) on every boot. The call still runs before any
+// weight loading; only the pure size-const computation now precedes it.
 // R4 — POLLINATIONS_URL for text chat deleted. Text-AI backend is gone.
 // Unity generates every word equationally via the language cortex
 // (see _initLanguageSubsystem + _generateBrainResponse).
@@ -775,6 +773,18 @@ const TOTAL_NEURONS = Object.values(CLUSTER_SIZES).reduce((s, n) => s + n, 0);
 // counting the 16 GB VRAM pool).
 const LANG_CORTEX_VRAM_BUDGET_BYTES = BRAIN_VRAM_ALLOC.perRegionBytes.language_cortex || 0;
 console.log(`[Brain] Main-brain cluster sizes (from biological weights): ${Object.entries(CLUSTER_SIZES).map(([k,n]) => `${k}=${n.toLocaleString()}`).join(', ')}. Total main-brain neurons: ${TOTAL_NEURONS.toLocaleString()}. Language cortex VRAM budget: ${(LANG_CORTEX_VRAM_BUDGET_BYTES/1e9).toFixed(2)}GB.`);
+// #38 TDZ fix — autoClearStaleState() is invoked HERE (moved down from its
+// original spot above the cluster-size consts) because its weight-format/size
+// compat gate references TOTAL_NEURONS, which is only initialized just above.
+// It still runs before the brain constructs or loads any weights; only the pure
+// size-const computation now precedes it. The require.main === module guard
+// keeps secondary module loads (require / syntax-check / REPL) from wiping:
+// real `node server/brain-server.js` boots wipe-by-default per the iter14-D
+// contract; dependency loads no-op.
+if (require.main === module) {
+  autoClearStaleState();
+}
+
 // Display-only scale factor (kept for boot log + state payload).
 const SCALE = Math.floor(TOTAL_NEURONS / 1000);
 

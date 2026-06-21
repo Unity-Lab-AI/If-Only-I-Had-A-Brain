@@ -24382,3 +24382,17 @@ During this implementation pass at 22:16 PT, a `node -e "require('./server/brain
 **Files modified:** `server/brain-server/chat.js` · `deploy/REDEPLOY-NOTES.md` · `docs/ARCHITECTURE.md` · `docs/FINALIZED.md`.
 
 **Brain math unchanged** — orchestration-layer gate only; no equation, weight, or curriculum change.
+
+---
+
+## 2026-06-21 — #38 hotfix — autoClearStaleState TDZ crash on boot (call ordered before TOTAL_NEURONS)
+
+**Symptom:** after the #37–#41 batch (main 74792ce) was deployed to the OVH box, `unity-brain` crash-looped on boot — `ReferenceError: Cannot access 'TOTAL_NEURONS' before initialization` at `autoClearStaleState` (`server/brain-server.js`). Service never came up (systemd auto-restart loop). Rolled the box back to 65367fd to restore service while fixing.
+
+**Root cause:** #38 added a weight-format/size compat gate INSIDE `autoClearStaleState()` that reads `TOTAL_NEURONS`. But `autoClearStaleState()` is invoked at module-load via `if (require.main === module)`, and that call site sits ABOVE the `const TOTAL_NEURONS` (and the `const CLUSTER_SIZES` it sums) declarations — so they're in their temporal dead zone at call time. `typeof X` does NOT shield a `let`/`const` in its TDZ; it throws too. Crashed on every real boot. (A first fix attempt re-pointed the line at `CLUSTER_SIZES` — same TDZ, since it's also declared below the call.)
+
+**Fix (`server/brain-server.js`):** moved the `if (require.main === module) { autoClearStaleState(); }` invocation from above the cluster-size consts to just AFTER `const TOTAL_NEURONS` is computed. The function now sees the initialized value; the buddy's `typeof TOTAL_NEURONS` compat-gate line is unchanged. The call still runs before the brain constructs or loads any weights (the intervening region is pure size-const computation + the community-tier config read — no weight I/O), so the iter14-D wipe-vs-load contract and `DREAM_KEEP_STATE` behavior are unchanged. Dropped the no-op `else` branch.
+
+**Verification (box):** `node --check` green. Deployed + restarted: 0 crash-loops, sized to 306,458,816 neurons, 25 Tier-3 identity schemas restored from `identity-core.json` (training/identity PRESERVED, not wiped), idle "No GPU — brain paused", public `/ws` 5/5, 0 systemd restarts.
+
+**Files modified:** `server/brain-server.js` · `deploy/REDEPLOY-NOTES.md` · `docs/FINALIZED.md`.

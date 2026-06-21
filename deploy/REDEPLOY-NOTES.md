@@ -102,3 +102,16 @@ Then on the admin dashboard, with a donor connected:
 **⚠ `WEIGHTS_FORMAT_VERSION` discipline (important for you/the buddy):** it's a constant in `brain-server.js` (currently `1`). Bump it ONLY when a code change makes previously-saved weights unloadable (format/topology/cluster-composition change). Do NOT bump for routine fixes — bumping forces an auto-fresh-start that discards trained weights on the next boot. On an incompatible redeploy the box auto-fresh-starts (with a `⚠⚠ saved training INCOMPATIBLE` console notice) instead of loading garbage.
 
 **Verify after redeploy:** clean-stop via the dashboard **Restart (Savestart)** button → console shows `clean shutdown … resume marker written` then on revive `✓ CLEAN SHUTDOWN detected … RESUMING`. **Reset Brain** → `⚠ FORCE-FRESH requested … wiping` then a fresh boot.
+
+### 2026-06-21 (hotfix) — #38 boot-crash (TDZ) fixed
+
+⚠ The #37–#41 batch (main `74792ce`) crash-looped on boot on the box:
+`ReferenceError: Cannot access 'TOTAL_NEURONS' before initialization` in
+`autoClearStaleState`. Cause: #38's compat gate reads `TOTAL_NEURONS`, but the
+`autoClearStaleState()` module-load call sat ABOVE that `const` declaration (and
+the `CLUSTER_SIZES` it sums) → temporal-dead-zone throw on every real boot.
+**Fixed** (`server/brain-server.js`) by moving the `if (require.main === module)
+{ autoClearStaleState(); }` call to just AFTER `const TOTAL_NEURONS` is computed
+(still before any weight load; wipe-vs-load contract + `DREAM_KEEP_STATE`
+unchanged). Pull main PAST this hotfix before redeploying — `74792ce` exactly
+will crash. Redeploy procedure otherwise unchanged (no unit change).
