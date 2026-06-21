@@ -45,8 +45,21 @@ Environment=DREAM_KEEP_STATE=1
 
 Restart=always
 RestartSec=5
-# Biological-scale brain wants a large heap; tune to the box.
-# Environment=NODE_OPTIONS=--max-old-space-size=65536
+
+# ── Resource caps — SHARED BOX (Forgejo + all the lab's git run here too).
+# Keep the brain under ~75% of the host (the lab box is 8c/16t · 32 GB) so it
+# can NEVER peg the CPU or OOM the box and take Forgejo down. These are cgroup-
+# enforced by systemd, independent of any in-app sizing: if the brain ever
+# exceeds MemoryMax it is OOM-killed ALONE (the box + Forgejo survive) and
+# systemd restarts it (DREAM_KEEP_STATE=1 resumes the walk). The in-app budget
+# (DREAM_BRAIN_BUDGET_MB / the RAM-safe auto-cap) sizes the brain well under
+# these so the hard cap is only a backstop. Tune the numbers to the box.
+MemoryAccounting=true
+CPUAccounting=true
+MemoryHigh=20G        # soft limit — kernel reclaims aggressively above this
+MemoryMax=24G         # HARD cap (~75% of 32 GB) — brain OOM-killed alone if exceeded
+CPUQuota=1200%        # ≤12 of 16 threads — always leaves cores for Forgejo + OS
+Environment=NODE_OPTIONS=--max-old-space-size=16384   # V8 heap ≤16 GB (off-heap buffers still counted by MemoryMax)
 
 # Hardening
 NoNewPrivileges=true
