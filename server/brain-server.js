@@ -3032,10 +3032,45 @@ class ServerBrain {
                   this.cortexCluster._cortexFullyReady = true;
                   console.log('[Brain] cortexCluster._cortexFullyReady = true — curriculum can proceed with GPU-hebbian teach path.');
                 }
+                // Cross-projection upload SUCCEEDED — clear any prior failure
+                // banner + broadcast the all-clear so the dashboard drops its
+                // red alarm and shows sparse matrices are live.
+                this._cortexUploadFailure = null;
+                try {
+                  const okMsg = JSON.stringify({ type: 'cortexUploadOk', ts: Date.now() });
+                  for (const [cws, c] of this.clients) {
+                    if (cws.readyState === 1 && c && c.mode === 'admin') {
+                      try { cws.send(okMsg); } catch { /* per-client send tolerated */ }
+                    }
+                  }
+                } catch { /* never let surfacing crash the success path */ }
               }).catch((err) => {
-                console.warn('[Brain] cortexCluster.initGpu() failed:', err && err.message);
+                // #32 — DON'T fail silently. Before this, a thrown initGpu
+                // (e.g. a donor whose WebGPU binding ceiling can't hold a
+                // cross-projection buffer) just flipped _cortexFullyReady=false
+                // and the walk limped on the CPU master copy with NO visible
+                // alarm — which is exactly why "0 sparse matrices uploaded"
+                // looked like "working great". Surface it LOUD: CRITICAL log +
+                // a persistent dashboard banner with the reason. If the reason
+                // smells like a buffer/binding-size limit, flag it — that's the
+                // signal that tells us the flagless-donor work (#31) needs
+                // server-side matrix tiling (or the donor needs a bigger
+                // binding ceiling), vs some other initGpu failure.
+                const reason = (err && err.message) ? err.message : String(err);
+                const looksLikeBindingLimit = /\b(size|binding|exceed|too large|maxbuffer|maxstorage|limit|allocat)\b/i.test(reason);
+                console.error(`[Server] [CRITICAL] cortexCluster.initGpu() FAILED — language-cortex cross-projections were NOT uploaded to the donor GPU. Sparse matrices stay at 0 and the brain limps on the CPU master copy. binding-limit-shaped=${looksLikeBindingLimit}. Reason: ${reason}`);
+                this._cortexUploadFailure = { reason, looksLikeBindingLimit, ts: Date.now() };
+                try {
+                  const failMsg = JSON.stringify({ type: 'cortexUploadFailed', reason, looksLikeBindingLimit, ts: Date.now() });
+                  for (const [cws, c] of this.clients) {
+                    if (cws.readyState === 1 && c && c.mode === 'admin') {
+                      try { cws.send(failMsg); } catch { /* per-client send tolerated */ }
+                    }
+                  }
+                } catch { /* never let surfacing crash the catch */ }
                 // Still flip the flag so curriculum doesn't hang
-                // forever on _waitForGpuReady; fallback path kicks in.
+                // forever on _waitForGpuReady; it limps on CPU until a
+                // subsequent upload attempt succeeds.
                 if (this.cortexCluster) this.cortexCluster._cortexFullyReady = false;
               });
             }
@@ -5675,6 +5710,17 @@ wss.on('connection', (ws, req) => {
   brain.clients.set(ws, client);
   console.log(`[Server] Client connected: ${id} (${brain.clients.size} total)`);
 
+  // #33 — donor-socket liveness heartbeat. readyState + the close event alone
+  // CANNOT detect a HALF-OPEN socket (laptop sleep, network blip, a tab killed
+  // without a clean close): the socket stays readyState===1 forever. A dead
+  // PRIMARY donor then keeps its slot and a fresh donor joins as an idle
+  // replica behind a corpse — and reconnecting never helps. Mark alive on
+  // every pong; the sweep timer (see _heartbeatTimer below) pings each round
+  // and terminate()s anything that missed the previous ping, which fires
+  // ws.on('close') → the existing primary-left failover / standby promotion.
+  ws._isAlive = true;
+  ws.on('pong', () => { ws._isAlive = true; });
+
   // Send initial state. The admin/viewer mode comes in a SEPARATE
   // `modeAssigned` message after a 500ms claim window — see the
   // setTimeout block below for the rationale (lets the compute worker
@@ -6042,6 +6088,25 @@ wss.on('connection', (ws, req) => {
           break;
         }
 
+        case 'gpu_telemetry': {
+          // #30 — per-donor GPU telemetry. compute.html reports ITS OWN GPU
+          // (each donor tracks their own): model, VRAM capacity, binding
+          // ceiling, and a live throughput proxy (WebGPU forbids reading true
+          // util%/VRAM-used for privacy, so throughput is the honest signal).
+          // Stored on the donor's client record; _updatePerfStats aggregates
+          // the whole pool into perf.gpuPool so the admin dashboard shows the
+          // donor fleet instead of the (GPU-less) server box's empty probe.
+          client.telemetry = {
+            gpuName: (msg.gpuName || client.gpuName || 'webgpu').toString().slice(0, 80),
+            vramMB: Number(msg.vramMB) || client.gpuVramMB || 0,
+            maxBindMB: Number(msg.maxBindMB) || 0,
+            gneuronsPerSec: Number(msg.gneuronsPerSec) || 0,
+            stepsComputed: Number(msg.stepsComputed) || 0,
+            ts: Date.now(),
+          };
+          break;
+        }
+
         case 'compute_result': {
           // GPU sent back spike count — voltages and spikes stay on GPU
           const name = msg.clusterName;
@@ -6320,6 +6385,27 @@ setInterval(() => {
     }
   }
 }, STATE_BROADCAST_MS);
+
+// #33 — donor-socket liveness heartbeat sweep. Pings every connected socket;
+// any that didn't answer the PREVIOUS ping (half-open — peer gone with no
+// FIN/close) is terminate()d, which fires its ws.on('close') and the existing
+// failover (a dead PRIMARY donor promotes a live standby instead of wedging a
+// fresh donor behind a corpse). 30s cadence — long enough not to spam, short
+// enough that a fresh donor isn't stuck for minutes behind a stale primary.
+const _HEARTBEAT_MS = 30000;
+const _heartbeatTimer = setInterval(() => {
+  for (const ws of wss.clients) {
+    if (ws._isAlive === false) {
+      const c = brain.clients.get(ws);
+      console.warn(`[Server] heartbeat — socket ${c ? c.id : '(unknown)'}${c && c.isGPU ? ' (GPU donor)' : ''} missed its ping (half-open) — terminating so failover can fire.`);
+      try { ws.terminate(); } catch { /* already gone */ }
+      continue;
+    }
+    ws._isAlive = false;
+    try { ws.ping(); } catch { /* socket dying — next sweep terminates it */ }
+  }
+}, _HEARTBEAT_MS);
+wss.on('close', () => clearInterval(_heartbeatTimer));
 
 /**
  * Auto-spawn the GPU compute client.

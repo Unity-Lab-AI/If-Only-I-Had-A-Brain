@@ -537,6 +537,41 @@ const SERVER_CHAT_MIXIN = {
       gpuUtilPercent = this._cachedGpuUtilPercent ?? 0;
     }
 
+    // #30 — DONOR GPU POOL aggregate. The server box has no GPU (gpuName above
+    // is the host probe = 'none' on a GPU-less deploy). REAL compute runs on
+    // the donor pool — each donor reports its own GPU via gpu_telemetry. Sum
+    // the fleet here so the dashboard shows donor compute ("each their own" +
+    // an admin aggregate) instead of the empty server-box probe. WebGPU can't
+    // expose true util%/VRAM-used (privacy), so throughput (Gneurons/sec) is
+    // the honest contribution signal. Primary listed first; list bounded.
+    const gpuPool = { donorCount: 0, totalVramMB: 0, aggGneuronsPerSec: 0, primaryModel: null, donors: [] };
+    try {
+      const seen = new Set();
+      const pushDonor = (ws, isPrimary) => {
+        if (!ws || ws.readyState !== 1 || seen.has(ws)) return;
+        seen.add(ws);
+        const c = this.clients.get(ws);
+        if (!c) return;
+        const t = c.telemetry || {};
+        const entry = {
+          name: t.gpuName || c.gpuName || 'webgpu',
+          vramMB: t.vramMB || c.gpuVramMB || 0,
+          maxBindMB: t.maxBindMB || 0,
+          gneuronsPerSec: t.gneuronsPerSec || 0,
+          isPrimary,
+        };
+        gpuPool.donors.push(entry);
+        gpuPool.totalVramMB += entry.vramMB;
+        gpuPool.aggGneuronsPerSec += entry.gneuronsPerSec;
+        if (isPrimary) gpuPool.primaryModel = entry.name;
+      };
+      if (this._gpuClient) pushDonor(this._gpuClient, true);
+      if (this._gpuClients) for (const ws of this._gpuClients) pushDonor(ws, false);
+      gpuPool.donorCount = gpuPool.donors.length;
+      if (!gpuPool.primaryModel && gpuPool.donors[0]) gpuPool.primaryModel = gpuPool.donors[0].name;
+      if (gpuPool.donors.length > 12) gpuPool.donors = gpuPool.donors.slice(0, 12);
+    } catch { /* telemetry aggregation is best-effort — never block perf */ }
+
     // UPDATE existing object — don't replace (tick loop writes stepTimeMs/stepsPerSec)
     Object.assign(this._perfStats, {
       cpuPercent,
@@ -551,6 +586,9 @@ const SERVER_CHAT_MIXIN = {
       gpuComputeConnected: !!(this._gpuConnected && this._gpuClient?.readyState === 1),
       gpuHits: this._gpuHits || 0,
       gpuMisses: this._gpuMisses || 0,
+      // #30 donor pool + #32 upload-failure banner — surfaced to the dashboard.
+      gpuPool,
+      cortexUploadFailure: this._cortexUploadFailure || null,
       nodeHeapMB: Math.round(mem.heapTotal / 1048576),
       cores: os.cpus().length,
       parallelMode: false,

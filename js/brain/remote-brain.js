@@ -651,21 +651,28 @@ export async function detectRemoteBrain(url = 'ws://localhost:7525') {
       host === '' ||
       location.protocol === 'file:';
     if (!isLocal) {
-      // PA.4.7 — DEPLOYED origin. The brain backend is reverse-proxied at the
-      // Forgejo-authed admin lane wss://<host>/admin/ws (nginx). Probe it: if
-      // reachable (operator authed → real brain) use it; else null → app.js
-      // local browser-brain fallback (covers an unauthed public visitor AND a
-      // pure static-demo deploy with no backend). Default = admin-only chat
-      // (secure); for PUBLIC chat, point this at /ws instead of /admin/ws.
+      // DEPLOYED origin. The brain backend exposes a PUBLIC observe/chat lane
+      // at wss://<host>/ws (nginx reverse-proxies to brain-server — the SAME
+      // lane compute.html donors connect on). Connect there so EVERY visitor,
+      // not just an authed operator, attaches to the live server brain and sees
+      // its real neuron count — which auto-scales up AND down with the pooled
+      // donor GPU compute — instead of dropping to the tiny 6700-neuron local
+      // browser fallback. The server's periodic `state` broadcast goes to all
+      // connected clients (no admin gate), so a public observer gets the live
+      // totalNeurons/scale every tick. Admin CONTROL actions (resize, server
+      // console, auto-scale sliders) stay on the SEPARATE Forgejo-authed
+      // /admin/ lane driven by the dashboard — only observation + chat are
+      // public by design. Probe first: if /ws doesn't open at all (a pure
+      // static-demo deploy with NO backend) → null → app.js local fallback.
       const wsProto = location.protocol === 'https:' ? 'wss' : 'ws';
-      const adminUrl = `${wsProto}://${location.host}/admin/ws`;
-      const reachable = await _probeWs(adminUrl, 4000);
+      const publicUrl = `${wsProto}://${location.host}/ws`;
+      const reachable = await _probeWs(publicUrl, 4000);
       if (!reachable) {
-        console.log(`[RemoteBrain] Deployed origin — admin backend not reachable at ${adminUrl} (unauthed or static demo); using local fallback brain.`);
+        console.log(`[RemoteBrain] Deployed origin — public brain lane not reachable at ${publicUrl} (static-only demo, no backend); using local fallback brain.`);
         return null;
       }
-      console.log(`[RemoteBrain] Deployed origin — admin backend reachable; constructing RemoteBrain ws=${adminUrl}`);
-      return new RemoteBrain(adminUrl);
+      console.log(`[RemoteBrain] Deployed origin — public brain lane reachable; constructing RemoteBrain ws=${publicUrl}`);
+      return new RemoteBrain(publicUrl);
     }
   }
   // operator (2026-05-06): "if i refresh the 3D brain html
