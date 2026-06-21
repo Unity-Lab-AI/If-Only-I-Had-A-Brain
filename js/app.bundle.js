@@ -585,7 +585,9 @@ var init_sparse_matrix = __esm({
         const gammaScale = kScales && typeof kScales.gammaScale === "number" ? kScales.gammaScale : 1;
         const haveLayer = !!(layerScales && dstLayerId);
         const haveHub = !!srcHubMask;
-        for (let i = 0; i < rows; i++) {
+        const rowStart = opts && typeof opts.rowStart === "number" ? Math.max(0, opts.rowStart) : 0;
+        const rowEnd = opts && typeof opts.rowEnd === "number" ? Math.min(rows, opts.rowEnd) : rows;
+        for (let i = rowStart; i < rowEnd; i++) {
           const y = postSpikes[i];
           if (!y) continue;
           let lrPostScale = 1;
@@ -53311,7 +53313,16 @@ var CLUSTER_HEBBIAN_MIXIN = {
           }
           const preF2 = this.regionSpikes(src);
           const postF2 = this.regionSpikes(dst);
-          proj.ojaUpdate(preF2, postF2, lr, ojaOpts);
+          const _rows = proj.rows | 0;
+          const _CHUNK = 25e4;
+          if (_rows > _CHUNK) {
+            for (let _rs = 0; _rs < _rows; _rs += _CHUNK) {
+              proj.ojaUpdate(preF2, postF2, lr, { ...ojaOpts || {}, rowStart: _rs, rowEnd: Math.min(_rs + _CHUNK, _rows) });
+              await new Promise((resolve) => setImmediate(resolve));
+            }
+          } else {
+            proj.ojaUpdate(preF2, postF2, lr, ojaOpts);
+          }
         }
         continue;
       }
