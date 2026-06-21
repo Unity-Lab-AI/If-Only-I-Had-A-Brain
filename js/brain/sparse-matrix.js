@@ -706,7 +706,17 @@ export class SparseMatrix {
     const haveLayer = !!(layerScales && dstLayerId);
     const haveHub = !!srcHubMask;
 
-    for (let i = 0; i < rows; i++) {
+    // #37 step 2 — optional row-range slice so callers can chunk a large
+    // projection's update across event-loop yields. The dst region can be
+    // millions of rows at biological scale, and this outer loop alone is
+    // seconds even with the skip-non-firing fast-out below — chunking it lets
+    // a /ws handshake get a slot mid-teach. Defaults = full matrix, so every
+    // existing caller is unaffected; the update is row-independent so slicing
+    // produces an identical result to one full pass.
+    const rowStart = (opts && typeof opts.rowStart === 'number') ? Math.max(0, opts.rowStart) : 0;
+    const rowEnd = (opts && typeof opts.rowEnd === 'number') ? Math.min(rows, opts.rowEnd) : rows;
+
+    for (let i = rowStart; i < rowEnd; i++) {
       const y = postSpikes[i];
       if (!y) continue;
       // per-layer plasticity per-row layer plasticity scale (post-neuron's absolute layer)

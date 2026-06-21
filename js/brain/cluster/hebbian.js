@@ -176,7 +176,25 @@ export const CLUSTER_HEBBIAN_MIXIN = {
           }
           const preF = this.regionSpikes(src);
           const postF = this.regionSpikes(dst);
-          proj.ojaUpdate(preF, postF, lr, ojaOpts);
+          // #37 step 2 — chunk this sync CPU Oja by row-range with event-loop
+          // yields. It's the dominant teach-path blocker at 306M: even on the
+          // GPU-bound fast path we still run the probe-critical CPU Oja so the
+          // gate probe can read CPU arrays, and the dst region is millions of
+          // rows — one pass blocks the loop for seconds and stalls the /ws
+          // donor/chat handshake mid-teach. Row-independent math → slicing is
+          // identical; we just `await` a macrotask between slices so the loop
+          // drains HTTP/WS work. GPU fire-and-forget already ran above, so GPU
+          // weights stay current regardless.
+          const _rows = proj.rows | 0;
+          const _CHUNK = 250000;
+          if (_rows > _CHUNK) {
+            for (let _rs = 0; _rs < _rows; _rs += _CHUNK) {
+              proj.ojaUpdate(preF, postF, lr, { ...(ojaOpts || {}), rowStart: _rs, rowEnd: Math.min(_rs + _CHUNK, _rows) });
+              await new Promise(resolve => setImmediate(resolve));
+            }
+          } else {
+            proj.ojaUpdate(preF, postF, lr, ojaOpts);
+          }
         }
         continue;
       }
