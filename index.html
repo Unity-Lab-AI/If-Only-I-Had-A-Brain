@@ -59,9 +59,36 @@
     #unity-no-conn-banner .countdown { color: #f59e0b; font-variant-numeric: tabular-nums; }
     #unity-no-conn-banner a { color: #ff4d9a; text-decoration: none; border-bottom: 1px dotted #ff4d9a; }
     #unity-no-conn-banner a:hover { color: #fff; border-bottom-color: #fff; }
+    /* #112.6 — donor-needed CTA: the live brain has no GPU donor → it's paused;
+       any visitor can revive it by donating. Amber (call-to-action), not red. */
+    #unity-donor-banner {
+      display: none; position: fixed; top: 80px; left: 50%; transform: translateX(-50%);
+      z-index: 99; max-width: 560px; text-align: center;
+      background: linear-gradient(135deg, #1a1206 0%, #0f0a04 100%);
+      border: 2px solid #fbbf24; border-radius: 10px; padding: 16px 22px;
+      color: #fde9c8; font-family: 'JetBrains Mono', monospace; font-size: 12px;
+      line-height: 1.6; box-shadow: 0 0 32px rgba(251,191,36,0.22); pointer-events: auto;
+    }
+    #unity-donor-banner.active { display: block; }
+    #unity-donor-banner .title { font-size: 14px; font-weight: 700; color: #fbbf24; margin: 0 0 6px 0; }
+    #unity-donor-banner a.cta {
+      display: inline-block; margin-top: 8px; background: #fbbf24; color: #1a1206;
+      font-weight: 700; padding: 7px 16px; border-radius: 6px; text-decoration: none;
+    }
+    #unity-donor-banner a.cta:hover { background: #fff; }
   </style>
 </head>
 <body>
+
+  <!-- #112.6 — donor-needed CTA. Toggled .active by app.js stateUpdate when the
+       live server brain reports 0 GPU donors (it's PAUSED — no compute). Lets any
+       visitor revive her by donating, since the deployed box can't auto-respawn a
+       donor (DREAM_NO_AUTO_GPU=1). Hidden on the local fallback brain. -->
+  <div id="unity-donor-banner" role="status">
+    <div class="title">⏸ Unity's training is paused — she needs a GPU</div>
+    <div>The live brain has <strong>no GPU donor connected</strong>, so there's no compute to think or learn. Lend your browser's GPU to wake her back up — it's one click, no install, and you can close the tab anytime.</div>
+    <a class="cta" href="html/compute.html">⚡ Donate your GPU →</a>
+  </div>
 
   <!-- No-connection recovery banner. Self-contained probe checks
        ws://localhost:7525 reachability every 3s. Shows + auto-hides as

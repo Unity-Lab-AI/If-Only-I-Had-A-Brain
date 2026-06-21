@@ -151,6 +151,21 @@ let landingBrainSource = null; // RemoteBrain or null
       if (landingBrain3d) landingBrain3d.updateState(state);
       updateLandingStats(state);
       updateBrainIndicator(state);
+      // #112.6 — DONOR-NEEDED CTA. On the donor-compute model the server brain
+      // has NO compute when no GPU donor is connected — it's PAUSED. Since the
+      // deployed box runs DREAM_NO_AUTO_GPU=1 (can't auto-respawn a donor), a
+      // sole-donor drop strands the brain until a human reconnects. Surface a
+      // prominent "donate to wake her" banner so ANY visitor can revive her.
+      // Only fires on the real server brain (gpuPool is server-only telemetry;
+      // undefined on the local fallback → banner stays hidden).
+      try {
+        const banner = document.getElementById('unity-donor-banner');
+        if (banner) {
+          const pool = state && state.perf && state.perf.gpuPool;
+          const noDonor = !!pool && (pool.donorCount | 0) === 0;
+          banner.classList.toggle('active', noDonor);
+        }
+      } catch { /* non-fatal */ }
     });
     console.log('[Landing] Connected to server brain');
 
