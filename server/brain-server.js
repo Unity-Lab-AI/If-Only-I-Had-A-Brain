@@ -286,9 +286,29 @@ const DEFAULT_BIO_WEIGHTS = {
 };
 const BRAIN_VRAM_ALLOC = (function () {
   const cfg = RESOURCES.override || {};
-  const vramMB = typeof cfg.vramCapMB === 'number' ? cfg.vramCapMB
-               : (RESOURCES.gpu && RESOURCES.gpu.vram) ? RESOURCES.gpu.vram
-               : 16384;
+  let vramMB = typeof cfg.vramCapMB === 'number' ? cfg.vramCapMB
+             : (RESOURCES.gpu && RESOURCES.gpu.vram) ? RESOURCES.gpu.vram
+             : 16384;
+  // SERVER-RAM SAFETY (shared box — Forgejo runs here too). The brain's
+  // authoritative weights live in the HOST's RAM (the CPU CSR shadow), so on a
+  // box with no real GPU the "VRAM budget" is really a HOST-RAM budget. Cap it
+  // to a safe fraction of host RAM so the brain can never starve Forgejo / the
+  // OS and crash the box. Default: ≤45% of host RAM AND always leave ≥13 GB for
+  // everything else. Tunable via DREAM_BRAIN_BUDGET_MB. The systemd unit also
+  // hard-caps the cgroup (MemoryMax) as an independent backstop.
+  if (!(RESOURCES.gpu && RESOURCES.gpu.vram > 0)) {
+    const _hostRamMB = Math.floor(os.totalmem() / 1048576);
+    const _envBudget = Number(process.env.DREAM_BRAIN_BUDGET_MB) || 0;
+    const _safeMB = Math.max(1024, Math.min(
+      Math.floor(_hostRamMB * 0.45),     // never more than 45% of host RAM
+      _hostRamMB - 13312,                // always leave ≥13 GB for Forgejo + OS + page cache
+    ));
+    const _budgetMB = _envBudget > 0 ? Math.min(_envBudget, _hostRamMB - 13312) : _safeMB;
+    if (_budgetMB < vramMB) {
+      console.log(`[Brain] SERVER-RAM SAFETY — no GPU on host (${_hostRamMB}MB RAM, shared with Forgejo): capping brain budget ${vramMB}MB → ${_budgetMB}MB so the brain can't crash the box.`);
+      vramMB = _budgetMB;
+    }
+  }
   const osReserveMB = typeof cfg.osReserveVramMB === 'number' ? cfg.osReserveVramMB : 2048;
   const brainBudgetMB = Math.max(1024, vramMB - osReserveMB);
 
@@ -619,7 +639,14 @@ const CLUSTER_SIZES = {
 // localhost walk runs at full scale. Scales DOWN only.
 let COMMUNITY_TIER_RUNNING = 0;
 {
-  const _BOOTSTRAP_NEURONS = 6_000_000; // tier 0 — fits a modest donor GPU
+  // Community-compute sizing (boot side). The cluster sizes above are already
+  // derived from the SERVER-RAM-SAFE budget (see BRAIN_VRAM_ALLOC clamp), so on
+  // a deployed host the brain now boots at the largest size the box can SAFELY
+  // hold (Forgejo-protected) — NOT an artificial tiny floor. A donor GPU holds a
+  // full replica of that; if the smallest connected donor can't hold it, the
+  // downscale-rectify gate shrinks it (server/brain-server/gpu.js). Only an
+  // explicit server/community-tier.json overrides the size, and it can only
+  // scale DOWN from the RAM-safe base (never up past what the box RAM allows).
   let _communityTarget = 0;
   try {
     const _ctPath = path.join(__dirname, 'community-tier.json');
@@ -627,21 +654,21 @@ let COMMUNITY_TIER_RUNNING = 0;
       const _ct = JSON.parse(fs.readFileSync(_ctPath, 'utf8'));
       _communityTarget = Number(_ct.targetNeurons) || 0;
       COMMUNITY_TIER_RUNNING = Number(_ct.tier) || 0;
-    } else if (process.env.UAL_PROXY_AUTH === '1') {
-      _communityTarget = _BOOTSTRAP_NEURONS;
     }
+    // NOTE: deployed (UAL_PROXY_AUTH=1) no longer forces a 6M bootstrap floor —
+    // the RAM-safe budget IS the bound, so the brain uses the box to its safe max.
   } catch (e) {
-    console.warn('[Brain] PA.4.8 — community-tier.json read failed (using VRAM-derived size):', e.message);
+    console.warn('[Brain] community-tier.json read failed (using RAM-safe VRAM-derived size):', e.message);
   }
-  if (_communityTarget > 0) {
-    const _curTotal = Object.values(CLUSTER_SIZES).reduce((s, n) => s + n, 0);
-    if (_curTotal > _communityTarget) {
-      const _factor = _communityTarget / _curTotal;
-      for (const _k of Object.keys(CLUSTER_SIZES)) {
-        CLUSTER_SIZES[_k] = Math.max(1000, Math.floor(CLUSTER_SIZES[_k] * _factor));
-      }
-      console.log(`[Brain] PA.4.8 — community tier ${COMMUNITY_TIER_RUNNING} target ~${_communityTarget.toLocaleString()} neurons → scaled main-brain DOWN from ${_curTotal.toLocaleString()} (donor-pool-bound).`);
+  const _curTotal = Object.values(CLUSTER_SIZES).reduce((s, n) => s + n, 0);
+  if (_communityTarget > 0 && _curTotal > _communityTarget) {
+    const _factor = _communityTarget / _curTotal;
+    for (const _k of Object.keys(CLUSTER_SIZES)) {
+      CLUSTER_SIZES[_k] = Math.max(1000, Math.floor(CLUSTER_SIZES[_k] * _factor));
     }
+    console.log(`[Brain] community tier ${COMMUNITY_TIER_RUNNING} target ~${_communityTarget.toLocaleString()} neurons → scaled main-brain DOWN from ${_curTotal.toLocaleString()} (explicit override).`);
+  } else {
+    console.log(`[Brain] main-brain sized to the RAM-safe budget base: ${_curTotal.toLocaleString()} neurons (no down-scale; deployed runs at the box's safe max).`);
   }
 }
 // TOTAL_NEURONS is the SUM of main-brain cluster sizes (language cortex
