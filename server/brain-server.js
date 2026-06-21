@@ -6435,6 +6435,42 @@ const _heartbeatTimer = setInterval(() => {
 }, _HEARTBEAT_MS);
 wss.on('close', () => clearInterval(_heartbeatTimer));
 
+// #36 — EVENT-LOOP LAG MONITOR (Path B keystone instrument). The box proved
+// /ws handshakes stall at 306M even with consolidation disabled, so a
+// synchronous span somewhere is monopolizing the loop — but we couldn't see
+// WHICH. This sampler fires on a fixed 1s cadence; if it fires LATE, the delta
+// is exactly how long the loop was blocked (= how long /ws handshakes + donor
+// frames were stalled). It logs the blocked duration + live context so the
+// span can be correlated to a phase / the inner-voice tick / a donor sync /
+// consolidation. The threshold keeps healthy noise out. Tunable via
+// DREAM_LOOP_LAG_WARN_MS. This turns "1/8 handshakes" into "section X blocked
+// Nms" so Path B chunks the PROVEN blocker instead of guessing. Also pushed to
+// the dashboard via brain._lastEventLoopLagMs (perf state) for a live readout.
+const _LAG_SAMPLE_MS = 1000;
+const _LAG_WARN_MS = Number(process.env.DREAM_LOOP_LAG_WARN_MS) > 0
+  ? Number(process.env.DREAM_LOOP_LAG_WARN_MS)
+  : 250;
+let _lagAnchor = process.hrtime.bigint();
+const _lagTimer = setInterval(() => {
+  const now = process.hrtime.bigint();
+  const actualMs = Number(now - _lagAnchor) / 1e6;
+  _lagAnchor = now;
+  const lagMs = actualMs - _LAG_SAMPLE_MS;
+  brain._lastEventLoopLagMs = lagMs > 0 ? Math.round(lagMs) : 0;
+  if (lagMs > _LAG_WARN_MS) {
+    const cc = brain.cortexCluster;
+    const phase = (cc && cc._activePhase && cc._activePhase.name)
+      || (brain._curriculumInProgress ? 'curriculum' : 'idle');
+    const cell = (cc && cc._currentCellKey) || '(none)';
+    const donors = brain._gpuClients ? brain._gpuClients.size : 0;
+    const consol = !!(brain.consolidationEngine && brain.consolidationEngine._inFlight);
+    const innerVoice = !!brain._innerVoiceInFlight;
+    const syncing = brain._replicaSyncInFlight ? brain._replicaSyncInFlight.size : 0;
+    console.warn(`[EventLoop] BLOCKED ${lagMs.toFixed(0)}ms — /ws handshakes + donor frames stalled this long. context: phase=${phase} cell=${cell} donors=${donors} consolidationInFlight=${consol} innerVoiceInFlight=${innerVoice} replicaSyncing=${syncing}`);
+  }
+}, _LAG_SAMPLE_MS);
+wss.on('close', () => clearInterval(_lagTimer));
+
 /**
  * Auto-spawn the GPU compute client.
  *

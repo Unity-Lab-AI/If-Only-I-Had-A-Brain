@@ -589,6 +589,9 @@ const SERVER_CHAT_MIXIN = {
       // #30 donor pool + #32 upload-failure banner — surfaced to the dashboard.
       gpuPool,
       cortexUploadFailure: this._cortexUploadFailure || null,
+      // #36 — event-loop lag (ms the loop was last blocked). >250ms = /ws
+      // handshakes were stalling; this is the Path B responsiveness gauge.
+      eventLoopLagMs: this._lastEventLoopLagMs || 0,
       nodeHeapMB: Math.round(mem.heapTotal / 1048576),
       cores: os.cpus().length,
       parallelMode: false,
@@ -871,25 +874,41 @@ const SERVER_CHAT_MIXIN = {
       // rich live state passed through as external args. Returns
       // `{ word, sentence, seed, emissionPath, capability, chainEntry }`
       // per the unified contract.
-      const thought = await this.innerVoice.think({
-        cluster,
-        languageCortex: this.languageCortex,
-        dictionary: this.dictionary,
-        state: {
-          arousal: this.arousal,
-          coherence: this.coherence,
-          psi: this.psi,
-          motorConfidence: this.motorConfidence ?? 0,
-          predictionError: 0,
-          drugState: this._drugStateLabel(),
-          speechMod: this.drugScheduler ? this.drugScheduler.speechModulation() : null,
-          fear: this.fear,
-          reward: this.reward,
-          socialNeed: this.persona?.socialAttachment ?? 0.5,
-        },
-        chain: this._innerThoughtChain,
-        opts: { seed },
-      });
+      // #36 — flag + time the think tick so the [EventLoop] lag monitor can
+      // name it as the blocking span when it correlates. innerVoice.think()
+      // ticks the cortex; at 306M any synchronous CPU work inside it stalls
+      // the loop (and the /ws donor handshake). The flag is read by the lag
+      // monitor (innerVoiceInFlight=...); the elapsed log flags a slow tick.
+      this._innerVoiceInFlight = true;
+      const _ivStartMs = Date.now();
+      let thought;
+      try {
+        thought = await this.innerVoice.think({
+          cluster,
+          languageCortex: this.languageCortex,
+          dictionary: this.dictionary,
+          state: {
+            arousal: this.arousal,
+            coherence: this.coherence,
+            psi: this.psi,
+            motorConfidence: this.motorConfidence ?? 0,
+            predictionError: 0,
+            drugState: this._drugStateLabel(),
+            speechMod: this.drugScheduler ? this.drugScheduler.speechModulation() : null,
+            fear: this.fear,
+            reward: this.reward,
+            socialNeed: this.persona?.socialAttachment ?? 0.5,
+          },
+          chain: this._innerThoughtChain,
+          opts: { seed },
+        });
+      } finally {
+        this._innerVoiceInFlight = false;
+        const _ivMs = Date.now() - _ivStartMs;
+        if (_ivMs > 500) {
+          console.warn(`[Brain] inner-voice think() took ${_ivMs}ms — if this lines up with an [EventLoop] BLOCKED warning, the cortex tick is a Path B chunk target (bound the per-tick synchronous work or dispatch it to the donor GPU).`);
+        }
+      }
 
       // Surface generation errors once so silent failures aren't hidden.
       if (thought.emissionPath && thought.emissionPath.startsWith('generate-error')) {
