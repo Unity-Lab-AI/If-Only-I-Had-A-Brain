@@ -9621,14 +9621,28 @@ export class Curriculum {
     // teach-loop velocity within ~1-2% of un-throttled throughput while
     // guaranteeing HTTP request handlers + WebSocket socket draining
     // get scheduled inside any 50ms wall-clock window.
-    const _now = Date.now();
-    if (!this._lastHebbianYieldAt) this._lastHebbianYieldAt = 0;
-    if (_now - this._lastHebbianYieldAt > 50) {
-      await new Promise(resolve => setImmediate(resolve));
-      this._lastHebbianYieldAt = _now;
-    }
-
+    // #37 — throttled cooperative yield BETWEEN the heavy sub-ops. At the 306M
+    // RAM-safe sizing _crossRegionHebbian AND the synchronous intra-synapse
+    // hebbianUpdate each run hundreds of ms; with no breathing room between
+    // them a /ws donor/chat handshake can't get an event-loop slot mid-teach,
+    // so it times out (the symptom: heartbeat gaps widen + donors can't connect
+    // DURING training). Yield (macrotask) before EACH heavy sub-op, throttled to
+    // ~50ms so teach throughput stays within ~1-2% while the loop still drains
+    // HTTP/WS work inside any 50ms window. NOTE: a SINGLE sub-op that itself
+    // exceeds the window still blocks for its own duration — chunking that
+    // internally is the lag-monitor-confirmed follow-up ([EventLoop] BLOCKED
+    // phase=ela names which op).
+    const _yieldIfHot = async () => {
+      const _t = Date.now();
+      if (!this._lastHebbianYieldAt) this._lastHebbianYieldAt = 0;
+      if (_t - this._lastHebbianYieldAt > 50) {
+        await new Promise(resolve => setImmediate(resolve));
+        this._lastHebbianYieldAt = Date.now();
+      }
+    };
+    await _yieldIfHot();
     await cluster._crossRegionHebbian(lr, opts);
+    await _yieldIfHot();
     if (opts.skipIntraSynapses || opts.skipIntraHebbian) return;
     if (typeof cluster.intraSynapsesHebbian === 'function') {
       await cluster.intraSynapsesHebbian(cluster.lastSpikes, cluster.lastSpikes, lr);

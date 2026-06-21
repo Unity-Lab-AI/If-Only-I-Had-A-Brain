@@ -5,6 +5,26 @@
 
 ---
 
+## 2026-06-21 — #37 (step 1) — cooperative yield between teach Hebbian sub-ops so /ws survives training
+
+### Gee verbatim per LAW #0
+
+> *"is it rrunning okay?"* (heartbeat gaps widening to 60-135s during the ELA-K-STRUCTURE teach) · *"all todo and items done first"*
+
+During `_teachHebbian`, both `_crossRegionHebbian` and the synchronous intra-synapse `hebbianUpdate` (deliberately sync at biological scale — the worker-pool path OOM'd, see `cluster/hebbian.js:466`) each run hundreds of ms; its timing analysis assumed a ~301K cortex, but at the 306M RAM-safe sizing they're far longer, and there was no yield BETWEEN them — so a `/ws` donor/chat handshake couldn't get an event-loop slot mid-teach (donors can't connect DURING training; heartbeat gaps widen to 60-135s). **Step 1 (safe, no learning dropped, no hot-path rewrite):** a throttled cooperative yield (`_yieldIfHot`, ~50ms-gated `setImmediate`) now fires before EACH heavy sub-op in `_teachHebbian`, so the loop drains HTTP/WS work between sub-ops while teach throughput stays within ~1-2%. **Residual (step 2, lag-monitor-confirmed):** a SINGLE sub-op that itself exceeds the window still blocks for its own duration — chunking that internally (or confirming `_crossRegionHebbian` dispatches to GPU once cross-projections upload per #31) is gated on the box's `[EventLoop] BLOCKED phase=ela` reading so the right op gets fixed, not a guess. `node --check` + ESM `import()` clean. Frontend module (curriculum.js) → bundle; backend uses the same source → backend redeploy.
+
+---
+
+## 2026-06-21 — #41 — brain-page performance panel shows the donor GPU pool (was the empty server box)
+
+### Gee verbatim per LAW #0
+
+> *"the performance button in the brain html is not correctly showing the gpu and stuff of the commencted gpu through the compute html so yeah its not working"*
+
+The brain-page perf view (`js/app.js` perf card) rendered `p.gpuName` / `p.gpuVramMB` — the GPU-less orchestrator box — so it showed `Model none / VRAM 0MB` even with a donor connected. #30 added `perf.gpuPool` (the donor fleet) + fixed the *dashboard* card but not this brain-page card. Fixed: the GPU card now renders the donor pool (Donor GPUs count / Pooled VRAM / aggregate Gneurons-per-sec throughput / primary model) with the server box demoted to a footnote — mirrors the dashboard #30 card. Bundle rebuilt (`gpuPool` present, esbuild clean), `node --check` clean. Frontend — auto-deploys. (Caveat: the brain page only shows real donor perf when it's connected to `/ws`; during a heavy teach burst the #37 block can drop it to the local fallback brain, which has no donor pool — that's the open #37, not this card.)
+
+---
+
 ## 2026-06-21 — Training-lifecycle batch — banner-probe fix + #38 clean-stop auto-resume + compat gate + #39 Reset button + #40 Restart button
 
 ### Gee verbatim per LAW #0
