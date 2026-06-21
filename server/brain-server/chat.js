@@ -819,6 +819,57 @@ const SERVER_CHAT_MIXIN = {
       }
       return;
     }
+    // #36 step 2 (Path B) — bound the inner-voice cortex tick at scale.
+    // innerVoice.think() → languageCortex.generateAsync() drives
+    // cluster.step()/emitWordDirect() — a SYNCHRONOUS propagation of the main
+    // cortex on the host CPU CSR shadow. Measured 2026-06-21: at ~61M cortex
+    // neurons one tick blocks the Node event loop ~57s (↔ [EventLoop] BLOCKED
+    // 56–119s), stalling the /ws handshake. A GPU donor does NOT help here —
+    // the generation path runs on the server CPU regardless of donors (verified
+    // live: think() still took 58s with donors=1). So above a neuron-count
+    // threshold the CPU tick can never be loop-safe; emit the cheap trained-
+    // vocab showcase instead (allowCompose:false — pure bucket sample, never
+    // composeSentence's brain-ticks) so popups keep streaming AND the loop stays
+    // free for donors to connect + compute. Mirrors the #35 nnz-guard idiom;
+    // brain stays FULL size (Path B). Small brains (cortex ≤ threshold) still do
+    // full equational generation. Tunables: DREAM_INNERVOICE_MAX_NEURONS
+    // (default 2,000,000); DREAM_INNERVOICE_FORCE_CPU=1 forces full CPU
+    // generation regardless (e.g. once the cortex tick is GPU-dispatched).
+    // Gate on the MAIN cortex neuron count (`clusters.cortex` — the 61M-at-scale
+    // region) as the deployment-scale signal. NB `this.cortexCluster` is the
+    // dense LANGUAGE cortex (~323K neurons but ~13GB budget); its generateAsync
+    // tick scales with the deployment (cross-projects into the main cortex) and
+    // is what blocks ~57s here, so the main-cortex count is the reliable O(1)
+    // proxy for "this brain is too big for a loop-safe CPU inner-voice tick".
+    const _cortexNeurons = (this.clusters && this.clusters.cortex && this.clusters.cortex.size) || 0;
+    const _innerVoiceMaxNeurons = Number(process.env.DREAM_INNERVOICE_MAX_NEURONS) || 2000000;
+    if (_cortexNeurons > _innerVoiceMaxNeurons && process.env.DREAM_INNERVOICE_FORCE_CPU !== '1') {
+      const showcaseSentence = await this._sampleCurrentSentence({ allowCompose: false });
+      const showcaseWord = showcaseSentence ? showcaseSentence.split(/\s+/)[0] : null;
+      if (showcaseSentence) {
+        this._lastInnerThoughtEmittedAt = now;  // feed the natural-rhythm gate
+        try {
+          process.stdout.write(`[Brain] 🧠 inner-thought (showcase) "${showcaseSentence}" — vocab sample (cortex ${_cortexNeurons.toLocaleString()} neurons > ${_innerVoiceMaxNeurons.toLocaleString()}; full CPU generation would stall the loop)\n`);
+        } catch { /* non-fatal */ }
+        if (this.clients && this.clients.size > 0) {
+          const showcasePayload = JSON.stringify({
+            type: 'innerThought',
+            word: showcaseWord,
+            sentence: showcaseSentence,
+            seed: 'showcase',
+            seedLabel: 'trained vocabulary sample (cortex too large for a loop-safe CPU tick)',
+            ts: now,
+          });
+          for (const [ws] of this.clients) {
+            if (ws.readyState === ws.OPEN) {
+              try { ws.send(showcasePayload); } catch { /* non-fatal */ }
+            }
+          }
+        }
+      }
+      return;
+    }
+
     // Reentrancy guard — async generation can take longer than 3 s on
     // a slow tick; don't fire a new generation while a prior one is in
     // flight (would queue up dispatches + ghost the WS broadcast order).
@@ -1136,9 +1187,14 @@ const SERVER_CHAT_MIXIN = {
   // ticks the brain between word emissions for real autoregressive
   // emergence). Callers in _innerVoiceTick are already async; they
   // now `await this._sampleCurrentSentence()`.
-  async _sampleCurrentSentence() {
+  async _sampleCurrentSentence(opts = {}) {
     const cluster = this.cortexCluster;
     if (!cluster) return null;
+    // #36 — allowCompose:false forces the CHEAP path (pure trained-vocab pick,
+    // no cortex propagation). The no-GPU-donor inner-voice gate uses it so a
+    // showcase emit can never trigger composeSentence()'s brain ticks (which
+    // would re-introduce the event-loop block this change fixes).
+    const allowCompose = opts.allowCompose !== false;
     // SYNC: mirror of js/brain/subjects.js `SUBJECTS` — this is a CommonJS
     // module and subjects.js is ESM, so it can't be require()'d here. Keep
     // this list identical if the canonical subject roster ever changes.
@@ -1183,7 +1239,7 @@ const SERVER_CHAT_MIXIN = {
     // decoder MECHANICS, not content prescription. Falls through to
     // random multi-word phrase if composeSentence returns null (cold
     // cortex, no current activation, etc.).
-    if (typeof cluster.composeSentence === 'function') {
+    if (allowCompose && typeof cluster.composeSentence === 'function') {
       try {
         // awaited; composeSentence ticks the brain
         // between word emissions for real autoregressive emergence.

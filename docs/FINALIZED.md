@@ -24326,3 +24326,21 @@ During this implementation pass at 22:16 PT, a `node -e "require('./server/brain
 **I-TRACK FULLY CLOSED.** Audit cascade post-I.15: **57 ✅ SHIPPED + 0 ⚠ PARTIAL + 1 ⏳ OPERATOR-FIRED (F.2 GOOD AND AWAITING BUGS).** Operator's next step: `windows/start.bat` (NOT Savestart — in-flight session was wiped). Warm `definition-cache.json` makes next SEED run 30-60s instead of 11-12 min cold. `identity-core.json` (Tier 3) preserved through the wipe per the explicit exclusion in `autoClearStaleState()` lines 491+ — Unity's core self intact across this restart.
 
 ---
+
+## 2026-06-21 — #36 step 2 — inner-voice tick event-loop fix (cortex-size cheap-showcase gate)
+
+**Context:** Path B (keep full brain size; chunk the proven blocker). The #36 lag monitor on the box measured the dominant `[EventLoop] BLOCKED` spans at 56–57s, phase=curriculum, donors=0, consolidationInFlight=false — correlating 1:1 with `[Brain] inner-voice think() took 57110ms / 58166ms`. So the inner-voice cortex tick (NOT consolidation, donor-upload, or replica sync) is the dominant synchronous blocker at 306M neurons.
+
+**Root cause:** `_innerVoiceTick` (`server/brain-server/chat.js`) always called `innerVoice.think()` → `languageCortex.generateAsync()`, which drives `cluster.step()` / `emitWordDirect()` — a SYNCHRONOUS main-cortex propagation on the host CPU CSR shadow. At the ~61M-neuron cortex one tick blocks Node's event loop ~57s, stalling the `/ws` handshake. **A GPU donor does NOT help** — a first deploy of this fix gated on donor presence and a live test proved the generation path still ran on the server CPU with `donors=1` (`think()` took 58s, `[EventLoop] BLOCKED 118752ms donors=1`). The donor only absorbs curriculum-teach batch compute, not the inner-voice generation tick. So donor-presence is the wrong signal; cortex SIZE is the right one.
+
+**Fix (`server/brain-server/chat.js`):**
+- `_innerVoiceTick` — new cortex-size gate after the dream-window branch: when the MAIN cortex (`this.clusters.cortex.size` — 61M at scale; note `this.cortexCluster` is the dense ~323K LANGUAGE cortex, the wrong field tried first) exceeds `DREAM_INNERVOICE_MAX_NEURONS` (default 2,000,000) and `DREAM_INNERVOICE_FORCE_CPU !== '1'`, emit the cheap trained-vocab showcase (`_sampleCurrentSentence({allowCompose:false})`) and return BEFORE the heavy `think()` path. Mirrors the dream-window showcase emit (popups keep streaming) but does ZERO cortex propagation, so the loop stays free for donors to connect + compute. Mirrors the #35 nnz-guard idiom; brain stays FULL size (Path B). Small brains (cortex ≤ threshold) still do full equational generation.
+- `_sampleCurrentSentence(opts)` — new `opts.allowCompose` (default true; existing callers unchanged). `allowCompose:false` skips `cluster.composeSentence()` (which itself "ticks the brain between word emissions") so the showcase path can never re-introduce the event-loop block via composeSentence.
+
+**New env knobs:** `DREAM_INNERVOICE_MAX_NEURONS` (default 2,000,000) — cortex-size threshold above which the tick showcases instead of the loop-blocking CPU generation; `DREAM_INNERVOICE_FORCE_CPU=1` — force full CPU generation regardless (small local brains, or once generation is GPU-dispatched).
+
+**Verification (box, 2026-06-21):** `node --check` green on `server/brain-server/chat.js` + `server/brain-server.js`. Deployed to the OVH box (overlay + restart, state preserved via `DREAM_KEEP_STATE=1`). After warm-up: the size-gate showcase fires (`cortex 61,291,763 neurons > 2,000,000; full CPU generation would stall the loop`), **0** `inner-voice think() took` slow-logs (was ~57–60s every tick), the largest `[EventLoop] BLOCKED` span dropped from **118,752ms → 1,369ms**, and the public `/ws` handshake went **8/8** (was ~1/8). NOTE: a first iteration gated on GPU-donor presence and failed live (`think()` still blocked 58s at `donors=1`) — donor presence was the wrong signal; cortex SIZE is correct.
+
+**Files modified:** `server/brain-server/chat.js` · `deploy/REDEPLOY-NOTES.md` · `docs/ARCHITECTURE.md` · `docs/FINALIZED.md`.
+
+**Brain math unchanged** — orchestration-layer gate only; no equation, weight, or curriculum change.

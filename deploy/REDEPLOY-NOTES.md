@@ -45,6 +45,19 @@ Gee chose Path B over shrinking: the event loop must stay responsive at ANY brai
 
 **No systemd unit change in this cluster** → no `daemon-reload` needed, just restart.
 
+### 2026-06-21 (later still) — #36 step 2 LANDED: inner-voice tick was the dominant blocker
+
+The box measurement came back: with consolidation disabled, the dominant `[EventLoop] BLOCKED` spans were **56–119s** and lined up 1:1 with `[Brain] inner-voice think() took 57110ms`. So the inner-voice cortex tick is the blocker (NOT consolidation, donor-upload, or replica sync). **A GPU donor does NOT help** — verified live that `think()` still took 58s with `donors=1`; the generation path runs on the server CPU regardless of donors. Fix landed:
+
+**Backend file changed (NEEDS REDEPLOY):**
+- `server/brain-server/chat.js` — `_innerVoiceTick` now bounds the heavy `innerVoice.think()` → `languageCortex.generateAsync()` path (which drives `cluster.step()`/`emitWordDirect()` = synchronous main-cortex propagation on the host CPU CSR shadow) by **cortex neuron count**. At ~61M cortex neurons one tick blocked the loop ~57s, stalling the `/ws` handshake so donors couldn't connect. Now, when the MAIN cortex (`clusters.cortex.size` — 61M at scale; `cortexCluster` itself is the dense ~323K language cortex) exceeds `DREAM_INNERVOICE_MAX_NEURONS` (default 2,000,000), the tick emits the cheap trained-vocab showcase instead (`_sampleCurrentSentence({allowCompose:false})` — pure bucket sample, never `composeSentence`'s brain-ticks), keeping popups alive AND the loop free for donors to connect + compute. Mirrors the #35 nnz-guard idiom; brain stays FULL size. Small brains (cortex ≤ threshold) still do full equational generation.
+
+**New env knobs (optional, comment on their OWN line in the unit):**
+- `DREAM_INNERVOICE_MAX_NEURONS=2000000` — above this cortex neuron count, the inner-voice tick uses the cheap showcase instead of the loop-blocking CPU generation (the default; raise it only if the cortex tick becomes loop-safe, e.g. genuinely GPU-dispatched).
+- `DREAM_INNERVOICE_FORCE_CPU=1` — force full CPU inner-voice generation regardless of cortex size (small local brains, or once generation is GPU-dispatched). Default off.
+
+**No systemd unit change** → no `daemon-reload`, just the overlay + restart below. (`DREAM_CONSOLIDATION_DISABLE=1` can stay set; this fix is independent of consolidation.)
+
 ### Copy-paste redeploy (run on the box, from a fresh clone of the repo)
 
 ```bash
