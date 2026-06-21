@@ -1087,6 +1087,11 @@ async function handleComputeRequest(msg) {
   totalComputeMs += elapsed;
   const avg = totalComputeMs / stepsComputed;
   statsEl.textContent = `Steps: ${stepsComputed.toLocaleString()} | Avg: ${avg.toFixed(1)}ms | Last: ${elapsed.toFixed(1)}ms | ${state.size.toLocaleString()} neurons`;
+  // #30 — also stash throughput from the per-cluster fullStep path (not just the
+  // batch path) so the donor's "YOUR GPU"/dashboard Gn/s reads its real
+  // contribution whichever dispatch path the server is driving (it showed 0.00
+  // Gn/s when only the batch path set this and the per-cluster path was active).
+  window._lastGneuronsPerSec = (state.size / (elapsed / 1000)) / 1e9;
   perfEl.textContent = `Throughput: ${(state.size / (elapsed / 1000)).toFixed(0)} neurons/sec | Spikes: ${result.spikeCount.toLocaleString()} (${(result.spikeCount/state.size*100).toFixed(1)}%)`;
 }
 </script>
