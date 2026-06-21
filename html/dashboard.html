@@ -173,7 +173,9 @@
            The 'admin-only' CSS class on #btn-graceful-stop hides it
            until admin confirmed; same for #d-ms-advance below. -->
       <span id="d-mode-badge" class="mode-badge mode-connecting" title="Connection role — admin sees brain controls; viewer sees read-only telemetry">⋯ connecting</span>
-      <button id="btn-graceful-stop" class="btn-stop admin-only" title="Graceful brain shutdown — flushes definition disk cache, terminates worker pool, saves weights, then exits. Equivalent to running stop.bat. Use Savestart.bat to resume from saved state. (Admin-only — hidden in viewer mode.)">⏹ Stop Brain</button>
+      <button id="btn-graceful-stop" class="btn-stop admin-only" title="Graceful brain shutdown — flushes definition disk cache, terminates worker pool, saves weights, then exits. Equivalent to running stop.bat. On the deployed box systemd auto-resumes (clean stop = resume marker). (Admin-only — hidden in viewer mode.)">⏹ Stop Brain</button>
+      <button id="btn-restart" class="btn-stop admin-only" title="Restart the brain and RESUME training from saved state (auto-Savestart). Force-saves weights + drops a resume marker, then exits; systemd revives the process and it picks up where it left off. Restart without shell access. If a heavy update changed the brain size/format, it fresh-starts instead and says so. (Admin-only.)">🔄 Restart (Savestart)</button>
+      <button id="btn-reset" class="btn-stop admin-only" title="RESET to a FRESH brain — WIPES all trained weights / episodic memory / schemas (identity-core Tier 3 anchors preserved) and reboots clean via systemd. Destructive; use to start training over. (Admin-only.)">♻ Reset Brain (fresh)</button>
     </div>
 
     <!-- Dashboard-zero diagnostic panel (collapsible). Operator 2026-06-17
@@ -2316,6 +2318,69 @@
           btn.classList.add('shutdown-fired');
           btn.textContent = '✓ stopped (no response)';
           log(`Shutdown fetch failed (server likely already exited): ${err?.message || err}`);
+        }
+      });
+    })();
+
+    // #40 — Restart (Savestart) button. POST /restart → server force-saves +
+    // drops the resume marker + exits; systemd Restart=always revives it and it
+    // auto-RESUMES the trained state (#38). A UI restart without shell access.
+    (function wireRestart() {
+      const btn = document.getElementById('btn-restart');
+      if (!btn) return;
+      btn.addEventListener('click', async () => {
+        const ok = window.confirm(
+          'Restart the brain and RESUME training?\n\n' +
+          '✓ Weights force-saved + resume marker dropped\n' +
+          '✓ Server exits; systemd revives it in a few seconds\n' +
+          '✓ Picks up training where it left off (auto-Savestart)\n\n' +
+          'If a heavy update changed the brain size/format, it fresh-starts instead and tells you.'
+        );
+        if (!ok) return;
+        btn.disabled = true;
+        btn.textContent = '⏳ restarting...';
+        try {
+          const r = await fetch(adminApi('restart'), { method: 'POST', cache: 'no-store' });
+          const j = await r.json().catch(() => ({}));
+          btn.classList.add('shutdown-fired');
+          btn.textContent = '✓ restarting (resumes)';
+          log(`Restart POST → ${JSON.stringify(j)}`);
+        } catch (err) {
+          btn.classList.add('shutdown-fired');
+          btn.textContent = '✓ restart sent (reviving)';
+          log(`Restart fetch failed (server exiting, systemd reviving): ${err?.message || err}`);
+        }
+      });
+    })();
+
+    // #39 — Reset Brain button. POST /reset → server writes a .force-fresh flag
+    // + clears the resume marker + exits; systemd revives into a WIPED fresh
+    // brain (identity-core Tier 3 anchors preserved). Destructive → double-confirm.
+    (function wireReset() {
+      const btn = document.getElementById('btn-reset');
+      if (!btn) return;
+      btn.addEventListener('click', async () => {
+        const ok = window.confirm(
+          '⚠ RESET the brain to a FRESH start?\n\n' +
+          'This WIPES all trained weights, episodic memory, and schemas, then reboots clean.\n' +
+          'Unity\'s core identity (Tier 3 anchors) is preserved, but ALL training is lost.\n\n' +
+          'systemd revives the process into a fresh brain in a few seconds. Proceed?'
+        );
+        if (!ok) return;
+        const ok2 = window.confirm('Are you SURE? All training since the last reset will be permanently wiped. This cannot be undone.');
+        if (!ok2) return;
+        btn.disabled = true;
+        btn.textContent = '⏳ resetting...';
+        try {
+          const r = await fetch(adminApi('reset'), { method: 'POST', cache: 'no-store' });
+          const j = await r.json().catch(() => ({}));
+          btn.classList.add('shutdown-fired');
+          btn.textContent = '✓ reset (fresh boot)';
+          log(`Reset POST → ${JSON.stringify(j)}`);
+        } catch (err) {
+          btn.classList.add('shutdown-fired');
+          btn.textContent = '✓ reset sent (reviving)';
+          log(`Reset fetch failed (server exiting, systemd reviving fresh): ${err?.message || err}`);
         }
       });
     })();

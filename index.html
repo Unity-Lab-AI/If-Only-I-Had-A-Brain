@@ -88,17 +88,19 @@
       // differently depending on origin:
       //   • LOCAL dev (localhost / 127.0.0.1 / file://) → raw loopback port
       //     ws://localhost:7525 (brain-server binds 7525 directly).
-      //   • DEPLOYED (any public host) → same-origin admin lane reverse-proxied
-      //     by nginx at wss://<host>/admin/ws — NOT a raw :7525 port (that port
-      //     is bound to loopback only and never exposed publicly). This mirrors
-      //     remote-brain.js detectRemoteBrain() so the banner probes exactly
-      //     what the app itself connects to.
+      //   • DEPLOYED (any public host) → same-origin PUBLIC lane reverse-proxied
+      //     by nginx at wss://<host>/ws — the SAME lane the app itself connects
+      //     to (remote-brain.js detectRemoteBrain() + compute.html donors). NOT
+      //     /admin/ws: that lane is Forgejo-auth-gated, so a public visitor would
+      //     ALWAYS fail the probe and see a false "backend unreachable" banner
+      //     even when the brain is healthy. Probing /ws mirrors what the page
+      //     actually uses, so the banner only fires on a REAL outage.
       var _host = location.hostname || '';
       var IS_LOCAL = _host === 'localhost' || _host === '127.0.0.1'
         || _host === '[::1]' || _host === '' || location.protocol === 'file:';
       var WS_URL = IS_LOCAL
         ? 'ws://localhost:7525'
-        : (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/admin/ws';
+        : (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws';
       var bannerEl = document.getElementById('unity-no-conn-banner');
       var countdownEl = document.getElementById('unity-conn-countdown');
       var retryEl = document.getElementById('unity-conn-retry');
@@ -120,8 +122,8 @@
         if (titleEl) titleEl.textContent = '⚠ Live brain backend unreachable';
         if (descEl) descEl.innerHTML = 'The deployed brain backend at <code>' + WS_URL + '</code> isn\'t responding. If you\'re just visiting, the page falls back to a local in-browser brain automatically — no action needed.';
         if (stepsEl) stepsEl.innerHTML =
-            '<li><strong>Visitor:</strong> nothing to do — a local browser brain is loading as a fallback.</li>'
-          + '<li><strong>Operator:</strong> confirm the <code>unity-brain</code> service is running on the host (<code>systemctl status unity-brain</code>) and that you\'re authenticated through Forgejo for the admin lane.</li>'
+            '<li><strong>Visitor:</strong> nothing to do — a local browser brain is loading as a fallback, and the page keeps retrying the live brain in the background.</li>'
+          + '<li><strong>If it persists:</strong> the brain may just be busy (a heavy training burst can briefly stall new connections — it auto-recovers), or the <code>unity-brain</code> service is down. Operators: <code>systemctl status unity-brain</code>.</li>'
           + '<li><strong>Donate compute:</strong> open <a href="compute.html">compute.html</a> to connect your GPU.</li>';
       }
       function showBanner() { if (bannerEl) { applyDeployedCopy(); bannerEl.classList.add('active'); } }
