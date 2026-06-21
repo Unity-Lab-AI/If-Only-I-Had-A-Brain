@@ -5,6 +5,16 @@
 
 ---
 
+## 2026-06-21 — #42 — talk page stuck on the 7k fallback brain (resilient /ws probe) + donor throughput telemetry
+
+### Gee verbatim per LAW #0
+
+> *"7k rendered of 7k real neurons (1:1) … but [dashboard] Neurons 306,458,816 … see discepancey?"* · *"try to fix it box guy is gone no server updates"* · *"only git main"*
+
+**Discrepancy:** the talk page header read "7k rendered of 7k real neurons (1:1)" (the local **6700-neuron fallback** brain) while the dashboard showed the live **306,458,816**. Probed the live deploy: the bundle HAS the #29 `/ws` fix and `/ws` returns `101` (healthy) — so the talk page *could* reach the brain but didn't. **Root cause:** `detectRemoteBrain`'s single **4 s** `/ws` probe times out during a teach/probe burst (the server's WS-accept lags while the event loop is mid-synchronous-work), so it gave up and dropped to the local fallback even though the backend was up. **Fix (frontend-only — auto-deploys on main, no server access needed):** the deployed probe now **retries 5× (6 s timeout, 1.5 s gap, ~25 s total)** before falling back; a transient stall is caught on a later attempt, while a true backend-less mirror still fails all attempts → graceful local fallback. Once `RemoteBrain` is constructed it owns its own retry-forever reconnect, so a later burst never flips the page back to 7k. Also: donor throughput showed `0.00 Gn/s` (the #30 hook was only in the batch dispatch path) — added `window._lastGneuronsPerSec` to the per-cluster `fullStep` path too so the donor's Gn/s reads its real contribution whichever path the server drives. `remote-brain.js` ESM import + `compute.html` module parse clean; bundle rebuilt. Box admin unavailable → shipped via git main (frontend CI rsync); no backend redeploy required.
+
+---
+
 ## 2026-06-21 — #37 (step 1) — cooperative yield between teach Hebbian sub-ops so /ws survives training
 
 ### Gee verbatim per LAW #0
