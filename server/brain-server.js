@@ -433,6 +433,51 @@ function writeBrainCodeHash(hash) {
   }
 }
 
+// #38 — WEIGHT-COMPATIBILITY VERSION. Bump this ONLY when a code change alters
+// the saved weight FORMAT or brain TOPOLOGY such that previously-saved weights
+// can no longer be loaded (serialization layout, projection structure, cluster
+// composition, neuron-tiling scheme). Routine fixes — event-loop yields,
+// telemetry, dashboard/UI, the donor lane — must NOT bump it: bumping forces an
+// auto-fresh-start that DISCARDS trained weights. The clean-shutdown resume path
+// refuses to load a marker whose formatVersion != this, so a heavy update that
+// breaks the format triggers a normal fresh start instead of loading garbage.
+const WEIGHTS_FORMAT_VERSION = 1;
+const RESUME_MARKER_PATH = path.join(__dirname, '.resume-marker.json');
+
+// #38 — clean-shutdown resume marker. Written on a DELIBERATE graceful stop
+// (stop.bat → HTTP /shutdown, or systemctl stop → SIGTERM) AFTER force-saving
+// the latest weights. It records the brain size + weight-format version at save
+// time so the next boot can decide: RESUME (auto-Savestart) if compatible, or a
+// normal FRESH start + loud notice if a heavy update changed the format/size.
+// A crash / hard-kill leaves NO marker → next boot wipes (correct: crash state
+// is stale per the clear-stale-state LAW). Consumed (deleted) on boot — one
+// resume per clean stop.
+function _writeResumeMarker(reason) {
+  // Force the latest state to disk FIRST — stop()/SIGTERM don't save on their
+  // own, so without this the marker would claim "good state" while the on-disk
+  // weights were only as fresh as the last periodic save.
+  try {
+    brain.saveWeights({ force: true, trigger: `clean-shutdown:${reason}` });
+    if (typeof brain.saveConversations === 'function') brain.saveConversations();
+  } catch (e) {
+    console.warn('[Brain] clean-shutdown force-save failed (marker NOT written — next boot will fresh-start):', e && e.message);
+    return;
+  }
+  try {
+    const total = (typeof TOTAL_NEURONS === 'number') ? TOTAL_NEURONS : 0;
+    fs.writeFileSync(RESUME_MARKER_PATH, JSON.stringify({
+      cleanShutdown: true,
+      reason,
+      totalNeurons: total,
+      formatVersion: WEIGHTS_FORMAT_VERSION,
+      savedAt: Date.now(),
+    }, null, 2));
+    console.log(`[Brain] clean shutdown (${reason}) — state force-saved + resume marker written (totalNeurons=${total.toLocaleString()}, formatVersion=${WEIGHTS_FORMAT_VERSION}). Next boot RESUMES automatically (auto-Savestart) unless a heavy update changed the brain size/format.`);
+  } catch (e) {
+    console.warn('[Brain] resume-marker write failed (next boot will fresh-start):', e && e.message);
+  }
+}
+
 function autoClearStaleState() {
   // iter14-D — Operator verbatim 2026-05-04: "yes all the weights
   // everything shoudl reset when the start.bat is run or the .sh...
@@ -457,11 +502,62 @@ function autoClearStaleState() {
   // bound schemas (server/identity-core.json) STILL persist across
   // every wipe regardless of which launcher fired — Unity's core
   // self survives even a `start.bat` fresh boot.
-  if (process.env.DREAM_KEEP_STATE === '1') {
-    console.log('[Brain] ⚠ DREAM_KEEP_STATE=1 (Savestart.bat) — KEEPING prior state. Auto-clear SKIPPED.');
-    // Refresh the hash baseline for diagnostics; not used to gate the wipe anymore.
-    writeBrainCodeHash(computeBrainCodeHash());
-    return;
+  // #39 — explicit operator RESET (dashboard "Reset Brain" button → /reset
+  // writes a .force-fresh flag). Forces an unconditional wipe THIS boot
+  // regardless of DREAM_KEEP_STATE or any resume marker, then deletes the flag.
+  // This is the UI path to a clean server-side fresh start without shell access.
+  const _forceFreshPath = path.join(__dirname, '.force-fresh');
+  let _forceFresh = false;
+  try {
+    if (fs.existsSync(_forceFreshPath)) { _forceFresh = true; fs.unlinkSync(_forceFreshPath); }
+  } catch { /* unreadable flag → fall through to normal logic */ }
+
+  // #38 — consume the clean-shutdown resume marker (one resume per clean stop).
+  let _marker = null;
+  try {
+    if (fs.existsSync(RESUME_MARKER_PATH)) {
+      _marker = JSON.parse(fs.readFileSync(RESUME_MARKER_PATH, 'utf8'));
+      fs.unlinkSync(RESUME_MARKER_PATH);
+    }
+  } catch { _marker = null; }
+
+  const _currentTotal = (typeof TOTAL_NEURONS === 'number') ? TOTAL_NEURONS : 0;
+
+  if (_forceFresh) {
+    console.log('[Brain] ⚠ FORCE-FRESH requested (dashboard Reset Brain) — wiping all trained state for a clean fresh start (identity-core Tier 3 anchors preserved).');
+    // fall through to the wipe below
+  } else {
+    // #38 — resume is requested when the operator ran Savestart (DREAM_KEEP_STATE=1)
+    // OR a clean shutdown left a marker (stop.bat / systemctl stop). Either way,
+    // VERIFY the saved weights are still loadable before resuming: a heavy update
+    // that changed the brain SIZE or weight FORMAT makes them unloadable → do a
+    // normal FRESH start + loud notice instead of crashing on garbage weights.
+    const _keepRequested = process.env.DREAM_KEEP_STATE === '1' || (_marker && _marker.cleanShutdown);
+    if (_keepRequested) {
+      if (_marker) {
+        const _fmtOk = _marker.formatVersion === WEIGHTS_FORMAT_VERSION;
+        const _sizeOk = _marker.totalNeurons === _currentTotal;
+        if (_fmtOk && _sizeOk) {
+          console.log(`[Brain] ✓ CLEAN SHUTDOWN detected — saved training is COMPATIBLE (formatVersion=${WEIGHTS_FORMAT_VERSION}, ${_currentTotal.toLocaleString()} neurons). RESUMING where it left off (auto-Savestart). Auto-clear SKIPPED.`);
+          writeBrainCodeHash(computeBrainCodeHash());
+          return;
+        }
+        const _why = [
+          !_fmtOk ? `weight FORMAT (saved v${_marker.formatVersion} → now v${WEIGHTS_FORMAT_VERSION})` : null,
+          !_sizeOk ? `brain SIZE (saved ${Number(_marker.totalNeurons || 0).toLocaleString()} → now ${_currentTotal.toLocaleString()} neurons)` : null,
+        ].filter(Boolean).join(' and ');
+        console.warn(`[Brain] ⚠⚠ CLEAN SHUTDOWN detected, BUT a heavy update changed the ${_why} — the saved training can NO LONGER be loaded. Doing a NORMAL FRESH START so the brain boots clean instead of choking on incompatible weights. (Identity-core Tier 3 anchors still persist.)`);
+        // fall through to the wipe below
+      } else {
+        // DREAM_KEEP_STATE=1 with no marker (explicit Savestart.bat, or a deployed
+        // restart that didn't record a clean stop). Honor the explicit keep;
+        // _loadWeights still defends against a dimension mismatch at load time.
+        console.log('[Brain] ⚠ DREAM_KEEP_STATE=1 (Savestart.bat) — KEEPING prior state. Auto-clear SKIPPED.');
+        writeBrainCodeHash(computeBrainCodeHash());
+        return;
+      }
+    }
+    // No keep requested + no force-fresh → normal start.bat default wipe below.
   }
 
   // Default path = wipe. Always. Whether code changed, resource-config
@@ -4758,10 +4854,61 @@ const httpServer = http.createServer((req, res) => {
     global._brainShutdownRequested = true;
     console.log('[Brain] HTTP /shutdown — graceful halt requested by operator (stop.bat or curl).');
     res.end(JSON.stringify({ status: 'shutdown requested, exiting in 500ms' }));
+    // #38 — this is a DELIBERATE clean stop (stop.bat). Force-save the latest
+    // weights + drop the resume marker so the next boot auto-resumes (no need to
+    // remember Savestart) unless a heavy update made the weights incompatible.
+    try { _writeResumeMarker('stop.bat / HTTP /shutdown'); } catch (err) {
+      console.warn('[Brain] resume-marker on /shutdown failed:', err && err.message);
+    }
     try { brain.stop(); } catch (err) {
       console.error('[Brain] stop() failed during /shutdown:', err);
     }
-    setTimeout(() => { process.exit(0); }, 500);
+    // Give the (possibly large) force-save a moment to flush to disk before exit.
+    setTimeout(() => { process.exit(0); }, 1500);
+    return;
+  }
+
+  // #40 — RESTART (Savestart) from the dashboard. Drops the resume marker
+  // (force-save + mark) then exits; on the deployed box systemd Restart=always
+  // revives the process, which then auto-RESUMES the trained state (#38). Gives
+  // the operator a UI restart without shell access. (Local dev has no systemd —
+  // the process just exits; re-run Savestart.bat.)
+  if (req.url === '/restart' && req.method === 'POST') {
+    if (!requireLoopback(req, res, '/restart')) return;
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    if (global._brainShutdownRequested) { res.end(JSON.stringify({ status: 'already restarting' })); return; }
+    global._brainShutdownRequested = true;
+    console.log('[Brain] HTTP /restart — operator requested RESTART+RESUME (dashboard). Force-saving + marking resume, then exiting for systemd to revive.');
+    res.end(JSON.stringify({ status: 'restarting — will resume on next boot (systemd revives in a few seconds)' }));
+    try { _writeResumeMarker('dashboard /restart'); } catch (err) {
+      console.warn('[Brain] resume-marker on /restart failed:', err && err.message);
+    }
+    try { brain.stop(); } catch (err) { console.error('[Brain] stop() failed during /restart:', err); }
+    setTimeout(() => { process.exit(0); }, 1500);
+    return;
+  }
+
+  // #39 — RESET (fresh start) from the dashboard. Writes a .force-fresh flag +
+  // clears any resume marker, then exits; systemd revives the process and
+  // autoClearStaleState sees the flag → WIPES all trained state (identity-core
+  // Tier 3 anchors preserved) for a clean fresh brain. UI path to a server-side
+  // reset without shell access.
+  if (req.url === '/reset' && req.method === 'POST') {
+    if (!requireLoopback(req, res, '/reset')) return;
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    if (global._brainShutdownRequested) { res.end(JSON.stringify({ status: 'already restarting' })); return; }
+    try {
+      fs.writeFileSync(path.join(__dirname, '.force-fresh'), JSON.stringify({ requestedAt: Date.now(), via: 'dashboard /reset' }, null, 2));
+      try { if (fs.existsSync(RESUME_MARKER_PATH)) fs.unlinkSync(RESUME_MARKER_PATH); } catch { /* best-effort */ }
+    } catch (err) {
+      res.end(JSON.stringify({ status: 'reset FAILED — could not write force-fresh flag', error: err && err.message }));
+      return;
+    }
+    global._brainShutdownRequested = true;
+    console.log('[Brain] HTTP /reset — operator requested RESET (dashboard). Force-fresh flag written + resume marker cleared; exiting for systemd to revive into a FRESH brain (identity-core preserved).');
+    res.end(JSON.stringify({ status: 'reset armed — wiping to a fresh brain on next boot (systemd revives in a few seconds)' }));
+    try { brain.stop(); } catch (err) { console.error('[Brain] stop() failed during /reset:', err); }
+    setTimeout(() => { process.exit(0); }, 1000);
     return;
   }
 
@@ -6907,7 +7054,13 @@ process.on('SIGINT', () => {
   process.exit(0);
 });
 process.on('SIGTERM', () => {
-  console.log('\n[Brain] SIGTERM — halting immediately.');
+  console.log('\n[Brain] SIGTERM — graceful stop (systemctl stop / restart).');
+  // #38 — SIGTERM is a DELIBERATE clean stop (systemctl). Force-save + drop the
+  // resume marker so the next spin-up auto-resumes (unless a heavy update made
+  // the weights incompatible — then it fresh-starts with a notice).
+  try { _writeResumeMarker('SIGTERM / systemctl'); } catch (err) {
+    console.warn('[Brain] resume-marker on SIGTERM failed:', err && err.message);
+  }
   try { brain.stop(); } catch {}
   process.exit(0);
 });

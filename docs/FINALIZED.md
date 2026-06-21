@@ -5,6 +5,24 @@
 
 ---
 
+## 2026-06-21 — Training-lifecycle batch — banner-probe fix + #38 clean-stop auto-resume + compat gate + #39 Reset button + #40 Restart button
+
+### Gee verbatim per LAW #0
+
+> *"when i try to comment from a none admin browser i get this: ⚠ Live brain backend unreachable … wss://…/admin/ws isn't responding"* · *"we also need it to know if stop.bat was used to next start use savestart.bat on server spin up and training"* · *"witha crutial knowledge and notice if an update kills the training data because of heavy changes and it can nolonger be used and noraml start is needed, it needed to know and act accordingly"* · *"need a button on dashboard to reset the server side too"* · *"need a restart savestart button too as if i stop it there is no way to resatart it"*
+
+**Banner-probe fix (`index.html`).** The deployment banner probed `wss://<host>/admin/ws` — the Forgejo-auth-gated lane — so a public visitor ALWAYS failed it and saw a false "backend unreachable / Operator confirm Forgejo auth" alarm even when the brain was healthy. #29 fixed the actual brain connection (`remote-brain.js` → `/ws`) but missed this separate inline probe. Now probes the public `/ws` (mirrors what the page connects to, so the banner only fires on a real outage) + the copy reflects "the brain may just be busy (a heavy training burst can briefly stall new connections — it auto-recovers)" instead of the admin-auth steps.
+
+**#38 — clean-stop auto-resume + incompatibility-aware fresh start (`brain-server.js`).** A DELIBERATE clean stop now force-saves the latest weights and drops a `server/.resume-marker.json` stamped with `totalNeurons` + `WEIGHTS_FORMAT_VERSION`, on both clean paths: stop.bat → HTTP `/shutdown`, and systemctl stop/restart → SIGTERM. `autoClearStaleState` consumes the marker on boot (one resume per clean stop) and: marker present + compatible (size + format match) → **RESUME** (auto-Savestart, skip the wipe — no need to remember Savestart.bat); marker present but a heavy update changed the size or format → **normal FRESH start + loud notice** (so it boots clean instead of choking on incompatible weights); no marker → existing wipe default (start.bat / crash = stale per the clear-stale LAW). **Why not code-hash:** `computeBrainCodeHash()` hashes the brain code files, so it flips on EVERY routine redeploy (event-loop fix, telemetry, UI) → it would false-wipe training constantly. `WEIGHTS_FORMAT_VERSION` is a manual constant (currently `1`) bumped ONLY when a change genuinely breaks the saved weight format/topology. The compat gate also applies under `DREAM_KEEP_STATE=1`, so the deployed box auto-fresh-starts on an incompatible redeploy instead of loading garbage.
+
+**#39 — dashboard "Reset Brain" button (`/reset` + `dashboard.html`).** Admin-only, double-confirm. POST `/reset` writes a `server/.force-fresh` flag + clears the resume marker + exits; systemd `Restart=always` revives the process and `autoClearStaleState` sees the flag → WIPES all trained state unconditionally (even under DREAM_KEEP_STATE / a resume marker) + deletes the flag → fresh brain. Identity-core Tier 3 anchors preserved. UI path to a server-side reset without shell access.
+
+**#40 — dashboard "Restart (Savestart)" button (`/restart` + `dashboard.html`).** Admin-only. POST `/restart` force-saves + drops the resume marker + exits; systemd revives and #38 auto-resumes the trained state. Needed because on a `Restart=always` box the Stop button can't truly halt from the UI (systemd revives), and the operator had no UI way to restart-and-resume. All three lifecycle buttons rely on systemd Restart=always to come back (local dev has no systemd → the process just exits; re-run start/Savestart.bat).
+
+**Files.** `index.html` (banner probe + copy) · `server/brain-server.js` (`WEIGHTS_FORMAT_VERSION` + `_writeResumeMarker` + `autoClearStaleState` marker/compat/force-fresh logic + `/shutdown` & SIGTERM marker wiring + `/restart` & `/reset` endpoints) · `html/dashboard.html` (Restart + Reset buttons + handlers) · `.gitignore` (`server/.resume-marker.json` + `server/.force-fresh`). `node --check` + inline `vm` parse clean. **Deploy:** `index.html` + `dashboard.html` auto-deploy (static rsync); `brain-server.js` needs the backend redeploy per `deploy/REDEPLOY-NOTES.md`.
+
+---
+
 ## 2026-06-21 — #36 — Path B: keep brain full size, instrument the event loop to find the remaining blocker
 
 ### Gee verbatim per LAW #0
