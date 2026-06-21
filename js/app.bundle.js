@@ -118253,14 +118253,14 @@ async function detectRemoteBrain(url = "ws://localhost:7525") {
     const isLocal = host === "localhost" || host === "127.0.0.1" || host === "[::1]" || host === "" || location.protocol === "file:";
     if (!isLocal) {
       const wsProto = location.protocol === "https:" ? "wss" : "ws";
-      const adminUrl = `${wsProto}://${location.host}/admin/ws`;
-      const reachable = await _probeWs(adminUrl, 4e3);
+      const publicUrl = `${wsProto}://${location.host}/ws`;
+      const reachable = await _probeWs(publicUrl, 4e3);
       if (!reachable) {
-        console.log(`[RemoteBrain] Deployed origin \u2014 admin backend not reachable at ${adminUrl} (unauthed or static demo); using local fallback brain.`);
+        console.log(`[RemoteBrain] Deployed origin \u2014 public brain lane not reachable at ${publicUrl} (static-only demo, no backend); using local fallback brain.`);
         return null;
       }
-      console.log(`[RemoteBrain] Deployed origin \u2014 admin backend reachable; constructing RemoteBrain ws=${adminUrl}`);
-      return new RemoteBrain(adminUrl);
+      console.log(`[RemoteBrain] Deployed origin \u2014 public brain lane reachable; constructing RemoteBrain ws=${publicUrl}`);
+      return new RemoteBrain(publicUrl);
     }
   }
   console.log(`[RemoteBrain] Local origin detected \u2014 constructing RemoteBrain directly (no probe), ws=${url}`);

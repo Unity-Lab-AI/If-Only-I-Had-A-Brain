@@ -5,6 +5,44 @@
 
 ---
 
+## 2026-06-21 — Live-bring-up fix cluster (#29–#34) — public-lane visibility + per-donor telemetry + upload-failure alarm + donor heartbeat + redeploy handoff
+
+### Gee verbatim per LAW #0
+
+> *"will this also fix the fact that other only see 7k neurons while im seeing 300M"* · *"not just 300 it scale up and down remmeber based on user gpu powers of all"* · *"should the performance not correctly track to the user and or admin 's GPu compute they are using ?"* · *"each theri own"* · *"are other users goning to need to do this too"* (the unsafe-webgpu flag) · *"if the server files need updated too i need a copy paste with instructions for the other clkaude of the repo to use and what files to update on the server and how to restart it (should be auto right) add this all to the todo / task list"* · *"do it docs commitcascade cascade one at a time and veryify inbetween"* · *"the todo work task list means = DO IT"*
+
+**Root cause.** On a deployed origin, `detectRemoteBrain()` (`js/brain/remote-brain.js`) probed the Forgejo-authed admin lane `wss://<host>/admin/ws`. An unauthed public visitor failed the probe and `app.js` fell back to the 6700-neuron local browser `UnityBrain` (`TOTAL_NEURONS` default in engine.js). Only the operator — whose browser had cached the admin Basic-auth — connected and saw the live server brain. So strangers saw a frozen ~7k while the operator saw the real biological-scale count.
+
+**Fix.** Deployed origin now probes + connects the **public** lane `wss://<host>/ws` (the same lane donor `compute.html` tabs use; nginx exposes it public). The server's periodic `state` broadcast (`brain-server.js`, the `setInterval` at the state-broadcast block) sends `{type:'state', state}` to **every** connected client with no admin gate, so a public observer receives `totalNeurons` + `scale` every tick and the page renders the live count — which auto-scales up AND down with the pooled donor-GPU community-compute tier. Admin CONTROL actions (resize, server console, auto-scale sliders) remain on the separate Forgejo-authed `/admin/` lane driven by the dashboard — only observation + chat are public by design. If `/ws` never opens at all (a backend-less static-only mirror), the client still falls through to the local browser brain, so a pure GitHub-Pages deploy keeps working.
+
+**Files.** `js/brain/remote-brain.js` (deployed branch of `detectRemoteBrain` swapped `/admin/ws` → `/ws` + comment rewrite) · `js/app.bundle.js` (rebuilt via the `server` esbuild build script; verified `admin/ws` occurrences → 0, public-lane code present, ESM `import()` clean) · `README.md` (WS-topology paragraph synced to the public-lane behavior) · `docs/NOW.md` (current banner) · `docs/FINALIZED.md` (this entry).
+
+**Deploy.** #29 is frontend-only — the static rsync in `.forgejo/workflows/deploy.yml` ships `js/` as-is, so the rebuilt bundle reaches the live site on push to main. No backend redeploy needed. Cascaded feature → develop → main one at a time with verification between each per Gee's directive.
+
+### #30 — Per-donor GPU telemetry ("each their own")
+
+The dashboard perf panel showed the SERVER box's GPU (`RESOURCES.gpu` = `none / 0MB / 0%` on the GPU-less box) — never the donor pool that actually runs the compute. Now: `html/compute.html` sends a periodic `gpu_telemetry` message (its own GPU model, VRAM capacity, max-binding ceiling, live Gneurons/sec throughput) every 5s + paints a "🎮 YOUR GPU" line on the worker page (each donor tracks their own); `server/brain-server.js` handles `gpu_telemetry` (stores `client.telemetry`); `server/brain-server/chat.js _updatePerfStats` aggregates the live pool into `perf.gpuPool` (donorCount / totalVramMB / aggGneuronsPerSec / primaryModel / bounded per-donor list); `html/dashboard.html` GPU card rewritten to render the DONOR POOL (★ = primary) with the server-box GPU demoted to a footnote. WebGPU forbids true util%/VRAM-used (privacy), so throughput is the honest contribution signal.
+
+### #32 — Surface `cortexCluster.initGpu()` failure instead of silent CPU limp
+
+The cross-projection upload's `.catch` silently set `_cortexFullyReady=false` and the walk limped on the CPU master copy with no alarm — which is exactly why "0 sparse matrices uploaded" looked like "working great". Now: CRITICAL log + `brain._cortexUploadFailure = {reason, looksLikeBindingLimit, ts}` + an admin WS broadcast (`cortexUploadFailed`) + a persistent `perf.cortexUploadFailure` field + a red banner in the dashboard GPU card. The success path clears it + broadcasts `cortexUploadOk`. The `looksLikeBindingLimit` flag (regex on the error) is the diagnostic that tells us whether the flagless-donor work (#31) needs server-side matrix tiling vs another fix.
+
+### #33 — Donor-socket heartbeat → evict half-open primary so failover fires
+
+`readyState` + the close event can't detect a half-open socket (laptop sleep, network blip, killed tab without a clean close): a dead PRIMARY donor kept its slot forever and a fresh donor joined as an idle replica behind a corpse (reconnecting never helped). Added `ws._isAlive` + a `pong` handler at connection and a 30s sweep (`_heartbeatTimer`) that pings every socket and `terminate()`s any that missed the prior ping — which fires `ws.on('close')` → the existing primary-left failover / standby promotion. Cleared on `wss` close.
+
+### #31 — Flagless donor (no `--enable-unsafe-webgpu`) — GATED, not shipped
+
+Donors must not need a Chrome unsafe-webgpu launch flag (it kills public-donation UX — a website can't enable it, and a hand-launched custom-profile Chrome is a non-starter for "lots of people"). The flag only raises the 2 GB buffer-binding ceiling. The fix DIVERGES by root cause: a binding-size limit → server-side sparse-matrix tiling under the donor ceiling; the warmup gate / a non-binding `initGpu` throw → a different fix entirely. The decisive signal is #32's now-automatic dashboard banner. Building a GPU-shader tiling change BLIND (no WebGPU in node to verify) would violate "code it right the first time", so #31 stays gated on #32's diagnostic after a redeploy + flagged reconnect. `donate-gpu.bat` added as the operator's own isolated-Chrome flag-launcher workaround in the meantime.
+
+### #34 — Server-redeploy handoff
+
+`deploy/REDEPLOY-NOTES.md` written for the box Claude / admin: which files auto-deploy (frontend static rsync) vs need a manual backend redeploy (`server/**`), the git-archive overlay (`/opt/unity-brain` has no `.git`; preserves untracked runtime state), the `systemctl restart` (no unit change this cluster → no daemon-reload; `DREAM_KEEP_STATE=1` preserves training), and read-only verify commands. This cluster's backend files (`server/brain-server.js` + `server/brain-server/chat.js`) need that redeploy; the rest auto-deploys on push to main.
+
+**Verification.** `node --check` clean on `server/brain-server.js` + `server/brain-server/chat.js`; `compute.html` + `dashboard.html` inline scripts parse clean (vm); `remote-brain.js` ESM `import()` clean; bundle rebuilt + verified. Cascaded feature → develop → main one at a time with a check between each per Gee's directive.
+
+---
+
 ## 2026-06-20 — Pre-alpha deploy hardening — DEPLOY-FIX (DF.1–DF.7) + distributed multi-GPU data-parallel engine + community-compute auto-scaling + full public-docs sweep → RELEASE CASCADE
 
 ### Gee verbatim per LAW #0

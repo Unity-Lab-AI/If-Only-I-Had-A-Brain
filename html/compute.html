@@ -18,6 +18,7 @@
   one donor dropping off never downgrades the brain.
 </p>
 <div id="status">Connecting to brain server...</div>
+<div id="yourgpu" style="margin-top:8px;font-size:12px;color:#ff4d9a;font-weight:bold;"></div>
 <div id="hierarchy" style="margin-top:12px;font-size:11px;color:#666;line-height:1.6;"></div>
 <div id="stats" style="margin-top:10px;font-size:12px;color:#555;"></div>
 <div id="perf" style="margin-top:10px;font-size:11px;color:#444;"></div>
@@ -42,6 +43,7 @@
 import { GPUCompute } from '/js/brain/gpu-compute.js';
 
 const statusEl = document.getElementById('status');
+const gpuEl = document.getElementById('yourgpu');
 const hierarchyEl = document.getElementById('hierarchy');
 const statsEl = document.getElementById('stats');
 const perfEl = document.getElementById('perf');
@@ -128,6 +130,32 @@ let totalComputeMs = 0;
 
   // NOW connect WebSocket — GPU is ready
   connectToServer();
+
+  // #30 — periodic per-donor telemetry. Each donor reports ITS OWN GPU
+  // (model, VRAM capacity, binding ceiling, live throughput) so the admin
+  // dashboard can aggregate the donor fleet instead of the GPU-less server
+  // box's empty probe. Also paints the donor's own GPU line on this worker
+  // page ("each their own"). WebGPU forbids true util%/VRAM-used (privacy),
+  // so Gneurons/sec is the honest contribution signal.
+  const _reportTelemetry = () => {
+    if (!gpu || !ws || ws.readyState !== 1) return;
+    let vramMB = 0, maxBindMB = 0, gpuName = 'webgpu';
+    try {
+      const lim = gpu._device && gpu._device.limits;
+      vramMB = Math.round(((gpu._maxBufferSize) || (lim && lim.maxBufferSize) || 0) / (1024 * 1024));
+      maxBindMB = Math.round(((gpu._maxStorageBufferBindingSize) || (lim && lim.maxStorageBufferBindingSize) || 0) / (1024 * 1024));
+      const info = gpu._adapterInfo;
+      if (info) gpuName = (info.device || info.description || info.vendor || info.architecture || 'webgpu').toString().slice(0, 80);
+    } catch { /* capacity reporting is best-effort */ }
+    const gneuronsPerSec = window._lastGneuronsPerSec || 0;
+    try {
+      ws.send(JSON.stringify({ type: 'gpu_telemetry', gpuName, vramMB, maxBindMB, gneuronsPerSec, stepsComputed }));
+    } catch { /* socket dying — next tick retries */ }
+    if (gpuEl) {
+      gpuEl.textContent = `🎮 YOUR GPU: ${gpuName} · ${vramMB.toLocaleString()}MB max-buffer / ${maxBindMB.toLocaleString()}MB max-binding · ${gneuronsPerSec.toFixed(2)} Gneurons/sec`;
+    }
+  };
+  setInterval(_reportTelemetry, 5000);
 })();
 
 const clusterState = {}; // persists across reconnects
@@ -1013,7 +1041,11 @@ async function handleComputeBatch(msg) {
   const totalSize = ready.reduce((s, c) => s + (clusterState[c.name]?.size || 0), 0);
   statsEl.textContent = `Batch: ${ready.length}×${substeps} steps in ${elapsed.toFixed(0)}ms | Total: ${stepsComputed.toLocaleString()} steps | ${(totalSize / 1e6).toFixed(0)}M neurons`;
   const totalSpikes = Object.values(perCluster).reduce((s, p) => s + p.lastSpikeCount, 0);
-  perfEl.textContent = `Throughput: ${((totalSize * substeps) / (elapsed / 1000) / 1e9).toFixed(2)} Gneurons/sec | Last-substep spikes: ${totalSpikes.toLocaleString()}`;
+  // #30 — stash this donor's live throughput so the periodic gpu_telemetry
+  // send can report it. Gneurons/sec is the honest contribution proxy
+  // (WebGPU forbids reading true util%/VRAM-used for privacy).
+  window._lastGneuronsPerSec = (totalSize * substeps) / (elapsed / 1000) / 1e9;
+  perfEl.textContent = `Throughput: ${window._lastGneuronsPerSec.toFixed(2)} Gneurons/sec | Last-substep spikes: ${totalSpikes.toLocaleString()}`;
 }
 
 // Per-cluster compute request handler — single fullStep per call.
