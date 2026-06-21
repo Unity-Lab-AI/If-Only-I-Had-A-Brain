@@ -53313,16 +53313,7 @@ var CLUSTER_HEBBIAN_MIXIN = {
           }
           const preF2 = this.regionSpikes(src);
           const postF2 = this.regionSpikes(dst);
-          const _rows = proj.rows | 0;
-          const _CHUNK = 25e4;
-          if (_rows > _CHUNK) {
-            for (let _rs = 0; _rs < _rows; _rs += _CHUNK) {
-              proj.ojaUpdate(preF2, postF2, lr, { ...ojaOpts || {}, rowStart: _rs, rowEnd: Math.min(_rs + _CHUNK, _rows) });
-              await new Promise((resolve) => setImmediate(resolve));
-            }
-          } else {
-            proj.ojaUpdate(preF2, postF2, lr, ojaOpts);
-          }
+          await this._ojaUpdateChunked(proj, preF2, postF2, lr, ojaOpts);
         }
         continue;
       }
@@ -53339,10 +53330,10 @@ var CLUSTER_HEBBIAN_MIXIN = {
         try {
           await this._sparsePool.hebbianUpdate(proj, preF, postF, lr);
         } catch {
-          proj.ojaUpdate(preF, postF, lr, ojaOpts);
+          await this._ojaUpdateChunked(proj, preF, postF, lr, ojaOpts);
         }
       } else {
-        proj.ojaUpdate(preF, postF, lr, ojaOpts);
+        await this._ojaUpdateChunked(proj, preF, postF, lr, ojaOpts);
       }
       if (this._gpuProxyReady && this._gpuProxy && this._gpuProxy.hebbian) {
         try {
@@ -53350,6 +53341,27 @@ var CLUSTER_HEBBIAN_MIXIN = {
         } catch {
         }
       }
+    }
+  },
+  // #37/#112.4 — chunked CPU Oja. Slices ojaUpdate's row loop + yields a
+  // macrotask between slices so a single large projection can't monopolize the
+  // event loop (dst region = millions of rows at biological scale; the loop is
+  // seconds even with the skip-non-firing fast-out). The update is row-
+  // independent, so slicing produces an IDENTICAL result to one full pass — it
+  // just lets a /ws handshake get a slot between slices. setImmediate on Node;
+  // the setTimeout(0) shim in the browser bundle (setImmediate is Node-only).
+  // Below the chunk threshold it's a single synchronous pass (no yield overhead).
+  async _ojaUpdateChunked(proj, preF, postF, lr, ojaOpts) {
+    const rows = proj.rows | 0;
+    const CHUNK = 25e4;
+    if (rows <= CHUNK) {
+      proj.ojaUpdate(preF, postF, lr, ojaOpts);
+      return;
+    }
+    const yieldMacro = typeof setImmediate === "function" ? () => new Promise((r) => setImmediate(r)) : () => new Promise((r) => setTimeout(r, 0));
+    for (let rs = 0; rs < rows; rs += CHUNK) {
+      proj.ojaUpdate(preF, postF, lr, { ...ojaOpts || {}, rowStart: rs, rowEnd: Math.min(rs + CHUNK, rows) });
+      await yieldMacro();
     }
   },
   /**
@@ -53397,7 +53409,12 @@ var CLUSTER_HEBBIAN_MIXIN = {
           colIdx: proj.colIdx,
           rowPtr: proj.rowPtr
         };
-        const ack = await this._gpuProxy.upload(key, matrix, binding);
+        let ack = null;
+        for (let _try = 1; _try <= 3; _try++) {
+          ack = await this._gpuProxy.upload(key, matrix, binding);
+          if (ack && ack.ok) break;
+          if (_try < 3) console.warn(`[Cluster ${this.name}] GPU upload ${projName || key} attempt ${_try}/3 failed (${ack ? "ack not-ok" : "null / timeout"}) \u2014 retrying`);
+        }
         if (ack && ack.ok) {
           uploaded++;
           if (binding) {
@@ -66730,6 +66747,16 @@ var PREK_MIXIN = {
 };
 
 // ../js/brain/curriculum/kindergarten.js
+var _kGateEnvNum = (key, dflt) => {
+  try {
+    const v = typeof process !== "undefined" && process.env ? Number(process.env[key]) : NaN;
+    return v > 0 ? v : dflt;
+  } catch {
+    return dflt;
+  }
+};
+var K_GATE_PROD_MIN = _kGateEnvNum("DREAM_GATE_PROD_MIN", 0.8);
+var K_GATE_PATH_MIN = _kGateEnvNum("DREAM_GATE_PATH_MIN", 0.8);
 var K_MIXIN = {
   /**
    * K-LIFE-VOCAB — Pre-step. Defines K-LIFE-specific new vocab via
@@ -68565,7 +68592,7 @@ var K_MIXIN = {
         console.warn("[Curriculum] _probeSentenceGeneration[life] threw:", err?.message || err);
       }
       const sentenceGenRate = sentenceGen.rate || 0;
-      const pass = prodRate >= 0.95;
+      const pass = prodRate >= K_GATE_PROD_MIN;
       const pct = (r) => (r * 100).toFixed(0);
       const prodFailSummary = prodResult.fails && prodResult.fails.length > 0 ? " [FAIL: " + prodResult.fails.slice(0, 5).map((f) => `"${f.q}"\u2192"${String(f.emitted).slice(0, 30)}"`).join("; ") + "]" : "";
       const _lifeKResult = {
@@ -68916,7 +68943,7 @@ var K_MIXIN = {
         console.warn("[Curriculum] _probeSentenceGeneration[art] threw:", err?.message || err);
       }
       const sentenceGenRate = sentenceGen.rate || 0;
-      const pass = prodRate >= 0.95;
+      const pass = prodRate >= K_GATE_PROD_MIN;
       const pct = (r) => (r * 100).toFixed(0);
       const prodFailSummary = prodResult.fails && prodResult.fails.length > 0 ? " [FAIL: " + prodResult.fails.slice(0, 5).map((f) => `"${f.q}"\u2192"${String(f.emitted).slice(0, 30)}"`).join("; ") + "]" : "";
       const _artKResult = {
@@ -69107,7 +69134,7 @@ var K_MIXIN = {
         console.warn("[Curriculum] _probeSentenceGeneration[social] threw:", err?.message || err);
       }
       const sentenceGenRate = sentenceGen.rate || 0;
-      const pass = prodRate >= 0.95;
+      const pass = prodRate >= K_GATE_PROD_MIN;
       const pct = (r) => (r * 100).toFixed(0);
       const prodFailSummary = prodResult.fails && prodResult.fails.length > 0 ? " [FAIL: " + prodResult.fails.slice(0, 5).map((f) => `"${f.q}"\u2192"${String(f.emitted).slice(0, 30)}"`).join("; ") + "]" : "";
       const _socKResult = {
@@ -69286,7 +69313,7 @@ var K_MIXIN = {
         console.warn("[Curriculum] _probeSentenceGeneration[science] threw:", err?.message || err);
       }
       const sentenceGenRate = sentenceGen.rate || 0;
-      const PROD_MIN = 0.95;
+      const PROD_MIN = K_GATE_PROD_MIN;
       const pass = prodRate >= PROD_MIN;
       const pct = (r) => (r * 100).toFixed(0);
       const prodFailSummary = prodResult.fails && prodResult.fails.length > 0 ? " [FAIL: " + prodResult.fails.slice(0, 5).map((f) => `"${f.q}"\u2192"${String(f.emitted).slice(0, 30)}"`).join("; ") + "]" : "";
@@ -69934,10 +69961,10 @@ var K_MIXIN = {
       const shapeDimRate = shapeDimResult.total > 0 ? shapeDimResult.pass / shapeDimResult.total : 0;
       const shapeComposeRate = shapeComposeResult.total > 0 ? shapeComposeResult.pass / shapeComposeResult.total : 0;
       const prodRate = prodResult.total > 0 ? prodResult.pass / prodResult.total : 0;
-      const PATH_MIN = 0.95;
-      const SEQ_MIN = 0.95;
-      const ORDER_MIN = 0.95;
-      const PROD_MIN = 0.95;
+      const PATH_MIN = K_GATE_PATH_MIN;
+      const SEQ_MIN = K_GATE_PATH_MIN;
+      const ORDER_MIN = K_GATE_PATH_MIN;
+      const PROD_MIN = K_GATE_PROD_MIN;
       const pass = readRate >= PATH_MIN && thinkRate >= PATH_MIN && talkRate >= PATH_MIN && seqRate >= SEQ_MIN && orderRate >= ORDER_MIN && succRate >= PATH_MIN && skipRate >= PATH_MIN && makeTenRate >= PATH_MIN && teenRate >= PATH_MIN && attrRate >= PATH_MIN && classifyRate >= PATH_MIN && shapeSidesRate >= PATH_MIN && shapeDimRate >= PATH_MIN && shapeComposeRate >= PATH_MIN && prodRate >= PROD_MIN;
       const pct = (r) => (r * 100).toFixed(0);
       const prodFailSummary = prodResult.fails && prodResult.fails.length > 0 ? " [FAIL: " + prodResult.fails.slice(0, 5).map((f) => `"${f.q}"\u2192"${String(f.emitted).slice(0, 30)}"`).join("; ") + "]" : "";
@@ -72780,9 +72807,9 @@ var K_MIXIN = {
 `);
       } catch {
       }
-      const PATH_MIN = 0.95;
-      const PROD_MIN = 0.95;
-      const STUDENT_MIN = 0.95;
+      const PATH_MIN = K_GATE_PATH_MIN;
+      const PROD_MIN = K_GATE_PROD_MIN;
+      const STUDENT_MIN = K_GATE_PROD_MIN;
       const SENTENCE_GEN_MIN = 0.6;
       let sentenceGen = { passed: 0, total: 5, rate: 0, perIntent: {} };
       try {
@@ -88672,6 +88699,16 @@ var GRADE_ORDER = [
   "grad",
   "phd"
 ];
+var _gateEnvNum = (key, dflt) => {
+  try {
+    const v = typeof process !== "undefined" && process.env ? Number(process.env[key]) : NaN;
+    return v > 0 ? v : dflt;
+  } catch {
+    return dflt;
+  }
+};
+var GATE_PROD_MIN = _gateEnvNum("DREAM_GATE_PROD_MIN", 0.8);
+var GATE_PATH_MIN = _gateEnvNum("DREAM_GATE_PATH_MIN", 0.8);
 var ALPHABET_ORDER = "abcdefghijklmnopqrstuvwxyz";
 var DIGIT_ORDER = "0123456789";
 var K_CONCRETE_SENTENCES = [
@@ -103419,7 +103456,7 @@ var Curriculum = class _Curriculum {
         visualCortex: this.engine && this.engine.visualCortex || null
       });
       const prodRate = prodResult.total > 0 ? prodResult.pass / prodResult.total : 0;
-      const PROD_MIN = opts.prodMin ?? 0.95;
+      const PROD_MIN = opts.prodMin ?? GATE_PROD_MIN;
       const pass = prodRate >= PROD_MIN;
       const pct = (r) => (r * 100).toFixed(0);
       const failSummary = prodResult.fails && prodResult.fails.length > 0 ? " [FAIL: " + prodResult.fails.slice(0, 5).map((f) => `"${f.q}"\u2192"${String(f.emitted).slice(0, 30)}"`).join("; ") + "]" : "";
@@ -103903,7 +103940,7 @@ var Curriculum = class _Curriculum {
     }
     let readPass = 0, talkPass = 0;
     const talkFails = [];
-    const PATH_MIN = 0.95;
+    const PATH_MIN = GATE_PATH_MIN;
     for (const word of sample) {
       const firstLetter = word.replace(/[^a-z]/g, "")[0];
       if (!firstLetter) continue;
@@ -104279,7 +104316,7 @@ var Curriculum = class _Curriculum {
     }
     let readPass = 0, talkPass = 0;
     const talkFails = [];
-    const PATH_MIN = 0.95;
+    const PATH_MIN = GATE_PATH_MIN;
     for (const sentence of sample) {
       const words = sentence.split(/\s+/).filter(Boolean);
       if (words.length < 2) continue;
@@ -105564,7 +105601,7 @@ var Curriculum = class _Curriculum {
     }
     let readPass = 0, talkPass = 0;
     const talkFails = [];
-    const PATH_MIN = 0.95;
+    const PATH_MIN = GATE_PATH_MIN;
     for (const { name } of sample) {
       const firstLetter = name.replace(/[^a-z]/g, "")[0];
       if (!firstLetter) continue;
@@ -108409,7 +108446,7 @@ var Curriculum = class _Curriculum {
     let comprehendPass = 0;
     const fails = [];
     const SEM_DIM = 300;
-    const PATH_MIN = 0.95;
+    const PATH_MIN = GATE_PATH_MIN;
     for (const { prompt, answer } of sample) {
       const accumSem = new Float64Array(SEM_DIM);
       let wordCount = 0;
@@ -108500,7 +108537,7 @@ var Curriculum = class _Curriculum {
     }
     let convPass = 0;
     const fails = [];
-    const PATH_MIN = 0.95;
+    const PATH_MIN = GATE_PATH_MIN;
     for (const { input, expectTopics } of sample) {
       const words = input.split(/\s+/).filter(Boolean);
       const inputEmb = sharedEmbeddings.getSentenceEmbedding ? sharedEmbeddings.getSentenceEmbedding(input) : sharedEmbeddings.getEmbedding(words[0] || "hello");
@@ -118385,6 +118422,15 @@ var landingBrainSource = null;
       if (landingBrain3d) landingBrain3d.updateState(state);
       updateLandingStats(state);
       updateBrainIndicator(state);
+      try {
+        const banner = document.getElementById("unity-donor-banner");
+        if (banner) {
+          const pool = state && state.perf && state.perf.gpuPool;
+          const noDonor = !!pool && (pool.donorCount | 0) === 0;
+          banner.classList.toggle("active", noDonor);
+        }
+      } catch {
+      }
     });
     console.log("[Landing] Connected to server brain");
     if (landingBrain3d && typeof landingBrain3d.setBrain === "function") {

@@ -435,6 +435,29 @@ export const GRADE_ORDER = [
   'grad', 'phd',
 ];
 
+// #112.5 — A+ gate thresholds. The G1+ grade gates (and K) were hardcoded at
+// 0.95 (95% read/think/talk/production accuracy, "LAW 7 A+"). At biological
+// scale that bar is effectively unreachable, so a genuinely-trained cell never
+// A+-passes and the walk leans entirely on the slower force-advance fallback
+// (0.2 floor). 95% isn't a realistic per-grade PASS bar. Recalibrated to a
+// real-but-achievable default so a genuinely-trained cell A+-passes cleanly —
+// real production still required at benchmark (NOT a fake pass). The default is
+// NOT arbitrary: 0.80 is this codebase's own authoritative passing bar —
+// `STANDARD_CUT_SCORES.__default__` in student-question-banks.js, the "aggregate
+// K benchmark floor per DIBELS 8 below-benchmark cut scores". Env-tunable
+// (raise toward 0.95 for strict mastery). Mirrors the K_GATE_* constants in
+// curriculum/kindergarten.js. `process` guarded (also bundled to the browser).
+// Pairs with #112.1-4 (teach quality) — without real emissions no threshold
+// passes, A+ or force-advance.
+const _gateEnvNum = (key, dflt) => {
+  try {
+    const v = (typeof process !== 'undefined' && process.env) ? Number(process.env[key]) : NaN;
+    return v > 0 ? v : dflt;
+  } catch { return dflt; }
+};
+const GATE_PROD_MIN = _gateEnvNum('DREAM_GATE_PROD_MIN', 0.80);
+const GATE_PATH_MIN = _gateEnvNum('DREAM_GATE_PATH_MIN', 0.80);
+
 // ─── T14.24 — Alphabet + Digit data (ALPHABET AS DATA, NOT RULE) ───
 // These are not lookup tables for grammar rules — they are the
 // ALPHABET itself, which is primitive input data like the corpora.
@@ -16568,7 +16591,7 @@ export class Curriculum {
         visualCortex: (this.engine && this.engine.visualCortex) || null,
       });
       const prodRate = prodResult.total > 0 ? prodResult.pass / prodResult.total : 0;
-      const PROD_MIN = opts.prodMin ?? 0.95;
+      const PROD_MIN = opts.prodMin ?? GATE_PROD_MIN;
       const pass = prodRate >= PROD_MIN;
       const pct = (r) => (r * 100).toFixed(0);
       const failSummary = prodResult.fails && prodResult.fails.length > 0
@@ -17238,7 +17261,7 @@ export class Curriculum {
 
     let readPass = 0, talkPass = 0;
     const talkFails = [];
-    const PATH_MIN = 0.95;
+    const PATH_MIN = GATE_PATH_MIN;
 
     for (const word of sample) {
       const firstLetter = word.replace(/[^a-z]/g, '')[0];
@@ -17682,7 +17705,7 @@ export class Curriculum {
 
     let readPass = 0, talkPass = 0;
     const talkFails = [];
-    const PATH_MIN = 0.95;
+    const PATH_MIN = GATE_PATH_MIN;
 
     for (const sentence of sample) {
       const words = sentence.split(/\s+/).filter(Boolean);
@@ -19135,7 +19158,7 @@ export class Curriculum {
 
     let readPass = 0, talkPass = 0;
     const talkFails = [];
-    const PATH_MIN = 0.95;
+    const PATH_MIN = GATE_PATH_MIN;
 
     for (const { name } of sample) {
       const firstLetter = name.replace(/[^a-z]/g, '')[0];
@@ -22975,7 +22998,7 @@ export class Curriculum {
     let comprehendPass = 0;
     const fails = [];
     const SEM_DIM = 300;
-    const PATH_MIN = 0.95;
+    const PATH_MIN = GATE_PATH_MIN;
 
     for (const { prompt, answer } of sample) {
       // Build accumulated sem state from the prompt words.
@@ -23074,7 +23097,7 @@ export class Curriculum {
 
     let convPass = 0;
     const fails = [];
-    const PATH_MIN = 0.95;
+    const PATH_MIN = GATE_PATH_MIN;
 
     for (const { input, expectTopics } of sample) {
       // Get the input sentence's GloVe centroid

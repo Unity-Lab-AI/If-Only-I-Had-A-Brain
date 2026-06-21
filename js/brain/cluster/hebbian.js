@@ -185,16 +185,7 @@ export const CLUSTER_HEBBIAN_MIXIN = {
           // identical; we just `await` a macrotask between slices so the loop
           // drains HTTP/WS work. GPU fire-and-forget already ran above, so GPU
           // weights stay current regardless.
-          const _rows = proj.rows | 0;
-          const _CHUNK = 250000;
-          if (_rows > _CHUNK) {
-            for (let _rs = 0; _rs < _rows; _rs += _CHUNK) {
-              proj.ojaUpdate(preF, postF, lr, { ...(ojaOpts || {}), rowStart: _rs, rowEnd: Math.min(_rs + _CHUNK, _rows) });
-              await new Promise(resolve => setImmediate(resolve));
-            }
-          } else {
-            proj.ojaUpdate(preF, postF, lr, ojaOpts);
-          }
+          await this._ojaUpdateChunked(proj, preF, postF, lr, ojaOpts);
         }
         continue;
       }
@@ -232,19 +223,21 @@ export const CLUSTER_HEBBIAN_MIXIN = {
       // (standalone browser-only mode, or pre-rebind window during
       // initial boot). At biological scale all cross-projections are
       // GPU-bound post T17.7 Phase C.1 rebind so this path is cold.
+      // #112.4 — CHUNK the non-GPU-bound CPU Oja. This path runs when cross-
+      // projections AREN'T GPU-bound — at biological scale that's the donor-
+      // upload-FAILED case (the all-night "2/17 uploaded, 15 fell to CPU" loop):
+      // 15 projections × a full sync ojaUpdate over millions of dst rows = the
+      // residual ~5s [EventLoop] BLOCK during teach. _ojaUpdateChunked slices it
+      // + yields between slices (row-independent math = identical result), so a
+      // /ws donor/chat handshake gets an event-loop slot even on the CPU path.
       if (this._sparsePool && this._sparsePool.ready) {
         try {
-          // Sparse-pool path is cold at biological scale (sync path wins
-          // on nnz >= 100K per intraSynapsesHebbian threshold). Browser-
-          // only mode still uses the pool with bare Hebbian — the GPU
-          // plasticity shader already runs Oja fire-and-forget below, so
-          // the CSR shadow update stays correct-enough for probes.
           await this._sparsePool.hebbianUpdate(proj, preF, postF, lr);
         } catch {
-          proj.ojaUpdate(preF, postF, lr, ojaOpts);
+          await this._ojaUpdateChunked(proj, preF, postF, lr, ojaOpts);
         }
       } else {
-        proj.ojaUpdate(preF, postF, lr, ojaOpts);
+        await this._ojaUpdateChunked(proj, preF, postF, lr, ojaOpts);
       }
       // T17.3.d — fire-and-forget GPU Hebbian fallback for standalone
       // (non-bound) projections. Bandwidth cost: srcSize + dstSize u32s.
@@ -253,6 +246,27 @@ export const CLUSTER_HEBBIAN_MIXIN = {
           this._gpuProxy.hebbian(`${this.name}_${name}`, preF, postF, lr);
         } catch { /* non-fatal — CPU path already updated */ }
       }
+    }
+  },
+
+  // #37/#112.4 — chunked CPU Oja. Slices ojaUpdate's row loop + yields a
+  // macrotask between slices so a single large projection can't monopolize the
+  // event loop (dst region = millions of rows at biological scale; the loop is
+  // seconds even with the skip-non-firing fast-out). The update is row-
+  // independent, so slicing produces an IDENTICAL result to one full pass — it
+  // just lets a /ws handshake get a slot between slices. setImmediate on Node;
+  // the setTimeout(0) shim in the browser bundle (setImmediate is Node-only).
+  // Below the chunk threshold it's a single synchronous pass (no yield overhead).
+  async _ojaUpdateChunked(proj, preF, postF, lr, ojaOpts) {
+    const rows = proj.rows | 0;
+    const CHUNK = 250000;
+    if (rows <= CHUNK) { proj.ojaUpdate(preF, postF, lr, ojaOpts); return; }
+    const yieldMacro = (typeof setImmediate === 'function')
+      ? () => new Promise((r) => setImmediate(r))
+      : () => new Promise((r) => setTimeout(r, 0));
+    for (let rs = 0; rs < rows; rs += CHUNK) {
+      proj.ojaUpdate(preF, postF, lr, { ...(ojaOpts || {}), rowStart: rs, rowEnd: Math.min(rs + CHUNK, rows) });
+      await yieldMacro();
     }
   },
 
@@ -318,7 +332,19 @@ export const CLUSTER_HEBBIAN_MIXIN = {
           colIdx: proj.colIdx,
           rowPtr: proj.rowPtr,
         };
-        const ack = await this._gpuProxy.upload(key, matrix, binding);
+        // #112.3 — per-matrix retry. A flaky donor used to time out on ONE
+        // matrix and the whole upload declared PARTIAL (e.g. 2/17) → CPU
+        // fallback for the other 15 → the all-night CPU-grind loop that never
+        // left kindergarten. Retry each matrix up to 3× (the shorter per-attempt
+        // timeout in gpuSparseUpload makes this fast) before giving up to CPU.
+        // A transient drop recovers; a truly-gone donor fails fast and the next
+        // reconnect re-arms.
+        let ack = null;
+        for (let _try = 1; _try <= 3; _try++) {
+          ack = await this._gpuProxy.upload(key, matrix, binding);
+          if (ack && ack.ok) break;
+          if (_try < 3) console.warn(`[Cluster ${this.name}] GPU upload ${projName || key} attempt ${_try}/3 failed (${ack ? 'ack not-ok' : 'null / timeout'}) — retrying`);
+        }
         if (ack && ack.ok) {
           uploaded++;
           if (binding) {

@@ -17,6 +17,14 @@
   equational, <b>no text-AI / no language model</b>. Leave the tab open to keep donating;
   one donor dropping off never downgrades the brain.
 </p>
+<p style="font-size:11px;color:#fbbf24;line-height:1.6;max-width:780px;margin:0 0 14px 0;border-left:2px solid #fbbf24;padding-left:8px;">
+  <b>Donating overnight?</b> This page now holds a screen <b>Wake Lock</b> and auto-recovers a lost
+  GPU device — but for an unattended run also: (1) <b>disable system sleep/hibernate</b> in your OS
+  power settings (a wake lock only blocks <i>screen</i> sleep), (2) keep this tab <b>open and foreground</b>,
+  and (3) in <code>chrome://discards</code> set this tab to <b>no auto-discard</b> so Chrome doesn't
+  unload it under memory pressure. A donor that stays connected uploads once and keeps training; a donor
+  that drops forces a re-upload and stalls the brain.
+</p>
 <div id="status">Connecting to brain server...</div>
 <div id="yourgpu" style="margin-top:8px;font-size:12px;color:#ff4d9a;font-weight:bold;"></div>
 <div id="hierarchy" style="margin-top:12px;font-size:11px;color:#666;line-height:1.6;"></div>
@@ -95,6 +103,78 @@ let ws = null;
 let stepsComputed = 0;
 let totalComputeMs = 0;
 
+// #112.1 — Wake Lock + device-lost recovery helpers. Defined before the init
+// IIFE; their BODIES run at call time (after init / on a later device loss)
+// when gpu / ws / clusterState / connectToServer are all live, so no TDZ.
+let _wakeLock = null;
+async function _acquireWakeLock() {
+  try {
+    if ('wakeLock' in navigator && document.visibilityState === 'visible') {
+      _wakeLock = await navigator.wakeLock.request('screen');
+      _wakeLock.addEventListener('release', () => { _wakeLock = null; });
+    }
+  } catch { /* wake lock unavailable / denied — best effort, never block donation */ }
+}
+document.addEventListener('visibilitychange', () => {
+  // The OS releases the screen lock whenever the tab is hidden — re-acquire it
+  // the moment the tab is visible again so an overnight donor keeps it held.
+  if (document.visibilityState === 'visible' && !_wakeLock) _acquireWakeLock();
+});
+
+let _deviceLostRecovering = false;
+let _deviceLostCount = 0;
+let _lastDeviceLostAt = 0;
+function _installDeviceLostHandler() {
+  if (!gpu) return;
+  gpu.setDeviceLostCallback(async (info) => {
+    const reason = info && info.reason ? info.reason : 'unknown';
+    const message = info && info.message ? info.message : '(no message)';
+    gpuReady = false;
+    // Still tell the server (its log + dashboard banner) — but DON'T stop there.
+    try { if (ws && ws.readyState === 1) ws.send(JSON.stringify({ type: 'device_lost', reason, message })); } catch { /* non-fatal */ }
+    // Rate-limit: >3 losses in 60s = a genuine hardware/driver problem, not a
+    // transient — stop thrashing and ask for a manual reload.
+    const now = Date.now();
+    if (now - _lastDeviceLostAt > 60000) _deviceLostCount = 0;
+    _lastDeviceLostAt = now; _deviceLostCount++;
+    if (_deviceLostCount > 3) {
+      statusEl.textContent = `WebGPU device lost ${_deviceLostCount}× in 60s (reason=${reason}) — hardware/driver issue. Reload this tab.`;
+      statusEl.style.color = '#ef4444';
+      return;
+    }
+    if (_deviceLostRecovering) return;
+    _deviceLostRecovering = true;
+    statusEl.textContent = `WebGPU device lost (${reason}) — auto-recovering (rebuild GPU + reconnect)...`;
+    statusEl.style.color = '#f59e0b';
+    try {
+      // GPU buffers died with the device — drop stale cluster state so the
+      // server's re-upload lands on a CLEAN device (a clean re-upload, not a
+      // partial onto half-gone buffers — that partial was the #112.3 storm).
+      for (const k of Object.keys(clusterState)) delete clusterState[k];
+      window._sprsFrameStats = null;
+      try { if (ws) ws.close(); } catch { /* ignore */ }
+      gpu = new GPUCompute();
+      _installDeviceLostHandler(); // re-arm on the fresh device
+      const ok = await gpu.init();
+      if (ok) {
+        gpuReady = true;
+        statusEl.textContent = 'WebGPU device recovered — reconnecting to brain...';
+        statusEl.style.color = '#22c55e';
+        _acquireWakeLock();
+        connectToServer();
+      } else {
+        statusEl.textContent = 'WebGPU recovery failed (GPU init returned false) — reload this tab.';
+        statusEl.style.color = '#ef4444';
+      }
+    } catch (e) {
+      statusEl.textContent = `WebGPU recovery error: ${(e && e.message) || e} — reload this tab.`;
+      statusEl.style.color = '#ef4444';
+    } finally {
+      _deviceLostRecovering = false;
+    }
+  });
+}
+
 // Init WebGPU FIRST, then connect WebSocket
 (async () => {
   statusEl.textContent = 'Initializing WebGPU...';
@@ -111,22 +191,22 @@ let totalComputeMs = 0;
   // even before the first cluster upload / sparse matrix arrives.
   renderHierarchy();
 
-  // Register device-lost callback BEFORE connecting to the
-  // server so a device.lost event fired mid-upload gets surfaced as a
-  // `device_lost` WebSocket message to the server log instead of just
-  // cascading phantom "size too large" errors on the client console.
-  gpu.setDeviceLostCallback((info) => {
-    const reason = info && info.reason ? info.reason : 'unknown';
-    const message = info && info.message ? info.message : '(no message)';
-    statusEl.textContent = `WebGPU DEVICE LOST — reason=${reason}. Reload this tab after fixing cortex N.`;
-    statusEl.style.color = '#ef4444';
-    gpuReady = false;
-    try {
-      if (ws && ws.readyState === 1) {
-        ws.send(JSON.stringify({ type: 'device_lost', reason, message }));
-      }
-    } catch { /* non-fatal */ }
-  });
+  // #112.1 — Screen Wake Lock so the machine/tab doesn't sleep mid-donation.
+  // Overnight sleep was a top cause of the donor dropping → server re-upload
+  // storm → CPU fallback → zero training progress (the "trained all night,
+  // never left kindergarten" loop). Re-acquired on visibilitychange because
+  // the OS releases the lock when the tab is hidden. CAVEAT: a screen wake
+  // lock only blocks SCREEN sleep, NOT full-system hibernate — for an all-
+  // night run ALSO disable system sleep in the OS power settings.
+  _acquireWakeLock();
+
+  // #112.1 — device-lost AUTO-RECOVERY. A device loss (driver timeout on long
+  // compute, GPU reset, suspend/resume) used to strand the donor with "reload
+  // this tab" — overnight that meant the brain paused till morning. Re-register
+  // a handler that rebuilds the GPU device + reconnects so donation resumes
+  // UNATTENDED. Rate-limited: >3 losses in 60s = a real hardware/driver problem,
+  // stop and ask for a reload instead of thrashing.
+  _installDeviceLostHandler();
 
   // NOW connect WebSocket — GPU is ready
   connectToServer();

@@ -1093,7 +1093,14 @@ const SERVER_GPU_MIXIN = {
     // the ack handler can find it even if client ACKs very fast.
     if (!this._gpuSparsePending) this._gpuSparsePending = new Map();
     const promise = new Promise((resolve, reject) => {
-      const timeoutMs = 180_000;
+      // #112.3 — FAIL FAST. Was 180s: a stuck/dropped donor upload hung for 3
+      // minutes before the loop moved on, and with no retry it declared PARTIAL
+      // → CPU fallback. 45s + the per-matrix retry in initGpu means a transient
+      // failure recovers quickly and a truly-gone donor is detected in ~45s, not
+      // 3 minutes. Tunable via DREAM_SPARSE_UPLOAD_TIMEOUT_MS.
+      const timeoutMs = Number(process.env.DREAM_SPARSE_UPLOAD_TIMEOUT_MS) > 0
+        ? Number(process.env.DREAM_SPARSE_UPLOAD_TIMEOUT_MS)
+        : 45_000;
       const timeout = setTimeout(() => {
         if (this._gpuSparsePending && this._gpuSparsePending.has(reqId)) {
           this._gpuSparsePending.delete(reqId);
