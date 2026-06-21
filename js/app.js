@@ -931,11 +931,12 @@ function renderLandingTab(tab, s) {
         ${metric('Cores', p.cores ?? '?', '#00e5ff')}
         ${metric('Parallel Workers', p.workerCount ?? 0, p.parallelMode ? '#22c55e' : '#555')}
         ${metric('Mode', p.parallelMode ? 'PARALLEL (' + (p.workerCount ?? 0) + ' threads)' : 'Single Thread', p.parallelMode ? '#22c55e' : '#f59e0b')}
-      `) + card('GPU', `
-        ${metric('Usage', (p.gpuUtilPercent ?? 0) + '%', gpuColor)}
-        ${bar(p.gpuUtilPercent ?? 0, gpuColor)}
-        ${metric('Model', p.gpuName || 'none', '#00e5ff')}
-        ${metric('VRAM', (p.gpuVramMB ?? 0).toLocaleString() + 'MB', '#a855f7')}
+      `) + card('GPU (donor pool)', `
+        ${metric('Donor GPUs', (p.gpuPool?.donorCount ?? 0), (p.gpuPool?.donorCount ?? 0) > 0 ? '#22c55e' : '#ef4444')}
+        ${metric('Pooled VRAM', (p.gpuPool?.totalVramMB ?? 0).toLocaleString() + 'MB', '#a855f7')}
+        ${metric('Throughput', (p.gpuPool?.aggGneuronsPerSec ?? 0).toFixed(2) + ' Gn/s', '#00e5ff')}
+        ${metric('Primary', p.gpuPool?.primaryModel || ((p.gpuPool?.donorCount ?? 0) ? 'webgpu' : 'none'), '#00e5ff')}
+        ${metric('Server box', p.gpuName || 'none (orchestrator)', '#555')}
       `) + card('Memory', `
         ${metric('Heap', (p.memUsedMB ?? 0) + 'MB', '#a855f7')}
         ${metric('RSS', (p.memRssMB ?? 0) + 'MB', '#a855f7')}
