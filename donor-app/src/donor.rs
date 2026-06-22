@@ -59,6 +59,29 @@ fn set_status(control: &Control, f: impl FnOnce(&mut DonorStatus)) {
     }
 }
 
+/// Spawn a donor for one GPU on its own thread (own tokio runtime). Returns the Control
+/// (stop flag + live status) and the thread handle. One call per GPU = one full replica.
+pub fn spawn_donor(cfg: DonorConfig, gpu: GpuInfo) -> (Control, std::thread::JoinHandle<()>) {
+    let control = Control::new();
+    let c2 = control.clone();
+    let handle = std::thread::spawn(move || {
+        let rt = match tokio::runtime::Runtime::new() {
+            Ok(rt) => rt,
+            Err(e) => {
+                if let Ok(mut s) = c2.status.lock() { s.note = format!("runtime error: {e}"); }
+                return;
+            }
+        };
+        if let Err(e) = rt.block_on(run_donor(cfg, gpu, c2.clone())) {
+            if let Ok(mut s) = c2.status.lock() {
+                s.note = format!("error: {e}");
+                s.connected = false;
+            }
+        }
+    });
+    (control, handle)
+}
+
 /// In-progress chunked matrix upload (type=4), assembled until the last chunk.
 struct PartialUpload {
     rows: u32,
@@ -164,20 +187,18 @@ pub async fn run_donor(cfg: DonorConfig, gpu: GpuInfo, control: Control) -> Resu
                                 let ack = RebindAck { msg_type: "rebind_sparse_ack", req_id: rb.req_id, name: rb.name, ok: true };
                                 let _ = tx.send(Message::text(serde_json::to_string(&ack).unwrap())).await;
                             }
+                            // Region ops are best-effort: a write that lands before the
+                            // cluster is initialized (or targets a not-yet-known dynamic
+                            // region) is silently skipped — matches the browser donor's
+                            // gpuReady gate. No spam.
                             Ok(ServerMessage::WriteSpikeSlice(w)) => {
-                                if let Err(e) = engine.write_spike_slice(&w.cluster_name, &w.region_name, &w.sparse_indices) {
-                                    eprintln!("[donor] write_spike_slice failed: {e}");
-                                }
+                                let _ = engine.write_spike_slice(&w.cluster_name, &w.region_name, &w.sparse_indices);
                             }
                             Ok(ServerMessage::WriteCurrentSlice(w)) => {
-                                if let Err(e) = engine.write_current_slice(&w.cluster_name, &w.region_name, &w.sparse_indices, &w.sparse_values, w.psi) {
-                                    eprintln!("[donor] write_current_slice failed: {e}");
-                                }
+                                let _ = engine.write_current_slice(&w.cluster_name, &w.region_name, &w.sparse_indices, &w.sparse_values, w.psi);
                             }
                             Ok(ServerMessage::ClearSpikeRegion(w)) => {
-                                if let Err(e) = engine.clear_spike_region(&w.cluster_name, &w.region_name) {
-                                    eprintln!("[donor] clear_spike_region failed: {e}");
-                                }
+                                let _ = engine.clear_spike_region(&w.cluster_name, &w.region_name);
                             }
                             Ok(ServerMessage::ReadbackLetterBuckets(rb)) => {
                                 let counts = engine

@@ -113,15 +113,17 @@ fn main() {
 
     // Headless donor loop (the --no-default-features build is always here).
     if cfg.autostart {
-        // MVP: one donor for the first selected GPU (multi-GPU fan-out is M3+).
-        let target = selected[0].clone();
-        if selected.len() > 1 {
-            println!("(note: donating the first selected GPU [{}]; multi-GPU fan-out is M3+.)", target.index);
+        // One donor (full replica) per selected GPU; Ctrl+C stops them all.
+        let targets: Vec<gpu::GpuInfo> = selected.iter().map(|g| (*g).clone()).collect();
+        println!("donating {} GPU(s) — Ctrl+C to stop:", targets.len());
+        let mut handles = Vec::new();
+        for g in targets {
+            println!("  → [{}] {}", g.index, g.name);
+            let (_control, handle) = donor::spawn_donor(cfg.clone(), g);
+            handles.push(handle);
         }
-        let rt = tokio::runtime::Runtime::new().expect("tokio runtime");
-        if let Err(e) = rt.block_on(donor::run_donor(cfg, target, donor::Control::new())) {
-            eprintln!("[donor] exited with error: {e}");
-            std::process::exit(1);
+        for h in handles {
+            let _ = h.join();
         }
     } else {
         println!("\nsafe-start: not connecting. Use --autostart for headless donation, or run the GUI build.");

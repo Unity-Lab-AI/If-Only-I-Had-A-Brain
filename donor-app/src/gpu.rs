@@ -25,12 +25,23 @@ pub struct GpuInfo {
 
 const MB: u64 = 1024 * 1024;
 
-/// Enumerate every GPU adapter wgpu can see, with the buffer limits we advertise.
-pub fn enumerate() -> Vec<GpuInfo> {
+/// Enumerate real GPU adapters (PRIMARY backend — Vulkan/Metal/DX12 — and not the CPU
+/// software renderer). This avoids listing the same physical GPU once per backend (e.g.
+/// Vulkan + OpenGL) and hides llvmpipe. `ComputeEngine::new` filters IDENTICALLY so the
+/// index here matches the device it opens.
+pub fn select_adapters() -> Vec<wgpu::Adapter> {
     let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor::default());
     instance
-        .enumerate_adapters(wgpu::Backends::all())
-        .iter()
+        .enumerate_adapters(wgpu::Backends::PRIMARY)
+        .into_iter()
+        .filter(|a| a.get_info().device_type != wgpu::DeviceType::Cpu)
+        .collect()
+}
+
+/// Enumerate real GPUs, with the buffer limits we advertise.
+pub fn enumerate() -> Vec<GpuInfo> {
+    select_adapters()
+        .into_iter()
         .enumerate()
         .map(|(index, adapter)| {
             let info = adapter.get_info();

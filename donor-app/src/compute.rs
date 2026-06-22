@@ -114,9 +114,9 @@ fn dispatch_dims(n: u32) -> (u32, u32, u32) {
 impl ComputeEngine {
     /// Build an engine on the adapter at `adapter_index` (from `gpu::enumerate` order).
     pub async fn new(adapter_index: usize) -> Result<Self, String> {
-        let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor::default());
-        let adapters = instance.enumerate_adapters(wgpu::Backends::all());
-        let adapter = adapters
+        // Same filtered list as gpu::enumerate (PRIMARY backend, non-CPU) so the index
+        // here matches what the GUI/CLI showed.
+        let adapter = crate::gpu::select_adapters()
             .into_iter()
             .nth(adapter_index)
             .ok_or_else(|| format!("no GPU adapter at index {adapter_index}"))?;
