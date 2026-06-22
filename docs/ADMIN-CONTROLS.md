@@ -106,3 +106,35 @@ as a clean `inactive (dead)` rather than `failed`.
 `NRestarts=0` (not revived), `ExecMainStatus=42`; stayed down across re-checks;
 `systemctl start unity-brain` → `active` + `/health` alive (resumed 51,130,559
 neurons). Restart (exit 0) and crashes still auto-revive.
+
+---
+
+## Checkpoints, versioning & rollback (#112.11)
+
+The brain **auto-checkpoints every 5 minutes** while running (plus forced saves on
+each passed cell / grade-advance / clean shutdown), and **resumes** from the latest
+checkpoint on a Restart. Rolling versioned backups rotate through the last **N**
+slots — **default 3** (`DREAM_CHECKPOINT_SLOTS`, was a fixed 5; capped to bound disk,
+each `.bin` is ~145 MB at scale). Slots above the cap are pruned on boot.
+
+| Control | Endpoint | What it does |
+|---|---|---|
+| **💾 Save checkpoint now** | `POST /checkpoint` | Force an immediate versioned save between the 5-min ticks |
+| **⏪ Rollback to vN** | `POST /rollback {to:"vN"}` | Restore a backup slot over the active weights (**takes effect on next restart**) |
+| checkpoint list | `GET /versions` | The retained slots (slot, version#, time, size) |
+
+**Version mismatch ⇒ old checkpoint refused.** On boot, a checkpoint loads only if
+its `formatVersion === WEIGHTS_FORMAT_VERSION` **and** its `totalNeurons` matches the
+current build. If a brain change makes them differ, the old checkpoint is **refused**
+and a fresh start runs — surfaced in the dashboard as a **"Training was RESET — the
+previous checkpoint was INCOMPATIBLE"** banner (from the persisted
+`.last-boot-reason.json`, served via `/milestone`).
+
+**Versioning rule (what bumps a version):**
+- **Neuron-count / sizing changes** are auto-detected (the `totalNeurons` check) — old
+  checkpoints auto-refuse, no action needed.
+- **Weight-format / serialization changes** require **manually bumping
+  `WEIGHTS_FORMAT_VERSION`** (`server/brain-server.js`) in the same commit — that's the
+  lever that makes a format change refuse stale checkpoints instead of loading garbage.
+  Routine changes (telemetry, UI, donor lane) must NOT bump it (it forces a fresh start
+  that discards trained weights).

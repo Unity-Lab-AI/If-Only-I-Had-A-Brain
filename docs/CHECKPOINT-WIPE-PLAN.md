@@ -6,7 +6,7 @@
 > "fresh start required". Code-verified against the existing machinery first
 > (LAW 3) — most of this already exists; the plan is the deltas.
 >
-> **Status:** PLANNED 2026-06-22. NOT implemented.
+> **Status:** IMPLEMENTED 2026-06-22 (#112.11) — G1–G4 done. See `docs/ADMIN-CONTROLS.md` + `docs/FINALIZED.md`.
 > **Last updated:** 2026-06-22.
 
 ---
