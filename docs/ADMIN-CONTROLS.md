@@ -94,7 +94,15 @@ For the above to hold, `/etc/systemd/system/unity-brain.service` must have:
 ```
 Restart=always
 RestartPreventExitStatus=42
+SuccessExitStatus=42
 ```
 
 `Restart=always` keeps the brain up through crashes + Restart-button reboots;
-`RestartPreventExitStatus=42` is what lets the Stop button truly halt it.
+`RestartPreventExitStatus=42` is what lets the Stop button truly halt it (exit 42
+is exempt from auto-restart); `SuccessExitStatus=42` makes a deliberate Stop report
+as a clean `inactive (dead)` rather than `failed`.
+
+**Verified on the box (2026-06-22):** POST `/shutdown` → `active=inactive`,
+`NRestarts=0` (not revived), `ExecMainStatus=42`; stayed down across re-checks;
+`systemctl start unity-brain` → `active` + `/health` alive (resumed 51,130,559
+neurons). Restart (exit 0) and crashes still auto-revive.
