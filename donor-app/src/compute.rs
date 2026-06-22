@@ -7,6 +7,7 @@
 
 use std::borrow::Cow;
 use std::collections::HashMap;
+use std::time::Instant;
 use wgpu::util::DeviceExt;
 
 use crate::gpu::{LIF_SHADER, PLASTICITY_SHADER, SPIKE_COUNT_SHADER, SYNAPSE_PROPAGATE_SHADER};
@@ -120,6 +121,12 @@ impl ComputeEngine {
             .into_iter()
             .nth(adapter_index)
             .ok_or_else(|| format!("no GPU adapter at index {adapter_index}"))?;
+        Self::from_adapter(adapter).await
+    }
+
+    /// Build an engine on an already-selected adapter. `MultiEngine` uses this so every GPU
+    /// shares ONE wgpu instance (fewer Vulkan contexts → cleaner teardown).
+    pub async fn from_adapter(adapter: wgpu::Adapter) -> Result<Self, String> {
         let adapter_name = adapter.get_info().name;
 
         let (device, queue) = adapter
@@ -557,6 +564,9 @@ fn build_pipeline(device: &wgpu::Device, label: &str, src: &str) -> wgpu::Comput
 /// engine), so a compute_batch finishes in ~max-per-GPU time, not the sum → real speedup.
 pub struct MultiEngine {
     engines: Vec<ComputeEngine>,
+    /// Per-engine utilization % (1..=100) — each GPU duty-cycles to ITS own target so you can
+    /// e.g. run a display GPU gently and a spare GPU hard, independently.
+    util: Vec<f64>,
     cluster_gpu: HashMap<String, usize>,
     matrix_gpu: HashMap<String, usize>,
     next_cluster: usize,
@@ -578,17 +588,28 @@ pub struct StepOut {
 }
 
 impl MultiEngine {
-    /// Build one engine per GPU index (filtered `gpu::enumerate` order).
-    pub async fn new(indices: &[usize]) -> Result<Self, String> {
+    /// Build one engine per GPU index (filtered `gpu::enumerate` order), each with its own
+    /// utilization target (`utils[k]` pairs with `indices[k]`; missing → 10%). All engines
+    /// share ONE wgpu instance (the adapters from a single `select_adapters` call).
+    pub async fn new(indices: &[usize], utils: &[u8]) -> Result<Self, String> {
         if indices.is_empty() {
             return Err("no GPUs selected".into());
         }
+        let mut adapters: Vec<Option<wgpu::Adapter>> =
+            crate::gpu::select_adapters().into_iter().map(Some).collect();
         let mut engines = Vec::with_capacity(indices.len());
-        for &idx in indices {
-            engines.push(ComputeEngine::new(idx).await?);
+        let mut util = Vec::with_capacity(indices.len());
+        for (k, &idx) in indices.iter().enumerate() {
+            let adapter = adapters
+                .get_mut(idx)
+                .and_then(|o| o.take())
+                .ok_or_else(|| format!("no GPU adapter at index {idx} (or selected twice)"))?;
+            engines.push(ComputeEngine::from_adapter(adapter).await?);
+            util.push((utils.get(k).copied().unwrap_or(10) as f64).clamp(1.0, 100.0));
         }
         Ok(Self {
             engines,
+            util,
             cluster_gpu: HashMap::new(),
             matrix_gpu: HashMap::new(),
             next_cluster: 0,
@@ -648,14 +669,16 @@ impl MultiEngine {
     pub fn propagate(&self, name: &str, pre: &[u32]) -> Result<Vec<f32>, String> {
         match self.matrix_gpu.get(name) {
             Some(&g) => self.engines[g].propagate(name, pre),
-            None => Err(format!("matrix {name} not resident")),
+            // Not resident yet (the brain sends propagate before the upload lands). Best-effort
+            // zero-contribution — matches the browser donor's gpuReady gate. No spam.
+            None => Ok(Vec::new()),
         }
     }
 
     pub fn hebbian(&self, name: &str, pre: &[u32], post: &[u32], lr: f32) -> Result<(), String> {
         match self.matrix_gpu.get(name) {
             Some(&g) => self.engines[g].hebbian(name, pre, post, lr),
-            None => Err(format!("matrix {name} not resident")),
+            None => Ok(()), // not resident yet — best-effort, no weight change, no spam
         }
     }
 
@@ -710,7 +733,9 @@ impl MultiEngine {
                 }
                 let engine = &self.engines[g];
                 let seed0 = base_seed.wrapping_add((g as u32).wrapping_mul(0x9e3779b9));
+                let util_g = self.util.get(g).copied().unwrap_or(100.0);
                 let handle = scope.spawn(move || {
+                    let t0 = Instant::now();
                     let mut seed = seed0;
                     let mut local = Vec::with_capacity(idxs.len());
                     for &i in idxs {
@@ -729,6 +754,12 @@ impl MultiEngine {
                             }
                         }
                         local.push((job.name.clone(), StepOut { total, last }));
+                    }
+                    // Per-GPU duty-cycle: idle a slice so THIS card's busy-fraction ≈ util_g%.
+                    // (Independent per GPU — a gentle display card + a hard spare card coexist.)
+                    if util_g < 100.0 {
+                        let busy = t0.elapsed();
+                        std::thread::sleep(busy.mul_f64((100.0 - util_g) / util_g));
                     }
                     local
                 });

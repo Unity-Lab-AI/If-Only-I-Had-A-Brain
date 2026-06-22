@@ -1,6 +1,7 @@
 {
-  "mode": "wipe",
-  "reason": "default-fresh",
-  "detail": "start.bat default — fresh brain (DREAM_KEEP_STATE not set)",
-  "at": "2026-06-22T18:12:23.802Z"
+  "mode": "resume",
+  "reason": "compatible",
+  "neurons": 25565277,
+  "formatVersion": 1,
+  "at": "2026-06-22T21:32:18.170Z"
 }

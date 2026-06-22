@@ -24,15 +24,19 @@ struct DonorApp {
     cfg: DonorConfig,
     gpus: Vec<GpuInfo>,
     enabled: Vec<bool>,
-    util: f32,
+    util: Vec<f32>,
     host: Option<RunningHost>,
 }
 
 impl DonorApp {
     fn new(cfg: DonorConfig, gpus: Vec<GpuInfo>) -> Self {
-        // Default: card 1 (index 0) enabled; host @ 10%. Nothing runs until ▶ Start.
-        let enabled: Vec<bool> = gpus.iter().enumerate().map(|(i, _)| i == 0).collect();
-        Self { cfg, gpus, enabled, util: 10.0, host: None }
+        // Safe default: enable only the LAST card @ 10%. GPU 0 is almost always the primary
+        // DISPLAY GPU — running compute on it hitches the desktop — so we default to the
+        // highest-indexed card (usually a spare). Single-GPU machines just enable that one.
+        let last = gpus.len().saturating_sub(1);
+        let enabled: Vec<bool> = gpus.iter().enumerate().map(|(i, _)| i == last).collect();
+        let util: Vec<f32> = gpus.iter().map(|_| 10.0).collect();
+        Self { cfg, gpus, enabled, util, host: None }
     }
 
     fn running(&self) -> bool {
@@ -45,20 +49,19 @@ impl DonorApp {
 
     /// Launch ONE donor that aggregates every enabled GPU into a single compute unit.
     fn start(&mut self) {
-        let targets: Vec<GpuInfo> = self
-            .gpus
-            .iter()
-            .enumerate()
-            .filter(|(i, _)| self.enabled[*i])
-            .map(|(_, g)| g.clone())
-            .collect();
+        let mut targets: Vec<GpuInfo> = Vec::new();
+        let mut utils: Vec<u8> = Vec::new();
+        for (i, g) in self.gpus.iter().enumerate() {
+            if self.enabled[i] {
+                targets.push(g.clone());
+                utils.push(self.util[i].round().clamp(1.0, 100.0) as u8);
+            }
+        }
         if targets.is_empty() {
             return;
         }
-        let mut cfg = self.cfg.clone();
-        cfg.utilization_pct = self.util.round().clamp(1.0, 100.0) as u8;
         let count = targets.len();
-        let (control, handle) = donor::spawn_donor(cfg, targets);
+        let (control, handle) = donor::spawn_donor(self.cfg.clone(), targets, utils);
         self.host = Some(RunningHost { control, handle, gpu_count: count });
     }
 
@@ -91,19 +94,21 @@ impl eframe::App for DonorApp {
             });
             ui.add_space(8.0);
 
-            ui.label(egui::RichText::new("GPUs  (all enabled cards form ONE compute unit)").strong());
-            egui::Grid::new("gpus").num_columns(2).spacing([12.0, 6.0]).show(ui, |ui| {
+            ui.label(egui::RichText::new("GPUs  (enabled cards form ONE compute unit; each throttles to its own %)").strong());
+            egui::Grid::new("gpus").num_columns(3).spacing([12.0, 6.0]).show(ui, |ui| {
                 for (i, g) in self.gpus.iter().enumerate() {
                     ui.add_enabled(!running, egui::Checkbox::new(&mut self.enabled[i], ""));
-                    ui.label(format!("[{}] {}  ({} MB binding cap)", g.index, g.name, g.max_storage_binding_mb));
+                    let tag = if i == 0 { "  ⚠ likely your display GPU" } else { "" };
+                    ui.label(format!("[{}] {}{}", g.index, g.name, tag));
+                    ui.add_enabled(!running, egui::Slider::new(&mut self.util[i], 1.0..=100.0).suffix("%"));
                     ui.end_row();
                 }
             });
-            ui.add_space(6.0);
-            ui.horizontal(|ui| {
-                ui.label("Host utilization:");
-                ui.add_enabled(!running, egui::Slider::new(&mut self.util, 1.0..=100.0).suffix("%"));
-            });
+            ui.label(egui::RichText::new(
+                "⚠ Running compute on your display GPU (usually [0]) can lag your desktop, even at low %. \
+                 Prefer a spare card. The per-matrix limit (~2047 MB) is a GPU/WebGPU hardware cap, \
+                 not a limit on how much you contribute — the brain splits large data to fit."
+            ).weak().small());
             ui.add_space(10.0);
 
             ui.horizontal(|ui| {
@@ -154,10 +159,18 @@ pub fn run(cfg: DonorConfig, gpus: Vec<GpuInfo>) -> Result<(), String> {
         viewport: egui::ViewportBuilder::default().with_inner_size([520.0, 420.0]),
         ..Default::default()
     };
-    eframe::run_native(
+    let r = eframe::run_native(
         "unity-donor",
         options,
         Box::new(|_cc| Ok(Box::new(DonorApp::new(cfg, gpus)))),
     )
-    .map_err(|e| format!("GUI failed: {e}"))
+    .map_err(|e| format!("GUI failed: {e}"));
+    // The GUI (egui) and the compute engine each hold their own wgpu/Vulkan context. Tearing
+    // them down together on exit can segfault inside the driver. The window is closed and the
+    // process is ending anyway, so exit hard and let the OS reclaim everything — skip the
+    // destructor race entirely.
+    if r.is_ok() {
+        std::process::exit(0);
+    }
+    r
 }

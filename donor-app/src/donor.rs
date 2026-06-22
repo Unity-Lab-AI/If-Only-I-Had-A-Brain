@@ -5,8 +5,6 @@
 //!
 //! Multi-GPU = one `run_donor` task per selected GPU (M3+). MVP runs one.
 
-use std::time::Instant;
-
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
@@ -62,7 +60,7 @@ fn set_status(control: &Control, f: impl FnOnce(&mut DonorStatus)) {
 /// Spawn ONE donor for a host's whole GPU pool on its own thread (own tokio runtime).
 /// Returns the Control (stop flag + live status) and the thread handle. The host registers
 /// as a single compute unit and drives every GPU in `gpus` internally (see `MultiEngine`).
-pub fn spawn_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>) -> (Control, std::thread::JoinHandle<()>) {
+pub fn spawn_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>) -> (Control, std::thread::JoinHandle<()>) {
     let control = Control::new();
     let c2 = control.clone();
     let handle = std::thread::spawn(move || {
@@ -73,7 +71,7 @@ pub fn spawn_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>) -> (Control, std::threa
                 return;
             }
         };
-        if let Err(e) = rt.block_on(run_donor(cfg, gpus, c2.clone())) {
+        if let Err(e) = rt.block_on(run_donor(cfg, gpus, utils, c2.clone())) {
             if let Ok(mut s) = c2.status.lock() {
                 s.note = format!("error: {e}");
                 s.connected = false;
@@ -113,10 +111,10 @@ enum Out {
 
 /// Connect one donor for `gpu` and run until the connection closes, Ctrl+C, or
 /// `control.stop` is set (the GUI Stop button). Updates `control.status` live.
-pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, control: Control) -> Result<(), String> {
+pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, control: Control) -> Result<(), String> {
     let indices: Vec<usize> = gpus.iter().map(|g| g.index).collect();
-    println!("[donor] building multi-GPU engine over {} card(s): {:?}", gpus.len(), indices);
-    let engine = MultiEngine::new(&indices).await?;
+    println!("[donor] building multi-GPU engine over {} card(s): {:?} @ utils {:?}", gpus.len(), indices, utils);
+    let engine = MultiEngine::new(&indices, &utils).await?;
     let label = engine.gpu_label();
     // A matrix lives on ONE local GPU, so advertise the SMALLEST per-binding cap across the
     // pool — the brain won't then hand us a binding bigger than any single card can hold.
@@ -155,8 +153,6 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, control: Control) -
     println!("[donor] registered as '{}' = {} ({} MB binding cap). Donating at {}% utilization.", cfg.name, host_name, binding_mb, cfg.utilization_pct);
     set_status(&control, |s| { s.connected = true; s.gpu_name = host_name.clone(); s.note = "registered".into(); });
 
-    let util = cfg.utilization_pct.clamp(1, 100) as f64;
-
     // M3.3 — GPU work runs on a dedicated worker thread. The async WS loop below never
     // blocks on a compute/readback: it forwards each message to the worker (unbounded, never
     // blocks the send), keeps draining the socket + answering pings (liveness), and streams
@@ -177,18 +173,13 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, control: Control) -
                     let _ = reply_tx.send(Out::Text(serde_json::to_string(&ack).unwrap()));
                 }
                 Work::Batch(batch) => {
-                    let t0 = Instant::now();
+                    // Per-GPU duty-cycle now lives inside run_substeps (each card throttles to
+                    // its own util target), so the worker just runs + replies.
                     let result = run_batch(&engine, &batch, &mut step_seed);
                     let spikes: u64 = result.per_cluster.values().map(|p| p.spike_count_total).sum();
                     set_status(&control_w, |s| { s.batches += 1; s.spikes_last = spikes; s.note = "computing".into(); });
                     if let Ok(j) = serde_json::to_string(&result) {
                         let _ = reply_tx.send(Out::Text(j));
-                    }
-                    // Utilization duty-cycle: idle a slice so busy-fraction ≈ util% (on this
-                    // worker thread, not the WS task).
-                    if util < 100.0 {
-                        let busy = t0.elapsed();
-                        std::thread::sleep(busy.mul_f64((100.0 - util) / util));
                     }
                 }
                 Work::Frame(frame) => {
