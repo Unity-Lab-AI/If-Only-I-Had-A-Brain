@@ -100,6 +100,12 @@ buffer < 2 MB) + 30 s op timeouts + device-lost auto-reconnect.
   acks `gpu_init`, and runs the Rulkov step loop — but it does NOT yet handle the binary
   sparse-matrix uploads (SPRS/SPRR), so the brain can't sync it to a full replica (those
   uploads would time out). Verify M1's round-trip against a local mock until M3 lands.
+- **✅ LIVE-VERIFIED 2026-06-22:** ran a local brain (25.5M neurons) on the RTX +
+  connected the donor (`ws://localhost:7525`). Full chain worked: register → `gpu_init`×7
+  → **17/17 sparse matrix uploads** (SPRS/SPRR codec) → **rebind acks** (M3.1, no timeout)
+  → **`compute_batch` loop returning real spike counts** → `/health` `gpu=RTX 4070
+  spikes=233632`, brain "thinking continuously". The native donor IS accepted + computing
+  against the real brain-server.
 - **M3 core — DONE (kernels + codec GPU-verified):** synapse-propagate + Oja-plasticity
   WGSL shaders (verified on the RTX: known 4x4 CSR → exact currents `[3,0,0,5]`); binary
   SPRS/SPRR codec (`frames.rs`) for type=1 upload / 4 chunked (assembled) / 2 propagate /
