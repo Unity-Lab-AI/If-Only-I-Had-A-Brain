@@ -337,6 +337,15 @@
         <div id="d-ms-grades" style="margin-top:6px;color:#888;font-size:11px;">grades: —</div>
         <div id="d-ms-signoffs" style="margin-top:6px;color:#888;font-size:11px;">operator signoffs: —</div>
         <div id="d-ms-weights" style="margin-top:6px;color:#555;font-size:10px;">weights file: —</div>
+        <!-- #112.11 — boot-reason banner. Surfaces when training was reset because
+             the previous checkpoint was incompatible (brain size/format changed)
+             or an operator wipe fired. Hidden on a clean resume. -->
+        <div id="d-ms-bootreason" style="margin-top:8px;padding:6px 10px;border-radius:4px;font-size:11px;display:none;"></div>
+        <!-- #112.11 — checkpoint slots (last N) + per-slot rollback. Admin-only. -->
+        <div id="d-ms-checkpoints" class="admin-only" style="margin-top:8px;color:#888;font-size:11px;line-height:1.9;">checkpoints: —</div>
+        <div class="admin-only" style="margin-top:8px;">
+          <button id="btn-save-checkpoint" title="Force an immediate versioned checkpoint now, between the automatic 5-minute saves. Rotates within the last-N slots. (Admin-only.)" style="background:#0a1f2a;color:#38bdf8;border:1px solid #155;border-radius:4px;padding:5px 10px;font-size:11px;cursor:pointer;">💾 Save checkpoint now</button>
+        </div>
         <!-- Auto-advance toggle. Single switch governing both the
              /grade-advance signoff-bypass AND the curriculum runner's
              auto-fire-next-grade behavior. Admin-only (hidden in
@@ -2385,6 +2394,57 @@
       });
     })();
 
+    // #112.11 — render the last-N checkpoint slots + a per-slot rollback button.
+    // Hoisted (function declaration) so refreshMilestone can call it.
+    async function refreshCheckpoints() {
+      try {
+        const r = await fetch(adminApi('versions'), { cache: 'no-store' });
+        if (!r.ok) return;
+        const v = await r.json();
+        const el = document.getElementById('d-ms-checkpoints');
+        if (!el) return;
+        const list = Array.isArray(v.versions) ? v.versions : [];
+        const cap = v.slots || 3;
+        if (list.length === 0) { el.textContent = `checkpoints: none yet (keeping last ${cap})`; return; }
+        const rows = list.map((s) => {
+          const mb = s.binBytes ? ` · ${(s.binBytes / 1048576).toFixed(0)}MB` : '';
+          const when = s.savedAt ? ` · ${String(s.savedAt).replace('T', ' ').slice(0, 19)}` : '';
+          return `<span style="display:inline-block;margin:2px 8px 2px 0;">v${s.slot} (#${s.version || '?'}${mb}${when}) <button data-rollback="v${s.slot}" style="font-size:9px;padding:1px 6px;cursor:pointer;background:#1a1020;color:#c084fc;border:1px solid #4c1d6b;border-radius:3px;">⏪ rollback</button></span>`;
+        }).join('');
+        el.innerHTML = `checkpoints (last ${cap}): ${rows}`;
+        el.querySelectorAll('button[data-rollback]').forEach((b) => {
+          b.addEventListener('click', async () => {
+            const to = b.getAttribute('data-rollback');
+            if (!window.confirm(`Rollback active weights to ${to}? It takes effect after the next restart.`)) return;
+            b.disabled = true; b.textContent = '⏳';
+            try {
+              const rr = await fetch(adminApi('rollback'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ to }), cache: 'no-store' });
+              const jj = await rr.json().catch(() => ({}));
+              log(`Rollback → ${JSON.stringify(jj)}`);
+              b.textContent = jj.ok ? '✓ restart to apply' : '✗';
+            } catch (err) { log(`Rollback failed: ${err?.message || err}`); b.textContent = '✗'; }
+          });
+        });
+      } catch { /* non-fatal */ }
+    }
+
+    // #112.11 — "Save checkpoint now" → POST /checkpoint (force a versioned save).
+    (function wireSaveCheckpoint() {
+      const btn = document.getElementById('btn-save-checkpoint');
+      if (!btn) return;
+      btn.addEventListener('click', async () => {
+        btn.disabled = true; const orig = btn.textContent; btn.textContent = '⏳ saving...';
+        try {
+          const r = await fetch(adminApi('checkpoint'), { method: 'POST', cache: 'no-store' });
+          const j = await r.json().catch(() => ({}));
+          log(`Checkpoint POST → ${JSON.stringify(j)}`);
+          btn.textContent = j.ok ? `✓ saved ${j.slot || ''}` : '✗ failed';
+        } catch (err) { log(`Checkpoint failed: ${err?.message || err}`); btn.textContent = '✗ failed'; }
+        setTimeout(() => { btn.disabled = false; btn.textContent = orig; }, 2500);
+        refreshMilestone();
+      });
+    })();
+
     // Apply auto-advance toggle state to the checkbox UI. Centralized so
     // the WS echo handler, the initial GET, and the user-click POST all
     // pass through the same DOM update path — no chance of UI drift
@@ -2505,6 +2565,24 @@
           const sizeKB = m.weightsFile.sizeBytes ? (m.weightsFile.sizeBytes / 1024).toFixed(1) : '?';
           weightsEl.textContent = `weights file: ${m.weightsFile.path} · ${sizeKB} KB · mtime ${m.weightsFile.mtime || 'n/a'}`;
         }
+        // #112.11 — "training was reset" banner from the persisted boot reason.
+        const brEl = document.getElementById('d-ms-bootreason');
+        if (brEl) {
+          const br = m.lastBootReason;
+          if (br && br.mode === 'wipe' && br.reason === 'incompatible') {
+            brEl.style.display = 'block';
+            brEl.style.background = '#3b0d0d'; brEl.style.color = '#fca5a5'; brEl.style.border = '1px solid #7f1d1d';
+            brEl.textContent = `⚠ Training was RESET on last boot — the previous checkpoint was INCOMPATIBLE (${br.detail || 'brain changed'}; was ${Number(br.wasNeurons || 0).toLocaleString()} → now ${Number(br.nowNeurons || 0).toLocaleString()} neurons). A fresh start was required — bump or sizing change can't load the old checkpoint.`;
+          } else if (br && br.mode === 'wipe' && br.reason === 'force-fresh') {
+            brEl.style.display = 'block';
+            brEl.style.background = '#3a2d0a'; brEl.style.color = '#fcd34d'; brEl.style.border = '1px solid #78550d';
+            brEl.textContent = '♻ Brain was WIPED to a fresh start (operator Reset) on last boot.';
+          } else {
+            brEl.style.display = 'none';
+          }
+        }
+        // #112.11 — refresh the checkpoint slot list (+ rollback buttons).
+        refreshCheckpoints();
         // Grade-advance pause panel. Three visual states:
         //   1. curriculum running (m.paused=false) — panel hidden
         //   2. paused with a next grade available (m.paused=true, nextGrade != null)
