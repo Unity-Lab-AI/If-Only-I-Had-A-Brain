@@ -3920,6 +3920,49 @@ export class Curriculum {
     const _batteryStart = Date.now();
 
     // ═══════════════════════════════════════════════════════════════
+    // §6.1 / §6.2 — battery TIME BUDGETS (per-question + battery-level).
+    // Without these the battery wall-clock is unbounded: N questions ×
+    // maxTicks × per-tick GPU-readback latency. On a glacial or
+    // dropped-donor readback the cell never returns and the entire
+    // K→PhD walk wedges (observed live: ~113 min parked on
+    // ela/kindergarten, cellsPassed 0, event loop healthy = async stall,
+    // not a CPU hang). A probe that blows its budget DEGRADES TO SCORE 0
+    // — never an unbounded await. Both budgets are env-tunable.
+    //
+    // NOTE: the per-tick readback abort on the DONOR path (every emission
+    // tick becomes a remote WS roundtrip → strictly worse latency) is a
+    // separate, deeper fix that must be designed WITH the donor-compute
+    // app, not retrofitted here. These two budgets are the local-GPU
+    // unblock that lets her leave the cell.
+    // ═══════════════════════════════════════════════════════════════
+    const PER_Q_TIMEOUT_MS = Number(process.env.DREAM_BATTERY_QUESTION_TIMEOUT_MS) || 45_000;
+    const BATTERY_DEADLINE_MS = Number(process.env.DREAM_BATTERY_DEADLINE_MS) || 8 * 60_000;
+    // Run one probe under a hard per-question wall-clock cap. Returns the
+    // probe result, or `{ __timedOut: true }` if the cap trips first. The
+    // AbortSignal is passed into the probe so it stops its own
+    // orchestration promptly (won't START a fresh emission or run the
+    // methodology pass after the cap) instead of grinding to full budget
+    // in the background, competing with the next probe for the GPU.
+    const _probeWithBudget = async (probeOpts) => {
+      const ac = (typeof AbortController === 'function') ? new AbortController() : null;
+      let timer = null;
+      const timeout = new Promise((resolve) => {
+        timer = setTimeout(() => {
+          if (ac) { try { ac.abort(); } catch { /* no-op */ } }
+          resolve({ __timedOut: true });
+        }, PER_Q_TIMEOUT_MS);
+      });
+      try {
+        return await Promise.race([
+          this._studentTestProbe({ ...probeOpts, signal: ac ? ac.signal : null }),
+          timeout,
+        ]);
+      } finally {
+        if (timer) clearTimeout(timer);
+      }
+    };
+
+    // ═══════════════════════════════════════════════════════════════
     // T39.j.1 — Pre-battery VOCAB FILTER
     // Operator's rule: "you cant ask her a question using words
     // shes never known before". Filter out any question that contains
@@ -4010,19 +4053,34 @@ export class Curriculum {
         filteredForComprehension.push(...group);
         continue;
       }
+      // §6.2 — if the battery deadline already elapsed during comprehension
+      // sampling, stop sampling and admit remaining groups as-is. The main
+      // loop's deadline guard then degrades them to score 0 — no unbounded
+      // sampling phase either.
+      if (Date.now() - _batteryStart > BATTERY_DEADLINE_MS) {
+        filteredForComprehension.push(...group);
+        continue;
+      }
       // Comprehension sample: run the first question. If it scores
       // ≥ 0.5, group is admitted. Otherwise group is skipped.
       const sample = group[0];
       compSamplesFired += 1;
       let sampleScore = 0;
       try {
-        const r = await this._studentTestProbe({
+        const r = await _probeWithBudget({
           question: sample.question,
           expectedAnswer: sample.expectedAnswer,
           expectedVariants: sample.expectedVariants || [sample.expectedAnswer],
           maxTicks: sample.maxTicks || 60,
           methodology: sample.methodology || null,
         });
+        // §6.1 — a timed-out comprehension sample scores 0 (its group is
+        // then skipped by the existing < 0.15 gate, never re-probed).
+        if (r && r.__timedOut) {
+          this._hb(`[Curriculum][${label}] COMPREHENSION sample ⏱ timed out at ${PER_Q_TIMEOUT_MS}ms → template T${tid} treated as score 0`);
+          templateSkips.push({ templateId: tid, count: group.length, sampleScore: 0, sampleQ: sample.question });
+          continue;
+        }
         sampleScore = r?.score || 0;
         // The sample IS a real probe result — record it to avoid
         // re-running the same question in the main loop.
@@ -4074,14 +4132,45 @@ export class Curriculum {
     let methoQuestions = 0;
     let methoPass = 0;
     for (const q of questions) {
+      // §6.2 — battery wall-clock deadline. _batteryStart was previously
+      // only logged at the end; now it actually gates. Once the battery
+      // has run past the deadline, STOP probing and degrade every
+      // remaining question to score 0 so the cell returns instead of
+      // wedging the walk.
+      if (Date.now() - _batteryStart > BATTERY_DEADLINE_MS) {
+        const remaining = questions.length - results.length;
+        try { process.stdout.write(`[Curriculum][${label}] ⏱ BATTERY DEADLINE ${BATTERY_DEADLINE_MS}ms exceeded after ${results.length}/${questions.length} questions — degrading ${remaining} remaining to score 0 (never an unbounded await).\n`); } catch {}
+        for (let di = results.length; di < questions.length; di++) {
+          const dq = questions[di];
+          const dStd = dq.standard || 'unspecified';
+          const dBucket = byStandard.get(dStd) || { pass: 0, total: 0 };
+          dBucket.total += 1;
+          byStandard.set(dStd, dBucket);
+          results.push({ question: dq.question, answer: '', score: 0, match: { exact: false, startsWith: false, contains: false, overall: false }, standard: dStd, deadlineExceeded: true });
+        }
+        break;
+      }
+      // §6.4 — live battery progress for the /ws state broadcast, so the
+      // walk can be watched without hand-diffing log polls.
+      if (this.cluster) this.cluster._batteryProgress = { i: results.length + 1, total: questions.length, label, startedAt: _batteryStart };
       try {
-        const r = await this._studentTestProbe({
+        const r = await _probeWithBudget({
           question: q.question,
           expectedAnswer: q.expectedAnswer,
           expectedVariants: q.expectedVariants || [q.expectedAnswer],
           maxTicks: q.maxTicks || 60,
           methodology: q.methodology || null,
         });
+        // §6.1 — per-question budget tripped: degrade to score 0, keep going.
+        if (r && r.__timedOut) {
+          const tStd = q.standard || 'unspecified';
+          const tBucket = byStandard.get(tStd) || { pass: 0, total: 0 };
+          tBucket.total += 1;
+          byStandard.set(tStd, tBucket);
+          results.push({ question: q.question, answer: '', score: 0, match: { exact: false, startsWith: false, contains: false, overall: false }, standard: tStd, timedOut: true });
+          this._hb(`[Curriculum][${label}] Q${results.length}/${questions.length} [${tStd}]: "${q.question.slice(0, 60)}" → ⏱ timed out at ${PER_Q_TIMEOUT_MS}ms · score=0.00`);
+          continue;
+        }
         r.standard = q.standard || 'unspecified';
         r.difficulty = q.difficulty || 1;
         r.source = q.source || 'authored';
@@ -4162,6 +4251,9 @@ export class Curriculum {
     const methoSuffix = methoQuestions > 0 ? ` · methodology ${methoPass}/${methoQuestions} ${(methoRate * 100).toFixed(0)}%` : '';
     const summary = ` [${label}: ${pass}/${total} ${(rate * 100).toFixed(1)}% · ${standardsBelowCut} std below cut${methoSuffix}]`;
     try { process.stdout.write(`[Curriculum][${label}] BATTERY DONE in ${Date.now() - _batteryStart}ms — ${pass}/${total} (${(rate * 100).toFixed(1)}%) · standardsBelowCut=${standardsBelowCut}${methoSuffix}\n`); } catch {}
+    // §6.4 — clear the live progress field so the dashboard doesn't show a
+    // stale in-flight battery after this one returns.
+    if (this.cluster) this.cluster._batteryProgress = null;
     return { pass, total, rate, summary, results, byStandard: standardBreakdown, standardsBelowCut, methoQuestions, methoPass, methoRate };
   }
 
@@ -4533,6 +4625,11 @@ export class Curriculum {
     const expectedVariants = (opts.expectedVariants || [expectedAnswer])
       .map(v => String(v || '').toLowerCase().trim()).filter(v => v.length > 0);
     const maxTicks = typeof opts.maxTicks === 'number' ? opts.maxTicks : 60;
+    // §6.1 — abort checkpoint. The battery passes an AbortSignal that trips
+    // at the per-question budget; when set, bail before STARTING any further
+    // heavy emission so a timed-out probe stops competing for the GPU.
+    const _aborted = () => !!(opts.signal && opts.signal.aborted);
+    if (_aborted()) { out.ms = Date.now() - startMs; out.timedOut = true; return out; }
 
     // Inject the question through the same `readInput` path live chat
     // uses. This walks visual→letter→phon→sem ventral stream, carrying
@@ -4966,7 +5063,9 @@ export class Curriculum {
       }
       if (wordEmit && wordEmit.length > 0) {
         generated = wordEmit;
-      } else {
+      } else if (!_aborted()) {
+        // §6.1 — skip the (load-bearing) emission if the per-question
+        // budget already tripped; answer stays '' and scores 0.
         const raw = await cluster.generateSentenceAwait(intentSeed, emitOpts);
         generated = (raw && typeof raw === 'string' ? raw : (raw?.text || '')) || '';
       }
@@ -5091,7 +5190,7 @@ export class Curriculum {
     // budgets. If this is slow at biological scale the fix is in
     // the cortex tick infrastructure (GPU dispatch / propagate
     // pipeline), not in skipping parts of the test.
-    if (opts.methodology && typeof opts.methodology === 'object') {
+    if (opts.methodology && typeof opts.methodology === 'object' && !_aborted()) {
       const methoPrompt = String(opts.methodology.prompt || '');
       const keywords = (opts.methodology.keywords || [])
         .map(k => String(k || '').toLowerCase().trim()).filter(k => k.length > 0);
@@ -7790,10 +7889,21 @@ export class Curriculum {
           if ((battery.methoQuestions || 0) > 0 && (battery.methoRate || 0) < METHODOLOGY_MIN) {
             blockers.push(`methodology ${battery.methoPass}/${battery.methoQuestions} (${((battery.methoRate || 0) * 100).toFixed(1)}%) < ${METHODOLOGY_MIN * 100}%`);
           }
-          if (blockers.length > 0 && result.pass) {
+          // Item 1 — battery-gate ADVISORY mode. Default OFF (the battery
+          // hard-blocks advancement, original behavior). With
+          // DREAM_BATTERY_GATE_ADVISORY=1 the blockers are still computed,
+          // logged, and recorded in _lastGateResult, but they DO NOT block
+          // advancement — the substrate gate alone decides pass, so the
+          // walk proceeds even on a weak battery ("if we get a cavewoman so
+          // be it"). Lets training progress without wedging on a cell.
+          const _gateAdvisory = process.env.DREAM_BATTERY_GATE_ADVISORY === '1';
+          if (blockers.length > 0 && result.pass && !_gateAdvisory) {
             console.warn(`[Curriculum][${label}] ⛔ BATTERY BLOCKS advancement: ${blockers.join(' · ')}. Substrate passed but the educational test did not — grade NOT advanced.`);
             result.pass = false;
             result.reason = `BATTERY-BLOCKED: ${blockers.join('; ')} | ${result.reason || ''}`;
+          } else if (blockers.length > 0 && result.pass && _gateAdvisory) {
+            console.warn(`[Curriculum][${label}] ⚠ BATTERY blockers present but DREAM_BATTERY_GATE_ADVISORY=1 — advancement NOT blocked (advisory mode): ${blockers.join(' · ')}`);
+            result.reason = `BATTERY-ADVISORY(${blockers.length} blocker${blockers.length === 1 ? '' : 's'}): ${blockers.join('; ')} | ${result.reason || ''}`;
           } else if (blockers.length === 0) {
             const methoTag = (battery.methoQuestions || 0) > 0
               ? ` · methodology ${battery.methoPass}/${battery.methoQuestions} (${((battery.methoRate || 0) * 100).toFixed(1)}%)`
