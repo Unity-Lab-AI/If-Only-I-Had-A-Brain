@@ -1,0 +1,100 @@
+# ADMIN CONTROLS — dashboard Stop / Restart / Reset, and the one-backend model
+
+> Clarifies what the admin-only dashboard power buttons actually control, how
+> the "deployed website" and "the server" relate (they are NOT two brains), and
+> the #112.10 fix that makes **Stop** truly stop.
+>
+> Last updated: **2026-06-22**.
+
+---
+
+## There is ONE backend, not two
+
+A common confusion: "the deployed version (the website) vs the server version."
+In reality there is **one** Node brain-server process, and everything connects to
+it over WebSocket. There is no second "server-version website."
+
+```
+                        ┌─────────────────────────────────────────┐
+   donor browsers  ───► │  nginx  :443  (SNI/stream split)         │
+   (compute.html)       │   ├─ public lane   /ws        (no auth)  │ ──┐
+                        │   └─ admin  lane   /admin/ws  (Forgejo   │   │
+   admin dashboard ───► │                    auth_request +        │   ├─►  ONE Node
+   (dashboard.html)     │                    X-UAL-User header)    │   │    brain-server
+                        │       admin REST   /admin/<endpoint>     │ ──┘    127.0.0.1:7525
+                        └─────────────────────────────────────────┘        (loopback only)
+```
+
+- **The deployed "website"** = the static frontend (donor page + dashboard UI),
+  served by the Forgejo Pages rsync (`.forgejo/workflows/deploy.yml`). It is just
+  HTML/JS/CSS. It has **no brain of its own** — it connects to the one brain-server
+  over WSS.
+- **The brain-server** = the Node process on the OVH box (`/opt/unity-brain`,
+  systemd `unity-brain`). It binds loopback only; nginx fronts it.
+- **"The server version" / local dev** = running `node server/brain-server.js` on
+  your own machine; the page then connects to `ws://localhost:7525` (the hostname
+  gate in `js/brain/remote-brain.js` only probes loopback on localhost origins).
+
+So the admin power buttons act on the **single shared brain-server**. There is no
+"deployed brain" vs "server brain" to keep in unison — it's the same process for
+everyone. The Pages static site is unaffected by these buttons (it's always there;
+when the brain is down the page simply shows "waiting for brain / no GPU").
+
+---
+
+## The three admin-only buttons (`html/dashboard.html`)
+
+Hidden behind `.admin-only`; revealed only after the server sends `modeAssigned`
+confirming admin. Each POSTs to an endpoint — `localhost:7525/<endpoint>` in local
+dev, `https://<host>/admin/<endpoint>` deployed (nginx strips `/admin/`). All three
+are gated by `requireLoopback()` in `server/brain-server.js`: the request must
+arrive on loopback (it does — nginx proxies to 127.0.0.1) **and**, when
+`UAL_PROXY_AUTH=1`, carry the `X-UAL-User` header that nginx injects after Forgejo
+auth (client-supplied copies are stripped). So in deployment they are reachable
+ONLY through the Forgejo-authenticated admin lane.
+
+| Button | Endpoint | Exit | systemd behavior | Net effect |
+|---|---|---|---|---|
+| **⏹ Stop Brain** | `POST /shutdown` | **42** | `RestartPreventExitStatus=42` → **NOT revived** | True halt — stays down until a manual start |
+| **🔄 Restart (Savestart)** | `POST /restart` | 0 | `Restart=always` → revived | Restarts + auto-resumes trained state |
+| **♻ Reset (fresh)** | `POST /reset` | 0 | `Restart=always` → revived | Writes `.force-fresh` → boots a wiped brain (identity-core Tier-3 anchors preserved) |
+
+All three force-save weights first. Restart/Reset drop or set the resume marker so
+the revived process resumes (or wipes) correctly.
+
+### #112.10 — why Stop now exits 42
+
+Before this fix, **/shutdown and /restart BOTH exited 0**. With systemd
+`Restart=always`, exit 0 is auto-revived — so "Stop Brain" behaved exactly like
+Restart and **could not actually stop the brain** (the "couldn't shut it off"
+symptom). The fix is systemd-native:
+
+- `/shutdown` now `process.exit(42)`, and the unit sets `RestartPreventExitStatus=42`.
+- A **deliberate Stop** (exit 42) → systemd does **not** revive → the brain stays down.
+- A **Restart** (exit 0) and a **crash** (any other non-zero) → still auto-revived.
+
+**Bringing the brain back after a Stop** (it can't restart itself — the process is
+gone, so there's no dashboard to click): on the box run
+`sudo systemctl start unity-brain`; locally re-run `start.bat` / `Savestart.bat`.
+
+### Do the buttons work for "both versions"?
+
+There is only one thing to act on — the single brain-server — so yes, the buttons
+inherently cover everyone connected (deployed donors + admin alike). They do **not**
+(and cannot) stop the static Pages website itself; that's just files on nginx and
+is always served. After a Stop/Restart, every connected client (donor + dashboard)
+drops and auto-reconnects when the brain is back (`remote-brain.js` reconnect loop).
+
+---
+
+## systemd unit requirements (box)
+
+For the above to hold, `/etc/systemd/system/unity-brain.service` must have:
+
+```
+Restart=always
+RestartPreventExitStatus=42
+```
+
+`Restart=always` keeps the brain up through crashes + Restart-button reboots;
+`RestartPreventExitStatus=42` is what lets the Stop button truly halt it.
