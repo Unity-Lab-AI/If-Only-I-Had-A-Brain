@@ -24427,3 +24427,27 @@ During this implementation pass at 22:16 PT, a `node -e "require('./server/brain
 **Verification (box):** `node --check` green. Deployed + restarted: 0 crash-loops, sized to 306,458,816 neurons, 25 Tier-3 identity schemas restored from `identity-core.json` (training/identity PRESERVED, not wiped), idle "No GPU — brain paused", public `/ws` 5/5, 0 systemd restarts.
 
 **Files modified:** `server/brain-server.js` · `deploy/REDEPLOY-NOTES.md` · `docs/FINALIZED.md`.
+
+---
+
+## 2026-06-21 — #112.9 — student-battery STALL: per-question + battery-level time budgets (§6.1/§6.2) + advisory-gate flag
+
+**Context:** the deployed 51M brain wedged on cell 1 (ela/kindergarten), `cellsPassed:0`, ~113 min on the cell — parked in `_runStudentBattery` 18+ min with frozen progress counters but a healthy 11 ms event loop. An ASYNC stall, not a CPU hang. Gee verbatim: *"we may want to get rid of testing gating her to proceed. if we get a cavewoman so be it"* and *"Go ahead and implement the §6.1 + §6.2 timeouts now (the actual unblock so she leaves kindergarten) … we need training to proceed correctly without fail!"*
+
+**Root cause:** `_runStudentBattery` (`js/brain/curriculum.js`) ran every question sequentially with `await _studentTestProbe({maxTicks:60})` — no per-question timeout, and `_batteryStart` was set but never checked. Battery wall-clock = N × 60 ticks × per-tick GPU-readback latency, unbounded; each tick is a GPU readback that glacially grinds (or hard-hangs on a dropped-donor readback). The cell never returns → never gates → walk wedged. T30-family, resurfaced at deploy scale. The donor path makes it strictly worse (every emission tick becomes a remote WS roundtrip), so the budget architecture is designed with the donor path in mind, not retrofitted.
+
+**Fix (`js/brain/curriculum.js`):**
+- §6.1 per-question budget — `_probeWithBudget` wraps each probe in `Promise.race` against `DREAM_BATTERY_QUESTION_TIMEOUT_MS` (default 45 000 ms) and passes an `AbortSignal` into `_studentTestProbe`. The probe checks `_aborted()` before each `generateSentenceAwait` (primary answer + methodology pass) so a timed-out probe stops competing for the GPU instead of grinding to full budget in the background. A timed-out question scores 0.
+- §6.2 battery-level deadline — the main loop AND the comprehension-sample loop now consume `_batteryStart` against `DREAM_BATTERY_DEADLINE_MS` (default 480 000 ms = 8 min). Past it, every remaining question degrades to score 0 (recorded in `byStandard`) and the cell returns. Never an unbounded await.
+- Item 1 (off by default) — `DREAM_BATTERY_GATE_ADVISORY=1` makes the battery blockers ADVISORY: still computed, logged, and recorded in `_lastGateResult`, but they do NOT downgrade `result.pass`. The substrate gate alone advances, so a weak battery no longer wedges the cell ("cavewoman so be it"). Default OFF preserves the original hard-gate; the deployed box opts in via the unit `Environment=`.
+- Item 4 (partial) — `cluster._batteryProgress = {i, total, label, startedAt}` set/cleared in `_runStudentBattery` as the data source for a future `/ws` `batteryQ` field; `getState()` broadcast + dashboard wiring deferred.
+
+**New env knobs:** `DREAM_BATTERY_QUESTION_TIMEOUT_MS` (default 45 000) · `DREAM_BATTERY_DEADLINE_MS` (default 480 000) · `DREAM_BATTERY_GATE_ADVISORY` (default off; `=1` makes the battery gate advisory).
+
+**Deferred:** item 3 — per-tick GPU-readback ABORT inside `generateSentenceAwait`/`emit.js` (donor-path hardening, to be designed with the donor-compute app). `js/app.bundle.js` rebuild (browser-local fallback only; the server walk uses the SOURCE module, `brain-server.js:1129 import('../js/brain/curriculum.js')`, so the unblock does not depend on it).
+
+**Verification (box, 2026-06-22 UTC):** `node --check` green locally and on the box copy. Deployed via `git archive` overlay (state preserved by `DREAM_KEEP_STATE=1`); advisory enabled via a clean unit `Environment=DREAM_BATTERY_GATE_ADVISORY=1` line (no inline comment — the prior systemd parse-bug guard). After restart: clean SIGTERM save → RESUMED (Auto-clear SKIPPED, formatVersion=1, 51,130,559 neurons — training preserved), `active`, **NRestarts=0**, no boot exceptions, `/health` alive with neurons 51,130,559 + clients 6, donors=2 connected and the walk running with sub-second event-loop blocks. Advisory + keep-state confirmed in the running unit env. NOTE: the walk-leaves-kindergarten confirmation is Gee's (operator runs the K→PhD walk + fix verification himself) — this entry covers the implementation + DEPLOY-HEALTH only.
+
+**Files modified:** `js/brain/curriculum.js` · `docs/TODO.md` · `docs/FINALIZED.md` · (box) `/etc/systemd/system/unity-brain.service`.
+
+**Brain math unchanged** — orchestration/gating-layer only; no equation, weight, or curriculum-content change.
