@@ -24451,3 +24451,19 @@ During this implementation pass at 22:16 PT, a `node -e "require('./server/brain
 **Files modified:** `js/brain/curriculum.js` · `docs/TODO.md` · `docs/FINALIZED.md` · (box) `/etc/systemd/system/unity-brain.service`.
 
 **Brain math unchanged** — orchestration/gating-layer only; no equation, weight, or curriculum-content change.
+
+---
+
+## 2026-06-22 — gate-walk local diagnostic + #112.10 Stop-brain true-halt fix + #112.9 TODO tidy
+
+**(1) `scripts/gate-walk-check.mjs` — local gate-logic + cell-transition diagnostic.** Sponge asked for a fast LOCAL way to prove the gate logic + cell→cell transitions have no hang-ups "between finishing up between cells" across all K→PhD cells, without a brain/GPU ("print a→z as a test for each test"). Built a standalone Node ESM diagnostic (NOT a CI unit-test suite — a manual "verify by reading output" tool, consistent with the NO-TESTS LAW): it stubs the heavy seams (`_cellRunner` teach, `_runStudentBattery` → a→z + pass/fail by score, `_studentTestProbe`, `_measureEmissionCapability`, `_teachVocabList`, `_dreamWindow`, `_saveCheckpoint`, `_memorySnapshotAndGc`) on a minimal fake cluster, then drives the REAL `runSubjectGrade` gate-enforcement + `runFullSubjectCurriculum` transitions. Three phases: (1) dispatch coverage — all 120 cells (6 subjects × 20 grades) resolve via `_cellRunnerRaw`; (2) gate decision logic — passing→advance, failing+advisory-OFF→BLOCK, failing+advisory-ON→advance; (3) full pre-K→PhD traversal per subject under a per-cell hang watchdog (`GATE_WALK_PER_CELL_MS`, default 4000) that FAILS loud on a hang. `node scripts/gate-walk-check.mjs` → exit 0 = green. Verified locally: ALL GREEN, 120 cells, slowest cell ~2 ms, no hangs.
+
+**(2) #112.10 — admin dashboard "Stop Brain" now truly stops (Stop ≠ Restart).** Audit (`docs/ADMIN-CONTROLS.md`): there is ONE brain-server, not two — the deployed Pages site + the admin dashboard both connect to it (`/ws` public + `/admin/ws` Forgejo-authed `requireLoopback` + `X-UAL-User`); no separate "server-version website." BUG: `/shutdown` and `/restart` BOTH `process.exit(0)`, and systemd `Restart=always` auto-revives exit 0 → "Stop Brain" behaved identically to Restart and could not halt the brain (the earlier "cant shut it off"). FIX (`server/brain-server.js`): `/shutdown` → `process.exit(42)`; unit gains `RestartPreventExitStatus=42` (exit 42 exempt from auto-restart) + `SuccessExitStatus=42` (deliberate stop reports clean `inactive`, not `failed`). Restart (exit 0) + crashes still auto-revive. Bring back after a Stop: `sudo systemctl start unity-brain` (box) / `start.bat` (local). New doc `docs/ADMIN-CONTROLS.md` covers the one-backend-two-lanes model + button semantics + auth gating + the fix + restart-after-halt.
+
+**(3) #112.9 TODO drift tidied** — advisory-gate decision (ON) + deploy status reflected (was "DECISION PENDING").
+
+**Verification (box, 2026-06-22):** `node --check` green (brain-server.js + curriculum.js) locally + on box. Deployed brain-server.js via overlay + added `RestartPreventExitStatus=42` / `SuccessExitStatus=42` to the unit, daemon-reload + restart: active, NRestarts=0, `/health` alive (51,130,559 neurons). CONTROLLED HALT TEST: POST `/shutdown` (loopback + `X-UAL-User`) → `active=inactive`, `NRestarts=0` (NOT revived), `ExecMainStatus=42`, stayed down across re-checks; `systemctl start` → `active` + `/health` alive (resumed). Stop = true halt confirmed; Restart/crash still revive.
+
+**Files modified:** `server/brain-server.js` · `scripts/gate-walk-check.mjs` (new) · `docs/ADMIN-CONTROLS.md` (new) · `docs/TODO.md` · `docs/FINALIZED.md` · (box) `/etc/systemd/system/unity-brain.service`.
+
+**Brain math unchanged** — diagnostic tooling + admin-control/process-lifecycle only; no equation, weight, or curriculum change.
