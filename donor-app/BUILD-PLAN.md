@@ -85,6 +85,23 @@ pool sync. Server validates spike counts (clamp to [0,size]); 5 bad results = qu
 → we must always return finite, clamped counts + honor backpressure (≤4 in-flight, socket
 buffer < 2 MB) + 30 s op timeouts + device-lost auto-reconnect.
 
+## ⚠ Brain-side gap: replicas get NO compute (found 2026-06-22)
+Multi-GPU donors connect + sync fine, but a 2nd GPU does **0 work**. Root cause is in the
+BRAIN, not the donor: `_gpuBatch` sends the per-tick `compute_batch` to `this._gpuClient`
+(the PRIMARY only), and `_nextPoolDonor()` (the round-robin that would spread work to
+replicas) is **defined but never called** anywhere in `server/`. The pool is used ONLY for
+`_rebroadcastMasterToReplicas` (weight re-sync). So replicas are **hot-standby + weight-
+synced**, never compute.
+- The per-tick simulation is inherently single-GPU (neuron state is resident on one device;
+  you can't alternate ticks across GPUs without fragmenting state — and sharding is ruled
+  out, see `DONOR-SCALING-DECISION.md`).
+- The legitimate way a 2nd GPU contributes is **data-parallel learning**: each replica runs
+  independent teach passes on its full copy, deltas merge back (the DF.7 intent). That
+  compute-dispatch is the unwired `_nextPoolDonor` path.
+- **To actually load both GPUs:** a BRAIN-side change (wire data-parallel replica compute
+  dispatch + merge) + the donor-side **M3.3** (async pipeline, to sustain teach). Until
+  then, GPU #2 is redundancy/hot-standby. The donor app is doing its part correctly.
+
 ## Milestones
 - **M0 — DONE:** project + plan + CLI flags + **wgpu GPU enumeration** (`--list-gpus`) +
   embedded WGSL shaders + protocol JSON structs. `cargo check` green; ran on real HW.
