@@ -5,9 +5,11 @@
 //! The actual compute device + per-cluster buffers + LIF/spike-count pipelines land in M2;
 //! this module is enumeration + the advertised limits for `gpu_register`.
 
-/// Embedded WGSL shaders, lifted verbatim from js/brain/gpu-compute.js (used in M2).
+/// Embedded WGSL shaders, lifted verbatim from js/brain/gpu-compute.js.
 pub const LIF_SHADER: &str = include_str!("shaders/lif.wgsl");
 pub const SPIKE_COUNT_SHADER: &str = include_str!("shaders/spike_count.wgsl");
+pub const SYNAPSE_PROPAGATE_SHADER: &str = include_str!("shaders/synapse_propagate.wgsl");
+pub const PLASTICITY_SHADER: &str = include_str!("shaders/plasticity.wgsl");
 
 #[derive(Debug, Clone)]
 pub struct GpuInfo {

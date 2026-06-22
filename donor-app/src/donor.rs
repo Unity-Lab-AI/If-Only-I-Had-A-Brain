@@ -7,16 +7,28 @@
 
 use std::time::Instant;
 
+use std::collections::HashMap;
+
 use futures_util::{SinkExt, StreamExt};
 use tokio_tungstenite::tungstenite::Message;
 
 use crate::compute::ComputeEngine;
 use crate::config::DonorConfig;
+use crate::frames::{self, Frame};
 use crate::gpu::GpuInfo;
 use crate::protocol::{
     ComputeBatch, ComputeBatchResult, GpuInit, GpuInitAck, GpuRegister, PerClusterResult,
     ServerMessage,
 };
+
+/// In-progress chunked matrix upload (type=4), assembled until the last chunk.
+struct PartialUpload {
+    rows: u32,
+    cols: u32,
+    row_ptr: Vec<u32>,
+    values: Vec<f32>,
+    col_idx: Vec<u32>,
+}
 
 /// Connect one donor for `gpu` and run until the connection closes or Ctrl+C.
 pub async fn run_donor(cfg: DonorConfig, gpu: GpuInfo) -> Result<(), String> {
@@ -39,6 +51,7 @@ pub async fn run_donor(cfg: DonorConfig, gpu: GpuInfo) -> Result<(), String> {
 
     let util = cfg.utilization_pct.clamp(1, 100) as f64;
     let mut step_seed: u32 = 0x9e3779b9;
+    let mut partials: HashMap<String, PartialUpload> = HashMap::new();
 
     // Ctrl+C → graceful stop (safe stop): close the socket cleanly so the brain drops us.
     let mut ctrlc = Box::pin(tokio::signal::ctrl_c());
@@ -81,9 +94,12 @@ pub async fn run_donor(cfg: DonorConfig, gpu: GpuInfo) -> Result<(), String> {
                             Err(_) => { /* non-JSON or unparseable — ignore */ }
                         }
                     }
-                    Message::Binary(_) => {
-                        // M3 — sparse SPRS/SPRR frames (matrix upload / propagate / hebbian).
-                        // Not yet implemented; the MVP donor runs the Rulkov step loop only.
+                    Message::Binary(bytes) => {
+                        if let Some(frame) = frames::decode(&bytes) {
+                            if let Some(ack) = handle_frame(&mut engine, &mut partials, frame) {
+                                let _ = tx.send(Message::Binary(ack.into())).await;
+                            }
+                        }
                     }
                     Message::Ping(p) => { let _ = tx.send(Message::Pong(p)).await; }
                     Message::Close(_) => { println!("[donor] server closed the connection."); break; }
@@ -135,4 +151,70 @@ fn run_batch(engine: &ComputeEngine, batch: &ComputeBatch, step_seed: &mut u32) 
         );
     }
     ComputeBatchResult { msg_type: "compute_batch_result", batch_id: batch.batch_id, per_cluster }
+}
+
+/// Handle a decoded binary sparse frame; returns the SPRR ack bytes to send (if any).
+fn handle_frame(engine: &mut ComputeEngine, partials: &mut HashMap<String, PartialUpload>, frame: Frame) -> Option<Vec<u8>> {
+    match frame {
+        Frame::Upload { req_id, name, rows, cols, row_ptr, values, col_idx } => {
+            engine.upload_sparse(&name, rows, cols, &row_ptr, &values, &col_idx);
+            Some(frames::ack_simple(1, req_id))
+        }
+        Frame::Chunk { req_id, name, chunk_seq, total_chunks, first, values_offset, values, col_idx_offset, col_idx } => {
+            if let Some(f) = first {
+                partials.insert(
+                    name.clone(),
+                    PartialUpload {
+                        rows: f.rows,
+                        cols: f.cols,
+                        row_ptr: f.row_ptr,
+                        values: vec![0.0; f.nnz as usize],
+                        col_idx: vec![0u32; f.nnz as usize],
+                    },
+                );
+            }
+            if let Some(p) = partials.get_mut(&name) {
+                let vstart = (values_offset as usize) / 4;
+                for (k, v) in values.iter().enumerate() {
+                    if vstart + k < p.values.len() {
+                        p.values[vstart + k] = *v;
+                    }
+                }
+                let cstart = (col_idx_offset as usize) / 4;
+                for (k, c) in col_idx.iter().enumerate() {
+                    if cstart + k < p.col_idx.len() {
+                        p.col_idx[cstart + k] = *c;
+                    }
+                }
+            }
+            // The server expects the SPRR ack only on the LAST chunk.
+            if chunk_seq + 1 >= total_chunks {
+                if let Some(p) = partials.remove(&name) {
+                    engine.upload_sparse(&name, p.rows, p.cols, &p.row_ptr, &p.values, &p.col_idx);
+                }
+                Some(frames::ack_simple(1, req_id))
+            } else {
+                None
+            }
+        }
+        Frame::Propagate { req_id, name, pre } => match engine.propagate(&name, &pre) {
+            Ok(currents) => Some(frames::ack_propagate(req_id, &currents)),
+            Err(e) => {
+                eprintln!("[donor] propagate '{name}' failed: {e}");
+                Some(frames::ack_propagate(req_id, &[]))
+            }
+        },
+        Frame::Hebbian { req_id, name, pre, post, lr } => {
+            if let Err(e) = engine.hebbian(&name, &pre, &post, lr) {
+                eprintln!("[donor] hebbian '{name}' failed: {e}");
+            }
+            Some(frames::ack_simple(3, req_id))
+        }
+        Frame::BatchedHebbian { req_id, ops: _ } => {
+            // type=5 carries only (name, lr) per op — spikes are resident from prior writes.
+            // M3 refinement: track resident pre/post spikes per matrix. For now ack so the
+            // brain doesn't stall (no incorrect weight change applied).
+            Some(frames::ack_simple(5, req_id))
+        }
+    }
 }

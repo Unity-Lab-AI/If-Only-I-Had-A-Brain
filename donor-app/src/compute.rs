@@ -9,7 +9,7 @@ use std::borrow::Cow;
 use std::collections::HashMap;
 use wgpu::util::DeviceExt;
 
-use crate::gpu::{LIF_SHADER, SPIKE_COUNT_SHADER};
+use crate::gpu::{LIF_SHADER, PLASTICITY_SHADER, SPIKE_COUNT_SHADER, SYNAPSE_PROPAGATE_SHADER};
 
 const WORKGROUP: u32 = 256;
 const MAX_WG_DIM: u32 = 65535;
@@ -38,6 +38,45 @@ struct SpikeParams {
     grid_x: u32,
 }
 
+#[repr(C)]
+#[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
+struct PropagateParams {
+    rows: u32,
+    cols: u32,
+    nnz: u32,
+    src_offset: u32,
+    dst_offset: u32,
+}
+
+#[repr(C)]
+#[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
+struct HebbParams {
+    rows: u32,
+    nnz: u32,
+    lr: f32,
+    reward: f32,
+    w_min: f32,
+    w_max: f32,
+    src_offset: u32,
+    dst_offset: u32,
+}
+
+/// A standalone CSR sparse matrix resident on the GPU (cross-projection or intra-synapse).
+/// Cluster-bound mode (src/dst offsets into cluster slices) is a later refinement; MVP
+/// uses standalone pre-spike / post-current buffers.
+struct SparseMatrix {
+    rows: u32,
+    cols: u32,
+    nnz: u32,
+    values: wgpu::Buffer,
+    col_idx: wgpu::Buffer,
+    row_ptr: wgpu::Buffer,
+    pre_spikes: wgpu::Buffer,    // u32 × cols
+    post_currents: wgpu::Buffer, // f32 × rows
+    post_spikes: wgpu::Buffer,   // u32 × rows
+    currents_staging: wgpu::Buffer,
+}
+
 struct Cluster {
     size: u32,
     state: wgpu::Buffer,        // vec2<f32> per neuron
@@ -57,7 +96,10 @@ pub struct ComputeEngine {
     adapter_name: String,
     lif_pipeline: wgpu::ComputePipeline,
     spike_pipeline: wgpu::ComputePipeline,
+    propagate_pipeline: wgpu::ComputePipeline,
+    plasticity_pipeline: wgpu::ComputePipeline,
     clusters: HashMap<String, Cluster>,
+    sparse: HashMap<String, SparseMatrix>,
 }
 
 fn dispatch_dims(n: u32) -> (u32, u32, u32) {
@@ -91,6 +133,8 @@ impl ComputeEngine {
 
         let lif_pipeline = build_pipeline(&device, "lif", LIF_SHADER);
         let spike_pipeline = build_pipeline(&device, "spike_count", SPIKE_COUNT_SHADER);
+        let propagate_pipeline = build_pipeline(&device, "synapse_propagate", SYNAPSE_PROPAGATE_SHADER);
+        let plasticity_pipeline = build_pipeline(&device, "plasticity", PLASTICITY_SHADER);
 
         Ok(Self {
             device,
@@ -98,7 +142,10 @@ impl ComputeEngine {
             adapter_name,
             lif_pipeline,
             spike_pipeline,
+            propagate_pipeline,
+            plasticity_pipeline,
             clusters: HashMap::new(),
+            sparse: HashMap::new(),
         })
     }
 
@@ -269,6 +316,118 @@ impl ComputeEngine {
         c.count_staging.unmap();
         Ok(count)
     }
+
+    pub fn has_sparse(&self, name: &str) -> bool {
+        self.sparse.contains_key(name)
+    }
+
+    /// Upload (or replace) a standalone CSR sparse matrix on the GPU.
+    pub fn upload_sparse(&mut self, name: &str, rows: u32, cols: u32, row_ptr: &[u32], values: &[f32], col_idx: &[u32]) {
+        let nnz = values.len() as u32;
+        let dev = &self.device;
+        let su = wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST;
+        // guard against zero-size bindings
+        let v: &[f32] = if values.is_empty() { &[0.0] } else { values };
+        let ci: &[u32] = if col_idx.is_empty() { &[0] } else { col_idx };
+        let values_buf = dev.create_buffer_init(&wgpu::util::BufferInitDescriptor { label: Some(name), contents: bytemuck::cast_slice(v), usage: su });
+        let col_idx_buf = dev.create_buffer_init(&wgpu::util::BufferInitDescriptor { label: Some(name), contents: bytemuck::cast_slice(ci), usage: su });
+        let row_ptr_buf = dev.create_buffer_init(&wgpu::util::BufferInitDescriptor { label: Some(name), contents: bytemuck::cast_slice(row_ptr), usage: su });
+        let pre = vec![0u32; cols.max(1) as usize];
+        let pre_spikes = dev.create_buffer_init(&wgpu::util::BufferInitDescriptor { label: Some(name), contents: bytemuck::cast_slice(&pre), usage: su });
+        let postf = vec![0f32; rows.max(1) as usize];
+        let post_currents = dev.create_buffer_init(&wgpu::util::BufferInitDescriptor { label: Some(name), contents: bytemuck::cast_slice(&postf), usage: su | wgpu::BufferUsages::COPY_SRC });
+        let postu = vec![0u32; rows.max(1) as usize];
+        let post_spikes = dev.create_buffer_init(&wgpu::util::BufferInitDescriptor { label: Some(name), contents: bytemuck::cast_slice(&postu), usage: su });
+        let currents_staging = dev.create_buffer(&wgpu::BufferDescriptor { label: Some(name), size: (rows.max(1) as u64) * 4, usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST, mapped_at_creation: false });
+        self.sparse.insert(name.to_string(), SparseMatrix { rows, cols, nnz, values: values_buf, col_idx: col_idx_buf, row_ptr: row_ptr_buf, pre_spikes, post_currents, post_spikes, currents_staging });
+    }
+
+    /// Scatter sparse spike indices into a dense u32 buffer (set 1 at each index).
+    fn write_dense_spikes(&self, buf: &wgpu::Buffer, n: u32, indices: &[u32]) {
+        let mut dense = vec![0u32; n.max(1) as usize];
+        for &idx in indices {
+            if (idx as usize) < dense.len() {
+                dense[idx as usize] = 1;
+            }
+        }
+        self.queue.write_buffer(buf, 0, bytemuck::cast_slice(&dense));
+    }
+
+    /// Run sparse propagate: scatter pre-spikes, matmul, return the post currents.
+    pub fn propagate(&self, name: &str, pre_indices: &[u32]) -> Result<Vec<f32>, String> {
+        let m = self.sparse.get(name).ok_or_else(|| format!("sparse '{name}' not uploaded"))?;
+        self.write_dense_spikes(&m.pre_spikes, m.cols, pre_indices);
+        // zero post_currents
+        let zeros = vec![0f32; m.rows.max(1) as usize];
+        self.queue.write_buffer(&m.post_currents, 0, bytemuck::cast_slice(&zeros));
+
+        let params = PropagateParams { rows: m.rows, cols: m.cols, nnz: m.nnz, src_offset: 0, dst_offset: 0 };
+        let ub = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor { label: Some("prop-params"), contents: bytemuck::bytes_of(&params), usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST });
+        let bg = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("prop-bg"),
+            layout: &self.propagate_pipeline.get_bind_group_layout(0),
+            entries: &[
+                wgpu::BindGroupEntry { binding: 0, resource: ub.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 1, resource: m.values.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 2, resource: m.col_idx.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 3, resource: m.row_ptr.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 4, resource: m.pre_spikes.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 5, resource: m.post_currents.as_entire_binding() },
+            ],
+        });
+        let wg = (m.rows.div_ceil(WORKGROUP)).max(1).min(MAX_WG_DIM);
+        let mut enc = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("propagate") });
+        {
+            let mut cp = enc.begin_compute_pass(&wgpu::ComputePassDescriptor { label: Some("propagate"), timestamp_writes: None });
+            cp.set_pipeline(&self.propagate_pipeline);
+            cp.set_bind_group(0, &bg, &[]);
+            cp.dispatch_workgroups(wg, 1, 1);
+        }
+        enc.copy_buffer_to_buffer(&m.post_currents, 0, &m.currents_staging, 0, (m.rows.max(1) as u64) * 4);
+        self.queue.submit(std::iter::once(enc.finish()));
+
+        let (tx, rx) = std::sync::mpsc::channel();
+        m.currents_staging.slice(..).map_async(wgpu::MapMode::Read, move |r| { let _ = tx.send(r); });
+        let _ = self.device.poll(wgpu::Maintain::Wait);
+        rx.recv().map_err(|_| "map channel dropped".to_string())?.map_err(|e| format!("map failed: {e:?}"))?;
+        let data = m.currents_staging.slice(..).get_mapped_range();
+        let out: Vec<f32> = bytemuck::cast_slice(&data[..(m.rows as usize) * 4]).to_vec();
+        drop(data);
+        m.currents_staging.unmap();
+        Ok(out)
+    }
+
+    /// Run Oja/anti-Hebbian plasticity on a sparse matrix (in place).
+    pub fn hebbian(&self, name: &str, pre_indices: &[u32], post_indices: &[u32], lr: f32) -> Result<(), String> {
+        let m = self.sparse.get(name).ok_or_else(|| format!("sparse '{name}' not uploaded"))?;
+        self.write_dense_spikes(&m.pre_spikes, m.cols, pre_indices);
+        self.write_dense_spikes(&m.post_spikes, m.rows, post_indices);
+        let params = HebbParams { rows: m.rows, nnz: m.nnz, lr, reward: 1.0, w_min: -2.0, w_max: 2.0, src_offset: 0, dst_offset: 0 };
+        let ub = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor { label: Some("hebb-params"), contents: bytemuck::bytes_of(&params), usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST });
+        let bg = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("hebb-bg"),
+            layout: &self.plasticity_pipeline.get_bind_group_layout(0),
+            entries: &[
+                wgpu::BindGroupEntry { binding: 0, resource: ub.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 1, resource: m.values.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 2, resource: m.col_idx.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 3, resource: m.row_ptr.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 4, resource: m.pre_spikes.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 5, resource: m.post_spikes.as_entire_binding() },
+            ],
+        });
+        let wg = (m.rows.div_ceil(WORKGROUP)).max(1).min(MAX_WG_DIM);
+        let mut enc = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("hebbian") });
+        {
+            let mut cp = enc.begin_compute_pass(&wgpu::ComputePassDescriptor { label: Some("hebbian"), timestamp_writes: None });
+            cp.set_pipeline(&self.plasticity_pipeline);
+            cp.set_bind_group(0, &bg, &[]);
+            cp.dispatch_workgroups(wg, 1, 1);
+        }
+        self.queue.submit(std::iter::once(enc.finish()));
+        let _ = self.device.poll(wgpu::Maintain::Wait);
+        Ok(())
+    }
 }
 
 fn build_pipeline(device: &wgpu::Device, label: &str, src: &str) -> wgpu::ComputePipeline {
@@ -298,6 +457,24 @@ pub async fn self_test(gpu_index: usize, neurons: u32, steps: u32, drive: f32) -
         let pct = (count as f64 / neurons as f64) * 100.0;
         println!("  step {s:>3}: {count:>10} spikes ({pct:.2}% of {neurons})");
     }
-    println!("self-test: OK — Rulkov LIF + spike-count ran on the GPU.");
+
+    // Sparse propagate check: a known 4x4 CSR, fire neurons {0,2}, verify currents.
+    // dense rows: r0=[1,0,2,0] r1=[0,3,0,0] r2=[0,0,0,4] r3=[5,0,0,0]
+    // CSR: row_ptr=[0,2,3,4,5] values=[1,2,3,4,5] col_idx=[0,2,1,3,0]
+    // pre={0,2} → expected currents [1+2, 0, 0, 5] = [3,0,0,5]
+    println!("self-test: sparse propagate (known 4x4 CSR)...");
+    eng.upload_sparse("probe", 4, 4, &[0, 2, 3, 4, 5], &[1.0, 2.0, 3.0, 4.0, 5.0], &[0, 2, 1, 3, 0]);
+    let currents = eng.propagate("probe", &[0, 2])?;
+    let expected = [3.0_f32, 0.0, 0.0, 5.0];
+    println!("  currents = {currents:?} (expected {expected:?})");
+    let ok = currents.len() == 4 && currents.iter().zip(expected.iter()).all(|(a, b)| (a - b).abs() < 1e-4);
+    if !ok {
+        return Err(format!("propagate mismatch: got {currents:?}, expected {expected:?}"));
+    }
+
+    // Plasticity smoke: one Oja step shouldn't error or NaN the weights.
+    eng.hebbian("probe", &[0, 2], &[0], 0.1)?;
+
+    println!("self-test: OK — Rulkov LIF + spike-count + sparse propagate + plasticity ran on the GPU.");
     Ok(())
 }

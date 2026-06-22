@@ -9,6 +9,7 @@ mod cli;
 mod compute;
 mod config;
 mod donor;
+mod frames;
 mod gpu;
 mod protocol;
 
@@ -39,8 +40,15 @@ fn main() {
         return;
     }
 
-    // --self-test: verify the GPU compute path locally (no brain), then exit.
+    // --self-test: verify the GPU compute path + frame codec locally (no brain), then exit.
     if cli.self_test {
+        match frames::self_check() {
+            Ok(()) => println!("self-test: binary frame codec round-trip OK"),
+            Err(e) => {
+                eprintln!("self-test FAILED (frame codec): {e}");
+                std::process::exit(1);
+            }
+        }
         let idx = first_selected_index(&cli, &gpus);
         let rt = tokio::runtime::Runtime::new().expect("tokio runtime");
         if let Err(e) = rt.block_on(compute::self_test(idx, cli.self_test_neurons, 20, 22.0)) {

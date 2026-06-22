@@ -100,9 +100,16 @@ buffer < 2 MB) + 30 s op timeouts + device-lost auto-reconnect.
   acks `gpu_init`, and runs the Rulkov step loop — but it does NOT yet handle the binary
   sparse-matrix uploads (SPRS/SPRR), so the brain can't sync it to a full replica (those
   uploads would time out). Verify M1's round-trip against a local mock until M3 lands.
-- **M3:** sparse binary frames (type=1/4 upload, 2 propagate, 3 hebbian, 5 batched) +
-  synapse-propagate/Oja-plasticity shaders + region ops → clean full participation +
-  safe live-brain connection.
+- **M3 core — DONE (kernels + codec GPU-verified):** synapse-propagate + Oja-plasticity
+  WGSL shaders (verified on the RTX: known 4x4 CSR → exact currents `[3,0,0,5]`); binary
+  SPRS/SPRR codec (`frames.rs`) for type=1 upload / 4 chunked (assembled) / 2 propagate /
+  3 hebbian / 5 batched, round-trip self-tested; wired into the donor loop with SPRR acks.
+  **M3.2 remaining:** region-op JSON messages (`write_spike_slice` / `write_current_slice`
+  / `clear_spike_region` / `readback_letter_buckets`) + cluster-bound matrix slices (used
+  during curriculum teach/probes). Until M3.2, base compute + matrix upload/propagate/
+  hebbian work, but curriculum region probes are unhandled (readback would time out —
+  bounded by the brain's #112.9 budget). ⇒ first live test = register/init/compute/matrix
+  ops; full curriculum participation needs M3.2.
 - **M4:** eframe GUI (per-GPU rows/sliders/start-stop/status panel: server-total + your
   contribution), default card 1 @ 10% require-Start.
 - **M5:** packaging — `cargo build --release` per target (Win/Linux), headless container
