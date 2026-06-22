@@ -67,6 +67,13 @@ impl eframe::App for DonorApp {
         // Live-refresh the status panel while running.
         ctx.request_repaint_after(Duration::from_millis(300));
 
+        // If the donor thread finished (clean stop, disconnect, or connect failure),
+        // reset to idle so ▶ Start reappears.
+        if self.running && self.handle.as_ref().map_or(false, |h| h.is_finished()) {
+            self.running = false;
+            self.handle = None;
+        }
+
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.heading("unity-donor");
             ui.label(egui::RichText::new("Donate GPU compute to the Unity brain").weak());

@@ -75,9 +75,26 @@ pub async fn run_donor(cfg: DonorConfig, gpu: GpuInfo, control: Control) -> Resu
     let mut engine = ComputeEngine::new(gpu.index).await?;
 
     println!("[donor] connecting to {} ...", cfg.server);
-    let (ws, _resp) = tokio_tungstenite::connect_async(&cfg.server)
-        .await
-        .map_err(|e| format!("connect failed: {e}"))?;
+    set_status(&control, |s| s.note = "connecting…".into());
+    // Retry the connect for ~60s so pressing Start before the brain is up still works.
+    let mut attempt = 0u32;
+    let ws = loop {
+        if control.stop.load(Ordering::Relaxed) {
+            set_status(&control, |s| { s.connected = false; s.note = "stopped".into(); });
+            return Ok(());
+        }
+        match tokio_tungstenite::connect_async(&cfg.server).await {
+            Ok((ws, _resp)) => break ws,
+            Err(e) => {
+                attempt += 1;
+                if attempt >= 30 {
+                    return Err(format!("connect failed after {attempt} tries: {e}"));
+                }
+                set_status(&control, |s| s.note = format!("waiting for brain at {} (retry {attempt})", cfg.server));
+                tokio::time::sleep(Duration::from_secs(2)).await;
+            }
+        }
+    };
     let (mut tx, mut rx) = ws.split();
 
     // gpu_register — advertise the per-binding cap (the capability the brain gates on),
