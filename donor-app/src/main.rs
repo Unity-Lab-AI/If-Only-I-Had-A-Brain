@@ -6,11 +6,28 @@
 #![allow(dead_code)]
 
 mod cli;
+mod compute;
 mod config;
+mod donor;
 mod gpu;
 mod protocol;
 
 use clap::Parser;
+
+/// First GPU index to use (for --self-test / single-GPU MVP): first entry of --gpus,
+/// or 0 for "all", clamped to what's actually present.
+fn first_selected_index(cli: &cli::Cli, gpus: &[gpu::GpuInfo]) -> usize {
+    let want = if cli.gpus.trim().eq_ignore_ascii_case("all") {
+        0
+    } else {
+        cli.gpus.split(',').next().and_then(|s| s.trim().parse::<usize>().ok()).unwrap_or(0)
+    };
+    if gpus.is_empty() {
+        want
+    } else {
+        want.min(gpus.len() - 1)
+    }
+}
 
 fn main() {
     let cli = cli::Cli::parse();
@@ -19,6 +36,17 @@ fn main() {
     let gpus = gpu::enumerate();
     if cli.list_gpus {
         gpu::print_list(&gpus);
+        return;
+    }
+
+    // --self-test: verify the GPU compute path locally (no brain), then exit.
+    if cli.self_test {
+        let idx = first_selected_index(&cli, &gpus);
+        let rt = tokio::runtime::Runtime::new().expect("tokio runtime");
+        if let Err(e) = rt.block_on(compute::self_test(idx, cli.self_test_neurons, 20, 22.0)) {
+            eprintln!("self-test FAILED: {e}");
+            std::process::exit(1);
+        }
         return;
     }
 
@@ -76,11 +104,17 @@ fn main() {
     }
 
     if cfg.autostart {
-        println!(
-            "\nautostart: would connect to {} and begin the donor loop — M1 (WS register) + M2 (compute) land next.",
-            cfg.server
-        );
+        // MVP: one donor for the first selected GPU (multi-GPU fan-out is M3).
+        let target = selected[0].clone();
+        if selected.len() > 1 {
+            println!("\n(note: MVP donates the first selected GPU [{}]; multi-GPU fan-out lands in M3.)", target.index);
+        }
+        let rt = tokio::runtime::Runtime::new().expect("tokio runtime");
+        if let Err(e) = rt.block_on(donor::run_donor(cfg, target)) {
+            eprintln!("[donor] exited with error: {e}");
+            std::process::exit(1);
+        }
     } else {
-        println!("\nsafe-start: not connecting yet. The GUI \u{25b6} Start button (M4) or --autostart begins donation once M1 ships.");
+        println!("\nsafe-start: not connecting yet. The GUI \u{25b6} Start button (M4) or --autostart begins donation now.");
     }
 }

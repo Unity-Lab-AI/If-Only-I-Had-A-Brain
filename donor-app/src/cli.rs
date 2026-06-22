@@ -39,4 +39,13 @@ pub struct Cli {
     /// the operator must press Start).
     #[arg(long)]
     pub autostart: bool,
+
+    /// Local GPU self-test: run the Rulkov LIF + spike-count shaders on a synthetic
+    /// cluster (no brain needed) to verify the compute path, then exit.
+    #[arg(long)]
+    pub self_test: bool,
+
+    /// Neuron count for --self-test.
+    #[arg(long, default_value_t = 1_000_000)]
+    pub self_test_neurons: u32,
 }

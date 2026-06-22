@@ -86,18 +86,27 @@ pool sync. Server validates spike counts (clamp to [0,size]); 5 bad results = qu
 buffer < 2 MB) + 30 s op timeouts + device-lost auto-reconnect.
 
 ## Milestones
-- **M0 (this pass):** project + this plan + CLI flags + **wgpu GPU enumeration**
-  (`--list-gpus`) + embedded WGSL shaders + protocol JSON structs. Compiles (`cargo check`).
-- **M1:** WS client (tokio-tungstenite) → connect + `gpu_register` + the JSON message
-  loop skeleton (parse `gpu_init`/`compute_batch`, send acks).
-- **M2 (MVP donor):** wgpu device + per-cluster buffers + LIF/spike-count pipelines +
-  `gpu_init`→alloc/seed, `compute_batch`→substep loop→`compute_batch_result`. **Verify on
-  Sponge's GPU against the live brain** (server validates our spike counts).
-- **M3:** sparse binary frames + propagate/plasticity shaders + region ops → full
-  participation (real training contribution).
-- **M4:** eframe GUI (rows/sliders/start-stop/status) + duty-cycle utilization throttle.
+- **M0 — DONE:** project + plan + CLI flags + **wgpu GPU enumeration** (`--list-gpus`) +
+  embedded WGSL shaders + protocol JSON structs. `cargo check` green; ran on real HW.
+- **M1 — DONE:** WS client (tokio-tungstenite) → connect + `gpu_register` (advertises the
+  per-binding cap) + the JSON message loop: `gpu_init`→alloc/seed + `gpu_init_ack`,
+  `compute_batch`→substep loop→`compute_batch_result`; duty-cycle utilization throttle;
+  Ctrl+C safe-stop (clean WS close). Compiles. (`src/donor.rs`.)
+- **M2 — compute VERIFIED:** wgpu device + per-cluster buffers + LIF (Rulkov) + spike-count
+  pipelines + `step()`. **Verified on the RTX 4070** via `--self-test`: 1M neurons, spike
+  rate evolves + settles to ~3.6% (sparse, biologically plausible). The `compute_batch`
+  path uses it. (`src/compute.rs`.)
+- **⚠ M3 is required before connecting to the LIVE brain.** The MVP (M1+M2) registers,
+  acks `gpu_init`, and runs the Rulkov step loop — but it does NOT yet handle the binary
+  sparse-matrix uploads (SPRS/SPRR), so the brain can't sync it to a full replica (those
+  uploads would time out). Verify M1's round-trip against a local mock until M3 lands.
+- **M3:** sparse binary frames (type=1/4 upload, 2 propagate, 3 hebbian, 5 batched) +
+  synapse-propagate/Oja-plasticity shaders + region ops → clean full participation +
+  safe live-brain connection.
+- **M4:** eframe GUI (per-GPU rows/sliders/start-stop/status panel: server-total + your
+  contribution), default card 1 @ 10% require-Start.
 - **M5:** packaging — `cargo build --release` per target (Win/Linux), headless container
-  recipe for RunPod, README.
+  recipe for RunPod.
 
 ## Verification reality
 M0–M1 compile-check here. M2+ (actual GPU compute correctness — exact Rulkov math,
