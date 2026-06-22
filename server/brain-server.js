@@ -465,6 +465,39 @@ function writeBrainCodeHash(hash) {
 const WEIGHTS_FORMAT_VERSION = 1;
 const RESUME_MARKER_PATH = path.join(__dirname, '.resume-marker.json');
 
+// #112.11 — checkpoint slot cap. Keep only the last N rolling save slots
+// (brain-weights-v0..v{N-1}.json + matching .bin) to bound backup storage —
+// each .bin is ~145 MB at full scale, so 5 slots ≈ 725 MB. Was a fixed 5
+// (v0-v4); now env-tunable, default 3.
+const CHECKPOINT_SLOTS = Math.max(1, Number(process.env.DREAM_CHECKPOINT_SLOTS) || 3);
+const LAST_BOOT_REASON_PATH = path.join(__dirname, '.last-boot-reason.json');
+
+// #112.11 — persist WHY the last boot resumed vs wiped, so the admin dashboard
+// can surface "training was reset — the previous checkpoint was incompatible"
+// instead of it only living in the console log. PURELY informational — written
+// from autoClearStaleState's decision points; NEVER affects the resume/wipe
+// decision itself.
+function _writeBootReason(info) {
+  try {
+    fs.writeFileSync(LAST_BOOT_REASON_PATH, JSON.stringify({ ...info, at: new Date().toISOString() }, null, 2));
+  } catch { /* non-fatal — dashboard hint only */ }
+}
+
+// #112.11 — delete rolling backup slots ABOVE the cap (e.g. legacy v3/v4 after
+// dropping 5→3) so lowering the cap actually frees the disk. Only ever touches
+// numbered backup slots beyond the cap — never the main weights, the active
+// slots, or any non-slot state file.
+function _pruneStaleCheckpointSlots() {
+  for (let i = CHECKPOINT_SLOTS; i <= 9; i++) {
+    for (const ext of ['json', 'bin']) {
+      const f = path.join(__dirname, `brain-weights-v${i}.${ext}`);
+      try {
+        if (fs.existsSync(f)) { fs.unlinkSync(f); console.log(`[Brain] #112.11 pruned stale checkpoint slot brain-weights-v${i}.${ext} (cap=${CHECKPOINT_SLOTS})`); }
+      } catch { /* best-effort */ }
+    }
+  }
+}
+
 // #38 — clean-shutdown resume marker. Written on a DELIBERATE graceful stop
 // (stop.bat → HTTP /shutdown, or systemctl stop → SIGTERM) AFTER force-saving
 // the latest weights. It records the brain size + weight-format version at save
@@ -546,6 +579,7 @@ function autoClearStaleState() {
 
   if (_forceFresh) {
     console.log('[Brain] ⚠ FORCE-FRESH requested (dashboard Reset Brain) — wiping all trained state for a clean fresh start (identity-core Tier 3 anchors preserved).');
+    _writeBootReason({ mode: 'wipe', reason: 'force-fresh', detail: 'operator Reset Brain (dashboard)' });
     // fall through to the wipe below
   } else {
     // #38 — resume is requested when the operator ran Savestart (DREAM_KEEP_STATE=1)
@@ -560,6 +594,7 @@ function autoClearStaleState() {
         const _sizeOk = _marker.totalNeurons === _currentTotal;
         if (_fmtOk && _sizeOk) {
           console.log(`[Brain] ✓ CLEAN SHUTDOWN detected — saved training is COMPATIBLE (formatVersion=${WEIGHTS_FORMAT_VERSION}, ${_currentTotal.toLocaleString()} neurons). RESUMING where it left off (auto-Savestart). Auto-clear SKIPPED.`);
+          _writeBootReason({ mode: 'resume', reason: 'compatible', neurons: _currentTotal, formatVersion: WEIGHTS_FORMAT_VERSION });
           writeBrainCodeHash(computeBrainCodeHash());
           return;
         }
@@ -568,12 +603,18 @@ function autoClearStaleState() {
           !_sizeOk ? `brain SIZE (saved ${Number(_marker.totalNeurons || 0).toLocaleString()} → now ${_currentTotal.toLocaleString()} neurons)` : null,
         ].filter(Boolean).join(' and ');
         console.warn(`[Brain] ⚠⚠ CLEAN SHUTDOWN detected, BUT a heavy update changed the ${_why} — the saved training can NO LONGER be loaded. Doing a NORMAL FRESH START so the brain boots clean instead of choking on incompatible weights. (Identity-core Tier 3 anchors still persist.)`);
+        _writeBootReason({
+          mode: 'wipe', reason: 'incompatible', detail: _why,
+          wasNeurons: Number(_marker.totalNeurons || 0), nowNeurons: _currentTotal,
+          wasFormat: _marker.formatVersion, nowFormat: WEIGHTS_FORMAT_VERSION,
+        });
         // fall through to the wipe below
       } else {
         // DREAM_KEEP_STATE=1 with no marker (explicit Savestart.bat, or a deployed
         // restart that didn't record a clean stop). Honor the explicit keep;
         // _loadWeights still defends against a dimension mismatch at load time.
         console.log('[Brain] ⚠ DREAM_KEEP_STATE=1 (Savestart.bat) — KEEPING prior state. Auto-clear SKIPPED.');
+        _writeBootReason({ mode: 'resume', reason: 'keep-flag', detail: 'DREAM_KEEP_STATE=1 (no marker)' });
         writeBrainCodeHash(computeBrainCodeHash());
         return;
       }
@@ -594,6 +635,7 @@ function autoClearStaleState() {
           ? 'start.bat default — fresh brain (DREAM_KEEP_STATE not set)'
           : `code changed since last boot (was ${savedHash.slice(0, 8)}…, now ${currentHash.slice(0, 8)}…)`));
   console.log(`[Brain] Auto-clear triggered: ${reason}`);
+  if (!_forceFresh) _writeBootReason({ mode: 'wipe', reason: (!savedHash ? 'first-run' : (savedHash === currentHash ? 'default-fresh' : 'code-changed')), detail: reason });
 
   // NOTE — js/app.bundle.js NOT cleared here. start.bat runs
   // `npm run build` IMMEDIATELY before `node brain-server.js`, which
@@ -804,6 +846,10 @@ console.log(`[Brain] Main-brain cluster sizes (from biological weights): ${Objec
 // contract; dependency loads no-op.
 if (require.main === module) {
   autoClearStaleState();
+  // #112.11 — free any rolling backup slots above the cap (e.g. legacy v3/v4
+  // after dropping 5→3). Runs on BOTH resume and fresh boots; on a fresh wipe
+  // the slots are already gone so it's a no-op.
+  _pruneStaleCheckpointSlots();
 }
 
 // Display-only scale factor (kept for boot log + state payload).
@@ -3928,8 +3974,8 @@ class ServerBrain {
       };
       fs.writeFileSync(WEIGHTS_FILE, JSON.stringify(data, null, 2));
 
-      // Keep versioned backups (last 5)
-      const backupFile = WEIGHTS_FILE.replace('.json', `-v${this._saveVersion % 5}.json`);
+      // Keep versioned backups (last CHECKPOINT_SLOTS — #112.11, was fixed 5)
+      const backupFile = WEIGHTS_FILE.replace('.json', `-v${this._saveVersion % CHECKPOINT_SLOTS}.json`);
       fs.writeFileSync(backupFile, JSON.stringify(data, null, 2));
 
       // Stamp save metadata on `this` so the dashboard's milestone panel
@@ -3962,7 +4008,7 @@ class ServerBrain {
         // restores a consistent JSON+BIN snapshot pair.
         try {
           const BIN_FILE = WEIGHTS_FILE.replace(/\.json$/, '.bin');
-          const binBackupFile = BIN_FILE.replace(/\.bin$/, `-v${this._saveVersion % 5}.bin`);
+          const binBackupFile = BIN_FILE.replace(/\.bin$/, `-v${this._saveVersion % CHECKPOINT_SLOTS}.bin`);
           if (fs.existsSync(BIN_FILE)) {
             fs.copyFileSync(BIN_FILE, binBackupFile);
           }
@@ -4855,16 +4901,34 @@ const httpServer = http.createServer((req, res) => {
   if (req.url === '/versions') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     const versions = [];
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < CHECKPOINT_SLOTS; i++) {
       const vFile = WEIGHTS_FILE.replace('.json', `-v${i}.json`);
+      const vBin = WEIGHTS_FILE.replace(/\.json$/, `-v${i}.bin`);
       try {
         if (fs.existsSync(vFile)) {
           const data = JSON.parse(fs.readFileSync(vFile, 'utf8'));
-          versions.push({ slot: i, version: data.version, savedAt: data.savedAt, time: data.time });
+          let binBytes = 0;
+          try { if (fs.existsSync(vBin)) binBytes = fs.statSync(vBin).size; } catch {}
+          versions.push({ slot: i, version: data.version, savedAt: data.savedAt, time: data.time, neurons: data.totalNeurons || null, binBytes });
         }
       } catch {}
     }
-    res.end(JSON.stringify({ versions, current: brain._saveVersion || 0 }));
+    res.end(JSON.stringify({ versions, current: brain._saveVersion || 0, slots: CHECKPOINT_SLOTS }));
+    return;
+  }
+
+  // #112.11 — manual checkpoint (dashboard "Save checkpoint now"). Forces an
+  // immediate versioned save between the 5-min periodic ticks. Admin-gated.
+  if (req.url === '/checkpoint' && req.method === 'POST') {
+    if (!requireLoopback(req, res, '/checkpoint')) return;
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    try {
+      brain.saveWeights({ force: true, trigger: 'manual-dashboard' });
+      const ver = brain._saveVersion || 0;
+      res.end(JSON.stringify({ ok: true, version: ver, slot: `v${ver % CHECKPOINT_SLOTS}`, at: brain._lastSave?.at || null }));
+    } catch (err) {
+      res.end(JSON.stringify({ ok: false, error: err && err.message }));
+    }
     return;
   }
 
@@ -4967,9 +5031,17 @@ const httpServer = http.createServer((req, res) => {
     const bootMode = forceClear ? 'fresh-boot (DREAM_FORCE_CLEAR=1)'
                    : keepState ? 'save-resume (DREAM_KEEP_STATE=1)'
                    : 'code-hash gated (autoClearStaleState)';
+    // #112.11 — why the last boot resumed vs wiped (incl. incompatible-checkpoint
+    // detail) so the dashboard can surface a "training was reset" banner.
+    let lastBootReason = null;
+    try {
+      if (fs.existsSync(LAST_BOOT_REASON_PATH)) lastBootReason = JSON.parse(fs.readFileSync(LAST_BOOT_REASON_PATH, 'utf8'));
+    } catch {}
     res.end(JSON.stringify({
       lastSave: brain._lastSave || null,
       bootMode,
+      lastBootReason,
+      checkpointSlots: CHECKPOINT_SLOTS,
       keepStateFlag: keepState,
       forceClearFlag: forceClear,
       weightsFile: {
@@ -5367,17 +5439,19 @@ const httpServer = http.createServer((req, res) => {
         res.end(JSON.stringify({ ok: false, error: 'request body too large (>4KB)' }));
         return;
       }
-      let to = 'v4';
+      let to = `v${CHECKPOINT_SLOTS - 1}`;
       try {
         const body = Buffer.concat(chunks).toString('utf8');
         if (body) {
           const parsed = JSON.parse(body);
           if (parsed && typeof parsed.to === 'string') to = parsed.to;
         }
-      } catch { /* default 'v4' */ }
-      if (!/^v[0-4]$/.test(to)) {
+      } catch { /* default to highest slot */ }
+      // #112.11 — validate against the live slot cap (was hardcoded v0-v4).
+      const _slotMatch = /^v([0-9])$/.exec(to);
+      if (!_slotMatch || Number(_slotMatch[1]) >= CHECKPOINT_SLOTS) {
         res.writeHead(400, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ ok: false, error: `invalid 'to' (expected v0-v4), got: ${to}` }));
+        res.end(JSON.stringify({ ok: false, error: `invalid 'to' (expected v0-v${CHECKPOINT_SLOTS - 1}), got: ${to}` }));
         return;
       }
       try {

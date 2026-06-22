@@ -29,6 +29,7 @@ Run this **every** push, before `node scripts/stamp-version.mjs`:
 - [ ] `docs/SKILL_TREE.md` — capability matrix updated
 - [ ] `docs/SENSORY.md` / `docs/WEBSOCKET.md` — peripheral/protocol changes
 - [ ] `README.md` / `SETUP.md` / `brain-equations.html` / `unity-guide.html` / `index.html` — public surface aligned
+- [ ] **`WEIGHTS_FORMAT_VERSION` bumped IF the weight/serialization format changed** (forces incompatible old checkpoints to refuse-and-fresh-start). Do NOT bump for routine/telemetry/UI/donor changes — bumping discards trained weights. Neuron-count/sizing changes are auto-detected and need no bump. (#112.11)
 - [ ] All affected docs are part of the current working tree, not deferred
 - [ ] Every task Gee gave this session is completed (and documented) or explicitly deferred
 
