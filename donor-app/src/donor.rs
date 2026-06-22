@@ -18,7 +18,7 @@ use crate::frames::{self, Frame};
 use crate::gpu::GpuInfo;
 use crate::protocol::{
     ComputeBatch, ComputeBatchResult, GpuInit, GpuInitAck, GpuRegister, PerClusterResult,
-    RebindAck, ServerMessage,
+    ReadbackAck, RebindAck, ServerMessage,
 };
 
 /// In-progress chunked matrix upload (type=4), assembled until the last chunk.
@@ -97,6 +97,28 @@ pub async fn run_donor(cfg: DonorConfig, gpu: GpuInfo) -> Result<(), String> {
                                 let ack = RebindAck { msg_type: "rebind_sparse_ack", req_id: rb.req_id, name: rb.name, ok: true };
                                 let _ = tx.send(Message::text(serde_json::to_string(&ack).unwrap())).await;
                             }
+                            Ok(ServerMessage::WriteSpikeSlice(w)) => {
+                                if let Err(e) = engine.write_spike_slice(&w.cluster_name, &w.region_name, &w.sparse_indices) {
+                                    eprintln!("[donor] write_spike_slice failed: {e}");
+                                }
+                            }
+                            Ok(ServerMessage::WriteCurrentSlice(w)) => {
+                                if let Err(e) = engine.write_current_slice(&w.cluster_name, &w.region_name, &w.sparse_indices, &w.sparse_values, w.psi) {
+                                    eprintln!("[donor] write_current_slice failed: {e}");
+                                }
+                            }
+                            Ok(ServerMessage::ClearSpikeRegion(w)) => {
+                                if let Err(e) = engine.clear_spike_region(&w.cluster_name, &w.region_name) {
+                                    eprintln!("[donor] clear_spike_region failed: {e}");
+                                }
+                            }
+                            Ok(ServerMessage::ReadbackLetterBuckets(rb)) => {
+                                let counts = engine
+                                    .readback_letter_buckets(&rb.cluster_name, &rb.region_name, rb.bucket_count, rb.sub_slice_len, rb.start_offset)
+                                    .unwrap_or_default();
+                                let ack = ReadbackAck { msg_type: "readback_letter_buckets_ack", req_id: rb.req_id, cluster_name: rb.cluster_name, region_name: rb.region_name, counts };
+                                let _ = tx.send(Message::text(serde_json::to_string(&ack).unwrap())).await;
+                            }
                             Ok(ServerMessage::Other) => { /* forward-compat: ignore unknown */ }
                             Err(_) => { /* non-JSON or unparseable — ignore */ }
                         }
@@ -119,9 +141,10 @@ pub async fn run_donor(cfg: DonorConfig, gpu: GpuInfo) -> Result<(), String> {
 }
 
 fn handle_gpu_init(engine: &mut ComputeEngine, init: &GpuInit) {
-    let num_regions = init.regions.len() as u32;
-    engine.init_cluster(&init.cluster_name, init.size, num_regions, init.tonic_drive, init.noise_amp);
-    println!("[donor] gpu_init '{}' — {} neurons, {} regions", init.cluster_name, init.size, num_regions);
+    let regions: HashMap<String, (u32, u32)> =
+        init.regions.iter().map(|(n, r)| (n.clone(), (r.start, r.end))).collect();
+    engine.init_cluster(&init.cluster_name, init.size, &regions, init.tonic_drive, init.noise_amp);
+    println!("[donor] gpu_init '{}' — {} neurons, {} regions", init.cluster_name, init.size, regions.len());
 }
 
 fn run_batch(engine: &ComputeEngine, batch: &ComputeBatch, step_seed: &mut u32) -> ComputeBatchResult {

@@ -156,6 +156,69 @@ pub struct RebindAck {
     pub ok: bool,
 }
 
+// ─── Region ops (M3.2 — curriculum teach/probe) ───────────────────
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct WriteSpikeSlice {
+    #[serde(rename = "clusterName")]
+    pub cluster_name: String,
+    #[serde(rename = "regionName")]
+    pub region_name: String,
+    #[serde(rename = "sparseIndices", default)]
+    pub sparse_indices: Vec<u32>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct WriteCurrentSlice {
+    #[serde(rename = "clusterName")]
+    pub cluster_name: String,
+    #[serde(rename = "regionName")]
+    pub region_name: String,
+    #[serde(rename = "sparseIndices", default)]
+    pub sparse_indices: Vec<u32>,
+    #[serde(rename = "sparseValues", default)]
+    pub sparse_values: Vec<f32>,
+    #[serde(default = "one")]
+    pub psi: f32,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct ClearSpikeRegion {
+    #[serde(rename = "clusterName")]
+    pub cluster_name: String,
+    #[serde(rename = "regionName")]
+    pub region_name: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct ReadbackLetterBuckets {
+    #[serde(rename = "reqId")]
+    pub req_id: u32,
+    #[serde(rename = "clusterName")]
+    pub cluster_name: String,
+    #[serde(rename = "regionName")]
+    pub region_name: String,
+    #[serde(rename = "bucketCount")]
+    pub bucket_count: u32,
+    #[serde(rename = "subSliceLen")]
+    pub sub_slice_len: u32,
+    #[serde(rename = "startOffset", default)]
+    pub start_offset: u32,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct ReadbackAck {
+    #[serde(rename = "type")]
+    pub msg_type: &'static str, // "readback_letter_buckets_ack"
+    #[serde(rename = "reqId")]
+    pub req_id: u32,
+    #[serde(rename = "clusterName")]
+    pub cluster_name: String,
+    #[serde(rename = "regionName")]
+    pub region_name: String,
+    pub counts: Vec<u32>,
+}
+
 /// Tagged dispatch over the JSON messages a donor receives. Unknown types are ignored
 /// (forward-compat, matching the browser donor).
 #[derive(Debug, Clone, Deserialize)]
@@ -167,6 +230,14 @@ pub enum ServerMessage {
     ComputeBatch(ComputeBatch),
     #[serde(rename = "rebind_sparse")]
     RebindSparse(RebindSparse),
+    #[serde(rename = "write_spike_slice")]
+    WriteSpikeSlice(WriteSpikeSlice),
+    #[serde(rename = "write_current_slice")]
+    WriteCurrentSlice(WriteCurrentSlice),
+    #[serde(rename = "clear_spike_region")]
+    ClearSpikeRegion(ClearSpikeRegion),
+    #[serde(rename = "readback_letter_buckets")]
+    ReadbackLetterBuckets(ReadbackLetterBuckets),
     #[serde(other)]
     Other,
 }

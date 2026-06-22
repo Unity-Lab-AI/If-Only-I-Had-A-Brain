@@ -84,6 +84,7 @@ struct Cluster {
     currents: wgpu::Buffer,     // f32 per neuron
     region_gates: wgpu::Buffer, // [start,end,gate,pad] f32 per region (≥1 dummy)
     num_regions: u32,
+    regions: HashMap<String, (u32, u32)>, // name → (start, end) for region ops
     count: wgpu::Buffer,        // atomic<u32> [1]
     count_staging: wgpu::Buffer,
     noise_amp: f32,
@@ -159,10 +160,11 @@ impl ComputeEngine {
         &mut self,
         name: &str,
         size: u32,
-        num_regions: u32,
+        regions: &HashMap<String, (u32, u32)>,
         tonic_drive: f32,
         noise_amp: f32,
     ) {
+        let num_regions = regions.len() as u32;
         let n = size as usize;
         // CPU-seed the state; golden-ratio low-discrepancy (x in [-1.5,-0.5], y near -3).
         const PHI: f32 = 1.618_034;
@@ -190,8 +192,14 @@ impl ComputeEngine {
             contents: bytemuck::cast_slice(&zero_f32),
             usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
         });
-        // region_gates needs ≥1 entry (4 floats) even with 0 regions (no zero-size binding).
-        let gates = vec![0f32; (num_regions.max(1) as usize) * 4];
+        // region_gates packed [start, end, gate, pad] per region; gate defaults to 1.0
+        // (psi modulation is a later refinement). Needs ≥1 entry (no zero-size binding).
+        let mut gates = vec![0f32; (num_regions.max(1) as usize) * 4];
+        for (i, (_n, (start, end))) in regions.iter().enumerate() {
+            gates[i * 4] = *start as f32;
+            gates[i * 4 + 1] = *end as f32;
+            gates[i * 4 + 2] = 1.0;
+        }
         let region_gates = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some(&format!("{name}-region-gates")),
             contents: bytemuck::cast_slice(&gates),
@@ -219,12 +227,91 @@ impl ComputeEngine {
                 currents,
                 region_gates,
                 num_regions,
+                regions: regions.clone(),
                 count,
                 count_staging,
                 noise_amp,
                 tonic_drive,
             },
         );
+    }
+
+    /// Region op — write a spike pattern into a cluster sub-region (clears the region then
+    /// sets 1 at each sparse index, relative to the region start). For curriculum teach.
+    pub fn write_spike_slice(&self, cluster: &str, region: &str, indices: &[u32]) -> Result<(), String> {
+        let c = self.clusters.get(cluster).ok_or_else(|| format!("cluster '{cluster}' missing"))?;
+        // Dynamic regions (word_motor + per-subject bands) aren't in gpu_init — no-op for
+        // now (M3.3: register them). Silent so the teach frame-flood isn't spammed.
+        let (start, end) = match c.regions.get(region) { Some(r) => *r, None => return Ok(()) };
+        let len = (end - start) as usize;
+        let mut dense = vec![0u32; len.max(1)];
+        for &idx in indices {
+            if (idx as usize) < len {
+                dense[idx as usize] = 1;
+            }
+        }
+        self.queue.write_buffer(&c.spikes, (start as u64) * 4, bytemuck::cast_slice(&dense));
+        Ok(())
+    }
+
+    /// Region op — zero a cluster sub-region's spike buffer.
+    pub fn clear_spike_region(&self, cluster: &str, region: &str) -> Result<(), String> {
+        let c = self.clusters.get(cluster).ok_or_else(|| format!("cluster '{cluster}' missing"))?;
+        let (start, end) = match c.regions.get(region) { Some(r) => *r, None => return Ok(()) };
+        let zeros = vec![0u32; ((end - start) as usize).max(1)];
+        self.queue.write_buffer(&c.spikes, (start as u64) * 4, bytemuck::cast_slice(&zeros));
+        Ok(())
+    }
+
+    /// Region op — write injected currents into a cluster sub-region (sparse → dense over
+    /// the region, scaled by psi).
+    pub fn write_current_slice(&self, cluster: &str, region: &str, indices: &[u32], values: &[f32], psi: f32) -> Result<(), String> {
+        let c = self.clusters.get(cluster).ok_or_else(|| format!("cluster '{cluster}' missing"))?;
+        let (start, end) = match c.regions.get(region) { Some(r) => *r, None => return Ok(()) };
+        let len = (end - start) as usize;
+        let mut dense = vec![0f32; len.max(1)];
+        for (k, &idx) in indices.iter().enumerate() {
+            if (idx as usize) < len {
+                dense[idx as usize] = values.get(k).copied().unwrap_or(0.0) * psi;
+            }
+        }
+        self.queue.write_buffer(&c.currents, (start as u64) * 4, bytemuck::cast_slice(&dense));
+        Ok(())
+    }
+
+    /// Region op — reduce a region's spike sub-slice into `bucket_count` buckets (the
+    /// letter-bucket argmax readback the curriculum uses). Reads the slice back to CPU.
+    pub fn readback_letter_buckets(&self, cluster: &str, region: &str, bucket_count: u32, sub_slice_len: u32, start_offset: u32) -> Result<Vec<u32>, String> {
+        let c = self.clusters.get(cluster).ok_or_else(|| format!("cluster '{cluster}' missing"))?;
+        let (start, _end) = *c.regions.get(region).ok_or_else(|| format!("region '{region}' missing"))?;
+        let len = sub_slice_len.max(1) as usize;
+        let byte_off = ((start + start_offset) as u64) * 4;
+        let staging = self.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("readback-staging"),
+            size: (len as u64) * 4,
+            usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        let mut enc = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("readback") });
+        enc.copy_buffer_to_buffer(&c.spikes, byte_off, &staging, 0, (len as u64) * 4);
+        self.queue.submit(std::iter::once(enc.finish()));
+        let (tx, rx) = std::sync::mpsc::channel();
+        staging.slice(..).map_async(wgpu::MapMode::Read, move |r| { let _ = tx.send(r); });
+        let _ = self.device.poll(wgpu::Maintain::Wait);
+        rx.recv().map_err(|_| "map channel dropped".to_string())?.map_err(|e| format!("map failed: {e:?}"))?;
+        let data = staging.slice(..).get_mapped_range();
+        let spikes: &[u32] = bytemuck::cast_slice(&data[..len * 4]);
+        let bc = bucket_count.max(1) as usize;
+        let bucket_size = (len / bc).max(1);
+        let mut buckets = vec![0u32; bc];
+        for (b, slot) in buckets.iter_mut().enumerate() {
+            let lo = b * bucket_size;
+            let hi = ((b + 1) * bucket_size).min(len);
+            *slot = spikes[lo..hi].iter().filter(|&&s| s != 0).count() as u32;
+        }
+        drop(data);
+        staging.unmap();
+        Ok(buckets)
     }
 
     pub fn has_cluster(&self, name: &str) -> bool {
@@ -425,7 +512,9 @@ impl ComputeEngine {
             cp.dispatch_workgroups(wg, 1, 1);
         }
         self.queue.submit(std::iter::once(enc.finish()));
-        let _ = self.device.poll(wgpu::Maintain::Wait);
+        // No blocking readback — hebbian only needs an ack; the GPU runs the dispatch
+        // asynchronously. Blocking poll(Wait) here per-frame starved the WS reader during
+        // the teach frame-flood and the brain reset the donor.
         Ok(())
     }
 }
@@ -451,7 +540,7 @@ pub async fn self_test(gpu_index: usize, neurons: u32, steps: u32, drive: f32) -
     println!("self-test: building engine on GPU [{gpu_index}]...");
     let mut eng = ComputeEngine::new(gpu_index).await?;
     println!("self-test: device on '{}' — seeding {} neurons", eng.adapter_name(), neurons);
-    eng.init_cluster("selftest", neurons, 0, drive, 0.05);
+    eng.init_cluster("selftest", neurons, &HashMap::new(), drive, 0.05);
     for s in 0..steps {
         let count = eng.step("selftest", drive, 0.05, s.wrapping_mul(2654435761))?;
         let pct = (count as f64 / neurons as f64) * 100.0;
