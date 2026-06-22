@@ -11,6 +11,8 @@ mod config;
 mod donor;
 mod frames;
 mod gpu;
+#[cfg(feature = "gui")]
+mod gui;
 mod protocol;
 
 use clap::Parser;
@@ -98,31 +100,30 @@ fn main() {
         );
     }
 
+    // GUI build, interactive (not --headless): open the window. Defaults card 1 @ 10%;
+    // nothing donates until ▶ Start (safe start).
+    #[cfg(feature = "gui")]
     if !cfg.headless {
-        println!("\n(GUI lands in M4 — running headless meanwhile.)");
-    }
-
-    // Preview the gpu_register we'll send per GPU once the WS loop (M1) lands. This also
-    // exercises the protocol + config + gpu modules end-to-end so they're compile-checked.
-    if let Some(g) = selected.first() {
-        let reg = protocol::GpuRegister::new(g.max_buffer_mb, g.max_storage_binding_mb, g.name.clone());
-        if let Ok(j) = serde_json::to_string(&reg) {
-            println!("\ngpu_register preview (M1 will send this on connect):\n  {j}");
+        if let Err(e) = gui::run(cfg.clone(), gpus.clone()) {
+            eprintln!("{e}");
+            std::process::exit(1);
         }
+        return;
     }
 
+    // Headless donor loop (the --no-default-features build is always here).
     if cfg.autostart {
-        // MVP: one donor for the first selected GPU (multi-GPU fan-out is M3).
+        // MVP: one donor for the first selected GPU (multi-GPU fan-out is M3+).
         let target = selected[0].clone();
         if selected.len() > 1 {
-            println!("\n(note: MVP donates the first selected GPU [{}]; multi-GPU fan-out lands in M3.)", target.index);
+            println!("(note: donating the first selected GPU [{}]; multi-GPU fan-out is M3+.)", target.index);
         }
         let rt = tokio::runtime::Runtime::new().expect("tokio runtime");
-        if let Err(e) = rt.block_on(donor::run_donor(cfg, target)) {
+        if let Err(e) = rt.block_on(donor::run_donor(cfg, target, donor::Control::new())) {
             eprintln!("[donor] exited with error: {e}");
             std::process::exit(1);
         }
     } else {
-        println!("\nsafe-start: not connecting yet. The GUI \u{25b6} Start button (M4) or --autostart begins donation now.");
+        println!("\nsafe-start: not connecting. Use --autostart for headless donation, or run the GUI build.");
     }
 }

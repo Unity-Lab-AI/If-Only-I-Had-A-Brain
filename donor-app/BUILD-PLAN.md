@@ -116,8 +116,31 @@ buffer < 2 MB) + 30 s op timeouts + device-lost auto-reconnect.
   hebbian work, but curriculum region probes are unhandled (readback would time out —
   bounded by the brain's #112.9 budget). ⇒ first live test = register/init/compute/matrix
   ops; full curriculum participation needs M3.2.
-- **M4:** eframe GUI (per-GPU rows/sliders/start-stop/status panel: server-total + your
-  contribution), default card 1 @ 10% require-Start.
+- **M3.2 — DONE (handlers) + live-tested:** region ops wired — write_spike_slice /
+  write_current_slice / clear_spike_region (cortex sub-region slices) +
+  readback_letter_buckets (CPU bucket reduction → ack, no more probe timeout); stores
+  per-cluster region offsets; hebbian made non-blocking. Live test: pre-K passed all 6
+  subjects → auto-advanced to K. Dynamic regions (word_motor + per-subject bands) not in
+  gpu_init → no-op gracefully (folded into M3.3).
+- **⚠ M3.3 — REQUIRED for sustained heavy teach (live test confirmed):** during the
+  K-VOCAB teach frame-flood the donor's SYNCHRONOUS GPU readbacks (per-tick spike +
+  per-frame propagate, both device.poll(Wait)) block the WS task, so the brain's liveness
+  check declares the donor "disconnected UNEXPECTEDLY" (~60s in). Base compute + matrix
+  sync are rock-solid; heavy teach needs an ASYNC GPU pipeline: own the ComputeEngine on a
+  dedicated GPU worker thread; the async WS task sends commands over a channel + awaits
+  results via oneshot, never blocking on poll(Wait), so the brain always gets timely
+  compute_batch acks. Plus dynamic-region registration (word_motor*). Last piece for full
+  live training contribution.
+- **M4 — DONE (compiles + links; visual test is yours):** eframe/egui GUI (`gui.rs`) —
+  per-GPU row (toggle + utilization slider), **default card 1 @ 10%, nothing runs until
+  ▶ Start** (safe start), ⏹ Stop (sets the donor stop flag → clean WS close), status panel
+  (server connected + your contribution: GPU, batches, spikes/last-batch). Start launches
+  the donor on a background thread via `Control` (stop flag + shared status). `gui` is now
+  the DEFAULT feature; `--no-default-features` = pure-headless (server/RunPod, no
+  windowing deps). Both build configs `cargo check` green; release binary links (17 MB).
+  Running the window needs a display — that's your visual test. (Status currently shows
+  your-contribution fully + server connection; the community "server total" metric needs
+  state-broadcast parsing — minor polish.)
 - **M5:** packaging — `cargo build --release` per target (Win/Linux), headless container
   recipe for RunPod.
 

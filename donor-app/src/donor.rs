@@ -8,6 +8,9 @@
 use std::time::Instant;
 
 use std::collections::HashMap;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex};
+use std::time::Duration;
 
 use futures_util::{SinkExt, StreamExt};
 use tokio_tungstenite::tungstenite::Message;
@@ -21,6 +24,41 @@ use crate::protocol::{
     ReadbackAck, RebindAck, ServerMessage,
 };
 
+/// Live status the GUI reads (and headless ignores).
+#[derive(Default)]
+pub struct DonorStatus {
+    pub connected: bool,
+    pub gpu_name: String,
+    pub batches: u64,
+    pub spikes_last: u64,
+    pub note: String,
+}
+
+/// Start/stop + status handle shared with a donor task.
+#[derive(Clone)]
+pub struct Control {
+    pub stop: Arc<AtomicBool>,
+    pub status: Arc<Mutex<DonorStatus>>,
+}
+
+impl Control {
+    pub fn new() -> Self {
+        Self { stop: Arc::new(AtomicBool::new(false)), status: Arc::new(Mutex::new(DonorStatus::default())) }
+    }
+}
+
+impl Default for Control {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+fn set_status(control: &Control, f: impl FnOnce(&mut DonorStatus)) {
+    if let Ok(mut s) = control.status.lock() {
+        f(&mut s);
+    }
+}
+
 /// In-progress chunked matrix upload (type=4), assembled until the last chunk.
 struct PartialUpload {
     rows: u32,
@@ -30,8 +68,9 @@ struct PartialUpload {
     col_idx: Vec<u32>,
 }
 
-/// Connect one donor for `gpu` and run until the connection closes or Ctrl+C.
-pub async fn run_donor(cfg: DonorConfig, gpu: GpuInfo) -> Result<(), String> {
+/// Connect one donor for `gpu` and run until the connection closes, Ctrl+C, or
+/// `control.stop` is set (the GUI Stop button). Updates `control.status` live.
+pub async fn run_donor(cfg: DonorConfig, gpu: GpuInfo, control: Control) -> Result<(), String> {
     println!("[donor] building GPU engine on [{}] {}...", gpu.index, gpu.name);
     let mut engine = ComputeEngine::new(gpu.index).await?;
 
@@ -48,16 +87,25 @@ pub async fn run_donor(cfg: DonorConfig, gpu: GpuInfo) -> Result<(), String> {
         .await
         .map_err(|e| format!("register send failed: {e}"))?;
     println!("[donor] registered as '{}' ({} MB binding cap). Donating at {}% utilization.", cfg.name, gpu.max_storage_binding_mb, cfg.utilization_pct);
+    set_status(&control, |s| { s.connected = true; s.gpu_name = gpu.name.clone(); s.note = "registered".into(); });
 
     let util = cfg.utilization_pct.clamp(1, 100) as f64;
     let mut step_seed: u32 = 0x9e3779b9;
     let mut partials: HashMap<String, PartialUpload> = HashMap::new();
 
-    // Ctrl+C → graceful stop (safe stop): close the socket cleanly so the brain drops us.
+    // Ctrl+C OR control.stop → graceful stop (safe stop): clean WS close.
     let mut ctrlc = Box::pin(tokio::signal::ctrl_c());
+    let mut stop_check = tokio::time::interval(Duration::from_millis(250));
 
     loop {
         tokio::select! {
+            _ = stop_check.tick() => {
+                if control.stop.load(Ordering::Relaxed) {
+                    println!("[donor] stop requested (GUI) — closing connection cleanly.");
+                    let _ = tx.send(Message::Close(None)).await;
+                    break;
+                }
+            }
             _ = &mut ctrlc => {
                 println!("\n[donor] stop requested — closing connection cleanly (safe stop).");
                 let _ = tx.send(Message::Close(None)).await;
@@ -80,6 +128,8 @@ pub async fn run_donor(cfg: DonorConfig, gpu: GpuInfo) -> Result<(), String> {
                             Ok(ServerMessage::ComputeBatch(batch)) => {
                                 let t0 = Instant::now();
                                 let result = run_batch(&engine, &batch, &mut step_seed);
+                                let spikes: u64 = result.per_cluster.values().map(|p| p.spike_count_total).sum();
+                                set_status(&control, |s| { s.batches += 1; s.spikes_last = spikes; s.note = "computing".into(); });
                                 if let Ok(j) = serde_json::to_string(&result) {
                                     let _ = tx.send(Message::text(j)).await;
                                 }
@@ -137,6 +187,7 @@ pub async fn run_donor(cfg: DonorConfig, gpu: GpuInfo) -> Result<(), String> {
             }
         }
     }
+    set_status(&control, |s| { s.connected = false; s.note = "stopped".into(); });
     Ok(())
 }
 
