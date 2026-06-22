@@ -4868,13 +4868,16 @@ const httpServer = http.createServer((req, res) => {
     return;
   }
 
-  // Graceful shutdown endpoint. stop.bat POSTs here as its first kill
-  // attempt before falling through to taskkill on the port-holder.
-  // Handler flips the shutdown flag + calls brain.stop() + schedules a
-  // process.exit(0) after a brief drain window so the HTTP response
-  // can return before the Node event loop dies. Idempotent — a second
-  // POST after shutdown is already in progress short-circuits with an
-  // already-shutting-down response.
+  // Graceful shutdown endpoint = a TRUE HALT (dashboard "Stop Brain" / stop.bat).
+  // #112.10 — exits with code 42 (NOT 0). The systemd unit sets
+  // `RestartPreventExitStatus=42`, so a deliberate Stop stays DOWN instead of
+  // being instantly revived by `Restart=always` (the prior `exit(0)` made Stop
+  // behave identically to Restart — "couldn't shut it off"). A crash or a
+  // Restart (exit 0) is still auto-revived; only THIS deliberate halt is not.
+  // To bring it back after a Stop: `sudo systemctl start unity-brain` (box) or
+  // re-run start.bat / Savestart.bat (local). Force-saves + drops the resume
+  // marker first, so when it IS restarted it auto-resumes the trained state.
+  // Idempotent — a second POST short-circuits.
   if (req.url === '/shutdown' && req.method === 'POST') {
     if (!requireLoopback(req, res, '/shutdown')) return;
     res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -4883,11 +4886,11 @@ const httpServer = http.createServer((req, res) => {
       return;
     }
     global._brainShutdownRequested = true;
-    console.log('[Brain] HTTP /shutdown — graceful halt requested by operator (stop.bat or curl).');
-    res.end(JSON.stringify({ status: 'shutdown requested, exiting in 500ms' }));
-    // #38 — this is a DELIBERATE clean stop (stop.bat). Force-save the latest
-    // weights + drop the resume marker so the next boot auto-resumes (no need to
-    // remember Savestart) unless a heavy update made the weights incompatible.
+    console.log('[Brain] HTTP /shutdown — TRUE HALT requested (dashboard Stop / stop.bat). Exiting 42; systemd will NOT revive. Bring back with: sudo systemctl start unity-brain');
+    res.end(JSON.stringify({ status: 'halting — exit 42, will NOT auto-revive; restart with `systemctl start unity-brain` (box) or start.bat (local)' }));
+    // #38 — DELIBERATE clean stop. Force-save the latest weights + drop the
+    // resume marker so a LATER manual start auto-resumes (no need to remember
+    // Savestart) unless a heavy update made the weights incompatible.
     try { _writeResumeMarker('stop.bat / HTTP /shutdown'); } catch (err) {
       console.warn('[Brain] resume-marker on /shutdown failed:', err && err.message);
     }
@@ -4895,7 +4898,8 @@ const httpServer = http.createServer((req, res) => {
       console.error('[Brain] stop() failed during /shutdown:', err);
     }
     // Give the (possibly large) force-save a moment to flush to disk before exit.
-    setTimeout(() => { process.exit(0); }, 1500);
+    // Exit 42 (deliberate-halt sentinel) — see RestartPreventExitStatus in the unit.
+    setTimeout(() => { process.exit(42); }, 1500);
     return;
   }
 
