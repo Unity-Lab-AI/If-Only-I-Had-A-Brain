@@ -24467,3 +24467,27 @@ During this implementation pass at 22:16 PT, a `node -e "require('./server/brain
 **Files modified:** `server/brain-server.js` · `scripts/gate-walk-check.mjs` (new) · `docs/ADMIN-CONTROLS.md` (new) · `docs/TODO.md` · `docs/FINALIZED.md` · (box) `/etc/systemd/system/unity-brain.service`.
 
 **Brain math unchanged** — diagnostic tooling + admin-control/process-lifecycle only; no equation, weight, or curriculum change.
+
+---
+
+## 2026-06-22 — #112.11 — admin checkpoint cap (last 3) + fresh-start/incompatible dashboard surfacing + save-now/rollback UI
+
+**Context:** Sponge asked for an admin wipe-to-fresh, periodic checkpointing that resumes on restart, **keep only the last 3** checkpoints, versioned checkpoints where a mismatch refuses the old one, and a dashboard note when a fresh start is required — "do the dashboard and checkpointing changes first." Audit (`docs/CHECKPOINT-WIPE-PLAN.md`) found MOST already existed (5-min periodic save, `/reset` wipe button, versioned v0–v4 slots + `/versions`+`/rollback`, `WEIGHTS_FORMAT_VERSION`+neuron-count mismatch→fresh-start). Closed the real gaps.
+
+**Fix (`server/brain-server.js`):**
+- `CHECKPOINT_SLOTS` (env `DREAM_CHECKPOINT_SLOTS`, default **3**, was a fixed 5) — slot rotation `% CHECKPOINT_SLOTS`; `GET /versions` loops to the cap (+ returns `binBytes`, `slots`); `POST /rollback` validates `v0..v{cap-1}`; `_pruneStaleCheckpointSlots()` deletes legacy slots ≥ cap on boot (frees disk when lowering the cap).
+- `_writeBootReason()` persists `.last-boot-reason.json` at every `autoClearStaleState()` decision point (resume-compatible / wipe-incompatible / force-fresh / default-fresh) — PURELY additive, never alters the resume/wipe decision. `GET /milestone` now returns `lastBootReason` + `checkpointSlots`.
+- `POST /checkpoint` — admin-gated force-save-now (versioned), between the 5-min periodic saves.
+
+**Fix (`html/dashboard.html`):**
+- Milestone panel: red **"Training was RESET — previous checkpoint INCOMPATIBLE (was X → now Y neurons)"** banner + amber operator-wipe note, from `lastBootReason`.
+- Checkpoint slot list (slot, version#, size, time) + per-slot **⏪ rollback** buttons (wired to existing `/rollback`).
+- **💾 Save checkpoint now** button → `POST /checkpoint`.
+
+**Docs:** `ADMIN-CONTROLS.md` (checkpoints/versioning/rollback section + the version-bump rule), `PUSH_WORKFLOW.md` (pre-push checklist item: bump `WEIGHTS_FORMAT_VERSION` only on weight-format changes), `CHECKPOINT-WIPE-PLAN.md` (status → implemented), `TODO.md` (#112.11).
+
+**Verification (box, 2026-06-22):** `node --check` green (brain-server.js + extracted dashboard inline JS) locally + on box. Deployed brain-server.js via overlay + restart: active, NRestarts=0, clean **resume** (formatVersion=1, 51,130,559 neurons preserved). `GET /milestone` → `checkpointSlots=3`, `lastBootReason={mode:resume,reason:compatible}` (so no banner — correct). `GET /versions` → `slots:3` with v1/v2 + `binBytes`. `POST /checkpoint` (loopback + `X-UAL-User`) → `{ok:true,version:1,slot:"v1"}`. `.last-boot-reason.json` persisted. dashboard.html ships via the main-push pages CI.
+
+**Files modified:** `server/brain-server.js` · `html/dashboard.html` · `docs/ADMIN-CONTROLS.md` · `docs/PUSH_WORKFLOW.md` · `docs/CHECKPOINT-WIPE-PLAN.md` · `docs/TODO.md` · `docs/FINALIZED.md` · (box) `/opt/unity-brain/server/brain-server.js`.
+
+**Brain math unchanged** — checkpoint/admin/process-lifecycle + dashboard only; no equation, weight, or curriculum change.
