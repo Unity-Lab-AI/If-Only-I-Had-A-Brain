@@ -137,6 +137,25 @@ fn one() -> f32 {
     1.0
 }
 
+/// Rebind a sparse matrix to cluster sub-slices (we ack it; binding detail used later).
+#[derive(Debug, Clone, Deserialize)]
+pub struct RebindSparse {
+    #[serde(rename = "reqId")]
+    pub req_id: u32,
+    pub name: String,
+}
+
+/// Ack for `rebind_sparse`.
+#[derive(Debug, Clone, Serialize)]
+pub struct RebindAck {
+    #[serde(rename = "type")]
+    pub msg_type: &'static str, // "rebind_sparse_ack"
+    #[serde(rename = "reqId")]
+    pub req_id: u32,
+    pub name: String,
+    pub ok: bool,
+}
+
 /// Tagged dispatch over the JSON messages a donor receives. Unknown types are ignored
 /// (forward-compat, matching the browser donor).
 #[derive(Debug, Clone, Deserialize)]
@@ -146,6 +165,8 @@ pub enum ServerMessage {
     GpuInit(GpuInit),
     #[serde(rename = "compute_batch")]
     ComputeBatch(ComputeBatch),
+    #[serde(rename = "rebind_sparse")]
+    RebindSparse(RebindSparse),
     #[serde(other)]
     Other,
 }

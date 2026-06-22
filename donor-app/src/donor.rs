@@ -18,7 +18,7 @@ use crate::frames::{self, Frame};
 use crate::gpu::GpuInfo;
 use crate::protocol::{
     ComputeBatch, ComputeBatchResult, GpuInit, GpuInitAck, GpuRegister, PerClusterResult,
-    ServerMessage,
+    RebindAck, ServerMessage,
 };
 
 /// In-progress chunked matrix upload (type=4), assembled until the last chunk.
@@ -89,6 +89,13 @@ pub async fn run_donor(cfg: DonorConfig, gpu: GpuInfo) -> Result<(), String> {
                                     let idle = busy.mul_f64((100.0 - util) / util);
                                     tokio::time::sleep(idle).await;
                                 }
+                            }
+                            Ok(ServerMessage::RebindSparse(rb)) => {
+                                // Ack so the brain doesn't hit its 30s rebind timeout. The
+                                // matrix stays standalone for now (the carried preSpikes path
+                                // still works); cluster-slice binding is an M3.2 refinement.
+                                let ack = RebindAck { msg_type: "rebind_sparse_ack", req_id: rb.req_id, name: rb.name, ok: true };
+                                let _ = tx.send(Message::text(serde_json::to_string(&ack).unwrap())).await;
                             }
                             Ok(ServerMessage::Other) => { /* forward-compat: ignore unknown */ }
                             Err(_) => { /* non-JSON or unparseable — ignore */ }
