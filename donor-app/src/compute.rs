@@ -132,6 +132,12 @@ impl ComputeEngine {
             .await
             .map_err(|e| format!("request_device failed: {e}"))?;
 
+        // Don't let a wgpu validation error hard-panic the donor thread — log + continue
+        // (the brain validates results and will drop us if compute is actually broken).
+        device.on_uncaptured_error(Box::new(|e| {
+            eprintln!("[gpu] wgpu error (non-fatal, continuing): {e}");
+        }));
+
         let lif_pipeline = build_pipeline(&device, "lif", LIF_SHADER);
         let spike_pipeline = build_pipeline(&device, "spike_count", SPIKE_COUNT_SHADER);
         let propagate_pipeline = build_pipeline(&device, "synapse_propagate", SYNAPSE_PROPAGATE_SHADER);
@@ -414,11 +420,13 @@ impl ComputeEngine {
         let dev = &self.device;
         let su = wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST;
         // guard against zero-size bindings
+        // Guard every buffer to ≥1 element — wgpu rejects a zero-size storage binding.
         let v: &[f32] = if values.is_empty() { &[0.0] } else { values };
         let ci: &[u32] = if col_idx.is_empty() { &[0] } else { col_idx };
+        let rp: &[u32] = if row_ptr.is_empty() { &[0] } else { row_ptr };
         let values_buf = dev.create_buffer_init(&wgpu::util::BufferInitDescriptor { label: Some(name), contents: bytemuck::cast_slice(v), usage: su });
         let col_idx_buf = dev.create_buffer_init(&wgpu::util::BufferInitDescriptor { label: Some(name), contents: bytemuck::cast_slice(ci), usage: su });
-        let row_ptr_buf = dev.create_buffer_init(&wgpu::util::BufferInitDescriptor { label: Some(name), contents: bytemuck::cast_slice(row_ptr), usage: su });
+        let row_ptr_buf = dev.create_buffer_init(&wgpu::util::BufferInitDescriptor { label: Some(name), contents: bytemuck::cast_slice(rp), usage: su });
         let pre = vec![0u32; cols.max(1) as usize];
         let pre_spikes = dev.create_buffer_init(&wgpu::util::BufferInitDescriptor { label: Some(name), contents: bytemuck::cast_slice(&pre), usage: su });
         let postf = vec![0f32; rows.max(1) as usize];
@@ -443,6 +451,10 @@ impl ComputeEngine {
     /// Run sparse propagate: scatter pre-spikes, matmul, return the post currents.
     pub fn propagate(&self, name: &str, pre_indices: &[u32]) -> Result<Vec<f32>, String> {
         let m = self.sparse.get(name).ok_or_else(|| format!("sparse '{name}' not uploaded"))?;
+        // Empty/degenerate matrix → all-zero currents (no dispatch, no bind group).
+        if m.rows == 0 || m.nnz == 0 {
+            return Ok(vec![0.0; m.rows as usize]);
+        }
         self.write_dense_spikes(&m.pre_spikes, m.cols, pre_indices);
         // zero post_currents
         let zeros = vec![0f32; m.rows.max(1) as usize];
@@ -487,6 +499,9 @@ impl ComputeEngine {
     /// Run Oja/anti-Hebbian plasticity on a sparse matrix (in place).
     pub fn hebbian(&self, name: &str, pre_indices: &[u32], post_indices: &[u32], lr: f32) -> Result<(), String> {
         let m = self.sparse.get(name).ok_or_else(|| format!("sparse '{name}' not uploaded"))?;
+        if m.rows == 0 || m.nnz == 0 {
+            return Ok(());
+        }
         self.write_dense_spikes(&m.pre_spikes, m.cols, pre_indices);
         self.write_dense_spikes(&m.post_spikes, m.rows, post_indices);
         let params = HebbParams { rows: m.rows, nnz: m.nnz, lr, reward: 1.0, w_min: -2.0, w_max: 2.0, src_offset: 0, dst_offset: 0 };
