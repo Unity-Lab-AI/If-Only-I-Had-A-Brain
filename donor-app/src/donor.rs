@@ -15,7 +15,7 @@ use std::time::Duration;
 use futures_util::{SinkExt, StreamExt};
 use tokio_tungstenite::tungstenite::Message;
 
-use crate::compute::ComputeEngine;
+use crate::compute::{MultiEngine, StepJob};
 use crate::config::DonorConfig;
 use crate::frames::{self, Frame};
 use crate::gpu::GpuInfo;
@@ -59,9 +59,10 @@ fn set_status(control: &Control, f: impl FnOnce(&mut DonorStatus)) {
     }
 }
 
-/// Spawn a donor for one GPU on its own thread (own tokio runtime). Returns the Control
-/// (stop flag + live status) and the thread handle. One call per GPU = one full replica.
-pub fn spawn_donor(cfg: DonorConfig, gpu: GpuInfo) -> (Control, std::thread::JoinHandle<()>) {
+/// Spawn ONE donor for a host's whole GPU pool on its own thread (own tokio runtime).
+/// Returns the Control (stop flag + live status) and the thread handle. The host registers
+/// as a single compute unit and drives every GPU in `gpus` internally (see `MultiEngine`).
+pub fn spawn_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>) -> (Control, std::thread::JoinHandle<()>) {
     let control = Control::new();
     let c2 = control.clone();
     let handle = std::thread::spawn(move || {
@@ -72,7 +73,7 @@ pub fn spawn_donor(cfg: DonorConfig, gpu: GpuInfo) -> (Control, std::thread::Joi
                 return;
             }
         };
-        if let Err(e) = rt.block_on(run_donor(cfg, gpu, c2.clone())) {
+        if let Err(e) = rt.block_on(run_donor(cfg, gpus, c2.clone())) {
             if let Ok(mut s) = c2.status.lock() {
                 s.note = format!("error: {e}");
                 s.connected = false;
@@ -93,9 +94,15 @@ struct PartialUpload {
 
 /// Connect one donor for `gpu` and run until the connection closes, Ctrl+C, or
 /// `control.stop` is set (the GUI Stop button). Updates `control.status` live.
-pub async fn run_donor(cfg: DonorConfig, gpu: GpuInfo, control: Control) -> Result<(), String> {
-    println!("[donor] building GPU engine on [{}] {}...", gpu.index, gpu.name);
-    let mut engine = ComputeEngine::new(gpu.index).await?;
+pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, control: Control) -> Result<(), String> {
+    let indices: Vec<usize> = gpus.iter().map(|g| g.index).collect();
+    println!("[donor] building multi-GPU engine over {} card(s): {:?}", gpus.len(), indices);
+    let mut engine = MultiEngine::new(&indices).await?;
+    let label = engine.gpu_label();
+    // A matrix lives on ONE local GPU, so advertise the SMALLEST per-binding cap across the
+    // pool — the brain won't then hand us a binding bigger than any single card can hold.
+    let binding_mb = gpus.iter().map(|g| g.max_storage_binding_mb).min().unwrap_or(0);
+    let host_name = if gpus.len() > 1 { format!("{label} ({} GPUs)", gpus.len()) } else { label.clone() };
 
     println!("[donor] connecting to {} ...", cfg.server);
     set_status(&control, |s| s.note = "connecting…".into());
@@ -122,12 +129,12 @@ pub async fn run_donor(cfg: DonorConfig, gpu: GpuInfo, control: Control) -> Resu
 
     // gpu_register — advertise the per-binding cap (the capability the brain gates on),
     // not the (unbounded on native) max_buffer_size.
-    let reg = GpuRegister::new(gpu.max_storage_binding_mb, gpu.max_storage_binding_mb, gpu.name.clone());
+    let reg = GpuRegister::new(binding_mb, binding_mb, host_name.clone());
     tx.send(Message::text(serde_json::to_string(&reg).unwrap()))
         .await
         .map_err(|e| format!("register send failed: {e}"))?;
-    println!("[donor] registered as '{}' ({} MB binding cap). Donating at {}% utilization.", cfg.name, gpu.max_storage_binding_mb, cfg.utilization_pct);
-    set_status(&control, |s| { s.connected = true; s.gpu_name = gpu.name.clone(); s.note = "registered".into(); });
+    println!("[donor] registered as '{}' = {} ({} MB binding cap). Donating at {}% utilization.", cfg.name, host_name, binding_mb, cfg.utilization_pct);
+    set_status(&control, |s| { s.connected = true; s.gpu_name = host_name.clone(); s.note = "registered".into(); });
 
     let util = cfg.utilization_pct.clamp(1, 100) as f64;
     let mut step_seed: u32 = 0x9e3779b9;
@@ -229,16 +236,17 @@ pub async fn run_donor(cfg: DonorConfig, gpu: GpuInfo, control: Control) -> Resu
     Ok(())
 }
 
-fn handle_gpu_init(engine: &mut ComputeEngine, init: &GpuInit) {
+fn handle_gpu_init(engine: &mut MultiEngine, init: &GpuInit) {
     let regions: HashMap<String, (u32, u32)> =
         init.regions.iter().map(|(n, r)| (n.clone(), (r.start, r.end))).collect();
     engine.init_cluster(&init.cluster_name, init.size, &regions, init.tonic_drive, init.noise_amp);
     println!("[donor] gpu_init '{}' — {} neurons, {} regions", init.cluster_name, init.size, regions.len());
 }
 
-fn run_batch(engine: &ComputeEngine, batch: &ComputeBatch, step_seed: &mut u32) -> ComputeBatchResult {
-    let mut per_cluster = std::collections::HashMap::new();
+fn run_batch(engine: &MultiEngine, batch: &ComputeBatch, step_seed: &mut u32) -> ComputeBatchResult {
     let substeps = batch.substeps.max(1);
+    let mut per_cluster = std::collections::HashMap::new();
+    let mut jobs: Vec<StepJob> = Vec::with_capacity(batch.clusters.len());
     for c in &batch.clusters {
         if !engine.has_cluster(&c.name) {
             // not initialized (shouldn't happen post-init) — report zero, stay valid.
@@ -248,32 +256,23 @@ fn run_batch(engine: &ComputeEngine, batch: &ComputeBatch, step_seed: &mut u32) 
         // effectiveDrive = tonic * driveBaseline * emotionalGate * gainMultiplier + errorCorrection
         let effective_drive =
             c.tonic_drive * c.drive_baseline * c.emotional_gate * c.gain_multiplier + c.error_correction;
-        let mut total: u64 = 0;
-        let mut last: u64 = 0;
-        for _ in 0..substeps {
-            *step_seed = step_seed.wrapping_mul(2654435761).wrapping_add(40503);
-            match engine.step(&c.name, effective_drive, c.noise_amp, *step_seed) {
-                Ok(count) => {
-                    // clamp to [0, size] — the brain validates this; never feed it garbage.
-                    let count = (count as u64).min(c.size as u64);
-                    total += count;
-                    last = count;
-                }
-                Err(e) => {
-                    eprintln!("[donor] step error on '{}': {e}", c.name);
-                }
-            }
-        }
+        jobs.push(StepJob { name: c.name.clone(), size: c.size, drive: effective_drive, noise: c.noise_amp });
+    }
+    // Advance the batch seed once; MultiEngine derives a distinct per-GPU stream and runs
+    // each card's clusters in parallel, returning per-cluster spike totals.
+    *step_seed = step_seed.wrapping_mul(2654435761).wrapping_add(40503);
+    let outs = engine.run_substeps(&jobs, substeps, *step_seed);
+    for (name, so) in outs {
         per_cluster.insert(
-            c.name.clone(),
-            PerClusterResult { spike_count_total: total, last_spike_count: last, mean_voltage: None },
+            name,
+            PerClusterResult { spike_count_total: so.total, last_spike_count: so.last, mean_voltage: None },
         );
     }
     ComputeBatchResult { msg_type: "compute_batch_result", batch_id: batch.batch_id, per_cluster }
 }
 
 /// Handle a decoded binary sparse frame; returns the SPRR ack bytes to send (if any).
-fn handle_frame(engine: &mut ComputeEngine, partials: &mut HashMap<String, PartialUpload>, frame: Frame) -> Option<Vec<u8>> {
+fn handle_frame(engine: &mut MultiEngine, partials: &mut HashMap<String, PartialUpload>, frame: Frame) -> Option<Vec<u8>> {
     match frame {
         Frame::Upload { req_id, name, rows, cols, row_ptr, values, col_idx } => {
             engine.upload_sparse(&name, rows, cols, &row_ptr, &values, &col_idx);

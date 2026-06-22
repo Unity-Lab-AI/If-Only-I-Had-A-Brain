@@ -113,18 +113,15 @@ fn main() {
 
     // Headless donor loop (the --no-default-features build is always here).
     if cfg.autostart {
-        // One donor (full replica) per selected GPU; Ctrl+C stops them all.
+        // ONE donor for the whole host: all selected GPUs are aggregated into a single
+        // compute unit (round-robin per cluster, parallel per batch). Ctrl+C stops it.
         let targets: Vec<gpu::GpuInfo> = selected.iter().map(|g| (*g).clone()).collect();
-        println!("donating {} GPU(s) — Ctrl+C to stop:", targets.len());
-        let mut handles = Vec::new();
-        for g in targets {
+        println!("donating {} GPU(s) as ONE compute unit — Ctrl+C to stop:", targets.len());
+        for g in &targets {
             println!("  → [{}] {}", g.index, g.name);
-            let (_control, handle) = donor::spawn_donor(cfg.clone(), g);
-            handles.push(handle);
         }
-        for h in handles {
-            let _ = h.join();
-        }
+        let (_control, handle) = donor::spawn_donor(cfg.clone(), targets);
+        let _ = handle.join();
     } else {
         println!("\nsafe-start: not connecting. Use --autostart for headless donation, or run the GUI build.");
     }

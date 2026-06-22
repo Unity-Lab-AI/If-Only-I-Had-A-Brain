@@ -549,6 +549,202 @@ fn build_pipeline(device: &wgpu::Device, label: &str, src: &str) -> wgpu::Comput
     })
 }
 
+/// A host's local GPU pool presented to the brain as ONE compute unit. Holds one
+/// `ComputeEngine` per selected GPU and routes each cluster / matrix to a GPU (round-robin),
+/// so a SINGLE donor connection drives every GPU in the box — like a mining worker or a
+/// data-parallel AI training node. The brain never sees the individual cards; it just sees
+/// one big donor. `run_substeps` executes each GPU's clusters IN PARALLEL (one OS thread per
+/// engine), so a compute_batch finishes in ~max-per-GPU time, not the sum → real speedup.
+pub struct MultiEngine {
+    engines: Vec<ComputeEngine>,
+    cluster_gpu: HashMap<String, usize>,
+    matrix_gpu: HashMap<String, usize>,
+    next_cluster: usize,
+    next_matrix: usize,
+}
+
+/// One cluster's per-batch stepping parameters (effective drive already folded in).
+pub struct StepJob {
+    pub name: String,
+    pub size: u32,
+    pub drive: f32,
+    pub noise: f32,
+}
+
+#[derive(Default, Clone, Copy)]
+pub struct StepOut {
+    pub total: u64,
+    pub last: u64,
+}
+
+impl MultiEngine {
+    /// Build one engine per GPU index (filtered `gpu::enumerate` order).
+    pub async fn new(indices: &[usize]) -> Result<Self, String> {
+        if indices.is_empty() {
+            return Err("no GPUs selected".into());
+        }
+        let mut engines = Vec::with_capacity(indices.len());
+        for &idx in indices {
+            engines.push(ComputeEngine::new(idx).await?);
+        }
+        Ok(Self {
+            engines,
+            cluster_gpu: HashMap::new(),
+            matrix_gpu: HashMap::new(),
+            next_cluster: 0,
+            next_matrix: 0,
+        })
+    }
+
+    pub fn gpu_count(&self) -> usize {
+        self.engines.len()
+    }
+
+    /// Combined label, e.g. "NVIDIA GeForce RTX 4070 + NVIDIA GeForce RTX 2060".
+    pub fn gpu_label(&self) -> String {
+        self.engines.iter().map(|e| e.adapter_name()).collect::<Vec<_>>().join(" + ")
+    }
+
+    fn cluster_engine(&mut self, name: &str) -> usize {
+        if let Some(&g) = self.cluster_gpu.get(name) {
+            return g;
+        }
+        let g = self.next_cluster % self.engines.len();
+        self.next_cluster += 1;
+        self.cluster_gpu.insert(name.to_string(), g);
+        g
+    }
+
+    fn matrix_engine(&mut self, name: &str) -> usize {
+        if let Some(&g) = self.matrix_gpu.get(name) {
+            return g;
+        }
+        let g = self.next_matrix % self.engines.len();
+        self.next_matrix += 1;
+        self.matrix_gpu.insert(name.to_string(), g);
+        g
+    }
+
+    pub fn init_cluster(&mut self, name: &str, size: u32, regions: &HashMap<String, (u32, u32)>, tonic: f32, noise: f32) {
+        let g = self.cluster_engine(name);
+        let placed = self.engines[g].adapter_name().to_string();
+        self.engines[g].init_cluster(name, size, regions, tonic, noise);
+        println!("[multi] cluster '{name}' → GPU {g} ({placed})");
+    }
+
+    pub fn has_cluster(&self, name: &str) -> bool {
+        self.cluster_gpu.get(name).map(|&g| self.engines[g].has_cluster(name)).unwrap_or(false)
+    }
+
+    pub fn has_sparse(&self, name: &str) -> bool {
+        self.matrix_gpu.get(name).map(|&g| self.engines[g].has_sparse(name)).unwrap_or(false)
+    }
+
+    pub fn upload_sparse(&mut self, name: &str, rows: u32, cols: u32, row_ptr: &[u32], values: &[f32], col_idx: &[u32]) {
+        let g = self.matrix_engine(name);
+        self.engines[g].upload_sparse(name, rows, cols, row_ptr, values, col_idx);
+    }
+
+    pub fn propagate(&self, name: &str, pre: &[u32]) -> Result<Vec<f32>, String> {
+        match self.matrix_gpu.get(name) {
+            Some(&g) => self.engines[g].propagate(name, pre),
+            None => Err(format!("matrix {name} not resident")),
+        }
+    }
+
+    pub fn hebbian(&self, name: &str, pre: &[u32], post: &[u32], lr: f32) -> Result<(), String> {
+        match self.matrix_gpu.get(name) {
+            Some(&g) => self.engines[g].hebbian(name, pre, post, lr),
+            None => Err(format!("matrix {name} not resident")),
+        }
+    }
+
+    pub fn write_spike_slice(&self, cluster: &str, region: &str, indices: &[u32]) -> Result<(), String> {
+        match self.cluster_gpu.get(cluster) {
+            Some(&g) => self.engines[g].write_spike_slice(cluster, region, indices),
+            None => Ok(()),
+        }
+    }
+
+    pub fn write_current_slice(&self, cluster: &str, region: &str, indices: &[u32], values: &[f32], psi: f32) -> Result<(), String> {
+        match self.cluster_gpu.get(cluster) {
+            Some(&g) => self.engines[g].write_current_slice(cluster, region, indices, values, psi),
+            None => Ok(()),
+        }
+    }
+
+    pub fn clear_spike_region(&self, cluster: &str, region: &str) -> Result<(), String> {
+        match self.cluster_gpu.get(cluster) {
+            Some(&g) => self.engines[g].clear_spike_region(cluster, region),
+            None => Ok(()),
+        }
+    }
+
+    pub fn readback_letter_buckets(&self, cluster: &str, region: &str, bucket_count: u32, sub_slice_len: u32, start_offset: u32) -> Result<Vec<u32>, String> {
+        match self.cluster_gpu.get(cluster) {
+            Some(&g) => self.engines[g].readback_letter_buckets(cluster, region, bucket_count, sub_slice_len, start_offset),
+            None => Ok(Vec::new()),
+        }
+    }
+
+    /// Run `substeps` Rulkov iterations for every job, with each GPU's clusters executed in
+    /// parallel on its own thread. Returns per-cluster spike totals keyed by cluster name.
+    pub fn run_substeps(&self, jobs: &[StepJob], substeps: u32, base_seed: u32) -> HashMap<String, StepOut> {
+        let substeps = substeps.max(1);
+        let mut by_engine: Vec<Vec<usize>> = vec![Vec::new(); self.engines.len()];
+        let mut out: HashMap<String, StepOut> = HashMap::new();
+        for (i, job) in jobs.iter().enumerate() {
+            match self.cluster_gpu.get(&job.name) {
+                Some(&g) => by_engine[g].push(i),
+                None => { out.insert(job.name.clone(), StepOut::default()); }
+            }
+        }
+        // One thread per engine → GPUs run concurrently. Each thread owns a distinct engine
+        // (no aliasing — step takes &self and devices are independent) and its own RNG seed
+        // (the seed only drives stochastic noise; cross-GPU determinism isn't required).
+        let results: Vec<Vec<(String, StepOut)>> = std::thread::scope(|scope| {
+            let mut handles = Vec::new();
+            for (g, idxs) in by_engine.iter().enumerate() {
+                if idxs.is_empty() {
+                    continue;
+                }
+                let engine = &self.engines[g];
+                let seed0 = base_seed.wrapping_add((g as u32).wrapping_mul(0x9e3779b9));
+                let handle = scope.spawn(move || {
+                    let mut seed = seed0;
+                    let mut local = Vec::with_capacity(idxs.len());
+                    for &i in idxs {
+                        let job = &jobs[i];
+                        let mut total: u64 = 0;
+                        let mut last: u64 = 0;
+                        for _ in 0..substeps {
+                            seed = seed.wrapping_mul(2654435761).wrapping_add(40503);
+                            match engine.step(&job.name, job.drive, job.noise, seed) {
+                                Ok(count) => {
+                                    let count = (count as u64).min(job.size as u64);
+                                    total += count;
+                                    last = count;
+                                }
+                                Err(e) => eprintln!("[donor] step error on '{}': {e}", job.name),
+                            }
+                        }
+                        local.push((job.name.clone(), StepOut { total, last }));
+                    }
+                    local
+                });
+                handles.push(handle);
+            }
+            handles.into_iter().map(|h| h.join().unwrap_or_default()).collect()
+        });
+        for group in results {
+            for (name, so) in group {
+                out.insert(name, so);
+            }
+        }
+        out
+    }
+}
+
 /// Local self-test: build an engine on `gpu_index`, init a synthetic cluster, run `steps`
 /// Rulkov iterations, print spike counts. Verifies the GPU compute path with NO brain.
 pub async fn self_test(gpu_index: usize, neurons: u32, steps: u32, drive: f32) -> Result<(), String> {
