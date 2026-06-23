@@ -855,7 +855,9 @@ impl MultiEngine {
 
     /// Run `substeps` Rulkov iterations for every job, with each GPU's clusters executed in
     /// parallel on its own thread. Returns per-cluster spike totals keyed by cluster name.
-    pub fn run_substeps(&self, jobs: &[StepJob], substeps: u32, base_seed: u32) -> HashMap<String, StepOut> {
+    /// `stop` lets a long per-GPU duty-cycle idle (low util) bail promptly on ⏹ Stop instead
+    /// of pinning the worker for seconds.
+    pub fn run_substeps(&self, jobs: &[StepJob], substeps: u32, base_seed: u32, stop: &std::sync::atomic::AtomicBool) -> HashMap<String, StepOut> {
         let substeps = substeps.max(1);
         let mut by_engine: Vec<Vec<usize>> = vec![Vec::new(); self.engines.len()];
         let mut out: HashMap<String, StepOut> = HashMap::new();
@@ -900,9 +902,19 @@ impl MultiEngine {
                     }
                     // Per-GPU duty-cycle: idle a slice so THIS card's busy-fraction ≈ util_g%.
                     // (Independent per GPU — a gentle display card + a hard spare card coexist.)
+                    // Sleep in small chunks so a ⏹ Stop during a long low-util idle is noticed
+                    // fast (instead of pinning the worker for the whole idle slice).
                     if util_g < 100.0 {
-                        let busy = t0.elapsed();
-                        std::thread::sleep(busy.mul_f64((100.0 - util_g) / util_g));
+                        let mut remaining = t0.elapsed().mul_f64((100.0 - util_g) / util_g);
+                        let chunk = std::time::Duration::from_millis(50);
+                        while remaining > std::time::Duration::ZERO {
+                            if stop.load(std::sync::atomic::Ordering::Relaxed) {
+                                break;
+                            }
+                            let nap = remaining.min(chunk);
+                            std::thread::sleep(nap);
+                            remaining -= nap;
+                        }
                     }
                     local
                 });

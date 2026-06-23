@@ -168,6 +168,12 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
         let mut partials: HashMap<String, PartialUpload> = HashMap::new();
         let mut step_seed: u32 = 0x9e3779b9;
         while let Ok(work) = work_rx.recv() {
+            // Stop promptly on request: DON'T drain the queued backlog (the brain can have many
+            // compute_batch/frames buffered). Without this, join() blocks until the whole
+            // backlog clears, so the GUI's ▶ Start never reappears after ⏹ Stop.
+            if control_w.stop.load(Ordering::Relaxed) {
+                break;
+            }
             match work {
                 Work::Init(init) => {
                     handle_gpu_init(&mut engine, &init);
@@ -176,8 +182,9 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                 }
                 Work::Batch(batch) => {
                     // Per-GPU duty-cycle now lives inside run_substeps (each card throttles to
-                    // its own util target), so the worker just runs + replies.
-                    let result = run_batch(&engine, &batch, &mut step_seed);
+                    // its own util target), so the worker just runs + replies. Pass the stop
+                    // flag so a low-util idle bails fast on ⏹ Stop.
+                    let result = run_batch(&engine, &batch, &mut step_seed, &control_w.stop);
                     let spikes: u64 = result.per_cluster.values().map(|p| p.spike_count_total).sum();
                     set_status(&control_w, |s| { s.batches += 1; s.spikes_last = spikes; s.note = "computing".into(); });
                     if let Ok(j) = serde_json::to_string(&result) {
@@ -287,7 +294,7 @@ fn handle_gpu_init(engine: &mut MultiEngine, init: &GpuInit) {
     println!("[donor] gpu_init '{}' — {} neurons, {} regions", init.cluster_name, init.size, regions.len());
 }
 
-fn run_batch(engine: &MultiEngine, batch: &ComputeBatch, step_seed: &mut u32) -> ComputeBatchResult {
+fn run_batch(engine: &MultiEngine, batch: &ComputeBatch, step_seed: &mut u32, stop: &AtomicBool) -> ComputeBatchResult {
     let substeps = batch.substeps.max(1);
     let mut per_cluster = std::collections::HashMap::new();
     let mut jobs: Vec<StepJob> = Vec::with_capacity(batch.clusters.len());
@@ -305,7 +312,7 @@ fn run_batch(engine: &MultiEngine, batch: &ComputeBatch, step_seed: &mut u32) ->
     // Advance the batch seed once; MultiEngine derives a distinct per-GPU stream and runs
     // each card's clusters in parallel, returning per-cluster spike totals.
     *step_seed = step_seed.wrapping_mul(2654435761).wrapping_add(40503);
-    let outs = engine.run_substeps(&jobs, substeps, *step_seed);
+    let outs = engine.run_substeps(&jobs, substeps, *step_seed, stop);
     for (name, so) in outs {
         per_cluster.insert(
             name,
