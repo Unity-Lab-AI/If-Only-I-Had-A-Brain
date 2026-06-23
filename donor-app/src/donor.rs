@@ -33,6 +33,10 @@ pub struct DonorStatus {
     /// brain sends THESE, not compute_batch — so without this the GUI showed a misleading
     /// "0 batches" while the GPU was busy teaching.
     pub teach_ops: u64,
+    /// Last compute_batch throughput (billions of neuron-steps/sec) — matches compute.html's
+    /// metric; the periodic gpu_telemetry reports it so the brain accrues leaderboard credit.
+    pub gneurons_per_sec: f64,
+    pub steps_computed: u64,
     pub note: String,
 }
 
@@ -150,13 +154,18 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
     };
     let (mut tx, mut rx) = ws.split();
 
+    // Leaderboard identity: a persistent donor id + the OPTIONAL display name (--name / GUI).
+    // Same name across devices → one aggregated leaderboard row; empty name → anonymous.
+    let donor_id = crate::config::persistent_donor_id();
+    let donor_name: Option<String> = { let n = cfg.name.trim(); if n.is_empty() { None } else { Some(n.to_string()) } };
+
     // gpu_register — advertise the per-binding cap (the capability the brain gates on),
-    // not the (unbounded on native) max_buffer_size.
-    let reg = GpuRegister::new(binding_mb, binding_mb, host_name.clone());
+    // not the (unbounded on native) max_buffer_size. Carries the leaderboard id + name.
+    let reg = GpuRegister::new(binding_mb, binding_mb, host_name.clone(), Some(donor_id.clone()), donor_name.clone());
     tx.send(Message::text(serde_json::to_string(&reg).unwrap()))
         .await
         .map_err(|e| format!("register send failed: {e}"))?;
-    println!("[donor] registered as '{}' = {} ({} MB binding cap). Donating at {}% utilization.", cfg.name, host_name, binding_mb, cfg.utilization_pct);
+    println!("[donor] registered as {} ({} MB binding cap) — leaderboard: {}. Donating at {}% utilization.", host_name, binding_mb, donor_name.as_deref().unwrap_or("anonymous"), cfg.utilization_pct);
     set_status(&control, |s| { s.connected = true; s.gpu_name = host_name.clone(); s.note = "registered".into(); });
 
     // M3.3 — GPU work runs on a dedicated worker thread. The async WS loop below never
@@ -195,9 +204,15 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                     // Per-GPU duty-cycle now lives inside run_substeps (each card throttles to
                     // its own util target), so the worker just runs + replies. Pass the stop
                     // flag so a low-util idle bails fast on ⏹ Stop.
+                    let _neurons: u64 = batch.clusters.iter().map(|c| c.size as u64).sum();
+                    let _substeps = batch.substeps.max(1) as u64;
+                    let _t0 = std::time::Instant::now();
                     let result = run_batch(&engine, &batch, &mut step_seed, &control_w.stop, &pending_w);
+                    let _elapsed = _t0.elapsed().as_secs_f64().max(1e-6);
+                    // Gneuron-steps/sec — same metric as compute.html: (Σ cluster sizes × substeps) / sec / 1e9.
+                    let _gns = (_neurons as f64 * _substeps as f64) / _elapsed / 1e9;
                     let spikes: u64 = result.per_cluster.values().map(|p| p.spike_count_total).sum();
-                    set_status(&control_w, |s| { s.batches += 1; s.spikes_last = spikes; s.note = "computing".into(); });
+                    set_status(&control_w, |s| { s.batches += 1; s.spikes_last = spikes; s.gneurons_per_sec = _gns; s.steps_computed += _neurons * _substeps; s.note = "computing".into(); });
                     if let Ok(j) = serde_json::to_string(&result) {
                         let _ = reply_tx.send(Out::Text(j));
                     }
@@ -237,6 +252,9 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
     // Ctrl+C OR control.stop → graceful stop (safe stop): clean WS close.
     let mut ctrlc = Box::pin(tokio::signal::ctrl_c());
     let mut stop_check = tokio::time::interval(Duration::from_millis(250));
+    // Leaderboard telemetry every 5s (matches compute.html): report this host's last-batch
+    // throughput so the brain accrues neuron-compute credit under our id / name.
+    let mut telemetry_tick = tokio::time::interval(Duration::from_secs(5));
 
     loop {
         tokio::select! {
@@ -245,6 +263,22 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                     println!("[donor] stop requested (GUI) — closing connection cleanly.");
                     let _ = tx.send(Message::Close(None)).await;
                     break;
+                }
+            }
+            _ = telemetry_tick.tick() => {
+                let (gns, steps) = control.status.lock().map(|s| (s.gneurons_per_sec, s.steps_computed)).unwrap_or((0.0, 0));
+                let tele = crate::protocol::GpuTelemetry {
+                    msg_type: "gpu_telemetry",
+                    gpu_name: host_name.clone(),
+                    vram_mb: binding_mb,
+                    max_bind_mb: binding_mb,
+                    gneurons_per_sec: gns,
+                    steps_computed: steps,
+                    donor_id: Some(donor_id.clone()),
+                    donor_name: donor_name.clone(),
+                };
+                if let Ok(j) = serde_json::to_string(&tele) {
+                    let _ = tx.send(Message::text(j)).await;
                 }
             }
             _ = &mut ctrlc => {

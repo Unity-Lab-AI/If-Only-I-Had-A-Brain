@@ -20,11 +20,17 @@ pub struct GpuRegister {
     pub max_storage_binding_mb: u64,
     #[serde(rename = "gpuName")]
     pub gpu_name: String,
+    /// Persistent per-install donor id — keys this host's cumulative leaderboard total.
+    #[serde(rename = "donorId", skip_serializing_if = "Option::is_none")]
+    pub donor_id: Option<String>,
+    /// Optional leaderboard display name. Same name across devices → ONE aggregated row.
+    #[serde(rename = "donorName", skip_serializing_if = "Option::is_none")]
+    pub donor_name: Option<String>,
 }
 
 impl GpuRegister {
-    pub fn new(vram_mb: u64, max_storage_binding_mb: u64, gpu_name: String) -> Self {
-        Self { msg_type: "gpu_register", vram_mb, max_storage_binding_mb, gpu_name }
+    pub fn new(vram_mb: u64, max_storage_binding_mb: u64, gpu_name: String, donor_id: Option<String>, donor_name: Option<String>) -> Self {
+        Self { msg_type: "gpu_register", vram_mb, max_storage_binding_mb, gpu_name, donor_id, donor_name }
     }
 }
 
@@ -75,6 +81,10 @@ pub struct GpuTelemetry {
     pub gneurons_per_sec: f64,
     #[serde(rename = "stepsComputed")]
     pub steps_computed: u64,
+    #[serde(rename = "donorId", skip_serializing_if = "Option::is_none")]
+    pub donor_id: Option<String>,
+    #[serde(rename = "donorName", skip_serializing_if = "Option::is_none")]
+    pub donor_name: Option<String>,
 }
 
 // ─── Server → Donor ───────────────────────────────────────────────
