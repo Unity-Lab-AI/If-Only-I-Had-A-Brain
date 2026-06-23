@@ -4085,6 +4085,11 @@ export class Curriculum {
       }
       // Comprehension sample: run the first question. If it scores
       // ≥ 0.5, group is admitted. Otherwise group is skipped.
+      // Hand the event loop a MACROTASK tick before each probe so WS pings + donor frames are
+      // serviced between questions. Without it the battery's awaits resolve as microtasks only,
+      // never reaching the I/O phase → a 100s+ contiguous block that mass-evicts every GPU donor
+      // (missed pings → reconnect storm → matrix re-upload flood). setImmediate IS that boundary.
+      await new Promise((r) => setImmediate(r));
       const sample = group[0];
       compSamplesFired += 1;
       let sampleScore = 0;
@@ -4175,6 +4180,9 @@ export class Curriculum {
       // §6.4 — live battery progress for the /ws state broadcast, so the
       // walk can be watched without hand-diffing log polls.
       if (this.cluster) this.cluster._batteryProgress = { i: results.length + 1, total: questions.length, label, startedAt: _batteryStart };
+      // Macrotask yield (see loop above) — service WS pings/donor frames between probes so the
+      // battery doesn't block the event loop for the whole run and evict every donor.
+      await new Promise((r) => setImmediate(r));
       try {
         const r = await _probeWithBudget({
           question: q.question,
