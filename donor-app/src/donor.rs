@@ -116,9 +116,11 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
     println!("[donor] building multi-GPU engine over {} card(s): {:?} @ utils {:?}", gpus.len(), indices, utils);
     let engine = MultiEngine::new(&indices, &utils).await?;
     let label = engine.gpu_label();
+    println!("[donor] backends: {}", engine.backend_summary());
     // A matrix lives on ONE local GPU, so advertise the SMALLEST per-binding cap across the
-    // pool — the brain won't then hand us a binding bigger than any single card can hold.
-    let binding_mb = gpus.iter().map(|g| g.max_storage_binding_mb).min().unwrap_or(0);
+    // pool. CUDA engines report VRAM-sized caps (no 2 GB limit); wgpu engines report the
+    // adapter's binding limit. The brain then won't hand us a binding bigger than any card holds.
+    let binding_mb = engine.advertised_binding_mb();
     let host_name = if gpus.len() > 1 { format!("{label} ({} GPUs)", gpus.len()) } else { label.clone() };
 
     println!("[donor] connecting to {} ...", cfg.server);

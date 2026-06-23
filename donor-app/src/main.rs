@@ -8,6 +8,8 @@
 mod cli;
 mod compute;
 mod config;
+#[cfg(feature = "cuda")]
+mod cuda;
 mod donor;
 mod frames;
 mod gpu;

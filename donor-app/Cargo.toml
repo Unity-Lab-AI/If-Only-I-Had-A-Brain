@@ -15,11 +15,17 @@ bytemuck = { version = "1", features = ["derive"] }
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time", "signal"] }
 tokio-tungstenite = "0.24"
 futures-util = "0.3"
+# CUDA backend (NVIDIA). dynamic-loading => links WITHOUT the CUDA toolkit and dlopens
+# libcuda/libnvrtc at runtime, so the same binary runs on AMD/Intel hosts (CUDA just no-ops
+# and we fall back to wgpu). Optional + feature-gated.
+cudarc = { version = "0.16.6", default-features = false, features = ["std", "driver", "nvrtc", "dynamic-loading", "cuda-12040"], optional = true }
 
 [features]
-# Placeholder for the M4 GUI (eframe/egui). `--no-default-features` is the pure-headless build.
-default = ["gui"]
+# default = GUI + CUDA. Headless WITH cuda: `--no-default-features --features cuda`.
+# Pure portable headless (no CUDA, wgpu only — e.g. AMD build): `--no-default-features`.
+default = ["gui", "cuda"]
 gui = ["dep:eframe"]
+cuda = ["dep:cudarc"]
 
 [profile.release]
 opt-level = 3

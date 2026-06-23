@@ -562,11 +562,118 @@ fn build_pipeline(device: &wgpu::Device, label: &str, src: &str) -> wgpu::Comput
 /// data-parallel AI training node. The brain never sees the individual cards; it just sees
 /// one big donor. `run_substeps` executes each GPU's clusters IN PARALLEL (one OS thread per
 /// engine), so a compute_batch finishes in ~max-per-GPU time, not the sum → real speedup.
+/// One GPU's compute backend. CUDA on NVIDIA (no 2 GB cap, more control); wgpu everywhere
+/// else (AMD/Intel/Apple) — and as the fallback if CUDA init fails. Both expose the same
+/// surface so `MultiEngine` is backend-agnostic. Host-write methods take `&mut self` (CUDA
+/// needs it for memcpy-into-buffer); `step`/`has_*`/`readback` take `&self` so a batch can
+/// run every GPU's clusters in parallel.
+enum Backend {
+    Wgpu(ComputeEngine),
+    #[cfg(feature = "cuda")]
+    Cuda(crate::cuda::CudaEngine),
+}
+
+impl Backend {
+    fn adapter_name(&self) -> &str {
+        match self {
+            Backend::Wgpu(e) => e.adapter_name(),
+            #[cfg(feature = "cuda")]
+            Backend::Cuda(e) => e.adapter_name(),
+        }
+    }
+    fn kind(&self) -> &'static str {
+        match self {
+            Backend::Wgpu(_) => "wgpu",
+            #[cfg(feature = "cuda")]
+            Backend::Cuda(_) => "CUDA",
+        }
+    }
+    fn init_cluster(&mut self, name: &str, size: u32, regions: &HashMap<String, (u32, u32)>, tonic: f32, noise: f32) {
+        match self {
+            Backend::Wgpu(e) => e.init_cluster(name, size, regions, tonic, noise),
+            #[cfg(feature = "cuda")]
+            Backend::Cuda(e) => e.init_cluster(name, size, regions, tonic, noise),
+        }
+    }
+    fn has_cluster(&self, name: &str) -> bool {
+        match self {
+            Backend::Wgpu(e) => e.has_cluster(name),
+            #[cfg(feature = "cuda")]
+            Backend::Cuda(e) => e.has_cluster(name),
+        }
+    }
+    fn step(&self, name: &str, drive: f32, noise: f32, seed: u32) -> Result<u32, String> {
+        match self {
+            Backend::Wgpu(e) => e.step(name, drive, noise, seed),
+            #[cfg(feature = "cuda")]
+            Backend::Cuda(e) => e.step(name, drive, noise, seed),
+        }
+    }
+    fn has_sparse(&self, name: &str) -> bool {
+        match self {
+            Backend::Wgpu(e) => e.has_sparse(name),
+            #[cfg(feature = "cuda")]
+            Backend::Cuda(e) => e.has_sparse(name),
+        }
+    }
+    fn upload_sparse(&mut self, name: &str, rows: u32, cols: u32, row_ptr: &[u32], values: &[f32], col_idx: &[u32]) {
+        match self {
+            Backend::Wgpu(e) => e.upload_sparse(name, rows, cols, row_ptr, values, col_idx),
+            #[cfg(feature = "cuda")]
+            Backend::Cuda(e) => e.upload_sparse(name, rows, cols, row_ptr, values, col_idx),
+        }
+    }
+    fn propagate(&mut self, name: &str, pre: &[u32]) -> Result<Vec<f32>, String> {
+        match self {
+            Backend::Wgpu(e) => e.propagate(name, pre),
+            #[cfg(feature = "cuda")]
+            Backend::Cuda(e) => e.propagate(name, pre),
+        }
+    }
+    fn hebbian(&mut self, name: &str, pre: &[u32], post: &[u32], lr: f32) -> Result<(), String> {
+        match self {
+            Backend::Wgpu(e) => e.hebbian(name, pre, post, lr),
+            #[cfg(feature = "cuda")]
+            Backend::Cuda(e) => e.hebbian(name, pre, post, lr),
+        }
+    }
+    fn write_spike_slice(&mut self, cluster: &str, region: &str, indices: &[u32]) -> Result<(), String> {
+        match self {
+            Backend::Wgpu(e) => e.write_spike_slice(cluster, region, indices),
+            #[cfg(feature = "cuda")]
+            Backend::Cuda(e) => e.write_spike_slice(cluster, region, indices),
+        }
+    }
+    fn write_current_slice(&mut self, cluster: &str, region: &str, indices: &[u32], values: &[f32], psi: f32) -> Result<(), String> {
+        match self {
+            Backend::Wgpu(e) => e.write_current_slice(cluster, region, indices, values, psi),
+            #[cfg(feature = "cuda")]
+            Backend::Cuda(e) => e.write_current_slice(cluster, region, indices, values, psi),
+        }
+    }
+    fn clear_spike_region(&mut self, cluster: &str, region: &str) -> Result<(), String> {
+        match self {
+            Backend::Wgpu(e) => e.clear_spike_region(cluster, region),
+            #[cfg(feature = "cuda")]
+            Backend::Cuda(e) => e.clear_spike_region(cluster, region),
+        }
+    }
+    fn readback_letter_buckets(&self, cluster: &str, region: &str, bucket_count: u32, sub_slice_len: u32, start_offset: u32) -> Result<Vec<u32>, String> {
+        match self {
+            Backend::Wgpu(e) => e.readback_letter_buckets(cluster, region, bucket_count, sub_slice_len, start_offset),
+            #[cfg(feature = "cuda")]
+            Backend::Cuda(e) => e.readback_letter_buckets(cluster, region, bucket_count, sub_slice_len, start_offset),
+        }
+    }
+}
+
 pub struct MultiEngine {
-    engines: Vec<ComputeEngine>,
+    engines: Vec<Backend>,
     /// Per-engine utilization % (1..=100) — each GPU duty-cycles to ITS own target so you can
     /// e.g. run a display GPU gently and a spare GPU hard, independently.
     util: Vec<f64>,
+    /// Per-engine per-binding cap in MB (CUDA → VRAM, wgpu → adapter limit).
+    binding_mb: Vec<u64>,
     cluster_gpu: HashMap<String, usize>,
     matrix_gpu: HashMap<String, usize>,
     next_cluster: usize,
@@ -597,19 +704,56 @@ impl MultiEngine {
         }
         let mut adapters: Vec<Option<wgpu::Adapter>> =
             crate::gpu::select_adapters().into_iter().map(Some).collect();
+        // CUDA device names by ordinal, consumed as we match them to wgpu adapters (so two
+        // identical cards map 1:1 in order). Empty when the `cuda` feature is off or no CUDA.
+        #[cfg(feature = "cuda")]
+        let mut cuda_names: Vec<Option<String>> =
+            crate::cuda::device_names().into_iter().map(Some).collect();
+
         let mut engines = Vec::with_capacity(indices.len());
         let mut util = Vec::with_capacity(indices.len());
+        let mut binding_mb = Vec::with_capacity(indices.len());
         for (k, &idx) in indices.iter().enumerate() {
             let adapter = adapters
                 .get_mut(idx)
                 .and_then(|o| o.take())
                 .ok_or_else(|| format!("no GPU adapter at index {idx} (or selected twice)"))?;
-            engines.push(ComputeEngine::from_adapter(adapter).await?);
+            let aname = adapter.get_info().name;
+            let wgpu_cap = (adapter.limits().max_storage_buffer_binding_size as u64) / (1024 * 1024);
+
+            // Prefer CUDA on a name-matched NVIDIA card; fall back to wgpu on any failure.
+            #[cfg_attr(not(feature = "cuda"), allow(unused_mut))]
+            let mut backend: Option<Backend> = None;
+            #[cfg(feature = "cuda")]
+            {
+                if let Some(ord) = cuda_names.iter().position(|n| n.as_deref() == Some(aname.as_str())) {
+                    match crate::cuda::CudaEngine::new(ord) {
+                        Ok(e) => {
+                            let cap = e.binding_mb();
+                            println!("[multi] GPU slot {idx} '{aname}' → CUDA (ordinal {ord}, {cap} MB cap, no 2GB binding limit)");
+                            cuda_names[ord] = None;
+                            binding_mb.push(cap);
+                            backend = Some(Backend::Cuda(e));
+                        }
+                        Err(e) => eprintln!("[multi] CUDA init for '{aname}' failed ({e}); using wgpu"),
+                    }
+                }
+            }
+            let backend = match backend {
+                Some(b) => b,
+                None => {
+                    println!("[multi] GPU slot {idx} '{aname}' → wgpu ({wgpu_cap} MB binding cap)");
+                    binding_mb.push(wgpu_cap);
+                    Backend::Wgpu(ComputeEngine::from_adapter(adapter).await?)
+                }
+            };
+            engines.push(backend);
             util.push((utils.get(k).copied().unwrap_or(10) as f64).clamp(1.0, 100.0));
         }
         Ok(Self {
             engines,
             util,
+            binding_mb,
             cluster_gpu: HashMap::new(),
             matrix_gpu: HashMap::new(),
             next_cluster: 0,
@@ -619,6 +763,17 @@ impl MultiEngine {
 
     pub fn gpu_count(&self) -> usize {
         self.engines.len()
+    }
+
+    /// The per-binding cap to advertise to the brain = the SMALLEST across the pool (a matrix
+    /// lives on one GPU). All-CUDA pools advertise VRAM-sized caps (no 2 GB limit).
+    pub fn advertised_binding_mb(&self) -> u64 {
+        self.binding_mb.iter().copied().min().unwrap_or(2047)
+    }
+
+    /// One-line backend summary, e.g. "RTX 4070 SUPER [CUDA] + RTX 2060 [CUDA]".
+    pub fn backend_summary(&self) -> String {
+        self.engines.iter().map(|e| format!("{} [{}]", e.adapter_name(), e.kind())).collect::<Vec<_>>().join(" + ")
     }
 
     /// Combined label, e.g. "NVIDIA GeForce RTX 4070 + NVIDIA GeForce RTX 2060".
@@ -666,48 +821,36 @@ impl MultiEngine {
         self.engines[g].upload_sparse(name, rows, cols, row_ptr, values, col_idx);
     }
 
-    pub fn propagate(&self, name: &str, pre: &[u32]) -> Result<Vec<f32>, String> {
-        match self.matrix_gpu.get(name) {
-            Some(&g) => self.engines[g].propagate(name, pre),
-            // Not resident yet (the brain sends propagate before the upload lands). Best-effort
-            // zero-contribution — matches the browser donor's gpuReady gate. No spam.
-            None => Ok(Vec::new()),
-        }
+    pub fn propagate(&mut self, name: &str, pre: &[u32]) -> Result<Vec<f32>, String> {
+        // Not resident yet (the brain sends propagate before the upload lands). Best-effort
+        // zero-contribution — matches the browser donor's gpuReady gate. No spam.
+        let g = match self.matrix_gpu.get(name) { Some(&g) => g, None => return Ok(Vec::new()) };
+        self.engines[g].propagate(name, pre)
     }
 
-    pub fn hebbian(&self, name: &str, pre: &[u32], post: &[u32], lr: f32) -> Result<(), String> {
-        match self.matrix_gpu.get(name) {
-            Some(&g) => self.engines[g].hebbian(name, pre, post, lr),
-            None => Ok(()), // not resident yet — best-effort, no weight change, no spam
-        }
+    pub fn hebbian(&mut self, name: &str, pre: &[u32], post: &[u32], lr: f32) -> Result<(), String> {
+        let g = match self.matrix_gpu.get(name) { Some(&g) => g, None => return Ok(()) };
+        self.engines[g].hebbian(name, pre, post, lr)
     }
 
-    pub fn write_spike_slice(&self, cluster: &str, region: &str, indices: &[u32]) -> Result<(), String> {
-        match self.cluster_gpu.get(cluster) {
-            Some(&g) => self.engines[g].write_spike_slice(cluster, region, indices),
-            None => Ok(()),
-        }
+    pub fn write_spike_slice(&mut self, cluster: &str, region: &str, indices: &[u32]) -> Result<(), String> {
+        let g = match self.cluster_gpu.get(cluster) { Some(&g) => g, None => return Ok(()) };
+        self.engines[g].write_spike_slice(cluster, region, indices)
     }
 
-    pub fn write_current_slice(&self, cluster: &str, region: &str, indices: &[u32], values: &[f32], psi: f32) -> Result<(), String> {
-        match self.cluster_gpu.get(cluster) {
-            Some(&g) => self.engines[g].write_current_slice(cluster, region, indices, values, psi),
-            None => Ok(()),
-        }
+    pub fn write_current_slice(&mut self, cluster: &str, region: &str, indices: &[u32], values: &[f32], psi: f32) -> Result<(), String> {
+        let g = match self.cluster_gpu.get(cluster) { Some(&g) => g, None => return Ok(()) };
+        self.engines[g].write_current_slice(cluster, region, indices, values, psi)
     }
 
-    pub fn clear_spike_region(&self, cluster: &str, region: &str) -> Result<(), String> {
-        match self.cluster_gpu.get(cluster) {
-            Some(&g) => self.engines[g].clear_spike_region(cluster, region),
-            None => Ok(()),
-        }
+    pub fn clear_spike_region(&mut self, cluster: &str, region: &str) -> Result<(), String> {
+        let g = match self.cluster_gpu.get(cluster) { Some(&g) => g, None => return Ok(()) };
+        self.engines[g].clear_spike_region(cluster, region)
     }
 
     pub fn readback_letter_buckets(&self, cluster: &str, region: &str, bucket_count: u32, sub_slice_len: u32, start_offset: u32) -> Result<Vec<u32>, String> {
-        match self.cluster_gpu.get(cluster) {
-            Some(&g) => self.engines[g].readback_letter_buckets(cluster, region, bucket_count, sub_slice_len, start_offset),
-            None => Ok(Vec::new()),
-        }
+        let g = match self.cluster_gpu.get(cluster) { Some(&g) => g, None => return Ok(Vec::new()) };
+        self.engines[g].readback_letter_buckets(cluster, region, bucket_count, sub_slice_len, start_offset)
     }
 
     /// Run `substeps` Rulkov iterations for every job, with each GPU's clusters executed in
