@@ -857,7 +857,7 @@ impl MultiEngine {
     /// parallel on its own thread. Returns per-cluster spike totals keyed by cluster name.
     /// `stop` lets a long per-GPU duty-cycle idle (low util) bail promptly on ⏹ Stop instead
     /// of pinning the worker for seconds.
-    pub fn run_substeps(&self, jobs: &[StepJob], substeps: u32, base_seed: u32, stop: &std::sync::atomic::AtomicBool) -> HashMap<String, StepOut> {
+    pub fn run_substeps(&self, jobs: &[StepJob], substeps: u32, base_seed: u32, stop: &std::sync::atomic::AtomicBool, pending: &std::sync::atomic::AtomicUsize) -> HashMap<String, StepOut> {
         let substeps = substeps.max(1);
         let mut by_engine: Vec<Vec<usize>> = vec![Vec::new(); self.engines.len()];
         let mut out: HashMap<String, StepOut> = HashMap::new();
@@ -908,7 +908,12 @@ impl MultiEngine {
                         let mut remaining = t0.elapsed().mul_f64((100.0 - util_g) / util_g);
                         let chunk = std::time::Duration::from_millis(50);
                         while remaining > std::time::Duration::ZERO {
-                            if stop.load(std::sync::atomic::Ordering::Relaxed) {
+                            // Bail the idle immediately on ⏹ Stop OR when new work is queued
+                            // (an upload/ack/batch waiting) — never make the brain wait out a
+                            // throttle sleep for its sparse-upload acks.
+                            if stop.load(std::sync::atomic::Ordering::Relaxed)
+                                || pending.load(std::sync::atomic::Ordering::Relaxed) > 0
+                            {
                                 break;
                             }
                             let nap = remaining.min(chunk);
