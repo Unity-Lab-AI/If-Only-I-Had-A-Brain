@@ -53164,6 +53164,39 @@ var CLUSTER_TELEMETRY_MIXIN = {
   _recordWordCreationCandidate(top1, top2, floor) {
     if (!top1 || !top2) return;
     if (top1.word === top2.word) return;
+    if (Array.isArray(this._metaRegister) && this._metaRegister.length >= 8) {
+      const counts = /* @__PURE__ */ new Map();
+      for (const e of this._metaRegister) {
+        if (e && e.word) counts.set(e.word, (counts.get(e.word) || 0) + 1);
+      }
+      let topN = 0;
+      for (const n of counts.values()) if (n > topN) topN = n;
+      if (topN / this._metaRegister.length > 0.45) return;
+    }
+    try {
+      const se = typeof globalThis !== "undefined" && globalThis.__sharedEmbeddings ? globalThis.__sharedEmbeddings : null;
+      if (se && typeof se.getEmbedding === "function") {
+        const e1 = se.getEmbedding(top1.word);
+        const e2 = se.getEmbedding(top2.word);
+        if (e1 && e2 && e1.length === e2.length && e1.length > 0) {
+          let dot = 0, n1 = 0, n2 = 0;
+          for (let i = 0; i < e1.length; i++) {
+            dot += e1[i] * e2[i];
+            n1 += e1[i] * e1[i];
+            n2 += e2[i] * e2[i];
+          }
+          const cos = n1 > 0 && n2 > 0 ? dot / (Math.sqrt(n1) * Math.sqrt(n2)) : 0;
+          let cohMin = 0.2;
+          try {
+            const v = parseFloat(process?.env?.DREAM_BC_COMPOUND_COH_MIN);
+            if (Number.isFinite(v) && v >= 0) cohMin = v;
+          } catch {
+          }
+          if (cos < cohMin) return;
+        }
+      }
+    } catch {
+    }
     if (!this._wordCreationCandidates) {
       this._wordCreationCandidates = /* @__PURE__ */ new Map();
     }
@@ -55907,7 +55940,18 @@ var NeuronCluster = class {
    */
   getWorkspaceCandidate() {
     if (this.name === "cortex" && this._lastEmittedWord) {
-      const value2 = Math.min(1, Math.max(0, this._lastEmittedActivation || 0));
+      let value2 = Math.min(1, Math.max(0, this._lastEmittedActivation || 0));
+      if (Array.isArray(this._metaRegister) && this._metaRegister.length >= 6) {
+        let same = 0;
+        for (const e of this._metaRegister) {
+          if (e && e.word === this._lastEmittedWord) same++;
+        }
+        const share = same / this._metaRegister.length;
+        if (share > 0.4) {
+          const damp = Math.max(0.25, 1 - (share - 0.4) * 1.25);
+          value2 *= damp;
+        }
+      }
       if (value2 > 0) {
         return {
           label: `cortex:${this._lastEmittedWord}`,
@@ -57071,12 +57115,16 @@ var NeuronCluster = class {
           if (sharedEmb && typeof sharedEmb.getEmbedding === "function") {
             const emb = sharedEmb.getEmbedding(last.word);
             if (emb && emb.length > 0) {
-              if (this._lastInjectedWord === last.word) {
-                this._injectStrength = Math.max(0.04, (this._injectStrength ?? 0.3) * 0.5);
-              } else {
-                this._injectStrength = 0.3;
-                this._lastInjectedWord = last.word;
+              let freqShare = 0;
+              if (Array.isArray(this._metaRegister) && this._metaRegister.length > 0) {
+                let same = 0;
+                for (const e of this._metaRegister) {
+                  if (e && e.word === last.word) same++;
+                }
+                freqShare = same / this._metaRegister.length;
               }
+              this._injectStrength = Math.max(0.04, 0.3 * (1 - freqShare));
+              this._lastInjectedWord = last.word;
               this.injectEmbeddingToRegion("sem", emb, this._injectStrength);
             }
           }
@@ -92190,6 +92238,14 @@ var Curriculum = class _Curriculum {
         }
       }
     }
+    for (const sub of SUBJECTS2) {
+      if (perSubject[sub]) {
+        if (cluster && cluster.grades && cluster.grades[sub]) {
+          perSubject[sub].grade = cluster.grades[sub];
+        }
+        perSubject[sub].courseName = courseNameFor(sub, perSubject[sub].grade);
+      }
+    }
     const activePhase = cluster && cluster._activePhase ? {
       name: cluster._activePhase.name,
       elapsedMs: cluster._activePhase.startAt ? Date.now() - cluster._activePhase.startAt : 0
@@ -92212,6 +92268,10 @@ var Curriculum = class _Curriculum {
       currentSubject: this._currentSubject || (macroActive ? "pre-cell setup" : null),
       currentGrade: this._currentGrade || (macroActive ? "kindergarten" : null),
       currentLabel: this._currentSubjectLabel || (macroActive ? this._currentMacroPhase : null),
+      // Real course name of the ACTIVE subject at the current grade (e.g.
+      // "Algebra I", "Biology", "U.S. Government") so the dashboard shows the
+      // actual class mid-walk instead of "ela". Null when no cell is active.
+      currentCourseName: this._currentSubject ? courseNameFor(this._currentSubject, this._currentGrade) : null,
       currentGradeLabel: this._currentGrade ? GRADE_LABELS[this._currentGrade] || this._currentGrade : macroActive ? "kindergarten" : null,
       macroPhaseProgress,
       // Compact label for dashboard panel headers — "Pre-K" / "K" /
@@ -93086,6 +93146,31 @@ var Curriculum = class _Curriculum {
     const results = [];
     let pass = 0;
     const _batteryStart = Date.now();
+    const PER_Q_TIMEOUT_MS = Number(process.env.DREAM_BATTERY_QUESTION_TIMEOUT_MS) || 45e3;
+    const BATTERY_DEADLINE_MS = Number(process.env.DREAM_BATTERY_DEADLINE_MS) || 8 * 6e4;
+    const _probeWithBudget = async (probeOpts) => {
+      const ac = typeof AbortController === "function" ? new AbortController() : null;
+      let timer = null;
+      const timeout = new Promise((resolve) => {
+        timer = setTimeout(() => {
+          if (ac) {
+            try {
+              ac.abort();
+            } catch {
+            }
+          }
+          resolve({ __timedOut: true });
+        }, PER_Q_TIMEOUT_MS);
+      });
+      try {
+        return await Promise.race([
+          this._studentTestProbe({ ...probeOpts, signal: ac ? ac.signal : null }),
+          timeout
+        ]);
+      } finally {
+        if (timer) clearTimeout(timer);
+      }
+    };
     const cellKey = this.cluster?._currentCellKey || null;
     let trainedVocab = null;
     if (cellKey && typeof this._trainedVocabularySet === "function") {
@@ -93211,17 +93296,26 @@ var Curriculum = class _Curriculum {
         filteredForComprehension.push(...group);
         continue;
       }
+      if (Date.now() - _batteryStart > BATTERY_DEADLINE_MS) {
+        filteredForComprehension.push(...group);
+        continue;
+      }
       const sample = group[0];
       compSamplesFired += 1;
       let sampleScore = 0;
       try {
-        const r = await this._studentTestProbe({
+        const r = await _probeWithBudget({
           question: sample.question,
           expectedAnswer: sample.expectedAnswer,
           expectedVariants: sample.expectedVariants || [sample.expectedAnswer],
           maxTicks: sample.maxTicks || 60,
           methodology: sample.methodology || null
         });
+        if (r && r.__timedOut) {
+          this._hb(`[Curriculum][${label}] COMPREHENSION sample \u23F1 timed out at ${PER_Q_TIMEOUT_MS}ms \u2192 template T${tid} treated as score 0`);
+          templateSkips.push({ templateId: tid, count: group.length, sampleScore: 0, sampleQ: sample.question });
+          continue;
+        }
         sampleScore = r?.score || 0;
         r.standard = sample.standard || "unspecified";
         r.difficulty = sample.difficulty || 1;
@@ -93251,14 +93345,41 @@ var Curriculum = class _Curriculum {
     let methoQuestions = 0;
     let methoPass = 0;
     for (const q of questions) {
+      if (Date.now() - _batteryStart > BATTERY_DEADLINE_MS) {
+        const remaining = questions.length - results.length;
+        try {
+          process.stdout.write(`[Curriculum][${label}] \u23F1 BATTERY DEADLINE ${BATTERY_DEADLINE_MS}ms exceeded after ${results.length}/${questions.length} questions \u2014 degrading ${remaining} remaining to score 0 (never an unbounded await).
+`);
+        } catch {
+        }
+        for (let di = results.length; di < questions.length; di++) {
+          const dq = questions[di];
+          const dStd = dq.standard || "unspecified";
+          const dBucket = byStandard.get(dStd) || { pass: 0, total: 0 };
+          dBucket.total += 1;
+          byStandard.set(dStd, dBucket);
+          results.push({ question: dq.question, answer: "", score: 0, match: { exact: false, startsWith: false, contains: false, overall: false }, standard: dStd, deadlineExceeded: true });
+        }
+        break;
+      }
+      if (this.cluster) this.cluster._batteryProgress = { i: results.length + 1, total: questions.length, label, startedAt: _batteryStart };
       try {
-        const r = await this._studentTestProbe({
+        const r = await _probeWithBudget({
           question: q.question,
           expectedAnswer: q.expectedAnswer,
           expectedVariants: q.expectedVariants || [q.expectedAnswer],
           maxTicks: q.maxTicks || 60,
           methodology: q.methodology || null
         });
+        if (r && r.__timedOut) {
+          const tStd = q.standard || "unspecified";
+          const tBucket = byStandard.get(tStd) || { pass: 0, total: 0 };
+          tBucket.total += 1;
+          byStandard.set(tStd, tBucket);
+          results.push({ question: q.question, answer: "", score: 0, match: { exact: false, startsWith: false, contains: false, overall: false }, standard: tStd, timedOut: true });
+          this._hb(`[Curriculum][${label}] Q${results.length}/${questions.length} [${tStd}]: "${q.question.slice(0, 60)}" \u2192 \u23F1 timed out at ${PER_Q_TIMEOUT_MS}ms \xB7 score=0.00`);
+          continue;
+        }
         r.standard = q.standard || "unspecified";
         r.difficulty = q.difficulty || 1;
         r.source = q.source || "authored";
@@ -93321,6 +93442,7 @@ var Curriculum = class _Curriculum {
 `);
     } catch {
     }
+    if (this.cluster) this.cluster._batteryProgress = null;
     return { pass, total, rate, summary, results, byStandard: standardBreakdown, standardsBelowCut, methoQuestions, methoPass, methoRate };
   }
   /**
@@ -93611,6 +93733,12 @@ var Curriculum = class _Curriculum {
     const expectedAnswer = String(opts.expectedAnswer || "").toLowerCase().trim();
     const expectedVariants = (opts.expectedVariants || [expectedAnswer]).map((v) => String(v || "").toLowerCase().trim()).filter((v) => v.length > 0);
     const maxTicks = typeof opts.maxTicks === "number" ? opts.maxTicks : 60;
+    const _aborted = () => !!(opts.signal && opts.signal.aborted);
+    if (_aborted()) {
+      out.ms = Date.now() - startMs;
+      out.timedOut = true;
+      return out;
+    }
     try {
       if (typeof cluster.readInput === "function") {
         await cluster.readInput(question, { ticks: 10 });
@@ -93908,7 +94036,7 @@ var Curriculum = class _Curriculum {
       }
       if (wordEmit && wordEmit.length > 0) {
         generated = wordEmit;
-      } else {
+      } else if (!_aborted()) {
         const raw = await cluster.generateSentenceAwait(intentSeed, emitOpts);
         generated = (raw && typeof raw === "string" ? raw : raw?.text || "") || "";
       }
@@ -93998,7 +94126,7 @@ var Curriculum = class _Curriculum {
     if (out.retention) score += 0.1;
     if (out.understanding) score += 0.1;
     out.score = Math.min(1, score);
-    if (opts.methodology && typeof opts.methodology === "object") {
+    if (opts.methodology && typeof opts.methodology === "object" && !_aborted()) {
       const methoPrompt = String(opts.methodology.prompt || "");
       const keywords = (opts.methodology.keywords || []).map((k) => String(k || "").toLowerCase().trim()).filter((k) => k.length > 0);
       const minKeywords = typeof opts.methodology.minKeywords === "number" ? opts.methodology.minKeywords : 1;
@@ -95733,6 +95861,99 @@ var Curriculum = class _Curriculum {
     return ctx;
   }
   /**
+   * BC — PER-GRADE ADVANCE HEALTH GATE. Runs before EVERY grade advance
+   * (true A+ pass AND force-advance), for every grade K→PhD, so a grade
+   * can NOT be skipped while broken. Blocks the advance on any of the
+   * failure modes the BC hardening targets:
+   *   (1) sem→motor SATURATED / basin-collapsed (cluster.checkSemMotorHealth)
+   *   (2) EMISSION mode-collapsed — one token dominates recent output
+   *       (the "mushrooms" lock: GW broadcasts one word every tick)
+   *   (3) VOCAB INCOMPLETE — cell exam-vocab coverage below the cut
+   *       (Gee 2026-06-21: "needs to learn vocab it missed before minaal
+   *       jump to next grade too")
+   * On ANY failure the grade does NOT advance — the cell re-teaches on the
+   * next walk pass ("any additional training needed before grade advance"
+   * — Gee 2026-06-21). PURE CHECK: reads state, mutates nothing.
+   *
+   * Env-tunable: DREAM_BC_EMISSION_DOM_MAX (default 0.45) ·
+   * DREAM_BC_VOCAB_MIN (default 0.85).
+   *
+   * @param {string} subject
+   * @param {string} grade
+   * @returns {{ok:boolean, issues:string[], detail:object}}
+   */
+  _gradeAdvanceHealthGate(subject, grade) {
+    const issues = [];
+    const detail = {};
+    const cluster = this.cluster;
+    if (!cluster) return { ok: true, issues, detail };
+    const _envNum = (k, d) => {
+      try {
+        const v = parseFloat(process?.env?.[k]);
+        return Number.isFinite(v) && v > 0 ? v : d;
+      } catch {
+        return d;
+      }
+    };
+    const DOM_MAX = _envNum("DREAM_BC_EMISSION_DOM_MAX", 0.45);
+    const VOCAB_MIN = _envNum("DREAM_BC_VOCAB_MIN", 0.85);
+    const cellKey = `${subject}/${grade}`;
+    try {
+      if (typeof cluster.checkSemMotorHealth === "function") {
+        const h = cluster.checkSemMotorHealth();
+        detail.semMotor = h;
+        if (h && h.saturated) {
+          const mc = typeof h.meanCos === "number" ? `meanCos=${h.meanCos.toFixed(3)} ` : "";
+          issues.push(`sem\u2192motor saturated (${mc}ratio=${(h.ratio || 0).toFixed(2)})`);
+        }
+      }
+    } catch {
+    }
+    try {
+      const recents = typeof cluster.getRecentEmissions === "function" ? cluster.getRecentEmissions(32) : [];
+      const tokens = [];
+      for (const e of recents) {
+        if (e && typeof e.text === "string") {
+          for (const w of e.text.toLowerCase().split(/\s+/)) {
+            if (w && /[a-z]/.test(w)) tokens.push(w);
+          }
+        }
+      }
+      if (tokens.length >= 8) {
+        const counts = /* @__PURE__ */ new Map();
+        for (const w of tokens) counts.set(w, (counts.get(w) || 0) + 1);
+        let topW = null, topN = 0;
+        for (const [w, n] of counts) {
+          if (n > topN) {
+            topN = n;
+            topW = w;
+          }
+        }
+        const share = topN / tokens.length;
+        detail.emissionDominantShare = share;
+        detail.emissionDominantToken = topW;
+        if (share > DOM_MAX) {
+          issues.push(`emission mode-collapsed (token "${topW}" = ${(share * 100).toFixed(0)}% of recent output > ${(DOM_MAX * 100).toFixed(0)}% cap)`);
+        }
+      }
+    } catch {
+    }
+    try {
+      if (typeof this._trainedVocabularySet === "function" && typeof examVocabCoverage === "function") {
+        const report = examVocabCoverage(cellKey, this._trainedVocabularySet(cellKey));
+        if (report && typeof report.coverage === "number") {
+          detail.vocabCoverage = report.coverage;
+          detail.vocabMissing = Array.isArray(report.missing) ? report.missing.length : 0;
+          if (report.coverage < VOCAB_MIN) {
+            issues.push(`vocab incomplete (coverage ${(report.coverage * 100).toFixed(0)}% < ${(VOCAB_MIN * 100).toFixed(0)}%, ${detail.vocabMissing} words untaught)`);
+          }
+        }
+      }
+    } catch {
+    }
+    return { ok: issues.length === 0, issues, detail };
+  }
+  /**
    * Run a single (subject, grade) cell. Sets `cluster.grades[subject]
    * = grade` on pass and records the cell in `cluster.passedCells`.
    * When `corpora` is null, falls back to `this._lastCtx` so post-boot
@@ -96085,10 +96306,14 @@ var Curriculum = class _Curriculum {
             if ((battery.methoQuestions || 0) > 0 && (battery.methoRate || 0) < METHODOLOGY_MIN) {
               blockers.push(`methodology ${battery.methoPass}/${battery.methoQuestions} (${((battery.methoRate || 0) * 100).toFixed(1)}%) < ${METHODOLOGY_MIN * 100}%`);
             }
-            if (blockers.length > 0 && result.pass) {
+            const _gateAdvisory = process.env.DREAM_BATTERY_GATE_ADVISORY === "1";
+            if (blockers.length > 0 && result.pass && !_gateAdvisory) {
               console.warn(`[Curriculum][${label}] \u26D4 BATTERY BLOCKS advancement: ${blockers.join(" \xB7 ")}. Substrate passed but the educational test did not \u2014 grade NOT advanced.`);
               result.pass = false;
               result.reason = `BATTERY-BLOCKED: ${blockers.join("; ")} | ${result.reason || ""}`;
+            } else if (blockers.length > 0 && result.pass && _gateAdvisory) {
+              console.warn(`[Curriculum][${label}] \u26A0 BATTERY blockers present but DREAM_BATTERY_GATE_ADVISORY=1 \u2014 advancement NOT blocked (advisory mode): ${blockers.join(" \xB7 ")}`);
+              result.reason = `BATTERY-ADVISORY(${blockers.length} blocker${blockers.length === 1 ? "" : "s"}): ${blockers.join("; ")} | ${result.reason || ""}`;
             } else if (blockers.length === 0) {
               const methoTag = (battery.methoQuestions || 0) > 0 ? ` \xB7 methodology ${battery.methoPass}/${battery.methoQuestions} (${((battery.methoRate || 0) * 100).toFixed(1)}%)` : "";
               this._hb(`[Curriculum][${label}] \u2713 BATTERY PASS: answer ${(battery.rate * 100).toFixed(1)}% \xB7 all sub-standards at/above cut \xB7 external-ref ${extPass}/${extTotal} (${(extRate * 100).toFixed(1)}%)${methoTag}`);
@@ -96117,6 +96342,15 @@ var Curriculum = class _Curriculum {
       } catch (err) {
         if (cluster) cluster._probeGateActive = false;
         console.warn(`[Curriculum] student battery for ${subject}/${grade} failed:`, err?.message || err);
+      }
+    }
+    if (result && result.pass) {
+      const _bcGate = this._gradeAdvanceHealthGate(subject, grade);
+      if (!_bcGate.ok) {
+        this._hb(`[Curriculum] \u26D4 ADVANCE BLOCKED ${cellKey} \u2014 A+ probes passed BUT ${_bcGate.issues.join(" \xB7 ")}. Grade held; cell re-teaches next pass (additional training needed before advance).`);
+        result.pass = false;
+        result.advanceBlocked = true;
+        result.bcIssues = _bcGate.issues;
       }
     }
     if (result && result.pass) {
@@ -96471,6 +96705,11 @@ var Curriculum = class _Curriculum {
           const hasAnyCapability = meetsSentenceMin || meetsProdMin || meetsStudentMin;
           if (!hasAnyCapability) {
             console.warn(`[Curriculum] \u2934 FORCE-ADVANCE ${cellKey} REFUSED \u2014 capability minimums not met: sentenceGen=${(sentenceGenRate * 100).toFixed(0)}% (need\u2265${(SENTENCE_MIN_LOOSE * 100).toFixed(0)}%), prod=${(prodRate * 100).toFixed(0)}% (need\u2265${(PROD_MIN_LOOSE * 100).toFixed(0)}%), student=${(studentRate * 100).toFixed(0)}% (need\u2265${(STUDENT_MIN_LOOSE * 100).toFixed(0)}%). Brain learned the teach phases but cannot emit real sentences / letters / answers. Unity holds prior grade. Operator review required: re-run start.bat for fresh attempt OR investigate basin saturation per docs/TODO.md fg.Tier3 / fg.Tier4 / fg.Tier5 / fg.Tier6.`);
+            continue;
+          }
+          const _bcGate = this._gradeAdvanceHealthGate(subject, grade);
+          if (!_bcGate.ok) {
+            console.warn(`[Curriculum] \u2934 FORCE-ADVANCE ${cellKey} REFUSED \u2014 health gate failed (additional training needed before advance): ${_bcGate.issues.join(" \xB7 ")}. Unity holds prior grade; cell re-teaches next pass.`);
             continue;
           }
           cl.grades[subject] = grade;
@@ -119054,7 +119293,19 @@ function updateLandingStats(state) {
     else if (minGrade === "unknown" || minGrade === "\u2014") gradeEl.style.color = "#555";
     else gradeEl.style.color = "#22c55e";
   }
-  if (state.grades) {
+  const _cur = state.curriculum;
+  if (_cur && _cur.perSubject) {
+    const ps = _cur.perSubject;
+    const parts = [];
+    for (const sub of ["ela", "math", "science", "social", "art", "life"]) {
+      const e = ps[sub];
+      if (!e) continue;
+      const name = e.courseName || sub;
+      const gr = e.grade || "\u2014";
+      parts.push(`${name} (${gr})`);
+    }
+    if (parts.length) el("ls-grade-per-subject", parts.join(" \xB7 "));
+  } else if (state.grades) {
     const g = state.grades;
     const line = `ela:${g.ela || "\u2014"} \xB7 math:${g.math || "\u2014"} \xB7 sci:${g.science || "\u2014"} \xB7 soc:${g.social || "\u2014"} \xB7 art:${g.art || "\u2014"} \xB7 life:${g.life || "\u2014"}`;
     el("ls-grade-per-subject", line);

@@ -58,6 +58,17 @@ The box measurement came back: with consolidation disabled, the dominant `[Event
 
 **No systemd unit change** → no `daemon-reload`, just the overlay + restart below. (`DREAM_CONSOLIDATION_DISABLE=1` can stay set; this fix is independent of consolidation.)
 
+### 2026-06-21 (BC + features batch) — basin-collapse hardening + Update button + public dashboard + leaderboard
+
+All weight-preserving / logic-only — **no neuron-count change, no `WEIGHTS_FORMAT_VERSION` bump**, so a redeploy with the box's existing `DREAM_KEEP_STATE=1` **resumes the current weights** (no wipe). Backend files changed (NEED REDEPLOY): `js/brain/curriculum.js` · `js/brain/cluster.js` · `js/brain/cluster/telemetry.js` · `js/brain/global-workspace.js` · `server/brain-server.js` · `server/brain-server/chat.js` · `server/brain-server/state.js`. Frontend (auto-deploy): `html/dashboard.html` · `html/dashboard-public.html` (new) · `html/compute.html` · `js/app.bundle.js`. New file: `deploy/self-update.sh`.
+
+- **Basin-collapse hardening** (the live single-token "mushrooms" lock) + a per-grade advance health gate (blocks any grade advancing while sem→motor saturated / emission mode-collapsed / vocab-incomplete). Full detail: `docs/ISSUE-basin-collapse-fix.md`. Env (optional, own-line comments): `DREAM_BC_EMISSION_DOM_MAX` (0.45) · `DREAM_BC_VOCAB_MIN` (0.85) · `DREAM_BC_COMPOUND_COH_MIN` (0.2).
+- **Dashboard "Update & Fresh Walk"** button → `POST /update` → spawns `deploy/self-update.sh` (git-archive overlay of latest code → `.force-fresh` → `systemctl restart` → fresh walk). **Box setup:** `deploy/self-update.sh` ships in the repo; it needs `git`+`rsync`, the deploy key able to clone the remote, and **`sudo -n systemctl restart unity-brain` permitted** for the service user. Env: `UAL_BACKEND_DIR` (`/opt/unity-brain`) · `UAL_GIT_REMOTE` · `UAL_GIT_BRANCH` (`main`) · `UAL_SERVICE` (`unity-brain`) · `DREAM_SELF_UPDATE_CMD` (override script path). Runs privileged shell — review before enabling.
+- **Static public dashboard**: `GET /public-state.json` (one cached snapshot, refreshed on the broadcast cadence) + `html/dashboard.html?public=1` / `html/dashboard-public.html` (admin controls force-hidden). **nginx:** serve/proxy `/public-state.json` PUBLICLY (no auth) — it's the same data the public `/ws` lane sends; a short `proxy_cache` (2–3s) makes 1000 viewers cost ~one backend hit per window. compute.html's leaderboard panel also fetches it.
+- **Donor neuron-compute leaderboard** — persists in the brain weights (`neuronLeaderboard` in saveWeights), resets on a fresh walk; donors keep a persistent `donorId` (localStorage) + settable name.
+
+**No systemd unit change** for the BC/feature code → overlay + restart. (Add the `UAL_*` / `DREAM_SELF_UPDATE_CMD` env + the sudo rule only if you want the dashboard Update button live.)
+
 ### Copy-paste redeploy (run on the box, from a fresh clone of the repo)
 
 ```bash

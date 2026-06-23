@@ -2820,6 +2820,24 @@ export class Curriculum {
         }
       }
     }
+    // Real per-grade COURSE NAME for each subject (Algebra I / Biology /
+    // U.S. Government / Physical Education / Literature / etc.) so the brain
+    // footer + dashboard show the ACTUAL class she's taking at her current
+    // grade — not the generic "ela / math / science" key. Falls back to the
+    // band's nearest earlier name, else the capitalized subject. Updates live
+    // as each subject's grade advances (K → G1 → … → PhD).
+    for (const sub of SUBJECTS) {
+      if (perSubject[sub]) {
+        // Authoritative current grade comes from `cluster.grades` (set on
+        // every advance) — the per-subject runtime stat can lag it (this is
+        // why the footer "never updated pre-K→K"). Prefer it, then compute
+        // the real course name from THAT grade.
+        if (cluster && cluster.grades && cluster.grades[sub]) {
+          perSubject[sub].grade = cluster.grades[sub];
+        }
+        perSubject[sub].courseName = courseNameFor(sub, perSubject[sub].grade);
+      }
+    }
     const activePhase = cluster && cluster._activePhase ? {
       name: cluster._activePhase.name,
       elapsedMs: cluster._activePhase.startAt ? Date.now() - cluster._activePhase.startAt : 0,
@@ -2869,6 +2887,10 @@ export class Curriculum {
       currentSubject: this._currentSubject || (macroActive ? 'pre-cell setup' : null),
       currentGrade: this._currentGrade || (macroActive ? 'kindergarten' : null),
       currentLabel: this._currentSubjectLabel || (macroActive ? this._currentMacroPhase : null),
+      // Real course name of the ACTIVE subject at the current grade (e.g.
+      // "Algebra I", "Biology", "U.S. Government") so the dashboard shows the
+      // actual class mid-walk instead of "ela". Null when no cell is active.
+      currentCourseName: this._currentSubject ? courseNameFor(this._currentSubject, this._currentGrade) : null,
       currentGradeLabel: this._currentGrade
         ? (GRADE_LABELS[this._currentGrade] || this._currentGrade)
         : (macroActive ? 'kindergarten' : null),
@@ -7247,6 +7269,93 @@ export class Curriculum {
   }
 
   /**
+   * BC — PER-GRADE ADVANCE HEALTH GATE. Runs before EVERY grade advance
+   * (true A+ pass AND force-advance), for every grade K→PhD, so a grade
+   * can NOT be skipped while broken. Blocks the advance on any of the
+   * failure modes the BC hardening targets:
+   *   (1) sem→motor SATURATED / basin-collapsed (cluster.checkSemMotorHealth)
+   *   (2) EMISSION mode-collapsed — one token dominates recent output
+   *       (the "mushrooms" lock: GW broadcasts one word every tick)
+   *   (3) VOCAB INCOMPLETE — cell exam-vocab coverage below the cut
+   *       (Gee 2026-06-21: "needs to learn vocab it missed before minaal
+   *       jump to next grade too")
+   * On ANY failure the grade does NOT advance — the cell re-teaches on the
+   * next walk pass ("any additional training needed before grade advance"
+   * — Gee 2026-06-21). PURE CHECK: reads state, mutates nothing.
+   *
+   * Env-tunable: DREAM_BC_EMISSION_DOM_MAX (default 0.45) ·
+   * DREAM_BC_VOCAB_MIN (default 0.85).
+   *
+   * @param {string} subject
+   * @param {string} grade
+   * @returns {{ok:boolean, issues:string[], detail:object}}
+   */
+  _gradeAdvanceHealthGate(subject, grade) {
+    const issues = [];
+    const detail = {};
+    const cluster = this.cluster;
+    if (!cluster) return { ok: true, issues, detail };
+    const _envNum = (k, d) => {
+      try { const v = parseFloat(process?.env?.[k]); return (Number.isFinite(v) && v > 0) ? v : d; }
+      catch { return d; }
+    };
+    const DOM_MAX = _envNum('DREAM_BC_EMISSION_DOM_MAX', 0.45);
+    const VOCAB_MIN = _envNum('DREAM_BC_VOCAB_MIN', 0.85);
+    const cellKey = `${subject}/${grade}`;
+
+    // (1) sem→motor saturation / basin-collapse.
+    try {
+      if (typeof cluster.checkSemMotorHealth === 'function') {
+        const h = cluster.checkSemMotorHealth();
+        detail.semMotor = h;
+        if (h && h.saturated) {
+          const mc = (typeof h.meanCos === 'number') ? `meanCos=${h.meanCos.toFixed(3)} ` : '';
+          issues.push(`sem→motor saturated (${mc}ratio=${(h.ratio || 0).toFixed(2)})`);
+        }
+      }
+    } catch { /* non-fatal */ }
+
+    // (2) emission mode-collapse — dominant-token share of recent output.
+    try {
+      const recents = (typeof cluster.getRecentEmissions === 'function') ? cluster.getRecentEmissions(32) : [];
+      const tokens = [];
+      for (const e of recents) {
+        if (e && typeof e.text === 'string') {
+          for (const w of e.text.toLowerCase().split(/\s+/)) { if (w && /[a-z]/.test(w)) tokens.push(w); }
+        }
+      }
+      if (tokens.length >= 8) {
+        const counts = new Map();
+        for (const w of tokens) counts.set(w, (counts.get(w) || 0) + 1);
+        let topW = null, topN = 0;
+        for (const [w, n] of counts) { if (n > topN) { topN = n; topW = w; } }
+        const share = topN / tokens.length;
+        detail.emissionDominantShare = share;
+        detail.emissionDominantToken = topW;
+        if (share > DOM_MAX) {
+          issues.push(`emission mode-collapsed (token "${topW}" = ${(share * 100).toFixed(0)}% of recent output > ${(DOM_MAX * 100).toFixed(0)}% cap)`);
+        }
+      }
+    } catch { /* non-fatal */ }
+
+    // (3) vocab-completeness — cell exam-vocab coverage must clear the cut.
+    try {
+      if (typeof this._trainedVocabularySet === 'function' && typeof examVocabCoverage === 'function') {
+        const report = examVocabCoverage(cellKey, this._trainedVocabularySet(cellKey));
+        if (report && typeof report.coverage === 'number') {
+          detail.vocabCoverage = report.coverage;
+          detail.vocabMissing = Array.isArray(report.missing) ? report.missing.length : 0;
+          if (report.coverage < VOCAB_MIN) {
+            issues.push(`vocab incomplete (coverage ${(report.coverage * 100).toFixed(0)}% < ${(VOCAB_MIN * 100).toFixed(0)}%, ${detail.vocabMissing} words untaught)`);
+          }
+        }
+      }
+    } catch { /* non-fatal */ }
+
+    return { ok: issues.length === 0, issues, detail };
+  }
+
+  /**
    * Run a single (subject, grade) cell. Sets `cluster.grades[subject]
    * = grade` on pass and records the cell in `cluster.passedCells`.
    * When `corpora` is null, falls back to `this._lastCtx` so post-boot
@@ -7944,6 +8053,21 @@ export class Curriculum {
       }
     }
 
+    // BC — per-grade ADVANCE HEALTH GATE. Even a true A+ probe pass must
+    // clear the saturation / mode-collapse / vocab-completeness checks
+    // before the grade advances. "any additional training needed before
+    // grade advance" — Gee 2026-06-21. On failure the pass is held and
+    // the cell re-teaches next walk pass (grade NOT advanced).
+    if (result && result.pass) {
+      const _bcGate = this._gradeAdvanceHealthGate(subject, grade);
+      if (!_bcGate.ok) {
+        this._hb(`[Curriculum] ⛔ ADVANCE BLOCKED ${cellKey} — A+ probes passed BUT ${_bcGate.issues.join(' · ')}. Grade held; cell re-teaches next pass (additional training needed before advance).`);
+        result.pass = false;
+        result.advanceBlocked = true;
+        result.bcIssues = _bcGate.issues;
+      }
+    }
+
     if (result && result.pass) {
       if (!cluster.grades || typeof cluster.grades !== 'object') {
         cluster.grades = { ela: 'pre-K', math: 'pre-K', science: 'pre-K', social: 'pre-K', art: 'pre-K' };
@@ -8567,6 +8691,15 @@ export class Curriculum {
           const hasAnyCapability = meetsSentenceMin || meetsProdMin || meetsStudentMin;
           if (!hasAnyCapability) {
             console.warn(`[Curriculum] ⤴ FORCE-ADVANCE ${cellKey} REFUSED — capability minimums not met: sentenceGen=${(sentenceGenRate*100).toFixed(0)}% (need≥${(SENTENCE_MIN_LOOSE*100).toFixed(0)}%), prod=${(prodRate*100).toFixed(0)}% (need≥${(PROD_MIN_LOOSE*100).toFixed(0)}%), student=${(studentRate*100).toFixed(0)}% (need≥${(STUDENT_MIN_LOOSE*100).toFixed(0)}%). Brain learned the teach phases but cannot emit real sentences / letters / answers. Unity holds prior grade. Operator review required: re-run start.bat for fresh attempt OR investigate basin saturation per docs/TODO.md fg.Tier3 / fg.Tier4 / fg.Tier5 / fg.Tier6.`);
+            continue;
+          }
+          // BC — force-advance must ALSO clear the per-grade health gate.
+          // Capability minimums (above) prove she can emit SOMETHING; the
+          // health gate proves the output isn't mode-collapsed/saturated
+          // and the grade's vocab is learned. No premature/minimal jump.
+          const _bcGate = this._gradeAdvanceHealthGate(subject, grade);
+          if (!_bcGate.ok) {
+            console.warn(`[Curriculum] ⤴ FORCE-ADVANCE ${cellKey} REFUSED — health gate failed (additional training needed before advance): ${_bcGate.issues.join(' · ')}. Unity holds prior grade; cell re-teaches next pass.`);
             continue;
           }
           cl.grades[subject] = grade;

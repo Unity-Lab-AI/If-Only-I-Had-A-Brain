@@ -46,6 +46,48 @@ If you're reading a public doc / HTML claim ("Unity has completed high school bi
 
 ## OPEN TASKS
 
+### BC — basin-collapse: Unity's output mode-collapsed to a single token ("mushrooms") + premature grade-jump (Gee 2026-06-21) — WRITE-UP / FIX-PLAN
+
+**Gee verbatim per LAW #0:**
+
+> *"wriet the full todo of the fixes scanning the ccode and reading the full files relevantg to layout the full amoutn of work needed to get unity fixed"*
+
+> *"wtf is she only saying mushrooms most of the time?"*
+
+> *"lets make surte that we can use the save weights and it just trains correctly and revctifies , but if we have to change server lets make sure we still use old weeights that thewy just get fixed"*
+
+> *"needs to learn vocab it missed before minaal jump to next grade too"*
+
+**The issue (live, deployed 51M brain):** Global Workspace broadcasts ONE token (`cortex:mushrooms 0.41`) every tick ×8; `drugState:"sober"` (not a drug effect); `emitDiagnostic: below-signal-floor (bestMean 0.098 < floor 0.210)`; predictive error 0.685 rising; arousal pinned 0.90; `chatTimeHebbianStats: turns 1842 / pairs 26747`. sem→motor saturated → one basin captured all output. 4/6 K cells "passed" via force-advance then output collapsed — AND she jumped cells without learning the vocab she missed.
+
+**Root cause (code-confirmed):** a closed positive-feedback lock with NO active decorrelation anywhere. (1) sem→motor saturated; `checkSemMotorHealth` (`cluster.js:2167`) only *reports*. (2) meta-register re-injects the emitted word into sem (`cluster.js:3283-3315`) — familiarity-decay resets to 0.3 on ANY token change so a dominant basin never gets sustained suppression. (3) `getWorkspaceCandidate` (`cluster.js:1943-1955`) echoes `_lastEmittedWord` with no anti-repeat → GW (`global-workspace.js`, zero winner-suppression) re-broadcasts → GW-bias boosts the same bucket. (4) CHAT-TIME-DEEP-HEBBIAN bound the collapsed output 1842× → deepened the basin. (5) `_teachAssociationPairs` rescale SKIPS when it would "drown" (`curriculum.js:12876-12928`); (6) SATURATION HALT (`curriculum.js:8469`) pauses + recommends a *fresh boot wipe* instead of rectifying. (7) PREMATURE GRADE-JUMP — force-advance (0.2 floor) carries her past cells whose vocab she never learned; no vocab-completeness gate blocks the advance.
+
+**Constraint (Gee):** preserve the trained weights. Box runs `DREAM_KEEP_STATE=1` → `autoClearStaleState` skipped → redeploy resumes existing weights. ALL fixes must be LOGIC-ONLY: no neuron-count change, no `WEIGHTS_FORMAT_VERSION` bump (stays 1), no required new persisted fields. Old (collapsed) weights load and get RECTIFIED in place. AND she must learn missed vocab before any grade advance — no minimal/premature jump.
+
+**Full fix plan:** `docs/ISSUE-basin-collapse-fix.md` (tasks BC.0–BC.12 across weight-preservation / rectify / break-loops / separate / vocab-completeness-gate / verify phases).
+
+**STATUS:** ✅ SHIPPED 2026-06-21 — BC.4/5/6/7/13 + per-grade advance health gate + BC.12 telemetry all coded + verified; BC.8/BC.9 resolved-by-design (existing per-phase normalizeRows + phase-level halt). Same batch shipped: Update & Fresh Walk button, real course names (brain footer + dashboard), static public dashboard, donor neuron-compute leaderboard. ALL logic-only / weight-preserving (no neuron-count or `WEIGHTS_FORMAT_VERSION` change) → box redeploy with `DREAM_KEEP_STATE=1` resumes current weights. Migrated to `docs/FINALIZED.md` (2026-06-21 entries). Takes effect on box redeploy per `deploy/REDEPLOY-NOTES.md`.
+
+---
+
+### SBS — student-battery stall blocks the K→PhD walk at cell 1 (Gee 2026-06-21) — WRITE-UP
+
+**Gee verbatim per LAW #0:**
+
+> *"make a write up of this issue before sponge make s the GPUcompute applicion.. so"*
+
+> *"check er out is she stuck or thinking hard"* + *"is it passing cells now?"*
+
+**The issue:** live deployed walk (51,130,559-neuron donor-fit brain) is parked on the FIRST cell `ela/kindergarten` — `cellsPassed: 0`, `cellElapsedMs` ~113 min and climbing. Confirmed via two `/ws` polls 18s apart: `activePhase=_runStudentBattery` for ~18 min, `phaseElapsedMs` advancing by pure wall-clock only, `subPhases`/`teachEvents` FROZEN at 460,436, `eventLoopLagMs` healthy at 11ms (NOT a CPU block). Root cause: `_runStudentBattery` (`curriculum.js:3917`) runs every question sequentially via `await _studentTestProbe({maxTicks: 60})` (`curriculum.js:4078`) with NO per-question hard timeout and NO battery-level wall-clock deadline (`_batteryStart` is set at :3920 but never checked to break the loop). At biological scale each of the 60 emission ticks is a GPU dispatch/readback — on the distributed donor path that's a WS roundtrip PER TICK → battery wall-clock = N questions × 60 ticks × per-tick-latency, unbounded. Either grinds catastrophically slow or hangs on a single probe whose donor readback never returns → cell never reaches its gate → walk cannot leave kindergarten.
+
+**Why "before sponge makes the GPUcompute application":** the distributed GPU-compute app makes per-tick latency WORSE (remote WS roundtrip vs local GPU), so the battery/probe timeout architecture must be designed with this stall in mind BEFORE the donor-compute app is built on top of it.
+
+**Full write-up:** `docs/ISSUE-student-battery-stall.md` (evidence + root cause + recommended fix surface).
+
+**STATUS:** ✅ RESOLVED 2026-06-21 — fixed upstream by #112.9 (§6.1 per-question timeout + §6.2 battery wall-clock deadline, `8d8a7bc`), already on `if-only/main` (`99c5358`) + local. The write-up (`docs/ISSUE-student-battery-stall.md`) stands as the record. Migrated to `docs/FINALIZED.md`.
+
+---
+
 ### DEPLOY-FIX (DF) — make the static deploy actually train off donor GPUs (Gee 2026-06-20) — IN FLIGHT
 
 **Gee verbatim per LAW #0:**

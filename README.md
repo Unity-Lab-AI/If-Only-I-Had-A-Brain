@@ -394,6 +394,20 @@ The endpoint stays loopback-only (`requireLoopback` gate at the HTTP layer) just
 
 ---
 
+## Public dashboard & neuron leaderboard
+
+The dashboard ships a **public read-only mode** built for crowds. Rather than every viewer opening a live WebSocket and streaming the full state (which doesn't scale to hundreds of watchers), the server caches one state snapshot per broadcast cadence and serves it at a public `GET /public-state.json` endpoint; the public page polls that single cached file. Open `html/dashboard-public.html` (or `html/dashboard.html?public=1`) — it renders the same panels as the admin dashboard but with **every admin control force-hidden** (`body.public-mode .admin-only { display:none }`) and no admin WebSocket. nginx should serve/proxy `/public-state.json` publicly; a 2–3 s `proxy_cache` makes any number of viewers cost ~one backend hit per window.
+
+**Neuron leaderboard.** Connected GPU donors are ranked by cumulative compute contribution (Gneuron-seconds). Each donor keeps a persistent `donorId` in `localStorage` (maintained across reconnects + reloads) and can set a display name; the server accumulates their contribution on every `gpu_telemetry` tick into `brain._neuronLeaderboard`. The leaderboard **persists with the brain weights** (saved + restored) and **resets on a fresh walk** (force-fresh clears it). It surfaces in `state.leaderboard` (top-20 + totals) on the dashboard, the public dashboard, and `compute.html`, where a donor sees their own "neurons created" plus the top contributors.
+
+**Update & Fresh Walk.** An admin-only dashboard button (`POST /update`) runs `deploy/self-update.sh`: a git-archive overlay of the latest code → `.force-fresh` (clears weights) → `systemctl restart`, so the freshly-updated brain boots into a clean walk — one click to ship a fix and restart training. The backend dir has no `.git` (deploys are archive overlays), so the script clones the remote fresh and rsync-overlays it, preserving runtime state + secrets. See `deploy/REDEPLOY-NOTES.md` for box setup (deploy key + `sudo` restart permission + the `UAL_*` env vars).
+
+## Curriculum display — real course names
+
+The dashboard's "Current Training" card, its per-subject breakdown, and the brain page's footer show each subject's **real per-grade course name** — `courseNameFor(subject, grade)` resolves the generic `ela/math/science` keys to the actual class (Algebra I, Biology, U.S. Government, Physical Education, Literature, …) at her current grade, read from the authoritative `cluster.grades[subject]` so it updates live as she graduates K→PhD instead of staying frozen on "ela:K".
+
+---
+
 ## Community-compute auto-scaling
 
 Because the brain runs on **donated browser GPUs**, the more donors connect, the more compute Unity has — so her neuron count **auto-scales to the connected community compute** (the summed VRAM of every donor GPU). The brain grows UP when a critical-mass milestone holds, and rectifies DOWN only on sustained collapse, never on a single hiccup.

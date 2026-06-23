@@ -198,6 +198,37 @@ export const CLUSTER_TELEMETRY_MIXIN = {
   _recordWordCreationCandidate(top1, top2, floor) {
     if (!top1 || !top2) return;
     if (top1.word === top2.word) return;
+    // BC.13 — health + coherence gate. Don't coin compound words from
+    // degraded output (the live `ice_sorry` / `laundry_mom` junk came from
+    // coining off a mode-collapsed emission stream).
+    // (a) Skip while emission is mode-collapsed — one token dominating the
+    //     recent meta-register means the top-2 are repetitive garbage.
+    if (Array.isArray(this._metaRegister) && this._metaRegister.length >= 8) {
+      const counts = new Map();
+      for (const e of this._metaRegister) { if (e && e.word) counts.set(e.word, (counts.get(e.word) || 0) + 1); }
+      let topN = 0;
+      for (const n of counts.values()) if (n > topN) topN = n;
+      if (topN / this._metaRegister.length > 0.45) return; // mode-collapsed → don't coin
+    }
+    // (b) Require semantic coherence between the two components (embedding
+    //     cosine ≥ floor) so a promoted compound is motivated ("moon"+
+    //     "light"), not an arbitrary frequent adjacency. Skips the check
+    //     gracefully when embeddings aren't available (feature still runs).
+    try {
+      const se = (typeof globalThis !== 'undefined' && globalThis.__sharedEmbeddings) ? globalThis.__sharedEmbeddings : null;
+      if (se && typeof se.getEmbedding === 'function') {
+        const e1 = se.getEmbedding(top1.word);
+        const e2 = se.getEmbedding(top2.word);
+        if (e1 && e2 && e1.length === e2.length && e1.length > 0) {
+          let dot = 0, n1 = 0, n2 = 0;
+          for (let i = 0; i < e1.length; i++) { dot += e1[i] * e2[i]; n1 += e1[i] * e1[i]; n2 += e2[i] * e2[i]; }
+          const cos = (n1 > 0 && n2 > 0) ? dot / (Math.sqrt(n1) * Math.sqrt(n2)) : 0;
+          let cohMin = 0.2;
+          try { const v = parseFloat(process?.env?.DREAM_BC_COMPOUND_COH_MIN); if (Number.isFinite(v) && v >= 0) cohMin = v; } catch { /* default */ }
+          if (cos < cohMin) return; // components not semantically related → not a real compound
+        }
+      }
+    } catch { /* non-fatal — embeddings unavailable, fall through */ }
     if (!this._wordCreationCandidates) {
       this._wordCreationCandidates = new Map();   // compound → {count, top1, top2, lastTs, sumMean, maxMean}
     }
