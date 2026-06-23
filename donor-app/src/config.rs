@@ -1,5 +1,12 @@
 use crate::cli::Cli;
 
+/// Public production donor endpoint — the nginx `/ws` lane on the box, the same URL the
+/// browser donor (compute.html) connects to. This is the DEFAULT so a distributed binary
+/// donates to the live brain out of the box.
+pub const PROD_SERVER: &str = "wss://if-only-i-had-a-brain.git.unityailab.com/ws";
+/// Local brain for testing (`--local`).
+pub const LOCAL_SERVER: &str = "ws://localhost:7525";
+
 /// Which GPUs to donate.
 #[derive(Debug, Clone, PartialEq)]
 pub enum GpuSelection {
@@ -29,8 +36,12 @@ pub struct DonorConfig {
 
 impl DonorConfig {
     pub fn from_cli(cli: &Cli) -> Result<Self, String> {
+        // Precedence: explicit --server > --local > production default.
+        let server = cli.server.clone().unwrap_or_else(|| {
+            if cli.local { LOCAL_SERVER.to_string() } else { PROD_SERVER.to_string() }
+        });
         Ok(DonorConfig {
-            server: cli.server.clone(),
+            server,
             name: cli.name.clone(),
             gpus: parse_gpus(&cli.gpus)?,
             utilization_pct: parse_utilization(&cli.utilization)?,
