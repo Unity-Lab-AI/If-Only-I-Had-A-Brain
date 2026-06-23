@@ -132,21 +132,25 @@ impl eframe::App for DonorApp {
                     ui.label(egui::RichText::new("(idle — press Start)").weak());
                 }
                 Some(h) => {
-                    let (conn, gpu_name, batches, spikes, note) = h
+                    let (conn, gpu_name, batches, spikes, teach, note) = h
                         .control
                         .status
                         .lock()
-                        .map(|s| (s.connected, s.gpu_name.clone(), s.batches, s.spikes_last, s.note.clone()))
-                        .unwrap_or((false, String::new(), 0, 0, String::new()));
+                        .map(|s| (s.connected, s.gpu_name.clone(), s.batches, s.spikes_last, s.teach_ops, s.note.clone()))
+                        .unwrap_or((false, String::new(), 0, 0, 0, String::new()));
                     let dot = if conn { "🟢" } else { "⚪" };
                     ui.label(format!("{dot} {} GPU(s) as one unit — {}", h.gpu_count, gpu_name));
-                    ui.label(format!("    {batches} batches · {spikes} spikes/last-batch  ({note})"));
+                    ui.label(format!("    {batches} compute batches · {teach} teach ops · {spikes} spikes/last-batch  ({note})"));
                     ui.add_space(4.0);
                     ui.label(egui::RichText::new(format!(
-                        "Your contribution:  {} · {total} compute batches done",
+                        "Your contribution:  {} · {batches} compute batches + {teach} teach ops",
                         if conn { "connected" } else { "connecting…" },
-                        total = batches
                     )).strong());
+                    if conn && batches == 0 && teach > 0 {
+                        ui.label(egui::RichText::new(
+                            "(brain is in its teaching phase — your GPU runs the Hebbian/propagate work, not compute batches)"
+                        ).weak().small());
+                    }
                 }
             }
         });
