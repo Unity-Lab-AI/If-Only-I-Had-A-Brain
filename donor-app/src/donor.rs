@@ -29,6 +29,10 @@ pub struct DonorStatus {
     pub gpu_name: String,
     pub batches: u64,
     pub spikes_last: u64,
+    /// Teach operations processed (propagate + Hebbian frames). During the curriculum walk the
+    /// brain sends THESE, not compute_batch — so without this the GUI showed a misleading
+    /// "0 batches" while the GPU was busy teaching.
+    pub teach_ops: u64,
     pub note: String,
 }
 
@@ -199,8 +203,14 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                     }
                 }
                 Work::Frame(frame) => {
+                    // Count teach work (propagate / Hebbian) so the GUI reflects the curriculum
+                    // walk — the brain sends these, not compute_batch, during teaching.
+                    let is_teach = matches!(frame, Frame::Propagate { .. } | Frame::Hebbian { .. } | Frame::BatchedHebbian { .. });
                     if let Some(ack) = handle_frame(&mut engine, &mut partials, frame) {
                         let _ = reply_tx.send(Out::Binary(ack));
+                    }
+                    if is_teach {
+                        set_status(&control_w, |s| { s.teach_ops += 1; s.note = "teaching".into(); });
                     }
                 }
                 // Region ops are best-effort (silently skipped before the cluster exists).
