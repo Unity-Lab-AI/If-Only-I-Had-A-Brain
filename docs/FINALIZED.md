@@ -5,6 +5,27 @@
 
 ---
 
+## 2026-06-23 — Per-page social images + custom social description per page
+
+### Gee verbatim per LAW #0
+
+> *"need u use a callage of examples in playwrite for the  for social images for all pages with each page and url having a custom social description and all use their own image u make"* · *"not callage tho just take 1 image of top of each page for that pages social image"* · *"for admin page u pay want to use my forgejo access as its keyed to that remember"* · *"so have to use my browser i think"* · *"us current opened browser and fullscreen it with some kind of vooodoo if opoened there it will auto log in"*
+
+Every page gets its OWN top-of-page screenshot as its social card (NOT a collage, no shared `og-image`) + its OWN custom social description, all absolute on the lab base **`https://if-only-i-had-a-brain.git.unityailab.com`** (Gee's base-URL pick) so FB/Twitter/LinkedIn scrapers resolve.
+
+- **`scripts/social-shots.mjs`** (new) — Playwright generator. Built-in static HTTP server (compute.html refuses `file://`), chromium run **headed** so the brain pages get a real WebGPU adapter off the GPU (headless → the "WebGPU Required" wall), 1200×630 top-of-page screenshot per page → `assets/social/<name>.png`. Modes: default (9 public pages), `--only=NAME`, `--admin-only` (drives Gee's authenticated browser over CDP for the live admin shot), `--admin-local` (admin layout from the local server). CDP default `http://127.0.0.1:9222` (was `localhost` → IPv6 `::1` → ECONNREFUSED — fixed).
+- **`assets/social/*.png`** (10 new) — index, brain-equations, compute, docs, dashboard-public, gpu-configure, legend, unity-guide, webgpu-prep (public) + dashboard (admin layout). ~50–190 KB each.
+- **`index.html` + 9 `html/*.html`** — per-page `og:image` / `twitter:image` / `og:url` rewritten absolute on the lab base, each → its OWN image; custom `og:description` / `twitter:description` / `meta description` per page. Updated the 4 pages with existing og blocks (index, brain-equations, unity-guide, dashboard incl. adding its missing `og:url`); added full og/twitter blocks to the 6 bare pages (compute, gpu-configure, webgpu-prep, docs, legend, dashboard-public). Zero stale `unity-lab-ai.github.io` / shared `assets/og-image.png` refs remain.
+- **`package.json`** (new, root) — playwright devDep + `social:shots` / `social:shots:admin` npm scripts; deploy-excluded.
+- **`.forgejo/workflows/deploy.yml`** — frontend rsync excludes root `package*.json`; notes `assets/social/*.png` ships.
+- **`assets/README.md`** — rewritten for the per-page system (per-page table, wiring, regeneration via `npm run social:shots`, the admin CDP flow, deploy note). **`README.md`** — Code-layout table gains `assets/social/` + `social-shots.mjs` rows + per-directory rationale line.
+
+`node --check scripts/social-shots.mjs` clean. All 10 images verified by eye (real hero/content, not blank/modal). Branch `feature/playwright-social-images` (`1899bbb`) pushed to `if-only`.
+
+**Open (optional):** admin `dashboard.png` is the LAYOUT (no live data) — the CDP-through-Gee's-Chrome live shot refused because an already-running Chrome ate the `--remote-debugging-port` flag (nothing bound on 9222). Swap to live data anytime: fully quit Chrome, relaunch with the flag, `npm run social:shots:admin`.
+
+---
+
 ## 2026-06-21 — Donor neuron-compute LEADERBOARD (persistent, named, resets on fresh walk)
 
 ### Gee verbatim per LAW #0
