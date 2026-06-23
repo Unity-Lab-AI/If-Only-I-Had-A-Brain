@@ -6428,13 +6428,22 @@ wss.on('connection', (ws, req) => {
           // persists in saveWeights and RESETS on a fresh walk (force-fresh wipes
           // brain-weights). Accumulation happens in gpu_telemetry below.
           client.donorId = (msg.donorId && String(msg.donorId).slice(0, 64)) || client.donorId || `anon-${id}`;
+          if (msg.donorName !== undefined) {
+            const _nm = msg.donorName ? String(msg.donorName).replace(/[<>&]/g, '').trim().slice(0, 32) : '';
+            client.donorName = _nm || null;
+          }
+          // Leaderboard aggregation key — the NAME links compute across devices (browser +
+          // native + many): same name → ONE row, totals combined. No name → anonymous, keyed
+          // per-device (donorId) so anon donors stay separate rows instead of one giant blob.
+          // No verification/password — a username is just the "who is contributing" label.
+          client.lbKey = client.donorName ? ('name:' + client.donorName.toLowerCase()) : client.donorId;
           if (!brain._neuronLeaderboard) brain._neuronLeaderboard = {};
           {
-            const lbE = brain._neuronLeaderboard[client.donorId] || { name: null, neurons: 0, lastSeen: 0, _lastTs: 0 };
-            if (msg.donorName) lbE.name = String(msg.donorName).replace(/[<>&]/g, '').slice(0, 32);
+            const lbE = brain._neuronLeaderboard[client.lbKey] || { name: null, neurons: 0, lastSeen: 0, _lastTs: 0 };
+            lbE.name = client.donorName || lbE.name || null; // null → "anonymous" on display
             lbE.lastSeen = Date.now();
             lbE._lastTs = Date.now();
-            brain._neuronLeaderboard[client.donorId] = lbE;
+            brain._neuronLeaderboard[client.lbKey] = lbE;
           }
           const havePrimary = brain._gpuClient && brain._gpuClient.readyState === 1;
           if (!havePrimary) {
@@ -6486,16 +6495,23 @@ wss.on('connection', (ws, req) => {
           // leaderboard — Gneuron-seconds since their last telemetry (dt capped
           // at 10s so a reconnect gap can't spike the total). Keyed by the
           // persistent donorId so it survives page reloads + reconnects.
-          if (client.donorId) {
+          // A telemetry frame may carry an updated name (donor renamed mid-session) — re-key.
+          if (msg.donorName !== undefined) {
+            const _nm = msg.donorName ? String(msg.donorName).replace(/[<>&]/g, '').trim().slice(0, 32) : '';
+            client.donorName = _nm || null;
+            client.lbKey = client.donorName ? ('name:' + client.donorName.toLowerCase()) : (client.donorId || `anon-${id}`);
+          }
+          const _lbKey = client.lbKey || client.donorId;
+          if (_lbKey) {
             if (!brain._neuronLeaderboard) brain._neuronLeaderboard = {};
-            const lb = brain._neuronLeaderboard[client.donorId] || { name: null, neurons: 0, lastSeen: 0, _lastTs: Date.now() };
+            const lb = brain._neuronLeaderboard[_lbKey] || { name: null, neurons: 0, lastSeen: 0, _lastTs: Date.now() };
             const now = Date.now();
             const dt = Math.min(10, Math.max(0, (now - (lb._lastTs || now)) / 1000));
             lb.neurons += (Number(msg.gneuronsPerSec) || 0) * dt; // billions of neuron-steps contributed
             lb._lastTs = now;
             lb.lastSeen = now;
-            if (msg.donorName && !lb.name) lb.name = String(msg.donorName).replace(/[<>&]/g, '').slice(0, 32);
-            brain._neuronLeaderboard[client.donorId] = lb;
+            if (client.donorName) lb.name = client.donorName;
+            brain._neuronLeaderboard[_lbKey] = lb;
           }
           break;
         }
