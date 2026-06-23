@@ -1072,6 +1072,21 @@ const SERVER_GPU_MIXIN = {
     if (!isReplicaSync) {
       if (!this._replicaMatrixRegistry) this._replicaMatrixRegistry = new Map();
       this._replicaMatrixRegistry.set(name, { matrix, binding });
+      // DF.7 LIVE-MIRROR — push this matrix to every connected REPLICA right now, while its
+      // CPU CSR is still valid (the cluster frees it via CPU-CSR-free shortly after upload, so
+      // the registry-replay path in _syncReplicaToDonor would otherwise upload an EMPTY matrix).
+      // This is how secondary donors (browser + native, mixed) get the 17 cross-projections —
+      // not just clusters — so they hold a FULL brain replica for teach propagate/hebbian, which
+      // current cognition needs. Safe + memory-free: gpuSparseUpload reads the CSR into locals
+      // synchronously up top, so each mirror captures the live arrays (and keeps them alive for
+      // its own upload) before the free; the recursive call is isReplicaSync so it neither
+      // re-registers nor re-mirrors. Fire-and-forget; dropped replicas are skipped.
+      if (matrix && matrix.values && typeof this._livePoolDonors === 'function') {
+        for (const _r of this._livePoolDonors()) {
+          if (!_r || _r === this._gpuClient || _r.readyState !== 1) continue;
+          this.gpuSparseUpload(name, matrix, binding, _r).catch(() => {});
+        }
+      }
     }
     const reqId = this._nextSparseReqId();
     const rows = matrix.rows;
