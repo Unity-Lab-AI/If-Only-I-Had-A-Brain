@@ -72,6 +72,9 @@
     body.is-admin .admin-only { display: inline-block !important; }
     body.is-admin button.admin-only { display: inline-block !important; }
     body.is-admin div.admin-only { display: block !important; }
+    /* PUBLIC dashboard mode — force-hide ALL admin controls regardless of
+       is-admin so the shared read-only public page can never expose them. */
+    body.public-mode .admin-only { display: none !important; }
     .mode-badge {
       display: inline-block;
       padding: 2px 8px;
@@ -176,6 +179,7 @@
       <button id="btn-graceful-stop" class="btn-stop admin-only" title="Graceful brain shutdown — flushes definition disk cache, terminates worker pool, saves weights, then exits. Equivalent to running stop.bat. On the deployed box systemd auto-resumes (clean stop = resume marker). (Admin-only — hidden in viewer mode.)">⏹ Stop Brain</button>
       <button id="btn-restart" class="btn-stop admin-only" title="Restart the brain and RESUME training from saved state (auto-Savestart). Force-saves weights + drops a resume marker, then exits; systemd revives the process and it picks up where it left off. Restart without shell access. If a heavy update changed the brain size/format, it fresh-starts instead and says so. (Admin-only.)">🔄 Restart (Savestart)</button>
       <button id="btn-reset" class="btn-stop admin-only" title="RESET to a FRESH brain — WIPES all trained weights / episodic memory / schemas (identity-core Tier 3 anchors preserved) and reboots clean via systemd. Destructive; use to start training over. (Admin-only.)">♻ Reset Brain (fresh)</button>
+      <button id="btn-update" class="btn-stop admin-only" title="UPDATE & FRESH WALK — server re-pulls the latest project code (git-archive overlay), CLEARS all trained weights (identity-core Tier 3 preserved), restarts, and starts a clean K→PhD walk. Use after shipping fixes to deploy + restart training in one click. Destructive to weights. (Admin-only.)">⬆ Update &amp; Fresh Walk</button>
     </div>
 
     <!-- Dashboard-zero diagnostic panel (collapsible). Operator 2026-06-17
@@ -850,7 +854,47 @@
     })();
 
     let ws;
+    // PUBLIC dashboard mode — one static read-only page ALL users share.
+    // Instead of each viewer opening a live admin WS (1000 viewers ×
+    // full-state stream every cadence = server meltdown), public mode polls
+    // the server's ONE cached snapshot (GET /public-state.json, refreshed on
+    // the broadcast cadence) and renders the SAME data through the same
+    // handler. Never goes admin → every admin control stays hidden (CSS
+    // body.public-mode .admin-only). Enable via ?public=1 or a path with
+    // "public" (html/dashboard-public.html redirects here with the flag).
+    const PUBLIC_MODE = new URLSearchParams(location.search).has('public') || /public/i.test(location.pathname);
+    function publicStateUrl() {
+      if (_dashIsLocal) {
+        const scheme = location.protocol === 'https:' ? 'https:' : 'http:';
+        const host = location.hostname || 'localhost';
+        return `${scheme}//${host}:7525/public-state.json`;
+      }
+      return `${location.origin}/public-state.json`;
+    }
+    function startPublicPolling() {
+      document.body.classList.add('public-mode');
+      const url = publicStateUrl();
+      let firstOk = false;
+      async function poll() {
+        try {
+          const r = await fetch(url, { cache: 'no-store' });
+          const msg = await r.json();
+          if (msg && msg.type === 'state' && msg.state) {
+            if (!firstOk) {
+              firstOk = true;
+              const ct = document.getElementById('d-conn-text');
+              if (ct) ct.innerHTML = '<span class="status alive">live</span> Public view — shared snapshot (read-only)';
+              const b = document.getElementById('no-conn-banner'); if (b) b.classList.remove('active');
+            }
+            handleMessage(msg);
+          }
+        } catch (err) { /* transient — next poll retries */ }
+      }
+      poll();
+      setInterval(poll, 3000);
+    }
     function connect() {
+      if (PUBLIC_MODE) { startPublicPolling(); return; }
       ws = new WebSocket(SERVER_URL);
       ws.onopen = () => {
         // Target the inner text div, not the wrapper, so the
@@ -1098,6 +1142,7 @@
       // progress bar + per-subject cumulative breakdown. Same source
       // of truth: the Curriculum object's getCurriculumStatus().
       renderCurriculumStatus(s.curriculum || null);
+      renderLeaderboard(s.leaderboard || null);
 
       // Full-Mind K Gate panel — 23-probe pass-instrument for K closure.
       // Renders state.fullMindK populated by curriculum._aggregateFullMindK().
@@ -1930,6 +1975,35 @@
       probesEl.innerHTML = rows.join('');
     }
 
+    // Donor neuron-compute leaderboard (admin + public dashboard). Self-creates
+    // its DOM on first render so it needs no HTML layout change. Shows total
+    // contributors + total Gn·s + the top contributors. Resets on a fresh walk.
+    function renderLeaderboard(lb) {
+      let panel = document.getElementById('d-leaderboard');
+      if (!panel) {
+        panel = document.createElement('div');
+        panel.id = 'd-leaderboard';
+        panel.style.cssText = 'margin:12px 0;padding:12px;border:1px solid #333;border-radius:8px;background:#0d0d0d;';
+        const host = document.querySelector('.container') || document.querySelector('main') || document.body;
+        host.appendChild(panel);
+      }
+      const fmt = (n) => (n >= 1e3 ? (n / 1e3).toFixed(1) + 'k' : (n || 0).toFixed(1));
+      if (!lb || !Array.isArray(lb.top) || lb.top.length === 0) {
+        panel.innerHTML = '<div style="color:#22c55e;font-weight:bold;">🏆 Neuron Leaderboard</div><div style="color:#666;font-size:11px;margin-top:6px;">No donor contributions yet — connect a GPU at compute.html.</div>';
+        return;
+      }
+      const rows = lb.top.slice(0, 20).map((e, i) =>
+        '<div style="display:grid;grid-template-columns:28px 1fr 90px;gap:6px;padding:2px 0;font-size:11px;color:#bbb;">'
+        + '<div style="color:#666;">' + (i + 1) + '.</div>'
+        + '<div>' + String(e.name || 'anon').replace(/[<>&]/g, '') + '</div>'
+        + '<div style="text-align:right;color:#a78bfa;">' + fmt(e.neurons) + ' Gn·s</div></div>'
+      ).join('');
+      panel.innerHTML =
+        '<div style="color:#22c55e;font-weight:bold;margin-bottom:8px;">🏆 Neuron Leaderboard '
+        + '<span style="color:#666;font-weight:normal;font-size:10px;">· ' + (lb.totalContributors || 0) + ' contributors · ' + fmt(lb.totalNeurons || 0) + ' Gn·s total · resets on fresh walk</span></div>'
+        + rows;
+    }
+
     function renderCurriculumStatus(c) {
       const $ = id => document.getElementById(id);
       if (!c) {
@@ -1946,8 +2020,11 @@
       applyGradeLabels(c.currentGradeShort || '');
       // Subject + grade header
       if (c.currentSubject && c.currentGrade) {
-        const subUpper = String(c.currentSubject).toUpperCase();
-        $('d-curr-subject').textContent = `${subUpper} — ${c.currentGrade}`;
+        // Real course name (Algebra I / Biology / U.S. Government / …) at the
+        // current grade — not the raw "ELA" key — so mid-walk the header
+        // shows the actual class she's taking. Falls back to the subject key.
+        const courseName = c.currentCourseName || String(c.currentSubject).toUpperCase();
+        $('d-curr-subject').textContent = `${courseName} — ${c.currentGradeLabel || c.currentGrade}`;
       } else if (c.passedCellsTotal > 0) {
         $('d-curr-subject').textContent = 'between cells';
       } else {
@@ -2034,13 +2111,16 @@
       // operator see the whole curriculum walk at a glance.
       const subjects = Array.isArray(c.subjects) && c.subjects.length ? c.subjects : Object.keys(c.perSubject || {});
       const rows = [];
-      rows.push('<div style="display:grid;grid-template-columns:60px 1fr 48px 48px 60px;gap:4px;font-size:10px;color:#666;border-bottom:1px solid #222;padding-bottom:3px;margin-bottom:4px;"><div>subject</div><div>grade</div><div style="text-align:right;">phases</div><div style="text-align:right;">cells</div><div style="text-align:right;">events</div></div>');
+      rows.push('<div style="display:grid;grid-template-columns:1fr 84px 44px 40px 52px;gap:4px;font-size:10px;color:#666;border-bottom:1px solid #222;padding-bottom:3px;margin-bottom:4px;"><div>course</div><div>grade</div><div style="text-align:right;">phases</div><div style="text-align:right;">cells</div><div style="text-align:right;">events</div></div>');
       for (const sub of subjects) {
-        const s = (c.perSubject && c.perSubject[sub]) || { phasesCompleted: 0, cellsPassed: 0, teachEvents: 0, grade: null };
+        const s = (c.perSubject && c.perSubject[sub]) || { phasesCompleted: 0, cellsPassed: 0, teachEvents: 0, grade: null, courseName: null };
         const isActive = c.currentSubject === sub;
         const color = isActive ? '#a78bfa' : '#888';
-        rows.push(`<div style="display:grid;grid-template-columns:60px 1fr 48px 48px 60px;gap:4px;font-size:10px;color:${color};padding:2px 0;">`
-          + `<div style="font-weight:${isActive ? 'bold' : 'normal'};">${sub}</div>`
+        // Real per-grade course name (Algebra I / Biology / U.S. Government /
+        // PE / etc.) — not the raw "ela/math" key — updating as she graduates.
+        const courseLabel = s.courseName || sub;
+        rows.push(`<div style="display:grid;grid-template-columns:1fr 84px 44px 40px 52px;gap:4px;font-size:10px;color:${color};padding:2px 0;">`
+          + `<div style="font-weight:${isActive ? 'bold' : 'normal'};" title="${sub}">${courseLabel}</div>`
           + `<div style="color:#666;">${s.grade || '—'}</div>`
           + `<div style="text-align:right;">${s.phasesCompleted | 0}</div>`
           + `<div style="text-align:right;">${s.cellsPassed | 0}</div>`
@@ -2390,6 +2470,40 @@
           btn.classList.add('shutdown-fired');
           btn.textContent = '✓ reset sent (reviving)';
           log(`Reset fetch failed (server exiting, systemd reviving fresh): ${err?.message || err}`);
+        }
+      });
+    })();
+
+    // Update & Fresh Walk button. POST /update → server spawns
+    // deploy/self-update.sh detached: overlay latest code → write .force-fresh
+    // (clears weights) → systemctl restart → fresh code boots into a clean
+    // walk (auto-advance ON). Destructive to weights → double-confirm.
+    (function wireUpdate() {
+      const btn = document.getElementById('btn-update');
+      if (!btn) return;
+      btn.addEventListener('click', async () => {
+        const ok = window.confirm(
+          '⬆ UPDATE the server to the latest code + start a FRESH walk?\n\n' +
+          'The server re-pulls the latest project code (git-archive overlay), WIPES all trained ' +
+          'weights / episodic memory / schemas (identity-core Tier 3 preserved), restarts, and ' +
+          'begins a clean K→PhD walk.\n\n' +
+          'Use this after shipping fixes. ALL current training is lost. Proceed?'
+        );
+        if (!ok) return;
+        const ok2 = window.confirm('Are you SURE? This pulls new code AND wipes all training for a fresh walk. This cannot be undone.');
+        if (!ok2) return;
+        btn.disabled = true;
+        btn.textContent = '⏳ updating + fresh walk...';
+        try {
+          const r = await fetch(adminApi('update'), { method: 'POST', cache: 'no-store' });
+          const j = await r.json().catch(() => ({}));
+          btn.classList.add('shutdown-fired');
+          btn.textContent = (j && j.status && /FAILED/i.test(j.status)) ? '✗ update failed (see log)' : '✓ updating (fresh walk ~1-2m)';
+          log(`Update POST → ${JSON.stringify(j)}`);
+        } catch (err) {
+          btn.classList.add('shutdown-fired');
+          btn.textContent = '✓ update sent (restarting)';
+          log(`Update fetch failed (server restarting into new code): ${err?.message || err}`);
         }
       });
     })();

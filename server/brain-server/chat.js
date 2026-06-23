@@ -118,6 +118,29 @@ const SERVER_CHAT_MIXIN = {
             pairs.push([filtered[i], filtered[i + 1]]);
           }
           if (pairs.length > 0) {
+            // BC.7 — health / diversity gate. Do NOT deep-bind chat pairs
+            // while the cortex is saturated or emission is mode-collapsed.
+            // Binding more pairs into a collapsed brain just deepens the
+            // dominant basin — this is the 1842-pass self-reinforcement
+            // that dug the live "mushrooms" lock. Skip + count; binding
+            // resumes automatically once the brain is healthy again.
+            let _bcCollapsed = false;
+            try {
+              const cc = this.cortexCluster;
+              if (cc && typeof cc.checkSemMotorHealth === 'function' && cc.checkSemMotorHealth().saturated) _bcCollapsed = true;
+              if (!_bcCollapsed && cc && Array.isArray(cc._metaRegister) && cc._metaRegister.length >= 8) {
+                const counts = new Map();
+                for (const e of cc._metaRegister) { if (e && e.word) counts.set(e.word, (counts.get(e.word) || 0) + 1); }
+                let topN = 0; for (const n of counts.values()) if (n > topN) topN = n;
+                if (topN / cc._metaRegister.length > 0.45) _bcCollapsed = true;
+              }
+            } catch { /* health unknown — proceed with bind */ }
+            if (_bcCollapsed) {
+              if (!this._chatTimeHebbianStats) {
+                this._chatTimeHebbianStats = { turns: 0, totalPairs: 0, lastTs: 0, errors: 0, lastError: null, lastWarnTs: 0 };
+              }
+              this._chatTimeHebbianStats.skippedCollapsed = (this._chatTimeHebbianStats.skippedCollapsed || 0) + 1;
+            } else {
             if (!this._chatTimeHebbianStats) {
               this._chatTimeHebbianStats = { turns: 0, totalPairs: 0, lastTs: 0, errors: 0, lastError: null, lastWarnTs: 0 };
             }
@@ -152,6 +175,7 @@ const SERVER_CHAT_MIXIN = {
             this._chatTimeHebbianStats.turns++;
             this._chatTimeHebbianStats.totalPairs += pairs.length;
             this._chatTimeHebbianStats.lastTs = Date.now();
+            } // close BC.7 else (not collapsed)
           }
         }
       }

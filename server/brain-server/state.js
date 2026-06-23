@@ -404,8 +404,62 @@ const SERVER_STATE_MIXIN = {
             lastTs: this._chatTimeHebbianStats.lastTs || 0,
             errors: this._chatTimeHebbianStats.errors || 0,
             lastError: this._chatTimeHebbianStats.lastError || null,
+            skippedCollapsed: this._chatTimeHebbianStats.skippedCollapsed || 0, // BC.7 — binds skipped while collapsed
           }
-        : { turns: 0, totalPairs: 0, lastTs: 0, errors: 0, lastError: null },
+        : { turns: 0, totalPairs: 0, lastTs: 0, errors: 0, lastError: null, skippedCollapsed: 0 },
+      // Donor neuron-compute LEADERBOARD — top contributors by cumulative
+      // Gneuron-seconds, with display names. Persists in saveWeights, resets on
+      // a fresh walk. Dashboard + public dashboard + compute.html render it; a
+      // donor finds their own row by their persistent donorId.
+      leaderboard: (() => {
+        try {
+          const lb = this._neuronLeaderboard || {};
+          const rows = Object.entries(lb).map(([id, e]) => ({
+            id,
+            name: (e && e.name) || null,
+            neurons: (e && e.neurons) || 0,
+            lastSeen: (e && e.lastSeen) || 0,
+          }));
+          rows.sort((a, b) => b.neurons - a.neurons);
+          const total = rows.reduce((s, r) => s + r.neurons, 0);
+          return { top: rows.slice(0, 20), totalContributors: rows.length, totalNeurons: total };
+        } catch (err) { return { top: [], totalContributors: 0, totalNeurons: 0, error: err.message }; }
+      })(),
+      // BC.12 — basin-collapse telemetry. Surfaces the signals behind the
+      // single-token mode-collapse so recovery is visible without hand-
+      // diffing /ws polls: sem→motor saturation, dominant-token share of
+      // recent emissions, GW broadcast diversity. Computed once per state
+      // broadcast (not per tick) so the checkSemMotorHealth sample is cheap.
+      basinHealth: (() => {
+        try {
+          const cc = this.cortexCluster;
+          if (!cc) return null;
+          const out = { saturated: null, semMotorMeanCos: null, semMotorRatio: null, dominantToken: null, dominantShare: null, gwUniqueRatio: null };
+          if (typeof cc.checkSemMotorHealth === 'function') {
+            const h = cc.checkSemMotorHealth();
+            out.saturated = !!h.saturated;
+            out.semMotorMeanCos = (typeof h.meanCos === 'number') ? +h.meanCos.toFixed(3) : null;
+            out.semMotorRatio = (typeof h.ratio === 'number') ? +h.ratio.toFixed(2) : null;
+          }
+          if (Array.isArray(cc._metaRegister) && cc._metaRegister.length > 0) {
+            const counts = new Map();
+            for (const e of cc._metaRegister) { if (e && e.word) counts.set(e.word, (counts.get(e.word) || 0) + 1); }
+            let topW = null, topN = 0;
+            for (const [w, n] of counts) { if (n > topN) { topN = n; topW = w; } }
+            out.dominantToken = topW;
+            out.dominantShare = +(topN / cc._metaRegister.length).toFixed(2);
+          }
+          const gw = cc._globalWorkspace || this._globalWorkspace || (this.brain && this.brain._globalWorkspace);
+          if (gw && typeof gw.getHistory === 'function') {
+            const hist = gw.getHistory();
+            if (Array.isArray(hist) && hist.length > 0) {
+              const labels = new Set(hist.map(h => h && h.label));
+              out.gwUniqueRatio = +(labels.size / hist.length).toFixed(2);
+            }
+          }
+          return out;
+        } catch (err) { return { error: err.message }; }
+      })(),
       // Audit A.3 — P6.4 dream-recombination consolidation counters.
       // Per audit E.4 the curriculum-side _dreamRecombinationStats also
       // exposes a `consolidatedSamples` ring (cap 20) for operator audit.

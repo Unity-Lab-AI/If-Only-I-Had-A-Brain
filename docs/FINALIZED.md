@@ -5,6 +5,92 @@
 
 ---
 
+## 2026-06-21 — Donor neuron-compute LEADERBOARD (persistent, named, resets on fresh walk)
+
+### Gee verbatim per LAW #0
+
+> *"i want a totasl Nurons computed leader bard of the connected user that persist with the brain weight and reset when the brain does a new walk so compute clients can see now many nuerons they have created and are ablke to make a name for the leaderboard of thier connect id linking them to the leaderboard both"* · *"compute clients should attempt to maintain id through reconnects"*
+
+A leaderboard of connected compute donors by cumulative neuron contribution, persisted with the brain weights and reset on a fresh walk:
+- **`server/brain-server.js`** — `brain._neuronLeaderboard` keyed by a persistent `donorId` → `{name, neurons, lastSeen}`. `gpu_register` captures donorId (+ optional name); `gpu_telemetry` accumulates `gneuronsPerSec × dt` (dt capped 10s so a reconnect gap can't spike it) as cumulative Gneuron-seconds; new `set_donor_name` message updates the display name. Persisted in `saveWeights` (`neuronLeaderboard`, top-200) + restored in `_loadWeights` (re-seeds `_lastTs=0`) → survives restart/resume, WIPED on a fresh walk (force-fresh clears brain-weights).
+- **`server/brain-server/state.js`** — `leaderboard` field (top-20 by neurons + totalContributors + totalNeurons) so dashboard / public dashboard / compute.html all render it.
+- **`html/compute.html`** — persistent `donorId` in localStorage (MAINTAINED across reconnects + reloads per Gee) + a name input (localStorage + `set_donor_name`); both sent in `gpu_register` + `gpu_telemetry`. A 🏆 panel shows the donor's own "neurons created" + the top-10, polled from the shared `/public-state.json` (no extra firehose).
+- **`html/dashboard.html`** — `renderLeaderboard()` self-creating 🏆 panel (admin + public) showing top-20 + totals.
+
+`node --check` clean (brain-server.js + state.js); compute.html + dashboard.html are static.
+
+---
+
+## 2026-06-21 — Static public dashboard (shared cached snapshot, no admin) + real course names on brain footer & dashboard
+
+### Gee verbatim per LAW #0
+
+> *"and we want to make sure the grade levels on the brain page at the bottom for everything properly update they never got update from pre k to k grade and they need to work for all grades, and not just ela math science but as she grade graduates she need to actual have the reall course names in there so even on the dashboard cirriculum runthrouhg of training it need to not list ela whne she is in higher grades taking actual physic algedbra geometry us governemtn ect ect and all other classes not mentioned her, the dashbboard and brain's html footer need to properly showe all cirrriculm correctly and status where applicable"* · *"AND i want a static page of the dashboard that users can use in pages so update legend to just leave all admin shit off of it ... we just post one static page of it ewveryone uses ... make sure the user static dishboard does NOT have admionn controls"* · *"no it has all the same data point but is not the admin version with constant updates ... we dont want millions of data calles to every user only one static page that updatea like dashboard currently"*
+
+**Real course names + live grade (all grades K→PhD):** `Curriculum.getCurriculumStatus()` now pulls each subject's AUTHORITATIVE current grade from `cluster.grades[sub]` (the per-subject runtime stat lagged it — that's why the footer "never updated pre-K→K") and computes the real per-grade course name via `courseNameFor(sub, grade)` — exposed as `perSubject[sub].courseName` + a top-level `currentCourseName`. Display sites updated to use them:
+- **Brain page footer** (`js/app.js` `ls-grade-per-subject`): reads `state.curriculum.perSubject` → `"Algebra I (grade8) · Biology (grade9) · U.S. Government (grade11) …"` instead of `"ela:K · math:K"`. Falls back to `state.grades` before curriculum status is up.
+- **Dashboard** (`html/dashboard.html`): the per-subject grid header `subject`→`course`, column widened (`1fr 84px …`), each row shows `s.courseName` (raw key in `title=`); the "Current Training" header shows `currentCourseName — gradeLabel` ("Algebra I — Grade 8") instead of "ELA — grade8".
+Bundle rebuilt (3.7mb) for the app.js change; dashboard.html is static.
+
+**Static public dashboard (scalable, no admin):** a public read-only dashboard ALL viewers share, without each opening a live admin WS (1000 viewers × full-state stream every cadence = meltdown).
+- **`server/brain-server.js`** — the broadcast loop now caches the SAME state object as `brain._publicStateJson` on the dashboard cadence (computed when there are WS viewers OR a public poll in the last 30s, so it stays warm without a WS). New PUBLIC `GET /public-state.json` returns that cached string (no per-request recompute) with `Cache-Control: public, max-age=2` (nginx/browser micro-cache friendly) + stamps `_lastPublicPollTs`.
+- **`html/dashboard.html`** — PUBLIC_MODE (via `?public=1` or a "public" path): polls `/public-state.json` every 3s and renders through the SAME `handleMessage` path; never opens the admin WS, never goes `is-admin`; CSS `body.public-mode .admin-only{display:none!important}` force-hides every admin control (restart/reset/update/shutdown/autoscale/grade-signoff/server-console).
+- **`html/dashboard-public.html`** (new) — clean public entry that redirects to `dashboard.html?public=1`.
+So N public viewers cost one `getState()` per cadence + a static file read each; nginx should serve `/public-state.json` publicly (micro-cache optional). Same data points as the admin view; zero admin controls.
+
+`node --check` clean (brain-server.js); ESM `import()` clean (curriculum.js); bundle rebuilt.
+
+---
+
+## 2026-06-21 — Dashboard "Update & Fresh Walk" button (one-click re-pull + fresh walk)
+
+### Gee verbatim per LAW #0
+
+> *"want a update button on the dashboard that makes the server repull the project and update it restart and start the new walk with cleared weights ready and starting the walk"*
+
+A dashboard admin button that, in one click, re-pulls the latest project code, clears weights, restarts, and starts a fresh K→PhD walk. Built around the deploy reality that the backend dir has NO `.git` (redeploy is a git-archive overlay, not `git pull`):
+
+- **`server/brain-server.js` — `POST /update`** (admin/loopback-gated, mirrors `/reset`): spawns the self-update script DETACHED and returns immediately. Does NOT `process.exit` itself — the script's `systemctl restart` (after the overlay) replaces the process, so there's no old-code/new-code race. Returns a clear "script not found" on local dev (no deploy dir) rather than half-updating. Script path overridable via `DREAM_SELF_UPDATE_CMD`.
+- **`deploy/self-update.sh`** (new): git-archive overlay of the latest branch into the backend dir (preserving `node_modules` + `.env` + `user.json` + all runtime state: `brain-weights*` / `schemas.json` / `identity-core.json` / `episodic-memory.db*` / `conversations.json` / `autoscale-settings.json` / `auto-advance.json` / `definition-cache.json` / `.claude`), best-effort `npm install`, writes `server/.force-fresh` (so `autoClearStaleState` WIPES trained weights — identity-core Tier 3 preserved), then `systemctl restart`. With auto-advance ON (persisted in `auto-advance.json`) the fresh boot starts the walk itself. Env-configurable: `UAL_BACKEND_DIR` (default `/opt/unity-brain`) · `UAL_GIT_REMOTE` · `UAL_GIT_BRANCH` (default `main`) · `UAL_SERVICE` (default `unity-brain`). Aborts (service NOT restarted, weights intact) if the clone or overlay fails.
+- **`html/dashboard.html`** — `⬆ Update & Fresh Walk` admin button + `wireUpdate()` (double-confirm, destructive-to-weights warning) → `POST /update` via the same `adminApi()` helper as the other admin controls.
+
+**Box setup needed (operator/Sponge):** the box must have `deploy/self-update.sh` present (it ships in the repo now), `git`+`rsync` installed, the deploy key able to clone the remote, and `sudo -n systemctl restart unity-brain` permitted for the service user. Cannot be verified headless — it runs privileged shell + a service restart on the box. `node --check` clean on brain-server.js; `bash -n` clean on self-update.sh.
+
+---
+
+## 2026-06-21 — BC — basin-collapse hardening (single-token "mushrooms" lock) + per-grade advance health gate
+
+### Gee verbatim per LAW #0
+
+> *"wtf is she only saying mushrooms most of the time?"* · *"lets make surte that we can use the save weights and it just trains correctly and revctifies , but if we have to change server lets make sure we still use old weeights that thewy just get fixed"* · *"needs to learn vocab it missed before minaal jump to next grade too"* · *"this is only this go round we are trying to keep the data if it dontr work we will nuke it all and start freash so dont really code shit in just for this data set of weights specificly just harden the traing checks to fix the issues"* · *"is she really making words like_this??? thats weird no?"* · *"wriet the full todo of the fixes scanning the ccode and reading the full files relevantg to layout the full amoutn of work needed to get unity fixed"* · *"add it to toso work and comtinue to complete all todo work"* · *"make new feature branch one all tasks are completed and cleard and doc push is complete only then push to new feature"*
+
+**Diagnosed live off the deployed 51M brain:** the Global Workspace broadcast ONE token (`cortex:mushrooms 0.41`) every tick ×8; `drugState:"sober"` (not a drug effect); `emitDiagnostic: below-signal-floor (bestMean 0.098 < floor 0.210)`; `chatTimeHebbianStats: turns 1842`; sem→motor saturated → one basin captured all output, and `wordCreationCandidates` was coining junk compounds off the collapsed stream (`aww_serious`, `ice_sorry`, `laundry_mom` — "sorry" in 6/10). Root: a closed positive-feedback lock with NO active decorrelation — every saturation control only *prevented worsening* (veto/halt/skip), nothing rectified. Per Gee, the durable fix is **hardened training CHECKS** (prevent + gate before advance), NOT dataset-specific weight-rescue (if this run's weights don't recover under the hardened training, they nuke + fresh-start). Full diagnosis + plan: `docs/ISSUE-basin-collapse-fix.md`.
+
+Shipped (all LOGIC-ONLY — no neuron-count change, no `WEIGHTS_FORMAT_VERSION` bump, no required new persisted fields, so saved weights load unchanged; redeploy with the box's existing `DREAM_KEEP_STATE=1` resumes on her current brain):
+
+- **Per-grade ADVANCE HEALTH GATE** — `Curriculum._gradeAdvanceHealthGate(subject, grade)` (`curriculum.js`) wired into BOTH advance paths (true A+ pass + FORCE-ADVANCE), so EVERY grade K→PhD is blocked from jumping while (1) sem→motor saturated, (2) emission mode-collapsed (dominant-token share > `DREAM_BC_EMISSION_DOM_MAX`=0.45), or (3) cell exam-vocab coverage below `DREAM_BC_VOCAB_MIN`=0.85 (`examVocabCoverage`). On failure the grade does NOT advance — the cell re-teaches next pass ("any additional training needed before grade advance"). This is the "check grade completions of these issues for each grade for future grades" Gee asked for.
+- **BC.4** — frequency-based familiarity decay on the meta-register back-injection (`cluster.js`): inject strength now scales by the word's recent-frequency share (0.30 fresh → 0.04 fully habituated) instead of resetting to 0.30 on any token change, so a dominant basin gets sustained suppression.
+- **BC.5** — GlobalWorkspace winner-refractory (`global-workspace.js`): a label that just ignited gets a linear recency penalty for `winnerRefractoryTicks` (12), so the workspace can't re-broadcast the same content every tick (kills the ×8 repeat).
+- **BC.6** — `getWorkspaceCandidate` anti-repeat (`cluster.js`): damps the cortex candidate value when the last-emitted word dominates the recent meta-register, so cortex stops nominating the same token.
+- **BC.7** — chat-Hebbian collapse gate (`server/brain-server/chat.js`): the deep-Hebbian bind is skipped (counted as `skippedCollapsed`) while the cortex is saturated or emission mode-collapsed — stops the 1842-pass self-reinforcement that dug the basin.
+- **BC.13** — word-creation health + coherence gate (`cluster/telemetry.js` `_recordWordCreationCandidate`): no compound coined while mode-collapsed, AND components must clear a semantic-coherence floor (embedding cosine ≥ `DREAM_BC_COMPOUND_COH_MIN`=0.2). Stops the junk neologisms.
+- **BC.12** — basin-collapse telemetry on the WS state (`server/brain-server/state.js` `basinHealth`): sem→motor saturated/meanCos/ratio + dominant-token share + GW broadcast unique-label ratio + chat-Hebbian `skippedCollapsed`, so collapse + recovery are visible without hand-diffing polls.
+- **BC.8 / BC.9 — resolved-by-design (no new code):** separation already fires every training phase via the existing per-phase `normalizeRows` (`curriculum.js:13049-13064`); the collapse came from feedback re-amplification (BC.4/5/6) + un-normalized chat-Hebbian (BC.7), not absent separation. `_teachPredictiveError` is lr-bounded and trains the INTRA recurrent matrix (not sem→motor), and a per-call saturation gate in a millions-of-calls-per-cell hot loop would be perf-unsafe; phase-level SATURATION HALT + the per-grade gate already block saturated cells. Adding redundant per-call edits was rejected per Gee's "dont really code shit in just for this."
+
+**Verification:** ESM `import()` clean on `curriculum.js` / `cluster.js` / `global-workspace.js` / `cluster/telemetry.js`; `node --check` clean on `server/brain-server/chat.js` + `state.js`; bundle rebuilt (3.7mb, carries `winnerRefractoryTicks` / `_gradeAdvanceHealthGate` / `skippedCollapsed`). Backend pieces take effect on the box redeploy (git-archive overlay + `systemctl restart`, `DREAM_KEEP_STATE=1` resumes existing weights); frontend (bundle) auto-deploys on main.
+
+---
+
+## 2026-06-21 — SBS — student-battery stall (write-up) → fixed upstream by #112.9
+
+### Gee verbatim per LAW #0
+
+> *"make a write up of this issue before sponge make s the GPUcompute applicion.. so"* · *"check er out is she stuck or thinking hard"* · *"is it passing cells now?"*
+
+Live-diagnosed the deployed brain wedged on the first cell (`ela/kindergarten`, `cellsPassed:0`, ~18 min parked in `_runStudentBattery` with frozen counters + a healthy 11ms event loop = async stall, not CPU hang). Root cause written up in `docs/ISSUE-student-battery-stall.md`: `_runStudentBattery` ran every question with `await _studentTestProbe({maxTicks:60})` and NO per-question timeout / NO battery wall-clock deadline (`_batteryStart` set but never checked), so at biological scale each 60-tick emission probe × N questions ran unbounded (T30 family). **Resolved upstream:** the local-merge from `if-only/main` brought `8d8a7bc fix(curriculum): bound student-battery wall-clock (§6.1 per-question + §6.2 battery deadline)` — exactly the §6.1/§6.2 fix the write-up specified, already deploy-verified as #112.9. The write-up doc + diagnosis stand as the record; no further SBS code needed.
+
+---
+
 ## 2026-06-21 — #112 LIVE-DEPLOY STABILITY cluster (the all-night donor-loop) — full fix set
 
 ### Gee verbatim per LAW #0

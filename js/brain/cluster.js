@@ -1946,7 +1946,22 @@ export class NeuronCluster {
     // suffix and boost continuity-of-thought. Other clusters fall
     // through to the firing-rate-only signal.
     if (this.name === 'cortex' && this._lastEmittedWord) {
-      const value = Math.min(1, Math.max(0, this._lastEmittedActivation || 0));
+      let value = Math.min(1, Math.max(0, this._lastEmittedActivation || 0));
+      // BC.6 — anti-repeat. If the last-emitted word has DOMINATED recent
+      // emissions, damp its workspace-candidate value so cortex stops
+      // nominating the same token every tick (which feeds the GW lock and
+      // the "mushrooms" broadcast). Reads the meta-register frequency;
+      // pure value reshaping, no weights touched.
+      if (Array.isArray(this._metaRegister) && this._metaRegister.length >= 6) {
+        let same = 0;
+        for (const e of this._metaRegister) { if (e && e.word === this._lastEmittedWord) same++; }
+        const share = same / this._metaRegister.length;
+        if (share > 0.4) {
+          // share 0.4 → ×1.0 (no damp) … share 1.0 → ×0.25 (heavy damp)
+          const damp = Math.max(0.25, 1 - (share - 0.4) * 1.25);
+          value *= damp;
+        }
+      }
       if (value > 0) {
         return {
           label: `cortex:${this._lastEmittedWord}`,
@@ -3301,12 +3316,22 @@ export class NeuronCluster {
           if (sharedEmb && typeof sharedEmb.getEmbedding === 'function') {
             const emb = sharedEmb.getEmbedding(last.word);
             if (emb && emb.length > 0) {
-              if (this._lastInjectedWord === last.word) {
-                this._injectStrength = Math.max(0.04, (this._injectStrength ?? 0.3) * 0.5);
-              } else {
-                this._injectStrength = 0.3;
-                this._lastInjectedWord = last.word;
+              // BC.4 — FREQUENCY-based familiarity decay. The prior
+              // reset-to-0.3-on-any-token-change let a dominant basin that
+              // wins most (but not strictly consecutive) ticks re-inject at
+              // full strength, feeding the collapse. Now strength scales by
+              // how often the word appears in the recent meta-register, so a
+              // word that DOMINATES recent emissions is damped hard
+              // regardless of exact-consecutive repeats. Base 0.3, floor 0.04.
+              let freqShare = 0;
+              if (Array.isArray(this._metaRegister) && this._metaRegister.length > 0) {
+                let same = 0;
+                for (const e of this._metaRegister) { if (e && e.word === last.word) same++; }
+                freqShare = same / this._metaRegister.length;
               }
+              // share 0 → 0.30 (fresh) … share 1 → 0.04 (fully habituated)
+              this._injectStrength = Math.max(0.04, 0.3 * (1 - freqShare));
+              this._lastInjectedWord = last.word;
               this.injectEmbeddingToRegion('sem', emb, this._injectStrength);
             }
           }

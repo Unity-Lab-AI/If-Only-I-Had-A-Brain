@@ -1046,7 +1046,25 @@ function updateLandingStats(state) {
     else if (minGrade === 'unknown' || minGrade === '—') gradeEl.style.color = '#555';
     else gradeEl.style.color = '#22c55e';                              // green = confident speaker
   }
-  if (state.grades) {
+  // Per-subject footer line — REAL course names + current grade, from the
+  // curriculum status (perSubject carries courseName + authoritative grade
+  // per subject, updating live as each subject graduates K→PhD). So once
+  // Unity's in higher grades the footer reads "Algebra I (grade8) · Biology
+  // (grade9) · U.S. Government (grade11) …" instead of "ela:K · math:K".
+  // Falls back to the raw state.grades map when curriculum status isn't up yet.
+  const _cur = state.curriculum;
+  if (_cur && _cur.perSubject) {
+    const ps = _cur.perSubject;
+    const parts = [];
+    for (const sub of ['ela', 'math', 'science', 'social', 'art', 'life']) {
+      const e = ps[sub];
+      if (!e) continue;
+      const name = e.courseName || sub;
+      const gr = e.grade || '—';
+      parts.push(`${name} (${gr})`);
+    }
+    if (parts.length) el('ls-grade-per-subject', parts.join(' · '));
+  } else if (state.grades) {
     const g = state.grades;
     const line = `ela:${g.ela || '—'} · math:${g.math || '—'} · sci:${g.science || '—'} · soc:${g.social || '—'} · art:${g.art || '—'} · life:${g.life || '—'}`;
     el('ls-grade-per-subject', line);
