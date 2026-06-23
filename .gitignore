@@ -191,3 +191,8 @@ out/
 # #38/#39 runtime state markers (per-boot, never committed)
 server/.resume-marker.json
 server/.force-fresh
+
+# runtime state (written by the brain at boot/run — never commit)
+server/.last-boot-reason.json
+server/resource-config.json
+server/auto-advance.json
