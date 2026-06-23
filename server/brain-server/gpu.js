@@ -1069,21 +1069,37 @@ const SERVER_GPU_MIXIN = {
     // by replaying these. Replica-sync uploads (targetWs set) don't re-track.
     const ws = (targetWs && targetWs.readyState === 1) ? targetWs : this._gpuClient;
     const isReplicaSync = !!(targetWs && targetWs !== this._gpuClient);
+    // Never push an EMPTY matrix to a replica. A registry-replay (the 1.5s initial sync or the
+    // 10-min rebroadcast) can hit a matrix whose CPU CSR was freed (CPU-CSR-free nulls it after
+    // the primary's upload); uploading that empty result would CLOBBER the valid copy the
+    // live-mirror already gave the replica. Skip — the live-mirror re-sends on the next
+    // canonical (valid-CSR) upload.
+    if (isReplicaSync && (!matrix || !matrix.values || matrix.values.length === 0)) {
+      return null;
+    }
     if (!isReplicaSync) {
       if (!this._replicaMatrixRegistry) this._replicaMatrixRegistry = new Map();
       this._replicaMatrixRegistry.set(name, { matrix, binding });
-      // DF.7 LIVE-MIRROR — push this matrix to every connected REPLICA right now, while its
-      // CPU CSR is still valid (the cluster frees it via CPU-CSR-free shortly after upload, so
-      // the registry-replay path in _syncReplicaToDonor would otherwise upload an EMPTY matrix).
-      // This is how secondary donors (browser + native, mixed) get the 17 cross-projections —
-      // not just clusters — so they hold a FULL brain replica for teach propagate/hebbian, which
-      // current cognition needs. Safe + memory-free: gpuSparseUpload reads the CSR into locals
-      // synchronously up top, so each mirror captures the live arrays (and keeps them alive for
-      // its own upload) before the free; the recursive call is isReplicaSync so it neither
-      // re-registers nor re-mirrors. Fire-and-forget; dropped replicas are skipped.
-      if (matrix && matrix.values && typeof this._livePoolDonors === 'function') {
+      // DF.7 LIVE-MIRROR — push this matrix to every connected REPLICA while its CPU CSR is
+      // still valid (CPU-CSR-free nulls it shortly after, so the registry-replay path would
+      // upload an EMPTY matrix). This is how secondary donors (browser + native, mixed) get the
+      // 17 cross-projections — not just clusters — so they hold a FULL brain replica for teach
+      // propagate/hebbian. THROTTLED per (replica,matrix) to once/15s: a new replica (no entry)
+      // gets all 17 immediately; subsequent teach re-uploads don't re-flood the donor's link
+      // (the matrix re-upload flood × replicas was filling the brain's 65MB WS send buffer and
+      // starving compute_batch — "connected but never works"). Drift between throttle windows is
+      // the accepted DF.7 data-parallel behavior. Memory-free: the CSR is read into locals
+      // synchronously up top; recursive call is isReplicaSync (no re-register / no re-mirror).
+      if (matrix && matrix.values && matrix.values.length && typeof this._livePoolDonors === 'function') {
+        if (!this._replicaMirrorAt) this._replicaMirrorAt = new WeakMap();
+        const nowMs = Date.now();
+        const MIRROR_THROTTLE_MS = 15_000;
         for (const _r of this._livePoolDonors()) {
           if (!_r || _r === this._gpuClient || _r.readyState !== 1) continue;
+          let _seen = this._replicaMirrorAt.get(_r);
+          if (!_seen) { _seen = new Map(); this._replicaMirrorAt.set(_r, _seen); }
+          if (nowMs - (_seen.get(name) || 0) < MIRROR_THROTTLE_MS) continue;
+          _seen.set(name, nowMs);
           this.gpuSparseUpload(name, matrix, binding, _r).catch(() => {});
         }
       }
