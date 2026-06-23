@@ -13,7 +13,9 @@ serde_json = "1"
 eframe = { version = "0.31", optional = true }
 bytemuck = { version = "1", features = ["derive"] }
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time", "signal"] }
-tokio-tungstenite = "0.24"
+# native-tls => wss:// works. Cross-compiles cleanly: SChannel on the Windows target,
+# system OpenSSL on Linux (no aws-lc-rs/cmake pain that rustls would add to the win-gnu build).
+tokio-tungstenite = { version = "0.24", features = ["native-tls"] }
 futures-util = "0.3"
 # CUDA backend (NVIDIA). dynamic-loading => links WITHOUT the CUDA toolkit and dlopens
 # libcuda/libnvrtc at runtime, so the same binary runs on AMD/Intel hosts (CUDA just no-ops
