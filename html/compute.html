@@ -211,6 +211,58 @@ function _installDeviceLostHandler() {
   // NOW connect WebSocket — GPU is ready
   connectToServer();
 
+  // ── Donor neuron-compute LEADERBOARD identity ─────────────────────────────
+  // A persistent donor ID (localStorage) so this donor's cumulative neuron
+  // contribution MAINTAINS through reconnects + page reloads, plus a settable
+  // display name. Sent in gpu_register + gpu_telemetry so the server keys this
+  // donor's leaderboard total to a stable id. A small UI lets the donor name
+  // themselves + see their own + the top contributors (polled from the shared
+  // public snapshot — no extra per-user firehose).
+  const _DONOR_ID_KEY = 'unity_donor_id', _DONOR_NAME_KEY = 'unity_donor_name';
+  function _genDonorId() {
+    try { return (crypto.randomUUID ? crypto.randomUUID() : 'd-' + Math.random().toString(36).slice(2) + Date.now().toString(36)); }
+    catch { return 'd-' + Date.now().toString(36); }
+  }
+  let _donorId = null, _donorName = null;
+  try { _donorId = localStorage.getItem(_DONOR_ID_KEY); if (!_donorId) { _donorId = _genDonorId(); localStorage.setItem(_DONOR_ID_KEY, _donorId); } }
+  catch { _donorId = _genDonorId(); }
+  try { _donorName = localStorage.getItem(_DONOR_NAME_KEY) || null; } catch { /* private mode */ }
+  window._donorId = _donorId;
+  window._getDonorName = () => _donorName;
+  (function _donorLeaderboardUI() {
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'margin:12px auto;max-width:520px;padding:10px;border:1px solid #333;border-radius:6px;font-size:12px;background:#0d0d0d;';
+    wrap.innerHTML = '<div style="color:#22c55e;font-weight:bold;margin-bottom:6px;">🏆 Neuron Leaderboard</div>'
+      + '<div style="margin-bottom:6px;">Your name: <input id="donor-name-input" maxlength="32" placeholder="(anonymous)" style="background:#111;color:#e0e0e0;border:1px solid #333;border-radius:4px;padding:3px 6px;width:160px;"> <button id="donor-name-save" style="background:#1a1a1a;color:#22c55e;border:1px solid #333;border-radius:4px;padding:3px 8px;cursor:pointer;">save</button></div>'
+      + '<div id="donor-you" style="color:#a78bfa;margin-bottom:6px;">Your neurons created: —</div>'
+      + '<div id="donor-top" style="color:#bbb;line-height:1.5;"></div>';
+    document.body.appendChild(wrap);
+    const input = wrap.querySelector('#donor-name-input');
+    if (_donorName) input.value = _donorName;
+    wrap.querySelector('#donor-name-save').addEventListener('click', () => {
+      const nm = (input.value || '').replace(/[<>&]/g, '').trim().slice(0, 32);
+      _donorName = nm || null;
+      try { if (nm) localStorage.setItem(_DONOR_NAME_KEY, nm); else localStorage.removeItem(_DONOR_NAME_KEY); } catch { /* */ }
+      try { if (ws && ws.readyState === 1) ws.send(JSON.stringify({ type: 'set_donor_name', name: nm })); } catch { /* */ }
+    });
+    const fmtN = (n) => (n >= 1e3 ? (n / 1e3).toFixed(1) + 'k' : (n || 0).toFixed(1));
+    async function pollLB() {
+      try {
+        const r = await fetch('/public-state.json', { cache: 'no-store' });
+        const m = await r.json();
+        const lb = m && m.state && m.state.leaderboard;
+        if (!lb) return;
+        const you = (lb.top || []).find(e => e.id === _donorId);
+        document.getElementById('donor-you').textContent = 'Your neurons created: ' + (you ? fmtN(you.neurons) + ' Gn·s' : '— (start donating!)');
+        document.getElementById('donor-top').innerHTML = (lb.top || []).slice(0, 10)
+          .map((e, i) => (i + 1) + '. ' + String(e.name || 'anon').replace(/[<>&]/g, '') + ' — ' + fmtN(e.neurons) + ' Gn·s' + (e.id === _donorId ? ' (you)' : ''))
+          .join('<br>') || '(no contributors yet)';
+      } catch { /* transient */ }
+    }
+    pollLB();
+    setInterval(pollLB, 5000);
+  })();
+
   // #30 — periodic per-donor telemetry. Each donor reports ITS OWN GPU
   // (model, VRAM capacity, binding ceiling, live throughput) so the admin
   // dashboard can aggregate the donor fleet instead of the GPU-less server
@@ -229,7 +281,7 @@ function _installDeviceLostHandler() {
     } catch { /* capacity reporting is best-effort */ }
     const gneuronsPerSec = window._lastGneuronsPerSec || 0;
     try {
-      ws.send(JSON.stringify({ type: 'gpu_telemetry', gpuName, vramMB, maxBindMB, gneuronsPerSec, stepsComputed }));
+      ws.send(JSON.stringify({ type: 'gpu_telemetry', gpuName, vramMB, maxBindMB, gneuronsPerSec, stepsComputed, donorId: window._donorId || null, donorName: (window._getDonorName && window._getDonorName()) || null }));
     } catch { /* socket dying — next tick retries */ }
     if (gpuEl) {
       gpuEl.textContent = `🎮 YOUR GPU: ${gpuName} · ${vramMB.toLocaleString()}MB max-buffer / ${maxBindMB.toLocaleString()}MB max-binding · ${gneuronsPerSec.toFixed(2)} Gneurons/sec`;
@@ -296,7 +348,7 @@ function connectToServer() {
       const _info = gpu && gpu._adapterInfo;
       if (_info) _gpuName = (_info.device || _info.description || _info.vendor || _info.architecture || 'webgpu').toString().slice(0, 80);
     } catch { /* capacity reporting is best-effort — never block registration */ }
-    ws.send(JSON.stringify({ type: 'gpu_register', vramMB: _vramMB, maxStorageBindingMB: _maxBindMB, gpuName: _gpuName }));
+    ws.send(JSON.stringify({ type: 'gpu_register', vramMB: _vramMB, maxStorageBindingMB: _maxBindMB, gpuName: _gpuName, donorId: window._donorId || null, donorName: (window._getDonorName && window._getDonorName()) || null }));
   };
 
   ws.onerror = (err) => {

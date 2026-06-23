@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Unity — Public Dashboard</title>
+  <meta name="description" content="Unity's live training dashboard — public read-only view (shared snapshot).">
+  <!-- Public read-only dashboard. Loads dashboard.html in PUBLIC_MODE: it
+       polls the server's single cached snapshot (GET /public-state.json,
+       refreshed on the broadcast cadence) instead of each viewer opening a
+       live admin WebSocket — so any number of viewers cost one getState()
+       per cadence + a static file read each, not N full-state streams. All
+       admin controls are force-hidden. Same data points as the admin view. -->
+  <meta http-equiv="refresh" content="0; url=dashboard.html?public=1">
+  <script>location.replace('dashboard.html?public=1');</script>
+  <style>
+    body { background:#0a0a0a; color:#e0e0e0; font-family:'JetBrains Mono',monospace; padding:2rem; }
+    a { color:#22c55e; }
+  </style>
+</head>
+<body>
+  Loading Unity's public dashboard… <a href="dashboard.html?public=1">click here if it doesn't redirect</a>.
+</body>
+</html>

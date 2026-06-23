@@ -82,6 +82,16 @@ class GlobalWorkspace {
     // Ignition history (capped at historyLen — bounded memory).
     this._ignitionHistory = [];
 
+    // BC.5 — winner-refractory. A label that just ignited gets a recency
+    // penalty so the workspace can NOT re-broadcast the SAME content every
+    // tick. Without this the GW faithfully re-elects whatever cortex
+    // reports as its top candidate, which under a saturated sem→motor
+    // basin is one token forever (the live "mushrooms" lock: 8× identical
+    // broadcast). Pure value reshaping — no persisted state, no weights.
+    this._recentWinnerTicks = new Map(); // label → tickCounter when it last won
+    this.winnerRefractoryTicks = opts.winnerRefractoryTicks ?? 12;
+    this.recencyPenaltyMax = opts.recencyPenaltyMax ?? 0.6; // ≤60% value cut on the most-recent winner
+
     // Stats for diagnostic.
     this.stats = {
       ticksTotal: 0,
@@ -152,6 +162,25 @@ class GlobalWorkspace {
     }
     if (candidates.length === 0) return;
 
+    // BC.5 — winner-refractory recency penalty. A label that ignited
+    // within the last `winnerRefractoryTicks` gets its value scaled down
+    // (linearly, strongest right after it won) so the workspace can't
+    // re-broadcast the SAME content every tick. Pure per-tick value
+    // reshaping — no persisted state, no weight change.
+    if (this._recentWinnerTicks.size > 0) {
+      for (const c of candidates) {
+        const lastWon = this._recentWinnerTicks.get(c.label);
+        if (lastWon == null) continue;
+        const age = this._tickCounter - lastWon;
+        if (age >= 0 && age < this.winnerRefractoryTicks) {
+          const recency = 1 - (age / this.winnerRefractoryTicks); // 1 at age 0 → 0 at window edge
+          c.value = c.value * (1 - this.recencyPenaltyMax * recency);
+        } else {
+          this._recentWinnerTicks.delete(c.label); // expired — stop tracking
+        }
+      }
+    }
+
     // Softmax over values with temperature τ.
     const values = candidates.map(c => c.value / this.softmaxTau);
     const maxV = Math.max(...values);
@@ -186,6 +215,14 @@ class GlobalWorkspace {
         age: 0,
       };
       this.stats.ignitions += 1;
+      // BC.5 — record this winner's tick so the recency penalty above
+      // suppresses it on the next ~winnerRefractoryTicks ticks. Bounded map.
+      this._recentWinnerTicks.set(winner.label, this._tickCounter);
+      if (this._recentWinnerTicks.size > 64) {
+        let oldestKey = null, oldestTick = Infinity;
+        for (const [k, t] of this._recentWinnerTicks) { if (t < oldestTick) { oldestTick = t; oldestKey = k; } }
+        if (oldestKey != null) this._recentWinnerTicks.delete(oldestKey);
+      }
       this._ignitionHistory.push({ ...this.currentBroadcast });
       while (this._ignitionHistory.length > this.historyLen) {
         this._ignitionHistory.shift();

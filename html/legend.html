@@ -183,7 +183,7 @@
       <div class="card">
         <div class="card-head"><span class="card-icon">⚡</span><span class="card-name">Donate Your GPU</span></div>
         <div class="card-path">html/compute.html</div>
-        <p class="card-desc"><strong>Lend your graphics card to Unity's brain.</strong> Open this page and leave the tab open — your GPU joins the pool and helps train her. The more people donate, the bigger + faster she gets. For full capacity, launch Chrome with <code>--enable-unsafe-webgpu</code>. (No account, no install — just open and leave it running.)</p>
+        <p class="card-desc"><strong>Lend your graphics card to Unity's brain.</strong> Open this page and leave the tab open — your GPU joins the pool and helps train her. The more people donate, the bigger + faster she gets. For full capacity, launch Chrome with <code>--enable-unsafe-webgpu</code>. (No account, no install — just open and leave it running.) <strong>You're on the 🏆 neuron leaderboard</strong> — name yourself and watch your total "neurons created" climb; your spot persists across reconnects and resets when Unity starts a fresh walk.</p>
         <div class="card-tags">
           <span class="tag live">LIVE</span>
           <span class="tag auto">DONATE</span>
@@ -231,6 +231,17 @@
         <a class="open-btn" href="webgpu-prep.html">→ Open</a>
       </div>
 
+      <div class="card">
+        <div class="card-head"><span class="card-icon">📊</span><span class="card-name">Public Dashboard (read-only)</span></div>
+        <div class="card-path">html/dashboard-public.html &nbsp;·&nbsp; html/dashboard.html?public=1</div>
+        <p class="card-desc">The full live dashboard — curriculum progress with <strong>real course names</strong> (Algebra I, Biology, U.S. Government … as she graduates K→PhD), brain vitals, and the 🏆 <strong>neuron leaderboard</strong> — but <strong>read-only with every admin control hidden</strong>. All viewers share ONE cached snapshot (<code>/public-state.json</code>, refreshed on the dashboard cadence) instead of each opening a live stream, so it scales to any crowd. Open and watch Unity learn.</p>
+        <div class="card-tags">
+          <span class="tag static">STATIC</span>
+          <span class="tag live">LIVE</span>
+        </div>
+        <a class="open-btn" href="dashboard-public.html">→ Open</a>
+      </div>
+
     </div>
 
     <h2>🔑 Admin / operator — login required</h2>
@@ -240,7 +251,7 @@
       <div class="card">
         <div class="card-head"><span class="card-icon">📊</span><span class="card-name">Admin Dashboard</span></div>
         <div class="card-path">html/dashboard.html</div>
-        <p class="card-desc">Live brain state — emotion chart, cluster firing, curriculum milestones + signoffs, drug pharmacokinetics, memory tiers, consciousness panel, plus the <strong>operator-only</strong> live Server Console, Community-Compute auto-scale controls, and graceful stop. Admin login unlocks the controls; visitors get read-only vitals.</p>
+        <p class="card-desc">Live brain state — emotion chart, cluster firing, curriculum milestones + signoffs, drug pharmacokinetics, memory tiers, consciousness panel, plus the <strong>operator-only</strong> live Server Console, Community-Compute auto-scale controls, graceful stop, and a one-click <strong>⬆ Update &amp; Fresh Walk</strong> (re-pulls the latest code, clears weights, restarts into a clean walk). Admin login unlocks the controls; visitors get read-only vitals (or use the dedicated read-only <a href="dashboard-public.html" style="color:#67e8f9;">Public Dashboard</a>).</p>
         <div class="card-tags">
           <span class="tag live">LIVE</span>
           <span class="tag admin">ADMIN</span>

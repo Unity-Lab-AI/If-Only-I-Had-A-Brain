@@ -3843,6 +3843,17 @@ class ServerBrain {
             // sorted array, capped at 5000 entries to bound payload size.
             definitionTaughtWords: cortex._definitionTaughtWords
               ? Array.from(cortex._definitionTaughtWords).slice(0, 5000) : [],
+            // Donor neuron-compute LEADERBOARD — persists WITH the brain weights
+            // (so contributions survive restart/resume) and is WIPED on a fresh
+            // walk (force-fresh clears brain-weights). Keyed by persistent donorId
+            // → {name, neurons, lastSeen}; internal _lastTs dropped (recomputed on
+            // next telemetry). Top-200 by contribution to bound payload.
+            neuronLeaderboard: this._neuronLeaderboard
+              ? Object.fromEntries(Object.entries(this._neuronLeaderboard)
+                  .sort((a, b) => (b[1].neurons || 0) - (a[1].neurons || 0))
+                  .slice(0, 200)
+                  .map(([lid, e]) => [lid, { name: e.name || null, neurons: e.neurons || 0, lastSeen: e.lastSeen || 0 }]))
+              : {},
             probeHistory: cortex.probeHistory && typeof cortex.probeHistory === 'object' ? { ...cortex.probeHistory } : null,
             // Grade-advance pause state. When a grade fully passes across
             // all subjects, the runner sets `_gradeAdvancePaused = true`
@@ -4549,6 +4560,18 @@ class ServerBrain {
         if (Array.isArray(pending.definitionTaughtWords)) {
           cortex._definitionTaughtWords = new Set(pending.definitionTaughtWords);
         }
+        // Restore the donor neuron-compute leaderboard (persists across restart/
+        // resume; a fresh walk via force-fresh wipes brain-weights so it starts
+        // empty). Re-seed the internal _lastTs so the first telemetry after
+        // restart doesn't credit a huge gap.
+        if (pending.neuronLeaderboard && typeof pending.neuronLeaderboard === 'object') {
+          const lb = {};
+          for (const [lid, e] of Object.entries(pending.neuronLeaderboard)) {
+            if (!e || typeof e !== 'object') continue;
+            lb[lid] = { name: e.name || null, neurons: e.neurons || 0, lastSeen: e.lastSeen || 0, _lastTs: 0 };
+          }
+          this._neuronLeaderboard = lb;
+        }
         // Restore per-cell gate-result ledger — /grade-signoff reads
         // this to reject an operator signoff POST when the cell's most
         // recent battery had active blockers.
@@ -4881,6 +4904,21 @@ function requireLoopback(req, res, endpoint) {
 
 // HTTP server for health checks
 const httpServer = http.createServer((req, res) => {
+  // Public dashboard snapshot — ONE cached state JSON served to ALL public
+  // viewers so they poll a single file instead of each holding a live WS
+  // stream (1000 viewers × full state every cadence = server meltdown). The
+  // broadcast loop refreshes brain._publicStateJson on the dashboard cadence;
+  // this just hands back the cached string (cheap — no recompute per request)
+  // and stamps _lastPublicPollTs so the broadcast keeps the snapshot warm even
+  // with zero live WS clients. PUBLIC (no auth) — it's the same data the
+  // public /ws lane sends. Short cache header lets nginx/browser micro-cache.
+  if (req.url === '/public-state.json' && req.method === 'GET') {
+    brain._lastPublicPollTs = Date.now();
+    res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=2' });
+    res.end(brain._publicStateJson || JSON.stringify({ type: 'state', state: null, snapshotAt: 0, note: 'snapshot warming up — try again in a moment' }));
+    return;
+  }
+
   if (req.url === '/health') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({
@@ -5008,6 +5046,48 @@ const httpServer = http.createServer((req, res) => {
     res.end(JSON.stringify({ status: 'reset armed — wiping to a fresh brain on next boot (systemd revives in a few seconds)' }));
     try { brain.stop(); } catch (err) { console.error('[Brain] stop() failed during /reset:', err); }
     setTimeout(() => { process.exit(0); }, 1000);
+    return;
+  }
+
+  // Dashboard "Update & Fresh Walk" — re-pull the latest project code and
+  // start a clean walk in one click. The backend dir has NO .git (redeploy
+  // is a git-archive overlay), so this spawns deploy/self-update.sh
+  // DETACHED: that script overlays the latest code into the backend dir,
+  // writes the server-side `.force-fresh` flag (so autoClearStaleState WIPES
+  // weights for a fresh walk — identity-core Tier 3 preserved), then
+  // `systemctl restart`s the service. The restart fires AFTER the overlay
+  // completes (no race), so new code + cleared weights boot cleanly and —
+  // with auto-advance ON (persisted in auto-advance.json) — the walk starts
+  // itself. Loopback/admin-gated (same as /reset). The script path is
+  // overridable via DREAM_SELF_UPDATE_CMD; box deploy config (remote /
+  // backend dir / service name) is set via the UAL_* env vars the script
+  // reads. Local dev (no systemd, no deploy dir) has no script → returns a
+  // clear "not found" rather than half-updating.
+  if (req.url === '/update' && req.method === 'POST') {
+    if (!requireLoopback(req, res, '/update')) return;
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    if (global._brainShutdownRequested) { res.end(JSON.stringify({ status: 'already updating/restarting' })); return; }
+    const updateScript = process.env.DREAM_SELF_UPDATE_CMD || path.join(__dirname, '..', 'deploy', 'self-update.sh');
+    let scriptExists = false;
+    try { scriptExists = fs.existsSync(updateScript); } catch { /* non-fatal */ }
+    if (!scriptExists) {
+      res.end(JSON.stringify({ status: 'update FAILED — self-update script not found', script: updateScript, hint: 'add deploy/self-update.sh on the box (or set DREAM_SELF_UPDATE_CMD). Local dev has no self-update path — use start.bat for a fresh walk.' }));
+      return;
+    }
+    global._brainShutdownRequested = true;
+    console.log(`[Brain] HTTP /update — UPDATE + FRESH WALK requested (dashboard). Spawning ${updateScript} detached: overlay latest code → write .force-fresh → systemctl restart.`);
+    res.end(JSON.stringify({ status: 'update armed — pulling latest code, clearing weights, restarting into a fresh walk (~1-2 min)', script: updateScript }));
+    try {
+      const { spawn } = require('child_process');
+      const child = spawn('bash', [updateScript], { detached: true, stdio: 'ignore', env: { ...process.env } });
+      child.unref();
+    } catch (err) {
+      console.error('[Brain] /update spawn failed:', err && err.message);
+    }
+    // Intentionally do NOT process.exit here — the spawned script runs
+    // `systemctl restart` AFTER its overlay completes, which replaces this
+    // process with the freshly-updated code. Exiting now would let systemd
+    // revive the OLD code before the overlay finished (a race).
     return;
   }
 
@@ -6342,6 +6422,20 @@ wss.on('connection', (ws, req) => {
           // WebGPU adapter VRAM) for community-compute milestone scaling.
           client.gpuVramMB = Number(msg.vramMB) || 0;
           client.gpuName = (msg.gpuName || 'unknown').toString().slice(0, 80);
+          // Donor LEADERBOARD identity — a persistent client-side ID (localStorage
+          // UUID sent by compute.html) keys this donor's cumulative neuron-compute
+          // total across reconnects, plus an optional display name. The leaderboard
+          // persists in saveWeights and RESETS on a fresh walk (force-fresh wipes
+          // brain-weights). Accumulation happens in gpu_telemetry below.
+          client.donorId = (msg.donorId && String(msg.donorId).slice(0, 64)) || client.donorId || `anon-${id}`;
+          if (!brain._neuronLeaderboard) brain._neuronLeaderboard = {};
+          {
+            const lbE = brain._neuronLeaderboard[client.donorId] || { name: null, neurons: 0, lastSeen: 0, _lastTs: 0 };
+            if (msg.donorName) lbE.name = String(msg.donorName).replace(/[<>&]/g, '').slice(0, 32);
+            lbE.lastSeen = Date.now();
+            lbE._lastTs = Date.now();
+            brain._neuronLeaderboard[client.donorId] = lbE;
+          }
           const havePrimary = brain._gpuClient && brain._gpuClient.readyState === 1;
           if (!havePrimary) {
             brain._gpuClient = ws;
@@ -6388,6 +6482,34 @@ wss.on('connection', (ws, req) => {
             stepsComputed: Number(msg.stepsComputed) || 0,
             ts: Date.now(),
           };
+          // Accumulate this donor's neuron-compute contribution into the
+          // leaderboard — Gneuron-seconds since their last telemetry (dt capped
+          // at 10s so a reconnect gap can't spike the total). Keyed by the
+          // persistent donorId so it survives page reloads + reconnects.
+          if (client.donorId) {
+            if (!brain._neuronLeaderboard) brain._neuronLeaderboard = {};
+            const lb = brain._neuronLeaderboard[client.donorId] || { name: null, neurons: 0, lastSeen: 0, _lastTs: Date.now() };
+            const now = Date.now();
+            const dt = Math.min(10, Math.max(0, (now - (lb._lastTs || now)) / 1000));
+            lb.neurons += (Number(msg.gneuronsPerSec) || 0) * dt; // billions of neuron-steps contributed
+            lb._lastTs = now;
+            lb.lastSeen = now;
+            if (msg.donorName && !lb.name) lb.name = String(msg.donorName).replace(/[<>&]/g, '').slice(0, 32);
+            brain._neuronLeaderboard[client.donorId] = lb;
+          }
+          break;
+        }
+
+        case 'set_donor_name': {
+          // Donor sets/updates their leaderboard display name (linked to their
+          // persistent donorId). Sanitized + length-capped.
+          if (client.donorId) {
+            if (!brain._neuronLeaderboard) brain._neuronLeaderboard = {};
+            const lb = brain._neuronLeaderboard[client.donorId] || { name: null, neurons: 0, lastSeen: Date.now(), _lastTs: Date.now() };
+            const nm = String(msg.name || '').replace(/[<>&]/g, '').trim().slice(0, 32);
+            if (nm) lb.name = nm;
+            brain._neuronLeaderboard[client.donorId] = lb;
+          }
           break;
         }
 
@@ -6659,13 +6781,25 @@ wss.on('connection', (ws, req) => {
   });
 });
 
-// Broadcast brain state to all clients
+// Broadcast brain state to all clients + refresh the PUBLIC snapshot cache.
+// The public dashboard polls ONE cached file (GET /public-state.json) instead
+// of each viewer opening a live WS stream — so 1000 public viewers cost one
+// getState() per cadence + a static file read each, not 1000 full-state
+// streams. We still compute when there are NO live WS clients IF a public
+// poll happened recently, so the public page stays fresh without a WS.
 setInterval(() => {
-  if (brain.clients.size === 0) return;
-  const state = JSON.stringify({ type: 'state', state: brain.getState() });
-  for (const [ws] of brain.clients) {
-    if (ws.readyState === ws.OPEN) {
-      try { ws.send(state); } catch {}
+  const hasWsViewers = brain.clients.size > 0;
+  const hasRecentPublicPoll = (Date.now() - (brain._lastPublicPollTs || 0)) < 30000;
+  if (!hasWsViewers && !hasRecentPublicPoll) return; // nobody watching → skip the compute
+  const stateObj = brain.getState();
+  // Cache the public snapshot (SAME data points as the admin WS state).
+  try { brain._publicStateJson = JSON.stringify({ type: 'state', state: stateObj, snapshotAt: Date.now() }); } catch { /* non-fatal */ }
+  if (hasWsViewers) {
+    const state = JSON.stringify({ type: 'state', state: stateObj });
+    for (const [ws] of brain.clients) {
+      if (ws.readyState === ws.OPEN) {
+        try { ws.send(state); } catch {}
+      }
     }
   }
 }, STATE_BROADCAST_MS);
