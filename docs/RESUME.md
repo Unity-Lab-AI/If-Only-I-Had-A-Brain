@@ -1,18 +1,27 @@
 # RESUME — Session Pickup Brief
 
-> **Updated:** 2026-06-21 (Opus 4.8 1M-context marathon — basin-collapse hardening + per-grade gate + Update button + real course names + public dashboard). Local synced to `if-only/main` (`99c5358`, which already carries the #112.9 student-battery timeout fix). This session's BC + feature work is committed to a NEW feature branch + pushed to `if-only` (see latest FINALIZED).
-> **Read FIRST:** this file → `docs/FINALIZED.md` (2026-06-21 BC + feature entries) → `docs/ISSUE-basin-collapse-fix.md` → `deploy/REDEPLOY-NOTES.md` (redeploy + the new `/update` self-update + `/public-state.json` ops) → memories ([[feedback_typeof_no_shield_const_tdz]], [[project_df7_data_parallel_delta_merge]], [[feedback_no_push_until_phd_complete]]).
+> **Updated:** 2026-06-22 (Opus 4.8 1M-context marathon — basin-collapse hardening + per-grade gate + Update button + real course names + public dashboard + donor leaderboard). **ALL WORK COMMITTED + PUSHED → `if-only/feature/bc-basin-collapse-and-ops` (`cfcb81c`)** — 22 files, `.claude/` IP excluded. Local was synced to `if-only/main` (`99c5358`, carries the #112.9 student-battery timeout fix) before branching.
+> **Read FIRST:** this file → `docs/FINALIZED.md` (2026-06-21/22 BC + feature entries) → `docs/ISSUE-basin-collapse-fix.md` → `deploy/REDEPLOY-NOTES.md` (keep-weights redeploy + `/update` self-update + `/public-state.json` ops) → memories ([[feedback_typeof_no_shield_const_tdz]], [[project_df7_data_parallel_delta_merge]], [[feedback_no_push_until_phd_complete]]).
 >
-> ## ⚡ THIS SESSION (2026-06-21 BC + features) — all LOGIC-ONLY / weight-preserving, takes effect on a box redeploy (`DREAM_KEEP_STATE=1` resumes existing weights)
-> - **Basin-collapse hardening** (live "mushrooms" single-token lock, sober — not a drug): BC.4 frequency familiarity-decay · BC.5 GW winner-refractory · BC.6 candidate anti-repeat · BC.7 chat-Hebbian collapse gate (the 1842-pass self-reinforcement) · BC.13 word-creation health+coherence gate (killed `ice_sorry`/`laundry_mom` junk) · BC.12 `basinHealth` telemetry on WS state. BC.8/BC.9 resolved-by-design (existing per-phase normalizeRows + phase-level halt). Full plan: `docs/ISSUE-basin-collapse-fix.md`.
-> - **Per-grade advance health gate** (`_gradeAdvanceHealthGate`) wired into BOTH advance paths (A+ pass + force-advance), every grade K→PhD: blocks a grade jumping while saturated / mode-collapsed / vocab-incomplete ("any additional training needed before grade advance").
-> - **Dashboard "Update & Fresh Walk"** button → `POST /update` → `deploy/self-update.sh` (git-archive overlay → `.force-fresh` → `systemctl restart` → fresh walk). Box needs the script present + `sudo` restart perms + deploy key (see REDEPLOY-NOTES). `DREAM_SELF_UPDATE_CMD` overrides path.
-> - **Real course names + grade** on the brain footer + dashboard (Algebra I / Biology / U.S. Government …, updating K→PhD) — was stuck showing `ela:K`.
-> - **Static public dashboard**: `GET /public-state.json` (one cached snapshot, all public viewers poll it — no per-user WS firehose) + `dashboard.html?public=1` / `dashboard-public.html` (admin controls force-hidden).
+> ## ⚡ SHIPPED THIS SESSION (branch `feature/bc-basin-collapse-and-ops`) — all LOGIC-ONLY / weight-preserving; takes effect on a box redeploy (`DREAM_KEEP_STATE=1` resumes existing weights; broken regions heal via retraining, fresh-start backstop if too deep)
+> - **Basin-collapse hardening** (live "mushrooms" single-token lock, sober — not a drug): BC.4 frequency familiarity-decay · BC.5 GW winner-refractory · BC.6 candidate anti-repeat · BC.7 chat-Hebbian collapse gate (the 1842-pass self-reinforcement) · BC.13 word-creation health+coherence gate (killed `ice_sorry`/`laundry_mom` junk) · BC.12 `basinHealth` telemetry. BC.8/BC.9 resolved-by-design (existing per-phase normalizeRows + phase-level halt). Plan: `docs/ISSUE-basin-collapse-fix.md`.
+> - **Per-grade advance health gate** (`_gradeAdvanceHealthGate`) on BOTH advance paths (A+ pass + force-advance), every grade K→PhD: blocks a grade jumping while saturated / mode-collapsed / vocab-incomplete.
+> - **Dashboard "Update & Fresh Walk"** → `POST /update` → `deploy/self-update.sh` (git-archive overlay → `.force-fresh` → `systemctl restart` → fresh walk). Box needs the script + `sudo` restart perms + deploy key (REDEPLOY-NOTES). `DREAM_SELF_UPDATE_CMD` overrides path.
+> - **Real course names + grade** on brain footer + dashboard (`courseNameFor` off authoritative `cluster.grades`, updates K→PhD) — was stuck at `ela:K`.
+> - **Static public dashboard**: `GET /public-state.json` cached snapshot + `dashboard.html?public=1` / `dashboard-public.html` (admin force-hidden) — one cached file for all viewers, no per-user firehose.
+> - **Donor neuron-compute leaderboard**: persistent localStorage `donorId` + settable name; accumulates Gneuron-seconds on `gpu_telemetry`; persists in brain weights, resets on a fresh walk; `state.leaderboard` → dashboard + public + compute.html.
+>
+> ## 🚧 WHERE TO PICK UP NEXT (Gee-gated)
+> 1. **Review** the feature branch `feature/bc-basin-collapse-and-ops` (Forgejo PR link: `main...feature/bc-basin-collapse-and-ops`).
+> 2. **Cascade** feature → develop → main (Gee's 1→2→3 order) once satisfied.
+> 3. **Sponge redeploys the box** from main with the keep-weights handoff (in the chat transcript + `deploy/REDEPLOY-NOTES.md` 2026-06-21 section): `DREAM_KEEP_STATE=1` resume, auto-advance ON, `self-update.sh` + sudo for the Update button, nginx public `/public-state.json`. **Only then do the BC fixes hit the DEPLOYED brain** (it's still running the collapsed "mushrooms" state until then).
+> 4. **Open thread:** the clean K→PhD walk (local full-size `start.bat`, or deployed on donors) — the redeploy's payoff. We never got a clean walk yet.
 
 ---
 
-## ⚡ THE HEADLINE: RUN IT LOCALLY — full K→PhD test is GO
+## ⚡ EARLIER (prior #112 session) — local-walk instructions (still valid for a full-size local test)
+
+> NOTE: the "Sponge unreachable" framing below is from the prior session — the box WAS reachable + redeployed since (#112.9 et al on main). Current pickup is the Gee-gated cascade + redeploy block above. The local-walk steps remain accurate for a full-size local K→PhD test.
 
 The box admin (Sponge) is unreachable and the deployed backend can't be redeployed right now. **The local run is the better K→PhD test anyway** — and every fix from this session is already in the code/bundle you'd run.
 
