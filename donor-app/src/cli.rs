@@ -7,9 +7,14 @@ use clap::Parser;
 #[derive(Parser, Debug, Clone)]
 #[command(name = "unity-donor", version, about)]
 pub struct Cli {
-    /// Brain WebSocket URL (e.g. ws://localhost:7525 or wss://host/ws).
-    #[arg(long, default_value = "ws://localhost:7525")]
-    pub server: String,
+    /// Brain WebSocket URL — overrides everything. Default (no flag) = the production server;
+    /// use --local for a local brain. e.g. wss://host/ws or ws://localhost:7525
+    #[arg(long)]
+    pub server: Option<String>,
+
+    /// Point at a LOCAL brain (ws://localhost:7525) instead of production. Ignored if --server is set.
+    #[arg(long)]
+    pub local: bool,
 
     /// Donor label shown in the admin telemetry.
     #[arg(long, default_value = "native-donor")]
