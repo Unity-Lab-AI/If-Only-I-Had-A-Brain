@@ -669,7 +669,7 @@
       rowsEl.innerHTML=html;
       footEl.textContent=(lb.totalContributors||0)+' contributor'+(lb.totalContributors===1?'':'s')+' · resets on fresh walk';
     }
-    function poll(){fetch('/public-state.json',{cache:'no-store'}).then(function(r){return r.ok?r.json():null;}).then(function(s){render(s&&s.leaderboard);}).catch(function(){footEl.textContent='offline — retrying…';});}
+    function poll(){fetch('/public-state.json',{cache:'no-store'}).then(function(r){return r.ok?r.json():null;}).then(function(s){render(s&&s.state&&s.state.leaderboard);}).catch(function(){footEl.textContent='offline — retrying…';});}
     poll();setInterval(poll,5000);
   })();</script>
 

@@ -92,6 +92,11 @@ impl eframe::App for DonorApp {
                 ui.label("Server:");
                 ui.add_enabled(!running, egui::TextEdit::singleline(&mut self.cfg.server).desired_width(280.0));
             });
+            ui.horizontal(|ui| {
+                ui.label("Leaderboard name:");
+                ui.add_enabled(!running, egui::TextEdit::singleline(&mut self.cfg.name).hint_text("(optional — anonymous)").desired_width(200.0));
+            });
+            ui.label(egui::RichText::new("Use the same name here + in the browser/other devices to combine your compute into one leaderboard entry. No sign-up.").weak().small());
             ui.add_space(8.0);
 
             ui.label(egui::RichText::new("GPUs  (enabled cards form ONE compute unit; each throttles to its own %)").strong());

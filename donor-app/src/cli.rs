@@ -16,8 +16,10 @@ pub struct Cli {
     #[arg(long)]
     pub local: bool,
 
-    /// Donor label shown in the admin telemetry.
-    #[arg(long, default_value = "native-donor")]
+    /// Your name on the public compute leaderboard (OPTIONAL). The same name across devices and
+    /// apps (browser + native + many) aggregates all your compute into ONE leaderboard entry.
+    /// Empty = anonymous. No password/verification — it's just the "who is contributing" label.
+    #[arg(long, default_value = "")]
     pub name: String,
 
     /// List detected GPUs (index, name, VRAM, max buffer) and exit.

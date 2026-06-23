@@ -114,3 +114,30 @@ fn parse_memory(s: &str) -> Result<MemoryCap, String> {
         .map_err(|_| format!("invalid --memory '{s}' (expected MB or 'all')"))?;
     Ok(MemoryCap::MegaBytes(mb))
 }
+
+/// A persistent per-install donor id — keys this host's cumulative leaderboard total across
+/// restarts (separate from the optional display name). Stored in the user's data dir; generated
+/// from time+pid on first run. Ephemeral fallback if the file can't be written (still works for
+/// the session). The brain aggregates by NAME when set, else by this id.
+pub fn persistent_donor_id() -> String {
+    use std::time::{SystemTime, UNIX_EPOCH};
+    let base = std::env::var("XDG_DATA_HOME")
+        .ok()
+        .or_else(|| std::env::var("HOME").ok().map(|h| format!("{h}/.local/share")))
+        .or_else(|| std::env::var("APPDATA").ok())
+        .or_else(|| std::env::var("USERPROFILE").ok())
+        .unwrap_or_else(|| ".".to_string());
+    let dir = std::path::Path::new(&base).join("unity-donor");
+    let path = dir.join("donor-id");
+    if let Ok(s) = std::fs::read_to_string(&path) {
+        let t = s.trim();
+        if !t.is_empty() {
+            return t.to_string();
+        }
+    }
+    let nanos = SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_nanos()).unwrap_or(0);
+    let id = format!("native-{nanos:x}-{:x}", std::process::id());
+    let _ = std::fs::create_dir_all(&dir);
+    let _ = std::fs::write(&path, &id);
+    id
+}
