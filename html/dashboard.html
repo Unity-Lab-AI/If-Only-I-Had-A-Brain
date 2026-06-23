@@ -791,9 +791,14 @@
     // Forgejo-authed admin lane wss://<host>/admin/ws (nginx reverse-proxies it
     // to the brain-server — NOT a raw :7525 port on the public host).
     const _dashIsLocal = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+    // PUBLIC mode (?public=1 or a /public path) connects to the PUBLIC /ws lane — NO auth.
+    // Only the ADMIN dashboard uses the Forgejo-authed /admin/ws lane. Without this split the
+    // public dashboard opened /admin/ws and the browser threw a Basic-auth PASSWORD PROMPT at
+    // every public viewer — the public page is public, no sign-in; only admin sections are gated.
+    const _dashIsPublic = /[?&]public=1(\b|&|$)/.test(location.search) || /\/public(\/|$)/.test(location.pathname);
     const SERVER_URL = _dashIsLocal
       ? 'ws://localhost:7525'
-      : `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/admin/ws`;
+      : `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/${_dashIsPublic ? 'ws' : 'admin/ws'}`;
 
     // Deployment-aware admin REST base. The dashboard's HTTP control
     // endpoints (auto-advance / shutdown / milestone / grade-advance /

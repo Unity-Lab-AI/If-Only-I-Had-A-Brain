@@ -620,5 +620,58 @@
     }
   </script>
 
+  <!-- ═══ Compute Leaderboard — prominent, draggable, collapsible; polls public /public-state.json ═══ -->
+  <div id="unity-lb" style="position:fixed;top:64px;right:16px;z-index:99990;width:286px;max-width:calc(100vw - 24px);background:rgba(10,15,18,0.94);border:1px solid #1f2a30;border-radius:10px;font-family:'JetBrains Mono',monospace;color:#e0e0e0;box-shadow:0 8px 28px rgba(0,0,0,0.5);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);user-select:none;font-size:12px;">
+    <div id="unity-lb-head" style="display:flex;align-items:center;gap:8px;padding:9px 12px;cursor:move;border-bottom:1px solid #1f2a30;">
+      <span style="font-size:14px;">🏆</span>
+      <span style="font-weight:bold;color:#22c55e;flex:1;">Compute Leaderboard</span>
+      <button id="unity-lb-min" title="minimize / expand" style="background:none;border:none;color:#8aa;cursor:pointer;font-size:14px;line-height:1;padding:0 4px;">▾</button>
+    </div>
+    <div id="unity-lb-body" style="padding:10px 12px;">
+      <div style="font-size:11px;color:#8aa;">Total neuron-compute donated</div>
+      <div id="unity-lb-total" style="font-size:18px;font-weight:bold;color:#00e5ff;margin:2px 0 9px;letter-spacing:0.5px;">—</div>
+      <div id="unity-lb-rows" style="line-height:1.75;"></div>
+      <div id="unity-lb-foot" style="margin-top:9px;font-size:10px;color:#667;border-top:1px solid #1f2a30;padding-top:6px;">connecting…</div>
+    </div>
+  </div>
+  <script>(function(){
+    var el=document.getElementById('unity-lb'),head=document.getElementById('unity-lb-head'),body=document.getElementById('unity-lb-body'),
+        minBtn=document.getElementById('unity-lb-min'),totalEl=document.getElementById('unity-lb-total'),rowsEl=document.getElementById('unity-lb-rows'),footEl=document.getElementById('unity-lb-foot');
+    try{var p=JSON.parse(localStorage.getItem('unity-lb-pos')||'null');if(p&&p.left){el.style.left=p.left;el.style.top=p.top;el.style.right='auto';}}catch(e){}
+    var collapsed=false;try{collapsed=localStorage.getItem('unity-lb-collapsed')==='1';}catch(e){}
+    function applyC(){body.style.display=collapsed?'none':'block';minBtn.textContent=collapsed?'▸':'▾';}
+    applyC();
+    minBtn.addEventListener('click',function(ev){ev.stopPropagation();collapsed=!collapsed;applyC();try{localStorage.setItem('unity-lb-collapsed',collapsed?'1':'0');}catch(e){}});
+    var drag=false,sx,sy,ol,ot;
+    function down(cx,cy){var r=el.getBoundingClientRect();drag=true;sx=cx;sy=cy;ol=r.left;ot=r.top;el.style.right='auto';}
+    function move(cx,cy){if(!drag)return;el.style.left=Math.max(0,Math.min(window.innerWidth-60,ol+cx-sx))+'px';el.style.top=Math.max(0,Math.min(window.innerHeight-28,ot+cy-sy))+'px';}
+    function up(){if(!drag)return;drag=false;try{localStorage.setItem('unity-lb-pos',JSON.stringify({left:el.style.left,top:el.style.top}));}catch(e){}}
+    head.addEventListener('mousedown',function(e){if(e.target===minBtn)return;down(e.clientX,e.clientY);e.preventDefault();});
+    window.addEventListener('mousemove',function(e){move(e.clientX,e.clientY);});
+    window.addEventListener('mouseup',up);
+    head.addEventListener('touchstart',function(e){if(e.target===minBtn)return;var t=e.touches[0];down(t.clientX,t.clientY);},{passive:true});
+    window.addEventListener('touchmove',function(e){if(drag){var t=e.touches[0];move(t.clientX,t.clientY);}},{passive:true});
+    window.addEventListener('touchend',up);
+    var SUP={'0':'⁰','1':'¹','2':'²','3':'³','4':'⁴','5':'⁵','6':'⁶','7':'⁷','8':'⁸','9':'⁹','-':'⁻'};
+    function sup(s){return String(s).split('').map(function(c){return SUP[c]||'';}).join('');}
+    // leaderboard 'neurons' is in BILLIONS of neuron-steps (Gneuron-seconds) → actual = v*1e9
+    function sci(g){var n=(Number(g)||0)*1e9;if(n<1)return '0';var e=Math.floor(Math.log10(n));var m=(n/Math.pow(10,e)).toFixed(2);return m+'×10'+sup(e);}
+    function esc(s){return String(s==null?'':s).replace(/[<>&]/g,'');}
+    function render(lb){
+      if(!lb){footEl.textContent='waiting for the brain…';return;}
+      totalEl.innerHTML=sci(lb.totalNeurons)+' <span style="font-size:11px;color:#667;">steps</span>';
+      var top=(lb.top||[]).slice(0,8),html='';
+      if(!top.length){html='<div style="color:#667;">no contributors yet — donate your GPU to be first!</div>';}
+      top.forEach(function(r,i){
+        var medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':(i+1)+'.';
+        html+='<div style="display:flex;gap:6px;"><span style="width:22px;color:#8aa;flex:none;">'+medal+'</span><span style="flex:1;color:'+(r.name?'#e0e0e0':'#778')+';overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+(r.name?esc(r.name):'anonymous')+'</span><span style="color:#00e5ff;flex:none;">'+sci(r.neurons)+'</span></div>';
+      });
+      rowsEl.innerHTML=html;
+      footEl.textContent=(lb.totalContributors||0)+' contributor'+(lb.totalContributors===1?'':'s')+' · resets on fresh walk';
+    }
+    function poll(){fetch('/public-state.json',{cache:'no-store'}).then(function(r){return r.ok?r.json():null;}).then(function(s){render(s&&s.leaderboard);}).catch(function(){footEl.textContent='offline — retrying…';});}
+    poll();setInterval(poll,5000);
+  })();</script>
+
 </body>
 </html>
