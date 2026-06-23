@@ -163,11 +163,18 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
     let (work_tx, work_rx) = std::sync::mpsc::channel::<Work>();
     let (reply_tx, mut reply_rx) = tokio::sync::mpsc::unbounded_channel::<Out>();
     let control_w = control.clone();
+    // Count of QUEUED (not-yet-pulled) Work. The duty-cycle idle (run_substeps) aborts the
+    // moment this is > 0, so the throttle never delays a matrix upload / its ack behind a
+    // compute_batch's idle sleep — that starvation was timing out the brain's 45s sparse
+    // uploads at low util and feeding the reconnect churn.
+    let pending = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
+    let pending_w = pending.clone();
     let worker = std::thread::spawn(move || {
         let mut engine = engine;
         let mut partials: HashMap<String, PartialUpload> = HashMap::new();
         let mut step_seed: u32 = 0x9e3779b9;
         while let Ok(work) = work_rx.recv() {
+            pending_w.fetch_sub(1, Ordering::Relaxed); // pulled one off the queue
             // Stop promptly on request: DON'T drain the queued backlog (the brain can have many
             // compute_batch/frames buffered). Without this, join() blocks until the whole
             // backlog clears, so the GUI's ▶ Start never reappears after ⏹ Stop.
@@ -184,7 +191,7 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                     // Per-GPU duty-cycle now lives inside run_substeps (each card throttles to
                     // its own util target), so the worker just runs + replies. Pass the stop
                     // flag so a low-util idle bails fast on ⏹ Stop.
-                    let result = run_batch(&engine, &batch, &mut step_seed, &control_w.stop);
+                    let result = run_batch(&engine, &batch, &mut step_seed, &control_w.stop, &pending_w);
                     let spikes: u64 = result.per_cluster.values().map(|p| p.spike_count_total).sum();
                     set_status(&control_w, |s| { s.batches += 1; s.spikes_last = spikes; s.note = "computing".into(); });
                     if let Ok(j) = serde_json::to_string(&result) {
@@ -251,8 +258,8 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                 match msg {
                     Message::Text(t) => {
                         match serde_json::from_str::<ServerMessage>(t.as_str()) {
-                            Ok(ServerMessage::GpuInit(init)) => { let _ = work_tx.send(Work::Init(init)); }
-                            Ok(ServerMessage::ComputeBatch(batch)) => { let _ = work_tx.send(Work::Batch(batch)); }
+                            Ok(ServerMessage::GpuInit(init)) => { pending.fetch_add(1, Ordering::Relaxed); let _ = work_tx.send(Work::Init(init)); }
+                            Ok(ServerMessage::ComputeBatch(batch)) => { pending.fetch_add(1, Ordering::Relaxed); let _ = work_tx.send(Work::Batch(batch)); }
                             Ok(ServerMessage::RebindSparse(rb)) => {
                                 // Ack inline (no GPU work) so the brain doesn't hit its 30s
                                 // rebind timeout. The matrix stays standalone (carried preSpikes
@@ -260,17 +267,17 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                                 let ack = RebindAck { msg_type: "rebind_sparse_ack", req_id: rb.req_id, name: rb.name, ok: true };
                                 let _ = tx.send(Message::text(serde_json::to_string(&ack).unwrap())).await;
                             }
-                            Ok(ServerMessage::WriteSpikeSlice(w)) => { let _ = work_tx.send(Work::WriteSpike { cluster: w.cluster_name, region: w.region_name, indices: w.sparse_indices }); }
-                            Ok(ServerMessage::WriteCurrentSlice(w)) => { let _ = work_tx.send(Work::WriteCurrent { cluster: w.cluster_name, region: w.region_name, indices: w.sparse_indices, values: w.sparse_values, psi: w.psi }); }
-                            Ok(ServerMessage::ClearSpikeRegion(w)) => { let _ = work_tx.send(Work::ClearSpike { cluster: w.cluster_name, region: w.region_name }); }
-                            Ok(ServerMessage::ReadbackLetterBuckets(rb)) => { let _ = work_tx.send(Work::Readback { req_id: rb.req_id, cluster: rb.cluster_name, region: rb.region_name, bucket_count: rb.bucket_count, sub_slice_len: rb.sub_slice_len, start_offset: rb.start_offset }); }
+                            Ok(ServerMessage::WriteSpikeSlice(w)) => { pending.fetch_add(1, Ordering::Relaxed); let _ = work_tx.send(Work::WriteSpike { cluster: w.cluster_name, region: w.region_name, indices: w.sparse_indices }); }
+                            Ok(ServerMessage::WriteCurrentSlice(w)) => { pending.fetch_add(1, Ordering::Relaxed); let _ = work_tx.send(Work::WriteCurrent { cluster: w.cluster_name, region: w.region_name, indices: w.sparse_indices, values: w.sparse_values, psi: w.psi }); }
+                            Ok(ServerMessage::ClearSpikeRegion(w)) => { pending.fetch_add(1, Ordering::Relaxed); let _ = work_tx.send(Work::ClearSpike { cluster: w.cluster_name, region: w.region_name }); }
+                            Ok(ServerMessage::ReadbackLetterBuckets(rb)) => { pending.fetch_add(1, Ordering::Relaxed); let _ = work_tx.send(Work::Readback { req_id: rb.req_id, cluster: rb.cluster_name, region: rb.region_name, bucket_count: rb.bucket_count, sub_slice_len: rb.sub_slice_len, start_offset: rb.start_offset }); }
                             Ok(ServerMessage::Other) => { /* forward-compat: ignore unknown */ }
                             Err(_) => { /* non-JSON or unparseable — ignore */ }
                         }
                     }
                     Message::Binary(bytes) => {
                         if let Some(frame) = frames::decode(&bytes) {
-                            let _ = work_tx.send(Work::Frame(frame));
+                            pending.fetch_add(1, Ordering::Relaxed); let _ = work_tx.send(Work::Frame(frame));
                         }
                     }
                     Message::Ping(p) => { let _ = tx.send(Message::Pong(p)).await; }
@@ -294,7 +301,7 @@ fn handle_gpu_init(engine: &mut MultiEngine, init: &GpuInit) {
     println!("[donor] gpu_init '{}' — {} neurons, {} regions", init.cluster_name, init.size, regions.len());
 }
 
-fn run_batch(engine: &MultiEngine, batch: &ComputeBatch, step_seed: &mut u32, stop: &AtomicBool) -> ComputeBatchResult {
+fn run_batch(engine: &MultiEngine, batch: &ComputeBatch, step_seed: &mut u32, stop: &AtomicBool, pending: &std::sync::atomic::AtomicUsize) -> ComputeBatchResult {
     let substeps = batch.substeps.max(1);
     let mut per_cluster = std::collections::HashMap::new();
     let mut jobs: Vec<StepJob> = Vec::with_capacity(batch.clusters.len());
@@ -312,7 +319,7 @@ fn run_batch(engine: &MultiEngine, batch: &ComputeBatch, step_seed: &mut u32, st
     // Advance the batch seed once; MultiEngine derives a distinct per-GPU stream and runs
     // each card's clusters in parallel, returning per-cluster spike totals.
     *step_seed = step_seed.wrapping_mul(2654435761).wrapping_add(40503);
-    let outs = engine.run_substeps(&jobs, substeps, *step_seed, stop);
+    let outs = engine.run_substeps(&jobs, substeps, *step_seed, stop, pending);
     for (name, so) in outs {
         per_cluster.insert(
             name,
