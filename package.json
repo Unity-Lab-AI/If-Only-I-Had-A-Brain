@@ -1,0 +1,14 @@
+{
+  "name": "if-only-i-had-a-brain-tooling",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Repo-wide dev tooling (build/diagnostic scripts). The runtime app lives in server/ (own package.json) + js/ + static HTML. This manifest is dev-only and is excluded from the pages deploy.",
+  "type": "module",
+  "scripts": {
+    "social:shots": "node scripts/social-shots.mjs",
+    "social:shots:admin": "node scripts/social-shots.mjs --admin-only"
+  },
+  "devDependencies": {
+    "playwright": "^1.49.0"
+  }
+}

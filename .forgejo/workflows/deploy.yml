@@ -48,11 +48,13 @@ jobs:
         run: |
           REPO="$(echo "${{ github.event.repository.name }}" | tr 'A-Z' 'a-z')"
           # Frontend only — exclude backend, training data, deps, internals, docs.
+          # NOTE: assets/ (incl. assets/social/*.png per-page social images) DOES ship.
           rsync -az --delete \
             --exclude='.git' --exclude='.forgejo' --exclude='.gitea' \
             --exclude='.claude' --exclude='server' --exclude='corpora' \
             --exclude='node_modules' --exclude='scripts' --exclude='deploy' \
             --exclude='docs' --exclude='*.md' --exclude='donor-app' \
+            --exclude='package.json' --exclude='package-lock.json' \
             -e "ssh -i ~/.ssh/deploy -o StrictHostKeyChecking=accept-new" \
             ./ "${USER}@${HOST}:${REPO}/"
 
