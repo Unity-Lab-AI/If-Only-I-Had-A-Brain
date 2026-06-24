@@ -8322,7 +8322,7 @@ export class Curriculum {
     const envMax = (typeof process !== 'undefined' && process.env && process.env.DREAM_MAX_GRADE)
       ? String(process.env.DREAM_MAX_GRADE).trim()
       : null;
-    const cap = envMax || 'kindergarten';  // default: pre-K + K only
+    const cap = envMax || 'phd';  // default: FULL K→PhD walk — Pre-K+K-only scope REVOKED (Gee 2026-06-18). DREAM_MAX_GRADE still overrides to cap lower for testing.
     const idx = GRADE_ORDER.indexOf(cap);
     if (idx < 0) {
       console.warn(`[Curriculum] DREAM_MAX_GRADE='${cap}' not in GRADE_ORDER — ignoring cap.`);

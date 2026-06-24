@@ -1603,15 +1603,16 @@ class ServerBrain {
         gpuProxy, // T17.3.d — proxy used for cross-region ops when GPU ready
         sparsePool: this.sparsePool, // T18.4.e — CPU-fallback parallel sparse matmul
       });
-      // Auto-advance toggle — default OFF. Single switch governs both
-      // the operator-signoff bypass at /grade-advance and the curriculum
-      // runner's auto-fire-next-grade behavior. Restored from persisted
-      // cortexState by _applyPendingCortexState if a prior boot had it
-      // on; otherwise stays at this default. Reading the field as
-      // `=== true` everywhere makes the undefined-vs-false distinction
-      // moot, but explicit init keeps dashboard observability clean.
+      // Auto-advance toggle — default ON. Gee's standing intent is an
+      // unattended K→PhD walk that proceeds through every grade without
+      // pausing at each boundary for a manual signoff (the per-grade LAW-6
+      // Part-2 pause defeated the overnight walk). The single switch governs
+      // both the operator-signoff bypass at /grade-advance and the curriculum
+      // runner's auto-fire-next-grade behavior. The dashboard toggle +
+      // auto-advance.json (loaded just below) still OVERRIDE this default, so
+      // an operator can turn it OFF to chat-test a grade before advancing.
       if (typeof this.cortexCluster._autoAdvanceGrade !== 'boolean') {
-        this.cortexCluster._autoAdvanceGrade = false;
+        this.cortexCluster._autoAdvanceGrade = true;
       }
       // DF.7 — restore the auto-advance toggle from its STANDALONE persistence
       // file (server/auto-advance.json), which survives the brain-weights CLEAR
