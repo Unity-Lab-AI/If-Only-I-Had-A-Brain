@@ -17,6 +17,10 @@
 #   UAL_GIT_REMOTE   git remote URL       (default git@git.unityailab.com:UnityAILab/If-Only-I-Had-A-Brain.git)
 #   UAL_GIT_BRANCH   branch to pull       (default main)
 #   UAL_SERVICE      systemd service name (default unity-brain)
+#   UAL_KEEP_STATE   "1" = SAVESTART mode — overlay new code but DON'T write
+#                    .force-fresh, so the restart RESUMES the saved weights
+#                    (relies on DREAM_KEEP_STATE=1 in the unit). Anything else
+#                    (default) = the original fresh-walk wipe.
 #
 # Requires on the box: git, rsync, and sudo rights to `systemctl restart`
 # the service (or run as a user that can). The deploy key must be able to
@@ -27,6 +31,7 @@ BACKEND_DIR="${UAL_BACKEND_DIR:-/opt/unity-brain}"
 GIT_REMOTE="${UAL_GIT_REMOTE:-git@git.unityailab.com:UnityAILab/If-Only-I-Had-A-Brain.git}"
 GIT_BRANCH="${UAL_GIT_BRANCH:-main}"
 SERVICE="${UAL_SERVICE:-unity-brain}"
+KEEP_STATE="${UAL_KEEP_STATE:-0}"
 LOG="${BACKEND_DIR}/self-update.log"
 
 log() { echo "[self-update] $(date -u +%Y-%m-%dT%H:%M:%SZ) $*" >> "$LOG" 2>&1; }
@@ -74,12 +79,21 @@ rsync -a --delete \
 # Re-install deps if package.json changed (best-effort, non-fatal).
 ( cd "$BACKEND_DIR/server" && npm install --omit=dev >> "$LOG" 2>&1 ) || log "npm install skipped/failed (non-fatal)"
 
-# CLEAR weights for a fresh walk. The brain-server reads .force-fresh from
-# its own dir (server/) at boot; autoClearStaleState wipes trained state
-# regardless of DREAM_KEEP_STATE / resume marker (identity-core Tier 3 kept).
-printf '{"requestedAt": %s000, "via": "dashboard /update self-update.sh"}\n' "$(date +%s)" > "$BACKEND_DIR/server/.force-fresh"
-
-log "overlay complete — restarting ${SERVICE} into a fresh walk"
+# SAVESTART vs FRESH WALK. In fresh-walk mode (default) we write .force-fresh
+# so the brain-server's autoClearStaleState wipes trained state at boot
+# (regardless of DREAM_KEEP_STATE / resume marker; identity-core Tier 3 kept).
+# In savestart mode (UAL_KEEP_STATE=1) we DON'T write it — the restart then
+# resumes the saved weights via the unit's DREAM_KEEP_STATE=1 (a heavy update
+# that changed brain size/format still safely fresh-starts via the boot
+# compat gate). This is the "deploy a fix without losing training" path.
+if [ "$KEEP_STATE" = "1" ]; then
+  log "savestart mode (UAL_KEEP_STATE=1) — NOT writing .force-fresh; restart will RESUME saved weights."
+  log "overlay complete — restarting ${SERVICE} (savestart, weights preserved)"
+else
+  printf '{"requestedAt": %s000, "via": "dashboard /update self-update.sh"}\n' "$(date +%s)" > "$BACKEND_DIR/server/.force-fresh"
+  log "fresh-walk mode — wrote .force-fresh; weights will be wiped on restart."
+  log "overlay complete — restarting ${SERVICE} into a fresh walk"
+fi
 
 # Restart — new code + cleared weights boot; with auto-advance ON the walk
 # starts itself. Prefer sudo; fall back to plain systemctl if already root.
