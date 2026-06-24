@@ -7353,6 +7353,10 @@ export class Curriculum {
         if (report && typeof report.coverage === 'number') {
           detail.vocabCoverage = report.coverage;
           detail.vocabMissing = Array.isArray(report.missing) ? report.missing.length : 0;
+          // Always log coverage (not just on failure) so a vocab-HELD cell is
+          // diagnosable from the console — if a cell never advances, this line
+          // shows whether it's a vocab-tracking gap vs a real teaching gap.
+          this._hb(`[Curriculum] vocab-coverage ${cellKey}: ${(report.coverage * 100).toFixed(0)}% (${detail.vocabMissing} missing · need ≥${(VOCAB_MIN * 100).toFixed(0)}%)`);
           if (report.coverage < VOCAB_MIN) {
             issues.push(`vocab incomplete (coverage ${(report.coverage * 100).toFixed(0)}% < ${(VOCAB_MIN * 100).toFixed(0)}%, ${detail.vocabMissing} words untaught)`);
           }
@@ -8175,6 +8179,29 @@ export class Curriculum {
     const _cellPass = !!(result && result.pass);
     this._hb(`[Curriculum] ═══ CELL DONE ═══ ${subject}/${grade} in ${(_cellMs / 1000).toFixed(1)}s — pass=${_cellPass}${_cellPass ? '' : ' (reason: ' + String(result?.reason || 'unknown').slice(0, 120) + ')'}`);
 
+    // LEARNING-COVERAGE LEDGER — record whether this cell actually TAUGHT
+    // (ran a real runner) or was HELD (readyAndWaiting: no runner wired for
+    // this subject/grade). The academic spine (ela/math/science/social/art)
+    // is wired pre-K→PhD, but the expanded + life tracks thin out at higher
+    // grades and HOLD rather than teach. This ledger makes that visible so
+    // "the walk proceeded" is never mistaken for "every grade was learned".
+    try {
+      if (cluster) {
+        if (!cluster._cellLedger || typeof cluster._cellLedger !== 'object') cluster._cellLedger = {};
+        const _held = !!(result && result.readyAndWaiting);
+        cluster._cellLedger[`${subject}/${grade}`] = {
+          taught: !_held,
+          held: _held,
+          pass: _cellPass,
+          reason: _held ? 'readyAndWaiting (runner not wired)' : String(result?.reason || (_cellPass ? 'pass' : 'attempted')).slice(0, 120),
+          ts: Date.now(),
+        };
+        if (_held) {
+          this._hb(`[Curriculum] ⚠ HELD (not taught) ${subject}/${grade} — no runner wired for this cell; walk continues but this cell did NOT teach. (See cluster._cellLedger for the full taught-vs-held map.)`);
+        }
+      }
+    } catch { /* ledger is non-fatal telemetry */ }
+
     // iter17 — populate memory system during curriculum learning. Operator
     // verbatim 2026-05-05: "she is leasrning weords and not a thing in
     // memory is lighting up... what the fuck is broken? fix it". Root
@@ -8612,6 +8639,18 @@ export class Curriculum {
           if (!(subject in failed)) failed[subject] = null;
           const currentIdx = GRADE_ORDER.indexOf(cluster.grades[subject] || 'pre-K');
           if (currentIdx >= i) continue; // already past this grade
+          // DESYNC GUARD — a subject left behind (force-advance refused at a
+          // lower grade) must NOT be taught the walk's current (too-high)
+          // grade; that silently SKIPS the grades it never learned and trains
+          // it on content it isn't ready for. Hold + log instead. The walk
+          // still advances (held ≠ failed); a held subject simply doesn't
+          // jump ahead. Lockstep is the normal case (force-advance keeps
+          // subjects together); this only trips when a subject genuinely
+          // can't clear a lower grade.
+          if (currentIdx < i - 1) {
+            this._hb(`[Curriculum] ⏭ ${subject} LAGGING at '${cluster.grades[subject] || 'pre-K'}' while walk is at '${grade}' — holding (won't teach a skipped-ahead grade; catch it up via the per-subject walk or operator re-teach).`);
+            continue;
+          }
 
           let attempt = 0;
           let result = null;
