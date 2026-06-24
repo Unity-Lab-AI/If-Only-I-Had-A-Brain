@@ -47,6 +47,12 @@ pub struct Cli {
     #[arg(long)]
     pub autostart: bool,
 
+    /// Disable auto-reconnect. If set, an unexpected disconnect ENDS the session
+    /// (the old behavior). Default (unset) = auto-reconnect ON — a dropped donor
+    /// rejoins on its own after a short backoff.
+    #[arg(long)]
+    pub no_auto_restart: bool,
+
     /// Local GPU self-test: run the Rulkov LIF + spike-count shaders on a synthetic
     /// cluster (no brain needed) to verify the compute path, then exit.
     #[arg(long)]

@@ -79,7 +79,7 @@ pub fn spawn_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>) -> (Con
                 return;
             }
         };
-        if let Err(e) = rt.block_on(run_donor(cfg, gpus, utils, c2.clone())) {
+        if let Err(e) = rt.block_on(run_donor_supervised(cfg, gpus, utils, c2.clone())) {
             if let Ok(mut s) = c2.status.lock() {
                 s.note = format!("error: {e}");
                 s.connected = false;
@@ -115,6 +115,73 @@ enum Work {
 enum Out {
     Text(String),
     Binary(Vec<u8>),
+}
+
+/// SUPERVISOR — run a donor session and, on an UNEXPECTED disconnect (the
+/// connection dropped/closed or the initial connect failed — NOT a user Stop /
+/// Ctrl+C), wait a short backoff and reconnect, indefinitely, when
+/// `cfg.auto_restart_on_disconnect` is set (the default). This is the fix for
+/// "it drops the connection and there's no auto-restart": before, a single
+/// `run_donor` returned on any drop and the donor went dark until someone
+/// pressed Start again. Now it rejoins on its own.
+///
+/// A user Stop sets `control.stop` (checked after each session AND during the
+/// backoff wait) → we return without reconnecting. With auto-restart OFF the
+/// supervisor is a passthrough (legacy single-session behavior).
+///
+/// Note: each reconnect rebuilds the GPU engine (engine ownership moves into
+/// the per-session worker). Reconnects are infrequent, so the extra GPU init on
+/// a drop is acceptable; a fresh engine after a drop is also the safer state.
+pub async fn run_donor_supervised(
+    cfg: DonorConfig,
+    gpus: Vec<GpuInfo>,
+    utils: Vec<u8>,
+    control: Control,
+) -> Result<(), String> {
+    let mut backoff: u64 = 2;
+    loop {
+        let result = run_donor(cfg.clone(), gpus.clone(), utils.clone(), control.clone()).await;
+
+        // User Stop / Ctrl+C → never reconnect.
+        if control.stop.load(Ordering::Relaxed) {
+            return result;
+        }
+        // Auto-restart disabled → legacy behavior: surface the outcome and stop.
+        if !cfg.auto_restart_on_disconnect {
+            return result;
+        }
+
+        // Unexpected end. A clean session that simply dropped resets the backoff
+        // (it was a real connection); a failed CONNECT grows it (brain likely down).
+        let why = match &result {
+            Ok(()) => {
+                backoff = 2;
+                "connection dropped".to_string()
+            }
+            Err(e) => format!("connect failed ({e})"),
+        };
+        set_status(&control, |s| {
+            s.connected = false;
+            s.note = format!("{why} — auto-reconnecting in {backoff}s…");
+        });
+        println!("[donor] {why} — auto-reconnecting in {backoff}s (disable with --no-auto-restart / the GUI toggle).");
+
+        // Stop-aware backoff wait (500 ms granularity) so a Stop during the wait
+        // cancels the reconnect promptly.
+        let steps = backoff.saturating_mul(2);
+        let mut i = 0u64;
+        while i < steps {
+            if control.stop.load(Ordering::Relaxed) {
+                set_status(&control, |s| { s.connected = false; s.note = "stopped".into(); });
+                return Ok(());
+            }
+            tokio::time::sleep(Duration::from_millis(500)).await;
+            i += 1;
+        }
+        if result.is_err() {
+            backoff = backoff.saturating_mul(2).min(30);
+        }
+    }
 }
 
 /// Connect one donor for `gpu` and run until the connection closes, Ctrl+C, or

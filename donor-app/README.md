@@ -30,4 +30,12 @@ unity-donor --gpus all --utilization all   # donate everything, full tilt
 unity-donor --headless --autostart --server wss://host/ws --gpus all   # server/RunPod
 ```
 GUI build (default) opens a window with per-GPU toggles + utilization sliders + Start/Stop
-(M4). `--headless` runs without it.
+(M4), an **Auto-reconnect** checkbox, and a **📖 How it works / legend** link to
+`https://if-only-i-had-a-brain.git.unityailab.com/html/legend.html`. `--headless` runs without it.
+
+## Auto-reconnect (default ON)
+A dropped/closed connection (or an initial connect failure) now **auto-rejoins** after a
+short backoff instead of going dark until someone presses Start again — the donor
+supervises its own session. A user **Stop** / Ctrl+C never reconnects. Disable with
+`--no-auto-restart` (headless) or by unchecking the GUI box. The backoff starts at 2 s and
+caps at 30 s; a real session that simply dropped resets it.
