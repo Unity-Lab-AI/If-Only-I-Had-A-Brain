@@ -5,6 +5,24 @@
 
 ---
 
+## 2026-06-24 — native donor app: auto-reconnect supervisor + GUI toggle + legend link (drop-no-recovery fix)
+
+### Gee verbatim per LAW #0
+
+> *"we made upgrades last we need to update the downloadable linix and window doner applicasations with the fixes we did i need you to toastlly understandits current workings and what exactly in the update broke it and also it was having problems before last update it would drop the connection and there is no toggle for auto restasrt when disconnects and we need a link to the https://if-only-i-had-a-brain.git.unityailab.com/html/legend.html page"*
+
+**Investigation finding:** the server-side brain fixes (rectify / weight-save / grade-cap / auto-advance / ledger) do NOT change the donor WS protocol — donors just crunch matrices the server hands them — so nothing in "the update" broke the donor app, and it needs no protocol change for those fixes. The real, PRE-EXISTING bug confirmed in `donor-app/src/donor.rs`: on ANY disconnect (`ws error` :248 / server `None` :249 / `Close` :277) the loop just `break`s and the session ends. The 30-attempt connect-retry only covered the INITIAL connect — once connected and dropped, there was **zero reconnect** (GUI showed Start again; headless exited). No config field, no toggle. The last donor commit (`7a874ea`, TLS for wss://) was a fix, not the breakage.
+
+**Shipped (Rust source — `donor-app/`):**
+- **`donor.rs` — `run_donor_supervised()`**: wraps the per-session `run_donor` in a reconnect loop. On an unexpected end (drop/close/connect-fail) with auto-restart ON, it waits a stop-aware backoff (2 s → cap 30 s; resets on a real session that dropped) and reconnects indefinitely. A user **Stop**/Ctrl+C (`control.stop`) — checked after each session AND during the backoff — never reconnects. `spawn_donor` now calls the supervisor (so BOTH the GUI and headless paths auto-rejoin).
+- **`config.rs` + `cli.rs`** — new `DonorConfig.auto_restart_on_disconnect` (default **ON**) + `--no-auto-restart` opt-out flag.
+- **`gui.rs`** — an **"Auto-reconnect if the connection drops"** checkbox (editable while stopped) + a **"📖 How it works / legend"** hyperlink to `https://if-only-i-had-a-brain.git.unityailab.com/html/legend.html`.
+- **`Cargo.toml`** — version `0.1.0` → `0.2.0`. **`README.md`** — Auto-reconnect section + legend-link note.
+
+**⚠ Build/release is a separate step (no Rust toolchain on this box):** the Windows + Linux donor binaries must be rebuilt from this source on a machine with Rust (+ CUDA for the NVIDIA backend) and re-uploaded to the download location — `cargo build --release` (Linux), `--target x86_64-pc-windows-gnu` (Windows), `--no-default-features` (headless/RunPod). Source `node`-equivalent check not possible here; edits were syntax-reviewed by hand. Known limitation: each reconnect rebuilds the GPU engine (engine ownership moves into the per-session worker) — fine for infrequent drops.
+
+---
+
 ## 2026-06-24 — learning-quality batch: runner-coverage audit + taught-vs-held ledger + vocab-coverage logging + desync guard
 
 ### Gee verbatim per LAW #0

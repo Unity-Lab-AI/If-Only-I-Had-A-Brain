@@ -84,6 +84,7 @@ impl eframe::App for DonorApp {
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.heading("unity-donor");
             ui.label(egui::RichText::new("Donate GPU compute to the Unity brain").weak());
+            ui.hyperlink_to("📖 How it works / legend", "https://if-only-i-had-a-brain.git.unityailab.com/html/legend.html");
             ui.add_space(8.0);
 
             let running = self.running();
@@ -92,6 +93,13 @@ impl eframe::App for DonorApp {
                 ui.label("Server:");
                 ui.add_enabled(!running, egui::TextEdit::singleline(&mut self.cfg.server).desired_width(280.0));
             });
+            // Auto-reconnect toggle — when ON (default), a dropped/closed connection
+            // auto-rejoins after a short backoff instead of going dark. Editable only
+            // while stopped (it's read when the session starts), matching the Server field.
+            ui.add_enabled(
+                !running,
+                egui::Checkbox::new(&mut self.cfg.auto_restart_on_disconnect, "Auto-reconnect if the connection drops"),
+            );
             ui.horizontal(|ui| {
                 ui.label("Leaderboard name:");
                 ui.add_enabled(!running, egui::TextEdit::singleline(&mut self.cfg.name).hint_text("(optional — anonymous)").desired_width(200.0));
