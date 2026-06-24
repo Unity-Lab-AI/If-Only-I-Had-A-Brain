@@ -95946,6 +95946,7 @@ var Curriculum = class _Curriculum {
         if (report && typeof report.coverage === "number") {
           detail.vocabCoverage = report.coverage;
           detail.vocabMissing = Array.isArray(report.missing) ? report.missing.length : 0;
+          this._hb(`[Curriculum] vocab-coverage ${cellKey}: ${(report.coverage * 100).toFixed(0)}% (${detail.vocabMissing} missing \xB7 need \u2265${(VOCAB_MIN * 100).toFixed(0)}%)`);
           if (report.coverage < VOCAB_MIN) {
             issues.push(`vocab incomplete (coverage ${(report.coverage * 100).toFixed(0)}% < ${(VOCAB_MIN * 100).toFixed(0)}%, ${detail.vocabMissing} words untaught)`);
           }
@@ -96439,6 +96440,23 @@ var Curriculum = class _Curriculum {
     const _cellPass = !!(result && result.pass);
     this._hb(`[Curriculum] \u2550\u2550\u2550 CELL DONE \u2550\u2550\u2550 ${subject}/${grade} in ${(_cellMs / 1e3).toFixed(1)}s \u2014 pass=${_cellPass}${_cellPass ? "" : " (reason: " + String(result?.reason || "unknown").slice(0, 120) + ")"}`);
     try {
+      if (cluster) {
+        if (!cluster._cellLedger || typeof cluster._cellLedger !== "object") cluster._cellLedger = {};
+        const _held = !!(result && result.readyAndWaiting);
+        cluster._cellLedger[`${subject}/${grade}`] = {
+          taught: !_held,
+          held: _held,
+          pass: _cellPass,
+          reason: _held ? "readyAndWaiting (runner not wired)" : String(result?.reason || (_cellPass ? "pass" : "attempted")).slice(0, 120),
+          ts: Date.now()
+        };
+        if (_held) {
+          this._hb(`[Curriculum] \u26A0 HELD (not taught) ${subject}/${grade} \u2014 no runner wired for this cell; walk continues but this cell did NOT teach. (See cluster._cellLedger for the full taught-vs-held map.)`);
+        }
+      }
+    } catch {
+    }
+    try {
       const brain2 = this.brain || cluster && cluster._brain;
       if (brain2 && typeof brain2.storeEpisode === "function") {
         const userId = "curriculum";
@@ -96678,6 +96696,10 @@ var Curriculum = class _Curriculum {
           if (!(subject in failed)) failed[subject] = null;
           const currentIdx = GRADE_ORDER.indexOf(cluster.grades[subject] || "pre-K");
           if (currentIdx >= i) continue;
+          if (currentIdx < i - 1) {
+            this._hb(`[Curriculum] \u23ED ${subject} LAGGING at '${cluster.grades[subject] || "pre-K"}' while walk is at '${grade}' \u2014 holding (won't teach a skipped-ahead grade; catch it up via the per-subject walk or operator re-teach).`);
+            continue;
+          }
           let attempt = 0;
           let result = null;
           if (typeof globalThis._brainShutdownRequested !== "undefined" && globalThis._brainShutdownRequested) {

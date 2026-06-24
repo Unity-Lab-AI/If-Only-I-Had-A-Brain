@@ -5,6 +5,25 @@
 
 ---
 
+## 2026-06-24 — learning-quality batch: runner-coverage audit + taught-vs-held ledger + vocab-coverage logging + desync guard
+
+### Gee verbatim per LAW #0
+
+> *"do it all. and rewrite the copy paste for sponge"* (following the `/super-review` of *"make sure that there is nothing else to be done to ensure the training is all 100% and once unity completes k grade she proceeds into 1st gade and all subsequent grades with out fail or hickups and the brain is properly learning"*)
+
+Closed the safe, high-value review items (#2-#4). #5 (emission-coherence pipeline, `114.19fn`) is flagged as the remaining large effort, not faked.
+
+**Runner-coverage audit (`_cellRunnerRaw`):** the academic spine — **ela, math, science, social, art — is fully wired pre-K→PhD** (real teaching runner per grade). The expanded + life tracks thin out: **music/pe/health** wired K→G12 (held college+), **cs/civics/economics/psychology/language** wired only across their introduced span, **`life`** has a single runner (K). Beyond their coverage these cells return `readyAndWaiting` → they HOLD (don't teach) but do NOT stall the walk. So the K→PhD academic walk genuinely learns; full per-track teaching at every higher grade is remaining curriculum-authoring work.
+
+**Shipped (all additive / safe — no advancement-logic behavior change beyond the guard):**
+- **Taught-vs-held LEDGER** (`curriculum.js`, after CELL DONE) — `cluster._cellLedger[subject/grade] = {taught, held, pass, reason, ts}`; a `⚠ HELD (not taught)` heartbeat fires for any `readyAndWaiting` cell. Makes "proceeded through grades" vs "actually learned every grade" honest + visible.
+- **Vocab-coverage LOG** (`curriculum.js`, `_gradeAdvanceHealthGate`) — logs `vocab-coverage <cell>: X% (N missing · need ≥85%)` on every advance check (not only on failure), so a vocab-HELD cell is diagnosable from the console (tracking-gap vs real teaching-gap).
+- **DESYNC GUARD** (`curriculum.js`, `runAllSubjects`) — a subject left behind (`currentIdx < i - 1`) is HELD + logged instead of being taught the walk's too-high current grade (which would skip the grades it never learned). Held ≠ failed, so the walk still advances.
+
+**Verification:** ESM `import()` clean (curriculum.js), bundle rebuilt (3.8mb). **Remaining (logged, NOT done):** #5 finish the emission-coherence pipeline so force-advance's capability check passes with real multi-word sentences (the gate of "properly learning" higher grades); wire real runners for the expanded + life tracks at higher grades.
+
+---
+
 ## 2026-06-23 — super-review follow-up: grade-cap default → FULL K→PhD + auto-advance default ON (the REAL "never gets past K" blockers)
 
 ### Gee verbatim per LAW #0
