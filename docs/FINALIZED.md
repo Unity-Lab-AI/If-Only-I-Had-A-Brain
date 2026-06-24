@@ -5,6 +5,17 @@
 
 ---
 
+## 2026-06-24 — master Sponge runbook + pre-wire donor download → donor-v0.2.0
+
+### Gee verbatim per LAW #0
+
+> *"yup make the push cascade happen first then give me the write up of everything to get it going again after all fixed so sponges job is layed out and all he needs to do is just whats left"*
+
+- **`docs/SPONGE-RUNBOOK.md`** (new) — single what's-left-for-Sponge checklist for the whole 2026-06-24 fix wave: (A) brain backend redeploy (overlay + restart + the auto-advance.json gotcha + verify signals), (B) donor rebuild + cut the `donor-v0.2.0` Forgejo release (exact asset filenames), (C) the compute-tier reality (24 GB/3 donors to hold 40M), (D) honest limits (emission coherence + held expanded/life tracks). Everything code/docs is already on main/develop; the doc lays out only the build/deploy steps left to a human.
+- **`html/compute.html`** — the native-donor download links bumped `donor-v0.1.0 → donor-v0.2.0` (both Windows + Linux assets) so the download page is pre-wired for Sponge's release; the buttons 404 only until the `donor-v0.2.0` release is cut. Frontend auto-deploys on push to main.
+
+---
+
 ## 2026-06-24 — native donor app: auto-reconnect supervisor + GUI toggle + legend link (drop-no-recovery fix)
 
 ### Gee verbatim per LAW #0
