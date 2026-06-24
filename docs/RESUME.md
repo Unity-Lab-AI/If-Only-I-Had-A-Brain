@@ -1,20 +1,25 @@
 # RESUME — Session Pickup Brief
 
-> **Updated:** 2026-06-21 (Opus 4.8 1M-context marathon — basin-collapse hardening + per-grade gate + Update button + real course names + public dashboard). Local synced to `if-only/main` (`99c5358`, which already carries the #112.9 student-battery timeout fix). This session's BC + feature work is committed to a NEW feature branch + pushed to `if-only` (see latest FINALIZED).
-> **Read FIRST:** this file → `docs/FINALIZED.md` (2026-06-21 BC + feature entries) → `docs/ISSUE-basin-collapse-fix.md` → `deploy/REDEPLOY-NOTES.md` (redeploy + the new `/update` self-update + `/public-state.json` ops) → memories ([[feedback_typeof_no_shield_const_tdz]], [[project_df7_data_parallel_delta_merge]], [[feedback_no_push_until_phd_complete]]).
+> **Updated:** 2026-06-23 (Opus 4.8 1M-context) — **per-page social images + custom social description for every page.** Local `main` + `develop` fast-forwarded to truth **`f4eafce`** (Sponge cascaded the prior BC + ops work onto main AND stacked the native GPU donor app + donor TLS fix on top). This session's social-image work is on a NEW feature branch **`feature/playwright-social-images`** (`1899bbb`), pushed to `if-only`.
+> **Read FIRST:** this file → `docs/FINALIZED.md` (2026-06-23 social-images entry, then the 2026-06-21 BC + feature entries) → `assets/README.md` (the per-page social-image system) → memories ([[feedback_no_push_until_phd_complete]], [[project_df7_data_parallel_delta_merge]], [[feedback_typeof_no_shield_const_tdz]]).
 >
-> ## ⚡ THIS SESSION (2026-06-21 BC + features) — all LOGIC-ONLY / weight-preserving, takes effect on a box redeploy (`DREAM_KEEP_STATE=1` resumes existing weights)
-> - **Basin-collapse hardening** (live "mushrooms" single-token lock, sober — not a drug): BC.4 frequency familiarity-decay · BC.5 GW winner-refractory · BC.6 candidate anti-repeat · BC.7 chat-Hebbian collapse gate (the 1842-pass self-reinforcement) · BC.13 word-creation health+coherence gate (killed `ice_sorry`/`laundry_mom` junk) · BC.12 `basinHealth` telemetry on WS state. BC.8/BC.9 resolved-by-design (existing per-phase normalizeRows + phase-level halt). Full plan: `docs/ISSUE-basin-collapse-fix.md`.
-> - **Per-grade advance health gate** (`_gradeAdvanceHealthGate`) wired into BOTH advance paths (A+ pass + force-advance), every grade K→PhD: blocks a grade jumping while saturated / mode-collapsed / vocab-incomplete ("any additional training needed before grade advance").
-> - **Dashboard "Update & Fresh Walk"** button → `POST /update` → `deploy/self-update.sh` (git-archive overlay → `.force-fresh` → `systemctl restart` → fresh walk). Box needs the script present + `sudo` restart perms + deploy key (see REDEPLOY-NOTES). `DREAM_SELF_UPDATE_CMD` overrides path.
-> - **Real course names + grade** on the brain footer + dashboard (Algebra I / Biology / U.S. Government …, updating K→PhD) — was stuck showing `ela:K`.
-> - **Static public dashboard**: `GET /public-state.json` (one cached snapshot, all public viewers poll it — no per-user WS firehose) + `dashboard.html?public=1` / `dashboard-public.html` (admin controls force-hidden).
+> ## ⚡ THIS SESSION (2026-06-23) — per-page social images
+> - **One top-of-page social card per page** (NOT a collage, no shared `og-image`) + a custom `og:description` / `twitter:description` / `meta description` per page, all ABSOLUTE on **`https://if-only-i-had-a-brain.git.unityailab.com`** (Gee's base-URL pick) so scrapers resolve. 10 images in `assets/social/`, wired into `index.html` + 9 `html/*.html`. Zero stale `github.io` / shared-og-image refs.
+> - **Generator:** `scripts/social-shots.mjs` (`npm run social:shots`) — Playwright, built-in static server (compute.html refuses `file://`), HEADED so brain pages get a real WebGPU adapter. Admin `dashboard.png` is the LAYOUT (no live data); live-data swap optional via `npm run social:shots:admin` once Chrome is relaunched with `--remote-debugging-port=9222`. Full detail: `docs/FINALIZED.md` 2026-06-23 + `assets/README.md`.
+> - **Branches synced:** local `main` + `develop` = `f4eafce` (Sponge's truth). The prior BC + ops work (basin-collapse hardening, per-grade gate, Update button, public dashboard, course names, donor leaderboard) is MERGED to main + on the deployed path; the native GPU donor app + donor TLS fix also landed.
+>
+> ## 📦 PRIOR SESSION (2026-06-21 BC + features) — now MERGED into truth (`f4eafce`), all LOGIC-ONLY / weight-preserving
+> - **Basin-collapse hardening** (live "mushrooms" single-token lock, sober — not a drug): BC.4 frequency familiarity-decay · BC.5 GW winner-refractory · BC.6 candidate anti-repeat · BC.7 chat-Hebbian collapse gate · BC.13 word-creation health+coherence gate · BC.12 `basinHealth` telemetry. Full plan: `docs/ISSUE-basin-collapse-fix.md`.
+> - **Per-grade advance health gate** (`_gradeAdvanceHealthGate`) wired into BOTH advance paths, every grade K→PhD.
+> - **Dashboard "Update & Fresh Walk"** button → `POST /update` → `deploy/self-update.sh`. **Real course names + grade** on footer + dashboard. **Static public dashboard** (`GET /public-state.json` + `dashboard.html?public=1`).
 
 ---
 
 ## ⚡ THE HEADLINE: RUN IT LOCALLY — full K→PhD test is GO
 
-The box admin (Sponge) is unreachable and the deployed backend can't be redeployed right now. **The local run is the better K→PhD test anyway** — and every fix from this session is already in the code/bundle you'd run.
+> **SUPERSEDED 2026-06-23:** Sponge is back — the prior BC + ops work was cascaded to `main` and the box redeployed (truth is `f4eafce`, which also carries the native GPU donor app + donor TLS fix). The "box admin unreachable" framing below no longer holds. The local run is still a valid K→PhD test; the deployed path now also carries the fixes.
+
+**The local run is a clean K→PhD test** — every fix is in the code/bundle you'd run.
 
 **To run the full K→PhD walk locally:**
 1. `windows/start.bat` — **fresh boot** (wipes prior state for a clean K→PhD walk from zero). Use `windows/Savestart.bat` only to RESUME a saved walk. (It rebuilds `js/app.bundle.js`, boots `brain-server.js`, and auto-launches the flagged `compute.html` against YOUR GPU.)
@@ -68,9 +73,10 @@ Diagnosed from the live admin-WS log: server ran 10.6h fine; the donor Chrome ke
 
 ## 🚧 WHERE TO PICK UP
 
-1. **RUN THE LOCAL K→PhD WALK** (top of this file) — the real test now that the box is offline. This is the runtime confirmation of #112.5 (cells pass at 0.80 on a stable GPU teach).
-2. **When the box admin (Sponge) is back:** redeploy the backend per `deploy/REDEPLOY-NOTES.md` (git-archive overlay + `systemctl restart`) so #112.2/.3/.4/.5 take effect on the deployed brain. Frontend (#112.1/.6 + bundle) already auto-deployed on the `dc0a67f` main push.
-3. **#112.6 robust half** — true sole-donor-drop auto-recovery needs infra (a headless always-on donor, or a watchdog). The shipped CTA only nudges humans.
+1. **Social images — review `feature/playwright-social-images` (`1899bbb`)** → when blessed, cascade feature → develop → main so the per-page cards + descriptions deploy (frontend rsync ships `assets/social/*.png` on a main push). OPTIONAL first: swap the admin `dashboard.png` to the live-data version (fully quit Chrome → relaunch with `--remote-debugging-port=9222` → `npm run social:shots:admin`).
+2. **RUN THE LOCAL K→PhD WALK** (top of this file) — the runtime confirmation of the gate fix (cells pass at 0.80 on a stable GPU teach). Still the cleanest full-curriculum test.
+3. **Box is current** — Sponge cascaded + redeployed; truth `f4eafce` carries the BC + ops fixes + native donor app + TLS fix. No pending redeploy for the prior session's work.
+4. **Sole-donor-drop auto-recovery** — true unattended recovery still needs infra (a headless always-on donor, or a watchdog). The shipped CTA only nudges humans.
 
 ---
 

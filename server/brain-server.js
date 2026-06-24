@@ -6467,7 +6467,19 @@ wss.on('connection', (ws, req) => {
             brain._neuronLeaderboard[client.lbKey] = lbE;
           }
           const havePrimary = brain._gpuClient && brain._gpuClient.readyState === 1;
-          if (!havePrimary) {
+          // DF.7 (flag-gated) — promote a materially-stronger newcomer to PRIMARY
+          // so the beefiest GPU does the work instead of whoever connected first
+          // (the "2GB card is primary while the 16GB idles" problem). Re-uploads
+          // the brain to the new primary via the same path as failover; the old
+          // primary stays in the pool as a replica. Default OFF = first-come.
+          const _df7PromoteStronger = havePrimary
+            && process.env.DREAM_DF7_FANOUT === '1'
+            && typeof brain._donorStrength === 'function'
+            && brain._donorStrength(ws) > brain._donorStrength(brain._gpuClient);
+          if (!havePrimary || _df7PromoteStronger) {
+            if (_df7PromoteStronger) {
+              console.log(`[${id}] DF.7 — newcomer GPU is STRONGER (${brain._donorStrength(ws)}MB VRAM > ${brain._donorStrength(brain._gpuClient)}MB current primary) — promoting it to PRIMARY; previous primary stays a replica + re-syncs.`);
+            }
             brain._gpuClient = ws;
             brain._gpuConnected = true;
             brain._gpuWaitLogged = false;
@@ -6477,7 +6489,7 @@ wss.on('connection', (ws, req) => {
             brain._gpuInitializedConfirmed = {};
             brain._gpuHits = 0;
             brain._gpuMisses = 0;
-            _rearmCortexGpuUpload('gpu_register primary');
+            _rearmCortexGpuUpload(_df7PromoteStronger ? 'gpu_register promote-stronger' : 'gpu_register primary');
             console.log(`[${id}] GPU compute client registered as PRIMARY — brain weights upload here (pool: ${brain._gpuClients.size}).`);
           } else {
             console.log(`[${id}] GPU compute client registered — bringing it up to a FULL brain replica (DF.7 data-parallel; pool: ${brain._gpuClients.size}).`);
@@ -6747,8 +6759,16 @@ wss.on('connection', (ws, req) => {
       // the next dispatch re-sends gpu_init + re-uploads every projection.
       let _promotedGpu = null;
       if (brain._gpuClients) {
-        for (const _cand of brain._gpuClients) {
-          if (_cand && _cand.readyState === 1) { _promotedGpu = _cand; break; }
+        // DF.7 (flag-gated) — promote the STRONGEST live standby, not just the
+        // first one, so the beefiest remaining GPU takes over. Default OFF =
+        // first-alive (today's behavior).
+        if (process.env.DREAM_DF7_FANOUT === '1' && typeof brain._strongestLiveDonor === 'function') {
+          _promotedGpu = brain._strongestLiveDonor(ws);
+        }
+        if (!_promotedGpu) {
+          for (const _cand of brain._gpuClients) {
+            if (_cand && _cand.readyState === 1 && _cand !== ws) { _promotedGpu = _cand; break; }
+          }
         }
       }
       if (_promotedGpu) {
