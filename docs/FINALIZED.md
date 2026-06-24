@@ -5,6 +5,21 @@
 
 ---
 
+## 2026-06-23 — super-review follow-up: grade-cap default → FULL K→PhD + auto-advance default ON (the REAL "never gets past K" blockers)
+
+### Gee verbatim per LAW #0
+
+> *"make sure that there is nothing else to be done to ensure the training is all 100% and once unity completes k grade she proceeds into 1st gade and all subsequent grades with out fail or hickups and the brain is properly learning"* · *"ultrathink"*
+
+A `/super-review` of the full advancement control flow found two defaults that **stop the walk at kindergarten independent of the saturation fix** — the documented Pre-K+K-ONLY scope revocation (Gee 2026-06-18) was never applied to the code defaults:
+
+- **`js/brain/curriculum.js` `_resolveMaxGradeIdx()`** — the grade-walk cap defaulted to `'kindergarten'`, and `runAllSubjects`/`runSubjectAllGrades` **`break` when `i > maxIdx`**. So with no `DREAM_MAX_GRADE` env set (the deployed unit doesn't set it), the walk stopped at K BY DESIGN and never reached grade1 — exactly the reported symptom. Changed the default to **`'phd'`** (uncapped; `DREAM_MAX_GRADE` still overrides to cap lower for testing). Matches the scope revocation.
+- **`server/brain-server.js`** — `_autoAdvanceGrade` defaulted to **`false`**, so after all subjects pass a grade the runner **PAUSES at every boundary** waiting for a dashboard `/grade-advance` click (defeats an unattended K→PhD walk). Changed the default to **`true`** for the unattended walk Gee wants; the dashboard toggle + `auto-advance.json` still OVERRIDE it. ⚠ A deployed box that already has `auto-advance.json` with `enabled:false` keeps pausing — toggle it ON in the dashboard (or delete the file) to pick up the new default.
+
+Other review findings (NOT blockers, logged for follow-up): `readyAndWaiting` runners for not-yet-wired subject/grade combos (ELA is wired pre-K→PhD; math/science/social/art/life + expanded subjects thin out at higher grades — those cells hold rather than teach, so "properly learning" is incomplete there, but they don't STALL the walk); a lagging subject that fails + can't force-advance gets its grade SKIPPED when the index moves on (desync); `examVocabCoverage` returns 1.0 for cells with no exam bank (so missing banks don't block). Verified: ESM `import()` clean, `node --check` clean, bundle rebuilt.
+
+---
+
 ## 2026-06-23 — kindergarten-stall + weight-save fix (sem→motor RECTIFY, no halt) + "Update & Savestart" button
 
 ### Gee verbatim per LAW #0
