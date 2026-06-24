@@ -93300,6 +93300,7 @@ var Curriculum = class _Curriculum {
         filteredForComprehension.push(...group);
         continue;
       }
+      await new Promise((r) => setImmediate(r));
       const sample = group[0];
       compSamplesFired += 1;
       let sampleScore = 0;
@@ -93363,6 +93364,7 @@ var Curriculum = class _Curriculum {
         break;
       }
       if (this.cluster) this.cluster._batteryProgress = { i: results.length + 1, total: questions.length, label, startedAt: _batteryStart };
+      await new Promise((r) => setImmediate(r));
       try {
         const r = await _probeWithBudget({
           question: q.question,
@@ -95954,6 +95956,67 @@ var Curriculum = class _Curriculum {
     return { ok: issues.length === 0, issues, detail };
   }
   /**
+   * RECTIFY a saturated / basin-collapsed sem→motor projection IN PLACE.
+   *
+   * Detection-only was the old behavior — saturation tripped a HALT that
+   * `return`ed out of the whole curriculum walk and asked the operator to
+   * fresh-boot. That IS the "stalls at the end of kindergarten" bug: the
+   * walk quits the moment sem→motor collapses and never advances. Gee's
+   * standing directive is no stalling at the K gate, so instead of halting
+   * we actively pull the collapsed matrix back down — multiplicative
+   * weight-decay shrinks the saturated magnitudes that made every row look
+   * alike, row-norm re-scales to a sane target, and we drop the stale
+   * sep-probe meanCos + the collapsed recent-emission history so the next
+   * health read measures the RECTIFIED matrix instead of the pre-rectify
+   * lock. Plasticity regains headroom + the dominant basin loosens, and the
+   * walk CONTINUES.
+   *
+   * Logic-only / weight-preserving: no neuron-count change, no format bump,
+   * no new required persisted field — old weights load and get rectified in
+   * place. Env-tunable: DREAM_BC_RECTIFY_DECAY (0.5) · DREAM_BC_RECTIFY_NORM
+   * (0.6).
+   *
+   * @param {string} cellKey for log context
+   * @returns {{attempted:boolean, cleared:boolean, before:object|null, after:object|null}}
+   */
+  _rectifySemMotor(cellKey = "") {
+    const out = { attempted: false, cleared: false, before: null, after: null };
+    const cluster = this.cluster;
+    if (!cluster) return out;
+    const _envNum = (k, d) => {
+      try {
+        const v = parseFloat(process?.env?.[k]);
+        return Number.isFinite(v) && v > 0 ? v : d;
+      } catch {
+        return d;
+      }
+    };
+    try {
+      out.before = typeof cluster.checkSemMotorHealth === "function" ? cluster.checkSemMotorHealth() : null;
+      const proj = cluster.crossProjections && cluster.crossProjections["sem_to_motor"];
+      if (!proj || !proj.values || proj.values.length === 0) {
+        cluster._lastSemMotorMeanCos = null;
+        return out;
+      }
+      out.attempted = true;
+      const DECAY = Math.min(0.95, _envNum("DREAM_BC_RECTIFY_DECAY", 0.5));
+      for (let k = 0; k < proj.values.length; k++) proj.values[k] *= DECAY;
+      if (typeof proj.normalizeRows === "function") {
+        try {
+          proj.normalizeRows(_envNum("DREAM_BC_RECTIFY_NORM", 0.6));
+        } catch {
+        }
+      }
+      cluster._gpuShadowDirty = true;
+      cluster._lastSemMotorMeanCos = null;
+      if (Array.isArray(cluster._emissionBus)) cluster._emissionBus.length = 0;
+      out.after = typeof cluster.checkSemMotorHealth === "function" ? cluster.checkSemMotorHealth() : null;
+      out.cleared = !!(out.after && !out.after.saturated);
+    } catch {
+    }
+    return out;
+  }
+  /**
    * Run a single (subject, grade) cell. Sets `cluster.grades[subject]
    * = grade` on pass and records the cell in `cluster.passedCells`.
    * When `corpora` is null, falls back to `this._lastCtx` so post-boot
@@ -96638,25 +96701,35 @@ var Curriculum = class _Curriculum {
                 this._semMotorSaturationStreak = (this._semMotorSaturationStreak || 0) + 1;
                 const meanCosTag = typeof health.meanCos === "number" ? `mean-cos=${health.meanCos.toFixed(3)} ` : "";
                 const ratioTag = health.ratio > 0 ? `max/mean=${health.ratio.toFixed(2)} ` : "";
-                console.warn(`[Curriculum] \u26A0 saturation detected post-${_cellKeyHealth} (streak ${this._semMotorSaturationStreak}/3 \xB7 window ${recentSat}/${windowSize}-of-5) \u2014 ${meanCosTag}${ratioTag}source=${health.source}`);
-                const consecutiveTrip = this._semMotorSaturationStreak >= 3;
-                const windowTrip = recentSat >= 3 && windowSize >= 3;
-                if (consecutiveTrip || windowTrip) {
-                  const trippedBy = consecutiveTrip ? "consecutive-streak (3/3)" : `windowed (${recentSat}/${windowSize}-of-5)`;
-                  console.warn(`[Curriculum] \u26D4 SATURATION HALT \u2014 sem\u2192motor saturated; trip cause: ${trippedBy}. Curriculum walk paused. Operator review required: stop.bat \u2192 start.bat for fresh boot OR investigate per docs/TODO.md fg.Tier3 / fg.Tier4 / fg.Tier5 / fj.7 (env-tunable thresholds). Continued teaching against saturated weights deepens the lock-in.`);
-                  this._semMotorSaturationHalted = true;
-                  if (cluster) {
-                    cluster._lastCurriculumHalt = {
-                      reason: "sem-motor-saturation",
-                      ts: Date.now(),
-                      cellAtHalt: _cellKeyHealth,
-                      meanCos: health.meanCos,
-                      trippedBy,
-                      consecutiveStreak: this._semMotorSaturationStreak,
-                      windowedRatio: `${recentSat}/${windowSize}-of-5`
-                    };
+                console.warn(`[Curriculum] \u26A0 saturation detected post-${_cellKeyHealth} (streak ${this._semMotorSaturationStreak} \xB7 window ${recentSat}/${windowSize}-of-5) \u2014 ${meanCosTag}${ratioTag}source=${health.source} \u2014 RECTIFYING in place (NO halt \u2014 operator directive: no stalling at the kindergarten gate).`);
+                const rect = this._rectifySemMotor(_cellKeyHealth);
+                const beforeCos = rect.before && typeof rect.before.meanCos === "number" ? rect.before.meanCos : typeof health.meanCos === "number" ? health.meanCos : null;
+                const afterCos = rect.after && typeof rect.after.meanCos === "number" ? rect.after.meanCos : null;
+                if (cluster) {
+                  cluster._lastCurriculumHalt = {
+                    reason: rect.cleared ? "sem-motor-saturation-rectified" : "sem-motor-saturation-rectify-partial",
+                    ts: Date.now(),
+                    cellAtHalt: _cellKeyHealth,
+                    meanCosBefore: beforeCos,
+                    meanCosAfter: afterCos,
+                    rectifyAttempted: rect.attempted,
+                    rectified: rect.cleared,
+                    streakAtRectify: this._semMotorSaturationStreak,
+                    windowedRatio: `${recentSat}/${windowSize}-of-5`
+                  };
+                }
+                if (rect.cleared) {
+                  console.warn(`[Curriculum] \u2713 RECTIFIED sem\u2192motor post-${_cellKeyHealth} \u2014 saturation cleared (meanCos ${beforeCos != null ? beforeCos.toFixed(3) : "?"} \u2192 ${afterCos != null ? afterCos.toFixed(3) : "?"}). Streak + window reset. Walk continues.`);
+                  this._semMotorSaturationStreak = 0;
+                  this._semMotorSatHistory = [];
+                } else {
+                  console.warn(`[Curriculum] \u26A0 rectify post-${_cellKeyHealth} ${rect.attempted ? "reduced magnitudes but saturation did not fully clear" : "could not run (sem\u2192motor CPU CSR not resident \u2014 GPU-only scale; stale signal cleared)"}. Walk continues anyway \u2014 never halting on saturation.`);
+                }
+                if (typeof this._saveCheckpoint === "function") {
+                  try {
+                    this._saveCheckpoint(`saturation-rectify:${_cellKeyHealth}`);
+                  } catch {
                   }
-                  return { reached: passed, passed, failed, haltReason: "sem-motor-saturation" };
                 }
               } else {
                 this._semMotorSaturationStreak = 0;

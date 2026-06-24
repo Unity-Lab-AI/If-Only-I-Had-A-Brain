@@ -152,3 +152,25 @@ Context: the brain trained all night but the DONOR (Chrome compute.html) kept dr
 - #112.6 (robust half) — true sole-donor-drop auto-recovery needs infra (headless always-on donor, or watchdog). The shipped CTA only nudges humans to reconnect.
 - #112.7 — admin password rotation: DECLINED by Gee (not changing it). No action; noted that the credential is exposed in the work transcript.
 - Confirm `Restart=always` is in the unit (the dashboard Stop/Restart/Reset buttons rely on it).
+
+### 2026-06-23 — kindergarten-stall + weight-save fix + "Update & Savestart" button
+
+**Two things in this batch:**
+
+**(1) The never-gets-past-kindergarten + weights-don't-save fix.** When `sem→motor` saturated (basin-collapse / single-token output), `Curriculum.runAllSubjects` hit a `SATURATION HALT` that **`return`ed out of the whole walk** (asked for a fresh boot) — the walk quit mid-K and never advanced. And the 5-min periodic save is gated off during a walk (`_curriculumInProgress`), so weights only persisted on a cell-pass → a walk that halted before any pass never hit disk → reboot wiped it.
+
+- `js/brain/curriculum.js` — **server-side module despite the `js/` path** (like `consolidation-engine.js`): new `_rectifySemMotor()` CORRECTS a collapsed `cortexCluster.crossProjections['sem_to_motor']` in place (weight-decay `×DREAM_BC_RECTIFY_DECAY` + `normalizeRows(DREAM_BC_RECTIFY_NORM)` + clears stale meanCos/emission history + `_gpuShadowDirty`). The `SATURATION HALT` no longer `return`s — it rectifies, force-checkpoints, and CONTINUES. `sem_to_motor` is on the dense ~323K language cortex (CPU-resident CSR), so it reaches it at full scale. **(backend — needs redeploy)**
+- `server/brain-server.js` — periodic save now force-writes through the curriculum guard during a walk (`{force:true, trigger:'periodic-curriculum-checkpoint'}`), so weights persist every 5 min regardless of cell-pass. **(backend — needs redeploy)**
+- Env knobs (optional, own-line in the unit): `DREAM_BC_RECTIFY_DECAY=0.5` · `DREAM_BC_RECTIFY_NORM=0.6`. No knob required.
+
+**(2) New dashboard button "⬆ Update & Savestart (keep weights)".** Same git-archive-overlay self-update as "Update & Fresh Walk" but it RESUMES the saved weights instead of wiping — deploy a fix WITHOUT losing training.
+
+- `html/dashboard.html` — new `btn-update-savestart` + `wireUpdateSavestart()` → `POST /update?keep=1`. **(frontend — auto-deploys)**
+- `server/brain-server.js` — `/update` now reads `?keep=1` (or `?mode=savestart`) and spawns the script with `UAL_KEEP_STATE=1`. Default (no query) = the original fresh-walk. **(backend — needs redeploy)**
+- `deploy/self-update.sh` — `UAL_KEEP_STATE=1` SKIPS the `.force-fresh` write; the restart then resumes weights. **(deploy script — ships in overlay)**
+
+**✅ No one-time box change needed for savestart-resume.** The unit ALREADY sets `Environment=DREAM_KEEP_STATE=1` (this file, above), so `autoClearStaleState` resumes on any restart that doesn't write `.force-fresh`. The savestart path simply omits `.force-fresh`. (If a heavy update changes brain size/format, the boot compat gate fresh-starts safely + says so.)
+
+**Bootstrap reality (answers "do I need Sponge?"):** after this batch is deployed ONCE, Gee can self-serve routine code updates from the dashboard — **Update & Savestart** (keep training) or **Update & Fresh Walk** (wipe) — no Sponge. The ONLY things that still need box-admin: the FIRST deploy of this batch (the existing Update button or a manual overlay), any `deploy/unity-brain.service` change (needs `daemon-reload`), and the one-time button prerequisites (deploy key can clone, `sudo -n systemctl restart unity-brain` permitted, `Restart=always`). Redeploy = the standard git-archive overlay + restart at the top of this file.
+
+**Verify after redeploy:** console shows `✓ RECTIFIED sem→motor` where it used to print `⛔ SATURATION HALT`; walk crosses K→grade1; `periodic-curriculum-checkpoint` saves every ~5 min. Click **Update & Savestart** → `self-update.log` shows `savestart mode … NOT writing .force-fresh` and the boot logs `DREAM_KEEP_STATE=1 … KEEPING prior state` (not a wipe).

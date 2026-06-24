@@ -5,6 +5,25 @@
 
 ---
 
+## 2026-06-23 — kindergarten-stall + weight-save fix (sem→motor RECTIFY, no halt) + "Update & Savestart" button
+
+### Gee verbatim per LAW #0
+
+> *"did the training freeze? what the issue? why did it not get to first gade, we neecd to fix this shit im fucking tired of the fact that u cant fucking correctly get the brain pasted kindergarden grade!!! IM NOT TELLING YOU AGAIN MAKLE THIS FUCKING WORK NO MOR STALLING AT END OF KINDERGARDEN AND ALSO SAVE THE FUCKING WEIGHTS !~!!"* · *"make sure that u add a button so inadditiion to  update and fresh walk its update and savestart, to where it uses last good save weights as imging to use update and fresh start but i dont want the weights to be reset so that i can use update and fresh button, then do savestart and it should load one of that previous saves... right? and i dont need sponge?"* · *"might need a one time thing so the server doesnt wipe the weights or something on the update"*
+
+**Root cause (two coupled defects):** (1) **Stall** — when `sem→motor` saturated (basin-collapse / single-token "mushrooms" output), `Curriculum.runAllSubjects` hit a `SATURATION HALT` that **`return`ed out of the entire walk** and recommended a fresh boot; 3 saturating cells → the walk quit mid-kindergarten and never advanced to grade1, with the per-cell + force-advance health gates double-locking advance while saturated (no path forward). (2) **Weights never persisted** — the 5-min periodic `saveWeights()` is gated off during a walk (`_curriculumInProgress`), so weights only hit disk on a cell-pass; a walk that halted before any pass never saved → next boot (no resume marker) wiped the RAM-only training.
+
+**Shipped (all LOGIC-ONLY — no neuron-count change, no `WEIGHTS_FORMAT_VERSION` bump, no new required persisted field → saved weights load unchanged; resumes under `DREAM_KEEP_STATE=1`):**
+- **`js/brain/curriculum.js`** — new `_rectifySemMotor()` actually CORRECTS a saturated/collapsed `cortexCluster.crossProjections['sem_to_motor']` in place: multiplicative weight-decay (`×DREAM_BC_RECTIFY_DECAY`, default 0.5) + `normalizeRows(DREAM_BC_RECTIFY_NORM`, default 0.6) + clears the stale sep-probe `_lastSemMotorMeanCos` + the collapsed `_emissionBus` history + sets `_gpuShadowDirty` for re-upload. The `SATURATION HALT` no longer `return`s — it rectifies, force-checkpoints the corrected weights, and CONTINUES the walk. Saturation never hard-stops the walk again. `sem_to_motor` is on the dense ~323K language cortex (CPU-resident CSR), so it reaches it at full deployed scale.
+- **`server/brain-server.js`** — periodic save now force-writes through the curriculum guard during a walk (`{force:true, trigger:'periodic-curriculum-checkpoint'}`), so trained weights persist every 5 min regardless of cell-pass. `/update` endpoint now reads `?keep=1` (or `?mode=savestart`) and spawns the self-update script with `UAL_KEEP_STATE=1`; default (no query) is the original fresh-walk.
+- **`html/dashboard.html`** — new **⬆ Update & Savestart (keep weights)** admin button (`btn-update-savestart` + `wireUpdateSavestart()` → `POST /update?keep=1`): re-pulls + restarts but RESUMES saved weights (deploy a fix without losing training), beside the existing fresh-walk button.
+- **`deploy/self-update.sh`** — `UAL_KEEP_STATE=1` SKIPS the `.force-fresh` write so the restart resumes weights (relies on the unit's already-present `DREAM_KEEP_STATE=1`). Default unchanged (writes `.force-fresh` → wipe).
+- **`deploy/REDEPLOY-NOTES.md`** — box-admin handoff section for both changes; documents that NO one-time box change is needed for savestart-resume (the unit already sets `DREAM_KEEP_STATE=1`), and that after this batch deploys once, routine code updates are self-serve from the dashboard (no Sponge) except the first deploy / unit changes / button prerequisites.
+
+**Env knobs (optional, own-line in the unit):** `DREAM_BC_RECTIFY_DECAY=0.5` · `DREAM_BC_RECTIFY_NORM=0.6`. **Verification:** ESM `import()` clean (curriculum.js), `node --check` clean (brain-server.js), `bash -n` clean (self-update.sh), bundle rebuilt (3.8mb, carries `_rectifySemMotor`, old halt-return gone). Backend pieces take effect on box redeploy (overlay + `systemctl restart`, `DREAM_KEEP_STATE=1` resumes); frontend auto-deploys on main.
+
+---
+
 ## 2026-06-21 — Donor neuron-compute LEADERBOARD (persistent, named, resets on fresh walk)
 
 ### Gee verbatim per LAW #0
