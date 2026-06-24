@@ -58,9 +58,20 @@ ONLY through the Forgejo-authenticated admin lane.
 | **⏹ Stop Brain** | `POST /shutdown` | **42** | `RestartPreventExitStatus=42` → **NOT revived** | True halt — stays down until a manual start |
 | **🔄 Restart (Savestart)** | `POST /restart` | 0 | `Restart=always` → revived | Restarts + auto-resumes trained state |
 | **♻ Reset (fresh)** | `POST /reset` | 0 | `Restart=always` → revived | Writes `.force-fresh` → boots a wiped brain (identity-core Tier-3 anchors preserved) |
+| **⬆ Update & Fresh Walk** | `POST /update` | n/a (detached `self-update.sh` → `systemctl restart`) | `Restart=always` → revived | Overlays latest code (git-archive) **and** writes `.force-fresh` → reboots into a WIPED fresh K→PhD walk |
+| **⬆ Update & Savestart** | `POST /update?keep=1` | n/a (detached `self-update.sh` → `systemctl restart`) | `Restart=always` → revived | Overlays latest code **but SKIPS** `.force-fresh` → reboots and RESUMES saved weights — deploy a fix without losing training (relies on the unit's `DREAM_KEEP_STATE=1`) |
 
-All three force-save weights first. Restart/Reset drop or set the resume marker so
-the revived process resumes (or wipes) correctly.
+Stop/Restart/Reset force-save weights first; Restart/Reset drop or set the resume
+marker so the revived process resumes (or wipes) correctly. The two **Update**
+buttons instead spawn `deploy/self-update.sh` detached — it git-archive-overlays
+the latest `main` into the backend dir, then `systemctl restart`s; the restart
+fires AFTER the overlay completes (no old/new-code race). `?keep=1` passes
+`UAL_KEEP_STATE=1` to the script so it omits the `.force-fresh` write and the
+reboot resumes the saved weights (a heavy update that changed brain size/format
+still fresh-starts safely via the boot compat gate). After this batch is deployed
+once, routine code updates are self-serve from the dashboard — no box admin
+needed except for the first deploy, a `unity-brain.service` change, or the
+one-time button prerequisites (deploy key, `sudo -n systemctl restart`).
 
 ### #112.10 — why Stop now exits 42
 

@@ -4,6 +4,8 @@
 > **Severity:** ⛔ BLOCKER — her live output is mode-collapsed to one word; the K→PhD walk is advancing without real learning.
 > **Hard constraint:** WEIGHT-PRESERVING. Every fix below is **logic-only** — no neuron-count change, no `WEIGHTS_FORMAT_VERSION` bump (stays `1`), no required new persisted fields. The box runs `DREAM_KEEP_STATE=1` → `autoClearStaleState` is skipped → a redeploy **resumes the existing saved weights** and rectifies them in place. NOT a wipe.
 
+> **✅ RESOLVED 2026-06-23 (shipped on main):** The SATURATION HALT described in loop #6 / §2 + the BC.2 fix is now LIVE. The HALT (`curriculum.js:8469`) no longer `return`s and recommends a fresh boot — it calls `_rectifySemMotor()` to decorrelate the collapsed basin **in place** and CONTINUES the walk. The periodic weight-save now **force-writes during the walk** so the rectified weights persist. Net effect: the walk no longer dies at kindergarten and weights persist across saves — no wipe, no fresh-boot recommendation.
+
 ---
 
 ## 1. Symptom (live, deployed 51,130,559-neuron brain)
