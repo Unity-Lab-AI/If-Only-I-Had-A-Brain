@@ -96533,7 +96533,7 @@ var Curriculum = class _Curriculum {
    */
   _resolveMaxGradeIdx() {
     const envMax = typeof process !== "undefined" && process.env && process.env.DREAM_MAX_GRADE ? String(process.env.DREAM_MAX_GRADE).trim() : null;
-    const cap = envMax || "kindergarten";
+    const cap = envMax || "phd";
     const idx = GRADE_ORDER.indexOf(cap);
     if (idx < 0) {
       console.warn(`[Curriculum] DREAM_MAX_GRADE='${cap}' not in GRADE_ORDER \u2014 ignoring cap.`);

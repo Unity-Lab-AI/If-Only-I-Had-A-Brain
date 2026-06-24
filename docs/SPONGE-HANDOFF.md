@@ -129,3 +129,14 @@ Pulled `GET /public-state.json` off the deploy. At that moment the brain was **h
 | `deploy/REDEPLOY-NOTES.md` · `docs/FINALIZED.md` · `docs/ADMIN-CONTROLS.md` · `docs/NOW.md` · `docs/ROADMAP.md` · `docs/TODO.md` · `docs/ISSUE-basin-collapse-fix.md` · `README.md` · `html/unity-guide.html` · `docs/SPONGE-HANDOFF.md` | docs/pages | n/a (docs) / frontend |
 
 **Verification:** ESM `import()` clean (curriculum.js), `node --check` clean (brain-server.js), `bash -n` clean (self-update.sh), bundle rebuilt (3.8mb — carries `_rectifySemMotor`, old halt-return gone).
+
+---
+
+## 8. ⚠ Follow-up (same day) — the REAL "never gets past K" defaults (read this)
+
+A `/super-review` after the above found two DEFAULTS that stop the walk at kindergarten **regardless** of the saturation fix. Both are now changed on `main` (and `develop`):
+
+1. **Grade cap** — `curriculum.js` defaulted the walk cap to `'kindergarten'`; the loop `break`s past the cap. With no `DREAM_MAX_GRADE` env (the unit doesn't set one), the walk stopped at K by design. Default is now `'phd'` (uncapped). **Action: none** — you do NOT need to add `DREAM_MAX_GRADE` to the unit (the default is now full K→PhD; only set it if you want to *cap lower* for a test).
+2. **Auto-advance** — `brain-server.js` defaulted `_autoAdvanceGrade` to `false`, so the runner **pauses at every grade boundary** waiting for a dashboard signoff click — fatal for an unattended walk. Default is now `true`. **⚠ Action for the box:** the standalone `server/auto-advance.json` (if present) OVERRIDES the default. If that file exists with `"enabled": false`, the walk will STILL pause — flip auto-advance ON in the admin dashboard (or `rm server/auto-advance.json`) so the unattended K→PhD walk proceeds.
+
+Both ride the **same backend redeploy** as §3 (overlay + `systemctl restart`). After redeploy, confirm the walk crosses `kindergarten → grade1 → …` without pausing.
