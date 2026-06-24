@@ -4818,7 +4818,15 @@ brain.start().catch((err) => {
 
 // Periodic saves
 setInterval(() => {
-  brain.saveWeights();
+  // Force the periodic save THROUGH the curriculum guard while a walk is
+  // in progress. Otherwise saveWeights() returns early (the _curriculumInProgress
+  // guard) and weights ONLY ever persist on a cell-pass — so a walk that
+  // stalls/rectifies before any cell passes never hits disk, and the next
+  // boot wipes the RAM-only training. A forced checkpoint on the save cadence
+  // guarantees the walk's progress is durable (resumes under DREAM_KEEP_STATE).
+  brain.saveWeights(brain._curriculumInProgress
+    ? { force: true, trigger: 'periodic-curriculum-checkpoint' }
+    : {});
   brain.saveConversations();
 }, WEIGHT_SAVE_MS);
 
@@ -5063,23 +5071,35 @@ const httpServer = http.createServer((req, res) => {
   // backend dir / service name) is set via the UAL_* env vars the script
   // reads. Local dev (no systemd, no deploy dir) has no script → returns a
   // clear "not found" rather than half-updating.
-  if (req.url === '/update' && req.method === 'POST') {
+  if (req.url.split('?')[0] === '/update' && req.method === 'POST') {
     if (!requireLoopback(req, res, '/update')) return;
+    // `?keep=1` (or `?mode=savestart`) = UPDATE & SAVESTART: overlay the new
+    // code but RESUME the saved weights instead of wiping. Default (no query)
+    // = the original UPDATE & FRESH WALK (writes .force-fresh → wipe).
+    const _q = req.url.split('?')[1] || '';
+    const keepState = /(?:^|&)keep=1(?:&|$)/.test(_q) || /(?:^|&)mode=savestart(?:&|$)/.test(_q);
     res.writeHead(200, { 'Content-Type': 'application/json' });
     if (global._brainShutdownRequested) { res.end(JSON.stringify({ status: 'already updating/restarting' })); return; }
     const updateScript = process.env.DREAM_SELF_UPDATE_CMD || path.join(__dirname, '..', 'deploy', 'self-update.sh');
     let scriptExists = false;
     try { scriptExists = fs.existsSync(updateScript); } catch { /* non-fatal */ }
     if (!scriptExists) {
-      res.end(JSON.stringify({ status: 'update FAILED — self-update script not found', script: updateScript, hint: 'add deploy/self-update.sh on the box (or set DREAM_SELF_UPDATE_CMD). Local dev has no self-update path — use start.bat for a fresh walk.' }));
+      res.end(JSON.stringify({ status: 'update FAILED — self-update script not found', script: updateScript, hint: 'add deploy/self-update.sh on the box (or set DREAM_SELF_UPDATE_CMD). Local dev has no self-update path — use start.bat (fresh) / Savestart.bat (resume).' }));
       return;
     }
     global._brainShutdownRequested = true;
-    console.log(`[Brain] HTTP /update — UPDATE + FRESH WALK requested (dashboard). Spawning ${updateScript} detached: overlay latest code → write .force-fresh → systemctl restart.`);
-    res.end(JSON.stringify({ status: 'update armed — pulling latest code, clearing weights, restarting into a fresh walk (~1-2 min)', script: updateScript }));
+    if (keepState) {
+      console.log(`[Brain] HTTP /update?keep=1 — UPDATE + SAVESTART requested (dashboard). Spawning ${updateScript} detached with UAL_KEEP_STATE=1: overlay latest code → SKIP .force-fresh → systemctl restart (resumes saved weights via the unit's DREAM_KEEP_STATE=1).`);
+      res.end(JSON.stringify({ status: 'update armed — pulling latest code, RESUMING saved weights (savestart), restarting (~1-2 min)', mode: 'savestart', script: updateScript }));
+    } else {
+      console.log(`[Brain] HTTP /update — UPDATE + FRESH WALK requested (dashboard). Spawning ${updateScript} detached: overlay latest code → write .force-fresh → systemctl restart.`);
+      res.end(JSON.stringify({ status: 'update armed — pulling latest code, clearing weights, restarting into a fresh walk (~1-2 min)', mode: 'fresh', script: updateScript }));
+    }
     try {
       const { spawn } = require('child_process');
-      const child = spawn('bash', [updateScript], { detached: true, stdio: 'ignore', env: { ...process.env } });
+      const env = { ...process.env };
+      if (keepState) env.UAL_KEEP_STATE = '1';
+      const child = spawn('bash', [updateScript], { detached: true, stdio: 'ignore', env });
       child.unref();
     } catch (err) {
       console.error('[Brain] /update spawn failed:', err && err.message);
