@@ -5,6 +5,24 @@
 
 ---
 
+## 2026-06-24 — DF.7 multi-GPU fan-out (feature branch — make idle donor GPUs actually compute)
+
+### Gee verbatim per LAW #0
+
+> *"YES completely!!!!! YES!!!! then cascade push and give me write up"* (build the DF.7 compute fan-out so the idle replica GPUs crunch instead of just holding a replica) · *"make a new feature branch no push to main"* · *"and on this new feature branch merge in the social image and description feature branch if not already in the new feature branch u make"*
+
+⚠ **On `feature/df7-multigpu-fanout` ONLY — NOT merged to develop/main.** Branch = `main` + merged `feature/playwright-social-images` + this work.
+
+**Diagnosis (live):** 4 donors connected (34.4 GB), but only the `★` primary (a 2 GB-cap card) computed at 1.55 Gn/s while a 16 GB 4070 Ti SUPER + 10 GB 3080 + 2060 sat at **0.00 Gn/s**. Confirmed in code: the CPU CSR is the authoritative master and GPUs are fire-and-forget **shadows with NO weight-readback path**; almost all teach/probe work is **bound** to the primary's resident GPU spike buffers, and `_gpuParallelMap` was only ever called for replica-sync — never for compute. So the standbys held a full replica but were handed no work. Not a wait-state; an unbuilt fan-out.
+
+**Shipped — all behind `DREAM_DF7_FANOUT` (default OFF = today's EXACT single-primary behavior; flip to `1` to enable, roll back by unsetting — no weight-format/restart-contract change):**
+- **`server/brain-server/gpu.js`** — `_df7Fanout()` switch; `_donorStrength()`/`_strongestLiveDonor()` (VRAM-ranked); `_mirrorCortexWriteToReplicas()` mirrors every cortex resident-buffer write (`write_spike_slice` / `write_current_slice` / `clear_spike_region`) to all replicas so their resident state matches the primary (per-socket FIFO preserves clear→write→propagate order) — the prerequisite the DF.7 notes called out; `gpuSparsePropagateBound()` round-robins across the pool (`_nextPoolDonor`) so the bound forward-propagate (the student-battery / emission probe path) actually runs on the idle GPUs.
+- **`server/brain-server.js`** — `gpu_register` promotes a materially-stronger newcomer to PRIMARY (so the 16 GB card does the work, not the 2 GB one; re-uploads via the failover path, old primary becomes a replica); failover promotes the **strongest** live standby instead of first-alive. Both flag-gated; default OFF = first-come.
+
+**Honest scope:** this fans out the **bound propagate** (stateless once resident state is mirrored) + fixes primary selection — that lights up the idle GPUs on the parallelizable probe/emission path. It does NOT data-parallel the **teach Hebbian** (that needs GPU→CPU weight-delta readback the donor protocol doesn't have — a deeper future build) or the sequential main tick (stateful, can't split without sharding). Verification is LIVE-ONLY (no toolchain/donors here): `node --check` clean on both files; correctness must be confirmed on the deploy with the flag on — watch idle GPUs' Gn/s climb AND gate probes still pass; if probes go wrong, unset the flag + restart.
+
+---
+
 ## 2026-06-24 — master Sponge runbook + pre-wire donor download → donor-v0.2.0
 
 ### Gee verbatim per LAW #0
