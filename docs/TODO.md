@@ -68,6 +68,8 @@ If you're reading a public doc / HTML claim ("Unity has completed high school bi
 
 **STATUS:** ✅ SHIPPED 2026-06-21 — BC.4/5/6/7/13 + per-grade advance health gate + BC.12 telemetry all coded + verified; BC.8/BC.9 resolved-by-design (existing per-phase normalizeRows + phase-level halt). Same batch shipped: Update & Fresh Walk button, real course names (brain footer + dashboard), static public dashboard, donor neuron-compute leaderboard. ALL logic-only / weight-preserving (no neuron-count or `WEIGHTS_FORMAT_VERSION` change) → box redeploy with `DREAM_KEEP_STATE=1` resumes current weights. Migrated to `docs/FINALIZED.md` (2026-06-21 entries). Takes effect on box redeploy per `deploy/REDEPLOY-NOTES.md`.
 
+**UPDATE 2026-06-23 (shipped on main, commit f0a770c):** The SATURATION HALT (`curriculum.js:8469`) was converted from a walk-killing `return` into an in-place RECTIFY+CONTINUE — it now calls `_rectifySemMotor()` to decorrelate the collapsed basin and resumes the walk instead of stopping. The periodic weight-save now force-writes during the walk so weights persist. Net effect: the walk no longer dies at kindergarten and weights persist across saves. Also shipped the new "Update & Savestart" dashboard button (`POST /update?keep=1`).
+
 ---
 
 ### SBS — student-battery stall blocks the K→PhD walk at cell 1 (Gee 2026-06-21) — WRITE-UP
