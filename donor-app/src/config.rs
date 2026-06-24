@@ -32,6 +32,9 @@ pub struct DonorConfig {
     pub memory: MemoryCap,
     pub headless: bool,
     pub autostart: bool,
+    /// Auto-reconnect after an UNEXPECTED disconnect (default ON). A user Stop /
+    /// Ctrl+C never reconnects; only a dropped/closed/failed connection does.
+    pub auto_restart_on_disconnect: bool,
 }
 
 impl DonorConfig {
@@ -50,6 +53,8 @@ impl DonorConfig {
             // Headless donors autostart by default (no operator to press Start); the GUI
             // defaults to NOT autostarting (safe start — must press ▶ Start).
             autostart: cli.autostart || cli.headless,
+            // Default ON — a dropped donor rejoins on its own. `--no-auto-restart` opts out.
+            auto_restart_on_disconnect: !cli.no_auto_restart,
         })
     }
 
