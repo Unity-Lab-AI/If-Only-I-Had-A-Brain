@@ -368,6 +368,22 @@
             ON = signoffs bypassed + grade auto-fired. OFF = per-subject signoffs required + manual ▶ Start Next Grade click.
           </div>
         </div>
+        <!-- Live single-cell RE-TEACH (admin-only). Surgically retrains one
+             subject/grade cell on the running brain with NO reset — POST
+             /curriculum/forget drops it from passedCells + demotes the subject
+             (no weight wipe), then re-teaches it in the background. Weights
+             persist; watch the Current Training card / milestone for progress. -->
+        <div id="d-ms-reteach" class="admin-only" style="margin-top:10px;padding:8px 10px;background:#0a0a14;border:1px solid #1a1a2a;border-radius:4px;" title="Re-teach ONE cell live without resetting the brain. Drops the cell from passedCells + demotes the subject (no weight wipe), then re-teaches it in the background. Refused while another cell is already teaching.">
+          <div style="font-size:11px;color:#aaa;margin-bottom:6px;">🧠 Re-teach a cell <span style="color:#666;">(live, no reset)</span></div>
+          <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+            <select id="d-reteach-subject" style="background:#111;color:#e0e0e0;border:1px solid #333;border-radius:4px;padding:4px 6px;font-size:11px;">
+              <option value="ela">ela</option><option value="math">math</option><option value="science">science</option><option value="social">social</option><option value="art">art</option><option value="life">life</option>
+            </select>
+            <select id="d-reteach-grade" style="background:#111;color:#e0e0e0;border:1px solid #333;border-radius:4px;padding:4px 6px;font-size:11px;"></select>
+            <button id="btn-reteach" style="background:#0a1f2a;color:#38bdf8;border:1px solid #155;border-radius:4px;padding:5px 10px;font-size:11px;cursor:pointer;">↻ Re-teach</button>
+          </div>
+          <div id="d-reteach-result" style="margin-top:6px;font-size:10px;color:#666;line-height:1.4;">Forgets the cell + re-teaches live. No reset. Refused while another cell is teaching.</div>
+        </div>
         <div id="d-ms-advance" style="margin-top:10px;display:none;"></div>
       </div>
     </div>
@@ -2596,6 +2612,48 @@
           btn.textContent = j.ok ? `✓ saved ${j.slot || ''}` : '✗ failed';
         } catch (err) { log(`Checkpoint failed: ${err?.message || err}`); btn.textContent = '✗ failed'; }
         setTimeout(() => { btn.disabled = false; btn.textContent = orig; }, 2500);
+        refreshMilestone();
+      });
+    })();
+
+    // Live single-cell re-teach → POST /curriculum/forget {subject,grade}.
+    // Server forgets the cell (no weight wipe) then re-teaches it in the
+    // background; we surface the 202/4xx/503 result inline. Grade list mirrors
+    // the server's GRADE_ORDER so the dropdown can't offer an invalid grade.
+    (function wireReteach() {
+      const btn = document.getElementById('btn-reteach');
+      const gradeSel = document.getElementById('d-reteach-grade');
+      const subjSel = document.getElementById('d-reteach-subject');
+      const resultEl = document.getElementById('d-reteach-result');
+      if (!btn || !gradeSel || !subjSel) return;
+      const GRADE_ORDER = ['pre-K','kindergarten','grade1','grade2','grade3','grade4','grade5','grade6','grade7','grade8','grade9','grade10','grade11','grade12','college1','college2','college3','college4','grad','phd'];
+      gradeSel.innerHTML = GRADE_ORDER.map(g => `<option value="${g}">${g}</option>`).join('');
+      gradeSel.value = 'grade1';
+      btn.addEventListener('click', async () => {
+        const subject = subjSel.value, grade = gradeSel.value;
+        btn.disabled = true; const orig = btn.textContent; btn.textContent = '⏳ requesting...';
+        if (resultEl) { resultEl.style.color = '#888'; resultEl.textContent = `forgetting + re-teaching ${subject}/${grade}…`; }
+        try {
+          const r = await fetch(adminApi('curriculum/forget'), {
+            method: 'POST', cache: 'no-store',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ subject, grade }),
+          });
+          const j = await r.json().catch(() => ({}));
+          log(`Re-teach ${subject}/${grade} → ${r.status} ${JSON.stringify(j)}`);
+          if (r.status === 202 && j.ok) {
+            if (resultEl) { resultEl.style.color = '#22c55e'; resultEl.textContent = `✓ re-teaching ${subject}/${grade} live (no reset) — watch Current Training.`; }
+            btn.textContent = '✓ started';
+          } else {
+            if (resultEl) { resultEl.style.color = '#ef4444'; resultEl.textContent = `✗ ${j.error || ('HTTP ' + r.status)}${j.teaching ? ` (busy: ${j.teaching})` : ''}`; }
+            btn.textContent = '✗ ' + r.status;
+          }
+        } catch (err) {
+          log(`Re-teach failed: ${err?.message || err}`);
+          if (resultEl) { resultEl.style.color = '#ef4444'; resultEl.textContent = `✗ ${err?.message || err}`; }
+          btn.textContent = '✗ failed';
+        }
+        setTimeout(() => { btn.disabled = false; btn.textContent = orig; }, 3000);
         refreshMilestone();
       });
     })();

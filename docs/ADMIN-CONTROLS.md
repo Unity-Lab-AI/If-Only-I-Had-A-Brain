@@ -149,3 +149,38 @@ previous checkpoint was INCOMPATIBLE"** banner (from the persisted
   lever that makes a format change refuse stale checkpoints instead of loading garbage.
   Routine changes (telemetry, UI, donor lane) must NOT bump it (it forces a fresh start
   that discards trained weights).
+
+## Live single-cell re-teach (no reset)
+
+Retrain ONE `(subject, grade)` cell on the **running** brain without wiping anything.
+Useful when a cell force-advanced or taught poorly and you want to redo just that one
+without a full fresh walk (which resets all weights).
+
+| Control | Endpoint | What it does |
+|---|---|---|
+| **🧠 Re-teach a cell** | `POST /curriculum/forget {subject,grade}` | `forgetCell()` drops the cell from `passedCells` + demotes the subject (**no weight wipe**), then `runSubjectGrade()` re-teaches it **in the background** |
+
+**Why forget-then-teach:** `runSubjectGrade` *skips* a cell that's still in `passedCells`
+(it reports a synthetic pass on resume). `forgetCell` removes that mark so the re-run
+actually teaches. Weights are never reset — only the one cell's pass-flag + the
+subject's top grade are rolled back, and the brain re-teaches in place.
+
+**Semantics:**
+- **202 Accepted** — cell forgotten, re-teach started in the background. Watch the
+  **Current Training** card / `GET /milestone`; weights `saveWeights({force})` on
+  completion. A cell teach takes minutes, so the request returns immediately.
+- **409** — refused because a cell is already teaching (`cortex._currentCellKey`) or a
+  prior re-teach is still running. Retry when idle (two teach passes must never
+  interleave on one cluster).
+- **400** — unknown subject/grade (validated against the curriculum's `SUBJECTS` /
+  `GRADE_ORDER`; the response lists the valid values).
+- **503** — the brain hasn't begun its walk yet (no cached corpora to teach from).
+
+Loopback-gated like every other brain-mutating endpoint; the dashboard button is
+**admin-only** (hidden in viewer/public mode). The taught-vs-held **learning-coverage
+ledger** (`curriculum.js`, logs `⚠ HELD (not taught)` per cell + `cluster._cellLedger`)
+ships alongside, so you can see which cells actually taught vs force-advanced.
+
+> Deploy note: this is a backend addition — it reaches the live brain only after an
+> **overlay redeploy + restart** (use **⬆ Update & Savestart**, `DREAM_KEEP_STATE=1`
+> resumes the trained weights — no wipe).
