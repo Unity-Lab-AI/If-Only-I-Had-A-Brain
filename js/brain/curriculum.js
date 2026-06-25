@@ -8692,6 +8692,11 @@ export class Curriculum {
               const windowSize = this._semMotorSatHistory.length;
               if (health && health.saturated) {
                 this._semMotorSaturationStreak = (this._semMotorSaturationStreak || 0) + 1;
+                // Held-back HB.4 — collapsed/saturated sem→motor is meaningless
+                // noise; damp the coherence factor so the (default-OFF) noise gate
+                // stops the surprise boost from reinforcing it. No effect unless
+                // DREAM_NOISE_GATE=1.
+                if (cluster) cluster._noiseSuppressFactor = 0.2;
                 const meanCosTag = typeof health.meanCos === 'number' ? `mean-cos=${health.meanCos.toFixed(3)} ` : '';
                 const ratioTag = health.ratio > 0 ? `max/mean=${health.ratio.toFixed(2)} ` : '';
                 console.warn(`[Curriculum] ⚠ saturation detected post-${_cellKeyHealth} (streak ${this._semMotorSaturationStreak} · window ${recentSat}/${windowSize}-of-5) — ${meanCosTag}${ratioTag}source=${health.source} — RECTIFYING in place (NO halt — operator directive: no stalling at the kindergarten gate).`);
@@ -8735,6 +8740,10 @@ export class Curriculum {
                 }
               } else {
                 this._semMotorSaturationStreak = 0;
+                // Held-back HB.4 — clean/coherent output: full coherence factor so
+                // the noise gate preserves surprise-driven learning (exploration
+                // that resolves is GOOD). No effect unless DREAM_NOISE_GATE=1.
+                if (cluster) cluster._noiseSuppressFactor = 1.0;
                 // Window history is NOT reset on clean cell — flapping
                 // pattern needs to surface. Window only ages out via
                 // the cap-5 shift above. Pure clean-history path
@@ -8768,6 +8777,14 @@ export class Curriculum {
       }
 
       if (!allPassedThisGrade) {
+        // HELD-BACK remediation (Sponge) — BEFORE force-advance, drill THIS grade's
+        // failed cells through the escalating ladder (re-teach → +sleep →
+        // +inhibition → mark-failed-and-continue). Cells that recover get marked
+        // passed by runSubjectGrade; cells that exhaust the ladder are marked failed
+        // in the ledger and have their grade pointer advanced anyway (mastery-gated,
+        // but never blocks the walk). The force-advance block below then skips any
+        // cell now at-grade (currentIdx >= i). DREAM_HELD_BACK=0 opts out.
+        try { await this._remediateGradeFailures(grade, i, opts); } catch (err) { this._hb(`[Curriculum] HELD-BACK remediation error (non-fatal): ${err?.message || err}`); }
         // 114.19fg.Tier10 — Capability-gated force-advance. Prior
         // implementation auto-promoted any cell with ≥1 teach phase
         // fired regardless of whether the brain actually emitted
@@ -8927,6 +8944,125 @@ export class Curriculum {
     }
     this._hb(`[Curriculum] forgot ${cellKey} — will re-teach on next curriculum pass`);
     return true;
+  }
+
+  /**
+   * Forget + re-teach ONE cell once. Returns true if the re-teach passed the
+   * gate. `forgetCell` drops the cell from passedCells so runSubjectGrade
+   * actually re-teaches (it would otherwise skip an already-passed cell), and
+   * runSubjectGrade self-marks grades + passedCells on a genuine pass. Used as
+   * a single rung of the held-back remediation ladder. Errors are non-fatal —
+   * a thrown re-teach counts as a failed rung, never crashes the walk.
+   */
+  async _reteachOnce(subject, grade, opts = {}) {
+    try {
+      this.forgetCell(subject, grade);
+      const res = await this.runSubjectGrade(subject, grade, null, opts);
+      return !!(res && res.pass);
+    } catch (err) {
+      this._hb(`[Curriculum] HELD-BACK re-teach ${subject}/${grade} error (non-fatal): ${err?.message || err}`);
+      return false;
+    }
+  }
+
+  /**
+   * HELD-BACK remediation (Sponge). Mastery-based promotion: a grade isn't truly
+   * "done" just because every cell was attempted — cells that FAILED get drilled
+   * through a bounded, escalating ladder BEFORE the walk advances. Run once per
+   * grade, after the grade's cells are all attempted, targeting only the fails.
+   *
+   * Per failed cell, the ladder (each rung = one forget+re-teach):
+   *   1. plain re-teach
+   *   2. + extra targeted consolidation sleep (let noise decay, signal consolidate)
+   *   3. + de-saturate (rectify) and raise inhibition (_remediationInhibition) to
+   *      force the basin to peak — exploration already failed, so cool it down
+   *   terminus: still failing → MARK FAILED and CONTINUE (advance the grade pointer,
+   *             record the deficiency in the ledger; NOT marked mastered). Never
+   *             blocks the walk, never pings the operator.
+   *
+   * "Failure" already includes NOISY/degenerate output — runSubjectGrade's gate
+   * (_gradeAdvanceHealthGate) fails on saturation + mode-collapse, so a noisy cell
+   * is a failed cell here. Default-on; DREAM_HELD_BACK=0 opts out.
+   *
+   * @returns {{remediated: Array, heldBack: string[]}}
+   */
+  async _remediateGradeFailures(grade, gradeIdx, opts = {}) {
+    const cluster = this.cluster;
+    if (!cluster) return { remediated: [], heldBack: [] };
+    if (typeof process !== 'undefined' && process.env && process.env.DREAM_HELD_BACK === '0') {
+      return { remediated: [], heldBack: [] };
+    }
+    const subjects = (typeof subjectsForGrade === 'function') ? subjectsForGrade(grade) : SUBJECTS;
+    if (!cluster._cellLedger) cluster._cellLedger = {};
+    const remediated = [];
+    const heldBack = [];
+
+    // Collect this grade's genuine LEARNING fails: taught cells not yet passed.
+    // Skip (a) cells already at/above this grade (true pass earlier), (b) HELD
+    // cells with no runner wired (re-teaching can't fix a curriculum gap), and
+    // (c) cells where no teach phase ever fired (nothing to re-teach).
+    const targets = [];
+    for (const subject of subjects) {
+      const currentIdx = GRADE_ORDER.indexOf((cluster.grades && cluster.grades[subject]) || 'pre-K');
+      if (currentIdx >= gradeIdx) continue;
+      const cellKey = `${subject}/${grade}`;
+      const ledger = cluster._cellLedger[cellKey];
+      if (ledger && ledger.held) continue;
+      const pp = Array.isArray(cluster.passedPhases) ? cluster.passedPhases : [];
+      const phasesRan = pp.filter((k) => k && k.startsWith(`${cellKey}:`)).length;
+      if (phasesRan < 1) continue;
+      targets.push({ subject, cellKey });
+    }
+    if (targets.length === 0) return { remediated, heldBack };
+
+    this._hb(`[Curriculum] 🔁 HELD-BACK — '${grade}' finished with ${targets.length} failed cell(s): ${targets.map((t) => t.cellKey).join(', ')}. Drilling each through the remediation ladder before advancing (no reset).`);
+
+    for (const { subject, cellKey } of targets) {
+      let passedRound = 0;
+      // Rung 1 — plain re-teach.
+      if (await this._reteachOnce(subject, grade, opts)) passedRound = 1;
+      // Rung 2 — extra targeted consolidation sleep, then re-teach.
+      if (!passedRound) {
+        this._hb(`[Curriculum] 🔁 HELD-BACK rung 2 (${cellKey}) — extra consolidation sleep, then re-teach.`);
+        try { await this._dreamWindow({ minMs: 90_000, settleMs: 5_000 }); } catch { /* non-fatal */ }
+        if (await this._reteachOnce(subject, grade, opts)) passedRound = 2;
+      }
+      // Rung 3 — de-saturate + raise inhibition (cool the exploration temperature),
+      // then re-teach. Free exploration already failed twice, so force convergence.
+      if (!passedRound) {
+        this._hb(`[Curriculum] 🔁 HELD-BACK rung 3 (${cellKey}) — de-saturate + raise inhibition, then re-teach.`);
+        try { if (typeof this._rectifySemMotor === 'function') this._rectifySemMotor(cellKey); } catch { /* non-fatal */ }
+        cluster._remediationInhibition = true;
+        try {
+          if (await this._reteachOnce(subject, grade, opts)) passedRound = 3;
+        } finally {
+          cluster._remediationInhibition = false;
+        }
+      }
+      // Ledger + terminus.
+      const led = cluster._cellLedger[cellKey] || {};
+      led.ts = Date.now();
+      if (passedRound > 0) {
+        led.heldBackPassedRound = passedRound;
+        led.heldBackFailed = false;
+        cluster._cellLedger[cellKey] = led;
+        remediated.push({ cellKey, round: passedRound });
+        this._hb(`[Curriculum] ✓ HELD-BACK ${cellKey} — recovered on rung ${passedRound}; marked passed.`);
+      } else {
+        // Terminus: ladder exhausted. Per the held-back design — mark FAILED and
+        // CONTINUE. Advance the grade pointer so the walk moves on; do NOT push
+        // passedCells (not mastered — recorded as a carried-forward deficiency).
+        led.heldBackFailed = true;
+        led.heldBackPassedRound = 0;
+        cluster._cellLedger[cellKey] = led;
+        if (cluster.grades) cluster.grades[subject] = grade;
+        heldBack.push(cellKey);
+        this._hb(`[Curriculum] ⤵ HELD-BACK ${cellKey} — still failing after the full ladder. Marked FAILED and progressing anyway (recorded deficiency; not mastered).`);
+      }
+    }
+
+    this._hb(`[Curriculum] 🔁 HELD-BACK '${grade}' done — ${remediated.length} recovered, ${heldBack.length} carried forward failed.`);
+    return { remediated, heldBack };
   }
 
   /**
