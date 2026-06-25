@@ -890,3 +890,17 @@ Gates the walk (#32) — empty/partial academic grades = an incomplete year; un-
 - [ ] **DA.11 — Leaderboard tab.** *"a "leaderboard" tab so people can view the leaderboard stats"* — full leaderboard view (reads the same `/public-state.json` leaderboard the browser/site use; respects the LB.* name-dedup keying).
 - [ ] **DA.12 — About tab.** *"an "about" tab for information about the application."*
 - [ ] **DA.13 — Theme: dark + readable + a little color, organic-meets-tech.** *"keep the dark-theme for the application, but, we need to make text more readable, and add a little bit of color so its not all grey scale. Something that looks organic but also technological at the same time, basically showing off a bit more of the brain and tech mashup going on within the project."* — tune egui visuals: keep dark base, raise text contrast, introduce an accent palette (organic + technological), apply across all tabs.
+
+## Live single-cell re-teach — POST /curriculum/forget + dashboard button (feature/gee-work)
+
+> **Gee's Claude (verbatim handoff):**
+> *"There IS a forgetCell(subject, grade) method in the curriculum code (demotes just that subject + drops the one cell from passedCells, no weight wipe) — but it is not wired to any admin endpoint… So today there's no dashboard/HTTP way to trigger a single-cell re-teach on the running brain."*
+> *"A POST /curriculum/forget {subject,grade} (admin/loopback-gated) → calls curriculum.forgetCell(subject, grade) then re-runs that one cell via runSubjectGrade on the live cluster. No weight reset, surgical, in-place."*
+> *"Want me to build that live "re-teach this cell" endpoint (+ a dashboard button) so you can surgically retrain math/grade1 — or anything else — without ever resetting? It's a clean, low-risk addition."*
+
+**Context:** `forgetCell` (`curriculum.js:8911`) drops a cell from `passedCells` + demotes the subject, no weight wipe. `runSubjectGrade` (`curriculum.js:7439`) SKIPS teaching if the cell is still in `passedCells` (line 7471) — so forget-then-run is what makes a live re-teach actually teach. The taught-vs-held LEARNING-COVERAGE LEDGER (`curriculum.js:8182`, `⚠ HELD (not taught)`) is ALREADY present on this branch (came in via the df7 merge), so a redeploy from here ships per-cell teach visibility too.
+
+- [x] **GW.1 — POST /curriculum/forget {subject,grade} (IN PROGRESS).** Loopback-gated (mirrors `/grade-advance`). Validates subject ∈ curriculum SUBJECTS + grade ∈ GRADE_ORDER synchronously; 409 if a cell is mid-teach (`cortex._currentCellKey`) or a live re-teach is already running; 503 if no cached corpora (`curriculum._lastCtx`) yet. On accept: `forgetCell()` then `runSubjectGrade()` in the BACKGROUND (a cell teach takes minutes — respond 202, don't hold the socket), `saveWeights({force})` on completion. No weight reset.
+- [x] **GW.2 — capture SUBJECTS/GRADE_ORDER on the brain (IN PROGRESS).** Stash `curriculumMod.SUBJECTS` + `GRADE_ORDER` onto the brain at curriculum construction so the endpoint can validate input without re-importing.
+- [x] **GW.3 — dashboard "Re-teach a cell" control (IN PROGRESS).** Admin-only (force-hidden in public mode like the other power buttons): subject dropdown + grade dropdown + button → POST /curriculum/forget; shows the 202/409/503 result. Watch the existing "Current Training" card + /milestone for the re-teach progress.
+- [x] **GW.4 — docs (IN PROGRESS).** `docs/ADMIN-CONTROLS.md` documents the endpoint + button + the no-reset guarantee + the busy/again semantics.

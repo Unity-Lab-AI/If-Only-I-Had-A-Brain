@@ -1797,6 +1797,12 @@ class ServerBrain {
         this.dictionary,
         this.languageCortex,
       );
+      // Stash the curriculum's subject + grade-order vocab so privileged
+      // endpoints (e.g. POST /curriculum/forget — live single-cell re-teach)
+      // can validate {subject,grade} input synchronously without re-importing
+      // the module from the HTTP handler scope.
+      this._curriculumSubjects = Array.isArray(curriculumMod.SUBJECTS) ? curriculumMod.SUBJECTS.slice() : null;
+      this._curriculumGradeOrder = Array.isArray(curriculumMod.GRADE_ORDER) ? curriculumMod.GRADE_ORDER.slice() : null;
       // wire live dictionary API onto cluster + curriculum.
       // Server-side cluster gets cluster.lookupDefinition(word) async,
       // cluster.lookupDefinitionSync(word) for instant cache reads, and
@@ -5335,6 +5341,111 @@ const httpServer = http.createServer((req, res) => {
         console.log(`[Brain] grade-advance recorded: ${from} → ${to} (operator localhost)`);
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ ok: true, advancedFrom: from, advancedTo: to }));
+      } catch (err) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: err.message }));
+      }
+    });
+    return;
+  }
+
+  // Live single-cell RE-TEACH endpoint. Surgically retrains ONE (subject,grade)
+  // cell on the running brain WITHOUT a reset: forgetCell() drops the cell from
+  // passedCells + demotes the subject (no weight wipe), then runSubjectGrade()
+  // re-teaches it (it would otherwise SKIP a cell still marked passed). The teach
+  // takes minutes, so we forget + respond 202 immediately and run the re-teach in
+  // the BACKGROUND, persisting weights on completion. Loopback-gated like every
+  // other brain-mutating endpoint; refuses while a cell is already teaching so two
+  // teach passes never interleave on the same cluster.
+  if (req.url === '/curriculum/forget' && req.method === 'POST') {
+    if (!requireLoopback(req, res, '/curriculum/forget')) return;
+    const chunks = [];
+    let total = 0;
+    req.on('data', (chunk) => {
+      total += chunk.length;
+      if (total > 10000) { req.destroy(); return; }
+      chunks.push(chunk);
+    });
+    req.on('end', () => {
+      try {
+        const parsed = JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}');
+        const subject = String(parsed.subject || '').trim().toLowerCase();
+        const grade = String(parsed.grade || '').trim();
+        const curriculum = brain.curriculum;
+        const cortex = brain.cortexCluster;
+        if (!curriculum || !cortex) {
+          res.writeHead(503, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'curriculum/cortex not initialized' }));
+          return;
+        }
+        if (typeof curriculum.forgetCell !== 'function' || typeof curriculum.runSubjectGrade !== 'function') {
+          res.writeHead(501, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'live re-teach not supported by this build' }));
+          return;
+        }
+        // Validate input synchronously — we kick the teach off in the background,
+        // so a bad subject/grade must be rejected NOW, not silently fail later.
+        const subjects = brain._curriculumSubjects;
+        const gradeOrder = brain._curriculumGradeOrder;
+        if (Array.isArray(subjects) && !subjects.includes(subject)) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: `unknown subject '${subject}'`, validSubjects: subjects }));
+          return;
+        }
+        if (Array.isArray(gradeOrder) && !gradeOrder.includes(grade)) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: `unknown grade '${grade}'`, validGrades: gradeOrder }));
+          return;
+        }
+        if (!subject || !grade) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'subject and grade are required' }));
+          return;
+        }
+        // Concurrency guard — never interleave two teach passes on one cluster.
+        if (cortex._currentCellKey) {
+          res.writeHead(409, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'a cell is currently teaching — retry when idle', teaching: cortex._currentCellKey }));
+          return;
+        }
+        if (brain._liveReteachActive) {
+          res.writeHead(409, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'a live re-teach is already running', reteaching: brain._liveReteachActive }));
+          return;
+        }
+        // runSubjectGrade(null corpora) falls back to curriculum._lastCtx — if the
+        // brain never started its walk that cache is empty and there's nothing to
+        // teach from.
+        if (!curriculum._lastCtx) {
+          res.writeHead(503, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'curriculum corpora not initialized yet (brain has not begun its walk) — cannot re-teach' }));
+          return;
+        }
+        const cellKey = `${subject}/${grade}`;
+        const forgot = curriculum.forgetCell(subject, grade);
+        brain._liveReteachActive = cellKey;
+        console.log(`[Brain] /curriculum/forget — live re-teach requested for ${cellKey} (forgot=${forgot}); teaching in background, no reset.`);
+        res.writeHead(202, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          ok: true,
+          accepted: true,
+          subject,
+          grade,
+          forgot,
+          note: 'cell forgotten (no weight reset); live re-teach started in background — watch the Current Training card / GET /milestone. Weights persist on completion.',
+        }));
+        // Background re-teach — long-running; runs after the response is sent.
+        (async () => {
+          try {
+            const result = await curriculum.runSubjectGrade(subject, grade, null, {});
+            console.log(`[Brain] live re-teach ${cellKey} DONE — pass=${result?.pass} reason=${result?.reason || 'n/a'}`);
+            brain.saveWeights({ force: true, trigger: `live-reteach:${cellKey}` });
+          } catch (err) {
+            console.warn(`[Brain] live re-teach ${cellKey} FAILED: ${err?.message || err}`);
+          } finally {
+            brain._liveReteachActive = null;
+          }
+        })();
       } catch (err) {
         res.writeHead(500, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: err.message }));
