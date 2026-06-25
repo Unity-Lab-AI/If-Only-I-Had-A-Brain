@@ -5,6 +5,24 @@
 
 ---
 
+## 2026-06-24 — DF.7 multi-GPU fan-out (feature branch — make idle donor GPUs actually compute)
+
+### Gee verbatim per LAW #0
+
+> *"YES completely!!!!! YES!!!! then cascade push and give me write up"* (build the DF.7 compute fan-out so the idle replica GPUs crunch instead of just holding a replica) · *"make a new feature branch no push to main"* · *"and on this new feature branch merge in the social image and description feature branch if not already in the new feature branch u make"*
+
+⚠ **On `feature/df7-multigpu-fanout` ONLY — NOT merged to develop/main.** Branch = `main` + merged `feature/playwright-social-images` + this work.
+
+**Diagnosis (live):** 4 donors connected (34.4 GB), but only the `★` primary (a 2 GB-cap card) computed at 1.55 Gn/s while a 16 GB 4070 Ti SUPER + 10 GB 3080 + 2060 sat at **0.00 Gn/s**. Confirmed in code: the CPU CSR is the authoritative master and GPUs are fire-and-forget **shadows with NO weight-readback path**; almost all teach/probe work is **bound** to the primary's resident GPU spike buffers, and `_gpuParallelMap` was only ever called for replica-sync — never for compute. So the standbys held a full replica but were handed no work. Not a wait-state; an unbuilt fan-out.
+
+**Shipped — all behind `DREAM_DF7_FANOUT` (default OFF = today's EXACT single-primary behavior; flip to `1` to enable, roll back by unsetting — no weight-format/restart-contract change):**
+- **`server/brain-server/gpu.js`** — `_df7Fanout()` switch; `_donorStrength()`/`_strongestLiveDonor()` (VRAM-ranked); `_mirrorCortexWriteToReplicas()` mirrors every cortex resident-buffer write (`write_spike_slice` / `write_current_slice` / `clear_spike_region`) to all replicas so their resident state matches the primary (per-socket FIFO preserves clear→write→propagate order) — the prerequisite the DF.7 notes called out; `gpuSparsePropagateBound()` round-robins across the pool (`_nextPoolDonor`) so the bound forward-propagate (the student-battery / emission probe path) actually runs on the idle GPUs.
+- **`server/brain-server.js`** — `gpu_register` promotes a materially-stronger newcomer to PRIMARY (so the 16 GB card does the work, not the 2 GB one; re-uploads via the failover path, old primary becomes a replica); failover promotes the **strongest** live standby instead of first-alive. Both flag-gated; default OFF = first-come.
+
+**Honest scope:** this fans out the **bound propagate** (stateless once resident state is mirrored) + fixes primary selection — that lights up the idle GPUs on the parallelizable probe/emission path. It does NOT data-parallel the **teach Hebbian** (that needs GPU→CPU weight-delta readback the donor protocol doesn't have — a deeper future build) or the sequential main tick (stateful, can't split without sharding). Verification is LIVE-ONLY (no toolchain/donors here): `node --check` clean on both files; correctness must be confirmed on the deploy with the flag on — watch idle GPUs' Gn/s climb AND gate probes still pass; if probes go wrong, unset the flag + restart.
+
+---
+
 ## 2026-06-24 — master Sponge runbook + pre-wire donor download → donor-v0.2.0
 
 ### Gee verbatim per LAW #0
@@ -84,6 +102,27 @@ Other review findings (NOT blockers, logged for follow-up): `readyAndWaiting` ru
 - **`deploy/REDEPLOY-NOTES.md`** — box-admin handoff section for both changes; documents that NO one-time box change is needed for savestart-resume (the unit already sets `DREAM_KEEP_STATE=1`), and that after this batch deploys once, routine code updates are self-serve from the dashboard (no Sponge) except the first deploy / unit changes / button prerequisites.
 
 **Env knobs (optional, own-line in the unit):** `DREAM_BC_RECTIFY_DECAY=0.5` · `DREAM_BC_RECTIFY_NORM=0.6`. **Verification:** ESM `import()` clean (curriculum.js), `node --check` clean (brain-server.js), `bash -n` clean (self-update.sh), bundle rebuilt (3.8mb, carries `_rectifySemMotor`, old halt-return gone). Backend pieces take effect on box redeploy (overlay + `systemctl restart`, `DREAM_KEEP_STATE=1` resumes); frontend auto-deploys on main.
+
+---
+
+## 2026-06-23 — Per-page social images + custom social description per page
+
+### Gee verbatim per LAW #0
+
+> *"need u use a callage of examples in playwrite for the  for social images for all pages with each page and url having a custom social description and all use their own image u make"* · *"not callage tho just take 1 image of top of each page for that pages social image"* · *"for admin page u pay want to use my forgejo access as its keyed to that remember"* · *"so have to use my browser i think"* · *"us current opened browser and fullscreen it with some kind of vooodoo if opoened there it will auto log in"*
+
+Every page gets its OWN top-of-page screenshot as its social card (NOT a collage, no shared `og-image`) + its OWN custom social description, all absolute on the lab base **`https://if-only-i-had-a-brain.git.unityailab.com`** (Gee's base-URL pick) so FB/Twitter/LinkedIn scrapers resolve.
+
+- **`scripts/social-shots.mjs`** (new) — Playwright generator. Built-in static HTTP server (compute.html refuses `file://`), chromium run **headed** so the brain pages get a real WebGPU adapter off the GPU (headless → the "WebGPU Required" wall), 1200×630 top-of-page screenshot per page → `assets/social/<name>.png`. Modes: default (9 public pages), `--only=NAME`, `--admin-only` (drives Gee's authenticated browser over CDP for the live admin shot), `--admin-local` (admin layout from the local server). CDP default `http://127.0.0.1:9222` (was `localhost` → IPv6 `::1` → ECONNREFUSED — fixed).
+- **`assets/social/*.png`** (10 new) — index, brain-equations, compute, docs, dashboard-public, gpu-configure, legend, unity-guide, webgpu-prep (public) + dashboard (admin layout). ~50–190 KB each.
+- **`index.html` + 9 `html/*.html`** — per-page `og:image` / `twitter:image` / `og:url` rewritten absolute on the lab base, each → its OWN image; custom `og:description` / `twitter:description` / `meta description` per page. Updated the 4 pages with existing og blocks (index, brain-equations, unity-guide, dashboard incl. adding its missing `og:url`); added full og/twitter blocks to the 6 bare pages (compute, gpu-configure, webgpu-prep, docs, legend, dashboard-public). Zero stale `unity-lab-ai.github.io` / shared `assets/og-image.png` refs remain.
+- **`package.json`** (new, root) — playwright devDep + `social:shots` / `social:shots:admin` npm scripts; deploy-excluded.
+- **`.forgejo/workflows/deploy.yml`** — frontend rsync excludes root `package*.json`; notes `assets/social/*.png` ships.
+- **`assets/README.md`** — rewritten for the per-page system (per-page table, wiring, regeneration via `npm run social:shots`, the admin CDP flow, deploy note). **`README.md`** — Code-layout table gains `assets/social/` + `social-shots.mjs` rows + per-directory rationale line.
+
+`node --check scripts/social-shots.mjs` clean. All 10 images verified by eye (real hero/content, not blank/modal). Branch `feature/playwright-social-images` (`1899bbb`) pushed to `if-only`.
+
+**Open (optional):** admin `dashboard.png` is the LAYOUT (no live data) — the CDP-through-Gee's-Chrome live shot refused because an already-running Chrome ate the `--remote-debugging-port` flag (nothing bound on 9222). Swap to live data anytime: fully quit Chrome, relaunch with the flag, `npm run social:shots:admin`.
 
 ---
 
