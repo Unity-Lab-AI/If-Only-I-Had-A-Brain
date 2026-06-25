@@ -646,6 +646,52 @@ const SERVER_GPU_MIXIN = {
     return donors[this._poolRR];
   },
 
+  // ── DF.7 multi-GPU fan-out (EXPERIMENTAL · env-gated) ──────────────────────
+  // Master switch. Default OFF = today's EXACT single-primary behavior. ON
+  // ('1') enables: strongest-donor primary promotion + cortex resident-write
+  // mirroring to replicas + round-robin of the bound forward-propagate, so the
+  // idle replica GPUs actually compute instead of just holding a replica.
+  // ⚠ Validated only with live donors — flip on the deploy, watch the idle
+  // GPUs' Gn/s climb AND that gate probes still pass; roll back by unsetting the
+  // env (no weight-format change, no restart contract change).
+  _df7Fanout() {
+    return process.env.DREAM_DF7_FANOUT === '1';
+  },
+
+  // DF.7 — donor strength for primary selection: VRAM MB (captured per donor at
+  // gpu_register as gpuVramMB). Bigger card = stronger = should be primary.
+  _donorStrength(ws) {
+    const c = (this.clients && this.clients.get) ? this.clients.get(ws) : null;
+    return c ? Number(c.gpuVramMB || 0) : 0;
+  },
+
+  // DF.7 — strongest live donor (optionally excluding one ws, e.g. the one
+  // that's leaving during failover).
+  _strongestLiveDonor(exclude = null) {
+    let best = null, bestScore = -1;
+    for (const ws of this._livePoolDonors()) {
+      if (ws === exclude) continue;
+      const s = this._donorStrength(ws);
+      if (s > bestScore) { bestScore = s; best = ws; }
+    }
+    return best;
+  },
+
+  // DF.7 — mirror a cortex resident-buffer write (spike / current / clear) to
+  // every REPLICA (not the primary) so a replica's resident state matches the
+  // primary's — the prerequisite for a bound propagate to read correct state
+  // when it's dispatched to that replica. Per-socket FIFO preserves the
+  // clear→write→propagate ordering on each replica. No-op unless the fan-out
+  // switch is ON. Best effort (fire-and-forget; a missed replica re-converges
+  // on the periodic _rebroadcastMasterToReplicas).
+  _mirrorCortexWriteToReplicas(json) {
+    if (!this._df7Fanout()) return;
+    for (const ws of this._livePoolDonors()) {
+      if (ws === this._gpuClient) continue;
+      try { if (ws.readyState === 1) ws.send(json); } catch { /* replica dropped — ignore */ }
+    }
+  },
+
   /**
    * DF.7 — data-parallel fan-out primitive. Distributes INDEPENDENT work units
    * round-robin across every live donor GPU and awaits them all. This is the
@@ -1437,7 +1483,13 @@ const SERVER_GPU_MIXIN = {
    * same as standalone path (shape = dstRegion size).
    */
   async gpuSparsePropagateBound(name) {
-    return this.gpuSparsePropagate(name, new Uint32Array(0));
+    // DF.7 — when fan-out is ON, spread the bound propagate round-robin across
+    // the pool so the idle replica GPUs compute (their resident state is kept
+    // current by _mirrorCortexWriteToReplicas). Default: targetWs=null →
+    // primary (today's exact behavior). Result routing is by reqId, so an ACK
+    // from any donor resolves correctly.
+    const target = this._df7Fanout() ? this._nextPoolDonor() : null;
+    return this.gpuSparsePropagate(name, new Uint32Array(0), target);
   },
 
   /**
@@ -1458,12 +1510,14 @@ const SERVER_GPU_MIXIN = {
       : (sparseIndices && typeof sparseIndices.length === 'number')
         ? Array.from(sparseIndices)
         : [];
-    this._gpuClient.send(JSON.stringify({
+    const json = JSON.stringify({
       type: 'write_spike_slice',
       clusterName: 'cortex',
       regionName,
       sparseIndices: arr,
-    }));
+    });
+    this._gpuClient.send(json);
+    this._mirrorCortexWriteToReplicas(json);   // DF.7 — keep replicas' resident state in sync (flag-gated)
   },
 
   /**
@@ -1487,14 +1541,16 @@ const SERVER_GPU_MIXIN = {
     const idx = Array.isArray(sparseIndices) ? sparseIndices : Array.from(sparseIndices || []);
     const val = Array.isArray(sparseValues)  ? sparseValues  : Array.from(sparseValues || []);
     if (idx.length === 0 || idx.length !== val.length) return;
-    this._gpuClient.send(JSON.stringify({
+    const json = JSON.stringify({
       type: 'write_current_slice',
       clusterName: 'cortex',
       regionName,
       sparseIndices: idx,
       sparseValues: val,
       psi: this.psi ?? 0,
-    }));
+    });
+    this._gpuClient.send(json);
+    this._mirrorCortexWriteToReplicas(json);   // DF.7 — mirror to replicas (flag-gated)
   },
 
   /**
@@ -1508,11 +1564,13 @@ const SERVER_GPU_MIXIN = {
    */
   _gpuClearCortexSpikeRegion(regionName) {
     if (!this._gpuClient || this._gpuClient.readyState !== 1) return;
-    this._gpuClient.send(JSON.stringify({
+    const json = JSON.stringify({
       type: 'clear_spike_region',
       clusterName: 'cortex',
       regionName,
-    }));
+    });
+    this._gpuClient.send(json);
+    this._mirrorCortexWriteToReplicas(json);   // DF.7 — mirror to replicas (flag-gated)
   },
 
   /**
