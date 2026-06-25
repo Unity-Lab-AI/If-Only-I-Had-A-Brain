@@ -5,6 +5,22 @@
 
 ---
 
+## 2026-06-24 — Native donor-app GUI overhaul (Sponge spec DA.1–DA.13) — feature branch
+
+### Sponge ask (verbatim, captured in TODO.md)
+
+> *"the application for the native doner app … I do want to see what each GPU … is doing work … open to 1280 x 720 … resizable … title should say "Unity Brain Donor" … should NOT say unkown on linux … icon … colorized custom SVG graphic of a brain, with a GPU graphic inside … tabs, the main tab "Donate" … "Settings" … "dashboard" … "leaderboard" … "about" … Live vs Local radio … green / red … verbose … keep the dark-theme … add a little bit of color … organic but also technological"*
+
+Full tabbed redesign of the native Rust/egui donor (`donor-app/src/gui.rs` rewritten; `Cargo.toml` v0.2.0→0.3.0). On `feature/donor-gui-overhaul`.
+
+**DONE:** DA.1 (1280×720 + min-size + resizable), DA.2 (window/app name + title "Unity Brain Donor"), DA.3 (`with_app_id` so Linux/Wayland shows the name, not "unknown"), DA.4 (procedural brain+GPU RGBA icon built in code — no asset/dep), DA.6 (Donate/Settings/Dashboard/Leaderboard/About tab bar), DA.7 (centered "Brain Donor" + subtitle + how-it-works link + hard-coded server with **Live/Local radio** + bigger leaderboard name & helper + read-only GPU summary + **green Start / red Stop**), DA.8 (verbose state — idle / connecting / reconnecting / registered / teaching-task / compute-task), DA.9 (Settings tab: GPU selectors + util + auto-reconnect + server incl. Custom), DA.12 (About), DA.13 (dark organic-tech theme — violet accent, brighter text, warm-dark panels).
+
+**PARTIAL (best-available now; the live-number versions need infra I deliberately did NOT add blind):** DA.5 (per-GPU rows show each enabled card + % share + activity dot — live per-GPU *throughput* needs a per-device counter in `compute.rs MultiEngine`, left untouched), DA.10 / DA.11 (Dashboard + Leaderboard tabs render THIS machine's live stats + link to the full web views — embedding the brain-wide public-state poll needs an HTTP client, not added to avoid the cross-compile-risky dep the Cargo notes warn about).
+
+**⚠ NOT compile-verified** (no Rust toolchain on the dev box) — written carefully by inspection against egui 0.31; Sponge's `cargo build --release` (± `--target x86_64-pc-windows-gnu`) compiles it and surfaces any API nit. Release as **`donor-v0.3.0`** (download links stay at v0.2.0 until that release is cut). Donor app is NOT the live brain, so unverified source is low-risk. Docs swept: `donor-app/README.md`, `docs/TODO.md` (DA status block), this entry.
+
+---
+
 ## 2026-06-24 — DF.7 multi-GPU fan-out (feature branch — make idle donor GPUs actually compute)
 
 ### Gee verbatim per LAW #0
