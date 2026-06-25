@@ -34,6 +34,80 @@ const { learnFromWeb } = require('./world-knowledge.js');
 // Unity can speak the meaning of any English word.
 const definitionService = require('./definition-service.js');
 
+// ── Donor LEADERBOARD identity helpers ─────────────────────────
+// The leaderboard answers "who is contributing compute", which is a DIFFERENT
+// question from "where do I route work" (that's always client.donorId — a
+// per-device persistent UUID, never touched here). The aggregation rule: a
+// donor who types a name lands in ONE shared row keyed by name:<lowercased>, so
+// 100 people all typing "Bob" stack onto a single "Bob"; a donor with no name
+// stays a per-device anonymous row keyed by their donorId. These helpers are the
+// single source of truth for that key so the three WS writers can't drift apart.
+
+// Sanitize + length-cap a raw donor name (strips angle/amp to stop markup
+// injection into the rendered leaderboard). Empty/whitespace → null (anonymous).
+function lbSanitizeName(raw) {
+  if (!raw) return null;
+  const nm = String(raw).replace(/[<>&]/g, '').trim().slice(0, 32);
+  return nm || null;
+}
+
+// The canonical leaderboard key for a (name, donorId) pair: named donors collapse
+// onto name:<lowercased>; unnamed donors keep their own per-device donorId row.
+function lbCanonicalKey(donorName, donorId, fallbackId) {
+  return donorName ? ('name:' + String(donorName).toLowerCase()) : (donorId || fallbackId);
+}
+
+// Resolve + APPLY a donor's leaderboard identity on a client, migrating any
+// compute they already banked under their previous key onto the new one so a
+// donor's Gneuron-seconds follow them when they go anonymous → named (or rename).
+// Returns the canonical key now in effect. Routing identity is left alone.
+function lbApplyDonorIdentity(brain, client, rawName, fallbackId) {
+  if (!brain._neuronLeaderboard) brain._neuronLeaderboard = {};
+  const lb = brain._neuronLeaderboard;
+  const prevKey = client.lbKey || client.donorId || fallbackId;
+  client.donorName = lbSanitizeName(rawName);
+  const newKey = lbCanonicalKey(client.donorName, client.donorId, fallbackId);
+  client.lbKey = newKey;
+  const now = Date.now();
+  const dst = lb[newKey] || { name: null, neurons: 0, lastSeen: 0, _lastTs: now };
+  // Migrate a PER-DEVICE (donorId) row onto the new key. Never migrate FROM a
+  // shared name: row — that would let a renamer walk off with every other
+  // contributor's points. A name→name rename simply starts a fresh name row.
+  if (prevKey && prevKey !== newKey && !String(prevKey).startsWith('name:') && lb[prevKey]) {
+    const src = lb[prevKey];
+    dst.neurons += src.neurons || 0;
+    dst.lastSeen = Math.max(dst.lastSeen || 0, src.lastSeen || 0);
+    dst._lastTs = Math.max(dst._lastTs || 0, src._lastTs || 0);
+    delete lb[prevKey];
+  }
+  if (client.donorName) dst.name = client.donorName;
+  if (!dst.lastSeen) dst.lastSeen = now;
+  if (!dst._lastTs) dst._lastTs = now;
+  lb[newKey] = dst;
+  return newKey;
+}
+
+// Collapse a leaderboard object so every row sharing a lowercased name folds into
+// ONE name:<lower> row (neurons summed, latest lastSeen kept); unnamed rows stay
+// per-device. Heals state already corrupted by the pre-fix donorId-keyed writes —
+// run on weight-load so the live production leaderboard self-repairs on restart.
+function canonicalizeLeaderboard(lb) {
+  if (!lb || typeof lb !== 'object') return {};
+  const merged = {};
+  for (const [id, e] of Object.entries(lb)) {
+    if (!e || typeof e !== 'object') continue;
+    const name = e.name || null;
+    const key = lbCanonicalKey(name, id, id);
+    const dst = merged[key] || { name: name || null, neurons: 0, lastSeen: 0, _lastTs: 0 };
+    dst.neurons += e.neurons || 0;
+    dst.lastSeen = Math.max(dst.lastSeen || 0, e.lastSeen || 0);
+    dst._lastTs = Math.max(dst._lastTs || 0, e._lastTs || 0);
+    if (name && !dst.name) dst.name = name;
+    merged[key] = dst;
+  }
+  return merged;
+}
+
 // ── Auto-Scale: Detect Hardware → Set Neuron Count ─────────────
 
 // Optional admin override — server/resource-config.json is written by
@@ -4571,7 +4645,10 @@ class ServerBrain {
             if (!e || typeof e !== 'object') continue;
             lb[lid] = { name: e.name || null, neurons: e.neurons || 0, lastSeen: e.lastSeen || 0, _lastTs: 0 };
           }
-          this._neuronLeaderboard = lb;
+          // Self-heal: collapse pre-fix duplicate rows (many donorId-keyed "Bob"
+          // rows left by the old set_donor_name bug) into one name:<lower> row each.
+          // The live production leaderboard repairs itself on the next restart.
+          this._neuronLeaderboard = canonicalizeLeaderboard(lb);
         }
         // Restore per-cell gate-result ledger — /grade-signoff reads
         // this to reject an operator signoff POST when the cell's most
@@ -6449,22 +6526,16 @@ wss.on('connection', (ws, req) => {
           // persists in saveWeights and RESETS on a fresh walk (force-fresh wipes
           // brain-weights). Accumulation happens in gpu_telemetry below.
           client.donorId = (msg.donorId && String(msg.donorId).slice(0, 64)) || client.donorId || `anon-${id}`;
-          if (msg.donorName !== undefined) {
-            const _nm = msg.donorName ? String(msg.donorName).replace(/[<>&]/g, '').trim().slice(0, 32) : '';
-            client.donorName = _nm || null;
-          }
-          // Leaderboard aggregation key — the NAME links compute across devices (browser +
-          // native + many): same name → ONE row, totals combined. No name → anonymous, keyed
-          // per-device (donorId) so anon donors stay separate rows instead of one giant blob.
-          // No verification/password — a username is just the "who is contributing" label.
-          client.lbKey = client.donorName ? ('name:' + client.donorName.toLowerCase()) : client.donorId;
-          if (!brain._neuronLeaderboard) brain._neuronLeaderboard = {};
+          // Leaderboard identity — NOT routing (routing is always client.donorId,
+          // set above, untouched). The NAME links compute across devices: same name
+          // → ONE shared row, totals combined (100 people typing "Bob" → one "Bob");
+          // no name → a per-device anonymous row keyed by donorId. lbApplyDonorIdentity
+          // also migrates any compute the donor banked while anonymous onto their name
+          // row. A register frame with no donorName keeps the donor's current name
+          // rather than silently demoting them to anonymous.
           {
-            const lbE = brain._neuronLeaderboard[client.lbKey] || { name: null, neurons: 0, lastSeen: 0, _lastTs: 0 };
-            lbE.name = client.donorName || lbE.name || null; // null → "anonymous" on display
-            lbE.lastSeen = Date.now();
-            lbE._lastTs = Date.now();
-            brain._neuronLeaderboard[client.lbKey] = lbE;
+            const _rawName = (msg.donorName !== undefined) ? msg.donorName : client.donorName;
+            lbApplyDonorIdentity(brain, client, _rawName, `anon-${id}`);
           }
           const havePrimary = brain._gpuClient && brain._gpuClient.readyState === 1;
           // DF.7 (flag-gated) — promote a materially-stronger newcomer to PRIMARY
@@ -6528,16 +6599,16 @@ wss.on('connection', (ws, req) => {
           // leaderboard — Gneuron-seconds since their last telemetry (dt capped
           // at 10s so a reconnect gap can't spike the total). Keyed by the
           // persistent donorId so it survives page reloads + reconnects.
-          // A telemetry frame may carry an updated name (donor renamed mid-session) — re-key.
+          // A telemetry frame may carry an updated name (donor renamed mid-session) —
+          // re-resolve identity (and migrate banked compute) through the shared helper
+          // so the row key always matches gpu_register's keying.
           if (msg.donorName !== undefined) {
-            const _nm = msg.donorName ? String(msg.donorName).replace(/[<>&]/g, '').trim().slice(0, 32) : '';
-            client.donorName = _nm || null;
-            client.lbKey = client.donorName ? ('name:' + client.donorName.toLowerCase()) : (client.donorId || `anon-${id}`);
+            lbApplyDonorIdentity(brain, client, msg.donorName, `anon-${id}`);
           }
           const _lbKey = client.lbKey || client.donorId;
           if (_lbKey) {
             if (!brain._neuronLeaderboard) brain._neuronLeaderboard = {};
-            const lb = brain._neuronLeaderboard[_lbKey] || { name: null, neurons: 0, lastSeen: 0, _lastTs: Date.now() };
+            const lb = brain._neuronLeaderboard[_lbKey] || { name: client.donorName || null, neurons: 0, lastSeen: 0, _lastTs: Date.now() };
             const now = Date.now();
             const dt = Math.min(10, Math.max(0, (now - (lb._lastTs || now)) / 1000));
             lb.neurons += (Number(msg.gneuronsPerSec) || 0) * dt; // billions of neuron-steps contributed
@@ -6550,15 +6621,12 @@ wss.on('connection', (ws, req) => {
         }
 
         case 'set_donor_name': {
-          // Donor sets/updates their leaderboard display name (linked to their
-          // persistent donorId). Sanitized + length-capped.
-          if (client.donorId) {
-            if (!brain._neuronLeaderboard) brain._neuronLeaderboard = {};
-            const lb = brain._neuronLeaderboard[client.donorId] || { name: null, neurons: 0, lastSeen: Date.now(), _lastTs: Date.now() };
-            const nm = String(msg.name || '').replace(/[<>&]/g, '').trim().slice(0, 32);
-            if (nm) lb.name = nm;
-            brain._neuronLeaderboard[client.donorId] = lb;
-          }
+          // Donor sets/updates their leaderboard display name. Route their
+          // contributions to the shared NAME row (name:<lower>) — NOT a donorId-keyed
+          // row, which was the bug that spawned a duplicate "Bob" per device. The
+          // helper sanitizes + length-caps the name and migrates any compute already
+          // banked under this donor's anonymous donorId row onto the name row.
+          lbApplyDonorIdentity(brain, client, msg.name, client.donorId || `anon-${id}`);
           break;
         }
 

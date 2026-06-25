@@ -304,16 +304,21 @@ function _installDeviceLostHandler() {
       try { if (ws && ws.readyState === 1) ws.send(JSON.stringify({ type: 'set_donor_name', name: nm })); } catch { /* */ }
     });
     const fmtN = (n) => (n >= 1e3 ? (n / 1e3).toFixed(1) + 'k' : (n || 0).toFixed(1));
+    // My leaderboard row id mirrors the server's canonical key: when I've set a
+    // name I share the name:<lower> row with everyone else of that name, so match
+    // on that; otherwise I'm my own per-device anonymous donorId row.
+    const _myLbKey = () => (_donorName ? ('name:' + _donorName.toLowerCase()) : _donorId);
     async function pollLB() {
       try {
         const r = await fetch('/public-state.json', { cache: 'no-store' });
         const m = await r.json();
         const lb = m && m.state && m.state.leaderboard;
         if (!lb) return;
-        const you = (lb.top || []).find(e => e.id === _donorId);
+        const mine = _myLbKey();
+        const you = (lb.top || []).find(e => e.id === mine);
         document.getElementById('donor-you').textContent = 'Your neurons created: ' + (you ? fmtN(you.neurons) + ' Gn·s' : '— (start donating!)');
         document.getElementById('donor-top').innerHTML = (lb.top || []).slice(0, 10)
-          .map((e, i) => (i + 1) + '. ' + String(e.name || 'anon').replace(/[<>&]/g, '') + ' — ' + fmtN(e.neurons) + ' Gn·s' + (e.id === _donorId ? ' (you)' : ''))
+          .map((e, i) => (i + 1) + '. ' + String(e.name || 'anon').replace(/[<>&]/g, '') + ' — ' + fmtN(e.neurons) + ' Gn·s' + (e.id === mine ? ' (you)' : ''))
           .join('<br>') || '(no contributors yet)';
       } catch { /* transient */ }
     }

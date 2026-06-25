@@ -414,12 +414,24 @@ const SERVER_STATE_MIXIN = {
       leaderboard: (() => {
         try {
           const lb = this._neuronLeaderboard || {};
-          const rows = Object.entries(lb).map(([id, e]) => ({
-            id,
-            name: (e && e.name) || null,
-            neurons: (e && e.neurons) || 0,
-            lastSeen: (e && e.lastSeen) || 0,
-          }));
+          // Collapse to canonical identity before rendering: every donor sharing a
+          // name folds into ONE row (id = name:<lower>, neurons summed) so 4 people
+          // typing "Bob" show as a single "Bob"; unnamed donors stay per-device anon
+          // rows keyed by donorId. Defends the public output even if in-memory state
+          // still holds pre-fix duplicate rows (a row's own donorId is the lookup id
+          // a client uses for its "(you)" highlight, so anon rows keep it).
+          const merged = new Map();
+          for (const [id, e] of Object.entries(lb)) {
+            if (!e || typeof e !== 'object') continue;
+            const name = e.name || null;
+            const key = name ? ('name:' + String(name).toLowerCase()) : id;
+            const cur = merged.get(key) || { id: key, name, neurons: 0, lastSeen: 0 };
+            cur.neurons += e.neurons || 0;
+            cur.lastSeen = Math.max(cur.lastSeen, e.lastSeen || 0);
+            if (name && !cur.name) cur.name = name;
+            merged.set(key, cur);
+          }
+          const rows = Array.from(merged.values());
           rows.sort((a, b) => b.neurons - a.neurons);
           const total = rows.reduce((s, r) => s + r.neurons, 0);
           return { top: rows.slice(0, 20), totalContributors: rows.length, totalNeurons: total };
