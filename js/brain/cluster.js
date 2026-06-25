@@ -1829,7 +1829,26 @@ export class NeuronCluster {
     // by 1.5×. Combined multiplicatively with gammaScale so theta-gamma
     // and predictive-coding gates compose without one drowning the other.
     const predErr = Math.max(0, Math.min(1, this._lastPredictionError || 0));
-    const surpriseGate = 0.5 + predErr;
+    // Outcome-gated noise suppression (held-back HB.4 — default OFF via
+    // DREAM_NOISE_GATE). Plain predictive coding cranks plasticity UP wherever
+    // error is high — but that also REINFORCES meaningless noise (incoherent /
+    // collapsed sem→motor output). When the noise gate is on, the surprise-driven
+    // BOOST is scaled by a cached coherence factor (_noiseSuppressFactor, set from
+    // saturation health during the walk) so high-error EXPLORATION that resolves
+    // coherently still learns, while high-error NOISE is damped instead of stamped
+    // in. The baseline 0.5 floor always learns; only the boost is gated. The
+    // held-back rung-3 remediation damps further via _remediationInhibition.
+    // OFF by default → identical to plain predictive coding; the magnitudes want a
+    // live training run to tune, so it ships dormant (same posture as DF.7).
+    if (this._noiseGateEnabled === undefined) {
+      this._noiseGateEnabled = (typeof process !== 'undefined' && !!process.env && process.env.DREAM_NOISE_GATE === '1');
+    }
+    let surpriseGate = 0.5 + predErr;
+    if (this._noiseGateEnabled) {
+      const coherence = Math.max(0, Math.min(1, this._noiseSuppressFactor ?? 1));
+      const inhib = this._remediationInhibition ? 0.5 : 1.0;
+      surpriseGate = 0.5 + predErr * coherence * inhib;
+    }
     // Spread cached static portion + only dynamic gammaScale rebuilt per-call.
     return {
       ...staticBundle,
