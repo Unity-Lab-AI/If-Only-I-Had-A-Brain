@@ -41,6 +41,7 @@ import { ChatPanel } from './ui/chat-panel.js';
 import { BrainVisualizer } from './ui/brain-viz.js';
 import { sensoryStatus } from './ui/sensory-status.js';
 import { Brain3D } from './ui/brain-3d.js';
+import { MindSpaceGPU } from './brain/mindspace/gpu.js';
 // persona-prompt.js no longer needed — brain equations ARE the personality
 
 // ── Load API keys from env.js ──
@@ -2385,24 +2386,18 @@ async function bootUnity(apiKey, perms) {
 
   if (perms.camera && perms.cameraStream) {
     brain.connectCamera(perms.cameraStream);
-    // R13 — vision describer now goes through SensoryAIProviders with
-    // full multi-provider priority (env.js visionBackends → auto-detected
-    // Ollama llava/moondream/LM Studio/LocalAI/llama.cpp/Jan → Pollinations
-    // multimodal fallback). Returns null on total failure instead of a
-    // lying "processing..." string so visual cortex can skip the frame
-    // and retry cleanly on the next scheduled call.
-    // RemoteBrain uses a stub visualCortex without setDescriber — the
-    // server handles its own vision pipeline. Only wire the describer
-    // on local-brain mode where visualCortex is the real V1→IT pipeline.
-    if (brain.visualCortex && typeof brain.visualCortex.setDescriber === 'function') {
-      brain.visualCortex.setDescriber(async (dataUrl) => {
-        if (!dataUrl) return null;
-        const desc = await providers.describeImage(dataUrl);
-        if (desc) {
-          console.log('[Vision]', desc.slice(0, 80));
-          return desc;
-        }
-        return null;
+    // MS.I2 — vision is now 100% EQUATIONAL, no LLM/VLM. The visual cortex's IT level is the
+    // Uni Vs Matics mind-space (CDF 9/7 wavelet field C, on the GPU when available): the frame
+    // is transformed to its equation and the percept vector is read straight out of it — the
+    // wavelet field IS the percept. This removes the LAST text-AI from the cognition path
+    // (no Pollinations/Ollama/LocalAI describeImage). Image-gen + TTS stay sensory-OUTPUT only.
+    // RemoteBrain uses a server-side vision pipeline (stub cortex without setMindSpace), so only
+    // wire on local-brain mode where visualCortex is the real V1→IT pipeline.
+    if (brain.visualCortex && typeof brain.visualCortex.setMindSpace === 'function') {
+      const mindSpace = new MindSpaceGPU();
+      brain.visualCortex.setMindSpace(mindSpace);   // CPU fallback works immediately
+      mindSpace.init().then((ok) => {               // upgrade to the GPU path once WebGPU is ready
+        console.log('[Vision] equational mind-space online —', ok ? 'GPU' : 'CPU', 'path; no LLM describer');
       });
     }
   }

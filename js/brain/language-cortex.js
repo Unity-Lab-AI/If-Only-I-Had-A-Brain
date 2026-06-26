@@ -2162,10 +2162,21 @@ export class LanguageCortex {
               // reranking: emit 3 independent candidates, keep the one most
               // coherent with the intentSeed. Chat is where we want Unity's
               // best emission; probe/gate paths deliberately stay single-shot.
+              // R.8 affect modulation — derive temperature + topK from the LIVE
+              // arousal/coherence/intoxication this method already receives, so
+              // the MAIN chat reply carries Unity's state (the three permanent
+              // streams) instead of a flat 0.6 preset. Aroused/high → looser +
+              // more intense; coherent → more focused. Equational, not a filter.
+              const _ar = Math.max(0, Math.min(1, typeof arousal === 'number' ? arousal : 0.5));
+              const _co = Math.max(0, Math.min(1, typeof coherence === 'number' ? coherence : 0.5));
+              const _drug = (opts.drugState && opts.drugState !== 'sober') ? 0.5 : 0;
+              let _temp = 0.6 + 0.4 * _ar + 0.35 * _drug - 0.3 * _co;
+              _temp = Math.max(0.45, Math.min(1.2, _temp));
+              const _topK = Math.round(8 + 6 * Math.max(_ar, _drug));
               composedSentence = await cluster.composeSentence(intentSeed, {
                 subject: inferredSubject || undefined,
-                temperature: 0.6,
-                topK: 8,
+                temperature: Number(_temp.toFixed(2)),
+                topK: _topK,
                 coherenceCandidates: 3,
               });
               // Gate relaxed from >= 2 to >= 1 while structure
@@ -2184,6 +2195,41 @@ export class LanguageCortex {
                     && !/[.!?]$/.test(composedWordsAsync[composedWordsAsync.length - 1])) {
                   composedWordsAsync[composedWordsAsync.length - 1] += composedSentence.sentence.slice(-1);
                 }
+                // R.9 multi-sentence turn — a living reply is often more than
+                // one clause. Emit up to N continuation sentences (affect-gated:
+                // more when aroused/engaged), each emerging from the brain's
+                // EVOLVED state after the prior one (composeSentence ticks the
+                // brain), so the thought continues instead of stopping dead.
+                // Bounded (≤2 extra, ≤30 words) + dedup-guarded so she neither
+                // rambles nor repeats. Reuses the affect temperature/topK.
+                try {
+                  const _arN = Math.max(0, Math.min(1, typeof arousal === 'number' ? arousal : 0.5));
+                  const maxExtra = _arN > 0.66 ? 2 : (_arN > 0.33 ? 1 : 0);
+                  let _total = composedWordsAsync.length;
+                  const _seen = new Set([(composedSentence.sentence || composedWordsAsync.join(' ')).toLowerCase()]);
+                  for (let _s = 0; _s < maxExtra && _total < 30; _s++) {
+                    let cont = null;
+                    try {
+                      cont = await cluster.composeSentence(intentSeed, {
+                        subject: inferredSubject || undefined,
+                        temperature: Number(_temp.toFixed(2)),
+                        topK: _topK,
+                        coherenceCandidates: 2,
+                      });
+                    } catch { cont = null; }
+                    if (!cont || !Array.isArray(cont.words) || cont.words.length < 1) break;
+                    const _key = (cont.sentence || cont.words.join(' ')).toLowerCase();
+                    if (_seen.has(_key)) break;   // stop on a repeated sentence
+                    _seen.add(_key);
+                    const cw = cont.words.slice();
+                    if (cont.sentence && /[.!?]$/.test(cont.sentence) && cw.length > 0
+                        && !/[.!?]$/.test(cw[cw.length - 1])) {
+                      cw[cw.length - 1] += cont.sentence.slice(-1);
+                    }
+                    composedWordsAsync = composedWordsAsync.concat(cw);
+                    _total += cw.length;
+                  }
+                } catch { /* continuation non-fatal — the first sentence stands */ }
                 // 114.19fi.B.1 — push to shared emission bus so inner-
                 // voice / popup / image-gen paths see what chat just
                 // emitted. Single source of truth across the unified
@@ -2192,7 +2238,7 @@ export class LanguageCortex {
                   try {
                     cluster.pushEmission({
                       source: 'chat',
-                      text: composedSentence.sentence || composedWordsAsync.join(' '),
+                      text: composedWordsAsync.join(' '),
                       ts: Date.now(),
                       subject: inferredSubject || null,
                     });

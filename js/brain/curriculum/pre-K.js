@@ -212,6 +212,12 @@ export const PREK_MIXIN = {
   // ══════════════════════════════════════════════════════════════════
 
   async runElaPreK(_ctx) {
+    // Pre-K ELA = oral language + phonological awareness + alphabet +
+    // print concepts + vocabulary + listening comprehension (Head Start /
+    // state Pre-K ELA standards). Deepened to the K-depth bar: full A-Z
+    // letter-sound coverage, rhyming families, beginning-sound awareness,
+    // print concepts, and listening Q->A — all equational via _conceptTeach
+    // + _teachAssociationPairs + _teachBiographicalFacts.
     const PHONEME_CONCEPTS = [
       { name: 'apple',  feat: [1, 0, 0.5, 0, 0, 0.3, 0, 0] },
       { name: 'ball',   feat: [0.5, 0, 0, 0, 0, 0.3, 0, 0] },
@@ -223,23 +229,78 @@ export const PREK_MIXIN = {
       { name: 'word',   feat: [0.3, 0, 0.3, 0, 0, 0, 0, 0.3] },
     ];
     await this._conceptTeach(PHONEME_CONCEPTS, 8);
+
+    // Print concepts — emergent literacy: print carries meaning, a book
+    // has pages, words are made of letters, stories have rhyme.
+    const PRINT_CONCEPTS = [
+      { name: 'book',   feat: [0.5, 0, 0.5, 0, 0, 0.3, 0, 0.3] },
+      { name: 'page',   feat: [0.3, 0, 0.3, 0, 0, 0, 0, 0] },
+      { name: 'letter', feat: [0.3, 0, 0.3, 0, 0, 0, 0, 0.3] },
+      { name: 'read',   feat: [0.5, 0, 0.5, 0, 0, 0.3, 0, 0.3] },
+      { name: 'name',   feat: [0.5, 0, 0.5, 0, 0, 0, 0, 0.5] },
+      { name: 'story',  feat: [0.5, 0, 0.5, 0, 0, 0.5, 0, 0.3] },
+      { name: 'rhyme',  feat: [0.5, 0, 0.3, 0, 0, 0.3, 0, 0] },
+      { name: 'first',  feat: [0.3, 0, 0.3, 0, 0, 0, 0, 0] },
+      { name: 'last',   feat: [0.3, 0, 0.3, 0, 0, 0, 0, 0] },
+    ];
+    await this._conceptTeach(PRINT_CONCEPTS, 8);
+
     await this._teachBiographicalFacts([
       { question: 'what sound does a dog make', answer: 'bark' },
       { question: 'what sound does a cat make', answer: 'meow' },
       { question: 'what do words have',         answer: 'sound' },
+      { question: 'what is made of letters',    answer: 'word' },
+      { question: 'what do i read',             answer: 'book' },
+      { question: 'what has pages',             answer: 'book' },
+      { question: 'what rhymes with cat',       answer: 'hat' },
+      { question: 'what rhymes with dog',       answer: 'log' },
     ], { reps: 6 });
+
+    // FULL A-Z letter -> beginning-sound exemplar word (was only a-p).
+    // Alphabet knowledge: every letter names a beginning-sound exemplar.
     await this._teachAssociationPairs([
       ['a','apple'], ['b','ball'], ['c','cat'], ['d','dog'],
       ['e','egg'], ['f','fish'], ['g','goat'], ['h','hat'],
       ['i','ink'], ['j','jump'], ['k','kite'], ['l','leaf'],
       ['m','moon'], ['n','net'], ['o','octopus'], ['p','pig'],
+      ['q','queen'], ['r','rain'], ['s','sun'], ['t','top'],
+      ['u','umbrella'], ['v','van'], ['w','water'], ['x','box'],
+      ['y','yarn'], ['z','zebra'],
       ['bark','dog'], ['meow','cat'], ['moo','cow'],
       ['quack','duck'], ['tweet','bird'],
     ], { reps: 8, label: 'PREK-ELA-LETTER-SOUND', relationTagId: 3 });
-    return await this._gateVocabList(PHONEME_CONCEPTS.map(c => c.name).concat(['bark', 'meow', 'sound']));
+
+    // Phonological awareness — rhyming families (shared ending sound).
+    // Foundational pre-reading skill; each family clusters by rime.
+    await this._teachAssociationPairs([
+      ['cat','hat'], ['hat','bat'], ['bat','mat'], ['mat','rat'],
+      ['dog','log'], ['log','frog'], ['frog','hog'],
+      ['ball','wall'], ['wall','tall'], ['tall','fall'],
+      ['bee','tree'], ['tree','three'], ['three','knee'],
+      ['sun','fun'], ['fun','run'], ['run','bun'],
+      ['rhyme','same'], ['cat','rhyme'], ['hat','rhyme'],
+    ], { reps: 8, label: 'PREK-ELA-RHYME', relationTagId: 3 });
+
+    // Listening comprehension — answer simple who/what questions about a
+    // heard mini-story (retell). Pre-K listening + comprehension standard.
+    await this._teachBiographicalFacts([
+      { question: 'the cat sat on the mat who sat', answer: 'cat' },
+      { question: 'the dog ran to the ball what did the dog get', answer: 'ball' },
+      { question: 'the sun is up is it day or night', answer: 'day' },
+      { question: 'mom read a book what did mom read', answer: 'book' },
+    ], { reps: 6 });
+
+    return await this._gateVocabList(
+      PHONEME_CONCEPTS.map(c => c.name)
+        .concat(PRINT_CONCEPTS.map(c => c.name))
+        .concat(['bark', 'meow', 'sound', 'hat', 'rhyme'])
+    );
   },
 
   async runMathPreK(_ctx) {
+    // Pre-K Math = counting & cardinality + geometry (shapes) + sorting/
+    // classifying + patterns (AB) + measurement comparison. Deepened to the
+    // K-depth bar from the original count-only cell.
     const QUANTITY_CONCEPTS = [
       { name: 'one',   feat: [0.2, 0, 0, 0, 0, 0, 0, 0.5] },
       { name: 'two',   feat: [0.4, 0, 0, 0, 0, 0, 0, 0.5] },
@@ -250,13 +311,38 @@ export const PREK_MIXIN = {
       { name: 'small', feat: [0.2, 0, 0, 0, 0, 0, 0, 0] },
     ];
     await this._conceptTeach(QUANTITY_CONCEPTS, 8);
+
+    // Geometry — basic 2D shapes + sorting/pattern/measurement vocab.
+    const SHAPE_CONCEPTS = [
+      { name: 'circle',    feat: [0.3, 0, 0.3, 0, 0, 0, 0, 0] },
+      { name: 'square',    feat: [0.3, 0, 0, 0, 0, 0, 0, 0] },
+      { name: 'triangle',  feat: [0.3, 0, 0, 0, 0, 0, 0, 0] },
+      { name: 'rectangle', feat: [0.3, 0, 0, 0, 0, 0, 0, 0] },
+      { name: 'sort',      feat: [0.3, 0, 0.3, 0, 0, 0, 0, 0] },
+      { name: 'match',     feat: [0.3, 0, 0.3, 0, 0, 0, 0, 0] },
+      { name: 'pattern',   feat: [0.3, 0, 0, 0, 0, 0, 0, 0.3] },
+      { name: 'count',     feat: [0.3, 0, 0.3, 0, 0, 0, 0, 0.3] },
+      { name: 'long',      feat: [0.5, 0, 0, 0, 0, 0, 0, 0] },
+      { name: 'short',     feat: [0.2, 0, 0, 0, 0, 0, 0, 0] },
+      { name: 'heavy',     feat: [0.5, 0, 0, 0, 0, 0, 0, 0] },
+      { name: 'empty',     feat: [0, 0.2, 0, 0, 0, 0, 0, 0] },
+      { name: 'full',      feat: [0.6, 0, 0, 0, 0, 0, 0, 0] },
+    ];
+    await this._conceptTeach(SHAPE_CONCEPTS, 8);
+
     await this._teachBiographicalFacts([
       { question: 'how many eyes',    answer: 'two' },
       { question: 'how many hands',   answer: 'two' },
       { question: 'how many noses',   answer: 'one' },
       { question: 'which is more',    answer: 'more' },
       { question: 'which is less',    answer: 'less' },
+      { question: 'what shape is a ball',  answer: 'circle' },
+      { question: 'what shape is a box',   answer: 'square' },
+      { question: 'what shape has three sides', answer: 'triangle' },
+      { question: 'what comes after one',  answer: 'two' },
+      { question: 'what comes after two',  answer: 'three' },
     ], { reps: 6 });
+
     await this._teachAssociationPairs([
       ['one','two'], ['two','three'], ['three','four'], ['four','five'],
       ['five','six'], ['six','seven'], ['seven','eight'],
@@ -264,11 +350,28 @@ export const PREK_MIXIN = {
       ['big','more'], ['small','less'],
       ['tall','more'], ['short','less'],
       ['many','more'], ['few','less'],
+      ['long','short'], ['heavy','light'], ['full','empty'],
     ], { reps: 8, label: 'PREK-MATH-COUNT-MAG', relationTagId: 5 });
-    return await this._gateVocabList(QUANTITY_CONCEPTS.map(c => c.name));
+
+    // Cardinality (number -> quantity), shapes, sorting, AB-patterns.
+    await this._teachAssociationPairs([
+      ['one','dot'], ['two','dots'], ['three','dots'],
+      ['circle','round'], ['square','four'], ['triangle','three'],
+      ['rectangle','four'], ['ball','circle'], ['box','square'],
+      ['sort','color'], ['sort','size'], ['match','same'],
+      ['pattern','repeat'], ['red','blue'], ['blue','red'],
+    ], { reps: 8, label: 'PREK-MATH-SHAPE-SORT', relationTagId: 5 });
+
+    return await this._gateVocabList(
+      QUANTITY_CONCEPTS.map(c => c.name)
+        .concat(['circle', 'square', 'triangle', 'count', 'sort', 'pattern'])
+    );
   },
 
   async runSciPreK(_ctx) {
+    // Pre-K Science = living/non-living + animals & sounds + five senses +
+    // weather/seasons + nature + simple cause-effect (push/pull, drop/fall).
+    // Deepened to the K-depth bar. Also runs the spatial + logic primitives.
     const OBJECT_CONCEPTS = [
       { name: 'animal',   feat: [0.5, 0, 0.5, 0, 0, 0.3, 0, 0] },
       { name: 'plant',    feat: [0.3, 0, 0.3, 0, 0, 0, 0, 0] },
@@ -280,6 +383,26 @@ export const PREK_MIXIN = {
       { name: 'ball',     feat: [0.5, 0, 0, 0, 0, 0.3, 0, 0] },
     ];
     await this._conceptTeach(OBJECT_CONCEPTS, 8);
+
+    // Five senses + weather/seasons + living-vs-nonliving vocab.
+    const NATURE_CONCEPTS = [
+      { name: 'living',  feat: [1, 0, 0.5, 0, 0, 0.3, 0, 0] },
+      { name: 'grow',    feat: [0.8, 0, 0.3, 0, 0, 0.3, 0, 0] },
+      { name: 'hot',     feat: [0.3, 0.3, 0, 0, 0.3, 0, 0, 0] },
+      { name: 'cold',    feat: [0, 0.3, 0, 0.3, 0, 0, 0, 0.3] },
+      { name: 'wet',     feat: [0.3, 0, 0, 0, 0, 0, 0, 0] },
+      { name: 'dry',     feat: [0.3, 0, 0, 0, 0, 0, 0, 0] },
+      { name: 'wind',    feat: [0.3, 0, 0, 0.3, 0, 0, 0, 0] },
+      { name: 'snow',    feat: [0.5, 0, 0.3, 0, 0, 0, 0, 0.3] },
+      { name: 'cloud',   feat: [0.5, 0, 0, 0, 0, 0, 0, 0] },
+      { name: 'day',     feat: [0.8, 0, 0.3, 0, 0, 0, 0, 0] },
+      { name: 'night',   feat: [0, 0.3, 0.3, 0.3, 0, 0, 0, 0.5] },
+      { name: 'smell',   feat: [0.3, 0, 0.3, 0, 0, 0.3, 0, 0] },
+      { name: 'hear',    feat: [0.3, 0, 0.3, 0, 0, 0.3, 0, 0] },
+      { name: 'touch',   feat: [0.3, 0, 0.3, 0, 0, 0.3, 0, 0] },
+    ];
+    await this._conceptTeach(NATURE_CONCEPTS, 8);
+
     await this._teachBiographicalFacts([
       { question: 'what does a dog say',  answer: 'bark' },
       { question: 'what does a cat say',  answer: 'meow' },
@@ -288,7 +411,14 @@ export const PREK_MIXIN = {
       { question: 'what is hot',          answer: 'fire' },
       { question: 'what is wet',          answer: 'water' },
       { question: 'what falls down',      answer: 'ball' },
+      { question: 'is a dog living',      answer: 'yes' },
+      { question: 'is a rock living',     answer: 'no' },
+      { question: 'what do plants do',    answer: 'grow' },
+      { question: 'what falls from clouds', answer: 'rain' },
+      { question: 'what do i see with',   answer: 'eye' },
+      { question: 'what do i hear with',  answer: 'ear' },
     ], { reps: 6 });
+
     await this._teachAssociationPairs([
       ['dog','bark'], ['cat','meow'], ['cow','moo'],
       ['bird','tweet'], ['duck','quack'], ['pig','oink'],
@@ -298,12 +428,25 @@ export const PREK_MIXIN = {
       ['push','move'], ['pull','move'], ['drop','fall'],
       ['throw','fly'],
     ], { reps: 8, label: 'PREK-SCI-ANIMAL-SOUND', relationTagId: 1 });
+
+    // Senses, living/non-living, weather, cause-effect bindings.
+    await this._teachAssociationPairs([
+      ['eye','see'], ['ear','hear'], ['nose','smell'],
+      ['tongue','taste'], ['hand','touch'],
+      ['animal','living'], ['plant','living'], ['rock','nonliving'],
+      ['plant','grow'], ['baby','grow'],
+      ['rain','wet'], ['sun','dry'], ['snow','cold'], ['fire','hot'],
+      ['cloud','rain'], ['wind','cold'],
+    ], { reps: 8, label: 'PREK-SCI-SENSE-NATURE', relationTagId: 1 });
+
     await this._teachPrekSpatial();
     await this._teachPrekLogic();
-    return await this._gateVocabList(['animal', 'water', 'sun', 'fire', 'bark', 'meow', 'moo', 'above', 'below', 'because', 'so']);
+    return await this._gateVocabList(['animal', 'water', 'sun', 'fire', 'bark', 'meow', 'moo', 'living', 'grow', 'cold', 'hot', 'smell', 'hear', 'above', 'below', 'because', 'so']);
   },
 
   async runSocPreK(_ctx) {
+    // Pre-K Social = self & others + family + manners/politeness + feelings +
+    // community helpers + sharing/turn-taking + simple rules. Deepened.
     const SOCIAL_CONCEPTS = [
       { name: 'me',     feat: [0.5, 0, 0.5, 0, 0, 0, 0, 1] },
       { name: 'you',    feat: [0.3, 0, 0.3, 0, 0, 0, 0, 0.5] },
@@ -316,12 +459,32 @@ export const PREK_MIXIN = {
       { name: 'mean',   feat: [0, 0.5, 0, 0.3, 0.5, 0, 0, 0] },
     ];
     await this._conceptTeach(SOCIAL_CONCEPTS, 8);
+
+    // Community helpers + manners + turn-taking + simple rules.
+    const COMMUNITY_CONCEPTS = [
+      { name: 'friend',  feat: [1, 0, 1, 0, 0, 0.5, 0, 0] },
+      { name: 'help',    feat: [0.5, 0, 0.5, 0, 0, 0.3, 0, 0] },
+      { name: 'doctor',  feat: [0.3, 0, 0.5, 0, 0, 0, 0, 0] },
+      { name: 'teacher', feat: [0.5, 0, 0.5, 0, 0, 0, 0, 0] },
+      { name: 'turn',    feat: [0.3, 0, 0.3, 0, 0, 0, 0, 0] },
+      { name: 'wait',    feat: [0.2, 0.2, 0.3, 0, 0, 0, 0, 0] },
+      { name: 'rule',    feat: [0.3, 0, 0.3, 0, 0, 0, 0, 0.3] },
+      { name: 'sorry',   feat: [0.2, 0.3, 0.5, 0, 0, 0.3, 0, 0] },
+    ];
+    await this._conceptTeach(COMMUNITY_CONCEPTS, 8);
+
     await this._teachBiographicalFacts([
       { question: 'who is the mom',        answer: 'mom' },
       { question: 'who is the baby',       answer: 'baby' },
       { question: 'what is nice to do',    answer: 'share' },
       { question: 'what is bad to be',     answer: 'mean' },
+      { question: 'who helps when i am sick', answer: 'doctor' },
+      { question: 'who helps me learn',    answer: 'teacher' },
+      { question: 'what do i say when i bump someone', answer: 'sorry' },
+      { question: 'what do i do to be polite', answer: 'share' },
+      { question: 'what do i do while i wait', answer: 'wait' },
     ], { reps: 6 });
+
     await this._teachAssociationPairs([
       ['mom','parent'], ['dad','parent'], ['baby','child'],
       ['brother','sibling'], ['sister','sibling'],
@@ -331,10 +494,24 @@ export const PREK_MIXIN = {
       ['happy','smile'], ['sad','cry'], ['mad','frown'],
       ['scared','hide'], ['love','hug'],
     ], { reps: 8, label: 'PREK-SOC-FAMILY-EMOT', relationTagId: 1 });
-    return await this._gateVocabList(SOCIAL_CONCEPTS.map(c => c.name));
+
+    // Community helpers, sharing/turn-taking, manners, simple rules.
+    await this._teachAssociationPairs([
+      ['friend','play'], ['friend','share'], ['share','turn'],
+      ['turn','wait'], ['doctor','help'], ['teacher','help'],
+      ['sorry','kind'], ['please','ask'], ['thanks','give'],
+      ['rule','follow'], ['kind','friend'], ['mean','sad'],
+    ], { reps: 8, label: 'PREK-SOC-COMMUNITY', relationTagId: 1 });
+
+    return await this._gateVocabList(
+      SOCIAL_CONCEPTS.map(c => c.name)
+        .concat(['friend', 'help', 'doctor', 'teacher', 'turn', 'sorry'])
+    );
   },
 
   async runArtPreK(_ctx) {
+    // Pre-K Art = colors + shapes + drawing/painting tools + music/rhythm +
+    // creative expression. Deepened to the K-depth bar; runs visual primitive.
     const ART_CONCEPTS = [
       { name: 'red',     feat: [0.5, 0, 0, 0, 0.3, 0, 0, 0] },
       { name: 'blue',    feat: [0.3, 0, 0.3, 0, 0, 0, 0, 0] },
@@ -348,12 +525,35 @@ export const PREK_MIXIN = {
       { name: 'song',    feat: [0.8, 0, 0.3, 0, 0, 0.5, 0, 0.3] },
     ];
     await this._conceptTeach(ART_CONCEPTS, 8);
+
+    // More colors + tools + music elements + creative-expression vocab.
+    const CREATE_CONCEPTS = [
+      { name: 'purple',  feat: [0.5, 0, 0.3, 0, 0, 0.3, 0, 0.5] },
+      { name: 'orange',  feat: [0.8, 0, 0, 0, 0, 0, 0, 0] },
+      { name: 'paint',   feat: [0.8, 0, 0, 0, 0, 0.5, 0.5, 0.5] },
+      { name: 'brush',   feat: [0.5, 0, 0, 0, 0, 0.3, 0, 0] },
+      { name: 'crayon',  feat: [0.8, 0, 0, 0, 0, 0.5, 0, 0.3] },
+      { name: 'glue',    feat: [0.3, 0, 0.3, 0, 0, 0, 0, 0] },
+      { name: 'loud',    feat: [0.5, 0.3, 0, 0.3, 0, 0, 0, 0] },
+      { name: 'quiet',   feat: [0.3, 0, 0.3, 0, 0, 0, 0, 0.5] },
+      { name: 'fast',    feat: [0.6, 0, 0, 0, 0, 0, 0, 0] },
+      { name: 'slow',    feat: [0.3, 0, 0.3, 0, 0, 0, 0, 0] },
+      { name: 'beat',    feat: [0.6, 0, 0, 0, 0, 0.5, 0, 0.3] },
+      { name: 'dance',   feat: [1, 0, 0, 0, 0, 0.5, 0, 0.3] },
+    ];
+    await this._conceptTeach(CREATE_CONCEPTS, 8);
+
     await this._teachBiographicalFacts([
       { question: 'what color is the sun',   answer: 'yellow' },
       { question: 'what color is the sky',   answer: 'blue' },
       { question: 'what color is grass',     answer: 'green' },
       { question: 'what do i like to draw',  answer: 'black' },
+      { question: 'what do i paint with',    answer: 'brush' },
+      { question: 'what do i color with',    answer: 'crayon' },
+      { question: 'what do i do to music',   answer: 'dance' },
+      { question: 'what color do i like best', answer: 'black' },
     ], { reps: 6 });
+
     await this._teachAssociationPairs([
       ['red','color'], ['blue','color'], ['yellow','color'],
       ['green','color'], ['black','color'], ['white','color'],
@@ -362,8 +562,21 @@ export const PREK_MIXIN = {
       ['paper','draw'], ['marker','color'],
       ['song','music'], ['drum','beat'], ['sing','song'],
     ], { reps: 8, label: 'PREK-ART-COLORS-TOOLS', relationTagId: 1 });
+
+    // Extra colors, tools, music dynamics, movement/creative expression.
+    await this._teachAssociationPairs([
+      ['purple','color'], ['orange','color'],
+      ['paint','brush'], ['glue','stick'], ['crayon','draw'],
+      ['loud','quiet'], ['fast','slow'], ['beat','drum'],
+      ['dance','music'], ['song','sing'], ['music','feel'],
+      ['black','goth'], ['draw','make'],
+    ], { reps: 8, label: 'PREK-ART-CREATE', relationTagId: 1 });
+
     await this._teachPrekVisual();
-    return await this._gateVocabList(ART_CONCEPTS.map(c => c.name).concat(['see', 'look', 'picture', 'shape']));
+    return await this._gateVocabList(
+      ART_CONCEPTS.map(c => c.name)
+        .concat(['see', 'look', 'picture', 'shape', 'paint', 'crayon', 'dance', 'beat'])
+    );
   },
 
   async runLifePreK(ctx) {

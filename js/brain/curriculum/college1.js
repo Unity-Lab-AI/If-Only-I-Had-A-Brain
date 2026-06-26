@@ -311,6 +311,86 @@ export const COL1_MIXIN = {
     ], { gateSubjectTag: 'genered' });
   },
 
+  async runCsTheoryCol1Real(ctx) {
+    // Discrete Mathematics — CS theory track (M4 college expansion), concurrent with the major.
+    const VOCAB = [
+      'logic', 'proof', 'set', 'subset', 'union', 'intersection', 'function', 'relation',
+      'combination', 'permutation', 'graph', 'vertex', 'edge', 'induction', 'boolean', 'proposition',
+      'theorem', 'counterexample', 'cardinality', 'recurrence',
+    ];
+    await this._teachVocabList(VOCAB, ctx, { reps: 3 });
+    const SENTENCES = [
+      'discrete math is the math of distinct separate values',
+      'a proof shows that a statement is always true',
+      'a set is a collection of distinct objects',
+      'the union of two sets combines all their elements',
+      'the intersection of two sets is the elements they share',
+      'a function maps each input to exactly one output',
+      'a graph has vertices connected by edges',
+      'induction proves a statement for all the natural numbers',
+      'logic uses and or and not to combine propositions',
+      'a counterexample disproves a general claim',
+      'a permutation is an ordered arrangement of things',
+      'a combination is a choice where order does not matter',
+      'a boolean value is either true or false',
+      'a theorem is a statement that has been proven true',
+    ];
+    await this._teachSentenceList(SENTENCES, ctx, { reps: 2, ticksPerWord: 2 });
+    await this._teachCausalChains([
+      ['proof', 'true'], ['union', 'combine'], ['intersection', 'share'], ['function', 'map'], ['graph', 'edge'], ['induction', 'natural'], ['counterexample', 'disprove'],
+    ]);
+    await this._teachProductionStack('cstheory', ctx, { tag: 'CSTHEORY-COL1' });
+    return await this._gateSubjectProduction('cstheory', 'college1', [
+      { question: 'the math of distinct separate values is', expected: ['discrete', 'd'] },
+      { question: 'a statement shown always true by a', expected: ['proof', 'p'] },
+      { question: 'a collection of distinct objects is a', expected: ['set', 's'] },
+      { question: 'combining all elements of two sets is the', expected: ['union', 'u'] },
+      { question: 'the elements two sets share is the', expected: ['intersection', 'i'] },
+      { question: 'mapping each input to one output is a', expected: ['function', 'f'] },
+      { question: 'vertices connected by edges form a', expected: ['graph', 'g'] },
+      { question: 'a value that is true or false is', expected: ['boolean', 'b'] },
+    ], { gateSubjectTag: 'cstheory' });
+  },
+
+  async runCsSystemsCol1Real(ctx) {
+    // Computer Organization — CS systems track (M4 college expansion), the machine side.
+    const VOCAB = [
+      'bit', 'byte', 'binary', 'transistor', 'gate', 'register', 'memory', 'cpu',
+      'instruction', 'opcode', 'cache', 'bus', 'clock', 'hexadecimal', 'encode', 'circuit',
+      'processor', 'address', 'signal', 'voltage',
+    ];
+    await this._teachVocabList(VOCAB, ctx, { reps: 3 });
+    const SENTENCES = [
+      'a computer stores everything as bits that are zero or one',
+      'eight bits make one byte',
+      'binary is the base two number system computers use',
+      'a transistor is a tiny switch that is on or off',
+      'logic gates combine signals with and or and not',
+      'the cpu is the processor that runs instructions',
+      'an instruction tells the processor to do one operation',
+      'a register holds a small value right inside the cpu',
+      'the cache is fast memory close to the processor',
+      'the clock makes the processor step at a steady rate',
+      'memory stores instructions and data at numbered addresses',
+      'the bus carries signals between the parts of the computer',
+    ];
+    await this._teachSentenceList(SENTENCES, ctx, { reps: 2, ticksPerWord: 2 });
+    await this._teachCausalChains([
+      ['bit', 'binary'], ['transistor', 'switch'], ['gate', 'logic'], ['cpu', 'instruction'], ['register', 'cpu'], ['cache', 'fast'], ['clock', 'step'],
+    ]);
+    await this._teachProductionStack('cssystems', ctx, { tag: 'CSSYSTEMS-COL1' });
+    return await this._gateSubjectProduction('cssystems', 'college1', [
+      { question: 'the smallest unit storing zero or one is a', expected: ['bit', 'b'] },
+      { question: 'eight bits make one', expected: ['byte', 'b'] },
+      { question: 'the base two number system is', expected: ['binary', 'b'] },
+      { question: 'a tiny on off switch is a', expected: ['transistor', 't'] },
+      { question: 'the processor that runs instructions is the', expected: ['cpu', 'c'] },
+      { question: 'a small value held inside the cpu is in a', expected: ['register', 'r'] },
+      { question: 'fast memory close to the processor is the', expected: ['cache', 'c'] },
+      { question: 'what steps the processor at a steady rate is the', expected: ['clock', 'c'] },
+    ], { gateSubjectTag: 'cssystems' });
+  },
+
   async runLifeCol1(ctx) {
     // ── College-1 life experience — DATA-DRIVEN (corpora/life/college1.json) ──
     // The ADULT chapter begins (age 18, explicit register ON): freedom

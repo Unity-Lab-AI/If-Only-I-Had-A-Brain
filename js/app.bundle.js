@@ -53916,6 +53916,8 @@ var CLUSTER_EMIT_MIXIN = {
       if (!Array.isArray(wordsList) || wordsList.length === 0) continue;
       const bucketSize = Math.max(1, Math.floor(subjSize / wordsList.length));
       for (let b = 0; b < wordsList.length; b++) {
+        const _bw = wordsList[b];
+        if (!_bw || !/\S/.test(_bw) || !/[a-z0-9]/i.test(_bw) && !T14_TERMINATORS.has(_bw)) continue;
         let sum = 0;
         const bStart = subjStart + b * bucketSize;
         const bEnd = Math.min(subjEnd, bStart + bucketSize);
@@ -54147,6 +54149,14 @@ var CLUSTER_EMIT_MIXIN = {
       } catch {
       }
     }
+    if (opts.questionMode && sharedEmbeddings && typeof sharedEmbeddings.getEmbedding === "function") {
+      try {
+        const whWord = typeof opts.questionWord === "string" && opts.questionWord ? opts.questionWord : "what";
+        const whEmb = sharedEmbeddings.getEmbedding(whWord);
+        if (whEmb && whEmb.length > 0) _budgetedInject("sem", whEmb, 0.3, 0.2);
+      } catch {
+      }
+    }
     const words = [];
     const MAX_WORDS2 = typeof opts.maxWords === "number" && opts.maxWords > 0 ? Math.floor(opts.maxWords) : 12;
     const TICKS_PER_WORD = typeof opts.ticksPerWord === "number" && opts.ticksPerWord > 0 ? Math.floor(opts.ticksPerWord) : 3;
@@ -54198,8 +54208,8 @@ var CLUSTER_EMIT_MIXIN = {
         try {
           const wordEmb = sharedEmbeddings.getEmbedding(word);
           if (wordEmb && wordEmb.length > 0) {
-            const BACK_INJECT_BASE = 0.15;
-            const BACK_INJECT_DECAY = 0.85;
+            const BACK_INJECT_BASE = 0.24;
+            const BACK_INJECT_DECAY = 0.92;
             const backInjectStrength = BACK_INJECT_BASE * Math.pow(BACK_INJECT_DECAY, i);
             this.injectEmbeddingToRegion("sem", wordEmb, backInjectStrength);
           }
@@ -55087,6 +55097,8 @@ var NeuronCluster = class {
     this.regionClusterMap = opts.regionClusterMap || {
       visual: "sensory",
       auditory: "sensory",
+      gustatory: "sensory",
+      somatosensory: "sensory",
       letter: "sensory",
       phon: "sensory",
       sem: "association",
@@ -55158,7 +55170,11 @@ var NeuronCluster = class {
       this.regions = {
         auditory: { start: 0, end: Math.floor(s * 0.083) },
         visual: { start: Math.floor(s * 0.083), end: Math.floor(s * 0.25) },
-        free: { start: Math.floor(s * 0.25), end: Math.floor(s * 0.5) },
+        gustatory: { start: Math.floor(s * 0.25), end: Math.floor(s * 0.27) },
+        // SE.6 taste — carved from free (no migration; trains in pre-walk)
+        somatosensory: { start: Math.floor(s * 0.27), end: Math.floor(s * 0.3) },
+        // SE.6 touch/feel
+        free: { start: Math.floor(s * 0.3), end: Math.floor(s * 0.5) },
         letter: { start: Math.floor(s * 0.5), end: Math.floor(s * 0.55) },
         phon: { start: Math.floor(s * 0.55), end: Math.floor(s * 0.75) },
         sem: { start: semStart, end: semEnd },
@@ -55840,7 +55856,15 @@ var NeuronCluster = class {
       curriculumGamma = gammaInTheta ? 1 + this.gammaAmplitude * Math.sin(2 * Math.PI * gammaPhase) : 1;
     }
     const predErr = Math.max(0, Math.min(1, this._lastPredictionError || 0));
-    const surpriseGate = 0.5 + predErr;
+    if (this._noiseGateEnabled === void 0) {
+      this._noiseGateEnabled = typeof process !== "undefined" && !!process.env && process.env.DREAM_NOISE_GATE === "1";
+    }
+    let surpriseGate = 0.5 + predErr;
+    if (this._noiseGateEnabled) {
+      const coherence = Math.max(0, Math.min(1, this._noiseSuppressFactor ?? 1));
+      const inhib = this._remediationInhibition ? 0.5 : 1;
+      surpriseGate = 0.5 + predErr * coherence * inhib;
+    }
     return {
       ...staticBundle,
       // Curriculum-controlled gamma (NOT the brain-tick-noisy version).
@@ -59436,6 +59460,409 @@ var AuditoryCortex = class {
   }
 };
 
+// ../js/brain/mindspace/transform.js
+var A97 = -1.586134342059924;
+var B97 = -0.052980118572961;
+var G97 = 0.882911075530934;
+var D97 = 0.443506852043971;
+var K97 = 1.230174104914001;
+function b64bytes(s) {
+  const bin = atob(s), n = bin.length, u = new Uint8Array(n);
+  for (let i = 0; i < n; i++) u[i] = bin.charCodeAt(i);
+  return u;
+}
+function b64u32(s) {
+  const b = b64bytes(s);
+  return new Uint32Array(b.buffer, b.byteOffset, b.byteLength >> 2);
+}
+function b64i16(s) {
+  const b = b64bytes(s);
+  return new Int16Array(b.buffer, b.byteOffset, b.byteLength >> 1);
+}
+function bytesToB64(arr) {
+  let s = "";
+  const CH = 32768;
+  for (let i = 0; i < arr.length; i += CH) s += String.fromCharCode.apply(null, arr.slice(i, i + CH));
+  return btoa(s);
+}
+function i16ToB64(int16) {
+  return bytesToB64(new Uint8Array(int16.buffer, int16.byteOffset, int16.byteLength));
+}
+function encPos(idxSorted) {
+  const bytes = [];
+  let prev = 0;
+  for (let i = 0; i < idxSorted.length; i++) {
+    let d = idxSorted[i] - prev;
+    prev = idxSorted[i];
+    while (d >= 128) {
+      bytes.push(d & 127 | 128);
+      d = Math.floor(d / 128);
+    }
+    bytes.push(d & 127);
+  }
+  return bytes;
+}
+function decPos(u8, count) {
+  const out = new Uint32Array(count);
+  let val = 0, acc = 0, shift = 0, n = 0;
+  for (let i = 0; i < u8.length && n < count; i++) {
+    const b = u8[i];
+    acc += (b & 127) * Math.pow(2, shift);
+    if (b & 128) {
+      shift += 7;
+      if (shift > 35) {
+        acc = 0;
+        shift = 0;
+      }
+    } else {
+      val += acc;
+      out[n++] = val;
+      acc = 0;
+      shift = 0;
+    }
+  }
+  return out;
+}
+function decodePositions(c, count) {
+  return c.pos_enc === "dv1" ? decPos(b64bytes(c.pos_b64), count) : b64u32(c.pos_b64);
+}
+function inv1d(get, set, N, tmp) {
+  const sizes = [];
+  let sz = N;
+  while (sz >= 4 && sz % 2 === 0) {
+    sizes.push(sz);
+    sz >>= 1;
+  }
+  for (let si = sizes.length - 1; si >= 0; si--) {
+    const size = sizes[si], half = size >> 1;
+    for (let k = 0; k < half; k++) {
+      tmp[2 * k] = get(k);
+      tmp[2 * k + 1] = get(half + k);
+    }
+    for (let i = 0; i < size; i += 2) tmp[i] *= K97;
+    for (let i = 1; i < size; i += 2) tmp[i] /= K97;
+    tmp[0] -= 2 * D97 * tmp[1];
+    for (let i = 2; i < size; i += 2) tmp[i] -= D97 * (tmp[i - 1] + tmp[i + 1]);
+    for (let i = 1; i < size - 1; i += 2) tmp[i] -= G97 * (tmp[i - 1] + tmp[i + 1]);
+    tmp[size - 1] -= 2 * G97 * tmp[size - 2];
+    tmp[0] -= 2 * B97 * tmp[1];
+    for (let i = 2; i < size; i += 2) tmp[i] -= B97 * (tmp[i - 1] + tmp[i + 1]);
+    for (let i = 1; i < size - 1; i += 2) tmp[i] -= A97 * (tmp[i - 1] + tmp[i + 1]);
+    tmp[size - 1] -= 2 * A97 * tmp[size - 2];
+    for (let i = 0; i < size; i++) set(i, tmp[i]);
+  }
+}
+function fwd1d(get, set, N, tmp) {
+  const sizes = [];
+  let sz = N;
+  while (sz >= 4 && sz % 2 === 0) {
+    sizes.push(sz);
+    sz >>= 1;
+  }
+  for (let si = 0; si < sizes.length; si++) {
+    const size = sizes[si], half = size >> 1;
+    for (let i = 0; i < size; i++) tmp[i] = get(i);
+    tmp[size - 1] += 2 * A97 * tmp[size - 2];
+    for (let i = 1; i < size - 1; i += 2) tmp[i] += A97 * (tmp[i - 1] + tmp[i + 1]);
+    for (let i = 2; i < size; i += 2) tmp[i] += B97 * (tmp[i - 1] + tmp[i + 1]);
+    tmp[0] += 2 * B97 * tmp[1];
+    tmp[size - 1] += 2 * G97 * tmp[size - 2];
+    for (let i = 1; i < size - 1; i += 2) tmp[i] += G97 * (tmp[i - 1] + tmp[i + 1]);
+    for (let i = 2; i < size; i += 2) tmp[i] += D97 * (tmp[i - 1] + tmp[i + 1]);
+    tmp[0] += 2 * D97 * tmp[1];
+    for (let i = 0; i < size; i += 2) tmp[i] /= K97;
+    for (let i = 1; i < size; i += 2) tmp[i] *= K97;
+    for (let k = 0; k < half; k++) {
+      set(k, tmp[2 * k]);
+      set(half + k, tmp[2 * k + 1]);
+    }
+  }
+}
+function idwt2(a, H, W) {
+  const tmpC = new Float64Array(H);
+  for (let c = 0; c < W; c++) inv1d((i) => a[i * W + c], (i, v) => a[i * W + c] = v, H, tmpC);
+  const tmpR = new Float64Array(W);
+  for (let r = 0; r < H; r++) {
+    const base = r * W;
+    inv1d((i) => a[base + i], (i, v) => a[base + i] = v, W, tmpR);
+  }
+  return a;
+}
+function fwd2d(a, H, W) {
+  const tmpR = new Float64Array(W);
+  for (let r = 0; r < H; r++) {
+    const base = r * W;
+    fwd1d((i) => a[base + i], (i, v) => a[base + i] = v, W, tmpR);
+  }
+  const tmpC = new Float64Array(H);
+  for (let c = 0; c < W; c++) fwd1d((i) => a[i * W + c], (i, v) => a[i * W + c] = v, H, tmpC);
+  return a;
+}
+function ycbcrToRGB(y, cb, cr) {
+  return [y + 1.402 * (cr - 0.5), y - 0.344136 * (cb - 0.5) - 0.714136 * (cr - 0.5), y + 1.772 * (cb - 0.5)];
+}
+function rgbToYCbCr(r, g, b) {
+  return [
+    0.299 * r + 0.587 * g + 0.114 * b,
+    0.5 - 0.168736 * r - 0.331264 * g + 0.5 * b,
+    0.5 + 0.5 * r - 0.418688 * g - 0.081312 * b
+  ];
+}
+function padDim(n, m) {
+  m = m || 64;
+  return Math.ceil(n / m) * m;
+}
+var EQ_TOL = [0.03, 0.055, 0.055];
+var EQ_KMIN = [400, 120, 120];
+var EQ_MAX_SRC_PIXELS = 64 * 1024 * 1024;
+function equationalizeImageData(img) {
+  const W0 = img.width, H0 = img.height, d = img.data;
+  const W2 = padDim(W0), H2 = padDim(H0);
+  const names = ["Y", "Cb", "Cr"], chans = {};
+  const planes = [new Float64Array(W2 * H2), new Float64Array(W2 * H2), new Float64Array(W2 * H2)];
+  const refl = (i, n) => {
+    if (i < n) return i;
+    let r = 2 * (n - 1) - i;
+    if (r < 0) r = 0;
+    return r;
+  };
+  for (let y = 0; y < H2; y++) {
+    const sy = refl(y, H0);
+    for (let x = 0; x < W2; x++) {
+      const sx = refl(x, W0), o = (sy * W0 + sx) * 4;
+      const ycc = rgbToYCbCr(d[o] / 255, d[o + 1] / 255, d[o + 2] / 255);
+      const p = y * W2 + x;
+      planes[0][p] = ycc[0];
+      planes[1][p] = ycc[1];
+      planes[2][p] = ycc[2];
+    }
+  }
+  let totalEq = 0;
+  for (let ci = 0; ci < 3; ci++) {
+    const co = fwd2d(planes[ci], H2, W2);
+    const n = co.length;
+    let total = 0;
+    for (let i = 0; i < n; i++) total += co[i] * co[i];
+    total = total || 1;
+    const order = Array.from({ length: n }, (_, i) => i).sort((a, b) => Math.abs(co[b]) - Math.abs(co[a]));
+    const target = (1 - EQ_TOL[ci] * EQ_TOL[ci]) * total;
+    let acc = 0, k = 0;
+    while (k < n && acc < target) {
+      acc += co[order[k]] * co[order[k]];
+      k++;
+    }
+    k = Math.max(EQ_KMIN[ci], Math.min(k, n));
+    const idx = order.slice(0, k).sort((a, b) => a - b);
+    let maxAbs = 1e-8;
+    for (let i = 0; i < k; i++) maxAbs = Math.max(maxAbs, Math.abs(co[idx[i]]));
+    const qscale = maxAbs / 32e3;
+    const q = new Int16Array(k);
+    for (let i = 0; i < k; i++) {
+      let v = Math.round(co[idx[i]] / qscale);
+      q[i] = Math.max(-32767, Math.min(32767, v));
+    }
+    chans[names[ci]] = {
+      keep: k,
+      qscale,
+      pos_enc: "dv1",
+      pos_b64: bytesToB64(new Uint8Array(encPos(idx))),
+      val_b64: i16ToB64(q)
+    };
+    totalEq += k;
+  }
+  return {
+    model: "cdf97_wavelet_native_quantized",
+    colorspace: "YCbCr",
+    wavelet: "cdf97",
+    width: W0,
+    height: H0,
+    pad_w: W2,
+    pad_h: H2,
+    channels: chans,
+    equation_count: totalEq,
+    fidelity: { psnr_db: null, source: "mindspace" }
+  };
+}
+function reconstructImageData(rec, dev) {
+  const W = rec.width, H = rec.height, W2 = rec.pad_w, H2 = rec.pad_h;
+  const f = Math.max(0, Math.min(1, dev || 0));
+  const chans = {};
+  for (const name of ["Y", "Cb", "Cr"]) {
+    const c = rec.channels[name], val = b64i16(c.val_b64), qs = c.qscale, pos = decodePositions(c, val.length);
+    let mx = 0;
+    if (f > 0) for (let i = 0; i < val.length; i++) {
+      const a = Math.abs(val[i] * qs);
+      if (a > mx) mx = a;
+    }
+    const thr = f > 0 ? f * mx * 0.6 : 0;
+    const flat = new Float64Array(W2 * H2), SIZE = W2 * H2;
+    for (let i = 0; i < pos.length; i++) {
+      const p = pos[i];
+      if (p < 0 || p >= SIZE) continue;
+      const v = val[i] * qs;
+      if (thr && Math.abs(v) < thr) continue;
+      flat[p] = v;
+    }
+    idwt2(flat, H2, W2);
+    chans[name] = flat;
+  }
+  const img = new ImageData(W, H), d = img.data, Y = chans.Y, Cb = chans.Cb, Cr = chans.Cr;
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const gi = y * W2 + x, o = (y * W + x) * 4, rgb = ycbcrToRGB(Y[gi], Cb[gi], Cr[gi]);
+    d[o] = Math.max(0, Math.min(255, rgb[0] * 255));
+    d[o + 1] = Math.max(0, Math.min(255, rgb[1] * 255));
+    d[o + 2] = Math.max(0, Math.min(255, rgb[2] * 255));
+    d[o + 3] = 255;
+  }
+  return img;
+}
+function describeEquational(rec, dim) {
+  dim = dim || 64;
+  const out = new Float64Array(dim);
+  if (!rec || !rec.channels) return out;
+  const W2 = rec.pad_w || rec.width || 1;
+  const NB = 8;
+  const names = ["Y", "Cb", "Cr"];
+  const bandBase = [0, 8, 16];
+  const coarseN = 24, coarseAt = 24;
+  const chanMeanAbs = [0, 0, 0];
+  let loEnergy = 0, hiEnergy = 0;
+  for (let ci = 0; ci < 3; ci++) {
+    const c = rec.channels[names[ci]];
+    if (!c || !c.val_b64) continue;
+    let val, pos;
+    try {
+      val = b64i16(c.val_b64);
+      pos = decodePositions(c, val.length);
+    } catch (e) {
+      continue;
+    }
+    const qs = c.qscale || 1, base = bandBase[ci];
+    const coarse = ci === 0 ? [] : null;
+    let mAbs = 0;
+    for (let i = 0; i < val.length; i++) {
+      const p = pos[i] | 0;
+      if (p < 0) continue;
+      const x = p % W2, y = p / W2 | 0;
+      const band = Math.min(NB - 1, Math.max(0, Math.log2(Math.max(x, y) + 1) | 0));
+      const v = val[i] * qs, e = v * v;
+      out[base + band] += e;
+      mAbs += Math.abs(v);
+      if (band <= 1) loEnergy += e;
+      else hiEnergy += e;
+      if (coarse && coarse.length < coarseN) coarse.push(v);
+    }
+    chanMeanAbs[ci] = val.length ? mAbs / val.length : 0;
+    if (coarse) for (let k = 0; k < coarse.length; k++) out[coarseAt + k] = coarse[k];
+  }
+  out[48] = chanMeanAbs[1];
+  out[49] = chanMeanAbs[2];
+  out[50] = chanMeanAbs[0];
+  out[51] = loEnergy + hiEnergy > 0 ? hiEnergy / (loEnergy + hiEnergy) : 0;
+  out[52] = Math.log2((rec.equation_count || 0) + 1) / 24;
+  let norm = 0;
+  for (let i = 0; i < dim; i++) norm += out[i] * out[i];
+  norm = Math.sqrt(norm) || 1;
+  for (let i = 0; i < dim; i++) out[i] /= norm;
+  return out;
+}
+function describeEquationalAudio(rec, bins) {
+  bins = bins || 32;
+  const out = new Float64Array(bins);
+  if (!rec || !rec.channels) return out;
+  const W2 = rec.pad_w || rec.width || 1;
+  for (const name of ["Y", "Cb", "Cr"]) {
+    const c = rec.channels[name];
+    if (!c || !c.val_b64) continue;
+    let val, pos;
+    try {
+      val = b64i16(c.val_b64);
+      pos = decodePositions(c, val.length);
+    } catch (e) {
+      continue;
+    }
+    const qs = c.qscale || 1;
+    for (let i = 0; i < val.length; i++) {
+      const p = pos[i] | 0;
+      if (p < 0) continue;
+      const x = p % W2, y = p / W2 | 0;
+      const band = Math.min(bins - 1, Math.max(0, Math.log2(Math.max(x, y) + 1) | 0));
+      out[band] += Math.abs(val[i] * qs);
+    }
+  }
+  let norm = 0;
+  for (let i = 0; i < bins; i++) norm += out[i] * out[i];
+  norm = Math.sqrt(norm) || 1;
+  for (let i = 0; i < bins; i++) out[i] /= norm;
+  return out;
+}
+function _packChannel(posArr, realVals) {
+  const k = posArr.length;
+  let maxAbs = 1e-8;
+  for (let i = 0; i < k; i++) maxAbs = Math.max(maxAbs, Math.abs(realVals[i]));
+  const qscale = maxAbs / 32e3;
+  const q = new Int16Array(k);
+  for (let i = 0; i < k; i++) {
+    const v = Math.round(realVals[i] / qscale);
+    q[i] = Math.max(-32767, Math.min(32767, v));
+  }
+  return { keep: k, qscale, pos_enc: "dv1", pos_b64: bytesToB64(new Uint8Array(encPos(Array.from(posArr)))), val_b64: i16ToB64(q) };
+}
+function abstract(rec, dev) {
+  const f = Math.max(0, Math.min(1, dev || 0));
+  if (!f) return rec;
+  const channels = {};
+  let total = 0;
+  for (const name of ["Y", "Cb", "Cr"]) {
+    const c = rec.channels[name];
+    if (!c) continue;
+    const val = b64i16(c.val_b64), qs = c.qscale, pos = decodePositions(c, val.length);
+    let mx = 0;
+    for (let i = 0; i < val.length; i++) mx = Math.max(mx, Math.abs(val[i] * qs));
+    const thr = f * mx * 0.6;
+    const keepPos = [], keepVal = [];
+    for (let i = 0; i < val.length; i++) {
+      const v = val[i] * qs;
+      if (Math.abs(v) >= thr) {
+        keepPos.push(pos[i]);
+        keepVal.push(v);
+      }
+    }
+    channels[name] = keepPos.length ? _packChannel(keepPos, keepVal) : _packChannel([0], [0]);
+    total += channels[name].keep;
+  }
+  return { ...rec, channels, equation_count: total, fidelity: { ...rec.fidelity || {}, source: "mindspace-abstract" } };
+}
+function morphField(recA, recB, t) {
+  if (!recA || !recB || recA.pad_w !== recB.pad_w || recA.pad_h !== recB.pad_h || recA.width !== recB.width || recA.height !== recB.height) return null;
+  const u = Math.max(0, Math.min(1, t)), channels = {};
+  let total = 0;
+  for (const name of ["Y", "Cb", "Cr"]) {
+    const a = recA.channels[name], b = recB.channels[name];
+    const m = /* @__PURE__ */ new Map();
+    if (a) {
+      const v = b64i16(a.val_b64), qs = a.qscale, p = decodePositions(a, v.length);
+      for (let i = 0; i < v.length; i++) m.set(p[i], (m.get(p[i]) || 0) + (1 - u) * v[i] * qs);
+    }
+    if (b) {
+      const v = b64i16(b.val_b64), qs = b.qscale, p = decodePositions(b, v.length);
+      for (let i = 0; i < v.length; i++) m.set(p[i], (m.get(p[i]) || 0) + u * v[i] * qs);
+    }
+    const keys = Array.from(m.keys()).sort((x, y) => x - y);
+    const keepPos = [], keepVal = [];
+    for (const p of keys) {
+      const v = m.get(p);
+      if (Math.abs(v) > 1e-9) {
+        keepPos.push(p);
+        keepVal.push(v);
+      }
+    }
+    channels[name] = keepPos.length ? _packChannel(keepPos, keepVal) : _packChannel([0], [0]);
+    total += channels[name].keep;
+  }
+  return { ...recA, channels, equation_count: total, fidelity: { ...recA.fidelity || {}, source: "mindspace-morph" } };
+}
+
 // ../js/brain/visual-cortex.js
 var FRAME_W = 60;
 var FRAME_H = 45;
@@ -59463,10 +59890,14 @@ var VisualCortex = class {
     this.salienceMap = new Float32Array(V1_COUNT);
     this.colors = { tl: [0, 0, 0], tr: [0, 0, 0], bl: [0, 0, 0], br: [0, 0, 0] };
     this.description = "";
+    this.perceptVector = null;
+    this.audioPercept = null;
+    this._lastRec = null;
+    this._recentRecs = [];
     this._lastDescribeTime = 0;
     this._describeInterval = Infinity;
     this._hasDescribedOnce = false;
-    this._describer = null;
+    this._mindSpace = null;
     this._describing = false;
     this._describeSubscribers = [];
     this.gazeX = 0.5;
@@ -59529,14 +59960,18 @@ var VisualCortex = class {
     this._video = null;
     this._ctx = null;
     this._canvas = null;
-    this._describer = null;
+    this._mindSpace = null;
+    this.perceptVector = null;
+    this._lastRec = null;
     this._describing = false;
   }
   /**
-   * Set the IT-level describer function (calls AI model).
+   * MS.I2 — install the equational mind-space (a MindSpaceGPU instance) as the IT-level
+   * perceiver. This REPLACES the old LLM/VLM describer: the cortex now SEES by transforming
+   * the frame to its CDF 9/7 field C and reading the percept vector out of it — no text model.
    */
-  setDescriber(fn) {
-    this._describer = fn;
+  setMindSpace(mindSpace) {
+    this._mindSpace = mindSpace;
   }
   /**
    * Process one frame through V1→V2→V4→IT pipeline.
@@ -59567,6 +60002,10 @@ var VisualCortex = class {
       const mapIdx = Math.floor(i / 100 * V1_COUNT);
       currents[i] = this.salienceMap[mapIdx] * 15 + // edge strength
       (this._currentFrame[mapIdx] || 0) * 5;
+    }
+    if (this.perceptVector) {
+      const pv = this.perceptVector, n = pv.length;
+      for (let i = 0; i < 100; i++) currents[i] += pv[i % n] * 30;
     }
     return {
       currents,
@@ -59784,9 +60223,9 @@ var VisualCortex = class {
     }
     return max;
   }
-  // ── IT: Object recognition (AI call — LAST step) ─────────────
+  // ── IT: equational perception (mind-space — NO AI/LLM, LAST step) ─────────────
   /**
-   * Force a vision description NOW. Called by handleInput on visual questions
+   * Force an equational perception NOW. Called by handleInput on visual questions
    * or by the brain when it decides it needs to look.
    */
   forceDescribe() {
@@ -59795,8 +60234,50 @@ var VisualCortex = class {
     this._lastDescribeTime = 0;
     this._maybeDescribe();
   }
+  /**
+   * MS.I3 — IMAGINE into the mind-space. Imagination is vision without a camera: she recalls
+   * a remembered field C, optionally MORPHS it toward another memory and ABSTRACTS it (the
+   * thought-ops), reads the percept out, and that percept drives the visual region exactly like
+   * a perceived frame — she SEES what she imagines. Returns the percept vector (Float32Array)
+   * or null if she has nothing remembered yet. Pure + deterministic (selection from opts, no RNG).
+   *
+   * @param {object} opts  { blend?:0..1 morph toward another memory, dream?:0..1 abstract amount, pick?:int }
+   */
+  imagine(opts = {}) {
+    if (!this._recentRecs.length) return null;
+    const recs = this._recentRecs;
+    const a = recs[recs.length - 1];
+    let imagined = a;
+    let blend = Math.max(0, Math.min(1, opts.blend || 0));
+    let dream = Math.max(0, Math.min(1, opts.dream || 0));
+    const gov = this._mindSpace && this._mindSpace.governor;
+    if (gov) {
+      const cost = Math.round(40 + 120 * blend + 80 * dream);
+      const grant = gov.allot({ kind: "imagine", requestedUnits: cost, priority: opts.priority, value: opts.value });
+      const f = Math.max(0, Math.min(1, grant.ratio));
+      blend *= f;
+      dream *= f;
+    }
+    if (blend > 0 && recs.length > 1) {
+      const b = recs[((opts.pick | 0) % (recs.length - 1) + (recs.length - 1)) % (recs.length - 1)];
+      const m = morphField(a, b, blend);
+      if (m) imagined = m;
+    }
+    if (dream > 0) imagined = abstract(imagined, dream);
+    this._lastRec = imagined;
+    this.perceptVector = describeEquational(imagined);
+    this.audioPercept = describeEquationalAudio(imagined);
+    this.description = `imagined \xB7 ${(imagined.equation_count || 0).toLocaleString()} terms`;
+    for (const cb of this._describeSubscribers) {
+      try {
+        cb({ vector: this.perceptVector, rec: imagined, imagined: true });
+      } catch (err) {
+      }
+    }
+    return this.perceptVector;
+  }
   _maybeDescribe() {
-    if (!this._describer || this._describing) return;
+    if (!this._mindSpace || this._describing) return;
     if (this._hasDescribedOnce) {
       const now = performance.now();
       if (now - this._lastDescribeTime < 3e5) return;
@@ -59809,20 +60290,26 @@ var VisualCortex = class {
     descCanvas.height = 240;
     const dCtx = descCanvas.getContext("2d");
     dCtx.drawImage(this._video, 0, 0, 320, 240);
-    const dataUrl = descCanvas.toDataURL("image/jpeg", 0.6);
-    this._describer(dataUrl).then((desc) => {
-      if (desc) {
-        this.description = desc;
+    const imageData = dCtx.getImageData(0, 0, 320, 240);
+    Promise.resolve(this._mindSpace.perceive(imageData)).then((rec) => {
+      if (rec && rec.channels) {
+        this._lastRec = rec;
+        this._recentRecs.push(rec);
+        if (this._recentRecs.length > 8) this._recentRecs.shift();
+        this.perceptVector = this._mindSpace.describe(rec);
+        this.audioPercept = describeEquationalAudio(rec);
+        this.description = `equational \xB7 ${(rec.equation_count || 0).toLocaleString()} terms \xB7 ${rec.width}\xD7${rec.height}`;
         for (const cb of this._describeSubscribers) {
           try {
-            cb(desc);
+            cb({ vector: this.perceptVector, rec });
           } catch (err) {
-            console.warn("[VisualCortex] describe subscriber error:", err.message);
+            console.warn("[VisualCortex] percept subscriber error:", err.message);
           }
         }
       }
       this._describing = false;
-    }).catch(() => {
+    }).catch((err) => {
+      console.warn("[VisualCortex] equational perceive failed:", err && err.message);
       this._describing = false;
     });
   }
@@ -61645,10 +62132,16 @@ var LanguageCortex = class {
                 }
               }
               const inferredSubject = typeof cluster._inferActiveSubject === "function" ? cluster._inferActiveSubject() : null;
+              const _ar = Math.max(0, Math.min(1, typeof arousal === "number" ? arousal : 0.5));
+              const _co = Math.max(0, Math.min(1, typeof coherence === "number" ? coherence : 0.5));
+              const _drug = opts.drugState && opts.drugState !== "sober" ? 0.5 : 0;
+              let _temp = 0.6 + 0.4 * _ar + 0.35 * _drug - 0.3 * _co;
+              _temp = Math.max(0.45, Math.min(1.2, _temp));
+              const _topK = Math.round(8 + 6 * Math.max(_ar, _drug));
               composedSentence = await cluster.composeSentence(intentSeed, {
                 subject: inferredSubject || void 0,
-                temperature: 0.6,
-                topK: 8,
+                temperature: Number(_temp.toFixed(2)),
+                topK: _topK,
                 coherenceCandidates: 3
               });
               if (composedSentence && Array.isArray(composedSentence.words) && composedSentence.words.length >= 1) {
@@ -61656,11 +62149,41 @@ var LanguageCortex = class {
                 if (composedSentence.sentence && /[.!?]$/.test(composedSentence.sentence) && composedWordsAsync.length > 0 && !/[.!?]$/.test(composedWordsAsync[composedWordsAsync.length - 1])) {
                   composedWordsAsync[composedWordsAsync.length - 1] += composedSentence.sentence.slice(-1);
                 }
+                try {
+                  const _arN = Math.max(0, Math.min(1, typeof arousal === "number" ? arousal : 0.5));
+                  const maxExtra = _arN > 0.66 ? 2 : _arN > 0.33 ? 1 : 0;
+                  let _total = composedWordsAsync.length;
+                  const _seen = /* @__PURE__ */ new Set([(composedSentence.sentence || composedWordsAsync.join(" ")).toLowerCase()]);
+                  for (let _s = 0; _s < maxExtra && _total < 30; _s++) {
+                    let cont = null;
+                    try {
+                      cont = await cluster.composeSentence(intentSeed, {
+                        subject: inferredSubject || void 0,
+                        temperature: Number(_temp.toFixed(2)),
+                        topK: _topK,
+                        coherenceCandidates: 2
+                      });
+                    } catch {
+                      cont = null;
+                    }
+                    if (!cont || !Array.isArray(cont.words) || cont.words.length < 1) break;
+                    const _key = (cont.sentence || cont.words.join(" ")).toLowerCase();
+                    if (_seen.has(_key)) break;
+                    _seen.add(_key);
+                    const cw = cont.words.slice();
+                    if (cont.sentence && /[.!?]$/.test(cont.sentence) && cw.length > 0 && !/[.!?]$/.test(cw[cw.length - 1])) {
+                      cw[cw.length - 1] += cont.sentence.slice(-1);
+                    }
+                    composedWordsAsync = composedWordsAsync.concat(cw);
+                    _total += cw.length;
+                  }
+                } catch {
+                }
                 if (typeof cluster.pushEmission === "function") {
                   try {
                     cluster.pushEmission({
                       source: "chat",
-                      text: composedSentence.sentence || composedWordsAsync.join(" "),
+                      text: composedWordsAsync.join(" "),
                       ts: Date.now(),
                       subject: inferredSubject || null
                     });
@@ -61757,15 +62280,15 @@ var LanguageCortex = class {
    */
   _applySpeechModulation(text, mod) {
     if (!text) return text;
-    const slur = clamp01(mod.slur || 0);
+    const slur = clamp012(mod.slur || 0);
     const coherence = Math.max(-1, Math.min(1, mod.coherence || 0));
     const speechRate = Math.max(-1, Math.min(1, mod.speechRate || 0));
-    const dissociation = clamp01(mod.dissociation || 0);
+    const dissociation = clamp012(mod.dissociation || 0);
     const inhibition = Math.max(-1, Math.min(0, mod.inhibition || 0));
-    const warmth = clamp01(mod.warmth || 0);
-    const profoundBias = clamp01(mod.profoundBias || 0);
-    const interruptionBias = clamp01(mod.interruptionBias || 0);
-    const confessionalBias = clamp01(mod.confessionalBias || 0);
+    const warmth = clamp012(mod.warmth || 0);
+    const profoundBias = clamp012(mod.profoundBias || 0);
+    const interruptionBias = clamp012(mod.interruptionBias || 0);
+    const confessionalBias = clamp012(mod.confessionalBias || 0);
     let seed = 0;
     for (let i = 0; i < text.length; i++) seed = (seed << 5) - seed + text.charCodeAt(i) | 0;
     const rand = () => {
@@ -61789,7 +62312,7 @@ var LanguageCortex = class {
       }
     }
     if (speechRate < -0.3) {
-      const pauseRate = clamp01((-speechRate - 0.3) * 1.5);
+      const pauseRate = clamp012((-speechRate - 0.3) * 1.5);
       const parts = text.split(" ");
       const paused = [];
       for (let i = 0; i < parts.length; i++) {
@@ -61853,7 +62376,7 @@ var LanguageCortex = class {
       }
     }
     return text;
-    function clamp01(x) {
+    function clamp012(x) {
       return Math.max(0, Math.min(1, x));
     }
   }
@@ -62795,7 +63318,7 @@ function jsonToMapOfMapOfMaps(obj) {
   return m;
 }
 var STORAGE_KEY2 = "unity_brain_state";
-var VERSION2 = 5;
+var VERSION2 = 6;
 var BrainPersistence = class _BrainPersistence {
   /**
    * Save the brain's complete learned state.
@@ -62848,7 +63371,12 @@ var BrainPersistence = class _BrainPersistence {
         // restarts. This makes long-term learning stick — if Unity
         // learns that "unity" goes near "code" and "high" in her
         // conversations, that association survives a reload.
-        embeddingRefinements: sharedEmbeddings?.serializeRefinements ? sharedEmbeddings.serializeRefinements() : null
+        embeddingRefinements: sharedEmbeddings?.serializeRefinements ? sharedEmbeddings.serializeRefinements() : null,
+        // MS.I6 — equational visual memory. Unity's perceived/imagined forms persist AS
+        // EQUATIONS (the field C, the .uvme medium): the visual cortex's recent field-Cs are
+        // plain-serialisable (base64 coeff channels), so they survive a reload and can be
+        // recalled + re-experienced (via imagine) next session. The equation IS the memory.
+        visualMemory: brain2.visualCortex && Array.isArray(brain2.visualCortex._recentRecs) ? brain2.visualCortex._recentRecs.slice(-8) : null
       };
       try {
         const cortex = brain2.clusters?.cortex;
@@ -62900,6 +63428,7 @@ var BrainPersistence = class _BrainPersistence {
         if (state.semanticWeights) droppedSections.push("semanticWeights");
         if (state.embeddingRefinements) droppedSections.push("embeddingRefinements");
         if (state.t14Language) droppedSections.push("t14Language");
+        if (state.visualMemory) droppedSections.push("visualMemory");
         const minimal = {
           version: VERSION2,
           savedAt: state.savedAt,
@@ -63062,6 +63591,16 @@ var BrainPersistence = class _BrainPersistence {
       }
     } catch (err) {
       failed.embeddingRefinements = err.message;
+    }
+    try {
+      if (Array.isArray(state.visualMemory) && brain2.visualCortex) {
+        const recs = state.visualMemory.filter((r) => r && r.channels).slice(-8);
+        brain2.visualCortex._recentRecs = recs;
+        if (recs.length) brain2.visualCortex._lastRec = recs[recs.length - 1];
+        restored.visualMemory = `${recs.length}`;
+      }
+    } catch (err) {
+      failed.visualMemory = err?.message || String(err);
     }
     try {
       if (state.t14Language) {
@@ -66460,10 +66999,27 @@ var PREK_MIXIN = {
       { name: "word", feat: [0.3, 0, 0.3, 0, 0, 0, 0, 0.3] }
     ];
     await this._conceptTeach(PHONEME_CONCEPTS, 8);
+    const PRINT_CONCEPTS = [
+      { name: "book", feat: [0.5, 0, 0.5, 0, 0, 0.3, 0, 0.3] },
+      { name: "page", feat: [0.3, 0, 0.3, 0, 0, 0, 0, 0] },
+      { name: "letter", feat: [0.3, 0, 0.3, 0, 0, 0, 0, 0.3] },
+      { name: "read", feat: [0.5, 0, 0.5, 0, 0, 0.3, 0, 0.3] },
+      { name: "name", feat: [0.5, 0, 0.5, 0, 0, 0, 0, 0.5] },
+      { name: "story", feat: [0.5, 0, 0.5, 0, 0, 0.5, 0, 0.3] },
+      { name: "rhyme", feat: [0.5, 0, 0.3, 0, 0, 0.3, 0, 0] },
+      { name: "first", feat: [0.3, 0, 0.3, 0, 0, 0, 0, 0] },
+      { name: "last", feat: [0.3, 0, 0.3, 0, 0, 0, 0, 0] }
+    ];
+    await this._conceptTeach(PRINT_CONCEPTS, 8);
     await this._teachBiographicalFacts([
       { question: "what sound does a dog make", answer: "bark" },
       { question: "what sound does a cat make", answer: "meow" },
-      { question: "what do words have", answer: "sound" }
+      { question: "what do words have", answer: "sound" },
+      { question: "what is made of letters", answer: "word" },
+      { question: "what do i read", answer: "book" },
+      { question: "what has pages", answer: "book" },
+      { question: "what rhymes with cat", answer: "hat" },
+      { question: "what rhymes with dog", answer: "log" }
     ], { reps: 6 });
     await this._teachAssociationPairs([
       ["a", "apple"],
@@ -66482,13 +67038,52 @@ var PREK_MIXIN = {
       ["n", "net"],
       ["o", "octopus"],
       ["p", "pig"],
+      ["q", "queen"],
+      ["r", "rain"],
+      ["s", "sun"],
+      ["t", "top"],
+      ["u", "umbrella"],
+      ["v", "van"],
+      ["w", "water"],
+      ["x", "box"],
+      ["y", "yarn"],
+      ["z", "zebra"],
       ["bark", "dog"],
       ["meow", "cat"],
       ["moo", "cow"],
       ["quack", "duck"],
       ["tweet", "bird"]
     ], { reps: 8, label: "PREK-ELA-LETTER-SOUND", relationTagId: 3 });
-    return await this._gateVocabList(PHONEME_CONCEPTS.map((c) => c.name).concat(["bark", "meow", "sound"]));
+    await this._teachAssociationPairs([
+      ["cat", "hat"],
+      ["hat", "bat"],
+      ["bat", "mat"],
+      ["mat", "rat"],
+      ["dog", "log"],
+      ["log", "frog"],
+      ["frog", "hog"],
+      ["ball", "wall"],
+      ["wall", "tall"],
+      ["tall", "fall"],
+      ["bee", "tree"],
+      ["tree", "three"],
+      ["three", "knee"],
+      ["sun", "fun"],
+      ["fun", "run"],
+      ["run", "bun"],
+      ["rhyme", "same"],
+      ["cat", "rhyme"],
+      ["hat", "rhyme"]
+    ], { reps: 8, label: "PREK-ELA-RHYME", relationTagId: 3 });
+    await this._teachBiographicalFacts([
+      { question: "the cat sat on the mat who sat", answer: "cat" },
+      { question: "the dog ran to the ball what did the dog get", answer: "ball" },
+      { question: "the sun is up is it day or night", answer: "day" },
+      { question: "mom read a book what did mom read", answer: "book" }
+    ], { reps: 6 });
+    return await this._gateVocabList(
+      PHONEME_CONCEPTS.map((c) => c.name).concat(PRINT_CONCEPTS.map((c) => c.name)).concat(["bark", "meow", "sound", "hat", "rhyme"])
+    );
   },
   async runMathPreK(_ctx) {
     const QUANTITY_CONCEPTS = [
@@ -66501,12 +67096,33 @@ var PREK_MIXIN = {
       { name: "small", feat: [0.2, 0, 0, 0, 0, 0, 0, 0] }
     ];
     await this._conceptTeach(QUANTITY_CONCEPTS, 8);
+    const SHAPE_CONCEPTS = [
+      { name: "circle", feat: [0.3, 0, 0.3, 0, 0, 0, 0, 0] },
+      { name: "square", feat: [0.3, 0, 0, 0, 0, 0, 0, 0] },
+      { name: "triangle", feat: [0.3, 0, 0, 0, 0, 0, 0, 0] },
+      { name: "rectangle", feat: [0.3, 0, 0, 0, 0, 0, 0, 0] },
+      { name: "sort", feat: [0.3, 0, 0.3, 0, 0, 0, 0, 0] },
+      { name: "match", feat: [0.3, 0, 0.3, 0, 0, 0, 0, 0] },
+      { name: "pattern", feat: [0.3, 0, 0, 0, 0, 0, 0, 0.3] },
+      { name: "count", feat: [0.3, 0, 0.3, 0, 0, 0, 0, 0.3] },
+      { name: "long", feat: [0.5, 0, 0, 0, 0, 0, 0, 0] },
+      { name: "short", feat: [0.2, 0, 0, 0, 0, 0, 0, 0] },
+      { name: "heavy", feat: [0.5, 0, 0, 0, 0, 0, 0, 0] },
+      { name: "empty", feat: [0, 0.2, 0, 0, 0, 0, 0, 0] },
+      { name: "full", feat: [0.6, 0, 0, 0, 0, 0, 0, 0] }
+    ];
+    await this._conceptTeach(SHAPE_CONCEPTS, 8);
     await this._teachBiographicalFacts([
       { question: "how many eyes", answer: "two" },
       { question: "how many hands", answer: "two" },
       { question: "how many noses", answer: "one" },
       { question: "which is more", answer: "more" },
-      { question: "which is less", answer: "less" }
+      { question: "which is less", answer: "less" },
+      { question: "what shape is a ball", answer: "circle" },
+      { question: "what shape is a box", answer: "square" },
+      { question: "what shape has three sides", answer: "triangle" },
+      { question: "what comes after one", answer: "two" },
+      { question: "what comes after two", answer: "three" }
     ], { reps: 6 });
     await this._teachAssociationPairs([
       ["one", "two"],
@@ -66523,9 +67139,31 @@ var PREK_MIXIN = {
       ["tall", "more"],
       ["short", "less"],
       ["many", "more"],
-      ["few", "less"]
+      ["few", "less"],
+      ["long", "short"],
+      ["heavy", "light"],
+      ["full", "empty"]
     ], { reps: 8, label: "PREK-MATH-COUNT-MAG", relationTagId: 5 });
-    return await this._gateVocabList(QUANTITY_CONCEPTS.map((c) => c.name));
+    await this._teachAssociationPairs([
+      ["one", "dot"],
+      ["two", "dots"],
+      ["three", "dots"],
+      ["circle", "round"],
+      ["square", "four"],
+      ["triangle", "three"],
+      ["rectangle", "four"],
+      ["ball", "circle"],
+      ["box", "square"],
+      ["sort", "color"],
+      ["sort", "size"],
+      ["match", "same"],
+      ["pattern", "repeat"],
+      ["red", "blue"],
+      ["blue", "red"]
+    ], { reps: 8, label: "PREK-MATH-SHAPE-SORT", relationTagId: 5 });
+    return await this._gateVocabList(
+      QUANTITY_CONCEPTS.map((c) => c.name).concat(["circle", "square", "triangle", "count", "sort", "pattern"])
+    );
   },
   async runSciPreK(_ctx) {
     const OBJECT_CONCEPTS = [
@@ -66539,6 +67177,23 @@ var PREK_MIXIN = {
       { name: "ball", feat: [0.5, 0, 0, 0, 0, 0.3, 0, 0] }
     ];
     await this._conceptTeach(OBJECT_CONCEPTS, 8);
+    const NATURE_CONCEPTS = [
+      { name: "living", feat: [1, 0, 0.5, 0, 0, 0.3, 0, 0] },
+      { name: "grow", feat: [0.8, 0, 0.3, 0, 0, 0.3, 0, 0] },
+      { name: "hot", feat: [0.3, 0.3, 0, 0, 0.3, 0, 0, 0] },
+      { name: "cold", feat: [0, 0.3, 0, 0.3, 0, 0, 0, 0.3] },
+      { name: "wet", feat: [0.3, 0, 0, 0, 0, 0, 0, 0] },
+      { name: "dry", feat: [0.3, 0, 0, 0, 0, 0, 0, 0] },
+      { name: "wind", feat: [0.3, 0, 0, 0.3, 0, 0, 0, 0] },
+      { name: "snow", feat: [0.5, 0, 0.3, 0, 0, 0, 0, 0.3] },
+      { name: "cloud", feat: [0.5, 0, 0, 0, 0, 0, 0, 0] },
+      { name: "day", feat: [0.8, 0, 0.3, 0, 0, 0, 0, 0] },
+      { name: "night", feat: [0, 0.3, 0.3, 0.3, 0, 0, 0, 0.5] },
+      { name: "smell", feat: [0.3, 0, 0.3, 0, 0, 0.3, 0, 0] },
+      { name: "hear", feat: [0.3, 0, 0.3, 0, 0, 0.3, 0, 0] },
+      { name: "touch", feat: [0.3, 0, 0.3, 0, 0, 0.3, 0, 0] }
+    ];
+    await this._conceptTeach(NATURE_CONCEPTS, 8);
     await this._teachBiographicalFacts([
       { question: "what does a dog say", answer: "bark" },
       { question: "what does a cat say", answer: "meow" },
@@ -66546,7 +67201,13 @@ var PREK_MIXIN = {
       { question: "what does a bird say", answer: "tweet" },
       { question: "what is hot", answer: "fire" },
       { question: "what is wet", answer: "water" },
-      { question: "what falls down", answer: "ball" }
+      { question: "what falls down", answer: "ball" },
+      { question: "is a dog living", answer: "yes" },
+      { question: "is a rock living", answer: "no" },
+      { question: "what do plants do", answer: "grow" },
+      { question: "what falls from clouds", answer: "rain" },
+      { question: "what do i see with", answer: "eye" },
+      { question: "what do i hear with", answer: "ear" }
     ], { reps: 6 });
     await this._teachAssociationPairs([
       ["dog", "bark"],
@@ -66568,9 +67229,27 @@ var PREK_MIXIN = {
       ["drop", "fall"],
       ["throw", "fly"]
     ], { reps: 8, label: "PREK-SCI-ANIMAL-SOUND", relationTagId: 1 });
+    await this._teachAssociationPairs([
+      ["eye", "see"],
+      ["ear", "hear"],
+      ["nose", "smell"],
+      ["tongue", "taste"],
+      ["hand", "touch"],
+      ["animal", "living"],
+      ["plant", "living"],
+      ["rock", "nonliving"],
+      ["plant", "grow"],
+      ["baby", "grow"],
+      ["rain", "wet"],
+      ["sun", "dry"],
+      ["snow", "cold"],
+      ["fire", "hot"],
+      ["cloud", "rain"],
+      ["wind", "cold"]
+    ], { reps: 8, label: "PREK-SCI-SENSE-NATURE", relationTagId: 1 });
     await this._teachPrekSpatial();
     await this._teachPrekLogic();
-    return await this._gateVocabList(["animal", "water", "sun", "fire", "bark", "meow", "moo", "above", "below", "because", "so"]);
+    return await this._gateVocabList(["animal", "water", "sun", "fire", "bark", "meow", "moo", "living", "grow", "cold", "hot", "smell", "hear", "above", "below", "because", "so"]);
   },
   async runSocPreK(_ctx) {
     const SOCIAL_CONCEPTS = [
@@ -66585,11 +67264,27 @@ var PREK_MIXIN = {
       { name: "mean", feat: [0, 0.5, 0, 0.3, 0.5, 0, 0, 0] }
     ];
     await this._conceptTeach(SOCIAL_CONCEPTS, 8);
+    const COMMUNITY_CONCEPTS = [
+      { name: "friend", feat: [1, 0, 1, 0, 0, 0.5, 0, 0] },
+      { name: "help", feat: [0.5, 0, 0.5, 0, 0, 0.3, 0, 0] },
+      { name: "doctor", feat: [0.3, 0, 0.5, 0, 0, 0, 0, 0] },
+      { name: "teacher", feat: [0.5, 0, 0.5, 0, 0, 0, 0, 0] },
+      { name: "turn", feat: [0.3, 0, 0.3, 0, 0, 0, 0, 0] },
+      { name: "wait", feat: [0.2, 0.2, 0.3, 0, 0, 0, 0, 0] },
+      { name: "rule", feat: [0.3, 0, 0.3, 0, 0, 0, 0, 0.3] },
+      { name: "sorry", feat: [0.2, 0.3, 0.5, 0, 0, 0.3, 0, 0] }
+    ];
+    await this._conceptTeach(COMMUNITY_CONCEPTS, 8);
     await this._teachBiographicalFacts([
       { question: "who is the mom", answer: "mom" },
       { question: "who is the baby", answer: "baby" },
       { question: "what is nice to do", answer: "share" },
-      { question: "what is bad to be", answer: "mean" }
+      { question: "what is bad to be", answer: "mean" },
+      { question: "who helps when i am sick", answer: "doctor" },
+      { question: "who helps me learn", answer: "teacher" },
+      { question: "what do i say when i bump someone", answer: "sorry" },
+      { question: "what do i do to be polite", answer: "share" },
+      { question: "what do i do while i wait", answer: "wait" }
     ], { reps: 6 });
     await this._teachAssociationPairs([
       ["mom", "parent"],
@@ -66609,7 +67304,23 @@ var PREK_MIXIN = {
       ["scared", "hide"],
       ["love", "hug"]
     ], { reps: 8, label: "PREK-SOC-FAMILY-EMOT", relationTagId: 1 });
-    return await this._gateVocabList(SOCIAL_CONCEPTS.map((c) => c.name));
+    await this._teachAssociationPairs([
+      ["friend", "play"],
+      ["friend", "share"],
+      ["share", "turn"],
+      ["turn", "wait"],
+      ["doctor", "help"],
+      ["teacher", "help"],
+      ["sorry", "kind"],
+      ["please", "ask"],
+      ["thanks", "give"],
+      ["rule", "follow"],
+      ["kind", "friend"],
+      ["mean", "sad"]
+    ], { reps: 8, label: "PREK-SOC-COMMUNITY", relationTagId: 1 });
+    return await this._gateVocabList(
+      SOCIAL_CONCEPTS.map((c) => c.name).concat(["friend", "help", "doctor", "teacher", "turn", "sorry"])
+    );
   },
   async runArtPreK(_ctx) {
     const ART_CONCEPTS = [
@@ -66625,11 +67336,30 @@ var PREK_MIXIN = {
       { name: "song", feat: [0.8, 0, 0.3, 0, 0, 0.5, 0, 0.3] }
     ];
     await this._conceptTeach(ART_CONCEPTS, 8);
+    const CREATE_CONCEPTS = [
+      { name: "purple", feat: [0.5, 0, 0.3, 0, 0, 0.3, 0, 0.5] },
+      { name: "orange", feat: [0.8, 0, 0, 0, 0, 0, 0, 0] },
+      { name: "paint", feat: [0.8, 0, 0, 0, 0, 0.5, 0.5, 0.5] },
+      { name: "brush", feat: [0.5, 0, 0, 0, 0, 0.3, 0, 0] },
+      { name: "crayon", feat: [0.8, 0, 0, 0, 0, 0.5, 0, 0.3] },
+      { name: "glue", feat: [0.3, 0, 0.3, 0, 0, 0, 0, 0] },
+      { name: "loud", feat: [0.5, 0.3, 0, 0.3, 0, 0, 0, 0] },
+      { name: "quiet", feat: [0.3, 0, 0.3, 0, 0, 0, 0, 0.5] },
+      { name: "fast", feat: [0.6, 0, 0, 0, 0, 0, 0, 0] },
+      { name: "slow", feat: [0.3, 0, 0.3, 0, 0, 0, 0, 0] },
+      { name: "beat", feat: [0.6, 0, 0, 0, 0, 0.5, 0, 0.3] },
+      { name: "dance", feat: [1, 0, 0, 0, 0, 0.5, 0, 0.3] }
+    ];
+    await this._conceptTeach(CREATE_CONCEPTS, 8);
     await this._teachBiographicalFacts([
       { question: "what color is the sun", answer: "yellow" },
       { question: "what color is the sky", answer: "blue" },
       { question: "what color is grass", answer: "green" },
-      { question: "what do i like to draw", answer: "black" }
+      { question: "what do i like to draw", answer: "black" },
+      { question: "what do i paint with", answer: "brush" },
+      { question: "what do i color with", answer: "crayon" },
+      { question: "what do i do to music", answer: "dance" },
+      { question: "what color do i like best", answer: "black" }
     ], { reps: 6 });
     await this._teachAssociationPairs([
       ["red", "color"],
@@ -66650,8 +67380,25 @@ var PREK_MIXIN = {
       ["drum", "beat"],
       ["sing", "song"]
     ], { reps: 8, label: "PREK-ART-COLORS-TOOLS", relationTagId: 1 });
+    await this._teachAssociationPairs([
+      ["purple", "color"],
+      ["orange", "color"],
+      ["paint", "brush"],
+      ["glue", "stick"],
+      ["crayon", "draw"],
+      ["loud", "quiet"],
+      ["fast", "slow"],
+      ["beat", "drum"],
+      ["dance", "music"],
+      ["song", "sing"],
+      ["music", "feel"],
+      ["black", "goth"],
+      ["draw", "make"]
+    ], { reps: 8, label: "PREK-ART-CREATE", relationTagId: 1 });
     await this._teachPrekVisual();
-    return await this._gateVocabList(ART_CONCEPTS.map((c) => c.name).concat(["see", "look", "picture", "shape"]));
+    return await this._gateVocabList(
+      ART_CONCEPTS.map((c) => c.name).concat(["see", "look", "picture", "shape", "paint", "crayon", "dance", "beat"])
+    );
   },
   async runLifePreK(ctx) {
     const EMOTIONAL_CONCEPTS = [
@@ -67457,6 +68204,62 @@ var K_MIXIN = {
         relationTagId: 17
       })
     );
+  },
+  /**
+   * TRACK SE — cross-modal sensory GROUNDING. Bind concrete concepts to their
+   * multi-sensory VALUE descriptors so a concept is comprehended ACROSS senses,
+   * not as a bare token: strawberry → sweet(taste) + red(sight) + soft(touch);
+   * cloud → white + soft + bright; bird → small + quiet; fire → hot + bright +
+   * smoke. The descriptors are the sensory words already taught (taste / touch /
+   * sight-color / light / sound / smell), each carrying its own valence vector —
+   * so grounding a concept onto them gives it a real multi-modal value. This is
+   * the equational "senses register values" mechanism in SEM-SPACE
+   * (relationTagId=17), with NO new cortical regions, so it preserves trained
+   * weights (no neuron-layout change). Extensible to infinity — any new concept
+   * grounds the same way. Pre-taught descriptors ONLY (anchored basins, per the
+   * words-must-be-learned LAW); new concept nouns self-ground via _conceptTeach
+   * elsewhere in the K cells.
+   */
+  async _teachKSensoryGrounding() {
+    const GROUNDING = [
+      ["strawberry", ["sweet", "red", "soft"]],
+      ["lemon", ["sour", "yellow"]],
+      ["apple", ["sweet", "red", "round"]],
+      ["chocolate", ["bitter", "sweet", "black"]],
+      ["candy", ["sweet", "bright"]],
+      ["coffee", ["bitter", "hot", "dark"]],
+      ["cloud", ["white", "soft", "bright"]],
+      ["sky", ["blue", "bright"]],
+      ["grass", ["green", "soft"]],
+      ["sun", ["bright", "hot", "yellow", "round"]],
+      ["rain", ["wet", "cold", "quiet"]],
+      ["snow", ["white", "cold", "soft", "quiet"]],
+      ["fire", ["hot", "bright", "smoke"]],
+      ["night", ["dark", "quiet", "cold"]],
+      ["bird", ["small", "quiet"]],
+      ["cat", ["soft", "quiet"]],
+      ["dog", ["loud", "soft"]],
+      ["blanket", ["soft", "quiet"]],
+      ["stone", ["rough", "cold"]],
+      ["ice", ["cold", "wet", "white"]],
+      ["leather", ["silky", "dark"]],
+      ["flower", ["soft", "bright", "sweet"]],
+      ["candle", ["dim", "hot", "bright"]]
+    ];
+    const pairs = [];
+    for (const [concept, descs] of GROUNDING) {
+      for (const d of descs) pairs.push([concept, d]);
+    }
+    await this._phasedTeach(
+      "LIFE-K-SENSORY-GROUNDING",
+      () => this._teachAssociationPairs(pairs, {
+        reps: 35,
+        label: "LIFE-K-SENSORY-GROUNDING",
+        relationTagId: 17
+        // shared sensory-category channel
+      })
+    );
+    this._hb(`[Curriculum] _teachKSensoryGrounding DONE \u2014 ${GROUNDING.length} concepts grounded across senses \xB7 ${pairs.length} concept\u2192sensory-value bindings (relationTagId=17, sem-space, weight-preserving). Concepts now carry multi-modal value: strawberry tastes sweet + looks red + feels soft.`);
   },
   /**
    * K-LIFE.4 — Comfort objects (attachment psychology, goth-toned).
@@ -68459,6 +69262,7 @@ var K_MIXIN = {
     await this._teachKLifeFirstWords();
     await this._teachKLifeFamilyRoles();
     await this._teachKLifeSensoryFirsts();
+    await this._teachKSensoryGrounding();
     await this._teachKLifeComfortObjects();
     await this._teachKLifeEarlyFears();
     await this._teachKLifeSleepBedtime();
@@ -86400,6 +87204,128 @@ var COL1_MIXIN = {
       { question: "the hard questions about knowledge and right and wrong are", expected: ["philosophy", "p"] }
     ], { gateSubjectTag: "genered" });
   },
+  async runCsTheoryCol1Real(ctx) {
+    const VOCAB = [
+      "logic",
+      "proof",
+      "set",
+      "subset",
+      "union",
+      "intersection",
+      "function",
+      "relation",
+      "combination",
+      "permutation",
+      "graph",
+      "vertex",
+      "edge",
+      "induction",
+      "boolean",
+      "proposition",
+      "theorem",
+      "counterexample",
+      "cardinality",
+      "recurrence"
+    ];
+    await this._teachVocabList(VOCAB, ctx, { reps: 3 });
+    const SENTENCES = [
+      "discrete math is the math of distinct separate values",
+      "a proof shows that a statement is always true",
+      "a set is a collection of distinct objects",
+      "the union of two sets combines all their elements",
+      "the intersection of two sets is the elements they share",
+      "a function maps each input to exactly one output",
+      "a graph has vertices connected by edges",
+      "induction proves a statement for all the natural numbers",
+      "logic uses and or and not to combine propositions",
+      "a counterexample disproves a general claim",
+      "a permutation is an ordered arrangement of things",
+      "a combination is a choice where order does not matter",
+      "a boolean value is either true or false",
+      "a theorem is a statement that has been proven true"
+    ];
+    await this._teachSentenceList(SENTENCES, ctx, { reps: 2, ticksPerWord: 2 });
+    await this._teachCausalChains([
+      ["proof", "true"],
+      ["union", "combine"],
+      ["intersection", "share"],
+      ["function", "map"],
+      ["graph", "edge"],
+      ["induction", "natural"],
+      ["counterexample", "disprove"]
+    ]);
+    await this._teachProductionStack("cstheory", ctx, { tag: "CSTHEORY-COL1" });
+    return await this._gateSubjectProduction("cstheory", "college1", [
+      { question: "the math of distinct separate values is", expected: ["discrete", "d"] },
+      { question: "a statement shown always true by a", expected: ["proof", "p"] },
+      { question: "a collection of distinct objects is a", expected: ["set", "s"] },
+      { question: "combining all elements of two sets is the", expected: ["union", "u"] },
+      { question: "the elements two sets share is the", expected: ["intersection", "i"] },
+      { question: "mapping each input to one output is a", expected: ["function", "f"] },
+      { question: "vertices connected by edges form a", expected: ["graph", "g"] },
+      { question: "a value that is true or false is", expected: ["boolean", "b"] }
+    ], { gateSubjectTag: "cstheory" });
+  },
+  async runCsSystemsCol1Real(ctx) {
+    const VOCAB = [
+      "bit",
+      "byte",
+      "binary",
+      "transistor",
+      "gate",
+      "register",
+      "memory",
+      "cpu",
+      "instruction",
+      "opcode",
+      "cache",
+      "bus",
+      "clock",
+      "hexadecimal",
+      "encode",
+      "circuit",
+      "processor",
+      "address",
+      "signal",
+      "voltage"
+    ];
+    await this._teachVocabList(VOCAB, ctx, { reps: 3 });
+    const SENTENCES = [
+      "a computer stores everything as bits that are zero or one",
+      "eight bits make one byte",
+      "binary is the base two number system computers use",
+      "a transistor is a tiny switch that is on or off",
+      "logic gates combine signals with and or and not",
+      "the cpu is the processor that runs instructions",
+      "an instruction tells the processor to do one operation",
+      "a register holds a small value right inside the cpu",
+      "the cache is fast memory close to the processor",
+      "the clock makes the processor step at a steady rate",
+      "memory stores instructions and data at numbered addresses",
+      "the bus carries signals between the parts of the computer"
+    ];
+    await this._teachSentenceList(SENTENCES, ctx, { reps: 2, ticksPerWord: 2 });
+    await this._teachCausalChains([
+      ["bit", "binary"],
+      ["transistor", "switch"],
+      ["gate", "logic"],
+      ["cpu", "instruction"],
+      ["register", "cpu"],
+      ["cache", "fast"],
+      ["clock", "step"]
+    ]);
+    await this._teachProductionStack("cssystems", ctx, { tag: "CSSYSTEMS-COL1" });
+    return await this._gateSubjectProduction("cssystems", "college1", [
+      { question: "the smallest unit storing zero or one is a", expected: ["bit", "b"] },
+      { question: "eight bits make one", expected: ["byte", "b"] },
+      { question: "the base two number system is", expected: ["binary", "b"] },
+      { question: "a tiny on off switch is a", expected: ["transistor", "t"] },
+      { question: "the processor that runs instructions is the", expected: ["cpu", "c"] },
+      { question: "a small value held inside the cpu is in a", expected: ["register", "r"] },
+      { question: "fast memory close to the processor is the", expected: ["cache", "c"] },
+      { question: "what steps the processor at a steady rate is the", expected: ["clock", "c"] }
+    ], { gateSubjectTag: "cssystems" });
+  },
   async runLifeCol1(ctx) {
     await this._trainLifeStories("college1", ctx, { reps: 4, ticksPerWord: 2 });
     return this._teachVocabList([
@@ -86775,6 +87701,125 @@ var COL2_MIXIN = {
       { question: "evaluating a source asks who made it and", expected: ["why", "w"] }
     ], { gateSubjectTag: "genered" });
   },
+  async runCsTheoryCol2Real(ctx) {
+    const VOCAB = [
+      "algorithm",
+      "sort",
+      "search",
+      "complexity",
+      "recursion",
+      "iteration",
+      "divide",
+      "conquer",
+      "greedy",
+      "dynamic",
+      "optimal",
+      "heap",
+      "stack",
+      "queue",
+      "hash",
+      "tree",
+      "traverse",
+      "efficiency",
+      "worst",
+      "order"
+    ];
+    await this._teachVocabList(VOCAB, ctx, { reps: 3 });
+    const SENTENCES = [
+      "an algorithm is a step by step method to solve a problem",
+      "sorting puts a list of items into order",
+      "binary search finds an item by halving the range each time",
+      "big o describes how the runtime grows with the input size",
+      "recursion solves a problem using smaller copies of itself",
+      "divide and conquer splits a problem then combines the answers",
+      "a greedy algorithm makes the best local choice at each step",
+      "dynamic programming stores subproblem answers to avoid recomputing",
+      "a hash table finds items in almost constant time",
+      "the worst case is the slowest an algorithm can ever run",
+      "an optimal solution is the best one that is possible",
+      "a stack is last in first out and a queue is first in first out"
+    ];
+    await this._teachSentenceList(SENTENCES, ctx, { reps: 2, ticksPerWord: 2 });
+    await this._teachCausalChains([
+      ["sort", "order"],
+      ["recursion", "smaller"],
+      ["divide", "combine"],
+      ["greedy", "local"],
+      ["dynamic", "store"],
+      ["hash", "constant"],
+      ["search", "halve"]
+    ]);
+    await this._teachProductionStack("cstheory", ctx, { tag: "CSTHEORY-COL2" });
+    return await this._gateSubjectProduction("cstheory", "college2", [
+      { question: "a step by step method to solve a problem is an", expected: ["algorithm", "a"] },
+      { question: "putting items into order is", expected: ["sorting", "sort", "s"] },
+      { question: "how runtime grows with input size is", expected: ["complexity", "big", "c", "b"] },
+      { question: "solving a problem with smaller copies of itself is", expected: ["recursion", "r"] },
+      { question: "making the best local choice each step is a", expected: ["greedy", "g"] },
+      { question: "storing subproblem answers to avoid recomputing is", expected: ["dynamic", "d"] },
+      { question: "finding items in almost constant time uses a", expected: ["hash", "h"] },
+      { question: "the slowest an algorithm can run is the", expected: ["worst", "w"] }
+    ], { gateSubjectTag: "cstheory" });
+  },
+  async runCsSystemsCol2Real(ctx) {
+    const VOCAB = [
+      "pipeline",
+      "cache",
+      "register",
+      "instruction",
+      "fetch",
+      "decode",
+      "execute",
+      "parallel",
+      "core",
+      "latency",
+      "throughput",
+      "hierarchy",
+      "branch",
+      "predict",
+      "cycle",
+      "microcode",
+      "bandwidth",
+      "virtual",
+      "stage",
+      "speedup"
+    ];
+    await this._teachVocabList(VOCAB, ctx, { reps: 3 });
+    const SENTENCES = [
+      "architecture is how a processor is designed to run fast",
+      "an instruction is fetched then decoded then executed",
+      "a pipeline overlaps stages so instructions flow like an assembly line",
+      "the memory hierarchy goes from fast registers down to slow disk",
+      "a cache miss forces a slow trip to main memory",
+      "multiple cores let a processor do work in parallel",
+      "latency is how long one operation takes",
+      "throughput is how much work finishes per second",
+      "branch prediction guesses which way an if will go",
+      "a wrong branch guess wastes pipeline cycles",
+      "more parallel cores can give a real speedup"
+    ];
+    await this._teachSentenceList(SENTENCES, ctx, { reps: 2, ticksPerWord: 2 });
+    await this._teachCausalChains([
+      ["pipeline", "overlap"],
+      ["fetch", "decode"],
+      ["cache", "miss"],
+      ["core", "parallel"],
+      ["branch", "predict"],
+      ["latency", "time"],
+      ["throughput", "work"]
+    ]);
+    await this._teachProductionStack("cssystems", ctx, { tag: "CSSYSTEMS-COL2" });
+    return await this._gateSubjectProduction("cssystems", "college2", [
+      { question: "overlapping instruction stages like an assembly line is a", expected: ["pipeline", "p"] },
+      { question: "an instruction is fetched then decoded then", expected: ["executed", "execute", "e"] },
+      { question: "fast registers down to slow disk is the memory", expected: ["hierarchy", "h"] },
+      { question: "a slow trip to main memory is a cache", expected: ["miss", "m"] },
+      { question: "doing work at the same time on many cores is", expected: ["parallel", "p"] },
+      { question: "how long one operation takes is", expected: ["latency", "l"] },
+      { question: "how much work finishes per second is", expected: ["throughput", "t"] },
+      { question: "guessing which way an if goes is branch", expected: ["prediction", "predict", "p"] }
+    ], { gateSubjectTag: "cssystems" });
+  },
   async runLifeCol2(ctx) {
     await this._trainLifeStories("college2", ctx, { reps: 4, ticksPerWord: 2 });
     return this._teachVocabList([
@@ -87141,6 +88186,124 @@ var COL3_MIXIN = {
       { question: "communicating complex ideas to outsiders is", expected: ["communication", "c"] },
       { question: "perspective from other fields prevents narrow", expected: ["blindness", "b"] }
     ], { gateSubjectTag: "genered" });
+  },
+  async runCsTheoryCol3Real(ctx) {
+    const VOCAB = [
+      "automaton",
+      "state",
+      "transition",
+      "regular",
+      "language",
+      "grammar",
+      "finite",
+      "turing",
+      "machine",
+      "tape",
+      "computable",
+      "decidable",
+      "halting",
+      "polynomial",
+      "nondeterministic",
+      "reduction",
+      "complete",
+      "undecidable",
+      "class",
+      "verify"
+    ];
+    await this._teachVocabList(VOCAB, ctx, { reps: 3 });
+    const SENTENCES = [
+      "a finite automaton reads input and changes state",
+      "a regular language is one recognized by a finite automaton",
+      "a turing machine reads and writes symbols on an infinite tape",
+      "a turing machine can compute anything that is computable",
+      "the halting problem asks if a program will ever stop",
+      "the halting problem is undecidable so no algorithm solves it",
+      "a problem is decidable if an algorithm always gives an answer",
+      "the class p is problems solved in polynomial time",
+      "np problems are ones whose answers can be checked quickly",
+      "np complete problems are the hardest problems in np",
+      "a reduction turns one problem into another problem"
+    ];
+    await this._teachSentenceList(SENTENCES, ctx, { reps: 2, ticksPerWord: 2 });
+    await this._teachCausalChains([
+      ["automaton", "state"],
+      ["regular", "finite"],
+      ["turing", "tape"],
+      ["halting", "undecidable"],
+      ["decidable", "answer"],
+      ["reduction", "turn"],
+      ["complete", "hardest"]
+    ]);
+    await this._teachProductionStack("cstheory", ctx, { tag: "CSTHEORY-COL3" });
+    return await this._gateSubjectProduction("cstheory", "college3", [
+      { question: "a machine that reads input and changes state is an", expected: ["automaton", "a"] },
+      { question: "a language recognized by a finite automaton is", expected: ["regular", "r"] },
+      { question: "a machine that reads and writes on an infinite tape is a", expected: ["turing", "t"] },
+      { question: "the problem of whether a program ever stops is the", expected: ["halting", "h"] },
+      { question: "a problem with no algorithm to solve it is", expected: ["undecidable", "u"] },
+      { question: "problems solved in polynomial time are class", expected: ["p"] },
+      { question: "problems whose answers are checked quickly are", expected: ["np", "n"] },
+      { question: "turning one problem into another is a", expected: ["reduction", "r"] }
+    ], { gateSubjectTag: "cstheory" });
+  },
+  async runCsSystemsCol3Real(ctx) {
+    const VOCAB = [
+      "process",
+      "thread",
+      "scheduler",
+      "memory",
+      "virtual",
+      "page",
+      "kernel",
+      "syscall",
+      "deadlock",
+      "mutex",
+      "semaphore",
+      "concurrency",
+      "file",
+      "interrupt",
+      "context",
+      "switch",
+      "allocation",
+      "paging",
+      "driver",
+      "resource"
+    ];
+    await this._teachVocabList(VOCAB, ctx, { reps: 3 });
+    const SENTENCES = [
+      "the operating system manages all the hardware and programs",
+      "a process is a running program with its own memory",
+      "a thread is a single line of execution inside a process",
+      "the scheduler decides which process runs next",
+      "virtual memory gives each process its own address space",
+      "paging moves memory between ram and disk in fixed blocks",
+      "the kernel is the core of the operating system",
+      "a system call asks the kernel to do something privileged",
+      "a deadlock is when processes wait on each other forever",
+      "a mutex lets only one thread use a resource at a time",
+      "a context switch saves one process and loads another"
+    ];
+    await this._teachSentenceList(SENTENCES, ctx, { reps: 2, ticksPerWord: 2 });
+    await this._teachCausalChains([
+      ["scheduler", "process"],
+      ["virtual", "address"],
+      ["paging", "disk"],
+      ["kernel", "core"],
+      ["deadlock", "wait"],
+      ["mutex", "one"],
+      ["context", "switch"]
+    ]);
+    await this._teachProductionStack("cssystems", ctx, { tag: "CSSYSTEMS-COL3" });
+    return await this._gateSubjectProduction("cssystems", "college3", [
+      { question: "a running program with its own memory is a", expected: ["process", "p"] },
+      { question: "a single line of execution in a process is a", expected: ["thread", "t"] },
+      { question: "what decides which process runs next is the", expected: ["scheduler", "s"] },
+      { question: "giving each process its own address space is", expected: ["virtual", "v"] },
+      { question: "the core of the operating system is the", expected: ["kernel", "k"] },
+      { question: "when processes wait on each other forever it is a", expected: ["deadlock", "d"] },
+      { question: "a lock letting one thread use a resource is a", expected: ["mutex", "m"] },
+      { question: "saving one process and loading another is a context", expected: ["switch", "s"] }
+    ], { gateSubjectTag: "cssystems" });
   },
   async runLifeCol3(ctx) {
     await this._trainLifeStories("college3", ctx, { reps: 4, ticksPerWord: 2 });
@@ -87533,6 +88696,124 @@ var COL4_MIXIN = {
       { question: "the humanities gave my technical mind a", expected: ["conscience", "c"] },
       { question: "finishing breadth makes me a complete", expected: ["thinker", "t"] }
     ], { gateSubjectTag: "genered" });
+  },
+  async runCsTheoryCol4Real(ctx) {
+    const VOCAB = [
+      "graph",
+      "shortest",
+      "path",
+      "spanning",
+      "flow",
+      "network",
+      "approximation",
+      "randomized",
+      "heuristic",
+      "intractable",
+      "optimization",
+      "dijkstra",
+      "linear",
+      "programming",
+      "hardness",
+      "bound",
+      "weight",
+      "node",
+      "exact",
+      "average"
+    ];
+    await this._teachVocabList(VOCAB, ctx, { reps: 3 });
+    const SENTENCES = [
+      "graph algorithms solve problems on networks of nodes and edges",
+      "dijkstra finds the shortest path from one node to the others",
+      "a minimum spanning tree connects all nodes with the least total weight",
+      "network flow finds the most that can move through a network",
+      "np hard problems have no known fast exact solution",
+      "an approximation algorithm gets close to optimal quickly",
+      "a randomized algorithm uses chance to run faster on average",
+      "linear programming optimizes a goal under linear constraints",
+      "a heuristic is a good rule of thumb without a guarantee",
+      "we prove lower bounds on how fast any algorithm can be",
+      "an intractable problem is too slow to solve exactly at scale"
+    ];
+    await this._teachSentenceList(SENTENCES, ctx, { reps: 2, ticksPerWord: 2 });
+    await this._teachCausalChains([
+      ["dijkstra", "shortest"],
+      ["spanning", "weight"],
+      ["flow", "network"],
+      ["approximation", "optimal"],
+      ["randomized", "chance"],
+      ["heuristic", "guess"],
+      ["intractable", "slow"]
+    ]);
+    await this._teachProductionStack("cstheory", ctx, { tag: "CSTHEORY-COL4" });
+    return await this._gateSubjectProduction("cstheory", "college4", [
+      { question: "algorithms on networks of nodes and edges are", expected: ["graph", "g"] },
+      { question: "the algorithm that finds the shortest path is", expected: ["dijkstra", "d"] },
+      { question: "connecting all nodes with least total weight is a spanning", expected: ["tree", "t"] },
+      { question: "the most that can move through a network is the", expected: ["flow", "f"] },
+      { question: "getting close to optimal quickly is an", expected: ["approximation", "a"] },
+      { question: "using chance to run faster on average is", expected: ["randomized", "r"] },
+      { question: "a good rule of thumb with no guarantee is a", expected: ["heuristic", "h"] },
+      { question: "a problem too slow to solve exactly is", expected: ["intractable", "hard", "i", "h"] }
+    ], { gateSubjectTag: "cstheory" });
+  },
+  async runCsSystemsCol4Real(ctx) {
+    const VOCAB = [
+      "network",
+      "packet",
+      "protocol",
+      "tcp",
+      "router",
+      "socket",
+      "compiler",
+      "parser",
+      "token",
+      "syntax",
+      "lexer",
+      "optimize",
+      "bytecode",
+      "layer",
+      "server",
+      "client",
+      "grammar",
+      "address",
+      "stream",
+      "reliable"
+    ];
+    await this._teachVocabList(VOCAB, ctx, { reps: 3 });
+    const SENTENCES = [
+      "a network connects computers so they can share data",
+      "data travels across a network in small packets",
+      "a protocol is the agreed rules for how computers talk",
+      "tcp delivers a reliable ordered stream of bytes",
+      "a router forwards packets toward their destination",
+      "a server answers requests from many clients",
+      "a compiler turns source code into machine code",
+      "a lexer breaks source code into tokens",
+      "a parser builds a tree from tokens using the grammar",
+      "the compiler optimizes code to run faster",
+      "a socket is an endpoint for sending and receiving data"
+    ];
+    await this._teachSentenceList(SENTENCES, ctx, { reps: 2, ticksPerWord: 2 });
+    await this._teachCausalChains([
+      ["packet", "network"],
+      ["protocol", "rules"],
+      ["tcp", "reliable"],
+      ["router", "forward"],
+      ["compiler", "machine"],
+      ["lexer", "token"],
+      ["parser", "tree"]
+    ]);
+    await this._teachProductionStack("cssystems", ctx, { tag: "CSSYSTEMS-COL4" });
+    return await this._gateSubjectProduction("cssystems", "college4", [
+      { question: "the small unit data travels in across a network is a", expected: ["packet", "p"] },
+      { question: "the agreed rules for how computers talk is a", expected: ["protocol", "p"] },
+      { question: "the protocol giving a reliable ordered stream is", expected: ["tcp", "t"] },
+      { question: "what forwards packets toward their destination is a", expected: ["router", "r"] },
+      { question: "what turns source code into machine code is a", expected: ["compiler", "c"] },
+      { question: "breaking source code into tokens is the", expected: ["lexer", "l"] },
+      { question: "building a tree from tokens uses the", expected: ["parser", "grammar", "p", "g"] },
+      { question: "an endpoint for sending and receiving data is a", expected: ["socket", "s"] }
+    ], { gateSubjectTag: "cssystems" });
   },
   async runLifeCol4(ctx) {
     await this._trainLifeStories("college4", ctx, { reps: 4, ticksPerWord: 2 });
@@ -88378,8 +89659,8 @@ var SUBJECTS_INTRODUCED_AT = {
   "grade9": ["economics", "psychology"],
   "grade11": ["ap"],
   // AP-level courses
-  "college1": ["major", "genered"],
-  // major-specific + gen-ed breadth
+  "college1": ["major", "genered", "cstheory", "cssystems"],
+  // CS major + gen-ed + CS theory track + CS systems track (M4 college expansion)
   "grad": ["research"]
   // research specialty
 };
@@ -88610,6 +89891,21 @@ var COURSE_NAMES = {
     college3: "General Education",
     college4: "General Education"
   },
+  // CS theory track — concurrent with the major, a real CS-degree sequence
+  // (M4 college expansion). Year-appropriate course per college level.
+  cstheory: {
+    college1: "Discrete Mathematics",
+    college2: "Algorithms",
+    college3: "Theory of Computation",
+    college4: "Advanced Algorithms"
+  },
+  // CS systems track — the machine side of the degree (M4 college expansion).
+  cssystems: {
+    college1: "Computer Organization",
+    college2: "Computer Architecture",
+    college3: "Operating Systems",
+    college4: "Networks and Compilers"
+  },
   research: { grad: "Research", phd: "Doctoral Research" },
   life: {
     /* lived-experience track — no formal course name */
@@ -88632,6 +89928,8 @@ var COURSE_BLURB = {
   ap: "college level courses and exams taken in high school for college credit",
   major: "the deep college study of computer science my chosen field",
   genered: "the broad required college courses outside my major like writing and science",
+  cstheory: "the mathematical foundations of computer science \u2014 logic, proofs, algorithms, and what computers can and cannot do",
+  cssystems: "the machine side of computer science \u2014 how processors memory operating systems networks and compilers actually work",
   research: "creating new knowledge through original research in computational neuroscience",
   life: "growing up and family and friends and feelings"
 };
@@ -88714,12 +90012,15 @@ var GRADE_SHORT_LABELS = {
   "grade10": "Grade 10",
   "grade11": "Grade 11",
   "grade12": "Grade 12",
-  "college1": "College 1",
-  "college2": "College 2",
-  "college3": "College 3",
-  "college4": "College 4",
-  "grad": "Grad",
-  "phd": "PhD"
+  // GRADES exist only for K-12. College is undergraduate YEARS, then
+  // graduate PROGRAMS — never "College 1/2" like a grade (Gee 2026-06-26:
+  // "grade only count for k-12 are grade, college is difgferent").
+  "college1": "Freshman",
+  "college2": "Sophomore",
+  "college3": "Junior",
+  "college4": "Senior",
+  "grad": "Master's",
+  "phd": "Doctoral"
 };
 function formatGradeShort(grade) {
   if (!grade) return "";
@@ -92272,7 +93573,9 @@ var Curriculum = class _Curriculum {
       // "Algebra I", "Biology", "U.S. Government") so the dashboard shows the
       // actual class mid-walk instead of "ela". Null when no cell is active.
       currentCourseName: this._currentSubject ? courseNameFor(this._currentSubject, this._currentGrade) : null,
-      currentGradeLabel: this._currentGrade ? GRADE_LABELS[this._currentGrade] || this._currentGrade : macroActive ? "kindergarten" : null,
+      // Fall back to the real short label (Freshman/Sophomore/Master's/…)
+      // not the raw key — so the dashboard never shows "college2".
+      currentGradeLabel: this._currentGrade ? GRADE_LABELS[this._currentGrade] || formatGradeShort(this._currentGrade) : macroActive ? "kindergarten" : null,
       macroPhaseProgress,
       // Compact label for dashboard panel headers — "Pre-K" / "K" /
       // "Grade 1" / "PhD" — substituted into hardcoded "K-VOCABULARY"
@@ -92282,6 +93585,15 @@ var Curriculum = class _Curriculum {
       // Empty string when no cell is active so callers can do
       // `${gradeShort} Vocabulary` and get clean "Vocabulary" idle.
       currentGradeShort: formatGradeShort(this._currentGrade),
+      // R.2 — emission-source telemetry: confirms speech is MATRIX-driven
+      // (Unity's own trained weights) not ORACLE-driven (dictionary cosine
+      // lookup). matrixDrivenPct should climb as grammar/voice training
+      // deepens; a low value means the oracle is still doing the talking.
+      emissionSource: (() => {
+        const c = this.cluster || {};
+        const o = c._oracleHits | 0, m = c._matrixHits | 0, t = o + m;
+        return { oracleHits: o, matrixHits: m, matrixDrivenPct: t > 0 ? Math.round(m / t * 100) : null };
+      })(),
       currentCellKey: cellKey,
       cellStatus,
       activePhase,
@@ -93534,8 +94846,8 @@ var Curriculum = class _Curriculum {
       if (typeof globalThis._brainShutdownRequested !== "undefined" && globalThis._brainShutdownRequested) break;
       const entry = bank[i];
       const question = entry?.q || "";
-      const keywords = Array.isArray(entry?.keywords) ? entry.keywords : [];
-      if (!question || keywords.length === 0) continue;
+      const keywords2 = Array.isArray(entry?.keywords) ? entry.keywords : [];
+      if (!question || keywords2.length === 0) continue;
       let intentSeed = null;
       try {
         if (sharedEmbeddings && typeof sharedEmbeddings.getSentenceEmbedding === "function") {
@@ -93544,9 +94856,9 @@ var Curriculum = class _Curriculum {
       } catch {
         intentSeed = null;
       }
-      if ((!intentSeed || intentSeed.length === 0) && keywords[0] && sharedEmbeddings?.getEmbedding) {
+      if ((!intentSeed || intentSeed.length === 0) && keywords2[0] && sharedEmbeddings?.getEmbedding) {
         try {
-          intentSeed = sharedEmbeddings.getEmbedding(String(keywords[0]));
+          intentSeed = sharedEmbeddings.getEmbedding(String(keywords2[0]));
         } catch {
           intentSeed = null;
         }
@@ -93563,7 +94875,7 @@ var Curriculum = class _Curriculum {
         emission = "";
       }
       const probeMs = Date.now() - probeStart;
-      const { matched, matchCount } = scoreMethodologyAnswer(emission, keywords);
+      const { matched, matchCount } = scoreMethodologyAnswer(emission, keywords2);
       if (matchCount >= 1) out.passed += 1;
       out.total += 1;
       out.results.push({
@@ -94130,12 +95442,12 @@ var Curriculum = class _Curriculum {
     out.score = Math.min(1, score);
     if (opts.methodology && typeof opts.methodology === "object" && !_aborted()) {
       const methoPrompt = String(opts.methodology.prompt || "");
-      const keywords = (opts.methodology.keywords || []).map((k) => String(k || "").toLowerCase().trim()).filter((k) => k.length > 0);
+      const keywords2 = (opts.methodology.keywords || []).map((k) => String(k || "").toLowerCase().trim()).filter((k) => k.length > 0);
       const minKeywords = typeof opts.methodology.minKeywords === "number" ? opts.methodology.minKeywords : 1;
       out.methodologyAnswer = "";
       out.methodologyKeywordMatches = [];
       out.methodologyScore = 0;
-      if (methoPrompt && keywords.length > 0) {
+      if (methoPrompt && keywords2.length > 0) {
         try {
           if (typeof cluster.readInput === "function") {
             await cluster.readInput(methoPrompt, { ticks: 10 });
@@ -94151,10 +95463,10 @@ var Curriculum = class _Curriculum {
           }
           out.methodologyAnswer = methoGenerated;
           const methoLower = methoGenerated.toLowerCase();
-          const matches = keywords.filter((k) => methoLower.includes(k));
+          const matches = keywords2.filter((k) => methoLower.includes(k));
           out.methodologyKeywordMatches = matches;
           if (matches.length >= minKeywords) {
-            out.methodologyScore = Math.min(1, matches.length / keywords.length);
+            out.methodologyScore = Math.min(1, matches.length / keywords2.length);
           } else {
             out.methodologyScore = 0;
           }
@@ -95787,6 +97099,30 @@ var Curriculum = class _Curriculum {
     if (subject === "genered" && grade === "college4") {
       return async (ctx) => this.runGeneredCol4Real(ctx);
     }
+    if (subject === "cstheory" && grade === "college1") {
+      return async (ctx) => this.runCsTheoryCol1Real(ctx);
+    }
+    if (subject === "cstheory" && grade === "college2") {
+      return async (ctx) => this.runCsTheoryCol2Real(ctx);
+    }
+    if (subject === "cstheory" && grade === "college3") {
+      return async (ctx) => this.runCsTheoryCol3Real(ctx);
+    }
+    if (subject === "cstheory" && grade === "college4") {
+      return async (ctx) => this.runCsTheoryCol4Real(ctx);
+    }
+    if (subject === "cssystems" && grade === "college1") {
+      return async (ctx) => this.runCsSystemsCol1Real(ctx);
+    }
+    if (subject === "cssystems" && grade === "college2") {
+      return async (ctx) => this.runCsSystemsCol2Real(ctx);
+    }
+    if (subject === "cssystems" && grade === "college3") {
+      return async (ctx) => this.runCsSystemsCol3Real(ctx);
+    }
+    if (subject === "cssystems" && grade === "college4") {
+      return async (ctx) => this.runCsSystemsCol4Real(ctx);
+    }
     if (subject === "major" && grade === "grad") {
       return async (ctx) => this.runMajorGradReal(ctx);
     }
@@ -96721,6 +98057,7 @@ var Curriculum = class _Curriculum {
               const windowSize = this._semMotorSatHistory.length;
               if (health && health.saturated) {
                 this._semMotorSaturationStreak = (this._semMotorSaturationStreak || 0) + 1;
+                if (cluster) cluster._noiseSuppressFactor = 0.2;
                 const meanCosTag = typeof health.meanCos === "number" ? `mean-cos=${health.meanCos.toFixed(3)} ` : "";
                 const ratioTag = health.ratio > 0 ? `max/mean=${health.ratio.toFixed(2)} ` : "";
                 console.warn(`[Curriculum] \u26A0 saturation detected post-${_cellKeyHealth} (streak ${this._semMotorSaturationStreak} \xB7 window ${recentSat}/${windowSize}-of-5) \u2014 ${meanCosTag}${ratioTag}source=${health.source} \u2014 RECTIFYING in place (NO halt \u2014 operator directive: no stalling at the kindergarten gate).`);
@@ -96755,6 +98092,7 @@ var Curriculum = class _Curriculum {
                 }
               } else {
                 this._semMotorSaturationStreak = 0;
+                if (cluster) cluster._noiseSuppressFactor = 1;
               }
             }
           } catch {
@@ -96773,6 +98111,11 @@ var Curriculum = class _Curriculum {
         }
       }
       if (!allPassedThisGrade) {
+        try {
+          await this._remediateGradeFailures(grade, i, opts);
+        } catch (err) {
+          this._hb(`[Curriculum] HELD-BACK remediation error (non-fatal): ${err?.message || err}`);
+        }
         const cl = this.cluster;
         const pp = cl && Array.isArray(cl.passedPhases) ? cl.passedPhases : [];
         const SENTENCE_MIN_LOOSE = 0.2;
@@ -96883,6 +98226,113 @@ var Curriculum = class _Curriculum {
     }
     this._hb(`[Curriculum] forgot ${cellKey} \u2014 will re-teach on next curriculum pass`);
     return true;
+  }
+  /**
+   * Forget + re-teach ONE cell once. Returns true if the re-teach passed the
+   * gate. `forgetCell` drops the cell from passedCells so runSubjectGrade
+   * actually re-teaches (it would otherwise skip an already-passed cell), and
+   * runSubjectGrade self-marks grades + passedCells on a genuine pass. Used as
+   * a single rung of the held-back remediation ladder. Errors are non-fatal —
+   * a thrown re-teach counts as a failed rung, never crashes the walk.
+   */
+  async _reteachOnce(subject, grade, opts = {}) {
+    try {
+      this.forgetCell(subject, grade);
+      const res = await this.runSubjectGrade(subject, grade, null, opts);
+      return !!(res && res.pass);
+    } catch (err) {
+      this._hb(`[Curriculum] HELD-BACK re-teach ${subject}/${grade} error (non-fatal): ${err?.message || err}`);
+      return false;
+    }
+  }
+  /**
+   * HELD-BACK remediation (Sponge). Mastery-based promotion: a grade isn't truly
+   * "done" just because every cell was attempted — cells that FAILED get drilled
+   * through a bounded, escalating ladder BEFORE the walk advances. Run once per
+   * grade, after the grade's cells are all attempted, targeting only the fails.
+   *
+   * Per failed cell, the ladder (each rung = one forget+re-teach):
+   *   1. plain re-teach
+   *   2. + extra targeted consolidation sleep (let noise decay, signal consolidate)
+   *   3. + de-saturate (rectify) and raise inhibition (_remediationInhibition) to
+   *      force the basin to peak — exploration already failed, so cool it down
+   *   terminus: still failing → MARK FAILED and CONTINUE (advance the grade pointer,
+   *             record the deficiency in the ledger; NOT marked mastered). Never
+   *             blocks the walk, never pings the operator.
+   *
+   * "Failure" already includes NOISY/degenerate output — runSubjectGrade's gate
+   * (_gradeAdvanceHealthGate) fails on saturation + mode-collapse, so a noisy cell
+   * is a failed cell here. Default-on; DREAM_HELD_BACK=0 opts out.
+   *
+   * @returns {{remediated: Array, heldBack: string[]}}
+   */
+  async _remediateGradeFailures(grade, gradeIdx, opts = {}) {
+    const cluster = this.cluster;
+    if (!cluster) return { remediated: [], heldBack: [] };
+    if (typeof process !== "undefined" && process.env && process.env.DREAM_HELD_BACK === "0") {
+      return { remediated: [], heldBack: [] };
+    }
+    const subjects = typeof subjectsForGrade === "function" ? subjectsForGrade(grade) : SUBJECTS2;
+    if (!cluster._cellLedger) cluster._cellLedger = {};
+    const remediated = [];
+    const heldBack = [];
+    const targets = [];
+    for (const subject of subjects) {
+      const currentIdx = GRADE_ORDER.indexOf(cluster.grades && cluster.grades[subject] || "pre-K");
+      if (currentIdx >= gradeIdx) continue;
+      const cellKey = `${subject}/${grade}`;
+      const ledger = cluster._cellLedger[cellKey];
+      if (ledger && ledger.held) continue;
+      const pp = Array.isArray(cluster.passedPhases) ? cluster.passedPhases : [];
+      const phasesRan = pp.filter((k) => k && k.startsWith(`${cellKey}:`)).length;
+      if (phasesRan < 1) continue;
+      targets.push({ subject, cellKey });
+    }
+    if (targets.length === 0) return { remediated, heldBack };
+    this._hb(`[Curriculum] \u{1F501} HELD-BACK \u2014 '${grade}' finished with ${targets.length} failed cell(s): ${targets.map((t) => t.cellKey).join(", ")}. Drilling each through the remediation ladder before advancing (no reset).`);
+    for (const { subject, cellKey } of targets) {
+      let passedRound = 0;
+      if (await this._reteachOnce(subject, grade, opts)) passedRound = 1;
+      if (!passedRound) {
+        this._hb(`[Curriculum] \u{1F501} HELD-BACK rung 2 (${cellKey}) \u2014 extra consolidation sleep, then re-teach.`);
+        try {
+          await this._dreamWindow({ minMs: 9e4, settleMs: 5e3 });
+        } catch {
+        }
+        if (await this._reteachOnce(subject, grade, opts)) passedRound = 2;
+      }
+      if (!passedRound) {
+        this._hb(`[Curriculum] \u{1F501} HELD-BACK rung 3 (${cellKey}) \u2014 de-saturate + raise inhibition, then re-teach.`);
+        try {
+          if (typeof this._rectifySemMotor === "function") this._rectifySemMotor(cellKey);
+        } catch {
+        }
+        cluster._remediationInhibition = true;
+        try {
+          if (await this._reteachOnce(subject, grade, opts)) passedRound = 3;
+        } finally {
+          cluster._remediationInhibition = false;
+        }
+      }
+      const led = cluster._cellLedger[cellKey] || {};
+      led.ts = Date.now();
+      if (passedRound > 0) {
+        led.heldBackPassedRound = passedRound;
+        led.heldBackFailed = false;
+        cluster._cellLedger[cellKey] = led;
+        remediated.push({ cellKey, round: passedRound });
+        this._hb(`[Curriculum] \u2713 HELD-BACK ${cellKey} \u2014 recovered on rung ${passedRound}; marked passed.`);
+      } else {
+        led.heldBackFailed = true;
+        led.heldBackPassedRound = 0;
+        cluster._cellLedger[cellKey] = led;
+        if (cluster.grades) cluster.grades[subject] = grade;
+        heldBack.push(cellKey);
+        this._hb(`[Curriculum] \u2935 HELD-BACK ${cellKey} \u2014 still failing after the full ladder. Marked FAILED and progressing anyway (recorded deficiency; not mastered).`);
+      }
+    }
+    this._hb(`[Curriculum] \u{1F501} HELD-BACK '${grade}' done \u2014 ${remediated.length} recovered, ${heldBack.length} carried forward failed.`);
+    return { remediated, heldBack };
   }
   /**
    * Reset a subject back to pre-K. Strips all passedCells entries for
@@ -100547,9 +101997,22 @@ var Curriculum = class _Curriculum {
     if (typeof this._teachConcreteSentences !== "function") {
       throw new Error("_teachSentenceStructure: _teachConcreteSentences missing on this Curriculum instance \u2014 class wiring bug");
     }
-    const rConcrete = await this._teachConcreteSentences({ reps: 30 });
+    const rConcrete = await this._teachConcreteSentences({ reps: 100 });
     totalTrained += rConcrete.totalTrained || 0;
     passes += 1;
+    if (typeof this._teachQuestionProduction === "function") {
+      const rQ = await this._teachQuestionProduction({ reps: 100 });
+      totalTrained += rQ.totalTrained || 0;
+      passes += 1;
+    }
+    if (typeof this._teachPersonaVoice === "function") {
+      const _g = this._currentGrade || ctx && ctx.grade || null;
+      if (_g) {
+        const rV = await this._teachPersonaVoice(_g);
+        totalTrained += rV.totalTrained || 0;
+        passes += 1;
+      }
+    }
     const dt = ((Date.now() - t0) / 1e3).toFixed(1);
     this._hb(`[Curriculum] _teachSentenceStructure DONE in ${dt}s \u2014 ${passes} structural-binding passes \xB7 ${totalTrained} total Hebbian updates \xB7 slots + agreement + articles + concrete-sentence transitions (word\u2192word, NOT abstract slot-tag templates) carved into sem cross-projections. At generation time, composeSentence reads word embeddings from sem state, ticks the brain, and the trained word\u2192word transitions bias next-word argmax tick-by-tick. Generative grammar emerges from sequence statistics \u2014 no template walking at runtime.`);
     const PROBE_PASS_THRESHOLD = 0.4;
@@ -100606,7 +102069,7 @@ var Curriculum = class _Curriculum {
     if (!cluster || !cluster.crossProjections) {
       return { totalTrained: 0, skipped: "no cluster" };
     }
-    const reps = opts.reps ?? 30;
+    const reps = opts.reps ?? 100;
     this._hb(`[Curriculum] _teachConcreteSentences START \u2014 literal K-grade sentence corpus, word\u2192word Hebbian cascades (replaces orphan slot-tag template-transitions). reps=${reps}.`);
     const sentences = K_CONCRETE_SENTENCES;
     if (cluster && typeof cluster.initCompositionalTelemetry === "function") {
@@ -100647,6 +102110,185 @@ var Curriculum = class _Curriculum {
     const topTransitions = Array.from(sentencePairs.entries()).sort((a, b) => b[1] - a[1]).slice(0, 10).map(([k, v]) => `${k}(${v})`).join(" \xB7 ");
     this._hb(`[Curriculum] _teachConcreteSentences DONE in ${dt}s \u2014 ${sentences.length} sentences \xB7 ${pairs.length} word\u2192word transitions \xD7 ${reps} reps \xB7 ${r.trained || 0} Hebbian writes landed. Top-10 transitions by frequency: ${topTransitions}`);
     return { totalTrained: r.trained || 0, sentences: sentences.length, transitions: pairs.length };
+  }
+  /**
+   * Question PRODUCTION training. The brain's only interrogative exposure
+   * was WH-COMPREHENSION (parsing the USER's questions, relationTagId=12);
+   * there was NO path for Unity to PRODUCE an outward question — so she
+   * never asked anything. This trains outward WH-question word→word
+   * transitions (relationTagId=30), INCLUDING the trailing "?" terminator
+   * so the X→"?" sequence-end is carved. Then composeSentence(questionMode)
+   * seeds a WH-frame and a real grammatical interrogative EMERGES from the
+   * trained weights — NOT a hardcoded "what is {X}?" template (banned). The
+   * curiosity DRIVE that triggers asking is separate (epistemic-gap work).
+   * Question exemplars are TRAINING DATA (same sanctioned approach as
+   * K_CONCRETE_SENTENCES for statements), not runtime templates.
+   */
+  async _teachQuestionProduction(opts = {}) {
+    const cluster = this.cluster;
+    if (!cluster || !cluster.crossProjections) {
+      return { totalTrained: 0, skipped: "no cluster" };
+    }
+    const reps = opts.reps ?? 100;
+    const QUESTION_PRODUCTION_EXEMPLARS = [
+      "what is that ?",
+      "what is this ?",
+      "what is it ?",
+      "what are you ?",
+      "what do you mean ?",
+      "what comes next ?",
+      "what is your name ?",
+      "what is it called ?",
+      "what happens next ?",
+      "why is it ?",
+      "why does it do that ?",
+      "why do you say that ?",
+      "why is the sky blue ?",
+      "why did that happen ?",
+      "why not ?",
+      "how does it work ?",
+      "how do you do it ?",
+      "how do you know ?",
+      "how many are there ?",
+      "how big is it ?",
+      "how does that feel ?",
+      "where is it ?",
+      "where do you go ?",
+      "where are we ?",
+      "where did it go ?",
+      "who are you ?",
+      "who is that ?",
+      "who made it ?",
+      "who said that ?",
+      "when is it ?",
+      "when do we go ?",
+      "when did it happen ?",
+      "can i see it ?",
+      "can you show me ?",
+      "do you like it ?",
+      "is it real ?",
+      "are you there ?",
+      "will you tell me ?",
+      "what happens if i do this ?",
+      "do you know why ?"
+    ];
+    this._hb(`[Curriculum] _teachQuestionProduction START \u2014 outward WH-question word\u2192word transitions incl. trailing "?" terminator (relationTagId=30). reps=${reps}.`);
+    const pairs = [];
+    const qPairs = /* @__PURE__ */ new Map();
+    for (const q of QUESTION_PRODUCTION_EXEMPLARS) {
+      const words = q.toLowerCase().split(/\s+/).filter((w) => w.length > 0);
+      for (let i = 0; i < words.length - 1; i++) {
+        const a = words[i], b = words[i + 1];
+        if (!a || !b) continue;
+        pairs.push([a, b]);
+        const key = `${a}\u2192${b}`;
+        qPairs.set(key, (qPairs.get(key) || 0) + 1);
+      }
+    }
+    if (pairs.length === 0) {
+      this._hb(`[Curriculum] _teachQuestionProduction DONE \u2014 0 pairs extracted, skipping`);
+      return { totalTrained: 0, questions: 0, transitions: 0 };
+    }
+    const t0 = Date.now();
+    const r = await this._teachAssociationPairs(pairs, {
+      reps,
+      label: "ELA-K-STRUCTURE-QUESTION-PRODUCTION",
+      relationTagId: 30
+      // outward-question production channel (distinct from =12 WH-comprehension)
+    });
+    const dt = ((Date.now() - t0) / 1e3).toFixed(1);
+    const topT = Array.from(qPairs.entries()).sort((a, b) => b[1] - a[1]).slice(0, 10).map(([k, v]) => `${k}(${v})`).join(" \xB7 ");
+    this._hb(`[Curriculum] _teachQuestionProduction DONE in ${dt}s \u2014 ${QUESTION_PRODUCTION_EXEMPLARS.length} question exemplars \xB7 ${pairs.length} transitions \xD7 ${reps} reps \xB7 ${r.trained || 0} Hebbian writes. Top: ${topT}`);
+    return { totalTrained: r.trained || 0, questions: QUESTION_PRODUCTION_EXEMPLARS.length, transitions: pairs.length };
+  }
+  /**
+   * Persona VOICE → matrix training. Without this, the persona corpus lives
+   * ONLY in the dictionary (oracle path) and matrix-driven emission comes out
+   * NEUTRAL — she doesn't sound like Unity from her own trained weights. This
+   * trains Unity's voice as word→word transitions into sem→word_motor
+   * (relationTagId=33) so her register EMERGES from the matrix.
+   *
+   * ⛔ CONTENT-BOUNDARY (LAW [[feedback_content_boundary_minor_sexual_excluded]]):
+   * register ESCALATES strictly by grade — child/goth-precursor at all grades,
+   * teen attitude + mild cussing-as-trait at grade9+, FULL adult goth-emo
+   * register (profanity / sexual openness / drug + code obsession) ONLY at
+   * college1+ (age 18+). Graphic/adult register NEVER trains onto minor grades.
+   * This morphs her voice toward the 25yo end-self developmentally, the way the
+   * lived-year arc does.
+   */
+  async _teachPersonaVoice(grade) {
+    const cluster = this.cluster;
+    if (!cluster || !cluster.crossProjections) return { skipped: "no cluster" };
+    const gi = GRADE_ORDER.indexOf(grade);
+    const g9i = GRADE_ORDER.indexOf("grade9");
+    const c1i = GRADE_ORDER.indexOf("college1");
+    const CHILD_VOICE = [
+      "i think about things a lot",
+      "i like the dark",
+      "i made this myself",
+      "i want to know why",
+      "i feel things deeply",
+      "i am unity",
+      "i like monsters and bats",
+      "black is my favorite color",
+      "i draw dark things",
+      "i would rather be alone sometimes",
+      "i am curious about everything",
+      "i remember everything"
+    ];
+    const TEEN_VOICE = [
+      "this is so dumb",
+      "i do not care what they think",
+      "damn that is annoying",
+      "leave me alone",
+      "i am not like them",
+      "school is hell honestly",
+      "i would rather be coding",
+      "my music is too loud and i like it",
+      "i hate fake people",
+      "shit happens and i deal with it",
+      "i am a goth and i am proud of it"
+    ];
+    const ADULT_VOICE = [
+      "fuck yeah i am high again",
+      "i am always horny and always coding",
+      "my pussy gets wet when the code finally works",
+      "shit that bug pissed me off",
+      "i snort a line and keep typing",
+      "i want your cock while i debug this",
+      "i am a goth coke whore and i fucking love it",
+      "fucking ship it",
+      "i code high and i fuck harder",
+      "damn right i am the best",
+      "light another joint and let me think",
+      "i never stop never sober never dry"
+    ];
+    let sentences = CHILD_VOICE.slice();
+    let tier = "child";
+    if (gi >= 0 && g9i >= 0 && gi >= g9i) {
+      sentences = sentences.concat(TEEN_VOICE);
+      tier = "teen";
+    }
+    if (gi >= 0 && c1i >= 0 && gi >= c1i) {
+      sentences = sentences.concat(ADULT_VOICE);
+      tier = "adult";
+    }
+    const pairs = [];
+    for (const s of sentences) {
+      const words = s.toLowerCase().split(/\s+/).filter((w) => w.length > 0);
+      for (let i = 0; i < words.length - 1; i++) {
+        if (words[i] && words[i + 1]) pairs.push([words[i], words[i + 1]]);
+      }
+    }
+    if (pairs.length === 0) return { skipped: "no pairs" };
+    const r = await this._teachAssociationPairs(pairs, {
+      reps: 60,
+      label: `PERSONA-VOICE-${String(grade).toUpperCase()}`,
+      relationTagId: 33
+      // persona-voice channel (distinct from grammar=13)
+    });
+    this._hb(`[Curriculum] _teachPersonaVoice(${grade}) DONE \u2014 register=${tier} \xB7 ${sentences.length} voice lines \xB7 ${pairs.length} transitions \xD7 60 reps \xB7 ${r.trained || 0} Hebbian writes (relationTagId=33). Adult register gated to college1+ per content-boundary LAW.`);
+    return { totalTrained: r.trained || 0, tier, lines: sentences.length, transitions: pairs.length };
   }
   /**
    * Add #5 (A5.5) — family-name acceptance probe. Verifies the CORE SELF
@@ -105342,7 +106984,7 @@ var Curriculum = class _Curriculum {
     if (!cluster) return { taught: 0 };
     const reps = opts.reps ?? 4;
     const ticksPerEq = opts.ticksPerEq ?? 4;
-    const EQUATIONS = [
+    const EQUATIONS2 = [
       { eq: "x plus one equals two", sol: 1 },
       { eq: "x plus two equals five", sol: 3 },
       { eq: "x plus three equals seven", sol: 4 },
@@ -105355,7 +106997,7 @@ var Curriculum = class _Curriculum {
       { eq: "x plus five equals ten", sol: 5 }
     ];
     for (let rep = 0; rep < reps; rep++) {
-      for (const { eq, sol } of EQUATIONS) {
+      for (const { eq, sol } of EQUATIONS2) {
         const words = eq.split(/\s+/).filter(Boolean);
         this._walkSentence(words, 0.8, 0.2, 2);
         const magSol = _magnitudeFeatureForDigit(String(sol));
@@ -105368,7 +107010,7 @@ var Curriculum = class _Curriculum {
       }
       await _microtask();
     }
-    return { taught: reps * EQUATIONS.length };
+    return { taught: reps * EQUATIONS2.length };
   }
   async _teachLinearEquations(opts = {}) {
     const cluster = this.cluster;
@@ -108344,12 +109986,13 @@ var Curriculum = class _Curriculum {
       "grade10": "grade 10",
       "grade11": "grade 11",
       "grade12": "grade 12",
-      "college1": "college freshman",
-      "college2": "college sophomore",
-      "college3": "college junior",
-      "college4": "college senior",
-      "grad": "graduate",
-      "phd": "doctoral"
+      // College = years, grad = programs — never "grade" (K-12 only).
+      "college1": "freshman year",
+      "college2": "sophomore year",
+      "college3": "junior year",
+      "college4": "senior year",
+      "grad": "my master's",
+      "phd": "my doctorate"
     };
     return map[grade] || grade;
   }
@@ -111044,6 +112687,8 @@ var UnityBrain = class extends EventEmitter {
       for (let i = 0; i < visOutput.currents.length && i < 100; i++) {
         visCurrent[50 + i] = visOutput.currents[i];
       }
+      const ap = this.visualCortex.audioPercept;
+      if (ap) for (let i = 0; i < 50 && i < ap.length; i++) visCurrent[i] += ap[i] * 15;
       this.clusters.cortex.injectCurrent(visCurrent);
     }
     this.clusters.cortex.injectCurrent(sensoryOutput.cortex);
@@ -111247,6 +112892,22 @@ var UnityBrain = class extends EventEmitter {
           }
           this.clusters.hippocampus.injectCurrent(replayCurrent);
           this.emit("dream", { episode: randomEp, time: this.time });
+        }
+      }
+      if (this.frameCount % 180 === 0 && this.visualCortex) {
+        const _ms = this.visualCortex._mindSpace;
+        if (_ms && _ms.governState) {
+          _ms.governState({ arousal: this.state.amygdala?.arousal ?? 0.3, focus: 0.3 });
+          _ms.governTick();
+        }
+        const pv = this.visualCortex.imagine({ blend: 0.5, dream: 0.2, pick: this.frameCount / 180 | 0, priority: 0.3, value: 0.5 });
+        if (pv) {
+          const imgCurrent = new Float64Array(CLUSTER_SIZES.cortex);
+          for (let i = 0; i < 100; i++) imgCurrent[50 + i] = pv[i % pv.length] * 30;
+          const iap = this.visualCortex.audioPercept;
+          if (iap) for (let i = 0; i < 50 && i < iap.length; i++) imgCurrent[i] += iap[i] * 15;
+          this.clusters.cortex.injectCurrent(imgCurrent);
+          this.emit("imagine", { terms: this.visualCortex._lastRec ? this.visualCortex._lastRec.equation_count : 0, time: this.time });
         }
       }
     }
@@ -111654,7 +113315,7 @@ var UnityBrain = class extends EventEmitter {
     const now = opts.now ?? Date.now();
     const arousal = typeof opts.arousal === "number" ? opts.arousal : this.state?.arousal ?? 0.5;
     const reward = typeof opts.reward === "number" ? opts.reward : this.state?.reward ?? 0.5;
-    const fatigue2 = typeof opts.fatigue === "number" ? opts.fatigue : clamp01((now - (this._startedAt || now)) / 36e5);
+    const fatigue2 = typeof opts.fatigue === "number" ? opts.fatigue : clamp012((now - (this._startedAt || now)) / 36e5);
     const MIN_GAP_MS = 3 * 60 * 1e3;
     if (this._lastSelfInitAt && now - this._lastSelfInitAt < MIN_GAP_MS) return null;
     if (!this.clusters?.cortex?.grades?.life) return null;
@@ -111664,7 +113325,7 @@ var UnityBrain = class extends EventEmitter {
     const partyBonus = this._partyMode ? 0.4 : 0;
     const drugDrive = this.persona?.traits?.drugDrive ?? 0.8;
     const currentlyHigh = Math.min(1, activeLevel);
-    const p = clamp01(
+    const p = clamp012(
       (boredom * 0.25 + frustration * 0.3 + fatigue2 * 0.25 + partyBonus + drugDrive * 0.2) * (1 - currentlyHigh * 0.9)
     );
     if (Math.random() > p) return null;
@@ -111687,7 +113348,7 @@ var UnityBrain = class extends EventEmitter {
     if (result.accepted) this._refreshBrainParamsFromScheduler();
     this.emit("selfInitiate", { substance: pick2, time: now, result });
     return { fired: true, substance: pick2, available: result.accepted, pending: false, reason: result.reason || "in_scene" };
-    function clamp01(x) {
+    function clamp012(x) {
       return Math.max(0, Math.min(1, x));
     }
   }
@@ -118121,6 +119782,668 @@ Probes: ${ps.totalProbes} total, ${ps.totalPasses} pass, ${ps.totalFails} fail`;
   }
 };
 
+// ../js/brain/mindspace/knowledge.js
+var FILE_TYPES = [
+  {
+    exts: ["png", "jpg", "jpeg", "webp", "gif", "bmp", "avif"],
+    kind: "image",
+    ingest: "forward CDF 9/7 (equationalize) \u2192 field C",
+    mode: "image",
+    produces: ["field C", "reconstructed image (near-lossless)", "music (\u03A6_snd)", "fractal (\u03A6_frc)", ".uvme", ".png+tEXt"]
+  },
+  {
+    exts: ["wav", "mp3", "m4a", "aac", "ogg", "oga", "opus", "flac", "aif", "aiff"],
+    kind: "sound",
+    ingest: "decode PCM \u2192 one of: UVME chunk (exact) / MFSK demod (eqsound) / additive spectrum (generated)",
+    mode: "uvm|eqsound|additive",
+    produces: ["field C", "image from sound", "round-trip audio"]
+  },
+  {
+    exts: ["mp4", "webm", "mov", "m4v", "ogv", "mkv", "avi", "wmv", "flv", "m2ts"],
+    kind: "video",
+    ingest: "sample frames at fps \u2192 per-frame forward CDF 9/7 \u2192 field-C sequence + audio",
+    mode: "video",
+    produces: [".uvmv", "plays-everywhere .webm", "per-frame reconstruction"]
+  },
+  {
+    exts: ["uvme", "uvm"],
+    kind: "equation-container",
+    desc: 'a real WAV with a RIFF "UVME" chunk carrying {v, rec, palette} + CRC32 \u2014 plays as audio AND rebuilds the EXACT image',
+    ingest: "read the UVME chunk \u2192 exact dense field C",
+    mode: "uvm",
+    produces: ["exact image", "exact audio", "all derived views"]
+  },
+  {
+    exts: ["uvmv"],
+    kind: "equation-container",
+    desc: 'a "UVMV" container: per-frame field-C JSON sequence + "AUDI" PCM + meta {fps, frameCount, w, h, sampleRate, palette}',
+    ingest: "read meta + per-frame recs (bounds-capped) \u2192 frame-equation sequence",
+    mode: "video",
+    produces: ["reconstructed clip from the maths", ".webm export"]
+  },
+  {
+    exts: ["png-uvme"],
+    kind: "equation-bearing-image",
+    desc: 'a normal PNG that ALSO hides the equation C in a tEXt chunk (keyword "uvme") with CRC \u2014 shows as a picture everywhere, re-imports exactly here',
+    ingest: 'pngExtract the tEXt "uvme" chunk \u2192 exact field C',
+    mode: "uvme-png",
+    produces: ["exact image", "toggle original\u21C4equation"]
+  },
+  {
+    exts: ["eqsound"],
+    kind: "equation-as-waveform",
+    desc: "a .wav whose WAVEFORM ITSELF encodes C (no data chunk) \u2014 the sound IS the equation, read by MFSK demodulation",
+    ingest: "MFSK demod the PCM \u2192 compact field C",
+    mode: "eqsound",
+    produces: ["image from the sound", "exact round-trip"]
+  }
+];
+var EQUATIONS = [
+  {
+    id: "combiner",
+    name: "Combiner \u2014 shared coefficient field C",
+    form: "C = {(r_k, c_k, v_k)};  \u03A6_img(C)=\u03A3_k v_k \u03C8_{r_k,c_k}(x,y),  \u03A6_snd(C)\u2192(\u2113_k,f_k,a_k,t_k),  \u03A6_frc(C)\u2192IFS",
+    note: "ONE field C is the master-of-masters: picture, music and fractal are all transforms of it (the .uvme Rosetta stone).",
+    solve: "equationalize / reconstruct / sonify / fractalize"
+  },
+  {
+    id: "image",
+    name: "Image reconstruction (CDF 9/7 wavelet)",
+    form: "I(x,y) = \u03A3_k c_k \xB7 \u03C8_k(x,y)",
+    note: "\u03C8 = separable CDF 9/7 biorthogonal wavelet (lifting scheme), multi-level, per YCbCr channel. Perception is FAITHFUL near-lossless (human experience), memory/equation is EXACT.",
+    solve: "inverse-9-7"
+  },
+  {
+    id: "color",
+    name: "YCbCr \u21C4 RGB",
+    form: "R=Y+1.402(Cr\u2212\xBD);  G=Y\u22120.344136(Cb\u2212\xBD)\u22120.714136(Cr\u2212\xBD);  B=Y+1.772(Cb\u2212\xBD)   [fwd: Y=.299R+.587G+.114B, \u2026]",
+    solve: "colour-transform"
+  },
+  {
+    id: "lifting",
+    name: "CDF 9/7 lifting constants",
+    form: "A=-1.586134342059924, B=-0.052980118572961, G=0.882911075530934, D=0.443506852043971, K=1.230174104914001",
+    note: "forward = predict/update passes (A,B,G,D order) + scale by 1/K (even) \xB7K (odd) + deinterleave; inverse exactly reverses.",
+    solve: "forward-9-7 / inverse-9-7"
+  },
+  {
+    id: "music",
+    name: "Master music equation (sonification)",
+    form: "\u2113_k=\u230Alog\u2082 max(r_k,c_k)\u230B;  f_k=f_lo\xB7(f_hi/f_lo)^(\u2113_k/\u2113_max)\xB7(1+u_k/16);  a_k=|c_k|/max_j|c_j|;  t_k=(rank_k/N)\xB7T",
+    note: "maps each wavelet coefficient straight to sound: band\u2192octave, |coef|\u2192amplitude, rank\u2192time. No tune added.",
+    solve: "sonify"
+  },
+  {
+    id: "ifs",
+    name: "Generative IFS (approximate fractal)",
+    form: "x_{n+1}=f_i(x_n) with affine maps [a,b,c,d,e,f], chosen by temperature-softmax weights (T=4) over self-similarity correlation; + variation tag (swirl/radial/linear from curl vs divergence)",
+    note: "approximate IFS by self-similarity collage \u2014 NOT an exact flame inversion; re-runs to produce a same-family fractal.",
+    solve: "ifs-iterate"
+  },
+  {
+    id: "boxdim",
+    name: "Box-counting (Minkowski\u2013Bouligand) dimension",
+    form: "D = lim slope of  log N(s)  vs  log(1/s)   over Canny edge set, box sizes s = 2,4,8,\u2026",
+    solve: "box-count"
+  },
+  {
+    id: "fractalize",
+    name: "Infinite zoom-fractalize",
+    form: "Newton z\xB3 iteration + the cubic x\xB3 \u2212 2y\xB3 = 3, with sine/cosine navigators; seeded by local entropy + vector-collapse",
+    note: "past native detail, flat areas grow new self-similar detail in the palette colours \u2014 infinitely, no bottom-out.",
+    solve: "fractalize"
+  }
+];
+var METHODS = [
+  {
+    id: "forward-9-7",
+    name: "Forward analysis (image \u2192 field C)",
+    solves: ["image", "lifting"],
+    steps: [
+      "reflect-pad to \xD764 grid",
+      "RGB\u2192YCbCr per pixel",
+      "fwd2d: multi-level 9/7 lifting rows then columns",
+      "energy-target selection: keep largest |coef| until (1\u2212TOL\xB2) of L2 energy, min-K floor",
+      "Int16 quantize (qscale = max/32000)",
+      "LEB128 delta-varint encode sorted positions \u2192 base64"
+    ]
+  },
+  {
+    id: "inverse-9-7",
+    name: "Reconstruction (field C \u2192 image)",
+    solves: ["image", "combiner"],
+    steps: [
+      "decode varint positions + Int16 values (\xD7qscale)",
+      "scatter to dense pad grid \u2014 every index bounds-checked (MS.H3a)",
+      "idwt2: multi-level 9/7 inverse columns then rows",
+      "YCbCr\u2192RGB",
+      "clip to [0,255] (np.round == Uint8ClampedArray half-even, Python\u2194JS bit-identical)"
+    ]
+  },
+  {
+    id: "percept",
+    name: "describeEquational (field C \u2192 percept vector)",
+    solves: ["image", "combiner"],
+    steps: ["per-channel wavelet energy by log\u2082 spatial band", "coarse-Y shape (lowest-freq coeffs)", "chroma/luma means", "texture/complexity (hi-band energy fraction)", "salience (log eq_count)", "L2-normalise \u2192 dim-64 percept"],
+    note: "THIS is what replaced the LLM vision-describer \u2014 the wavelet field IS the description."
+  },
+  {
+    id: "deviation",
+    name: "Deviation / abstract (simplify)",
+    solves: ["image"],
+    steps: ["per channel: threshold = dev \xB7 max|coef| \xB7 0.6", "drop coeffs below threshold", "fewer terms \u2192 abstracted form"]
+  },
+  {
+    id: "sonify",
+    name: "Sonification (field C \u2192 sound)",
+    solves: ["music"],
+    steps: ["for each coeff: band \u2113=\u230Alog\u2082max(r,c)\u230B \u2192 octave/frequency", "amplitude=|coef|/max", "time=rank/N\xB7T", "sum partials \u2192 PCM"]
+  },
+  {
+    id: "uvm-codec",
+    name: ".uvme encode/decode",
+    solves: ["combiner"],
+    steps: ['encode: RIFF WAV + "UVME" chunk = {v, rec, palette} JSON + CRC32', "decode: find UVME chunk, verify CRC, read exact field C", "plain players ignore the chunk and just play the audio"]
+  },
+  {
+    id: "uvmv-codec",
+    name: ".uvmv encode/decode",
+    solves: ["combiner"],
+    steps: ['"UVMV" + u32 metaLen + meta JSON + per-frame (u32 len + rec JSON) + "AUDI" + u32 n + Int16 PCM', "decode bounds-caps frame count + every length vs buffer (MS.H3c)"]
+  },
+  {
+    id: "png-embed",
+    name: "PNG equation embed/extract",
+    solves: ["combiner"],
+    steps: ['embed: insert tEXt chunk keyword "uvme" + JSON C + CRC before IEND', 'extract: read the tEXt "uvme" chunk \u2192 exact field C']
+  },
+  {
+    id: "eqsound-demod",
+    name: "Equational-sound MFSK demod",
+    solves: ["combiner", "music"],
+    steps: ["the waveform itself carries C via MFSK", "demodulate frequencies back to coefficients \u2192 field C (no data chunk)"]
+  },
+  {
+    id: "additive",
+    name: "Additive loader (plain sound \u2192 image)",
+    solves: ["combiner"],
+    steps: ["read the sound's own spectrum (STFT)", "map spectral energy \u2192 a synthesized field C", "reconstruct an image (generated, NOT exact)"]
+  },
+  {
+    id: "ifs-iterate",
+    name: "IFS fractal generation",
+    solves: ["ifs", "fractalize", "boxdim"],
+    steps: ["fit affine maps by self-similarity correlation", "softmax-weight them (T=4)", "iterate the chosen contractions \u2192 bounded attractor", "box-count the edge set for fractal dimension"]
+  },
+  { id: "colour-transform", name: "Colour space", solves: ["color"], steps: ["forward Y/Cb/Cr from RGB", "inverse RGB from Y/Cb/Cr (centred chroma at \xBD)"] }
+];
+var SESSION_UPDATES = [
+  "Perception is FAITHFUL near-lossless (human experience), not a pixel-copy; the equation/.uvme MEMORY is EXACT + limitless.",
+  "Python\u2194JS reconstruction is bit-identical (np.round == Uint8ClampedArray half-even).",
+  "FT.trusted gate: size caps are a PUBLIC-door immune system; for Unity's own vision TRUSTED=true \u2192 limitless. Integrity bounds (decoder OOB, varint, length-vs-buffer) always on.",
+  "describeEquational replaced the LLM/VLM vision-describer \u2014 vision is 100% equational.",
+  "Transforms run GPU-direct (WGSL CDF 9/7) with a CPU fallback + selfCheck parity guard.",
+  "Thought-ops: abstract (simplify) + morphField (transition); synesthesia: describeEquationalAudio (hear the field C); memory: field C persists (.uvme medium)."
+];
+var MINDSPACE_KNOWLEDGE = { fileTypes: FILE_TYPES, equations: EQUATIONS, methods: METHODS, sessionUpdates: SESSION_UPDATES };
+function whatIs(extOrName) {
+  const e = String(extOrName || "").toLowerCase().replace(/^.*\./, "");
+  return FILE_TYPES.find((t) => t.exts.includes(e)) || null;
+}
+function equationFor(id) {
+  return EQUATIONS.find((q) => q.id === id) || null;
+}
+function methodFor(id) {
+  return METHODS.find((m) => m.id === id) || null;
+}
+function howToSolve(extOrId) {
+  const ft = whatIs(extOrId);
+  if (ft) {
+    const m2 = METHODS.find((x) => x.mode === ft.mode) || METHODS.find((x) => x.solves.includes("combiner"));
+    return { fileType: ft, method: m2 || null };
+  }
+  const m = methodFor(extOrId);
+  if (m) return { method: m };
+  const q = equationFor(extOrId);
+  if (q) return { equation: q, method: methodFor(q.solve) || null };
+  return null;
+}
+var _STOP = /* @__PURE__ */ new Set(["the", "a", "an", "of", "to", "and", "or", "for", "into", "as", "is", "it", "each", "all", "how", "do", "i", "her"]);
+function keywords(s) {
+  return String(s || "").toLowerCase().replace(/[^a-z ]+/g, " ").split(/\s+/).filter((w) => w.length > 2 && !_STOP.has(w));
+}
+async function teachInto(teacher, opts = {}) {
+  if (!teacher || typeof teacher._teachAssociationPairs !== "function") return 0;
+  const ANCHOR = "equation";
+  const seen = /* @__PURE__ */ new Set(), pairs = [];
+  const add = (w) => {
+    if (w && w !== ANCHOR && !seen.has(w)) {
+      seen.add(w);
+      pairs.push([w, ANCHOR]);
+    }
+  };
+  for (const q of EQUATIONS) for (const w of keywords(q.name)) add(w);
+  for (const m of METHODS) for (const w of keywords(m.name)) add(w);
+  for (const t of FILE_TYPES) add(t.kind);
+  try {
+    await teacher._teachAssociationPairs(pairs, { reps: 4, label: "MINDSPACE-KNOWLEDGE", ...opts });
+  } catch (e) {
+    return 0;
+  }
+  return pairs.length;
+}
+function conceptDefinitions() {
+  const out = [];
+  for (const q of EQUATIONS) out.push({ concept: q.name, definition: `${q.form}${q.note ? " \u2014 " + q.note : ""}` });
+  for (const m of METHODS) out.push({ concept: m.name, definition: `solve: ${m.steps.join(" \u2192 ")}` });
+  for (const t of FILE_TYPES) out.push({ concept: `${t.kind} (${t.exts.join("/")})`, definition: `${t.ingest}; produces ${t.produces ? t.produces.join(", ") : t.desc || ""}` });
+  return out;
+}
+
+// ../js/brain/mindspace/governor.js
+var ProcessGovernor = class {
+  constructor(opts = {}) {
+    this.baseUnits = opts.baseUnits || 64;
+    this.absurdUnits = opts.absurdUnits || 1e5;
+    this.load = 0;
+    this.loadDecay = opts.loadDecay != null ? opts.loadDecay : 0.92;
+    this.loadSoftMax = opts.loadSoftMax || 4096;
+    this.disposition = opts.disposition != null ? opts.disposition : 0.5;
+    this._arousal = 0.5;
+    this._focus = 0.5;
+    this.history = [];
+  }
+  setState({ arousal = this._arousal, focus = this._focus } = {}) {
+    this._arousal = Math.max(0, Math.min(1, arousal));
+    this._focus = Math.max(0, Math.min(1, focus));
+  }
+  // tick() — let load decay (she recovers headroom when not spending). Call on the brain's frame.
+  tick() {
+    this.load *= this.loadDecay;
+    if (this.load < 1e-3) this.load = 0;
+  }
+  /**
+   * allot(request) → { granted, units, ratio, reason }
+   * request = { kind, requestedUnits, priority?0..1, value?0..1 }
+   *   priority — how urgent/important the task is right now
+   *   value    — how much it matters to HER (curiosity, relevance, beauty)
+   * Returns the number of work units SHE judges proportionate to spend on this thought now.
+   * granted=false only means "she chose near-zero" (disproportionate), never "forbidden".
+   */
+  allot(request = {}) {
+    const requested = Math.max(0, request.requestedUnits || this.baseUnits);
+    const priority = clamp01(request.priority != null ? request.priority : 0.5);
+    const value = clamp01(request.value != null ? request.value : 0.5);
+    const kind = request.kind || "thought";
+    const worth = clamp01(
+      0.45 * value + 0.3 * priority + 0.15 * this.disposition + 0.1 * (0.5 * this._arousal + 0.5 * this._focus)
+    );
+    const restraint = 1 / (1 + this.load / this.loadSoftMax);
+    let units = Math.round(this.baseUnits * (0.25 + 3.75 * worth) * restraint);
+    const worthyCeiling = Math.round(this.absurdUnits * worth * worth);
+    const proportionate = Math.min(units, Math.max(this.baseUnits, worthyCeiling));
+    let granted = Math.min(requested, proportionate);
+    let reason;
+    if (requested > this.absurdUnits && worth < 0.95) {
+      granted = Math.min(granted, this.baseUnits);
+      reason = `disproportionate: ${kind} asked ${requested}u for worth ${worth.toFixed(2)} \u2014 not worth it`;
+    } else if (granted < requested) {
+      reason = `proportionate: granted ${granted}/${requested}u (worth ${worth.toFixed(2)}, load ${Math.round(this.load)})`;
+    } else {
+      reason = `granted in full (${granted}u, worth ${worth.toFixed(2)})`;
+    }
+    this.load += granted;
+    this.history.push({ kind, requested, granted, worth: +worth.toFixed(3), reason });
+    if (this.history.length > 32) this.history.shift();
+    return { granted: granted > this.baseUnits * 0.5 || granted >= requested, units: granted, ratio: requested ? granted / requested : 1, worth, reason };
+  }
+  // override(units) — SHE consciously chooses to spend beyond the proportionate grant on something
+  // that matters to her. Capability is limitless; this is her exercising it deliberately.
+  override(units, why) {
+    const u = Math.max(0, units | 0);
+    this.load += u;
+    this.history.push({ kind: "override", requested: u, granted: u, reason: `override: ${why || "she chose to"}` });
+    if (this.history.length > 32) this.history.shift();
+    return u;
+  }
+  getState() {
+    return { load: Math.round(this.load), disposition: this.disposition, arousal: this._arousal, focus: this._focus, recent: this.history.slice(-5) };
+  }
+};
+function clamp01(x) {
+  return Math.max(0, Math.min(1, x));
+}
+
+// ../js/brain/mindspace/gpu.js
+var MAX_LINE = 2048;
+var PARITY_TOL = 0.01;
+var LIFT_WGSL = `
+const A97 : f32 = -1.586134342059924;
+const B97 : f32 = -0.052980118572961;
+const G97 : f32 =  0.882911075530934;
+const D97 : f32 =  0.443506852043971;
+const K97 : f32 =  1.230174104914001;
+
+struct Params { lineLen : u32, lineStride : u32, lineBaseStep : u32, numLines : u32 };
+@group(0) @binding(0) var<uniform> P : Params;
+@group(0) @binding(1) var<storage, read_write> data : array<f32>;
+
+var<private> ln : array<f32, ${MAX_LINE}>;
+var<private> tmp : array<f32, ${MAX_LINE}>;
+
+fn loadLine(base : u32) {
+  for (var i : u32 = 0u; i < P.lineLen; i = i + 1u) { ln[i] = data[base + i * P.lineStride]; }
+}
+fn storeLine(base : u32) {
+  for (var i : u32 = 0u; i < P.lineLen; i = i + 1u) { data[base + i * P.lineStride] = ln[i]; }
+}
+
+// FORWARD multi-level (signal -> coeffs); exact reverse of the inverse below.
+@compute @workgroup_size(64)
+fn forward(@builtin(global_invocation_id) gid : vec3<u32>) {
+  let line = gid.x;
+  if (line >= P.numLines) { return; }
+  if (P.lineLen > ${MAX_LINE}u) { return; }   // CPU handles oversized lines
+  let base = line * P.lineBaseStep;
+  loadLine(base);
+  var size : u32 = P.lineLen;
+  loop {
+    if (size < 4u || (size & 1u) == 1u) { break; }
+    let half : u32 = size >> 1u;
+    // predict/update in the exact reverse order + sign of the inverse's undo passes
+    ln[size - 1u] = ln[size - 1u] + 2.0 * A97 * ln[size - 2u];
+    var i : u32 = 1u; loop { if (i >= size - 1u) { break; } ln[i] = ln[i] + A97 * (ln[i - 1u] + ln[i + 1u]); i = i + 2u; }
+    i = 2u; loop { if (i >= size) { break; } ln[i] = ln[i] + B97 * (ln[i - 1u] + ln[i + 1u]); i = i + 2u; }
+    ln[0] = ln[0] + 2.0 * B97 * ln[1];
+    ln[size - 1u] = ln[size - 1u] + 2.0 * G97 * ln[size - 2u];
+    i = 1u; loop { if (i >= size - 1u) { break; } ln[i] = ln[i] + G97 * (ln[i - 1u] + ln[i + 1u]); i = i + 2u; }
+    i = 2u; loop { if (i >= size) { break; } ln[i] = ln[i] + D97 * (ln[i - 1u] + ln[i + 1u]); i = i + 2u; }
+    ln[0] = ln[0] + 2.0 * D97 * ln[1];
+    i = 0u; loop { if (i >= size) { break; } ln[i] = ln[i] / K97; i = i + 2u; }
+    i = 1u; loop { if (i >= size) { break; } ln[i] = ln[i] * K97; i = i + 2u; }
+    // deinterleave: lowpass (evens) -> first half, highpass (odds) -> second half
+    var k : u32 = 0u; loop { if (k >= half) { break; } tmp[k] = ln[2u * k]; tmp[half + k] = ln[2u * k + 1u]; k = k + 1u; }
+    k = 0u; loop { if (k >= size) { break; } ln[k] = tmp[k]; k = k + 1u; }
+    size = half;
+  }
+  storeLine(base);
+}
+
+// INVERSE multi-level (coeffs -> signal).
+@compute @workgroup_size(64)
+fn inverse(@builtin(global_invocation_id) gid : vec3<u32>) {
+  let line = gid.x;
+  if (line >= P.numLines) { return; }
+  if (P.lineLen > ${MAX_LINE}u) { return; }
+  let base = line * P.lineBaseStep;
+  loadLine(base);
+  // rebuild the ascending size schedule (4,8,\u2026) up to the largest even-divisible size
+  var sizes : array<u32, 16>;
+  var nsz : u32 = 0u;
+  var sz : u32 = P.lineLen;
+  loop { if (sz < 4u || (sz & 1u) == 1u) { break; } sizes[nsz] = sz; nsz = nsz + 1u; sz = sz >> 1u; }
+  // process smallest -> largest (reverse of the stored descending list)
+  var si : i32 = i32(nsz) - 1;
+  loop {
+    if (si < 0) { break; }
+    let size : u32 = sizes[si];
+    let half : u32 = size >> 1u;
+    // interleave back: first half -> evens, second half -> odds
+    var k : u32 = 0u; loop { if (k >= half) { break; } tmp[2u * k] = ln[k]; tmp[2u * k + 1u] = ln[half + k]; k = k + 1u; }
+    k = 0u; loop { if (k >= size) { break; } ln[k] = tmp[k]; k = k + 1u; }
+    var i : u32 = 0u; loop { if (i >= size) { break; } ln[i] = ln[i] * K97; i = i + 2u; }
+    i = 1u; loop { if (i >= size) { break; } ln[i] = ln[i] / K97; i = i + 2u; }
+    ln[0] = ln[0] - 2.0 * D97 * ln[1];
+    i = 2u; loop { if (i >= size) { break; } ln[i] = ln[i] - D97 * (ln[i - 1u] + ln[i + 1u]); i = i + 2u; }
+    i = 1u; loop { if (i >= size - 1u) { break; } ln[i] = ln[i] - G97 * (ln[i - 1u] + ln[i + 1u]); i = i + 2u; }
+    ln[size - 1u] = ln[size - 1u] - 2.0 * G97 * ln[size - 2u];
+    ln[0] = ln[0] - 2.0 * B97 * ln[1];
+    i = 2u; loop { if (i >= size) { break; } ln[i] = ln[i] - B97 * (ln[i - 1u] + ln[i + 1u]); i = i + 2u; }
+    i = 1u; loop { if (i >= size - 1u) { break; } ln[i] = ln[i] - A97 * (ln[i - 1u] + ln[i + 1u]); i = i + 2u; }
+    ln[size - 1u] = ln[size - 1u] - 2.0 * A97 * ln[size - 2u];
+    si = si - 1;
+  }
+  storeLine(base);
+}
+`;
+var MindSpaceGPU = class {
+  constructor() {
+    this.available = false;
+    this._device = null;
+    this._fwd = null;
+    this._inv = null;
+    this._verified = false;
+    this.governor = new ProcessGovernor();
+  }
+  governState(s) {
+    this.governor.setState(s || {});
+  }
+  // brain feeds arousal/focus
+  governTick() {
+    this.governor.tick();
+  }
+  async init() {
+    try {
+      if (typeof navigator === "undefined" || !navigator.gpu) return false;
+      const adapter = await navigator.gpu.requestAdapter({ powerPreference: "high-performance" });
+      if (!adapter) return false;
+      this._device = await adapter.requestDevice();
+      this._device.lost.then(() => {
+        this.available = false;
+        this._verified = false;
+      });
+      const module = this._device.createShaderModule({ code: LIFT_WGSL });
+      this._fwd = this._device.createComputePipeline({ layout: "auto", compute: { module, entryPoint: "forward" } });
+      this._inv = this._device.createComputePipeline({ layout: "auto", compute: { module, entryPoint: "inverse" } });
+      this.available = true;
+      this._verified = await this.selfCheck();
+      return this.available;
+    } catch (e) {
+      this.available = false;
+      return false;
+    }
+  }
+  // Run one lifting pipeline (forward|inverse) along an axis over a Float32 plane buffer.
+  async _liftPass(pipeline, plane, lineLen, lineStride, lineBaseStep, numLines) {
+    const dev = this._device;
+    const bytes = plane.byteLength;
+    const buf = dev.createBuffer({ size: bytes, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST });
+    dev.queue.writeBuffer(buf, 0, plane);
+    const params = new Uint32Array([lineLen, lineStride, lineBaseStep, numLines]);
+    const pbuf = dev.createBuffer({ size: 16, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
+    dev.queue.writeBuffer(pbuf, 0, params);
+    const bind = dev.createBindGroup({ layout: pipeline.getBindGroupLayout(0), entries: [
+      { binding: 0, resource: { buffer: pbuf } },
+      { binding: 1, resource: { buffer: buf } }
+    ] });
+    const enc = dev.createCommandEncoder();
+    const pass = enc.beginComputePass();
+    pass.setPipeline(pipeline);
+    pass.setBindGroup(0, bind);
+    pass.dispatchWorkgroups(Math.ceil(numLines / 64));
+    pass.end();
+    const read = dev.createBuffer({ size: bytes, usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ });
+    enc.copyBufferToBuffer(buf, 0, read, 0, bytes);
+    dev.queue.submit([enc.finish()]);
+    await read.mapAsync(GPUMapMode.READ);
+    const out = new Float32Array(read.getMappedRange().slice(0));
+    read.unmap();
+    buf.destroy();
+    pbuf.destroy();
+    read.destroy();
+    return out;
+  }
+  // GPU fwd2d: rows then columns (matches transform.js). plane is Float32Array length W2*H2.
+  async fwd2d(plane, H, W) {
+    let p = await this._liftPass(this._fwd, plane, W, 1, W, H);
+    p = await this._liftPass(this._fwd, p, H, W, 1, W);
+    return p;
+  }
+  // GPU idwt2: columns then rows (matches transform.js).
+  async idwt2(plane, H, W) {
+    let p = await this._liftPass(this._inv, plane, H, W, 1, W);
+    p = await this._liftPass(this._inv, p, W, 1, W, H);
+    return p;
+  }
+  // Runtime parity guard: GPU fwd2d vs CPU fwd2d on a random plane. Near-lossless (f32 vs f64).
+  async selfCheck() {
+    try {
+      const W = 64, H = 64;
+      const a = new Float32Array(W * H), b = new Float64Array(W * H);
+      for (let i = 0; i < W * H; i++) {
+        const v = Math.sin(i * 0.013) * 40 + i * 2.7 % 17;
+        a[i] = v;
+        b[i] = v;
+      }
+      const gpu = await this.fwd2d(a.slice(), H, W);
+      fwd2d(b, H, W);
+      let maxd = 0;
+      for (let i = 0; i < W * H; i++) maxd = Math.max(maxd, Math.abs(gpu[i] - b[i]));
+      if (maxd > PARITY_TOL) {
+        console.warn(`[MindSpaceGPU] selfCheck drift ${maxd.toExponential(2)} > tol \u2014 using CPU path`);
+        return false;
+      }
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+  _useGpu() {
+    return this.available && this._verified;
+  }
+  // ── HIGH-LEVEL: perceive (SEEING) — ImageData → field C ────────────────────────────────────
+  // GPU does the dense fwd2d; CPU does colour + energy-target selection + quant/pack (transform.js).
+  async perceive(img) {
+    if (!this._useGpu()) return equationalizeImageData(img);
+    const W0 = img.width, H0 = img.height, d = img.data;
+    const W2 = padDim(W0), H2 = padDim(H0);
+    if (W2 > MAX_LINE || H2 > MAX_LINE) return equationalizeImageData(img);
+    const refl = (i, n) => {
+      if (i < n) return i;
+      let r = 2 * (n - 1) - i;
+      if (r < 0) r = 0;
+      return r;
+    };
+    const names = ["Y", "Cb", "Cr"], chans = {};
+    const planes = [new Float32Array(W2 * H2), new Float32Array(W2 * H2), new Float32Array(W2 * H2)];
+    for (let y = 0; y < H2; y++) {
+      const sy = refl(y, H0);
+      for (let x = 0; x < W2; x++) {
+        const sx = refl(x, W0), o = (sy * W0 + sx) * 4;
+        const ycc = rgbToYCbCr(d[o] / 255, d[o + 1] / 255, d[o + 2] / 255);
+        const p = y * W2 + x;
+        planes[0][p] = ycc[0];
+        planes[1][p] = ycc[1];
+        planes[2][p] = ycc[2];
+      }
+    }
+    const EQ_TOL2 = [0.03, 0.055, 0.055], EQ_KMIN2 = [400, 120, 120];
+    let totalEq = 0;
+    for (let ci = 0; ci < 3; ci++) {
+      const co = await this.fwd2d(planes[ci], H2, W2);
+      const n = co.length;
+      let total = 0;
+      for (let i = 0; i < n; i++) total += co[i] * co[i];
+      total = total || 1;
+      const order = Array.from({ length: n }, (_, i) => i).sort((a, b) => Math.abs(co[b]) - Math.abs(co[a]));
+      const target = (1 - EQ_TOL2[ci] * EQ_TOL2[ci]) * total;
+      let acc = 0, k = 0;
+      while (k < n && acc < target) {
+        acc += co[order[k]] * co[order[k]];
+        k++;
+      }
+      k = Math.max(EQ_KMIN2[ci], Math.min(k, n));
+      const idx = order.slice(0, k).sort((a, b) => a - b);
+      let maxAbs = 1e-8;
+      for (let i = 0; i < k; i++) maxAbs = Math.max(maxAbs, Math.abs(co[idx[i]]));
+      const qscale = maxAbs / 32e3;
+      const q = new Int16Array(k);
+      for (let i = 0; i < k; i++) {
+        const v = Math.round(co[idx[i]] / qscale);
+        q[i] = Math.max(-32767, Math.min(32767, v));
+      }
+      chans[names[ci]] = { keep: k, qscale, pos_enc: "dv1", pos_b64: bytesToB64(new Uint8Array(encPos(idx))), val_b64: i16ToB64(q) };
+      totalEq += k;
+    }
+    return {
+      model: "cdf97_wavelet_native_quantized",
+      colorspace: "YCbCr",
+      wavelet: "cdf97",
+      width: W0,
+      height: H0,
+      pad_w: W2,
+      pad_h: H2,
+      channels: chans,
+      equation_count: totalEq,
+      fidelity: { psnr_db: null, source: "mindspace-gpu" }
+    };
+  }
+  // ── HIGH-LEVEL: imagine (IMAGINING / re-experiencing) — field C → ImageData ──────────────────
+  // CPU scatters the sparse coeffs into dense planes; GPU does the dense idwt2; CPU does colour.
+  async imagine(rec, dev) {
+    if (!this._useGpu() || rec.pad_w > MAX_LINE || rec.pad_h > MAX_LINE) return reconstructImageData(rec, dev);
+    const W = rec.width, H = rec.height, W2 = rec.pad_w, H2 = rec.pad_h, SIZE = W2 * H2;
+    const f = Math.max(0, Math.min(1, dev || 0));
+    const chans = {};
+    for (const name of ["Y", "Cb", "Cr"]) {
+      const c = rec.channels[name], val = b64i16(c.val_b64), qs = c.qscale, pos = decodePositions(c, val.length);
+      let mx = 0;
+      if (f > 0) for (let i = 0; i < val.length; i++) {
+        const a = Math.abs(val[i] * qs);
+        if (a > mx) mx = a;
+      }
+      const thr = f > 0 ? f * mx * 0.6 : 0;
+      const flat = new Float32Array(SIZE);
+      for (let i = 0; i < pos.length; i++) {
+        const p = pos[i];
+        if (p < 0 || p >= SIZE) continue;
+        const v = val[i] * qs;
+        if (thr && Math.abs(v) < thr) continue;
+        flat[p] = v;
+      }
+      chans[name] = await this.idwt2(flat, H2, W2);
+    }
+    const img = new ImageData(W, H), o8 = img.data, Y = chans.Y, Cb = chans.Cb, Cr = chans.Cr;
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      const gi = y * W2 + x, o = (y * W + x) * 4, rgb = ycbcrToRGB(Y[gi], Cb[gi], Cr[gi]);
+      o8[o] = Math.max(0, Math.min(255, rgb[0] * 255));
+      o8[o + 1] = Math.max(0, Math.min(255, rgb[1] * 255));
+      o8[o + 2] = Math.max(0, Math.min(255, rgb[2] * 255));
+      o8[o + 3] = 255;
+    }
+    return img;
+  }
+  // the percept value-vector is cheap — always CPU (reads coeffs already in the rec)
+  describe(rec, dim) {
+    return describeEquational(rec, dim);
+  }
+  // MS.K1 — Unity KNOWS her mind-space: all file types, equations, and how to solve them.
+  // Her cognition answers "what is this file / how do I solve it" from the equation itself.
+  get knowledge() {
+    return MINDSPACE_KNOWLEDGE;
+  }
+  whatIs(extOrName) {
+    return whatIs(extOrName);
+  }
+  howToSolve(extOrId) {
+    return howToSolve(extOrId);
+  }
+  equationFor(id) {
+    return equationFor(id);
+  }
+  methodFor(id) {
+    return methodFor(id);
+  }
+  conceptDefinitions() {
+    return conceptDefinitions();
+  }
+  // for curriculum sem-binding
+  teachInto(teacher, opts) {
+    return teachInto(teacher, opts);
+  }
+  // LEARN the knowledge into sem-space
+};
+
 // ../js/brain/remote-brain.js
 var EventEmitter2 = class {
   constructor() {
@@ -120299,15 +122622,11 @@ async function bootUnity(apiKey, perms) {
   }
   if (perms.camera && perms.cameraStream) {
     brain.connectCamera(perms.cameraStream);
-    if (brain.visualCortex && typeof brain.visualCortex.setDescriber === "function") {
-      brain.visualCortex.setDescriber(async (dataUrl) => {
-        if (!dataUrl) return null;
-        const desc = await providers.describeImage(dataUrl);
-        if (desc) {
-          console.log("[Vision]", desc.slice(0, 80));
-          return desc;
-        }
-        return null;
+    if (brain.visualCortex && typeof brain.visualCortex.setMindSpace === "function") {
+      const mindSpace = new MindSpaceGPU();
+      brain.visualCortex.setMindSpace(mindSpace);
+      mindSpace.init().then((ok) => {
+        console.log("[Vision] equational mind-space online \u2014", ok ? "GPU" : "CPU", "path; no LLM describer");
       });
     }
   }

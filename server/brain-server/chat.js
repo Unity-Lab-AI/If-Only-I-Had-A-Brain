@@ -454,6 +454,31 @@ const SERVER_CHAT_MIXIN = {
     this._learnWords(response);
     this.storeEpisode(userId, 'interaction', text, response);
 
+    // Curiosity FOLLOW-UP — if Unity ASKED a question last tick
+    // (_pendingQuestionConcept set by _maybeAskCuriousQuestion), this user
+    // message is the ANSWER. Bind the answer tokens to the gap concept so she
+    // LEARNS it (Hebbian, definition channel) + store the Q→A as an episode,
+    // then clear the pending flag. Closes the ask → answer → incorporate loop
+    // so she follows up on what she asked, like a real curious entity.
+    if (this._pendingQuestionConcept && typeof text === 'string' && text.trim()) {
+      const concept = this._pendingQuestionConcept;
+      this._pendingQuestionConcept = null;
+      try {
+        const curric = this.cortexCluster && this.cortexCluster._curriculum;
+        const answerTokens = text.toLowerCase().split(/\s+/)
+          .filter(w => /^[a-z]{2,}$/.test(w)).slice(0, 8);
+        if (curric && typeof curric._teachAssociationPairs === 'function' && answerTokens.length > 0) {
+          const pairs = answerTokens.map(t => [concept, t]);
+          // relationTagId=23 = definition/grounding channel — the answer
+          // grounds the concept, same shape as _teachWordDefinition.
+          await curric._teachAssociationPairs(pairs, { reps: 12, label: 'CURIOSITY-FOLLOWUP-ANSWER', relationTagId: 23 });
+        }
+        this.storeEpisode('curiosity', 'answer-learned', concept, text);
+      } catch (e) {
+        if (!this._followupErrLogged) { this._followupErrLogged = true; console.warn(`[Brain] curiosity follow-up bind failed: ${e?.message || e}`); }
+      }
+    }
+
     // 114.19fi.B.5 — push chat-turn pair to rolling history (cap 16).
     // Multi-turn coherence: next call's processAndRespond reads prior
     // 2 user inputs and injects their embeddings into sem.
@@ -932,6 +957,20 @@ const SERVER_CHAT_MIXIN = {
         });
       }
 
+      // CURIOSITY — occasionally Unity ASKS about something instead of only
+      // contemplating. The epistemic-gap drive picks a recently-encountered
+      // concept she's weakly grounded on and fires an outward question via
+      // the trained question-production path (composeSentence questionMode →
+      // relationTagId=30 transitions → "?"). It records the asked concept so
+      // the next user reply binds as the answer (follow-up loop in the
+      // interaction handler). Returns true when she asked — skip the normal
+      // contemplation this tick. (finally below still resets the in-flight flag.)
+      try {
+        if (await this._maybeAskCuriousQuestion(now)) return;
+      } catch (e) {
+        if (!this._curiosityErrLogged) { this._curiosityErrLogged = true; console.warn(`[Brain] curiosity ask failed: ${e?.message || e}`); }
+      }
+
       // SANDBOX-NOTICE ACTIVATOR — pick a contemplation seed from one of
       // five live state sources (learning, mood, chat-recall, memory,
       // identity). Operator's "constantly being built and updgraded as
@@ -1267,7 +1306,7 @@ const SERVER_CHAT_MIXIN = {
       try {
         // awaited; composeSentence ticks the brain
         // between word emissions for real autoregressive emergence.
-        const composed = await cluster.composeSentence(null, { temperature: 0.7, topK: 10 });
+        const composed = await cluster.composeSentence(null, this._affectDecoder());
         if (composed && composed.sentence && composed.fillCount >= 2) {
           return composed.sentence;
         }
@@ -1391,6 +1430,110 @@ const SERVER_CHAT_MIXIN = {
    * PhD Unity speaking her mind = PhD-vocabulary contemplation. The
    * MOUTH evolves with her training, the mind keeps generating.
    */
+  /**
+   * Curiosity / epistemic-gap drive — fire an outward QUESTION about a
+   * concept Unity is weakly grounded on, via the trained question-production
+   * path (composeSentence questionMode → relationTagId=30 → "?"). Probabilistic
+   * + gap-gated so she asks like a curious newly-created entity, not on a
+   * metronome. Records the asked concept on `_pendingQuestionConcept` so the
+   * next user reply binds as the answer (follow-up loop). Returns true if she
+   * asked (caller skips normal contemplation that tick).
+   */
+  /**
+   * Affect → decoder params. Maps Unity's LIVE emotional + chemical state to
+   * emission sampling so her speech carries the persona's three permanent
+   * streams (intoxicated + aroused + focused). EQUATIONAL, not a filter:
+   *   arousal ↑  → looser + more intense (higher temperature, wider top-K)
+   *   intoxication ↑ → more impulsive/uninhibited (higher temperature)
+   *   coherence ↑ → more focused (lower temperature)
+   * Returns { temperature, topK } for composeSentence/emitWordDirect. Probes
+   * that need deterministic greedy decode simply don't call this.
+   */
+  _affectDecoder() {
+    const arousal = Math.max(0, Math.min(1, this.arousal ?? 0.5));
+    const coherence = Math.max(0, Math.min(1, this.coherence ?? 0.5));
+    let drug = 0;
+    try {
+      const sm = this.drugScheduler ? this.drugScheduler.speechModulation() : null;
+      if (sm && typeof sm.intensity === 'number') drug = Math.max(0, Math.min(1, sm.intensity));
+      else if (typeof this._drugStateLabel === 'function' && this._drugStateLabel() !== 'sober') drug = 0.5;
+    } catch { /* drug read non-fatal — stay sober-default */ }
+    let temperature = 0.6 + 0.4 * arousal + 0.35 * drug - 0.3 * coherence;
+    temperature = Math.max(0.45, Math.min(1.2, temperature));
+    const topK = Math.round(8 + 6 * Math.max(arousal, drug));
+    return { temperature: Number(temperature.toFixed(2)), topK };
+  },
+
+  async _maybeAskCuriousQuestion(now) {
+    const cluster = this.cortexCluster;
+    if (!cluster || typeof cluster.composeSentence !== 'function') return false;
+    if (this._pendingQuestionConcept) return false;   // one open question at a time
+    // Base curiosity ~12%, lifted by arousal (engaged → more inquisitive).
+    const drive = 0.12 + 0.18 * Math.max(0, Math.min(1, this.arousal ?? 0.5));
+    if (Math.random() > drive) return false;
+    const concept = this._pickEpistemicGap();
+    if (!concept) return false;
+    let composed = null;
+    try {
+      composed = await cluster.composeSentence(concept, {
+        questionMode: true,
+        intentConcept: concept,
+        coherenceCandidates: 2,
+        ...this._affectDecoder(),   // temperature + topK from live affect/chemical state
+      });
+    } catch { composed = null; }
+    const sentence = composed && composed.sentence ? composed.sentence.trim() : '';
+    if (!sentence) return false;
+    // Record for the follow-up loop — the next user reply answers THIS.
+    this._pendingQuestionConcept = concept;
+    this._pendingQuestionAt = now;
+    this._lastInnerThoughtEmittedAt = now;   // feed the natural-rhythm gate
+    try { process.stdout.write(`[Brain] ❓ curious-question (about=${concept}) "${sentence}"\n`); } catch { /* nf */ }
+    if (typeof cluster.pushEmission === 'function') {
+      try { cluster.pushEmission({ source: 'curiosity', text: sentence, ts: now, intent: concept }); } catch { /* nf */ }
+    }
+    if (typeof this.storeEpisode === 'function') {
+      try { this.storeEpisode('curiosity', 'question-asked', concept, sentence); } catch { /* nf */ }
+    }
+    if (this.clients && this.clients.size > 0) {
+      const payload = JSON.stringify({
+        type: 'innerThought',
+        word: sentence.split(/\s+/)[0] || '',
+        sentence,
+        seed: 'curiosity',
+        seedLabel: `curious about ${concept}`,
+        ts: now,
+        capability: null,
+      });
+      for (const [ws] of this.clients) {
+        if (ws.readyState === ws.OPEN) {
+          try { ws.send(payload); } catch { /* nf */ }
+        }
+      }
+    }
+    return true;
+  },
+
+  /**
+   * Pick a concept Unity is curious about — a recently-bound vocab word
+   * (fresh in mind, weakly consolidated) from the persistent
+   * `_definitionTaughtWords` Set. The epistemic-gap signal: things she's
+   * encountered but not deeply grounded on yet. Returns null when nothing's
+   * available (genuine silence — no fabricated curiosity).
+   */
+  _pickEpistemicGap() {
+    const cortex = this.cortexCluster;
+    const taught = cortex && cortex._definitionTaughtWords;
+    if (taught instanceof Set && taught.size > 0) {
+      const arr = Array.from(taught);
+      const recentStart = Math.floor(arr.length * 0.75);   // most-recent quarter
+      const idx = recentStart + Math.floor(Math.random() * Math.max(1, arr.length - recentStart));
+      const word = arr[Math.min(idx, arr.length - 1)];
+      if (typeof word === 'string' && word.length > 1) return word;
+    }
+    return null;
+  },
+
   _pickInnerThoughtSeed() {
     if (!Array.isArray(this._innerThoughtSeedRotation)) {
       // Seven sources rotate. The original five (learning / mood /

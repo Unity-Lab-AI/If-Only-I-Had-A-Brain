@@ -546,7 +546,7 @@ export class NeuronCluster {
     // stays within-cluster, 30% crosses cluster boundaries via hub
     // neurons (hub neurons effect).
     this.regionClusterMap = opts.regionClusterMap || {
-      visual: 'sensory', auditory: 'sensory', letter: 'sensory', phon: 'sensory',
+      visual: 'sensory', auditory: 'sensory', gustatory: 'sensory', somatosensory: 'sensory', letter: 'sensory', phon: 'sensory',
       sem: 'association', fineType: 'association', free: 'association',
       motor: 'output', word_motor: 'output',
     };
@@ -700,7 +700,9 @@ export class NeuronCluster {
 
       //   auditory   0.000 - 0.083   auditory phoneme recognition
       //   visual     0.083 - 0.250   visual letter recognition
-      //   free       0.250 - 0.500   inter-cluster projection sink + working mem
+      //   gustatory  0.250 - 0.270   SE.6 taste value-profile (curriculum-injected; carved from free, no migration)
+      //   somatosens 0.270 - 0.300   SE.6 touch/feel value-profile (curriculum-injected)
+      //   free       0.300 - 0.500   inter-cluster projection sink + working mem
       //   letter     0.500 - 0.550   letter input one-hot region (READ/TALK probe input)
       //   phon       0.550 - 0.750   phonological attractor basins
       //   sem        0.750 - 0.875   semantic GloVe target (iter21-B carved into 6 sub-bands)
@@ -731,7 +733,9 @@ export class NeuronCluster {
       this.regions = {
         auditory:   { start: 0,                          end: Math.floor(s * 0.083) },
         visual:     { start: Math.floor(s * 0.083),      end: Math.floor(s * 0.250) },
-        free:       { start: Math.floor(s * 0.250),      end: Math.floor(s * 0.500) },
+        gustatory:     { start: Math.floor(s * 0.250),   end: Math.floor(s * 0.270) },   // SE.6 taste — carved from free (no migration; trains in pre-walk)
+        somatosensory: { start: Math.floor(s * 0.270),   end: Math.floor(s * 0.300) },   // SE.6 touch/feel
+        free:       { start: Math.floor(s * 0.300),      end: Math.floor(s * 0.500) },
         letter:     { start: Math.floor(s * 0.500),      end: Math.floor(s * 0.550) },
         phon:       { start: Math.floor(s * 0.550),      end: Math.floor(s * 0.750) },
         sem:        { start: semStart,                   end: semEnd },

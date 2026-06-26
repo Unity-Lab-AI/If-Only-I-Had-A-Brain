@@ -86,7 +86,13 @@ const STORAGE_KEY = 'unity_brain_state';
 // broken binding. Loading that state would contaminate the current
 // direct-pattern teaching. V5 rejection forces a clean boot with full
 // curriculum re-run under the current equational methods.
-const VERSION = 5;
+// VERSION 6 — MIND-SPACE INTEGRATION + SENSORY REGION layout change. Ships equational vision (LLM
+// describer removed), bidirectional imagine-workspace, thought-ops + synesthesia + equational memory,
+// the autonomous process governor, and TWO NEW cortical regions (gustatory + somatosensory, carved
+// from `free` in cluster.js). That region change shifts the cortex partition, so any v5 save's
+// synapses/projection weights are allocated against the OLD layout and would corrupt if loaded. V6
+// rejection forces a clean boot + FRESH full K→PhD walk under the new layout — exactly what we want.
+const VERSION = 6;
 
 export class BrainPersistence {
 
@@ -152,6 +158,14 @@ export class BrainPersistence {
         // conversations, that association survives a reload.
         embeddingRefinements: sharedEmbeddings?.serializeRefinements
           ? sharedEmbeddings.serializeRefinements()
+          : null,
+
+        // MS.I6 — equational visual memory. Unity's perceived/imagined forms persist AS
+        // EQUATIONS (the field C, the .uvme medium): the visual cortex's recent field-Cs are
+        // plain-serialisable (base64 coeff channels), so they survive a reload and can be
+        // recalled + re-experienced (via imagine) next session. The equation IS the memory.
+        visualMemory: (brain.visualCortex && Array.isArray(brain.visualCortex._recentRecs))
+          ? brain.visualCortex._recentRecs.slice(-8)
           : null,
       };
 
@@ -226,6 +240,7 @@ export class BrainPersistence {
         if (state.semanticWeights) droppedSections.push('semanticWeights');
         if (state.embeddingRefinements) droppedSections.push('embeddingRefinements');
         if (state.t14Language) droppedSections.push('t14Language');
+        if (state.visualMemory) droppedSections.push('visualMemory');
         const minimal = {
           version: VERSION,
           savedAt: state.savedAt,
@@ -438,6 +453,19 @@ export class BrainPersistence {
       }
     } catch (err) {
       failed.embeddingRefinements = err.message;
+    }
+
+    // MS.I6 — restore equational visual memory (the field-C / .uvme medium). Past-session
+    // perceived/imagined forms come back as equations she can recall + re-experience (imagine).
+    try {
+      if (Array.isArray(state.visualMemory) && brain.visualCortex) {
+        const recs = state.visualMemory.filter(r => r && r.channels).slice(-8);
+        brain.visualCortex._recentRecs = recs;
+        if (recs.length) brain.visualCortex._lastRec = recs[recs.length - 1];
+        restored.visualMemory = `${recs.length}`;
+      }
+    } catch (err) {
+      failed.visualMemory = err?.message || String(err);
     }
 
     // T14.16 — restore T14 language state onto the cortex cluster

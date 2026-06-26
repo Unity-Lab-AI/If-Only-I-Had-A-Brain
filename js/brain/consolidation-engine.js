@@ -278,7 +278,7 @@ export class ConsolidationEngine {
             schema.promotedToTier3 = true;
             schema.tier3PromotedAt = Date.now();
             stats.tier3Promotions++;
-            console.log(`[Hippocampus] PROMOTED to Tier 3: ${schema.label} (${schema.id}) consolidation_strength=${schema.consolidationStrength.toFixed(2)} retrieval_count=${schema.retrievalCount} emotional_valence=${(schema.attributeVector[0] || 0).toFixed(2)}`);
+            console.log(`[Hippocampus] PROMOTED to Tier 3: ${schema.label} (${schema.id}) consolidation_strength=${schema.consolidationStrength.toFixed(2)} retrieval_count=${schema.retrievalCount} replay_count=${schema.replayCount || 0} emotional_valence=${(schema.attributeVector[0] || 0).toFixed(2)}`);
           }
         }
       }
