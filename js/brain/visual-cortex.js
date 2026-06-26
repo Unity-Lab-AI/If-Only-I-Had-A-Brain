@@ -19,6 +19,11 @@
 // pointer bugged out off to the side.
 // 60×45 gives face-level detail (~15-25px wide for a typical webcam
 // framing) while staying cheap: 9× the V1 ops still runs <1ms per frame.
+// MS.I3 — the mind-space thought medium. Imagination is vision without a camera: the same
+// equational substrate (consciousness + imaging + imagining are ONE process). describeEquational
+// reads a percept out of a field C; morphField/abstract are the thought-ops she runs ON it.
+import { describeEquational, describeEquationalAudio, morphField, abstract } from './mindspace/transform.js';
+
 const FRAME_W = 60;
 const FRAME_H = 45;
 const V1_ORIENTATIONS = 4; // 0°, 45°, 90°, 135°
@@ -75,16 +80,22 @@ export class VisualCortex {
     // V4: dominant colors (RGB averages for quadrants)
     this.colors = { tl: [0, 0, 0], tr: [0, 0, 0], bl: [0, 0, 0], br: [0, 0, 0] };
 
-    // IT: high-level description (from AI, updated periodically)
-    this.description = '';
+    // IT: high-level perception — EQUATIONAL, not text-AI (MS.I2). The IT level used to
+    // call an LLM/VLM to produce a text description; it now runs the equational mind-space
+    // (Uni Vs Matics CDF 9/7) over the frame and yields a deterministic PERCEPT VECTOR — the
+    // wavelet field IS the percept. No text model anywhere in the cognition path.
+    this.description = '';        // short NON-LLM equational tag, for display only (never fed to cognition)
+    this.perceptVector = null;    // Float32Array(64) — the equational VISUAL percept (→ visual region)
+    this.audioPercept = null;     // MS.I5 — Float32Array(32) — the SAME field C heard (→ auditory region, synesthesia)
+    this._lastRec = null;         // the field C of the last perceived frame (for memory / synesthesia)
+    this._recentRecs = [];        // MS.I3 — ring of recent field-Cs she can imagine FROM (cap 8)
     this._lastDescribeTime = 0;
-    this._describeInterval = Infinity; // Don't auto-describe — only on demand or first frame
+    this._describeInterval = Infinity; // Don't auto-perceive — only on demand or first frame
     this._hasDescribedOnce = false; // first look on boot
-    this._describer = null; // function(frameCanvas) => Promise<string>
-    this._describing = false;
-    // T7.2 — subscribers notified whenever a fresh description
-    // lands. Language cortex uses this to feed the text into its
-    // social schema (gender inference via closed-class token match).
+    this._mindSpace = null;       // MindSpaceGPU — set via setMindSpace(); the equational vision substrate
+    this._describing = false;     // re-entrancy guard for the async perceive
+    // Subscribers notified whenever a fresh percept lands. They now receive the EQUATIONAL
+    // percept { vector, rec }, NOT an LLM text string.
     this._describeSubscribers = [];
 
     // Gaze — determined by salience map peak
@@ -180,15 +191,19 @@ export class VisualCortex {
     this._video = null;
     this._ctx = null;
     this._canvas = null;
-    this._describer = null;
+    this._mindSpace = null;
+    this.perceptVector = null;
+    this._lastRec = null;
     this._describing = false;
   }
 
   /**
-   * Set the IT-level describer function (calls AI model).
+   * MS.I2 — install the equational mind-space (a MindSpaceGPU instance) as the IT-level
+   * perceiver. This REPLACES the old LLM/VLM describer: the cortex now SEES by transforming
+   * the frame to its CDF 9/7 field C and reading the percept vector out of it — no text model.
    */
-  setDescriber(fn) {
-    this._describer = fn;
+  setMindSpace(mindSpace) {
+    this._mindSpace = mindSpace;
   }
 
   /**
@@ -242,6 +257,14 @@ export class VisualCortex {
       const mapIdx = Math.floor(i / 100 * V1_COUNT);
       currents[i] = this.salienceMap[mapIdx] * 15 + // edge strength
                      (this._currentFrame[mapIdx] || 0) * 5; // brightness
+    }
+    // MS.I2 — fold the EQUATIONAL percept (the IT-level field-C readout) into the visual
+    // currents. The wavelet percept vector IS what she sees at the high level; spreading it
+    // across the visual neurons drives the region with equational CONTENT, not just edge/brightness.
+    // perceptVector is L2-normalised (~0.x); ×30 brings it into range with the salience currents.
+    if (this.perceptVector) {
+      const pv = this.perceptVector, n = pv.length;
+      for (let i = 0; i < 100; i++) currents[i] += pv[i % n] * 30;
     }
 
     return {
@@ -512,10 +535,10 @@ export class VisualCortex {
     return max;
   }
 
-  // ── IT: Object recognition (AI call — LAST step) ─────────────
+  // ── IT: equational perception (mind-space — NO AI/LLM, LAST step) ─────────────
 
   /**
-   * Force a vision description NOW. Called by handleInput on visual questions
+   * Force an equational perception NOW. Called by handleInput on visual questions
    * or by the brain when it decides it needs to look.
    */
   forceDescribe() {
@@ -527,12 +550,54 @@ export class VisualCortex {
     this._maybeDescribe();
   }
 
-  _maybeDescribe() {
-    if (!this._describer || this._describing) return;
+  /**
+   * MS.I3 — IMAGINE into the mind-space. Imagination is vision without a camera: she recalls
+   * a remembered field C, optionally MORPHS it toward another memory and ABSTRACTS it (the
+   * thought-ops), reads the percept out, and that percept drives the visual region exactly like
+   * a perceived frame — she SEES what she imagines. Returns the percept vector (Float32Array)
+   * or null if she has nothing remembered yet. Pure + deterministic (selection from opts, no RNG).
+   *
+   * @param {object} opts  { blend?:0..1 morph toward another memory, dream?:0..1 abstract amount, pick?:int }
+   */
+  imagine(opts = {}) {
+    if (!this._recentRecs.length) return null;
+    const recs = this._recentRecs;
+    const a = recs[recs.length - 1];                 // anchor on the most recent memory
+    let imagined = a;
+    let blend = Math.max(0, Math.min(1, opts.blend || 0));
+    let dream = Math.max(0, Math.min(1, opts.dream || 0));
+    // MS.K2 — autonomous proportionality conscience. Capability is limitless, but she only
+    // imagines as DEEP as the thought is worth: ask the governor, scale morph/abstract depth to
+    // the grant. Low worth / high load → a shallower, cheaper recall; truly worthy → full depth.
+    const gov = this._mindSpace && this._mindSpace.governor;
+    if (gov) {
+      const cost = Math.round(40 + 120 * blend + 80 * dream);
+      const grant = gov.allot({ kind: 'imagine', requestedUnits: cost, priority: opts.priority, value: opts.value });
+      const f = Math.max(0, Math.min(1, grant.ratio));
+      blend *= f; dream *= f;                        // she imagines as deep as it's worth, no deeper
+    }
+    if (blend > 0 && recs.length > 1) {
+      const b = recs[(((opts.pick | 0) % (recs.length - 1)) + (recs.length - 1)) % (recs.length - 1)]; // another memory
+      const m = morphField(a, b, blend);             // thought-transition between two equational forms
+      if (m) imagined = m;
+    }
+    if (dream > 0) imagined = abstract(imagined, dream);   // dreaminess = simplify the form
+    this._lastRec = imagined;
+    this.perceptVector = describeEquational(imagined);
+    this.audioPercept = describeEquationalAudio(imagined);   // MS.I5 — imagined imagery has its sound too
+    this.description = `imagined · ${(imagined.equation_count || 0).toLocaleString()} terms`;
+    for (const cb of this._describeSubscribers) {
+      try { cb({ vector: this.perceptVector, rec: imagined, imagined: true }); } catch (err) { /* non-fatal */ }
+    }
+    return this.perceptVector;
+  }
 
-    // Only auto-describe ONCE on boot (first look). After that, only on demand.
+  _maybeDescribe() {
+    if (!this._mindSpace || this._describing) return;
+
+    // Only auto-perceive ONCE on boot (first look). After that, only on demand.
     if (this._hasDescribedOnce) {
-      // Rate limit: 5 minutes between auto descriptions.
+      // Rate limit: 5 minutes between auto perceptions.
       // forceDescribe from user request bypasses this.
       const now = performance.now();
       if (now - this._lastDescribeTime < 300000) return; // 5 minutes
@@ -542,29 +607,34 @@ export class VisualCortex {
     this._hasDescribedOnce = true;
     this._lastDescribeTime = performance.now();
 
-    // Get a higher-res frame for AI description
+    // MS.I2 — capture the frame and PERCEIVE it equationally. The mind-space transforms the
+    // pixels to a CDF 9/7 field C (on the GPU when available) and reads a deterministic percept
+    // vector out of it. NO LLM, NO text — the wavelet field IS the percept.
     const descCanvas = document.createElement('canvas');
     descCanvas.width = 320;
     descCanvas.height = 240;
     const dCtx = descCanvas.getContext('2d');
     dCtx.drawImage(this._video, 0, 0, 320, 240);
-    const dataUrl = descCanvas.toDataURL('image/jpeg', 0.6);
+    const imageData = dCtx.getImageData(0, 0, 320, 240);
 
-    this._describer(dataUrl).then(desc => {
-      // null = describer failed (backend dead / paused / bad response).
-      // Keep _hasDescribedOnce=true so the 5-min rate limit engages and
-      // we don't retry every frame against a dead backend.
-      if (desc) {
-        this.description = desc;
-        // T7.2 — notify subscribers so downstream consumers (the
-        // language cortex social schema, specifically) can extract
-        // gender / scene context from the describer output.
+    Promise.resolve(this._mindSpace.perceive(imageData)).then(rec => {
+      if (rec && rec.channels) {
+        this._lastRec = rec;                                  // field C — for memory / synesthesia (MS.I5/I6)
+        this._recentRecs.push(rec); if (this._recentRecs.length > 8) this._recentRecs.shift();  // MS.I3 memory ring
+        this.perceptVector = this._mindSpace.describe(rec);   // Float32Array(64) — the equational percept
+        this.audioPercept = describeEquationalAudio(rec);     // MS.I5 — the same field C heard (synesthesia)
+        // short NON-LLM tag, display only (never fed to cognition)
+        this.description = `equational · ${(rec.equation_count || 0).toLocaleString()} terms · ${rec.width}×${rec.height}`;
+        // Notify subscribers with the EQUATIONAL percept { vector, rec } — not an LLM text string.
         for (const cb of this._describeSubscribers) {
-          try { cb(desc); } catch (err) { console.warn('[VisualCortex] describe subscriber error:', err.message); }
+          try { cb({ vector: this.perceptVector, rec }); } catch (err) { console.warn('[VisualCortex] percept subscriber error:', err.message); }
         }
       }
       this._describing = false;
-    }).catch(() => {
+    }).catch((err) => {
+      // perceive failed (e.g. GPU device lost mid-frame) — keep _hasDescribedOnce so the rate
+      // limit engages; the CPU fallback inside MindSpaceGPU should normally prevent this.
+      console.warn('[VisualCortex] equational perceive failed:', err && err.message);
       this._describing = false;
     });
   }

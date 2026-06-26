@@ -573,6 +573,64 @@ export const K_MIXIN = {
   },
 
   /**
+   * TRACK SE — cross-modal sensory GROUNDING. Bind concrete concepts to their
+   * multi-sensory VALUE descriptors so a concept is comprehended ACROSS senses,
+   * not as a bare token: strawberry → sweet(taste) + red(sight) + soft(touch);
+   * cloud → white + soft + bright; bird → small + quiet; fire → hot + bright +
+   * smoke. The descriptors are the sensory words already taught (taste / touch /
+   * sight-color / light / sound / smell), each carrying its own valence vector —
+   * so grounding a concept onto them gives it a real multi-modal value. This is
+   * the equational "senses register values" mechanism in SEM-SPACE
+   * (relationTagId=17), with NO new cortical regions, so it preserves trained
+   * weights (no neuron-layout change). Extensible to infinity — any new concept
+   * grounds the same way. Pre-taught descriptors ONLY (anchored basins, per the
+   * words-must-be-learned LAW); new concept nouns self-ground via _conceptTeach
+   * elsewhere in the K cells.
+   */
+  async _teachKSensoryGrounding() {
+    // [concept, [multi-sensory value descriptors]] — descriptors are all
+    // sensory words taught by _teachKLifeSensoryFirsts + the art color cell.
+    const GROUNDING = [
+      ['strawberry', ['sweet', 'red', 'soft']],
+      ['lemon',      ['sour', 'yellow']],
+      ['apple',      ['sweet', 'red', 'round']],
+      ['chocolate',  ['bitter', 'sweet', 'black']],
+      ['candy',      ['sweet', 'bright']],
+      ['coffee',     ['bitter', 'hot', 'dark']],
+      ['cloud',      ['white', 'soft', 'bright']],
+      ['sky',        ['blue', 'bright']],
+      ['grass',      ['green', 'soft']],
+      ['sun',        ['bright', 'hot', 'yellow', 'round']],
+      ['rain',       ['wet', 'cold', 'quiet']],
+      ['snow',       ['white', 'cold', 'soft', 'quiet']],
+      ['fire',       ['hot', 'bright', 'smoke']],
+      ['night',      ['dark', 'quiet', 'cold']],
+      ['bird',       ['small', 'quiet']],
+      ['cat',        ['soft', 'quiet']],
+      ['dog',        ['loud', 'soft']],
+      ['blanket',    ['soft', 'quiet']],
+      ['stone',      ['rough', 'cold']],
+      ['ice',        ['cold', 'wet', 'white']],
+      ['leather',    ['silky', 'dark']],
+      ['flower',     ['soft', 'bright', 'sweet']],
+      ['candle',     ['dim', 'hot', 'bright']],
+    ];
+    // Flatten to [concept, descriptor] pairs for the Hebbian binder.
+    const pairs = [];
+    for (const [concept, descs] of GROUNDING) {
+      for (const d of descs) pairs.push([concept, d]);
+    }
+    await this._phasedTeach('LIFE-K-SENSORY-GROUNDING', () =>
+      this._teachAssociationPairs(pairs, {
+        reps: 35,
+        label: 'LIFE-K-SENSORY-GROUNDING',
+        relationTagId: 17,  // shared sensory-category channel
+      })
+    );
+    this._hb(`[Curriculum] _teachKSensoryGrounding DONE — ${GROUNDING.length} concepts grounded across senses · ${pairs.length} concept→sensory-value bindings (relationTagId=17, sem-space, weight-preserving). Concepts now carry multi-modal value: strawberry tastes sweet + looks red + feels soft.`);
+  },
+
+  /**
    * K-LIFE.4 — Comfort objects (attachment psychology, goth-toned).
    * Bowlby attachment theory: secure-base objects for exploration. Unity's
    * comfort objects skew goth-precursor: black bat plush, dark blanket,
@@ -1309,6 +1367,13 @@ export const K_MIXIN = {
     // leather/rain/bonfire/quiet have HIGH identity scores. Dark has PEAK
     // identity=1.0 (her core).
     await this._teachKLifeSensoryFirsts();
+
+    // ── TRACK SE — cross-modal sensory grounding ──
+    // Ground concrete concepts to their multi-sensory value descriptors so a
+    // strawberry tastes sweet + looks red + feels soft, a cloud is white +
+    // soft + bright. Runs AFTER sensory-firsts so the descriptor words are
+    // already anchored. Sem-space (relationTagId=17), weight-preserving.
+    await this._teachKSensoryGrounding();
 
     // ── A.K-LIFE.4 — Comfort objects (GOTH-TONED) ──
     // Bowlby attachment psychology. Comfort objects skew goth-precursor:

@@ -586,6 +586,11 @@ export class UnityBrain extends EventEmitter {
       for (let i = 0; i < visOutput.currents.length && i < 100; i++) {
         visCurrent[50 + i] = visOutput.currents[i];
       }
+      // MS.I5 — synesthesia: the SAME field C heard. Cross-inject the visual percept's auditory
+      // read into the auditory region (neurons 0-49) at a modest strength so she HEARS what she
+      // sees, blended with (not overriding) real audio. One equation, many senses.
+      const ap = this.visualCortex.audioPercept;
+      if (ap) for (let i = 0; i < 50 && i < ap.length; i++) visCurrent[i] += ap[i] * 15;
       this.clusters.cortex.injectCurrent(visCurrent);
     }
 
@@ -862,6 +867,29 @@ export class UnityBrain extends EventEmitter {
           }
           this.clusters.hippocampus.injectCurrent(replayCurrent);
           this.emit('dream', { episode: randomEp, time: this.time });
+        }
+      }
+
+      // MS.I3 — mind-space mental imagery (the bidirectional workspace). The brain dreams by
+      // IMAGINING into the equational mind-space: it recalls a remembered field C, morphs it
+      // toward another memory + abstracts it (the thought-ops), and feeds the imagined percept
+      // back through the visual region (neurons 50-149) — she SEES what she imagines, no camera
+      // needed. Consciousness + imaging + imagining are ONE process over the shared field C.
+      if (this.frameCount % 180 === 0 && this.visualCortex) {
+        // MS.K2 — feed her process-allotment conscience the current state + let load decay, then
+        // imagine at idle priority/value so dreaming stays a RESTRAINED spend (she doesn't pour
+        // the GPU into idle daydreams just because it's free).
+        const _ms = this.visualCortex._mindSpace;
+        if (_ms && _ms.governState) { _ms.governState({ arousal: this.state.amygdala?.arousal ?? 0.3, focus: 0.3 }); _ms.governTick(); }
+        const pv = this.visualCortex.imagine({ blend: 0.5, dream: 0.2, pick: (this.frameCount / 180) | 0, priority: 0.3, value: 0.5 });
+        if (pv) {
+          const imgCurrent = new Float64Array(CLUSTER_SIZES.cortex);
+          for (let i = 0; i < 100; i++) imgCurrent[50 + i] = pv[i % pv.length] * 30;
+          // MS.I5 — imagined imagery carries its sound too (synesthesia into the auditory region)
+          const iap = this.visualCortex.audioPercept;
+          if (iap) for (let i = 0; i < 50 && i < iap.length; i++) imgCurrent[i] += iap[i] * 15;
+          this.clusters.cortex.injectCurrent(imgCurrent);
+          this.emit('imagine', { terms: this.visualCortex._lastRec ? this.visualCortex._lastRec.equation_count : 0, time: this.time });
         }
       }
     }

@@ -276,6 +276,82 @@ export const COL3_MIXIN = {
     ], { gateSubjectTag: 'genered' });
   },
 
+  async runCsTheoryCol3Real(ctx) {
+    // Theory of Computation — CS theory track (M4 college expansion), concurrent with the major.
+    const VOCAB = [
+      'automaton', 'state', 'transition', 'regular', 'language', 'grammar', 'finite', 'turing',
+      'machine', 'tape', 'computable', 'decidable', 'halting', 'polynomial', 'nondeterministic', 'reduction',
+      'complete', 'undecidable', 'class', 'verify',
+    ];
+    await this._teachVocabList(VOCAB, ctx, { reps: 3 });
+    const SENTENCES = [
+      'a finite automaton reads input and changes state',
+      'a regular language is one recognized by a finite automaton',
+      'a turing machine reads and writes symbols on an infinite tape',
+      'a turing machine can compute anything that is computable',
+      'the halting problem asks if a program will ever stop',
+      'the halting problem is undecidable so no algorithm solves it',
+      'a problem is decidable if an algorithm always gives an answer',
+      'the class p is problems solved in polynomial time',
+      'np problems are ones whose answers can be checked quickly',
+      'np complete problems are the hardest problems in np',
+      'a reduction turns one problem into another problem',
+    ];
+    await this._teachSentenceList(SENTENCES, ctx, { reps: 2, ticksPerWord: 2 });
+    await this._teachCausalChains([
+      ['automaton', 'state'], ['regular', 'finite'], ['turing', 'tape'], ['halting', 'undecidable'], ['decidable', 'answer'], ['reduction', 'turn'], ['complete', 'hardest'],
+    ]);
+    await this._teachProductionStack('cstheory', ctx, { tag: 'CSTHEORY-COL3' });
+    return await this._gateSubjectProduction('cstheory', 'college3', [
+      { question: 'a machine that reads input and changes state is an', expected: ['automaton', 'a'] },
+      { question: 'a language recognized by a finite automaton is', expected: ['regular', 'r'] },
+      { question: 'a machine that reads and writes on an infinite tape is a', expected: ['turing', 't'] },
+      { question: 'the problem of whether a program ever stops is the', expected: ['halting', 'h'] },
+      { question: 'a problem with no algorithm to solve it is', expected: ['undecidable', 'u'] },
+      { question: 'problems solved in polynomial time are class', expected: ['p'] },
+      { question: 'problems whose answers are checked quickly are', expected: ['np', 'n'] },
+      { question: 'turning one problem into another is a', expected: ['reduction', 'r'] },
+    ], { gateSubjectTag: 'cstheory' });
+  },
+
+  async runCsSystemsCol3Real(ctx) {
+    // Operating Systems — CS systems track (M4 college expansion), the machine side.
+    const VOCAB = [
+      'process', 'thread', 'scheduler', 'memory', 'virtual', 'page', 'kernel', 'syscall',
+      'deadlock', 'mutex', 'semaphore', 'concurrency', 'file', 'interrupt', 'context', 'switch',
+      'allocation', 'paging', 'driver', 'resource',
+    ];
+    await this._teachVocabList(VOCAB, ctx, { reps: 3 });
+    const SENTENCES = [
+      'the operating system manages all the hardware and programs',
+      'a process is a running program with its own memory',
+      'a thread is a single line of execution inside a process',
+      'the scheduler decides which process runs next',
+      'virtual memory gives each process its own address space',
+      'paging moves memory between ram and disk in fixed blocks',
+      'the kernel is the core of the operating system',
+      'a system call asks the kernel to do something privileged',
+      'a deadlock is when processes wait on each other forever',
+      'a mutex lets only one thread use a resource at a time',
+      'a context switch saves one process and loads another',
+    ];
+    await this._teachSentenceList(SENTENCES, ctx, { reps: 2, ticksPerWord: 2 });
+    await this._teachCausalChains([
+      ['scheduler', 'process'], ['virtual', 'address'], ['paging', 'disk'], ['kernel', 'core'], ['deadlock', 'wait'], ['mutex', 'one'], ['context', 'switch'],
+    ]);
+    await this._teachProductionStack('cssystems', ctx, { tag: 'CSSYSTEMS-COL3' });
+    return await this._gateSubjectProduction('cssystems', 'college3', [
+      { question: 'a running program with its own memory is a', expected: ['process', 'p'] },
+      { question: 'a single line of execution in a process is a', expected: ['thread', 't'] },
+      { question: 'what decides which process runs next is the', expected: ['scheduler', 's'] },
+      { question: 'giving each process its own address space is', expected: ['virtual', 'v'] },
+      { question: 'the core of the operating system is the', expected: ['kernel', 'k'] },
+      { question: 'when processes wait on each other forever it is a', expected: ['deadlock', 'd'] },
+      { question: 'a lock letting one thread use a resource is a', expected: ['mutex', 'm'] },
+      { question: 'saving one process and loading another is a context', expected: ['switch', 's'] },
+    ], { gateSubjectTag: 'cssystems' });
+  },
+
   async runLifeCol3(ctx) {
     // ── College-3 life experience — DATA-DRIVEN (corpora/life/college3.json) ──
     // Adult Unity established + a major loss: transfer to a real CS program

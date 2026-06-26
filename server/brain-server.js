@@ -536,7 +536,13 @@ function writeBrainCodeHash(hash) {
 // auto-fresh-start that DISCARDS trained weights. The clean-shutdown resume path
 // refuses to load a marker whose formatVersion != this, so a heavy update that
 // breaks the format triggers a normal fresh start instead of loading garbage.
-const WEIGHTS_FORMAT_VERSION = 1;
+// Bumped 1 → 2: the mind-space integration added TWO cortical regions (gustatory + somatosensory,
+// carved from `free` in cluster.js) — a brain TOPOLOGY change. Any v1 weights are tiled against the
+// old region layout and would misalign if loaded. The brain-code-hash already forces a fresh start
+// on normal deploys, but DREAM_KEEP_STATE=1 BYPASSES the hash check — this format bump is the
+// belt-and-suspenders that still rejects v1 weights on that path, forcing the mandatory fresh
+// K→PhD walk that trains the new senses in from scratch (no migration, no garbage-weight load).
+const WEIGHTS_FORMAT_VERSION = 2;
 const RESUME_MARKER_PATH = path.join(__dirname, '.resume-marker.json');
 
 // #112.11 — checkpoint slot cap. Keep only the last N rolling save slots

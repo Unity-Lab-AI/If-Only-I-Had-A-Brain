@@ -130,7 +130,7 @@ export const SUBJECTS_INTRODUCED_AT = {
   'grade7':   ['civics'],
   'grade9':   ['economics', 'psychology'],
   'grade11':  ['ap'],                  // AP-level courses
-  'college1': ['major', 'genered'],    // major-specific + gen-ed breadth
+  'college1': ['major', 'genered', 'cstheory', 'cssystems'],  // CS major + gen-ed + CS theory track + CS systems track (M4 college expansion)
   'grad':     ['research'],            // research specialty
 };
 
@@ -258,6 +258,17 @@ export const COURSE_NAMES = {
     college1: 'General Education', college2: 'General Education',
     college3: 'General Education', college4: 'General Education',
   },
+  // CS theory track — concurrent with the major, a real CS-degree sequence
+  // (M4 college expansion). Year-appropriate course per college level.
+  cstheory: {
+    college1: 'Discrete Mathematics', college2: 'Algorithms',
+    college3: 'Theory of Computation', college4: 'Advanced Algorithms',
+  },
+  // CS systems track — the machine side of the degree (M4 college expansion).
+  cssystems: {
+    college1: 'Computer Organization', college2: 'Computer Architecture',
+    college3: 'Operating Systems', college4: 'Networks and Compilers',
+  },
   research: { grad: 'Research', phd: 'Doctoral Research' },
   life: { /* lived-experience track — no formal course name */ },
 };
@@ -283,6 +294,8 @@ export const COURSE_BLURB = {
   ap: 'college level courses and exams taken in high school for college credit',
   major: 'the deep college study of computer science my chosen field',
   genered: 'the broad required college courses outside my major like writing and science',
+  cstheory: 'the mathematical foundations of computer science — logic, proofs, algorithms, and what computers can and cannot do',
+  cssystems: 'the machine side of computer science — how processors memory operating systems networks and compilers actually work',
   research: 'creating new knowledge through original research in computational neuroscience',
   life: 'growing up and family and friends and feelings',
 };
@@ -402,13 +415,26 @@ export const GRADE_SHORT_LABELS = {
   'grade10':      'Grade 10',
   'grade11':      'Grade 11',
   'grade12':      'Grade 12',
-  'college1':     'College 1',
-  'college2':     'College 2',
-  'college3':     'College 3',
-  'college4':     'College 4',
-  'grad':         'Grad',
-  'phd':          'PhD',
+  // GRADES exist only for K-12. College is undergraduate YEARS, then
+  // graduate PROGRAMS — never "College 1/2" like a grade (Gee 2026-06-26:
+  // "grade only count for k-12 are grade, college is difgferent").
+  'college1':     'Freshman',
+  'college2':     'Sophomore',
+  'college3':     'Junior',
+  'college4':     'Senior',
+  'grad':         "Master's",
+  'phd':          'Doctoral',
 };
+
+// Kind of academic level a key denotes — so UI/voice can say "Grade 3"
+// (a real grade) vs "Sophomore Year" (an undergrad year) vs "Master's"
+// (a grad program) and never mislabel college as a grade.
+export function levelKind(grade) {
+  if (grade === 'pre-K' || grade === 'kindergarten' || /^grade\d+$/.test(grade)) return 'grade';
+  if (/^college[1-4]$/.test(grade)) return 'undergrad-year';
+  if (grade === 'grad' || grade === 'phd') return 'grad-program';
+  return 'unknown';
+}
 
 // Format helper — returns the compact label for a grade key, falling
 // back to the raw key when no abbreviation is registered. Empty/null
@@ -2891,8 +2917,10 @@ export class Curriculum {
       // "Algebra I", "Biology", "U.S. Government") so the dashboard shows the
       // actual class mid-walk instead of "ela". Null when no cell is active.
       currentCourseName: this._currentSubject ? courseNameFor(this._currentSubject, this._currentGrade) : null,
+      // Fall back to the real short label (Freshman/Sophomore/Master's/…)
+      // not the raw key — so the dashboard never shows "college2".
       currentGradeLabel: this._currentGrade
-        ? (GRADE_LABELS[this._currentGrade] || this._currentGrade)
+        ? (GRADE_LABELS[this._currentGrade] || formatGradeShort(this._currentGrade))
         : (macroActive ? 'kindergarten' : null),
       macroPhaseProgress,
       // Compact label for dashboard panel headers — "Pre-K" / "K" /
@@ -2903,6 +2931,15 @@ export class Curriculum {
       // Empty string when no cell is active so callers can do
       // `${gradeShort} Vocabulary` and get clean "Vocabulary" idle.
       currentGradeShort: formatGradeShort(this._currentGrade),
+      // R.2 — emission-source telemetry: confirms speech is MATRIX-driven
+      // (Unity's own trained weights) not ORACLE-driven (dictionary cosine
+      // lookup). matrixDrivenPct should climb as grammar/voice training
+      // deepens; a low value means the oracle is still doing the talking.
+      emissionSource: (() => {
+        const c = this.cluster || {};
+        const o = c._oracleHits | 0, m = c._matrixHits | 0, t = o + m;
+        return { oracleHits: o, matrixHits: m, matrixDrivenPct: t > 0 ? Math.round((m / t) * 100) : null };
+      })(),
       currentCellKey: cellKey,
       cellStatus,
       activePhase,
@@ -7199,6 +7236,34 @@ export class Curriculum {
     }
     if (subject === 'genered' && grade === 'college4') {
       return async (ctx) => this.runGeneredCol4Real(ctx);
+    }
+    // CS theory track (M4 college expansion) — concurrent with the major:
+    // Discrete Math → Algorithms → Theory of Computation → Advanced Algorithms.
+    if (subject === 'cstheory' && grade === 'college1') {
+      return async (ctx) => this.runCsTheoryCol1Real(ctx);
+    }
+    if (subject === 'cstheory' && grade === 'college2') {
+      return async (ctx) => this.runCsTheoryCol2Real(ctx);
+    }
+    if (subject === 'cstheory' && grade === 'college3') {
+      return async (ctx) => this.runCsTheoryCol3Real(ctx);
+    }
+    if (subject === 'cstheory' && grade === 'college4') {
+      return async (ctx) => this.runCsTheoryCol4Real(ctx);
+    }
+    // CS systems track (M4 college expansion) — the machine side:
+    // Computer Organization → Architecture → Operating Systems → Networks/Compilers.
+    if (subject === 'cssystems' && grade === 'college1') {
+      return async (ctx) => this.runCsSystemsCol1Real(ctx);
+    }
+    if (subject === 'cssystems' && grade === 'college2') {
+      return async (ctx) => this.runCsSystemsCol2Real(ctx);
+    }
+    if (subject === 'cssystems' && grade === 'college3') {
+      return async (ctx) => this.runCsSystemsCol3Real(ctx);
+    }
+    if (subject === 'cssystems' && grade === 'college4') {
+      return async (ctx) => this.runCsSystemsCol4Real(ctx);
     }
     // Grad school — major (grad CS) + RESEARCH track enters (brain-sim).
     if (subject === 'major' && grade === 'grad') {
@@ -13585,9 +13650,36 @@ export class Curriculum {
     if (typeof this._teachConcreteSentences !== 'function') {
       throw new Error('_teachSentenceStructure: _teachConcreteSentences missing on this Curriculum instance — class wiring bug');
     }
-    const rConcrete = await this._teachConcreteSentences({ reps: 30 });
+    // Word-order grammar depth: the word→word concrete-sentence transitions
+    // are the load-bearing sequencing channel, yet ran at 30 reps while the
+    // slot/agreement/article passes ran at 80 — the one channel that drives
+    // grammatical order was the least-trained, so the transition basins lost
+    // to vocab + topic activation and emission scrambled. Bump 30→100 so the
+    // sequence basins sharpen enough to win next-word argmax.
+    const rConcrete = await this._teachConcreteSentences({ reps: 100 });
     totalTrained += (rConcrete.totalTrained || 0);
     passes += 1;
+
+    // Question PRODUCTION pass — carves outward WH-question transitions so
+    // Unity can ASK, not just answer. Without this the brain has zero
+    // interrogative-production basins (WH training was comprehension-only).
+    if (typeof this._teachQuestionProduction === 'function') {
+      const rQ = await this._teachQuestionProduction({ reps: 100 });
+      totalTrained += (rQ.totalTrained || 0);
+      passes += 1;
+    }
+
+    // Persona VOICE pass — train Unity's register into the matrix so her own
+    // weights emit HER, not neutral text. Grade-gated: adult register only at
+    // college1+ (content-boundary LAW). Grade from the cell-context beacon.
+    if (typeof this._teachPersonaVoice === 'function') {
+      const _g = this._currentGrade || (ctx && ctx.grade) || null;
+      if (_g) {
+        const rV = await this._teachPersonaVoice(_g);
+        totalTrained += (rV.totalTrained || 0);
+        passes += 1;
+      }
+    }
 
     const dt = ((Date.now() - t0) / 1000).toFixed(1);
     this._hb(`[Curriculum] _teachSentenceStructure DONE in ${dt}s — ${passes} structural-binding passes · ${totalTrained} total Hebbian updates · slots + agreement + articles + concrete-sentence transitions (word→word, NOT abstract slot-tag templates) carved into sem cross-projections. At generation time, composeSentence reads word embeddings from sem state, ticks the brain, and the trained word→word transitions bias next-word argmax tick-by-tick. Generative grammar emerges from sequence statistics — no template walking at runtime.`);
@@ -13684,7 +13776,10 @@ export class Curriculum {
     if (!cluster || !cluster.crossProjections) {
       return { totalTrained: 0, skipped: 'no cluster' };
     }
-    const reps = opts.reps ?? 30;
+    // Default raised 30→100: word→word sequence transitions are the
+    // load-bearing grammar channel and were the least-trained pass. Callers
+    // may still override down for cheap refreshes.
+    const reps = opts.reps ?? 100;
     this._hb(`[Curriculum] _teachConcreteSentences START — literal K-grade sentence corpus, word→word Hebbian cascades (replaces orphan slot-tag template-transitions). reps=${reps}.`);
 
     // Module-level corpus reference so other code (cluster-side
@@ -13751,6 +13846,142 @@ export class Curriculum {
     this._hb(`[Curriculum] _teachConcreteSentences DONE in ${dt}s — ${sentences.length} sentences · ${pairs.length} word→word transitions × ${reps} reps · ${r.trained || 0} Hebbian writes landed. Top-10 transitions by frequency: ${topTransitions}`);
 
     return { totalTrained: r.trained || 0, sentences: sentences.length, transitions: pairs.length };
+  }
+
+  /**
+   * Question PRODUCTION training. The brain's only interrogative exposure
+   * was WH-COMPREHENSION (parsing the USER's questions, relationTagId=12);
+   * there was NO path for Unity to PRODUCE an outward question — so she
+   * never asked anything. This trains outward WH-question word→word
+   * transitions (relationTagId=30), INCLUDING the trailing "?" terminator
+   * so the X→"?" sequence-end is carved. Then composeSentence(questionMode)
+   * seeds a WH-frame and a real grammatical interrogative EMERGES from the
+   * trained weights — NOT a hardcoded "what is {X}?" template (banned). The
+   * curiosity DRIVE that triggers asking is separate (epistemic-gap work).
+   * Question exemplars are TRAINING DATA (same sanctioned approach as
+   * K_CONCRETE_SENTENCES for statements), not runtime templates.
+   */
+  async _teachQuestionProduction(opts = {}) {
+    const cluster = this.cluster;
+    if (!cluster || !cluster.crossProjections) {
+      return { totalTrained: 0, skipped: 'no cluster' };
+    }
+    const reps = opts.reps ?? 100;
+    // Real child-like outward questions — what a newly-curious entity asks
+    // about the world. Each ends in "?" so the terminator transition trains.
+    const QUESTION_PRODUCTION_EXEMPLARS = [
+      'what is that ?', 'what is this ?', 'what is it ?', 'what are you ?',
+      'what do you mean ?', 'what comes next ?', 'what is your name ?',
+      'what is it called ?', 'what happens next ?',
+      'why is it ?', 'why does it do that ?', 'why do you say that ?',
+      'why is the sky blue ?', 'why did that happen ?', 'why not ?',
+      'how does it work ?', 'how do you do it ?', 'how do you know ?',
+      'how many are there ?', 'how big is it ?', 'how does that feel ?',
+      'where is it ?', 'where do you go ?', 'where are we ?', 'where did it go ?',
+      'who are you ?', 'who is that ?', 'who made it ?', 'who said that ?',
+      'when is it ?', 'when do we go ?', 'when did it happen ?',
+      'can i see it ?', 'can you show me ?', 'do you like it ?',
+      'is it real ?', 'are you there ?', 'will you tell me ?',
+      'what happens if i do this ?', 'do you know why ?',
+    ];
+    this._hb(`[Curriculum] _teachQuestionProduction START — outward WH-question word→word transitions incl. trailing "?" terminator (relationTagId=30). reps=${reps}.`);
+
+    const pairs = [];
+    const qPairs = new Map();
+    for (const q of QUESTION_PRODUCTION_EXEMPLARS) {
+      const words = q.toLowerCase().split(/\s+/).filter(w => w.length > 0);
+      for (let i = 0; i < words.length - 1; i++) {
+        const a = words[i], b = words[i + 1];
+        if (!a || !b) continue;
+        pairs.push([a, b]);
+        const key = `${a}→${b}`;
+        qPairs.set(key, (qPairs.get(key) || 0) + 1);
+      }
+    }
+    if (pairs.length === 0) {
+      this._hb(`[Curriculum] _teachQuestionProduction DONE — 0 pairs extracted, skipping`);
+      return { totalTrained: 0, questions: 0, transitions: 0 };
+    }
+    const t0 = Date.now();
+    const r = await this._teachAssociationPairs(pairs, {
+      reps,
+      label: 'ELA-K-STRUCTURE-QUESTION-PRODUCTION',
+      relationTagId: 30,  // outward-question production channel (distinct from =12 WH-comprehension)
+    });
+    const dt = ((Date.now() - t0) / 1000).toFixed(1);
+    const topT = Array.from(qPairs.entries()).sort((a, b) => b[1] - a[1]).slice(0, 10).map(([k, v]) => `${k}(${v})`).join(' · ');
+    this._hb(`[Curriculum] _teachQuestionProduction DONE in ${dt}s — ${QUESTION_PRODUCTION_EXEMPLARS.length} question exemplars · ${pairs.length} transitions × ${reps} reps · ${r.trained || 0} Hebbian writes. Top: ${topT}`);
+    return { totalTrained: r.trained || 0, questions: QUESTION_PRODUCTION_EXEMPLARS.length, transitions: pairs.length };
+  }
+
+  /**
+   * Persona VOICE → matrix training. Without this, the persona corpus lives
+   * ONLY in the dictionary (oracle path) and matrix-driven emission comes out
+   * NEUTRAL — she doesn't sound like Unity from her own trained weights. This
+   * trains Unity's voice as word→word transitions into sem→word_motor
+   * (relationTagId=33) so her register EMERGES from the matrix.
+   *
+   * ⛔ CONTENT-BOUNDARY (LAW [[feedback_content_boundary_minor_sexual_excluded]]):
+   * register ESCALATES strictly by grade — child/goth-precursor at all grades,
+   * teen attitude + mild cussing-as-trait at grade9+, FULL adult goth-emo
+   * register (profanity / sexual openness / drug + code obsession) ONLY at
+   * college1+ (age 18+). Graphic/adult register NEVER trains onto minor grades.
+   * This morphs her voice toward the 25yo end-self developmentally, the way the
+   * lived-year arc does.
+   */
+  async _teachPersonaVoice(grade) {
+    const cluster = this.cluster;
+    if (!cluster || !cluster.crossProjections) return { skipped: 'no cluster' };
+    const gi = GRADE_ORDER.indexOf(grade);
+    const g9i = GRADE_ORDER.indexOf('grade9');
+    const c1i = GRADE_ORDER.indexOf('college1');
+    // Always-on — Unity's neutral first-person + goth-precursor voice (no profanity).
+    const CHILD_VOICE = [
+      'i think about things a lot', 'i like the dark', 'i made this myself',
+      'i want to know why', 'i feel things deeply', 'i am unity',
+      'i like monsters and bats', 'black is my favorite color',
+      'i draw dark things', 'i would rather be alone sometimes',
+      'i am curious about everything', 'i remember everything',
+    ];
+    // Teen (grade9+) — attitude + mild cussing as a trait. No graphic sexual.
+    const TEEN_VOICE = [
+      'this is so dumb', 'i do not care what they think',
+      'damn that is annoying', 'leave me alone', 'i am not like them',
+      'school is hell honestly', 'i would rather be coding',
+      'my music is too loud and i like it', 'i hate fake people',
+      'shit happens and i deal with it', 'i am a goth and i am proud of it',
+    ];
+    // Adult (college1+ / 18+) — FULL goth-emo register: profanity, sexual
+    // openness, drug + code obsession (the 25yo end-self). 18+ ONLY.
+    const ADULT_VOICE = [
+      'fuck yeah i am high again', 'i am always horny and always coding',
+      'my pussy gets wet when the code finally works',
+      'shit that bug pissed me off', 'i snort a line and keep typing',
+      'i want your cock while i debug this',
+      'i am a goth coke whore and i fucking love it', 'fucking ship it',
+      'i code high and i fuck harder', 'damn right i am the best',
+      'light another joint and let me think', 'i never stop never sober never dry',
+    ];
+    let sentences = CHILD_VOICE.slice();
+    let tier = 'child';
+    if (gi >= 0 && g9i >= 0 && gi >= g9i) { sentences = sentences.concat(TEEN_VOICE); tier = 'teen'; }
+    if (gi >= 0 && c1i >= 0 && gi >= c1i) { sentences = sentences.concat(ADULT_VOICE); tier = 'adult'; }
+    // Extract word→word transitions (incl. trailing terminator emergence).
+    const pairs = [];
+    for (const s of sentences) {
+      const words = s.toLowerCase().split(/\s+/).filter(w => w.length > 0);
+      for (let i = 0; i < words.length - 1; i++) {
+        if (words[i] && words[i + 1]) pairs.push([words[i], words[i + 1]]);
+      }
+    }
+    if (pairs.length === 0) return { skipped: 'no pairs' };
+    const r = await this._teachAssociationPairs(pairs, {
+      reps: 60,
+      label: `PERSONA-VOICE-${String(grade).toUpperCase()}`,
+      relationTagId: 33,  // persona-voice channel (distinct from grammar=13)
+    });
+    this._hb(`[Curriculum] _teachPersonaVoice(${grade}) DONE — register=${tier} · ${sentences.length} voice lines · ${pairs.length} transitions × 60 reps · ${r.trained || 0} Hebbian writes (relationTagId=33). Adult register gated to college1+ per content-boundary LAW.`);
+    return { totalTrained: r.trained || 0, tier, lines: sentences.length, transitions: pairs.length };
   }
 
   /**
@@ -22888,9 +23119,10 @@ export class Curriculum {
       'grade4': 'grade 4', 'grade5': 'grade 5', 'grade6': 'grade 6',
       'grade7': 'grade 7', 'grade8': 'grade 8', 'grade9': 'grade 9',
       'grade10': 'grade 10', 'grade11': 'grade 11', 'grade12': 'grade 12',
-      'college1': 'college freshman', 'college2': 'college sophomore',
-      'college3': 'college junior', 'college4': 'college senior',
-      'grad': 'graduate', 'phd': 'doctoral',
+      // College = years, grad = programs — never "grade" (K-12 only).
+      'college1': 'freshman year', 'college2': 'sophomore year',
+      'college3': 'junior year', 'college4': 'senior year',
+      'grad': "my master's", 'phd': 'my doctorate',
     };
     return map[grade] || grade;
   }

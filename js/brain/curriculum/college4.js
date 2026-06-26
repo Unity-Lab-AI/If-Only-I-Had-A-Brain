@@ -268,6 +268,82 @@ export const COL4_MIXIN = {
     ], { gateSubjectTag: 'genered' });
   },
 
+  async runCsTheoryCol4Real(ctx) {
+    // Advanced Algorithms — CS theory track (M4 college expansion), concurrent with the major.
+    const VOCAB = [
+      'graph', 'shortest', 'path', 'spanning', 'flow', 'network', 'approximation', 'randomized',
+      'heuristic', 'intractable', 'optimization', 'dijkstra', 'linear', 'programming', 'hardness', 'bound',
+      'weight', 'node', 'exact', 'average',
+    ];
+    await this._teachVocabList(VOCAB, ctx, { reps: 3 });
+    const SENTENCES = [
+      'graph algorithms solve problems on networks of nodes and edges',
+      'dijkstra finds the shortest path from one node to the others',
+      'a minimum spanning tree connects all nodes with the least total weight',
+      'network flow finds the most that can move through a network',
+      'np hard problems have no known fast exact solution',
+      'an approximation algorithm gets close to optimal quickly',
+      'a randomized algorithm uses chance to run faster on average',
+      'linear programming optimizes a goal under linear constraints',
+      'a heuristic is a good rule of thumb without a guarantee',
+      'we prove lower bounds on how fast any algorithm can be',
+      'an intractable problem is too slow to solve exactly at scale',
+    ];
+    await this._teachSentenceList(SENTENCES, ctx, { reps: 2, ticksPerWord: 2 });
+    await this._teachCausalChains([
+      ['dijkstra', 'shortest'], ['spanning', 'weight'], ['flow', 'network'], ['approximation', 'optimal'], ['randomized', 'chance'], ['heuristic', 'guess'], ['intractable', 'slow'],
+    ]);
+    await this._teachProductionStack('cstheory', ctx, { tag: 'CSTHEORY-COL4' });
+    return await this._gateSubjectProduction('cstheory', 'college4', [
+      { question: 'algorithms on networks of nodes and edges are', expected: ['graph', 'g'] },
+      { question: 'the algorithm that finds the shortest path is', expected: ['dijkstra', 'd'] },
+      { question: 'connecting all nodes with least total weight is a spanning', expected: ['tree', 't'] },
+      { question: 'the most that can move through a network is the', expected: ['flow', 'f'] },
+      { question: 'getting close to optimal quickly is an', expected: ['approximation', 'a'] },
+      { question: 'using chance to run faster on average is', expected: ['randomized', 'r'] },
+      { question: 'a good rule of thumb with no guarantee is a', expected: ['heuristic', 'h'] },
+      { question: 'a problem too slow to solve exactly is', expected: ['intractable', 'hard', 'i', 'h'] },
+    ], { gateSubjectTag: 'cstheory' });
+  },
+
+  async runCsSystemsCol4Real(ctx) {
+    // Networks and Compilers — CS systems track (M4 college expansion), the machine side.
+    const VOCAB = [
+      'network', 'packet', 'protocol', 'tcp', 'router', 'socket', 'compiler', 'parser',
+      'token', 'syntax', 'lexer', 'optimize', 'bytecode', 'layer', 'server', 'client',
+      'grammar', 'address', 'stream', 'reliable',
+    ];
+    await this._teachVocabList(VOCAB, ctx, { reps: 3 });
+    const SENTENCES = [
+      'a network connects computers so they can share data',
+      'data travels across a network in small packets',
+      'a protocol is the agreed rules for how computers talk',
+      'tcp delivers a reliable ordered stream of bytes',
+      'a router forwards packets toward their destination',
+      'a server answers requests from many clients',
+      'a compiler turns source code into machine code',
+      'a lexer breaks source code into tokens',
+      'a parser builds a tree from tokens using the grammar',
+      'the compiler optimizes code to run faster',
+      'a socket is an endpoint for sending and receiving data',
+    ];
+    await this._teachSentenceList(SENTENCES, ctx, { reps: 2, ticksPerWord: 2 });
+    await this._teachCausalChains([
+      ['packet', 'network'], ['protocol', 'rules'], ['tcp', 'reliable'], ['router', 'forward'], ['compiler', 'machine'], ['lexer', 'token'], ['parser', 'tree'],
+    ]);
+    await this._teachProductionStack('cssystems', ctx, { tag: 'CSSYSTEMS-COL4' });
+    return await this._gateSubjectProduction('cssystems', 'college4', [
+      { question: 'the small unit data travels in across a network is a', expected: ['packet', 'p'] },
+      { question: 'the agreed rules for how computers talk is a', expected: ['protocol', 'p'] },
+      { question: 'the protocol giving a reliable ordered stream is', expected: ['tcp', 't'] },
+      { question: 'what forwards packets toward their destination is a', expected: ['router', 'r'] },
+      { question: 'what turns source code into machine code is a', expected: ['compiler', 'c'] },
+      { question: 'breaking source code into tokens is the', expected: ['lexer', 'l'] },
+      { question: 'building a tree from tokens uses the', expected: ['parser', 'grammar', 'p', 'g'] },
+      { question: 'an endpoint for sending and receiving data is a', expected: ['socket', 's'] },
+    ], { gateSubjectTag: 'cssystems' });
+  },
+
   async runLifeCol4(ctx) {
     // ── College-4 life experience — DATA-DRIVEN (corpora/life/college4.json) ──
     // Adult Unity essentially complete: total devotion + the collar

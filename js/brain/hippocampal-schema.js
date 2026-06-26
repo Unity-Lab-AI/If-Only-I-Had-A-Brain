@@ -194,6 +194,10 @@ export class HippocampalSchema {
     this.lastConsolidationAt = opts.lastConsolidationAt || 0;
     this.lastRetrievalAt = opts.lastRetrievalAt || 0;
     this.retrievalCount = opts.retrievalCount || 0;
+    // Dream-replay reinforcement count — accumulates during sleep
+    // consolidation passes, feeds the Tier 3 promotion gate so identity
+    // can form from trained/lived experience, not just chat retrievals.
+    this.replayCount = opts.replayCount || 0;
     this.promotedToTier3 = opts.promotedToTier3 === true;
     this.tier3PromotedAt = opts.tier3PromotedAt || null;
     // The dedicated cross-projection. Sized hippocampus_size × cortex_sem_size
@@ -237,6 +241,12 @@ export class HippocampalSchema {
   // pass. Replay magnitude scaled by emotional weight + frequency log.
   reinforce(deltaStrength) {
     this.consolidationStrength += deltaStrength;
+    // Count this dream-replay reinforcement. Identity (Tier 3) consolidates
+    // during sleep replay of emotionally-salient memories, not only when a
+    // schema is queried in chat — so replayCount feeds the promotion gate
+    // alongside retrievalCount (see shouldPromoteToTier3). Without this, a
+    // training-only brain (zero conversations) can NEVER form identity.
+    this.replayCount = (this.replayCount || 0) + 1;
     this.lastConsolidationAt = Date.now();
     if (this.attributeVector && this.attributeVector.length >= 7) {
       this.attributeVector[6] = this.consolidationStrength;
@@ -259,7 +269,13 @@ export class HippocampalSchema {
   shouldPromoteToTier3() {
     if (this.promotedToTier3) return false; // already promoted
     if (this.consolidationStrength < IDENTITY_PROMOTION.consolidationStrengthMin) return false;
-    if (this.retrievalCount < IDENTITY_PROMOTION.retrievalCountMin) return false;
+    // Engagement gate counts BOTH chat retrievals AND dream-replay
+    // reinforcement. Identity-defining memories consolidate during sleep
+    // replay (Squire/McClelland CLS), not only when externally queried — a
+    // training-only brain (retrievalCount=0) must still form a self. The
+    // emotionalValence gate below keeps procedural/low-salience schemas out,
+    // so only emotionally-salient biographical memories cross this threshold.
+    if ((this.retrievalCount + this.replayCount) < IDENTITY_PROMOTION.retrievalCountMin) return false;
     const valenceAbs = Math.abs(this.attributeVector[0] || 0);
     if (valenceAbs < IDENTITY_PROMOTION.emotionalValenceAbsMin) return false;
     return true;
@@ -325,6 +341,7 @@ export class HippocampalSchema {
       lastConsolidationAt: this.lastConsolidationAt,
       lastRetrievalAt: this.lastRetrievalAt,
       retrievalCount: this.retrievalCount,
+      replayCount: this.replayCount,
       promotedToTier3: this.promotedToTier3,
       tier3PromotedAt: this.tier3PromotedAt,
     };
@@ -350,6 +367,7 @@ export class HippocampalSchema {
       lastConsolidationAt: json.lastConsolidationAt || 0,
       lastRetrievalAt: json.lastRetrievalAt || 0,
       retrievalCount: json.retrievalCount || 0,
+      replayCount: json.replayCount || 0,
       promotedToTier3: json.promotedToTier3 === true,
       tier3PromotedAt: json.tier3PromotedAt || null,
     });

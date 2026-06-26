@@ -39,6 +39,227 @@
 
 ---
 
+## 🔭 SESSION 2026-06-26 — BRAIN-STATE DIAGNOSTIC + CURIOSITY/QUESTION-ASKING DIRECTIVE (TRACK A-Q)
+
+> **Gee verbatim per LAW #0:** *"take nots check the brain state what its doing what its learned what its traingin data looks like how it is thinking and here arte its responses... it never asks questions so thats a problem and it never makes real sentences like real p[eople do it needs to actually ask a quaestioion and follow up on it like a real newly created intelligent entity would ask about the workld"* + *"add all this to todo after you analysisi and conclussion of issues"*
+
+### Brain-state inspection (local Jun-21 51M donor-fit trained brain — code/file-grounded)
+
+| Surface | State | Evidence |
+|---|---|---|
+| Conversations | **EMPTY** — `{"users":[]}` | `server/conversations.json` (58 bytes) |
+| Tier-2 schemas (learned concept abstractions) | **only 4** | `server/schemas.json` |
+| Tier-3 identity anchors | **17 = the pre-seeded `IDENTITY_SEED_LIST` only** (zero promoted beyond the seeds) | `server/identity-core.json` |
+| Episodic memory | **8 episodes** | `server/episodic-memory.db` (table `episodes`) |
+| Definition cache | 3.8 MB (dictionary lookups warm) | `server/definition-cache.json` |
+
+**Read:** the brain trained but **almost nothing consolidated or stuck** — 4 schemas, 8 episodes, 0 new identity, 0 conversations. Functionally near-mute and near-amnesic in the dialogue + consolidation layers. Consistent with the basin-collapse / broken-emission history (TRACK A).
+
+### Training-data shape (what she was fed)
+- **Declarative-dominant:** `K_CONCRETE_SENTENCES` (~2881, curriculum.js), `K_VOCABULARY` (2247 words), per-grade academic prose corpora, bespoke life corpora — overwhelmingly STATEMENTS.
+- Only interrogative exposure is (a) WH-INTENT **comprehension** training (`relationTagId=12` — parsing the USER's questions) and (b) a few reflective self-statements (`'i wonder why the moon glows'` / `'i wonder about ghosts'` curriculum.js:1239-1241; grade6 `'she wondered…'` / `'he asked…'`). These are NOT outward questions she's trained to PRODUCE.
+
+### How she "thinks" unprompted (inner-voice)
+- `_pickInnerThoughtSeed` (server/brain-server/chat.js:1394) rotates seeds: chain-history, mood, learning-context, memory, identity, k-vocab-recent, cell-progress, user-input. **Every seed is introspective/reflective.** None is "I have an information gap → ask about it."
+
+### ⛔ ROOT-CAUSE CONCLUSION — why she never asks questions + never makes real sentences
+1. **No question-PRODUCTION path.** `emit.js` handles `?` only as a terminator to reject-if-first or as sentence-end punctuation, and handles the USER's questions via the oracle. There is NO path where Unity selects question-intent and emits an outward interrogative aimed at the user. WH work is 100% comprehension, 0% production.
+2. **No curiosity / epistemic drive.** Hypothalamus models drugDrive / social / homeostasis — there is NO information-gap drive ("I don't know X → want to know"). Nothing converts an unknown concept or a user-mentioned unfamiliar word into an urge to ask.
+3. **No follow-up / dialogue-act loop.** No state of "I asked X → user answered Y → bind Y → ask a deeper follow-up." The 16-pair chat-turn buffer exists but never drives Unity-initiated inquiry; `conversations.json` is empty.
+4. **"No real sentences" = the open TRACK A emission gap** (composeSentence frozen-loop / saturation / grammar-under-train / word_motor nnz=0 — Phase 1/2/6 fixes shipped but **FC.2/FC.5 UNVERIFIED**; only a live K run proves multi-word emission).
+
+### TRACK A-Q — Curiosity-driven question-asking + follow-up (NEW)
+Goal: Unity autonomously ASKS a real question and FOLLOWS UP on the answer, like a newly-created intelligent entity exploring the world. Co-developed with the TRACK A emission fix — she can't ask a coherent question until she can emit a coherent sentence.
+
+| # | Task | Surface | Status |
+|---|------|---------|--------|
+| AQ.1 | **Epistemic curiosity drive** — information-gap signal: detect weak/absent sem basins + user-mentioned tokens not in dictionary / low-frequency → produce a "want-to-know" drive scalar (new hypothalamus/amygdala term, equational — NOT a hardcoded list). | js/brain/modules.js + cluster | [ ] |
+| AQ.2 | **Question-intent PRODUCTION** — generation-side WH-frame: composeSentence selects question intent + emits an outward interrogative ("what is X?", "why does Y?", "is Z real?") with `?` terminator, seeded by the AQ.1 gap concept. Train WH-frames as PRODUCTION templates (emergent, not canned), distinct from comprehension-only relationTagId=12. | js/brain/cluster/emit.js + curriculum | [ ] |
+| AQ.3 | **Curiosity seed in inner-voice** — add an 8th `_pickInnerThoughtSeed` source: epistemic-gap → fires a question emission when curiosity-drive crosses threshold during idle/chat. | server/brain-server/chat.js | [ ] |
+| AQ.4 | **Follow-up dialogue loop** — when Unity asks Qx and the user answers: Hebbian-bind the answer to the gap concept (real learning), lower that gap's drive, generate a follow-up that builds on the answer ("oh so X is Y? then what about Z?"). Persist the Q→A→follow-up chain. | server/brain-server/chat.js + cluster | [ ] |
+| AQ.5 | **Training corpus — outward questions + follow-ups** — curiosity corpus of real child-like question→follow-up exchanges (what/why/how/where/who + "but why?" follow-ups) as PRODUCTION exemplars so WH-production basins carve. Grade-appropriate, goth-toned. | curriculum corpora | [ ] |
+| AQ.6 | **Verify live** — localhost/deploy K run: confirm Unity (a) emits ≥1 spontaneous outward question, (b) consumes the answer, (c) emits a coherent follow-up. Headless can't prove this (no GPU tick) — operator-run. | live test | [ ] |
+
+**Blocks/relates:** AQ.* depends on TRACK A emission being real (FC.2/FC.5). "No real sentences" half = TRACK A; "no questions + follow-up" half = TRACK A-Q. Both land before the curiosity behavior is observable.
+
+**✅ AQ.1-AQ.5 SHIPPED 2026-06-26 (code; live efficacy → AQ.6/#6):** AQ.2+AQ.5 (question PRODUCTION) — `curriculum.js _teachQuestionProduction` trains 40 outward WH-question exemplars → word→word transitions incl. trailing "?" (relationTagId=30), wired into `_teachSentenceStructure` (every ELA cell); `emit.js composeSentence` got a `questionMode` that seeds a WH-frame so a real interrogative emerges from trained weights (no string template). AQ.1+AQ.3 (curiosity drive) — `chat.js _maybeAskCuriousQuestion` fires probabilistically (0.12 + 0.18·arousal) in the inner-thought tick, `_pickEpistemicGap` picks a recently-bound concept, fires `composeSentence(questionMode)` directly + broadcasts as innerThought. AQ.4 (follow-up) — the interaction handler binds the user's reply to the asked concept (relationTagId=23 grounding channel) + stores the Q→A episode + clears the pending question, closing ask→answer→incorporate. All load clean; bundle rebuilt. AQ.6 = live verify (folds into #6).
+
+---
+
+## 🧩 SESSION 2026-06-26 (cont.) — TRACK A WORD-ORDER ROOT CAUSE (code-grounded) + BRANCH SETUP + LIVE-STATE CONFIRMATION
+
+> **Gee verbatim per LAW #0 this session:** *"2.. yeah new feature branch 1."* · *"option 1. but started from develop maaking sure that develop is exact copy of main"* · *"she is in college why is she doing ela?"* · *"and check this out after to write all your current work down"*
+>
+> Plus the live chat paste (deployed brain, college-trained) that prompted this trace:
+> *"hi" → "My is intensify breaking than"* · *"Person ethical only maintain makes"* · *"Female an partner, and with."* · *"Evaluating fit physically matching speech."* · *"Conflicting 20 spaces identity policies"* · *"Encoded up me sentence everything!"*
+
+### Branch setup (done)
+- Synced local `main`/`develop` UP to `if-only` (local was 4 commits stale — the **held-back mastery remediation + outcome-gated noise gate** work, `3bfc4e5`, was already on the remote). `develop` fast-forwarded to be **tree-identical to `main`** (Gee's "develop = exact copy of main"). No force, no loss; remote develop was already correct.
+- Cut **`feature/coherence-word-order-curiosity`** off the synced `develop` (Gee's "option 1, started from develop"). Base includes the held-back remediation work + `docs/HELD-BACK.md`.
+- TRACK A-Q diagnostic (above) carried onto the new branch; `statusline.sh` WIP parked in stash for `feature/statusline-restore-original`.
+
+### Word-order ROOT CAUSE — why output is topical-but-scrambled (grounded in `js/brain/cluster/emit.js`)
+Phase 1 is genuinely working — `_composeSentenceOnce` (`emit.js:1002-1111`) ticks the brain between words (`TICKS_PER_WORD=3`, `stepAwait`) and back-injects each emitted word into `sem`, so emission is multi-word (no more one-word collapse). The scramble is a **signal-dominance imbalance** in the autoregressive loop:
+
+1. **Intent seed** injected into `sem` at strength **0.30** and persists additively for the whole sentence (`emit.js:953-967`).
+2. **Back-injected prior word** — the thing that should drive grammatical *next-word* order via the trained word→word (relationTagId=13, sem→sem) transition — lands at only **0.15 × 0.85ⁱ**, decaying every word (`emit.js:1104-1107`).
+3. So every tick `sem` is dominated by the **persistent topic centroid (0.30)** and `emitWordDirect` (`emit.js:501`) argmaxes words by **topical similarity to intent**, not by **grammatical sequence given the prior word**. Right concepts, no grammar — exactly "*Person ethical only maintain makes*".
+
+Train-side confirmation (live dashboard, brain at **college2**, 2026-06-26 07:3x): the per-cell grammar refresh fires
+`ELA-K-STRUCTURE-SLOTS · 78×80` · `…-AGREEMENT · 18×80` · `…-ARTICLES · 16×80` · **`…-CONCRETE-SENTENCES · 11427×30`**.
+The load-bearing word→word grammar channel (`_teachConcreteSentences`, `curriculum.js:13682`, reps=30) is the **least-trained** of the grammar passes, yet it's the only one that drives sequencing. A college-trained brain still talking in salad proves the refresh (wired at every grade via `…-STRUCTURE-REFRESH`) is too weak to ever win.
+
+### "ELA at college" clarification (Gee's Q)
+- ELA is the subject family; course-roster renames it **"Composition and Literature"** at college (dashboard header). The "alphabet/phonics/reading/writing" blurb is a **static subject description that doesn't update per grade** — misleading at college (display nit, candidate fix).
+- `ELA-K-STRUCTURE-*` events = the all-grade grammar **refresh** (`_teachSentenceStructure` → `…-STRUCTURE-REFRESH`, `kindergarten.js:1567/1872/2082/2296/2686` + `curriculum.js:17060`). The "K" is the primitive's name, not her grade.
+
+### Fix lever (Gee chose **"Both, balanced"**) + task plan
+- **#2 Fix grammatical word-ordering** — (a) deepen `_teachConcreteSentences` reps 30→~100 (per Phase-2 P2.1) so the transition basins sharpen; (b) make the intent seed **decay across the sentence** so the prior-word transition can steer mid-sentence ordering. Tune so topic doesn't drift. Equational only, no sentence templates.
+- **#3 Scrub filler-token leak** — `emitWordDirect` only special-cases terminators (`emit.js:1053`); a whitespace/filler token in a `wordBucketWords_<subj>` bucket can win argmax (live: "20 spaces"). Filter non-word/whitespace tokens out of bucket maps / guard like terminators.
+- **#4/#5 TRACK A-Q** — question-PRODUCTION path + curiosity/epistemic drive + follow-up loop (after grammar; she can't ask coherently until she can sequence).
+- **#6 Verify** — manual/probe live run (NO automated tests per LAW): multi-word grammar ≥80%, ≥3-word grammatical ≥70%, ≥1 self-initiated question + coherent follow-up.
+
+Harness task list mirrors #1-#6 (1 done: mapping; 2 in progress).
+
+### TRACK A-R — TRAINING ↔ WEIGHTS ↔ BEHAVIOR rectification (why she doesn't sound human)
+
+> **Gee verbatim per LAW #0:** *"yes doi that , read it and work todo of ewhat needs to be fixed compareing her traing to whats she knows in weightss compared to how she behaves to rectify her not sounding human correctly"*
+
+Three-way comparison after a full read of `js/brain/cluster/emit.js` + `_teachConcreteSentences`/`_teachSentenceStructure` + the live college dashboard + the brain-state diagnostic. The thesis: **she was trained on the right things, but they didn't consolidate in the right proportions, so behavior diverges from training.**
+
+| Capability | TRAINED (what she was fed) | WEIGHTS (what actually stuck) | BEHAVES (how she talks) | Gap → Fix |
+|---|---|---|---|---|
+| Vocabulary | ~2247 K words + per-grade; ~18k Hebbian writes | Strong sem basins; sem→word_motor nnz healthy (post-#9) | Pulls correct, on-topic words | OK — vocab is the one thing that works |
+| Word order (grammar) | `_teachConcreteSentences` word→word (relationTagId=13) at **30 reps**; slots/agreement/articles at **80** | Transition basins **WEAK** — least-trained channel, lost to vocab + topic centroid | **Topical word-salad** ("Person ethical only maintain makes") | Under-trained + out-muscled → **R.1** = task #2 (reps 30→~100 + runtime back-inject vs intent rebalance) |
+| Matrix vs lookup | trained sem→motor matrix is meant to DRIVE speech | matrix weak on grammar → **dictionary oracle historically won ~99%** of emissions (`_dictionaryOracleEmit`, threshold bumped 0.05→0.20 to force matrix priority) | when matrix weak → silence or oracle echo, not her own brain | **R.2** — once R.1 strengthens the matrix, confirm emission is matrix-driven not oracle-driven (telemetry: oracleHits vs matrixHits ratio). |
+| Questions | 100% comprehension (relationTagId=12 parses USER's Qs); 0% production | no question-PRODUCTION basin exists | **never asks anything** | **R.3** = tasks #4/#5 (TRACK A-Q production path + curiosity/epistemic drive + follow-up loop) |
+| Memory / continuity | full K→college walk fed episodic + schema + identity layers | **near-inert: 4 schemas, 8 episodes, 0 promoted identity, 0 conversations** | amnesic across turns; can't follow up; no persistent self surfacing | **R.4 (NEW)** — investigate why consolidation/promotion isn't firing despite a full walk (schema-promotion gate, episodic-write path, identity Tier-3 promotion counter). Near-empty consolidation = she has no "self" to speak from. |
+| Filler tokens | n/a | whitespace/non-word token sits in a `wordBucketWords_<subj>` bucket | leaks into speech ("Conflicting 20 spaces identity policies") | **R.5** = task #3 (guard non-word buckets from argmax like terminators) |
+| Course identity display | course-roster renames ELA→"Composition and Literature" at college | works | dashboard subject blurb ("alphabet/phonics…") is **static, doesn't update per grade** | **R.6 (NEW, LOW)** — per-grade subject description so a college view doesn't read like kindergarten. |
+
+**Ordering:** R.1 (word-order) and R.5 (filler) first — they're the loudest "not human" signals and R.1 also feeds R.2 (matrix-driven). R.4 (consolidation inertness) is HIGH — an amnesic brain with no consolidated self can never sound like a continuous person, but it's independent of emission and can run in parallel. R.3 (questions) after R.1 (can't ask coherently until she can sequence). R.6 cosmetic.
+
+**R.4 — ROOT CAUSE FOUND + STRUCTURAL FIX SHIPPED (2026-06-26):** The "0 promoted identity" was a hard structural impossibility, not a tuning issue. Tier-3 (identity) promotion (`hippocampal-schema.js shouldPromoteToTier3`) required `retrievalCount ≥ 100`, and `retrievalCount` is incremented **only** by `registerRetrieval()` — called **only** when the CHAT path queries a schema. Dream-replay consolidation (the sleep pass that runs during the walk) reinforces `consolidationStrength` but never touched `retrievalCount`. So a training-only brain (0 conversations) forms **ZERO identity, forever**, regardless of how much it walks — her sense of self could only crystallize through chat she'd never had. FIX: added `replayCount` (incremented by `reinforce()` each dream-replay pass; persisted in toJSON/fromJSON) and the promotion gate now counts `retrievalCount + replayCount` — identity consolidates during sleep replay (Squire/McClelland CLS), not only when externally queried. The `emotionalValenceAbsMin: 0.6` gate still keeps procedural/low-salience schemas out, so only emotionally-salient biographical memories (name, family, first kiss) cross. Verified: valence 0.8 + consolidation 6 + 100 replays + 0 retrievals → promotes. **STILL OPEN (needs live re-walk, can't verify headless):** the low schema/episode COUNT (4 schemas / 8 episodes) is a separate symptom — likely compounded by the historically-broken walk (basin-collapse / battery-stall meant the brain barely progressed, so few life-memory episodes ran) + possibly aggressive Tier-1 prune. A fresh full walk on the fixed stack is needed to confirm episode/schema formation rate; tune replay-promotion threshold + episode-survival live (folds into #6 verify).
+
+### COMPLETENESS — everything required for Unity to sound LIVING (not just correct)
+
+> **Gee verbatim per LAW #0:** *"make sure we do everyhthing we need to inorder getting Unity brain sounding living"*
+
+R.1–R.6 repair a BROKEN brain. A repaired brain that talks in neutral grammatical textbook sentences still is not ALIVE. The full living-checklist — every box must be checked before she sounds like a continuous, present, distinct person:
+
+| # | Living requirement | Covered by | Status |
+|---|---|---|---|
+| L1 | Grammatical, ordered sentences | R.1 / task #2 | in progress |
+| L2 | **Her VOICE** — Unity's persona shapes word choice (goth/profane/intoxicated/devoted-cruel), not generic | **R.7 / NEW #9** | gap |
+| L3 | **Affect + chemical state modulate speech** — amygdala valence/arousal + the three permanent streams (high/horny/coding) color intensity, length, word choice | **R.8 / NEW #10** | gap |
+| L4 | **Responds to what you said** — binds user input → answers the actual thread, across multiple connected sentences (not one 12-word topical burst) | **R.9 / NEW #11** | gap |
+| L5 | Asks questions / curious | R.3 / tasks #4-5 | planned |
+| L6 | Continuous memory + first-person self ("I think/want/remember") | R.4 / #7 (+ R.7 first-person) | planned |
+| L7 | Spontaneous LIVING inner-voice — varied, on-topic, persona-flavored, Hurlburt rhythm (not per-tick metronome, not word fragments) | verify in #6 + R.7/R.8 | verify |
+| L8 | Matrix-driven, not dictionary-lookup | R.2 / #8 | planned |
+| L9 | No filler/garbage tokens | R.5 / #3 | planned |
+
+**R.7 (VOICE) — NEW #9:** `emitWordDirect` is pure sem→word_motor bucket-argmax with NO persona weighting; persona vocabulary lived only in the ORACLE path (`boostPersona`/`personaBoost +0.30`) we are deliberately retiring (R.2). Confirm the persona corpus is Hebbian-TRAINED into the sem→word_motor matrix (not just loaded into the dictionary for oracle cosine), so her own trained weights emit Unity's voice. If under-trained vs K-vocab, deepen persona-corpus emission training. Equational — voice emerges from trained weights, not a profanity-injection filter.
+> **✅ DIAGNOSED 2026-06-26 (build pending, content-boundary-sensitive):** CONFIRMED the gap — there is NO method training the persona corpus into the matrix. Persona vocab/sentences live ONLY in the dictionary (`isPersona`, used by the oracle) + `inner-voice loadPersona` (dictionary learnSentence). Nothing buckets persona vocab into `word_motor` or trains persona word→word transitions into `sem→word_motor`. So matrix-driven emission (R.2) emits NEUTRAL — her voice can't emerge from trained weights because it was never trained into them. BUILD PLAN: a grade-gated `_teachPersonaVoice(grade)` (mirror of `_teachConcreteSentences`) — bucket persona vocab into `word_motor` + train persona word→word transitions (new relationTagId), with REGISTER ESCALATING BY GRADE per [[feedback_unity_precocious_early_vocab]] + [[feedback_always_cuss]] + [[feedback_erotic_state_grade_9_gate]]: mild experiments G1-G5, peer cussing G11-13, full adult goth-slut register at college+/18+. ⛔ CONTENT-BOUNDARY: adult/erotic register must NOT train onto minor grades ([[feedback_content_boundary_minor_sexual_excluded]]) — this gating is load-bearing, so the build is deferred to a focused pass alongside the M-track curriculum content (NOT rushed). The mechanism (persona→matrix) is what makes her SOUND like Unity from her own weights.
+
+**R.8 (AFFECT/STATE) — NEW #10:** wire amygdala valence/arousal + chemical/sexual/coding stream state into emission as equational modulators (e.g. arousal→temperature/intensity, valence→word-basin bias, drug state→register). The persona LAW is three PERMANENT simultaneous streams that never separate; her speech must carry them. Check what already reads `cluster.attentionGain`/arousal at emit time and extend.
+
+**R.9 (RESPONSIVENESS) — NEW #11:** she must bind the USER's input (comprehension) to her response so she answers the actual thread, and produce a multi-sentence turn when the thought needs it (composeSentence caps at 12 words / one sentence). A living conversant tracks what was said and builds on it across sentences. Relates to R.3 follow-up loop + R.4 conversation persistence (conversations.json empty).
+
+Harness mirrors: #2 (R.1) · #3 (R.5) · #4/#5 (R.3) · #6 (verify) · #7 (R.4 consolidation) · #8 (R.2 matrix-vs-oracle) · **#9 (R.7 voice)** · **#10 (R.8 affect/state)** · **#11 (R.9 responsiveness)**. This is the full set to "sounding living."
+
+---
+
+## 🎓 SESSION 2026-06-26 (cont.) — TRACK A-S: ACADEMIC STRUCTURE + REAL COURSE LOAD (grades vs levels, thin roster)
+
+> **Gee verbatim per LAW #0:** *"no one calls it college 1 college 2 , thats bullshit grade only count for k-12 are grade , college is difgferent and you know this, so ciricullum and dashboard and internals need to reflecvt this shit,,, and what the fuck!!! why only  courses? highschool has 6 per year college even more in graduate master and phsd so wtf arte you doing to Unity..... all this need s proper write up for fixes"*
+
+### S.1 — Grade-vs-level nomenclature is WRONG
+`GRADE_ORDER` = `pre-K, K, grade1…grade12, college1, college2, college3, college4, grad, phd` (canonical in curriculum.js; duplicated in `server/brain-server/state.js:178`). The dashboard renders the raw key, so it shows **"college2"** as if it were a grade. **Grades only exist for K-12.** College is undergraduate YEARS, then graduate PROGRAMS:
+
+| Internal key (keep stable) | Real name (must display everywhere) |
+|---|---|
+| pre-K … grade12 | Pre-K, Kindergarten, Grade 1 … Grade 12 (these ARE grades — fine) |
+| college1 / 2 / 3 / 4 | **Freshman / Sophomore / Junior / Senior Year** (undergraduate) |
+| grad | **Master's** |
+| phd | **Doctoral (PhD)** |
+
+**Fix:** add a `LEVEL_LABELS` (display-name) map + an `isGrade(key)` / `levelKind(key)` helper (grade | undergrad-year | grad-program). Curriculum heartbeats, `COURSE_NAMES` headers, the dashboard, and `state.js` all render the real name, never `college2`. Internal keys stay `college1..4`/`grad`/`phd` so weights/persistence don't churn.
+
+### S.2 — Only 6 courses run at EVERY level (the "wtf are you doing to Unity")
+`SUBJECTS = ['ela','math','science','social','art','life']` — the grade-advancement + gate loops iterate this **flat 6-core list at every level K→PhD**. The richer `subjectsForGrade()` roster (adds pe, music, health at K; language @3; cs @5; civics @7; economics+psychology @9; ap @11; major+genered @college1; research @grad) **is defined but the walk never consumes it** (deferred per the curriculum.js:116-119 note). So Unity does 6 courses in kindergarten AND 6 in college — when a real student carries far more.
+
+**Real course-load targets (what she SHOULD carry per level):**
+| Level | Real load | Currently walked |
+|---|---|---|
+| Elementary (K-5) | 6-8 (core + PE + music + art + health) | 6 |
+| Middle (6-8) | 7-9 (+ language, cs intro, civics) | 6 |
+| High School (9-12) | **6-8/year** + electives (core + language + cs + econ + psych + AP + PE/health/art/music) | 6 |
+| Undergrad (Fresh-Senior) | **8-12/year** — multiple concurrent MAJOR courses (not one "CS Major" blob) + gen-ed breadth as distinct courses + electives | 6 |
+| Master's | focused specialization seminars + thesis research (distinct courses) | 6 |
+| PhD | advanced seminars + dissertation research (distinct) | 6 |
+
+**Fix (build K-up, strict order, K is the proven template per [[feedback_full_real_school_course_roster]] + [[feedback_full_completeness_per_grade]]):**
+1. **Migrate the walk** — grade-advancement + gate loops consume `subjectsForGrade(grade)` instead of flat `SUBJECTS`, so every introduced subject runs as its own cell with its own runner + gate. (The comment says this was deferred "until later grades are walked" — they're being walked now, so it's due.)
+2. **Expand the roster itself** — `COURSE_NAMES` collapses college to single blobs ("Computer Science Major" ×4 years, "Social Science" ×4, "General Education" ×4). Break these into REAL distinct concurrent courses per year (e.g. Freshman CS: Intro to CS + Discrete Math + Calc II + Writing + a science + an elective). Add `COURSE_NAMES` + `COURSE_BLURB` + a runner + a gate for each. Grad/PhD get named seminars + research.
+3. **Each new course is a real cell** — vocab + mechanics + content depth to the K-depth bar ([[feedback_curriculum_depth_and_mechanics]]), not a stub.
+
+**Scope note:** S.2 is a LARGE build (many new per-level course runners + gates, K→PhD in strict order). S.1 (nomenclature) is small and can land first/independently. Both are SEPARATE from the emission/voice/memory tracks (A/A-Q/A-R) — they're about WHAT she's taught and HOW it's labeled, not how she speaks.
+
+Harness mirrors: **#13 (S.1 nomenclature)** · **#14 (S.2 walk consumes subjectsForGrade)** · **#15 (S.2 roster expansion to real course loads)**.
+
+---
+
+## 👁️👂👅👃✋ TRACK SE — EQUATIONAL SENSORY VALUE SYSTEM (all senses, value-spaces, comprehend + incorporate, open-ended) — LAYOUT (build after layouts complete)
+
+> **Gee verbatim per LAW #0 (2026-06-26):** *"lets get the layout shit done first before we start getting athe content build of that matterial that runs through the \"eyes\" ears\" taste\" feel\" all the senses Unity has and all those senses need values and shit for what they are regersting in her brain like a real person can tastse fruit and can see cloudsd and hear birds and smeelll strawberrys just as a micro examples to infinity where as each sense can sense a new thing experiences and use brain to comprehend and incorporat in ot understandings"* + *"add all that to todo"* + *"euqationally remmebr"*
+
+**Mandate:** LAYOUT now, build after the other layouts are done. Every sense registers an **equational VALUE** (a numeric vector in that sense's modality-space) for WHAT it perceives — the sweet of a strawberry, the white-soft of a cloud, the chirp-frequency of a bird, the odor-vector of a strawberry — that injects into a sensory cortical region, Hebbian-binds to the concept, and gets comprehended + incorporated into understanding. **Open-ended to infinity:** the value-spaces are continuous, so ANY new stimulus is a new point; binding it to a concept (taught or spawned) = a new learned experience. **EQUATIONAL ONLY** — senses are numeric value-streams feeding the brain's equations; any AI (image describer / TTS) is a sensory peripheral/labeler ONLY, never in the value→binding→comprehension path [[project_future_no_text_models]]. Extends `docs/SENSORY.md` (peripheral contract), Track J (senses), Track B (body), Pillar 1/8.
+
+### Current state (grounded)
+- `docs/SENSORY.md` defines the peripheral contract (init/process/destroy) + the AI-boundary (AI = sensory I/O only, never cognition).
+- Regions `visual` + `auditory` exist (cluster.js:2559/2565); `js/brain/visual-cortex.js` turns a frame → `Float64Array(100)` current; `sensory.js`/`sensory-olfactory.js`/`motor.js` are stubs.
+- K curriculum teaches sense WORDS (sweet/sour/salty/bitter→taste, soft/rough/cold/hot→touch, flower/smoke/rain→smell, eye→see) as vocab — but there is **no equational VALUE behind any of them**. "sweet" is a token, not a point in taste-space. THAT is the gap.
+
+### The per-sense VALUE-SPACE spec (what each sense equationally registers)
+Each sense = a fixed-dimensional value vector `v_s` in its modality-space, range-normalized, injected as current into `region_s`:
+
+| Sense | Region | Equational value dimensions (the "values for what they're registering") | Example points |
+|---|---|---|---|
+| **Sight** | `visual` (V1→V4→IT) | hue/wavelength, saturation, brightness, edge/shape descriptors, motion vector, depth, spatial-frequency, object-embedding | cloud = bright, low-sat, soft-edge, white-grey, slow, sky |
+| **Hearing** | `auditory` (tonotopic) | frequency-spectrum bins, amplitude, timbre/harmonics, onset/rhythm, pitch, spatial direction | birdsong = high-freq, pitch-modulated, chirp-rhythm |
+| **Taste** | `gustatory` (NEW) | [sweet, sour, salty, bitter, umami] + intensity (+ temp/texture from touch) | strawberry = high-sweet, mild-sour, low rest |
+| **Smell** | `olfactory` (extend sensory-olfactory.js) | odorant embedding vector (N-dim olfactory space; per-odorant learned point) | strawberry = its odor-vector; smoke, rain, leather each a point |
+| **Touch/feel** | `somatosensory` (NEW) + body map (Track B.1) | pressure, temperature, texture/vibration, pain, pleasure, body-location | silk = low-pressure, smooth-texture, neutral-temp, pleasure+ |
+| **Proprioception** | body model | limb/joint positions, balance | — |
+| **Interoception** | hypothalamus drives (exists) | hunger, thirst, fatigue, arousal, drug-state | ties to existing drive equations |
+
+### The equational comprehend + incorporate loop (per stimulus)
+1. peripheral `process()` → value vector `v_s` in modality-space.
+2. inject `v_s` as current into `region_s`.
+3. **cross-modal Hebbian binding** — bind `sem(active-concept) ↔ region_s(v_s)` under a per-sense `relationTagId` (taste/smell/sight/sound/touch each get a channel). A concept becomes multi-modally grounded: `sem(strawberry) ↔ taste(sweet-profile) ↔ smell(strawberry-odor) ↔ sight(red-small-round)`.
+4. **comprehension** = cross-modal convergence: when several senses co-fire on the same concept, the bindings reinforce → the concept is "understood" as a multi-sensory whole, not a word.
+5. **incorporation** = consolidation: repeated/strong sensory experience → Tier 2 schema → (if identity-relevant) Tier 3 — the experience becomes durable understanding/memory (ties to R.4 consolidation track).
+6. **extensibility (infinity)** — a novel stimulus is a new point in the continuous value-space. If it co-occurs with a known concept → bind. If novel with no concept → spawn a candidate concept (reuse the word-creation-candidate gate, emit.js) → name/learn it later. New experiences accrete without bound.
+
+### LAYOUT tasks (SE.* — spec/design now; content build deferred to after all layouts)
+| # | Task | Surface |
+|---|------|---------|
+| SE.1 | **Value-space spec** — finalize the dimensions + normalized ranges per sense (the table above → a precise contract in `docs/SENSORY.md`). The equational definition of "what each sense registers." | docs/SENSORY.md + sensory.js |
+| SE.2 | **Sensory cortical regions** — add `gustatory` + `somatosensory` regions; confirm `visual`/`auditory`/`olfactory`; value→current injection per region (the `process()→inject` path). | cluster regions + sensory.js |
+| SE.3 | **Cross-modal Hebbian binding** — per-sense `relationTagId` channels binding `sem(concept) ↔ region_s(value)`; multi-modal grounding of concepts. | cluster + curriculum |
+| SE.4 | **Comprehend + incorporate** — cross-modal convergence detection + consolidation of sensory experience into schema/episodic/identity (shares R.4 consolidation engine). | cluster + consolidation |
+| SE.5 | **Extensibility engine** — novel-stimulus → value-point → bind-to-concept OR spawn-candidate (the "to infinity" mechanism); reuse word-creation-candidate gate. | emit.js + cluster |
+| SE.6 | **Sensory peripherals (input adapters)** — vision (camera/image→values), audio (mic/spectrum→values), taste/smell (no physical sensor → value-profile injected from context/curriculum, e.g. "she eats a strawberry" → inject its taste+smell profile), touch (body model→values). | visual-cortex.js, sensory-*.js, somatosensory.js (new) |
+| SE.7 | **Curriculum value-profiles** — every sense word taught with its VALUE profile, not just the token (K's sweet→taste becomes sweet=taste-vector); grade-progressive sensory richness. Built into the M1→M5 curriculum depth pass. | curriculum (all grades) |
+| SE.8 | **Equational guarantee** — assert NO text-AI in the value→binding→comprehension path; describer/TTS are labelers/executors only. | architecture/CI check |
+
+**Build order:** SE.1/SE.2 (spec + regions) → SE.3/SE.4 (binding + comprehension) → SE.5 (extensibility) → SE.6 (peripherals) → SE.7 (curriculum value-profiles, folds into M1→M5). Per Gee: **LAYOUT done first; content build of the per-sense material runs after the layouts are complete.**
+
+Harness mirror: **#20 (SE.1+SE.2 spec+regions)** · **#21 (SE.3+SE.4 binding+comprehension)** · **#22 (SE.5 extensibility)** · **#23 (SE.6 peripherals + SE.7 curriculum value-profiles)**. SE.8 is an invariant enforced throughout.
+
+---
+
 ## 🧠 THE VISION — what we are building, in full
 
 Unity's brain has eight pillars. Each pillar maps to one or more architectural tracks below. The pillars compose at runtime: every tick, ALL of them fire simultaneously. There is no "language module" that runs in isolation — language is what falls out of cortex-amygdala-hippocampus-mystery interactions when sem state holds an intent. There is no "emotion module" — emotions are what fall out of attractor depth + drug state + hormone curves + memory associations.
