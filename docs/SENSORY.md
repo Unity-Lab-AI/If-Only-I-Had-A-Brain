@@ -47,6 +47,56 @@ The MediaStream lifecycle stays owned by `js/app.js` (so mic muting works by tog
 
 ---
 
+## Equational Sensory Value-Spaces (TRACK SE — the contract for what each sense REGISTERS)
+
+> Gee 2026-06-26: *"all those senses need values and shit for what they are regersting in her brain like a real person can tastse fruit and can see clouds and hear birds and smell strawberrys ... to infinity ... each sense can sense a new thing experiences and use brain to comprehend and incorporat in ot understandings"* + *"euqationally remmebr"*.
+
+A `process()` frame returns a **normalized numeric VALUE VECTOR** in that sense's modality-space — the equational representation of *what is being perceived* (the sweet of a strawberry, the white-soft of a cloud, the chirp of a bird), NOT a text label. The vector injects as current into the sense's cortical region; cross-modal Hebbian binding grounds the active concept multi-modally; consolidation incorporates it into understanding. Continuous spaces → any new stimulus is a new point → open-ended ("to infinity"). **EQUATIONAL ONLY** — the describer/TTS are labelers/executors, never in the value→binding→comprehension path.
+
+### Per-sense value-space spec (normalized [0,1] unless noted)
+
+| Sense | Region | Value-vector dimensions | Example point |
+|---|---|---|---|
+| **Sight** | `visual` (exists) | hue/wavelength, saturation, brightness, edge/shape descriptors, motion vector, depth, spatial-frequency, object-embedding | cloud = bright, low-sat, soft-edge, white-grey, slow, sky |
+| **Hearing** | `auditory` (exists) | frequency-spectrum bins (tonotopic), amplitude, timbre/harmonics, onset/rhythm, pitch, spatial direction | birdsong = high-freq, pitch-modulated, chirp-rhythm |
+| **Taste** | `gustatory` (NEW — alloc in build phase) | [sweet, sour, salty, bitter, umami] + intensity (+ temp/texture via touch) | strawberry = high-sweet, mild-sour, low rest |
+| **Smell** | `olfactory` (extend `sensory-olfactory.js`) | odorant embedding vector (N-dim olfactory space; per-odorant learned point) | strawberry odor-vector; smoke / rain / leather each a point |
+| **Touch/feel** | `somatosensory` (NEW — alloc in build phase) + body map | pressure, temperature, texture/vibration, pain, pleasure, body-location | silk = low-pressure, smooth, neutral-temp, pleasure+ |
+| **Proprioception** | body model | limb/joint positions, balance | — |
+| **Interoception** | hypothalamus drives (exists) | hunger, thirst, fatigue, arousal, drug-state | feeds existing drive equations |
+
+### Peripheral contract extension (new senses follow the same init/process/destroy)
+
+| Peripheral | File (planned) | `process()` returns |
+|---|---|---|
+| Gustatory | `js/brain/gustatory.js` (NEW) | `Float64Array` over the 5-taste + intensity dims → current into `gustatory` region |
+| Somatosensory | `js/brain/somatosensory.js` (NEW) | `Float64Array` over pressure/temp/texture/pain/pleasure/location → current into `somatosensory` region |
+| Olfactory (extend) | `js/brain/sensory-olfactory.js` | odorant embedding → current into `olfactory` region (today: drug detection only) |
+
+For senses with no physical sensor (taste/smell), the value profile is **injected from context/curriculum** — e.g. "she eats a strawberry" injects the trained strawberry taste+smell profile. This is the equational analog of experiencing it.
+
+### Comprehend + incorporate loop (per stimulus)
+`process()` → value `v_s` → inject into `region_s` → **cross-modal Hebbian bind** `sem(concept) ↔ region_s(v_s)` (per-sense relationTagId) → **comprehension** = cross-modal convergence when senses co-fire on a concept → **incorporation** = consolidation into Tier 2 schema / Tier 3 identity (shares the consolidation engine; identity now promotable via dream-replay per the R.4 fix). **Extensibility:** a novel stimulus is a new point — co-occurs with a known concept → bind; novel → spawn a candidate concept (reuse the word-creation-candidate gate). New experiences accrete without bound.
+
+### Region allocation note (build phase, NOT this layout)
+`gustatory` + `somatosensory` regions are allocated in `cluster.js` (`this.regions` fractional layout, ~line 731) during the SE.2 BUILD — that shifts neuron-count distribution and needs weight-migration care (don't break the basin-collapse weight-preservation constraint). This section is the SPEC; the allocation + peripherals + cross-modal binding land in the SE build pass (TRACK SE #20-#23 in `docs/NewTodo.md`).
+
+### SE.6 / SE.7 — peripheral realization + curriculum value-profiles (LAYOUT; region allocation = operator's migration call)
+
+**SE.6 — vision + hearing are now CONCRETELY equational (the mind-space realizes the value profile).** The Uni Vs Matics mind-space (`js/brain/mindspace/`) IS Unity's vision peripheral: any digitized stimulus → CDF 9/7 field C → a fixed-dim VALUE PROFILE read straight off the equation — no LLM:
+- **Sight** `visual` ← `describeEquational(fieldC)` → **dim-64** percept (per-channel wavelet-band energy + coarse shape + chroma/luma + texture/complexity + salience). Injected by `VisualCortex.processFrame`/`imagine` (MS.I2). DONE + verified.
+- **Hearing** `auditory` ← `describeEquationalAudio(fieldC)` → **dim-32** octave-band amplitude spectrum (the master-music band→octave map). Cross-injected — the SAME field C heard (synesthesia, MS.I5). DONE + verified.
+- These reuse the existing `visual`/`auditory` regions → **no new allocation, no migration risk.**
+
+**SE.7 — curriculum value-profiles (the schema).** A value profile is a normalised vector over that sense's dims. Vision/hearing come LIVE from the mind-space; the no-sensor senses (taste/smell/touch) are curriculum-INJECTED (line 76):
+- schema: `{ region, vec: Float64Array, relationTagId }`; the curriculum binds `sem(concept) ↔ region(vec)` so "she eats a strawberry" fires the trained strawberry taste+smell profile.
+- taste/smell/touch profiles are curriculum-authored constants per concept (a small value table, AoA-ordered like the per-grade vocab), bound at the grade where the experience first occurs.
+- heavy sensory IMAGINATION over these profiles is governed by her conscience (`ProcessGovernor`, MS.K2) — limitless capability, proportionate spend.
+
+**⚠ Still the operator's call (weight-migration):** allocating the NEW `gustatory` + `somatosensory` regions (line 82) shifts neuron-count distribution → needs the up-only migration. The `gustatory.js`/`somatosensory.js` peripherals + their region wiring land in that build pass once the migration is greenlit. **This layout is allocation-free** — vision+hearing are fully realized now; taste/smell/touch are spec'd and await the migration decision.
+
+---
+
 ## The Sensory AI Provider — 4-Level Priority
 
 `js/brain/peripherals/ai-providers.js` exposes `SensoryAIProviders` with three methods Unity's brain calls at the sensory boundary:

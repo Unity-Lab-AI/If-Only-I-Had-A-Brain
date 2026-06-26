@@ -597,6 +597,16 @@ export const CLUSTER_EMIT_MIXIN = {
       if (!Array.isArray(wordsList) || wordsList.length === 0) continue;
       const bucketSize = Math.max(1, Math.floor(subjSize / wordsList.length));
       for (let b = 0; b < wordsList.length; b++) {
+        // Filler-token guard — a bucket whose token is empty, pure
+        // whitespace, or carries no word character must never win argmax
+        // or surface as an emitted "word" (live leak rendered a whitespace
+        // token as "20 spaces"). SKIP the bucket rather than filter the
+        // list: bucket index b maps to a fixed neuron sub-band, so dropping
+        // list entries would desync the word↔bucket alignment. Terminators
+        // (. ? !) are exempt — they carry no alphanumeric but composeSentence
+        // consumes them as sentence-end punctuation.
+        const _bw = wordsList[b];
+        if (!_bw || !/\S/.test(_bw) || (!/[a-z0-9]/i.test(_bw) && !T14_TERMINATORS.has(_bw))) continue;
         let sum = 0;
         const bStart = subjStart + b * bucketSize;
         const bEnd = Math.min(subjEnd, bStart + bucketSize);
@@ -979,6 +989,21 @@ export const CLUSTER_EMIT_MIXIN = {
         }
       } catch { /* nf */ }
     }
+
+    // Question-production mode — seed a WH-frame intent so the FIRST emitted
+    // word biases interrogative and the trained question-production
+    // transitions (relationTagId=30, taught by _teachQuestionProduction)
+    // carry the sentence into a real outward question ending in "?".
+    // EQUATIONAL: we inject the WH-word embedding; the words EMERGE from the
+    // trained weights — NOT a "what is {X}?" string template (banned). The
+    // topic to ask about rides in via intentSeed/intentConcept above.
+    if (opts.questionMode && sharedEmbeddings && typeof sharedEmbeddings.getEmbedding === 'function') {
+      try {
+        const whWord = (typeof opts.questionWord === 'string' && opts.questionWord) ? opts.questionWord : 'what';
+        const whEmb = sharedEmbeddings.getEmbedding(whWord);
+        if (whEmb && whEmb.length > 0) _budgetedInject('sem', whEmb, 0.30, 0.20);
+      } catch { /* nf */ }
+    }
     // Budget bookkeeping: _cumulativeSemInject ≤ MAX_CUMULATIVE_SEM_INJECT
     // post-block. Per-call back-injection loop below reserves the
     // remaining 15% budget via similar _budgetedInject pattern.
@@ -1101,8 +1126,22 @@ export const CLUSTER_EMIT_MIXIN = {
             // 1.5% of biological. Drift trigger: if TICKS_PER_WORD or
             // τ_ms changes, BACK_INJECT_DECAY = exp(-TICKS_PER_WORD ×
             // tick_ms / τ_ms). Full derivation: docs/THRESHOLD-DERIVATION.md
-            const BACK_INJECT_BASE = 0.15;
-            const BACK_INJECT_DECAY = 0.85;
+            // WORD-ORDER REBALANCE — the bio-leak default (base 0.15,
+            // decay 0.85) left the prior-word transition signal too weak
+            // against the persistent ~0.30 intent seed, so per-tick argmax
+            // selected words by topic-similarity to the intent rather than
+            // by grammatical sequence given the prior word → topically-
+            // correct but scrambled "word-salad" output. Raise base
+            // 0.15→0.24 so the just-emitted word competes with the intent
+            // anchor, and soften the positional decay 0.85→0.92 so mid-
+            // sentence words keep strong next-word steering instead of
+            // fading into the topic centroid. This lets the trained
+            // word→word transition (relationTagId=13) actually drive
+            // sequencing tick-by-tick. Deliberate trade above pure
+            // cortical-leak timing; constants are tunable and validated on
+            // a live GPU emission run (headless can't exercise emission).
+            const BACK_INJECT_BASE = 0.24;
+            const BACK_INJECT_DECAY = 0.92;
             const backInjectStrength = BACK_INJECT_BASE * Math.pow(BACK_INJECT_DECAY, i);
             this.injectEmbeddingToRegion('sem', wordEmb, backInjectStrength);
           }

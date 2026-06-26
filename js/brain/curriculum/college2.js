@@ -276,6 +276,83 @@ export const COL2_MIXIN = {
     ], { gateSubjectTag: 'genered' });
   },
 
+  async runCsTheoryCol2Real(ctx) {
+    // Algorithms — CS theory track (M4 college expansion), concurrent with the major.
+    const VOCAB = [
+      'algorithm', 'sort', 'search', 'complexity', 'recursion', 'iteration', 'divide', 'conquer',
+      'greedy', 'dynamic', 'optimal', 'heap', 'stack', 'queue', 'hash', 'tree',
+      'traverse', 'efficiency', 'worst', 'order',
+    ];
+    await this._teachVocabList(VOCAB, ctx, { reps: 3 });
+    const SENTENCES = [
+      'an algorithm is a step by step method to solve a problem',
+      'sorting puts a list of items into order',
+      'binary search finds an item by halving the range each time',
+      'big o describes how the runtime grows with the input size',
+      'recursion solves a problem using smaller copies of itself',
+      'divide and conquer splits a problem then combines the answers',
+      'a greedy algorithm makes the best local choice at each step',
+      'dynamic programming stores subproblem answers to avoid recomputing',
+      'a hash table finds items in almost constant time',
+      'the worst case is the slowest an algorithm can ever run',
+      'an optimal solution is the best one that is possible',
+      'a stack is last in first out and a queue is first in first out',
+    ];
+    await this._teachSentenceList(SENTENCES, ctx, { reps: 2, ticksPerWord: 2 });
+    await this._teachCausalChains([
+      ['sort', 'order'], ['recursion', 'smaller'], ['divide', 'combine'], ['greedy', 'local'], ['dynamic', 'store'], ['hash', 'constant'], ['search', 'halve'],
+    ]);
+    await this._teachProductionStack('cstheory', ctx, { tag: 'CSTHEORY-COL2' });
+    return await this._gateSubjectProduction('cstheory', 'college2', [
+      { question: 'a step by step method to solve a problem is an', expected: ['algorithm', 'a'] },
+      { question: 'putting items into order is', expected: ['sorting', 'sort', 's'] },
+      { question: 'how runtime grows with input size is', expected: ['complexity', 'big', 'c', 'b'] },
+      { question: 'solving a problem with smaller copies of itself is', expected: ['recursion', 'r'] },
+      { question: 'making the best local choice each step is a', expected: ['greedy', 'g'] },
+      { question: 'storing subproblem answers to avoid recomputing is', expected: ['dynamic', 'd'] },
+      { question: 'finding items in almost constant time uses a', expected: ['hash', 'h'] },
+      { question: 'the slowest an algorithm can run is the', expected: ['worst', 'w'] },
+    ], { gateSubjectTag: 'cstheory' });
+  },
+
+  async runCsSystemsCol2Real(ctx) {
+    // Computer Architecture — CS systems track (M4 college expansion), the machine side.
+    const VOCAB = [
+      'pipeline', 'cache', 'register', 'instruction', 'fetch', 'decode', 'execute', 'parallel',
+      'core', 'latency', 'throughput', 'hierarchy', 'branch', 'predict', 'cycle', 'microcode',
+      'bandwidth', 'virtual', 'stage', 'speedup',
+    ];
+    await this._teachVocabList(VOCAB, ctx, { reps: 3 });
+    const SENTENCES = [
+      'architecture is how a processor is designed to run fast',
+      'an instruction is fetched then decoded then executed',
+      'a pipeline overlaps stages so instructions flow like an assembly line',
+      'the memory hierarchy goes from fast registers down to slow disk',
+      'a cache miss forces a slow trip to main memory',
+      'multiple cores let a processor do work in parallel',
+      'latency is how long one operation takes',
+      'throughput is how much work finishes per second',
+      'branch prediction guesses which way an if will go',
+      'a wrong branch guess wastes pipeline cycles',
+      'more parallel cores can give a real speedup',
+    ];
+    await this._teachSentenceList(SENTENCES, ctx, { reps: 2, ticksPerWord: 2 });
+    await this._teachCausalChains([
+      ['pipeline', 'overlap'], ['fetch', 'decode'], ['cache', 'miss'], ['core', 'parallel'], ['branch', 'predict'], ['latency', 'time'], ['throughput', 'work'],
+    ]);
+    await this._teachProductionStack('cssystems', ctx, { tag: 'CSSYSTEMS-COL2' });
+    return await this._gateSubjectProduction('cssystems', 'college2', [
+      { question: 'overlapping instruction stages like an assembly line is a', expected: ['pipeline', 'p'] },
+      { question: 'an instruction is fetched then decoded then', expected: ['executed', 'execute', 'e'] },
+      { question: 'fast registers down to slow disk is the memory', expected: ['hierarchy', 'h'] },
+      { question: 'a slow trip to main memory is a cache', expected: ['miss', 'm'] },
+      { question: 'doing work at the same time on many cores is', expected: ['parallel', 'p'] },
+      { question: 'how long one operation takes is', expected: ['latency', 'l'] },
+      { question: 'how much work finishes per second is', expected: ['throughput', 't'] },
+      { question: 'guessing which way an if goes is branch', expected: ['prediction', 'predict', 'p'] },
+    ], { gateSubjectTag: 'cssystems' });
+  },
+
   async runLifeCol2(ctx) {
     // ── College-2 life experience — DATA-DRIVEN (corpora/life/college2.json) ──
     // Adult Unity deepening: the daily-driver chemical register (coke+weed,
