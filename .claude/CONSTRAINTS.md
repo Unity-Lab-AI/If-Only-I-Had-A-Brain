@@ -293,6 +293,32 @@ The 3-part gate appears at the END of every grade block in `docs/TODO-full-sylla
 - Cannot propose "we'll skip Life Experience this grade and come back to it" — Part 1 requires ALL six subjects for the grade, including Life.
 - Cannot test Unity's pass in lieu of Gee testing. Claude's role is to build; Gee's role is to verify.
 
+## AMENDMENT 2026-06-27 — CELL PASS = LEARNING COMPLETION (not test-question correctness)
+
+### Gee's exact words 2026-06-27
+
+> *"solve the issue of grade cells staYING ON 0 BUT TRAING WENT TO GRADE 1, uNITY STILL NEED GATE CELL CHECKS AND FINALIZATION TO PUSH BRAIN WEIGHTS, WE JUST DONT FORCE QUESTIONS TO BE ANSWERED COPRRECLTY BEFORE ALLOWING PASS GRADE CELLS OF CIRICULUMS.. IE uNITY ALWAYS GETS ALL CELLS PASSSED WHEN CONTENT IS FINISHED TRAINING NO TESTING TO RECIEVE CELL PASS(only need unity to complete the ciriculumns not pass test questions)>> all cells shall pass as learning completes for that cell"*
+
+### What changed
+
+A curriculum **cell** now passes when its **content/teach phases finish** — NOT when the A+ probe gate, student battery, or per-grade health gate report correct answers. The directive is explicit: *we do NOT force questions to be answered correctly before allowing a cell pass.* Unity only needs to **complete** the curriculum content, not pass test questions, to receive a cell pass.
+
+- **RETAINED ("Unity still need gate cell checks and finalization"):** the probe gate, student battery, methodology battery, and health gate all STILL RUN and record telemetry into `cluster._lastGateResult` / `cluster._cellLedger`; finalization still pushes brain weights via `_saveCheckpoint`. They are now **ADVISORY** — they never block the cell pass.
+- **REMOVED:** test-question-correctness as a precondition for cell pass. A collapsed/saturated `sem_to_motor` projection that pins every capability rate to 0 (see `docs/SPONGE-SEM-MOTOR-SATURATION-HANDOFF.md`) no longer stalls the walk at 0 cells passed.
+- **STILL HELD (no completed learning to finalize):** `readyAndWaiting`/held cells (no runner wired for that subject/grade) and cells whose runner threw mid-teach do NOT pass.
+
+### Relationship to the 3-part gate above
+
+- **Part 1 (build the full grade syllabus as equational content)** still stands — "complete the curriculum" IS the bar, so the content must exist to be completed.
+- **Part 2 (Gee's localhost signoff) + Part 3 (life-info propagation)** remain the **grade-advance** ritual Gee performs; they are not changed. What changed is that an individual **cell** no longer waits on the brain answering probes correctly before it counts as passed.
+
+### Implementation (code)
+
+- `js/brain/curriculum.js` `runSubjectGrade()` — after the cell runner + student battery, a cell that actually taught (`teachEvents > 0` / has `passedPhases` for the cell) is marked `result.pass = true` (`passedOnCompletion`) unless held or the runner threw.
+- Battery gate flipped to advisory-by-default (`DREAM_BATTERY_GATE_HARD=1` restores hard-block).
+- Health gate flipped to advisory-by-default (`DREAM_HEALTH_GATE_HARD=1` restores hard-block).
+- `DREAM_CELL_PASS_HARD=1` restores the old probe/battery/health-decides-pass behavior wholesale.
+
 ---
 
 # LAW — SYLLABUS BEFORE COMP-TODO (Gee, 2026-04-16)

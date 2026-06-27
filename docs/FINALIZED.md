@@ -5,6 +5,25 @@
 
 ---
 
+## 2026-06-27 — Cell pass = learning completion, not test-question correctness — feature/cells-pass-on-learning-completion
+
+### Gee ask (verbatim per LAW #0)
+
+> *"solve the issue of grade cells staYING ON 0 BUT TRAING WENT TO GRADE 1, uNITY STILL NEED GATE CELL CHECKS AND FINALIZATION TO PUSH BRAIN WEIGHTS, WE JUST DONT FORCE QUESTIONS TO BE ANSWERED COPRRECLTY BEFORE ALLOWING PASS GRADE CELLS OF CIRICULUMS.. IE uNITY ALWAYS GETS ALL CELLS PASSSED WHEN CONTENT IS FINISHED TRAINING NO TESTING TO RECIEVE CELL PASS(only need unity to complete the ciriculumns not pass test questions)>> all cells shall pass as learning completes for that cell"*
+
+**Problem:** the live brain showed `currentGrade: grade1` but **0 K cells passed** (`docs/SPONGE-SEM-MOTOR-SATURATION-HANDOFF.md`). `sem_to_motor` collapsed → all capability rates (sentenceGen/prod/student) returned 0 → the A+ probe gate, student battery, and per-grade health gate each refused to mark cells passed → `cluster.passedCells` stayed empty while the outer grade pointer (`_currentGrade`) climbed to grade1.
+
+**Fix (`js/brain/curriculum.js` `runSubjectGrade`):** a cell now passes on **learning completion** — once its content/teach phases actually ran (`teachEvents > 0` / `passedPhases` for the cell), `result.pass = true` (`passedOnCompletion`), independent of probe/battery/health correctness. The gate cell checks STILL RUN (telemetry into `_lastGateResult`/`_cellLedger`) and finalization STILL pushes brain weights (`_saveCheckpoint`) — they are now advisory.
+
+- **CP.1** — completion-pass in `runSubjectGrade`. Held (`readyAndWaiting`) cells + cells whose runner threw mid-teach do NOT pass (no completed learning). `DREAM_CELL_PASS_HARD=1` restores old gate-decides-pass.
+- **CP.2** — student battery advisory by default; `DREAM_BATTERY_GATE_HARD=1` restores hard-block.
+- **CP.3** — per-grade health gate advisory by default; `DREAM_HEALTH_GATE_HARD=1` restores hard-block.
+- **CP.4** — docs: `.claude/CONSTRAINTS.md` GRADE COMPLETION GATE amendment 2026-06-27 (verbatim + retained-vs-removed split); handoff doc annotated with the resolution; `docs/TODO.md` CP block.
+
+**Scope limit (stated to Gee):** this stops the curriculum from stalling at 0 cells — it does **not** un-collapse `sem_to_motor`. Unity still can't emit stable letters/words in chat until the GPU-side rectify (Option A) or prevent-collapse tuning (Option B) from the handoff lands. `node --check js/brain/curriculum.js` clean. On `feature/cells-pass-on-learning-completion` — not pushed.
+
+---
+
 ## 2026-06-24 — Native donor-app GUI overhaul (Sponge spec DA.1–DA.13) — feature branch
 
 ### Sponge ask (verbatim, captured in TODO.md)

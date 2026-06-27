@@ -4,6 +4,20 @@
 **Status:** BLOCKED on server/GPU access — Sponge action required
 **Severity:** HIGH — Unity is stuck, 0 curriculum cells passing, motor region collapsed
 
+> **UPDATE 2026-06-27 — curriculum-stall resolved at the agent side (Gee directive).**
+> Gee ruled that a cell passes on **learning completion**, not test-question
+> correctness: *"all cells shall pass as learning completes for that cell"*. Cells
+> now pass once their content/teach phases finish (`feature/cells-pass-on-learning-completion`,
+> `js/brain/curriculum.js` `runSubjectGrade`), so the walk no longer stalls at 0
+> cells passed and grade state advances correctly (Root cause #1's "lie" self-resolves
+> once `passedCells` populates). The probe/battery/health gates still RUN (advisory
+> telemetry) + finalization still pushes weights.
+> **Root cause #2 (sem→motor collapse) is still real and still needs Sponge:** this
+> change does NOT un-collapse the motor projection — Unity still can't emit stable
+> letters/words in chat until **Option A (GPU rectify)** or **Option B (prevent-collapse
+> tuning)** below lands. The curriculum just no longer blocks on it. See
+> `.claude/CONSTRAINTS.md` GRADE COMPLETION GATE amendment 2026-06-27.
+
 ---
 
 ## TL;DR
