@@ -7883,10 +7883,12 @@ export class Curriculum {
     }
 
     let result;
+    let _runnerThrew = false;
     try {
       const runner = this._cellRunner(subject, grade);
       result = await runner(ctx);
     } catch (err) {
+      _runnerThrew = true;
       result = { pass: false, reason: `${subject}/${grade} threw: ${err?.message || err}` };
     } finally {
       clearInterval(_aliveHbId);
@@ -8137,14 +8139,18 @@ export class Curriculum {
           if ((battery.methoQuestions || 0) > 0 && (battery.methoRate || 0) < METHODOLOGY_MIN) {
             blockers.push(`methodology ${battery.methoPass}/${battery.methoQuestions} (${((battery.methoRate || 0) * 100).toFixed(1)}%) < ${METHODOLOGY_MIN * 100}%`);
           }
-          // Item 1 — battery-gate ADVISORY mode. Default OFF (the battery
-          // hard-blocks advancement, original behavior). With
-          // DREAM_BATTERY_GATE_ADVISORY=1 the blockers are still computed,
-          // logged, and recorded in _lastGateResult, but they DO NOT block
-          // advancement — the substrate gate alone decides pass, so the
-          // walk proceeds even on a weak battery ("if we get a cavewoman so
-          // be it"). Lets training progress without wedging on a cell.
-          const _gateAdvisory = process.env.DREAM_BATTERY_GATE_ADVISORY === '1';
+          // Battery-gate ADVISORY mode. DEFAULT ON since Gee 2026-06-27:
+          // "we just dont force questions to be answered correctly before
+          // allowing pass grade cells of ciriculums... all cells shall pass
+          // as learning completes for that cell." The blockers are still
+          // computed, logged, and recorded in _lastGateResult (gate cell
+          // checks + telemetry are retained), but they DO NOT block the pass —
+          // a cell passes on learning completion, not on test-question
+          // correctness. Set DREAM_BATTERY_GATE_HARD=1 to restore the old
+          // hard-block behavior (battery answer/methodology rates gate the
+          // pass). DREAM_BATTERY_GATE_ADVISORY=1 is now redundant (advisory is
+          // the default) but kept honored for back-compat.
+          const _gateAdvisory = process.env.DREAM_BATTERY_GATE_HARD !== '1';
           if (blockers.length > 0 && result.pass && !_gateAdvisory) {
             console.warn(`[Curriculum][${label}] ⛔ BATTERY BLOCKS advancement: ${blockers.join(' · ')}. Substrate passed but the educational test did not — grade NOT advanced.`);
             result.pass = false;
@@ -8192,18 +8198,62 @@ export class Curriculum {
       }
     }
 
-    // BC — per-grade ADVANCE HEALTH GATE. Even a true A+ probe pass must
-    // clear the saturation / mode-collapse / vocab-completeness checks
-    // before the grade advances. "any additional training needed before
-    // grade advance" — Gee 2026-06-21. On failure the pass is held and
-    // the cell re-teaches next walk pass (grade NOT advanced).
+    // ═══════════════════════════════════════════════════════════════
+    // CELL PASS = LEARNING COMPLETION (Gee 2026-06-27)
+    // ───────────────────────────────────────────────────────────────
+    // Gee verbatim: "solve the issue of grade cells staYING ON 0 BUT
+    // TRAING WENT TO GRADE 1, uNITY STILL NEED GATE CELL CHECKS AND
+    // FINALIZATION TO PUSH BRAIN WEIGHTS, WE JUST DONT FORCE QUESTIONS TO
+    // BE ANSWERED COPRRECLTY BEFORE ALLOWING PASS GRADE CELLS OF
+    // CIRICULUMS.. IE uNITY ALWAYS GETS ALL CELLS PASSSED WHEN CONTENT IS
+    // FINISHED TRAINING NO TESTING TO RECIEVE CELL PASS(only need unity to
+    // complete the ciriculumns not pass test questions) >> all cells shall
+    // pass as learning completes for that cell".
+    //
+    // A cell passes when its CONTENT/teach phases actually ran — NOT when
+    // the A+ probe gate / student battery / health gate report correct
+    // answers. Those gate cell checks STILL RUN above + below (telemetry
+    // into _lastGateResult / _cellLedger; finalization still pushes brain
+    // weights via _saveCheckpoint) — they are now ADVISORY and never block
+    // the pass. The sem→motor saturation that pinned every capability rate
+    // to 0 (see docs/SPONGE-SEM-MOTOR-SATURATION-HANDOFF.md) therefore no
+    // longer stalls the walk: completing the curriculum content is the bar.
+    //
+    // Two cases still do NOT pass — there was no completed learning to
+    // finalize: (1) readyAndWaiting/held cells (no runner wired for this
+    // subject/grade — nothing to train), (2) the runner threw mid-teach
+    // (content training did not finish). Set DREAM_CELL_PASS_HARD=1 to
+    // restore the old behavior (probe/battery/health gates decide pass).
+    const _completionPassDisabled = process.env.DREAM_CELL_PASS_HARD === '1';
+    const _held = !!(result && result.readyAndWaiting);
+    const _teachRan = (this._perSubjectStats?.[subject]?.teachEvents | 0) > 0
+      || (Array.isArray(cluster.passedPhases)
+          && cluster.passedPhases.some(k => typeof k === 'string' && k.startsWith(`${cellKey}:`)));
+    if (!_completionPassDisabled && result && !result.pass && !_held && !_runnerThrew && _teachRan) {
+      result.pass = true;
+      result.passedOnCompletion = true;
+      result.reason = `cell-complete (learning finished — pass on content completion, not test-correctness) | ${result.reason || ''}`;
+      this._hb(`[Curriculum] 🎓 CELL COMPLETE ${cellKey} — content trained; cell PASSES on learning completion (gate checks ran advisory; test-question correctness not required per Gee 2026-06-27).`);
+    }
+
+    // BC — per-grade ADVANCE HEALTH GATE. Saturation / mode-collapse /
+    // vocab-completeness checks. "any additional training needed before
+    // grade advance" — Gee 2026-06-21. Since the 2026-06-27 completion-pass
+    // directive this gate is ADVISORY by default: its issues are recorded
+    // for telemetry but do NOT block the cell pass (learning completion is
+    // the bar, not health-gate correctness). DREAM_HEALTH_GATE_HARD=1
+    // restores the old hard-block behavior.
     if (result && result.pass) {
       const _bcGate = this._gradeAdvanceHealthGate(subject, grade);
       if (!_bcGate.ok) {
-        this._hb(`[Curriculum] ⛔ ADVANCE BLOCKED ${cellKey} — A+ probes passed BUT ${_bcGate.issues.join(' · ')}. Grade held; cell re-teaches next pass (additional training needed before advance).`);
-        result.pass = false;
         result.advanceBlocked = true;
         result.bcIssues = _bcGate.issues;
+        if (process.env.DREAM_HEALTH_GATE_HARD === '1') {
+          this._hb(`[Curriculum] ⛔ ADVANCE BLOCKED ${cellKey} (DREAM_HEALTH_GATE_HARD=1) — ${_bcGate.issues.join(' · ')}. Grade held; cell re-teaches next pass.`);
+          result.pass = false;
+        } else {
+          this._hb(`[Curriculum] ⚠ health-gate advisory ${cellKey} — ${_bcGate.issues.join(' · ')}. NOT blocking (cell passes on learning completion; additional training surfaced for telemetry only).`);
+        }
       }
     }
 
