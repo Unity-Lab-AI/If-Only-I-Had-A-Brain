@@ -94,12 +94,14 @@ Add a GPU-bridge command that decays the `sem_to_motor` rows **on the GPU** (× 
 - **Pros:** actually un-collapses the live weights; walk can then make real progress.
 - **Cons:** new GPU-bridge plumbing; must be validated against a live donor GPU; touches the tick loop. Test on a throwaway/fresh brain before the live one.
 
-### Option B — prevent the collapse during teach (deploy + observe)
+### Option B — prevent the collapse during teach (deploy + observe) ✅ CHOSEN + IMPLEMENTED 2026-06-27
 The collapse is driven by sem→motor Hebbian over-strengthening one dominant basin during teach. Levers (pure code, but tune + watch on a live GPU):
 - Lower the sem→motor `ojaUpdate` learning rate for the `sem_to_motor` projection specifically.
 - Tighten that projection's `wMax`.
 - Strengthen anti-Hebbian / top-K-per-row prune on `sem_to_motor`.
 - This is the long-running saturation fight — **blind tuning is risky**; needs eyes on `[SatHealth]` logs (first-5 calibration samples at `cluster.js:2263`) and the capability rates after a fresh K walk.
+
+> **See the "RESOLUTION 2026-06-27" section at the bottom for why B was chosen over A, what shipped, and the live-tuning procedure.**
 
 ### Option C — cosmetic display fix (agent can do now, no server)
 Root cause #1 above. Stops the "grade1 / 0 cells passed" confusion. Does NOT fix training. Can ship in the next branch push whenever.
@@ -133,3 +135,33 @@ Root cause #1 above. Stops the "grade1 / 0 cells passed" confusion. Does NOT fix
 | subGrade ladder | `js/brain/cluster.js:2284` |
 | Motor-instability chat popup (symptom) | `server/brain-server/chat.js:445` |
 | `passedCellCount` / trained-cap source | `server/brain-server/chat.js:425`–`445` |
+
+---
+
+## RESOLUTION 2026-06-27 — Option B chosen + implemented (`feature/sem-motor-prevent-collapse`)
+
+### Why B, not A
+1. **A is moot after the fresh wipe.** The fresh-state K-walk (`docs/SPONGE-FRESH-WALK-DEPLOY.md`) wipes weights v0–v4, so there are no pre-collapsed weights to rectify at boot — and the *same* teach code would re-saturate a fresh `sem_to_motor` the same way. Option A is reactive whack-a-mole; **Option B stops the collapse forming during the very walk that's about to run.** B + fresh-walk is the correct pairing.
+2. **A needs new GPU plumbing.** Option A requires a brand-new GPU decay+normalize dispatch through the tick loop / `gpu-compute.js` — more code, all unvalidatable without a donor GPU. Option B's primary lever needs **no new shader**.
+3. **The root cause is reachable cheaply.** The existing CPU-side prevention pipeline (row-normalize / contrastive anti-Hebbian / top-K prune in `_teachAssociationPairs`) is a no-op at biological scale because it operates on a **stale CPU shadow** (the matrix's real weights are GPU-resident; `_rectifySemMotor` hits the same dead path). BUT `cluster/hebbian.js:_crossRegionHebbian` is the **one chokepoint where the learning rate flows to BOTH the GPU `hebbianBound` dispatch AND the CPU `ojaUpdate` shadow.** Damping the LR there for the emission projections is the single lever that actually reaches the GPU-resident weights.
+
+### What shipped
+| Lever | Where | Default | Knob |
+|-------|-------|---------|------|
+| **sem→motor LR damping** (primary) | `js/brain/cluster/hebbian.js` `_crossRegionHebbian` — `lrEff = lr × scale` for `sem_to_motor` + `sem_to_word_motor` only, applied to GPU + CPU dispatch | **×0.5** (active) | `DREAM_SM_LR_SCALE` (`1.0` = old behavior / disable) |
+| **sem→motor wMax tightening** (secondary) | `js/brain/cluster.js` cross-projection creation — tighter weight ceiling for the two emission projections | **0.4 (unchanged)** | `DREAM_SM_WMAX` (e.g. `0.25`) |
+
+- LR damping is **active by default** (×0.5) because the fresh walk IS the test and slower strengthening is the textbook anti-saturation move; it pairs with the cell-pass-on-completion fix (slower sem→motor learning no longer blocks grade progression, it just buys the basins time to separate). First-use logs `sem→motor LR damping ACTIVE … ×0.5`.
+- wMax tightening is shipped **disabled** (default 0.4 = the bisected value) so the heavily-tuned default isn't changed blind — it's a second lever to try live if LR damping alone doesn't clear `meanCos`.
+
+### Live-tuning procedure (do this on the fresh walk)
+1. Deploy `js/brain/cluster/hebbian.js` + `js/brain/cluster.js` to the box (same `/opt` overlay as `curriculum.js` in `SPONGE-FRESH-WALK-DEPLOY.md` STEP 2).
+2. Run the FRESH-STATE walk (STEP 3 — `DREAM_KEEP_STATE` off). A fresh walk re-creates the matrices so the wMax knob (if set) and the clean LR-damped training both take effect from scratch.
+3. Watch: `journalctl -u unity-brain -f | grep -E "SatHealth|LR damping|saturation|meanCos"`.
+   - **Want:** `[SatHealth] … meanCos < 0.7 … saturated=false` holding across the walk; no `⚠ saturation detected` spam.
+   - **If meanCos still climbs past 0.7:** lower further — `DREAM_SM_LR_SCALE=0.25`, and/or add `DREAM_SM_WMAX=0.25`. Restart fresh, re-watch.
+   - **If basins go dead / TALK→0 (over-damped):** raise — `DREAM_SM_LR_SCALE=0.7`.
+4. ⚠ This is prevention only — it does NOT un-collapse weights already saturated under old code. It only works from a fresh walk. (A reactive GPU rectify — Option A — remains available as a future follow-up if a collapse ever needs clearing on a brain you don't want to wipe; the GPU anti-Hebbian dispatch already exists, so it's a smaller add than originally scoped.)
+
+### ⚠ Still does NOT fix speech on a stale brain
+If you do NOT run a fresh walk, the existing collapsed `sem_to_motor` stays collapsed — this change can't rectify it (that's Option A). Speech recovers only after a fresh, LR-damped walk produces a non-saturated `sem_to_motor`.
