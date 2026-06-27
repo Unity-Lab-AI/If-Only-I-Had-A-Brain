@@ -1086,7 +1086,20 @@ export class NeuronCluster {
         // the trained-signal headroom doubles. Paired with the rescale
         // FLOOR at wMax × 0.25 = 0.1 added to `_teachAssociationPairs` +
         // `_teachQABinding` so rescale stops before trained signal drowns.
-        const ab = new SparseMatrix(bSize, aSize, { wMin: -0.4, wMax: 0.4 });
+        // sem→motor saturation prevention (Option B, Gee 2026-06-27) — the
+        // motor-emission projections can be given a tighter weight ceiling to
+        // limit how far the dominant basin runs above the others. Default
+        // UNCHANGED (0.4, the bisected value); DREAM_SM_WMAX>0 opts a tighter
+        // ceiling for sem_to_motor + sem_to_word_motor only. Secondary lever to
+        // the LR damping (DREAM_SM_LR_SCALE) — try it live watching [SatHealth]
+        // if LR damping alone doesn't clear meanCos. See
+        // docs/SPONGE-SEM-MOTOR-SATURATION-HANDOFF.md.
+        const _smWMax = (() => {
+          try { const v = parseFloat(process?.env?.DREAM_SM_WMAX); return (Number.isFinite(v) && v > 0) ? v : 0.4; }
+          catch { return 0.4; }
+        })();
+        const _wMaxFor = (key) => (key === 'sem_to_motor' || key === 'sem_to_word_motor') ? _smWMax : 0.4;
+        const ab = new SparseMatrix(bSize, aSize, { wMin: -_wMaxFor(`${a}_to_${b}`), wMax: _wMaxFor(`${a}_to_${b}`) });
         // topographic init for aligned-feature-space pairs.
         // layer-constrained endpoints when laminated:
         // src = L2/3 of source region (output pyramidals), dst = L4 of
@@ -1117,7 +1130,7 @@ export class NeuronCluster {
         _projIdx++;
         if (logConstruction) console.log(`[Cluster ${name}]   ${_projIdx}/${pairs.length * 2} ${a}_to_${b}${TOPOGRAPHIC_PAIRS.has(abKey) ? ' [topographic]' : ''} (${bSize.toLocaleString()}×${aSize.toLocaleString()}, nnz=${ab.nnz.toLocaleString()}) in ${Date.now() - abTime}ms`);
         const baTime = Date.now();
-        const ba = new SparseMatrix(aSize, bSize, { wMin: -0.4, wMax: 0.4 });
+        const ba = new SparseMatrix(aSize, bSize, { wMin: -_wMaxFor(`${b}_to_${a}`), wMax: _wMaxFor(`${b}_to_${a}`) });
         // reverse direction: src = L2/3 of b, dst = L4 of a.
         const srcMaskBA = (this.lamination && bRegion) ? buildLayerMask(bRegion, 1) : null;
         const dstMaskBA = (this.lamination && aRegion) ? buildLayerMask(aRegion, 2) : null;
