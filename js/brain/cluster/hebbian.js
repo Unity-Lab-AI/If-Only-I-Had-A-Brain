@@ -82,6 +82,36 @@ export const CLUSTER_HEBBIAN_MIXIN = {
       const dst = name.slice(idx + 4);
       if (!this.regions[src] || !this.regions[dst]) continue;
 
+      // ─── sem→motor saturation prevention (Option B, Gee 2026-06-27) ───
+      // The motor-emission cross-projections collapse under Hebbian over-
+      // strengthening: sem→motor meanCos pins > 0.7 (saturated) because one
+      // dominant basin races to wMax faster than the contrastive anti-Hebbian
+      // + top-K prune + row-normalize can re-separate it. Full diagnosis:
+      // docs/SPONGE-SEM-MOTOR-SATURATION-HANDOFF.md.
+      //
+      // This is the ONE chokepoint where the learning rate reaches BOTH the
+      // GPU-resident weights (hebbianBound dispatch below) and the CPU shadow
+      // (ojaUpdate) — the CPU-side prevention pipeline alone is a no-op at
+      // biological scale because it operates on a stale CPU shadow. Damping
+      // the LR on the emission projections specifically slows the march to
+      // wMax so basin separation holds. Scoped to sem_to_motor +
+      // sem_to_word_motor only — letter_to_phon / letter_to_motor /
+      // motor_to_sem (comprehension) are untouched.
+      //
+      // DREAM_SM_LR_SCALE overrides the 0.5 default; 1.0 = old behavior
+      // (no damping). Cached once per cluster; logged loudly on first use so
+      // the [SatHealth] watcher can correlate the walk's meanCos with it.
+      if (this._smLrScale === undefined) {
+        let _v = NaN;
+        try { _v = parseFloat(typeof process !== 'undefined' && process?.env?.DREAM_SM_LR_SCALE); } catch { _v = NaN; }
+        this._smLrScale = (Number.isFinite(_v) && _v >= 0) ? _v : 0.5;
+        if (this._smLrScale !== 1) {
+          console.log(`[Cluster ${this.name}] sem→motor LR damping ACTIVE — sem_to_motor + sem_to_word_motor Hebbian LR ×${this._smLrScale} (saturation prevention; DREAM_SM_LR_SCALE=1.0 disables). Watch [SatHealth] meanCos across the walk.`);
+        }
+      }
+      const _isMotorEmissionProj = (name === 'sem_to_motor' || name === 'sem_to_word_motor');
+      const lrEff = _isMotorEmissionProj ? lr * this._smLrScale : lr;
+
       // Build the K-scales bundle ONCE per-projection per-call. Passes
       // K.4 hub-mask + K.7 gamma-scale + K.9 per-layer plasticity through
       // to every downstream ojaUpdate path (GPU-bound CPU shadow, sparse-
@@ -147,7 +177,7 @@ export const CLUSTER_HEBBIAN_MIXIN = {
         // different probe projections, we extend the whitelist per
         // subject. Currently focused on unblocking ELA-K gate.
         try {
-          this._gpuProxy.hebbianBound(`${this.name}_${name}`, lr);
+          this._gpuProxy.hebbianBound(`${this.name}_${name}`, lrEff);
         } catch { /* non-fatal */ }
         // Whitelist of probe-critical projection names (unprefixed key,
         // i.e. without the cluster-name prefix). Matches what
@@ -185,7 +215,7 @@ export const CLUSTER_HEBBIAN_MIXIN = {
           // identical; we just `await` a macrotask between slices so the loop
           // drains HTTP/WS work. GPU fire-and-forget already ran above, so GPU
           // weights stay current regardless.
-          await this._ojaUpdateChunked(proj, preF, postF, lr, ojaOpts);
+          await this._ojaUpdateChunked(proj, preF, postF, lrEff, ojaOpts);
         }
         continue;
       }
@@ -232,18 +262,18 @@ export const CLUSTER_HEBBIAN_MIXIN = {
       // /ws donor/chat handshake gets an event-loop slot even on the CPU path.
       if (this._sparsePool && this._sparsePool.ready) {
         try {
-          await this._sparsePool.hebbianUpdate(proj, preF, postF, lr);
+          await this._sparsePool.hebbianUpdate(proj, preF, postF, lrEff);
         } catch {
-          await this._ojaUpdateChunked(proj, preF, postF, lr, ojaOpts);
+          await this._ojaUpdateChunked(proj, preF, postF, lrEff, ojaOpts);
         }
       } else {
-        await this._ojaUpdateChunked(proj, preF, postF, lr, ojaOpts);
+        await this._ojaUpdateChunked(proj, preF, postF, lrEff, ojaOpts);
       }
       // T17.3.d — fire-and-forget GPU Hebbian fallback for standalone
       // (non-bound) projections. Bandwidth cost: srcSize + dstSize u32s.
       if (this._gpuProxyReady && this._gpuProxy && this._gpuProxy.hebbian) {
         try {
-          this._gpuProxy.hebbian(`${this.name}_${name}`, preF, postF, lr);
+          this._gpuProxy.hebbian(`${this.name}_${name}`, preF, postF, lrEff);
         } catch { /* non-fatal — CPU path already updated */ }
       }
     }

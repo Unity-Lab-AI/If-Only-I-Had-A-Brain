@@ -5,6 +5,22 @@
 
 ---
 
+## 2026-06-27 — sem→motor saturation: Option B (prevent collapse during teach) — feature/sem-motor-prevent-collapse
+
+### Gee ask
+
+> "He also wants you to choose whether option A or option B would be best, and get to work." (re: `docs/SPONGE-SEM-MOTOR-SATURATION-HANDOFF.md` — Option A GPU-side rectify vs Option B prevent-collapse-during-teach for the `sem_to_motor` saturation that pins capability rates to 0.)
+
+**Decision: Option B.** A rectifies already-collapsed weights — moot after Gee's fresh-state K-walk wipes them, and the same teach code would re-saturate a fresh matrix; A also needs new GPU decay/normalize plumbing + a donor GPU to validate. B prevents the collapse forming during the fresh walk that's about to run = the correct pairing. Root cause: sem→motor Hebbian over-strengthens one basin to `wMax`; the existing CPU-side prevention pipeline (normalize/anti-Hebbian/prune in `_teachAssociationPairs`) is a no-op at biological scale because it edits a stale CPU shadow. The fix lever lives at `cluster/hebbian.js:_crossRegionHebbian` — the ONE chokepoint where the learning rate reaches BOTH the GPU `hebbianBound` dispatch and the CPU `ojaUpdate` shadow.
+
+- **SM.1 (primary)** — sem→motor LR damping. `_crossRegionHebbian` computes `lrEff = lr × scale` for `sem_to_motor` + `sem_to_word_motor` only and uses it at all 6 dispatch sites (GPU `hebbianBound`/`hebbian` + CPU `ojaUpdate`/`sparsePool.hebbianUpdate`). Default ×0.5 (active — slower strengthening lets basins separate; pairs with cell-pass-on-completion so slower learning no longer blocks progression). `DREAM_SM_LR_SCALE=1.0` disables. Logs `sem→motor LR damping ACTIVE … ×0.5` on first use. `motor_to_sem` (comprehension) + `letter_to_*` untouched.
+- **SM.2 (secondary)** — sem→motor wMax tightening. `js/brain/cluster.js` cross-projection creation gives the two emission projections a tighter ceiling via `DREAM_SM_WMAX`. Default UNCHANGED at 0.4 (the bisected value) — shipped as a knob, not a blind default change.
+- **SM.3** — `SPONGE-SEM-MOTOR-SATURATION-HANDOFF.md` RESOLUTION 2026-06-27 (why B>A, what shipped, deploy + fresh-walk live-tuning watching `[SatHealth]` meanCos<0.7, escalation/back-off knobs). TODO SM block.
+
+**Scope limit (stated to Gee):** prevention only — does NOT un-collapse an already-saturated brain. Validates only on a FRESH walk (`DREAM_KEEP_STATE` off). Needs `/opt` deploy of `cluster/hebbian.js` + `cluster.js` + fresh restart (Sponge — server/GPU, per `SPONGE-FRESH-WALK-DEPLOY.md`). `node --check` clean on both files. On `feature/sem-motor-prevent-collapse`.
+
+---
+
 ## 2026-06-27 — Cell pass = learning completion, not test-question correctness — feature/cells-pass-on-learning-completion
 
 ### Gee ask (verbatim per LAW #0)
