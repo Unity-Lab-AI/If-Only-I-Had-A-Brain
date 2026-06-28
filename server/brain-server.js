@@ -5722,27 +5722,11 @@ const httpServer = http.createServer((req, res) => {
   //   POST /autoscale  { enabled?, bufferPct?, stabilityMin?, minDonorsFloor? }
   if (req.url === '/autoscale') {
     if (!requireLoopback(req, res, '/autoscale')) return;
-    const communityStatus = () => ({
-      communityComputeMB: brain._communityComputeMB || 0,
-      donorCount: brain._communityDonorCount || 0,
-      currentTier: brain._communityTier || 0,        // raw — what the pool qualifies for
-      upgradeTier: brain._communityUpgradeTier || 0, // buffered — what would trigger a resize
-      runningTier: brain._communityTierRunning || 0, // what the brain is actually sized at
-      pendingTier: brain._communityTierPending == null ? null : brain._communityTierPending,
-      pendingSinceMs: brain._communityTierPendingSince || null,
-      // DF.7 downscale telemetry — for the insufficient-compute alert + the
-      // down-rectify countdown in the admin panel.
-      runningFloorMB: brain._runningFloorMB || 0,     // VRAM the running tier needs
-      computeInsufficient: !!brain._computeInsufficient, // can't hold the running tier RIGHT NOW
-      downPendingTier: brain._communityDownTierPending == null ? null : brain._communityDownTierPending,
-      downPendingSinceMs: brain._communityDownTierPendingSince || null,
-      // DF.7 replica-pool telemetry — so you can SEE the multi-GPU engine work
-      // on deploy: how many donor GPUs hold a full brain replica (beyond the
-      // primary) + when their shadows were last re-merged to the master.
-      replicaCount: (typeof brain._livePoolDonors === 'function')
-        ? Math.max(0, brain._livePoolDonors().length - 1) : 0,
-      lastRebroadcastMs: brain._lastReplicaRebroadcastMs || null,
-    });
+    // Shared with the periodic WS broadcast (getState → community) via the
+    // brain._getCommunityState() method, so the HTTP /autoscale response and the
+    // live dashboard can never drift (the panel showed 0s because only this route
+    // set `community`, never the broadcast). Single source of truth now.
+    const communityStatus = () => brain._getCommunityState();
     if (req.method === 'GET') {
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ settings: brain._getAutoScaleSettings(), community: communityStatus() }));
