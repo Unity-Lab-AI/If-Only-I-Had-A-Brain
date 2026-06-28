@@ -5069,6 +5069,14 @@ const REPLICA_REBROADCAST_MS = Number(process.env.DREAM_DF7_REBROADCAST_MS) > 0
   ? Number(process.env.DREAM_DF7_REBROADCAST_MS)
   : (process.env.DREAM_DF7_FANOUT !== '0' ? 60 * 1000 : 10 * 60 * 1000);
 setInterval(() => {
+  // DF.7 F4 — before re-syncing replicas, re-evaluate which donor should be PRIMARY
+  // (fastest healthy, by live capacity score) so a fast late-joiner / a recovered
+  // donor takes the main per-tick stream instead of it staying pinned to a
+  // weaker/laggy card. Margin-gated inside to avoid thrash. Must run before the
+  // rebroadcast so the (possibly new) primary's master is what replicas converge to.
+  if (typeof brain._maybeRebalancePrimary === 'function') {
+    try { brain._maybeRebalancePrimary(); } catch (e) { console.warn('[Brain] DF.7 F4 — primary rebalance check failed:', e?.message || e); }
+  }
   if (typeof brain._rebroadcastMasterToReplicas === 'function') {
     brain._rebroadcastMasterToReplicas().catch((e) => {
       console.warn('[Brain] DF.7 — replica rebroadcast failed:', e?.message || e);

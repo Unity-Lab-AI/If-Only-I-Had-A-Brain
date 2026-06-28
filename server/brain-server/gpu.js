@@ -639,14 +639,30 @@ const SERVER_GPU_MIXIN = {
     return out;
   },
 
-  // DF.7 — round-robin donor selector for independent (stateless) work units.
-  // Returns the next live donor, cycling across the whole pool so load spreads
-  // instead of pinning the primary. Falls back to the primary when alone.
+  // DF.7 F3 — CAPACITY-WEIGHTED donor selector for independent (stateless) work
+  // units. Was flat round-robin (`idx % len`, equal share → slowest donor became
+  // the barrier); now one smooth-weighted-round-robin step so the next donor is
+  // picked ∝ strength (throughput × health). Slow/laggy donors get proportionally
+  // fewer units; >1s-RTT donors get none while a healthy donor exists. Single
+  // donor / fan-out OFF → that donor.
   _nextPoolDonor() {
     const donors = this._livePoolDonors();
     if (donors.length === 0) return null;
-    this._poolRR = ((this._poolRR || 0) + 1) % donors.length;
-    return donors[this._poolRR];
+    if (!this._df7Fanout() || donors.length === 1) return donors[0];
+    let scored = donors.map((ws) => ({ ws, w: Math.max(0, this._donorStrength(ws)) }));
+    if (scored.some((s) => s.w > 0)) scored = scored.filter((s) => s.w > 0);
+    else scored = scored.map((s) => ({ ws: s.ws, w: 1 }));
+    const total = scored.reduce((a, s) => a + s.w, 0) || scored.length;
+    if (!Array.isArray(this._swrrAcc) || this._swrrAcc.length !== scored.length) {
+      this._swrrAcc = scored.map(() => 0);
+    }
+    let bi = 0, bv = -Infinity;
+    for (let j = 0; j < scored.length; j++) {
+      this._swrrAcc[j] += scored[j].w / total;
+      if (this._swrrAcc[j] > bv) { bv = this._swrrAcc[j]; bi = j; }
+    }
+    this._swrrAcc[bi] -= 1;
+    return scored[bi].ws;
   },
 
   // ── DF.7 multi-GPU fan-out (DEFAULT ON · env kill-switch) ──────────────────
@@ -678,11 +694,74 @@ const SERVER_GPU_MIXIN = {
     return process.env.DREAM_DF7_FANOUT_PROPAGATE === '1';
   },
 
-  // DF.7 — donor strength for primary selection: VRAM MB (captured per donor at
-  // gpu_register as gpuVramMB). Bigger card = stronger = should be primary.
+  // DF.7 F2 — link health [0..1] from heartbeat RTT (set per client by the pong
+  // handler). 1.0 at ≤200ms, ramps linearly to 0 by 1000ms, then 0 (a >1s donor —
+  // e.g. a Starlink node mid-handover — is NOT primary-eligible and must never be
+  // the fan-out barrier). Unknown RTT (no pong yet) → treated healthy so a fresh
+  // donor isn't unfairly excluded before its first heartbeat.
+  _donorHealth(ws) {
+    const c = (this.clients && this.clients.get) ? this.clients.get(ws) : null;
+    const rtt = (c && typeof c.rttMs === 'number') ? c.rttMs : 0;
+    if (rtt <= 200) return 1;
+    if (rtt >= 1000) return 0;
+    return Math.max(0, 1 - (rtt - 200) / 800);
+  },
+
+  // DF.7 F1 — donor strength for primary selection + work weighting. Operator
+  // 2026-06-28: "there should be no primary, all are equal" → equal BY REAL
+  // CAPACITY, not VRAM. Score = actual useful throughput × link-health. Throughput
+  // (gneuronsPerSec, from gpu_telemetry) already bakes in the donor's donation %
+  // (a 10%-throttled card reports ~10% throughput), so no separate donation factor
+  // is needed. A card with too little VRAM to hold a replica can still compute
+  // units but is not primary-eligible (returns a tiny VRAM-proxy, never the top
+  // score). A freshly-joined donor with no telemetry yet falls back to a VRAM-GB
+  // proxy × health so first-donor / newcomer selection stays sane until real
+  // throughput arrives ~5s later. DREAM_DF7_MIN_VRAM_MB (default 1500) = the floor
+  // to be a useful primary.
   _donorStrength(ws) {
     const c = (this.clients && this.clients.get) ? this.clients.get(ws) : null;
-    return c ? Number(c.gpuVramMB || 0) : 0;
+    if (!c) return 0;
+    const vram = Number(c.gpuVramMB || 0);
+    const health = this._donorHealth(ws);
+    const minVram = Number(process.env.DREAM_DF7_MIN_VRAM_MB) > 0 ? Number(process.env.DREAM_DF7_MIN_VRAM_MB) : 1500;
+    // can't hold a full replica → tiny score (still > 0 so it can take stateless
+    // units, but it'll never out-score a real donor for primary).
+    if (vram > 0 && vram < minVram) return 0.001 * vram * (health || 0.001);
+    const tput = Number(c.telemetry && c.telemetry.gneuronsPerSec || 0);
+    const base = tput > 0 ? tput : (vram / 1000); // VRAM-GB proxy before first telemetry
+    return base * health;
+  },
+
+  // DF.7 F3 — capacity-weighted donor plan: an `n`-length list where each live
+  // donor appears ~proportional to its strength (smooth weighted round-robin), so
+  // a fast/high-donation card carries the bulk and a slow one a sliver — instead of
+  // the old flat `idx % len` that handed every donor an EQUAL share and let the
+  // slowest stall the Promise.all barrier. Unhealthy donors (rtt>1s → strength 0)
+  // are dropped entirely WHEN a healthy donor exists; if every donor is unhealthy
+  // we fall back to all of them equally (something must run). Fan-out OFF or a
+  // single donor → plain primary-first list (identical to pre-DF.7 behavior).
+  _capacityWeightedPlan(donors, n) {
+    const live = (donors || []).filter((ws) => ws && ws.readyState === 1);
+    if (live.length === 0 || n <= 0) return [];
+    if (!this._df7Fanout() || live.length === 1) {
+      return Array.from({ length: n }, (_, i) => live[i % live.length]);
+    }
+    let scored = live.map((ws) => ({ ws, w: Math.max(0, this._donorStrength(ws)) }));
+    if (scored.some((s) => s.w > 0)) scored = scored.filter((s) => s.w > 0);
+    else scored = scored.map((s) => ({ ws: s.ws, w: 1 })); // all unhealthy → equal fallback
+    const total = scored.reduce((a, s) => a + s.w, 0) || scored.length;
+    const acc = scored.map(() => 0);
+    const plan = [];
+    for (let i = 0; i < n; i++) {
+      let bi = 0, bv = -Infinity;
+      for (let j = 0; j < scored.length; j++) {
+        acc[j] += scored[j].w / total;
+        if (acc[j] > bv) { bv = acc[j]; bi = j; }
+      }
+      acc[bi] -= 1;
+      plan.push(scored[bi].ws);
+    }
+    return plan;
   },
 
   // DF.7 — strongest live donor (optionally excluding one ws, e.g. the one
@@ -695,6 +774,37 @@ const SERVER_GPU_MIXIN = {
       if (s > bestScore) { bestScore = s; best = ws; }
     }
     return best;
+  },
+
+  // DF.7 F4 — periodically hand primary to the strongest healthy donor, not just
+  // on connect/disconnect. Without this, a fast donor that joins AFTER a slow one
+  // (or a primary that degrades, e.g. a Starlink node whose RTT climbs) keeps the
+  // main per-tick stream stuck on the wrong card. Called off the rebroadcast
+  // timer. Requires a clear margin (1.25×) over the current primary so normal
+  // throughput jitter doesn't thrash the primary (each handoff re-uploads the
+  // brain). No-op with fan-out off, <2 donors, or no established primary.
+  _maybeRebalancePrimary() {
+    if (!this._df7Fanout()) return;
+    const donors = this._livePoolDonors();
+    if (donors.length < 2 || !this._gpuClient) return;
+    const cur = this._gpuClient;
+    const curScore = this._donorStrength(cur);
+    const best = this._strongestLiveDonor();
+    if (!best || best === cur) return;
+    const bestScore = this._donorStrength(best);
+    const MARGIN = 1.25;
+    if (bestScore > curScore * MARGIN && bestScore > 0) {
+      const bc = this.clients && this.clients.get ? this.clients.get(best) : null;
+      const cc = this.clients && this.clients.get ? this.clients.get(cur) : null;
+      console.log(`[Brain] DF.7 F4 — rebalancing PRIMARY → healthier donor (${bc && bc.gpuName || '?'} score=${bestScore.toFixed(1)} vs current ${cc && cc.gpuName || '?'} score=${curScore.toFixed(1)}). Previous primary stays a replica + re-syncs.`);
+      this._gpuClient = best;
+      this._gpuConnected = true;
+      this._gpuInitialized = {};
+      this._gpuInitializedConfirmed = {};
+      if (typeof this._rearmCortexGpuUpload === 'function') {
+        try { this._rearmCortexGpuUpload('F4 periodic primary rebalance'); } catch { /* non-fatal */ }
+      }
+    }
   },
 
   // DF.7 — mirror a cortex resident-buffer write (spike / current / clear) to
@@ -727,9 +837,13 @@ const SERVER_GPU_MIXIN = {
   async _gpuParallelMap(items, perItemFn) {
     const donors = this._livePoolDonors();
     if (donors.length === 0 || !Array.isArray(items) || items.length === 0) return [];
+    // DF.7 F3 — assign items capacity-weighted (∝ throughput×health) instead of a
+    // flat idx%len equal share, so the Promise.all finishes near the FASTEST
+    // aggregate rather than waiting on the slowest equal-share donor.
+    const plan = this._capacityWeightedPlan(donors, items.length);
     const results = new Array(items.length).fill(null);
     await Promise.all(items.map((item, idx) => {
-      const donor = donors[idx % donors.length];
+      const donor = plan[idx] || donors[idx % donors.length];
       return Promise.resolve()
         .then(() => perItemFn(item, donor, idx))
         .then((r) => { results[idx] = r; })
