@@ -252,3 +252,17 @@ Standard git-archive overlay + restart at the TOP of this file — but **`git ch
 **⛔ WHY THE BUTTON DIDN'T WORK (Gee 2026-06-28):** the dashboard Update button fired `self-update.sh` but the service never restarted (uptime never reset). Root cause: `sudo -n systemctl restart unity-brain` is NOT granted for the service user, so the overlay lands but the bounce fails, and a stuck "already updating" flag then locks the button out. **FIX = grant the sudo rule + confirm `Restart=always`** (see the standalone Sponge deploy brief Gee pasted you). Until that grant exists, the dashboard cannot self-deploy.
 
 **LIVE VALIDATION (after a real restart):** Profiling → Clients — BOTH donors' Gn/s > 0 (TheREV off zero) + BOTH on the leaderboard; a curriculum cell still PASSES its gate. Rollback: `DREAM_DF7_FANOUT=0`.
+
+---
+
+## 2026-06-28 — main (DDW+WL.4) deploy + box self-serve setup + donor v0.3.1/v0.3.2 releases
+
+**Brain backend:** overlaid `main` (2dc6ce4 — DDW work-sharing + WL.4 self-deploy + PUBDASH) onto `/opt/unity-brain` via `git archive main | ssh tar -x` (box has NO `~/unity-brain-src`; archive-from-local is the reliable path), `chown unity`, `node --check`, then a `.force-fresh` restart (FRESH WALK — weights cleared, identity-core preserved). `DREAM_DF7_FANOUT=1` already in the unit (default-ON in DDW code too). `DREAM_DF7_FANOUT_PROPAGATE` left OFF (reads-fan-out — only enable after replica sync proven clean). On a fresh boot the brain PAUSES until ≥1 donor GPU connects (headless box, `DREAM_NO_AUTO_GPU=1`); donor clients reconnect on their own exp-backoff (compute.html 3s→60s) IF running.
+
+**WL.4 self-serve button — why it had failed + what's fixed/left:** `self-update.log` showed `git clone git@git.unityailab.com … Host key verification failed` — the `unity` user couldn't clone. Fixed two of three prerequisites: (1) `Restart=always` confirmed present; (2) added `/etc/sudoers.d/unity-brain-restart` → `unity ALL=(root) NOPASSWD: /usr/bin/systemctl restart unity-brain` (validated, works); (3) added the if-only host key to `/home/unity/.ssh/known_hosts`. **STILL NEEDED for full self-serve:** a read-only **deploy key** for the `unity` user registered on the repo (it has no SSH key yet) — until then the button's clone still fails auth; the manual archive-overlay above is the deploy path.
+
+**Donor releases (rebuilt on this box — it HAS Rust 1.95 + `x86_64-pc-windows-gnu` + mingw-w64):**
+- **donor-v0.3.1** — PUBDASH light theme + no-console Windows GUI. Both binaries (`cargo build --release --features gui` native + `--target x86_64-pc-windows-gnu`), Forgejo release + site links (`index.html`, `html/compute.html`, `html/legend.html`).
+- **donor-v0.3.2** — Light/Dark/System theme toggle (OS-following default via egui `raw.system_theme`, dual readable palettes) + ALL settings persisted to `<data_dir>/settings.json` (`config::DonorSettings`: theme, server, name, per-GPU enable/%, auto-reconnect). Both binaries rebuilt + Forgejo release + site links bumped to donor-v0.3.2. `cargo check`/`build` clean; Windows exe verified `PE32+ (GUI)` (no console).
+
+Release flow: `fj --host … release --repo UnityAILab/If-Only-I-Had-A-Brain create donor-vX --tag donor-vX --attach <win> --attach <linux>`. Asset names MUST stay `unity-donor-windows-x86_64.exe` + `unity-donor-linux-x86_64` (the site links + donor-app self-update expect them).
