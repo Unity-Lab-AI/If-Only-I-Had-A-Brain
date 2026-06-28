@@ -73,7 +73,7 @@ If you're reading a public doc / HTML claim ("Unity has completed high school bi
 - **ASCALE.5 — fresh walk, RESET WEIGHTS** (do NOT resume) per `docs/SPONGE-FRESH-WALK-DEPLOY.md` after deploy.
 - **ASCALE.6 — docs** — correct `docs/SPONGE-BRAIN-SIZE-AND-AUTOSCALE-DONATED.md` (RESOLVED) + WEBSOCKET register payload + FINALIZED.
 
-**STATUS:** [~] IN PROGRESS — Issue 1 is working-as-designed (donor-fit budget, not a WebGPU cap; documented). Issue 2 confirmed-bug fix in flight (ASCALE.1-4), then deploy + fresh walk (ASCALE.5) + docs (ASCALE.6).
+**STATUS:** ✅ DONE — Issue 1 documented (donor-fit budget, not a WebGPU cap). Issue 2 fixed: ASCALE.1 donor reports utilizationPct+donatedMB, ASCALE.2 server captures, ASCALE.3 effective-donated in the tier gate, ASCALE.4 minDonorMB tracked+logged+in `/autoscale` (caveat honored). Donor v0.3.4 rebuilt (Linux+Windows), released (assets 200), site links bumped. Concurrent-agent RESUME.md merge + `_getCommunityState` single-source conflict resolved cleanly. Pushed feature→develop→main; deployed to box (overlay+chown+fresh walk: 13 files wiped, Tier 3=29 preserved, 0 write failures, NRestarts=0). Verbatim in `docs/FINALIZED.md` 2026-06-28 ASCALE. (Effective-donated counting engages once v0.3.4 donors connect; older donors default to 100% = prior full-card behavior.)
 
 ---
 
