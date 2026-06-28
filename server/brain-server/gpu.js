@@ -1285,17 +1285,24 @@ const SERVER_GPU_MIXIN = {
    * Returns Float32Array (or null on timeout).
    */
   async gpuSparsePropagate(name, preSpikes, targetWs = null) {
-    // Backpressure gate — if the WS send buffer is backed up, skip this
-    // shadow instead of queueing another doomed request.
-    // DF.7 — when targetWs is given this propagate runs on that donor REPLICA
-    // (it carries its own preSpikes, so it's stateless + correct on any replica
-    // holding the same weights). This is the fan-out unit _gpuParallelMap
-    // spreads across all donor GPUs. Untargeted → primary, unchanged.
-    if (!this._gpuSparseFlowOk(targetWs)) return null;
-    const reqId = this._nextSparseReqId();
     const pre = preSpikes instanceof Uint32Array ? preSpikes
       : preSpikes instanceof Uint8Array ? Uint32Array.from(preSpikes)
       : new Uint32Array(preSpikes || []);
+    // DF.7 — a STANDALONE propagate (non-empty preSpikes) carries its own input,
+    // so it's stateless + correct on any replica holding the same weights. When
+    // fan-out is ON and no explicit target was given, round-robin it across the
+    // pool so the idle replica GPUs actually compute (and earn leaderboard credit
+    // via their own telemetry) instead of pinning every forward pass to the
+    // primary. Empty-preSpikes (bound) calls arrive via gpuSparsePropagateBound
+    // with their OWN target + their resident state already mirrored, so they skip
+    // this. Untargeted + fan-out OFF → primary, exactly as before.
+    if (!targetWs && pre.length > 0 && this._df7Fanout && this._df7Fanout()) {
+      targetWs = this._nextPoolDonor();
+    }
+    // Backpressure gate — check the CHOSEN donor's flow; if its WS send buffer is
+    // backed up, skip this shadow instead of queueing another doomed request.
+    if (!this._gpuSparseFlowOk(targetWs)) return null;
+    const reqId = this._nextSparseReqId();
     const hdr = this._encodeSparseHeader(2, reqId, name);
     const lenBuf = Buffer.alloc(4);
     lenBuf.writeUInt32LE(pre.length, 0);
@@ -1440,7 +1447,18 @@ const SERVER_GPU_MIXIN = {
     if (ops.length === 0) return;
     batch.ops = [];
 
-    if (!this._gpuClient || this._gpuClient.readyState !== 1) {
+    // DF.7 — the bound-Hebbian batch is the BULK of teach GPU work. With fan-out
+    // ON, round-robin each batch to the next donor so the teach load actually
+    // SPREADS across the pool (every donor computes + earns leaderboard credit)
+    // instead of pinning 100% of Hebbian to the primary. Safe: the CPU CSR is the
+    // authoritative Hebbian master (the GPU op is a fire-and-forget shadow), the
+    // resident spike state each batch reads is already mirrored to replicas
+    // (_mirrorCortexWriteToReplicas on write_spike_slice), and the periodic master
+    // re-broadcast re-converges each donor's drifted weight-shadow — so a batch
+    // landing on any replica can't corrupt training. Fan-out OFF → primary, exact
+    // prior behavior.
+    const target = (this._df7Fanout && this._df7Fanout()) ? this._nextPoolDonor() : this._gpuClient;
+    if (!target || target.readyState !== 1) {
       for (const op of ops) op.resolve(null);
       return;
     }
@@ -1467,7 +1485,7 @@ const SERVER_GPU_MIXIN = {
     }
     const frame = Buffer.concat([headerBuf, countBuf, ...opBufs]);
 
-    const batchPromise = this._sparseSendBinary(frame, reqId, 30_000);
+    const batchPromise = this._sparseSendBinary(frame, reqId, 30_000, target);
     batchPromise.then((result) => {
       for (const op of ops) op.resolve(result);
     }, (err) => {

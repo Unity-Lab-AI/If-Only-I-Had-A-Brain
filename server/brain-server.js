@@ -5061,7 +5061,13 @@ setInterval(() => {
 // the master). Conservative interval — re-streaming the full weight set is
 // heavy at scale, so this corrects slow drift; fire-and-forget Hebbian keeps
 // replicas approximately current between rebroadcasts.
-const REPLICA_REBROADCAST_MS = 10 * 60 * 1000;
+// DF.7 — when fan-out is ON, Hebbian batches round-robin across donors so their
+// GPU weight-shadows drift apart faster; re-converge them to the CPU master more
+// often (default 60s) to bound the drift. Without fan-out, slow-drift correction
+// at 10 min is plenty. Env-tunable via DREAM_DF7_REBROADCAST_MS.
+const REPLICA_REBROADCAST_MS = Number(process.env.DREAM_DF7_REBROADCAST_MS) > 0
+  ? Number(process.env.DREAM_DF7_REBROADCAST_MS)
+  : (process.env.DREAM_DF7_FANOUT === '1' ? 60 * 1000 : 10 * 60 * 1000);
 setInterval(() => {
   if (typeof brain._rebroadcastMasterToReplicas === 'function') {
     brain._rebroadcastMasterToReplicas().catch((e) => {
