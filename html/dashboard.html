@@ -1942,11 +1942,23 @@
         const cls = (x.unhealthy ? 'unhealthy' : '') + (x.type === 'donor' ? ' donor' : '');
         const rtt = (x.rttMs == null) ? '—' : `${x.rttMs}ms`;
         const nm = x.name ? String(x.name).slice(0, 16) : '<span style="color:#475569">anon</span>';
-        const gpu = x.type === 'donor' ? `${x.gpuName ? String(x.gpuName).slice(0, 18) : '?'} ${x.gneuronsPerSec != null ? '· ' + num(x.gneuronsPerSec, 1) + 'Gn/s' : ''}` : '';
+        // F9 — show the donor's bind cap + the HONEST reason when it can't hold the
+        // cortex matrices, instead of a mystery 0-Gn/s row.
+        const bindGB = x.maxBindMB ? (x.maxBindMB / 1024).toFixed(1) + 'GB' : '';
+        const gpu = x.type === 'donor'
+          ? (x.bindIncapable
+              ? `<span style="color:#ef4444">⚠ buffer too small for cortex (${bindGB})</span>`
+              : `${x.gpuName ? String(x.gpuName).slice(0, 18) : '?'} ${x.gneuronsPerSec != null ? '· ' + num(x.gneuronsPerSec, 1) + 'Gn/s' : ''}${bindGB ? ' · bind ' + bindGB : ''}`)
+          : '';
         return `<tr class="${cls.trim()}"><td>${x.type}</td><td>${nm}</td><td>${x.ip || '?'}</td><td>${fmtDur(x.uptimeS)}</td><td>${x.lastSeenS}s</td><td>${rtt}</td><td>${num(x.bytesInMB, 1)}/${num(x.bytesOutMB, 1)}MB</td><td>${num(x.bufferedKB)}KB</td><td>${gpu}</td></tr>`;
       }).join('');
       const more = (c.total > c.shown) ? `<div class="muted" style="font-size:10px;color:#666;padding:4px 6px;">+${c.total - c.shown} more not shown</div>` : '';
-      cl.innerHTML = `<table class="profiling-tbl"><thead><tr><th>type</th><th>name</th><th>ip</th><th>up</th><th>seen</th><th>rtt</th><th>in/out</th><th>buf</th><th>gpu</th></tr></thead><tbody>${rows}</tbody></table>${more}`;
+      // F9 — cortex-upload binding-limit banner (honest reason, not a mystery stall).
+      const cu = p.cortexUpload || {};
+      const cuBanner = (cu.failed && cu.looksLikeBindingLimit)
+        ? `<div style="color:#ef4444;font-size:11px;padding:4px 6px;">⚠ cortex cross-projections failed to BIND on the donor GPU (storage buffer too small) — brain on CPU master. ${String(cu.reason || '').slice(0, 80)}</div>`
+        : '';
+      cl.innerHTML = cuBanner + `<table class="profiling-tbl"><thead><tr><th>type</th><th>name</th><th>ip</th><th>up</th><th>seen</th><th>rtt</th><th>in/out</th><th>buf</th><th>gpu</th></tr></thead><tbody>${rows}</tbody></table>${more}`;
     }
 
     // Brain-event stream renderer. Reads the `brainEvents` array out
