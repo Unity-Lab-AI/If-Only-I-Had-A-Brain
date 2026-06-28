@@ -5,6 +5,27 @@
 
 ---
 
+## 2026-06-28 — ASCALE: auto-scale gated on MAX card VRAM not DONATED amount + brain-size budget clarity (donor-app v0.3.4) — feature/community-compute-donor-count
+
+### Gee verbatim per LAW #0
+
+> *"Deal with gee's stuff"*
+
+Forwarded handoff (`docs/SPONGE-BRAIN-SIZE-AND-AUTOSCALE-DONATED.md`): *"ISSUE 2 — auto-scale-UP triggers on MAX card VRAM, not the DONATED amount (two 15GB cards trip a tier at ~30GB even though combined they're set to ~18GB). CONFIRMED BUG"* · *"FIX (3 parts): donor sends utilizationPct (+ donatedMB); server captures it; _recomputeCommunityCompute uses EFFECTIVE donated capacity"* · *"CAVEAT: utilization is a TIME duty-cycle (throughput), not VRAM held. Size-tier should gate on min committed VRAM per donor; throughput-tier on Σ gneuronsPerSec. Don't conflate"* · *"⚠⚠ ONCE EITHER FIX IS IN: FULLY RESET WEIGHTS + FRESH WALK — do NOT resume."*
+
+**ISSUE 1 — working as designed (documented, no code):** the ~4GB brain is `DREAM_DONOR_FIT_MB=4096` (deployed donor-fit budget so one modest donor holds a full data-parallel replica), NOT a WebGPU/binary cap. Bump `DREAM_BRAIN_BUDGET_MB` to go bigger (then every donor must hold it), or let the now-fixed auto-scale grow it.
+
+**ISSUE 2 — confirmed bug, fixed:**
+
+- **ASCALE.1** `donor-app/src/protocol.rs` + `donor.rs` (v0.3.4) — `gpu_register` now sends `utilizationPct` (avg of per-GPU donation duty-cycles, else `cfg.utilization_pct`) + `donatedMB` (from `cfg.memory` `--memory` cap, 0 = unset).
+- **ASCALE.2** `server/brain-server.js` gpu_register — captures `client.utilizationPct` (clamp 0–100, default 100) + `client.donatedMB`.
+- **ASCALE.3** `server/brain-server/gpu.js` `_recomputeCommunityCompute` — community total sums **effective donated** capacity `eff = donatedMB>0 ? min(donatedMB, fullVram) : fullVram × util/100` instead of raw `gpuVramMB`. Two 15 GB cards at 60 % → 18 GB community, no false tier-up. Old donors (no util field) default to 100 % = full-card (prior behavior).
+- **ASCALE.4 (caveat honored)** — tracks `_communityMinDonorMB` (smallest donor's effective committed VRAM = the real data-parallel SIZE bound), logs it in the milestone-candidate line, exposes it in `/autoscale` community state as `minDonorMB`. Tiers still gate on the (now effective) sum; full size-tier(min-donor) vs throughput-tier(Σ Gn/s) rewire is the flagged architectural follow-up.
+
+`cargo check` clean (donor); `node --check` clean (brain-server.js, gpu.js). Doc `SPONGE-BRAIN-SIZE-AND-AUTOSCALE-DONATED.md` RESOLVED banner + WEBSOCKET register payload updated. Then donor v0.3.4 rebuilt (Linux + Windows), released, site links bumped, deployed to box + fresh walk (reset weights, do NOT resume) per `docs/SPONGE-FRESH-WALK-DEPLOY.md`.
+
+---
+
 ## 2026-06-28 — FLAP: Linux native-donor red/0 Gn/s = connection flapping (Blackwell theory disproven) + flap resistance + donor telemetry — feature/community-compute-donor-count
 
 ### Gee verbatim per LAW #0
