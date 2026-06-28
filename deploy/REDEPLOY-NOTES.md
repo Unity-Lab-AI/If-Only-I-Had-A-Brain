@@ -174,3 +174,25 @@ Context: the brain trained all night but the DONOR (Chrome compute.html) kept dr
 **Bootstrap reality (answers "do I need Sponge?"):** after this batch is deployed ONCE, Gee can self-serve routine code updates from the dashboard — **Update & Savestart** (keep training) or **Update & Fresh Walk** (wipe) — no Sponge. The ONLY things that still need box-admin: the FIRST deploy of this batch (the existing Update button or a manual overlay), any `deploy/unity-brain.service` change (needs `daemon-reload`), and the one-time button prerequisites (deploy key can clone, `sudo -n systemctl restart unity-brain` permitted, `Restart=always`). Redeploy = the standard git-archive overlay + restart at the top of this file.
 
 **Verify after redeploy:** console shows `✓ RECTIFIED sem→motor` where it used to print `⛔ SATURATION HALT`; walk crosses K→grade1; `periodic-curriculum-checkpoint` saves every ~5 min. Click **Update & Savestart** → `self-update.log` shows `savestart mode … NOT writing .force-fresh` and the boot logs `DREAM_KEEP_STATE=1 … KEEPING prior state` (not a wipe).
+
+---
+
+## 2026-06-27 — v1.1.0 + tier3 wave cascade: new env flags + cell-pass + sem→motor + profiling
+
+Two backend waves landed on `main` (tag `v1.1.0`, then the `feature/tier3-identity-seed-repair` cascade merge). Both are **backend + frontend** → standard git-archive overlay redeploy + `systemctl restart` (the SIGTERM handler force-saves weights + writes the resume marker, so a `DREAM_KEEP_STATE=1` restart **resumes** — no wipe). For a clean re-train use **Update & Fresh Walk** / `.force-fresh` (unconditional wipe; preserves `identity-core.json`).
+
+**NEW env flags this wave (all default-safe — set NONE for the intended behavior):**
+
+| Flag | Default | Effect |
+|------|---------|--------|
+| `DREAM_SM_LR_SCALE` | `0.5` (active) | sem→motor Hebbian LR multiplier (saturation prevention, `cluster/hebbian.js`). `1.0` = old behavior. Lower (`0.25`) if `[SatHealth] meanCos` still climbs past 0.7 on a fresh walk; raise (`0.7`) if basins go dead / TALK→0. |
+| `DREAM_SM_WMAX` | unset (=0.4) | tighter weight ceiling for `sem_to_motor`+`sem_to_word_motor` only. Secondary saturation lever; try `0.25` if LR damping alone doesn't clear meanCos. |
+| `DREAM_CELL_PASS_HARD` | unset (OFF) | restore old gate (probe/battery/health correctness decides cell pass). Default OFF = cells pass on learning completion. |
+| `DREAM_BATTERY_GATE_HARD` | unset (OFF) | restore student-battery hard-block on cell pass. (Supersedes the older `DREAM_BATTERY_GATE_ADVISORY` opt-in — advisory is now the default.) |
+| `DREAM_HEALTH_GATE_HARD` | unset (OFF) | restore per-grade health-gate hard-block on cell pass. |
+
+The unit currently sets `DREAM_BATTERY_GATE_ADVISORY=1` — now redundant (advisory is default) but harmless; leave it.
+
+**Console signals the wave landed:** `[Curriculum] 🎓 CELL COMPLETE … PASSES on learning completion`; `[Cluster cortex] sem→motor LR damping ACTIVE … ×0.5`; `/public-state.json` includes a `profiling` block (host/process/throughput/network/clients). Admin dashboard shows the **Application Profiling** card. Plus the tier3-wave signals: `[Tier3Store] seeded N missing identity anchor(s)`, `[MindSpace] server equational mind-space ready (CPU reference path)`.
+
+**Per-file overlay used for the v1.1.0 backend (when not git-archiving the whole tree):** `server/brain-server.js`, `server/brain-server/state.js`, `server/brain-server/gpu.js`, `js/brain/cluster.js`, `js/brain/cluster/hebbian.js`, `js/brain/curriculum.js`, `html/dashboard.html` → `/opt/unity-brain/…`, `chown unity:unity`, `node --check`, restart. Backups land in `/opt/unity-brain/_release-backup-*` (rollback: `cp -a` back + restart).

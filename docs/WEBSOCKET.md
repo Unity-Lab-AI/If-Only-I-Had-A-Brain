@@ -115,12 +115,21 @@ Broadcast to every connected client every `STATE_BROADCAST_MS` (100 ms → 10 Hz
       "auditory": { "standRate": 0.0, "mainRate": 0.0, "divergence": 0.0 },
       "letter":   { "standRate": 0.0, "mainRate": 0.0, "divergence": 0.0 }
     },
+    "profiling": {
+      "host":       { "loadAvg": [1.4,1.3,1.4], "cpuCount": 16, "sysMemUsedPct": 41, "osUptimeS": 0 },
+      "process":    { "rssMB": 6822, "heapUsedMB": 18, "heapLimitMB": 16384, "heapUsedPct": 0, "cpuPercent": 42, "voluntaryCtxSwitches": 0, "uptimeS": 0 },
+      "throughput": { "stepTimeMs": 8.5, "stepsPerSec": 16, "eventLoopLagMs": 8, "eventLoopDelay": {"meanMs":1.2,"p50Ms":0.8,"p99Ms":7.1,"maxMs":9.5}, "gpuDispatchPerSec": 1, "totalSpikes": 0, "defsLearnedPerHour": 0 },
+      "network":    { "bytesInTotalMB": 0.03, "bytesInPerSecKB": 0, "bytesOutPerSecKB": 0, "msgInTotal": 0, "donorCount": 1, "aggGneuronsPerSec": 0, "wsPressure": { "...": "see _getWsPressureState" } },
+      "clients":    { "total": 4, "admins": 1, "viewers": 2, "donors": 1, "totalConnectionsEver": 4, "avgRttMs": null, "unhealthyCount": 0, "shown": 4, "list": [ { "id": "user_…", "type": "donor", "rttMs": 35, "bytesInMB": 0, "bufferedKB": 0, "unhealthy": false } ] }
+    },
     "clientCount": 3
   }
 }
 ```
 
 The exact shape comes from `brain.getState()` in `server/brain-server.js` — it's the full live snapshot the dashboard renders. This is the highest-traffic message by volume (10 Hz × every client).
+
+`profiling` (`server/brain-server/state.js _getProfilingState()`) is the admin Application Profiling payload — **host** hardware, **process** resource usage, **throughput** (incl. a `perf_hooks.monitorEventLoopDelay` percentile histogram + GPU dispatch rate), **network** (per-WS byte totals + live rates, reuses `wsPressure`), and **clients** (per-connection health — type/RTT/bytes/buffered, `unhealthy`-flagged + sorted first, list capped at 24 + `shown`). Per-client byte/RTT counters are instrumented in `brain-server.js` (send-wrapper + inbound listener + heartbeat ping/pong). The dashboard renders it in an `admin-only` Profiling card; public viewers receive it in `/public-state.json` but the panel is admin-gated. Full field reference: `docs/ADMIN-CONTROLS.md`.
 
 `drugSnapshot` is `DrugScheduler.snapshot(now)`. `active` carries per-substance `{substance, displayName, level, phase}` where phase ∈ {onset, peak, plateau, tail, sober}. `combos` carries per-pair `{key: 'a+b', displayName, level: min(level_a, level_b)}` for the 7 synergy entries in the COMBOS table. `riskFlags` maps axis name → cumulative intensity across active combos (e.g., `physicalStrain`). `pendingDesires` maps substance → `{delta, expiresAt}` from sensory-trigger cravings. `pendingAcquisitions` tracks substances Unity is waiting on (dealer / friend / party source).
 

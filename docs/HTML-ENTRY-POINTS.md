@@ -54,7 +54,7 @@ Either way, viewer-mode dashboards hide Stop / Grade-advance / Signoff / Auto-ad
 
 ### `html/dashboard.html` — admin/operator live dashboard
 
-**Purpose:** Admin/operator view of the brain — emotion chart, cluster firing, curriculum milestones, drug-pharmacokinetics, conversation activity, ALL the Phase 6 telemetry panels (audit A.1-A.3), live server-console panel, community-compute auto-scale controls, GPU spawn-failure banner (audit H.6), no-connection recovery banner (audit H.9). Viewers connecting on the public lane see the read-only subset (admin controls hidden via `.admin-only`).
+**Purpose:** Admin/operator view of the brain — emotion chart, cluster firing, curriculum milestones, drug-pharmacokinetics, conversation activity, ALL the Phase 6 telemetry panels (audit A.1-A.3), live server-console panel, community-compute auto-scale controls, GPU spawn-failure banner (audit H.6), no-connection recovery banner (audit H.9), and the **Application Profiling** card (admin-only — system resources [CPU/load/RAM/V8-heap], throughput [step/sec, event-loop delay histogram, GPU dispatch/sec], network [WS bytes + rates + backpressure], and a per-client client↔brain health table with RTT/bytes/buffered + unhealthy-row flagging; reads `state.profiling`). Viewers connecting on the public lane see the read-only subset (admin controls + the Profiling card hidden via `.admin-only`).
 
 **Access:** Deployed = served static; admin telemetry + controls ride the Forgejo-authed lane `wss://<host>/admin/ws` (first authed operator after deploy = master). Local dev = `start.bat` auto-opens `http://localhost:7525/dashboard.html`, socket `ws://localhost:7525` (loopback → admin).
 
