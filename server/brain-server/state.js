@@ -663,9 +663,15 @@ const SERVER_STATE_MIXIN = {
             // client/donor fault, so high RTT only flags a client when the loop is healthy.
             // (Threshold 1s→2.5s so a normal blip never trips it.) Was false-flagging the
             // admin + donors red during teach.
+            // Backpressure red at 300 MB (60% of the 500 MB drop threshold) — NOT 50 MB.
+            // A high-latency / high-bandwidth-delay link (Starlink: satellite RTT + jitter +
+            // bufferbloat + ~15s handover stalls) legitimately holds 10s-100s of MB in the
+            // server's send buffer to that donor — that's the link draining, not a fault.
+            // Only red when it climbs toward the point where frames start getting DROPPED
+            // (500 MB → GPU-shadow divergence). Below that it's all still delivered, just queued.
             unhealthy: ((now - (c.lastSeen || now)) > 90000)
               || (typeof c.rttMs === 'number' && c.rttMs > 2500 && (this._lastEventLoopLagMs || 0) < 1000)
-              || (buffered > 50 * MB),
+              || (buffered > 300 * MB),
           });
         }
       }
