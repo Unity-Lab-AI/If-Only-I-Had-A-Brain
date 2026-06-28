@@ -95,3 +95,32 @@ Speech (`sem_to_motor` saturation) is still separate + donor-GPU-gated: **`docs/
 3. Don't model-parallel-shard the single tick now (latency trap) — F1–F5 give the real win.
 4. **After deploying: fresh-start walk, NO saved weights** (clear `DREAM_KEEP_STATE`, let `autoClearStaleState` wipe) — see `SPONGE-FRESH-WALK-DEPLOY.md`.
 5. Rollback: `DREAM_DF7_FANOUT=0`.
+
+---
+
+## ADDENDUM (2026-06-28) — the red "16s RTT" donor is a GPU BUFFER-BINDING stall, NOT network
+
+Live data that proves it: one donor showed **donor-lane RTT 16,381ms** while that *same person's* **admin-lane RTT was 186ms** — same machine, same Starlink, same instant. A network/ISP problem hits BOTH lanes. It only hit the donor lane → it is not the pipe.
+
+### What it actually is (file:line verified)
+- Donor `rttMs` is a **WebSocket ping/pong** (`brain-server.js:6496` = `Date.now() - ws._pingSentAt`), not a compute round-trip. It balloons when the donor's client event loop is **blocked**, not when the wire is slow.
+- That donor's `in/out = 0 / 187.4MB`: the server pushed ~187MB — a FULL brain replica including the **14–17 cortex cross-projection matrices** (`gpu.js:1152`). He sent **0** back.
+- His GPU/browser **can't bind one of those matrices** because it exceeds HIS device's WebGPU **`maxStorageBufferBindingSize`** (per-binding ceiling — `brain-server.js:181-187`, `:7454`). `initGpu()` then fails binding-limit-shaped and sets `_cortexUploadFailure.looksLikeBindingLimit` (`brain-server.js:3428-3430`): *"sparse matrices stay at 0 and the brain limps on the CPU master copy."*
+- Net: oversized cortex matrix → bind fails → 0 compute returned (0 in, 0 Gn/s) → client event loop jammed on the failed/huge buffer → ping/pong can't return for ~16s → flagged red. **The RTT looks like lag but it's a stalled GPU upload.**
+
+### Why other donors are fine + why this donor "used to run it alone"
+- Other cards report a **higher `maxStorageBufferBindingSize`** (different GPU/driver/browser) and accept the same matrix → normal Gn/s.
+- This donor ran fine solo earlier because the brain / cross-projections (esp. `sem_to_motor`) were small enough to fit under HIS card's binding ceiling. Cortex-microstructure + `sem_to_motor` growth pushed one matrix past *his* device limit. Same wall flagged in `SPONGE-SEM-MOTOR-SATURATION-HANDOFF.md` and the native-donor brainstorm.
+
+### Fix (additions to F1–F6)
+- **F7 — matrix TILING (the proper fix):** split any cross-projection larger than the target donor's reported `maxStorageBufferBindingSize` into sub-binding chunks so ANY GPU can bind it. Helps every donor, removes the wall permanently. (This also unblocks the `sem_to_motor` saturation path — a tiled matrix is CPU-addressable per-tile.)
+- **F8 — capability-aware routing:** read each donor's `maxStorageBufferBindingSize` (and `maxBufferSize`) at `gpu_register` (alongside `vramMB`, `brain-server.js:6834`). Never dispatch a donor a matrix it can't bind; route the big one only to GPUs that can hold it, give the smaller donor the work that fits. (Composes with F1's capability score.)
+- **F9 — honest dashboard label:** when `_cortexUploadFailure.looksLikeBindingLimit` is set for a donor, surface "GPU buffer too small for cortex matrix" instead of leaving a 16s RTT that reads as high ping. Don't punish a fine-network donor as "laggy."
+
+---
+
+## ⚠⚠ REPEAT — AFTER THESE FIXES, FRESH-START WALK + CLEAR WEIGHTS AGAIN
+This bears repeating because it must happen EVERY time after a fix lands: **do not resume.** Clear the weights and start the curriculum fresh from pre-K.
+- Remove `Environment=DREAM_KEEP_STATE=1` from the unit → `sudo systemctl daemon-reload` → `sudo systemctl restart unity-brain` so `autoClearStaleState()` wipes brain-weights v0–v4 + conversations.json + episodic-memory.db* (excludes identity-core.json; `brain-server.js:609,714,720-740`).
+- A resumed walk carries the old desynced state and won't validate the fixes. Fresh weights, fresh pre-K walk, watch `🎓 CELL COMPLETE` + `passedCells` climbing in grade order.
+- Full steps: `docs/SPONGE-FRESH-WALK-DEPLOY.md`.
