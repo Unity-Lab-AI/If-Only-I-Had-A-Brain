@@ -4,7 +4,37 @@
 **Branch:** `feature/community-compute-donor-count`
 **Goal:** Sponge's donor stays RED / 0 Gn/s while the Windows donors compute fine. Sponge runs the **Linux** build of the native `donor-app`; everyone else is **Windows**. Figure out the platform incompatibility and whether there's a fix.
 
+> ✅ **RESOLVED 2026-06-28 — the Blackwell/PTX theory below is DISPROVEN by live evidence on Sponge's actual box. Root cause = CONNECTION FLAPPING, not the GPU.** See the new top section. The PRIMARY/SECONDARY hypotheses are kept for the record but did NOT apply to this hardware.
+
+---
+
+## ✅ RESOLUTION (live evidence, Sponge's Linux donor box, 2026-06-28)
+
+Ran the investigation directly on Sponge's machine. Every premise of the hypotheses below collapsed on contact with the real hardware + logs:
+
+- **Hardware:** `nvidia-smi` → **RTX 4070 SUPER (Ada, cc 8.9)** + **RTX 2060 (Turing, cc 7.5)**. **No Blackwell / RTX 5070 Ti on this box.** Driver **595.71.05 / CUDA 13.2** — newer than anything Blackwell would need.
+- **PTX target:** `kernels.ptx` is built for **compute_60 (Pascal)** (`cuda.rs:24`), the most forward-compatible target there is — a 595 driver JITs it to Ada/Turing trivially. The "PTX-for-12.4 has no Blackwell SASS → JIT fails on an under-versioned driver" story does not apply.
+- **CUDA is live:** donor journal → `[donor] backends: NVIDIA GeForce RTX 2060 [CUDA]`. If the PTX had failed to load, `CudaEngine::new` would have `Err`'d → wgpu fallback; it didn't. Kernels loaded. "Registers but kernels never run" is also wrong here.
+- **The card choice explains the low score:** Sponge donates GPU slot **1 = the RTX 2060** (`building multi-GPU engine over 1 card(s): [1]`), not the 4070 SUPER (his display card). A 2060 is weak → low `score`. User choice, not a bug.
+- **ROOT CAUSE — connection flapping (matches Gee's own words):** the WS resets every ~3–5 min:
+  ```
+  14:14:26  ws error: Connection reset without closing handshake
+  14:19:28  ws error: Connection reset by peer (os error 104)
+  14:22:05  ws error: Connection reset by peer (os error 104)
+  ```
+  Each reset → full engine rebuild + reconnect + re-init of all 7 clusters (40M neurons) → minutes of 0 throughput per flap → dashboard red. On a `wss://…git.unityailab.com/ws` link over **Starlink CGNAT + reverse proxy**, a quiet teach window lets the connection go idle long enough for an intermediary to reap it (RST). The donor never sent its OWN keepalive pings (`donor.rs` only answered server pings), so nothing kept the link warm.
+
+### Fix shipped (donor-app v0.3.3, branch `feature/community-compute-donor-count`)
+
+- **Client-initiated WS keepalive ping** every 15s (`donor.rs`) → the link never goes idle long enough to be reaped (the flap PREVENTION).
+- **Fast dead-link detection** — `IDLE_TIMEOUT` 45s on inbound silence → proactive reconnect instead of waiting minutes for `os error 104`.
+- **Jittered reconnect backoff** (per-install donor-id hash) so donors don't reconnect in lockstep.
+- **LOUD CUDA load logging** (`cuda.rs`) — `cuModuleLoadData` / kernel-load failure now prints a `⚠⚠ PTX MODULE LOAD FAILED` banner, never a silent 0 (Gee's ask).
+- **Donor telemetry gap closed** — `osPlatform` + `engineBackend` + `driverVersion` + `computeCapability` now flow in `gpu_register` + `gpu_telemetry` (`protocol.rs`/`donor.rs`/`compute.rs`/`cuda.rs`), are captured server-side (`brain-server.js`), and show in the dashboard **Clients table** `plat` column (`state.js` + `dashboard.html`). A 0-Gn/s donor's platform/backend/driver is now visible, never log-archaeology again.
+
 > ⚠ **Correction to the earlier saturation/binding-limit handoff:** that 128MB-binding theory was for a *browser* donor. The **native** donor requests `required_limits: adapter.limits()` (`donor-app/src/compute.rs:136`) — it gets the card's REAL max binding, so the default-128MB wall does NOT apply to the native binary. The native-Linux suspects below are different.
+
+> ⛔ **The PRIMARY + SECONDARY hypotheses below are SUPERSEDED** by the resolution above — retained for the record only.
 
 ---
 

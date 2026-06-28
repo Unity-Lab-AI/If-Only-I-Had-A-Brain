@@ -6864,6 +6864,13 @@ wss.on('connection', (ws, req) => {
           // FIRST replica-sync, before the first telemetry frame arrives.
           client.maxBindMB = Number(msg.maxStorageBindingMB) || Number(msg.maxBindMB) || 0;
           client.gpuName = (msg.gpuName || 'unknown').toString().slice(0, 80);
+          // FLAP — platform/backend telemetry captured at register so a 0-Gn/s donor's
+          // OS / compute backend / driver / compute-capability is visible in the Clients table
+          // from the first frame (native donor sends these; the browser donor omits them → blank).
+          client.osPlatform = (msg.osPlatform || client.osPlatform || '').toString().slice(0, 16);
+          client.engineBackend = (msg.engineBackend || client.engineBackend || '').toString().slice(0, 24);
+          client.driverVersion = (msg.driverVersion || client.driverVersion || '').toString().slice(0, 48);
+          client.computeCapability = (msg.computeCapability || client.computeCapability || '').toString().slice(0, 12);
           // Donor LEADERBOARD identity — a persistent client-side ID (localStorage
           // UUID sent by compute.html) keys this donor's cumulative neuron-compute
           // total across reconnects, plus an optional display name. The leaderboard
@@ -6931,12 +6938,22 @@ wss.on('connection', (ws, req) => {
           // Stored on the donor's client record; _updatePerfStats aggregates
           // the whole pool into perf.gpuPool so the admin dashboard shows the
           // donor fleet instead of the (GPU-less) server box's empty probe.
+          // FLAP — re-read platform/backend each telemetry tick so the Clients table stays correct
+          // even if the register frame was missed on a reconnect race (native donor re-sends them).
+          if (msg.osPlatform) client.osPlatform = String(msg.osPlatform).slice(0, 16);
+          if (msg.engineBackend) client.engineBackend = String(msg.engineBackend).slice(0, 24);
+          if (msg.driverVersion) client.driverVersion = String(msg.driverVersion).slice(0, 48);
+          if (msg.computeCapability) client.computeCapability = String(msg.computeCapability).slice(0, 12);
           client.telemetry = {
             gpuName: (msg.gpuName || client.gpuName || 'webgpu').toString().slice(0, 80),
             vramMB: Number(msg.vramMB) || client.gpuVramMB || 0,
             maxBindMB: Number(msg.maxBindMB) || 0,
             gneuronsPerSec: Number(msg.gneuronsPerSec) || 0,
             stepsComputed: Number(msg.stepsComputed) || 0,
+            osPlatform: client.osPlatform || '',
+            engineBackend: client.engineBackend || '',
+            driverVersion: client.driverVersion || '',
+            computeCapability: client.computeCapability || '',
             ts: Date.now(),
           };
           // Accumulate this donor's neuron-compute contribution into the

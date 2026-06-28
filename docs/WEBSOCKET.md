@@ -278,13 +278,21 @@ Stored on the server-side client record (`client.name`). Currently used only for
 
 ### `gpu_register`
 
-Sent by `compute.html` on WebSocket open to mark itself as the GPU compute client.
+Sent by `compute.html` (browser donor) or the native donor-app on WebSocket open to join the donor pool.
 
 ```json
-{ "type": "gpu_register" }
+{
+  "type": "gpu_register",
+  "vramMB": 16302,
+  "maxStorageBindingMB": 16302,
+  "gpuName": "NVIDIA GeForce RTX 2060",
+  "donorId": "native-…", "donorName": "Sponge",
+  "osPlatform": "linux", "engineBackend": "cuda",
+  "driverVersion": "595.71.05", "computeCapability": "7.5"
+}
 ```
 
-The server marks `brain._gpuClient = ws` and `brain._gpuConnected = true`, then all subsequent Rulkov step requests get routed to this client via `compute_request` / `compute_result` round trips. The brain waits (blocks step dispatching) until a GPU client connects, with a log message every few seconds announcing `[GPU] Waiting for compute client`. Only one GPU client is supported at a time — a second `gpu_register` replaces the first. No CPU fallback exists — at 400K+ cerebellum neurons × 7 clusters × 60 Hz the iteration cost would cook any CPU.
+The server adds `ws` to `brain._gpuClients` and (if there's no primary, or the newcomer is materially stronger under DF.7) marks it `brain._gpuClient`; otherwise it's brought up as a full data-parallel replica. The browser donor omits everything but `type`; the native donor sends the richer payload above. **`osPlatform` / `engineBackend` (`cuda`/`vulkan`/`dx12`/`metal`/`gl`) / `driverVersion` / `computeCapability`** (donor-app v0.3.3+) are captured on `client.*` and surfaced in the admin dashboard **Clients table** `plat` column so a red / 0-Gn/s donor's platform + backend + driver is visible instead of inferred from logs. `gpu_telemetry` re-sends the same four fields each tick so the row stays correct across a reconnect race.
 
 ### `compute_result`
 
@@ -341,6 +349,14 @@ There's no global rate limit or burst budget — it's purely per-client per-mess
 4. **Messages during the gap:** anything the client tried to send while disconnected is lost. The client should queue user input in its own UI layer if it wants delivery guarantees (currently it doesn't — dropped text messages are just dropped).
 
 This is intentional: Unity's brain state lives ON the server, not in the client. A reconnecting client has nothing to restore beyond the HUD snapshot, because the brain kept running the whole time.
+
+### Native donor flap resistance (donor-app v0.3.3+)
+
+The native donor (`donor-app/src/donor.rs`) hardens the donor WS against connection flapping — the failure mode where a `wss://…/ws` link over Starlink CGNAT + a reverse proxy gets its idle connection reaped every few minutes (`Connection reset by peer (os error 104)`), each reset forcing a full GPU-engine rebuild + 40M-neuron re-init = minutes of 0 throughput (dashboard red):
+
+1. **Client-initiated keepalive** — the donor sends its own WS `Ping` every 15s (`KEEPALIVE_INTERVAL`) so the link never goes idle long enough for CGNAT / the proxy to reap it. (Before, the donor only *answered* server pings.)
+2. **Fast dead-link detection** — if no inbound frame (incl. the brain's pong) arrives for 45s (`IDLE_TIMEOUT`) while keepalive-pinging, the donor presumes the link dead and reconnects immediately instead of waiting minutes for the OS to surface the RST.
+3. **Jittered reconnect backoff** — a deterministic per-install offset (donor-id hash, 0–1500 ms) staggers rejoins so a brain restart doesn't make every donor reconnect in lockstep. The supervisor (`run_donor_supervised`) still resets backoff on a clean drop and grows it (capped 30s) on a failed connect.
 
 ### The hostname gate
 

@@ -47,6 +47,33 @@ pub fn device_names() -> Vec<String> {
     .unwrap_or_default()
 }
 
+/// CUDA compute capability for device `ordinal` as "major.minor" (e.g. "8.9"). Empty string on
+/// any failure (missing libcuda, query error). Wrapped in catch_unwind so a non-NVIDIA host or a
+/// driver-API mismatch can't crash the donor.
+fn query_compute_capability(ordinal: usize) -> String {
+    std::panic::catch_unwind(|| {
+        use cudarc::driver::{result, sys};
+        let dev = match result::device::get(ordinal as i32) {
+            Ok(d) => d,
+            Err(_) => return String::new(),
+        };
+        let major = unsafe {
+            result::device::get_attribute(dev, sys::CUdevice_attribute::CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MAJOR)
+        }
+        .unwrap_or(0);
+        let minor = unsafe {
+            result::device::get_attribute(dev, sys::CUdevice_attribute::CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MINOR)
+        }
+        .unwrap_or(0);
+        if major > 0 {
+            format!("{major}.{minor}")
+        } else {
+            String::new()
+        }
+    })
+    .unwrap_or_default()
+}
+
 struct CudaCluster {
     size: u32,
     state: CudaSlice<f32>,        // 2*n interleaved (x,y)
@@ -76,6 +103,7 @@ pub struct CudaEngine {
     stream: Arc<CudaStream>,
     name: String,
     vram_mb: u64,
+    compute_capability: String,
     f_lif: CudaFunction,
     f_spike: CudaFunction,
     f_prop: CudaFunction,
@@ -103,16 +131,25 @@ impl CudaEngine {
                 .map(|b| (b as u64) / (1024 * 1024))
                 .unwrap_or(0)
         };
-        let module = ctx.load_module(Ptx::from_src(KERNELS_PTX)).map_err(|e| format!("load PTX: {e}"))?;
-        let f_lif = module.load_function("lif").map_err(|e| format!("load lif: {e}"))?;
-        let f_spike = module.load_function("spike_count").map_err(|e| format!("load spike_count: {e}"))?;
-        let f_prop = module.load_function("synapse_propagate").map_err(|e| format!("load propagate: {e}"))?;
-        let f_hebb = module.load_function("plasticity").map_err(|e| format!("load plasticity: {e}"))?;
+        let compute_capability = query_compute_capability(ordinal);
+        // LOUD on PTX load failure: a driver too old to JIT this PTX to the host arch (or a
+        // missing/mismatched libnvrtc) would otherwise look like a silent 0-throughput donor.
+        // Make cuModuleLoadData failure scream so it's never mistaken for "registered but idle".
+        let module = ctx.load_module(Ptx::from_src(KERNELS_PTX)).map_err(|e| {
+            eprintln!("[cuda] ⚠⚠ PTX MODULE LOAD FAILED (cuModuleLoadData) on device {ordinal} '{name}' (cc {}): {e}", if compute_capability.is_empty() { "?" } else { &compute_capability });
+            eprintln!("[cuda] ⚠⚠ the precompiled kernels.ptx could not be JIT-compiled for this GPU/driver — this card FALLS BACK to wgpu (it will NOT silently compute 0). Update the NVIDIA driver/CUDA runtime if you want the CUDA path.");
+            format!("load PTX (cuModuleLoadData) on '{name}' cc {compute_capability}: {e}")
+        })?;
+        let f_lif = module.load_function("lif").map_err(|e| { eprintln!("[cuda] ⚠⚠ kernel 'lif' load failed on '{name}': {e}"); format!("load lif: {e}") })?;
+        let f_spike = module.load_function("spike_count").map_err(|e| { eprintln!("[cuda] ⚠⚠ kernel 'spike_count' load failed on '{name}': {e}"); format!("load spike_count: {e}") })?;
+        let f_prop = module.load_function("synapse_propagate").map_err(|e| { eprintln!("[cuda] ⚠⚠ kernel 'synapse_propagate' load failed on '{name}': {e}"); format!("load propagate: {e}") })?;
+        let f_hebb = module.load_function("plasticity").map_err(|e| { eprintln!("[cuda] ⚠⚠ kernel 'plasticity' load failed on '{name}': {e}"); format!("load plasticity: {e}") })?;
         Ok(Self {
             ctx,
             stream,
             name,
             vram_mb,
+            compute_capability,
             f_lif,
             f_spike,
             f_prop,
@@ -124,6 +161,12 @@ impl CudaEngine {
 
     pub fn adapter_name(&self) -> &str {
         &self.name
+    }
+
+    /// CUDA compute capability of this device ("8.9" Ada, "7.5" Turing, "12.0" Blackwell …).
+    /// Empty if the attribute query failed. Surfaced to the brain so the Clients table shows it.
+    pub fn compute_capability(&self) -> &str {
+        &self.compute_capability
     }
 
     /// Per-matrix binding capacity to advertise — CUDA has no 2 GB cap, so this is the card's

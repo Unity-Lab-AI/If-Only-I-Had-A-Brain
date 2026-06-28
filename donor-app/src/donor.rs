@@ -22,6 +22,15 @@ use crate::protocol::{
     ReadbackAck, RebindAck, ServerMessage,
 };
 
+/// Outbound keepalive cadence. We ping the brain on this interval so a quiet teach window never
+/// lets the WS sit idle long enough for Starlink CGNAT / a reverse proxy to reap it — the flap
+/// that surfaces as `Connection reset by peer` every few minutes. Well under any common idle-reap.
+const KEEPALIVE_INTERVAL: Duration = Duration::from_secs(15);
+/// If NO frame (incl. the brain's pong) arrives within this window while we're keepalive-pinging,
+/// the link is half-open (satellite handover / proxy drop) — reconnect immediately instead of
+/// waiting minutes for the OS to surface the RST.
+const IDLE_TIMEOUT: Duration = Duration::from_secs(45);
+
 /// Live status the GUI reads (and headless ignores).
 #[derive(Default)]
 pub struct DonorStatus {
@@ -139,6 +148,13 @@ pub async fn run_donor_supervised(
     control: Control,
 ) -> Result<(), String> {
     let mut backoff: u64 = 2;
+    // Deterministic per-install reconnect jitter (0–1500 ms) derived from the donor id, so a brain
+    // restart doesn't make every donor reconnect in lockstep (thundering herd) — each host offsets
+    // its rejoin by a stable amount.
+    let jitter_ms: u64 = crate::config::persistent_donor_id()
+        .bytes()
+        .fold(0u64, |a, b| a.wrapping_mul(31).wrapping_add(b as u64))
+        % 1500;
     loop {
         let result = run_donor(cfg.clone(), gpus.clone(), utils.clone(), control.clone()).await;
 
@@ -178,6 +194,10 @@ pub async fn run_donor_supervised(
             tokio::time::sleep(Duration::from_millis(500)).await;
             i += 1;
         }
+        // Staggered rejoin (see jitter_ms) — short, stop-aware, so donors don't reconnect in lockstep.
+        if jitter_ms > 0 && !control.stop.load(Ordering::Relaxed) {
+            tokio::time::sleep(Duration::from_millis(jitter_ms)).await;
+        }
         if result.is_err() {
             backoff = backoff.saturating_mul(2).min(30);
         }
@@ -196,6 +216,12 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
     // pool. CUDA engines report VRAM-sized caps (no 2 GB limit); wgpu engines report the
     // adapter's binding limit. The brain then won't hand us a binding bigger than any card holds.
     let binding_mb = engine.advertised_binding_mb();
+    // Platform/backend telemetry — captured BEFORE `engine` moves into the worker thread, so the
+    // register + every telemetry tick can report os / backend / driver / compute-capability.
+    let os_platform = engine.os_platform();
+    let engine_backend = engine.engine_backend();
+    let driver_version = engine.driver_version();
+    let compute_capability = engine.compute_capability();
     let host_name = if gpus.len() > 1 { format!("{label} ({} GPUs)", gpus.len()) } else { label.clone() };
 
     println!("[donor] connecting to {} ...", cfg.server);
@@ -228,7 +254,17 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
 
     // gpu_register — advertise the per-binding cap (the capability the brain gates on),
     // not the (unbounded on native) max_buffer_size. Carries the leaderboard id + name.
-    let reg = GpuRegister::new(binding_mb, binding_mb, host_name.clone(), Some(donor_id.clone()), donor_name.clone());
+    let reg = GpuRegister::new(
+        binding_mb,
+        binding_mb,
+        host_name.clone(),
+        Some(donor_id.clone()),
+        donor_name.clone(),
+        os_platform.clone(),
+        engine_backend.clone(),
+        driver_version.clone(),
+        compute_capability.clone(),
+    );
     tx.send(Message::text(serde_json::to_string(&reg).unwrap()))
         .await
         .map_err(|e| format!("register send failed: {e}"))?;
@@ -322,6 +358,13 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
     // Leaderboard telemetry every 5s (matches compute.html): report this host's last-batch
     // throughput so the brain accrues neuron-compute credit under our id / name.
     let mut telemetry_tick = tokio::time::interval(Duration::from_secs(5));
+    // FLAP RESISTANCE — client-initiated keepalive so the link never goes idle long enough for
+    // CGNAT / a reverse proxy to reap it, plus a heartbeat for fast dead-link detection.
+    let mut keepalive_tick = tokio::time::interval(KEEPALIVE_INTERVAL);
+    keepalive_tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+    // Last time ANY frame arrived from the brain (incl. its pong). Stale past IDLE_TIMEOUT while
+    // we're actively pinging ⇒ the link is dead ⇒ reconnect now.
+    let mut last_recv = std::time::Instant::now();
 
     loop {
         tokio::select! {
@@ -343,9 +386,27 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                     steps_computed: steps,
                     donor_id: Some(donor_id.clone()),
                     donor_name: donor_name.clone(),
+                    os_platform: os_platform.clone(),
+                    engine_backend: engine_backend.clone(),
+                    driver_version: driver_version.clone(),
+                    compute_capability: compute_capability.clone(),
                 };
                 if let Ok(j) = serde_json::to_string(&tele) {
                     let _ = tx.send(Message::text(j)).await;
+                }
+            }
+            _ = keepalive_tick.tick() => {
+                // Dead-link detection: we ping every KEEPALIVE_INTERVAL and the brain's WS stack
+                // pongs; if NOTHING has arrived for IDLE_TIMEOUT, the connection is half-open —
+                // bail now so the supervisor reconnects fast (don't wait for a write to error out).
+                if last_recv.elapsed() > IDLE_TIMEOUT {
+                    eprintln!("[donor] no traffic for {}s — link presumed dead, reconnecting.", last_recv.elapsed().as_secs());
+                    break;
+                }
+                // Outbound keepalive — keeps NAT/proxy mappings warm during quiet teach windows.
+                if tx.send(Message::Ping(Vec::new().into())).await.is_err() {
+                    eprintln!("[donor] keepalive ping send failed — reconnecting.");
+                    break;
                 }
             }
             _ = &mut ctrlc => {
@@ -366,6 +427,9 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                     Some(Err(e)) => { eprintln!("[donor] ws error: {e}"); break; }
                     None => { println!("[donor] connection closed by server."); break; }
                 };
+                // A frame arrived (text/binary/ping/pong/close) — the link is alive; reset the
+                // dead-link timer so keepalive only trips on genuine silence.
+                last_recv = std::time::Instant::now();
                 match msg {
                     Message::Text(t) => {
                         match serde_json::from_str::<ServerMessage>(t.as_str()) {

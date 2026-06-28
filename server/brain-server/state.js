@@ -659,6 +659,13 @@ const SERVER_STATE_MIXIN = {
             // show "GPU buffer too small for cortex matrix" instead of a mystery 0 Gn/s.
             maxBindMB: isGPU ? (Number(c.maxBindMB || (tele && tele.maxBindMB)) || null) : null,
             bindIncapable: isGPU ? !!c._bindIncapable : false,
+            // FLAP — platform/backend telemetry so a red / 0-Gn/s donor's OS, compute backend,
+            // driver, and compute-capability are visible in the Clients table instead of
+            // reverse-engineered from logs (native donor reports these; browser donor → null).
+            osPlatform: isGPU ? ((c.osPlatform || (tele && tele.osPlatform)) || null) : null,
+            engineBackend: isGPU ? ((c.engineBackend || (tele && tele.engineBackend)) || null) : null,
+            driverVersion: isGPU ? ((c.driverVersion || (tele && tele.driverVersion)) || null) : null,
+            computeCapability: isGPU ? ((c.computeCapability || (tele && tele.computeCapability)) || null) : null,
             // health flag — RED only on a REAL per-client problem: genuinely stale
             // (90s+ silent), backed-up (>50 MB unsent), or high RTT that is NOT just the
             // server's own event-loop lag. RTT is measured off the heartbeat ping/pong, so
