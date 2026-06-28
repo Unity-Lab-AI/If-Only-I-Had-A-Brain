@@ -32,9 +32,13 @@ GIT_REMOTE="${UAL_GIT_REMOTE:-git@git.unityailab.com:UnityAILab/If-Only-I-Had-A-
 GIT_BRANCH="${UAL_GIT_BRANCH:-main}"
 SERVICE="${UAL_SERVICE:-unity-brain}"
 KEEP_STATE="${UAL_KEEP_STATE:-0}"
+BRAIN_PORT="${UAL_BRAIN_PORT:-7525}"
 LOG="${BACKEND_DIR}/self-update.log"
 
-log() { echo "[self-update] $(date -u +%Y-%m-%dT%H:%M:%SZ) $*" >> "$LOG" 2>&1; }
+# WL.4 — tee to BOTH the file AND stdout. The brain-server spawns this with piped
+# stdio and console.log's each line into the admin Server Console ring, so a dashboard
+# operator watches the deploy live instead of needing shell to read this file.
+log() { echo "[self-update] $(date -u +%Y-%m-%dT%H:%M:%SZ) $*" | tee -a "$LOG"; }
 
 log "START — overlay ${GIT_BRANCH} from ${GIT_REMOTE} -> ${BACKEND_DIR}"
 
@@ -101,7 +105,15 @@ if sudo -n systemctl restart "$SERVICE" >> "$LOG" 2>&1; then
   log "DONE — ${SERVICE} restarted via sudo"
 elif systemctl restart "$SERVICE" >> "$LOG" 2>&1; then
   log "DONE — ${SERVICE} restarted"
+elif curl -fsS -m 15 -X POST "http://127.0.0.1:${BRAIN_PORT}/restart" >> "$LOG" 2>&1; then
+  # WL.4 — NO-SUDO fallback. If neither systemctl restart worked (the service user
+  # lacks the sudo grant), trigger the loopback /restart endpoint: the server
+  # force-saves + process.exit's, and systemd Restart=always revives the freshly
+  # overlaid code. Requires Restart=always in the unit + the server reachable on
+  # loopback. This is what makes the dashboard Update button self-serve WITHOUT
+  # any sudoers setup.
+  log "DONE — restart triggered via loopback POST /restart (process.exit → systemd Restart=always revives the overlaid code; NO sudo needed)."
 else
-  log "FATAL — could not restart ${SERVICE}; run: sudo systemctl restart ${SERVICE}"
+  log "FATAL — could not restart ${SERVICE}. sudo systemctl restart failed AND the no-sudo loopback POST /restart failed. Fix ONE of: (1) grant the service user 'sudo -n systemctl restart ${SERVICE}', or (2) ensure the server is up on 127.0.0.1:${BRAIN_PORT} with Restart=always in the unit. Manual: sudo systemctl restart ${SERVICE}"
   exit 1
 fi

@@ -5296,7 +5296,20 @@ const httpServer = http.createServer((req, res) => {
     const _q = req.url.split('?')[1] || '';
     const keepState = /(?:^|&)keep=1(?:&|$)/.test(_q) || /(?:^|&)mode=savestart(?:&|$)/.test(_q);
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    if (global._brainShutdownRequested) { res.end(JSON.stringify({ status: 'already updating/restarting' })); return; }
+    // WL.4 — auto-clear a STALE update flag. If a prior /update's self-update script
+    // died before restarting (e.g. the sudo restart was blocked), `_brainShutdownRequested`
+    // would stay set forever and lock the button out (exactly what happened 2026-06-28).
+    // Clear it once it's older than the stale window so a retry works. Env-tunable
+    // DREAM_UPDATE_STALE_MS (default 5 min).
+    const _updStaleMs = Number(process.env.DREAM_UPDATE_STALE_MS) > 0 ? Number(process.env.DREAM_UPDATE_STALE_MS) : 5 * 60 * 1000;
+    if (global._brainShutdownRequested) {
+      if (global._brainShutdownRequestedAt && (Date.now() - global._brainShutdownRequestedAt) > _updStaleMs) {
+        console.warn(`[Brain] /update — clearing STALE update flag (set ${Math.round((Date.now() - global._brainShutdownRequestedAt) / 1000)}s ago; the prior update likely failed to restart). Allowing this retry.`);
+        global._brainShutdownRequested = false;
+      } else {
+        res.end(JSON.stringify({ status: 'already updating/restarting' })); return;
+      }
+    }
     const updateScript = process.env.DREAM_SELF_UPDATE_CMD || path.join(__dirname, '..', 'deploy', 'self-update.sh');
     let scriptExists = false;
     try { scriptExists = fs.existsSync(updateScript); } catch { /* non-fatal */ }
@@ -5305,6 +5318,7 @@ const httpServer = http.createServer((req, res) => {
       return;
     }
     global._brainShutdownRequested = true;
+    global._brainShutdownRequestedAt = Date.now();   // WL.4 — stamp so a failed update can be detected stale + cleared
     if (keepState) {
       console.log(`[Brain] HTTP /update?keep=1 — UPDATE + SAVESTART requested (dashboard). Spawning ${updateScript} detached with UAL_KEEP_STATE=1: overlay latest code → SKIP .force-fresh → systemctl restart (resumes saved weights via the unit's DREAM_KEEP_STATE=1).`);
       res.end(JSON.stringify({ status: 'update armed — pulling latest code, RESUMING saved weights (savestart), restarting (~1-2 min)', mode: 'savestart', script: updateScript }));
@@ -5316,7 +5330,14 @@ const httpServer = http.createServer((req, res) => {
       const { spawn } = require('child_process');
       const env = { ...process.env };
       if (keepState) env.UAL_KEEP_STATE = '1';
-      const child = spawn('bash', [updateScript], { detached: true, stdio: 'ignore', env });
+      const child = spawn('bash', [updateScript], { detached: true, stdio: ['ignore', 'pipe', 'pipe'], env });
+      // WL.4 — stream the self-update script's output into the brain console (→ the
+      // admin Server Console ring → dashboard) so the operator watches the deploy
+      // live (clone → overlay → restart, or the exact failure) instead of needing
+      // shell to read /opt/unity-brain/self-update.log.
+      const _pipeUpdateLines = (buf) => String(buf).split(/\r?\n/).forEach(l => { if (l.trim()) console.log(l); });
+      if (child.stdout) child.stdout.on('data', _pipeUpdateLines);
+      if (child.stderr) child.stderr.on('data', _pipeUpdateLines);
       child.unref();
     } catch (err) {
       console.error('[Brain] /update spawn failed:', err && err.message);
