@@ -52,6 +52,27 @@ The completed 2026-06-27 batch — **T3SEED** (Tier 3 identity ZERO-bug), **CGAT
 
 ---
 
+### PUBDASH-DONOR-UX — public-dashboard auth leak + donor app theme/headless + memory-panel nits (Gee 2026-06-27) — IN PROGRESS (branch `feature/public-dashboard-donor-ux-fixes`)
+
+**Gee verbatim per LAW #0:**
+
+> *"yes start a feature branch, solve all that and all of this: https://if-only-i-had-a-brain.git.unityailab.com/admin/milestone [HTTP/1.1 401 Unauthorized nullms] public version of the dashboard is asking for admin login(when is shall only be the admin version that asks for log in),, 1. the donor application needs OS white theeme better colors(as its hard to read grey on white. 2. the doner application needs its termianl when open to open headless"*
+
+**"all that"** = the memory-readout nits surfaced in the prior Tier-2 diagnostic: the dashboard `pass interval: (blank)` should read `5 min`; the `cosine≥0.85 grouping` label is wrong (engine constant `SCHEMA_GROUP_COSINE` is 0.7); and the Tier 3 anchor list shows a duplicate label (`play-tag-games · play-tag-games`) — dedup gap.
+
+**Tasks:**
+
+- **PD.1 — public dashboard 401 leak.** `html/dashboard-public.html` redirects to `dashboard.html?public=1`; `dashboard.html:3057-3058` registers `refreshMilestone()` + `setInterval(refreshMilestone, 5000)` UNCONDITIONALLY → polls `adminApi('milestone')` → `/admin/milestone` → 401 + Forgejo login prompt for every public viewer. Fix: gate `refreshMilestone` (and its interval) behind `!PUBLIC_MODE` (the milestone/save panel is `.admin-only` anyway). Audit confirmed it's the ONLY unconditional admin poll (auto-advance is `isAdmin`-gated; gate-probe timer does no fetch).
+- **PD.2 — donor app OS light theme + readable contrast.** `donor-app/src/gui.rs` — grey-on-white is unreadable. Switch to a light/OS-white visual style with proper text contrast.
+- **PD.3 — donor app GUI opens headless (no console window).** `donor-app/src/main.rs` — GUI build has no `windows_subsystem` attr, so a console window pops up behind the GUI on Windows. Add `#![cfg_attr(all(windows, feature = "gui"), windows_subsystem = "windows")]` so the GUI build launches with no console; the pure-headless (`--no-default-features`) CLI build keeps its console.
+- **PD.4 — memory-panel nits.** Dashboard consolidation panel: fix `pass interval` to show the real 5-min value; correct the `cosine≥0.85` label to 0.7 (or whatever `SCHEMA_GROUP_COSINE` actually is). Tier 3: dedup the anchor label list (`hippocampal-schema.js`).
+
+**Note:** branched off `develop` (complete v1.2.0 base). The IMG-GEN/IMG-SEE/SPONGE/GHBACKUP verbatim FINALIZED entries + finalize-correction live on `feature/tier3-identity-seed-repair` + the github backup; they'll reconcile on the next cascade.
+
+**STATUS:** ✅ DONE + VERIFIED (verbatim entry in `docs/FINALIZED.md`). PD.1 public-dashboard admin-poll gated behind `!PUBLIC_MODE` (no more 401/login); PD.2 donor app → OS light/white high-contrast theme; PD.3 donor GUI build → no Windows console (`windows_subsystem` cfg_attr); PD.4 stale `0.7`→`0.85` comment fixed + `pass interval` hardened (never blanks) + Tier 3 label-dedup (`promote()` + `dedupeByLabel()` boot cleanup). `node --check`+import clean; bundle 3.9MB. ⚠ donor `.exe` needs CI/Gee rebuild for PD.2/PD.3. Docs swept. Pushed to `if-only` + `github`.
+
+---
+
 ### DEPLOY-FIX (DF) — make the static deploy actually train off donor GPUs (Gee 2026-06-20) — IN FLIGHT
 
 **Gee verbatim per LAW #0:**

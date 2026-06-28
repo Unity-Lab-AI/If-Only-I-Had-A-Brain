@@ -1548,7 +1548,8 @@
         $('d-mem-cons-last').textContent = fmtAge(cons.lastPassAt);
         $('d-mem-cons-dreaming').textContent = cons.isDreaming ? '✓ yes' : 'no';
         $('d-mem-cons-dreaming').style.color = cons.isDreaming ? '#22c55e' : '#555';
-        $('d-mem-cons-interval').textContent = Math.floor((cons.intervalMs ?? 300000) / 60000) + ' min';
+        // Number()||default — never blanks on undefined/NaN/empty (deployed-stale safety).
+        $('d-mem-cons-interval').textContent = Math.floor((Number(cons.intervalMs) || 300000) / 60000) + ' min';
       }
 
       // Clusters
@@ -2857,6 +2858,12 @@
     // only on save events or grade signoffs) and a fresh GET on a known
     // port is simpler than piggybacking on the state broadcast.
     async function refreshMilestone() {
+      // PUBLIC viewers must NEVER hit /admin/* — the milestone / save-state
+      // panel is .admin-only. Polling it in public mode returned 401 and threw
+      // a Forgejo Basic-auth login prompt at every public visitor (Gee 2026-06-27:
+      // "public version of the dashboard is asking for admin login"). Bail before
+      // any admin fetch; the panel stays hidden via body.public-mode .admin-only.
+      if (PUBLIC_MODE) return;
       try {
         const r = await fetch(adminApi('milestone'), { cache: 'no-store' });
         if (!r.ok) return;
@@ -3054,8 +3061,11 @@
         // CORS, firewall) we don't want to spam the log.
       }
     }
-    refreshMilestone();
-    setInterval(refreshMilestone, 5000);
+    // Admin-only poll — never schedule it in public mode (would 401 on /admin/milestone).
+    if (!PUBLIC_MODE) {
+      refreshMilestone();
+      setInterval(refreshMilestone, 5000);
+    }
 
     // Wire the "retry now" link in the no-connection banner
     // so operator can short-circuit the 3s countdown when they know the

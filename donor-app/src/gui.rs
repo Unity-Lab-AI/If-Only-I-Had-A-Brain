@@ -21,13 +21,18 @@ const LEGEND_URL: &str = "https://if-only-i-had-a-brain.git.unityailab.com/html/
 const DASHBOARD_URL: &str = "https://if-only-i-had-a-brain.git.unityailab.com/html/dashboard-public.html";
 const LEADERBOARD_URL: &str = "https://if-only-i-had-a-brain.git.unityailab.com/html/dashboard-public.html";
 
-// Organic-meets-tech accent palette (DA.13). Dark base, but not flat grey.
-const ACCENT: egui::Color32 = egui::Color32::from_rgb(0xc0, 0x84, 0xfc); // synapse violet
-const ACCENT_DIM: egui::Color32 = egui::Color32::from_rgb(0x7c, 0x3a, 0xed);
-const GO_GREEN: egui::Color32 = egui::Color32::from_rgb(0x22, 0xc5, 0x5e);
-const STOP_RED: egui::Color32 = egui::Color32::from_rgb(0xdc, 0x26, 0x26);
-const TEXT_BRIGHT: egui::Color32 = egui::Color32::from_rgb(0xe6, 0xe1, 0xf0);
-const TEXT_DIM: egui::Color32 = egui::Color32::from_rgb(0x9a, 0x93, 0xad);
+// OS light/white theme palette (Gee 2026-06-27 — "OS white theme better
+// colors, hard to read grey on white"). Dark text on near-white panels; a deep
+// violet accent that stays high-contrast on white; secondary text is a real
+// slate, not the pale grey that washed out before. (TEXT_BRIGHT keeps its name
+// for diff stability but is now the DARK primary-text colour for the light theme.)
+const ACCENT: egui::Color32 = egui::Color32::from_rgb(0x6d, 0x28, 0xd9); // deep violet — readable on white
+const ACCENT_DIM: egui::Color32 = egui::Color32::from_rgb(0xa7, 0x8b, 0xfa); // light violet — selection/hover fill
+const GO_GREEN: egui::Color32 = egui::Color32::from_rgb(0x15, 0x80, 0x3d); // green-700 — white button text stays legible
+const STOP_RED: egui::Color32 = egui::Color32::from_rgb(0xb9, 0x1c, 0x1c); // red-700
+const TEXT_BRIGHT: egui::Color32 = egui::Color32::from_rgb(0x18, 0x18, 0x27); // near-black primary text on white
+const TEXT_DIM: egui::Color32 = egui::Color32::from_rgb(0x52, 0x52, 0x5b); // slate-600 — readable secondary on white
+const WARN: egui::Color32 = egui::Color32::from_rgb(0xb4, 0x53, 0x09); // amber-700 — readable on white (was 0xfbbf24, washed out)
 
 #[derive(PartialEq, Clone, Copy)]
 enum Tab {
@@ -132,9 +137,9 @@ impl DonorApp {
         }
         if !conn {
             if note.contains("reconnect") {
-                return ("Reconnecting…", egui::Color32::from_rgb(0xfb, 0xbf, 0x24));
+                return ("Reconnecting…", WARN);
             }
-            return ("Connecting…", egui::Color32::from_rgb(0xfb, 0xbf, 0x24));
+            return ("Connecting…", WARN);
         }
         let n = note.to_lowercase();
         if teach > 0 && (batches == 0 || n.contains("teach") || n.contains("hebbian")) {
@@ -312,7 +317,7 @@ impl DonorApp {
         ui.add_space(8.0);
         ui.label(egui::RichText::new("Settings").size(22.0).strong().color(ACCENT));
         if running {
-            ui.label(egui::RichText::new("Stop donating to change GPU selection / server.").color(egui::Color32::from_rgb(0xfb, 0xbf, 0x24)));
+            ui.label(egui::RichText::new("Stop donating to change GPU selection / server.").color(WARN));
         }
         ui.add_space(8.0);
 
@@ -435,18 +440,20 @@ impl DonorApp {
     }
 }
 
-/// DA.13 — dark, readable, organic-meets-tech theme.
+/// OS light/white theme — dark text on near-white panels, high contrast
+/// (Gee 2026-06-27 — was a dark theme; "needs OS white theme better colors").
 fn install_theme(ctx: &egui::Context) {
-    let mut v = egui::Visuals::dark();
+    let mut v = egui::Visuals::light();
     v.override_text_color = Some(TEXT_BRIGHT);
     v.hyperlink_color = ACCENT;
     v.selection.bg_fill = ACCENT_DIM;
     v.selection.stroke = egui::Stroke::new(1.0, ACCENT);
     v.widgets.hovered.bg_fill = ACCENT_DIM;
     v.widgets.active.bg_fill = ACCENT_DIM;
-    // Slightly warm-dark panels so it's not flat grey.
-    v.panel_fill = egui::Color32::from_rgb(0x16, 0x12, 0x1f);
-    v.window_fill = egui::Color32::from_rgb(0x12, 0x0f, 0x19);
+    // Clean near-white panels (OS light theme); window pure white, panels a
+    // hair off-white so grouped frames read against the background.
+    v.panel_fill = egui::Color32::from_rgb(0xf7, 0xf7, 0xfb);
+    v.window_fill = egui::Color32::from_rgb(0xff, 0xff, 0xff);
     ctx.set_visuals(v);
 }
 

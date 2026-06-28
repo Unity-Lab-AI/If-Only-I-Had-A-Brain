@@ -29,13 +29,17 @@ unity-donor --gpus 0 --utilization 10      # donate card 1 at 10% (GUI defaults)
 unity-donor --gpus all --utilization all   # donate everything, full tilt
 unity-donor --headless --autostart --server wss://host/ws --gpus all   # server/RunPod
 ```
-GUI build (default) opens **"Unity Brain Donor"** — a 1280×720 resizable, dark organic-tech
-themed, tabbed app: **Donate** (server Live/Local radio, leaderboard name, GPU summary, green
+GUI build (default) opens **"Unity Brain Donor"** — a 1280×720 resizable, **OS light/white
+themed** (high-contrast dark text on white — readable, no more washed-out grey-on-white),
+tabbed app: **Donate** (server Live/Local radio, leaderboard name, GPU summary, green
 Start / red Stop, verbose status, per-GPU rows), **Settings** (GPU selectors + util + auto-
 reconnect + server incl. Custom), **Dashboard** (this machine's live stats + link to the public
 dashboard), **Leaderboard** (your contribution + link to the live board), **About**. An
 **Auto-reconnect** checkbox lives in Settings; a **📖 How it works / legend** link is on Donate
-+ About. `--headless` runs without the window.
++ About. `--headless` runs without the window. On **Windows** the GUI build launches with
+**no console window** behind it (`windows_subsystem = "windows"` on the `gui` feature build) —
+the pure-headless `--no-default-features` CLI build keeps its console so server/RunPod
+operators still see stdout.
 
 ## Auto-reconnect (default ON)
 A dropped/closed connection (or an initial connect failure) now **auto-rejoins** after a
