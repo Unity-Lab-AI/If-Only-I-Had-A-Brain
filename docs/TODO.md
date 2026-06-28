@@ -46,6 +46,23 @@ If you're reading a public doc / HTML claim ("Unity has completed high school bi
 
 ## OPEN TASKS
 
+### ⛔ WHAT'S LEFT TO MEET THE GOAL — "all donors compute + all on the leaderboard, deployed + verified" (super-review tracker, Gee 2026-06-28)
+
+Live-follow checklist. The CODE is done + on both `main`s (`d32f932`); everything below is what stands between here and the goal:
+
+- **WL.1 — [⛔ BLOCKED · BOX/SPONGE] Deploy is stuck.** Dashboard Update button overlays code but can't restart the service — `sudo -n systemctl restart unity-brain` isn't granted for the service user (uptime never reset, "already updating" flag stuck). **Action:** Sponge grants the sudo rule + confirms `Restart=always`, then pulls `main` + restarts. Copy-paste brief delivered to Gee for Sponge.
+- **WL.2 — [⏳ PENDING · LIVE-VALIDATE] All-donors-compute proof.** After a real restart: Profiling → Clients shows BOTH donors' Gn/s > 0 + BOTH on the leaderboard + a cell still PASSES its gate. Can't be verified headless. Rollback `DREAM_DF7_FANOUT=0`.
+- **WL.3 — [🔴 OPEN · PERF, GATES WL.2 QUALITY] Replica sync is unreliable.** Live log: EVERY donor matrix upload times out at 45s + a 72s `[EventLoop] BLOCKED`. Replicas may never hold current weights → teach-fan-out benefit limited + READ fan-out unsafe. Bound the inner-voice/teach event-loop block so WS upload frames get airtime. This is the real perf task; READ fan-out (`DREAM_DF7_FANOUT_PROPAGATE`) stays OFF until this is fixed + proven.
+- **WL.4 — [🟡 OFFERED · NOT BUILT] Robust self-deploy (no Sponge needed).** Build: (a) no-sudo deploy path — `self-update.sh` overlays then signals the server to `process.exit` → systemd `Restart=always` revives the new code (removes the sudo dependency that caused WL.1); (b) timeout/clear on the stuck "already updating" flag so a failed update doesn't lock the button forever; (c) stream `self-update.log` into the dashboard Server Console so deploys aren't blind. All ride the same pending deploy.
+- **WL.5 — [🟡 PENDING · RUST] Donor `.exe` rebuild.** PUBDASH light-theme + no-console source is fixed; binary not rebuilt (no Rust toolchain on the dev box). `cd donor-app && cargo build --release --features gui --target x86_64-pc-windows-gnu` → replace `unity-donor-windows-x86_64.exe`. Cosmetic, Sponge/CI.
+- **WL.6 — [⚪ DEFERRED · GEE DECISION] IMG-SEE actual-pixel perceive.** Mind's-eye preview ships; perceiving the real Pollinations pixels needs a server image-decode dep OR a CORS proxy. Your call which (or leave as preview).
+- **WL.7 — [⚪ STANDING · GEE] The one live K→PhD + vision walk** you run at the end (no-tests / no-push-until-verified LAW).
+- **WL.8 — [🟡 SPONGE] Standing asks:** Sponge runs the same full doc sweep for his box/deploy/donor/GPU work; verify Unity actually generates images on the deploy (client-side Pollinations reaches `gen.pollinations.ai`).
+
+**Bottom line:** nothing more to CODE for the core goal — it's cascaded + correct. The goal is gated on **WL.1 (Sponge unblocks the restart)** → **WL.2 (you watch both donors light up)**, with **WL.3** the perf fix that makes it actually hold. WL.4 is the optional build that makes future deploys self-serve.
+
+---
+
 ### DDW — distributed donor work-sharing: ALL donors compute + ALL on the leaderboard (Gee 2026-06-27/28) — IN PROGRESS (branch `feature/distributed-donor-work-sharing`)
 
 **Gee verbatim per LAW #0:**
@@ -64,7 +81,7 @@ Scope decision (Gee, AskUserQuestion): **Full swing now** — distribute BOTH th
 - Already in place (verified): bound-propagate fan-out (`gpuSparsePropagateBound` → `_nextPoolDonor()`), resident-state mirroring (`_mirrorCortexWriteToReplicas` on `write_spike_slice`/`write_current_slice`), and per-donor leaderboard credit (each donor's own `gpu_telemetry.gneuronsPerSec` → no primary-only filter, so a replica appears the moment it computes).
 - **DDW.4** `brain-server.js` — replica re-broadcast tightened to **60 s under fan-out** (was fixed 10 min) so round-robin Hebbian drift re-converges fast; env `DREAM_DF7_REBROADCAST_MS`.
 
-**STATUS:** [~] IN PROGRESS — code done + `node --check` clean (gpu.js, brain-server.js). **DDW.5: fan-out is now DEFAULT ON in code** (`DREAM_DF7_FANOUT !== '0'`) so the dashboard Update & Fresh Walk auto-distributes with NO systemd-unit edit (Gee 2026-06-28: "fanout=1 set auto … Sponge is asleep") — single-donor = no-op; kill-switch `DREAM_DF7_FANOUT=0`. ⚠ MUST be validated LIVE on Gee's 2 donors (can't be verified headless): restart (or dashboard Update & Fresh Walk once cascaded to main), watch BOTH donors' Gn/s climb + BOTH appear on the leaderboard AND gate probes still pass. Rollback = `DREAM_DF7_FANOUT=0`. Pairs with Sponge's `deploy/df7-and-donor-rebuild` (donor `.exe` rebuild; his env line now redundant).
+**STATUS:** [~] CODE DONE + CASCADED to BOTH mains (`d32f932`) — BLOCKED on deploy + live-validation. `node --check` clean. **DDW.5: WRITE fan-out (teach Hebbian) DEFAULT ON** (`DREAM_DF7_FANOUT !== '0'`, kill-switch `=0`) → dashboard Update & Fresh Walk auto-distributes the teach bulk, no unit edit. **DDW.6 (super-review correction 2026-06-28): READ fan-out (forward propagate → gate probes / student battery / emission) is now OPT-IN** behind `DREAM_DF7_FANOUT_PROPAGATE` (default OFF) — routing a decision-driving read to a stale/incompletely-synced replica can spuriously FAIL gates + stall the walk; only enable after replica sync proven clean. ⚠ BLOCKERS: (a) deploy can't happen — dashboard button can't restart the service (`sudo systemctl restart` not granted; Sponge brief written); (b) replica uploads timing out 45s + 72s event-loop block → replica sync unreliable. Live-validate after a real restart: BOTH donors' Gn/s > 0 + BOTH on leaderboard + gates pass; rollback `DREAM_DF7_FANOUT=0`.
 
 ---
 

@@ -235,20 +235,20 @@ Standard git-archive overlay + restart at the TOP of this file — but **`git ch
 
 ## 2026-06-28 — DDW: distributed donor work-sharing (ALL donors compute + ALL on the leaderboard)
 
-Branch `feature/distributed-donor-work-sharing` (off develop). **Backend-only** — `server/brain-server/gpu.js` + `server/brain-server.js`. **No client/HTML/bundle change** (compute.html handles its frames identically regardless of which donor socket they land on; the fan-out is pure server-side routing). All weight-preserving — **no neuron-count change, no `WEIGHTS_FORMAT_VERSION` bump** → `DREAM_KEEP_STATE=1` restart RESUMES weights.
+✅ ON `main` `d32f932` (BOTH git.unityailab AND github) — cascaded feature→develop→main. **Deploy by pulling `main`** (the standard overlay below); do NOT check out a feature branch. Carries the PUBDASH batch too (public-dashboard auth + memory nits). Backend files: `server/brain-server/gpu.js` + `server/brain-server.js`. Weight-preserving — NO neuron-count / `WEIGHTS_FORMAT_VERSION` change. **No client/HTML/bundle change.**
 
-**What it does:** makes every connected donor actually compute (and earn leaderboard credit), not just the primary. Was: 100% of GPU work pinned to the primary even with `DREAM_DF7_FANOUT=1` on (the flag had no code path for the teach bulk). Now the dispatch chokepoints round-robin work across the pool: standalone forward-propagates (`gpuSparsePropagate`) + the bound-Hebbian batch (`_flushBoundHebbianBatch`, the teach bulk). CPU CSR stays the authoritative Hebbian master (GPU = fire-and-forget shadow) so a batch landing on any replica CANNOT corrupt training; the periodic master re-broadcast re-converges drift.
+**What it does + the read/write split (IMPORTANT):**
+- **WRITES (teach Hebbian batch) fan out by DEFAULT** (`DREAM_DF7_FANOUT`, default ON; kill-switch `=0`). This is the bulk of teach GPU work → every donor computes + earns leaderboard credit. Safe: CPU CSR is the authoritative Hebbian master, the GPU op is a fire-and-forget shadow, and the periodic re-broadcast re-converges drift — a batch on any replica CANNOT corrupt training.
+- **READS (forward propagate: gate probes, student battery, emission) DO NOT fan by default** — gated behind `DREAM_DF7_FANOUT_PROPAGATE` (default OFF). A read drives a curriculum DECISION, so routing it to a replica with stale/incomplete weights returns a wrong answer the gate acts on → spurious cell-fail / stalled walk. **Only enable `DREAM_DF7_FANOUT_PROPAGATE=1` AFTER you confirm replica weight-sync completes cleanly** (see the upload-timeout caveat below).
 
-**DEFAULT ON in code** (Gee 2026-06-28 — "we need fanout=1 set auto … when I do the update and fresh walk", + Sponge asleep, so it must NOT depend on a systemd-unit env edit). No env/unit setup needed — the dashboard **Update & Fresh Walk** auto-distributes once this code is on `main`. Your `deploy/df7-and-donor-rebuild` env line is now **redundant (harmless)**. Single donor = no-op; **kill-switch `DREAM_DF7_FANOUT=0`** (byte-identical primary-only behavior).
+**⚠ GATING CAVEAT — replica sync is currently UNRELIABLE on this box:** the live log shows EVERY donor matrix upload timing out at 45s (`sparse chunked upload … timed out after 45000ms`) + a 72-second `[EventLoop] BLOCKED`. Until that event-loop block is bounded so WS upload frames get airtime, replicas may never hold current weights — so leave `DREAM_DF7_FANOUT_PROPAGATE` OFF, and even the teach-Hebbian fan-out's benefit is limited until sync is healthy. This is the next real perf task.
 
-**New env knob (optional, own-line comment in the unit):**
-- `DREAM_DF7_REBROADCAST_MS` — replica weight re-converge interval. Default 60 s when `DREAM_DF7_FANOUT=1` (round-robin Hebbian drifts donor shadows faster, so re-merge more often), else 10 min.
+**New env knobs (optional, own-line comment in the unit):**
+- `DREAM_DF7_FANOUT_PROPAGATE=1` — also fan READS across replicas. DEFAULT OFF. Turn on only after replica sync is proven clean.
+- `DREAM_DF7_REBROADCAST_MS` — replica weight re-converge interval. Default 60 s when `DREAM_DF7_FANOUT≠0`, else 10 min.
 
-**Redeploy** = standard git-archive overlay + `systemctl restart unity-brain`, but **`git checkout feature/distributed-donor-work-sharing` first** (NOT cascaded to main — see below). **No unit change needed** (fan-out is default-on in code) → no `daemon-reload`; nothing to set. Once on `main`, the dashboard Update & Fresh Walk does the whole thing.
+**Redeploy** = standard git-archive overlay of `main` + `systemctl restart unity-brain` (top of this file). DDW is on `main`, so once the box can restart, the dashboard Update & Fresh Walk does the whole thing.
 
-**LAW LIVE VALIDATION REQUIRED before any cascade to main (cannot be verified headless):**
-1. With 2+ donors connected, admin Profiling -> Clients: EVERY donor's Gn/s should be > 0 (not just the primary) and EVERY donor should appear on the leaderboard.
-2. Confirm gate probes still PASS (training quality not degraded by replica weight-staleness) — watch a cell complete + advance.
-3. If a donor stays 0 or gates regress, roll back by unsetting `DREAM_DF7_FANOUT` (no weight-format / restart-contract change) and report which donor + what the log shows.
+**⛔ WHY THE BUTTON DIDN'T WORK (Gee 2026-06-28):** the dashboard Update button fired `self-update.sh` but the service never restarted (uptime never reset). Root cause: `sudo -n systemctl restart unity-brain` is NOT granted for the service user, so the overlay lands but the bounce fails, and a stuck "already updating" flag then locks the button out. **FIX = grant the sudo rule + confirm `Restart=always`** (see the standalone Sponge deploy brief Gee pasted you). Until that grant exists, the dashboard cannot self-deploy.
 
-**Cascade:** this branch is held at the feature branch precisely so it gets LIVE-validated on the donor pool first. Cascade only after 1-3 pass.
+**LIVE VALIDATION (after a real restart):** Profiling → Clients — BOTH donors' Gn/s > 0 (TheREV off zero) + BOTH on the leaderboard; a curriculum cell still PASSES its gate. Rollback: `DREAM_DF7_FANOUT=0`.
