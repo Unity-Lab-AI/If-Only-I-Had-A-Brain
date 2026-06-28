@@ -5726,6 +5726,7 @@ const httpServer = http.createServer((req, res) => {
     // brain._getCommunityState() method, so the HTTP /autoscale response and the
     // live dashboard can never drift (the panel showed 0s because only this route
     // set `community`, never the broadcast). Single source of truth now.
+    // ASCALE minDonorMB lives inside _getCommunityState() (state.js) so it surfaces here too.
     const communityStatus = () => brain._getCommunityState();
     if (req.method === 'GET') {
       res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -6842,6 +6843,12 @@ wss.on('connection', (ws, req) => {
           // PA.4.8 — capture donor compute capacity (compute.html reports its
           // WebGPU adapter VRAM) for community-compute milestone scaling.
           client.gpuVramMB = Number(msg.vramMB) || 0;
+          // ASCALE — DONATED capacity, so auto-scale gates on what the donor actually gives, not
+          // the full card. utilizationPct = donation duty-cycle (default 100 = full); donatedMB =
+          // explicit VRAM cap if the donor set one (0 = unset → fall back to vram × util in
+          // _recomputeCommunityCompute). Browser donor omits both → util 100 / donated 0.
+          client.utilizationPct = Math.max(0, Math.min(100, Number(msg.utilizationPct) || 100));
+          client.donatedMB = Math.max(0, Number(msg.donatedMB) || 0);
           // F8/F9 — WebGPU storage-binding cap, captured at register (gpu_register
           // sends it as `maxStorageBindingMB`; telemetry later sends `maxBindMB`).
           // Capturing here makes the capability gate + dashboard label work from the

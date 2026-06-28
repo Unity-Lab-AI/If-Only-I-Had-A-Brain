@@ -392,18 +392,30 @@ const SERVER_GPU_MIXIN = {
   },
 
   _recomputeCommunityCompute() {
-    let totalMB = 0, donorCount = 0;
+    let totalMB = 0, donorCount = 0, minDonorMB = Infinity;
     if (this._gpuClients) {
       for (const ws of this._gpuClients) {
         if (!ws || ws.readyState !== 1) continue;
         const c = this.clients && this.clients.get(ws);
-        const vram = (c && c.gpuVramMB) || 0;
-        if (vram > 0) totalMB += vram;
+        const fullVram = (c && c.gpuVramMB) || 0;
+        // ASCALE — EFFECTIVE donated capacity, not the full card. Use the donor's explicit
+        // donatedMB cap if it sent one, else full card × donation duty-cycle (utilizationPct).
+        // Fixes the over-count where two 15GB cards at 60% tripped a ~30GB tier instead of 18GB.
+        const eff = (c && c.donatedMB > 0)
+          ? (fullVram > 0 ? Math.min(c.donatedMB, fullVram) : c.donatedMB)
+          : fullVram * (((c && c.utilizationPct) ?? 100) / 100);
+        if (eff > 0) { totalMB += eff; if (eff < minDonorMB) minDonorMB = eff; }
         donorCount++;
       }
     }
     this._communityComputeMB = totalMB;
     this._communityDonorCount = donorCount;
+    // ASCALE caveat (data-parallel): every donor holds the FULL replica, so the brain's max SIZE is
+    // bounded by the SMALLEST donor's committed VRAM — NOT the community SUM (which is a throughput
+    // metric). Tracked + logged for the size-tier(min-donor) vs throughput-tier(Σ Gn/s)
+    // reconciliation. The milestone tiers below still gate on the (now effective) sum; a full
+    // size-tier rewire onto min-donor is the flagged architectural follow-up.
+    this._communityMinDonorMB = (donorCount > 0 && minDonorMB !== Infinity) ? Math.round(minDonorMB) : 0;
     const settings = this._getAutoScaleSettings();
 
     // Milestone tiers: (min community VRAM, min donor count) → target neuron
@@ -455,7 +467,7 @@ const SERVER_GPU_MIXIN = {
       this._communityTierPending = upgradeTier;
       this._communityTierPendingTarget = MILESTONES[upgradeTier].neurons;
       this._communityTierPendingSince = Date.now();
-      console.log(`[Brain] DF.7/PA.4.8 — milestone candidate: tier ${upgradeTier} (${totalMB.toLocaleString()}MB across ${donorCount} donor(s), past the ${(settings.bufferPct * 100).toFixed(0)}% dead-zone → target ${MILESTONES[upgradeTier].neurons.toLocaleString()} neurons). Resize fires only if held ≥${settings.stabilityMin}min — a single donor joining/leaving will NOT trigger it.`);
+      console.log(`[Brain] DF.7/PA.4.8 — milestone candidate: tier ${upgradeTier} (${Math.round(totalMB).toLocaleString()}MB EFFECTIVE DONATED across ${donorCount} donor(s); smallest donor commits ${this._communityMinDonorMB.toLocaleString()}MB ⚠ data-parallel SIZE is bounded by THIS, not the sum, past the ${(settings.bufferPct * 100).toFixed(0)}% dead-zone → target ${MILESTONES[upgradeTier].neurons.toLocaleString()} neurons). Resize fires only if held ≥${settings.stabilityMin}min — a single donor joining/leaving will NOT trigger it.`);
     } else if (upgradeTier <= runningTier && this._communityTierPending && upgradeTier < this._communityTierPending) {
       // Dropped back below the buffered candidate before it executed — cancel
       // (critical mass not sustained past the dead-zone). The RUNNING brain is

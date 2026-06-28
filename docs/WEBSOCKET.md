@@ -288,11 +288,12 @@ Sent by `compute.html` (browser donor) or the native donor-app on WebSocket open
   "gpuName": "NVIDIA GeForce RTX 2060",
   "donorId": "native-…", "donorName": "Sponge",
   "osPlatform": "linux", "engineBackend": "cuda",
-  "driverVersion": "595.71.05", "computeCapability": "7.5"
+  "driverVersion": "595.71.05", "computeCapability": "7.5",
+  "utilizationPct": 60, "donatedMB": 0
 }
 ```
 
-The server adds `ws` to `brain._gpuClients` and (if there's no primary, or the newcomer is materially stronger under DF.7) marks it `brain._gpuClient`; otherwise it's brought up as a full data-parallel replica. The browser donor omits everything but `type`; the native donor sends the richer payload above. **`osPlatform` / `engineBackend` (`cuda`/`vulkan`/`dx12`/`metal`/`gl`) / `driverVersion` / `computeCapability`** (donor-app v0.3.3+) are captured on `client.*` and surfaced in the admin dashboard **Clients table** `plat` column so a red / 0-Gn/s donor's platform + backend + driver is visible instead of inferred from logs. `gpu_telemetry` re-sends the same four fields each tick so the row stays correct across a reconnect race.
+The server adds `ws` to `brain._gpuClients` and (if there's no primary, or the newcomer is materially stronger under DF.7) marks it `brain._gpuClient`; otherwise it's brought up as a full data-parallel replica. The browser donor omits everything but `type`; the native donor sends the richer payload above. **`osPlatform` / `engineBackend` (`cuda`/`vulkan`/`dx12`/`metal`/`gl`) / `driverVersion` / `computeCapability`** (donor-app v0.3.3+) are captured on `client.*` and surfaced in the admin dashboard **Clients table** `plat` column so a red / 0-Gn/s donor's platform + backend + driver is visible instead of inferred from logs. `gpu_telemetry` re-sends the same four fields each tick so the row stays correct across a reconnect race. **`utilizationPct` (donation duty-cycle, 0–100, default 100) + `donatedMB` (explicit VRAM cap, 0 = unset)** (donor-app v0.3.4+) tell the brain how much each donor actually gives: `_recomputeCommunityCompute` sums **effective donated** capacity (`donatedMB>0 ? min(donatedMB, fullVram) : fullVram × util/100`) for the auto-scale tier gate, so two 15 GB cards at 60 % count as 18 GB, not 30 GB. ⚠ utilization is a *throughput* duty-cycle, not VRAM held — for data-parallel the brain's max SIZE is bounded by the *smallest* donor's committed VRAM (`/autoscale` exposes `minDonorMB`), not the sum.
 
 ### `compute_result`
 
