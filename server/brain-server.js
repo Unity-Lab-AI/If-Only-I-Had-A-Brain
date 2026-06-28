@@ -6858,6 +6858,11 @@ wss.on('connection', (ws, req) => {
           // PA.4.8 — capture donor compute capacity (compute.html reports its
           // WebGPU adapter VRAM) for community-compute milestone scaling.
           client.gpuVramMB = Number(msg.vramMB) || 0;
+          // F8/F9 — WebGPU storage-binding cap, captured at register (gpu_register
+          // sends it as `maxStorageBindingMB`; telemetry later sends `maxBindMB`).
+          // Capturing here makes the capability gate + dashboard label work from the
+          // FIRST replica-sync, before the first telemetry frame arrives.
+          client.maxBindMB = Number(msg.maxStorageBindingMB) || Number(msg.maxBindMB) || 0;
           client.gpuName = (msg.gpuName || 'unknown').toString().slice(0, 80);
           // Donor LEADERBOARD identity — a persistent client-side ID (localStorage
           // UUID sent by compute.html) keys this donor's cumulative neuron-compute
