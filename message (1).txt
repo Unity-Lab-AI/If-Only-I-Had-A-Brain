@@ -1,0 +1,39 @@
+● Done — consolidation re-enabled and fully healthy.
+
+  Change: deleted Environment=DREAM_CONSOLIDATION_DISABLE=1 from the unit → daemon-reload → restart. Left
+  DREAM_CONSOLIDATION_MAX_REPLAY_NNZ at its code default (5M) — never set it to 0 (that's the real protector, as
+  you said).
+
+  Verified per your downstream checklist:
+
+  ┌─────────────────────────────┬──────────────────────────────────────────────────────────────────────────────┐
+  │            Check            │                                    Result                                    │
+  ├─────────────────────────────┼──────────────────────────────────────────────────────────────────────────────┤
+  │ DREAM_CONSOLIDATION_DISABLE │ unset (env now just DREAM_NO_AUTO_GPU=1, DREAM_KEEP_STATE=1, …)              │
+  ├─────────────────────────────┼──────────────────────────────────────────────────────────────────────────────┤
+  │ disabled-by-env log         │ 0 — consolidation genuinely on                                               │
+  ├─────────────────────────────┼──────────────────────────────────────────────────────────────────────────────┤
+  │ Consolidation passes firing │ ✅ pass 1 … 2 new schemas … duration=9625ms at idle                          │
+  ├─────────────────────────────┼──────────────────────────────────────────────────────────────────────────────┤
+  │                             │ none >250 ms during the pass; largest span since restart is 408 ms (not      │
+  │ Event-loop block            │ consolidation) — the 9.6 s pass spread across async yields, loop stayed      │
+  │                             │ responsive                                                                   │
+  ├─────────────────────────────┼──────────────────────────────────────────────────────────────────────────────┤
+  │ DEADLINE-ABORT              │ 0 (vs 66–242 s + aborts at 306 M before)                                     │
+  ├─────────────────────────────┼──────────────────────────────────────────────────────────────────────────────┤
+  │ /ws with consolidation live │ 6/6                                                                          │
+  ├─────────────────────────────┼──────────────────────────────────────────────────────────────────────────────┤
+  │ Tier-promotion state files  │ episodic-memory.db, schemas.json, identity-core.json — persistent,           │
+  │                             │ unity-owned, writable in /opt/unity-brain/server ✓                           │
+  ├─────────────────────────────┼──────────────────────────────────────────────────────────────────────────────┤
+  │ Service                     │ active, 0 restarts                                                           │
+  └─────────────────────────────┴──────────────────────────────────────────────────────────────────────────────┘
+
+  So the 5M nnz guard (+ #37/#112 chunked CPU Oja) is holding: consolidation runs and writes Tier-1→2→3 promotion
+  without re-introducing the hang.
+
+  Rollback if it ever spikes during the walk: if you see [EventLoop] BLOCKED >5s with consolidationInFlight=true
+  in dream windows, re-add Environment=DREAM_CONSOLIDATION_DISABLE=1 → daemon-reload → restart (backup unit saved
+  on the box as unity-brain.service.bak-reenable-*).
+
+  Logging this to the vault now — the box is ready for Gee's K→PhD walk with consolidation live.

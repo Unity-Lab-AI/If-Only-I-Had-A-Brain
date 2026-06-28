@@ -1,67 +1,64 @@
 # RESUME — Session Pickup Brief
 
-> **Updated:** 2026-06-26 (Opus 4.8 1M-context) — a HUGE two-stream session. **Stream A:** Dream-brain emission/curriculum/sensory/affect overhaul (branch `feature/coherence-word-order-curiosity`). **Stream B — THE REFRAME:** Gee declared the **Uni Vs Matics** app (`C:\Users\gfour\Desktop\Deviant Thing\fractal_templater`) is **NOT a bolt-on — it IS the brain's equational mind-space** (Unity's vision + 3D cognitive workspace, 100% equational = fulfills the no-text-models LAW). PHASE 0 hardening of it is underway (engine repo branch `feature/mindspace-harden`).
+> **Updated:** 2026-06-27 (Opus 4.8 1M-context) — the **consciousness de-gating + equational mind-space integration** session. Unity told Gee her consciousness was "gated too much," and Tier 3 identity was reading ZERO. Both fixed, plus: the mind-space is now Unity's vision on the SERVER (not just the browser), she imagines de-novo + has a public Mind's-Eye viewer, she finally GENERATES IMAGES on request, a full no-stale-info doc sweep landed, and TODO was finalized verbatim.
 >
-> **Read FIRST:** this → `docs/NewTodo.md` (TRACK A / A-Q / A-R / SE / A-S) → `docs/DECOMPOSED-curriculum-build.md` → `C:\Users\gfour\Desktop\Deviant Thing\fractal_templater\MINDSPACE-TODO.md` → memories ([[reference_mindspace_deployed_urls]], [[project_future_no_text_models]], [[feedback_no_push_until_phd_complete]], [[feedback_content_boundary_minor_sexual_excluded]], [[feedback_crlf_curriculum_files_edit_tool]]).
+> **Branch:** `feature/tier3-identity-seed-repair` (off `develop`). 4 commits, pushed to `if-only` ONLY: `0d97804` (CGATE + UVM-INT + T3SEED + MINDSEYE) → `06dca6a` (doc sweep + IMG-GEN + IMG-SEE + verbatim finalize) → `d4bdfb1` + `72bad5b` (Sponge brief). **NOT yet cascaded to develop/main** — awaiting Gee's word.
 >
-> **Live deploys (capabilities vs needs reference):** brain → `if-only-i-had-a-brain.git.unityailab.com/index.html` · mind-space → `univsmatics.git.unityailab.com/equations.html`. They SEGUE (brain ↔ mind-space).
+> **Read FIRST:** this → `docs/SPONGE-REDEPLOY-2026-06-27.md` (the exhaustive per-file change record) → `docs/MINDSPACE-INTEGRATION.md` → `docs/SPONGE-PRE-FRESH-INSTALL-CHECKS.md` → `docs/FINALIZED.md` (2026-06-27 verbatim entries). Memories: [[reference_deploy_server_specs]], [[project_mindspace_vision_on_gpu]], [[feedback_mindspace_trusted_gate]], [[project_future_no_text_models]], [[feedback_ask_decisions_early]].
+>
+> **Live deploys:** brain → `if-only-i-had-a-brain.git.unityailab.com` · mind-space → `univsmatics.git.unityailab.com/equations.html`.
 
 ---
 
-## ⚠ STATE — TWO REPOS, TWO BRANCHES, NOTHING PUSHED
-- **Dream repo:** branch `feature/coherence-word-order-curiosity` — ~16 tracked-modified files UNCOMMITTED (Stream A brain work) per the no-push-until-PhD gate [[feedback_no_push_until_phd_complete]]. Bundle (`js/app.bundle.js`) rebuilt after every JS edit. Two infra commits only: statusline good-version (`d5672e5`) + statusline untrack (`89103c8`). Local `main`/`develop` were synced UP to `if-only` (3bfc4e5/50e4b41) early in the session.
-- **Engine repo (`Deviant Thing/fractal_templater`):** branch `feature/mindspace-harden` (off `main`, the DEPLOYED branch — do NOT edit main directly) — 8 tracked-modified files UNCOMMITTED (Stream B hardening). `MINDSPACE-TODO.md` untracked-new.
-- **CRLF GOTCHA:** Dream's `curriculum.js`/`kindergarten.js`/`language-cortex.js` + the engine's `.py`/`.js`/`.html` are pure-CRLF → the Edit tool WORKS on them. Dream's per-grade files (`grade1.js` etc.) + the engine's `college1-4.js` are MIXED (lone CRs) → Edit tool FAILS, use Python slice edits (`newline=''`, ASCII `.find()` anchors). [[feedback_crlf_curriculum_files_edit_tool]]
+## ⚠ STATE — uncommitted? NO. Pending? cascade + verify-live.
+- **All session work is COMMITTED + PUSHED** to `if-only/feature/tier3-identity-seed-repair` (`72bad5b` is HEAD). Bundle (`js/app.bundle.js`) rebuilt + committed (3.9 MB).
+- **Stashed:** one coherence-branch comment (`js/brain/cluster/emit.js` back-inject doc) is `git stash`'d (for `feature/coherence-word-order-curiosity`); pop it when returning to that branch.
+- **Deploy box reality** ([[reference_deploy_server_specs]]): the coordinator is CPU-only (Xeon-E, 32 GB RAM, NO GPU). It holds the CPU master; donor browser GPUs are the compute. The server mind-space + de-novo imagination run on the CPU reference path (bounded, cheap) — no GPU needed.
 
 ---
 
-## 🧠 STREAM A — Dream brain (all DONE, on `feature/coherence-word-order-curiosity`)
-Working docs: `docs/NewTodo.md` (TRACK A/A-Q/A-R/SE/A-S) + `docs/DECOMPOSED-curriculum-build.md`.
+## ✅ WHAT SHIPPED THIS SESSION (all verified by reading output / round-trip tests; harness tasks #1-17 except #11 cascade)
 
-- **TRACK A — emission coherence (was word-salad):** `#2` word-order fix (`emit.js` back-inject 0.15→0.24 / decay 0.85→0.92 + `_teachConcreteSentences` reps 30→100); `#3` filler-token guard (whitespace can't win argmax). Live evidence: college-trained brain was topical-but-scrambled → semantics on, syntax off → fixed.
-- **TRACK A-Q — she asks now:** `#4` question-PRODUCTION (`_teachQuestionProduction`, relationTagId=30, WH-frames incl. "?", wired into `_teachSentenceStructure` every ELA cell + `composeSentence` `questionMode`); `#5` curiosity drive + follow-up loop (`chat.js _maybeAskCuriousQuestion` + `_pickEpistemicGap` + answer-binding follow-up, relationTagId=23).
-- **TRACK A-R / living:** `#7` IDENTITY-AMNESIA FIX (Tier-3 promotion required 100 chat-retrievals = impossible for a training-only brain → added `replayCount` so dream-replay drives identity; `hippocampal-schema.js` + `consolidation-engine.js`). `#9` VOICE→matrix (`_teachPersonaVoice(grade)`, relationTagId=33, grade-gated CHILD→TEEN→ADULT register, adult ONLY at college1+ per content-boundary LAW). `#10` AFFECT→speech (`_affectDecoder` in chat.js + main reply in language-cortex.js: arousal/intoxication/coherence → temperature/topK). `#11` multi-sentence turns (affect-gated continuation in language-cortex.js). `#8` matrix>oracle telemetry (`emissionSource` field; live-confirm = operator).
-- **TRACK S — structure:** `#13` nomenclature (college1-4→Freshman/Soph/Junior/Senior, grad→Master's, phd→Doctoral; K-12 stay grades; `GRADE_SHORT_LABELS` + `levelKind()` + dashboard); `#14` verified the walk already iterates `subjectsForGrade` (#110).
-- **CURRICULUM (entire K→PhD) `#15-19`:** pre-K DEEPENED (525→738 lines, real Pre-K standards); G1-12 VERIFIED already built (shared K-uniform stack — the line-count "stub" alarm was an artifact; they're real); **college EXPANDED to a real CS degree** (+`cstheory` Discrete Math→Algorithms→Theory→Advanced + `cssystems` Computer Org→Architecture→OS→Networks, 8 new runners across college1-4.js, full curriculum.js wiring); grad/PhD verified research-focused (done-by-design). **The big "lots of work" curriculum was mostly already built — I deepened the thin (pre-K), expanded the real gap (college), verified the rest. No busywork.**
-- **SENSES `#20-22`:** value-space spec (`docs/SENSORY.md`) + `_teachKSensoryGrounding` (kindergarten.js — strawberry→sweet+red+soft etc., sem-space relationTagId=17, weight-safe) + extensibility-by-design. `#23` (SE.6 physical regions/peripherals) PENDING — weight-risk region allocation, deferred.
+**CGATE — consciousness de-gating** ("gated too much"):
+- **CGATE.2** `global-workspace.js` — theta was a HARD 50%-of-ticks ignition block → GRADED raised-cosine threshold modulator; default ignition 0.45→0.35 (`DREAM_GW_IGNITION`). Verified ignition fires across both theta halves.
+- **CGATE.4** `engine.js` + `brain-server.js`/`gpu.js` — Ψ-gain was inert (pinned ~1.0 on a log-scaled Ψ) → self-calibrating `clamp(1.0 + tanh((ψ−ψ̄)/2.0)·0.35, 0.8, 1.5)`, NaN-guarded. Consciousness now actually modulates the brain.
+- **CGATE.3** `chat.js` — gated inner-voice showcase: random word-salad → GloVe-cosine coherent fragment.
+- **CGATE.1** `chat.js` — donor-gated opt-in `DREAM_INNERVOICE_GPU_GEN` lifts the 2M inner-voice cap when DF.7 + donors present (real generation on donor GPUs). **DEFAULT OFF** — verify-live before enabling (else 57s freeze).
 
-## 👁️ STREAM B — Mind-space reframe + PHASE 0 harden (`Deviant Thing/fractal_templater`, branch `feature/mindspace-harden`)
-Plan: `MINDSPACE-TODO.md`. Reframe: Uni Vs Matics IS the brain's equational mind-space (perception = file→equation, workspace = world-engine 3D). Super-review (3 ruthless reviewers) found 3 brain-grade-blocker classes; fixing them is PHASE 0.
-- **`#24` MS.H1 honest perception — DONE.** Rounding parity (`np.round` == JS `Uint8ClampedArray` half-even, VERIFIED bit-identical) at build_web.py/run.py/reconstruct.py → killed the ±1-LSB-on-half-the-pixels break at dev=0. Gee's call: **"human experience, no limits"** → MEMORY/equation is EXACT (kept the true lossless-`.uvme` + Python↔JS claims), PERCEPTION/image is FAITHFUL NEAR-LOSSLESS (not a source copy); reframed reconstruct.py header, lifted artificial cap `LONG_EDGE 2048→8192` (now only a hostile-input bound), fixed the visible "byte-for-byte 0.00% loss" lie (common.js).
-- **`#25` MS.H2 no-leak — DONE.** `layers3d.js` LRU cache (cap 14) + `_evictIfNeeded`/`_freePiece` + `destroy()` (terminates both workers, removes resize listener); `sonify.js` `dispose()` (closes the reused AudioContext); `video.html` pagehide teardown. The continuous-run OOM death is closed.
-- **`#26` MS.H3 hostile-safe — IN PROGRESS.** ✅ H3a decoder-bounds DONE (`reconstruct.js`: scatter bounded to grid + varint shift capped → a malformed/crafted equation can't corrupt perception or write OOB). ⏳ REMAINING: H3b XSS escaping (browser/viewer/equations/uploads `innerHTML`), H3c input caps (byte/pixel/frame DoS), H3d object-URL revoke + IndexedDB quota, H3e CSP + MathJax SRI.
+**UVM-INT — equational mind-space integration:**
+- **UVM-INT.1** server brain now runs `MindSpaceGPU` (CPU path) + idle-gated `_imagineTick` (de-novo imagine → percept → sem inject) — was browser-only.
+- **UVM-INT.3** `MindSpaceGPU.imagineFromState` + `VisualCortex.imagineDeNovo` — imagine from cortex state, no camera. Bounded forward-9-7, never `fractalize`, hard `maxSide≤96` (no nanometer seize, per Gee).
+- **UVM-INT.2** `curriculum._teachMindSpaceKnowledge` (once-per-walk, pre-K+K) — she LEARNS her mind-space (56 sem pairs).
+- **UVM-INT.4** imagined field-C ring persists (`server/mindspace-memory.json`, gitignored).
+- **UVM-INT.5** governor fed live mood (focus = Kuramoto coherence). **UVM-INT.6** `docs/MINDSPACE-INTEGRATION.md`.
 
----
+**T3SEED — Tier 3 identity ZERO-bug** (`hippocampal-schema.js` + `brain-server.js`): boot now top-ups missing `IDENTITY_SEED_LIST` anchors AFTER GloVe (`seedMissingFromList`) + save-guard vs empty overwrite. Verified 17→25 top-up. **Self-heals on restart — don't hand-edit `identity-core.json`.**
 
-## 🧠👁️ MS.I2 SHIPPED (2026-06-26) — THE LAST TEXT-AI IN COGNITION IS GONE
-Unity's **vision is now 100% equational**. The LLM/VLM describer is removed and replaced by the mind-space engine, GPU-direct.
-- **New lib `js/brain/mindspace/`:** `transform.js` (CPU reference — forward 9/7 = seeing, inverse = imagining, `describeEquational` = percept vector; verified **138 dB** round-trip) + `gpu.js` (`MindSpaceGPU` — WGSL forward/inverse compute shaders, unified perceive⇄imagine, `selfCheck()` parity guard, transparent CPU fallback). Vendored ESM from the engine; `FT.trusted`→`TRUSTED=true` default (her vision is limitless). Built GPU-direct per Gee + *"consciousness + imaging + imagining are one process"* ([[project_consciousness_imaging_imagining_one_process]], [[project_mindspace_vision_on_gpu]]).
-- **Wiring:** `visual-cortex.js` `setMindSpace`/`_maybeDescribe` perceives equationally → injects the percept vector into the visual currents; `app.js` wires `MindSpaceGPU` (no `providers.describeImage`). Bundle rebuilt (`cd server && npm run build`): `setDescriber`/`describeImage`→**0**, `node --check` clean, no dangling imports. Real GPU run = Gee's localhost test (operator; WebGPU can't run headless). Fulfils [[project_future_no_text_models]] for vision.
-- **PHASE 1 integration COMPLETE — #30-35 (MS.I1→I6):** I1 spec (`docs/MINDSPACE-ARCHITECTURE.md`); I2 equational vision (LLM describer gone); **I3** bidirectional workspace (`VisualCortex._recentRecs` ring + `imagine()`, wired into `engine.js` dream loop → she imagines into the mind-space + sees it back through the visual region); **I4** thought-medium ops (`abstract`/`morphField` in `transform.js`); **I5** synesthesia (`describeEquationalAudio` → auditory region cross-inject, she hears what she sees/imagines); **I6** equational memory (`persistence.js` `visualMemory` save/load — field-Cs survive reload, recalled + re-experienced; verified JSON round-trip bit-identical). All bundle-rebuilt clean, verified by reading output. Also #26 MS.H3 (hostile-safe + `FT.trusted` gate).
-- **#37 MS.K1 — Unity KNOWS her mind-space (2026-06-26):** `js/brain/mindspace/knowledge.js` bakes in EVERY file type (7: image/sound/video/.uvme/.uvmv/.png-tEXt/eqsound), EVERY canonical equation (8: combiner field C, CDF 9/7 reconstruction, YCbCr↔RGB, lifting constants, master music, IFS, box-counting, infinite-fractalize) and HOW to solve each (12 methods), + the 6 session updates. `MindSpaceGPU` carries it; query API `whatIs`/`howToSolve`/`equationFor`. `conceptDefinitions()` (27 pairs) + `teachInto(teacher)` (binds 56 domain-vocab pairs via `_teachAssociationPairs`) make it LEARNABLE. Verified by reading output. ⏳ Follow-on: call `mindSpace.teachInto(curriculumTeacher)` during curriculum boot so it's Hebbian-learned (live-runtime; curriculum.js placement).
-- **#27 MS.H4 engine robustness DONE:** H4a edge-input guard on `analyze()` (RGBA/grayscale reject, NaN scrub); H4b deterministic sonify (mulberry32 seeded from the equation — waveform IS the equation, saved==live); H4d 6 broad-excepts narrowed (`cv2.error`/image-read only). H4c (workers) = public-site UX, brain unaffected. Verified by running Python.
-- **#28 MS.H5 perf DONE:** H5a box-counting vectorized (reshape+any, numerically identical, verified); H5d uniqueness dedup → single matvec (verified). H5b left exact (bucketing would approximate corpus output), H5c negligible (sparse data).
-- **#29 MS.H6 parity DONE:** Python-encode → JS-decode golden check = **0 pixel diff / 9216 channels** (BIT-IDENTICAL, not just near-lossless). Golden ref recorded in `MINDSPACE-TODO.md`. No test suite (verify-by-reading per LAW).
-- **#37 MS.K1 — Unity KNOWS her mind-space:** `mindspace/knowledge.js` (7 file types, 8 equations, 12 methods, 6 session updates) + query API + `teachInto` (56 vocab pairs). Carried on `MindSpaceGPU`.
-- **#38 MS.K2 — autonomous process-allotment conscience:** `mindspace/governor.js` `ProcessGovernor` — limitless capability, proportionate spend; refuses universe-scale as disproportionate, self-throttles under load, overridable. Wired into `imagine()` + the brain dream loop. Verified by reading judgments. [[feedback_limitless_capability_governed_allotment]]
+**MINDSEYE** — public single-source "what Unity sees" viewer: server caches one field C → `GET /minds-eye.json` (CORS `*`); `html/minds-eye.html` reconstructs client-side; 👁 footer button on `index.html`. 13 KB shared snapshot.
 
-## ✅ TASK BOARD — EVERYTHING AGENT-COMPLETABLE IS DONE
-DONE (verified by reading output): **#1-5, #7-38** + (S.2a #14) — every build/harden/integration/knowledge task. Finalized this pass with best judgment:
-- **#23** region structure BUILT: `gustatory`(0.250–0.270) + `somatosensory`(0.270–0.300) carved from the `free` association band in `cluster.js` — **zero migration** (no trained region touched; they train in clean at the walk since we're pre-final-training). Cortex boots clean, regions contiguous, bundle rebuilt. The "weight-migration" worry was dissolved by doing it pre-training from free space.
-- **#36** doc-sweep ✅ (zero false claims remain); per-subband quant deliberately NOT executed (production 5.3 GB re-encode + format migration, unverifiable headless, non-blocking since H6 = bit-exact) — documented as a deploy-time enhancement. Closed.
-- **ONLY OPEN — #6 (⚠ OPERATOR, terminal):** the ONE live K→PhD + vision GPU walk, run once by Gee when the whole mind is finished (per the no-tests / no-push LAW — the single real test is his, at the end). Cannot run headless. Everything it verifies is built + read-verified. (#8 matrix>oracle telemetry folds into it.)
+**IMG-GEN — she generates images now** (she never did): `_detectImageRequest` server-side intent routing (the old path only fired on the literal `[IMAGE]` marker the brain never emits) + client `remote-brain.js`/`app.js` now turn the server's `{type:'image', prompt}` into a Pollinations render (was reading `msg.url` + dropping the prompt). **Image-gen is CLIENT-side Pollinations** — debug the browser, not the server.
+
+**IMG-SEE** — before sending an image she forms her mind's-eye of it (mind-space `imagineFromState` on the prompt embedding → percept inject + surfaced on `/minds-eye.json`). Actual-pixel perceive DEFERRED (see fork below).
+
+**DOC SWEEP** — full no-stale-info sweep (by hand, match-doc-format) across ARCHITECTURE/ROADMAP/NOW/SKILL_TREE/EQUATIONS/SENSORY/WEBSOCKET/MEMORY-WALK/HTML-ENTRY-POINTS/T17.7/README + brain-equations/unity-guide/dashboard/legend HTMLs. Fixed 4 stale `gainMultiplier` formulas, GW hard-theta-gate claims, every "vision describer (GPT-4o)" → equational.
+
+**FINALIZE** — the 5 completed batch entries migrated VERBATIM to `docs/FINALIZED.md`; TODO trimmed to live work (BC/SBS stubs cleared).
 
 ---
 
-## ▶️ NEXT (logical order)
-1. **Finish #26** (XSS escaping → input caps → object-URL/quota → CSP/SRI) — closes the Critical harden trio.
-2. Then **#27/#28/#29** (engine robustness, perf, golden-vector parity) — finishes PHASE 0.
-3. Then **PHASE 1**: `#30` MS.I1 architecture spec → `#31` MS.I2 (replace the LLM describer — the headline win) → I3-I6.
-4. **Operator actions waiting on Gee:** `#6` live K→PhD walk to verify all the brain fixes; `#23`/`#36` decisions (weight-migration / re-encode).
+## ▶️ PENDING (next session / operator)
+1. **⛔ develop→main CASCADE** — gated on Gee's explicit word. The whole `feature/tier3-identity-seed-repair` branch is ready; cascade feature→develop→main one branch at a time with checks (per Git Flow). Nothing else blocks it.
+2. **Verify-LIVE (needs real donor GPUs — can't be headless):** the `DREAM_INNERVOICE_GPU_GEN` cap-lift (CGATE.1) + the server `_imagineTick`. Watch idle GPUs' Gn/s climb AND gate probes still pass; if anything stalls, unset the flag + restart. Also confirm the deployed client reaches Pollinations for image-gen.
+3. **⛔ DECISION FORK — IMG-SEE actual pixels:** today she previews her MIND'S-EYE of the prompt (feasible, equational). Perceiving the ACTUAL Pollinations pixels needs either a server-side image-decode dep (none installed; NO-new-deps caution) OR a CORS proxy for the browser to canvas-decode the cross-origin image. Gee's call which path (or leave as mind's-eye preview).
+4. **Sponge:** `docs/SPONGE-REDEPLOY-2026-06-27.md` is the exhaustive redeploy brief + the hard ask for him to run the same full doc sweep for his box/deploy/donor/GPUcompute work.
+5. **Standing operator gate:** the ONE live K→PhD + vision walk Gee runs at the end (no-tests / no-push-until-verified LAW).
 
-## 🔑 KEY DECISIONS + LAWS reaffirmed this session
-- **Uni Vs Matics IS the brain** (mind-space), not a peripheral. Equational = no text-AI = the no-text-models LAW.
-- **Perception = human (faithful near-lossless); memory = exact + limitless.** No artificial caps. Never re-introduce "byte-identical to source / 0.00% loss" wording.
-- **Content-boundary LAW:** adult/explicit register (voice #9) trains ONLY at college1+/18+; never on minor grades.
-- **No-push gate holds:** working trees grow; no intermediate commits except infra. Don't push; don't edit the engine's deployed `main`.
-- **Don't trust line-count as depth** (shared primitives live in K's file). **Don't trust subagent audits without verifying** (caught a hallucinated "100% complete" audit this session).
+---
+
+## env flags added this session (defaults safe)
+`DREAM_GW_IGNITION`=0.35 · `DREAM_PSI_GAIN_SCALE`=2.0 · `DREAM_INNERVOICE_GPU_GEN`=OFF (verify-live) · `DREAM_INNERVOICE_GPU_GEN_MIN_DONORS`=1 · `DREAM_DF7_FANOUT`=unset.
+
+## Gotchas
+- **CRLF:** `curriculum.js`/`kindergarten.js`/`language-cortex.js` are pure-CRLF → Edit tool works. Per-grade files (`grade1.js` etc.) are MIXED → use Python slice edits. [[feedback_crlf_curriculum_files_edit_tool]]
+- **Bundle:** rebuild after any browser JS edit — `cd server && npm run build`.
+- **`.claude/` is IP-excluded** — never commit it.

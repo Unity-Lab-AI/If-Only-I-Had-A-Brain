@@ -1,0 +1,94 @@
+❯ still brainstorming... but I meant like me and gee could theoretically make an application we can spin up on    
+  our own systems and select how much GPU compute and what GPUs we want, and how much per gpu we want to utilize, 
+  and could run it on our own systems, temporarily spin up GPU compute on runpod or another service, send it out  
+  to others to donate their GPU compute, ext. No code edits, brain storming.                                      
+  
+● Yes — and now you're describing the right shape of it. What you're sketching is a dedicated donor agent: a
+  native app that turns "open a browser tab and hope" into "operator-controlled, elastic compute supply." It's
+  entirely feasible, and most of the hard parts are product decisions, not technical blockers. Let me lay out the
+  design space.
+
+  The core idea: a "donor agent," not a browser tab
+
+  One native application that:
+  - Enumerates every GPU on the machine (native wgpu/Dawn can see all adapters — a browser tab can't).
+  - Lets you pick which GPUs participate and how hard each one works.
+  - Supervises one worker per selected GPU, each running the same WGSL kernels we already have.
+  - Each worker connects to the backend's /ws lane as its own donor — so the existing many-donor orchestrator
+  needs zero changes to suddenly have 4 GPUs instead of 1 browser. That's the elegant part: multi-GPU falls out of
+  the existing fan-out for free.
+
+  The control knobs you described — and the honest caveats
+
+  "Which GPUs" — clean. Enumerate adapters, bind specific device indices, start/stop workers per card.
+
+  "How much per GPU" — this is the one with a wrinkle worth knowing. GPUs don't have a clean "use 50%" dial like
+  CPU cgroup quota does. The portable levers are:
+  - Duty cycling — do work, then idle a slice of wall-clock (50% target ≈ work half the time). Simple,
+  vendor-neutral, what you'd ship first.
+  - Dispatch pacing / smaller chunks — limit in-flight workgroups and insert gaps.
+  - Hard power/clock caps — nvidia-smi -pl (power limit) or clock locks give real hardware throttling, but they're
+  vendor-specific and need privileges. A nice "advanced" layer on top of duty cycling.
+
+  So "% utilization" is achievable as a target via pacing; a true hardware ceiling is an NVIDIA-specific bonus.
+  Worth setting expectations that way rather than promising a perfect slider.
+
+  The RunPod / ephemeral-cloud angle — this is the strongest part
+
+  This is where a native agent really pays off:
+  - Bake the donor agent into a container image. Startup reads BACKEND_URL + a donor token, auto-connects, starts
+  crunching.
+  - Spin up N pods → N donors appear in seconds. Tear down when done. Pay per second.
+  - The agent could even autoscale: poll the backend's reported demand and spin RunPod/Vast/Lambda pods up or down
+  to hit a target throughput — a "donor autoscaler."
+  - Guardrails matter here: budget ceiling, idle auto-stop, max-pods cap. Easy to leave GPUs billing overnight
+  otherwise.
+
+  This converts the project from "wait for random browser donors" to "operator can guarantee a compute floor and 
+  burst on demand." That's a real capability jump for getting Gee's K→PhD walk done on a schedule instead of
+  donor-luck.
+
+  "Send it to others to donate"
+
+  Same agent, packaged as a signed installer / single binary, with a dead-simple UI: paste the project's join URL,
+  pick GPUs, set caps, hit Start. Two honest trust considerations:
+  - Donors run shaders you ship. Same trust as the browser model — except outside the browser sandbox, so a
+  signed, reputable binary matters more. People will (rightly) be warier of a downloaded GPU binary than a tab.
+  - The backend must not trust donor results blindly. A sandboxed tab is hard to fake; a native donor is easier to
+  spoof or to return garbage. So redundant compute / spot-check validation on critical matrices becomes more
+  important as you open native donation to strangers. For your and Gee's own machines + your own RunPod pods,
+  that's a non-issue — it only matters when you distribute widely.
+
+  What the backend would need (tweaks, not a rewrite)
+
+  - Capability handshake — donor advertises buffer size, device count, throughput class. (This is also what fixes
+  the cortex_sem_to_motor 1024 MB wall: a native donor says "I can take 8 GB chunks," and the upload failures we
+  hit just stop.)
+  - Scheduling/fairness — when you've got a few beefy native donors plus flaky browser ones, prefer the reliable
+  big ones for the large matrices.
+  - Result validation — only if/when you open it to untrusted donors (above).
+  - Heartbeat/health you mostly already have.
+
+  The architecture in one breath
+
+  Donor Agent (control UI + config + supervisor) → spawns N GPU Workers (one per card, each a wgpu/Dawn device
+  running the existing WGSL, throttled to target util, each a /ws donor) → optional Cloud module (RunPod API:
+  spawn/teardown pre-baked donor containers, autoscale, budget-cap).
+
+  The honest open questions (real brainstorm, not a pitch)
+
+  1. One WS connection multiplexing all GPUs, or one connection per GPU? Per-connection is simpler and needs no
+  backend change; multiplexed is tidier but more protocol work.
+  2. Native runtime choice — wgpu-native (Rust, clean C API, easy static-ish binary) vs Dawn (C++, what Chrome
+  ships, closest behavior to the browser donors). Both load your existing WGSL unmodified, which is the whole
+  reason this is cheap.
+  3. How far to take "% per GPU" — ship duty-cycle pacing first; treat power-limit caps as a later NVIDIA-only
+  nicety.
+  4. Distribution trust posture — keep native donation to trusted operators (you, Gee, your cloud) initially, and
+  only invest in result-validation when you actually want to crowd-source native donors.
+
+  Bottom line: your buddy's "it has to be the browser" is the current implementation, not a constraint. What
+  you're describing — operator-controlled, multi-GPU, throttleable, cloud-burstable donor agent — is the natural
+  next tier, reuses the WGSL kernels and the existing orchestrator wholesale, and directly kills the two walls
+  we've already hit (buffer size + single-GPU ceiling). The cost is "build a native donor host + a capability
+  handshake," and the cloud-autoscaler is the highest-leverage piece of it.

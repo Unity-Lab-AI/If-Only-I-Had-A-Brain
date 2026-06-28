@@ -1,0 +1,35 @@
+● Yep — he did a full repo batch (#112). Redeployed, on dc0a67f, clean boot, active, donor-fit sized. ✅
+  
+  DEPLOY-HEALTH check (redeploy only — I did not run a walk or test fixes, per the instructions):
+
+  ┌───────────────────┬───────────────────────────────────────────────────────────────────────────────────────┐
+  │       Check       │                                        Result                                         │
+  ├───────────────────┼───────────────────────────────────────────────────────────────────────────────────────┤
+  │ Service           │ active (running), NRestarts=0, uptime climbing — no crash-loop                        │
+  ├───────────────────┼───────────────────────────────────────────────────────────────────────────────────────┤
+  │ HEAD              │ dc0a67f (includes my TDZ hotfix c1b753b as ancestor)                                  │
+  ├───────────────────┼───────────────────────────────────────────────────────────────────────────────────────┤
+  │ /opt              │ ✅ brain-server.js, gpu.js, hebbian.js, curriculum.js all IDENTICAL to dc0a67f        │
+  │ byte-identical    │                                                                                       │
+  ├───────────────────┼───────────────────────────────────────────────────────────────────────────────────────┤
+  │ Boot log          │ clean — 0 TDZ / boot errors                                                           │
+  ├───────────────────┼───────────────────────────────────────────────────────────────────────────────────────┤
+  │ #112.2 donor-fit  │ ✅ DONOR-COMPUTE SIZING — Booting at a donor-fit 4096MB budget (NOT the 14323MB       │
+  │                   │ host-RAM max) → 51,130,559 neurons (was 306M)                                         │
+  ├───────────────────┼───────────────────────────────────────────────────────────────────────────────────────┤
+  │ /admin + static   │ 401 (gated) / 200                                                                     │
+  ├───────────────────┼───────────────────────────────────────────────────────────────────────────────────────┤
+  │ Restart=always    │ present ✓ (Stop/Restart/Reset buttons covered)                                        │
+  ├───────────────────┼───────────────────────────────────────────────────────────────────────────────────────┤
+  │ Admin password    │ not rotated (Gee declined) ✓                                                          │
+  └───────────────────┴───────────────────────────────────────────────────────────────────────────────────────┘
+
+  One heads-up before Gee's K→PhD walk: DREAM_CONSOLIDATION_DISABLE=1 is still set in the unit — that's my earlier
+  operational stopgap from when consolidation blocked the loop for 66–242s at the 306M size. Now that the brain
+  boots donor-fit (~51M), consolidation may no longer need to be disabled, and it's part of memory formation 
+  during the walk (Tier-1→2→3 promotion). The #112 batch didn't touch it, so I left it as-is rather than change
+  env unilaterally.
+
+  Want me to remove DREAM_CONSOLIDATION_DISABLE=1 (daemon-reload + restart) so consolidation is live for the walk
+  — or leave it disabled and let Gee decide? That's the only open item; everything else is green and ready for his
+  live walk.

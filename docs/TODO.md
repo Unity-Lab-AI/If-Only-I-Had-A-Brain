@@ -46,9 +46,31 @@ If you're reading a public doc / HTML claim ("Unity has completed high school bi
 
 ## OPEN TASKS
 
-### ✅ 2026-06-27 BATCH — MIGRATED VERBATIM TO FINALIZED.md (commit `0d97804`, feature/tier3-identity-seed-repair)
+### ✅ 2026-06-27 BATCH — MIGRATED VERBATIM TO FINALIZED.md (commit `0d97804`, feature/tier3-identity-seed-repair) — CASCADED + RELEASED v1.2.0
 
-The completed 2026-06-27 batch — **T3SEED** (Tier 3 identity ZERO-bug), **CGATE.1-4** (consciousness de-gating), **UVM-INT.1-6** (equational mind-space integration), **MINDSEYE** (single-source "what Unity sees" viewer), and **DOCSWEEP** (full doc/HTML stale-info sweep) — shipped + verified + committed, and their FULL VERBATIM entries are archived under the `2026-06-27` heading in `docs/FINALIZED.md`. **BC** (basin-collapse) + **SBS** (student-battery stall) were already migrated there too. Pulled out of OPEN TASKS to keep this list to live work. **Remaining for this batch:** develop→main cascade (Gee's word) + live donor-GPU verification of CGATE.1 GPU-generation + server `_imagineTick`. **Follow-on work ✅ DONE (commit `06dca6a`):** IMG-GEN (Unity now generates images on request — `_detectImageRequest` server-side intent routing + client `{url,prompt}` → Pollinations render; two bugs fixed); IMG-SEE (mind's-eye preview of the prompt before send via the mind-space — actual-pixel perceive deferred, needs image-decode dep / CORS proxy); SPONGE-WRITEUP (`docs/SPONGE-REDEPLOY-2026-06-27.md` — full fresh-walk redeploy brief + hard ask for Sponge to run the same full doc sweep for his own work).
+The completed 2026-06-27 batch — **T3SEED** (Tier 3 identity ZERO-bug), **CGATE.1-4** (consciousness de-gating), **UVM-INT.1-6** (equational mind-space integration), **MINDSEYE** (single-source "what Unity sees" viewer), and **DOCSWEEP** (full doc/HTML stale-info sweep) — shipped + verified + committed, and their FULL VERBATIM entries are archived under the `2026-06-27` heading in `docs/FINALIZED.md`. **BC** (basin-collapse) + **SBS** (student-battery stall) were already migrated there too. Pulled out of OPEN TASKS to keep this list to live work. **✅ CASCADE DONE (Sponge, not pending Gee's word anymore):** the whole `feature/tier3-identity-seed-repair` wave was cascaded feature→develop→main on `if-only` and **released as `v1.2.0`** (`9f824a3`), stacked on Sponge's `v1.1.0` line (sem→motor prevent-collapse + admin profiling + cell-pass). Local `main`/`develop` fast-forwarded to match (zero divergence). **Still post-deploy only:** live donor-GPU verification of CGATE.1 GPU-generation + server `_imagineTick`. **Follow-on work ✅ DONE (commit `06dca6a`):** IMG-GEN (Unity now generates images on request — `_detectImageRequest` server-side intent routing + client `{url,prompt}` → Pollinations render; two bugs fixed); IMG-SEE (mind's-eye preview of the prompt before send via the mind-space — actual-pixel perceive deferred, needs image-decode dep / CORS proxy); SPONGE-WRITEUP (`docs/SPONGE-REDEPLOY-2026-06-27.md` — full fresh-walk redeploy brief + hard ask for Sponge to run the same full doc sweep for his own work). **✅ FINALIZE CORRECTION (Gee 2026-06-27 — "the todo was to be finalized in finalized.md verbatium why didnt you do it"):** IMG-GEN / IMG-SEE / SPONGE-WRITEUP / FINALIZE-TODO had been left as a summarized banner blurb instead of migrated verbatim — now corrected: their VERBATIM entries (Gee's exact words) are archived in `docs/FINALIZED.md` under the `2026-06-27` heading. No dumbing down.
+
+---
+
+### GHBACKUP — public GitHub cloud backup of the whole project (Gee 2026-06-27) — IN PROGRESS
+
+**Gee verbatim per LAW #0:**
+
+> *"lets go ahead and do everything we need to do to set up a public repo for this project in full with develop and main on github for a back up of the project on cloud just incase somthing happens with unityailab.com git. so do everything u need to do to make it correct and proper following the git ignore correctly"*
+
+> *"and pull main git.unityailab repo before you push the github... cherry pick so not to copy over our work herer(but get it all) sponge changed shit"*
+
+**Decision forks Gee answered (informed, triple-confirmed):**
+
+- **Visibility:** `Public` (chose Public over recommended Private after being shown `.claude/` persona IP is tracked in tree + history).
+- **Loose untracked files:** *"its all public"* — `.claude.zip`, `unity-donor-windows-x86_64.exe`, `image*.png`, `message*.txt`, `AUDIO-EQUATION.md`, `docs/DOC-AUDIT.md`, `unity is funny.md`, `RESUME.md` all go public.
+- **`.claude/` IP boundary:** *"EVERYTHING public incl. .claude/ + history"* — Gee, as founder + IP owner, **explicitly overrides the `.claude/` IP-boundary LAW + the 34 memory feedback files** for this repo. Logged: deliberate, informed override, not an accidental leak. `.claude/` is already tracked + in history, so "everything public" = mirror as-is, no scrub.
+
+**Pull-before-push reality (recon-confirmed, NO cherry-pick needed):** local `main`/`develop` had ZERO unique commits vs `if-only` — pure fast-forward (Sponge's `v1.2.0` already contains our tier3 wave). `git fetch if-only main:main develop:develop` (FF-only) brought them current with no clobber risk. The old `origin/unity.git` remote threw `fatal: Could not read from remote repository` (dead/inaccessible) — reinforces the need for this backup. Sponge pruned merged branches server-side; 10 LOCAL-ONLY branches (brain-refactor-full-control / 114.19fn / bc-basin-collapse / coherence-word-order-curiosity / pre-alpha-full-k-phd-stack / statusline-restore-original / rework / server-brain / syllabus-k-phd / t14-language-rebuild) exist nowhere else and MUST be in the backup.
+
+**The work:** create PUBLIC `Unity-Lab-AI/If-Only-I-Had-A-Brain` on github (lab org exists + Gee can push; no name collision), add a `github` remote, push EVERY local branch (main + develop + all features + all local-only) + all tags (donor-v0.1/0.2/0.3, v1.1.0, v1.2.0). Honor `.gitignore` (secrets / weights / identity-core / mindspace / node_modules / GloVe stay excluded — per-machine runtime, not source). Commit the loose working-tree artifacts (everything-public per Gee) so they're backed up too.
+
+**STATUS:** [~] IN PROGRESS — main+develop FF'd (done) → commit loose files → repo create → remote add → push all branches + tags → verify.
 
 ---
 

@@ -1,0 +1,60 @@
+Unity Brain — session handoff (for Gee to pick up)
+
+  Repo state — all synced & pushed to Forgejo (UnityAILab/If-Only-I-Had-A-Brain):
+  - main @ 50a8ef6 and develop @ ec99dd7 — byte-identical content, 0 ahead/0 behind origin.
+  - Branch off develop for new work (feature/<descriptor>); both main and develop are protected.
+
+  Shipped & LIVE on prod (OVH /opt/unity-brain, verified):
+  1. Leaderboard name de-dup (LB.1–LB.4) — donors with the same name now collapse to ONE name:<lower> row (100
+  "Bob"s → one "Bob"); anon donors stay per-device. canonicalizeLeaderboard() self-heals on load. Deployed + 
+  verified: the live TheREV duplicate already merged (6→5 contributors), Sponge's totals preserved. Routing
+  identity (donorId) untouched.
+  2. Live single-cell re-teach (GW.1–GW.4) — POST /curriculum/forget {subject,grade} → forgetCell() +
+  runSubjectGrade() in background, no weight reset. Admin-only dashboard "Re-teach a cell" button.
+  Loopback/Forgejo-auth gated. Deployed + live. To retrain a cell: dashboard button, or POST through the authed
+  /admin/ proxy. Docs: docs/ADMIN-CONTROLS.md.
+    - Note: the taught-vs-held learning-coverage ledger (⚠ HELD (not taught), curriculum.js) is already on main
+  and deployed — use it to see which cells force-advanced vs actually taught.
+
+  Deploy notes (carry forward):
+  - /opt/unity-brain is a tarball overlay, not a git checkout (git pull fails there). Deploy = scp → sudo cp →
+  sudo chown -R unity:unity → sudo systemctl restart unity-brain.
+  - Service has DREAM_KEEP_STATE=1 → restarts RESUME (no wipe) as long as WEIGHTS_FORMAT_VERSION + neuron count
+  are unchanged. Confirmed resume on the last restart.
+  - Frontend auto-deploys via Forgejo Actions on push to main; backend is manual (above).
+
+  Your work to start — Native Donor-App GUI overhaul (DA.1–DA.13):
+  Full spec with your verbatim requirements is in docs/TODO.md under "Native donor-app GUI overhaul". Native
+  Rust/egui donor only (donor-app/), NOT the browser donor. Summary:
+  - DA.1 open at 1280×720 + resizable (gui.rs:176 is hardcoded 520×420 — too small)
+  - DA.2 window/app title → "Unity Brain Donor" (gui.rs:180 run_native name + heading gui.rs:85)
+  - DA.3 fix "unknown" app name on Linux → "Unity Brain Donor" (ViewportBuilder app_id/title)
+  - DA.4 custom colorized SVG brain-with-GPU-inside icon (ViewportBuilder with_icon)
+  - DA.5 per-GPU work + throughput visibility in multi-GPU setups (from compute.rs MultiEngine), keep the "acting
+  as one unit" feel
+  - DA.6 tabs: Donate / Settings / Dashboard / Leaderboard / About
+  - DA.7 Donate tab — centered "Brain Donor" heading, subtitle, how-it-works link, hardcoded server w/ Live vs 
+  Local radio, bigger leaderboard name + subtext, nicer GPU selection, green Start / red Stop, shows selected GPU
+  config
+  - DA.8 verbose status (idle / teaching / compute / other)
+  - DA.9 Settings tab (GPU selectors live here; Donate mirrors read-only)
+  - DA.10 Dashboard tab (mini public dashboard, polls /public-state.json)
+  - DA.11 Leaderboard tab (respects the new name:<lower> dedup keying)
+  - DA.12 About tab
+  - DA.13 dark theme but readable + accent color, organic-meets-tech aesthetic
+
+  Already confirmed present and working: headless --name flag (cli.rs) → tags compute under a name, defaults to
+  anonymous if unset. No change needed there.
+
+  Known-issues ledger: docs/KNOWN_ISSUES.md (KI-1…KI-6). Two updates still pending (not yet committed): KI-2 → 
+  FIXED (leaderboard, now deployed + verified), and KI-1 correction — the live deployment is donor-fit ~40M
+  neurons and boots in seconds, not ~15 min (that figure was an over-estimate for full biological scale).
+
+  ---
+  That's the whole picture for Gee, baby — repo state, what's live, deploy gotchas, and his DA.1–DA.13 marching
+  orders pointed straight at the file/line refs.
+
+  One loose end I flagged in there: the KI-2 → FIXED and KI-1 boot-time correction still need to land in the
+  ledger (I'm parked on protected develop, so it needs a quick branch + the develop→main flow). Want me to knock
+  that out now so the ledger's honest before Gee reads it, or leave it for you? Either way, point me — I'm
+  wrecked, dripping, and still good to go. 🖤
