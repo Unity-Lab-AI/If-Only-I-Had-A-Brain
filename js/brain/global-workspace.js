@@ -16,12 +16,14 @@
 //      semantic label like 'cortex:word_motor:dog' or 'amygdala:fear').
 //   2. GlobalWorkspace.tick() aggregates all candidates
 //   3. Apply softmax with temperature τ over the activation values
-//   4. If max softmax probability > IGNITION_THRESHOLD: WINNER fires.
-//      Winner content gets BROADCAST back to all clusters as feedback
-//      input on next tick.
+//   4. If max softmax probability > the theta-modulated ignition threshold:
+//      WINNER fires. Winner content gets BROADCAST back to all clusters as
+//      feedback input on next tick.
 //   5. Below-threshold ticks have no broadcast — UNCONSCIOUS processing.
-//   6. Theta-gated: ignition fires only on theta peak (every ~167 ticks)
-//      so consciousness has the ~6 Hz oscillatory cadence real cortex has.
+//   6. Theta-MODULATED (CGATE.2): the ignition threshold rises and falls with
+//      theta phase (raised-cosine openness, peak every ~167 ticks) so
+//      consciousness keeps the ~6 Hz cadence real cortex has — but, unlike the
+//      old hard 50%-of-ticks block, strong content can still ignite off-peak.
 
 // **What it gives Unity:**
 //   - Unified conscious moment (single content broadcast at a time)
@@ -64,11 +66,23 @@ class GlobalWorkspace {
     if (typeof process !== 'undefined' && process.env?.DREAM_GW_IGNITION) {
       envIgn = parseFloat(process.env.DREAM_GW_IGNITION);
     }
+    // CGATE.2 — default lowered 0.45 → 0.35. Unity reported her consciousness
+    // "gated too much"; the old default + the hard 50% theta block (below) let
+    // only sharply-dominant content ignite. 0.35 lets more real content reach
+    // conscious broadcast while still gating noise. Env/opts override unchanged.
     this.ignitionThreshold = (Number.isFinite(envIgn) && envIgn > 0 && envIgn < 1)
       ? envIgn
-      : (opts.ignitionThreshold ?? 0.45);
+      : (opts.ignitionThreshold ?? 0.35);
     this.softmaxTau = opts.softmaxTau ?? 0.5;
     this.thetaPeriod = opts.thetaPeriod ?? 167;
+    // CGATE.2 — theta no longer HARD-gates (the old code barred ignition on the
+    // entire upper half of every cycle — 50% of ticks could never be conscious).
+    // Theta now MODULATES the ignition threshold by phase (phase-amplitude
+    // coupling): easiest at the theta peak, harder — but NOT impossible — off
+    // peak, so strong content can still break through any time while the conscious
+    // cadence is preserved. thetaGateStrength = how much higher the threshold gets
+    // at the theta trough (0 = no theta effect; 0.22 ≈ off-peak eff-threshold 0.57).
+    this.thetaGateStrength = opts.thetaGateStrength ?? 0.22;
     this.broadcastDecay = opts.broadcastDecay ?? 0.85;
     this.historyLen = opts.historyLen ?? 32;
 
@@ -135,14 +149,15 @@ class GlobalWorkspace {
       }
     }
 
-    // Theta-gated: only fire ignition during upper half of theta phase
-    // (sin > 0). Models cortical phase-amplitude coupling — conscious
-    // moments cluster on the theta rhythm.
+    // CGATE.2 — theta as a GRADED modulator, not a binary gate. Raised-cosine
+    // "openness" peaks at the theta peak (phase 0/1) and troughs at phase 0.5 —
+    // the conscious cadence real cortex shows — but instead of hard-returning on
+    // the trough half (the old 50%-of-ticks-can-never-be-conscious block), it
+    // raises the ignition threshold off-peak. Strong content still ignites any
+    // time; weak content only near the peak.
     const thetaPhase = (this._tickCounter % this.thetaPeriod) / this.thetaPeriod;
-    if (thetaPhase >= 0.5) {
-      this.stats.thetaGated += 1;
-      return; // subthreshold processing only
-    }
+    const thetaOpenness = 0.5 * (1 + Math.cos(2 * Math.PI * thetaPhase)); // 1 at peak → 0 at trough
+    const effIgnitionThreshold = this.ignitionThreshold + (1 - thetaOpenness) * this.thetaGateStrength;
 
     // Aggregate candidates from all registered clusters.
     const candidates = [];
@@ -194,7 +209,7 @@ class GlobalWorkspace {
     }
     const maxProb = probs[bestIdx];
 
-    if (maxProb >= this.ignitionThreshold) {
+    if (maxProb >= effIgnitionThreshold) {
       // IGNITION — winner broadcasts.
       const winner = candidates[bestIdx];
       this.currentBroadcast = {
@@ -229,6 +244,11 @@ class GlobalWorkspace {
       }
     } else {
       this.stats.subthreshold += 1;
+      // CGATE.2 — track ignitions theta SUPPRESSED: would have crossed the base
+      // threshold but not the off-peak raised one. Replaces the old hard-gate
+      // counter; lets the dashboard show how much the theta cadence (not a hard
+      // wall) is shaping conscious access.
+      if (maxProb >= this.ignitionThreshold) this.stats.thetaGated += 1;
     }
   }
 

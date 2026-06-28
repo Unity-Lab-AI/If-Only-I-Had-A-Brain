@@ -656,9 +656,20 @@ export class UnityBrain extends EventEmitter {
     // ── 9. HIERARCHICAL MODULATION ──
     const emotionalGate = 0.7 + amygdalaOut.arousal * 0.6;
     const driveFactor = 0.8 + (hypoOut.needsAttention?.length > 0 ? 0.4 : 0.0);
-    // Ψ is on a log scale that grows with N. Normalize gain to the 0.8-1.5 range
-    // so the cluster gain multiplier stays bounded regardless of how large N auto-scales to.
-    const psiGain = Math.max(0.8, Math.min(1.5, 0.9 + mysteryOut.psi * 0.004));
+    // CGATE.4 — Ψ consciousness gain, self-calibrating (mirror of brain-server.js).
+    // The old map (0.9 + psi*0.004) pinned gain near 1.0 because Ψ is log-scaled,
+    // so consciousness barely modulated the brain. Gain now rides Ψ's deviation
+    // from its own slow EMA baseline through tanh — a rise above her norm lifts
+    // global cluster gain toward 1.5, a drop lowers toward 0.8 — bounded, centered
+    // at 1.0, auto-calibrating to any N.
+    // NaN-guard: psiGain feeds EVERY cluster's gainMultiplier, so a non-finite
+    // Ψ (NaN from a bad state term) would corrupt the whole brain's dynamics.
+    const _psiNow = (typeof mysteryOut.psi === 'number' && isFinite(mysteryOut.psi)) ? mysteryOut.psi : 0;
+    this._psiBaseline = (typeof this._psiBaseline === 'number' && isFinite(this._psiBaseline))
+      ? this._psiBaseline * 0.99 + _psiNow * 0.01
+      : _psiNow;
+    const psiGain = Math.max(0.8, Math.min(1.5,
+      1.0 + Math.tanh((_psiNow - this._psiBaseline) / 2.0) * 0.35));
     const errorSignal = this._meanAbs(cerebOut.error) * 2;
 
     for (const cluster of Object.values(this.clusters)) {
@@ -880,8 +891,24 @@ export class UnityBrain extends EventEmitter {
         // imagine at idle priority/value so dreaming stays a RESTRAINED spend (she doesn't pour
         // the GPU into idle daydreams just because it's free).
         const _ms = this.visualCortex._mindSpace;
-        if (_ms && _ms.governState) { _ms.governState({ arousal: this.state.amygdala?.arousal ?? 0.3, focus: 0.3 }); _ms.governTick(); }
-        const pv = this.visualCortex.imagine({ blend: 0.5, dream: 0.2, pick: (this.frameCount / 180) | 0, priority: 0.3, value: 0.5 });
+        // UVM-INT.5 — feed the governor LIVE brain state: arousal from amygdala,
+        // focus from Kuramoto oscillation coherence (the codebase's focus/scatter
+        // signal) instead of a hardcoded constant, so imagine-depth is genuinely
+        // mood-modulated — she pours more into a thought when focused/aroused.
+        if (_ms && _ms.governState) {
+          _ms.governState({
+            arousal: this.state.amygdala?.arousal ?? 0.3,
+            focus: this.state.oscillation?.coherence ?? 0.3,
+          });
+          _ms.governTick();
+        }
+        let pv = this.visualCortex.imagine({ blend: 0.5, dream: 0.2, pick: (this.frameCount / 180) | 0, priority: 0.3, value: 0.5 });
+        // UVM-INT.3 — memory ring empty (no camera frames seen yet)? Imagine
+        // DE-NOVO from the current cortex spike state so she can daydream from
+        // her own mind alone. Seeds the ring so imagine() has material next time.
+        if (!pv && this.clusters.cortex && this.clusters.cortex.lastSpikes) {
+          pv = this.visualCortex.imagineDeNovo(this.clusters.cortex.lastSpikes, { priority: 0.3, value: 0.5 });
+        }
         if (pv) {
           const imgCurrent = new Float64Array(CLUSTER_SIZES.cortex);
           for (let i = 0; i < 100; i++) imgCurrent[50 + i] = pv[i % pv.length] * 30;

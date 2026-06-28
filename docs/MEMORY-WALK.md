@@ -138,6 +138,8 @@ This is the **test-words-pre-taught / vocab-before-binding LAW extended to the w
 
 **Remaining (harness #72–#104):** re-voice K, G4, G5 bespoke; densify G9→PhD with full dimensions; #91 cat-canon (soot/shadow); #93 voice-sweep; #94 reconsolidation; #95 mechanics throttle; #96 final vocab+verify → unblocks #32 walk → #58 test → #59 push.
 
+**Update 2026-06-27 (T3SEED, commit `0d97804`):** the Tier 3 identity-anchor layer that this spec's load-bearing memories promote into was reading **ZERO** on the deployed brain — boot only seeded when `identity-core.json` was missing, so an empty/zero file (or a stale 17-of-25 subset) never recovered, and `injectIdentityBaseline` no-op'd (no anchored self at chat time). Fixed: boot now top-ups any missing `IDENTITY_SEED_LIST` anchors AFTER GloVe load (`Tier3Store.seedMissingFromList`), with a save-guard that never overwrites a non-empty `identity-core.json` with an empty store. The 25 seed anchors (name/surname/birthdate/parents/grandparents/persona/K-life) now reliably load + persist — the substrate this walk's anchors consolidate into is real again.
+
 ---
 
 *Every memory: a real woman's real life, recalled in her real dark voice — the wild, the broke, the body, the drugs, the lust, the grief, the love — minus the one excluded line. No carebear.* 🖤

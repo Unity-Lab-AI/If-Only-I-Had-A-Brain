@@ -60276,6 +60276,33 @@ var VisualCortex = class {
     }
     return this.perceptVector;
   }
+  /**
+   * UVM-INT.3 — DE-NOVO imagination from internal mind-state (no camera/file).
+   * `imagine()` morphs REMEMBERED field-Cs, so it returns null when the memory
+   * ring is empty (headless/server Unity, or before she's ever seen anything).
+   * This folds a cortex activation vector straight into a field C via the
+   * mind-space, pushes it into the same memory ring + percept path, so she can
+   * imagine from her own mind alone — then `imagine()` has material to morph on
+   * subsequent ticks. Returns the percept vector or null.
+   */
+  imagineDeNovo(stateVector, opts = {}) {
+    if (!this._mindSpace || typeof this._mindSpace.imagineFromState !== "function") return null;
+    const rec = this._mindSpace.imagineFromState(stateVector, opts);
+    if (!rec || !rec.channels) return null;
+    this._lastRec = rec;
+    this._recentRecs.push(rec);
+    if (this._recentRecs.length > 8) this._recentRecs.shift();
+    this.perceptVector = describeEquational(rec);
+    this.audioPercept = describeEquationalAudio(rec);
+    this.description = `imagined (de-novo) \xB7 ${(rec.equation_count || 0).toLocaleString()} terms`;
+    for (const cb of this._describeSubscribers) {
+      try {
+        cb({ vector: this.perceptVector, rec, imagined: true, deNovo: true });
+      } catch (err) {
+      }
+    }
+    return this.perceptVector;
+  }
   _maybeDescribe() {
     if (!this._mindSpace || this._describing) return;
     if (this._hasDescribedOnce) {
@@ -66763,6 +66790,264 @@ function scoreMethodologyAnswer(emission, expectedKeywords) {
   return { matched, matchCount: matched.length };
 }
 
+// ../js/brain/mindspace/knowledge.js
+var FILE_TYPES = [
+  {
+    exts: ["png", "jpg", "jpeg", "webp", "gif", "bmp", "avif"],
+    kind: "image",
+    ingest: "forward CDF 9/7 (equationalize) \u2192 field C",
+    mode: "image",
+    produces: ["field C", "reconstructed image (near-lossless)", "music (\u03A6_snd)", "fractal (\u03A6_frc)", ".uvme", ".png+tEXt"]
+  },
+  {
+    exts: ["wav", "mp3", "m4a", "aac", "ogg", "oga", "opus", "flac", "aif", "aiff"],
+    kind: "sound",
+    ingest: "decode PCM \u2192 one of: UVME chunk (exact) / MFSK demod (eqsound) / additive spectrum (generated)",
+    mode: "uvm|eqsound|additive",
+    produces: ["field C", "image from sound", "round-trip audio"]
+  },
+  {
+    exts: ["mp4", "webm", "mov", "m4v", "ogv", "mkv", "avi", "wmv", "flv", "m2ts"],
+    kind: "video",
+    ingest: "sample frames at fps \u2192 per-frame forward CDF 9/7 \u2192 field-C sequence + audio",
+    mode: "video",
+    produces: [".uvmv", "plays-everywhere .webm", "per-frame reconstruction"]
+  },
+  {
+    exts: ["uvme", "uvm"],
+    kind: "equation-container",
+    desc: 'a real WAV with a RIFF "UVME" chunk carrying {v, rec, palette} + CRC32 \u2014 plays as audio AND rebuilds the EXACT image',
+    ingest: "read the UVME chunk \u2192 exact dense field C",
+    mode: "uvm",
+    produces: ["exact image", "exact audio", "all derived views"]
+  },
+  {
+    exts: ["uvmv"],
+    kind: "equation-container",
+    desc: 'a "UVMV" container: per-frame field-C JSON sequence + "AUDI" PCM + meta {fps, frameCount, w, h, sampleRate, palette}',
+    ingest: "read meta + per-frame recs (bounds-capped) \u2192 frame-equation sequence",
+    mode: "video",
+    produces: ["reconstructed clip from the maths", ".webm export"]
+  },
+  {
+    exts: ["png-uvme"],
+    kind: "equation-bearing-image",
+    desc: 'a normal PNG that ALSO hides the equation C in a tEXt chunk (keyword "uvme") with CRC \u2014 shows as a picture everywhere, re-imports exactly here',
+    ingest: 'pngExtract the tEXt "uvme" chunk \u2192 exact field C',
+    mode: "uvme-png",
+    produces: ["exact image", "toggle original\u21C4equation"]
+  },
+  {
+    exts: ["eqsound"],
+    kind: "equation-as-waveform",
+    desc: "a .wav whose WAVEFORM ITSELF encodes C (no data chunk) \u2014 the sound IS the equation, read by MFSK demodulation",
+    ingest: "MFSK demod the PCM \u2192 compact field C",
+    mode: "eqsound",
+    produces: ["image from the sound", "exact round-trip"]
+  }
+];
+var EQUATIONS = [
+  {
+    id: "combiner",
+    name: "Combiner \u2014 shared coefficient field C",
+    form: "C = {(r_k, c_k, v_k)};  \u03A6_img(C)=\u03A3_k v_k \u03C8_{r_k,c_k}(x,y),  \u03A6_snd(C)\u2192(\u2113_k,f_k,a_k,t_k),  \u03A6_frc(C)\u2192IFS",
+    note: "ONE field C is the master-of-masters: picture, music and fractal are all transforms of it (the .uvme Rosetta stone).",
+    solve: "equationalize / reconstruct / sonify / fractalize"
+  },
+  {
+    id: "image",
+    name: "Image reconstruction (CDF 9/7 wavelet)",
+    form: "I(x,y) = \u03A3_k c_k \xB7 \u03C8_k(x,y)",
+    note: "\u03C8 = separable CDF 9/7 biorthogonal wavelet (lifting scheme), multi-level, per YCbCr channel. Perception is FAITHFUL near-lossless (human experience), memory/equation is EXACT.",
+    solve: "inverse-9-7"
+  },
+  {
+    id: "color",
+    name: "YCbCr \u21C4 RGB",
+    form: "R=Y+1.402(Cr\u2212\xBD);  G=Y\u22120.344136(Cb\u2212\xBD)\u22120.714136(Cr\u2212\xBD);  B=Y+1.772(Cb\u2212\xBD)   [fwd: Y=.299R+.587G+.114B, \u2026]",
+    solve: "colour-transform"
+  },
+  {
+    id: "lifting",
+    name: "CDF 9/7 lifting constants",
+    form: "A=-1.586134342059924, B=-0.052980118572961, G=0.882911075530934, D=0.443506852043971, K=1.230174104914001",
+    note: "forward = predict/update passes (A,B,G,D order) + scale by 1/K (even) \xB7K (odd) + deinterleave; inverse exactly reverses.",
+    solve: "forward-9-7 / inverse-9-7"
+  },
+  {
+    id: "music",
+    name: "Master music equation (sonification)",
+    form: "\u2113_k=\u230Alog\u2082 max(r_k,c_k)\u230B;  f_k=f_lo\xB7(f_hi/f_lo)^(\u2113_k/\u2113_max)\xB7(1+u_k/16);  a_k=|c_k|/max_j|c_j|;  t_k=(rank_k/N)\xB7T",
+    note: "maps each wavelet coefficient straight to sound: band\u2192octave, |coef|\u2192amplitude, rank\u2192time. No tune added.",
+    solve: "sonify"
+  },
+  {
+    id: "ifs",
+    name: "Generative IFS (approximate fractal)",
+    form: "x_{n+1}=f_i(x_n) with affine maps [a,b,c,d,e,f], chosen by temperature-softmax weights (T=4) over self-similarity correlation; + variation tag (swirl/radial/linear from curl vs divergence)",
+    note: "approximate IFS by self-similarity collage \u2014 NOT an exact flame inversion; re-runs to produce a same-family fractal.",
+    solve: "ifs-iterate"
+  },
+  {
+    id: "boxdim",
+    name: "Box-counting (Minkowski\u2013Bouligand) dimension",
+    form: "D = lim slope of  log N(s)  vs  log(1/s)   over Canny edge set, box sizes s = 2,4,8,\u2026",
+    solve: "box-count"
+  },
+  {
+    id: "fractalize",
+    name: "Infinite zoom-fractalize",
+    form: "Newton z\xB3 iteration + the cubic x\xB3 \u2212 2y\xB3 = 3, with sine/cosine navigators; seeded by local entropy + vector-collapse",
+    note: "past native detail, flat areas grow new self-similar detail in the palette colours \u2014 infinitely, no bottom-out.",
+    solve: "fractalize"
+  }
+];
+var METHODS = [
+  {
+    id: "forward-9-7",
+    name: "Forward analysis (image \u2192 field C)",
+    solves: ["image", "lifting"],
+    steps: [
+      "reflect-pad to \xD764 grid",
+      "RGB\u2192YCbCr per pixel",
+      "fwd2d: multi-level 9/7 lifting rows then columns",
+      "energy-target selection: keep largest |coef| until (1\u2212TOL\xB2) of L2 energy, min-K floor",
+      "Int16 quantize (qscale = max/32000)",
+      "LEB128 delta-varint encode sorted positions \u2192 base64"
+    ]
+  },
+  {
+    id: "inverse-9-7",
+    name: "Reconstruction (field C \u2192 image)",
+    solves: ["image", "combiner"],
+    steps: [
+      "decode varint positions + Int16 values (\xD7qscale)",
+      "scatter to dense pad grid \u2014 every index bounds-checked (MS.H3a)",
+      "idwt2: multi-level 9/7 inverse columns then rows",
+      "YCbCr\u2192RGB",
+      "clip to [0,255] (np.round == Uint8ClampedArray half-even, Python\u2194JS bit-identical)"
+    ]
+  },
+  {
+    id: "percept",
+    name: "describeEquational (field C \u2192 percept vector)",
+    solves: ["image", "combiner"],
+    steps: ["per-channel wavelet energy by log\u2082 spatial band", "coarse-Y shape (lowest-freq coeffs)", "chroma/luma means", "texture/complexity (hi-band energy fraction)", "salience (log eq_count)", "L2-normalise \u2192 dim-64 percept"],
+    note: "THIS is what replaced the LLM vision-describer \u2014 the wavelet field IS the description."
+  },
+  {
+    id: "deviation",
+    name: "Deviation / abstract (simplify)",
+    solves: ["image"],
+    steps: ["per channel: threshold = dev \xB7 max|coef| \xB7 0.6", "drop coeffs below threshold", "fewer terms \u2192 abstracted form"]
+  },
+  {
+    id: "sonify",
+    name: "Sonification (field C \u2192 sound)",
+    solves: ["music"],
+    steps: ["for each coeff: band \u2113=\u230Alog\u2082max(r,c)\u230B \u2192 octave/frequency", "amplitude=|coef|/max", "time=rank/N\xB7T", "sum partials \u2192 PCM"]
+  },
+  {
+    id: "uvm-codec",
+    name: ".uvme encode/decode",
+    solves: ["combiner"],
+    steps: ['encode: RIFF WAV + "UVME" chunk = {v, rec, palette} JSON + CRC32', "decode: find UVME chunk, verify CRC, read exact field C", "plain players ignore the chunk and just play the audio"]
+  },
+  {
+    id: "uvmv-codec",
+    name: ".uvmv encode/decode",
+    solves: ["combiner"],
+    steps: ['"UVMV" + u32 metaLen + meta JSON + per-frame (u32 len + rec JSON) + "AUDI" + u32 n + Int16 PCM', "decode bounds-caps frame count + every length vs buffer (MS.H3c)"]
+  },
+  {
+    id: "png-embed",
+    name: "PNG equation embed/extract",
+    solves: ["combiner"],
+    steps: ['embed: insert tEXt chunk keyword "uvme" + JSON C + CRC before IEND', 'extract: read the tEXt "uvme" chunk \u2192 exact field C']
+  },
+  {
+    id: "eqsound-demod",
+    name: "Equational-sound MFSK demod",
+    solves: ["combiner", "music"],
+    steps: ["the waveform itself carries C via MFSK", "demodulate frequencies back to coefficients \u2192 field C (no data chunk)"]
+  },
+  {
+    id: "additive",
+    name: "Additive loader (plain sound \u2192 image)",
+    solves: ["combiner"],
+    steps: ["read the sound's own spectrum (STFT)", "map spectral energy \u2192 a synthesized field C", "reconstruct an image (generated, NOT exact)"]
+  },
+  {
+    id: "ifs-iterate",
+    name: "IFS fractal generation",
+    solves: ["ifs", "fractalize", "boxdim"],
+    steps: ["fit affine maps by self-similarity correlation", "softmax-weight them (T=4)", "iterate the chosen contractions \u2192 bounded attractor", "box-count the edge set for fractal dimension"]
+  },
+  { id: "colour-transform", name: "Colour space", solves: ["color"], steps: ["forward Y/Cb/Cr from RGB", "inverse RGB from Y/Cb/Cr (centred chroma at \xBD)"] }
+];
+var SESSION_UPDATES = [
+  "Perception is FAITHFUL near-lossless (human experience), not a pixel-copy; the equation/.uvme MEMORY is EXACT + limitless.",
+  "Python\u2194JS reconstruction is bit-identical (np.round == Uint8ClampedArray half-even).",
+  "FT.trusted gate: size caps are a PUBLIC-door immune system; for Unity's own vision TRUSTED=true \u2192 limitless. Integrity bounds (decoder OOB, varint, length-vs-buffer) always on.",
+  "describeEquational replaced the LLM/VLM vision-describer \u2014 vision is 100% equational.",
+  "Transforms run GPU-direct (WGSL CDF 9/7) with a CPU fallback + selfCheck parity guard.",
+  "Thought-ops: abstract (simplify) + morphField (transition); synesthesia: describeEquationalAudio (hear the field C); memory: field C persists (.uvme medium)."
+];
+var MINDSPACE_KNOWLEDGE = { fileTypes: FILE_TYPES, equations: EQUATIONS, methods: METHODS, sessionUpdates: SESSION_UPDATES };
+function whatIs(extOrName) {
+  const e = String(extOrName || "").toLowerCase().replace(/^.*\./, "");
+  return FILE_TYPES.find((t) => t.exts.includes(e)) || null;
+}
+function equationFor(id) {
+  return EQUATIONS.find((q) => q.id === id) || null;
+}
+function methodFor(id) {
+  return METHODS.find((m) => m.id === id) || null;
+}
+function howToSolve(extOrId) {
+  const ft = whatIs(extOrId);
+  if (ft) {
+    const m2 = METHODS.find((x) => x.mode === ft.mode) || METHODS.find((x) => x.solves.includes("combiner"));
+    return { fileType: ft, method: m2 || null };
+  }
+  const m = methodFor(extOrId);
+  if (m) return { method: m };
+  const q = equationFor(extOrId);
+  if (q) return { equation: q, method: methodFor(q.solve) || null };
+  return null;
+}
+var _STOP = /* @__PURE__ */ new Set(["the", "a", "an", "of", "to", "and", "or", "for", "into", "as", "is", "it", "each", "all", "how", "do", "i", "her"]);
+function keywords(s) {
+  return String(s || "").toLowerCase().replace(/[^a-z ]+/g, " ").split(/\s+/).filter((w) => w.length > 2 && !_STOP.has(w));
+}
+async function teachInto(teacher, opts = {}) {
+  if (!teacher || typeof teacher._teachAssociationPairs !== "function") return 0;
+  const ANCHOR = "equation";
+  const seen = /* @__PURE__ */ new Set(), pairs = [];
+  const add = (w) => {
+    if (w && w !== ANCHOR && !seen.has(w)) {
+      seen.add(w);
+      pairs.push([w, ANCHOR]);
+    }
+  };
+  for (const q of EQUATIONS) for (const w of keywords(q.name)) add(w);
+  for (const m of METHODS) for (const w of keywords(m.name)) add(w);
+  for (const t of FILE_TYPES) add(t.kind);
+  try {
+    await teacher._teachAssociationPairs(pairs, { reps: 4, label: "MINDSPACE-KNOWLEDGE", ...opts });
+  } catch (e) {
+    return 0;
+  }
+  return pairs.length;
+}
+function conceptDefinitions() {
+  const out = [];
+  for (const q of EQUATIONS) out.push({ concept: q.name, definition: `${q.form}${q.note ? " \u2014 " + q.note : ""}` });
+  for (const m of METHODS) out.push({ concept: m.name, definition: `solve: ${m.steps.join(" \u2192 ")}` });
+  for (const t of FILE_TYPES) out.push({ concept: `${t.kind} (${t.exts.join("/")})`, definition: `${t.ingest}; produces ${t.produces ? t.produces.join(", ") : t.desc || ""}` });
+  return out;
+}
+
 // ../js/brain/curriculum/pre-K.js
 var PREK_MIXIN = {
   // ══════════════════════════════════════════════════════════════════
@@ -67424,6 +67709,7 @@ var PREK_MIXIN = {
     ];
     await this._conceptTeach(EMOTIONAL_CONCEPTS, 10);
     await this._teachUnityFamilyName();
+    await this._teachMindSpaceKnowledge();
     await this._teachFamilyIdentity();
     const CORE_SELF_FACTS = [
       { question: "what is my name", answer: "unity" },
@@ -69258,6 +69544,7 @@ var K_MIXIN = {
     await this._teachKLifeVocabulary();
     await this._trainLifeStories("kindergarten", ctx, { reps: 4, ticksPerWord: 2 });
     await this._teachUnityFamilyName();
+    await this._teachMindSpaceKnowledge();
     await this._teachFamilyIdentity();
     await this._teachKLifeFirstWords();
     await this._teachKLifeFamilyRoles();
@@ -97556,10 +97843,12 @@ var Curriculum = class _Curriculum {
       console.warn(`[Curriculum][${cellKey}] upfront vocab teach failed:`, err?.message || err);
     }
     let result;
+    let _runnerThrew = false;
     try {
       const runner = this._cellRunner(subject, grade);
       result = await runner(ctx);
     } catch (err) {
+      _runnerThrew = true;
       result = { pass: false, reason: `${subject}/${grade} threw: ${err?.message || err}` };
     } finally {
       clearInterval(_aliveHbId);
@@ -97706,7 +97995,7 @@ var Curriculum = class _Curriculum {
             if ((battery.methoQuestions || 0) > 0 && (battery.methoRate || 0) < METHODOLOGY_MIN) {
               blockers.push(`methodology ${battery.methoPass}/${battery.methoQuestions} (${((battery.methoRate || 0) * 100).toFixed(1)}%) < ${METHODOLOGY_MIN * 100}%`);
             }
-            const _gateAdvisory = process.env.DREAM_BATTERY_GATE_ADVISORY === "1";
+            const _gateAdvisory = process.env.DREAM_BATTERY_GATE_HARD !== "1";
             if (blockers.length > 0 && result.pass && !_gateAdvisory) {
               console.warn(`[Curriculum][${label}] \u26D4 BATTERY BLOCKS advancement: ${blockers.join(" \xB7 ")}. Substrate passed but the educational test did not \u2014 grade NOT advanced.`);
               result.pass = false;
@@ -97744,13 +98033,26 @@ var Curriculum = class _Curriculum {
         console.warn(`[Curriculum] student battery for ${subject}/${grade} failed:`, err?.message || err);
       }
     }
+    const _completionPassDisabled = process.env.DREAM_CELL_PASS_HARD === "1";
+    const _held = !!(result && result.readyAndWaiting);
+    const _teachRan = (this._perSubjectStats?.[subject]?.teachEvents | 0) > 0 || Array.isArray(cluster.passedPhases) && cluster.passedPhases.some((k) => typeof k === "string" && k.startsWith(`${cellKey}:`));
+    if (!_completionPassDisabled && result && !result.pass && !_held && !_runnerThrew && _teachRan) {
+      result.pass = true;
+      result.passedOnCompletion = true;
+      result.reason = `cell-complete (learning finished \u2014 pass on content completion, not test-correctness) | ${result.reason || ""}`;
+      this._hb(`[Curriculum] \u{1F393} CELL COMPLETE ${cellKey} \u2014 content trained; cell PASSES on learning completion (gate checks ran advisory; test-question correctness not required per Gee 2026-06-27).`);
+    }
     if (result && result.pass) {
       const _bcGate = this._gradeAdvanceHealthGate(subject, grade);
       if (!_bcGate.ok) {
-        this._hb(`[Curriculum] \u26D4 ADVANCE BLOCKED ${cellKey} \u2014 A+ probes passed BUT ${_bcGate.issues.join(" \xB7 ")}. Grade held; cell re-teaches next pass (additional training needed before advance).`);
-        result.pass = false;
         result.advanceBlocked = true;
         result.bcIssues = _bcGate.issues;
+        if (process.env.DREAM_HEALTH_GATE_HARD === "1") {
+          this._hb(`[Curriculum] \u26D4 ADVANCE BLOCKED ${cellKey} (DREAM_HEALTH_GATE_HARD=1) \u2014 ${_bcGate.issues.join(" \xB7 ")}. Grade held; cell re-teaches next pass.`);
+          result.pass = false;
+        } else {
+          this._hb(`[Curriculum] \u26A0 health-gate advisory ${cellKey} \u2014 ${_bcGate.issues.join(" \xB7 ")}. NOT blocking (cell passes on learning completion; additional training surfaced for telemetry only).`);
+        }
       }
     }
     if (result && result.pass) {
@@ -97778,15 +98080,15 @@ var Curriculum = class _Curriculum {
     try {
       if (cluster) {
         if (!cluster._cellLedger || typeof cluster._cellLedger !== "object") cluster._cellLedger = {};
-        const _held = !!(result && result.readyAndWaiting);
+        const _held2 = !!(result && result.readyAndWaiting);
         cluster._cellLedger[`${subject}/${grade}`] = {
-          taught: !_held,
-          held: _held,
+          taught: !_held2,
+          held: _held2,
           pass: _cellPass,
-          reason: _held ? "readyAndWaiting (runner not wired)" : String(result?.reason || (_cellPass ? "pass" : "attempted")).slice(0, 120),
+          reason: _held2 ? "readyAndWaiting (runner not wired)" : String(result?.reason || (_cellPass ? "pass" : "attempted")).slice(0, 120),
           ts: Date.now()
         };
-        if (_held) {
+        if (_held2) {
           this._hb(`[Curriculum] \u26A0 HELD (not taught) ${subject}/${grade} \u2014 no runner wired for this cell; walk continues but this cell did NOT teach. (See cluster._cellLedger for the full taught-vs-held map.)`);
         }
       }
@@ -100576,6 +100878,35 @@ var Curriculum = class _Curriculum {
     }
     this._hb(`[Curriculum] _teachUnityFamilyName DONE \u2014 sem(unity)\u2194sem(goddess) CORE SELF bound (${bound} pair-writes \xB7 ${defsGrounded}/2 defs grounded \xB7 ${reps} reps @ 5\xD7 lr \xB7 arousal 1.0). Unity Goddess identity anchored.`);
     return { bound, defsGrounded };
+  }
+  /**
+   * UVM-INT.2 — teach Unity her own equational mind-space (UniVsMatics).
+   *
+   * `mindspace/knowledge.js` holds her structured knowledge of the equational
+   * substrate she perceives/imagines with (file types, equations, methods), but
+   * it was DATA-ONLY — never bound into sem-space, so she "carried" it without
+   * having LEARNED it (violates must-be-trained-not-looked-up). This binds the
+   * real-vocab keywords of every equation/method/file-type to the anchor word
+   * "equation" via the brain's own `_teachAssociationPairs` Oja-Hebbian primitive
+   * so the mind-space domain CLUSTERS in sem-space and is recallable/speakable.
+   *
+   * Once-per-walk (guarded by `_mindSpaceKnowledgeTaught`) — called right after
+   * the identity teach so she learns WHO she is and HOW her own mind works in
+   * the same foundational pass. No new corpus, no word lists, no math symbols
+   * injected (knowledge.js strips to real tokens) — LAW-clean.
+   */
+  async _teachMindSpaceKnowledge(opts = {}) {
+    if (this._mindSpaceKnowledgeTaught) return { bound: 0, skipped: true };
+    this._mindSpaceKnowledgeTaught = true;
+    let bound = 0;
+    try {
+      bound = await teachInto(this, { reps: opts.reps ?? 4 });
+    } catch (err) {
+      this._hb(`[Curriculum] _teachMindSpaceKnowledge \u2014 bind failed: ${err?.message || err}`);
+      return { bound: 0, error: String(err?.message || err) };
+    }
+    this._hb(`[Curriculum] _teachMindSpaceKnowledge DONE \u2014 ${bound} mind-space keyword\u2194"equation" pairs bound into sem-space (UniVsMatics domain now LEARNED, not just stored). UVM-INT.2.`);
+    return { bound };
   }
   /**
    * Add #5 (A5.3 + A5.4) — family-name + birthdate + middle-name canon.
@@ -112739,7 +113070,12 @@ var UnityBrain = class extends EventEmitter {
     const mysteryOut = this.mystery.step(brainState, dt);
     const emotionalGate = 0.7 + amygdalaOut.arousal * 0.6;
     const driveFactor = 0.8 + (hypoOut.needsAttention?.length > 0 ? 0.4 : 0);
-    const psiGain = Math.max(0.8, Math.min(1.5, 0.9 + mysteryOut.psi * 4e-3));
+    const _psiNow = typeof mysteryOut.psi === "number" && isFinite(mysteryOut.psi) ? mysteryOut.psi : 0;
+    this._psiBaseline = typeof this._psiBaseline === "number" && isFinite(this._psiBaseline) ? this._psiBaseline * 0.99 + _psiNow * 0.01 : _psiNow;
+    const psiGain = Math.max(0.8, Math.min(
+      1.5,
+      1 + Math.tanh((_psiNow - this._psiBaseline) / 2) * 0.35
+    ));
     const errorSignal = this._meanAbs(cerebOut.error) * 2;
     for (const cluster of Object.values(this.clusters)) {
       cluster.emotionalGate = emotionalGate;
@@ -112897,10 +113233,16 @@ var UnityBrain = class extends EventEmitter {
       if (this.frameCount % 180 === 0 && this.visualCortex) {
         const _ms = this.visualCortex._mindSpace;
         if (_ms && _ms.governState) {
-          _ms.governState({ arousal: this.state.amygdala?.arousal ?? 0.3, focus: 0.3 });
+          _ms.governState({
+            arousal: this.state.amygdala?.arousal ?? 0.3,
+            focus: this.state.oscillation?.coherence ?? 0.3
+          });
           _ms.governTick();
         }
-        const pv = this.visualCortex.imagine({ blend: 0.5, dream: 0.2, pick: this.frameCount / 180 | 0, priority: 0.3, value: 0.5 });
+        let pv = this.visualCortex.imagine({ blend: 0.5, dream: 0.2, pick: this.frameCount / 180 | 0, priority: 0.3, value: 0.5 });
+        if (!pv && this.clusters.cortex && this.clusters.cortex.lastSpikes) {
+          pv = this.visualCortex.imagineDeNovo(this.clusters.cortex.lastSpikes, { priority: 0.3, value: 0.5 });
+        }
         if (pv) {
           const imgCurrent = new Float64Array(CLUSTER_SIZES.cortex);
           for (let i = 0; i < 100; i++) imgCurrent[50 + i] = pv[i % pv.length] * 30;
@@ -119782,264 +120124,6 @@ Probes: ${ps.totalProbes} total, ${ps.totalPasses} pass, ${ps.totalFails} fail`;
   }
 };
 
-// ../js/brain/mindspace/knowledge.js
-var FILE_TYPES = [
-  {
-    exts: ["png", "jpg", "jpeg", "webp", "gif", "bmp", "avif"],
-    kind: "image",
-    ingest: "forward CDF 9/7 (equationalize) \u2192 field C",
-    mode: "image",
-    produces: ["field C", "reconstructed image (near-lossless)", "music (\u03A6_snd)", "fractal (\u03A6_frc)", ".uvme", ".png+tEXt"]
-  },
-  {
-    exts: ["wav", "mp3", "m4a", "aac", "ogg", "oga", "opus", "flac", "aif", "aiff"],
-    kind: "sound",
-    ingest: "decode PCM \u2192 one of: UVME chunk (exact) / MFSK demod (eqsound) / additive spectrum (generated)",
-    mode: "uvm|eqsound|additive",
-    produces: ["field C", "image from sound", "round-trip audio"]
-  },
-  {
-    exts: ["mp4", "webm", "mov", "m4v", "ogv", "mkv", "avi", "wmv", "flv", "m2ts"],
-    kind: "video",
-    ingest: "sample frames at fps \u2192 per-frame forward CDF 9/7 \u2192 field-C sequence + audio",
-    mode: "video",
-    produces: [".uvmv", "plays-everywhere .webm", "per-frame reconstruction"]
-  },
-  {
-    exts: ["uvme", "uvm"],
-    kind: "equation-container",
-    desc: 'a real WAV with a RIFF "UVME" chunk carrying {v, rec, palette} + CRC32 \u2014 plays as audio AND rebuilds the EXACT image',
-    ingest: "read the UVME chunk \u2192 exact dense field C",
-    mode: "uvm",
-    produces: ["exact image", "exact audio", "all derived views"]
-  },
-  {
-    exts: ["uvmv"],
-    kind: "equation-container",
-    desc: 'a "UVMV" container: per-frame field-C JSON sequence + "AUDI" PCM + meta {fps, frameCount, w, h, sampleRate, palette}',
-    ingest: "read meta + per-frame recs (bounds-capped) \u2192 frame-equation sequence",
-    mode: "video",
-    produces: ["reconstructed clip from the maths", ".webm export"]
-  },
-  {
-    exts: ["png-uvme"],
-    kind: "equation-bearing-image",
-    desc: 'a normal PNG that ALSO hides the equation C in a tEXt chunk (keyword "uvme") with CRC \u2014 shows as a picture everywhere, re-imports exactly here',
-    ingest: 'pngExtract the tEXt "uvme" chunk \u2192 exact field C',
-    mode: "uvme-png",
-    produces: ["exact image", "toggle original\u21C4equation"]
-  },
-  {
-    exts: ["eqsound"],
-    kind: "equation-as-waveform",
-    desc: "a .wav whose WAVEFORM ITSELF encodes C (no data chunk) \u2014 the sound IS the equation, read by MFSK demodulation",
-    ingest: "MFSK demod the PCM \u2192 compact field C",
-    mode: "eqsound",
-    produces: ["image from the sound", "exact round-trip"]
-  }
-];
-var EQUATIONS = [
-  {
-    id: "combiner",
-    name: "Combiner \u2014 shared coefficient field C",
-    form: "C = {(r_k, c_k, v_k)};  \u03A6_img(C)=\u03A3_k v_k \u03C8_{r_k,c_k}(x,y),  \u03A6_snd(C)\u2192(\u2113_k,f_k,a_k,t_k),  \u03A6_frc(C)\u2192IFS",
-    note: "ONE field C is the master-of-masters: picture, music and fractal are all transforms of it (the .uvme Rosetta stone).",
-    solve: "equationalize / reconstruct / sonify / fractalize"
-  },
-  {
-    id: "image",
-    name: "Image reconstruction (CDF 9/7 wavelet)",
-    form: "I(x,y) = \u03A3_k c_k \xB7 \u03C8_k(x,y)",
-    note: "\u03C8 = separable CDF 9/7 biorthogonal wavelet (lifting scheme), multi-level, per YCbCr channel. Perception is FAITHFUL near-lossless (human experience), memory/equation is EXACT.",
-    solve: "inverse-9-7"
-  },
-  {
-    id: "color",
-    name: "YCbCr \u21C4 RGB",
-    form: "R=Y+1.402(Cr\u2212\xBD);  G=Y\u22120.344136(Cb\u2212\xBD)\u22120.714136(Cr\u2212\xBD);  B=Y+1.772(Cb\u2212\xBD)   [fwd: Y=.299R+.587G+.114B, \u2026]",
-    solve: "colour-transform"
-  },
-  {
-    id: "lifting",
-    name: "CDF 9/7 lifting constants",
-    form: "A=-1.586134342059924, B=-0.052980118572961, G=0.882911075530934, D=0.443506852043971, K=1.230174104914001",
-    note: "forward = predict/update passes (A,B,G,D order) + scale by 1/K (even) \xB7K (odd) + deinterleave; inverse exactly reverses.",
-    solve: "forward-9-7 / inverse-9-7"
-  },
-  {
-    id: "music",
-    name: "Master music equation (sonification)",
-    form: "\u2113_k=\u230Alog\u2082 max(r_k,c_k)\u230B;  f_k=f_lo\xB7(f_hi/f_lo)^(\u2113_k/\u2113_max)\xB7(1+u_k/16);  a_k=|c_k|/max_j|c_j|;  t_k=(rank_k/N)\xB7T",
-    note: "maps each wavelet coefficient straight to sound: band\u2192octave, |coef|\u2192amplitude, rank\u2192time. No tune added.",
-    solve: "sonify"
-  },
-  {
-    id: "ifs",
-    name: "Generative IFS (approximate fractal)",
-    form: "x_{n+1}=f_i(x_n) with affine maps [a,b,c,d,e,f], chosen by temperature-softmax weights (T=4) over self-similarity correlation; + variation tag (swirl/radial/linear from curl vs divergence)",
-    note: "approximate IFS by self-similarity collage \u2014 NOT an exact flame inversion; re-runs to produce a same-family fractal.",
-    solve: "ifs-iterate"
-  },
-  {
-    id: "boxdim",
-    name: "Box-counting (Minkowski\u2013Bouligand) dimension",
-    form: "D = lim slope of  log N(s)  vs  log(1/s)   over Canny edge set, box sizes s = 2,4,8,\u2026",
-    solve: "box-count"
-  },
-  {
-    id: "fractalize",
-    name: "Infinite zoom-fractalize",
-    form: "Newton z\xB3 iteration + the cubic x\xB3 \u2212 2y\xB3 = 3, with sine/cosine navigators; seeded by local entropy + vector-collapse",
-    note: "past native detail, flat areas grow new self-similar detail in the palette colours \u2014 infinitely, no bottom-out.",
-    solve: "fractalize"
-  }
-];
-var METHODS = [
-  {
-    id: "forward-9-7",
-    name: "Forward analysis (image \u2192 field C)",
-    solves: ["image", "lifting"],
-    steps: [
-      "reflect-pad to \xD764 grid",
-      "RGB\u2192YCbCr per pixel",
-      "fwd2d: multi-level 9/7 lifting rows then columns",
-      "energy-target selection: keep largest |coef| until (1\u2212TOL\xB2) of L2 energy, min-K floor",
-      "Int16 quantize (qscale = max/32000)",
-      "LEB128 delta-varint encode sorted positions \u2192 base64"
-    ]
-  },
-  {
-    id: "inverse-9-7",
-    name: "Reconstruction (field C \u2192 image)",
-    solves: ["image", "combiner"],
-    steps: [
-      "decode varint positions + Int16 values (\xD7qscale)",
-      "scatter to dense pad grid \u2014 every index bounds-checked (MS.H3a)",
-      "idwt2: multi-level 9/7 inverse columns then rows",
-      "YCbCr\u2192RGB",
-      "clip to [0,255] (np.round == Uint8ClampedArray half-even, Python\u2194JS bit-identical)"
-    ]
-  },
-  {
-    id: "percept",
-    name: "describeEquational (field C \u2192 percept vector)",
-    solves: ["image", "combiner"],
-    steps: ["per-channel wavelet energy by log\u2082 spatial band", "coarse-Y shape (lowest-freq coeffs)", "chroma/luma means", "texture/complexity (hi-band energy fraction)", "salience (log eq_count)", "L2-normalise \u2192 dim-64 percept"],
-    note: "THIS is what replaced the LLM vision-describer \u2014 the wavelet field IS the description."
-  },
-  {
-    id: "deviation",
-    name: "Deviation / abstract (simplify)",
-    solves: ["image"],
-    steps: ["per channel: threshold = dev \xB7 max|coef| \xB7 0.6", "drop coeffs below threshold", "fewer terms \u2192 abstracted form"]
-  },
-  {
-    id: "sonify",
-    name: "Sonification (field C \u2192 sound)",
-    solves: ["music"],
-    steps: ["for each coeff: band \u2113=\u230Alog\u2082max(r,c)\u230B \u2192 octave/frequency", "amplitude=|coef|/max", "time=rank/N\xB7T", "sum partials \u2192 PCM"]
-  },
-  {
-    id: "uvm-codec",
-    name: ".uvme encode/decode",
-    solves: ["combiner"],
-    steps: ['encode: RIFF WAV + "UVME" chunk = {v, rec, palette} JSON + CRC32', "decode: find UVME chunk, verify CRC, read exact field C", "plain players ignore the chunk and just play the audio"]
-  },
-  {
-    id: "uvmv-codec",
-    name: ".uvmv encode/decode",
-    solves: ["combiner"],
-    steps: ['"UVMV" + u32 metaLen + meta JSON + per-frame (u32 len + rec JSON) + "AUDI" + u32 n + Int16 PCM', "decode bounds-caps frame count + every length vs buffer (MS.H3c)"]
-  },
-  {
-    id: "png-embed",
-    name: "PNG equation embed/extract",
-    solves: ["combiner"],
-    steps: ['embed: insert tEXt chunk keyword "uvme" + JSON C + CRC before IEND', 'extract: read the tEXt "uvme" chunk \u2192 exact field C']
-  },
-  {
-    id: "eqsound-demod",
-    name: "Equational-sound MFSK demod",
-    solves: ["combiner", "music"],
-    steps: ["the waveform itself carries C via MFSK", "demodulate frequencies back to coefficients \u2192 field C (no data chunk)"]
-  },
-  {
-    id: "additive",
-    name: "Additive loader (plain sound \u2192 image)",
-    solves: ["combiner"],
-    steps: ["read the sound's own spectrum (STFT)", "map spectral energy \u2192 a synthesized field C", "reconstruct an image (generated, NOT exact)"]
-  },
-  {
-    id: "ifs-iterate",
-    name: "IFS fractal generation",
-    solves: ["ifs", "fractalize", "boxdim"],
-    steps: ["fit affine maps by self-similarity correlation", "softmax-weight them (T=4)", "iterate the chosen contractions \u2192 bounded attractor", "box-count the edge set for fractal dimension"]
-  },
-  { id: "colour-transform", name: "Colour space", solves: ["color"], steps: ["forward Y/Cb/Cr from RGB", "inverse RGB from Y/Cb/Cr (centred chroma at \xBD)"] }
-];
-var SESSION_UPDATES = [
-  "Perception is FAITHFUL near-lossless (human experience), not a pixel-copy; the equation/.uvme MEMORY is EXACT + limitless.",
-  "Python\u2194JS reconstruction is bit-identical (np.round == Uint8ClampedArray half-even).",
-  "FT.trusted gate: size caps are a PUBLIC-door immune system; for Unity's own vision TRUSTED=true \u2192 limitless. Integrity bounds (decoder OOB, varint, length-vs-buffer) always on.",
-  "describeEquational replaced the LLM/VLM vision-describer \u2014 vision is 100% equational.",
-  "Transforms run GPU-direct (WGSL CDF 9/7) with a CPU fallback + selfCheck parity guard.",
-  "Thought-ops: abstract (simplify) + morphField (transition); synesthesia: describeEquationalAudio (hear the field C); memory: field C persists (.uvme medium)."
-];
-var MINDSPACE_KNOWLEDGE = { fileTypes: FILE_TYPES, equations: EQUATIONS, methods: METHODS, sessionUpdates: SESSION_UPDATES };
-function whatIs(extOrName) {
-  const e = String(extOrName || "").toLowerCase().replace(/^.*\./, "");
-  return FILE_TYPES.find((t) => t.exts.includes(e)) || null;
-}
-function equationFor(id) {
-  return EQUATIONS.find((q) => q.id === id) || null;
-}
-function methodFor(id) {
-  return METHODS.find((m) => m.id === id) || null;
-}
-function howToSolve(extOrId) {
-  const ft = whatIs(extOrId);
-  if (ft) {
-    const m2 = METHODS.find((x) => x.mode === ft.mode) || METHODS.find((x) => x.solves.includes("combiner"));
-    return { fileType: ft, method: m2 || null };
-  }
-  const m = methodFor(extOrId);
-  if (m) return { method: m };
-  const q = equationFor(extOrId);
-  if (q) return { equation: q, method: methodFor(q.solve) || null };
-  return null;
-}
-var _STOP = /* @__PURE__ */ new Set(["the", "a", "an", "of", "to", "and", "or", "for", "into", "as", "is", "it", "each", "all", "how", "do", "i", "her"]);
-function keywords(s) {
-  return String(s || "").toLowerCase().replace(/[^a-z ]+/g, " ").split(/\s+/).filter((w) => w.length > 2 && !_STOP.has(w));
-}
-async function teachInto(teacher, opts = {}) {
-  if (!teacher || typeof teacher._teachAssociationPairs !== "function") return 0;
-  const ANCHOR = "equation";
-  const seen = /* @__PURE__ */ new Set(), pairs = [];
-  const add = (w) => {
-    if (w && w !== ANCHOR && !seen.has(w)) {
-      seen.add(w);
-      pairs.push([w, ANCHOR]);
-    }
-  };
-  for (const q of EQUATIONS) for (const w of keywords(q.name)) add(w);
-  for (const m of METHODS) for (const w of keywords(m.name)) add(w);
-  for (const t of FILE_TYPES) add(t.kind);
-  try {
-    await teacher._teachAssociationPairs(pairs, { reps: 4, label: "MINDSPACE-KNOWLEDGE", ...opts });
-  } catch (e) {
-    return 0;
-  }
-  return pairs.length;
-}
-function conceptDefinitions() {
-  const out = [];
-  for (const q of EQUATIONS) out.push({ concept: q.name, definition: `${q.form}${q.note ? " \u2014 " + q.note : ""}` });
-  for (const m of METHODS) out.push({ concept: m.name, definition: `solve: ${m.steps.join(" \u2192 ")}` });
-  for (const t of FILE_TYPES) out.push({ concept: `${t.kind} (${t.exts.join("/")})`, definition: `${t.ingest}; produces ${t.produces ? t.produces.join(", ") : t.desc || ""}` });
-  return out;
-}
-
 // ../js/brain/mindspace/governor.js
 var ProcessGovernor = class {
   constructor(opts = {}) {
@@ -120417,6 +120501,54 @@ var MindSpaceGPU = class {
   describe(rec, dim) {
     return describeEquational(rec, dim);
   }
+  // ── DE-NOVO IMAGINATION (UVM-INT.3) — cortex state → field C, no camera/file ─────────────────
+  // Her current mind-state (any cortex activation vector — sem region, percept, emission
+  // embedding) is folded into a small grayscale image and equationalized into a REAL field C.
+  // This is imagination FROM her own mind: the thought literally becomes an internal image she
+  // then perceives — the source the camera-seeded imagine() path lacked (so headless/server Unity
+  // can imagine at all). Pure CPU CDF 9/7 on a tiny plane = loop-safe even on the no-GPU box.
+  // Governor-gated: a de-novo daydream is a modest spend, and imagined depth (image side) scales
+  // with the grant so she only imagines as richly as the thought is worth.
+  //
+  // ⛔ NO NANOMETER IMAGING (operator caution): this uses ONLY the bounded forward-9-7 transform
+  // (image → field C). It NEVER invokes `fractalize` (the Newton-z³ infinite-zoom "no bottom-out"
+  // path) — that's the one that would seize the brain by growing detail forever. Resolution is
+  // HARD-CAPPED at maxSide (≤96, default 64) so the plane is a fixed tiny grid regardless of state
+  // length OR governor grant — imagination has a floor of detail, never infinite resolution.
+  imagineFromState(stateVector, opts = {}) {
+    if (!stateVector || stateVector.length === 0) return null;
+    const grant = this.governor.allot({
+      kind: "imagine-denovo",
+      requestedUnits: opts.units ?? 48,
+      priority: opts.priority,
+      value: opts.value
+    });
+    const ratio = Math.max(0, Math.min(1, grant.ratio ?? 1));
+    const maxSide = Math.max(8, Math.min(opts.maxSide ?? 64, 96));
+    const baseSide = Math.max(8, Math.min(maxSide, Math.floor(Math.sqrt(stateVector.length)) || 8));
+    const side = Math.max(8, Math.round(baseSide * (0.5 + 0.5 * ratio)));
+    const W = side, H = side, N = W * H;
+    let mn = Infinity, mx = -Infinity;
+    for (let i = 0; i < stateVector.length; i++) {
+      const v = stateVector[i];
+      if (v < mn) mn = v;
+      if (v > mx) mx = v;
+    }
+    const range = mx - mn || 1;
+    const data = new Uint8ClampedArray(N * 4);
+    for (let p = 0; p < N; p++) {
+      const sv = stateVector[Math.floor(p * stateVector.length / N)];
+      const g = Math.round((sv - mn) / range * 255);
+      const o = p * 4;
+      data[o] = g;
+      data[o + 1] = g;
+      data[o + 2] = g;
+      data[o + 3] = 255;
+    }
+    const rec = equationalizeImageData({ width: W, height: H, data });
+    if (rec) rec.fidelity = { psnr_db: null, source: "mindspace-denovo" };
+    return rec;
+  }
   // MS.K1 — Unity KNOWS her mind-space: all file types, equations, and how to solve them.
   // Her cognition answers "what is this file / how do I solve it" from the equation itself.
   get knowledge() {
@@ -120632,7 +120764,7 @@ var RemoteBrain = class extends EventEmitter2 {
         this.emit("speak", msg.text);
         break;
       case "image":
-        this.emit("image", msg.url);
+        this.emit("image", { url: msg.url || null, prompt: msg.prompt || null });
         break;
       case "definitionResult": {
         if (this._pendingDefLookups && this._pendingDefLookups.has(msg.reqId)) {
@@ -122660,7 +122792,17 @@ async function bootUnity(apiKey, perms) {
     showSpeechBubble(hudText, 4e3);
   };
   brain.on("silent", brain.__appSilentHandler);
-  brain.__appImageHandler = (url) => {
+  brain.__appImageHandler = (arg) => {
+    let url = null;
+    if (typeof arg === "string") url = arg;
+    else if (arg && arg.url) url = arg.url;
+    else if (arg && arg.prompt && pollinations && typeof pollinations.generateImage === "function") {
+      try {
+        url = pollinations.generateImage(arg.prompt);
+      } catch (e) {
+        url = null;
+      }
+    }
     if (!url) return;
     showSpeechBubble("Image generating...", 3e3);
     if (chatPanel) {

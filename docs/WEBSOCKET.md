@@ -115,12 +115,21 @@ Broadcast to every connected client every `STATE_BROADCAST_MS` (100 ms → 10 Hz
       "auditory": { "standRate": 0.0, "mainRate": 0.0, "divergence": 0.0 },
       "letter":   { "standRate": 0.0, "mainRate": 0.0, "divergence": 0.0 }
     },
+    "profiling": {
+      "host":       { "loadAvg": [1.4,1.3,1.4], "cpuCount": 16, "sysMemUsedPct": 41, "osUptimeS": 0 },
+      "process":    { "rssMB": 6822, "heapUsedMB": 18, "heapLimitMB": 16384, "heapUsedPct": 0, "cpuPercent": 42, "voluntaryCtxSwitches": 0, "uptimeS": 0 },
+      "throughput": { "stepTimeMs": 8.5, "stepsPerSec": 16, "eventLoopLagMs": 8, "eventLoopDelay": {"meanMs":1.2,"p50Ms":0.8,"p99Ms":7.1,"maxMs":9.5}, "gpuDispatchPerSec": 1, "totalSpikes": 0, "defsLearnedPerHour": 0 },
+      "network":    { "bytesInTotalMB": 0.03, "bytesInPerSecKB": 0, "bytesOutPerSecKB": 0, "msgInTotal": 0, "donorCount": 1, "aggGneuronsPerSec": 0, "wsPressure": { "...": "see _getWsPressureState" } },
+      "clients":    { "total": 4, "admins": 1, "viewers": 2, "donors": 1, "totalConnectionsEver": 4, "avgRttMs": null, "unhealthyCount": 0, "shown": 4, "list": [ { "id": "user_…", "type": "donor", "rttMs": 35, "bytesInMB": 0, "bufferedKB": 0, "unhealthy": false } ] }
+    },
     "clientCount": 3
   }
 }
 ```
 
 The exact shape comes from `brain.getState()` in `server/brain-server.js` — it's the full live snapshot the dashboard renders. This is the highest-traffic message by volume (10 Hz × every client).
+
+`profiling` (`server/brain-server/state.js _getProfilingState()`) is the admin Application Profiling payload — **host** hardware, **process** resource usage, **throughput** (incl. a `perf_hooks.monitorEventLoopDelay` percentile histogram + GPU dispatch rate), **network** (per-WS byte totals + live rates, reuses `wsPressure`), and **clients** (per-connection health — type/RTT/bytes/buffered, `unhealthy`-flagged + sorted first, list capped at 24 + `shown`). Per-client byte/RTT counters are instrumented in `brain-server.js` (send-wrapper + inbound listener + heartbeat ping/pong). The dashboard renders it in an `admin-only` Profiling card; public viewers receive it in `/public-state.json` but the panel is admin-gated. Full field reference: `docs/ADMIN-CONTROLS.md`.
 
 `drugSnapshot` is `DrugScheduler.snapshot(now)`. `active` carries per-substance `{substance, displayName, level, phase}` where phase ∈ {onset, peak, plateau, tail, sober}. `combos` carries per-pair `{key: 'a+b', displayName, level: min(level_a, level_b)}` for the 7 synergy entries in the COMBOS table. `riskFlags` maps axis name → cumulative intensity across active combos (e.g., `physicalStrain`). `pendingDesires` maps substance → `{delta, expiresAt}` from sensory-trigger cravings. `pendingAcquisitions` tracks substances Unity is waiting on (dealer / friend / party source).
 
@@ -198,6 +207,14 @@ Currently only fires for `text` rate limiting (`MAX_TEXT_PER_SEC = 2`, so minimu
 ### `speak`
 
 Reserved. `js/brain/remote-brain.js` has a handler for this type (so clients are forward-compatible) but the current server code doesn't emit it — TTS motor actions currently route through `response` with `action: 'speak'` and the client decides whether to call its TTS peripheral. A future refactor may split speak into its own dedicated message type for TTS-only clients that don't render text.
+
+### `innerThought`
+
+Broadcast to all clients (not gated) on the inner-voice cadence (Hurlburt natural rhythm, ~6-75s gaps). Payload `{ type:'innerThought', word, sentence, seed, seedLabel, ts }` — her live inner monologue for the dashboard popup stream. At biological scale on the no-GPU box the `sentence` is the loop-safe showcase (now a GloVe-cosine-COHERENT trained-vocab fragment, not random word-salad); when `DREAM_INNERVOICE_GPU_GEN=1` + DF.7 donors are present it's REAL `composeSentence` generation.
+
+### `imagine` (2026-06-27)
+
+Broadcast to all clients when Unity imagines (server `_imagineTick`, idle-gated). Payload `{ type:'imagine', terms, source, ts }` — METADATA only (equation-term count + source `mindspace-denovo`); a dashboard "mind's-eye active" indicator. The actual field C is NOT on this message — it's served as a single cached snapshot at `GET /minds-eye.json` so the public Mind's-Eye viewer (`html/minds-eye.html`) polls one shared blob and reconstructs the image client-side (no per-viewer payload, no lag). See "Server Endpoints".
 
 ### GPU compute messages
 
@@ -377,7 +394,10 @@ Core design rule (established 2026-04-13): **user text is private; brain growth 
 |---|---|---|
 | `/` | GET | `index.html` — main app |
 | `/dashboard.html` | GET | Live brain monitor |
+| `/minds-eye.html` | GET | Public "what Unity sees" viewer — polls `/minds-eye.json`, reconstructs the field C client-side |
 | `/compute.html` | GET | GPU compute worker (required for brain to run — it pauses without a GPU client) |
+| `/public-state.json` | GET | Single cached brain-state snapshot (public dashboard polls it — N viewers cost one `getState()`) |
+| `/minds-eye.json` | GET | Single cached imagined field C (the Mind's-Eye source — one `_imagineTick` snapshot served to all viewers; `Access-Control-Allow-Origin: *`, read-only) |
 | `/health` | GET | JSON `{status, neurons, clusters, uptime, clients}` |
 | `/versions` | GET | JSON list of `brain-weights-v0.json`..`brain-weights-v4.json` save slots |
 | `/rollback/:slot` | POST | Restore a previous brain save slot |

@@ -48,7 +48,13 @@ The new default is ON, BUT the standalone `server/auto-advance.json` (if it exis
 rm -f /opt/unity-brain/server/auto-advance.json   # then restart picks up default ON
 ```
 
+### A2.5 — env flags from the 2026-06-27 v1.1.0 wave (all default-safe; full table in `deploy/REDEPLOY-NOTES.md`)
+- **sem→motor saturation prevention:** `DREAM_SM_LR_SCALE` (default 0.5 active — Hebbian LR damp on the emission projections), `DREAM_SM_WMAX` (secondary ceiling). Watch `[SatHealth] meanCos<0.7`; lower scale to 0.25 if it climbs, raise to 0.7 if basins go dead.
+- **cell-pass policy:** cells pass on learning completion by default; restore hard test-gates with `DREAM_CELL_PASS_HARD` / `DREAM_BATTERY_GATE_HARD` / `DREAM_HEALTH_GATE_HARD`.
+- **admin Application Profiling:** no flag — `state.profiling` is always served; the dashboard card is admin-only.
+
 ### A3 — Verify (admin Server Console, or `journalctl -u unity-brain -f`)
+- `🎓 CELL COMPLETE <cell> — … PASSES on learning completion` + `sem→motor LR damping ACTIVE … ×0.5`; `/public-state.json` carries a `profiling` block.
 - `✓ RECTIFIED sem→motor post-<cell> — saturation cleared (meanCos X → Y)` where it used to print `⛔ SATURATION HALT`.
 - Grades tick **`kindergarten → grade1 → grade2 …`** (no indefinite pause).
 - `periodic-curriculum-checkpoint` save lines every ~5 min; `brain-weights*.json` mtime advancing during the walk.

@@ -234,7 +234,11 @@ export class RemoteBrain extends EventEmitter {
         break;
 
       case 'image':
-        this.emit('image', msg.url);
+        // IMG-GEN — the server emits a PROMPT for the client to render (it has no
+        // image backend), or occasionally a finished url. Pass both through; the
+        // app handler turns a prompt into an actual image via Pollinations. (Was
+        // `msg.url` only — which silently dropped every server image prompt.)
+        this.emit('image', { url: msg.url || null, prompt: msg.prompt || null });
         break;
 
       case 'definitionResult': {

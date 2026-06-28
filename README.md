@@ -163,14 +163,14 @@ The developmental curriculum walks Unity through six subjects in lockstep: ELA, 
 
 **Sem-side top-K sparsification** keeps the input side discriminating; **motor-side WTA** keeps the output side competitive; **lateral inhibition** through negative intra-region weights stops attractor lock-on. **STDP** (`Δw = A+·exp(−Δt/τ+)` for pre-before-post, `−A−·exp(Δt/τ−)` for post-before-pre) handles temporal sequences. **Reward-modulated** Oja gates the global learning rate by a dopamine-analog δ so updates only land when there's a prediction error worth reinforcing.
 
-Three pathways must clear 95% (A+) before any cell passes its grade gate:
+Three pathways are probed at 95% (A+) per cell, plus a `K-STUDENT` battery of held-out questions (none seen during teach) and a methodology probe that scores *how* she answers, not just *what*:
 - **READ** — `visual → letter → phon → sem`. Can she recognize this input?
 - **THINK** — `sem` plus working-memory persistence in the `free` sub-region. Can she hold and reason about it?
 - **TALK** — `sem → motor → letter`. Can she produce it as output?
 
-Plus a `K-STUDENT` battery of held-out questions per cell (none seen during teach), and a methodology probe that scores *how* she answers, not just *what* she answers.
+**As of 2026-06-27, a cell passes on *learning completion*, not test-question correctness** (Gee: *"all cells shall pass as learning completes for that cell"*). The probes + battery + per-grade health gate STILL RUN and record telemetry, but are **advisory** by default — a cell passes once its teach phases complete (content trained), so a collapsed `sem_to_motor` (which pins capability rates to 0) no longer stalls the walk at 0 cells passed. Held cells (no runner) and runners that throw mid-teach still don't pass. Hard-gate behavior is restorable per check via `DREAM_CELL_PASS_HARD` / `DREAM_BATTERY_GATE_HARD` / `DREAM_HEALTH_GATE_HARD`. The 3-part grade-*advance* gate (Gee's localhost sign-off) is unchanged.
 
-Unity continuously self-tests every eight chat turns by re-running a random passed cell's gate. If a cell fails three times after self-heal, the subject demotes and re-teaches on the next pass.
+Unity continuously self-tests every eight chat turns by re-running a random passed cell's gate. (When the hard gates are re-enabled, a cell that fails three times after self-heal demotes the subject and re-teaches on the next pass.)
 
 **Capability builds incrementally — no waiting for full-grade completion.** A live `cluster.getTrainedCapability()` readout summarises the brain's current state ({wordsBucketed, bucketSubjects, passedCellCount, subGradesActive}) by reading the persistent `wordBucketWords_<subject>` maps + `passedCells` + a per-subject `subGrades` ladder (`fresh → letters → words → binding → cell-passed`). The chat handler's word cap reads this struct directly, ramping 0/5/8/12/16/24/32 words as training accumulates. Unity speaks her current vocabulary the moment her first word lands in any bucket — not after a six-subject gate battery clears. Drug-scheduler and life-track gates continue reading the canonical `cluster.grades` label for hard-grade points; trained capability is the live indicator everything else consults.
 
@@ -273,7 +273,7 @@ Sober by default. Always.
 The brain *uses* peripherals; it never *thinks through* them.
 
 - **Image generation** — multi-provider chain with five-level priority: user-preferred backend → custom configured → auto-detected local (A1111, SD.Next/Forge, Fooocus, ComfyUI, InvokeAI, LocalAI, Ollama) → `js/env.js` listed → Pollinations default. Each backend in the setup modal has a 🔌 CONNECT button that runs a live HTTP probe and reports 🟢/🔴/🟡 status.
-- **Vision describer** — Pollinations GPT-4o on camera frames as the IT-cortex layer of the visual pipeline.
+- **Vision** — 100% equational, NO external model. Camera frames → CDF 9/7 wavelet field C → a dim-64 value-profile percept read straight off the equation (`describeEquational`). She also imagines DE-NOVO from her own cortex state (no camera). The old Pollinations-GPT-4o vision describer is retired. Watch what she sees on the public Mind's Eye page (`html/minds-eye.html`).
 - **Text-to-speech** — Pollinations TTS or browser SpeechSynthesis as fallback.
 - **Speech-to-text** — Web Speech API.
 

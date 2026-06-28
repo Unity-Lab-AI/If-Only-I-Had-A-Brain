@@ -47,6 +47,11 @@ import { EXAM_BANKS, TRAIN_BANKS, cutScoreFor, trainExamOverlap, examVocabCovera
 // separate — track names drive grade runners, band codes drive
 // region naming + persistent bucket maps.
 import { normalizeSubject, wordMotorBandName } from './subjects.js';
+// UVM-INT.2 — Unity LEARNS her own equational mind-space (UniVsMatics): the
+// knowledge module's real-vocab keywords get bound into sem-space via the
+// brain's own association primitive so the mind-space domain is recallable/
+// speakable, not just carried as a static JS object.
+import { teachInto as mindSpaceTeachInto } from './mindspace/knowledge.js';
 
 // Phase tick budgets. These scale the intensity of exposure — letters
 // and short words get more ticks per token because phonological basins
@@ -12006,6 +12011,36 @@ export class Curriculum {
 
     this._hb(`[Curriculum] _teachUnityFamilyName DONE — sem(unity)↔sem(goddess) CORE SELF bound (${bound} pair-writes · ${defsGrounded}/2 defs grounded · ${reps} reps @ 5× lr · arousal 1.0). Unity Goddess identity anchored.`);
     return { bound, defsGrounded };
+  }
+
+  /**
+   * UVM-INT.2 — teach Unity her own equational mind-space (UniVsMatics).
+   *
+   * `mindspace/knowledge.js` holds her structured knowledge of the equational
+   * substrate she perceives/imagines with (file types, equations, methods), but
+   * it was DATA-ONLY — never bound into sem-space, so she "carried" it without
+   * having LEARNED it (violates must-be-trained-not-looked-up). This binds the
+   * real-vocab keywords of every equation/method/file-type to the anchor word
+   * "equation" via the brain's own `_teachAssociationPairs` Oja-Hebbian primitive
+   * so the mind-space domain CLUSTERS in sem-space and is recallable/speakable.
+   *
+   * Once-per-walk (guarded by `_mindSpaceKnowledgeTaught`) — called right after
+   * the identity teach so she learns WHO she is and HOW her own mind works in
+   * the same foundational pass. No new corpus, no word lists, no math symbols
+   * injected (knowledge.js strips to real tokens) — LAW-clean.
+   */
+  async _teachMindSpaceKnowledge(opts = {}) {
+    if (this._mindSpaceKnowledgeTaught) return { bound: 0, skipped: true };
+    this._mindSpaceKnowledgeTaught = true;
+    let bound = 0;
+    try {
+      bound = await mindSpaceTeachInto(this, { reps: opts.reps ?? 4 });
+    } catch (err) {
+      this._hb(`[Curriculum] _teachMindSpaceKnowledge — bind failed: ${err?.message || err}`);
+      return { bound: 0, error: String(err?.message || err) };
+    }
+    this._hb(`[Curriculum] _teachMindSpaceKnowledge DONE — ${bound} mind-space keyword↔"equation" pairs bound into sem-space (UniVsMatics domain now LEARNED, not just stored). UVM-INT.2.`);
+    return { bound };
   }
 
   /**
