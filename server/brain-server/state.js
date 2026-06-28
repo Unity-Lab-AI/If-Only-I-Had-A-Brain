@@ -493,7 +493,48 @@ const SERVER_STATE_MIXIN = {
       // (the brain's system-resource usage) AND per-client connection health
       // (client↔brain). Bounded payload: aggregates + a capped client list.
       profiling: this._getProfilingState(),
+      // Community-compute + auto-scale telemetry for the admin panel. The panel
+      // reads payload.community.*; without this key in the PERIODIC broadcast it
+      // showed 0 donors / 0 VRAM / 0 replicas between /autoscale POSTs. Same data
+      // the GET /autoscale route returns (now a shared method).
+      community: this._getCommunityState(),
     };
+  },
+
+  /**
+   * Community-compute + auto-scale snapshot — the admin "Community Compute &
+   * Auto-Scale" panel reads these. Underlying counters (_communityDonorCount /
+   * _communityComputeMB) are recomputed on donor register + disconnect via
+   * _recomputeCommunityCompute(). Shared by GET /autoscale and the periodic WS
+   * broadcast so the two can never drift. Defensive: any missing field / thrown
+   * read degrades to safe zeros so it can NEVER crash the hot broadcast path.
+   */
+  _getCommunityState() {
+    try {
+      return {
+        communityComputeMB: this._communityComputeMB || 0,
+        donorCount: this._communityDonorCount || 0,
+        currentTier: this._communityTier || 0,        // raw — what the pool qualifies for
+        upgradeTier: this._communityUpgradeTier || 0, // buffered — what would trigger a resize
+        runningTier: this._communityTierRunning || 0, // what the brain is actually sized at
+        pendingTier: this._communityTierPending == null ? null : this._communityTierPending,
+        pendingSinceMs: this._communityTierPendingSince || null,
+        runningFloorMB: this._runningFloorMB || 0,     // VRAM the running tier needs
+        computeInsufficient: !!this._computeInsufficient,
+        downPendingTier: this._communityDownTierPending == null ? null : this._communityDownTierPending,
+        downPendingSinceMs: this._communityDownTierPendingSince || null,
+        replicaCount: (typeof this._livePoolDonors === 'function')
+          ? Math.max(0, this._livePoolDonors().length - 1) : 0,
+        lastRebroadcastMs: this._lastReplicaRebroadcastMs || null,
+      };
+    } catch {
+      return {
+        communityComputeMB: 0, donorCount: 0, currentTier: 0, upgradeTier: 0,
+        runningTier: 0, pendingTier: null, pendingSinceMs: null, runningFloorMB: 0,
+        computeInsufficient: false, downPendingTier: null, downPendingSinceMs: null,
+        replicaCount: 0, lastRebroadcastMs: null,
+      };
+    }
   },
 
   /**
