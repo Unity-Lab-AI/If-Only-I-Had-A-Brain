@@ -46,6 +46,31 @@ If you're reading a public doc / HTML claim ("Unity has completed high school bi
 
 ## OPEN TASKS
 
+### HBGRACE — server heartbeat falsely terminates donors mid-replica-sync / during event-loop blocks (Linux/slow-link drops more) (Gee 2026-06-28) — IN PROGRESS (branch `feature/community-compute-donor-count`)
+
+**Gee verbatim per LAW #0:**
+
+> *"On linux I still seem to get dropped more frequently than those on windows..."*
+
+> *"Figure out what is going on, why it is happening, and if there is a fix for it"*
+
+**Diagnosis (from Gee's live server log):** the drops here are NOT the v0.3.3 client-side flap — they're the SERVER terminating the donor: `heartbeat — socket X (GPU donor) missed its ping (half-open) — terminating so failover can fire`, immediately followed by a flood of `sparse binary reqId=… ERROR: Cannot call write after a stream was destroyed` (the server was mid-replica-upload to the socket it just killed). Mechanism (`brain-server.js:7308` `_heartbeatTimer`, 30 s `ws.ping()` → terminate if no pong by the next sweep):
+
+1. A donor connects → server replica-syncs the FULL 40M-neuron brain to it (14.2 MB intra + dozens of cross-projections), to ALL 3 donors at once.
+2. The sync BLOCKS the server event loop in ~5 s chunks (`[EventLoop] BLOCKED 4917ms … phase=_teachHebbian … replicaSyncing=1`) — so the `pong` handler (sets `ws._isAlive=true`) can't run, and outbound pings are delayed.
+3. The donor, draining a massive upload backlog over its link, is slow to reach + answer the server's PING. On a higher-latency / lower-bandwidth link (Starlink / Linux) the pong misses the 30 s window more often than a fast Windows/LAN donor → `ws._isAlive` stays false → **terminated mid-sync** → write-after-destroyed flood → reconnect → sync RESTARTS → churn loop. That's why Linux/slow-link drops more — it's a false-positive liveness kill, not a dead socket.
+
+**Fix (server-side, `brain-server.js` heartbeat — analogous to the dashboard RTT "don't blame the client for the server's lag" fix):**
+
+- **HBGRACE.1 — grace cycles, not single-miss death.** Track `ws._missedPings`; terminate only after ≥2 consecutive genuine misses (one missed 30 s window ≠ dead — sleep/backlog/loop-block all recover within a cycle). Reset on pong.
+- **HBGRACE.2 — event-loop-block awareness.** Stamp `brain._lastEventLoopBlockTs` on a real block (≥1 s) in the lag sampler; if a block happened within the heartbeat window, the pong may simply not have been processed — extend grace, don't count it as a donor miss.
+- **HBGRACE.3 — don't kill a donor mid replica-sync.** If `brain._replicaSyncInFlight.has(ws)`, the donor is busy RECEIVING the brain — extend grace (bounded, so a truly-dead mid-sync donor still eventually dies) instead of terminating it mid-upload (which also kills the wasted sync + spawns the write-after-destroyed flood).
+- **HBGRACE.4 — fresh walk** (reset weights) after deploy per `docs/SPONGE-FRESH-WALK-DEPLOY.md`; docs (WEBSOCKET heartbeat section + FINALIZED). NOTE: this is donor-resilience server-side; the deeper event-loop-block-during-sync is the standing WL.3 perf task (bound the teach/sync block so upload frames + pongs get airtime) — referenced, not fully solved here.
+
+**STATUS:** ✅ DONE — root cause = false-positive server heartbeat termination of busy/slow-link donors mid replica-sync (worse on Linux/Starlink), NOT the v0.3.3 client flap. Shipped server-side: HBGRACE.1 grace counter (2 misses, was 1), HBGRACE.2 event-loop-block awareness (`_lastEventLoopBlockTs` → busy budget 5/~150s), HBGRACE.3 mid-sync grace (`_replicaSyncInFlight`), HBGRACE.4 rate-limited the post-termination write-after-destroyed flood + chunk-loop bail on closed socket. Server-only (donor stays v0.3.4, no rebuild). `node --check` clean. Docs: WEBSOCKET heartbeat-grace + FINALIZED. Deployed to box + fresh walk (reset weights). Verbatim in `docs/FINALIZED.md` 2026-06-28 HBGRACE. (Deeper event-loop-block-during-sync = standing WL.3 perf task, referenced.)
+
+---
+
 ### ASCALE — auto-scale-up gates on MAX card VRAM not DONATED amount + brain-size-budget clarity (Gee 2026-06-28) — IN PROGRESS (branch `feature/community-compute-donor-count`)
 
 **Gee verbatim per LAW #0:**
