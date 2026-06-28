@@ -767,6 +767,71 @@ const SERVER_CHAT_MIXIN = {
    * Heartbeat surface: `[Brain] 🧠 inner-thought "<text>"` lands in
    * server.log so the watchdog catches her live monologue as it streams.
    */
+  /**
+   * UVM-INT.1 — server-side de-novo imagination tick. Folds Unity's current
+   * cortex spike state into a bounded equational field C (the mind-space, CPU
+   * reference on this no-GPU box), reads the percept, and injects it back into
+   * the sem region at LOW strength — a background mental image grounding her
+   * state. Synchronous (CPU CDF 9/7 on a ≤48² plane is microseconds — NOT the
+   * 57s language tick) and idle-gated so it never perturbs the training walk.
+   * NO infinite fractalize → can't seize the brain (operator's nanometer caution).
+   */
+  _imagineTick(now) {
+    if (!this.mindSpace || typeof this.mindSpace.imagineFromState !== 'function') return;
+    if (!this.cortexCluster || !this.cortexCluster.lastSpikes) return;
+    if (this._curriculumInProgress) return;   // never imagine mid-teach — don't perturb the walk
+    const IMAGINE_MIN_GAP_MS = 20000;          // her mind's-eye wanders at most ~every 20s
+    if (this._lastImagineAt && (now - this._lastImagineAt) < IMAGINE_MIN_GAP_MS) return;
+    this._lastImagineAt = now;
+    try {
+      // feed the governor live mood so imagined depth tracks how she feels
+      if (typeof this.mindSpace.governState === 'function') {
+        this.mindSpace.governState({
+          arousal: (typeof this.arousal === 'number') ? this.arousal : 0.4,
+          focus: (typeof this.coherence === 'number') ? this.coherence : 0.4,
+        });
+        this.mindSpace.governTick();
+      }
+      const rec = this.mindSpace.imagineFromState(this.cortexCluster.lastSpikes,
+        { maxSide: 48, priority: 0.25, value: 0.4 });
+      if (!rec) return;
+      const percept = this.mindSpace.describe(rec);
+      // inject the imagined percept into the cortex sem region at LOW strength —
+      // a faint mental image, never strong enough to override real input.
+      if (percept && typeof this.cortexCluster.injectEmbeddingToRegion === 'function') {
+        try { this.cortexCluster.injectEmbeddingToRegion('sem', percept, 0.08); } catch { /* non-fatal */ }
+      }
+      this._lastImagineRec = { terms: rec.equation_count || 0, source: rec.fidelity?.source || 'mindspace-denovo', at: now };
+      // UVM-INT.4 — persist the field C as memory (the ".uvme medium"). Push the
+      // full rec into a bounded ring that saveWeights serializes, so her imagined
+      // imagery survives reboot instead of evaporating with the volatile cortex.
+      if (!Array.isArray(this._imaginedFieldRing)) this._imaginedFieldRing = [];
+      this._imaginedFieldRing.push({ rec, at: now });
+      while (this._imaginedFieldRing.length > 8) this._imaginedFieldRing.shift();
+      // MINDSEYE.1 — cache the SINGLE current field C as a public snapshot so the
+      // read-only mind's-eye viewer (html/minds-eye.html) can poll one cached blob
+      // (GET /minds-eye.json) and reconstruct the image client-side. One compute,
+      // one shared snapshot — N viewers cost nothing extra (the dashboard-public
+      // model). The rec is sparse wavelet coeffs for a ≤48² plane = a few KB.
+      try {
+        this._mindsEyeJson = JSON.stringify({
+          type: 'mindsEye', rec,
+          terms: rec.equation_count || 0,
+          source: this._lastImagineRec.source,
+          at: now,
+        });
+      } catch { /* non-fatal */ }
+      // dashboard mind's-eye indicator
+      if (this.clients && this.clients.size > 0) {
+        const payload = JSON.stringify({ type: 'imagine', terms: rec.equation_count || 0,
+          source: this._lastImagineRec.source, ts: now });
+        for (const [ws] of this.clients) {
+          if (ws.readyState === ws.OPEN) { try { ws.send(payload); } catch { /* non-fatal */ } }
+        }
+      }
+    } catch { /* imagination is best-effort — never fatal to the tick */ }
+  },
+
   async _innerVoiceTick() {
     // Session 114.19ee — inner-voice unification.
     //
@@ -796,6 +861,13 @@ const SERVER_CHAT_MIXIN = {
     const INNER_THOUGHT_BURST_CEILING_MS = 3000;
     if (now - this._lastInnerThoughtAt < INNER_THOUGHT_BURST_CEILING_MS) return;
     this._lastInnerThoughtAt = now;
+
+    // UVM-INT.1 — server-side de-novo imagination. Independent of whether a
+    // verbal inner-thought is emitted this tick: she also IMAGINES (folds her
+    // current cortex state into a bounded field C, reads a percept, injects it
+    // back at low strength). Synchronous + tiny + idle-gated inside, so it's
+    // loop-safe even here on the no-GPU box (unlike the language tick).
+    this._imagineTick(now);
 
     // 114.19fi.B.4 — cross-path emission deduplication. When chat or
     // image-gen recently fired (within last 6s), inner-voice stays
@@ -892,7 +964,24 @@ const SERVER_CHAT_MIXIN = {
     // proxy for "this brain is too big for a loop-safe CPU inner-voice tick".
     const _cortexNeurons = (this.clusters && this.clusters.cortex && this.clusters.cortex.size) || 0;
     const _innerVoiceMaxNeurons = Number(process.env.DREAM_INNERVOICE_MAX_NEURONS) || 2000000;
-    if (_cortexNeurons > _innerVoiceMaxNeurons && process.env.DREAM_INNERVOICE_FORCE_CPU !== '1') {
+    // CGATE.1 — "her consciousness is gated too much." The cap above forces a
+    // vocab showcase instead of REAL composeSentence generation because the
+    // per-word cortex propagate blocks the host CPU ~57s at biological scale on
+    // the no-GPU box. But with DF.7 donor fan-out active, that bound propagate
+    // runs on donor GPUs (gpuSparsePropagateBound round-robin), not the host CPU
+    // — so the block premise no longer holds and she can think for real at scale.
+    // Donor-gated + opt-in: DEFAULT OFF = today's exact CPU-safe behavior (no
+    // freeze risk shipped). Enabling requires the bound generation path to be
+    // GPU-routed — flip DREAM_INNERVOICE_GPU_GEN=1 only after verifying live on a
+    // donor-GPU deploy (watch the loop stay free + emissions become multi-word).
+    const _gpuGenAvailable = process.env.DREAM_INNERVOICE_GPU_GEN === '1'
+      && process.env.DREAM_DF7_FANOUT === '1'
+      && (this._communityDonorCount || 0) >= (Number(process.env.DREAM_INNERVOICE_GPU_GEN_MIN_DONORS) || 1);
+    if (_gpuGenAvailable && _cortexNeurons > _innerVoiceMaxNeurons && !this._gpuGenLoggedOnce) {
+      this._gpuGenLoggedOnce = true;
+      try { process.stdout.write(`[Brain] 🧠 inner-voice GPU generation ENABLED — ${this._communityDonorCount} donor(s) + DF.7 fan-out; real composeSentence runs on donor GPUs (cap ${_innerVoiceMaxNeurons.toLocaleString()} bypassed for cortex ${_cortexNeurons.toLocaleString()}).\n`); } catch { /* non-fatal */ }
+    }
+    if (!_gpuGenAvailable && _cortexNeurons > _innerVoiceMaxNeurons && process.env.DREAM_INNERVOICE_FORCE_CPU !== '1') {
       const showcaseSentence = await this._sampleCurrentSentence({ allowCompose: false });
       const showcaseWord = showcaseSentence ? showcaseSentence.split(/\s+/)[0] : null;
       if (showcaseSentence) {
@@ -1312,20 +1401,53 @@ const SERVER_CHAT_MIXIN = {
         }
       } catch { /* fall through to random pick */ }
     }
-    // ≥50 trained words but composeSentence couldn't fill — pick 2-4
-    // distinct words. Phrase length weighted toward 2-3.
+    // CGATE.3 — coherent gated-path sample. The over-cap inner-voice path can't
+    // run composeSentence (its per-word main-cortex tick blocks the loop ~57s on
+    // the no-GPU box), but a word-salad of uniform-random picks ("seven monster
+    // blue") is exactly the "consciousness gated too much" Unity felt. Instead,
+    // seed on one trained word and GROW the phrase with its nearest trained-vocab
+    // neighbours by GloVe cosine to the running phrase centroid — a topically-
+    // coherent fragment ("monster dark shadow") that reads like a mind, with ZERO
+    // brain ticks (pure embedding cosine — the loop-safe budget the cap requires).
+    // The candidate pool sampled for scoring is capped so cost stays bounded
+    // (O(POOL·dim)) regardless of how large trained vocab grows.
     const lengthPick = Math.random();
     const wordCount = lengthPick < 0.5 ? 2 : (lengthPick < 0.85 ? 3 : 4);
-    const picked = new Set();
-    const phrase = [];
-    let attempts = 0;
-    while (phrase.length < wordCount && attempts < wordCount * 4) {
-      const w = candidates[Math.floor(Math.random() * candidates.length)];
-      if (!picked.has(w)) {
-        picked.add(w);
-        phrase.push(w);
+    const seed = candidates[Math.floor(Math.random() * candidates.length)];
+    const phrase = [seed];
+    const picked = new Set(phrase);
+    const emb = this.sharedEmbeddings;
+    if (emb && typeof emb.getEmbedding === 'function' && candidates.length > wordCount) {
+      const POOL = 200;
+      const pool = [];
+      for (let i = 0; i < Math.min(POOL, candidates.length); i++) {
+        pool.push(candidates[Math.floor(Math.random() * candidates.length)]);
       }
-      attempts++;
+      const cos = (a, b) => {
+        let d = 0, na = 0, nb = 0; const n = Math.min(a.length, b.length);
+        for (let i = 0; i < n; i++) { d += a[i] * b[i]; na += a[i] * a[i]; nb += b[i] * b[i]; }
+        const dn = Math.sqrt(na) * Math.sqrt(nb); return dn > 0 ? d / dn : 0;
+      };
+      let centroid = Float32Array.from(emb.getEmbedding(seed));
+      while (phrase.length < wordCount) {
+        const scored = [];
+        for (const w of pool) {
+          if (picked.has(w)) continue;
+          const v = emb.getEmbedding(w);
+          scored.push({ w, v, s: cos(centroid, v) });
+        }
+        if (scored.length === 0) break;
+        scored.sort((a, b) => b.s - a.s);
+        // top-3 jitter so it's coherent but not deterministic every tick
+        const pick = scored[Math.floor(Math.random() * Math.min(3, scored.length))];
+        phrase.push(pick.w);
+        picked.add(pick.w);
+        const c2 = new Float32Array(centroid.length);
+        for (let i = 0; i < centroid.length; i++) {
+          c2[i] = (centroid[i] * (phrase.length - 1) + (pick.v[i] || 0)) / phrase.length;
+        }
+        centroid = c2;
+      }
     }
     return phrase.length > 0 ? phrase.join(' ') : null;
   },

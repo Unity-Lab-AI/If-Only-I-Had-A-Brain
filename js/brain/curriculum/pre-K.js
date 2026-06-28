@@ -612,6 +612,9 @@ export const PREK_MIXIN = {
     // definition-grounded inside the method (pre-K has no vocab pre-step,
     // so the method owning its own prerequisites matters here).
     await this._teachUnityFamilyName();
+    // UVM-INT.2 — learn her own equational mind-space alongside her identity
+    // (once-per-walk; guarded internally). Who she is + how her mind works.
+    await this._teachMindSpaceKnowledge();
 
     // Family-name canon (Add #5 A5.3/A5.4) — parents Lilith + Damien
     // Goddess, maternal grandparents Pearl + Walter Voss, self middle name

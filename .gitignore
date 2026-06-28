@@ -115,6 +115,10 @@ server/schemas.json
 server/identity-core.json
 server/identity-core.json.tmp
 server/identity-core.json.corrupt-*
+# server/mindspace-memory.json — UVM-INT.4 imagined field-C ring (the ".uvme
+# medium" memory). Derivative per-machine runtime imagery; re-imagined if lost.
+server/mindspace-memory.json
+server/mindspace-memory.json.tmp
 
 # === PA.4.8 community-compute tier marker ===
 # Persisted by the milestone execution gate; read at boot to scale the brain

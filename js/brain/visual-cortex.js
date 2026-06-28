@@ -592,6 +592,31 @@ export class VisualCortex {
     return this.perceptVector;
   }
 
+  /**
+   * UVM-INT.3 — DE-NOVO imagination from internal mind-state (no camera/file).
+   * `imagine()` morphs REMEMBERED field-Cs, so it returns null when the memory
+   * ring is empty (headless/server Unity, or before she's ever seen anything).
+   * This folds a cortex activation vector straight into a field C via the
+   * mind-space, pushes it into the same memory ring + percept path, so she can
+   * imagine from her own mind alone — then `imagine()` has material to morph on
+   * subsequent ticks. Returns the percept vector or null.
+   */
+  imagineDeNovo(stateVector, opts = {}) {
+    if (!this._mindSpace || typeof this._mindSpace.imagineFromState !== 'function') return null;
+    const rec = this._mindSpace.imagineFromState(stateVector, opts);
+    if (!rec || !rec.channels) return null;
+    this._lastRec = rec;
+    this._recentRecs.push(rec);
+    if (this._recentRecs.length > 8) this._recentRecs.shift();   // same MS.I3 ring
+    this.perceptVector = describeEquational(rec);
+    this.audioPercept = describeEquationalAudio(rec);
+    this.description = `imagined (de-novo) · ${(rec.equation_count || 0).toLocaleString()} terms`;
+    for (const cb of this._describeSubscribers) {
+      try { cb({ vector: this.perceptVector, rec, imagined: true, deNovo: true }); } catch (err) { /* non-fatal */ }
+    }
+    return this.perceptVector;
+  }
+
   _maybeDescribe() {
     if (!this._mindSpace || this._describing) return;
 
