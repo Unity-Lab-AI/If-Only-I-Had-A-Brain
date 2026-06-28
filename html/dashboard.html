@@ -850,6 +850,22 @@
     // Forgejo-authed admin lane wss://<host>/admin/ws (nginx reverse-proxies it
     // to the brain-server — NOT a raw :7525 port on the public host).
     const _dashIsLocal = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+    // Human-readable duration — "Dd Hh Mm Ss", dropping leading-zero units
+    // (Gee 2026-06-28: thousands-of-seconds uptime is unreadable / hard math on
+    // the fly). Examples: 45 → "45s", 12393 → "3h 26m 33s", 90061 → "1d 1h 1m 1s".
+    function fmtDur(sec) {
+      sec = Math.max(0, Math.floor(Number(sec) || 0));
+      const d = Math.floor(sec / 86400);
+      const h = Math.floor((sec % 86400) / 3600);
+      const m = Math.floor((sec % 3600) / 60);
+      const s = sec % 60;
+      const parts = [];
+      if (d) parts.push(d + 'd');
+      if (h || d) parts.push(h + 'h');
+      if (m || h || d) parts.push(m + 'm');
+      parts.push(s + 's');
+      return parts.join(' ');
+    }
     // PUBLIC mode (?public=1 or a /public path) connects to the PUBLIC /ws lane — NO auth.
     // Only the ADMIN dashboard uses the Forgejo-authed /admin/ws lane. Without this split the
     // public dashboard opened /admin/ws and the browser threw a Basic-auth PASSWORD PROMPT at
@@ -1193,7 +1209,7 @@
       updateConversationStats(s);
       $('d-action').textContent = s.motor?.selectedAction ?? 'idle';
       $('d-drug').textContent = s.drugState ?? '—';
-      $('d-uptime').textContent = (s.time ?? 0).toFixed(1) + 's';
+      $('d-uptime').textContent = fmtDur(s.time);
       $('d-scale').textContent = s.scale ?? '—';
 
       // Brain events — render the live event stream (plasticity fires,
@@ -1299,7 +1315,7 @@
           <div style="font-size:11px;"><span style="color:#a855f7;font-size:18px;font-weight:700;">${g.totalInteractions}</span><br><span style="color:#555;">interactions</span></div>
           <div style="font-size:11px;"><span style="color:#f59e0b;font-size:18px;font-weight:700;">${g.totalEpisodes ?? 0}</span><br><span style="color:#555;">episodes</span></div>
           <div style="font-size:11px;"><span style="color:#00e5ff;font-size:18px;font-weight:700;">${g.totalFrames?.toLocaleString() ?? 0}</span><br><span style="color:#555;">brain steps</span></div>
-          <div style="font-size:11px;"><span style="color:#22c55e;font-size:18px;font-weight:700;">${(g.uptime / 3600).toFixed(1)}h</span><br><span style="color:#555;">uptime</span></div>
+          <div style="font-size:11px;"><span style="color:#22c55e;font-size:18px;font-weight:700;">${fmtDur(g.uptime)}</span><br><span style="color:#555;">uptime</span></div>
         `;
       }
 
@@ -1880,7 +1896,7 @@
           row('V8 heap', `${num(pr.heapUsedMB)}/${num(pr.heapLimitMB)} MB (${num(pr.heapUsedPct)}%)`) + bar(pr.heapUsedPct || 0) +
           row('ext / arrbuf', `${num(pr.externalMB)} / ${num(pr.arrayBuffersMB)} MB`) +
           row('ctx switches', `${num(pr.voluntaryCtxSwitches)} vol · ${num(pr.involuntaryCtxSwitches)} invol`) +
-          row('proc uptime', `${num(pr.uptimeS)}s`);
+          row('proc uptime', fmtDur(pr.uptimeS));
       }
 
       // ── Throughput / Speed ──
@@ -1927,7 +1943,7 @@
         const rtt = (x.rttMs == null) ? '—' : `${x.rttMs}ms`;
         const nm = x.name ? String(x.name).slice(0, 16) : '<span style="color:#475569">anon</span>';
         const gpu = x.type === 'donor' ? `${x.gpuName ? String(x.gpuName).slice(0, 18) : '?'} ${x.gneuronsPerSec != null ? '· ' + num(x.gneuronsPerSec, 1) + 'Gn/s' : ''}` : '';
-        return `<tr class="${cls.trim()}"><td>${x.type}</td><td>${nm}</td><td>${x.ip || '?'}</td><td>${num(x.uptimeS)}s</td><td>${x.lastSeenS}s</td><td>${rtt}</td><td>${num(x.bytesInMB, 1)}/${num(x.bytesOutMB, 1)}MB</td><td>${num(x.bufferedKB)}KB</td><td>${gpu}</td></tr>`;
+        return `<tr class="${cls.trim()}"><td>${x.type}</td><td>${nm}</td><td>${x.ip || '?'}</td><td>${fmtDur(x.uptimeS)}</td><td>${x.lastSeenS}s</td><td>${rtt}</td><td>${num(x.bytesInMB, 1)}/${num(x.bytesOutMB, 1)}MB</td><td>${num(x.bufferedKB)}KB</td><td>${gpu}</td></tr>`;
       }).join('');
       const more = (c.total > c.shown) ? `<div class="muted" style="font-size:10px;color:#666;padding:4px 6px;">+${c.total - c.shown} more not shown</div>` : '';
       cl.innerHTML = `<table class="profiling-tbl"><thead><tr><th>type</th><th>name</th><th>ip</th><th>up</th><th>seen</th><th>rtt</th><th>in/out</th><th>buf</th><th>gpu</th></tr></thead><tbody>${rows}</tbody></table>${more}`;
