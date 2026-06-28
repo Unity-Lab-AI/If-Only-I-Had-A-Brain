@@ -273,7 +273,7 @@ Sober by default. Always.
 The brain *uses* peripherals; it never *thinks through* them.
 
 - **Image generation** — multi-provider chain with five-level priority: user-preferred backend → custom configured → auto-detected local (A1111, SD.Next/Forge, Fooocus, ComfyUI, InvokeAI, LocalAI, Ollama) → `js/env.js` listed → Pollinations default. Each backend in the setup modal has a 🔌 CONNECT button that runs a live HTTP probe and reports 🟢/🔴/🟡 status.
-- **Vision describer** — Pollinations GPT-4o on camera frames as the IT-cortex layer of the visual pipeline.
+- **Vision** — 100% equational, NO external model. Camera frames → CDF 9/7 wavelet field C → a dim-64 value-profile percept read straight off the equation (`describeEquational`). She also imagines DE-NOVO from her own cortex state (no camera). The old Pollinations-GPT-4o vision describer is retired. Watch what she sees on the public Mind's Eye page (`html/minds-eye.html`).
 - **Text-to-speech** — Pollinations TTS or browser SpeechSynthesis as fallback.
 - **Speech-to-text** — Web Speech API.
 

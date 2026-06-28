@@ -199,6 +199,14 @@ Currently only fires for `text` rate limiting (`MAX_TEXT_PER_SEC = 2`, so minimu
 
 Reserved. `js/brain/remote-brain.js` has a handler for this type (so clients are forward-compatible) but the current server code doesn't emit it — TTS motor actions currently route through `response` with `action: 'speak'` and the client decides whether to call its TTS peripheral. A future refactor may split speak into its own dedicated message type for TTS-only clients that don't render text.
 
+### `innerThought`
+
+Broadcast to all clients (not gated) on the inner-voice cadence (Hurlburt natural rhythm, ~6-75s gaps). Payload `{ type:'innerThought', word, sentence, seed, seedLabel, ts }` — her live inner monologue for the dashboard popup stream. At biological scale on the no-GPU box the `sentence` is the loop-safe showcase (now a GloVe-cosine-COHERENT trained-vocab fragment, not random word-salad); when `DREAM_INNERVOICE_GPU_GEN=1` + DF.7 donors are present it's REAL `composeSentence` generation.
+
+### `imagine` (2026-06-27)
+
+Broadcast to all clients when Unity imagines (server `_imagineTick`, idle-gated). Payload `{ type:'imagine', terms, source, ts }` — METADATA only (equation-term count + source `mindspace-denovo`); a dashboard "mind's-eye active" indicator. The actual field C is NOT on this message — it's served as a single cached snapshot at `GET /minds-eye.json` so the public Mind's-Eye viewer (`html/minds-eye.html`) polls one shared blob and reconstructs the image client-side (no per-viewer payload, no lag). See "Server Endpoints".
+
 ### GPU compute messages
 
 `brain-server.js` offloads all Rulkov-map neuron iteration and synapse propagation to a browser GPU compute client running `compute.html`. The live neural rule is the Rulkov 2002 2D chaotic map (`x_{n+1} = α/(1+x²) + y`, `y_{n+1} = y − μ(x − σ)`) running as a WGSL compute shader in `js/brain/gpu-compute.js` — the `LIF_SHADER` constant name is historical, the kernel body is the Rulkov iteration. Server talks to the GPU client via three WebSocket message types on the same connection:
@@ -377,7 +385,10 @@ Core design rule (established 2026-04-13): **user text is private; brain growth 
 |---|---|---|
 | `/` | GET | `index.html` — main app |
 | `/dashboard.html` | GET | Live brain monitor |
+| `/minds-eye.html` | GET | Public "what Unity sees" viewer — polls `/minds-eye.json`, reconstructs the field C client-side |
 | `/compute.html` | GET | GPU compute worker (required for brain to run — it pauses without a GPU client) |
+| `/public-state.json` | GET | Single cached brain-state snapshot (public dashboard polls it — N viewers cost one `getState()`) |
+| `/minds-eye.json` | GET | Single cached imagined field C (the Mind's-Eye source — one `_imagineTick` snapshot served to all viewers; `Access-Control-Allow-Origin: *`, read-only) |
 | `/health` | GET | JSON `{status, neurons, clusters, uptime, clients}` |
 | `/versions` | GET | JSON list of `brain-weights-v0.json`..`brain-weights-v4.json` save slots |
 | `/rollback/:slot` | POST | Restore a previous brain save slot |

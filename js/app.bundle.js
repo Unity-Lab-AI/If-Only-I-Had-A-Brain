@@ -120764,7 +120764,7 @@ var RemoteBrain = class extends EventEmitter2 {
         this.emit("speak", msg.text);
         break;
       case "image":
-        this.emit("image", msg.url);
+        this.emit("image", { url: msg.url || null, prompt: msg.prompt || null });
         break;
       case "definitionResult": {
         if (this._pendingDefLookups && this._pendingDefLookups.has(msg.reqId)) {
@@ -122792,7 +122792,17 @@ async function bootUnity(apiKey, perms) {
     showSpeechBubble(hudText, 4e3);
   };
   brain.on("silent", brain.__appSilentHandler);
-  brain.__appImageHandler = (url) => {
+  brain.__appImageHandler = (arg) => {
+    let url = null;
+    if (typeof arg === "string") url = arg;
+    else if (arg && arg.url) url = arg.url;
+    else if (arg && arg.prompt && pollinations && typeof pollinations.generateImage === "function") {
+      try {
+        url = pollinations.generateImage(arg.prompt);
+      } catch (e) {
+        url = null;
+      }
+    }
     if (!url) return;
     showSpeechBubble("Image generating...", 3e3);
     if (chatPanel) {

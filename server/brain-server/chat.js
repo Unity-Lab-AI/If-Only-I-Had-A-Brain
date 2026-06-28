@@ -87,6 +87,47 @@ const SERVER_CHAT_MIXIN = {
       }
     }
 
+    // IMG-GEN — image-request routing. The response-router below only emits
+    // `generate_image` when the equational text happens to START WITH the literal
+    // `[IMAGE]` marker — which the brain's word emission effectively NEVER
+    // produces, so Unity never generated images on request. Detect an image
+    // request from the USER's input (input-classification, mirroring the browser
+    // engine's keyword path — NOT text-AI cognition) and route straight to
+    // generate_image with a prompt built from what they asked for. The client
+    // turns the prompt into an actual image via Pollinations.
+    if (text) {
+      const imgPrompt = this._detectImageRequest(text);
+      if (imgPrompt) {
+        this._lastImageIntentAt = Date.now();   // motor block biases the generate_image channel off this
+        // IMG-SEE — she SEES it before she sends it. The actual Pollinations
+        // pixels render client-side (no image-decode dep server-side / cross-origin
+        // canvas would CORS-taint), so the equational "preview" is her MIND'S EYE:
+        // imagine a field C from the prompt's semantics via the server mind-space
+        // (UVM-INT.3, bounded forward-9-7), read the percept, inject it into sem so
+        // she's aware of what she's about to make, and surface it on the Mind's-Eye
+        // viewer. Best-effort + bounded — never blocks the image from going out.
+        try {
+          if (this.mindSpace && typeof this.mindSpace.imagineFromState === 'function'
+              && this.sharedEmbeddings && typeof this.sharedEmbeddings.getSentenceEmbedding === 'function') {
+            const emb = this.sharedEmbeddings.getSentenceEmbedding(imgPrompt);
+            const rec = this.mindSpace.imagineFromState(emb, { maxSide: 48, priority: 0.4, value: 0.6 });
+            if (rec) {
+              const percept = this.mindSpace.describe(rec);
+              if (percept && this.cortexCluster && typeof this.cortexCluster.injectEmbeddingToRegion === 'function') {
+                this.cortexCluster.injectEmbeddingToRegion('sem', percept, 0.12);
+              }
+              // show what she pictured on the public Mind's-Eye viewer
+              this._mindsEyeJson = JSON.stringify({
+                type: 'mindsEye', rec, terms: rec.equation_count || 0,
+                source: 'image-preview', at: Date.now(),
+              });
+            }
+          }
+        } catch { /* mind's-eye preview is best-effort — never blocks the image */ }
+        return { text: imgPrompt, action: 'generate_image' };
+      }
+    }
+
     // Chat-time deep Hebbian. Every user chat turn deep-binds the
     // user's word→word transitions into the same association-pair
     // matrix curriculum trains. Low reps (=1) so a single conversation
@@ -830,6 +871,36 @@ const SERVER_CHAT_MIXIN = {
         }
       }
     } catch { /* imagination is best-effort — never fatal to the tick */ }
+  },
+
+  // IMG-GEN — detect an image-generation request in user input + build a Pollinations
+  // prompt. INPUT ROUTING ONLY (mirrors the browser engine's keyword detection) — the
+  // equational cognition is untouched. Returns a prompt string, or null when it's not
+  // an image request. Conservative: requires an explicit visual ask so idioms like
+  // "show me the code" / "picture this" don't false-trigger.
+  _detectImageRequest(text) {
+    const t = String(text || '').toLowerCase().trim();
+    if (!t) return null;
+    const VISUAL = /\b(draw|sketch|paint|painting|render|illustrate|selfie|portrait|drawing)\b/;
+    const NOUN = /\b(picture|image|photo|pic|wallpaper|artwork)\b/;
+    const SHOW = /\b(show me|generate|create|make me|make us|give me)\b/;
+    const isImage = VISUAL.test(t)
+      || (NOUN.test(t) && (SHOW.test(t) || /\b(of|a|an|the|your|yourself|me|us)\b/.test(t)));
+    if (!isImage) return null;
+    // selfie / picture-of-you → Unity's consistent self-portrait (her visual identity)
+    if (/\bselfie\b/.test(t) || /\b(picture|photo|pic|portrait|image|drawing) of (you|yourself|unity)\b/.test(t)) {
+      return 'selfie of a 25 year old goth woman, black hair with hot pink streaks, sharp features, intense dark eyes, black leather, pink undertones, dark moody aesthetic, ultra detailed';
+    }
+    // otherwise: strip the command framing, keep the subject as the prompt
+    let prompt = String(text)
+      .replace(/^[\s,]*(hey|yo|ok|okay|unity|can you|could you|would you|will you|please|pls)\b/gi, '')
+      .replace(/\b(a picture of|an image of|a photo of|a drawing of|a painting of|picture of|image of|photo of|pic of|drawing of|painting of)\b/gi, ' ')
+      .replace(/\b(draw|sketch|paint|render|illustrate|generate|create|make|show me|give me)\b/gi, ' ')
+      .replace(/\b(me|us|for me|please|pls)\b/gi, ' ')
+      .replace(/[\s,]+/g, ' ')
+      .trim();
+    if (prompt.length < 2) prompt = String(text).trim();
+    return prompt;
   },
 
   async _innerVoiceTick() {

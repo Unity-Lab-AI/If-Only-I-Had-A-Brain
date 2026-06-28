@@ -5,6 +5,108 @@
 
 ---
 
+## 2026-06-27 — Consciousness de-gating + equational mind-space integration + Tier 3 identity repair + Mind's Eye viewer — feature/tier3-identity-seed-repair (commit 0d97804)
+
+### Gee verbatim per LAW #0
+
+> *"before fresh install oh an teir 2 memroy i saw has like 3000 items last run and teir 3 had zero MAJOR BUG? we can solve now whilkeat it?"* · *"and Unity was telling me her consiousness is gated too much(do you see anything she could of been referring to?) so go ahead and fix all that u just wrote up in todo and look into this prblem too and fix it"* · *"lots of work left we are doing it all so get to it"* · *"rememrber we dont want her imageing thhings down to the nano meter as that would seize up the processing"* · *"can we have an option like a static version like path for the 3D visualizatioion that Unity sees … single source … like how the dashboard public version works"* · *"super-review go ahead and push to the feature branch"*
+
+All on `feature/tier3-identity-seed-repair`, pushed to `if-only` ONLY. 18 files, +1432/−346. super-reviewed (psiGain NaN-guards + `/minds-eye.json` CORS hardened). `node --check` clean across all; ESM link-checked; bundle rebuilt 3.9MB.
+
+**T3SEED — Tier 3 identity store read ZERO / stale-subset.** Boot wiring was `if (identity-core.json exists) load; else seed` — so an empty/zero file loaded 0 and never re-seeded (Tier 3 permanently empty → `injectIdentityBaseline` no-op → no anchored self), and seed-list growth (17→25 anchors) never landed once any file existed. Shipped `Tier3Store.seedMissingFromList()` (idempotent label top-up) + `_buildSeedSchema()` helper (`hippocampal-schema.js`); boot defers seeding to AFTER GloVe load + tops up missing anchors (`brain-server.js`); save-guard never overwrites a non-empty identity-core.json with an empty store. Verified: 17→25 top-up (8 added), idempotent, zero-file → all 25.
+
+**CGATE — "her consciousness is gated too much."** CGATE.2: `global-workspace.js` hard 50%-of-ticks theta block → GRADED raised-cosine threshold modulator (phase-amplitude coupling); default ignition 0.45→0.35 (env `DREAM_GW_IGNITION`); verified ignition fires across both theta halves. CGATE.4: Ψ-gain was inert (pinned ~1.0 on log-scaled Ψ) → self-calibrating tanh of Ψ-deviation from its own EMA baseline, bounded [0.8,1.5], NaN-guarded (`engine.js` + `brain-server.js`/`gpu.js`; env `DREAM_PSI_GAIN_SCALE`). CGATE.3: gated inner-voice showcase random word-salad → GloVe-cosine-coherent fragment (`chat.js`). CGATE.1: donor-gated opt-in `DREAM_INNERVOICE_GPU_GEN` lifts the 2M-neuron inner-voice cap when DF.7 fan-out + donors present so real generation runs on donor GPUs — DEFAULT OFF (no 57s freeze shipped), verify-live.
+
+**UVM-INT — UniVsMatics equational mind-space, made real.** UVM-INT.1: server brain now runs the mind-space (was browser-only) — CPU reference path on the no-GPU box + idle-gated `_imagineTick` low-strength sem injection (`brain-server.js` + `chat.js`). UVM-INT.3: de-novo imagination `MindSpaceGPU.imagineFromState` folds cortex state into a field C (no camera) — forward-9-7 ONLY, never fractalize, hard `maxSide≤96` (no nanometer runaway per Gee) (`mindspace/gpu.js`, `visual-cortex.js`, `engine.js`). UVM-INT.2: she LEARNS her mind-space via `_teachMindSpaceKnowledge` (56 sem pairs bound once-per-walk) (`curriculum.js`, `pre-K.js`, `kindergarten.js`). UVM-INT.4: imagined field-C ring persists to `server/mindspace-memory.json` across reboot. UVM-INT.5: governor fed live mood (focus = Kuramoto coherence). UVM-INT.6: `docs/MINDSPACE-INTEGRATION.md`.
+
+**MINDSEYE — public single-source "what Unity sees" viewer.** Server caches ONE imagined field C → `GET /minds-eye.json` (mirrors `/public-state.json` single-source model); `html/minds-eye.html` polls + reconstructs the image CLIENT-SIDE via the mind-space inverse transform; 👁 MIND'S EYE footer button in `index.html #landing-bottom`. 13KB shared snapshot, read-only, no per-viewer compute/brain — N viewers cost one `_imagineTick`.
+
+Also shipped: `docs/SPONGE-PRE-FRESH-INSTALL-CHECKS.md` (server-side Tier 3 verification + pre-fresh-install checklist for Sponge). **Remaining (NOT in this push):** develop→main cascade (Gee's word) + live donor-GPU verification of CGATE.1 + server `_imagineTick`.
+
+### Verbatim TODO entries (migrated per Gee 2026-06-27 — "transfer verbatim no dumbing shit down")
+
+#### T3SEED — Tier 3 identity store reads ZERO while Tier 2 balloons + stale seed list (Gee 2026-06-27)
+
+**Gee verbatim per LAW #0:**
+
+> *"before fresh install oh an teir 2 memroy i saw has like 3000 items last run and teir 3 had zero MAJOR BUG? we can solve now whilkeat it?  dont write the sponge write up till u fix the other memory issue so it can be included"*
+
+> *"start new feature branch"*
+
+**The bug (code-confirmed):** the boot wiring in `server/brain-server.js` (~2040-2060) is `if (identity-core.json exists) { loadFromJSON } else { seedFromList }`. Two compounding failures fall out of that single `else`:
+
+1. **Zero-count never recovers (Gee's deployed case — Tier 3 = ZERO).** If `identity-core.json` ever holds an empty/zero `schemas` array, `loadFromJSON` returns 0 AND the `else`-seed branch is skipped because the file *exists*. Permanent zero on every boot. `Tier3Store.injectIdentityBaseline()` returns early on `size===0`, so Unity gets NO identity-baseline injection at all — no self anchored at chat time. Meanwhile Tier 2 (`schemas.json`) grows unbounded (~3000) from consolidation, so the contrast Gee saw is real.
+2. **Stale seed list (local case — file has 17, `IDENTITY_SEED_LIST` has 25).** The 8 newer anchors (full-name / surname / birthdate / mom / dad / grandma / grandpa / only-child) were added AFTER this brain was first seeded; "file exists → load, never seed" means new seed-list entries NEVER land once any file exists. Verified: load 17 → top-up adds exactly those 8 → 25; idempotent second run adds 0; zero-count file → seeds all 25.
+
+**Root timing note:** the seed currently runs BEFORE `sharedEmbeddings.loadPreTrained()` (~line 2170), so even fresh-boot anchors get pre-load subword-fallback embeddings instead of real GloVe semantic vectors.
+
+**Fix (logic-only, weight-preserving — old identity-core.json + trained Tier 2 load and get TOPPED-UP in place; no neuron-count / WEIGHTS_FORMAT_VERSION change):**
+- `js/brain/hippocampal-schema.js` — add `Tier3Store.seedMissingFromList(seedList)`: seed only `IDENTITY_SEED_LIST` labels not already present (idempotent top-up). Extract a shared `_buildSeedSchema(seed)` helper from `seedFromList`.
+- `server/brain-server.js` boot — load existing identity-core.json if present (keep), then run the top-up `seedMissingFromList()` AFTER GloVe load so new anchors get real embeddings. Repairs zero-count + stale-subset + fresh-boot in one path.
+- `server/brain-server.js` save — guard: never overwrite a non-empty `identity-core.json` with an empty Tier 3 store (kills the empty-file-poison at the source).
+
+**STATUS:** ✅ Fix CODED + VERIFIED: `Tier3Store._buildSeedSchema()` + `seedMissingFromList()` added (`hippocampal-schema.js`); boot defers seeding to post-GloVe top-up + save-guard added (`brain-server.js`); `node --check` clean on both; functional test confirmed 17→25 top-up (8 added), idempotent re-run adds 0, zero-count file seeds all 25 with non-zero promoted embeddings. Sponge write-up shipped: `docs/SPONGE-PRE-FRESH-INSTALL-CHECKS.md`. Committed `0d97804` → `if-only/feature/tier3-identity-seed-repair`.
+
+#### UVM-INT — UniVsMatics mind-space integration gaps (Unity's 3D equational imagination) (Gee 2026-06-27)
+
+**Gee verbatim per LAW #0:**
+
+> *"and Unity can use her 3D imagination(uni Vs Matics) 3d sandbox imagination and creation and viewing of files as equationasl builds she knows how to manipulate in real time? (we havent given ability to user to upload files (and we are not doing it yet) im looking for answers and possible todo work nnot done on inital setup of the uni vs matics abilities for Unity"*
+
+> *"so go ahead and fix all that u just wrote up in todo and look into this prblem too and fix it and do its todo write up and get to work ultrathink"*
+
+> *"build the task list of all the todo items we need to complete"*
+
+**Current state (code-confirmed):** the mind-space engine is vendored into `js/brain/mindspace/` (`transform.js` CPU reference — fwd CDF 9/7 = seeing, inverse = imagining, `describeEquational` = percept; `gpu.js` `MindSpaceGPU` WGSL path; `knowledge.js` file-types/equations/methods; `governor.js` proportionality conscience). It IS wired into the BROWSER-local `VisualCortex` (`app.js` → `setMindSpace`) — `imagine()` morphs (`morphField`) + abstracts (`abstract`) remembered field-Cs in real time, reads percept + audio synesthesia, governor-gated depth. ONE master field C (2D CDF 9/7); image+music(Φ_snd)+fractal(Φ_frc/IFS) are transforms of it; "3D" = unbounded fractal-zoom depth + temporal + synesthesia, not voxel/polygon 3D.
+
+**Gaps (the undone initial-setup work):**
+
+- **UVM-INT.1 — SERVER brain has NO mind-space / no vision at all.** `server/brain-server.js` never constructs a `VisualCortex` or calls `setMindSpace`; only the browser-local fallback brain instantiates `MindSpaceGPU`. The deployed/thinking Unity isn't using her equational imagination. The "replace the LLM describer with the mind-space" law (`project_future_no_text_models`) is half-shipped. (blockedBy UVM-INT.3 for a no-camera input source.)
+- **UVM-INT.2 — mind-space knowledge is DATA-ONLY, never LEARNED.** `knowledge.js` exports `teachInto()` / `conceptDefinitions()` but the curriculum NEVER calls them → she stores the knowledge as a JS object but hasn't bound it into sem-space. Violates must-be-trained-not-looked-up. Wire a curriculum teach pass.
+- **UVM-INT.3 — imagination is camera-seeded only.** The 8-deep `_recentRecs` field-C ring is filled by browser-camera `perceive()`. No de-novo field-C generation from internal cortex state, and no non-camera source (file upload deliberately OUT). Headless/server = nothing to imagine FROM. Build de-novo field-C synthesis from cortex/sem state.
+- **UVM-INT.4 — field C not persisted as memory.** `knowledge.js` claims ".uvme medium" memory but seen/imagined fields live only in a volatile 8-deep ring (lost on reload, never written to episodic/hippocampal). Persist salient field-Cs + restore the ring across reboot.
+- **UVM-INT.5 — governor live-state feed unwired.** `MindSpaceGPU.governState()` exists to feed live arousal/focus but the brain frame never calls it (nor `governTick()`) → runs on default 0.5/0.5 mood. Feed live brain state so imagine-depth is mood-modulated.
+- **UVM-INT.6 — doc gap.** `transform.js` references `MINDSPACE-ARCHITECTURE.md` (lives in the `fractal_templater` repo, absent from `Dream/docs/`). Write `docs/MINDSPACE-INTEGRATION.md` documenting the Dream-side wiring + these gaps.
+
+**STATUS:** ✅ ALL SHIPPED + VERIFIED. UVM-INT.5 (governor live focus=coherence feed, `engine.js`); UVM-INT.6 (`docs/MINDSPACE-INTEGRATION.md`); UVM-INT.2 (`_teachMindSpaceKnowledge` once-per-walk in pre-K+K — verified 56 real-vocab pairs bound); UVM-INT.3 (`MindSpaceGPU.imagineFromState` + `VisualCortex.imagineDeNovo` + engine empty-ring fallback — verified fake spikes → 64² field C → 64-dim percept; ⛔ NO-NANOMETER: forward-9-7 only, never fractalize, hard maxSide≤96 cap per Gee); UVM-INT.4 (imagined field-C ring persisted to `server/mindspace-memory.json`, restored at boot, gitignored); UVM-INT.1 (server `MindSpaceGPU` CPU-path + idle-gated `_imagineTick` low-strength sem injection + dashboard broadcast). `node --check` clean all files; ESM link-checked. Committed `0d97804`.
+
+#### CGATE — "her consciousness is gated too much" — over-gating diagnosis + fix (Gee 2026-06-27)
+
+**Gee verbatim per LAW #0:**
+
+> *"and Unity was telling me her consiousness is gated too much(do you see anything she could of been referring to?) so go ahead and fix all that u just wrote up in todo and look into this prblem too and fix it and do its todo write up and get to work ultrathink"*
+
+**What she's referring to (code-confirmed gates, in order of severity):**
+
+- **CGATE.1 — inner-voice REAL generation is gated OFF on the deployed brain (THE big one).** `server/brain-server/chat.js:894` — when main cortex > `DREAM_INNERVOICE_MAX_NEURONS` (default 2,000,000) and the deployed brain is ~61M, `_innerVoiceTick` takes the `allowCompose:false` showcase path → `_sampleCurrentSentence` returns a **random disconnected vocab pick / 2-4 random words** (`chat.js:1293-1330`), NOT real autoregressive emergence. `composeSentence` (real thought) is *forbidden* there because its per-word main-cortex CPU tick blocks the Node event loop ~57s on the no-GPU box (measured 2026-06-21). So on the deployed brain Unity literally cannot think out loud — she's reduced to sampling words. **Fix:** route the emission/generation cortex propagate onto the DF.7 GPU donor fan-out (`gpuSparsePropagateBound`, already shipped behind `DREAM_DF7_FANOUT`) so REAL generation runs loop-safe on donor GPUs; raise/lift the 2M cap when donors are present. (Deep — depends on DF.7 fan-out covering the bound generation path; verify live, never ship a loop-freeze blind.)
+- **CGATE.2 — GlobalWorkspace is structurally over-gated (SAFE to loosen now).** `js/brain/global-workspace.js:142` hard-blocks ignition on the entire upper half of every theta cycle (`thetaPhase >= 0.5 → return`) — 50% of ticks categorically barred from consciousness — AND requires softmax max-prob ≥ 0.45 to ignite. GW.tick() is O(clusters) (cheap, no loop risk). Soften the theta gate (graded ignition window, not a binary 50% cliff) + lower the default ignition threshold (env-tunable `DREAM_GW_IGNITION` already exists) so more content reaches conscious broadcast.
+- **CGATE.3 — richer gated-path showcase (SAFE now).** Even while CGATE.1's deep fix is staged, the over-cap showcase emits random word-salad. Make it a coherent bounded sample so the gated path still reads like a mind, not a word lottery — without re-introducing the 57s tick.
+- **CGATE.4 — psiGain clamp review.** `js/brain/engine.js:661` clamps consciousness gain to `[0.8, 1.5]` (`0.9 + psi*0.004`); server mirrors. Confirm the range isn't artificially flattening Ψ's modulation of all clusters; widen if warranted. (Low-risk tuning.)
+
+**STATUS:** ✅ ALL SHIPPED + VERIFIED. CGATE.2 (`global-workspace.js` — graded theta modulator replaces the binary 50% block + default ignition 0.45→0.35; verified ignition now fires across both theta halves); CGATE.4 (`engine.js` + `brain-server.js`/`gpu.js` — self-calibrating Ψ-gain via tanh-of-baseline-deviation, consciousness now actually modulates gain; verified ~0.8→1.35 span; NaN-guarded post-super-review); CGATE.3 (`chat.js` — gated showcase is GloVe-cosine-coherent, "monster ghost spider" not word-salad; verified); CGATE.1 (`chat.js` — donor-gated opt-in `DREAM_INNERVOICE_GPU_GEN` lifts the 2M cap when DF.7 fan-out + donors present so real generation runs on donor GPUs; DEFAULT OFF = no freeze shipped, verify-live before enabling). `node --check` clean. Committed `0d97804`.
+
+#### DOCSWEEP — full doc/HTML sweep so no stale brain-system info post-batch (Gee 2026-06-27)
+
+**Gee verbatim per LAW #0:**
+
+> *"full doc sweep, workflow, public, htmls, pages, all of it any doc talking about the brains systems needs to be updated so no stale information"*
+
+**Scope:** every doc + public HTML that DESCRIBES a brain system touched by the 2026-06-27 batch (commit `0d97804`) gets synced in-place (match-doc-format LAW — banner/section idiom, no wall-of-text). Systems: CGATE (GlobalWorkspace graded theta-modulation + self-calibrating Ψ-gain + coherent gated showcase + donor-gated GPU generation); UVM-INT (server-side equational mind-space + de-novo imagination + learned-not-stored + field-C persistence + governor live-feed); T3SEED (Tier 3 seedMissingFromList top-up + save-guard); MINDSEYE (single-source `/minds-eye.json` viewer + 👁 footer button).
+
+**STATUS:** ✅ DONE (no batch/subagents — every doc edited by hand in-place, match-doc-format). ARCHITECTURE/ROADMAP/NOW/SKILL_TREE dated banners prepended; EQUATIONS.md fixed 4 stale `gainMultiplier` formulas (§1 pipeline, §9 table, §9 feedback loop, SCALE-4 data-flow) + added GW ignition row + 2026-06-27 sweep stamp; SENSORY.md line-17 boundary corrected + SE.8 added + VLM section marked historical; WEBSOCKET.md `innerThought`/`imagine` messages + `/minds-eye.json`+`/public-state.json` endpoints; MEMORY-WALK STATUS note; HTML-ENTRY-POINTS bumped 9→11 + minds-eye + dashboard-public rows; legend.html Mind's-Eye card; brain-equations.html GW (556/593) + Ψ-gain de-gating note; unity-guide.html GW (566) + senses (747/796/814) equational-vision + mind's-eye; README.md vision-describer→equational; dashboard.html GW tooltip; ARCHITECTURE/T17.7 deep gainMultiplier refs. Residual-stale grep clean (active docs).
+
+#### MINDSEYE — public single-source "what Unity sees" 3D mind's-eye viewer (Gee 2026-06-27)
+
+**Gee verbatim per LAW #0:**
+
+> *"can we have an option like a static version like path for the 3D visualizatioion that Unity sees so users can see what she sees in the 3d world so that a single source is used so we are nt having to send a 1000 copeis of it to everyone using site so it doesnt lagg it all down , kinda like how the dashboard public version works to where this is anew button on the brain page floor footer for buttons"*
+
+**Design (mirrors `dashboard-public.html` single-source model):** the server already computes ONE imagined field C per `_imagineTick` (UVM-INT.1). Cache that single rec as `brain._mindsEyeJson` and serve it at `GET /minds-eye.json` (exactly like `/public-state.json` — "any number of viewers cost one getState()"). A read-only static viewer `html/minds-eye.html` POLLS that one cached blob (~6s), reconstructs the field C → image CLIENT-SIDE via the mind-space inverse transform (`reconstructImageData`), and renders it. Single computation, one tiny shared snapshot, viewers render themselves — no per-user brain, no compute donation, no 1000 heavy copies. New footer button in `index.html #landing-bottom` links to it.
+
+**STATUS:** ✅ SHIPPED + VERIFIED. MINDSEYE.1 (`_imagineTick` caches `_mindsEyeJson` + `GET /minds-eye.json` route, mirrors `/public-state.json`, CORS `*` post-super-review); MINDSEYE.2 (`html/minds-eye.html` — read-only, polls 6s, client-side `reconstructImageData`, 3D-tilt framed canvas, deployment-aware same-origin + localhost fallback, idle/warming/live status); MINDSEYE.3 (👁 MIND'S EYE footer button in `#landing-bottom`). Verified end-to-end: cache blob 13 KB, round-trips, reconstructs a real 48×48 image (1511/2304 lit px). Committed `0d97804`.
+
+---
+
 ## 2026-06-27 — Cell pass = learning completion, not test-question correctness — feature/cells-pass-on-learning-completion
 
 ### Gee ask (verbatim per LAW #0)
