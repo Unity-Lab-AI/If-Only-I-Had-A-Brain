@@ -277,3 +277,18 @@ Re-measure after the DDW deploy (the brief's "all donors actually working" gatin
 - ⚠ A slow-link donor's chunked cross-projection uploads (`cortex_motor_to_sem`, `auditory_to_phon`, …) **timed out after 45000ms** → retry → never fully replica-synced. Root cause is the donor LINK (Starlink: satellite RTT + jitter + ~15s handover stalls), NOT the event loop (blocks are 2.8s, not 45s).
 
 **Fix:** `Environment=DREAM_SPARSE_UPLOAD_TIMEOUT_MS=180000` (3 min; default 45s, `server/brain-server/gpu.js:1198`) added to the unit + template — lets satellite-class donors finish the upload + fully replica-sync instead of timing out. Also brought the repo `deploy/unity-brain.service` template in sync with the box: `DREAM_DF7_FANOUT=1` (was only on the box) + this new timeout. (Box additionally carries operator tuning not in the template: `DREAM_BATTERY_GATE_ADVISORY=1`, `DREAM_CONSOLIDATION_DISABLE=1`.) `DREAM_DF7_FANOUT_PROPAGATE` stays OFF until replica sync is proven clean — which this change is meant to finally achieve for slow donors.
+
+---
+
+## 2026-06-28 — DDW capacity-weighted work-sharing (F1–F4): no VRAM-primary, slow donor never the barrier
+
+Implements `docs/SPONGE-DONOR-WORK-SHARING.md` (operator: "there should be no primary, all are equal" — equal BY CAPACITY). All server-side in `server/brain-server/gpu.js` + the rebalance call in `brain-server.js`; gated behind `DREAM_DF7_FANOUT` (=0 reverts to single-primary); CPU CSR stays authoritative. No donor-app/protocol change (throughput already reflects donation %).
+
+- **F1** `_donorStrength` = `throughputGnPerSec × linkHealth` (was VRAM only). Throughput bakes in donation %; VRAM-GB proxy used only before a newcomer's first telemetry; sub-`DREAM_DF7_MIN_VRAM_MB` (1500) cards can take units but never win primary.
+- **F2** `_donorHealth` = 1.0 ≤200ms → 0 by 1000ms. RTT>1s donors (Starlink mid-handover) score 0 → not primary-eligible + excluded from the fan-out barrier (when any healthy donor exists).
+- **F3** `_capacityWeightedPlan` + weighted `_nextPoolDonor` (smooth weighted round-robin) replace flat `idx%len`; `_gpuParallelMap` assigns items ∝ score so `Promise.all` finishes near the FASTEST aggregate, not the slowest equal-share.
+- **F4** `_maybeRebalancePrimary` on the rebroadcast timer (60s) hands primary to the strongest healthy donor (1.25× margin to avoid thrash) — a fast late-joiner / recovered donor takes the main stream.
+- **F5** throughput-based scoring inherently honors donation % (no protocol change). `DREAM_DF7_FANOUT_PROPAGATE` stays OFF until replica sync proven clean (the upload-timeout bump above is meant to get slow donors syncing first).
+- **F6** leaderboard already ranks by accumulated contributed throughput — self-corrects once idle strong donors start working.
+
+Verified by mock: fast(77ms/17.6Gn/s)=score 17.6 = primary; slow(5.5s-RTT/24GB)=score 0 = not primary, 0 work; weighted plan of 10 → fast 7 / mid 3 / slow 0. Live multi-donor validation after deploy + fresh-walk. Rollback: `DREAM_DF7_FANOUT=0`.
