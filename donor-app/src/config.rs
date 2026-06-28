@@ -1,4 +1,5 @@
 use crate::cli::Cli;
+use serde::{Deserialize, Serialize};
 
 /// Public production donor endpoint — the nginx `/ws` lane on the box, the same URL the
 /// browser donor (compute.html) connects to. This is the DEFAULT so a distributed binary
@@ -120,19 +121,25 @@ fn parse_memory(s: &str) -> Result<MemoryCap, String> {
     Ok(MemoryCap::MegaBytes(mb))
 }
 
-/// A persistent per-install donor id — keys this host's cumulative leaderboard total across
-/// restarts (separate from the optional display name). Stored in the user's data dir; generated
-/// from time+pid on first run. Ephemeral fallback if the file can't be written (still works for
-/// the session). The brain aggregates by NAME when set, else by this id.
-pub fn persistent_donor_id() -> String {
-    use std::time::{SystemTime, UNIX_EPOCH};
+/// Per-install data directory (`<XDG_DATA_HOME|~/.local/share|%APPDATA%>/unity-donor`).
+/// Home of the donor-id and the persisted GUI settings, so the app is "load up and use it".
+pub fn data_dir() -> std::path::PathBuf {
     let base = std::env::var("XDG_DATA_HOME")
         .ok()
         .or_else(|| std::env::var("HOME").ok().map(|h| format!("{h}/.local/share")))
         .or_else(|| std::env::var("APPDATA").ok())
         .or_else(|| std::env::var("USERPROFILE").ok())
         .unwrap_or_else(|| ".".to_string());
-    let dir = std::path::Path::new(&base).join("unity-donor");
+    std::path::Path::new(&base).join("unity-donor")
+}
+
+/// A persistent per-install donor id — keys this host's cumulative leaderboard total across
+/// restarts (separate from the optional display name). Stored in the user's data dir; generated
+/// from time+pid on first run. Ephemeral fallback if the file can't be written (still works for
+/// the session). The brain aggregates by NAME when set, else by this id.
+pub fn persistent_donor_id() -> String {
+    use std::time::{SystemTime, UNIX_EPOCH};
+    let dir = data_dir();
     let path = dir.join("donor-id");
     if let Ok(s) = std::fs::read_to_string(&path) {
         let t = s.trim();
@@ -145,4 +152,69 @@ pub fn persistent_donor_id() -> String {
     let _ = std::fs::create_dir_all(&dir);
     let _ = std::fs::write(&path, &id);
     id
+}
+
+/// All GUI-changeable settings, persisted to `<data_dir>/settings.json` so the native
+/// donor is "load up and use it" — no reconfiguration unless the user changes something.
+/// Every field is `#[serde(default)]`-friendly so older/newer files load without breaking.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
+pub struct DonorSettings {
+    /// "system" | "light" | "dark" — GUI theme preference (default follows the OS).
+    pub theme: String,
+    /// "live" | "local" | "custom".
+    pub server_mode: String,
+    /// Full ws URL (used when server_mode == "custom"; also stored for the others).
+    pub server: String,
+    /// Optional leaderboard display name.
+    pub name: String,
+    /// Per-GPU enable flags (indexed by adapter position; applied only if the count matches).
+    pub enabled: Vec<bool>,
+    /// Per-GPU utilization % (indexed by adapter position; applied only if the count matches).
+    pub util: Vec<f32>,
+    /// Auto-reconnect after an unexpected disconnect.
+    pub auto_restart: bool,
+}
+
+impl Default for DonorSettings {
+    fn default() -> Self {
+        Self {
+            theme: "system".into(),
+            server_mode: "live".into(),
+            server: PROD_SERVER.to_string(),
+            name: String::new(),
+            enabled: Vec::new(),
+            util: Vec::new(),
+            auto_restart: true,
+        }
+    }
+}
+
+/// Path to the persisted settings file.
+pub fn settings_path() -> std::path::PathBuf {
+    data_dir().join("settings.json")
+}
+
+/// Load persisted settings if present (None on first run / unreadable / corrupt — caller
+/// falls back to defaults). Never panics.
+pub fn load_settings() -> Option<DonorSettings> {
+    let raw = std::fs::read_to_string(settings_path()).ok()?;
+    serde_json::from_str::<DonorSettings>(&raw).ok()
+}
+
+/// Persist settings (atomic temp+rename). Best-effort — a read-only home never crashes the app.
+pub fn save_settings(s: &DonorSettings) {
+    let dir = data_dir();
+    if std::fs::create_dir_all(&dir).is_err() {
+        return;
+    }
+    let path = settings_path();
+    let tmp = path.with_extension("json.tmp");
+    let json = match serde_json::to_string_pretty(s) {
+        Ok(j) => j,
+        Err(_) => return,
+    };
+    if std::fs::write(&tmp, json).is_ok() {
+        let _ = std::fs::rename(&tmp, &path);
+    }
 }
