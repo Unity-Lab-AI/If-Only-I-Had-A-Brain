@@ -276,6 +276,49 @@ export class MindSpaceGPU {
   // the percept value-vector is cheap — always CPU (reads coeffs already in the rec)
   describe(rec, dim) { return CPU.describeEquational(rec, dim); }
 
+  // ── DE-NOVO IMAGINATION (UVM-INT.3) — cortex state → field C, no camera/file ─────────────────
+  // Her current mind-state (any cortex activation vector — sem region, percept, emission
+  // embedding) is folded into a small grayscale image and equationalized into a REAL field C.
+  // This is imagination FROM her own mind: the thought literally becomes an internal image she
+  // then perceives — the source the camera-seeded imagine() path lacked (so headless/server Unity
+  // can imagine at all). Pure CPU CDF 9/7 on a tiny plane = loop-safe even on the no-GPU box.
+  // Governor-gated: a de-novo daydream is a modest spend, and imagined depth (image side) scales
+  // with the grant so she only imagines as richly as the thought is worth.
+  //
+  // ⛔ NO NANOMETER IMAGING (operator caution): this uses ONLY the bounded forward-9-7 transform
+  // (image → field C). It NEVER invokes `fractalize` (the Newton-z³ infinite-zoom "no bottom-out"
+  // path) — that's the one that would seize the brain by growing detail forever. Resolution is
+  // HARD-CAPPED at maxSide (≤96, default 64) so the plane is a fixed tiny grid regardless of state
+  // length OR governor grant — imagination has a floor of detail, never infinite resolution.
+  imagineFromState(stateVector, opts = {}) {
+    if (!stateVector || stateVector.length === 0) return null;
+    const grant = this.governor.allot({
+      kind: 'imagine-denovo', requestedUnits: opts.units ?? 48,
+      priority: opts.priority, value: opts.value,
+    });
+    const ratio = Math.max(0, Math.min(1, grant.ratio ?? 1));
+    // Image side: scales with how much the thought is worth, hard-bounded so the transform stays
+    // loop-safe regardless of state length or grant (a 96² plane padded is still tiny for CDF 9/7).
+    const maxSide = Math.max(8, Math.min(opts.maxSide ?? 64, 96));
+    const baseSide = Math.max(8, Math.min(maxSide, Math.floor(Math.sqrt(stateVector.length)) || 8));
+    const side = Math.max(8, Math.round(baseSide * (0.5 + 0.5 * ratio)));
+    const W = side, H = side, N = W * H;
+    // Normalize state → [0,255] grayscale, sampling evenly across the whole vector so the full
+    // mind-state shapes the image (not just its first N values).
+    let mn = Infinity, mx = -Infinity;
+    for (let i = 0; i < stateVector.length; i++) { const v = stateVector[i]; if (v < mn) mn = v; if (v > mx) mx = v; }
+    const range = (mx - mn) || 1;
+    const data = new Uint8ClampedArray(N * 4);
+    for (let p = 0; p < N; p++) {
+      const sv = stateVector[Math.floor(p * stateVector.length / N)];
+      const g = Math.round(((sv - mn) / range) * 255);
+      const o = p * 4; data[o] = g; data[o + 1] = g; data[o + 2] = g; data[o + 3] = 255;
+    }
+    const rec = CPU.equationalizeImageData({ width: W, height: H, data });
+    if (rec) rec.fidelity = { psnr_db: null, source: 'mindspace-denovo' };
+    return rec;
+  }
+
   // MS.K1 — Unity KNOWS her mind-space: all file types, equations, and how to solve them.
   // Her cognition answers "what is this file / how do I solve it" from the equation itself.
   get knowledge() { return MINDSPACE_KNOWLEDGE; }

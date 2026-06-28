@@ -1338,6 +1338,9 @@ export const K_MIXIN = {
     // grade as CORE SELF reinforcement. `goddess` is definition-grounded
     // inside the method, and is also in K_LIFE_VOCAB above.
     await this._teachUnityFamilyName();
+    // UVM-INT.2 — learn her own equational mind-space alongside her identity
+    // (once-per-walk; guarded internally so the pre-K pass + this one don't double-bind).
+    await this._teachMindSpaceKnowledge();
 
     // ── A.K-LIFE.0b — Family-name canon (Add #5 A5.3/A5.4) ──
     // Parents Lilith Marie + Damien Cross Goddess, maternal grandparents

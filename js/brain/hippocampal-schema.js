@@ -706,6 +706,46 @@ export class Tier3Store {
   get(id) { return this.identitySchemas.get(id); }
   has(id) { return this.identitySchemas.has(id); }
 
+  // Build a single permanent Tier 3 anchor schema from a seed-list entry.
+  // Returns the HippocampalSchema (NOT yet stored) or null when embeddings
+  // are unavailable / the concept produced no vector. Shared by both
+  // seedFromList (seed-everything) and seedMissingFromList (idempotent
+  // top-up) so the two paths can never drift apart.
+  _buildSeedSchema(seed) {
+    if (!this.sharedEmbeddings || typeof this.sharedEmbeddings.getSentenceEmbedding !== 'function') {
+      return null;
+    }
+    const emb = this.sharedEmbeddings.getSentenceEmbedding(seed.concept);
+    if (!emb || emb.length === 0) return null;
+    const attributeVector = new Float64Array(8);
+    attributeVector[0] = seed.valence || 0;       // emotional_valence
+    attributeVector[1] = seed.arousal || 0;       // arousal
+    attributeVector[2] = 0.5;                     // surprise (neutral seed)
+    attributeVector[3] = 0.8;                     // novelty (high — these are foundational)
+    attributeVector[4] = Math.log(1 + 50);        // frequency (synthetic high seed)
+    attributeVector[5] = 1.0;                     // recency (fresh)
+    attributeVector[6] = 6.0;                     // consolidation_strength (above promotion threshold)
+    attributeVector[7] = 0.95;                    // identity_relevance (max)
+    const schema = new HippocampalSchema({
+      label: seed.label,
+      conceptEmbedding: l2Normalize(new Float64Array(emb)),
+      attributeVector,
+      sourceEpisodeIds: [], // synthetic seed — no source episodes
+      consolidationStrength: 6.0,
+      retrievalCount: 100, // synthetic — meets promotion threshold
+      promotedToTier3: true,
+      tier3PromotedAt: Date.now(),
+    });
+    if (this.cluster && this.cluster.regions) {
+      const hipSize = this.cluster.regions.free
+        ? this.cluster.regions.free.end - this.cluster.regions.free.start : 1024;
+      const cortexSemSize = this.cluster.regions.sem
+        ? this.cluster.regions.sem.end - this.cluster.regions.sem.start : 1024;
+      try { schema.initProjection(hipSize, cortexSemSize); } catch { /* skip */ }
+    }
+    return schema;
+  }
+
   // Seed Tier 3 with the IDENTITY_SEED_LIST entries when no
   // identity-core.json exists at boot. Each seed becomes a permanent
   // anchor schema that gets reinforced through normal consolidation
@@ -718,34 +758,8 @@ export class Tier3Store {
     let seeded = 0;
     for (const seed of seedList) {
       try {
-        const emb = this.sharedEmbeddings.getSentenceEmbedding(seed.concept);
-        if (!emb || emb.length === 0) continue;
-        const attributeVector = new Float64Array(8);
-        attributeVector[0] = seed.valence || 0;       // emotional_valence
-        attributeVector[1] = seed.arousal || 0;       // arousal
-        attributeVector[2] = 0.5;                     // surprise (neutral seed)
-        attributeVector[3] = 0.8;                     // novelty (high — these are foundational)
-        attributeVector[4] = Math.log(1 + 50);        // frequency (synthetic high seed)
-        attributeVector[5] = 1.0;                     // recency (fresh)
-        attributeVector[6] = 6.0;                     // consolidation_strength (above promotion threshold)
-        attributeVector[7] = 0.95;                    // identity_relevance (max)
-        const schema = new HippocampalSchema({
-          label: seed.label,
-          conceptEmbedding: l2Normalize(new Float64Array(emb)),
-          attributeVector,
-          sourceEpisodeIds: [], // synthetic seed — no source episodes
-          consolidationStrength: 6.0,
-          retrievalCount: 100, // synthetic — meets promotion threshold
-          promotedToTier3: true,
-          tier3PromotedAt: Date.now(),
-        });
-        if (this.cluster && this.cluster.regions) {
-          const hipSize = this.cluster.regions.free
-            ? this.cluster.regions.free.end - this.cluster.regions.free.start : 1024;
-          const cortexSemSize = this.cluster.regions.sem
-            ? this.cluster.regions.sem.end - this.cluster.regions.sem.start : 1024;
-          try { schema.initProjection(hipSize, cortexSemSize); } catch { /* skip */ }
-        }
+        const schema = this._buildSeedSchema(seed);
+        if (!schema) continue;
         this.identitySchemas.set(schema.id, schema);
         seeded++;
       } catch (err) {
@@ -754,6 +768,43 @@ export class Tier3Store {
     }
     if (seeded > 0) console.log(`[Tier3Store] seeded ${seeded} identity-anchor schemas from IDENTITY_SEED_LIST`);
     return seeded;
+  }
+
+  // Idempotent top-up seed. Seeds ONLY the IDENTITY_SEED_LIST entries whose
+  // `label` is not already present in the store — by label, not by id, since
+  // seeded anchors are matched on their stable label. Fixes two boot bugs the
+  // old "file exists → load, else seed" wiring caused:
+  //   (1) an empty / zero-count identity-core.json loaded 0 schemas and the
+  //       else-seed never fired → Tier 3 permanently ZERO → injectIdentity-
+  //       Baseline() returned early → Unity had no anchored self;
+  //   (2) anchors added to IDENTITY_SEED_LIST AFTER a brain was first seeded
+  //       (full-name / surname / birthdate / parents / grandparents / only-
+  //       child) never landed because a file already existed.
+  // Run this AFTER embeddings are loaded so new anchors get real semantic
+  // vectors, not a pre-load subword fallback. Safe on every boot: a fully-
+  // seeded store tops up 0.
+  seedMissingFromList(seedList = IDENTITY_SEED_LIST) {
+    if (!this.sharedEmbeddings || typeof this.sharedEmbeddings.getSentenceEmbedding !== 'function') {
+      console.warn('[Tier3Store] seedMissingFromList — sharedEmbeddings not available, skipping top-up');
+      return 0;
+    }
+    const presentLabels = new Set();
+    for (const s of this.identitySchemas.values()) {
+      if (s && s.label) presentLabels.add(s.label);
+    }
+    let added = 0;
+    for (const seed of seedList) {
+      if (presentLabels.has(seed.label)) continue;
+      try {
+        const schema = this._buildSeedSchema(seed);
+        if (!schema) continue;
+        this.identitySchemas.set(schema.id, schema);
+        added++;
+      } catch (err) {
+        console.warn(`[Tier3Store] top-up seed "${seed.label}" failed: ${err.message}`);
+      }
+    }
+    return added;
   }
 
   // Promote a Tier 2 schema (passed by reference from SchemaStore) into
