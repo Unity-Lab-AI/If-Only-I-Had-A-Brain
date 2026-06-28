@@ -665,6 +665,19 @@ const SERVER_GPU_MIXIN = {
     return process.env.DREAM_DF7_FANOUT !== '0';
   },
 
+  // DF.7 — separate gate for fanning READS (forward propagate, bound + standalone)
+  // across replicas. DEFAULT OFF — distinct from the WRITE fan-out above. Reads
+  // feed decisions (gate probes, student battery, emission), so routing them to a
+  // replica whose weights are stale/incompletely-synced (e.g. while donor matrix
+  // uploads are timing out) returns a WRONG answer the curriculum acts on →
+  // spurious gate failures / stalled walk. Teach Hebbian (a fire-and-forget shadow,
+  // CPU-authoritative) is always safe to fan; propagate reads are only safe once the
+  // replica weight-sync is proven healthy on the live pool. Opt in per-deploy with
+  // DREAM_DF7_FANOUT_PROPAGATE=1 after confirming replica sync completes cleanly.
+  _df7FanoutPropagate() {
+    return process.env.DREAM_DF7_FANOUT_PROPAGATE === '1';
+  },
+
   // DF.7 — donor strength for primary selection: VRAM MB (captured per donor at
   // gpu_register as gpuVramMB). Bigger card = stronger = should be primary.
   _donorStrength(ws) {
@@ -1300,7 +1313,7 @@ const SERVER_GPU_MIXIN = {
     // primary. Empty-preSpikes (bound) calls arrive via gpuSparsePropagateBound
     // with their OWN target + their resident state already mirrored, so they skip
     // this. Untargeted + fan-out OFF → primary, exactly as before.
-    if (!targetWs && pre.length > 0 && this._df7Fanout && this._df7Fanout()) {
+    if (!targetWs && pre.length > 0 && this._df7FanoutPropagate && this._df7FanoutPropagate()) {
       targetWs = this._nextPoolDonor();
     }
     // Backpressure gate — check the CHOSEN donor's flow; if its WS send buffer is
@@ -1513,7 +1526,7 @@ const SERVER_GPU_MIXIN = {
     // current by _mirrorCortexWriteToReplicas). Default: targetWs=null →
     // primary (today's exact behavior). Result routing is by reqId, so an ACK
     // from any donor resolves correctly.
-    const target = this._df7Fanout() ? this._nextPoolDonor() : null;
+    const target = this._df7FanoutPropagate() ? this._nextPoolDonor() : null;
     return this.gpuSparsePropagate(name, new Uint32Array(0), target);
   },
 
