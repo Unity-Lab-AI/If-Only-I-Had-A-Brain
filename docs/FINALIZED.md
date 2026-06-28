@@ -5,6 +5,33 @@
 
 ---
 
+## 2026-06-28 — FLAP: Linux native-donor red/0 Gn/s = connection flapping (Blackwell theory disproven) + flap resistance + donor telemetry — feature/community-compute-donor-count
+
+### Gee verbatim per LAW #0
+
+> *"write todo and update docs before final push and fresh walk"*
+
+> *"The problem is that I end up having to reconnect a lot, might be a problem with connection flaps, so we need it to be flap resistent"*
+
+Forwarded handoff (Gee relayed as the work spec): *"capture osPlatform + engineBackend (cuda/vulkan/dx12/software) + driverVersion + computeCapability at gpu_register and show them in the Clients table"* · *"Make cuModuleLoadData failure LOUD in cuda.rs (right now a JIT fail looks like a silent 0)."*
+
+**Investigation conclusion (live evidence on Sponge's actual box — the handoff's Blackwell/PTX theory is DISPROVEN):** `nvidia-smi` shows **RTX 4070 SUPER (Ada cc 8.9) + RTX 2060 (Turing cc 7.5)**, NOT a Blackwell 5070 Ti; driver **595.71.05 / CUDA 13.2** (bleeding edge); `kernels.ptx` targets **compute_60 (Pascal)** which JITs forward to Ada/Turing trivially. Donor journal: `[donor] backends: NVIDIA GeForce RTX 2060 [CUDA]` — CUDA loaded fine (a PTX-load failure would have `Err`'d → wgpu fallback). Sponge donates GPU slot 1 (the weak 2060), not the 4070 SUPER — explains the low `score`. **ROOT CAUSE = connection flapping:** WS resets every ~3–5 min (`Connection reset by peer (os error 104)`) on a `wss://…/ws` link over Starlink CGNAT + reverse proxy; each reset rebuilds the GPU engine + re-inits 40M neurons → minutes of 0 throughput → dashboard red. The donor never sent its own keepalive pings, so quiet teach windows let the link idle-reap.
+
+**Fix shipped (donor-app v0.3.3):**
+
+- **FLAP.1** `donor-app/src/donor.rs` — client-initiated WS `Ping` every 15s (`KEEPALIVE_INTERVAL`) so the link never goes idle long enough for CGNAT / proxy to reap it (flap PREVENTION).
+- **FLAP.2** — fast dead-link detection: `IDLE_TIMEOUT` 45s of inbound silence → proactive reconnect instead of waiting minutes for the OS RST. `last_recv` reset on every inbound frame.
+- **FLAP.3** `run_donor_supervised` — deterministic per-install jittered reconnect (donor-id hash, 0–1500 ms) so donors don't reconnect in lockstep; clean-drop backoff reset + connect-fail growth (cap 30s) retained.
+- **FLAP.4** `donor-app/src/cuda.rs` — LOUD `[cuda] ⚠⚠ PTX MODULE LOAD FAILED (cuModuleLoadData)` + per-kernel-load banners so a JIT/load failure is never a silent 0 (Gee's ask).
+- **FLAP.5** `protocol.rs` (`GpuRegister` + `GpuTelemetry` gain `osPlatform`/`engineBackend`/`driverVersion`/`computeCapability`) + `donor.rs` (populate from `std::env::consts::OS` + `MultiEngine` getters) + `compute.rs` (per-slot backend tag from `wgpu::Backend` + driver from adapter `driver_info`; software-adapter can't occur — `select_adapters()` filters `DeviceType::Cpu`) + `cuda.rs` (`query_compute_capability` via cudarc `get_attribute`, catch_unwind-guarded).
+- **FLAP.6** `server/brain-server.js` (capture the 4 fields on `client.*` in both `gpu_register` + `gpu_telemetry`) + `server/brain-server/state.js` (per-client clients block) + `html/dashboard.html` (Clients table new `plat` column: `os·backend·cc`, driver in tooltip). A 0-Gn/s donor's stack is now visible, never log-archaeology again.
+- **FLAP.7** — rebuilt BOTH binaries on Sponge's box (`cargo build --release --features gui,cuda` for `x86_64-unknown-linux-gnu` + `x86_64-pc-windows-gnu`), version 0.3.2 → **0.3.3**; site download links bumped `donor-v0.3.2` → `donor-v0.3.3` in `html/legend.html` + `html/compute.html`; release `donor-v0.3.3` published with `unity-donor-linux-x86_64` + `unity-donor-windows-x86_64.exe`.
+- **FLAP.8** — `docs/SPONGE-LINUX-DONOR-COMPAT-INVESTIGATION.md` corrected in place (RESOLVED banner; Blackwell hypotheses marked superseded); `docs/WEBSOCKET.md` `gpu_register` payload + native-donor flap-resistance subsection updated.
+
+`cargo check` + both release builds clean; `node --check` clean on `brain-server.js` + `state.js`. Then fresh walk per `docs/SPONGE-FRESH-WALK-DEPLOY.md`.
+
+---
+
 ## 2026-06-28 — WL.4: robust self-deploy (no-sudo restart + stale-flag clear + live log) — feature/distributed-donor-work-sharing
 
 **Why:** the dashboard Update button overlaid code but couldn't restart the service (`sudo -n systemctl restart` not granted) → old code kept running + a stuck `_brainShutdownRequested` flag locked the button out (Gee 2026-06-28). This removes the sudo dependency + the lockout so the button self-serves.

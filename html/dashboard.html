@@ -1950,7 +1950,12 @@
               ? `<span style="color:#ef4444">⚠ buffer too small for cortex (${bindGB})</span>`
               : `${x.gpuName ? String(x.gpuName).slice(0, 18) : '?'} ${x.gneuronsPerSec != null ? '· ' + num(x.gneuronsPerSec, 1) + 'Gn/s' : ''}${bindGB ? ' · bind ' + bindGB : ''}`)
           : '';
-        return `<tr class="${cls.trim()}"><td>${x.type}</td><td>${nm}</td><td>${x.ip || '?'}</td><td>${fmtDur(x.uptimeS)}</td><td>${x.lastSeenS}s</td><td>${rtt}</td><td>${num(x.bytesInMB, 1)}/${num(x.bytesOutMB, 1)}MB</td><td>${num(x.bufferedKB)}KB</td><td>${gpu}</td></tr>`;
+        // FLAP — compact platform/backend cell: os·backend·cc (driver version in the tooltip), so a
+        // red / 0-Gn/s donor's stack is visible at a glance. Native donor reports it; browser → —.
+        const plat = x.type === 'donor'
+          ? `<span title="${x.driverVersion ? 'driver ' + String(x.driverVersion).slice(0, 48) : 'driver —'}">${[x.osPlatform, x.engineBackend, x.computeCapability].filter(Boolean).join('·') || '—'}</span>`
+          : '—';
+        return `<tr class="${cls.trim()}"><td>${x.type}</td><td>${nm}</td><td>${x.ip || '?'}</td><td>${fmtDur(x.uptimeS)}</td><td>${x.lastSeenS}s</td><td>${rtt}</td><td>${num(x.bytesInMB, 1)}/${num(x.bytesOutMB, 1)}MB</td><td>${num(x.bufferedKB)}KB</td><td>${gpu}</td><td>${plat}</td></tr>`;
       }).join('');
       const more = (c.total > c.shown) ? `<div class="muted" style="font-size:10px;color:#666;padding:4px 6px;">+${c.total - c.shown} more not shown</div>` : '';
       // F9 — cortex-upload binding-limit banner (honest reason, not a mystery stall).
@@ -1958,7 +1963,7 @@
       const cuBanner = (cu.failed && cu.looksLikeBindingLimit)
         ? `<div style="color:#ef4444;font-size:11px;padding:4px 6px;">⚠ cortex cross-projections failed to BIND on the donor GPU (storage buffer too small) — brain on CPU master. ${String(cu.reason || '').slice(0, 80)}</div>`
         : '';
-      cl.innerHTML = cuBanner + `<table class="profiling-tbl"><thead><tr><th>type</th><th>name</th><th>ip</th><th>up</th><th>seen</th><th>rtt</th><th>in/out</th><th>buf</th><th>gpu</th></tr></thead><tbody>${rows}</tbody></table>${more}`;
+      cl.innerHTML = cuBanner + `<table class="profiling-tbl"><thead><tr><th>type</th><th>name</th><th>ip</th><th>up</th><th>seen</th><th>rtt</th><th>in/out</th><th>buf</th><th>gpu</th><th>plat</th></tr></thead><tbody>${rows}</tbody></table>${more}`;
     }
 
     // Brain-event stream renderer. Reads the `brainEvents` array out

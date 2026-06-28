@@ -674,6 +674,12 @@ pub struct MultiEngine {
     util: Vec<f64>,
     /// Per-engine per-binding cap in MB (CUDA → VRAM, wgpu → adapter limit).
     binding_mb: Vec<u64>,
+    /// Per-engine backend tag ("cuda" / "vulkan" / "dx12" / "metal" / "gl") — telemetry.
+    backends: Vec<String>,
+    /// Per-engine driver version string (from the wgpu adapter info) — telemetry.
+    drivers: Vec<String>,
+    /// Per-engine CUDA compute capability ("8.9", "12.0", …); empty on non-CUDA — telemetry.
+    ccs: Vec<String>,
     cluster_gpu: HashMap<String, usize>,
     matrix_gpu: HashMap<String, usize>,
     next_cluster: usize,
@@ -713,12 +719,28 @@ impl MultiEngine {
         let mut engines = Vec::with_capacity(indices.len());
         let mut util = Vec::with_capacity(indices.len());
         let mut binding_mb = Vec::with_capacity(indices.len());
+        let mut backends: Vec<String> = Vec::with_capacity(indices.len());
+        let mut drivers: Vec<String> = Vec::with_capacity(indices.len());
+        let mut ccs: Vec<String> = Vec::with_capacity(indices.len());
         for (k, &idx) in indices.iter().enumerate() {
             let adapter = adapters
                 .get_mut(idx)
                 .and_then(|o| o.take())
                 .ok_or_else(|| format!("no GPU adapter at index {idx} (or selected twice)"))?;
-            let aname = adapter.get_info().name;
+            // Capture adapter info BEFORE the wgpu path consumes the adapter — driver string +
+            // wgpu backend tag are valid for the CUDA card too (same physical NVIDIA driver).
+            let ainfo = adapter.get_info();
+            let aname = ainfo.name.clone();
+            let driver_str = if !ainfo.driver_info.is_empty() { ainfo.driver_info.clone() } else { ainfo.driver.clone() };
+            let wgpu_backend_tag: String = match ainfo.backend {
+                wgpu::Backend::Vulkan => "vulkan",
+                wgpu::Backend::Dx12 => "dx12",
+                wgpu::Backend::Metal => "metal",
+                wgpu::Backend::Gl => "gl",
+                wgpu::Backend::BrowserWebGpu => "webgpu",
+                _ => "unknown",
+            }
+            .to_string();
             let wgpu_cap = (adapter.limits().max_storage_buffer_binding_size as u64) / (1024 * 1024);
 
             // Prefer CUDA on a name-matched NVIDIA card; fall back to wgpu on any failure.
@@ -730,9 +752,13 @@ impl MultiEngine {
                     match crate::cuda::CudaEngine::new(ord) {
                         Ok(e) => {
                             let cap = e.binding_mb();
-                            println!("[multi] GPU slot {idx} '{aname}' → CUDA (ordinal {ord}, {cap} MB cap, no 2GB binding limit)");
+                            let cc = e.compute_capability().to_string();
+                            println!("[multi] GPU slot {idx} '{aname}' → CUDA (ordinal {ord}, {cap} MB cap, no 2GB binding limit, cc {})", if cc.is_empty() { "?" } else { &cc });
                             cuda_names[ord] = None;
                             binding_mb.push(cap);
+                            backends.push("cuda".to_string());
+                            drivers.push(driver_str.clone());
+                            ccs.push(cc);
                             backend = Some(Backend::Cuda(e));
                         }
                         Err(e) => eprintln!("[multi] CUDA init for '{aname}' failed ({e}); using wgpu"),
@@ -742,8 +768,11 @@ impl MultiEngine {
             let backend = match backend {
                 Some(b) => b,
                 None => {
-                    println!("[multi] GPU slot {idx} '{aname}' → wgpu ({wgpu_cap} MB binding cap)");
+                    println!("[multi] GPU slot {idx} '{aname}' → wgpu/{wgpu_backend_tag} ({wgpu_cap} MB binding cap)");
                     binding_mb.push(wgpu_cap);
+                    backends.push(wgpu_backend_tag);
+                    drivers.push(driver_str);
+                    ccs.push(String::new());
                     Backend::Wgpu(ComputeEngine::from_adapter(adapter).await?)
                 }
             };
@@ -754,6 +783,9 @@ impl MultiEngine {
             engines,
             util,
             binding_mb,
+            backends,
+            drivers,
+            ccs,
             cluster_gpu: HashMap::new(),
             matrix_gpu: HashMap::new(),
             next_cluster: 0,
@@ -779,6 +811,32 @@ impl MultiEngine {
     /// Combined label, e.g. "NVIDIA GeForce RTX 4070 + NVIDIA GeForce RTX 2060".
     pub fn gpu_label(&self) -> String {
         self.engines.iter().map(|e| e.adapter_name()).collect::<Vec<_>>().join(" + ")
+    }
+
+    /// Host OS for the Clients table ("linux" / "windows" / "macos" / …).
+    pub fn os_platform(&self) -> String {
+        std::env::consts::OS.to_string()
+    }
+
+    /// Backend tag(s) across the pool, e.g. "cuda" or "cuda+vulkan" — distinct, "+"-joined.
+    pub fn engine_backend(&self) -> String {
+        let mut seen: Vec<String> = Vec::new();
+        for b in &self.backends {
+            if !b.is_empty() && !seen.contains(b) {
+                seen.push(b.clone());
+            }
+        }
+        seen.join("+")
+    }
+
+    /// First non-empty GPU driver version across the pool.
+    pub fn driver_version(&self) -> String {
+        self.drivers.iter().find(|d| !d.is_empty()).cloned().unwrap_or_default()
+    }
+
+    /// First non-empty CUDA compute capability across the pool (empty if all-wgpu).
+    pub fn compute_capability(&self) -> String {
+        self.ccs.iter().find(|c| !c.is_empty()).cloned().unwrap_or_default()
     }
 
     fn cluster_engine(&mut self, name: &str) -> usize {

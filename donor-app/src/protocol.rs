@@ -26,11 +26,47 @@ pub struct GpuRegister {
     /// Optional leaderboard display name. Same name across devices → ONE aggregated row.
     #[serde(rename = "donorName", skip_serializing_if = "Option::is_none")]
     pub donor_name: Option<String>,
+    /// Host OS ("linux" / "windows" / "macos") — so a 0-Gn/s donor's platform is visible in the
+    /// Clients table instead of reverse-engineered from logs.
+    #[serde(rename = "osPlatform", skip_serializing_if = "String::is_empty")]
+    pub os_platform: String,
+    /// Compute backend actually in use ("cuda" / "vulkan" / "dx12" / "metal" / "gl", or a
+    /// "+"-joined mix for a multi-GPU pool). Distinguishes a CUDA donor from a wgpu one at a glance.
+    #[serde(rename = "engineBackend", skip_serializing_if = "String::is_empty")]
+    pub engine_backend: String,
+    /// GPU driver version string (as reported by the wgpu adapter, e.g. "550.xx").
+    #[serde(rename = "driverVersion", skip_serializing_if = "String::is_empty")]
+    pub driver_version: String,
+    /// CUDA compute capability ("8.9" Ada, "7.5" Turing, "12.0" Blackwell …) — empty on non-CUDA.
+    #[serde(rename = "computeCapability", skip_serializing_if = "String::is_empty")]
+    pub compute_capability: String,
 }
 
 impl GpuRegister {
-    pub fn new(vram_mb: u64, max_storage_binding_mb: u64, gpu_name: String, donor_id: Option<String>, donor_name: Option<String>) -> Self {
-        Self { msg_type: "gpu_register", vram_mb, max_storage_binding_mb, gpu_name, donor_id, donor_name }
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        vram_mb: u64,
+        max_storage_binding_mb: u64,
+        gpu_name: String,
+        donor_id: Option<String>,
+        donor_name: Option<String>,
+        os_platform: String,
+        engine_backend: String,
+        driver_version: String,
+        compute_capability: String,
+    ) -> Self {
+        Self {
+            msg_type: "gpu_register",
+            vram_mb,
+            max_storage_binding_mb,
+            gpu_name,
+            donor_id,
+            donor_name,
+            os_platform,
+            engine_backend,
+            driver_version,
+            compute_capability,
+        }
     }
 }
 
@@ -85,6 +121,16 @@ pub struct GpuTelemetry {
     pub donor_id: Option<String>,
     #[serde(rename = "donorName", skip_serializing_if = "Option::is_none")]
     pub donor_name: Option<String>,
+    /// Platform/backend re-reported on every telemetry tick so the Clients table stays correct
+    /// even if the register frame was missed (e.g. reconnect race).
+    #[serde(rename = "osPlatform", skip_serializing_if = "String::is_empty")]
+    pub os_platform: String,
+    #[serde(rename = "engineBackend", skip_serializing_if = "String::is_empty")]
+    pub engine_backend: String,
+    #[serde(rename = "driverVersion", skip_serializing_if = "String::is_empty")]
+    pub driver_version: String,
+    #[serde(rename = "computeCapability", skip_serializing_if = "String::is_empty")]
+    pub compute_capability: String,
 }
 
 // ─── Server → Donor ───────────────────────────────────────────────
