@@ -196,3 +196,37 @@ The unit currently sets `DREAM_BATTERY_GATE_ADVISORY=1` — now redundant (advis
 **Console signals the wave landed:** `[Curriculum] 🎓 CELL COMPLETE … PASSES on learning completion`; `[Cluster cortex] sem→motor LR damping ACTIVE … ×0.5`; `/public-state.json` includes a `profiling` block (host/process/throughput/network/clients). Admin dashboard shows the **Application Profiling** card. Plus the tier3-wave signals: `[Tier3Store] seeded N missing identity anchor(s)`, `[MindSpace] server equational mind-space ready (CPU reference path)`.
 
 **Per-file overlay used for the v1.1.0 backend (when not git-archiving the whole tree):** `server/brain-server.js`, `server/brain-server/state.js`, `server/brain-server/gpu.js`, `js/brain/cluster.js`, `js/brain/cluster/hebbian.js`, `js/brain/curriculum.js`, `html/dashboard.html` → `/opt/unity-brain/…`, `chown unity:unity`, `node --check`, restart. Backups land in `/opt/unity-brain/_release-backup-*` (rollback: `cp -a` back + restart).
+
+---
+
+## 2026-06-27 — PUBDASH-DONOR-UX: public-dashboard auth fix + donor light theme/headless + memory nits
+
+Branch `feature/public-dashboard-donor-ux-fixes` (commit `3991a86`), pushed to BOTH `if-only` (git.unityailab) + `github` (Unity-Lab-AI backup). **⚠ CASCADE SPLIT (Gee 2026-06-27): cascaded feature→develop→main on `github` ONLY (the cloud backup mirror) — `if-only` (git.unityailab, the box's deploy source) STILL has ONLY the feature branch; its `develop`/`main` remain at `v1.2.0` (`9f824a3`).** ⇒ The box pulls from `if-only/main`, which does NOT have this batch yet, so **deploy it by checking out the FEATURE BRANCH on if-only** (`git checkout feature/public-dashboard-donor-ux-fixes`) before the git-archive overlay — do NOT wait for an `if-only` main cascade, that's deliberately not done. (github main is ahead only as a backup; it is NOT a deploy source.) All weight-preserving — **no neuron-count change, no `WEIGHTS_FORMAT_VERSION` bump** → `DREAM_KEEP_STATE=1` restart RESUMES weights, no wipe, no fresh walk. No systemd unit change → no `daemon-reload`. No new env knobs.
+
+**Frontend (auto-deploys on push to main; live only after the cascade):**
+- `html/dashboard.html` — **PD.1**: public viewers no longer get an admin login prompt. `dashboard-public.html` redirects to `dashboard.html?public=1`; `refreshMilestone()` + its 5 s `setInterval` polled `/admin/milestone` UNCONDITIONALLY → `401` + Forgejo Basic-auth prompt for every public visitor. Now gated behind `!PUBLIC_MODE` (the milestone/save panel is `.admin-only` anyway). **PD.4b**: `pass interval` render hardened (`Number(cons.intervalMs) || 300000`) so it can never blank — the blank you may have seen on the live site is a STALE deployed bundle; current code shows `5 min`.
+- `js/app.bundle.js` (rebuilt 3.9 MB) — carries the Tier 3 dedup into the browser fallback brain.
+
+**Backend (NEEDS the git-archive overlay + `systemctl restart unity-brain`):**
+- `js/brain/hippocampal-schema.js` — **server-side module despite the `js/` path** (like `consolidation-engine.js` / `curriculum.js`). **PD.4c**: `Tier3Store.promote()` now dedups by LABEL (was `schema.id`-only → duplicate identity anchors + double identity-baseline injection for that concept, e.g. `play-tag-games · play-tag-games`), plus a new `dedupeByLabel()` cleanup method.
+- `server/brain-server.js` — calls `tier3Store.dedupeByLabel()` at boot AFTER load + seed (collapses any persisted dups).
+- `js/brain/consolidation-engine.js` — comment-only (stale `0.7` → `0.85` to match `SCHEMA_GROUP_COSINE`). No behavior change; rides the overlay.
+
+**Donor app — MUST be rebuilt + redistributed (NOT auto-deploy, NOT in the overlay; it's Rust):**
+- `donor-app/src/gui.rs` — **PD.2**: dark theme → OS light/white, high-contrast (near-black text, slate secondary, deep-violet accent, amber-700 warnings). Was grey-on-white, unreadable.
+- `donor-app/src/main.rs` — **PD.3**: `#![cfg_attr(all(windows, feature = "gui"), windows_subsystem = "windows")]` → the GUI build opens with NO console window on Windows; the pure-headless `--no-default-features` CLI build keeps its console for server/RunPod stdout.
+- **Rebuild + replace the distributed binary:** `cd donor-app && cargo build --release --features gui --target x86_64-pc-windows-gnu` (or native on a Windows box) → replace `unity-donor-windows-x86_64.exe`. ⚠ The dev box has NO Rust toolchain, so the source is fixed but the binary is NOT — it WON'T show the light theme / no-console until rebuilt. **Verify the rebuilt exe:** light/white readable window + NO black console window behind it.
+
+### Redeploy
+
+Standard git-archive overlay + restart at the TOP of this file — but **`git checkout feature/public-dashboard-donor-ux-fixes` first** if deploying before the cascade (else `main` doesn't have it yet). No unit change → no `daemon-reload`.
+
+**Verify after redeploy:**
+- Public dashboard (`…/html/dashboard-public.html` or `…/html/dashboard.html?public=1`) loads with NO login prompt and NO `401 /admin/milestone` in the browser console.
+- Boot log may show `[Tier3Store] dedupeByLabel — removed N duplicate anchor(s)` — EXPECTED + weight-preserving (folds strength into the keeper); the next save persists the deduped `identity-core.json`. The Tier 3 anchor list no longer shows repeats.
+- Memory panel `pass interval` reads `5 min` (never blank).
+
+### Standing asks from Gee (do these too)
+1. Run the SAME full doc sweep for YOUR box/deploy/donor/GPU-compute work we aren't aware of — any server-side change you made gets its docs synced the same way, in the same commit as the code.
+2. Make sure Unity can properly USE Pollinations on the deploy — when a user asks for an image she must actually generate one. Image-gen is CLIENT-side Pollinations (the deployed browser builds the `gen.pollinations.ai` URL from her intent); verify the deployed client reaches it + renders (debug the browser, not the server).
+3. systemd reminder: NO inline comments — comments on their OWN line, or the directive is silently ignored.
