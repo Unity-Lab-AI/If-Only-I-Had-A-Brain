@@ -655,8 +655,17 @@ const SERVER_STATE_MIXIN = {
             bufferedKB: r1(buffered / 1024),
             gpuName: isGPU ? (c.gpuName || (tele && tele.gpuName) || null) : null,
             gneuronsPerSec: (isGPU && tele) ? r2(tele.gneuronsPerSec || 0) : null,
-            // health flag — stale (no traffic 90s+), laggy (RTT>1s), or backed-up (>50MB)
-            unhealthy: ((now - (c.lastSeen || now)) > 90000) || (typeof c.rttMs === 'number' && c.rttMs > 1000) || (buffered > 50 * MB),
+            // health flag — RED only on a REAL per-client problem: genuinely stale
+            // (90s+ silent), backed-up (>50 MB unsent), or high RTT that is NOT just the
+            // server's own event-loop lag. RTT is measured off the heartbeat ping/pong, so
+            // a blocked event loop during a heavy teach phase delays EVERY client's pong by
+            // seconds → inflates everyone's RTT for ~30s. That's a SERVER condition, not a
+            // client/donor fault, so high RTT only flags a client when the loop is healthy.
+            // (Threshold 1s→2.5s so a normal blip never trips it.) Was false-flagging the
+            // admin + donors red during teach.
+            unhealthy: ((now - (c.lastSeen || now)) > 90000)
+              || (typeof c.rttMs === 'number' && c.rttMs > 2500 && (this._lastEventLoopLagMs || 0) < 1000)
+              || (buffered > 50 * MB),
           });
         }
       }
