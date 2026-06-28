@@ -1,11 +1,16 @@
 //! eframe/egui desktop GUI — "Unity Brain Donor".
 //!
 //! Tabbed redesign (Sponge spec DA.1–DA.13): Donate / Settings / Dashboard /
-//! Leaderboard / About, dark organic-tech theme, 1280×720 resizable, brain+GPU
-//! icon, Live/Local server radio, green/red Start-Stop, verbose status, per-GPU
-//! visibility. The host still registers as ONE compute unit that drives every
-//! enabled GPU internally; nothing runs until ▶ Start (safe start). Compiled
-//! only with the `gui` feature.
+//! Leaderboard / About, 1280×720 resizable, brain+GPU icon, Live/Local server
+//! radio, green/red Start-Stop, verbose status, per-GPU visibility. The host
+//! still registers as ONE compute unit that drives every enabled GPU internally;
+//! nothing runs until ▶ Start (safe start). Compiled only with the `gui` feature.
+//!
+//! THEME (Gee 2026-06-28): Light / Dark / System radios under Settings. Default
+//! FOLLOWS THE OS (dark OS → dark, light OS → light) and can be overridden. Both
+//! palettes are tuned for readability. Every changeable setting (theme, name,
+//! server, per-GPU enable/%, auto-reconnect) PERSISTS to disk via
+//! `config::DonorSettings`, so it's load-up-and-go with no reconfiguration.
 
 use std::sync::atomic::Ordering;
 use std::thread::JoinHandle;
@@ -13,7 +18,7 @@ use std::time::Duration;
 
 use eframe::egui;
 
-use crate::config::{DonorConfig, LOCAL_SERVER, PROD_SERVER};
+use crate::config::{self, DonorConfig, LOCAL_SERVER, PROD_SERVER};
 use crate::donor::{self, Control};
 use crate::gpu::GpuInfo;
 
@@ -21,18 +26,52 @@ const LEGEND_URL: &str = "https://if-only-i-had-a-brain.git.unityailab.com/html/
 const DASHBOARD_URL: &str = "https://if-only-i-had-a-brain.git.unityailab.com/html/dashboard-public.html";
 const LEADERBOARD_URL: &str = "https://if-only-i-had-a-brain.git.unityailab.com/html/dashboard-public.html";
 
-// OS light/white theme palette (Gee 2026-06-27 — "OS white theme better
-// colors, hard to read grey on white"). Dark text on near-white panels; a deep
-// violet accent that stays high-contrast on white; secondary text is a real
-// slate, not the pale grey that washed out before. (TEXT_BRIGHT keeps its name
-// for diff stability but is now the DARK primary-text colour for the light theme.)
-const ACCENT: egui::Color32 = egui::Color32::from_rgb(0x6d, 0x28, 0xd9); // deep violet — readable on white
-const ACCENT_DIM: egui::Color32 = egui::Color32::from_rgb(0xa7, 0x8b, 0xfa); // light violet — selection/hover fill
-const GO_GREEN: egui::Color32 = egui::Color32::from_rgb(0x15, 0x80, 0x3d); // green-700 — white button text stays legible
-const STOP_RED: egui::Color32 = egui::Color32::from_rgb(0xb9, 0x1c, 0x1c); // red-700
-const TEXT_BRIGHT: egui::Color32 = egui::Color32::from_rgb(0x18, 0x18, 0x27); // near-black primary text on white
-const TEXT_DIM: egui::Color32 = egui::Color32::from_rgb(0x52, 0x52, 0x5b); // slate-600 — readable secondary on white
-const WARN: egui::Color32 = egui::Color32::from_rgb(0xb4, 0x53, 0x09); // amber-700 — readable on white (was 0xfbbf24, washed out)
+/// Runtime colour palette — replaces the old module-level `const`s so the same
+/// widgets read correctly in BOTH light and dark themes. `Copy` so each `ui_*`
+/// method can pull a local `let pal = self.pal;` and use it freely inside
+/// closures without fighting the borrow checker against `&mut self`.
+#[derive(Clone, Copy)]
+struct Pal {
+    accent: egui::Color32,
+    accent_dim: egui::Color32,
+    go_green: egui::Color32,
+    stop_red: egui::Color32,
+    text_bright: egui::Color32,
+    text_dim: egui::Color32,
+    warn: egui::Color32,
+    panel: egui::Color32,
+    window: egui::Color32,
+}
+
+fn pal(dark: bool) -> Pal {
+    if dark {
+        // DARK — near-white text on deep panels; light violet accent reads on dark.
+        Pal {
+            accent: egui::Color32::from_rgb(0xa7, 0x8b, 0xfa),     // light violet
+            accent_dim: egui::Color32::from_rgb(0x4c, 0x3a, 0x80), // muted violet selection/hover fill
+            go_green: egui::Color32::from_rgb(0x22, 0xc5, 0x5e),   // green-500
+            stop_red: egui::Color32::from_rgb(0xef, 0x44, 0x44),   // red-500
+            text_bright: egui::Color32::from_rgb(0xe8, 0xe8, 0xf0),// near-white primary text
+            text_dim: egui::Color32::from_rgb(0xa1, 0xa1, 0xaa),   // zinc-400 secondary
+            warn: egui::Color32::from_rgb(0xfb, 0xbf, 0x24),       // amber-400
+            panel: egui::Color32::from_rgb(0x15, 0x15, 0x1c),      // deep panel
+            window: egui::Color32::from_rgb(0x0d, 0x0d, 0x12),     // near-black window
+        }
+    } else {
+        // LIGHT — near-black text on near-white panels; deep violet accent reads on white.
+        Pal {
+            accent: egui::Color32::from_rgb(0x6d, 0x28, 0xd9),     // deep violet
+            accent_dim: egui::Color32::from_rgb(0xa7, 0x8b, 0xfa), // light violet selection/hover fill
+            go_green: egui::Color32::from_rgb(0x15, 0x80, 0x3d),   // green-700 (white text legible)
+            stop_red: egui::Color32::from_rgb(0xb9, 0x1c, 0x1c),   // red-700
+            text_bright: egui::Color32::from_rgb(0x18, 0x18, 0x27),// near-black primary text
+            text_dim: egui::Color32::from_rgb(0x52, 0x52, 0x5b),   // slate-600 secondary
+            warn: egui::Color32::from_rgb(0xb4, 0x53, 0x09),       // amber-700 (readable on white)
+            panel: egui::Color32::from_rgb(0xf7, 0xf7, 0xfb),      // off-white panel
+            window: egui::Color32::from_rgb(0xff, 0xff, 0xff),     // pure white window
+        }
+    }
+}
 
 #[derive(PartialEq, Clone, Copy)]
 enum Tab {
@@ -50,6 +89,44 @@ enum ServerMode {
     Custom,
 }
 
+/// Theme preference. `System` follows the OS (the default); Light/Dark force it.
+#[derive(PartialEq, Clone, Copy)]
+enum ThemeChoice {
+    System,
+    Light,
+    Dark,
+}
+
+impl ThemeChoice {
+    fn from_str(s: &str) -> Self {
+        match s.trim().to_ascii_lowercase().as_str() {
+            "light" => ThemeChoice::Light,
+            "dark" => ThemeChoice::Dark,
+            _ => ThemeChoice::System,
+        }
+    }
+    fn as_str(self) -> &'static str {
+        match self {
+            ThemeChoice::System => "system",
+            ThemeChoice::Light => "light",
+            ThemeChoice::Dark => "dark",
+        }
+    }
+    /// Resolve to a concrete dark/light boolean. `System` reads the OS theme that
+    /// the windowing backend reports (`raw.system_theme`); unknown → dark.
+    fn resolve_dark(self, ctx: &egui::Context) -> bool {
+        match self {
+            ThemeChoice::Light => false,
+            ThemeChoice::Dark => true,
+            ThemeChoice::System => match ctx.input(|i| i.raw.system_theme) {
+                Some(egui::Theme::Light) => false,
+                Some(egui::Theme::Dark) => true,
+                None => true, // OS theme not reported → default dark
+            },
+        }
+    }
+}
+
 /// The single running host donor (drives all enabled GPUs internally).
 struct RunningHost {
     control: Control,
@@ -65,6 +142,12 @@ struct DonorApp {
     host: Option<RunningHost>,
     tab: Tab,
     server_mode: ServerMode,
+    theme: ThemeChoice,
+    pal: Pal,
+    /// Last dark/light actually pushed to egui — re-applied only on change (no per-frame churn).
+    applied_dark: Option<bool>,
+    /// Serialized snapshot of the last persisted settings — used to save only on real change.
+    last_saved: String,
 }
 
 impl DonorApp {
@@ -82,7 +165,84 @@ impl DonorApp {
         } else {
             ServerMode::Custom
         };
-        Self { cfg, gpus, enabled, util, host: None, tab: Tab::Donate, server_mode }
+        let mut app = Self {
+            cfg,
+            gpus,
+            enabled,
+            util,
+            host: None,
+            tab: Tab::Donate,
+            server_mode,
+            theme: ThemeChoice::System,
+            pal: pal(true),
+            applied_dark: None,
+            last_saved: String::new(),
+        };
+        // "Load up and use it" — overlay any persisted settings on top of the CLI defaults.
+        if let Some(s) = config::load_settings() {
+            app.apply_settings(&s);
+        }
+        app.last_saved = serde_json::to_string(&app.current_settings()).unwrap_or_default();
+        app
+    }
+
+    /// Build a `DonorSettings` snapshot of the current GUI state (for persistence).
+    fn current_settings(&self) -> config::DonorSettings {
+        config::DonorSettings {
+            theme: self.theme.as_str().to_string(),
+            server_mode: match self.server_mode {
+                ServerMode::Live => "live",
+                ServerMode::Local => "local",
+                ServerMode::Custom => "custom",
+            }
+            .to_string(),
+            server: self.cfg.server.clone(),
+            name: self.cfg.name.clone(),
+            enabled: self.enabled.clone(),
+            util: self.util.clone(),
+            auto_restart: self.cfg.auto_restart_on_disconnect,
+        }
+    }
+
+    /// Apply persisted settings over the current state. Per-GPU arrays are applied
+    /// only when their length matches the detected GPU count (same machine layout).
+    fn apply_settings(&mut self, s: &config::DonorSettings) {
+        self.theme = ThemeChoice::from_str(&s.theme);
+        self.server_mode = match s.server_mode.as_str() {
+            "local" => ServerMode::Local,
+            "custom" => ServerMode::Custom,
+            _ => ServerMode::Live,
+        };
+        self.cfg.server = match self.server_mode {
+            ServerMode::Live => PROD_SERVER.to_string(),
+            ServerMode::Local => LOCAL_SERVER.to_string(),
+            ServerMode::Custom => {
+                if s.server.trim().is_empty() {
+                    self.cfg.server.clone()
+                } else {
+                    s.server.clone()
+                }
+            }
+        };
+        self.cfg.name = s.name.clone();
+        self.cfg.auto_restart_on_disconnect = s.auto_restart;
+        if s.enabled.len() == self.enabled.len() && !s.enabled.is_empty() {
+            self.enabled = s.enabled.clone();
+        }
+        if s.util.len() == self.util.len() && !s.util.is_empty() {
+            self.util = s.util.iter().map(|u| u.clamp(1.0, 100.0)).collect();
+        }
+    }
+
+    /// Persist current settings if they changed since the last save (called each frame end).
+    fn save_if_changed(&mut self) {
+        let snap = self.current_settings();
+        if let Ok(json) = serde_json::to_string(&snap) {
+            if json != self.last_saved {
+                config::save_settings(&snap);
+                self.last_saved = json;
+            }
+        }
     }
 
     fn running(&self) -> bool {
@@ -131,33 +291,43 @@ impl DonorApp {
     }
 
     /// DA.8 — derive a human task-state from the raw status fields.
-    fn task_state(&self, conn: bool, batches: u64, teach: u64, note: &str) -> (&'static str, egui::Color32) {
+    fn task_state(&self, pal: Pal, conn: bool, batches: u64, teach: u64, note: &str) -> (&'static str, egui::Color32) {
         if self.host.is_none() {
-            return ("Idle — press Start", TEXT_DIM);
+            return ("Idle — press Start", pal.text_dim);
         }
         if !conn {
             if note.contains("reconnect") {
-                return ("Reconnecting…", WARN);
+                return ("Reconnecting…", pal.warn);
             }
-            return ("Connecting…", WARN);
+            return ("Connecting…", pal.warn);
         }
         let n = note.to_lowercase();
         if teach > 0 && (batches == 0 || n.contains("teach") || n.contains("hebbian")) {
-            return ("Working — teaching task (Hebbian / propagate)", GO_GREEN);
+            return ("Working — teaching task (Hebbian / propagate)", pal.go_green);
         }
         if n.contains("comput") || batches > 0 {
-            return ("Working — compute task (brain tick)", GO_GREEN);
+            return ("Working — compute task (brain tick)", pal.go_green);
         }
         if n.contains("regist") {
-            return ("Registered — waiting for the brain to hand out work", ACCENT);
+            return ("Registered — waiting for the brain to hand out work", pal.accent);
         }
-        ("Connected — idle, waiting for a task", ACCENT)
+        ("Connected — idle, waiting for a task", pal.accent)
     }
 }
 
 impl eframe::App for DonorApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         ctx.request_repaint_after(Duration::from_millis(300));
+
+        // Resolve + apply the theme. System mode tracks the OS live (a mid-session
+        // OS light↔dark switch repaints correctly); manual modes pin it.
+        let dark = self.theme.resolve_dark(ctx);
+        self.pal = pal(dark);
+        if self.applied_dark != Some(dark) {
+            apply_theme(ctx, dark, self.pal);
+            self.applied_dark = Some(dark);
+        }
+
         // Drop the host once its thread finishes (stopped / disconnected / failed) so
         // ▶ Start reappears. With auto-reconnect ON the thread stays alive across drops,
         // so this only fires on a genuine Stop / fatal exit.
@@ -188,25 +358,30 @@ impl eframe::App for DonorApp {
                 Tab::About => self.ui_about(ui),
             });
         });
+
+        // Persist any setting the user changed this frame (theme, name, server,
+        // per-GPU enable/%, auto-reconnect) — debounced to real changes only.
+        self.save_if_changed();
     }
 }
 
 impl DonorApp {
     // ── DA.7 — Donate tab ─────────────────────────────────────────────────
     fn ui_donate(&mut self, ui: &mut egui::Ui) {
+        let pal = self.pal;
         let running = self.running();
 
         ui.add_space(10.0);
         ui.vertical_centered(|ui| {
-            ui.label(egui::RichText::new("Brain Donor").size(30.0).strong().color(ACCENT));
-            ui.label(egui::RichText::new("Donate your GPU compute to the Unity Brain").size(14.0).color(TEXT_DIM));
-            ui.hyperlink_to(egui::RichText::new("📖 How it works / legend").color(ACCENT), LEGEND_URL);
+            ui.label(egui::RichText::new("Brain Donor").size(30.0).strong().color(pal.accent));
+            ui.label(egui::RichText::new("Donate your GPU compute to the Unity Brain").size(14.0).color(pal.text_dim));
+            ui.hyperlink_to(egui::RichText::new("📖 How it works / legend").color(pal.accent), LEGEND_URL);
         });
         ui.add_space(14.0);
 
         // Hard-coded server with Live/Local radio (DA.7).
         egui::Frame::group(ui.style()).show(ui, |ui| {
-            ui.label(egui::RichText::new("Server").strong().color(TEXT_BRIGHT));
+            ui.label(egui::RichText::new("Server").strong().color(pal.text_bright));
             ui.horizontal(|ui| {
                 let prev = self.server_mode;
                 ui.add_enabled_ui(!running, |ui| {
@@ -221,18 +396,18 @@ impl DonorApp {
                     }
                 }
             });
-            ui.label(egui::RichText::new(&self.cfg.server).small().color(TEXT_DIM));
+            ui.label(egui::RichText::new(&self.cfg.server).small().color(pal.text_dim));
         });
         ui.add_space(10.0);
 
         // Leaderboard name — bigger field + bigger helper text (DA.7).
         ui.horizontal(|ui| {
-            ui.label(egui::RichText::new("Leaderboard name:").size(15.0).color(TEXT_BRIGHT));
+            ui.label(egui::RichText::new("Leaderboard name:").size(15.0).color(pal.text_bright));
             ui.add_enabled(!running, egui::TextEdit::singleline(&mut self.cfg.name).hint_text("(optional — anonymous)").desired_width(260.0));
         });
         ui.label(egui::RichText::new(
             "Use the same name here + in the browser / other devices to combine all your compute into ONE leaderboard entry. No sign-up.",
-        ).size(13.0).color(TEXT_DIM));
+        ).size(13.0).color(pal.text_dim));
         ui.add_space(12.0);
 
         // Read-only summary of the selected GPU config (DA.7 — editing lives in Settings).
@@ -244,14 +419,14 @@ impl DonorApp {
             .map(|(i, g)| format!("[{}] {} @ {}%", g.index, g.name, self.util[i].round() as u8))
             .collect();
         egui::Frame::group(ui.style()).show(ui, |ui| {
-            ui.label(egui::RichText::new("Selected GPUs (edit in Settings)").strong().color(TEXT_BRIGHT));
+            ui.label(egui::RichText::new("Selected GPUs (edit in Settings)").strong().color(pal.text_bright));
             if sel.is_empty() {
-                ui.label(egui::RichText::new("none — enable a card in Settings").color(STOP_RED));
+                ui.label(egui::RichText::new("none — enable a card in Settings").color(pal.stop_red));
             } else {
                 for s in &sel {
-                    ui.label(egui::RichText::new(format!("• {s}")).color(TEXT_BRIGHT));
+                    ui.label(egui::RichText::new(format!("• {s}")).color(pal.text_bright));
                 }
-                ui.label(egui::RichText::new(format!("{} card(s) acting as ONE compute unit", sel.len())).small().color(TEXT_DIM));
+                ui.label(egui::RichText::new(format!("{} card(s) acting as ONE compute unit", sel.len())).small().color(pal.text_dim));
             }
         });
         ui.add_space(14.0);
@@ -259,12 +434,12 @@ impl DonorApp {
         // Green Start / red Stop (DA.7).
         ui.vertical_centered(|ui| {
             if !running {
-                let btn = egui::Button::new(egui::RichText::new("▶  Start donating").size(17.0).color(egui::Color32::WHITE)).fill(GO_GREEN).min_size(egui::vec2(220.0, 40.0));
+                let btn = egui::Button::new(egui::RichText::new("▶  Start donating").size(17.0).color(egui::Color32::WHITE)).fill(pal.go_green).min_size(egui::vec2(220.0, 40.0));
                 if ui.add_enabled(self.any_enabled(), btn).clicked() {
                     self.start();
                 }
             } else {
-                let btn = egui::Button::new(egui::RichText::new("⏹  Stop").size(17.0).color(egui::Color32::WHITE)).fill(STOP_RED).min_size(egui::vec2(220.0, 40.0));
+                let btn = egui::Button::new(egui::RichText::new("⏹  Stop").size(17.0).color(egui::Color32::WHITE)).fill(pal.stop_red).min_size(egui::vec2(220.0, 40.0));
                 if ui.add(btn).clicked() {
                     self.stop();
                 }
@@ -276,19 +451,19 @@ impl DonorApp {
 
         // ── Verbose status (DA.8) + per-GPU visibility (DA.5) ──────────────
         let (conn, gpu_name, batches, spikes, teach, note) = self.status_snapshot();
-        let (state_label, state_color) = self.task_state(conn, batches, teach, &note);
+        let (state_label, state_color) = self.task_state(pal, conn, batches, teach, &note);
         ui.horizontal(|ui| {
             ui.label(egui::RichText::new(if conn { "🟢" } else if self.host.is_some() { "🟡" } else { "⚪" }).size(16.0));
             ui.label(egui::RichText::new(state_label).strong().color(state_color));
         });
         if !gpu_name.is_empty() {
-            ui.label(egui::RichText::new(format!("Unit: {gpu_name}")).color(TEXT_DIM));
+            ui.label(egui::RichText::new(format!("Unit: {gpu_name}")).color(pal.text_dim));
         }
         ui.label(egui::RichText::new(format!(
             "Your contribution:  {batches} compute batches · {teach} teach ops · {spikes} spikes/last-batch",
-        )).color(TEXT_BRIGHT));
+        )).color(pal.text_bright));
         if !note.is_empty() {
-            ui.label(egui::RichText::new(format!("({note})")).small().color(TEXT_DIM));
+            ui.label(egui::RichText::new(format!("({note})")).small().color(pal.text_dim));
         }
 
         // Per-GPU rows — what each card is doing (DA.5). The aggregate work
@@ -296,16 +471,16 @@ impl DonorApp {
         // per-card live throughput needs an engine-side counter (noted in the
         // About tab). Here we show each enabled card + its configured share.
         ui.add_space(6.0);
-        ui.label(egui::RichText::new("Per-GPU").strong().color(TEXT_BRIGHT));
+        ui.label(egui::RichText::new("Per-GPU").strong().color(pal.text_bright));
         egui::Grid::new("donate-pergpu").num_columns(3).spacing([14.0, 4.0]).striped(true).show(ui, |ui| {
             for (i, g) in self.gpus.iter().enumerate() {
                 if !self.enabled[i] {
                     continue;
                 }
-                let dot = if running && conn { egui::RichText::new("●").color(GO_GREEN) } else { egui::RichText::new("○").color(TEXT_DIM) };
+                let dot = if running && conn { egui::RichText::new("●").color(pal.go_green) } else { egui::RichText::new("○").color(pal.text_dim) };
                 ui.label(dot);
-                ui.label(egui::RichText::new(format!("[{}] {}", g.index, g.name)).color(TEXT_BRIGHT));
-                ui.label(egui::RichText::new(format!("{}% share", self.util[i].round() as u8)).color(TEXT_DIM));
+                ui.label(egui::RichText::new(format!("[{}] {}", g.index, g.name)).color(pal.text_bright));
+                ui.label(egui::RichText::new(format!("{}% share", self.util[i].round() as u8)).color(pal.text_dim));
                 ui.end_row();
             }
         });
@@ -313,20 +488,35 @@ impl DonorApp {
 
     // ── DA.9 — Settings tab (all the editable config) ─────────────────────
     fn ui_settings(&mut self, ui: &mut egui::Ui) {
+        let pal = self.pal;
         let running = self.running();
         ui.add_space(8.0);
-        ui.label(egui::RichText::new("Settings").size(22.0).strong().color(ACCENT));
+        ui.label(egui::RichText::new("Settings").size(22.0).strong().color(pal.accent));
+        ui.label(egui::RichText::new("Everything here is saved on this machine — set it once, just launch and donate next time.").size(13.0).color(pal.text_dim));
         if running {
-            ui.label(egui::RichText::new("Stop donating to change GPU selection / server.").color(WARN));
+            ui.label(egui::RichText::new("Stop donating to change GPU selection / server.").color(pal.warn));
         }
-        ui.add_space(8.0);
+        ui.add_space(10.0);
 
-        ui.label(egui::RichText::new("GPUs (enabled cards form ONE compute unit; each throttles to its own %)").strong().color(TEXT_BRIGHT));
+        // ── Theme (Light / Dark / System) — readable in both; System follows the OS ──
+        egui::Frame::group(ui.style()).show(ui, |ui| {
+            ui.label(egui::RichText::new("Theme").strong().color(pal.text_bright));
+            ui.horizontal(|ui| {
+                ui.radio_value(&mut self.theme, ThemeChoice::System, "System (follow OS)");
+                ui.radio_value(&mut self.theme, ThemeChoice::Light, "Light");
+                ui.radio_value(&mut self.theme, ThemeChoice::Dark, "Dark");
+            });
+            let now = if self.applied_dark == Some(true) { "dark" } else { "light" };
+            ui.label(egui::RichText::new(format!("Currently showing: {now}")).small().color(pal.text_dim));
+        });
+        ui.add_space(12.0);
+
+        ui.label(egui::RichText::new("GPUs (enabled cards form ONE compute unit; each throttles to its own %)").strong().color(pal.text_bright));
         egui::Grid::new("settings-gpus").num_columns(3).spacing([12.0, 6.0]).show(ui, |ui| {
             for (i, g) in self.gpus.iter().enumerate() {
                 ui.add_enabled(!running, egui::Checkbox::new(&mut self.enabled[i], ""));
                 let tag = if i == 0 { "  ⚠ likely your display GPU" } else { "" };
-                ui.label(egui::RichText::new(format!("[{}] {}{}", g.index, g.name, tag)).color(TEXT_BRIGHT));
+                ui.label(egui::RichText::new(format!("[{}] {}{}", g.index, g.name, tag)).color(pal.text_bright));
                 ui.add_enabled(!running, egui::Slider::new(&mut self.util[i], 1.0..=100.0).suffix("%"));
                 ui.end_row();
             }
@@ -335,7 +525,7 @@ impl DonorApp {
             "⚠ Running compute on your display GPU (usually [0]) can lag your desktop, even at low %. \
              Prefer a spare card. The per-matrix limit (~2047 MB) is a GPU/WebGPU hardware cap, \
              not a limit on how much you contribute — the brain splits large data to fit.",
-        ).size(13.0).color(TEXT_DIM));
+        ).size(13.0).color(pal.text_dim));
         ui.add_space(12.0);
 
         ui.add_enabled(
@@ -345,12 +535,12 @@ impl DonorApp {
         ui.add_space(8.0);
 
         ui.horizontal(|ui| {
-            ui.label(egui::RichText::new("Leaderboard name:").color(TEXT_BRIGHT));
+            ui.label(egui::RichText::new("Leaderboard name:").color(pal.text_bright));
             ui.add_enabled(!running, egui::TextEdit::singleline(&mut self.cfg.name).hint_text("(optional — anonymous)").desired_width(240.0));
         });
         ui.add_space(8.0);
 
-        ui.label(egui::RichText::new("Server").strong().color(TEXT_BRIGHT));
+        ui.label(egui::RichText::new("Server").strong().color(pal.text_bright));
         ui.add_enabled_ui(!running, |ui| {
             let prev = self.server_mode;
             ui.radio_value(&mut self.server_mode, ServerMode::Live, "Live (production brain)");
@@ -372,29 +562,31 @@ impl DonorApp {
 
     // ── DA.10 — Dashboard tab (mini public dashboard) ─────────────────────
     fn ui_dashboard(&mut self, ui: &mut egui::Ui) {
+        let pal = self.pal;
         ui.add_space(8.0);
-        ui.label(egui::RichText::new("Dashboard").size(22.0).strong().color(ACCENT));
+        ui.label(egui::RichText::new("Dashboard").size(22.0).strong().color(pal.accent));
         ui.add_space(6.0);
         let (conn, gpu_name, batches, spikes, teach, note) = self.status_snapshot();
-        let (state_label, state_color) = self.task_state(conn, batches, teach, &note);
+        let (state_label, state_color) = self.task_state(pal, conn, batches, teach, &note);
         egui::Frame::group(ui.style()).show(ui, |ui| {
-            ui.label(egui::RichText::new("This machine").strong().color(TEXT_BRIGHT));
+            ui.label(egui::RichText::new("This machine").strong().color(pal.text_bright));
             ui.label(egui::RichText::new(state_label).color(state_color));
-            ui.label(egui::RichText::new(format!("Unit: {}", if gpu_name.is_empty() { "—".into() } else { gpu_name })).color(TEXT_DIM));
-            ui.label(egui::RichText::new(format!("{batches} compute batches · {teach} teach ops · {spikes} spikes/last-batch")).color(TEXT_BRIGHT));
-            ui.label(egui::RichText::new(format!("Server: {}", self.cfg.server)).small().color(TEXT_DIM));
+            ui.label(egui::RichText::new(format!("Unit: {}", if gpu_name.is_empty() { "—".into() } else { gpu_name })).color(pal.text_dim));
+            ui.label(egui::RichText::new(format!("{batches} compute batches · {teach} teach ops · {spikes} spikes/last-batch")).color(pal.text_bright));
+            ui.label(egui::RichText::new(format!("Server: {}", self.cfg.server)).small().color(pal.text_dim));
         });
         ui.add_space(10.0);
         ui.label(egui::RichText::new(
             "Live brain-wide stats (grades, neuron count, donor pool, basin health) stream on the full public dashboard:",
-        ).color(TEXT_DIM));
-        ui.hyperlink_to(egui::RichText::new("🧠 Open the live public dashboard").color(ACCENT), DASHBOARD_URL);
+        ).color(pal.text_dim));
+        ui.hyperlink_to(egui::RichText::new("🧠 Open the live public dashboard").color(pal.accent), DASHBOARD_URL);
     }
 
     // ── DA.11 — Leaderboard tab ───────────────────────────────────────────
     fn ui_leaderboard(&mut self, ui: &mut egui::Ui) {
+        let pal = self.pal;
         ui.add_space(8.0);
-        ui.label(egui::RichText::new("Leaderboard").size(22.0).strong().color(ACCENT));
+        ui.label(egui::RichText::new("Leaderboard").size(22.0).strong().color(pal.accent));
         ui.add_space(6.0);
         let label = if self.cfg.name.trim().is_empty() {
             "anonymous (set a name in Settings to climb the board)".to_string()
@@ -403,57 +595,56 @@ impl DonorApp {
         };
         let (_, _, batches, _, teach, _) = self.status_snapshot();
         egui::Frame::group(ui.style()).show(ui, |ui| {
-            ui.label(egui::RichText::new("You").strong().color(TEXT_BRIGHT));
-            ui.label(egui::RichText::new(format!("name: {label}")).color(ACCENT));
-            ui.label(egui::RichText::new(format!("this session: {batches} compute batches · {teach} teach ops")).color(TEXT_BRIGHT));
+            ui.label(egui::RichText::new("You").strong().color(pal.text_bright));
+            ui.label(egui::RichText::new(format!("name: {label}")).color(pal.accent));
+            ui.label(egui::RichText::new(format!("this session: {batches} compute batches · {teach} teach ops")).color(pal.text_bright));
             ui.label(egui::RichText::new(
                 "Everyone using the SAME name (browser + every device) is summed into one row.",
-            ).small().color(TEXT_DIM));
+            ).small().color(pal.text_dim));
         });
         ui.add_space(10.0);
-        ui.label(egui::RichText::new("Full neuron-contribution leaderboard (all donors):").color(TEXT_DIM));
-        ui.hyperlink_to(egui::RichText::new("🏆 Open the live leaderboard").color(ACCENT), LEADERBOARD_URL);
+        ui.label(egui::RichText::new("Full neuron-contribution leaderboard (all donors):").color(pal.text_dim));
+        ui.hyperlink_to(egui::RichText::new("🏆 Open the live leaderboard").color(pal.accent), LEADERBOARD_URL);
     }
 
     // ── DA.12 — About tab ─────────────────────────────────────────────────
     fn ui_about(&mut self, ui: &mut egui::Ui) {
+        let pal = self.pal;
         ui.add_space(8.0);
-        ui.label(egui::RichText::new("Unity Brain Donor").size(22.0).strong().color(ACCENT));
-        ui.label(egui::RichText::new(format!("v{}", env!("CARGO_PKG_VERSION"))).color(TEXT_DIM));
+        ui.label(egui::RichText::new("Unity Brain Donor").size(22.0).strong().color(pal.accent));
+        ui.label(egui::RichText::new(format!("v{}", env!("CARGO_PKG_VERSION"))).color(pal.text_dim));
         ui.add_space(8.0);
         ui.label(egui::RichText::new(
             "A native GPU compute donor for the Unity Brain — a living, always-on equational \
              neural simulation. Your GPU runs the same brain math the browser donor does, with \
              bigger buffers, no tab-sleep drops, multi-GPU support, and an optional CUDA backend \
              for NVIDIA cards (automatic WebGPU fallback otherwise).",
-        ).color(TEXT_BRIGHT));
+        ).color(pal.text_bright));
         ui.add_space(8.0);
-        ui.label(egui::RichText::new("Nothing is uploaded from your machine — your GPU only does math the server hands it; the brain weights stay on the server.").size(13.0).color(TEXT_DIM));
+        ui.label(egui::RichText::new("Nothing is uploaded from your machine — your GPU only does math the server hands it; the brain weights stay on the server.").size(13.0).color(pal.text_dim));
         ui.add_space(10.0);
-        ui.hyperlink_to(egui::RichText::new("📖 How it works / legend").color(ACCENT), LEGEND_URL);
-        ui.hyperlink_to(egui::RichText::new("🧠 Public dashboard").color(ACCENT), DASHBOARD_URL);
+        ui.hyperlink_to(egui::RichText::new("📖 How it works / legend").color(pal.accent), LEGEND_URL);
+        ui.hyperlink_to(egui::RichText::new("🧠 Public dashboard").color(pal.accent), DASHBOARD_URL);
         ui.add_space(10.0);
         ui.label(egui::RichText::new(
             "Note: per-GPU live throughput and the in-app dashboard/leaderboard show this machine's \
              own data + link to the full web views; brain-wide live numbers are on the public dashboard.",
-        ).small().color(TEXT_DIM));
+        ).size(13.0).color(pal.text_dim));
     }
 }
 
-/// OS light/white theme — dark text on near-white panels, high contrast
-/// (Gee 2026-06-27 — was a dark theme; "needs OS white theme better colors").
-fn install_theme(ctx: &egui::Context) {
-    let mut v = egui::Visuals::light();
-    v.override_text_color = Some(TEXT_BRIGHT);
-    v.hyperlink_color = ACCENT;
-    v.selection.bg_fill = ACCENT_DIM;
-    v.selection.stroke = egui::Stroke::new(1.0, ACCENT);
-    v.widgets.hovered.bg_fill = ACCENT_DIM;
-    v.widgets.active.bg_fill = ACCENT_DIM;
-    // Clean near-white panels (OS light theme); window pure white, panels a
-    // hair off-white so grouped frames read against the background.
-    v.panel_fill = egui::Color32::from_rgb(0xf7, 0xf7, 0xfb);
-    v.window_fill = egui::Color32::from_rgb(0xff, 0xff, 0xff);
+/// Apply the resolved theme to egui — base light/dark visuals plus the palette's
+/// accent/selection/panel colours so both themes stay high-contrast + readable.
+fn apply_theme(ctx: &egui::Context, dark: bool, pal: Pal) {
+    let mut v = if dark { egui::Visuals::dark() } else { egui::Visuals::light() };
+    v.override_text_color = Some(pal.text_bright);
+    v.hyperlink_color = pal.accent;
+    v.selection.bg_fill = pal.accent_dim;
+    v.selection.stroke = egui::Stroke::new(1.0, pal.accent);
+    v.widgets.hovered.bg_fill = pal.accent_dim;
+    v.widgets.active.bg_fill = pal.accent_dim;
+    v.panel_fill = pal.panel;
+    v.window_fill = pal.window;
     ctx.set_visuals(v);
 }
 
@@ -515,8 +706,12 @@ pub fn run(cfg: DonorConfig, gpus: Vec<GpuInfo>) -> Result<(), String> {
         "Unity Brain Donor", // DA.2 — window/app name
         options,
         Box::new(|cc| {
-            install_theme(&cc.egui_ctx); // DA.13
-            Ok(Box::new(DonorApp::new(cfg, gpus)))
+            let app = DonorApp::new(cfg, gpus);
+            // Paint the right theme on the very first frame (no flash): resolve the
+            // app's preference against the OS theme the backend already reported.
+            let dark = app.theme.resolve_dark(&cc.egui_ctx);
+            apply_theme(&cc.egui_ctx, dark, pal(dark));
+            Ok(Box::new(app))
         }),
     )
     .map_err(|e| format!("GUI failed: {e}"));
