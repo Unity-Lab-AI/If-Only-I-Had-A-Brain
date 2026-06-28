@@ -53325,11 +53325,25 @@ var CLUSTER_HEBBIAN_MIXIN = {
       const src = name.slice(0, idx);
       const dst = name.slice(idx + 4);
       if (!this.regions[src] || !this.regions[dst]) continue;
+      if (this._smLrScale === void 0) {
+        let _v = NaN;
+        try {
+          _v = parseFloat(typeof process !== "undefined" && process?.env?.DREAM_SM_LR_SCALE);
+        } catch {
+          _v = NaN;
+        }
+        this._smLrScale = Number.isFinite(_v) && _v >= 0 ? _v : 0.5;
+        if (this._smLrScale !== 1) {
+          console.log(`[Cluster ${this.name}] sem\u2192motor LR damping ACTIVE \u2014 sem_to_motor + sem_to_word_motor Hebbian LR \xD7${this._smLrScale} (saturation prevention; DREAM_SM_LR_SCALE=1.0 disables). Watch [SatHealth] meanCos across the walk.`);
+        }
+      }
+      const _isMotorEmissionProj = name === "sem_to_motor" || name === "sem_to_word_motor";
+      const lrEff = _isMotorEmissionProj ? lr * this._smLrScale : lr;
       const kScalesForProj = opts.kScalesOverride !== void 0 ? opts.kScalesOverride : typeof this.buildKScalesForProjection === "function" ? this.buildKScalesForProjection(src, dst) : null;
       const ojaOpts = kScalesForProj ? { kScales: kScalesForProj } : void 0;
       if (proj._gpuBound && this._gpuProxyReady && this._gpuProxy && this._gpuProxy.hebbianBound) {
         try {
-          this._gpuProxy.hebbianBound(`${this.name}_${name}`, lr);
+          this._gpuProxy.hebbianBound(`${this.name}_${name}`, lrEff);
         } catch {
         }
         const PROBE_CRITICAL = this._probeCriticalProjectionsSet ||= /* @__PURE__ */ new Set([
@@ -53346,7 +53360,7 @@ var CLUSTER_HEBBIAN_MIXIN = {
           }
           const preF2 = this.regionSpikes(src);
           const postF2 = this.regionSpikes(dst);
-          await this._ojaUpdateChunked(proj, preF2, postF2, lr, ojaOpts);
+          await this._ojaUpdateChunked(proj, preF2, postF2, lrEff, ojaOpts);
         }
         continue;
       }
@@ -53361,16 +53375,16 @@ var CLUSTER_HEBBIAN_MIXIN = {
       const postF = this.regionSpikes(dst);
       if (this._sparsePool && this._sparsePool.ready) {
         try {
-          await this._sparsePool.hebbianUpdate(proj, preF, postF, lr);
+          await this._sparsePool.hebbianUpdate(proj, preF, postF, lrEff);
         } catch {
-          await this._ojaUpdateChunked(proj, preF, postF, lr, ojaOpts);
+          await this._ojaUpdateChunked(proj, preF, postF, lrEff, ojaOpts);
         }
       } else {
-        await this._ojaUpdateChunked(proj, preF, postF, lr, ojaOpts);
+        await this._ojaUpdateChunked(proj, preF, postF, lrEff, ojaOpts);
       }
       if (this._gpuProxyReady && this._gpuProxy && this._gpuProxy.hebbian) {
         try {
-          this._gpuProxy.hebbian(`${this.name}_${name}`, preF, postF, lr);
+          this._gpuProxy.hebbian(`${this.name}_${name}`, preF, postF, lrEff);
         } catch {
         }
       }
@@ -55357,7 +55371,16 @@ var NeuronCluster = class {
         const abExcitatory = EMISSION_PAIRS.has(abKey) ? 0.5 : 0.7;
         const baExcitatory = EMISSION_PAIRS.has(baKey) ? 0.5 : 0.7;
         const abTime = Date.now();
-        const ab = new SparseMatrix(bSize, aSize, { wMin: -0.4, wMax: 0.4 });
+        const _smWMax = (() => {
+          try {
+            const v = parseFloat(process?.env?.DREAM_SM_WMAX);
+            return Number.isFinite(v) && v > 0 ? v : 0.4;
+          } catch {
+            return 0.4;
+          }
+        })();
+        const _wMaxFor = (key) => key === "sem_to_motor" || key === "sem_to_word_motor" ? _smWMax : 0.4;
+        const ab = new SparseMatrix(bSize, aSize, { wMin: -_wMaxFor(`${a}_to_${b}`), wMax: _wMaxFor(`${a}_to_${b}`) });
         const buildLayerMask = (region, regionLayer) => {
           if (!this.layerId || !region) return null;
           const mask = new Uint8Array(region.end - region.start);
@@ -55383,7 +55406,7 @@ var NeuronCluster = class {
         _projIdx++;
         if (logConstruction) console.log(`[Cluster ${name}]   ${_projIdx}/${pairs.length * 2} ${a}_to_${b}${TOPOGRAPHIC_PAIRS.has(abKey) ? " [topographic]" : ""} (${bSize.toLocaleString()}\xD7${aSize.toLocaleString()}, nnz=${ab.nnz.toLocaleString()}) in ${Date.now() - abTime}ms`);
         const baTime = Date.now();
-        const ba = new SparseMatrix(aSize, bSize, { wMin: -0.4, wMax: 0.4 });
+        const ba = new SparseMatrix(aSize, bSize, { wMin: -_wMaxFor(`${b}_to_${a}`), wMax: _wMaxFor(`${b}_to_${a}`) });
         const srcMaskBA = this.lamination && bRegion ? buildLayerMask(bRegion, 1) : null;
         const dstMaskBA = this.lamination && aRegion ? buildLayerMask(aRegion, 2) : null;
         if (TOPOGRAPHIC_PAIRS.has(baKey) && typeof ba.initTopographicProjection === "function") {

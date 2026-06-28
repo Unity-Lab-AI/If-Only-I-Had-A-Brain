@@ -11,7 +11,7 @@
 //
 // Pass sequence (every 5 min during dream window):
 //   1. EpisodicMemory.findPromotionCandidates(20) — top-20 promoted-eligible Tier 1 episodes
-//   2. Group by cosine > 0.7 (SCHEMA_GROUP_COSINE) — episodes that share semantic content cluster into one schema
+//   2. Group by cosine > 0.85 (SCHEMA_GROUP_COSINE) — episodes that share semantic content cluster into one schema
 //   3. For each cluster: SchemaStore.createSchema OR find-existing + reinforce
 //   4. Replay each schema 3-5 times via Hebbian through its hippocampus_to_cortex_projection
 //      replay_lr = base_lr × (1 + emotional_weight) × log(1 + frequency)
