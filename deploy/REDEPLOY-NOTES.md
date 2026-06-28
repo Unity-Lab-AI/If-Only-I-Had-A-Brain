@@ -266,3 +266,14 @@ Standard git-archive overlay + restart at the TOP of this file — but **`git ch
 - **donor-v0.3.2** — Light/Dark/System theme toggle (OS-following default via egui `raw.system_theme`, dual readable palettes) + ALL settings persisted to `<data_dir>/settings.json` (`config::DonorSettings`: theme, server, name, per-GPU enable/%, auto-reconnect). Both binaries rebuilt + Forgejo release + site links bumped to donor-v0.3.2. `cargo check`/`build` clean; Windows exe verified `PE32+ (GUI)` (no console).
 
 Release flow: `fj --host … release --repo UnityAILab/If-Only-I-Had-A-Brain create donor-vX --tag donor-vX --attach <win> --attach <linux>`. Asset names MUST stay `unity-donor-windows-x86_64.exe` + `unity-donor-linux-x86_64` (the site links + donor-app self-update expect them).
+
+---
+
+## 2026-06-28 — slow-link (Starlink) donor: chunked-upload timeout 45s→3min
+
+Re-measure after the DDW deploy (the brief's "all donors actually working" gating risk):
+- ✅ EventLoop blocks down 72s → ~2.8s (inner-voice cap + yields working).
+- ✅ Fast donors compute fine (Gn/s>0, gpuHits with 0 misses), 0 buffered.
+- ⚠ A slow-link donor's chunked cross-projection uploads (`cortex_motor_to_sem`, `auditory_to_phon`, …) **timed out after 45000ms** → retry → never fully replica-synced. Root cause is the donor LINK (Starlink: satellite RTT + jitter + ~15s handover stalls), NOT the event loop (blocks are 2.8s, not 45s).
+
+**Fix:** `Environment=DREAM_SPARSE_UPLOAD_TIMEOUT_MS=180000` (3 min; default 45s, `server/brain-server/gpu.js:1198`) added to the unit + template — lets satellite-class donors finish the upload + fully replica-sync instead of timing out. Also brought the repo `deploy/unity-brain.service` template in sync with the box: `DREAM_DF7_FANOUT=1` (was only on the box) + this new timeout. (Box additionally carries operator tuning not in the template: `DREAM_BATTERY_GATE_ADVISORY=1`, `DREAM_CONSOLIDATION_DISABLE=1`.) `DREAM_DF7_FANOUT_PROPAGATE` stays OFF until replica sync is proven clean — which this change is meant to finally achieve for slow donors.
