@@ -46,6 +46,46 @@ If you're reading a public doc / HTML claim ("Unity has completed high school bi
 
 ## OPEN TASKS
 
+### FLAP — Linux native-donor red/0 Gn/s investigation + connection-flap resistance + donor telemetry gap (Gee 2026-06-28) — IN PROGRESS (branch `feature/community-compute-donor-count`)
+
+**Gee verbatim per LAW #0:**
+
+> *"write todo and update docs before final push and fresh walk"*
+
+> *"The problem is that I end up having to reconnect a lot, might be a problem with connection flaps, so we need it to be flap resistent"*
+
+**Forwarded handoff brief (Gee relayed it as the work spec — verbatim asks):**
+
+> *"Sponge — your donor stays RED / 0 Gn/s while the Windows donors compute fine. You're on the LINUX native donor-app; they're on Windows. This is a platform/compat investigation."*
+
+> *"capture osPlatform + engineBackend (cuda/vulkan/dx12/software) + driverVersion + computeCapability at gpu_register and show them in the Clients table"*
+
+> *"Make cuModuleLoadData failure LOUD in cuda.rs (right now a JIT fail looks like a silent 0)."*
+
+> *"ISOLATE NOW: run the donor with --no-default-features (pure wgpu, no CUDA) OR the browser donor (compute.html) on Linux."*
+
+**INVESTIGATION CONCLUSION (live evidence on Sponge's actual Linux box, 2026-06-28) — the handoff's Blackwell theory is DISPROVEN for this hardware:**
+
+- Sponge's Linux donor box GPUs are **RTX 4070 SUPER (Ada sm_89)** + **RTX 2060 (Turing sm_75)** — **NO Blackwell / RTX 5070 Ti present**. Driver **595.71.05 / CUDA 13.2** (newer than anything Blackwell-JIT needs). The shipped `kernels.ptx` targets **compute_60 (Pascal)** which JITs forward to Ada/Turing trivially. So "PTX-for-12.4 has no Blackwell SASS → JIT fails on an under-versioned driver" does NOT apply here.
+- Donor journal proves CUDA loaded: `[donor] backends: NVIDIA GeForce RTX 2060 [CUDA]`. If PTX load had failed, `CudaEngine::new` would have `Err`'d → wgpu fallback; it didn't. **Kernels loaded, CUDA is live.** "Registers but kernels never run" is also wrong for this box.
+- Sponge donates the **RTX 2060** (GPU slot 1) at high util, NOT the 4070 SUPER (his display card) — that explains the low server `score`; weak card, his choice, not a bug.
+- **ROOT CAUSE (matches Gee's own words):** the WS connection RESETS every ~3–5 min — journal shows `ws error: Connection reset by peer (os error 104)` / `Connection reset without closing handshake` on a `wss://…git.unityailab.com/ws` link over Starlink CGNAT + reverse proxy. Each reset triggers a FULL engine rebuild + reconnect + re-init of all 7 clusters (40M neurons) → minutes of 0 throughput per flap → dashboard red. The donor never sends its OWN keepalive pings (`donor.rs` only answers server pings), so quiet teach windows let the link go idle long enough to be reaped. **It's connection flapping, not the GPU.**
+
+**Tasks:**
+
+- **FLAP.1 — donor client-initiated WS keepalive ping.** `donor-app/src/donor.rs` — add a ~15s outbound `Message::Ping` interval in the session select loop so the link never goes idle long enough for CGNAT / proxy to reap it (the infra-agnostic flap PREVENTION).
+- **FLAP.2 — donor fast dead-link detection.** Track last-inbound-frame time; if no traffic (incl. pong) for an idle window, proactively break → reconnect instead of waiting minutes for `os error 104`. Recover fast.
+- **FLAP.3 — jittered, capped reconnect backoff.** Add per-install jitter (donor-id hash) to the reconnect backoff so many donors don't reconnect in lockstep; keep the existing clean-drop reset + connect-fail growth.
+- **FLAP.4 — LOUD CUDA load failure logging.** `donor-app/src/cuda.rs` — prominent `[cuda] ⚠⚠ PTX MODULE LOAD FAILED` banner around `load_module` / `load_function` so a JIT/load failure is never a silent 0 (Gee's ask).
+- **FLAP.5 — donor telemetry: osPlatform + engineBackend + driverVersion + computeCapability.** `protocol.rs` (GpuRegister + GpuTelemetry fields) + `donor.rs`/`compute.rs`/`cuda.rs` (populate from `std::env::consts::OS`, wgpu backend tag + software-adapter detection, wgpu `driver_info`, CUDA compute-capability query — best-effort, empty when unknown).
+- **FLAP.6 — server captures + shows the new telemetry.** `server/brain-server.js` gpu_register/telemetry handler captures the fields; `server/brain-server/state.js` clients block includes them; `html/dashboard.html` Clients table shows them (with `—` for unknown) so a 0-Gn/s donor's platform/backend/driver is visible, never log-archaeology again.
+- **FLAP.7 — rebuild Windows + Linux donor binaries, new release, bump site download links** (the donor-app changes require a rebuild + release + `index.html`/`html/compute.html`/`html/legend.html`/dashboard link bump, per the standing release flow).
+- **FLAP.8 — correct `docs/SPONGE-LINUX-DONOR-COMPAT-INVESTIGATION.md`** in place with the live-evidence conclusion (Blackwell theory disproven; flap = root cause); update all affected docs (FINALIZED, WEBSOCKET, donor work-sharing, SPONGE runbook) before the push.
+
+**STATUS:** [~] CODE + DOCS + BUILD DONE — FLAP.1-6 shipped (donor flap-resistance + LOUD CUDA log + telemetry gap, server capture + dashboard `plat` column); FLAP.8 docs corrected (investigation doc RESOLVED banner + WEBSOCKET). FLAP.7 binaries rebuilt v0.3.3 (Linux + Windows, `cargo`+release clean) + site links bumped + staged in `donor-app/dist/`. `node --check` clean. **REMAINING:** commit → develop → main cascade (Git Flow) + push, publish `donor-v0.3.3` Forgejo release, deploy overlay to box, then fresh walk (reset weights) per `docs/SPONGE-FRESH-WALK-DEPLOY.md`. Verbatim archived in `docs/FINALIZED.md` 2026-06-28 FLAP.
+
+---
+
 ### ⛔ WHAT'S LEFT TO MEET THE GOAL — "all donors compute + all on the leaderboard, deployed + verified" (super-review tracker, Gee 2026-06-28)
 
 Live-follow checklist. The CODE is done + on both `main`s (`d32f932`); everything below is what stands between here and the goal:
