@@ -6499,9 +6499,27 @@ wss.on('connection', (ws, req) => {
   ws._isAlive = true;
   ws.on('pong', () => {
     ws._isAlive = true;
-    // PR.4 — round-trip latency from the heartbeat ping/pong pair.
+    // PR.4 — round-trip latency from the heartbeat ping/pong pair, SMOOTHED.
+    // The heartbeat samples once per 30s, so a single jittery pong (Starlink
+    // handover, a briefly-backgrounded/throttled browser-tab donor) would pin
+    // the displayed RTT — and the red "unhealthy" flag — high for a full 30s,
+    // making the row flap in/out of red on bad samples. We take the MEDIAN of
+    // the last 5 samples instead: a lone spike is rejected, only a sustained
+    // high RTT moves the reported value (which both the dashboard + the F1/F2
+    // donor health-score read via c.rttMs). c.rttRawMs keeps the latest raw.
     const c = brain.clients.get(ws);
-    if (c) { c.lastSeen = Date.now(); if (ws._pingSentAt) c.rttMs = Math.max(0, Date.now() - ws._pingSentAt); }
+    if (c && ws._pingSentAt) {
+      const raw = Math.max(0, Date.now() - ws._pingSentAt);
+      c.lastSeen = Date.now();
+      c.rttRawMs = raw;
+      if (!Array.isArray(c._rttSamples)) c._rttSamples = [];
+      c._rttSamples.push(raw);
+      while (c._rttSamples.length > 5) c._rttSamples.shift();
+      const sorted = c._rttSamples.slice().sort((a, b) => a - b);
+      c.rttMs = sorted[Math.floor(sorted.length / 2)]; // median → outlier-robust
+    } else if (c) {
+      c.lastSeen = Date.now();
+    }
   });
 
   // Send initial state. The admin/viewer mode comes in a SEPARATE
