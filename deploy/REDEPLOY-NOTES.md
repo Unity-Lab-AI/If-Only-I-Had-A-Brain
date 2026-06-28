@@ -292,3 +292,15 @@ Implements `docs/SPONGE-DONOR-WORK-SHARING.md` (operator: "there should be no pr
 - **F6** leaderboard already ranks by accumulated contributed throughput — self-corrects once idle strong donors start working.
 
 Verified by mock: fast(77ms/17.6Gn/s)=score 17.6 = primary; slow(5.5s-RTT/24GB)=score 0 = not primary, 0 work; weighted plan of 10 → fast 7 / mid 3 / slow 0. Live multi-donor validation after deploy + fresh-walk. Rollback: `DREAM_DF7_FANOUT=0`.
+
+---
+
+## 2026-06-28 — DDW F8/F9: capability-aware routing + honest binding-limit visibility
+
+Hardening for the WebGPU storage-binding failure mode (raised by a peer review). NOTE: verified NOT currently occurring — live pool shows all donors negotiating ~16 GB bind caps (RTX 4070 Ti S / 5060 Ti / 5070 Ti all ~16300 MB), `GPU proxy ready 17/17`, no `_cortexUploadFailure`. So this is defense-in-depth, not a fix for the present 0-Gn/s (that's Starlink RTT + the work-sharing correctly down-weighting a laggy replica). Server-side, gated by `DREAM_DF7_FANOUT`, no forced redeploy (applies next restart).
+
+- **F8** `_syncReplicaToDonor` (`gpu.js`): skip replica-sync for a donor whose `maxBindMB` < `DREAM_DF7_MIN_BIND_MB` (default 1800, below the 2 GB WebGPU spec minimum) — only a genuinely-unraised-limit device (e.g. the 128 MiB default) is skipped; all normal cards sync. Avoids a wasted 100 MB+ upload + a silent 0-Gn/s bind-fail. Sets `client._bindIncapable`.
+- **F9** `state.js` `_getProfilingState`: per-donor `maxBindMB` + `bindIncapable`; top-level `cortexUpload` = `{failed, looksLikeBindingLimit, reason, ageMs}` from `_cortexUploadFailure`. `dashboard.html` renders the donor bind cap, shows "⚠ buffer too small for cortex" on an incapable donor, and a banner when cortex matrices fail to bind — the HONEST reason instead of a mystery high-RTT/0-Gn/s row.
+- F7 (matrix tiling) deliberately NOT done — bigger project, nothing hitting the limit.
+
+Verified: server JS + dashboard parse; `_getProfilingState` mock → cortexUpload + per-donor maxBindMB/bindIncapable well-formed (capable 16302 MB donor vs an incapable 128 MB one).
