@@ -84,7 +84,10 @@ const SERVER_GPU_MIXIN = {
     //       + noise × noiseAmp
     // These are the same modulation factors engine.js applies on the client side.
     const p = this.persona;
-    const psiGain = Math.max(0.8, Math.min(1.5, 0.9 + (this.psi || 0) * 0.004));
+    // CGATE.4 — use the self-calibrating Ψ gain computed in the psi update
+    // (baseline-relative tanh, set on `this.psiGain`); fall back to a neutral
+    // 1.0 only before the first psi update has run.
+    const psiGain = (typeof this.psiGain === 'number' && isFinite(this.psiGain)) ? this.psiGain : 1.0;
     const emotionalGate = 0.7 + (this.arousal || 0.5) * 0.6;
     const driveFactor = 0.8 + ((this.clusters.hypothalamus?.spikeCount || 0) > 100 ? 0.4 : 0.0);
     const errorSignal = clusterName === 'cortex' || clusterName === 'basalGanglia'

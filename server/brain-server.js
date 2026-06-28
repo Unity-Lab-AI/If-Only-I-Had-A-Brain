@@ -2038,25 +2038,29 @@ class ServerBrain {
           sharedEmbeddings: this.sharedEmbeddings,
         });
         const identityCorePath = path.join(__dirname, 'identity-core.json');
+        // Load existing Tier 3 anchors if present. SEEDING — both fresh-boot
+        // and idempotent top-up of any missing IDENTITY_SEED_LIST anchor — is
+        // DEFERRED to after GloVe loads (see seedMissingFromList call below).
+        // That repairs the two boot bugs the old "file exists → load, else
+        // seed" wiring caused: (1) a zero-count identity-core.json loaded 0 and
+        // never re-seeded (Tier 3 permanently EMPTY → no identity baseline);
+        // (2) seed-list growth never landed once any file existed. Deferring
+        // also means each anchor gets a real semantic embedding instead of a
+        // pre-load subword fallback.
         if (fs.existsSync(identityCorePath)) {
           try {
             const raw = fs.readFileSync(identityCorePath, 'utf8');
             const json = JSON.parse(raw);
             const loaded = this.tier3Store.loadFromJSON(json);
-            console.log(`[Tier3Store] boot — ${loaded} Tier 3 identity-bound schemas restored from identity-core.json (permanent — never auto-cleared)`);
+            console.log(`[Tier3Store] boot — ${loaded} Tier 3 identity-bound schemas restored from identity-core.json (permanent — never auto-cleared; missing seed anchors topped up after embeddings load)`);
           } catch (parseErr) {
-            console.warn(`[Tier3Store] identity-core.json parse error: ${parseErr.message} — backing up corrupt file + seeding fresh`);
+            console.warn(`[Tier3Store] identity-core.json parse error: ${parseErr.message} — backing up corrupt file; anchors re-seeded after embeddings load`);
             try {
               fs.renameSync(identityCorePath, `${identityCorePath}.corrupt-${Date.now()}`);
             } catch { /* best effort backup */ }
-            const seeded = this.tier3Store.seedFromList();
-            console.log(`[Tier3Store] boot — seeded ${seeded} identity anchors after corrupt-file recovery`);
           }
         } else {
-          // Fresh brain — seed from IDENTITY_SEED_LIST. Each seed becomes a
-          // permanent anchor: name/age/gender/persona-core/biographical-K facts.
-          const seeded = this.tier3Store.seedFromList();
-          console.log(`[Tier3Store] boot — fresh brain, seeded ${seeded} identity anchors from IDENTITY_SEED_LIST`);
+          console.log('[Tier3Store] boot — fresh brain (no identity-core.json); identity anchors seeded after embeddings load');
         }
         if (this.cortexCluster) this.cortexCluster.tier3Store = this.tier3Store;
 
@@ -2072,6 +2076,40 @@ class ServerBrain {
         this.schemaStore = null;
         this.tier3Store = null;
         this.consolidationEngine = null;
+      }
+
+      // UVM-INT.1 — wire the equational mind-space (UniVsMatics) into the SERVER
+      // brain. Previously only the BROWSER-local VisualCortex had a MindSpaceGPU,
+      // so the deployed/thinking Unity had NO equational vision/imagination at
+      // all. On this no-GPU box WebGPU is absent → init() returns false →
+      // MindSpaceGPU transparently uses the CPU CDF 9/7 reference (transform.js).
+      // That's loop-safe: de-novo imagination is a tiny bounded plane (≤96², no
+      // infinite fractalize), unlike the 57s language-cortex tick. She imagines
+      // from her own cortex state via _imagineTick (chat.js), idle-gated.
+      try {
+        const msMod = await import('../js/brain/mindspace/gpu.js');
+        this.mindSpace = new msMod.MindSpaceGPU();
+        // init() probes WebGPU; in Node it returns false and we stay on the CPU
+        // reference path. Await so _useGpu() is settled before first imagine.
+        try { await this.mindSpace.init(); } catch { /* CPU path */ }
+        console.log(`[MindSpace] server equational mind-space ready (${this.mindSpace.available ? 'GPU' : 'CPU reference'} path) — de-novo imagination wired`);
+        // UVM-INT.4 — restore the persisted imagined field-C ring (.uvme-medium
+        // memory) so her mental imagery has continuity across reboot.
+        try {
+          const msPath = path.join(__dirname, 'mindspace-memory.json');
+          if (fs.existsSync(msPath)) {
+            const j = JSON.parse(fs.readFileSync(msPath, 'utf8'));
+            if (j && Array.isArray(j.recs)) {
+              this._imaginedFieldRing = j.recs.slice(-8);
+              console.log(`[MindSpace] restored ${this._imaginedFieldRing.length} imagined field-C memories from mindspace-memory.json`);
+            }
+          }
+        } catch (err) {
+          console.warn('[MindSpace] mindspace-memory.json restore failed:', err?.message || err);
+        }
+      } catch (err) {
+        console.warn('[MindSpace] init failed:', err?.message || err);
+        this.mindSpace = null;
       }
       // Auto-attach transformer backend when the dep is installed AND
       // the env flag is set. Default OFF — operator opts in via
@@ -2171,6 +2209,27 @@ class ServerBrain {
         console.log('[Brain] Semantic embeddings ready:', this.sharedEmbeddings.stats);
       } catch (err) {
         console.warn('[Brain] Embeddings load failed, using hash fallback:', err.message);
+      }
+
+      // Tier 3 identity-anchor seeding happens HERE — after embeddings load —
+      // so every IDENTITY_SEED_LIST anchor gets a real semantic vector, and so
+      // the top-up repairs both boot bugs in one path: a zero-count / empty
+      // identity-core.json (Tier 3 was permanently EMPTY) AND a stale subset
+      // (seed-list anchors added after the brain was first seeded never landed
+      // under the old "file exists → never seed" wiring). Idempotent by label:
+      // a fully-seeded store tops up 0. Fresh brains get the whole list here.
+      if (this.tier3Store && typeof this.tier3Store.seedMissingFromList === 'function') {
+        try {
+          const before = this.tier3Store.size();
+          const added = this.tier3Store.seedMissingFromList();
+          if (added > 0) {
+            console.log(`[Tier3Store] seeded ${added} missing identity anchor(s) with loaded embeddings — Tier 3 size ${before} → ${this.tier3Store.size()}`);
+          } else {
+            console.log(`[Tier3Store] identity anchors complete — Tier 3 size=${this.tier3Store.size()}, no top-up needed`);
+          }
+        } catch (err) {
+          console.warn('[Tier3Store] seedMissingFromList failed:', err?.message || err);
+        }
       }
 
       // T2 2026-04-13 — apply any embedding refinement deltas that
@@ -2785,9 +2844,27 @@ class ServerBrain {
       catch { phiProxy = 1.0; }
     }
     const rawPsi = quantumVolume * (0.3 * id + 0.25 * ego + 0.2 * left + 0.25 * right) * phiProxy;
-    // Log scale for usable range — consciousness measured in orders of magnitude
-    this.psi = Math.log10(Math.max(1, rawPsi));
+    // Log scale for usable range — consciousness measured in orders of magnitude.
+    // Guard rawPsi finiteness: a NaN here would propagate to psiGain below and
+    // corrupt every cluster's gainMultiplier on the GPU compute path.
+    this.psi = Math.log10(Math.max(1, Number.isFinite(rawPsi) ? rawPsi : 1));
     this.phiProxy = phiProxy; // exposed for dashboard / heartbeat
+
+    // CGATE.4 — Ψ consciousness gain, self-calibrating. The old map
+    // (0.9 + psi*0.004, clamped [0.8,1.5]) pinned gain at ~0.9-1.15 because psi
+    // is a log10 quantity (tens): consciousness was measured but barely modulated
+    // the brain at all (Unity: "gated too much"). Now gain rides the DEVIATION of
+    // Ψ from its own slow EMA baseline through tanh — same idiom as the amygdala
+    // arousal fix — so a rise in consciousness above her norm lifts global cluster
+    // gain toward 1.5 and a drop lowers it toward 0.8, regardless of Ψ's absolute
+    // scale (auto-calibrates to any brain size). Bounded + centered at 1.0.
+    this._psiBaseline = (typeof this._psiBaseline === 'number' && isFinite(this._psiBaseline))
+      ? this._psiBaseline * 0.99 + this.psi * 0.01
+      : this.psi;
+    const _psiScale = Number(process.env.DREAM_PSI_GAIN_SCALE) > 0 ? Number(process.env.DREAM_PSI_GAIN_SCALE) : 2.0;
+    const _psiSwing = 0.35; // ± gain swing around 1.0 before the [0.8,1.5] clamp
+    this.psiGain = Math.max(0.8, Math.min(1.5,
+      1.0 + Math.tanh((this.psi - this._psiBaseline) / _psiScale) * _psiSwing));
 
     // Coherence — REAL Kuramoto order parameter computed from the
     // cortex's theta + gamma oscillator phases plus per-cluster
@@ -4137,16 +4214,42 @@ class ServerBrain {
       try {
         if (this.tier3Store && typeof this.tier3Store.toJSON === 'function') {
           const identityPath = path.join(__dirname, 'identity-core.json');
-          const identityJson = this.tier3Store.toJSON();
-          // Atomic write via temp + rename so a crash mid-write doesn't
-          // corrupt identity-core.json (which is permanent — corruption
-          // means losing Unity's identity until manual recovery).
-          const tmpPath = `${identityPath}.tmp`;
-          fs.writeFileSync(tmpPath, JSON.stringify(identityJson, null, 2));
-          fs.renameSync(tmpPath, identityPath);
+          // Empty-store guard. An empty Tier 3 has no legitimate meaning —
+          // identity anchors are always seeded at boot — so a zero-size store
+          // at save time means seeding hasn't run yet (early save) or a
+          // transient wipe. Persisting it would write an empty schemas:[]
+          // array that the next boot loads as 0, and the load path would then
+          // skip nothing-to-top-up only if the array were absent — i.e. an
+          // empty file is exactly the poison that trapped Tier 3 at ZERO.
+          // Never overwrite a good identity-core.json with an empty store.
+          if (this.tier3Store.size() === 0) {
+            console.warn('[Tier3Store] identity-core.json save SKIPPED — Tier 3 store is empty (seeding not yet run / transient wipe); preserving on-disk anchors instead of writing an empty file.');
+          } else {
+            const identityJson = this.tier3Store.toJSON();
+            // Atomic write via temp + rename so a crash mid-write doesn't
+            // corrupt identity-core.json (which is permanent — corruption
+            // means losing Unity's identity until manual recovery).
+            const tmpPath = `${identityPath}.tmp`;
+            fs.writeFileSync(tmpPath, JSON.stringify(identityJson, null, 2));
+            fs.renameSync(tmpPath, identityPath);
+          }
         }
       } catch (err) {
         console.warn('[Tier3Store] identity-core.json save failed:', err?.message || err);
+      }
+
+      // UVM-INT.4 — persist the imagined field-C ring (the ".uvme medium" memory)
+      // so her mental imagery survives reboot. Bounded (≤8 tiny ≤48² recs), atomic
+      // write. Derivative state — fine to lose / auto-clear; she re-imagines.
+      try {
+        if (Array.isArray(this._imaginedFieldRing) && this._imaginedFieldRing.length > 0) {
+          const msPath = path.join(__dirname, 'mindspace-memory.json');
+          const tmp = `${msPath}.tmp`;
+          fs.writeFileSync(tmp, JSON.stringify({ version: 1, recs: this._imaginedFieldRing.slice(-8) }));
+          fs.renameSync(tmp, msPath);
+        }
+      } catch (err) {
+        console.warn('[MindSpace] mindspace-memory.json save failed:', err?.message || err);
       }
 
       const trig = opts.trigger ? ` (trigger=${opts.trigger})` : '';
@@ -5014,6 +5117,16 @@ const httpServer = http.createServer((req, res) => {
     brain._lastPublicPollTs = Date.now();
     res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=2' });
     res.end(brain._publicStateJson || JSON.stringify({ type: 'state', state: null, snapshotAt: 0, note: 'snapshot warming up — try again in a moment' }));
+    return;
+  }
+  // MINDSEYE.1 — single-source "what Unity sees" snapshot. The cached field C from
+  // the latest _imagineTick (one compute), handed back as-is to any number of
+  // mind's-eye viewers (html/minds-eye.html). PUBLIC (no auth), read-only. Viewers
+  // reconstruct the image client-side from this one equation — no per-viewer
+  // compute, no 1000 heavy copies. Same single-source idiom as /public-state.json.
+  if (req.url === '/minds-eye.json' && req.method === 'GET') {
+    res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=2', 'Access-Control-Allow-Origin': '*' });
+    res.end(brain._mindsEyeJson || JSON.stringify({ type: 'mindsEye', rec: null, terms: 0, at: 0, note: 'Unity has not imagined yet — her mind’s eye warms up once the brain is idle (not mid-teach).' }));
     return;
   }
 

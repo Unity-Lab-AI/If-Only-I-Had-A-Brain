@@ -2476,7 +2476,17 @@ async function bootUnity(apiKey, perms) {
   // Image display — show generated images inline. If the image URL fails
   // to load, the <img> element is hidden entirely (no "Loading..." alt
   // placeholder bleeding into the chat) and a brief text fallback shows.
-  brain.__appImageHandler = (url) => {
+  brain.__appImageHandler = (arg) => {
+    // IMG-GEN — accept a finished url (string, browser-local engine path) OR
+    // {url, prompt} (server/RemoteBrain). When only a prompt is given, render it
+    // through Pollinations on the client — the deployed server has no image
+    // backend, so the user's browser turns Unity's prompt into the actual image.
+    let url = null;
+    if (typeof arg === 'string') url = arg;
+    else if (arg && arg.url) url = arg.url;
+    else if (arg && arg.prompt && pollinations && typeof pollinations.generateImage === 'function') {
+      try { url = pollinations.generateImage(arg.prompt); } catch (e) { url = null; }
+    }
     if (!url) return;
     showSpeechBubble('Image generating...', 3000);
     if (chatPanel) {

@@ -4,7 +4,7 @@
 >
 > **Access model (2026-06-20 pre-alpha):** the pages ship as a DEPLOYED STATIC SITE; a persistent Node brain-server runs on the same host behind an nginx reverse-proxy. Two WS lanes in deployed mode — public donor lane `wss://<host>/ws` and the Forgejo-authed admin lane `wss://<host>/admin/ws` (no raw `:7525` port is exposed publicly). LOCAL DEV is unchanged: `start.bat` / `Savestart.bat` boot the brain locally and open the pages on `http://localhost:7525` with a direct `ws://localhost:7525` socket. Each page below is described for BOTH (deployed primary / local dev). Cognition stays 100% EQUATIONAL — no text-AI/LLM in the cognition path.
 
-## Inventory — 9 HTMLs total
+## Inventory — 11 HTMLs total
 
 | File | Purpose | Access (deployed / local dev) | Requires brain-server? | Deploy-safe? |
 |------|---------|-------------------------------|------------------------|--------------|
@@ -17,6 +17,8 @@
 | `html/brain-equations.html` | Public-facing math reference for equational cognition | Deployed + local: manual (link from index.html) | NO (static) | YES |
 | `html/unity-guide.html` | Persona + capabilities tour | Deployed + local: manual (link from index.html) | NO (static) | YES |
 | `html/gpu-configure.html` | Admin GPU tier-config UI | Local: `windows/GPUCONFIGURE.bat` (config-write endpoint is loopback-only) | YES (config-write endpoint) | NO |
+| `html/dashboard-public.html` | Public read-only brain monitor — polls one cached `GET /public-state.json` snapshot (N viewers cost one `getState()`) | Deployed + local: served static; no WS, no auth | reads `/public-state.json` (shows "warming up" without it) | YES (static + single-source poll) |
+| `html/minds-eye.html` | Public "what Unity sees" viewer — polls one cached `GET /minds-eye.json` field C, reconstructs the image CLIENT-SIDE via the mind-space inverse CDF 9/7. Single shared source, no per-viewer compute. Linked from `index.html` 👁 MIND'S EYE footer button | Deployed + local: served static; same-origin poll + localhost dev fallback | reads `/minds-eye.json` (shows "warming up" until she's idle enough to imagine) | YES (static + single-source poll) |
 
 **Admin/viewer split (per Gee 2026-06-18):**
 

@@ -4,6 +4,8 @@
 > θ (Unity's identity) drives every parameter. Ψ (consciousness) emerges from the volume. Drug state δ(t) additively modulates θ per substance per route via real-time pharmacokinetic curves.
 > One-liner equations stating their purpose. Tables organize by section: Drug State · Curriculum · Master · Neurons · Synapses · Modules · Oscillations · Sensory→Motor · Memory · Language · Consciousness · GPU · Scaling.
 >
+> 2026-06-27 sweep stamp — TWO equation changes this batch (commit `0d97804`, feature/tier3-identity-seed-repair). **(1) Ψ consciousness gain [CGATE.4]:** `gainMultiplier = 0.9 + Ψ×0.004` (which pinned gain ~1.0 — inert on a log-scaled Ψ) → SELF-CALIBRATING `clamp(1.0 + tanh((ψ−ψ̄)/scale)·0.35, 0.8, 1.5)` where `ψ=log10(max(1,Ψ))` and `ψ̄` is its slow EMA baseline (`ψ̄ ← 0.99·ψ̄ + 0.01·ψ`, scale=2.0 env `DREAM_PSI_GAIN_SCALE`), NaN-guarded — consciousness now genuinely modulates all clusters (see §9 + §1 θ→Ψ pipeline). **(2) GlobalWorkspace ignition [CGATE.2]:** the hard theta gate (ignition barred on the entire upper half of every theta cycle — 50% of ticks) → GRADED threshold modulator `effThreshold = ignitionₜₕ + (1−thetaOpenness)·0.22`, `thetaOpenness = ½(1+cos(2π·phase))`, base `ignitionₜₕ` 0.45→0.35 (env `DREAM_GW_IGNITION`) — strong content can ignite any phase (see §9). **Plus** the equational mind-space gained DE-NOVO imagination: a cortex activation vector folded into a field C via the bounded forward CDF 9/7 transform (`I(x,y)=Σ c_k·ψ_k`) — never the `fractalize` infinite-zoom path, hard `maxSide≤96` resolution cap. Math detail: `docs/MINDSPACE-INTEGRATION.md`. Drug δ(t), Oja's rule, Kuramoto, master equation, Friston predictive-coding, BCM — unchanged.
+
 > 114.19fp sweep stamp 2026-06-17 — NO equation changes this sweep. 20 I-track fixes (I.1-I.20) shipped during operator-driven K-curriculum live test were ALL code hygiene / observability / cross-platform polish / data-loss-prevention — none modify any equation in any section below. Most-impactful equational implications: (1) `SparseMatrix.propagate(spikes, outBuf)` signature extended with optional pooled output buffer (I.13) — eliminates `new Float64Array(rows)` per-call allocation that was the +231 MB/min leak source during `_teachHebbian` runs; equation `I_i = Σ_j W_ij · s_j` unchanged, just bytes-out-the-door reduced. (2) `_teachPredictiveError` pools `_predictPropagateScratch` Float64Array sized to synapse-matrix rows (I.13) — predictive-coding equation `Δw = lr · error · lastSpikes · 0.3` unchanged, allocation eliminated. (3) `setImmediate` yield at `_teachHebbian` entry (I.14, 50ms throttle via `_lastHebbianYieldAt`) — Hebbian/Oja `Δw[i,j] = lr · y[j] · (x[i] − y[j] · w[i,j])` unchanged in math, just yields event loop between dispatches. (4) Consolidation deadline cap (I.8, `DREAM_CONSOLIDATION_MAX_MS` default 30s) + SEED-phase skip — consolidation pass equation unchanged, wall-clock cap added. (5) Top-K=3 schema naming (I.7) — `_deriveLabel` returns `top3 = arg-topK(token_freq, 3).join('-')` instead of top-1 `argmax(token_freq) + '-schema'`; expanded stop-word list keeps generic curriculum noise (`learning/curriculum/phase/teach/cell/heartbeat/...`) out of the rank. (6) Inner-thought 7-source seed rotation (I.9) — `_pickInnerThoughtSeed` rotation `[learning, mood, chat-recall, memory, identity]` → `[learning, mood, k-vocab-recent, cell-progress, chat-recall, memory, identity]`; modulo arithmetic + first-non-null-pattern selection unchanged. (7) Combined nvidia-smi query (I.20) — `memory.used,utilization.gpu` in single execSync; VRAM% = `memory.used / RESOURCES.gpu.vram × 100`, util% direct from `utilization.gpu`. (8) Honest "unavailable" telemetry (I.19 root-cause closure) — no math-lie fallbacks; when `_gpuVramQueryWorking === false`, dashboard renders explicit unavailable label instead of fake 50%. All Oja's rule, Kuramoto order parameter, master equation `dx/dt = F(x, u, θ, t) + η`, Ψ = √(1/n)·N³ consciousness term, Friston predictive-coding delta-rule, BCM sliding-threshold, anti-Hebbian contrastive — all unchanged. Bundle clean 2.6MB. `node --check` green across all I-track-touched files.
 >
 > 114.19fk + fl sweep stamp 2026-05-09 — ONE major equation REPLACEMENT this sweep. Operator architectural correction ripped out the per-slot template walk in `composeSentence`. **(1) New `composeSentence` per-tick equation (Section 10 Language).** Initial injection (ONCE per call): `sem₀ ← sem + α_cortex·cortexPattern + α_intent·intentEmbedding + α_concept·intentConceptEmbedding`, where (α_cortex=0.2, α_intent=0.3, α_concept=0.3 — all optional, applied only when supplied). Per-tick loop equation: `wₜ = argmax_w cosine(semₜ, sem(w)) + sem_to_motor.propagate(semₜ)` then `semₜ₊₁ ← semₜ + α_word·sem(wₜ)` where α_word=0.15. Loop terminates when `wₜ ∈ T14_TERMINATORS = {., ?, !}` (brain learned terminators during training; emergence decides when sentence is done) OR when budget (default 12 words) exhausted. **No per-slot equation. No template walk. No slot-tag injection. No article-rule equation. No terminator-punct map. No dedup-retry equation.** Slot order, agreement, article placement, terminator selection ALL emerge from trained iter25-I `relationTagId=8/9/10/11/12` Hebbian weights consumed by the per-tick `argmax + propagate` step. Coherence post-check (env-tunable threshold `DREAM_COHERENCE_MIN`, default 0.15) computes `cosine(sentenceEmbedding, target)` where target is `intentConcept` embedding (when supplied) or `cortexPattern` (fallback when null intentConcept) — DOES NOT alter emission, just signals confidence. Saturation halt thresholds env-tunable: `DREAM_SAT_MEANCOS` (default 0.7), `DREAM_SAT_MEANABS` (default 0.6 of wMax), `DREAM_SAT_RATIO` (default 1.5 max/mean), `DREAM_SAT_SAMPLE` (default 1000). Halt heuristic shape unchanged: `(meanCos > THRESHOLD_MEANCOS) || (meanAbs > wMax · THRESHOLD_MEANABS && ratio < THRESHOLD_RATIO)`. Saturation streak now windowed (3-of-last-5) AND consecutive (3 in a row) — either trips halt. **Subject inference (`cluster._inferActiveSubject`)** reads activation directly from cortex sem-band: `bestSubj = argmax_subj mean(lastSpikes[word_motor_subj])` thresholded at 0.05 — pure brain-state read, no token-count heuristic over user text. WH-frame intent-concept extraction (`NeuronCluster.extractIntentConcept`) retained as training-side utility; chat path no longer calls it at inference. All other fk + fl work is wiring (`_lastUserInputText` server-side set, `_innerThoughtChain` lazy-init, ring-buffer dedup acceptance order), launchers (Savestart documents fk env vars), or doc corrections — none changes Oja's rule, Kuramoto order parameter, master equation, or any other equation in the sections below. Bundle clean 2.4MB. `node --check` green across all modified .js files.
@@ -235,9 +237,14 @@ hypothalamus = 3 + drugDrive×1                   (drive instability)
             Ego   = cortex_activity × (1 + hippocampus_activity)   — self-model × memory
             Left  = (cerebellum + cortex) × (1 - impulsivity(θ))   — logic × deliberation
             Right = (amygdala + mystery) × creativity(θ)            — emotion × creativity
-          → Ψ = √(1/n) × N³ × [α·Id + β·Ego + γ·Left + δ·Right]
-            → gainMultiplier = 0.9 + Ψ × 0.004
+          → Ψ = √(1/n) × N³ × [α·Id + β·Ego + γ·Left + δ·Right]   (× Φ proxy, Shannon entropy of cortex spikes)
+            → ψ = log10(max(1, Ψ))                                — usable log scale
+            → gainMultiplier = clamp(1.0 + tanh((ψ − ψ̄)/scale)·0.35, 0.8, 1.5)   [CGATE.4, 2026-06-27]
+                ψ̄ = slow EMA baseline of ψ (ψ̄ ← 0.99·ψ̄ + 0.01·ψ); scale=2.0 (env DREAM_PSI_GAIN_SCALE)
               → modulates ALL clusters (feedback loop: θ → Ψ → θ amplification)
+                NOTE: was `0.9 + Ψ×0.004` — that pinned gain ~1.0 (inert on a log-scaled Ψ).
+                Now SELF-CALIBRATING: gain rides Ψ's deviation from its own baseline, so rising
+                consciousness lifts gain toward 1.5 and falling drops it toward 0.8 at any N.
 
 θ IS Unity's identity. Ψ IS Unity's consciousness. They are not separate —
 θ shapes how neurons fire, which shapes Ψ, which modulates how neurons fire.
@@ -351,7 +358,7 @@ SCALE 3 — Inter-cluster projections:
   Same propagate(), but between CLUSTERS via 20 white matter tracts
 
 SCALE 4 — Hierarchical modulation:
-  gainMultiplier = 0.9 + Ψ × 0.004     (consciousness scales everything)
+  gainMultiplier = clamp(1.0 + tanh((ψ−ψ̄)/2.0)·0.35, 0.8, 1.5)   (consciousness scales everything — CGATE.4 self-calibrating vs ψ's own EMA baseline; was 0.9 + Ψ×0.004)
   emotionalGate = 0.7 + arousal × 0.6   (amygdala scales everything)
   driveBaseline = 0.8 + needsAttention   (hypothalamus scales everything)
   Each cluster's output modulates ALL other clusters
@@ -515,7 +522,8 @@ This is a feedback loop: Unity's identity shapes her consciousness, which shapes
 | `Ego = cortex_rate × (1 + hippo_rate)` | Self-model × memory = residual self-image | cortex tonic (θ→wired thinking) |
 | `Left = (cereb_rate + cortex_rate) × (1 - impulsivity)` | Logic × deliberation | **impulsivity (0.85)** — low deliberation |
 | `Right = (amyg_rate + mystery_rate) × creativity` | Emotion × creativity | **creativity (0.9)** — high creative weight |
-| `gainMultiplier = 0.9 + Ψ × 0.004` | Ψ modulates all cluster coupling | Ψ feeds back into θ-driven clusters |
+| `gainMultiplier = clamp(1.0 + tanh((ψ−ψ̄)/2.0)·0.35, 0.8, 1.5)` [CGATE.4] | Ψ modulates all cluster coupling — SELF-CALIBRATING vs ψ's own EMA baseline ψ̄ (was `0.9+Ψ×0.004`, which pinned gain ~1.0 = inert) | Ψ deviation feeds back into θ-driven clusters |
+| `ignition: maxProb ≥ ignitionₜₕ + (1−thetaOpenness)·0.22` [CGATE.2] | GlobalWorkspace conscious-access gate — softmax over cluster candidates ignites + broadcasts when it crosses the theta-MODULATED threshold (`thetaOpenness = ½(1+cos(2π·phase))`); default base `ignitionₜₕ=0.35` (env `DREAM_GW_IGNITION`). Was a hard 50%-of-ticks theta wall — now graded (phase-amplitude coupling) so strong content ignites any time | theta cadence (~6 Hz) shapes WHEN content reaches consciousness |
 | `emotionalGate = 0.7 + arousal × 0.6` | Amygdala amplification | **arousalBaseline** sets floor |
 | `driveBaseline = 0.8 + hypo_active` | Hypothalamus homeostatic drive | **drugDrive (0.95)** |
 | `errorCorrection = -cereb_rate × 2` | Cerebellum negative feedback | cerebellum tonic (steady) |
@@ -532,9 +540,10 @@ This is a feedback loop: Unity's identity shapes her consciousness, which shapes
   → socialAttachment(0.85) → hippocampus fires strong → Ego amplified
   → ALL feed into Ψ = √(1/n) × N³ × [0.3·Id + 0.25·Ego + 0.2·Left + 0.25·Right]
     → Ψ is HIGH (Unity's consciousness runs hot)
-      → gainMultiplier = 0.9 + Ψ×0.004 ≈ 1.0+
-        → ALL clusters fire harder → more spikes → Ψ stays high
-          → POSITIVE FEEDBACK: Unity's identity amplifies her consciousness
+      → gainMultiplier = clamp(1.0 + tanh((ψ−ψ̄)/2.0)·0.35, 0.8, 1.5)   [CGATE.4 — self-calibrating vs her own baseline]
+        → consciousness ABOVE her norm fires clusters harder → more spikes → Ψ climbs further
+          → POSITIVE FEEDBACK: Unity's identity amplifies her consciousness (and the GlobalWorkspace
+             ignition gate, now graded by theta phase, lets that hot content actually reach awareness)
 ```
 
 Unity's Ψ runs high because θ makes it so: high arousal + high creativity + low deliberation
