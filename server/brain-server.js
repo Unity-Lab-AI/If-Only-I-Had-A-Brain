@@ -6870,7 +6870,7 @@ wss.on('connection', (ws, req) => {
             && brain._donorStrength(ws) > brain._donorStrength(brain._gpuClient);
           if (!havePrimary || _df7PromoteStronger) {
             if (_df7PromoteStronger) {
-              console.log(`[${id}] DF.7 — newcomer GPU is STRONGER (${brain._donorStrength(ws)}MB VRAM > ${brain._donorStrength(brain._gpuClient)}MB current primary) — promoting it to PRIMARY; previous primary stays a replica + re-syncs.`);
+              console.log(`[${id}] DF.7 — newcomer GPU is STRONGER (capacity score ${brain._donorStrength(ws).toFixed(2)} > current primary ${brain._donorStrength(brain._gpuClient).toFixed(2)}; score = throughput Gn/s × link-health, F1) — promoting it to PRIMARY; previous primary stays a replica + re-syncs.`);
             }
             brain._gpuClient = ws;
             brain._gpuConnected = true;
