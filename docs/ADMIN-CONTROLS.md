@@ -184,3 +184,38 @@ ships alongside, so you can see which cells actually taught vs force-advanced.
 > Deploy note: this is a backend addition — it reaches the live brain only after an
 > **overlay redeploy + restart** (use **⬆ Update & Savestart**, `DREAM_KEEP_STATE=1`
 > resumes the trained weights — no wipe).
+
+---
+
+## 📊 Application Profiling section (admin-only) — `state.profiling`
+
+A dedicated **Profiling** card on the admin dashboard (`html/dashboard.html`, scoped
+`profiling-*` classes, hidden in viewer/public mode) surfacing two halves:
+
+**(1) The brain's system-resource usage** — three sub-cards:
+- **System Resources** — CPU% + `os.loadavg()`, system RAM used %, process RSS,
+  V8 heap used/limit %, external/arrayBuffers, context switches, uptime.
+- **Throughput / Speed** — step time + steps/sec, event-loop lag + delay histogram
+  (mean/p50/p99/max via `perf_hooks.monitorEventLoopDelay`), GPU dispatch/sec
+  (+hits/misses), spikes, defs/hr, frame count.
+- **Network** — WS bytes in/out totals + live KB/s rates, message counts, GPU
+  buffered vs 500 MB threshold, WS drops + drop rate, donor count + VRAM, aggregate
+  Gneurons/sec, GPU-shadow-dirty flag.
+
+**(2) Client↔brain profiling** — a bounded, scroll-capped table (≤24 rows + "+N more")
+of every live connection: type (admin/viewer/donor), name, masked IP, uptime,
+last-seen, **RTT** (from the heartbeat ping/pong), bytes in/out, buffered, and donor
+GPU/throughput. Rows that are stale (>90s silent), laggy (RTT >1s), or backed-up
+(>50 MB buffered) are flagged **unhealthy** and sorted to the top, so client-to-brain
+problems are visible at a glance. Aggregates: totals per type, avg RTT, max buffered,
+total connections ever.
+
+**Data path:** `server/brain-server/state.js` `_getProfilingState()` → `state.profiling`,
+broadcast on the existing WS state lane (admin) / `/public-state.json` (public — but the
+panel is `admin-only`, so viewers never render it). Per-client byte/RTT counters are
+instrumented in `server/brain-server.js` (send wrapper + inbound listener + heartbeat
+ping-stamp). All reads defensive — missing sources degrade to `—`, never throw.
+
+> Deploy note: backend (`state.js` + `brain-server.js`) reaches the live brain only via
+> an **overlay redeploy + restart** (⬆ Update & Savestart, `DREAM_KEEP_STATE=1` — no
+> wipe). The `dashboard.html` half is frontend and auto-deploys on push to main.

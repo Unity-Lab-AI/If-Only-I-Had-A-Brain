@@ -40,7 +40,11 @@
 // Caught by operator 2026-06-17 live test boot crash cascade.
 const path = require('path');
 const fs = require('fs');
+const os = require('os');
 const definitionService = require('../definition-service.js');
+// PR.1/PR.2 profiling — optional Node internals. Guarded require so a stripped
+// runtime degrades to partial profiling instead of crashing the state build.
+let _v8 = null; try { _v8 = require('v8'); } catch { _v8 = null; }
 
 const SERVER_STATE_MIXIN = {
   /**
@@ -485,7 +489,195 @@ const SERVER_STATE_MIXIN = {
               : [],
           }
         : { totalDreamed: 0, novelConsolidated: 0, lastTs: 0, consolidatedSamples: [] },
+      // PR.1-PR.4 — application profiling block. Hardware + network + throughput
+      // (the brain's system-resource usage) AND per-client connection health
+      // (client↔brain). Bounded payload: aggregates + a capped client list.
+      profiling: this._getProfilingState(),
     };
+  },
+
+  /**
+   * PR.1-PR.4 — assemble the admin Profiling payload. Four sub-blocks:
+   *   host       — system hardware: load average, CPU cores, system RAM.
+   *   process    — this Node process: RSS / V8 heap / external / heap-limit,
+   *                CPU%, resourceUsage (maxRSS, ctx switches, fs I/O), uptime.
+   *   throughput — how fast the brain is going: step time + steps/sec, event-
+   *                loop lag + histogram percentiles, GPU dispatch rate, spike
+   *                rate, defs/hr, chat-Hebbian rate.
+   *   network    — WS byte totals + live rates (from cumulative counters), msg
+   *                counts, backpressure (reuses wsPressure), donor aggregate.
+   *   clients    — per-connection health (type/name/uptime/RTT/bytes/buffered),
+   *                capped at 24 + aggregates, so client→brain issues are visible.
+   * All reads are defensive — any missing source degrades to null/0, never throws.
+   */
+  _getProfilingState() {
+    const now = Date.now();
+    const MB = 1024 * 1024;
+    const r1 = (n) => Math.round(n);
+    const r2 = (n) => Math.round(n * 100) / 100;
+    const perf = this._perfStats || {};
+    const out = { collectedAt: now, host: null, process: null, throughput: null, network: null, clients: null };
+
+    // ── host (system hardware) ──
+    try {
+      const la = (typeof os.loadavg === 'function') ? os.loadavg() : [0, 0, 0];
+      const totalMem = os.totalmem();
+      const freeMem = os.freemem();
+      const cpus = (typeof os.cpus === 'function' ? os.cpus() : []) || [];
+      out.host = {
+        loadAvg: la.map(r2),
+        cpuCount: cpus.length || perf.cores || 0,
+        cpuModel: (cpus[0] && cpus[0].model) ? cpus[0].model.trim() : 'unknown',
+        sysMemTotalMB: r1(totalMem / MB),
+        sysMemUsedMB: r1((totalMem - freeMem) / MB),
+        sysMemUsedPct: totalMem > 0 ? r1(((totalMem - freeMem) / totalMem) * 100) : 0,
+        osUptimeS: (typeof os.uptime === 'function') ? r1(os.uptime()) : 0,
+        platform: process.platform,
+      };
+    } catch (err) { out.host = { error: err.message }; }
+
+    // ── process (this Node process) ──
+    try {
+      const mu = process.memoryUsage();
+      let heapLimitMB = 0;
+      if (_v8 && typeof _v8.getHeapStatistics === 'function') {
+        try { heapLimitMB = r1((_v8.getHeapStatistics().heap_size_limit || 0) / MB); } catch { /* ignore */ }
+      }
+      let ru = null;
+      try { ru = (typeof process.resourceUsage === 'function') ? process.resourceUsage() : null; } catch { ru = null; }
+      out.process = {
+        rssMB: r1(mu.rss / MB),
+        heapUsedMB: r1(mu.heapUsed / MB),
+        heapTotalMB: r1(mu.heapTotal / MB),
+        externalMB: r1((mu.external || 0) / MB),
+        arrayBuffersMB: r1((mu.arrayBuffers || 0) / MB),
+        heapLimitMB,
+        heapUsedPct: heapLimitMB > 0 ? r1((mu.heapUsed / MB / heapLimitMB) * 100) : 0,
+        cpuPercent: r1(perf.cpuPercent || 0),
+        uptimeS: r1(process.uptime()),
+        maxRssMB: ru ? r1((ru.maxRSS || 0) / 1024) : 0, // maxRSS is KB on linux
+        voluntaryCtxSwitches: ru ? (ru.voluntaryContextSwitches || 0) : 0,
+        involuntaryCtxSwitches: ru ? (ru.involuntaryContextSwitches || 0) : 0,
+        fsRead: ru ? (ru.fsRead || 0) : 0,
+        fsWrite: ru ? (ru.fsWrite || 0) : 0,
+      };
+    } catch (err) { out.process = { error: err.message }; }
+
+    // ── throughput (how fast the brain is going) ──
+    try {
+      // event-loop delay histogram (ns → ms)
+      let elDelay = null;
+      const h = this._eventLoopHistogram;
+      if (h && typeof h.percentile === 'function') {
+        const nsToMs = (v) => r2((v || 0) / 1e6);
+        elDelay = { meanMs: nsToMs(h.mean), p50Ms: nsToMs(h.percentile(50)), p99Ms: nsToMs(h.percentile(99)), maxMs: nsToMs(h.max) };
+      }
+      // GPU dispatch rate from the rolling timestamp window
+      let gpuDispatchPerSec = 0;
+      const dts = this._gpuDispatchTimestamps;
+      if (Array.isArray(dts) && dts.length >= 2) {
+        const span = (dts[dts.length - 1] - dts[0]) / 1000;
+        if (span > 0) gpuDispatchPerSec = r2(dts.length / span);
+      }
+      out.throughput = {
+        stepTimeMs: r2(perf.stepTimeMs || 0),
+        stepsPerSec: r2(perf.stepsPerSec || 0),
+        eventLoopLagMs: this._lastEventLoopLagMs || 0,
+        eventLoopDelay: elDelay,
+        gpuDispatchPerSec,
+        gpuHits: perf.gpuHits || 0,
+        gpuMisses: perf.gpuMisses || 0,
+        totalSpikes: this._lastTotalSpikes || perf.totalSpikes || 0,
+        phaseTimingMs: perf.phaseTimingMs || null,
+        defsLearnedPerHour: (this._defLearnedTimestamps && this._defLearnedTimestamps.length)
+          ? this._defLearnedTimestamps.length : 0,
+        chatHebbianTurns: (this._chatTimeHebbianStats && this._chatTimeHebbianStats.turns) || 0,
+        frameCount: this.frameCount || 0,
+      };
+    } catch (err) { out.throughput = { error: err.message }; }
+
+    // ── network (WS byte/message totals + live rates + backpressure) ──
+    try {
+      const bytesInEver = this._netBytesInEver || 0;
+      const bytesOutEver = this._netBytesOutEver || 0;
+      if (!this._netRateBuffer) this._netRateBuffer = [];
+      const nb = this._netRateBuffer;
+      nb.push({ ts: now, in: bytesInEver, out: bytesOutEver });
+      while (nb.length > 60) nb.shift();
+      let bytesInPerSec = 0, bytesOutPerSec = 0;
+      if (nb.length >= 2) {
+        const o = nb[0]; const dt = (now - o.ts) / 1000;
+        if (dt > 0) { bytesInPerSec = Math.max(0, r1((bytesInEver - o.in) / dt)); bytesOutPerSec = Math.max(0, r1((bytesOutEver - o.out) / dt)); }
+      }
+      let msgIn = 0, msgOut = 0;
+      if (this.clients) for (const [, c] of this.clients) { msgIn += c.msgIn || 0; msgOut += c.msgOut || 0; }
+      const pool = perf.gpuPool || {};
+      out.network = {
+        bytesInTotalMB: r2(bytesInEver / MB),
+        bytesOutTotalMB: r2(bytesOutEver / MB),
+        bytesInPerSecKB: r2(bytesInPerSec / 1024),
+        bytesOutPerSecKB: r2(bytesOutPerSec / 1024),
+        msgInTotal: msgIn,
+        msgOutTotal: msgOut,
+        wsPressure: (typeof this._getWsPressureState === 'function') ? this._getWsPressureState() : null,
+        donorCount: pool.donorCount || 0,
+        donorTotalVramMB: pool.totalVramMB || 0,
+        aggGneuronsPerSec: r2(pool.aggGneuronsPerSec || 0),
+      };
+    } catch (err) { out.network = { error: err.message }; }
+
+    // ── clients (per-connection health — client↔brain) ──
+    try {
+      const list = [];
+      let admins = 0, viewers = 0, donors = 0, totalBytesIn = 0, totalBytesOut = 0, rttSum = 0, rttN = 0, maxBuffered = 0;
+      if (this.clients) {
+        for (const [ws, c] of this.clients) {
+          const isGPU = !!c.isGPU;
+          const type = isGPU ? 'donor' : (c.mode === 'admin' ? 'admin' : 'viewer');
+          if (type === 'admin') admins++; else if (type === 'donor') donors++; else viewers++;
+          totalBytesIn += c.bytesIn || 0; totalBytesOut += c.bytesOut || 0;
+          if (typeof c.rttMs === 'number') { rttSum += c.rttMs; rttN++; }
+          const buffered = (ws && typeof ws.bufferedAmount === 'number') ? ws.bufferedAmount : 0;
+          if (buffered > maxBuffered) maxBuffered = buffered;
+          const tele = c.telemetry || null;
+          list.push({
+            id: c.id,
+            type,
+            name: c.name || c.donorName || c.ualUser || null,
+            ip: c.ip || '?',
+            uptimeS: r1((now - (c.connectedAt || now)) / 1000),
+            lastSeenS: r1((now - (c.lastSeen || now)) / 1000),
+            rttMs: (typeof c.rttMs === 'number') ? c.rttMs : null,
+            bytesInMB: r2((c.bytesIn || 0) / MB),
+            bytesOutMB: r2((c.bytesOut || 0) / MB),
+            msgIn: c.msgIn || 0,
+            msgOut: c.msgOut || 0,
+            bufferedKB: r1(buffered / 1024),
+            gpuName: isGPU ? (c.gpuName || (tele && tele.gpuName) || null) : null,
+            gneuronsPerSec: (isGPU && tele) ? r2(tele.gneuronsPerSec || 0) : null,
+            // health flag — stale (no traffic 90s+), laggy (RTT>1s), or backed-up (>50MB)
+            unhealthy: ((now - (c.lastSeen || now)) > 90000) || (typeof c.rttMs === 'number' && c.rttMs > 1000) || (buffered > 50 * MB),
+          });
+        }
+      }
+      // sort unhealthy first, then by bytes (busiest), so the admin sees problems up top
+      list.sort((a, b) => (b.unhealthy - a.unhealthy) || ((b.bytesInMB + b.bytesOutMB) - (a.bytesInMB + a.bytesOutMB)));
+      const CAP = 24;
+      out.clients = {
+        total: list.length,
+        admins, viewers, donors,
+        totalConnectionsEver: this._totalConnectionsEver || 0,
+        totalBytesInMB: r2(totalBytesIn / MB),
+        totalBytesOutMB: r2(totalBytesOut / MB),
+        avgRttMs: rttN > 0 ? r1(rttSum / rttN) : null,
+        maxBufferedKB: r1(maxBuffered / 1024),
+        unhealthyCount: list.filter(c => c.unhealthy).length,
+        shown: Math.min(list.length, CAP),
+        list: list.slice(0, CAP),
+      };
+    } catch (err) { out.clients = { error: err.message }; }
+
+    return out;
   },
 
   /**
