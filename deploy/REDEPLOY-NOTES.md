@@ -239,12 +239,12 @@ Branch `feature/distributed-donor-work-sharing` (off develop). **Backend-only** 
 
 **What it does:** makes every connected donor actually compute (and earn leaderboard credit), not just the primary. Was: 100% of GPU work pinned to the primary even with `DREAM_DF7_FANOUT=1` on (the flag had no code path for the teach bulk). Now the dispatch chokepoints round-robin work across the pool: standalone forward-propagates (`gpuSparsePropagate`) + the bound-Hebbian batch (`_flushBoundHebbianBatch`, the teach bulk). CPU CSR stays the authoritative Hebbian master (GPU = fire-and-forget shadow) so a batch landing on any replica CANNOT corrupt training; the periodic master re-broadcast re-converges drift.
 
-**REQUIRES `DREAM_DF7_FANOUT=1`** — this is the code that makes that flag (your `deploy/df7-and-donor-rebuild` branch sets it) actually distribute work. Flag OFF = byte-identical to before (primary-only).
+**DEFAULT ON in code** (Gee 2026-06-28 — "we need fanout=1 set auto … when I do the update and fresh walk", + Sponge asleep, so it must NOT depend on a systemd-unit env edit). No env/unit setup needed — the dashboard **Update & Fresh Walk** auto-distributes once this code is on `main`. Your `deploy/df7-and-donor-rebuild` env line is now **redundant (harmless)**. Single donor = no-op; **kill-switch `DREAM_DF7_FANOUT=0`** (byte-identical primary-only behavior).
 
 **New env knob (optional, own-line comment in the unit):**
 - `DREAM_DF7_REBROADCAST_MS` — replica weight re-converge interval. Default 60 s when `DREAM_DF7_FANOUT=1` (round-robin Hebbian drifts donor shadows faster, so re-merge more often), else 10 min.
 
-**Redeploy** = standard git-archive overlay + `systemctl restart unity-brain`, but **`git checkout feature/distributed-donor-work-sharing` first** (NOT cascaded to main — see below). Applying your `DREAM_DF7_FANOUT=1` unit line is a unit change → `sudo systemctl daemon-reload` before restart.
+**Redeploy** = standard git-archive overlay + `systemctl restart unity-brain`, but **`git checkout feature/distributed-donor-work-sharing` first** (NOT cascaded to main — see below). **No unit change needed** (fan-out is default-on in code) → no `daemon-reload`; nothing to set. Once on `main`, the dashboard Update & Fresh Walk does the whole thing.
 
 **LAW LIVE VALIDATION REQUIRED before any cascade to main (cannot be verified headless):**
 1. With 2+ donors connected, admin Profiling -> Clients: EVERY donor's Gn/s should be > 0 (not just the primary) and EVERY donor should appear on the leaderboard.

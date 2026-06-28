@@ -649,16 +649,20 @@ const SERVER_GPU_MIXIN = {
     return donors[this._poolRR];
   },
 
-  // ── DF.7 multi-GPU fan-out (EXPERIMENTAL · env-gated) ──────────────────────
-  // Master switch. Default OFF = today's EXACT single-primary behavior. ON
-  // ('1') enables: strongest-donor primary promotion + cortex resident-write
-  // mirroring to replicas + round-robin of the bound forward-propagate, so the
-  // idle replica GPUs actually compute instead of just holding a replica.
-  // ⚠ Validated only with live donors — flip on the deploy, watch the idle
-  // GPUs' Gn/s climb AND that gate probes still pass; roll back by unsetting the
-  // env (no weight-format change, no restart contract change).
+  // ── DF.7 multi-GPU fan-out (DEFAULT ON · env kill-switch) ──────────────────
+  // Master switch. DEFAULT ON (Gee 2026-06-28: "we need fanout=1 set auto … when
+  // I do the update and fresh walk" + Sponge asleep, so it can't depend on a
+  // manual systemd-unit env edit). Enables: strongest-donor primary promotion +
+  // cortex resident-write mirroring to replicas + round-robin of the standalone
+  // & bound forward-propagate + the bound-Hebbian teach batch, so every idle
+  // replica GPU actually computes (and lands on the leaderboard) instead of just
+  // holding a replica. With a SINGLE donor it's a no-op (the pool is just
+  // [primary]) — so work-spreading only kicks in at ≥2 donors, exactly when you
+  // want it, with ZERO env/unit setup. CPU CSR stays the authoritative Hebbian
+  // master, so a batch on any replica can't corrupt training; roll back instantly
+  // with DREAM_DF7_FANOUT=0 (no weight-format / restart-contract change).
   _df7Fanout() {
-    return process.env.DREAM_DF7_FANOUT === '1';
+    return process.env.DREAM_DF7_FANOUT !== '0';
   },
 
   // DF.7 — donor strength for primary selection: VRAM MB (captured per donor at

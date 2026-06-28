@@ -24,9 +24,11 @@ Scope (Gee, AskUserQuestion): **Full swing now** — distribute independent forw
 - **DDW.4** `server/brain-server.js` — replica re-broadcast tightened to **60 s under fan-out** (was fixed 10 min) so the faster weight-shadow drift from round-robin Hebbian re-converges to the CPU master quickly; env `DREAM_DF7_REBROADCAST_MS`.
 - Already in place + verified (no change needed): bound-propagate fan-out (`gpuSparsePropagateBound` → `_nextPoolDonor()`); resident-state mirroring (`_mirrorCortexWriteToReplicas` on `write_spike_slice`/`write_current_slice`); per-donor leaderboard credit (each donor's own `gpu_telemetry.gneuronsPerSec` accumulates — NO primary-only filter, so a replica appears the instant it computes).
 
-`node --check` clean (gpu.js, brain-server.js). Pairs with Sponge's `DREAM_DF7_FANOUT=1`.
+- **DDW.5** `gpu.js _df7Fanout()` + the two primary-promotion gates + the rebroadcast interval — fan-out flipped to **DEFAULT ON** (`DREAM_DF7_FANOUT !== '0'`) so the dashboard **Update & Fresh Walk** auto-distributes with NO systemd-unit env edit (Gee 2026-06-28: "we need fanout=1 set auto … Sponge is asleep"). The button overlays code, not the `/etc/` unit env, so a flag-default OFF would have left it dormant; default ON closes that. Single-donor = no-op; kill-switch `DREAM_DF7_FANOUT=0`.
 
-**STATUS:** ✅ CODE DONE + VERIFIED (headless). ⚠ **MUST be validated LIVE on the 2-donor pool (cannot be verified headless):** confirm `DREAM_DF7_FANOUT=1`, restart, watch BOTH donors' Gn/s climb + BOTH on the leaderboard AND gate probes still pass. Rollback = unset the flag (no weight-format / restart-contract change).
+`node --check` clean (gpu.js, brain-server.js). Default ON — no env/unit setup; Sponge's flag line is now redundant (harmless).
+
+**STATUS:** ✅ CODE DONE + VERIFIED (headless). ⚠ **MUST be validated LIVE on the 2-donor pool (cannot be verified headless):** restart (or dashboard Update & Fresh Walk once cascaded to main), watch BOTH donors' Gn/s climb + BOTH on the leaderboard AND gate probes still pass. Rollback = `DREAM_DF7_FANOUT=0` (no weight-format / restart-contract change).
 
 ---
 
