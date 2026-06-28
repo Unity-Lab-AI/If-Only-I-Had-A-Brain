@@ -657,7 +657,7 @@ const SERVER_STATE_MIXIN = {
             gneuronsPerSec: (isGPU && tele) ? r2(tele.gneuronsPerSec || 0) : null,
             // F9 — WebGPU storage-binding cap + capability flag, so the dashboard can
             // show "GPU buffer too small for cortex matrix" instead of a mystery 0 Gn/s.
-            maxBindMB: isGPU ? (Number(c.maxBindMB) || null) : null,
+            maxBindMB: isGPU ? (Number(c.maxBindMB || (tele && tele.maxBindMB)) || null) : null,
             bindIncapable: isGPU ? !!c._bindIncapable : false,
             // health flag — RED only on a REAL per-client problem: genuinely stale
             // (90s+ silent), backed-up (>50 MB unsent), or high RTT that is NOT just the
