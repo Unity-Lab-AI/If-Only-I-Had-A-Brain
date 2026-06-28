@@ -359,6 +359,15 @@ The native donor (`donor-app/src/donor.rs`) hardens the donor WS against connect
 2. **Fast dead-link detection** — if no inbound frame (incl. the brain's pong) arrives for 45s (`IDLE_TIMEOUT`) while keepalive-pinging, the donor presumes the link dead and reconnects immediately instead of waiting minutes for the OS to surface the RST.
 3. **Jittered reconnect backoff** — a deterministic per-install offset (donor-id hash, 0–1500 ms) staggers rejoins so a brain restart doesn't make every donor reconnect in lockstep. The supervisor (`run_donor_supervised`) still resets backoff on a clean drop and grows it (capped 30s) on a failed connect.
 
+### Server heartbeat grace (HBGRACE — `brain-server.js`)
+
+The server's own liveness sweep (`_heartbeatTimer`, 30s `ws.ping()` → terminate if no pong by the next sweep) was FALSE-positive-killing live donors and is the *server-side* cause of "Linux drops more than Windows". When a donor connects, the server replica-syncs the full 40M-neuron brain to it (14.2 MB intra + dozens of cross-projections) — which (a) blocks the server event loop in ~5s chunks (`[EventLoop] BLOCKED … phase=_teachHebbian … replicaSyncing=1`), so the `pong` handler can't run + the ping is delayed, and (b) floods the donor, which on a higher-RTT/lower-bandwidth link (Starlink/Linux) drains the upload backlog slowly and answers the ping late → misses the single 30s window → **terminated mid-sync** → `Cannot call write after a stream was destroyed` flood → reconnect → re-sync → churn. The grace logic:
+
+1. **Grace cycles** — `ws._missedPings` must reach `_HB_MISS_LIMIT` (2) consecutive misses before terminate (was 1). A pong resets it.
+2. **Event-loop-block awareness** — the lag sampler stamps `_lastEventLoopBlockTs` on a real block (≥1s); if one happened within the heartbeat window the budget rises to `_HB_MISS_LIMIT_BUSY` (5 ≈ 150s) — a missed pong during the server's own stall isn't the donor's fault.
+3. **Mid-sync grace** — if `_replicaSyncInFlight.has(ws)` the donor is busy receiving the brain → the busy budget applies, so it's not killed mid-upload.
+4. The post-termination `Cannot call write after a stream was destroyed` burst is now rate-limited (one line / 10s) and the chunk loop bails on a closed socket, instead of one dead donor spewing hundreds of lines.
+
 ### The hostname gate
 
 `detectRemoteBrain(url = 'ws://localhost:7525')` only probes when the page is served from `localhost` / `127.0.0.1` / `[::1]` / `file://`. On GitHub Pages or any public origin, the probe is skipped and the client falls through to local-mode UnityBrain with no server.

@@ -6482,8 +6482,10 @@ wss.on('connection', (ws, req) => {
   // and terminate()s anything that missed the previous ping, which fires
   // ws.on('close') → the existing primary-left failover / standby promotion.
   ws._isAlive = true;
+  ws._missedPings = 0;
   ws.on('pong', () => {
     ws._isAlive = true;
+    ws._missedPings = 0; // HBGRACE.1 — a pong clears the grace counter
     // PR.4 — round-trip latency from the heartbeat ping/pong pair, SMOOTHED.
     // The heartbeat samples once per 30s, so a single jittery pong (Starlink
     // handover, a briefly-backgrounded/throttled browser-tab donor) would pin
@@ -7287,11 +7289,31 @@ setInterval(() => {
 // fresh donor behind a corpse). 30s cadence — long enough not to spam, short
 // enough that a fresh donor isn't stuck for minutes behind a stale primary.
 const _HEARTBEAT_MS = 30000;
+// HBGRACE — how many CONSECUTIVE missed sweeps before terminate(). A single missed 30s window is
+// NOT a dead socket: a donor mid replica-sync is draining a 40MB brain over its link, and the
+// server's own teach/sync event-loop blocks can delay the ping send AND the pong handler. One miss
+// under those conditions was falsely killing live, busy donors (worse on high-RTT/Starlink/Linux
+// links) → terminate mid-sync → write-after-destroyed flood → reconnect → re-sync → churn.
+const _HB_MISS_LIMIT = 2;        // healthy loop, idle donor: 2 misses (~60s) → dead
+const _HB_MISS_LIMIT_BUSY = 5;   // mid-sync OR loop recently blocked: ~150s grace before death
 const _heartbeatTimer = setInterval(() => {
+  const loopBlockedRecently = (Date.now() - (brain._lastEventLoopBlockTs || 0)) < _HEARTBEAT_MS;
   for (const ws of wss.clients) {
     if (ws._isAlive === false) {
       const c = brain.clients.get(ws);
-      console.warn(`[Server] heartbeat — socket ${c ? c.id : '(unknown)'}${c && c.isGPU ? ' (GPU donor)' : ''} missed its ping (half-open) — terminating so failover can fire.`);
+      // HBGRACE.3 — is this donor actively receiving the full-brain replica sync right now?
+      const midSync = !!(brain._replicaSyncInFlight && brain._replicaSyncInFlight.has(ws));
+      // HBGRACE.1/2 — busier grace budget when the donor is mid-sync OR the SERVER's own loop
+      // just blocked (the pong may be sitting unprocessed in the queue — not the donor's fault).
+      const limit = (midSync || loopBlockedRecently) ? _HB_MISS_LIMIT_BUSY : _HB_MISS_LIMIT;
+      ws._missedPings = (ws._missedPings || 0) + 1;
+      if (ws._missedPings < limit) {
+        // Not dead yet — give another cycle. Re-ping so a live donor can clear it.
+        ws._pingSentAt = Date.now();
+        try { ws.ping(); } catch { /* dying — a later sweep terminates it */ }
+        continue;
+      }
+      console.warn(`[Server] heartbeat — socket ${c ? c.id : '(unknown)'}${c && c.isGPU ? ' (GPU donor)' : ''} missed ${ws._missedPings} consecutive pings${midSync ? ' (mid replica-sync)' : ''}${loopBlockedRecently ? ' (server loop recently blocked)' : ''} — terminating so failover can fire.`);
       try { ws.terminate(); } catch { /* already gone */ }
       continue;
     }
@@ -7334,6 +7356,10 @@ const _lagTimer = setInterval(() => {
   _lagAnchor = now;
   const lagMs = actualMs - _LAG_SAMPLE_MS;
   brain._lastEventLoopLagMs = lagMs > 0 ? Math.round(lagMs) : 0;
+  // HBGRACE.2 — stamp a REAL block (≥1s) so the donor heartbeat sweep can tell that a missed
+  // pong was the server's own loop stalling (couldn't run the pong handler / send the ping),
+  // NOT a dead donor — and extend grace instead of terminating a live, busy donor.
+  if (lagMs >= 1000) brain._lastEventLoopBlockTs = Date.now();
   if (lagMs > _LAG_WARN_MS) {
     const cc = brain.cortexCluster;
     const phase = (cc && cc._activePhase && cc._activePhase.name)

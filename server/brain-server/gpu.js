@@ -1178,6 +1178,21 @@ const SERVER_GPU_MIXIN = {
           }
           return;
         }
+        // HBGRACE — a donor terminated mid-replica-sync leaves the burst of in-flight upload
+        // sends writing to a now-destroyed socket ("Cannot call write after a stream was
+        // destroyed" / "WebSocket is not open"). Benign post-disconnect race (the sync aborts
+        // when its acks time out) — throttle so one dead donor can't spew hundreds of lines.
+        const _benignClosed = err.message && (/stream was destroyed|not open|ERR_STREAM_DESTROYED/i.test(err.message));
+        if (_benignClosed) {
+          if (!this._wsClosedSendCount) this._wsClosedSendCount = 0;
+          this._wsClosedSendCount++;
+          const nowMs = Date.now();
+          if (!this._wsClosedSendLogMs || (nowMs - this._wsClosedSendLogMs) >= 10000) {
+            this._wsClosedSendLogMs = nowMs;
+            console.warn(`[Brain] sparse send to a CLOSED donor socket (terminated mid-sync) — ${this._wsClosedSendCount} suppressed since boot; sync aborts on ack-timeout. Rate-limited 10s.`);
+          }
+          return;
+        }
         console.warn(`[Brain] sparse binary reqId=${reqId} ERROR: ${err.message}`);
       }
     });
@@ -1432,10 +1447,25 @@ const SERVER_GPU_MIXIN = {
       // Send chunk. WebSocket preserves order. Wait for the send
       // callback so we don't flood the send buffer with hundreds of
       // MB at once — backpressure per chunk.
+      // HBGRACE — bail the chunk loop if the socket died mid-upload (donor terminated by the
+      // heartbeat / disconnected), instead of writing every remaining chunk into a destroyed
+      // stream and logging an error per chunk.
+      if (!ws || ws.readyState !== 1) break;
       await new Promise((res) => {
         ws.send(frame, (err) => {
           if (err) {
-            console.warn(`[Brain] sparse chunk reqId=${reqId} seq=${seq}/${totalChunks} ERROR: ${err.message}`);
+            const _benignClosed = err.message && (/stream was destroyed|not open|ERR_STREAM_DESTROYED/i.test(err.message));
+            if (_benignClosed) {
+              if (!this._wsClosedSendCount) this._wsClosedSendCount = 0;
+              this._wsClosedSendCount++;
+              const nowMs = Date.now();
+              if (!this._wsClosedSendLogMs || (nowMs - this._wsClosedSendLogMs) >= 10000) {
+                this._wsClosedSendLogMs = nowMs;
+                console.warn(`[Brain] sparse chunk send to a CLOSED donor socket (terminated mid-sync) — ${this._wsClosedSendCount} suppressed since boot. Rate-limited 10s.`);
+              }
+            } else {
+              console.warn(`[Brain] sparse chunk reqId=${reqId} seq=${seq}/${totalChunks} ERROR: ${err.message}`);
+            }
           }
           res();
         });
