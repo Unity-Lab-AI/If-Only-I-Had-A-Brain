@@ -5,6 +5,32 @@
 
 ---
 
+## 2026-06-27 — Public-dashboard auth leak + donor app light theme/headless + memory-panel nits — feature/public-dashboard-donor-ux-fixes
+
+### Gee verbatim per LAW #0
+
+> *"yes start a feature branch, solve all that and all of this: https://if-only-i-had-a-brain.git.unityailab.com/admin/milestone [HTTP/1.1 401 Unauthorized nullms] public version of the dashboard is asking for admin login(when is shall only be the admin version that asks for log in),, 1. the donor application needs OS white theeme better colors(as its hard to read grey on white. 2. the doner application needs its termianl when open to open headless"*
+
+> *"do full doc uupdate too with these changes"* · *"before pushes to the git and github"*
+
+(**"all that"** = the memory-readout nits surfaced in the prior Tier-2 diagnostic: blank `pass interval`, the `cosine≥0.85` label, and the duplicate Tier 3 anchor.)
+
+Branched off `develop` (complete v1.2.0 base). `node --check` + ESM `import()` clean on all touched JS; bundle rebuilt 3.9MB. ⚠ Donor `.exe` needs a CI/Gee rebuild to pick up PD.2/PD.3 — no Rust toolchain on the dev box (source verified by read; valid egui `Visuals::light()` + defined `WARN` const + valid crate-root `cfg_attr`).
+
+**PD.1 — public dashboard 401 / admin-login leak.** `html/dashboard-public.html` is a redirect to `dashboard.html?public=1`; `dashboard.html:3057-3058` registered `refreshMilestone()` + `setInterval(refreshMilestone, 5000)` UNCONDITIONALLY → polled `adminApi('milestone')` → `/admin/milestone` → 401 + Forgejo Basic-auth prompt for every public viewer. Fix: `refreshMilestone()` early-returns on `PUBLIC_MODE` (covers all call sites) AND the immediate-call + interval are wrapped in `if (!PUBLIC_MODE)`. The milestone/save-state panel is `.admin-only` so it was never visible publicly anyway. Audited every `setInterval` + `adminApi()` caller: the milestone poll was the ONLY unconditional admin request — auto-advance is `isAdmin`-gated, the gate-probe timer mutates banner text with no fetch. `html/dashboard.html`.
+
+**PD.2 — donor app OS light/white theme + readable contrast.** `donor-app/src/gui.rs` was a dark theme; on Gee's setup the secondary text read as unreadable grey-on-white. Switched `install_theme` from `egui::Visuals::dark()` → `Visuals::light()` with near-white panels (`#f7f7fb`) / white window; repurposed the palette for the light background: `TEXT_BRIGHT` → near-black `#181827` (primary), `TEXT_DIM` → slate-600 `#52525b` (readable secondary), `ACCENT` → deep violet `#6d28d9` (high-contrast on white), `GO_GREEN`/`STOP_RED` → green-700/red-700 (button text stays legible), plus a new `WARN` amber-700 `#b45309` replacing the washed-out `#fbbf24` at the three status/warning sites.
+
+**PD.3 — donor GUI opens headless (no console window) on Windows.** `donor-app/src/main.rs` had no `windows_subsystem` attribute, so the GUI exe popped a console window behind the window when launched from Explorer. Added `#![cfg_attr(all(windows, feature = "gui"), windows_subsystem = "windows")]` — the GUI feature build detaches from the console; the pure-headless `--no-default-features` CLI build keeps its console for server/RunPod stdout.
+
+**PD.4 — memory-panel nits.** (a) The `cosine≥0.85` dashboard label was CORRECT — `SCHEMA_GROUP_COSINE = 0.85` in `hippocampal-schema.js` (raised from 0.70 so distinct teach phases form distinct schemas); the STALE artifact was the `0.7` in the `consolidation-engine.js:14` header comment — fixed to `0.85`. (b) `pass interval` blank: current `dashboard.html` already renders `5 min` (static default + `?? 300000` fallback + getState always sends `intervalMs`), so the blank Gee saw is a stale DEPLOYED bundle; hardened the render to `Number(cons.intervalMs) || 300000` so it can never blank on undefined/NaN/empty. (c) Tier 3 duplicate anchor (`play-tag-games · play-tag-games`): `Tier3Store.promote()` only guarded on `schema.id`, so two distinct schemas with the same label both promoted → duplicate anchor + double identity-baseline injection. Added a label-dedup in `promote()` (folds the dup's strength into the existing anchor, skips it) + a `dedupeByLabel()` cleanup wired into `server/brain-server.js` boot after load + seed to collapse any persisted dups.
+
+**Docs (full sweep, by hand, match-doc-format):** `donor-app/README.md` (theme dark→light/white + Windows no-console note), `docs/HTML-ENTRY-POINTS.md` (public mode makes ZERO `/admin/*` requests → no 401/login), `docs/NOW.md` (dated banner), `docs/KNOWN_ISSUES.md` (KI-8 CLOSED — public dashboard admin-login prompt), `docs/TODO.md` (PUBDASH-DONOR-UX entry).
+
+**STATUS:** ✅ DONE + VERIFIED (code + docs). Pushed to `if-only` + `github` per Gee ("before pushes to the git and github").
+
+---
+
 ## 2026-06-27 — Admin dashboard: Application Profiling section — feature/admin-profiling-dashboard
 
 ### Gee ask (verbatim per LAW #0)

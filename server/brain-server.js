@@ -2231,6 +2231,14 @@ class ServerBrain {
           console.warn('[Tier3Store] seedMissingFromList failed:', err?.message || err);
         }
       }
+      // PD.4 — collapse any duplicate-label anchors (older boots double-promoted
+      // the same identity concept; promote() only guarded on schema.id, so the
+      // dups persisted into identity-core.json). Runs after load + seed so it
+      // cleans both freshly-seeded and previously-persisted duplicates.
+      if (this.tier3Store && typeof this.tier3Store.dedupeByLabel === 'function') {
+        try { this.tier3Store.dedupeByLabel(); }
+        catch (err) { console.warn('[Tier3Store] dedupeByLabel failed:', err?.message || err); }
+      }
 
       // T2 2026-04-13 — apply any embedding refinement deltas that
       // _loadWeights() stashed on this._pendingEmbeddingRefinements at

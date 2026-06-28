@@ -813,6 +813,22 @@ export class Tier3Store {
   promote(schema) {
     if (!schema) return false;
     if (schema.promotedToTier3 && this.identitySchemas.has(schema.id)) return false;
+    // Dedup by LABEL — never hold two anchors for the same identity concept
+    // (Gee 2026-06-27 saw "play-tag-games · play-tag-games"). promote() only
+    // guarded on schema.id, so two distinct schemas with the same label both
+    // landed → a duplicate anchor + double identity-baseline injection for that
+    // concept. If an anchor with this label already exists, fold the new
+    // schema's strength into it and skip the duplicate.
+    if (schema.label) {
+      for (const existing of this.identitySchemas.values()) {
+        if (existing.id !== schema.id && existing.label === schema.label) {
+          if (typeof existing.reinforce === 'function') {
+            existing.reinforce(schema.consolidationStrength || 0);
+          }
+          return false;
+        }
+      }
+    }
     schema.promotedToTier3 = true;
     schema.tier3PromotedAt = Date.now();
     this.identitySchemas.set(schema.id, schema);
@@ -844,6 +860,33 @@ export class Tier3Store {
       return demoted;
     }
     return null;
+  }
+
+  // One-time cleanup — collapse duplicate anchors that share a label. Older
+  // boots promoted the same identity concept twice (promote() only guarded on
+  // schema.id), and those dups persisted into identity-core.json (Gee 2026-06-27
+  // saw "play-tag-games · play-tag-games"). Keeps the first per label, folds
+  // each duplicate's strength into the keeper, deletes the rest. Idempotent —
+  // run after loadFromJSON + seedMissingFromList in boot. Returns count removed.
+  dedupeByLabel() {
+    const byLabel = new Map(); // label -> kept schema
+    const toRemove = [];
+    for (const [id, s] of this.identitySchemas) {
+      const label = s && s.label ? s.label : '';
+      if (!label) continue;
+      const kept = byLabel.get(label);
+      if (!kept) {
+        byLabel.set(label, s);
+      } else {
+        if (typeof kept.reinforce === 'function') kept.reinforce(s.consolidationStrength || 0);
+        toRemove.push(id);
+      }
+    }
+    for (const id of toRemove) this.identitySchemas.delete(id);
+    if (toRemove.length > 0) {
+      console.log(`[Tier3Store] dedupeByLabel — removed ${toRemove.length} duplicate anchor(s); Tier 3 size=${this.identitySchemas.size}`);
+    }
+    return toRemove.length;
   }
 
   // Called by ConsolidationEngine each pass. Iterates SchemaStore.schemas

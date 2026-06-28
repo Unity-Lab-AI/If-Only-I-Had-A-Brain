@@ -3,6 +3,13 @@
 // M0 scaffold: CLI flags + GPU enumeration + config + protocol types + embedded shaders.
 // The WS donor loop (M1), GPU compute (M2), sparse frames (M3), and GUI (M4) follow —
 // see BUILD-PLAN.md. Scaffold types/messages aren't all exercised yet:
+// Windows GUI build: suppress the console window that otherwise pops up behind
+// the GUI when the app is launched from Explorer (Gee 2026-06-27: "the donor
+// application needs its terminal when open to open headless"). Only the GUI
+// feature build detaches from the console; the pure-headless
+// (--no-default-features) CLI build keeps its console so server/RunPod
+// operators still see stdout.
+#![cfg_attr(all(windows, feature = "gui"), windows_subsystem = "windows")]
 #![allow(dead_code)]
 
 mod cli;
