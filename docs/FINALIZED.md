@@ -5,6 +5,25 @@
 
 ---
 
+## 2026-06-28 — HBGRACE: server heartbeat false-terminates donors mid-sync / during event-loop blocks (Linux/slow-link drops) — feature/community-compute-donor-count
+
+### Gee verbatim per LAW #0
+
+> *"On linux I still seem to get dropped more frequently than those on windows..."* · *"Figure out what is going on, why it is happening, and if there is a fix for it"*
+
+**Diagnosis (Gee's live server log):** NOT the v0.3.3 client flap — the SERVER was terminating donors: `heartbeat — socket X (GPU donor) missed its ping (half-open) — terminating`, then a flood of `sparse binary reqId=… ERROR: Cannot call write after a stream was destroyed` (mid-replica-upload to the just-killed socket). The 30s single-miss heartbeat (`_heartbeatTimer`) kills a donor that's merely BUSY: a fresh donor is replica-synced the full 40M-neuron brain (14.2 MB intra + crosses), which blocks the server loop ~5s at a time (`[EventLoop] BLOCKED 4917ms phase=_teachHebbian replicaSyncing=1`) so the pong handler can't run + the ping is delayed, AND floods the donor — on a high-RTT/low-bw link (Starlink/Linux) it drains the backlog + answers the ping late → misses the one 30s window → terminated mid-sync → write-after-destroyed flood → reconnect → re-sync → churn. False-positive liveness kill, worse on slow links = why Linux drops more.
+
+**Fix (server-side, `server/brain-server.js` + `server/brain-server/gpu.js`):**
+
+- **HBGRACE.1** — `ws._missedPings` grace counter; terminate only after `_HB_MISS_LIMIT`=2 consecutive misses (was 1). Reset on pong.
+- **HBGRACE.2** — lag sampler stamps `brain._lastEventLoopBlockTs` on a real block (≥1s); if one occurred within the heartbeat window the budget rises to `_HB_MISS_LIMIT_BUSY`=5 (~150s) — a pong lost to the server's OWN stall isn't the donor's fault (mirrors the dashboard RTT "don't blame the client for the server's lag" fix).
+- **HBGRACE.3** — if `brain._replicaSyncInFlight.has(ws)` the donor is busy receiving the brain → busy budget applies; not killed mid-upload.
+- **HBGRACE.4 (log-flood cleanup)** — `_sparseSendBinary` + the chunked-upload loop now detect a benign post-disconnect send error (`stream was destroyed` / `not open`) and rate-limit it (one line / 10s); the chunk loop `break`s on a closed socket instead of writing every remaining chunk into a dead stream.
+
+Server-only (no donor binary change → no rebuild/release; donor stays v0.3.4). `node --check` clean (brain-server.js, gpu.js). WEBSOCKET.md heartbeat-grace subsection added. Deeper event-loop-block-during-sync remains the standing WL.3 perf task (bound the teach/sync block so upload frames + pongs get airtime) — referenced, not fully solved here. Deployed to box + fresh walk (reset weights) per `docs/SPONGE-FRESH-WALK-DEPLOY.md`.
+
+---
+
 ## 2026-06-28 — ASCALE: auto-scale gated on MAX card VRAM not DONATED amount + brain-size budget clarity (donor-app v0.3.4) — feature/community-compute-donor-count
 
 ### Gee verbatim per LAW #0
