@@ -655,6 +655,10 @@ const SERVER_STATE_MIXIN = {
             bufferedKB: r1(buffered / 1024),
             gpuName: isGPU ? (c.gpuName || (tele && tele.gpuName) || null) : null,
             gneuronsPerSec: (isGPU && tele) ? r2(tele.gneuronsPerSec || 0) : null,
+            // F9 — WebGPU storage-binding cap + capability flag, so the dashboard can
+            // show "GPU buffer too small for cortex matrix" instead of a mystery 0 Gn/s.
+            maxBindMB: isGPU ? (Number(c.maxBindMB) || null) : null,
+            bindIncapable: isGPU ? !!c._bindIncapable : false,
             // health flag — RED only on a REAL per-client problem: genuinely stale
             // (90s+ silent), backed-up (>50 MB unsent), or high RTT that is NOT just the
             // server's own event-loop lag. RTT is measured off the heartbeat ping/pong, so
@@ -691,6 +695,17 @@ const SERVER_STATE_MIXIN = {
         list: list.slice(0, CAP),
       };
     } catch (err) { out.clients = { error: err.message }; }
+
+    // F9 — cortex GPU-upload status. When initGpu() failed to bind the cross-projection
+    // matrices on the donor (e.g. a too-small WebGPU storage-binding cap), surface the
+    // honest reason so the dashboard shows "GPU buffer too small for cortex matrix"
+    // instead of leaving the operator to infer it from a 0-Gn/s / high-RTT row.
+    try {
+      const f = this._cortexUploadFailure;
+      out.cortexUpload = f
+        ? { failed: true, looksLikeBindingLimit: !!f.looksLikeBindingLimit, reason: String(f.reason || '').slice(0, 200), ageMs: Math.max(0, now - (f.ts || now)) }
+        : { failed: false };
+    } catch { out.cortexUpload = { failed: false }; }
 
     return out;
   },

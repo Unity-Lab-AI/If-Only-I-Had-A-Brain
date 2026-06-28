@@ -866,6 +866,26 @@ const SERVER_GPU_MIXIN = {
     if (!ws || ws.readyState !== 1) return;
     if (ws === this._gpuClient) return;   // primary is the master — nothing to replicate
     if (!this._gpuClient) return;         // no master established yet
+    // DF.7 F8 — capability-aware routing. Don't stream a full brain replica to a
+    // donor whose WebGPU storage-binding cap can't hold the cortex cross-projection
+    // matrices: it would just fail to bind (looksLikeBindingLimit) and sit at a
+    // silent 0 Gn/s after we wasted a 100MB+ upload over its link. maxBindMB is
+    // captured per donor at gpu_register. Floor is below the 2GB WebGPU spec minimum,
+    // so only a genuinely-unraised-limit device (e.g. the 128 MiB default) is skipped;
+    // any capable donor (≥ floor — all normal cards) syncs as before. Override with
+    // DREAM_DF7_MIN_BIND_MB. `_bindIncapable` is surfaced on the dashboard (F9) as the
+    // honest reason instead of a mysterious high-RTT / 0-Gn/s row.
+    const _cc = (this.clients && this.clients.get) ? this.clients.get(ws) : null;
+    const _minBind = Number(process.env.DREAM_DF7_MIN_BIND_MB) > 0 ? Number(process.env.DREAM_DF7_MIN_BIND_MB) : 1800;
+    if (_cc && Number(_cc.maxBindMB || 0) > 0 && Number(_cc.maxBindMB) < _minBind) {
+      _cc._bindIncapable = true;
+      if (!_cc._bindSkipWarned) {
+        _cc._bindSkipWarned = true;
+        console.warn(`[Brain] DF.7 F8 — donor ${_cc.gpuName || _cc.id} maxBind ${_cc.maxBindMB}MB < ${_minBind}MB floor — NOT replica-syncing (can't bind cortex matrices; would 0-compute after a wasted upload). Stays connected but excluded from the fan-out.`);
+      }
+      return;
+    }
+    if (_cc) _cc._bindIncapable = false;
     if (!this._replicaSyncInFlight) this._replicaSyncInFlight = new Set();
     if (this._replicaSyncInFlight.has(ws)) return;
     this._replicaSyncInFlight.add(ws);
