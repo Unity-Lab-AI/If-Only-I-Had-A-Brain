@@ -80,6 +80,14 @@ git fetch origin && git checkout main && git pull --ff-only
 #    state: brain-weights.bin, episodic-memory.db, *.json caches, identity-core.json)
 git archive HEAD | sudo tar -x -C /opt/unity-brain
 
+# 2b. ⚠ REQUIRED — `sudo tar -x` writes the overlaid files AND directory entries
+#     (server/, server/brain-server/, …) as root:root. The service runs as `unity`,
+#     so a root-owned server/ dir means `unity` can no longer create files in it →
+#     identity-core.json / mindspace / brain-weights / .resume-marker saves fail with
+#     EACCES, and a force-fresh wipe can't unlink the old weights (needs dir-write).
+#     ALWAYS reclaim ownership after the overlay (2026-06-28 regression):
+sudo chown -R unity:unity /opt/unity-brain
+
 # 3. Restart (state preserved via DREAM_KEEP_STATE=1; no unit change → no daemon-reload)
 sudo systemctl restart unity-brain
 
