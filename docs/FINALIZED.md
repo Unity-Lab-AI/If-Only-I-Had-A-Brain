@@ -159,6 +159,22 @@ Also shipped: `docs/SPONGE-PRE-FRESH-INSTALL-CHECKS.md` (server-side Tier 3 veri
 
 **STATUS:** ✅ DONE. The 2026-06-27 batch (T3SEED / CGATE / UVM-INT / DOCSWEEP / MINDSEYE) was migrated verbatim above. **Correction 2026-06-27:** the follow-on completed items (IMG-GEN / IMG-SEE / SPONGE-WRITEUP) had been left as a summarized banner blurb in `docs/TODO.md` instead of migrated verbatim — Gee caught it ("the todo was to be finalized in finalized.md verbatium why didnt you do it"). Now corrected: their verbatim entries (above) are archived here with Gee's exact words, and the TODO banner points to them. No dumbing down.
 
+#### GHBACKUP — public GitHub cloud backup of the whole project (Gee 2026-06-27)
+
+**Gee verbatim per LAW #0:**
+
+> *"lets go ahead and do everything we need to do to set up a public repo for this project in full with develop and main on github for a back up of the project on cloud just incase somthing happens with unityailab.com git. so do everything u need to do to make it correct and proper following the git ignore correctly"*
+
+> *"and pull main git.unityailab repo before you push the github... cherry pick so not to copy over our work herer(but get it all) sponge changed shit"*
+
+**Decision forks Gee answered (informed, triple-confirmed via AskUserQuestion):** Visibility = **Public** (over the recommended Private, after being shown `.claude/` persona IP is tracked in tree + history). Loose untracked files = *"its all public"*. `.claude/` IP boundary = *"EVERYTHING public incl. .claude/ + history"* — Gee, as founder + IP owner, **explicitly overrode the `.claude/` IP-boundary LAW + the 34 memory feedback files** for this repo (deliberate, informed override — logged, not an accidental leak).
+
+**Pull-before-push (recon-confirmed — NO cherry-pick needed):** local `main`/`develop` had ZERO unique commits vs `if-only` → pure fast-forward. `git fetch if-only main:main develop:develop` (FF-only, refuses non-FF) brought them current with zero clobber risk — Sponge's `v1.2.0` (`9f824a3`) already contained our tier3 wave, cascaded feature→develop→main + released by him. The old `origin/unity.git` remote returned `fatal: Could not read from remote repository` (dead/inaccessible — the exact disaster this backup guards against). Sponge had pruned merged branches server-side; 10 LOCAL-ONLY branches (brain-refactor-full-control / 114.19fn / bc-basin-collapse / coherence-word-order-curiosity / pre-alpha-full-k-phd-stack / statusline-restore-original / rework / server-brain / syllabus-k-phd / t14-language-rebuild) existed nowhere else and were captured.
+
+**What shipped:** PUBLIC repo **`Unity-Lab-AI/If-Only-I-Had-A-Brain`** (github.com — lab org; default branch `main`). All **16 local branches** pushed (main + develop + 6 server-backed features + the 10 local-only) + all **5 tags** (donor-v0.1/0.2/0.3, v1.1.0, v1.2.0). `git add -A` honored `.gitignore` — verified ZERO weights / identity-core / mindspace-memory / `.env` / pollinations-user / episodic-memory / conversations / glove / node_modules / schemas staged. Loose working-tree artifacts (`.claude.zip`, `unity-donor-windows-x86_64.exe`, scratch images/messages, `AUDIO-EQUATION.md`, `docs/DOC-AUDIT.md`, `RESUME.md`) committed (`614df1c`) per "its all public". **Verified:** `github/main` == `if-only/main` byte-identical (`9f824a3ea000`); repo `visibility=PUBLIC`, `default=main`, not empty; 31 `.claude/` files present on github main per the override. Pushed to `github` ONLY (not `if-only` — "do not push to feature branch again" honored).
+
+**STATUS:** ✅ DONE + VERIFIED. https://github.com/Unity-Lab-AI/If-Only-I-Had-A-Brain — full public mirror, byte-identical to the canonical server main. Backup is live.
+
 ---
 
 ## 2026-06-27 — Cell pass = learning completion, not test-question correctness — feature/cells-pass-on-learning-completion
