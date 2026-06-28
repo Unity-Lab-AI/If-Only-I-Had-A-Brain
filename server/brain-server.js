@@ -5061,7 +5061,13 @@ setInterval(() => {
 // the master). Conservative interval — re-streaming the full weight set is
 // heavy at scale, so this corrects slow drift; fire-and-forget Hebbian keeps
 // replicas approximately current between rebroadcasts.
-const REPLICA_REBROADCAST_MS = 10 * 60 * 1000;
+// DF.7 — when fan-out is ON, Hebbian batches round-robin across donors so their
+// GPU weight-shadows drift apart faster; re-converge them to the CPU master more
+// often (default 60s) to bound the drift. Without fan-out, slow-drift correction
+// at 10 min is plenty. Env-tunable via DREAM_DF7_REBROADCAST_MS.
+const REPLICA_REBROADCAST_MS = Number(process.env.DREAM_DF7_REBROADCAST_MS) > 0
+  ? Number(process.env.DREAM_DF7_REBROADCAST_MS)
+  : (process.env.DREAM_DF7_FANOUT !== '0' ? 60 * 1000 : 10 * 60 * 1000);
 setInterval(() => {
   if (typeof brain._rebroadcastMasterToReplicas === 'function') {
     brain._rebroadcastMasterToReplicas().catch((e) => {
@@ -6828,9 +6834,9 @@ wss.on('connection', (ws, req) => {
           // so the beefiest GPU does the work instead of whoever connected first
           // (the "2GB card is primary while the 16GB idles" problem). Re-uploads
           // the brain to the new primary via the same path as failover; the old
-          // primary stays in the pool as a replica. Default OFF = first-come.
+          // primary stays in the pool as a replica. Default ON (DREAM_DF7_FANOUT≠0).
           const _df7PromoteStronger = havePrimary
-            && process.env.DREAM_DF7_FANOUT === '1'
+            && (typeof brain._df7Fanout === 'function' && brain._df7Fanout())
             && typeof brain._donorStrength === 'function'
             && brain._donorStrength(ws) > brain._donorStrength(brain._gpuClient);
           if (!havePrimary || _df7PromoteStronger) {
@@ -7113,10 +7119,9 @@ wss.on('connection', (ws, req) => {
       // the next dispatch re-sends gpu_init + re-uploads every projection.
       let _promotedGpu = null;
       if (brain._gpuClients) {
-        // DF.7 (flag-gated) — promote the STRONGEST live standby, not just the
-        // first one, so the beefiest remaining GPU takes over. Default OFF =
-        // first-alive (today's behavior).
-        if (process.env.DREAM_DF7_FANOUT === '1' && typeof brain._strongestLiveDonor === 'function') {
+        // DF.7 — promote the STRONGEST live standby, not just the first one, so
+        // the beefiest remaining GPU takes over. Default ON (DREAM_DF7_FANOUT≠0).
+        if (typeof brain._df7Fanout === 'function' && brain._df7Fanout() && typeof brain._strongestLiveDonor === 'function') {
           _promotedGpu = brain._strongestLiveDonor(ws);
         }
         if (!_promotedGpu) {

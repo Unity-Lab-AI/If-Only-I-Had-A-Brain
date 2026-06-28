@@ -5,6 +5,33 @@
 
 ---
 
+## 2026-06-28 — Distributed donor work-sharing: ALL donors compute + ALL on the leaderboard — feature/distributed-donor-work-sharing
+
+### Gee verbatim per LAW #0
+
+> *"do what ever we need to do on new feature branch so that users actually all do work correctly..... We can NOT have only one person on the leaderboard doing work(THAT IS FUCKING STUPIOD WHAT THE POINT IS HAVING DONOR(S) IF ONLY ONE CAN DO THE FUCKING WORK AND ONLY ONE CAN BE ON THE LEADERBOARD IS A LOAD OF HORSE SHIT!"*
+
+> *"go ahead an pull main beforee you do anything"*
+
+Scope (Gee, AskUserQuestion): **Full swing now** — distribute independent forward work AND per-item teach work across all donors in one batch.
+
+**Diagnosis (live profiling + code trace):** with 2 donors connected, `Gee` did 16.7 Gn/s and `TheREV` did **0** — connected + fully synced as a replica, but handed zero work, so zero leaderboard credit. Every DF.7 fan-out part was BUILT (`_livePoolDonors`/`_nextPoolDonor`/`_gpuParallelMap`, replica sync, resident-state mirroring, target-addressed dispatch, per-donor leaderboard credit) but the dispatch chokepoints never round-robined real work → 100% pinned to the primary. Sponge's `DREAM_DF7_FANOUT=1` flag (his `deploy/df7-and-donor-rebuild` branch) couldn't help — no code path acted on it for the teach bulk. **CPU CSR is authoritative for Hebbian (GPU = fire-and-forget shadow)** → distributing GPU work CANNOT corrupt the master, so no risky delta-merge-back. The per-tick LIF stream stays serial-on-primary (resident voltage state; model-parallel sharding rejected for latency) — that's the documented ceiling, untouched.
+
+**Fix (server-side ONLY — fan-out at the dispatch layer spreads ALL callers' work incl. teach, zero curriculum/client/bundle edits):**
+
+- **DDW.1** `server/brain-server/gpu.js` `gpuSparsePropagate` — a STANDALONE propagate (non-empty preSpikes = carries its own input = stateless, correct on any replica with the same weights) now round-robins across `_nextPoolDonor()` when fan-out ON + no explicit target. Idle replicas compute forward passes. Empty-pre (bound) calls keep their own target.
+- **DDW.3** `gpu.js` `_flushBoundHebbianBatch` — the bound-Hebbian batch (the BULK of teach GPU work) round-robins to the next donor when fan-out ON (was primary-only). This is what actually spreads TEACHING across the pool.
+- **DDW.4** `server/brain-server.js` — replica re-broadcast tightened to **60 s under fan-out** (was fixed 10 min) so the faster weight-shadow drift from round-robin Hebbian re-converges to the CPU master quickly; env `DREAM_DF7_REBROADCAST_MS`.
+- Already in place + verified (no change needed): bound-propagate fan-out (`gpuSparsePropagateBound` → `_nextPoolDonor()`); resident-state mirroring (`_mirrorCortexWriteToReplicas` on `write_spike_slice`/`write_current_slice`); per-donor leaderboard credit (each donor's own `gpu_telemetry.gneuronsPerSec` accumulates — NO primary-only filter, so a replica appears the instant it computes).
+
+- **DDW.5** `gpu.js _df7Fanout()` + the two primary-promotion gates + the rebroadcast interval — fan-out flipped to **DEFAULT ON** (`DREAM_DF7_FANOUT !== '0'`) so the dashboard **Update & Fresh Walk** auto-distributes with NO systemd-unit env edit (Gee 2026-06-28: "we need fanout=1 set auto … Sponge is asleep"). The button overlays code, not the `/etc/` unit env, so a flag-default OFF would have left it dormant; default ON closes that. Single-donor = no-op; kill-switch `DREAM_DF7_FANOUT=0`.
+
+`node --check` clean (gpu.js, brain-server.js). Default ON — no env/unit setup; Sponge's flag line is now redundant (harmless).
+
+**STATUS:** ✅ CODE DONE + VERIFIED (headless). ⚠ **MUST be validated LIVE on the 2-donor pool (cannot be verified headless):** restart (or dashboard Update & Fresh Walk once cascaded to main), watch BOTH donors' Gn/s climb + BOTH on the leaderboard AND gate probes still pass. Rollback = `DREAM_DF7_FANOUT=0` (no weight-format / restart-contract change).
+
+---
+
 ## 2026-06-27 — Public-dashboard auth leak + donor app light theme/headless + memory-panel nits — feature/public-dashboard-donor-ux-fixes
 
 ### Gee verbatim per LAW #0
