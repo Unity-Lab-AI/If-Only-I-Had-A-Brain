@@ -5,6 +5,18 @@
 
 ---
 
+## 2026-06-28 — WL.4: robust self-deploy (no-sudo restart + stale-flag clear + live log) — feature/distributed-donor-work-sharing
+
+**Why:** the dashboard Update button overlaid code but couldn't restart the service (`sudo -n systemctl restart` not granted) → old code kept running + a stuck `_brainShutdownRequested` flag locked the button out (Gee 2026-06-28). This removes the sudo dependency + the lockout so the button self-serves.
+
+- **(a) No-sudo restart fallback** — `deploy/self-update.sh`: after the overlay, if `sudo -n systemctl restart` AND plain `systemctl restart` both fail, it `curl -X POST http://127.0.0.1:${UAL_BRAIN_PORT:-7525}/restart` → the server force-saves + `process.exit`'s, and systemd `Restart=always` revives the freshly-overlaid code. No sudoers grant needed. (`bash -n` clean.)
+- **(b) Stale-flag auto-clear** — `server/brain-server.js` `/update`: `_brainShutdownRequested` is now stamped (`_brainShutdownRequestedAt`) and auto-cleared if older than `DREAM_UPDATE_STALE_MS` (default 5 min), so a prior update that died before restarting no longer locks the button forever.
+- **(c) Live deploy log** — `self-update.sh log()` tees to stdout; the `/update` spawn pipes the child's stdout/stderr to `console.log` → admin Server Console ring → dashboard. The operator watches clone → overlay → restart (or the exact failure) live, no shell needed.
+
+`bash -n` + `node --check` clean. Cascaded to both mains. **Takes effect after the first manual deploy lands this code** — from then on the dashboard Update button self-serves with no sudo + full visibility. New env knobs: `UAL_BRAIN_PORT` (default 7525), `DREAM_UPDATE_STALE_MS` (default 5 min).
+
+---
+
 ## 2026-06-28 — Distributed donor work-sharing: ALL donors compute + ALL on the leaderboard — feature/distributed-donor-work-sharing
 
 ### Gee verbatim per LAW #0
