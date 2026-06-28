@@ -76,6 +76,22 @@
     /* PUBLIC dashboard mode — force-hide ALL admin controls regardless of
        is-admin so the shared read-only public page can never expose them. */
     body.public-mode .admin-only { display: none !important; }
+    /* PR.5 — Application Profiling section (scoped profiling-* classes). */
+    .profiling-card { background:#0d0d0d; border:1px solid #1c1c1c; border-radius:6px; padding:10px 12px; }
+    .profiling-h { font-size:10px; color:#38bdf8; letter-spacing:.5px; text-transform:uppercase; margin-bottom:6px; }
+    .profiling-kv { font-family:'JetBrains Mono',monospace; font-size:11px; color:#bbb; line-height:1.7; }
+    .profiling-kv .row { display:flex; justify-content:space-between; gap:10px; }
+    .profiling-kv .row b { color:#e5e7eb; font-weight:600; }
+    .profiling-kv .muted { color:#666; }
+    .profiling-bar { height:5px; border-radius:3px; background:#1f2937; overflow:hidden; margin-top:2px; }
+    .profiling-bar > span { display:block; height:100%; background:#38bdf8; }
+    .profiling-bar.warn > span { background:#f59e0b; }
+    .profiling-bar.crit > span { background:#ef4444; }
+    table.profiling-tbl { width:100%; border-collapse:collapse; font-family:'JetBrains Mono',monospace; font-size:10px; }
+    table.profiling-tbl th { text-align:left; color:#64748b; font-weight:600; padding:3px 6px; position:sticky; top:0; background:#0d0d0d; border-bottom:1px solid #1c1c1c; }
+    table.profiling-tbl td { padding:3px 6px; color:#cbd5e1; border-bottom:1px solid #141414; white-space:nowrap; }
+    table.profiling-tbl tr.unhealthy td { color:#fca5a5; background:#2a0f0f; }
+    table.profiling-tbl tr.donor td:first-child { color:#a78bfa; }
     .mode-badge {
       display: inline-block;
       padding: 2px 8px;
@@ -799,6 +815,31 @@
       </div>
       <div class="log" id="d-srvlog" style="max-height:360px;color:#9ca3af;"></div>
     </div>
+
+    <!-- PR.5 — Application Profiling (admin-only). Two halves per the spec:
+         (1) the BRAIN's system-resource usage (hardware/network/throughput) and
+         (2) per-client connection health so client↔brain issues are visible. -->
+    <div class="card admin-only profiling-section" style="margin-top:12px;" title="Live application profiling — system-resource usage of the brain (CPU / RAM / V8 heap / event-loop), network throughput + backpressure, GPU dispatch speed, and per-client connection health (RTT / bytes / buffered) so client↔brain issues surface here.">
+      <div class="card-title">📊 Application Profiling <span style="color:#555;font-size:9px;">(admin · live)</span><span id="d-prof-age" style="color:#555;font-size:9px;float:right;">—</span></div>
+      <div class="profiling-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:10px;margin-top:8px;">
+        <div class="profiling-card">
+          <div class="profiling-h">🖥 System Resources</div>
+          <div id="d-prof-host" class="profiling-kv"><span class="muted">waiting for state…</span></div>
+        </div>
+        <div class="profiling-card">
+          <div class="profiling-h">⚡ Throughput / Speed</div>
+          <div id="d-prof-throughput" class="profiling-kv"><span class="muted">waiting for state…</span></div>
+        </div>
+        <div class="profiling-card">
+          <div class="profiling-h">🌐 Network</div>
+          <div id="d-prof-network" class="profiling-kv"><span class="muted">waiting for state…</span></div>
+        </div>
+      </div>
+      <details class="profiling-clients" style="margin-top:10px;background:#0d0d0d;border:1px solid #1c1c1c;border-radius:6px;padding:8px 10px;" open>
+        <summary style="color:#38bdf8;cursor:pointer;font-family:'JetBrains Mono',monospace;font-size:11px;">👥 Clients (client↔brain) — <span id="d-prof-client-summary" style="color:#cbd5e1;">—</span></summary>
+        <div id="d-prof-clients" style="max-height:260px;overflow-y:auto;margin-top:8px;"><span class="muted" style="font-size:11px;color:#666;">waiting for state…</span></div>
+      </details>
+    </div>
   </div>
 
   <script>
@@ -1161,6 +1202,7 @@
       // WHAT the unified cortex is doing right now. One source of
       // truth: the same cortexCluster that plasticity writes to.
       renderBrainEvents(s.brainEvents || []);
+      try { renderProfiling(s.profiling || null); } catch (err) { /* profiling render is non-fatal */ }
       // Current-training card — subject + grade + description + phase
       // progress bar + per-subject cumulative breakdown. Same source
       // of truth: the Curriculum object's getCurriculumStatus().
@@ -1805,6 +1847,91 @@
     // state.lastMessageAt / state.activeUsers if the server exposes
     // them. If those fields aren't present in the state snapshot,
     // counters stay at default and the panel still renders cleanly.
+    // PR.5 — Application Profiling renderer. Reads state.profiling (host /
+    // process / throughput / network / clients) and paints the three resource
+    // sub-cards + the per-client health table. All-defensive: any missing field
+    // renders a muted "—" rather than throwing. Bounded: client list already
+    // capped server-side at 24; the table is scroll-bounded in CSS.
+    function renderProfiling(p) {
+      const $ = id => document.getElementById(id);
+      const host = $('d-prof-host'), thru = $('d-prof-throughput'), net = $('d-prof-network'), cl = $('d-prof-clients');
+      if (!host || !thru || !net || !cl) return;
+      if (!p || typeof p !== 'object') { return; }
+      const ageEl = $('d-prof-age');
+      if (ageEl) ageEl.textContent = p.collectedAt ? `updated ${Math.max(0, Math.round((Date.now() - p.collectedAt) / 1000))}s ago` : '';
+      const row = (k, v, extra) => `<div class="row"><span class="muted">${k}</span><b>${v}</b></div>${extra || ''}`;
+      const bar = (pct, warnAt, critAt) => {
+        const c = pct >= (critAt ?? 90) ? ' crit' : pct >= (warnAt ?? 75) ? ' warn' : '';
+        return `<div class="profiling-bar${c}"><span style="width:${Math.max(0, Math.min(100, pct))}%"></span></div>`;
+      };
+      const num = (n, d = 0) => (typeof n === 'number' && isFinite(n)) ? n.toLocaleString(undefined, { maximumFractionDigits: d }) : '—';
+
+      // ── System Resources ──
+      const h = p.host || {}, pr = p.process || {};
+      if (h.error) { host.innerHTML = `<span class="muted">host: ${h.error}</span>`; }
+      else {
+        const la = Array.isArray(h.loadAvg) ? h.loadAvg.join(' / ') : '—';
+        host.innerHTML =
+          row('CPU', `${num(pr.cpuPercent)}% <span class="muted">(${h.cpuCount || '?'} cores)</span>`) + bar(pr.cpuPercent || 0) +
+          row('load avg', la) +
+          row('sys RAM', `${num(h.sysMemUsedMB)}/${num(h.sysMemTotalMB)} MB (${num(h.sysMemUsedPct)}%)`) + bar(h.sysMemUsedPct || 0) +
+          row('proc RSS', `${num(pr.rssMB)} MB`) +
+          row('V8 heap', `${num(pr.heapUsedMB)}/${num(pr.heapLimitMB)} MB (${num(pr.heapUsedPct)}%)`) + bar(pr.heapUsedPct || 0) +
+          row('ext / arrbuf', `${num(pr.externalMB)} / ${num(pr.arrayBuffersMB)} MB`) +
+          row('ctx switches', `${num(pr.voluntaryCtxSwitches)} vol · ${num(pr.involuntaryCtxSwitches)} invol`) +
+          row('proc uptime', `${num(pr.uptimeS)}s`);
+      }
+
+      // ── Throughput / Speed ──
+      const t = p.throughput || {};
+      if (t.error) { thru.innerHTML = `<span class="muted">throughput: ${t.error}</span>`; }
+      else {
+        const el = t.eventLoopDelay || {};
+        thru.innerHTML =
+          row('step time', `${num(t.stepTimeMs, 2)} ms`) +
+          row('steps/sec', num(t.stepsPerSec, 2)) +
+          row('event-loop lag', `${num(t.eventLoopLagMs)} ms`) +
+          row('loop delay', el.meanMs != null ? `μ${num(el.meanMs, 1)} · p99 ${num(el.p99Ms, 1)} · max ${num(el.maxMs, 1)} ms` : '—') +
+          row('GPU dispatch', `${num(t.gpuDispatchPerSec, 1)}/s <span class="muted">(${num(t.gpuHits)}✓/${num(t.gpuMisses)}✗)</span>`) +
+          row('spikes', num(t.totalSpikes)) +
+          row('defs/hr', num(t.defsLearnedPerHour)) +
+          row('frames', num(t.frameCount));
+      }
+
+      // ── Network ──
+      const n = p.network || {}, wp = n.wsPressure || {};
+      if (n.error) { net.innerHTML = `<span class="muted">network: ${n.error}</span>`; }
+      else {
+        net.innerHTML =
+          row('in / out', `${num(n.bytesInPerSecKB, 1)} / ${num(n.bytesOutPerSecKB, 1)} KB/s`) +
+          row('total in/out', `${num(n.bytesInTotalMB, 1)} / ${num(n.bytesOutTotalMB, 1)} MB`) +
+          row('messages', `${num(n.msgInTotal)} in · ${num(n.msgOutTotal)} out`) +
+          row('GPU buffered', `${num((wp.bufferedAmountMB) || 0, 1)} / ${num(wp.thresholdMB || 500)} MB`) + bar(((wp.bufferedAmountMB || 0) / (wp.thresholdMB || 500)) * 100) +
+          row('WS drops', `${num(wp.drops)} <span class="muted">(${num(wp.dropRatePerSec, 2)}/s)</span>`) +
+          row('donors', `${num(n.donorCount)} · ${num(n.donorTotalVramMB)} MB VRAM`) +
+          row('agg throughput', `${num(n.aggGneuronsPerSec, 2)} Gn/s`) +
+          (wp.gpuShadowDirty ? `<div class="row"><span class="muted">⚠ GPU shadow</span><b style="color:#ef4444">DIRTY</b></div>` : '');
+      }
+
+      // ── Clients (client↔brain) ──
+      const c = p.clients || {};
+      const sum = $('d-prof-client-summary');
+      if (c.error) { cl.innerHTML = `<span class="muted">clients: ${c.error}</span>`; if (sum) sum.textContent = 'error'; return; }
+      if (sum) sum.textContent = `${c.total || 0} live (${c.admins || 0} admin · ${c.viewers || 0} viewer · ${c.donors || 0} donor)` +
+        (c.unhealthyCount ? ` · ${c.unhealthyCount} ⚠` : '') + ` · ${num(c.totalConnectionsEver)} ever`;
+      const list = Array.isArray(c.list) ? c.list : [];
+      if (list.length === 0) { cl.innerHTML = `<span class="muted" style="font-size:11px;color:#666;">no connections</span>`; return; }
+      const rows = list.map(x => {
+        const cls = (x.unhealthy ? 'unhealthy' : '') + (x.type === 'donor' ? ' donor' : '');
+        const rtt = (x.rttMs == null) ? '—' : `${x.rttMs}ms`;
+        const nm = x.name ? String(x.name).slice(0, 16) : '<span style="color:#475569">anon</span>';
+        const gpu = x.type === 'donor' ? `${x.gpuName ? String(x.gpuName).slice(0, 18) : '?'} ${x.gneuronsPerSec != null ? '· ' + num(x.gneuronsPerSec, 1) + 'Gn/s' : ''}` : '';
+        return `<tr class="${cls.trim()}"><td>${x.type}</td><td>${nm}</td><td>${x.ip || '?'}</td><td>${num(x.uptimeS)}s</td><td>${x.lastSeenS}s</td><td>${rtt}</td><td>${num(x.bytesInMB, 1)}/${num(x.bytesOutMB, 1)}MB</td><td>${num(x.bufferedKB)}KB</td><td>${gpu}</td></tr>`;
+      }).join('');
+      const more = (c.total > c.shown) ? `<div class="muted" style="font-size:10px;color:#666;padding:4px 6px;">+${c.total - c.shown} more not shown</div>` : '';
+      cl.innerHTML = `<table class="profiling-tbl"><thead><tr><th>type</th><th>name</th><th>ip</th><th>up</th><th>seen</th><th>rtt</th><th>in/out</th><th>buf</th><th>gpu</th></tr></thead><tbody>${rows}</tbody></table>${more}`;
+    }
+
     // Brain-event stream renderer. Reads the `brainEvents` array out
     // of each state broadcast and shows the most recent 12 events in
     // the event log panel. Type + region tags are colored so operator
