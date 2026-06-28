@@ -6278,6 +6278,22 @@ const wss = new WebSocketServer({
   perMessageDeflate: false,
 });
 
+// PR.4 — privacy-preserving IP mask for the client↔brain profiling table.
+// Drops the last IPv4 octet / tail IPv6 segments so the admin view can group
+// clients by rough origin without surfacing a full address.
+function _maskIp(ip) {
+  if (!ip) return '?';
+  let s = String(ip).replace(/^::ffff:/, '');
+  if (s.includes('.')) { const p = s.split('.'); return p.length === 4 ? `${p[0]}.${p[1]}.${p[2]}.x` : s; }
+  if (s.includes(':')) { const p = s.split(':').filter(Boolean); return (p.slice(0, 3).join(':') || '::') + '::x'; }
+  return s;
+}
+// PR.3 — byte sizer shared by the inbound listener + outbound send wrapper.
+function _wsFrameBytes(d) {
+  try { return typeof d === 'string' ? Buffer.byteLength(d) : (d && (d.byteLength || d.length)) || 0; }
+  catch { return 0; }
+}
+
 wss.on('connection', (ws, req) => {
   const id = 'user_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 6);
   // PA.4 reverse-proxy Forgejo auth: the auth proxy sets X-UAL-User on the
@@ -6285,8 +6301,35 @@ wss.on('connection', (ws, req) => {
   // client-supplied copy on every route). Donor/public routes carry no such
   // header. Trusted only when UAL_PROXY_AUTH=1 — see mode assignment below.
   const ualUser = (req.headers['x-ual-user'] || '').toString().trim();
-  const client = { id, lastInput: 0, inputCount: 0, name: null, isGPU: false, mode: null, ualUser: ualUser || null };
+  const _connNow = Date.now();
+  const _rawIp = (req.socket && req.socket.remoteAddress)
+    || (req.headers['x-forwarded-for'] || '').toString().split(',')[0].trim()
+    || '';
+  const client = {
+    id, lastInput: 0, inputCount: 0, name: null, isGPU: false, mode: null, ualUser: ualUser || null,
+    // PR.4 client↔brain profiling — per-connection health counters. Live byte
+    // counters feed the admin Clients table; cumulative totals (on brain) survive
+    // disconnects for the Network rate readout.
+    connectedAt: _connNow, lastSeen: _connNow, ip: _maskIp(_rawIp),
+    bytesIn: 0, bytesOut: 0, msgIn: 0, msgOut: 0, rttMs: null,
+  };
   brain.clients.set(ws, client);
+  brain._totalConnectionsEver = (brain._totalConnectionsEver || 0) + 1;
+  // PR.3 network accounting. Wrap send (outbound) + add a lightweight inbound
+  // listener — both purely additive: they count bytes/messages and never alter
+  // payloads. The primary message handler (added below) runs independently.
+  const _origSend = ws.send.bind(ws);
+  ws.send = (data, ...rest) => {
+    const n = _wsFrameBytes(data);
+    client.bytesOut += n; client.msgOut += 1;
+    brain._netBytesOutEver = (brain._netBytesOutEver || 0) + n;
+    return _origSend(data, ...rest);
+  };
+  ws.on('message', (data) => {
+    const n = _wsFrameBytes(data);
+    client.bytesIn += n; client.msgIn += 1; client.lastSeen = Date.now();
+    brain._netBytesInEver = (brain._netBytesInEver || 0) + n;
+  });
   console.log(`[Server] Client connected: ${id} (${brain.clients.size} total)`);
 
   // #33 — donor-socket liveness heartbeat. readyState + the close event alone
@@ -6298,7 +6341,12 @@ wss.on('connection', (ws, req) => {
   // and terminate()s anything that missed the previous ping, which fires
   // ws.on('close') → the existing primary-left failover / standby promotion.
   ws._isAlive = true;
-  ws.on('pong', () => { ws._isAlive = true; });
+  ws.on('pong', () => {
+    ws._isAlive = true;
+    // PR.4 — round-trip latency from the heartbeat ping/pong pair.
+    const c = brain.clients.get(ws);
+    if (c) { c.lastSeen = Date.now(); if (ws._pingSentAt) c.rttMs = Math.max(0, Date.now() - ws._pingSentAt); }
+  });
 
   // Send initial state. The admin/viewer mode comes in a SEPARATE
   // `modeAssigned` message after a 500ms claim window — see the
@@ -7062,10 +7110,21 @@ const _heartbeatTimer = setInterval(() => {
       continue;
     }
     ws._isAlive = false;
+    ws._pingSentAt = Date.now(); // PR.4 — stamp for the pong RTT measurement
     try { ws.ping(); } catch { /* socket dying — next sweep terminates it */ }
   }
 }, _HEARTBEAT_MS);
 wss.on('close', () => clearInterval(_heartbeatTimer));
+
+// PR.2 — event-loop delay histogram (percentiles) via perf_hooks, complementing
+// the 1s lag sampler above. Cumulative since boot; _getProfilingState reads
+// mean/p50/p99/max so the admin view shows tail latency, not just the last spike.
+try {
+  const { monitorEventLoopDelay } = require('perf_hooks');
+  const _elh = monitorEventLoopDelay({ resolution: 20 });
+  _elh.enable();
+  brain._eventLoopHistogram = _elh;
+} catch { brain._eventLoopHistogram = null; }
 
 // #36 — EVENT-LOOP LAG MONITOR (Path B keystone instrument). The box proved
 // /ws handshakes stall at 306M even with consolidation disabled, so a

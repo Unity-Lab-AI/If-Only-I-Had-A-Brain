@@ -5,6 +5,25 @@
 
 ---
 
+## 2026-06-27 — Admin dashboard: Application Profiling section — feature/admin-profiling-dashboard
+
+### Gee ask (verbatim per LAW #0)
+
+> *"as a new feature branch based on develop, we need to expand the admin dashboard to have a section deticated to profiling of the overall application, for hardware usage, network usage, how fast it is doing things, tons of profiling information, so we can easily see what the brain is using as far as system resources, as well as have a profiling done for the clients so we can see any potential issues with client to brain. So two things I need you to do."*
+
+Two halves: (1) the BRAIN's system-resource usage; (2) per-client connection health (client↔brain). New admin-only **Application Profiling** card on `html/dashboard.html` fed by a new `state.profiling` block.
+
+- **PR.1 server profiling** — `server/brain-server/state.js` `_getProfilingState()` → `state.profiling`. Host (CPU% + `os.loadavg()`, sys RAM used%, cores/model, OS uptime), process (RSS, V8 heap used/limit %, external/arrayBuffers, `process.resourceUsage()` ctx-switches + fs I/O, uptime).
+- **PR.2 throughput/speed** — step time + steps/sec, event-loop lag + `perf_hooks.monitorEventLoopDelay()` histogram (mean/p50/p99/max), GPU dispatch/sec from `_gpuDispatchTimestamps`, hits/misses, spikes, defs/hr, frames.
+- **PR.3 network** — per-WS byte counters (send wrapper + inbound listener in `brain-server.js`) → bytes in/out totals + live KB/s rates, msg counts; reuses `wsPressure` (buffered/drops/threshold); donor count/VRAM + aggregate Gneurons/sec.
+- **PR.4 client↔brain** — per-connection registry surfaced: type/name/masked-IP/uptime/last-seen/**RTT** (heartbeat ping/pong instrumented), bytes, buffered, donor GPU/throughput. Bounded table (≤24 + "+N more"), aggregates (avg RTT, max buffered, totals per type, connections-ever), **unhealthy** rows (>90s stale / RTT>1s / >50MB buffered) flagged + sorted to top.
+- **PR.5 dashboard** — admin-only `profiling-section` card (System Resources / Throughput / Network sub-cards + collapsible Clients table), scoped `profiling-*` CSS, `renderProfiling(s.profiling)` wired into `updateDashboard()`, bounded heights + bars + health highlighting. Gated by `.admin-only` + `body.is-admin`; force-hidden in `body.public-mode`.
+- **PR.6 docs** — `docs/ADMIN-CONTROLS.md` profiling section.
+
+**Verification:** `node --check` clean on `brain-server.js`, `state.js`, and both extracted `dashboard.html` script blocks. `_getProfilingState()` run against a mock brain context (2 clients incl. a stale 1200ms-RTT admin + a busy donor) — output well-formed, unhealthy flag + sort correct, all four sub-blocks populate, byte/heap/loop math right. On `feature/admin-profiling-dashboard` — not merged. Deploy: backend (state.js + brain-server.js) needs `/opt` overlay redeploy + restart (Update & Savestart, `DREAM_KEEP_STATE=1`, no wipe); dashboard.html auto-deploys on push to main.
+
+---
+
 ## 2026-06-27 — sem→motor saturation: Option B (prevent collapse during teach) — feature/sem-motor-prevent-collapse
 
 ### Gee ask
