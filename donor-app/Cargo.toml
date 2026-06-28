@@ -1,6 +1,6 @@
 [package]
 name = "unity-donor"
-version = "0.3.0"
+version = "0.3.1"
 edition = "2021"
 description = "Native GPU compute donor for the Unity brain — versatile headless/GUI, cross-platform (Windows + Linux)."
 license = "MIT"
