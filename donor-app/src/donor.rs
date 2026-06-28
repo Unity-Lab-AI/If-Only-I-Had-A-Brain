@@ -222,6 +222,19 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
     let engine_backend = engine.engine_backend();
     let driver_version = engine.driver_version();
     let compute_capability = engine.compute_capability();
+    // DONATED CAPACITY for the brain's auto-scale tier gate (so it counts what this host actually
+    // gives, not the full card). utilizationPct = the donation duty-cycle (avg of the per-GPU util
+    // targets the GUI/CLI set, else the config default). donatedMB = an explicit VRAM cap if the
+    // user set `--memory <MB>` (0 = unset → the brain falls back to fullVram × utilization).
+    let utilization_pct: u8 = if !utils.is_empty() {
+        (utils.iter().map(|&u| u as u32).sum::<u32>() / utils.len() as u32).min(100) as u8
+    } else {
+        cfg.utilization_pct
+    };
+    let donated_mb: u64 = match cfg.memory {
+        crate::config::MemoryCap::MegaBytes(mb) => mb,
+        crate::config::MemoryCap::All => 0,
+    };
     let host_name = if gpus.len() > 1 { format!("{label} ({} GPUs)", gpus.len()) } else { label.clone() };
 
     println!("[donor] connecting to {} ...", cfg.server);
@@ -264,6 +277,8 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
         engine_backend.clone(),
         driver_version.clone(),
         compute_capability.clone(),
+        utilization_pct,
+        donated_mb,
     );
     tx.send(Message::text(serde_json::to_string(&reg).unwrap()))
         .await

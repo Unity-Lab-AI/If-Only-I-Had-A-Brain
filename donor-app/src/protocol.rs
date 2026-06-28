@@ -40,6 +40,15 @@ pub struct GpuRegister {
     /// CUDA compute capability ("8.9" Ada, "7.5" Turing, "12.0" Blackwell …) — empty on non-CUDA.
     #[serde(rename = "computeCapability", skip_serializing_if = "String::is_empty")]
     pub compute_capability: String,
+    /// Donation duty-cycle (0–100). How much of this host's compute TIME is donated — the brain
+    /// weights the community-compute tier by this so auto-scale counts DONATED capacity, not the
+    /// full card. (Throughput knob; NOT a VRAM-held commitment.)
+    #[serde(rename = "utilizationPct")]
+    pub utilization_pct: u8,
+    /// Explicit donated-VRAM cap in MB if the donor set one (`--memory`); 0 = unset (the brain then
+    /// falls back to fullVram × utilization). This is the size-relevant number for data-parallel.
+    #[serde(rename = "donatedMB")]
+    pub donated_mb: u64,
 }
 
 impl GpuRegister {
@@ -54,6 +63,8 @@ impl GpuRegister {
         engine_backend: String,
         driver_version: String,
         compute_capability: String,
+        utilization_pct: u8,
+        donated_mb: u64,
     ) -> Self {
         Self {
             msg_type: "gpu_register",
@@ -66,6 +77,8 @@ impl GpuRegister {
             engine_backend,
             driver_version,
             compute_capability,
+            utilization_pct,
+            donated_mb,
         }
     }
 }

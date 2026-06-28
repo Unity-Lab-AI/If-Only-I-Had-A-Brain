@@ -6,6 +6,21 @@
 
 ---
 
+## ✅ RESOLVED 2026-06-28 (donor-app v0.3.4 + server)
+
+- **ISSUE 1 — working as designed, documented.** The ~4GB cap is `DREAM_DONOR_FIT_MB=4096`, a deliberate donor-fit budget (so one modest donor holds a full data-parallel replica), NOT a WebGPU/binary limit. To go bigger: bump `DREAM_BRAIN_BUDGET_MB` on the unit (then every donor must hold it), or let the now-fixed auto-scale grow it. No code change.
+- **ISSUE 2 — confirmed bug FIXED (3-part + caveat):**
+  - **ASCALE.1** `donor-app` (`protocol.rs` + `donor.rs`) — `gpu_register` now sends `utilizationPct` (avg of per-GPU donation duty-cycles) + `donatedMB` (explicit `--memory` cap, 0 = unset).
+  - **ASCALE.2** `server/brain-server.js` — captures `client.utilizationPct` (clamp 0–100, default 100) + `client.donatedMB` at register.
+  - **ASCALE.3** `server/brain-server/gpu.js` `_recomputeCommunityCompute` — community total now sums **effective donated** capacity: `eff = donatedMB>0 ? min(donatedMB, fullVram) : fullVram × util/100`. Two 15GB cards at 60% → **18GB**, not 30GB → no false tier-up.
+  - **ASCALE.4 (caveat honored)** — tracks `_communityMinDonorMB` (smallest donor's effective committed VRAM = the real data-parallel SIZE bound) and logs it in the milestone-candidate line + exposes it in `/autoscale` community state. The tiers still gate on the (now effective) sum; a full **size-tier(min-donor) vs throughput-tier(Σ Gn/s)** rewire remains the flagged architectural follow-up.
+- Old donors (no `utilizationPct`) default to 100% → full-card counting (prior behavior); the fix engages once donors run v0.3.4.
+- Followed by the standing **fresh walk, reset weights** below.
+
+> ⛔ The original ISSUE 1 / ISSUE 2 write-ups below are retained for the record.
+
+---
+
 ## ISSUE 1 — donor GPU set to 90% of 16GB but only ~3.9GB is used. Is a WebGPU limit leaking into the binary?
 **No. It's a deliberate server-side budget, not a WebGPU/HTML/binary cap.**
 

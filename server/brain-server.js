@@ -5724,6 +5724,9 @@ const httpServer = http.createServer((req, res) => {
     if (!requireLoopback(req, res, '/autoscale')) return;
     const communityStatus = () => ({
       communityComputeMB: brain._communityComputeMB || 0,
+      // ASCALE — smallest donor's EFFECTIVE committed VRAM. For data-parallel each donor holds the
+      // FULL replica, so this (not the sum above) is the real upper bound on brain SIZE.
+      minDonorMB: brain._communityMinDonorMB || 0,
       donorCount: brain._communityDonorCount || 0,
       currentTier: brain._communityTier || 0,        // raw — what the pool qualifies for
       upgradeTier: brain._communityUpgradeTier || 0, // buffered — what would trigger a resize
@@ -6858,6 +6861,12 @@ wss.on('connection', (ws, req) => {
           // PA.4.8 — capture donor compute capacity (compute.html reports its
           // WebGPU adapter VRAM) for community-compute milestone scaling.
           client.gpuVramMB = Number(msg.vramMB) || 0;
+          // ASCALE — DONATED capacity, so auto-scale gates on what the donor actually gives, not
+          // the full card. utilizationPct = donation duty-cycle (default 100 = full); donatedMB =
+          // explicit VRAM cap if the donor set one (0 = unset → fall back to vram × util in
+          // _recomputeCommunityCompute). Browser donor omits both → util 100 / donated 0.
+          client.utilizationPct = Math.max(0, Math.min(100, Number(msg.utilizationPct) || 100));
+          client.donatedMB = Math.max(0, Number(msg.donatedMB) || 0);
           // F8/F9 — WebGPU storage-binding cap, captured at register (gpu_register
           // sends it as `maxStorageBindingMB`; telemetry later sends `maxBindMB`).
           // Capturing here makes the capability gate + dashboard label work from the
