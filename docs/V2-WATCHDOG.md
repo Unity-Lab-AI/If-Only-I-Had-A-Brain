@@ -139,7 +139,7 @@ When a code sweep adds a new milestone-worthy log signature:
 
 # Window 2 — start the watchdog filter pipeline. This APPENDS to
 # v2-milestone-watchdog.log so Claude can tail the same file:
-cd C:\Users\gfour\Desktop\Dream
+cd C:\Users\gfour\Desktop\If-Only-I-Had-A-Brain
 Get-Content server\server.log -Wait -Tail 0 | Select-String -Pattern '<paste pattern from above>' -NotMatch '(CELL ALIVE)' | Tee-Object -FilePath v2-milestone-watchdog.log -Append
 ```
 
