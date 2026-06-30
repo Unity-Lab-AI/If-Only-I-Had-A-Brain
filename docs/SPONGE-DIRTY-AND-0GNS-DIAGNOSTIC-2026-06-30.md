@@ -66,7 +66,7 @@ wipe regardless.
 
 ## ⭐ BRAIN-SIDE FIXES SHIPPED (2026-06-30) — verify after the Savestart redeploy
 
-Three brain-side fixes were coded + bundled and ship via **Update & Savestart** (`/update?keep=1` — overlays
+Four brain-side fixes were coded + bundled and ship via **Update & Savestart** (`/update?keep=1` — overlays
 `main`, KEEPS weights). All are pure throughput / wiring changes — **no weight-format or brain-size change**,
 so resuming the trained weights is safe. After you Savestart, verify each:
 
@@ -75,14 +75,37 @@ so resuming the trained weights is safe. After you Savestart, verify each:
 | **EL.1 — EventLoop block (Issue 4)** | `js/brain/cluster/hebbian.js`: the bio-scale intra-synapse `ojaUpdate` (+ anti-Hebbian) was a SINGLE synchronous pass over the millions-of-rows recurrent matrix = the 300–3900ms `[EventLoop] BLOCKED` stamped `_teachHebbian`/`_teachHebbianAsymmetric`. Now chunked through `_ojaUpdateChunked`/`_antiHebbianChunked` (row-slice + `setImmediate` yield; row-independent → identical math). Cross-projections were already chunked; this was the residual. | `journalctl -u unity-brain` grep `EventLoop\|BLOCKED` — block durations should drop from 100s–3900ms to per-chunk (tens of ms). Aggregate Gn/s should rise; donor RTT spikes should ease. |
 | **EL.2 — Auto-scale toggle (Issue 5)** | `html/dashboard.html`: server default was already `enabled:true`; the dashboard just never did an initial GET `/autoscale` on admin connect, so a refresh / second admin browser showed the checkbox unchecked. Now it fetches `/autoscale` on admin connect and seeds the panel from server truth. | Open the admin dashboard, refresh — Auto-scale checkbox stays as persisted. Open it in a 2nd admin browser — same state shown. |
 | **RS.1 — `/resync` (Issue 2 assist)** | `server/brain-server.js` + dashboard button: weight-safe `POST /resync` calls `_rearmCortexGpuUpload` to force the cortex GPU re-upload from the CPU master to the **currently-connected** donor (no donor disconnect needed), so a stuck `gpuShadowDirty` clears. Button in the Community Compute panel: "↻ Re-sync GPU shadow (clear DIRTY)". | Click it (or `curl -s -X POST http://localhost:PORT/resync`). Watch for `_gpuShadowDirty cleared — cortex re-confirmed` in the console. `/public-state.json` `wsPressure.gpuShadowDirty` → `false`. |
+| **CS.1 — Consolidation starvation guard (Issue 6)** | `server/brain-server.js` tick caller: the 5-tier memory pipeline only promotes UPWARD inside a COMPLETED consolidation pass — but the caller fired `runConsolidationPass()` with NO `forced`, so a SEED macro-phase (or a never-opening idle gate on a busy brain) returned it before `passCount++` forever ⇒ **passes run: 0** ⇒ **Tier 2 stuck at 0** + **Tier 3 stuck at its 29 identity-core seed**. Now: after a starvation window with no completed pass, escalate to a FORCED pass (bypasses the SEED skip). Bounded by `DREAM_CONSOLIDATION_MAX_MS` (30s) + the EL.1-chunked replay + the saturation veto. Tunable: `DREAM_CONSOLIDATION_FORCE_MS`. | Memory dashboard: "CONSOLIDATION ENGINE → passes run" climbs > 0; "TIER 2 SCHEMATIC → schemas" grows past 0; "TIER 3 IDENTITY → anchors" grows past 29. Console: `[Consolidation] starvation guard — FORCING a pass`. **BUT FIRST check the kill-switch (below) — if it's set, NO code fix runs.** |
+
+**⚠ Issue 6 — the operational box-check ONLY YOU can do (the kill-switch overrides the code fix):**
+The CS.1 guard does NOT override `DREAM_CONSOLIDATION_DISABLE=1` — that env kill-switch (#35) returns BEFORE any
+pass runs, by design (it was added because consolidation's CPU replay used to monopolize the loop + stall donor
+`/ws`; EL.1's chunked replay + the 30s cap now make that safe). **If consolidation passes are still 0 after the
+deploy, check the box env:**
+```bash
+systemctl cat unity-brain | grep -i CONSOLIDATION
+grep -i CONSOLIDATION /opt/unity-brain/server/.env 2>/dev/null
+sudo journalctl -u unity-brain -n 5000 --no-pager | grep -iE 'Consolidation|disabled-by-env|seed-phase|saturation veto|starvation guard'
+```
+If `DREAM_CONSOLIDATION_DISABLE=1` is set, UNSET it (now safe with EL.1 + the 30s cap) so Tiers 2/3 form.
 
 **Issue 1 (under-resourced)** resolves operationally as a consequence of EL.1 — once teach stops freezing the
 loop, new donors' `/ws` handshakes stop timing out, so the pool can actually climb to ≥3 donors / 24 GB.
 
-**Issue 3 (TheREV 0 Gn/s)** needs NO build: the donor source is ours (`donor-app/`), already **v0.3.4** with
-auto-reconnect + keepalive + cuda telemetry (the blank `plat` column = TheREV is on a stale pre-telemetry
-download). Fix = **TheREV re-downloads the current v0.3.4 donor app and relaunches** — you can't push a new
-binary into a process already running on a remote machine. No rebuild, no deploy step.
+**Issue 3 (TheREV 0 Gn/s) — BINARY UPDATE + REBUILD PATH (read this):**
+- The donor source is OURS (`donor-app/`), already **v0.3.4** with auto-reconnect + keepalive + cuda telemetry
+  (the blank `plat` column = TheREV is on a **stale pre-telemetry download**). For the CURRENT bug, no code
+  change is needed — **TheREV just re-downloads the current v0.3.4 donor binary and relaunches.** You can't push
+  a new binary into a process already running on a remote machine, and the server Savestart never touches the
+  donor artifact, so updating the donor is always a "grab the release + relaunch" on the donor's side.
+- **IF/when we DO change `donor-app/src` (Rust + `cuda_kernels.cu`), the binary MUST be REBUILT and re-released**
+  before anyone benefits — there is no hot-reload for the native donor. Build per target: `cargo build --release`.
+  - **Windows binary** can be built on a Windows box with Rust + CUDA (Gee's box has CUDA v13; needs `cargo`).
+  - **Linux binary** (what TheREV and the coordinator-box donors run) needs YOUR Linux box / CI — that's the
+    piece that stays Sponge-side. Release the rebuilt binaries to Forgejo and bump the site download links, then
+    EVERY donor must re-download + relaunch to pick it up (same "can't push into a running process" rule).
+- So the donor update flow is always: **(rebuild if src changed) → release to Forgejo → donors re-download +
+  relaunch.** Confirm a donor's version via the dashboard `plat` column (populated = current; blank = stale).
 
 ---
 
