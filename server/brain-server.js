@@ -5203,6 +5203,41 @@ const httpServer = http.createServer((req, res) => {
     return;
   }
 
+  // Manual GPU-shadow re-sync (dashboard "↻ Re-sync GPU shadow"). Weight-SAFE.
+  // `_gpuShadowDirty` is set when a compute client drops / fails over (the donor
+  // GPU mirror may have drifted from the authoritative CPU master). It normally
+  // clears only when a donor RESPAWNS and cortex re-confirms gpu_init — so with a
+  // single never-respawning donor it stays stuck indefinitely. This forces the
+  // cortex GPU re-upload to the CURRENTLY-connected primary (no donor disconnect
+  // needed): `_rearmCortexGpuUpload` resets the init flag so the next warm tick
+  // re-uploads the master CSR; the donor's gpu_init re-confirm then clears
+  // `_gpuShadowDirty` via the existing path. Touches NO weights — it re-pushes
+  // the intact CPU master to the GPU mirror.
+  if (req.url === '/resync' && req.method === 'POST') {
+    if (!requireLoopback(req, res, '/resync')) return;
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    try {
+      const dirtyBefore = !!(brain.cortexCluster && brain.cortexCluster._gpuShadowDirty);
+      const donors = brain._gpuClients ? brain._gpuClients.size : 0;
+      if (typeof _rearmCortexGpuUpload === 'function') {
+        _rearmCortexGpuUpload('manual /resync (dashboard)');
+      }
+      console.log(`[Brain] HTTP /resync — manual cortex GPU re-upload armed (dashboard). dirtyBefore=${dirtyBefore} donors=${donors}. Cortex re-uploads the CPU master to the primary on the next warm tick; _gpuShadowDirty clears when the donor re-confirms gpu_init.`);
+      res.end(JSON.stringify({
+        ok: true,
+        armed: true,
+        dirtyBefore,
+        donors,
+        note: donors > 0
+          ? 'cortex re-upload armed — DIRTY clears when the primary donor re-confirms gpu_init (watch the server console for "_gpuShadowDirty cleared")'
+          : 'no donors connected — the re-upload fires when a donor connects',
+      }));
+    } catch (err) {
+      res.end(JSON.stringify({ ok: false, error: String((err && err.message) || err) }));
+    }
+    return;
+  }
+
   // Graceful shutdown endpoint = a TRUE HALT (dashboard "Stop Brain" / stop.bat).
   // #112.10 — exits with code 42 (NOT 0). The systemd unit sets
   // `RestartPreventExitStatus=42`, so a deliberate Stop stays DOWN instead of

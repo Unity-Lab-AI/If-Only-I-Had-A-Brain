@@ -300,6 +300,24 @@ export const CLUSTER_HEBBIAN_MIXIN = {
     }
   },
 
+  // #37 — chunked CPU anti-Hebbian. Same row-slice + macrotask-yield shape as
+  // _ojaUpdateChunked, for the intra-synapse contrastive push-pull pass. The
+  // anti-Hebbian update is row-independent so slicing is identical to one full
+  // pass; below the chunk threshold it's a single synchronous call (no yield
+  // overhead). Requires SparseMatrix.antiHebbianUpdate to honor rowStart/rowEnd.
+  async _antiHebbianChunked(mat, preF, postF, lr) {
+    const rows = mat.rows | 0;
+    const CHUNK = 250000;
+    if (rows <= CHUNK) { mat.antiHebbianUpdate(preF, postF, lr); return; }
+    const yieldMacro = (typeof setImmediate === 'function')
+      ? () => new Promise((r) => setImmediate(r))
+      : () => new Promise((r) => setTimeout(r, 0));
+    for (let rs = 0; rs < rows; rs += CHUNK) {
+      mat.antiHebbianUpdate(preF, postF, lr, { rowStart: rs, rowEnd: Math.min(rs + CHUNK, rows) });
+      await yieldMacro();
+    }
+  },
+
   /**
    * T17.3.d — Upload all cross-projections to GPU via the proxy. Once
    * complete, sets `_gpuProxyReady = true` so subsequent
@@ -601,11 +619,22 @@ export const CLUSTER_HEBBIAN_MIXIN = {
     const atBioScale = (this.size | 0) > BIOLOGICAL_SCALE_SYNC_THRESHOLD;
 
     if (atBioScale) {
-      // Biological scale — sync path, zero external-memory allocation.
+      // Biological scale — sync-math path, zero external-memory allocation.
       // Oja's rule here: self-normalizing Hebbian with decorrelating
       // decay so repeated intra-cluster associations don't all pile
       // into the same recurrent columns.
-      this.synapses.ojaUpdate(pre, post, lr);
+      // #37 — CHUNK the intra-synapse Oja the same way _crossRegionHebbian
+      // chunks its cross-projection Oja. This was the RESIDUAL [EventLoop]
+      // BLOCKED 300–3900ms stamped phase=_teachHebbian / _teachHebbianAsymmetric:
+      // the recurrent intra matrix is millions of rows at biological scale and
+      // one synchronous ojaUpdate froze the loop for seconds, starving donor
+      // compute frames + /ws handshakes + pongs mid-teach (low aggregate Gn/s,
+      // donor RTT spikes, heartbeat false-reaps → gpuShadowDirty churn). The
+      // row loop is row-independent so slicing + yielding a macrotask between
+      // slices produces an IDENTICAL result while letting HTTP/WS work get an
+      // event-loop slot. Below the chunk threshold _ojaUpdateChunked runs a
+      // single synchronous pass (no yield overhead).
+      await this._ojaUpdateChunked(this.synapses, pre, post, lr);
     } else if (this._sparsePool && this._sparsePool.ready) {
       try {
         // Pool path keeps bare Hebbian (external worker RPC doesn't
@@ -770,7 +799,10 @@ export const CLUSTER_HEBBIAN_MIXIN = {
     const BIOLOGICAL_SCALE_SYNC_THRESHOLD = 100_000;
     const atBioScale = (this.size | 0) > BIOLOGICAL_SCALE_SYNC_THRESHOLD;
     if (atBioScale) {
-      this.synapses.antiHebbianUpdate(pre, post, lr);
+      // #37 — CHUNK the intra-synapse anti-Hebbian like the Oja path above so
+      // the contrastive push-pull pass doesn't block the event loop at
+      // biological scale (same residual [EventLoop] BLOCKED cause).
+      await this._antiHebbianChunked(this.synapses, pre, post, lr);
     } else if (this._sparsePool && this._sparsePool.ready && typeof this._sparsePool.antiHebbianUpdate === 'function') {
       try {
         await this._sparsePool.antiHebbianUpdate(this.synapses, pre, post, lr);

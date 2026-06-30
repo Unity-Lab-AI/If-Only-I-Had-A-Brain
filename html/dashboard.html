@@ -794,6 +794,11 @@
         </div>
         <button id="d-as-save" style="background:#1f2937;border:1px solid #4b5563;color:#e5e7eb;font-family:monospace;font-size:11px;font-weight:700;padding:6px 14px;border-radius:4px;cursor:pointer;">Apply auto-scale settings</button>
         <span id="d-as-status" style="margin-left:10px;font-size:10px;color:#555;"></span>
+        <div style="border-top:1px solid #1f2937;margin:10px 0 0 0;padding-top:10px;">
+          <button id="d-as-resync" style="background:#0a1f2a;border:1px solid #00e5ff;color:#7fe7ff;font-family:monospace;font-size:10px;font-weight:700;padding:5px 12px;border-radius:4px;cursor:pointer;">↻ Re-sync GPU shadow (clear DIRTY)</button>
+          <span id="d-as-resync-status" style="margin-left:8px;font-size:10px;color:#555;"></span>
+          <div style="color:#6b7280;font-size:9px;margin-top:6px;line-height:1.5;">Weight-SAFE. Forces the cortex GPU mirror to re-upload from the intact CPU master to the currently-connected donor — clears a <code style="color:#00e5ff;">gpuShadowDirty</code> flag that's stuck because no donor has respawned. Touches no weights.</div>
+        </div>
         <div style="color:#6b7280;font-size:9px;margin-top:8px;line-height:1.5;">Inside the stable band [downscale-floor … upscale-gate] the brain just keeps running at its current neuron count — donors come and go freely. A single donor (or 10) leaving NEVER downgrades the running brain unless compute stays collapsed below the floor past the downscale hold window.</div>
       </div>
     </div>
@@ -1104,6 +1109,20 @@
                 if (typeof j.enabled === 'boolean') applyAutoAdvanceState(j.enabled);
               }
             } catch { /* server may be transitioning — toggle stays at HTML default OFF */ }
+          })();
+          // Seed the auto-scale panel from server truth on admin connect.
+          // The panel otherwise only renders on the autoScaleChanged WS (which
+          // fires only when someone toggles) or after a local POST — so a fresh
+          // load / refresh, and any second admin browser, showed the checkbox at
+          // its hardcoded-unchecked HTML default even though the server default
+          // is enabled:true and the setting is persisted. GET /autoscale returns
+          // { settings, community }; renderAutoScale seeds the toggle + sliders +
+          // telemetry from it so refresh AND cross-admin both reflect the truth.
+          (async () => {
+            try {
+              const r = await fetch(adminApi('autoscale'), { cache: 'no-store' });
+              if (r.ok) renderAutoScale(await r.json());
+            } catch { /* server may be transitioning — panel stays at HTML default until the next autoScaleChanged WS */ }
           })();
         }
       }
@@ -1854,6 +1873,22 @@
         } catch (e) {
           if (statusEl) { statusEl.textContent = '✗ ' + (e?.message || e); statusEl.style.color = '#ff6b6b'; }
         }
+      });
+      // Manual GPU-shadow re-sync — POST /resync. Weight-safe: forces the cortex
+      // GPU re-upload from the CPU master to the connected donor so a stuck
+      // gpuShadowDirty (no donor respawn) clears without a disconnect.
+      const resync = document.getElementById('d-as-resync');
+      if (resync) resync.addEventListener('click', async () => {
+        const st = document.getElementById('d-as-resync-status');
+        if (st) { st.textContent = '… arming'; st.style.color = '#888'; }
+        try {
+          const r = await fetch(adminApi('resync'), { method: 'POST', cache: 'no-store' });
+          const j = await r.json().catch(() => ({}));
+          if (st) {
+            if (r.ok && j.ok) { st.textContent = '✓ ' + (j.note || 'armed'); st.style.color = '#22c55e'; }
+            else { st.textContent = '✗ ' + (j.error || r.status); st.style.color = '#ff6b6b'; }
+          }
+        } catch (e) { if (st) { st.textContent = '✗ ' + (e?.message || e); st.style.color = '#ff6b6b'; } }
       });
     })();
 

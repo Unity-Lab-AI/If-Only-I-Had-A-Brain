@@ -622,7 +622,7 @@ R4 (commit `7e095d0`) deleted: `BrocasArea.generate()` AI-prompting pipeline, `_
 ## Directory Structure (ACTUAL — updated SESSION_20260411_4)
 
 ```
-Dream/
+If-Only-I-Had-A-Brain/
 ├── index.html                  # Entry point — setup modal, brain HUD, sandbox (root-only — GitHub Pages landing URL)
 ├── proxy.js                    # Anthropic CORS proxy (Node.js)
 ├── css/

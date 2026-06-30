@@ -622,10 +622,12 @@ var init_sparse_matrix = __esm({
        * in weight space while the positive pair pulls the correct pair
        * together — push-pull discrimination instead of passive superposition.
        */
-      antiHebbianUpdate(preSpikes, postSpikes, lr) {
+      antiHebbianUpdate(preSpikes, postSpikes, lr, opts) {
         const { rows, values, colIdx, rowPtr, wMin, wMax } = this;
         if (!values || !rowPtr || !colIdx) return;
-        for (let i = 0; i < rows; i++) {
+        const rowStart = opts && typeof opts.rowStart === "number" ? Math.max(0, opts.rowStart) : 0;
+        const rowEnd = opts && typeof opts.rowEnd === "number" ? Math.min(rows, opts.rowEnd) : rows;
+        for (let i = rowStart; i < rowEnd; i++) {
           if (!postSpikes[i]) continue;
           const scaled = -lr * postSpikes[i];
           const start = rowPtr[i];
@@ -53411,6 +53413,24 @@ var CLUSTER_HEBBIAN_MIXIN = {
       await yieldMacro();
     }
   },
+  // #37 — chunked CPU anti-Hebbian. Same row-slice + macrotask-yield shape as
+  // _ojaUpdateChunked, for the intra-synapse contrastive push-pull pass. The
+  // anti-Hebbian update is row-independent so slicing is identical to one full
+  // pass; below the chunk threshold it's a single synchronous call (no yield
+  // overhead). Requires SparseMatrix.antiHebbianUpdate to honor rowStart/rowEnd.
+  async _antiHebbianChunked(mat, preF, postF, lr) {
+    const rows = mat.rows | 0;
+    const CHUNK = 25e4;
+    if (rows <= CHUNK) {
+      mat.antiHebbianUpdate(preF, postF, lr);
+      return;
+    }
+    const yieldMacro = typeof setImmediate === "function" ? () => new Promise((r) => setImmediate(r)) : () => new Promise((r) => setTimeout(r, 0));
+    for (let rs = 0; rs < rows; rs += CHUNK) {
+      mat.antiHebbianUpdate(preF, postF, lr, { rowStart: rs, rowEnd: Math.min(rs + CHUNK, rows) });
+      await yieldMacro();
+    }
+  },
   /**
    * T17.3.d — Upload all cross-projections to GPU via the proxy. Once
    * complete, sets `_gpuProxyReady = true` so subsequent
@@ -53533,7 +53553,7 @@ var CLUSTER_HEBBIAN_MIXIN = {
     const BIOLOGICAL_SCALE_SYNC_THRESHOLD = 1e5;
     const atBioScale = (this.size | 0) > BIOLOGICAL_SCALE_SYNC_THRESHOLD;
     if (atBioScale) {
-      this.synapses.ojaUpdate(pre, post, lr);
+      await this._ojaUpdateChunked(this.synapses, pre, post, lr);
     } else if (this._sparsePool && this._sparsePool.ready) {
       try {
         await this._sparsePool.hebbianUpdate(this.synapses, pre, post, lr);
@@ -53632,7 +53652,7 @@ var CLUSTER_HEBBIAN_MIXIN = {
     const BIOLOGICAL_SCALE_SYNC_THRESHOLD = 1e5;
     const atBioScale = (this.size | 0) > BIOLOGICAL_SCALE_SYNC_THRESHOLD;
     if (atBioScale) {
-      this.synapses.antiHebbianUpdate(pre, post, lr);
+      await this._antiHebbianChunked(this.synapses, pre, post, lr);
     } else if (this._sparsePool && this._sparsePool.ready && typeof this._sparsePool.antiHebbianUpdate === "function") {
       try {
         await this._sparsePool.antiHebbianUpdate(this.synapses, pre, post, lr);
