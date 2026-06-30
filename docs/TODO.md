@@ -46,6 +46,32 @@ If you're reading a public doc / HTML claim ("Unity has completed high school bi
 
 ## OPEN TASKS
 
+### WSQ — donor work-stealing "mining" model + sync pacing so high-RTT/Starlink donors carry real compute batches (Sponge 2026-06-30) — IN PROGRESS (branch `feature/donor-work-stealing-pull-queue`)
+
+**Sponge verbatim per LAW #0:**
+
+> *"option 2, but use option 3 so they do carry a compute batch"*
+
+> *"Honestly, becuase of how this all works, shouldent we be setting up the work almost like crypto currency mining? Cause we have things using sha hashes, and a bunch of mathmatical principuls, and it almost feels like crypto currency mining to a degree, so theoretically whoever can compute faster and churn out the calculations for the neurton firing and patterns for the brain, would be doing more work than others? It turns compute into a race, but it does allow people to contribute what the CAN, and has very little change to how work is sent out?"*
+
+> *"I was thinking a mix of A and B honestly."*
+
+> *"Build it all, verify locally, then deploy once confirmed its all good"*
+
+> *"Go ahead and start a fresh walk if needed"* (NOTE: NOT needed — this is routing/pacing only, no weight-format/size change, savestart-safe. Brain keeps training.)
+
+> Scope choice (AskUserQuestion 2026-06-30): **"Server + donor v0.3.5 hint"** — build server-side work-stealing AND the donor capability/bandwidth hint.
+
+**Root cause (Sponge's live Clients table 2026-06-30):** Sponge's donor (Linux RTX 2060, Starlink) sits at `rtt 6481ms · 0 Gn/s · bind 5.6GB` while Windows donors (57–117ms) compute fine. DF.7 `_donorHealth` (gpu.js:714) hard-zeros work-eligibility at rtt≥1000ms, then `_nextPoolDonor`/`_capacityWeightedPlan` filter w>0 → high-RTT donor excluded from EVERY work plan while a healthy donor exists. The 6.5s RTT is warmup-window congestion: the 51M-neuron replica-sync floods the Starlink uplink (the scenario HBGRACE was written for, at 40M). Reconnecting re-measures the same RTT and re-benches. NOT a binary/crossplay bug — CUDA works (reports cc 7.5 via the real CUDA path). Flap-recovery (PR.4 median RTT + HBGRACE + donor keepalive) is intact but only protects LIVENESS, never work-eligibility.
+
+**Build (savestart-safe — no fresh walk):**
+- [ ] WSQ.1 — `gpu.js` eligibility decouple: `_donorHealth` floors at a small epsilon for WORK weight (high-RTT donors still pull units); add `_donorPrimaryScore`/strict gate so primary/barrier selection keeps the >1s cutoff (a slow donor must never become primary or stall the main tick).
+- [ ] WSQ.2 — `gpu.js` `_gpuParallelMap` → completion-driven work-stealing: shared item cursor + bounded in-flight per donor; fast donors loop back + pull more, slow donors pull fewer, no `Promise.all` waits on a slow donor's pre-assigned share. The donor's existing per-unit ACK is the pull signal.
+- [ ] WSQ.3 — `gpu.js` `gpuSparseUpload` sync pacing: inter-chunk breathe for replica-sync uploads to high-RTT donors (∝ rttMs, capped) so the Starlink uplink drains instead of saturating — kills the RTT inflation at the source.
+- [ ] WSQ.4 — donor v0.3.5: capability/bandwidth hint in `gpu_register` (`protocol.rs` + `donor.rs` + `compute.rs` measure) so the server can pace per-link precisely; server reads it in the `gpu_register` handler (`brain-server.js`). Browser-donor field stays optional (forward/back-compat).
+- [ ] WSQ.5 — build donor (Linux local; Windows cross-build / release flagged), `node --check` server, `cargo check`/`--self-test` donor, local brain boot verification.
+- [ ] WSQ.6 — docs before push (ADMIN-CONTROLS / WEBSOCKET / diagnostic verify-table / FINALIZED) + Forgejo release notes for donor-v0.3.5.
+
 ### HBGRACE — server heartbeat falsely terminates donors mid-replica-sync / during event-loop blocks (Linux/slow-link drops more) (Gee 2026-06-28) — IN PROGRESS (branch `feature/community-compute-donor-count`)
 
 **Gee verbatim per LAW #0:**
