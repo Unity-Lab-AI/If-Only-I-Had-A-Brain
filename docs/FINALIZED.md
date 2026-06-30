@@ -5,6 +5,25 @@
 
 ---
 
+## 2026-06-30 — EL/RS: brain-side fixes for the donor diagnostic (EventLoop block + auto-scale toggle + /resync) — feature/community-compute-donor-count
+
+### Gee verbatim per LAW #0
+
+> *"can you do all those fixes? do we need sponge to do it? i think we have the update and savestart button in dashboard admin working now... so can you evaluate and anylysius oif all these issues using the stack make up and simulated outcomes to properly understand how these issues porpigate and how to fix them? if we fix them all we can push to main and use the update and save start button... yeah?"*
+> then *"yes"*
+> then *"why cant we do the binary? nothing is different for use everything should be documented by sponge, is it not, why cant we rep[licate on deploy?"*
+
+**Stack-traced analysis:** Issue 4 (`[EventLoop] BLOCKED`) is the propagation hub. The cross-projection Hebbian was already chunked (`_ojaUpdateChunked`), but the bio-scale **intra-synapse** `ojaUpdate` (+ anti-Hebbian) in `js/brain/cluster/hebbian.js` ran as a SINGLE synchronous pass over the millions-of-rows recurrent matrix — the residual 300–3900ms freeze stamped `_teachHebbian`/`_teachHebbianAsymmetric`. That freeze starves donor compute frames (low aggregate Gn/s), spikes donor RTT (1022ms observed), false-reaps busy donors via HBGRACE (sets `gpuShadowDirty`), drops mid replica-sync (TheREV re-sync loop), and times out new-donor `/ws` handshakes (stuck under-resourced). All fixes are pure throughput/wiring — no weight-format or brain-size change — so Update & Savestart (`/update?keep=1`) resumes the trained weights safely. Donor binary (Issue 3) needs NO build: source is ours (`donor-app/`), already v0.3.4 w/ auto-reconnect+keepalive+telemetry, already released — TheREV is on a stale download (blank `plat` col); fix = TheREV re-downloads + relaunches (can't push a binary into a remote running process).
+
+**Shipped:**
+- **EL.1** `js/brain/cluster/hebbian.js` — `intraSynapsesHebbian` bio-path now routes through `_ojaUpdateChunked(this.synapses, …)` instead of one synchronous `synapses.ojaUpdate`; `intraSynapsesAntiHebbian` bio-path now routes through a new `_antiHebbianChunked(this.synapses, …)`. Both slice the recurrent matrix by 250k-row chunks with a `setImmediate` macrotask yield between slices (row-independent math → identical result; below threshold a single synchronous pass, no yield overhead). `js/brain/sparse-matrix.js` — `antiHebbianUpdate` gained `rowStart`/`rowEnd` opts mirroring `ojaUpdate`. Bundle rebuilt (`npm run build`, 3.9mb). Verified: `node --check` + ESM `import()` of hebbian.js / sparse-matrix.js clean.
+- **EL.2** `html/dashboard.html` — auto-scale panel now seeds from a GET `/autoscale` on admin connect (added beside the existing `auto-advance` seed in the `if (isAdmin)` block) → `renderAutoScale(j)`. Server default was ALREADY `enabled:true` (`server/brain-server/gpu.js _getAutoScaleSettings`) and the panel already live-synced via the `autoScaleChanged` WS — the only gap was the missing initial seed, which left a fresh load / second admin browser showing the checkbox at its hardcoded-unchecked HTML default. Closes **SD.2**.
+- **RS.1** `server/brain-server.js` — weight-safe `POST /resync` (loopback-gated) calls `_rearmCortexGpuUpload('manual /resync (dashboard)')` to force the cortex GPU re-upload from the intact CPU master to the currently-connected primary, so a stuck `gpuShadowDirty` clears without waiting for a donor respawn (the genuine clear lands when the donor re-confirms `gpu_init`). `html/dashboard.html` — "↻ Re-sync GPU shadow (clear DIRTY)" button + handler in the Community Compute panel. Reports `dirtyBefore`/`donors` + a note.
+
+**Docs:** `docs/SPONGE-DIRTY-AND-0GNS-DIAGNOSTIC-2026-06-30.md` gained a "BRAIN-SIDE FIXES SHIPPED" section (per-fix verify-after-Savestart table + Issue 1 resolves-via-EL.1 + Issue 3 no-build-needed). `docs/ADMIN-CONTROLS.md` gained the `/resync` row. `.claude/settings.local.json` statusLine command fixed to the `$CLAUDE_PROJECT_DIR` absolute path (was a relative path that didn't render from a non-root cwd).
+
+---
+
 ## 2026-06-30 — SD: Sponge box-check + DIRTY/0Gn/s diagnostic runbook — feature/community-compute-donor-count
 
 ### Gee verbatim per LAW #0

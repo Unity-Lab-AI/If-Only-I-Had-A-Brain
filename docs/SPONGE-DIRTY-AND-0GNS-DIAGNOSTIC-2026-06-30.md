@@ -64,6 +64,28 @@ wipe regardless.
 
 ---
 
+## ⭐ BRAIN-SIDE FIXES SHIPPED (2026-06-30) — verify after the Savestart redeploy
+
+Three brain-side fixes were coded + bundled and ship via **Update & Savestart** (`/update?keep=1` — overlays
+`main`, KEEPS weights). All are pure throughput / wiring changes — **no weight-format or brain-size change**,
+so resuming the trained weights is safe. After you Savestart, verify each:
+
+| Fix | What changed | How to verify post-deploy |
+|---|---|---|
+| **EL.1 — EventLoop block (Issue 4)** | `js/brain/cluster/hebbian.js`: the bio-scale intra-synapse `ojaUpdate` (+ anti-Hebbian) was a SINGLE synchronous pass over the millions-of-rows recurrent matrix = the 300–3900ms `[EventLoop] BLOCKED` stamped `_teachHebbian`/`_teachHebbianAsymmetric`. Now chunked through `_ojaUpdateChunked`/`_antiHebbianChunked` (row-slice + `setImmediate` yield; row-independent → identical math). Cross-projections were already chunked; this was the residual. | `journalctl -u unity-brain` grep `EventLoop\|BLOCKED` — block durations should drop from 100s–3900ms to per-chunk (tens of ms). Aggregate Gn/s should rise; donor RTT spikes should ease. |
+| **EL.2 — Auto-scale toggle (Issue 5)** | `html/dashboard.html`: server default was already `enabled:true`; the dashboard just never did an initial GET `/autoscale` on admin connect, so a refresh / second admin browser showed the checkbox unchecked. Now it fetches `/autoscale` on admin connect and seeds the panel from server truth. | Open the admin dashboard, refresh — Auto-scale checkbox stays as persisted. Open it in a 2nd admin browser — same state shown. |
+| **RS.1 — `/resync` (Issue 2 assist)** | `server/brain-server.js` + dashboard button: weight-safe `POST /resync` calls `_rearmCortexGpuUpload` to force the cortex GPU re-upload from the CPU master to the **currently-connected** donor (no donor disconnect needed), so a stuck `gpuShadowDirty` clears. Button in the Community Compute panel: "↻ Re-sync GPU shadow (clear DIRTY)". | Click it (or `curl -s -X POST http://localhost:PORT/resync`). Watch for `_gpuShadowDirty cleared — cortex re-confirmed` in the console. `/public-state.json` `wsPressure.gpuShadowDirty` → `false`. |
+
+**Issue 1 (under-resourced)** resolves operationally as a consequence of EL.1 — once teach stops freezing the
+loop, new donors' `/ws` handshakes stop timing out, so the pool can actually climb to ≥3 donors / 24 GB.
+
+**Issue 3 (TheREV 0 Gn/s)** needs NO build: the donor source is ours (`donor-app/`), already **v0.3.4** with
+auto-reconnect + keepalive + cuda telemetry (the blank `plat` column = TheREV is on a stale pre-telemetry
+download). Fix = **TheREV re-downloads the current v0.3.4 donor app and relaunches** — you can't push a new
+binary into a process already running on a remote machine. No rebuild, no deploy step.
+
+---
+
 ## WHAT THE FOUNDER ASKED ME TO INVESTIGATE
 > "the brain its been in ela grade 2 for some time… is everything on track? nothing stalled or hung?"
 > then: "TheREV 0Gn/s?", "what does DIRTY mean", and "we KEEP the weights if they aren't trash."

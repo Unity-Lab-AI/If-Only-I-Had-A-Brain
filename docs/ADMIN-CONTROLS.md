@@ -133,6 +133,7 @@ each `.bin` is ~145 MB at scale). Slots above the cap are pruned on boot.
 | **💾 Save checkpoint now** | `POST /checkpoint` | Force an immediate versioned save between the 5-min ticks |
 | **⏪ Rollback to vN** | `POST /rollback {to:"vN"}` | Restore a backup slot over the active weights (**takes effect on next restart**) |
 | checkpoint list | `GET /versions` | The retained slots (slot, version#, time, size) |
+| **↻ Re-sync GPU shadow** | `POST /resync` | **Weight-SAFE.** Forces the cortex GPU mirror to re-upload from the intact CPU master to the currently-connected donor (`_rearmCortexGpuUpload`) — clears a stuck `gpuShadowDirty` without waiting for a donor to respawn. Touches no weights; the genuine clear lands when the donor re-confirms `gpu_init` (`_gpuShadowDirty cleared — cortex re-confirmed`). Button in the Community Compute panel. |
 
 **Version mismatch ⇒ old checkpoint refused.** On boot, a checkpoint loads only if
 its `formatVersion === WEIGHTS_FORMAT_VERSION` **and** its `totalNeurons` matches the
