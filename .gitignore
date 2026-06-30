@@ -189,6 +189,14 @@ out/
 # the server; Gee's commits should include the fresh bundle whenever
 # source files under `js/` change.
 
+# === Donor-app build binaries ===
+# Compiled donor executables (cargo --release). Distributed via Forgejo
+# releases + the site download links, never committed — way too big for git
+# and rebuilt per platform. Stray local build/test copies land in repo root.
+unity-donor-*-x86_64*
+unity-donor-*.exe
+donor-app/target/
+
 # Claude task scheduler runtime lock (session-specific PID)
 .claude/scheduled_tasks.lock
 
