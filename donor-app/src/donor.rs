@@ -279,6 +279,7 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
         compute_capability.clone(),
         utilization_pct,
         donated_mb,
+        0.0, // WSQ.4 — link bandwidth unknown at register; telemetry reports it once data flows.
     );
     tx.send(Message::text(serde_json::to_string(&reg).unwrap()))
         .await
@@ -380,6 +381,13 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
     // Last time ANY frame arrived from the brain (incl. its pong). Stale past IDLE_TIMEOUT while
     // we're actively pinging ⇒ the link is dead ⇒ reconnect now.
     let mut last_recv = std::time::Instant::now();
+    // WSQ.4 — measured downlink: accumulate inbound bytes per telemetry window → megabits/sec,
+    // peak-hold with slow decay so the reported value reflects link CAPACITY (seen during the
+    // replica-sync burst), not the idle rate. The brain uses it to pace future syncs to this
+    // link instead of guessing from RTT.
+    let mut bytes_in_window: u64 = 0;
+    let mut link_down_mbps: f64 = 0.0;
+    let mut link_window_start = std::time::Instant::now();
 
     loop {
         tokio::select! {
@@ -392,6 +400,12 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
             }
             _ = telemetry_tick.tick() => {
                 let (gns, steps) = control.status.lock().map(|s| (s.gneurons_per_sec, s.steps_computed)).unwrap_or((0.0, 0));
+                // WSQ.4 — fold this window's inbound byte count into the peak-hold downlink estimate.
+                let _win_s = link_window_start.elapsed().as_secs_f64().max(1e-6);
+                let _inst_mbps = (bytes_in_window as f64) * 8.0 / 1e6 / _win_s;
+                link_down_mbps = _inst_mbps.max(link_down_mbps * 0.9); // jump up on a burst, decay 10%/tick when idle
+                bytes_in_window = 0;
+                link_window_start = std::time::Instant::now();
                 let tele = crate::protocol::GpuTelemetry {
                     msg_type: "gpu_telemetry",
                     gpu_name: host_name.clone(),
@@ -405,6 +419,7 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                     engine_backend: engine_backend.clone(),
                     driver_version: driver_version.clone(),
                     compute_capability: compute_capability.clone(),
+                    link_down_mbps,
                 };
                 if let Ok(j) = serde_json::to_string(&tele) {
                     let _ = tx.send(Message::text(j)).await;
@@ -445,6 +460,13 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                 // A frame arrived (text/binary/ping/pong/close) — the link is alive; reset the
                 // dead-link timer so keepalive only trips on genuine silence.
                 last_recv = std::time::Instant::now();
+                // WSQ.4 — tally inbound bytes for the downlink-throughput estimate (folded in on the telemetry tick).
+                bytes_in_window += match &msg {
+                    Message::Text(t) => t.len() as u64,
+                    Message::Binary(b) => b.len() as u64,
+                    Message::Ping(p) | Message::Pong(p) => p.len() as u64,
+                    _ => 0,
+                };
                 match msg {
                     Message::Text(t) => {
                         match serde_json::from_str::<ServerMessage>(t.as_str()) {

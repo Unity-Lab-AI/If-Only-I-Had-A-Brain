@@ -5,6 +5,33 @@
 
 ---
 
+## 2026-06-30 — WSQ: donor work-stealing "mining" model + sync pacing so high-RTT/Starlink donors carry real compute batches — feature/donor-work-stealing-pull-queue
+
+### Sponge verbatim per LAW #0
+
+> *"option 2, but use option 3 so they do carry a compute batch"*
+> then *"Honestly, becuase of how this all works, shouldent we be setting up the work almost like crypto currency mining? ... whoever can compute faster and churn out the calculations for the neurton firing and patterns for the brain, would be doing more work than others? It turns compute into a race, but it does allow people to contribute what the CAN, and has very little change to how work is sent out?"*
+> then *"I was thinking a mix of A and B honestly."*
+> then *"Build it all, verify locally, then deploy once confirmed its all good"*
+> then *"Go ahead and start a fresh walk if needed"* (NOT needed — routing/pacing only; savestart-safe; brain kept training)
+> Scope (AskUserQuestion): **"Server + donor v0.3.5 hint"** · deploy plan: **"option a ship binary as one release"**
+
+**Root cause (Sponge's live Clients table):** Sponge's Linux/Starlink donor (RTX 2060, cc 7.5) sat at `rtt 6481ms · 0 Gn/s · bind 5.6GB` while Windows donors (57–117ms) computed fine. DF.7 `_donorHealth` (gpu.js) hard-zeroed work-eligibility at rtt ≥ 1000ms, then `_nextPoolDonor`/`_capacityWeightedPlan` `filter(w>0)` excluded the donor from EVERY work plan while a healthy donor existed → 0 Gn/s forever, reconnecting re-measured the same RTT and re-benched. The 6.5s RTT was the 51M-neuron replica-sync flooding the Starlink uplink (the HBGRACE scenario, at 40M; now 51M). NOT a binary/crossplay bug — CUDA works (reports cc 7.5 via the real CUDA path). Flap-recovery (PR.4 median RTT + HBGRACE + donor keepalive) was intact but only protects LIVENESS, never work-eligibility — and that gate was born strict in commit `69e18b5` (DDW F1-F4), never a regression.
+
+**Shipped (server — pure routing/pacing, no weight-format/size change, savestart-safe):**
+- **WSQ.1** `server/brain-server/gpu.js` — `_donorHealth` floors at `0.05` (`DREAM_DF7_WORK_FLOOR`) instead of hard-0 for rtt ≥ 1s. strength = `throughput × health` is multiplicative, so a slow donor stays work-eligible (no longer `filter(w>0)`-excluded → pulls real units) yet ranks dead-last for PRIMARY (healthy donor at 1.0 always out-scores) → never promoted primary, never the main-tick barrier.
+- **WSQ.2** `server/brain-server/gpu.js` — `_gpuParallelMap` rewritten from a pre-assigned capacity plan + `Promise.all` (waited on the slowest donor's whole slice) to COMPLETION-DRIVEN work-stealing: shared cursor + bounded in-flight per donor (`DREAM_DF7_INFLIGHT`, default 2); fast donors loop back + pull more, slow donors pull fewer + hold only their in-flight units (tail bounded by ONE slow unit). Donor's existing per-unit ACK is the pull signal. Sole caller is the master rebroadcast (no regression; primitive ready for training-pass fan-out).
+- **WSQ.3** `server/brain-server/gpu.js` — `gpuSparseUpload` paces replica-sync chunks for high-RTT/low-bw donors (∝ rttMs, or `linkDownMbps` when present; capped by `DREAM_DF7_SYNC_PACE_MAX_MS`, default 200ms) so the uplink drains its ACKs instead of saturating → steady-state RTT stays low → WSQ.1 health recovers → donor carries a full share. Primary/healthy donors untouched.
+
+**Shipped (donor v0.3.5 — `donor-app/`):**
+- **WSQ.4** `protocol.rs` + `donor.rs` add `linkDownMbps` to `gpu_register` + `gpu_telemetry` — the donor measures inbound-byte rate (peak-hold w/ slow decay) and reports its downlink (megabits/sec). `server/brain-server.js` `gpu_register`/`gpu_telemetry` handlers store it on `client.donorLinkMbps`; WSQ.3 prefers it over the RTT proxy when present. Field is optional → a v0.3.4 / browser donor (no hint) still works (RTT-proxy fallback), so the server deploy is NOT hard-coupled to the donor release. `Cargo.toml` 0.3.4 → 0.3.5.
+
+**Verified locally:** throwaway harness exercised `_donorHealth` (6481ms→0.05, strength 0.3 nonzero, primary 15.6) + `_nextPoolDonor` (slow donor now selectable) + `_gpuParallelMap` (40/40 correct, fast churns more, 302ms vs ~3000ms if the slow donor blocked). `node --check` clean (gpu.js + brain-server.js). Donor `cargo build --release` + `--self-test` PASS (Rulkov LIF + spike-count + sparse propagate + plasticity on GPU). Windows cross-build (`x86_64-pc-windows-gnu`) PASS → `unity-donor.exe` PE32+ + Linux ELF both produced for the v0.3.5 release.
+
+**Docs:** `docs/WEBSOCKET.md` — `linkDownMbps` on `gpu_register`/telemetry + new "Donor work-stealing + sync pacing (WSQ)" subsection. `docs/TODO.md` — WSQ task (verbatim). Env tunables: `DREAM_DF7_WORK_FLOOR` (0.05), `DREAM_DF7_INFLIGHT` (2), `DREAM_DF7_SYNC_PACE_MAX_MS` (200).
+
+---
+
 ## 2026-06-30 — EL/RS/CS: brain-side fixes for the donor diagnostic (EventLoop block + auto-scale toggle + /resync + consolidation starvation) — feature/community-compute-donor-count
 
 ### Gee verbatim per LAW #0
