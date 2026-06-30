@@ -3268,7 +3268,36 @@ class ServerBrain {
       // rapid re-fire even during probe-heavy windows.
       if (this.consolidationEngine
           && this.consolidationEngine.shouldRunPass()) {
-        this.consolidationEngine.runConsolidationPass().catch(err => {
+        // Issue 6 (CS.1) — consolidation STARVATION GUARD. A non-forced pass
+        // SKIPS SEED macro-phases (to protect teach velocity) and returns BEFORE
+        // passCount++/lastPassAt, and on a busy shared brain the idle dream path
+        // never opens — so the only caller here could be starved forever:
+        // passes run stays 0 → Tier 1→2 promotion never happens → Tier 2 stuck
+        // at 0 AND Tier 3 stuck at its identity-core seed (operator caught Tier 2
+        // = 0 / Tier 3 = 29-since-start). After a starvation window with NO
+        // completed pass, escalate to a FORCED pass (bypasses the SEED skip).
+        // - never-run case keys off process.uptime() so a legit early-boot SEED
+        //   (upfront vocab seeding) isn't pre-empted in the first window.
+        // - has-run case keys off Date.now() - lastPassAt.
+        // Bounded by DREAM_CONSOLIDATION_MAX_MS (30s cap) + the EL.1-chunked
+        // replay (intra-synapse Hebbian now yields) + the saturation veto, so a
+        // forced pass won't monopolize the loop / stall donors. Does NOT override
+        // DREAM_CONSOLIDATION_DISABLE=1 (that kill-switch returns earlier by
+        // design — the operational box-check when consolidation must stay off).
+        const ce = this.consolidationEngine;
+        const ranBefore = (ce.passCount || 0) > 0;
+        const elapsedSincePassMs = ranBefore
+          ? (Date.now() - (ce.lastPassAt || 0))
+          : (typeof process !== 'undefined' && typeof process.uptime === 'function' ? process.uptime() * 1000 : 0);
+        const forceMs = Number(process.env.DREAM_CONSOLIDATION_FORCE_MS) > 0
+          ? Number(process.env.DREAM_CONSOLIDATION_FORCE_MS)
+          : (ranBefore ? 1200000 : 600000); // 20 min after a pass; 10 min if never run
+        const starved = elapsedSincePassMs >= forceMs;
+        if (starved && (!ce._lastForceLogMs || (Date.now() - ce._lastForceLogMs) > 60000)) {
+          ce._lastForceLogMs = Date.now();
+          console.log(`[Consolidation] starvation guard — FORCING a pass (no completed pass in ${Math.round(elapsedSincePassMs / 1000)}s; passCount=${ce.passCount || 0}). Bypasses the SEED skip so Tier 1→2→3 promotion resumes; bounded by DREAM_CONSOLIDATION_MAX_MS. Tune via DREAM_CONSOLIDATION_FORCE_MS. (Does NOT override DREAM_CONSOLIDATION_DISABLE=1.)`);
+        }
+        ce.runConsolidationPass(starved ? { forced: true } : {}).catch(err => {
           console.warn('[Consolidation] pass failed:', err?.message || err);
         });
       }
