@@ -164,6 +164,26 @@ heartbeat-grace false-reap (HBGRACE).
    biological scale and wait for a real GPU.
 3. Re-check after donors are healthy — with the shadow clean + the ops offloaded, the blocks should drop.
 
+### Issue 5 — Auto-scale toggle must default ON + persist (refresh + across admin browsers)
+
+**Symptom (operator-reported):** the Community Compute **auto-scale** toggle does not stick. (a) It should
+**default to enabled (checked)**, but a **page refresh unchecks it**. (b) It does **not persist across admin
+browsers** — if one admin toggles it on, the other admin's dashboard still shows it **unchecked**, and
+vice-versa. Both admins see it off even after one already turned it on.
+
+**Read:** the toggle is reading **per-session/per-browser UI state** instead of the **server-side persisted
+state**. The persistence layer exists (`_getAutoScaleSettings` / `_setAutoScaleSettings` →
+`server/autoscale-settings.json`, the `/autoscale` GET/POST + `autoScaleChanged` WS from the DF.7 work), so
+this is a wiring gap: the dashboard isn't seeding the checkbox from `/autoscale` GET on load (defaulting it
+unchecked), and/or `_getAutoScaleSettings` isn't defaulting `enabled:true`.
+
+**Asks for you:**
+1. Make the server-side default `enabled: true` (auto-scale ON out of the box).
+2. On dashboard load, seed the toggle from the `/autoscale` GET (server truth), not a local default — so a
+   refresh shows the real persisted state.
+3. Confirm `/autoscale` POST persists to `autoscale-settings.json` and the `autoScaleChanged` WS broadcasts,
+   so BOTH admin browsers reflect the same state live (one admin toggling → the other sees it).
+
 ---
 
 ## BOX-SIDE CHECKS — only you can run these (SSH to the box)
