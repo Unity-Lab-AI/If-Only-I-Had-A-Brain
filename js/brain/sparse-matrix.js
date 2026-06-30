@@ -756,11 +756,18 @@ export class SparseMatrix {
    * in weight space while the positive pair pulls the correct pair
    * together — push-pull discrimination instead of passive superposition.
    */
-  antiHebbianUpdate(preSpikes, postSpikes, lr) {
+  antiHebbianUpdate(preSpikes, postSpikes, lr, opts) {
     const { rows, values, colIdx, rowPtr, wMin, wMax } = this;
     if (!values || !rowPtr || !colIdx) return;
 
-    for (let i = 0; i < rows; i++) {
+    // #37 step 2 — optional row-range slice (mirrors ojaUpdate) so callers can
+    // chunk a large matrix's anti-Hebbian update across event-loop yields. The
+    // update is row-independent, so slicing produces an identical result to one
+    // full pass; defaults = full matrix so existing callers are unaffected.
+    const rowStart = (opts && typeof opts.rowStart === 'number') ? Math.max(0, opts.rowStart) : 0;
+    const rowEnd = (opts && typeof opts.rowEnd === 'number') ? Math.min(rows, opts.rowEnd) : rows;
+
+    for (let i = rowStart; i < rowEnd; i++) {
       if (!postSpikes[i]) continue;
       const scaled = -lr * postSpikes[i]; // negative — weights depress
       const start = rowPtr[i];

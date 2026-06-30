@@ -5,6 +5,47 @@
 
 ---
 
+## 2026-06-30 — EL/RS: brain-side fixes for the donor diagnostic (EventLoop block + auto-scale toggle + /resync) — feature/community-compute-donor-count
+
+### Gee verbatim per LAW #0
+
+> *"can you do all those fixes? do we need sponge to do it? i think we have the update and savestart button in dashboard admin working now... so can you evaluate and anylysius oif all these issues using the stack make up and simulated outcomes to properly understand how these issues porpigate and how to fix them? if we fix them all we can push to main and use the update and save start button... yeah?"*
+> then *"yes"*
+> then *"why cant we do the binary? nothing is different for use everything should be documented by sponge, is it not, why cant we rep[licate on deploy?"*
+
+**Stack-traced analysis:** Issue 4 (`[EventLoop] BLOCKED`) is the propagation hub. The cross-projection Hebbian was already chunked (`_ojaUpdateChunked`), but the bio-scale **intra-synapse** `ojaUpdate` (+ anti-Hebbian) in `js/brain/cluster/hebbian.js` ran as a SINGLE synchronous pass over the millions-of-rows recurrent matrix — the residual 300–3900ms freeze stamped `_teachHebbian`/`_teachHebbianAsymmetric`. That freeze starves donor compute frames (low aggregate Gn/s), spikes donor RTT (1022ms observed), false-reaps busy donors via HBGRACE (sets `gpuShadowDirty`), drops mid replica-sync (TheREV re-sync loop), and times out new-donor `/ws` handshakes (stuck under-resourced). All fixes are pure throughput/wiring — no weight-format or brain-size change — so Update & Savestart (`/update?keep=1`) resumes the trained weights safely. Donor binary (Issue 3) needs NO build: source is ours (`donor-app/`), already v0.3.4 w/ auto-reconnect+keepalive+telemetry, already released — TheREV is on a stale download (blank `plat` col); fix = TheREV re-downloads + relaunches (can't push a binary into a remote running process).
+
+**Shipped:**
+- **EL.1** `js/brain/cluster/hebbian.js` — `intraSynapsesHebbian` bio-path now routes through `_ojaUpdateChunked(this.synapses, …)` instead of one synchronous `synapses.ojaUpdate`; `intraSynapsesAntiHebbian` bio-path now routes through a new `_antiHebbianChunked(this.synapses, …)`. Both slice the recurrent matrix by 250k-row chunks with a `setImmediate` macrotask yield between slices (row-independent math → identical result; below threshold a single synchronous pass, no yield overhead). `js/brain/sparse-matrix.js` — `antiHebbianUpdate` gained `rowStart`/`rowEnd` opts mirroring `ojaUpdate`. Bundle rebuilt (`npm run build`, 3.9mb). Verified: `node --check` + ESM `import()` of hebbian.js / sparse-matrix.js clean.
+- **EL.2** `html/dashboard.html` — auto-scale panel now seeds from a GET `/autoscale` on admin connect (added beside the existing `auto-advance` seed in the `if (isAdmin)` block) → `renderAutoScale(j)`. Server default was ALREADY `enabled:true` (`server/brain-server/gpu.js _getAutoScaleSettings`) and the panel already live-synced via the `autoScaleChanged` WS — the only gap was the missing initial seed, which left a fresh load / second admin browser showing the checkbox at its hardcoded-unchecked HTML default. Closes **SD.2**.
+- **RS.1** `server/brain-server.js` — weight-safe `POST /resync` (loopback-gated) calls `_rearmCortexGpuUpload('manual /resync (dashboard)')` to force the cortex GPU re-upload from the intact CPU master to the currently-connected primary, so a stuck `gpuShadowDirty` clears without waiting for a donor respawn (the genuine clear lands when the donor re-confirms `gpu_init`). `html/dashboard.html` — "↻ Re-sync GPU shadow (clear DIRTY)" button + handler in the Community Compute panel. Reports `dirtyBefore`/`donors` + a note.
+
+**Docs:** `docs/SPONGE-DIRTY-AND-0GNS-DIAGNOSTIC-2026-06-30.md` gained a "BRAIN-SIDE FIXES SHIPPED" section (per-fix verify-after-Savestart table + Issue 1 resolves-via-EL.1 + Issue 3 no-build-needed). `docs/ADMIN-CONTROLS.md` gained the `/resync` row. `.claude/settings.local.json` statusLine command fixed to the `$CLAUDE_PROJECT_DIR` absolute path (was a relative path that didn't render from a non-root cwd).
+
+---
+
+## 2026-06-30 — SD: Sponge box-check + DIRTY/0Gn/s diagnostic runbook — feature/community-compute-donor-count
+
+### Gee verbatim per LAW #0
+
+> *"do a full write up and make the docs needed for sponge, to run checks on the box like you tried(only he can run real checks and tell him asll the issues possiible and how he should use best found options whith his investigation of the issues u may of found and what i originally told you to iinvestigate so that we can fix sttuff like DIRTY and 0Gn/s  AND AAAANNNDDD, WE KEEP THE WIEGHTS IF THEY ARNT TRASH, SO MAKE SURE HE KNOWS"*
+
+**Trigger:** founder asked whether the live brain — on ELA grade 2 "for some time" — was stalled/hung, then flagged `TheREV 0Gn/s`, `GPU shadow DIRTY`, and the hard requirement to KEEP the weights unless trash.
+
+**Outside investigation (no shell — `/public-state.json` + dashboard, two samples 45s apart):** NOT hung. `curriculum.currentCellKey: ela/grade2 in-progress` (founder correct; top-line `grades.ela: grade1` = last *passed* grade), `cellElapsedMs ~82.4M (~22.9h)` but `cellSubPhases`/`elaTeachEvents` +4,553 in 45s (~101/s) + `activePhase _teachHebbian` cycling = actively teaching. Faults: `wsPressure.gpuShadowDirty: true` with `lastDropTs ~35h ago` (stuck, never cleared), `donorCount: 1` / `donorTotalVramMB: 16375` (TheREV gone), aggregate 16.79 Gn/s on the one donor; TheREV had shown 0 Gn/s + ~232 GB egress (re-sync loop). `GPU 0%` = host CPU-only coordinator, expected.
+
+**Three issues diagnosed (mechanisms read from `server/brain-server.js`):**
+1. grade2 grind = under-resourced — tier-1 (40M) needs 24 GB / ≥3 donors just to HOLD (`SPONGE-RUNBOOK.md §C`); running on 1 donor / 16 GB ⇒ `INSUFFICIENT COMPUTE — holding`, one GPU doing a three-GPU job.
+2. `gpuShadowDirty` set on unexpected compute-client disconnect / primary-left / quarantine failover; cleared ONLY when cortex re-confirms `gpu_init` after a compute-client respawn. With one never-respawning donor there's no auto-clear path, and the DF.7 periodic replica re-converge is a no-op with <2 donors → wedged ~35h. CPU master CSR is authoritative, so the trained brain is NOT corrupt; reconnect a donor (full re-upload from master) clears it.
+3. TheREV 0 Gn/s = connected + holding a replica but doing zero compute, ~232 GB egress (~14 re-uploads) = re-sync loop / pre-v0.2.0 donor app (no auto-reconnect) / flaky link.
+
+**Shipped:**
+- **SD.1** `docs/SPONGE-DIRTY-AND-0GNS-DIAGNOSTIC-2026-06-30.md` — weight-safety banner FIRST (KEEP weights: `systemctl restart` resumes via the unit's `DREAM_KEEP_STATE=1`; DIRTY ≠ corrupt; enumerated weight-safe `/checkpoint`·`/restart`·`/shutdown`·`/update?keep=1`·`systemctl restart` vs weight-killer `/reset`·"Reset Brain"·"Update & Fresh Walk"·`/update` w/o keep·`DREAM_FORCE_CLEAR`·deleting weights; the one unavoidable auto-wipe = format/size mismatch on resume, visible in `.last-boot-reason.json`; rolling checkpoint slots + `/rollback/<slot>`; identity-core survives all wipes). What the founder asked + outside findings. The three issues w/ mechanisms + weight-safe fixes. Box-side checks ONLY Sponge can run (`systemctl status unity-brain`, `.last-boot-reason.json` / `.resume-marker.json` / `boot-error.log`, `brain-weights*` mtimes, `/public-state.json` two-sample one-liner, `journalctl -u unity-brain` grep set for CRITICAL/shadow/promoted/SatHealth/RECTIFIED/INSUFFICIENT). Is-it-trash decision table. Fix order (safest first — steps 1–4 no-wipe: checkpoint → fix donors/reconnect to clear DIRTY → re-check → restart-resume; step 5 rollback only if confirmed trash). Public-doc hygiene: no "Gee"/iter-IDs in the doc body per the task-numbers LAW; refers to "the founder"/"operator".
+
+No code change — diagnostic + doc only; live brain untouched (read-only `/public-state.json` polls). Added probe helpers `scripts/unity-diag.mjs` / `unity-pulse.mjs` for the outside read.
+
+---
+
 ## 2026-06-28 — HBGRACE: server heartbeat false-terminates donors mid-sync / during event-loop blocks (Linux/slow-link drops) — feature/community-compute-donor-count
 
 ### Gee verbatim per LAW #0
