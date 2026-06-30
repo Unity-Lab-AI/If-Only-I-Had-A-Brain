@@ -6915,6 +6915,9 @@ wss.on('connection', (ws, req) => {
           // _recomputeCommunityCompute). Browser donor omits both → util 100 / donated 0.
           client.utilizationPct = Math.max(0, Math.min(100, Number(msg.utilizationPct) || 100));
           client.donatedMB = Math.max(0, Number(msg.donatedMB) || 0);
+          // WSQ.4 — donor's self-measured downlink (Mbps); lets sync pacing target the real link
+          // capacity instead of an RTT proxy. 0 / absent (browser donor, or pre-measurement) = unknown.
+          client.donorLinkMbps = Math.max(0, Number(msg.linkDownMbps) || 0);
           // F8/F9 — WebGPU storage-binding cap, captured at register (gpu_register
           // sends it as `maxStorageBindingMB`; telemetry later sends `maxBindMB`).
           // Capturing here makes the capability gate + dashboard label work from the
@@ -7001,6 +7004,7 @@ wss.on('connection', (ws, req) => {
           if (msg.engineBackend) client.engineBackend = String(msg.engineBackend).slice(0, 24);
           if (msg.driverVersion) client.driverVersion = String(msg.driverVersion).slice(0, 48);
           if (msg.computeCapability) client.computeCapability = String(msg.computeCapability).slice(0, 12);
+          if (Number(msg.linkDownMbps) > 0) client.donorLinkMbps = Number(msg.linkDownMbps); // WSQ.4 — live downlink update
           client.telemetry = {
             gpuName: (msg.gpuName || client.gpuName || 'webgpu').toString().slice(0, 80),
             vramMB: Number(msg.vramMB) || client.gpuVramMB || 0,

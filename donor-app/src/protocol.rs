@@ -49,6 +49,11 @@ pub struct GpuRegister {
     /// falls back to fullVram × utilization). This is the size-relevant number for data-parallel.
     #[serde(rename = "donatedMB")]
     pub donated_mb: u64,
+    /// WSQ.4 — measured downlink throughput hint (megabits/sec; peak-hold with slow decay;
+    /// 0 = unknown / not yet measured). Lets the brain pace replica-sync to this donor's REAL
+    /// link capacity instead of an RTT proxy, so a low-bandwidth uplink (Starlink) isn't flooded.
+    #[serde(rename = "linkDownMbps")]
+    pub link_down_mbps: f64,
 }
 
 impl GpuRegister {
@@ -65,6 +70,7 @@ impl GpuRegister {
         compute_capability: String,
         utilization_pct: u8,
         donated_mb: u64,
+        link_down_mbps: f64,
     ) -> Self {
         Self {
             msg_type: "gpu_register",
@@ -79,6 +85,7 @@ impl GpuRegister {
             compute_capability,
             utilization_pct,
             donated_mb,
+            link_down_mbps,
         }
     }
 }
@@ -144,6 +151,10 @@ pub struct GpuTelemetry {
     pub driver_version: String,
     #[serde(rename = "computeCapability", skip_serializing_if = "String::is_empty")]
     pub compute_capability: String,
+    /// WSQ.4 — measured downlink throughput (megabits/sec) re-reported each tick so the brain's
+    /// sync pacing tracks the donor's real link capacity as it changes (Starlink varies).
+    #[serde(rename = "linkDownMbps")]
+    pub link_down_mbps: f64,
 }
 
 // ─── Server → Donor ───────────────────────────────────────────────

@@ -714,9 +714,22 @@ const SERVER_GPU_MIXIN = {
   _donorHealth(ws) {
     const c = (this.clients && this.clients.get) ? this.clients.get(ws) : null;
     const rtt = (c && typeof c.rttMs === 'number') ? c.rttMs : 0;
+    // WSQ.1 — work-eligibility FLOOR. A >1s donor (Starlink mid-handover, or a link still
+    // congested by its own warmup replica-sync) used to return 0 here — and `_nextPoolDonor`
+    // + `_capacityWeightedPlan` then `filter(w>0)` it OUT of every work plan while any healthy
+    // donor existed, so a WILLING high-RTT GPU got zero units and sat at 0 Gn/s forever (no
+    // amount of reconnecting helped — each reconnect re-measured the same RTT and re-benched).
+    // Now it floors at WSQ_WORK_FLOOR so the donor STILL pulls a sliver of work (the WSQ.2
+    // work-stealing queue + WSQ.3 sync pacing let it carry real units once its uplink stops
+    // being flooded and its RTT recovers). Because strength = base × health is MULTIPLICATIVE,
+    // the tiny floor keeps a slow donor at the BOTTOM of the primary/failover ranking — a
+    // healthy donor (health 1.0) always out-scores it — so it's never promoted PRIMARY and
+    // never becomes the main-tick barrier. Tunable via DREAM_DF7_WORK_FLOOR.
+    const _floorEnv = Number(process.env.DREAM_DF7_WORK_FLOOR);
+    const floor = Number.isFinite(_floorEnv) && _floorEnv >= 0 ? _floorEnv : 0.05;
     if (rtt <= 200) return 1;
-    if (rtt >= 1000) return 0;
-    return Math.max(0, 1 - (rtt - 200) / 800);
+    if (rtt >= 1000) return floor;
+    return Math.max(floor, 1 - (rtt - 200) / 800);
   },
 
   // DF.7 F1 — donor strength for primary selection + work weighting. Operator
@@ -849,18 +862,39 @@ const SERVER_GPU_MIXIN = {
   async _gpuParallelMap(items, perItemFn) {
     const donors = this._livePoolDonors();
     if (donors.length === 0 || !Array.isArray(items) || items.length === 0) return [];
-    // DF.7 F3 — assign items capacity-weighted (∝ throughput×health) instead of a
-    // flat idx%len equal share, so the Promise.all finishes near the FASTEST
-    // aggregate rather than waiting on the slowest equal-share donor.
-    const plan = this._capacityWeightedPlan(donors, items.length);
     const results = new Array(items.length).fill(null);
-    await Promise.all(items.map((item, idx) => {
-      const donor = plan[idx] || donors[idx % donors.length];
-      return Promise.resolve()
-        .then(() => perItemFn(item, donor, idx))
-        .then((r) => { results[idx] = r; })
-        .catch(() => { results[idx] = null; });
-    }));
+    // WSQ.2 — COMPLETION-DRIVEN WORK-STEALING (replaces the old capacity-weighted plan +
+    // `Promise.all`, where each donor got a PRE-ASSIGNED ~1/N slice and the barrier waited on
+    // the SLOWEST donor finishing its WHOLE slice). Now a single shared cursor (`next`) walks the
+    // item list and each donor runs a few concurrent PULL loops: grab the next index → await
+    // perItemFn → loop back for another. A FAST donor returns to the cursor sooner so it
+    // naturally pulls MORE items; a SLOW donor pulls FEWER; no donor is pre-committed to a fixed
+    // share. The round ends when the cursor drains, and a slow donor only holds the ≤IN_FLIGHT
+    // items it actually pulled — so the tail is bounded by ONE slow item, not a slow donor's
+    // entire slice. perItemFn already carries its own per-unit timeout (sparse/batch dispatch
+    // resolves null on timeout), so a hung donor can't wedge the round. This is the donor
+    // "mining" model (Sponge 2026-06-30): contribute what you can, faster churns more, nobody
+    // waits on the slowest. The donor's existing per-unit ACK is the pull signal — no protocol
+    // change needed for the queue itself.
+    let next = 0;
+    // Open the round with the strongest donors pulling first (cosmetic — the shared cursor
+    // self-balances within microseconds regardless of start order).
+    const ordered = donors.slice().sort((a, b) => this._donorStrength(b) - this._donorStrength(a));
+    const _inflightEnv = Number(process.env.DREAM_DF7_INFLIGHT);
+    const IN_FLIGHT_PER_DONOR = Number.isFinite(_inflightEnv) && _inflightEnv >= 1 ? Math.floor(_inflightEnv) : 2;
+    const pull = async (donor) => {
+      for (;;) {
+        const idx = next++;            // single-threaded JS → read-then-increment is atomic
+        if (idx >= items.length) return;
+        try { results[idx] = await perItemFn(items[idx], donor, idx); }
+        catch { results[idx] = null; }
+      }
+    };
+    const loops = [];
+    for (const donor of ordered) {
+      for (let k = 0; k < IN_FLIGHT_PER_DONOR; k++) loops.push(pull(donor));
+    }
+    await Promise.all(loops);
     return results;
   },
 
@@ -1470,6 +1504,30 @@ const SERVER_GPU_MIXIN = {
           res();
         });
       });
+      // WSQ.3 — SYNC PACING. On a replica-sync to a high-RTT/low-bandwidth donor (Starlink),
+      // blasting 16MB chunks back-to-back saturates its uplink → its heartbeat pong queues
+      // behind the inbound flood → measured RTT spikes into the >1s zone during the warmup
+      // window (the very thing that benched it from compute, pre-WSQ.1). Breathe between chunks
+      // ∝ the donor's smoothed RTT (capped) so the uplink drains its ACKs and steady-state RTT
+      // stays low — which lets WSQ.1's health recover to a real value and the donor carry a
+      // full work share. Only paces replica-sync to ALREADY-slow donors; the primary canonical
+      // upload and healthy donors are untouched. Tunable via DREAM_DF7_SYNC_PACE_MAX_MS.
+      if (isReplicaSync && seq + 1 < totalChunks) {
+        const _pc = this.clients && this.clients.get ? this.clients.get(ws) : null;
+        const _prtt = _pc && typeof _pc.rttMs === 'number' ? _pc.rttMs : 0;
+        const _mbps = _pc && Number(_pc.donorLinkMbps) > 0 ? Number(_pc.donorLinkMbps) : 0;
+        if (_prtt > 200 || _mbps > 0) {
+          const _capEnv = Number(process.env.DREAM_DF7_SYNC_PACE_MAX_MS);
+          const _capMs = Number.isFinite(_capEnv) && _capEnv > 0 ? _capEnv : 200;
+          // RTT proxy: ~RTT/8 between chunks. Bandwidth-aware (WSQ.4 hint, preferred when present):
+          // ~half this chunk's transmit time at the donor's measured downlink so we don't outrun the
+          // link. Take the max of the two, capped (DREAM_DF7_SYNC_PACE_MAX_MS).
+          const _rttPace = _prtt > 200 ? Math.round(_prtt / 8) : 0;
+          const _bwPace = _mbps > 0 ? Math.round(((valuesByteLen + colIdxByteLen) * 8 / 1e6) / _mbps * 1000 * 0.5) : 0;
+          const _paceMs = Math.min(_capMs, Math.max(_rttPace, _bwPace));
+          if (_paceMs > 0) await new Promise((r) => setTimeout(r, _paceMs));
+        }
+      }
     }
     console.log(`[Brain] sparse chunked upload reqId=${reqId} name=${name} all ${totalChunks} chunks dispatched, awaiting ack`);
     return promise;
