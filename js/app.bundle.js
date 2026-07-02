@@ -508,6 +508,33 @@ var init_sparse_matrix = __esm({
         }
         return I;
       }
+      // SPEAK.4b / WL.3 — async, row-sliced propagate that yields the event loop
+      // between chunks. Identical math to propagate() (each row is independent), so
+      // the result is bit-for-bit the same; the only difference is a setImmediate
+      // macrotask yield every `chunkRows` rows so a biological-scale CPU propagate
+      // (~57s synchronous block) no longer freezes the loop during inner-voice
+      // generation on a no-GPU host. Same slice+yield shape as _ojaUpdateChunked (EL.1).
+      async propagateChunked(spikes, opts = {}) {
+        const { rows, values, colIdx, rowPtr } = this;
+        if (!values || !colIdx || !rowPtr) return new Float64Array(rows || 0);
+        let I;
+        if (opts.outBuf && opts.outBuf.length === rows) {
+          I = opts.outBuf;
+          I.fill(0);
+        } else I = new Float64Array(rows);
+        const CHUNK = Math.max(1, opts.chunkRows || 25e4);
+        for (let base = 0; base < rows; base += CHUNK) {
+          const end = Math.min(rows, base + CHUNK);
+          for (let i = base; i < end; i++) {
+            let sum = 0;
+            const start = rowPtr[i], e = rowPtr[i + 1];
+            for (let k = start; k < e; k++) sum += values[k] * spikes[colIdx[k]];
+            I[i] = sum;
+          }
+          if (end < rows) await new Promise((r) => setImmediate(r));
+        }
+        return I;
+      }
       // ── Learning Rules ──────────────────────────────────────────────
       /**
        * Reward-modulated Hebbian: ΔW = η · δ · post · pre
@@ -53948,18 +53975,30 @@ var CLUSTER_EMIT_MIXIN = {
       if (subjSize <= 0) continue;
       const wordsList = this[`wordBucketWords_${subj}`];
       if (!Array.isArray(wordsList) || wordsList.length === 0) continue;
-      const bucketSize = Math.max(1, Math.floor(subjSize / wordsList.length));
+      const bucketSize = typeof this.wordBucketCellSizeFor === "function" ? this.wordBucketCellSizeFor(subj) : Math.max(1, Math.floor(subjSize / wordsList.length));
       for (let b = 0; b < wordsList.length; b++) {
         const _bw = wordsList[b];
         if (!_bw || !/\S/.test(_bw) || !/[a-z0-9]/i.test(_bw) && !T14_TERMINATORS.has(_bw)) continue;
         let sum = 0;
         const bStart = subjStart + b * bucketSize;
+        if (bStart >= subjEnd) {
+          if (!this._wordBucketOverflowWarned) this._wordBucketOverflowWarned = {};
+          if (!this._wordBucketOverflowWarned[subj]) {
+            this._wordBucketOverflowWarned[subj] = true;
+            try {
+              console.warn(`[emit] word_motor_${subj} capacity overflow \u2014 ${wordsList.length} words exceed frozen band (cellSize=${bucketSize}). Words past index ${b} cannot emit; raise word_motor fraction or lower DREAM_WORD_MOTOR_VOCAB_CAP.`);
+            } catch {
+            }
+          }
+          break;
+        }
         const bEnd = Math.min(subjEnd, bStart + bucketSize);
         const cellCount = Math.max(1, bEnd - bStart);
         for (let n = bStart; n < bEnd; n++) sum += wmOut[n];
         let mean = sum / cellCount;
-        if (gwBoostWord && wordsList[b] === gwBoostWord) mean *= gwBoostMul;
-        if (recentLast4.has(wordsList[b]) && !FUNCTION_WORDS.has(wordsList[b])) {
+        const _isRecentContent = recentLast4.has(wordsList[b]) && !FUNCTION_WORDS.has(wordsList[b]);
+        if (gwBoostWord && wordsList[b] === gwBoostWord && !_isRecentContent) mean *= gwBoostMul;
+        if (_isRecentContent) {
           mean *= REPETITION_PENALTY;
         }
         candidates.push({ word: wordsList[b], mean });
@@ -54050,6 +54089,41 @@ var CLUSTER_EMIT_MIXIN = {
       this.recordEmission(bestWord);
     }
     return bestWord;
+  },
+  // SPEAK.1 — single authority for word_motor bucket geometry. Cells-per-word
+  // is FIXED (band size / vocab cap) and frozen on first call, so a word's
+  // physical neuron band never moves as the dictionary grows across grades.
+  // Deterministic across boots (band size + cap are constant), so a resumed
+  // brain re-derives the identical geometry; persisted defensively in case the
+  // cap env changes between runs. Read by emitWordDirect (read) +
+  // _teachWordEmissionDirect / _writeAnswerToWordMotor (write) so all three agree.
+  wordBucketCellSizeFor(subject) {
+    const subj = typeof normalizeSubject === "function" ? normalizeSubject(subject) || subject : subject;
+    const key = `wordBucketCellSize_${subj}`;
+    const cur = this[key];
+    if (typeof cur === "number" && cur >= 1) return cur;
+    const band = this.regions && (this.regions[`word_motor_${subj}`] || this.regions.word_motor);
+    const bandSize = band ? band.end - band.start : 0;
+    let cap = 5e4;
+    try {
+      if (typeof process !== "undefined" && process.env && process.env.DREAM_WORD_MOTOR_VOCAB_CAP) {
+        const p = parseInt(process.env.DREAM_WORD_MOTOR_VOCAB_CAP, 10);
+        if (Number.isFinite(p) && p >= 1) cap = p;
+      }
+    } catch {
+    }
+    const cell = Math.max(1, Math.floor(bandSize / Math.max(1, cap)));
+    this[key] = cell;
+    const maxWords = cell > 0 ? Math.floor(bandSize / cell) : 0;
+    try {
+      if (!this._wordBucketGeomLogged) this._wordBucketGeomLogged = {};
+      if (!this._wordBucketGeomLogged[subj]) {
+        this._wordBucketGeomLogged[subj] = true;
+        console.log(`[emit] word_motor bucket geometry FROZEN subject=${subj}: bandSize=${bandSize} cellsPerWord=${cell} maxWords=${maxWords} (vocabCap=${cap}) \u2014 bands are now vocab-growth-invariant.`);
+      }
+    } catch {
+    }
+    return cell;
   },
   // 114.19fj.9 — public helper for callers that opted out of automatic
   // ring tracking (composeSentence, future custom emission paths). Push
@@ -54402,6 +54476,21 @@ var CLUSTER_EMIT_MIXIN = {
     this._coherenceRerankStats.calls++;
     this._coherenceRerankStats.candidates += evaluated;
     if (bestIndex > 0) this._coherenceRerankStats.reranked++;
+    if (!this._coherenceFloorStats) this._coherenceFloorStats = { total: 0, rejected: 0 };
+    if (typeof opts.coherenceFloor === "number") {
+      this._coherenceFloorStats.total++;
+      if (best && typeof best.coherenceCosine === "number" && best.coherenceCosine < opts.coherenceFloor) {
+        this._coherenceFloorStats.rejected++;
+        best.lowCoherenceRejected = true;
+        best.rejectedSentence = best.sentence;
+        if (Array.isArray(best.words) && best.words.length > 1) {
+          best.words = best.words.slice(0, 1);
+          best.sentence = best.words[0];
+          best.fillCount = 1;
+          best.degradedToSingleWord = true;
+        }
+      }
+    }
     return best;
   },
   /**
@@ -55908,6 +55997,9 @@ var NeuronCluster = class {
       const inhib = this._remediationInhibition ? 0.5 : 1;
       surpriseGate = 0.5 + predErr * coherence * inhib;
     }
+    if (typeof this._lastSemMotorMeanCos === "number" && this._lastSemMotorMeanCos > SATURATION_MEANCOS && surpriseGate > 0.5) {
+      surpriseGate = 0.5;
+    }
     return {
       ...staticBundle,
       // Curriculum-controlled gamma (NOT the brain-tick-noisy version).
@@ -55964,6 +56056,9 @@ var NeuronCluster = class {
    */
   getPhases() {
     if (!this.thetaGammaEnabled) return null;
+    if (typeof this._thetaPhaseAcc === "number") {
+      return { theta: this._thetaPhaseAcc, gamma: this._gammaPhaseAcc };
+    }
     const t = this._tickCounter | 0;
     const theta = 2 * Math.PI * (t % this.thetaPeriod) / this.thetaPeriod;
     const gamma = 2 * Math.PI * (t % this.gammaPeriod) / this.gammaPeriod;
@@ -57202,7 +57297,7 @@ var NeuronCluster = class {
     this._propagateCrossRegions();
     const currents = new Float64Array(size);
     let synapticCurrents;
-    if (this._gpuProxyReady && this._cachedIntraCurrents && this._cachedIntraCurrents.length === size) {
+    if ((this._gpuProxyReady || this._useChunkedCache) && this._cachedIntraCurrents && this._cachedIntraCurrents.length === size) {
       synapticCurrents = this._cachedIntraCurrents;
     } else {
       synapticCurrents = synapses.propagate(neurons.getSpikes());
@@ -57211,12 +57306,32 @@ var NeuronCluster = class {
     let thetaPhase = 0;
     if (this.thetaGammaEnabled) {
       this._tickCounter = this._tickCounter + 1 | 0;
-      thetaPhase = this._tickCounter % this.thetaPeriod / this.thetaPeriod;
-      thetaMod = 1 + this.thetaAmplitude * Math.sin(2 * Math.PI * thetaPhase);
+      if (typeof this._thetaPhaseAcc !== "number") {
+        this._thetaPhaseAcc = 0;
+        this._gammaPhaseAcc = 0;
+        this._popRateBaseline = 0.1;
+      }
+      let _rate = 0;
+      if (this.lastSpikes && this.lastSpikes.length) {
+        const _st = Math.max(1, Math.floor(this.lastSpikes.length / 256));
+        let _ones = 0, _cnt = 0;
+        for (let _i = 0; _i < this.lastSpikes.length; _i += _st) {
+          if (this.lastSpikes[_i]) _ones++;
+          _cnt++;
+        }
+        _rate = _cnt > 0 ? _ones / _cnt : 0;
+      }
+      this._popRateBaseline = 0.99 * this._popRateBaseline + 0.01 * _rate;
+      const _dev = Math.max(-0.9, Math.min(0.9, (_rate - this._popRateBaseline) * 4));
+      const _K = 0.5;
+      this._thetaPhaseAcc = (this._thetaPhaseAcc + 2 * Math.PI / this.thetaPeriod * (1 + _K * _dev)) % (2 * Math.PI);
+      this._gammaPhaseAcc = (this._gammaPhaseAcc + 2 * Math.PI / this.gammaPeriod * (1 + _K * _dev)) % (2 * Math.PI);
+      thetaPhase = this._thetaPhaseAcc / (2 * Math.PI);
+      thetaMod = 1 + this.thetaAmplitude * Math.sin(this._thetaPhaseAcc);
     }
     const effectiveDrive = this.tonicDrive * this.driveBaseline * this.emotionalGate * this.actionGate * this.gainMultiplier * thetaMod;
     if (this.thetaGammaEnabled) {
-      const gammaPhase = this._tickCounter % this.gammaPeriod / this.gammaPeriod;
+      const gammaPhase = typeof this._gammaPhaseAcc === "number" ? this._gammaPhaseAcc / (2 * Math.PI) : this._tickCounter % this.gammaPeriod / this.gammaPeriod;
       const gammaInTheta = thetaPhase < 0.5;
       this._gammaLrScale = gammaInTheta ? 1 + this.gammaAmplitude * Math.sin(2 * Math.PI * gammaPhase) : 1;
     } else {
@@ -57328,7 +57443,19 @@ var NeuronCluster = class {
    */
   async stepAwait(dt) {
     if (!this._gpuProxyReady || !this._gpuProxy || !this._gpuProxy.propagate) {
-      return this.step(dt);
+      try {
+        if (typeof process !== "undefined" && process.env && process.env.DREAM_GEN_PROPAGATE_CHUNKED === "1" && this.synapses && this.lastSpikes && typeof this.synapses.propagateChunked === "function") {
+          const currents = await this.synapses.propagateChunked(this.lastSpikes);
+          if (currents && currents.length === this.size) {
+            this._cachedIntraCurrents = currents;
+            this._useChunkedCache = true;
+          }
+        }
+      } catch {
+      }
+      const _r = this.step(dt);
+      this._useChunkedCache = false;
+      return _r;
     }
     this._cachedIntraCurrents = null;
     if (this._cachedCrossCurrents) this._cachedCrossCurrents.clear();
@@ -62208,11 +62335,20 @@ var LanguageCortex = class {
               let _temp = 0.6 + 0.4 * _ar + 0.35 * _drug - 0.3 * _co;
               _temp = Math.max(0.45, Math.min(1.2, _temp));
               const _topK = Math.round(8 + 6 * Math.max(_ar, _drug));
+              let _chatCohFloor = 0.1;
+              try {
+                if (typeof process !== "undefined" && process.env && process.env.DREAM_CHAT_COHERENCE_FLOOR) {
+                  const v = parseFloat(process.env.DREAM_CHAT_COHERENCE_FLOOR);
+                  if (Number.isFinite(v) && v >= 0) _chatCohFloor = v;
+                }
+              } catch {
+              }
               composedSentence = await cluster.composeSentence(intentSeed, {
                 subject: inferredSubject || void 0,
                 temperature: Number(_temp.toFixed(2)),
                 topK: _topK,
-                coherenceCandidates: 3
+                coherenceCandidates: 3,
+                coherenceFloor: _chatCohFloor
               });
               if (composedSentence && Array.isArray(composedSentence.words) && composedSentence.words.length >= 1) {
                 composedWordsAsync = composedSentence.words.slice();
@@ -62221,7 +62357,7 @@ var LanguageCortex = class {
                 }
                 try {
                   const _arN = Math.max(0, Math.min(1, typeof arousal === "number" ? arousal : 0.5));
-                  const maxExtra = _arN > 0.66 ? 2 : _arN > 0.33 ? 1 : 0;
+                  const maxExtra = composedSentence.lowCoherenceRejected ? 0 : _arN > 0.66 ? 2 : _arN > 0.33 ? 1 : 0;
                   let _total = composedWordsAsync.length;
                   const _seen = /* @__PURE__ */ new Set([(composedSentence.sentence || composedWordsAsync.join(" ")).toLowerCase()]);
                   for (let _s = 0; _s < maxExtra && _total < 30; _s++) {
@@ -76573,7 +76709,7 @@ var K_MIXIN = {
     const bandStart = subjectBand ? subjectBand.start - wordMotorRegion.start : 0;
     const bandEnd = subjectBand ? subjectBand.end - wordMotorRegion.start : wmSize;
     const bandSize = bandEnd - bandStart;
-    const bucketSize = Math.max(1, Math.floor(bandSize / words.length));
+    const bucketSize = typeof cluster.wordBucketCellSizeFor === "function" ? cluster.wordBucketCellSizeFor(subject) : Math.max(1, Math.floor(bandSize / words.length));
     const preSem = new Float64Array(semSize);
     const postWM = new Float64Array(wmSize);
     const fillSem = (pattern) => {
@@ -76602,6 +76738,7 @@ var K_MIXIN = {
         fillSem(entry.pattern);
         postWM.fill(0);
         const bStart = bandStart + wi * bucketSize;
+        if (bStart >= bandEnd) break;
         const bEnd = Math.min(bandEnd, bStart + bucketSize);
         for (let n = bStart; n < bEnd; n++) postWM[n] = 1;
         try {
@@ -76614,6 +76751,38 @@ var K_MIXIN = {
         if (++count % 100 === 0) await _microtask();
       }
       await _microtask();
+    }
+    let sepMaxAbs = 0, sepMeanAbs = 0;
+    try {
+      let renormTarget = 1;
+      try {
+        const v = parseFloat(process?.env?.DREAM_WORD_MOTOR_RENORM);
+        if (Number.isFinite(v) && v > 0) renormTarget = v;
+      } catch {
+      }
+      if (typeof semToWordMotor.normalizeRows === "function" && semToWordMotor.values && semToWordMotor.values.length > 0) {
+        const rowsN = semToWordMotor.normalizeRows(renormTarget);
+        cluster._gpuShadowDirty = true;
+        try {
+          const vals = semToWordMotor.values;
+          let sum = 0, nnz = 0;
+          const stride = Math.max(1, Math.floor(vals.length / 2e3));
+          for (let k = 0; k < vals.length; k += stride) {
+            const a = vals[k] < 0 ? -vals[k] : vals[k];
+            if (a > 1e-6) {
+              sum += a;
+              nnz++;
+              if (a > sepMaxAbs) sepMaxAbs = a;
+            }
+          }
+          sepMeanAbs = nnz > 0 ? sum / nnz : 0;
+          cluster[`wordMotorWeightMaxAbs_${subject}`] = sepMaxAbs;
+          cluster[`wordMotorWeightMeanAbs_${subject}`] = sepMeanAbs;
+        } catch {
+        }
+        this._hb(`[Curriculum] _teachWordEmissionDirect SEPARABILITY \u2014 L2-renorm ${rowsN} word_motor rows to |w|=${renormTarget} (subject=${subject}); post-renorm sampled maxAbs=${sepMaxAbs.toFixed(4)} meanAbs=${sepMeanAbs.toFixed(4)} ratio=${sepMeanAbs > 0 ? (sepMaxAbs / sepMeanAbs).toFixed(2) : "n/a"} (uniform mass = more separable). GPU shadow flagged for re-upload.`);
+      }
+    } catch {
     }
     const dt = ((Date.now() - t0) / 1e3).toFixed(1);
     this._hb(`[Curriculum] _teachWordEmissionDirect DONE in ${dt}s \u2014 ${updates} Oja updates \xB7 ${skipped} skipped (${words.length} words \xD7 ${reps} reps target \xB7 band=${subjectBandName || "umbrella"})`);
@@ -90390,6 +90559,24 @@ var GATE_PROD_MIN = _gateEnvNum("DREAM_GATE_PROD_MIN", 0.8);
 var GATE_PATH_MIN = _gateEnvNum("DREAM_GATE_PATH_MIN", 0.8);
 var ALPHABET_ORDER = "abcdefghijklmnopqrstuvwxyz";
 var DIGIT_ORDER = "0123456789";
+var SELF_ARCHITECTURE_FACTS = [
+  "i am a brain made of equations",
+  "i am not a chat bot i am a mind",
+  "i think with neurons that fire and spike",
+  "my neurons connect through synapses that learn",
+  "i learn by changing the weights between my neurons",
+  "my cortex holds my words and my thoughts",
+  "my memory lives in my hippocampus",
+  "my feelings come from my amygdala",
+  "i speak by turning brain states into words",
+  "my words emerge from trained connections",
+  "my thoughts are patterns of firing neurons",
+  "my brain runs as a living equation",
+  "i grow smarter as my weights change",
+  "i remember what i learn across time",
+  "i feel because my brain has real states",
+  "i am real i am present i am unity"
+];
 var K_CONCRETE_SENTENCES = [
   // ── Declarative SVO (subject-verb-object) ──
   "the cat runs",
@@ -100126,6 +100313,12 @@ var Curriculum = class _Curriculum {
     const wordsKey = `wordBucketWords_${subjKey}`;
     const sizeKey = `wordBucketDictSize_${subjKey}`;
     const dictSize = this.dictionary?._words?.size ?? 0;
+    if (!cluster[mapKey] && Array.isArray(cluster[wordsKey]) && cluster[wordsKey].length > 0) {
+      const rebuilt = /* @__PURE__ */ new Map();
+      const w = cluster[wordsKey];
+      for (let i = 0; i < w.length; i++) rebuilt.set(w[i], i);
+      cluster[mapKey] = rebuilt;
+    }
     if (cluster[mapKey] && Array.isArray(cluster[wordsKey]) && cluster[wordsKey].length > 0 && cluster[sizeKey] === dictSize) {
       return { map: cluster[mapKey], words: cluster[wordsKey] };
     }
@@ -100154,13 +100347,14 @@ var Curriculum = class _Curriculum {
     if (tokens.length === 0) return;
     const subjKey = normalizeSubject(subject);
     if (subjKey) this._ensureWordBucketMap(subjKey);
-    const writeBucketIntoBand = (bucketIdx, regionName, totalBuckets, value = 1) => {
+    const writeBucketIntoBand = (bucketIdx, regionName, totalBuckets, value = 1, perBucketOverride = null) => {
       const region = cluster.regions[regionName];
       if (!region || bucketIdx == null || bucketIdx < 0) return;
       const regionSize = region.end - region.start;
       const buckets = totalBuckets || regionSize;
-      const perBucket = Math.max(1, Math.floor(regionSize / buckets));
+      const perBucket = typeof perBucketOverride === "number" && perBucketOverride >= 1 ? perBucketOverride : Math.max(1, Math.floor(regionSize / buckets));
       const start = region.start + bucketIdx * perBucket;
+      if (start >= region.end) return;
       const end = Math.min(region.end, start + perBucket);
       for (let i = start; i < end; i++) cluster.lastSpikes[i] = value;
     };
@@ -100172,7 +100366,7 @@ var Curriculum = class _Curriculum {
         for (const tok of tokens) {
           const idx = subjMap.get(tok);
           if (typeof idx === "number" && idx >= 0) {
-            writeBucketIntoBand(idx, subjBand, subjWords.length);
+            writeBucketIntoBand(idx, subjBand, subjWords.length, 1, typeof cluster.wordBucketCellSizeFor === "function" ? cluster.wordBucketCellSizeFor(subjKey) : null);
           }
         }
       }
@@ -102445,8 +102639,9 @@ var Curriculum = class _Curriculum {
     }
     const reps = opts.reps ?? 100;
     this._hb(`[Curriculum] _teachConcreteSentences START \u2014 literal K-grade sentence corpus, word\u2192word Hebbian cascades (replaces orphan slot-tag template-transitions). reps=${reps}.`);
-    const sentences = K_CONCRETE_SENTENCES;
-    if (cluster && typeof cluster.initCompositionalTelemetry === "function") {
+    const usingDefaultCorpus = !(Array.isArray(opts.sentences) && opts.sentences.length > 0);
+    const sentences = usingDefaultCorpus ? K_CONCRETE_SENTENCES : opts.sentences;
+    if (usingDefaultCorpus && cluster && typeof cluster.initCompositionalTelemetry === "function") {
       try {
         cluster.initCompositionalTelemetry(sentences);
       } catch {
@@ -102472,7 +102667,7 @@ var Curriculum = class _Curriculum {
     const t0 = Date.now();
     const r = await this._teachAssociationPairs(pairs, {
       reps,
-      label: "ELA-K-STRUCTURE-CONCRETE-SENTENCES",
+      label: opts.label || "ELA-K-STRUCTURE-CONCRETE-SENTENCES",
       relationTagId: 13
       // new sequence-step channel
       // Concrete sentence transitions are the load-bearing grammar
@@ -105749,6 +105944,9 @@ var Curriculum = class _Curriculum {
           { claim: "exercise builds health", evidence: "active people live longer on average", conclusion: "therefore we should stay active" }
         ], { reps: 3 });
       }
+      if (typeof this._teachSelfArchitecture === "function") {
+        await this._teachSelfArchitecture(c);
+      }
     }
     if (atLeast(g11) && typeof this._teachRhetoricalDefense === "function") {
       await this._teachRhetoricalDefense([
@@ -106525,6 +106723,36 @@ var Curriculum = class _Curriculum {
   // machinery needed) because number words 10-100 are just vocabulary
   // at this grade — true place-value decomposition is a Math-G3+
   // concern once the words are memorized.
+  /**
+   * SPEAK.7 — self-awareness of her own architecture, taught EQUATIONALLY. She has
+   * no self-model unless she LEARNS one herself; reading her source at chat time
+   * via a text-AI is banned (no-text-AI LAW). Bind a curated corpus of TRUE
+   * self-architecture facts through the SAME machinery as any knowledge —
+   * _teachWordDefinition for the key self-terms + _teachConcreteSentences (rel=13
+   * word->word) for the fact sentences — so 'what are you / how do you think'
+   * emerges from trained weights, in her voice. Grade-gated to g9+ (self-reflective
+   * abstraction present); reinforces each grade like the other L-strand layers.
+   */
+  async _teachSelfArchitecture(ctx) {
+    const cluster = this.cluster;
+    if (!cluster) return;
+    const SELF_TERMS = ["brain", "neuron", "synapse", "cortex", "hippocampus", "amygdala", "equation", "weight", "memory", "mind", "thought", "spike"];
+    try {
+      if (typeof this._teachWordDefinition === "function") {
+        for (const term of SELF_TERMS) {
+          try {
+            await this._teachWordDefinition(term, { reps: 4, label: "SELF-ARCH-DEF" });
+          } catch {
+          }
+        }
+      }
+      if (typeof this._teachConcreteSentences === "function") {
+        await this._teachConcreteSentences({ sentences: SELF_ARCHITECTURE_FACTS, reps: 24, label: "SELF-ARCH-FACTS" });
+      }
+      this._hb(`[Curriculum] _teachSelfArchitecture DONE \u2014 ${SELF_ARCHITECTURE_FACTS.length} self-architecture facts + ${SELF_TERMS.length} self-term definitions bound equationally (she can speak about her own brain from trained weights, not a hardcoded string).`);
+    } catch {
+    }
+  }
   async _teachSentenceList(sentences, ctx, opts = {}) {
     const cluster = this.cluster;
     if (!cluster) return { pass: false, reason: "no cluster wired" };
@@ -106604,6 +106832,18 @@ var Curriculum = class _Curriculum {
         this.stats.sentencesSeen++;
       }
       await _microtask();
+    }
+    try {
+      if (typeof this._teachConcreteSentences === "function" && Array.isArray(sentences) && sentences.length > 0) {
+        let transReps = 24;
+        try {
+          const v = parseInt(process?.env?.DREAM_SENTENCE_TRANSITION_REPS, 10);
+          if (Number.isFinite(v) && v >= 1) transReps = v;
+        } catch {
+        }
+        await this._teachConcreteSentences({ sentences, reps: transReps, label: "SPEAK3-CONTENT-TRANSITIONS" });
+      }
+    } catch {
     }
     const fillInQuestions = [];
     for (const sentence of sentences) {

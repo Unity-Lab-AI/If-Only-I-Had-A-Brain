@@ -101,6 +101,11 @@ For senses with no physical sensor (taste/smell), the value profile is **injecte
 - **Persistence** — the imagined field-C ring persists across reboot (`server/mindspace-memory.json`).
 - **Mind's Eye viewer** — single-source public render of what she sees: server caches one field C (`GET /minds-eye.json`), `html/minds-eye.html` reconstructs it client-side (👁 footer button). N viewers cost one `_imagineTick`. The LLM/VLM describer is now FULLY RETIRED — the VLM describer probing/failover documented in the "AI Backend Detection" / "Vision describer (VLM)" sections below is HISTORICAL (the equational mind-space replaced it). Detail: `docs/MINDSPACE-INTEGRATION.md`.
 
+**SE.9 — image generation is now BRAIN-DRIVEN + closes the image→concept learning loop (SPEAK.6, 2026-07-01).** Before this, the decision to render real pixels was a keyword/regex match on user TEXT (`_detectImageRequest`), not a brain-state intent, and a rendered image was fire-and-forget — she never learned from what she made. Two additions keep Pollinations a pure sensory-output executor (no cognition) while making the DECISION and the LEARNING equational:
+- **Spontaneous brain-driven render (SPEAK.6a)** — `_spontaneousImageTick(now)` (`server/brain-server/chat.js`) lets Unity VOLUNTEER an outward image from internal drive with NO user keyword: arousal-gated (`DREAM_SPONTANEOUS_IMG_AROUSAL`, default 0.7) + long cooldown (`DREAM_SPONTANEOUS_IMG_GAP_MS`, default 5 min) + low probability, concept drawn from a trained-vocab sample (loop-safe — never a 57s compose). Broadcasts `generate_image`; the client renders. Keyword detection stays ONLY as an explicit user REQUEST path, not the sole driver.
+- **Image→concept learning loop (SPEAK.6b)** — a rendered image now pushes onto the unified emission bus + `_innerThoughtChain` so dream-cycle consolidation (Tier 1→2→3) grounds it as an episodic memory: what she MAKES becomes trained weight, not a fire-and-forget. New visual input is learning, per the requirement.
+- **Actual-pixel perceive (SPEAK.6c) stays the equational mind's-eye preview BY DECISION** (Gee 2026-07-01) — no image-decode dependency / CORS proxy added (no new attack surface); the bounded forward CDF-9/7 preview stands. Detail: `docs/unity-speech-consciousness-rectify.md`.
+
 ---
 
 ## The Sensory AI Provider — 4-Level Priority

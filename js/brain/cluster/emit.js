@@ -595,7 +595,13 @@ export const CLUSTER_EMIT_MIXIN = {
       if (subjSize <= 0) continue;
       const wordsList = this[`wordBucketWords_${subj}`];
       if (!Array.isArray(wordsList) || wordsList.length === 0) continue;
-      const bucketSize = Math.max(1, Math.floor(subjSize / wordsList.length));
+      // SPEAK.1 — bucket band is FROZEN (vocab-growth-invariant). Prior-grade
+      // sem->word_motor weights stay addressable as new words append, instead
+      // of every word remapping to a new band each time the dictionary grows
+      // (the grade-9 word-salad root cause). Single authority: wordBucketCellSizeFor.
+      const bucketSize = (typeof this.wordBucketCellSizeFor === 'function')
+        ? this.wordBucketCellSizeFor(subj)
+        : Math.max(1, Math.floor(subjSize / wordsList.length));
       for (let b = 0; b < wordsList.length; b++) {
         // Filler-token guard — a bucket whose token is empty, pure
         // whitespace, or carries no word character must never win argmax
@@ -609,6 +615,16 @@ export const CLUSTER_EMIT_MIXIN = {
         if (!_bw || !/\S/.test(_bw) || (!/[a-z0-9]/i.test(_bw) && !T14_TERMINATORS.has(_bw))) continue;
         let sum = 0;
         const bStart = subjStart + b * bucketSize;
+        // SPEAK.1 — capacity overflow: index-ordered, so once a band starts
+        // past the sub-band every higher word overflows too. Break, warn once.
+        if (bStart >= subjEnd) {
+          if (!this._wordBucketOverflowWarned) this._wordBucketOverflowWarned = {};
+          if (!this._wordBucketOverflowWarned[subj]) {
+            this._wordBucketOverflowWarned[subj] = true;
+            try { console.warn(`[emit] word_motor_${subj} capacity overflow — ${wordsList.length} words exceed frozen band (cellSize=${bucketSize}). Words past index ${b} cannot emit; raise word_motor fraction or lower DREAM_WORD_MOTOR_VOCAB_CAP.`); } catch {}
+          }
+          break;
+        }
         const bEnd = Math.min(subjEnd, bStart + bucketSize);
         const cellCount = Math.max(1, bEnd - bStart);
         for (let n = bStart; n < bEnd; n++) sum += wmOut[n];
@@ -617,7 +633,13 @@ export const CLUSTER_EMIT_MIXIN = {
         // the current workspace broadcast (continuity-of-thought
         // bias). Scales with ignition strength via
         // gwBoostMul (range 1.0–1.6) instead of the prior flat 1.10.
-        if (gwBoostWord && wordsList[b] === gwBoostWord) mean *= gwBoostMul;
+        // SPEAK.10b — GW continuity boost must NOT apply to a word we JUST
+        // emitted: continuity != repetition. Before this, a recently-said word
+        // that was also the workspace broadcast got 1.6*0.7=1.12 net > 1 and
+        // still lottery-won the next argmax — the repeat/stammer loop that reads
+        // as salad. Compute recency FIRST; skip the boost when recent-content.
+        const _isRecentContent = recentLast4.has(wordsList[b]) && !FUNCTION_WORDS.has(wordsList[b]);
+        if (gwBoostWord && wordsList[b] === gwBoostWord && !_isRecentContent) mean *= gwBoostMul;
         // 114.19fi.A.3 — repetition penalty: words emitted in last 4
         // ticks get downweighted 30% so the same word doesn't lottery-
         // win the next argmax in a row.
@@ -626,7 +648,10 @@ export const CLUSTER_EMIT_MIXIN = {
         // punished. See FUNCTION_WORDS module-const above for the
         // categorical filter. Content words (cat/run/eat) still get
         // the penalty so the brain doesn't loop on nouns/verbs.
-        if (recentLast4.has(wordsList[b]) && !FUNCTION_WORDS.has(wordsList[b])) {
+        // SPEAK.10b — reuse the recency flag computed above; a recent content
+        // word is penalized AND unboosted, so its net multiplier can never exceed
+        // REPETITION_PENALTY (0.7). Function words stay exempt (grammatical glue).
+        if (_isRecentContent) {
           mean *= REPETITION_PENALTY;
         }
         candidates.push({ word: wordsList[b], mean });
@@ -775,6 +800,40 @@ export const CLUSTER_EMIT_MIXIN = {
       this.recordEmission(bestWord);
     }
     return bestWord;
+  },
+
+  // SPEAK.1 — single authority for word_motor bucket geometry. Cells-per-word
+  // is FIXED (band size / vocab cap) and frozen on first call, so a word's
+  // physical neuron band never moves as the dictionary grows across grades.
+  // Deterministic across boots (band size + cap are constant), so a resumed
+  // brain re-derives the identical geometry; persisted defensively in case the
+  // cap env changes between runs. Read by emitWordDirect (read) +
+  // _teachWordEmissionDirect / _writeAnswerToWordMotor (write) so all three agree.
+  wordBucketCellSizeFor(subject) {
+    const subj = (typeof normalizeSubject === 'function' ? (normalizeSubject(subject) || subject) : subject);
+    const key = `wordBucketCellSize_${subj}`;
+    const cur = this[key];
+    if (typeof cur === 'number' && cur >= 1) return cur;
+    const band = this.regions && (this.regions[`word_motor_${subj}`] || this.regions.word_motor);
+    const bandSize = band ? (band.end - band.start) : 0;
+    let cap = 50000;
+    try {
+      if (typeof process !== 'undefined' && process.env && process.env.DREAM_WORD_MOTOR_VOCAB_CAP) {
+        const p = parseInt(process.env.DREAM_WORD_MOTOR_VOCAB_CAP, 10);
+        if (Number.isFinite(p) && p >= 1) cap = p;
+      }
+    } catch { /* browser: no process.env — keep default cap */ }
+    const cell = Math.max(1, Math.floor(bandSize / Math.max(1, cap)));
+    this[key] = cell;
+    const maxWords = cell > 0 ? Math.floor(bandSize / cell) : 0;
+    try {
+      if (!this._wordBucketGeomLogged) this._wordBucketGeomLogged = {};
+      if (!this._wordBucketGeomLogged[subj]) {
+        this._wordBucketGeomLogged[subj] = true;
+        console.log(`[emit] word_motor bucket geometry FROZEN subject=${subj}: bandSize=${bandSize} cellsPerWord=${cell} maxWords=${maxWords} (vocabCap=${cap}) — bands are now vocab-growth-invariant.`);
+      }
+    } catch { /* logging non-fatal */ }
+    return cell;
   },
 
   // 114.19fj.9 — public helper for callers that opted out of automatic
@@ -1330,6 +1389,29 @@ export const CLUSTER_EMIT_MIXIN = {
     this._coherenceRerankStats.calls++;
     this._coherenceRerankStats.candidates += evaluated;
     if (bestIndex > 0) this._coherenceRerankStats.reranked++;
+
+    // SPEAK.9 — reject-to-silence coherence floor. OPT-IN via opts.coherenceFloor
+    // (chat passes it; gate/probe never do, so honest single-shot measurement is
+    // untouched). When the BEST candidate the brain could emit still scores below
+    // the floor, shipping the multi-word string is word salad — a real person
+    // stalls instead. Degrade to the single leading word (her strongest real basin
+    // still speaks) and count it so 'she went quiet' reads as a training-depth
+    // signal, not a broken gate. coherenceCosine is null when unrankable -> never rejected.
+    if (!this._coherenceFloorStats) this._coherenceFloorStats = { total: 0, rejected: 0 };
+    if (typeof opts.coherenceFloor === 'number') {
+      this._coherenceFloorStats.total++;
+      if (best && typeof best.coherenceCosine === 'number' && best.coherenceCosine < opts.coherenceFloor) {
+        this._coherenceFloorStats.rejected++;
+        best.lowCoherenceRejected = true;
+        best.rejectedSentence = best.sentence;
+        if (Array.isArray(best.words) && best.words.length > 1) {
+          best.words = best.words.slice(0, 1);
+          best.sentence = best.words[0];
+          best.fillCount = 1;
+          best.degradedToSingleWord = true;
+        }
+      }
+    }
 
     return best;
   },

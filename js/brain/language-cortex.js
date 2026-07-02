@@ -2173,11 +2173,17 @@ export class LanguageCortex {
               let _temp = 0.6 + 0.4 * _ar + 0.35 * _drug - 0.3 * _co;
               _temp = Math.max(0.45, Math.min(1.2, _temp));
               const _topK = Math.round(8 + 6 * Math.max(_ar, _drug));
+              // SPEAK.9 — below-floor emission is refused (degraded to a single
+              // honest word) instead of shipping salad. Env-tunable; calibrate on
+              // the live walk. Gate/probe paths never pass this — chat only.
+              let _chatCohFloor = 0.10;
+              try { if (typeof process !== 'undefined' && process.env && process.env.DREAM_CHAT_COHERENCE_FLOOR) { const v = parseFloat(process.env.DREAM_CHAT_COHERENCE_FLOOR); if (Number.isFinite(v) && v >= 0) _chatCohFloor = v; } } catch { /* default */ }
               composedSentence = await cluster.composeSentence(intentSeed, {
                 subject: inferredSubject || undefined,
                 temperature: Number(_temp.toFixed(2)),
                 topK: _topK,
                 coherenceCandidates: 3,
+                coherenceFloor: _chatCohFloor,
               });
               // Gate relaxed from >= 2 to >= 1 while structure
               // training matures. A single emitted word is still a
@@ -2204,7 +2210,9 @@ export class LanguageCortex {
                 // rambles nor repeats. Reuses the affect temperature/topK.
                 try {
                   const _arN = Math.max(0, Math.min(1, typeof arousal === 'number' ? arousal : 0.5));
-                  const maxExtra = _arN > 0.66 ? 2 : (_arN > 0.33 ? 1 : 0);
+                  // SPEAK.9 — don't pile continuation clauses onto a floor-rejected
+                  // (below-coherence) reply; one honest word stands alone.
+                  const maxExtra = composedSentence.lowCoherenceRejected ? 0 : (_arN > 0.66 ? 2 : (_arN > 0.33 ? 1 : 0));
                   let _total = composedWordsAsync.length;
                   const _seen = new Set([(composedSentence.sentence || composedWordsAsync.join(' ')).toLowerCase()]);
                   for (let _s = 0; _s < maxExtra && _total < 30; _s++) {
