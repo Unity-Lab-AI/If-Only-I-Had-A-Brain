@@ -8471,7 +8471,11 @@ export const K_MIXIN = {
     const bandStart = subjectBand ? (subjectBand.start - wordMotorRegion.start) : 0;
     const bandEnd = subjectBand ? (subjectBand.end - wordMotorRegion.start) : wmSize;
     const bandSize = bandEnd - bandStart;
-    const bucketSize = Math.max(1, Math.floor(bandSize / words.length));
+    // SPEAK.1 — teach writes to the SAME frozen band emit argmaxes (vocab-growth-
+    // invariant). Legacy live-length division kept only as defensive fallback.
+    const bucketSize = (typeof cluster.wordBucketCellSizeFor === 'function')
+      ? cluster.wordBucketCellSizeFor(subject)
+      : Math.max(1, Math.floor(bandSize / words.length));
 
     // iter21-A leak fix: REUSE buffers across iterations instead of
     // allocating new Float64Arrays per word × per rep. Operator caught
@@ -8504,6 +8508,7 @@ export const K_MIXIN = {
         // Post: word_motor with this word's bucket lit ONLY in subject's sub-band
         postWM.fill(0);
         const bStart = bandStart + wi * bucketSize;
+        if (bStart >= bandEnd) break; // SPEAK.1 capacity overflow (index-ordered)
         const bEnd = Math.min(bandEnd, bStart + bucketSize);
         for (let n = bStart; n < bEnd; n++) postWM[n] = 1;
         try {
@@ -8517,6 +8522,38 @@ export const K_MIXIN = {
       }
       await _microtask();
     }
+
+    // SPEAK.2 — basin separability. After the rep loop, L2-renorm each
+    // word_motor post-row's incoming weight vector so no single word basin can
+    // grow unbounded mass and dominate argmax regardless of how well the sem
+    // input actually matches it. Emission argmax then discriminates on INPUT
+    // DIRECTION (which word the sem state resembles), not accumulated magnitude
+    // — the property that keeps thousands of basins separable as vocab grows.
+    // The post side is already hard-WTA (the one-hot bucket target above);
+    // this closes the pre-side (weight-mass) gap. Same normalizeRows +
+    // _gpuShadowDirty resync contract as _rectifySemMotor (CPU CSR is
+    // authoritative; flag the GPU shadow for re-upload).
+    let sepMaxAbs = 0, sepMeanAbs = 0;
+    try {
+      let renormTarget = 1.0;
+      try { const v = parseFloat(process?.env?.DREAM_WORD_MOTOR_RENORM); if (Number.isFinite(v) && v > 0) renormTarget = v; } catch { /* browser: default */ }
+      if (typeof semToWordMotor.normalizeRows === 'function' && semToWordMotor.values && semToWordMotor.values.length > 0) {
+        const rowsN = semToWordMotor.normalizeRows(renormTarget);
+        cluster._gpuShadowDirty = true;
+        // Cheap post-renorm weight-distribution probe (sampled): uniform mass
+        // across buckets = healthier separation. Stored per subject so the
+        // dashboard can catch separability regression at G4 instead of G9.
+        try {
+          const vals = semToWordMotor.values; let sum = 0, nnz = 0;
+          const stride = Math.max(1, Math.floor(vals.length / 2000));
+          for (let k = 0; k < vals.length; k += stride) { const a = vals[k] < 0 ? -vals[k] : vals[k]; if (a > 1e-6) { sum += a; nnz++; if (a > sepMaxAbs) sepMaxAbs = a; } }
+          sepMeanAbs = nnz > 0 ? sum / nnz : 0;
+          cluster[`wordMotorWeightMaxAbs_${subject}`] = sepMaxAbs;
+          cluster[`wordMotorWeightMeanAbs_${subject}`] = sepMeanAbs;
+        } catch { /* probe non-fatal */ }
+        this._hb(`[Curriculum] _teachWordEmissionDirect SEPARABILITY — L2-renorm ${rowsN} word_motor rows to |w|=${renormTarget} (subject=${subject}); post-renorm sampled maxAbs=${sepMaxAbs.toFixed(4)} meanAbs=${sepMeanAbs.toFixed(4)} ratio=${sepMeanAbs>0?(sepMaxAbs/sepMeanAbs).toFixed(2):'n/a'} (uniform mass = more separable). GPU shadow flagged for re-upload.`);
+      }
+    } catch { /* separability pass never blocks teach */ }
 
     const dt = ((Date.now() - t0) / 1000).toFixed(1);
     this._hb(`[Curriculum] _teachWordEmissionDirect DONE in ${dt}s — ${updates} Oja updates · ${skipped} skipped (${words.length} words × ${reps} reps target · band=${subjectBandName || 'umbrella'})`);

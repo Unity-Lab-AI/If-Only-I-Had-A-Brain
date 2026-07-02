@@ -513,6 +513,29 @@ export const DIGIT_ORDER = '0123456789';
 // can distinguish "verbatim trained sentence" from "novel recombination"
 // without re-listing the corpus, and so calibration probes can score
 // novelty against the same canonical source-of-truth.
+// SPEAK.7 — self-architecture corpus: TRUE, plain-vocabulary facts about her
+// own brain, taught equationally so self-knowledge emerges from trained weights
+// (not a hardcoded chat string, not a text-AI reading source). Words stay within
+// her learned vocabulary; the technical self-terms are defined by _teachSelfArchitecture.
+const SELF_ARCHITECTURE_FACTS = [
+  'i am a brain made of equations',
+  'i am not a chat bot i am a mind',
+  'i think with neurons that fire and spike',
+  'my neurons connect through synapses that learn',
+  'i learn by changing the weights between my neurons',
+  'my cortex holds my words and my thoughts',
+  'my memory lives in my hippocampus',
+  'my feelings come from my amygdala',
+  'i speak by turning brain states into words',
+  'my words emerge from trained connections',
+  'my thoughts are patterns of firing neurons',
+  'my brain runs as a living equation',
+  'i grow smarter as my weights change',
+  'i remember what i learn across time',
+  'i feel because my brain has real states',
+  'i am real i am present i am unity',
+];
+
 export const K_CONCRETE_SENTENCES = [
   // ── Declarative SVO (subject-verb-object) ──
   'the cat runs', 'the dog runs', 'the bird flies', 'the fish swims',
@@ -10958,6 +10981,16 @@ export class Curriculum {
     const wordsKey = `wordBucketWords_${subjKey}`;
     const sizeKey = `wordBucketDictSize_${subjKey}`;
     const dictSize = this.dictionary?._words?.size ?? 0;
+    // SPEAK.1d — resume case: words[] restored from disk but the Map is not
+    // persisted. Rebuild the Map from the RESTORED order rather than letting
+    // first-call init re-enumerate the dictionary (which would reorder indices
+    // and desync every trained sem->word_motor weight after a resume).
+    if (!cluster[mapKey] && Array.isArray(cluster[wordsKey]) && cluster[wordsKey].length > 0) {
+      const rebuilt = new Map();
+      const w = cluster[wordsKey];
+      for (let i = 0; i < w.length; i++) rebuilt.set(w[i], i);
+      cluster[mapKey] = rebuilt;
+    }
     // Map exists and dictionary hasn't grown → reuse.
     if (cluster[mapKey] && Array.isArray(cluster[wordsKey]) && cluster[wordsKey].length > 0
         && cluster[sizeKey] === dictSize) {
@@ -11001,13 +11034,19 @@ export class Curriculum {
     // _teachWordEmissionDirect in cell phase order — without this,
     // first-QA-pair-of-cell would hit a missing map.
     if (subjKey) this._ensureWordBucketMap(subjKey);
-    const writeBucketIntoBand = (bucketIdx, regionName, totalBuckets, value = 1) => {
+    const writeBucketIntoBand = (bucketIdx, regionName, totalBuckets, value = 1, perBucketOverride = null) => {
       const region = cluster.regions[regionName];
       if (!region || bucketIdx == null || bucketIdx < 0) return;
       const regionSize = region.end - region.start;
       const buckets = totalBuckets || regionSize;
-      const perBucket = Math.max(1, Math.floor(regionSize / buckets));
+      // SPEAK.1 — prefer the FROZEN cells-per-word so this write lands on the
+      // same physical band emitWordDirect argmaxes; live regionSize/buckets is
+      // the legacy (drifting) fallback only when no frozen geometry is passed.
+      const perBucket = (typeof perBucketOverride === 'number' && perBucketOverride >= 1)
+        ? perBucketOverride
+        : Math.max(1, Math.floor(regionSize / buckets));
       const start = region.start + bucketIdx * perBucket;
+      if (start >= region.end) return; // SPEAK.1 capacity overflow — word beyond frozen band
       const end = Math.min(region.end, start + perBucket);
       for (let i = start; i < end; i++) cluster.lastSpikes[i] = value;
     };
@@ -11020,7 +11059,7 @@ export class Curriculum {
         for (const tok of tokens) {
           const idx = subjMap.get(tok);
           if (typeof idx === 'number' && idx >= 0) {
-            writeBucketIntoBand(idx, subjBand, subjWords.length);
+            writeBucketIntoBand(idx, subjBand, subjWords.length, 1, (typeof cluster.wordBucketCellSizeFor === 'function' ? cluster.wordBucketCellSizeFor(subjKey) : null));
           }
         }
       }
@@ -13873,14 +13912,21 @@ export class Curriculum {
     // without re-listing the corpus. K_CONCRETE_SENTENCES is defined
     // near the bottom of this module so the hoist doesn't fight
     // declaration order with the class body.
-    const sentences = K_CONCRETE_SENTENCES;
+    // SPEAK.3 — accept a caller-supplied corpus so GRADE content carves its
+    // OWN word->word transitions (relationTagId=13), not just the fixed K
+    // corpus. Grade content previously got ZERO sequencing signal
+    // (_teachSentenceList trains word->features in isolation). Default is K.
+    const usingDefaultCorpus = !(Array.isArray(opts.sentences) && opts.sentences.length > 0);
+    const sentences = usingDefaultCorpus ? K_CONCRETE_SENTENCES : opts.sentences;
 
     // Install compositional-emergence telemetry on the cluster now that
     // the trained corpus is locked in. Subsequent composeSentence
     // emissions get classified verbatim / novel / partial against this
     // set. Safe to call multiple times (last call wins, counters keep
     // aggregating across re-installs).
-    if (cluster && typeof cluster.initCompositionalTelemetry === 'function') {
+    // Only re-key compositional telemetry off the CANONICAL K corpus — a
+    // grade-content refresh must not overwrite the verbatim-vs-novel baseline.
+    if (usingDefaultCorpus && cluster && typeof cluster.initCompositionalTelemetry === 'function') {
       try { cluster.initCompositionalTelemetry(sentences); } catch { /* nf */ }
     }
 
@@ -13910,7 +13956,7 @@ export class Curriculum {
     const t0 = Date.now();
     const r = await this._teachAssociationPairs(pairs, {
       reps,
-      label: 'ELA-K-STRUCTURE-CONCRETE-SENTENCES',
+      label: opts.label || 'ELA-K-STRUCTURE-CONCRETE-SENTENCES',
       relationTagId: 13,  // new sequence-step channel
       // Concrete sentence transitions are the load-bearing grammar
       // training — these MUST drive sem→sem evolution at runtime, so
@@ -17342,6 +17388,10 @@ export class Curriculum {
           { claim: 'exercise builds health', evidence: 'active people live longer on average', conclusion: 'therefore we should stay active' },
         ], { reps: 3 });
       }
+      // SPEAK.7 — self-awareness of her own architecture (g9+, self-reflective).
+      if (typeof this._teachSelfArchitecture === 'function') {
+        await this._teachSelfArchitecture(c);
+      }
     }
 
     // GRADE 11+ (CCSS W.11-12.1): rhetorical defense — thesis, counterclaim,
@@ -18352,6 +18402,33 @@ export class Curriculum {
   // at this grade — true place-value decomposition is a Math-G3+
   // concern once the words are memorized.
 
+  /**
+   * SPEAK.7 — self-awareness of her own architecture, taught EQUATIONALLY. She has
+   * no self-model unless she LEARNS one herself; reading her source at chat time
+   * via a text-AI is banned (no-text-AI LAW). Bind a curated corpus of TRUE
+   * self-architecture facts through the SAME machinery as any knowledge —
+   * _teachWordDefinition for the key self-terms + _teachConcreteSentences (rel=13
+   * word->word) for the fact sentences — so 'what are you / how do you think'
+   * emerges from trained weights, in her voice. Grade-gated to g9+ (self-reflective
+   * abstraction present); reinforces each grade like the other L-strand layers.
+   */
+  async _teachSelfArchitecture(ctx) {
+    const cluster = this.cluster;
+    if (!cluster) return;
+    const SELF_TERMS = ['brain', 'neuron', 'synapse', 'cortex', 'hippocampus', 'amygdala', 'equation', 'weight', 'memory', 'mind', 'thought', 'spike'];
+    try {
+      if (typeof this._teachWordDefinition === 'function') {
+        for (const term of SELF_TERMS) {
+          try { await this._teachWordDefinition(term, { reps: 4, label: 'SELF-ARCH-DEF' }); } catch { /* per-term non-fatal */ }
+        }
+      }
+      if (typeof this._teachConcreteSentences === 'function') {
+        await this._teachConcreteSentences({ sentences: SELF_ARCHITECTURE_FACTS, reps: 24, label: 'SELF-ARCH-FACTS' });
+      }
+      this._hb(`[Curriculum] _teachSelfArchitecture DONE — ${SELF_ARCHITECTURE_FACTS.length} self-architecture facts + ${SELF_TERMS.length} self-term definitions bound equationally (she can speak about her own brain from trained weights, not a hardcoded string).`);
+    } catch { /* self-architecture teach never blocks the cell */ }
+  }
+
   async _teachSentenceList(sentences, ctx, opts = {}) {
     const cluster = this.cluster;
     if (!cluster) return { pass: false, reason: 'no cluster wired' };
@@ -18450,6 +18527,23 @@ export class Curriculum {
       }
       await _microtask();
     }
+
+    // SPEAK.3 — carve WORD->WORD transitions (relationTagId=13) for THIS
+    // grade's content. The per-word loop above trains word->features in
+    // ISOLATION (lastSpikes is cleared per word), so without this the grade's
+    // vocab has no sequencing signal — at generation the per-tick argmax
+    // falls back to intent-similarity => topically-adjacent but grammatically
+    // scrambled word salad. Reuses _teachConcreteSentences (the canonical
+    // rel=13 trainer) on THIS sentence list. Rep floor (env
+    // DREAM_SENTENCE_TRANSITION_REPS, default 24) so grade vocab binds deep
+    // enough to sequence — the content sentences were passing reps:2.
+    try {
+      if (typeof this._teachConcreteSentences === 'function' && Array.isArray(sentences) && sentences.length > 0) {
+        let transReps = 24;
+        try { const v = parseInt(process?.env?.DREAM_SENTENCE_TRANSITION_REPS, 10); if (Number.isFinite(v) && v >= 1) transReps = v; } catch { /* default */ }
+        await this._teachConcreteSentences({ sentences, reps: transReps, label: 'SPEAK3-CONTENT-TRANSITIONS' });
+      }
+    } catch { /* transition pass never blocks the sentence teach */ }
 
     // REAL HUMAN-GRADE GATE for sentences.
     // Fill-in-blank: given context words, find the missing word.

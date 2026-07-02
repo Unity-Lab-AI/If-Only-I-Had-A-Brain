@@ -1051,6 +1051,36 @@ const SERVER_STATE_MIXIN = {
       thetaPhase,
       gammaScale: cortex ? (cortex._gammaLrScale || 1) : 1,
       phiProxy: this.phiProxy || 0,
+      // SPEAK.2/9-obs — speech-pipeline health. Per-subject word_motor basin
+      // separability (weight-mass distribution: uniform = separable; from the
+      // SPEAK.2 renorm probe) + frozen cellSize (SPEAK.1) + the reject-to-silence
+      // coherence-floor stats (SPEAK.9) + best-of-N rerank stats. Lets separability
+      // regression show at G4 instead of surfacing as G9 word salad.
+      speechHealth: (() => {
+        try {
+          const subj = ['ela', 'math', 'sci', 'soc', 'art', 'life'];
+          const sep = {};
+          for (const sj of subj) {
+            const mx = cortex && cortex[`wordMotorWeightMaxAbs_${sj}`];
+            const mn = cortex && cortex[`wordMotorWeightMeanAbs_${sj}`];
+            if (typeof mx === 'number' || typeof mn === 'number') {
+              sep[sj] = {
+                maxAbs: Number((mx || 0).toFixed(4)),
+                meanAbs: Number((mn || 0).toFixed(4)),
+                ratio: (mn > 0) ? Number((mx / mn).toFixed(2)) : 0,
+                cellSize: (cortex && cortex[`wordBucketCellSize_${sj}`]) || 0,
+              };
+            }
+          }
+          const cf = cortex && cortex._coherenceFloorStats;
+          const rr = cortex && cortex._coherenceRerankStats;
+          return {
+            separability: sep,
+            coherenceFloor: cf ? { total: cf.total || 0, rejected: cf.rejected || 0, rejectRate: cf.total ? Number((cf.rejected / cf.total).toFixed(3)) : 0 } : null,
+            rerank: rr ? { calls: rr.calls || 0, reranked: rr.reranked || 0 } : null,
+          };
+        } catch { return null; }
+      })(),
       // GlobalWorkspace ignition snapshot (O.15) — current broadcast
       // label/value, ignition rate (broadcasts per tick), recent
       // history capped 8 most-recent entries. Surfaces whether GW
