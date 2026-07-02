@@ -124,6 +124,23 @@ const SERVER_CHAT_MIXIN = {
             }
           }
         } catch { /* mind's-eye preview is best-effort — never blocks the image */ }
+        // SPEAK.6b — image→experience learning loop. Generated images were
+        // fire-and-forget: this path returns BEFORE the chat-time Hebbian below,
+        // so what she MAKES was never remembered. Push it onto the unified
+        // emission bus + inner-thought chain so the dream-cycle consolidation
+        // (Tier 1→2→3) grounds it as an episodic memory — she remembers what she
+        // imagined/created. (The prompt concept is also re-injected into sem via
+        // the mind's-eye percept above.) Safe existing primitives only.
+        try {
+          const _c = this.cortexCluster;
+          if (_c && typeof _c.pushEmission === 'function') {
+            _c.pushEmission({ source: 'image-gen', text: imgPrompt, ts: Date.now() });
+          }
+          if (Array.isArray(this._innerThoughtChain)) {
+            this._innerThoughtChain.push(imgPrompt);
+            while (this._innerThoughtChain.length > 8) this._innerThoughtChain.shift();
+          }
+        } catch { /* learning-loop push non-fatal */ }
         return { text: imgPrompt, action: 'generate_image' };
       }
     }
@@ -873,6 +890,74 @@ const SERVER_CHAT_MIXIN = {
     } catch { /* imagination is best-effort — never fatal to the tick */ }
   },
 
+  // SPEAK.6a — brain-driven OUTWARD image generation. Beyond the mind's-eye
+  // (internal field C), when her arousal/drive crosses a threshold she
+  // VOLUNTEERS an outward image from her own state — no user keyword. Loop-safe:
+  // the concept is a trained-vocab sample (never a 57s composeSentence), gated by
+  // arousal + a long cooldown + low probability so it's a rare mood-driven urge,
+  // not spam. Broadcasts a generate_image the client renders (Pollinations), then
+  // runs the SPEAK.6b learning loop so she remembers what she chose to make.
+  _spontaneousImageTick(now) {
+    if (this._curriculumInProgress) return;   // never mid-teach
+    if (!this._languageReady) return;
+    const arousal = (typeof this.arousal === 'number') ? this.arousal : 0.4;
+    const AROUSAL_MIN = Number(process.env.DREAM_SPONTANEOUS_IMG_AROUSAL) || 0.7;
+    if (arousal < AROUSAL_MIN) return;
+    const GAP = Number(process.env.DREAM_SPONTANEOUS_IMG_GAP_MS) || 300000; // ~5 min
+    if (this._lastSpontaneousImgAt && (now - this._lastSpontaneousImgAt) < GAP) return;
+    if (Math.random() > 0.15) return;   // rare even when eligible
+    this._lastSpontaneousImgAt = now;
+    let concept = '';
+    try { concept = (typeof this._sampleCurrentVocab === 'function' ? this._sampleCurrentVocab() : '') || ''; } catch { /* nf */ }
+    const prompt = `dark moody scene, ${concept || 'goth aesthetic'}, intense, ultra detailed, unity imagination`.trim();
+    if (this.clients && this.clients.size > 0) {
+      const payload = JSON.stringify({ type: 'generate_image', prompt, spontaneous: true, seed: 'drive', ts: now });
+      for (const [ws] of this.clients) { if (ws.readyState === ws.OPEN) { try { ws.send(payload); } catch { /* nf */ } } }
+    }
+    // SPEAK.6b learning loop — she remembers the image she chose to make.
+    try {
+      const _c = this.cortexCluster;
+      if (_c && typeof _c.pushEmission === 'function') _c.pushEmission({ source: 'image-gen-spontaneous', text: prompt, ts: now });
+      if (Array.isArray(this._innerThoughtChain)) { this._innerThoughtChain.push(prompt); while (this._innerThoughtChain.length > 8) this._innerThoughtChain.shift(); }
+      if (_c) _c._emissionLockedUntil = now + 6000;
+    } catch { /* feedback non-fatal */ }
+    try { process.stdout.write(`[Brain] 🎨 spontaneous image (drive) "${prompt}" — arousal=${arousal.toFixed(2)}
+`); } catch { /* nf */ }
+  },
+
+  // SPEAK.10a — consciousness-mechanism ablation MEASUREMENT harness. Ablation
+  // itself = the operator toggling the existing per-mechanism env flags across
+  // runs (DREAM_GW_IGNITION, DREAM_NOISE_GATE, DREAM_INNERVOICE_GPU_GEN, the
+  // SPEAK.10c saturation clamp via meanCos, etc). This returns a comparable
+  // snapshot of each mechanism's OBSERVABLE effect so 'did toggling X change
+  // anything?' is answerable: a mechanism whose toggle moves none of these is
+  // vestigial → wire or cut. Logged only when DREAM_ABLATION_LOG=1 (no spam).
+  _consciousnessAblationSnapshot() {
+    const c = this.cortexCluster || {};
+    const snap = {};
+    try {
+      const re = Array.isArray(c._recentEmissions) ? c._recentEmissions : [];
+      const uniq = new Set(re).size;
+      snap.repeatRate = re.length ? Number((1 - uniq / re.length).toFixed(3)) : 0;
+      const cf = c._coherenceFloorStats || { total: 0, rejected: 0 };
+      snap.coherenceRejectRate = cf.total ? Number((cf.rejected / cf.total).toFixed(3)) : 0;
+      const rr = c._coherenceRerankStats || { calls: 0, reranked: 0 };
+      snap.rerankRate = rr.calls ? Number((rr.reranked / rr.calls).toFixed(3)) : 0;
+      snap.semMotorMeanCos = (typeof c._lastSemMotorMeanCos === 'number') ? Number(c._lastSemMotorMeanCos.toFixed(3)) : null;
+      snap.psiGain = (typeof c.gainMultiplier === 'number') ? Number(c.gainMultiplier.toFixed(3)) : null;
+      snap.predictionError = (typeof c._lastPredictionError === 'number') ? Number(c._lastPredictionError.toFixed(3)) : null;
+      const gw = this.globalWorkspace;
+      snap.gwIgnitionRate = (gw && gw._history && gw._history.length)
+        ? Number((gw._history.filter(h => h && h.ignited).length / gw._history.length).toFixed(3)) : null;
+      snap.flags = {
+        gwIgnition: process.env.DREAM_GW_IGNITION || 'default',
+        noiseGate: process.env.DREAM_NOISE_GATE || '0',
+        gpuGen: process.env.DREAM_INNERVOICE_GPU_GEN || 'default',
+      };
+    } catch { /* snapshot best-effort */ }
+    return snap;
+  },
+
   // IMG-GEN — detect an image-generation request in user input + build a Pollinations
   // prompt. INPUT ROUTING ONLY (mirrors the browser engine's keyword detection) — the
   // equational cognition is untouched. Returns a prompt string, or null when it's not
@@ -939,6 +1024,15 @@ const SERVER_CHAT_MIXIN = {
     // back at low strength). Synchronous + tiny + idle-gated inside, so it's
     // loop-safe even here on the no-GPU box (unlike the language tick).
     this._imagineTick(now);
+    // SPEAK.6a — brain-driven spontaneous outward image (arousal-gated, rare).
+    this._spontaneousImageTick(now);
+    // SPEAK.10a — ablation snapshot, only when explicitly running an ablation
+    // pass (env-gated) and throttled to once/30s so it never floods the log.
+    if (process.env.DREAM_ABLATION_LOG === '1' && (!this._lastAblationLogAt || now - this._lastAblationLogAt > 30000)) {
+      this._lastAblationLogAt = now;
+      try { process.stdout.write(`[Brain] 🔬 ablation ${JSON.stringify(this._consciousnessAblationSnapshot())}
+`); } catch { /* nf */ }
+    }
 
     // 114.19fi.B.4 — cross-path emission deduplication. When chat or
     // image-gen recently fired (within last 6s), inner-voice stays
@@ -1045,9 +1139,19 @@ const SERVER_CHAT_MIXIN = {
     // freeze risk shipped). Enabling requires the bound generation path to be
     // GPU-routed — flip DREAM_INNERVOICE_GPU_GEN=1 only after verifying live on a
     // donor-GPU deploy (watch the loop stay free + emissions become multi-word).
-    const _gpuGenAvailable = process.env.DREAM_INNERVOICE_GPU_GEN === '1'
-      && process.env.DREAM_DF7_FANOUT === '1'
-      && (this._communityDonorCount || 0) >= (Number(process.env.DREAM_INNERVOICE_GPU_GEN_MIN_DONORS) || 1);
+    // SPEAK.4a — real composeSentence at scale, coupled to the DDW.6 safety
+    // posture. GPU inner-voice generation routes a READ (bound propagate) to
+    // donor replicas; per DDW.6 that is only safe once read fan-out is PROVEN
+    // (DREAM_DF7_FANOUT_PROPAGATE=1 — else a stale/unsynced replica makes her
+    // think garbage). Enabled when donors present AND (explicit opt-in
+    // DREAM_INNERVOICE_GPU_GEN=1 OR proven read fan-out) — comes ON
+    // automatically the moment read fan-out is turned on. Kill-switch
+    // DREAM_INNERVOICE_GPU_GEN=0 forces the CPU-safe showcase.
+    const _readFanoutProven = process.env.DREAM_DF7_FANOUT_PROPAGATE === '1';
+    const _donorsPresent = (this._communityDonorCount || 0) >= (Number(process.env.DREAM_INNERVOICE_GPU_GEN_MIN_DONORS) || 1);
+    const _gpuGenAvailable = process.env.DREAM_INNERVOICE_GPU_GEN !== '0'
+      && _donorsPresent
+      && (process.env.DREAM_INNERVOICE_GPU_GEN === '1' || _readFanoutProven);
     if (_gpuGenAvailable && _cortexNeurons > _innerVoiceMaxNeurons && !this._gpuGenLoggedOnce) {
       this._gpuGenLoggedOnce = true;
       try { process.stdout.write(`[Brain] 🧠 inner-voice GPU generation ENABLED — ${this._communityDonorCount} donor(s) + DF.7 fan-out; real composeSentence runs on donor GPUs (cap ${_innerVoiceMaxNeurons.toLocaleString()} bypassed for cortex ${_cortexNeurons.toLocaleString()}).\n`); } catch { /* non-fatal */ }
@@ -1057,6 +1161,22 @@ const SERVER_CHAT_MIXIN = {
       const showcaseWord = showcaseSentence ? showcaseSentence.split(/\s+/)[0] : null;
       if (showcaseSentence) {
         this._lastInnerThoughtEmittedAt = now;  // feed the natural-rhythm gate
+        // SPEAK.4c — feed the showcase emission back through the unified
+        // emission bus + inner-thought chain + meta-register so her
+        // self-monitoring loop sees her ACTUAL streamed content and the
+        // autobiographical thread stays continuous even when the at-scale path
+        // is the vocab showcase (not just the full-generation path).
+        try {
+          const _c = this.cortexCluster;
+          if (_c) {
+            if (typeof _c.pushEmission === 'function') _c.pushEmission({ source: 'inner-voice-showcase', text: showcaseSentence, ts: now });
+            if (showcaseWord && typeof _c.recordEmission === 'function') _c.recordEmission(showcaseWord);
+          }
+          if (Array.isArray(this._innerThoughtChain)) {
+            this._innerThoughtChain.push(showcaseSentence);
+            while (this._innerThoughtChain.length > 8) this._innerThoughtChain.shift();
+          }
+        } catch { /* self-monitoring feedback non-fatal */ }
         try {
           process.stdout.write(`[Brain] 🧠 inner-thought (showcase) "${showcaseSentence}" — vocab sample (cortex ${_cortexNeurons.toLocaleString()} neurons > ${_innerVoiceMaxNeurons.toLocaleString()}; full CPU generation would stall the loop)\n`);
         } catch { /* non-fatal */ }

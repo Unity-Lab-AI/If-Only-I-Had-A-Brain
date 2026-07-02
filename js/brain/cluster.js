@@ -1866,6 +1866,18 @@ export class NeuronCluster {
       const inhib = this._remediationInhibition ? 0.5 : 1.0;
       surpriseGate = 0.5 + predErr * coherence * inhib;
     }
+    // SPEAK.10c — saturation clamp (always-on, independent of the dormant
+    // DREAM_NOISE_GATE). When sem→motor basins have collapsed (saturated), a
+    // HIGH prediction error is CORRUPTION, not novelty — amplifying plasticity
+    // there stamps the salad in up to 1.5× harder, a self-reinforcing collapse
+    // loop at degraded grades. Cap the gate at the 0.5 baseline (no boost) while
+    // saturated so she stops learning her own noise; full surprise-driven
+    // learning resumes automatically once SPEAK.2 renorm / _rectifySemMotor
+    // restores separability (meanCos drops back below threshold). Uses the
+    // cached sep-probe meanCos — no per-call re-sample cost.
+    if (typeof this._lastSemMotorMeanCos === 'number' && this._lastSemMotorMeanCos > SATURATION_MEANCOS && surpriseGate > 0.5) {
+      surpriseGate = 0.5;
+    }
     // Spread cached static portion + only dynamic gammaScale rebuilt per-call.
     return {
       ...staticBundle,
@@ -1933,6 +1945,13 @@ export class NeuronCluster {
    */
   getPhases() {
     if (!this.thetaGammaEnabled) return null;
+    // SPEAK.5a — return the ACTIVITY-MODULATED phase accumulators (advanced in
+    // step() by a rate-dependent frequency), not the bare tick clock, so the
+    // Kuramoto order parameter measures real (de)synchrony. Fall back to the
+    // tick-clock phase only before the first step populated the accumulators.
+    if (typeof this._thetaPhaseAcc === 'number') {
+      return { theta: this._thetaPhaseAcc, gamma: this._gammaPhaseAcc };
+    }
     const t = this._tickCounter | 0;
     const theta = (2 * Math.PI * (t % this.thetaPeriod)) / this.thetaPeriod;
     const gamma = (2 * Math.PI * (t % this.gammaPeriod)) / this.gammaPeriod;
@@ -3391,7 +3410,7 @@ export class NeuronCluster {
     // This is the hot-path refactor that removes the CPU_SINGLE_THREAD
     // dispatch budget cap — GPU does the sparse matmul, CPU does LIF.
     let synapticCurrents;
-    if (this._gpuProxyReady && this._cachedIntraCurrents && this._cachedIntraCurrents.length === size) {
+    if ((this._gpuProxyReady || this._useChunkedCache) && this._cachedIntraCurrents && this._cachedIntraCurrents.length === size) {
       synapticCurrents = this._cachedIntraCurrents;
     } else {
       synapticCurrents = synapses.propagate(neurons.getSpikes());
@@ -3406,8 +3425,30 @@ export class NeuronCluster {
     let thetaPhase = 0;
     if (this.thetaGammaEnabled) {
       this._tickCounter = (this._tickCounter + 1) | 0;
-      thetaPhase = (this._tickCounter % this.thetaPeriod) / this.thetaPeriod;
-      thetaMod = 1.0 + this.thetaAmplitude * Math.sin(2 * Math.PI * thetaPhase);
+      // SPEAK.5a — activity-modulated oscillator phase (real Kuramoto substrate).
+      // The bare tick clock advanced EVERY cluster's phase identically, so the
+      // order parameter r was trivially ~1 (all phase-locked to one counter) — a
+      // cosmetic wave decoupled from real spikes. Instead advance a per-cluster
+      // phase accumulator whose instantaneous frequency is modulated by THIS
+      // cluster's real population firing rate (deviation from its own slow EMA
+      // baseline, bounded so phase stays monotonic). Active clusters run faster,
+      // quiet ones slower → genuine phase dispersion, so r measures REAL
+      // (de)synchrony. Rate is sampled from the PRIOR tick's actual lastSpikes.
+      if (typeof this._thetaPhaseAcc !== 'number') { this._thetaPhaseAcc = 0; this._gammaPhaseAcc = 0; this._popRateBaseline = 0.1; }
+      let _rate = 0;
+      if (this.lastSpikes && this.lastSpikes.length) {
+        const _st = Math.max(1, Math.floor(this.lastSpikes.length / 256));
+        let _ones = 0, _cnt = 0;
+        for (let _i = 0; _i < this.lastSpikes.length; _i += _st) { if (this.lastSpikes[_i]) _ones++; _cnt++; }
+        _rate = _cnt > 0 ? _ones / _cnt : 0;
+      }
+      this._popRateBaseline = 0.99 * this._popRateBaseline + 0.01 * _rate;
+      const _dev = Math.max(-0.9, Math.min(0.9, (_rate - this._popRateBaseline) * 4));
+      const _K = 0.5; // activity->frequency coupling (bounded => no negative freq)
+      this._thetaPhaseAcc = (this._thetaPhaseAcc + (2 * Math.PI / this.thetaPeriod) * (1 + _K * _dev)) % (2 * Math.PI);
+      this._gammaPhaseAcc = (this._gammaPhaseAcc + (2 * Math.PI / this.gammaPeriod) * (1 + _K * _dev)) % (2 * Math.PI);
+      thetaPhase = this._thetaPhaseAcc / (2 * Math.PI); // keep [0,1) for existing thetaMod / gammaInTheta usage
+      thetaMod = 1.0 + this.thetaAmplitude * Math.sin(this._thetaPhaseAcc);
     }
 
     // Effective tonic drive with all modulation applied (theta-modulated)
@@ -3423,7 +3464,9 @@ export class NeuronCluster {
     // its cycle (phase 0-π). Models cross-frequency phase-amplitude
     // coupling. Stored on cluster so Hebbian primitives can read.
     if (this.thetaGammaEnabled) {
-      const gammaPhase = (this._tickCounter % this.gammaPeriod) / this.gammaPeriod;
+      // SPEAK.5a — gamma drive reads the activity-modulated accumulator too, so
+      // the learning-rate gate and the reported wave share one real oscillator.
+      const gammaPhase = (typeof this._gammaPhaseAcc === 'number') ? (this._gammaPhaseAcc / (2 * Math.PI)) : ((this._tickCounter % this.gammaPeriod) / this.gammaPeriod);
       const gammaInTheta = thetaPhase < 0.5; // upper half (sin > 0)
       this._gammaLrScale = gammaInTheta
         ? (1.0 + this.gammaAmplitude * Math.sin(2 * Math.PI * gammaPhase))
@@ -3610,8 +3653,27 @@ export class NeuronCluster {
    */
   async stepAwait(dt) {
     if (!this._gpuProxyReady || !this._gpuProxy || !this._gpuProxy.propagate) {
-      // No GPU proxy — fall through to synchronous step with CPU path.
-      return this.step(dt);
+      // No GPU proxy — synchronous CPU step. SPEAK.4b/WL.3: that step's
+      // synapses.propagate blocks the loop ~57s at biological scale. When
+      // DREAM_GEN_PROPAGATE_CHUNKED=1, pre-compute the dominant intra-synapse
+      // propagate via the row-sliced chunked pass (identical math, yields the
+      // loop between slices), cache it, and let step() consume the cache instead
+      // of re-propagating synchronously — exactly how the GPU path already feeds
+      // _cachedIntraCurrents. Default OFF = byte-identical to today; needs live
+      // perf validation before becoming default.
+      try {
+        if (typeof process !== 'undefined' && process.env && process.env.DREAM_GEN_PROPAGATE_CHUNKED === '1'
+            && this.synapses && this.lastSpikes && typeof this.synapses.propagateChunked === 'function') {
+          const currents = await this.synapses.propagateChunked(this.lastSpikes);
+          if (currents && currents.length === this.size) {
+            this._cachedIntraCurrents = currents;
+            this._useChunkedCache = true;
+          }
+        }
+      } catch { /* fall through to synchronous propagate in step() */ }
+      const _r = this.step(dt);
+      this._useChunkedCache = false;
+      return _r;
     }
 
     // Clear stale cache so we only honor promises from THIS tick.

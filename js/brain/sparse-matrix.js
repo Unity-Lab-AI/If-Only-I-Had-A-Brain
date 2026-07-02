@@ -612,6 +612,31 @@ export class SparseMatrix {
     return I;
   }
 
+  // SPEAK.4b / WL.3 — async, row-sliced propagate that yields the event loop
+  // between chunks. Identical math to propagate() (each row is independent), so
+  // the result is bit-for-bit the same; the only difference is a setImmediate
+  // macrotask yield every `chunkRows` rows so a biological-scale CPU propagate
+  // (~57s synchronous block) no longer freezes the loop during inner-voice
+  // generation on a no-GPU host. Same slice+yield shape as _ojaUpdateChunked (EL.1).
+  async propagateChunked(spikes, opts = {}) {
+    const { rows, values, colIdx, rowPtr } = this;
+    if (!values || !colIdx || !rowPtr) return new Float64Array(rows || 0);
+    let I;
+    if (opts.outBuf && opts.outBuf.length === rows) { I = opts.outBuf; I.fill(0); }
+    else I = new Float64Array(rows);
+    const CHUNK = Math.max(1, opts.chunkRows || 250000);
+    for (let base = 0; base < rows; base += CHUNK) {
+      const end = Math.min(rows, base + CHUNK);
+      for (let i = base; i < end; i++) {
+        let sum = 0; const start = rowPtr[i], e = rowPtr[i + 1];
+        for (let k = start; k < e; k++) sum += values[k] * spikes[colIdx[k]];
+        I[i] = sum;
+      }
+      if (end < rows) await new Promise((r) => setImmediate(r));
+    }
+    return I;
+  }
+
   // ── Learning Rules ──────────────────────────────────────────────
 
   /**

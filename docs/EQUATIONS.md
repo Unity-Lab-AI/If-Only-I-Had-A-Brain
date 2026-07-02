@@ -427,9 +427,9 @@ Spike in neuron A (cortex)
 | Equation | Purpose | File |
 |----------|---------|------|
 | `dθ_i/dt = ω_i + Σ K_ij · sin(θ_j - θ_i)` | Kuramoto coupling | `oscillations.js` |
-| `r = \|(1/N) Σ exp(i·θ_k)\|` | Kuramoto order parameter — real synchrony measurement across the cortex theta-gamma ensemble + per-cluster activity-coupled phases | `brain-server.js _computeKuramotoCoherence` |
-| `θ_theta = 2π · (tick mod 167) / 167` | Per-cluster theta phase (~6 Hz) from `_tickCounter` | `cluster.js getPhases` |
-| `θ_gamma = 2π · (tick mod 25) / 25` | Per-cluster gamma phase (~40 Hz) from `_tickCounter` | `cluster.js getPhases` |
+| `r = \|(1/N) Σ exp(i·θ_k)\|` | Kuramoto order parameter — real synchrony across each cluster's OWN activity-modulated phase (SPEAK.5a.i: `_computeKuramotoCoherence` reads every cluster's `getPhases()`; the prior shared-base+`firingRate` synthesis is rotation-invariant in `r` and is kept only as the null fallback) | `brain-server.js _computeKuramotoCoherence` |
+| `φ_θ ← (φ_θ + (2π/167)·(1 + K·dev)) mod 2π`, `dev = clamp((rate − rateEMA)·4, ±0.9)`, `K = 0.5` | SPEAK.5a per-cluster theta phase ACCUMULATOR (~6 Hz base) — instantaneous frequency scales with this cluster's real population firing rate (`rate` sampled from `lastSpikes`), so active clusters advance faster than quiet ones → genuine phase dispersion (was `2π·(tick mod 167)/167`, identical across clusters → `r`≈1 cosmetic) | `cluster.js step` / `getPhases` |
+| `φ_γ ← (φ_γ + (2π/25)·(1 + K·dev)) mod 2π` | SPEAK.5a per-cluster gamma phase accumulator (~40 Hz base); same activity modulation. One oscillator drives BOTH the reported wave and the gamma learning-rate gate (`_gammaLrScale`) | `cluster.js step` / `getPhases` |
 | `coherence = 0.6·r_gamma + 0.4·r_theta` | Combined coherence (gamma-weighted — attention dominates conscious binding, theta is working-memory backbone) | `brain-server.js _computeKuramotoCoherence` |
 | `coherence ← 0.9·coherence + 0.1·computed` | EMA smoothing across ticks | `brain-server.js step` |
 | `gamma = (cortexRate + amygRate) × 50` | Fast cortical + emotional | `brain-server.js` |
@@ -515,6 +515,25 @@ COMPOUNDS:  len > 6 → insert conjunction (arousal→"and", negative→"but")
 | Morpheme equations | 7 prefixes + 12 suffixes |
 | Learned type-transition map | starts empty, grows from curriculum observation (`_typeTransitionLearned` on `NeuronCluster`); replaces the pre-T14.7 hardcoded 200-line `_TYPE_TRANSITIONS` English bigram matrix |
 | Dynamic expansion | New words auto-join categories via type + similarity |
+
+### Word-Motor Emission — vocab-growth-invariant geometry (SPEAK.1/2/9)
+
+The `word_motor` argmax was the grade-9 word-salad root cause: `bucketSize` was recomputed each emit from the LIVE word-list length, so the physical neuron band of every prior word drifted as vocabulary grew. Frozen geometry + separability + a silence floor fix it equationally.
+
+| Equation | Purpose | File |
+|----------|---------|------|
+| `cellsPerWord = max(1, ⌊bandSize / DREAM_WORD_MOTOR_VOCAB_CAP⌋)` (cap default 50000) | SPEAK.1 — FROZEN cells-per-word, computed once per subject, deterministic across boots. A word's physical band never moves as the dictionary grows. Single authority read by emit + teach + QA-write | `cluster/emit.js wordBucketCellSizeFor` |
+| `bStart = subjStart + b·cellsPerWord`, guard `bStart < subjEnd` | Frozen band start per bucket index `b`; capacity-overflow guard warns once and stops (no wrap-around remap) | `cluster/emit.js` |
+| `W_row ← W_row · (target / ‖W_row‖₂)` per word-cell after teach (target `DREAM_WORD_MOTOR_RENORM`, default 1.0) | SPEAK.2 — L2 renorm so emit argmax discriminates on input DIRECTION, not accumulated magnitude → thousands of basins stay separable | `curriculum/kindergarten.js _teachWordEmissionDirect` → `SparseMatrix.normalizeRows` |
+| `emit = coherenceCosine(best) < DREAM_CHAT_COHERENCE_FLOOR (0.10) ? leadingWord : sentence` | SPEAK.9 — reject-to-silence: a below-floor best-of-N winner degrades to her strongest single word instead of shipping salad (chat path only; gate/probe stay floor-free) | `cluster/emit.js` (best-of-N wrapper) + `language-cortex.js` |
+| `mean ×= gwBoostMul` only if `word ∉ recentContent`; `mean ×= 0.7` if `word ∈ recentContent` | SPEAK.10b — GW continuity boost never applies to a just-said content word, so a repeat can't net > 1 and lottery-win the next argmax (was `1.6·0.7 = 1.12 > 1`) | `cluster/emit.js emitWordDirect` |
+| `surpriseGate ≤ 0.5` while `meanCos > SATURATION_MEANCOS` | SPEAK.10c — cap plasticity amplification when `sem→motor` is saturated so the brain stops learning its own noise; auto-lifts when separability returns | `cluster.js buildKScalesForProjection` |
+
+### Word→word sequencing depth (SPEAK.3)
+
+| Equation | Purpose | File |
+|----------|---------|------|
+| `reps = max(gradeReps, DREAM_SENTENCE_TRANSITION_REPS)` (default 24) | Grade content carves its OWN `relationTagId=13` word→word transitions after the per-word loop (was `reps:2` at G9 vs 30+ at K → sequencing noise) | `curriculum.js _teachSentenceList → _teachConcreteSentences` |
 
 ---
 

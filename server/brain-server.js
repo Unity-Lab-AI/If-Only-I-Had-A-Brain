@@ -3045,16 +3045,33 @@ class ServerBrain {
     for (let i = 0; i < clusterNames.length; i++) {
       const c = this.clusters[clusterNames[i]];
       if (!c) continue;
-      // Amplify low firing rates so steady-state activity (~0.05-0.2)
-      // maps to a meaningful coupling strength. Clamped to [0, 1].
-      const couple = Math.max(0, Math.min(1, (c.firingRate || 0) * 5));
-      // Deterministic phase drift derived from tick + cluster index
-      // so silent clusters wander predictably without RNG. Active
-      // clusters phase-lock (drift damped by couple weight).
-      const drift = (1 - couple) * Math.sin(tick * 0.0137 + i * 1.91);
-      const offset = (i / Math.max(1, clusterNames.length)) * Math.PI * 2;
-      const thetaPhase = baseTheta + offset * (1 - couple) + drift * Math.PI;
-      const gammaPhase = baseGamma + offset * 5 * (1 - couple) + drift * Math.PI * 0.5;
+      let thetaPhase, gammaPhase;
+      // SPEAK.5a.i — prefer each cluster's OWN activity-modulated oscillator
+      // phase (getPhases()/_thetaPhaseAcc), so r measures the genuine emergent
+      // (de)synchrony across the real oscillators SPEAK.5a built. The prior
+      // base+offset+drift synthesis added baseTheta/baseGamma as a common term
+      // to every phasor, and the order parameter r = |Σ exp(iθ)|/N is
+      // ROTATION-INVARIANT → the shared base cancelled and 5a's accumulator
+      // never reached the readout (r stayed driven only by the firingRate
+      // synthesis). Reading the cluster's real phase makes 5a actually modulate
+      // r. Fall back to the synthesis ONLY for a cluster whose oscillator hasn't
+      // populated yet (thetaGamma disabled / not yet stepped → getPhases() null).
+      const cp = (typeof c.getPhases === 'function') ? c.getPhases() : null;
+      if (cp && typeof cp.theta === 'number' && typeof cp.gamma === 'number') {
+        thetaPhase = cp.theta;
+        gammaPhase = cp.gamma;
+      } else {
+        // Amplify low firing rates so steady-state activity (~0.05-0.2)
+        // maps to a meaningful coupling strength. Clamped to [0, 1].
+        const couple = Math.max(0, Math.min(1, (c.firingRate || 0) * 5));
+        // Deterministic phase drift derived from tick + cluster index
+        // so silent clusters wander predictably without RNG. Active
+        // clusters phase-lock (drift damped by couple weight).
+        const drift = (1 - couple) * Math.sin(tick * 0.0137 + i * 1.91);
+        const offset = (i / Math.max(1, clusterNames.length)) * Math.PI * 2;
+        thetaPhase = baseTheta + offset * (1 - couple) + drift * Math.PI;
+        gammaPhase = baseGamma + offset * 5 * (1 - couple) + drift * Math.PI * 0.5;
+      }
       sumTcos += Math.cos(thetaPhase);
       sumTsin += Math.sin(thetaPhase);
       sumGcos += Math.cos(gammaPhase);
@@ -4109,10 +4126,12 @@ class ServerBrain {
               for (const subj of SUBJECTS) {
                 const list = cortex[`wordBucketWords_${subj}`];
                 const watermark = cortex[`wordBucketDictSize_${subj}`];
+                const cellSize = cortex[`wordBucketCellSize_${subj}`]; // SPEAK.1 frozen geometry
                 if (Array.isArray(list) && list.length > 0) {
                   out[subj] = {
                     words: list.slice(),
                     watermark: typeof watermark === 'number' ? watermark : list.length,
+                    cellSize: typeof cellSize === 'number' ? cellSize : undefined,
                   };
                 }
               }
@@ -4825,6 +4844,11 @@ class ServerBrain {
               cortex[`wordBucketWords_${subj}`] = payload.words.slice();
               cortex[`wordBucketDictSize_${subj}`] = typeof payload.watermark === 'number'
                 ? payload.watermark : payload.words.length;
+              // SPEAK.1 — restore frozen bucket geometry so a cap env change between
+              // boots can't silently re-shape bands and desync trained weights.
+              if (typeof payload.cellSize === 'number' && payload.cellSize >= 1) {
+                cortex[`wordBucketCellSize_${subj}`] = payload.cellSize;
+              }
               restoredSubjects++;
               restoredWords += payload.words.length;
             }
