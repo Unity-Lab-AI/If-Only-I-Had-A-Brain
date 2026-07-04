@@ -198,6 +198,7 @@
       <button id="btn-reset" class="btn-stop admin-only" title="RESET to a FRESH brain — WIPES all trained weights / episodic memory / schemas (identity-core Tier 3 anchors preserved) and reboots clean via systemd. Destructive; use to start training over. (Admin-only.)">♻ Reset Brain (fresh)</button>
       <button id="btn-update" class="btn-stop admin-only" title="UPDATE & FRESH WALK — server re-pulls the latest project code (git-archive overlay), CLEARS all trained weights (identity-core Tier 3 preserved), restarts, and starts a clean K→PhD walk. Use after shipping fixes to deploy + restart training in one click. Destructive to weights. (Admin-only.)">⬆ Update &amp; Fresh Walk</button>
       <button id="btn-update-savestart" class="btn-stop admin-only" title="UPDATE & SAVESTART — server re-pulls the latest project code (git-archive overlay) and restarts, but RESUMES the saved weights instead of wiping (NO fresh walk). Use to deploy a fix WITHOUT losing training. Non-destructive to weights — resumes via the unit's DREAM_KEEP_STATE=1; if a heavy update changed the brain size/format it fresh-starts and says so. (Admin-only.)">⬆ Update &amp; Savestart (keep weights)</button>
+      <button id="btn-savererun" class="btn-stop admin-only" title="SAVERERUN — KEEP all trained weights and RE-WALK the entire curriculum from pre-K on top of them. Takes a rollback checkpoint first, resets only the grade pointers (all subjects → pre-K, passed cells cleared), restarts, and the boot walk re-teaches every cell onto the existing synapses with the current teach code. Weights, episodic memory, and identity all preserved — Oja updates are self-normalizing so re-teaching on trained weights strengthens instead of corrupting. (Admin-only.)">🔁 Savererun (keep weights, re-walk pre-K→)</button>
     </div>
 
     <!-- Dashboard-zero diagnostic panel (collapsible). Operator 2026-06-17
@@ -2776,6 +2777,41 @@
           btn.classList.add('shutdown-fired');
           btn.textContent = '✓ update sent (restarting)';
           log(`Update+Savestart fetch failed (server restarting into new code): ${err?.message || err}`);
+        }
+      });
+    })();
+
+    // SAVERERUN button. POST /savererun → server takes a rollback checkpoint,
+    // resets ONLY the grade pointers (all subjects → pre-K, passedCells
+    // cleared), force-saves the reset inside the KEPT weights + drops the
+    // resume marker, exits; systemd revives and the boot walk re-teaches the
+    // whole curriculum ON TOP of the trained synapses (Oja self-normalizing —
+    // re-teach strengthens, doesn't corrupt). Weight-safe → single confirm.
+    (function wireSavererun() {
+      const btn = document.getElementById('btn-savererun');
+      if (!btn) return;
+      btn.addEventListener('click', async () => {
+        const ok = window.confirm(
+          '🔁 SAVERERUN — keep ALL trained weights and re-walk the curriculum from pre-K on top of them?\n\n' +
+          '✓ Weights KEPT (rollback checkpoint taken first)\n' +
+          '✓ Episodic memory + identity preserved\n' +
+          '✓ Only grade pointers reset (all subjects → pre-K, passed cells cleared)\n' +
+          '✓ Re-walk re-teaches every cell onto the existing synapses with the current teach code\n\n' +
+          'Server restarts in a few seconds and begins the re-walk. Proceed?'
+        );
+        if (!ok) return;
+        btn.disabled = true;
+        btn.textContent = '⏳ savererun...';
+        try {
+          const r = await fetch(adminApi('savererun'), { method: 'POST', cache: 'no-store' });
+          const j = await r.json().catch(() => ({}));
+          btn.classList.add('shutdown-fired');
+          btn.textContent = j && j.ok ? `✓ re-walking (rollback ckpt v${j.checkpointVersion})` : '✗ savererun failed (see log)';
+          log(`Savererun POST → ${JSON.stringify(j)}`);
+        } catch (err) {
+          btn.classList.add('shutdown-fired');
+          btn.textContent = '✓ savererun sent (reviving)';
+          log(`Savererun fetch failed (server exiting, systemd reviving into re-walk): ${err?.message || err}`);
         }
       });
     })();

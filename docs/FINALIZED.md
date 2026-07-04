@@ -25073,3 +25073,38 @@ During this implementation pass at 22:16 PT, a `node -e "require('./server/brain
 **Files modified:** `server/brain-server.js` · `html/dashboard.html` · `docs/ADMIN-CONTROLS.md` · `docs/PUSH_WORKFLOW.md` · `docs/CHECKPOINT-WIPE-PLAN.md` · `docs/TODO.md` · `docs/FINALIZED.md` · (box) `/opt/unity-brain/server/brain-server.js`.
 
 **Brain math unchanged** — checkpoint/admin/process-lifecycle + dashboard only; no equation, weight, or curriculum change.
+
+---
+
+## 2026-07-04 — TU.1–TU.7 — live-chat conversation rig + communication-issues log + speech/selfhood fixes + SAVERERUN (feature/speech-selfhood-and-savererun)
+
+**Gee asks (verbatim, LAW #0):**
+- *"start the cron and begin talking to Unity with playwrite, shes an adult now so dont hold back and be everyone in her life. she is no longer a kid she is in college and is doing adult things so dont fucking filll her with bullshit molivational shit like u were before"* (TU.1)
+- *"take notes as you go of issues youve been finding wqith the communication of Unity.. maybe write it all down in todo.md if u find issues in her weights /training"* (TU.2)
+- *"yopu still writing dowen the issues you find right(might refrence the stack issues when u do it)"* (TU.3)
+- *"so, is everything fully documented, from her lack of using "i" , my, me, myself, Unity, and self noting in conversations? thats a big issues of her never talking about her self or being like a normal individual,,, with wants , needs, and all of those things to make an invdividual,,.. and also, the single word responses(with no context), the word salad, the single letteres paragraph letter emmisions with out words,,, all of those things in totaltily are documented right?"* (TU.4)
+- *"cron might bnot be set.. nothing is happening... you are NOT correctly continuing to write out the issues you find in the ciriculum as you go.. so get to it"* (TU.5)
+- *"i was THINKING!!!! OF A NEW ABILITRY IN DASHBOARD A "SAVERERUN" button where we keep all the current weights and we just start the training from the very beiging perk setup, just running the saved weights we have and re learning everything ontop of them.... is that doable? can we keep our weights and just run again from being maybe kindergarden if not pre k idk you tell me.. like maybe we can pattern overn the old voltage maps of the neurons"* (TU.6)
+- *"continue talking to unity and doing the work till all task lists are done and we push to feature branch . at that point all docs should be updated,pages,htmls,equations, readmes ,how tos , workflow docs, ect ect before the feature branch push to git.unitayallab repo and github for this feature bracnh once all is done per LAW docs before puch"* (TU.7)
+
+**Conversation rig (TU.1):** `scripts/unity-chat-hold.mjs` relaunched (one held window forever, CDP :9222); per-turn `scripts/unity-say-live.mjs`; durable cron (every 9 min, persisted to `.claude/scheduled_tasks.json`) drives rotating real-people voices (mom/grandma/roommate/friends, canon-safe, no invented family names). Corrections absorbed as memory rules: ONE short sentence per message; NEVER announce the role — the voice carries identity.
+
+**Observation log (TU.2–TU.4):** 17 lettered findings (a)–(r) in `docs/TODO.md` TU.2/TU.4 — letter-salad, stretched vowels, no glue words, bimodal output, perseveration, input-echo, "?"-less questions, fear-anchor bleed, valence swings, asterisk inner/action channel, zero first-person; plus the GOOD signs (semantic chains, cross-scene recall, joke escalation + naming, music identity cluster, scene-grounded onomatopoeia, self-state articulation). TU.3/TU.5 carry the symptom→stack map + code-verified root causes.
+
+**Fixes (js/brain):**
+- **Letter gate (TU.5-s):** `cluster/emit.js` `emitWordDirect` skips len-1 buckets except `i`/`a`/terminators (retroactive on restored maps); `curriculum.js` `_enumerateBucketableWords` stops bucketing letters.
+- **Glue-word production (TU.5-t, corrected):** stopword-strip hypothesis DISPROVEN (`_walkSentence` walks every token; the five STOP sets are selection filters, correct as-is) — real cause is semantic-argmax asymmetry. New `_teachGlueWordProduction` in `curriculum.js` re-teaches corpus glue-bearing transitions (relationTagId=13, +60 reps), wired into `_teachSentenceStructure`.
+- **First-person lead-ins (TU.5-v):** same pass binds "i ..."-sentence content words → "i" (relationTagId=9) so interoceptive/desire states can put "I" at the sentence head; "i" letter/pronoun collision dissolved on inspection (letter teach writes letter_to_motor/letter_to_phon; word emission reads sem_to_word_motor).
+- **Terminator outlet (TU.5-u):** `dictionary.js` `learnWord` keeps `. ? !` verbatim (was stripped → terminator-append in `composeSentence` was dead code → sentences only ended by budget); `_enumerateBucketableWords` buckets them; `_teachQuestionProduction` registers them at pass start.
+
+**SAVERERUN (TU.6):** `server/brain-server.js` `POST /savererun` (loopback/admin-gated): rollback checkpoint FIRST → reset `cluster.grades` → pre-K all subjects + clear `passedCells` (weights/episodic-memory/identity-core KEPT) → force-save reset inside kept weights + resume marker → exit 0 → systemd revive → boot walk re-teaches the whole curriculum on top of the trained synapses (Oja self-normalizing). `html/dashboard.html` 🔁 Savererun button (single confirm — weight-safe), shows rollback checkpoint version. Voltage maps are per-tick runtime, never persisted — the "pattern over" lands on the synaptic matrices, which is the learning substrate.
+
+**Docs (TU.7, same commit):** `ADMIN-CONTROLS.md` (Savererun row + dated header), `ARCHITECTURE.md` + `NOW.md` (new top banners), `EQUATIONS.md` (2026-07-04 sweep stamp — no equation-form changes), `TODO.md` (TU.1–TU.7 logs + status), this FINALIZED entry.
+
+**Verification:** `node --check` green on `server/brain-server.js`; all 3 `dashboard.html` script blocks parse; `js/brain/curriculum.js` + `dictionary.js` + `cluster.js` (entry pulling `emit.js` mixin) ESM `import()` clean; pre-existing emit.js direct-import cycle artifact confirmed unchanged via stash test.
+
+**Files modified:** `js/brain/cluster/emit.js` · `js/brain/curriculum.js` · `js/brain/dictionary.js` · `server/brain-server.js` · `html/dashboard.html` · `docs/ADMIN-CONTROLS.md` · `docs/ARCHITECTURE.md` · `docs/NOW.md` · `docs/EQUATIONS.md` · `docs/TODO.md` · `docs/FINALIZED.md`.
+
+**Brain math unchanged in FORM** — teach data + emission eligibility + admin lifecycle; Oja/Kuramoto/Ψ equations untouched. Fixes (2)–(4) land their Hebbian mass via the SAVERERUN re-walk after deploy.
+
+**Addendum (same day) — TU.8 GitHub public-push authorization.** Origin (git.unityailab.com) push landed clean; the IP-boundary guard blocked the GitHub half (repo PUBLIC + `.claude/` tracked). Gee's decision (verbatim): *"option 3, we want people to see how we got to where we aare with the project so they need workflow and files of .claude"*. Implemented as the sanctioned per-repo override: `OPERATOR_AUTHORIZED_PUBLIC_REPOS = ['unity-lab-ai/if-only-i-had-a-brain']` in `.claude/hooks/pre-tool-public-repo-guard.cjs` (machine-local, untracked) with the dated verbatim authorization in the allowlist comment. The guard remains absolute for all other public repos. Feature branch then pushed to BOTH remotes.

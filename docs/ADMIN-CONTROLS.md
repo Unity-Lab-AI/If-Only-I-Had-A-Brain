@@ -4,7 +4,7 @@
 > the "deployed website" and "the server" relate (they are NOT two brains), and
 > the #112.10 fix that makes **Stop** truly stop.
 >
-> Last updated: **2026-06-22**.
+> Last updated: **2026-07-04** (added 🔁 Savererun — keep weights, re-walk curriculum from pre-K).
 
 ---
 
@@ -60,6 +60,7 @@ ONLY through the Forgejo-authenticated admin lane.
 | **♻ Reset (fresh)** | `POST /reset` | 0 | `Restart=always` → revived | Writes `.force-fresh` → boots a wiped brain (identity-core Tier-3 anchors preserved) |
 | **⬆ Update & Fresh Walk** | `POST /update` | n/a (detached `self-update.sh` → `systemctl restart`) | `Restart=always` → revived | Overlays latest code (git-archive) **and** writes `.force-fresh` → reboots into a WIPED fresh K→PhD walk |
 | **⬆ Update & Savestart** | `POST /update?keep=1` | n/a (detached `self-update.sh` → `systemctl restart`) | `Restart=always` → revived | Overlays latest code **but SKIPS** `.force-fresh` → reboots and RESUMES saved weights — deploy a fix without losing training (relies on the unit's `DREAM_KEEP_STATE=1`) |
+| **🔁 Savererun** | `POST /savererun` | 0 | `Restart=always` → revived | **Weights KEPT** (rollback checkpoint taken first) — resets ONLY the walk pointers (`cluster.grades` → pre-K all subjects, `passedCells` cleared, sub-grades re-derive), force-saves the reset inside the kept weights + drops the resume marker, reboots; the boot walk **re-teaches the whole curriculum on top of the trained synapses** with the current teach code (Oja is self-normalizing — re-teach strengthens, doesn't corrupt). Episodic memory + identity-core preserved. Use after shipping teach-path fixes that need Hebbian mass the original walk never laid down (deploy the code first via ⬆ Update & Savestart, then press 🔁 Savererun once) |
 
 Stop/Restart/Reset force-save weights first; Restart/Reset drop or set the resume
 marker so the revived process resumes (or wipes) correctly. The two **Update**
