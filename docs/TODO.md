@@ -1324,3 +1324,7 @@ Analysis (stack-traced 2026-06-30): Issue 4 is the propagation hub — the synch
 > **Gee authorization (verbatim 2026-07-04, AskUserQuestion answer on the GitHub push):** *"option 3, we want people to see how we aare with the project so they need workflow and files of .claude"* — full answer text: *"option 3, we want people to see how we got to where we aare with the project so they need workflow and files of .claude"*
 
 - [x] **TU.8 — push anyway (override LAW) — GitHub public push authorized.** The IP-boundary guard blocked pushing the feature branch to the PUBLIC github.com/Unity-Lab-AI/If-Only-I-Had-A-Brain because `.claude/` (31 files) is tracked. Gee explicitly authorized the public push (verbatim above). Encoded as a PER-REPO sanctioned override, not a bypass: `OPERATOR_AUTHORIZED_PUBLIC_REPOS` allowlist added to `.claude/hooks/pre-tool-public-repo-guard.cjs` (unity-lab-ai/if-only-i-had-a-brain, dated verbatim authorization in the hook comment + FINALIZED). Guard stays absolute for every other public repo.
+
+> **Gee ask (verbatim 2026-07-04):** *"okay feature>develop>main cascade on both repos .... then write the sponge copy paste so he knows everything and the new SAVERERUN option we we be doing this run through once he is informammed and possible pulls main to sync his local"*
+
+- [~] **TU.9 — feature>develop>main cascade on both repos, then write the sponge copy paste so he knows everything and the new SAVERERUN option — run-through happens once Sponge is informed and possibly pulls main to sync his local.**
