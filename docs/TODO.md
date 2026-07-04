@@ -1327,4 +1327,4 @@ Analysis (stack-traced 2026-06-30): Issue 4 is the propagation hub — the synch
 
 > **Gee ask (verbatim 2026-07-04):** *"okay feature>develop>main cascade on both repos .... then write the sponge copy paste so he knows everything and the new SAVERERUN option we we be doing this run through once he is informammed and possible pulls main to sync his local"*
 
-- [~] **TU.9 — feature>develop>main cascade on both repos, then write the sponge copy paste so he knows everything and the new SAVERERUN option — run-through happens once Sponge is informed and possibly pulls main to sync his local.**
+- [x] **TU.9 — feature>develop>main cascade on both repos, then write the sponge copy paste so he knows everything and the new SAVERERUN option — run-through happens once Sponge is informed and possibly pulls main to sync his local.**
