@@ -125,7 +125,15 @@ export class Dictionary {
    * @param {number} valence — amygdala valence when word was encountered
    */
   learnWord(word, cortexPattern, arousal, valence, opts = {}) {
-    const clean = word.toLowerCase().replace(/[^a-z0-9'-]/g, '');
+    // Terminators (. ? !) are real emission tokens — composeSentence
+    // consumes them as sentence-enders and the question-production
+    // pass trains word→"?" transitions. The alphanumeric strip below
+    // deleted them, so no terminator could ever become a dictionary
+    // word → never bucketable → emitWordDirect could never emit one →
+    // the terminator-append branch in composeSentence was dead code
+    // and every sentence ran to word budget. Keep them verbatim.
+    const isTerminator = word === '.' || word === '?' || word === '!';
+    const clean = isTerminator ? word : word.toLowerCase().replace(/[^a-z0-9'-]/g, '');
     // Keep single-letter words — "i" and "a" are critical function
     // words in English. Dropping them means Unity can't use "i" as a
     // subject or "a" as an article, which wrecks slot-0 selection
