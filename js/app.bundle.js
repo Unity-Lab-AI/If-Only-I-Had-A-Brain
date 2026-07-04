@@ -53979,6 +53979,7 @@ var CLUSTER_EMIT_MIXIN = {
       for (let b = 0; b < wordsList.length; b++) {
         const _bw = wordsList[b];
         if (!_bw || !/\S/.test(_bw) || !/[a-z0-9]/i.test(_bw) && !T14_TERMINATORS.has(_bw)) continue;
+        if (_bw.length === 1 && _bw !== "i" && _bw !== "a" && !T14_TERMINATORS.has(_bw)) continue;
         let sum = 0;
         const bStart = subjStart + b * bucketSize;
         if (bStart >= subjEnd) {
@@ -60648,7 +60649,8 @@ var Dictionary = class {
    * @param {number} valence — amygdala valence when word was encountered
    */
   learnWord(word, cortexPattern, arousal, valence, opts = {}) {
-    const clean = word.toLowerCase().replace(/[^a-z0-9'-]/g, "");
+    const isTerminator = word === "." || word === "?" || word === "!";
+    const clean = isTerminator ? word : word.toLowerCase().replace(/[^a-z0-9'-]/g, "");
     if (!clean) return;
     const existing = this._words.get(clean);
     if (existing) {
@@ -100277,7 +100279,12 @@ var Curriculum = class _Curriculum {
     const out = [];
     for (const [w, entry] of this.dictionary._words.entries()) {
       if (typeof w !== "string" || w.length === 0) continue;
+      if (w === "." || w === "?" || w === "!") {
+        if (entry && entry.pattern && entry.pattern.length) out.push(w);
+        continue;
+      }
       if (!/^[a-z]+$/.test(w)) continue;
+      if (w.length === 1 && w !== "i" && w !== "a") continue;
       if (!entry || !entry.pattern || !entry.pattern.length) continue;
       if (entry.isPersona) continue;
       out.push(w);
@@ -102573,6 +102580,11 @@ var Curriculum = class _Curriculum {
       totalTrained += rQ.totalTrained || 0;
       passes += 1;
     }
+    if (typeof this._teachGlueWordProduction === "function") {
+      const rG = await this._teachGlueWordProduction();
+      totalTrained += rG.totalTrained || 0;
+      passes += 1;
+    }
     if (typeof this._teachPersonaVoice === "function") {
       const _g = this._currentGrade || ctx && ctx.grade || null;
       if (_g) {
@@ -102681,6 +102693,96 @@ var Curriculum = class _Curriculum {
     return { totalTrained: r.trained || 0, sentences: sentences.length, transitions: pairs.length };
   }
   /**
+   * Glue-word production reinforcement. Function words receive full
+   * word→word transition training in _teachConcreteSentences, but at
+   * emission time they compete against CONTENT-word activation that the
+   * intent seed pumps directly into sem — glue is semantically diffuse,
+   * so its transition-induced activation loses the bucket argmax and
+   * free composition emits content-words-only ("Wings." / topic dumps
+   * with no the/is/a). This pass re-teaches the SAME corpus-extracted
+   * transitions RESTRICTED to pairs that touch a function word, at
+   * additional reps on the sequence channel (relationTagId=13), so
+   * trained transition mass can outweigh topic activation at compose
+   * time.
+   *
+   * Second pass: first-slot lead-in bindings (relationTagId=9 — the
+   * intent→first-slot channel). For every corpus sentence that OPENS
+   * with "i", bind each of its content words → "i". When an
+   * interoceptive/desire state (hungry, tired, want...) is active and a
+   * self-report sentence starts, the state word's activation now feeds
+   * sem("i") so the first person can LEAD the sentence; the trained
+   * i→am / i→want transitions carry it from there. This is the
+   * production-side deixis fix — the corpus already contains hundreds
+   * of first-person sentences; they just never got a path to the
+   * sentence-initial slot because first-word argmax is intent-driven.
+   *
+   * Pure trained composition — every pair is corpus-extracted TRAINING
+   * DATA (same sanctioned approach as _teachConcreteSentences); nothing
+   * is walked at runtime.
+   *
+   * @param {object} opts
+   * @param {string[]} [opts.sentences] — corpus override (defaults to
+   *   K_CONCRETE_SENTENCES, same as _teachConcreteSentences)
+   * @param {number} [opts.reps=60] — extra reps for glue transitions
+   * @param {number} [opts.leadReps=80] — reps for state→"i" lead-ins
+   * @returns {Promise<{totalTrained:number, glueTransitions:number, firstPersonLeadIns:number}>}
+   */
+  async _teachGlueWordProduction(opts = {}) {
+    const cluster = this.cluster;
+    if (!cluster || !cluster.crossProjections) {
+      return { totalTrained: 0, skipped: "no cluster" };
+    }
+    const reps = opts.reps ?? 60;
+    const sentences = Array.isArray(opts.sentences) && opts.sentences.length > 0 ? opts.sentences : K_CONCRETE_SENTENCES;
+    const gluePairs = [];
+    for (const s of sentences) {
+      const words = s.toLowerCase().split(/\s+/).filter((w) => w.length > 0);
+      for (let i = 0; i < words.length - 1; i++) {
+        const a = words[i];
+        const b = words[i + 1];
+        if (!a || !b) continue;
+        if (FUNCTION_WORDS.has(a) || FUNCTION_WORDS.has(b)) gluePairs.push([a, b]);
+      }
+    }
+    let glueTrained = 0;
+    if (gluePairs.length > 0) {
+      const rGlue = await this._teachAssociationPairs(gluePairs, {
+        reps,
+        label: opts.label || "ELA-STRUCTURE-GLUE-REINFORCE",
+        relationTagId: 13
+      });
+      glueTrained = rGlue.trained || 0;
+    }
+    const leadPairs = [];
+    const leadSeen = /* @__PURE__ */ new Set();
+    for (const s of sentences) {
+      const words = s.toLowerCase().split(/\s+/).filter((w) => w.length > 0);
+      if (words[0] !== "i" || words.length < 3) continue;
+      for (let i = 1; i < words.length; i++) {
+        const w = words[i];
+        if (FUNCTION_WORDS.has(w)) continue;
+        if (leadSeen.has(w)) continue;
+        leadSeen.add(w);
+        leadPairs.push([w, "i"]);
+      }
+    }
+    let leadTrained = 0;
+    if (leadPairs.length > 0) {
+      const rLead = await this._teachAssociationPairs(leadPairs, {
+        reps: opts.leadReps ?? 80,
+        label: (opts.label || "ELA-STRUCTURE-GLUE-REINFORCE") + "-FIRST-PERSON-LEAD",
+        relationTagId: 9
+      });
+      leadTrained = rLead.trained || 0;
+    }
+    this._hb(`[Curriculum] _teachGlueWordProduction DONE \u2014 ${gluePairs.length} glue-bearing transitions \xD7 ${reps} reps (${glueTrained} writes) + ${leadPairs.length} state\u2192"i" first-slot lead-ins \xD7 ${opts.leadReps ?? 80} reps (${leadTrained} writes).`);
+    return {
+      totalTrained: glueTrained + leadTrained,
+      glueTransitions: gluePairs.length,
+      firstPersonLeadIns: leadPairs.length
+    };
+  }
+  /**
    * Question PRODUCTION training. The brain's only interrogative exposure
    * was WH-COMPREHENSION (parsing the USER's questions, relationTagId=12);
    * there was NO path for Unity to PRODUCE an outward question — so she
@@ -102742,6 +102844,14 @@ var Curriculum = class _Curriculum {
       "do you know why ?"
     ];
     this._hb(`[Curriculum] _teachQuestionProduction START \u2014 outward WH-question word\u2192word transitions incl. trailing "?" terminator (relationTagId=30). reps=${reps}.`);
+    if (this.dictionary && typeof this.dictionary.learnWord === "function") {
+      for (const t of [".", "?", "!"]) {
+        try {
+          this.dictionary.learnWord(t, null, 0.3, 0);
+        } catch {
+        }
+      }
+    }
     const pairs = [];
     const qPairs = /* @__PURE__ */ new Map();
     for (const q of QUESTION_PRODUCTION_EXEMPLARS) {

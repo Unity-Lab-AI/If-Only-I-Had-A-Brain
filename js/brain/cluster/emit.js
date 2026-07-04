@@ -613,6 +613,14 @@ export const CLUSTER_EMIT_MIXIN = {
         // consumes them as sentence-end punctuation.
         const _bw = wordsList[b];
         if (!_bw || !/\S/.test(_bw) || (!/[a-z0-9]/i.test(_bw) && !T14_TERMINATORS.has(_bw))) continue;
+        // Letter-token guard — single-letter buckets ('b','x','r','y'...)
+        // are alphabet/spelling inventory that landed in the bucket maps
+        // alongside real words. They must never win free-composition
+        // argmax (the single-letter salad emission class). 'i' and 'a'
+        // are real English words and stay eligible; terminators (. ? !)
+        // are consumed as sentence punctuation and stay eligible. Skip
+        // (not filter) so bucket index ↔ neuron band alignment holds.
+        if (_bw.length === 1 && _bw !== 'i' && _bw !== 'a' && !T14_TERMINATORS.has(_bw)) continue;
         let sum = 0;
         const bStart = subjStart + b * bucketSize;
         // SPEAK.1 — capacity overflow: index-ordered, so once a band starts

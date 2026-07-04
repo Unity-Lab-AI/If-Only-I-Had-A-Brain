@@ -5346,6 +5346,65 @@ const httpServer = http.createServer((req, res) => {
     return;
   }
 
+  // SAVERERUN — keep ALL trained weights, reset the grade pointers to the
+  // very beginning, and re-walk the whole curriculum ON TOP of the existing
+  // synapses. The re-walk re-teaches every cell with the CURRENT teach code
+  // (letter-token gating, glue-word production reinforcement, first-person
+  // lead-ins, terminator outlet) so fixes that need teach-time Hebbian mass
+  // land on the kept brain instead of requiring a from-zero rebuild. Oja
+  // updates are self-normalizing — re-teaching on trained weights
+  // strengthens correct bindings and lands missing ones without blowup.
+  // Weight-SAFE BY DESIGN: takes a forced checkpoint FIRST (rollback slot),
+  // never touches autoClearStaleState, keeps episodic-memory.db +
+  // identity-core. Only the walk POINTERS reset: cluster.grades → pre-K on
+  // every subject, passedCells → [] (cells re-run), curriculum sub-state
+  // re-derives at walk time. Voltage maps are per-tick runtime state (never
+  // persisted) — what "patterns over" is the synaptic weight matrices,
+  // which is the part that learns.
+  // Flow mirrors /restart: checkpoint → reset → force-save (persists the
+  // reset pointers INSIDE the kept weights) → resume marker → exit 0 →
+  // systemd revives → boot restores weights (trained synapses + pre-K
+  // pointers) → runCompleteCurriculum re-walks from the very beginning.
+  if (req.url === '/savererun' && req.method === 'POST') {
+    if (!requireLoopback(req, res, '/savererun')) return;
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    if (global._brainShutdownRequested) { res.end(JSON.stringify({ status: 'already restarting' })); return; }
+    try {
+      const cortex = brain.cortexCluster;
+      if (!cortex) { res.end(JSON.stringify({ ok: false, error: 'no cortex cluster' })); return; }
+      // (1) Safety checkpoint of the CURRENT state — the pre-reset
+      // rollback slot. If the re-walk ever needs undoing, this version
+      // still holds the old grade pointers.
+      brain.saveWeights({ force: true, trigger: 'savererun-pre-reset-checkpoint' });
+      const checkpointVersion = brain._saveVersion || 0;
+      const gradesBefore = cortex.grades ? { ...cortex.grades } : null;
+      const passedBefore = Array.isArray(cortex.passedCells) ? cortex.passedCells.length : 0;
+      // (2) Reset the walk pointers — weights untouched.
+      cortex.grades = { ela: 'pre-K', math: 'pre-K', science: 'pre-K', social: 'pre-K', art: 'pre-K', life: 'pre-K' };
+      cortex.passedCells = [];
+      if (cortex.subGrades && typeof cortex.subGrades === 'object') cortex.subGrades = {};
+      global._brainShutdownRequested = true;
+      console.log(`[Brain] HTTP /savererun — SAVERERUN: weights KEPT (rollback checkpoint v${checkpointVersion}), grade pointers reset ${JSON.stringify(gradesBefore)} → pre-K all subjects, ${passedBefore} passedCells cleared. Force-saving reset pointers + resume marker, then exiting for systemd revive → full curriculum re-walk on top of the trained brain.`);
+      res.end(JSON.stringify({
+        ok: true,
+        checkpointVersion,
+        gradesBefore,
+        passedCellsCleared: passedBefore,
+        status: 'weights kept — re-walking curriculum from pre-K on top of them; brain restarts in a few seconds',
+      }));
+      // (3) Resume marker force-saves AGAIN post-reset so the kept
+      // weights now carry the pre-K pointers, then systemd revives.
+      try { _writeResumeMarker('dashboard /savererun (keep weights, re-walk from pre-K)'); } catch (err) {
+        console.warn('[Brain] resume-marker on /savererun failed:', err && err.message);
+      }
+      try { brain.stop(); } catch (err) { console.error('[Brain] stop() failed during /savererun:', err); }
+      setTimeout(() => { process.exit(0); }, 1500);
+    } catch (err) {
+      try { res.end(JSON.stringify({ ok: false, error: String((err && err.message) || err) })); } catch { /* response already sent */ }
+    }
+    return;
+  }
+
   // #39 — RESET (fresh start) from the dashboard. Writes a .force-fresh flag +
   // clears any resume marker, then exits; systemd revives the process and
   // autoClearStaleState sees the flag → WIPES all trained state (identity-core

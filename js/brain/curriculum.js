@@ -47,6 +47,12 @@ import { EXAM_BANKS, TRAIN_BANKS, cutScoreFor, trainExamOverlap, examVocabCovera
 // separate — track names drive grade runners, band codes drive
 // region naming + persistent bucket maps.
 import { normalizeSubject, wordMotorBandName } from './subjects.js';
+// FUNCTION_WORDS — the categorical glue-word set emitWordDirect already
+// exempts from its repetition penalty. Imported here so the glue-word
+// production-reinforcement pass trains the SAME word class the emit
+// side treats as grammatical glue (single source of truth; cluster.js
+// does not import curriculum.js, so this edge is cycle-safe).
+import { FUNCTION_WORDS } from './cluster.js';
 // UVM-INT.2 — Unity LEARNS her own equational mind-space (UniVsMatics): the
 // knowledge module's real-vocab keywords get bound into sem-space via the
 // brain's own association primitive so the mind-space domain is recallable/
@@ -10945,7 +10951,23 @@ export class Curriculum {
     const out = [];
     for (const [w, entry] of this.dictionary._words.entries()) {
       if (typeof w !== 'string' || w.length === 0) continue;
+      // Terminators (. ? !) ARE bucketable — emitWordDirect's guards
+      // already exempt them and composeSentence consumes an emitted
+      // terminator as the sentence-ender. Without a bucket they can
+      // never be emitted and trained word→"?" transitions have no
+      // outlet (sentences only end by budget exhaustion).
+      if (w === '.' || w === '?' || w === '!') {
+        if (entry && entry.pattern && entry.pattern.length) out.push(w);
+        continue;
+      }
       if (!/^[a-z]+$/.test(w)) continue;
+      // Single-letter tokens ('b','x','r','y'...) are alphabet/spelling
+      // inventory, not conversational words — bucketing them put letters
+      // in the same emission argmax as real words (the single-letter
+      // salad class). 'i' and 'a' are real English words and stay
+      // bucketable. Existing restored bucket maps that already contain
+      // letters are handled by emitWordDirect's letter-token skip guard.
+      if (w.length === 1 && w !== 'i' && w !== 'a') continue;
       if (!entry || !entry.pattern || !entry.pattern.length) continue;
       if (entry.isPersona) continue;
       out.push(w);
@@ -13793,6 +13815,20 @@ export class Curriculum {
       passes += 1;
     }
 
+    // Glue-word production reinforcement — function words train at the
+    // same reps as content transitions above but lose the emission
+    // argmax to topic activation (glue is semantically diffuse, so the
+    // intent seed never pumps it the way it pumps content words). This
+    // pass re-teaches the corpus transitions RESTRICTED to pairs that
+    // touch a function word, plus state→"i" first-slot lead-ins, so the
+    // sequence channel carries enough trained mass for glue and the
+    // first person to actually win their slots at compose time.
+    if (typeof this._teachGlueWordProduction === 'function') {
+      const rG = await this._teachGlueWordProduction();
+      totalTrained += (rG.totalTrained || 0);
+      passes += 1;
+    }
+
     // Persona VOICE pass — train Unity's register into the matrix so her own
     // weights emit HER, not neutral text. Grade-gated: adult register only at
     // college1+ (content-boundary LAW). Grade from the cell-context beacon.
@@ -13980,6 +14016,107 @@ export class Curriculum {
   }
 
   /**
+   * Glue-word production reinforcement. Function words receive full
+   * word→word transition training in _teachConcreteSentences, but at
+   * emission time they compete against CONTENT-word activation that the
+   * intent seed pumps directly into sem — glue is semantically diffuse,
+   * so its transition-induced activation loses the bucket argmax and
+   * free composition emits content-words-only ("Wings." / topic dumps
+   * with no the/is/a). This pass re-teaches the SAME corpus-extracted
+   * transitions RESTRICTED to pairs that touch a function word, at
+   * additional reps on the sequence channel (relationTagId=13), so
+   * trained transition mass can outweigh topic activation at compose
+   * time.
+   *
+   * Second pass: first-slot lead-in bindings (relationTagId=9 — the
+   * intent→first-slot channel). For every corpus sentence that OPENS
+   * with "i", bind each of its content words → "i". When an
+   * interoceptive/desire state (hungry, tired, want...) is active and a
+   * self-report sentence starts, the state word's activation now feeds
+   * sem("i") so the first person can LEAD the sentence; the trained
+   * i→am / i→want transitions carry it from there. This is the
+   * production-side deixis fix — the corpus already contains hundreds
+   * of first-person sentences; they just never got a path to the
+   * sentence-initial slot because first-word argmax is intent-driven.
+   *
+   * Pure trained composition — every pair is corpus-extracted TRAINING
+   * DATA (same sanctioned approach as _teachConcreteSentences); nothing
+   * is walked at runtime.
+   *
+   * @param {object} opts
+   * @param {string[]} [opts.sentences] — corpus override (defaults to
+   *   K_CONCRETE_SENTENCES, same as _teachConcreteSentences)
+   * @param {number} [opts.reps=60] — extra reps for glue transitions
+   * @param {number} [opts.leadReps=80] — reps for state→"i" lead-ins
+   * @returns {Promise<{totalTrained:number, glueTransitions:number, firstPersonLeadIns:number}>}
+   */
+  async _teachGlueWordProduction(opts = {}) {
+    const cluster = this.cluster;
+    if (!cluster || !cluster.crossProjections) {
+      return { totalTrained: 0, skipped: 'no cluster' };
+    }
+    const reps = opts.reps ?? 60;
+    const sentences = (Array.isArray(opts.sentences) && opts.sentences.length > 0)
+      ? opts.sentences : K_CONCRETE_SENTENCES;
+
+    // (1) Corpus transitions touching a function word — same extraction
+    // as _teachConcreteSentences, filtered to glue-bearing pairs.
+    const gluePairs = [];
+    for (const s of sentences) {
+      const words = s.toLowerCase().split(/\s+/).filter(w => w.length > 0);
+      for (let i = 0; i < words.length - 1; i++) {
+        const a = words[i];
+        const b = words[i + 1];
+        if (!a || !b) continue;
+        if (FUNCTION_WORDS.has(a) || FUNCTION_WORDS.has(b)) gluePairs.push([a, b]);
+      }
+    }
+    let glueTrained = 0;
+    if (gluePairs.length > 0) {
+      const rGlue = await this._teachAssociationPairs(gluePairs, {
+        reps,
+        label: opts.label || 'ELA-STRUCTURE-GLUE-REINFORCE',
+        relationTagId: 13,
+      });
+      glueTrained = rGlue.trained || 0;
+    }
+
+    // (2) First-slot lead-ins: content words of corpus "i ..." sentences
+    // → "i" on the intent→first-slot channel. Deduped pairs so a state
+    // word that opens many sentences trains once per pass (reps carry
+    // the strength, not pair duplication).
+    const leadPairs = [];
+    const leadSeen = new Set();
+    for (const s of sentences) {
+      const words = s.toLowerCase().split(/\s+/).filter(w => w.length > 0);
+      if (words[0] !== 'i' || words.length < 3) continue;
+      for (let i = 1; i < words.length; i++) {
+        const w = words[i];
+        if (FUNCTION_WORDS.has(w)) continue;
+        if (leadSeen.has(w)) continue;
+        leadSeen.add(w);
+        leadPairs.push([w, 'i']);
+      }
+    }
+    let leadTrained = 0;
+    if (leadPairs.length > 0) {
+      const rLead = await this._teachAssociationPairs(leadPairs, {
+        reps: opts.leadReps ?? 80,
+        label: (opts.label || 'ELA-STRUCTURE-GLUE-REINFORCE') + '-FIRST-PERSON-LEAD',
+        relationTagId: 9,
+      });
+      leadTrained = rLead.trained || 0;
+    }
+
+    this._hb(`[Curriculum] _teachGlueWordProduction DONE — ${gluePairs.length} glue-bearing transitions × ${reps} reps (${glueTrained} writes) + ${leadPairs.length} state→"i" first-slot lead-ins × ${opts.leadReps ?? 80} reps (${leadTrained} writes).`);
+    return {
+      totalTrained: glueTrained + leadTrained,
+      glueTransitions: gluePairs.length,
+      firstPersonLeadIns: leadPairs.length,
+    };
+  }
+
+  /**
    * Question PRODUCTION training. The brain's only interrogative exposure
    * was WH-COMPREHENSION (parsing the USER's questions, relationTagId=12);
    * there was NO path for Unity to PRODUCE an outward question — so she
@@ -14016,6 +14153,21 @@ export class Curriculum {
       'what happens if i do this ?', 'do you know why ?',
     ];
     this._hb(`[Curriculum] _teachQuestionProduction START — outward WH-question word→word transitions incl. trailing "?" terminator (relationTagId=30). reps=${reps}.`);
+
+    // Register the terminators as dictionary words so they become
+    // bucketable emission tokens. Without this the trained X→"?"
+    // transitions had no outlet: "?" was never in the dictionary
+    // (learnWord's alphanumeric strip deleted it — fixed in
+    // dictionary.js), never got a word_motor bucket, and
+    // emitWordDirect could never emit it — so composeSentence's
+    // terminator-append branch was dead code and every sentence ran
+    // to word budget instead of trained-terminating. "." and "!" ride
+    // along so statement/exclamative enders share the same outlet.
+    if (this.dictionary && typeof this.dictionary.learnWord === 'function') {
+      for (const t of ['.', '?', '!']) {
+        try { this.dictionary.learnWord(t, null, 0.3, 0); } catch { /* nf */ }
+      }
+    }
 
     const pairs = [];
     const qPairs = new Map();
