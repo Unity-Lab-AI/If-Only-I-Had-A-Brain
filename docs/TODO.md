@@ -46,6 +46,22 @@ If you're reading a public doc / HTML claim ("Unity has completed high school bi
 
 ## OPEN TASKS
 
+### DONOR-036 — donor-v0.3.6 release: IDLE_TIMEOUT watchdog fix + PD.2/PD.3 (light theme + headless) rebuild + CI + site download-link bump (Sponge 2026-07-05) — DONE 2026-07-05 (see FINALIZED.md; built + verified locally, released via fj, CI workflow added) (branch `feature/donor-v0.3.6-idle-watchdog-release`)
+
+**Sponge verbatim per LAW #0:**
+
+> *"⚠ ACTION: this is Rust — the fix only reaches running donors after your CI rebuild. Roll it together with the still-pending PD.2/PD.3 build (light theme + headless flag), tag donor-v0.3.6, and bump the site download links. Browser-tab donors are unaffected."*
+
+> *"do it"*
+
+**Scope:** the IDLE_TIMEOUT 45s→150s watchdog fix (`donor-app/src/donor.rs`, already on main `016bbd1`), PD.2 OS light theme + PD.3 headless GUI (already in source since `d32f932`) all ship together in one rebuilt binary. This box carries the full toolchain (cargo 1.95 + `x86_64-pc-windows-gnu` target + mingw), so the release is built LOCALLY here and cut via `fj`; a `.forgejo/workflows/donor-release.yml` is added so future `donor-v*` tags rebuild + upload automatically ("your CI" going forward).
+
+- [x] **DONOR-036.1 — bump `donor-app/Cargo.toml` version 0.3.5 → 0.3.6.**
+- [x] **DONOR-036.2 — build Linux (`unity-donor-linux-x86_64`) + Windows cross (`unity-donor-windows-x86_64.exe`) release binaries (GUI+CUDA default features) on this box.**
+- [x] **DONOR-036.3 — add `.forgejo/workflows/donor-release.yml` — on `donor-v*` tag (+ `workflow_dispatch`): install mingw + windows-gnu target, build both binaries, create-release-if-missing + idempotent asset upload.**
+- [x] **DONOR-036.4 — bump site download links donor-v0.3.5 → donor-v0.3.6 in `html/compute.html` (2) + `html/legend.html` (3, incl. the `donor-v0.3.5` card-path text).**
+- [x] **DONOR-036.5 — cut the `donor-v0.3.6` Forgejo release (tag on main) with both binaries attached; verify assets resolve (200) before the link-bump deploy lands.**
+
 ### SPEAK — all-encompassing brain-shortfall write-up: word salad after 9th grade + consciousness performance + image gen + self-awareness of her own code + build UI sandbox + brain waves correct for spikes/voltage — stay true to the mathematical neuronic brain (Gee 2026-07-01) — IN PROGRESS (branch `feature/unity-speech-consciousness-rectify`)
 
 **Gee verbatim per LAW #0:**
@@ -168,7 +184,7 @@ If you're reading a public doc / HTML claim ("Unity has completed high school bi
 
 ---
 
-### WSQ — donor work-stealing "mining" model + sync pacing so high-RTT/Starlink donors carry real compute batches (Sponge 2026-06-30) — IN PROGRESS (branch `feature/donor-work-stealing-pull-queue`)
+### WSQ — donor work-stealing "mining" model + sync pacing so high-RTT/Starlink donors carry real compute batches (Sponge 2026-06-30) — DONE 2026-06-30 (deployed FRESH WALK to OVH + donor-v0.3.5 released; see FINALIZED.md. Pending: donors must reconnect — pool was 0 post-deploy.) (branch `feature/donor-work-stealing-pull-queue`)
 
 **Sponge verbatim per LAW #0:**
 
