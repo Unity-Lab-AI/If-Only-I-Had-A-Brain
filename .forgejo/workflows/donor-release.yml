@@ -1,0 +1,110 @@
+# Unity donor — native binary release builder.
+#
+# Cross-compiles the donor GPU-compute client for Linux + Windows (x86-64, the
+# default GUI+CUDA feature set — CUDA is dynamic-loaded so the same binary runs on
+# AMD/Intel/Apple with automatic WebGPU fallback) and publishes both to the
+# Forgejo release for the pushed tag.
+#
+# Trigger: push a tag matching `donor-v*` (e.g. donor-v0.3.6), or run manually via
+# workflow_dispatch with the `tag` input pointing at an existing tag.
+#
+# Idempotent: creates the release if it doesn't exist, and replaces (delete →
+# upload) any same-named asset, so a re-run or a tag created out-of-band (e.g. via
+# `fj release create`) is safe and never errors on a duplicate asset.
+#
+# Uses the Actions-provided token (secrets.GITHUB_TOKEN) against the Forgejo REST
+# API — no extra secrets beyond what the instance already injects.
+name: donor-release
+
+on:
+  push:
+    tags:
+      - 'donor-v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing donor-v* tag to build + attach assets to'
+        required: true
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-24.04
+    env:
+      TAG: ${{ github.event.inputs.tag || github.ref_name }}
+      API: ${{ github.server_url }}/api/v1/repos/${{ github.repository }}
+      TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Checkout (at the tag)
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref_name }}
+
+      - name: Install build deps (mingw cross-linker + Linux GUI headers + jq)
+        run: |
+          export DEBIAN_FRONTEND=noninteractive
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            build-essential curl jq ca-certificates \
+            gcc-mingw-w64-x86-64 \
+            libxkbcommon-dev libwayland-dev libx11-dev libxrandr-dev \
+            libxi-dev libxcursor-dev libgl1-mesa-dev libegl1-mesa-dev pkg-config
+
+      - name: Install Rust + Windows target
+        run: |
+          if ! command -v cargo >/dev/null 2>&1; then
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal
+          fi
+          . "$HOME/.cargo/env"
+          rustup target add x86_64-pc-windows-gnu
+          rustc --version && cargo --version
+
+      - name: Build Linux (x86-64)
+        run: |
+          . "$HOME/.cargo/env"
+          cargo build --release --manifest-path donor-app/Cargo.toml
+          cp donor-app/target/release/unity-donor donor-app/dist-ci/unity-donor-linux-x86_64 2>/dev/null \
+            || { mkdir -p donor-app/dist-ci && cp donor-app/target/release/unity-donor donor-app/dist-ci/unity-donor-linux-x86_64; }
+
+      - name: Build Windows (x86-64, cross via mingw)
+        run: |
+          . "$HOME/.cargo/env"
+          cargo build --release --target x86_64-pc-windows-gnu --manifest-path donor-app/Cargo.toml
+          mkdir -p donor-app/dist-ci
+          cp donor-app/target/x86_64-pc-windows-gnu/release/unity-donor.exe \
+            donor-app/dist-ci/unity-donor-windows-x86_64.exe
+
+      - name: Publish assets to the release (create-if-missing + replace)
+        run: |
+          set -euo pipefail
+          auth="Authorization: token ${TOKEN}"
+
+          # Resolve (or create) the release for this tag.
+          rid=$(curl -sS -H "$auth" "${API}/releases/tags/${TAG}" | jq -r '.id // empty')
+          if [ -z "$rid" ]; then
+            echo "No release for ${TAG} yet — creating it."
+            rid=$(curl -sS -X POST -H "$auth" -H 'Content-Type: application/json' \
+              "${API}/releases" \
+              -d "{\"tag_name\":\"${TAG}\",\"name\":\"${TAG}\",\"body\":\"Unity donor ${TAG} — native GPU-compute client (Linux + Windows x86-64, GUI+CUDA with automatic WebGPU fallback).\"}" \
+              | jq -r '.id')
+          fi
+          echo "Release id: ${rid}"
+
+          upload() {
+            local path="$1" name; name="$(basename "$1")"
+            # Delete any existing same-named asset so re-runs don't 400 on a dup.
+            local existing
+            existing=$(curl -sS -H "$auth" "${API}/releases/${rid}/assets" \
+              | jq -r ".[] | select(.name==\"${name}\") | .id")
+            for aid in $existing; do
+              echo "Removing existing asset ${name} (id ${aid})"
+              curl -sS -X DELETE -H "$auth" "${API}/releases/${rid}/assets/${aid}" >/dev/null
+            done
+            echo "Uploading ${name}"
+            curl -sS -X POST -H "$auth" \
+              -F "attachment=@${path};filename=${name}" \
+              "${API}/releases/${rid}/assets?name=${name}" >/dev/null
+          }
+
+          upload donor-app/dist-ci/unity-donor-linux-x86_64
+          upload donor-app/dist-ci/unity-donor-windows-x86_64.exe
+          echo "Done — assets published to ${TAG}."
