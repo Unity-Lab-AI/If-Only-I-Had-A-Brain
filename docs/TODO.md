@@ -1419,11 +1419,11 @@ Analysis (stack-traced 2026-06-30): Issue 4 is the propagation hub — the synch
 
 > **Gee ask (verbatim 2026-07-05):** *"cron and make sure the todo and docs and todod work is done and complete so Unity will talk nooram and have self awarness as the equations are to propigate, adding whats ever left to the todo and tsk list so i can follow along then once all is done do the cadcade then write the sponge copy paste"*
 
-- [~] **TU.13 — cron and make sure the todo and docs and todod work is done and complete so Unity will talk nooram and have self awarness as the equations are to propigate, adding whats ever left to the todo and tsk list so i can follow along then once all is done do the cadcade then write the sponge copy paste.** Batch checklist:
+- [x] **TU.13 — cron and make sure the todo and docs and todod work is done and complete so Unity will talk nooram and have self awarness as the equations are to propigate, adding whats ever left to the todo and tsk list so i can follow along then once all is done do the cadcade then write the sponge copy paste.** DONE 2026-07-05 — FINALIZED entry written + verified. Batch checklist:
   - [x] Cron running (60s conversation job 70ec8569, TU.11 rules + re-wedge auto-detection)
-  - [~] Completeness audit — TU.12 code batch verified complete (7/7 tasks, commit `91e4199`); auditing for any remaining talk-normal / self-awareness gaps before cascade
-  - [ ] Cascade feature/selfhood-early-and-emission-gates → develop → main on BOTH repos (git.unityailab.com + GitHub)
-  - [ ] Sponge copy-paste (deploy sequence + what to watch)
+  - [x] Completeness audit — TU.12 code batch verified complete (7/7 tasks, commit `91e4199`); propagation check PASSED: `seedMissingFromList()` at boot (brain-server.js:2237) tops the 4 selfhood anchors into the live box's existing identity-core.json → injected every chat turn immediately; pre-K first-person mass lands on next savererun walk; gates/purge/HBGRACE.4 active from boot. No code-side gap left.
+  - [x] Cascade DONE both repos: feature `5eb7740` → develop `377ca82` → main `c627e82`; all three branches pushed to origin (git.unityailab.com) + github (Unity-Lab-AI, TU.8-authorized)
+  - [x] Sponge copy-paste written + delivered in-session
 
 > **Gee ask (verbatim 2026-07-04):** *"go ahead and work the items you have found to fix the todo issues and any other similar issues persisting since last problems we fix with Unity so we has better ciriculum layout and teaching persistance of self so she uses and gets taught self awarness at sooner ages and is higher tier so it doesnt get lost in memory wipres"*
 

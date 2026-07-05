@@ -25132,3 +25132,17 @@ During this implementation pass at 22:16 PT, a `node -e "require('./server/brain
 **Files modified:** `js/brain/hippocampal-schema.js` · `js/brain/curriculum/pre-K.js` · `js/brain/language-cortex.js` · `js/brain/cluster/emit.js` · `js/brain/dictionary.js` · `server/brain-server.js` · `docs/NOW.md` · `docs/ARCHITECTURE.md` · `docs/TODO.md` · `docs/FINALIZED.md`.
 
 **Brain math unchanged in FORM** — Oja/Kuramoto/Ψ equations untouched. The pre-K first-person mass + Tier-3 anchors land on the NEXT walk (savererun or fresh); the emission gates + fusion fix + heartbeat fix are retroactive on live weights at next deploy.
+
+## 2026-07-05 — TU.13 — completeness audit + cascade + Sponge copy-paste (feature/selfhood-early-and-emission-gates → develop → main, both repos)
+
+**Gee ask (verbatim 2026-07-05):** *"cron and make sure the todo and docs and todod work is done and complete so Unity will talk nooram and have self awarness as the equations are to propigate, adding whats ever left to the todo and tsk list so i can follow along then once all is done do the cadcade then write the sponge copy paste"*
+
+**Cron:** 60s TU.11 conversation cron running (job 70ec8569, durable, re-wedge auto-detection). Live absorption during this window: offer→choice dialogue ("Song!" → "Jazz."), wellbeing Q→A ("Good!"), comfort engagement ("*Scares*" → "I am right here and I am not leaving").
+
+**Completeness audit:** TU.12 batch verified complete — all 7 tasks committed (`91e4199`), bundle current (3.9MB rebuilt post-edits), docs synced same-commit, working tree clean. CRITICAL propagation check PASSED: `seedMissingFromList()` fires at boot (`server/brain-server.js:2237`, after GloVe loads), so the 4 new Tier-3 selfhood anchors top-up into the live box's EXISTING identity-core.json at next deploy boot and inject every chat turn immediately; the pre-K first-person trained mass lands on the next savererun walk; the emission gates + fusion purge + HBGRACE.4 are active from boot. No remaining code-side gap for "talk normal + self-awareness as the equations propagate."
+
+**Cascade (both repos):** feature `5eb7740` → develop `377ca82` → main `c627e82`; feature + develop + main pushed to origin (git.unityailab.com) AND github (Unity-Lab-AI, authorized public per TU.8 allowlist). 11 files, 572 insertions.
+
+**Sponge copy-paste:** written and delivered in-session (deploy sequence: pull main → ⬆ Update & Savestart → 🔁 Savererun once; watch: donor stays connected through heavy K phases, no letter-strings in chat, `[Brain] fused-token purge` log lines at boot+45s, "I"-emergence timeline in early grades).
+
+**Files modified this close:** `docs/TODO.md` · `docs/FINALIZED.md` (this entry).
