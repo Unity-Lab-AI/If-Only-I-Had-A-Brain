@@ -25132,3 +25132,31 @@ During this implementation pass at 22:16 PT, a `node -e "require('./server/brain
 **Files modified:** `js/brain/hippocampal-schema.js` · `js/brain/curriculum/pre-K.js` · `js/brain/language-cortex.js` · `js/brain/cluster/emit.js` · `js/brain/dictionary.js` · `server/brain-server.js` · `docs/NOW.md` · `docs/ARCHITECTURE.md` · `docs/TODO.md` · `docs/FINALIZED.md`.
 
 **Brain math unchanged in FORM** — Oja/Kuramoto/Ψ equations untouched. The pre-K first-person mass + Tier-3 anchors land on the NEXT walk (savererun or fresh); the emission gates + fusion fix + heartbeat fix are retroactive on live weights at next deploy.
+
+## 2026-07-05 — TU.13 — completeness audit + cascade + Sponge copy-paste (feature/selfhood-early-and-emission-gates → develop → main, both repos)
+
+**Gee ask (verbatim 2026-07-05):** *"cron and make sure the todo and docs and todod work is done and complete so Unity will talk nooram and have self awarness as the equations are to propigate, adding whats ever left to the todo and tsk list so i can follow along then once all is done do the cadcade then write the sponge copy paste"*
+
+**Cron:** 60s TU.11 conversation cron running (job 70ec8569, durable, re-wedge auto-detection). Live absorption during this window: offer→choice dialogue ("Song!" → "Jazz."), wellbeing Q→A ("Good!"), comfort engagement ("*Scares*" → "I am right here and I am not leaving").
+
+**Completeness audit:** TU.12 batch verified complete — all 7 tasks committed (`91e4199`), bundle current (3.9MB rebuilt post-edits), docs synced same-commit, working tree clean. CRITICAL propagation check PASSED: `seedMissingFromList()` fires at boot (`server/brain-server.js:2237`, after GloVe loads), so the 4 new Tier-3 selfhood anchors top-up into the live box's EXISTING identity-core.json at next deploy boot and inject every chat turn immediately; the pre-K first-person trained mass lands on the next savererun walk; the emission gates + fusion purge + HBGRACE.4 are active from boot. No remaining code-side gap for "talk normal + self-awareness as the equations propagate."
+
+**Cascade (both repos):** feature `5eb7740` → develop `377ca82` → main `c627e82`; feature + develop + main pushed to origin (git.unityailab.com) AND github (Unity-Lab-AI, authorized public per TU.8 allowlist). 11 files, 572 insertions.
+
+**Sponge copy-paste:** written and delivered in-session (deploy sequence: pull main → ⬆ Update & Savestart → 🔁 Savererun once; watch: donor stays connected through heavy K phases, no letter-strings in chat, `[Brain] fused-token purge` log lines at boot+45s, "I"-emergence timeline in early grades).
+
+**Files modified this close:** `docs/TODO.md` · `docs/FINALIZED.md` (this entry).
+
+## 2026-07-05 — TU.15 — heap self-correction (pea-brain kill) + purge 404-guard, cascaded (feature/selfhood-early-and-emission-gates → develop → main, both repos)
+
+**Gee ask (verbatim 2026-07-05):** *"i think we still have erounious limits on the neural size of the brain as if sumq connects theri gpu like at speed im running locally it should build a similar sized brain.. not sdet errrouns micro sized pea brained limits to Unity"* + *"let push the selfe will and self creation of understanding fixes with that and cascade down to main and make a new sponge copy paste as he never got the last one"*
+
+**Pea-brain root:** language cortex clamped to 54,945 neurons by V8 heap default (~4GB heap_size_limit − 2GB reserve ÷ 40KB/neuron) while the host's free-RAM bound allowed 1,460,079 — no launcher anywhere passed --max-old-space-size, so every deployment ran the brain's main organ at ~3.7% of hardware capacity. Main brain was NOT capped (357M neurons correctly VRAM-scaled locally).
+
+**Fix — heap self-correction (`server/brain-server.js` top-of-file):** boot detects heap_size_limit below the hardware target (50% host RAM, floor 4GB, ceiling 96GB) and re-execs once with `--max-old-space-size=<target>` (guard `DREAM_HEAP_REEXECED`, opt-out `DREAM_NO_HEAP_REEXEC=1`, explicit higher NODE_OPTIONS respected). Every invocation — systemd, launchers, bare node — now builds to the machine.
+
+**Purge 404-guard (from the TU.14 local test):** fused-token purge wrongly deleted real words ("prevent", "password", "overflow") when dictionaryapi.dev rate-limited mid-batch (null lookup treated as no-definition). `definition-service.js` exports `lookupStatus()` (hasDef/noDef/error/unknown); purge now requires POSITIVE 404 before deleting.
+
+**Docs (same commit):** NOW.md new top banner; TODO.md TU.15 root+fix log + TU.14 live findings (HBGRACE.4 validated under a real 10.7s pin — both donors held; clean genuine-reap failover; Tier 3 17→29 at boot). Noted-not-changed: tracked resource-config.json per-machine tier footgun (future batch).
+
+**Verification:** node --check green on brain-server.js + definition-service.js; heap re-exec logic is top-of-file with loop guard; local test run left undisturbed (fix applies on next boot).
