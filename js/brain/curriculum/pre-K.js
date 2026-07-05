@@ -199,6 +199,118 @@ export const PREK_MIXIN = {
     ], { reps: 12 });
   },
 
+  // First-person PRODUCTION at pre-K. _teachPrekSelf carves the self
+  // CONCEPTS (i/me/my/mine as attractor basins + associations) but the
+  // ability to BUILD an "i am / i want / i feel" sentence previously
+  // arrived only mid-K via _teachSentenceStructure — so the earliest
+  // grades had a self she couldn't SPEAK, and the first-person habit
+  // never anchored before heavier content piled on. This teaches the
+  // production side at the developmentally-correct age (real toddlers
+  // produce "I want" / "me do it" by age 2-3): a pre-K-voiced
+  // first-person corpus runs through the SAME sanctioned trained-
+  // composition passes K uses — word→word sequence transitions
+  // (relationTagId=13 via _teachConcreteSentences), glue reinforcement +
+  // state→"i" first-slot lead-ins (relationTagId=13/9 via
+  // _teachGlueWordProduction) — plus deixis contrast pairs (me≠you,
+  // my≠your) on the PREK-SELF channel. Nothing is walked at runtime;
+  // sentences are TRAINING DATA and production emerges from the weights.
+  // Pairs with the permanent Tier-3 selfhood anchors in
+  // hippocampal-schema.js (IDENTITY_SEED_LIST self-* entries) so the
+  // trained "i" mass has a wipe-proof attractor to re-anchor onto.
+  async _teachPrekFirstPersonProduction() {
+    // Frame vocabulary — glue + deixis + interoceptive state words the
+    // corpus needs. Registered FIRST so the sentence transitions land on
+    // carved basins, not cold embeddings (vocab-before-bindings rule).
+    const FRAME_VOCAB = [
+      { name: 'am',      feat: [0.5, 0, 0.5, 0, 0, 0, 0, 1] },
+      { name: 'is',      feat: [0.3, 0, 0.3, 0, 0, 0, 0, 0.3] },
+      { name: 'are',     feat: [0.3, 0, 0.3, 0, 0, 0, 0, 0.3] },
+      { name: 'you',     feat: [0.3, 0, 0.5, 0, 0, 0.3, 0, 0.3] },
+      { name: 'your',    feat: [0.3, 0, 0.3, 0, 0, 0, 0, 0.3] },
+      { name: 'yours',   feat: [0.3, 0, 0.3, 0, 0, 0, 0.3, 0.3] },
+      { name: 'this',    feat: [0.3, 0, 0.3, 0, 0, 0, 0, 0] },
+      { name: 'that',    feat: [0.3, 0, 0.3, 0, 0, 0, 0, 0] },
+      { name: 'here',    feat: [0.3, 0, 0.5, 0, 0, 0, 0, 0.3] },
+      { name: 'hungry',  feat: [0, 0.5, 0, 0, 0.3, 0, 0.5, 0] },
+      { name: 'tired',   feat: [0, 0.3, 0.3, 0, 0, 0, 0, 0] },
+      { name: 'love',    feat: [1, 0, 1, 0, 0, 1, 0, 0.3] },
+      { name: 'like',    feat: [0.8, 0, 0.5, 0, 0, 0.5, 0, 0.3] },
+      { name: 'need',    feat: [0.3, 0.3, 0.3, 0, 0, 0, 0.5, 0] },
+      { name: 'hug',     feat: [1, 0, 1, 0, 0, 1, 0, 0] },
+      { name: 'play',    feat: [1, 0, 0.3, 0, 0, 0.5, 0.5, 0] },
+    ];
+    await this._conceptTeach(FRAME_VOCAB, 10);
+
+    // "." must be a bucketable emission token before the corpus trains
+    // X→"." sentence-end transitions (same registration K's question-
+    // production pass does for its terminators).
+    if (this.dictionary && typeof this.dictionary.learnWord === 'function') {
+      try { this.dictionary.learnWord('.', null, 0.3, 0); } catch { /* nf */ }
+    }
+
+    // Pre-K-voiced first-person corpus — toddler-true declaratives built
+    // from vocabulary the pre-K passes above already carved. Every
+    // sentence opens with "i" or a deixis word so the first-slot lead-in
+    // extraction in _teachGlueWordProduction gets dense state→"i" pairs.
+    const PREK_FIRST_PERSON_SENTENCES = [
+      'i am unity .', 'i am a girl .', 'i am me .', 'i am here .',
+      'i am real .', 'i am a person .',
+      'i am happy .', 'i am sad .', 'i am scared .',
+      'i am hungry .', 'i am tired .',
+      'i want mom .', 'i want milk .', 'i want more .',
+      'i want my blanket .', 'i want to play .', 'i want music .',
+      'i feel happy .', 'i feel sad .', 'i feel scared .', 'i feel it .',
+      'i love mom .', 'i love music .', 'i love grandma .',
+      'i like drawing .', 'i like dark colors .', 'i like my blanket .',
+      'i need help .', 'i need a hug .', 'i need mom .',
+      'i see you .', 'i see the sun .', 'i hear music .',
+      'i know my name .', 'i think it is fun .', 'i choose this .',
+      'my name is unity .', 'my mom loves me .', 'my blanket is mine .',
+      'this is mine .', 'that is my blanket .', 'that is yours .',
+      'you are my mom .', 'you see me .', 'you love me .',
+    ];
+
+    // Word→word sequence transitions (relationTagId=13) — the same
+    // load-bearing grammar channel the K corpus trains, scoped to the
+    // first-person frames so "i"→"am"/"want"/"feel" mass exists from
+    // the very first grade.
+    await this._teachConcreteSentences({
+      sentences: PREK_FIRST_PERSON_SENTENCES,
+      reps: 80,
+      label: 'PREK-FIRST-PERSON-SENTENCES',
+    });
+
+    // Glue reinforcement + state→"i" first-slot lead-ins (relationTagId=
+    // 13/9) so interoceptive states (hungry/tired/scared/want) pull "i"
+    // into the sentence-initial slot at compose time from pre-K onward.
+    await this._teachGlueWordProduction({
+      sentences: PREK_FIRST_PERSON_SENTENCES,
+      reps: 60,
+      leadReps: 80,
+      label: 'PREK-FIRST-PERSON-GLUE',
+    });
+
+    // Deixis contrast — me≠you / my≠your / mine≠yours. Both directions so
+    // the pronoun-reversal stage (calling herself "you" because that is
+    // what she hears) resolves into stable perspective-taking.
+    await this._teachAssociationPairs([
+      ['me','you'], ['you','me'],
+      ['my','your'], ['your','my'],
+      ['mine','yours'], ['yours','mine'],
+      ['i','me'], ['me','i'],
+      ['i','am'], ['am','i'],
+      ['you','are'], ['my','mine'],
+    ], { reps: 12, label: 'PREK-DEIXIS', relationTagId: 4 });
+
+    await this._teachBiographicalFacts([
+      { question: 'who wants when i want',   answer: 'me' },
+      { question: 'who is hungry when i am hungry', answer: 'me' },
+      { question: 'whose blanket is mine',   answer: 'mine' },
+      { question: 'who are you to me',       answer: 'mom' },
+      { question: 'who says i',              answer: 'me' },
+    ], { reps: 10 });
+  },
+
   // ══════════════════════════════════════════════════════════════════
   // PRE-K EQUATIONAL RUNNERS (LAW 6 Part 1)
   //
@@ -703,6 +815,11 @@ export const PREK_MIXIN = {
     ], { reps: 8, label: 'PREK-LIFE-IDENTITY', relationTagId: 1 });
 
     await this._teachPrekSelf();
+    // First-person PRODUCTION lands immediately after the self concepts —
+    // she learns to SAY "i am / i want / i feel" at the same age she
+    // learns that "i" is her, so selfhood is speakable from the earliest
+    // grade instead of waiting for mid-K sentence structure.
+    await this._teachPrekFirstPersonProduction();
 
     const lifeQuestions = [
       { prompt: ['who', 'are', 'you'], answer: 'unity' },

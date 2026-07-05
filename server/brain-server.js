@@ -1941,6 +1941,22 @@ class ServerBrain {
       // Periodic retry — first tick fires after 60s; the wrapper
       // re-arms with the appropriate interval based on current state.
       this._scheduleSmokeTestRetry();
+      // Fused-token dictionary purge — learnSentence's old sanitizer
+      // DELETED punctuation/newlines instead of spacing them, fusing
+      // adjacent words into fake compounds ("lightingto", "fuckeryyou")
+      // that were then LEARNED as real dictionary words and pollute the
+      // oracle/scorer candidate pools. The sanitizer is fixed in
+      // dictionary.js; this boot pass cleans entries the old code
+      // already persisted. Delayed 45s so the definition disk cache is
+      // warm and boot I/O has settled; fire-and-forget, API-verified
+      // (a candidate is only purged when dictionaryapi.dev has NO
+      // definition for it — legit compounds like "football" survive).
+      const _fusedPurgeTimer = setTimeout(() => {
+        try { this._purgeFusedDictionaryTokens(); } catch (err) {
+          console.warn('[Brain] fused-token dictionary purge threw:', err?.message || err);
+        }
+      }, 45 * 1000);
+      if (typeof _fusedPurgeTimer.unref === 'function') _fusedPurgeTimer.unref();
       // 114.19es.5 — periodic disk-cache flush every 5min so any words
       // fetched during this run persist for the next boot. The disk
       // path is now default-on per definition-service.js (writes to
@@ -2493,6 +2509,66 @@ class ServerBrain {
   // Attached via Object.assign(ServerBrain.prototype, ...) at the
   // bottom of this file. CommonJS module pattern.
 
+
+  /**
+   * Fused-token dictionary purge. The old learnSentence sanitizer fused
+   * words across deleted separators ("lighting\nto" → "lightingto") and
+   * learned the concat as a word. Candidates: pure-alpha entries ≥ 7
+   * chars, low frequency (runtime-learned, not curriculum-trained), not
+   * persona, not definition-taught, that split cleanly into TWO known
+   * dictionary words. Each candidate is then verified against the live
+   * dictionary API — an entry is deleted ONLY when the API has no
+   * definition for it, so real compounds ("football", "another",
+   * "something") always survive. Bounded at 100 API checks per boot;
+   * the definition service's cache + backoff absorb the load.
+   */
+  async _purgeFusedDictionaryTokens() {
+    if (this._fusedPurgeRan) return;
+    this._fusedPurgeRan = true;
+    const dict = this.dictionary;
+    const words = dict && dict._words;
+    if (!words || words.size === 0) return;
+    const cluster = this.cortexCluster;
+    if (!cluster || typeof cluster.lookupDefinition !== 'function') return;
+    const taught = cluster._definitionTaughtWords instanceof Set
+      ? cluster._definitionTaughtWords : null;
+    const candidates = [];
+    for (const [word, entry] of words) {
+      if (candidates.length >= 100) break;
+      if (!entry || entry.isPersona === true) continue;
+      if (word.length < 7 || !/^[a-z]+$/.test(word)) continue;
+      if ((entry.frequency | 0) > 5) continue;
+      if (taught && taught.has(word)) continue;
+      let splits = false;
+      for (let i = 3; i <= word.length - 2; i++) {
+        const a = word.slice(0, i);
+        const b = word.slice(i);
+        if (words.has(a) && words.has(b)) { splits = true; break; }
+      }
+      if (splits) candidates.push(word);
+    }
+    if (candidates.length === 0) return;
+    console.log(`[Brain] fused-token purge — ${candidates.length} candidate compound(s) queued for API verification: ${candidates.slice(0, 8).join(', ')}${candidates.length > 8 ? ', …' : ''}`);
+    let purged = 0;
+    for (const word of candidates) {
+      let def = null;
+      try { def = await cluster.lookupDefinition(word); } catch { def = null; }
+      if (def) continue; // real word — the API knows it
+      words.delete(word);
+      // Bigram hygiene — drop the fake token as a key and as a follower.
+      try {
+        if (dict._bigrams) {
+          dict._bigrams.delete(word);
+          for (const followers of dict._bigrams.values()) followers.delete(word);
+        }
+      } catch { /* best-effort */ }
+      purged++;
+      console.log(`[Brain] fused-token purge — removed "${word}" (two-known-word concat, no API definition)`);
+    }
+    if (purged > 0) {
+      console.log(`[Brain] fused-token purge DONE — ${purged}/${candidates.length} fake compound(s) removed from the dictionary.`);
+    }
+  }
 
   /**
    * T17.7 Phase B.4 — helper matching the LAYOUT in _regionsFor so
@@ -6630,9 +6706,11 @@ wss.on('connection', (ws, req) => {
   // ws.on('close') → the existing primary-left failover / standby promotion.
   ws._isAlive = true;
   ws._missedPings = 0;
+  ws._forgivenPings = 0;
   ws.on('pong', () => {
     ws._isAlive = true;
     ws._missedPings = 0; // HBGRACE.1 — a pong clears the grace counter
+    ws._forgivenPings = 0; // HBGRACE.4 — and the forgiven-sweep ledger
     // PR.4 — round-trip latency from the heartbeat ping/pong pair, SMOOTHED.
     // The heartbeat samples once per 30s, so a single jittery pong (Starlink
     // handover, a briefly-backgrounded/throttled browser-tab donor) would pin
@@ -7446,7 +7524,16 @@ const _HEARTBEAT_MS = 30000;
 // under those conditions was falsely killing live, busy donors (worse on high-RTT/Starlink/Linux
 // links) → terminate mid-sync → write-after-destroyed flood → reconnect → re-sync → churn.
 const _HB_MISS_LIMIT = 2;        // healthy loop, idle donor: 2 misses (~60s) → dead
-const _HB_MISS_LIMIT_BUSY = 5;   // mid-sync OR loop recently blocked: ~150s grace before death
+const _HB_MISS_LIMIT_BUSY = 5;   // mid-sync: ~150s grace before death
+// HBGRACE.4 — hard ceiling on FORGIVEN misses. A miss that lands while the
+// server's own loop just blocked is not evidence about the donor at all (the
+// pong is likely sitting unprocessed in the queue), so blocked-loop sweeps no
+// longer count toward the kill limit — a long K battery / gate-probe phase
+// that stalls the loop sweep after sweep was executing live donors for the
+// coordinator's own deafness (the false-reap → work-steal-no-op → wedge
+// circle). The ceiling keeps a genuinely-dead socket from becoming immortal
+// during a long heavy phase: ~10 min of TOTAL silence terminates regardless.
+const _HB_MISS_LIMIT_HARD = 20;
 const _heartbeatTimer = setInterval(() => {
   const loopBlockedRecently = (Date.now() - (brain._lastEventLoopBlockTs || 0)) < _HEARTBEAT_MS;
   for (const ws of wss.clients) {
@@ -7454,17 +7541,31 @@ const _heartbeatTimer = setInterval(() => {
       const c = brain.clients.get(ws);
       // HBGRACE.3 — is this donor actively receiving the full-brain replica sync right now?
       const midSync = !!(brain._replicaSyncInFlight && brain._replicaSyncInFlight.has(ws));
-      // HBGRACE.1/2 — busier grace budget when the donor is mid-sync OR the SERVER's own loop
-      // just blocked (the pong may be sitting unprocessed in the queue — not the donor's fault).
-      const limit = (midSync || loopBlockedRecently) ? _HB_MISS_LIMIT_BUSY : _HB_MISS_LIMIT;
       ws._missedPings = (ws._missedPings || 0) + 1;
+      // HBGRACE.4 — self-inflicted sweep: don't advance the countable miss
+      // ledger, just re-ping and track the forgiveness total for the ceiling.
+      if (loopBlockedRecently && ws._missedPings < _HB_MISS_LIMIT_HARD) {
+        ws._missedPings -= 1; // uncount — this miss is the server's fault
+        ws._forgivenPings = (ws._forgivenPings || 0) + 1;
+        if (ws._forgivenPings + ws._missedPings >= _HB_MISS_LIMIT_HARD) {
+          console.warn(`[Server] heartbeat — socket ${c ? c.id : '(unknown)'}${c && c.isGPU ? ' (GPU donor)' : ''} silent through ${ws._forgivenPings} forgiven + ${ws._missedPings} counted sweeps (~${Math.round(((ws._forgivenPings + ws._missedPings) * _HEARTBEAT_MS) / 1000)}s) — hard ceiling, terminating.`);
+          try { ws.terminate(); } catch { /* already gone */ }
+          continue;
+        }
+        ws._pingSentAt = Date.now();
+        try { ws.ping(); } catch { /* dying — a later sweep terminates it */ }
+        continue;
+      }
+      // HBGRACE.1 — busier grace budget when the donor is mid-sync (draining
+      // a 40MB replica over its link is not death).
+      const limit = midSync ? _HB_MISS_LIMIT_BUSY : _HB_MISS_LIMIT;
       if (ws._missedPings < limit) {
         // Not dead yet — give another cycle. Re-ping so a live donor can clear it.
         ws._pingSentAt = Date.now();
         try { ws.ping(); } catch { /* dying — a later sweep terminates it */ }
         continue;
       }
-      console.warn(`[Server] heartbeat — socket ${c ? c.id : '(unknown)'}${c && c.isGPU ? ' (GPU donor)' : ''} missed ${ws._missedPings} consecutive pings${midSync ? ' (mid replica-sync)' : ''}${loopBlockedRecently ? ' (server loop recently blocked)' : ''} — terminating so failover can fire.`);
+      console.warn(`[Server] heartbeat — socket ${c ? c.id : '(unknown)'}${c && c.isGPU ? ' (GPU donor)' : ''} missed ${ws._missedPings} consecutive pings${ws._forgivenPings ? ` (+${ws._forgivenPings} forgiven during server loop blocks)` : ''}${midSync ? ' (mid replica-sync)' : ''} — terminating so failover can fire.`);
       try { ws.terminate(); } catch { /* already gone */ }
       continue;
     }

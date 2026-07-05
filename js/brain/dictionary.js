@@ -392,7 +392,11 @@ export class Dictionary {
    */
   learnSentence(text, cortexPattern, arousal, valence, opts = {}) {
     // Keep len >= 1 so "i" and "a" enter the dictionary. Keep digits too.
-    const words = text.toLowerCase().replace(/[^a-z0-9' -]/g, '').split(/\s+/).filter(w => w.length >= 1);
+    // Disallowed characters become SPACES, not deletions — deleting fused
+    // the neighbors of every punctuation/newline boundary that had no
+    // space of its own ("lighting\nto" → "lightingto", "fuckery,you" →
+    // "fuckeryyou") and those fake compounds were then LEARNED as words.
+    const words = text.toLowerCase().replace(/[^a-z0-9' -]/g, ' ').split(/\s+/).filter(w => w.length >= 1);
     for (const w of words) {
       this.learnWord(w, cortexPattern, arousal, valence, opts);
     }
