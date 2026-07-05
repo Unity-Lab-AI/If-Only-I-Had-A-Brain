@@ -17,6 +17,39 @@
  * Requires: npm install ws (WebSocket library)
  */
 
+// ── HEAP SELF-CORRECTION — build to the HARDWARE, not Node defaults ──
+// The language cortex (the brain's main organ — its CSR weight matrices
+// live in the V8 HEAP, not VRAM) is size-bounded by v8 heap_size_limit
+// during auto-scaling. No launcher ever passed --max-old-space-size, so
+// every boot everywhere ran at Node's ~4 GB default and the language
+// cortex was silently clamped to a fraction of what the machine allows
+// (observed: 54,945 neurons on a 128 GB host whose RAM bound permitted
+// 1.46M — a pea brain by V8 default, not by hardware). Fix: detect the
+// binder at boot and RE-EXEC once with a heap sized to host RAM (50% of
+// total, floor 4 GB, ceiling 96 GB) so any invocation — systemd, start
+// scripts, bare `node brain-server.js` — builds a brain sized to the
+// machine it's on. Opt out: DREAM_NO_HEAP_REEXEC=1. Guard env prevents
+// loops; explicit --max-old-space-size in NODE_OPTIONS is respected
+// (we only re-exec when the CURRENT limit is below the hardware target).
+{
+  const _os = require('os');
+  const _v8 = require('v8');
+  if (process.env.DREAM_NO_HEAP_REEXEC !== '1' && process.env.DREAM_HEAP_REEXECED !== '1') {
+    const _totalMB = Math.floor(_os.totalmem() / 1048576);
+    const _targetMB = Math.max(4096, Math.min(Math.floor(_totalMB * 0.5), 98304));
+    const _currentLimitMB = Math.floor(_v8.getHeapStatistics().heap_size_limit / 1048576);
+    if (_currentLimitMB < _targetMB - 512) {
+      console.log(`[Brain] heap self-correction — V8 heap limit ${_currentLimitMB}MB < hardware target ${_targetMB}MB (host RAM ${_totalMB}MB). Re-exec with --max-old-space-size=${_targetMB} so the language cortex scales to the machine, not Node defaults. (DREAM_NO_HEAP_REEXEC=1 to opt out.)`);
+      const { spawnSync } = require('child_process');
+      const _res = spawnSync(process.execPath, [`--max-old-space-size=${_targetMB}`, ...process.argv.slice(1)], {
+        stdio: 'inherit',
+        env: { ...process.env, DREAM_HEAP_REEXECED: '1' },
+      });
+      process.exit(_res.status === null ? 1 : _res.status);
+    }
+  }
+}
+
 const { WebSocketServer } = require('ws');
 const http = require('http');
 const fs = require('fs');
@@ -2554,6 +2587,12 @@ class ServerBrain {
       let def = null;
       try { def = await cluster.lookupDefinition(word); } catch { def = null; }
       if (def) continue; // real word — the API knows it
+      // Purge ONLY on a POSITIVE 404 (the API affirmatively said the word
+      // has no dictionary entry). A null from rate-limiting / network /
+      // timeout is NOT evidence — the 2026-07-05 local run rate-limited
+      // partway through the candidate batch and purged real words
+      // ("prevent", "password", "overflow") before this guard existed.
+      if (definitionService.lookupStatus(word) !== 'noDef') continue;
       words.delete(word);
       // Bigram hygiene — drop the fake token as a key and as a follower.
       try {

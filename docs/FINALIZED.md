@@ -25146,3 +25146,17 @@ During this implementation pass at 22:16 PT, a `node -e "require('./server/brain
 **Sponge copy-paste:** written and delivered in-session (deploy sequence: pull main → ⬆ Update & Savestart → 🔁 Savererun once; watch: donor stays connected through heavy K phases, no letter-strings in chat, `[Brain] fused-token purge` log lines at boot+45s, "I"-emergence timeline in early grades).
 
 **Files modified this close:** `docs/TODO.md` · `docs/FINALIZED.md` (this entry).
+
+## 2026-07-05 — TU.15 — heap self-correction (pea-brain kill) + purge 404-guard, cascaded (feature/selfhood-early-and-emission-gates → develop → main, both repos)
+
+**Gee ask (verbatim 2026-07-05):** *"i think we still have erounious limits on the neural size of the brain as if sumq connects theri gpu like at speed im running locally it should build a similar sized brain.. not sdet errrouns micro sized pea brained limits to Unity"* + *"let push the selfe will and self creation of understanding fixes with that and cascade down to main and make a new sponge copy paste as he never got the last one"*
+
+**Pea-brain root:** language cortex clamped to 54,945 neurons by V8 heap default (~4GB heap_size_limit − 2GB reserve ÷ 40KB/neuron) while the host's free-RAM bound allowed 1,460,079 — no launcher anywhere passed --max-old-space-size, so every deployment ran the brain's main organ at ~3.7% of hardware capacity. Main brain was NOT capped (357M neurons correctly VRAM-scaled locally).
+
+**Fix — heap self-correction (`server/brain-server.js` top-of-file):** boot detects heap_size_limit below the hardware target (50% host RAM, floor 4GB, ceiling 96GB) and re-execs once with `--max-old-space-size=<target>` (guard `DREAM_HEAP_REEXECED`, opt-out `DREAM_NO_HEAP_REEXEC=1`, explicit higher NODE_OPTIONS respected). Every invocation — systemd, launchers, bare node — now builds to the machine.
+
+**Purge 404-guard (from the TU.14 local test):** fused-token purge wrongly deleted real words ("prevent", "password", "overflow") when dictionaryapi.dev rate-limited mid-batch (null lookup treated as no-definition). `definition-service.js` exports `lookupStatus()` (hasDef/noDef/error/unknown); purge now requires POSITIVE 404 before deleting.
+
+**Docs (same commit):** NOW.md new top banner; TODO.md TU.15 root+fix log + TU.14 live findings (HBGRACE.4 validated under a real 10.7s pin — both donors held; clean genuine-reap failover; Tier 3 17→29 at boot). Noted-not-changed: tracked resource-config.json per-machine tier footgun (future batch).
+
+**Verification:** node --check green on brain-server.js + definition-service.js; heap re-exec logic is top-of-file with loop guard; local test run left undisturbed (fix applies on next boot).
