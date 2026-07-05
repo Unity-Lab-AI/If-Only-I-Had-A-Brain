@@ -2052,6 +2052,11 @@ Generation latency dropped 490ms → 133ms after candidate pool pre-filter + wor
 - `_teachWordDefinition(compound, { reps: 4 })` + `_teachAssociationPairs([[a, compound], [b, compound]], { reps: 30, relationTagId: 32 })`
 - Math: child novel-coinage acquisition (Pinker 1989) — co-activation threshold crossing fires the lexicalization
 
+**relationTagId=34 — Anecdotal word grounding (2026-07-05, coming-of-age scenes across all of life)**
+- Fires inside `_trainLifeStories(grade)` per experience, kindergarten→PhD (every `corpora/life/<grade>.json` memory)
+- Content words of the memory (non-glue, len ≥ 3, deduped) ↔ the memory's theme tokens, BOTH directions: `_teachAssociationPairs(groundPairs, { reps: 20, relationTagId: 34 })`, ≤ 2×N pairs per memory
+- Math: episodic-to-semantic grounding (Nelson 1986 script theory; Tulving episodic→semantic gradient) — a word that appears in a lived scene is Hebbian-bound to that scene's retrieval label, so sem(word) activation recalls the scene and scene recall re-activates its words; affect coloring rides the memory's own `_deriveMemoryEmotion` walk. Closes the "pot of words with no meaning" gap: vocabulary carries lived relational context, not just GloVe geometry + definitions
+
 ### Audit B.2 — two-axis novelty formula
 
 `classifyCompositionalEmission` now computes both:

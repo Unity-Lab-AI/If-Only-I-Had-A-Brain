@@ -12364,6 +12364,48 @@ export class Curriculum {
         const memCtx = { ...ctx, arousal: emotion.arousal, valence: emotion.valence };
         await this._teachSentenceList(exp.sentences, memCtx, { reps, ticksPerWord });
         sentenceCount += exp.sentences.length;
+        // ANECDOTAL WORD GROUNDING (relationTagId=34) — jam every content
+        // word of this memory into the SCENE it was lived in, bidirectionally
+        // with the memory's theme tokens (its retrieval label). Before this,
+        // vocabulary carried only distributional meaning (GloVe geometry +
+        // definition binds) and the life scenes walked their own sentences in
+        // parallel — the word never RECALLED the scene and the scene never
+        // recalled the word, so words piled up without lived meaning. Now a
+        // word that appears in a coming-of-age memory is Hebbian-bound to
+        // that memory's theme across every grade of her life: sem(word)↔
+        // sem(theme) at grounding reps, colored by the memory's own affect
+        // (the memCtx walk above already carved the in-scene transitions).
+        // Bounded: content words only (no glue, len ≥ 3), deduped, ≤ 2×N
+        // pairs per memory (word→theme + theme→word).
+        try {
+          const themeTokens = String(exp.theme || '')
+            .toLowerCase().replace(/[^a-z0-9' -]/g, ' ').split(/\s+/)
+            .filter(w => w.length >= 3 && !FUNCTION_WORDS.has(w));
+          if (themeTokens.length > 0) {
+            const sceneWords = new Set();
+            for (const s of exp.sentences) {
+              for (const w of String(s).toLowerCase().replace(/[^a-z0-9' -]/g, ' ').split(/\s+/)) {
+                if (w.length >= 3 && !FUNCTION_WORDS.has(w) && !themeTokens.includes(w)) sceneWords.add(w);
+              }
+            }
+            const groundPairs = [];
+            for (const w of sceneWords) {
+              for (const t of themeTokens) {
+                groundPairs.push([w, t]);
+                groundPairs.push([t, w]);
+              }
+            }
+            if (groundPairs.length > 0) {
+              await this._teachAssociationPairs(groundPairs, {
+                reps: opts.groundReps ?? 20,
+                label: `LIFE-${grade}-ANECDOTAL-GROUND`,
+                relationTagId: 34,
+              });
+            }
+          }
+        } catch (e) {
+          this._hb(`[Curriculum] _trainLifeStories(${grade}) anecdotal grounding failed for theme="${exp.theme}": ${e?.message || e}`);
+        }
         // Discrete episode: theme = retrieval label, story = the memory body,
         // emotion override = its OWN affect (drives the salience formula so
         // load-bearing anchors — deaths, first kiss, the gray — score high
