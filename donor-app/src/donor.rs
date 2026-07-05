@@ -27,9 +27,18 @@ use crate::protocol::{
 /// that surfaces as `Connection reset by peer` every few minutes. Well under any common idle-reap.
 const KEEPALIVE_INTERVAL: Duration = Duration::from_secs(15);
 /// If NO frame (incl. the brain's pong) arrives within this window while we're keepalive-pinging,
-/// the link is half-open (satellite handover / proxy drop) — reconnect immediately instead of
-/// waiting minutes for the OS to surface the RST.
-const IDLE_TIMEOUT: Duration = Duration::from_secs(45);
+/// the link is half-open (satellite handover / proxy drop) — reconnect instead of waiting
+/// minutes for the OS to surface the RST.
+///
+/// 45s → 150s: the coordinator's event loop legitimately goes quiet-to-this-socket for long
+/// stretches during heavy synchronous teach (Hebbian grind pins the loop; the WS pong sits
+/// queued until it frees). At 45s the donor declared those stretches a dead link and
+/// reconnect-cycled every ~60-90s through an entire teach phase — dropping its replica and
+/// forcing a full matrix re-upload each time. 150s matches the server's own busy-grace
+/// heartbeat budget; genuine half-open links (satellite handover, proxy drop) still detect
+/// in 2.5 min instead of 45 s, which costs nothing — reconnect latency was never the
+/// bottleneck, replica re-upload is.
+const IDLE_TIMEOUT: Duration = Duration::from_secs(150);
 
 /// Live status the GUI reads (and headless ignores).
 #[derive(Default)]
