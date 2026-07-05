@@ -1568,7 +1568,34 @@ export class LanguageCortex {
           excludeTokens: _liveExclude,
           boostPersona: true, // iter14-C — always on, popups need persona too
         });
-        words = raw ? raw.split(/\s+/).filter(Boolean) : [];
+        // SPEAK.10 — letter-chain output gate for USER-VISIBLE lanes.
+        // generateSentence is motor letter-argmax; on an unstable or
+        // mid-teach cortex it emits letter salad (single-letter runs,
+        // 300-char pseudo-words). That instrument readout must never
+        // ship as chat/popup speech. Tokens are validated here: stray
+        // single letters (except i/a) are dropped, and when salad
+        // dominates the whole emission is discarded so the pipeline
+        // degrades to the word-level dictionary-cosine path below —
+        // the same lane empty motor output already takes. Gate/probe
+        // callers hit cluster.generateSentenceAwait directly and are
+        // untouched (probes WANT the raw letter readout).
+        const rawWords = raw ? raw.split(/\s+/).filter(Boolean) : [];
+        const _isSaladToken = (w) => {
+          const t = w.toLowerCase().replace(/[.!?]+$/, '');
+          if (t.length === 1 && t !== 'i' && t !== 'a') return true;
+          if (t.length > 24) return true;
+          return false;
+        };
+        const _saladCount = rawWords.reduce((n, w) => n + (_isSaladToken(w) ? 1 : 0), 0);
+        if (rawWords.length > 0 && _saladCount / rawWords.length > 0.34) {
+          if (!this._letterChainGateWarned) {
+            this._letterChainGateWarned = true;
+            try { console.warn(`[LanguageCortex] letter-chain emission gated from user-visible lane — ${_saladCount}/${rawWords.length} salad tokens (sample "${rawWords.slice(0, 5).join(' ').slice(0, 60)}"); degrading to dictionary-cosine. Motor basins unstable this tick.`); } catch { /* nf */ }
+          }
+          words = [];
+        } else {
+          words = rawWords.filter(w => !_isSaladToken(w));
+        }
       }
     }
 
@@ -1785,6 +1812,9 @@ export class LanguageCortex {
     const scored = [];
     for (const [word, entry] of dictionary._words) {
       if (!entry || !entry.pattern) continue;
+      // Single-letter entries (letters registered as dictionary words by
+      // older builds) never rank as speech — only i/a are real words.
+      if (word.length === 1 && word !== 'i' && word !== 'a') continue;
       if (recentWords && recentWords.includes(word)) continue;
       let dot = 0, nt = 0, nw = 0;
       const len = Math.min(target.length, entry.pattern.length);
@@ -1846,6 +1876,9 @@ export class LanguageCortex {
     let i = 0;
     for (const [word, entry] of dictionary._words) {
       if (!entry || !entry.pattern) { i++; continue; }
+      // Same single-letter skip as the sync scorer — letters registered
+      // as dictionary words never rank as speech (only i/a are words).
+      if (word.length === 1 && word !== 'i' && word !== 'a') { i++; continue; }
       if (recentWords && recentWords.includes(word)) { i++; continue; }
       let dot = 0, nt = 0, nw = 0;
       const len = Math.min(target.length, entry.pattern.length);
