@@ -25174,3 +25174,17 @@ During this implementation pass at 22:16 PT, a `node -e "require('./server/brain
 **Verification:** node --check + ESM import() green on curriculum.js; bundle rebuilt 3.9MB; relationTagId=34 confirmed unused before claim; validation gate = `LIFE-*-ANECDOTAL-GROUND` teach lines when a walk reaches its life cells.
 
 **Files modified:** `js/brain/curriculum.js` · `js/app.bundle.js` · `docs/EQUATIONS.md` · `docs/NOW.md` · `docs/TODO.md` · `docs/FINALIZED.md`.
+
+## 2026-07-05 — TU.14 round-5 fixes — VRAM-allocator cap plumbing + full local page map (feature/selfhood-early-and-emission-gates → develop → main, both repos)
+
+**Context:** Gee's local-test directives (verbatim): *"we need to run it without the compute page auto opening.. i want to run the doner and the doner alone grabs all the vram so its getting clashing"* + *"open the legend tho for the local run"* + *"that should open all the local stuff right? it says: Not found"* + *"did you do the main cascade and write the sponge copy paste yet?"*
+
+**Allocator cap bug (donor churn root):** the donor reconnect-cycled forever (6 PRIMARY registrations, 1 completed upload, `cortex_intraSynapses` timing out). `BRAIN_VRAM_ALLOC` read `RESOURCES.override` — the APPLIED-override summary, which only carries `vramCapMB` when the neuron-cap branch fires — instead of the raw resource-config.json, so the operator's 12GB tier cap on the 16GB card silently fell through: the allocator budgeted the full 16.4GB, leaving zero headroom for the donor page + Windows compositor, and the big-matrix upload died every cycle. FIX: `rawOverride` passthrough in `detectResources()` return + `BRAIN_VRAM_ALLOC` reads `RESOURCES.rawOverride` first. Post-fix boot: brain budget 9216MB → main brain 230M, language cortex 262,143 neurons (still 4.8× the killed pea brain), ~5GB card headroom.
+
+**Full local page map:** `legend.html` / `docs.html` / `minds-eye.html` / `dashboard-public.html` / `webgpu-prep.html` returned 404 "Not found" from the local server (only the deployed reverse-proxy ever served them). All added to `PUBLIC_PAGES` at both `/` and `/html/` paths — any self-hosted run now serves the complete site.
+
+**Also validated this round:** `DREAM_NO_AUTO_GPU=1` (existing flag) runs the brain with the operator's donor as sole GPU — no auto-launch clash; dashboard Reset/restart buttons exit expecting systemd revival which doesn't exist locally — supervised manually (curl POST /reset + background relaunch).
+
+**Verification:** node --check green; post-fix boot log confirms `total=11264MB − OS=2048MB = brain=9216MB` allocator line + all five pages 200.
+
+**Files modified:** `server/brain-server.js` · `docs/TODO.md` · `docs/FINALIZED.md`.
