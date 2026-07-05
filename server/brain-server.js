@@ -293,6 +293,15 @@ function detectResources() {
     clusterScale,
     scaleSource,
     override: appliedOverride,
+    // RAW config passthrough — BRAIN_VRAM_ALLOC needs the operator's
+    // configured vramCapMB directly. It previously read `override` (the
+    // APPLIED summary above, which only carries vramCapMB when the
+    // neuron-cap branch happened to fire), so a 12GB tier cap on a 16GB
+    // card silently fell through and the allocator budgeted full VRAM —
+    // zero headroom for the donor page + Windows compositor → the big-
+    // matrix upload died → donor reconnect-cycled forever (6 PRIMARY
+    // registrations / 1 completed upload on the 2026-07-05 local run).
+    rawOverride: override || null,
   };
 }
 
@@ -392,7 +401,10 @@ const DEFAULT_BIO_WEIGHTS = {
   mystery:         0.06,
 };
 const BRAIN_VRAM_ALLOC = (function () {
-  const cfg = RESOURCES.override || {};
+  // rawOverride = the operator's resource-config.json verbatim (vramCapMB
+  // etc.) — see detectResources return for why `override` was the wrong
+  // object to read here.
+  const cfg = RESOURCES.rawOverride || RESOURCES.override || {};
   let vramMB = typeof cfg.vramCapMB === 'number' ? cfg.vramCapMB
              : (RESOURCES.gpu && RESOURCES.gpu.vram) ? RESOURCES.gpu.vram
              : 16384;
@@ -6588,6 +6600,20 @@ const httpServer = http.createServer((req, res) => {
     '/dashboard.html': path.join(__dirname, '..', 'html', 'dashboard.html'),
     '/gpu-configure.html': path.join(__dirname, '..', 'html', 'gpu-configure.html'),
     '/compute.html': path.join(__dirname, '..', 'html', 'compute.html'),
+    // Remaining site pages — every html/ page a local/self-hosted run
+    // needs is servable (legend / docs / minds-eye / public dashboard /
+    // webgpu-prep were 404 "Not found" locally; only the deployed
+    // reverse-proxy served them).
+    '/html/legend.html': path.join(__dirname, '..', 'html', 'legend.html'),
+    '/legend.html': path.join(__dirname, '..', 'html', 'legend.html'),
+    '/html/docs.html': path.join(__dirname, '..', 'html', 'docs.html'),
+    '/docs.html': path.join(__dirname, '..', 'html', 'docs.html'),
+    '/html/minds-eye.html': path.join(__dirname, '..', 'html', 'minds-eye.html'),
+    '/minds-eye.html': path.join(__dirname, '..', 'html', 'minds-eye.html'),
+    '/html/dashboard-public.html': path.join(__dirname, '..', 'html', 'dashboard-public.html'),
+    '/dashboard-public.html': path.join(__dirname, '..', 'html', 'dashboard-public.html'),
+    '/html/webgpu-prep.html': path.join(__dirname, '..', 'html', 'webgpu-prep.html'),
+    '/webgpu-prep.html': path.join(__dirname, '..', 'html', 'webgpu-prep.html'),
   };
   if (req.method === 'GET' && (req.url === '/unity-guide.html' || req.url === '/brain-equations.html')) {
     res.writeHead(301, { Location: `/html${req.url}`, 'Cache-Control': 'no-store' });
