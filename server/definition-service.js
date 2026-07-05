@@ -389,6 +389,26 @@ function flushCacheToDisk() {
   }
 }
 
+/**
+ * Definitive lookup-status for a word AFTER a getDefinition call ran.
+ * Distinguishes "the API positively said 404 — this word has no dictionary
+ * entry" from "the lookup failed for another reason" (429 rate-limit,
+ * network, timeout, 5xx). Callers that DELETE data based on absence of a
+ * definition (the fused-token dictionary purge) must require 'noDef' —
+ * treating a rate-limited miss as no-definition purged real words
+ * ("prevent", "password", "overflow") on the 2026-07-05 local run.
+ * Returns: 'hasDef' | 'noDef' | 'error' | 'unknown' (never looked up /
+ * cache evicted).
+ */
+function lookupStatus(word) {
+  const key = _normalize(word);
+  if (!key) return 'unknown';
+  const entry = cache.get(key);
+  if (!entry) return 'unknown';
+  if (!entry.error) return 'hasDef';
+  return entry.noDef ? 'noDef' : 'error';
+}
+
 module.exports = {
   getDefinition,
   getDefinitionSync,
@@ -397,6 +417,7 @@ module.exports = {
   getCacheStats,
   clearCache,
   flushCacheToDisk,
+  lookupStatus,
   // exposed for testing / brain boot smoke test
   _hasFetch: () => HAS_FETCH,
 };
