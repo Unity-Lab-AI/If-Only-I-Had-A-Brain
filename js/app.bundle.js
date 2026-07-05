@@ -101521,6 +101521,33 @@ var Curriculum = class _Curriculum {
         const memCtx = { ...ctx, arousal: emotion.arousal, valence: emotion.valence };
         await this._teachSentenceList(exp.sentences, memCtx, { reps, ticksPerWord });
         sentenceCount += exp.sentences.length;
+        try {
+          const themeTokens = String(exp.theme || "").toLowerCase().replace(/[^a-z0-9' -]/g, " ").split(/\s+/).filter((w) => w.length >= 3 && !FUNCTION_WORDS.has(w));
+          if (themeTokens.length > 0) {
+            const sceneWords = /* @__PURE__ */ new Set();
+            for (const s of exp.sentences) {
+              for (const w of String(s).toLowerCase().replace(/[^a-z0-9' -]/g, " ").split(/\s+/)) {
+                if (w.length >= 3 && !FUNCTION_WORDS.has(w) && !themeTokens.includes(w)) sceneWords.add(w);
+              }
+            }
+            const groundPairs = [];
+            for (const w of sceneWords) {
+              for (const t of themeTokens) {
+                groundPairs.push([w, t]);
+                groundPairs.push([t, w]);
+              }
+            }
+            if (groundPairs.length > 0) {
+              await this._teachAssociationPairs(groundPairs, {
+                reps: opts.groundReps ?? 20,
+                label: `LIFE-${grade}-ANECDOTAL-GROUND`,
+                relationTagId: 34
+              });
+            }
+          }
+        } catch (e) {
+          this._hb(`[Curriculum] _trainLifeStories(${grade}) anecdotal grounding failed for theme="${exp.theme}": ${e?.message || e}`);
+        }
         if (brain2 && typeof brain2.storeEpisode === "function") {
           try {
             brain2.storeEpisode(

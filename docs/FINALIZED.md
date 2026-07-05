@@ -25160,3 +25160,17 @@ During this implementation pass at 22:16 PT, a `node -e "require('./server/brain
 **Docs (same commit):** NOW.md new top banner; TODO.md TU.15 root+fix log + TU.14 live findings (HBGRACE.4 validated under a real 10.7s pin — both donors held; clean genuine-reap failover; Tier 3 17→29 at boot). Noted-not-changed: tracked resource-config.json per-machine tier footgun (future batch).
 
 **Verification:** node --check green on brain-server.js + definition-service.js; heap re-exec logic is top-of-file with loop guard; local test run left undisturbed (fix applies on next boot).
+
+## 2026-07-05 — TU.16 — anecdotal word grounding: words jammed to lived coming-of-age scenes across all of life (feature/selfhood-early-and-emission-gates → develop → main, both repos)
+
+**Gee asks (verbatim 2026-07-05):** *"is training strong enough should we be training words she learns to actual actedotal scenes memories in her life to reall jam words relational context and such? idk i just think she learned a pot of words but doesnt now or have meaning to any"* + *"comming of age stuff"* + *"in all of life for her"* + *"do anything we have left to do that is in the todo or forgot to put in it and then cascade to main then write the sponge copy paste"* + *"stop all the crons"* (all crons stopped — local-test monitor d76d831f cancelled).
+
+**Diagnosis confirmed:** meaning channel (definition binds reps 1-4, association pairs 8-12) ran 10-50× weaker than the grammar channel (transitions reps 60-100), and vocabulary was NEVER bound to lived scenes — words carried distributional GloVe meaning only. Live-chat evidence matched: semantically-adjacent single tokens with shallow grounding.
+
+**Fix — ANECDOTAL WORD GROUNDING (relationTagId=34):** `_trainLifeStories(grade)` (the engine that already walks every grade's coming-of-age memories from `corpora/life/<grade>.json`, kindergarten→PhD, 19 corpora, with per-memory `_deriveMemoryEmotion` coloring + discrete Tier-1 `storeEpisode` + anchor reconsolidation) gains a per-experience grounding pass: every content word of the memory (non-glue, len≥3, deduped) is Hebbian-bound BIDIRECTIONALLY to the memory's theme tokens (its retrieval label) via `_teachAssociationPairs(groundPairs, { reps: 20, relationTagId: 34 })`, ≤2×N pairs per memory. sem(word) activation now recalls the lived scene; scene recall re-activates its words; affect rides the memory's own emotion walk. Coverage = ALL of life automatically: every grade whose life cell calls `_trainLifeStories` (K→PhD); pre-K keeps its bespoke self-scene binds.
+
+**Docs (same commit):** EQUATIONS.md relationTagId=34 entry (episodic-to-semantic grounding — Nelson 1986 / Tulving gradient); NOW.md new top banner; TODO.md TU.16 build log with all verbatims.
+
+**Verification:** node --check + ESM import() green on curriculum.js; bundle rebuilt 3.9MB; relationTagId=34 confirmed unused before claim; validation gate = `LIFE-*-ANECDOTAL-GROUND` teach lines when a walk reaches its life cells.
+
+**Files modified:** `js/brain/curriculum.js` · `js/app.bundle.js` · `docs/EQUATIONS.md` · `docs/NOW.md` · `docs/TODO.md` · `docs/FINALIZED.md`.
