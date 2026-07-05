@@ -198,6 +198,11 @@ export const CLUSTER_EMIT_MIXIN = {
       for (const [word, entry] of dictionary._words) {
         if (!entry || !entry.pattern) continue;
         if (entry.isPersona !== true) continue;
+        // Single-letter dictionary entries (letters registered as words
+        // by older builds) are not speech — only "i" and "a" are real
+        // one-letter English words. Without this skip a stray letter
+        // entry can cosine-win and ship as the whole chat reply.
+        if (word.length === 1 && word !== 'i' && word !== 'a') continue;
         if (excludeTokens && excludeTokens.has(word)) continue;
         if (restrictToVocab && !restrictToVocab.has(word)) continue;
         const pattern = entry.pattern;
@@ -232,6 +237,9 @@ export const CLUSTER_EMIT_MIXIN = {
     let bestScore = -Infinity;
     for (const [word, entry] of dictionary._words) {
       if (!entry || !entry.pattern) continue;
+      // Same single-letter skip as the persona-first pass — letters
+      // registered as dictionary words must never win an oracle reply.
+      if (word.length === 1 && word !== 'i' && word !== 'a') continue;
       if (excludeTokens && excludeTokens.has(word)) continue;
       if (excludePersona && entry.isPersona === true) continue;
       if (restrictToVocab && !restrictToVocab.has(word)) continue;
