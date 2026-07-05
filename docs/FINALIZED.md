@@ -5,6 +5,30 @@
 
 ---
 
+## 2026-07-05 — DONOR-036: donor-v0.3.6 release — IDLE_TIMEOUT watchdog fix + PD.2/PD.3 rebuild + CI + site download-link bump — feature/donor-v0.3.6-idle-watchdog-release
+
+### Sponge verbatim per LAW #0
+
+> *"⚠ ACTION: this is Rust — the fix only reaches running donors after your CI rebuild. Roll it together with the still-pending PD.2/PD.3 build (light theme + headless flag), tag donor-v0.3.6, and bump the site download links. Browser-tab donors are unaffected."*
+> then *"do it"*
+
+**Context:** the IDLE_TIMEOUT 45s→150s watchdog fix (Release 5, `donor-app/src/donor.rs`) was already merged to main (`016bbd1`). The exe pinged every 15s and force-reconnected if no frame arrived in 45s — a coordinator mid-heavy-teach legitimately queues the pong past 45s, so the exe declared good links dead and reconnect-cycled every ~60-90s through whole teach phases, dropping its brain replica + forcing a full matrix re-upload each round (confirmed live: 17 re-registrations in one teach phase, every disconnect clean = the exe hanging up, never the server heartbeat). PD.2 (OS light theme, `gui.rs`) + PD.3 (headless GUI, no Windows console, `main.rs`) were already in source since `d32f932` but had never reached a rebuilt binary. All three ship together in donor-v0.3.6.
+
+**Shipped:**
+- **DONOR-036.1** `donor-app/Cargo.toml` version `0.3.5` → `0.3.6`.
+- **DONOR-036.2** Both release binaries built + verified on this box (full Rust toolchain present: cargo 1.95 + `x86_64-pc-windows-gnu` target + mingw `x86_64-w64-mingw32-gcc`): `cargo build --release` → `unity-donor-linux-x86_64` (ELF, `--version` reports `unity-donor 0.3.6`); `cargo build --release --target x86_64-pc-windows-gnu` → `unity-donor-windows-x86_64.exe` (PE32+, **Windows-GUI subsystem confirmed via objdump = PD.3 no-console**). Default `gui`+`cuda` features (CUDA dynamic-loaded → runs on AMD/Intel/Apple with WebGPU fallback), same as prior releases.
+- **DONOR-036.3** NEW `.forgejo/workflows/donor-release.yml` — on `donor-v*` tag push (or `workflow_dispatch` with a `tag` input): installs mingw + the windows-gnu target + Linux GUI headers, builds both binaries, then resolves-or-creates the release for the tag and idempotently uploads each asset (deletes any same-named asset first, so a re-run or an `fj`-created tag never 400s on a dup). Uses the Actions-provided `GITHUB_TOKEN` against the Forgejo REST API — no new secrets. This is the "your CI" the brief asked for, push-button for every future donor release.
+- **DONOR-036.4** Site download links bumped `donor-v0.3.5` → `donor-v0.3.6`: `html/compute.html` (Windows + Linux buttons) + `html/legend.html` (Windows + Linux buttons + the `<code>donor-v0.3.6</code>` card-path version text). Repo-wide grep confirms zero stale `donor-v0.3.5` references in public files.
+- **DONOR-036.5** `donor-v0.3.6` Forgejo release cut via `fj` (tag on main) with both binaries attached; assets verified reachable before the link-bump deploy landed.
+
+**Verified:** Linux binary runs + self-reports `0.3.6`; Windows PE32+ subsystem = Windows GUI (headless-console PD.3); `file(1)` types correct; both sizes match the prior release (~18MB / ~12.4MB); grep clean of stale version links. `donor-app/Cargo.lock` + `dist/` are gitignored (binaries live only as release assets) — only `Cargo.toml` + the workflow + the two HTMLs are committed.
+
+**Docs (same commit, docs-before-push LAW):** `docs/NOW.md` release banner, `docs/TODO.md` DONOR-036 task (verbatim), this FINALIZED entry.
+
+**Note:** running donors keep the old 45s watchdog until they re-download the new exe; browser-tab donors are unaffected (native-binary-only fix). Deploy for the box stays: pull main → ⬆ Update & Savestart → 🔁 Savererun once.
+
+---
+
 ## 2026-06-30 — WSQ: donor work-stealing "mining" model + sync pacing so high-RTT/Starlink donors carry real compute batches — feature/donor-work-stealing-pull-queue
 
 ### Sponge verbatim per LAW #0

@@ -46,6 +46,22 @@ If you're reading a public doc / HTML claim ("Unity has completed high school bi
 
 ## OPEN TASKS
 
+### DONOR-036 — donor-v0.3.6 release: IDLE_TIMEOUT watchdog fix + PD.2/PD.3 (light theme + headless) rebuild + CI + site download-link bump (Sponge 2026-07-05) — DONE 2026-07-05 (see FINALIZED.md; built + verified locally, released via fj, CI workflow added) (branch `feature/donor-v0.3.6-idle-watchdog-release`)
+
+**Sponge verbatim per LAW #0:**
+
+> *"⚠ ACTION: this is Rust — the fix only reaches running donors after your CI rebuild. Roll it together with the still-pending PD.2/PD.3 build (light theme + headless flag), tag donor-v0.3.6, and bump the site download links. Browser-tab donors are unaffected."*
+
+> *"do it"*
+
+**Scope:** the IDLE_TIMEOUT 45s→150s watchdog fix (`donor-app/src/donor.rs`, already on main `016bbd1`), PD.2 OS light theme + PD.3 headless GUI (already in source since `d32f932`) all ship together in one rebuilt binary. This box carries the full toolchain (cargo 1.95 + `x86_64-pc-windows-gnu` target + mingw), so the release is built LOCALLY here and cut via `fj`; a `.forgejo/workflows/donor-release.yml` is added so future `donor-v*` tags rebuild + upload automatically ("your CI" going forward).
+
+- [x] **DONOR-036.1 — bump `donor-app/Cargo.toml` version 0.3.5 → 0.3.6.**
+- [x] **DONOR-036.2 — build Linux (`unity-donor-linux-x86_64`) + Windows cross (`unity-donor-windows-x86_64.exe`) release binaries (GUI+CUDA default features) on this box.**
+- [x] **DONOR-036.3 — add `.forgejo/workflows/donor-release.yml` — on `donor-v*` tag (+ `workflow_dispatch`): install mingw + windows-gnu target, build both binaries, create-release-if-missing + idempotent asset upload.**
+- [x] **DONOR-036.4 — bump site download links donor-v0.3.5 → donor-v0.3.6 in `html/compute.html` (2) + `html/legend.html` (3, incl. the `donor-v0.3.5` card-path text).**
+- [x] **DONOR-036.5 — cut the `donor-v0.3.6` Forgejo release (tag on main) with both binaries attached; verify assets resolve (200) before the link-bump deploy lands.**
+
 ### SPEAK — all-encompassing brain-shortfall write-up: word salad after 9th grade + consciousness performance + image gen + self-awareness of her own code + build UI sandbox + brain waves correct for spikes/voltage — stay true to the mathematical neuronic brain (Gee 2026-07-01) — IN PROGRESS (branch `feature/unity-speech-consciousness-rectify`)
 
 **Gee verbatim per LAW #0:**
@@ -168,7 +184,7 @@ If you're reading a public doc / HTML claim ("Unity has completed high school bi
 
 ---
 
-### WSQ — donor work-stealing "mining" model + sync pacing so high-RTT/Starlink donors carry real compute batches (Sponge 2026-06-30) — IN PROGRESS (branch `feature/donor-work-stealing-pull-queue`)
+### WSQ — donor work-stealing "mining" model + sync pacing so high-RTT/Starlink donors carry real compute batches (Sponge 2026-06-30) — DONE 2026-06-30 (deployed FRESH WALK to OVH + donor-v0.3.5 released; see FINALIZED.md. Pending: donors must reconnect — pool was 0 post-deploy.) (branch `feature/donor-work-stealing-pull-queue`)
 
 **Sponge verbatim per LAW #0:**
 
@@ -1454,6 +1470,7 @@ Analysis (stack-traced 2026-06-30): Issue 4 is the propagation hub — the synch
   - **Also noted:** local `server/resource-config.json` is a TRACKED file carrying an "enthusiast-12gb" tier (vramCapMB 11264) on a 16GB card — per-machine tier files being git-tracked is a footgun (flagged for a future batch; NOT changed this push to avoid perturbing the box's tier).
 
 - [~] **TU.14 — run the whole brain locally for a local test while monitoring it all — the whole thing, even the donor; readjust for local test, start it up the same in Playwright, Gee diverts the donor to the localhost test.** Live findings:
+  - **[⭐ DONOR .EXE WATCHDOG TOO TWITCHY — source patched, CI rebuild needed] (2026-07-05, round-6, Gee: "so what is the issue with the binary does it need fixed too"):** the donor binary pings every 15s and force-reconnects if NO frame arrives within 45s (`IDLE_TIMEOUT`, donor-app/src/donor.rs) — tuned for Starlink/CGNAT flap detection, but a coordinator mid-heavy-teach legitimately queues the pong past 45s → the exe declared the link dead and reconnect-cycled every ~60-90s through the whole teach phase (matches the observed re-register cadence + all-clean disconnects: the EXE hangs up, never the server heartbeat). Each cycle drops the replica + forces full matrix re-upload. PATCED source: IDLE_TIMEOUT 45s → 150s (matches the server's busy-grace heartbeat budget; real half-open links still detect in 2.5min — reconnect latency was never the cost, replica re-upload is). ⚠ Needs the Sponge/CI Rust rebuild (same pipeline as the pending PD.2/PD.3 theme build) — the running exe keeps the old 45s until then; browser-tab donors are unaffected.
   - **[⭐ ALLOCATOR BUG FOUND + FIXED — vramCapMB never reached the VRAM allocator] (2026-07-05, round-5 local test):** donor reconnect-cycled forever (6 PRIMARY registrations / 1 completed upload; `cortex_intraSynapses` timing out) — ROOT: `BRAIN_VRAM_ALLOC` read `RESOURCES.override` (the APPLIED summary, which only carries vramCapMB when the neuron-cap branch fires) instead of the RAW resource-config.json, so the operator's 12GB tier cap on the 16GB card silently fell through → allocator budgeted full 16.4GB → zero headroom for the donor page + Windows compositor → big-matrix upload died → churn loop. FIX: `rawOverride` passthrough in detectResources + allocator reads it. Post-fix boot: brain budget 9216MB, main brain 230M, language cortex 262,143 (still 4.8× pea brain), ~5GB card headroom. ALSO this round: full page map added to the server (legend/docs/minds-eye/dashboard-public/webgpu-prep were 404 "Not found" locally — only the deployed reverse-proxy served them); DREAM_NO_AUTO_GPU=1 confirmed working (Gee's donor = sole GPU, per his "run the doner and the doner alone grabs all the vram so its getting clashing"); dashboard reset button design noted — it exits expecting systemd revival, which doesn't exist locally (we supervise manually; fired /reset via curl + relaunch).
   - **[⭐⭐ FRESH BOOT — ALL FIXES LIVE, pea brain dead] (2026-07-05, round-2 local test):** old run killed (had died already), rebooted on the full stack. FIRST LINE: heap self-correction fired — "V8 heap limit 4144MB < hardware target 65490MB → re-exec --max-old-space-size=65490". **Language cortex 54,945 → 407,551 neurons (7.4×, 16.3GB RAM, sem 68,061 was 9,175)** — TU.15 validated live. Tier 3 restored complete at 29 (selfhood anchors persisted, no top-up needed). **Purge 404-guard validated: 1 removal this boot (was 61 with false positives like "prevent"/"password").** Main brain 357M. Fresh walk from pre-K (code-change auto-clear). Chat hold live on :9222; 60s monitor cron a3cd7ccd armed watching for PREK-FIRST-PERSON first-fire, LIFE-*-ANECDOTAL-GROUND first-fire, and the EARLY "I" in chat. Gee re-diverting his donor.
   - **[✓ HBGRACE.4 VALIDATED under real stall] (2026-07-05 local):** `[EventLoop] BLOCKED 10712ms` during `_teachHebbian` (plus 282-532ms spikes earlier) — and donorCount held at 2 straight through. On the live box this exact block class was false-reaping the donor (60-150s of misses → terminate); locally with the fix, both donors survived a 10.7s pin with zero drops. The forgiveness path is silent-by-design (only logs at hard-ceiling), so donor-stability-through-block IS the pass signal.
