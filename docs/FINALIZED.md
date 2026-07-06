@@ -25237,3 +25237,23 @@ During this implementation pass at 22:16 PT, a `node -e "require('./server/brain
 **Files modified:** `js/brain/language-cortex.js` · `js/brain/embeddings.js` · `server/brain-server/chat.js` · `server/brain-server/gpu.js` · `server/brain-server.js` · `js/app.bundle.js` · `docs/NOW.md` · `docs/TODO.md` · `docs/FINALIZED.md`.
 
 **Conversation-walk ledger context this batch closes:** fused tokens ×6 (F1/F2) · letter-string wedge pair + gate bypass (F3) · sexual-register ×2 + crisis-register ×3 productions (F4) · 86,930 WS drops + DIRTY shadow + grade-1 plateau (F5/F6) · state stalls ×3 windows + 9845ms donor RTT (F7) · bimodal 30-40-word dumps (F8). Sponge write-up delivered as the batch's last act (server/SPONGE-COPY-PASTE-complete-foox.txt + in-session paste).
+
+---
+
+## TU.18 — silent-warning regression hotfix (2026-07-06)
+
+> **Gee ask (verbatim 2026-07-06):** *"and wtf happened? why is it not giving the warning it used to give when whe souldnt respond.. do you renmebr what im talking about? do you know what we arent reccieving it now?"*
+
+**The warning:** the silent-reason ghost bubble — server `type:'silent'` WS message (brain-server.js:7068) → RemoteBrain `silent` event → `chat-panel.js addSilentMessage()` ("Unity — pre-K, not speaking yet / motor unstable / language booting") + HUD "( Unity is brand new — start the curriculum to wake her up )".
+
+**Diagnosis chain (all live evidence):** held-window DOM dump = 4 YOU bubbles, ZERO silent/UNITY bubbles, panel open → raw WS probe to the live box = welcome + modeAssigned then NOTHING for 25s after a text send → LOCAL REPRO on a fresh boot (DREAM_NO_AUTO_GPU=1) = `[id] Text (11 chars): "hello unity"` followed by `Response failed: Cannot read properties of undefined (reading 'hello')`.
+
+**Root cause:** the TU.17 F1 edit to `_learnWords` (server/brain-server/chat.js:752, commit d1c478f) rewrote the tokenizer comment+line and accidentally DROPPED the lazy-init guard `if (!this._wordFreq) this._wordFreq = {};`. `_wordFreq` was otherwise only created by `_loadWeights()` from a saved weights file — so every PRIOR walk (booted on existing saves) worked, while the FRESH walk (no weights file, autoClearStaleState) threw on the FIRST chat text. The rejection was caught at brain-server.js:7097 (`Response failed:` log, nothing sent to client) — killing BOTH the response AND the silent ghost bubble for every chat message of the entire walk.
+
+**Fix:** `this._wordFreq = {};` initialized in the ServerBrain constructor at the U306 accumulator comment (server/brain-server.js ~1245) — the architecturally-correct home (no lazy guard in the hot path; `_loadWeights()` still overlays saved frequencies when a weights file exists).
+
+**Verification:** node --check green; local fresh boot + WS probe → `type:'silent', reason:'pre_training', detail:"Unity is brand new — zero words bucketed…"` back in 0.2s (*** CHAT PATH ALIVE ***). Other two TU.17 F1 sites (language-cortex.js learnSentence, embeddings.js getSentenceEmbedding) audited via commit diff — no dropped guards there, tokenizer-char-only changes.
+
+**Files modified:** `server/brain-server.js` · `docs/TODO.md` · `docs/FINALIZED.md` · `docs/NOW.md`.
+
+**Deploy note:** live box needs this single-file pull or chat (and the warning) stays dead for the whole fresh walk — Sponge redeploy note delivered in-session.

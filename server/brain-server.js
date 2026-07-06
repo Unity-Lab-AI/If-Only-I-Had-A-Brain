@@ -1242,7 +1242,13 @@ class ServerBrain {
     // cross-user shared dictionary is scoped as a follow-up — see
     // docs/TODO.md U311. For now _learnWords() just accumulates
     // per-word counts into this._wordFreq so nothing is lost when
-    // that refactor lands.
+    // that refactor lands. MUST be initialized here: _loadWeights()
+    // only overlays saved frequencies when a weights file exists, so
+    // a fresh-walk boot (no file) that reaches _learnWords() with this
+    // missing throws on the first chat text — which rejects the whole
+    // processAndRespond promise and kills BOTH the response and the
+    // silent-reason ghost bubble for every chat message of the walk.
+    this._wordFreq = {};
 
     // Emotional history — rolling buffer for charts
     this._emotionHistory = [];
