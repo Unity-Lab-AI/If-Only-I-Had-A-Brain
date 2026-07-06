@@ -5,6 +5,33 @@
 
 ---
 
+## 2026-07-06 — TU.22: donor release is now hands-off — a donor-v* tag auto-bumps the site download links + everything — feature/donor-release-auto-link-bump
+
+### Sponge ask (verbatim per LAW #0)
+
+> *"Can we also make sure if there is a new doner release it also updates links and everything?"*
+
+**Context:** `.forgejo/workflows/donor-release.yml` built + attached both donor binaries on a `donor-v*` tag, but the site download links (`html/compute.html` ×2 hrefs, `html/legend.html` ×2 hrefs + ×1 visible version label = 5 `donor-vX.Y.Z` tokens) were bumped BY HAND every release — the step that kept getting forgotten (e.g. it had to be caught explicitly in DONOR-036). Also nothing stopped a human from tagging without first bumping `donor-app/Cargo.toml`, which would ship a binary that self-reports + version-gates on the wrong `appVersion`.
+
+**Shipped (`.forgejo/workflows/donor-release.yml`):**
+- **TU.22.1 — fail-early version guard.** New step right after checkout: extracts the tag version (`${TAG#donor-v}`) and `donor-app/Cargo.toml`'s `version`, and `exit 1`s with a `::error::` if they differ — BEFORE building — so a forgotten Cargo bump can never produce a mislabeled binary.
+- **TU.22.2 — auto link-bump + Pages redeploy.** New final step (after the binaries are attached): `git checkout -B main origin/main`, `sed -i -E "s#donor-v[0-9]+\.[0-9]+\.[0-9]+#${TAG}#g" html/compute.html html/legend.html`, commit as `unity-ci`, and push to `main` over HTTPS with the Actions token → `deploy.yml` (push-to-main trigger) redeploys the public Pages site with the new links. No-op + clean exit if the links were already bumped by hand. Job now declares `permissions: contents: write`.
+- **TU.22.3 — scope note.** `DREAM_MIN_DONOR_VERSION` (the brain's minimum *compatible* donor version, `server/brain-server.js`) is deliberately NOT auto-bumped — it's a per-protocol-change compatibility decision, not "every release."
+
+**Why CI-commit-to-main works here (verified):** `main` has NO server-side branch protection — `GET /api/v1/repos/UnityAILab/If-Only-I-Had-A-Brain/branch_protections` returns `[]` (the "protected branch" banners in-session are the LOCAL git-flow opt-in hook, not a server rule). With `permissions: contents: write`, the Actions token pushes the link-bump commit; if `main` is ever protected later, the push step fails LOUD (binaries still ship) telling the operator to bump by hand or whitelist the Actions user.
+
+**Verified (verify-by-reading / no-tests LAW):**
+- `python3 yaml.safe_load` → workflow YAML valid.
+- **`sed` dry-run on the REAL html files** with `TAG=donor-v0.3.8`: rewrote EXACTLY the 5 version tokens (2 in compute.html, 3 in legend.html) to `donor-v0.3.8` and changed no other line (diff = 2 lines + 3 lines).
+- Cargo/tag guard extraction confirmed against the live `version = "0.3.7"` line.
+- ⚠ The CI-on-tag runtime path (build → attach → push-to-main → Pages redeploy) is unverifiable until the next real donor tag is pushed — the same "unverifiable-until-CI" boundary as the binary cross-build itself. First real donor release validates end-to-end.
+
+**New donor-release flow:** bump `Cargo.toml`, commit/cascade, `git tag donor-vX.Y.Z && git push origin donor-vX.Y.Z` — CI builds binaries, bumps + commits the links, and redeploys the site. One tag, everything updates.
+
+**Docs (same commit, docs-before-push LAW):** `deploy/REDEPLOY-NOTES.md` 2026-07-06 donor-release entry, `docs/TODO.md` TU.22 task (Sponge verbatim), this FINALIZED entry.
+
+---
+
 ## 2026-07-06 — TU.21: dashboard admin Update buttons now self-restart — Gee can self-deploy without Sponge/OVH access — feature/dashboard-update-restart-auth-header
 
 ### Gee ask (verbatim per LAW #0)

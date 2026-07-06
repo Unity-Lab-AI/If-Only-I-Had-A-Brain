@@ -327,3 +327,20 @@ Verified: server JS + dashboard parse; `_getProfilingState` mock → cortexUploa
 **Deploy this fix:** it's IN `self-update.sh`, and the on-box script is the broken one, so bootstrap it once via a path that CAN restart — from a shell that is NOT under the unit's NoNewPrivileges: `sudo -u unity env UAL_KEEP_STATE=1 bash /opt/unity-brain/deploy/self-update.sh` (savestart, resumes weights; the sudo-from-shell restart works here). After that, the on-box script carries the header and **Gee's dashboard Update buttons self-restart with no box access**.
 
 **Verify after this lands:** click **Update & Savestart** on the dashboard → `self-update.log` shows `DONE — restart triggered via loopback POST /restart (X-UAL-User=self-update …)` and the service MainPID/uptime actually resets into the new code (no `403`, no FATAL). Box-side equivalent test: `curl -fsS -X POST -H "X-UAL-User: self-update" http://127.0.0.1:7525/restart` returns `{"status":"restarting …"}` (not `403 forbidden — admin endpoint requires Forgejo auth`).
+
+---
+
+## 2026-07-06 — donor release is now HANDS-OFF (site links auto-bump on the tag)
+
+**What changed:** `.forgejo/workflows/donor-release.yml` no longer just builds binaries — pushing a `donor-v*` tag now does the whole release. The manual "bump the 5 download-link spots in `html/compute.html` + `html/legend.html`" step (the one that kept getting forgotten) is gone.
+
+**New release flow (from any dev machine with push rights):**
+1. Bump `donor-app/Cargo.toml` `version = "X.Y.Z"` (this is the binary's self-reported version AND the `appVersion` the brain's TU.20.12 gate checks), commit, cascade to `main`.
+2. `git tag donor-vX.Y.Z && git push origin donor-vX.Y.Z` (or `fj release create` — the workflow is idempotent either way).
+3. CI does the rest: **(a)** a fail-early guard aborts if `Cargo.toml` version ≠ the tag (so a forgotten Cargo bump can't ship a mislabeled binary); **(b)** builds + attaches both binaries; **(c)** `sed`-bumps every `donor-vX.Y.Z` token in the two download pages to the new tag, commits to `main` as `unity-ci`, and pushes — which triggers `deploy.yml` to redeploy the public Pages site with the new links.
+
+**Prereqs (already satisfied):** `main` has NO server-side branch protection (`branch_protections` = `[]`), and the workflow declares `permissions: contents: write`, so the Actions token can push the link-bump commit. If a future change protects `main`, whitelist the Actions user or the push step fails LOUD (binaries still ship; the log tells you to bump links by hand).
+
+**Deliberately NOT auto-bumped:** `DREAM_MIN_DONOR_VERSION` in `server/brain-server.js` (the brain's *minimum compatible* donor version). That's a compatibility decision tied to protocol changes, not every release — raise it by hand only when a donor-side protocol change makes older binaries genuinely incompatible.
+
+**Verify after the next real donor tag:** the Actions run shows the guard passing, both uploads, then `Pushed link bump to main …`; `main` gets a `site(donor): bump download links -> donor-vX.Y.Z [auto donor-release]` commit; the live download pages (`…/html/compute.html`, `…/html/legend.html`) point at the new tag. Dry-run proof at authoring time: the `sed` rewrote exactly the 5 version tokens (2 in compute.html, 3 in legend.html) and nothing else.
