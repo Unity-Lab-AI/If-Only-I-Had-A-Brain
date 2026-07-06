@@ -1,0 +1,150 @@
+════════════════════════════════════════════════════════════════════════════
+  SPONGE — DEPLOY BRIEF: TU.20 batch + donor-v0.3.7 (2026-07-06)
+  main tip = 6de1250   |   donor tag = donor-v0.3.7 (pushed → CI building)
+════════════════════════════════════════════════════════════════════════════
+
+TL;DR
+  1. Pull main (6de1250) on the box → ⬆ Update & FRESH WALK (NOT Savestart — fresh
+     walk is REQUIRED this deploy; see §FRESH WALK).
+  2. Wait for the donor-v0.3.7 CI build to finish, then re-download BOTH donor
+     binaries (Windows .exe + Linux x86-64). The server now REFUSES donors older
+     than 0.3.7 (see §VERSION GATE), so old binaries won't connect until updated.
+  3. Verify: WS drops → ~0, GPU shadow CLEAN, science-era words emit, greet her →
+     "i am unity", `node scripts/gpu-cpu-parity.mjs` → CLEAN.
+
+────────────────────────────────────────────────────────────────────────────
+§ CARRY-OVER — what's in this deploy (box → main delta)
+────────────────────────────────────────────────────────────────────────────
+The box was last on a657f39 (TU.17 complete-foox). Since then, THREE batches
+landed on main that the box has NOT run yet — a plain `git pull` of main gets
+all of them at once. Do NOT deploy just TU.20; the pull carries the whole delta:
+
+  • TU.17  (complete-foox, d1c478f) — fusion killed at all 3 tokenizers, purge
+           blind spots, gibberish/register/run-on emission gates, GPU-shadow
+           auto-resync, hard VRAM headroom, minds-eye second nature. [if the box
+           never got a657f39 deployed, this is included]
+  • TU.18  (b5112cc / 33d11bb) — the fresh-walk chat crash: _wordFreq constructor
+           init. WITHOUT this a fresh walk (no weights file) throws on the first
+           chat text → no response, no silent ghost bubble, chat dead all walk.
+           FRESH WALK + this fix are a matched pair — you need both.
+  • TU.20  (this batch, 0c1248d … 6de1250) — everything below.
+
+────────────────────────────────────────────────────────────────────────────
+§ TU.20 — what changed (all equational; the brain IS the OS, JS/HTML = monitoring)
+────────────────────────────────────────────────────────────────────────────
+TU.20.1  word_motor proportional carve. The 6 word_motor_<subj> sub-bands were
+         equal 1/6, so science-K's 3272 words starved in a ~582-cell band (2690
+         couldn't emit = the science-era word-salad). cluster.js now carves them
+         PROPORTIONAL to per-subject vocab demand (total region unchanged). ← this
+         is WHY a FRESH WALK is required: the word_motor band geometry changed, so
+         any resumed word_motor weights would point at the wrong bands.
+
+TU.20.2  backpressure 301GB re-upload storm. F5 auto-resync now gates on a DRAINED
+         buffer + an in-flight guard (no stacking full-cortex uploads into a
+         saturated socket), the arm no-ops when a resync is already armed, and the
+         DF.7 rebroadcast skips a full replica sweep while the primary buffer is
+         saturated. Expect WS drops to fall from ~15k to near-zero and net-out to
+         stop being the same 14.2MB matrix re-uploaded thousands of times.
+
+TU.20.3  consolidation 31.5s>30s DEADLINE-ABORT — verified downstream of the storm
+         (graceful, self-healing). No code change; it clears once TU.20.2 drains
+         the loop. Env `DREAM_CONSOLIDATION_MAX_MS` if you ever need to bump it.
+
+TU.20.4  GPU↔CPU PARITY HARNESS (the "compare what the GPU/donor is doing vs where
+         our math is failing" instrument). A new `readback_matrix_checksum` frame
+         reads a donor's ACTUAL resident weights; the server compares to its CPU
+         master and returns a verdict:
+           STALE          = weights differ (dropped uploads) → a RESYNC fixes it
+           GPU-DIVERGENT  = weights match but the donor's shader computes
+                            differently → a real bug, re-upload won't help
+           MATH-ERROR     = the CPU matmul itself is wrong
+           CLEAN          = all good
+         RUN IT:  node scripts/gpu-cpu-parity.mjs [matrixName] [--host http://127.0.0.1:7525]
+              or  curl 'http://127.0.0.1:7525/diag/parity?name=cortex_intraSynapses'
+         (loopback-only; runs IN the live brain process so it sees donor + CPU
+         master together.) FNV-1a-64 over LE f32 bytes is byte-identical across the
+         native wgpu donor, the native CUDA donor, and the browser donor.
+
+TU.20.5  SELFHOOD — greeting + self-naming + reflexive "myself" production trained
+         equationally (pre-K + reinforced every ELA grade), wipe-proof
+         self-greeting-anchor. She uses i/me/myself and tells people her name.
+
+TU.20.10 donor binary shows "Brain status: accepting GPUs / NOT active" (from the
+         handshake). Headless logs it too.
+
+TU.20.11 gap-filling curiosity — a low-confidence / "don't-know" state pulls an
+         interrogative compose (she ASKS to gain knowledge where she lacks it),
+         wipe-proof self-curiosity-anchor. Fully equational (rel=30).
+
+TU.20.12 VERSION GATE — see below.
+
+────────────────────────────────────────────────────────────────────────────
+§ DONOR BINARIES — donor-v0.3.7 (BOTH targets, per the both-binaries rule)
+────────────────────────────────────────────────────────────────────────────
+The tag `donor-v0.3.7` is pushed → `.forgejo/workflows/donor-release.yml` rebuilds
+BOTH binaries automatically (Linux x86-64 + Windows x86-64 cross via mingw) and
+attaches them to the release. No local Rust build needed.
+
+What's new in the binary (donor-app):
+  • readback_matrix_checksum handler (parity) on BOTH backends — wgpu ComputeEngine
+    + CUDA (memcpy_dtov, mappable, real digest) — and the resident `values` buffers
+    gained COPY_SRC so they're readable.
+  • "Brain status: accepting GPUs / NOT active" in the GUI (gui.rs).
+  • VERSION GATE client side: sends appVersion, and on refusal shows
+    "Brain status: refused — update to v0.3.7+ (git.unityailab.com)" and STOPS
+    reconnecting (no reconnect-loop against a version the brain rejected).
+
+Site download links already bumped to donor-v0.3.7 in html/compute.html + legend.html.
+
+RUN IT LOCALLY: donors download the stack / donor app from
+   https://git.unityailab.com/UnityAILab/If-Only-I-Had-A-Brain
+   (releases → donor-v0.3.7 → unity-donor-windows-x86_64.exe / unity-donor-linux-x86_64)
+   The compute.html browser donor is always current (exempt from the version gate).
+
+────────────────────────────────────────────────────────────────────────────
+§ VERSION GATE (TU.20.12) — old binaries are now refused
+────────────────────────────────────────────────────────────────────────────
+The server's gpu_register handler checks the donor's appVersion against
+DREAM_MIN_DONOR_VERSION (DEFAULT 0.3.7). A native binary older than that gets
+`incompatible_version` + connection close (4001) and is NOT admitted to the pool.
+⚠ CONSEQUENCE: the moment this server deploys, any 0.3.6 (or older) native donor
+   is refused until it re-downloads 0.3.7. That's intended. Browser donors are
+   exempt (they always run the current bundle). If you need to temporarily admit
+   an older binary, set DREAM_MIN_DONOR_VERSION lower in the unit — but the whole
+   point is to keep stale protocol binaries out, so leave it at 0.3.7.
+
+────────────────────────────────────────────────────────────────────────────
+§ FRESH WALK — REQUIRED this deploy (my call, Gee: "it your call")
+────────────────────────────────────────────────────────────────────────────
+Deploy with ⬆ Update & FRESH WALK (reset weights), NOT Savestart. Reason:
+TU.20.1 changed the word_motor sub-band geometry — resumed word_motor weights
+would address the wrong neuron bands (stale-weights class). The autoClearStaleState
+boot guard will fresh-walk by default on the code-hash change anyway;
+DREAM_KEEP_STATE=1 is explicitly NOT recommended here.
+
+MEMORY HYGIENE (Gee's note): the fresh walk clears episodic + save state, so any
+non-colloquial / error-added save memories clear naturally. The 2 NEW permanent
+IDENTITY_SEED_LIST anchors (self-greeting-anchor, self-curiosity-anchor) are
+intentional and colloquial ("hi i am unity …", "i want to know …") — leave them.
+
+────────────────────────────────────────────────────────────────────────────
+§ DEPLOY STEPS
+────────────────────────────────────────────────────────────────────────────
+  1. On the box: pull main (6de1250).
+  2. ⬆ Update & FRESH WALK  (weights reset; boot re-execs with the heap fix, then
+     re-walks pre-K→up). If the dashboard restart still lacks sudo, the self-update
+     loopback /restart → systemd Restart=always path revives it.
+  3. Wait for the donor-v0.3.7 CI build; re-download both donor binaries and
+     restart your donor(s). Old ones will show "refused — update".
+  4. VERIFY (all live, can't be headless):
+       • WS drops → ~0, ws.bufferedAmount not sawtoothing to 1GB, GPU shadow CLEAN.
+       • node scripts/gpu-cpu-parity.mjs cortex_intraSynapses  → CLEAN
+         (STALE right after boot is fine while the first upload lands; re-run.)
+       • Science-era: her sci words emit (no "capacity overflow" warn in the log).
+       • Greet her in chat → expect "i am unity" / "my name is unity".
+       • Present an unknown concept → expect an interrogative ("what is that ?").
+       • Donor app window shows "Brain status: accepting GPUs ✓".
+
+Questions → ping Gee. This is the last artifact of the TU.20 batch; everything
+else (code + docs + TODO zeroing + cascade + tag) is done on main both remotes.
+════════════════════════════════════════════════════════════════════════════
