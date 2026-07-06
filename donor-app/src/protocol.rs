@@ -299,6 +299,54 @@ pub struct ReadbackAck {
     pub counts: Vec<u32>,
 }
 
+// ─── GPU↔CPU parity (TU.19-D) ──────────────────────────────────────
+//
+// The server needs to attribute a "GPU shadow DIRTY" flag to a concrete cause:
+// stale resident weights (dropped uploads) vs a wrong GPU compute vs wrong CPU
+// math. This request reads back the donor's ACTUAL resident sparse-matrix weight
+// buffer, and the donor replies with a cheap digest (checksum over all nnz values
+// + a handful of sample (index,value) pairs) instead of the full multi-MB array —
+// so the server can compare against a digest of its CPU master with a tiny frame.
+
+/// Read back a resident sparse matrix's weight digest (checksum + samples).
+#[derive(Debug, Clone, Deserialize)]
+pub struct ReadbackMatrixChecksum {
+    #[serde(rename = "reqId")]
+    pub req_id: u32,
+    /// Sparse-matrix name as registered on the donor (e.g. "cortex_intraSynapses").
+    pub name: String,
+    /// How many evenly-spaced sample values to return alongside the checksum
+    /// (0 = checksum only). Bounded server-side; donor clamps to a small cap.
+    #[serde(rename = "sampleCount", default)]
+    pub sample_count: u32,
+}
+
+/// One sampled resident weight (flat nnz index → value) for parity spot-checks.
+#[derive(Debug, Clone, Serialize)]
+pub struct MatrixSample {
+    pub idx: u32,
+    pub val: f32,
+}
+
+/// Reply to `readback_matrix_checksum`. `found=false` when the donor holds no
+/// resident matrix by that name (so the server can distinguish "not uploaded"
+/// from "uploaded but diverged").
+#[derive(Debug, Clone, Serialize)]
+pub struct ReadbackMatrixChecksumAck {
+    #[serde(rename = "type")]
+    pub msg_type: &'static str, // "readback_matrix_checksum_ack"
+    #[serde(rename = "reqId")]
+    pub req_id: u32,
+    pub name: String,
+    pub found: bool,
+    /// Number of stored non-zero values (CSR nnz) resident on the GPU.
+    pub nnz: u32,
+    /// FNV-1a 64-bit checksum over the resident values buffer (bit-exact f32 bytes),
+    /// returned as a decimal string so it survives JSON's f64 number range intact.
+    pub checksum: String,
+    pub samples: Vec<MatrixSample>,
+}
+
 /// Tagged dispatch over the JSON messages a donor receives. Unknown types are ignored
 /// (forward-compat, matching the browser donor).
 #[derive(Debug, Clone, Deserialize)]
@@ -318,6 +366,8 @@ pub enum ServerMessage {
     ClearSpikeRegion(ClearSpikeRegion),
     #[serde(rename = "readback_letter_buckets")]
     ReadbackLetterBuckets(ReadbackLetterBuckets),
+    #[serde(rename = "readback_matrix_checksum")]
+    ReadbackMatrixChecksum(ReadbackMatrixChecksum),
     #[serde(other)]
     Other,
 }

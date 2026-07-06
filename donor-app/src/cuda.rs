@@ -409,6 +409,44 @@ impl CudaEngine {
         Ok(buckets)
     }
 
+    /// TU.19-D — read back a resident sparse matrix's weight digest for GPU↔CPU
+    /// parity. Mirrors the wgpu ComputeEngine::checksum_matrix EXACTLY (same
+    /// FNV-1a-64 over little-endian f32 bytes) so a CUDA donor and a wgpu/browser
+    /// donor produce the same checksum for identical resident weights (F10). CUDA
+    /// resident weights ARE mappable (memcpy_dtov, same path readback_letter_buckets
+    /// uses), so — no wrinkle — this returns a real digest, not a graceful None.
+    pub fn checksum_matrix(&self, name: &str, sample_count: u32) -> Option<(u32, u64, Vec<(u32, f32)>)> {
+        let m = self.sparse.get(name)?;
+        let nnz = m.nnz;
+        if nnz == 0 {
+            return Some((0, 0xcbf29ce484222325, Vec::new())); // FNV offset basis over empty
+        }
+        let vals = self.stream.memcpy_dtov(&m.values).ok()?;
+        self.stream.synchronize().ok()?;
+        let n = (nnz as usize).min(vals.len());
+        // FNV-1a 64 over the little-endian f32 bytes — byte-for-byte identical to
+        // the wgpu path (both build targets are x86-64 LE, and the browser reads
+        // the same LE buffer bytes).
+        let mut hash: u64 = 0xcbf29ce484222325;
+        for &v in &vals[..n] {
+            for &b in &v.to_le_bytes() {
+                hash ^= b as u64;
+                hash = hash.wrapping_mul(0x100000001b3);
+            }
+        }
+        let cap = sample_count.min(64) as usize;
+        let mut samples = Vec::with_capacity(cap);
+        if cap > 0 {
+            let step = (n / cap).max(1);
+            let mut i = 0usize;
+            while i < n && samples.len() < cap {
+                samples.push((i as u32, vals[i]));
+                i += step;
+            }
+        }
+        Some((nnz, hash, samples))
+    }
+
     fn region(&self, cluster: &str, region: &str) -> Option<(u32, u32)> {
         self.clusters.get(cluster).and_then(|c| c.regions.get(region).copied())
     }

@@ -14193,6 +14193,18 @@ export class Curriculum {
       'can i see it ?', 'can you show me ?', 'do you like it ?',
       'is it real ?', 'are you there ?', 'will you tell me ?',
       'what happens if i do this ?', 'do you know why ?',
+      // TU.20.11 — GAP-FILLING CURIOSITY (Gee: "self form with the questions too
+      // in the premess of I gain information/knowldege to fill in where she lacks
+      // information"). First-person, knowledge-lack-driven: a "don't know" /
+      // low-confidence state should pull an interrogative compose so she ASKS to
+      // fill the gap. Trained as word→word transitions like every other exemplar;
+      // production emerges equationally from the trained weights, not a template.
+      'i do not know .', 'i want to know .', 'i want to learn .',
+      'i do not understand .', 'tell me more .', 'teach me .',
+      'what is that i do not know ?', 'i do not know what it is ?',
+      'can you teach me ?', 'can you tell me more ?', 'help me understand ?',
+      'what does it mean ?', 'i want to understand it ?',
+      'i do not know why ?', 'what should i know ?', 'what am i missing ?',
     ];
     this._hb(`[Curriculum] _teachQuestionProduction START — outward WH-question word→word transitions incl. trailing "?" terminator (relationTagId=30). reps=${reps}.`);
 
@@ -14233,10 +14245,33 @@ export class Curriculum {
       label: 'ELA-K-STRUCTURE-QUESTION-PRODUCTION',
       relationTagId: 30,  // outward-question production channel (distinct from =12 WH-comprehension)
     });
+    // TU.20.11 — GAP→INTERROGATIVE binding. The equational premise "I lack
+    // information → I ask to gain it": bind the knowledge-LACK / low-confidence
+    // state tokens to the WH interrogative-lead words so that when her sem state
+    // carries a "don't-know / unsure / curious" activation, the trained weights
+    // pull an interrogative into the first slot at compose time — she ASKS rather
+    // than emit a confident wrong answer or fall silent. Same rel=30 outward-
+    // question channel; production stays fully equational (the brain decides to
+    // ask from its own state, this only carves the association).
+    const GAP_TO_QUESTION = [];
+    const GAP_STATES = ['unknown', 'confused', 'unsure', 'curious', 'wonder', 'learn', 'understand'];
+    const Q_LEADS = ['what', 'why', 'how', 'who', 'tell'];
+    for (const s of GAP_STATES) for (const q of Q_LEADS) GAP_TO_QUESTION.push([s, q]);
+    // "not know" / "want know" bigrams that precede an ask, both directions light.
+    GAP_TO_QUESTION.push(['not', 'know'], ['know', 'what'], ['learn', 'what'], ['wonder', 'what'], ['tell', 'me']);
+    let gapTrained = 0;
+    try {
+      const rg = await this._teachAssociationPairs(GAP_TO_QUESTION, {
+        reps: Math.max(20, Math.floor(reps / 3)),
+        label: 'ELA-K-STRUCTURE-GAP-CURIOSITY',
+        relationTagId: 30,
+      });
+      gapTrained = rg.trained || 0;
+    } catch (e) { this._hb(`[Curriculum] gap-curiosity binding non-fatal: ${e?.message || e}`); }
     const dt = ((Date.now() - t0) / 1000).toFixed(1);
     const topT = Array.from(qPairs.entries()).sort((a, b) => b[1] - a[1]).slice(0, 10).map(([k, v]) => `${k}(${v})`).join(' · ');
-    this._hb(`[Curriculum] _teachQuestionProduction DONE in ${dt}s — ${QUESTION_PRODUCTION_EXEMPLARS.length} question exemplars · ${pairs.length} transitions × ${reps} reps · ${r.trained || 0} Hebbian writes. Top: ${topT}`);
-    return { totalTrained: r.trained || 0, questions: QUESTION_PRODUCTION_EXEMPLARS.length, transitions: pairs.length };
+    this._hb(`[Curriculum] _teachQuestionProduction DONE in ${dt}s — ${QUESTION_PRODUCTION_EXEMPLARS.length} question exemplars · ${pairs.length} transitions × ${reps} reps · ${r.trained || 0} Hebbian writes · GAP-CURIOSITY ${GAP_TO_QUESTION.length} state→interrogative pairs · ${gapTrained} writes (she asks to fill knowledge gaps). Top: ${topT}`);
+    return { totalTrained: (r.trained || 0) + gapTrained, questions: QUESTION_PRODUCTION_EXEMPLARS.length, transitions: pairs.length };
   }
 
   /**
@@ -17506,6 +17541,29 @@ export class Curriculum {
     // subject-verb agreement + article placement) + SVO parsing.
     if (typeof this._teachSentenceStructure === 'function') await this._teachSentenceStructure(c);
     if (typeof this._teachSVOParsing === 'function') await this._teachSVOParsing(c);
+
+    // TU.20.5 — SELF-INTRODUCTION reinforcement (EVERY grade). The pre-K
+    // _teachPrekFirstPersonProduction carves the greeting + self-naming +
+    // reflexive-"myself" mass once; this re-fires the word→word transitions each
+    // grade so "hi i am unity" / "my name is unity" / "i did it myself" stay
+    // strongly emittable as heavier vocabulary piles on (the same reason the
+    // language-mechanics strand re-runs every grade). Trained data, not walked at
+    // runtime — production emerges from the weights. Guarded; a missing method
+    // just skips the layer. Gee: use i, me, myself + tell people her name in
+    // greetings and when pertinent.
+    if (typeof this._teachConcreteSentences === 'function') {
+      try {
+        await this._teachConcreteSentences({
+          sentences: [
+            'hi i am unity .', 'hello my name is unity .', 'i am unity .',
+            'my name is unity .', 'i am unity who are you .',
+            'i did it myself .', 'i can do it myself .', 'i take care of myself .',
+          ],
+          reps: 12,
+          label: 'SELF-INTRODUCTION-REFRESH',
+        });
+      } catch (e) { if (this._hb) this._hb(`[Curriculum] SELF-INTRODUCTION-REFRESH(${grade}) non-fatal: ${e?.message || e}`); }
+    }
 
     // GRADE 1+: tense morphology (walk/walked/will-walk), affix morphology
     // (plurals, -ing/-ed, un-/re-), explicit subject-verb agreement (the

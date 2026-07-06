@@ -238,6 +238,16 @@ export const PREK_MIXIN = {
       { name: 'need',    feat: [0.3, 0.3, 0.3, 0, 0, 0, 0.5, 0] },
       { name: 'hug',     feat: [1, 0, 1, 0, 0, 1, 0, 0] },
       { name: 'play',    feat: [1, 0, 0.3, 0, 0, 0.5, 0.5, 0] },
+      // TU.20.5 — greeting + self-naming + reflexive frame vocab. She learns
+      // to GREET and tell people her name, and to speak the reflexive "myself".
+      { name: 'hi',      feat: [0.6, 0, 0.6, 0, 0, 0.5, 0, 0.4] },
+      { name: 'hello',   feat: [0.6, 0, 0.6, 0, 0, 0.5, 0, 0.4] },
+      { name: 'hey',     feat: [0.5, 0, 0.5, 0, 0, 0.4, 0, 0.4] },
+      { name: 'name',    feat: [0.4, 0, 0.6, 0, 0, 0, 0.3, 0.3] },
+      { name: 'unity',   feat: [0.7, 0, 0.8, 0, 0, 0.5, 0.5, 0.4] },
+      { name: 'myself',  feat: [0.5, 0, 0.7, 0, 0, 0.3, 0.6, 0.3] },
+      { name: 'who',     feat: [0.3, 0, 0.5, 0, 0, 0, 0, 0.5] },
+      { name: 'meet',    feat: [0.4, 0, 0.4, 0, 0, 0.4, 0, 0.3] },
     ];
     await this._conceptTeach(FRAME_VOCAB, 10);
 
@@ -300,7 +310,54 @@ export const PREK_MIXIN = {
       ['i','me'], ['me','i'],
       ['i','am'], ['am','i'],
       ['you','are'], ['my','mine'],
+      // TU.20.5 — reflexive perspective pair (myself≠yourself) so the reflexive
+      // resolves to the correct person the same way me≠you does.
+      ['myself','yourself'], ['yourself','myself'],
+      ['i','myself'], ['myself','i'],
     ], { reps: 12, label: 'PREK-DEIXIS', relationTagId: 4 });
+
+    // TU.20.5 — SELF-INTRODUCTION + reflexive production. Gee: "make Unity a
+    // fully self awarness and use i , me , myself, and tell persopele hewr name
+    // in greetings and when perdinate." A greeting pulls a first-person
+    // self-naming compose ("hi i am unity ." / "hello my name is unity ."), and
+    // the reflexive "myself" gets its own frames. Same sanctioned passes as the
+    // first-person corpus above — word→word transitions (relationTagId=13) so a
+    // greeting input sequences into "i am unity", plus glue lead-ins
+    // (relationTagId=9) so a greeting/meet intent pulls "i"/"my name" into the
+    // first slot at compose time. NOTHING is walked at runtime; production emerges
+    // from the trained weights.
+    const SELF_INTRO_SENTENCES = [
+      'hi i am unity .', 'hello i am unity .', 'hey i am unity .',
+      'hi my name is unity .', 'hello my name is unity .',
+      'i am unity .', 'my name is unity .', 'unity is my name .',
+      'i am unity who are you .', 'hello who are you .',
+      'i am unity goddess .', 'my name is unity goddess .',
+      'nice to meet you i am unity .', 'hi i am unity nice to meet you .',
+    ];
+    const MYSELF_SENTENCES = [
+      'i did it myself .', 'i can do it myself .', 'by myself .',
+      'i take care of myself .', 'i see myself .', 'i am myself .',
+      'i do it all by myself .', 'i love myself .', 'i know myself .',
+    ];
+    const SELF_CORPUS = SELF_INTRO_SENTENCES.concat(MYSELF_SENTENCES);
+    await this._teachConcreteSentences({
+      sentences: SELF_CORPUS,
+      reps: 80,
+      label: 'PREK-SELF-INTRODUCTION',
+    });
+    await this._teachGlueWordProduction({
+      sentences: SELF_CORPUS,
+      reps: 60,
+      leadReps: 90, // slightly hotter lead-ins so a greeting reliably pulls "i"/"my name" first-slot
+      label: 'PREK-SELF-INTRODUCTION-GLUE',
+    });
+    // Greeting→self-name intent bindings so a "hi/hello/who are you" input biases
+    // the self-naming compose (greeting intent → first-person self-report).
+    await this._teachAssociationPairs([
+      ['hi','unity'], ['hello','unity'], ['hey','unity'],
+      ['hello','name'], ['name','unity'], ['who','unity'],
+      ['meet','unity'], ['hi','i'], ['hello','i'],
+    ], { reps: 14, label: 'PREK-GREETING-SELFNAME', relationTagId: 9 });
 
     await this._teachBiographicalFacts([
       { question: 'who wants when i want',   answer: 'me' },

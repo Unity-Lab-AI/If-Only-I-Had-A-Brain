@@ -3584,13 +3584,33 @@ class ServerBrain {
             const confirmedForMs = this._allClustersConfirmedAt ? (Date.now() - this._allClustersConfirmedAt) : 0;
             const warmReady = warmupBatches >= SPARSE_UPLOAD_WARMUP_BATCHES;
             const timeReady = confirmedForMs >= SPARSE_UPLOAD_TIME_FALLBACK_MS;
+            // TU.20.2 (ISSUE-B) — gate the cortex re-upload on a DRAINED primary
+            // buffer + an in-flight guard. The F5 auto-resync clears
+            // _cortexGpuInitStarted on a backpressure drop; without this gate the
+            // next tick re-uploads the 14 cross-projections + 14.2MB intra-synapses
+            // straight INTO the still-saturated socket → deeper backpressure → more
+            // drops → re-arm → the 301GB re-upload storm. Defer (not skip) until the
+            // buffer drains; this block re-evaluates every tick.
+            const _priWs = this._gpuClient;
+            const _RESYNC_BUF_GATE = 64 * 1024 * 1024; // well below the 500MB drop threshold
+            const _bufSaturated = !!(_priWs && _priWs.readyState === 1 && _priWs.bufferedAmount > _RESYNC_BUF_GATE);
+            if (_bufSaturated && this.cortexCluster && this.cortexCluster._gpuProxy
+                && !this._cortexGpuInitStarted && !this._cortexUploadInFlight && (warmReady || timeReady)) {
+              if (!this._resyncDeferLogMs || (Date.now() - this._resyncDeferLogMs) > 10000) {
+                this._resyncDeferLogMs = Date.now();
+                console.warn(`[Brain] TU.20.2 — cortex re-upload DEFERRED: primary ws.bufferedAmount=${(_priWs.bufferedAmount / 1024 / 1024).toFixed(1)}MB > ${_RESYNC_BUF_GATE / 1024 / 1024}MB gate; waiting for drain (avoids the resync-into-saturated-buffer storm).`);
+              }
+            }
             if (
               this.cortexCluster &&
               this.cortexCluster._gpuProxy &&
               !this._cortexGpuInitStarted &&
+              !this._cortexUploadInFlight &&
+              !_bufSaturated &&
               (warmReady || timeReady)
             ) {
               this._cortexGpuInitStarted = true;
+              this._cortexUploadInFlight = true;
               console.log(`[Brain] Sparse language-cortex upload starting — trigger=${warmReady ? `compute_batch warm (${warmupBatches} round-trips)` : `TIME FALLBACK (${(confirmedForMs / 1000).toFixed(0)}s since clusters confirmed, only ${warmupBatches} batches — teach-heavy deploy never warmed the main loop)`}`);
               this.cortexCluster.initGpu().then(async (gpuReady) => {
                 // T17.7 Phase C.1 — once the 14 cross-projections + the
@@ -3636,6 +3656,10 @@ class ServerBrain {
                     }
                   }
                 } catch { /* never let surfacing crash the success path */ }
+                // TU.20.2 — release the in-flight guard so a later legitimate
+                // resync (new primary / real drift) can re-upload; the buffer-drain
+                // gate above still prevents stacking into a saturated socket.
+                this._cortexUploadInFlight = false;
               }).catch((err) => {
                 // #32 — DON'T fail silently. Before this, a thrown initGpu
                 // (e.g. a donor whose WebGPU binding ceiling can't hold a
@@ -3664,6 +3688,9 @@ class ServerBrain {
                 // forever on _waitForGpuReady; it limps on CPU until a
                 // subsequent upload attempt succeeds.
                 if (this.cortexCluster) this.cortexCluster._cortexFullyReady = false;
+                // TU.20.2 — release the in-flight guard on failure too, so a
+                // retry can arm once the buffer drains (the gate re-checks).
+                this._cortexUploadInFlight = false;
               });
             }
             // T14.23 — BATCHED COMPUTE PATH.
@@ -5469,6 +5496,35 @@ const httpServer = http.createServer((req, res) => {
     return;
   }
 
+  // TU.19-D — GPU↔CPU parity harness. Runs the 3-mode verdict on a named matrix
+  // (default cortex_intraSynapses) so a "shadow DIRTY" flag can be attributed to a
+  // concrete cause: STALE (dropped uploads) vs GPU-DIVERGENT (shader/precision) vs
+  // MATH-ERROR (CPU matmul) vs CLEAN. Loopback-only (diagnostic, reads live state).
+  // `?name=<matrix>&samples=<n>` optional. This is the "secondary script" instrument
+  // Gee asked for, served in-process so it sees the live donor + CPU master together.
+  if (req.url && req.url.startsWith('/diag/parity') && req.method === 'GET') {
+    if (!requireLoopback(req, res, '/diag/parity')) return;
+    // Async work runs in an IIFE — the outer request handler is a sync arrow.
+    (async () => {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      try {
+        const u = new URL(req.url, 'http://localhost');
+        const name = u.searchParams.get('name') || 'cortex_intraSynapses';
+        const samples = Math.min(64, Math.max(0, parseInt(u.searchParams.get('samples') || '8', 10) || 0));
+        if (!brain || typeof brain.parityCheckMatrix !== 'function') {
+          res.end(JSON.stringify({ ok: false, error: 'parity harness not available on this brain instance' }));
+          return;
+        }
+        const verdict = await brain.parityCheckMatrix(name, samples);
+        console.log(`[Brain] /diag/parity ${name} → ${verdict.verdict}${verdict.detail ? ' — ' + verdict.detail : ''}`);
+        res.end(JSON.stringify({ ok: true, ...verdict }));
+      } catch (err) {
+        try { res.end(JSON.stringify({ ok: false, error: String((err && err.message) || err) })); } catch { /* already ended */ }
+      }
+    })();
+    return;
+  }
+
   // Graceful shutdown endpoint = a TRUE HALT (dashboard "Stop Brain" / stop.bat).
   // #112.10 — exits with code 42 (NOT 0). The systemd unit sets
   // `RestartPreventExitStatus=42`, so a deliberate Stop stays DOWN instead of
@@ -7009,7 +7065,7 @@ wss.on('connection', (ws, req) => {
       // public/donor-route connection faking these could poison brain state.
       // gpu_register is exempt (it's how a donor JOINS the pool). Chat policy
       // (who may send 'text') is a separate operator decision — not gated here.
-      const DONOR_PROTOCOL = ['compute_result', 'compute_batch_result', 'gpu_init_ack', 'sparse_upload_ack', 'sparse_propagate_ack', 'sparse_hebbian_ack', 'rebind_sparse_ack', 'readback_letter_buckets_ack', 'device_lost'];
+      const DONOR_PROTOCOL = ['compute_result', 'compute_batch_result', 'gpu_init_ack', 'sparse_upload_ack', 'sparse_propagate_ack', 'sparse_hebbian_ack', 'rebind_sparse_ack', 'readback_letter_buckets_ack', 'readback_matrix_checksum_ack', 'device_lost'];
       if (DONOR_PROTOCOL.indexOf(msg.type) !== -1 && !(brain._gpuClients && brain._gpuClients.has(ws))) {
         if (!brain._donorSpoofWarnAt || (Date.now() - brain._donorSpoofWarnAt) > 5000) {
           brain._donorSpoofWarnAt = Date.now();
@@ -7462,7 +7518,8 @@ wss.on('connection', (ws, req) => {
         case 'sparse_propagate_ack':
         case 'sparse_hebbian_ack':
         case 'rebind_sparse_ack':
-        case 'readback_letter_buckets_ack': {
+        case 'readback_letter_buckets_ack':
+        case 'readback_matrix_checksum_ack': { // TU.19-D parity digest
           if (!brain._gpuSparsePending || !msg.reqId) break;
           const pending = brain._gpuSparsePending.get(msg.reqId);
           if (!pending) break;

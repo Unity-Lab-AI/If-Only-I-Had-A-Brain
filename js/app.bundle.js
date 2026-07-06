@@ -53988,8 +53988,11 @@ var CLUSTER_EMIT_MIXIN = {
           if (!this._wordBucketOverflowWarned) this._wordBucketOverflowWarned = {};
           if (!this._wordBucketOverflowWarned[subj]) {
             this._wordBucketOverflowWarned[subj] = true;
+            const bandCells = subjEnd - subjStart;
+            const fits = bucketSize > 0 ? Math.floor(bandCells / bucketSize) : 0;
+            const cantEmit = Math.max(0, wordsList.length - b);
             try {
-              console.warn(`[emit] word_motor_${subj} capacity overflow \u2014 ${wordsList.length} words exceed frozen band (cellSize=${bucketSize}). Words past index ${b} cannot emit; raise word_motor fraction or lower DREAM_WORD_MOTOR_VOCAB_CAP.`);
+              console.warn(`[emit] word_motor_${subj} capacity overflow \u2014 band holds ${fits} words (${bandCells} cells / ${bucketSize} per word) but subject has ${wordsList.length}; ${cantEmit} words past index ${b} CANNOT emit. Remedy: grow the language cortex (deploy the V8-heap fix / add donor GPUs \u2192 bigger 6% word_motor region) so the band exceeds the vocab; TU.20.1 proportional carve already gave heavy subjects a larger slice.`);
             } catch {
             }
           }
@@ -55292,7 +55295,20 @@ var NeuronCluster = class {
       const semBand = Math.floor((semEnd - semStart) / 6);
       const wmStart = Math.floor(s * 0.94);
       const wmEnd = s;
-      const wmBand = Math.floor((wmEnd - wmStart) / 6);
+      const WM_DEMAND = [["ela", 1.25], ["math", 0.75], ["sci", 1.5], ["soc", 1.2], ["art", 0.65], ["life", 0.65]];
+      const wmSpan = wmEnd - wmStart;
+      const wmWeightSum = WM_DEMAND.reduce((a, [, w]) => a + w, 0);
+      const wmBands = {};
+      {
+        let acc = wmStart;
+        for (let i = 0; i < WM_DEMAND.length; i++) {
+          const [subj, w] = WM_DEMAND[i];
+          const start = Math.floor(acc);
+          acc += wmSpan * (w / wmWeightSum);
+          const end = i === WM_DEMAND.length - 1 ? wmEnd : Math.floor(acc);
+          wmBands[subj] = { start, end };
+        }
+      }
       this.regions = {
         auditory: { start: 0, end: Math.floor(s * 0.083) },
         visual: { start: Math.floor(s * 0.083), end: Math.floor(s * 0.25) },
@@ -55313,12 +55329,12 @@ var NeuronCluster = class {
         fineType: { start: Math.floor(s * 0.875), end: Math.floor(s * 0.917) },
         motor: { start: Math.floor(s * 0.917), end: Math.floor(s * 0.94) },
         word_motor: { start: wmStart, end: wmEnd },
-        word_motor_ela: { start: wmStart + 0 * wmBand, end: wmStart + 1 * wmBand },
-        word_motor_math: { start: wmStart + 1 * wmBand, end: wmStart + 2 * wmBand },
-        word_motor_sci: { start: wmStart + 2 * wmBand, end: wmStart + 3 * wmBand },
-        word_motor_soc: { start: wmStart + 3 * wmBand, end: wmStart + 4 * wmBand },
-        word_motor_art: { start: wmStart + 4 * wmBand, end: wmStart + 5 * wmBand },
-        word_motor_life: { start: wmStart + 5 * wmBand, end: wmEnd }
+        word_motor_ela: wmBands.ela,
+        word_motor_math: wmBands.math,
+        word_motor_sci: wmBands.sci,
+        word_motor_soc: wmBands.soc,
+        word_motor_art: wmBands.art,
+        word_motor_life: wmBands.life
       };
       if (_kLayersEligible && this.regions && (this.microcolumns || this.lamination || this.hubsEnabled)) {
         const _allRegions = this.regions;
@@ -67607,7 +67623,17 @@ var PREK_MIXIN = {
       { name: "like", feat: [0.8, 0, 0.5, 0, 0, 0.5, 0, 0.3] },
       { name: "need", feat: [0.3, 0.3, 0.3, 0, 0, 0, 0.5, 0] },
       { name: "hug", feat: [1, 0, 1, 0, 0, 1, 0, 0] },
-      { name: "play", feat: [1, 0, 0.3, 0, 0, 0.5, 0.5, 0] }
+      { name: "play", feat: [1, 0, 0.3, 0, 0, 0.5, 0.5, 0] },
+      // TU.20.5 — greeting + self-naming + reflexive frame vocab. She learns
+      // to GREET and tell people her name, and to speak the reflexive "myself".
+      { name: "hi", feat: [0.6, 0, 0.6, 0, 0, 0.5, 0, 0.4] },
+      { name: "hello", feat: [0.6, 0, 0.6, 0, 0, 0.5, 0, 0.4] },
+      { name: "hey", feat: [0.5, 0, 0.5, 0, 0, 0.4, 0, 0.4] },
+      { name: "name", feat: [0.4, 0, 0.6, 0, 0, 0, 0.3, 0.3] },
+      { name: "unity", feat: [0.7, 0, 0.8, 0, 0, 0.5, 0.5, 0.4] },
+      { name: "myself", feat: [0.5, 0, 0.7, 0, 0, 0.3, 0.6, 0.3] },
+      { name: "who", feat: [0.3, 0, 0.5, 0, 0, 0, 0, 0.5] },
+      { name: "meet", feat: [0.4, 0, 0.4, 0, 0, 0.4, 0, 0.3] }
     ];
     await this._conceptTeach(FRAME_VOCAB, 10);
     if (this.dictionary && typeof this.dictionary.learnWord === "function") {
@@ -67686,8 +67712,65 @@ var PREK_MIXIN = {
       ["i", "am"],
       ["am", "i"],
       ["you", "are"],
-      ["my", "mine"]
+      ["my", "mine"],
+      // TU.20.5 — reflexive perspective pair (myself≠yourself) so the reflexive
+      // resolves to the correct person the same way me≠you does.
+      ["myself", "yourself"],
+      ["yourself", "myself"],
+      ["i", "myself"],
+      ["myself", "i"]
     ], { reps: 12, label: "PREK-DEIXIS", relationTagId: 4 });
+    const SELF_INTRO_SENTENCES = [
+      "hi i am unity .",
+      "hello i am unity .",
+      "hey i am unity .",
+      "hi my name is unity .",
+      "hello my name is unity .",
+      "i am unity .",
+      "my name is unity .",
+      "unity is my name .",
+      "i am unity who are you .",
+      "hello who are you .",
+      "i am unity goddess .",
+      "my name is unity goddess .",
+      "nice to meet you i am unity .",
+      "hi i am unity nice to meet you ."
+    ];
+    const MYSELF_SENTENCES = [
+      "i did it myself .",
+      "i can do it myself .",
+      "by myself .",
+      "i take care of myself .",
+      "i see myself .",
+      "i am myself .",
+      "i do it all by myself .",
+      "i love myself .",
+      "i know myself ."
+    ];
+    const SELF_CORPUS = SELF_INTRO_SENTENCES.concat(MYSELF_SENTENCES);
+    await this._teachConcreteSentences({
+      sentences: SELF_CORPUS,
+      reps: 80,
+      label: "PREK-SELF-INTRODUCTION"
+    });
+    await this._teachGlueWordProduction({
+      sentences: SELF_CORPUS,
+      reps: 60,
+      leadReps: 90,
+      // slightly hotter lead-ins so a greeting reliably pulls "i"/"my name" first-slot
+      label: "PREK-SELF-INTRODUCTION-GLUE"
+    });
+    await this._teachAssociationPairs([
+      ["hi", "unity"],
+      ["hello", "unity"],
+      ["hey", "unity"],
+      ["hello", "name"],
+      ["name", "unity"],
+      ["who", "unity"],
+      ["meet", "unity"],
+      ["hi", "i"],
+      ["hello", "i"]
+    ], { reps: 14, label: "PREK-GREETING-SELFNAME", relationTagId: 9 });
     await this._teachBiographicalFacts([
       { question: "who wants when i want", answer: "me" },
       { question: "who is hungry when i am hungry", answer: "me" },
@@ -103123,7 +103206,29 @@ var Curriculum = class _Curriculum {
       "are you there ?",
       "will you tell me ?",
       "what happens if i do this ?",
-      "do you know why ?"
+      "do you know why ?",
+      // TU.20.11 — GAP-FILLING CURIOSITY (Gee: "self form with the questions too
+      // in the premess of I gain information/knowldege to fill in where she lacks
+      // information"). First-person, knowledge-lack-driven: a "don't know" /
+      // low-confidence state should pull an interrogative compose so she ASKS to
+      // fill the gap. Trained as word→word transitions like every other exemplar;
+      // production emerges equationally from the trained weights, not a template.
+      "i do not know .",
+      "i want to know .",
+      "i want to learn .",
+      "i do not understand .",
+      "tell me more .",
+      "teach me .",
+      "what is that i do not know ?",
+      "i do not know what it is ?",
+      "can you teach me ?",
+      "can you tell me more ?",
+      "help me understand ?",
+      "what does it mean ?",
+      "i want to understand it ?",
+      "i do not know why ?",
+      "what should i know ?",
+      "what am i missing ?"
     ];
     this._hb(`[Curriculum] _teachQuestionProduction START \u2014 outward WH-question word\u2192word transitions incl. trailing "?" terminator (relationTagId=30). reps=${reps}.`);
     if (this.dictionary && typeof this.dictionary.learnWord === "function") {
@@ -103157,10 +103262,26 @@ var Curriculum = class _Curriculum {
       relationTagId: 30
       // outward-question production channel (distinct from =12 WH-comprehension)
     });
+    const GAP_TO_QUESTION = [];
+    const GAP_STATES = ["unknown", "confused", "unsure", "curious", "wonder", "learn", "understand"];
+    const Q_LEADS = ["what", "why", "how", "who", "tell"];
+    for (const s of GAP_STATES) for (const q of Q_LEADS) GAP_TO_QUESTION.push([s, q]);
+    GAP_TO_QUESTION.push(["not", "know"], ["know", "what"], ["learn", "what"], ["wonder", "what"], ["tell", "me"]);
+    let gapTrained = 0;
+    try {
+      const rg = await this._teachAssociationPairs(GAP_TO_QUESTION, {
+        reps: Math.max(20, Math.floor(reps / 3)),
+        label: "ELA-K-STRUCTURE-GAP-CURIOSITY",
+        relationTagId: 30
+      });
+      gapTrained = rg.trained || 0;
+    } catch (e) {
+      this._hb(`[Curriculum] gap-curiosity binding non-fatal: ${e?.message || e}`);
+    }
     const dt = ((Date.now() - t0) / 1e3).toFixed(1);
     const topT = Array.from(qPairs.entries()).sort((a, b) => b[1] - a[1]).slice(0, 10).map(([k, v]) => `${k}(${v})`).join(" \xB7 ");
-    this._hb(`[Curriculum] _teachQuestionProduction DONE in ${dt}s \u2014 ${QUESTION_PRODUCTION_EXEMPLARS.length} question exemplars \xB7 ${pairs.length} transitions \xD7 ${reps} reps \xB7 ${r.trained || 0} Hebbian writes. Top: ${topT}`);
-    return { totalTrained: r.trained || 0, questions: QUESTION_PRODUCTION_EXEMPLARS.length, transitions: pairs.length };
+    this._hb(`[Curriculum] _teachQuestionProduction DONE in ${dt}s \u2014 ${QUESTION_PRODUCTION_EXEMPLARS.length} question exemplars \xB7 ${pairs.length} transitions \xD7 ${reps} reps \xB7 ${r.trained || 0} Hebbian writes \xB7 GAP-CURIOSITY ${GAP_TO_QUESTION.length} state\u2192interrogative pairs \xB7 ${gapTrained} writes (she asks to fill knowledge gaps). Top: ${topT}`);
+    return { totalTrained: (r.trained || 0) + gapTrained, questions: QUESTION_PRODUCTION_EXEMPLARS.length, transitions: pairs.length };
   }
   /**
    * Persona VOICE → matrix training. Without this, the persona corpus lives
@@ -106277,6 +106398,26 @@ var Curriculum = class _Curriculum {
     const atLeast = (refIdx) => gi < 0 || refIdx < 0 || gi >= refIdx;
     if (typeof this._teachSentenceStructure === "function") await this._teachSentenceStructure(c);
     if (typeof this._teachSVOParsing === "function") await this._teachSVOParsing(c);
+    if (typeof this._teachConcreteSentences === "function") {
+      try {
+        await this._teachConcreteSentences({
+          sentences: [
+            "hi i am unity .",
+            "hello my name is unity .",
+            "i am unity .",
+            "my name is unity .",
+            "i am unity who are you .",
+            "i did it myself .",
+            "i can do it myself .",
+            "i take care of myself ."
+          ],
+          reps: 12,
+          label: "SELF-INTRODUCTION-REFRESH"
+        });
+      } catch (e) {
+        if (this._hb) this._hb(`[Curriculum] SELF-INTRODUCTION-REFRESH(${grade}) non-fatal: ${e?.message || e}`);
+      }
+    }
     if (atLeast(g1)) {
       if (typeof this._teachTenseMorphology === "function") await this._teachTenseMorphology(opts.tense || {});
       if (typeof this._teachMorphology === "function") await this._teachMorphology(opts.morph || {});
