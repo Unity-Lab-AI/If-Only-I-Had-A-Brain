@@ -729,7 +729,30 @@ export class NeuronCluster {
       const semBand = Math.floor((semEnd - semStart) / 6);
       const wmStart = Math.floor(s * 0.940);
       const wmEnd = s;
-      const wmBand = Math.floor((wmEnd - wmStart) / 6);
+      // TU.20.1 — word_motor sub-bands carved PROPORTIONAL to each subject's
+      // real vocabulary demand instead of an equal 1/6 split. Science / social
+      // / ELA carry thousands of words; art / life / math far fewer. Equal
+      // splits starved the heavy subjects (sci-K = 3272 words in a 1/6 band
+      // that only held ~582 → 2690 words physically unable to emit = the
+      // science-era word-salad). Weights sum to 6.0 so the average band equals
+      // the old 1/6 and the total region is UNCHANGED (no migration of the
+      // neighbouring fineType/motor regions). Contiguous tiling; the last band
+      // ends exactly at wmEnd. Frozen at carve → bucket geometry stays
+      // vocab-growth-invariant (SPEAK.1 law).
+      const WM_DEMAND = [['ela', 1.25], ['math', 0.75], ['sci', 1.5], ['soc', 1.2], ['art', 0.65], ['life', 0.65]];
+      const wmSpan = wmEnd - wmStart;
+      const wmWeightSum = WM_DEMAND.reduce((a, [, w]) => a + w, 0);
+      const wmBands = {};
+      {
+        let acc = wmStart;
+        for (let i = 0; i < WM_DEMAND.length; i++) {
+          const [subj, w] = WM_DEMAND[i];
+          const start = Math.floor(acc);
+          acc += wmSpan * (w / wmWeightSum);
+          const end = (i === WM_DEMAND.length - 1) ? wmEnd : Math.floor(acc);
+          wmBands[subj] = { start, end };
+        }
+      }
       this.regions = {
         auditory:   { start: 0,                          end: Math.floor(s * 0.083) },
         visual:     { start: Math.floor(s * 0.083),      end: Math.floor(s * 0.250) },
@@ -747,13 +770,13 @@ export class NeuronCluster {
         sem_life:   { start: semStart + 5 * semBand,     end: semEnd },
         fineType:   { start: Math.floor(s * 0.875),      end: Math.floor(s * 0.917) },
         motor:      { start: Math.floor(s * 0.917),      end: Math.floor(s * 0.940) },
-        word_motor:      { start: wmStart,                end: wmEnd },
-        word_motor_ela:  { start: wmStart + 0 * wmBand,   end: wmStart + 1 * wmBand },
-        word_motor_math: { start: wmStart + 1 * wmBand,   end: wmStart + 2 * wmBand },
-        word_motor_sci:  { start: wmStart + 2 * wmBand,   end: wmStart + 3 * wmBand },
-        word_motor_soc:  { start: wmStart + 3 * wmBand,   end: wmStart + 4 * wmBand },
-        word_motor_art:  { start: wmStart + 4 * wmBand,   end: wmStart + 5 * wmBand },
-        word_motor_life: { start: wmStart + 5 * wmBand,   end: wmEnd },
+        word_motor:      { start: wmStart, end: wmEnd },
+        word_motor_ela:  wmBands.ela,
+        word_motor_math: wmBands.math,
+        word_motor_sci:  wmBands.sci,
+        word_motor_soc:  wmBands.soc,
+        word_motor_art:  wmBands.art,
+        word_motor_life: wmBands.life,
       };
 
       // Region-boundary respect for microcolumns/six-layer lamination/hub neurons. The

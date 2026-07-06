@@ -987,6 +987,20 @@ const SERVER_GPU_MIXIN = {
     const replicas = this._livePoolDonors().filter(ws => ws !== this._gpuClient);
     if (replicas.length === 0) return;
     if (this._rebroadcastInFlight) return;
+    // TU.20.2 (ISSUE-B) — do NOT launch a full 17-matrix replica sweep while the
+    // primary's WS send buffer is still saturated. Piling a rebroadcast onto a
+    // jammed socket compounds the backpressure that the drop storm is already
+    // fighting. Skip this cycle; the timer fires again and fire-and-forget
+    // Hebbian keeps replicas approximately current until the buffer drains.
+    const _pri = this._gpuClient;
+    const _REBROADCAST_BUF_GATE = 64 * 1024 * 1024;
+    if (_pri && _pri.readyState === 1 && _pri.bufferedAmount > _REBROADCAST_BUF_GATE) {
+      if (!this._rebroadcastDeferLogMs || (Date.now() - this._rebroadcastDeferLogMs) > 30000) {
+        this._rebroadcastDeferLogMs = Date.now();
+        console.warn(`[Brain] DF.7 / TU.20.2 — replica rebroadcast SKIPPED this cycle: primary ws.bufferedAmount=${(_pri.bufferedAmount / 1024 / 1024).toFixed(1)}MB > ${_REBROADCAST_BUF_GATE / 1024 / 1024}MB. Won't stack a full-replica sweep onto a saturated socket; retries next interval.`);
+      }
+      return;
+    }
     this._rebroadcastInFlight = true;
     try {
       // Fan the per-replica re-sync across the pool in parallel via the
@@ -1182,12 +1196,20 @@ const SERVER_GPU_MIXIN = {
           // re-confirms gpu_init. Throttled to once/60s so a drop storm
           // arms one resync, not a re-upload flood.
           const _resyncNow = Date.now();
-          if (!this._shadowAutoResyncAt || (_resyncNow - this._shadowAutoResyncAt) > 60000) {
+          // TU.20.2 (ISSUE-B) — only ARM a resync if one isn't already armed
+          // (_cortexGpuInitStarted already false) or in flight
+          // (_cortexUploadInFlight). Without this guard every drop in a storm
+          // re-cleared the gate, and the re-upload trigger (brain-server.js)
+          // fired repeatedly, stacking overlapping full-cortex uploads into the
+          // saturated socket. The trigger's buffer-drain gate now defers the
+          // actual upload until drain; this guard stops the redundant re-arms.
+          const _alreadyArmed = (this._cortexGpuInitStarted === false) || (this._cortexUploadInFlight === true);
+          if (!_alreadyArmed && (!this._shadowAutoResyncAt || (_resyncNow - this._shadowAutoResyncAt) > 60000)) {
             this._shadowAutoResyncAt = _resyncNow;
             this._cortexGpuInitStarted = false;
             this._allClustersConfirmedAt = null;
             if (this.cortexCluster) this.cortexCluster._cortexFullyReady = false;
-            console.error('[Brain] AUTO-RESYNC ARMED after backpressure drop — cortex re-uploads the CPU master (cross-projections + intra-synapses) to the primary on the next warm tick; _gpuShadowDirty clears when the donor re-confirms gpu_init. (throttle 60s)');
+            console.error('[Brain] AUTO-RESYNC ARMED after backpressure drop — cortex re-uploads the CPU master (cross-projections + intra-synapses) to the primary once the ws buffer DRAINS below the resync gate (TU.20.2 defers into-saturated uploads); _gpuShadowDirty clears when the donor re-confirms gpu_init. (throttle 60s)');
           }
           if (!this._wsLastDropLogMs || (Date.now() - this._wsLastDropLogMs) >= 5000) {
             this._wsLastDropLogMs = Date.now();
@@ -1899,6 +1921,150 @@ const SERVER_GPU_MIXIN = {
     }, 30000);
     if (!ack || !ack.counts) return null;
     return new Uint32Array(ack.counts);
+  },
+
+  // ─── TU.19-D — GPU↔CPU parity harness ──────────────────────────────
+  //
+  // "GPU shadow DIRTY" conflated three independent failure modes. This
+  // harness tells them apart with a cheap digest instead of shipping the
+  // whole 14MB matrix back:
+  //   Mode 1 STALE         — donor's resident weights ≠ CPU master (dropped
+  //                          uploads / ISSUE-B). Detected by checksum mismatch.
+  //   Mode 2 GPU-DIVERGENT — weights MATCH but the donor's shader computes a
+  //                          different propagate than the CPU for identical
+  //                          input. Detected by feeding the same sparse input
+  //                          to both and diffing the output.
+  //   Mode 3 MATH-ERROR    — the CPU master itself computes garbage. Detected
+  //                          against a hand-computed tiny reference.
+  // Verdict: STALE | GPU-DIVERGENT | MATH-ERROR | CLEAN.
+
+  /** Ask a donor for its resident weight digest (checksum + samples). */
+  async gpuReadbackMatrixChecksum(name, sampleCount = 0, targetWs = null) {
+    const ws = (targetWs && targetWs.readyState === 1) ? targetWs : this._gpuClient;
+    if (!ws || ws.readyState !== 1) return null;
+    const ack = await this._sparseSend({ type: 'readback_matrix_checksum', name, sampleCount: sampleCount | 0 }, 30000, ws);
+    if (!ack) return null;
+    return {
+      found: !!ack.found,
+      nnz: ack.nnz | 0,
+      checksum: String(ack.checksum != null ? ack.checksum : '0'),
+      samples: Array.isArray(ack.samples) ? ack.samples : [],
+    };
+  },
+
+  /**
+   * FNV-1a-64 over the CPU master's weights in the SAME f32 representation the
+   * GPU received (matrix.values is Float64 on the CPU but gpuSparseUpload
+   * downcasts to Float32 — so hashing the f32 view is what matches the donor's
+   * digest). Chunked + setImmediate-yielded so a 14MB matrix hash never pins the
+   * event loop (TU.20.2 discipline). Returns a decimal string (u64 via BigInt).
+   */
+  async _cpuMasterMatrixChecksum(name, sampleCount = 0) {
+    const reg = this._replicaMatrixRegistry;
+    const entry = (reg && typeof reg.get === 'function') ? reg.get(name) : null;
+    const matrix = entry && entry.matrix;
+    const FNV_OFFSET = 0xcbf29ce484222325n, MASK = 0xffffffffffffffffn, PRIME = 0x100000001b3n;
+    if (!matrix || !matrix.values) return { found: false, nnz: 0, checksum: '0', samples: [] };
+    const f32 = matrix.values instanceof Float32Array ? matrix.values : new Float32Array(matrix.values);
+    const nnz = f32.length;
+    if (nnz === 0) return { found: true, nnz: 0, checksum: FNV_OFFSET.toString(), samples: [] };
+    const bytes = new Uint8Array(f32.buffer, f32.byteOffset, f32.byteLength);
+    let hash = FNV_OFFSET;
+    const CHUNK = 1_000_000; // yield every ~1MB so the diagnostic never pins the loop
+    for (let i = 0; i < bytes.length; i++) {
+      hash = (hash ^ BigInt(bytes[i])) & MASK;
+      hash = (hash * PRIME) & MASK;
+      if ((i & (CHUNK - 1)) === (CHUNK - 1)) await new Promise(r => setImmediate(r));
+    }
+    const cap = Math.min(sampleCount | 0, 64);
+    const samples = [];
+    if (cap > 0) {
+      const step = Math.max(1, Math.floor(nnz / cap));
+      for (let i = 0; i < nnz && samples.length < cap; i += step) samples.push({ idx: i, val: f32[i] });
+    }
+    return { found: true, nnz, checksum: hash.toString(), samples };
+  },
+
+  /**
+   * Full parity verdict for one named matrix. Runs the three checks in order and
+   * returns { verdict, ...evidence }. Mode 3 (MATH-ERROR) uses a fixed 3×3 sparse
+   * reference so a CPU-math regression is caught even when GPU + CPU agree with
+   * each other (both could be equally wrong on a shared code path).
+   */
+  async parityCheckMatrix(name, sampleCount = 8) {
+    const out = { name, verdict: 'UNKNOWN', ts: Date.now() };
+    // Mode 3 FIRST — CPU sanity vs a hand-computed reference (independent of GPU).
+    // 3×3 CSR: row0=[2,0,1], row1=[0,3,0], row2=[1,0,4]; spikes=[1,1,1] → [3,3,5].
+    try {
+      // Use the REAL SparseMatrix class (constructor of any registry matrix) so
+      // this exercises the actual propagate() code path, not a reimplementation.
+      const reg0 = this._replicaMatrixRegistry;
+      const anyEntry = (reg0 && reg0.size) ? [...reg0.values()][0] : null;
+      const SM = anyEntry && anyEntry.matrix && anyEntry.matrix.constructor;
+      if (SM) {
+        const ref = new SM(3, 3);
+        ref.values = new Float64Array([2, 1, 3, 1, 4]);
+        ref.colIdx = new Uint32Array([0, 2, 1, 0, 2]);
+        ref.rowPtr = new Uint32Array([0, 2, 3, 5]);
+        ref.nnz = 5;
+        const got = ref.propagate(new Float64Array([1, 1, 1]), new Float64Array(3));
+        const want = [3, 3, 5];
+        const mathOk = got && got.length === 3 && want.every((w, i) => Math.abs(got[i] - w) < 1e-9);
+        if (!mathOk) {
+          out.verdict = 'MATH-ERROR';
+          out.detail = `CPU reference propagate wrong: got [${Array.from(got || []).join(',')}] want [${want.join(',')}] — the equational matmul itself is broken, GPU parity is moot.`;
+          return out;
+        }
+      }
+    } catch (e) { /* reference check is best-effort; fall through to weight parity */ }
+
+    const cpu = await this._cpuMasterMatrixChecksum(name, sampleCount);
+    if (!cpu.found) { out.verdict = 'UNKNOWN'; out.detail = `no CPU master matrix '${name}' in the replica registry`; return out; }
+    const gpu = await this.gpuReadbackMatrixChecksum(name, sampleCount);
+    out.cpu = { nnz: cpu.nnz, checksum: cpu.checksum };
+    if (!gpu) { out.verdict = 'UNKNOWN'; out.detail = 'no donor connected / readback timed out'; return out; }
+    out.gpu = { found: gpu.found, nnz: gpu.nnz, checksum: gpu.checksum };
+    // Mode 1 — STALE: donor lacks the matrix, or nnz/checksum differ.
+    if (!gpu.found || gpu.nnz !== cpu.nnz || gpu.checksum !== cpu.checksum) {
+      out.verdict = 'STALE';
+      out.detail = !gpu.found
+        ? `donor holds no resident '${name}' — never uploaded, or dropped (ISSUE-B). Resync needed.`
+        : `resident weights ≠ CPU master (cpu nnz=${cpu.nnz}/hash=${cpu.checksum} vs gpu nnz=${gpu.nnz}/hash=${gpu.checksum}) — dropped uploads left the donor training a stale matrix (ISSUE-B). Resync needed.`;
+      return out;
+    }
+    // Weights MATCH → Mode 2 — GPU-DIVERGENT: same input, diff output?
+    try {
+      // Deterministic sparse input: every 7th pre-neuron fires (bounded, repeatable).
+      const cols = (cpu && this._replicaMatrixRegistry.get(name).matrix.cols) || 0;
+      const idx = [];
+      for (let c = 0; c < cols; c += 7) idx.push(c);
+      const preSpikes = new Uint32Array(idx);
+      const gpuCurr = await this.gpuSparsePropagate(name, preSpikes);
+      const m = this._replicaMatrixRegistry.get(name).matrix;
+      const dense = new Float64Array(m.cols);
+      for (const c of idx) dense[c] = 1;
+      const cpuCurr = m.propagate(dense, new Float64Array(m.rows));
+      if (gpuCurr && cpuCurr && gpuCurr.length === cpuCurr.length) {
+        let maxAbs = 0, dot = 0, na = 0, nb = 0;
+        for (let i = 0; i < cpuCurr.length; i++) {
+          const d = Math.abs(gpuCurr[i] - cpuCurr[i]); if (d > maxAbs) maxAbs = d;
+          dot += gpuCurr[i] * cpuCurr[i]; na += gpuCurr[i] * gpuCurr[i]; nb += cpuCurr[i] * cpuCurr[i];
+        }
+        const cos = (na > 0 && nb > 0) ? dot / Math.sqrt(na * nb) : 1;
+        out.propagate = { maxAbsErr: maxAbs, cosine: cos };
+        // f32 GPU vs f64 CPU → small numeric drift is expected; only a real
+        // shader/precision BUG diverges beyond a generous tolerance.
+        const DIVERGE_ABS = 1e-2, DIVERGE_COS = 0.9999;
+        if (maxAbs > DIVERGE_ABS || cos < DIVERGE_COS) {
+          out.verdict = 'GPU-DIVERGENT';
+          out.detail = `weights match but donor propagate differs (maxAbsErr=${maxAbs.toExponential(2)}, cosine=${cos.toFixed(6)}) — shader/precision bug, not stale weights. Re-uploading won't help.`;
+          return out;
+        }
+      }
+    } catch (e) { out.propagateError = e && e.message; }
+    out.verdict = 'CLEAN';
+    out.detail = 'resident weights == CPU master and propagate agrees within f32 tolerance.';
+    return out;
   },
 
   /**

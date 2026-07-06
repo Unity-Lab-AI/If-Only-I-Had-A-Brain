@@ -1418,7 +1418,13 @@ export class GPUCompute {
       usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
     });
 
-    const valuesBuf = makeStorage(vals32.byteLength);
+    // TU.19-D — values gets COPY_SRC so the GPU↔CPU parity harness can read the
+    // ACTUAL resident weights back for a checksum (mirrors the native donor's
+    // values_buf COPY_SRC). colIdx/rowPtr stay storage-only.
+    const valuesBuf = device.createBuffer({
+      size: vals32.byteLength,
+      usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC,
+    });
     const colIdxBuf = makeStorage(cols32.byteLength);
     const rowPtrBuf = makeStorage(rows32.byteLength);
 
@@ -1514,7 +1520,8 @@ export class GPUCompute {
     });
     const entry = {
       rows, cols, nnz,
-      values: makeStorage(nnz * 4),
+      // TU.19-D — values gets COPY_SRC for the parity checksum readback (chunked path).
+      values: device.createBuffer({ size: nnz * 4, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC }),
       colIdx: makeStorage(nnz * 4),
       rowPtr: makeStorage(rowPtr32.byteLength),
       _pending: true,
@@ -1657,6 +1664,55 @@ export class GPUCompute {
     readback.destroy();
     paramsBuf.destroy();
     return out;
+  }
+
+  /**
+   * TU.19-D — read back a resident sparse matrix's weight digest for the GPU↔CPU
+   * parity harness. Copies the resident `values` buffer to a MAP_READ staging
+   * buffer, maps it, and computes FNV-1a-64 over the bit-exact little-endian f32
+   * bytes — byte-for-byte identical to the native donor (compute.rs/cuda.rs) so a
+   * browser donor and a native donor produce the same checksum for the same
+   * resident weights (F10). Returns { found, nnz, checksum (decimal string),
+   * samples:[{idx,val}] } or { found:false } when the matrix isn't resident.
+   * `checksum` is a decimal string (BigInt) so JSON never loses precision.
+   */
+  async checksumSparseMatrix(name, sampleCount = 0) {
+    if (!this._available) return { found: false, nnz: 0, checksum: '0', samples: [] };
+    const entry = this._sparseMatrices[name];
+    if (!entry) return { found: false, nnz: 0, checksum: '0', samples: [] };
+    const device = this._device;
+    const nnz = entry.nnz | 0;
+    const FNV_OFFSET = 0xcbf29ce484222325n;
+    if (nnz === 0) return { found: true, nnz: 0, checksum: FNV_OFFSET.toString(), samples: [] };
+    const byteLen = nnz * 4;
+    const staging = device.createBuffer({ size: byteLen, usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST });
+    const encoder = device.createCommandEncoder();
+    encoder.copyBufferToBuffer(entry.values, 0, staging, 0, byteLen);
+    device.queue.submit([encoder.finish()]);
+    await staging.mapAsync(GPUMapMode.READ);
+    const mapped = staging.getMappedRange();
+    const bytes = new Uint8Array(mapped);
+    // FNV-1a 64 over the raw LE value bytes. 64-bit math in BigInt masked to u64.
+    const MASK = 0xffffffffffffffffn;
+    const PRIME = 0x100000001b3n;
+    let hash = FNV_OFFSET;
+    for (let i = 0; i < byteLen; i++) {
+      hash = (hash ^ BigInt(bytes[i])) & MASK;
+      hash = (hash * PRIME) & MASK;
+    }
+    // Evenly-spaced samples (flat nnz index → value), capped at 64.
+    const vals = new Float32Array(mapped);
+    const cap = Math.min(sampleCount | 0, 64);
+    const samples = [];
+    if (cap > 0) {
+      const step = Math.max(1, Math.floor(nnz / cap));
+      for (let i = 0; i < nnz && samples.length < cap; i += step) {
+        samples.push({ idx: i, val: vals[i] });
+      }
+    }
+    staging.unmap();
+    staging.destroy();
+    return { found: true, nnz, checksum: hash.toString(), samples };
   }
 
   /**

@@ -525,7 +525,8 @@ The `word_motor` argmax was the grade-9 word-salad root cause: `bucketSize` was 
 | Equation | Purpose | File |
 |----------|---------|------|
 | `cellsPerWord = max(1, ⌊bandSize / DREAM_WORD_MOTOR_VOCAB_CAP⌋)` (cap default 50000) | SPEAK.1 — FROZEN cells-per-word, computed once per subject, deterministic across boots. A word's physical band never moves as the dictionary grows. Single authority read by emit + teach + QA-write | `cluster/emit.js wordBucketCellSizeFor` |
-| `bStart = subjStart + b·cellsPerWord`, guard `bStart < subjEnd` | Frozen band start per bucket index `b`; capacity-overflow guard warns once and stops (no wrap-around remap) | `cluster/emit.js` |
+| `bStart = subjStart + b·cellsPerWord`, guard `bStart < subjEnd` | Frozen band start per bucket index `b`; capacity-overflow guard warns once with the exact deficit (words-that-cannot-emit + remedy) and stops (no wrap-around remap) | `cluster/emit.js` |
+| `‖word_motor_<subj>‖ = ⌊wmSpan · WM_DEMAND[subj] / ΣWM_DEMAND⌋`, contiguous tiling (ΣWM_DEMAND=6.0) | TU.20.1 — the 6 `word_motor` sub-bands are carved PROPORTIONAL to per-subject vocab demand instead of equal 1/6, so a heavy subject (sci = 3272 K-words, weight 1.5) gets a band sized to its vocab while a light one (art/life, 0.65) yields cells. Total region unchanged, last band ends exactly at `wmEnd`, frozen at carve (SPEAK.1 invariance holds) | `cluster.js` (region carve) |
 | `W_row ← W_row · (target / ‖W_row‖₂)` per word-cell after teach (target `DREAM_WORD_MOTOR_RENORM`, default 1.0) | SPEAK.2 — L2 renorm so emit argmax discriminates on input DIRECTION, not accumulated magnitude → thousands of basins stay separable | `curriculum/kindergarten.js _teachWordEmissionDirect` → `SparseMatrix.normalizeRows` |
 | `emit = coherenceCosine(best) < DREAM_CHAT_COHERENCE_FLOOR (0.10) ? leadingWord : sentence` | SPEAK.9 — reject-to-silence: a below-floor best-of-N winner degrades to her strongest single word instead of shipping salad (chat path only; gate/probe stay floor-free) | `cluster/emit.js` (best-of-N wrapper) + `language-cortex.js` |
 | `mean ×= gwBoostMul` only if `word ∉ recentContent`; `mean ×= 0.7` if `word ∈ recentContent` | SPEAK.10b — GW continuity boost never applies to a just-said content word, so a repeat can't net > 1 and lottery-win the next argmax (was `1.6·0.7 = 1.12 > 1`) | `cluster/emit.js emitWordDirect` |
@@ -2056,6 +2057,23 @@ Generation latency dropped 490ms → 133ms after candidate pool pre-filter + wor
 - Fires inside `_trainLifeStories(grade)` per experience, kindergarten→PhD (every `corpora/life/<grade>.json` memory)
 - Content words of the memory (non-glue, len ≥ 3, deduped) ↔ the memory's theme tokens, BOTH directions: `_teachAssociationPairs(groundPairs, { reps: 20, relationTagId: 34 })`, ≤ 2×N pairs per memory
 - Math: episodic-to-semantic grounding (Nelson 1986 script theory; Tulving episodic→semantic gradient) — a word that appears in a lived scene is Hebbian-bound to that scene's retrieval label, so sem(word) activation recalls the scene and scene recall re-activates its words; affect coloring rides the memory's own `_deriveMemoryEmotion` walk. Closes the "pot of words with no meaning" gap: vocabulary carries lived relational context, not just GloVe geometry + definitions
+
+**TU.20.5 — Self-introduction + reflexive production (2026-07-06)**
+- `_teachPrekFirstPersonProduction` (pre-K) + `_teachLanguageMechanics` FOUNDATION (every grade) train a greeting→self-naming + reflexive-"myself" corpus through the EXISTING passes — word→word transitions (`relationTagId=13`), glue/first-slot lead-ins (`relationTagId=9`, greeting/meet intent → "i"/"my name" first slot), and deixis contrast (`relationTagId=4`, myself≠yourself / i↔myself)
+- Wipe-proof Tier-3 `self-greeting-anchor` in `IDENTITY_SEED_LIST` (injected every turn). No canned strings — a greeting input pulls a first-person self-naming compose from the trained weights (she says "i am unity" / "my name is unity" / "i did it myself")
+
+**TU.20.11 — Gap-filling curiosity: self-forms questions to gain knowledge (2026-07-06)**
+- Extends `_teachQuestionProduction` (`relationTagId=30` outward-question channel): first-person gap-curiosity exemplars ("i do not know", "i want to know", "what is that i do not know ?") PLUS a GAP→INTERROGATIVE binding — knowledge-lack/low-confidence state tokens (unknown/confused/unsure/curious/wonder/learn/understand) ↔ WH interrogative-leads (what/why/how/who/tell)
+- Math: the equational premise "I lack information → I ask to gain it" — when sem carries a low-confidence/"don't-know" activation, the trained rel=30 weights pull an interrogative into the first slot at compose time, so the brain ASKS from its own state rather than emit a confident-wrong answer or fall silent. Wipe-proof Tier-3 `self-curiosity-anchor`
+
+### GPU↔CPU parity digest (TU.19-D / TU.20.4)
+
+Attributes a "GPU shadow DIRTY" flag to a concrete cause instead of one conflated bit. The donor reports its ACTUAL resident weights via a cheap digest; the server compares against the CPU master and returns a verdict.
+
+| Equation | Purpose | File |
+|----------|---------|------|
+| `h₀ = 0xcbf29ce484222325`; `hᵢ₊₁ = (hᵢ ⊕ byteᵢ) · 0x100000001b3 mod 2⁶⁴` over the resident `values` buffer's LE f32 bytes | FNV-1a-64 digest of a matrix's resident weights — byte-identical across native-wgpu / native-CUDA / browser donors (all x86-64 LE + LE GPU buffers, F10) | donor `checksum_matrix` / `checksumSparseMatrix`; server `_cpuMasterMatrixChecksum` (hashes `Float32Array(matrix.values)` = the f32 that was uploaded, not the f64 CPU CSR) |
+| `verdict = MATH-ERROR if refPropagate([2,1,3,1,4]·[1,1,1]) ≠ [3,3,5]; else STALE if h_gpu ≠ h_cpu ∨ nnz differ; else GPU-DIVERGENT if maxAbsErr > 1e-2 ∨ cosine < 0.9999; else CLEAN` | `parityCheckMatrix` — MATH-ERROR (CPU matmul wrong) → STALE (dropped uploads) → GPU-DIVERGENT (shader/precision) → CLEAN. Same-input propagate diff feeds every 7th pre-neuron to both CPU `SparseMatrix.propagate` and donor `gpuSparsePropagate` | `server/brain-server/gpu.js`; `GET /diag/parity`, `scripts/gpu-cpu-parity.mjs` |
 
 ### Audit B.2 — two-axis novelty formula
 
