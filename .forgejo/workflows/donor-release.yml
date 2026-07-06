@@ -14,6 +14,19 @@
 #
 # Uses the Actions-provided token (secrets.GITHUB_TOKEN) against the Forgejo REST
 # API — no extra secrets beyond what the instance already injects.
+#
+# HANDS-OFF SITE SYNC: pushing a `donor-v*` tag now does EVERYTHING for a release —
+#   1. a fast fail-early guard verifies donor-app/Cargo.toml's version == the tag
+#      (the binary self-reports that version + sends it as the donor appVersion the
+#      brain's version gate checks, so a tag/Cargo mismatch would ship a mislabeled
+#      binary — we refuse before building instead of after),
+#   2. builds + attaches both binaries (below), then
+#   3. bumps the site download links (html/compute.html + html/legend.html) to the
+#      new tag and commits them to `main`, which triggers deploy.yml to redeploy the
+#      public Pages site. No manual link edit, no forgotten bump.
+# NOTE: it deliberately does NOT touch DREAM_MIN_DONOR_VERSION (the brain's minimum
+# COMPATIBLE donor version) — that's a compatibility decision per protocol change,
+# not "every release", so it stays a manual edit in server/brain-server.js.
 name: donor-release
 
 on:
@@ -29,15 +42,31 @@ on:
 jobs:
   build-and-release:
     runs-on: ubuntu-24.04
+    permissions:
+      contents: write
     env:
       TAG: ${{ github.event.inputs.tag || github.ref_name }}
       API: ${{ github.server_url }}/api/v1/repos/${{ github.repository }}
       TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      SERVER_URL: ${{ github.server_url }}
+      REPO: ${{ github.repository }}
     steps:
       - name: Checkout (at the tag)
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.inputs.tag || github.ref_name }}
+
+      - name: Guard — Cargo.toml version must match the tag
+        run: |
+          set -euo pipefail
+          # TAG is donor-vX.Y.Z; the version string (no prefix) is what Cargo.toml carries.
+          ver="${TAG#donor-v}"
+          cargo_ver="$(grep -m1 '^version' donor-app/Cargo.toml | sed -E 's/.*"([^"]+)".*/\1/')"
+          echo "tag version=${ver}  cargo version=${cargo_ver}"
+          if [ "$ver" != "$cargo_ver" ]; then
+            echo "::error::donor-app/Cargo.toml version (${cargo_ver}) != tag ${TAG} (expected ${ver}). The binary self-reports the Cargo version + sends it as the donor appVersion the brain's version gate checks — bump Cargo.toml to ${ver}, commit, and re-tag. Refusing to build a mislabeled binary."
+            exit 1
+          fi
 
       - name: Install build deps (mingw cross-linker + Linux GUI headers + jq)
         run: |
@@ -108,3 +137,30 @@ jobs:
           upload donor-app/dist-ci/unity-donor-linux-x86_64
           upload donor-app/dist-ci/unity-donor-windows-x86_64.exe
           echo "Done — assets published to ${TAG}."
+
+      - name: Bump site download links on main (auto — triggers Pages redeploy)
+        run: |
+          set -euo pipefail
+          # Move onto main (checkout above is detached at the tag) and rewrite every
+          # donor-vX.Y.Z token in the two download pages to this tag. The regex hits
+          # both the release-download hrefs AND the visible version label; it's a
+          # no-op if a human already bumped them in the release branch.
+          git fetch --depth 1 origin main
+          git checkout -B main origin/main
+          sed -i -E "s#donor-v[0-9]+\.[0-9]+\.[0-9]+#${TAG}#g" html/compute.html html/legend.html
+          if git diff --quiet -- html/compute.html html/legend.html; then
+            echo "Site links already at ${TAG} — nothing to commit."
+            exit 0
+          fi
+          git config user.name  "unity-ci"
+          git config user.email "ci@unityailab.com"
+          git add html/compute.html html/legend.html
+          git commit -m "site(donor): bump download links -> ${TAG} [auto donor-release]"
+          # Push over HTTPS with the Actions token. host = server_url minus scheme.
+          host="${SERVER_URL#https://}"; host="${host#http://}"
+          if git push "https://x-access-token:${TOKEN}@${host}/${REPO}.git" HEAD:main; then
+            echo "Pushed link bump to main — deploy.yml will redeploy the Pages site with ${TAG} links."
+          else
+            echo "::error::Built + attached the ${TAG} binaries, but pushing the site-link bump to main FAILED. Bump html/compute.html + html/legend.html to ${TAG} by hand (or check the Actions token's contents:write + main push rights)."
+            exit 1
+          fi
