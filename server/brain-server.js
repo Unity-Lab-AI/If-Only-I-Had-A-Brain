@@ -7228,6 +7228,41 @@ wss.on('connection', (ws, req) => {
           break;
 
         case 'gpu_register': {
+          // TU.20.12 — version-incompatibility gate. A native donor binary sends
+          // its `appVersion` (Cargo pkg version). If it's older than the minimum
+          // compatible build, REFUSE the connection with an explicit "incompatible"
+          // message instead of admitting a stale binary that speaks an out-of-date
+          // protocol. Browser donors (compute.html) omit appVersion — they always
+          // run the current bundle, so they're exempt. Floor is env-tunable
+          // (`DREAM_MIN_DONOR_VERSION`, default 0.3.7 = the parity-harness build);
+          // bump it whenever a donor-side protocol change ships.
+          const _donorVer = (msg.appVersion || '').toString().trim();
+          if (_donorVer) {
+            const _minVer = (process.env.DREAM_MIN_DONOR_VERSION || '0.3.7').trim();
+            const _cmp = (a, b) => {
+              const pa = a.split('.').map(n => parseInt(n, 10) || 0);
+              const pb = b.split('.').map(n => parseInt(n, 10) || 0);
+              for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+                const d = (pa[i] || 0) - (pb[i] || 0);
+                if (d !== 0) return d < 0 ? -1 : 1;
+              }
+              return 0;
+            };
+            if (_cmp(_donorVer, _minVer) < 0) {
+              try {
+                ws.send(JSON.stringify({
+                  type: 'incompatible_version',
+                  yourVersion: _donorVer,
+                  minVersion: _minVer,
+                  message: `Donor binary v${_donorVer} is incompatible — the brain requires v${_minVer} or newer. Download the current donor from git.unityailab.com and reconnect.`,
+                }));
+              } catch { /* best-effort notify */ }
+              console.warn(`[Brain] gpu_register REFUSED — donor binary v${_donorVer} < min v${_minVer} (incompatible). Told the donor to update; closing.`);
+              try { ws.close(4001, 'incompatible donor version'); } catch { /* already closing */ }
+              break;
+            }
+          }
+          client.donorAppVersion = _donorVer || 'browser';
           client.isGPU = true;
           // PA.4.3 multi-donor pool. Track every registered donor GPU. The
           // brain's weights live in the PRIMARY donor's VRAM and ALL dispatch
