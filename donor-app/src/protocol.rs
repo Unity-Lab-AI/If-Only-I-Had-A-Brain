@@ -54,6 +54,12 @@ pub struct GpuRegister {
     /// link capacity instead of an RTT proxy, so a low-bandwidth uplink (Starlink) isn't flooded.
     #[serde(rename = "linkDownMbps")]
     pub link_down_mbps: f64,
+    /// TU.20.12 — this donor binary's version (Cargo pkg version). The brain
+    /// refuses a binary older than its minimum-compatible build at register
+    /// (replies `incompatible_version` + closes) instead of admitting a stale
+    /// binary that speaks an out-of-date protocol. Compile-time constant.
+    #[serde(rename = "appVersion")]
+    pub app_version: String,
 }
 
 impl GpuRegister {
@@ -86,6 +92,7 @@ impl GpuRegister {
             utilization_pct,
             donated_mb,
             link_down_mbps,
+            app_version: env!("CARGO_PKG_VERSION").to_string(),
         }
     }
 }
@@ -347,11 +354,25 @@ pub struct ReadbackMatrixChecksumAck {
     pub samples: Vec<MatrixSample>,
 }
 
+/// TU.20.12 — the brain refused this binary as too old. Carries the version info
+/// so the donor can tell the user to update instead of silently reconnect-looping.
+#[derive(Debug, Clone, Deserialize)]
+pub struct IncompatibleVersion {
+    #[serde(rename = "yourVersion", default)]
+    pub your_version: String,
+    #[serde(rename = "minVersion", default)]
+    pub min_version: String,
+    #[serde(default)]
+    pub message: String,
+}
+
 /// Tagged dispatch over the JSON messages a donor receives. Unknown types are ignored
 /// (forward-compat, matching the browser donor).
 #[derive(Debug, Clone, Deserialize)]
 #[serde(tag = "type")]
 pub enum ServerMessage {
+    #[serde(rename = "incompatible_version")]
+    IncompatibleVersion(IncompatibleVersion),
     #[serde(rename = "gpu_init")]
     GpuInit(GpuInit),
     #[serde(rename = "compute_batch")]

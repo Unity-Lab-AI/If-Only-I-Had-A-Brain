@@ -320,6 +320,11 @@ impl DonorApp {
     /// a running host that can't connect ⇒ the brain is NOT active (down / not
     /// reachable); no host ⇒ nothing to report yet.
     fn brain_status(&self, pal: Pal, conn: bool, note: &str) -> (String, egui::Color32) {
+        // TU.20.12 — refused as an incompatible/out-of-date binary. Distinct from
+        // "can't reach the brain" — the brain IS up, it rejected this version.
+        if note.to_lowercase().contains("incompatible") {
+            return (format!("Brain status: refused — {note}"), pal.warn);
+        }
         if self.host.is_none() {
             return ("Brain status: — (press Start to connect)".to_string(), pal.text_dim);
         }
