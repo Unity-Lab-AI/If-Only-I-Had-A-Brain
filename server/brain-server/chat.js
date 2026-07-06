@@ -750,9 +750,12 @@ const SERVER_CHAT_MIXIN = {
   },
 
   _learnWords(text) {
-    // Simple word frequency tracking for server-side dictionary
-    if (!this._wordFreq) this._wordFreq = {};
-    const words = text.toLowerCase().replace(/[^a-z' -]/g, '').split(/\s+/);
+    // Simple word frequency tracking for server-side dictionary.
+    // Disallowed chars become SPACES (never deleted) — deleting them fused
+    // adjacent words across punctuation ("fuckery,you" → "fuckeryyou") and
+    // this frequency table recorded the fused counts. Same fix class as
+    // dictionary.js learnSentence.
+    const words = text.toLowerCase().replace(/[^a-z' -]/g, ' ').split(/\s+/);
     for (const w of words) {
       if (w.length >= 2) this._wordFreq[w] = (this._wordFreq[w] || 0) + 1;
     }
@@ -837,8 +840,16 @@ const SERVER_CHAT_MIXIN = {
   _imagineTick(now) {
     if (!this.mindSpace || typeof this.mindSpace.imagineFromState !== 'function') return;
     if (!this.cortexCluster || !this.cortexCluster.lastSpikes) return;
-    if (this._curriculumInProgress) return;   // never imagine mid-teach — don't perturb the walk
-    const IMAGINE_MIN_GAP_MS = 20000;          // her mind's-eye wanders at most ~every 20s
+    // SECOND-NATURE FIX — the old hard `return` during curriculum meant the
+    // deployed box (which is ALWAYS mid-walk) never imagined at all: her
+    // mind's-eye was dead for the entire K→PhD walk. Her imagination should
+    // be second nature — always running. During curriculum she still
+    // imagines (the CPU CDF 9/7 on a ≤48² plane is microseconds), just at a
+    // slower cadence AND view-only: the sem re-injection is skipped mid-
+    // teach so the walk's Hebbian patterns stay pristine while the
+    // mind's-eye viewer + imagined-field memory ring stay alive.
+    const _midTeach = !!this._curriculumInProgress;
+    const IMAGINE_MIN_GAP_MS = _midTeach ? 120000 : 20000;
     if (this._lastImagineAt && (now - this._lastImagineAt) < IMAGINE_MIN_GAP_MS) return;
     this._lastImagineAt = now;
     try {
@@ -856,7 +867,10 @@ const SERVER_CHAT_MIXIN = {
       const percept = this.mindSpace.describe(rec);
       // inject the imagined percept into the cortex sem region at LOW strength —
       // a faint mental image, never strong enough to override real input.
-      if (percept && typeof this.cortexCluster.injectEmbeddingToRegion === 'function') {
+      // VIEW-ONLY mid-teach: skip the sem re-injection while curriculum is
+      // writing Hebbian so imagination never perturbs the walk's patterns;
+      // the viewer snapshot + memory ring below still update.
+      if (!_midTeach && percept && typeof this.cortexCluster.injectEmbeddingToRegion === 'function') {
         try { this.cortexCluster.injectEmbeddingToRegion('sem', percept, 0.08); } catch { /* non-fatal */ }
       }
       this._lastImagineRec = { terms: rec.equation_count || 0, source: rec.fidelity?.source || 'mindspace-denovo', at: now };

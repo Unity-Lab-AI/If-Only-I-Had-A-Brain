@@ -1584,6 +1584,29 @@ export class LanguageCortex {
           const t = w.toLowerCase().replace(/[.!?]+$/, '');
           if (t.length === 1 && t !== 'i' && t !== 'a') return true;
           if (t.length > 24) return true;
+          // Mid-length gibberish test. The len-1/>24 checks alone let
+          // 6-24-char letter-chain readouts sail through (live wedge
+          // shipped "ojajtgggtgtgtgggtttjcik" (23) and
+          // "dijesssssssjjjjjjjj" (19) to chat). Dictionary words always
+          // pass; a NON-dictionary 6+-char pure-alpha token must look
+          // pronounceable — enough vowels, no long consonant runs, no
+          // stutter runs of one repeated letter. Trained vocabulary
+          // lives in the dictionary so real words are never gated;
+          // motor letter-chains are never dictionary words.
+          if (t.length >= 6 && /^[a-z]+$/.test(t)
+              && !(dictionary && dictionary._words && dictionary._words.has(t))) {
+            let vowels = 0, cons = 0, maxCons = 0, run = 1, maxRun = 1;
+            for (let i = 0; i < t.length; i++) {
+              const c = t[i];
+              if ('aeiouy'.includes(c)) { vowels++; cons = 0; }
+              else { cons++; if (cons > maxCons) maxCons = cons; }
+              if (i > 0 && c === t[i - 1]) { run++; if (run > maxRun) maxRun = run; }
+              else run = 1;
+            }
+            if (vowels / t.length < 0.18) return true;  // consonant soup
+            if (maxCons >= 6) return true;              // 6+ consonant run
+            if (maxRun >= 4) return true;               // aaaa/jjjj stutter run
+          }
           return false;
         };
         const _saladCount = rawWords.reduce((n, w) => n + (_isSaladToken(w) ? 1 : 0), 0);
@@ -1673,6 +1696,99 @@ export class LanguageCortex {
     }
 
     if (words.length === 0) return '';
+
+    // SPEAK.11 — run-on clamp for the user-visible lane. Live-walk ledger
+    // established a bimodal emission pattern: coherent 1-8-word emissions
+    // (which track conversation across turns) vs 30-40-word undifferentiated
+    // dumps when sem state is diffuse (no single intent winning the tick
+    // sequence). The dumps carry no sentence structure — they read as a
+    // token spill. Clamp the emission to a bounded length so the coherent
+    // short mode is the DEFAULT shape; the leading words carry the
+    // strongest activations (emission order follows argmax strength), so
+    // truncation keeps the signal and drops the spill. Env-tunable.
+    let _maxEmitWords = 12;
+    try {
+      if (typeof process !== 'undefined' && process.env && process.env.DREAM_CHAT_MAX_WORDS) {
+        const v = parseInt(process.env.DREAM_CHAT_MAX_WORDS, 10);
+        if (Number.isFinite(v) && v >= 4) _maxEmitWords = v;
+      }
+    } catch { /* default stands */ }
+    if (words.length > _maxEmitWords) {
+      if (!this._runOnClampWarned) {
+        this._runOnClampWarned = true;
+        try { console.warn(`[LanguageCortex] run-on emission clamped ${words.length} → ${_maxEmitWords} words (diffuse-sem token spill; leading words carry the strongest activations). Tune via DREAM_CHAT_MAX_WORDS.`); } catch { /* nf */ }
+      }
+      words = words.slice(0, _maxEmitWords);
+    }
+
+    // SPEAK.12 — production-side register gate (exposure ≠ production).
+    // The developmental canon: she HEARS everything (input absorption and
+    // Hebbian learning are untouched — words land in weights/dictionary),
+    // but PRODUCTION of certain registers waits for the gate age, exactly
+    // like the erotic-state machine gates at the grade-9 first-kiss.
+    // Live-walk ledger: sexual-register tokens ("pussy" ×2) and
+    // crisis-register tokens ("suicide" ×3) shipped in free compose at
+    // K/G1 era — absorbed from visitor input + persona-canon seed text.
+    // Pure expletives (fuck/shit/hell/damn) are NOT gated — household
+    // cussing is canon at every age. Sex-ACT/anatomy register unlocks at
+    // grade 9; crisis register unlocks at grade 7 (until then it is
+    // dropped from her own output and counted, never silently — the
+    // telemetry counter is dashboard-readable).
+    if (words.length > 0 && opts.cortexCluster) {
+      const _cl = opts.cortexCluster;
+      let _gateGrade = -1; // pre-K
+      try {
+        const g = _cl.grades;
+        if (g && typeof g === 'object') {
+          for (const v of Object.values(g)) {
+            let n = -1;
+            if (v === 'kindergarten') n = 0;
+            else if (typeof v === 'string' && v.startsWith('grade')) n = parseInt(v.slice(5), 10) || -1;
+            else if (typeof v === 'string' && v.startsWith('college')) n = 12 + (parseInt(v.slice(7), 10) || 1);
+            else if (v === 'grad') n = 17;
+            else if (v === 'phd') n = 18;
+            if (n > _gateGrade) _gateGrade = n; // most-advanced subject = her age proxy
+          }
+        }
+      } catch { /* stays pre-K conservative */ }
+      const SEXUAL_REGISTER = new Set([
+        'pussy', 'cock', 'dick', 'cum', 'tits', 'blowjob', 'handjob',
+        'orgasm', 'horny', 'nympho', 'slut', 'whore', 'anal', 'dildo',
+      ]);
+      const CRISIS_REGISTER = new Set(['suicide', 'suicidal', 'self-harm', 'selfharm', 'overdose']);
+      const _sexUnlocked = _gateGrade >= 9;
+      const _crisisUnlocked = _gateGrade >= 7;
+      if (!_sexUnlocked || !_crisisUnlocked) {
+        const kept = [];
+        for (const w of words) {
+          const t = String(w).toLowerCase().replace(/[.!?,;:]+$/, '');
+          if (!_sexUnlocked && SEXUAL_REGISTER.has(t)) {
+            if (!_cl._registerGateStats) _cl._registerGateStats = { sexual: 0, crisis: 0, lastTs: 0 };
+            _cl._registerGateStats.sexual++;
+            _cl._registerGateStats.lastTs = Date.now();
+            continue;
+          }
+          if (!_crisisUnlocked && CRISIS_REGISTER.has(t)) {
+            if (!_cl._registerGateStats) _cl._registerGateStats = { sexual: 0, crisis: 0, lastTs: 0 };
+            _cl._registerGateStats.crisis++;
+            _cl._registerGateStats.lastTs = Date.now();
+            // Crisis tokens get TELEMETRY, not silence — throttled log with
+            // the surrounding emission so recurrence is traceable to a
+            // source instead of window-scrape forensics (ledger ask).
+            try {
+              if (!this._crisisGateLastLogTs || Date.now() - this._crisisGateLastLogTs > 60000) {
+                this._crisisGateLastLogTs = Date.now();
+                console.warn(`[LanguageCortex] crisis-register token "${t}" gated from emission at grade ${_gateGrade} (total ${_cl._registerGateStats.crisis}) — emission context: "${words.join(' ').slice(0, 120)}"`);
+              }
+            } catch { /* nf */ }
+            continue;
+          }
+          kept.push(w);
+        }
+        words = kept;
+        if (words.length === 0) return '';
+      }
+    }
 
     // Recency-ring bookkeeping — same as the legacy path, so repeat
     // suppression in downstream consumers still works.
@@ -2720,8 +2836,14 @@ export class LanguageCortex {
   }
 
   learnSentence(sentence, dictionary, arousal, valence, cortexPattern = null, fromPersona = false, doInflections = false, skipSlotPriors = false) {
+    // Disallowed chars become SPACES (never deleted) — deleting them fused
+    // adjacent words across punctuation ("herself.These" → "herselfthese",
+    // "concepts…resonate" → "conceptsresonate") and THIS tokenizer feeds
+    // the persona lane (loadSelfImage / loadBaseline / loadCodingKnowledge /
+    // loadCosmicCorpus), which re-reinforces every fused token on each
+    // injection. Same fix class as dictionary.js learnSentence.
     const rawWords = String(sentence).toLowerCase()
-      .replace(/[^a-z0-9' ?!*-]/g, '')
+      .replace(/[^a-z0-9' ?!*-]/g, ' ')
       .split(/\s+/)
       .map(w => w.replace(/^'+|'+$/g, ''))
       .filter(w => w.length >= 1);
