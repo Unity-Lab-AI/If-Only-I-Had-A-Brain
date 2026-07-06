@@ -1169,9 +1169,29 @@ const SERVER_GPU_MIXIN = {
           this._wsDroppedCount++;
           this._wsLastDropTs = Date.now();
           this._gpuShadowDirty = true;
+          // AUTO-RESYNC — the old banner CLAIMED "full resync scheduled"
+          // but nothing ever armed one: the flag sat DIRTY until a donor
+          // happened to reconnect (live box: 86,930 drops, shadow DIRTY
+          // for hours, grades frozen — the donor kept training a stale
+          // matrix). Arm the SAME re-upload path the dashboard /resync
+          // endpoint uses (_rearmCortexGpuUpload semantics, inlined here
+          // because that helper is a brain-server.js closure): clear the
+          // one-time cortex upload gate so the next warm tick re-uploads
+          // the authoritative CPU cross-projections + intra-synapses to
+          // the primary; _gpuShadowDirty clears when the donor
+          // re-confirms gpu_init. Throttled to once/60s so a drop storm
+          // arms one resync, not a re-upload flood.
+          const _resyncNow = Date.now();
+          if (!this._shadowAutoResyncAt || (_resyncNow - this._shadowAutoResyncAt) > 60000) {
+            this._shadowAutoResyncAt = _resyncNow;
+            this._cortexGpuInitStarted = false;
+            this._allClustersConfirmedAt = null;
+            if (this.cortexCluster) this.cortexCluster._cortexFullyReady = false;
+            console.error('[Brain] AUTO-RESYNC ARMED after backpressure drop — cortex re-uploads the CPU master (cross-projections + intra-synapses) to the primary on the next warm tick; _gpuShadowDirty clears when the donor re-confirms gpu_init. (throttle 60s)');
+          }
           if (!this._wsLastDropLogMs || (Date.now() - this._wsLastDropLogMs) >= 5000) {
             this._wsLastDropLogMs = Date.now();
-            console.error(`[Brain] CRITICAL backpressure DROP after ${MAX_AWAIT_MS}ms await — ws.bufferedAmount=${(ws.bufferedAmount/1024/1024).toFixed(1)}MB > ${BUFFERED_AMOUNT_DROP_THRESHOLD/1024/1024}MB. ${this._wsDroppedCount} total drops since boot. GPU shadow marked DIRTY; full resync scheduled before next teach-phase Hebbian fire. CPU + GPU weights are diverging — cortical-microstructure projections will mis-fire until resync lands.`);
+            console.error(`[Brain] CRITICAL backpressure DROP after ${MAX_AWAIT_MS}ms await — ws.bufferedAmount=${(ws.bufferedAmount/1024/1024).toFixed(1)}MB > ${BUFFERED_AMOUNT_DROP_THRESHOLD/1024/1024}MB. ${this._wsDroppedCount} total drops since boot. GPU shadow marked DIRTY; auto-resync armed (see banner above). CPU + GPU weights are diverging — cortical-microstructure projections will mis-fire until resync lands.`);
           }
           return Promise.resolve(null);
         }

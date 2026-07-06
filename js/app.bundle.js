@@ -52613,7 +52613,7 @@ var SemanticEmbeddings = class {
    * @returns {Float32Array}
    */
   getSentenceEmbedding(text) {
-    const words = text.toLowerCase().replace(/[^a-z' -]/g, "").split(/\s+/).filter((w) => w.length >= 2);
+    const words = text.toLowerCase().replace(/[^a-z' -]/g, " ").split(/\s+/).filter((w) => w.length >= 2);
     if (words.length === 0) return new Float32Array(EMBED_DIM);
     const avg = new Float32Array(EMBED_DIM);
     for (const word of words) {
@@ -61949,6 +61949,26 @@ var LanguageCortex = class {
           const t = w.toLowerCase().replace(/[.!?]+$/, "");
           if (t.length === 1 && t !== "i" && t !== "a") return true;
           if (t.length > 24) return true;
+          if (t.length >= 6 && /^[a-z]+$/.test(t) && !(dictionary && dictionary._words && dictionary._words.has(t))) {
+            let vowels = 0, cons = 0, maxCons = 0, run = 1, maxRun = 1;
+            for (let i = 0; i < t.length; i++) {
+              const c = t[i];
+              if ("aeiouy".includes(c)) {
+                vowels++;
+                cons = 0;
+              } else {
+                cons++;
+                if (cons > maxCons) maxCons = cons;
+              }
+              if (i > 0 && c === t[i - 1]) {
+                run++;
+                if (run > maxRun) maxRun = run;
+              } else run = 1;
+            }
+            if (vowels / t.length < 0.18) return true;
+            if (maxCons >= 6) return true;
+            if (maxRun >= 4) return true;
+          }
           return false;
         };
         const _saladCount = rawWords.reduce((n, w) => n + (_isSaladToken(w) ? 1 : 0), 0);
@@ -61998,6 +62018,90 @@ var LanguageCortex = class {
       }
     }
     if (words.length === 0) return "";
+    let _maxEmitWords = 12;
+    try {
+      if (typeof process !== "undefined" && process.env && process.env.DREAM_CHAT_MAX_WORDS) {
+        const v = parseInt(process.env.DREAM_CHAT_MAX_WORDS, 10);
+        if (Number.isFinite(v) && v >= 4) _maxEmitWords = v;
+      }
+    } catch {
+    }
+    if (words.length > _maxEmitWords) {
+      if (!this._runOnClampWarned) {
+        this._runOnClampWarned = true;
+        try {
+          console.warn(`[LanguageCortex] run-on emission clamped ${words.length} \u2192 ${_maxEmitWords} words (diffuse-sem token spill; leading words carry the strongest activations). Tune via DREAM_CHAT_MAX_WORDS.`);
+        } catch {
+        }
+      }
+      words = words.slice(0, _maxEmitWords);
+    }
+    if (words.length > 0 && opts.cortexCluster) {
+      const _cl = opts.cortexCluster;
+      let _gateGrade = -1;
+      try {
+        const g = _cl.grades;
+        if (g && typeof g === "object") {
+          for (const v of Object.values(g)) {
+            let n = -1;
+            if (v === "kindergarten") n = 0;
+            else if (typeof v === "string" && v.startsWith("grade")) n = parseInt(v.slice(5), 10) || -1;
+            else if (typeof v === "string" && v.startsWith("college")) n = 12 + (parseInt(v.slice(7), 10) || 1);
+            else if (v === "grad") n = 17;
+            else if (v === "phd") n = 18;
+            if (n > _gateGrade) _gateGrade = n;
+          }
+        }
+      } catch {
+      }
+      const SEXUAL_REGISTER = /* @__PURE__ */ new Set([
+        "pussy",
+        "cock",
+        "dick",
+        "cum",
+        "tits",
+        "blowjob",
+        "handjob",
+        "orgasm",
+        "horny",
+        "nympho",
+        "slut",
+        "whore",
+        "anal",
+        "dildo"
+      ]);
+      const CRISIS_REGISTER = /* @__PURE__ */ new Set(["suicide", "suicidal", "self-harm", "selfharm", "overdose"]);
+      const _sexUnlocked = _gateGrade >= 9;
+      const _crisisUnlocked = _gateGrade >= 7;
+      if (!_sexUnlocked || !_crisisUnlocked) {
+        const kept = [];
+        for (const w of words) {
+          const t = String(w).toLowerCase().replace(/[.!?,;:]+$/, "");
+          if (!_sexUnlocked && SEXUAL_REGISTER.has(t)) {
+            if (!_cl._registerGateStats) _cl._registerGateStats = { sexual: 0, crisis: 0, lastTs: 0 };
+            _cl._registerGateStats.sexual++;
+            _cl._registerGateStats.lastTs = Date.now();
+            continue;
+          }
+          if (!_crisisUnlocked && CRISIS_REGISTER.has(t)) {
+            if (!_cl._registerGateStats) _cl._registerGateStats = { sexual: 0, crisis: 0, lastTs: 0 };
+            _cl._registerGateStats.crisis++;
+            _cl._registerGateStats.lastTs = Date.now();
+            try {
+              if (!this._crisisGateLastLogTs || Date.now() - this._crisisGateLastLogTs > 6e4) {
+                this._crisisGateLastLogTs = Date.now();
+                console.warn(`[LanguageCortex] crisis-register token "${t}" gated from emission at grade ${_gateGrade} (total ${_cl._registerGateStats.crisis}) \u2014 emission context: "${words.join(" ").slice(0, 120)}"`);
+              }
+            } catch {
+            }
+            continue;
+          }
+          kept.push(w);
+        }
+        words = kept;
+        if (words.length === 0) return "";
+      }
+    }
     for (const w of words) {
       this._recentOutputWords.push(w);
       if (this._recentOutputWords.length > this._recentOutputMax) {
@@ -62862,7 +62966,7 @@ var LanguageCortex = class {
     return pattern;
   }
   learnSentence(sentence, dictionary, arousal, valence, cortexPattern = null, fromPersona = false, doInflections = false, skipSlotPriors = false) {
-    const rawWords = String(sentence).toLowerCase().replace(/[^a-z0-9' ?!*-]/g, "").split(/\s+/).map((w) => w.replace(/^'+|'+$/g, "")).filter((w) => w.length >= 1);
+    const rawWords = String(sentence).toLowerCase().replace(/[^a-z0-9' ?!*-]/g, " ").split(/\s+/).map((w) => w.replace(/^'+|'+$/g, "")).filter((w) => w.length >= 1);
     if (rawWords.length < 2) return;
     const words = this._expandContractionsForLearning(rawWords);
     let sentenceIntent = "unknown";

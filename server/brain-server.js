@@ -408,6 +408,30 @@ const BRAIN_VRAM_ALLOC = (function () {
   let vramMB = typeof cfg.vramCapMB === 'number' ? cfg.vramCapMB
              : (RESOURCES.gpu && RESOURCES.gpu.vram) ? RESOURCES.gpu.vram
              : 16384;
+  // HARD HEADROOM RESERVE — defense-in-depth on GPU boxes. A missing or
+  // stale resource-config.json used to let the budget default to the FULL
+  // card; with only the osReserve subtraction below, the big matrix upload
+  // + browser/compositor contention killed uploads → WS drop storm → GPU
+  // shadow DIRTY → donor reconnect churn (live-box incident: bind at the
+  // full 16GB, 86,930 drops, grades frozen). Regardless of config, never
+  // budget above (card − max(2GB, 12.5% of card)); and when NO explicit
+  // vramCapMB is configured, default conservatively to 75% of the card.
+  if (RESOURCES.gpu && RESOURCES.gpu.vram > 0) {
+    const _hwMB = RESOURCES.gpu.vram;
+    const _hardReserveMB = Math.max(2048, Math.floor(_hwMB * 0.125));
+    const _hardMaxMB = Math.max(1024, _hwMB - _hardReserveMB);
+    if (typeof cfg.vramCapMB !== 'number') {
+      const _conservative = Math.floor(_hwMB * 0.75);
+      if (vramMB > _conservative) {
+        console.log(`[Brain] VRAM HEADROOM — no vramCapMB configured: defaulting budget to 75% of the ${_hwMB}MB card (${vramMB}MB → ${_conservative}MB). Set vramCapMB in resource-config.json to tune.`);
+        vramMB = _conservative;
+      }
+    }
+    if (vramMB > _hardMaxMB) {
+      console.log(`[Brain] VRAM HEADROOM — hard reserve enforced: budget ${vramMB}MB → ${_hardMaxMB}MB (card ${_hwMB}MB − reserve ${_hardReserveMB}MB). Config can lower this, never raise it.`);
+      vramMB = _hardMaxMB;
+    }
+  }
   // SERVER-RAM SAFETY (shared box — Forgejo runs here too). The brain's
   // authoritative weights live in the HOST's RAM (the CPU CSR shadow), so on a
   // box with no real GPU the "VRAM budget" is really a HOST-RAM budget. Cap it
@@ -2564,8 +2588,10 @@ class ServerBrain {
    * dictionary words. Each candidate is then verified against the live
    * dictionary API — an entry is deleted ONLY when the API has no
    * definition for it, so real compounds ("football", "another",
-   * "something") always survive. Bounded at 100 API checks per boot;
-   * the definition service's cache + backoff absorb the load.
+   * "something") always survive. Bounded at 200 API checks per boot;
+   * the definition service's cache + backoff absorb the load. Persona
+   * entries are candidates too (stricter ≥9-char floor, no freq gate)
+   * since the persona-lane tokenizer was itself a fusion source.
    */
   async _purgeFusedDictionaryTokens() {
     if (this._fusedPurgeRan) return;
@@ -2579,11 +2605,30 @@ class ServerBrain {
       ? cluster._definitionTaughtWords : null;
     const candidates = [];
     for (const [word, entry] of words) {
-      if (candidates.length >= 100) break;
-      if (!entry || entry.isPersona === true) continue;
-      if (word.length < 7 || !/^[a-z]+$/.test(word)) continue;
-      if ((entry.frequency | 0) > 5) continue;
+      if (candidates.length >= 200) break;
+      if (!entry) continue;
+      if (!/^[a-z]+$/.test(word)) continue;
       if (taught && taught.has(word)) continue;
+      // PERSONA entries are no longer skipped — the persona-lane tokenizer
+      // was the SECOND fusion source ("herselfthese", "conceptsresonate",
+      // "meintensity" all rode persona text) and the old isPersona skip
+      // meant those fusions could NEVER be purged while the identity
+      // injection re-reinforced them every chat turn. Persona candidates
+      // get a stricter length floor (≥9 — real persona slang like
+      // "dumbass" stays protected) and no frequency gate (injection
+      // inflates their counts); the two-known-words split + POSITIVE-404
+      // API check below still protect every real word.
+      if (entry.isPersona === true) {
+        if (word.length < 9) continue;
+      } else {
+        if (word.length < 7) continue;
+        // Frequency ceiling raised 5 → 50: legacy fusions that predate the
+        // sanitizer fix ("fuckeryyou") were reinforced past the old ≤5 gate
+        // and emitted live post-purge. Real high-usage words that split
+        // into two known words ("another", "something") survive via the
+        // API check regardless of frequency.
+        if ((entry.frequency | 0) > 50) continue;
+      }
       let splits = false;
       for (let i = 3; i <= word.length - 2; i++) {
         const a = word.slice(0, i);

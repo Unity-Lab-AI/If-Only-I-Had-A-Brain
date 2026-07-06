@@ -351,7 +351,12 @@ export class SemanticEmbeddings {
    * @returns {Float32Array}
    */
   getSentenceEmbedding(text) {
-    const words = text.toLowerCase().replace(/[^a-z' -]/g, '').split(/\s+/).filter(w => w.length >= 2);
+    // Disallowed chars become SPACES (never deleted) — deleting them fused
+    // adjacent words across punctuation ("herself.These" → "herselfthese"),
+    // which poisoned the identity-anchor embeddings this method computes
+    // for every persona/seed injection. Same fix class as dictionary.js
+    // learnSentence.
+    const words = text.toLowerCase().replace(/[^a-z' -]/g, ' ').split(/\s+/).filter(w => w.length >= 2);
     if (words.length === 0) return new Float32Array(EMBED_DIM);
 
     const avg = new Float32Array(EMBED_DIM);
