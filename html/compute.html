@@ -1023,6 +1023,28 @@ function connectToServer() {
       return;
     }
 
+    // TU.19-D — GPU↔CPU parity: read back this browser donor's resident weight
+    // digest (checksum + samples) so the server can attribute a "shadow DIRTY"
+    // flag to stale-upload vs wrong-GPU-compute vs wrong-CPU-math. Same FNV-1a-64
+    // over LE f32 bytes as the native donor (F10 — both donor paths must match).
+    if (msg.type === 'readback_matrix_checksum' && gpuReady) {
+      const { reqId, name, sampleCount } = msg;
+      try {
+        const r = await gpu.checksumSparseMatrix(name, sampleCount ?? 0);
+        ws.send(JSON.stringify({
+          type: 'readback_matrix_checksum_ack',
+          reqId, name,
+          found: !!r.found,
+          nnz: r.nnz || 0,
+          checksum: r.checksum || '0',
+          samples: r.samples || [],
+        }));
+      } catch (err) {
+        ws.send(JSON.stringify({ type: 'readback_matrix_checksum_ack', reqId, name, found: false, nnz: 0, checksum: '0', samples: [], error: err.message }));
+      }
+      return;
+    }
+
     // Rebind an already-uploaded cross-projection
     // matrix from standalone to cluster-bound mode. No matrix data
     // re-transferred; only the per-dispatch src/dst buffer resolution

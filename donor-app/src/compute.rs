@@ -431,7 +431,10 @@ impl ComputeEngine {
         let v: &[f32] = if values.is_empty() { &[0.0] } else { values };
         let ci: &[u32] = if col_idx.is_empty() { &[0] } else { col_idx };
         let rp: &[u32] = if row_ptr.is_empty() { &[0] } else { row_ptr };
-        let values_buf = dev.create_buffer_init(&wgpu::util::BufferInitDescriptor { label: Some(name), contents: bytemuck::cast_slice(v), usage: su });
+        // TU.19-D — values buffer gets COPY_SRC so the GPU↔CPU parity harness can
+        // read back the ACTUAL resident weights (checksum + samples) to attribute a
+        // "shadow DIRTY" flag to stale-upload vs wrong-compute vs wrong-math.
+        let values_buf = dev.create_buffer_init(&wgpu::util::BufferInitDescriptor { label: Some(name), contents: bytemuck::cast_slice(v), usage: su | wgpu::BufferUsages::COPY_SRC });
         let col_idx_buf = dev.create_buffer_init(&wgpu::util::BufferInitDescriptor { label: Some(name), contents: bytemuck::cast_slice(ci), usage: su });
         let row_ptr_buf = dev.create_buffer_init(&wgpu::util::BufferInitDescriptor { label: Some(name), contents: bytemuck::cast_slice(rp), usage: su });
         let pre = vec![0u32; cols.max(1) as usize];
@@ -501,6 +504,56 @@ impl ComputeEngine {
         drop(data);
         m.currents_staging.unmap();
         Ok(out)
+    }
+
+    /// TU.19-D — read back a resident sparse matrix's weight digest for GPU↔CPU
+    /// parity. Returns (nnz, FNV-1a-64 checksum over the bit-exact f32 value bytes,
+    /// evenly-spaced (flat-index, value) samples). Copies the resident `values`
+    /// buffer to a fresh MAP_READ staging buffer and maps it — same pattern as the
+    /// currents readback above. `None` if no matrix by that name is resident.
+    pub fn checksum_matrix(&self, name: &str, sample_count: u32) -> Option<(u32, u64, Vec<(u32, f32)>)> {
+        let m = self.sparse.get(name)?;
+        let nnz = m.nnz;
+        if nnz == 0 {
+            return Some((0, 0xcbf29ce484222325, Vec::new())); // FNV offset basis over empty
+        }
+        let byte_len = (nnz as u64) * 4;
+        let staging = self.device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("matrix-checksum-staging"),
+            size: byte_len,
+            usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        let mut enc = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("matrix-checksum") });
+        enc.copy_buffer_to_buffer(&m.values, 0, &staging, 0, byte_len);
+        self.queue.submit(std::iter::once(enc.finish()));
+        let (tx, rx) = std::sync::mpsc::channel();
+        staging.slice(..).map_async(wgpu::MapMode::Read, move |r| { let _ = tx.send(r); });
+        let _ = self.device.poll(wgpu::Maintain::Wait);
+        if rx.recv().ok().and_then(|r| r.ok()).is_none() {
+            return None;
+        }
+        let data = staging.slice(..).get_mapped_range();
+        // FNV-1a 64 over the raw value bytes (bit-exact — matches the CPU-side digest).
+        let mut hash: u64 = 0xcbf29ce484222325;
+        for &b in &data[..(nnz as usize) * 4] {
+            hash ^= b as u64;
+            hash = hash.wrapping_mul(0x100000001b3);
+        }
+        let vals: &[f32] = bytemuck::cast_slice(&data[..(nnz as usize) * 4]);
+        let cap = sample_count.min(64) as usize;
+        let mut samples = Vec::with_capacity(cap);
+        if cap > 0 {
+            let step = (nnz as usize / cap).max(1);
+            let mut i = 0usize;
+            while i < nnz as usize && samples.len() < cap {
+                samples.push((i as u32, vals[i]));
+                i += step;
+            }
+        }
+        drop(data);
+        staging.unmap();
+        Some((nnz, hash, samples))
     }
 
     /// Run Oja/anti-Hebbian plasticity on a sparse matrix (in place).
@@ -663,6 +716,14 @@ impl Backend {
             Backend::Wgpu(e) => e.readback_letter_buckets(cluster, region, bucket_count, sub_slice_len, start_offset),
             #[cfg(feature = "cuda")]
             Backend::Cuda(e) => e.readback_letter_buckets(cluster, region, bucket_count, sub_slice_len, start_offset),
+        }
+    }
+    /// TU.19-D — resident weight digest for GPU↔CPU parity (checksum + samples).
+    fn checksum_matrix(&self, name: &str, sample_count: u32) -> Option<(u32, u64, Vec<(u32, f32)>)> {
+        match self {
+            Backend::Wgpu(e) => e.checksum_matrix(name, sample_count),
+            #[cfg(feature = "cuda")]
+            Backend::Cuda(e) => e.checksum_matrix(name, sample_count),
         }
     }
 }
@@ -889,6 +950,15 @@ impl MultiEngine {
     pub fn hebbian(&mut self, name: &str, pre: &[u32], post: &[u32], lr: f32) -> Result<(), String> {
         let g = match self.matrix_gpu.get(name) { Some(&g) => g, None => return Ok(()) };
         self.engines[g].hebbian(name, pre, post, lr)
+    }
+
+    /// TU.19-D — resident weight digest for GPU↔CPU parity. Routes to the engine
+    /// that actually holds the matrix (matrix_gpu), same as propagate. `None` when
+    /// the matrix isn't resident on any donor GPU — the server reads that as STALE
+    /// (uploaded-but-dropped) vs a real checksum mismatch.
+    pub fn checksum_matrix(&self, name: &str, sample_count: u32) -> Option<(u32, u64, Vec<(u32, f32)>)> {
+        let g = *self.matrix_gpu.get(name)?;
+        self.engines[g].checksum_matrix(name, sample_count)
     }
 
     pub fn write_spike_slice(&mut self, cluster: &str, region: &str, indices: &[u32]) -> Result<(), String> {

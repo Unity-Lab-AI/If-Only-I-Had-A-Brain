@@ -19,7 +19,7 @@ use crate::frames::{self, Frame};
 use crate::gpu::GpuInfo;
 use crate::protocol::{
     ComputeBatch, ComputeBatchResult, GpuInit, GpuInitAck, GpuRegister, PerClusterResult,
-    ReadbackAck, RebindAck, ServerMessage,
+    MatrixSample, ReadbackAck, ReadbackMatrixChecksumAck, RebindAck, ServerMessage,
 };
 
 /// Outbound keepalive cadence. We ping the brain on this interval so a quiet teach window never
@@ -127,6 +127,8 @@ enum Work {
     WriteCurrent { cluster: String, region: String, indices: Vec<u32>, values: Vec<f32>, psi: f32 },
     ClearSpike { cluster: String, region: String },
     Readback { req_id: u32, cluster: String, region: String, bucket_count: u32, sub_slice_len: u32, start_offset: u32 },
+    // TU.19-D — GPU↔CPU parity: read back a resident matrix's weight digest.
+    ChecksumMatrix { req_id: u32, name: String, sample_count: u32 },
 }
 
 /// A reply the worker produced; the WS loop sends it in receipt order.
@@ -373,6 +375,32 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                     let ack = ReadbackAck { msg_type: "readback_letter_buckets_ack", req_id, cluster_name: cluster, region_name: region, counts };
                     let _ = reply_tx.send(Out::Text(serde_json::to_string(&ack).unwrap()));
                 }
+                // TU.19-D — resident weight digest for GPU↔CPU parity. found=false
+                // when the matrix isn't resident (server reads that as STALE, i.e.
+                // uploaded-but-dropped, distinct from a checksum mismatch = diverged).
+                Work::ChecksumMatrix { req_id, name, sample_count } => {
+                    let ack = match engine.checksum_matrix(&name, sample_count) {
+                        Some((nnz, checksum, samples)) => ReadbackMatrixChecksumAck {
+                            msg_type: "readback_matrix_checksum_ack",
+                            req_id,
+                            name,
+                            found: true,
+                            nnz,
+                            checksum: checksum.to_string(),
+                            samples: samples.into_iter().map(|(idx, val)| MatrixSample { idx, val }).collect(),
+                        },
+                        None => ReadbackMatrixChecksumAck {
+                            msg_type: "readback_matrix_checksum_ack",
+                            req_id,
+                            name,
+                            found: false,
+                            nnz: 0,
+                            checksum: "0".to_string(),
+                            samples: Vec::new(),
+                        },
+                    };
+                    let _ = reply_tx.send(Out::Text(serde_json::to_string(&ack).unwrap()));
+                }
             }
         }
     });
@@ -492,6 +520,7 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                             Ok(ServerMessage::WriteCurrentSlice(w)) => { pending.fetch_add(1, Ordering::Relaxed); let _ = work_tx.send(Work::WriteCurrent { cluster: w.cluster_name, region: w.region_name, indices: w.sparse_indices, values: w.sparse_values, psi: w.psi }); }
                             Ok(ServerMessage::ClearSpikeRegion(w)) => { pending.fetch_add(1, Ordering::Relaxed); let _ = work_tx.send(Work::ClearSpike { cluster: w.cluster_name, region: w.region_name }); }
                             Ok(ServerMessage::ReadbackLetterBuckets(rb)) => { pending.fetch_add(1, Ordering::Relaxed); let _ = work_tx.send(Work::Readback { req_id: rb.req_id, cluster: rb.cluster_name, region: rb.region_name, bucket_count: rb.bucket_count, sub_slice_len: rb.sub_slice_len, start_offset: rb.start_offset }); }
+                            Ok(ServerMessage::ReadbackMatrixChecksum(rc)) => { pending.fetch_add(1, Ordering::Relaxed); let _ = work_tx.send(Work::ChecksumMatrix { req_id: rc.req_id, name: rc.name, sample_count: rc.sample_count }); }
                             Ok(ServerMessage::Other) => { /* forward-compat: ignore unknown */ }
                             Err(_) => { /* non-JSON or unparseable — ignore */ }
                         }

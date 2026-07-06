@@ -25257,3 +25257,142 @@ During this implementation pass at 22:16 PT, a `node -e "require('./server/brain
 **Files modified:** `server/brain-server.js` · `docs/TODO.md` · `docs/FINALIZED.md` · `docs/NOW.md`.
 
 **Deploy note:** live box needs this single-file pull or chat (and the warning) stays dead for the whole fresh walk — Sponge redeploy note delivered in-session.
+
+## 2026-07-06 — TU.20.9 TODO-ZEROING MIGRATION (verbatim)
+
+> Gee (verbatim 2026-07-06): *"add to task list (properly zeor the todo via transcrabing verbatium all the items to finalized) as it doesnt look like its been done correctly in a while"*. The following fully-completed + deployed task sections were archived at completion time but never removed from docs/TODO.md. Their exact TODO text is transcribed here verbatim (FINALIZED-before-DELETE) before removal from the live TODO. Open / in-flight / [~] work stays in TODO.
+
+### DONOR-036 — donor-v0.3.6 release: IDLE_TIMEOUT watchdog fix + PD.2/PD.3 (light theme + headless) rebuild + CI + site download-link bump (Sponge 2026-07-05) — DONE 2026-07-05 (see FINALIZED.md; built + verified locally, released via fj, CI workflow added) (branch `feature/donor-v0.3.6-idle-watchdog-release`)
+
+**Sponge verbatim per LAW #0:**
+
+> *"⚠ ACTION: this is Rust — the fix only reaches running donors after your CI rebuild. Roll it together with the still-pending PD.2/PD.3 build (light theme + headless flag), tag donor-v0.3.6, and bump the site download links. Browser-tab donors are unaffected."*
+
+> *"do it"*
+
+**Scope:** the IDLE_TIMEOUT 45s→150s watchdog fix (`donor-app/src/donor.rs`, already on main `016bbd1`), PD.2 OS light theme + PD.3 headless GUI (already in source since `d32f932`) all ship together in one rebuilt binary. This box carries the full toolchain (cargo 1.95 + `x86_64-pc-windows-gnu` target + mingw), so the release is built LOCALLY here and cut via `fj`; a `.forgejo/workflows/donor-release.yml` is added so future `donor-v*` tags rebuild + upload automatically ("your CI" going forward).
+
+- [x] **DONOR-036.1 — bump `donor-app/Cargo.toml` version 0.3.5 → 0.3.6.**
+- [x] **DONOR-036.2 — build Linux (`unity-donor-linux-x86_64`) + Windows cross (`unity-donor-windows-x86_64.exe`) release binaries (GUI+CUDA default features) on this box.**
+- [x] **DONOR-036.3 — add `.forgejo/workflows/donor-release.yml` — on `donor-v*` tag (+ `workflow_dispatch`): install mingw + windows-gnu target, build both binaries, create-release-if-missing + idempotent asset upload.**
+- [x] **DONOR-036.4 — bump site download links donor-v0.3.5 → donor-v0.3.6 in `html/compute.html` (2) + `html/legend.html` (3, incl. the `donor-v0.3.5` card-path text).**
+- [x] **DONOR-036.5 — cut the `donor-v0.3.6` Forgejo release (tag on main) with both binaries attached; verify assets resolve (200) before the link-bump deploy lands.**
+
+---
+
+### WSQ — donor work-stealing "mining" model + sync pacing so high-RTT/Starlink donors carry real compute batches (Sponge 2026-06-30) — DONE 2026-06-30 (deployed FRESH WALK to OVH + donor-v0.3.5 released; see FINALIZED.md. Pending: donors must reconnect — pool was 0 post-deploy.) (branch `feature/donor-work-stealing-pull-queue`)
+
+**Sponge verbatim per LAW #0:**
+
+> *"option 2, but use option 3 so they do carry a compute batch"*
+
+> *"Honestly, becuase of how this all works, shouldent we be setting up the work almost like crypto currency mining? Cause we have things using sha hashes, and a bunch of mathmatical principuls, and it almost feels like crypto currency mining to a degree, so theoretically whoever can compute faster and churn out the calculations for the neurton firing and patterns for the brain, would be doing more work than others? It turns compute into a race, but it does allow people to contribute what the CAN, and has very little change to how work is sent out?"*
+
+> *"I was thinking a mix of A and B honestly."*
+
+> *"Build it all, verify locally, then deploy once confirmed its all good"*
+
+> *"Go ahead and start a fresh walk if needed"* (NOTE: NOT needed — this is routing/pacing only, no weight-format/size change, savestart-safe. Brain keeps training.)
+
+> Scope choice (AskUserQuestion 2026-06-30): **"Server + donor v0.3.5 hint"** — build server-side work-stealing AND the donor capability/bandwidth hint.
+
+**Root cause (Sponge's live Clients table 2026-06-30):** Sponge's donor (Linux RTX 2060, Starlink) sits at `rtt 6481ms · 0 Gn/s · bind 5.6GB` while Windows donors (57–117ms) compute fine. DF.7 `_donorHealth` (gpu.js:714) hard-zeros work-eligibility at rtt≥1000ms, then `_nextPoolDonor`/`_capacityWeightedPlan` filter w>0 → high-RTT donor excluded from EVERY work plan while a healthy donor exists. The 6.5s RTT is warmup-window congestion: the 51M-neuron replica-sync floods the Starlink uplink (the scenario HBGRACE was written for, at 40M). Reconnecting re-measures the same RTT and re-benches. NOT a binary/crossplay bug — CUDA works (reports cc 7.5 via the real CUDA path). Flap-recovery (PR.4 median RTT + HBGRACE + donor keepalive) is intact but only protects LIVENESS, never work-eligibility.
+
+**Build (savestart-safe — no fresh walk):**
+- [ ] WSQ.1 — `gpu.js` eligibility decouple: `_donorHealth` floors at a small epsilon for WORK weight (high-RTT donors still pull units); add `_donorPrimaryScore`/strict gate so primary/barrier selection keeps the >1s cutoff (a slow donor must never become primary or stall the main tick).
+- [ ] WSQ.2 — `gpu.js` `_gpuParallelMap` → completion-driven work-stealing: shared item cursor + bounded in-flight per donor; fast donors loop back + pull more, slow donors pull fewer, no `Promise.all` waits on a slow donor's pre-assigned share. The donor's existing per-unit ACK is the pull signal.
+- [ ] WSQ.3 — `gpu.js` `gpuSparseUpload` sync pacing: inter-chunk breathe for replica-sync uploads to high-RTT donors (∝ rttMs, capped) so the Starlink uplink drains instead of saturating — kills the RTT inflation at the source.
+- [ ] WSQ.4 — donor v0.3.5: capability/bandwidth hint in `gpu_register` (`protocol.rs` + `donor.rs` + `compute.rs` measure) so the server can pace per-link precisely; server reads it in the `gpu_register` handler (`brain-server.js`). Browser-donor field stays optional (forward/back-compat).
+- [ ] WSQ.5 — build donor (Linux local; Windows cross-build / release flagged), `node --check` server, `cargo check`/`--self-test` donor, local brain boot verification.
+- [ ] WSQ.6 — docs before push (ADMIN-CONTROLS / WEBSOCKET / diagnostic verify-table / FINALIZED) + Forgejo release notes for donor-v0.3.5.
+
+---
+
+### HBGRACE — server heartbeat falsely terminates donors mid-replica-sync / during event-loop blocks (Linux/slow-link drops more) (Gee 2026-06-28) — IN PROGRESS (branch `feature/community-compute-donor-count`)
+
+**Gee verbatim per LAW #0:**
+
+> *"On linux I still seem to get dropped more frequently than those on windows..."*
+
+> *"Figure out what is going on, why it is happening, and if there is a fix for it"*
+
+**Diagnosis (from Gee's live server log):** the drops here are NOT the v0.3.3 client-side flap — they're the SERVER terminating the donor: `heartbeat — socket X (GPU donor) missed its ping (half-open) — terminating so failover can fire`, immediately followed by a flood of `sparse binary reqId=… ERROR: Cannot call write after a stream was destroyed` (the server was mid-replica-upload to the socket it just killed). Mechanism (`brain-server.js:7308` `_heartbeatTimer`, 30 s `ws.ping()` → terminate if no pong by the next sweep):
+
+1. A donor connects → server replica-syncs the FULL 40M-neuron brain to it (14.2 MB intra + dozens of cross-projections), to ALL 3 donors at once.
+2. The sync BLOCKS the server event loop in ~5 s chunks (`[EventLoop] BLOCKED 4917ms … phase=_teachHebbian … replicaSyncing=1`) — so the `pong` handler (sets `ws._isAlive=true`) can't run, and outbound pings are delayed.
+3. The donor, draining a massive upload backlog over its link, is slow to reach + answer the server's PING. On a higher-latency / lower-bandwidth link (Starlink / Linux) the pong misses the 30 s window more often than a fast Windows/LAN donor → `ws._isAlive` stays false → **terminated mid-sync** → write-after-destroyed flood → reconnect → sync RESTARTS → churn loop. That's why Linux/slow-link drops more — it's a false-positive liveness kill, not a dead socket.
+
+**Fix (server-side, `brain-server.js` heartbeat — analogous to the dashboard RTT "don't blame the client for the server's lag" fix):**
+
+- **HBGRACE.1 — grace cycles, not single-miss death.** Track `ws._missedPings`; terminate only after ≥2 consecutive genuine misses (one missed 30 s window ≠ dead — sleep/backlog/loop-block all recover within a cycle). Reset on pong.
+- **HBGRACE.2 — event-loop-block awareness.** Stamp `brain._lastEventLoopBlockTs` on a real block (≥1 s) in the lag sampler; if a block happened within the heartbeat window, the pong may simply not have been processed — extend grace, don't count it as a donor miss.
+- **HBGRACE.3 — don't kill a donor mid replica-sync.** If `brain._replicaSyncInFlight.has(ws)`, the donor is busy RECEIVING the brain — extend grace (bounded, so a truly-dead mid-sync donor still eventually dies) instead of terminating it mid-upload (which also kills the wasted sync + spawns the write-after-destroyed flood).
+- **HBGRACE.4 — fresh walk** (reset weights) after deploy per `docs/SPONGE-FRESH-WALK-DEPLOY.md`; docs (WEBSOCKET heartbeat section + FINALIZED). NOTE: this is donor-resilience server-side; the deeper event-loop-block-during-sync is the standing WL.3 perf task (bound the teach/sync block so upload frames + pongs get airtime) — referenced, not fully solved here.
+
+**STATUS:** ✅ DONE — root cause = false-positive server heartbeat termination of busy/slow-link donors mid replica-sync (worse on Linux/Starlink), NOT the v0.3.3 client flap. Shipped server-side: HBGRACE.1 grace counter (2 misses, was 1), HBGRACE.2 event-loop-block awareness (`_lastEventLoopBlockTs` → busy budget 5/~150s), HBGRACE.3 mid-sync grace (`_replicaSyncInFlight`), HBGRACE.4 rate-limited the post-termination write-after-destroyed flood + chunk-loop bail on closed socket. Server-only (donor stays v0.3.4, no rebuild). `node --check` clean. Docs: WEBSOCKET heartbeat-grace + FINALIZED. Deployed to box + fresh walk (reset weights). Verbatim in `docs/FINALIZED.md` 2026-06-28 HBGRACE. (Deeper event-loop-block-during-sync = standing WL.3 perf task, referenced.)
+
+---
+
+---
+
+### ASCALE — auto-scale-up gates on MAX card VRAM not DONATED amount + brain-size-budget clarity (Gee 2026-06-28) — IN PROGRESS (branch `feature/community-compute-donor-count`)
+
+**Gee verbatim per LAW #0:**
+
+> *"Deal with gee's stuff"*
+
+**Forwarded handoff brief (Gee relayed `docs/SPONGE-BRAIN-SIZE-AND-AUTOSCALE-DONATED.md` as the work spec):**
+
+> *"ISSUE 1 — 'donor set to 90% of 16GB but only ~3.9GB used. WebGPU limit in the binary?' NO. It's deliberate, server-side, NOT WebGPU/binary"* — `DREAM_DONOR_FIT_MB` default 4096 (deployed) → ~4GB brain so a modest donor can hold a full data-parallel replica. Not a cap; the brain is just ~4GB big. Designed growth path = auto-scale tiers (Issue 2).
+
+> *"ISSUE 2 — auto-scale-UP triggers on MAX card VRAM, not the DONATED amount (your report: two 15GB cards trip a tier at ~30GB even though combined they're set to ~18GB). CONFIRMED BUG"*
+
+> *"FIX (3 parts): 1. donor sends utilizationPct (+ donatedMB if the GUI has a VRAM slider) in gpu_register. 2. server captures client.utilizationPct / client.donatedMB next to vramMB. 3. _recomputeCommunityCompute uses EFFECTIVE donated capacity, not full card: eff = donatedMB>0 ? min(donatedMB, fullVram) : fullVram * (utilizationPct/100)"*
+
+> *"CAVEAT: utilization is a TIME duty-cycle (throughput), not VRAM held. Size-tier should gate on min committed VRAM per donor; throughput-tier on Σ gneuronsPerSec. Don't conflate"*
+
+> *"⚠⚠ ONCE EITHER FIX IS IN: FULLY RESET WEIGHTS + FRESH WALK — do NOT resume."*
+
+**Tasks:**
+
+- **ASCALE.1 — donor reports donated capacity in `gpu_register`.** `donor-app/src/donor.rs` — add `utilizationPct` (avg of per-GPU utils, else `cfg.utilization_pct`) + `donatedMB` (from `cfg.memory` MemoryCap, 0 = unset) to the register payload; `protocol.rs` GpuRegister gains the two fields.
+- **ASCALE.2 — server captures it.** `server/brain-server.js` gpu_register handler → `client.utilizationPct` (clamp 0-100, default 100) + `client.donatedMB`.
+- **ASCALE.3 — effective donated capacity in the tier gate.** `server/brain-server/gpu.js` `_recomputeCommunityCompute` — sum `eff = donatedMB>0 ? min(donatedMB, fullVram) : fullVram*(util/100)` instead of raw `gpuVramMB`. Two 15GB at 60% → 18GB community, no false tier-up.
+- **ASCALE.4 — honor the caveat (observability).** Track `_communityMinDonorMB` (min effective committed VRAM across live donors — the real data-parallel SIZE bound) + surface it in the milestone log line, so the size-tier(min-donor) vs throughput-tier(Σ Gn/s) reconciliation is visible. (Full size-tier rewire onto min-donor is the flagged architectural follow-up, not this pass.)
+- **ASCALE.5 — fresh walk, RESET WEIGHTS** (do NOT resume) per `docs/SPONGE-FRESH-WALK-DEPLOY.md` after deploy.
+- **ASCALE.6 — docs** — correct `docs/SPONGE-BRAIN-SIZE-AND-AUTOSCALE-DONATED.md` (RESOLVED) + WEBSOCKET register payload + FINALIZED.
+
+**STATUS:** ✅ DONE — Issue 1 documented (donor-fit budget, not a WebGPU cap). Issue 2 fixed: ASCALE.1 donor reports utilizationPct+donatedMB, ASCALE.2 server captures, ASCALE.3 effective-donated in the tier gate, ASCALE.4 minDonorMB tracked+logged+in `/autoscale` (caveat honored). Donor v0.3.4 rebuilt (Linux+Windows), released (assets 200), site links bumped. Concurrent-agent RESUME.md merge + `_getCommunityState` single-source conflict resolved cleanly. Pushed feature→develop→main; deployed to box (overlay+chown+fresh walk: 13 files wiped, Tier 3=29 preserved, 0 write failures, NRestarts=0). Verbatim in `docs/FINALIZED.md` 2026-06-28 ASCALE. (Effective-donated counting engages once v0.3.4 donors connect; older donors default to 100% = prior full-card behavior.)
+
+---
+
+---
+
+### ✅ 2026-06-27 BATCH — MIGRATED VERBATIM TO FINALIZED.md (commit `0d97804`, feature/tier3-identity-seed-repair)
+
+The completed 2026-06-27 batch — **T3SEED** (Tier 3 identity ZERO-bug), **CGATE.1-4** (consciousness de-gating), **UVM-INT.1-6** (equational mind-space integration), **MINDSEYE** (single-source "what Unity sees" viewer), and **DOCSWEEP** (full doc/HTML stale-info sweep) — shipped + verified + committed, and their FULL VERBATIM entries are archived under the `2026-06-27` heading in `docs/FINALIZED.md`. **BC** (basin-collapse) + **SBS** (student-battery stall) were already migrated there too. Pulled out of OPEN TASKS to keep this list to live work. **Remaining for this batch:** develop→main cascade (Gee's word) + live donor-GPU verification of CGATE.1 GPU-generation + server `_imagineTick`. **Follow-on work ✅ DONE (commit `06dca6a`):** IMG-GEN (Unity now generates images on request — `_detectImageRequest` server-side intent routing + client `{url,prompt}` → Pollinations render; two bugs fixed); IMG-SEE (mind's-eye preview of the prompt before send via the mind-space — actual-pixel perceive deferred, needs image-decode dep / CORS proxy); SPONGE-WRITEUP (`docs/SPONGE-REDEPLOY-2026-06-27.md` — full fresh-walk redeploy brief + hard ask for Sponge to run the same full doc sweep for his own work).
+
+---
+
+---
+
+### PUBDASH-DONOR-UX — public-dashboard auth leak + donor app theme/headless + memory-panel nits (Gee 2026-06-27) — IN PROGRESS (branch `feature/public-dashboard-donor-ux-fixes`)
+
+**Gee verbatim per LAW #0:**
+
+> *"yes start a feature branch, solve all that and all of this: https://if-only-i-had-a-brain.git.unityailab.com/admin/milestone [HTTP/1.1 401 Unauthorized nullms] public version of the dashboard is asking for admin login(when is shall only be the admin version that asks for log in),, 1. the donor application needs OS white theeme better colors(as its hard to read grey on white. 2. the doner application needs its termianl when open to open headless"*
+
+**"all that"** = the memory-readout nits surfaced in the prior Tier-2 diagnostic: the dashboard `pass interval: (blank)` should read `5 min`; the `cosine≥0.85 grouping` label is wrong (engine constant `SCHEMA_GROUP_COSINE` is 0.7); and the Tier 3 anchor list shows a duplicate label (`play-tag-games · play-tag-games`) — dedup gap.
+
+**Tasks:**
+
+- **PD.1 — public dashboard 401 leak.** `html/dashboard-public.html` redirects to `dashboard.html?public=1`; `dashboard.html:3057-3058` registers `refreshMilestone()` + `setInterval(refreshMilestone, 5000)` UNCONDITIONALLY → polls `adminApi('milestone')` → `/admin/milestone` → 401 + Forgejo login prompt for every public viewer. Fix: gate `refreshMilestone` (and its interval) behind `!PUBLIC_MODE` (the milestone/save panel is `.admin-only` anyway). Audit confirmed it's the ONLY unconditional admin poll (auto-advance is `isAdmin`-gated; gate-probe timer does no fetch).
+- **PD.2 — donor app OS light theme + readable contrast.** `donor-app/src/gui.rs` — grey-on-white is unreadable. Switch to a light/OS-white visual style with proper text contrast.
+- **PD.3 — donor app GUI opens headless (no console window).** `donor-app/src/main.rs` — GUI build has no `windows_subsystem` attr, so a console window pops up behind the GUI on Windows. Add `#![cfg_attr(all(windows, feature = "gui"), windows_subsystem = "windows")]` so the GUI build launches with no console; the pure-headless (`--no-default-features`) CLI build keeps its console.
+- **PD.4 — memory-panel nits.** Dashboard consolidation panel: fix `pass interval` to show the real 5-min value; correct the `cosine≥0.85` label to 0.7 (or whatever `SCHEMA_GROUP_COSINE` actually is). Tier 3: dedup the anchor label list (`hippocampal-schema.js`).
+
+**Note:** branched off `develop` (complete v1.2.0 base). The IMG-GEN/IMG-SEE/SPONGE/GHBACKUP verbatim FINALIZED entries + finalize-correction live on `feature/tier3-identity-seed-repair` + the github backup; they'll reconcile on the next cascade.
+
+**STATUS:** ✅ DONE + VERIFIED (verbatim entry in `docs/FINALIZED.md`). PD.1 public-dashboard admin-poll gated behind `!PUBLIC_MODE` (no more 401/login); PD.2 donor app → OS light/white high-contrast theme; PD.3 donor GUI build → no Windows console (`windows_subsystem` cfg_attr); PD.4 stale `0.7`→`0.85` comment fixed + `pass interval` hardened (never blanks) + Tier 3 label-dedup (`promote()` + `dedupeByLabel()` boot cleanup). `node --check`+import clean; bundle 3.9MB. ⚠ donor `.exe` needs CI/Gee rebuild for PD.2/PD.3. Docs swept. Pushed to `if-only` + `github`.
+
+---

@@ -313,6 +313,29 @@ impl DonorApp {
         }
         ("Connected — idle, waiting for a task", pal.accent)
     }
+
+    /// TU.20.10 — the BRAIN SERVER's status as this donor sees it from the
+    /// connect/register handshake. Gee: "Brain status: accepting GPUs / NOT
+    /// active". Connected + registered ⇒ the brain is up and taking donor GPUs;
+    /// a running host that can't connect ⇒ the brain is NOT active (down / not
+    /// reachable); no host ⇒ nothing to report yet.
+    fn brain_status(&self, pal: Pal, conn: bool, note: &str) -> (String, egui::Color32) {
+        if self.host.is_none() {
+            return ("Brain status: — (press Start to connect)".to_string(), pal.text_dim);
+        }
+        if conn {
+            let n = note.to_lowercase();
+            // Connected and past registration = the brain accepted us into the pool.
+            if n.contains("regist") || n.contains("teach") || n.contains("comput") || n.contains("hebbian") {
+                return ("Brain status: accepting GPUs ✓".to_string(), pal.go_green);
+            }
+            return ("Brain status: accepting GPUs (registering…)".to_string(), pal.go_green);
+        }
+        if note.to_lowercase().contains("reconnect") {
+            return ("Brain status: NOT active — reconnecting…".to_string(), pal.warn);
+        }
+        ("Brain status: NOT active — can't reach the brain".to_string(), pal.warn)
+    }
 }
 
 impl eframe::App for DonorApp {
@@ -456,6 +479,9 @@ impl DonorApp {
             ui.label(egui::RichText::new(if conn { "🟢" } else if self.host.is_some() { "🟡" } else { "⚪" }).size(16.0));
             ui.label(egui::RichText::new(state_label).strong().color(state_color));
         });
+        // TU.20.10 — brain server status line (accepting GPUs / NOT active).
+        let (brain_label, brain_color) = self.brain_status(pal, conn, &note);
+        ui.label(egui::RichText::new(brain_label).strong().color(brain_color));
         if !gpu_name.is_empty() {
             ui.label(egui::RichText::new(format!("Unit: {gpu_name}")).color(pal.text_dim));
         }

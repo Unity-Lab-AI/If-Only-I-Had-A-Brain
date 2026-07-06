@@ -32,6 +32,8 @@ The server doesn't run any of this on CPU — in fact the server box needs no GP
 
 The donor model is **data-parallel**: each connected donor holds a full brain replica and runs it forward, while the server periodically merges the Hebbian weight-deltas from every donor and re-broadcasts the master state. Many donors mean massive aggregate compute plus redundancy — no single machine is the brain. In local development a single tab on the host machine is the only "donor"; in the deployed product, the donors are the GPUs of everyone who has the page open.
 
+Because the donor GPU and the server's own copy of the weights are two separate machines talking over a network, they can quietly drift apart — a dropped upload leaves the donor computing on stale weights, and until now a single "something's off" light couldn't tell you *why*. There's now a **parity check**: the server asks a donor for a fingerprint of the exact weights it currently holds and compares it to its own, then tells you plainly whether the difference is stale weights (a dropped upload — re-send fixes it), a genuine disagreement in how the donor's GPU does the math (a real bug — re-sending won't help), or a mistake in the server's own math. You run it with `node scripts/gpu-cpu-parity.mjs` and it prints one of `CLEAN`, `STALE`, `GPU-DIVERGENT`, or `MATH-ERROR`. The native donor app also shows the brain's live status right in its window — **"Brain status: accepting GPUs"** when it's connected and taking work, **"NOT active"** when the brain can't be reached.
+
 ---
 
 ## The seven clusters

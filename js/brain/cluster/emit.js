@@ -637,7 +637,10 @@ export const CLUSTER_EMIT_MIXIN = {
           if (!this._wordBucketOverflowWarned) this._wordBucketOverflowWarned = {};
           if (!this._wordBucketOverflowWarned[subj]) {
             this._wordBucketOverflowWarned[subj] = true;
-            try { console.warn(`[emit] word_motor_${subj} capacity overflow — ${wordsList.length} words exceed frozen band (cellSize=${bucketSize}). Words past index ${b} cannot emit; raise word_motor fraction or lower DREAM_WORD_MOTOR_VOCAB_CAP.`); } catch {}
+            const bandCells = subjEnd - subjStart;
+            const fits = bucketSize > 0 ? Math.floor(bandCells / bucketSize) : 0;
+            const cantEmit = Math.max(0, wordsList.length - b);
+            try { console.warn(`[emit] word_motor_${subj} capacity overflow — band holds ${fits} words (${bandCells} cells / ${bucketSize} per word) but subject has ${wordsList.length}; ${cantEmit} words past index ${b} CANNOT emit. Remedy: grow the language cortex (deploy the V8-heap fix / add donor GPUs → bigger 6% word_motor region) so the band exceeds the vocab; TU.20.1 proportional carve already gave heavy subjects a larger slice.`); } catch {}
           }
           break;
         }
