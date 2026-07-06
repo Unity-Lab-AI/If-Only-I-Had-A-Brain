@@ -5,6 +5,31 @@
 
 ---
 
+## 2026-07-06 — TU.21: dashboard admin Update buttons now self-restart — Gee can self-deploy without Sponge/OVH access — feature/dashboard-update-restart-auth-header
+
+### Gee ask (verbatim per LAW #0)
+
+> *"needs to figure out a way to use the brain admin login to operate the update buttons on the admin dashboard"* — relayed by Sponge 2026-07-06: so Gee can go about updating without needing Sponge to do things on OVH, and without giving Gee direct access to the OVH server.
+
+**Context:** the dashboard already ships four admin buttons (`🔄 Restart (Savestart)` → `/restart`, `⬆ Update & Fresh Walk` → `/update`, `⬆ Update & Savestart` → `/update?keep=1`, `🔁 Savererun` → `/savererun`), all admin-gated. Restart/Reset/Savererun worked for Gee (in-process `process.exit` → systemd revives; his click carries a proxy-vouched `X-UAL-User`, so `requireLoopback` admits it). The two **Update** buttons did NOT — they overlaid the new code but the service kept running the OLD code (the long-standing "button does nothing", mis-blamed on the sudo grant in the 2026-06-28 notes).
+
+**Root cause (finally isolated):** `/update` spawns `deploy/self-update.sh` FROM the brain-server process, which runs under systemd `NoNewPrivileges=yes`. A child inherits NoNewPrivileges and **cannot escalate via sudo even with the `/etc/sudoers.d/unity-brain-restart` grant** → `sudo -n systemctl restart` fails. The WL.4 no-sudo fallback (loopback `POST /restart` → `process.exit` → systemd `Restart=always` revives the overlaid code) is the correct escape — **but its curl sent no `X-UAL-User` header.** Deployed boxes run `UAL_PROXY_AUTH=1`, so `requireLoopback()` (`server/brain-server.js:5359`) rejects a header-less loopback POST with **403** → the fallback failed too → FATAL, service never restarted.
+
+**Shipped:**
+- **TU.21.1** `deploy/self-update.sh` — the no-sudo `/restart` fallback now sends `-H "X-UAL-User: ${DEPLOY_AUTH_USER}"` (new env `UAL_DEPLOY_USER`, default `self-update`). `requireLoopback` only requires the header be non-empty, and this is a DIRECT loopback call (nginx not in the path → nothing strips it), so the vouched identity passes the gate → `process.exit(0)` → `Restart=always` revives the freshly-overlaid code. Header var + env doc block + fallback comment + the FATAL diagnostic all updated to name both traps (NoNewPrivileges-blocks-sudo, header-403). No systemd unit change, no `daemon-reload` — ships in the normal overlay.
+
+**Verified (live on the box, no code guesswork):**
+- **Gate mechanism proven non-destructively:** `curl` to the loopback `/diag/parity` (which shares the identical `requireLoopback` gate as `/restart`, without restarting) — **bare → HTTP 403**, **with `-H "X-UAL-User: self-update"` → HTTP 200.** That is exactly the 403→200 the fix converts on the `/restart` fallback.
+- `bash -n deploy/self-update.sh` clean locally AND on the box after deploy; on-box script carries the header at the fallback line; owned `unity:unity`, `0755`; prior copy saved as `self-update.sh.pre-tu21`.
+- **Deployed to the box** by copying the fixed script into `/opt/unity-brain/deploy/` (the file is read fresh each time `/update` spawns it → no restart needed to install; Gee's next Update click uses it).
+- Box prereqs confirmed present: `Restart=always` in the unit, server on `127.0.0.1:7525`, `unity` clone deploy/host keys (2026-06-28). No sudoers rule is even required anymore — the loopback fallback is self-sufficient.
+
+**Result:** Gee, logged into the brain admin dashboard, can now click **Update & Savestart** (deploy a fix, keep training) or **Update & Fresh Walk** (deploy + re-walk) and the box actually restarts into the new code — no Sponge, no OVH shell, no direct server access.
+
+**Docs (same commit, docs-before-push LAW):** `deploy/REDEPLOY-NOTES.md` 2026-07-06 entry, `docs/TODO.md` TU.21 task (Gee verbatim), this FINALIZED entry.
+
+---
+
 ## 2026-07-05 — DONOR-036: donor-v0.3.6 release — IDLE_TIMEOUT watchdog fix + PD.2/PD.3 rebuild + CI + site download-link bump — feature/donor-v0.3.6-idle-watchdog-release
 
 ### Sponge verbatim per LAW #0
