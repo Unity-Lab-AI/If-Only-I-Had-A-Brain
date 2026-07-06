@@ -344,3 +344,19 @@ Verified: server JS + dashboard parse; `_getProfilingState` mock → cortexUploa
 **Deliberately NOT auto-bumped:** `DREAM_MIN_DONOR_VERSION` in `server/brain-server.js` (the brain's *minimum compatible* donor version). That's a compatibility decision tied to protocol changes, not every release — raise it by hand only when a donor-side protocol change makes older binaries genuinely incompatible.
 
 **Verify after the next real donor tag:** the Actions run shows the guard passing, both uploads, then `Pushed link bump to main …`; `main` gets a `site(donor): bump download links -> donor-vX.Y.Z [auto donor-release]` commit; the live download pages (`…/html/compute.html`, `…/html/legend.html`) point at the new tag. Dry-run proof at authoring time: the `sed` rewrote exactly the 5 version tokens (2 in compute.html, 3 in legend.html) and nothing else.
+
+---
+
+## 2026-07-06 — /minds-eye.json + /public-state.json are PROXIED by design (mind's-eye "brain offline" fix)
+
+**Symptom:** the 👁 mind's-eye viewer (`html/minds-eye.html`) showed "brain offline — no snapshot reachable" on the deployed site but worked on localhost. **NOT a brain/curriculum problem** — she imagines during idle windows regardless of how far the walk got.
+
+**Root cause (nginx proxy gap):** the viewer fetches same-origin `/minds-eye.json`, a LIVE backend route (`server/brain-server.js` — always 200, returns a "warming up" note before she's imagined). The per-host vhost `unity-brain.git.unityailab.com.conf` serves the static frontend with an SPA fallback (`location / { try_files $uri $uri/ @spa }` → `@spa` → `index.html`). `/minds-eye.json` had no proxy `location`, so it fell through to that SPA fallback → **HTTP 200 but `text/html` (index.html)** → the viewer's `JSON.parse` failed → "offline". Localhost works because the brain serves everything directly (no proxy). NOTE: `/public-state.json` was ALREADY proxied on the live box (the fuller per-host vhost differs from the generic `deploy/nginx-unity-brain.conf` reference), so the public dashboard stats were fine — only `/minds-eye.json` was missing.
+
+**Fix (live box + repo reference — pure proxy config, NO brain restart / fresh walk):**
+- **Live box** `/etc/nginx/sites-available/unity-brain.git.unityailab.com.conf` — added a `location = /minds-eye.json` block mirroring the existing `/public-state.json` one (public, no auth, `proxy_set_header X-UAL-User ""`). Backup saved `…conf.pre-mindseye-<UTC>`. Applied with `sudo nginx -t && sudo systemctl reload nginx` (test passed, reloaded — no rollback needed).
+- **Repo reference** `deploy/nginx-unity-brain.conf` — added BOTH `location = /public-state.json` and `location = /minds-eye.json` public snapshot blocks (the reference had neither) with a comment explaining WHY they must be proxied when a vhost serves static with an SPA fallback — so the next person doesn't re-diagnose it as a brain issue. (Pairs with the DF.3 precedent that added the `/admin/` proxy block.)
+
+**Verified live:** `curl https://if-only-i-had-a-brain.git.unityailab.com/minds-eye.json` → **before:** `HTTP 200 text/html` (index.html); **after:** `HTTP 200 application/json` (`{"type":"mindsEye","rec":{…}}` — real imagined snapshot). `/public-state.json` still JSON, `/admin/milestone` still `401`. The deployed viewer status goes "brain offline" → "live".
+
+**⚠ Config drift note:** the LIVE box uses `unity-brain.git.unityailab.com.conf` (a full per-host vhost that also serves static — because an exact `server_name` shadows the wildcard-pages vhost), which is NOT the same file as the repo's generic proxy-only `deploy/nginx-unity-brain.conf` reference. The live vhost is not git-tracked; the repo file is a reference. When touching brain proxy routing, change BOTH (the live per-host vhost is the source of truth for the box).
