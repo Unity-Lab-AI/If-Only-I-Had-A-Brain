@@ -521,6 +521,19 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                             Ok(ServerMessage::ClearSpikeRegion(w)) => { pending.fetch_add(1, Ordering::Relaxed); let _ = work_tx.send(Work::ClearSpike { cluster: w.cluster_name, region: w.region_name }); }
                             Ok(ServerMessage::ReadbackLetterBuckets(rb)) => { pending.fetch_add(1, Ordering::Relaxed); let _ = work_tx.send(Work::Readback { req_id: rb.req_id, cluster: rb.cluster_name, region: rb.region_name, bucket_count: rb.bucket_count, sub_slice_len: rb.sub_slice_len, start_offset: rb.start_offset }); }
                             Ok(ServerMessage::ReadbackMatrixChecksum(rc)) => { pending.fetch_add(1, Ordering::Relaxed); let _ = work_tx.send(Work::ChecksumMatrix { req_id: rc.req_id, name: rc.name, sample_count: rc.sample_count }); }
+                            // TU.20.12 — the brain refused this binary as incompatible. Surface it
+                            // and set stop so the supervisor does NOT reconnect-loop a version it
+                            // already rejected. The user must download the current donor + restart.
+                            Ok(ServerMessage::IncompatibleVersion(iv)) => {
+                                let msg = if iv.message.is_empty() {
+                                    format!("this donor binary (v{}) is too old — the brain requires v{}+. Download the current donor from git.unityailab.com and restart.", iv.your_version, iv.min_version)
+                                } else { iv.message.clone() };
+                                eprintln!("[donor] ⛔ INCOMPATIBLE: {msg}");
+                                set_status(&control, |s| { s.connected = false; s.note = format!("INCOMPATIBLE — update to v{}+ (git.unityailab.com)", iv.min_version); });
+                                control.stop.store(true, Ordering::Relaxed);
+                                let _ = tx.send(Message::Close(None)).await;
+                                break;
+                            }
                             Ok(ServerMessage::Other) => { /* forward-compat: ignore unknown */ }
                             Err(_) => { /* non-JSON or unparseable — ignore */ }
                         }

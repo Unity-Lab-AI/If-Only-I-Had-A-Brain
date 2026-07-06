@@ -239,7 +239,7 @@ On the public donor lane (`wss://<host>/ws`), any number of `compute.html` donor
 
 | Direction | Type | Payload | Meaning |
 |---|---|---|---|
-| Donor → Server | `gpu_register` | `{}` (public lane) | Donor joins the replica pool; server uploads the full brain to it |
+| Donor → Server | `gpu_register` | `{ …, appVersion }` (native binary) | Donor joins the replica pool; server uploads the full brain to it. **TU.20.12:** a native binary sends `appVersion` (Cargo pkg version); if it's below `DREAM_MIN_DONOR_VERSION` (default 0.3.7) the server replies `{type:"incompatible_version", yourVersion, minVersion, message}` + closes (code 4001) and does NOT admit it. Browser donors omit `appVersion` → exempt. The refused donor stops reconnecting + shows "Brain status: refused — update". |
 | Server → Donor | (full-brain upload + periodic master re-broadcast) | weights | Replica receives the complete brain on join, then periodic merged-master pushes |
 
 Admin-only telemetry rides the admin lane (`wss://<host>/admin/ws`): the live server console stream and auto-scale telemetry (replica count, per-replica throughput, scaling decisions) are pushed only to authed admin clients, never to donors/viewers.
