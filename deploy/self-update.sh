@@ -21,6 +21,11 @@
 #                    .force-fresh, so the restart RESUMES the saved weights
 #                    (relies on DREAM_KEEP_STATE=1 in the unit). Anything else
 #                    (default) = the original fresh-walk wipe.
+#   UAL_DEPLOY_USER  identity sent as X-UAL-User on the no-sudo loopback
+#                    /restart fallback (default "self-update"). Deployed boxes
+#                    run UAL_PROXY_AUTH=1, so requireLoopback() rejects a
+#                    header-less loopback POST — the fallback MUST vouch an
+#                    identity or it 403s and the restart silently never fires.
 #
 # Requires on the box: git, rsync, and sudo rights to `systemctl restart`
 # the service (or run as a user that can). The deploy key must be able to
@@ -33,6 +38,7 @@ GIT_BRANCH="${UAL_GIT_BRANCH:-main}"
 SERVICE="${UAL_SERVICE:-unity-brain}"
 KEEP_STATE="${UAL_KEEP_STATE:-0}"
 BRAIN_PORT="${UAL_BRAIN_PORT:-7525}"
+DEPLOY_AUTH_USER="${UAL_DEPLOY_USER:-self-update}"
 LOG="${BACKEND_DIR}/self-update.log"
 
 # WL.4 — tee to BOTH the file AND stdout. The brain-server spawns this with piped
@@ -105,15 +111,23 @@ if sudo -n systemctl restart "$SERVICE" >> "$LOG" 2>&1; then
   log "DONE — ${SERVICE} restarted via sudo"
 elif systemctl restart "$SERVICE" >> "$LOG" 2>&1; then
   log "DONE — ${SERVICE} restarted"
-elif curl -fsS -m 15 -X POST "http://127.0.0.1:${BRAIN_PORT}/restart" >> "$LOG" 2>&1; then
-  # WL.4 — NO-SUDO fallback. If neither systemctl restart worked (the service user
-  # lacks the sudo grant), trigger the loopback /restart endpoint: the server
-  # force-saves + process.exit's, and systemd Restart=always revives the freshly
-  # overlaid code. Requires Restart=always in the unit + the server reachable on
-  # loopback. This is what makes the dashboard Update button self-serve WITHOUT
-  # any sudoers setup.
-  log "DONE — restart triggered via loopback POST /restart (process.exit → systemd Restart=always revives the overlaid code; NO sudo needed)."
+elif curl -fsS -m 15 -X POST -H "X-UAL-User: ${DEPLOY_AUTH_USER}" "http://127.0.0.1:${BRAIN_PORT}/restart" >> "$LOG" 2>&1; then
+  # WL.4 — NO-SUDO fallback. If neither systemctl restart worked (the service runs
+  # under NoNewPrivileges, so a script SPAWNED by the brain-server can't escalate
+  # via sudo even with a sudoers grant), trigger the loopback /restart endpoint:
+  # the server force-saves + process.exit's, and systemd Restart=always revives the
+  # freshly overlaid code. Requires Restart=always in the unit + the server
+  # reachable on loopback. This is what makes the dashboard Update button self-serve
+  # WITHOUT any sudoers setup.
+  #   ⚠ The X-UAL-User header is REQUIRED: deployed boxes run UAL_PROXY_AUTH=1, so
+  #   requireLoopback() gates /restart on a proxy-vouched identity. A header-less
+  #   loopback POST returns 403 — the restart would silently never fire and the box
+  #   would keep running the OLD code after a successful overlay (the exact reason
+  #   the dashboard Update buttons appeared to "do nothing" pre-2026-07-06). nginx
+  #   strips client-supplied X-UAL-User only on the PUBLIC path; this is a direct
+  #   loopback call (nginx not in the path), so the header sails through the gate.
+  log "DONE — restart triggered via loopback POST /restart (X-UAL-User=${DEPLOY_AUTH_USER}; process.exit → systemd Restart=always revives the overlaid code; NO sudo needed)."
 else
-  log "FATAL — could not restart ${SERVICE}. sudo systemctl restart failed AND the no-sudo loopback POST /restart failed. Fix ONE of: (1) grant the service user 'sudo -n systemctl restart ${SERVICE}', or (2) ensure the server is up on 127.0.0.1:${BRAIN_PORT} with Restart=always in the unit. Manual: sudo systemctl restart ${SERVICE}"
+  log "FATAL — could not restart ${SERVICE}. sudo systemctl restart failed AND the no-sudo loopback POST /restart failed. Fix ONE of: (1) grant the service user 'sudo -n systemctl restart ${SERVICE}' AND drop NoNewPrivileges (a script spawned by the service inherits it and can't escalate), or (2) ensure the server is up on 127.0.0.1:${BRAIN_PORT} with Restart=always in the unit AND that the loopback /restart POST carries a non-empty X-UAL-User (UAL_DEPLOY_USER) when UAL_PROXY_AUTH=1 — a 403 here means the header was missing/empty. Manual: sudo systemctl restart ${SERVICE}"
   exit 1
 fi
