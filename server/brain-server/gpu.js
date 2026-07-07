@@ -1036,7 +1036,7 @@ const SERVER_GPU_MIXIN = {
           resolve(null);
         }
       }, timeoutMs);
-      this._gpuSparsePending.set(reqId, { resolve, reject, timeout });
+      this._gpuSparsePending.set(reqId, { resolve, reject, timeout, ws }); // TU.25.D — target-tagged for cancel-on-disconnect
     });
   },
 
@@ -1279,7 +1279,7 @@ const SERVER_GPU_MIXIN = {
           resolve(null);
         }
       }, timeoutMs);
-      this._gpuSparsePending.set(reqId, { resolve, reject, timeout });
+      this._gpuSparsePending.set(reqId, { resolve, reject, timeout, ws }); // TU.25.D — target-tagged for cancel-on-disconnect
     });
   },
 
@@ -1374,6 +1374,11 @@ const SERVER_GPU_MIXIN = {
     // by replaying these. Replica-sync uploads (targetWs set) don't re-track.
     const ws = (targetWs && targetWs.readyState === 1) ? targetWs : this._gpuClient;
     const isReplicaSync = !!(targetWs && targetWs !== this._gpuClient);
+    // TU.25.C — stamp the upload-dispatch time on the RECEIVING socket so the
+    // heartbeat sweep grants mid-upload grace (the primary's canonical initGpu
+    // upload has no _replicaSyncInFlight marker; without this it was terminated
+    // mid-upload every churn cycle).
+    if (ws) ws._lastUploadDispatchTs = Date.now();
     // Never push an EMPTY matrix to a replica. A registry-replay (the 1.5s initial sync or the
     // 10-min rebroadcast) can hit a matrix whose CPU CSR was freed (CPU-CSR-free nulls it after
     // the primary's upload); uploading that empty result would CLOBBER the valid copy the
@@ -1444,7 +1449,7 @@ const SERVER_GPU_MIXIN = {
           resolve(null);
         }
       }, timeoutMs);
-      this._gpuSparsePending.set(reqId, { resolve, reject, timeout });
+      this._gpuSparsePending.set(reqId, { resolve, reject, timeout, ws }); // TU.25.D — target-tagged for cancel-on-disconnect
     });
 
     if (!ws || ws.readyState !== 1) return null;
@@ -1754,6 +1759,32 @@ const SERVER_GPU_MIXIN = {
     // prior behavior.
     const target = (this._df7Fanout && this._df7Fanout()) ? this._nextPoolDonor() : this._gpuClient;
     if (!target || target.readyState !== 1) {
+      for (const op of ops) op.resolve(null);
+      return;
+    }
+
+    // TU.25.A — SHED, don't stack. The bound-Hebbian batch stream is the teach
+    // flood (~7.4MB/s sustained on the live box) and it out-runs a donor link's
+    // drain rate: the buffer sawtoothed 400-900MB, our heartbeat ping queued
+    // BEHIND that mass for 60-120s, and every just-promoted primary got
+    // false-reaped mid-upload (7 kills in 12.5min). These frames are
+    // fire-and-forget GPU shadows — the CPU CSR is authoritative and the
+    // (TU.20.2-fixed) auto-resync re-converges the shadow once the buffer
+    // drains — so under saturation the correct move is to DROP the batch
+    // immediately, not enqueue it (the old 30s backpressure await downstream
+    // just stalled the pipeline while the queue kept growing). Threshold is a
+    // SOFT cap well below the 500MB hard-drop line so liveness traffic (pings,
+    // acks, uploads) keeps a drainable buffer. Env: DREAM_WS_SOFT_SHED_MB.
+    const SOFT_SHED_MB = Number(process.env.DREAM_WS_SOFT_SHED_MB) > 0
+      ? Number(process.env.DREAM_WS_SOFT_SHED_MB) : 64;
+    if (target.bufferedAmount > SOFT_SHED_MB * 1024 * 1024) {
+      if (!this._wsShedCount) this._wsShedCount = 0;
+      this._wsShedCount += ops.length;
+      this._gpuShadowDirty = true; // shadow heals via auto-resync on drain
+      if (!this._wsShedLogMs || (Date.now() - this._wsShedLogMs) > 30000) {
+        this._wsShedLogMs = Date.now();
+        console.warn(`[Brain] TU.25.A — teach-Hebbian batch SHED (${ops.length} ops): target bufferedAmount=${(target.bufferedAmount / 1024 / 1024).toFixed(1)}MB > ${SOFT_SHED_MB}MB soft cap. CPU stays authoritative; GPU shadow re-converges via auto-resync once the buffer drains. ${this._wsShedCount} ops shed since boot (rate-limited 30s).`);
+      }
       for (const op of ops) op.resolve(null);
       return;
     }
