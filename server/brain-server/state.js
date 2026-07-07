@@ -1187,6 +1187,10 @@ const SERVER_STATE_MIXIN = {
       drops,
       absorbs,
       enobufs,
+      // TU.25.A — teach-Hebbian ops shed at the soft cap (fire-and-forget
+      // frames dropped instantly under saturation instead of stacking the
+      // buffer; CPU authoritative, shadow re-converges via auto-resync).
+      sheds: this._wsShedCount || 0,
       dropRatePerSec,
       wsConnected: !!(ws && ws.readyState === 1),
       // GPU shadow dirty flag. Set when a drop-after-timeout fires;

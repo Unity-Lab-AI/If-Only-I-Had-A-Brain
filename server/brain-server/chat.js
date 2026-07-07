@@ -861,7 +861,50 @@ const SERVER_CHAT_MIXIN = {
         });
         this.mindSpace.governTick();
       }
-      const rec = this.mindSpace.imagineFromState(this.cortexCluster.lastSpikes,
+      // TU.25.G — she images what she's THINKING, not a map of her neurons.
+      // The old seed was the raw whole-cortex lastSpikes = literally a neuron
+      // map (near-black on an early walk, speckle at scale — a readout, not
+      // imagination). Now the seed is her THOUGHT CONTENT: the most recent
+      // inner-thought/emission text embedded into sem space, EXPERIMENTING by
+      // blending in a rotating older thought from the chain (70/30) so
+      // successive daydreams recombine her ideas instead of repeating one.
+      // Before she has any thoughts (fresh boot), the seed is the SEM region
+      // activation — her thinking region's concept state — never the
+      // whole-cortex spike map. Equational end to end: text → sentence
+      // embedding → bounded forward CDF 9/7 field C.
+      let _seed = null;
+      let _seedSource = 'thought';
+      try {
+        const chain = Array.isArray(this._innerThoughtChain) ? this._innerThoughtChain : [];
+        const _txt = (e) => (typeof e === 'string' ? e : (e && e.sentence) || '').trim();
+        const texts = chain.map(_txt).filter(t => t.length > 0);
+        if (texts.length > 0 && this.sharedEmbeddings
+            && typeof this.sharedEmbeddings.getSentenceEmbedding === 'function') {
+          const cur = this.sharedEmbeddings.getSentenceEmbedding(texts[texts.length - 1]);
+          if (cur && cur.length) {
+            if (texts.length > 1) {
+              // experiment: rotate through her older thoughts as the blend partner
+              this._imagineExperimentIdx = ((this._imagineExperimentIdx || 0) + 1) % (texts.length - 1);
+              const older = this.sharedEmbeddings.getSentenceEmbedding(texts[this._imagineExperimentIdx]);
+              if (older && older.length === cur.length) {
+                const mix = new Float64Array(cur.length);
+                for (let i = 0; i < cur.length; i++) mix[i] = cur[i] * 0.7 + older[i] * 0.3;
+                _seed = mix;
+                _seedSource = 'thought-blend';
+              }
+            }
+            if (!_seed) _seed = cur;
+          }
+        }
+      } catch { /* thought-seed is best-effort; sem-region seed below */ }
+      if (!_seed) {
+        const semR = this.cortexCluster.regions && this.cortexCluster.regions.sem;
+        _seed = (semR && typeof this.cortexCluster.lastSpikes.subarray === 'function')
+          ? this.cortexCluster.lastSpikes.subarray(semR.start, semR.end)
+          : this.cortexCluster.lastSpikes;
+        _seedSource = 'sem-state';
+      }
+      const rec = this.mindSpace.imagineFromState(_seed,
         { maxSide: 48, priority: 0.25, value: 0.4 });
       if (!rec) return;
       const percept = this.mindSpace.describe(rec);
@@ -873,7 +916,9 @@ const SERVER_CHAT_MIXIN = {
       if (!_midTeach && percept && typeof this.cortexCluster.injectEmbeddingToRegion === 'function') {
         try { this.cortexCluster.injectEmbeddingToRegion('sem', percept, 0.08); } catch { /* non-fatal */ }
       }
-      this._lastImagineRec = { terms: rec.equation_count || 0, source: rec.fidelity?.source || 'mindspace-denovo', at: now };
+      // TU.25.G — surface WHAT seeded the image (thought / thought-blend /
+      // sem-state) so the viewer shows she's imaging her thinking.
+      this._lastImagineRec = { terms: rec.equation_count || 0, source: _seedSource, at: now };
       // UVM-INT.4 — persist the field C as memory (the ".uvme medium"). Push the
       // full rec into a bounded ring that saveWeights serializes, so her imagined
       // imagery survives reboot instead of evaporating with the volatile cortex.
