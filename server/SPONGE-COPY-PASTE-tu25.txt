@@ -1,0 +1,86 @@
+════════════════════════════════════════════════════════════════════════════
+  SPONGE — DEPLOY TU.25: teach-flood shed + heartbeat truth + churn brakes
+  2026-07-06   |   main = efa1ab3 (git.unityailab + github, in sync)
+  Deploy mode: **Update & SAVESTART (keep weights)** — NOT a fresh walk.
+════════════════════════════════════════════════════════════════════════════
+
+WHY THIS DEPLOY (what the post-TU.20 live log showed)
+  TU.20 is live and its resync fix WORKS (the "TU.20.2 rebroadcast SKIPPED"
+  lines). What remained: the fire-and-forget teach-Hebbian stream (~7.4MB/s)
+  out-runs a donor link's drain → buffer sawtooths 400-900MB → our own PING
+  queues behind that mass → heartbeat false-reaps the just-promoted primary
+  (7 kills in 12.5min, one every ~107s) → every reconnect scores "STRONGER"
+  (fresh 10.24 vs beaten 0.73) → instant re-promote → full canonical re-upload
+  → killed again — while the orphaned uploads rot on 180s timers (all 17 timed
+  out; letter_to_phon burned 3×180s retries). TU.25 breaks every link of that
+  chain. Full receipts: docs/TODO.md §TU.25.
+
+WHAT'S IN IT (all server-side — server/brain-server.js, gpu.js, state.js, chat.js)
+  A  FLOOD SHED — the bound-Hebbian teach batch DROPS instantly when the target
+     socket buffers > DREAM_WS_SOFT_SHED_MB (default 64MB). Safe by design: the
+     CPU CSR is authoritative, the GPU shadow re-converges via the TU.20.2
+     auto-resync once the buffer drains. New counter: wsPressure.sheds.
+  B  HONEST HEARTBEAT — ping misses are FORGIVEN while our send buffer to that
+     socket > DREAM_HB_BUF_FORGIVE_MB (default 32MB): the ping physically never
+     left the box, so the miss is our congestion, not donor death.
+  C  CANONICAL-UPLOAD GRACE — a socket that had a chunked upload dispatched to
+     it < 90s ago is busy receiving the brain; the primary's initGpu canonical
+     upload finally gets the same grace replica-syncs had (HBGRACE.3 gap).
+     The hard ceiling is unchanged — a truly dead socket still dies.
+  D  CHURN BRAKES — promote-stronger DEFERS while the current primary is
+     mid-canonical-upload or within DREAM_DF7_PROMOTE_COOLDOWN_S (default 120s)
+     of the last promotion (deferred newcomers join as replicas; the periodic
+     rebalance promotes them once proven). And all in-flight sparse reqIds are
+     tagged with their target socket + CANCELLED the moment that donor
+     disconnects — no more 180s-timeout storms after a churn kill.
+  E  wMAX RESTORE INTEGRITY — _loadBinaryWeights now inherits the construction-
+     time wMin/wMax clamps onto restored matrices (the "proj.wMax non-finite
+     (Infinity)" WARN class — iter14-D — is dead at the root).
+  G  MIND'S EYE (Gee directive) — she images what she's THINKING: field C seeds
+     from her latest inner-thought/emission embedding with a rotating 70/30
+     older-thought blend (experimentation), or her sem-region activation before
+     any thoughts exist — never the raw whole-cortex neuron map. The viewer's
+     "source" now reads thought / thought-blend / sem-state.
+
+DEPLOY
+  1. Pull main (efa1ab3) on the box.
+  2. Dashboard ⬆ **Update & Savestart (keep weights)** — TU.25 is transport/
+     liveness only: NO weight-format or band-geometry change, so the current
+     walk RESUMES. Do NOT fresh-walk (that would throw away the walk for
+     nothing). If the buttons misbehave, the manual overlay runbook is
+     server/SPONGE-MANUAL-DEPLOY.txt — same steps, just skip the .force-fresh
+     write (step 6) so the restart resumes weights.
+  3. No nginx change, no donor-binary change (donor-v0.3.7 stays current), no
+     systemd unit change (env knobs below are optional, defaults are right).
+
+ENV KNOBS (all optional — defaults tuned to the live evidence)
+  DREAM_WS_SOFT_SHED_MB=64          teach-batch shed threshold
+  DREAM_HB_BUF_FORGIVE_MB=32        heartbeat buffer-forgiveness threshold
+  DREAM_DF7_PROMOTE_COOLDOWN_S=120  promote-stronger cooldown
+  DREAM_SM_WMAX=0.4                 (existing) sem_to_motor clamp the restore
+                                    fallback honors
+
+VERIFY (live, during a heavy teach phase — that's when the old code churned)
+  • Donors STAY connected through _teachHebbian: no "missed 2 consecutive
+    pings" terminations every ~2min; forgiveness lines may appear instead
+    ("+N forgiven — loop-block / buffer-saturation / mid-upload").
+  • wsPressure: bufferedAmountMB hovers near/below ~64 instead of sawtoothing
+    to 900; `sheds` climbs during heavy teach (that's the flood being shed —
+    GOOD); `drops` stays near-flat.
+  • On a donor disconnect: "TU.25.D — cancelled N in-flight sparse request(s)"
+    replaces the old wall of 180s "timed out" lines.
+  • Newcomer donors mid-teach log "promotion is DEFERRED (…) — joins as a
+    replica" instead of instantly seizing PRIMARY.
+  • On the Savestart boot: NO "proj.wMax non-finite (Infinity)" WARN.
+  • Mind's-eye viewer (👁): source shows thought / thought-blend / sem-state,
+    and the image changes as her thoughts change (not a static spike map).
+  • Parity spot-check any time: curl -s
+    'http://127.0.0.1:7525/diag/parity?name=cortex_intraSynapses' → CLEAN
+    (or STALE briefly right after sheds, clearing once the auto-resync lands).
+
+CONTEXT REFERENCES
+  docs/TODO.md §TU.25 (full log-receipt analysis + per-fix rationale)
+  docs/WEBSOCKET.md §Server heartbeat grace (items 5-7 are new)
+  docs/ARCHITECTURE.md 2026-07-06 TU.25 banner · docs/NOW.md TU.25 banner
+  server/SPONGE-MANUAL-DEPLOY.txt (manual overlay runbook, if buttons fail)
+════════════════════════════════════════════════════════════════════════════
