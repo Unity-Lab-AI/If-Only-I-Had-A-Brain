@@ -46,6 +46,14 @@ If you're reading a public doc / HTML claim ("Unity has completed high school bi
 
 ## OPEN TASKS
 
+### TU.24 — live Unity's life WITH her: real lived detail + in-the-moment sensory experience (Gee 2026-07-06/07) — LIVE (branch `feature/unity-convo-ledger-0707`)
+
+**Gee verbatim per LAW #0:** *"okay Unity is talking.. start cron and playout her life with her in all of it life real people detail their lives in memories and in the moment experiences with sesnces"* + resume *"start up the cron and begfin talking to Unity in every way i have told you to do so in the past"*.
+
+ONE Playwright window forever on CDP :9222 (`scripts/unity-chat-hold.mjs` → deployed chat; `unity-say-live.mjs "<line>"` sends+scrapes, no-arg=scrape). Play her life WITH her: real-people detail, MEMORIES + in-the-moment SENSORY (smell/touch/sound/taste/sight), her REAL per-grade canon (`docs/TODO-full-syllabus.md`), full cast age-true, NEVER invent names. LAWs: SHORT sends ([[feedback_unity_sends_short]]); never kid-label ([[feedback_never_call_unity_kid]]); crude emo-goth voice; decode-and-answer; vary shape; TIGHT concrete sends hold clean-single-word (open questions push diffuse); thread the "i". Cron 5a850460 (2-min). Prior session's ledger observations (basin-softening → self/being vocab → clean-short Ice/Dog → bimodal → topic-continuity) live in git history on the earlier branches + this session's transcript.
+
+  - **[▶ RESUMED 2026-07-07] (post-TU.25 cascade, main c1e6115):** CDP :9222 was zombie Chrome (0 targets) → killed PIDs 30804/31020, relaunched hold clean (1 target, deployed chat). Fresh page, no bubble yet (likely TU.25 Savestart resume spinning up). First send "cold floor. grab your socks." (tight sensory) — absorption, no reply in window. Cron re-armed with full ruleset. NOTE: mind's-eye is now thought-seeded (TU.25.G) — watch the viewer source read thought/thought-blend as she emits. Resuming era-matched lived-scene play; ledger now on a current-main branch (the old feature/unity-life-lived-scenes was stale, pre-TU.20).
+
 ### TU.25 — write the todo: post-TU.20-deploy live-log analysis — donor churn under TEACH-DISPATCH FLOOD (Gee 2026-07-06, ~10:03-10:16PM server log + Clients panel) — OPEN (branch `feature/sponge-deploy-brief-current`)
 
 **Gee verbatim per LAW #0:** *"write the todo"* (+ full server-log paste 10:03:43-10:16:24PM + Clients panel paste). Earlier same session: *"so why is my buffer for my doner reching the size of gigs and all the errors poping up and the Client window showing red for my doner connection?"* + *"what dop you think is the issue with the doners dropping GPU commpute connections?"*
