@@ -4758,11 +4758,29 @@ class ServerBrain {
         m.rowPtr = s.rowPtr;
         m.nnz = s.nnz;
         if (s.name === 'cortex.synapses') {
+          // TU.25.E — the constructor default is wMax=Infinity; the binary save
+          // doesn't persist clamps, so restored matrices came back UNBOUNDED
+          // (iter14-D clamp-loss: every Hebbian write unbounded → saturation →
+          // the live `proj.wMax non-finite (Infinity)` WARN). Inherit the
+          // construction-time clamps from the live object we're replacing;
+          // fall back to the canonical creation values if it's missing.
+          const prev = cortex.synapses;
+          if (prev && Number.isFinite(prev.wMax)) { m.wMin = prev.wMin; m.wMax = prev.wMax; }
+          else { m.wMin = -2.0; m.wMax = 2.0; } // cluster.js intra-synapse creation values
           cortex.synapses = m;
           applied++;
         } else if (s.name.startsWith('cortex.crossProjections.')) {
           const key = s.name.substring('cortex.crossProjections.'.length);
           if (!cortex.crossProjections) cortex.crossProjections = {};
+          // TU.25.E — same clamp inheritance for cross-projections (creation
+          // value 0.4, sem_to_motor/sem_to_word_motor honor DREAM_SM_WMAX).
+          const prevP = cortex.crossProjections[key];
+          if (prevP && Number.isFinite(prevP.wMax)) { m.wMin = prevP.wMin; m.wMax = prevP.wMax; }
+          else {
+            const _smW = Number(process.env.DREAM_SM_WMAX) > 0 ? Number(process.env.DREAM_SM_WMAX) : 0.4;
+            const w = (key === 'sem_to_motor' || key === 'sem_to_word_motor') ? _smW : 0.4;
+            m.wMin = -w; m.wMax = w;
+          }
           cortex.crossProjections[key] = m;
           applied++;
         }
@@ -7322,14 +7340,38 @@ wss.on('connection', (ws, req) => {
           // (the "2GB card is primary while the 16GB idles" problem). Re-uploads
           // the brain to the new primary via the same path as failover; the old
           // primary stays in the pool as a replica. Default ON (DREAM_DF7_FANOUT≠0).
+          // TU.25.D — promotion HYSTERESIS. The live churn loop: every reconnect
+          // of the same dying donor scored "STRONGER" than the battered survivor
+          // (fresh socket 10.24 vs beaten-down 0.73) → instant promote → full
+          // canonical re-upload → false-reaped mid-flood → reconnect → repeat
+          // (7 cycles in 12.5min). Don't promote a newcomer while the current
+          // primary's canonical upload is still in flight (its socket has a
+          // recent upload dispatch stamp) or within a cooldown of the last
+          // promotion — the newcomer joins as a replica and can win primacy at
+          // the next periodic _maybeRebalancePrimary once it has PROVEN itself.
+          // First-primary assignment (no primary at all) is never gated.
+          const _promoteCooldownMs = (Number(process.env.DREAM_DF7_PROMOTE_COOLDOWN_S) > 0
+            ? Number(process.env.DREAM_DF7_PROMOTE_COOLDOWN_S) : 120) * 1000;
+          const _primaryMidUpload = havePrimary
+            && (Date.now() - (brain._gpuClient._lastUploadDispatchTs || 0)) < 90_000;
+          const _promoteCooling = (Date.now() - (brain._lastPrimaryPromoteTs || 0)) < _promoteCooldownMs;
           const _df7PromoteStronger = havePrimary
             && (typeof brain._df7Fanout === 'function' && brain._df7Fanout())
             && typeof brain._donorStrength === 'function'
-            && brain._donorStrength(ws) > brain._donorStrength(brain._gpuClient);
+            && brain._donorStrength(ws) > brain._donorStrength(brain._gpuClient)
+            && !_primaryMidUpload
+            && !_promoteCooling;
+          if (havePrimary && !_df7PromoteStronger
+              && typeof brain._donorStrength === 'function'
+              && brain._donorStrength(ws) > brain._donorStrength(brain._gpuClient)
+              && (_primaryMidUpload || _promoteCooling)) {
+            console.log(`[${id}] DF.7 / TU.25.D — newcomer scores higher but promotion is DEFERRED (${_primaryMidUpload ? 'primary mid-canonical-upload' : `cooldown ${Math.round(_promoteCooldownMs / 1000)}s`}) — joins as a replica; periodic rebalance promotes it once proven.`);
+          }
           if (!havePrimary || _df7PromoteStronger) {
             if (_df7PromoteStronger) {
               console.log(`[${id}] DF.7 — newcomer GPU is STRONGER (capacity score ${brain._donorStrength(ws).toFixed(2)} > current primary ${brain._donorStrength(brain._gpuClient).toFixed(2)}; score = throughput Gn/s × link-health, F1) — promoting it to PRIMARY; previous primary stays a replica + re-syncs.`);
             }
+            brain._lastPrimaryPromoteTs = Date.now();
             brain._gpuClient = ws;
             brain._gpuConnected = true;
             brain._gpuWaitLogged = false;
@@ -7610,6 +7652,26 @@ wss.on('connection', (ws, req) => {
     // crash trigger (e.g. driver bug that crashes Chrome instantly on
     // first compute_batch — would burn through respawns and make logs
     // unreadable).
+    // TU.25.D — cancel this socket's in-flight sparse requests IMMEDIATELY.
+    // Before this, pending reqIds targeted at a departed donor rotted on their
+    // 180s timers (live log: all 17 canonical uploads timed out at 180000ms;
+    // letter_to_phon burned 3×180s retries ≈ 9min stuck) while retries kept
+    // re-targeting sockets that kept dying. Resolve(null) matches the timeout
+    // path's contract so callers degrade identically, just 180s sooner.
+    if (brain._gpuSparsePending && brain._gpuSparsePending.size) {
+      let _cancelled = 0;
+      for (const [rid, p] of brain._gpuSparsePending) {
+        if (p && p.ws === ws) {
+          brain._gpuSparsePending.delete(rid);
+          if (p.timeout) clearTimeout(p.timeout);
+          try { p.resolve(null); } catch { /* caller already settled */ }
+          _cancelled++;
+        }
+      }
+      if (_cancelled > 0) {
+        console.log(`[Brain] TU.25.D — cancelled ${_cancelled} in-flight sparse request(s) targeted at the departed donor socket (no 180s rot; callers resolve null now).`);
+      }
+    }
     if (ws === brain._gpuClient) {
       // PA.4.3 — the PRIMARY donor left. Promote a healthy STANDBY from the
       // pool (failover) so the brain keeps a GPU instead of dropping to
@@ -7752,8 +7814,22 @@ const _heartbeatTimer = setInterval(() => {
       ws._missedPings = (ws._missedPings || 0) + 1;
       // HBGRACE.4 — self-inflicted sweep: don't advance the countable miss
       // ledger, just re-ping and track the forgiveness total for the ceiling.
-      if (loopBlockedRecently && ws._missedPings < _HB_MISS_LIMIT_HARD) {
-        ws._missedPings -= 1; // uncount — this miss is the server's fault
+      // TU.25.B — buffer-saturation forgiveness: when OUR send buffer to this
+      // socket holds tens of MB, the ping we "sent" is queued BEHIND that mass
+      // and physically never reached the donor (live log: 400-900MB buffered →
+      // ping delayed 60-120s → 2 missed pings guaranteed → 7 false-reaps of the
+      // just-promoted primary in 12.5min). The miss is OUR congestion, not their
+      // death. TU.25.C — same grace for a socket that had a chunked sparse
+      // upload dispatched to it recently: the primary's canonical initGpu upload
+      // has no _replicaSyncInFlight marker (HBGRACE.3 covers replica syncs only),
+      // so it was killed mid-upload every cycle. Both are bounded by the same
+      // hard ceiling as HBGRACE.4 — a truly dead socket still dies.
+      const _hbBufForgiveBytes = (Number(process.env.DREAM_HB_BUF_FORGIVE_MB) > 0
+        ? Number(process.env.DREAM_HB_BUF_FORGIVE_MB) : 32) * 1024 * 1024;
+      const bufSaturated = typeof ws.bufferedAmount === 'number' && ws.bufferedAmount > _hbBufForgiveBytes;
+      const recentUpload = (Date.now() - (ws._lastUploadDispatchTs || 0)) < 90_000;
+      if ((loopBlockedRecently || bufSaturated || recentUpload) && ws._missedPings < _HB_MISS_LIMIT_HARD) {
+        ws._missedPings -= 1; // uncount — this miss is self-inflicted (loop block / our congestion / mid-upload)
         ws._forgivenPings = (ws._forgivenPings || 0) + 1;
         if (ws._forgivenPings + ws._missedPings >= _HB_MISS_LIMIT_HARD) {
           console.warn(`[Server] heartbeat — socket ${c ? c.id : '(unknown)'}${c && c.isGPU ? ' (GPU donor)' : ''} silent through ${ws._forgivenPings} forgiven + ${ws._missedPings} counted sweeps (~${Math.round(((ws._forgivenPings + ws._missedPings) * _HEARTBEAT_MS) / 1000)}s) — hard ceiling, terminating.`);
@@ -7773,7 +7849,7 @@ const _heartbeatTimer = setInterval(() => {
         try { ws.ping(); } catch { /* dying — a later sweep terminates it */ }
         continue;
       }
-      console.warn(`[Server] heartbeat — socket ${c ? c.id : '(unknown)'}${c && c.isGPU ? ' (GPU donor)' : ''} missed ${ws._missedPings} consecutive pings${ws._forgivenPings ? ` (+${ws._forgivenPings} forgiven during server loop blocks)` : ''}${midSync ? ' (mid replica-sync)' : ''} — terminating so failover can fire.`);
+      console.warn(`[Server] heartbeat — socket ${c ? c.id : '(unknown)'}${c && c.isGPU ? ' (GPU donor)' : ''} missed ${ws._missedPings} consecutive pings${ws._forgivenPings ? ` (+${ws._forgivenPings} forgiven — loop-block / buffer-saturation / mid-upload)` : ''}${midSync ? ' (mid replica-sync)' : ''} — terminating so failover can fire.`);
       try { ws.terminate(); } catch { /* already gone */ }
       continue;
     }
