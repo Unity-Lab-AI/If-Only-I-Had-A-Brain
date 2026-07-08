@@ -5253,6 +5253,10 @@ Object.assign(ServerBrain.prototype, SERVER_STATE_MIXIN);
 Object.assign(ServerBrain.prototype, SERVER_MEMORY_MIXIN);
 Object.assign(ServerBrain.prototype, SERVER_CHAT_MIXIN);
 Object.assign(ServerBrain.prototype, SERVER_VISUAL_MEMORY_MIXIN);
+// TU.29.13 — expose the image-URL builder to the mixins (the concept→imagery
+// loop in chat.js broadcasts a server-keyed {type:'image',url} so the render is
+// cross-browser reliable, same path as the user-ask lane).
+ServerBrain.prototype._buildPollinationsImageUrl = _buildPollinationsImageUrl;
 
 const brain = new ServerBrain();
 

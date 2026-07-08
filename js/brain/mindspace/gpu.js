@@ -542,6 +542,43 @@ export class MindSpaceGPU {
     return rec;
   }
 
+  // ── TU.29.13 BUILD B — ACTIVE SKETCH CANVAS ──────────────────────────────────────────────────
+  // The mind's eye as a TOOL she USES, not just a passive readout: she lays down
+  // lines / vectors / points directly onto a plane and equationalizes it into a
+  // real field C. `strokes` is an array of primitives she "draws":
+  //   { type:'line',  x0,y0,x1,y1, rgb? }   — a vector between two normalized [0,1] points
+  //   { type:'point', x,y, r?, rgb? }        — a node
+  //   { type:'poly',  pts:[[x,y]...], rgb? } — a connected path (a shape / gesture)
+  // Coordinates are normalized [0,1] so callers reason in "canvas space". Colors
+  // default to her mood tint. Output is a bounded (≤96px) field C — the SAME
+  // equational substrate as perception/imagination, so what she draws is a real
+  // image she can then re-see, morph, or remember. No fractalize, hard side cap.
+  sketch(strokes, opts = {}) {
+    const side = Math.max(16, Math.min(opts.maxSide ?? 96, 96));
+    const W = side, H = side, N = W * H;
+    const data = new Uint8ClampedArray(N * 4);
+    // background: her mood as a low wash so the strokes read on top
+    const bg = moodTint(opts.mood);
+    for (let p = 0; p < N; p++) { const o = p * 4; data[o] = Math.round(bg[0] * 0.12); data[o + 1] = Math.round(bg[1] * 0.12); data[o + 2] = Math.round(bg[2] * 0.12); data[o + 3] = 255; }
+    const ink = opts.rgb || [Math.round(bg[0] * 0.4 + 255 * 0.6), Math.round(bg[1] * 0.4 + 255 * 0.6), Math.round(bg[2] * 0.4 + 255 * 0.6)];
+    const px = (x, y, rgb) => { const xi = Math.round(x * (W - 1)), yi = Math.round(y * (H - 1)); if (xi < 0 || xi >= W || yi < 0 || yi >= H) return; const o = (yi * W + xi) * 4; data[o] = rgb[0]; data[o + 1] = rgb[1]; data[o + 2] = rgb[2]; data[o + 3] = 255; };
+    const dot = (x, y, r, rgb) => { for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) if (dx * dx + dy * dy <= r * r) px(x + dx / (W - 1), y + dy / (H - 1), rgb); };
+    const line = (x0, y0, x1, y1, rgb) => {   // sampled DDA in normalized space
+      const steps = Math.max(2, Math.round(Math.hypot((x1 - x0) * W, (y1 - y0) * H)));
+      for (let i = 0; i <= steps; i++) { const t = i / steps; px(x0 + (x1 - x0) * t, y0 + (y1 - y0) * t, rgb); }
+    };
+    for (const s of (Array.isArray(strokes) ? strokes : [])) {
+      if (!s) continue;
+      const rgb = s.rgb || ink;
+      if (s.type === 'line') line(s.x0, s.y0, s.x1, s.y1, rgb);
+      else if (s.type === 'point') dot(s.x, s.y, Math.max(0, Math.min(4, s.r ?? 1)), rgb);
+      else if (s.type === 'poly' && Array.isArray(s.pts)) { for (let i = 0; i + 1 < s.pts.length; i++) line(s.pts[i][0], s.pts[i][1], s.pts[i + 1][0], s.pts[i + 1][1], rgb); }
+    }
+    const rec = CPU.equationalizeImageData({ width: W, height: H, data });
+    if (rec) rec.fidelity = { psnr_db: null, source: 'mindspace-sketch' };
+    return rec;
+  }
+
   // MS.K1 — Unity KNOWS her mind-space: all file types, equations, and how to solve them.
   // Her cognition answers "what is this file / how do I solve it" from the equation itself.
   get knowledge() { return MINDSPACE_KNOWLEDGE; }
