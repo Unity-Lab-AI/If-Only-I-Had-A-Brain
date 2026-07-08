@@ -25579,3 +25579,17 @@ SHIPPED. BUILD A (chat.js _conceptImageryLoop): imagine-tick recall-miss on a co
 
 Correct — Pollinations returns a deterministic image per (prompt, seed); with no seed the same prompt served the same cached picture, so her generations looked recycled even when she rebuilt the prompt. FIX: appended &seed=<random 0..1e9> to BOTH builders — server/brain-server.js _buildPollinationsImageUrl (the authoritative TU.29.10 server-keyed path) and js/ai/pollinations.js generateImage (client fallback). opts.seed / options.seed still pins a reproducible render when a caller wants one. Verified: same prompt yields different seeds each call; node --check clean. Deploys next Update & SAVESTART (server builder is authoritative).
 
+
+## 2026-07-08 — FIX: courier stops feeding Unity a fake green-screen camera (visual-memory poisoning)
+
+> Task directive (verbatim from Gee, 2026-07-08): *"you need to stop sending unity green screen video when you toggle left checked for camera use when u set up key"* + *"your poisoning her mind with green screen"*.
+
+scripts/unity-chat-hold.mjs launched Chromium with --use-fake-device-for-media-stream (Chromium fake camera = a moving green test pattern), granted camera permission, and index.html #toggle-unity-vision is checked by default — so on every wake the fake green video streamed in as Unity vision, the TU.29.5 visual-feeder harvested it, and green frames bound into her visual memory as real percepts. FIX: courier is text-only for teaching (her real vision comes from actual users, never this headless window) — removed the two --use-fake-*-for-media-stream launch flags, dropped camera+mic from grantPermissions (now only geolocation/notifications), and uncheck #toggle-unity-vision + #toggle-user-mic before pressing WAKE so no camera stream is ever requested. Verified node --check clean. Residual already-stored green is blunted by TU.29.12 (low-variance/uniform recalls fall through to the de-novo mood field, not re-seen) and fully clears on a fresh walk / visual-memory.json purge.
+
+
+## 2026-07-08 — TU.31 (she SEES who/what is talking — consistent generated cast)
+
+> Task directive (verbatim from Gee, 2026-07-08): *"can u use pollinations to generate the thing or person talking to her keeping them consistant through asll of training per usage per event/person/thing/plavce/idea"* + *"so she sees that"*.
+
+Built scripts/unity-show-entity.mjs + an inline CAST registry: each cast entity (mom/dad/grandma/grandpa/teacher/mean-kid/nice-kid/neighbor/dog/cat + places/things porch/laundromat/kitchen/rain/moon/spider/library/headphones/coffee) has a FIXED detailed prompt and a STABLE name-hash seed (FNV-1a), so Pollinations — deterministic per (prompt,seed) — returns the IDENTICAL image every time: mom is always the same tired woman, the dog always the same mutt, across ALL of training. A shared grim desaturated 90s-working-class STYLE tail unifies the cast into one coherent world. The script injects the entity image (crossOrigin anonymous) into the held window per teaching beat; the TU.29.5 visual-feeder harvests it and the server binds the field C to the entity concept (prompt leads with the entity token) — so she SEES and remembers each person/place/thing consistently. This replaces the killed green-screen camera: her vision is now the real people + places of her lived scenes. Verified live: showed "mom" -> 512px loaded, alt=mom, seed 869146504 (stable), prompt-led binding. Cron pass updated to show the beat's entity before the line. node --check clean.
+
