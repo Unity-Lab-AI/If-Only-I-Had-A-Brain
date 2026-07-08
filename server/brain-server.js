@@ -59,6 +59,42 @@ const Database = require('better-sqlite3');
 const os = require('os');
 const { execSync } = require('child_process');
 const { performance } = require('perf_hooks');
+
+// TU.29.10 — server-side Pollinations image-URL builder. The deployed client
+// bundle renders a server-sent `msg.url` if present (emit("image",{url,prompt}))
+// and ONLY falls back to building the URL from ITS OWN localStorage key when no
+// url is sent — which is why image gen worked in an operator-CONNECTed session
+// but failed in a fresh visitor browser whose key never loaded into the live
+// PollinationsAI instance. Building the full keyed URL here makes rendering
+// independent of the visitor's client key state. The key is the SAME published
+// default already seeded into every browser via index.html (not a new secret);
+// single source of truth is index.html's DEFAULT_POLLINATIONS_KEY, extracted
+// once + cached, overridable by env for ops. Returns '' if no key is available
+// (then the client falls back to its own key / anonymous tier, unchanged).
+let _pollImageKeyCache = null;
+function _pollinationsImageKey() {
+  if (_pollImageKeyCache !== null) return _pollImageKeyCache;
+  let key = process.env.DREAM_POLLINATIONS_KEY || '';
+  if (!key) {
+    try {
+      const idx = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+      const m = idx.match(/DEFAULT_POLLINATIONS_KEY\s*=\s*'([^']*)'/);
+      if (m && m[1]) key = m[1];
+    } catch { /* no index.html on this box — leave empty, client falls back */ }
+  }
+  _pollImageKeyCache = key;
+  return key;
+}
+function _buildPollinationsImageUrl(prompt, opts = {}) {
+  const model = opts.model || 'flux';
+  const width = opts.width || 512;
+  const height = opts.height || 512;
+  const encoded = encodeURIComponent(String(prompt || '').slice(0, 300));
+  let url = `https://gen.pollinations.ai/image/${encoded}?model=${encodeURIComponent(model)}&width=${width}&height=${height}&nologo=true`;
+  const key = _pollinationsImageKey();
+  if (key) url += `&key=${encodeURIComponent(key)}`;
+  return url;
+}
 const { SparseMatmulPool } = require('./worker-pool.js');
 const { learnFromWeb } = require('./world-knowledge.js');
 // Live dictionary API service (dictionaryapi.dev wrapper).
@@ -7167,7 +7203,10 @@ wss.on('connection', (ws, req) => {
               if (result.action === 'build_ui' && result.component) {
                 ws.send(JSON.stringify({ type: 'build', component: result.component }));
               } else if (result.action === 'generate_image') {
-                ws.send(JSON.stringify({ type: 'image', prompt: result.text }));
+                // TU.29.10 — send the FULL keyed URL so the client renders with
+                // the server's working key (the deployed bundle uses msg.url when
+                // present); prompt stays for the visual-feeder label + fallback.
+                ws.send(JSON.stringify({ type: 'image', prompt: result.text, url: _buildPollinationsImageUrl(result.text) }));
               } else {
                 ws.send(JSON.stringify({ type: 'response', text: result.text, action: result.action }));
               }
