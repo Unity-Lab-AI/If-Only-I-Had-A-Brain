@@ -154,8 +154,16 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
     } catch { /* non-fatal */ }
 
     // she SEES it — swap the shared mind's-eye snapshot to the live percept
-    // so the viewer shows the eye receiving, not just daydreaming.
-    try {
+    // so the viewer shows the eye receiving. BALANCED: camera frames arrive
+    // every ~8s but the viewer belongs to IMAGINATION — a camera-seen swap
+    // lands at most once per 60s (first sight immediate) so daydreams and
+    // recalls own the display between glances. Her creations (generated
+    // images, rare) always swap. Binding/grounding above are UNTHROTTLED —
+    // she still perceives and remembers every frame; only the display paces.
+    const _eyeSwapOk = !fromCamera
+      || !this._vmLastEyeSwapAt || (now - this._vmLastEyeSwapAt) > 60000;
+    if (_eyeSwapOk) try {
+      this._vmLastEyeSwapAt = now;
       this._mindsEyeJson = JSON.stringify({
         type: 'mindsEye', rec, terms: rec.equation_count || 0,
         source: (fromCamera ? 'seen-camera' : 'seen') + (tokens.length ? ':' + tokens[0] : ''),
