@@ -119,6 +119,10 @@ server/identity-core.json.corrupt-*
 # medium" memory). Derivative per-machine runtime imagery; re-imagined if lost.
 server/mindspace-memory.json
 server/mindspace-memory.json.tmp
+# server/visual-memory.json — TU.29.5 seen-concept field-C store (visual memory
+# medium — derivative brain state, recreated as she sees; never committed)
+server/visual-memory.json
+server/visual-memory.json.tmp
 
 # === PA.4.8 community-compute tier marker ===
 # Persisted by the milestone execution gate; read at boot to scale the brain

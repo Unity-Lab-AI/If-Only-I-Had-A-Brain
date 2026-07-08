@@ -144,7 +144,10 @@ ADDENDUM 2026-07-08 (LATER) — TU.29.5 REAL MINDS EYE ON MAIN
     the WS switch: frame -> perceive (CPU CDF 9/7, full color) -> field C
     bound to concepts active at perception; store LRU 384 persisted at
     server/visual-memory.json (NEW derivative file — safe to delete, she
-    just re-sees; do NOT add to rsync excludes).
+    just re-sees; IS in the rsync excludes as of 273544a+1 alongside
+    mindspace-memory.json — both memory media now survive updates;
+    protection takes effect from the NEXT update after this one, since
+    each press runs the script already on disk).
   • chat.js imagine paths recall stored percepts FIRST, morphField-fuse two
     on multi-match; mindspace/gpu.js demotes glyphs to numbers/letters.
   VALIDATE: server log shows "[VisualMemory] 👁 seen ..." lines once any
