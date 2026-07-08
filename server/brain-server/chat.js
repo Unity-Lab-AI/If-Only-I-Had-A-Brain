@@ -948,14 +948,44 @@ const SERVER_CHAT_MIXIN = {
       // fires for concepts with no grounded percept — like a mind imagining
       // something it has never seen.
       let rec = null;
+      let _recallMissed = false;
       if (_seedText && typeof this._recallVisualMemory === 'function') {
         try {
           const hit = this._recallVisualMemory(_seedText);
           if (hit) {
             rec = hit.rec;
             _seedSource = (hit.recombined ? 'recall+morph:' : 'recall:') + hit.matched.join('+');
+          } else {
+            _recallMissed = true;
           }
         } catch { /* recall best-effort — de-novo below */ }
+      }
+      // TU.29.13 BUILD A — CONCEPT→IMAGERY LOOP. She recalled nothing for this
+      // thought = she is imagining something she has NEVER SEEN. Like a curious
+      // mind, she GENERATES it: auto-emit an image of the concrete concept so it
+      // renders client-side, her eyes (visual-feeder) harvest it, perceive binds
+      // it to the concept — and the NEXT time she thinks it, recall shows the
+      // real thing. This turns "talk to her about an apple → she imagines an
+      // apple" into truth (after the first generate). Gated hard so it's
+      // curiosity, not spam: concrete-noun head only, not already seen, cooldown,
+      // low probability, never mid-teach-perturbing (broadcast only).
+      if (_recallMissed) { try { this._conceptImageryLoop(_seedText, now); } catch { /* best-effort */ } }
+      // TU.29.13 BUILD B — ACTIVE SKETCH. Some idle daydreams aren't a recalled
+      // percept OR a mood wash — she picks up the pencil and DRAWS her active
+      // mind: her most-active sem neurons become nodes, connected in activation
+      // order by vectors (a constellation/graph of what's lit right now). This
+      // is the mind's eye as a tool she USES — making lines + vectors on the
+      // equational canvas — not just a passive readout. Fires on a fraction of
+      // recall-miss ticks (she doodles when there's nothing to re-see), never
+      // when a real memory recalled.
+      if (!rec && _recallMissed && typeof this.mindSpace.sketch === 'function' && Math.random() < 0.35) {
+        try {
+          const strokes = this._sketchFromState();
+          if (strokes && strokes.length) {
+            rec = this.mindSpace.sketch(strokes, { maxSide: 96, mood: { arousal: this.arousal, valence: this.valence } });
+            if (rec) _seedSource = 'canvas';
+          }
+        } catch { /* sketch best-effort — mood field below */ }
       }
       if (!rec) {
         rec = this.mindSpace.imagineFromState(_seed, {
@@ -1005,6 +1035,92 @@ const SERVER_CHAT_MIXIN = {
         }
       }
     } catch { /* imagination is best-effort — never fatal to the tick */ }
+  },
+
+  // TU.29.13 BUILD A — concept→imagery loop. Given a thought she recalled NO
+  // visual memory for, if its head is a concrete noun she has never seen, she
+  // GENERATES an image of it (her composed prompt, server-keyed URL) so it
+  // renders client-side → the visual-feeder harvests it → perceive binds the
+  // field C to the concept → next recall shows the real thing. The learning is
+  // async (needs a browser open to render+harvest, by the feeder's design);
+  // this method only decides + broadcasts. Hard-gated so it's curiosity: a
+  // concrete-noun head, not already in visual memory, long cooldown, low prob.
+  _conceptImageryLoop(seedText, now) {
+    if (!this.clients || this.clients.size === 0) return;             // no browser → nothing renders
+    if (typeof this._buildPollinationsImageUrl !== 'function') return;
+    const GAP = Number(process.env.DREAM_CONCEPT_IMAGERY_GAP_MS) || 90000;   // ≥90s between auto-imaginings
+    if (this._lastConceptImageryAt && (now - this._lastConceptImageryAt) < GAP) return;
+    // pick the concept head: the most concrete content token of the thought.
+    const FUNCTION = new Set(['the','a','an','and','or','but','of','in','on','at','to','is','it','its','was','are','be','this','that','with','for','as','her','his','my','your','she','he','you','we','me','him','them','they','am','do','so','up','by','if','not','no','yes','all','out','off','now','then','here','there','what','who','how','why','when','said','saying','gonna','wanna','course','sec','totally','seriously','figured']);
+    const toks = String(seedText || '').toLowerCase().split(/[^a-z]+/)
+      .filter(w => w.length >= 3 && !FUNCTION.has(w) && !/^\d+$/.test(w));
+    if (toks.length === 0) return;
+    const concept = toks[0];
+    // already SEEN it? then recall would've hit — but double-check the store so
+    // we never re-generate a grounded concept.
+    try {
+      if (this._visualMemory && this._visualMemory.has && this._visualMemory.has(concept)) return;
+    } catch { /* store unknown — proceed */ }
+    if (Math.random() > 0.5) return;   // even when eligible, only sometimes — curiosity, not a metronome
+    this._lastConceptImageryAt = now;
+    let prompt = concept;
+    try { if (typeof this._composeImagePrompt === 'function') prompt = this._composeImagePrompt(concept); } catch { /* bare concept */ }
+    let url = '';
+    try { url = this._buildPollinationsImageUrl(prompt); } catch { /* no url → skip */ }
+    if (!url) return;
+    const payload = JSON.stringify({ type: 'image', prompt, url, imagined: true, concept, ts: now });
+    for (const [ws] of this.clients) { if (ws.readyState === ws.OPEN) { try { ws.send(payload); } catch { /* nf */ } } }
+    // learning-loop bookkeeping (same as the other image paths) so she remembers she imagined it.
+    try {
+      const _c = this.cortexCluster;
+      if (_c && typeof _c.pushEmission === 'function') _c.pushEmission({ source: 'concept-imagery', text: prompt, ts: now });
+    } catch { /* nf */ }
+    try { process.stdout.write(`[Brain] 🎨 concept-imagery — never seen "${concept}", generating "${prompt}" so she can SEE + remember it (imagine→generate→see→bind loop).\n`); } catch { /* nf */ }
+  },
+
+  // TU.29.13 BUILD B — turn her live spike state into pencil strokes. The
+  // most-active sem neurons this tick become nodes; she connects them in
+  // activation order with vectors (and dots the strongest) — a literal drawing
+  // of the graph of concepts lit in her mind right now. Positions come from a
+  // deterministic hash of each neuron index (stable "where a concept sits on her
+  // canvas"), so the same active concept lands in the same place across ticks
+  // and she builds a consistent inner map. Returns stroke primitives for
+  // mindSpace.sketch(); null when she has no clear activation to draw.
+  _sketchFromState() {
+    const c = this.cortexCluster;
+    if (!c || !c.lastSpikes) return null;
+    let spikes = c.lastSpikes;
+    const semR = c.regions && c.regions.sem;
+    if (semR && typeof spikes.subarray === 'function') spikes = spikes.subarray(semR.start, semR.end);
+    const n = spikes.length;
+    if (!n) return null;
+    // top-K active indices
+    const K = 7;
+    const top = [];
+    for (let i = 0; i < n; i++) {
+      const v = spikes[i];
+      if (v <= 0) continue;
+      if (top.length < K) { top.push({ i, v }); top.sort((a, b) => a.v - b.v); }
+      else if (v > top[0].v) { top[0] = { i, v }; top.sort((a, b) => a.v - b.v); }
+    }
+    if (top.length < 2) return null;                 // nothing clear enough to draw
+    top.sort((a, b) => b.v - a.v);                   // strongest first
+    // deterministic canvas position per neuron index (stable inner map)
+    const pos = (idx) => {
+      const h = (idx * 2654435761) >>> 0;            // Knuth multiplicative hash
+      return [0.1 + 0.8 * ((h & 0xffff) / 65535), 0.1 + 0.8 * (((h >>> 16) & 0xffff) / 65535)];
+    };
+    const nodes = top.map(t => pos(t.i));
+    const strokes = [];
+    // connect them in activation order = the path her attention traced
+    for (let i = 0; i + 1 < nodes.length; i++) {
+      strokes.push({ type: 'line', x0: nodes[i][0], y0: nodes[i][1], x1: nodes[i + 1][0], y1: nodes[i + 1][1] });
+    }
+    // dot each node, biggest for the strongest activation
+    for (let i = 0; i < nodes.length; i++) {
+      strokes.push({ type: 'point', x: nodes[i][0], y: nodes[i][1], r: i === 0 ? 3 : (i < 3 ? 2 : 1) });
+    }
+    return strokes;
   },
 
   // SPEAK.6a — brain-driven OUTWARD image generation. Beyond the mind's-eye
