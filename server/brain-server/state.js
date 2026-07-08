@@ -1191,6 +1191,15 @@ const SERVER_STATE_MIXIN = {
       // frames dropped instantly under saturation instead of stacking the
       // buffer; CPU authoritative, shadow re-converges via auto-resync).
       sheds: this._wsShedCount || 0,
+      // TU.28.2 — per-stream saturation attribution. patternSheds counts
+      // teach-pattern JSON frames (write_spike_slice / write_current_slice /
+      // clear_spike_region) dropped by the TU.28.1 gate — the stream that
+      // previously had NO guard and grew the buffer to GB scale. mirrorSheds
+      // counts replica-mirror frames skipped at a saturated replica socket.
+      // Split out from `sheds` (hebbian ops) so the dashboard/public-state
+      // shows WHICH stream is saturating at a glance.
+      patternSheds: this._wsPatternShedCount || 0,
+      mirrorSheds: this._wsMirrorShedCount || 0,
       dropRatePerSec,
       wsConnected: !!(ws && ws.readyState === 1),
       // GPU shadow dirty flag. Set when a drop-after-timeout fires;

@@ -843,7 +843,18 @@ const SERVER_GPU_MIXIN = {
     if (!this._df7Fanout()) return;
     for (const ws of this._livePoolDonors()) {
       if (ws === this._gpuClient) continue;
-      try { if (ws.readyState === 1) ws.send(json); } catch { /* replica dropped — ignore */ }
+      try {
+        if (ws.readyState !== 1) continue;
+        // TU.28.1 — replicas get the same soft-cap gate as the primary; a
+        // saturated replica socket sheds the mirror frame (it re-converges
+        // on the periodic _rebroadcastMasterToReplicas) instead of stacking
+        // an unbounded buffer on a slow replica link.
+        if (ws.bufferedAmount > this._donorSoftCapBytes()) {
+          this._wsMirrorShedCount = (this._wsMirrorShedCount || 0) + 1;
+          continue;
+        }
+        ws.send(json);
+      } catch { /* replica dropped — ignore */ }
     }
   },
 
@@ -1839,6 +1850,51 @@ const SERVER_GPU_MIXIN = {
     return this.gpuSparsePropagate(name, new Uint32Array(0), target);
   },
 
+  // TU.28.1 — shared soft-cap knob (same env knob as the TU.25.A hebbian
+  // shed so ops tune ONE number: DREAM_WS_SOFT_SHED_MB, default 64).
+  _donorSoftCapBytes() {
+    const mb = Number(process.env.DREAM_WS_SOFT_SHED_MB) > 0
+      ? Number(process.env.DREAM_WS_SOFT_SHED_MB) : 64;
+    return mb * 1024 * 1024;
+  },
+
+  // TU.28.1 — backpressure gate for the teach-pattern JSON stream
+  // (write_spike_slice / write_current_slice / clear_spike_region).
+  // ROOT CAUSE (live-box log audit): this stream was the ONLY donor-bound
+  // producer with NO bufferedAmount guard — the TU.25.A soft-shed covers
+  // hebbian batch frames and the 500MB await-drain covers sparse binary
+  // uploads, but these per-teach-iteration JSON frames (8 region clears +
+  // pattern writes per iteration, sustained thousands/sec during teach
+  // phases) went straight to ws.send(). Result: ws.bufferedAmount
+  // sawtoothed 68MB -> 1.6GB, the heartbeat ping queued behind gigabytes
+  // (19s median RTT -> donor flagged unhealthy/red), and the compute.html
+  // tab crashed under the receive backlog (~12min flap cycle), each crash
+  // triggering a full re-init burst on top of the ongoing flood.
+  // POLICY (matches TU.25.A): above the soft cap DROP the frame
+  // immediately — never enqueue. The CPU is authoritative for all of this
+  // state; the GPU shadow is marked dirty and re-converges via the armed
+  // auto-resync once the buffer drains. Spike/current/clear slices are
+  // per-iteration ephemeral (the next iteration's clear+write supersedes),
+  // so a dropped frame costs one shadow-teach iteration, not correctness.
+  // Gate probes are unaffected: gpuDrainWait() drains to 10MB (< cap)
+  // before probe patterns fire, so probe writes pass the gate.
+  _donorPatternSendGated(json) {
+    const ws = this._gpuClient;
+    if (!ws || ws.readyState !== 1) return false;
+    if (ws.bufferedAmount > this._donorSoftCapBytes()) {
+      this._wsPatternShedCount = (this._wsPatternShedCount || 0) + 1;
+      this._gpuShadowDirty = true; // shadow heals via auto-resync on drain
+      const now = Date.now();
+      if (!this._wsPatternShedLogMs || (now - this._wsPatternShedLogMs) > 30000) {
+        this._wsPatternShedLogMs = now;
+        console.warn(`[Brain] TU.28.1 — teach-pattern frame SHED: ws.bufferedAmount=${(ws.bufferedAmount / 1024 / 1024).toFixed(1)}MB > ${(this._donorSoftCapBytes() / 1024 / 1024)}MB soft cap. This stream previously had NO backpressure guard (buffer grew to GB scale, donor pings queued 19s+, compute tab crash-looped). Dropping is safe — CPU authoritative; GPU shadow re-converges via auto-resync once the buffer drains. ${this._wsPatternShedCount} pattern frames shed since boot (rate-limited 30s).`);
+      }
+      return false;
+    }
+    ws.send(json);
+    return true;
+  },
+
   /**
    * T17.7 Phase C.1 — ship a sparse spike pattern to the main cortex
    * GPU sub-region slice via the existing write_spike_slice message.
@@ -1863,7 +1919,7 @@ const SERVER_GPU_MIXIN = {
       regionName,
       sparseIndices: arr,
     });
-    this._gpuClient.send(json);
+    if (!this._donorPatternSendGated(json)) return;   // TU.28.1 — soft-cap gate (stream was unguarded)
     this._mirrorCortexWriteToReplicas(json);   // DF.7 — keep replicas' resident state in sync (flag-gated)
   },
 
@@ -1896,7 +1952,7 @@ const SERVER_GPU_MIXIN = {
       sparseValues: val,
       psi: this.psi ?? 0,
     });
-    this._gpuClient.send(json);
+    if (!this._donorPatternSendGated(json)) return;   // TU.28.1 — soft-cap gate (stream was unguarded)
     this._mirrorCortexWriteToReplicas(json);   // DF.7 — mirror to replicas (flag-gated)
   },
 
@@ -1916,7 +1972,7 @@ const SERVER_GPU_MIXIN = {
       clusterName: 'cortex',
       regionName,
     });
-    this._gpuClient.send(json);
+    if (!this._donorPatternSendGated(json)) return;   // TU.28.1 — soft-cap gate (stream was unguarded)
     this._mirrorCortexWriteToReplicas(json);   // DF.7 — mirror to replicas (flag-gated)
   },
 

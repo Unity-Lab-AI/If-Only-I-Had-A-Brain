@@ -102,9 +102,15 @@ export class ConsolidationEngine {
     // the next pass resumes work from a fresh candidate batch. Without
     // the cap, observed durations of 153s+ stole the GPU exclusively
     // for minutes during active K-cell teaching.
+    // TU.28.3 — default raised 30000 -> 45000: live-box passes were
+    // DEADLINE-ABORTing at 30.5-32.1s EVERY pass — the budget sat just
+    // under the real pass cost, so the tail stages (including Tier-3
+    // promotion) were cut on every single pass ("0 promoted" chronically).
+    // 45s finishes the pass; the env knob is unchanged for ops tuning,
+    // and the cap still guards against the original 153s+ runaway passes.
     const maxMs = Number(process.env.DREAM_CONSOLIDATION_MAX_MS) > 0
       ? Number(process.env.DREAM_CONSOLIDATION_MAX_MS)
-      : 30000;
+      : 45000;
     this._consolidationDeadlineMs = Date.now() + maxMs;
     // iter20-A — harden gate. Operator caught (verbatim 2026-05-05
     // "fix it all thouroughly"): 102 consolidation passes in 67s
