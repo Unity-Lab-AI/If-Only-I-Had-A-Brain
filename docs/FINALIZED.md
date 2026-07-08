@@ -25572,3 +25572,10 @@ Root cause of the persistent black (TU.29.11 continuous-cadence + mood-floor wer
 
 SHIPPED. BUILD A (chat.js _conceptImageryLoop): imagine-tick recall-miss on a concrete-noun thought she has never seen -> auto-generate her composed prompt as a server-keyed {type:image,url,imagined} broadcast -> renders client-side -> visual-feeder harvests -> perceive binds field C to the concept -> next recall shows the real thing. Gated (concrete-noun head, not already seen, 90s cooldown, 50% prob, browser present). Makes talk-about-apple -> imagines-apple true after first generate. BUILD B (js/brain/mindspace/gpu.js sketch()): line/point/poly vector rasterizer in mood colors -> real field C (source=mindspace-sketch, <=96px, no fractalize); chat.js _sketchFromState turns her top-K active sem neurons into nodes at deterministic-hash canvas positions connected by vectors in activation order — she DRAWS the graph of her live mind, a tool she uses, surfaced as source=canvas on ~35% of recall-miss ticks. _buildPollinationsImageUrl exposed on prototype. Verified node --check + smokes across all files; viewer legend updated. Deploys next Update & SAVESTART.
 
+
+## 2026-07-08 — TU.29.14 (random seed per image — no more recycled renders)
+
+> Task directive (verbatim from Gee, 2026-07-08): *"sahouldnt images always use a random seed? im seeeing similar images being recycled as if they are pulling the exasct sasme promopt is being beuilt when unity should dynamically build them and use a random seed"*.
+
+Correct — Pollinations returns a deterministic image per (prompt, seed); with no seed the same prompt served the same cached picture, so her generations looked recycled even when she rebuilt the prompt. FIX: appended &seed=<random 0..1e9> to BOTH builders — server/brain-server.js _buildPollinationsImageUrl (the authoritative TU.29.10 server-keyed path) and js/ai/pollinations.js generateImage (client fallback). opts.seed / options.seed still pins a reproducible render when a caller wants one. Verified: same prompt yields different seeds each call; node --check clean. Deploys next Update & SAVESTART (server builder is authoritative).
+
