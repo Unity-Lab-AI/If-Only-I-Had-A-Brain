@@ -5586,8 +5586,23 @@ const httpServer = http.createServer((req, res) => {
   if (req.url === '/restart' && req.method === 'POST') {
     if (!requireLoopback(req, res, '/restart')) return;
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    if (global._brainShutdownRequested) { res.end(JSON.stringify({ status: 'already restarting' })); return; }
+    // TU.30 — STALE-FLAG CLEAR (the interlock that broke every Update button): the /update
+    // handler sets _brainShutdownRequested BEFORE spawning self-update.sh, and this guard
+    // then swallowed the script's own loopback /restart as "already restarting" — so the
+    // overlay landed but the process NEVER exited (uptime kept climbing on old code). If
+    // the flag is older than 60s and we are demonstrably still alive, the prior exit never
+    // happened — clear it and proceed (same WL.4 staleness pattern as /update itself).
+    if (global._brainShutdownRequested) {
+      const _ageMs = global._brainShutdownRequestedAt ? (Date.now() - global._brainShutdownRequestedAt) : Infinity;
+      if (_ageMs > 60000) {
+        console.warn(`[Brain] /restart — clearing STALE shutdown flag (set ${Math.round(_ageMs / 1000)}s ago; the prior restart never exited). Proceeding with this restart.`);
+        global._brainShutdownRequested = false;
+      } else {
+        res.end(JSON.stringify({ status: 'already restarting' })); return;
+      }
+    }
     global._brainShutdownRequested = true;
+    global._brainShutdownRequestedAt = Date.now();
     console.log('[Brain] HTTP /restart — operator requested RESTART+RESUME (dashboard). Force-saving + marking resume, then exiting for systemd to revive.');
     res.end(JSON.stringify({ status: 'restarting — will resume on next boot (systemd revives in a few seconds)' }));
     try { _writeResumeMarker('dashboard /restart'); } catch (err) {
@@ -5620,7 +5635,16 @@ const httpServer = http.createServer((req, res) => {
   if (req.url === '/savererun' && req.method === 'POST') {
     if (!requireLoopback(req, res, '/savererun')) return;
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    if (global._brainShutdownRequested) { res.end(JSON.stringify({ status: 'already restarting' })); return; }
+    // TU.30 — same stale-flag clear as /restart (see comment there).
+    if (global._brainShutdownRequested) {
+      const _ageMs = global._brainShutdownRequestedAt ? (Date.now() - global._brainShutdownRequestedAt) : Infinity;
+      if (_ageMs > 60000) {
+        console.warn(`[Brain] /savererun — clearing STALE shutdown flag (set ${Math.round(_ageMs / 1000)}s ago; the prior restart never exited). Proceeding.`);
+        global._brainShutdownRequested = false;
+      } else {
+        res.end(JSON.stringify({ status: 'already restarting' })); return;
+      }
+    }
     try {
       const cortex = brain.cortexCluster;
       if (!cortex) { res.end(JSON.stringify({ ok: false, error: 'no cortex cluster' })); return; }
