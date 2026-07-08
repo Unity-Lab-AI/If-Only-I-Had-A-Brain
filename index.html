@@ -621,6 +621,12 @@
     }
   </script>
 
+  <!-- Visual intake — standalone module (NOT bundled): ships camera frames
+       (permission-gated, never prompts) + generated-image renders to the brain
+       as tiny 96x96 visual_frame messages so her mind's eye learns to recall
+       real percepts. Raw-served so a plain file overlay deploys it. -->
+  <script type="module" src="js/visual-feeder.js"></script>
+
   <!-- ═══ Compute Leaderboard — prominent, draggable, collapsible; polls public /public-state.json ═══ -->
   <div id="unity-lb" style="position:fixed;top:64px;right:16px;z-index:99990;width:286px;max-width:calc(100vw - 24px);background:rgba(10,15,18,0.94);border:1px solid #1f2a30;border-radius:10px;font-family:'JetBrains Mono',monospace;color:#e0e0e0;box-shadow:0 8px 28px rgba(0,0,0,0.5);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);user-select:none;font-size:12px;">
     <div id="unity-lb-head" style="display:flex;align-items:center;gap:8px;padding:9px 12px;cursor:move;border-bottom:1px solid #1f2a30;">

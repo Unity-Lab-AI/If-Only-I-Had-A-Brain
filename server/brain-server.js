@@ -1027,6 +1027,7 @@ const { SERVER_GPU_MIXIN } = require('./brain-server/gpu.js');
 const { SERVER_STATE_MIXIN } = require('./brain-server/state.js');
 const { SERVER_MEMORY_MIXIN } = require('./brain-server/memory.js');
 const { SERVER_CHAT_MIXIN } = require('./brain-server/chat.js');
+const { SERVER_VISUAL_MEMORY_MIXIN } = require('./brain-server/visual-memory.js');
 
 class ServerBrain {
   constructor() {
@@ -5215,6 +5216,7 @@ Object.assign(ServerBrain.prototype, SERVER_GPU_MIXIN);
 Object.assign(ServerBrain.prototype, SERVER_STATE_MIXIN);
 Object.assign(ServerBrain.prototype, SERVER_MEMORY_MIXIN);
 Object.assign(ServerBrain.prototype, SERVER_CHAT_MIXIN);
+Object.assign(ServerBrain.prototype, SERVER_VISUAL_MEMORY_MIXIN);
 
 const brain = new ServerBrain();
 
@@ -7262,6 +7264,17 @@ wss.on('connection', (ws, req) => {
               }));
             }
           }).catch(() => {});
+          break;
+        }
+
+        case 'visual_frame': {
+          // Visual intake — what her eyes receive (camera frames /
+          // generated images) from the standalone client feeder
+          // (js/visual-feeder.js). Equationalized into a full-color field C
+          // and bound to the concepts active at perception time so the
+          // mind's eye can RECALL + RECOMBINE real percepts at imagine-time.
+          // Strictly validated + paced inside; fire-and-forget.
+          brain._ingestVisualFrame(msg).catch(() => { /* intake best-effort */ });
           break;
         }
 

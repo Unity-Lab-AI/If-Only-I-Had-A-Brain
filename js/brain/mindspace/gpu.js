@@ -209,26 +209,49 @@ function moodTint(mood) {
   return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
 }
 
+// TU.29.5 — glyphs DEMOTED to genuinely symbolic thoughts. A human mind's eye
+// pictures "7" as the numeral and "B" as the letterform, but it does NOT print
+// sentences across the visual field — imagination is not a caption. Only digit
+// tokens, math operators and single letters survive to the glyph raster; every
+// other thought renders as her state textured in the named color / her mood
+// (the abstract field), and CONCRETE imagery comes from the visual-memory
+// recall + morph layer (server/brain-server/visual-memory.js) which bypasses
+// this de-novo path entirely when a stored real percept matches the thought.
+function symbolGlyphText(text) {
+  const t = String(text || '').trim();
+  if (!t) return '';
+  const symbolish = t.split(/\s+/).filter(w =>
+    /^[0-9]+([.,][0-9]+)?$/.test(w)      // numbers — pictured as numerals
+    || /^[+\-x=<>?!]$/.test(w)           // math / punctuation symbols
+    || /^[a-zA-Z]$/.test(w));             // single letters — pictured as letterforms
+  return symbolish.length ? symbolish.slice(0, 12).join(' ') : '';
+}
 // TU.29.1 — compose the thought plane in FULL COLOR: background = her live state as a
 // texture tinted by the named color (or her mood), foreground = the thought's words
 // rasterized bright and centered. Short thoughts render at 2x glyph scale so a single
 // word fills the eye. Returns RGBA for equationalizeImageData (whose YCbCr channels
 // carry the color through the field-C rec to the viewer). Bounded: side<=96 (engine
 // cap), text<=180 chars — no fractalize, no runaway.
-function renderThoughtPlane(text, stateVector, W, H, mood) {
+function renderThoughtPlane(glyphText, stateVector, W, H, mood, tintText) {
   const N = W * H;
   const data = new Uint8ClampedArray(N * 4);
-  const txt = String(text || '').toUpperCase().replace(/\s+/g, ' ').trim().slice(0, 180);
-  // color-word detection on the thought itself
+  const txt = String(glyphText || '').toUpperCase().replace(/\s+/g, ' ').trim().slice(0, 180);
+  // color-word detection on the FULL thought (tintText) — a non-symbolic thought
+  // contributes no glyphs but its named color still paints the field.
+  const tintSrc = String(tintText || glyphText || '').toLowerCase();
   let tint = null;
-  for (const w of txt.toLowerCase().split(/[^a-z]+/)) {
+  for (const w of tintSrc.split(/[^a-z]+/)) {
     if (COLOR_WORDS[w]) { tint = COLOR_WORDS[w]; break; }
   }
   const named = !!tint;
   if (!tint) tint = moodTint(mood);
   // background: state texture modulates the tint. A NAMED color paints strong (a "solid
-  // red sheet" reads as a red field); mood tint stays faint so glyphs dominate.
-  const lo = named ? 0.30 : 0.06, hi = named ? 0.55 : 0.28;
+  // red sheet" reads as a red field). With NO glyph overlay the state texture IS the
+  // image — render it vivid (her mind-state in color), not near-black; with glyphs,
+  // keep it faint so the symbols dominate.
+  let lo, hi;
+  if (!txt) { lo = named ? 0.45 : 0.25; hi = named ? 0.95 : 0.85; }
+  else { lo = named ? 0.30 : 0.06; hi = named ? 0.55 : 0.28; }
   if (stateVector && stateVector.length > 0) {
     let mn = Infinity, mx = -Infinity;
     for (let i = 0; i < stateVector.length; i++) { const v = stateVector[i]; if (v < mn) mn = v; if (v > mx) mx = v; }
@@ -449,6 +472,12 @@ export class MindSpaceGPU {
   // the percept value-vector is cheap — always CPU (reads coeffs already in the rec)
   describe(rec, dim) { return CPU.describeEquational(rec, dim); }
 
+  // TU.29.5 — equation-domain blend of two stored percepts (coefficient-set
+  // union + lerp, transform.js morphField). This is the RECOMBINATION step of
+  // imagination: two seen field Cs fuse into one imagined field C without ever
+  // leaving the equational domain. Returns null on canvas/pad dim mismatch.
+  morph(recA, recB, t) { return CPU.morphField(recA, recB, t); }
+
   // ── DE-NOVO IMAGINATION (UVM-INT.3) — cortex state → field C, no camera/file ─────────────────
   // Her current mind-state (any cortex activation vector — sem region, percept, emission
   // embedding) is folded into a small grayscale image and equationalized into a REAL field C.
@@ -480,17 +509,24 @@ export class MindSpaceGPU {
     // baseSide to ~17px) with a hard 48px legibility floor — the governor still ALLOTS the
     // spend (grant above), it just can't shrink the canvas below readable. Vector mode keeps
     // the state-sampled field but floors at 32px and takes the mood tint instead of gray.
-    const hasText = typeof opts.text === 'string' && opts.text.trim().length > 0;
+    // TU.29.5 — IMAGINATION, not a text printer. Glyphs fire ONLY for genuinely
+    // symbolic thoughts (numbers / single letters / math marks — symbols a mind
+    // pictures AS glyphs). Everything else renders as her live state textured in
+    // the thought's named color or her mood — the abstract field a mind holds for
+    // a concept it has never SEEN. Concrete imagery (banana as a banana) comes
+    // from the visual-memory recall/morph layer, which bypasses this path.
+    const glyphText = symbolGlyphText(opts.text);
+    const hasGlyphs = glyphText.length > 0;
     let side;
-    if (hasText) {
-      side = Math.max(48, Math.round(maxSide * (0.75 + 0.25 * ratio)));
+    if (hasGlyphs) {
+      side = Math.max(48, Math.round(maxSide * (0.75 + 0.25 * ratio)));   // legibility floor
     } else {
       const baseSide = Math.max(8, Math.min(maxSide, Math.floor(Math.sqrt(stateVector.length)) || 8));
       side = Math.max(32, Math.round(baseSide * (0.5 + 0.5 * ratio)));
     }
     side = Math.min(side, maxSide);
     const W = side, H = side;
-    const data = renderThoughtPlane(hasText ? opts.text : '', stateVector, W, H, opts.mood);
+    const data = renderThoughtPlane(glyphText, stateVector, W, H, opts.mood, opts.text);
     const rec = CPU.equationalizeImageData({ width: W, height: H, data });
     if (rec) rec.fidelity = { psnr_db: null, source: 'mindspace-denovo' };
     return rec;
