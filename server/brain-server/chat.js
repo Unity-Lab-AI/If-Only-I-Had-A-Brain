@@ -110,7 +110,13 @@ const SERVER_CHAT_MIXIN = {
           if (this.mindSpace && typeof this.mindSpace.imagineFromState === 'function'
               && this.sharedEmbeddings && typeof this.sharedEmbeddings.getSentenceEmbedding === 'function') {
             const emb = this.sharedEmbeddings.getSentenceEmbedding(imgPrompt);
-            const rec = this.mindSpace.imagineFromState(emb, { maxSide: 48, priority: 0.4, value: 0.6 });
+            // TU.29 — pass the prompt TEXT + live mood so the mind's eye renders the
+            // actual words in color at full resolution, not a ~17px embedding-noise plane.
+            const rec = this.mindSpace.imagineFromState(emb, {
+              maxSide: 96, text: imgPrompt,
+              mood: { arousal: this.arousal, valence: this.valence },
+              priority: 0.4, value: 0.6,
+            });
             if (rec) {
               const percept = this.mindSpace.describe(rec);
               if (percept && this.cortexCluster && typeof this.cortexCluster.injectEmbeddingToRegion === 'function') {
@@ -873,6 +879,7 @@ const SERVER_CHAT_MIXIN = {
       // whole-cortex spike map. Equational end to end: text → sentence
       // embedding → bounded forward CDF 9/7 field C.
       let _seed = null;
+      let _seedText = null;   // TU.29 — the thought's TEXT rides along so the plane renders the words
       let _seedSource = 'thought';
       try {
         const chain = Array.isArray(this._innerThoughtChain) ? this._innerThoughtChain : [];
@@ -880,6 +887,7 @@ const SERVER_CHAT_MIXIN = {
         const texts = chain.map(_txt).filter(t => t.length > 0);
         if (texts.length > 0 && this.sharedEmbeddings
             && typeof this.sharedEmbeddings.getSentenceEmbedding === 'function') {
+          _seedText = texts[texts.length - 1];   // TU.29 — what she is thinking, verbatim
           const cur = this.sharedEmbeddings.getSentenceEmbedding(texts[texts.length - 1]);
           if (cur && cur.length) {
             if (texts.length > 1) {
@@ -904,8 +912,13 @@ const SERVER_CHAT_MIXIN = {
           : this.cortexCluster.lastSpikes;
         _seedSource = 'sem-state';
       }
-      const rec = this.mindSpace.imagineFromState(_seed,
-        { maxSide: 48, priority: 0.25, value: 0.4 });
+      // TU.29 — text mode + color: the plane shows the thought's words (glyph raster over
+      // a mood/color-tinted state texture) at up to 96px instead of grayscale noise at <=48px.
+      const rec = this.mindSpace.imagineFromState(_seed, {
+        maxSide: 96, text: _seedText,
+        mood: { arousal: this.arousal, valence: this.valence },
+        priority: 0.25, value: 0.4,
+      });
       if (!rec) return;
       const percept = this.mindSpace.describe(rec);
       // inject the imagined percept into the cortex sem region at LOW strength —

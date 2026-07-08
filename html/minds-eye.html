@@ -22,7 +22,7 @@
       box-shadow:0 30px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,77,154,0.08), inset 0 0 60px rgba(255,77,154,0.04);
     }
     .frame:hover { transform: rotateX(3deg) rotateY(-3deg); }
-    canvas { display:block; width:512px; max-width:78vw; height:auto; image-rendering:pixelated; border-radius:8px; background:#000;
+    canvas { display:block; width:512px; max-width:78vw; height:auto; /* TU.29.2 — smooth upscale (was image-rendering:pixelated = maximal blocks) */ border-radius:8px; background:#000;
              box-shadow:0 0 40px rgba(77,208,225,0.10); }
     .meta { display:flex; gap:18px; flex-wrap:wrap; justify-content:center; margin-top:20px; font-size:12px; color:var(--dim); }
     .meta b { color:var(--cyan); font-weight:700; }
@@ -42,7 +42,7 @@
 
   <div class="stage">
     <div class="frame">
-      <canvas id="eye" width="64" height="64"></canvas>
+      <canvas id="eye" width="96" height="96"></canvas>
     </div>
   </div>
 
