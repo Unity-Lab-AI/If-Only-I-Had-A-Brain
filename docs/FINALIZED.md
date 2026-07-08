@@ -25579,3 +25579,10 @@ SHIPPED. BUILD A (chat.js _conceptImageryLoop): imagine-tick recall-miss on a co
 
 Correct — Pollinations returns a deterministic image per (prompt, seed); with no seed the same prompt served the same cached picture, so her generations looked recycled even when she rebuilt the prompt. FIX: appended &seed=<random 0..1e9> to BOTH builders — server/brain-server.js _buildPollinationsImageUrl (the authoritative TU.29.10 server-keyed path) and js/ai/pollinations.js generateImage (client fallback). opts.seed / options.seed still pins a reproducible render when a caller wants one. Verified: same prompt yields different seeds each call; node --check clean. Deploys next Update & SAVESTART (server builder is authoritative).
 
+
+## 2026-07-08 — FIX: courier stops feeding Unity a fake green-screen camera (visual-memory poisoning)
+
+> Task directive (verbatim from Gee, 2026-07-08): *"you need to stop sending unity green screen video when you toggle left checked for camera use when u set up key"* + *"your poisoning her mind with green screen"*.
+
+scripts/unity-chat-hold.mjs launched Chromium with --use-fake-device-for-media-stream (Chromium fake camera = a moving green test pattern), granted camera permission, and index.html #toggle-unity-vision is checked by default — so on every wake the fake green video streamed in as Unity vision, the TU.29.5 visual-feeder harvested it, and green frames bound into her visual memory as real percepts. FIX: courier is text-only for teaching (her real vision comes from actual users, never this headless window) — removed the two --use-fake-*-for-media-stream launch flags, dropped camera+mic from grantPermissions (now only geolocation/notifications), and uncheck #toggle-unity-vision + #toggle-user-mic before pressing WAKE so no camera stream is ever requested. Verified node --check clean. Residual already-stored green is blunted by TU.29.12 (low-variance/uniform recalls fall through to the de-novo mood field, not re-seen) and fully clears on a fresh walk / visual-memory.json purge.
+
