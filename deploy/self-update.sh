@@ -60,6 +60,14 @@ fi
 
 # Overlay code, PRESERVING runtime state + secrets + node_modules. --delete
 # removes stale files EXCEPT the excluded runtime/secret paths.
+#   ⚠ community-tier.json is LOAD-BEARING state: the DF.7 milestone gate writes
+#   it when the community tier resizes the brain, and the boot-scaler reads it
+#   to size the brain to the saved weights. Deleting it makes the next boot
+#   size to the RAM-safe base instead → size mismatch vs the resume marker →
+#   autoClearStaleState WIPES the trained weights on an otherwise-safe
+#   savestart (exactly what happened 2026-07-08 00:49; weights restored from
+#   the pre-deploy backup). Any file the boot-scaler or resume gate reads MUST
+#   be excluded here.
 rsync -a --delete \
   --exclude '.git' \
   --exclude 'node_modules' \
@@ -77,6 +85,8 @@ rsync -a --delete \
   --exclude 'server/conversations.json' \
   --exclude 'autoscale-settings.json' \
   --exclude 'server/autoscale-settings.json' \
+  --exclude 'community-tier.json' \
+  --exclude 'server/community-tier.json' \
   --exclude 'auto-advance.json' \
   --exclude 'server/auto-advance.json' \
   --exclude 'definition-cache.json' \

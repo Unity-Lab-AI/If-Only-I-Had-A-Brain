@@ -54018,7 +54018,9 @@ var CLUSTER_EMIT_MIXIN = {
     if (typeof this._emitSignalEMA !== "number") this._emitSignalEMA = 0;
     if (typeof this._emitSignalSampleCount !== "number") this._emitSignalSampleCount = 0;
     const adaptiveComponent = this._emitSignalSampleCount >= 20 && this._emitSignalEMA > 0 ? this._emitSignalEMA * 0.5 : 0;
-    const floor = typeof opts.signalFloorOverride === "number" ? opts.signalFloorOverride : Math.max(NOISE_FLOOR, adaptiveComponent);
+    const winnerIsFunctionWord = !!(bestWord && FUNCTION_WORDS.has(bestWord));
+    const activeAdaptive = winnerIsFunctionWord ? 0 : adaptiveComponent;
+    const floor = typeof opts.signalFloorOverride === "number" ? opts.signalFloorOverride : Math.max(NOISE_FLOOR, activeAdaptive);
     this._emitSignalFloor = floor;
     if (!bestWord || bestMean < floor) {
       this._lastEmitRejection = {
@@ -54041,9 +54043,11 @@ var CLUSTER_EMIT_MIXIN = {
       }
       return "";
     }
-    const _emaAlpha = 0.05;
-    this._emitSignalEMA = (1 - _emaAlpha) * this._emitSignalEMA + _emaAlpha * bestMean;
-    this._emitSignalSampleCount++;
+    if (!winnerIsFunctionWord) {
+      const _emaAlpha = 0.05;
+      this._emitSignalEMA = (1 - _emaAlpha) * this._emitSignalEMA + _emaAlpha * bestMean;
+      this._emitSignalSampleCount++;
+    }
     const temperature = typeof opts.temperature === "number" ? opts.temperature : 0;
     if (temperature > 0 && candidates.length > 1) {
       const topK = Math.max(1, Math.min(opts.topK ?? 8, candidates.length));
