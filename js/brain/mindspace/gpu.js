@@ -493,7 +493,17 @@ export class MindSpaceGPU {
   // HARD-CAPPED at maxSide (≤96, default 64) so the plane is a fixed tiny grid regardless of state
   // length OR governor grant — imagination has a floor of detail, never infinite resolution.
   imagineFromState(stateVector, opts = {}) {
-    if (!stateVector || stateVector.length === 0) return null;
+    // TU.29.11 — imagination is CONTINUOUS: a quiet mind still holds an image
+    // (the ambient wash of its mood), it never goes blank. When the cortex seed
+    // is empty/missing, synthesize a small mood-driven vector instead of
+    // returning null so the mind's-eye always has SOMETHING to render — the
+    // de-novo path below then paints her live mood as a vivid field, never black.
+    if (!stateVector || stateVector.length === 0) {
+      const aro = (opts.mood && typeof opts.mood.arousal === 'number') ? opts.mood.arousal : 0.4;
+      const n = 64;
+      stateVector = new Float64Array(n);
+      for (let i = 0; i < n; i++) stateVector[i] = 0.5 + 0.5 * Math.sin(i * (0.6 + aro)) ;  // gentle ambient wash
+    }
     const grant = this.governor.allot({
       kind: 'imagine-denovo', requestedUnits: opts.units ?? 48,
       priority: opts.priority, value: opts.value,
