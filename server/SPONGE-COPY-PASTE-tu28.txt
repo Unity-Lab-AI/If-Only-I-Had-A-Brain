@@ -1,0 +1,93 @@
+════════════════════════════════════════════════════════════════════════════
+  SPONGE — DEPLOY + VALIDATE TU.28: donor-pipeline rectify
+  2026-07-08   |   branch feature/unity-convo-ledger-0707
+  Deploy mode: **Update & SAVESTART (keep weights)** — NOT a fresh walk.
+════════════════════════════════════════════════════════════════════════════
+
+WHAT GEE CAUGHT (the symptoms, live box 3h window)
+  • ws.bufferedAmount to the donor sawtoothed 68MB → 1.6 GB ("why is the
+    buffer getting to Gigs in size?")
+  • Donor row RED in the client log — median heartbeat RTT 19,185ms
+  • Donor (Chrome compute.html tab) disconnected UNEXPECTEDLY every ~12min
+    (+10675s, +11436s), each crash triggering full re-init + 17-matrix
+    re-upload on top of the ongoing flood
+  • gpuShadowDirty chronically ON (auto-resync cleared it at 2:47:22, first
+    shed re-set it at 2:53:09 — re-dirtied within seconds of every clear)
+
+ROOT CAUSE (code-audited, NOT a guess)
+  Three streams share the one donor websocket:
+    (a) hebbian batch frames         — guarded (TU.25.A 64MB soft-shed)
+    (b) sparse binary matrix uploads — guarded (500MB await-drain)
+    (c) teach-pattern JSON frames    — write_spike_slice / write_current_slice
+        / clear_spike_region — **ZERO guard**: raw ws.send(), 8 region clears
+        + pattern writes per teach iteration, thousands/sec during teach.
+  Stream (c) is what grew the buffer to GBs. The ping then queued BEHIND that
+  mass (19s RTT = red row), and the Chrome tab OOM/crashed under the receive
+  backlog (12min flap cycle). gpuShadowDirty is WORKING AS DESIGNED (CPU
+  authoritative, GPU shadow, F5 auto-resync arms + clears correctly) — it was
+  chronically dirty because production outran the pipe, not because the flag
+  or resync is broken.
+
+THE FIX (TU.28.1-3, already in the source on this branch)
+  • TU.28.1 — server/brain-server/gpu.js: `_donorPatternSendGated(json)` +
+    `_donorSoftCapBytes()` gate ALL three pattern writers at the SAME soft cap
+    as the hebbian shed (env DREAM_WS_SOFT_SHED_MB, default 64MB). Above cap:
+    frame DROPPED (never enqueued), _gpuShadowDirty set (auto-resync heals),
+    counted + rate-limited log "[Brain] TU.28.1 — teach-pattern frame SHED".
+    Replica mirror gets the same per-socket gate. Gate probes unaffected
+    (gpuDrainWait drains to 10MB < cap before probes fire).
+  • TU.28.2 — server/brain-server/state.js: wsPressure JSON now exposes
+    `patternSheds` + `mirrorSheds` so saturation is attributable per-stream
+    straight from public-state.json.
+  • TU.28.3 — js/brain/consolidation-engine.js: DREAM_CONSOLIDATION_MAX_MS
+    default 30000 → 45000. Live passes 40/41/42 ALL DEADLINE-ABORTed at
+    30.5-32.1s — tail stages (incl. Tier-3 promotion) were cut EVERY pass.
+    45s finishes the pass; env knob unchanged; still guards the 153s runaway.
+
+DEPLOY
+  1. Pull the branch (or cherry-pick the three files) onto /opt/unity-brain:
+       server/brain-server/gpu.js
+       server/brain-server/state.js
+       js/brain/consolidation-engine.js
+  2. gpu.js + state.js are SERVER-ONLY (CJS mixins) — no bundle rebuild
+     required for the fix to be live. consolidation-engine.js is also in the
+     browser bundle; the 45s default folds in at the next canonical rebuild
+     (server/package.json esbuild) — rebuild if convenient, not blocking.
+  3. Dashboard ⬆ **Update & Savestart (keep weights)** — TU.28 changes NO
+     weight format, NO band geometry, NO protocol messages. Current walk
+     RESUMES (baseline at hand-off: passed=2, ela=K, math=K, science/K
+     in-flight). community-tier.json rsync exclude (TU.27 fix) must remain in
+     the overlay excludes.
+  4. No nginx / systemd / donor-binary change.
+
+VALIDATE (live box)
+  • Watch the log for "[Brain] TU.28.1 — teach-pattern frame SHED" appearing
+    INSTEAD of the buffer climbing past ~80MB.
+  • curl public-state.json → wsPressure: bufferedAmountMB should now sawtooth
+    UNDER ~64-80MB (was 68→1600); patternSheds counting during teach bursts.
+  • Donor row: RTT should drop from 19s to seconds; ⚠ unhealthy flag clears.
+  • Donor stability: compute.html tab should STOP crash-looping (~12min cycle
+    gone). If it still flaps, that's the TU.28.4 escalation (run Gee's donor
+    as the native Rust binary instead of the Chrome tab).
+  • gpuShadowDirty: will still flip TRUE during shed windows (by design) but
+    should now CLEAR shortly after each teach burst (auto-resync lands on a
+    drainable buffer) instead of sitting dirty for hours.
+  • Consolidation: "[Consolidation] pass N" lines should stop showing
+    "⚠ DEADLINE-ABORT" every pass; expect "promoted to Tier 3" > 0
+    occasionally once passes complete.
+
+TUNING KNOBS (ops)
+  • DREAM_WS_SOFT_SHED_MB — one knob for BOTH the hebbian shed and the new
+    pattern gate. 64 default. If the donor row still reads red during heavy
+    teach (64MB / ~7MB/s drain ≈ 9s worst-case ping delay), try 16-32 for
+    snappier heartbeats at the cost of more shed (CPU stays authoritative —
+    sheds only slow the GPU shadow, never training truth).
+  • DREAM_CONSOLIDATION_MAX_MS — now 45000 default.
+
+FOLLOW-UPS (open in docs/TODO.md, not in this deploy)
+  TU.28.4 run donor as native Rust binary (ops/Gee — kills the Chrome-tab OOM
+          class entirely; pairs with F10 donor-v0.3.6 build)
+  TU.28.5 binary-pack + batch pattern frames (protocol + bundle rebuild)
+  TU.28.6 credit-based flow control unifying the three caps
+  TU.28.7 event-loop chunking in _crossRegionHebbian (Sponge-scoped per F7)
+════════════════════════════════════════════════════════════════════════════
