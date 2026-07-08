@@ -875,7 +875,15 @@ const SERVER_CHAT_MIXIN = {
     // teach so the walk's Hebbian patterns stay pristine while the
     // mind's-eye viewer + imagined-field memory ring stay alive.
     const _midTeach = !!this._curriculumInProgress;
-    const IMAGINE_MIN_GAP_MS = _midTeach ? 120000 : 20000;
+    // TU.29.11 — imagination is CONTINUOUS consciousness, never a blank rest
+    // state. The old 120s mid-teach gap left her mind's-eye dead for 2-minute
+    // stretches while she walks the curriculum (she is ALWAYS mid-walk on the
+    // deployed box) — Gee: "its a part and process of her thinking ... it
+    // should never be blank". Now she free-wheels every ~8s even mid-teach
+    // (the CPU CDF 9/7 on a ≤96² plane is microseconds; still VIEW-ONLY
+    // mid-teach — no sem re-injection — so the walk's Hebbian stays pristine).
+    // Idle (not walking) she daydreams every ~6s.
+    const IMAGINE_MIN_GAP_MS = _midTeach ? 8000 : 6000;
     if (this._lastImagineAt && (now - this._lastImagineAt) < IMAGINE_MIN_GAP_MS) return;
     this._lastImagineAt = now;
     try {
