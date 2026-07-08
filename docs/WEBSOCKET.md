@@ -280,6 +280,34 @@ Client identifies itself with a display name.
 
 Stored on the server-side client record (`client.name`). Currently used only for logging and future dashboard display — no effect on the brain simulation.
 
+### `visual_frame` (2026-07-08)
+
+Visual intake — what Unity's eyes receive. Sent by the standalone client
+feeder (`js/visual-feeder.js`, raw-served — NOT bundled) for camera frames
+(permission-gated, never prompts) and generated-image renders (prompt decoded
+from the Pollinations URL as the label).
+
+```json
+{
+  "type": "visual_frame",
+  "source": "camera",
+  "w": 96, "h": 96,
+  "rgba_b64": "<base64 RGBA, exactly w*h*4 bytes>",
+  "label": "yellow banana"
+}
+```
+
+Server (`server/brain-server/visual-memory.js` `_ingestVisualFrame`)
+equationalizes the frame into a full-color field C (forward CDF 9/7, YCbCr)
+and stores it keyed to the concept words active at perception time — the
+`label` when present, else her current thought (inner-thought chain /
+global-workspace broadcast). At imagine-time the mind's eye recalls +
+morphField-recombines these stored percepts (`_recallVisualMemory`).
+Validation is strict (dims 8..96, byte length must equal `w*h*4`, base64
+decode verified) and intake is paced (2s min gap brain-wide); malformed or
+flooding frames drop silently. Store: LRU-capped 384 concepts, persisted to
+`server/visual-memory.json` (debounced 30s, atomic).
+
 ### `gpu_register`
 
 Sent by `compute.html` (browser donor) or the native donor-app on WebSocket open to join the donor pool.
