@@ -133,9 +133,14 @@ export class PollinationsAI {
             }
 
             const encoded = encodeURIComponent(finalPrompt);
+            // TU.29.14 — FRESH SEED per call. Pollinations is deterministic per
+            // (prompt, seed): with no seed the same prompt returns the same cached
+            // image and renders look recycled. A random seed (pinnable via
+            // options.seed) makes each generation a new picture.
+            const seed = (typeof options.seed === 'number') ? options.seed : Math.floor(Math.random() * 1e9);
             // gen.pollinations.ai/image/{prompt} — unified endpoint for all users
             // Auth via ?key= param (for authenticated) or anonymous (no key)
-            let url = `${GEN_URL}/image/${encoded}?model=${encodeURIComponent(model)}&width=${width}&height=${height}&nologo=true`;
+            let url = `${GEN_URL}/image/${encoded}?model=${encodeURIComponent(model)}&width=${width}&height=${height}&seed=${seed}&nologo=true`;
             if (this._apiKey) {
                 url += `&key=${encodeURIComponent(this._apiKey)}`;
             }
