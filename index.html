@@ -621,6 +621,36 @@
     }
   </script>
 
+  <!-- Pollinations default key — runs BEFORE the bundle so its env-seed path
+       (which carries a retired key frozen at build time) can never win. Purges
+       the retired key from visitor storage (plain AND obfuscated forms) and
+       seeds the current default so image gen works out of the box; the setup
+       modal pre-fills from the same slot. Deploys via plain file overlay. -->
+  <script>
+  (function () {
+    var DEFAULT_POLLINATIONS_KEY = '';   // current default key (empty = no seed)
+    var RETIRED_KEYS = ['sk_cVKTWfmo9wF7S5bOiFHZPhN2LjpW4SZ3'];
+    try {
+      var raw = localStorage.getItem('unity_brain_apikeys');
+      var keys = raw ? JSON.parse(raw) : {};
+      var cur = keys.pollinations || '';
+      // stored keys may be XOR-obfuscated with the per-user salt — decode to compare
+      var plain = cur;
+      if (cur && cur.indexOf('sk_') !== 0 && cur.indexOf('sk-') !== 0) {
+        try {
+          var sess = JSON.parse(localStorage.getItem('unity_brain_session') || '{}');
+          var salt = sess.userId || 'unity_default_salt';
+          var dec = atob(cur), out = '';
+          for (var j = 0; j < dec.length; j++) out += String.fromCharCode(dec.charCodeAt(j) ^ salt.charCodeAt(j % salt.length));
+          plain = out;
+        } catch (e) { /* not base64 — leave as-is */ }
+      }
+      if (RETIRED_KEYS.indexOf(plain) !== -1) { delete keys.pollinations; cur = plain = null; }
+      if (!plain && DEFAULT_POLLINATIONS_KEY) keys.pollinations = DEFAULT_POLLINATIONS_KEY;
+      localStorage.setItem('unity_brain_apikeys', JSON.stringify(keys));
+    } catch (e) { /* storage unavailable — bundle falls back to anonymous tier */ }
+  })();
+  </script>
   <!-- Visual intake — standalone module (NOT bundled): ships camera frames
        (permission-gated, never prompts) + generated-image renders to the brain
        as tiny 96x96 visual_frame messages so her mind's eye learns to recall

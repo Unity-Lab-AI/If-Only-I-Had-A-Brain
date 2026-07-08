@@ -1069,8 +1069,16 @@ const SERVER_CHAT_MIXIN = {
     const VISUAL = /\b(draw|sketch|paint|painting|render|illustrate|selfie|portrait|drawing)\b/;
     const NOUN = /\b(picture|image|photo|pic|wallpaper|artwork)\b/;
     const SHOW = /\b(show me|generate|create|make me|make us|give me)\b/;
+    // show-me-object routing: "show me an apple!" is a visual ask even without
+    // a picture/image noun. Route "show me/us <object>" to image UNLESS the
+    // object is a code/state/telemetry word ("show me the code" stays text).
+    // Input classification only, same rule-class as the detectors above.
+    const showObj = /\bshow (?:me|us)\s+(?:a|an|the|your|some)?\s*([a-z][a-z' -]{1,40})/.exec(t);
+    const SHOW_OBJ_EXCLUDE = /\b(code|state|log|logs|stat|stats|error|errors|weight|weights|dashboard|data|number|numbers|progress|status|list|file|files|source|console|terminal|output)\b/;
+    const isShowObject = !!(showObj && showObj[1] && !SHOW_OBJ_EXCLUDE.test(showObj[1]));
     const isImage = VISUAL.test(t)
-      || (NOUN.test(t) && (SHOW.test(t) || /\b(of|a|an|the|your|yourself|me|us)\b/.test(t)));
+      || (NOUN.test(t) && (SHOW.test(t) || /\b(of|a|an|the|your|yourself|me|us)\b/.test(t)))
+      || isShowObject;
     if (!isImage) return null;
     // selfie / picture-of-you → Unity's consistent self-portrait (her visual identity)
     if (/\bselfie\b/.test(t) || /\b(picture|photo|pic|portrait|image|drawing) of (you|yourself|unity)\b/.test(t)) {
