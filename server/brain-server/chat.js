@@ -98,7 +98,14 @@ const SERVER_CHAT_MIXIN = {
     if (text) {
       const imgRequest = this._detectImageRequest(text);
       // TU.29.7 — the detected request is the INTENT; the PROMPT is hers.
-      const imgPrompt = imgRequest ? this._composeImagePrompt(imgRequest) : null;
+      // TU.29.9 — EXCEPT a selfie: _detectImageRequest returns her curated
+      // self-portrait identity string (with the literal "25 year old"). Running
+      // that through _composeImagePrompt stripped the digits ("25" → gone, "a
+      // year old goth woman") and appended redundant mood tags, degrading her
+      // visual identity + bloating the heaviest prompt (the one most prone to a
+      // Pollinations timeout → "image generation failed"). Selfies go out clean.
+      const isSelfie = imgRequest && /^selfie of a \d+ year old/.test(imgRequest);
+      const imgPrompt = imgRequest ? (isSelfie ? imgRequest : this._composeImagePrompt(imgRequest)) : null;
       if (imgPrompt) {
         this._lastImageIntentAt = Date.now();   // motor block biases the generate_image channel off this
         // IMG-SEE — she SEES it before she sends it. The actual Pollinations
