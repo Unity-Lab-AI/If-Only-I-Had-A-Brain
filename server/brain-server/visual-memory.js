@@ -103,6 +103,31 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
     if (buf.length !== w * h * 4) return;
     this._vmLastIngestAt = now;
 
+    // TU.29.12 — BLANK-FRAME GATE. A near-uniform frame (dark room, blank wall,
+    // lens covered, subject off-frame) is not a percept worth remembering — it
+    // equationalizes to a flat field that reconstructs BLACK when later recalled.
+    // Reject low-variance frames at intake (luma stddev on a stride-sampled set)
+    // so only frames with real visual detail get bound to concepts.
+    {
+      let sum = 0, sumSq = 0, cnt = 0;
+      for (let i = 0; i < buf.length; i += 4 * 7) {   // stride-sample every 7th pixel
+        const luma = 0.299 * buf[i] + 0.587 * buf[i + 1] + 0.114 * buf[i + 2];
+        sum += luma; sumSq += luma * luma; cnt++;
+      }
+      if (cnt > 0) {
+        const mean = sum / cnt;
+        const variance = Math.max(0, sumSq / cnt - mean * mean);
+        const std = Math.sqrt(variance);
+        if (std < 12) {   // ~flat frame (0-255 scale); a real scene is >>12
+          if (!this._vmBlankLogAt || (now - this._vmBlankLogAt) > 60000) {
+            this._vmBlankLogAt = now;
+            console.log(`[VisualMemory] skipped near-uniform frame (luma std ${std.toFixed(1)} < 12 — blank wall / dark room / off-frame), not a percept worth binding.`);
+          }
+          return;
+        }
+      }
+    }
+
     // pixels → field C (full-color YCbCr, forward CDF 9/7). perceive() takes a
     // plain {width, height, data} — no browser ImageData needed server-side.
     let rec;
@@ -195,16 +220,46 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
     }
     if (hits.length === 0) return null;
     hits.sort((a, b) => (b.e.seen - a.e.seen) || (b.e.at - a.e.at));
+    // TU.29.12 — QUALITY GATE. A near-uniform frame (dark room / blank wall /
+    // subject off-frame) equationalizes to almost no wavelet detail; morphing
+    // two of them collapses to a handful of coefficients that reconstruct FLAT
+    // BLACK — and that degenerate "recall" was bypassing the never-blank mood
+    // floor. `_recDetail()` counts the coefficients that actually survive the
+    // drop-tiny threshold; below MIN it is not a real image, so we treat the
+    // recall as a MISS and let the caller render the vivid de-novo mood field.
+    const MIN_DETAIL = 200;
     if (hits.length >= 2 && this.mindSpace && typeof this.mindSpace.morph === 'function') {
-      // morph requires matching canvas/pad dims — feeder frames are all 96×96
-      // so stored-vs-stored blends; a dim mismatch returns null and the
-      // strongest single memory carries the image.
       try {
         const m = this.mindSpace.morph(hits[0].e.rec, hits[1].e.rec, 0.5);
-        if (m) return { rec: m, matched: [hits[0].word, hits[1].word], recombined: true };
+        if (m && this._recDetail(m) >= MIN_DETAIL) return { rec: m, matched: [hits[0].word, hits[1].word], recombined: true };
       } catch { /* fall through to single recall */ }
     }
-    return { rec: hits[0].e.rec, matched: [hits[0].word], recombined: false };
+    // single strongest — only if it carries real detail
+    for (const h of hits) {
+      if (this._recDetail(h.e.rec) >= MIN_DETAIL) return { rec: h.e.rec, matched: [h.word], recombined: false };
+    }
+    return null;   // all matches degenerate → de-novo mood field (never black)
+  },
+
+  // TU.29.12 — count coefficients above the reconstruction drop-tiny floor
+  // across channels: the real measure of whether a field C is an IMAGE or a
+  // near-uniform blank. Cheap (reads the packed values, no transform).
+  _recDetail(rec) {
+    if (!rec || !rec.channels) return 0;
+    let n = 0;
+    try {
+      for (const name of ['Y', 'Cb', 'Cr']) {
+        const c = rec.channels[name];
+        if (!c || !c.val_b64) continue;
+        // decode base64 → int16 count of non-trivial magnitudes (>2 quant units)
+        const bin = Buffer.from(c.val_b64, 'base64');
+        for (let i = 0; i + 1 < bin.length; i += 2) {
+          const v = bin.readInt16LE(i);
+          if (v > 2 || v < -2) n++;
+        }
+      }
+    } catch { return rec.equation_count || 0; }
+    return n;
   },
 };
 
