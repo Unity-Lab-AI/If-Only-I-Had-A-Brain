@@ -117,6 +117,15 @@ fi
 
 # Restart — new code + cleared weights boot; with auto-advance ON the walk
 # starts itself. Prefer sudo; fall back to plain systemctl if already root.
+
+# TU.30 — pin the CURRENT brain PID before attempting any restart. The /update handler
+# sets the shutdown flag BEFORE spawning this script, and /restart treats that flag as
+# "already restarting" and silently NO-OPS — the interlock that made every dashboard
+# Update press overlay the code but never actually restart the process (uptime just
+# kept climbing on the old code). With the PID pinned we can VERIFY the exit landed
+# and escalate to a direct same-user SIGTERM (no sudo; the SIGTERM handler force-saves
+# + drops the resume marker, systemd Restart=always revives the overlaid code).
+BRAIN_PID="$(pgrep -of 'node.*brain-server\.js' 2>/dev/null || true)"
 if sudo -n systemctl restart "$SERVICE" >> "$LOG" 2>&1; then
   log "DONE — ${SERVICE} restarted via sudo"
 elif systemctl restart "$SERVICE" >> "$LOG" 2>&1; then
@@ -140,4 +149,23 @@ elif curl -fsS -m 15 -X POST -H "X-UAL-User: ${DEPLOY_AUTH_USER}" "http://127.0.
 else
   log "FATAL — could not restart ${SERVICE}. sudo systemctl restart failed AND the no-sudo loopback POST /restart failed. Fix ONE of: (1) grant the service user 'sudo -n systemctl restart ${SERVICE}' AND drop NoNewPrivileges (a script spawned by the service inherits it and can't escalate), or (2) ensure the server is up on 127.0.0.1:${BRAIN_PORT} with Restart=always in the unit AND that the loopback /restart POST carries a non-empty X-UAL-User (UAL_DEPLOY_USER) when UAL_PROXY_AUTH=1 — a 403 here means the header was missing/empty. Manual: sudo systemctl restart ${SERVICE}"
   exit 1
+fi
+
+# TU.30 — VERIFY the restart actually landed. If the pinned PID is still alive after a
+# grace window, the /restart endpoint swallowed the request ("already restarting" no-op
+# from the /update shutdown-flag interlock) — escalate: SIGTERM the pinned PID directly.
+# PID-pinned so a systemd-revived NEW process can never be mistakenly killed.
+if [ -n "$BRAIN_PID" ]; then
+  sleep 8
+  if kill -0 "$BRAIN_PID" 2>/dev/null; then
+    log "restart did NOT land — PID $BRAIN_PID still alive (the /update shutdown-flag interlock swallows the /restart POST). Escalating: kill -TERM $BRAIN_PID (same-user, no sudo; SIGTERM handler force-saves + drops the resume marker; systemd Restart=always revives the overlaid code)."
+    kill -TERM "$BRAIN_PID" 2>/dev/null || log "kill -TERM failed (process may have exited between checks)"
+    sleep 6
+    if kill -0 "$BRAIN_PID" 2>/dev/null; then
+      log "PID $BRAIN_PID STILL alive after SIGTERM — final escalation: kill -KILL (weights were checkpointed continuously; boot resume relies on the last periodic save)."
+      kill -KILL "$BRAIN_PID" 2>/dev/null || true
+    fi
+  else
+    log "restart verified — PID $BRAIN_PID exited; systemd revives the overlaid code."
+  fi
 fi
