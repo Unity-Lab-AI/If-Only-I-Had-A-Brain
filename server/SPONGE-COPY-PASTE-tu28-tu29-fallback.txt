@@ -1,0 +1,134 @@
+════════════════════════════════════════════════════════════════════════════
+  SPONGE — TU.28 + TU.29 DEPLOY VALIDATION + FULL FALLBACK RUNBOOK
+  2026-07-08  |  main @ d802843 (contains BOTH fixes + all docs)
+  Context: Gee is pressing dashboard "Update & Savestart" solo; you're ~8h
+  out. This file is the complete "if it didn't work" path — every failure
+  mode, in order of likelihood, with the exact recovery.
+════════════════════════════════════════════════════════════════════════════
+
+WHAT IS ON MAIN (one deploy carries both)
+  • TU.28 — donor-pipeline rectify (the GB-buffer / red-donor / 12-min-flap /
+    chronic-gpuShadowDirty cluster):
+      TU.28.1 server/brain-server/gpu.js — `_donorPatternSendGated()` +
+        `_donorSoftCapBytes()`: the teach-pattern JSON stream
+        (write_spike_slice / write_current_slice / clear_spike_region) was
+        the ONLY donor-bound producer with NO bufferedAmount guard → grew
+        the buffer 68MB→1.6GB. Now gated at the same soft cap as the
+        TU.25.A hebbian shed (env DREAM_WS_SOFT_SHED_MB, default 64MB):
+        above cap the frame DROPS (never enqueues), _gpuShadowDirty set,
+        auto-resync heals on drain. Replica mirror gated per-socket.
+      TU.28.2 server/brain-server/state.js — wsPressure now exposes
+        `patternSheds` + `mirrorSheds` (per-stream attribution).
+      TU.28.3 js/brain/consolidation-engine.js — DREAM_CONSOLIDATION_MAX_MS
+        default 30000→45000 (passes 40/41/42 all DEADLINE-ABORTed at
+        ~31.5s = tail stages incl. Tier-3 promotion cut EVERY pass).
+  • TU.29 — mind's-eye rectify (was ≤48px grayscale noise):
+      js/brain/mindspace/gpu.js — FONT5X7 + COLOR_WORDS + moodTint +
+        renderThoughtPlane(); imagineFromState() gains opts.text/opts.mood
+        (text mode: the thought's words glyph-rastered in COLOR over a
+        state texture, 48px floor, 96px cap — no fractalize, cap intact).
+      server/brain-server/chat.js — both call sites pass text + mood,
+        maxSide 48→96 (`_seedText` captured beside the embedding seed).
+      html/minds-eye.html — smooth upscale (pixelated dropped), 96px canvas.
+  • NO weight-format / band-geometry / protocol / dependency changes.
+    NO bundle rebuild required for any live path (gpu.js/state.js/chat.js
+    are server-only; server imports mindspace ESM directly; the viewer
+    imports transform.js — UNCHANGED — as a served module). Rebuilding the
+    bundle at your convenience folds the 45s consolidation default into the
+    browser-fallback brain; cosmetic, not blocking.
+
+PRE-DEPLOY BASELINE (box state when Gee got the green light)
+  uptime 11,862s | cell science/kindergarten _teachHebbian | passed=2
+  grades: ela=K math=K science/social/art/life=pre-K
+  perSubject phasesCompleted: ela 28 (1 cell), math 26 (1), sci 16 (0)
+  kVocabTaught 2,287 | canSpeak false
+  buffer 1,416MB / sheds 2,445,534 / gpuShadowDirty True (flood live)
+
+VALIDATE — SUCCESS LOOKS LIKE
+  1. Boot log: "✓ saved training is COMPATIBLE … RESUMING where it left off"
+     (NOT autoClearStaleState firing).
+  2. Grades/passed ≥ baseline above after boot settles.
+  3. During teach: "[Brain] TU.28.1 — teach-pattern frame SHED" lines appear
+     and wsPressure.bufferedAmountMB sawtooths UNDER ~80MB (was →1.6GB).
+     curl the box /public-state.json → wsPressure.patternSheds counting.
+  4. Donor row: RTT seconds (was 19,185ms median), ⚠ unhealthy clears,
+     compute.html tab STOPS crash-looping (~12min cycle gone).
+  5. gpuShadowDirty still flips true in shed windows (by design) but CLEARS
+     shortly after each burst instead of sitting dirty for hours.
+  6. Consolidation passes stop logging "⚠ DEADLINE-ABORT" every pass;
+     "promoted to Tier 3" > 0 starts appearing occasionally.
+  7. /minds-eye.html → a COLOR field with her thought's words rendered in it
+     (first image ~20s after she's idle; ~2min cadence mid-teach).
+
+FAILURE MODE A — button pressed but box still runs OLD code
+  Tell: no "TU.28.1" shed lines ever, wsPressure has NO patternSheds field,
+        buffer still climbing to GBs.
+  Cause: self-update didn't pull/overlay (git fetch fail, service didn't
+        restart, etc.). Check the self-update log.
+  Fix:  manual overlay per server/SPONGE-MANUAL-DEPLOY.txt with
+        UAL_KEEP_STATE=1 (savestart — do NOT write .force-fresh). Pull
+        main @ d802843. Restart service. Re-run VALIDATE.
+
+FAILURE MODE B — savestart WIPED the walk (worst case)
+  Tell: boot log shows autoClearStaleState / "fresh" sizing; grades all
+        pre-K, passed=0, uptime young.
+  Cause: something the boot-scaler reads got deleted by the overlay
+        (the known one — community-tier.json — IS excluded on main
+        self-update.sh lines 88-89; if this fired, find WHICH file the
+        boot sized against and add it to the excludes like TU.27 did).
+  Fix (same as TU.27 recovery, ~15min):
+    1. systemctl stop unity-brain
+    2. Restore the newest pre-deploy weight backup (on-box + off-box rsync
+       copies exist per your standing pre-deploy practice; md5-verify).
+    3. Recreate server/.resume-marker.json to match the restored weights
+       (TU.27 precedent: hand-written 39,999,995 / v2 → boot logged
+       "COMPATIBLE … RESUMING").
+    4. Ensure the wipe-culprit file is restored + added to the rsync
+       excludes in deploy/self-update.sh (box copy AND commit to main).
+    5. systemctl start unity-brain (unit has DREAM_KEEP_STATE=1) →
+       verify "RESUMING" in the boot log.
+  NOTE: even in this mode the TU.28/29 CODE is fine — only state was lost;
+        after restore you keep the new code.
+
+FAILURE MODE C — new code live but donor STILL crash-looping
+  Tell: patternSheds counting + buffer bounded <100MB, yet the compute.html
+        tab still dies on a cycle.
+  Read: the tab has a second, non-backlog death cause (GPU device-lost,
+        driver, tab memory from its OWN allocations).
+  Fix:  escalate TU.28.4 — move Gee's donor to the native Rust binary
+        (unity-donor-windows-x86_64.exe). Your F10 notes: build BOTH
+        targets from donor-app/, tag donor-v0.3.6, bump the 4 site
+        download links. Gee just downloads + runs the exe (no Rust on his
+        side). Optional stopgap: DREAM_WS_SOFT_SHED_MB=16 on the box for
+        snappier heartbeats under teach (more shed, CPU stays
+        authoritative).
+
+FAILURE MODE D — mind's eye blank / erroring (cosmetic, never brain-fatal)
+  Tell: /minds-eye.html shows "warming up" forever or reconstruct error.
+  Read: both imagineFromState call sites are inside try/catch ("imagination
+        is best-effort — never fatal to the tick") — a renderer bug CANNOT
+        take the brain down.
+  Check: curl /minds-eye.json — if rec:null persists >10min while the brain
+        is idle, grep the server log for the imagine tick; if rec present
+        but the page errors, it's viewer-side (browser console).
+  Fix:  no rush — log it; the walk is unaffected.
+
+STILL-OPEN (not this deploy, for your queue)
+  • SPEAK.12 — training-depth pass on _teachSentenceStructure (function
+    words never argmax-win; your TU.26 validation verdict stands; live-box
+    confirmed again 2026-07-08: 10/10 novel-compositional emissions, ZERO
+    function words).
+  • word_motor_art band overflow (379 slots vs 3,282 art words).
+  • Pollinations image key on the box is DEAD (401) — Gee is plugging a
+    new key in himself (never clear pollinations-user.json).
+  • TU.28.5 binary-pack pattern frames / TU.28.6 credit-based flow control /
+    TU.28.7 event-loop chunking (your F7, deliberately not blind-patched).
+  • TU.29.3 camera→mind's-eye / TU.29.4 concrete imagery (client-side
+    equationalize of real pixels).
+
+RECEIPTS
+  docs/TODO.md — TU.28 investigation + task lists (TU.28 / TU.29)
+  docs/FINALIZED.md — 2026-07-08 TU.28 + TU.29 entries
+  docs/NOW.md banner + docs/RESUME.md 2026-07-08 section
+  server/SPONGE-COPY-PASTE-tu28.txt (TU.28-only detail)
+════════════════════════════════════════════════════════════════════════════
