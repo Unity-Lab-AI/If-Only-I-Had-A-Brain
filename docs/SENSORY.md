@@ -104,7 +104,26 @@ For senses with no physical sensor (taste/smell), the value profile is **injecte
 **SE.9 — image generation is now BRAIN-DRIVEN + closes the image→concept learning loop (SPEAK.6, 2026-07-01).** Before this, the decision to render real pixels was a keyword/regex match on user TEXT (`_detectImageRequest`), not a brain-state intent, and a rendered image was fire-and-forget — she never learned from what she made. Two additions keep Pollinations a pure sensory-output executor (no cognition) while making the DECISION and the LEARNING equational:
 - **Spontaneous brain-driven render (SPEAK.6a)** — `_spontaneousImageTick(now)` (`server/brain-server/chat.js`) lets Unity VOLUNTEER an outward image from internal drive with NO user keyword: arousal-gated (`DREAM_SPONTANEOUS_IMG_AROUSAL`, default 0.7) + long cooldown (`DREAM_SPONTANEOUS_IMG_GAP_MS`, default 5 min) + low probability, concept drawn from a trained-vocab sample (loop-safe — never a 57s compose). Broadcasts `generate_image`; the client renders. Keyword detection stays ONLY as an explicit user REQUEST path, not the sole driver.
 - **Image→concept learning loop (SPEAK.6b)** — a rendered image now pushes onto the unified emission bus + `_innerThoughtChain` so dream-cycle consolidation (Tier 1→2→3) grounds it as an episodic memory: what she MAKES becomes trained weight, not a fire-and-forget. New visual input is learning, per the requirement.
-- **Actual-pixel perceive (SPEAK.6c) stays the equational mind's-eye preview BY DECISION** (Gee 2026-07-01) — no image-decode dependency / CORS proxy added (no new attack surface); the bounded forward CDF-9/7 preview stands. Detail: `docs/unity-speech-consciousness-rectify.md`.
+- **Actual-pixel perceive (SPEAK.6c) stays the equational mind's-eye preview BY DECISION** (Gee 2026-07-01) — no image-decode dependency / CORS proxy added (no new attack surface); the bounded forward CDF-9/7 preview stands. Detail: `docs/unity-speech-consciousness-rectify.md` **SUPERSEDED in spirit by SE.10 (TU.29.5, 2026-07-08):** actual pixels ARE now perceived — but CLIENT-side (canvas decode in the browser, anonymous CORS re-request), honoring both original objections: still zero server-side image-decode dependency, still no CORS proxy.
+
+
+**SE.10 — VISUAL MEMORY: seeing grounds imagining (TU.29.5, 2026-07-08).** The mind's eye was a de-novo
+renderer — TU.29.1 painted the thought as GLYPHS (a text printer, not imagination; Gee: "a human doesnt have
+only a text printer in the r imagination MINDS EYE= UNITYS IMAGINATION"). Now perception grounds imagination:
+- **Intake** — `js/visual-feeder.js` (standalone raw-served module on `index.html`, no bundle dependency) ships
+  what her eyes receive as ≤96×96 RGBA `visual_frame` WS messages: camera frames every 8s (ONLY when the page
+  already holds camera permission — never prompts) + generated-image renders (prompt decoded from the
+  Pollinations URL as the label, anonymous CORS re-request, silently skipped when the CDN denies).
+- **Binding** — `server/brain-server/visual-memory.js` equationalizes each frame to a full-color field C and
+  stores it keyed to the concepts active at perception time (label, else her live thought / workspace
+  broadcast) — sight fuses with the word being "heard", infant-style grounding. Percept vector injects into
+  `sem` at 0.10 (skipped mid-teach). LRU 384 concepts, persisted `server/visual-memory.json`.
+- **Imagining = recall + recombination** — `_imagineTick` and the IMG-SEE preview look the thought up in visual
+  memory FIRST: one match re-sees the stored percept; two matches fuse via `morphField` (equation-domain
+  coefficient union + lerp) — imagination as RECOMBINATION of real percepts. Only unseen concepts fall to the
+  de-novo plane, where glyphs are DEMOTED to genuinely symbolic thoughts (numbers / single letters) and
+  everything else renders as her state textured in the named color or her mood. Equational end-to-end;
+  ≤96px cap and no-fractalize invariants intact.
 
 ---
 

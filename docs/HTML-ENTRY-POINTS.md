@@ -18,7 +18,7 @@
 | `html/unity-guide.html` | Persona + capabilities tour | Deployed + local: manual (link from index.html) | NO (static) | YES |
 | `html/gpu-configure.html` | Admin GPU tier-config UI | Local: `windows/GPUCONFIGURE.bat` (config-write endpoint is loopback-only) | YES (config-write endpoint) | NO |
 | `html/dashboard-public.html` | Public read-only brain monitor — polls one cached `GET /public-state.json` snapshot (N viewers cost one `getState()`) | Deployed + local: served static; no WS, no auth | reads `/public-state.json` (shows "warming up" without it) | YES (static + single-source poll) |
-| `html/minds-eye.html` | Public "what Unity sees" viewer — polls one cached `GET /minds-eye.json` field C, reconstructs the image CLIENT-SIDE via the mind-space inverse CDF 9/7. Single shared source, no per-viewer compute. Linked from `index.html` 👁 MIND'S EYE footer button | Deployed + local: served static; same-origin poll + localhost dev fallback | reads `/minds-eye.json` (shows "warming up" until she's idle enough to imagine) | YES (static + single-source poll) |
+| `html/minds-eye.html` | Public "what Unity sees" viewer — polls one cached `GET /minds-eye.json` field C, reconstructs the image CLIENT-SIDE via the mind-space inverse CDF 9/7. Single shared source, no per-viewer compute. Sources: `seen-camera`/`seen:<word>` (live perception), `recall:<word>`/`recall+morph:<w1>+<w2>` (visual memory re-seen/recombined), `thought`/`thought-blend`/`sem-state` (de-novo). Linked from `index.html` 👁 MIND'S EYE footer button | Deployed + local: served static; same-origin poll + localhost dev fallback | reads `/minds-eye.json` (shows "warming up" until she's idle enough to imagine) | YES (static + single-source poll) |
 
 **Admin/viewer split (per Gee 2026-06-18):**
 
@@ -33,7 +33,7 @@ Either way, viewer-mode dashboards hide Stop / Grade-advance / Signoff / Auto-ad
 
 ### `index.html` (root) — the brain UI
 
-**Purpose:** Public landing page + 3D brain visualization + chat UI + HUD metrics. Static auto-sizes neuron count from detected WebGPU adapter `maxStorageBufferBindingSize` BEFORE the WS connection lands. Once WS connects, server reports authoritative neuron count + curriculum state + emotion stream.
+**Purpose:** Public landing page + 3D brain visualization + chat UI + HUD metrics. Also loads `js/visual-feeder.js` (standalone raw module, NOT bundled) — ships camera frames (permission-gated) + generated-image renders to the brain as `visual_frame` WS messages so her mind's eye learns to recall real percepts. Static auto-sizes neuron count from detected WebGPU adapter `maxStorageBufferBindingSize` BEFORE the WS connection lands. Once WS connects, server reports authoritative neuron count + curriculum state + emotion stream.
 
 **Access:** Deployed = served static at the site root; chat + live state ride the public donor lane `wss://<host>/ws`. Local dev = `start.bat` auto-opens `http://localhost:7525`, socket `ws://localhost:7525`.
 

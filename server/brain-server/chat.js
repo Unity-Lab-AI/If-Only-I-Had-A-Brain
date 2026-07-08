@@ -109,14 +109,25 @@ const SERVER_CHAT_MIXIN = {
         try {
           if (this.mindSpace && typeof this.mindSpace.imagineFromState === 'function'
               && this.sharedEmbeddings && typeof this.sharedEmbeddings.getSentenceEmbedding === 'function') {
-            const emb = this.sharedEmbeddings.getSentenceEmbedding(imgPrompt);
-            // TU.29 — pass the prompt TEXT + live mood so the mind's eye renders the
-            // actual words in color at full resolution, not a ~17px embedding-noise plane.
-            const rec = this.mindSpace.imagineFromState(emb, {
-              maxSide: 96, text: imgPrompt,
-              mood: { arousal: this.arousal, valence: this.valence },
-              priority: 0.4, value: 0.6,
-            });
+            // TU.29.5 — RECALL FIRST: if she has SEEN this concept (visual-memory
+            // field C bound at perception time), the preview is the real remembered
+            // percept — recombined via morphField when two concepts match. Only an
+            // unseen concept falls to the de-novo abstract/symbol plane.
+            let rec = null;
+            if (typeof this._recallVisualMemory === 'function') {
+              try {
+                const hit = this._recallVisualMemory(imgPrompt);
+                if (hit) rec = hit.rec;
+              } catch { /* recall best-effort */ }
+            }
+            if (!rec) {
+              const emb = this.sharedEmbeddings.getSentenceEmbedding(imgPrompt);
+              rec = this.mindSpace.imagineFromState(emb, {
+                maxSide: 96, text: imgPrompt,
+                mood: { arousal: this.arousal, valence: this.valence },
+                priority: 0.4, value: 0.6,
+              });
+            }
             if (rec) {
               const percept = this.mindSpace.describe(rec);
               if (percept && this.cortexCluster && typeof this.cortexCluster.injectEmbeddingToRegion === 'function') {
@@ -912,13 +923,30 @@ const SERVER_CHAT_MIXIN = {
           : this.cortexCluster.lastSpikes;
         _seedSource = 'sem-state';
       }
-      // TU.29 — text mode + color: the plane shows the thought's words (glyph raster over
-      // a mood/color-tinted state texture) at up to 96px instead of grayscale noise at <=48px.
-      const rec = this.mindSpace.imagineFromState(_seed, {
-        maxSide: 96, text: _seedText,
-        mood: { arousal: this.arousal, valence: this.valence },
-        priority: 0.25, value: 0.4,
-      });
+      // TU.29.5 — IMAGINATION = RECALL + RECOMBINE first. If her thought names
+      // concepts she has actually SEEN (camera frames / generated images bound in
+      // visual memory at perception time), the mind's eye re-sees the stored field C
+      // — morphField-blended when two concepts match (recombination). The de-novo
+      // plane (symbol glyphs for numbers/letters, color/mood field otherwise) only
+      // fires for concepts with no grounded percept — like a mind imagining
+      // something it has never seen.
+      let rec = null;
+      if (_seedText && typeof this._recallVisualMemory === 'function') {
+        try {
+          const hit = this._recallVisualMemory(_seedText);
+          if (hit) {
+            rec = hit.rec;
+            _seedSource = (hit.recombined ? 'recall+morph:' : 'recall:') + hit.matched.join('+');
+          }
+        } catch { /* recall best-effort — de-novo below */ }
+      }
+      if (!rec) {
+        rec = this.mindSpace.imagineFromState(_seed, {
+          maxSide: 96, text: _seedText,
+          mood: { arousal: this.arousal, valence: this.valence },
+          priority: 0.25, value: 0.4,
+        });
+      }
       if (!rec) return;
       const percept = this.mindSpace.describe(rec);
       // inject the imagined percept into the cortex sem region at LOW strength —

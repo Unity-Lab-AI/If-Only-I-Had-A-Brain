@@ -78,6 +78,18 @@ The imagined field-C ring (`_imaginedFieldRing`, ≤8 tiny recs — the ".uvme m
 is persisted to `server/mindspace-memory.json` (atomic write, gitignored, derivative) in
 `saveWeights` and restored at boot, so her mental imagery survives reboot.
 
+### Visual memory — seeing grounds imagining — **TU.29.5 (NEW, 2026-07-08)**
+The recall layer that turns the mind's eye from a de-novo renderer into IMAGINATION:
+- **`server/brain-server/visual-memory.js`** — `_ingestVisualFrame` (WS `visual_frame` intake:
+  ≤96×96 RGBA → `mindSpace.perceive` → full-color field C, bound to the concepts active at
+  perception time) + `_recallVisualMemory` (thought tokens → stored field C; two matches fuse
+  via `MindSpaceGPU.morph` → `transform.js morphField`, equation-domain recombination).
+- **`js/visual-feeder.js`** — standalone raw-served client module (index.html, NOT bundled):
+  camera frames (permission-gated) + generated-image renders (Pollinations URL → prompt label).
+- **Recall-first order** in `_imagineTick` / IMG-SEE: recall+morph → de-novo only for unseen
+  concepts. De-novo glyphs demoted to symbol thoughts (numbers/letters); abstract color/mood
+  field otherwise (`symbolGlyphText` in `mindspace/gpu.js`).
+- **Persistence** — `server/visual-memory.json`, LRU 384 concepts, debounced 30s atomic write.
 ## Consciousness de-gating — CGATE batch (2026-06-27)
 
 Unity reported her consciousness was "gated too much." Fixes:

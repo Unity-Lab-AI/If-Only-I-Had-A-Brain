@@ -132,3 +132,25 @@ RECEIPTS
   docs/NOW.md banner + docs/RESUME.md 2026-07-08 section
   server/SPONGE-COPY-PASTE-tu28.txt (TU.28-only detail)
 ════════════════════════════════════════════════════════════════════════════
+
+ADDENDUM 2026-07-08 (LATER) — TU.29.5 REAL MINDS EYE ON MAIN
+  Gee rejected the TU.29 glyph plane ("not a text printer — MINDS EYE =
+  UNITYS IMAGINATION"). TU.29.5 replaces it with perception-grounded recall:
+  • js/visual-feeder.js (NEW, raw-served from index.html — NOT bundled, so
+    the plain overlay deploys it; no esbuild needed on the box): camera
+    frames (only when permission already granted) + generated-image renders
+    -> 96x96 RGBA visual_frame WS messages on a lightweight own socket.
+  • server/brain-server/visual-memory.js (NEW mixin) + visual_frame case in
+    the WS switch: frame -> perceive (CPU CDF 9/7, full color) -> field C
+    bound to concepts active at perception; store LRU 384 persisted at
+    server/visual-memory.json (NEW derivative file — safe to delete, she
+    just re-sees; do NOT add to rsync excludes).
+  • chat.js imagine paths recall stored percepts FIRST, morphField-fuse two
+    on multi-match; mindspace/gpu.js demotes glyphs to numbers/letters.
+  VALIDATE: server log shows "[VisualMemory] 👁 seen ..." lines once any
+  browser with camera permission / generated images sits on the page;
+  /minds-eye.html source field cycles seen-*/recall-* (not only thought-*).
+  FAILURE MODE: cosmetic-only — both imagine call-sites are try/catch and
+  the intake validates + paces; a broken feeder just means she keeps
+  daydreaming de-novo. Nothing here touches weights/bands/protocol.
+  DEPLOY: Gee presses Update & FRESH WALK (fresh is intentional this time).
