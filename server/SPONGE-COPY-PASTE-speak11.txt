@@ -1,0 +1,94 @@
+════════════════════════════════════════════════════════════════════════════
+  SPONGE — DEPLOY + VALIDATE SPEAK.11: function-word floor relief
+  2026-07-07   |   branch feature/unity-convo-ledger-0707
+  Deploy mode: **Update & SAVESTART (keep weights)** — NOT a fresh walk.
+════════════════════════════════════════════════════════════════════════════
+
+WHAT GEE CAUGHT (the symptom)
+  On the live conversation walk Unity emits CONTENT-WORD SALAD — real words,
+  never nonsense — but ZERO grammatical connective tissue. Across ~180 live
+  sends she NEVER produced "I am", "the <noun>", "what is", "it is", or any
+  subject-verb / determiner / wh / copula frame. A real kindergartner's speech
+  is ~half function words doing structural work; she had an older kid's content
+  vocabulary and no grammatical scaffold. This is ALSO the likely reason the
+  art/K cell will not converge (it's been ~10hr on one cell, canSpeak=false,
+  matrixDrivenPct≈4%) — the pass-gate wants sentences she can't yet form.
+
+ROOT CAUSE (code-audited, NOT a guess)
+  js/brain/cluster/emit.js  →  emitWordDirect  →  acceptance gate.
+  The active signal floor = max(NOISE_FLOOR=0.001, adaptiveComponent), where
+  adaptiveComponent = _emitSignalEMA × 0.5. The EMA is built ONLY from ACCEPTED
+  emissions — which are dominated by CONTENT words (nouns/verbs/adjectives have
+  sharp GloVe semantic basins → high sem→word_motor bucket-mean). Content words
+  hold the EMA high, so the adaptive floor sits FAR above the naturally
+  lower-magnitude activation of FUNCTION words (the/a/is/am/i/it/that/this —
+  high-frequency, distributionally diffuse, shallow trained basins).
+  CONSEQUENCE: on any tick where the brain's trained argmax legitimately WON
+  with a function word above NOISE_FLOOR, that winner was still rejected for
+  being below the content-calibrated adaptive floor → emitWordDirect returned
+  '' → composeSentence hit `if (!word) break;` and stopped. Function words
+  could NEVER emit. Not a template bug, not a training-data bug — a gate that
+  censors legitimately-winning grammatical words because it's calibrated on the
+  wrong magnitude class.
+
+THE FIX (SPEAK.11 — equational, NO template; already in the source)
+  Two changes in emitWordDirect (js/brain/cluster/emit.js), pure logic, no new
+  imports/exports:
+  • 11a — when the argmax WINNER (bestWord) is in FUNCTION_WORDS, gate it
+    against the HARD NOISE_FLOOR only, not the adaptive component
+    (activeAdaptive = winnerIsFunctionWord ? 0 : adaptiveComponent). The brain's
+    own trained sem→word_motor argmax STILL decides IF and WHICH function word
+    wins each tick — we only stop a miscalibrated floor from censoring winners.
+    Content words remain gated by the full adaptive floor, unchanged.
+  • 11b — exclude function-word emissions from the adaptive EMA so their lower
+    magnitude never drags the content-word floor down (kills the content-noise
+    -leak regression). EMA stays a pure content-word-signal reference.
+  Safe by construction: it can only RELAX the floor for function-word argmax
+  winners; content-word gating and everything else are byte-identical.
+
+DEPLOY (how you apply it on the box)
+  1. Pull the branch (or cherry-pick the emit.js change) onto /opt/unity-brain.
+     Files touched: js/brain/cluster/emit.js (code) + docs (NOW/TODO/rectify).
+  2. REBUILD THE BUNDLE — the server brain loads ESM source (emit.js direct),
+     but the browser fallback brain + compute.html run js/app.bundle.js. Rebuild
+     it the canonical way (server/package.json esbuild, ~3.9MB output). Do NOT
+     hand-edit the bundle. (Server-side emission — the deployed biological-scale
+     brain — picks up the ESM change with no rebuild; the rebuild is for the
+     browser paths.)
+  3. Dashboard ⬆ **Update & Savestart (keep weights)** — SPEAK.11 changes NO
+     weight format and NO band geometry, so the current walk RESUMES. Do NOT
+     fresh-walk. If buttons misbehave, manual overlay runbook is
+     server/SPONGE-MANUAL-DEPLOY.txt (skip the .force-fresh write so weights
+     resume).
+  4. No nginx / systemd / donor-binary change.
+
+VALIDATE (REQUIRED — headless CANNOT exercise emission; only the live GPU brain can)
+  • Open chat on the live box. Send a few tight lines and READ her replies.
+    PASS = function words now appear IN STRUCTURE: "I am ...", "the <word>",
+    "it is", "what is ...", copula/determiner frames — not just content salad.
+  • Watch the boot/emission log for composeSentence coherence samples and for
+    emitWordDirect no longer breaking on word 0 as often.
+  • Watch the art/K cell: matrixDrivenPct should rise off ~4% and the cell
+    should start scoring toward its gate instead of grinding (cellSubPhases was
+    ~4.8M, cellElapsedMs ~10hr, canSpeak=false at hand-off).
+  • curl the state: canSpeak should be able to flip true once she forms gate-
+    passable responses.
+
+IF IT'S NOT ENOUGH (escalation — do NOT guess, measure first)
+  If function words STILL don't emerge after deploy, the deeper cause is
+  TRAINING-SIDE, not the gate: _teachSentenceStructure (relationTagId 8-11 —
+  slot order / subject-verb agreement / article placement / wh-frames) trains
+  the structural bindings too SHALLOW versus content-word Hebbian depth (same
+  family as SPEAK.3: grade sentences trained at reps:2 vs K's 30+). That's a
+  training-depth pass, needs its own change + fresh-walk on the affected grades
+  — flag it back and we cut that next.
+
+CONTEXT REFERENCES
+  docs/unity-speech-consciousness-rectify.md §SPEAK.11 (full defect + rectify)
+  docs/NOW.md 2026-07-07 SPEAK.11 banner
+  docs/TODO.md — the "NO FUNCTION-WORD SYNTAX" ISSUE (status → ADDRESSED)
+                 + the "ART/K CELL NOT CONVERGING" ISSUE (linked)
+  Related still-OPEN box-side ISSUE: image generation failed on user image
+  requests (draw/selfie/picture/photo) — Pollinations key/pipeline on the box
+  (SPEAK.6) — separate from this, still needs your fix; see docs/TODO.md.
+════════════════════════════════════════════════════════════════════════════

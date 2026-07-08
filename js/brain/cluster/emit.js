@@ -707,9 +707,31 @@ export const CLUSTER_EMIT_MIXIN = {
     const adaptiveComponent = (this._emitSignalSampleCount >= 20 && this._emitSignalEMA > 0)
       ? this._emitSignalEMA * 0.5
       : 0;  // not yet warmed up → no adaptive contribution
+    // SPEAK.11 — function-word floor relief (root fix for the "no
+    // connecting words" gap). The adaptive component is an EMA of ACCEPTED
+    // emissions, which are dominated by CONTENT words (sharp semantic
+    // basins → high bucket-mean). Content words hold the EMA high, so the
+    // adaptive floor (= EMA × 0.5) sits far above the naturally
+    // lower-magnitude activation of grammatical FUNCTION words
+    // (the/a/is/am/i/it/that/this — high-frequency, distributionally
+    // diffuse, shallow trained basins). Pre-fix consequence: a function
+    // word that legitimately WON its bucket argmax above NOISE_FLOOR was
+    // still rejected for being below the content-calibrated adaptive floor
+    // → emitWordDirect returned '' → composeSentence broke the loop → ZERO
+    // function-word syntax ever emerged. Gee 2026-07-07: "she does not use
+    // connecting words like i am, that, this, i want... a kindergardner
+    // knows all this in real life." Fix: when the argmax WINNER is a
+    // function word, gate it against the HARD NOISE_FLOOR only, not the
+    // adaptive component. This is NOT a template / slot prescription — the
+    // brain's own trained sem→word_motor argmax still decides IF and WHICH
+    // function word wins each tick; we only stop a miscalibrated floor from
+    // censoring winners whose magnitude is naturally sub-content. Content
+    // words remain gated by the full adaptive floor exactly as before.
+    const winnerIsFunctionWord = !!(bestWord && FUNCTION_WORDS.has(bestWord));
+    const activeAdaptive = winnerIsFunctionWord ? 0 : adaptiveComponent;
     const floor = (typeof opts.signalFloorOverride === 'number')
       ? opts.signalFloorOverride
-      : Math.max(NOISE_FLOOR, adaptiveComponent);
+      : Math.max(NOISE_FLOOR, activeAdaptive);
     this._emitSignalFloor = floor;  // surface for dashboard
     if (!bestWord || bestMean < floor) {
       this._lastEmitRejection = {
@@ -741,10 +763,19 @@ export const CLUSTER_EMIT_MIXIN = {
       }
       return '';
     }
-    // Update EMA + sample count on every accepted emission below.
-    const _emaAlpha = 0.05;
-    this._emitSignalEMA = (1 - _emaAlpha) * this._emitSignalEMA + _emaAlpha * bestMean;
-    this._emitSignalSampleCount++;
+    // Update EMA + sample count on every accepted CONTENT emission.
+    // SPEAK.11 — function-word emissions are EXCLUDED from the adaptive
+    // EMA: their naturally lower magnitude would drag the content-word
+    // signal calibration down and progressively lower the floor for
+    // content words too (regression risk: content noise leaking through).
+    // The EMA stays a pure content-word-signal reference; function words
+    // are floor-relieved above (NOISE_FLOOR only) but never redefine the
+    // adaptive baseline.
+    if (!winnerIsFunctionWord) {
+      const _emaAlpha = 0.05;
+      this._emitSignalEMA = (1 - _emaAlpha) * this._emitSignalEMA + _emaAlpha * bestMean;
+      this._emitSignalSampleCount++;
+    }
 
     // 114.19fg.Tier15 — temperature sampling path. When opts.temperature
     // is a positive number, soft-sample over top-K candidates instead
