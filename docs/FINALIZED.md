@@ -25537,3 +25537,10 @@ CONFIRMED GAP: the user-ask lane echo-routed the stripped user text as the Polli
 
 His report PROVED the TU.29.5 chain live on the fresh walk (feeder shipping camera frames, perceive working, seen-camera swapping the viewer) AND exposed the flaw: camera frames land every ~8s vs the imagine tick 20-120s, so perception dominated the display — the minds eye read as a camera mirror instead of imagination. SHIPPED: _eyeSwapOk gate in visual-memory.js _ingestVisualFrame — camera-seen viewer swaps land at most once per 60s (first sight immediate), her generated-image creations always swap, recall/de-novo daydreams own the display between glances. Binding + sem grounding + persistence UNTHROTTLED (she still perceives and remembers every frame — only the display paces). Deploys with the next Update & SAVESTART (keep weights).
 
+
+## 2026-07-08 — TU.29.9 (selfie image fix: curated identity prompt bypasses composition)
+
+> Task directive (verbatim from Gee, 2026-07-08): *"ask her to send a selfie image.. when i do it it fails.. so track the issues"*
+
+TRACKED + FIXED. Diagnosis: deployed index.html carries the seeded key + feeder (verified live); the selfie URL returns HTTP 200 server-side (key + endpoint fine). Root bug: TU.29.7 _composeImagePrompt mangled the selfie — its [^a-zA-Z] base regex stripped the literal "25" ("selfie of a YEAR old goth woman") and appended redundant ", dark moody, intense" to the already-curated 220-char self-portrait, bloating the single heaviest prompt (3.3s vs 0.9s for a simple noun) into the one most prone to a Pollinations flux timeout that surfaces as "(image generation failed)". FIX (server/brain-server/chat.js): selfie requests (/^selfie of a \d+ year old/) BYPASS _composeImagePrompt — her curated self-portrait ships clean with the age intact; non-selfie asks still compose from her brain. Verified: bypass matches, "25" retained, clean selfie URL renders HTTP 200 (75KB). Residual (Pollinations-side, not ours): heavy prompts can still intermittently time out under load — a retry succeeds; removing the bloat makes it far less likely. Deploys next Update & SAVESTART.
+
