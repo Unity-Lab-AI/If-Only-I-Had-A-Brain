@@ -4548,6 +4548,15 @@ export const K_MIXIN = {
         }
       }
     }
+    // TU.24-FIX — union the words actually taught via `_teachVocabList`
+    // (recorded in `_vocabTaughtSet` by `_pregateEnrichment`). Without
+    // this the pregate re-taught the same "missing" exam words on every
+    // gate entry forever — the root cause of the science 7M-event
+    // runaway. Now a taught word counts as trained and the coverage
+    // audit clears, so the teach fires once and the cell advances.
+    if (this._vocabTaughtSet && this._vocabTaughtSet.size > 0) {
+      for (const w of this._vocabTaughtSet) vocab.add(w);
+    }
     return vocab;
   },
 

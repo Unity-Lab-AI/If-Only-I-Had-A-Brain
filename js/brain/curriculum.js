@@ -9392,8 +9392,21 @@ export class Curriculum {
   async _pregateEnrichment(cellKey, opts = {}) {
     if (!cellKey) return;
     this._pregateCellsDone = this._pregateCellsDone || new Set();
+    // TU.24-FIX — persistent taught-word set + per-cell vocab guard.
+    // Root cause of the science 7M-event runaway: EXAM-VOCAB-TEACH ran
+    // on EVERY gate entry, and the words it taught never registered
+    // where `_trainedVocabularySet` reads, so `examVocabCoverage`
+    // reported the SAME words missing forever → infinite re-teach with
+    // ~zero net learning (matrixDrivenPct stuck at 3%). `_vocabTaughtSet`
+    // records what was actually taught (unioned into the trained set by
+    // `_trainedVocabularySet` so the audit clears); `_pregateVocabDone`
+    // caps EXAM-VOCAB-TEACH to ONCE per cell per session. Teach once,
+    // register, advance — we do NOT chase A+ coverage. She is what she is.
+    this._vocabTaughtSet = this._vocabTaughtSet || new Set();
+    this._pregateVocabDone = this._pregateVocabDone || new Set();
 
-    // VOCAB-TEACH runs on EVERY gate entry (not just first). The
+    // VOCAB-TEACH now runs ONCE per cell per session (was: every gate
+    // entry). The
     // original `_pregateCellsDone` guard below wraps the structure-
     // teach path (which is expensive and re-doing it across retries
     // produces destructive interference) — but missing-exam-word
@@ -9403,7 +9416,9 @@ export class Curriculum {
     // all the vocab by fuckng adding the words to the learned
     // words!!!"*. The prior wrap meant retry N could not pick up
     // words that retry N-1 failed to teach. Lifted out of the guard.
-    try {
+    if (opts.force || !this._pregateVocabDone.has(cellKey)) {
+     this._pregateVocabDone.add(cellKey);
+     try {
       this._auditExamVocabulary(cellKey);
       const trained = this._trainedVocabularySet(cellKey);
       const report = examVocabCoverage(cellKey, trained);
@@ -9420,6 +9435,11 @@ export class Curriculum {
             const slice = words.slice(i, i + CHUNK);
             try {
               await this._teachVocabList(slice, ctx, { reps });
+              // Register every taught word so `_trainedVocabularySet`
+              // counts it and the next coverage audit reports it trained
+              // (stops the re-teach loop). Store lowercased to match the
+              // token form `examVocabCoverage` checks.
+              for (const w of slice) this._vocabTaughtSet.add(String(w).toLowerCase());
             } catch (err) {
               console.warn(`[Curriculum][${cellKey}] EXAM-VOCAB-TEACH chunk ${i/CHUNK | 0} failed:`, err?.message || err);
             }
@@ -9431,8 +9451,9 @@ export class Curriculum {
           this._auditExamVocabulary(cellKey);
         }
       }
-    } catch (err) {
+     } catch (err) {
       console.warn(`[Curriculum][${cellKey}] exam-vocab teach failed:`, err?.message || err);
+     }
     }
 
     // Per-session per-cell guard — structure-teach can be minutes of
