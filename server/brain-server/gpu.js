@@ -727,9 +727,45 @@ const SERVER_GPU_MIXIN = {
     // never becomes the main-tick barrier. Tunable via DREAM_DF7_WORK_FLOOR.
     const _floorEnv = Number(process.env.DREAM_DF7_WORK_FLOOR);
     const floor = Number.isFinite(_floorEnv) && _floorEnv >= 0 ? _floorEnv : 0.05;
-    if (rtt <= 200) return 1;
-    if (rtt >= 1000) return floor;
-    return Math.max(floor, 1 - (rtt - 200) / 800);
+    let rttHealth;
+    if (rtt <= 200) rttHealth = 1;
+    else if (rtt >= 1000) rttHealth = floor;
+    else rttHealth = Math.max(floor, 1 - (rtt - 200) / 800);
+
+    // DONOR-EQUAL FIX (2026-07-09) — health must also crater on a SATURATED
+    // send buffer, in REAL TIME. There is no fixed primary: the coordinator
+    // (the donor the sequential main tick runs on) is elected purely by this
+    // health-weighted strength and re-elected on every rebalance tick. The bug
+    // was that election read only the SMOOTHED rtt, which lags a live buffer
+    // flood by seconds — so a card whose socket was backing up to 50MB (12s+
+    // real RTT) still scored as healthy and stayed coordinator, pinning the
+    // whole main-tick stream onto a link that could not drain it. Folding the
+    // live bufferedAmount in means the instant a donor's socket backs up it is
+    // demoted and the coordinator role hands off to a donor that drains — no
+    // card is ever special or stuck as "primary". Buffer health ramps 1.0 at
+    // 0MB down to the floor at the soft cap; penalty starts at 15% of the cap.
+    let bufHealth = 1;
+    try {
+      const buf = (ws && typeof ws.bufferedAmount === 'number') ? ws.bufferedAmount : 0;
+      const cap = (typeof this._donorSoftCapBytes === 'function') ? this._donorSoftCapBytes() : 64 * 1024 * 1024;
+      const lo = cap * 0.15;
+      if (buf > lo && cap > lo) {
+        bufHealth = Math.max(floor, 1 - (buf - lo) / (cap - lo));
+        if (c) c._coordFloodMs = Date.now();   // stamp: this card's socket just backed up
+      }
+      // Anti-thrash hysteresis. A card that flooded recently stays capped below
+      // full health for a cooldown, so the instant its buffer drains it can NOT
+      // immediately re-win the coordinator role and re-flood (each handoff
+      // re-uploads the brain). This is what makes "no fixed primary" stable
+      // rather than a per-second flip-flop between a strong-GPU/weak-link card
+      // and a weaker-GPU/strong-link one. DREAM_DF7_FLOOD_COOLDOWN_MS (default 90s).
+      if (c && c._coordFloodMs) {
+        const cd = Number(process.env.DREAM_DF7_FLOOD_COOLDOWN_MS) > 0 ? Number(process.env.DREAM_DF7_FLOOD_COOLDOWN_MS) : 90000;
+        if (Date.now() - c._coordFloodMs < cd) bufHealth = Math.min(bufHealth, floor);
+      }
+    } catch { /* non-fatal — fall back to rtt-only health */ }
+
+    return Math.min(rttHealth, bufHealth);
   },
 
   // DF.7 F1 — donor strength for primary selection + work weighting. Operator
