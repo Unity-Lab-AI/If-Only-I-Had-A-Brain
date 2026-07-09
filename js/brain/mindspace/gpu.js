@@ -554,7 +554,12 @@ export class MindSpaceGPU {
   // equational substrate as perception/imagination, so what she draws is a real
   // image she can then re-see, morph, or remember. No fractalize, hard side cap.
   sketch(strokes, opts = {}) {
-    const side = Math.max(16, Math.min(opts.maxSide ?? 96, 96));
+    // DRAW.8 — hard cap raised 96 → 512 so the drawing composer can grow the
+    // canvas with her grade (K=96 … adult=512). The 96 cap was a safety
+    // POSTURE, not an engine limit — MAX_LINE is 2048 and the CPU CDF 9/7 on
+    // a padded 512² plane is still milliseconds. Callers pass the grade-gated
+    // side (server chat.js _drawCanvasSide); no-fractalize invariant intact.
+    const side = Math.max(16, Math.min(opts.maxSide ?? 96, 512));
     const W = side, H = side, N = W * H;
     const data = new Uint8ClampedArray(N * 4);
     // DRAW.3 — background is PAPER (her dark sketchbook page), not a mood

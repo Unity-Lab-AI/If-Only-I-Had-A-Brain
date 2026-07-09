@@ -163,6 +163,26 @@ background took the SAME `moodTint` (her valence parked mid-low → hue ~0.27 �
   shape layouts shift every couple attempts) instead of repeating pixel-identical forms — colors stay
   concept-stable; (DRAW.6) schema cosine threshold 0.42 → 0.34 so more concepts reach a real figure.
 
+**SE.12 — SERIOUS-IMAGE GROWTH: the artist ladder past crayon (DRAW.7-10, 2026-07-09).** Gee: can she get
+past crayon stick drawings to serious images? Yes — the same way humans do, and every rung is now wired:
+- **DRAW.7 practice loop** — when she draws from a visual memory she has a REFERENCE, so she now practices:
+  bounded draw→compare→adjust attempts, each scored by the cosine between `describe(drawing)` and
+  `describe(memory)` (the equational "does my drawing look like the thing"); the best survives. Per-concept
+  skill (best resemblance achieved, in-memory Map cap 300) steadies her hand — stroke jitter shrinks up to
+  ~45% at mastery — so her line control genuinely improves with practice. No image-model in the loop.
+- **DRAW.8 grade-gated resolution** — the canvas grows with her live minGrade like a real artist's control:
+  K=96px → grade3=128 → grade8=192 → grade12=256 → college=320-384 → PhD=512. `sketch()`'s hard cap raised
+  96→512 (engine MAX_LINE is 2048; a padded 512² CPU CDF 9/7 is milliseconds; no-fractalize intact).
+- **DRAW.9 memory-painting** — the practiced drawing sometimes composites ONTO the memory via `morphField`
+  (equation-domain union+lerp): her strokes fused with the real seen field C = composed paintings from real
+  material (`canvas:paint:<concept>`).
+- **DRAW.10 underdrawing realization** — a completed scene drawing is her composition INTENT: occasionally
+  she hands it to the image executor to realize (her drawing decides WHAT, the executor is only the brush —
+  sensory-output law intact; cooldown `DREAM_DRAW_REALIZE_GAP_MS` 5min + low probability). The render feeds
+  back through the visual-feeder into visual memory, so her NEXT recall + practice reference for that
+  subject is the realized version — the full artist loop closes: imagine → draw → realize → see → remember
+  → draw better.
+
 ---
 
 ## The Sensory AI Provider — 4-Level Priority

@@ -968,12 +968,13 @@ const SERVER_CHAT_MIXIN = {
             // her sketchbook grows with everything her eyes have grounded.
             if (typeof this.mindSpace.sketch === 'function' && Math.random() < 0.35) {
               try {
+                // DRAW.7/9 — the PRACTICE LOOP: bounded draw→compare→adjust
+                // attempts against the memory's own percept; the best drawing
+                // survives, her per-concept skill grows, and sometimes the
+                // result composites ONTO the memory (canvas:paint:<concept>).
                 const _mConcept = (hit.matched && hit.matched[0]) || null;
-                const mStrokes = this._drawFromMemoryStrokes(_mConcept, hit.rec);
-                if (mStrokes && mStrokes.length) {
-                  const drawn = this.mindSpace.sketch(mStrokes, { maxSide: 96, mood: { arousal: this.arousal, valence: this.valence } });
-                  if (drawn) { rec = drawn; _seedSource = 'canvas:memory:' + (_mConcept || 'seen'); }
-                }
+                const practiced = this._practiceDrawFromMemory(_mConcept, hit.rec);
+                if (practiced && practiced.rec) { rec = practiced.rec; _seedSource = practiced.label; }
               } catch { /* memory-draw best-effort — the recall itself stands */ }
             }
           } else {
@@ -1007,8 +1008,19 @@ const SERVER_CHAT_MIXIN = {
           // subject ('canvas:scene:cat', 'canvas:figure:mom?').
           const strokes = this._sketchFromState(_seedText);
           if (strokes && strokes.length) {
-            rec = this.mindSpace.sketch(strokes, { maxSide: 96, mood: { arousal: this.arousal, valence: this.valence } });
+            // DRAW.8 — the canvas grows with her grade (K=96 → adult=512)
+            rec = this.mindSpace.sketch(strokes, { maxSide: this._drawCanvasSide(), mood: { arousal: this.arousal, valence: this.valence } });
             if (rec) _seedSource = this._lastSketchLabel || 'canvas';
+            // DRAW.10 — a completed SCENE is her composition intent:
+            // occasionally hand it to the image executor to realize; the
+            // render feeds back through the feeder into visual memory so
+            // her next reference for this subject upgrades.
+            if (rec && typeof this._lastSketchLabel === 'string' && this._lastSketchLabel.startsWith('canvas:scene:')) {
+              try {
+                const _rc = this._lastSketchLabel.slice('canvas:scene:'.length).replace(/\?$/, '');
+                this._realizeDrawing(_rc, 'childs crayon scene', now);
+              } catch { /* realization best-effort */ }
+            }
           }
         } catch { /* sketch best-effort — mood field below */ }
       }
@@ -1460,6 +1472,122 @@ const SERVER_CHAT_MIXIN = {
     return n;
   },
 
+  // DRAW.8 — grade-gated canvas resolution. Her drawing surface grows with
+  // her education exactly like a real artist's control does: K crayons on a
+  // small page → adult work on a big sheet. Reads the live minGrade (the
+  // same signal that caps her speech). Bounded 96..512 (the raised sketch()
+  // cap; engine MAX_LINE 2048 upstream, no-fractalize invariant untouched —
+  // the CPU CDF 9/7 on a padded 512² plane is still milliseconds).
+  _drawCanvasSide() {
+    let g = 'K';
+    try { if (typeof this._computeMinGrade === 'function') g = this._computeMinGrade(); } catch { /* grade read best-effort */ }
+    const MAP = {
+      'pre-K': 96, 'K': 96,
+      'grade1': 128, 'grade2': 128, 'grade3': 128, 'grade4': 160, 'grade5': 160,
+      'grade6': 192, 'grade7': 192, 'grade8': 192,
+      'grade9': 256, 'grade10': 256, 'grade11': 256, 'grade12': 256,
+      'college1': 320, 'college2': 320, 'college3': 384, 'college4': 384,
+      'grad': 448, 'phd': 512,
+    };
+    return MAP[g] || 96;
+  },
+
+  // DRAW.7 — the PRACTICE LOOP: draw → compare → adjust → keep the best.
+  // When she draws from a visual memory she HAS a reference — the stored
+  // field C. A human gets past stick figures exactly this way: look at the
+  // thing, draw it, compare, adjust, repeat for years. Bounded attempts
+  // (loop-safe, tiny planes): each renders a stroke variant and scores it by
+  // the cosine between describe(drawing) and describe(memory) — the
+  // equational "does my drawing look like the thing" — and the best
+  // survives. Per-concept skill (best cosine achieved, Map cap 300,
+  // in-memory per boot) steadies her hand: _drawFromMemoryStrokes shrinks
+  // its wobble as skill grows, so her line control genuinely improves with
+  // practice. No image-model anywhere in the loop.
+  // DRAW.9 — MEMORY-PAINTING: sometimes the practiced drawing composites
+  // ONTO the memory itself via morphField (equation-domain coefficient
+  // union + lerp) — her strokes fused with the real seen field C = a
+  // composed painting from real material, label canvas:paint:<concept>.
+  // The practice render uses the MEMORY's dims so the percept comparison is
+  // apples-to-apples and the morph pads match.
+  _practiceDrawFromMemory(concept, memRec) {
+    if (!memRec || !this.mindSpace || typeof this.mindSpace.sketch !== 'function') return null;
+    let memPercept = null;
+    try { memPercept = this.mindSpace.describe(memRec); } catch { return null; }
+    if (!memPercept) return null;
+    const cos = (a, b) => {
+      let d = 0, na = 0, nb = 0; const n = Math.min(a.length, b.length);
+      for (let i = 0; i < n; i++) { d += a[i] * b[i]; na += a[i] * a[i]; nb += b[i] * b[i]; }
+      const dn = Math.sqrt(na) * Math.sqrt(nb); return dn > 0 ? d / dn : 0;
+    };
+    if (!(this._drawSkill instanceof Map)) this._drawSkill = new Map();
+    const key = concept || 'seen';
+    const mood = { arousal: this.arousal, valence: this.valence };
+    const side = Math.max(16, Math.min(memRec.width || 96, 512));
+    const ATTEMPTS = 2;
+    let best = null, bestCos = -1;
+    for (let v = 0; v < ATTEMPTS; v++) {
+      let strokes = null;
+      try { strokes = this._drawFromMemoryStrokes(key, memRec, v); } catch { strokes = null; }
+      if (!strokes || !strokes.length) continue;
+      let drawn = null;
+      try { drawn = this.mindSpace.sketch(strokes, { maxSide: side, mood }); } catch { drawn = null; }
+      if (!drawn) continue;
+      let s = 0;
+      try { s = cos(this.mindSpace.describe(drawn), memPercept); } catch { s = 0; }
+      if (s > bestCos) { bestCos = s; best = drawn; }
+    }
+    if (!best) return null;
+    // skill = the best resemblance she has ever achieved for this concept
+    const prev = this._drawSkill.get(key) || 0;
+    if (bestCos > prev) {
+      if (this._drawSkill.size >= 300 && !this._drawSkill.has(key)) {
+        const first = this._drawSkill.keys().next().value;
+        this._drawSkill.delete(first);
+      }
+      this._drawSkill.set(key, bestCos);
+    }
+    try { process.stdout.write(`[Brain] ✏ drawing practice "${key}" — resemblance ${bestCos.toFixed(3)} (skill ${Math.max(prev, bestCos).toFixed(3)})\n`); } catch { /* nf */ }
+    // DRAW.9 — memory-painting: fuse her strokes with the real seen field C
+    if (typeof this.mindSpace.morph === 'function' && Math.random() < 0.4) {
+      try {
+        const comp = this.mindSpace.morph(memRec, best, 0.5);
+        if (comp) return { rec: comp, label: 'canvas:paint:' + key, resemblance: bestCos };
+      } catch { /* composite best-effort — the drawing stands */ }
+    }
+    return { rec: best, label: 'canvas:memory:' + key, resemblance: bestCos };
+  },
+
+  // DRAW.10 — UNDERDRAWING REALIZATION: a completed scene drawing is her
+  // COMPOSITION INTENT — occasionally she hands it to the image executor to
+  // realize (the artist's underdrawing workflow: her drawing decides WHAT,
+  // the executor is only the brush — the sensory-output law intact). The
+  // render comes back through the visual-feeder → visual memory binds it →
+  // her NEXT recall + practice reference for that concept is the realized
+  // version, so the practice loop's reference itself upgrades. Full artist
+  // loop: imagine → draw → realize → see → remember → draw better.
+  // Hard-gated: clients present, long cooldown, low probability.
+  _realizeDrawing(concept, sceneWords, now) {
+    if (!concept) return;
+    if (!this.clients || this.clients.size === 0) return;
+    if (typeof this._buildPollinationsImageUrl !== 'function') return;
+    const GAP = Number(process.env.DREAM_DRAW_REALIZE_GAP_MS) || 300000;   // ≥5min between realizations
+    if (this._lastDrawRealizeAt && (now - this._lastDrawRealizeAt) < GAP) return;
+    if (Math.random() > 0.35) return;   // occasional urge, not a metronome
+    this._lastDrawRealizeAt = now;
+    let prompt = concept + (sceneWords ? ' ' + sceneWords : '');
+    try { if (typeof this._composeImagePrompt === 'function') prompt = this._composeImagePrompt(prompt); } catch { /* bare */ }
+    let url = '';
+    try { url = this._buildPollinationsImageUrl(prompt); } catch { return; }
+    if (!url) return;
+    const payload = JSON.stringify({ type: 'image', prompt, url, imagined: true, concept, ts: now });
+    for (const [ws] of this.clients) { if (ws.readyState === ws.OPEN) { try { ws.send(payload); } catch { /* nf */ } } }
+    try {
+      const _c = this.cortexCluster;
+      if (_c && typeof _c.pushEmission === 'function') _c.pushEmission({ source: 'draw-realize', text: prompt, ts: now });
+    } catch { /* nf */ }
+    try { process.stdout.write(`[Brain] 🖼 underdrawing realized — her scene drawing of "${concept}" goes to the executor as "${prompt}" (render → feeder → visual memory → her next reference upgrades).\n`); } catch { /* nf */ }
+  },
+
   // DRAW.4 — draw WHAT SHE REMEMBERS. Turns a recalled visual-memory field C
   // into pencil strokes derived from the memory's OWN percept vector
   // (describeEquational layout: dims 24-47 = coarse spatial Y coefficients,
@@ -1470,14 +1598,18 @@ const SERVER_CHAT_MIXIN = {
   // dark), texture adds interior hatch strokes, and she labels it in her own
   // hand. This is the growth engine Gee asked for: every concept her eyes
   // ground becomes a NEW thing she can draw.
-  _drawFromMemoryStrokes(concept, srcRec) {
+  _drawFromMemoryStrokes(concept, srcRec, variant = 0) {
     if (!srcRec || !this.mindSpace || typeof this.mindSpace.describe !== 'function') return null;
     let p = null;
     try { p = this.mindSpace.describe(srcRec); } catch { return null; }
     if (!p || p.length < 52) return null;
     const arousal = Math.max(0, Math.min(1, this.arousal ?? 0.4));
     const fear = Math.max(0, Math.min(1, this.fear ?? 0));
-    const wob = 0.008 + 0.018 * arousal + 0.010 * fear;
+    // DRAW.7 — skill steadies the hand: as her best resemblance for this
+    // concept grows (practice loop), the jitter shrinks — real learned line
+    // control, up to ~45% steadier at mastery.
+    const _skill = (this._drawSkill instanceof Map) ? (this._drawSkill.get(concept || 'seen') || 0) : 0;
+    const wob = (0.008 + 0.018 * arousal + 0.010 * fear) * (1 - 0.45 * Math.max(0, Math.min(1, _skill)));
     const jj = () => (Math.random() * 2 - 1) * wob;
     const strokes = [];
     // crayon from the memory's chroma: Cr-heavy → warm, Cb-heavy → cool,
@@ -1497,8 +1629,10 @@ const SERVER_CHAT_MIXIN = {
     const pts = [];
     const cx = 0.5, cy = 0.5;
     // practice rotates the starting angle a little each attempt — she draws
-    // the same memory from a slightly different "grip" as she practices
-    const rot = ((n % 8) / 8) * Math.PI * 2 * 0.12;
+    // the same memory from a slightly different "grip" as she practices;
+    // the DRAW.7 attempt variant nudges it further so each try in a practice
+    // round is a genuinely different adjustment, not a re-roll of jitter.
+    const rot = ((n % 8) / 8) * Math.PI * 2 * 0.12 + variant * 0.09;
     for (let i = 0; i <= 24; i++) {
       const k = 24 + (i % 24);
       const mag = Math.abs(p[k] || 0) / maxAbs;
