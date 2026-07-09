@@ -151,6 +151,17 @@ background took the SAME `moodTint` (her valence parked mid-low → hue ~0.27 �
 - **Viewer** — the mind's-eye `source` label now carries the stage + subject (`canvas:scene:cat`,
   `canvas:figure:mom`, `canvas:shapes:blue`, `…?` when she's asking). Equational end-to-end; ≤96px cap and
   no-fractalize invariants intact.
+- **DRAW.4-6 — her drawings LEARN (2026-07-09).** The composer used to fire only on recall-MISS, so
+  everything she had actually seen was excluded from drawing — a fixed 11-schema table + strict 0.42 cosine
+  meant most subjects fell to the shapes stage and the viewer looped the same shape-stacks. Now: (DRAW.4)
+  a recall-HIT has a 35% chance of becoming a DRAWING OF THE MEMORY — the contour is a 24-point radial
+  outline whose radii come from the stored field C's own coarse spatial coefficients (percept dims 24-47),
+  crayon from its chroma mass (48/49: warm vs cool vs dark), hatch detail from its texture ratio (51),
+  labeled in her hand with no "?" (she KNOWS this one) — so every concept her eyes ground becomes a new
+  thing she can draw (`canvas:memory:<concept>`); (DRAW.5) a per-concept practice counter folds into the
+  layout hashes so re-drawing the same subject EVOLVES (subject wanders the ground line, context rotates,
+  shape layouts shift every couple attempts) instead of repeating pixel-identical forms — colors stay
+  concept-stable; (DRAW.6) schema cosine threshold 0.42 → 0.34 so more concepts reach a real figure.
 
 ---
 
