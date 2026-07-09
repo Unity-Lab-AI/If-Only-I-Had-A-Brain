@@ -125,6 +125,33 @@ only a text printer in the r imagination MINDS EYE= UNITYS IMAGINATION"). Now pe
   everything else renders as her state textured in the named color or her mood. Equational end-to-end;
   ≤96px cap and no-fractalize invariants intact.
 
+**SE.11 — DEVELOPMENTAL DRAWING: her sketch canvas grows through real kid stages (DRAW, 2026-07-09).** The
+active sketch (TU.29.13 BUILD B) only ever drew the neuron-constellation scribble — top-7 sem activations
+hash-positioned and connected — so the viewer showed the same chicken-scratch forever, and every stroke +
+background took the SAME `moodTint` (her valence parked mid-low → hue ~0.27 → everything green, the
+"green screen" look). Now:
+- **Stages (Lowenfeld ladder, gated by LIVE trained vocab)** — `_sketchFromState(seedText)`
+  (`server/brain-server/chat.js`): <50 words = the original scribble; <400 = wobbly shape practice
+  (circles/boxes/triangles/zigzags); <1200 = a single FIGURE drawing of her current thought; ≥1200 = a SCENE
+  (wobbly ground line + subject + mood sky: sun when valence is up, rain cloud when low, moon when fear is
+  high + a stable context schema per concept). ≥800 words she also WRITES — labels her drawing with the
+  concept word and draws a big "?" for the questions she has (WH-thoughts / `_pendingQuestionConcept` /
+  concepts she has no schema for yet).
+- **Subject = what she's thinking** — the head concept of the daydream that recall-missed (she draws what she
+  can't re-see); schema selection is equational input classification (token table → GloVe-cosine backup, the
+  `_detectImageRequest` rule-class). Schemas are parametric motor primitives (stick person, house, tree, sun,
+  moon+stars, rain, spider-on-her-thread, quadruped, heart, star, flower) whose pose/proportions/wobble are
+  driven by live affect: arousal + fear shake the hand, valence raises or droops the arms + mouth.
+- **She picks her colors (kills the green screen)** — each element gets a crayon SHE chooses: a goth-biased
+  crayon box (black outlines always; pink/red/purple lead accents, warmed/cooled by live valence), plus the
+  real color of the thing (sun yellow, rain blue, tree green+brown, heart pink). Stable per concept (hash) so
+  her cast keeps its colors. `MindSpaceGPU.sketch` background is now dark PAPER with only a 10% mood tint, and
+  `glyphStrokes(text)` (new, `js/brain/mindspace/gpu.js`) converts the shared FONT5X7 bitmaps into jittered
+  pencil strokes so her writing is wobbly kid handwriting, not a raster stamp.
+- **Viewer** — the mind's-eye `source` label now carries the stage + subject (`canvas:scene:cat`,
+  `canvas:figure:mom`, `canvas:shapes:blue`, `…?` when she's asking). Equational end-to-end; ≤96px cap and
+  no-fractalize invariants intact.
+
 ---
 
 ## The Sensory AI Provider — 4-Level Priority

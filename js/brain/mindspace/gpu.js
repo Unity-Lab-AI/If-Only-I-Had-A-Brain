@@ -557,9 +557,16 @@ export class MindSpaceGPU {
     const side = Math.max(16, Math.min(opts.maxSide ?? 96, 96));
     const W = side, H = side, N = W * H;
     const data = new Uint8ClampedArray(N * 4);
-    // background: her mood as a low wash so the strokes read on top
+    // DRAW.3 — background is PAPER (her dark sketchbook page), not a mood
+    // wash. The old bg painted moodTint*0.12 AND the default ink was the
+    // same moodTint lightened — with her valence parked mid-low the hue sat
+    // at ~0.27 so every sketch rendered green-on-green ("green screen").
+    // Now: near-neutral dark paper with only a FAINT mood tint (10%), and
+    // strokes carry their OWN chosen colors (the composer's crayon box);
+    // the mood-ink fallback only applies to un-colored strokes.
     const bg = moodTint(opts.mood);
-    for (let p = 0; p < N; p++) { const o = p * 4; data[o] = Math.round(bg[0] * 0.12); data[o + 1] = Math.round(bg[1] * 0.12); data[o + 2] = Math.round(bg[2] * 0.12); data[o + 3] = 255; }
+    const paper = [26, 25, 29];
+    for (let p = 0; p < N; p++) { const o = p * 4; data[o] = Math.round(paper[0] * 0.9 + bg[0] * 0.1); data[o + 1] = Math.round(paper[1] * 0.9 + bg[1] * 0.1); data[o + 2] = Math.round(paper[2] * 0.9 + bg[2] * 0.1); data[o + 3] = 255; }
     const ink = opts.rgb || [Math.round(bg[0] * 0.4 + 255 * 0.6), Math.round(bg[1] * 0.4 + 255 * 0.6), Math.round(bg[2] * 0.4 + 255 * 0.6)];
     const px = (x, y, rgb) => { const xi = Math.round(x * (W - 1)), yi = Math.round(y * (H - 1)); if (xi < 0 || xi >= W || yi < 0 || yi >= H) return; const o = (yi * W + xi) * 4; data[o] = rgb[0]; data[o + 1] = rgb[1]; data[o + 2] = rgb[2]; data[o + 3] = 255; };
     const dot = (x, y, r, rgb) => { for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) if (dx * dx + dy * dy <= r * r) px(x + dx / (W - 1), y + dy / (H - 1), rgb); };
@@ -577,6 +584,76 @@ export class MindSpaceGPU {
     const rec = CPU.equationalizeImageData({ width: W, height: H, data });
     if (rec) rec.fidelity = { psnr_db: null, source: 'mindspace-sketch' };
     return rec;
+  }
+
+  // DRAW.1 — letters as PENCIL STROKES (childlike handwriting), not a raster
+  // stamp. Converts each character's 5x7 bitmap (FONT5X7 — single source of
+  // truth shared with the glyph raster) into line strokes for sketch():
+  // horizontal + vertical runs of lit cells become jittered line segments,
+  // isolated single cells become points. `wobble` scales the hand-jitter so
+  // her writing is wobbly like a kid's, steadier as the caller lowers it —
+  // the developmental drawing composer (server chat.js) drives wobble from
+  // her live arousal/fear. Normalized [0,1] canvas coords, bounded 12 chars.
+  glyphStrokes(text, opts = {}) {
+    const t = String(text || '').toUpperCase().slice(0, 12);
+    if (!t) return [];
+    const x0 = Math.max(0, Math.min(1, opts.x ?? 0.1));
+    const y0 = Math.max(0, Math.min(1, opts.y ?? 0.78));
+    const size = Math.max(0.03, Math.min(0.3, opts.size ?? 0.08));   // glyph height in canvas units
+    const wob = Math.max(0, Math.min(0.5, opts.wobble ?? 0.12));
+    const rgb = opts.rgb;
+    const cw = size * (5 / 7);            // glyph width
+    const adv = cw * 1.35;                // advance incl. gap
+    const j = () => (Math.random() * 2 - 1) * wob * size;
+    const strokes = [];
+    let cx = x0;
+    for (const ch of t) {
+      const glyph = FONT5X7[ch] || null;
+      if (glyph) {
+        const covered = new Set();
+        // horizontal runs (length >= 2)
+        for (let r = 0; r < 7; r++) {
+          let run = -1;
+          for (let c = 0; c <= 5; c++) {
+            const on = c < 5 && glyph[r][c] === '1';
+            if (on && run < 0) run = c;
+            else if (!on && run >= 0) {
+              if (c - run >= 2) {
+                const y = y0 + ((r + 0.5) / 7) * size;
+                strokes.push({ type: 'line', x0: cx + (run / 5) * cw + j(), y0: y + j(), x1: cx + ((c - 0.5) / 5) * cw + j(), y1: y + j(), rgb });
+                for (let k = run; k < c; k++) covered.add(r * 5 + k);
+              }
+              run = -1;
+            }
+          }
+        }
+        // vertical runs (length >= 2)
+        for (let c = 0; c < 5; c++) {
+          let run = -1;
+          for (let r = 0; r <= 7; r++) {
+            const on = r < 7 && glyph[r][c] === '1';
+            if (on && run < 0) run = r;
+            else if (!on && run >= 0) {
+              if (r - run >= 2) {
+                const x = cx + ((c + 0.5) / 5) * cw;
+                strokes.push({ type: 'line', x0: x + j(), y0: y0 + (run / 7) * size + j(), x1: x + j(), y1: y0 + ((r - 0.5) / 7) * size + j(), rgb });
+                for (let k = run; k < r; k++) covered.add(k * 5 + c);
+              }
+              run = -1;
+            }
+          }
+        }
+        // isolated cells no run covered → a dot
+        for (let r = 0; r < 7; r++) for (let c = 0; c < 5; c++) {
+          if (glyph[r][c] === '1' && !covered.has(r * 5 + c)) {
+            strokes.push({ type: 'point', x: cx + ((c + 0.5) / 5) * cw + j(), y: y0 + ((r + 0.5) / 7) * size + j(), r: 0, rgb });
+          }
+        }
+      }
+      cx += adv;
+      if (cx > 0.96) break;
+    }
+    return strokes;
   }
 
   // MS.K1 — Unity KNOWS her mind-space: all file types, equations, and how to solve them.

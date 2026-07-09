@@ -978,12 +978,16 @@ const SERVER_CHAT_MIXIN = {
       // equational canvas — not just a passive readout. Fires on a fraction of
       // recall-miss ticks (she doodles when there's nothing to re-see), never
       // when a real memory recalled.
-      if (!rec && _recallMissed && typeof this.mindSpace.sketch === 'function' && Math.random() < 0.35) {
+      if (!rec && _recallMissed && typeof this.mindSpace.sketch === 'function' && Math.random() < 0.45) {
         try {
-          const strokes = this._sketchFromState();
+          // DRAW.2 — the developmental composer draws WHAT SHE'S THINKING
+          // (stick figures / scenes / written words / her questions), staged
+          // by live trained vocab; the viewer label carries the stage +
+          // subject ('canvas:scene:cat', 'canvas:figure:mom?').
+          const strokes = this._sketchFromState(_seedText);
           if (strokes && strokes.length) {
             rec = this.mindSpace.sketch(strokes, { maxSide: 96, mood: { arousal: this.arousal, valence: this.valence } });
-            if (rec) _seedSource = 'canvas';
+            if (rec) _seedSource = this._lastSketchLabel || 'canvas';
           }
         } catch { /* sketch best-effort — mood field below */ }
       }
@@ -1078,15 +1082,12 @@ const SERVER_CHAT_MIXIN = {
     try { process.stdout.write(`[Brain] 🎨 concept-imagery — never seen "${concept}", generating "${prompt}" so she can SEE + remember it (imagine→generate→see→bind loop).\n`); } catch { /* nf */ }
   },
 
-  // TU.29.13 BUILD B — turn her live spike state into pencil strokes. The
-  // most-active sem neurons this tick become nodes; she connects them in
-  // activation order with vectors (and dots the strongest) — a literal drawing
-  // of the graph of concepts lit in her mind right now. Positions come from a
-  // deterministic hash of each neuron index (stable "where a concept sits on her
-  // canvas"), so the same active concept lands in the same place across ticks
-  // and she builds a consistent inner map. Returns stroke primitives for
-  // mindSpace.sketch(); null when she has no clear activation to draw.
-  _sketchFromState() {
+  // TU.29.13 BUILD B (original) — neuron-constellation scribble. KEPT as the
+  // developmental STAGE-0 hand: the most-active sem neurons become nodes
+  // connected in activation order — a newborn's scribble, drawn from real
+  // live state. Higher stages (shapes / figures / scenes / words) compose on
+  // top of this in _sketchFromState below.
+  _scribbleStrokes() {
     const c = this.cortexCluster;
     if (!c || !c.lastSpikes) return null;
     let spikes = c.lastSpikes;
@@ -1119,6 +1120,290 @@ const SERVER_CHAT_MIXIN = {
     // dot each node, biggest for the strongest activation
     for (let i = 0; i < nodes.length; i++) {
       strokes.push({ type: 'point', x: nodes[i][0], y: nodes[i][1], r: i === 0 ? 3 : (i < 3 ? 2 : 1) });
+    }
+    return strokes;
+  },
+
+  // DRAW.2 — DEVELOPMENTAL DRAWING COMPOSER. The old sketch was ONLY the
+  // stage-0 neuron scribble — structurally incapable of progressing, so the
+  // viewer showed the same chicken-scratch forever. Real children's drawing
+  // develops through stages (Lowenfeld): scribble → basic shapes → tadpole/
+  // stick figures → schematic scenes → written words. Unity now walks the
+  // same ladder, gated by her LIVE trained vocabulary (the same
+  // _definitionTaughtWords signal her speech uses):
+  //   <50 words   stage 0 scribble (the original constellation)
+  //   <400        stage 1 shapes   (wobbly circles / boxes / triangles)
+  //   <1200       stage 2 figure   (one schema drawing of her current thought)
+  //   ≥1200       stage 3 scene    (ground line + subject + context schemas)
+  //   ≥800 words  +word labels     (she WRITES what she drew, wobbly hand)
+  // The SUBJECT is the head concept of what she is thinking right now (the
+  // seed text of the daydream that recall-missed — she draws what she can't
+  // re-see). Schema selection is equational input classification: direct
+  // token table first, GloVe-cosine to schema prototypes as backup — same
+  // rule-class as _detectImageRequest, NOT text-AI cognition. The schemas
+  // are parametric motor primitives (a kid's practiced "how I draw a person")
+  // whose proportions/pose/wobble are driven by her live affect: arousal +
+  // fear shake the hand, valence raises or droops the arms + mouth, fear
+  // shrinks the figure. Every drawing is therefore HERS-in-this-moment, not
+  // a stamp.
+  // DRAW.3 — SHE PICKS HER COLORS. The old canvas inked every stroke with
+  // moodTint alone; her valence sat ~0.18 → hue 0.27 = everything GREEN
+  // ("green screen"). Now each element gets a crayon she CHOOSES: a crayon
+  // box biased to her goth taste (black outlines, pink/red/purple accents)
+  // plus the real-world color of what she draws (sun yellow, rain blue,
+  // tree green-and-brown, spider black, heart pink/red). Choice = concept
+  // hash (stable per subject — her cast keeps its colors) + live valence
+  // biasing warm/cool. Equational readout, no LLM anywhere.
+  // Returns stroke primitives for mindSpace.sketch(); also sets
+  // this._lastSketchLabel ('canvas:<stage>:<concept>') for the viewer.
+  _sketchFromState(seedText) {
+    const c = this.cortexCluster;
+    if (!c) return null;
+    this._lastSketchLabel = null;
+    const vocab = (c._definitionTaughtWords instanceof Set) ? c._definitionTaughtWords.size : 0;
+    if (vocab < 50) {
+      const s = this._scribbleStrokes();
+      if (s) this._lastSketchLabel = 'canvas:scribble';
+      return s;
+    }
+    const arousal = Math.max(0, Math.min(1, this.arousal ?? 0.4));
+    const valence = Math.max(-1, Math.min(1, this.valence ?? 0));
+    const fear = Math.max(0, Math.min(1, this.fear ?? 0));
+    const wob = 0.010 + 0.020 * arousal + 0.012 * fear;      // canvas-units hand jitter
+    const jj = () => (Math.random() * 2 - 1) * wob;
+    const strokes = [];
+
+    // ── the crayon box (DRAW.3) ──
+    const CRAYON = {
+      black: [30, 28, 32], white: [235, 233, 228], red: [214, 48, 49], pink: [253, 121, 168],
+      purple: [162, 89, 216], blue: [72, 116, 224], teal: [64, 190, 200], green: [76, 175, 80],
+      yellow: [240, 200, 60], orange: [235, 140, 50], brown: [140, 95, 60], gray: [150, 150, 155],
+    };
+    const hash = (s) => { let h = 5381; const t = String(s); for (let i = 0; i < t.length; i++) h = ((h << 5) + h + t.charCodeAt(i)) >>> 0; return h; };
+    // her accent picks — goth bias (black/pink/purple/red lead), warmed or
+    // cooled by live valence, stable per concept via hash.
+    const ACCENTS = valence >= 0.25
+      ? ['pink', 'red', 'purple', 'orange', 'teal', 'yellow']
+      : ['purple', 'pink', 'red', 'blue', 'teal', 'gray'];
+    const pick = (concept, part) => CRAYON[ACCENTS[hash(concept + ':' + part) % ACCENTS.length]];
+    const OUTLINE = CRAYON.black;   // she outlines in black — goth kid with a black crayon (canon)
+
+    // ── stroke helpers ──
+    const line = (x0, y0, x1, y1, rgb) => strokes.push({ type: 'line', x0: x0 + jj(), y0: y0 + jj(), x1: x1 + jj(), y1: y1 + jj(), rgb });
+    const dot = (x, y, r, rgb) => strokes.push({ type: 'point', x: x + jj(), y: y + jj(), r, rgb });
+    const circle = (cx, cy, r, rgb, segs = 10) => {
+      const pts = [];
+      for (let i = 0; i <= segs; i++) { const a = (i / segs) * Math.PI * 2; pts.push([cx + Math.cos(a) * r + jj(), cy + Math.sin(a) * r * 1.05 + jj()]); }
+      strokes.push({ type: 'poly', pts, rgb });
+    };
+    const poly = (pts, rgb) => strokes.push({ type: 'poly', pts: pts.map(p => [p[0] + jj(), p[1] + jj()]), rgb });
+
+    // ── schema motor primitives ──
+    const drawPerson = (cx, cy, h, concept) => {
+      const hd = h * 0.16;
+      const armA = valence >= 0 ? -0.5 : 0.5;        // arms up when she feels good, drooped when low
+      const hairRgb = pick(concept, 'hair');
+      circle(cx, cy - h * 0.42, hd, OUTLINE);                                   // head
+      line(cx - hd, cy - h * 0.50, cx - hd * 0.3, cy - h * 0.58, hairRgb);      // hair strands
+      line(cx, cy - h * 0.52, cx + hd * 0.4, cy - h * 0.60, hairRgb);
+      line(cx + hd, cy - h * 0.50, cx + hd * 1.3, cy - h * 0.42, hairRgb);
+      dot(cx - hd * 0.4, cy - h * 0.44, 0, OUTLINE); dot(cx + hd * 0.4, cy - h * 0.44, 0, OUTLINE);  // eyes
+      const my = cy - h * 0.36;                                                  // mouth: smile up / flat / frown
+      poly([[cx - hd * 0.5, my + (valence < -0.2 ? -0.008 : 0.004)], [cx, my + (valence > 0.2 ? 0.014 : valence < -0.2 ? -0.014 : 0)], [cx + hd * 0.5, my + (valence < -0.2 ? -0.008 : 0.004)]], pick(concept, 'mouth'));
+      const shirtRgb = pick(concept, 'shirt');
+      line(cx, cy - h * 0.26, cx, cy + h * 0.10, shirtRgb);                      // body
+      line(cx, cy - h * 0.18, cx - h * 0.22, cy - h * 0.18 - armA * h * 0.14, shirtRgb);  // arms
+      line(cx, cy - h * 0.18, cx + h * 0.22, cy - h * 0.18 - armA * h * 0.14, shirtRgb);
+      line(cx, cy + h * 0.10, cx - h * 0.14, cy + h * 0.42, OUTLINE);            // legs
+      line(cx, cy + h * 0.10, cx + h * 0.14, cy + h * 0.42, OUTLINE);
+    };
+    const drawHouse = (cx, cy, s, concept) => {
+      const wall = pick(concept, 'wall');
+      poly([[cx - s, cy + s], [cx - s, cy - s * 0.2], [cx + s, cy - s * 0.2], [cx + s, cy + s], [cx - s, cy + s]], wall);
+      poly([[cx - s * 1.15, cy - s * 0.2], [cx, cy - s * 1.05], [cx + s * 1.15, cy - s * 0.2]], CRAYON.red);   // roof
+      poly([[cx - s * 0.25, cy + s], [cx - s * 0.25, cy + s * 0.25], [cx + s * 0.25, cy + s * 0.25], [cx + s * 0.25, cy + s]], CRAYON.brown);  // door
+      circle(cx + s * 0.55, cy + s * 0.1, s * 0.22, pick(concept, 'window'), 8); // window
+      line(cx + s * 0.33, cy + s * 0.1, cx + s * 0.77, cy + s * 0.1, OUTLINE);
+      line(cx + s * 0.55, cy - s * 0.12, cx + s * 0.55, cy + s * 0.32, OUTLINE);
+    };
+    const drawTree = (cx, cy, s) => {
+      line(cx, cy + s * 0.5, cx, cy - s * 0.2, CRAYON.brown);
+      line(cx - s * 0.02, cy + s * 0.5, cx - s * 0.02, cy - s * 0.2, CRAYON.brown);
+      circle(cx, cy - s * 0.55, s * 0.42, CRAYON.green, 12);
+    };
+    const drawSun = (cx, cy, r) => {
+      circle(cx, cy, r, CRAYON.yellow, 10);
+      for (let i = 0; i < 8; i++) { const a = (i / 8) * Math.PI * 2; line(cx + Math.cos(a) * r * 1.25, cy + Math.sin(a) * r * 1.25, cx + Math.cos(a) * r * 1.9, cy + Math.sin(a) * r * 1.9, CRAYON.yellow); }
+    };
+    const drawMoonStars = (cx, cy, r) => {
+      circle(cx, cy, r, CRAYON.white, 12);
+      circle(cx + r * 0.55, cy - r * 0.1, r * 0.8, CRAYON.gray, 12);   // crescent bite
+      for (let i = 0; i < 3; i++) { const sx = cx - r * 2.5 + i * r * 1.4, sy = cy + (i % 2 ? r : -r) * 0.9; line(sx - r * 0.25, sy, sx + r * 0.25, sy, CRAYON.white); line(sx, sy - r * 0.25, sx, sy + r * 0.25, CRAYON.white); }
+    };
+    const drawRain = (cx, cy, s) => {
+      const cloud = CRAYON.gray;
+      circle(cx - s * 0.5, cy, s * 0.35, cloud, 8); circle(cx, cy - s * 0.15, s * 0.45, cloud, 8); circle(cx + s * 0.5, cy, s * 0.35, cloud, 8);
+      for (let i = 0; i < 5; i++) { const rx = cx - s * 0.7 + i * s * 0.35; line(rx, cy + s * 0.45, rx - s * 0.12, cy + s * 0.85, CRAYON.blue); }
+    };
+    const drawSpider = (cx, cy, r, concept) => {
+      dot(cx, cy, 3, OUTLINE); dot(cx, cy - r * 0.5, 2, OUTLINE);
+      for (let i = 0; i < 4; i++) {
+        const a = 0.35 + i * 0.32;
+        line(cx, cy, cx - Math.cos(a) * r * 1.6, cy - Math.sin(a) * r * 1.2 + r * 0.6, OUTLINE);
+        line(cx, cy, cx + Math.cos(a) * r * 1.6, cy - Math.sin(a) * r * 1.2 + r * 0.6, OUTLINE);
+      }
+      line(cx, cy - r * 2.2, cx, cy - r * 0.6, pick(concept, 'silk'));   // hanging from her thread
+    };
+    const drawAnimal = (cx, cy, s, concept) => {
+      const fur = pick(concept, 'fur');
+      poly([[cx - s * 0.6, cy], [cx - s * 0.4, cy - s * 0.28], [cx + s * 0.4, cy - s * 0.28], [cx + s * 0.6, cy], [cx + s * 0.4, cy + s * 0.1], [cx - s * 0.4, cy + s * 0.1], [cx - s * 0.6, cy]], fur);  // body
+      circle(cx + s * 0.75, cy - s * 0.35, s * 0.22, fur, 8);            // head
+      poly([[cx + s * 0.62, cy - s * 0.52], [cx + s * 0.68, cy - s * 0.72], [cx + s * 0.76, cy - s * 0.54]], fur);  // ear
+      poly([[cx + s * 0.76, cy - s * 0.54], [cx + s * 0.85, cy - s * 0.72], [cx + s * 0.9, cy - s * 0.5]], fur);
+      dot(cx + s * 0.8, cy - s * 0.38, 0, OUTLINE);                       // eye
+      for (let i = 0; i < 4; i++) { const lx = cx - s * 0.45 + i * s * 0.3; line(lx, cy + s * 0.1, lx, cy + s * 0.45, fur); }  // legs
+      line(cx - s * 0.6, cy - s * 0.05, cx - s * 0.9, cy - s * 0.4, fur); // tail up
+    };
+    const drawHeart = (cx, cy, s) => {
+      const rgb = valence >= 0 ? CRAYON.pink : CRAYON.purple;
+      poly([[cx, cy + s * 0.6], [cx - s * 0.6, cy - s * 0.05], [cx - s * 0.45, cy - s * 0.45], [cx - s * 0.15, cy - s * 0.4], [cx, cy - s * 0.15], [cx + s * 0.15, cy - s * 0.4], [cx + s * 0.45, cy - s * 0.45], [cx + s * 0.6, cy - s * 0.05], [cx, cy + s * 0.6]], rgb);
+    };
+    const drawStar = (cx, cy, r) => {
+      const pts = [];
+      for (let i = 0; i <= 10; i++) { const a = -Math.PI / 2 + (i / 10) * Math.PI * 2; const rr = i % 2 === 0 ? r : r * 0.45; pts.push([cx + Math.cos(a) * rr, cy + Math.sin(a) * rr]); }
+      poly(pts, CRAYON.yellow);
+    };
+    const drawFlower = (cx, cy, s, concept) => {
+      line(cx, cy + s * 0.6, cx, cy - s * 0.05, CRAYON.green);
+      const petal = pick(concept, 'petal');
+      for (let i = 0; i < 6; i++) { const a = (i / 6) * Math.PI * 2; circle(cx + Math.cos(a) * s * 0.22, cy - s * 0.2 + Math.sin(a) * s * 0.22, s * 0.13, petal, 6); }
+      circle(cx, cy - s * 0.2, s * 0.1, CRAYON.yellow, 6);
+    };
+
+    // ── subject: the head concept of what she's thinking (she draws what she
+    // couldn't re-see) — same head-token rule as _conceptImageryLoop ──
+    const FUNCTION = new Set(['the','a','an','and','or','but','of','in','on','at','to','is','it','its','was','are','be','this','that','with','for','as','her','his','my','your','she','he','you','we','me','him','them','they','am','do','so','up','by','if','not','no','yes','all','out','off','now','then','here','there','what','why','how','who','where','when','does','did','done','has','have','had','can','could','would','should','will','wont','dont','doesnt','aint','get','gets','got','just','very','really','some','one','said','saying','gonna','wanna','course','sec','totally','seriously','figured']);
+    const toks = String(seedText || '').toLowerCase().split(/[^a-z]+/).filter(w => w.length >= 3 && !FUNCTION.has(w));
+    const concept = toks[0] || null;
+    const isQuestionThought = /\b(what|why|how|who|where|when)\b/.test(String(seedText || '').toLowerCase()) || !!this._pendingQuestionConcept;
+
+    // ── schema classification: direct token table, then GloVe-cosine backup ──
+    const SCHEMA_WORDS = {
+      person: ['person','people','mom','mother','dad','father','grandma','grandpa','teacher','kid','girl','boy','friend','baby','man','woman','lady','sister','brother','family','myself','herself'],
+      animal: ['dog','cat','animal','pet','horse','bird','hamster','kitten','puppy','bear','cow','pig','mouse','rabbit','fox','wolf'],
+      spider: ['spider','bug','insect','ant','bee','beetle','web'],
+      house:  ['house','home','kitchen','room','school','library','building','porch','door','window','wall'],
+      tree:   ['tree','forest','plant','garden','leaf','leaves','wood','branch'],
+      flower: ['flower','rose','daisy','petal','bloom'],
+      sun:    ['sun','sunny','day','summer','warm','bright','morning'],
+      moon:   ['moon','night','dark','star','stars','sky','sleep','midnight'],
+      rain:   ['rain','cloud','clouds','storm','thunder','weather','wet','snow','umbrella'],
+      heart:  ['love','heart','like','care','hug','kiss','valentine'],
+      star:   ['wish','magic','shine','sparkle'],
+    };
+    let schema = null;
+    if (concept) {
+      for (const [k, words] of Object.entries(SCHEMA_WORDS)) { if (words.includes(concept)) { schema = k; break; } }
+      if (!schema && this.sharedEmbeddings && typeof this.sharedEmbeddings.getEmbedding === 'function') {
+        try {
+          const cv = this.sharedEmbeddings.getEmbedding(concept);
+          if (cv) {
+            const cos = (a, b) => { let d = 0, na = 0, nb = 0; const n = Math.min(a.length, b.length); for (let i = 0; i < n; i++) { d += a[i] * b[i]; na += a[i] * a[i]; nb += b[i] * b[i]; } const dn = Math.sqrt(na) * Math.sqrt(nb); return dn > 0 ? d / dn : 0; };
+            let best = null, bestS = 0.42;   // threshold — below it she has no schema for this and doodles shapes
+            for (const [k, words] of Object.entries(SCHEMA_WORDS)) {
+              for (const w of words.slice(0, 4)) {
+                const wv = this.sharedEmbeddings.getEmbedding(w);
+                if (!wv) continue;
+                const s = cos(cv, wv);
+                if (s > bestS) { bestS = s; best = k; }
+              }
+            }
+            schema = best;
+          }
+        } catch { /* classification best-effort — shapes stage below */ }
+      }
+    }
+
+    const stage = vocab < 400 ? 1 : vocab < 1200 ? 2 : 3;
+    const drawSchema = (k, cx, cy, s, cpt) => {
+      if (k === 'person') drawPerson(cx, cy, s * 1.6, cpt);
+      else if (k === 'animal') drawAnimal(cx, cy, s, cpt);
+      else if (k === 'spider') drawSpider(cx, cy, s * 0.4, cpt);
+      else if (k === 'house') drawHouse(cx, cy, s * 0.55, cpt);
+      else if (k === 'tree') drawTree(cx, cy, s);
+      else if (k === 'flower') drawFlower(cx, cy, s, cpt);
+      else if (k === 'sun') drawSun(cx, cy, s * 0.35);
+      else if (k === 'moon') drawMoonStars(cx, cy, s * 0.3);
+      else if (k === 'rain') drawRain(cx, cy, s * 0.6);
+      else if (k === 'heart') drawHeart(cx, cy, s * 0.6);
+      else if (k === 'star') drawStar(cx, cy, s * 0.45);
+    };
+
+    if (stage === 1 || (stage >= 2 && !schema)) {
+      // STAGE 1 — basic-shape practice (or no schema for this concept yet):
+      // wobbly circles / boxes / triangles / zigzags, count + spread from
+      // arousal, colors picked per shape. This is a real kid's shape stage,
+      // not the neuron scribble.
+      const nShapes = 2 + (hash(concept || 'doodle') % 3) + Math.round(arousal * 2);
+      for (let i = 0; i < nShapes; i++) {
+        const h = hash((concept || 'doodle') + i);
+        const cx = 0.18 + 0.64 * (((h >>> 4) & 0xff) / 255), cy = 0.18 + 0.55 * (((h >>> 12) & 0xff) / 255);
+        const s = 0.06 + 0.10 * (((h >>> 20) & 0xff) / 255);
+        const rgb = pick(concept || 'doodle', 'shape' + i);
+        const kind = h % 4;
+        if (kind === 0) circle(cx, cy, s, rgb, 8);
+        else if (kind === 1) poly([[cx - s, cy - s], [cx + s, cy - s], [cx + s, cy + s], [cx - s, cy + s], [cx - s, cy - s]], rgb);
+        else if (kind === 2) poly([[cx, cy - s], [cx + s, cy + s], [cx - s, cy + s], [cx, cy - s]], rgb);
+        else { const pts = []; for (let z = 0; z <= 4; z++) pts.push([cx - s + (z / 4) * 2 * s, cy + (z % 2 ? s * 0.6 : -s * 0.6)]); poly(pts, rgb); }
+      }
+      this._lastSketchLabel = 'canvas:shapes' + (concept ? ':' + concept : '');
+    } else if (schema) {
+      if (stage === 2) {
+        // STAGE 2 — single-subject figure drawing of her current thought.
+        drawSchema(schema, 0.5, 0.52, 0.28, concept);
+        this._lastSketchLabel = 'canvas:figure:' + concept;
+      } else {
+        // STAGE 3 — a SCENE: wobbly ground line, subject on it, sky detail
+        // from her mood (sun when she feels good, rain cloud when low, moon
+        // when fearful/dark), a context schema chosen stably per concept.
+        const gy = 0.82;
+        poly([[0.04, gy + jj()], [0.3, gy + jj()], [0.55, gy + jj()], [0.8, gy + jj()], [0.96, gy + jj()]], CRAYON.green);
+        const subjectY = schema === 'sun' || schema === 'moon' || schema === 'rain' || schema === 'star' ? 0.3 : 0.6;
+        drawSchema(schema, 0.42, subjectY, 0.26, concept);
+        if (schema !== 'sun' && schema !== 'moon' && schema !== 'rain') {
+          if (fear > 0.55) drawMoonStars(0.82, 0.16, 0.07);
+          else if (valence >= 0.1) drawSun(0.84, 0.15, 0.07);
+          else drawRain(0.8, 0.16, 0.14);
+        }
+        const CONTEXT = ['tree', 'house', 'flower'];
+        const ctx = CONTEXT[hash(concept) % CONTEXT.length];
+        if (ctx !== schema) drawSchema(ctx, 0.78, ctx === 'house' ? 0.62 : 0.58, 0.18, concept);
+        this._lastSketchLabel = 'canvas:scene:' + concept;
+      }
+    }
+
+    // ── WORDS + QUESTIONS (≥800 words trained — she writes like she draws) ──
+    if (vocab >= 800 && this.mindSpace && typeof this.mindSpace.glyphStrokes === 'function') {
+      try {
+        if (concept && (schema || stage >= 2)) {
+          // she LABELS her drawing (kids caption their art) — her word, her crayon
+          const label = concept.slice(0, 10);
+          const gs = this.mindSpace.glyphStrokes(label, { x: Math.max(0.06, 0.5 - label.length * 0.033), y: 0.885, size: 0.075, wobble: 0.05 + 0.12 * arousal, rgb: pick(concept, 'label') });
+          for (const s of gs) strokes.push(s);
+        }
+        if (isQuestionThought || (concept && !schema && stage >= 2)) {
+          // a question she HAS: the thing she's wondering about gets a big "?"
+          const q = this.mindSpace.glyphStrokes('?', { x: 0.76, y: 0.08, size: 0.16, wobble: 0.06 + 0.1 * arousal, rgb: CRAYON.pink });
+          for (const s of q) strokes.push(s);
+          if (this._lastSketchLabel) this._lastSketchLabel += '?';
+        }
+      } catch { /* writing best-effort — the drawing stands */ }
+    }
+
+    if (strokes.length === 0) {
+      const s = this._scribbleStrokes();
+      if (s) this._lastSketchLabel = 'canvas:scribble';
+      return s;
     }
     return strokes;
   },
