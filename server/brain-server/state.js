@@ -724,9 +724,21 @@ const SERVER_STATE_MIXIN = {
             // server's send buffer to that donor — that's the link draining, not a fault.
             // Only red when it climbs toward the point where frames start getting DROPPED
             // (500 MB → GPU-shadow divergence). Below that it's all still delivered, just queued.
-            unhealthy: ((now - (c.lastSeen || now)) > 90000)
-              || (typeof c.rttMs === 'number' && c.rttMs > 2500 && (this._lastEventLoopLagMs || 0) < 1000)
-              || (buffered > 300 * MB),
+            // BUSY-DONOR forgiveness (2026-07-09) — a donor whose send buffer
+            // is DRAINED (<8MB) and which is actively computing
+            // (gneuronsPerSec > 0) answers the heartbeat late because its
+            // browser tab's MAIN THREAD is grinding GPU work — the WS pong is
+            // serviced by that same busy thread. A hard-working solo donor
+            // showed a permanent 3-5s RTT and a permanently RED row even after
+            // the 64MB-parked-socket bug was fixed and its buffer sat at ZERO.
+            // Busy ≠ broken: skip the RTT clause for such a donor; a genuinely
+            // stale (90s+ silent) or backed-up (>300MB) one still flags.
+            unhealthy: (() => {
+              const busyDonor = isGPU && buffered < 8 * MB && ((tele && tele.gneuronsPerSec) || 0) > 0;
+              return ((now - (c.lastSeen || now)) > 90000)
+                || (typeof c.rttMs === 'number' && c.rttMs > 2500 && (this._lastEventLoopLagMs || 0) < 1000 && !busyDonor)
+                || (buffered > 300 * MB);
+            })(),
           });
         }
       }

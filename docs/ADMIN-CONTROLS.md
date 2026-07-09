@@ -213,8 +213,12 @@ are flagged **unhealthy** and sorted to the top, so client-to-brain problems are
 visible at a glance. A donor row that sat permanently red at 10-14s RTT was the
 64MB-parked-socket bug (fixed 2026-07-09 — see `docs/WEBSOCKET.md` §WSQ.4-6): work
 routing now keeps every donor socket under the `DREAM_DF7_LINK_CAP_MB` (4MB) link cap,
-so RTT reads true and the row heals on drain. Aggregates: totals per type, avg RTT,
-max buffered, total connections ever.
+so RTT reads true and the row heals on drain. **Busy-donor forgiveness (2026-07-09):**
+a donor whose buffer is DRAINED (<8 MB) and which is actively computing (Gn/s > 0) is
+exempt from the RTT clause — its compute tab's busy main thread answers the heartbeat
+late, which is work, not a fault (a hard-working solo donor showed a permanent 3-5s
+RTT red row with an empty buffer); stale and backed-up donors still flag. Aggregates:
+totals per type, avg RTT, max buffered, total connections ever.
 
 **Data path:** `server/brain-server/state.js` `_getProfilingState()` → `state.profiling`,
 broadcast on the existing WS state lane (admin) / `/public-state.json` (public — but the
