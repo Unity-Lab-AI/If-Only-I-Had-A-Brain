@@ -662,6 +662,18 @@ const SERVER_GPU_MIXIN = {
     if (donors.length === 0) return null;
     if (!this._df7Fanout() || donors.length === 1) return donors[0];
     let scored = donors.map((ws) => ({ ws, w: Math.max(0, this._donorStrength(ws)) }));
+    // DONOR-EQUAL — never queue NEW work onto a socket that already has a
+    // backlog past the link cap. Strength weighting alone kept routing
+    // hebbian batches at a fast-GPU/weak-link card until its buffer hit the
+    // 64MB shed line (10s+ of queued bytes on its uplink → red row → health
+    // floor → 5min cooldown → thrash). Preferring drained sockets makes each
+    // donor take exactly the work its link drains — a slow link self-paces
+    // in ~linkCap bursts, a fat link takes the bulk, nobody's socket parks.
+    // If EVERY donor is backed up, fall through to all (the downstream soft-
+    // cap shed still guards the truly-saturated case).
+    const _linkCap = this._donorLinkCapBytes();
+    const _drained = scored.filter((s) => ((s.ws && s.ws.bufferedAmount) || 0) <= _linkCap);
+    if (_drained.length > 0) scored = _drained;
     if (scored.some((s) => s.w > 0)) scored = scored.filter((s) => s.w > 0);
     else scored = scored.map((s) => ({ ws: s.ws, w: 1 }));
     const total = scored.reduce((a, s) => a + s.w, 0) || scored.length;
@@ -751,7 +763,16 @@ const SERVER_GPU_MIXIN = {
       const lo = cap * 0.15;
       if (buf > lo && cap > lo) {
         bufHealth = Math.max(floor, 1 - (buf - lo) / (cap - lo));
-        if (c) c._coordFloodMs = Date.now();   // stamp: this card's socket just backed up
+        // FLOOD STAMP — only at >50% of the soft cap, NOT at the 15% ramp
+        // start. The old stamp-at-9.6MB fired on every routine 16MB matrix
+        // upload chunk (replica sync / live-mirror), so a donor got benched
+        // by the 5-min cooldown after every ordinary upload — replicas sat
+        // floored (0 Gn/s) and the coordinator election had nothing healthy
+        // to pick, pinning EVERY donor at the floor together. A transient
+        // upload spike now just dips bufHealth on the ramp (recovers the
+        // moment it drains); only a genuinely saturated socket (>32MB at
+        // default cap — the teach-flood signature) trips the cooldown.
+        if (c && buf > cap * 0.5) c._coordFloodMs = Date.now();
       }
       // Anti-thrash hysteresis. A card that flooded recently stays capped below
       // full health for a cooldown, so the instant its buffer drains it can NOT
@@ -894,11 +915,16 @@ const SERVER_GPU_MIXIN = {
       if (ws === this._gpuClient) continue;
       try {
         if (ws.readyState !== 1) continue;
-        // TU.28.1 — replicas get the same soft-cap gate as the primary; a
-        // saturated replica socket sheds the mirror frame (it re-converges
-        // on the periodic _rebroadcastMasterToReplicas) instead of stacking
-        // an unbounded buffer on a slow replica link.
-        if (ws.bufferedAmount > this._donorSoftCapBytes()) {
+        // DONOR-EQUAL — mirror frames shed at the LINK cap (default 4MB), not
+        // the 64MB soft cap. The old 64MB gate meant a weak-uplink replica's
+        // socket was allowed to park just under 64MB of queued mirror frames
+        // forever: its heartbeat pong sat behind 10s+ of backlog, RTT read
+        // 10-14s, the Clients row stayed RED, and health floored the card. A
+        // mirror frame is the CHEAPEST thing to lose (per-iteration ephemeral;
+        // the replica re-converges on the periodic rebroadcast), so shed it
+        // the moment the replica's link has any real backlog and keep every
+        // donor's socket seconds-empty.
+        if (ws.bufferedAmount > this._donorLinkCapBytes()) {
           this._wsMirrorShedCount = (this._wsMirrorShedCount || 0) + 1;
           continue;
         }
@@ -1242,35 +1268,14 @@ const SERVER_GPU_MIXIN = {
           if (!this._wsDroppedCount) this._wsDroppedCount = 0;
           this._wsDroppedCount++;
           this._wsLastDropTs = Date.now();
-          this._gpuShadowDirty = true;
-          // AUTO-RESYNC — the old banner CLAIMED "full resync scheduled"
-          // but nothing ever armed one: the flag sat DIRTY until a donor
-          // happened to reconnect (live box: 86,930 drops, shadow DIRTY
-          // for hours, grades frozen — the donor kept training a stale
-          // matrix). Arm the SAME re-upload path the dashboard /resync
-          // endpoint uses (_rearmCortexGpuUpload semantics, inlined here
-          // because that helper is a brain-server.js closure): clear the
-          // one-time cortex upload gate so the next warm tick re-uploads
-          // the authoritative CPU cross-projections + intra-synapses to
-          // the primary; _gpuShadowDirty clears when the donor
-          // re-confirms gpu_init. Throttled to once/60s so a drop storm
-          // arms one resync, not a re-upload flood.
-          const _resyncNow = Date.now();
-          // TU.20.2 (ISSUE-B) — only ARM a resync if one isn't already armed
-          // (_cortexGpuInitStarted already false) or in flight
-          // (_cortexUploadInFlight). Without this guard every drop in a storm
-          // re-cleared the gate, and the re-upload trigger (brain-server.js)
-          // fired repeatedly, stacking overlapping full-cortex uploads into the
-          // saturated socket. The trigger's buffer-drain gate now defers the
-          // actual upload until drain; this guard stops the redundant re-arms.
-          const _alreadyArmed = (this._cortexGpuInitStarted === false) || (this._cortexUploadInFlight === true);
-          if (!_alreadyArmed && (!this._shadowAutoResyncAt || (_resyncNow - this._shadowAutoResyncAt) > 60000)) {
-            this._shadowAutoResyncAt = _resyncNow;
-            this._cortexGpuInitStarted = false;
-            this._allClustersConfirmedAt = null;
-            if (this.cortexCluster) this.cortexCluster._cortexFullyReady = false;
-            console.error('[Brain] AUTO-RESYNC ARMED after backpressure drop — cortex re-uploads the CPU master (cross-projections + intra-synapses) to the primary once the ws buffer DRAINS below the resync gate (TU.20.2 defers into-saturated uploads); _gpuShadowDirty clears when the donor re-confirms gpu_init. (throttle 60s)');
-          }
+          // Mark the shadow dirty on the SAME flag the gpu_init re-confirm
+          // handler clears (cortexCluster's) + arm the throttled auto-resync.
+          // The old code set a brain-level flag here that no code path ever
+          // cleared — the dashboard DIRTY banner latched ON permanently and
+          // the manual /resync button appeared dead even after a successful
+          // re-upload. TU.20.2 already-armed guard + 60s throttle live inside
+          // the helper.
+          this._armShadowResync('CRITICAL backpressure drop after 30s await');
           if (!this._wsLastDropLogMs || (Date.now() - this._wsLastDropLogMs) >= 5000) {
             this._wsLastDropLogMs = Date.now();
             console.error(`[Brain] CRITICAL backpressure DROP after ${MAX_AWAIT_MS}ms await — ws.bufferedAmount=${(ws.bufferedAmount/1024/1024).toFixed(1)}MB > ${BUFFERED_AMOUNT_DROP_THRESHOLD/1024/1024}MB. ${this._wsDroppedCount} total drops since boot. GPU shadow marked DIRTY; auto-resync armed (see banner above). CPU + GPU weights are diverging — cortical-microstructure projections will mis-fire until resync lands.`);
@@ -1865,7 +1870,7 @@ const SERVER_GPU_MIXIN = {
     if (target.bufferedAmount > SOFT_SHED_MB * 1024 * 1024) {
       if (!this._wsShedCount) this._wsShedCount = 0;
       this._wsShedCount += ops.length;
-      this._gpuShadowDirty = true; // shadow heals via auto-resync on drain
+      this._armShadowResync('teach-hebbian batch shed at soft cap'); // dirty on the clearable flag + resync actually armed
       if (!this._wsShedLogMs || (Date.now() - this._wsShedLogMs) > 30000) {
         this._wsShedLogMs = Date.now();
         console.warn(`[Brain] TU.25.A — teach-Hebbian batch SHED (${ops.length} ops): target bufferedAmount=${(target.bufferedAmount / 1024 / 1024).toFixed(1)}MB > ${SOFT_SHED_MB}MB soft cap. CPU stays authoritative; GPU shadow re-converges via auto-resync once the buffer drains. ${this._wsShedCount} ops shed since boot (rate-limited 30s).`);
@@ -1932,6 +1937,48 @@ const SERVER_GPU_MIXIN = {
     return mb * 1024 * 1024;
   },
 
+  // DONOR-LINK CAP — the per-donor "keep the socket nearly empty" bound for
+  // NEW work routing (hebbian batches via _nextPoolDonor) and replica mirror
+  // frames. The soft cap above is a SHED line, not an operating point: gating
+  // streams only at 64MB let the system park a weak-uplink donor's socket
+  // just under 64MB indefinitely — 10s+ of queued bytes on a residential
+  // link, so its heartbeat pong queued behind the backlog, measured RTT sat
+  // at 10-14s, the Clients row went permanently RED, and _donorHealth floored
+  // the card no matter what role it held. Routing new work only onto sockets
+  // below THIS cap keeps every donor's buffer ~seconds-empty: each card takes
+  // exactly the work its link can drain (equal donors, each at its own pace),
+  // RTT stays real, and the red row heals. Tunable via DREAM_DF7_LINK_CAP_MB.
+  _donorLinkCapBytes() {
+    const mb = Number(process.env.DREAM_DF7_LINK_CAP_MB) > 0
+      ? Number(process.env.DREAM_DF7_LINK_CAP_MB) : 4;
+    return mb * 1024 * 1024;
+  },
+
+  // SHADOW-DIRTY single source of truth + real auto-heal. The shed paths used
+  // to set a brain-level `_gpuShadowDirty` that NOTHING ever cleared — the
+  // gpu_init re-confirm handler and the dashboard /resync button clear the
+  // CORTEX-CLUSTER flag, so the dashboard's DIRTY banner (which displayed the
+  // brain-level flag) latched ON after the first shed and the resync button
+  // appeared dead even when the resync completed. All dirty-markers now land
+  // on cortexCluster._gpuShadowDirty (the flag the confirm handler clears),
+  // and every mark also ARMS the throttled auto-resync the comments always
+  // promised: clear the one-time cortex upload gate so the next warm tick
+  // re-uploads the CPU master (the TU.20.2 drain gate defers it until the
+  // buffer drains). Throttled 60s + already-armed guarded so a shed storm
+  // arms one resync, not a re-upload flood.
+  _armShadowResync(reason) {
+    if (this.cortexCluster) this.cortexCluster._gpuShadowDirty = true;
+    const now = Date.now();
+    const alreadyArmed = (this._cortexGpuInitStarted === false) || (this._cortexUploadInFlight === true);
+    if (alreadyArmed) return;
+    if (this._shadowAutoResyncAt && (now - this._shadowAutoResyncAt) <= 60000) return;
+    this._shadowAutoResyncAt = now;
+    this._cortexGpuInitStarted = false;
+    this._allClustersConfirmedAt = null;
+    if (this.cortexCluster) this.cortexCluster._cortexFullyReady = false;
+    console.error(`[Brain] AUTO-RESYNC ARMED (${reason}) — cortex re-uploads the CPU master (cross-projections + intra-synapses) once the ws buffer drains below the resync gate; _gpuShadowDirty clears when the donor re-confirms gpu_init. (throttle 60s)`);
+  },
+
   // TU.28.1 — backpressure gate for the teach-pattern JSON stream
   // (write_spike_slice / write_current_slice / clear_spike_region).
   // ROOT CAUSE (live-box log audit): this stream was the ONLY donor-bound
@@ -1957,7 +2004,7 @@ const SERVER_GPU_MIXIN = {
     if (!ws || ws.readyState !== 1) return false;
     if (ws.bufferedAmount > this._donorSoftCapBytes()) {
       this._wsPatternShedCount = (this._wsPatternShedCount || 0) + 1;
-      this._gpuShadowDirty = true; // shadow heals via auto-resync on drain
+      this._armShadowResync('teach-pattern frame shed at soft cap'); // dirty on the clearable flag + resync actually armed
       const now = Date.now();
       if (!this._wsPatternShedLogMs || (now - this._wsPatternShedLogMs) > 30000) {
         this._wsPatternShedLogMs = now;

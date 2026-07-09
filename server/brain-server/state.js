@@ -1202,14 +1202,17 @@ const SERVER_STATE_MIXIN = {
       mirrorSheds: this._wsMirrorShedCount || 0,
       dropRatePerSec,
       wsConnected: !!(ws && ws.readyState === 1),
-      // GPU shadow dirty flag. Set when a drop-after-timeout fires;
-      // means CPU and GPU weights have diverged on at least one
-      // projection. Surfaces to dashboard so the operator sees the
-      // divergence + can restart to clear (full automatic resync is
-      // a follow-up iter — too large for this pass). Last drop
-      // timestamp lets dashboard render "12s ago" / "no drops since
-      // boot" without each panel computing its own.
-      gpuShadowDirty: !!this._gpuShadowDirty,
+      // GPU shadow dirty flag — read from cortexCluster._gpuShadowDirty,
+      // the SINGLE flag the gpu_init re-confirm handler + /resync path
+      // actually clear. The old read was a brain-level `_gpuShadowDirty`
+      // that shed/drop paths set but NO code path ever cleared, so the
+      // dashboard DIRTY banner latched ON after the first shed and the
+      // manual Re-sync button appeared dead even when the re-upload
+      // completed. Now DIRTY truthfully flips clean the moment the donor
+      // re-confirms cortex gpu_init after a resync. Last drop timestamp
+      // lets dashboard render "12s ago" / "no drops since boot" without
+      // each panel computing its own.
+      gpuShadowDirty: !!(this.cortexCluster && this.cortexCluster._gpuShadowDirty),
       lastDropTs: this._wsLastDropTs || 0,
     };
   },

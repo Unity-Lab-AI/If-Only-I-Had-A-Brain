@@ -134,7 +134,7 @@ each `.bin` is ~145 MB at scale). Slots above the cap are pruned on boot.
 | **💾 Save checkpoint now** | `POST /checkpoint` | Force an immediate versioned save between the 5-min ticks |
 | **⏪ Rollback to vN** | `POST /rollback {to:"vN"}` | Restore a backup slot over the active weights (**takes effect on next restart**) |
 | checkpoint list | `GET /versions` | The retained slots (slot, version#, time, size) |
-| **↻ Re-sync GPU shadow** | `POST /resync` | **Weight-SAFE.** Forces the cortex GPU mirror to re-upload from the intact CPU master to the currently-connected donor (`_rearmCortexGpuUpload`) — clears a stuck `gpuShadowDirty` without waiting for a donor to respawn. Touches no weights; the genuine clear lands when the donor re-confirms `gpu_init` (`_gpuShadowDirty cleared — cortex re-confirmed`). Button in the Community Compute panel. |
+| **↻ Re-sync GPU shadow** | `POST /resync` | **Weight-SAFE.** Forces the cortex GPU mirror to re-upload from the intact CPU master to the currently-connected donor (`_rearmCortexGpuUpload`) — clears a stuck `gpuShadowDirty` without waiting for a donor to respawn. Touches no weights; the genuine clear lands when the donor re-confirms `gpu_init` (`_gpuShadowDirty cleared — cortex re-confirmed`). Button in the Community Compute panel. **2026-07-09 fix:** the button used to APPEAR dead — the shed/drop paths set a brain-level dirty flag the dashboard displayed but the resync path never cleared (it clears `cortexCluster._gpuShadowDirty`), so the DIRTY banner latched ON even after a successful re-upload. All dirty-markers + the display now use the one clearable cortex-cluster flag, and every shed also auto-arms the same drain-gated resync the button fires. |
 
 **Version mismatch ⇒ old checkpoint refused.** On boot, a checkpoint loads only if
 its `formatVersion === WEIGHTS_FORMAT_VERSION` **and** its `totalNeurons` matches the
@@ -207,10 +207,14 @@ A dedicated **Profiling** card on the admin dashboard (`html/dashboard.html`, sc
 **(2) Client↔brain profiling** — a bounded, scroll-capped table (≤24 rows + "+N more")
 of every live connection: type (admin/viewer/donor), name, masked IP, uptime,
 last-seen, **RTT** (from the heartbeat ping/pong), bytes in/out, buffered, and donor
-GPU/throughput. Rows that are stale (>90s silent), laggy (RTT >1s), or backed-up
-(>50 MB buffered) are flagged **unhealthy** and sorted to the top, so client-to-brain
-problems are visible at a glance. Aggregates: totals per type, avg RTT, max buffered,
-total connections ever.
+GPU/throughput. Rows that are stale (>90s silent), laggy (RTT >2.5s while the server
+event loop is healthy), or backed-up (>300 MB buffered — 60% of the 500 MB drop line)
+are flagged **unhealthy** and sorted to the top, so client-to-brain problems are
+visible at a glance. A donor row that sat permanently red at 10-14s RTT was the
+64MB-parked-socket bug (fixed 2026-07-09 — see `docs/WEBSOCKET.md` §WSQ.4-6): work
+routing now keeps every donor socket under the `DREAM_DF7_LINK_CAP_MB` (4MB) link cap,
+so RTT reads true and the row heals on drain. Aggregates: totals per type, avg RTT,
+max buffered, total connections ever.
 
 **Data path:** `server/brain-server/state.js` `_getProfilingState()` → `state.profiling`,
 broadcast on the existing WS state lane (admin) / `/public-state.json` (public — but the
