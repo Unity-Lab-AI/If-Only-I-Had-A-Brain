@@ -760,7 +760,7 @@ const SERVER_GPU_MIXIN = {
       // rather than a per-second flip-flop between a strong-GPU/weak-link card
       // and a weaker-GPU/strong-link one. DREAM_DF7_FLOOD_COOLDOWN_MS (default 90s).
       if (c && c._coordFloodMs) {
-        const cd = Number(process.env.DREAM_DF7_FLOOD_COOLDOWN_MS) > 0 ? Number(process.env.DREAM_DF7_FLOOD_COOLDOWN_MS) : 90000;
+        const cd = Number(process.env.DREAM_DF7_FLOOD_COOLDOWN_MS) > 0 ? Number(process.env.DREAM_DF7_FLOOD_COOLDOWN_MS) : 300000;
         if (Date.now() - c._coordFloodMs < cd) bufHealth = Math.min(bufHealth, floor);
       }
     } catch { /* non-fatal — fall back to rtt-only health */ }
@@ -784,6 +784,19 @@ const SERVER_GPU_MIXIN = {
     if (!c) return 0;
     const vram = Number(c.gpuVramMB || 0);
     const health = this._donorHealth(ws);
+    // DONOR-EQUAL FIX (2026-07-09) — an UNREACHABLE / flooding donor (health at the
+    // work-floor: >1s RTT or a saturated send buffer, per _donorHealth) is NOT
+    // coordinator- or work-eligible no matter how fast its GPU is. A card you can't
+    // drain to is useless as the sequential-tick coordinator, and multiplying its
+    // huge raw throughput (billions of neurons/s) by the 0.05 floor STILL leaves a
+    // score orders of magnitude above a healthy-but-cold donor's VRAM-proxy — that
+    // was the exact bug that kept the flooded card pinned as "primary" and starved
+    // the other donor (0 Gn/s, because only the coordinator runs the main tick).
+    // Collapse a floored donor's strength to ~health so ANY reachable donor out-
+    // scores it; it rejoins at full strength the instant its link recovers.
+    const _wf = Number(process.env.DREAM_DF7_WORK_FLOOR);
+    const _floor = Number.isFinite(_wf) && _wf >= 0 ? _wf : 0.05;
+    if (health <= _floor * 1.0001) return health;
     const minVram = Number(process.env.DREAM_DF7_MIN_VRAM_MB) > 0 ? Number(process.env.DREAM_DF7_MIN_VRAM_MB) : 1500;
     // can't hold a full replica → tiny score (still > 0 so it can take stateless
     // units, but it'll never out-score a real donor for primary).
