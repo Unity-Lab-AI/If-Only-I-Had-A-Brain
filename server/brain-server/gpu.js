@@ -1543,6 +1543,31 @@ const SERVER_GPU_MIXIN = {
       // heartbeat / disconnected), instead of writing every remaining chunk into a destroyed
       // stream and logging an error per chunk.
       if (!ws || ws.readyState !== 1) break;
+      // DONOR-FIX — PACE EVERY upload by THIS donor's own socket buffer,
+      // not just replica-sync. The per-chunk send-callback await below only
+      // confirms the data was handed to the OS send buffer — NOT that the
+      // link drained it. On a donor whose browser thread is busy feeding a
+      // fast GPU (so it can't service its own socket), bufferedAmount balloons,
+      // chunks queue for 10s+, the upload blows its timeout, and the GPU shadow
+      // wedges DIRTY (which also makes the manual /resync button futile — its
+      // re-upload times out against the same choked link). Wait for THIS
+      // donor's buffer to drain below a low-water mark before sending the next
+      // chunk. Applied equally to every donor (no primary concept — the equal-
+      // replica model): a slow-link donor gets fed at its own pace so the
+      // upload COMPLETES instead of timing out. The outer timeout still guards
+      // a genuinely dead link. Tunable via DREAM_UPLOAD_PACE_LOWATER_MB.
+      {
+        const _loMbEnv = Number(process.env.DREAM_UPLOAD_PACE_LOWATER_MB);
+        const _loBytes = (Number.isFinite(_loMbEnv) && _loMbEnv > 0 ? _loMbEnv : 8) * 1024 * 1024;
+        let _pacedMs = 0;
+        const _paceCapMs = 150000; // < the upload timeoutMs; hard timeout still applies if link is truly dead
+        while (ws && ws.readyState === 1 && typeof ws.bufferedAmount === 'number'
+               && ws.bufferedAmount > _loBytes && _pacedMs < _paceCapMs) {
+          await new Promise((r) => setTimeout(r, 20));
+          _pacedMs += 20;
+        }
+        if (!ws || ws.readyState !== 1) break;
+      }
       await new Promise((res) => {
         ws.send(frame, (err) => {
           if (err) {
