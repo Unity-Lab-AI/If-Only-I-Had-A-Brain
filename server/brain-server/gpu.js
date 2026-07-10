@@ -321,6 +321,15 @@ const SERVER_GPU_MIXIN = {
       stabilityMin: 5,      // minutes a higher tier must be HELD past the buffer
                             // before the resize+retrain actually fires.
       minDonorsFloor: 1,    // never consider a tier needing fewer donors than this.
+      // SIZING BASELINE — data-parallel sizing assumes a committed replica donor
+      // holds at least this card class (operator directive); the size driver
+      // never drops below it, so small cards can never shrink the brain. Tune
+      // via the admin autoscale endpoint / autoscale-settings.json.
+      donorBaselineMB: 24576,
+      // Donor-replica cost estimator (bytes/neuron): host main-brain 21 B/neuron
+      // / 0.5 main-weight fraction — mirrors BRAIN_VRAM_ALLOC so donor capacity
+      // and host sizing agree.
+      donorBytesPerNeuron: 42,
       // DF.7 downscale rectify — "buffers for the buffers". A downscale is far
       // more conservative than an upscale because it RETRAINS at a smaller size
       // (loses the bigger brain's learning), so it must only fire on a genuine,
@@ -349,6 +358,8 @@ const SERVER_GPU_MIXIN = {
           autoDownscale: typeof saved.autoDownscale === 'boolean' ? saved.autoDownscale : defaults.autoDownscale,
           downBufferPct: Number.isFinite(saved.downBufferPct) ? Math.max(0, Math.min(0.9, saved.downBufferPct)) : defaults.downBufferPct,
           downStabilityMin: Number.isFinite(saved.downStabilityMin) ? Math.max(0, Math.min(240, saved.downStabilityMin)) : defaults.downStabilityMin,
+          donorBaselineMB: Number.isFinite(saved.donorBaselineMB) ? Math.max(1024, Math.min(262144, saved.donorBaselineMB)) : defaults.donorBaselineMB,
+          donorBytesPerNeuron: Number.isFinite(saved.donorBytesPerNeuron) ? Math.max(8, Math.min(1024, saved.donorBytesPerNeuron)) : defaults.donorBytesPerNeuron,
         };
       } else {
         this._autoScale = { ...defaults };
@@ -375,6 +386,8 @@ const SERVER_GPU_MIXIN = {
       autoDownscale: typeof patch.autoDownscale === 'boolean' ? patch.autoDownscale : cur.autoDownscale,
       downBufferPct: Number.isFinite(patch.downBufferPct) ? Math.max(0, Math.min(0.9, patch.downBufferPct)) : cur.downBufferPct,
       downStabilityMin: Number.isFinite(patch.downStabilityMin) ? Math.max(0, Math.min(240, patch.downStabilityMin)) : cur.downStabilityMin,
+      donorBaselineMB: Number.isFinite(patch.donorBaselineMB) ? Math.max(1024, Math.min(262144, patch.donorBaselineMB)) : cur.donorBaselineMB,
+      donorBytesPerNeuron: Number.isFinite(patch.donorBytesPerNeuron) ? Math.max(8, Math.min(1024, patch.donorBytesPerNeuron)) : cur.donorBytesPerNeuron,
     };
     this._autoScale = next;
     try {
@@ -412,13 +425,32 @@ const SERVER_GPU_MIXIN = {
     this._communityDonorCount = donorCount;
     // ASCALE caveat (data-parallel): every donor holds the FULL replica, so the brain's max SIZE is
     // bounded by the SMALLEST donor's committed VRAM — NOT the community SUM (which is a throughput
-    // metric). Tracked + logged for the size-tier(min-donor) vs throughput-tier(Σ Gn/s)
-    // reconciliation. The milestone tiers below still gate on the (now effective) sum; a full
-    // size-tier rewire onto min-donor is the flagged architectural follow-up.
+    // metric). The size-tier rewire onto min-donor is BUILT below: tiers gate on
+    // the size-driver capacity (max(baseline, smallest committed donor)), and
+    // the community sum is telemetry/throughput only.
     this._communityMinDonorMB = (donorCount > 0 && minDonorMB !== Infinity) ? Math.round(minDonorMB) : 0;
     const settings = this._getAutoScaleSettings();
 
-    // Milestone tiers: (min community VRAM, min donor count) → target neuron
+    // SIZE DRIVER (data-parallel): every replica donor holds the FULL brain, so
+    // size is driven by what the smallest COMMITTED donor can hold — floored by
+    // the operator baseline (donors are assumed to hold at least that card
+    // class; smaller cards are assist-lane and never lower the driver). The
+    // community SUM stays a THROUGHPUT metric only.
+    const _baselineMB = settings.donorBaselineMB || 24576;
+    const _driverMB = Math.max(_baselineMB, this._communityMinDonorMB || 0);
+    const _bytesPerNeuron = settings.donorBytesPerNeuron || 42;
+    // Mirrors local host sizing: 75% of the card usable minus a 2GB reserve.
+    const _capNeurons = Math.max(0, Math.floor(((_driverMB * 0.75 - 2048) * 1048576) / _bytesPerNeuron));
+    // Capacity of the baseline ALONE — tiers this covers are entered without
+    // the dead-zone buffer (the baseline is an operator constant, it cannot
+    // flap the way a joining/leaving donor can).
+    const _baseCapNeurons = Math.max(0, Math.floor(((_baselineMB * 0.75 - 2048) * 1048576) / _bytesPerNeuron));
+    this._communitySizeDriverMB = _driverMB;
+    this._communityCapacityNeurons = _capNeurons;
+
+    // Milestone tiers — QUANTIZED neuron ladder for resizes. Post min-donor
+    // rework the SIZE gate is the size-driver capacity (see above); the
+    // minCommunityMB/minDonors fields remain for telemetry + legacy readers.
     // scale. Conservative under replication (Path A) — the running brain must
     // fit a typical donor. Tune as real donor hardware is observed.
     const MILESTONES = [
@@ -427,28 +459,29 @@ const SERVER_GPU_MIXIN = {
       { minCommunityMB: 96_000,  minDonors: 6,  neurons: 150_000_000 }, // tier 2 — community momentum
       { minCommunityMB: 256_000, minDonors: 10, neurons: 357_000_000 }, // tier 3 — top-computer scale
     ];
-    // RAW tier — highest tier whose bare thresholds are met. This is the
-    // display/telemetry value (what the community currently qualifies for).
+    // RAW tier — highest tier whose neuron target fits the size-driver
+    // capacity (display/telemetry: what the pool currently qualifies for).
     let tier = 0;
     for (let i = 0; i < MILESTONES.length; i++) {
-      if (totalMB >= MILESTONES[i].minCommunityMB && donorCount >= MILESTONES[i].minDonors) tier = i;
+      if (_capNeurons >= MILESTONES[i].neurons) tier = i;
     }
     this._communityTier = tier;
     this._communityTierTarget = MILESTONES[tier].neurons;
 
-    // DF.7 DEAD-ZONE — UPGRADE tier uses BUFFERED thresholds. To count as
-    // "entered" for the purpose of triggering a resize, community compute must
-    // exceed the tier's VRAM gate by bufferPct (hysteresis) AND meet the donor
-    // floor. This is Gee's dead-zone: hovering right at a gate (one donor
-    // flapping connect/disconnect) never trips a resize — only a genuine,
+    // DF.7 DEAD-ZONE — UPGRADE tier uses a BUFFERED capacity gate. To count as
+    // "entered" for the purpose of triggering a resize, the size-driver
+    // capacity must exceed the tier's neuron target by bufferPct headroom
+    // (hysteresis). This is Gee's dead-zone: hovering right at a gate (one
+    // donor flapping connect/disconnect) never trips a resize — only a genuine,
     // sustained surplus past the buffer does. With bufferPct=0 it reduces to
-    // the raw gate.
+    // the raw gate. Donor-count gates are retired for SIZING (the baseline
+    // assumption covers a lone donor). Tiers already covered by the BASELINE
+    // capacity skip the buffer entirely — the baseline cannot flap, so there
+    // is nothing to hysteresis against.
     const buffer = 1 + (settings.bufferPct || 0);
     let upgradeTier = 0;
     for (let i = 0; i < MILESTONES.length; i++) {
-      const vramGate = MILESTONES[i].minCommunityMB * buffer;
-      const donorGate = Math.max(MILESTONES[i].minDonors, settings.minDonorsFloor || 1);
-      if (totalMB >= vramGate && donorCount >= donorGate) upgradeTier = i;
+      if (_baseCapNeurons >= MILESTONES[i].neurons || _capNeurons >= MILESTONES[i].neurons * buffer) upgradeTier = i;
     }
     this._communityUpgradeTier = upgradeTier;
 
@@ -467,7 +500,7 @@ const SERVER_GPU_MIXIN = {
       this._communityTierPending = upgradeTier;
       this._communityTierPendingTarget = MILESTONES[upgradeTier].neurons;
       this._communityTierPendingSince = Date.now();
-      console.log(`[Brain] DF.7/PA.4.8 — milestone candidate: tier ${upgradeTier} (${Math.round(totalMB).toLocaleString()}MB EFFECTIVE DONATED across ${donorCount} donor(s); smallest donor commits ${this._communityMinDonorMB.toLocaleString()}MB ⚠ data-parallel SIZE is bounded by THIS, not the sum, past the ${(settings.bufferPct * 100).toFixed(0)}% dead-zone → target ${MILESTONES[upgradeTier].neurons.toLocaleString()} neurons). Resize fires only if held ≥${settings.stabilityMin}min — a single donor joining/leaving will NOT trigger it.`);
+      console.log(`[Brain] DF.7/PA.4.8 — milestone candidate: tier ${upgradeTier} (size driver ${_driverMB.toLocaleString()}MB = max(baseline ${_baselineMB.toLocaleString()}MB, smallest committed donor ${(this._communityMinDonorMB || 0).toLocaleString()}MB) -> capacity ~${_capNeurons.toLocaleString()} neurons past the ${(settings.bufferPct * 100).toFixed(0)}% dead-zone -> target ${MILESTONES[upgradeTier].neurons.toLocaleString()} neurons; community sum ${Math.round(totalMB).toLocaleString()}MB across ${donorCount} donor(s) is a THROUGHPUT metric, not the size bound). Resize fires only if held >=${settings.stabilityMin}min — a single donor joining/leaving will NOT trigger it.`);
     } else if (upgradeTier <= runningTier && this._communityTierPending && upgradeTier < this._communityTierPending) {
       // Dropped back below the buffered candidate before it executed — cancel
       // (critical mass not sustained past the dead-zone). The RUNNING brain is
@@ -480,31 +513,37 @@ const SERVER_GPU_MIXIN = {
     // DF.7 DOWNSCALE rectify — "buffers for the buffers". The stable operating
     // band is [down-floor … up-gate]: inside it the brain just keeps running at
     // its current neuron count, unchanged, no matter how donors come and go.
-    // ONLY when community compute collapses BELOW the running tier's VRAM floor
-    // by more than downBufferPct AND stays there past downStabilityMin do we
+    // ONLY when the size-driver capacity collapses BELOW the running tier's
+    // neuron target by more than downBufferPct AND stays there past
+    // downStabilityMin do we
     // rectify — retrain at the biggest tier the surviving GPUs can actually
     // hold. Far more conservative than upscale (a downscale loses the bigger
     // brain's learning), so a transient mass-disconnect (10 people leaving then
     // returning) never shrinks the brain. `_computeInsufficient` flags the
     // admin alert the instant compute can't hold the running tier, regardless
     // of the buffer/window (so you SEE the problem before any rectify fires).
-    const runningFloorMB = MILESTONES[runningTier] ? MILESTONES[runningTier].minCommunityMB : 0;
+    const _runningNeurons = MILESTONES[runningTier] ? MILESTONES[runningTier].neurons : 0;
+    // VRAM a single replica donor needs to hold the running tier — inverse of
+    // the capacity estimator (neurons x bytes/neuron + 2GB reserve at 75% use).
+    const runningFloorMB = _runningNeurons > 0
+      ? Math.ceil(((_runningNeurons * _bytesPerNeuron) / 1048576 + 2048) / 0.75)
+      : 0;
     this._runningFloorMB = runningFloorMB;
-    this._computeInsufficient = (runningTier > 0) && (totalMB < runningFloorMB);
+    this._computeInsufficient = (runningTier > 0) && (_capNeurons < _runningNeurons);
     if (settings.autoDownscale && runningTier > 0) {
-      const downGate = runningFloorMB * (1 - (settings.downBufferPct || 0));
-      if (totalMB < downGate) {
+      const downGate = _runningNeurons * (1 - (settings.downBufferPct || 0));
+      if (_capNeurons < downGate) {
         // Pick the biggest tier the surviving compute can actually hold (raw —
         // no buffer; we want the largest brain that fits, not a timid floor).
         let fitTier = 0;
         for (let i = 0; i < MILESTONES.length; i++) {
-          if (totalMB >= MILESTONES[i].minCommunityMB && donorCount >= MILESTONES[i].minDonors) fitTier = i;
+          if (_capNeurons >= MILESTONES[i].neurons) fitTier = i;
         }
         if (fitTier < runningTier && fitTier !== this._communityDownTierPending) {
           this._communityDownTierPending = fitTier;
           this._communityDownTierPendingTarget = MILESTONES[fitTier].neurons;
           this._communityDownTierPendingSince = Date.now();
-          console.warn(`[Brain] DF.7 — DOWNSCALE candidate: compute ${totalMB.toLocaleString()}MB fell >${(settings.downBufferPct * 100).toFixed(0)}% below the running tier ${runningTier} floor (${runningFloorMB.toLocaleString()}MB). If HELD ≥${settings.downStabilityMin}min, rectify by retraining at tier ${fitTier} (${MILESTONES[fitTier].neurons.toLocaleString()} neurons). A transient mass-disconnect will NOT trigger it.`);
+          console.warn(`[Brain] DF.7 — DOWNSCALE candidate: size-driver capacity ~${_capNeurons.toLocaleString()} neurons fell >${(settings.downBufferPct * 100).toFixed(0)}% below the running tier ${runningTier} target (${_runningNeurons.toLocaleString()} neurons; driver ${_driverMB.toLocaleString()}MB vs floor ${runningFloorMB.toLocaleString()}MB). With the baseline assumption this only happens if the admin lowers donorBaselineMB. If HELD >=${settings.downStabilityMin}min, rectify by retraining at tier ${fitTier} (${MILESTONES[fitTier].neurons.toLocaleString()} neurons). A transient mass-disconnect will NOT trigger it.`);
         }
       } else if (this._communityDownTierPending != null) {
         // Compute recovered above the down-gate before the window elapsed — cancel.
