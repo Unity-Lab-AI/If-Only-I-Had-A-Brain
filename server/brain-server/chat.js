@@ -1006,7 +1006,25 @@ const SERVER_CHAT_MIXIN = {
           // (stick figures / scenes / written words / her questions), staged
           // by live trained vocab; the viewer label carries the stage +
           // subject ('canvas:scene:cat', 'canvas:figure:mom?').
-          const strokes = this._sketchFromState(_seedText);
+          // EXP.2 — DREAM-MIX experiment: sometimes she doesn't draw the thought
+          // at all — she EXPERIMENTS, morphing two RANDOM stored memories into
+          // something she has never seen (apple+rain, cat+moon). Novel
+          // recombination of real percepts = genuine visual play, the thing a
+          // curious kid does with a full sketchbook. Equation-domain morph,
+          // detail-gated so degenerate blends never show.
+          if (this._visualMemory && this._visualMemory.size >= 2
+              && typeof this.mindSpace.morph === 'function'
+              && typeof this._recDetail === 'function' && Math.random() < 0.18) {
+            try {
+              const keys = Array.from(this._visualMemory.keys());
+              const i1 = Math.floor(Math.random() * keys.length);
+              let i2 = Math.floor(Math.random() * keys.length);
+              if (i2 === i1) i2 = (i2 + 1) % keys.length;
+              const m = this.mindSpace.morph(this._visualMemory.get(keys[i1]).rec, this._visualMemory.get(keys[i2]).rec, 0.35 + Math.random() * 0.3);
+              if (m && this._recDetail(m) >= 200) { rec = m; _seedSource = 'canvas:dream-mix:' + keys[i1] + '+' + keys[i2]; }
+            } catch { /* experiment best-effort */ }
+          }
+          const strokes = rec ? null : this._sketchFromState(_seedText);
           if (strokes && strokes.length) {
             // DRAW.8 — the canvas grows with her grade (K=96 → adult=512)
             rec = this.mindSpace.sketch(strokes, { maxSide: this._drawCanvasSide(), mood: { arousal: this.arousal, valence: this.valence } });
@@ -1218,7 +1236,7 @@ const SERVER_CHAT_MIXIN = {
     const ACCENTS = valence >= 0.25
       ? ['pink', 'red', 'purple', 'orange', 'teal', 'yellow']
       : ['purple', 'pink', 'red', 'blue', 'teal', 'gray'];
-    const pick = (concept, part) => CRAYON[ACCENTS[hash(concept + ':' + part) % ACCENTS.length]];
+    let pick = (concept, part) => CRAYON[ACCENTS[hash(concept + ':' + part) % ACCENTS.length]];
     const OUTLINE = CRAYON.black;   // she outlines in black — goth kid with a black crayon (canon)
 
     // ── stroke helpers ──
@@ -1312,6 +1330,19 @@ const SERVER_CHAT_MIXIN = {
       for (let i = 0; i < 6; i++) { const a = (i / 6) * Math.PI * 2; circle(cx + Math.cos(a) * s * 0.22, cy - s * 0.2 + Math.sin(a) * s * 0.22, s * 0.13, petal, 6); }
       circle(cx, cy - s * 0.2, s * 0.1, CRAYON.yellow, 6);
     };
+    const drawMonster = (cx, cy, s, concept) => {
+      // her canon: the monster under the bed she LIKES — wobbly body, horns,
+      // big mismatched eyes, zigzag fang mouth, stubby legs
+      const skin = pick(concept, 'skin');
+      circle(cx, cy, s * 0.55, skin, 9);                                                   // wobbly body
+      poly([[cx - s * 0.35, cy - s * 0.45], [cx - s * 0.5, cy - s * 0.85], [cx - s * 0.15, cy - s * 0.5]], skin);   // horns
+      poly([[cx + 0.35 * s, cy - s * 0.45], [cx + s * 0.5, cy - s * 0.85], [cx + s * 0.15, cy - s * 0.5]], skin);
+      circle(cx - s * 0.2, cy - s * 0.12, s * 0.14, CRAYON.white, 7); dot(cx - s * 0.2, cy - s * 0.12, 1, OUTLINE);  // big eye
+      circle(cx + s * 0.22, cy - s * 0.1, s * 0.09, CRAYON.white, 7); dot(cx + s * 0.22, cy - s * 0.1, 0, OUTLINE);  // small eye
+      { const pts = []; for (let z = 0; z <= 6; z++) pts.push([cx - s * 0.3 + (z / 6) * 0.6 * s, cy + s * 0.22 + (z % 2 ? 0.06 : -0.02) * s]); poly(pts, OUTLINE); }  // fangs
+      line(cx - s * 0.2, cy + s * 0.5, cx - s * 0.2, cy + s * 0.72, skin);                  // stubby legs
+      line(cx + s * 0.2, cy + s * 0.5, cx + s * 0.2, cy + s * 0.72, skin);
+    };
 
     // ── subject: the head concept of what she's thinking (she draws what she
     // couldn't re-see) — same head-token rule as _conceptImageryLoop ──
@@ -1322,17 +1353,18 @@ const SERVER_CHAT_MIXIN = {
 
     // ── schema classification: direct token table, then GloVe-cosine backup ──
     const SCHEMA_WORDS = {
-      person: ['person','people','mom','mother','dad','father','grandma','grandpa','teacher','kid','girl','boy','friend','baby','man','woman','lady','sister','brother','family','myself','herself'],
-      animal: ['dog','cat','animal','pet','horse','bird','hamster','kitten','puppy','bear','cow','pig','mouse','rabbit','fox','wolf'],
-      spider: ['spider','bug','insect','ant','bee','beetle','web'],
-      house:  ['house','home','kitchen','room','school','library','building','porch','door','window','wall'],
-      tree:   ['tree','forest','plant','garden','leaf','leaves','wood','branch'],
-      flower: ['flower','rose','daisy','petal','bloom'],
-      sun:    ['sun','sunny','day','summer','warm','bright','morning'],
-      moon:   ['moon','night','dark','star','stars','sky','sleep','midnight'],
-      rain:   ['rain','cloud','clouds','storm','thunder','weather','wet','snow','umbrella'],
+      person: ['person','people','mom','mother','dad','father','grandma','grandpa','teacher','kid','girl','boy','friend','baby','man','woman','lady','sister','brother','family','myself','herself','doctor','nurse','witch','king','queen','police'],
+      animal: ['dog','cat','animal','pet','horse','bird','hamster','kitten','puppy','bear','cow','pig','mouse','rabbit','fox','wolf','fish','snake','frog','duck','chicken','sheep','goat','lion','tiger','monkey','elephant','deer','owl','bat','squirrel'],
+      spider: ['spider','bug','insect','ant','bee','beetle','web','worm','fly'],
+      house:  ['house','home','kitchen','room','school','library','building','porch','door','window','wall','barn','store','castle','church','bedroom'],
+      tree:   ['tree','forest','plant','garden','leaf','leaves','wood','branch','bush','grass'],
+      flower: ['flower','rose','daisy','petal','bloom','tulip'],
+      sun:    ['sun','sunny','day','summer','warm','bright','morning','light'],
+      moon:   ['moon','night','dark','star','stars','sky','sleep','midnight','halloween'],
+      rain:   ['rain','cloud','clouds','storm','thunder','weather','wet','snow','umbrella','wind','lightning','rainbow'],
       heart:  ['love','heart','like','care','hug','kiss','valentine'],
-      star:   ['wish','magic','shine','sparkle'],
+      star:   ['wish','magic','shine','sparkle','firework'],
+      monster: ['monster','ghost','zombie','vampire','demon','creature','dragon','skeleton','skull','goblin','troll','beast','alien'],
     };
     let schema = null;
     if (concept) {
@@ -1370,6 +1402,7 @@ const SERVER_CHAT_MIXIN = {
       else if (k === 'rain') drawRain(cx, cy, s * 0.6);
       else if (k === 'heart') drawHeart(cx, cy, s * 0.6);
       else if (k === 'star') drawStar(cx, cy, s * 0.45);
+      else if (k === 'monster') drawMonster(cx, cy, s * 0.8, cpt);
     };
 
     // DRAW.5 — practice evolution: the per-concept draw counter folds into
@@ -1379,8 +1412,33 @@ const SERVER_CHAT_MIXIN = {
     // hash-only seeding. Colors stay concept-stable; composition practices.
     const practice = Math.floor(this._drawPracticeBump(concept || 'doodle') / 2);
 
-    if (stage === 1 || (stage >= 2 && !schema)) {
-      // STAGE 1 — basic-shape practice (or no schema for this concept yet):
+    // Past shape-age, a schema-less ABSTRACT concept is NOT a drawing — it
+    // falls through to the de-novo colored thought-field. The old fallback
+    // sent every abstract thought (coming/time/very/...) to the stage-1
+    // shapes doodle, whose whole vocabulary is 4 primitives — so the viewer
+    // looped the same triangle/square/circle stacks all day at scene-age.
+    if (stage >= 2 && !schema) return null;
+
+    // EXP.1 — EXPERIMENTATION. A kid with a full sketchbook doesn't just
+    // repeat what she knows — she plays: mashes two schemas into one frame
+    // (spider ON the house, a heart over the moon) or colors on purpose
+    // "wrong" (purple sun, red tree). ~22% of schema draws experiment.
+    let expMash = null, expWild = false;
+    if (stage >= 2 && schema && Math.random() < 0.22) {
+      if (Math.random() < 0.5) {
+        const others = Object.keys(SCHEMA_WORDS).filter(k => k !== schema);
+        expMash = others[Math.floor(Math.random() * others.length)];
+      } else {
+        expWild = true;   // wild-color rebellion: every part gets a random crayon
+      }
+    }
+    if (expWild) {
+      const names = Object.keys(CRAYON);
+      pick = () => CRAYON[names[Math.floor(Math.random() * names.length)]];
+    }
+
+    if (stage === 1) {
+      // STAGE 1 — basic-shape practice (real shape-age only, vocab < 400):
       // wobbly circles / boxes / triangles / zigzags, count + spread from
       // arousal, colors picked per shape. This is a real kid's shape stage,
       // not the neuron scribble.
@@ -1401,7 +1459,8 @@ const SERVER_CHAT_MIXIN = {
       if (stage === 2) {
         // STAGE 2 — single-subject figure drawing of her current thought.
         drawSchema(schema, 0.5, 0.52, 0.28, concept);
-        this._lastSketchLabel = 'canvas:figure:' + concept;
+        if (expMash) { drawSchema(expMash, 0.74, 0.42, 0.16, concept); }
+        this._lastSketchLabel = 'canvas:' + (expMash ? 'experiment:' + concept + '+' + expMash : (expWild ? 'experiment:wildcolor:' + concept : 'figure:' + concept));
       } else {
         // STAGE 3 — a SCENE: wobbly ground line, subject on it, sky detail
         // from her mood (sun when she feels good, rain cloud when low, moon
@@ -1419,11 +1478,13 @@ const SERVER_CHAT_MIXIN = {
           else if (valence >= 0.1) drawSun(0.84, 0.15, 0.07);
           else drawRain(0.8, 0.16, 0.14);
         }
+        // context: an experiment mash REPLACES the stock context — the novel
+        // pairing IS the experiment (spider on the house, heart over the moon)
         const CONTEXT = ['tree', 'house', 'flower'];
-        const ctx = CONTEXT[hash(concept + ':ctx' + practice) % CONTEXT.length];
+        const ctx = expMash || CONTEXT[hash(concept + ':ctx' + practice) % CONTEXT.length];
         const ctxX = subjX < 0.5 ? 0.78 : 0.18;
-        if (ctx !== schema) drawSchema(ctx, ctxX, ctx === 'house' ? 0.62 : 0.58, 0.18, concept);
-        this._lastSketchLabel = 'canvas:scene:' + concept;
+        if (ctx !== schema) drawSchema(ctx, ctxX, ctx === 'house' ? 0.62 : 0.58, expMash ? 0.22 : 0.18, concept);
+        this._lastSketchLabel = 'canvas:' + (expMash ? 'experiment:' + concept + '+' + expMash : (expWild ? 'experiment:wildcolor:' + concept : 'scene:' + concept));
       }
     }
 
