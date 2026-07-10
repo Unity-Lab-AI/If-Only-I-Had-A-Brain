@@ -1825,9 +1825,37 @@ const SERVER_CHAT_MIXIN = {
       || (NOUN.test(t) && (SHOW.test(t) || /\b(of|a|an|the|your|yourself|me|us)\b/.test(t)))
       || isShowObject;
     if (!isImage) return null;
-    // selfie / picture-of-you → Unity's consistent self-portrait (her visual identity)
-    if (/\bselfie\b/.test(t) || /\b(picture|photo|pic|portrait|image|drawing) of (you|yourself|unity)\b/.test(t)) {
-      return 'selfie of a 25 year old goth woman, black hair with hot pink streaks, sharp features, intense dark eyes, black leather, pink undertones, dark moody aesthetic, ultra detailed';
+    // SELF-IMAGE (2026-07-09 rebuild) — her IDENTITY CORE stays constant (the
+    // consistent face/hair/eyes that make her recognizably HER) but the
+    // requested SCENE / ACTION / OUTFIT is merged back in. The old path
+    // returned the fixed identity string VERBATIM for any ask containing
+    // selfie / picture-of-you — the scene was discarded, so "selfie at
+    // nascar" and "you fighting a zebra" both rendered the same mug shot.
+    // A real girl can picture herself doing ANYTHING; only her face is fixed.
+    // When the ask names what she wears (or nothing), her stated wear
+    // REPLACES the default black-leather outfit instead of colliding with it.
+    const isSelf = /\bselfie\b/.test(t)
+      || /\b(picture|photo|pic|portrait|image|drawing|painting) of (you|yourself|unity|herself)\b/.test(t)
+      || /\b(image|draw|show|paint|render|sketch|picture|generate|make)\s+(me\s+)?(yourself|herself|unity)\b/.test(t);
+    if (isSelf) {
+      // scene = the ask minus the command/selfie framing + self references
+      let scene = t
+        .replace(/^[\s,]*(hey|yo|ok|okay|unity|can you|could you|would you|will you|please|pls)\b/g, ' ')
+        .replace(/\b(send|take|snap|show|give|make|draw|image|generate|create|paint|render|sketch)\b/g, ' ')
+        .replace(/\b(selfie|picture|photo|pic|portrait|drawing|painting)\b/g, ' ')
+        .replace(/\b(of|me|us|a|an|the)\b/g, ' ')
+        .replace(/\b(you|yourself|unity|herself|your)\b/g, ' ')
+        .replace(/[^a-z0-9' -]/g, ' ')
+        .replace(/[\s,]+/g, ' ').trim();
+      const CORE = '25 year old goth woman, black hair with hot pink streaks, sharp features, intense dark eyes';
+      const OUTFIT = 'black leather, pink undertones';
+      const TAIL = 'dark moody aesthetic, ultra detailed';
+      // her stated wear (or bare skin) replaces the default outfit
+      const hasWear = /\b(wear|wearing|dressed|dress|outfit|clothes|clothing|naked|nude|topless|nothing|bikini|skirt|lingerie|costume|uniform|hoodie|corset|boots|shirt|jacket|coat|swimsuit)\b/.test(scene);
+      return 'selfie of a ' + CORE
+        + (hasWear ? '' : ', ' + OUTFIT)
+        + (scene ? ', ' + scene : '')
+        + ', ' + TAIL;
     }
     // otherwise: strip the command framing, keep the subject as the prompt
     let prompt = String(text)
