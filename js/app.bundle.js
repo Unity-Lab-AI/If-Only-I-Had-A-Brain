@@ -53694,6 +53694,32 @@ var CLUSTER_HEBBIAN_MIXIN = {
 
 // ../js/brain/cluster/emit.js
 var CLUSTER_EMIT_MIXIN = {
+  /**
+   * Set (or clear) the grade-vocab emission allow-set consumed by
+   * emitWordDirect's free-composition argmax. Pass an iterable of
+   * word tokens (any case — stored lowercased) to constrain emission
+   * to developmentally-cleared vocabulary; pass null/empty to disable
+   * the gate entirely (full bucket map eligible, pre-gate behavior).
+   *
+   * The curriculum owns population: it unions the vocabulary from
+   * pre-K up to the live grade and pushes it here on boot + every
+   * grade advance, so persona/dev/consciousness-corpus words bound by
+   * later-stage training can't win an early-grade emission (the
+   * corpus-bleed finding). Idempotent + null-safe. Returns the active
+   * set size for logging.
+   */
+  setEmissionAllowedVocab(words) {
+    if (!words) {
+      this._emissionAllowedVocab = null;
+      return 0;
+    }
+    const set = /* @__PURE__ */ new Set();
+    for (const w of words) {
+      if (typeof w === "string" && w) set.add(w.toLowerCase());
+    }
+    this._emissionAllowedVocab = set.size > 0 ? set : null;
+    return set.size;
+  },
   _dictionaryOracleEmit(intentSeed, opts = {}) {
     if (opts.skipDictionaryOracle === true) return null;
     const dictionary = opts.dictionary || this.dictionary;
@@ -53982,6 +54008,10 @@ var CLUSTER_EMIT_MIXIN = {
         const _bw = wordsList[b];
         if (!_bw || !/\S/.test(_bw) || !/[a-z0-9]/i.test(_bw) && !T14_TERMINATORS.has(_bw)) continue;
         if (_bw.length === 1 && _bw !== "i" && _bw !== "a" && !T14_TERMINATORS.has(_bw)) continue;
+        if (opts.gradeGate === true) {
+          const _allow = this._emissionAllowedVocab;
+          if (_allow && _allow.size > 0 && !_allow.has(_bw.toLowerCase()) && !FUNCTION_WORDS.has(_bw) && !T14_TERMINATORS.has(_bw)) continue;
+        }
         let sum = 0;
         const bStart = subjStart + b * bucketSize;
         if (bStart >= subjEnd) {
@@ -54299,6 +54329,7 @@ var CLUSTER_EMIT_MIXIN = {
       if (typeof opts.temperature === "number") emitOpts.temperature = opts.temperature;
       if (typeof opts.topK === "number") emitOpts.topK = opts.topK;
       if (typeof opts.topP === "number") emitOpts.topP = opts.topP;
+      if (opts.gradeGate === true) emitOpts.gradeGate = true;
       let word = "";
       try {
         word = this.emitWordDirect(emitOpts) || "";
@@ -62410,7 +62441,7 @@ var LanguageCortex = class {
               for (let i = 0; i < 6; i++) {
                 let w = "";
                 try {
-                  w = cluster.emitWordDirect({}) || "";
+                  w = cluster.emitWordDirect({ gradeGate: true }) || "";
                 } catch {
                   w = "";
                 }
@@ -62500,7 +62531,11 @@ var LanguageCortex = class {
                 temperature: Number(_temp.toFixed(2)),
                 topK: _topK,
                 coherenceCandidates: 3,
-                coherenceFloor: _chatCohFloor
+                coherenceFloor: _chatCohFloor,
+                // grade-vocab gate: chat reply stays in developmentally-
+                // cleared vocabulary (blocks corpus-bleed). Chat-only —
+                // gate/probe compose calls never set this.
+                gradeGate: true
               });
               if (composedSentence && Array.isArray(composedSentence.words) && composedSentence.words.length >= 1) {
                 composedWordsAsync = composedSentence.words.slice();
@@ -62519,7 +62554,8 @@ var LanguageCortex = class {
                         subject: inferredSubject || void 0,
                         temperature: Number(_temp.toFixed(2)),
                         topK: _topK,
-                        coherenceCandidates: 2
+                        coherenceCandidates: 2,
+                        gradeGate: true
                       });
                     } catch {
                       cont = null;
@@ -63359,7 +63395,7 @@ var InnerVoice = class {
     }
     if (cluster && typeof cluster.emitWordDirect === "function") {
       try {
-        const word = cluster.emitWordDirect(opts.emitOpts || {}) || "";
+        const word = cluster.emitWordDirect({ ...opts.emitOpts || {}, gradeGate: true }) || "";
         return {
           word,
           sentence: word,
@@ -63410,7 +63446,7 @@ var InnerVoice = class {
     const wantsThought = shouldSpeak || socialNeed * arousal > 0.25;
     if (wantsThought && cluster && typeof cluster.emitWordDirect === "function") {
       try {
-        const word = cluster.emitWordDirect({}) || "";
+        const word = cluster.emitWordDirect({ gradeGate: true }) || "";
         if (word && word.length > 0) {
           sentence = word;
           const entry = this.dictionary?._words?.get(word);
@@ -77048,7 +77084,12 @@ var K_MIXIN = {
       return;
     }
     const words = bucketState.words;
-    this._hb(`[Curriculum] _teachWordEmissionDirect START: ${words.length} K words \xD7 ${reps} reps \xB7 lr=${lr.toFixed(4)} (subject=${subject} band=${subjectBandName || "umbrella word_motor"}) \u2014 single-tick word emission via sem_to_word_motor`);
+    const _emTaughtKey = `_emissionTaughtWords_${subject}`;
+    if (!(cluster[_emTaughtKey] instanceof Set)) cluster[_emTaughtKey] = /* @__PURE__ */ new Set();
+    const emTaught = cluster[_emTaughtKey];
+    const forceAll = opts.force === true || opts.reteachAll === true;
+    const newlyTaught = [];
+    this._hb(`[Curriculum] _teachWordEmissionDirect START: ${words.length} K words \xD7 ${reps} reps \xB7 lr=${lr.toFixed(4)} (subject=${subject} band=${subjectBandName || "umbrella word_motor"}) \u2014 single-tick word emission via sem_to_word_motor${forceAll ? " [FORCE re-drill all]" : ` [incremental: ${emTaught.size} already emission-taught this session will be skipped]`}`);
     const t0 = Date.now();
     let updates = 0, skipped = 0;
     const semSize = semRegion.end - semRegion.start;
@@ -77077,11 +77118,16 @@ var K_MIXIN = {
       let count = 0;
       for (let wi = 0; wi < words.length; wi++) {
         const word = words[wi];
+        if (!forceAll && emTaught.has(word)) {
+          skipped++;
+          continue;
+        }
         const entry = this.dictionary._words.get(word);
         if (!entry || !entry.pattern) {
           skipped++;
           continue;
         }
+        if (rep === 0) newlyTaught.push(word);
         fillSem(entry.pattern);
         postWM.fill(0);
         const bStart = bandStart + wi * bucketSize;
@@ -77099,6 +77145,7 @@ var K_MIXIN = {
       }
       await _microtask();
     }
+    for (const w of newlyTaught) emTaught.add(w);
     let sepMaxAbs = 0, sepMeanAbs = 0;
     try {
       let renormTarget = 1;
@@ -98781,6 +98828,63 @@ var Curriculum = class _Curriculum {
    * so no single subject races ahead while the others are still at K.
    * Stops when every subject is either at PhD or has a failing gate.
    */
+  /**
+   * Build + install the emission allow-set on the cluster from the
+   * vocabulary the CURRICULUM has taught: every TRAIN_BANKS question +
+   * answer token (all cells/grades), the K_VOCABULARY definition-seed
+   * list, and the runtime taught-sets (_vocabTaughtSet,
+   * _definitionTaughtWords, _emissionTaughtWords_<subject>). Union of
+   * these = the words Unity has been exposed to by teaching. It
+   * deliberately EXCLUDES the persona/dev/consciousness/academic corpus
+   * that entered her dictionary via chat/persona/dream training — those
+   * are the tokens that bled into early-grade emission. Function words +
+   * terminators are gate-exempt in emitWordDirect, so grammatical glue
+   * never needs to be in this set. Keyed off taught vocab, NOT a grade
+   * gate: emission is limited to what she's learned, with no bar to pass.
+   * Idempotent + cheap; safe to call at boot + on grade advance.
+   */
+  async _refreshEmissionAllowedVocab() {
+    const cluster = this.cluster;
+    if (!cluster || typeof cluster.setEmissionAllowedVocab !== "function") return 0;
+    const allow = /* @__PURE__ */ new Set();
+    const addTok = (s) => {
+      if (typeof s !== "string" || !s) return;
+      for (const t of s.toLowerCase().split(/[^a-z']+/)) {
+        if (t && /[a-z]/.test(t)) allow.add(t);
+      }
+    };
+    try {
+      for (const cellKey of Object.keys(TRAIN_BANKS || {})) {
+        const bank = TRAIN_BANKS[cellKey];
+        if (!Array.isArray(bank)) continue;
+        for (const e of bank) {
+          if (!e) continue;
+          addTok(e.question || e.q || "");
+          addTok(e.expectedAnswer || e.a || "");
+          if (Array.isArray(e.expected)) for (const x of e.expected) addTok(x);
+        }
+      }
+    } catch {
+    }
+    try {
+      const { K_VOCABULARY: K_VOCABULARY2 } = await Promise.resolve().then(() => (init_k_vocabulary(), k_vocabulary_exports));
+      if (Array.isArray(K_VOCABULARY2)) for (const w of K_VOCABULARY2) addTok(w);
+    } catch {
+    }
+    try {
+      if (this._vocabTaughtSet instanceof Set) for (const w of this._vocabTaughtSet) addTok(w);
+      if (this._definitionTaughtWords instanceof Set) for (const w of this._definitionTaughtWords) addTok(w);
+      for (const k of Object.keys(cluster)) {
+        if (k.startsWith("_emissionTaughtWords_") && cluster[k] instanceof Set) {
+          for (const w of cluster[k]) addTok(w);
+        }
+      }
+    } catch {
+    }
+    const size = cluster.setEmissionAllowedVocab(allow);
+    this._hb(`[Curriculum] emission allow-set installed \u2014 ${size} taught tokens eligible for chat/inner-voice argmax (persona/dev/consciousness corpus excluded; corpus-bleed gate ACTIVE).`);
+    return size;
+  }
   async runAllSubjects(corpora, opts = {}) {
     const cluster = this.cluster;
     if (!cluster) return { reached: {}, passed: {}, failed: {} };
@@ -98788,6 +98892,11 @@ var Curriculum = class _Curriculum {
       cluster.grades = { ela: "pre-K", math: "pre-K", science: "pre-K", social: "pre-K", art: "pre-K" };
     }
     if (corpora) this._buildCtx(corpora, opts);
+    try {
+      await this._refreshEmissionAllowedVocab();
+    } catch (err) {
+      console.warn("[Curriculum] emission allow-set build failed (bleed gate stays OFF, safe):", err?.message || err);
+    }
     const passed = {};
     const failed = {};
     for (const s of SUBJECTS2) {
