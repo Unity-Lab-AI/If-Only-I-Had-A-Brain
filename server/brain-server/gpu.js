@@ -690,14 +690,38 @@ const SERVER_GPU_MIXIN = {
     return out;
   },
 
+  // Partial-coverage routing guard — TRUE if this donor can serve work touching
+  // the given matrix name(s): full-replica donors always can; a partial donor
+  // must cover EVERY name's cluster prefix; work with no name goes to full
+  // donors only (safe default).
+  _donorCoversMatrices(ws, names) {
+    const c = this.clients && this.clients.get ? this.clients.get(ws) : null;
+    if (!c) return true;
+    if (c._replicaIncapable || c._bindIncapable) return false;
+    const cov = c.clusterCoverage;
+    if (!cov || !cov.size) return true;
+    if (names === undefined || names === null) return false;
+    const list = Array.isArray(names) ? names : [names];
+    for (const n of list) {
+      if (typeof n !== 'string') return false;
+      let hit = false;
+      for (const cl of cov) { if (n.startsWith(cl + '_')) { hit = true; break; } }
+      if (!hit) return false;
+    }
+    return true;
+  },
+
   // DF.7 F3 — CAPACITY-WEIGHTED donor selector for independent (stateless) work
   // units. Was flat round-robin (`idx % len`, equal share → slowest donor became
   // the barrier); now one smooth-weighted-round-robin step so the next donor is
   // picked ∝ strength (throughput × health). Slow/laggy donors get proportionally
   // fewer units; >1s-RTT donors get none while a healthy donor exists. Single
   // donor / fan-out OFF → that donor.
-  _nextPoolDonor() {
-    const donors = this._livePoolDonors();
+  _nextPoolDonor(matrixNames) {
+    let donors = this._livePoolDonors();
+    // Coverage filter: partial donors only take work they hold matrices for;
+    // the primary (full master upload target) is always eligible.
+    donors = donors.filter(ws => ws === this._gpuClient || this._donorCoversMatrices(ws, matrixNames));
     if (donors.length === 0) return null;
     if (!this._df7Fanout() || donors.length === 1) return donors[0];
     let scored = donors.map((ws) => ({ ws, w: Math.max(0, this._donorStrength(ws)) }));
@@ -904,6 +928,10 @@ const SERVER_GPU_MIXIN = {
     let best = null, bestScore = -1;
     for (const ws of this._livePoolDonors()) {
       if (ws === exclude) continue;
+      // PRIMARY candidates must hold (or be able to hold) the FULL brain — a
+      // partial/incapable donor can never be the canonical upload target.
+      const _sc = this.clients && this.clients.get ? this.clients.get(ws) : null;
+      if (_sc && (_sc._replicaIncapable || _sc._partialReplica || _sc._bindIncapable)) continue;
       const s = this._donorStrength(ws);
       if (s > bestScore) { bestScore = s; best = ws; }
     }
@@ -952,6 +980,10 @@ const SERVER_GPU_MIXIN = {
     if (!this._df7Fanout()) return;
     for (const ws of this._livePoolDonors()) {
       if (ws === this._gpuClient) continue;
+      // Partial donors without cortex coverage (or holding nothing) don't get
+      // cortex resident-state mirrors — they can't bind them.
+      const _mc = this.clients && this.clients.get ? this.clients.get(ws) : null;
+      if (_mc && (_mc._replicaIncapable || (_mc.clusterCoverage && !_mc.clusterCoverage.has('cortex')))) continue;
       try {
         if (ws.readyState !== 1) continue;
         // DONOR-EQUAL — mirror frames shed at the LINK cap (default 4MB), not
@@ -1059,14 +1091,16 @@ const SERVER_GPU_MIXIN = {
       return;
     }
     if (_cc) _cc._bindIncapable = false;
-    // VRAM-FIT gate (small-donor policy) — same shape as F8 above but for total
-    // committed VRAM vs the RUNNING brain size. A card that cannot hold the full
-    // replica must not receive the doomed multi-GB stream (wasted upload, bind
-    // fail or OOM, reconnect churn). It STAYS CONNECTED and never shrinks the
-    // brain (the size driver is baseline-floored); the partial-coverage assist
-    // lane that lets it pull the teach units it CAN hold is the flagged
-    // follow-up in the workflow docs. Effective VRAM mirrors the community
-    // recompute: explicit donatedMB cap, else full card x duty-cycle.
+    // VRAM-FIT + PARTIAL COVERAGE (small-donor policy). A donor that cannot
+    // hold the FULL running replica is not streamed a doomed multi-GB upload —
+    // instead it gets the largest priority-ordered CLUSTER SUBSET that fits its
+    // effective VRAM (teach traffic is overwhelmingly cortex, so even a small
+    // card covering cortex pulls real work). Donors that cannot fit even the
+    // first cluster stay connected but hold nothing (_replicaIncapable). The
+    // brain never shrinks either way (the size driver is baseline-floored).
+    // Effective VRAM mirrors the community recompute: explicit donatedMB cap,
+    // else full card x duty-cycle.
+    let _coverage = null;
     if (_cc) {
       const _fullVram = Number(_cc.gpuVramMB || 0);
       const _effVram = (Number(_cc.donatedMB) > 0)
@@ -1074,14 +1108,41 @@ const SERVER_GPU_MIXIN = {
         : _fullVram * (((_cc.utilizationPct) ?? 100) / 100);
       const _needMB = Number(this._runningFloorMB || 0);
       if (_effVram > 0 && _needMB > 0 && _effVram < _needMB) {
-        _cc._replicaIncapable = true;
-        if (!_cc._replicaSkipWarned) {
-          _cc._replicaSkipWarned = true;
-          console.warn(`[Brain] DF.7 — donor ${_cc.gpuName || _cc.id} effective VRAM ${Math.round(_effVram)}MB < ${_needMB}MB needed for the running brain — NOT replica-syncing (would waste the upload and churn). Stays connected; never shrinks the brain; partial-coverage assist lane is the queued follow-up.`);
+        const _budgetBytes = Math.max(0, (_effVram * 0.75 - 2048)) * 1048576;
+        const _set = (typeof this._getAutoScaleSettings === 'function') ? this._getAutoScaleSettings() : null;
+        const _bpn = (_set && _set.donorBytesPerNeuron) || 42;
+        const _prio = ['cortex', 'hippocampus', 'amygdala', 'basalGanglia', 'hypothalamus', 'mystery', 'cerebellum'];
+        const _cov = new Set();
+        let _used = 0;
+        for (const _cl of _prio) {
+          const _n = (this.CLUSTER_SIZES && this.CLUSTER_SIZES[_cl]) || 0;
+          if (!_n) continue;
+          const _cost = _n * _bpn;
+          if (_used + _cost <= _budgetBytes) { _cov.add(_cl); _used += _cost; }
         }
-        return;
+        if (_cov.size === 0) {
+          _cc._replicaIncapable = true;
+          _cc._partialReplica = false;
+          _cc.clusterCoverage = null;
+          if (!_cc._replicaSkipWarned) {
+            _cc._replicaSkipWarned = true;
+            console.warn(`[Brain] DF.7 — donor ${_cc.gpuName || _cc.id} effective VRAM ${Math.round(_effVram)}MB cannot fit even the smallest priority cluster — NOT replica-syncing. Stays connected; never shrinks the brain.`);
+          }
+          return;
+        }
+        _cc._replicaIncapable = false;
+        _cc._partialReplica = true;
+        _cc.clusterCoverage = _cov;
+        _coverage = _cov;
+        if (!_cc._partialSyncLogged) {
+          _cc._partialSyncLogged = true;
+          console.log(`[Brain] DF.7 — donor ${_cc.gpuName || _cc.id} effective VRAM ${Math.round(_effVram)}MB < ${_needMB}MB full-replica need: PARTIAL coverage [${[..._cov].join(', ')}] (~${Math.round(_used / 1048576)}MB est). It pulls the work units it holds matrices for; never shrinks the brain.`);
+        }
+      } else {
+        _cc._replicaIncapable = false;
+        _cc._partialReplica = false;
+        _cc.clusterCoverage = null;
       }
-      _cc._replicaIncapable = false;
     }
     if (!this._replicaSyncInFlight) this._replicaSyncInFlight = new Set();
     if (this._replicaSyncInFlight.has(ws)) return;
@@ -1092,6 +1153,7 @@ const SERVER_GPU_MIXIN = {
       for (const clusterName of clusters) {
         const size = this.CLUSTER_SIZES[clusterName];
         if (!size || !ws || ws.readyState !== 1) continue;
+        if (_coverage && !_coverage.has(clusterName)) continue;
         const regions = this._regionsFor ? this._regionsFor(clusterName, size) : undefined;
         try {
           ws.send(JSON.stringify({
@@ -1111,11 +1173,16 @@ const SERVER_GPU_MIXIN = {
       if (reg && reg.size) {
         for (const [name, entry] of reg) {
           if (!ws || ws.readyState !== 1) break;
+          if (_coverage) {
+            let _covOk = false;
+            for (const _cl of _coverage) { if (name.startsWith(_cl + '_')) { _covOk = true; break; } }
+            if (!_covOk) continue;
+          }
           try { await this.gpuSparseUpload(name, entry.matrix, entry.binding, ws); synced++; }
           catch { /* skip a matrix that failed; rebroadcast will retry */ }
         }
       }
-      console.log(`[Brain] DF.7 — replica sync complete: ${synced} matrices + ${clusters.length} clusters pushed to a donor. It now holds a FULL brain replica and shares compute (no longer idle standby).`);
+      console.log(`[Brain] DF.7 — replica sync complete: ${synced} matrices pushed to a donor${_coverage ? ` (PARTIAL coverage [${[..._coverage].join(', ')}] — it shares compute for the clusters it holds)` : '. It now holds a FULL brain replica and shares compute (no longer idle standby)'}.`);
     } catch (e) {
       console.warn('[Brain] DF.7 — replica sync failed (donor stays standby until next rebroadcast):', e.message);
     } finally {
@@ -1750,7 +1817,7 @@ const SERVER_GPU_MIXIN = {
     // with their OWN target + their resident state already mirrored, so they skip
     // this. Untargeted + fan-out OFF → primary, exactly as before.
     if (!targetWs && pre.length > 0 && this._df7FanoutPropagate && this._df7FanoutPropagate()) {
-      targetWs = this._nextPoolDonor();
+      targetWs = this._nextPoolDonor(name);
     }
     // Backpressure gate — check the CHOSEN donor's flow; if its WS send buffer is
     // backed up, skip this shadow instead of queueing another doomed request.
@@ -1910,7 +1977,7 @@ const SERVER_GPU_MIXIN = {
     // re-broadcast re-converges each donor's drifted weight-shadow — so a batch
     // landing on any replica can't corrupt training. Fan-out OFF → primary, exact
     // prior behavior.
-    const target = (this._df7Fanout && this._df7Fanout()) ? this._nextPoolDonor() : this._gpuClient;
+    const target = (this._df7Fanout && this._df7Fanout()) ? this._nextPoolDonor(ops.map(_o => _o.name)) : this._gpuClient;
     if (!target || target.readyState !== 1) {
       for (const op of ops) op.resolve(null);
       return;
@@ -1988,7 +2055,7 @@ const SERVER_GPU_MIXIN = {
     // current by _mirrorCortexWriteToReplicas). Default: targetWs=null →
     // primary (today's exact behavior). Result routing is by reqId, so an ACK
     // from any donor resolves correctly.
-    const target = this._df7FanoutPropagate() ? this._nextPoolDonor() : null;
+    const target = this._df7FanoutPropagate() ? this._nextPoolDonor(name) : null;
     return this.gpuSparsePropagate(name, new Uint32Array(0), target);
   },
 

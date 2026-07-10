@@ -7473,6 +7473,10 @@ wss.on('connection', (ws, req) => {
             const _rawName = (msg.donorName !== undefined) ? msg.donorName : client.donorName;
             lbApplyDonorIdentity(brain, client, _rawName, `anon-${id}`);
           }
+          // Refresh community sizing BEFORE the primary decision so the
+          // too-small-for-primary guard below reads a populated running floor
+          // (idempotent; also runs at the end of register as before).
+          if (brain._recomputeCommunityCompute) { try { brain._recomputeCommunityCompute(); } catch { /* non-fatal */ } }
           const havePrimary = brain._gpuClient && brain._gpuClient.readyState === 1;
           // DF.7 (flag-gated) — promote a materially-stronger newcomer to PRIMARY
           // so the beefiest GPU does the work instead of whoever connected first
@@ -7506,7 +7510,22 @@ wss.on('connection', (ws, req) => {
               && (_primaryMidUpload || _promoteCooling)) {
             console.log(`[${id}] DF.7 / TU.25.D — newcomer scores higher but promotion is DEFERRED (${_primaryMidUpload ? 'primary mid-canonical-upload' : `cooldown ${Math.round(_promoteCooldownMs / 1000)}s`}) — joins as a replica; periodic rebalance promotes it once proven.`);
           }
-          if (!havePrimary || _df7PromoteStronger) {
+          // A donor too small to hold the FULL running brain must never be
+          // PRIMARY — the primary is the canonical full-weights upload target.
+          // It joins as a replica; the sync path gives it partial coverage.
+          let _tooSmallForPrimary = false;
+          try {
+            const _pv = Number(client.gpuVramMB || 0);
+            const _pe = (Number(client.donatedMB) > 0)
+              ? (_pv > 0 ? Math.min(Number(client.donatedMB), _pv) : Number(client.donatedMB))
+              : _pv * (((client.utilizationPct) ?? 100) / 100);
+            const _pn = Number(brain._runningFloorMB || 0);
+            _tooSmallForPrimary = (_pe > 0 && _pn > 0 && _pe < _pn);
+          } catch { /* keep false */ }
+          if (_tooSmallForPrimary && (!havePrimary || _df7PromoteStronger)) {
+            console.log(`[${id}] DF.7 — donor VRAM cannot hold the FULL running brain (needs ~${brain._runningFloorMB}MB) — NOT eligible for PRIMARY; joins as a (partial) replica.`);
+          }
+          if ((!havePrimary || _df7PromoteStronger) && !_tooSmallForPrimary) {
             if (_df7PromoteStronger) {
               console.log(`[${id}] DF.7 — newcomer GPU is STRONGER (capacity score ${brain._donorStrength(ws).toFixed(2)} > current primary ${brain._donorStrength(brain._gpuClient).toFixed(2)}; score = throughput Gn/s × link-health, F1) — promoting it to PRIMARY; previous primary stays a replica + re-syncs.`);
             }
