@@ -283,6 +283,23 @@ deleted at the end like the LLM describer was).
 
 ---
 
+**SE.17 — VOX v1: HER OWN EQUATIONAL VOICE (the word bank, 2026-07-10).** The equational voice shipped
+a smarter v1 than the original LJSpeech plan: the WORKING executor is the corpus. `js/brain/mindspace/audio.js`
+is the audio substrate — 1-D CDF 9/7 (the wavelet in its native habitat): `perceiveAudio` (32768-sample
+chunks, energy-target sparsification, int16 + LEB128 — the image encoder idiom in 1-D), `reconstructAudio`
+(inverse), `concatAudio` (30ms crossfade), `describeAudio` (octave-band percept for the HEAR track).
+Measured: 38.4 dB SNR / 0.9998 correlation / 19 ms encode / ~19 KB per word — transparent for speech.
+`js/io/voice.js` drives the loop: every word the executor speaks gets fetched IN ISOLATION (no alignment
+problem), decoded, resampled 24 kHz mono, silence-trimmed, perceived to a field-A record and BANKED
+(IndexedDB `unity-vox`, key `tier:word` — 5 age tiers so K-voice words and adult-voice words never mix).
+`speak()` tries HER bank first: a sentence whose words are all banked reconstructs from her own equations +
+crossfade — ZERO executor. Missing words fall through to the executor once and get primed in the background
+(6 s pacing, paused while she speaks, stops on executor cooldown). The bank grows like her visual memory did:
+the more she talks, the more of her voice is literally HERS. Off-switch: `localStorage.unity_vox_equational
+= 'false'`. LJSpeech diphones remain queued (VOX-next) for unseen-word synthesis without any executor call.
+
+---
+
 ## The Sensory AI Provider — 4-Level Priority
 
 `js/brain/peripherals/ai-providers.js` exposes `SensoryAIProviders` with three methods Unity's brain calls at the sensory boundary:

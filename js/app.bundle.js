@@ -522,9 +522,9 @@ var init_sparse_matrix = __esm({
           I = opts.outBuf;
           I.fill(0);
         } else I = new Float64Array(rows);
-        const CHUNK = Math.max(1, opts.chunkRows || 25e4);
-        for (let base = 0; base < rows; base += CHUNK) {
-          const end = Math.min(rows, base + CHUNK);
+        const CHUNK2 = Math.max(1, opts.chunkRows || 25e4);
+        for (let base = 0; base < rows; base += CHUNK2) {
+          const end = Math.min(rows, base + CHUNK2);
           for (let i = base; i < end; i++) {
             let sum = 0;
             const start = rowPtr[i], e = rowPtr[i + 1];
@@ -53429,14 +53429,14 @@ var CLUSTER_HEBBIAN_MIXIN = {
   // Below the chunk threshold it's a single synchronous pass (no yield overhead).
   async _ojaUpdateChunked(proj, preF, postF, lr, ojaOpts) {
     const rows = proj.rows | 0;
-    const CHUNK = 25e4;
-    if (rows <= CHUNK) {
+    const CHUNK2 = 25e4;
+    if (rows <= CHUNK2) {
       proj.ojaUpdate(preF, postF, lr, ojaOpts);
       return;
     }
     const yieldMacro = typeof setImmediate === "function" ? () => new Promise((r) => setImmediate(r)) : () => new Promise((r) => setTimeout(r, 0));
-    for (let rs = 0; rs < rows; rs += CHUNK) {
-      proj.ojaUpdate(preF, postF, lr, { ...ojaOpts || {}, rowStart: rs, rowEnd: Math.min(rs + CHUNK, rows) });
+    for (let rs = 0; rs < rows; rs += CHUNK2) {
+      proj.ojaUpdate(preF, postF, lr, { ...ojaOpts || {}, rowStart: rs, rowEnd: Math.min(rs + CHUNK2, rows) });
       await yieldMacro();
     }
   },
@@ -53447,14 +53447,14 @@ var CLUSTER_HEBBIAN_MIXIN = {
   // overhead). Requires SparseMatrix.antiHebbianUpdate to honor rowStart/rowEnd.
   async _antiHebbianChunked(mat, preF, postF, lr) {
     const rows = mat.rows | 0;
-    const CHUNK = 25e4;
-    if (rows <= CHUNK) {
+    const CHUNK2 = 25e4;
+    if (rows <= CHUNK2) {
       mat.antiHebbianUpdate(preF, postF, lr);
       return;
     }
     const yieldMacro = typeof setImmediate === "function" ? () => new Promise((r) => setImmediate(r)) : () => new Promise((r) => setTimeout(r, 0));
-    for (let rs = 0; rs < rows; rs += CHUNK) {
-      mat.antiHebbianUpdate(preF, postF, lr, { rowStart: rs, rowEnd: Math.min(rs + CHUNK, rows) });
+    for (let rs = 0; rs < rows; rs += CHUNK2) {
+      mat.antiHebbianUpdate(preF, postF, lr, { rowStart: rs, rowEnd: Math.min(rs + CHUNK2, rows) });
       await yieldMacro();
     }
   },
@@ -98396,16 +98396,16 @@ var Curriculum = class _Curriculum {
         const words = report.missing.filter((w) => typeof w === "string" && /^[a-z][a-z']*$/i.test(w) && w.length >= 2 && w.length <= 20);
         if (words.length > 0 && typeof this._teachVocabList === "function") {
           const ctx2 = { arousal: 0.7, valence: 0.2 };
-          const CHUNK = 25;
+          const CHUNK2 = 25;
           const reps = opts.vocabReps ?? 4;
           this._hb(`[Curriculum][${cellKey}] UPFRONT-VOCAB-TEACH START \u2014 ${words.length} missing exam words \xD7 ${reps} reps (before cell teach phases)`);
           let done = 0;
-          for (let i = 0; i < words.length; i += CHUNK) {
-            const slice = words.slice(i, i + CHUNK);
+          for (let i = 0; i < words.length; i += CHUNK2) {
+            const slice = words.slice(i, i + CHUNK2);
             try {
               await this._teachVocabList(slice, ctx2, { reps });
             } catch (err) {
-              console.warn(`[Curriculum][${cellKey}] UPFRONT-VOCAB-TEACH chunk ${i / CHUNK | 0} failed:`, err?.message || err);
+              console.warn(`[Curriculum][${cellKey}] UPFRONT-VOCAB-TEACH chunk ${i / CHUNK2 | 0} failed:`, err?.message || err);
             }
             done += slice.length;
             this._hb(`[Curriculum][${cellKey}] UPFRONT-VOCAB-TEACH progress \u2014 ${done}/${words.length} words taught`);
@@ -98849,14 +98849,14 @@ var Curriculum = class _Curriculum {
                   label: "K-VOCAB-UPFRONT-MULTIDEF SEED"
                 };
                 this._hb(`[Curriculum] \u{1F4DA} K-VOCAB-UPFRONT-MULTIDEF SEED START \u2014 moderate (reps:2) Hebbian seed of all definitions for ${K_VOCABULARY2.length} K-words. Bulk learning happens inline + dream-trickle.`);
-                const CHUNK = 300;
+                const CHUNK2 = 300;
                 let totalTrained = 0;
                 let totalWordsBound = 0;
                 let totalDefsBound = 0;
                 let totalTimeouts = 0;
                 let totalSlowWords = 0;
-                for (let chunkStart = 0; chunkStart < K_VOCABULARY2.length; chunkStart += CHUNK) {
-                  const chunk = K_VOCABULARY2.slice(chunkStart, chunkStart + CHUNK);
+                for (let chunkStart = 0; chunkStart < K_VOCABULARY2.length; chunkStart += CHUNK2) {
+                  const chunk = K_VOCABULARY2.slice(chunkStart, chunkStart + CHUNK2);
                   this._hb(`[Curriculum] \u{1F4DA} UPFRONT-MULTIDEF chunk ${chunkStart}\u2013${chunkStart + chunk.length}/${K_VOCABULARY2.length}`);
                   const chunkStats = await this._teachWordDefinitions(chunk, {
                     reps: 1,
@@ -98872,7 +98872,7 @@ var Curriculum = class _Curriculum {
                     total: K_VOCABULARY2.length,
                     label: "K-VOCAB-UPFRONT-MULTIDEF SEED"
                   };
-                  if (chunkStart + CHUNK < K_VOCABULARY2.length) {
+                  if (chunkStart + CHUNK2 < K_VOCABULARY2.length) {
                     try {
                       await this._dreamWindow({ minMs: 3e4, settleMs: 3e3 });
                     } catch (dwErr) {
@@ -99381,17 +99381,17 @@ var Curriculum = class _Curriculum {
           const words = report.missing.filter((w) => typeof w === "string" && /^[a-z][a-z']*$/i.test(w) && w.length >= 2 && w.length <= 20);
           if (words.length > 0 && typeof this._teachVocabList === "function") {
             const ctx = { arousal: 0.7, valence: 0.2 };
-            const CHUNK = 25;
+            const CHUNK2 = 25;
             const reps = opts.vocabReps ?? 4;
-            this._hb(`[Curriculum][${cellKey}] EXAM-VOCAB-TEACH START \u2014 ${words.length} missing exam words \xD7 ${reps} reps (chunked ${CHUNK})`);
+            this._hb(`[Curriculum][${cellKey}] EXAM-VOCAB-TEACH START \u2014 ${words.length} missing exam words \xD7 ${reps} reps (chunked ${CHUNK2})`);
             let done = 0;
-            for (let i = 0; i < words.length; i += CHUNK) {
-              const slice = words.slice(i, i + CHUNK);
+            for (let i = 0; i < words.length; i += CHUNK2) {
+              const slice = words.slice(i, i + CHUNK2);
               try {
                 await this._teachVocabList(slice, ctx, { reps });
                 for (const w of slice) this._vocabTaughtSet.add(String(w).toLowerCase());
               } catch (err) {
-                console.warn(`[Curriculum][${cellKey}] EXAM-VOCAB-TEACH chunk ${i / CHUNK | 0} failed:`, err?.message || err);
+                console.warn(`[Curriculum][${cellKey}] EXAM-VOCAB-TEACH chunk ${i / CHUNK2 | 0} failed:`, err?.message || err);
               }
               done += slice.length;
               this._hb(`[Curriculum][${cellKey}] EXAM-VOCAB-TEACH progress \u2014 ${done}/${words.length} words taught`);
@@ -115473,6 +115473,112 @@ var PollinationsAI = class _PollinationsAI {
   }
 };
 
+// ../js/brain/mindspace/audio.js
+var VOX_BANK_VERSION = 1;
+var CHUNK = 32768;
+var AUDIO_TOL = 0.02;
+var AUDIO_KMIN = 256;
+var MAX_SECONDS = 30;
+function perceiveAudio(pcm, sampleRate = 24e3) {
+  if (!pcm || !pcm.length) return null;
+  const n = Math.min(pcm.length, sampleRate * MAX_SECONDS);
+  const chunks = [];
+  for (let off = 0; off < n; off += CHUNK) {
+    const len = Math.min(CHUNK, n - off);
+    const buf = new Float64Array(CHUNK);
+    for (let i = 0; i < len; i++) buf[i] = pcm[off + i];
+    fwd1d((i) => buf[i], (i, v) => {
+      buf[i] = v;
+    }, CHUNK, new Float64Array(CHUNK));
+    let total = 0;
+    for (let i = 0; i < CHUNK; i++) total += buf[i] * buf[i];
+    total = total || 1;
+    const order = Array.from({ length: CHUNK }, (_, i) => i).sort((a, b) => Math.abs(buf[b]) - Math.abs(buf[a]));
+    const target = (1 - AUDIO_TOL * AUDIO_TOL) * total;
+    let acc = 0, k = 0;
+    while (k < CHUNK && acc < target) {
+      acc += buf[order[k]] * buf[order[k]];
+      k++;
+    }
+    k = Math.max(AUDIO_KMIN, Math.min(k, CHUNK));
+    const idx = order.slice(0, k).sort((a, b) => a - b);
+    let maxAbs = 1e-8;
+    for (let i = 0; i < k; i++) maxAbs = Math.max(maxAbs, Math.abs(buf[idx[i]]));
+    const qscale = maxAbs / 32e3;
+    const q = new Int16Array(k);
+    for (let i = 0; i < k; i++) {
+      const v = Math.round(buf[idx[i]] / qscale);
+      q[i] = Math.max(-32767, Math.min(32767, v));
+    }
+    chunks.push({
+      keep: k,
+      qscale,
+      pos_enc: "dv1",
+      len,
+      pos_b64: bytesToB64(new Uint8Array(encPos(idx))),
+      val_b64: i16ToB64(q)
+    });
+  }
+  let terms = 0;
+  for (const c of chunks) terms += c.keep;
+  return {
+    model: "cdf97_audio_native_quantized",
+    wavelet: "cdf97",
+    v: VOX_BANK_VERSION,
+    sampleRate,
+    length: n,
+    chunkSize: CHUNK,
+    chunks,
+    equation_count: terms
+  };
+}
+function reconstructAudio(rec) {
+  if (!rec || !Array.isArray(rec.chunks)) return null;
+  const out = new Float32Array(rec.length);
+  let off = 0;
+  for (const c of rec.chunks) {
+    const flat = new Float64Array(rec.chunkSize);
+    const val = b64i16(c.val_b64);
+    const pos = decodePositions(c, val.length);
+    for (let i = 0; i < pos.length; i++) {
+      const p = pos[i];
+      if (p >= 0 && p < rec.chunkSize) flat[p] = val[i] * c.qscale;
+    }
+    inv1d((i) => flat[i], (i, v) => {
+      flat[i] = v;
+    }, rec.chunkSize, new Float64Array(rec.chunkSize));
+    const len = Math.min(c.len ?? rec.chunkSize, rec.length - off);
+    for (let i = 0; i < len; i++) out[off + i] = flat[i];
+    off += len;
+  }
+  return out;
+}
+function concatAudio(pcms, sampleRate = 24e3, xfadeMs = 30) {
+  const parts = (pcms || []).filter((p) => p && p.length);
+  if (!parts.length) return null;
+  const xf = Math.max(0, Math.round(sampleRate * xfadeMs / 1e3));
+  let total = 0;
+  for (const p of parts) total += p.length;
+  total -= xf * (parts.length - 1);
+  const out = new Float32Array(Math.max(1, total));
+  let off = 0;
+  for (let pi = 0; pi < parts.length; pi++) {
+    const p = parts[pi];
+    const start = pi === 0 ? 0 : xf;
+    if (pi > 0) {
+      for (let i = 0; i < xf && off - xf + i < out.length && i < p.length; i++) {
+        const t = i / xf;
+        out[off - xf + i] = out[off - xf + i] * (1 - t) + p[i] * t;
+      }
+    }
+    for (let i = start; i < p.length && off + i - start < out.length; i++) {
+      out[off + i - start] = p[i];
+    }
+    off += p.length - start;
+  }
+  return out;
+}
+
 // ../js/io/voice.js
 var VoiceIO = class {
   constructor() {
@@ -115488,7 +115594,213 @@ var VoiceIO = class {
     this._onResult = null;
     this._onError = null;
     this._listeners = {};
+    this._voxBank = /* @__PURE__ */ new Map();
+    this._voxQueue = [];
+    this._voxPriming = false;
+    this._voxEnabled = typeof localStorage === "undefined" || localStorage.getItem("unity_vox_equational") !== "false";
+    this._voxDb = null;
+    this._voxInitDb();
     this._initRecognition();
+  }
+  // ── VOX — equational voice bank ─────────────────────────────────────────
+  _voxTier() {
+    const a = this._age || 25;
+    return a < 11 ? "k" : a < 14 ? "mid" : a < 18 ? "teen" : a < 23 ? "college" : "adult";
+  }
+  _voxTokens(text) {
+    return String(text || "").toLowerCase().split(/[^a-z']+/).filter((w) => w.length >= 1 && w.length <= 24).slice(0, 64);
+  }
+  _voxInitDb() {
+    try {
+      if (typeof indexedDB === "undefined") return;
+      const req = indexedDB.open("unity-vox", 1);
+      req.onupgradeneeded = () => {
+        req.result.createObjectStore("bank");
+      };
+      req.onsuccess = () => {
+        this._voxDb = req.result;
+        try {
+          const tx = this._voxDb.transaction("bank", "readonly");
+          const store = tx.objectStore("bank");
+          const cur = store.openCursor();
+          let n = 0;
+          cur.onsuccess = () => {
+            const c = cur.result;
+            if (c) {
+              this._voxBank.set(c.key, c.value);
+              n++;
+              c.continue();
+            } else if (n > 0) console.log(`[VoiceIO] VOX bank hydrated \u2014 ${n} word equation(s) from IndexedDB`);
+          };
+        } catch {
+        }
+      };
+      req.onerror = () => {
+      };
+    } catch {
+    }
+  }
+  _voxPersist(key, rec) {
+    try {
+      if (!this._voxDb) return;
+      const tx = this._voxDb.transaction("bank", "readwrite");
+      tx.objectStore("bank").put(rec, key);
+    } catch {
+    }
+  }
+  /**
+   * Speak from HER equations alone. Returns true only when every word of
+   * the text is banked for the current age tier — the caller falls through
+   * to the executor otherwise (which then primes the missing words).
+   */
+  async _speakVox(text, rate) {
+    if (!this._voxEnabled) return false;
+    const tier = this._voxTier();
+    const toks = this._voxTokens(text);
+    if (!toks.length) return false;
+    const recs = [];
+    for (const w of toks) {
+      const rec = this._voxBank.get(`${tier}:${w}`);
+      if (!rec) return false;
+      recs.push(rec);
+    }
+    const pcms = recs.map((r) => reconstructAudio(r)).filter(Boolean);
+    if (pcms.length !== recs.length) return false;
+    const sr = recs[0].sampleRate || 24e3;
+    const pcm = concatAudio(pcms, sr, 30);
+    if (!pcm || !pcm.length) return false;
+    console.log(`[VoiceIO] \u{1F399} VOX equational speech \u2014 ${toks.length} word(s) from her own bank, zero executor`);
+    await this._playPcm(pcm, sr, rate || 1);
+    return true;
+  }
+  /** Play raw Float32 PCM through the shared AudioContext (honors age rate). */
+  async _playPcm(pcm, sampleRate, rate = 1) {
+    if (!this._audioCtx) {
+      const AC = typeof AudioContext !== "undefined" ? AudioContext : typeof webkitAudioContext !== "undefined" ? webkitAudioContext : null;
+      if (!AC) throw new Error("No AudioContext");
+      this._audioCtx = new AC();
+    }
+    if (this._audioCtx.state === "suspended") await this._audioCtx.resume();
+    const buf = this._audioCtx.createBuffer(1, pcm.length, sampleRate);
+    buf.getChannelData(0).set(pcm);
+    return new Promise((resolve, reject) => {
+      const source = this._audioCtx.createBufferSource();
+      source.buffer = buf;
+      source.playbackRate.value = rate;
+      source.connect(this._audioCtx.destination);
+      this._currentAudioSource = source;
+      source.onended = () => {
+        this._currentAudioSource = null;
+        resolve();
+      };
+      source.onerror = (e) => {
+        this._currentAudioSource = null;
+        reject(e);
+      };
+      source.start(0);
+    });
+  }
+  /** Queue every un-banked word of the text for background bank-building. */
+  _voxQueueMissing(text) {
+    if (!this._voxEnabled) return;
+    const tier = this._voxTier();
+    for (const w of this._voxTokens(text)) {
+      const key = `${tier}:${w}`;
+      if (!this._voxBank.has(key) && !this._voxQueue.includes(key)) {
+        this._voxQueue.push(key);
+      }
+    }
+    if (this._voxQueue.length && !this._voxPriming) this._voxPrimeLoop();
+  }
+  /**
+   * Background bank-builder — one executor call per word, rate-limited,
+   * paused while she is speaking. Each word is fetched IN ISOLATION (no
+   * alignment problem), decoded, resampled to 24 kHz mono, perceived into
+   * a field-A record and banked + persisted. Stops on executor cooldown.
+   */
+  async _voxPrimeLoop() {
+    this._voxPriming = true;
+    try {
+      while (this._voxQueue.length) {
+        if (this._speaking) {
+          await new Promise((r) => setTimeout(r, 2e3));
+          continue;
+        }
+        if (this._pollTtsDead && Date.now() - this._pollTtsDead < 36e5) break;
+        const key = this._voxQueue.shift();
+        const word = key.slice(key.indexOf(":") + 1);
+        try {
+          const ab = await this._voxFetchWord(word);
+          const pcm = await this._voxDecodeTo24kMono(ab);
+          if (pcm && pcm.length) {
+            const rec = perceiveAudio(pcm, 24e3);
+            if (rec) {
+              this._voxBank.set(key, rec);
+              this._voxPersist(key, rec);
+              console.log(`[VoiceIO] \u{1F399} VOX banked "${word}" (${rec.equation_count} terms) \u2014 ${this._voxBank.size} word equations held`);
+            }
+          }
+        } catch (err) {
+          console.warn(`[VoiceIO] VOX prime failed for "${word}": ${err.message}`);
+        }
+        await new Promise((r) => setTimeout(r, 6e3));
+      }
+    } finally {
+      this._voxPriming = false;
+    }
+  }
+  /** Fetch ONE isolated word from the executor (same wire shape as speech). */
+  async _voxFetchWord(word) {
+    const preset = this._agePreset();
+    const headers = { "Content-Type": "application/json" };
+    if (this._apiKey) headers["Authorization"] = `Bearer ${this._apiKey}`;
+    const res = await fetch("https://gen.pollinations.ai/v1/chat/completions", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        model: "openai-audio",
+        modalities: ["text", "audio"],
+        audio: { voice: this._voiceOverride || preset.voice, format: "mp3" },
+        messages: [
+          { role: "system", content: preset.style + " Say ONLY the single word the user gives you, naturally, nothing else." },
+          { role: "user", content: word }
+        ]
+      })
+    });
+    if (!res.ok) {
+      if (res.status === 401 || res.status === 402 || res.status === 403) this._pollTtsDead = Date.now();
+      throw new Error(`HTTP ${res.status}`);
+    }
+    const data = await res.json();
+    const b64 = data?.choices?.[0]?.message?.audio?.data;
+    if (!b64) throw new Error("no audio data");
+    const bin = atob(b64);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return bytes.buffer;
+  }
+  /** Decode any compressed audio → 24 kHz mono Float32 via OfflineAudioContext. */
+  async _voxDecodeTo24kMono(arrayBuffer) {
+    const AC = typeof AudioContext !== "undefined" ? AudioContext : typeof webkitAudioContext !== "undefined" ? webkitAudioContext : null;
+    if (!AC) throw new Error("No AudioContext");
+    if (!this._voxDecodeCtx) this._voxDecodeCtx = new AC();
+    const decoded = await this._voxDecodeCtx.decodeAudioData(arrayBuffer.slice(0));
+    const frames = Math.ceil(decoded.duration * 24e3);
+    const off = new OfflineAudioContext(1, Math.max(1, frames), 24e3);
+    const src = off.createBufferSource();
+    src.buffer = decoded;
+    src.connect(off.destination);
+    src.start(0);
+    const rendered = await off.startRendering();
+    const raw = rendered.getChannelData(0);
+    let s = 0, e = raw.length - 1;
+    const TH = 4e-3;
+    while (s < e && Math.abs(raw[s]) < TH) s++;
+    while (e > s && Math.abs(raw[e]) < TH) e--;
+    const pad = 240;
+    s = Math.max(0, s - pad);
+    e = Math.min(raw.length - 1, e + pad);
+    return raw.slice(s, e + 1);
   }
   // =========================================================================
   //  EventEmitter mixin
@@ -115636,6 +115948,15 @@ var VoiceIO = class {
     this._speaking = true;
     this.emit("speech_start");
     const voice2 = options.voice || null;
+    try {
+      if (await this._speakVox(text, this._agePreset().rate)) {
+        this._speaking = false;
+        this.emit("speech_end");
+        return;
+      }
+    } catch (err) {
+      console.warn("[VoiceIO] VOX equational path failed, executor fallback:", err.message);
+    }
     let spoke = false;
     for (let attempt = 0; attempt < 2 && !spoke; attempt++) {
       try {
@@ -115663,6 +115984,10 @@ var VoiceIO = class {
     }
     this._speaking = false;
     this.emit("speech_end");
+    try {
+      this._voxQueueMissing(text);
+    } catch {
+    }
   }
   stopSpeaking() {
     if (this._currentAudioSource) {

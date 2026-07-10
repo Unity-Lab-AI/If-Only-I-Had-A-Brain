@@ -7,6 +7,8 @@
  * No external dependencies.
  */
 
+import { perceiveAudio, reconstructAudio, concatAudio } from '../brain/mindspace/audio.js';
+
 class VoiceIO {
   constructor() {
     // --- state ---
@@ -27,8 +29,221 @@ class VoiceIO {
     // --- event emitter ---
     this._listeners = {};
 
+    // --- VOX — her equational voice bank (word → field-A record) ---
+    // The TTS executor is the BANK-BUILDER: each word it speaks gets
+    // perceived ONCE into a 1-D CDF 9/7 field-A and banked; sentences
+    // whose words are all banked speak from HER equations with zero
+    // executor involvement. The bank grows like her visual memory did.
+    this._voxBank = new Map();          // key `${tier}:${word}` → field-A rec
+    this._voxQueue = [];                // words awaiting bank-build
+    this._voxPriming = false;
+    this._voxEnabled = (typeof localStorage === 'undefined')
+      || localStorage.getItem('unity_vox_equational') !== 'false';
+    this._voxDb = null;
+    this._voxInitDb();
+
     // --- init recognition if available ---
     this._initRecognition();
+  }
+
+  // ── VOX — equational voice bank ─────────────────────────────────────────
+
+  _voxTier() {
+    const a = this._age || 25;
+    return a < 11 ? 'k' : a < 14 ? 'mid' : a < 18 ? 'teen' : a < 23 ? 'college' : 'adult';
+  }
+
+  _voxTokens(text) {
+    return String(text || '').toLowerCase().split(/[^a-z']+/)
+      .filter(w => w.length >= 1 && w.length <= 24).slice(0, 64);
+  }
+
+  _voxInitDb() {
+    try {
+      if (typeof indexedDB === 'undefined') return;
+      const req = indexedDB.open('unity-vox', 1);
+      req.onupgradeneeded = () => { req.result.createObjectStore('bank'); };
+      req.onsuccess = () => {
+        this._voxDb = req.result;
+        // hydrate the in-memory bank from disk
+        try {
+          const tx = this._voxDb.transaction('bank', 'readonly');
+          const store = tx.objectStore('bank');
+          const cur = store.openCursor();
+          let n = 0;
+          cur.onsuccess = () => {
+            const c = cur.result;
+            if (c) { this._voxBank.set(c.key, c.value); n++; c.continue(); }
+            else if (n > 0) console.log(`[VoiceIO] VOX bank hydrated — ${n} word equation(s) from IndexedDB`);
+          };
+        } catch { /* hydrate best-effort */ }
+      };
+      req.onerror = () => { /* no persistence — in-memory bank still works */ };
+    } catch { /* environments without IndexedDB */ }
+  }
+
+  _voxPersist(key, rec) {
+    try {
+      if (!this._voxDb) return;
+      const tx = this._voxDb.transaction('bank', 'readwrite');
+      tx.objectStore('bank').put(rec, key);
+    } catch { /* persistence best-effort */ }
+  }
+
+  /**
+   * Speak from HER equations alone. Returns true only when every word of
+   * the text is banked for the current age tier — the caller falls through
+   * to the executor otherwise (which then primes the missing words).
+   */
+  async _speakVox(text, rate) {
+    if (!this._voxEnabled) return false;
+    const tier = this._voxTier();
+    const toks = this._voxTokens(text);
+    if (!toks.length) return false;
+    const recs = [];
+    for (const w of toks) {
+      const rec = this._voxBank.get(`${tier}:${w}`);
+      if (!rec) return false;
+      recs.push(rec);
+    }
+    const pcms = recs.map(r => reconstructAudio(r)).filter(Boolean);
+    if (pcms.length !== recs.length) return false;
+    const sr = recs[0].sampleRate || 24000;
+    const pcm = concatAudio(pcms, sr, 30);
+    if (!pcm || !pcm.length) return false;
+    console.log(`[VoiceIO] 🎙 VOX equational speech — ${toks.length} word(s) from her own bank, zero executor`);
+    await this._playPcm(pcm, sr, rate || 1.0);
+    return true;
+  }
+
+  /** Play raw Float32 PCM through the shared AudioContext (honors age rate). */
+  async _playPcm(pcm, sampleRate, rate = 1.0) {
+    if (!this._audioCtx) {
+      const AC = typeof AudioContext !== 'undefined'
+        ? AudioContext
+        : typeof webkitAudioContext !== 'undefined' ? webkitAudioContext : null;
+      if (!AC) throw new Error('No AudioContext');
+      this._audioCtx = new AC();
+    }
+    if (this._audioCtx.state === 'suspended') await this._audioCtx.resume();
+    const buf = this._audioCtx.createBuffer(1, pcm.length, sampleRate);
+    buf.getChannelData(0).set(pcm);
+    return new Promise((resolve, reject) => {
+      const source = this._audioCtx.createBufferSource();
+      source.buffer = buf;
+      source.playbackRate.value = rate;
+      source.connect(this._audioCtx.destination);
+      this._currentAudioSource = source;
+      source.onended = () => { this._currentAudioSource = null; resolve(); };
+      source.onerror = (e) => { this._currentAudioSource = null; reject(e); };
+      source.start(0);
+    });
+  }
+
+  /** Queue every un-banked word of the text for background bank-building. */
+  _voxQueueMissing(text) {
+    if (!this._voxEnabled) return;
+    const tier = this._voxTier();
+    for (const w of this._voxTokens(text)) {
+      const key = `${tier}:${w}`;
+      if (!this._voxBank.has(key) && !this._voxQueue.includes(key)) {
+        this._voxQueue.push(key);
+      }
+    }
+    if (this._voxQueue.length && !this._voxPriming) this._voxPrimeLoop();
+  }
+
+  /**
+   * Background bank-builder — one executor call per word, rate-limited,
+   * paused while she is speaking. Each word is fetched IN ISOLATION (no
+   * alignment problem), decoded, resampled to 24 kHz mono, perceived into
+   * a field-A record and banked + persisted. Stops on executor cooldown.
+   */
+  async _voxPrimeLoop() {
+    this._voxPriming = true;
+    try {
+      while (this._voxQueue.length) {
+        if (this._speaking) { await new Promise(r => setTimeout(r, 2000)); continue; }
+        if (this._pollTtsDead && Date.now() - this._pollTtsDead < 3600000) break;
+        const key = this._voxQueue.shift();
+        const word = key.slice(key.indexOf(':') + 1);
+        try {
+          const ab = await this._voxFetchWord(word);
+          const pcm = await this._voxDecodeTo24kMono(ab);
+          if (pcm && pcm.length) {
+            const rec = perceiveAudio(pcm, 24000);
+            if (rec) {
+              this._voxBank.set(key, rec);
+              this._voxPersist(key, rec);
+              console.log(`[VoiceIO] 🎙 VOX banked "${word}" (${rec.equation_count} terms) — ${this._voxBank.size} word equations held`);
+            }
+          }
+        } catch (err) {
+          // one bad word never kills the loop; cooldown check above ends it
+          console.warn(`[VoiceIO] VOX prime failed for "${word}": ${err.message}`);
+        }
+        await new Promise(r => setTimeout(r, 6000));   // gentle on the executor
+      }
+    } finally {
+      this._voxPriming = false;
+    }
+  }
+
+  /** Fetch ONE isolated word from the executor (same wire shape as speech). */
+  async _voxFetchWord(word) {
+    const preset = this._agePreset();
+    const headers = { 'Content-Type': 'application/json' };
+    if (this._apiKey) headers['Authorization'] = `Bearer ${this._apiKey}`;
+    const res = await fetch('https://gen.pollinations.ai/v1/chat/completions', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        model: 'openai-audio',
+        modalities: ['text', 'audio'],
+        audio: { voice: this._voiceOverride || preset.voice, format: 'mp3' },
+        messages: [
+          { role: 'system', content: preset.style + ' Say ONLY the single word the user gives you, naturally, nothing else.' },
+          { role: 'user', content: word },
+        ],
+      }),
+    });
+    if (!res.ok) {
+      if (res.status === 401 || res.status === 402 || res.status === 403) this._pollTtsDead = Date.now();
+      throw new Error(`HTTP ${res.status}`);
+    }
+    const data = await res.json();
+    const b64 = data?.choices?.[0]?.message?.audio?.data;
+    if (!b64) throw new Error('no audio data');
+    const bin = atob(b64);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return bytes.buffer;
+  }
+
+  /** Decode any compressed audio → 24 kHz mono Float32 via OfflineAudioContext. */
+  async _voxDecodeTo24kMono(arrayBuffer) {
+    const AC = typeof AudioContext !== 'undefined'
+      ? AudioContext
+      : typeof webkitAudioContext !== 'undefined' ? webkitAudioContext : null;
+    if (!AC) throw new Error('No AudioContext');
+    if (!this._voxDecodeCtx) this._voxDecodeCtx = new AC();
+    const decoded = await this._voxDecodeCtx.decodeAudioData(arrayBuffer.slice(0));
+    const frames = Math.ceil(decoded.duration * 24000);
+    const off = new OfflineAudioContext(1, Math.max(1, frames), 24000);
+    const src = off.createBufferSource();
+    src.buffer = decoded;
+    src.connect(off.destination);
+    src.start(0);
+    const rendered = await off.startRendering();
+    // trim leading/trailing silence (executor words carry padding)
+    const raw = rendered.getChannelData(0);
+    let s = 0, e = raw.length - 1;
+    const TH = 0.004;
+    while (s < e && Math.abs(raw[s]) < TH) s++;
+    while (e > s && Math.abs(raw[e]) < TH) e--;
+    const pad = 240;   // keep 10ms of breath on each side
+    s = Math.max(0, s - pad); e = Math.min(raw.length - 1, e + pad);
+    return raw.slice(s, e + 1);
   }
 
   // =========================================================================
@@ -217,6 +432,20 @@ class VoiceIO {
     // explicitly overrides. Her voice tracks her live grade via setAge().
     const voice = options.voice || null;
 
+    // VOX — HER equations first. If every word of this text is banked for
+    // the current age tier, the sentence reconstructs from her own field-A
+    // records (inverse CDF 9/7 + crossfade concat) and the executor never
+    // fires. Falls through silently when any word is missing.
+    try {
+      if (await this._speakVox(text, this._agePreset().rate)) {
+        this._speaking = false;
+        this.emit('speech_end');
+        return;
+      }
+    } catch (err) {
+      console.warn('[VoiceIO] VOX equational path failed, executor fallback:', err.message);
+    }
+
     // Try Pollinations TTS — retry once on 5xx errors before falling
     // back. 401/402/403 (handled by _speakPollinations dead-backend
     // marking) short-circuits silently to the browser fallback after
@@ -254,6 +483,11 @@ class VoiceIO {
 
     this._speaking = false;
     this.emit('speech_end');
+
+    // VOX — whatever just went through the executor becomes bank-building
+    // work: every un-banked word gets fetched in isolation, perceived into
+    // a field-A equation and banked. Next time these words are all hers.
+    try { this._voxQueueMissing(text); } catch { /* priming best-effort */ }
   }
 
   stopSpeaking() {
