@@ -501,17 +501,51 @@ const BRAIN_VRAM_ALLOC = (function () {
     const _deployDonorMode = process.env.UAL_PROXY_AUTH === '1';
     const _donorFitDefaultMB = Number(process.env.DREAM_DONOR_FIT_MB) > 0
       ? Number(process.env.DREAM_DONOR_FIT_MB) : 4096;
+    // TIER-TARGET SIZING — honor a persisted DF.7 community-tier target UPWARD
+    // at boot. The DF.7 execution layer (_persistTierAndRestart) wipes weights
+    // and restarts expecting THIS allocator to size the brain TO the persisted
+    // targetNeurons; previously the target was only ever applied downward (the
+    // PA.4.8 trim after the allocator), so every up-tier restart retrained at
+    // the same donor-fit size — weight wipe, zero size gain. Derive the budget
+    // the target actually needs (main-brain bytes / main-weight fraction + OS
+    // reserve) and boot to it, still capped by the host-RAM safety above. The
+    // PA.4.8 trim then lands the cluster sum exactly on the target.
+    let _tierTargetNeurons = 0;
+    try {
+      const _tierPath = path.join(__dirname, 'community-tier.json');
+      if (fs.existsSync(_tierPath)) {
+        _tierTargetNeurons = Math.max(0, Number(JSON.parse(fs.readFileSync(_tierPath, 'utf8')).targetNeurons) || 0);
+      }
+    } catch (e) {
+      console.warn('[Brain] community-tier.json read failed in the budget allocator (falling back to donor-fit/default sizing):', e.message);
+    }
+    let _tierRequiredMB = 0;
+    if (_tierTargetNeurons > 0) {
+      const _rw = { ...DEFAULT_BIO_WEIGHTS, ...(cfg.biologicalWeights || {}) };
+      const _wSum = Object.values(_rw).reduce((s, w) => s + (Number(w) || 0), 0) || 1;
+      const _mainFrac = Math.max(0.05, 1 - ((Number(_rw.language_cortex) || 0) / _wSum));
+      const _osMB = typeof cfg.osReserveVramMB === 'number' ? cfg.osReserveVramMB : 2048;
+      _tierRequiredMB = Math.ceil((_tierTargetNeurons * 21) / _mainFrac / 1048576) + _osMB;
+    }
     let _budgetMB;
     if (_envBudget > 0) {
       _budgetMB = Math.min(_envBudget, _hostRamMB - 13312);
+    } else if (_tierRequiredMB > 0) {
+      _budgetMB = Math.max(1024, Math.min(_tierRequiredMB, _safeMB));
+      const _fitsBox = _tierRequiredMB <= _safeMB;
+      console.log(`[Brain] TIER-TARGET SIZING — community-tier.json targets ${_tierTargetNeurons.toLocaleString()} neurons: booting at a ${_budgetMB}MB budget${_fitsBox ? '' : ` (host-RAM safety capped the required ${_tierRequiredMB}MB — the box cannot hold the full tier, brain boots at the safe max)`}. Donor-fit bootstrap is superseded once a tier is confirmed.`);
     } else if (_deployDonorMode) {
       _budgetMB = Math.max(1024, Math.min(_donorFitDefaultMB, _safeMB));
       console.log(`[Brain] #112.2 DONOR-COMPUTE SIZING — UAL_PROXY_AUTH=1: compute runs on donor GPUs, not host RAM. Booting at a donor-fit ${_budgetMB}MB budget (NOT the ${_safeMB}MB host-RAM max) so one modest donor can hold + fast-re-upload it; DF.7 scales up with the donor pool. Override via DREAM_BRAIN_BUDGET_MB / DREAM_DONOR_FIT_MB.`);
     } else {
       _budgetMB = _safeMB;
     }
-    if (_budgetMB < vramMB) {
-      console.log(`[Brain] SERVER-RAM SAFETY — no GPU on host (${_hostRamMB}MB RAM, shared with Forgejo): capping brain budget ${vramMB}MB → ${_budgetMB}MB so the brain can't crash the box.`);
+    // Raise is allowed only for POLICY-driven budgets (explicit env budget or a
+    // confirmed tier target with no explicit vramCapMB in resource-config.json);
+    // an operator-configured cap is never raised past.
+    const _raiseOk = (_envBudget > 0) || (_tierRequiredMB > 0 && typeof cfg.vramCapMB !== 'number');
+    if (_budgetMB < vramMB || (_raiseOk && _budgetMB > vramMB)) {
+      console.log(`[Brain] SERVER-RAM SAFETY — no GPU on host (${_hostRamMB}MB RAM, shared with Forgejo): ${_budgetMB < vramMB ? 'capping' : 'raising'} brain budget ${vramMB}MB -> ${_budgetMB}MB (policy: ${_envBudget > 0 ? 'explicit DREAM_BRAIN_BUDGET_MB' : _tierRequiredMB > 0 ? 'confirmed community tier' : _deployDonorMode ? 'donor-fit bootstrap' : 'host-RAM safe max'}).`);
       vramMB = _budgetMB;
     }
   }
@@ -984,7 +1018,9 @@ const CLUSTER_SIZES = {
 // target; else, in deployed mode (UAL_PROXY_AUTH=1) with no milestone reached
 // yet, bootstrap small so the brain fits a modest donor GPU. In LOCAL dev (no
 // proxy-auth, no tier file) leave the host-VRAM-derived size untouched — the
-// localhost walk runs at full scale. Scales DOWN only.
+// localhost walk runs at full scale. The allocator (BRAIN_VRAM_ALLOC) now
+// pre-sizes the boot budget to a persisted tier target, so this block is the
+// precision TRIM down to the exact target — it never raises sizes itself.
 let COMMUNITY_TIER_RUNNING = 0;
 {
   // Community-compute sizing (boot side). The cluster sizes above are already
