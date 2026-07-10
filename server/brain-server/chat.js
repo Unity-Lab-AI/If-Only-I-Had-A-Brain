@@ -132,7 +132,7 @@ const SERVER_CHAT_MIXIN = {
             if (!rec) {
               const emb = this.sharedEmbeddings.getSentenceEmbedding(imgPrompt);
               rec = this.mindSpace.imagineFromState(emb, {
-                maxSide: 96, text: imgPrompt,
+                maxSide: 192, text: imgPrompt,
                 mood: { arousal: this.arousal, valence: this.valence },
                 priority: 0.4, value: 0.6,
               });
@@ -1073,7 +1073,7 @@ const SERVER_CHAT_MIXIN = {
       }
       if (!rec) {
         rec = this.mindSpace.imagineFromState(_seed, {
-          maxSide: 96, text: _seedText,
+          maxSide: 192, text: _seedText,
           mood: { arousal: this.arousal, valence: this.valence },
           priority: 0.25, value: 0.4,
         });
@@ -1113,7 +1113,23 @@ const SERVER_CHAT_MIXIN = {
               if (_iBest) {
                 const _iMem = this._visualMemory.get(_iBest);
                 if (_iMem && _iMem.rec) {
-                  const m = this.mindSpace.morph(_iMem.rec, rec, 0.30 + Math.random() * 0.2);
+                  // MS.EXT — morphField refuses mismatched canvas/pad dims, and the
+                  // de-novo plane rarely matched the stored percept's — so the
+                  // impression anchor silently no-opped on every hit. Re-render the
+                  // de-novo field AT the memory's own side (exact-side override)
+                  // when dims differ, then the equation-domain morph is valid.
+                  let _iDen = rec;
+                  if (rec.width !== _iMem.rec.width || rec.height !== _iMem.rec.height
+                      || rec.pad_w !== _iMem.rec.pad_w || rec.pad_h !== _iMem.rec.pad_h) {
+                    try {
+                      _iDen = this.mindSpace.imagineFromState(_seed, {
+                        side: _iMem.rec.width, text: _seedText,
+                        mood: { arousal: this.arousal, valence: this.valence },
+                        priority: 0.25, value: 0.4,
+                      }) || rec;
+                    } catch { _iDen = rec; }
+                  }
+                  const m = this.mindSpace.morph(_iMem.rec, _iDen, 0.30 + Math.random() * 0.2);
                   if (m && (typeof this._recDetail !== 'function' || this._recDetail(m) >= 150)) {
                     rec = m;
                     _seedSource = 'impression:' + _iBestTok + '~' + _iBest;

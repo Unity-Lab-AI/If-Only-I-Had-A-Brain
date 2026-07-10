@@ -20,7 +20,7 @@
 //     crossOrigin='anonymous'; if the CDN denies CORS the canvas taints and
 //     the capture silently skips. Never breaks the page.
 
-const SIDE = 96;                     // matches the engine's mind's-eye hard cap
+const SIDE = 192;                    // MS.EXT — retina raised 96→192 (was crushing her own 1024² renders to 96²; ~196KB b64/frame at 5-8s pacing, trivial vs the 2GB WS ceiling)
 const CAMERA_INTERVAL_MS = 8000;
 const IMAGE_MIN_GAP_MS = 5000;
 const RECONNECT_MS = 30000;

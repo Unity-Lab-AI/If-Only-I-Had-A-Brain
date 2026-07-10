@@ -101,8 +101,8 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
     const now = Date.now();
     if (this._vmLastIngestAt && (now - this._vmLastIngestAt) < VM_INGEST_GAP_MS) return;
     const w = msg.w | 0, h = msg.h | 0;
-    if (w < 8 || h < 8 || w > 96 || h > 96) return;
-    if (typeof msg.rgba_b64 !== 'string' || msg.rgba_b64.length > 96 * 96 * 4 * 2) return;
+    if (w < 8 || h < 8 || w > 192 || h > 192) return;   // MS.EXT — retina raised with the feeder (96→192)
+    if (typeof msg.rgba_b64 !== 'string' || msg.rgba_b64.length > 192 * 192 * 4 * 2) return;
     let buf;
     try { buf = Buffer.from(msg.rgba_b64, 'base64'); } catch { return; }
     if (buf.length !== w * h * 4) return;

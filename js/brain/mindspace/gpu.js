@@ -455,7 +455,7 @@ export class MindSpaceGPU {
       const ycc = CPU.rgbToYCbCr(d[o] / 255, d[o + 1] / 255, d[o + 2] / 255);
       const p = y * W2 + x; planes[0][p] = ycc[0]; planes[1][p] = ycc[1]; planes[2][p] = ycc[2];
     } }
-    const EQ_TOL = [0.030, 0.055, 0.055], EQ_KMIN = [400, 120, 120];
+    const EQ_TOL = [0.018, 0.032, 0.032], EQ_KMIN = [500, 150, 150];   // MS.EXT — donor corpus quality (matches transform.js)
     let totalEq = 0;
     for (let ci = 0; ci < 3; ci++) {
       const co = await this.fwd2d(planes[ci], H2, W2);
@@ -542,7 +542,7 @@ export class MindSpaceGPU {
     const ratio = Math.max(0, Math.min(1, grant.ratio ?? 1));
     // Image side: scales with how much the thought is worth, hard-bounded so the transform stays
     // loop-safe regardless of state length or grant (a 96² plane padded is still tiny for CDF 9/7).
-    const maxSide = Math.max(8, Math.min(opts.maxSide ?? 64, 96));
+    const maxSide = Math.max(8, Math.min(opts.maxSide ?? 128, 192));   // MS.EXT — cap raised 96→192 (CPU CDF 9/7 on a padded 256² plane is still ms; no-fractalize intact)
     // TU.29.1/.2 — TEXT MODE + COLOR: when the caller passes the thought's TEXT, the plane
     // renders the actual words/letters/numbers (glyph raster over a state texture tinted by
     // a named color word or her live mood) instead of painting the raw vector as grayscale
@@ -559,13 +559,23 @@ export class MindSpaceGPU {
     const glyphText = symbolGlyphText(opts.text);
     const hasGlyphs = glyphText.length > 0;
     let side;
-    if (hasGlyphs) {
-      side = Math.max(48, Math.round(maxSide * (0.75 + 0.25 * ratio)));   // legibility floor
+    if (opts.side) {
+      // MS.EXT — exact-side override: morphField requires identical canvas/pad
+      // dims, so a caller anchoring a de-novo field onto a stored percept passes
+      // side = memory.width and the planes match (bounded, never fractalize).
+      side = Math.max(16, Math.min(Math.round(opts.side), 512));
+    } else if (hasGlyphs) {
+      side = Math.max(96, Math.round(maxSide * (0.75 + 0.25 * ratio)));   // legibility floor
     } else {
-      const baseSide = Math.max(8, Math.min(maxSide, Math.floor(Math.sqrt(stateVector.length)) || 8));
-      side = Math.max(32, Math.round(baseSide * (0.5 + 0.5 * ratio)));
+      // MS.EXT — the old side collapsed to sqrt(stateVector.length): a 300-dim
+      // embedding seeded a 17px base → the 32px floor, so EVERY de-novo thought
+      // field rendered 32² and the viewer upscaled it ~16x into mush ("kindas
+      // blurry"). The state texture samples the vector across ANY plane size —
+      // resolution is a rendering choice, not information content. Render the
+      // full plane; the governor still modulates within a high band.
+      side = Math.max(96, Math.round(maxSide * (0.6 + 0.4 * ratio)));
     }
-    side = Math.min(side, maxSide);
+    if (!opts.side) side = Math.min(side, maxSide);
     const W = side, H = side;
     const data = renderThoughtPlane(glyphText, stateVector, W, H, opts.mood, opts.text);
     const rec = CPU.equationalizeImageData({ width: W, height: H, data });

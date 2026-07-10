@@ -238,6 +238,34 @@ on its own. Three fixes route abstract thoughts toward things she has actually S
 
 ---
 
+**SE.15 — FULL-EXTENT EQUATIONS: the blur audit vs the original univsmatics (MS.EXT, 2026-07-09).** Gee: her
+mind's eye is "kindas blurry" vs the donor project — "are you sure we a using the uni vs matic equations
+correctly and to their extent?" Audit against the original `fractal_templater` repo found we were NOT:
+- **Preview-grade encoder** — we vendored the donor's loose in-browser preview constants (TOL 0.030/0.055,
+  KMIN 400/120); the original corpus encoder (`ftcore/reconstruct.py`) runs TOL (0.018, 0.032, 0.032) +
+  KMIN (500, 150, 150) — about half the target error. Both `transform.js` and the `gpu.js` WGSL-path copy
+  now carry the corpus constants.
+- **32x32 de-novo planes** — `imagineFromState` collapsed the plane side to sqrt(embedding length) (300-dim
+  -> 17px base -> the 32px floor); the viewer then upscaled 32² to a 512px canvas = the mush. Resolution is a
+  rendering choice, not information content (the state texture samples any plane size): de-novo now renders
+  the full plane (floor 96, cap 192), governor still modulates within a high band.
+- **96x96 retina** — the feeder crushed every camera frame AND her own 1024² generated renders to 96² before
+  perceive (the donor ingests at native res, its only ceiling a bomb-guard). Retina raised to 192
+  (`js/visual-feeder.js` SIDE + the `visual-memory.js` ingest gate; ~196KB b64/frame at 5-8s pacing vs the
+  2GB WS ceiling).
+- **BUG: SEE.5 impressions were dead on arrival** — `morphField` refuses mismatched canvas/pad dims and the
+  32² de-novo plane never matched a 96² stored percept, so the impression anchor silently no-opped on every
+  hit. `imagineFromState` gains an exact-side override (`opts.side` = memory.width) and the anchor
+  re-renders the de-novo field at the memory's own dims before morphing. Smoke-verified: 192-percept morph
+  SUCCESS, legacy 96-store morph SUCCESS.
+- **BUG: her visual store was wiped on every deploy** — `deploy/self-update.sh` rsync --delete excluded only
+  `visual-memory.json` (v1); the live `visual-memory-v2.json` was deleted by every Update press. Exclude is
+  now the `visual-memory*.json` wildcard.
+- Watch-item: richer recs (tighter TOL + bigger planes) grow `/minds-eye.json` to ~40-140KB; max-age=2
+  caching holds for typical viewer counts — revisit with a de-novo-specific looser TOL if traffic grows.
+
+---
+
 ## The Sensory AI Provider — 4-Level Priority
 
 `js/brain/peripherals/ai-providers.js` exposes `SensoryAIProviders` with three methods Unity's brain calls at the sensory boundary:
