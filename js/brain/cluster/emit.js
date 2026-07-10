@@ -57,6 +57,30 @@ import { normalizeSubject, SUBJECTS } from '../subjects.js';
 import { encodeLetter, decodeLetterAlpha, inventorySize, inventorySnapshot } from '../letter-input.js';
 
 export const CLUSTER_EMIT_MIXIN = {
+  /**
+   * Set (or clear) the grade-vocab emission allow-set consumed by
+   * emitWordDirect's free-composition argmax. Pass an iterable of
+   * word tokens (any case — stored lowercased) to constrain emission
+   * to developmentally-cleared vocabulary; pass null/empty to disable
+   * the gate entirely (full bucket map eligible, pre-gate behavior).
+   *
+   * The curriculum owns population: it unions the vocabulary from
+   * pre-K up to the live grade and pushes it here on boot + every
+   * grade advance, so persona/dev/consciousness-corpus words bound by
+   * later-stage training can't win an early-grade emission (the
+   * corpus-bleed finding). Idempotent + null-safe. Returns the active
+   * set size for logging.
+   */
+  setEmissionAllowedVocab(words) {
+    if (!words) { this._emissionAllowedVocab = null; return 0; }
+    const set = new Set();
+    for (const w of words) {
+      if (typeof w === 'string' && w) set.add(w.toLowerCase());
+    }
+    this._emissionAllowedVocab = set.size > 0 ? set : null;
+    return set.size;
+  },
+
   _dictionaryOracleEmit(intentSeed, opts = {}) {
     if (opts.skipDictionaryOracle === true) return null;
     const dictionary = opts.dictionary || this.dictionary;
@@ -629,6 +653,37 @@ export const CLUSTER_EMIT_MIXIN = {
         // are consumed as sentence punctuation and stay eligible. Skip
         // (not filter) so bucket index ↔ neuron band alignment holds.
         if (_bw.length === 1 && _bw !== 'i' && _bw !== 'a' && !T14_TERMINATORS.has(_bw)) continue;
+        // GRADE-VOCAB EMISSION GATE — persona/dev/consciousness-corpus
+        // words (python, sentient, quantum-processed, lover, worship,
+        // generate, hacking, cognition...) get Hebbian-bound into the
+        // word_motor buckets by later-stage persona/academic/dream
+        // training and then WIN free-composition argmax inside an
+        // early-grade emission (the corpus-bleed caught in live teaching
+        // 2026-07-10, reproduced 7× across an active window). This gate
+        // constrains free-composition emission to the vocabulary the
+        // brain is developmentally cleared for: when a live allow-set is
+        // present, skip any bucket whose word is outside it. Single
+        // authority: `_emissionAllowedVocab` (a Set of lowercased tokens,
+        // populated by the curriculum from the union of grade vocab up to
+        // the live grade — see cluster.setEmissionAllowedVocab). DEFAULT-
+        // OFF: when the set is null/empty the loop behaves exactly as
+        // before (zero regression). Function words + terminators are
+        // ALWAYS eligible (grammatical glue is grade-invariant). Skip (not
+        // filter) so bucket index ↔ neuron band alignment holds. The gate
+        // FAIL-SAFE opt-in: the gate is OFF unless the CALLER explicitly
+        // passes opts.gradeGate === true (chat + inner-voice emission set
+        // it; see LanguageCortex chat path + InnerVoice). Every gate/
+        // production/student probe leaves it unset, so measurement always
+        // reads the full bucket map and the emission gate can NEVER break
+        // a cell's pass-criteria. A path that forgets to set it simply
+        // stays ungated (pre-gate behavior) — the safe direction.
+        if (opts.gradeGate === true) {
+          const _allow = this._emissionAllowedVocab;
+          if (_allow && _allow.size > 0
+              && !_allow.has(_bw.toLowerCase())
+              && !FUNCTION_WORDS.has(_bw)
+              && !T14_TERMINATORS.has(_bw)) continue;
+        }
         let sum = 0;
         const bStart = subjStart + b * bucketSize;
         // SPEAK.1 — capacity overflow: index-ordered, so once a band starts
@@ -1165,6 +1220,12 @@ export const CLUSTER_EMIT_MIXIN = {
       if (typeof opts.temperature === 'number') emitOpts.temperature = opts.temperature;
       if (typeof opts.topK === 'number') emitOpts.topK = opts.topK;
       if (typeof opts.topP === 'number') emitOpts.topP = opts.topP;
+      // Forward the grade-vocab emission gate opt-in: chat/inner-voice
+      // compose calls pass gradeGate:true so their per-word emission is
+      // grade-constrained (blocks persona/dev/consciousness-corpus bleed).
+      // Gate/production probes leave it unset → full bucket map, gate never
+      // breaks. Fail-safe: unset = ungated.
+      if (opts.gradeGate === true) emitOpts.gradeGate = true;
 
       let word = '';
       try { word = this.emitWordDirect(emitOpts) || ''; } catch { word = ''; }

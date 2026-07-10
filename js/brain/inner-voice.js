@@ -308,7 +308,9 @@ export class InnerVoice {
     // generation engine, just runs the cluster's bucket-mean argmax).
     if (cluster && typeof cluster.emitWordDirect === 'function') {
       try {
-        const word = cluster.emitWordDirect(opts.emitOpts || {}) || '';
+        // gradeGate: inner-voice thoughts stay in grade-vocab too (same
+        // corpus-bleed fix as chat). Merge so any caller emitOpts survive.
+        const word = cluster.emitWordDirect({ ...(opts.emitOpts || {}), gradeGate: true }) || '';
         return {
           word,
           sentence: word,
@@ -415,7 +417,7 @@ export class InnerVoice {
     const wantsThought = shouldSpeak || (socialNeed * arousal > 0.25);
     if (wantsThought && cluster && typeof cluster.emitWordDirect === 'function') {
       try {
-        const word = cluster.emitWordDirect({}) || '';
+        const word = cluster.emitWordDirect({ gradeGate: true }) || '';
         if (word && word.length > 0) {
           sentence = word;
           // Push the thought into WM so it accumulates → fires

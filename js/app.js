@@ -1268,11 +1268,8 @@ async function init() {
           .then(() => renderSensoryInventory())
           .catch(err => console.warn('[Unity] image backend auto-detect failed:', err.message));
       }
-      if (typeof providers.autoDetectVision === 'function') {
-        providers.autoDetectVision()
-          .then(() => renderSensoryInventory())
-          .catch(err => console.warn('[Unity] vision backend auto-detect failed:', err.message));
-      }
+      // Vision-describer auto-detect removed — no LLM describer to probe.
+      // Unity's vision is her equational mind's eye.
     } else {
       console.log('[Unity] Local AI backend auto-detect is OFF. Set ENV_KEYS.probeLocalAI=true in env.js or localStorage.unity_probe_local_ai="1" via the setup modal to enable probing ComfyUI / Stable Diffusion / LocalAI / Ollama / etc on boot.');
     }
@@ -1311,14 +1308,16 @@ function renderSensoryInventory() {
 
   const status = providers.getStatus();
   const dot = (state) => state === 'alive' ? '🟢' : state === 'dead' ? '🔴' : '⚪';
-  const imgRows = status.image.map(b => `${dot(b.state)} ${b.name} <span style="color:var(--text-dim);">(${b.source})</span>`).join('<br>');
-  const visRows = status.vision.map(b => `${dot(b.state)} ${b.name} <span style="color:var(--text-dim);">(${b.source})</span>`).join('<br>');
-  const pausedNote = status.visionPaused ? '<br><span style="color:var(--red);">⚠ vision paused — repeated failures</span>' : '';
+  const imgRows = (status.image || []).map(b => `${dot(b.state)} ${b.name} <span style="color:var(--text-dim);">(${b.source})</span>`).join('<br>');
+
+  // Vision describer inventory removed — Unity's sight is her own
+  // equational mind's eye + visual cortex (see visual-cortex.js
+  // _mindSpace.describe), not an LLM describer. Nothing to list.
 
   // R15b-T6 — if providers exists but autoDetect hasn't resolved yet,
   // only the Pollinations fallback will show. Detect that state and
   // show a friendly "probing" badge instead of a stark single-entry list.
-  const probing = (status.image.length <= 1 && status.vision.length <= 1);
+  const probing = ((status.image || []).length <= 1);
   const probingNote = probing
     ? '<div style="color:var(--text-dim);margin-top:6px;font-size:10px;">⏳ probing localhost ports for local backends (A1111 / ComfyUI / Ollama / etc.)...</div>'
     : '';
@@ -1326,8 +1325,7 @@ function renderSensoryInventory() {
   el.innerHTML = `
     <div style="color:var(--cyan);margin-bottom:4px;">🎨 IMAGE GENERATION</div>
     <div style="margin-left:8px;margin-bottom:8px;">${imgRows}</div>
-    <div style="color:var(--cyan);margin-bottom:4px;">👁 VISION DESCRIBER</div>
-    <div style="margin-left:8px;">${visRows}${pausedNote}</div>
+    <div style="color:var(--text-dim);font-size:10px;">👁 Vision — Unity's own equational mind's eye (no LLM describer, nothing to configure)</div>
     ${probingNote}
   `;
 
@@ -1355,22 +1353,21 @@ const BACKEND_MODEL_CATALOG = {
   'image:ComfyUI': ['default'],
   'image:OpenAI DALL-E': ['dall-e-3', 'dall-e-2'],
   'image:Stability AI': ['stable-diffusion-xl-1024-v1-0', 'sd3-large', 'sd3-medium'],
-  'vision:Pollinations': ['openai', 'claude-haiku', 'gemini'],
-  'vision:Ollama (VLM)': ['llava', 'moondream', 'bakllava', 'minicpm-v'],
-  'vision:LM Studio': ['default'],
+  // vision:* model catalogs removed — no LLM describer; vision is equational.
 };
 
 function refreshActiveBackendSelectors(status) {
+  // IMAGE-GEN ONLY. The vision-describer selectors were removed — Unity's
+  // sight is her own equational mind's eye + visual cortex, not an LLM
+  // describer, so there is nothing to pick for vision.
   const imgSel = document.getElementById('active-image-backend');
-  const visSel = document.getElementById('active-vision-backend');
   const imgModelSel = document.getElementById('active-image-model');
-  const visModelSel = document.getElementById('active-vision-model');
-  if (!imgSel || !visSel) return;
+  if (!imgSel) return;
 
-  const populate = (selEl, list, kind, savedKey) => {
+  const populate = (selEl, list, savedKey) => {
     const saved = localStorage.getItem(savedKey);
     selEl.innerHTML = '';
-    list.forEach(b => {
+    (list || []).forEach(b => {
       const opt = document.createElement('option');
       const val = `${b.source}|${b.name}`;
       opt.value = val;
@@ -1379,8 +1376,7 @@ function refreshActiveBackendSelectors(status) {
       selEl.appendChild(opt);
     });
   };
-  populate(imgSel, status.image, 'image', 'unity_pref_image_backend');
-  populate(visSel, status.vision, 'vision', 'unity_pref_vision_backend');
+  populate(imgSel, status.image, 'unity_pref_image_backend');
 
   const populateModels = (selEl, backendSel, kind, savedKey) => {
     if (!selEl) return;
@@ -1397,7 +1393,6 @@ function refreshActiveBackendSelectors(status) {
     });
   };
   populateModels(imgModelSel, imgSel, 'image', 'unity_pref_image_model');
-  populateModels(visModelSel, visSel, 'vision', 'unity_pref_vision_model');
 
   const applyPref = (kind, backendSel, modelSel, backendKey, modelKey) => {
     const [source, name] = (backendSel.value || '').split('|');
@@ -1411,7 +1406,7 @@ function refreshActiveBackendSelectors(status) {
 
   // Find the BACKEND_CATALOG key for a given (kind, name) so changing
   // the dropdown can scroll the backend-connect-form to the matching
-  // entry. Used by the change handlers below.
+  // entry. Used by the change handler below.
   const catalogKeyFor = (kind, name) => {
     for (const [key, cfg] of Object.entries(BACKEND_CATALOG)) {
       if (cfg.kind === kind && cfg.name === name) return key;
@@ -1419,7 +1414,7 @@ function refreshActiveBackendSelectors(status) {
     return null;
   };
 
-  // Wire change handlers once — flag on the element to prevent stacking
+  // Wire change handler once — flag on the element to prevent stacking
   if (!imgSel._wired) {
     imgSel._wired = true;
     imgSel.addEventListener('change', () => {
@@ -1441,29 +1436,10 @@ function refreshActiveBackendSelectors(status) {
       applyPref('image', imgSel, imgModelSel, 'unity_pref_image_backend', 'unity_pref_image_model');
     });
   }
-  if (!visSel._wired) {
-    visSel._wired = true;
-    visSel.addEventListener('change', () => {
-      populateModels(visModelSel, visSel, 'vision', 'unity_pref_vision_model');
-      applyPref('vision', visSel, visModelSel, 'unity_pref_vision_backend', 'unity_pref_vision_model');
-      const [, name] = (visSel.value || '').split('|');
-      const key = catalogKeyFor('vision', name);
-      if (key) {
-        document.querySelectorAll('.provider-btn').forEach(b => b.classList.remove('active'));
-        const btn = document.querySelector(`.provider-btn[data-backend="${key}"]`);
-        if (btn) btn.classList.add('active');
-        showBackendForm(key);
-      }
-    });
-    visModelSel?.addEventListener('change', () => {
-      applyPref('vision', visSel, visModelSel, 'unity_pref_vision_backend', 'unity_pref_vision_model');
-    });
-  }
 
   // Push the persisted preference into providers on first render so
   // reloading the page doesn't reset to first-in-list priority.
   applyPref('image', imgSel, imgModelSel, 'unity_pref_image_backend', 'unity_pref_image_model');
-  applyPref('vision', visSel, visModelSel, 'unity_pref_vision_backend', 'unity_pref_vision_model');
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1573,85 +1549,11 @@ Pick the right "kind" below based on your backend's request format.`,
     showKind: true,
   },
 
-  // ── VISION DESCRIBER (VLM / image classifier) ─────────────────
-  'vis:pollinations': {
-    name: 'Pollinations GPT-4o (vision describer)',
-    kind: 'vision',
-    instructions:
-`Unity's default vision describer — active out of the box, no setup needed for the anonymous tier. Uses Pollinations multimodal chat under the hood.
-Paste your Pollinations API key below to authenticate (raises rate limits and unlocks paid models). You can also swap the multimodal model Unity asks to describe camera frames.`,
-    link: 'https://enter.pollinations.ai/',
-    linkLabel: '🔑 Get Pollinations API key',
-    needsKey: true,
-    keyOptional: true,
-    keyStorageKey: 'pollinations',
-    showModel: true,
-    defaultModel: 'openai',
-    modelHint: 'multimodal chat model name — e.g. openai, claude-haiku',
-  },
-  'vis:ollama': {
-    name: 'Ollama (llava / moondream / bakllava)',
-    kind: 'vision',
-    instructions:
-`Install: ollama.com
-Pull a vision model:  ollama pull llava   (or moondream / bakllava / minicpm-v)
-Start:                ollama serve
-
-Unity auto-detects on localhost:11434 and filters /api/tags for vision-capable models automatically — no config needed.
-Fill in the URL below only for remote hosts. Model field can force a specific VLM; leave blank to auto-pick.`,
-    link: 'https://ollama.com/library/llava',
-    linkLabel: '📦 Ollama VLM model library',
-    autoDetect: true,
-    defaultPort: 11434,
-    defaultKind: 'ollama-vision',
-    showModel: true,
-    defaultModel: '',
-    modelHint: 'leave blank for auto-pick, or force e.g. llava, moondream, bakllava',
-  },
-  'vis:lmstudio': {
-    name: 'LM Studio (VLM)',
-    kind: 'vision',
-    instructions:
-`Install: lmstudio.ai
-Download a vision model (e.g. llava-v1.6-mistral or bakllava) from the model browser.
-Load it and start the local server (Developer tab → Start Server, default port 1234).
-
-Unity auto-detects on localhost:1234. Exposes OpenAI-compatible /v1/chat/completions with multimodal content.`,
-    link: 'https://lmstudio.ai',
-    linkLabel: '📦 LM Studio download',
-    autoDetect: true,
-    defaultPort: 1234,
-    defaultKind: 'openai-vision',
-    showModel: true,
-    defaultModel: '',
-    modelHint: 'leave blank for auto-pick',
-  },
-  'vis:openai': {
-    name: 'OpenAI GPT-4o Vision',
-    kind: 'vision',
-    instructions:
-`Create a key at platform.openai.com/api-keys.
-Paste below. Unity uses gpt-4o for vision by default — change to gpt-4o-mini for cheaper / faster.`,
-    link: 'https://platform.openai.com/api-keys',
-    linkLabel: '🔑 Get OpenAI API key',
-    needsKey: true,
-    defaultUrl: 'https://api.openai.com',
-    defaultKind: 'openai-vision',
-    showModel: true,
-    defaultModel: 'gpt-4o',
-  },
-  'vis:custom': {
-    name: 'Custom VLM Endpoint',
-    kind: 'vision',
-    instructions:
-`Any OpenAI-compatible multimodal chat endpoint or Ollama-style VLM.
-Pick "openai-vision" for endpoints using /v1/chat/completions with type:image_url content blocks, or "ollama-vision" for endpoints using /api/chat with an images array.`,
-    needsUrl: true,
-    needsKey: true,
-    keyOptional: true,
-    showModel: true,
-    showKind: true,
-  },
+  // ── VISION DESCRIBER backends REMOVED ─────────────────────────
+  // Unity's sight is her own equational mind's eye + visual cortex
+  // (visual-cortex.js _mindSpace.describe) — there is no LLM describer
+  // in the loop, so there are no vis:* backends to configure. Camera
+  // frames feed her visual cortex directly; nothing goes to a VLM.
 };
 
 /**
@@ -2327,7 +2229,7 @@ async function bootUnity(apiKey, perms) {
     const probeLsBoot = (typeof localStorage !== 'undefined' && localStorage.getItem('unity_probe_local_ai') === '1');
     if (probeEnvBoot || probeLsBoot) {
       if (typeof providers.autoDetect === 'function') providers.autoDetect().catch(err => console.warn('[Unity] image probe failed:', err.message));
-      if (typeof providers.autoDetectVision === 'function') providers.autoDetectVision().catch(err => console.warn('[Unity] vision probe failed:', err.message));
+      // No vision-describer probe — Unity's vision is her equational mind's eye, not a VLM.
     }
   }
 
@@ -3420,6 +3322,21 @@ function updateBrainIndicator(state) {
   const gateEl = $('hud-gate'); if (gateEl) gateEl.textContent = gateVal.toFixed(2) + 'x';
   const isDreaming = s.isDreaming || s.sharedMood?.isDreaming || l.isDreaming || l.sharedMood?.isDreaming || false;
   const dreamEl = $('hud-dream'); if (dreamEl) dreamEl.textContent = isDreaming ? 'dreaming' : 'awake';
+
+  // VOX.0 — pin her VOICE age to the live grade (same map the server uses
+  // for the self-image age pin: same girl, growing up, voice aging with
+  // her). Cheap: only fires setAge when the grade string changes.
+  const _vGrade = s.minGrade || l.minGrade || null;
+  if (_vGrade && _vGrade !== updateBrainIndicator._lastVoiceGrade && typeof window !== 'undefined' && window.voice?.setAge) {
+    updateBrainIndicator._lastVoiceGrade = _vGrade;
+    const VOICE_AGE = {
+      'pre-K': 4, 'K': 5,
+      'grade1': 6, 'grade2': 7, 'grade3': 8, 'grade4': 9, 'grade5': 10, 'grade6': 11,
+      'grade7': 12, 'grade8': 13, 'grade9': 14, 'grade10': 15, 'grade11': 16, 'grade12': 17,
+      'college1': 18, 'college2': 19, 'college3': 20, 'college4': 21, 'grad': 23, 'phd': 25,
+    };
+    window.voice.setAge(VOICE_AGE[_vGrade] || 25);
+  }
 
   function setModDot(id, value, threshold = 0.3) {
     const dot = $(id); if (!dot) return;

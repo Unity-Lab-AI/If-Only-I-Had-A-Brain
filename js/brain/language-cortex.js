@@ -2160,7 +2160,10 @@ export class LanguageCortex {
               let lastWord = null;
               for (let i = 0; i < 6; i++) {
                 let w = '';
-                try { w = cluster.emitWordDirect({}) || ''; } catch { w = ''; }
+                // gradeGate: chat emission is grade-vocab-constrained so
+                // persona/dev/consciousness-corpus words can't win argmax
+                // in an early-grade reply (corpus-bleed fix 2026-07-10).
+                try { w = cluster.emitWordDirect({ gradeGate: true }) || ''; } catch { w = ''; }
                 if (!w) break;
                 const lw = String(w).toLowerCase().trim();
                 if (!lw) break;
@@ -2333,6 +2336,10 @@ export class LanguageCortex {
                 topK: _topK,
                 coherenceCandidates: 3,
                 coherenceFloor: _chatCohFloor,
+                // grade-vocab gate: chat reply stays in developmentally-
+                // cleared vocabulary (blocks corpus-bleed). Chat-only —
+                // gate/probe compose calls never set this.
+                gradeGate: true,
               });
               // Gate relaxed from >= 2 to >= 1 while structure
               // training matures. A single emitted word is still a
@@ -2372,6 +2379,7 @@ export class LanguageCortex {
                         temperature: Number(_temp.toFixed(2)),
                         topK: _topK,
                         coherenceCandidates: 2,
+                        gradeGate: true,
                       });
                     } catch { cont = null; }
                     if (!cont || !Array.isArray(cont.words) || cont.words.length < 1) break;

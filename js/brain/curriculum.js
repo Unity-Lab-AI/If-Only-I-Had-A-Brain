@@ -8515,6 +8515,70 @@ export class Curriculum {
    * so no single subject races ahead while the others are still at K.
    * Stops when every subject is either at PhD or has a failing gate.
    */
+  /**
+   * Build + install the emission allow-set on the cluster from the
+   * vocabulary the CURRICULUM has taught: every TRAIN_BANKS question +
+   * answer token (all cells/grades), the K_VOCABULARY definition-seed
+   * list, and the runtime taught-sets (_vocabTaughtSet,
+   * _definitionTaughtWords, _emissionTaughtWords_<subject>). Union of
+   * these = the words Unity has been exposed to by teaching. It
+   * deliberately EXCLUDES the persona/dev/consciousness/academic corpus
+   * that entered her dictionary via chat/persona/dream training — those
+   * are the tokens that bled into early-grade emission. Function words +
+   * terminators are gate-exempt in emitWordDirect, so grammatical glue
+   * never needs to be in this set. Keyed off taught vocab, NOT a grade
+   * gate: emission is limited to what she's learned, with no bar to pass.
+   * Idempotent + cheap; safe to call at boot + on grade advance.
+   */
+  async _refreshEmissionAllowedVocab() {
+    const cluster = this.cluster;
+    if (!cluster || typeof cluster.setEmissionAllowedVocab !== 'function') return 0;
+    const allow = new Set();
+    const addTok = (s) => {
+      if (typeof s !== 'string' || !s) return;
+      // split on non-letters; keep alphabetic tokens (contractions kept
+      // whole via the apostrophe class) so "don't"/"i'm" survive intact.
+      for (const t of s.toLowerCase().split(/[^a-z']+/)) {
+        if (t && /[a-z]/.test(t)) allow.add(t);
+      }
+    };
+    // 1. Every TRAIN_BANKS question + answer across all cells (the
+    //    curriculum's own held-out-distinct teaching corpus).
+    try {
+      for (const cellKey of Object.keys(TRAIN_BANKS || {})) {
+        const bank = TRAIN_BANKS[cellKey];
+        if (!Array.isArray(bank)) continue;
+        for (const e of bank) {
+          if (!e) continue;
+          addTok(e.question || e.q || '');
+          addTok(e.expectedAnswer || e.a || '');
+          if (Array.isArray(e.expected)) for (const x of e.expected) addTok(x);
+        }
+      }
+    } catch { /* non-fatal */ }
+    // 2. K_VOCABULARY definition-seed list (dynamic import — matches how
+    //    the rest of the curriculum loads it).
+    try {
+      const { K_VOCABULARY } = await import('./k-vocabulary.js');
+      if (Array.isArray(K_VOCABULARY)) for (const w of K_VOCABULARY) addTok(w);
+    } catch { /* non-fatal — TRAIN_BANKS alone still blocks the bleed */ }
+    // 3. Runtime taught-sets — grows the allow-set as she actually
+    //    learns more (chat learnWord of grade-appropriate words, per-cell
+    //    emission/definition teaching). Keeps it "trained vocab", live.
+    try {
+      if (this._vocabTaughtSet instanceof Set) for (const w of this._vocabTaughtSet) addTok(w);
+      if (this._definitionTaughtWords instanceof Set) for (const w of this._definitionTaughtWords) addTok(w);
+      for (const k of Object.keys(cluster)) {
+        if (k.startsWith('_emissionTaughtWords_') && cluster[k] instanceof Set) {
+          for (const w of cluster[k]) addTok(w);
+        }
+      }
+    } catch { /* non-fatal */ }
+    const size = cluster.setEmissionAllowedVocab(allow);
+    this._hb(`[Curriculum] emission allow-set installed — ${size} taught tokens eligible for chat/inner-voice argmax (persona/dev/consciousness corpus excluded; corpus-bleed gate ACTIVE).`);
+    return size;
+  }
+
   async runAllSubjects(corpora, opts = {}) {
     const cluster = this.cluster;
     if (!cluster) return { reached: {}, passed: {}, failed: {} };
@@ -8522,6 +8586,17 @@ export class Curriculum {
       cluster.grades = { ela: 'pre-K', math: 'pre-K', science: 'pre-K', social: 'pre-K', art: 'pre-K' };
     }
     if (corpora) this._buildCtx(corpora, opts);
+    // Populate the emission grade-vocab allow-set (see cluster
+    // setEmissionAllowedVocab + emitWordDirect gate). This is the
+    // ACTIVATION of the corpus-bleed fix: constrains chat/inner-voice
+    // emission to the vocabulary the CURRICULUM has taught her, so the
+    // persona/dev/consciousness corpus (python/sentient/lover/worship/
+    // quantum...) that Hebbian-bled into her word buckets can't win an
+    // argmax in her spoken voice. It is keyed off TAUGHT vocab, NOT a
+    // grade-pass — she says words she's been taught, no gate to clear.
+    try { await this._refreshEmissionAllowedVocab(); } catch (err) {
+      console.warn('[Curriculum] emission allow-set build failed (bleed gate stays OFF, safe):', err?.message || err);
+    }
 
     const passed = {};
     const failed = {};
@@ -9392,8 +9467,21 @@ export class Curriculum {
   async _pregateEnrichment(cellKey, opts = {}) {
     if (!cellKey) return;
     this._pregateCellsDone = this._pregateCellsDone || new Set();
+    // TU.24-FIX — persistent taught-word set + per-cell vocab guard.
+    // Root cause of the science 7M-event runaway: EXAM-VOCAB-TEACH ran
+    // on EVERY gate entry, and the words it taught never registered
+    // where `_trainedVocabularySet` reads, so `examVocabCoverage`
+    // reported the SAME words missing forever → infinite re-teach with
+    // ~zero net learning (matrixDrivenPct stuck at 3%). `_vocabTaughtSet`
+    // records what was actually taught (unioned into the trained set by
+    // `_trainedVocabularySet` so the audit clears); `_pregateVocabDone`
+    // caps EXAM-VOCAB-TEACH to ONCE per cell per session. Teach once,
+    // register, advance — we do NOT chase A+ coverage. She is what she is.
+    this._vocabTaughtSet = this._vocabTaughtSet || new Set();
+    this._pregateVocabDone = this._pregateVocabDone || new Set();
 
-    // VOCAB-TEACH runs on EVERY gate entry (not just first). The
+    // VOCAB-TEACH now runs ONCE per cell per session (was: every gate
+    // entry). The
     // original `_pregateCellsDone` guard below wraps the structure-
     // teach path (which is expensive and re-doing it across retries
     // produces destructive interference) — but missing-exam-word
@@ -9403,7 +9491,9 @@ export class Curriculum {
     // all the vocab by fuckng adding the words to the learned
     // words!!!"*. The prior wrap meant retry N could not pick up
     // words that retry N-1 failed to teach. Lifted out of the guard.
-    try {
+    if (opts.force || !this._pregateVocabDone.has(cellKey)) {
+     this._pregateVocabDone.add(cellKey);
+     try {
       this._auditExamVocabulary(cellKey);
       const trained = this._trainedVocabularySet(cellKey);
       const report = examVocabCoverage(cellKey, trained);
@@ -9420,6 +9510,11 @@ export class Curriculum {
             const slice = words.slice(i, i + CHUNK);
             try {
               await this._teachVocabList(slice, ctx, { reps });
+              // Register every taught word so `_trainedVocabularySet`
+              // counts it and the next coverage audit reports it trained
+              // (stops the re-teach loop). Store lowercased to match the
+              // token form `examVocabCoverage` checks.
+              for (const w of slice) this._vocabTaughtSet.add(String(w).toLowerCase());
             } catch (err) {
               console.warn(`[Curriculum][${cellKey}] EXAM-VOCAB-TEACH chunk ${i/CHUNK | 0} failed:`, err?.message || err);
             }
@@ -9431,8 +9526,9 @@ export class Curriculum {
           this._auditExamVocabulary(cellKey);
         }
       }
-    } catch (err) {
+     } catch (err) {
       console.warn(`[Curriculum][${cellKey}] exam-vocab teach failed:`, err?.message || err);
+     }
     }
 
     // Per-session per-cell guard — structure-teach can be minutes of

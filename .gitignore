@@ -212,3 +212,14 @@ server/.force-fresh
 server/.last-boot-reason.json
 server/resource-config.json
 server/auto-advance.json
+
+# session test artifacts + runtime state (never committed) 2026-07-10
+server/shot-*.png
+server/*-test.mp3
+server/vox-*-test.mp3
+server/tts-test.mp3
+server/vox-k-test.mp3
+selfie-test.html
+scripts/patch-*.py
+server/visual-memory-v2.json
+server/visual-memory*.json
