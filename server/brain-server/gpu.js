@@ -1634,9 +1634,24 @@ const SERVER_GPU_MIXIN = {
       // → CPU fallback. 45s + the per-matrix retry in initGpu means a transient
       // failure recovers quickly and a truly-gone donor is detected in ~45s, not
       // 3 minutes. Tunable via DREAM_SPARSE_UPLOAD_TIMEOUT_MS.
-      const timeoutMs = Number(process.env.DREAM_SPARSE_UPLOAD_TIMEOUT_MS) > 0
-        ? Number(process.env.DREAM_SPARSE_UPLOAD_TIMEOUT_MS)
-        : 45_000;
+      // Size-scaled upload timeout. A flat 45s cannot cover a multi-GB matrix
+      // on a paced link (the per-chunk pacing below can legally spend 150s on
+      // ONE chunk) — the flat deadline then killed uploads that were draining
+      // fine, and the retry loop re-opened the reconnect churn at full brain
+      // scale. Scale the deadline to the payload at a conservative assumed
+      // throughput (DREAM_UPLOAD_MIN_MBPS, default 4 MB/s) + 30s margin,
+      // capped (DREAM_SPARSE_UPLOAD_TIMEOUT_MAX_MS, default 15 min); an
+      // explicit DREAM_SPARSE_UPLOAD_TIMEOUT_MS still wins outright. A truly
+      // dead link still dies: pacing bails on close, and a stalled-but-open
+      // socket hits the scaled deadline.
+      const _envTimeout = Number(process.env.DREAM_SPARSE_UPLOAD_TIMEOUT_MS);
+      const _minMBps = Number(process.env.DREAM_UPLOAD_MIN_MBPS) > 0
+        ? Number(process.env.DREAM_UPLOAD_MIN_MBPS) : 4;
+      const _payloadBytes = values.byteLength + colIdx.byteLength + rowPtr.byteLength;
+      const _scaledMs = Math.ceil((_payloadBytes / (_minMBps * 1048576)) * 1000) + 30_000;
+      const _capMs = Number(process.env.DREAM_SPARSE_UPLOAD_TIMEOUT_MAX_MS) > 0
+        ? Number(process.env.DREAM_SPARSE_UPLOAD_TIMEOUT_MAX_MS) : 900_000;
+      const timeoutMs = _envTimeout > 0 ? _envTimeout : Math.min(_capMs, Math.max(45_000, _scaledMs));
       const timeout = setTimeout(() => {
         if (this._gpuSparsePending && this._gpuSparsePending.has(reqId)) {
           this._gpuSparsePending.delete(reqId);
