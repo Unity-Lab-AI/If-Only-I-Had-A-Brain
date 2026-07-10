@@ -214,6 +214,30 @@ four gates:
 
 ---
 
+**SE.14 — GROUNDED IMPRESSIONS + FAVORITE DRAWS + BLEND HOLD (SEE.5-6 + DRAW.11, 2026-07-09).** Gee: 1-in-20
+frames were drawings, the rest blocky multi-tone fields — "wiill unity be able to make this appear as
+something at some point of is she just randomly tossing variables at the equations?" Answer: the pure de-novo
+field is deterministic (semantic state -> wavelet band energies), NOT random — but structurally
+non-representational: no word->appearance mapping exists in that path, so it could never converge to a picture
+on its own. Three fixes route abstract thoughts toward things she has actually SEEN:
+- **SEE.5 percept-anchored impressions** (`server/brain-server/chat.js` `_imagineTick`) — before a pure
+  thought-blend publishes, the thought's content tokens are GloVe-cosine matched against her seen-concept
+  store (bounded 60-key sample, threshold 0.32); a hit morphs the stored memory field toward the mood field
+  MEMORY-DOMINANT (t=0.30-0.50, detail-gated >=150). Label `impression:<thoughtToken>~<seenConcept>`. An
+  abstract thought now inherits real visual structure from the nearest thing her eyes have grounded — and
+  impressions get better as the store grows.
+- **DRAW.11 favorite-subject fallback** — post shape-age, a schema-less abstract thought ended the drawing
+  entirely (the 300bd0b shape-stack kill), so her drawings nearly vanished as her think-stream went abstract.
+  Now 50% of those cases she draws a FAVORITE instead: a concept from her own practice map (or seen store),
+  run through the same developmental composer. Label prefix `canvas:fav:` — deliberately never matches the
+  DRAW.10 `canvas:scene:` realization hook.
+- **SEE.6 blend hold** — grounded frames (seen / recall / canvas / dream-mix / impression / image-preview)
+  stamp `_lastGroundedEyeAt`; a PURE thought-blend or sem-state field cannot replace a grounded frame on the
+  public viewer for `DREAM_EYE_BLEND_HOLD_MS` (45s default). She still imagines internally every tick (ring +
+  sem injection untouched) — only the shared snapshot favors frames that look like something.
+
+---
+
 ## The Sensory AI Provider — 4-Level Priority
 
 `js/brain/peripherals/ai-providers.js` exposes `SensoryAIProviders` with three methods Unity's brain calls at the sensory boundary:

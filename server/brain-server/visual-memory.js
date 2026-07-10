@@ -225,6 +225,7 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
       || !this._vmLastEyeSwapAt || (now - this._vmLastEyeSwapAt) > 60000;
     if (_eyeSwapOk) try {
       this._vmLastEyeSwapAt = now;
+      this._lastGroundedEyeAt = now;   // SEE.6 — a seen frame is a grounded frame
       this._mindsEyeJson = JSON.stringify({
         type: 'mindsEye', rec, terms: rec.equation_count || 0,
         source: (fromCamera ? 'seen-camera' : 'seen') + (tokens.length ? ':' + tokens[0] : ''),

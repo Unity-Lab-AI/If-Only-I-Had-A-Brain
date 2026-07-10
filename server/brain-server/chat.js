@@ -143,6 +143,7 @@ const SERVER_CHAT_MIXIN = {
                 this.cortexCluster.injectEmbeddingToRegion('sem', percept, 0.12);
               }
               // show what she pictured on the public Mind's-Eye viewer
+              this._lastGroundedEyeAt = Date.now();   // SEE.6 — previews are grounded frames
               this._mindsEyeJson = JSON.stringify({
                 type: 'mindsEye', rec, terms: rec.equation_count || 0,
                 source: 'image-preview', at: Date.now(),
@@ -1024,7 +1025,35 @@ const SERVER_CHAT_MIXIN = {
               if (m && this._recDetail(m) >= 200) { rec = m; _seedSource = 'canvas:dream-mix:' + keys[i1] + '+' + keys[i2]; }
             } catch { /* experiment best-effort */ }
           }
-          const strokes = rec ? null : this._sketchFromState(_seedText);
+          let strokes = rec ? null : this._sketchFromState(_seedText);
+          // DRAW.11 — FAVORITE-SUBJECT fallback. An abstract thought with no
+          // schema used to end the drawing entirely (post shape-age it falls
+          // to the colored field) — so as her think-stream went abstract her
+          // drawings VANISHED from the viewer. A real kid with a sketchbook
+          // doesn't stop drawing because her thought is abstract: she draws a
+          // FAVORITE — a subject she has practiced or seen. Picked from her
+          // own practiced concepts (or seen-concept store), run through the
+          // same developmental composer; the label carries a fav: marker (and
+          // deliberately never matches the scene-realization hook prefix).
+          if (!rec && (!strokes || !strokes.length) && Math.random() < 0.5) {
+            try {
+              let fav = null;
+              if (this._drawPractice instanceof Map && this._drawPractice.size > 0) {
+                const ks = Array.from(this._drawPractice.keys()).filter(k => k && k !== 'doodle' && k !== 'seen');
+                if (ks.length) fav = ks[Math.floor(Math.random() * ks.length)];
+              }
+              if (!fav && this._visualMemory && this._visualMemory.size > 0) {
+                const ks = Array.from(this._visualMemory.keys());
+                fav = ks[Math.floor(Math.random() * ks.length)];
+              }
+              if (fav) {
+                strokes = this._sketchFromState(fav);
+                if (strokes && strokes.length && this._lastSketchLabel) {
+                  this._lastSketchLabel = this._lastSketchLabel.replace(/^canvas:/, 'canvas:fav:');
+                }
+              }
+            } catch { /* favorite best-effort — field below */ }
+          }
           if (strokes && strokes.length) {
             // DRAW.8 — the canvas grows with her grade (K=96 → adult=512)
             rec = this.mindSpace.sketch(strokes, { maxSide: this._drawCanvasSide(), mood: { arousal: this.arousal, valence: this.valence } });
@@ -1048,6 +1077,52 @@ const SERVER_CHAT_MIXIN = {
           mood: { arousal: this.arousal, valence: this.valence },
           priority: 0.25, value: 0.4,
         });
+        // SEE.5 — PERCEPT-ANCHORED IMPRESSION. The pure de-novo field hashes
+        // her semantic state into wavelet band energies — deterministic but
+        // structurally NON-representational: no word→appearance mapping exists
+        // in that path, so it can never converge to a picture on its own.
+        // Anchor it instead: find the stored SEEN percept whose concept is
+        // nearest (GloVe cosine) to the thought's content tokens and morph the
+        // memory toward the mood field (memory-dominant). Abstract thoughts
+        // inherit real visual structure from what her eyes have grounded, and
+        // the impressions get BETTER as her seen-store grows.
+        try {
+          if (rec && this._visualMemory && this._visualMemory.size > 0
+              && this.sharedEmbeddings && typeof this.sharedEmbeddings.getEmbedding === 'function'
+              && typeof this.mindSpace.morph === 'function') {
+            const _STOP = new Set(['the','a','an','and','or','but','of','in','on','at','to','is','it','its','was','are','be','this','that','with','for','as','her','his','my','your','she','he','you','we','me','him','them','they','am','do','so','up','by','if','not','no','yes','all','out','off','now','then','here','there','what','why','how','who','where','when','said','saying','gonna','wanna']);
+            const _iToks = String(_seedText || '').toLowerCase().split(/[^a-z]+/)
+              .filter(w => w.length >= 3 && !_STOP.has(w)).slice(0, 4);
+            if (_iToks.length > 0) {
+              const _iCos = (a, b) => { let d = 0, na = 0, nb = 0; const n = Math.min(a.length, b.length); for (let i = 0; i < n; i++) { d += a[i] * b[i]; na += a[i] * a[i]; nb += b[i] * b[i]; } const dn = Math.sqrt(na) * Math.sqrt(nb); return dn > 0 ? d / dn : 0; };
+              const _iKeys = Array.from(this._visualMemory.keys());
+              const _iPOOL = 60;
+              const _iSample = _iKeys.length <= _iPOOL ? _iKeys : Array.from({ length: _iPOOL }, () => _iKeys[Math.floor(Math.random() * _iKeys.length)]);
+              let _iBest = null, _iBestTok = null, _iBestS = 0.32;
+              for (const k of _iSample) {
+                if (_iToks.includes(k)) { _iBest = k; _iBestTok = k; _iBestS = 1; break; }
+                const kv = this.sharedEmbeddings.getEmbedding(k);
+                if (!kv) continue;
+                for (const t of _iToks) {
+                  const tv = this.sharedEmbeddings.getEmbedding(t);
+                  if (!tv) continue;
+                  const s = _iCos(tv, kv);
+                  if (s > _iBestS) { _iBestS = s; _iBest = k; _iBestTok = t; }
+                }
+              }
+              if (_iBest) {
+                const _iMem = this._visualMemory.get(_iBest);
+                if (_iMem && _iMem.rec) {
+                  const m = this.mindSpace.morph(_iMem.rec, rec, 0.30 + Math.random() * 0.2);
+                  if (m && (typeof this._recDetail !== 'function' || this._recDetail(m) >= 150)) {
+                    rec = m;
+                    _seedSource = 'impression:' + _iBestTok + '~' + _iBest;
+                  }
+                }
+              }
+            }
+          }
+        } catch { /* impression anchor best-effort — the pure field stands */ }
       }
       if (!rec) return;
       const percept = this.mindSpace.describe(rec);
@@ -1073,20 +1148,35 @@ const SERVER_CHAT_MIXIN = {
       // (GET /minds-eye.json) and reconstruct the image client-side. One compute,
       // one shared snapshot — N viewers cost nothing extra (the dashboard-public
       // model). The rec is sparse wavelet coeffs for a ≤48² plane = a few KB.
-      try {
-        this._mindsEyeJson = JSON.stringify({
-          type: 'mindsEye', rec,
-          terms: rec.equation_count || 0,
-          source: this._lastImagineRec.source,
-          at: now,
-        });
-      } catch { /* non-fatal */ }
-      // dashboard mind's-eye indicator
-      if (this.clients && this.clients.size > 0) {
-        const payload = JSON.stringify({ type: 'imagine', terms: rec.equation_count || 0,
-          source: this._lastImagineRec.source, ts: now });
-        for (const [ws] of this.clients) {
-          if (ws.readyState === ws.OPEN) { try { ws.send(payload); } catch { /* non-fatal */ } }
+      // SEE.6 — BLEND HOLD. Grounded frames (recalls / drawings / favorites /
+      // impressions / dream-mixes / seen) stamp _lastGroundedEyeAt; a PURE
+      // thought-blend or sem-state field may not shove a grounded frame off
+      // the public viewer for DREAM_EYE_BLEND_HOLD_MS (default 45s). She
+      // still imagines every tick (the ring + sem injection above are
+      // untouched) — only the shared viewer snapshot favors frames that LOOK
+      // like something over raw texture.
+      const _groundedEye = _seedSource !== 'thought-blend' && _seedSource !== 'sem-state';
+      if (_groundedEye) this._lastGroundedEyeAt = now;
+      const _blendHoldMs = Number(process.env.DREAM_EYE_BLEND_HOLD_MS) > 0
+        ? Number(process.env.DREAM_EYE_BLEND_HOLD_MS) : 45000;
+      const _holdViewer = !_groundedEye && !!this._mindsEyeJson
+        && !!this._lastGroundedEyeAt && (now - this._lastGroundedEyeAt) < _blendHoldMs;
+      if (!_holdViewer) {
+        try {
+          this._mindsEyeJson = JSON.stringify({
+            type: 'mindsEye', rec,
+            terms: rec.equation_count || 0,
+            source: this._lastImagineRec.source,
+            at: now,
+          });
+        } catch { /* non-fatal */ }
+        // dashboard mind's-eye indicator
+        if (this.clients && this.clients.size > 0) {
+          const payload = JSON.stringify({ type: 'imagine', terms: rec.equation_count || 0,
+            source: this._lastImagineRec.source, ts: now });
+          for (const [ws] of this.clients) {
+            if (ws.readyState === ws.OPEN) { try { ws.send(payload); } catch { /* non-fatal */ } }
+          }
         }
       }
     } catch { /* imagination is best-effort — never fatal to the tick */ }
