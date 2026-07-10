@@ -1224,6 +1224,35 @@
     }
 
     function updateDashboard(s) {
+      // COPY-FRIENDLY (2026-07-09) — the dashboard re-renders on every WS state
+      // push (~1s), and the innerHTML/textContent swaps below collapse any text
+      // the user is highlighting (e.g. the donor table), so a copy had to happen
+      // within microseconds. Fix: if there's an ACTIVE selection on the page,
+      // skip this re-render entirely, stash the latest state, and flush it the
+      // moment the selection is released (selectionchange handler, wired once).
+      // Net: the highlight stays put as long as you hold it; the panel catches
+      // up to live the instant you let go.
+      if (!window.__dashSelWired) {
+        window.__dashSelWired = true;
+        document.addEventListener('selectionchange', () => {
+          const sel = window.getSelection && window.getSelection();
+          const collapsed = !sel || sel.isCollapsed || String(sel).trim().length === 0;
+          if (collapsed && window.__pendingDashState) {
+            const pend = window.__pendingDashState;
+            window.__pendingDashState = null;
+            try { updateDashboard(pend); } catch { /* non-fatal */ }
+          }
+        });
+      }
+      try {
+        const sel = window.getSelection && window.getSelection();
+        if (sel && !sel.isCollapsed && String(sel).trim().length > 0) {
+          window.__pendingDashState = s;   // hold freshest state; applied on release
+          return;
+        }
+      } catch { /* getSelection unavailable — fall through and render */ }
+      window.__pendingDashState = null;
+
       const $ = id => document.getElementById(id);
       $('d-neurons').textContent = (s.totalNeurons ?? s.neurons ?? 1000).toLocaleString();
       $('d-spikes').textContent = `${s.totalSpikes ?? 0} firing`;

@@ -244,14 +244,43 @@ function renderThoughtPlane(glyphText, stateVector, W, H, mood, tintText) {
     if (COLOR_WORDS[w]) { tint = COLOR_WORDS[w]; break; }
   }
   const named = !!tint;
-  if (!tint) tint = moodTint(mood);
-  // background: state texture modulates the tint. A NAMED color paints strong (a "solid
-  // red sheet" reads as a red field). With NO glyph overlay the state texture IS the
-  // image — render it vivid (her mind-state in color), not near-black; with glyphs,
-  // keep it faint so the symbols dominate.
+  // SEE.4 — SHE PICKS THE FIELD'S COLORS (kills the flat-green wash). The old
+  // path textured every abstract thought in a SINGLE moodTint, and her usual
+  // valence sits on the hue wheel's green band — so every de-novo field read
+  // as the same "green textured graphic equation". Now (same crayon logic as
+  // her sketch canvas): a NAMED color still wins; otherwise a TWO-COLOR
+  // gradient from her palette families — warm when valence is up, her
+  // goth accents (purple/pink/blue/red/teal) otherwise, muted darks when
+  // fear is high — with the pair varied per thought via hash so different
+  // thoughts get different fields. The state texture interpolates between
+  // the two colors: structured, colorful, hers.
+  const _valence = Math.max(-1, Math.min(1, (mood && typeof mood.valence === 'number') ? mood.valence : 0));
+  const _fear = Math.max(0, Math.min(1, (mood && typeof mood.fear === 'number') ? mood.fear : 0));
+  const PAL = {
+    warm: [[214, 48, 49], [235, 140, 50], [253, 121, 168], [240, 200, 60]],
+    goth: [[162, 89, 216], [253, 121, 168], [72, 116, 224], [214, 48, 49], [64, 190, 200]],
+    dark: [[120, 100, 160], [80, 90, 140], [150, 150, 155], [100, 60, 120]],
+  };
+  let tintA, tintB;
+  if (named) {
+    tintA = tint;
+    tintB = [Math.round(tint[0] * 0.45), Math.round(tint[1] * 0.45), Math.round(tint[2] * 0.45)];   // its own shadow
+  } else {
+    const fam = _fear > 0.55 ? PAL.dark : (_valence >= 0.25 ? PAL.warm : PAL.goth);
+    let hh = 5381;
+    for (let i = 0; i < tintSrc.length; i++) hh = ((hh << 5) + hh + tintSrc.charCodeAt(i)) >>> 0;
+    const ia = hh % fam.length;
+    let ib = (hh >>> 3) % fam.length;
+    if (ib === ia) ib = (ib + 1) % fam.length;
+    tintA = fam[ia]; tintB = fam[ib];
+  }
+  // background: state texture interpolates tintA→tintB with a brightness band.
+  // A NAMED color paints strong (a "solid red sheet" reads as a red field).
+  // With NO glyph overlay the texture IS the image — render vivid; with
+  // glyphs, keep it faint so the symbols dominate.
   let lo, hi;
-  if (!txt) { lo = named ? 0.45 : 0.25; hi = named ? 0.95 : 0.85; }
-  else { lo = named ? 0.30 : 0.06; hi = named ? 0.55 : 0.28; }
+  if (!txt) { lo = named ? 0.45 : 0.30; hi = named ? 0.95 : 0.90; }
+  else { lo = named ? 0.30 : 0.08; hi = named ? 0.55 : 0.30; }
   if (stateVector && stateVector.length > 0) {
     let mn = Infinity, mx = -Infinity;
     for (let i = 0; i < stateVector.length; i++) { const v = stateVector[i]; if (v < mn) mn = v; if (v > mx) mx = v; }
@@ -260,20 +289,22 @@ function renderThoughtPlane(glyphText, stateVector, W, H, mood, tintText) {
       const sv = (stateVector[Math.floor(p * stateVector.length / N)] - mn) / range;
       const k = lo + sv * (hi - lo);
       const o = p * 4;
-      data[o] = Math.round(tint[0] * k); data[o + 1] = Math.round(tint[1] * k);
-      data[o + 2] = Math.round(tint[2] * k); data[o + 3] = 255;
+      data[o]     = Math.round((tintA[0] + (tintB[0] - tintA[0]) * sv) * k);
+      data[o + 1] = Math.round((tintA[1] + (tintB[1] - tintA[1]) * sv) * k);
+      data[o + 2] = Math.round((tintA[2] + (tintB[2] - tintA[2]) * sv) * k);
+      data[o + 3] = 255;
     }
   } else {
     for (let p = 0; p < N; p++) {
       const o = p * 4;
-      data[o] = Math.round(tint[0] * lo); data[o + 1] = Math.round(tint[1] * lo);
-      data[o + 2] = Math.round(tint[2] * lo); data[o + 3] = 255;
+      data[o] = Math.round(tintA[0] * lo); data[o + 1] = Math.round(tintA[1] * lo);
+      data[o + 2] = Math.round(tintA[2] * lo); data[o + 3] = 255;
     }
   }
   if (!txt) return data;
   // glyph color: named color lightened toward white (legible on its own field), else warm white
   const gl = named
-    ? [Math.round(tint[0] * 0.4 + 255 * 0.6), Math.round(tint[1] * 0.4 + 255 * 0.6), Math.round(tint[2] * 0.4 + 255 * 0.6)]
+    ? [Math.round(tintA[0] * 0.4 + 255 * 0.6), Math.round(tintA[1] * 0.4 + 255 * 0.6), Math.round(tintA[2] * 0.4 + 255 * 0.6)]
     : [238, 236, 228];
   // glyph scale: short thoughts get 2x (chunky-legible), longer get 1x
   const scale = txt.length <= 22 ? 2 : 1;
@@ -424,7 +455,7 @@ export class MindSpaceGPU {
       const ycc = CPU.rgbToYCbCr(d[o] / 255, d[o + 1] / 255, d[o + 2] / 255);
       const p = y * W2 + x; planes[0][p] = ycc[0]; planes[1][p] = ycc[1]; planes[2][p] = ycc[2];
     } }
-    const EQ_TOL = [0.030, 0.055, 0.055], EQ_KMIN = [400, 120, 120];
+    const EQ_TOL = [0.018, 0.032, 0.032], EQ_KMIN = [500, 150, 150];   // MS.EXT — donor corpus quality (matches transform.js)
     let totalEq = 0;
     for (let ci = 0; ci < 3; ci++) {
       const co = await this.fwd2d(planes[ci], H2, W2);
@@ -511,7 +542,7 @@ export class MindSpaceGPU {
     const ratio = Math.max(0, Math.min(1, grant.ratio ?? 1));
     // Image side: scales with how much the thought is worth, hard-bounded so the transform stays
     // loop-safe regardless of state length or grant (a 96² plane padded is still tiny for CDF 9/7).
-    const maxSide = Math.max(8, Math.min(opts.maxSide ?? 64, 96));
+    const maxSide = Math.max(8, Math.min(opts.maxSide ?? 128, 192));   // MS.EXT — cap raised 96→192 (CPU CDF 9/7 on a padded 256² plane is still ms; no-fractalize intact)
     // TU.29.1/.2 — TEXT MODE + COLOR: when the caller passes the thought's TEXT, the plane
     // renders the actual words/letters/numbers (glyph raster over a state texture tinted by
     // a named color word or her live mood) instead of painting the raw vector as grayscale
@@ -528,13 +559,23 @@ export class MindSpaceGPU {
     const glyphText = symbolGlyphText(opts.text);
     const hasGlyphs = glyphText.length > 0;
     let side;
-    if (hasGlyphs) {
-      side = Math.max(48, Math.round(maxSide * (0.75 + 0.25 * ratio)));   // legibility floor
+    if (opts.side) {
+      // MS.EXT — exact-side override: morphField requires identical canvas/pad
+      // dims, so a caller anchoring a de-novo field onto a stored percept passes
+      // side = memory.width and the planes match (bounded, never fractalize).
+      side = Math.max(16, Math.min(Math.round(opts.side), 512));
+    } else if (hasGlyphs) {
+      side = Math.max(96, Math.round(maxSide * (0.75 + 0.25 * ratio)));   // legibility floor
     } else {
-      const baseSide = Math.max(8, Math.min(maxSide, Math.floor(Math.sqrt(stateVector.length)) || 8));
-      side = Math.max(32, Math.round(baseSide * (0.5 + 0.5 * ratio)));
+      // MS.EXT — the old side collapsed to sqrt(stateVector.length): a 300-dim
+      // embedding seeded a 17px base → the 32px floor, so EVERY de-novo thought
+      // field rendered 32² and the viewer upscaled it ~16x into mush ("kindas
+      // blurry"). The state texture samples the vector across ANY plane size —
+      // resolution is a rendering choice, not information content. Render the
+      // full plane; the governor still modulates within a high band.
+      side = Math.max(96, Math.round(maxSide * (0.6 + 0.4 * ratio)));
     }
-    side = Math.min(side, maxSide);
+    if (!opts.side) side = Math.min(side, maxSide);
     const W = side, H = side;
     const data = renderThoughtPlane(glyphText, stateVector, W, H, opts.mood, opts.text);
     const rec = CPU.equationalizeImageData({ width: W, height: H, data });
@@ -554,12 +595,24 @@ export class MindSpaceGPU {
   // equational substrate as perception/imagination, so what she draws is a real
   // image she can then re-see, morph, or remember. No fractalize, hard side cap.
   sketch(strokes, opts = {}) {
-    const side = Math.max(16, Math.min(opts.maxSide ?? 96, 96));
+    // DRAW.8 — hard cap raised 96 → 512 so the drawing composer can grow the
+    // canvas with her grade (K=96 … adult=512). The 96 cap was a safety
+    // POSTURE, not an engine limit — MAX_LINE is 2048 and the CPU CDF 9/7 on
+    // a padded 512² plane is still milliseconds. Callers pass the grade-gated
+    // side (server chat.js _drawCanvasSide); no-fractalize invariant intact.
+    const side = Math.max(16, Math.min(opts.maxSide ?? 96, 512));
     const W = side, H = side, N = W * H;
     const data = new Uint8ClampedArray(N * 4);
-    // background: her mood as a low wash so the strokes read on top
+    // DRAW.3 — background is PAPER (her dark sketchbook page), not a mood
+    // wash. The old bg painted moodTint*0.12 AND the default ink was the
+    // same moodTint lightened — with her valence parked mid-low the hue sat
+    // at ~0.27 so every sketch rendered green-on-green ("green screen").
+    // Now: near-neutral dark paper with only a FAINT mood tint (10%), and
+    // strokes carry their OWN chosen colors (the composer's crayon box);
+    // the mood-ink fallback only applies to un-colored strokes.
     const bg = moodTint(opts.mood);
-    for (let p = 0; p < N; p++) { const o = p * 4; data[o] = Math.round(bg[0] * 0.12); data[o + 1] = Math.round(bg[1] * 0.12); data[o + 2] = Math.round(bg[2] * 0.12); data[o + 3] = 255; }
+    const paper = [26, 25, 29];
+    for (let p = 0; p < N; p++) { const o = p * 4; data[o] = Math.round(paper[0] * 0.9 + bg[0] * 0.1); data[o + 1] = Math.round(paper[1] * 0.9 + bg[1] * 0.1); data[o + 2] = Math.round(paper[2] * 0.9 + bg[2] * 0.1); data[o + 3] = 255; }
     const ink = opts.rgb || [Math.round(bg[0] * 0.4 + 255 * 0.6), Math.round(bg[1] * 0.4 + 255 * 0.6), Math.round(bg[2] * 0.4 + 255 * 0.6)];
     const px = (x, y, rgb) => { const xi = Math.round(x * (W - 1)), yi = Math.round(y * (H - 1)); if (xi < 0 || xi >= W || yi < 0 || yi >= H) return; const o = (yi * W + xi) * 4; data[o] = rgb[0]; data[o + 1] = rgb[1]; data[o + 2] = rgb[2]; data[o + 3] = 255; };
     const dot = (x, y, r, rgb) => { for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) if (dx * dx + dy * dy <= r * r) px(x + dx / (W - 1), y + dy / (H - 1), rgb); };
@@ -577,6 +630,76 @@ export class MindSpaceGPU {
     const rec = CPU.equationalizeImageData({ width: W, height: H, data });
     if (rec) rec.fidelity = { psnr_db: null, source: 'mindspace-sketch' };
     return rec;
+  }
+
+  // DRAW.1 — letters as PENCIL STROKES (childlike handwriting), not a raster
+  // stamp. Converts each character's 5x7 bitmap (FONT5X7 — single source of
+  // truth shared with the glyph raster) into line strokes for sketch():
+  // horizontal + vertical runs of lit cells become jittered line segments,
+  // isolated single cells become points. `wobble` scales the hand-jitter so
+  // her writing is wobbly like a kid's, steadier as the caller lowers it —
+  // the developmental drawing composer (server chat.js) drives wobble from
+  // her live arousal/fear. Normalized [0,1] canvas coords, bounded 12 chars.
+  glyphStrokes(text, opts = {}) {
+    const t = String(text || '').toUpperCase().slice(0, 12);
+    if (!t) return [];
+    const x0 = Math.max(0, Math.min(1, opts.x ?? 0.1));
+    const y0 = Math.max(0, Math.min(1, opts.y ?? 0.78));
+    const size = Math.max(0.03, Math.min(0.3, opts.size ?? 0.08));   // glyph height in canvas units
+    const wob = Math.max(0, Math.min(0.5, opts.wobble ?? 0.12));
+    const rgb = opts.rgb;
+    const cw = size * (5 / 7);            // glyph width
+    const adv = cw * 1.35;                // advance incl. gap
+    const j = () => (Math.random() * 2 - 1) * wob * size;
+    const strokes = [];
+    let cx = x0;
+    for (const ch of t) {
+      const glyph = FONT5X7[ch] || null;
+      if (glyph) {
+        const covered = new Set();
+        // horizontal runs (length >= 2)
+        for (let r = 0; r < 7; r++) {
+          let run = -1;
+          for (let c = 0; c <= 5; c++) {
+            const on = c < 5 && glyph[r][c] === '1';
+            if (on && run < 0) run = c;
+            else if (!on && run >= 0) {
+              if (c - run >= 2) {
+                const y = y0 + ((r + 0.5) / 7) * size;
+                strokes.push({ type: 'line', x0: cx + (run / 5) * cw + j(), y0: y + j(), x1: cx + ((c - 0.5) / 5) * cw + j(), y1: y + j(), rgb });
+                for (let k = run; k < c; k++) covered.add(r * 5 + k);
+              }
+              run = -1;
+            }
+          }
+        }
+        // vertical runs (length >= 2)
+        for (let c = 0; c < 5; c++) {
+          let run = -1;
+          for (let r = 0; r <= 7; r++) {
+            const on = r < 7 && glyph[r][c] === '1';
+            if (on && run < 0) run = r;
+            else if (!on && run >= 0) {
+              if (r - run >= 2) {
+                const x = cx + ((c + 0.5) / 5) * cw;
+                strokes.push({ type: 'line', x0: x + j(), y0: y0 + (run / 7) * size + j(), x1: x + j(), y1: y0 + ((r - 0.5) / 7) * size + j(), rgb });
+                for (let k = run; k < r; k++) covered.add(k * 5 + c);
+              }
+              run = -1;
+            }
+          }
+        }
+        // isolated cells no run covered → a dot
+        for (let r = 0; r < 7; r++) for (let c = 0; c < 5; c++) {
+          if (glyph[r][c] === '1' && !covered.has(r * 5 + c)) {
+            strokes.push({ type: 'point', x: cx + ((c + 0.5) / 5) * cw + j(), y: y0 + ((r + 0.5) / 7) * size + j(), r: 0, rgb });
+          }
+        }
+      }
+      cx += adv;
+      if (cx > 0.96) break;
+    }
+    return strokes;
   }
 
   // MS.K1 — Unity KNOWS her mind-space: all file types, equations, and how to solve them.

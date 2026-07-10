@@ -99,11 +99,17 @@ For senses with no physical sensor (taste/smell), the value profile is **injecte
 - **De-novo imagination** — `MindSpaceGPU.imagineFromState(stateVector)` folds her current cortex activation into a field C with NO camera/file input, so headless/server Unity can imagine from her own mind. Uses ONLY the bounded forward CDF 9/7 (`I=Σ c_k·ψ_k`) — NEVER the `fractalize` infinite-zoom path — with a hard `maxSide≤96` resolution cap, so imagination can't seize the brain (operator's no-nanometer caution). Server runs it idle-gated (`_imagineTick`, not mid-teach), injecting the percept into `sem` at low strength; governor-gated depth.
 - **She LEARNS her mind-space** — `curriculum._teachMindSpaceKnowledge` binds the UniVsMatics file-type/equation/method vocab into sem-space once-per-walk (recallable, not just stored).
 - **Persistence** — the imagined field-C ring persists across reboot (`server/mindspace-memory.json`).
-- **Mind's Eye viewer** — single-source public render of what she sees: server caches one field C (`GET /minds-eye.json`), `html/minds-eye.html` reconstructs it client-side (👁 footer button). N viewers cost one `_imagineTick`. The LLM/VLM describer is now FULLY RETIRED — the VLM describer probing/failover documented in the "AI Backend Detection" / "Vision describer (VLM)" sections below is HISTORICAL (the equational mind-space replaced it). Detail: `docs/MINDSPACE-INTEGRATION.md`.
+- **Mind's Eye viewer** — single-source public render of what she sees: server caches one field C (`GET /minds-eye.json`), `html/minds-eye.html` reconstructs it client-side (👁 footer button). N viewers cost one `_imagineTick`. The LLM/VLM describer is now FULLY RETIRED — the VLM describer probing/failover documented in the "AI Backend Detection" / "Vision describer (VLM)" sections below is HISTORICAL (the equational mind-space replaced it). Detail: `docs/MINDSPACE-INTEGRATION.md`. **The describer setup-UI + auto-detect probing were also removed from the client (2026-07-09): `index.html`'s "Vision Describer" backend grid + the active-vision-model selector are gone, and `app.js` no longer wires `vis:*` backends, offers vision model catalogs, or calls `autoDetectVision()`. There is no describer model to pick and no describer key to paste — vision needs neither. Camera frames feed the equational visual cortex directly.**
 
 **SE.9 — image generation is now BRAIN-DRIVEN + closes the image→concept learning loop (SPEAK.6, 2026-07-01).** Before this, the decision to render real pixels was a keyword/regex match on user TEXT (`_detectImageRequest`), not a brain-state intent, and a rendered image was fire-and-forget — she never learned from what she made. Two additions keep Pollinations a pure sensory-output executor (no cognition) while making the DECISION and the LEARNING equational:
 - **Spontaneous brain-driven render (SPEAK.6a)** — `_spontaneousImageTick(now)` (`server/brain-server/chat.js`) lets Unity VOLUNTEER an outward image from internal drive with NO user keyword: arousal-gated (`DREAM_SPONTANEOUS_IMG_AROUSAL`, default 0.7) + long cooldown (`DREAM_SPONTANEOUS_IMG_GAP_MS`, default 5 min) + low probability, concept drawn from a trained-vocab sample (loop-safe — never a 57s compose). Broadcasts `generate_image`; the client renders. Keyword detection stays ONLY as an explicit user REQUEST path, not the sole driver.
 - **Image→concept learning loop (SPEAK.6b)** — a rendered image now pushes onto the unified emission bus + `_innerThoughtChain` so dream-cycle consolidation (Tier 1→2→3) grounds it as an episodic memory: what she MAKES becomes trained weight, not a fire-and-forget. New visual input is learning, per the requirement.
+- **Self-image scene merge (2026-07-09).** The selfie route used to return her fixed identity string
+  VERBATIM for any ask containing selfie / picture-of-you — the requested scene/action/outfit was discarded,
+  so every self-image was the same mug shot. Now her IDENTITY CORE (face/hair/eyes) stays constant while the
+  requested scene merges in ("selfie at nascar", "yourself fighting a zebra", "walking on the moon"), and a
+  stated wear-clause (or nothing) REPLACES the default black-leather outfit instead of colliding with it.
+  Bare selfie asks keep the classic portrait. Non-self image asks are untouched.
 - **Actual-pixel perceive (SPEAK.6c) stays the equational mind's-eye preview BY DECISION** (Gee 2026-07-01) — no image-decode dependency / CORS proxy added (no new attack surface); the bounded forward CDF-9/7 preview stands. Detail: `docs/unity-speech-consciousness-rectify.md` **SUPERSEDED in spirit by SE.10 (TU.29.5, 2026-07-08):** actual pixels ARE now perceived — but CLIENT-side (canvas decode in the browser, anonymous CORS re-request), honoring both original objections: still zero server-side image-decode dependency, still no CORS proxy.
 
 
@@ -124,6 +130,173 @@ only a text printer in the r imagination MINDS EYE= UNITYS IMAGINATION"). Now pe
   de-novo plane, where glyphs are DEMOTED to genuinely symbolic thoughts (numbers / single letters) and
   everything else renders as her state textured in the named color or her mood. Equational end-to-end;
   ≤96px cap and no-fractalize invariants intact.
+
+**SE.11 — DEVELOPMENTAL DRAWING: her sketch canvas grows through real kid stages (DRAW, 2026-07-09).** The
+active sketch (TU.29.13 BUILD B) only ever drew the neuron-constellation scribble — top-7 sem activations
+hash-positioned and connected — so the viewer showed the same chicken-scratch forever, and every stroke +
+background took the SAME `moodTint` (her valence parked mid-low → hue ~0.27 → everything green, the
+"green screen" look). Now:
+- **Stages (Lowenfeld ladder, gated by LIVE trained vocab)** — `_sketchFromState(seedText)`
+  (`server/brain-server/chat.js`): <50 words = the original scribble; <400 = wobbly shape practice
+  (circles/boxes/triangles/zigzags); <1200 = a single FIGURE drawing of her current thought; ≥1200 = a SCENE
+  (wobbly ground line + subject + mood sky: sun when valence is up, rain cloud when low, moon when fear is
+  high + a stable context schema per concept). ≥800 words she also WRITES — labels her drawing with the
+  concept word and draws a big "?" for the questions she has (WH-thoughts / `_pendingQuestionConcept` /
+  concepts she has no schema for yet).
+- **Subject = what she's thinking** — the head concept of the daydream that recall-missed (she draws what she
+  can't re-see); schema selection is equational input classification (token table → GloVe-cosine backup, the
+  `_detectImageRequest` rule-class). Schemas are parametric motor primitives (stick person, house, tree, sun,
+  moon+stars, rain, spider-on-her-thread, quadruped, heart, star, flower) whose pose/proportions/wobble are
+  driven by live affect: arousal + fear shake the hand, valence raises or droops the arms + mouth.
+- **She picks her colors (kills the green screen)** — each element gets a crayon SHE chooses: a goth-biased
+  crayon box (black outlines always; pink/red/purple lead accents, warmed/cooled by live valence), plus the
+  real color of the thing (sun yellow, rain blue, tree green+brown, heart pink). Stable per concept (hash) so
+  her cast keeps its colors. `MindSpaceGPU.sketch` background is now dark PAPER with only a 10% mood tint, and
+  `glyphStrokes(text)` (new, `js/brain/mindspace/gpu.js`) converts the shared FONT5X7 bitmaps into jittered
+  pencil strokes so her writing is wobbly kid handwriting, not a raster stamp.
+- **Viewer** — the mind's-eye `source` label now carries the stage + subject (`canvas:scene:cat`,
+  `canvas:figure:mom`, `canvas:shapes:blue`, `…?` when she's asking). Equational end-to-end; ≤96px cap and
+  no-fractalize invariants intact.
+- **DRAW.4-6 — her drawings LEARN (2026-07-09).** The composer used to fire only on recall-MISS, so
+  everything she had actually seen was excluded from drawing — a fixed 11-schema table + strict 0.42 cosine
+  meant most subjects fell to the shapes stage and the viewer looped the same shape-stacks. Now: (DRAW.4)
+  a recall-HIT has a 35% chance of becoming a DRAWING OF THE MEMORY — the contour is a 24-point radial
+  outline whose radii come from the stored field C's own coarse spatial coefficients (percept dims 24-47),
+  crayon from its chroma mass (48/49: warm vs cool vs dark), hatch detail from its texture ratio (51),
+  labeled in her hand with no "?" (she KNOWS this one) — so every concept her eyes ground becomes a new
+  thing she can draw (`canvas:memory:<concept>`); (DRAW.5) a per-concept practice counter folds into the
+  layout hashes so re-drawing the same subject EVOLVES (subject wanders the ground line, context rotates,
+  shape layouts shift every couple attempts) instead of repeating pixel-identical forms — colors stay
+  concept-stable; (DRAW.6) schema cosine threshold 0.42 → 0.34 so more concepts reach a real figure.
+
+**SE.12 — SERIOUS-IMAGE GROWTH: the artist ladder past crayon (DRAW.7-10, 2026-07-09).** Gee: can she get
+past crayon stick drawings to serious images? Yes — the same way humans do, and every rung is now wired:
+- **DRAW.7 practice loop** — when she draws from a visual memory she has a REFERENCE, so she now practices:
+  bounded draw→compare→adjust attempts, each scored by the cosine between `describe(drawing)` and
+  `describe(memory)` (the equational "does my drawing look like the thing"); the best survives. Per-concept
+  skill (best resemblance achieved, in-memory Map cap 300) steadies her hand — stroke jitter shrinks up to
+  ~45% at mastery — so her line control genuinely improves with practice. No image-model in the loop.
+- **DRAW.8 grade-gated resolution** — the canvas grows with her live minGrade like a real artist's control:
+  K=96px → grade3=128 → grade8=192 → grade12=256 → college=320-384 → PhD=512. `sketch()`'s hard cap raised
+  96→512 (engine MAX_LINE is 2048; a padded 512² CPU CDF 9/7 is milliseconds; no-fractalize intact).
+- **DRAW.9 memory-painting** — the practiced drawing sometimes composites ONTO the memory via `morphField`
+  (equation-domain union+lerp): her strokes fused with the real seen field C = composed paintings from real
+  material (`canvas:paint:<concept>`).
+- **DRAW.10 underdrawing realization** — a completed scene drawing is her composition INTENT: occasionally
+  she hands it to the image executor to realize (her drawing decides WHAT, the executor is only the brush —
+  sensory-output law intact; cooldown `DREAM_DRAW_REALIZE_GAP_MS` 5min + low probability). The render feeds
+  back through the visual-feeder into visual memory, so her NEXT recall + practice reference for that
+  subject is the realized version — the full artist loop closes: imagine → draw → realize → see → remember
+  → draw better.
+
+**SE.13 — DEAD-AIR + GREEN-FIELD POLLUTION purge (SEE.1-4, 2026-07-09).** With no cameras on, the mind's eye
+kept showing a static "dead air" notice, and abstract thoughts rendered as flat green texture. Four roots,
+four gates:
+- **SEE.1 feeder dead-air gates** (`js/visual-feeder.js`) — a page can hold camera permission while the
+  "camera" is dead (muted/ended track, covered lens, virtual cam serving a static placeholder). The feeder
+  now requires a LIVE unmuted track, rejects near-uniform frames client-side (luma stddev <12), and — the
+  categorical kill — **ships nothing when the frame is pixel-identical to the last one**: real sensors always
+  drift; dead air never does.
+- **SEE.2 server repeat rejection + store v2** (`server/brain-server/visual-memory.js`) — cached pre-SEE.1
+  feeder tabs can ship for days, so the server is the authority: a frame whose percept is near-identical
+  (cosine >0.995) to a recent ingest is refused — a frozen source can no longer bind itself to every concept
+  she thinks (the dead-air takeover: unlabeled camera frames bind to her current thoughts, so one static
+  image colonized dozens of concepts). The store file is bumped to `visual-memory-v2.json`, orphaning the
+  poisoned v1 — her eyes start clean under the new gates.
+- **SEE.3 recall cooldown** — a recalled memory RESTS for `DREAM_VM_RECALL_COOLDOWN_MS` (3min default)
+  before it can be shown again; while all matches rest, recall reports a miss and she sketches/daydreams
+  instead — no single percept can own the viewer's time.
+- **SEE.4 de-novo palette** (`js/brain/mindspace/gpu.js` `renderThoughtPlane`) — the abstract field was a
+  single `moodTint` texture, and her usual valence sits on the hue wheel's GREEN band → every de-novo field
+  read as the same "green graphic equation". Now: named color words still win; otherwise a TWO-COLOR gradient
+  from her palette families (warm when valence is up, goth accents otherwise, muted darks when fear rides
+  along), varied per thought via hash — structured, colorful, hers.
+
+---
+
+**SE.14 — GROUNDED IMPRESSIONS + FAVORITE DRAWS + BLEND HOLD (SEE.5-6 + DRAW.11, 2026-07-09).** Gee: 1-in-20
+frames were drawings, the rest blocky multi-tone fields — "wiill unity be able to make this appear as
+something at some point of is she just randomly tossing variables at the equations?" Answer: the pure de-novo
+field is deterministic (semantic state -> wavelet band energies), NOT random — but structurally
+non-representational: no word->appearance mapping exists in that path, so it could never converge to a picture
+on its own. Three fixes route abstract thoughts toward things she has actually SEEN:
+- **SEE.5 percept-anchored impressions** (`server/brain-server/chat.js` `_imagineTick`) — before a pure
+  thought-blend publishes, the thought's content tokens are GloVe-cosine matched against her seen-concept
+  store (bounded 60-key sample, threshold 0.32); a hit morphs the stored memory field toward the mood field
+  MEMORY-DOMINANT (t=0.30-0.50, detail-gated >=150). Label `impression:<thoughtToken>~<seenConcept>`. An
+  abstract thought now inherits real visual structure from the nearest thing her eyes have grounded — and
+  impressions get better as the store grows.
+- **DRAW.11 favorite-subject fallback** — post shape-age, a schema-less abstract thought ended the drawing
+  entirely (the 300bd0b shape-stack kill), so her drawings nearly vanished as her think-stream went abstract.
+  Now 50% of those cases she draws a FAVORITE instead: a concept from her own practice map (or seen store),
+  run through the same developmental composer. Label prefix `canvas:fav:` — deliberately never matches the
+  DRAW.10 `canvas:scene:` realization hook.
+- **SEE.6 blend hold** — grounded frames (seen / recall / canvas / dream-mix / impression / image-preview)
+  stamp `_lastGroundedEyeAt`; a PURE thought-blend or sem-state field cannot replace a grounded frame on the
+  public viewer for `DREAM_EYE_BLEND_HOLD_MS` (45s default). She still imagines internally every tick (ring +
+  sem injection untouched) — only the shared snapshot favors frames that look like something.
+
+---
+
+**SE.15 — FULL-EXTENT EQUATIONS: the blur audit vs the original univsmatics (MS.EXT, 2026-07-09).** Gee: her
+mind's eye is "kindas blurry" vs the donor project — "are you sure we a using the uni vs matic equations
+correctly and to their extent?" Audit against the original `fractal_templater` repo found we were NOT:
+- **Preview-grade encoder** — we vendored the donor's loose in-browser preview constants (TOL 0.030/0.055,
+  KMIN 400/120); the original corpus encoder (`ftcore/reconstruct.py`) runs TOL (0.018, 0.032, 0.032) +
+  KMIN (500, 150, 150) — about half the target error. Both `transform.js` and the `gpu.js` WGSL-path copy
+  now carry the corpus constants.
+- **32x32 de-novo planes** — `imagineFromState` collapsed the plane side to sqrt(embedding length) (300-dim
+  -> 17px base -> the 32px floor); the viewer then upscaled 32² to a 512px canvas = the mush. Resolution is a
+  rendering choice, not information content (the state texture samples any plane size): de-novo now renders
+  the full plane (floor 96, cap 192), governor still modulates within a high band.
+- **96x96 retina** — the feeder crushed every camera frame AND her own 1024² generated renders to 96² before
+  perceive (the donor ingests at native res, its only ceiling a bomb-guard). Retina raised to 192
+  (`js/visual-feeder.js` SIDE + the `visual-memory.js` ingest gate; ~196KB b64/frame at 5-8s pacing vs the
+  2GB WS ceiling).
+- **BUG: SEE.5 impressions were dead on arrival** — `morphField` refuses mismatched canvas/pad dims and the
+  32² de-novo plane never matched a 96² stored percept, so the impression anchor silently no-opped on every
+  hit. `imagineFromState` gains an exact-side override (`opts.side` = memory.width) and the anchor
+  re-renders the de-novo field at the memory's own dims before morphing. Smoke-verified: 192-percept morph
+  SUCCESS, legacy 96-store morph SUCCESS.
+- **BUG: her visual store was wiped on every deploy** — `deploy/self-update.sh` rsync --delete excluded only
+  `visual-memory.json` (v1); the live `visual-memory-v2.json` was deleted by every Update press. Exclude is
+  now the `visual-memory*.json` wildcard.
+- Watch-item: richer recs (tighter TOL + bigger planes) grow `/minds-eye.json` to ~40-140KB; max-age=2
+  caching holds for typical viewer counts — revisit with a de-novo-specific looser TOL if traffic grows.
+
+---
+
+**SE.16 — VOX.0: TTS RESURRECTED + THE VOICE AGE PIN (2026-07-10).** Her TTS died silently when
+Pollinations retired the `/v1/audio/speech` lane for `openai-audio` (the endpoint now answers
+"is a text model... Use the text endpoint instead") — every utterance 400d and fell to the browser
+SpeechSynthesis robot. Fix (`js/io/voice.js` `_speakPollinations`): TTS rides the CHAT endpoint with
+audio output modalities (the gpt-4o-audio pattern) — `modalities:[text,audio]` + `audio:{voice,format}`
++ a repeat-verbatim system instruction; base64 audio decoded from `choices[0].message.audio.data`.
+AND the voice now AGES with her: `setAge()` + a 5-tier preset (voice id + playback-rate nudge + an
+age-style instruction — nova bright for K/elementary, coral for teens, shimmer for college/adult),
+fed from live `state.minGrade` in `app.js` `updateBrainIndicator` via the same grade->age map as the
+self-image pin. Same girl, growing up, voice included. Verified live: adult shimmer + K nova both
+return real MP3s with verbatim transcripts. TTS remains a sensory-OUTPUT executor per the no-text-AI
+law; the equational replacement track is VOX.1-7 in TODO (LJSpeech diphone bank -> wavelet fields ->
+morphField concatenative speech -> equational age morphs -> her OWN voice, Kokoro-style executor
+deleted at the end like the LLM describer was).
+
+---
+
+**SE.17 — VOX v1: HER OWN EQUATIONAL VOICE (the word bank, 2026-07-10).** The equational voice shipped
+a smarter v1 than the original LJSpeech plan: the WORKING executor is the corpus. `js/brain/mindspace/audio.js`
+is the audio substrate — 1-D CDF 9/7 (the wavelet in its native habitat): `perceiveAudio` (32768-sample
+chunks, energy-target sparsification, int16 + LEB128 — the image encoder idiom in 1-D), `reconstructAudio`
+(inverse), `concatAudio` (30ms crossfade), `describeAudio` (octave-band percept for the HEAR track).
+Measured: 38.4 dB SNR / 0.9998 correlation / 19 ms encode / ~19 KB per word — transparent for speech.
+`js/io/voice.js` drives the loop: every word the executor speaks gets fetched IN ISOLATION (no alignment
+problem), decoded, resampled 24 kHz mono, silence-trimmed, perceived to a field-A record and BANKED
+(IndexedDB `unity-vox`, key `tier:word` — 5 age tiers so K-voice words and adult-voice words never mix).
+`speak()` tries HER bank first: a sentence whose words are all banked reconstructs from her own equations +
+crossfade — ZERO executor. Missing words fall through to the executor once and get primed in the background
+(6 s pacing, paused while she speaks, stops on executor cooldown). The bank grows like her visual memory did:
+the more she talks, the more of her voice is literally HERS. Off-switch: `localStorage.unity_vox_equational
+= 'false'`. LJSpeech diphones remain queued (VOX-next) for unseen-word synthesis without any executor call.
 
 ---
 

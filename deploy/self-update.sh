@@ -93,8 +93,8 @@ rsync -a --delete \
   --exclude 'server/definition-cache.json' \
   --exclude 'mindspace-memory.json' \
   --exclude 'server/mindspace-memory.json' \
-  --exclude 'visual-memory.json' \
-  --exclude 'server/visual-memory.json' \
+  --exclude 'visual-memory*.json' \
+  --exclude 'server/visual-memory*.json' \
   --exclude 'pollinations-user.json' \
   --exclude 'user.json' \
   --exclude '.claude' \

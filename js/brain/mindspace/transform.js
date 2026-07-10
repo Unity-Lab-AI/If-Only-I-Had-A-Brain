@@ -126,8 +126,13 @@ function padDim(n, m) { m = m || 64; return Math.ceil(n / m) * m; }
 
 // ---- forward analyzer: ImageData → field C (SEEING) ----
 const EQ_LONG_EDGE = 1536;
-const EQ_TOL = [0.030, 0.055, 0.055];
-const EQ_KMIN = [400, 120, 120];
+// MS.EXT — donor CORPUS quality. The vendored constants were the donor's loose
+// in-browser PREVIEW encoder (0.030/0.055, kmin 400/120); the original engine's
+// real corpus encoder (ftcore TOL/KMIN) runs ~half the target error and keeps
+// more coefficients — the difference between the donor's crisp renders and her
+// "kindas blurry" eye. Energy target still governs per-image counts.
+const EQ_TOL = [0.018, 0.032, 0.032];
+const EQ_KMIN = [500, 150, 150];
 const EQ_MAX_SRC_PIXELS = 64 * 1024 * 1024;   // hostile-input bomb guard (lifted when TRUSTED)
 
 export function equationalizeImageData(img) {

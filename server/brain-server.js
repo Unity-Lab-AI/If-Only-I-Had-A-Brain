@@ -5408,6 +5408,23 @@ setInterval(() => {
   }
 }, REPLICA_REBROADCAST_MS);
 
+// DONOR-EQUAL FIX (2026-07-09) — run the coordinator rebalance on a FAST timer
+// (default 10s), independent of the expensive replica rebroadcast above (60s).
+// The rebalance itself is cheap — it just compares live health-weighted donor
+// scores and only re-uploads when it ACTUALLY hands off (margin-gated inside,
+// plus the flood-cooldown hysteresis in _donorHealth prevents flapping). The
+// old code only checked every 60s, so a donor whose socket flooded stayed the
+// coordinator (main-tick stream) for up to a minute before any handoff. Now a
+// flooding donor is demoted within ~10s and the main tick moves to a donor that
+// drains — no card stays pinned as "primary". Env: DREAM_DF7_REBALANCE_MS.
+const PRIMARY_REBALANCE_MS = Number(process.env.DREAM_DF7_REBALANCE_MS) > 0
+  ? Number(process.env.DREAM_DF7_REBALANCE_MS) : 10 * 1000;
+setInterval(() => {
+  if (typeof brain._maybeRebalancePrimary === 'function') {
+    try { brain._maybeRebalancePrimary(); } catch (e) { console.warn('[Brain] DF.7 — fast primary rebalance failed:', e?.message || e); }
+  }
+}, PRIMARY_REBALANCE_MS);
+
 // Loopback gate for privileged HTTP endpoints (/shutdown, /grade-advance,
 // /grade-signoff). Defense-in-depth on top of the BIND_HOST=127.0.0.1
 // default — even when the operator opts in to BRAIN_BIND=0.0.0.0 to
