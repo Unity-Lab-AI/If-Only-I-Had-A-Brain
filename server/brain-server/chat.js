@@ -104,7 +104,7 @@ const SERVER_CHAT_MIXIN = {
       // year old goth woman") and appended redundant mood tags, degrading her
       // visual identity + bloating the heaviest prompt (the one most prone to a
       // Pollinations timeout → "image generation failed"). Selfies go out clean.
-      const isSelfie = imgRequest && /^selfie of a \d+ year old/.test(imgRequest);
+      const isSelfie = imgRequest && /^(?:selfie|full body photo) of a \d+ year old/.test(imgRequest);
       const imgPrompt = imgRequest ? (isSelfie ? imgRequest : this._composeImagePrompt(imgRequest)) : null;
       if (imgPrompt) {
         this._lastImageIntentAt = Date.now();   // motor block biases the generate_image channel off this
@@ -1803,6 +1803,22 @@ const SERVER_CHAT_MIXIN = {
     const prompt = parts.filter(Boolean).join(', ').slice(0, 220);
     return prompt || base;
   },
+  // AGE PIN — her self-image age tracks her LIVE grade ("25 pin in and out per
+  // grade level to age right"): K Unity pictures herself as the 5-year-old she
+  // currently IS; the 25-year-old appears when she has walked there. Derived
+  // fresh on every ask so a fresh walk pins the age back down automatically.
+  _selfImageAge() {
+    let g = null;
+    try { if (typeof this._computeMinGrade === 'function') g = this._computeMinGrade(); } catch { /* grade read best-effort */ }
+    const AGE = {
+      'pre-K': 4, 'K': 5,
+      'grade1': 6, 'grade2': 7, 'grade3': 8, 'grade4': 9, 'grade5': 10, 'grade6': 11,
+      'grade7': 12, 'grade8': 13, 'grade9': 14, 'grade10': 15, 'grade11': 16, 'grade12': 17,
+      'college1': 18, 'college2': 19, 'college3': 20, 'college4': 21, 'grad': 23, 'phd': 25,
+    };
+    return AGE[g] || 25;   // no grade state (stub/persona default) → the 25yo end-state
+  },
+
   // IMG-GEN — detect an image-generation request in user input + build a Pollinations
   // prompt. INPUT ROUTING ONLY (mirrors the browser engine's keyword detection) — the
   // equational cognition is untouched. Returns a prompt string, or null when it's not
@@ -1846,14 +1862,48 @@ const SERVER_CHAT_MIXIN = {
         .replace(/\b(of|me|us|a|an|the)\b/g, ' ')
         .replace(/\b(you|yourself|unity|herself|your)\b/g, ' ')
         .replace(/[^a-z0-9' -]/g, ' ')
-        .replace(/[\s,]+/g, ' ').trim();
-      const CORE = '25 year old goth woman, black hair with hot pink streaks, sharp features, intense dark eyes';
-      const OUTFIT = 'black leather, pink undertones';
+        .replace(/[\s,]+/g, ' ').trim()
+        .replace(/^'s\s+/, '');   // "unity's breasts" leaves a dangling 's after the name strips
+      // AGE PIN + CANON GATE — the age comes from her live grade, and while
+      // her self-image is under 18 any explicit/exposure content is STRIPPED
+      // from the scene (graphic waits for 18+ per the governing canon): the
+      // ask still renders, aged right and age-appropriate. At 18+ her stated
+      // scene passes through untouched.
+      const age = (typeof this._selfImageAge === 'function') ? this._selfImageAge() : 25;
+      const EXPLICIT_RE = /\b(bare|breasts?|nipples?|tits?|naked|nude|topless|braless|underwear|panties|bra|thong|lingerie|bikini|pussy|ass|butt|booty|cleavage|shirtless|sexy|alluring|seductive|erotic|nothing|undressed|unclothed)\b/g;
+      if (age < 18) {
+        scene = scene.replace(EXPLICIT_RE, ' ')
+          .replace(/\b(and|or|wearing|wear|dressed|in)\b(?=\s*(\b(and|or)\b\s*)*$)/g, ' ')   // dangling connectors/verbs left by the strip
+          .replace(/[\s,]+/g, ' ').trim();
+      }
+      const noun = age < 13 ? 'goth girl' : (age < 18 ? 'goth teen girl' : 'goth woman');
+      const CORE = age + ' year old ' + noun + ', black hair with hot pink streaks, sharp features, intense dark eyes';
+      // a real girl doesn't live in ONE outfit — when the ask doesn't name her
+      // wear, she picks from her own goth wardrobe (varied per request, all
+      // canonically her). The old single fixed OUTFIT string made every
+      // self-image wear the same black leather forever.
+      const WARDROBE = [
+        'black leather outfit, pink undertones',
+        'black band tee and ripped jeans',
+        'black lace top and a choker',
+        'oversized black hoodie and fishnets',
+        'black corset dress and combat boots',
+        'black crop top and plaid mini skirt',
+        'black velvet dress and silver jewelry',
+      ];
       const TAIL = 'dark moody aesthetic, ultra detailed';
-      // her stated wear (or bare skin) replaces the default outfit
-      const hasWear = /\b(wear|wearing|dressed|dress|outfit|clothes|clothing|naked|nude|topless|nothing|bikini|skirt|lingerie|costume|uniform|hoodie|corset|boots|shirt|jacket|coat|swimsuit)\b/.test(scene);
-      return 'selfie of a ' + CORE
-        + (hasWear ? '' : ', ' + OUTFIT)
+      // her stated wear — INCLUDING bare skin / named body parts — replaces
+      // the wardrobe entirely so clothing never collides with exposed skin
+      // ("bare breasts" used to render in the leather because the outfit was
+      // appended regardless).
+      const hasWear = /\b(wear|wearing|dressed|dress|outfit|clothes|clothing|naked|nude|topless|nothing|bikini|skirt|lingerie|costume|uniform|hoodie|corset|boots|shirt|jacket|coat|swimsuit|bare|breasts?|nipples?|tits?|braless|shirtless|underwear|panties|bra|thong|butt|ass|booty|pussy|chest|cleavage|body)\b/.test(scene);
+      // FRAMING — the literal word "selfie" magnetizes the model to head-shot
+      // crops (the mug-shot complaint). A bare ask keeps the classic selfie
+      // portrait; ANY scene/action/wear ask frames full-body so her whole
+      // life is in the picture, not just her face.
+      const framing = scene ? 'full body photo of a ' : 'selfie of a ';
+      const outfit = hasWear ? '' : ', ' + WARDROBE[Math.floor(Math.random() * WARDROBE.length)];
+      return framing + CORE + outfit
         + (scene ? ', ' + scene : '')
         + ', ' + TAIL;
     }
