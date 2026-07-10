@@ -516,6 +516,10 @@ const SERVER_STATE_MIXIN = {
         // ASCALE — smallest donor's EFFECTIVE committed VRAM. For data-parallel each donor holds
         // the FULL replica, so this (not the sum above) is the real upper bound on brain SIZE.
         minDonorMB: this._communityMinDonorMB || 0,
+        // Min-donor sizing rework: the SIZE driver = max(operator baseline,
+        // smallest committed donor) and the neuron capacity it can hold.
+        sizeDriverMB: this._communitySizeDriverMB || 0,
+        capacityNeurons: this._communityCapacityNeurons || 0,
         donorCount: this._communityDonorCount || 0,
         currentTier: this._communityTier || 0,        // raw — what the pool qualifies for
         upgradeTier: this._communityUpgradeTier || 0, // buffered — what would trigger a resize
@@ -532,7 +536,7 @@ const SERVER_STATE_MIXIN = {
       };
     } catch {
       return {
-        communityComputeMB: 0, minDonorMB: 0, donorCount: 0, currentTier: 0, upgradeTier: 0,
+        communityComputeMB: 0, minDonorMB: 0, sizeDriverMB: 0, capacityNeurons: 0, donorCount: 0, currentTier: 0, upgradeTier: 0,
         runningTier: 0, pendingTier: null, pendingSinceMs: null, runningFloorMB: 0,
         computeInsufficient: false, downPendingTier: null, downPendingSinceMs: null,
         replicaCount: 0, lastRebroadcastMs: null,
