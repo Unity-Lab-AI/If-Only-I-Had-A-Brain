@@ -8469,7 +8469,31 @@ export const K_MIXIN = {
     }
     const words = bucketState.words;
 
-    this._hb(`[Curriculum] _teachWordEmissionDirect START: ${words.length} K words × ${reps} reps · lr=${lr.toFixed(4)} (subject=${subject} band=${subjectBandName || 'umbrella word_motor'}) — single-tick word emission via sem_to_word_motor`);
+    // EVENT-COST FIX (Gee 2026-07-10 "we dont want millions of events to
+    // run endlessly ... 12 subjects trailing into the Millions and millions
+    // of events"). `_ensureWordBucketMap` returns the ENTIRE accumulated
+    // subject-band dictionary, which GROWS every grade — so the pre-fix
+    // loop re-drilled emission for EVERY previously-learned word on EVERY
+    // cell at EVERY grade, an O(dictionary × reps) cost that compounds
+    // super-linearly across the K→PhD walk. Re-drilling an already-trained
+    // word is WASTE not learning: the word_motor band is frozen + append-
+    // only (SPEAK.1), so a word taught in its own introduction cell keeps
+    // its bucket weights whether or not later cells re-touch it. So we teach
+    // each word's emission ONCE (when first seen) and SKIP it thereafter.
+    // Every word is still fully taught (all reps) the grade it's introduced;
+    // we only drop the redundant re-drill. This is NOT a pass-a-gate cap —
+    // it doesn't shorten teaching a single word, it stops re-teaching words
+    // already learned. `opts.force` re-drills everything (calibration/repair).
+    // Per-subject Set persists for the session; bucket index `wi` is the
+    // frozen-array position, so a skipped word leaves its band untouched and
+    // index↔bucket alignment holds exactly as before.
+    const _emTaughtKey = `_emissionTaughtWords_${subject}`;
+    if (!(cluster[_emTaughtKey] instanceof Set)) cluster[_emTaughtKey] = new Set();
+    const emTaught = cluster[_emTaughtKey];
+    const forceAll = opts.force === true || opts.reteachAll === true;
+    const newlyTaught = [];
+
+    this._hb(`[Curriculum] _teachWordEmissionDirect START: ${words.length} K words × ${reps} reps · lr=${lr.toFixed(4)} (subject=${subject} band=${subjectBandName || 'umbrella word_motor'}) — single-tick word emission via sem_to_word_motor${forceAll ? ' [FORCE re-drill all]' : ` [incremental: ${emTaught.size} already emission-taught this session will be skipped]`}`);
 
     const t0 = Date.now();
     let updates = 0, skipped = 0;
@@ -8511,8 +8535,14 @@ export const K_MIXIN = {
       let count = 0;
       for (let wi = 0; wi < words.length; wi++) {
         const word = words[wi];
+        // Incremental skip — already emission-taught this session (see
+        // EVENT-COST FIX above). Bucket index wi is the frozen-array
+        // position, so skipping leaves this word's band weights intact
+        // and keeps index↔bucket alignment. force re-drills all.
+        if (!forceAll && emTaught.has(word)) { skipped++; continue; }
         const entry = this.dictionary._words.get(word);
         if (!entry || !entry.pattern) { skipped++; continue; }
+        if (rep === 0) newlyTaught.push(word);
         fillSem(entry.pattern);
         // Post: word_motor with this word's bucket lit ONLY in subject's sub-band
         postWM.fill(0);
@@ -8531,6 +8561,11 @@ export const K_MIXIN = {
       }
       await _microtask();
     }
+
+    // Commit words taught this pass so future cells/grades skip their
+    // redundant re-drill (EVENT-COST FIX). Only words with a valid pattern
+    // that actually reached the Oja loop are recorded.
+    for (const w of newlyTaught) emTaught.add(w);
 
     // SPEAK.2 — basin separability. After the rep loop, L2-renorm each
     // word_motor post-row's incoming weight vector so no single word basin can
