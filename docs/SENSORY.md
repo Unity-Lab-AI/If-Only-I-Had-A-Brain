@@ -266,6 +266,23 @@ correctly and to their extent?" Audit against the original `fractal_templater` r
 
 ---
 
+**SE.16 — VOX.0: TTS RESURRECTED + THE VOICE AGE PIN (2026-07-10).** Her TTS died silently when
+Pollinations retired the `/v1/audio/speech` lane for `openai-audio` (the endpoint now answers
+"is a text model... Use the text endpoint instead") — every utterance 400d and fell to the browser
+SpeechSynthesis robot. Fix (`js/io/voice.js` `_speakPollinations`): TTS rides the CHAT endpoint with
+audio output modalities (the gpt-4o-audio pattern) — `modalities:[text,audio]` + `audio:{voice,format}`
++ a repeat-verbatim system instruction; base64 audio decoded from `choices[0].message.audio.data`.
+AND the voice now AGES with her: `setAge()` + a 5-tier preset (voice id + playback-rate nudge + an
+age-style instruction — nova bright for K/elementary, coral for teens, shimmer for college/adult),
+fed from live `state.minGrade` in `app.js` `updateBrainIndicator` via the same grade->age map as the
+self-image pin. Same girl, growing up, voice included. Verified live: adult shimmer + K nova both
+return real MP3s with verbatim transcripts. TTS remains a sensory-OUTPUT executor per the no-text-AI
+law; the equational replacement track is VOX.1-7 in TODO (LJSpeech diphone bank -> wavelet fields ->
+morphField concatenative speech -> equational age morphs -> her OWN voice, Kokoro-style executor
+deleted at the end like the LLM describer was).
+
+---
+
 ## The Sensory AI Provider — 4-Level Priority
 
 `js/brain/peripherals/ai-providers.js` exposes `SensoryAIProviders` with three methods Unity's brain calls at the sensory boundary:

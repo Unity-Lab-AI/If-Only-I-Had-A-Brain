@@ -59805,8 +59805,8 @@ function padDim(n, m) {
   m = m || 64;
   return Math.ceil(n / m) * m;
 }
-var EQ_TOL = [0.03, 0.055, 0.055];
-var EQ_KMIN = [400, 120, 120];
+var EQ_TOL = [0.018, 0.032, 0.032];
+var EQ_KMIN = [500, 150, 150];
 var EQ_MAX_SRC_PIXELS = 64 * 1024 * 1024;
 function equationalizeImageData(img) {
   const W0 = img.width, H0 = img.height, d = img.data;
@@ -73838,6 +73838,9 @@ var K_MIXIN = {
           if (tok.length >= 2) vocab.add(tok);
         }
       }
+    }
+    if (this._vocabTaughtSet && this._vocabTaughtSet.size > 0) {
+      for (const w of this._vocabTaughtSet) vocab.add(w);
     }
     return vocab;
   },
@@ -99366,35 +99369,41 @@ var Curriculum = class _Curriculum {
   async _pregateEnrichment(cellKey, opts = {}) {
     if (!cellKey) return;
     this._pregateCellsDone = this._pregateCellsDone || /* @__PURE__ */ new Set();
-    try {
-      this._auditExamVocabulary(cellKey);
-      const trained = this._trainedVocabularySet(cellKey);
-      const report = examVocabCoverage(cellKey, trained);
-      if (report && Array.isArray(report.missing) && report.missing.length > 0) {
-        const words = report.missing.filter((w) => typeof w === "string" && /^[a-z][a-z']*$/i.test(w) && w.length >= 2 && w.length <= 20);
-        if (words.length > 0 && typeof this._teachVocabList === "function") {
-          const ctx = { arousal: 0.7, valence: 0.2 };
-          const CHUNK = 25;
-          const reps = opts.vocabReps ?? 4;
-          this._hb(`[Curriculum][${cellKey}] EXAM-VOCAB-TEACH START \u2014 ${words.length} missing exam words \xD7 ${reps} reps (chunked ${CHUNK})`);
-          let done = 0;
-          for (let i = 0; i < words.length; i += CHUNK) {
-            const slice = words.slice(i, i + CHUNK);
-            try {
-              await this._teachVocabList(slice, ctx, { reps });
-            } catch (err) {
-              console.warn(`[Curriculum][${cellKey}] EXAM-VOCAB-TEACH chunk ${i / CHUNK | 0} failed:`, err?.message || err);
+    this._vocabTaughtSet = this._vocabTaughtSet || /* @__PURE__ */ new Set();
+    this._pregateVocabDone = this._pregateVocabDone || /* @__PURE__ */ new Set();
+    if (opts.force || !this._pregateVocabDone.has(cellKey)) {
+      this._pregateVocabDone.add(cellKey);
+      try {
+        this._auditExamVocabulary(cellKey);
+        const trained = this._trainedVocabularySet(cellKey);
+        const report = examVocabCoverage(cellKey, trained);
+        if (report && Array.isArray(report.missing) && report.missing.length > 0) {
+          const words = report.missing.filter((w) => typeof w === "string" && /^[a-z][a-z']*$/i.test(w) && w.length >= 2 && w.length <= 20);
+          if (words.length > 0 && typeof this._teachVocabList === "function") {
+            const ctx = { arousal: 0.7, valence: 0.2 };
+            const CHUNK = 25;
+            const reps = opts.vocabReps ?? 4;
+            this._hb(`[Curriculum][${cellKey}] EXAM-VOCAB-TEACH START \u2014 ${words.length} missing exam words \xD7 ${reps} reps (chunked ${CHUNK})`);
+            let done = 0;
+            for (let i = 0; i < words.length; i += CHUNK) {
+              const slice = words.slice(i, i + CHUNK);
+              try {
+                await this._teachVocabList(slice, ctx, { reps });
+                for (const w of slice) this._vocabTaughtSet.add(String(w).toLowerCase());
+              } catch (err) {
+                console.warn(`[Curriculum][${cellKey}] EXAM-VOCAB-TEACH chunk ${i / CHUNK | 0} failed:`, err?.message || err);
+              }
+              done += slice.length;
+              this._hb(`[Curriculum][${cellKey}] EXAM-VOCAB-TEACH progress \u2014 ${done}/${words.length} words taught`);
+              await new Promise((resolve) => setImmediate(resolve));
             }
-            done += slice.length;
-            this._hb(`[Curriculum][${cellKey}] EXAM-VOCAB-TEACH progress \u2014 ${done}/${words.length} words taught`);
-            await new Promise((resolve) => setImmediate(resolve));
+            this._hb(`[Curriculum][${cellKey}] EXAM-VOCAB-TEACH DONE \u2014 ${done}/${words.length} words taught`);
+            this._auditExamVocabulary(cellKey);
           }
-          this._hb(`[Curriculum][${cellKey}] EXAM-VOCAB-TEACH DONE \u2014 ${done}/${words.length} words taught`);
-          this._auditExamVocabulary(cellKey);
         }
+      } catch (err) {
+        console.warn(`[Curriculum][${cellKey}] exam-vocab teach failed:`, err?.message || err);
       }
-    } catch (err) {
-      console.warn(`[Curriculum][${cellKey}] exam-vocab teach failed:`, err?.message || err);
     }
     if (!opts.force && this._pregateCellsDone.has(cellKey)) return;
     this._pregateCellsDone.add(cellKey);
@@ -115405,7 +115414,8 @@ var PollinationsAI = class _PollinationsAI {
         finalPrompt += _PollinationsAI.STYLE_PRESETS[options.style];
       }
       const encoded = encodeURIComponent(finalPrompt);
-      let url = `${GEN_URL}/image/${encoded}?model=${encodeURIComponent(model)}&width=${width}&height=${height}&nologo=true`;
+      const seed = typeof options.seed === "number" ? options.seed : Math.floor(Math.random() * 1e9);
+      let url = `${GEN_URL}/image/${encoded}?model=${encodeURIComponent(model)}&width=${width}&height=${height}&seed=${seed}&nologo=true`;
       if (this._apiKey) {
         url += `&key=${encodeURIComponent(this._apiKey)}`;
       }
@@ -115585,8 +115595,32 @@ var VoiceIO = class {
     return this._speaking;
   }
   setVoice(voiceName) {
+    this._voiceOverride = voiceName || null;
     this._pollinationsVoice = voiceName;
     return this;
+  }
+  /**
+   * VOX.0 — pin her spoken age. app.js feeds this from live state.minGrade
+   * (same-girl-growing-up continuity: the voice ages as she walks the
+   * grades, exactly like the self-image age pin). Clamped 3..30.
+   */
+  setAge(years) {
+    const a = Math.max(3, Math.min(30, Math.round(years) || 25));
+    this._age = a;
+    return this;
+  }
+  /**
+   * VOX.0 — 5-tier age preset: voice id + playback rate + a speak-style
+   * instruction for the audio model. Female voices only (openai-audio):
+   * nova (bright/young), coral (mid), shimmer (warm adult).
+   */
+  _agePreset() {
+    const a = this._age || 25;
+    if (a < 11) return { voice: "nova", rate: 1.08, style: `You are a ${a}-year-old girl. Speak in the natural bright voice of a ${a}-year-old girl.` };
+    if (a < 14) return { voice: "nova", rate: 1.04, style: `You are a ${a}-year-old girl. Speak in the natural voice of a ${a}-year-old girl.` };
+    if (a < 18) return { voice: "coral", rate: 1.02, style: `You are a ${a}-year-old teenage girl. Speak in the natural voice of a ${a}-year-old teenage girl.` };
+    if (a < 23) return { voice: "shimmer", rate: 1, style: `You are a ${a}-year-old young woman. Speak in the natural voice of a ${a}-year-old young woman.` };
+    return { voice: "shimmer", rate: 0.98, style: `You are a ${a}-year-old woman. Speak in the natural warm voice of a ${a}-year-old woman.` };
   }
   setApiKey(key) {
     this._apiKey = key;
@@ -115601,7 +115635,7 @@ var VoiceIO = class {
     if (this._muted) return;
     this._speaking = true;
     this.emit("speech_start");
-    const voice2 = options.voice || this._pollinationsVoice;
+    const voice2 = options.voice || null;
     let spoke = false;
     for (let attempt = 0; attempt < 2 && !spoke; attempt++) {
       try {
@@ -115653,7 +115687,8 @@ var VoiceIO = class {
     if (this._pollTtsDead && Date.now() - this._pollTtsDead < 36e5) {
       throw new Error("Pollinations TTS dead (cooldown)");
     }
-    const url = "https://gen.pollinations.ai/v1/audio/speech";
+    const preset = this._agePreset();
+    const url = "https://gen.pollinations.ai/v1/chat/completions";
     const headers = { "Content-Type": "application/json" };
     if (this._apiKey) {
       headers["Authorization"] = `Bearer ${this._apiKey}`;
@@ -115663,8 +115698,12 @@ var VoiceIO = class {
       headers,
       body: JSON.stringify({
         model: "openai-audio",
-        input: text,
-        voice: voice2 || "shimmer"
+        modalities: ["text", "audio"],
+        audio: { voice: voice2 || this._voiceOverride || preset.voice, format: "mp3" },
+        messages: [
+          { role: "system", content: preset.style + " Repeat the user text EXACTLY, verbatim, word for word. Do not add, remove, or change anything." },
+          { role: "user", content: text }
+        ]
       })
     });
     if (!response.ok) {
@@ -115674,14 +115713,20 @@ var VoiceIO = class {
       }
       throw new Error(`Pollinations TTS HTTP ${response.status}`);
     }
-    const arrayBuffer = await response.arrayBuffer();
+    const data = await response.json().catch(() => null);
+    const b64 = data?.choices?.[0]?.message?.audio?.data;
+    if (!b64) throw new Error("Pollinations TTS returned no audio data");
+    const bin = atob(b64);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    const arrayBuffer = bytes.buffer;
     try {
-      await this._playWithAudioContext(arrayBuffer);
+      await this._playWithAudioContext(arrayBuffer.slice(0), preset.rate);
     } catch (_) {
-      await this._playWithAudioElement(arrayBuffer);
+      await this._playWithAudioElement(arrayBuffer, preset.rate);
     }
   }
-  async _playWithAudioContext(arrayBuffer) {
+  async _playWithAudioContext(arrayBuffer, rate = 1) {
     if (!this._audioCtx) {
       const AC = typeof AudioContext !== "undefined" ? AudioContext : typeof webkitAudioContext !== "undefined" ? webkitAudioContext : null;
       if (!AC) throw new Error("No AudioContext");
@@ -115694,6 +115739,7 @@ var VoiceIO = class {
     return new Promise((resolve, reject) => {
       const source = this._audioCtx.createBufferSource();
       source.buffer = audioBuffer;
+      source.playbackRate.value = rate;
       source.connect(this._audioCtx.destination);
       this._currentAudioSource = source;
       source.onended = () => {
@@ -115707,10 +115753,11 @@ var VoiceIO = class {
       source.start(0);
     });
   }
-  async _playWithAudioElement(arrayBuffer) {
+  async _playWithAudioElement(arrayBuffer, rate = 1) {
     const blob = new Blob([arrayBuffer], { type: "audio/mpeg" });
     const url = URL.createObjectURL(blob);
     const audio = new Audio(url);
+    audio.playbackRate = rate;
     this._currentAudioElement = audio;
     return new Promise((resolve, reject) => {
       audio.onended = () => {
@@ -121110,6 +121157,235 @@ fn inverse(@builtin(global_invocation_id) gid : vec3<u32>) {
   storeLine(base);
 }
 `;
+var FONT5X7 = {
+  "A": ["01110", "10001", "10001", "11111", "10001", "10001", "10001"],
+  "B": ["11110", "10001", "10001", "11110", "10001", "10001", "11110"],
+  "C": ["01110", "10001", "10000", "10000", "10000", "10001", "01110"],
+  "D": ["11100", "10010", "10001", "10001", "10001", "10010", "11100"],
+  "E": ["11111", "10000", "10000", "11110", "10000", "10000", "11111"],
+  "F": ["11111", "10000", "10000", "11110", "10000", "10000", "10000"],
+  "G": ["01110", "10001", "10000", "10111", "10001", "10001", "01111"],
+  "H": ["10001", "10001", "10001", "11111", "10001", "10001", "10001"],
+  "I": ["01110", "00100", "00100", "00100", "00100", "00100", "01110"],
+  "J": ["00111", "00010", "00010", "00010", "00010", "10010", "01100"],
+  "K": ["10001", "10010", "10100", "11000", "10100", "10010", "10001"],
+  "L": ["10000", "10000", "10000", "10000", "10000", "10000", "11111"],
+  "M": ["10001", "11011", "10101", "10101", "10001", "10001", "10001"],
+  "N": ["10001", "11001", "10101", "10011", "10001", "10001", "10001"],
+  "O": ["01110", "10001", "10001", "10001", "10001", "10001", "01110"],
+  "P": ["11110", "10001", "10001", "11110", "10000", "10000", "10000"],
+  "Q": ["01110", "10001", "10001", "10001", "10101", "10010", "01101"],
+  "R": ["11110", "10001", "10001", "11110", "10100", "10010", "10001"],
+  "S": ["01111", "10000", "10000", "01110", "00001", "00001", "11110"],
+  "T": ["11111", "00100", "00100", "00100", "00100", "00100", "00100"],
+  "U": ["10001", "10001", "10001", "10001", "10001", "10001", "01110"],
+  "V": ["10001", "10001", "10001", "10001", "10001", "01010", "00100"],
+  "W": ["10001", "10001", "10001", "10101", "10101", "11011", "10001"],
+  "X": ["10001", "10001", "01010", "00100", "01010", "10001", "10001"],
+  "Y": ["10001", "10001", "01010", "00100", "00100", "00100", "00100"],
+  "Z": ["11111", "00001", "00010", "00100", "01000", "10000", "11111"],
+  "0": ["01110", "10001", "10011", "10101", "11001", "10001", "01110"],
+  "1": ["00100", "01100", "00100", "00100", "00100", "00100", "01110"],
+  "2": ["01110", "10001", "00001", "00010", "00100", "01000", "11111"],
+  "3": ["01110", "10001", "00001", "00110", "00001", "10001", "01110"],
+  "4": ["00010", "00110", "01010", "10010", "11111", "00010", "00010"],
+  "5": ["11111", "10000", "11110", "00001", "00001", "10001", "01110"],
+  "6": ["00110", "01000", "10000", "11110", "10001", "10001", "01110"],
+  "7": ["11111", "00001", "00010", "00100", "01000", "01000", "01000"],
+  "8": ["01110", "10001", "10001", "01110", "10001", "10001", "01110"],
+  "9": ["01110", "10001", "10001", "01111", "00001", "00010", "01100"],
+  ".": ["00000", "00000", "00000", "00000", "00000", "00110", "00110"],
+  ",": ["00000", "00000", "00000", "00000", "00110", "00100", "01000"],
+  "!": ["00100", "00100", "00100", "00100", "00100", "00000", "00100"],
+  "?": ["01110", "10001", "00001", "00010", "00100", "00000", "00100"],
+  "'": ["00100", "00100", "01000", "00000", "00000", "00000", "00000"],
+  "-": ["00000", "00000", "00000", "01110", "00000", "00000", "00000"],
+  " ": ["00000", "00000", "00000", "00000", "00000", "00000", "00000"]
+};
+var COLOR_WORDS = {
+  red: [220, 45, 45],
+  blue: [55, 95, 225],
+  green: [45, 180, 75],
+  yellow: [235, 210, 55],
+  orange: [240, 145, 45],
+  purple: [155, 65, 205],
+  pink: [240, 125, 185],
+  white: [235, 235, 235],
+  black: [18, 18, 18],
+  brown: [145, 95, 55],
+  gray: [130, 130, 130],
+  grey: [130, 130, 130],
+  cyan: [65, 205, 225],
+  magenta: [220, 65, 205],
+  gold: [220, 180, 60],
+  silver: [195, 195, 205],
+  violet: [160, 80, 220],
+  tan: [205, 175, 130]
+};
+function moodTint(mood) {
+  const val = Math.max(-1, Math.min(1, mood && typeof mood.valence === "number" ? mood.valence : 0));
+  const aro = Math.max(0, Math.min(1, mood && typeof mood.arousal === "number" ? mood.arousal : 0.4));
+  const h = (1 - (val + 1) / 2) * 0.66;
+  const s = 0.35 + 0.5 * aro, v = 1;
+  const i = Math.floor(h * 6), f = h * 6 - i;
+  const pq = v * (1 - s), qq = v * (1 - f * s), tq = v * (1 - (1 - f) * s);
+  let r, g, b;
+  switch (i % 6) {
+    case 0:
+      r = v;
+      g = tq;
+      b = pq;
+      break;
+    case 1:
+      r = qq;
+      g = v;
+      b = pq;
+      break;
+    case 2:
+      r = pq;
+      g = v;
+      b = tq;
+      break;
+    case 3:
+      r = pq;
+      g = qq;
+      b = v;
+      break;
+    case 4:
+      r = tq;
+      g = pq;
+      b = v;
+      break;
+    default:
+      r = v;
+      g = pq;
+      b = qq;
+      break;
+  }
+  return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
+}
+function symbolGlyphText(text) {
+  const t = String(text || "").trim();
+  if (!t) return "";
+  const symbolish = t.split(/\s+/).filter((w) => /^[0-9]+([.,][0-9]+)?$/.test(w) || /^[+\-x=<>?!]$/.test(w) || /^[a-zA-Z]$/.test(w));
+  return symbolish.length ? symbolish.slice(0, 12).join(" ") : "";
+}
+function renderThoughtPlane(glyphText, stateVector, W, H, mood, tintText) {
+  const N = W * H;
+  const data = new Uint8ClampedArray(N * 4);
+  const txt = String(glyphText || "").toUpperCase().replace(/\s+/g, " ").trim().slice(0, 180);
+  const tintSrc = String(tintText || glyphText || "").toLowerCase();
+  let tint = null;
+  for (const w of tintSrc.split(/[^a-z]+/)) {
+    if (COLOR_WORDS[w]) {
+      tint = COLOR_WORDS[w];
+      break;
+    }
+  }
+  const named = !!tint;
+  const _valence = Math.max(-1, Math.min(1, mood && typeof mood.valence === "number" ? mood.valence : 0));
+  const _fear = Math.max(0, Math.min(1, mood && typeof mood.fear === "number" ? mood.fear : 0));
+  const PAL = {
+    warm: [[214, 48, 49], [235, 140, 50], [253, 121, 168], [240, 200, 60]],
+    goth: [[162, 89, 216], [253, 121, 168], [72, 116, 224], [214, 48, 49], [64, 190, 200]],
+    dark: [[120, 100, 160], [80, 90, 140], [150, 150, 155], [100, 60, 120]]
+  };
+  let tintA, tintB;
+  if (named) {
+    tintA = tint;
+    tintB = [Math.round(tint[0] * 0.45), Math.round(tint[1] * 0.45), Math.round(tint[2] * 0.45)];
+  } else {
+    const fam = _fear > 0.55 ? PAL.dark : _valence >= 0.25 ? PAL.warm : PAL.goth;
+    let hh = 5381;
+    for (let i = 0; i < tintSrc.length; i++) hh = (hh << 5) + hh + tintSrc.charCodeAt(i) >>> 0;
+    const ia = hh % fam.length;
+    let ib = (hh >>> 3) % fam.length;
+    if (ib === ia) ib = (ib + 1) % fam.length;
+    tintA = fam[ia];
+    tintB = fam[ib];
+  }
+  let lo, hi;
+  if (!txt) {
+    lo = named ? 0.45 : 0.3;
+    hi = named ? 0.95 : 0.9;
+  } else {
+    lo = named ? 0.3 : 0.08;
+    hi = named ? 0.55 : 0.3;
+  }
+  if (stateVector && stateVector.length > 0) {
+    let mn = Infinity, mx = -Infinity;
+    for (let i = 0; i < stateVector.length; i++) {
+      const v = stateVector[i];
+      if (v < mn) mn = v;
+      if (v > mx) mx = v;
+    }
+    const range = mx - mn || 1;
+    for (let p = 0; p < N; p++) {
+      const sv = (stateVector[Math.floor(p * stateVector.length / N)] - mn) / range;
+      const k = lo + sv * (hi - lo);
+      const o = p * 4;
+      data[o] = Math.round((tintA[0] + (tintB[0] - tintA[0]) * sv) * k);
+      data[o + 1] = Math.round((tintA[1] + (tintB[1] - tintA[1]) * sv) * k);
+      data[o + 2] = Math.round((tintA[2] + (tintB[2] - tintA[2]) * sv) * k);
+      data[o + 3] = 255;
+    }
+  } else {
+    for (let p = 0; p < N; p++) {
+      const o = p * 4;
+      data[o] = Math.round(tintA[0] * lo);
+      data[o + 1] = Math.round(tintA[1] * lo);
+      data[o + 2] = Math.round(tintA[2] * lo);
+      data[o + 3] = 255;
+    }
+  }
+  if (!txt) return data;
+  const gl = named ? [Math.round(tintA[0] * 0.4 + 255 * 0.6), Math.round(tintA[1] * 0.4 + 255 * 0.6), Math.round(tintA[2] * 0.4 + 255 * 0.6)] : [238, 236, 228];
+  const scale = txt.length <= 22 ? 2 : 1;
+  const gw = 6 * scale, gh = 8 * scale;
+  const cols = Math.max(1, Math.floor((W - 4) / gw));
+  const maxRows = Math.max(1, Math.floor((H - 4) / gh));
+  const lines = [];
+  let cur = "";
+  for (const word of txt.split(" ")) {
+    const cand = cur ? cur + " " + word : word;
+    if (cand.length <= cols) {
+      cur = cand;
+      continue;
+    }
+    if (cur) lines.push(cur);
+    cur = word.length > cols ? word.slice(0, cols) : word;
+    if (lines.length >= maxRows) break;
+  }
+  if (cur && lines.length < maxRows) lines.push(cur);
+  const used = lines.slice(0, maxRows);
+  const y0 = Math.max(2, Math.floor((H - used.length * gh) / 2));
+  for (let li = 0; li < used.length; li++) {
+    const line = used[li];
+    const x0 = Math.max(2, Math.floor((W - line.length * gw) / 2));
+    for (let ci = 0; ci < line.length; ci++) {
+      const glyph = FONT5X7[line[ci]] || FONT5X7[" "];
+      for (let r = 0; r < 7; r++) {
+        const rowBits = glyph[r];
+        for (let cc = 0; cc < 5; cc++) {
+          if (rowBits[cc] !== "1") continue;
+          for (let sy = 0; sy < scale; sy++) {
+            for (let sx = 0; sx < scale; sx++) {
+              const x = x0 + ci * gw + cc * scale + sx;
+              const y = y0 + li * gh + r * scale + sy;
+              if (x < 0 || x >= W || y < 0 || y >= H) continue;
+              const o = (y * W + x) * 4;
+              data[o] = gl[0];
+              data[o + 1] = gl[1];
+              data[o + 2] = gl[2];
+              data[o + 3] = 255;
+            }
+          }
+        }
+      }
+    }
+  }
+  return data;
+}
 var MindSpaceGPU = class {
   constructor() {
     this.available = false;
@@ -121241,7 +121517,7 @@ var MindSpaceGPU = class {
         planes[2][p] = ycc[2];
       }
     }
-    const EQ_TOL2 = [0.03, 0.055, 0.055], EQ_KMIN2 = [400, 120, 120];
+    const EQ_TOL2 = [0.018, 0.032, 0.032], EQ_KMIN2 = [500, 150, 150];
     let totalEq = 0;
     for (let ci = 0; ci < 3; ci++) {
       const co = await this.fwd2d(planes[ci], H2, W2);
@@ -121321,6 +121597,13 @@ var MindSpaceGPU = class {
   describe(rec, dim) {
     return describeEquational(rec, dim);
   }
+  // TU.29.5 — equation-domain blend of two stored percepts (coefficient-set
+  // union + lerp, transform.js morphField). This is the RECOMBINATION step of
+  // imagination: two seen field Cs fuse into one imagined field C without ever
+  // leaving the equational domain. Returns null on canvas/pad dim mismatch.
+  morph(recA, recB, t) {
+    return morphField(recA, recB, t);
+  }
   // ── DE-NOVO IMAGINATION (UVM-INT.3) — cortex state → field C, no camera/file ─────────────────
   // Her current mind-state (any cortex activation vector — sem region, percept, emission
   // embedding) is folded into a small grayscale image and equationalized into a REAL field C.
@@ -121336,7 +121619,12 @@ var MindSpaceGPU = class {
   // HARD-CAPPED at maxSide (≤96, default 64) so the plane is a fixed tiny grid regardless of state
   // length OR governor grant — imagination has a floor of detail, never infinite resolution.
   imagineFromState(stateVector, opts = {}) {
-    if (!stateVector || stateVector.length === 0) return null;
+    if (!stateVector || stateVector.length === 0) {
+      const aro = opts.mood && typeof opts.mood.arousal === "number" ? opts.mood.arousal : 0.4;
+      const n = 64;
+      stateVector = new Float64Array(n);
+      for (let i = 0; i < n; i++) stateVector[i] = 0.5 + 0.5 * Math.sin(i * (0.6 + aro));
+    }
     const grant = this.governor.allot({
       kind: "imagine-denovo",
       requestedUnits: opts.units ?? 48,
@@ -121344,30 +121632,146 @@ var MindSpaceGPU = class {
       value: opts.value
     });
     const ratio = Math.max(0, Math.min(1, grant.ratio ?? 1));
-    const maxSide = Math.max(8, Math.min(opts.maxSide ?? 64, 96));
-    const baseSide = Math.max(8, Math.min(maxSide, Math.floor(Math.sqrt(stateVector.length)) || 8));
-    const side = Math.max(8, Math.round(baseSide * (0.5 + 0.5 * ratio)));
-    const W = side, H = side, N = W * H;
-    let mn = Infinity, mx = -Infinity;
-    for (let i = 0; i < stateVector.length; i++) {
-      const v = stateVector[i];
-      if (v < mn) mn = v;
-      if (v > mx) mx = v;
+    const maxSide = Math.max(8, Math.min(opts.maxSide ?? 128, 192));
+    const glyphText = symbolGlyphText(opts.text);
+    const hasGlyphs = glyphText.length > 0;
+    let side;
+    if (opts.side) {
+      side = Math.max(16, Math.min(Math.round(opts.side), 512));
+    } else if (hasGlyphs) {
+      side = Math.max(96, Math.round(maxSide * (0.75 + 0.25 * ratio)));
+    } else {
+      side = Math.max(96, Math.round(maxSide * (0.6 + 0.4 * ratio)));
     }
-    const range = mx - mn || 1;
-    const data = new Uint8ClampedArray(N * 4);
-    for (let p = 0; p < N; p++) {
-      const sv = stateVector[Math.floor(p * stateVector.length / N)];
-      const g = Math.round((sv - mn) / range * 255);
-      const o = p * 4;
-      data[o] = g;
-      data[o + 1] = g;
-      data[o + 2] = g;
-      data[o + 3] = 255;
-    }
+    if (!opts.side) side = Math.min(side, maxSide);
+    const W = side, H = side;
+    const data = renderThoughtPlane(glyphText, stateVector, W, H, opts.mood, opts.text);
     const rec = equationalizeImageData({ width: W, height: H, data });
     if (rec) rec.fidelity = { psnr_db: null, source: "mindspace-denovo" };
     return rec;
+  }
+  // ── TU.29.13 BUILD B — ACTIVE SKETCH CANVAS ──────────────────────────────────────────────────
+  // The mind's eye as a TOOL she USES, not just a passive readout: she lays down
+  // lines / vectors / points directly onto a plane and equationalizes it into a
+  // real field C. `strokes` is an array of primitives she "draws":
+  //   { type:'line',  x0,y0,x1,y1, rgb? }   — a vector between two normalized [0,1] points
+  //   { type:'point', x,y, r?, rgb? }        — a node
+  //   { type:'poly',  pts:[[x,y]...], rgb? } — a connected path (a shape / gesture)
+  // Coordinates are normalized [0,1] so callers reason in "canvas space". Colors
+  // default to her mood tint. Output is a bounded (≤96px) field C — the SAME
+  // equational substrate as perception/imagination, so what she draws is a real
+  // image she can then re-see, morph, or remember. No fractalize, hard side cap.
+  sketch(strokes, opts = {}) {
+    const side = Math.max(16, Math.min(opts.maxSide ?? 96, 512));
+    const W = side, H = side, N = W * H;
+    const data = new Uint8ClampedArray(N * 4);
+    const bg = moodTint(opts.mood);
+    const paper = [26, 25, 29];
+    for (let p = 0; p < N; p++) {
+      const o = p * 4;
+      data[o] = Math.round(paper[0] * 0.9 + bg[0] * 0.1);
+      data[o + 1] = Math.round(paper[1] * 0.9 + bg[1] * 0.1);
+      data[o + 2] = Math.round(paper[2] * 0.9 + bg[2] * 0.1);
+      data[o + 3] = 255;
+    }
+    const ink = opts.rgb || [Math.round(bg[0] * 0.4 + 255 * 0.6), Math.round(bg[1] * 0.4 + 255 * 0.6), Math.round(bg[2] * 0.4 + 255 * 0.6)];
+    const px = (x, y, rgb) => {
+      const xi = Math.round(x * (W - 1)), yi = Math.round(y * (H - 1));
+      if (xi < 0 || xi >= W || yi < 0 || yi >= H) return;
+      const o = (yi * W + xi) * 4;
+      data[o] = rgb[0];
+      data[o + 1] = rgb[1];
+      data[o + 2] = rgb[2];
+      data[o + 3] = 255;
+    };
+    const dot = (x, y, r, rgb) => {
+      for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) if (dx * dx + dy * dy <= r * r) px(x + dx / (W - 1), y + dy / (H - 1), rgb);
+    };
+    const line = (x0, y0, x1, y1, rgb) => {
+      const steps = Math.max(2, Math.round(Math.hypot((x1 - x0) * W, (y1 - y0) * H)));
+      for (let i = 0; i <= steps; i++) {
+        const t = i / steps;
+        px(x0 + (x1 - x0) * t, y0 + (y1 - y0) * t, rgb);
+      }
+    };
+    for (const s of Array.isArray(strokes) ? strokes : []) {
+      if (!s) continue;
+      const rgb = s.rgb || ink;
+      if (s.type === "line") line(s.x0, s.y0, s.x1, s.y1, rgb);
+      else if (s.type === "point") dot(s.x, s.y, Math.max(0, Math.min(4, s.r ?? 1)), rgb);
+      else if (s.type === "poly" && Array.isArray(s.pts)) {
+        for (let i = 0; i + 1 < s.pts.length; i++) line(s.pts[i][0], s.pts[i][1], s.pts[i + 1][0], s.pts[i + 1][1], rgb);
+      }
+    }
+    const rec = equationalizeImageData({ width: W, height: H, data });
+    if (rec) rec.fidelity = { psnr_db: null, source: "mindspace-sketch" };
+    return rec;
+  }
+  // DRAW.1 — letters as PENCIL STROKES (childlike handwriting), not a raster
+  // stamp. Converts each character's 5x7 bitmap (FONT5X7 — single source of
+  // truth shared with the glyph raster) into line strokes for sketch():
+  // horizontal + vertical runs of lit cells become jittered line segments,
+  // isolated single cells become points. `wobble` scales the hand-jitter so
+  // her writing is wobbly like a kid's, steadier as the caller lowers it —
+  // the developmental drawing composer (server chat.js) drives wobble from
+  // her live arousal/fear. Normalized [0,1] canvas coords, bounded 12 chars.
+  glyphStrokes(text, opts = {}) {
+    const t = String(text || "").toUpperCase().slice(0, 12);
+    if (!t) return [];
+    const x0 = Math.max(0, Math.min(1, opts.x ?? 0.1));
+    const y0 = Math.max(0, Math.min(1, opts.y ?? 0.78));
+    const size = Math.max(0.03, Math.min(0.3, opts.size ?? 0.08));
+    const wob = Math.max(0, Math.min(0.5, opts.wobble ?? 0.12));
+    const rgb = opts.rgb;
+    const cw = size * (5 / 7);
+    const adv = cw * 1.35;
+    const j = () => (Math.random() * 2 - 1) * wob * size;
+    const strokes = [];
+    let cx = x0;
+    for (const ch of t) {
+      const glyph = FONT5X7[ch] || null;
+      if (glyph) {
+        const covered = /* @__PURE__ */ new Set();
+        for (let r = 0; r < 7; r++) {
+          let run = -1;
+          for (let c = 0; c <= 5; c++) {
+            const on = c < 5 && glyph[r][c] === "1";
+            if (on && run < 0) run = c;
+            else if (!on && run >= 0) {
+              if (c - run >= 2) {
+                const y = y0 + (r + 0.5) / 7 * size;
+                strokes.push({ type: "line", x0: cx + run / 5 * cw + j(), y0: y + j(), x1: cx + (c - 0.5) / 5 * cw + j(), y1: y + j(), rgb });
+                for (let k = run; k < c; k++) covered.add(r * 5 + k);
+              }
+              run = -1;
+            }
+          }
+        }
+        for (let c = 0; c < 5; c++) {
+          let run = -1;
+          for (let r = 0; r <= 7; r++) {
+            const on = r < 7 && glyph[r][c] === "1";
+            if (on && run < 0) run = r;
+            else if (!on && run >= 0) {
+              if (r - run >= 2) {
+                const x = cx + (c + 0.5) / 5 * cw;
+                strokes.push({ type: "line", x0: x + j(), y0: y0 + run / 7 * size + j(), x1: x + j(), y1: y0 + (r - 0.5) / 7 * size + j(), rgb });
+                for (let k = run; k < r; k++) covered.add(k * 5 + c);
+              }
+              run = -1;
+            }
+          }
+        }
+        for (let r = 0; r < 7; r++) for (let c = 0; c < 5; c++) {
+          if (glyph[r][c] === "1" && !covered.has(r * 5 + c)) {
+            strokes.push({ type: "point", x: cx + (c + 0.5) / 5 * cw + j(), y: y0 + (r + 0.5) / 7 * size + j(), r: 0, rgb });
+          }
+        }
+      }
+      cx += adv;
+      if (cx > 0.96) break;
+    }
+    return strokes;
   }
   // MS.K1 — Unity KNOWS her mind-space: all file types, equations, and how to solve them.
   // Her cognition answers "what is this file / how do I solve it" from the equation itself.
@@ -122795,9 +123199,6 @@ async function init() {
       if (typeof providers.autoDetect === "function") {
         providers.autoDetect().then(() => renderSensoryInventory()).catch((err) => console.warn("[Unity] image backend auto-detect failed:", err.message));
       }
-      if (typeof providers.autoDetectVision === "function") {
-        providers.autoDetectVision().then(() => renderSensoryInventory()).catch((err) => console.warn("[Unity] vision backend auto-detect failed:", err.message));
-      }
     } else {
       console.log('[Unity] Local AI backend auto-detect is OFF. Set ENV_KEYS.probeLocalAI=true in env.js or localStorage.unity_probe_local_ai="1" via the setup modal to enable probing ComfyUI / Stable Diffusion / LocalAI / Ollama / etc on boot.');
     }
@@ -122816,16 +123217,13 @@ function renderSensoryInventory() {
   }
   const status = providers.getStatus();
   const dot = (state) => state === "alive" ? "\u{1F7E2}" : state === "dead" ? "\u{1F534}" : "\u26AA";
-  const imgRows = status.image.map((b) => `${dot(b.state)} ${b.name} <span style="color:var(--text-dim);">(${b.source})</span>`).join("<br>");
-  const visRows = status.vision.map((b) => `${dot(b.state)} ${b.name} <span style="color:var(--text-dim);">(${b.source})</span>`).join("<br>");
-  const pausedNote = status.visionPaused ? '<br><span style="color:var(--red);">\u26A0 vision paused \u2014 repeated failures</span>' : "";
-  const probing = status.image.length <= 1 && status.vision.length <= 1;
+  const imgRows = (status.image || []).map((b) => `${dot(b.state)} ${b.name} <span style="color:var(--text-dim);">(${b.source})</span>`).join("<br>");
+  const probing = (status.image || []).length <= 1;
   const probingNote = probing ? '<div style="color:var(--text-dim);margin-top:6px;font-size:10px;">\u23F3 probing localhost ports for local backends (A1111 / ComfyUI / Ollama / etc.)...</div>' : "";
   el.innerHTML = `
     <div style="color:var(--cyan);margin-bottom:4px;">\u{1F3A8} IMAGE GENERATION</div>
     <div style="margin-left:8px;margin-bottom:8px;">${imgRows}</div>
-    <div style="color:var(--cyan);margin-bottom:4px;">\u{1F441} VISION DESCRIBER</div>
-    <div style="margin-left:8px;">${visRows}${pausedNote}</div>
+    <div style="color:var(--text-dim);font-size:10px;">\u{1F441} Vision \u2014 Unity's own equational mind's eye (no LLM describer, nothing to configure)</div>
     ${probingNote}
   `;
   refreshActiveBackendSelectors(status);
@@ -122835,21 +123233,17 @@ var BACKEND_MODEL_CATALOG = {
   "image:Automatic1111 / SD.Next / Forge": ["default"],
   "image:ComfyUI": ["default"],
   "image:OpenAI DALL-E": ["dall-e-3", "dall-e-2"],
-  "image:Stability AI": ["stable-diffusion-xl-1024-v1-0", "sd3-large", "sd3-medium"],
-  "vision:Pollinations": ["openai", "claude-haiku", "gemini"],
-  "vision:Ollama (VLM)": ["llava", "moondream", "bakllava", "minicpm-v"],
-  "vision:LM Studio": ["default"]
+  "image:Stability AI": ["stable-diffusion-xl-1024-v1-0", "sd3-large", "sd3-medium"]
+  // vision:* model catalogs removed — no LLM describer; vision is equational.
 };
 function refreshActiveBackendSelectors(status) {
   const imgSel = document.getElementById("active-image-backend");
-  const visSel = document.getElementById("active-vision-backend");
   const imgModelSel = document.getElementById("active-image-model");
-  const visModelSel = document.getElementById("active-vision-model");
-  if (!imgSel || !visSel) return;
-  const populate = (selEl, list, kind, savedKey) => {
+  if (!imgSel) return;
+  const populate = (selEl, list, savedKey) => {
     const saved = localStorage.getItem(savedKey);
     selEl.innerHTML = "";
-    list.forEach((b) => {
+    (list || []).forEach((b) => {
       const opt = document.createElement("option");
       const val = `${b.source}|${b.name}`;
       opt.value = val;
@@ -122858,8 +123252,7 @@ function refreshActiveBackendSelectors(status) {
       selEl.appendChild(opt);
     });
   };
-  populate(imgSel, status.image, "image", "unity_pref_image_backend");
-  populate(visSel, status.vision, "vision", "unity_pref_vision_backend");
+  populate(imgSel, status.image, "unity_pref_image_backend");
   const populateModels = (selEl, backendSel, kind, savedKey) => {
     if (!selEl) return;
     const [, name] = (backendSel.value || "").split("|");
@@ -122875,7 +123268,6 @@ function refreshActiveBackendSelectors(status) {
     });
   };
   populateModels(imgModelSel, imgSel, "image", "unity_pref_image_model");
-  populateModels(visModelSel, visSel, "vision", "unity_pref_vision_model");
   const applyPref = (kind, backendSel, modelSel, backendKey, modelKey) => {
     const [source, name] = (backendSel.value || "").split("|");
     const model = modelSel?.value || null;
@@ -122909,26 +123301,7 @@ function refreshActiveBackendSelectors(status) {
       applyPref("image", imgSel, imgModelSel, "unity_pref_image_backend", "unity_pref_image_model");
     });
   }
-  if (!visSel._wired) {
-    visSel._wired = true;
-    visSel.addEventListener("change", () => {
-      populateModels(visModelSel, visSel, "vision", "unity_pref_vision_model");
-      applyPref("vision", visSel, visModelSel, "unity_pref_vision_backend", "unity_pref_vision_model");
-      const [, name] = (visSel.value || "").split("|");
-      const key = catalogKeyFor("vision", name);
-      if (key) {
-        document.querySelectorAll(".provider-btn").forEach((b) => b.classList.remove("active"));
-        const btn = document.querySelector(`.provider-btn[data-backend="${key}"]`);
-        if (btn) btn.classList.add("active");
-        showBackendForm(key);
-      }
-    });
-    visModelSel?.addEventListener("change", () => {
-      applyPref("vision", visSel, visModelSel, "unity_pref_vision_backend", "unity_pref_vision_model");
-    });
-  }
   applyPref("image", imgSel, imgModelSel, "unity_pref_image_backend", "unity_pref_image_model");
-  applyPref("vision", visSel, visModelSel, "unity_pref_vision_backend", "unity_pref_vision_model");
 }
 var BACKEND_CATALOG = {
   // ── IMAGE GENERATION ──────────────────────────────────────────
@@ -123010,81 +123383,12 @@ Pick the right "kind" below based on your backend's request format.`,
     keyOptional: true,
     showModel: true,
     showKind: true
-  },
-  // ── VISION DESCRIBER (VLM / image classifier) ─────────────────
-  "vis:pollinations": {
-    name: "Pollinations GPT-4o (vision describer)",
-    kind: "vision",
-    instructions: `Unity's default vision describer \u2014 active out of the box, no setup needed for the anonymous tier. Uses Pollinations multimodal chat under the hood.
-Paste your Pollinations API key below to authenticate (raises rate limits and unlocks paid models). You can also swap the multimodal model Unity asks to describe camera frames.`,
-    link: "https://enter.pollinations.ai/",
-    linkLabel: "\u{1F511} Get Pollinations API key",
-    needsKey: true,
-    keyOptional: true,
-    keyStorageKey: "pollinations",
-    showModel: true,
-    defaultModel: "openai",
-    modelHint: "multimodal chat model name \u2014 e.g. openai, claude-haiku"
-  },
-  "vis:ollama": {
-    name: "Ollama (llava / moondream / bakllava)",
-    kind: "vision",
-    instructions: `Install: ollama.com
-Pull a vision model:  ollama pull llava   (or moondream / bakllava / minicpm-v)
-Start:                ollama serve
-
-Unity auto-detects on localhost:11434 and filters /api/tags for vision-capable models automatically \u2014 no config needed.
-Fill in the URL below only for remote hosts. Model field can force a specific VLM; leave blank to auto-pick.`,
-    link: "https://ollama.com/library/llava",
-    linkLabel: "\u{1F4E6} Ollama VLM model library",
-    autoDetect: true,
-    defaultPort: 11434,
-    defaultKind: "ollama-vision",
-    showModel: true,
-    defaultModel: "",
-    modelHint: "leave blank for auto-pick, or force e.g. llava, moondream, bakllava"
-  },
-  "vis:lmstudio": {
-    name: "LM Studio (VLM)",
-    kind: "vision",
-    instructions: `Install: lmstudio.ai
-Download a vision model (e.g. llava-v1.6-mistral or bakllava) from the model browser.
-Load it and start the local server (Developer tab \u2192 Start Server, default port 1234).
-
-Unity auto-detects on localhost:1234. Exposes OpenAI-compatible /v1/chat/completions with multimodal content.`,
-    link: "https://lmstudio.ai",
-    linkLabel: "\u{1F4E6} LM Studio download",
-    autoDetect: true,
-    defaultPort: 1234,
-    defaultKind: "openai-vision",
-    showModel: true,
-    defaultModel: "",
-    modelHint: "leave blank for auto-pick"
-  },
-  "vis:openai": {
-    name: "OpenAI GPT-4o Vision",
-    kind: "vision",
-    instructions: `Create a key at platform.openai.com/api-keys.
-Paste below. Unity uses gpt-4o for vision by default \u2014 change to gpt-4o-mini for cheaper / faster.`,
-    link: "https://platform.openai.com/api-keys",
-    linkLabel: "\u{1F511} Get OpenAI API key",
-    needsKey: true,
-    defaultUrl: "https://api.openai.com",
-    defaultKind: "openai-vision",
-    showModel: true,
-    defaultModel: "gpt-4o"
-  },
-  "vis:custom": {
-    name: "Custom VLM Endpoint",
-    kind: "vision",
-    instructions: `Any OpenAI-compatible multimodal chat endpoint or Ollama-style VLM.
-Pick "openai-vision" for endpoints using /v1/chat/completions with type:image_url content blocks, or "ollama-vision" for endpoints using /api/chat with an images array.`,
-    needsUrl: true,
-    needsKey: true,
-    keyOptional: true,
-    showModel: true,
-    showKind: true
   }
+  // ── VISION DESCRIBER backends REMOVED ─────────────────────────
+  // Unity's sight is her own equational mind's eye + visual cortex
+  // (visual-cortex.js _mindSpace.describe) — there is no LLM describer
+  // in the loop, so there are no vis:* backends to configure. Camera
+  // frames feed her visual cortex directly; nothing goes to a VLM.
 };
 function wireBackendButtons() {
   const buttons = document.querySelectorAll(".provider-btn");
@@ -123541,7 +123845,6 @@ async function bootUnity(apiKey, perms) {
     const probeLsBoot = typeof localStorage !== "undefined" && localStorage.getItem("unity_probe_local_ai") === "1";
     if (probeEnvBoot || probeLsBoot) {
       if (typeof providers.autoDetect === "function") providers.autoDetect().catch((err) => console.warn("[Unity] image probe failed:", err.message));
-      if (typeof providers.autoDetectVision === "function") providers.autoDetectVision().catch((err) => console.warn("[Unity] vision probe failed:", err.message));
     }
   }
   voice = new VoiceIO();
@@ -124343,6 +124646,33 @@ function updateBrainIndicator(state) {
   const isDreaming = s.isDreaming || s.sharedMood?.isDreaming || l.isDreaming || l.sharedMood?.isDreaming || false;
   const dreamEl = $("hud-dream");
   if (dreamEl) dreamEl.textContent = isDreaming ? "dreaming" : "awake";
+  const _vGrade = s.minGrade || l.minGrade || null;
+  if (_vGrade && _vGrade !== updateBrainIndicator._lastVoiceGrade && typeof window !== "undefined" && window.voice?.setAge) {
+    updateBrainIndicator._lastVoiceGrade = _vGrade;
+    const VOICE_AGE = {
+      "pre-K": 4,
+      "K": 5,
+      "grade1": 6,
+      "grade2": 7,
+      "grade3": 8,
+      "grade4": 9,
+      "grade5": 10,
+      "grade6": 11,
+      "grade7": 12,
+      "grade8": 13,
+      "grade9": 14,
+      "grade10": 15,
+      "grade11": 16,
+      "grade12": 17,
+      "college1": 18,
+      "college2": 19,
+      "college3": 20,
+      "college4": 21,
+      "grad": 23,
+      "phd": 25
+    };
+    window.voice.setAge(VOICE_AGE[_vGrade] || 25);
+  }
   function setModDot(id, value, threshold = 0.3) {
     const dot = $(id);
     if (!dot) return;

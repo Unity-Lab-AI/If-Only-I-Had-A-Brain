@@ -165,8 +165,35 @@ class VoiceIO {
   }
 
   setVoice(voiceName) {
+    // explicit override — beats the age preset when set
+    this._voiceOverride = voiceName || null;
     this._pollinationsVoice = voiceName;
     return this;
+  }
+
+  /**
+   * VOX.0 — pin her spoken age. app.js feeds this from live state.minGrade
+   * (same-girl-growing-up continuity: the voice ages as she walks the
+   * grades, exactly like the self-image age pin). Clamped 3..30.
+   */
+  setAge(years) {
+    const a = Math.max(3, Math.min(30, Math.round(years) || 25));
+    this._age = a;
+    return this;
+  }
+
+  /**
+   * VOX.0 — 5-tier age preset: voice id + playback rate + a speak-style
+   * instruction for the audio model. Female voices only (openai-audio):
+   * nova (bright/young), coral (mid), shimmer (warm adult).
+   */
+  _agePreset() {
+    const a = this._age || 25;
+    if (a < 11)  return { voice: 'nova',    rate: 1.08, style: `You are a ${a}-year-old girl. Speak in the natural bright voice of a ${a}-year-old girl.` };
+    if (a < 14)  return { voice: 'nova',    rate: 1.04, style: `You are a ${a}-year-old girl. Speak in the natural voice of a ${a}-year-old girl.` };
+    if (a < 18)  return { voice: 'coral',   rate: 1.02, style: `You are a ${a}-year-old teenage girl. Speak in the natural voice of a ${a}-year-old teenage girl.` };
+    if (a < 23)  return { voice: 'shimmer', rate: 1.0,  style: `You are a ${a}-year-old young woman. Speak in the natural voice of a ${a}-year-old young woman.` };
+    return       { voice: 'shimmer', rate: 0.98, style: `You are a ${a}-year-old woman. Speak in the natural warm voice of a ${a}-year-old woman.` };
   }
 
   setApiKey(key) {
@@ -186,7 +213,9 @@ class VoiceIO {
     this._speaking = true;
     this.emit('speech_start');
 
-    const voice = options.voice || this._pollinationsVoice;
+    // VOX.0 — the age preset picks the voice unless the caller (or setVoice)
+    // explicitly overrides. Her voice tracks her live grade via setAge().
+    const voice = options.voice || null;
 
     // Try Pollinations TTS — retry once on 5xx errors before falling
     // back. 401/402/403 (handled by _speakPollinations dead-backend
@@ -265,7 +294,15 @@ class VoiceIO {
       throw new Error('Pollinations TTS dead (cooldown)');
     }
 
-    const url = 'https://gen.pollinations.ai/v1/audio/speech';
+    // VOX.0 — Pollinations retired the /v1/audio/speech lane for openai-audio
+    // (the endpoint now answers: 'Model "openai-audio" is a text model and
+    // cannot be used on the audio endpoint. Use the text endpoint instead.').
+    // TTS rides the CHAT endpoint with audio output modalities (the
+    // gpt-4o-audio pattern): the model SPEAKS the user text verbatim, styled
+    // by the age instruction so her voice tracks her live grade, and returns
+    // base64 audio in choices[0].message.audio.data.
+    const preset = this._agePreset();
+    const url = 'https://gen.pollinations.ai/v1/chat/completions';
     const headers = { 'Content-Type': 'application/json' };
     if (this._apiKey) {
       headers['Authorization'] = `Bearer ${this._apiKey}`;
@@ -276,8 +313,12 @@ class VoiceIO {
       headers,
       body: JSON.stringify({
         model: 'openai-audio',
-        input: text,
-        voice: voice || 'shimmer',
+        modalities: ['text', 'audio'],
+        audio: { voice: voice || this._voiceOverride || preset.voice, format: 'mp3' },
+        messages: [
+          { role: 'system', content: preset.style + ' Repeat the user text EXACTLY, verbatim, word for word. Do not add, remove, or change anything.' },
+          { role: 'user', content: text },
+        ],
       }),
     });
 
@@ -290,17 +331,25 @@ class VoiceIO {
       throw new Error(`Pollinations TTS HTTP ${response.status}`);
     }
 
-    const arrayBuffer = await response.arrayBuffer();
+    const data = await response.json().catch(() => null);
+    const b64 = data?.choices?.[0]?.message?.audio?.data;
+    if (!b64) throw new Error('Pollinations TTS returned no audio data');
+    const bin = atob(b64);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    const arrayBuffer = bytes.buffer;
 
-    // Try AudioContext first, fall back to HTML5 Audio
+    // Try AudioContext first, fall back to HTML5 Audio — both honor the
+    // age preset's playback rate (a light pitch/tempo nudge on top of the
+    // voice + style so K-Unity reads younger than PhD-Unity).
     try {
-      await this._playWithAudioContext(arrayBuffer);
+      await this._playWithAudioContext(arrayBuffer.slice(0), preset.rate);
     } catch (_) {
-      await this._playWithAudioElement(arrayBuffer);
+      await this._playWithAudioElement(arrayBuffer, preset.rate);
     }
   }
 
-  async _playWithAudioContext(arrayBuffer) {
+  async _playWithAudioContext(arrayBuffer, rate = 1.0) {
     if (!this._audioCtx) {
       const AC = typeof AudioContext !== 'undefined'
         ? AudioContext
@@ -320,6 +369,7 @@ class VoiceIO {
     return new Promise((resolve, reject) => {
       const source = this._audioCtx.createBufferSource();
       source.buffer = audioBuffer;
+      source.playbackRate.value = rate;   // VOX.0 age nudge
       source.connect(this._audioCtx.destination);
       this._currentAudioSource = source;
       source.onended = () => {
@@ -334,10 +384,11 @@ class VoiceIO {
     });
   }
 
-  async _playWithAudioElement(arrayBuffer) {
+  async _playWithAudioElement(arrayBuffer, rate = 1.0) {
     const blob = new Blob([arrayBuffer], { type: 'audio/mpeg' });
     const url = URL.createObjectURL(blob);
     const audio = new Audio(url);
+    audio.playbackRate = rate;   // VOX.0 age nudge
     this._currentAudioElement = audio;
 
     return new Promise((resolve, reject) => {

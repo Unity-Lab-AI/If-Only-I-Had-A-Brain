@@ -3323,6 +3323,21 @@ function updateBrainIndicator(state) {
   const isDreaming = s.isDreaming || s.sharedMood?.isDreaming || l.isDreaming || l.sharedMood?.isDreaming || false;
   const dreamEl = $('hud-dream'); if (dreamEl) dreamEl.textContent = isDreaming ? 'dreaming' : 'awake';
 
+  // VOX.0 — pin her VOICE age to the live grade (same map the server uses
+  // for the self-image age pin: same girl, growing up, voice aging with
+  // her). Cheap: only fires setAge when the grade string changes.
+  const _vGrade = s.minGrade || l.minGrade || null;
+  if (_vGrade && _vGrade !== updateBrainIndicator._lastVoiceGrade && typeof window !== 'undefined' && window.voice?.setAge) {
+    updateBrainIndicator._lastVoiceGrade = _vGrade;
+    const VOICE_AGE = {
+      'pre-K': 4, 'K': 5,
+      'grade1': 6, 'grade2': 7, 'grade3': 8, 'grade4': 9, 'grade5': 10, 'grade6': 11,
+      'grade7': 12, 'grade8': 13, 'grade9': 14, 'grade10': 15, 'grade11': 16, 'grade12': 17,
+      'college1': 18, 'college2': 19, 'college3': 20, 'college4': 21, 'grad': 23, 'phd': 25,
+    };
+    window.voice.setAge(VOICE_AGE[_vGrade] || 25);
+  }
+
   function setModDot(id, value, threshold = 0.3) {
     const dot = $(id); if (!dot) return;
     dot.classList.remove('active', 'high');
