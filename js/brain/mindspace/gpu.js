@@ -244,14 +244,43 @@ function renderThoughtPlane(glyphText, stateVector, W, H, mood, tintText) {
     if (COLOR_WORDS[w]) { tint = COLOR_WORDS[w]; break; }
   }
   const named = !!tint;
-  if (!tint) tint = moodTint(mood);
-  // background: state texture modulates the tint. A NAMED color paints strong (a "solid
-  // red sheet" reads as a red field). With NO glyph overlay the state texture IS the
-  // image — render it vivid (her mind-state in color), not near-black; with glyphs,
-  // keep it faint so the symbols dominate.
+  // SEE.4 — SHE PICKS THE FIELD'S COLORS (kills the flat-green wash). The old
+  // path textured every abstract thought in a SINGLE moodTint, and her usual
+  // valence sits on the hue wheel's green band — so every de-novo field read
+  // as the same "green textured graphic equation". Now (same crayon logic as
+  // her sketch canvas): a NAMED color still wins; otherwise a TWO-COLOR
+  // gradient from her palette families — warm when valence is up, her
+  // goth accents (purple/pink/blue/red/teal) otherwise, muted darks when
+  // fear is high — with the pair varied per thought via hash so different
+  // thoughts get different fields. The state texture interpolates between
+  // the two colors: structured, colorful, hers.
+  const _valence = Math.max(-1, Math.min(1, (mood && typeof mood.valence === 'number') ? mood.valence : 0));
+  const _fear = Math.max(0, Math.min(1, (mood && typeof mood.fear === 'number') ? mood.fear : 0));
+  const PAL = {
+    warm: [[214, 48, 49], [235, 140, 50], [253, 121, 168], [240, 200, 60]],
+    goth: [[162, 89, 216], [253, 121, 168], [72, 116, 224], [214, 48, 49], [64, 190, 200]],
+    dark: [[120, 100, 160], [80, 90, 140], [150, 150, 155], [100, 60, 120]],
+  };
+  let tintA, tintB;
+  if (named) {
+    tintA = tint;
+    tintB = [Math.round(tint[0] * 0.45), Math.round(tint[1] * 0.45), Math.round(tint[2] * 0.45)];   // its own shadow
+  } else {
+    const fam = _fear > 0.55 ? PAL.dark : (_valence >= 0.25 ? PAL.warm : PAL.goth);
+    let hh = 5381;
+    for (let i = 0; i < tintSrc.length; i++) hh = ((hh << 5) + hh + tintSrc.charCodeAt(i)) >>> 0;
+    const ia = hh % fam.length;
+    let ib = (hh >>> 3) % fam.length;
+    if (ib === ia) ib = (ib + 1) % fam.length;
+    tintA = fam[ia]; tintB = fam[ib];
+  }
+  // background: state texture interpolates tintA→tintB with a brightness band.
+  // A NAMED color paints strong (a "solid red sheet" reads as a red field).
+  // With NO glyph overlay the texture IS the image — render vivid; with
+  // glyphs, keep it faint so the symbols dominate.
   let lo, hi;
-  if (!txt) { lo = named ? 0.45 : 0.25; hi = named ? 0.95 : 0.85; }
-  else { lo = named ? 0.30 : 0.06; hi = named ? 0.55 : 0.28; }
+  if (!txt) { lo = named ? 0.45 : 0.30; hi = named ? 0.95 : 0.90; }
+  else { lo = named ? 0.30 : 0.08; hi = named ? 0.55 : 0.30; }
   if (stateVector && stateVector.length > 0) {
     let mn = Infinity, mx = -Infinity;
     for (let i = 0; i < stateVector.length; i++) { const v = stateVector[i]; if (v < mn) mn = v; if (v > mx) mx = v; }
@@ -260,20 +289,22 @@ function renderThoughtPlane(glyphText, stateVector, W, H, mood, tintText) {
       const sv = (stateVector[Math.floor(p * stateVector.length / N)] - mn) / range;
       const k = lo + sv * (hi - lo);
       const o = p * 4;
-      data[o] = Math.round(tint[0] * k); data[o + 1] = Math.round(tint[1] * k);
-      data[o + 2] = Math.round(tint[2] * k); data[o + 3] = 255;
+      data[o]     = Math.round((tintA[0] + (tintB[0] - tintA[0]) * sv) * k);
+      data[o + 1] = Math.round((tintA[1] + (tintB[1] - tintA[1]) * sv) * k);
+      data[o + 2] = Math.round((tintA[2] + (tintB[2] - tintA[2]) * sv) * k);
+      data[o + 3] = 255;
     }
   } else {
     for (let p = 0; p < N; p++) {
       const o = p * 4;
-      data[o] = Math.round(tint[0] * lo); data[o + 1] = Math.round(tint[1] * lo);
-      data[o + 2] = Math.round(tint[2] * lo); data[o + 3] = 255;
+      data[o] = Math.round(tintA[0] * lo); data[o + 1] = Math.round(tintA[1] * lo);
+      data[o + 2] = Math.round(tintA[2] * lo); data[o + 3] = 255;
     }
   }
   if (!txt) return data;
   // glyph color: named color lightened toward white (legible on its own field), else warm white
   const gl = named
-    ? [Math.round(tint[0] * 0.4 + 255 * 0.6), Math.round(tint[1] * 0.4 + 255 * 0.6), Math.round(tint[2] * 0.4 + 255 * 0.6)]
+    ? [Math.round(tintA[0] * 0.4 + 255 * 0.6), Math.round(tintA[1] * 0.4 + 255 * 0.6), Math.round(tintA[2] * 0.4 + 255 * 0.6)]
     : [238, 236, 228];
   // glyph scale: short thoughts get 2x (chunky-legible), longer get 1x
   const scale = txt.length <= 22 ? 2 : 1;

@@ -183,6 +183,29 @@ past crayon stick drawings to serious images? Yes — the same way humans do, an
   subject is the realized version — the full artist loop closes: imagine → draw → realize → see → remember
   → draw better.
 
+**SE.13 — DEAD-AIR + GREEN-FIELD POLLUTION purge (SEE.1-4, 2026-07-09).** With no cameras on, the mind's eye
+kept showing a static "dead air" notice, and abstract thoughts rendered as flat green texture. Four roots,
+four gates:
+- **SEE.1 feeder dead-air gates** (`js/visual-feeder.js`) — a page can hold camera permission while the
+  "camera" is dead (muted/ended track, covered lens, virtual cam serving a static placeholder). The feeder
+  now requires a LIVE unmuted track, rejects near-uniform frames client-side (luma stddev <12), and — the
+  categorical kill — **ships nothing when the frame is pixel-identical to the last one**: real sensors always
+  drift; dead air never does.
+- **SEE.2 server repeat rejection + store v2** (`server/brain-server/visual-memory.js`) — cached pre-SEE.1
+  feeder tabs can ship for days, so the server is the authority: a frame whose percept is near-identical
+  (cosine >0.995) to a recent ingest is refused — a frozen source can no longer bind itself to every concept
+  she thinks (the dead-air takeover: unlabeled camera frames bind to her current thoughts, so one static
+  image colonized dozens of concepts). The store file is bumped to `visual-memory-v2.json`, orphaning the
+  poisoned v1 — her eyes start clean under the new gates.
+- **SEE.3 recall cooldown** — a recalled memory RESTS for `DREAM_VM_RECALL_COOLDOWN_MS` (3min default)
+  before it can be shown again; while all matches rest, recall reports a miss and she sketches/daydreams
+  instead — no single percept can own the viewer's time.
+- **SEE.4 de-novo palette** (`js/brain/mindspace/gpu.js` `renderThoughtPlane`) — the abstract field was a
+  single `moodTint` texture, and her usual valence sits on the hue wheel's GREEN band → every de-novo field
+  read as the same "green graphic equation". Now: named color words still win; otherwise a TWO-COLOR gradient
+  from her palette families (warm when valence is up, goth accents otherwise, muted darks when fear rides
+  along), varied per thought via hash — structured, colorful, hers.
+
 ---
 
 ## The Sensory AI Provider — 4-Level Priority

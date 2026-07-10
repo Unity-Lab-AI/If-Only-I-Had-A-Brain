@@ -29,7 +29,12 @@
 const fs = require('fs');
 const path = require('path');
 
-const VM_FILE = path.join(__dirname, '..', 'visual-memory.json');
+// SEE.2 — store bumped to v2: the v1 file was poisoned by dead-air placeholder
+// frames (a virtual cam's static "no signal" graphic bound itself to dozens of
+// concepts because unlabeled camera frames bind to whatever she's thinking) and
+// by green-screen-era captures. The rename orphans the polluted store — her
+// eyes start clean under the new gates. v1 stays on disk, unused.
+const VM_FILE = path.join(__dirname, '..', 'visual-memory-v2.json');
 const VM_CAP = 384;              // distinct seen-concepts held (LRU)
 const VM_INGEST_GAP_MS = 2000;   // per-brain pacing across ALL clients
 const VM_STOP = new Set([
@@ -144,6 +149,37 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
     const fromCamera = msg.source === 'camera';
     rec.fidelity = { psnr_db: null, source: fromCamera ? 'seen-camera' : 'seen-image' };
 
+    // SEE.2 — REPEAT-FRAME REJECTION (server-side authority). Deployed browser
+    // tabs can run a cached pre-SEE.1 feeder for days, so the server must also
+    // refuse a static source: if this frame's percept is near-identical to a
+    // recently ingested one (cosine > 0.995 over the dim-64 profile), NOTHING
+    // NEW was seen — binding it again would let one frozen image colonize
+    // every concept she thinks over hours (the dead-air takeover). Real scenes
+    // drift below that ceiling even when the camera is still.
+    try {
+      const pv = this.mindSpace.describe(rec);
+      if (pv && pv.length) {
+        if (!Array.isArray(this._vmRecentPercepts)) this._vmRecentPercepts = [];
+        const cosSim = (a, b) => {
+          let d = 0, na = 0, nb = 0; const n = Math.min(a.length, b.length);
+          for (let i = 0; i < n; i++) { d += a[i] * b[i]; na += a[i] * a[i]; nb += b[i] * b[i]; }
+          const dn = Math.sqrt(na) * Math.sqrt(nb); return dn > 0 ? d / dn : 0;
+        };
+        for (const old of this._vmRecentPercepts) {
+          if (cosSim(pv, old) > 0.995) {
+            this._vmRepeatSkips = (this._vmRepeatSkips || 0) + 1;
+            if (!this._vmRepeatLogAt || (now - this._vmRepeatLogAt) > 60000) {
+              this._vmRepeatLogAt = now;
+              console.log(`[VisualMemory] skipped repeat frame (percept cosine > 0.995 vs a recent ingest — frozen/static source, nothing new seen). ${this._vmRepeatSkips} repeats skipped this boot.`);
+            }
+            return;
+          }
+        }
+        this._vmRecentPercepts.push(pv);
+        while (this._vmRecentPercepts.length > 3) this._vmRecentPercepts.shift();
+      }
+    } catch { /* repeat gate best-effort — intake proceeds */ }
+
     // concept binding — label first (image prompts name what she made); an
     // unlabeled camera frame fuses with what she is THINKING in this moment.
     let tokens = this._vmContentTokens(msg.label);
@@ -220,6 +256,18 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
     }
     if (hits.length === 0) return null;
     hits.sort((a, b) => (b.e.seen - a.e.seen) || (b.e.at - a.e.at));
+    // SEE.3 — RECALL COOLDOWN (viewer variety). One stored percept must never
+    // own the mind's eye: without this, a frequently-thought concept re-showed
+    // the same memory every daydream tick and "took all the time" of the
+    // viewer. A recalled entry rests for DREAM_VM_RECALL_COOLDOWN_MS (default
+    // 3min) before it can be SHOWN again; while everything matched is resting,
+    // recall reports a MISS so the caller falls through to the sketch /
+    // de-novo paths — she draws or daydreams instead of re-staring.
+    const COOL = Number(process.env.DREAM_VM_RECALL_COOLDOWN_MS) > 0
+      ? Number(process.env.DREAM_VM_RECALL_COOLDOWN_MS) : 180000;
+    const nowR = Date.now();
+    const fresh = hits.filter(h => !h.e.shownAt || (nowR - h.e.shownAt) > COOL);
+    if (fresh.length === 0) return null;   // all resting → variety via de-novo/sketch
     // TU.29.12 — QUALITY GATE. A near-uniform frame (dark room / blank wall /
     // subject off-frame) equationalizes to almost no wavelet detail; morphing
     // two of them collapses to a handful of coefficients that reconstruct FLAT
@@ -228,15 +276,21 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
     // drop-tiny threshold; below MIN it is not a real image, so we treat the
     // recall as a MISS and let the caller render the vivid de-novo mood field.
     const MIN_DETAIL = 200;
-    if (hits.length >= 2 && this.mindSpace && typeof this.mindSpace.morph === 'function') {
+    if (fresh.length >= 2 && this.mindSpace && typeof this.mindSpace.morph === 'function') {
       try {
-        const m = this.mindSpace.morph(hits[0].e.rec, hits[1].e.rec, 0.5);
-        if (m && this._recDetail(m) >= MIN_DETAIL) return { rec: m, matched: [hits[0].word, hits[1].word], recombined: true };
+        const m = this.mindSpace.morph(fresh[0].e.rec, fresh[1].e.rec, 0.5);
+        if (m && this._recDetail(m) >= MIN_DETAIL) {
+          fresh[0].e.shownAt = nowR; fresh[1].e.shownAt = nowR;   // SEE.3 — both parents rest
+          return { rec: m, matched: [fresh[0].word, fresh[1].word], recombined: true };
+        }
       } catch { /* fall through to single recall */ }
     }
     // single strongest — only if it carries real detail
-    for (const h of hits) {
-      if (this._recDetail(h.e.rec) >= MIN_DETAIL) return { rec: h.e.rec, matched: [h.word], recombined: false };
+    for (const h of fresh) {
+      if (this._recDetail(h.e.rec) >= MIN_DETAIL) {
+        h.e.shownAt = nowR;                                       // SEE.3 — rests after showing
+        return { rec: h.e.rec, matched: [h.word], recombined: false };
+      }
     }
     return null;   // all matches degenerate → de-novo mood field (never black)
   },

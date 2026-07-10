@@ -98,10 +98,38 @@ async function startCamera() {
     vid.muted = true; vid.playsInline = true; vid.autoplay = true;
     vid.srcObject = stream; vid.style.display = 'none';
     document.body.appendChild(vid);
+    // SEE.1 — DEAD-AIR GATES. A page can hold camera permission while the
+    // "camera" is dead: a muted/ended track, a covered lens, or a virtual
+    // cam serving a static "no signal" placeholder. Those are NOT sight —
+    // shipping them bound the same dead-air graphic to every concept she
+    // was thinking, colonizing her visual memory and hogging the viewer.
+    //   (a) track-liveness: eyes are CLOSED when the track isn't live;
+    //   (b) variance: near-uniform frames (dark room / blank wall) never ship
+    //       (client-side mirror of the server blank gate — saves the socket);
+    //   (c) STATIC-FRAME dedup: a real camera never produces two pixel-
+    //       identical captures (sensor noise guarantees drift); a frozen or
+    //       placeholder source always does. Identical hash → ship NOTHING.
+    const track = stream.getVideoTracks ? stream.getVideoTracks()[0] : null;
+    let _lastFrameHash = 0;
     setInterval(() => {
       if (vid.readyState < 2 || !vid.videoWidth) return;
+      if (track && (track.readyState !== 'live' || track.muted)) return;   // eyes closed
       const img = capture(vid, vid.videoWidth, vid.videoHeight);
-      if (img) sendFrame('camera', img, null);
+      if (!img) return;
+      const d = img.data;
+      let sum = 0, sumSq = 0, cnt = 0, h = 5381;
+      for (let i = 0; i < d.length; i += 4 * 7) {   // stride-sample every 7th pixel
+        const l = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+        sum += l; sumSq += l * l; cnt++;
+        h = ((h << 5) + h + ((d[i] << 16) ^ (d[i + 1] << 8) ^ d[i + 2])) >>> 0;
+      }
+      if (!cnt) return;
+      const mean = sum / cnt;
+      const std = Math.sqrt(Math.max(0, sumSq / cnt - mean * mean));
+      if (std < 12) return;                          // blank/dark — not a percept
+      if (h === _lastFrameHash) return;              // pixel-identical = dead air / frozen source
+      _lastFrameHash = h;
+      sendFrame('camera', img, null);
     }, CAMERA_INTERVAL_MS);
   } catch { /* no camera / denied mid-flight — her eyes just stay closed */ }
 }
