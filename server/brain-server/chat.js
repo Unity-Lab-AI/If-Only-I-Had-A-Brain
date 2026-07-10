@@ -1475,6 +1475,25 @@ const SERVER_CHAT_MIXIN = {
     let schema = null;
     if (concept) {
       for (const [k, words] of Object.entries(SCHEMA_WORDS)) { if (words.includes(concept)) { schema = k; break; } }
+      // DEFINITION GROUNDING (operator directive: drawing uses her learned
+      // definition of the word, not the bare token). On a direct-table miss,
+      // the concept's LEARNED definition — the same cached dictionary text her
+      // curriculum Hebbian-bound at teach time — is tokenized and its content
+      // words walk the same table: "witch" classifies as person via "woman",
+      // "wasp" as spider via "insect" — before the GloVe fallback guesses.
+      if (!schema && this.cortexCluster && typeof this.cortexCluster.lookupDefinitionSync === 'function') {
+        try {
+          const _def = this.cortexCluster.lookupDefinitionSync(concept);
+          if (_def && typeof _def === 'string') {
+            const _dw = _def.toLowerCase().split(/[^a-z]+/).filter(w => w.length > 2).slice(0, 16);
+            outer: for (const w of _dw) {
+              for (const [k, words] of Object.entries(SCHEMA_WORDS)) {
+                if (words.includes(w)) { schema = k; break outer; }
+              }
+            }
+          }
+        } catch { /* grounding best-effort — GloVe backup below */ }
+      }
       if (!schema && this.sharedEmbeddings && typeof this.sharedEmbeddings.getEmbedding === 'function') {
         try {
           const cv = this.sharedEmbeddings.getEmbedding(concept);
@@ -1741,7 +1760,21 @@ const SERVER_CHAT_MIXIN = {
     if (this._lastDrawRealizeAt && (now - this._lastDrawRealizeAt) < GAP) return;
     if (Math.random() > 0.35) return;   // occasional urge, not a metronome
     this._lastDrawRealizeAt = now;
-    let prompt = concept + (sceneWords ? ' ' + sceneWords : '');
+    // DEFINITION GROUNDING (operator directive): the realized render composes
+    // from what the word MEANS to her — the learned definition's content
+    // words ride the prompt so "witch" renders magic+woman+broom instead of
+    // whatever the executor free-associates from a bare token.
+    let _defTail = '';
+    try {
+      const _c = this.cortexCluster;
+      const _d = (_c && typeof _c.lookupDefinitionSync === 'function') ? _c.lookupDefinitionSync(concept) : null;
+      if (_d && typeof _d === 'string') {
+        const _stop = new Set(['the','a','an','of','to','and','or','in','on','for','with','that','which','who','whom','is','are','was','were','be','been','as','by','at','it','its','this','these','those','from','used','uses','using','having','being','one','any','some','such','other','more','most','very','into','about','when','where','also']);
+        const _words = _d.toLowerCase().split(/[^a-z]+/).filter(w => w.length > 2 && !_stop.has(w) && w !== concept);
+        if (_words.length) _defTail = ' ' + [...new Set(_words)].slice(0, 6).join(' ');
+      }
+    } catch { /* bare concept prompt */ }
+    let prompt = concept + _defTail + (sceneWords ? ' ' + sceneWords : '');
     try { if (typeof this._composeImagePrompt === 'function') prompt = this._composeImagePrompt(prompt); } catch { /* bare */ }
     let url = '';
     try { url = this._buildPollinationsImageUrl(prompt); } catch { return; }
