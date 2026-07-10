@@ -1065,7 +1065,7 @@ const SERVER_CHAT_MIXIN = {
             if (rec && typeof this._lastSketchLabel === 'string' && this._lastSketchLabel.startsWith('canvas:scene:')) {
               try {
                 const _rc = this._lastSketchLabel.slice('canvas:scene:'.length).replace(/\?$/, '');
-                this._realizeDrawing(_rc, 'childs crayon scene', now);
+                this._realizeDrawing(_rc, 'hand-drawn crayon scene', now);
               } catch { /* realization best-effort */ }
             }
           }
@@ -1600,12 +1600,12 @@ const SERVER_CHAT_MIXIN = {
         if (concept && (schema || stage >= 2)) {
           // she LABELS her drawing (kids caption their art) — her word, her crayon
           const label = concept.slice(0, 10);
-          const gs = this.mindSpace.glyphStrokes(label, { x: Math.max(0.06, 0.5 - label.length * 0.033), y: 0.885, size: 0.075, wobble: 0.05 + 0.12 * arousal, rgb: pick(concept, 'label') });
+          const gs = this.mindSpace.glyphStrokes(label, { x: Math.max(0.06, 0.5 - label.length * 0.033), y: 0.885, size: 0.075, wobble: 0.02 + 0.12 * arousal, rgb: pick(concept, 'label') });
           for (const s of gs) strokes.push(s);
         }
         if (isQuestionThought || (concept && !schema && stage >= 2)) {
           // a question she HAS: the thing she's wondering about gets a big "?"
-          const q = this.mindSpace.glyphStrokes('?', { x: 0.76, y: 0.08, size: 0.16, wobble: 0.06 + 0.1 * arousal, rgb: CRAYON.pink });
+          const q = this.mindSpace.glyphStrokes('?', { x: 0.76, y: 0.08, size: 0.16, wobble: 0.02 + 0.1 * arousal, rgb: CRAYON.pink });
           for (const s of q) strokes.push(s);
           if (this._lastSketchLabel) this._lastSketchLabel += '?';
         }
@@ -1824,7 +1824,7 @@ const SERVER_CHAT_MIXIN = {
     try {
       if (concept && this.mindSpace && typeof this.mindSpace.glyphStrokes === 'function') {
         const label = String(concept).slice(0, 10);
-        const gs = this.mindSpace.glyphStrokes(label, { x: Math.max(0.06, 0.5 - label.length * 0.033), y: 0.885, size: 0.075, wobble: 0.05 + 0.1 * arousal, rgb: ink });
+        const gs = this.mindSpace.glyphStrokes(label, { x: Math.max(0.06, 0.5 - label.length * 0.033), y: 0.885, size: 0.075, wobble: 0.02 + 0.1 * arousal, rgb: ink });
         for (const s of gs) strokes.push(s);
       }
     } catch { /* label best-effort */ }

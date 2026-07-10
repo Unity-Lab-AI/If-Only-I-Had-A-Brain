@@ -122141,21 +122141,23 @@ var MindSpaceGPU = class {
     if (rec) rec.fidelity = { psnr_db: null, source: "mindspace-sketch" };
     return rec;
   }
-  // DRAW.1 — letters as PENCIL STROKES (childlike handwriting), not a raster
+  // DRAW.1 — letters as PENCIL STROKES (her own hand), not a raster
   // stamp. Converts each character's 5x7 bitmap (FONT5X7 — single source of
   // truth shared with the glyph raster) into line strokes for sketch():
   // horizontal + vertical runs of lit cells become jittered line segments,
-  // isolated single cells become points. `wobble` scales the hand-jitter so
-  // her writing is wobbly like a kid's, steadier as the caller lowers it —
-  // the developmental drawing composer (server chat.js) drives wobble from
-  // her live arousal/fear. Normalized [0,1] canvas coords, bounded 12 chars.
+  // isolated single cells become points. `wobble` scales the hand-jitter.
+  // Jitter comes ONLY from live affect (arousal/fear shake any hand) plus
+  // natural micro-tremor, annealed by practiced skill — NEVER from an
+  // age/grade mimicry constant (operator directive: no hand-wobble to fake
+  // children's writing; her line quality is her trained state, period).
+  // Normalized [0,1] canvas coords, bounded 12 chars.
   glyphStrokes(text, opts = {}) {
     const t = String(text || "").toUpperCase().slice(0, 12);
     if (!t) return [];
     const x0 = Math.max(0, Math.min(1, opts.x ?? 0.1));
     const y0 = Math.max(0, Math.min(1, opts.y ?? 0.78));
     const size = Math.max(0.03, Math.min(0.3, opts.size ?? 0.08));
-    const wob = Math.max(0, Math.min(0.5, opts.wobble ?? 0.12));
+    const wob = Math.max(0, Math.min(0.5, opts.wobble ?? 0.02));
     const rgb = opts.rgb;
     const cw = size * (5 / 7);
     const adv = cw * 1.35;
