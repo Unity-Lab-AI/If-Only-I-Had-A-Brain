@@ -1059,6 +1059,30 @@ const SERVER_GPU_MIXIN = {
       return;
     }
     if (_cc) _cc._bindIncapable = false;
+    // VRAM-FIT gate (small-donor policy) — same shape as F8 above but for total
+    // committed VRAM vs the RUNNING brain size. A card that cannot hold the full
+    // replica must not receive the doomed multi-GB stream (wasted upload, bind
+    // fail or OOM, reconnect churn). It STAYS CONNECTED and never shrinks the
+    // brain (the size driver is baseline-floored); the partial-coverage assist
+    // lane that lets it pull the teach units it CAN hold is the flagged
+    // follow-up in the workflow docs. Effective VRAM mirrors the community
+    // recompute: explicit donatedMB cap, else full card x duty-cycle.
+    if (_cc) {
+      const _fullVram = Number(_cc.gpuVramMB || 0);
+      const _effVram = (Number(_cc.donatedMB) > 0)
+        ? (_fullVram > 0 ? Math.min(Number(_cc.donatedMB), _fullVram) : Number(_cc.donatedMB))
+        : _fullVram * (((_cc.utilizationPct) ?? 100) / 100);
+      const _needMB = Number(this._runningFloorMB || 0);
+      if (_effVram > 0 && _needMB > 0 && _effVram < _needMB) {
+        _cc._replicaIncapable = true;
+        if (!_cc._replicaSkipWarned) {
+          _cc._replicaSkipWarned = true;
+          console.warn(`[Brain] DF.7 — donor ${_cc.gpuName || _cc.id} effective VRAM ${Math.round(_effVram)}MB < ${_needMB}MB needed for the running brain — NOT replica-syncing (would waste the upload and churn). Stays connected; never shrinks the brain; partial-coverage assist lane is the queued follow-up.`);
+        }
+        return;
+      }
+      _cc._replicaIncapable = false;
+    }
     if (!this._replicaSyncInFlight) this._replicaSyncInFlight = new Set();
     if (this._replicaSyncInFlight.has(ws)) return;
     this._replicaSyncInFlight.add(ws);
