@@ -11,7 +11,7 @@ import { K_VOCABULARY } from '../js/brain/k-vocabulary.js';
 
 const ROOT = new URL('..', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1');
 const PIPER = join(ROOT, '.claude', 'piper', 'piper', 'piper.exe');
-const MODEL = join(ROOT, '.claude', 'piper', 'amy.onnx');
+const MODEL = join(ROOT, '.claude', 'piper', 'hfc.onnx');   // Equation Unity One — the operator-picked reference (V4)
 const WAV_DIR = join(ROOT, '.claude', 'vox-bank-wavs');
 const OUT_DIR = join(ROOT, 'vox-bank');
 const CHUNK_WORDS = 250;
@@ -92,7 +92,7 @@ function trim(pcm, thresh = 0.02) {
   return pcm.subarray(Math.max(0, a - pad), Math.min(pcm.length, b + pad));
 }
 
-const manifest = { reference: 'piper-en_US-amy-medium', v: 1, chunks: [], words: 0 };
+const manifest = { reference: 'Equation Unity One (piper-en_US-hfc_female-medium)', v: 1, chunks: [], words: 0 };
 let chunk = {}, chunkIdx = 0, inChunk = 0, done = 0, failed = 0, bytes = 0;
 function flush() {
   if (!inChunk) return;
