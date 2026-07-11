@@ -115709,12 +115709,35 @@ var VoiceIO = class {
     this._voxEnabled = typeof localStorage === "undefined" || localStorage.getItem("unity_vox_equational") !== "false";
     this._voxDb = null;
     this._voxInitDb();
+    this._voxRef = /* @__PURE__ */ new Map();
+    this._voxPreloadRef().catch(() => {
+    });
     this._initRecognition();
   }
   // ── VOX — equational voice bank ─────────────────────────────────────────
   _voxTier() {
     const a = this._age || 25;
     return a < 11 ? "k" : a < 14 ? "mid" : a < 18 ? "teen" : a < 23 ? "college" : "adult";
+  }
+  /** VOXREF — preload the reference-voice equation bank (chunked JSON,
+   *  sequential + cache-friendly). Missing bank (404) degrades silently to
+   *  the executor/browser fallback chain, unchanged. */
+  async _voxPreloadRef() {
+    if (typeof fetch === "undefined") return;
+    try {
+      const man = await (await fetch("/vox-bank/manifest.json", { cache: "force-cache" })).json();
+      if (!man || !Array.isArray(man.chunks)) return;
+      console.log(`[VoiceIO] \u{1F399} VOX reference bank: ${man.words} words / ${man.chunks.length} chunks (${man.reference}) \u2014 loading\u2026`);
+      for (const c of man.chunks) {
+        try {
+          const chunk = await (await fetch("/vox-bank/" + c.file, { cache: "force-cache" })).json();
+          for (const [w, rec] of Object.entries(chunk)) this._voxRef.set(w, rec);
+        } catch {
+        }
+      }
+      console.log(`[VoiceIO] \u{1F399} VOX reference bank READY \u2014 ${this._voxRef.size} word equations held. Her voice is local + equational; the executor is not needed.`);
+    } catch {
+    }
   }
   _voxTokens(text) {
     return String(text || "").toLowerCase().split(/[^a-z']+/).filter((w) => w.length >= 1 && w.length <= 24).slice(0, 64);
@@ -115769,7 +115792,7 @@ var VoiceIO = class {
     if (!toks.length) return false;
     const recs = [];
     for (const w of toks) {
-      const rec = this._voxBank.get(`${tier}:${w}`);
+      const rec = this._voxBank.get(`${tier}:${w}`) || this._voxRef && this._voxRef.get(w) || null;
       if (!rec) return false;
       recs.push(rec);
     }
@@ -115814,6 +115837,7 @@ var VoiceIO = class {
     if (!this._voxEnabled) return;
     const tier = this._voxTier();
     for (const w of this._voxTokens(text)) {
+      if (this._voxRef && this._voxRef.has(w)) continue;
       const key = `${tier}:${w}`;
       if (!this._voxBank.has(key) && !this._voxQueue.includes(key)) {
         this._voxQueue.push(key);
