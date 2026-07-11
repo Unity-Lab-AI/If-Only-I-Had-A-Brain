@@ -1,0 +1,57 @@
+{
+  "reference": "Equation Unity One (piper-en_US-hfc_female-medium)",
+  "v": 1,
+  "chunks": [
+    {
+      "file": "bank-000.json",
+      "words": 250,
+      "bytes": 4613999
+    },
+    {
+      "file": "bank-001.json",
+      "words": 250,
+      "bytes": 4868157
+    },
+    {
+      "file": "bank-002.json",
+      "words": 250,
+      "bytes": 5235884
+    },
+    {
+      "file": "bank-003.json",
+      "words": 250,
+      "bytes": 5677373
+    },
+    {
+      "file": "bank-004.json",
+      "words": 250,
+      "bytes": 5378921
+    },
+    {
+      "file": "bank-005.json",
+      "words": 250,
+      "bytes": 5321153
+    },
+    {
+      "file": "bank-006.json",
+      "words": 250,
+      "bytes": 5738125
+    },
+    {
+      "file": "bank-007.json",
+      "words": 250,
+      "bytes": 5983698
+    },
+    {
+      "file": "bank-008.json",
+      "words": 250,
+      "bytes": 6107113
+    },
+    {
+      "file": "bank-009.json",
+      "words": 78,
+      "bytes": 2093835
+    }
+  ],
+  "words": 2328
+}
