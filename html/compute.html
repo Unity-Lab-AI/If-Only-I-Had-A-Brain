@@ -411,7 +411,11 @@ function connectToServer() {
       const _info = gpu && gpu._adapterInfo;
       if (_info) _gpuName = (_info.device || _info.description || _info.vendor || _info.architecture || 'webgpu').toString().slice(0, 80);
     } catch { /* capacity reporting is best-effort — never block registration */ }
-    ws.send(JSON.stringify({ type: 'gpu_register', vramMB: _vramMB, maxStorageBindingMB: _maxBindMB, gpuName: _gpuName, donorId: window._donorId || null, donorName: (window._getDonorName && window._getDonorName()) || null }));
+    // RECONNECT-RESUME — report the sparse matrices this tab still holds in
+    // VRAM (same-tab WS hiccup keeps WebGPU buffers alive, like the cluster
+    // skip-reinit below). The server skips re-streaming these ONCE on this
+    // reconnect; periodic rebroadcasts still re-converge any drift.
+    ws.send(JSON.stringify({ type: 'gpu_register', vramMB: _vramMB, maxStorageBindingMB: _maxBindMB, gpuName: _gpuName, donorId: window._donorId || null, donorName: (window._getDonorName && window._getDonorName()) || null, heldMatrices: (gpu && gpu._sparseMatrices) ? Object.keys(gpu._sparseMatrices).slice(0, 256) : [] }));
   };
 
   ws.onerror = (err) => {

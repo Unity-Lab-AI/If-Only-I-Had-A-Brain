@@ -668,6 +668,15 @@
     <!-- WS backpressure metrics — live ws.bufferedAmount, drops/absorbs
          counters, drops/sec rolling rate, threshold marker. Bounded
          max-height + scoped class for parity with consciousness panels. -->
+    <div class="card utilization-panel" style="margin-top:12px;" title="NEURON UTILIZATION — distinguishes per-tick sparse coding (healthy: cortex fires ~1-2% per tick by design) from never-recruited dead volume. Lifetime = fraction of language-cortex neurons that have fired AT LEAST ONCE since boot (CPU-owned bitset, sampled every 5s). Weight recruitment = fraction of post-neuron rows carrying any synapse mass per projection (authoritative CPU master, scanned every 5min). Main-brain lifetime bitsets await donor-side readback.">
+      <div class="card-title">🧮 Neuron Utilization</div>
+      <div style="padding:8px 12px;font-family:monospace;font-size:11px;color:#aaa;line-height:1.6;">
+        <div>language cortex lifetime fired: <span id="d-ut-lang" style="color:#22c55e;">—</span> <span id="d-ut-langn" style="color:#666;font-size:10px;"></span></div>
+        <div id="d-ut-regions" style="max-height:120px;overflow-y:auto;font-size:10px;color:#888;margin-top:4px;"></div>
+        <div style="margin-top:6px;">weight recruitment (CSR rows): <span id="d-ut-wr" style="color:#00e5ff;">—</span></div>
+        <div id="d-ut-wrlist" style="max-height:120px;overflow-y:auto;font-size:10px;color:#888;margin-top:4px;"></div>
+      </div>
+    </div>
     <div class="card ws-pressure-panel" style="margin-top:12px;" title="WebSocket backpressure between brain-server (CPU shadow, decision-making) and compute.html (GPU shadow, hot-path forward propagation). Under heavy teach load the channel can fill faster than the GPU client drains it. Drops here are EXPENSIVE — a dropped Hebbian update permanently de-syncs the two shadows for that projection. Threshold raised to 500MB and timeout to 30s with BLOCK-not-DROP semantics.">
       <div class="card-title">📡 WS Backpressure (GPU client)</div>
       <div id="d-ws-ws" style="padding:8px 12px;font-family:monospace;font-size:11px;color:#aaa;line-height:1.6;max-height:240px;overflow-y:auto;">
@@ -767,6 +776,8 @@
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:12px;">
           <div title="Live count of connected donor GPUs sharing compute.">donors: <span id="d-as-donors" style="color:#22c55e;">0</span></div>
           <div title="Sum of all connected donors' reported VRAM.">community VRAM: <span id="d-as-vram" style="color:#00e5ff;">0</span> MB</div>
+          <div title="SIZE DRIVER — max(operator baseline, smallest committed donor VRAM). Data-parallel: every replica donor holds the FULL brain, so this (not the community sum) bounds brain size.">size driver: <span id="d-as-driver" style="color:#00e5ff;">0</span> MB</div>
+          <div title="Neurons the size driver can hold ((driver x 0.75 − 2048MB) / bytes-per-neuron). Milestone tiers gate on this capacity.">capacity: <span id="d-as-cap" style="color:#a855f7;">0</span></div>
           <div title="Highest tier the pool currently qualifies for (raw thresholds).">tier qualifies: <span id="d-as-tier" style="color:#a855f7;">0</span></div>
           <div title="Tier the brain is ACTUALLY sized/trained at right now.">tier running: <span id="d-as-running" style="color:#f59e0b;">0</span></div>
           <div title="A higher tier held past the dead-zone, counting down the stability window before a resize fires. 'none' = stable.">pending: <span id="d-as-pending" style="color:#888;">none</span></div>
@@ -1488,6 +1499,36 @@
       // the brain-server backpressure state getter. Color-codes the buffer bar
       // green/yellow/red based on % of threshold consumed so operator
       // can see backpressure pressure at a glance.
+      // Neuron-utilization render — reads state.utilization (lifetime
+      // unique-fired coverage + CSR weight recruitment). Bounded: per-region
+      // list scrolls, matrix list caps at 12 + a more-count.
+      if (s.utilization) {
+        const u = s.utilization;
+        const $u = (id) => document.getElementById(id);
+        const lf = u.langEverFired;
+        if (lf && $u('d-ut-lang')) {
+          $u('d-ut-lang').textContent = (lf.pct ?? 0) + '%';
+          if ($u('d-ut-langn')) $u('d-ut-langn').textContent = `(${(lf.total || 0).toLocaleString()} / ${(lf.size || 0).toLocaleString()} since boot)`;
+          const rEl = $u('d-ut-regions');
+          if (rEl && lf.regions) {
+            rEl.innerHTML = Object.entries(lf.regions).map(([k, v]) =>
+              `<div>${k}: ${(v.pct ?? 0)}% (${(v.everFired || 0).toLocaleString()}/${(v.size || 0).toLocaleString()})</div>`).join('');
+          }
+        }
+        const wr = u.weightRecruitment;
+        if (wr && wr.matrices && $u('d-ut-wr')) {
+          const names = Object.keys(wr.matrices);
+          let rows = 0, rec = 0;
+          for (const n of names) { rows += wr.matrices[n].rows || 0; rec += wr.matrices[n].recruitedRows || 0; }
+          $u('d-ut-wr').textContent = rows > 0 ? ((rec / rows) * 100).toFixed(1) + '% overall' : '—';
+          const lEl = $u('d-ut-wrlist');
+          if (lEl) {
+            const top = names.slice(0, 12);
+            lEl.innerHTML = top.map(n => `<div>${n}: ${(wr.matrices[n].pct ?? 0)}%</div>`).join('')
+              + (names.length > 12 ? `<div style="color:#555;">${names.length - 12} more…</div>` : '');
+          }
+        }
+      }
       if (s.wsPressure) {
         const n = s.wsPressure;
         const $ = (id) => document.getElementById(id);
@@ -1810,6 +1851,8 @@
       const $ = id => document.getElementById(id);
       if ($('d-as-donors')) $('d-as-donors').textContent = c.donorCount ?? 0;
       if ($('d-as-vram')) $('d-as-vram').textContent = (c.communityComputeMB ?? 0).toLocaleString();
+      if ($('d-as-driver')) $('d-as-driver').textContent = (c.sizeDriverMB ?? 0).toLocaleString();
+      if ($('d-as-cap')) $('d-as-cap').textContent = (c.capacityNeurons ?? 0).toLocaleString();
       if ($('d-as-tier')) $('d-as-tier').textContent = c.currentTier ?? 0;
       if ($('d-as-running')) $('d-as-running').textContent = c.runningTier ?? 0;
       if ($('d-as-pending')) {
@@ -1840,7 +1883,7 @@
             const down = (c.downPendingTier != null)
               ? ` Auto-downscale to tier ${c.downPendingTier} is counting down (retrains at a smaller size).`
               : ' Holding — brain waits for compute to return (no shrink yet).';
-            txt.textContent = `Connected GPUs (${(c.communityComputeMB ?? 0).toLocaleString()} MB) are below the running tier's floor (${(c.runningFloorMB ?? 0).toLocaleString()} MB).${down}`;
+            txt.textContent = `Size-driver capacity (~${(c.capacityNeurons ?? 0).toLocaleString()} neurons from ${(c.sizeDriverMB ?? 0).toLocaleString()} MB) is below the running tier's target — a single donor needs ~${(c.runningFloorMB ?? 0).toLocaleString()} MB to hold this brain.${down}`;
           }
         } else {
           alertEl.style.display = 'none';

@@ -1168,11 +1168,20 @@ const SERVER_GPU_MIXIN = {
         } catch { /* replica dropped mid-sync — loop's readyState guard catches it */ }
       }
       // 2) replay every canonical matrix upload → full weight replica.
+      // RECONNECT-RESUME (one-shot): matrices the donor reported still holding
+      // at gpu_register skip the re-stream on THIS sync only — the claim is
+      // same-tab (a reloaded page reports nothing), and any Hebbian drift in
+      // the held copies is the normal DF.7 state the periodic rebroadcast
+      // converges. The set is cleared below so later rebroadcasts run FULL.
+      const _resumeHeld = (_cc && _cc.resumeHeldMatrices instanceof Set && _cc.resumeHeldMatrices.size)
+        ? _cc.resumeHeldMatrices : null;
+      let _resumedCount = 0;
       const reg = this._replicaMatrixRegistry;
       let synced = 0;
       if (reg && reg.size) {
         for (const [name, entry] of reg) {
           if (!ws || ws.readyState !== 1) break;
+          if (_resumeHeld && _resumeHeld.has(name)) { _resumedCount++; continue; }
           if (_coverage) {
             let _covOk = false;
             for (const _cl of _coverage) { if (name.startsWith(_cl + '_')) { _covOk = true; break; } }
@@ -1182,6 +1191,8 @@ const SERVER_GPU_MIXIN = {
           catch { /* skip a matrix that failed; rebroadcast will retry */ }
         }
       }
+      if (_cc && _cc.resumeHeldMatrices) _cc.resumeHeldMatrices = null;   // one-shot consumed
+      if (_resumedCount > 0) console.log(`[Brain] DF.7 — reconnect-resume: skipped re-streaming ${_resumedCount} matrices the donor still holds in VRAM (drift converges on the periodic rebroadcast).`);
       console.log(`[Brain] DF.7 — replica sync complete: ${synced} matrices pushed to a donor${_coverage ? ` (PARTIAL coverage [${[..._coverage].join(', ')}] — it shares compute for the clusters it holds)` : '. It now holds a FULL brain replica and shares compute (no longer idle standby)'}.`);
     } catch (e) {
       console.warn('[Brain] DF.7 — replica sync failed (donor stays standby until next rebroadcast):', e.message);
