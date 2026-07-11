@@ -336,11 +336,14 @@ const SERVER_GPU_MIXIN = {
       // holds at least this card class (operator directive); the size driver
       // never drops below it, so small cards can never shrink the brain. Tune
       // via the admin autoscale endpoint / autoscale-settings.json.
-      donorBaselineMB: 24576,
-      // Donor-replica cost estimator (bytes/neuron): host main-brain 21 B/neuron
-      // / 0.5 main-weight fraction — mirrors BRAIN_VRAM_ALLOC so donor capacity
+      donorBaselineMB: 16384,
+      // Donor-replica cost estimator (bytes/neuron): ~12B GPU Rulkov state +
+      // sparse-matrix share. The first-cut 42 (host-CSR semantics) was ~2x too
+      // conservative and REFUSED a 16GB card that provably runs 357M locally
+      // (live incident: runningFloor 21797MB vs the card's 16375MB -> no
+      // primary -> CPU-only grind -> curriculum never started).
       // and host sizing agree.
-      donorBytesPerNeuron: 42,
+      donorBytesPerNeuron: 20,
       // DF.7 downscale rectify — "buffers for the buffers". A downscale is far
       // more conservative than an upscale because it RETRAINS at a smaller size
       // (loses the bigger brain's learning), so it must only fire on a genuine,
@@ -428,7 +431,13 @@ const SERVER_GPU_MIXIN = {
         const eff = (c && c.donatedMB > 0)
           ? (fullVram > 0 ? Math.min(c.donatedMB, fullVram) : c.donatedMB)
           : fullVram * (((c && c.utilizationPct) ?? 100) / 100);
-        if (eff > 0) { totalMB += eff; if (eff < minDonorMB) minDonorMB = eff; }
+        // Duty-cycle shaves THROUGHPUT (the sum) only — VRAM HELD is what
+        // bounds replica SIZE, so min-donor tracks donated-cap-or-full-card.
+        const held = (c && Number(c.donatedMB) > 0)
+          ? (fullVram > 0 ? Math.min(Number(c.donatedMB), fullVram) : Number(c.donatedMB))
+          : fullVram;
+        if (eff > 0) totalMB += eff;
+        if (held > 0 && held < minDonorMB) minDonorMB = held;
         donorCount++;
       }
     }
@@ -447,9 +456,9 @@ const SERVER_GPU_MIXIN = {
     // the operator baseline (donors are assumed to hold at least that card
     // class; smaller cards are assist-lane and never lower the driver). The
     // community SUM stays a THROUGHPUT metric only.
-    const _baselineMB = settings.donorBaselineMB || 24576;
+    const _baselineMB = settings.donorBaselineMB || 16384;
     const _driverMB = Math.max(_baselineMB, this._communityMinDonorMB || 0);
-    const _bytesPerNeuron = settings.donorBytesPerNeuron || 42;
+    const _bytesPerNeuron = settings.donorBytesPerNeuron || 20;
     // Mirrors local host sizing: 75% of the card usable minus a 2GB reserve.
     const _capNeurons = Math.max(0, Math.floor(((_driverMB * 0.75 - 2048) * 1048576) / _bytesPerNeuron));
     // Capacity of the baseline ALONE — tiers this covers are entered without
@@ -1109,9 +1118,11 @@ const SERVER_GPU_MIXIN = {
     let _coverage = null;
     if (_cc) {
       const _fullVram = Number(_cc.gpuVramMB || 0);
+      // HELD VRAM (donated cap or full card) — duty-cycle is throughput, not
+      // VRAM held, so it must not shrink the fit check.
       const _effVram = (Number(_cc.donatedMB) > 0)
         ? (_fullVram > 0 ? Math.min(Number(_cc.donatedMB), _fullVram) : Number(_cc.donatedMB))
-        : _fullVram * (((_cc.utilizationPct) ?? 100) / 100);
+        : _fullVram;
       const _needMB = Number(this._runningFloorMB || 0);
       if (_effVram > 0 && _needMB > 0 && _effVram < _needMB) {
         const _budgetBytes = Math.max(0, (_effVram * 0.75 - 2048)) * 1048576;
