@@ -2211,7 +2211,14 @@ const SERVER_CHAT_MIXIN = {
     if (this._operatorSleepRequested) {
       // 114.19fg.Tier16 — sentence-mode showcase when ≥50 words trained,
       // single-word for early-curriculum brains.
-      const showcaseSentence = await this._sampleCurrentSentence();
+      // Dream windows must NEVER tick the cortex: this branch exists to give
+      // consolidation + K_VOCAB Hebbian CPU priority, but the default sample
+      // path was compose-ALLOWED — at biological scale one composeSentence
+      // word-tick synchronously propagates the main cortex ~57s on the host
+      // CPU (donors do not help; see the #36 Path B gate below), so a single
+      // dream-window showcase could pin the event loop for minutes and starve
+      // donors + dashboards mid-dream. Cheap trained-vocab pick only here.
+      const showcaseSentence = await this._sampleCurrentSentence({ allowCompose: false });
       const showcaseWord = showcaseSentence ? showcaseSentence.split(/\s+/)[0] : null;
       if (showcaseSentence) {
         this._lastInnerThoughtEmittedAt = now;
