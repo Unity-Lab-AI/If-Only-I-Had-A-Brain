@@ -3887,6 +3887,26 @@ class ServerBrain {
             // window and clears it on exit. When set, the main brain
             // tick loop idles this pass; it picks back up next tick
             // once the probe clears the flag.
+            // UPLOAD PRIORITY — same idle pattern as the probe gate below: while
+            // the canonical sparse upload is in flight, skip this tick's compute
+            // batch so the donor's message loop services upload ACKs instead of
+            // stepping 306M neurons (live: batches-before-upload starved every
+            // ack into 45s+ x3 timeouts per matrix; the curriculum sat idle
+            // behind a serialized ~30min grind). Bounded — initGpu clears the
+            // flag on resolve and stepping resumes next tick.
+            if (this._cortexUploadInFlight) {
+              if (!this._uploadPauseLogged) {
+                console.log('[Brain] Main tick paused while the canonical sparse upload runs (donor ACKs get the message loop; resumes when the upload settles).');
+                this._uploadPauseLogged = true;
+              }
+              this._updateDerivedState();
+              if (this.running) setTimeout(tick, Math.max(200, BRAIN_TICK_MS * 4));
+              return;
+            }
+            if (this._uploadPauseLogged && !this._cortexUploadInFlight) {
+              console.log('[Brain] Main tick resumed — canonical sparse upload settled.');
+              this._uploadPauseLogged = false;
+            }
             if (this.cortexCluster && this.cortexCluster._probeGateActive) {
               if (!this._probeGatePauseLogged) {
                 console.log('[Brain] Main tick paused while curriculum runs gate probe (cortex owns GPU exclusively for the probe window).');
