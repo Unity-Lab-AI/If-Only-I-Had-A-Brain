@@ -2095,7 +2095,7 @@ const SERVER_GPU_MIXIN = {
     if (target.bufferedAmount > SOFT_SHED_MB * 1024 * 1024) {
       if (!this._wsShedCount) this._wsShedCount = 0;
       this._wsShedCount += ops.length;
-      this._armShadowResync('teach-hebbian batch shed at soft cap'); // dirty on the clearable flag + resync actually armed
+      this._armShadowResyncDeferred('teach-hebbian batch shed at soft cap'); // dirty on the clearable flag + resync actually armed
       if (!this._wsShedLogMs || (Date.now() - this._wsShedLogMs) > 30000) {
         this._wsShedLogMs = Date.now();
         console.warn(`[Brain] TU.25.A — teach-Hebbian batch SHED (${ops.length} ops): target bufferedAmount=${(target.bufferedAmount / 1024 / 1024).toFixed(1)}MB > ${SOFT_SHED_MB}MB soft cap. CPU stays authoritative; GPU shadow re-converges via auto-resync once the buffer drains. ${this._wsShedCount} ops shed since boot (rate-limited 30s).`);
@@ -2191,6 +2191,30 @@ const SERVER_GPU_MIXIN = {
   // re-uploads the CPU master (the TU.20.2 drain gate defers it until the
   // buffer drains). Throttled 60s + already-armed guarded so a shed storm
   // arms one resync, not a re-upload flood.
+  // DEFERRED ARM — arming a resync WHILE the socket is saturated feeds the
+  // exact storm it is meant to cure (live 9:17-9:26PM: pattern shed -> arm ->
+  // resync pumps into the full socket -> more sheds; buffer pegged at the
+  // 64MB cap for 9+ minutes, donor RTT 24s, the 85MB canonical upload could
+  // never drain). Mark the shadow dirty immediately (honest telemetry), but
+  // arm the actual resync only once the buffer has genuinely drained below
+  // half the cap AND no canonical upload is in flight.
+  _armShadowResyncDeferred(reason) {
+    if (this.cortexCluster) this.cortexCluster._gpuShadowDirty = true;
+    this._resyncArmPendingReason = reason;
+    if (this._resyncArmPendingIv) return;
+    this._resyncArmPendingIv = setInterval(() => {
+      const ws = this._gpuClient;
+      if (!ws || ws.readyState !== 1) return;
+      if (this._cortexUploadInFlight) return;
+      if (ws.bufferedAmount > this._donorSoftCapBytes() / 2) return;
+      clearInterval(this._resyncArmPendingIv);
+      this._resyncArmPendingIv = null;
+      const r = this._resyncArmPendingReason || 'sheds settled';
+      this._resyncArmPendingReason = null;
+      this._armShadowResync(`${r} — buffer drained (deferred arm)`);
+    }, 5000);
+  },
+
   _armShadowResync(reason) {
     if (this.cortexCluster) this.cortexCluster._gpuShadowDirty = true;
     const now = Date.now();
@@ -2227,9 +2251,25 @@ const SERVER_GPU_MIXIN = {
   _donorPatternSendGated(json) {
     const ws = this._gpuClient;
     if (!ws || ws.readyState !== 1) return false;
+    // UPLOAD PRIORITY — pattern frames yield the socket entirely while the
+    // canonical sparse upload is in flight (same priority compute batches
+    // give): a pattern-pegged buffer starved the 85MB intra upload past even
+    // a 180s timeout because the per-chunk pacing low-water was never reached.
+    if (this._cortexUploadInFlight) return false;
+    // IDLE GATE — with no active teach phase and no open cell these per-tick
+    // mirror writes are pure pump (~50 frames/s at idle pegged the buffer for
+    // 9+ minutes: 14k sheds, donor drowned at 24s RTT). Frames are ephemeral
+    // (next iteration supersedes); the first real teach phase re-mirrors
+    // everything it needs.
+    const _cc2 = this.cortexCluster;
+    if (_cc2 && !_cc2._activePhase && !_cc2._currentCellKey) {
+      this._wsPatternIdleSkips = (this._wsPatternIdleSkips || 0) + 1;
+      return false;
+    }
+    // drain-edge: a deferred resync arms via its own interval; nothing to do here.
     if (ws.bufferedAmount > this._donorSoftCapBytes()) {
       this._wsPatternShedCount = (this._wsPatternShedCount || 0) + 1;
-      this._armShadowResync('teach-pattern frame shed at soft cap'); // dirty on the clearable flag + resync actually armed
+      this._armShadowResyncDeferred('teach-pattern frame shed at soft cap'); // dirty on the clearable flag + resync actually armed
       const now = Date.now();
       if (!this._wsPatternShedLogMs || (now - this._wsPatternShedLogMs) > 30000) {
         this._wsPatternShedLogMs = now;
