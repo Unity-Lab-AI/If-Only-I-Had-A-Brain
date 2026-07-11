@@ -7092,6 +7092,9 @@ wss.on('connection', (ws, req) => {
   // identify itself via gpu_register before we commit the admin slot).
   ws.send(JSON.stringify({
     type: 'welcome', id,
+    // DEPLOY VERSION HANDSHAKE — donor tabs survive deploys running old code;
+    // they compare this stamp across reconnects and reload on change.
+    buildStamp: (global.__ualBuildStamp || (global.__ualBuildStamp = (() => { try { return String(Math.floor(fs.statSync(__filename).mtimeMs)); } catch { return String(process.pid); } })())),
     state: brain.getState(),
     emotionHistory: brain._emotionHistory.slice(-300),
   }));
@@ -7478,6 +7481,12 @@ wss.on('connection', (ws, req) => {
           client.resumeHeldMatrices = (Array.isArray(msg.heldMatrices) && msg.heldMatrices.length)
             ? new Set(msg.heldMatrices.slice(0, 256).filter((x) => typeof x === 'string' && x.length < 128))
             : null;
+          // DONOR CRUMB — the tab reports WHY its previous session ended
+          // (webgpu device-lost / tab unload) so drop incidents carry evidence
+          // instead of the local-Chrome guess.
+          if (msg.crashCrumb && msg.crashCrumb.reason) {
+            console.warn(`[${id}] DONOR CRUMB — previous donor session ended: ${String(msg.crashCrumb.reason).slice(0, 300)} (${Math.round((Date.now() - (msg.crashCrumb.t || Date.now())) / 1000)}s ago).`);
+          }
           // ASCALE — DONATED capacity, so auto-scale gates on what the donor actually gives, not
           // the full card. utilizationPct = donation duty-cycle (default 100 = full); donatedMB =
           // explicit VRAM cap if the donor set one (0 = unset → fall back to vram × util in
@@ -7577,6 +7586,7 @@ wss.on('connection', (ws, req) => {
             }
             brain._lastPrimaryPromoteTs = Date.now();
             brain._gpuClient = ws;
+            brain._lastPrimaryAt = Date.now();   // dead-socket defer window (uploads wait for a RECENT primary's return)
             brain._gpuConnected = true;
             brain._gpuWaitLogged = false;
             brain._gpuWaitLogged2 = false;
@@ -7601,6 +7611,12 @@ wss.on('connection', (ws, req) => {
           }
           // PA.4.8 — recompute community compute level + milestone tier.
           if (brain._recomputeCommunityCompute) brain._recomputeCommunityCompute();
+          break;
+        }
+
+        case 'donor_crumb': {
+          // Live device-lost report from a still-open tab whose WebGPU died.
+          console.warn(`[${id}] DONOR CRUMB (live) — ${String(msg.reason || '').slice(0, 300)}`);
           break;
         }
 
@@ -7929,7 +7945,7 @@ wss.on('connection', (ws, req) => {
         const heapTotal = (memUsage.heapTotal / 1024 / 1024).toFixed(0);
         const phase = (brain.cortexCluster && brain.cortexCluster._activePhase && brain.cortexCluster._activePhase.name) || '(idle)';
         const cellKey = (brain.cortexCluster && brain.cortexCluster._currentCellKey) || '(none)';
-        console.error(`[Server] CRITICAL — GPU compute client disconnected UNEXPECTEDLY at +${(uptimeMs/1000).toFixed(0)}s uptime. Chrome compute.html process likely crashed (visible window closed). Brain state at crash: phase=${phase} cell=${cellKey} curriculumInProgress=${inCurriculum} heap=${heapUsed}/${heapTotal}MB rss=${rss}MB. iter25-O.2 _gpuShadowDirty flag set — full GPU resync scheduled before next teach phase Hebbian fire.`);
+        console.error(`[Server] CRITICAL — GPU compute client disconnected UNEXPECTEDLY at +${(uptimeMs/1000).toFixed(0)}s uptime. ${process.env.DREAM_NO_AUTO_GPU === '1' ? 'Remote donor tab dropped (proxied WS closed) — cause pending the donor crumb on reconnect.' : 'Chrome compute.html process likely crashed (visible window closed).'} Brain state at crash: phase=${phase} cell=${cellKey} curriculumInProgress=${inCurriculum} heap=${heapUsed}/${heapTotal}MB rss=${rss}MB. iter25-O.2 _gpuShadowDirty flag set — full GPU resync scheduled before next teach phase Hebbian fire.`);
 
         if (brain.cortexCluster) brain.cortexCluster._gpuShadowDirty = true;
 
@@ -7943,7 +7959,11 @@ wss.on('connection', (ws, req) => {
           console.error(`[Server] CRITICAL — auto-respawn cap hit (3 respawns within 5 minutes). Chrome is crashing too fast for auto-recovery. Diagnose the underlying cause and restart manually via start.bat. Last respawn timestamps: ${brain._gpuRespawnTimestamps.map((ts) => new Date(ts).toISOString()).join(', ')}`);
         } else {
           brain._gpuRespawnTimestamps.push(now);
-          console.log(`[Server] auto-respawn #${brain._gpuRespawnTimestamps.length}/3 scheduled in 2s — re-launching Chrome compute.html. Curriculum will resume once GPU client reconnects.`);
+          if (process.env.DREAM_NO_AUTO_GPU === '1') {
+            console.log('[Server] no local Chrome to respawn (DREAM_NO_AUTO_GPU=1, deployed box) — waiting for the remote donor tab to reconnect on its own.');
+          } else {
+            console.log(`[Server] auto-respawn #${brain._gpuRespawnTimestamps.length}/3 scheduled in 2s — re-launching Chrome compute.html. Curriculum will resume once GPU client reconnects.`);
+          }
           setTimeout(() => {
             try { _spawnGpuClient(PORT); }
             catch (err) { console.error(`[Server] auto-respawn _spawnGpuClient threw: ${err.message}`); }

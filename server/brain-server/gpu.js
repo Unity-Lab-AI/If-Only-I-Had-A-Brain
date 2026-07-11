@@ -1595,8 +1595,35 @@ const SERVER_GPU_MIXIN = {
     // primary (canonical upload). Track every CANONICAL upload in the replica
     // registry so a newly-joined donor can be brought to a FULL brain replica
     // by replaying these. Replica-sync uploads (targetWs set) don't re-track.
-    const ws = (targetWs && targetWs.readyState === 1) ? targetWs : this._gpuClient;
+    let ws = (targetWs && targetWs.readyState === 1) ? targetWs : this._gpuClient;
     const isReplicaSync = !!(targetWs && targetWs !== this._gpuClient);
+    // DEAD-SOCKET DEFER (canonical uploads only): a just-dropped primary is
+    // not a failed attempt. If no live primary but one existed recently, WAIT
+    // (bounded) for the re-register instead of letting the per-matrix retry
+    // loop burn its attempts into a corpse socket in milliseconds (live
+    // incident: 17 matrices x 3 attempts all "failed" within one second,
+    // donor back 4s later, teach stuck on CPU paths). Cold boot — no primary
+    // ever seen — keeps the fast-null + re-arm-on-register behavior; replica-
+    // targeted sends never wait (a dead replica is skipped, not awaited).
+    if (ws && ws.readyState === 1 && !isReplicaSync) this._lastPrimaryAt = Date.now();
+    if ((!ws || ws.readyState !== 1) && !isReplicaSync
+        && this._lastPrimaryAt && (Date.now() - this._lastPrimaryAt) < 600000) {
+      const _waitMs = Number(process.env.DREAM_UPLOAD_WAIT_DONOR_MS) > 0
+        ? Number(process.env.DREAM_UPLOAD_WAIT_DONOR_MS) : 120000;
+      const _t0 = Date.now();
+      if (!this._uploadDeferLogAt || (Date.now() - this._uploadDeferLogAt) > 15000) {
+        this._uploadDeferLogAt = Date.now();
+        console.log(`[Brain] upload ${name} — primary socket is DOWN; deferring (up to ${Math.round(_waitMs / 1000)}s) for the donor to re-register instead of burning retry attempts into a dead socket.`);
+      }
+      while ((Date.now() - _t0) < _waitMs) {
+        await new Promise((r) => setTimeout(r, 1500));
+        if (this._gpuClient && this._gpuClient.readyState === 1) {
+          ws = this._gpuClient;
+          console.log(`[Brain] upload ${name} — donor re-registered after ${((Date.now() - _t0) / 1000).toFixed(1)}s defer; canonical upload proceeds.`);
+          break;
+        }
+      }
+    }
     // TU.25.C — stamp the upload-dispatch time on the RECEIVING socket so the
     // heartbeat sweep grants mid-upload grace (the primary's canonical initGpu
     // upload has no _replicaSyncInFlight marker; without this it was terminated
@@ -1607,7 +1634,14 @@ const SERVER_GPU_MIXIN = {
     // the primary's upload); uploading that empty result would CLOBBER the valid copy the
     // live-mirror already gave the replica. Skip — the live-mirror re-sends on the next
     // canonical (valid-CSR) upload.
-    if (isReplicaSync && (!matrix || !matrix.values || matrix.values.length === 0)) {
+    // Empty-matrix guard, BOTH lanes. Replica lane: a registry replay can hit
+    // a CSR freed post-upload — pushing empty would clobber the replica's
+    // valid copy. Canonical lane (re-arm after donor churn): the freed CSR
+    // means the weights died with the old donor — uploading empty would
+    // install a WIPED projection on the fresh primary. Neither lane may ship
+    // a hollow matrix.
+    if (!matrix || !matrix.values || matrix.values.length === 0) {
+      if (!isReplicaSync) console.error(`[Brain] CRITICAL — canonical upload of ${name} BLOCKED: CPU CSR is empty/freed (weights lived on the departed donor). Skipping so the fresh donor is not seeded with a wiped projection.`);
       return null;
     }
     if (!isReplicaSync) {

@@ -212,6 +212,24 @@ function _installDeviceLostHandler() {
       window._sprsFrameStats = null;
       try { if (ws) ws.close(); } catch { /* ignore */ }
       gpu = new GPUCompute();
+      // CRASH BREADCRUMBS — record WHY this tab's session ends so the next
+      // gpu_register carries evidence (webgpu device-lost vs plain unload)
+      // instead of the server guessing 'Chrome crashed'.
+      try {
+        window.addEventListener('beforeunload', () => {
+          try { localStorage.setItem('ual_donor_crumb', JSON.stringify({ t: Date.now(), reason: 'tab unload (closed / navigated / reloaded)' })); } catch (e) { /* full */ }
+        });
+      } catch (e) { /* no window */ }
+      const _crumbIv = setInterval(() => {
+        if (gpu && gpu._device && gpu._device.lost) {
+          clearInterval(_crumbIv);
+          gpu._device.lost.then((info) => {
+            const reason = 'webgpu device LOST: ' + ((info && info.reason) || 'unknown') + ' — ' + ((info && info.message) || 'no message');
+            try { localStorage.setItem('ual_donor_crumb', JSON.stringify({ t: Date.now(), reason })); } catch (e) { /* full */ }
+            try { if (ws && ws.readyState === 1) ws.send(JSON.stringify({ type: 'donor_crumb', reason })); } catch (e) { /* socket gone */ }
+          }).catch(() => {});
+        }
+      }, 2000);
       _installDeviceLostHandler(); // re-arm on the fresh device
       const ok = await gpu.init();
       if (ok) {
@@ -415,7 +433,7 @@ function connectToServer() {
     // VRAM (same-tab WS hiccup keeps WebGPU buffers alive, like the cluster
     // skip-reinit below). The server skips re-streaming these ONCE on this
     // reconnect; periodic rebroadcasts still re-converge any drift.
-    ws.send(JSON.stringify({ type: 'gpu_register', vramMB: _vramMB, maxStorageBindingMB: _maxBindMB, gpuName: _gpuName, donorId: window._donorId || null, donorName: (window._getDonorName && window._getDonorName()) || null, heldMatrices: (gpu && gpu._sparseMatrices) ? Object.keys(gpu._sparseMatrices).slice(0, 256) : [] }));
+    ws.send(JSON.stringify({ type: 'gpu_register', vramMB: _vramMB, maxStorageBindingMB: _maxBindMB, gpuName: _gpuName, donorId: window._donorId || null, donorName: (window._getDonorName && window._getDonorName()) || null, heldMatrices: (gpu && gpu._sparseMatrices) ? Object.keys(gpu._sparseMatrices).slice(0, 256) : [], crashCrumb: (() => { try { const c = JSON.parse(localStorage.getItem('ual_donor_crumb') || 'null'); localStorage.removeItem('ual_donor_crumb'); return (c && (Date.now() - c.t) < 600000) ? c : null; } catch (e) { return null; } })() }));
   };
 
   ws.onerror = (err) => {
@@ -738,6 +756,24 @@ function connectToServer() {
     const msg = JSON.parse(e.data);
 
     // ── INIT: Server sends full voltages once per cluster ──
+    if (msg.type === 'welcome') {
+      // DEPLOY VERSION HANDSHAKE — this tab survives server deploys running
+      // old code (no reconnect-resume, missing fixes). The server stamps its
+      // build into every welcome; when a reconnect reports a DIFFERENT stamp,
+      // reload so the tab always runs the deployed code.
+      try {
+        const bs = String(msg.buildStamp || '');
+        const prev = sessionStorage.getItem('ual_build_stamp');
+        if (bs && prev && prev !== bs) {
+          console.log('[GPU] server build changed (' + prev + ' -> ' + bs + ') — reloading this donor tab onto the deployed code.');
+          sessionStorage.setItem('ual_build_stamp', bs);
+          location.reload();
+          return;
+        }
+        if (bs && !prev) sessionStorage.setItem('ual_build_stamp', bs);
+      } catch (e) { /* sessionStorage unavailable — skip handshake */ }
+    }
+
     if (msg.type === 'gpu_init' && gpuReady) {
       const { clusterName, size, lifParams, regions } = msg;
 

@@ -371,6 +371,16 @@ export const CLUSTER_HEBBIAN_MIXIN = {
     let uploaded = 0;
     let boundCount = 0;
     for (const { key, name: projName, proj, binding } of targets) {
+      // FREED-CSR GUARD — after T18.22 the CPU arrays of bound projections
+      // are nulled (GPU authoritative). On a RE-ARM after a donor drop those
+      // weights died with the old donor's VRAM and the CPU has nothing real
+      // to upload — attempting would install an EMPTY projection over the
+      // fresh donor (silent pathway wipe). Skip + scream instead; the
+      // GPU-readback persistence follow-up is the real cure.
+      if (!proj || !proj.values || !proj.rowPtr || !proj.colIdx) {
+        console.error(`[Cluster ${this.name}] CRITICAL — ${key} CPU CSR is FREED (GPU-authoritative weights died with the previous donor). NOT uploading an empty matrix over the new donor. This projection restarts from its last DISK state on next boot; mid-run learning since the free is lost until GPU-readback persistence ships.`);
+        continue;
+      }
       try {
         const matrix = {
           rows: proj.rows,
@@ -476,7 +486,22 @@ export const CLUSTER_HEBBIAN_MIXIN = {
             // and Phase 1's PROBE_CRITICAL Hebbian hit null rowPtr →
             // frozen Phase 1 at iter 0 letter 'a' right after the
             // _crossRegionHebbian first-call diag.
-            if (PROBE_CRITICAL_CPU_CSR.has(projName)) {
+            // PRESSURE GATE — the free exists for the multi-GB dense-scale
+            // case (V8 external-memory OOM). At current sparsity the whole
+            // cross-projection set is ~100-200MB, and freeing it is all cost:
+            // checkpoints SKIP freed matrices (GPU readback not wired), so a
+            // donor drop loses those pathways' mid-run learning and the re-arm
+            // has nothing real to upload. Free ONLY when this projection's CSR
+            // actually threatens memory (default >=512MB, DREAM_CSR_FREE_MIN_MB);
+            // below that, keep it resident — saves stay complete, donor churn
+            // stays lossless, re-arms upload truth. The values-only GPU
+            // readback frame remains the queued cure for the dense-scale case.
+            const _freeMinBytes = (Number(process.env.DREAM_CSR_FREE_MIN_MB) > 0
+              ? Number(process.env.DREAM_CSR_FREE_MIN_MB) : 512) * 1048576;
+            const _projBytes = _freedValuesBytes + _freedColIdxBytes + _freedRowPtrBytes;
+            if (_projBytes < _freeMinBytes) {
+              console.log(`[CPU-CSR-free] keeping ${key} resident (${_freedMB}MB < ${Math.round(_freeMinBytes / 1048576)}MB pressure gate) — checkpoints stay complete, donor churn stays lossless.`);
+            } else if (PROBE_CRITICAL_CPU_CSR.has(projName)) {
               console.log(`[CPU-CSR-free] keeping probe-critical ${key} CPU arrays resident (${_freedMB}MB) — needed for READ/TALK/DYN-PROD gate probes.`);
             } else {
               // Free the CPU CSR. `SparseMatrix.propagate` has a
