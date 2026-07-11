@@ -681,21 +681,37 @@ export async function detectRemoteBrain(url = 'ws://localhost:7525') {
       // fails every attempt → graceful local fallback. Once RemoteBrain is
       // constructed it owns its own retry-forever reconnect, so a later burst
       // never flips the page back to the fallback — it just reconnects.
+      // BACKEND-EXISTS GATE — /health is answered outside the brain's main
+      // loop and responds even mid-pin. If it responds, there IS a live brain
+      // behind this origin and showing the 6,700-neuron simulated fallback
+      // would be a lie — so the probe retries for MINUTES (live teach pins
+      // at 306M have run 25-460s; the old ~36s budget gave up inside them and
+      // every visitor landing mid-pin got the fake brain). Only a true static
+      // mirror — health dead too — falls back to the local demo.
+      let _backendExists = false;
+      try {
+        const _hc = new AbortController();
+        const _ht = setTimeout(() => _hc.abort(), 4000);
+        const _h = await fetch('/health', { signal: _hc.signal });
+        clearTimeout(_ht);
+        _backendExists = !!(_h && _h.ok);
+      } catch (e) { /* no health endpoint — likely a static mirror */ }
       const PROBE_ATTEMPTS = 5;
       const PROBE_TIMEOUT_MS = 6000;
       const PROBE_GAP_MS = 1500;
-      for (let attempt = 1; attempt <= PROBE_ATTEMPTS; attempt++) {
+      const _maxAttempts = _backendExists ? 60 : PROBE_ATTEMPTS;   // ~6min patient vs quick static-mirror check
+      for (let attempt = 1; attempt <= _maxAttempts; attempt++) {
         const reachable = await _probeWs(publicUrl, PROBE_TIMEOUT_MS);
         if (reachable) {
           console.log(`[RemoteBrain] Deployed origin — public brain lane reachable on attempt ${attempt}/${PROBE_ATTEMPTS}; constructing RemoteBrain ws=${publicUrl}`);
           return new RemoteBrain(publicUrl);
         }
-        if (attempt < PROBE_ATTEMPTS) {
-          console.log(`[RemoteBrain] Deployed origin — /ws probe ${attempt}/${PROBE_ATTEMPTS} timed out (server busy mid-teach?), retrying in ${PROBE_GAP_MS}ms...`);
+        if (attempt < _maxAttempts) {
+          console.log(`[RemoteBrain] Deployed origin — /ws probe ${attempt}/${_maxAttempts} timed out (server busy mid-teach?), server busy mid-teach — a LIVE brain exists (health OK), retrying rather than faking a simulated one...`);
           await new Promise(r => setTimeout(r, PROBE_GAP_MS));
         }
       }
-      console.log(`[RemoteBrain] Deployed origin — public brain lane unreachable after ${PROBE_ATTEMPTS} attempts at ${publicUrl} (no backend / static-only mirror); using local fallback brain.`);
+      console.log(`[RemoteBrain] Deployed origin — public brain lane unreachable after ${_maxAttempts} attempts at ${publicUrl} (no backend / static-only mirror); using local fallback brain.`);
       return null;
     }
   }
