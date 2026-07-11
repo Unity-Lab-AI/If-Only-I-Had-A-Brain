@@ -33,17 +33,25 @@ console.log(`[vox-bank] ${words.length} words to synthesize + equationalize (ref
 mkdirSync(WAV_DIR, { recursive: true });
 mkdirSync(OUT_DIR, { recursive: true });
 
-// one piper process, JSON-input mode: a line per word with its output file
-await new Promise((resolve, reject) => {
-  const p = spawn(PIPER, ['--model', MODEL, '--json-input'], { cwd: join(ROOT, '.claude', 'piper') });
-  let err = '';
-  p.stderr.on('data', (d) => { err += d; });
-  p.on('close', (code) => code === 0 ? resolve() : reject(new Error('piper exit ' + code + '\n' + err.slice(-500))));
-  for (const w of words) {
-    p.stdin.write(JSON.stringify({ text: w, output_file: join(WAV_DIR, w + '.wav') }) + '\n');
-  }
-  p.stdin.end();
-});
+// batched piper, resumable: skip words already synthesized; 100 words per
+// process with a hard timeout so one pathological word costs a batch retry,
+// never the whole build (live incident: one hang froze the 2,249-word run).
+const todo = words.filter((w) => !existsSync(join(WAV_DIR, w + '.wav')));
+console.log(`[vox-bank] ${todo.length} words need synthesis (${words.length - todo.length} already on disk)`);
+const BATCH = 100;
+for (let b = 0; b < todo.length; b += BATCH) {
+  const batch = todo.slice(b, b + BATCH);
+  const ok = await new Promise((resolve) => {
+    const p = spawn(PIPER, ['--model', MODEL, '--json-input'], { cwd: join(ROOT, '.claude', 'piper') });
+    const killer = setTimeout(() => { try { p.kill('SIGKILL'); } catch { /* gone */ } resolve(false); }, 180000);
+    p.stderr.on('data', () => {});
+    p.on('close', () => { clearTimeout(killer); resolve(true); });
+    for (const w of batch) p.stdin.write(JSON.stringify({ text: w, output_file: join(WAV_DIR, w + '.wav') }) + '\n');
+    p.stdin.end();
+  });
+  const got = batch.filter((w) => existsSync(join(WAV_DIR, w + '.wav'))).length;
+  console.log(`[vox-bank] batch ${1 + b / BATCH}/${Math.ceil(todo.length / BATCH)} ${ok ? 'done' : 'TIMED OUT'} — ${got}/${batch.length} wavs`);
+}
 console.log('[vox-bank] piper synthesis done');
 
 function parseWav(buf) {
