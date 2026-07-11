@@ -20,7 +20,7 @@ const limitArg = process.argv.indexOf('--limit');
 const LIMIT = limitArg > 0 ? Number(process.argv[limitArg + 1]) : 0;
 
 // glue words her sentences need even if outside K_VOCABULARY
-const GLUE = ['i','a','the','is','am','are','was','be','to','of','and','or','in','on','it','you','me','my','your','we','us','this','that','what','who','how','not','no','yes','do','does','did','can','will','with','for','at','so','but','if','they','she','he','her','his','them'];
+const GLUE = ['unity','goddess','hello','hey','yeah','okay','fuck','shit','damn','i','a','the','is','am','are','was','be','to','of','and','or','in','on','it','you','me','my','your','we','us','this','that','what','who','how','not','no','yes','do','does','did','can','will','with','for','at','so','but','if','they','she','he','her','his','them'];
 const seen = new Set();
 let words = [];
 for (const w of [...GLUE, ...K_VOCABULARY]) {
