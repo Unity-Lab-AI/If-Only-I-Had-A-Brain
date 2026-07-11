@@ -532,7 +532,7 @@ const BRAIN_VRAM_ALLOC = (function () {
     if (_deployDonorMode) {
       try {
         const { DF7_MILESTONES } = require('./brain-server/gpu.js');
-        let _blMB = 24576, _blBpn = 42;
+        let _blMB = 16384, _blBpn = 20;
         try {
           const _as = JSON.parse(fs.readFileSync(path.join(__dirname, 'autoscale-settings.json'), 'utf8'));
           if (Number.isFinite(_as.donorBaselineMB)) _blMB = Math.max(1024, Math.min(262144, _as.donorBaselineMB));
@@ -7560,9 +7560,11 @@ wss.on('connection', (ws, req) => {
           let _tooSmallForPrimary = false;
           try {
             const _pv = Number(client.gpuVramMB || 0);
+            // HELD VRAM (donated cap or full card) — duty-cycle is throughput,
+            // not VRAM held; it must not disqualify a card from PRIMARY.
             const _pe = (Number(client.donatedMB) > 0)
               ? (_pv > 0 ? Math.min(Number(client.donatedMB), _pv) : Number(client.donatedMB))
-              : _pv * (((client.utilizationPct) ?? 100) / 100);
+              : _pv;
             const _pn = Number(brain._runningFloorMB || 0);
             _tooSmallForPrimary = (_pe > 0 && _pn > 0 && _pe < _pn);
           } catch { /* keep false */ }
