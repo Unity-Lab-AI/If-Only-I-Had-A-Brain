@@ -53494,6 +53494,10 @@ var CLUSTER_HEBBIAN_MIXIN = {
     let uploaded = 0;
     let boundCount = 0;
     for (const { key, name: projName, proj, binding } of targets) {
+      if (!proj || !proj.values || !proj.rowPtr || !proj.colIdx) {
+        console.error(`[Cluster ${this.name}] CRITICAL \u2014 ${key} CPU CSR is FREED (GPU-authoritative weights died with the previous donor). NOT uploading an empty matrix over the new donor. This projection restarts from its last DISK state on next boot; mid-run learning since the free is lost until GPU-readback persistence ships.`);
+        continue;
+      }
       try {
         const matrix = {
           rows: proj.rows,
@@ -53535,7 +53539,11 @@ var CLUSTER_HEBBIAN_MIXIN = {
               // guard, so probe scoring stays correct-shape even when
               // the CPU array is gone.
             ]);
-            if (PROBE_CRITICAL_CPU_CSR.has(projName)) {
+            const _freeMinBytes = (Number(process.env.DREAM_CSR_FREE_MIN_MB) > 0 ? Number(process.env.DREAM_CSR_FREE_MIN_MB) : 512) * 1048576;
+            const _projBytes = _freedValuesBytes + _freedColIdxBytes + _freedRowPtrBytes;
+            if (_projBytes < _freeMinBytes) {
+              console.log(`[CPU-CSR-free] keeping ${key} resident (${_freedMB}MB < ${Math.round(_freeMinBytes / 1048576)}MB pressure gate) \u2014 checkpoints stay complete, donor churn stays lossless.`);
+            } else if (PROBE_CRITICAL_CPU_CSR.has(projName)) {
               console.log(`[CPU-CSR-free] keeping probe-critical ${key} CPU arrays resident (${_freedMB}MB) \u2014 needed for READ/TALK/DYN-PROD gate probes.`);
             } else {
               proj.values = null;
