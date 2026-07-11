@@ -124,9 +124,11 @@ only a text printer in the r imagination MINDS EYE= UNITYS IMAGINATION"). Now pe
   stores it keyed to the concepts active at perception time (label, else her live thought / workspace
   broadcast) — sight fuses with the word being "heard", infant-style grounding. Percept vector injects into
   `sem` at 0.10 (skipped mid-teach). LRU 384 concepts, persisted `server/visual-memory.json`.
-- **Imagining = recall + recombination** — `_imagineTick` and the IMG-SEE preview look the thought up in visual
-  memory FIRST: one match re-sees the stored percept; two matches fuse via `morphField` (equation-domain
-  coefficient union + lerp) — imagination as RECOMBINATION of real percepts. Only unseen concepts fall to the
+- **Imagining = accurate recall** — `_imagineTick` and the IMG-SEE preview look the thought up in visual
+  memory FIRST: a match re-sees the single strongest ACCURATE stored percept. The former two-match
+  `morphField` fusion was REMOVED (operator directive 2026-07-10): superimposing two seen frames is noise
+  interference, not composition — recombination now belongs to the definition-grounded drawing path. Only
+  unseen concepts fall to the
   de-novo plane, where glyphs are DEMOTED to genuinely symbolic thoughts (numbers / single letters) and
   everything else renders as her state textured in the named color or her mood. Equational end-to-end;
   ≤96px cap and no-fractalize invariants intact.
