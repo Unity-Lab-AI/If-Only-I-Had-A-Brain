@@ -371,6 +371,16 @@ export const CLUSTER_HEBBIAN_MIXIN = {
     let uploaded = 0;
     let boundCount = 0;
     for (const { key, name: projName, proj, binding } of targets) {
+      // FREED-CSR GUARD — after T18.22 the CPU arrays of bound projections
+      // are nulled (GPU authoritative). On a RE-ARM after a donor drop those
+      // weights died with the old donor's VRAM and the CPU has nothing real
+      // to upload — attempting would install an EMPTY projection over the
+      // fresh donor (silent pathway wipe). Skip + scream instead; the
+      // GPU-readback persistence follow-up is the real cure.
+      if (!proj || !proj.values || !proj.rowPtr || !proj.colIdx) {
+        console.error(`[Cluster ${this.name}] CRITICAL — ${key} CPU CSR is FREED (GPU-authoritative weights died with the previous donor). NOT uploading an empty matrix over the new donor. This projection restarts from its last DISK state on next boot; mid-run learning since the free is lost until GPU-readback persistence ships.`);
+        continue;
+      }
       try {
         const matrix = {
           rows: proj.rows,

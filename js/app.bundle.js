@@ -53494,6 +53494,10 @@ var CLUSTER_HEBBIAN_MIXIN = {
     let uploaded = 0;
     let boundCount = 0;
     for (const { key, name: projName, proj, binding } of targets) {
+      if (!proj || !proj.values || !proj.rowPtr || !proj.colIdx) {
+        console.error(`[Cluster ${this.name}] CRITICAL \u2014 ${key} CPU CSR is FREED (GPU-authoritative weights died with the previous donor). NOT uploading an empty matrix over the new donor. This projection restarts from its last DISK state on next boot; mid-run learning since the free is lost until GPU-readback persistence ships.`);
+        continue;
+      }
       try {
         const matrix = {
           rows: proj.rows,
