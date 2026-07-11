@@ -39,6 +39,17 @@ const path = require('path');
 const fs = require('fs');
 const { execSync } = require('child_process');
 
+// DF.7 milestone ladder — QUANTIZED neuron targets for resizes. Module-scope +
+// exported so the BOOT allocator (brain-server.js SELF-SEEDING BOOT) and the
+// runtime decision layer read the SAME ladder (no drift). Size gates on the
+// size-driver capacity; minCommunityMB/minDonors are telemetry/legacy fields.
+const DF7_MILESTONES = [
+  { minCommunityMB: 0,       minDonors: 1,  neurons: 6_000_000 },   // tier 0 — bootstrap, fits a modest GPU
+  { minCommunityMB: 24_000,  minDonors: 3,  neurons: 40_000_000 },  // tier 1 — a few mid GPUs
+  { minCommunityMB: 96_000,  minDonors: 6,  neurons: 150_000_000 }, // tier 2 — community momentum
+  { minCommunityMB: 256_000, minDonors: 10, neurons: 357_000_000 }, // tier 3 — top-computer scale
+    ];
+
 const SERVER_GPU_MIXIN = {
   async _gpuStep(clusterName) {
     if (!this._gpuClient || this._gpuClient.readyState !== 1) return null;
@@ -453,12 +464,7 @@ const SERVER_GPU_MIXIN = {
     // minCommunityMB/minDonors fields remain for telemetry + legacy readers.
     // scale. Conservative under replication (Path A) — the running brain must
     // fit a typical donor. Tune as real donor hardware is observed.
-    const MILESTONES = [
-      { minCommunityMB: 0,       minDonors: 1,  neurons: 6_000_000 },   // tier 0 — bootstrap, fits a modest GPU
-      { minCommunityMB: 24_000,  minDonors: 3,  neurons: 40_000_000 },  // tier 1 — a few mid GPUs
-      { minCommunityMB: 96_000,  minDonors: 6,  neurons: 150_000_000 }, // tier 2 — community momentum
-      { minCommunityMB: 256_000, minDonors: 10, neurons: 357_000_000 }, // tier 3 — top-computer scale
-    ];
+    const MILESTONES = DF7_MILESTONES;
     // RAW tier — highest tier whose neuron target fits the size-driver
     // capacity (display/telemetry: what the pool currently qualifies for).
     let tier = 0;
@@ -2563,4 +2569,4 @@ const SERVER_GPU_MIXIN = {
   },
 };
 
-module.exports = { SERVER_GPU_MIXIN };
+module.exports = { SERVER_GPU_MIXIN, DF7_MILESTONES };

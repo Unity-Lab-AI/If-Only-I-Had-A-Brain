@@ -519,6 +519,43 @@ const BRAIN_VRAM_ALLOC = (function () {
     } catch (e) {
       console.warn('[Brain] community-tier.json read failed in the budget allocator (falling back to donor-fit/default sizing):', e.message);
     }
+    // SELF-SEEDING BOOT (deploy only) — the operator drives deploys from the
+    // dashboard buttons alone (no shell), so a stale low-tier community-tier
+    // file cannot be hand-edited before a fresh walk. The size-driver BASELINE
+    // (a committed donor is assumed to hold at least the operator's card
+    // class) is standing policy, so the boot computes the baseline-qualified
+    // milestone tier itself and SUPERSEDES a lower persisted target — writing
+    // the seed back so running-tier bookkeeping, DF.7 and the resume marker
+    // all agree. Kills the small-boot -> donor joins -> up-tier resize ->
+    // weight-wipe double-restart on deploy day. LOCAL no-GPU dev (no proxy
+    // auth) is untouched.
+    if (_deployDonorMode) {
+      try {
+        const { DF7_MILESTONES } = require('./brain-server/gpu.js');
+        let _blMB = 24576, _blBpn = 42;
+        try {
+          const _as = JSON.parse(fs.readFileSync(path.join(__dirname, 'autoscale-settings.json'), 'utf8'));
+          if (Number.isFinite(_as.donorBaselineMB)) _blMB = Math.max(1024, Math.min(262144, _as.donorBaselineMB));
+          if (Number.isFinite(_as.donorBytesPerNeuron)) _blBpn = Math.max(8, Math.min(1024, _as.donorBytesPerNeuron));
+        } catch { /* defaults match the DF.7 loader */ }
+        const _blCap = Math.max(0, Math.floor(((_blMB * 0.75 - 2048) * 1048576) / _blBpn));
+        let _blTier = 0;
+        for (let i = 0; i < DF7_MILESTONES.length; i++) { if (_blCap >= DF7_MILESTONES[i].neurons) _blTier = i; }
+        const _blTarget = DF7_MILESTONES[_blTier] ? DF7_MILESTONES[_blTier].neurons : 0;
+        if (_blTarget > _tierTargetNeurons) {
+          console.log(`[Brain] SELF-SEEDING BOOT — baseline ${_blMB}MB capacity ~${_blCap.toLocaleString()} neurons qualifies tier ${_blTier} (${_blTarget.toLocaleString()}) above the persisted target ${(_tierTargetNeurons || 0).toLocaleString()}: superseding + rewriting community-tier.json so the FIRST boot is the full-size boot (no donor-join resize/wipe later).`);
+          _tierTargetNeurons = _blTarget;
+          try {
+            fs.writeFileSync(path.join(__dirname, 'community-tier.json'),
+              JSON.stringify({ tier: _blTier, targetNeurons: _blTarget, confirmedAtMs: Date.now() }, null, 2));
+          } catch (e) {
+            console.warn('[Brain] SELF-SEEDING BOOT — tier file write failed (sizing still applied this boot; DF.7 bookkeeping may lag one boot):', e.message);
+          }
+        }
+      } catch (e) {
+        console.warn('[Brain] SELF-SEEDING BOOT skipped (ladder unavailable):', e.message);
+      }
+    }
     let _tierRequiredMB = 0;
     if (_tierTargetNeurons > 0) {
       const _rw = { ...DEFAULT_BIO_WEIGHTS, ...(cfg.biologicalWeights || {}) };
