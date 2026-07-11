@@ -134,7 +134,7 @@ if sudo -n systemctl restart "$SERVICE" >> "$LOG" 2>&1; then
   log "DONE — ${SERVICE} restarted via sudo"
 elif systemctl restart "$SERVICE" >> "$LOG" 2>&1; then
   log "DONE — ${SERVICE} restarted"
-elif curl -fsS -m 15 -X POST -H "X-UAL-User: ${DEPLOY_AUTH_USER}" "http://127.0.0.1:${BRAIN_PORT}/restart" >> "$LOG" 2>&1; then
+elif curl -fsS -m 120 -X POST -H "X-UAL-User: ${DEPLOY_AUTH_USER}" "http://127.0.0.1:${BRAIN_PORT}/restart" >> "$LOG" 2>&1; then
   # WL.4 — NO-SUDO fallback. If neither systemctl restart worked (the service runs
   # under NoNewPrivileges, so a script SPAWNED by the brain-server can't escalate
   # via sudo even with a sudoers grant), trigger the loopback /restart endpoint:
@@ -151,8 +151,17 @@ elif curl -fsS -m 15 -X POST -H "X-UAL-User: ${DEPLOY_AUTH_USER}" "http://127.0.
   #   loopback call (nginx not in the path), so the header sails through the gate.
   log "DONE — restart triggered via loopback POST /restart (X-UAL-User=${DEPLOY_AUTH_USER}; process.exit → systemd Restart=always revives the overlaid code; NO sudo needed)."
 else
-  log "FATAL — could not restart ${SERVICE}. sudo systemctl restart failed AND the no-sudo loopback POST /restart failed. Fix ONE of: (1) grant the service user 'sudo -n systemctl restart ${SERVICE}' AND drop NoNewPrivileges (a script spawned by the service inherits it and can't escalate), or (2) ensure the server is up on 127.0.0.1:${BRAIN_PORT} with Restart=always in the unit AND that the loopback /restart POST carries a non-empty X-UAL-User (UAL_DEPLOY_USER) when UAL_PROXY_AUTH=1 — a 403 here means the header was missing/empty. Manual: sudo systemctl restart ${SERVICE}"
-  exit 1
+  if [ -n "$BRAIN_PID" ]; then
+    # All three direct restart paths failed (typical cause: the brain's event
+    # loop is pinned for 40-60s at biological scale and even a patient loopback
+    # curl can time out). Do NOT abort — the TU.30 PID escalation below owns
+    # this case: SIGTERM the pinned PID directly (same user, no sudo; the
+    # handler force-saves + systemd Restart=always revives the overlaid code).
+    log "WARN — sudo/systemctl/loopback restart all failed; falling through to the PID escalation (SIGTERM $BRAIN_PID) below."
+  else
+    log "FATAL — could not restart ${SERVICE}: all paths failed AND no brain PID found to escalate on. Fix ONE of: (1) grant the service user 'sudo -n systemctl restart ${SERVICE}' AND drop NoNewPrivileges, or (2) ensure the server is reachable on 127.0.0.1:${BRAIN_PORT} with Restart=always + a non-empty X-UAL-User (UAL_DEPLOY_USER). Manual: sudo systemctl restart ${SERVICE}"
+    exit 1
+  fi
 fi
 
 # TU.30 — VERIFY the restart actually landed. If the pinned PID is still alive after a
