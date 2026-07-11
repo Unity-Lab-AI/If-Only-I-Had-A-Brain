@@ -189,7 +189,83 @@ const SERVER_STATE_MIXIN = {
     return lo;
   },
 
+  // UTILIZATION instrumentation (operator ask: is the ~1.5%/tick firing
+  // healthy sparse coding or dead volume?). Two server-honest measures with
+  // NO donor changes: (1) LIFETIME UNIQUE-FIRED coverage over the CPU-owned
+  // language cortex (lastSpikes OR'd into a persistent bitset — at
+  // biological scale the GPU owns main-brain spikes as counts only, so
+  // main-brain bitsets await a donor-side follow-up); (2) WEIGHT-MASS
+  // RECRUITMENT over the authoritative CPU CSR master — fraction of
+  // post-neuron rows carrying any synapse mass, per tracked projection
+  // (covers the cortex bands server-side). Per-tick spikeRate answers
+  // "how sparse right now"; these answer "does the volume EVER participate".
+  _updateLangEverFired() {
+    const c = this.cortexCluster;
+    const ls = c && c.lastSpikes;
+    if (!ls || !ls.length) return;
+    const now = Date.now();
+    if (this._lcEverFiredAt && (now - this._lcEverFiredAt) < 5000) return;
+    this._lcEverFiredAt = now;
+    if (!this._lcEverFired || this._lcEverFired.length !== ls.length) {
+      this._lcEverFired = new Uint8Array(ls.length);
+      this._lcEverFiredCount = 0;
+      this._lcEverFiredSince = now;
+    }
+    const ef = this._lcEverFired;
+    let added = 0;
+    for (let i = 0; i < ls.length; i++) {
+      if (ls[i] && !ef[i]) { ef[i] = 1; added++; }
+    }
+    this._lcEverFiredCount = (this._lcEverFiredCount || 0) + added;
+  },
+
+  _getUtilizationState() {
+    try {
+      const out = { langEverFired: null, weightRecruitment: null };
+      const c = this.cortexCluster;
+      if (this._lcEverFired && c && c.regions) {
+        const regions = {};
+        for (const [rn, r] of Object.entries(c.regions)) {
+          let n = 0;
+          for (let i = r.start; i < r.end && i < this._lcEverFired.length; i++) n += this._lcEverFired[i];
+          regions[rn] = { size: r.end - r.start, everFired: n, pct: +((n / Math.max(1, r.end - r.start)) * 100).toFixed(2) };
+        }
+        out.langEverFired = {
+          total: this._lcEverFiredCount || 0,
+          size: this._lcEverFired.length,
+          pct: +(((this._lcEverFiredCount || 0) / Math.max(1, this._lcEverFired.length)) * 100).toFixed(2),
+          sinceMs: this._lcEverFiredSince || null,
+          regions,
+        };
+      }
+      // Throttled CSR row-recruitment scan (rowPtr diff — O(rows)/matrix,
+      // every 5min). Registry entries whose CSR was freed post-upload skip.
+      const now = Date.now();
+      if (!this._wrAt || (now - this._wrAt) > 300000) {
+        this._wrAt = now;
+        const reg = this._replicaMatrixRegistry;
+        const byMatrix = {};
+        if (reg && reg.size) {
+          for (const [name, e] of reg) {
+            const m = e && e.matrix;
+            const rp = m && m.rowPtr;
+            if (!rp || rp.length < 2) continue;
+            let rec = 0;
+            for (let i = 0; i + 1 < rp.length; i++) if (rp[i + 1] > rp[i]) rec++;
+            byMatrix[name] = { rows: rp.length - 1, recruitedRows: rec, pct: +(((rec) / Math.max(1, rp.length - 1)) * 100).toFixed(2) };
+          }
+        }
+        this._weightRecruitment = { at: now, matrices: byMatrix };
+      }
+      out.weightRecruitment = this._weightRecruitment || null;
+      return out;
+    } catch {
+      return { langEverFired: null, weightRecruitment: null };
+    }
+  },
+
   getState() {
+    this._updateLangEverFired();
     const clusterStates = {};
     for (const [name, cluster] of Object.entries(this.clusters)) {
       const size = cluster.size || 1;
@@ -350,6 +426,7 @@ const SERVER_STATE_MIXIN = {
       // a rolling drops/sec rate so operator can see whether the
       // BLOCK-not-DROP path is keeping Hebbian updates intact.
       wsPressure: this._getWsPressureState(),
+      utilization: this._getUtilizationState(),
       // Failed-emission diagnostic — surfaces `cortexCluster._lastEmitRejection`
       // (set by emitWordDirect when bestMean falls below the adaptive
       // signal floor OR no candidate word emerged) so the dashboard

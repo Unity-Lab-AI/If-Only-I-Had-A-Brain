@@ -7434,6 +7434,13 @@ wss.on('connection', (ws, req) => {
           // PA.4.8 — capture donor compute capacity (compute.html reports its
           // WebGPU adapter VRAM) for community-compute milestone scaling.
           client.gpuVramMB = Number(msg.vramMB) || 0;
+          // RECONNECT-RESUME — matrices the tab claims it still holds in VRAM.
+          // Consumed ONE-SHOT by _syncReplicaToDonor (skip re-stream on this
+          // reconnect only; periodic rebroadcasts still run full to converge
+          // drift). Native donors that don't send the field sync full as before.
+          client.resumeHeldMatrices = (Array.isArray(msg.heldMatrices) && msg.heldMatrices.length)
+            ? new Set(msg.heldMatrices.slice(0, 256).filter((x) => typeof x === 'string' && x.length < 128))
+            : null;
           // ASCALE — DONATED capacity, so auto-scale gates on what the donor actually gives, not
           // the full card. utilizationPct = donation duty-cycle (default 100 = full); donatedMB =
           // explicit VRAM cap if the donor set one (0 = unset → fall back to vram × util in

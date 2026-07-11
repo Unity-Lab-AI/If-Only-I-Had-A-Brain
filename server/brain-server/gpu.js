@@ -1168,11 +1168,20 @@ const SERVER_GPU_MIXIN = {
         } catch { /* replica dropped mid-sync — loop's readyState guard catches it */ }
       }
       // 2) replay every canonical matrix upload → full weight replica.
+      // RECONNECT-RESUME (one-shot): matrices the donor reported still holding
+      // at gpu_register skip the re-stream on THIS sync only — the claim is
+      // same-tab (a reloaded page reports nothing), and any Hebbian drift in
+      // the held copies is the normal DF.7 state the periodic rebroadcast
+      // converges. The set is cleared below so later rebroadcasts run FULL.
+      const _resumeHeld = (_cc && _cc.resumeHeldMatrices instanceof Set && _cc.resumeHeldMatrices.size)
+        ? _cc.resumeHeldMatrices : null;
+      let _resumedCount = 0;
       const reg = this._replicaMatrixRegistry;
       let synced = 0;
       if (reg && reg.size) {
         for (const [name, entry] of reg) {
           if (!ws || ws.readyState !== 1) break;
+          if (_resumeHeld && _resumeHeld.has(name)) { _resumedCount++; continue; }
           if (_coverage) {
             let _covOk = false;
             for (const _cl of _coverage) { if (name.startsWith(_cl + '_')) { _covOk = true; break; } }
@@ -1182,6 +1191,8 @@ const SERVER_GPU_MIXIN = {
           catch { /* skip a matrix that failed; rebroadcast will retry */ }
         }
       }
+      if (_cc && _cc.resumeHeldMatrices) _cc.resumeHeldMatrices = null;   // one-shot consumed
+      if (_resumedCount > 0) console.log(`[Brain] DF.7 — reconnect-resume: skipped re-streaming ${_resumedCount} matrices the donor still holds in VRAM (drift converges on the periodic rebroadcast).`);
       console.log(`[Brain] DF.7 — replica sync complete: ${synced} matrices pushed to a donor${_coverage ? ` (PARTIAL coverage [${[..._coverage].join(', ')}] — it shares compute for the clusters it holds)` : '. It now holds a FULL brain replica and shares compute (no longer idle standby)'}.`);
     } catch (e) {
       console.warn('[Brain] DF.7 — replica sync failed (donor stays standby until next rebroadcast):', e.message);
@@ -1634,9 +1645,24 @@ const SERVER_GPU_MIXIN = {
       // → CPU fallback. 45s + the per-matrix retry in initGpu means a transient
       // failure recovers quickly and a truly-gone donor is detected in ~45s, not
       // 3 minutes. Tunable via DREAM_SPARSE_UPLOAD_TIMEOUT_MS.
-      const timeoutMs = Number(process.env.DREAM_SPARSE_UPLOAD_TIMEOUT_MS) > 0
-        ? Number(process.env.DREAM_SPARSE_UPLOAD_TIMEOUT_MS)
-        : 45_000;
+      // Size-scaled upload timeout. A flat 45s cannot cover a multi-GB matrix
+      // on a paced link (the per-chunk pacing below can legally spend 150s on
+      // ONE chunk) — the flat deadline then killed uploads that were draining
+      // fine, and the retry loop re-opened the reconnect churn at full brain
+      // scale. Scale the deadline to the payload at a conservative assumed
+      // throughput (DREAM_UPLOAD_MIN_MBPS, default 4 MB/s) + 30s margin,
+      // capped (DREAM_SPARSE_UPLOAD_TIMEOUT_MAX_MS, default 15 min); an
+      // explicit DREAM_SPARSE_UPLOAD_TIMEOUT_MS still wins outright. A truly
+      // dead link still dies: pacing bails on close, and a stalled-but-open
+      // socket hits the scaled deadline.
+      const _envTimeout = Number(process.env.DREAM_SPARSE_UPLOAD_TIMEOUT_MS);
+      const _minMBps = Number(process.env.DREAM_UPLOAD_MIN_MBPS) > 0
+        ? Number(process.env.DREAM_UPLOAD_MIN_MBPS) : 4;
+      const _payloadBytes = values.byteLength + colIdx.byteLength + rowPtr.byteLength;
+      const _scaledMs = Math.ceil((_payloadBytes / (_minMBps * 1048576)) * 1000) + 30_000;
+      const _capMs = Number(process.env.DREAM_SPARSE_UPLOAD_TIMEOUT_MAX_MS) > 0
+        ? Number(process.env.DREAM_SPARSE_UPLOAD_TIMEOUT_MAX_MS) : 900_000;
+      const timeoutMs = _envTimeout > 0 ? _envTimeout : Math.min(_capMs, Math.max(45_000, _scaledMs));
       const timeout = setTimeout(() => {
         if (this._gpuSparsePending && this._gpuSparsePending.has(reqId)) {
           this._gpuSparsePending.delete(reqId);
