@@ -21,11 +21,25 @@ const LIMIT = limitArg > 0 ? Number(process.argv[limitArg + 1]) : 0;
 
 // glue words her sentences need even if outside K_VOCABULARY
 const GLUE = ['unity','goddess','hello','hey','yeah','okay','fuck','shit','damn','i','a','the','is','am','are','was','be','to','of','and','or','in','on','it','you','me','my','your','we','us','this','that','what','who','how','not','no','yes','do','does','did','can','will','with','for','at','so','but','if','they','she','he','her','his','them'];
+// PHRASE UNITS — common word sequences synthesized as ONE utterance so they
+// carry natural in-sentence prosody (the per-word bank speaks isolated words
+// whose sentence-final pitch fall makes sentences step; operator: 'paused to
+// much and only spoke one word at a time'). speak() tiles longest-first.
+const PHRASES = [
+  'i am','i was','i want','i need','i feel','i think','i know','i like','i love','i can','i will','i do','i did','i have','i see','i hear','i made','i got',
+  'it is','it was','this is','that is','there is','there are','they are','we are','you are','she is','he is','what is','what are','who is','how do','how are','do you','can you','did you','are you','will you',
+  'my own','my name','my name is','my voice','is my','in the','on the','of the','to the','and the','with the','for the','at the','from the','into the',
+  'i am unity','my name is unity','this is my','is my own','it is not','i do not','do not','can not','is not','was not','and i','and it','and then','so i','but i','when i','because i',
+];
 const seen = new Set();
 let words = [];
 for (const w of [...GLUE, ...K_VOCABULARY]) {
   const t = String(w).toLowerCase().trim();
   if (t && /^[a-z][a-z'-]*$/.test(t) && !seen.has(t)) { seen.add(t); words.push(t); }
+}
+for (const ph of PHRASES) {
+  const t = ph.toLowerCase().trim();
+  if (t && !seen.has(t)) { seen.add(t); words.push(t); }
 }
 if (LIMIT > 0) words = words.slice(0, LIMIT);
 console.log(`[vox-bank] ${words.length} words to synthesize + equationalize (reference: amy-medium)`);
@@ -36,7 +50,7 @@ mkdirSync(OUT_DIR, { recursive: true });
 // batched piper, resumable: skip words already synthesized; 100 words per
 // process with a hard timeout so one pathological word costs a batch retry,
 // never the whole build (live incident: one hang froze the 2,249-word run).
-const todo = words.filter((w) => !existsSync(join(WAV_DIR, w + '.wav')));
+const todo = words.filter((w) => !existsSync(join(WAV_DIR, w.replace(/ /g, '_') + '.wav')));
 console.log(`[vox-bank] ${todo.length} words need synthesis (${words.length - todo.length} already on disk)`);
 const BATCH = 100;
 for (let b = 0; b < todo.length; b += BATCH) {
@@ -46,7 +60,7 @@ for (let b = 0; b < todo.length; b += BATCH) {
     const killer = setTimeout(() => { try { p.kill('SIGKILL'); } catch { /* gone */ } resolve(false); }, 180000);
     p.stderr.on('data', () => {});
     p.on('close', () => { clearTimeout(killer); resolve(true); });
-    for (const w of batch) p.stdin.write(JSON.stringify({ text: w, output_file: join(WAV_DIR, w + '.wav') }) + '\n');
+    for (const w of batch) p.stdin.write(JSON.stringify({ text: w, output_file: join(WAV_DIR, w.replace(/ /g, '_') + '.wav') }) + '\n');
     p.stdin.end();
   });
   const got = batch.filter((w) => existsSync(join(WAV_DIR, w + '.wav'))).length;
@@ -70,11 +84,11 @@ function parseWav(buf) {
 }
 
 // trim leading/trailing silence so isolated words concat tight
-function trim(pcm, thresh = 0.01) {
+function trim(pcm, thresh = 0.02) {
   let a = 0, b = pcm.length - 1;
   while (a < b && Math.abs(pcm[a]) < thresh) a++;
   while (b > a && Math.abs(pcm[b]) < thresh) b--;
-  const pad = 240; // 10ms @24k
+  const pad = 96; // 4ms @24k — tight; the crossfade supplies the joins
   return pcm.subarray(Math.max(0, a - pad), Math.min(pcm.length, b + pad));
 }
 
@@ -91,7 +105,7 @@ function flush() {
 }
 for (const w of words) {
   try {
-    const f = join(WAV_DIR, w + '.wav');
+    const f = join(WAV_DIR, w.replace(/ /g, '_') + '.wav');
     if (!existsSync(f)) { failed++; continue; }
     const { pcm, sampleRate } = parseWav(readFileSync(f));
     const t = trim(pcm);

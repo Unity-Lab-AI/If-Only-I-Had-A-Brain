@@ -5,53 +5,53 @@
     {
       "file": "bank-000.json",
       "words": 250,
-      "bytes": 6141928
+      "bytes": 6007031
     },
     {
       "file": "bank-001.json",
       "words": 250,
-      "bytes": 6501484
+      "bytes": 6379234
     },
     {
       "file": "bank-002.json",
       "words": 250,
-      "bytes": 6836042
+      "bytes": 6726302
     },
     {
       "file": "bank-003.json",
       "words": 250,
-      "bytes": 7270785
+      "bytes": 7166752
     },
     {
       "file": "bank-004.json",
       "words": 250,
-      "bytes": 7093953
+      "bytes": 6979917
     },
     {
       "file": "bank-005.json",
       "words": 250,
-      "bytes": 7043974
+      "bytes": 6938181
     },
     {
       "file": "bank-006.json",
       "words": 250,
-      "bytes": 7414286
+      "bytes": 7315945
     },
     {
       "file": "bank-007.json",
       "words": 250,
-      "bytes": 7830100
+      "bytes": 7716236
     },
     {
       "file": "bank-008.json",
       "words": 250,
-      "bytes": 7947134
+      "bytes": 7832996
     },
     {
       "file": "bank-009.json",
-      "words": 6,
-      "bytes": 218789
+      "words": 77,
+      "bytes": 2567928
     }
   ],
-  "words": 2256
+  "words": 2327
 }

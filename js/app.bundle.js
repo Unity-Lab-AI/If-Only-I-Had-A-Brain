@@ -115791,15 +115791,27 @@ var VoiceIO = class {
     const toks = this._voxTokens(text);
     if (!toks.length) return false;
     const recs = [];
-    for (const w of toks) {
-      const rec = this._voxBank.get(`${tier}:${w}`) || this._voxRef && this._voxRef.get(w) || null;
-      if (!rec) return false;
-      recs.push(rec);
+    const _lookup = (key) => this._voxBank.get(`${tier}:${key}`) || this._voxRef && this._voxRef.get(key) || null;
+    let _ti = 0;
+    while (_ti < toks.length) {
+      let hit = null, span = 0;
+      for (let n = Math.min(3, toks.length - _ti); n >= 1; n--) {
+        const key = toks.slice(_ti, _ti + n).join(" ");
+        const rec = _lookup(key);
+        if (rec) {
+          hit = rec;
+          span = n;
+          break;
+        }
+      }
+      if (!hit) return false;
+      recs.push(hit);
+      _ti += span;
     }
     const pcms = recs.map((r) => reconstructAudio(r)).filter(Boolean);
     if (pcms.length !== recs.length) return false;
     const sr = recs[0].sampleRate || 24e3;
-    const pcm = concatAudio(pcms, sr, 30);
+    const pcm = concatAudio(pcms, sr, 70);
     if (!pcm || !pcm.length) return false;
     console.log(`[VoiceIO] \u{1F399} VOX equational speech \u2014 ${toks.length} word(s) from her own bank, zero executor`);
     await this._playPcm(pcm, sr, rate || 1);
