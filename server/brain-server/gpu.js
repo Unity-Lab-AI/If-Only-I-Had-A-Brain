@@ -52,6 +52,14 @@ const DF7_MILESTONES = [
 
 const SERVER_GPU_MIXIN = {
   async _gpuStep(clusterName) {
+    // UPLOAD PRIORITY — while the canonical cortex upload is in flight, PAUSE
+    // compute-batch dispatch. The donor services WS messages between compute
+    // work; at 306M scale continuous batches starve the upload ACKs (live:
+    // acks took 45s+ x3 retries per matrix once BATCHED RUNNING preceded the
+    // upload, vs ~1s each when uploads ran first — the curriculum sat idle
+    // behind a ~30min serialized timeout grind). Bounded: the flag clears
+    // when initGpu resolves; stepping resumes immediately after.
+    if (this._cortexUploadInFlight) return null;
     if (!this._gpuClient || this._gpuClient.readyState !== 1) return null;
     if (!this._gpuPending) this._gpuPending = {};
     if (!this._gpuInitialized) this._gpuInitialized = {};
