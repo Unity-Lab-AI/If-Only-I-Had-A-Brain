@@ -94711,6 +94711,33 @@ var Curriculum = class _Curriculum {
     }
     const startedAt = Date.now();
     this._hb(`[Curriculum] \u{1F4A4} dream window opened \u2014 curriculum paused \xB7 ConsolidationEngine firing \xB7 Tier 1\u21922\u21923 promotion \xB7 V8 + native GC settling`);
+    const _dwBudgetMs = typeof process !== "undefined" && Number(process.env?.DREAM_WINDOW_MAX_MS) > 0 ? Number(process.env.DREAM_WINDOW_MAX_MS) : 18e4;
+    const _dwSkipped = [];
+    const _dwStageMs = {};
+    const _dwOverBudget = (stage) => {
+      if (Date.now() - startedAt < _dwBudgetMs) return false;
+      if (!_dwSkipped.includes(stage)) {
+        _dwSkipped.push(stage);
+        this._hb(`[Curriculum] \u{1F4A4} dream window over budget (${((Date.now() - startedAt) / 1e3).toFixed(0)}s \u2265 ${(_dwBudgetMs / 1e3).toFixed(0)}s) \u2014 skipping ${stage} this window; later windows pick it up (tune DREAM_WINDOW_MAX_MS).`);
+      }
+      return true;
+    };
+    let _dwComposeSafe = true;
+    try {
+      const _env = typeof process !== "undefined" && process.env ? process.env : {};
+      const _cortexN = brain2 && brain2.clusters && brain2.clusters.cortex && brain2.clusters.cortex.size || 0;
+      const _maxN = Number(_env.DREAM_INNERVOICE_MAX_NEURONS) > 0 ? Number(_env.DREAM_INNERVOICE_MAX_NEURONS) : 2e6;
+      if (_cortexN > _maxN && _env.DREAM_INNERVOICE_FORCE_CPU !== "1") {
+        const _minDonors = Number(_env.DREAM_INNERVOICE_GPU_GEN_MIN_DONORS) || 1;
+        const _donorsPresent = (brain2 && brain2._communityDonorCount || 0) >= _minDonors;
+        _dwComposeSafe = _env.DREAM_INNERVOICE_GPU_GEN !== "0" && _donorsPresent && (_env.DREAM_INNERVOICE_GPU_GEN === "1" || _env.DREAM_DF7_FANOUT_PROPAGATE === "1");
+        if (!_dwComposeSafe && !this._dwComposeGateLogged) {
+          this._dwComposeGateLogged = true;
+          this._hb(`[Curriculum] \u{1F4A4} dream-window generation stages (phenomenology + recombination) DISABLED at scale \u2014 cortex ${_cortexN.toLocaleString()} > ${_maxN.toLocaleString()} and no GPU generation path. A composeSentence word-tick pins the host CPU ~57s at this scale; consolidation + trickle still run every window.`);
+        }
+      }
+    } catch {
+    }
     try {
       const engine = brain2?.consolidationEngine;
       if (engine && typeof engine.runConsolidationPass === "function") {
@@ -94718,8 +94745,9 @@ var Curriculum = class _Curriculum {
         const passMs = Date.now() - startedAt;
         const passCount = engine.passCount || 0;
         this._hb(`[Curriculum] \u2699 dream pass complete in ${(passMs / 1e3).toFixed(1)}s \u2014 ConsolidationEngine passCount=${passCount} \xB7 entering ${(settleMs / 1e3).toFixed(0)}s settle window for V8 + native drain`);
+        let _dwT = Date.now();
         try {
-          if (brain2 && brain2.languageCortex && cluster && typeof brain2.languageCortex.generateAsync === "function") {
+          if (_dwComposeSafe && !_dwOverBudget("phenomenology (generateAsync)") && brain2 && brain2.languageCortex && cluster && typeof brain2.languageCortex.generateAsync === "function") {
             let dreamSeed = null;
             try {
               const tier1 = brain2.memorySystem?.tier1 || brain2.tier1Store;
@@ -94784,8 +94812,10 @@ var Curriculum = class _Curriculum {
           }
         } catch (err) {
         }
+        _dwStageMs.phenomenology = Date.now() - _dwT;
+        _dwT = Date.now();
         try {
-          if (cluster && typeof cluster.composeSentence === "function" && typeof this._teachAssociationPairs === "function") {
+          if (_dwComposeSafe && !_dwOverBudget("recombination (composeSentence rounds)") && cluster && typeof cluster.composeSentence === "function" && typeof this._teachAssociationPairs === "function") {
             const DREAM_RECOMB_ROUNDS = 3;
             const DREAM_RECOMB_COHERENCE_MIN = 0.2;
             const DREAM_RECOMB_MIN_WORDS = 4;
@@ -94801,6 +94831,7 @@ var Curriculum = class _Curriculum {
             let totalDreamed = 0;
             const dreamRoundSamples = [];
             for (let round = 0; round < DREAM_RECOMB_ROUNDS; round++) {
+              if (_dwOverBudget("recombination (remaining rounds)")) break;
               const seed = dreamSeeds[round % dreamSeeds.length];
               let composed = null;
               try {
@@ -94869,12 +94900,15 @@ var Curriculum = class _Curriculum {
           }
         } catch (err) {
         }
+        _dwStageMs.recombination = Date.now() - _dwT;
+        _dwT = Date.now();
         try {
-          if (cluster && typeof cluster.getWordCreationCandidates === "function" && typeof this._teachAssociationPairs === "function") {
+          if (!_dwOverBudget("word-creation promotion") && cluster && typeof cluster.getWordCreationCandidates === "function" && typeof this._teachAssociationPairs === "function") {
             const MIN_PROMOTE = 10;
             const candidates = cluster.getWordCreationCandidates({ limit: 50, minCount: MIN_PROMOTE });
             let promoted = 0;
             for (const cand of candidates) {
+              if (_dwOverBudget("word-creation promotion (remaining candidates)")) break;
               const entry = cluster._wordCreationCandidates && cluster._wordCreationCandidates.get(cand.compound);
               if (!entry || entry.promoted) continue;
               const [a, b] = cand.components;
@@ -94903,7 +94937,9 @@ var Curriculum = class _Curriculum {
           }
         } catch (err) {
         }
-        if (cluster && typeof this._teachWordDefinition === "function") {
+        _dwStageMs.promotion = Date.now() - _dwT;
+        _dwT = Date.now();
+        if (!_dwOverBudget("dictionary dream-trickle") && cluster && typeof this._teachWordDefinition === "function") {
           try {
             if (!cluster._kVocabQueue) {
               const { K_VOCABULARY: K_VOCABULARY2 } = await Promise.resolve().then(() => (init_k_vocabulary(), k_vocabulary_exports));
@@ -94921,6 +94957,7 @@ var Curriculum = class _Curriculum {
               let bound = 0;
               let timedOut = 0;
               for (let i = 0; i < batchN; i++) {
+                if (_dwOverBudget("dream-trickle (remaining words this window)")) break;
                 const word = cluster._kVocabQueue.shift();
                 if (!word) break;
                 try {
@@ -94942,6 +94979,8 @@ var Curriculum = class _Curriculum {
           } catch (err) {
           }
         }
+        _dwStageMs.trickle = Date.now() - _dwT;
+        _dwT = Date.now();
         await new Promise((r) => setTimeout(r, settleMs));
       } else {
         this._hb(`[Curriculum] \u26A0 dream window \u2014 consolidationEngine unavailable, falling back to ${(minMs / 1e3).toFixed(0)}s wall-clock settle`);
@@ -94953,7 +94992,9 @@ var Curriculum = class _Curriculum {
         brain2._curriculumInProgress = wasCurrInProgress;
         brain2._operatorSleepRequested = wasSleepReq;
       }
-      this._hb(`[Curriculum] \u2600 dream window closed (${(totalMs / 1e3).toFixed(1)}s total) \u2014 resuming curriculum`);
+      const _dwStages = Object.entries(_dwStageMs).filter(([, v]) => v >= 100).map(([k, v]) => `${k} ${(v / 1e3).toFixed(1)}s`).join(" \xB7 ");
+      const _dwSkipNote = _dwSkipped.length ? ` \xB7 skipped: ${_dwSkipped.join(", ")}` : "";
+      this._hb(`[Curriculum] \u2600 dream window closed (${(totalMs / 1e3).toFixed(1)}s total${_dwStages ? " \u2014 " + _dwStages : ""}${_dwSkipNote}) \u2014 resuming curriculum`);
     }
   }
   /**
