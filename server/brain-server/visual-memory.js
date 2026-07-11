@@ -165,6 +165,30 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
           for (let i = 0; i < n; i++) { d += a[i] * b[i]; na += a[i] * a[i]; nb += b[i] * b[i]; }
           const dn = Math.sqrt(na) * Math.sqrt(nb); return dn > 0 ? d / dn : 0;
         };
+        // STATIC-SOURCE LOCKOUT (camera lane) — a virtual webcam whose app is
+        // off streams a placeholder CARD (text + logo: passes the blank-frame
+        // gate, wobbles past per-frame repeat checks via compression noise).
+        // If several consecutive camera frames match a rolling signature, the
+        // camera is showing a STILL — lock the lane until the scene actually
+        // changes. A still teaches nothing; one card must never colonize her
+        // concepts (live incident: thousands of 'turn on your webcam' frames).
+        const _isCam = !(msg && msg.label);
+        if (_isCam) {
+          if (this._vmStaticSig && cosSim(pv, this._vmStaticSig) > 0.98) {
+            this._vmStaticRun = (this._vmStaticRun || 0) + 1;
+          } else {
+            this._vmStaticSig = pv;
+            this._vmStaticRun = 0;
+          }
+          if (this._vmStaticRun >= 4) {
+            this._vmStaticSkips = (this._vmStaticSkips || 0) + 1;
+            if (!this._vmStaticLogAt || (now - this._vmStaticLogAt) > 60000) {
+              this._vmStaticLogAt = now;
+              console.warn(`[VisualMemory] camera LOCKED OUT — static source (${this._vmStaticRun}+ consecutive near-identical frames, e.g. a virtual-webcam placeholder card). Ingest resumes when the scene changes. ${this._vmStaticSkips} static frames skipped this boot.`);
+            }
+            return;
+          }
+        }
         for (const old of this._vmRecentPercepts) {
           if (cosSim(pv, old) > 0.995) {
             this._vmRepeatSkips = (this._vmRepeatSkips || 0) + 1;
@@ -176,7 +200,11 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
           }
         }
         this._vmRecentPercepts.push(pv);
-        while (this._vmRecentPercepts.length > 3) this._vmRecentPercepts.shift();
+        // Window widened 3 -> 24: interleaved generated-image ingests pushed a
+        // frozen camera source out of a 3-deep window and re-admitted it
+        // endlessly (live: a virtual-webcam placeholder card bound thousands
+        // of near-copies past the old gate).
+        while (this._vmRecentPercepts.length > 24) this._vmRecentPercepts.shift();
       }
     } catch { /* repeat gate best-effort — intake proceeds */ }
 

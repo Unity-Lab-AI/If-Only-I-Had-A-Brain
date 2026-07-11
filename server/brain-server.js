@@ -931,6 +931,12 @@ function autoClearStaleState() {
     // alongside the cortex weights so stale schemas don't poison the
     // fresh cortex with weights baked against old projection topology.
     path.join(__dirname, 'schemas.json'),
+    // Fresh walk = fresh EYES: visual + mindspace memories are experiential
+    // state like episodic, not identity. Discovered live: a virtual-webcam
+    // placeholder card poisoned thousands of visual bindings and would have
+    // SURVIVED a fresh walk because these files were missing from the wipe.
+    path.join(__dirname, 'visual-memory.json'),
+    path.join(__dirname, 'mindspace-memory.json'),
   ];
 
   // iter13 T13.16 — identity-core.json (Tier 3 identity-bound permanent
