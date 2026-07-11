@@ -486,7 +486,22 @@ export const CLUSTER_HEBBIAN_MIXIN = {
             // and Phase 1's PROBE_CRITICAL Hebbian hit null rowPtr →
             // frozen Phase 1 at iter 0 letter 'a' right after the
             // _crossRegionHebbian first-call diag.
-            if (PROBE_CRITICAL_CPU_CSR.has(projName)) {
+            // PRESSURE GATE — the free exists for the multi-GB dense-scale
+            // case (V8 external-memory OOM). At current sparsity the whole
+            // cross-projection set is ~100-200MB, and freeing it is all cost:
+            // checkpoints SKIP freed matrices (GPU readback not wired), so a
+            // donor drop loses those pathways' mid-run learning and the re-arm
+            // has nothing real to upload. Free ONLY when this projection's CSR
+            // actually threatens memory (default >=512MB, DREAM_CSR_FREE_MIN_MB);
+            // below that, keep it resident — saves stay complete, donor churn
+            // stays lossless, re-arms upload truth. The values-only GPU
+            // readback frame remains the queued cure for the dense-scale case.
+            const _freeMinBytes = (Number(process.env.DREAM_CSR_FREE_MIN_MB) > 0
+              ? Number(process.env.DREAM_CSR_FREE_MIN_MB) : 512) * 1048576;
+            const _projBytes = _freedValuesBytes + _freedColIdxBytes + _freedRowPtrBytes;
+            if (_projBytes < _freeMinBytes) {
+              console.log(`[CPU-CSR-free] keeping ${key} resident (${_freedMB}MB < ${Math.round(_freeMinBytes / 1048576)}MB pressure gate) — checkpoints stay complete, donor churn stays lossless.`);
+            } else if (PROBE_CRITICAL_CPU_CSR.has(projName)) {
               console.log(`[CPU-CSR-free] keeping probe-critical ${key} CPU arrays resident (${_freedMB}MB) — needed for READ/TALK/DYN-PROD gate probes.`);
             } else {
               // Free the CPU CSR. `SparseMatrix.propagate` has a
