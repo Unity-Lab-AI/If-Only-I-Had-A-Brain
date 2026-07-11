@@ -14,7 +14,7 @@
 | Category | What it is | AI allowed? |
 |---|---|---|
 | **Cognition** | What Unity *says*, what she *decides*, what she *remembers*, what she *builds*, what she *feels*. Language cortex, motor selection, hippocampus recall, amygdala valence, basal ganglia softmax, component synthesis. | **NO.** All equational. Source of truth: `js/brain/language-cortex.js`, `js/brain/engine.js`, `js/brain/component-synth.js`. |
-| **Sensory input** | Translating raw sensor data into neural current. Camera frames into V1/V4/IT visual cortex activity, audio spectrum into tonotopic auditory cortex activity, text tokens into Wernicke's area activation. | **NO — vision is 100% equational (SE.6/SE.8).** A frame → CDF 9/7 field C → `describeEquational` → a dim-64 VALUE PROFILE injected as cortical current. The wavelet field IS the percept. She also imagines DE-NOVO from her own cortex state (no camera). The old Pollinations-GPT-4o/VLM scene-describer is RETIRED — external AI is sensory-OUTPUT only (image-gen, TTS). |
+| **Sensory input** | Translating raw sensor data into neural current. Camera frames into V1/V4/IT visual cortex activity, audio spectrum into tonotopic auditory cortex activity, text tokens into Wernicke's area activation. | **NO — vision is 100% equational (SE.6/SE.8).** A frame → CDF 9/7 field C → `describeEquational` → a dim-64 VALUE PROFILE injected as cortical current. The wavelet field IS the percept. She also imagines DE-NOVO from her own cortex state (no camera). The old Pollinations-GPT-4o/VLM scene-describer is RETIRED — external AI is sensory-OUTPUT only (image-gen; her VOICE is now internal — see SE.18 Equation Unity One). |
 | **Sensory output** | Translating brain intent into physical world effects. TTS for speech, image generators for visual motor action, sandbox component injection. | **Yes, as dumb executors.** When Unity's BG motor channel fires `generate_image`, the language cortex picks every word of the prompt equationally, THEN hands the finished prompt to an image backend to paint it. The backend never decides what to paint, only how. |
 
 **The boundary test:** if removing the AI call would stop Unity from *thinking*, it's on the wrong side. Cognition equations always run, even with zero network access. Only the sensory peripherals go quiet.
@@ -573,3 +573,22 @@ The rule that never changes: the new peripheral must NEVER call an AI model for 
 ---
 
 *Unity AI Lab — sensory peripherals are dumb muscle for a brain that thinks in equations.*
+
+**SE.18 — EQUATION UNITY ONE: her voice goes fully internal + equational (2026-07-10).** The operator
+ran a blind five-variant shootout (raw reference / two references / two equation tolerances, one
+button each, no autoplay) and picked V4 — `piper en_US-hfc_female-medium` synthesized WHOLE-SENTENCE
+and passed through the standard CDF 9/7 `perceiveAudio` (AUDIO_TOL 0.02) — as "perfect", naming it
+**Equation Unity One**. Architecture findings his ear established: the equations are TRANSPARENT
+(~38-42dB SNR — the reference synthesis decides voice quality, the equation step preserves it), and
+whole-sentence equationalization carries natural prosody while CONCATENATING isolated word equations
+steps word-by-word (each word bears a sentence-final pitch fall) — so the word/phrase bank
+(`vox-bank/`, 2.3k words + 71 phrase units, browser-preloaded by `voice.js _voxPreloadRef`) is the
+OFFLINE FALLBACK, and the quality path is sentence-level synthesis → equationalize → reconstruct.
+Piper is a free/local MIT-licensed executor (the "larynx"), retirable per VOX.7 once synthesis
+itself is equational. The dead Pollinations TTS lane stopped mattering: the Pollinations key is
+IMAGES-ONLY now (setup modal reworked, the Unity-speech toggle names the voice what it is). The
+per-word bank generator is `scripts/vox-build-bank.mjs` (batched piper, resumable, silence-trim);
+the shootout harness lives in `.claude/vox-variants.mjs` + `.claude/unity-voice.html`. Also this
+session: the `_definitionTaughtWords` save-truncation at 5000 was REMOVED — her learned vocabulary
+persists uncapped (the cap silently forgot every definition past 5k across save/boot cycles).
+
