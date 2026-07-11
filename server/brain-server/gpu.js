@@ -1680,7 +1680,16 @@ const SERVER_GPU_MIXIN = {
     const nnz = values.length;
 
     // 16 MB NNZ worth ≈ 2M nnz/chunk × 8 bytes (4 values + 4 colIdx)
-    const CHUNK_NNZ = 2_000_000;
+    // FRAME-SIZE CEILING — the native donor's Rust WebSocket stack enforces a
+    // 16MiB max frame by default and KILLS the connection on violation. At
+    // 2M nnz a chunk frame is ~16MB (+headers, +rowPtr on the first chunk) —
+    // exactly why the 85MB intra-synapses upload dropped the donor on every
+    // attempt at 306M scale while the small cross-projections sailed (live
+    // incident: connect -> intra chunks -> socket killed -> reconnect loop
+    // every ~4.5s; the moment intra gave up, 16/17 uploaded fine). 750k nnz
+    // = ~6MB frames, comfortable margin even with the first-chunk rowPtr.
+    const CHUNK_NNZ = Number(process.env.DREAM_SPARSE_CHUNK_NNZ) > 0
+      ? Number(process.env.DREAM_SPARSE_CHUNK_NNZ) : 750_000;
     const totalChunks = Math.max(1, Math.ceil(nnz / CHUNK_NNZ));
     const rowPtrBuf = Buffer.from(rowPtr.buffer, rowPtr.byteOffset, rowPtr.byteLength);
     const totalMb = ((values.byteLength + colIdx.byteLength + rowPtr.byteLength) / 1e6).toFixed(1);
@@ -1797,6 +1806,7 @@ const SERVER_GPU_MIXIN = {
             : [hdr, chunkMeta, firstMeta, rowPtrBuf, valuesHdr, valuesSlice, colIdxHdr, colIdxSlice])
         : [hdr, chunkMeta, valuesHdr, valuesSlice, colIdxHdr, colIdxSlice];
       const frame = Buffer.concat(pieces);
+      if (isFirst) console.log(`[Brain] sparse upload ${name} first frame = ${(frame.length / 1048576).toFixed(1)}MB (frame ceiling ~16MiB on native donors — tune DREAM_SPARSE_CHUNK_NNZ if this approaches it).`);
       // Send chunk. WebSocket preserves order. Wait for the send
       // callback so we don't flood the send buffer with hundreds of
       // MB at once — backpressure per chunk.
