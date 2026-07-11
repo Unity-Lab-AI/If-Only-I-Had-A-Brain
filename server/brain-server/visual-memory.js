@@ -15,9 +15,9 @@
 //      being "heard", the way infant perception grounds vocabulary.
 //   3. IMAGINING — at imagine-time (_imagineTick / IMG-SEE preview), the
 //      thought's tokens are looked up here FIRST. One match → she re-sees
-//      the stored percept. Two matches → morphField blends both field Cs in
-//      the EQUATION domain (coefficient-set union + lerp) — imagination as
-//      RECOMBINATION of stored percepts, not a caption of the thought.
+//      the stored percept — the single strongest ACCURATE one. (The old
+//      two-match morphField overlay was REMOVED by operator directive —
+//      superimposing two seen frames is noise static, not imagination.)
 //   Equational end-to-end: pixels → forward CDF 9/7 → sparse field C →
 //   (morph) → inverse CDF 9/7 at the viewer. No text-AI, no picture library.
 //
@@ -241,9 +241,11 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
     }
   },
 
-  // Recall at imagine-time. One matched concept → re-see the stored field C.
-  // Two → morphField blends both in the equation domain (recombination —
-  // the imagination act itself). Returns {rec, matched, recombined} or null;
+  // Recall at imagine-time: re-see the single strongest ACCURATE stored
+  // field C for a matched concept. Returns {rec, matched, recombined:false}
+  // or null; null sends the caller down the de-novo abstract path. The old
+  // two-match morphField overlay was removed — superimposing two seen frames
+  // is static, not imagination.
   // null sends the caller down the de-novo abstract path.
   _recallVisualMemory(text) {
     const store = this._vmStore();
@@ -270,22 +272,20 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
     const fresh = hits.filter(h => !h.e.shownAt || (nowR - h.e.shownAt) > COOL);
     if (fresh.length === 0) return null;   // all resting → variety via de-novo/sketch
     // TU.29.12 — QUALITY GATE. A near-uniform frame (dark room / blank wall /
-    // subject off-frame) equationalizes to almost no wavelet detail; morphing
-    // two of them collapses to a handful of coefficients that reconstruct FLAT
+    // subject off-frame) equationalizes to almost no wavelet detail, which
+    // reconstructs FLAT BLACK — and that degenerate "recall" was bypassing
     // BLACK — and that degenerate "recall" was bypassing the never-blank mood
     // floor. `_recDetail()` counts the coefficients that actually survive the
     // drop-tiny threshold; below MIN it is not a real image, so we treat the
     // recall as a MISS and let the caller render the vivid de-novo mood field.
     const MIN_DETAIL = 200;
-    if (fresh.length >= 2 && this.mindSpace && typeof this.mindSpace.morph === 'function') {
-      try {
-        const m = this.mindSpace.morph(fresh[0].e.rec, fresh[1].e.rec, 0.5);
-        if (m && this._recDetail(m) >= MIN_DETAIL) {
-          fresh[0].e.shownAt = nowR; fresh[1].e.shownAt = nowR;   // SEE.3 — both parents rest
-          return { rec: m, matched: [fresh[0].word, fresh[1].word], recombined: true };
-        }
-      } catch { /* fall through to single recall */ }
-    }
+    // MORPH-OVERLAY REMOVED (operator directive): blending two SEEN images
+    // with morphField superimposes their wavelet fields — the result is noise
+    // interference / image static, not an accurate composition. Recall now
+    // always presents the single strongest ACCURATE stored percept; real
+    // recombination belongs to the definition-grounded composition path, not
+    // a field overlay of two frames. (mindSpace.morph stays available for
+    // non-percept uses.)
     // single strongest — only if it carries real detail
     for (const h of fresh) {
       if (this._recDetail(h.e.rec) >= MIN_DETAIL) {
