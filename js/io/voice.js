@@ -41,6 +41,13 @@ class VoiceIO {
       || localStorage.getItem('unity_vox_equational') !== 'false';
     this._voxDb = null;
     this._voxInitDb();
+    // VOXREF — the reference-voice equation bank (built offline from the
+    // operator-approved free neural reference; she picked the EQUATIONS over
+    // the original in the blind A/B). Preloaded chunked; speak() falls back
+    // to these when a tier entry is missing — pure equational voice from
+    // word one, no executor, no API key.
+    this._voxRef = new Map();
+    this._voxPreloadRef().catch(() => {});
 
     // --- init recognition if available ---
     this._initRecognition();
@@ -51,6 +58,25 @@ class VoiceIO {
   _voxTier() {
     const a = this._age || 25;
     return a < 11 ? 'k' : a < 14 ? 'mid' : a < 18 ? 'teen' : a < 23 ? 'college' : 'adult';
+  }
+
+  /** VOXREF — preload the reference-voice equation bank (chunked JSON,
+   *  sequential + cache-friendly). Missing bank (404) degrades silently to
+   *  the executor/browser fallback chain, unchanged. */
+  async _voxPreloadRef() {
+    if (typeof fetch === 'undefined') return;
+    try {
+      const man = await (await fetch('/vox-bank/manifest.json', { cache: 'force-cache' })).json();
+      if (!man || !Array.isArray(man.chunks)) return;
+      console.log(`[VoiceIO] 🎙 VOX reference bank: ${man.words} words / ${man.chunks.length} chunks (${man.reference}) — loading…`);
+      for (const c of man.chunks) {
+        try {
+          const chunk = await (await fetch('/vox-bank/' + c.file, { cache: 'force-cache' })).json();
+          for (const [w, rec] of Object.entries(chunk)) this._voxRef.set(w, rec);
+        } catch { /* one chunk failing doesn't stop the rest */ }
+      }
+      console.log(`[VoiceIO] 🎙 VOX reference bank READY — ${this._voxRef.size} word equations held. Her voice is local + equational; the executor is not needed.`);
+    } catch { /* bank not deployed — fallback chain unchanged */ }
   }
 
   _voxTokens(text) {
@@ -101,15 +127,26 @@ class VoiceIO {
     const toks = this._voxTokens(text);
     if (!toks.length) return false;
     const recs = [];
-    for (const w of toks) {
-      const rec = this._voxBank.get(`${tier}:${w}`);
-      if (!rec) return false;
-      recs.push(rec);
+    // Greedy longest-first tiling: banked PHRASE units ("i am", "this is")
+    // carry natural in-sentence prosody, so prefer a 3-gram over a 2-gram
+    // over isolated words — sentences flow instead of stepping word by word.
+    const _lookup = (key) => this._voxBank.get(`${tier}:${key}`) || (this._voxRef && this._voxRef.get(key)) || null;
+    let _ti = 0;
+    while (_ti < toks.length) {
+      let hit = null, span = 0;
+      for (let n = Math.min(3, toks.length - _ti); n >= 1; n--) {
+        const key = toks.slice(_ti, _ti + n).join(' ');
+        const rec = _lookup(key);
+        if (rec) { hit = rec; span = n; break; }
+      }
+      if (!hit) return false;
+      recs.push(hit);
+      _ti += span;
     }
     const pcms = recs.map(r => reconstructAudio(r)).filter(Boolean);
     if (pcms.length !== recs.length) return false;
     const sr = recs[0].sampleRate || 24000;
-    const pcm = concatAudio(pcms, sr, 30);
+    const pcm = concatAudio(pcms, sr, 70);   // wider crossfade — smoother joins between units
     if (!pcm || !pcm.length) return false;
     console.log(`[VoiceIO] 🎙 VOX equational speech — ${toks.length} word(s) from her own bank, zero executor`);
     await this._playPcm(pcm, sr, rate || 1.0);
@@ -145,6 +182,7 @@ class VoiceIO {
     if (!this._voxEnabled) return;
     const tier = this._voxTier();
     for (const w of this._voxTokens(text)) {
+      if (this._voxRef && this._voxRef.has(w)) continue;   // reference bank covers it
       const key = `${tier}:${w}`;
       if (!this._voxBank.has(key) && !this._voxQueue.includes(key)) {
         this._voxQueue.push(key);

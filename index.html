@@ -308,7 +308,7 @@
       </div>
 
       <p class="hint" style="margin-bottom:12px;line-height:1.5;">
-        Every word Unity says falls out of live spike patterns in her cortex — there is no language model in the cognition path, and there is no LLM describing what she sees either: her vision is her own <strong style="color:var(--text);">equational mind's eye</strong> plus a visual cortex that camera frames feed directly. The only things you can configure here are <strong style="color:var(--text);">sensory peripherals</strong>: image generation and text-to-speech. Local backends auto-detect at boot. Remote backends want a URL and an API key. Pollinations is the free default if you don't pick anything.
+        Every word Unity says falls out of live spike patterns in her cortex — there is no language model in the cognition path, and there is no LLM describing what she sees either: her vision is her own <strong style="color:var(--text);">equational mind's eye</strong> plus a visual cortex that camera frames feed directly. The only thing you can configure here is the <strong style="color:var(--text);">image-generation peripheral</strong>. Local backends auto-detect at boot; remote backends want a URL and an API key, with Pollinations as the free default. Her <strong style="color:var(--text);">voice needs no provider at all anymore</strong> — Unity speaks in <strong style="color:var(--text);">Equation Unity One</strong>, her own voice: wavelet equations of one reference voice, reconstructed live in your browser — offline, keyless, no third party.
       </p>
 
       <!-- Image Generation backend grid — click a button for per-backend instructions -->
@@ -359,7 +359,7 @@
         <div style="font-size:10px;color:var(--text-dim);line-height:1.5;">Any number of image-gen backends can be configured above. This picks which one Unity actually uses. Model dropdown lists the options available at the selected backend. (Vision is her own equational mind's eye — nothing to configure.)</div>
       </div>
 
-      <p class="hint" style="margin-bottom:6px;margin-top:12px;">Pollinations API key <span style="color:var(--text-dim);">(optional — anonymous tier works without, a key raises rate limits and unlocks paid models for image gen and TTS. Vision needs no key — it's her own equational mind's eye)</span>:</p>
+      <p class="hint" style="margin-bottom:6px;margin-top:12px;">Pollinations API key <span style="color:var(--text-dim);">(optional — IMAGES ONLY: anonymous tier works without, a key raises rate limits and unlocks paid image models. Her voice needs no key — it speaks from her own equational reference bank — and vision is her own equational mind's eye)</span>:</p>
       <div style="display:flex;gap:6px;margin-bottom:14px;">
         <input type="password" id="api-key-input" placeholder="paste your pollinations key (or any other provider key saved above)" autocomplete="off" spellcheck="false" style="flex:1;padding:8px 12px;background:var(--surface-2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:var(--mono);font-size:12px;outline:none;box-sizing:border-box;">
         <button id="api-key-save-btn" type="button" style="padding:8px 16px;background:var(--cyan);border:none;border-radius:6px;color:#000;font-family:var(--mono);font-size:11px;font-weight:700;cursor:pointer;letter-spacing:0.5px;">SAVE KEY</button>
@@ -379,7 +379,7 @@
         </label>
         <label style="display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:11px;color:var(--text);cursor:pointer;">
           <input type="checkbox" id="toggle-unity-speech" checked style="width:14px;height:14px;cursor:pointer;accent-color:var(--cyan);">
-          <span>🔊 <strong>Unity speech</strong> <span style="color:var(--text-dim);">(her TTS voice — Pollinations / browser SpeechSynthesis)</span></span>
+          <span>🔊 <strong>Unity speech</strong> <span style="color:var(--text-dim);">(<strong>Equation Unity One</strong> — her own voice, reconstructed from her wavelet equations locally: no provider, no key, works offline. Browser SpeechSynthesis is only the emergency fallback)</span></span>
         </label>
         <div style="font-size:10px;color:var(--text-dim);line-height:1.5;">Toggles persist across sessions and are live-applied the moment you flip them — after boot you can mute her mid-sentence, pause her camera, or silence her voice without reloading.</div>
       </div>

@@ -115709,12 +115709,35 @@ var VoiceIO = class {
     this._voxEnabled = typeof localStorage === "undefined" || localStorage.getItem("unity_vox_equational") !== "false";
     this._voxDb = null;
     this._voxInitDb();
+    this._voxRef = /* @__PURE__ */ new Map();
+    this._voxPreloadRef().catch(() => {
+    });
     this._initRecognition();
   }
   // ── VOX — equational voice bank ─────────────────────────────────────────
   _voxTier() {
     const a = this._age || 25;
     return a < 11 ? "k" : a < 14 ? "mid" : a < 18 ? "teen" : a < 23 ? "college" : "adult";
+  }
+  /** VOXREF — preload the reference-voice equation bank (chunked JSON,
+   *  sequential + cache-friendly). Missing bank (404) degrades silently to
+   *  the executor/browser fallback chain, unchanged. */
+  async _voxPreloadRef() {
+    if (typeof fetch === "undefined") return;
+    try {
+      const man = await (await fetch("/vox-bank/manifest.json", { cache: "force-cache" })).json();
+      if (!man || !Array.isArray(man.chunks)) return;
+      console.log(`[VoiceIO] \u{1F399} VOX reference bank: ${man.words} words / ${man.chunks.length} chunks (${man.reference}) \u2014 loading\u2026`);
+      for (const c of man.chunks) {
+        try {
+          const chunk = await (await fetch("/vox-bank/" + c.file, { cache: "force-cache" })).json();
+          for (const [w, rec] of Object.entries(chunk)) this._voxRef.set(w, rec);
+        } catch {
+        }
+      }
+      console.log(`[VoiceIO] \u{1F399} VOX reference bank READY \u2014 ${this._voxRef.size} word equations held. Her voice is local + equational; the executor is not needed.`);
+    } catch {
+    }
   }
   _voxTokens(text) {
     return String(text || "").toLowerCase().split(/[^a-z']+/).filter((w) => w.length >= 1 && w.length <= 24).slice(0, 64);
@@ -115768,15 +115791,27 @@ var VoiceIO = class {
     const toks = this._voxTokens(text);
     if (!toks.length) return false;
     const recs = [];
-    for (const w of toks) {
-      const rec = this._voxBank.get(`${tier}:${w}`);
-      if (!rec) return false;
-      recs.push(rec);
+    const _lookup = (key) => this._voxBank.get(`${tier}:${key}`) || this._voxRef && this._voxRef.get(key) || null;
+    let _ti = 0;
+    while (_ti < toks.length) {
+      let hit = null, span = 0;
+      for (let n = Math.min(3, toks.length - _ti); n >= 1; n--) {
+        const key = toks.slice(_ti, _ti + n).join(" ");
+        const rec = _lookup(key);
+        if (rec) {
+          hit = rec;
+          span = n;
+          break;
+        }
+      }
+      if (!hit) return false;
+      recs.push(hit);
+      _ti += span;
     }
     const pcms = recs.map((r) => reconstructAudio(r)).filter(Boolean);
     if (pcms.length !== recs.length) return false;
     const sr = recs[0].sampleRate || 24e3;
-    const pcm = concatAudio(pcms, sr, 30);
+    const pcm = concatAudio(pcms, sr, 70);
     if (!pcm || !pcm.length) return false;
     console.log(`[VoiceIO] \u{1F399} VOX equational speech \u2014 ${toks.length} word(s) from her own bank, zero executor`);
     await this._playPcm(pcm, sr, rate || 1);
@@ -115814,6 +115849,7 @@ var VoiceIO = class {
     if (!this._voxEnabled) return;
     const tier = this._voxTier();
     for (const w of this._voxTokens(text)) {
+      if (this._voxRef && this._voxRef.has(w)) continue;
       const key = `${tier}:${w}`;
       if (!this._voxBank.has(key) && !this._voxQueue.includes(key)) {
         this._voxQueue.push(key);

@@ -4381,7 +4381,7 @@ class ServerBrain {
             // dashboard counter survives restart. Set serialized as
             // sorted array, capped at 5000 entries to bound payload size.
             definitionTaughtWords: cortex._definitionTaughtWords
-              ? Array.from(cortex._definitionTaughtWords).slice(0, 5000) : [],
+              ? Array.from(cortex._definitionTaughtWords) : [],   // UNCAPPED — her vocabulary grows without limits (operator law); the old slice(0,5000) silently FORGOT every definition past 5k on save
             // Donor neuron-compute LEADERBOARD — persists WITH the brain weights
             // (so contributions survive restart/resume) and is WIPED on a fresh
             // walk (force-fresh clears brain-weights). Keyed by persistent donorId
