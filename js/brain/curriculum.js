@@ -3198,6 +3198,54 @@ export class Curriculum {
     }
     const startedAt = Date.now();
     this._hb(`[Curriculum] 💤 dream window opened — curriculum paused · ConsolidationEngine firing · Tier 1→2→3 promotion · V8 + native GC settling`);
+    // Wall-clock budget + compose scale gate for the enrichment stages.
+    // The window's REQUIRED work is the consolidation pass (own 45s cap);
+    // everything after it (phenomenology / recombination / word-creation
+    // promotion / dictionary trickle) is enrichment that previously ran
+    // UNBOUNDED — a live between-chunk window held the K-vocab seed ~44
+    // minutes while these stages ground through composeSentence cortex
+    // ticks + cold dictionary fetches. Budget is checked between stages
+    // and inside the per-item loops; skipped work is logged loudly and
+    // picked up by later windows (the trickle queue + promotion
+    // candidates persist across windows by design).
+    const _dwBudgetMs = (typeof process !== 'undefined' && Number(process.env?.DREAM_WINDOW_MAX_MS) > 0)
+      ? Number(process.env.DREAM_WINDOW_MAX_MS) : 180000;
+    const _dwSkipped = [];
+    const _dwStageMs = {};
+    const _dwOverBudget = (stage) => {
+      if ((Date.now() - startedAt) < _dwBudgetMs) return false;
+      if (!_dwSkipped.includes(stage)) {
+        _dwSkipped.push(stage);
+        this._hb(`[Curriculum] 💤 dream window over budget (${((Date.now() - startedAt) / 1000).toFixed(0)}s ≥ ${(_dwBudgetMs / 1000).toFixed(0)}s) — skipping ${stage} this window; later windows pick it up (tune DREAM_WINDOW_MAX_MS).`);
+      }
+      return true;
+    };
+    // Compose scale gate — same rule as the awake inner voice: one
+    // composeSentence / generateAsync word-tick synchronously propagates
+    // the MAIN cortex on the host CPU (~57s/word at biological scale;
+    // donors do NOT change it unless the GPU generation path is
+    // explicitly available via DREAM_INNERVOICE_GPU_GEN=1 or proven read
+    // fan-out DREAM_DF7_FANOUT_PROPAGATE=1). Above the neuron cap with
+    // no GPU-gen, the generation stages skip instead of pinning the
+    // event loop for minutes per sentence — the pins that starved
+    // donors, dashboards and page loads through every dream window.
+    let _dwComposeSafe = true;
+    try {
+      const _env = (typeof process !== 'undefined' && process.env) ? process.env : {};
+      const _cortexN = (brain && brain.clusters && brain.clusters.cortex && brain.clusters.cortex.size) || 0;
+      const _maxN = Number(_env.DREAM_INNERVOICE_MAX_NEURONS) > 0 ? Number(_env.DREAM_INNERVOICE_MAX_NEURONS) : 2000000;
+      if (_cortexN > _maxN && _env.DREAM_INNERVOICE_FORCE_CPU !== '1') {
+        const _minDonors = Number(_env.DREAM_INNERVOICE_GPU_GEN_MIN_DONORS) || 1;
+        const _donorsPresent = ((brain && brain._communityDonorCount) || 0) >= _minDonors;
+        _dwComposeSafe = _env.DREAM_INNERVOICE_GPU_GEN !== '0'
+          && _donorsPresent
+          && (_env.DREAM_INNERVOICE_GPU_GEN === '1' || _env.DREAM_DF7_FANOUT_PROPAGATE === '1');
+        if (!_dwComposeSafe && !this._dwComposeGateLogged) {
+          this._dwComposeGateLogged = true;
+          this._hb(`[Curriculum] 💤 dream-window generation stages (phenomenology + recombination) DISABLED at scale — cortex ${_cortexN.toLocaleString()} > ${_maxN.toLocaleString()} and no GPU generation path. A composeSentence word-tick pins the host CPU ~57s at this scale; consolidation + trickle still run every window.`);
+        }
+      }
+    } catch { /* default safe at small scale */ }
     try {
       const engine = brain?.consolidationEngine;
       if (engine && typeof engine.runConsolidationPass === 'function') {
@@ -3210,6 +3258,7 @@ export class Curriculum {
         const passMs = Date.now() - startedAt;
         const passCount = engine.passCount || 0;
         this._hb(`[Curriculum] ⚙ dream pass complete in ${(passMs / 1000).toFixed(1)}s — ConsolidationEngine passCount=${passCount} · entering ${(settleMs / 1000).toFixed(0)}s settle window for V8 + native drain`);
+        let _dwT = Date.now();
 
         // Dream phenomenology. During the dream window,
         // emit ONE dream-content thought generated from a Tier 1 episodic
@@ -3220,7 +3269,7 @@ export class Curriculum {
         //awake inner voice — uses episodic replay as seed
         // instead of current-state seed.
         try {
-          if (brain && brain.languageCortex && cluster
+          if (_dwComposeSafe && !_dwOverBudget('phenomenology (generateAsync)') && brain && brain.languageCortex && cluster
               && typeof brain.languageCortex.generateAsync === 'function') {
             // Pick a random Tier 1 episode pattern from memorySystem
             // tier1 store. Best-effort — fall through if memory not wired.
@@ -3289,6 +3338,7 @@ export class Curriculum {
         } catch (err) {
           // Non-fatal — dream consolidation continues even if dreaming fails.
         }
+        _dwStageMs.phenomenology = Date.now() - _dwT; _dwT = Date.now();
 
         // Dream-time recombination. Fire 3 composeSentence emissions
         // during the dream window using diverse K-vocab seeds (sampled
@@ -3304,7 +3354,7 @@ export class Curriculum {
         // dedicated dream-recombination channel so consolidated novel
         // bindings can be distinguished from waking curriculum writes.
         try {
-          if (cluster && typeof cluster.composeSentence === 'function'
+          if (_dwComposeSafe && !_dwOverBudget('recombination (composeSentence rounds)') && cluster && typeof cluster.composeSentence === 'function'
               && typeof this._teachAssociationPairs === 'function') {
             const DREAM_RECOMB_ROUNDS = 3;
             // Audit B.7 — coherence-only gate (cosine ≥ 0.20) was admitting
@@ -3341,6 +3391,7 @@ export class Curriculum {
             // WHAT got consolidated, only the count.
             const dreamRoundSamples = [];
             for (let round = 0; round < DREAM_RECOMB_ROUNDS; round++) {
+              if (_dwOverBudget('recombination (remaining rounds)')) break;
               const seed = dreamSeeds[round % dreamSeeds.length];
               let composed = null;
               try {
@@ -3417,6 +3468,7 @@ export class Curriculum {
         } catch (err) {
           // Dream recombination is exploratory + low-rep — failures are non-fatal.
         }
+        _dwStageMs.recombination = Date.now() - _dwT; _dwT = Date.now();
 
         // Audit E.1 — P6.7 word-creation promotion mechanism. Pre-audit
         // the tip-of-tongue candidates accumulated in
@@ -3429,12 +3481,13 @@ export class Curriculum {
         // to the new lexicalized compound. Mirrors child novel-compound
         // acquisition (Pinker 1989 overregularization theory).
         try {
-          if (cluster && typeof cluster.getWordCreationCandidates === 'function'
+          if (!_dwOverBudget('word-creation promotion') && cluster && typeof cluster.getWordCreationCandidates === 'function'
               && typeof this._teachAssociationPairs === 'function') {
             const MIN_PROMOTE = 10;
             const candidates = cluster.getWordCreationCandidates({ limit: 50, minCount: MIN_PROMOTE });
             let promoted = 0;
             for (const cand of candidates) {
+              if (_dwOverBudget('word-creation promotion (remaining candidates)')) break;
               const entry = cluster._wordCreationCandidates && cluster._wordCreationCandidates.get(cand.compound);
               if (!entry || entry.promoted) continue;
               const [a, b] = cand.components;
@@ -3466,6 +3519,7 @@ export class Curriculum {
         } catch (err) {
           // Promotion is exploratory + low-rep — failures are non-fatal.
         }
+        _dwStageMs.promotion = Date.now() - _dwT; _dwT = Date.now();
 
         // Background-trickle K_VOCABULARY multi-def Hebbian during
         // dream cycles. Session 114.19ei bumped batch size 1 → 25
@@ -3476,7 +3530,7 @@ export class Curriculum {
         // upfront seed (reps:2) + inline-from-teach + this dream
         // trickle, every K-word converges to multi-def coverage at
         // moderate plasticity without basin-blur.
-        if (cluster && typeof this._teachWordDefinition === 'function') {
+        if (!_dwOverBudget('dictionary dream-trickle') && cluster && typeof this._teachWordDefinition === 'function') {
           try {
             if (!cluster._kVocabQueue) {
               const { K_VOCABULARY } = await import('./k-vocabulary.js');
@@ -3494,6 +3548,7 @@ export class Curriculum {
               let bound = 0;
               let timedOut = 0;
               for (let i = 0; i < batchN; i++) {
+                if (_dwOverBudget('dream-trickle (remaining words this window)')) break;
                 const word = cluster._kVocabQueue.shift();
                 if (!word) break;
                 try {
@@ -3535,6 +3590,7 @@ export class Curriculum {
             // Non-fatal — dream consolidation continues even if trickle fails.
           }
         }
+        _dwStageMs.trickle = Date.now() - _dwT; _dwT = Date.now();
 
         // Settle window for V8 GC + native worker-pool buffer drain.
         await new Promise((r) => setTimeout(r, settleMs));
@@ -3551,7 +3607,9 @@ export class Curriculum {
         brain._curriculumInProgress = wasCurrInProgress;
         brain._operatorSleepRequested = wasSleepReq;
       }
-      this._hb(`[Curriculum] ☀ dream window closed (${(totalMs / 1000).toFixed(1)}s total) — resuming curriculum`);
+      const _dwStages = Object.entries(_dwStageMs).filter(([, v]) => v >= 100).map(([k, v]) => `${k} ${(v / 1000).toFixed(1)}s`).join(' · ');
+      const _dwSkipNote = _dwSkipped.length ? ` · skipped: ${_dwSkipped.join(', ')}` : '';
+      this._hb(`[Curriculum] ☀ dream window closed (${(totalMs / 1000).toFixed(1)}s total${_dwStages ? ' — ' + _dwStages : ''}${_dwSkipNote}) — resuming curriculum`);
     }
   }
 

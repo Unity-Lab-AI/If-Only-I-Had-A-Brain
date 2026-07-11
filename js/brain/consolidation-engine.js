@@ -267,14 +267,36 @@ export class ConsolidationEngine {
         }
       }
 
+      // Tail-step deadline honor — steps 7-10 previously ran UNBOUNDED after
+      // the cluster loop had already blown DREAM_CONSOLIDATION_MAX_MS
+      // (mergeOverlappingSchemas is O(N²) over schemas, decayEpisodes sweeps
+      // the episodic DB). At biological scale those tail sweeps were the
+      // part of a 'capped' pass that still ran minutes past the deadline,
+      // pinning the event loop inside every dream window. Each tail step
+      // now checks the same deadline; skipped steps are tagged in stats +
+      // the pass log, and the NEXT pass picks them up with a fresh budget
+      // (all four are idempotent maintenance sweeps, not one-shot work).
+      const _pastDeadline = () => !!(this._consolidationDeadlineMs && Date.now() > this._consolidationDeadlineMs);
+      const _tailSkipped = [];
+      
       // Step 7 — merge overlapping schemas
-      stats.schemasMerged = this.schemaStore.mergeOverlappingSchemas();
+      if (_pastDeadline()) {
+        _tailSkipped.push('merge');
+      } else {
+        stats.schemasMerged = this.schemaStore.mergeOverlappingSchemas();
+      }
 
       // Step 8 — apply daily decay across all Tier 2 schemas
-      stats.schemasDecayed = this.schemaStore.applyDecay();
+      if (_pastDeadline()) {
+        _tailSkipped.push('schema-decay');
+      } else {
+        stats.schemasDecayed = this.schemaStore.applyDecay();
+      }
 
       // Step 9 — Tier 3 promotion check
-      if (this.tier3Store && typeof this.tier3Store.checkPromotions === 'function') {
+      if (_pastDeadline()) {
+        _tailSkipped.push('tier3-promotion');
+      } else if (this.tier3Store && typeof this.tier3Store.checkPromotions === 'function') {
         const promoted = this.tier3Store.checkPromotions(this.schemaStore);
         stats.tier3Promotions = promoted;
       } else {
@@ -290,7 +312,9 @@ export class ConsolidationEngine {
       }
 
       // Step 10 — Tier 1 decay + prune sweep
-      if (typeof this.brain.decayEpisodes === 'function') {
+      if (_pastDeadline()) {
+        _tailSkipped.push('episode-decay');
+      } else if (typeof this.brain.decayEpisodes === 'function') {
         const epStats = this.brain.decayEpisodes();
         stats.episodesDecayed = epStats.decayed || 0;
         stats.episodesPruned = epStats.pruned || 0;
@@ -307,8 +331,10 @@ export class ConsolidationEngine {
       // I.8 closure — surface deadline-abort in the log so operator
       // sees when a pass was capped by DREAM_CONSOLIDATION_MAX_MS and
       // can tune the env var if needed.
+      stats.tailStepsSkipped = _tailSkipped.slice();
+      const tailTag = _tailSkipped.length ? ` · ⚠ tail steps skipped past deadline: ${_tailSkipped.join('+')} (next pass catches up)` : '';
       const deadlineTag = _abortedForDeadline ? ` · ⚠ DEADLINE-ABORT (DREAM_CONSOLIDATION_MAX_MS=${(this._consolidationDeadlineMs - startMs) >= 0 ? ((this._consolidationDeadlineMs - startMs) | 0) : 30000}ms)` : '';
-      console.log(`[Consolidation] pass ${passId}: ${stats.candidatesFound} candidates → ${stats.clustersFormed} clusters → ${stats.schemasCreated} new schemas, ${stats.schemasReinforced} reinforced, ${stats.replaysExecuted} replays (${stats.hebbianWritesTotal} writes), ${stats.schemasMerged} merged, ${stats.schemasDecayed} decayed, ${stats.tier3Promotions} promoted to Tier 3, ${stats.episodesDecayed} episodes decayed / ${stats.episodesPruned} pruned · duration=${stats.durationMs}ms${deadlineTag}`);
+      console.log(`[Consolidation] pass ${passId}: ${stats.candidatesFound} candidates → ${stats.clustersFormed} clusters → ${stats.schemasCreated} new schemas, ${stats.schemasReinforced} reinforced, ${stats.replaysExecuted} replays (${stats.hebbianWritesTotal} writes), ${stats.schemasMerged} merged, ${stats.schemasDecayed} decayed, ${stats.tier3Promotions} promoted to Tier 3, ${stats.episodesDecayed} episodes decayed / ${stats.episodesPruned} pruned · duration=${stats.durationMs}ms${deadlineTag}${tailTag}`);
     } catch (err) {
       console.warn(`[Consolidation] pass ${passId} threw: ${err.message}`);
       stats.error = err.message;
