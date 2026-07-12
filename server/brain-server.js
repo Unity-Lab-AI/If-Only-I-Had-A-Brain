@@ -5487,9 +5487,27 @@ setInterval(() => {
 // hundreds-to-thousands of episodes the sweep completes in <100ms.
 const EPISODIC_DECAY_INTERVAL_MS = 10 * 60 * 1000;
 setInterval(() => {
-  if (typeof brain.decayEpisodes === 'function') {
-    brain.decayEpisodes();
+  if (typeof brain.decayEpisodes !== 'function') return;
+  // CLS PAIRING GUARD — decay/prune must never outrun consolidation. Real
+  // sleep does both together; with mid-walk consolidation idle-only (dream
+  // windows + the 2h emergency valve), a free-running decay sweep erodes
+  // unconsolidated episodes' promotion candidacy before consolidation ever
+  // sees them — "learn it, then lose it before sleep". Skip the sweep while
+  // consolidation is starved: decay is AGE-based (recomputed from the
+  // episode timestamp), so the first sweep after consolidation resumes
+  // catches the whole ledger up with zero correctness loss — episodes just
+  // HOLD their salience (and their candidacy) until the brain has slept.
+  const _ce = brain.consolidationEngine;
+  const _lastPass = (_ce && _ce.passCount > 0) ? (_ce.lastPassAt || 0) : 0;
+  const _starvedMs = Date.now() - _lastPass;
+  if (_starvedMs > 3 * 60 * 60 * 1000) {
+    if (!brain._decayGateLogAt || (Date.now() - brain._decayGateLogAt) > 1800000) {
+      brain._decayGateLogAt = Date.now();
+      console.log(`[Episodic] decay sweep SKIPPED — no completed consolidation pass in ${Math.round(_starvedMs / 60000)}min; episodes hold their salience until consolidation runs again (CLS pairing: decay travels WITH sleep, never ahead of it).`);
+    }
+    return;
   }
+  brain.decayEpisodes();
 }, EPISODIC_DECAY_INTERVAL_MS);
 
 // PA.4.8 — community-compute milestone execution gate. Every 30s, check
@@ -7082,6 +7100,18 @@ wss.on('connection', (ws, req) => {
   };
   brain.clients.set(ws, client);
   brain._totalConnectionsEver = (brain._totalConnectionsEver || 0) + 1;
+  // DONOR-DIAGNOSTIC — while NO donor is live, log every new WS connection
+  // (throttled 10s). All-night incident: donors=0 for 5+ hours with zero
+  // server-side evidence of whether the native app was retrying (it retries
+  // forever when alive) or dead on the host. With this line, "app retrying
+  // but dying pre-register" vs "app gone" is decidable from the brain log.
+  if (!(brain._gpuClient && brain._gpuClient.readyState === 1)) {
+    const nowDiag = Date.now();
+    if (!brain._noDonorConnLogAt || (nowDiag - brain._noDonorConnLogAt) > 10000) {
+      brain._noDonorConnLogAt = nowDiag;
+      console.log(`[WS] connection ${id} from ${client.ip} while donors=0 — if this is the donor app, gpu_register should follow within seconds (its absence = handshake/registration dying, not a dead app).`);
+    }
+  }
   // PR.3 network accounting. Wrap send (outbound) + add a lightweight inbound
   // listener — both purely additive: they count bytes/messages and never alter
   // payloads. The primary message handler (added below) runs independently.
