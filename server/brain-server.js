@@ -5485,6 +5485,37 @@ setInterval(() => {
 // episodes meeting all three pruning criteria (salience<0.05, age>30d,
 // consolidation_count==0). Bounded background work — at typical N=
 // hundreds-to-thousands of episodes the sweep completes in <100ms.
+// DONOR-LATEST RESOLVER — the newest donor-v* release, resolved from the
+// Forgejo API into brain._donorLatestCache. Feeds three consumers: the
+// /download/* 302 doors (reachable on localhost/direct port), the pages'
+// live link upgrade via /public-state.json (the PUBLIC path — the public
+// origin's nginx only forwards endpoints it already knows, so brand-new
+// server routes are NOT reachable from outside; public-state.json is),
+// and the pages' version labels. Boot + 30-min refresh + on-miss refresh
+// from the doors. Failure keeps the prior cache — never a wrong answer.
+async function refreshDonorLatest() {
+  try {
+    const r = await fetch('https://git.unityailab.com/api/v1/repos/UnityAILab/If-Only-I-Had-A-Brain/releases?limit=20', { signal: AbortSignal.timeout(8000) });
+    if (!r.ok) return;
+    const rels = await r.json();
+    const rel = (Array.isArray(rels) ? rels : []).find(x => x && !x.draft && /^donor-v\d/.test(x.tag_name || ''));
+    if (!rel) return;
+    const assets = rel.assets || [];
+    const win = assets.find(a => /windows/i.test(a.name || ''));
+    const lin = assets.find(a => /linux/i.test(a.name || ''));
+    brain._donorLatestCache = {
+      tag: rel.tag_name,
+      windowsUrl: win ? win.browser_download_url : null,
+      linuxUrl: lin ? lin.browser_download_url : null,
+      windowsSize: win ? win.size : null,
+      linuxSize: lin ? lin.size : null,
+    };
+    brain._donorLatestCacheAt = Date.now();
+  } catch { /* keep prior cache */ }
+}
+refreshDonorLatest();
+setInterval(refreshDonorLatest, 30 * 60 * 1000);
+
 const EPISODIC_DECAY_INTERVAL_MS = 10 * 60 * 1000;
 setInterval(() => {
   if (typeof brain.decayEpisodes !== 'function') return;
@@ -5647,29 +5678,7 @@ const httpServer = http.createServer((req, res) => {
       res.end();
     };
     if (brain._donorLatestCache && (Date.now() - (brain._donorLatestCacheAt || 0)) < 300000) { _dlServe(); return; }
-    (async () => {
-      try {
-        const r = await fetch('https://git.unityailab.com/api/v1/repos/UnityAILab/If-Only-I-Had-A-Brain/releases?limit=20', { signal: AbortSignal.timeout(8000) });
-        if (r.ok) {
-          const rels = await r.json();
-          const rel = (Array.isArray(rels) ? rels : []).find(x => x && !x.draft && /^donor-v\d/.test(x.tag_name || ''));
-          if (rel) {
-            const assets = rel.assets || [];
-            const win = assets.find(a => /windows/i.test(a.name || ''));
-            const lin = assets.find(a => /linux/i.test(a.name || ''));
-            brain._donorLatestCache = {
-              tag: rel.tag_name,
-              windowsUrl: win ? win.browser_download_url : null,
-              linuxUrl: lin ? lin.browser_download_url : null,
-              windowsSize: win ? win.size : null,
-              linuxSize: lin ? lin.size : null,
-            };
-            brain._donorLatestCacheAt = Date.now();
-          }
-        }
-      } catch { /* keep any prior cache; the door degrades to the releases page */ }
-      _dlServe();
-    })();
+    refreshDonorLatest().finally(_dlServe);
     return;
   }
 
@@ -8124,6 +8133,10 @@ setInterval(() => {
   if (!hasWsViewers && !hasRecentPublicPoll) return; // nobody watching → skip the compute
   const stateObj = brain.getState();
   // Cache the public snapshot (SAME data points as the admin WS state).
+  // donor-latest rides the public snapshot — the one endpoint the public
+  // proxy provably forwards; the legend/compute pages upgrade their
+  // download buttons + version label from state.donorLatest.
+  try { if (brain._donorLatestCache) stateObj.donorLatest = brain._donorLatestCache; } catch { /* non-fatal */ }
   try { brain._publicStateJson = JSON.stringify({ type: 'state', state: stateObj, snapshotAt: Date.now() }); } catch { /* non-fatal */ }
   if (hasWsViewers) {
     const state = JSON.stringify({ type: 'state', state: stateObj });
