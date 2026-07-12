@@ -2976,6 +2976,7 @@ export class Curriculum {
       })(),
       currentCellKey: cellKey,
       cellStatus,
+      pausedForDonorMs: this._pausedForDonorSinceMs ? (Date.now() - this._pausedForDonorSinceMs) : 0,
       activePhase,
       cellPhasesCompleted: this._currentCellPhasesCompleted | 0,
       cellPhasesPersisted: currentCellPassedPhases,
@@ -10416,7 +10417,49 @@ export class Curriculum {
   // short-circuits at reward=0 (sparse-matrix.js:191) and updates
   // nothing. Calling `synapses.hebbianUpdate` directly bypasses the
   // reward gate and fires symmetric Hebbian across the full cluster.
+  /**
+   * NO-DONOR WALK GATE — pause instead of grind. With zero donors at
+   * biological scale the teach path falls to host-CPU Hebbian whose pins
+   * (observed 5s steady-state + 100-430s bursts) BLOCK the /ws handshake a
+   * returning donor needs — no donor -> CPU grind -> pins -> donor can't
+   * land: circular. A full night of donorless grind bought ~1.5 K-cells.
+   * This gate awaits a live primary with an idle loop (event loop stays
+   * FREE, a reconnect lands instantly) after DREAM_NO_DONOR_GRACE_MS
+   * (default 2min — short blips keep teaching through the donor's own
+   * fast auto-reconnect). Scoped to brains where a donor has EVER
+   * registered this boot ('_gpuClient' property exists): the cold-boot
+   * pre-first-donor window and browser/standalone runs are untouched.
+   * DREAM_NO_DONOR_GRIND=1 restores the old grind behavior.
+   */
+  async _awaitComputeSubstrate() {
+    if (typeof process === 'undefined' || !process.env) return;
+    if (process.env.DREAM_NO_DONOR_GRIND === '1') return;
+    const cluster = this.cluster;
+    const brain = this.brain || (cluster && cluster._brain);
+    if (!brain || !('_gpuClient' in brain)) return; // no donor has ever registered — walk-start gates own that window
+    const live = () => !!(brain._gpuClient && brain._gpuClient.readyState === 1);
+    if (live()) { this._noDonorSince = null; return; }
+    const graceMs = Number(process.env.DREAM_NO_DONOR_GRACE_MS) > 0
+      ? Number(process.env.DREAM_NO_DONOR_GRACE_MS) : 120000;
+    if (!this._noDonorSince) this._noDonorSince = Date.now();
+    if ((Date.now() - this._noDonorSince) < graceMs) return;
+    this._pausedForDonorSinceMs = Date.now();
+    this._hb(`[Curriculum] ⏸ walk PAUSED — no donor for ${((Date.now() - this._noDonorSince) / 60000).toFixed(1)}min. CPU-grinding 306M starves the very handshake a returning donor needs; the walk waits with a free event loop instead and resumes the moment a donor registers (DREAM_NO_DONOR_GRIND=1 to grind anyway).`);
+    let lastLog = Date.now();
+    while (!live()) {
+      await new Promise((r) => setTimeout(r, 5000));
+      if (Date.now() - lastLog > 60000) {
+        lastLog = Date.now();
+        this._hb(`[Curriculum] ⏸ still waiting for a donor (paused ${((Date.now() - this._pausedForDonorSinceMs) / 60000).toFixed(1)}min) — resumes automatically on donor register.`);
+      }
+    }
+    this._hb(`[Curriculum] ▶ donor is BACK — walk resumes (was paused ${((Date.now() - this._pausedForDonorSinceMs) / 60000).toFixed(1)}min).`);
+    this._pausedForDonorSinceMs = null;
+    this._noDonorSince = null;
+  }
+
   async _teachHebbian(lr, opts = {}) {
+    await this._awaitComputeSubstrate();   // no-donor gate — pause with a free loop instead of CPU-grinding
     const cluster = this.cluster;
     if (!cluster) return;
     // opts.projectionsWhitelist scopes _crossRegionHebbian to a subset
@@ -10624,6 +10667,7 @@ export class Curriculum {
    * no cluster reconstruction is needed.
    */
   async _teachLateralInhibition(lr, numBuckets = 26) {
+    await this._awaitComputeSubstrate();   // no-donor gate — pause with a free loop instead of CPU-grinding
     const cluster = this.cluster;
     if (!cluster) return;
     const motorRegion = cluster.regions && cluster.regions.motor;
@@ -10676,6 +10720,7 @@ export class Curriculum {
   }
 
   async _teachAntiHebbian(lr, opts = {}) {
+    await this._awaitComputeSubstrate();   // no-donor gate — pause with a free loop instead of CPU-grinding
     const cluster = this.cluster;
     if (!cluster) return;
     const absLr = Math.abs(lr);
@@ -10730,6 +10775,7 @@ export class Curriculum {
    * desired.
    */
   async _teachHebbianAsymmetric(preVec, postVec, lr, opts = {}) {
+    await this._awaitComputeSubstrate();   // no-donor gate — pause with a free loop instead of CPU-grinding
     const cluster = this.cluster;
     if (!cluster) return;
     // iter22-E — opts.projectionsWhitelist scopes _crossRegionHebbian

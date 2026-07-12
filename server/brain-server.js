@@ -7082,6 +7082,18 @@ wss.on('connection', (ws, req) => {
   };
   brain.clients.set(ws, client);
   brain._totalConnectionsEver = (brain._totalConnectionsEver || 0) + 1;
+  // DONOR-DIAGNOSTIC — while NO donor is live, log every new WS connection
+  // (throttled 10s). All-night incident: donors=0 for 5+ hours with zero
+  // server-side evidence of whether the native app was retrying (it retries
+  // forever when alive) or dead on the host. With this line, "app retrying
+  // but dying pre-register" vs "app gone" is decidable from the brain log.
+  if (!(brain._gpuClient && brain._gpuClient.readyState === 1)) {
+    const nowDiag = Date.now();
+    if (!brain._noDonorConnLogAt || (nowDiag - brain._noDonorConnLogAt) > 10000) {
+      brain._noDonorConnLogAt = nowDiag;
+      console.log(`[WS] connection ${id} from ${client.ip} while donors=0 — if this is the donor app, gpu_register should follow within seconds (its absence = handshake/registration dying, not a dead app).`);
+    }
+  }
   // PR.3 network accounting. Wrap send (outbound) + add a lightweight inbound
   // listener — both purely additive: they count bytes/messages and never alter
   // payloads. The primary message handler (added below) runs independently.

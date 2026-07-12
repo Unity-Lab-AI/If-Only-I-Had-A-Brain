@@ -83,6 +83,58 @@ fn set_status(control: &Control, f: impl FnOnce(&mut DonorStatus)) {
     }
 }
 
+/// KEEP-AWAKE — donating is foreground work: the host's idle-sleep timer
+/// suspends the whole machine mid-walk and the brain loses its donor until a
+/// human wakes it (live incident: donors=0 from the small hours, the walk
+/// crawled on host CPU all night). ES_CONTINUOUS|ES_SYSTEM_REQUIRED holds the
+/// SYSTEM awake (the display may still sleep) for the lifetime of the donor
+/// thread; cleared on Stop / thread exit. Manual sleep / lid-close still
+/// sleeps — this only vetoes the idle timer. Non-Windows builds no-op (the
+/// Linux boxes we target are servers that don't idle-sleep).
+#[cfg(windows)]
+fn keep_awake(active: bool) {
+    #[link(name = "kernel32")]
+    extern "system" {
+        fn SetThreadExecutionState(es_flags: u32) -> u32;
+    }
+    const ES_CONTINUOUS: u32 = 0x8000_0000;
+    const ES_SYSTEM_REQUIRED: u32 = 0x0000_0001;
+    unsafe {
+        SetThreadExecutionState(if active { ES_CONTINUOUS | ES_SYSTEM_REQUIRED } else { ES_CONTINUOUS });
+    }
+}
+#[cfg(not(windows))]
+fn keep_awake(_active: bool) {}
+
+/// Crash crumb — a panic anywhere in the session used to unwind through the
+/// donor thread and end the donation SILENTLY (the auto-reconnect supervisor
+/// only covers Err returns, not panics). The panic supervisor below catches
+/// it and writes this crumb; the next successful register reports it to the
+/// brain as a donor_crumb message (the server logs those), so the operator
+/// finally sees WHY the donor vanished instead of guessing.
+fn crumb_path() -> std::path::PathBuf {
+    crate::config::data_dir().join("last-crash.txt")
+}
+
+fn write_crumb(what: &str) {
+    let ts = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+    let _ = std::fs::write(crumb_path(), format!("ts={ts}\n{what}\n"));
+}
+
+fn take_crumb() -> Option<String> {
+    let p = crumb_path();
+    match std::fs::read_to_string(&p) {
+        Ok(s) if !s.trim().is_empty() => {
+            let _ = std::fs::remove_file(&p);
+            Some(s)
+        }
+        _ => None,
+    }
+}
+
 /// Spawn ONE donor for a host's whole GPU pool on its own thread (own tokio runtime).
 /// Returns the Control (stop flag + live status) and the thread handle. The host registers
 /// as a single compute unit and drives every GPU in `gpus` internally (see `MultiEngine`).
@@ -90,19 +142,49 @@ pub fn spawn_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>) -> (Con
     let control = Control::new();
     let c2 = control.clone();
     let handle = std::thread::spawn(move || {
-        let rt = match tokio::runtime::Runtime::new() {
-            Ok(rt) => rt,
-            Err(e) => {
-                if let Ok(mut s) = c2.status.lock() { s.note = format!("runtime error: {e}"); }
-                return;
-            }
-        };
-        if let Err(e) = rt.block_on(run_donor_supervised(cfg, gpus, utils, c2.clone())) {
-            if let Ok(mut s) = c2.status.lock() {
-                s.note = format!("error: {e}");
-                s.connected = false;
+        keep_awake(true);
+        // PANIC SUPERVISOR — a panic in the session (GPU backend, codec, a
+        // stray unwrap) used to unwind through block_on and end this thread:
+        // host process alive, donation DEAD, no log, no reconnect. Catch it,
+        // crumb it, and re-enter the supervised loop like any session error.
+        loop {
+            let cfg_i = cfg.clone();
+            let gpus_i = gpus.clone();
+            let utils_i = utils.clone();
+            let c_i = c2.clone();
+            let outcome = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                let rt = tokio::runtime::Runtime::new().map_err(|e| format!("runtime error: {e}"))?;
+                rt.block_on(run_donor_supervised(cfg_i, gpus_i, utils_i, c_i))
+            }));
+            match outcome {
+                Ok(Ok(())) => break,
+                Ok(Err(e)) => {
+                    if let Ok(mut s) = c2.status.lock() {
+                        s.note = format!("error: {e}");
+                        s.connected = false;
+                    }
+                    break;
+                }
+                Err(p) => {
+                    let what = p
+                        .downcast_ref::<String>()
+                        .cloned()
+                        .or_else(|| p.downcast_ref::<&str>().map(|s| s.to_string()))
+                        .unwrap_or_else(|| "panic (no message)".to_string());
+                    eprintln!("[donor] PANIC caught by supervisor: {what} — crumb written; re-entering reconnect loop in 5s.");
+                    write_crumb(&format!("panic: {what}"));
+                    if let Ok(mut s) = c2.status.lock() {
+                        s.note = format!("panic: {what} — recovering");
+                        s.connected = false;
+                    }
+                    if c2.stop.load(Ordering::Relaxed) || !cfg.auto_restart_on_disconnect {
+                        break;
+                    }
+                    std::thread::sleep(Duration::from_secs(5));
+                }
             }
         }
+        keep_awake(false);
     });
     (control, handle)
 }
@@ -297,6 +379,15 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
         .map_err(|e| format!("register send failed: {e}"))?;
     println!("[donor] registered as {} ({} MB binding cap) — leaderboard: {}. Donating at {}% utilization.", host_name, binding_mb, donor_name.as_deref().unwrap_or("anonymous"), cfg.utilization_pct);
     set_status(&control, |s| { s.connected = true; s.gpu_name = host_name.clone(); s.note = "registered".into(); });
+
+    // Report a prior crash (panic crumb) the moment we're registered — the
+    // brain logs it as DONOR CRUMB so the operator learns why the donor
+    // vanished last time instead of guessing from a silent donors=0 night.
+    if let Some(crumb) = take_crumb() {
+        let payload = serde_json::json!({ "type": "donor_crumb", "reason": format!("native-donor prior exit: {}", crumb.trim()) });
+        let _ = tx.send(Message::text(payload.to_string())).await;
+        println!("[donor] reported prior-crash crumb to the brain.");
+    }
 
     // M3.3 — GPU work runs on a dedicated worker thread. The async WS loop below never
     // blocks on a compute/readback: it forwards each message to the worker (unbounded, never
