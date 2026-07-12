@@ -224,10 +224,54 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
       } catch { /* binding is best-effort — an unbound frame still grounds sem below */ }
     }
     const store = this._vmStore();
+    // GENERATED-IMAGE CONFIRMATION GATE (operator directive) — an image
+    // generator is a NOISY oracle: "drag" can come back a balloon; an
+    // esoteric prompt can come back anything. One render must never poison
+    // a concept's visual memory. Camera frames stay trusted (the real
+    // world). A GENERATED render binds PROVISIONALLY (conf:false) on first
+    // sight; a later independent render of the same concept that AGREES
+    // (percept cosine ≥ 0.45) CONFIRMS it. An outlier against a CONFIRMED
+    // memory bounces off (logged); against a provisional one it replaces
+    // it (the first render may have been the outlier). Recall + sem
+    // grounding consume confirmed entries only, so a one-off weird render
+    // never enters her imagination or her weights.
+    let newPercept = null;
+    try { const _d = this.mindSpace.describe(rec); if (_d) newPercept = Array.from(_d); } catch { newPercept = null; }
+    const _vmCosP = (a, b) => {
+      if (!a || !b) return 0;
+      let d = 0, na = 0, nb = 0; const n = Math.min(a.length, b.length);
+      for (let i = 0; i < n; i++) { d += a[i] * b[i]; na += a[i] * a[i]; nb += b[i] * b[i]; }
+      const dn = Math.sqrt(na) * Math.sqrt(nb); return dn > 0 ? d / dn : 0;
+    };
+    let _anyTrustedBind = fromCamera;
     for (const t of tokens) {
       const prev = store.get(t);
-      store.delete(t);                                        // LRU touch
-      store.set(t, { rec, at: now, seen: (prev ? prev.seen : 0) + 1 });
+      if (fromCamera || !newPercept) {
+        store.delete(t);                                      // LRU touch
+        store.set(t, { rec, at: now, seen: (prev ? prev.seen : 0) + 1, conf: true, p: newPercept || (prev && prev.p) || null });
+        _anyTrustedBind = true;
+        continue;
+      }
+      if (!prev || !prev.p) {
+        store.delete(t);
+        store.set(t, { rec, at: now, seen: 1, conf: false, p: newPercept });
+        continue;                                             // provisional — awaits a confirming render
+      }
+      const _s = _vmCosP(newPercept, prev.p);
+      if (_s >= 0.45) {
+        store.delete(t);
+        store.set(t, { rec, at: now, seen: (prev.seen || 0) + 1, conf: true, p: newPercept });
+        _anyTrustedBind = true;                               // two independent renders agree — the look is real
+      } else if (prev.conf !== false) {
+        this._vmOutlierSkips = (this._vmOutlierSkips || 0) + 1;
+        if (!this._vmOutlierLogAt || (now - this._vmOutlierLogAt) > 60000) {
+          this._vmOutlierLogAt = now;
+          console.log(`[VisualMemory] outlier render for "${t}" REJECTED (percept cosine ${_s.toFixed(2)} vs the confirmed memory) — generator noise, not the concept. ${this._vmOutlierSkips} outlier(s) bounced this boot.`);
+        }
+      } else {
+        store.delete(t);
+        store.set(t, { rec, at: now, seen: 1, conf: false, p: newPercept });   // newer provisional replaces provisional
+      }
     }
     while (store.size > VM_CAP) store.delete(store.keys().next().value);
 
@@ -235,9 +279,9 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
     // seeing, not imagination). Skipped mid-teach so the walk's Hebbian
     // patterns stay pristine, same rule as the imagine tick.
     try {
-      if (!this._curriculumInProgress && this.cortexCluster
+      if (_anyTrustedBind && !this._curriculumInProgress && this.cortexCluster
           && typeof this.cortexCluster.injectEmbeddingToRegion === 'function') {
-        const percept = this.mindSpace.describe(rec);
+        const percept = newPercept || this.mindSpace.describe(rec);   // trusted frames only — provisional renders stay out of sem
         if (percept) this.cortexCluster.injectEmbeddingToRegion('sem', percept, 0.10);
       }
     } catch { /* non-fatal */ }
@@ -316,6 +360,7 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
     // non-percept uses.)
     // single strongest — only if it carries real detail
     for (const h of fresh) {
+      if (h.e.conf === false) continue;   // provisional generated render — not yet confirmed, never re-seen
       if (this._recDetail(h.e.rec) >= MIN_DETAIL) {
         h.e.shownAt = nowR;                                       // SEE.3 — rests after showing
         return { rec: h.e.rec, matched: [h.word], recombined: false };

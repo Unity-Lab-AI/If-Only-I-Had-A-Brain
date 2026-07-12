@@ -1003,28 +1003,11 @@ const SERVER_CHAT_MIXIN = {
       // when a real memory recalled.
       if (!rec && _recallMissed && typeof this.mindSpace.sketch === 'function' && Math.random() < 0.45) {
         try {
-          // DRAW.2 — the developmental composer draws WHAT SHE'S THINKING
-          // (stick figures / scenes / written words / her questions), staged
-          // by live trained vocab; the viewer label carries the stage +
-          // subject ('canvas:scene:cat', 'canvas:figure:mom?').
-          // EXP.2 — DREAM-MIX experiment: sometimes she doesn't draw the thought
-          // at all — she EXPERIMENTS, morphing two RANDOM stored memories into
-          // something she has never seen (apple+rain, cat+moon). Novel
-          // recombination of real percepts = genuine visual play, the thing a
-          // curious kid does with a full sketchbook. Equation-domain morph,
-          // detail-gated so degenerate blends never show.
-          if (this._visualMemory && this._visualMemory.size >= 2
-              && typeof this.mindSpace.morph === 'function'
-              && typeof this._recDetail === 'function' && Math.random() < 0.18) {
-            try {
-              const keys = Array.from(this._visualMemory.keys());
-              const i1 = Math.floor(Math.random() * keys.length);
-              let i2 = Math.floor(Math.random() * keys.length);
-              if (i2 === i1) i2 = (i2 + 1) % keys.length;
-              const m = this.mindSpace.morph(this._visualMemory.get(keys[i1]).rec, this._visualMemory.get(keys[i2]).rec, 0.35 + Math.random() * 0.3);
-              if (m && this._recDetail(m) >= 200) { rec = m; _seedSource = 'canvas:dream-mix:' + keys[i1] + '+' + keys[i2]; }
-            } catch { /* experiment best-effort */ }
-          }
+          // EXP.2 DREAM-MIX REMOVED (operator directive): morphing two random
+          // stored memories fades unrelated images together (a reading percept
+          // over a house percept = a person reading a book overlaid on a house)
+          // — noise pollution, not imagination. Novel correlation lives in the
+          // Hebbian concept space; percepts stay singular and accurate.
           let strokes = rec ? null : this._sketchFromState(_seedText);
           // DRAW.11 — FAVORITE-SUBJECT fallback. An abstract thought with no
           // schema used to end the drawing entirely (post shape-age it falls
@@ -1112,28 +1095,16 @@ const SERVER_CHAT_MIXIN = {
               }
               if (_iBest) {
                 const _iMem = this._visualMemory.get(_iBest);
-                if (_iMem && _iMem.rec) {
-                  // MS.EXT — morphField refuses mismatched canvas/pad dims, and the
-                  // de-novo plane rarely matched the stored percept's — so the
-                  // impression anchor silently no-opped on every hit. Re-render the
-                  // de-novo field AT the memory's own side (exact-side override)
-                  // when dims differ, then the equation-domain morph is valid.
-                  let _iDen = rec;
-                  if (rec.width !== _iMem.rec.width || rec.height !== _iMem.rec.height
-                      || rec.pad_w !== _iMem.rec.pad_w || rec.pad_h !== _iMem.rec.pad_h) {
-                    try {
-                      _iDen = this.mindSpace.imagineFromState(_seed, {
-                        side: _iMem.rec.width, text: _seedText,
-                        mood: { arousal: this.arousal, valence: this.valence },
-                        priority: 0.25, value: 0.4,
-                      }) || rec;
-                    } catch { _iDen = rec; }
-                  }
-                  const m = this.mindSpace.morph(_iMem.rec, _iDen, 0.30 + Math.random() * 0.2);
-                  if (m && (typeof this._recDetail !== 'function' || this._recDetail(m) >= 150)) {
-                    rec = m;
-                    _seedSource = 'impression:' + _iBestTok + '~' + _iBest;
-                  }
+                // IMPRESSION = the nearest SEEN percept AS-IS (operator directive:
+                // no morphing memories — a memory faded with the non-representational
+                // de-novo field is two images blended, i.e. static). Abstract
+                // thoughts re-see the closest real thing her eyes have grounded;
+                // the pure mood field stands when nothing near has been seen.
+                // Confirmed memories only (generator-noise gate).
+                if (_iMem && _iMem.rec && _iMem.conf !== false
+                    && (typeof this._recDetail !== 'function' || this._recDetail(_iMem.rec) >= 150)) {
+                  rec = _iMem.rec;
+                  _seedSource = 'impression:' + _iBestTok + '~' + _iBest;
                 }
               }
             }
@@ -1733,13 +1704,10 @@ const SERVER_CHAT_MIXIN = {
       this._drawSkill.set(key, bestCos);
     }
     try { process.stdout.write(`[Brain] ✏ drawing practice "${key}" — resemblance ${bestCos.toFixed(3)} (skill ${Math.max(prev, bestCos).toFixed(3)})\n`); } catch { /* nf */ }
-    // DRAW.9 — memory-painting: fuse her strokes with the real seen field C
-    if (typeof this.mindSpace.morph === 'function' && Math.random() < 0.4) {
-      try {
-        const comp = this.mindSpace.morph(memRec, best, 0.5);
-        if (comp) return { rec: comp, label: 'canvas:paint:' + key, resemblance: bestCos };
-      } catch { /* composite best-effort — the drawing stands */ }
-    }
+    // DRAW.9 memory-painting REMOVED (operator directive): compositing her
+    // strokes ONTO the seen field faded two images together — the same
+    // noise-pollution class as memory morphing. Her drawing stands alone;
+    // the reference stays pristine in memory.
     return { rec: best, label: 'canvas:memory:' + key, resemblance: bestCos };
   },
 
