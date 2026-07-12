@@ -2220,7 +2220,19 @@ const SERVER_GPU_MIXIN = {
     const now = Date.now();
     const alreadyArmed = (this._cortexGpuInitStarted === false) || (this._cortexUploadInFlight === true);
     if (alreadyArmed) return;
-    if (this._shadowAutoResyncAt && (now - this._shadowAutoResyncAt) <= 60000) return;
+    // TEACH-TIME CADENCE — with the pattern lane at its low operating point
+    // the buffer actually drains mid-teach, so resyncs become POSSIBLE while
+    // teaching; at a 60s throttle the 85MB canonical re-upload would become
+    // its own storm. 15min while the walk runs bounds the tax (~95KB/s
+    // average) and still refreshes the GPU shadow 4x/hour. Dream windows
+    // flip _curriculumInProgress false, so window-time resyncs keep the fast
+    // 60s throttle and land in the natural drain slot. Per-matrix dirty
+    // tracking stays the queued deep cure.
+    const _resyncThrottleMs = this._curriculumInProgress
+      ? (Number(process.env.DREAM_RESYNC_TEACH_THROTTLE_MS) > 0
+          ? Number(process.env.DREAM_RESYNC_TEACH_THROTTLE_MS) : 900000)
+      : 60000;
+    if (this._shadowAutoResyncAt && (now - this._shadowAutoResyncAt) <= _resyncThrottleMs) return;
     this._shadowAutoResyncAt = now;
     this._cortexGpuInitStarted = false;
     this._allClustersConfirmedAt = null;
@@ -2248,7 +2260,34 @@ const SERVER_GPU_MIXIN = {
   // so a dropped frame costs one shadow-teach iteration, not correctness.
   // Gate probes are unaffected: gpuDrainWait() drains to 10MB (< cap)
   // before probe patterns fire, so probe writes pass the gate.
-  _donorPatternSendGated(json) {
+  // PATTERN LANE OPERATING POINT — cheap pre-check with NO payload built.
+  // Two-part fix from the post-savestart live log read:
+  //   (1) all three pattern call sites used to JSON.stringify BEFORE the
+  //       gate — at saturation ~570 frames/s were serialized then thrown
+  //       away (a real slice of the 2-8s [EventLoop] BLOCKED pins during
+  //       teach). Call sites now check the lane FIRST; a shed frame costs
+  //       zero serialization.
+  //   (2) the lane used to gate at the 64MB SHED cap, which let the socket
+  //       PARK just under 64MB for entire teach phases (the exact failure
+  //       mode the _donorLinkCapBytes comment documents) — the deferred
+  //       resync's drain-below-half-cap condition never arrived, so
+  //       _gpuShadowDirty flapped permanently true and the canonical
+  //       re-upload never got a window. Patterns are per-iteration
+  //       ephemeral (the next iteration's clear+write supersedes; at
+  //       saturation they were already 95%+ shed), so gating them at a LOW
+  //       operating point costs nothing while letting the buffer actually
+  //       drain: ACKs/pings stay fast and resyncs get a landing slot.
+  //       Default 16MB stays ABOVE gpuDrainWait's 10MB probe drain point
+  //       so gate-probe pattern writes still pass. The hebbian-batch lane
+  //       (TU.25.A) keeps the full soft cap — those frames carry real
+  //       weight deltas.
+  _donorPatternLaneCapBytes() {
+    const mb = Number(process.env.DREAM_PATTERN_LANE_CAP_MB) > 0
+      ? Number(process.env.DREAM_PATTERN_LANE_CAP_MB) : 16;
+    return Math.min(mb * 1024 * 1024, this._donorSoftCapBytes());
+  },
+
+  _donorPatternLaneOpen() {
     const ws = this._gpuClient;
     if (!ws || ws.readyState !== 1) return false;
     // UPLOAD PRIORITY — pattern frames yield the socket entirely while the
@@ -2266,18 +2305,23 @@ const SERVER_GPU_MIXIN = {
       this._wsPatternIdleSkips = (this._wsPatternIdleSkips || 0) + 1;
       return false;
     }
-    // drain-edge: a deferred resync arms via its own interval; nothing to do here.
-    if (ws.bufferedAmount > this._donorSoftCapBytes()) {
+    const laneCap = this._donorPatternLaneCapBytes();
+    if (ws.bufferedAmount > laneCap) {
       this._wsPatternShedCount = (this._wsPatternShedCount || 0) + 1;
-      this._armShadowResyncDeferred('teach-pattern frame shed at soft cap'); // dirty on the clearable flag + resync actually armed
+      this._armShadowResyncDeferred('teach-pattern frame shed at lane cap'); // dirty on the clearable flag + resync actually armed
       const now = Date.now();
       if (!this._wsPatternShedLogMs || (now - this._wsPatternShedLogMs) > 30000) {
         this._wsPatternShedLogMs = now;
-        console.warn(`[Brain] TU.28.1 — teach-pattern frame SHED: ws.bufferedAmount=${(ws.bufferedAmount / 1024 / 1024).toFixed(1)}MB > ${(this._donorSoftCapBytes() / 1024 / 1024)}MB soft cap. This stream previously had NO backpressure guard (buffer grew to GB scale, donor pings queued 19s+, compute tab crash-looped). Dropping is safe — CPU authoritative; GPU shadow re-converges via auto-resync once the buffer drains. ${this._wsPatternShedCount} pattern frames shed since boot (rate-limited 30s).`);
+        console.warn(`[Brain] TU.28.1 — teach-pattern frame SHED (pre-serialization): ws.bufferedAmount=${(ws.bufferedAmount / 1024 / 1024).toFixed(1)}MB > ${(laneCap / 1024 / 1024)}MB pattern-lane cap (operating point — NOT the ${(this._donorSoftCapBytes() / 1024 / 1024)}MB shed cap; a lane parked at the shed cap starves resyncs + ACKs indefinitely). Dropping is safe — CPU authoritative; patterns are per-iteration ephemeral; the GPU shadow re-converges via auto-resync in the drain windows this cap creates. ${this._wsPatternShedCount} pattern frames shed since boot (rate-limited 30s).`);
       }
       return false;
     }
-    ws.send(json);
+    return true;
+  },
+
+  _donorPatternSendGated(json) {
+    if (!this._donorPatternLaneOpen()) return false;
+    this._gpuClient.send(json);
     return true;
   },
 
@@ -2294,6 +2338,7 @@ const SERVER_GPU_MIXIN = {
    */
   _gpuWriteCortexSpikeSlice(regionName, sparseIndices) {
     if (!this._gpuClient || this._gpuClient.readyState !== 1) return;
+    if (!this._donorPatternLaneOpen()) return;   // BEFORE Array.from/stringify — a shed frame costs zero serialization
     const arr = Array.isArray(sparseIndices)
       ? sparseIndices
       : (sparseIndices && typeof sparseIndices.length === 'number')
@@ -2327,6 +2372,7 @@ const SERVER_GPU_MIXIN = {
    */
   _gpuWriteCortexCurrentSlice(regionName, sparseIndices, sparseValues) {
     if (!this._gpuClient || this._gpuClient.readyState !== 1) return;
+    if (!this._donorPatternLaneOpen()) return;   // BEFORE Array.from/stringify — a shed frame costs zero serialization
     const idx = Array.isArray(sparseIndices) ? sparseIndices : Array.from(sparseIndices || []);
     const val = Array.isArray(sparseValues)  ? sparseValues  : Array.from(sparseValues || []);
     if (idx.length === 0 || idx.length !== val.length) return;
@@ -2353,6 +2399,7 @@ const SERVER_GPU_MIXIN = {
    */
   _gpuClearCortexSpikeRegion(regionName) {
     if (!this._gpuClient || this._gpuClient.readyState !== 1) return;
+    if (!this._donorPatternLaneOpen()) return;   // BEFORE Array.from/stringify — a shed frame costs zero serialization
     const json = JSON.stringify({
       type: 'clear_spike_region',
       clusterName: 'cortex',
