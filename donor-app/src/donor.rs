@@ -283,6 +283,74 @@ enum Out {
     Binary(Vec<u8>),
 }
 
+/// TWO-LANE WORK QUEUE — the fix for "it keeps dropping": with one FIFO, a
+/// compute_batch (the brain awaits it with a 180s deadline) queues behind the
+/// entire teach flood (pattern writes + Hebbian batches + resync re-uploads),
+/// the queue runs MINUTES deep during heavy teach, batch replies come back
+/// 3-6 min late, the brain times out 3 in a row and ZOMBIE-KICKS a donor that
+/// was computing fine the whole time (live incident: batches 28+29 both
+/// answered, both after the timeout). Priority lane = deadline-bearing,
+/// order-insensitive request/reply work. Propagate + Readback deliberately
+/// stay in the flood lane: they READ spike state the pattern writes ahead of
+/// them establish — jumping the queue would return stale reads to the
+/// curriculum. Cross-lane reorder of Hebbian vs uploads is the same benign
+/// shadow-drift class the auto-resync already re-converges.
+struct WorkLanes {
+    hi: std::collections::VecDeque<Work>,
+    lo: std::collections::VecDeque<Work>,
+    closed: bool,
+}
+
+struct WorkQueue {
+    inner: Mutex<WorkLanes>,
+    cv: std::sync::Condvar,
+}
+
+impl WorkQueue {
+    fn new() -> Self {
+        Self {
+            inner: Mutex::new(WorkLanes {
+                hi: std::collections::VecDeque::new(),
+                lo: std::collections::VecDeque::new(),
+                closed: false,
+            }),
+            cv: std::sync::Condvar::new(),
+        }
+    }
+    fn push(&self, work: Work) {
+        let hi = matches!(
+            &work,
+            Work::Batch(_) | Work::Init(_) | Work::ChecksumMatrix { .. }
+        ) || matches!(&work, Work::Frame(f) if matches!(f, Frame::Upload { .. } | Frame::Chunk { .. }));
+        if let Ok(mut lanes) = self.inner.lock() {
+            if hi { lanes.hi.push_back(work) } else { lanes.lo.push_back(work) }
+            self.cv.notify_one();
+        }
+    }
+    /// Blocking pop — priority lane first, then flood; None once closed + drained.
+    fn pop(&self) -> Option<Work> {
+        let mut lanes = self.inner.lock().ok()?;
+        loop {
+            if let Some(w) = lanes.hi.pop_front() {
+                return Some(w);
+            }
+            if let Some(w) = lanes.lo.pop_front() {
+                return Some(w);
+            }
+            if lanes.closed {
+                return None;
+            }
+            lanes = self.cv.wait(lanes).ok()?;
+        }
+    }
+    fn close(&self) {
+        if let Ok(mut lanes) = self.inner.lock() {
+            lanes.closed = true;
+        }
+        self.cv.notify_all();
+    }
+}
+
 /// SUPERVISOR — run a donor session and, on an UNEXPECTED disconnect (the
 /// connection dropped/closed or the initial connect failed — NOT a user Stop /
 /// Ctrl+C), wait a short backoff and reconnect, indefinitely, when
@@ -488,7 +556,8 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
     // blocks the send), keeps draining the socket + answering pings (liveness), and streams
     // the worker's replies back in receipt order. So a heavy teach burst can't stall the
     // connection past the brain's liveness window.
-    let (work_tx, work_rx) = std::sync::mpsc::channel::<Work>();
+    let workq = std::sync::Arc::new(WorkQueue::new());
+    let workq_w = workq.clone();
     let (reply_tx, mut reply_rx) = tokio::sync::mpsc::unbounded_channel::<Out>();
     let control_w = control.clone();
     // Count of QUEUED (not-yet-pulled) Work. The duty-cycle idle (run_substeps) aborts the
@@ -507,7 +576,7 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
         let mut engine = engine;
         let mut partials: HashMap<String, PartialUpload> = HashMap::new();
         let mut step_seed: u32 = 0x9e3779b9;
-        while let Ok(work) = work_rx.recv() {
+        while let Some(work) = workq_w.pop() {
             pending_w.fetch_sub(1, Ordering::Relaxed); // pulled one off the queue
             // Stop promptly on request: DON'T drain the queued backlog (the brain can have many
             // compute_batch/frames buffered). Without this, join() blocks until the whole
@@ -744,8 +813,8 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                 match msg {
                     Message::Text(t) => {
                         match serde_json::from_str::<ServerMessage>(t.as_str()) {
-                            Ok(ServerMessage::GpuInit(init)) => { pending.fetch_add(1, Ordering::Relaxed); let _ = work_tx.send(Work::Init(init)); }
-                            Ok(ServerMessage::ComputeBatch(batch)) => { pending.fetch_add(1, Ordering::Relaxed); let _ = work_tx.send(Work::Batch(batch)); }
+                            Ok(ServerMessage::GpuInit(init)) => { pending.fetch_add(1, Ordering::Relaxed); workq.push(Work::Init(init)); }
+                            Ok(ServerMessage::ComputeBatch(batch)) => { pending.fetch_add(1, Ordering::Relaxed); workq.push(Work::Batch(batch)); }
                             Ok(ServerMessage::RebindSparse(rb)) => {
                                 // Ack inline (no GPU work) so the brain doesn't hit its 30s
                                 // rebind timeout. The matrix stays standalone (carried preSpikes
@@ -753,11 +822,11 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                                 let ack = RebindAck { msg_type: "rebind_sparse_ack", req_id: rb.req_id, name: rb.name, ok: true };
                                 let _ = tx.send(Message::text(serde_json::to_string(&ack).unwrap())).await;
                             }
-                            Ok(ServerMessage::WriteSpikeSlice(w)) => { pending.fetch_add(1, Ordering::Relaxed); let _ = work_tx.send(Work::WriteSpike { cluster: w.cluster_name, region: w.region_name, indices: w.sparse_indices }); }
-                            Ok(ServerMessage::WriteCurrentSlice(w)) => { pending.fetch_add(1, Ordering::Relaxed); let _ = work_tx.send(Work::WriteCurrent { cluster: w.cluster_name, region: w.region_name, indices: w.sparse_indices, values: w.sparse_values, psi: w.psi }); }
-                            Ok(ServerMessage::ClearSpikeRegion(w)) => { pending.fetch_add(1, Ordering::Relaxed); let _ = work_tx.send(Work::ClearSpike { cluster: w.cluster_name, region: w.region_name }); }
-                            Ok(ServerMessage::ReadbackLetterBuckets(rb)) => { pending.fetch_add(1, Ordering::Relaxed); let _ = work_tx.send(Work::Readback { req_id: rb.req_id, cluster: rb.cluster_name, region: rb.region_name, bucket_count: rb.bucket_count, sub_slice_len: rb.sub_slice_len, start_offset: rb.start_offset }); }
-                            Ok(ServerMessage::ReadbackMatrixChecksum(rc)) => { pending.fetch_add(1, Ordering::Relaxed); let _ = work_tx.send(Work::ChecksumMatrix { req_id: rc.req_id, name: rc.name, sample_count: rc.sample_count }); }
+                            Ok(ServerMessage::WriteSpikeSlice(w)) => { pending.fetch_add(1, Ordering::Relaxed); workq.push(Work::WriteSpike { cluster: w.cluster_name, region: w.region_name, indices: w.sparse_indices }); }
+                            Ok(ServerMessage::WriteCurrentSlice(w)) => { pending.fetch_add(1, Ordering::Relaxed); workq.push(Work::WriteCurrent { cluster: w.cluster_name, region: w.region_name, indices: w.sparse_indices, values: w.sparse_values, psi: w.psi }); }
+                            Ok(ServerMessage::ClearSpikeRegion(w)) => { pending.fetch_add(1, Ordering::Relaxed); workq.push(Work::ClearSpike { cluster: w.cluster_name, region: w.region_name }); }
+                            Ok(ServerMessage::ReadbackLetterBuckets(rb)) => { pending.fetch_add(1, Ordering::Relaxed); workq.push(Work::Readback { req_id: rb.req_id, cluster: rb.cluster_name, region: rb.region_name, bucket_count: rb.bucket_count, sub_slice_len: rb.sub_slice_len, start_offset: rb.start_offset }); }
+                            Ok(ServerMessage::ReadbackMatrixChecksum(rc)) => { pending.fetch_add(1, Ordering::Relaxed); workq.push(Work::ChecksumMatrix { req_id: rc.req_id, name: rc.name, sample_count: rc.sample_count }); }
                             // TU.20.12 — the brain refused this binary as incompatible. Surface it
                             // and set stop so the supervisor does NOT reconnect-loop a version it
                             // already rejected. The user must download the current donor + restart.
@@ -777,7 +846,7 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                     }
                     Message::Binary(bytes) => {
                         if let Some(frame) = frames::decode(&bytes) {
-                            pending.fetch_add(1, Ordering::Relaxed); let _ = work_tx.send(Work::Frame(frame));
+                            pending.fetch_add(1, Ordering::Relaxed); workq.push(Work::Frame(frame));
                         }
                     }
                     Message::Ping(p) => { let _ = tx.send(Message::Pong(p)).await; }
@@ -792,7 +861,7 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
     // finishes, and an unbounded join() here pinned run_donor forever, making
     // the reconnect supervisor unreachable in exactly the failure it exists
     // for (live incident: zombie kick fired, donor never came back).
-    drop(work_tx);
+    workq.close();
     let join_deadline = std::time::Instant::now() + WORKER_JOIN_PATIENCE;
     let mut worker_done = false;
     loop {
