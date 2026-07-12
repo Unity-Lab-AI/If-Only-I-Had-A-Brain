@@ -5487,9 +5487,27 @@ setInterval(() => {
 // hundreds-to-thousands of episodes the sweep completes in <100ms.
 const EPISODIC_DECAY_INTERVAL_MS = 10 * 60 * 1000;
 setInterval(() => {
-  if (typeof brain.decayEpisodes === 'function') {
-    brain.decayEpisodes();
+  if (typeof brain.decayEpisodes !== 'function') return;
+  // CLS PAIRING GUARD — decay/prune must never outrun consolidation. Real
+  // sleep does both together; with mid-walk consolidation idle-only (dream
+  // windows + the 2h emergency valve), a free-running decay sweep erodes
+  // unconsolidated episodes' promotion candidacy before consolidation ever
+  // sees them — "learn it, then lose it before sleep". Skip the sweep while
+  // consolidation is starved: decay is AGE-based (recomputed from the
+  // episode timestamp), so the first sweep after consolidation resumes
+  // catches the whole ledger up with zero correctness loss — episodes just
+  // HOLD their salience (and their candidacy) until the brain has slept.
+  const _ce = brain.consolidationEngine;
+  const _lastPass = (_ce && _ce.passCount > 0) ? (_ce.lastPassAt || 0) : 0;
+  const _starvedMs = Date.now() - _lastPass;
+  if (_starvedMs > 3 * 60 * 60 * 1000) {
+    if (!brain._decayGateLogAt || (Date.now() - brain._decayGateLogAt) > 1800000) {
+      brain._decayGateLogAt = Date.now();
+      console.log(`[Episodic] decay sweep SKIPPED — no completed consolidation pass in ${Math.round(_starvedMs / 60000)}min; episodes hold their salience until consolidation runs again (CLS pairing: decay travels WITH sleep, never ahead of it).`);
+    }
+    return;
   }
+  brain.decayEpisodes();
 }, EPISODIC_DECAY_INTERVAL_MS);
 
 // PA.4.8 — community-compute milestone execution gate. Every 30s, check
