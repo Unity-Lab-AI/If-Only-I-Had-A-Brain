@@ -42,7 +42,14 @@ const USER_AGENT = 'Unity-Brain/1.0 (https://github.com/unity-ai-lab)';
 // LRU cache. Insertion order = recency in Map. On hit,
 // delete + re-set so the entry moves to the "newest" end. On overflow,
 // pop the oldest entry (first key).
-const CACHE_MAX = 10000;
+// CAP RAISED 10k -> 100k (env-tunable): the K walk alone filled 9,906 of
+// the old 10,000 slots — ONE conversation past that and her oldest
+// definitions started evicting (and vanishing from the disk cache on the
+// next flush). Her vocabulary grows without limits by LAW; the definition
+// ledger must too. ~100k entries ≈ tens of MB JSON — trivial next to the
+// 158MB weight saves. DREAM_DEF_CACHE_CAP overrides.
+const CACHE_MAX = Number(process.env.DREAM_DEF_CACHE_CAP) > 0
+  ? Number(process.env.DREAM_DEF_CACHE_CAP) : 100000;
 const cache = new Map();
 const inFlight = new Map();
 
