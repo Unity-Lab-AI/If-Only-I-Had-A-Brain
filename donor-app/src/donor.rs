@@ -39,6 +39,70 @@ const KEEPALIVE_INTERVAL: Duration = Duration::from_secs(15);
 /// in 2.5 min instead of 45 s, which costs nothing — reconnect latency was never the
 /// bottleneck, replica re-upload is.
 const IDLE_TIMEOUT: Duration = Duration::from_secs(150);
+/// GPU-HANG WATCHDOG — how long ONE Work item (a compute batch, an upload, a
+/// propagate) may run on the worker thread before the donor declares the GPU
+/// engine wedged. A driver-level hang blocks the GPU call forever — it is NOT
+/// a panic (catch_unwind never fires) and the WS loop keeps answering pings,
+/// so the socket looks alive while zero work completes (the zombie-donor
+/// shape). The default sits between the longest legitimate duty-cycled batch
+/// and the brain's own 180s compute_batch timeout. Override:
+/// UNITY_DONOR_HANG_LIMIT_SECS (floor 30).
+const HANG_LIMIT_SECS_DEFAULT: u64 = 150;
+/// How long an engine BUILD may take before the donor assumes the driver is
+/// still wedged, abandons the attempt, and lets the supervisor retry on its
+/// backoff. Adapter enumeration + device creation is seconds when healthy.
+const ENGINE_INIT_TIMEOUT: Duration = Duration::from_secs(75);
+/// Bounded patience for joining the worker thread on session end — a worker
+/// blocked inside a wedged GPU call would otherwise pin run_donor forever and
+/// make the reconnect supervisor unreachable (the exact failure the supervisor
+/// exists for).
+const WORKER_JOIN_PATIENCE: Duration = Duration::from_secs(15);
+
+fn hang_limit_secs() -> u64 {
+    std::env::var("UNITY_DONOR_HANG_LIMIT_SECS")
+        .ok()
+        .and_then(|v| v.trim().parse::<u64>().ok())
+        .map(|v| v.max(30))
+        .unwrap_or(HANG_LIMIT_SECS_DEFAULT)
+}
+
+fn now_ms() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis() as u64)
+        .unwrap_or(0)
+}
+
+/// What the GPU worker thread is doing RIGHT NOW — written by the worker at
+/// each Work item's start/end, read by the WS loop's hang watchdog. start_ms
+/// of 0 = idle between items.
+struct WorkerActivity {
+    start_ms: std::sync::atomic::AtomicU64,
+    label: Mutex<String>,
+}
+
+impl WorkerActivity {
+    fn new() -> Self {
+        Self { start_ms: std::sync::atomic::AtomicU64::new(0), label: Mutex::new(String::new()) }
+    }
+    fn begin(&self, label: String) {
+        if let Ok(mut l) = self.label.lock() {
+            *l = label;
+        }
+        self.start_ms.store(now_ms(), Ordering::Relaxed);
+    }
+    fn end(&self) {
+        self.start_ms.store(0, Ordering::Relaxed);
+    }
+    /// Seconds the current item has been running (None when idle).
+    fn busy_secs(&self) -> Option<u64> {
+        let s = self.start_ms.load(Ordering::Relaxed);
+        if s == 0 { None } else { Some(now_ms().saturating_sub(s) / 1000) }
+    }
+    fn label_snapshot(&self) -> String {
+        self.label.lock().map(|l| l.clone()).unwrap_or_default()
+    }
+}
 
 /// Live status the GUI reads (and headless ignores).
 #[derive(Default)]
@@ -302,7 +366,37 @@ pub async fn run_donor_supervised(
 pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, control: Control) -> Result<(), String> {
     let indices: Vec<usize> = gpus.iter().map(|g| g.index).collect();
     println!("[donor] building multi-GPU engine over {} card(s): {:?} @ utils {:?}", gpus.len(), indices, utils);
-    let engine = MultiEngine::new(&indices, &utils).await?;
+    // Engine build runs on a side thread with a bounded wait — a wedged driver
+    // can block adapter/device creation INDEFINITELY, and an unguarded build
+    // here would pin the reconnect supervisor on its very first retry after a
+    // GPU hang. On timeout: crumb + Err → the supervisor keeps retrying on its
+    // backoff and connects the moment the driver recovers.
+    let engine = {
+        let (etx, erx) = tokio::sync::oneshot::channel();
+        let indices_b = indices.clone();
+        let utils_b = utils.clone();
+        std::thread::spawn(move || {
+            let res = match tokio::runtime::Builder::new_current_thread().enable_all().build() {
+                Ok(rt) => rt.block_on(MultiEngine::new(&indices_b, &utils_b)),
+                Err(e) => Err(format!("engine runtime error: {e}")),
+            };
+            let _ = etx.send(res);
+        });
+        match tokio::time::timeout(ENGINE_INIT_TIMEOUT, erx).await {
+            Ok(Ok(Ok(engine))) => engine,
+            Ok(Ok(Err(e))) => return Err(format!("engine init failed: {e}")),
+            Ok(Err(_)) => return Err("engine init thread died before reporting".to_string()),
+            Err(_) => {
+                let what = format!(
+                    "gpu-hang: engine init exceeded {}s — driver likely wedged; supervisor keeps retrying",
+                    ENGINE_INIT_TIMEOUT.as_secs()
+                );
+                eprintln!("[donor] ⛔ {what}");
+                write_crumb(&what);
+                return Err(what);
+            }
+        }
+    };
     let label = engine.gpu_label();
     println!("[donor] backends: {}", engine.backend_summary());
     // A matrix lives on ONE local GPU, so advertise the SMALLEST per-binding cap across the
@@ -403,6 +497,12 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
     // uploads at low util and feeding the reconnect churn.
     let pending = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
     let pending_w = pending.clone();
+    // GPU-HANG WATCHDOG state — the worker stamps each Work item's start; the WS
+    // loop's watchdog reads it. A driver-wedged GPU call blocks the worker
+    // thread forever with NO panic and NO error, so liveness must be observed
+    // from outside the call.
+    let activity = std::sync::Arc::new(WorkerActivity::new());
+    let activity_w = activity.clone();
     let worker = std::thread::spawn(move || {
         let mut engine = engine;
         let mut partials: HashMap<String, PartialUpload> = HashMap::new();
@@ -415,6 +515,22 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
             if control_w.stop.load(Ordering::Relaxed) {
                 break;
             }
+            activity_w.begin(match &work {
+                Work::Init(init) => format!("gpu_init {}", init.cluster_name),
+                Work::Batch(batch) => format!("compute_batch {}", batch.batch_id),
+                Work::Frame(f) => match f {
+                    Frame::Upload { name, .. } => format!("upload {name}"),
+                    Frame::Chunk { name, chunk_seq, total_chunks, .. } => format!("upload-chunk {name} {}/{}", chunk_seq + 1, total_chunks),
+                    Frame::Propagate { name, .. } => format!("propagate {name}"),
+                    Frame::Hebbian { name, .. } => format!("hebbian {name}"),
+                    Frame::BatchedHebbian { .. } => "batched-hebbian".to_string(),
+                },
+                Work::WriteSpike { cluster, region, .. } => format!("write_spike {cluster}/{region}"),
+                Work::WriteCurrent { cluster, region, .. } => format!("write_current {cluster}/{region}"),
+                Work::ClearSpike { cluster, region } => format!("clear_spike {cluster}/{region}"),
+                Work::Readback { cluster, region, .. } => format!("readback {cluster}/{region}"),
+                Work::ChecksumMatrix { name, .. } => format!("checksum {name}"),
+            });
             match work {
                 Work::Init(init) => {
                     handle_gpu_init(&mut engine, &init);
@@ -493,6 +609,7 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                     let _ = reply_tx.send(Out::Text(serde_json::to_string(&ack).unwrap()));
                 }
             }
+            activity_w.end();
         }
     });
 
@@ -516,9 +633,38 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
     let mut bytes_in_window: u64 = 0;
     let mut link_down_mbps: f64 = 0.0;
     let mut link_window_start = std::time::Instant::now();
+    // GPU-HANG WATCHDOG — poll the worker's activity stamp. When one Work item
+    // blocks past the limit, the GPU engine is wedged (driver hang): crumb it
+    // WITH telemetry, tell the brain while the socket still works, abandon the
+    // stuck worker, and let the supervisor rebuild a fresh engine.
+    let hang_limit = hang_limit_secs();
+    let mut hang_tick = tokio::time::interval(Duration::from_secs(5));
+    hang_tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+    let mut gpu_hung = false;
 
     loop {
         tokio::select! {
+            _ = hang_tick.tick() => {
+                if let Some(busy) = activity.busy_secs() {
+                    if busy >= hang_limit {
+                        let label = activity.label_snapshot();
+                        let what = format!(
+                            "gpu-hang: work='{label}' blocked {busy}s (limit {hang_limit}s) gpu='{host_name}' backend={engine_backend} driver={driver_version}{}",
+                            if compute_capability.is_empty() { String::new() } else { format!(" cc={compute_capability}") }
+                        );
+                        eprintln!("[donor] ⛔ GPU HANG — {what} — abandoning the stuck worker; supervisor rebuilds a fresh engine.");
+                        write_crumb(&what);
+                        // The WS loop is still alive (that's the zombie shape) — report the
+                        // hang to the brain NOW so the operator sees WHY, not just donors=0.
+                        let payload = serde_json::json!({ "type": "donor_crumb", "reason": format!("native-donor GPU HANG (live): {what}") });
+                        let _ = tx.send(Message::text(payload.to_string())).await;
+                        set_status(&control, |s| { s.connected = false; s.note = format!("GPU hang ({label}) — rebuilding engine"); });
+                        let _ = tx.send(Message::Close(None)).await;
+                        gpu_hung = true;
+                        break;
+                    }
+                }
+            }
             _ = stop_check.tick() => {
                 if control.stop.load(Ordering::Relaxed) {
                     println!("[donor] stop requested (GUI) — closing connection cleanly.");
@@ -641,10 +787,39 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
             }
         }
     }
-    // Stop the worker: dropping the work sender ends its recv loop; join it out.
+    // Stop the worker: dropping the work sender ends its recv loop; join it out —
+    // with BOUNDED patience. A worker blocked inside a wedged GPU call never
+    // finishes, and an unbounded join() here pinned run_donor forever, making
+    // the reconnect supervisor unreachable in exactly the failure it exists
+    // for (live incident: zombie kick fired, donor never came back).
     drop(work_tx);
-    let _ = worker.join();
+    let join_deadline = std::time::Instant::now() + WORKER_JOIN_PATIENCE;
+    let mut worker_done = false;
+    loop {
+        if worker.is_finished() {
+            worker_done = true;
+            break;
+        }
+        if std::time::Instant::now() >= join_deadline {
+            eprintln!(
+                "[donor] worker still blocked in '{}' after {}s — abandoning the thread (it exits on its own if the driver ever returns).",
+                activity.label_snapshot(),
+                WORKER_JOIN_PATIENCE.as_secs()
+            );
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(250)).await;
+    }
+    if worker_done {
+        let _ = worker.join();
+    }
     set_status(&control, |s| { s.connected = false; s.note = "stopped".into(); });
+    if gpu_hung {
+        // Err (not Ok) so the supervisor's backoff grows if the driver stays
+        // wedged — each retry builds a FRESH engine under the init timeout and
+        // reconnects the moment the driver recovers. Self-healing, no hands.
+        return Err("gpu hang — worker abandoned; fresh engine on reconnect".to_string());
+    }
     Ok(())
 }
 
