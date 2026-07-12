@@ -3610,10 +3610,6 @@ class ServerBrain {
           ? Number(process.env.DREAM_CONSOLIDATION_FORCE_MS)
           : (ranBefore ? 1200000 : 600000); // 20 min after a pass; 10 min if never run
         const starved = elapsedSincePassMs >= forceMs;
-        if (starved && (!ce._lastForceLogMs || (Date.now() - ce._lastForceLogMs) > 60000)) {
-          ce._lastForceLogMs = Date.now();
-          console.log(`[Consolidation] starvation guard — FORCING a pass (no completed pass in ${Math.round(elapsedSincePassMs / 1000)}s; passCount=${ce.passCount || 0}). Bypasses the SEED skip so Tier 1→2→3 promotion resumes; bounded by DREAM_CONSOLIDATION_MAX_MS. Tune via DREAM_CONSOLIDATION_FORCE_MS. (Does NOT override DREAM_CONSOLIDATION_DISABLE=1.)`);
-        }
         // IDLE-ONLY (as documented, now enforced): a consolidation pass at
         // biological scale pins the event loop for MINUTES (live: pass 4 =
         // 192s inside an EventLoop BLOCKED 238s), starving the WS until the
@@ -3627,8 +3623,21 @@ class ServerBrain {
         const _emergencyMs = 7200000;
         if (_inWalk && elapsedSincePassMs < _emergencyMs) {
           // curriculum dream-windows own mid-walk passes — skip the periodic one
+          // HONEST LOG — the old code announced "FORCING a pass" BEFORE this
+          // gate deferred it, so a working defer read as a stuck engine (the
+          // line fired every 60s with passCount=0 while the cell simply hadn't
+          // reached its first dream window). Throttled pending-note instead;
+          // the FORCING log now only fires when a pass actually runs.
+          if (starved && (!ce._lastForcePendingLogMs || (Date.now() - ce._lastForcePendingLogMs) > 300000)) {
+            ce._lastForcePendingLogMs = Date.now();
+            console.log(`[Consolidation] force PENDING (no completed pass in ${Math.round(elapsedSincePassMs / 1000)}s; passCount=${ce.passCount || 0}) — deferred to the curriculum's own dream windows (mid-walk passes are idle-only; 2h emergency valve). Not an error.`);
+          }
         } else {
           if (_inWalk) console.warn(`[Consolidation] EMERGENCY pass despite active curriculum (no pass in ${Math.round(elapsedSincePassMs / 60000)}min) — expect a multi-minute loop pin; the donor may idle-timeout and reconnect (recovery is lossless).`);
+          if (starved && (!ce._lastForceLogMs || (Date.now() - ce._lastForceLogMs) > 60000)) {
+            ce._lastForceLogMs = Date.now();
+            console.log(`[Consolidation] starvation guard — FORCING a pass (no completed pass in ${Math.round(elapsedSincePassMs / 1000)}s; passCount=${ce.passCount || 0}). Bypasses the SEED skip so Tier 1→2→3 promotion resumes; bounded by DREAM_CONSOLIDATION_MAX_MS. Tune via DREAM_CONSOLIDATION_FORCE_MS. (Does NOT override DREAM_CONSOLIDATION_DISABLE=1.)`);
+          }
           ce.runConsolidationPass(starved ? { forced: true } : {}).catch(err => {
             console.warn('[Consolidation] pass failed:', err?.message || err);
           });
