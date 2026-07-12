@@ -260,9 +260,32 @@ const SERVER_GPU_MIXIN = {
           const queuePending = this._boundHebbianBatch?.ops?.length || 0;
           const lost = this._gpuDeviceLost ? ' (device.lost flagged during this batch)' : '';
           console.warn(`[Brain] compute_batch ${batchId} timed out after ${TIMEOUT_MS / 1000}s — GPU may be hung. Consecutive timeouts: ${this._gpuBatchConsecutiveTimeouts}. Bound-Hebbian queue: ${queuePending}.${lost}`);
-          if (this._gpuBatchConsecutiveTimeouts >= 3 && !this._gpuHangLogged) {
-            console.warn('[Brain] compute_batch consecutive-timeout threshold reached — GPU pipeline likely unrecoverable without compute.html reload. Main brain tick loop will keep waiting; curriculum work paused.');
-            this._gpuHangLogged = true;
+          if (this._gpuBatchConsecutiveTimeouts >= 3) {
+            // ZOMBIE-DONOR KICK — a connected-but-hung donor is WORSE than a
+            // missing one: ws.readyState stays 1 so the no-donor walk gate
+            // never pauses, while every batch + canonical upload burns 180s
+            // timeouts (live incident: batches 28-32 all timed out, uploads
+            // dead x3 attempts, the walk ground for 40 minutes against a
+            // braindead GPU). The old code logged "unrecoverable without
+            // compute.html reload" and then WAITED FOREVER. Now the server
+            // terminates the socket itself: the native donor's supervisor
+            // auto-reconnects in ~2s and REBUILDS ITS GPU ENGINE from
+            // scratch (each session builds a fresh engine) — the exact
+            // reload the log wished for, automated. Browser tabs reconnect
+            // + re-init the same way. Throttled so one kick per hang.
+            if (!this._zombieKickAt || (Date.now() - this._zombieKickAt) > 120000) {
+              this._zombieKickAt = Date.now();
+              console.warn('[Brain] ZOMBIE-DONOR KICK — 3 consecutive compute_batch timeouts with a live socket: terminating the donor connection so its supervisor reconnects with a FRESH GPU engine (auto-recovery; re-register re-arms the uploads).');
+              try {
+                const _zws = this._gpuClient;
+                if (_zws) { try { _zws.terminate(); } catch { try { _zws.close(); } catch { /* nf */ } } }
+              } catch { /* kick best-effort */ }
+              this._gpuBatchConsecutiveTimeouts = 0;
+              this._gpuHangLogged = false;
+            } else if (!this._gpuHangLogged) {
+              this._gpuHangLogged = true;
+              console.warn('[Brain] compute_batch consecutive-timeout threshold reached again within the kick throttle — waiting for the donor to finish reconnecting.');
+            }
           }
           resolve(null);
         }
