@@ -5624,6 +5624,55 @@ const httpServer = http.createServer((req, res) => {
     res.end(brain._publicStateJson || JSON.stringify({ type: 'state', state: null, snapshotAt: 0, note: 'snapshot warming up — try again in a moment' }));
     return;
   }
+  // STABLE DONOR DOWNLOAD DOOR — the legend/compute pages used to bake a
+  // fully-versioned release URL, so EVERY donor release needed a site
+  // redeploy before the page served the new binary (live incident: the
+  // page handed out 0.3.7 after 0.3.8 shipped, because the CI link-bump
+  // commit inherently lands on main AFTER the press that deployed the
+  // page). These routes resolve the NEWEST donor-v* release server-side
+  // (Forgejo API, 5-min cache) and 302 straight to its asset — the page
+  // links never change again. Resolve failure degrades to the RELEASES
+  // PAGE (a human lands somewhere useful), never to a stale binary.
+  if ((req.url === '/download/donor-windows' || req.url === '/download/donor-linux' || req.url === '/donor-latest.json') && req.method === 'GET') {
+    const RELEASES_PAGE = 'https://git.unityailab.com/UnityAILab/If-Only-I-Had-A-Brain/releases';
+    const _dlServe = () => {
+      const c = brain._donorLatestCache;
+      if (req.url === '/donor-latest.json') {
+        res.writeHead(c ? 200 : 503, { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' });
+        res.end(JSON.stringify(c || { error: 'release lookup unavailable — try the releases page', releases: RELEASES_PAGE }));
+        return;
+      }
+      const url = c && (req.url === '/download/donor-windows' ? c.windowsUrl : c.linuxUrl);
+      res.writeHead(302, { Location: url || RELEASES_PAGE, 'Cache-Control': 'no-cache' });
+      res.end();
+    };
+    if (brain._donorLatestCache && (Date.now() - (brain._donorLatestCacheAt || 0)) < 300000) { _dlServe(); return; }
+    (async () => {
+      try {
+        const r = await fetch('https://git.unityailab.com/api/v1/repos/UnityAILab/If-Only-I-Had-A-Brain/releases?limit=20', { signal: AbortSignal.timeout(8000) });
+        if (r.ok) {
+          const rels = await r.json();
+          const rel = (Array.isArray(rels) ? rels : []).find(x => x && !x.draft && /^donor-v\d/.test(x.tag_name || ''));
+          if (rel) {
+            const assets = rel.assets || [];
+            const win = assets.find(a => /windows/i.test(a.name || ''));
+            const lin = assets.find(a => /linux/i.test(a.name || ''));
+            brain._donorLatestCache = {
+              tag: rel.tag_name,
+              windowsUrl: win ? win.browser_download_url : null,
+              linuxUrl: lin ? lin.browser_download_url : null,
+              windowsSize: win ? win.size : null,
+              linuxSize: lin ? lin.size : null,
+            };
+            brain._donorLatestCacheAt = Date.now();
+          }
+        }
+      } catch { /* keep any prior cache; the door degrades to the releases page */ }
+      _dlServe();
+    })();
+    return;
+  }
+
   // MINDSEYE.1 — single-source "what Unity sees" snapshot. The cached field C from
   // the latest _imagineTick (one compute), handed back as-is to any number of
   // mind's-eye viewers (html/minds-eye.html). PUBLIC (no auth), read-only. Viewers
