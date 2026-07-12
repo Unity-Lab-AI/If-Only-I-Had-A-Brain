@@ -25799,3 +25799,7 @@ WHY THE FREEZES ARE "NEW": the deploy went 40M -> 306,458,816 neurons on 2026-07
 ### DEFINITION-CACHE CAP 10k -> 100k (2026-07-12)
 
 Gee verbatim: "lets do it and fresh walk it once shipped" + "but be sure that her learned words from conversations still is handles with the definitions api appropriately" — the disk cache proposed was already shipped + proven loaded live (9,906 entries restored); the real exposure was the LRU cap: 9,906/10,000 full after K alone, so conversation-learned words would start evicting her oldest definitions (and silently dropping them from disk). CACHE_MAX now 100k (DREAM_DEF_CACHE_CAP overrides) — the definition ledger grows with her vocabulary per the no-limits law. Conversation words keep the full correct path: cache-hit when known, live API fetch + error-TTL retry when novel, disk-persisted within 5 min, survives restarts AND fresh walks (definitions are facts about English, not trained state). node --check PASS.
+
+### TIME-SLICED BINARY WEIGHT SAVE (2026-07-12)
+
+Gee verbatim: "are you not seeing this shit? she is freezing up for minutes at a time in training" — the minutes-frozen class that survived teach time-slicing was the 158MB SYNCHRONOUS checkpoint write (every ~5min + every cell-pass), visible as saves stamping the tail of nearly every giant BLOCKED window. Routine saves are now time-sliced (8MB slices + yields, tmp + atomic rename, async rotation, in-flight guard); shutdown-class saves stay synchronous by design. Log line now carries wall-ms. node --check PASS. Deploys with the next press.

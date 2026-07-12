@@ -4602,21 +4602,44 @@ class ServerBrain {
       // exists; if absent, _loadWeights still succeeds but weights start
       // fresh (banner warns).
       try {
-        this._saveBinaryWeights();
-        // 114.19fh.A.1 — version the binary alongside the JSON rolling
-        // save (v0-v4 rotation via _saveVersion % 5). Without this,
-        // POST /rollback restored JSON-vN but binary stayed at most-
-        // recent (potentially saturated) state → inconsistent restore.
-        // Now both JSON-vN and BIN-vN rotate in lockstep so rollback
-        // restores a consistent JSON+BIN snapshot pair.
-        try {
-          const BIN_FILE = WEIGHTS_FILE.replace(/\.json$/, '.bin');
-          const binBackupFile = BIN_FILE.replace(/\.bin$/, `-v${this._saveVersion % CHECKPOINT_SLOTS}.bin`);
-          if (fs.existsSync(BIN_FILE)) {
-            fs.copyFileSync(BIN_FILE, binBackupFile);
+        // TIME-SLICED SAVE — the synchronous 158MB fs.writeSync sweep pinned
+        // the event loop for the whole write, every ~5 minutes + every
+        // cell-pass: THE minutes-long freeze class that survived the teach
+        // time-slicing (saves stamp the tail of almost every giant
+        // [EventLoop] BLOCKED window in the live logs). The async path
+        // writes ≤8MB slices with macrotask yields into a .tmp, renames
+        // atomically, then rotates the v-backup with async copyFile — the
+        // loop breathes throughout. Shutdown-class triggers keep the
+        // synchronous path: the process must not exit before the write
+        // lands, and a pin is irrelevant at shutdown.
+        const _binSync = /clean-shutdown|savererun-pre-reset/.test(String((opts && opts.trigger) || ''));
+        const BIN_FILE_R = WEIGHTS_FILE.replace(/\.json$/, '.bin');
+        const _binBackupFile = BIN_FILE_R.replace(/\.bin$/, `-v${this._saveVersion % CHECKPOINT_SLOTS}.bin`);
+        if (_binSync) {
+          this._saveBinaryWeightsSync();
+          try {
+            if (fs.existsSync(BIN_FILE_R)) fs.copyFileSync(BIN_FILE_R, _binBackupFile);
+          } catch (err) {
+            console.warn('[Brain] Binary weights versioned backup failed:', err?.message || err);
           }
-        } catch (err) {
-          console.warn('[Brain] Binary weights versioned backup failed:', err?.message || err);
+        } else if (!this._binSaveInFlight) {
+          this._binSaveInFlight = true;
+          this._saveBinaryWeightsAsync()
+            .then(() => {
+              // v-rotation only after a COMPLETE file exists; async copy so the
+              // 158MB duplicate never pins the loop either.
+              try {
+                if (fs.existsSync(BIN_FILE_R)) fs.copyFile(BIN_FILE_R, _binBackupFile, (err) => {
+                  if (err) console.warn('[Brain] Binary weights versioned backup failed:', err?.message || err);
+                });
+              } catch (err) {
+                console.warn('[Brain] Binary weights versioned backup failed:', err?.message || err);
+              }
+            })
+            .catch((err) => console.warn('[Brain] Binary weights async save failed:', err?.message || err))
+            .finally(() => { this._binSaveInFlight = false; });
+        } else {
+          console.log('[Brain] Binary weights save skipped — previous time-sliced save still writing (next checkpoint catches up).');
         }
       } catch (err) {
         console.warn('[Brain] Binary weights save failed:', err?.message || err);
@@ -4698,17 +4721,18 @@ class ServerBrain {
   // All values are host-byte-order (little-endian on x86/x64). The file
   // is only consumed on the same machine that wrote it, so endianness
   // swap is not needed.
-  _saveBinaryWeights() {
+  // Shared section collector for the binary save paths — reference-only
+  // (no copies): each section holds live views of the CSR arrays. Values
+  // may keep training during a time-sliced write; the resulting snapshot
+  // has per-value age skew but stays structurally consistent (rowPtr/
+  // colIdx/nnz are captured references and Oja mutates values only) —
+  // same consistency class as the fire-and-forget GPU shadow.
+  _collectBinarySections() {
     const cortex = this.cortexCluster;
-    if (!cortex) return;
-    const BIN_FILE = WEIGHTS_FILE.replace(/\.json$/, '.bin');
+    if (!cortex) return null;
     const sections = [];
     const push = (name, matrix) => {
       if (!matrix || typeof matrix.rows !== 'number' || !matrix.values) return;
-      // Skip GPU-bound matrices where CPU arrays were nulled out (happens
-      // at biological scale after T18.22 CPU-CSR free). The GPU holds the
-      // live weights; a separate GPU-readback path is needed to save them
-      // back. Queued as a follow-up to this binary save.
       if (!matrix.values || !matrix.colIdx || !matrix.rowPtr) {
         console.warn(`[Brain] Binary weights skip ${name} — CPU arrays freed (GPU-bound at biological scale; GPU readback not yet wired)`);
         return;
@@ -4717,32 +4741,9 @@ class ServerBrain {
     };
     push('cortex.synapses', cortex.synapses);
     if (cortex.crossProjections) {
-      const keys = Array.isArray(cortex.crossProjections)
-        ? []
-        : Object.keys(cortex.crossProjections);
+      const keys = Array.isArray(cortex.crossProjections) ? [] : Object.keys(cortex.crossProjections);
       for (const k of keys) push(`cortex.crossProjections.${k}`, cortex.crossProjections[k]);
     }
-    if (sections.length === 0) {
-      // Nothing persistable at this moment — still produce a marker file
-      // (empty sectionCount) so _loadBinaryWeights can detect "save ran,
-      // nothing to restore" vs "never saved".
-    }
-
-    // Stream to an open fd instead of allocating one giant Buffer for
-    // the whole file. Prior one-shot Buffer.alloc(totalBytes) approach
-    // hit two hard problems at biological scale:
-    //   (a) `TextEncoder().encode()` returns a Uint8Array (not Buffer),
-    //       so `.copy(buf, off)` threw "nameBuf.copy is not a function"
-    //       mid-write.
-    //   (b) Every phase-DONE fires a save; 11 phases × multi-GB Buffer
-    //       allocations accumulated in V8 external memory faster than
-    //       GC could reclaim → "Committing semi space failed" OOM on
-    //       subsequent DYN-PROD probe allocations.
-    // Streaming avoids both — per-chunk headers are tiny (at most a
-    // few hundred bytes) and the large rowPtr/colIdx/values arrays
-    // get written as zero-copy `Buffer.from(typedArray.buffer, ...)`
-    // views into disk via fs.writeSync. No multi-GB Buffer ever gets
-    // allocated.
     let totalBytes = 16;
     for (const s of sections) {
       const nameLen = Buffer.byteLength(s.name, 'utf8');
@@ -4752,52 +4753,97 @@ class ServerBrain {
       totalBytes += s.nnz * 4;
       totalBytes += s.nnz * 8;
     }
+    return { sections, totalBytes };
+  }
 
+  _writeBinarySection(fd, s) {
+    const nameBuf = Buffer.from(s.name, 'utf8');
+    const padded = Math.ceil(nameBuf.length / 4) * 4;
+    const sectHdr = Buffer.alloc(4 + 4 + padded + 4 + 4 + 4);
+    sectHdr.write('SECT', 0, 4, 'ascii');
+    sectHdr.writeUInt32LE(nameBuf.length, 4);
+    nameBuf.copy(sectHdr, 8);
+    sectHdr.writeUInt32LE(s.rows, 8 + padded);
+    sectHdr.writeUInt32LE(s.cols, 12 + padded);
+    sectHdr.writeUInt32LE(s.nnz, 16 + padded);
+    fs.writeSync(fd, sectHdr);
+  }
+
+  // SYNC path — shutdown-class only (clean-shutdown / savererun checkpoint):
+  // the process must not exit before the write lands; the pin is irrelevant.
+  _saveBinaryWeightsSync() {
+    const col = this._collectBinarySections();
+    if (!col) return;
+    const { sections, totalBytes } = col;
+    const BIN_FILE = WEIGHTS_FILE.replace(/\.json$/, '.bin');
+    const t0 = Date.now();
     let fd;
     try {
       fd = fs.openSync(BIN_FILE, 'w');
-      // File header: magic 'UBWT' + format version + save version +
-      // section count. 16 bytes total.
       const hdr = Buffer.alloc(16);
       hdr.write('UBWT', 0, 4, 'ascii');
       hdr.writeUInt32LE(1, 4);
       hdr.writeUInt32LE(this._saveVersion || 0, 8);
       hdr.writeUInt32LE(sections.length, 12);
       fs.writeSync(fd, hdr);
-
       for (const s of sections) {
-        // Use Buffer.from(s.name, 'utf8') to get a real Node Buffer
-        // with .copy() — TextEncoder().encode() returns a plain
-        // Uint8Array without .copy() and was the cause of the
-        // "nameBuf.copy is not a function" failure in the previous
-        // one-shot approach.
-        const nameBuf = Buffer.from(s.name, 'utf8');
-        const padded = Math.ceil(nameBuf.length / 4) * 4;
-        // Section header: SECT magic + nameLen + name(padded) + rows +
-        // cols + nnz. Total = 4 + 4 + padded + 4 + 4 + 4.
-        const sectHdr = Buffer.alloc(4 + 4 + padded + 4 + 4 + 4);
-        sectHdr.write('SECT', 0, 4, 'ascii');
-        sectHdr.writeUInt32LE(nameBuf.length, 4);
-        nameBuf.copy(sectHdr, 8);
-        sectHdr.writeUInt32LE(s.rows, 8 + padded);
-        sectHdr.writeUInt32LE(s.cols, 12 + padded);
-        sectHdr.writeUInt32LE(s.nnz, 16 + padded);
-        fs.writeSync(fd, sectHdr);
-        // Payload: rowPtr (Uint32), colIdx (Uint32), values (Float64).
-        // Buffer.from(typedArray.buffer, byteOffset, byteLength) creates
-        // a Buffer VIEW on the existing ArrayBuffer — no copy, no new
-        // allocation. fs.writeSync streams those bytes to disk.
+        this._writeBinarySection(fd, s);
         fs.writeSync(fd, Buffer.from(s.rowPtr.buffer, s.rowPtr.byteOffset, (s.rows + 1) * 4));
         fs.writeSync(fd, Buffer.from(s.colIdx.buffer, s.colIdx.byteOffset, s.nnz * 4));
         fs.writeSync(fd, Buffer.from(s.values.buffer, s.values.byteOffset, s.nnz * 8));
       }
       fs.closeSync(fd);
       fd = undefined;
-      const mb = (totalBytes / 1048576).toFixed(1);
-      console.log(`[Brain] Binary weights saved ${sections.length} sections, ${mb} MB → ${path.basename(BIN_FILE)}`);
+      console.log(`[Brain] Binary weights saved ${sections.length} sections, ${(totalBytes / 1048576).toFixed(1)} MB → ${path.basename(BIN_FILE)} (sync shutdown path, ${Date.now() - t0}ms)`);
     } catch (err) {
       if (fd !== undefined) { try { fs.closeSync(fd); } catch {} }
       console.warn('[Brain] Binary weights save failed:', err?.message || err);
+    }
+  }
+
+  // TIME-SLICED path — every routine checkpoint. ≤8MB writeSync slices with
+  // a macrotask yield between each, into BIN.tmp, then an atomic rename —
+  // the event loop services /ws + HTTP between every slice, so a 158MB
+  // checkpoint no longer freezes the brain/dashboard for its duration.
+  async _saveBinaryWeightsAsync() {
+    const col = this._collectBinarySections();
+    if (!col) return;
+    const { sections, totalBytes } = col;
+    const BIN_FILE = WEIGHTS_FILE.replace(/\.json$/, '.bin');
+    const TMP_FILE = BIN_FILE + '.tmp';
+    const SLICE = 8 * 1048576;
+    const t0 = Date.now();
+    let fd;
+    const yieldMacro = () => new Promise((r) => setImmediate(r));
+    const writeSliced = async (buf) => {
+      for (let off = 0; off < buf.length; off += SLICE) {
+        fs.writeSync(fd, buf.subarray(off, Math.min(off + SLICE, buf.length)));
+        await yieldMacro();
+      }
+    };
+    try {
+      fd = fs.openSync(TMP_FILE, 'w');
+      const hdr = Buffer.alloc(16);
+      hdr.write('UBWT', 0, 4, 'ascii');
+      hdr.writeUInt32LE(1, 4);
+      hdr.writeUInt32LE(this._saveVersion || 0, 8);
+      hdr.writeUInt32LE(sections.length, 12);
+      fs.writeSync(fd, hdr);
+      for (const s of sections) {
+        this._writeBinarySection(fd, s);
+        await writeSliced(Buffer.from(s.rowPtr.buffer, s.rowPtr.byteOffset, (s.rows + 1) * 4));
+        await writeSliced(Buffer.from(s.colIdx.buffer, s.colIdx.byteOffset, s.nnz * 4));
+        await writeSliced(Buffer.from(s.values.buffer, s.values.byteOffset, s.nnz * 8));
+      }
+      fs.closeSync(fd);
+      fd = undefined;
+      fs.renameSync(TMP_FILE, BIN_FILE);   // atomic swap — readers never see a torn file
+      console.log(`[Brain] Binary weights saved ${sections.length} sections, ${(totalBytes / 1048576).toFixed(1)} MB → ${path.basename(BIN_FILE)} (time-sliced, ${Date.now() - t0}ms wall, loop kept breathing)`);
+    } catch (err) {
+      if (fd !== undefined) { try { fs.closeSync(fd); } catch {} }
+      try { if (fs.existsSync(TMP_FILE)) fs.unlinkSync(TMP_FILE); } catch { /* tmp cleanup best-effort */ }
+      console.warn('[Brain] Binary weights save failed:', err?.message || err);
+      throw err;
     }
   }
 
