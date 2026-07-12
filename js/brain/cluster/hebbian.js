@@ -279,41 +279,58 @@ export const CLUSTER_HEBBIAN_MIXIN = {
     }
   },
 
-  // #37/#112.4 — chunked CPU Oja. Slices ojaUpdate's row loop + yields a
-  // macrotask between slices so a single large projection can't monopolize the
-  // event loop (dst region = millions of rows at biological scale; the loop is
-  // seconds even with the skip-non-firing fast-out). The update is row-
-  // independent, so slicing produces an IDENTICAL result to one full pass — it
-  // just lets a /ws handshake get a slot between slices. setImmediate on Node;
-  // the setTimeout(0) shim in the browser bundle (setImmediate is Node-only).
-  // Below the chunk threshold it's a single synchronous pass (no yield overhead).
+  // #37/#112.4 + TIME-SLICED — chunked CPU Oja. The old fixed 250k-row slice
+  // had scale-dependent COST: at 306M a single "slice" ran seconds, so the
+  // event loop starved between yields (the 5s BLOCKED cadence — dashboard
+  // freezes, /ws stalls — that appeared with the full-size deploy; at 40M
+  // the same slice was ~300ms and nobody noticed). Slices now adapt by
+  // TIME: each synchronous slice is measured and the row-chunk halves
+  // (floor 16k) past 60ms / doubles (cap 4M) under 15ms, converging every
+  // projection to ~30ms slices at ANY scale. Identical math (rows are
+  // independent); a slice that still exceeds 2s warns with the projection
+  // name so the next freeze names its culprit. Below one chunk it stays a
+  // single synchronous pass (no yield overhead).
   async _ojaUpdateChunked(proj, preF, postF, lr, ojaOpts) {
     const rows = proj.rows | 0;
-    const CHUNK = 250000;
-    if (rows <= CHUNK) { proj.ojaUpdate(preF, postF, lr, ojaOpts); return; }
+    if (!this._ojaChunkRows) this._ojaChunkRows = 131072;
+    if (rows <= this._ojaChunkRows) { proj.ojaUpdate(preF, postF, lr, ojaOpts); return; }
     const yieldMacro = (typeof setImmediate === 'function')
       ? () => new Promise((r) => setImmediate(r))
       : () => new Promise((r) => setTimeout(r, 0));
-    for (let rs = 0; rs < rows; rs += CHUNK) {
-      proj.ojaUpdate(preF, postF, lr, { ...(ojaOpts || {}), rowStart: rs, rowEnd: Math.min(rs + CHUNK, rows) });
+    for (let rs = 0; rs < rows; ) {
+      const chunk = this._ojaChunkRows;
+      const re = Math.min(rs + chunk, rows);
+      const t0 = Date.now();
+      proj.ojaUpdate(preF, postF, lr, { ...(ojaOpts || {}), rowStart: rs, rowEnd: re });
+      const dt = Date.now() - t0;
+      rs = re;
+      if (dt > 60 && chunk > 16384) this._ojaChunkRows = Math.max(16384, chunk >> 1);
+      else if (dt < 15 && chunk < 4194304) this._ojaChunkRows = chunk << 1;
+      if (dt > 2000) console.warn(`[Cluster ${this.name}] SLOW Hebbian slice: ${dt}ms for ${chunk.toLocaleString()} rows (nnz-dense projection) — chunk auto-halved; if this repeats, this projection is the freeze culprit.`);
       await yieldMacro();
     }
   },
 
-  // #37 — chunked CPU anti-Hebbian. Same row-slice + macrotask-yield shape as
-  // _ojaUpdateChunked, for the intra-synapse contrastive push-pull pass. The
-  // anti-Hebbian update is row-independent so slicing is identical to one full
-  // pass; below the chunk threshold it's a single synchronous call (no yield
-  // overhead). Requires SparseMatrix.antiHebbianUpdate to honor rowStart/rowEnd.
+  // #37 + TIME-SLICED — chunked CPU anti-Hebbian; same adaptive ~30ms
+  // slicing as _ojaUpdateChunked (shared chunk-size state so both paths
+  // converge together). Identical math; row-independent.
   async _antiHebbianChunked(mat, preF, postF, lr) {
     const rows = mat.rows | 0;
-    const CHUNK = 250000;
-    if (rows <= CHUNK) { mat.antiHebbianUpdate(preF, postF, lr); return; }
+    if (!this._ojaChunkRows) this._ojaChunkRows = 131072;
+    if (rows <= this._ojaChunkRows) { mat.antiHebbianUpdate(preF, postF, lr); return; }
     const yieldMacro = (typeof setImmediate === 'function')
       ? () => new Promise((r) => setImmediate(r))
       : () => new Promise((r) => setTimeout(r, 0));
-    for (let rs = 0; rs < rows; rs += CHUNK) {
-      mat.antiHebbianUpdate(preF, postF, lr, { rowStart: rs, rowEnd: Math.min(rs + CHUNK, rows) });
+    for (let rs = 0; rs < rows; ) {
+      const chunk = this._ojaChunkRows;
+      const re = Math.min(rs + chunk, rows);
+      const t0 = Date.now();
+      mat.antiHebbianUpdate(preF, postF, lr, { rowStart: rs, rowEnd: re });
+      const dt = Date.now() - t0;
+      rs = re;
+      if (dt > 60 && chunk > 16384) this._ojaChunkRows = Math.max(16384, chunk >> 1);
+      else if (dt < 15 && chunk < 4194304) this._ojaChunkRows = chunk << 1;
+      if (dt > 2000) console.warn(`[Cluster ${this.name}] SLOW anti-Hebbian slice: ${dt}ms for ${chunk.toLocaleString()} rows — chunk auto-halved; repeated hits name this matrix as the freeze culprit.`);
       await yieldMacro();
     }
   },

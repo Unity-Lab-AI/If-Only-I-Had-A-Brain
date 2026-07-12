@@ -47,7 +47,18 @@ class VoiceIO {
     // to these when a tier entry is missing — pure equational voice from
     // word one, no executor, no API key.
     this._voxRef = new Map();
-    this._voxPreloadRef().catch(() => {});
+    // VOXREF.6 — DEFERRED preload (operator: the freezes "started when we
+    // added the Unity One voice"). The eager constructor-time load parsed
+    // the whole multi-MB equation bank on the page's main thread right at
+    // boot — parse jank + a GC mountain exactly when the page is heaviest.
+    // Lazy: the first speak triggers the load; an idle prefetch 30s after
+    // boot warms a quiet page before she talks.
+    this._voxPreloadTimer = setTimeout(() => { this._ensureVoxRef(); }, 30000);
+    // AUDIO UNLOCK — browsers keep a gesture-less AudioContext SUSPENDED
+    // (autoplay policy): her speech composed but played into a suspended
+    // context = silence with the toggle on. Any first click/key/touch on
+    // the page resumes the context permanently.
+    this._installAudioUnlock();
 
     // --- init recognition if available ---
     this._initRecognition();
@@ -74,9 +85,41 @@ class VoiceIO {
           const chunk = await (await fetch('/vox-bank/' + c.file, { cache: 'force-cache' })).json();
           for (const [w, rec] of Object.entries(chunk)) this._voxRef.set(w, rec);
         } catch { /* one chunk failing doesn't stop the rest */ }
+        await new Promise((r) => setTimeout(r, 60));   // breather between multi-MB parses — spread the jank, no freeze wall
       }
       console.log(`[VoiceIO] 🎙 VOX reference bank READY — ${this._voxRef.size} word equations held. Her voice is local + equational; the executor is not needed.`);
     } catch { /* bank not deployed — fallback chain unchanged */ }
+  }
+
+  /** Lazy single-flight bank load — first speak (or the 30s idle timer)
+   *  starts it; every later caller shares the same promise. */
+  _ensureVoxRef() {
+    if (!this._voxPreloadPromise) this._voxPreloadPromise = this._voxPreloadRef().catch(() => {});
+    return this._voxPreloadPromise;
+  }
+
+  /** One unlock for the tab: browsers suspend a gesture-less AudioContext
+   *  (autoplay policy) and resume() without a gesture never completes —
+   *  speech composed into a suspended context is pure silence. Any
+   *  click/key/touch resumes it; listeners stay (cheap) so a later tab
+   *  suspension re-unlocks on the next interaction. */
+  _installAudioUnlock() {
+    if (typeof document === 'undefined') return;
+    const unlock = () => {
+      try {
+        if (!this._audioCtx) {
+          const AC = typeof AudioContext !== 'undefined'
+            ? AudioContext
+            : typeof webkitAudioContext !== 'undefined' ? webkitAudioContext : null;
+          if (!AC) return;
+          this._audioCtx = new AC();
+        }
+        if (this._audioCtx.state === 'suspended') this._audioCtx.resume().catch(() => {});
+      } catch { /* non-fatal */ }
+    };
+    for (const ev of ['pointerdown', 'keydown', 'touchstart']) {
+      document.addEventListener(ev, unlock, { passive: true });
+    }
   }
 
   _voxTokens(text) {
@@ -123,6 +166,7 @@ class VoiceIO {
    */
   async _speakVox(text, rate) {
     if (!this._voxEnabled) return false;
+    this._ensureVoxRef();   // lazy bank load — the first utterance may fall through while it warms
     const tier = this._voxTier();
     const toks = this._voxTokens(text);
     if (!toks.length) return false;
@@ -162,7 +206,20 @@ class VoiceIO {
       if (!AC) throw new Error('No AudioContext');
       this._audioCtx = new AC();
     }
-    if (this._audioCtx.state === 'suspended') await this._audioCtx.resume();
+    if (this._audioCtx.state === 'suspended') {
+      // resume() without a user gesture never settles in Chrome — the old
+      // bare await HUNG the whole speak chain here forever (she "talked",
+      // nothing played, the toggle looked broken). Bounded race + hard bail:
+      // the page's first click/key (see _installAudioUnlock) unlocks for good.
+      try { await Promise.race([this._audioCtx.resume(), new Promise((r2) => setTimeout(r2, 300))]); } catch { /* gesture-gated */ }
+      if (this._audioCtx.state !== 'running') {
+        if (!this._audioLockWarned) {
+          this._audioLockWarned = true;
+          console.warn('[VoiceIO] speaker LOCKED by the browser autoplay policy — her speech is composed and ready; click/tap the page once and audio unlocks permanently.');
+        }
+        throw new Error('audio locked (autoplay policy) — interact with the page once');
+      }
+    }
     const buf = this._audioCtx.createBuffer(1, pcm.length, sampleRate);
     buf.getChannelData(0).set(pcm);
     return new Promise((resolve, reject) => {
