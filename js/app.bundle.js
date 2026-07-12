@@ -53425,7 +53425,7 @@ var CLUSTER_HEBBIAN_MIXIN = {
   // freezes, /ws stalls — that appeared with the full-size deploy; at 40M
   // the same slice was ~300ms and nobody noticed). Slices now adapt by
   // TIME: each synchronous slice is measured and the row-chunk halves
-  // (floor 16k) past 60ms / doubles (cap 4M) under 15ms, converging every
+  // (floor 16k) past 60ms / doubles (cap 512k) under 15ms, converging every
   // projection to ~30ms slices at ANY scale. Identical math (rows are
   // independent); a slice that still exceeds 2s warns with the projection
   // name so the next freeze names its culprit. Below one chunk it stays a
@@ -53446,7 +53446,7 @@ var CLUSTER_HEBBIAN_MIXIN = {
       const dt = Date.now() - t0;
       rs = re;
       if (dt > 60 && chunk > 16384) this._ojaChunkRows = Math.max(16384, chunk >> 1);
-      else if (dt < 15 && chunk < 4194304) this._ojaChunkRows = chunk << 1;
+      else if (dt < 15 && chunk < 524288) this._ojaChunkRows = chunk << 1;
       if (dt > 2e3) console.warn(`[Cluster ${this.name}] SLOW Hebbian slice: ${dt}ms for ${chunk.toLocaleString()} rows (nnz-dense projection) \u2014 chunk auto-halved; if this repeats, this projection is the freeze culprit.`);
       await yieldMacro();
     }
@@ -53470,7 +53470,7 @@ var CLUSTER_HEBBIAN_MIXIN = {
       const dt = Date.now() - t0;
       rs = re;
       if (dt > 60 && chunk > 16384) this._ojaChunkRows = Math.max(16384, chunk >> 1);
-      else if (dt < 15 && chunk < 4194304) this._ojaChunkRows = chunk << 1;
+      else if (dt < 15 && chunk < 524288) this._ojaChunkRows = chunk << 1;
       if (dt > 2e3) console.warn(`[Cluster ${this.name}] SLOW anti-Hebbian slice: ${dt}ms for ${chunk.toLocaleString()} rows \u2014 chunk auto-halved; repeated hits name this matrix as the freeze culprit.`);
       await yieldMacro();
     }
