@@ -131,14 +131,14 @@ const SERVER_CHAT_MIXIN = {
             }
             if (!rec) {
               const emb = this.sharedEmbeddings.getSentenceEmbedding(imgPrompt);
-              rec = this.mindSpace.imagineFromState(emb, {
+              rec = await this.mindSpace.imagineFromState(emb, {
                 maxSide: 192, text: imgPrompt,
                 mood: { arousal: this.arousal, valence: this.valence },
                 priority: 0.4, value: 0.6,
               });
             }
             if (rec) {
-              const percept = this.mindSpace.describe(rec);
+              const percept = await this.mindSpace.describe(rec);
               if (percept && this.cortexCluster && typeof this.cortexCluster.injectEmbeddingToRegion === 'function') {
                 this.cortexCluster.injectEmbeddingToRegion('sem', percept, 0.12);
               }
@@ -864,8 +864,11 @@ const SERVER_CHAT_MIXIN = {
    * 57s language tick) and idle-gated so it never perturbs the training walk.
    * NO infinite fractalize → can't seize the brain (operator's nanometer caution).
    */
-  _imagineTick(now) {
+  async _imagineTick(now) {
     if (!this.mindSpace || typeof this.mindSpace.imagineFromState !== 'function') return;
+    // Reentrancy guard - engine ops run async in the mind-space worker now;
+    // a slow daydream must not stack a second one behind it.
+    if (this._imagineInFlight) return;
     if (!this.cortexCluster || !this.cortexCluster.lastSpikes) return;
     // SECOND-NATURE FIX — the old hard `return` during curriculum meant the
     // deployed box (which is ALWAYS mid-walk) never imagined at all: her
@@ -887,6 +890,7 @@ const SERVER_CHAT_MIXIN = {
     const IMAGINE_MIN_GAP_MS = _midTeach ? 8000 : 6000;
     if (this._lastImagineAt && (now - this._lastImagineAt) < IMAGINE_MIN_GAP_MS) return;
     this._lastImagineAt = now;
+    this._imagineInFlight = true;
     try {
       // feed the governor live mood so imagined depth tracks how she feels
       if (typeof this.mindSpace.governState === 'function') {
@@ -936,8 +940,8 @@ const SERVER_CHAT_MIXIN = {
       } catch { /* thought-seed is best-effort; sem-region seed below */ }
       if (!_seed) {
         const semR = this.cortexCluster.regions && this.cortexCluster.regions.sem;
-        _seed = (semR && typeof this.cortexCluster.lastSpikes.subarray === 'function')
-          ? this.cortexCluster.lastSpikes.subarray(semR.start, semR.end)
+        _seed = (semR && typeof this.cortexCluster.lastSpikes.slice === 'function')
+          ? this.cortexCluster.lastSpikes.slice(semR.start, semR.end)
           : this.cortexCluster.lastSpikes;
         _seedSource = 'sem-state';
       }
@@ -974,7 +978,7 @@ const SERVER_CHAT_MIXIN = {
                 // survives, her per-concept skill grows, and sometimes the
                 // result composites ONTO the memory (canvas:paint:<concept>).
                 const _mConcept = (hit.matched && hit.matched[0]) || null;
-                const practiced = this._practiceDrawFromMemory(_mConcept, hit.rec);
+                const practiced = await this._practiceDrawFromMemory(_mConcept, hit.rec);
                 if (practiced && practiced.rec) { rec = practiced.rec; _seedSource = practiced.label; }
               } catch { /* memory-draw best-effort — the recall itself stands */ }
             }
@@ -1039,7 +1043,7 @@ const SERVER_CHAT_MIXIN = {
           }
           if (strokes && strokes.length) {
             // DRAW.8 — the canvas grows with her grade (K=96 → adult=512)
-            rec = this.mindSpace.sketch(strokes, { maxSide: this._drawCanvasSide(), mood: { arousal: this.arousal, valence: this.valence } });
+            rec = await this.mindSpace.sketch(strokes, { maxSide: this._drawCanvasSide(), mood: { arousal: this.arousal, valence: this.valence } });
             if (rec) _seedSource = this._lastSketchLabel || 'canvas';
             // DRAW.10 — a completed SCENE is her composition intent:
             // occasionally hand it to the image executor to realize; the
@@ -1055,7 +1059,7 @@ const SERVER_CHAT_MIXIN = {
         } catch { /* sketch best-effort — mood field below */ }
       }
       if (!rec) {
-        rec = this.mindSpace.imagineFromState(_seed, {
+        rec = await this.mindSpace.imagineFromState(_seed, {
           maxSide: 192, text: _seedText,
           mood: { arousal: this.arousal, valence: this.valence },
           priority: 0.25, value: 0.4,
@@ -1112,7 +1116,7 @@ const SERVER_CHAT_MIXIN = {
         } catch { /* impression anchor best-effort — the pure field stands */ }
       }
       if (!rec) return;
-      const percept = this.mindSpace.describe(rec);
+      const percept = await this.mindSpace.describe(rec);
       // inject the imagined percept into the cortex sem region at LOW strength —
       // a faint mental image, never strong enough to override real input.
       // VIEW-ONLY mid-teach: skip the sem re-injection while curriculum is
@@ -1167,6 +1171,7 @@ const SERVER_CHAT_MIXIN = {
         }
       }
     } catch { /* imagination is best-effort — never fatal to the tick */ }
+    finally { this._imagineInFlight = false; }
   },
 
   // TU.29.13 BUILD A — concept→imagery loop. Given a thought she recalled NO
@@ -1666,10 +1671,10 @@ const SERVER_CHAT_MIXIN = {
   // composed painting from real material, label canvas:paint:<concept>.
   // The practice render uses the MEMORY's dims so the percept comparison is
   // apples-to-apples and the morph pads match.
-  _practiceDrawFromMemory(concept, memRec) {
+  async _practiceDrawFromMemory(concept, memRec) {
     if (!memRec || !this.mindSpace || typeof this.mindSpace.sketch !== 'function') return null;
     let memPercept = null;
-    try { memPercept = this.mindSpace.describe(memRec); } catch { return null; }
+    try { memPercept = await this.mindSpace.describe(memRec); } catch { return null; }
     if (!memPercept) return null;
     const cos = (a, b) => {
       let d = 0, na = 0, nb = 0; const n = Math.min(a.length, b.length);
@@ -1684,13 +1689,13 @@ const SERVER_CHAT_MIXIN = {
     let best = null, bestCos = -1;
     for (let v = 0; v < ATTEMPTS; v++) {
       let strokes = null;
-      try { strokes = this._drawFromMemoryStrokes(key, memRec, v); } catch { strokes = null; }
+      try { strokes = await this._drawFromMemoryStrokes(key, memRec, v); } catch { strokes = null; }
       if (!strokes || !strokes.length) continue;
       let drawn = null;
-      try { drawn = this.mindSpace.sketch(strokes, { maxSide: side, mood }); } catch { drawn = null; }
+      try { drawn = await this.mindSpace.sketch(strokes, { maxSide: side, mood }); } catch { drawn = null; }
       if (!drawn) continue;
       let s = 0;
-      try { s = cos(this.mindSpace.describe(drawn), memPercept); } catch { s = 0; }
+      try { s = cos(await this.mindSpace.describe(drawn), memPercept); } catch { s = 0; }
       if (s > bestCos) { bestCos = s; best = drawn; }
     }
     if (!best) return null;
@@ -1766,10 +1771,10 @@ const SERVER_CHAT_MIXIN = {
   // dark), texture adds interior hatch strokes, and she labels it in her own
   // hand. This is the growth engine Gee asked for: every concept her eyes
   // ground becomes a NEW thing she can draw.
-  _drawFromMemoryStrokes(concept, srcRec, variant = 0) {
+  async _drawFromMemoryStrokes(concept, srcRec, variant = 0) {
     if (!srcRec || !this.mindSpace || typeof this.mindSpace.describe !== 'function') return null;
     let p = null;
-    try { p = this.mindSpace.describe(srcRec); } catch { return null; }
+    try { p = await this.mindSpace.describe(srcRec); } catch { return null; }
     if (!p || p.length < 52) return null;
     const arousal = Math.max(0, Math.min(1, this.arousal ?? 0.4));
     const fear = Math.max(0, Math.min(1, this.fear ?? 0));
@@ -2122,7 +2127,7 @@ const SERVER_CHAT_MIXIN = {
     // current cortex state into a bounded field C, reads a percept, injects it
     // back at low strength). Synchronous + tiny + idle-gated inside, so it's
     // loop-safe even here on the no-GPU box (unlike the language tick).
-    this._imagineTick(now);
+    this._imagineTick(now).catch(() => { /* imagination best-effort */ });
     // SPEAK.6a — brain-driven spontaneous outward image (arousal-gated, rare).
     this._spontaneousImageTick(now);
     // SPEAK.10a — ablation snapshot, only when explicitly running an ablation
