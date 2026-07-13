@@ -101610,7 +101610,13 @@ var Curriculum = class _Curriculum {
         reps,
         label: definitions.length > 1 ? `${baseLabel}#${defIdx + 1}/${definitions.length}` : baseLabel,
         relationTagId: 23,
-        projectionsWhitelist: this._definitionPairsWhitelist()
+        projectionsWhitelist: this._definitionPairsWhitelist(),
+        // Batch the full-matrix post-loop diagnostics (prune/normalize) to
+        // ONCE per word: skip them for every definition except the last, so
+        // a high-polysemy word (e.g. "digit" = 28 senses) doesn't fire 28
+        // back-to-back synchronous CSR rebuilds (the ~20s seize). The last
+        // def runs prune/normalize once over the fully-accumulated projection.
+        deferDiagnostics: defIdx < definitions.length - 1
       });
       if (signal && signal.aborted) {
         return { passes: defsBound, totalTrained, defsBound, totalDefs: definitions.length, skipped: "aborted-mid-hebbian" };
@@ -102854,8 +102860,9 @@ var Curriculum = class _Curriculum {
     this._convergenceStreak = 0;
     const diagProjKeys = Array.isArray(opts.projectionsWhitelist) && opts.projectionsWhitelist.length > 0 ? opts.projectionsWhitelist.filter((k) => cluster.crossProjections && cluster.crossProjections[k]) : ["sem_to_motor", "motor_to_sem"].filter((k) => cluster.crossProjections && cluster.crossProjections[k]);
     const primaryProj = diagProjKeys[0] || "sem_to_motor";
+    const _deferDiag = opts.deferDiagnostics === true;
     let pruneReport = "";
-    if (pruneTopK > 0 && cluster.crossProjections) {
+    if (pruneTopK > 0 && !_deferDiag && cluster.crossProjections) {
       const pruned = [];
       for (const key of diagProjKeys) {
         const proj = cluster.crossProjections[key];
@@ -102953,7 +102960,7 @@ var Curriculum = class _Curriculum {
       rescaleReport = ` \xB7 rescale-skipped (basins separated, mean-cos=${sepResult.meanCos.toFixed(3)} < ${overloadMax} \u2014 preserving trained discrimination)`;
     }
     let normReport = "";
-    if (normalizeAfter && cluster.crossProjections) {
+    if (normalizeAfter && !_deferDiag && cluster.crossProjections) {
       const normed = [];
       for (const key of diagProjKeys) {
         const proj = cluster.crossProjections[key];

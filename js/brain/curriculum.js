@@ -12134,6 +12134,12 @@ export class Curriculum {
         label: definitions.length > 1 ? `${baseLabel}#${defIdx + 1}/${definitions.length}` : baseLabel,
         relationTagId: 23,
         projectionsWhitelist: this._definitionPairsWhitelist(),
+        // Batch the full-matrix post-loop diagnostics (prune/normalize) to
+        // ONCE per word: skip them for every definition except the last, so
+        // a high-polysemy word (e.g. "digit" = 28 senses) doesn't fire 28
+        // back-to-back synchronous CSR rebuilds (the ~20s seize). The last
+        // def runs prune/normalize once over the fully-accumulated projection.
+        deferDiagnostics: defIdx < definitions.length - 1,
       });
       // 114.19es.4 — re-check abort between primary Hebbian and the
       // K-scaled secondary ojaUpdate so the secondary write doesn't
@@ -13637,8 +13643,20 @@ export class Curriculum {
     // projection exists). Falls back to whichever first entry exists.
     const primaryProj = diagProjKeys[0] || 'sem_to_motor';
 
+    // DEFER-DIAGNOSTICS (2026-07-13) — pruneTopKPerRow + normalizeRows are
+    // full-matrix CSR rebuilds (allocate new typed arrays + per-row sort over
+    // all rows), synchronous and unsliced. They run once per _teachAssociationPairs
+    // call = once per DEFINITION in the multi-def seed. A high-polysemy word
+    // ("digit" = 28 senses) fired 28 back-to-back full-matrix rebuilds = a ~20s
+    // seize scaling with definition count. `opts.deferDiagnostics` skips them
+    // for all defs except the last (see _teachWordDefinition), so the prune/
+    // normalize run ONCE per word over the fully-accumulated projection instead
+    // of 28×. Density still controlled per word; the Hebbian binding for every
+    // definition is unchanged (nothing dumbed down — only the post-hoc
+    // basin-separation diagnostics are batched).
+    const _deferDiag = opts.deferDiagnostics === true;
     let pruneReport = '';
-    if (pruneTopK > 0 && cluster.crossProjections) {
+    if (pruneTopK > 0 && !_deferDiag && cluster.crossProjections) {
       const pruned = [];
       for (const key of diagProjKeys) {
         const proj = cluster.crossProjections[key];
@@ -13819,7 +13837,7 @@ export class Curriculum {
     // Targets sem_to_motor (the primary answer path) + the recurrent
     // intra-cluster synapses since _teachHebbian fires both.
     let normReport = '';
-    if (normalizeAfter && cluster.crossProjections) {
+    if (normalizeAfter && !_deferDiag && cluster.crossProjections) {
       // Session 114.19eo — row-norm targets diagProjKeys (whichever
       // projections actually got Hebbian) instead of hardcoded
       // sem_to_motor. Prevents the prior bug where row-norm hit
