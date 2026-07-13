@@ -794,6 +794,13 @@ function _writeResumeMarker(reason) {
   }
 }
 
+// Set true when THIS boot took a wipe path (fresh walk), false when it
+// resumed (Savestart). Read at Tier 3 load to reset identity-core.json to her
+// ORIGINAL persona (IDENTITY_SEED_LIST) — training-PROMOTED anchors are
+// derived-from-training, not original, and a fresh walk means pre-training.
+// A resume keeps them (part of the resumed developing identity).
+let _bootWasFreshWipe = false;
+
 function autoClearStaleState() {
   // iter14-D — Operator verbatim 2026-05-04: "yes all the weights
   // everything shoudl reset when the start.bat is run or the .sh...
@@ -886,6 +893,9 @@ function autoClearStaleState() {
 
   // Default path = wipe. Always. Whether code changed, resource-config
   // changed, both, or nothing changed at all. start.bat = fresh brain.
+  // Every resume path returned early above; reaching here = a fresh wipe,
+  // so Tier 3 must reset to her original persona seed at load (below).
+  _bootWasFreshWipe = true;
   const forceClear = process.env.DREAM_FORCE_CLEAR === '1';
   const currentHash = computeBrainCodeHash();
   const savedHash = readSavedBrainCodeHash();
@@ -2266,6 +2276,20 @@ class ServerBrain {
             const json = JSON.parse(raw);
             const loaded = this.tier3Store.loadFromJSON(json);
             console.log(`[Tier3Store] boot — ${loaded} Tier 3 identity-bound schemas restored from identity-core.json (permanent — never auto-cleared; missing seed anchors topped up after embeddings load)`);
+            // FRESH-WALK RESET (Gee 2026-07-12): consolidation PROMOTES episodes
+            // to Tier 3 during the walk; those promoted anchors get persisted
+            // into identity-core.json and — because the file is never auto-
+            // cleared — survive a fresh walk, polluting her identity with
+            // training-DERIVED (non-original) anchors. A fresh walk means
+            // pre-training: reset Tier 3 to her ORIGINAL persona (the
+            // IDENTITY_SEED_LIST labels) and strip everything promoted. On a
+            // Savestart RESUME (_bootWasFreshWipe false) they're kept.
+            if (_bootWasFreshWipe && typeof this.tier3Store.pruneToSeedLabels === 'function') {
+              const stripped = this.tier3Store.pruneToSeedLabels(schemaMod.IDENTITY_SEED_LIST);
+              if (stripped > 0) {
+                console.log(`[Tier3Store] fresh-walk reset — stripped ${stripped} training-promoted (non-original) anchor(s); Tier 3 = original persona seed only (${this.tier3Store.size()} anchors). Savestart-resume would have kept them.`);
+              }
+            }
           } catch (parseErr) {
             console.warn(`[Tier3Store] identity-core.json parse error: ${parseErr.message} — backing up corrupt file; anchors re-seeded after embeddings load`);
             try {
