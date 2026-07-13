@@ -159,11 +159,22 @@ const SERVER_MEMORY_MIXIN = {
     // iter13 T13.3 — frequency-merge query: find episodes within last
     // FREQ_MERGE_WINDOW_MS (default 48h) for the same user_id. Caller
     // computes cosine in JS against returned input_embedding blobs.
+    // LIMIT ? — BOUNDED merge scan. Without the cap this returned EVERY
+    // episode in the 48h window, and storeEpisode() (called on the MAIN LOOP
+    // from _memoryHeartbeat every 2s as a working-memory item ages out)
+    // deserialized + cosined all of them. During a marathon seed walk the
+    // episode count climbs into the thousands, so the per-call cost climbed
+    // with it — the escalating [tick] _memoryHeartbeat freeze (3.6s → 51s)
+    // that stalled the whole event loop and read as a stale phase=_teachPredictiveError
+    // BLOCKED. Near-duplicate heartbeats are temporally clustered and identical
+    // text already short-circuits on the indexed exact-text merge above, so
+    // scanning only the most-recent N recovers the same dedup at O(N) constant.
     this._stmtFindRecentForMerge = this._db.prepare(`
       SELECT id, input_embedding, frequency_count
       FROM episodes
       WHERE user_id IS ? AND timestamp > ? AND input_embedding IS NOT NULL
       ORDER BY id DESC
+      LIMIT ?
     `);
 
     // iter13 T13.3 — frequency-merge update: increment count + bump replay timestamp.
@@ -354,7 +365,11 @@ const SERVER_MEMORY_MIXIN = {
       // "learning/dreaming/attentive" category prefix.
       const FREQ_MERGE_COSINE = 0.5;
       const cutoff = Date.now() - FREQ_MERGE_WINDOW_MS;
-      const recent = this._stmtFindRecentForMerge.all(userId || null, cutoff);
+      // Bounded scan cap — most-recent N candidates. Keeps the per-episode
+      // cosine merge O(1) in the total episode count so the main-loop
+      // _memoryHeartbeat can never escalate into a multi-second freeze again.
+      const FREQ_MERGE_SCAN_CAP = 300;
+      const recent = this._stmtFindRecentForMerge.all(userId || null, cutoff, FREQ_MERGE_SCAN_CAP);
       let bestId = -1, bestCos = -Infinity;
       for (const row of recent) {
         if (!row.input_embedding) continue;
