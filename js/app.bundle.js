@@ -522,16 +522,26 @@ var init_sparse_matrix = __esm({
           I = opts.outBuf;
           I.fill(0);
         } else I = new Float64Array(rows);
-        const CHUNK2 = Math.max(1, opts.chunkRows || 25e4);
-        for (let base = 0; base < rows; base += CHUNK2) {
-          const end = Math.min(rows, base + CHUNK2);
+        const CEIL = Math.max(1, opts.chunkRows || 25e4);
+        const FLOOR = Math.min(CEIL, 16384);
+        if (!this._propChunkRows || this._propChunkRows > CEIL) this._propChunkRows = CEIL;
+        const yieldMacro = typeof setImmediate === "function" ? () => new Promise((r) => setImmediate(r)) : () => new Promise((r) => setTimeout(r, 0));
+        for (let base = 0; base < rows; ) {
+          const chunk = this._propChunkRows;
+          const end = Math.min(rows, base + chunk);
+          const t0 = Date.now();
           for (let i = base; i < end; i++) {
             let sum = 0;
             const start = rowPtr[i], e = rowPtr[i + 1];
             for (let k = start; k < e; k++) sum += values[k] * spikes[colIdx[k]];
             I[i] = sum;
           }
-          if (end < rows) await new Promise((r) => setImmediate(r));
+          const dt = Date.now() - t0;
+          base = end;
+          if (dt > 60 && chunk > FLOOR) this._propChunkRows = Math.max(FLOOR, chunk >> 1);
+          else if (dt < 15 && chunk < CEIL) this._propChunkRows = Math.min(CEIL, chunk << 1);
+          if (dt > 2e3) console.warn(`[SparseMatrix] SLOW propagate slice: ${dt}ms for ${chunk.toLocaleString()} rows \u2014 chunk auto-halved; repeated hits name this matrix as the propagate freeze culprit.`);
+          if (end < rows) await yieldMacro();
         }
         return I;
       }

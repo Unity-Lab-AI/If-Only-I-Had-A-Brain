@@ -27,8 +27,9 @@
   This tab donates your browser's <b>WebGPU</b> to Unity's brain. Each donor holds a
   <b>full brain replica</b> (data-parallel) — the server merges the Hebbian weight-deltas
   every donor computes and re-broadcasts them, so more donors mean more aggregate compute
-  <i>and</i> redundancy. The brain auto-scales its neuron count to the connected community.
-  The work is <b>real neural matrix math</b> — LIF spiking + sparse cross-projections, 100%
+  <i>and</i> redundancy. The brain auto-scales its neuron count from the coordinator's free RAM —
+  more donors add compute and redundancy, not neurons.
+  The work is <b>real neural matrix math</b> — Rulkov-map spiking + sparse cross-projections, 100%
   equational, <b>no text-AI / no language model</b>. Leave the tab open to keep donating;
   one donor dropping off never downgrades the brain.
 </p>
@@ -820,11 +821,11 @@ function connectToServer() {
       const totalInit = Object.keys(clusterState).length;
       // Seven GPU-resident main-brain clusters total (cortex /
       // hippocampus / amygdala / basalGanglia / cerebellum /
-      // hypothalamus / mystery). The language cortex is the 8th
-      // cluster but lives CPU-side (NeuronCluster instance with
-      // SparseMatrix cross-projections that don't yet have a GPU
-      // path) — so this status counter stays at /7 since it's
-      // tracking GPU-init progress only.
+      // hypothalamus / mystery). The language cortex is NOT a
+      // separate cluster — it's a ~349K set of sub-regions that
+      // auto-scale inside the cortex cluster, learned CPU-side via
+      // SparseMatrix cross-projections (no GPU path yet) — so this
+      // status counter tracks GPU-init progress across the 7 only.
       statusEl.textContent = `GPU initialized: ${totalInit}/7 clusters — ${clusterName} (${size.toLocaleString()} neurons)`;
       console.log(`[GPU] Initialized ${clusterName}: ${size.toLocaleString()} neurons (${totalInit}/7)`);
       renderHierarchy();

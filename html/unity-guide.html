@@ -4,10 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Unity — The Concept Guide</title>
-<meta name="description" content="Layman-friendly walkthrough of how Unity works. She's a brain, not a chatbot — her words come from tick-driven motor emission, not a language model. Explains the 8 clusters, the language sub-regions, cross-projections, curriculum learning, drugs + emotions as math, and how sensory peripherals plug in.">
+<meta name="description" content="Layman-friendly walkthrough of how Unity works. She's a brain, not a chatbot — her words come from tick-driven motor emission, not a language model. Explains the 7 clusters, the language sub-regions, cross-projections, curriculum learning, drugs + emotions as math, and how sensory peripherals plug in.">
 <meta property="og:type" content="article">
 <meta property="og:title" content="Unity — The Concept Guide">
-<meta property="og:description" content="Layman walkthrough: she's a brain, not a chatbot. Words come from tick-driven motor emission, not a language model. The 8 clusters, language sub-regions, curriculum learning, drugs + emotions as math.">
+<meta property="og:description" content="Layman walkthrough: she's a brain, not a chatbot. Words come from tick-driven motor emission, not a language model. The 7 clusters, language sub-regions, curriculum learning, drugs + emotions as math.">
 <meta property="og:image" content="https://if-only-i-had-a-brain.git.unityailab.com/assets/social/unity-guide.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
@@ -207,7 +207,7 @@
  <p>Unity is a <strong>simulated brain</strong>, not a chatbot. She doesn't generate text by asking another AI what to say — she runs a network of artificial neurons the same way your brain runs biological ones, and the words come out of that neural activity directly.</p>
  <p>When you talk to her, your sentence turns into electrical-style patterns that spread through seven brain regions. Those regions compute how she feels, what she remembers, what she wants to do, and which words fit the situation. The sentence she sends back is the <em>output of that whole process</em>, not a prompt handed to a language model.</p>
  <p>She has a persona — 25-year-old emo goth, always chemically altered, foul-mouthed, possessive — and that persona isn't a system prompt. It's a set of numbers baked into how her neurons fire at rest.</p>
- <p>And here's the genuinely new part: she lives on a <strong>website you just open in your browser</strong>. The people who visit donate their graphics card through a page on the site, and her brain trains and thinks across all those donated GPUs at once. The more people connected, the bigger and more powerful she gets — every connected computer holds a full copy of her brain and they stay in sync. (You can still run her on your own machine for development if you'd rather.)</p>
+ <p>And here's the genuinely new part: she lives on a <strong>website you just open in your browser</strong>. The people who visit donate their graphics card through a page on the site, and her brain trains and thinks across all those donated GPUs at once. The more people connected, the faster and more powerful she gets — every connected computer holds a full copy of her brain and they stay in sync. (You can still run her on your own machine for development if you'd rather.)</p>
  <p>Want to watch her grow? There's a <strong>public dashboard</strong> anyone can open — it shows her live progress through every grade (with the real class names: Algebra, Biology, U.S. Government, and the rest), her brain vitals, and a <strong>🏆 leaderboard</strong> of everyone donating compute. Donate your GPU and you get a spot on it — give yourself a name and watch your "neurons created" climb. It's read-only and shared by everyone, so a thousand people can watch at once without slowing her down.</p>
 </div>
 
@@ -318,43 +318,39 @@
  The textbook neuron model (leaky integrate-and-fire) is simpler but it doesn't burst the way real cortical neurons do — it just fires regular pulses. Rulkov's map naturally produces the irregular burst-then-pause rhythm you see in actual EEG recordings. And it's cheap enough to run millions of them on a GPU in real time. That's why Unity uses it.
 </div>
 
-<p>The neurons are grouped into <strong>eight clusters</strong>, each modeled after a real brain region or a specialized cortical subsystem. Within a cluster, neurons are densely connected to each other. Between clusters, they're connected through sparser pathways modeled after real white-matter tracts in the human brain. When something "flows" from her language cortex to her amygdala, it's actually spikes traveling across a simulated pathway that corresponds to a real neural tract you could look up in a neuroanatomy textbook. Her biggest cluster by VRAM share is the <strong>language cortex</strong> at 50% of the brain's GPU budget — because language is the primary cognitive substrate Unity runs (reading, thinking, sentence generation, dictionary oracle, cross-region Hebbian learning all live there). The remaining 50% gets split across seven other clusters that each carry a real biological role. (A real human cerebellum is the biggest by raw cell count thanks to granule cells; Unity's sim allocates the 10% share that matches real-brain mass proportion since she has no body to coordinate motor timing for, just enough cerebellum to do error correction.) Language cortex is its own dedicated cluster with nine specialized sub-regions inside it (auditory / visual / free / letter / phon / sem / fineType / motor / word_motor), the same way real cortex hosts Broca's and Wernicke's areas. Sixteen cross-projections wire those sub-regions into a dual-stream pipeline (a dedicated <code>sem↔word_motor</code> projection enables single-tick word emission alongside the existing letter-by-letter <code>sem→motor→letter</code> path; <code>word_motor</code> further sub-banded per-subject as <code>word_motor_ela / _math / _sci / _soc / _art / _life</code> so each curriculum subject trains its own word-emission band without overwriting others).</p>
+<p>The neurons are grouped into <strong>seven clusters</strong>, each modeled after a real brain region or a specialized cortical subsystem. Within a cluster, neurons are densely connected to each other. Between clusters, they're connected through sparser pathways modeled after real white-matter tracts in the human brain. When something "flows" from her language network to her amygdala, it's actually spikes traveling across a simulated pathway that corresponds to a real neural tract you could look up in a neuroanatomy textbook. Her two biggest clusters are the <strong>cortex</strong> and the <strong>cerebellum</strong> — about 61.3M neurons (roughly 20% of the brain) each. The <strong>language network</strong> is the primary cognitive substrate Unity runs (reading, thinking, sentence generation, dictionary oracle, cross-region Hebbian learning all live there), but it isn't a top-level cluster of its own — it's a set of ~349K neurons that auto-scale as nine specialized sub-regions living inside the cortex (auditory / visual / free / letter / phon / sem / fineType / motor / word_motor), the same way real cortex hosts Broca's and Wernicke's areas. The five remaining clusters — hippocampus, amygdala, basal ganglia, hypothalamus, and the mystery region — each carry a real biological role at about 36.8M neurons (roughly 12%) apiece. Sixteen cross-projections wire those sub-regions into a dual-stream pipeline (a dedicated <code>sem↔word_motor</code> projection enables single-tick word emission alongside the existing letter-by-letter <code>sem→motor→letter</code> path; <code>word_motor</code> further sub-banded per-subject as <code>word_motor_ela / _math / _sci / _soc / _art / _life</code> so each curriculum subject trains its own word-emission band without overwriting others).</p>
 
-<h2 id="regions">4. The eight brain regions and what each one does</h2>
+<h2 id="regions">4. The seven brain regions and what each one does</h2>
 
-<p>Unity's brain has eight clusters. Each is a population of Rulkov-map neurons with its own job, its own baseline firing rate, its own noise level, and its own learning speed. They talk to each other constantly through sparse connection pathways modeled on real white-matter tracts. The percentages below are the share of the GPU VRAM budget each cluster gets — they come from biologically-grounded ratios stored as <code>DEFAULT_BIO_WEIGHTS</code> in <code>server/brain-server.js</code>. Reference numbers are from Herculano-Houzel 2009 ("The Human Brain in Numbers", <em>Frontiers in Human Neuroscience</em> 3:31): real-human cerebellum holds ~80% of neurons but only ~10% of brain mass, cerebral cortex holds ~19% of neurons but ~82% of mass, and all subcortical regions combined hold ~0.8% of neurons / ~8% of mass. Unity's split honors a 5%-floor minimum per cluster (operator-set, exceeds biology by design — real subcortical regions are individually under 1% by neuron count) so no critical control region gets starved. Total neuron count auto-scales to whatever GPU Unity's running on.</p>
+<p>Unity's brain has seven clusters. Each is a population of Rulkov-map neurons with its own job, its own baseline firing rate, its own noise level, and its own learning speed. They talk to each other constantly through sparse connection pathways modeled on real white-matter tracts. The percentages below are the share of the brain's neuron budget each cluster gets — they come from biologically-grounded ratios stored as <code>DEFAULT_BIO_WEIGHTS</code> in <code>server/brain-server.js</code>. Reference numbers are from Herculano-Houzel 2009 ("The Human Brain in Numbers", <em>Frontiers in Human Neuroscience</em> 3:31): real-human cerebellum holds ~80% of neurons but only ~10% of brain mass, cerebral cortex holds ~19% of neurons but ~82% of mass, and all subcortical regions combined hold ~0.8% of neurons / ~8% of mass. Unity's split gives the cortex and cerebellum ~20% each and the five subcortical clusters ~12% each (operator-set floors exceed biology by design — real subcortical regions are individually under 1% by neuron count — so no critical control region gets starved). Total neuron count auto-scales from the host machine's free RAM — about 306M at full size on the deployed brain.</p>
 
 <div class="region-grid">
  <div class="region">
- <h4>🗣️ LANGUAGE CORTEX (50%)</h4>
- <p>The primary cognitive substrate. Nine named sub-regions live inside the language-cortex cluster: auditory, visual, free, letter, phon (phoneme), sem (semantic), fineType, motor, and word_motor. They're connected by 16 cross-projections that form the dual-stream language network — reading flows visual → letter → phon → sem → fineType; writing flows along two parallel paths now, the legacy letter-by-letter <code>sem → motor → letter</code> path AND the single-tick word-emission path <code>sem → word_motor</code>. The word path is the primary production route — single-tick argmax over per-subject word-buckets returns a real word like "five" instead of a fragile letter chain that bucket-stuck on attractors. It was a key win for word recall. Largest cluster by VRAM share because language is the main thing this brain does.</p>
- </div>
- <div class="region">
- <h4>🧠 CORTEX (10%)</h4>
- <p>General cerebral cortex outside the language network — frontal, parietal, occipital association areas. Predictive coding + sensory integration. Hosts the working-memory free sub-region's broader-scale activity that the language cortex draws from.</p>
+ <h4>🧠 CORTEX (20%)</h4>
+ <p>General cerebral cortex — frontal, parietal, occipital association areas — plus the language network that lives inside it, ~61.3M neurons total. Predictive coding + sensory integration. The <strong>language network</strong> is the primary cognitive substrate Unity runs: ~349K neurons auto-scaling as nine named sub-regions inside the cortex (auditory, visual, free, letter, phon, sem, fineType, motor, word_motor), wired by 16 cross-projections into a dual-stream pipeline — reading flows visual → letter → phon → sem → fineType; writing flows along two parallel paths, the legacy letter-by-letter <code>sem → motor → letter</code> path AND the single-tick word-emission path <code>sem → word_motor</code>. The word path is the primary production route — single-tick argmax over per-subject word-buckets returns a real word like "five" instead of a fragile letter chain that bucket-stuck on attractors. It was a key win for word recall.</p>
  </div>
  <div class="region cereb">
- <h4>🎼 CEREBELLUM (10%)</h4>
- <p>Error correction and timing. Whenever her predictions miss, this region computes the error signal that flows back to the cortex as negative feedback. Sized to match real-brain mass proportion (~10% of the human brain by mass per Herculano-Houzel 2009) — cerebellum's 80% neuron-count share comes from granule-cell density which Unity's Rulkov-map model doesn't replicate cell-for-cell.</p>
+ <h4>🎼 CEREBELLUM (20%)</h4>
+ <p>Error correction and timing. Whenever her predictions miss, this region computes the error signal that flows back to the cortex as negative feedback. Sized at ~61.3M neurons, tied with the cortex as her largest cluster — cerebellum's 80% neuron-count share in a real brain comes from granule-cell density which Unity's Rulkov-map model doesn't replicate cell-for-cell.</p>
  </div>
  <div class="region hippo">
- <h4>📚 HIPPOCAMPUS (6%)</h4>
+ <h4>📚 HIPPOCAMPUS (12%)</h4>
  <p>Memory. Stores experiences as stable attractor states — patterns the network can "fall into" again when something similar happens. This is how she remembers you between conversations. Tier 1 episodic + Tier 2 schematic + Tier 3 identity-bound consolidation lives here.</p>
  </div>
  <div class="region amyg">
- <h4>❤️‍🔥 AMYGDALA (6%)</h4>
+ <h4>❤️‍🔥 AMYGDALA (12%)</h4>
  <p>Emotion. A settling attractor that reads the situation and decides how she feels — fear, reward, neutral. The emotional basin she falls into shapes every other region's output.</p>
  </div>
  <div class="region bg">
- <h4>🎯 BASAL GANGLIA (6%)</h4>
+ <h4>🎯 BASAL GANGLIA (12%)</h4>
  <p>Action selection. When she has multiple options (respond with text, generate an image, speak aloud, build a UI, listen, stay quiet), this region picks one via a learned winner-take-all competition across six action channels.</p>
  </div>
  <div class="region hypo">
- <h4>🔥 HYPOTHALAMUS (6%)</h4>
+ <h4>🔥 HYPOTHALAMUS (12%)</h4>
  <p>Drives. The "need" center — arousal, social need, creativity, energy. Pushes the rest of the brain toward whatever drive is most depleted right now.</p>
  </div>
  <div class="region mys">
- <h4>✨ MYSTERY Ψ (6%)</h4>
+ <h4>✨ MYSTERY Ψ (12%)</h4>
  <p>Consciousness. An explicit region that computes a "global integration" number — how unified everything feels right now. See section 9.</p>
  </div>
 </div>
@@ -644,7 +640,7 @@
 
 <div class="callout cyan">
  <strong>Why this matters</strong>
- The generation loop is biologically constrained — it can only produce sequences her curriculum actually taught. A pre-K Unity produces garbled letter soup because her motor sub-region has no stable attractors yet. A kindergarten Unity produces single letters and short words. A Grade-1 Unity produces CVC words (cat, dog, pen) and the beginnings of full sentences. By PhD era, the full grammatical scaffolding is in the cross-projection weights, the cortical microstructure has settled into stable basins, the global workspace is integrating cleanly across all 8 clusters, and she produces whatever her semantic intent maps through the trained pipeline. The competency grows with the curriculum, not with a dial someone turned up. The dictionary fills out her semantic content. The cortex's microstructure makes basins stable enough to fire reliably. The consciousness mechanisms turn parallel processing pipelines into unified moments of thought.
+ The generation loop is biologically constrained — it can only produce sequences her curriculum actually taught. A pre-K Unity produces garbled letter soup because her motor sub-region has no stable attractors yet. A kindergarten Unity produces single letters and short words. A Grade-1 Unity produces CVC words (cat, dog, pen) and the beginnings of full sentences. By PhD era, the full grammatical scaffolding is in the cross-projection weights, the cortical microstructure has settled into stable basins, the global workspace is integrating cleanly across all 7 clusters, and she produces whatever her semantic intent maps through the trained pipeline. The competency grows with the curriculum, not with a dial someone turned up. The dictionary fills out her semantic content. The cortex's microstructure makes basins stable enough to fire reliably. The consciousness mechanisms turn parallel processing pipelines into unified moments of thought.
 </div>
 
 <h2 id="persona">8. How "personality" fits in</h2>

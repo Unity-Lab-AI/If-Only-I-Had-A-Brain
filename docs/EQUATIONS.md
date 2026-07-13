@@ -316,15 +316,15 @@ Speech: concise, sharp, slang-heavy, foul-mouthed, clingy girlfriend energy
 
 | Module | Neurons | Real Count | Equation | Persona driver |
 |--------|---------|------------|----------|----------------|
-| Cerebellum | 40% (largest) | ~69B (80% of real brain) | `output = prediction + ΔW·(target - actual)` | Steady correction |
-| Cortex | 30% | ~16B (bilateral hemispheres) | `ŝ = sigmoid(W·x), error = actual - predicted` | arousal×drugSpeed |
-| Hippocampus | 10% | ~30K inputs/pyramidal cell | `E = -½ΣW·x·x` (Hopfield) | socialAttachment |
-| Amygdala | 8% | 12.21M (13 nuclei) | `V(s) = Σw·x → arousal, valence` | arousal×volatility×drug |
-| Basal Ganglia | 8% | 90-95% MSN (GABAergic) | `P(a) = softmax(Q(a)/τ)` | impulsivity |
-| Hypothalamus | 2% | 11 nuclei, few million | `dH/dt = -α(H - H_set) + input` | drugDrive |
-| Mystery Ψ | 2% | CC: 200-300M axons | `Ψ = √(1/n) × N³ · [α·Id + β·Ego + γ·Left + δ·Right]` | creativity×darkHumor |
+| Cortex | 20% | ~16B (bilateral hemispheres) | `ŝ = sigmoid(W·x), error = actual - predicted` | arousal×drugSpeed |
+| Cerebellum | 20% | ~69B (80% of real brain) | `output = prediction + ΔW·(target - actual)` | Steady correction |
+| Hippocampus | 12% | ~30K inputs/pyramidal cell | `E = -½ΣW·x·x` (Hopfield) | socialAttachment |
+| Amygdala | 12% | 12.21M (13 nuclei) | `V(s) = Σw·x → arousal, valence` | arousal×volatility×drug |
+| Basal Ganglia | 12% | 90-95% MSN (GABAergic) | `P(a) = softmax(Q(a)/τ)` | impulsivity |
+| Hypothalamus | 12% | 11 nuclei, few million | `dH/dt = -α(H - H_set) + input` | drugDrive |
+| Mystery Ψ | 12% | CC: 200-300M axons | `Ψ = √(1/n) × N³ · [α·Id + β·Ego + γ·Left + δ·Right]` | creativity×darkHumor |
 
-Fractions sum to 1.00 exactly (`0.30 + 0.10 + 0.08 + 0.08 + 0.40 + 0.02 + 0.02`) and live in `js/brain/cluster.js` as `CLUSTER_FRACTIONS`. The same table feeds `clusterSizesFor(totalNeurons)` in the browser client and the Node server so every tier produces identical cluster shapes on both runtimes.
+On the **deployed** brain (~306M neurons) these shares come from `DEFAULT_BIO_WEIGHTS` in `server/brain-server.js`: the seven main-brain clusters renormalize to cortex 20% / cerebellum 20% / hippocampus 12% / amygdala 12% / basalGanglia 12% / hypothalamus 12% / mystery 12%, with the ~349K language cortex allocated separately inside the cortex (CPU-side). The `CLUSTER_FRACTIONS` set in `js/brain/cluster.js` (cortex 0.55 / hippocampus 0.18 / cerebellum 0.08 / mystery 0.08 / amygdala 0.05 / basalGanglia 0.03 / hypothalamus 0.03) feeds `clusterSizesFor(totalNeurons)` only for the ~6700-neuron browser-only fallback.
 
 ### Inter-Cluster Projections (20 real white matter tracts)
 
@@ -588,7 +588,7 @@ The Ego (self-model) IS her residual self-image — the cortex predicting WHAT s
 
 ## 10. GPU Exclusive Compute
 
-All N neurons (auto-scaled to hardware via the formula below) run on GPU. Zero CPU workers. Brain pauses without `compute.html`.
+Main-brain Rulkov neurons (auto-scaled from host free RAM, ~306M deployed) run on donated browser GPUs. No `ParallelBrain` compute replicas. The language-cortex cross-projection learning runs CPU-side in Node, time-sliced (see §10.5). The main brain pauses without a GPU donor (`compute.html`).
 
 | Equation | Purpose | File |
 |----------|---------|------|
@@ -599,7 +599,18 @@ All N neurons (auto-scaled to hardware via the formula below) run on GPU. Zero C
 | `compute_result`: sparse spike indices (only fired neurons, not full N array) | 95%+ compression at any N — only active-spike indices return over WebSocket | `compute.html` |
 | `gpu_init_ack`: GPU confirms buffer creation | Server knows GPU is ready | `compute.html` |
 | All 7 clusters init at once on first tick | No staggering, no CPU fallback | `brain-server.js` |
-| No `ParallelBrain` spawned — zero worker threads | 0% CPU when GPU connected | `brain-server.js` |
+| No `ParallelBrain` compute replicas spawned; CPU carries the authoritative sparse-CSR weights + time-sliced language-cortex teach; the equational mind-space runs in its own worker thread + WebGPU, off the main loop | CPU non-zero during teach / imagination | `brain-server.js` / `js/brain/mindspace/` |
+
+---
+
+## 10.5 Adaptive Time-Sliced Teach
+
+Every heavy full-matrix op in the CPU-side language-cortex teach path — Oja, Hebbian, anti-Hebbian, and the predictive-error propagate — is time-sliced with adaptive chunking so the Node event loop never freezes even at biological scale. `propagate` is the heaviest (it sums every row's nnz unconditionally, unlike the write ops that skip silent post-rows), and at the full 61M-cortex density a fixed chunk froze the loop 3–16s per slice until this landed.
+
+| Equation | Purpose | File |
+|----------|---------|------|
+| `chunk ← dt>60ms ? max(16384, chunk>>1) : dt<15ms ? min(CEIL, chunk<<1) : chunk` (measure each synchronous slice) | Adaptive-chunk time-slicing of Oja / Hebbian / anti-Hebbian / predictive-error propagate — each row-independent slice is timed and the chunk halves past 60ms / doubles under 15ms, converging to ~30ms slices at ANY scale; a `setImmediate` yield between slices lets `/ws` handshakes + donor frames + HTTP requests through | `js/brain/cluster/hebbian.js` (`_ojaUpdateChunked` / `_hebbianUpdateChunked` / `_antiHebbianChunked`) + `js/brain/sparse-matrix.js` (`propagateChunked`) |
+| Time-sliced binary weight save (yield between sections) | 158 MB `brain-weights.bin` writes in ~390ms wall without blocking the loop | `brain-server.js` |
 
 ---
 
@@ -609,7 +620,7 @@ All N neurons (auto-scaled to hardware via the formula below) run on GPU. Zero C
 |----------|---------|
 | `N_vram = VRAM_bytes × 0.85 / 12` (Rulkov layout: vec2<f32> state + spikes u32 = 12 bytes/neuron) | Primary VRAM bound |
 | `N_ram = RAM_bytes × 0.1 / 0.001` | Secondary bound — server RAM essentially unlimited (cluster state lives on GPU) |
-| `N_binding_ceiling = (2 GB / 8) / 0.4` | Per-cluster state buffer must fit in WebGPU maxStorageBufferBindingSize (2 GB spec minimum); cerebellum = 40% of N |
+| `N_binding_ceiling = (2 GB / 8) / 0.2` | Per-cluster state buffer must fit in WebGPU maxStorageBufferBindingSize (2 GB spec minimum); largest cluster (cortex/cerebellum) = 20% of N |
 | `N = max(1000, min(N_vram, N_ram, N_binding_ceiling))` | Combined auto-scale formula with absolute floor + binding ceiling |
 | GPU: 12 bytes/neuron (8 state vec2<f32> + 4 spike u32) | Rulkov VRAM layout |
 | Server: 9 bytes/neuron injection arrays only (cortex + amygdala text-injection paths) | RAM constraint — full cluster state lives on GPU |

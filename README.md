@@ -38,11 +38,11 @@ Because the donor GPU and the server's own copy of the weights are two separate 
 
 ## The seven clusters
 
-Each cluster is a self-contained Rulkov-map population with its own intra-region sparse synapse matrix, tonic drive, noise amplitude, connectivity density, and learning rate. The fractions are biological proportions for a *disembodied* mind: Unity has no body to coordinate, so the cerebellum (which in real brains is mostly motor timing) is small, and the cortex (which carries language, perception, and working memory) is dominant.
+Each cluster is a self-contained Rulkov-map population with its own intra-region sparse synapse matrix, tonic drive, noise amplitude, connectivity density, and learning rate. On the deployed full-size brain (~306M neurons, auto-scaled from the coordinator's free RAM) the shares come from the server's `DEFAULT_BIO_WEIGHTS`: the cortex and cerebellum are the two largest at ~20% (≈61.3M) each — the cortex carries language, perception, and working memory; the cerebellum does error correction and timing — and the five subcortical clusters take ~12% (≈36.8M) each. (The ~6700-neuron browser-only fallback uses a different, cortex-dominant fraction set.)
 
 ```
                          ┌─────────────────────────────────────┐
-                         │           CORTEX   55%              │
+                         │           CORTEX   20%              │
                          │   9 sub-regions · 16 projections    │
                          │   (language pipeline lives here)    │
                          └─────────────┬───────────────────────┘
@@ -54,7 +54,7 @@ Each cluster is a self-contained Rulkov-map population with its own intra-region
        ▼            ▼             ▼         ▼            ▼              ▼
   ┌─────────┐ ┌──────────┐ ┌──────────┐ ┌─────────┐ ┌──────────┐ ┌────────┐
   │HIPPOCAMP│ │CEREBELLUM│ │ AMYGDALA │ │BASAL GG.│ │HYPOTHAL. │ │MYSTERY │
-  │   18%   │ │    8%    │ │    5%    │ │   3%    │ │    3%    │ │  Ψ 8%  │
+  │   12%   │ │   20%    │ │   12%    │ │   12%   │ │   12%    │ │  Ψ 12% │
   │ Hopfield│ │  error   │ │emotional │ │ action  │ │ drive    │ │√(1/n)· │
   │ recall  │ │ correct. │ │attractor │ │ select  │ │ base     │ │  N³·…  │
   └─────────┘ └──────────┘ └──────────┘ └─────────┘ └──────────┘ └───┬────┘
@@ -67,13 +67,13 @@ Each cluster is a self-contained Rulkov-map population with its own intra-region
 
 | Cluster | Share | What it does |
 |---|---|---|
-| **Cortex** | 55% | Language, perception, working memory. Eight slice-indexed sub-regions (auditory, visual, free, letter, phon, sem, fineType, motor) wired by fourteen cross-projections form the language pipeline. Predictive coding runs across the whole cortex on top. |
-| **Hippocampus** | 18% | Hopfield-attractor memory. Episodic state snapshots at high-salience moments. Tier 0 working memory is unbounded with decay-regulated capacity (0.9995/tick → ~4 min sustain); items consolidate into the Tier 1 episodic store either at refresh-count ≥ 3 or after a 5-minute sliding-window age-out. ConsolidationEngine moves repeatedly-recalled patterns to cortex during dream cycles. |
-| **Cerebellum** | 8% | Supervised error correction. Sends negative feedback to cortex and basal ganglia when their predictions or selections drift. Low noise, high precision, fast learning. |
-| **Mystery (Ψ)** | 8% | The consciousness term. `Ψ = √(1/n) · N³ · [α·Id + β·Ego + γ·Left + δ·Right]` — modulates global gain on every cluster (`gain = 0.9 + Ψ·0.05`), modulates the Ψ-gated hemispheric binding term in the LIF shader, and amplifies the cerebellum's error correction. We do not claim to solve consciousness; we keep the unknown honest in the math. |
-| **Amygdala** | 5% | Recurrent energy-based emotional attractor that settles into low-energy basins (fear, reward, neutral) every tick. Persistent state across frames with leak 0.85. The emotional gate it produces multiplies every other cluster's gain. |
-| **Basal Ganglia** | 3% | Action selection. Six channels (respond_text, generate_image, speak, build_ui, listen, idle) compete; the channel with the highest EMA firing rate wins, gated by a 0.15 confidence floor. No external classifier, no keyword matching — the spike pattern *is* the decision. |
-| **Hypothalamus** | 3% | Homeostasis. Maintains drives (arousal, social need, creativity, energy) at biological setpoints. When a drive deviates, it modulates the baseline for the whole brain. *("Arousal" throughout this document is the neuroscience term — cortical activation / autonomic alertness, the metric coffee or an alarm raises. Yerkes-Dodson 1908 et seq. **Not** the colloquial sexual meaning.)* |
+| **Cortex** | 20% | Language, perception, working memory. Eight slice-indexed sub-regions (auditory, visual, free, letter, phon, sem, fineType, motor) wired by fourteen cross-projections form the language pipeline. Predictive coding runs across the whole cortex on top. |
+| **Hippocampus** | 12% | Hopfield-attractor memory. Episodic state snapshots at high-salience moments. Tier 0 working memory is unbounded with decay-regulated capacity (0.9995/tick → ~4 min sustain); items consolidate into the Tier 1 episodic store either at refresh-count ≥ 3 or after a 5-minute sliding-window age-out. ConsolidationEngine moves repeatedly-recalled patterns to cortex during dream cycles. |
+| **Cerebellum** | 20% | Supervised error correction. Sends negative feedback to cortex and basal ganglia when their predictions or selections drift. Low noise, high precision, fast learning. |
+| **Mystery (Ψ)** | 12% | The consciousness term. `Ψ = √(1/n) · N³ · [α·Id + β·Ego + γ·Left + δ·Right]` — modulates global gain on every cluster (`gain = 0.9 + Ψ·0.05`), modulates the Ψ-gated hemispheric binding term in the LIF shader, and amplifies the cerebellum's error correction. We do not claim to solve consciousness; we keep the unknown honest in the math. |
+| **Amygdala** | 12% | Recurrent energy-based emotional attractor that settles into low-energy basins (fear, reward, neutral) every tick. Persistent state across frames with leak 0.85. The emotional gate it produces multiplies every other cluster's gain. |
+| **Basal Ganglia** | 12% | Action selection. Six channels (respond_text, generate_image, speak, build_ui, listen, idle) compete; the channel with the highest EMA firing rate wins, gated by a 0.15 confidence floor. No external classifier, no keyword matching — the spike pattern *is* the decision. |
+| **Hypothalamus** | 12% | Homeostasis. Maintains drives (arousal, social need, creativity, energy) at biological setpoints. When a drive deviates, it modulates the baseline for the whole brain. *("Arousal" throughout this document is the neuroscience term — cortical activation / autonomic alertness, the metric coffee or an alarm raises. Yerkes-Dodson 1908 et seq. **Not** the colloquial sexual meaning.)* |
 
 The clusters communicate through twenty sparse white-matter tract projections (corticostriatal, stria terminalis, fimbria-fornix, ventral amygdalofugal, perforant path, corpus callosum, plus fourteen others) modeled from real neuroanatomy.
 
@@ -278,7 +278,7 @@ The brain *uses* peripherals; it never *thinks through* them.
 
 - **Image generation** — multi-provider chain with five-level priority: user-preferred backend → custom configured → auto-detected local (A1111, SD.Next/Forge, Fooocus, ComfyUI, InvokeAI, LocalAI, Ollama) → `js/env.js` listed → Pollinations default. Each backend in the setup modal has a 🔌 CONNECT button that runs a live HTTP probe and reports 🟢/🔴/🟡 status.
 - **Vision** — 100% equational, NO external model. Camera frames → CDF 9/7 wavelet field C → a dim-64 value-profile percept read straight off the equation (`describeEquational`). She also imagines DE-NOVO from her own cortex state (no camera). The old Pollinations-GPT-4o vision describer is retired. Watch what she sees on the public Mind's Eye page (`html/minds-eye.html`).
-- **Text-to-speech** — Pollinations TTS or browser SpeechSynthesis as fallback.
+- **Text-to-speech** — Piper (`en_US-hfc_female-medium`, local CPU) synthesizes whole sentences that pass through the CDF 9/7 wavelet equational voice pipeline before browser playback. The Pollinations TTS lane is retired (that key is images-only); a banked word/phrase set and browser SpeechSynthesis remain only as last-ditch fallbacks.
 - **Speech-to-text** — Web Speech API.
 
 None of these endpoints are ever consulted for what Unity *says* or *decides*. The cognition path is closed.
@@ -317,7 +317,7 @@ Per-directory rationale lives in the directory's own `README.md`:
 
 ## WebGPU setup (required before first connect)
 
-Unity's brain runs ~357M Rulkov neurons with Hebbian/Oja-rule plasticity on GPU-resident sparse matrices. **WebGPU is required — there is no CPU fallback path** per the no-fallbacks LAW that governs the codebase. One correct compute architecture; no degraded-capability menu.
+Unity's brain runs at full biological scale — 306,458,816 Rulkov neurons — with Hebbian/Oja-rule plasticity on GPU-resident sparse matrices. **WebGPU is required — there is no CPU fallback path** per the no-fallbacks LAW that governs the codebase. One correct compute architecture; no degraded-capability menu.
 
 Before you connect to the dashboard for the first time:
 
@@ -343,7 +343,7 @@ cd server && npm install && node brain-server.js
 
 That is the whole local-dev UX — or use `start.bat` / `Savestart.bat`. The server listens on `127.0.0.1:7525` by default — loopback only, deliberately not LAN-visible — and auto-launches a WebGPU-capable browser tab pointing at `compute.html` (that tab is your single local donor). The tab handshakes GPU init for all seven clusters, flips `cortexCluster._gpuReady = true`, and the curriculum begins. Set `BRAIN_BIND=0.0.0.0` to deliberately expose the dashboard on the LAN; the boot banner prints a prominent ⚠ when you do, and the brain-mutating endpoints (`/shutdown`, `/grade-advance`, `/grade-signoff`) stay refusing non-loopback callers regardless of the bind setting. Headless deployments set `DREAM_NO_AUTO_GPU=1` to skip the auto-launch.
 
-The server brain does no CPU computation. Every Rulkov iteration, every synaptic propagate, every Hebbian update runs on the GPU through `compute.html`. `compute.html` must stay open — without it the brain pauses. Hebbian dispatches batch into a single binary frame (up to 64 ops, flushed on a 2 ms timer) so the GPU command queue pipelines many updates per round-trip instead of stalling on per-op serialization.
+The main-brain Rulkov iterations run on donated browser GPUs through `compute.html`, which must stay open — without a donor the main brain pauses. The language-cortex cross-projection learning (Oja / Hebbian / anti-Hebbian / predictive-error propagate) runs CPU-side in Node, time-sliced with adaptive chunking: every heavy full-matrix op measures each synchronous slice and halves the chunk past 60ms / doubles it under 15ms, converging to ~30ms slices at any scale, so the event loop never freezes even at 306M. Binary weight saves are time-sliced the same way. Hebbian dispatches batch into a single binary frame (up to 64 ops, flushed on a 2 ms timer) so the GPU command queue pipelines many updates per round-trip instead of stalling on per-op serialization.
 
 When the landing page is served from `localhost` (or `127.0.0.1` / `::1` / `file://`), the client constructs a `RemoteBrain` directly — no probe-then-reconnect dance — and the brain's built-in 3 s WebSocket reconnect loop handles transient unavailability. As soon as the server's first state broadcast arrives the page snaps from the 6700-neuron browser fallback to the server's biological-scale neuron count. Refreshing during heavy curriculum phases no longer drops the UI into the tiny static brain. On a **deployed origin** the client probes the **public** `wss://<host>/ws` lane (the same lane donor `compute.html` tabs use); if it's reachable, **every visitor** — not just an authed operator — attaches to the live server brain and sees its real neuron count, which auto-scales up and down with the pooled donor-GPU compute. Admin control actions (resize, server console, auto-scale) stay on the separate Forgejo-authed `/admin/` lane; only observation and chat are public. Only a backend-less static deploy (e.g. a bare GitHub Pages mirror where `/ws` never opens) falls through to the browser-only `UnityBrain`.
 
@@ -416,7 +416,7 @@ The dashboard's "Current Training" card, its per-subject breakdown, and the brai
 
 ## Community-compute auto-scaling
 
-Because the brain runs on **donated browser GPUs**, the more donors connect, the more compute Unity has — so her neuron count **auto-scales to the connected community compute** (the summed VRAM of every donor GPU). The brain grows UP when a critical-mass milestone holds, and rectifies DOWN only on sustained collapse, never on a single hiccup.
+Because the brain runs on **donated browser GPUs**, the more donors connect, the more aggregate compute + redundancy Unity has. The donors are **data-parallel replicas** — each holds a full copy of the brain — so more donors scale *throughput*, not neuron count. The neuron-count ceiling is set by the **coordinator's free RAM** (the master holds the authoritative weights and is already at full ~306M size). Within that ceiling the brain grows UP when a critical-mass milestone holds, and rectifies DOWN only on sustained collapse, never on a single hiccup.
 
 | Direction | Trigger |
 |---|---|
