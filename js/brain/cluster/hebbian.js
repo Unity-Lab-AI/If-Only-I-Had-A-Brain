@@ -111,6 +111,9 @@ export const CLUSTER_HEBBIAN_MIXIN = {
       }
       const _isMotorEmissionProj = (name === 'sem_to_motor' || name === 'sem_to_word_motor');
       const lrEff = _isMotorEmissionProj ? lr * this._smLrScale : lr;
+      // Loop-pin breadcrumb — names the projection the teach path is inside
+      // when the [EventLoop] BLOCKED reporter fires (unattributed-pin hunt).
+      this._teachCrumb = 'xHebbian:' + name; this._teachCrumbAt = Date.now();
 
       // Build the K-scales bundle ONCE per-projection per-call. Passes
       // K.4 hub-mask + K.7 gamma-scale + K.9 per-layer plasticity through
@@ -293,7 +296,7 @@ export const CLUSTER_HEBBIAN_MIXIN = {
   async _ojaUpdateChunked(proj, preF, postF, lr, ojaOpts) {
     const rows = proj.rows | 0;
     if (!this._ojaChunkRows) this._ojaChunkRows = 131072;
-    if (rows <= this._ojaChunkRows) { proj.ojaUpdate(preF, postF, lr, ojaOpts); return; }
+    if (rows <= this._ojaChunkRows) { this._teachCrumb = 'ojaSingle:' + rows + 'r'; this._teachCrumbAt = Date.now(); proj.ojaUpdate(preF, postF, lr, ojaOpts); return; }
     const yieldMacro = (typeof setImmediate === 'function')
       ? () => new Promise((r) => setImmediate(r))
       : () => new Promise((r) => setTimeout(r, 0));
@@ -301,6 +304,7 @@ export const CLUSTER_HEBBIAN_MIXIN = {
       const chunk = this._ojaChunkRows;
       const re = Math.min(rs + chunk, rows);
       const t0 = Date.now();
+      this._teachCrumb = 'ojaSlice:' + rs + '/' + rows; this._teachCrumbAt = t0;
       proj.ojaUpdate(preF, postF, lr, { ...(ojaOpts || {}), rowStart: rs, rowEnd: re });
       const dt = Date.now() - t0;
       rs = re;
@@ -317,7 +321,7 @@ export const CLUSTER_HEBBIAN_MIXIN = {
   async _antiHebbianChunked(mat, preF, postF, lr) {
     const rows = mat.rows | 0;
     if (!this._ojaChunkRows) this._ojaChunkRows = 131072;
-    if (rows <= this._ojaChunkRows) { mat.antiHebbianUpdate(preF, postF, lr); return; }
+    if (rows <= this._ojaChunkRows) { this._teachCrumb = 'antiSingle:' + rows + 'r'; this._teachCrumbAt = Date.now(); mat.antiHebbianUpdate(preF, postF, lr); return; }
     const yieldMacro = (typeof setImmediate === 'function')
       ? () => new Promise((r) => setImmediate(r))
       : () => new Promise((r) => setTimeout(r, 0));
@@ -325,6 +329,7 @@ export const CLUSTER_HEBBIAN_MIXIN = {
       const chunk = this._ojaChunkRows;
       const re = Math.min(rs + chunk, rows);
       const t0 = Date.now();
+      this._teachCrumb = 'antiSlice:' + rs + '/' + rows; this._teachCrumbAt = t0;
       mat.antiHebbianUpdate(preF, postF, lr, { rowStart: rs, rowEnd: re });
       const dt = Date.now() - t0;
       rs = re;
@@ -676,6 +681,7 @@ export const CLUSTER_HEBBIAN_MIXIN = {
       // slices produces an IDENTICAL result while letting HTTP/WS work get an
       // event-loop slot. Below the chunk threshold _ojaUpdateChunked runs a
       // single synchronous pass (no yield overhead).
+      this._teachCrumb = 'intraOja:' + (this.size | 0) + 'n'; this._teachCrumbAt = Date.now();
       await this._ojaUpdateChunked(this.synapses, pre, post, lr);
     } else if (this._sparsePool && this._sparsePool.ready) {
       try {
@@ -844,6 +850,7 @@ export const CLUSTER_HEBBIAN_MIXIN = {
       // #37 — CHUNK the intra-synapse anti-Hebbian like the Oja path above so
       // the contrastive push-pull pass doesn't block the event loop at
       // biological scale (same residual [EventLoop] BLOCKED cause).
+      this._teachCrumb = 'intraAnti:' + (this.size | 0) + 'n'; this._teachCrumbAt = Date.now();
       await this._antiHebbianChunked(this.synapses, pre, post, lr);
     } else if (this._sparsePool && this._sparsePool.ready && typeof this._sparsePool.antiHebbianUpdate === 'function') {
       try {

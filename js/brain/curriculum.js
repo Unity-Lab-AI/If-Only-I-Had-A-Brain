@@ -2643,7 +2643,7 @@ export class Curriculum {
           this._hb(`[Curriculum] ⤳ PHASE SKIPPED — ${phaseKey} (already passed; resumed from persisted passedPhases — weights carried forward via brain-weights.bin)`);
           return;
         }
-        if (cl) cl._activePhase = { name, startAt: Date.now() };
+        if (cl) { const _n = Date.now(); cl._activePhase = { name, startAt: _n }; cl._teachCrumb = 'enter:' + name; cl._teachCrumbAt = _n; }
         try {
           const result = await original(...args);
           // Persist ONLY outermost phases. Nested primitives never
@@ -2708,7 +2708,7 @@ export class Curriculum {
       this[name] = async (...args) => {
         const cl = this.cluster;
         const prev = cl ? cl._activePhase : null;
-        if (cl) cl._activePhase = { name, startAt: Date.now() };
+        if (cl) { const _n = Date.now(); cl._activePhase = { name, startAt: _n }; cl._teachCrumb = 'enter:' + name; cl._teachCrumbAt = _n; }
         try {
           return await original(...args);
         } finally {
@@ -10511,10 +10511,12 @@ export class Curriculum {
       }
     };
     await _yieldIfHot();
+    cluster._teachCrumb = 'teachHeb:cross'; cluster._teachCrumbAt = Date.now();
     await cluster._crossRegionHebbian(lr, opts);
     await _yieldIfHot();
     if (opts.skipIntraSynapses || opts.skipIntraHebbian) return;
     if (typeof cluster.intraSynapsesHebbian === 'function') {
+      cluster._teachCrumb = 'teachHeb:intra'; cluster._teachCrumbAt = Date.now();
       await cluster.intraSynapsesHebbian(cluster.lastSpikes, cluster.lastSpikes, lr);
     } else if (cluster.synapses && typeof cluster.synapses.hebbianUpdate === 'function') {
       cluster.synapses.hebbianUpdate(cluster.lastSpikes, cluster.lastSpikes, lr);
@@ -10622,6 +10624,7 @@ export class Curriculum {
       // buffer eliminates per-call allocation. The fill(0) inside
       // SparseMatrix.propagate handles stale-tail safety so we don't
       // need to zero it here.
+      cluster._teachCrumb = 'predErr:propagate:' + size + 'n'; cluster._teachCrumbAt = Date.now();
       const predicted = cluster.synapses.propagate(target, this._predictPropagateScratch);
       if (!predicted || predicted.length === 0) return;
       let maxP = 1e-6;
@@ -10638,6 +10641,7 @@ export class Curriculum {
         error[i] = e;
       }
       if (typeof cluster.synapses.hebbianUpdate === 'function') {
+        cluster._teachCrumb = 'predErr:hebbSync:' + size + 'n'; cluster._teachCrumbAt = Date.now();
         cluster.synapses.hebbianUpdate(target, error, lr * 0.3);
       }
     } catch { /* non-fatal — predictive correction is best-effort */ }
@@ -10694,6 +10698,7 @@ export class Curriculum {
     // Build the cross-bucket post vector — 1 where motor fires outside
     // the primary bucket, 0 everywhere else (including primary bucket,
     // non-motor regions, and silent motor positions).
+    cluster._teachCrumb = 'latInhib:alloc:' + (cluster.size | 0) + 'n'; cluster._teachCrumbAt = Date.now();
     const crossBucketPost = new Uint8Array(cluster.size);
     let crossCount = 0;
     for (let i = 0; i < motorSize; i++) {
@@ -13442,6 +13447,7 @@ export class Curriculum {
         // same trained mapping. Motor side stays as raw GloVe because
         // motor-region tiling decodes via letter-bucket argmax, not
         // identity discrimination.
+        cluster._teachCrumb = 'assoc:pattern'; cluster._teachCrumbAt = Date.now();
         const inEmb = this._dictionaryPatternFor(inputWord);
         const outEmb = sharedEmbeddings && typeof sharedEmbeddings.getEmbedding === 'function'
           ? sharedEmbeddings.getEmbedding(outputWord) : null;
@@ -13550,6 +13556,7 @@ export class Curriculum {
       // mostly fight the rescale + top-K-prune that fires post-loop.
       if (rep >= 1 && pairs.length >= 2) {
         try {
+          cluster._teachCrumb = 'assoc:sepProbe'; cluster._teachCrumbAt = Date.now();
           const quickSep = this._checkSemBasinSeparation(pairs, {
             semRegion, motorRegion, overloadMax, sampleSize: 4,
             semWTA, semTopK,
@@ -13574,6 +13581,7 @@ export class Curriculum {
       }
     }
     this._convergenceStreak = 0;
+    cluster._teachCrumb = 'assoc:postPrune'; cluster._teachCrumbAt = Date.now();
     // Per-phase top-K-per-row pruning of sem_to_motor + motor_to_sem.
     // After the rep loop, keep only each output neuron's `pruneTopK`
     // strongest inputs and zero the rest. At sparse-init densities
