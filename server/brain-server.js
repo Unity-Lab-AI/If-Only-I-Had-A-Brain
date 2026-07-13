@@ -8324,7 +8324,12 @@ const _lagTimer = setInterval(() => {
     const _crumb = (cc && cc._teachCrumb)
       ? cc._teachCrumb + ' +' + (cc._teachCrumbAt ? (Date.now() - cc._teachCrumbAt) : '?') + 'ms'
       : '(none)';
-    console.warn(`[EventLoop] BLOCKED ${lagMs.toFixed(0)}ms — /ws handshakes + donor frames stalled this long. context: phase=${phase} cell=${cell} crumb=${_crumb} donors=${donors} consolidationInFlight=${consol} innerVoiceInFlight=${innerVoice} replicaSyncing=${syncing}`);
+    // The crumb that was HELD longest recently — survives the post-block
+    // overwrite race the live crumb loses (see _setCrumb in hebbian.js).
+    const _lastLong = (cc && cc._lastLongCrumb && cc._lastLongCrumbAt && (Date.now() - cc._lastLongCrumbAt) < 30000)
+      ? cc._lastLongCrumb + ' (' + (Date.now() - cc._lastLongCrumbAt) + 'ms ago)'
+      : '(none)';
+    console.warn(`[EventLoop] BLOCKED ${lagMs.toFixed(0)}ms — /ws handshakes + donor frames stalled this long. context: phase=${phase} cell=${cell} crumb=${_crumb} lastLong=${_lastLong} donors=${donors} consolidationInFlight=${consol} innerVoiceInFlight=${innerVoice} replicaSyncing=${syncing}`);
   }
 }, _LAG_SAMPLE_MS);
 wss.on('close', () => clearInterval(_lagTimer));
