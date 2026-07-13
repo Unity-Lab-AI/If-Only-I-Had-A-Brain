@@ -58,6 +58,17 @@ if ! git clone --depth 1 --branch "$GIT_BRANCH" "$GIT_REMOTE" "$TMP/src" >> "$LO
   exit 1
 fi
 
+# Capture the DEPLOY IDENTITY from the exact tree we just cloned. This is the
+# authoritative "which code is about to run" stamp — written into the backend
+# AFTER the overlay so the freshly-booted server reads it and surfaces it on
+# /public-state.json + the dashboard header. Independent of the version.js
+# BUILD stamp (which is push-time and can go stale), so it never lies about
+# what actually deployed.
+DEPLOYED_SHA="$(git -C "$TMP/src" rev-parse HEAD 2>/dev/null || echo unknown)"
+DEPLOYED_SHORT="$(git -C "$TMP/src" rev-parse --short=8 HEAD 2>/dev/null || echo unknown)"
+DEPLOYED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+log "deploy identity: ${DEPLOYED_SHORT} (${GIT_BRANCH}) sha=${DEPLOYED_SHA}"
+
 # Overlay code, PRESERVING runtime state + secrets + node_modules. --delete
 # removes stale files EXCEPT the excluded runtime/secret paths.
 #   ⚠ community-tier.json is LOAD-BEARING state: the DF.7 milestone gate writes
@@ -97,8 +108,18 @@ rsync -a --delete \
   --exclude 'server/visual-memory*.json' \
   --exclude 'pollinations-user.json' \
   --exclude 'user.json' \
+  --exclude 'deployed-build.json' \
+  --exclude 'server/deployed-build.json' \
   --exclude '.claude' \
   "$TMP/src/" "$BACKEND_DIR/" >> "$LOG" 2>&1 || { log "FATAL — rsync overlay failed; aborting."; exit 1; }
+
+# Stamp the deploy identity into the backend (AFTER overlay so --delete can't
+# nuke it; excluded above so a partial future deploy leaves the last-good stamp).
+printf '{"sha":"%s","short":"%s","branch":"%s","deployedAt":"%s"}\n' \
+  "$DEPLOYED_SHA" "$DEPLOYED_SHORT" "$GIT_BRANCH" "$DEPLOYED_AT" \
+  > "$BACKEND_DIR/server/deployed-build.json" 2>>"$LOG" \
+  && log "wrote server/deployed-build.json — server will surface ${DEPLOYED_SHORT} on /public-state.json + dashboard." \
+  || log "WARN — could not write deployed-build.json (non-fatal; server falls back to git/unknown)."
 
 # Re-install deps if package.json changed (best-effort, non-fatal).
 ( cd "$BACKEND_DIR/server" && npm install --omit=dev >> "$LOG" 2>&1 ) || log "npm install skipped/failed (non-fatal)"

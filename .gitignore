@@ -91,6 +91,9 @@ yarn-error.log*
 package-lock.json
 
 # === Server Brain Data ===
+# Deploy identity stamp — written at deploy time by deploy/self-update.sh
+# (or resolved from git on a dev box). Per-deploy runtime artifact, never committed.
+server/deployed-build.json
 server/brain-weights*.json
 server/brain-weights*.bin
 server/conversations.json
