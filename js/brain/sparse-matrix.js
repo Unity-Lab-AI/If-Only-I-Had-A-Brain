@@ -624,15 +624,40 @@ export class SparseMatrix {
     let I;
     if (opts.outBuf && opts.outBuf.length === rows) { I = opts.outBuf; I.fill(0); }
     else I = new Float64Array(rows);
-    const CHUNK = Math.max(1, opts.chunkRows || 250000);
-    for (let base = 0; base < rows; base += CHUNK) {
-      const end = Math.min(rows, base + CHUNK);
+    // TIME-ADAPTIVE slice — the same self-converging measure-and-halve shape as
+    // the cluster's _ojaUpdateChunked. The old FIXED chunk (opts.chunkRows, no
+    // adaptation) ran multiple seconds PER SLICE at the full-size cortex (61M
+    // rows, dense small-world nnz): propagate sums every row's nnz UNconditionally
+    // (unlike the write ops, which skip silent post-rows), so it is the heaviest
+    // teach op. A fixed 65536-row slice at that density produced the 3-16s
+    // [EventLoop] BLOCKED carpet that named _teachPredictiveError (the only teach
+    // op that propagates). opts.chunkRows is now the STARTING + ceiling chunk; each
+    // synchronous slice is measured and the chunk halves past 60ms (floor 16384) /
+    // doubles under 15ms (cap = ceiling), converging every propagate to ~30ms
+    // slices at ANY scale. Rows are independent, so a sliced pass is bit-for-bit
+    // identical to one whole-matrix pass. State persists on the matrix instance so
+    // it converges once and stays converged across the millions of per-pair calls.
+    const CEIL = Math.max(1, opts.chunkRows || 250000);
+    const FLOOR = Math.min(CEIL, 16384);
+    if (!this._propChunkRows || this._propChunkRows > CEIL) this._propChunkRows = CEIL;
+    const yieldMacro = (typeof setImmediate === 'function')
+      ? () => new Promise((r) => setImmediate(r))
+      : () => new Promise((r) => setTimeout(r, 0));
+    for (let base = 0; base < rows; ) {
+      const chunk = this._propChunkRows;
+      const end = Math.min(rows, base + chunk);
+      const t0 = Date.now();
       for (let i = base; i < end; i++) {
         let sum = 0; const start = rowPtr[i], e = rowPtr[i + 1];
         for (let k = start; k < e; k++) sum += values[k] * spikes[colIdx[k]];
         I[i] = sum;
       }
-      if (end < rows) await new Promise((r) => setImmediate(r));
+      const dt = Date.now() - t0;
+      base = end;
+      if (dt > 60 && chunk > FLOOR) this._propChunkRows = Math.max(FLOOR, chunk >> 1);
+      else if (dt < 15 && chunk < CEIL) this._propChunkRows = Math.min(CEIL, chunk << 1);
+      if (dt > 2000) console.warn(`[SparseMatrix] SLOW propagate slice: ${dt}ms for ${chunk.toLocaleString()} rows — chunk auto-halved; repeated hits name this matrix as the propagate freeze culprit.`);
+      if (end < rows) await yieldMacro();
     }
     return I;
   }
