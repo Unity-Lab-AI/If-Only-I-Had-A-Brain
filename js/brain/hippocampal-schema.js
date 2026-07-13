@@ -911,6 +911,24 @@ export class Tier3Store {
     return toRemove.length;
   }
 
+  // FRESH-WALK RESET (Gee 2026-07-12) — keep ONLY the anchors whose label is
+  // in the ORIGINAL persona seed list; delete every training-PROMOTED anchor
+  // (consolidation promotions that got persisted into identity-core.json and
+  // survived the wipe because the file is never auto-cleared). Called at boot
+  // ONLY when this boot took a fresh-wipe path — a Savestart resume keeps the
+  // promoted anchors. Returns count removed.
+  pruneToSeedLabels(seedList = IDENTITY_SEED_LIST) {
+    const keep = new Set((Array.isArray(seedList) ? seedList : []).map(s => s && s.label).filter(Boolean));
+    if (keep.size === 0) return 0;   // never strip to nothing if the seed list is unavailable
+    const toRemove = [];
+    for (const [id, s] of this.identitySchemas) {
+      const label = s && s.label ? s.label : '';
+      if (!keep.has(label)) toRemove.push(id);
+    }
+    for (const id of toRemove) this.identitySchemas.delete(id);
+    return toRemove.length;
+  }
+
   // Called by ConsolidationEngine each pass. Iterates SchemaStore.schemas
   // looking for any that meet shouldPromoteToTier3() criteria and promotes
   // them into this Tier3Store, removing from the source SchemaStore.
