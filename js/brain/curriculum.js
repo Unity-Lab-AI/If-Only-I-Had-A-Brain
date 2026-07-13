@@ -10615,9 +10615,17 @@ export class Curriculum {
       }
       const target = this._predictTargetScratch;
       const error = this._predictErrorScratch;
+      // SPAN A (unsliced, O(cluster.size)) — two full-buffer fills + the spike
+      // copy. Silent-unless-slow probe (same >threshold shape as the chunked
+      // slice warns): if this O(size) block itself runs long it names itself in
+      // the log, so the freeze stops being a guess. Uses performance.now (already
+      // the tick clock). Threshold high enough to stay quiet on a healthy loop.
+      const _tA0 = (typeof performance !== 'undefined' ? performance.now() : Date.now());
       target.fill(0);
       error.fill(0);
       for (let i = 0; i < size; i++) target[i] = cluster.lastSpikes[i] ? 1 : 0;
+      const _tA1 = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+      if (_tA1 - _tA0 > 1500) console.warn(`[teachPredictiveError] SPAN A (fills+copy) ${((_tA1 - _tA0) | 0)}ms over ${size.toLocaleString()} elems — UNSLICED O(cluster.size); this span is a freeze source (scope to active region).`);
       // Predicted next-step via intra-matrix propagate. Pooled output
       // buffer eliminates per-call allocation. The fill(0) inside
       // SparseMatrix.propagate handles stale-tail safety so we don't
@@ -10632,6 +10640,9 @@ export class Curriculum {
         ? await cluster.synapses.propagateChunked(target, { outBuf: this._predictPropagateScratch, chunkRows: 65536 })
         : cluster.synapses.propagate(target, this._predictPropagateScratch);
       if (!predicted || predicted.length === 0) return;
+      // SPAN C (unsliced, O(predicted.length)) — maxP scan + error compute.
+      // Same silent-unless-slow probe as SPAN A.
+      const _tC0 = (typeof performance !== 'undefined' ? performance.now() : Date.now());
       let maxP = 1e-6;
       for (let i = 0; i < predicted.length; i++) {
         const v = predicted[i];
@@ -10645,6 +10656,8 @@ export class Curriculum {
         else if (e < -1) e = -1;
         error[i] = e;
       }
+      const _tC1 = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+      if (_tC1 - _tC0 > 1500) console.warn(`[teachPredictiveError] SPAN C (maxP+error) ${((_tC1 - _tC0) | 0)}ms over ${predicted.length.toLocaleString()} elems — UNSLICED; this span is a freeze source (scope to active region).`);
       // TIME-SLICED — the predictive-error correction write, also once per
       // pair over the full intra matrix. Route through the adaptive slicer
       // (yields between chunks) like every other Hebbian write in the path;
