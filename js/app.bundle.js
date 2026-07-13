@@ -559,10 +559,12 @@ var init_sparse_matrix = __esm({
       /**
        * Hebbian: ΔW = η · post · pre
        */
-      hebbianUpdate(preSpikes, postSpikes, lr) {
+      hebbianUpdate(preSpikes, postSpikes, lr, opts) {
         const { rows, values, colIdx, rowPtr, wMin, wMax } = this;
         if (!values || !rowPtr || !colIdx) return;
-        for (let i = 0; i < rows; i++) {
+        const rowStart = opts && typeof opts.rowStart === "number" ? Math.max(0, opts.rowStart) : 0;
+        const rowEnd = opts && typeof opts.rowEnd === "number" ? Math.min(rows, opts.rowEnd) : rows;
+        for (let i = rowStart; i < rowEnd; i++) {
           if (!postSpikes[i]) continue;
           const scaled = lr * postSpikes[i];
           const start = rowPtr[i];
@@ -53454,6 +53456,31 @@ var CLUSTER_HEBBIAN_MIXIN = {
       await yieldMacro();
     }
   },
+  // TIME-SLICED — chunked bare-Hebbian write (the predictive-error delta
+  // rule in _teachPredictiveError). Same adaptive slicing + shared chunk
+  // state as _ojaUpdateChunked; row-independent so identical math. Fires
+  // once per pair over the full intra matrix — unsliced it stacked into
+  // ~20s stalls on multi-pair seed words (e.g. "minus").
+  async _hebbianUpdateChunked(mat, preF, postF, lr) {
+    const rows = mat.rows | 0;
+    if (!this._ojaChunkRows) this._ojaChunkRows = 65536;
+    if (rows <= 65536) {
+      mat.hebbianUpdate(preF, postF, lr);
+      return;
+    }
+    const yieldMacro = typeof setImmediate === "function" ? () => new Promise((r) => setImmediate(r)) : () => new Promise((r) => setTimeout(r, 0));
+    for (let rs = 0; rs < rows; ) {
+      const chunk = this._ojaChunkRows;
+      const re = Math.min(rs + chunk, rows);
+      const t0 = Date.now();
+      mat.hebbianUpdate(preF, postF, lr, { rowStart: rs, rowEnd: re });
+      const dt = Date.now() - t0;
+      rs = re;
+      if (dt > 60 && chunk > 16384) this._ojaChunkRows = Math.max(16384, chunk >> 1);
+      else if (dt < 15 && chunk < 65536) this._ojaChunkRows = chunk << 1;
+      await yieldMacro();
+    }
+  },
   // #37 + TIME-SLICED — chunked CPU anti-Hebbian; same adaptive ~30ms
   // slicing as _ojaUpdateChunked (shared chunk-size state so both paths
   // converge together). Identical math; row-independent.
@@ -100405,7 +100432,7 @@ var Curriculum = class _Curriculum {
       target.fill(0);
       error.fill(0);
       for (let i = 0; i < size; i++) target[i] = cluster.lastSpikes[i] ? 1 : 0;
-      const predicted = cluster.synapses.propagate(target, this._predictPropagateScratch);
+      const predicted = typeof cluster.synapses.propagateChunked === "function" ? await cluster.synapses.propagateChunked(target, { outBuf: this._predictPropagateScratch, chunkRows: 65536 }) : cluster.synapses.propagate(target, this._predictPropagateScratch);
       if (!predicted || predicted.length === 0) return;
       let maxP = 1e-6;
       for (let i = 0; i < predicted.length; i++) {
@@ -100420,7 +100447,9 @@ var Curriculum = class _Curriculum {
         else if (e < -1) e = -1;
         error[i] = e;
       }
-      if (typeof cluster.synapses.hebbianUpdate === "function") {
+      if (typeof cluster._hebbianUpdateChunked === "function") {
+        await cluster._hebbianUpdateChunked(cluster.synapses, target, error, lr * 0.3);
+      } else if (typeof cluster.synapses.hebbianUpdate === "function") {
         cluster.synapses.hebbianUpdate(target, error, lr * 0.3);
       }
     } catch {

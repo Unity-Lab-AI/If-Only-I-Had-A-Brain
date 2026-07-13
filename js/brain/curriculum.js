@@ -10622,7 +10622,15 @@ export class Curriculum {
       // buffer eliminates per-call allocation. The fill(0) inside
       // SparseMatrix.propagate handles stale-tail safety so we don't
       // need to zero it here.
-      const predicted = cluster.synapses.propagate(target, this._predictPropagateScratch);
+      // TIME-SLICED — fires once PER PAIR over the full intra-synapse matrix
+      // (349k rows / 10.5M nnz). Synchronous propagate() stacked into ~20s
+      // stalls on multi-pair words during the seed (e.g. "minus" 6 pairs ×
+      // multi-def). propagateChunked is bit-for-bit identical (rows are
+      // independent) but yields the loop every chunk. Fall back to sync if
+      // the chunked variant is unavailable.
+      const predicted = (typeof cluster.synapses.propagateChunked === 'function')
+        ? await cluster.synapses.propagateChunked(target, { outBuf: this._predictPropagateScratch, chunkRows: 65536 })
+        : cluster.synapses.propagate(target, this._predictPropagateScratch);
       if (!predicted || predicted.length === 0) return;
       let maxP = 1e-6;
       for (let i = 0; i < predicted.length; i++) {
@@ -10637,7 +10645,13 @@ export class Curriculum {
         else if (e < -1) e = -1;
         error[i] = e;
       }
-      if (typeof cluster.synapses.hebbianUpdate === 'function') {
+      // TIME-SLICED — the predictive-error correction write, also once per
+      // pair over the full intra matrix. Route through the adaptive slicer
+      // (yields between chunks) like every other Hebbian write in the path;
+      // identical math. Fall back to the direct sync call if unavailable.
+      if (typeof cluster._hebbianUpdateChunked === 'function') {
+        await cluster._hebbianUpdateChunked(cluster.synapses, target, error, lr * 0.3);
+      } else if (typeof cluster.synapses.hebbianUpdate === 'function') {
         cluster.synapses.hebbianUpdate(target, error, lr * 0.3);
       }
     } catch { /* non-fatal — predictive correction is best-effort */ }
