@@ -53432,9 +53432,12 @@ var CLUSTER_HEBBIAN_MIXIN = {
   // single synchronous pass (no yield overhead).
   async _ojaUpdateChunked(proj, preF, postF, lr, ojaOpts) {
     const rows = proj.rows | 0;
-    if (!this._ojaChunkRows) this._ojaChunkRows = 131072;
-    if (rows <= this._ojaChunkRows) {
+    if (!this._ojaChunkRows) this._ojaChunkRows = 65536;
+    if (rows <= 65536) {
+      const _t0 = Date.now();
       proj.ojaUpdate(preF, postF, lr, ojaOpts);
+      const _dt = Date.now() - _t0;
+      if (_dt > 2e3) console.warn(`[Cluster ${this.name}] SLOW single-pass Oja: ${_dt}ms for ${rows.toLocaleString()} rows (nnz=${proj.nnz ?? "?"}) \u2014 under the chunk threshold so it never sliced; this matrix is a loop-pin culprit.`);
       return;
     }
     const yieldMacro = typeof setImmediate === "function" ? () => new Promise((r) => setImmediate(r)) : () => new Promise((r) => setTimeout(r, 0));
@@ -53446,7 +53449,7 @@ var CLUSTER_HEBBIAN_MIXIN = {
       const dt = Date.now() - t0;
       rs = re;
       if (dt > 60 && chunk > 16384) this._ojaChunkRows = Math.max(16384, chunk >> 1);
-      else if (dt < 15 && chunk < 524288) this._ojaChunkRows = chunk << 1;
+      else if (dt < 15 && chunk < 65536) this._ojaChunkRows = chunk << 1;
       if (dt > 2e3) console.warn(`[Cluster ${this.name}] SLOW Hebbian slice: ${dt}ms for ${chunk.toLocaleString()} rows (nnz-dense projection) \u2014 chunk auto-halved; if this repeats, this projection is the freeze culprit.`);
       await yieldMacro();
     }
@@ -53456,9 +53459,12 @@ var CLUSTER_HEBBIAN_MIXIN = {
   // converge together). Identical math; row-independent.
   async _antiHebbianChunked(mat, preF, postF, lr) {
     const rows = mat.rows | 0;
-    if (!this._ojaChunkRows) this._ojaChunkRows = 131072;
-    if (rows <= this._ojaChunkRows) {
+    if (!this._ojaChunkRows) this._ojaChunkRows = 65536;
+    if (rows <= 65536) {
+      const _t0 = Date.now();
       mat.antiHebbianUpdate(preF, postF, lr);
+      const _dt = Date.now() - _t0;
+      if (_dt > 2e3) console.warn(`[Cluster ${this.name}] SLOW single-pass anti-Hebbian: ${_dt}ms for ${rows.toLocaleString()} rows (nnz=${mat.nnz ?? "?"}) \u2014 under the chunk threshold so it never sliced; this matrix is a loop-pin culprit.`);
       return;
     }
     const yieldMacro = typeof setImmediate === "function" ? () => new Promise((r) => setImmediate(r)) : () => new Promise((r) => setTimeout(r, 0));
@@ -53470,7 +53476,7 @@ var CLUSTER_HEBBIAN_MIXIN = {
       const dt = Date.now() - t0;
       rs = re;
       if (dt > 60 && chunk > 16384) this._ojaChunkRows = Math.max(16384, chunk >> 1);
-      else if (dt < 15 && chunk < 524288) this._ojaChunkRows = chunk << 1;
+      else if (dt < 15 && chunk < 65536) this._ojaChunkRows = chunk << 1;
       if (dt > 2e3) console.warn(`[Cluster ${this.name}] SLOW anti-Hebbian slice: ${dt}ms for ${chunk.toLocaleString()} rows \u2014 chunk auto-halved; repeated hits name this matrix as the freeze culprit.`);
       await yieldMacro();
     }
