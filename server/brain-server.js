@@ -8298,6 +8298,74 @@ const _LAG_SAMPLE_MS = 1000;
 const _LAG_WARN_MS = Number(process.env.DREAM_LOOP_LAG_WARN_MS) > 0
   ? Number(process.env.DREAM_LOOP_LAG_WARN_MS)
   : 250;
+// LOOP-PIN CPU PROFILER — crumb v2 proved the teach path is PARKED at an
+// await when the giant pins fire (lastLong=enter:_teachHebbian held ~= the
+// BLOCKED duration, and everything between that crumb and the next is
+// awaits), so the pinner is whatever the event queue runs while teach
+// yields — invisible to breadcrumbs. Definitive instrument: after 3
+// BLOCKED>2s within 5min, run ONE 30s inspector CPU profile and log the
+// top self-time functions (name + file:line + %); the full .cpuprofile is
+// written next to the server for DevTools. One profile per 30min;
+// DREAM_PIN_PROFILE=0 disables. Sampling overhead only during the 30s window.
+let _pinLagHits = [];
+let _pinProfileLastAt = 0;
+let _pinProfileRunning = false;
+function _pinProfilerMaybe(lagMs) {
+  if (process.env.DREAM_PIN_PROFILE === '0') return;
+  if (lagMs < 2000) return;
+  const now = Date.now();
+  _pinLagHits = _pinLagHits.filter(t => now - t < 300000);
+  _pinLagHits.push(now);
+  if (_pinLagHits.length < 3) return;
+  if (_pinProfileRunning || (now - _pinProfileLastAt) < 1800000) return;
+  _pinProfileRunning = true;
+  _pinProfileLastAt = now;
+  try {
+    const inspector = require('inspector');
+    const session = new inspector.Session();
+    session.connect();
+    console.warn('[PinProfiler] 3+ BLOCKED>2s within 5min — starting a 30s CPU profile to NAME the pinner (one-shot, 30min throttle).');
+    session.post('Profiler.enable', () => {
+      session.post('Profiler.start', () => {
+        setTimeout(() => {
+          session.post('Profiler.stop', (err, res) => {
+            try {
+              const profile = res && res.profile;
+              if (err || !profile) { console.warn('[PinProfiler] profile failed:', err && err.message); return; }
+              const byFn = new Map();
+              let total = 0;
+              for (const node of profile.nodes) {
+                const hits = node.hitCount | 0;
+                if (!hits) continue;
+                total += hits;
+                const cf = node.callFrame || {};
+                const url = (cf.url || '').replace(/^.*[\\/]/, '');
+                const key = (cf.functionName || '(anonymous)') + ' @ ' + url + ':' + ((cf.lineNumber | 0) + 1);
+                byFn.set(key, (byFn.get(key) || 0) + hits);
+              }
+              const top = [...byFn.entries()].sort((a, b) => b[1] - a[1]).slice(0, 12);
+              console.warn('[PinProfiler] 30s profile done — ' + total + ' samples. TOP SELF-TIME (the pinner is at the top):');
+              for (const [key, hits] of top) {
+                console.warn('[PinProfiler]   ' + ((hits / total) * 100).toFixed(1) + '%  ' + key);
+              }
+              try {
+                const p = path.join(__dirname, 'loop-pin-' + Date.now() + '.cpuprofile');
+                fs.writeFileSync(p, JSON.stringify(profile));
+                console.warn('[PinProfiler] full profile written: ' + p + ' (Chrome DevTools > Performance > load profile).');
+              } catch { /* disk write best-effort */ }
+            } finally {
+              try { session.disconnect(); } catch { /* nf */ }
+              _pinProfileRunning = false;
+            }
+          });
+        }, 30000);
+      });
+    });
+  } catch (e) {
+    console.warn('[PinProfiler] unavailable:', e && e.message);
+    _pinProfileRunning = false;
+  }
+}
 let _lagAnchor = process.hrtime.bigint();
 const _lagTimer = setInterval(() => {
   const now = process.hrtime.bigint();
@@ -8330,6 +8398,7 @@ const _lagTimer = setInterval(() => {
       ? cc._lastLongCrumb + ' (' + (Date.now() - cc._lastLongCrumbAt) + 'ms ago)'
       : '(none)';
     console.warn(`[EventLoop] BLOCKED ${lagMs.toFixed(0)}ms — /ws handshakes + donor frames stalled this long. context: phase=${phase} cell=${cell} crumb=${_crumb} lastLong=${_lastLong} donors=${donors} consolidationInFlight=${consol} innerVoiceInFlight=${innerVoice} replicaSyncing=${syncing}`);
+    _pinProfilerMaybe(lagMs);
   }
 }, _LAG_SAMPLE_MS);
 wss.on('close', () => clearInterval(_lagTimer));
