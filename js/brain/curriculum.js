@@ -12163,7 +12163,22 @@ export class Curriculum {
             }
             const kScales = cluster.buildKScalesForProjection(null, null);
             const lrK = (opts.lr ?? 0.01) * 0.25;
-            cluster.synapses.ojaUpdate(preFull, postFull, lrK, kScales ? { kScales } : undefined);
+            // TIME-SLICED — this K-scaled secondary write fires ONCE PER
+            // DEFINITION over the full intra-synapse matrix (349k rows /
+            // 10.5M nnz). Called directly (unchunked) it was a synchronous
+            // full-matrix pass with NO yield between definitions, so a
+            // high-polysemy word (20-30 dictionary senses: "set"/"run"/
+            // "point"/"page") stacked 20+ of them back-to-back into a
+            // 15-20s event-loop block — the rare intermittent freeze, and
+            // the outer 15s per-word timeout couldn't fire because it's a
+            // starved macrotask. Route through the adaptive slicer so each
+            // definition's write slices to ~30ms chunks with setImmediate
+            // yields; identical math (rows independent).
+            if (typeof cluster._ojaUpdateChunked === 'function') {
+              await cluster._ojaUpdateChunked(cluster.synapses, preFull, postFull, lrK, kScales ? { kScales } : undefined);
+            } else {
+              cluster.synapses.ojaUpdate(preFull, postFull, lrK, kScales ? { kScales } : undefined);
+            }
           } catch { /* non-fatal */ }
         }
       }
