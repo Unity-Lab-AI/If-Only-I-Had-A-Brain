@@ -20,23 +20,6 @@
 // this._gpuProxy, this._sparsePool, this.regions, this.lastSpikes etc.
 
 export const CLUSTER_HEBBIAN_MIXIN = {
-  // Loop-pin breadcrumb setter — every set measures how long the PREVIOUS
-  // crumb was held; a hold past 300ms is remembered as _lastLongCrumb so the
-  // [EventLoop] BLOCKED reporter names the pinner even when post-block teach
-  // code overwrites the live crumb before the lag timer gets a slot (the
-  // reporter always fires AFTER the loop frees, so the live crumb is usually
-  // fresh — the v1 crumbs proved that with +10ms ages on 2.4s pins). Caveat:
-  // a hold spanning an await measures wall-clock, not block time — read
-  // lastLong against the BLOCKED duration; a match is the conviction.
-  _setCrumb(label) {
-    const now = Date.now();
-    if (this._teachCrumbAt && this._teachCrumb && (now - this._teachCrumbAt) > 300) {
-      this._lastLongCrumb = this._teachCrumb + ' held ' + (now - this._teachCrumbAt) + 'ms';
-      this._lastLongCrumbAt = now;
-    }
-    this._teachCrumb = label;
-    this._teachCrumbAt = now;
-  },
   async _crossRegionHebbian(lr, opts = {}) {
     if (!this.crossProjections) return;
     // One-shot diagnostic — fires only the FIRST time this method is
@@ -128,9 +111,6 @@ export const CLUSTER_HEBBIAN_MIXIN = {
       }
       const _isMotorEmissionProj = (name === 'sem_to_motor' || name === 'sem_to_word_motor');
       const lrEff = _isMotorEmissionProj ? lr * this._smLrScale : lr;
-      // Loop-pin breadcrumb — names the projection the teach path is inside
-      // when the [EventLoop] BLOCKED reporter fires (unattributed-pin hunt).
-      this._setCrumb('xHebbian:' + name);
 
       // Build the K-scales bundle ONCE per-projection per-call. Passes
       // K.4 hub-mask + K.7 gamma-scale + K.9 per-layer plasticity through
@@ -314,7 +294,6 @@ export const CLUSTER_HEBBIAN_MIXIN = {
     const rows = proj.rows | 0;
     if (!this._ojaChunkRows) this._ojaChunkRows = 131072;
     if (rows <= this._ojaChunkRows) {
-      this._setCrumb('ojaSingle:' + rows + 'r');
       const _t0 = Date.now();
       proj.ojaUpdate(preF, postF, lr, ojaOpts);
       const _dt = Date.now() - _t0;
@@ -328,7 +307,6 @@ export const CLUSTER_HEBBIAN_MIXIN = {
       const chunk = this._ojaChunkRows;
       const re = Math.min(rs + chunk, rows);
       const t0 = Date.now();
-      this._setCrumb('ojaSlice:' + rs + '/' + rows);
       proj.ojaUpdate(preF, postF, lr, { ...(ojaOpts || {}), rowStart: rs, rowEnd: re });
       const dt = Date.now() - t0;
       rs = re;
@@ -346,7 +324,6 @@ export const CLUSTER_HEBBIAN_MIXIN = {
     const rows = mat.rows | 0;
     if (!this._ojaChunkRows) this._ojaChunkRows = 131072;
     if (rows <= this._ojaChunkRows) {
-      this._setCrumb('antiSingle:' + rows + 'r');
       const _t0 = Date.now();
       mat.antiHebbianUpdate(preF, postF, lr);
       const _dt = Date.now() - _t0;
@@ -360,7 +337,6 @@ export const CLUSTER_HEBBIAN_MIXIN = {
       const chunk = this._ojaChunkRows;
       const re = Math.min(rs + chunk, rows);
       const t0 = Date.now();
-      this._setCrumb('antiSlice:' + rs + '/' + rows);
       mat.antiHebbianUpdate(preF, postF, lr, { rowStart: rs, rowEnd: re });
       const dt = Date.now() - t0;
       rs = re;
@@ -712,7 +688,6 @@ export const CLUSTER_HEBBIAN_MIXIN = {
       // slices produces an IDENTICAL result while letting HTTP/WS work get an
       // event-loop slot. Below the chunk threshold _ojaUpdateChunked runs a
       // single synchronous pass (no yield overhead).
-      this._setCrumb('intraOja:' + (this.size | 0) + 'n');
       await this._ojaUpdateChunked(this.synapses, pre, post, lr);
     } else if (this._sparsePool && this._sparsePool.ready) {
       try {
@@ -881,7 +856,6 @@ export const CLUSTER_HEBBIAN_MIXIN = {
       // #37 — CHUNK the intra-synapse anti-Hebbian like the Oja path above so
       // the contrastive push-pull pass doesn't block the event loop at
       // biological scale (same residual [EventLoop] BLOCKED cause).
-      this._setCrumb('intraAnti:' + (this.size | 0) + 'n');
       await this._antiHebbianChunked(this.synapses, pre, post, lr);
     } else if (this._sparsePool && this._sparsePool.ready && typeof this._sparsePool.antiHebbianUpdate === 'function') {
       try {

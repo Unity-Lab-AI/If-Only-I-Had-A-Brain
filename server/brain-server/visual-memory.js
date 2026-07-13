@@ -157,7 +157,7 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
     // every concept she thinks over hours (the dead-air takeover). Real scenes
     // drift below that ceiling even when the camera is still.
     try {
-      const pv = this.mindSpace.describe(rec);
+      const pv = await this.mindSpace.describe(rec);
       if (pv && pv.length) {
         if (!Array.isArray(this._vmRecentPercepts)) this._vmRecentPercepts = [];
         const cosSim = (a, b) => {
@@ -236,7 +236,7 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
     // grounding consume confirmed entries only, so a one-off weird render
     // never enters her imagination or her weights.
     let newPercept = null;
-    try { const _d = this.mindSpace.describe(rec); if (_d) newPercept = Array.from(_d); } catch { newPercept = null; }
+    try { const _d = await this.mindSpace.describe(rec); if (_d) newPercept = Array.from(_d); } catch { newPercept = null; }
     const _vmCosP = (a, b) => {
       if (!a || !b) return 0;
       let d = 0, na = 0, nb = 0; const n = Math.min(a.length, b.length);
@@ -281,7 +281,7 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
     try {
       if (_anyTrustedBind && !this._curriculumInProgress && this.cortexCluster
           && typeof this.cortexCluster.injectEmbeddingToRegion === 'function') {
-        const percept = newPercept || this.mindSpace.describe(rec);   // trusted frames only — provisional renders stay out of sem
+        const percept = newPercept || await this.mindSpace.describe(rec);   // trusted frames only — provisional renders stay out of sem
         if (percept) this.cortexCluster.injectEmbeddingToRegion('sem', percept, 0.10);
       }
     } catch { /* non-fatal */ }
