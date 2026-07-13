@@ -3506,3 +3506,11 @@ Analysis (stack-traced 2026-06-30): Issue 4 is the propagation hub — the synch
 - Followed the code: _teachAssociationPairs per-pair loop; the only per-call full-cluster alloc left on the hot path = _teachLateralInhibition (curriculum.js:10711) `new Uint8Array(cluster.size)` = 61MB PER PAIR PER REP -> a 28-sense word churns GB/word -> stop-the-world major GC = the 49s spikes.
 - FIX: pooled crossBucketPost into this._crossBucketPostScratch, clear only the motor span between uses (O(motorSize) not O(61M)). Zero per-pair alloc. node --check + ESM PASS, bundle rebuilt.
 - RESIDUAL (honest): kills the 49s GC spikes; steady low-second blocks remain = the 61M-vs-349k event cost (_clearSpikes + predictive-error fills + propagate/intra-Hebbian over full cluster.size). That's the queued event-cost overhaul, NOT shipped here. Requires redeploy; badge confirms landing. Full body in FINALIZED.
+
+
+## [x] THE REAL FREEZE = _memoryHeartbeat unbounded episodic cosine-merge scan (Gee 2026-07-13)
+- Gee: "follow the code for the fix" / "this shit adds up"
+- Probe-proven (not guessed): SPAN timers in _teachPredictiveError stayed silent through 43s blocks -> teach code exonerated, phase label stale. Tick timers then matched EVERY BLOCKED to [tick] _memoryHeartbeat to the ms (51184ms <-> 50896ms), escalating 3.6s->51s.
+- ROOT: storeEpisode() frequency-merge (memory.js ~357) fetched EVERY 48h episode (no LIMIT) + deserialized + cosined all, on the main loop, every 2s per aged working-memory item; episode count grows unbounded mid-walk (prune deferred) -> escalating freeze.
+- FIX: `LIMIT ?` on _stmtFindRecentForMerge + FREQ_MERGE_SCAN_CAP=300. O(1) in total episodes; dedup behavior preserved (near-dupes are recent; identical text hits the exact-text merge first). node --check PASS, server-only.
+- TODO next: strip the diagnostic timers (SPAN A/C in curriculum.js + 3 tick timers in brain-server.js) once Gee confirms the freeze is gone. Full body in FINALIZED.
