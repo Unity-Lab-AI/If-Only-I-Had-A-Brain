@@ -100513,7 +100513,11 @@ var Curriculum = class _Curriculum {
       }
     }
     if (maxCount === 0) return;
-    const crossBucketPost = new Uint8Array(cluster.size);
+    if (!this._crossBucketPostScratch || this._crossBucketPostScratch.length !== cluster.size) {
+      this._crossBucketPostScratch = new Uint8Array(cluster.size);
+    }
+    const crossBucketPost = this._crossBucketPostScratch;
+    for (let i = motorRegion.start; i < motorRegion.end; i++) crossBucketPost[i] = 0;
     let crossCount = 0;
     for (let i = 0; i < motorSize; i++) {
       if (cluster.lastSpikes[motorRegion.start + i]) {
