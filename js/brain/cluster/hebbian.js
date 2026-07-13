@@ -292,8 +292,11 @@ export const CLUSTER_HEBBIAN_MIXIN = {
   // single synchronous pass (no yield overhead).
   async _ojaUpdateChunked(proj, preF, postF, lr, ojaOpts) {
     const rows = proj.rows | 0;
-    if (!this._ojaChunkRows) this._ojaChunkRows = 131072;
-    if (rows <= this._ojaChunkRows) {
+    if (!this._ojaChunkRows) this._ojaChunkRows = 65536;
+    // SINGLE-PASS only for genuinely small matrices — a FIXED threshold, NOT
+    // the adaptive slice size (which ratchets up on fast small projections and
+    // would then single-pass a large matrix unsliced = the 2-9s teach blocks).
+    if (rows <= 65536) {
       const _t0 = Date.now();
       proj.ojaUpdate(preF, postF, lr, ojaOpts);
       const _dt = Date.now() - _t0;
@@ -311,7 +314,7 @@ export const CLUSTER_HEBBIAN_MIXIN = {
       const dt = Date.now() - t0;
       rs = re;
       if (dt > 60 && chunk > 16384) this._ojaChunkRows = Math.max(16384, chunk >> 1);
-      else if (dt < 15 && chunk < 524288) this._ojaChunkRows = chunk << 1;
+      else if (dt < 15 && chunk < 65536) this._ojaChunkRows = chunk << 1;
       if (dt > 2000) console.warn(`[Cluster ${this.name}] SLOW Hebbian slice: ${dt}ms for ${chunk.toLocaleString()} rows (nnz-dense projection) — chunk auto-halved; if this repeats, this projection is the freeze culprit.`);
       await yieldMacro();
     }
@@ -322,8 +325,10 @@ export const CLUSTER_HEBBIAN_MIXIN = {
   // converge together). Identical math; row-independent.
   async _antiHebbianChunked(mat, preF, postF, lr) {
     const rows = mat.rows | 0;
-    if (!this._ojaChunkRows) this._ojaChunkRows = 131072;
-    if (rows <= this._ojaChunkRows) {
+    if (!this._ojaChunkRows) this._ojaChunkRows = 65536;
+    // SINGLE-PASS only for genuinely small matrices (fixed threshold, see
+    // _ojaUpdateChunked) — a large matrix must never single-pass unsliced.
+    if (rows <= 65536) {
       const _t0 = Date.now();
       mat.antiHebbianUpdate(preF, postF, lr);
       const _dt = Date.now() - _t0;
@@ -341,7 +346,7 @@ export const CLUSTER_HEBBIAN_MIXIN = {
       const dt = Date.now() - t0;
       rs = re;
       if (dt > 60 && chunk > 16384) this._ojaChunkRows = Math.max(16384, chunk >> 1);
-      else if (dt < 15 && chunk < 524288) this._ojaChunkRows = chunk << 1;
+      else if (dt < 15 && chunk < 65536) this._ojaChunkRows = chunk << 1;
       if (dt > 2000) console.warn(`[Cluster ${this.name}] SLOW anti-Hebbian slice: ${dt}ms for ${chunk.toLocaleString()} rows — chunk auto-halved; repeated hits name this matrix as the freeze culprit.`);
       await yieldMacro();
     }
