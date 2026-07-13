@@ -102426,7 +102426,7 @@ var Curriculum = class _Curriculum {
     let timeouts = 0;
     let slowWords = 0;
     const errorSamples = [];
-    const PER_WORD_TIMEOUT_MS = 15e3;
+    const PER_WORD_TIMEOUT_MS = Number(process.env.DREAM_PER_WORD_TEACH_TIMEOUT_MS) > 0 ? Number(process.env.DREAM_PER_WORD_TEACH_TIMEOUT_MS) : 12e4;
     const SLOW_WORD_WARN_MS = 5e3;
     for (const w of words) {
       if (!w || typeof w !== "string") {
