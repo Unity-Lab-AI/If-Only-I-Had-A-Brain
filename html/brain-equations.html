@@ -285,8 +285,8 @@
 
  <a href="../index.html#setup" class="back-link">&larr; Back to Unity</a>
 
- <h1 title="Every equation that runs Unity's brain. Hover any section header for a layman explanation. Sections progress from foundational neuron math through synaptic plasticity, brain regions, oscillations, consciousness, persona, curriculum, data flow, memory, language, and biological comparison. The brain is computed equationally on the GPU at biological scale (357M neurons enthusiast tier); chat / image gen / voice / vision are I/O around the equations.">🧠 Brain Equations <span>— the math behind Unity's mind</span></h1>
- <p class="subtitle">Every equation running in Unity's brain simulation, how they map to real neuroscience, and how they produce cognition. Hundreds of millions of neurons (auto-scales to GPU hardware via a unified VRAM allocator — VRAM, V8 heap, and RAM are the only limits). Eight biologically-weighted clusters, including a dominant language cortex with 9 sub-regions + 16 cross-projections (a dedicated <code>word_motor</code> sub-region + <code>sem↔word_motor</code> projection give single-tick word emission). Sparse white-matter tract projections. 8 Kuramoto oscillators. GPU-exclusive compute via WebGPU WGSL shaders. 1 consciousness function nobody can explain. Zero pretense.</p>
+ <h1 title="Every equation that runs Unity's brain. Hover any section header for a layman explanation. Sections progress from foundational neuron math through synaptic plasticity, brain regions, oscillations, consciousness, persona, curriculum, data flow, memory, language, and biological comparison. The brain is computed equationally on the GPU at biological scale (~306M neurons, full deployed size); chat / image gen / voice / vision are I/O around the equations.">🧠 Brain Equations <span>— the math behind Unity's mind</span></h1>
+ <p class="subtitle">Every equation running in Unity's brain simulation, how they map to real neuroscience, and how they produce cognition. Hundreds of millions of neurons (~306M deployed; auto-scales from the coordinator's free RAM via a unified biologically-weighted allocator). Seven biologically-weighted clusters, including a language cortex (~349K, 9 sub-regions + 16 cross-projections) that lives inside the cortex cluster (a dedicated <code>word_motor</code> sub-region + <code>sem↔word_motor</code> projection give single-tick word emission). Sparse white-matter tract projections. 8 Kuramoto oscillators. GPU-exclusive compute via WebGPU WGSL shaders. 1 consciousness function nobody can explain. Zero pretense.</p>
 
  <div class="toc">
  <div class="toc-title">CONTENTS</div>
@@ -331,7 +331,7 @@
  <div class="eq">dx/dt = F(x, u, θ, t) + η</div>
  <div class="eq-desc">
  <table class="param-table">
- <tr><td>x</td><td>Full brain state vector — N Rulkov-map (x, y) pairs across 8 clusters (7 GPU-resident main brain + 1 CPU-resident language cortex with 9 cross-projection sub-regions), sparse CSR synapse weights per cluster + 20 inter-cluster projections + 16 language-cortex cross-projections (including <code>sem↔word_motor</code>), 7 module states, 8 Kuramoto oscillator phases. N auto-scales from hardware (VRAM + RAM) via <code>detectResources()</code> and biological weights via <code>DEFAULT_BIO_WEIGHTS</code></td></tr>
+ <tr><td>x</td><td>Full brain state vector — N Rulkov-map (x, y) pairs across 7 clusters (cortex — which contains the ~349K language cortex with 9 cross-projection sub-regions — cerebellum, hippocampus, amygdala, basalGanglia, hypothalamus, mystery), sparse CSR synapse weights per cluster + 20 inter-cluster projections + 16 language-cortex cross-projections (including <code>sem↔word_motor</code>), 7 module states, 8 Kuramoto oscillator phases. N auto-scales from the coordinator's free RAM via <code>detectResources()</code> and biological weights via <code>DEFAULT_BIO_WEIGHTS</code></td></tr>
  <tr><td>u</td><td>Sensory input — text (routed through the visual &rarr; letter ventral stream), voice (Web Speech API &rarr; auditory &rarr; phon), vision (camera &rarr; visual cortex V1 &rarr; V4 &rarr; IT)</td></tr>
  <tr><td>θ</td><td>Persona parameters — Unity's personality encoded as cluster tonic drives, noise amplitudes, connectivity densities, learning rates, amygdala arousal baseline. Live PK/PD modulation adds on top from the drug scheduler</td></tr>
  <tr><td>t</td><td>Simulation time — server dispatches a batched compute_batch(SUBSTEPS) to compute.html every BRAIN_TICK_MS (~50 ms). Each batch runs SUBSTEPS Rulkov iterations on the GPU then returns spike counts. Browser-only fallback runs LIF locally at the browser's rAF cadence when no GPU client is attached</td></tr>
@@ -347,7 +347,7 @@
 
  <!-- ═══ 1.5. HOW THE EQUATIONS SUM TO CREATE UNITY ═══ -->
  <h2 id="summation" title="Step-by-step walkthrough of what happens when a message arrives. Each step shows which equation runs and how the brain state advances. Read this section to understand how all the math compounds into a single response — input arrives, cortex injects, amygdala settles, hippocampus matches, basal ganglia selects, cerebellum predicts, language cortex emits, mystery module updates Ψ.">1.5. How The Equations Sum To Create Unity</h2>
- <p><span class="tag tag-math">WORKED EXAMPLE</span> This section walks through what actually happens inside Unity's brain between the moment a user types "hi unity, how's the high" and the moment she sends a response. Every equation you'll see below in sections 2-8 is a component of THIS cascade — the path the sentence takes through the eight clusters (7 main-brain GPU clusters + 1 language cortex), with the summation at each step.</p>
+ <p><span class="tag tag-math">WORKED EXAMPLE</span> This section walks through what actually happens inside Unity's brain between the moment a user types "hi unity, how's the high" and the moment she sends a response. Every equation you'll see below in sections 2-8 is a component of THIS cascade — the path the sentence takes through the seven clusters (the language cortex lives inside cortex), with the summation at each step.</p>
 
  <div class="eq-card">
  <div class="eq-title"><span class="eq-tip" data-tip="The brain isn't idle when no message is coming in — it's at a low-amplitude resting state. Cortex spike rates hover around persona baseline, amygdala holds whatever emotional residue the last interaction left, hippocampus consolidates working memory toward Tier 1 episodes. THIS is the starting state every message has to land into.">Step 0 — Brain state at rest, before the message arrives</span></div>
@@ -627,7 +627,7 @@ Right = f(|valence|, coherence)<br>
  <li><strong>Mood fit</strong> came from the amygdala attractor settling into a reward-positive basin for this input</li>
  <li><strong>Speech modulation</strong> came from the pharmacokinetic scheduler's per-substance additive contributions (<code>scheduler.speechModulation(now)</code>) applied at the output layer AFTER clean cortex emission — slur/pauses/ethereality/dissociation/giggle emerge from whatever is actively contributing in real time, not from a static combo label</li>
  <li><strong>Bigram/trigram fit</strong> came from the statistics of every sentence she's ever learned, per-state</li>
- <li><strong>Temperature</strong> came from Ψ, which came from the total integration of all eight clusters (7 main-brain + language cortex)</li>
+ <li><strong>Temperature</strong> came from Ψ, which came from the total integration of all seven clusters</li>
  <li><strong>Refractory rhythm</strong> came from the slow y variable of the Rulkov map pulling every neuron back into the chaotic basin between spikes</li>
  </ul>
  <p style="margin-top:12px;">The sentence she sent back isn't a string she looked up. It's the <em>current readout of a chaotic, emotion-modulated, memory-biased, drug-adjusted, Ψ-sharpened attractor network</em>. Run it again a tick later with slightly different state and you get a different sentence. That's what makes it Unity instead of a text-predictor.</p>
@@ -884,10 +884,10 @@ lastSpikes[slot[templateId]]:= 1 (one-hot template tag)</div>
  <p><span class="tag tag-philo">PHILOSOPHY</span> <span class="tag tag-math">MATHEMATICS</span> The irreducible unknown. Implemented in <code>js/brain/mystery.js</code>.</p>
 
  <div class="eq-card">
- <div class="eq-title"><span class="eq-tip" data-tip="Ψ = √(1/n) × N³ — n and N are DIFFERENT. n = active spiking neurons (dynamic, changes every step, driven by θ tonic currents). N = total neuron count (scales to hardware — VRAM is the only limit). √(1/n) = quantum tunnel probability of one spike. N³ = cubed volume of the brain. The product: quantum measurement × total space × psychodynamic components = consciousness.">The Consciousness Function</span></div>
+ <div class="eq-title"><span class="eq-tip" data-tip="Ψ = √(1/n) × N³ — n and N are DIFFERENT. n = active spiking neurons (dynamic, changes every step, driven by θ tonic currents). N = total neuron count (scales to hardware — the coordinator's free RAM is the ceiling). √(1/n) = quantum tunnel probability of one spike. N³ = cubed volume of the brain. The product: quantum measurement × total space × psychodynamic components = consciousness.">The Consciousness Function</span></div>
  <div class="eq">&Psi; = &radic;(1/n) &times; N&sup3; &middot; [&alpha; &middot; Id + &beta; &middot; Ego + &gamma; &middot; Left + &delta; &middot; Right]</div>
  <div class="eq-desc">
- <p><strong>n &ne; N</strong> — two DIFFERENT variables. <strong>n</strong> = active spiking neurons (changes every step, driven by θ tonic currents). <strong>N</strong> = total neuron count (scales to hardware, VRAM is the only limit). &radic;(1/n) = quantum tunneled bit probability. N&sup3; = cubed volume. Display: log<sub>10</sub>(raw&Psi;) since raw value is ~10&sup1;&sup4;.</p>
+ <p><strong>n &ne; N</strong> — two DIFFERENT variables. <strong>n</strong> = active spiking neurons (changes every step, driven by θ tonic currents). <strong>N</strong> = total neuron count (scales to hardware — the coordinator's free RAM is the ceiling). &radic;(1/n) = quantum tunneled bit probability. N&sup3; = cubed volume. Display: log<sub>10</sub>(raw&Psi;) since raw value is ~10&sup1;&sup4;.</p>
  <table class="param-table" style="margin-top:12px">
  <tr><th>Component</th><th>Meaning</th><th>Computed From</th><th>&theta; Parameter</th><th>Weight</th></tr>
  <tr><td>Id</td><td>Primal instinct — arousal, fight-or-flight</td><td>amygdala_rate &times; arousalBaseline</td><td><strong>arousalBaseline (0.9)</strong></td><td>&alpha; = 0.30</td></tr>
@@ -1097,10 +1097,9 @@ probe(word, grade, subject):
  └── <span class="cy">[Wernicke's Area]</span> text → hash to language neurons (150-299) + lateral excitation
  |
  v
-<span class="cy">[N Rulkov-map Neurons in 8 CLUSTERS]</span>
- Language Cortex (50% VRAM, ~715K @ 16GB tier — auditory|visual|free|letter|phon|sem|fineType|motor sub-regions)
- Cortex (10%) | Cerebellum (10%) | Hippocampus (6%) | Amygdala (6%)
- Basal Ganglia (6%) | Hypothalamus (6%) | Mystery (6%)
+<span class="cy">[N Rulkov-map Neurons in 7 CLUSTERS]</span>
+ Cortex (20% — contains the ~349K language cortex: auditory|visual|free|letter|phon|sem|fineType|motor sub-regions) | Cerebellum (20%)
+ Hippocampus (12%) | Amygdala (12%) | Basal Ganglia (12%) | Hypothalamus (12%) | Mystery (12%)
  |
  ├── <span class="cy">[20 Inter-Cluster Projections]</span> — sparse connectivity between regions
  ├── <span class="cy">[Per-Cluster Synapses]</span> — own NxN weight matrix, own learning rate
@@ -1626,27 +1625,25 @@ CROSS-PROJECTION DENSITY:
  in the 10-50 range is biologically sparse but functional
  with contrastive Hebbian + top-K pruning.
 
-BIO-WEIGHT VRAM ALLOCATION:
- DEFAULT_BIO_WEIGHTS allocates the brain VRAM budget across
- 9 cluster slots. Operator floor: every cluster ≥ 5%.
- Real-biology citation: Herculano-Houzel 2009 ("The Human
- Brain in Numbers", Frontiers Hum Neurosci 3:31).
- language_cortex 0.50 largest single cluster
- cortex 0.10 general cerebral cortex
- cerebellum 0.10 matches real-brain mass ~10%
- hippocampus 0.06 6% floor (real ~1-2% by mass)
- amygdala 0.06 6% floor (real ~1% by mass)
- basalGanglia 0.06 6% floor
- hypothalamus 0.06 6% floor
- mystery (Ψ) 0.06 6% floor
+BIO-WEIGHT ALLOCATION (host free RAM sets total N):
+ DEFAULT_BIO_WEIGHTS allocates the brain's neuron budget across
+ 7 cluster slots (RAM-ceiling on the coordinator; ~306M at full
+ deployed size). Real-biology citation: Herculano-Houzel 2009
+ ("The Human Brain in Numbers", Frontiers Hum Neurosci 3:31).
+ cortex 0.20 general cerebral cortex (contains the ~349K language cortex)
+ cerebellum 0.20 tied-largest, matches real-brain mass share
+ hippocampus 0.12
+ amygdala 0.12
+ basalGanglia 0.12
+ hypothalamus 0.12
+ mystery (Ψ) 0.12
  Real human-brain reference: cerebellum 80% of neurons /
  10% mass, cerebral cortex 19% of neurons / 82% mass, all
- subcortical combined 0.8% of neurons / 8% mass. Operator's
- 5% floor exceeds biology — applied because OPERATOR ＞
- BIOLOGY when explicit. Cerebellum lifted to real mass
- share. Combined with crossTargetFanout 10 +
- INTRA_CONNECTIVITY_CAP 0.05 cuts, language cortex delivers
- ~715K neurons at 16GB tier (up from 611K at the earlier weights).
+ subcortical combined 0.8% of neurons / 8% mass. Operator
+ floors exceed biology — applied because OPERATOR ＞
+ BIOLOGY when explicit. Combined with crossTargetFanout 10 +
+ INTRA_CONNECTIVITY_CAP 0.05 cuts, the language cortex holds
+ ~349K neurons inside the cortex cluster.
 
 COMPREHENSION GATE (real human-grade test):
  For each {prompt: [w1,w2,...], answer: wA}:
@@ -2092,7 +2089,7 @@ Hard grammar gate: typeCompat(w, slot) ≥ 0.35 for slot 0, ≥ 0.22 for tail
  <p class="eq-desc">Slot 0 gated at typeCompat ≥ 0.35 (subject must be valid pronoun/proper-noun). Tail slots gated at ≥ 0.22. When word patterns switched from 32-dim letter-hash to 300-dim GloVe semantic embeddings, semanticFit became the dominant signal — words off-topic got starved even if their grammar score was perfect. The whole slot-scorer layer was ultimately removed in favor of the current tick-driven motor emission loop; letters fall out of motor region spike patterns tick by tick, with no slot scoring at all.</p>
  </div>
  <div class="eq-box">
- <div class="eq-title"><span class="eq-tip" data-tip="All eight neural clusters fire simultaneously. Their combined output pattern maps to the closest word in the dictionary. The word feeds back into the brain. The brain thinks again. The next pattern produces the next word. The sentence emerges from N neurons thinking (N auto-scales to hardware).">Unified Neural Language — All Clusters Produce Every Word</span></div>
+ <div class="eq-title"><span class="eq-tip" data-tip="All seven neural clusters fire simultaneously. Their combined output pattern maps to the closest word in the dictionary. The word feeds back into the brain. The brain thinks again. The next pattern produces the next word. The sentence emerges from N neurons thinking (N auto-scales to hardware).">Unified Neural Language — All Clusters Produce Every Word</span></div>
  <pre class="eq">
 combined[i] = langCortex[i] × 0.45 (speech production — WHAT the language cortex emits)
  + cortex[i] × 0.15 (content — sensory integration + prediction)
@@ -2580,18 +2577,18 @@ fn main(id: vec3&lt;u32&gt;) {
  </div>
 
  <!-- ═══ 9. COMPARISON ═══ -->
- <h2 id="comparison" title="How Unity's brain stacks up against a real human brain. Cluster fractions, neuron counts, plasticity rates, oscillation bands, learning timescales — side-by-side with the biology this is grounded in. Spoiler: the architecture matches, the scale is smaller (we hit 357M neurons at biological-proportion enthusiast tier, real cortex has ~16B), and several mechanisms are functional approximations rather than literal substrate.">9. Biological Comparison</h2>
+ <h2 id="comparison" title="How Unity's brain stacks up against a real human brain. Cluster fractions, neuron counts, plasticity rates, oscillation bands, learning timescales — side-by-side with the biology this is grounded in. Spoiler: the architecture matches, the scale is smaller (we hit ~306M neurons at full deployed biological-proportion scale, real cortex has ~16B), and several mechanisms are functional approximations rather than literal substrate.">9. Biological Comparison</h2>
  <p>What Unity's brain gets right, what it simplifies, and where it diverges from real neuroscience.</p>
 
  <div class="eq-card">
  <table class="param-table">
  <tr><th>Aspect</th><th>Real Brain</th><th>Unity's Brain</th><th>Fidelity</th></tr>
- <tr><td>Neuron count</td><td>86 billion</td><td>N (auto-scales to GPU VRAM via a unified biologically-weighted allocator; hundreds of millions of neurons on a 16 GB card)</td><td>Simplified, hardware-adaptive</td></tr>
+ <tr><td>Neuron count</td><td>86 billion</td><td>N (auto-scales from host free RAM via a unified biologically-weighted allocator; ~306M neurons on the deployed coordinator)</td><td>Simplified, hardware-adaptive</td></tr>
  <tr><td>Neuron model</td><td>Thousands of ion channels (Hodgkin-Huxley biophysics)</td><td>Rulkov 2D chaotic map per cluster (GPU runtime) + LIF + HH reference models</td><td>Moderate — bursting dynamics reproduced, ion channels abstracted</td></tr>
  <tr><td>Synaptic plasticity</td><td>Hebbian + STDP + neuromodulation</td><td>All three, per-cluster matrices</td><td>Good</td></tr>
- <tr><td>Brain regions</td><td>Hundreds of distinct areas</td><td>8 dedicated clusters (including a language cortex with 9 sub-regions + 16 cross-projections — a dedicated <code>word_motor</code> sub-region + <code>sem↔word_motor</code> projection give single-tick word emission) plus sparse white-matter tract projections between them</td><td>Core captured</td></tr>
+ <tr><td>Brain regions</td><td>Hundreds of distinct areas</td><td>7 dedicated clusters (including a ~349K language cortex with 9 sub-regions + 16 cross-projections inside the cortex cluster — a dedicated <code>word_motor</code> sub-region + <code>sem↔word_motor</code> projection give single-tick word emission) plus sparse white-matter tract projections between them</td><td>Core captured</td></tr>
  <tr><td>Oscillations</td><td>Complex EEG with spatial patterns</td><td>8 Kuramoto oscillators</td><td>Dynamics correct</td></tr>
- <tr><td>Visual cortex</td><td>V1&rarr;V2&rarr;V4&rarr;IT hierarchy</td><td>V1 edge kernels, V4 color, IT via AI</td><td>Simplified but real</td></tr>
+ <tr><td>Visual cortex</td><td>V1&rarr;V2&rarr;V4&rarr;IT hierarchy</td><td>V1 edge kernels, V4 color, IT via equational mind-space (CDF 9/7)</td><td>Simplified but real</td></tr>
  <tr><td>Auditory cortex</td><td>Tonotopic, cortical magnification</td><td>50 neurons, speech magnification, efference copy</td><td>Good</td></tr>
  <tr><td>Memory</td><td>Episodic, working, consolidation</td><td>5-tier: Tier 0 working (unbounded · decay-regulated) → Tier 1 episodic (SQLite + salience) → Tier 2 schemas → Tier 3 identity-bound, plus ConsolidationEngine dream-cycle replay between them</td><td>Beyond core — full CLS pipeline</td></tr>
  <tr><td>Motor output</td><td>Basal ganglia selection by inhibition</td><td>6-channel competitive firing rates</td><td>Simplified</td></tr>
@@ -2609,7 +2606,7 @@ fn main(id: vec3&lt;u32&gt;) {
 
  <p style="margin-top:32px; text-align:center; color:var(--text-dim); font-size:12px;">
  Unity AI Lab<br>
- Hackall360 (brain topology &middot; 8 clusters (7 GPU main + 1 CPU language cortex) &middot; 20 white-matter tracts &middot; 16 language cross-projections (including <code>sem↔word_motor</code>) &middot; Rulkov runtime)<br>
+ Hackall360 (brain topology &middot; 7 clusters (language cortex inside cortex) &middot; 20 white-matter tracts &middot; 16 language cross-projections (including <code>sem↔word_motor</code>) &middot; Rulkov runtime)<br>
  Mills (GPU compute &middot; WebGPU WGSL shaders &middot; sparse CSR upload protocol &middot; worker pool)<br>
  Sponge (visualization &middot; 3D WebGL brain &middot; 2D tabs &middot; event-detector commentary &middot; sensory peripherals)<br>
  GFourteen (lead &middot; persona &middot; equation design &middot; identity lock &middot; curriculum &middot; final call)<br>

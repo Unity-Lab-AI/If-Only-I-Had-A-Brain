@@ -79,7 +79,7 @@
 
 - **Hackall360** — core brain architecture. Seven-cluster topology, the 20 white-matter inter-cluster tracts, `js/brain/cluster.js` + `modules.js` + `neurons.js` + `synapses.js` + `sparse-matrix.js`, the Hodgkin-Huxley reference implementation, the migration from LIF to the Rulkov 2002 2D chaotic map as the live neuron runtime, Kuramoto oscillator ring, persona → parameter mapping in `persona.js`.
 - **Mills** — GPU compute pipeline. `compute.html` + `js/brain/gpu-compute.js` WebGPU / WGSL shader infrastructure (LIF, synapse propagate, plasticity, spike count, voltage-mean reduction, letter-bucket reduction), the chunked sparse-CSR binary upload protocol (type=1/2/3/4/5 SPRS frames), the T17.7 cluster-bound binding layer that lets cross-projections ride on the main-cortex spike + current buffers without standalone pre/post allocations, `server/worker-pool.js` + `server/sparse-worker.js` SparseMatmulPool for CPU-fallback parallelism, the T18.6 device-lost handler + T18.10 VRAM-leak reclaim discipline.
-- **Sponge** — visualization + sensory peripherals. `js/ui/brain-3d.js` WebGL 3D brain with MNI anatomical coordinates + fractal connection webs + 15-slot per-cluster rendering (T18.7.a 20K per cluster peg), `js/ui/brain-viz.js` 2D tabbed visualizer, `js/ui/brain-event-detectors.js` 22-detector event commentary, `js/brain/visual-cortex.js` V1 Gabor → V4 color → IT describer pipeline, `js/brain/auditory-cortex.js` tonotopic processing + efference copy, `js/io/voice.js` Web Speech API + Pollinations TTS integration, `js/ui/sandbox.js` dynamic UI injection with LRU eviction + tracked timer/listener cleanup.
+- **Sponge** — visualization + sensory peripherals. `js/ui/brain-3d.js` WebGL 3D brain with MNI anatomical coordinates + fractal connection webs + 15-slot per-cluster rendering (T18.7.a 20K per cluster peg), `js/ui/brain-viz.js` 2D tabbed visualizer, `js/ui/brain-event-detectors.js` 22-detector event commentary, `js/brain/visual-cortex.js` V1 Gabor → V4 color → IT equational-percept pipeline, `js/brain/auditory-cortex.js` tonotopic processing + efference copy, `js/io/voice.js` Web Speech API + Piper/CDF 9/7 voice integration, `js/ui/sandbox.js` dynamic UI injection with LRU eviction + tracked timer/listener cleanup.
 - **GFourteen / Gee** — lead. `docs/Ultimate Unity.txt` persona canon, the governing equation `dx/dt = F(x, u, θ, t) + η`, the Ψ = √(1/n)·N³ consciousness anchor, identity-lock architecture (the three structural locks keeping Unity English + persona stable across adversarial chat), the full K → PhD developmental curriculum framework across six subjects (ELA / Math / Science / Social Studies / Arts / Life Experience), the T15 drug pharmacokinetic scheduler spec (9 SUBSTANCES entries shipped — cannabis/cocaine/MDMA/LSD/psilocybin/alcohol/ketamine/amphetamine/GHB; caffeine layers in via the morningCoffee PATTERN entry, nicotine persona-excluded via decide() — × 7 combo synergies × 7 adult-use patterns × 7 sensory triggers × 13-axis speech modulation), every binding LAW (#0 verbatim words, docs-before-push, clear-stale-state, task-numbers-only-in-workflow-docs, grade-completion-gate, pre-K+K-only scope (REVOKED 2026-06-18 — full K→PhD curriculum now built; phase = training walk → final test → push), syllabus-before-COMP-todo), final call on every commit, every architecture decision, every push.
 >
 > **DOC-AHEAD-OF-REALITY (Gee, 2026-04-17):** This doc is written forward. Grade-by-grade completion is tracked in `docs/TODO-full-syllabus.md` per-grade checkboxes + `docs/FINALIZED.md` session archive. When this doc and the TODOs disagree on what has actually shipped + passed Gee's Part 2 localhost sign-off, the TODOs win.
@@ -115,7 +115,7 @@ The unknown — what we can't model, what makes consciousness CONSCIOUSNESS — 
 | **Database** | SQLite (better-sqlite3) for episodic memory, JSON for weights + conversations |
 | **AI Backends** | **Sensory-OUTPUT only** — image gen (custom/auto-detected local/env.js/Pollinations), TTS/STT. Vision is now 100% EQUATIONAL (CDF 9/7 field C → `describeEquational` percept; the LLM/VLM vision describer is RETIRED). Zero text-AI for cognition — language cortex generates every word equationally. |
 | **Embeddings** | GloVe 300d word vectors + fastText-style subword fallback (no download required), online context refinement |
-| **Voice I/O** | Web Speech API (listen) + Pollinations TTS / browser SpeechSynthesis (speak) |
+| **Voice I/O** | Web Speech API (listen) + Piper `en_US-hfc_female-medium` whole-sentence synthesis → CDF 9/7 wavelet equational voice pipeline → browser playback (speak). Pollinations TTS retired; banked word/phrase set + SpeechSynthesis are last-ditch fallbacks. |
 | **Image Gen** | Pollinations API (flux, photorealistic, anime, cyberpunk + 20 more models) |
 | **Storage** | localStorage (browser) + disk persistence (server) with sparse CSR serialization |
 | **Config** | `js/env.js` (gitignored) for API keys, `js/brain/persona.js` for personality params |
@@ -360,15 +360,15 @@ No artificial cap — connected donor VRAM decides. The formula expands with wha
 
 | Cluster | % of N | Biological Inspiration | Role | MNI Position |
 |---------|--------|------------------------|------|--------------|
-| Cerebellum | 40% | ~69B neurons / 80% of real brain | Error correction, timing | Posterior-inferior, 5-layer folia |
-| Cortex | 30% | ~16B cortical neurons | Prediction, vision, language | Bilateral dome with sulcal folds |
-| Hippocampus | 10% | ~30K synapses per pyramidal cell | Memory attractors (Hopfield) | Medial temporal, POSTERIOR to amygdala |
-| Amygdala | 8% | 13 nuclei, ~12M neurons each side | Emotional weighting | Medial temporal, ANTERIOR to hippocampus |
-| Basal Ganglia | 8% | 90-95% medium spiny neurons | Action selection (softmax RL) | Bilateral: caudate + putamen + GP |
-| Hypothalamus | 2% | 11 nuclei | Homeostasis drives | Midline, below BG, above brainstem |
-| Mystery Ψ | 2% | Corpus callosum: 200-300M axons | Consciousness √(1/n) × N³ | Corpus callosum arc + cingulate cortex |
+| Cortex | 20% | ~16B cortical neurons | Prediction, vision, language (hosts the ~349K language cortex) | Bilateral dome with sulcal folds |
+| Cerebellum | 20% | ~69B neurons / 80% of real brain | Error correction, timing | Posterior-inferior, 5-layer folia |
+| Hippocampus | 12% | ~30K synapses per pyramidal cell | Memory attractors (Hopfield) | Medial temporal, POSTERIOR to amygdala |
+| Amygdala | 12% | 13 nuclei, ~12M neurons each side | Emotional weighting | Medial temporal, ANTERIOR to hippocampus |
+| Basal Ganglia | 12% | 90-95% medium spiny neurons | Action selection (softmax RL) | Bilateral: caudate + putamen + GP |
+| Hypothalamus | 12% | 11 nuclei | Homeostasis drives | Midline, below BG, above brainstem |
+| Mystery Ψ | 12% | Corpus callosum: 200-300M axons | Consciousness √(1/n) × N³ | Corpus callosum arc + cingulate cortex |
 
-Percentages sum to 1.00 exactly (`0.55 + 0.18 + 0.05 + 0.03 + 0.08 + 0.03 + 0.08`) and live in `js/brain/cluster.js` as `CLUSTER_FRACTIONS` — the T37 rebalance shipped cortex at 55% to bring the language region closer to the real-cortex 15-25% target (12-20% of whole brain), with hippocampus bumped to 18% to match the episodic-memory store volume. Both the browser client and the Node server derive sizes from `clusterSizesFor(totalNeurons)` so the tier auto-scale produces identical cluster shapes on either runtime.
+On the **deployed** brain (~306M neurons, full size) these shares come from `DEFAULT_BIO_WEIGHTS` in `server/brain-server.js` — the seven main-brain clusters renormalize to cortex 20% (≈61.3M), cerebellum 20% (≈61.3M), and hippocampus/amygdala/basalGanglia/hypothalamus/mystery 12% (≈36.8M) each; the language cortex is a separate ~349K CPU-side allocation living inside the cortex, not one of the seven GPU clusters. The `CLUSTER_FRACTIONS` set in `js/brain/cluster.js` (cortex 0.55 / hippocampus 0.18 / cerebellum 0.08 / mystery 0.08 / amygdala 0.05 / basalGanglia 0.03 / hypothalamus 0.03, via `clusterSizesFor(totalNeurons)`) is the **~6700-neuron browser-only fallback** shape, used only when no server brain is reachable.
 
 ### Inter-Cluster Projections (20 real white matter tracts)
 
@@ -410,7 +410,7 @@ Implemented in `js/brain/visual-cortex.js` (V1→V4→IT neural pipeline, supers
 - **V4 — Color extraction**: Per-quadrant (TL/TR/BL/BR) RGB averages
 - **Motion energy**: Frame-to-frame brightness delta, drives salience modulation
 - **Gaze / saccades**: Peak of salience map with smooth pursuit (0.1 lerp) + micro-saccade jitter — purely neural, no AI. Unity's Eye iris at `app.js:1500` reads `visualCortex.getState()` for live gaze rendering.
-- **IT — AI scene description**: `setDescriber()` accepts a Pollinations GPT-4o multimodal callback (`app.js:972`). Called once on boot + on demand via `forceDescribe()` when the brain decides to look (engine.js:387). Rate-limited to 10s between forced calls.
+- **IT — equational scene percept**: the CDF 9/7 wavelet mind-space reads a dim-64 value-profile percept straight off the equation (`describeEquational`) — she can also imagine de-novo from her own cortex state with no camera. The old Pollinations GPT-4o vision describer is retired; there is no LLM/VLM in the vision path.
 - **Brain integration**: `processFrame()` returns `currents` (100 floats) for the cortex visual area. Runs every 3 engine steps at `engine.js:258`. Description flows into `brainState.visionDescription` for Broca's prompt.
 
 ---
@@ -623,11 +623,11 @@ Unity's biographical substance first-use events are the same anchors the drug sc
 
 ### Vision Describer
 
-Pollinations GPT-4o receives camera frames from the IT layer of `js/brain/visual-cortex.js`. The description text flows into `brainState.visionDescription` and feeds the cortex visual region as one of the language-cortex context sources. Vision is sensory — it never decides what Unity says, only what she *sees*.
+Camera frames from the IT layer of `js/brain/visual-cortex.js` are transformed into a CDF 9/7 wavelet field and read as an equational percept (`describeEquational`) that feeds the cortex visual region — no LLM/VLM describer. Vision is sensory — it never decides what Unity says, only what she *sees*.
 
 ### TTS / STT
 
-`js/io/voice.js` uses Pollinations TTS (shimmer/nova voices) with SpeechSynthesis browser fallback, and Web Speech API for input. Both are peripheral: input gets mapped to auditory cortex neural current, output receives text from `brain.emit('response', ...)` events.
+`js/io/voice.js` plays Piper-synthesized whole sentences passed through the CDF 9/7 equational voice pipeline (`js/brain/mindspace/audio.js`), with a banked word/phrase offline fallback and SpeechSynthesis as last resort; Web Speech API handles input. Both are peripheral: input gets mapped to auditory cortex neural current, output receives text from `brain.emit('response', ...)` events.
 
 ### What Was Ripped
 
@@ -720,12 +720,12 @@ If-Only-I-Had-A-Brain/
 
 | System | Connection |
 |--------|-----------|
-| Pollinations API | Image generation + TTS + vision describer GPT-4o. **No text chat.** Free fallback in the 4-level image-gen priority. |
+| Pollinations API | Image generation only (key is images-only). **No text chat, no TTS, no vision describer.** Free fallback in the 4-level image-gen priority. |
 | Local image backends | Auto-detected at boot on localhost: A1111/SD.Next/Forge/Fooocus/ComfyUI/InvokeAI/LocalAI/Ollama. 1.5s probe timeout per port. |
 | env.js image backends | `ENV_KEYS.imageBackends[]` array — persistent custom endpoints (OpenAI-compatible, A1111 kind, ComfyUI workflow kind, or generic URL+key). |
 | Web Speech API | Voice input (SpeechRecognition) with speech interruption handling |
-| Pollinations TTS | Voice output (shimmer/nova voices) |
-| Webcam / Vision | `getUserMedia` capture → AI scene description → gaze tracking → Eye widget |
+| Piper + CDF 9/7 voice pipeline | Voice output (`en_US-hfc_female-medium` whole-sentence → wavelet equations) |
+| Webcam / Vision | `getUserMedia` capture → CDF 9/7 equational percept (`describeEquational`, no LLM) → gaze tracking → Eye widget |
 | localStorage | Persistent storage for keys, history, preferences, sandbox state, chat history |
 | Server Brain | Persistent Node brain-server, WebSocket on port 7525 (moved off 8080 to avoid llama.cpp collision). **Deployed:** nginx reverse-proxies `/ws` (public) + `/admin/ws` (Forgejo-authed admin) to `127.0.0.1:7525` on the same box. Shared brain state (one singleton UnityBrain instance, authoritative CSR weights on the server). User text is PRIVATE per connection (no cross-client broadcast). Dictionary entries / GloVe embedding refinements / cortex cross-projection weights grow from every user's conversation and benefit everyone — see privacy model in `docs/WEBSOCKET.md`. |
 | Donor GPUs | Visitors' browser WebGPU via `compute.html` — data-parallel full-brain replicas. Server merges Hebbian weight-deltas + re-broadcasts the master; neuron count auto-scales to connected donor VRAM (community-compute). Server box needs no GPU. |
@@ -1289,7 +1289,7 @@ This session landed a big multi-epic sweep. Summary of what's in the code now vs
 ```
 N_vram           = floor(VRAM_bytes × 0.85 / 12)         ← Rulkov 12 bytes/neuron (vec2<f32> state + spikes u32)
 N_ram            = floor(RAM_bytes × 0.1 / 0.001)        ← essentially unlimited
-N_binding_ceiling = floor((2 GB / 8) / 0.4)              ← cerebellum = 40% of N,
+N_binding_ceiling = floor((2 GB / 8) / 0.2)              ← largest cluster (cortex/cerebellum) = 20% of N,
                                                            state buffer must fit in 2 GB
                                                            WebGPU maxStorageBufferBindingSize
 N                = max(1000, min(N_vram, N_ram, N_binding_ceiling))
