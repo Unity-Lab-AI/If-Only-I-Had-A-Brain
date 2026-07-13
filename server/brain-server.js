@@ -3550,6 +3550,35 @@ class ServerBrain {
     this._lastInputTime = Date.now();
     this._isDreaming = false;
 
+    // Deploy identity — the "did the new code even land?" signal. Resolve
+    // ONCE at boot, in priority order:
+    //   1. server/deployed-build.json — written by deploy/self-update.sh from
+    //      the EXACT tree it cloned, so it's authoritative regardless of
+    //      whether the version.js BUILD stamp ran. This is the deployed path.
+    //   2. `git rev-parse` — a dev box has a .git; the deploy dir does not.
+    //   3. 'unknown' — last resort so the field is always present.
+    // Surfaces on /public-state.json (state.build) + the dashboard header.
+    this._deployBuild = (() => {
+      const bootedAt = new Date(this._startedAt).toISOString();
+      try {
+        const bf = path.join(__dirname, 'deployed-build.json');
+        if (fs.existsSync(bf)) {
+          const b = JSON.parse(fs.readFileSync(bf, 'utf8'));
+          return { short: b.short || '?', sha: b.sha || null, branch: b.branch || null, deployedAt: b.deployedAt || null, source: 'deploy', bootedAt };
+        }
+      } catch { /* fall through to git */ }
+      try {
+        const { execSync } = require('child_process');
+        const opt = { cwd: path.join(__dirname, '..'), stdio: ['ignore', 'pipe', 'ignore'] };
+        const short = execSync('git rev-parse --short=8 HEAD', opt).toString().trim();
+        const branch = execSync('git rev-parse --abbrev-ref HEAD', opt).toString().trim();
+        return { short, sha: null, branch, deployedAt: null, source: 'git', bootedAt };
+      } catch { /* not a git dir */ }
+      return { short: 'unknown', sha: null, branch: null, deployedAt: null, source: 'none', bootedAt };
+    })();
+    const _b = this._deployBuild;
+    console.log(`[Brain] BUILD ${_b.short}${_b.branch ? ' (' + _b.branch + ')' : ''}${_b.deployedAt ? ' deployed ' + _b.deployedAt : ''} · booted ${_b.bootedAt} · source=${_b.source} — this is the code the running boot is executing.`);
+
     console.log('[Brain] GPU EXCLUSIVE MODE — no CPU workers spawned. Waiting for compute.html...');
 
     // Recursive setTimeout — next tick fires AFTER current step completes

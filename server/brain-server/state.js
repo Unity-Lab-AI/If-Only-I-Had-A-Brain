@@ -343,6 +343,13 @@ const SERVER_STATE_MIXIN = {
     return {
       time: (Date.now() - (this._startedAt || Date.now())) / 1000, // wall clock uptime in seconds
       simTime: this.time,  // simulation dt accumulation
+      // Deploy identity — proves WHICH code the running boot is actually
+      // executing (the "did the deploy even land?" signal). Populated once at
+      // boot from server/deployed-build.json (written by deploy/self-update.sh
+      // from the exact cloned tree), or git rev-parse on a dev box, or
+      // version.js FULL as last resort. Surfaces on /public-state.json + the
+      // dashboard header so a glance / one curl tells you what's live.
+      build: this._deployBuild || null,
       frameCount: this.frameCount,
       totalSpikes: this.totalSpikes,
       spikeCount: this.totalSpikes,

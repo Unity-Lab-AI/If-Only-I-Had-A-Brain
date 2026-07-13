@@ -105,6 +105,7 @@
     .mode-badge.mode-connecting { background: rgba(107, 114, 128, 0.2); color: #9ca3af; border: 1px solid #4b5563; }
     .mode-badge.mode-admin { background: rgba(245, 158, 11, 0.2); color: #f59e0b; border: 1px solid #f59e0b; }
     .mode-badge.mode-viewer { background: rgba(34, 197, 94, 0.2); color: #22c55e; border: 1px solid #22c55e; }
+    .mode-badge.build-badge { background: rgba(56, 189, 248, 0.12); color: #7dd3fc; border: 1px solid #0ea5e9; font-family: 'JetBrains Mono', monospace; letter-spacing: 0.02em; }
     /* Live-test diagnostic banners — surface spawn failures + no-connection
        state with explicit recovery instructions instead of small low-
        contrast pill. Operator 2026-06-17 live test surfaced HTMLs
@@ -193,6 +194,11 @@
            The 'admin-only' CSS class on #btn-graceful-stop hides it
            until admin confirmed; same for #d-ms-advance below. -->
       <span id="d-mode-badge" class="mode-badge mode-connecting" title="Connection role — admin sees brain controls; viewer sees read-only telemetry">⋯ connecting</span>
+      <!-- Deploy identity — the code the running boot is executing. Reads
+           state.build (written at deploy time by self-update.sh, or git on a
+           dev box). One glance tells you WHICH commit is live, so a redeploy
+           can be confirmed instead of guessed. -->
+      <span id="d-build-badge" class="mode-badge build-badge" title="Deploy build — the git commit the running server booted from. Set at deploy time; if this doesn't change after Update, the new code didn't land.">build …</span>
       <button id="btn-graceful-stop" class="btn-stop admin-only" title="Graceful brain shutdown — flushes definition disk cache, terminates worker pool, saves weights, then exits. Equivalent to running stop.bat. On the deployed box systemd auto-resumes (clean stop = resume marker). (Admin-only — hidden in viewer mode.)">⏹ Stop Brain</button>
       <button id="btn-restart" class="btn-stop admin-only" title="Restart the brain and RESUME training from saved state (auto-Savestart). Force-saves weights + drops a resume marker, then exits; systemd revives the process and it picks up where it left off. Restart without shell access. If a heavy update changed the brain size/format, it fresh-starts instead and says so. (Admin-only.)">🔄 Restart (Savestart)</button>
       <button id="btn-reset" class="btn-stop admin-only" title="RESET to a FRESH brain — WIPES all trained weights / episodic memory / schemas (identity-core Tier 3 anchors preserved) and reboots clean via systemd. Destructive; use to start training over. (Admin-only.)">♻ Reset Brain (fresh)</button>
@@ -1280,6 +1286,23 @@
       $('d-drug').textContent = s.drugState ?? '—';
       $('d-uptime').textContent = fmtDur(s.time);
       $('d-scale').textContent = s.scale ?? '—';
+
+      // Deploy build badge — proves which code the running boot is executing.
+      // Confirms a redeploy landed (the short SHA changes) instead of guessing
+      // from freeze symptoms. Shows source (deploy/git) + deployed date in the
+      // hover title.
+      if (s.build) {
+        const bb = $('d-build-badge');
+        if (bb) {
+          bb.textContent = 'build ' + (s.build.short || '?') + (s.build.branch ? ' · ' + s.build.branch : '');
+          const parts = [];
+          if (s.build.sha) parts.push('sha ' + s.build.sha);
+          if (s.build.deployedAt) parts.push('deployed ' + s.build.deployedAt);
+          if (s.build.bootedAt) parts.push('booted ' + s.build.bootedAt);
+          if (s.build.source) parts.push('source=' + s.build.source);
+          bb.title = 'Deploy build — the git commit the running server booted from. ' + parts.join(' · ') + '. If the short SHA doesn\'t change after Update, the new code didn\'t land.';
+        }
+      }
 
       // Brain events — render the live event stream (plasticity fires,
       // teach phases, vocab audits, gate results, drug events). Each
