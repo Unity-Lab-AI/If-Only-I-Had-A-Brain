@@ -110,6 +110,18 @@ const SERVER_MEMORY_MIXIN = {
       CREATE INDEX IF NOT EXISTS idx_episodes_user ON episodes(user_id);
       CREATE INDEX IF NOT EXISTS idx_episodes_salience ON episodes(effective_salience);
       CREATE INDEX IF NOT EXISTS idx_episodes_promoted ON episodes(promoted_at);
+      -- Composite indexes for storeEpisode()'s per-call dedup lookups, which run
+      -- on the MAIN LOOP from _memoryHeartbeat every 2s. Without these the
+      -- exact-text merge (WHERE user_id IS ? AND input_text = ? AND timestamp > ?)
+      -- could only seek by user_id, then LINEAR-SCANNED every one of that user's
+      -- rows to check input_text — and a novel wm-aged-out text (the cell key
+      -- changes constantly) never matches, so it scanned the whole growing
+      -- working-memory partition every 2s. That was the residual escalating
+      -- _memoryHeartbeat freeze left after the merge-scan LIMIT cap. The
+      -- (user_id, input_text) index makes the exact lookup an O(log N) seek;
+      -- (user_id, timestamp) serves the cosine-merge window scan.
+      CREATE INDEX IF NOT EXISTS idx_episodes_user_text ON episodes(user_id, input_text);
+      CREATE INDEX IF NOT EXISTS idx_episodes_user_ts ON episodes(user_id, timestamp);
     `);
 
     // iter13 T13.1 — defensive ALTER TABLE migration for pre-iter13 DBs
