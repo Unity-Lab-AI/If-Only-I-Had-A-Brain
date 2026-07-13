@@ -665,7 +665,7 @@ export class SparseMatrix {
   /**
    * Hebbian: ΔW = η · post · pre
    */
-  hebbianUpdate(preSpikes, postSpikes, lr) {
+  hebbianUpdate(preSpikes, postSpikes, lr, opts) {
     const { rows, values, colIdx, rowPtr, wMin, wMax } = this;
     // Null-CSR guard — post CPU CSR free this call would crash at
     // `rowPtr[i]` / `values[k]`. Silent no-op keeps teach paths safe
@@ -673,7 +673,14 @@ export class SparseMatrix {
     // accidentally fires. Same shape as the `normalizeRows` null guard.
     if (!values || !rowPtr || !colIdx) return;
 
-    for (let i = 0; i < rows; i++) {
+    // Optional row-range (opts.rowStart/rowEnd) so callers can time-slice
+    // this full-matrix write with yields between ranges — same contract as
+    // ojaUpdate/antiHebbianUpdate. Rows are independent, so a sliced run is
+    // bit-for-bit identical to the whole-matrix pass.
+    const rowStart = (opts && typeof opts.rowStart === 'number') ? Math.max(0, opts.rowStart) : 0;
+    const rowEnd = (opts && typeof opts.rowEnd === 'number') ? Math.min(rows, opts.rowEnd) : rows;
+
+    for (let i = rowStart; i < rowEnd; i++) {
       if (!postSpikes[i]) continue;
       const scaled = lr * postSpikes[i];
       const start = rowPtr[i];
