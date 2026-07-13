@@ -101610,7 +101610,11 @@ var Curriculum = class _Curriculum {
             }
             const kScales = cluster.buildKScalesForProjection(null, null);
             const lrK = (opts.lr ?? 0.01) * 0.25;
-            cluster.synapses.ojaUpdate(preFull, postFull, lrK, kScales ? { kScales } : void 0);
+            if (typeof cluster._ojaUpdateChunked === "function") {
+              await cluster._ojaUpdateChunked(cluster.synapses, preFull, postFull, lrK, kScales ? { kScales } : void 0);
+            } else {
+              cluster.synapses.ojaUpdate(preFull, postFull, lrK, kScales ? { kScales } : void 0);
+            }
           } catch {
           }
         }
