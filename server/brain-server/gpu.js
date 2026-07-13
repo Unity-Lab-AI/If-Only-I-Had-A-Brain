@@ -2230,11 +2230,24 @@ const SERVER_GPU_MIXIN = {
       if (!ws || ws.readyState !== 1) return;
       if (this._cortexUploadInFlight) return;
       if (ws.bufferedAmount > this._donorSoftCapBytes() / 2) return;
+      // DEFER TO A NON-TEACH PAUSE. The pattern lane holds the buffer at its
+      // 16MB operating point — BELOW this half-softCap gate (32MB) — so the
+      // gate alone passes mid-chunk and the 42s canonical re-upload fired as a
+      // fresh teach freeze on top of active teaching (Gee's "freeze for 30").
+      // A pattern-frame shed is EPHEMERAL (next iteration supersedes) and the
+      // cross-projections stay GPU-current via hebbianBound dispatch, so this
+      // shadow refresh is never urgent — hold it until teach is already paused.
+      // Dream windows between chunks flip _curriculumInProgress false; the
+      // re-upload then OVERLAPS that existing pause (near-zero marginal teach
+      // downtime) and the shadow still refreshes every chunk boundary. Genuine
+      // divergence events (donor drop / failover / hebbian-batch shed) resync
+      // immediately via their own arms — they do NOT route through here.
+      if (this._curriculumInProgress) return;
       clearInterval(this._resyncArmPendingIv);
       this._resyncArmPendingIv = null;
       const r = this._resyncArmPendingReason || 'sheds settled';
       this._resyncArmPendingReason = null;
-      this._armShadowResync(`${r} — buffer drained (deferred arm)`);
+      this._armShadowResync(`${r} — buffer drained + teach paused (deferred arm)`);
     }, 5000);
   },
 
