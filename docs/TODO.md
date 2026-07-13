@@ -3498,3 +3498,11 @@ Analysis (stack-traced 2026-06-30): Issue 4 is the propagation hub — the synch
 - WHY: two redeploys landed stale code (49s _teachPredictiveError = pre-fix signature) with no way to confirm the running commit from outside (version.js BUILD stale, /version returns SPA HTML).
 - BUILT: (1) self-update.sh captures the cloned-tree SHA -> writes server/deployed-build.json post-rsync (excluded from --delete). (2) brain-server resolves _deployBuild at boot (deployed-build.json -> git rev-parse -> unknown) + boot banner. (3) state.js emits state.build on /public-state.json. (4) dashboard.html build badge (admin + public) with sha/deployedAt/bootedAt/source in hover. deployed-build.json gitignored.
 - VERIFIED: node --check x2 PASS, bash -n PASS, resolver unit-tested both paths. One-deploy lag: first Update shows 'unknown' (old self-update ran), every Update after shows the real SHA. Full body in FINALIZED.
+
+
+## [x] THE 49s TEACH FREEZE = per-pair 61MB GC churn in _teachLateralInhibition, NOT propagate (Gee 2026-07-13)
+- Gee verbatim: "follow the code for the fix"
+- Build badge (4814cb08 · main) confirmed the propagate fix WAS deployed yet _teachPredictiveError still threw 3-49s blocks -> propagate was not the culprit (owned it). Proof: my >2s SLOW-slice warns never appear in the log -> the 49s spans are unsliced/uninstrumented = GC, confirmed by the escalate-then-settle + worker-pool heap-release + 500MB-external signature.
+- Followed the code: _teachAssociationPairs per-pair loop; the only per-call full-cluster alloc left on the hot path = _teachLateralInhibition (curriculum.js:10711) `new Uint8Array(cluster.size)` = 61MB PER PAIR PER REP -> a 28-sense word churns GB/word -> stop-the-world major GC = the 49s spikes.
+- FIX: pooled crossBucketPost into this._crossBucketPostScratch, clear only the motor span between uses (O(motorSize) not O(61M)). Zero per-pair alloc. node --check + ESM PASS, bundle rebuilt.
+- RESIDUAL (honest): kills the 49s GC spikes; steady low-second blocks remain = the 61M-vs-349k event cost (_clearSpikes + predictive-error fills + propagate/intra-Hebbian over full cluster.size). That's the queued event-cost overhaul, NOT shipped here. Requires redeploy; badge confirms landing. Full body in FINALIZED.

@@ -10708,7 +10708,23 @@ export class Curriculum {
     // Build the cross-bucket post vector — 1 where motor fires outside
     // the primary bucket, 0 everywhere else (including primary bucket,
     // non-motor regions, and silent motor positions).
-    const crossBucketPost = new Uint8Array(cluster.size);
+    // POOLED — was `new Uint8Array(cluster.size)` allocated ON EVERY CALL.
+    // _teachLateralInhibition fires once per pair per rep inside
+    // _teachAssociationPairs, so at the 61M-neuron cortex that was a fresh
+    // 61 MB allocation per pair-rep — a high-polysemy seed word (e.g. "digits",
+    // 28 senses × 24 reps × N pairs) churned gigabytes of short-lived garbage,
+    // and the resulting stop-the-world major-GC pauses were the multi-second
+    // (up to ~49 s) [EventLoop] BLOCKED spikes on the teach phases that survived
+    // the propagate/def slicing (those sliced the COMPUTE; this is the ALLOC).
+    // The buffer only ever sets indices inside the motor region and is read the
+    // same way, so pool it once and clear ONLY the motor span between uses
+    // (O(motorSize) ≈ a few thousand, not O(61M)) — everything outside motor is
+    // never written so it stays permanently zero from the initial allocation.
+    if (!this._crossBucketPostScratch || this._crossBucketPostScratch.length !== cluster.size) {
+      this._crossBucketPostScratch = new Uint8Array(cluster.size);
+    }
+    const crossBucketPost = this._crossBucketPostScratch;
+    for (let i = motorRegion.start; i < motorRegion.end; i++) crossBucketPost[i] = 0;
     let crossCount = 0;
     for (let i = 0; i < motorSize; i++) {
       if (cluster.lastSpikes[motorRegion.start + i]) {
