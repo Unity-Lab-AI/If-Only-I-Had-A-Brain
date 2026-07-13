@@ -8318,7 +8318,13 @@ const _lagTimer = setInterval(() => {
     const consol = !!(brain.consolidationEngine && brain.consolidationEngine._inFlight);
     const innerVoice = !!brain._innerVoiceInFlight;
     const syncing = brain._replicaSyncInFlight ? brain._replicaSyncInFlight.size : 0;
-    console.warn(`[EventLoop] BLOCKED ${lagMs.toFixed(0)}ms — /ws handshakes + donor frames stalled this long. context: phase=${phase} cell=${cell} donors=${donors} consolidationInFlight=${consol} innerVoiceInFlight=${innerVoice} replicaSyncing=${syncing}`);
+    // Teach-path breadcrumb — the last sub-step the teach code entered before
+    // the loop pinned, with its age. phase= names the method; crumb= names the
+    // exact op INSIDE it (or the unwrapped helper the wrapper can't see).
+    const _crumb = (cc && cc._teachCrumb)
+      ? cc._teachCrumb + ' +' + (cc._teachCrumbAt ? (Date.now() - cc._teachCrumbAt) : '?') + 'ms'
+      : '(none)';
+    console.warn(`[EventLoop] BLOCKED ${lagMs.toFixed(0)}ms — /ws handshakes + donor frames stalled this long. context: phase=${phase} cell=${cell} crumb=${_crumb} donors=${donors} consolidationInFlight=${consol} innerVoiceInFlight=${innerVoice} replicaSyncing=${syncing}`);
   }
 }, _LAG_SAMPLE_MS);
 wss.on('close', () => clearInterval(_lagTimer));
