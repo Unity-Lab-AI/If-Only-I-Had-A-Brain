@@ -12959,13 +12959,24 @@ export class Curriculum {
     let slowWords = 0;
     const errorSamples = []; // first 5 {word, reason}
 
-    // 114.19er.1 — per-word wall-clock timeout. Without this, a single
-    // hung dictionary fetch (rate-limit, network stall, in-flight zombie)
-    // freezes the entire chunked seed loop forever. Stalled overnight
-    // run (server.log session 2026-05-07) hung at "forty#2/2" with no
-    // recovery for 8+ hours. Per-word race ensures no single word can
-    // block the rest of the chunk.
-    const PER_WORD_TIMEOUT_MS = 15000;
+    // 114.19er.1 — per-word wall-clock timeout. Guards ONLY against a
+    // genuinely-hung dictionary FETCH (rate-limit, network stall, in-flight
+    // zombie) so one dead word can't block the chunk forever.
+    // 2026-07-13 (Gee "make sure it works, do not dumb her down") — RAISED
+    // 15s → 120s. The teach itself can no longer freeze (every synchronous
+    // Hebbian/propagate/K-scaled write in the def path now slices with
+    // setImmediate yields), so it runs as YIELDING wall-clock. A high-
+    // polysemy word (20-30 dictionary senses: set/run/point/page) doing its
+    // FULL multi-def teach across those yields can legitimately exceed 15s
+    // of wall-clock — and the old tight timeout would then SKIP it, dropping
+    // her richest words' definitions entirely (an inadvertent dumbing-down
+    // that only bites the hardest vocab). 120s comfortably fits the richest
+    // word's full sliced teach while still bailing a truly-hung fetch
+    // (>2min = the network is actually dead, not a rich word). Tunable via
+    // DREAM_PER_WORD_TEACH_TIMEOUT_MS. NO word's definitions get dropped for
+    // being rich.
+    const PER_WORD_TIMEOUT_MS = Number(process.env.DREAM_PER_WORD_TEACH_TIMEOUT_MS) > 0
+      ? Number(process.env.DREAM_PER_WORD_TEACH_TIMEOUT_MS) : 120000;
     const SLOW_WORD_WARN_MS = 5000;
 
     for (const w of words) {
