@@ -96,7 +96,12 @@ function _buildPollinationsImageUrl(prompt, opts = {}) {
   // picture even when the composed prompt repeats — imagination varies, it never
   // recycles. (Callers may pin opts.seed for a reproducible render.)
   const seed = (typeof opts.seed === 'number') ? opts.seed : Math.floor(Math.random() * 1e9);
-  let url = `https://gen.pollinations.ai/image/${encoded}?model=${encodeURIComponent(model)}&width=${width}&height=${height}&seed=${seed}&nologo=true`;
+  // image.pollinations.ai/prompt/{prompt} — the documented image endpoint
+  // (Pollinations APIDOCS.md). gen.pollinations.ai/image/ was DEPRECATED and now
+  // 401s for every auth method (live-verified 2026-07-13); it silently broke
+  // every script-side + server-side image URL. Auth via ?key= (works on the
+  // classic endpoint; a browser <img> can't send a Bearer header).
+  let url = `https://image.pollinations.ai/prompt/${encoded}?model=${encodeURIComponent(model)}&width=${width}&height=${height}&seed=${seed}&nologo=true`;
   const key = _pollinationsImageKey();
   if (key) url += `&key=${encodeURIComponent(key)}`;
   return url;
