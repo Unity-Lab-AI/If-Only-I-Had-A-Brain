@@ -100439,15 +100439,11 @@ var Curriculum = class _Curriculum {
       }
       const target = this._predictTargetScratch;
       const error = this._predictErrorScratch;
-      const _tA0 = typeof performance !== "undefined" ? performance.now() : Date.now();
       target.fill(0);
       error.fill(0);
       for (let i = 0; i < size; i++) target[i] = cluster.lastSpikes[i] ? 1 : 0;
-      const _tA1 = typeof performance !== "undefined" ? performance.now() : Date.now();
-      if (_tA1 - _tA0 > 1500) console.warn(`[teachPredictiveError] SPAN A (fills+copy) ${_tA1 - _tA0 | 0}ms over ${size.toLocaleString()} elems \u2014 UNSLICED O(cluster.size); this span is a freeze source (scope to active region).`);
       const predicted = typeof cluster.synapses.propagateChunked === "function" ? await cluster.synapses.propagateChunked(target, { outBuf: this._predictPropagateScratch, chunkRows: 65536 }) : cluster.synapses.propagate(target, this._predictPropagateScratch);
       if (!predicted || predicted.length === 0) return;
-      const _tC0 = typeof performance !== "undefined" ? performance.now() : Date.now();
       let maxP = 1e-6;
       for (let i = 0; i < predicted.length; i++) {
         const v = predicted[i];
@@ -100461,8 +100457,6 @@ var Curriculum = class _Curriculum {
         else if (e < -1) e = -1;
         error[i] = e;
       }
-      const _tC1 = typeof performance !== "undefined" ? performance.now() : Date.now();
-      if (_tC1 - _tC0 > 1500) console.warn(`[teachPredictiveError] SPAN C (maxP+error) ${_tC1 - _tC0 | 0}ms over ${predicted.length.toLocaleString()} elems \u2014 UNSLICED; this span is a freeze source (scope to active region).`);
       if (typeof cluster._hebbianUpdateChunked === "function") {
         await cluster._hebbianUpdateChunked(cluster.synapses, target, error, lr * 0.3);
       } else if (typeof cluster.synapses.hebbianUpdate === "function") {
