@@ -61,9 +61,10 @@ const base = CAST[entity] || entity;           // unknown entity → use the wor
 const prompt = `${entity}, ${base}${extra ? ', ' + extra : ''}${STYLE}`.slice(0, 300);
 const seed = stableSeed(entity);               // FIXED per entity → identical image every time
 const model = 'flux', w = 512, h = 512;
-// image.pollinations.ai/prompt/{prompt} — documented endpoint (APIDOCS.md).
-// gen.pollinations.ai/image/ was deprecated -> 401 (live-verified 2026-07-13).
-let url = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?model=${model}&width=${w}&height=${h}&seed=${seed}&nologo=true`;
+// gen.pollinations.ai/image/{prompt} — CURRENT unified gateway (June 2026 docs).
+// image.pollinations.ai/prompt/ is the legacy host; don't re-flip on one test
+// (Pollinations has intermittent outages — a transient 401 lies about deprecation).
+let url = `https://gen.pollinations.ai/image/${encodeURIComponent(prompt)}?model=${model}&width=${w}&height=${h}&seed=${seed}&nologo=true`;
 if (KEY) url += `&key=${encodeURIComponent(KEY)}`;
 
 const browser = await chromium.connectOverCDP('http://localhost:9222');
