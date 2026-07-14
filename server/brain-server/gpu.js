@@ -2341,6 +2341,33 @@ const SERVER_GPU_MIXIN = {
       this._wsPatternIdleSkips = (this._wsPatternIdleSkips || 0) + 1;
       return false;
     }
+    // TEACH-FLOOD THROTTLE — during an active teach primitive the curriculum
+    // fires 8 region-clears + spike/current writes PER micro-iteration
+    // (thousands/sec). On a LOCAL donor (127.0.0.1, same box) that flood
+    // buries the donor app's worker thread in receive-processing: it can't
+    // service its own socket (RTT blows to seconds) OR run compute (0 Gn/s),
+    // so the server reads it unhealthy, ZOMBIE-KICKs it, and it reconnects
+    // into a full canonical re-upload — a drop/re-upload/drown cycle that
+    // never settles on a single donor. These frames are per-iteration
+    // EPHEMERAL (next iteration's clear+write supersedes) and CPU is
+    // authoritative (teach WEIGHT deltas ride the bound-Hebbian dispatch, NOT
+    // this mirror), so at saturation they were already ~95% shed — the donor
+    // never had per-iteration fidelity anyway. Rate-limiting to one frame per
+    // THROTTLE_MS turns the flood into a paced trickle: the buffer actually
+    // drains between frames, RTT + ACKs recover, and the donor's thread is
+    // free to compute. Gated on a `_teach*` phase name only — gate probes /
+    // K-STUDENT battery run with teach PAUSED (no `_teach*` activePhase), so
+    // their pattern writes (drain-to-10MB then fire) are untouched; idle is
+    // already handled above; canonical resync/upload rides its own lane.
+    const _ap = _cc2 && _cc2._activePhase;
+    if (_ap && typeof _ap.name === 'string' && _ap.name.startsWith('_teach')) {
+      const THROTTLE_MS = Number(process.env.DREAM_PATTERN_TEACH_THROTTLE_MS) > 0
+        ? Number(process.env.DREAM_PATTERN_TEACH_THROTTLE_MS) : 20;
+      if (this._wsPatternLastSendMs && (Date.now() - this._wsPatternLastSendMs) < THROTTLE_MS) {
+        this._wsPatternThrottleSkips = (this._wsPatternThrottleSkips || 0) + 1;
+        return false;
+      }
+    }
     const laneCap = this._donorPatternLaneCapBytes();
     if (ws.bufferedAmount > laneCap) {
       this._wsPatternShedCount = (this._wsPatternShedCount || 0) + 1;
@@ -2371,6 +2398,9 @@ const SERVER_GPU_MIXIN = {
   _donorPatternSendGated(json) {
     if (!this._donorPatternLaneOpen()) return false;
     this._gpuClient.send(json);
+    // Stamp the actual send so the TEACH-FLOOD THROTTLE (above) paces off the
+    // last frame that truly went out, not off shed/throttled attempts.
+    this._wsPatternLastSendMs = Date.now();
     return true;
   },
 
