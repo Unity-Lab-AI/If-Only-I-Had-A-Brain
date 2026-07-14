@@ -713,7 +713,7 @@ const SERVER_MEMORY_MIXIN = {
       // episodic memory comes from chat + life-memory encoding, not the teach
       // heartbeat. Promotion resumes automatically in dream windows / idle / chat
       // (when _curriculumInProgress is false).
-      if (!this._curriculumInProgress && _agedTexts && _agedTexts.length > 0 && typeof this.storeEpisode === 'function' && typeof setImmediate === 'function') {
+      if (!this._curriculumInProgress && !this._operatorSleepRequested && _agedTexts && _agedTexts.length > 0 && typeof this.storeEpisode === 'function' && typeof setImmediate === 'function') {
         const _texts = _agedTexts;
         setImmediate(() => {
           for (let i = 0; i < _texts.length; i++) {
@@ -732,7 +732,7 @@ const SERVER_MEMORY_MIXIN = {
     }
 
     // Tier 1 thinking-episode — every ≥30000ms wall-clock
-    if (now - this._lastTier1HbAt >= 30000 && typeof this.storeEpisode === 'function' && !this._curriculumInProgress) {
+    if (now - this._lastTier1HbAt >= 30000 && typeof this.storeEpisode === 'function' && !this._curriculumInProgress && !this._operatorSleepRequested) {
       this._lastTier1HbAt = now;
       try {
         let context = 'idle';
