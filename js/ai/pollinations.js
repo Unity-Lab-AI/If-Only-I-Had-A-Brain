@@ -3,7 +3,7 @@
  *
  * Endpoints (current — NOT the deprecated text.pollinations.ai):
  *   Text:  https://gen.pollinations.ai/v1/chat/completions
- *   Image: https://image.pollinations.ai/prompt/{prompt}
+ *   Image: https://gen.pollinations.ai/image/{prompt}
  *   Audio: https://gen.pollinations.ai/v1/audio/speech
  *   Auth:  https://enter.pollinations.ai/authorize
  *
@@ -138,16 +138,19 @@ export class PollinationsAI {
             // image and renders look recycled. A random seed (pinnable via
             // options.seed) makes each generation a new picture.
             const seed = (typeof options.seed === 'number') ? options.seed : Math.floor(Math.random() * 1e9);
-            // image.pollinations.ai/prompt/{prompt} — the image endpoint.
-            // (Pollinations DEPRECATED gen.pollinations.ai/image/ — it now 401s
-            // even WITH a valid key AND anonymously; the chat-window "show me X"
-            // path silently stopped rendering. Live-verified 2026-07-13:
-            // image.pollinations.ai/prompt/<p>?...&key=<k> → 200 image/jpeg,
-            // gen.pollinations.ai/image/<p> → 401. This is the chat-window image
-            // path only — her equational mind's-eye imagination is a separate
-            // engine and was never affected.)
-            // Auth via ?key= param (for authenticated) or anonymous (no key).
-            let url = `${IMAGE_URL}/prompt/${encoded}?model=${encodeURIComponent(model)}&width=${width}&height=${height}&seed=${seed}&nologo=true`;
+            // gen.pollinations.ai/image/{prompt} — the CURRENT unified gateway
+            // (June 2026; confirmed against the live Pollinations docs). The
+            // platform consolidated text/image/audio/video under gen.pollinations.ai;
+            // image.pollinations.ai/prompt/ is the LEGACY host that still lingers in
+            // the GitHub APIDOCS but is not the working gateway. This is the
+            // chat-window image path only — her equational mind's-eye imagination is
+            // a separate engine and was never affected.
+            // Auth via ?key= param (a browser <img> can't send a Bearer header).
+            // NOTE: do NOT re-flip this on a single HTTP test — Pollinations has
+            // intermittent API issues, and a transient 401 during an outage reads as
+            // "deprecated" when it isn't. A prior mid-outage probe wrongly moved this
+            // to the legacy host; trust the current docs + operator over one test.
+            let url = `${GEN_URL}/image/${encoded}?model=${encodeURIComponent(model)}&width=${width}&height=${height}&seed=${seed}&nologo=true`;
             if (this._apiKey) {
                 url += `&key=${encodeURIComponent(this._apiKey)}`;
             }
