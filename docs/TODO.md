@@ -3235,6 +3235,7 @@ Analysis (stack-traced 2026-06-30): Issue 4 is the propagation hub — the synch
 - FIX A (event-cost): make in-cell re-teach TARGETED — only re-teach probe/vocab items still under the gate bar, not the whole vocabulary every cycle. Cut per-cell events from millions to the minimum needed to lift the laggards.
 - FIX B (persona/consciousness/dev-corpus bleed): grade-gate emission candidates OR defer adult-corpus Hebbian until live grade warrants; emission-only, redirect-immune, reproduced 7x in active window 326-350 (see prior TODO entry).
 - CRON STOPPED for this work (Gee: "stopo cron").
+- [x] DONOR-BANDWIDTH BLEED piece SHIPPED 2026-07-14 (Gee: "what happened? its dropped my doner then it never reconnected" ... "fix it"): teach-pattern lane flood was drowning the LOCAL donor (127.0.0.1) thread -> 4s RTT, 0 Gn/s, zombie-kick/re-upload/drown cycle. TEACH-FLOOD THROTTLE added to gpu.js _donorPatternLaneOpen (one frame per DREAM_PATTERN_TEACH_THROTTLE_MS, default 20ms, only during a _teach* phase). See FINALIZED 2026-07-14. Remaining bleed pieces (event-cost FIX A targeted re-teach, corpus-bleed FIX B) still open.
 
 ## [~] INVESTIGATE: are the curriculum GATE CHECKS correct? (Gee 2026-07-10)
 - Gee verbatim: "the issuese is the gate checks are they correct? write the todo if not, we dont want millions of events to run endlessly"
