@@ -703,7 +703,17 @@ const SERVER_MEMORY_MIXIN = {
       // indexed O(log N) op), so the tick's heartbeat span stays sub-millisecond
       // and the loop breathes between the write and any teach op. Nothing is
       // lost — the Tier 0 → Tier 1 promotion still happens, just not inside the tick.
-      if (_agedTexts && _agedTexts.length > 0 && typeof this.storeEpisode === 'function' && typeof setImmediate === 'function') {
+      // SUSPEND during active curriculum teaching. The aged items are still
+      // dropped from the WM array above (bounded), but the Tier-1 promotion
+      // storeEpisode (embedding + surprise + SQL, real CPU even deferred) is
+      // skipped while she's grinding the seed/cells — those "learning phase=X"
+      // snapshots are near-duplicate noise that merge anyway, and generating
+      // one every 2s on the main loop was the last freeze source (unnamed after
+      // the deferral, since the tick span itself is now trivial). Her meaningful
+      // episodic memory comes from chat + life-memory encoding, not the teach
+      // heartbeat. Promotion resumes automatically in dream windows / idle / chat
+      // (when _curriculumInProgress is false).
+      if (!this._curriculumInProgress && _agedTexts && _agedTexts.length > 0 && typeof this.storeEpisode === 'function' && typeof setImmediate === 'function') {
         const _texts = _agedTexts;
         setImmediate(() => {
           for (let i = 0; i < _texts.length; i++) {
@@ -722,7 +732,7 @@ const SERVER_MEMORY_MIXIN = {
     }
 
     // Tier 1 thinking-episode — every ≥30000ms wall-clock
-    if (now - this._lastTier1HbAt >= 30000 && typeof this.storeEpisode === 'function') {
+    if (now - this._lastTier1HbAt >= 30000 && typeof this.storeEpisode === 'function' && !this._curriculumInProgress) {
       this._lastTier1HbAt = now;
       try {
         let context = 'idle';
