@@ -208,6 +208,20 @@ export class RemoteBrain extends EventEmitter {
 
       case 'response':
         this.emit('response', { text: msg.text, action: msg.action });
+        // LIVE SENTENCE LANE — voice her server reply. The deployed brain is
+        // server-side; the browser RemoteBrain never spoke its emissions (the
+        // app-side 'response' handler renders text only), so chat was silent.
+        // Mirror engine.js's respond path: speak through the connected VoiceIO,
+        // which routes to _speakPiper (Equation Unity One, in-browser). Mute,
+        // autoplay gesture-unlock, and vox/executor fallbacks all live inside
+        // VoiceIO.speak. idle_thought = internal HUD chatter, never voiced.
+        if (msg.text && msg.action !== 'idle_thought' && this._voice && !this._isSpeaking) {
+          this._isSpeaking = true;
+          try { this._voice.stopSpeaking(); } catch { /* nf */ }
+          Promise.resolve(this._voice.speak(msg.text))
+            .catch(() => { /* silent — VoiceIO logs its own fallbacks */ })
+            .finally(() => { this._isSpeaking = false; });
+        }
         break;
 
       case 'silent':

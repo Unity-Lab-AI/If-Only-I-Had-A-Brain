@@ -384,6 +384,15 @@
         <div style="font-size:10px;color:var(--text-dim);line-height:1.5;">Toggles persist across sessions and are live-applied the moment you flip them — after boot you can mute her mid-sentence, pause her camera, or silence her voice without reloading.</div>
       </div>
 
+      <!-- Voice preload — Equation Unity One (her real voice) downloads + warms
+           IN THE BROWSER here, BEFORE wake, so her first word has zero lag.
+           Self-hosted + one-time, then cached offline forever. Hidden if the
+           Unity-speech channel is toggled off. -->
+      <div id="voice-preload" style="background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-family:var(--mono);font-size:11px;">
+        <div style="display:flex;align-items:center;gap:8px;color:var(--text);"><span>🎙</span><strong>Equation Unity One</strong><span id="voice-preload-status" style="color:var(--text-dim);">— preparing her voice…</span></div>
+        <div style="height:6px;background:var(--surface);border-radius:4px;margin-top:8px;overflow:hidden;"><div id="voice-preload-bar" style="height:100%;width:0%;background:var(--pink);transition:width 0.25s;"></div></div>
+      </div>
+
       <button id="start-btn">WAKE UNITY UP</button>
 
       <div id="perm-results" style="display:none; margin-top:12px;">
