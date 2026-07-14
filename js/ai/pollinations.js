@@ -3,7 +3,7 @@
  *
  * Endpoints (current — NOT the deprecated text.pollinations.ai):
  *   Text:  https://gen.pollinations.ai/v1/chat/completions
- *   Image: https://gen.pollinations.ai/image/{prompt}
+ *   Image: https://image.pollinations.ai/prompt/{prompt}
  *   Audio: https://gen.pollinations.ai/v1/audio/speech
  *   Auth:  https://enter.pollinations.ai/authorize
  *
