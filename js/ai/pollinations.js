@@ -138,9 +138,16 @@ export class PollinationsAI {
             // image and renders look recycled. A random seed (pinnable via
             // options.seed) makes each generation a new picture.
             const seed = (typeof options.seed === 'number') ? options.seed : Math.floor(Math.random() * 1e9);
-            // gen.pollinations.ai/image/{prompt} — unified endpoint for all users
-            // Auth via ?key= param (for authenticated) or anonymous (no key)
-            let url = `${GEN_URL}/image/${encoded}?model=${encodeURIComponent(model)}&width=${width}&height=${height}&seed=${seed}&nologo=true`;
+            // image.pollinations.ai/prompt/{prompt} — the image endpoint.
+            // (Pollinations DEPRECATED gen.pollinations.ai/image/ — it now 401s
+            // even WITH a valid key AND anonymously; the chat-window "show me X"
+            // path silently stopped rendering. Live-verified 2026-07-13:
+            // image.pollinations.ai/prompt/<p>?...&key=<k> → 200 image/jpeg,
+            // gen.pollinations.ai/image/<p> → 401. This is the chat-window image
+            // path only — her equational mind's-eye imagination is a separate
+            // engine and was never affected.)
+            // Auth via ?key= param (for authenticated) or anonymous (no key).
+            let url = `${IMAGE_URL}/prompt/${encoded}?model=${encodeURIComponent(model)}&width=${width}&height=${height}&seed=${seed}&nologo=true`;
             if (this._apiKey) {
                 url += `&key=${encodeURIComponent(this._apiKey)}`;
             }
