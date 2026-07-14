@@ -677,28 +677,39 @@ const SERVER_MEMORY_MIXIN = {
       // anchors. THAT'S the "recall a week later" path.
       const TIER0_AGE_LIMIT_MS = 5 * 60 * 1000;
       const cutoff = now - TIER0_AGE_LIMIT_MS;
+      let _agedTexts = null;
       while (this.memory.workingMemoryItems.length > 0
              && this.memory.workingMemoryItems[0].ts < cutoff) {
         const aged = this.memory.workingMemoryItems.shift();
+        // Build the Tier-1 promotion label NOW (synchronous, cheap) — BEFORE the
+        // object returns to the pool where a later heartbeat would overwrite its
+        // cellKey/phase fields. iter20-K freq-merge dedupes downstream.
+        const labelParts = [];
+        if (aged.cellKey) labelParts.push(`learning ${aged.cellKey}`);
+        if (aged.phase) labelParts.push(`phase=${aged.phase}`);
+        (_agedTexts || (_agedTexts = [])).push(labelParts.length > 0 ? labelParts.join(' · ') : 'working memory snapshot');
         // iter24.1 — return the object to the free pool for reuse on
         // the next heartbeat push. Cap pool size so memory doesn't
-        // unboundedly grow if the array shrinks faster than it grows
-        // for some reason.
+        // unboundedly grow if the array shrinks faster than it grows.
         if (this._tier0HbPool && this._tier0HbPool.length < 256) {
           this._tier0HbPool.push(aged);
         }
-        // Promote to Tier 1 before the WM hot-cache representation
-        // disappears. iter20-K freq-merge handles dedup. storeEpisode
-        // signature: (userId, type, inputText, responseText).
-        try {
-          if (typeof this.storeEpisode === 'function') {
-            const labelParts = [];
-            if (aged.cellKey) labelParts.push(`learning ${aged.cellKey}`);
-            if (aged.phase) labelParts.push(`phase=${aged.phase}`);
-            const inputText = labelParts.length > 0 ? labelParts.join(' · ') : 'working memory snapshot';
-            this.storeEpisode('working-memory', 'wm-aged-out', inputText, null);
+      }
+      // DEFER the Tier-1 promotion writes OFF the synchronous tick. storeEpisode
+      // does SQLite I/O + embedding + dedup lookups; running it inline (once per
+      // aged item, every 2s, on the MAIN LOOP) made _memoryHeartbeat a freeze
+      // source — the last residual after the merge-scan LIMIT + composite indexes.
+      // setImmediate moves each write to its own event-loop turn (each now an
+      // indexed O(log N) op), so the tick's heartbeat span stays sub-millisecond
+      // and the loop breathes between the write and any teach op. Nothing is
+      // lost — the Tier 0 → Tier 1 promotion still happens, just not inside the tick.
+      if (_agedTexts && _agedTexts.length > 0 && typeof this.storeEpisode === 'function' && typeof setImmediate === 'function') {
+        const _texts = _agedTexts;
+        setImmediate(() => {
+          for (let i = 0; i < _texts.length; i++) {
+            try { this.storeEpisode('working-memory', 'wm-aged-out', _texts[i], null); } catch { /* non-fatal — WM age-out already happened */ }
           }
-        } catch { /* non-fatal — WM age-out already happened */ }
+        });
       }
     }
 
@@ -754,7 +765,15 @@ const SERVER_MEMORY_MIXIN = {
           context = `${contextCategory} (transitioned from ${this._lastHbContext}) :: ${context}`;
         }
         this._lastHbContext = contextCategory;
-        this.storeEpisode('brain-heartbeat', 'thinking', context, `arousal=${arousal} valence=${valence} psi=${psi} spikes=${spikes}`);
+        // DEFER off the synchronous tick (same reason as the Tier-0 age-out
+        // promotion above) — the SQLite write + embedding runs on its own
+        // event-loop turn so the heartbeat never sits in the tick's blocking span.
+        const _hbResp = `arousal=${arousal} valence=${valence} psi=${psi} spikes=${spikes}`;
+        if (typeof setImmediate === 'function') {
+          setImmediate(() => { try { this.storeEpisode('brain-heartbeat', 'thinking', context, _hbResp); } catch { /* non-fatal */ } });
+        } else {
+          this.storeEpisode('brain-heartbeat', 'thinking', context, _hbResp);
+        }
       } catch (err) {
         // Surface the failure once so operator sees what's broken if
         // the heartbeat ever fails — silent catch hid an entire fix
