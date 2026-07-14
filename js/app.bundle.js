@@ -115595,6 +115595,7 @@ var SensoryAIProviders = class {
 
 // ../js/ai/pollinations.js
 var GEN_URL = "https://gen.pollinations.ai";
+var IMAGE_URL = "https://image.pollinations.ai";
 var PollinationsAI = class _PollinationsAI {
   constructor(apiKey = null) {
     this._apiKey = apiKey;
@@ -115697,7 +115698,7 @@ var PollinationsAI = class _PollinationsAI {
       }
       const encoded = encodeURIComponent(finalPrompt);
       const seed = typeof options.seed === "number" ? options.seed : Math.floor(Math.random() * 1e9);
-      let url = `${GEN_URL}/image/${encoded}?model=${encodeURIComponent(model)}&width=${width}&height=${height}&seed=${seed}&nologo=true`;
+      let url = `${IMAGE_URL}/prompt/${encoded}?model=${encodeURIComponent(model)}&width=${width}&height=${height}&seed=${seed}&nologo=true`;
       if (this._apiKey) {
         url += `&key=${encodeURIComponent(this._apiKey)}`;
       }
