@@ -3590,7 +3590,7 @@ class ServerBrain {
       // bottom of the tick body. Wall-clock timestamps inside (NOT
       // frameCount modulo) so cadence is robust against slow ticks at
       // biological scale.
-      { const _t = performance.now(); this._memoryHeartbeat(); const _d = performance.now() - _t; if (_d > 2000) console.warn(`[tick] _memoryHeartbeat ${_d | 0}ms — MAIN-LOOP freeze source (phase label on the BLOCKED line is stale/teach; this is the real op).`); }
+      this._memoryHeartbeat();
 
       // server-side inner voice tick. Fires Unity's REAL
       // current-state thought (read from server cluster's trained
@@ -3598,7 +3598,7 @@ class ServerBrain {
       // for 3D brain popups to render. Replaces the iter23.2 browser-
       // side inner voice (which ran on the client's untrained cortex —
       // decorative noise, not Unity's real mind).
-      { const _t = performance.now(); this._innerVoiceTick(); const _d = performance.now() - _t; if (_d > 2000) console.warn(`[tick] _innerVoiceTick ${_d | 0}ms — MAIN-LOOP freeze source (synchronous portion; innerVoiceInFlight tracks only the async tail).`); }
+      this._innerVoiceTick();
 
       // Attention selection. Amygdala (valence/arousal)
       // and basal-ganglia (action gating) write per-region gain factors
@@ -3628,11 +3628,8 @@ class ServerBrain {
       // consciousness — competition + threshold + global broadcast.
       // Subthreshold ticks have unconscious processing only.
       if (this.globalWorkspace && typeof this.globalWorkspace.tick === 'function') {
-        const _t = performance.now();
         try { this.globalWorkspace.tick(); }
         catch (err) { /* non-fatal — workspace failure shouldn't crash brain */ }
-        const _d = performance.now() - _t;
-        if (_d > 2000) console.warn(`[tick] globalWorkspace.tick ${_d | 0}ms — MAIN-LOOP freeze source.`);
       }
 
       // iter20-N — ConsolidationEngine fires at TOP of tick alongside
