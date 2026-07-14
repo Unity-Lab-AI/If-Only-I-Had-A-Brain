@@ -115861,6 +115861,65 @@ function concatAudio(pcms, sampleRate = 24e3, xfadeMs = 30) {
   return out;
 }
 
+// ../js/io/voice-piper.js
+var WORKER_URL = "/js/voice-piper-worker.bundle.js";
+var _worker = null;
+var _seq = 0;
+var _pending = /* @__PURE__ */ new Map();
+var _readyPromise = null;
+function _spawn() {
+  if (_worker) return _worker;
+  _worker = new Worker(WORKER_URL, { type: "module" });
+  _worker.addEventListener("message", (e) => {
+    const m = e.data || {};
+    if (m.type === "pcm" || m.type === "error") {
+      const p = _pending.get(m.id);
+      if (p) {
+        _pending.delete(m.id);
+        if (m.type === "pcm") p.resolve({ pcm: m.pcm, sampleRate: m.sampleRate });
+        else p.reject(new Error(m.error));
+      }
+    }
+  });
+  _worker.addEventListener("error", (err) => {
+    for (const [, p] of _pending) p.reject(new Error("voice worker error: " + (err.message || "unknown")));
+    _pending.clear();
+  });
+  return _worker;
+}
+function preloadVoice(onProgress) {
+  if (_readyPromise) return _readyPromise;
+  const w = _spawn();
+  _readyPromise = new Promise((resolve, reject) => {
+    const handler = (e) => {
+      const m = e.data || {};
+      if (m.type === "progress") {
+        if (onProgress) onProgress(m.loaded, m.total);
+      } else if (m.type === "ready") {
+        w.removeEventListener("message", handler);
+        resolve();
+      } else if (m.type === "error" && m.id == null) {
+        w.removeEventListener("message", handler);
+        reject(new Error(m.error));
+      }
+    };
+    w.addEventListener("message", handler);
+    w.postMessage({ type: "preload" });
+  });
+  return _readyPromise;
+}
+function synthPCM(text) {
+  const w = _spawn();
+  const id = ++_seq;
+  return new Promise((resolve, reject) => {
+    _pending.set(id, { resolve, reject });
+    w.postMessage({ type: "synth", id, text });
+  });
+}
+function isVoicePreloading() {
+  return _readyPromise != null;
+}
+
 // ../js/io/voice.js
 var VoiceIO = class {
   constructor() {
@@ -116021,6 +116080,42 @@ var VoiceIO = class {
     const pcm = concatAudio(pcms, sr, 70);
     if (!pcm || !pcm.length) return false;
     console.log(`[VoiceIO] \u{1F399} VOX equational speech \u2014 ${toks.length} word(s) from her own bank, zero executor`);
+    await this._playPcm(pcm, sr, rate || 1);
+    return true;
+  }
+  /**
+   * LIVE SENTENCE LANE — Equation Unity One, her REAL voice, synthesized in the
+   * browser off the main thread (piper en_US-hfc_female-medium via onnxruntime-web,
+   * WebGPU->CPU-wasm) from the self-hosted model. This is the whole-sentence path:
+   * it carries natural prosody the per-word vox-bank can't. Returns true on
+   * success; false (or throws) => caller falls through to the vox-bank / executor.
+   *
+   * Only used when the setup-page preload was kicked (isVoicePreloading), so a
+   * cold path never spawns the worker unexpectedly.
+   */
+  async _speakPiper(text, rate) {
+    if (this._piperEnabled === false) return false;
+    if (!isVoicePreloading()) return false;
+    let out;
+    try {
+      out = await synthPCM(text);
+    } catch (e) {
+      console.warn("[VoiceIO] live piper synth failed \u2014 vox/executor fallback:", e.message);
+      return false;
+    }
+    if (!out || !out.pcm || !out.pcm.length) return false;
+    let pcm = out.pcm;
+    let sr = out.sampleRate;
+    try {
+      const rec = perceiveAudio(pcm, sr);
+      const recon = reconstructAudio(rec);
+      if (recon && recon.length) {
+        pcm = recon;
+        sr = rec.sampleRate || sr;
+      }
+    } catch {
+    }
+    console.log(`[VoiceIO] \u{1F399} Equation Unity One (live sentence lane) \u2014 "${String(text).slice(0, 40)}" synthesized in-browser`);
     await this._playPcm(pcm, sr, rate || 1);
     return true;
   }
@@ -116312,6 +116407,15 @@ var VoiceIO = class {
     this._speaking = true;
     this.emit("speech_start");
     const voice2 = options.voice || null;
+    try {
+      if (await this._speakPiper(text, this._agePreset().rate)) {
+        this._speaking = false;
+        this.emit("speech_end");
+        return;
+      }
+    } catch (err) {
+      console.warn("[VoiceIO] live sentence lane failed, vox fallback:", err.message);
+    }
     try {
       if (await this._speakVox(text, this._agePreset().rate)) {
         this._speaking = false;
@@ -122664,6 +122768,17 @@ var RemoteBrain = class extends EventEmitter2 {
         break;
       case "response":
         this.emit("response", { text: msg.text, action: msg.action });
+        if (msg.text && msg.action !== "idle_thought" && this._voice && !this._isSpeaking) {
+          this._isSpeaking = true;
+          try {
+            this._voice.stopSpeaking();
+          } catch {
+          }
+          Promise.resolve(this._voice.speak(msg.text)).catch(() => {
+          }).finally(() => {
+            this._isSpeaking = false;
+          });
+        }
         break;
       case "silent":
         this.emit("silent", {
@@ -123214,6 +123329,29 @@ var landingBrainSource = null;
       renderLandingTab(activeTab, _landingState);
     }
   }, 500);
+  const kickVoicePreload = () => {
+    const box = document.getElementById("voice-preload");
+    const speechOn = (document.getElementById("toggle-unity-speech") || {}).checked !== false;
+    if (!speechOn) {
+      if (box) box.style.display = "none";
+      return;
+    }
+    if (box) box.style.display = "";
+    if (isVoicePreloading()) return;
+    const bar = document.getElementById("voice-preload-bar");
+    const status = document.getElementById("voice-preload-status");
+    preloadVoice((loaded, total) => {
+      const pct = total > 0 ? Math.min(100, Math.round(loaded / total * 100)) : 0;
+      if (bar) bar.style.width = pct + "%";
+      if (status) status.textContent = total > 0 ? `\u2014 downloading her voice\u2026 ${pct}%` : "\u2014 preparing her voice\u2026";
+    }).then(() => {
+      if (bar) bar.style.width = "100%";
+      if (status) status.textContent = "\u2014 her voice is ready \u2713";
+    }).catch((err) => {
+      if (status) status.textContent = "\u2014 voice unavailable (" + (err.message || "load failed") + ")";
+      console.warn("[Unity] voice preload failed:", err);
+    });
+  };
   const openSetupModal = () => {
     const modal = document.getElementById("setup-modal");
     if (modal) {
@@ -123221,6 +123359,11 @@ var landingBrainSource = null;
       modal.style.display = "";
     }
     if (typeof renderSensoryInventory === "function") renderSensoryInventory();
+    try {
+      kickVoicePreload();
+    } catch (e) {
+      console.warn("[Unity] kickVoicePreload:", e);
+    }
   };
   const FIRST_USE_FLAG = "unity_first_use_warning_shown_v1";
   const showFirstUseWarning = (onProceed) => {

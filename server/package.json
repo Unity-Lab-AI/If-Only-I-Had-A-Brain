@@ -6,7 +6,8 @@
   "main": "brain-server.js",
   "scripts": {
     "start": "node brain-server.js",
-    "build": "esbuild ../js/app.js --bundle --format=esm --outfile=../js/app.bundle.js --platform=browser --target=esnext --external:./env.js"
+    "build": "esbuild ../js/app.js --bundle --format=esm --outfile=../js/app.bundle.js --platform=browser --target=esnext --external:./env.js && npm run build:voiceworker",
+    "build:voiceworker": "esbuild ../js/io/voice-piper-worker.js --bundle --format=esm --outfile=../js/voice-piper-worker.bundle.js --platform=browser --target=esnext --alias:fs=../js/io/vendor/node-empty-stub.cjs --alias:path=../js/io/vendor/node-empty-stub.cjs --alias:crypto=../js/io/vendor/node-empty-stub.cjs"
   },
   "dependencies": {
     "better-sqlite3": "^11.0.0",

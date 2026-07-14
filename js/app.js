@@ -34,6 +34,7 @@ import { UnityBrain } from './brain/engine.js';
 import { AIProviders } from './brain/peripherals/ai-providers.js';
 import { PollinationsAI } from './ai/pollinations.js';
 import { VoiceIO } from './io/voice.js';
+import { preloadVoice, isVoicePreloading } from './io/voice-piper.js';
 import { requestPermissions } from './io/permissions.js';
 import { UserStorage } from './storage.js';
 import { Sandbox } from './ui/sandbox.js';
@@ -302,6 +303,32 @@ let landingBrainSource = null; // RemoteBrain or null
   // modal pre-boot. Post-boot, the bubble toggles the chat panel
   // instead. State-aware single handler so neither entry point is
   // ever dead.
+  // Kick Equation Unity One's in-browser voice preload the moment the setup
+  // modal opens — fetch + cache the model, warm the worker/session — so by the
+  // time the user finishes configuring and clicks WAKE, her voice has ZERO lag.
+  // Idempotent (preloadVoice returns the same promise). Skipped if the Unity-
+  // speech channel is toggled off (saves the one-time model download).
+  const kickVoicePreload = () => {
+    const box = document.getElementById('voice-preload');
+    const speechOn = (document.getElementById('toggle-unity-speech') || {}).checked !== false;
+    if (!speechOn) { if (box) box.style.display = 'none'; return; }
+    if (box) box.style.display = '';
+    if (isVoicePreloading()) return;   // already running/done — don't restack
+    const bar = document.getElementById('voice-preload-bar');
+    const status = document.getElementById('voice-preload-status');
+    preloadVoice((loaded, total) => {
+      const pct = total > 0 ? Math.min(100, Math.round((loaded / total) * 100)) : 0;
+      if (bar) bar.style.width = pct + '%';
+      if (status) status.textContent = total > 0 ? `— downloading her voice… ${pct}%` : '— preparing her voice…';
+    }).then(() => {
+      if (bar) bar.style.width = '100%';
+      if (status) status.textContent = '— her voice is ready ✓';
+    }).catch((err) => {
+      if (status) status.textContent = '— voice unavailable (' + (err.message || 'load failed') + ')';
+      console.warn('[Unity] voice preload failed:', err);
+    });
+  };
+
   const openSetupModal = () => {
     const modal = document.getElementById('setup-modal');
     if (modal) { modal.classList.remove('hidden'); modal.style.display = ''; }
@@ -309,6 +336,8 @@ let landingBrainSource = null; // RemoteBrain or null
     // the modal was last shown. Guarded against pre-boot null-providers
     // inside the render function itself.
     if (typeof renderSensoryInventory === 'function') renderSensoryInventory();
+    // Warm her voice while the user reads/configures — ready before WAKE.
+    try { kickVoicePreload(); } catch (e) { console.warn('[Unity] kickVoicePreload:', e); }
   };
 
   // FIRST-USE PRIVACY WARNING. Operator (2026-05-06): one-
