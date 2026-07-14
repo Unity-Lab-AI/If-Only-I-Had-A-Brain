@@ -2344,7 +2344,20 @@ const SERVER_GPU_MIXIN = {
     const laneCap = this._donorPatternLaneCapBytes();
     if (ws.bufferedAmount > laneCap) {
       this._wsPatternShedCount = (this._wsPatternShedCount || 0) + 1;
-      this._armShadowResyncDeferred('teach-pattern frame shed at lane cap'); // dirty on the clearable flag + resync actually armed
+      // A shed PATTERN frame does NOT dirty the weight shadow — DO NOT arm a
+      // resync here. These are write_spike_slice / write_current_slice /
+      // clear_spike_region frames: per-iteration EPHEMERAL spike/current mirror
+      // state that the next teach iteration's clear+write fully supersedes, and
+      // the teach WEIGHT updates ride the bound-Hebbian dispatch (explicit correct
+      // pre/post patterns), NOT this mirror. The old `_armShadowResyncDeferred`
+      // call here set `_gpuShadowDirty` on every shed — and a heavy cell sheds
+      // thousands of pattern frames per phase, re-arming the dirty flag faster
+      // than the pause-gated resync could EVER clear it, so the "GPU shadow DIRTY"
+      // banner flapped permanently true the instant a cell started and never left.
+      // Only REAL weight-delta drops (the TU.25.A hebbian-batch shed) and genuine
+      // divergence (donor drop / failover) dirty the weight shadow + arm a resync;
+      // those route through their own arms. The shed itself (buffer protection)
+      // still happens below — it's just no longer a false-positive dirty trigger.
       const now = Date.now();
       if (!this._wsPatternShedLogMs || (now - this._wsPatternShedLogMs) > 30000) {
         this._wsPatternShedLogMs = now;
