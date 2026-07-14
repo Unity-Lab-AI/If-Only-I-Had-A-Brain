@@ -115,7 +115,7 @@ The unknown — what we can't model, what makes consciousness CONSCIOUSNESS — 
 | **Database** | SQLite (better-sqlite3) for episodic memory, JSON for weights + conversations |
 | **AI Backends** | **Sensory-OUTPUT only** — image gen (custom/auto-detected local/env.js/Pollinations), TTS/STT. Vision is now 100% EQUATIONAL (CDF 9/7 field C → `describeEquational` percept; the LLM/VLM vision describer is RETIRED). Zero text-AI for cognition — language cortex generates every word equationally. |
 | **Embeddings** | GloVe 300d word vectors + fastText-style subword fallback (no download required), online context refinement |
-| **Voice I/O** | Web Speech API (listen) + Piper `en_US-hfc_female-medium` whole-sentence synthesis → CDF 9/7 wavelet equational voice pipeline → browser playback (speak). Pollinations TTS retired; banked word/phrase set + SpeechSynthesis are last-ditch fallbacks. |
+| **Voice I/O** | Web Speech API (listen) + "Equation Unity One": Piper `en_US-hfc_female-medium` synthesized **in-browser** via onnxruntime-web (WebGPU → CPU-wasm, in a Web Worker on the visitor's machine — never a server GPU) from a self-hosted model (`voice-engine/`, downloaded once at setup, OPFS-cached) → CDF 9/7 wavelet equational voice pipeline → playback (speak). No cloud TTS, no external API. Pollinations TTS retired; banked word/phrase set + SpeechSynthesis are last-ditch fallbacks. |
 | **Image Gen** | Pollinations API (flux, photorealistic, anime, cyberpunk + 20 more models) |
 | **Storage** | localStorage (browser) + disk persistence (server) with sparse CSR serialization |
 | **Config** | `js/env.js` (gitignored) for API keys, `js/brain/persona.js` for personality params |
@@ -627,7 +627,7 @@ Camera frames from the IT layer of `js/brain/visual-cortex.js` are transformed i
 
 ### TTS / STT
 
-`js/io/voice.js` plays Piper-synthesized whole sentences passed through the CDF 9/7 equational voice pipeline (`js/brain/mindspace/audio.js`), with a banked word/phrase offline fallback and SpeechSynthesis as last resort; Web Speech API handles input. Both are peripheral: input gets mapped to auditory cortex neural current, output receives text from `brain.emit('response', ...)` events.
+`js/io/voice.js` plays whole sentences synthesized **in the browser** by the voice worker (`js/io/voice-piper-worker.js` → `js/voice-piper-worker.bundle.js`: Piper `en_US-hfc_female-medium` via onnxruntime-web, WebGPU → CPU-wasm, self-hosted model under `voice-engine/`), passed through the CDF 9/7 equational voice pipeline (`js/brain/mindspace/audio.js`), with a banked word/phrase offline fallback and SpeechSynthesis as last resort; Web Speech API handles input. Both are peripheral: input gets mapped to auditory cortex neural current, output receives text from `brain.emit('response', ...)` events.
 
 ### What Was Ripped
 
@@ -724,7 +724,7 @@ If-Only-I-Had-A-Brain/
 | Local image backends | Auto-detected at boot on localhost: A1111/SD.Next/Forge/Fooocus/ComfyUI/InvokeAI/LocalAI/Ollama. 1.5s probe timeout per port. |
 | env.js image backends | `ENV_KEYS.imageBackends[]` array — persistent custom endpoints (OpenAI-compatible, A1111 kind, ComfyUI workflow kind, or generic URL+key). |
 | Web Speech API | Voice input (SpeechRecognition) with speech interruption handling |
-| Piper + CDF 9/7 voice pipeline | Voice output (`en_US-hfc_female-medium` whole-sentence → wavelet equations) |
+| Piper + CDF 9/7 voice pipeline | Voice output — in-browser (onnxruntime-web WebGPU→wasm, self-hosted `voice-engine/`) `en_US-hfc_female-medium` whole-sentence → wavelet equations |
 | Webcam / Vision | `getUserMedia` capture → CDF 9/7 equational percept (`describeEquational`, no LLM) → gaze tracking → Eye widget |
 | localStorage | Persistent storage for keys, history, preferences, sandbox state, chat history |
 | Server Brain | Persistent Node brain-server, WebSocket on port 7525 (moved off 8080 to avoid llama.cpp collision). **Deployed:** nginx reverse-proxies `/ws` (public) + `/admin/ws` (Forgejo-authed admin) to `127.0.0.1:7525` on the same box. Shared brain state (one singleton UnityBrain instance, authoritative CSR weights on the server). User text is PRIVATE per connection (no cross-client broadcast). Dictionary entries / GloVe embedding refinements / cortex cross-projection weights grow from every user's conversation and benefit everyone — see privacy model in `docs/WEBSOCKET.md`. |
