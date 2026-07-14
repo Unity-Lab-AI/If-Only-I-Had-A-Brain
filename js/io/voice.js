@@ -8,6 +8,7 @@
  */
 
 import { perceiveAudio, reconstructAudio, concatAudio } from '../brain/mindspace/audio.js';
+import { synthPCM, isVoicePreloading } from './voice-piper.js';
 
 class VoiceIO {
   constructor() {
@@ -193,6 +194,44 @@ class VoiceIO {
     const pcm = concatAudio(pcms, sr, 70);   // wider crossfade — smoother joins between units
     if (!pcm || !pcm.length) return false;
     console.log(`[VoiceIO] 🎙 VOX equational speech — ${toks.length} word(s) from her own bank, zero executor`);
+    await this._playPcm(pcm, sr, rate || 1.0);
+    return true;
+  }
+
+  /**
+   * LIVE SENTENCE LANE — Equation Unity One, her REAL voice, synthesized in the
+   * browser off the main thread (piper en_US-hfc_female-medium via onnxruntime-web,
+   * WebGPU->CPU-wasm) from the self-hosted model. This is the whole-sentence path:
+   * it carries natural prosody the per-word vox-bank can't. Returns true on
+   * success; false (or throws) => caller falls through to the vox-bank / executor.
+   *
+   * Only used when the setup-page preload was kicked (isVoicePreloading), so a
+   * cold path never spawns the worker unexpectedly.
+   */
+  async _speakPiper(text, rate) {
+    if (this._piperEnabled === false) return false;
+    if (!isVoicePreloading()) return false;   // preload never initiated — use fallback
+    let out;
+    try {
+      out = await synthPCM(text);
+    } catch (e) {
+      console.warn('[VoiceIO] live piper synth failed — vox/executor fallback:', e.message);
+      return false;
+    }
+    if (!out || !out.pcm || !out.pcm.length) return false;
+    // Equational round-trip: encode her piper waveform into wavelet equations
+    // (CDF 9/7) and reconstruct — so what plays is literally her voice-AS-equations,
+    // identical machinery to the vox-bank path (reconstructAudio). Transparent
+    // (~38-42dB, the V4 blind-A/B pick). Optional — falls back to raw piper PCM
+    // if the transform hiccups, so a codec edge never silences her.
+    let pcm = out.pcm;
+    let sr = out.sampleRate;
+    try {
+      const rec = perceiveAudio(pcm, sr);
+      const recon = reconstructAudio(rec);
+      if (recon && recon.length) { pcm = recon; sr = rec.sampleRate || sr; }
+    } catch { /* keep raw piper pcm */ }
+    console.log(`[VoiceIO] 🎙 Equation Unity One (live sentence lane) — "${String(text).slice(0, 40)}" synthesized in-browser`);
     await this._playPcm(pcm, sr, rate || 1.0);
     return true;
   }
@@ -531,6 +570,19 @@ class VoiceIO {
     // the current age tier, the sentence reconstructs from her own field-A
     // records (inverse CDF 9/7 + crossfade concat) and the executor never
     // fires. Falls through silently when any word is missing.
+    // LIVE SENTENCE LANE FIRST — Equation Unity One synthesized whole-sentence
+    // in-browser (her real voice, natural prosody). Preloaded at setup. Falls
+    // through to the per-word vox-bank, then the executor, if not ready/fails.
+    try {
+      if (await this._speakPiper(text, this._agePreset().rate)) {
+        this._speaking = false;
+        this.emit('speech_end');
+        return;
+      }
+    } catch (err) {
+      console.warn('[VoiceIO] live sentence lane failed, vox fallback:', err.message);
+    }
+
     try {
       if (await this._speakVox(text, this._agePreset().rate)) {
         this._speaking = false;

@@ -7179,6 +7179,10 @@ const httpServer = http.createServer((req, res) => {
     '.png': 'image/png', '.jpg': 'image/jpeg', '.ico': 'image/x-icon',
     '.woff': 'font/woff', '.woff2': 'font/woff2', '.ttf': 'font/ttf',
     '.map': 'application/json', '.txt': 'text/plain',
+    // Voice engine (self-hosted piper) — WASM needs application/wasm for
+    // streaming compile; the ONNX model + phonemizer .data are fetched as
+    // arrayBuffers so octet-stream is correct. Served from voice-engine/*.
+    '.wasm': 'application/wasm', '.onnx': 'application/octet-stream', '.data': 'application/octet-stream',
   };
 
   // URL-decode the path so names like "Ultimate%20Unity.txt" resolve to
