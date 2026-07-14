@@ -3,8 +3,8 @@
 //
 //   node scripts/unity-selfie-battery.mjs
 //
-// Uses the DOCUMENTED Pollinations image endpoint (image.pollinations.ai/prompt
-// — gen.pollinations.ai/image was deprecated -> 401). Auth via ?key= (a browser
+// Uses the CURRENT unified Pollinations gateway (gen.pollinations.ai/image —
+// June 2026 docs; image.pollinations.ai/prompt is legacy). Auth via ?key= (a browser
 // <img> can't send a Bearer header; ?key= is live-verified working). Saves each
 // render to pollinations-output/selfie-test/<label>.jpg and reports http/bytes.
 //
@@ -43,7 +43,7 @@ console.log(`[selfie-battery] key=${KEY ? KEY.slice(0, 6) + '…' : '(NONE)'} ou
 let pass = 0, fail = 0;
 for (const item of BATTERY) {
   const prompt = (item.p + STYLE).slice(0, 300);
-  const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?model=flux&width=512&height=512&seed=${seed(item.label)}&nologo=true${KEY ? `&key=${encodeURIComponent(KEY)}` : ''}`;
+  const url = `https://gen.pollinations.ai/image/${encodeURIComponent(prompt)}?model=flux&width=512&height=512&seed=${seed(item.label)}&nologo=true${KEY ? `&key=${encodeURIComponent(KEY)}` : ''}`;
   const t0 = Date.now();
   try {
     const res = await fetch(url);
