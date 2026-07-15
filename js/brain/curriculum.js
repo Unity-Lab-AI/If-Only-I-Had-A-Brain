@@ -7957,11 +7957,26 @@ export class Curriculum {
           const CHUNK = 25;
           const reps = opts.vocabReps ?? 4;
           this._hb(`[Curriculum][${cellKey}] UPFRONT-VOCAB-TEACH START — ${words.length} missing exam words × ${reps} reps (before cell teach phases)`);
+          // EVENT-COST FIX A (Gee 2026-07-10) — register every taught word in
+          // `_vocabTaughtSet` so `_trainedVocabularySet` counts it and the NEXT
+          // coverage audit (this cell's pregate EXAM-VOCAB-TEACH + every later
+          // cell's coverage) reports it trained. Mirrors the TU.24-FIX
+          // registration in `_pregateEnrichment` (~9576) that the UPFRONT path
+          // was MISSING — without it, words taught here relied solely on
+          // `_teachVocabList`'s dictionary registration, so any coverage lag
+          // let both UPFRONT and pregate re-teach the SAME words every cell
+          // (the "same words missing forever" re-drill class TU.24-FIX closed
+          // for pregate only). Store lowercased to match `examVocabCoverage`.
+          this._vocabTaughtSet = this._vocabTaughtSet || new Set();
           let done = 0;
           for (let i = 0; i < words.length; i += CHUNK) {
             const slice = words.slice(i, i + CHUNK);
-            try { await this._teachVocabList(slice, ctx, { reps }); }
-            catch (err) { console.warn(`[Curriculum][${cellKey}] UPFRONT-VOCAB-TEACH chunk ${i/CHUNK | 0} failed:`, err?.message || err); }
+            try {
+              await this._teachVocabList(slice, ctx, { reps });
+              for (const w of slice) this._vocabTaughtSet.add(String(w).toLowerCase());
+            } catch (err) {
+              console.warn(`[Curriculum][${cellKey}] UPFRONT-VOCAB-TEACH chunk ${i/CHUNK | 0} failed:`, err?.message || err);
+            }
             done += slice.length;
             this._hb(`[Curriculum][${cellKey}] UPFRONT-VOCAB-TEACH progress — ${done}/${words.length} words taught`);
             await new Promise(resolve => setImmediate(resolve));
