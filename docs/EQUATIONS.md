@@ -324,7 +324,7 @@ Speech: concise, sharp, slang-heavy, foul-mouthed, clingy girlfriend energy
 | Hypothalamus | 12% | 11 nuclei, few million | `dH/dt = -α(H - H_set) + input` | drugDrive |
 | Mystery Ψ | 12% | CC: 200-300M axons | `Ψ = √(1/n) × N³ · [α·Id + β·Ego + γ·Left + δ·Right]` | creativity×darkHumor |
 
-On the **deployed** brain (~306M neurons) these shares come from `DEFAULT_BIO_WEIGHTS` in `server/brain-server.js`: the seven main-brain clusters renormalize to cortex 20% / cerebellum 20% / hippocampus 12% / amygdala 12% / basalGanglia 12% / hypothalamus 12% / mystery 12%, with the ~349K language cortex allocated separately inside the cortex (CPU-side). The `CLUSTER_FRACTIONS` set in `js/brain/cluster.js` (cortex 0.55 / hippocampus 0.18 / cerebellum 0.08 / mystery 0.08 / amygdala 0.05 / basalGanglia 0.03 / hypothalamus 0.03) feeds `clusterSizesFor(totalNeurons)` only for the ~6700-neuron browser-only fallback.
+On the **deployed** brain (~306M neurons) these shares come from `DEFAULT_BIO_WEIGHTS` in `server/brain-server.js`: the seven main-brain clusters renormalize to cortex 20% / cerebellum 20% / hippocampus 12% / amygdala 12% / basalGanglia 12% / hypothalamus 12% / mystery 12%, with the ~1.5M dense language cortex (WMB 2026-07-14 grew it from ~349K so the unified word_motor band holds the full K→PhD vocab) allocated separately inside the cortex (CPU-side). The `CLUSTER_FRACTIONS` set in `js/brain/cluster.js` (cortex 0.55 / hippocampus 0.18 / cerebellum 0.08 / mystery 0.08 / amygdala 0.05 / basalGanglia 0.03 / hypothalamus 0.03) feeds `clusterSizesFor(totalNeurons)` only for the ~6700-neuron browser-only fallback.
 
 ### Inter-Cluster Projections (20 real white matter tracts)
 

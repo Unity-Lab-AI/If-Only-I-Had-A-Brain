@@ -3621,3 +3621,14 @@ Analysis (stack-traced 2026-06-30): Issue 4 is the propagation hub — the synch
   - **curriculum.js `_dwComposeSafe` (dream window)** — same `_gpuProxyLive` term added.
 - VERIFIED: node --check (chat.js + curriculum.js) + ESM import(curriculum.js, 26 exports) PASS; bundle rebuilt (curriculum.js bundled; chat.js server-only). No walk (Gee directive). Deploys via Update-Savestart (keep weights).
 - SUPERSEDES the TDR/backpressure/network hypotheses — the 156s pin + 150s donor idle is the proven mechanism. DD.A/B/C (TDR) NO LONGER NEEDED. Donor v0.3.11 NOT needed (server-side fix). The churn-debounce (shipped earlier) still bounds any residual drop to a clean single reconnect.
+
+### WMB.8 — FULL DOCUMENT PUSH before the atomic cascade (Gee 2026-07-14):
+- Gee verbatim: *"full document push, add to todo and task list, all workflow files, docs, pages , htmls, and documented informations about the brain public facing and internal , updating all stale information readmes and how to's... add all this to be done before the atomic cascade"*.
+- SCOPE — sync EVERY affected doc to the post-WMB + post-this-session brain reality (unified word_motor emission, grown language cortex ~349K→~1.5M, donor-freeze CPU-tick guard, corpus-bleed grade-defer, event-cost FIX A), in the SAME atomic commit as the code (docs-before-push LAW). Match each doc's existing format/layout (no wall-of-text dumps).
+- [ ] **Internal workflow docs:** `.claude/CLAUDE.md` CURRENT-STATE NOTES (add this session's iter), any `.claude/*.md` with stale brain facts.
+- [ ] **docs/ (internal + forward-written public):** `docs/ARCHITECTURE.md` (emission = single unified word_motor band, one bucket/word, no per-subject sub-bands; language cortex size; donor-freeze guard; corpus grade-defer), `docs/EQUATIONS.md` (word_motor emission section), `docs/SKILL_TREE.md`, `docs/ROADMAP.md`, `docs/NOW.md` if present — update stale neuron counts + emission architecture.
+- [ ] **Public HTMLs:** `index.html`, `html/brain-equations.html`, `html/unity-guide.html`, `html/dashboard.html`, `html/compute.html`, `html/webgpu-prep.html`, `html/legend.html` — sweep stale numbers (349K→~1.5M language cortex, 306M main, word_motor emission description) true to each page's layout/equation/layman format.
+- [ ] **README + how-tos:** `README.md` + any how-to / setup / donor docs — update stale brain-size / emission / donor-version info.
+- [ ] **deploy docs:** `deploy/REDEPLOY-NOTES.md` — WMB fresh-walk entry (geometry change → WEIGHTS_FORMAT_VERSION 3 → fresh walk required; grown language cortex cost).
+- [ ] **FINALIZED:** WMB entry (verbatim + design + verification) at cascade time.
+- ATOMIC: code (cluster/emit/kindergarten/curriculum/brain-server + bundle) + ALL docs above + FINALIZED + commit = ONE cascade. Nothing pushed until the whole sweep is done (Gee: "before the atomic cascade").

@@ -8500,14 +8500,18 @@ export const K_MIXIN = {
 
     const semSize = semRegion.end - semRegion.start;
     const wmSize = wordMotorRegion.end - wordMotorRegion.start;
-    // If subject-band is available, target writes to that slice of word_motor
-    const bandStart = subjectBand ? (subjectBand.start - wordMotorRegion.start) : 0;
-    const bandEnd = subjectBand ? (subjectBand.end - wordMotorRegion.start) : wmSize;
+    // WMB unify (2026-07-14) — write to the SINGLE global word_motor band (not
+    // a per-subject sub-band). Every unique word gets one bucket across the
+    // whole region; this matches the umbrella bucket map + emitWordDirect's
+    // single-band read + the shared wordBucketCellSizeFor(). subjectBand is now
+    // ignored for the write target (kept above only for log context).
+    const bandStart = 0;
+    const bandEnd = wmSize;
     const bandSize = bandEnd - bandStart;
     // SPEAK.1 — teach writes to the SAME frozen band emit argmaxes (vocab-growth-
-    // invariant). Legacy live-length division kept only as defensive fallback.
+    // invariant). Single unified authority: wordBucketCellSizeFor().
     const bucketSize = (typeof cluster.wordBucketCellSizeFor === 'function')
-      ? cluster.wordBucketCellSizeFor(subject)
+      ? cluster.wordBucketCellSizeFor()
       : Math.max(1, Math.floor(bandSize / words.length));
 
     // iter21-A leak fix: REUSE buffers across iterations instead of

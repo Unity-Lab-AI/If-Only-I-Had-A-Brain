@@ -618,21 +618,25 @@ export const CLUSTER_EMIT_MIXIN = {
     if (!Array.isArray(this._recentEmissions)) this._recentEmissions = [];
     const recentLast4 = new Set(this._recentEmissions.slice(-4));
     const REPETITION_PENALTY = 0.7;
-    for (const subj of subjScope) {
-      const subjectRegion = this.regions[`word_motor_${subj}`];
-      if (!subjectRegion) continue;
-      const subjStart = subjectRegion.start - wordMotor.start;
-      const subjEnd = subjectRegion.end - wordMotor.start;
+    // WMB unify (2026-07-14) — ONE global word_motor band + umbrella word list.
+    // Single pass (not a per-subject sub-band loop): every unique word occupies
+    // exactly one bucket across the whole word_motor region, argmaxed globally,
+    // so any trained word can win regardless of which subject taught it.
+    // opts.subject no longer scopes emission. Iterate-once so the existing
+    // `continue` guards below keep working with zero body changes.
+    for (let _wmOnce = 0; _wmOnce < 1; _wmOnce++) {
+      const subjStart = 0;                               // offsets relative to wordMotor.start
+      const subjEnd = wordMotor.end - wordMotor.start;   // full word_motor span
       const subjSize = subjEnd - subjStart;
       if (subjSize <= 0) continue;
-      const wordsList = this[`wordBucketWords_${subj}`];
+      const wordsList = this.wordBucketWords;
       if (!Array.isArray(wordsList) || wordsList.length === 0) continue;
       // SPEAK.1 — bucket band is FROZEN (vocab-growth-invariant). Prior-grade
       // sem->word_motor weights stay addressable as new words append, instead
       // of every word remapping to a new band each time the dictionary grows
       // (the grade-9 word-salad root cause). Single authority: wordBucketCellSizeFor.
       const bucketSize = (typeof this.wordBucketCellSizeFor === 'function')
-        ? this.wordBucketCellSizeFor(subj)
+        ? this.wordBucketCellSizeFor()
         : Math.max(1, Math.floor(subjSize / wordsList.length));
       for (let b = 0; b < wordsList.length; b++) {
         // Filler-token guard — a bucket whose token is empty, pure
@@ -689,13 +693,12 @@ export const CLUSTER_EMIT_MIXIN = {
         // SPEAK.1 — capacity overflow: index-ordered, so once a band starts
         // past the sub-band every higher word overflows too. Break, warn once.
         if (bStart >= subjEnd) {
-          if (!this._wordBucketOverflowWarned) this._wordBucketOverflowWarned = {};
-          if (!this._wordBucketOverflowWarned[subj]) {
-            this._wordBucketOverflowWarned[subj] = true;
+          if (!this._wordBucketOverflowWarned) {
+            this._wordBucketOverflowWarned = true;
             const bandCells = subjEnd - subjStart;
             const fits = bucketSize > 0 ? Math.floor(bandCells / bucketSize) : 0;
             const cantEmit = Math.max(0, wordsList.length - b);
-            try { console.warn(`[emit] word_motor_${subj} capacity overflow — band holds ${fits} words (${bandCells} cells / ${bucketSize} per word) but subject has ${wordsList.length}; ${cantEmit} words past index ${b} CANNOT emit. Remedy: grow the language cortex (deploy the V8-heap fix / add donor GPUs → bigger 6% word_motor region) so the band exceeds the vocab; TU.20.1 proportional carve already gave heavy subjects a larger slice.`); } catch {}
+            try { console.warn(`[emit] word_motor capacity overflow — unified band holds ${fits} words (${bandCells} cells / ${bucketSize} per word) but vocab has ${wordsList.length}; ${cantEmit} words past index ${b} CANNOT emit. Grow langCortexSize (word_motor = 6% of it) so the band exceeds the full K→PhD vocab.`); } catch {}
           }
           break;
         }
@@ -915,11 +918,16 @@ export const CLUSTER_EMIT_MIXIN = {
   // cap env changes between runs. Read by emitWordDirect (read) +
   // _teachWordEmissionDirect / _writeAnswerToWordMotor (write) so all three agree.
   wordBucketCellSizeFor(subject) {
-    const subj = (typeof normalizeSubject === 'function' ? (normalizeSubject(subject) || subject) : subject);
-    const key = `wordBucketCellSize_${subj}`;
+    // WMB unify (2026-07-14) — ONE global word_motor band, one bucket per
+    // UNIQUE word (no per-subject sub-band replication). The `subject` arg is
+    // ignored for geometry (kept for call-site compatibility); cells-per-word
+    // is derived from the single umbrella `word_motor` region and cached once,
+    // so write (_teachWordEmissionDirect / _writeAnswerToWordMotor) and read
+    // (emitWordDirect) share one authority and can never disagree on layout.
+    const key = 'wordBucketCellSize_unified';
     const cur = this[key];
     if (typeof cur === 'number' && cur >= 1) return cur;
-    const band = this.regions && (this.regions[`word_motor_${subj}`] || this.regions.word_motor);
+    const band = this.regions && this.regions.word_motor;
     const bandSize = band ? (band.end - band.start) : 0;
     let cap = 50000;
     try {
@@ -932,10 +940,9 @@ export const CLUSTER_EMIT_MIXIN = {
     this[key] = cell;
     const maxWords = cell > 0 ? Math.floor(bandSize / cell) : 0;
     try {
-      if (!this._wordBucketGeomLogged) this._wordBucketGeomLogged = {};
-      if (!this._wordBucketGeomLogged[subj]) {
-        this._wordBucketGeomLogged[subj] = true;
-        console.log(`[emit] word_motor bucket geometry FROZEN subject=${subj}: bandSize=${bandSize} cellsPerWord=${cell} maxWords=${maxWords} (vocabCap=${cap}) — bands are now vocab-growth-invariant.`);
+      if (!this._wordBucketGeomLogged) {
+        this._wordBucketGeomLogged = true;
+        console.log(`[emit] word_motor bucket geometry FROZEN (UNIFIED single band): bandSize=${bandSize} cellsPerWord=${cell} maxWords=${maxWords} (vocabCap=${cap}) — one bucket per unique word, vocab-growth-invariant.`);
       }
     } catch { /* logging non-fatal */ }
     return cell;

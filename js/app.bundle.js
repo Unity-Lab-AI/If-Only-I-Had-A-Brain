@@ -54062,16 +54062,14 @@ var CLUSTER_EMIT_MIXIN = {
     if (!Array.isArray(this._recentEmissions)) this._recentEmissions = [];
     const recentLast4 = new Set(this._recentEmissions.slice(-4));
     const REPETITION_PENALTY = 0.7;
-    for (const subj of subjScope) {
-      const subjectRegion = this.regions[`word_motor_${subj}`];
-      if (!subjectRegion) continue;
-      const subjStart = subjectRegion.start - wordMotor.start;
-      const subjEnd = subjectRegion.end - wordMotor.start;
+    for (let _wmOnce = 0; _wmOnce < 1; _wmOnce++) {
+      const subjStart = 0;
+      const subjEnd = wordMotor.end - wordMotor.start;
       const subjSize = subjEnd - subjStart;
       if (subjSize <= 0) continue;
-      const wordsList = this[`wordBucketWords_${subj}`];
+      const wordsList = this.wordBucketWords;
       if (!Array.isArray(wordsList) || wordsList.length === 0) continue;
-      const bucketSize = typeof this.wordBucketCellSizeFor === "function" ? this.wordBucketCellSizeFor(subj) : Math.max(1, Math.floor(subjSize / wordsList.length));
+      const bucketSize = typeof this.wordBucketCellSizeFor === "function" ? this.wordBucketCellSizeFor() : Math.max(1, Math.floor(subjSize / wordsList.length));
       for (let b = 0; b < wordsList.length; b++) {
         const _bw = wordsList[b];
         if (!_bw || !/\S/.test(_bw) || !/[a-z0-9]/i.test(_bw) && !T14_TERMINATORS.has(_bw)) continue;
@@ -54083,14 +54081,13 @@ var CLUSTER_EMIT_MIXIN = {
         let sum = 0;
         const bStart = subjStart + b * bucketSize;
         if (bStart >= subjEnd) {
-          if (!this._wordBucketOverflowWarned) this._wordBucketOverflowWarned = {};
-          if (!this._wordBucketOverflowWarned[subj]) {
-            this._wordBucketOverflowWarned[subj] = true;
+          if (!this._wordBucketOverflowWarned) {
+            this._wordBucketOverflowWarned = true;
             const bandCells = subjEnd - subjStart;
             const fits = bucketSize > 0 ? Math.floor(bandCells / bucketSize) : 0;
             const cantEmit = Math.max(0, wordsList.length - b);
             try {
-              console.warn(`[emit] word_motor_${subj} capacity overflow \u2014 band holds ${fits} words (${bandCells} cells / ${bucketSize} per word) but subject has ${wordsList.length}; ${cantEmit} words past index ${b} CANNOT emit. Remedy: grow the language cortex (deploy the V8-heap fix / add donor GPUs \u2192 bigger 6% word_motor region) so the band exceeds the vocab; TU.20.1 proportional carve already gave heavy subjects a larger slice.`);
+              console.warn(`[emit] word_motor capacity overflow \u2014 unified band holds ${fits} words (${bandCells} cells / ${bucketSize} per word) but vocab has ${wordsList.length}; ${cantEmit} words past index ${b} CANNOT emit. Grow langCortexSize (word_motor = 6% of it) so the band exceeds the full K\u2192PhD vocab.`);
             } catch {
             }
           }
@@ -54206,11 +54203,10 @@ var CLUSTER_EMIT_MIXIN = {
   // cap env changes between runs. Read by emitWordDirect (read) +
   // _teachWordEmissionDirect / _writeAnswerToWordMotor (write) so all three agree.
   wordBucketCellSizeFor(subject) {
-    const subj = typeof normalizeSubject === "function" ? normalizeSubject(subject) || subject : subject;
-    const key = `wordBucketCellSize_${subj}`;
+    const key = "wordBucketCellSize_unified";
     const cur = this[key];
     if (typeof cur === "number" && cur >= 1) return cur;
-    const band = this.regions && (this.regions[`word_motor_${subj}`] || this.regions.word_motor);
+    const band = this.regions && this.regions.word_motor;
     const bandSize = band ? band.end - band.start : 0;
     let cap = 5e4;
     try {
@@ -54224,10 +54220,9 @@ var CLUSTER_EMIT_MIXIN = {
     this[key] = cell;
     const maxWords = cell > 0 ? Math.floor(bandSize / cell) : 0;
     try {
-      if (!this._wordBucketGeomLogged) this._wordBucketGeomLogged = {};
-      if (!this._wordBucketGeomLogged[subj]) {
-        this._wordBucketGeomLogged[subj] = true;
-        console.log(`[emit] word_motor bucket geometry FROZEN subject=${subj}: bandSize=${bandSize} cellsPerWord=${cell} maxWords=${maxWords} (vocabCap=${cap}) \u2014 bands are now vocab-growth-invariant.`);
+      if (!this._wordBucketGeomLogged) {
+        this._wordBucketGeomLogged = true;
+        console.log(`[emit] word_motor bucket geometry FROZEN (UNIFIED single band): bandSize=${bandSize} cellsPerWord=${cell} maxWords=${maxWords} (vocabCap=${cap}) \u2014 one bucket per unique word, vocab-growth-invariant.`);
       }
     } catch {
     }
@@ -56297,17 +56292,19 @@ var NeuronCluster = class {
   getTrainedCapability() {
     let wordsBucketed = 0;
     let bucketSubjects = 0;
-    if (this.wordBucketWords && typeof this.wordBucketWords === "object") {
-      if (typeof this.wordBucketWords.size === "number") {
-        wordsBucketed += this.wordBucketWords.size;
-      }
+    if (Array.isArray(this.wordBucketWords)) {
+      wordsBucketed += this.wordBucketWords.length;
+      if (this.wordBucketWords.length > 0) bucketSubjects = 1;
+    } else if (this.wordBucketWords && typeof this.wordBucketWords.size === "number") {
+      wordsBucketed += this.wordBucketWords.size;
     }
     const subjects = ["ela", "math", "science", "social", "art", "life"];
     for (const subj of subjects) {
       const m = this[`wordBucketWords_${subj}`];
-      if (m && typeof m.size === "number") {
-        wordsBucketed += m.size;
-        if (m.size > 0) bucketSubjects++;
+      const n = m ? Array.isArray(m) ? m.length : typeof m.size === "number" ? m.size : 0 : 0;
+      if (n > 0) {
+        wordsBucketed += n;
+        bucketSubjects++;
       }
     }
     const passedCellCount = Array.isArray(this.passedCells) ? this.passedCells.length : 0;
@@ -77174,10 +77171,10 @@ var K_MIXIN = {
     let updates = 0, skipped = 0;
     const semSize = semRegion.end - semRegion.start;
     const wmSize = wordMotorRegion.end - wordMotorRegion.start;
-    const bandStart = subjectBand ? subjectBand.start - wordMotorRegion.start : 0;
-    const bandEnd = subjectBand ? subjectBand.end - wordMotorRegion.start : wmSize;
+    const bandStart = 0;
+    const bandEnd = wmSize;
     const bandSize = bandEnd - bandStart;
-    const bucketSize = typeof cluster.wordBucketCellSizeFor === "function" ? cluster.wordBucketCellSizeFor(subject) : Math.max(1, Math.floor(bandSize / words.length));
+    const bucketSize = typeof cluster.wordBucketCellSizeFor === "function" ? cluster.wordBucketCellSizeFor() : Math.max(1, Math.floor(bandSize / words.length));
     const preSem = new Float64Array(semSize);
     const postWM = new Float64Array(wmSize);
     const fillSem = (pattern) => {
@@ -100934,15 +100931,14 @@ var Curriculum = class _Curriculum {
   _installBucketMap(subject, words) {
     const cluster = this.cluster;
     if (!cluster) return null;
-    const subjKey = normalizeSubject(subject);
-    if (!subjKey || !Array.isArray(words) || words.length === 0) return null;
+    if (!Array.isArray(words) || words.length === 0) return null;
     const map = /* @__PURE__ */ new Map();
     for (let wi = 0; wi < words.length; wi++) map.set(words[wi], wi);
-    cluster[`wordBucketMap_${subjKey}`] = map;
-    cluster[`wordBucketWords_${subjKey}`] = words.slice();
-    cluster[`wordBucketBandName_${subjKey}`] = `word_motor_${subjKey}`;
-    cluster[`wordBucketDictSize_${subjKey}`] = this.dictionary?._words?.size ?? 0;
-    return { map, words: cluster[`wordBucketWords_${subjKey}`] };
+    cluster.wordBucketMap = map;
+    cluster.wordBucketWords = words.slice();
+    cluster.wordBucketBandName = "word_motor";
+    cluster.wordBucketDictSize = this.dictionary?._words?.size ?? 0;
+    return { map, words: cluster.wordBucketWords };
   }
   // Ensure the bucket map exists for `subject`. Lazy-populates on first
   // call, then APPEND-ONLY extends as new dictionary words land via
@@ -100951,24 +100947,19 @@ var Curriculum = class _Curriculum {
   _ensureWordBucketMap(subject) {
     const cluster = this.cluster;
     if (!cluster) return null;
-    const subjKey = normalizeSubject(subject);
-    if (!subjKey) return null;
-    const mapKey = `wordBucketMap_${subjKey}`;
-    const wordsKey = `wordBucketWords_${subjKey}`;
-    const sizeKey = `wordBucketDictSize_${subjKey}`;
     const dictSize = this.dictionary?._words?.size ?? 0;
-    if (!cluster[mapKey] && Array.isArray(cluster[wordsKey]) && cluster[wordsKey].length > 0) {
+    if (!cluster.wordBucketMap && Array.isArray(cluster.wordBucketWords) && cluster.wordBucketWords.length > 0) {
       const rebuilt = /* @__PURE__ */ new Map();
-      const w = cluster[wordsKey];
+      const w = cluster.wordBucketWords;
       for (let i = 0; i < w.length; i++) rebuilt.set(w[i], i);
-      cluster[mapKey] = rebuilt;
+      cluster.wordBucketMap = rebuilt;
     }
-    if (cluster[mapKey] && Array.isArray(cluster[wordsKey]) && cluster[wordsKey].length > 0 && cluster[sizeKey] === dictSize) {
-      return { map: cluster[mapKey], words: cluster[wordsKey] };
+    if (cluster.wordBucketMap && Array.isArray(cluster.wordBucketWords) && cluster.wordBucketWords.length > 0 && cluster.wordBucketDictSize === dictSize) {
+      return { map: cluster.wordBucketMap, words: cluster.wordBucketWords };
     }
-    if (cluster[mapKey] && Array.isArray(cluster[wordsKey]) && cluster[wordsKey].length > 0) {
-      const map = cluster[mapKey];
-      const words2 = cluster[wordsKey];
+    if (cluster.wordBucketMap && Array.isArray(cluster.wordBucketWords) && cluster.wordBucketWords.length > 0) {
+      const map = cluster.wordBucketMap;
+      const words2 = cluster.wordBucketWords;
       const seen = new Set(words2);
       const fresh = this._enumerateBucketableWords();
       for (const w of fresh) {
@@ -100976,12 +100967,12 @@ var Curriculum = class _Curriculum {
         map.set(w, words2.length);
         words2.push(w);
       }
-      cluster[sizeKey] = dictSize;
+      cluster.wordBucketDictSize = dictSize;
       return { map, words: words2 };
     }
     const words = this._enumerateBucketableWords();
     if (words.length === 0) return null;
-    return this._installBucketMap(subjKey, words);
+    return this._installBucketMap(subject, words);
   }
   _writeAnswerToWordMotor(answerText, subject) {
     const cluster = this.cluster;
@@ -100989,8 +100980,7 @@ var Curriculum = class _Curriculum {
     if (!answerText || typeof answerText !== "string") return;
     const tokens = answerText.toLowerCase().split(/[,;\s]+/).filter((t) => /^[a-z]+$/.test(t));
     if (tokens.length === 0) return;
-    const subjKey = normalizeSubject(subject);
-    if (subjKey) this._ensureWordBucketMap(subjKey);
+    this._ensureWordBucketMap(subject);
     const writeBucketIntoBand = (bucketIdx, regionName, totalBuckets, value = 1, perBucketOverride = null) => {
       const region = cluster.regions[regionName];
       if (!region || bucketIdx == null || bucketIdx < 0) return;
@@ -101002,26 +100992,14 @@ var Curriculum = class _Curriculum {
       const end = Math.min(region.end, start + perBucket);
       for (let i = start; i < end; i++) cluster.lastSpikes[i] = value;
     };
-    if (subjKey) {
-      const subjMap = cluster[`wordBucketMap_${subjKey}`];
-      const subjWords = cluster[`wordBucketWords_${subjKey}`];
-      const subjBand = `word_motor_${subjKey}`;
-      if (subjMap && typeof subjMap.get === "function" && Array.isArray(subjWords) && cluster.regions[subjBand]) {
-        for (const tok of tokens) {
-          const idx = subjMap.get(tok);
-          if (typeof idx === "number" && idx >= 0) {
-            writeBucketIntoBand(idx, subjBand, subjWords.length, 1, typeof cluster.wordBucketCellSizeFor === "function" ? cluster.wordBucketCellSizeFor(subjKey) : null);
-          }
-        }
-      }
-    }
     const fullMap = cluster.wordBucketMap;
     const fullWords = cluster.wordBucketWords;
     if (fullMap && typeof fullMap.get === "function" && Array.isArray(fullWords)) {
+      const cell = typeof cluster.wordBucketCellSizeFor === "function" ? cluster.wordBucketCellSizeFor() : null;
       for (const tok of tokens) {
         const idx = fullMap.get(tok);
         if (typeof idx === "number" && idx >= 0) {
-          writeBucketIntoBand(idx, "word_motor", fullWords.length);
+          writeBucketIntoBand(idx, "word_motor", fullWords.length, 1, cell);
         }
       }
     }
