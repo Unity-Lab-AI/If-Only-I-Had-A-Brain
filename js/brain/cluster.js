@@ -2104,19 +2104,20 @@ export class NeuronCluster {
   getTrainedCapability() {
     let wordsBucketed = 0;
     let bucketSubjects = 0;
-    if (this.wordBucketWords && typeof this.wordBucketWords === 'object') {
-      // umbrella bucket map (subject-less)
-      if (typeof this.wordBucketWords.size === 'number') {
-        wordsBucketed += this.wordBucketWords.size;
-      }
+    // WMB unify (2026-07-14) — the umbrella word list is a single ARRAY (one
+    // bucket per UNIQUE word, subject-agnostic). Count its length. Legacy
+    // per-subject fields below add 0 post-unify (kept for pre-WMB savestates).
+    if (Array.isArray(this.wordBucketWords)) {
+      wordsBucketed += this.wordBucketWords.length;
+      if (this.wordBucketWords.length > 0) bucketSubjects = 1;
+    } else if (this.wordBucketWords && typeof this.wordBucketWords.size === 'number') {
+      wordsBucketed += this.wordBucketWords.size;   // legacy Map form
     }
     const subjects = ['ela', 'math', 'science', 'social', 'art', 'life'];
     for (const subj of subjects) {
       const m = this[`wordBucketWords_${subj}`];
-      if (m && typeof m.size === 'number') {
-        wordsBucketed += m.size;
-        if (m.size > 0) bucketSubjects++;
-      }
+      const n = m ? (Array.isArray(m) ? m.length : (typeof m.size === 'number' ? m.size : 0)) : 0;
+      if (n > 0) { wordsBucketed += n; bucketSubjects++; }
     }
     const passedCellCount = Array.isArray(this.passedCells) ? this.passedCells.length : 0;
     let subGradesActive = 0;

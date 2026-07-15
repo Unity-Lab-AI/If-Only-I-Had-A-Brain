@@ -34,7 +34,7 @@ No neuron-count change, no `WEIGHTS_FORMAT_VERSION` bump, no new *required* pers
 - **`js/brain/curriculum.js`** — *server-side module despite the `js/` path* (the Node server imports it, like `consolidation-engine.js`):
   - New **`_rectifySemMotor()`** — actually CORRECTS a saturated/collapsed `cortexCluster.crossProjections['sem_to_motor']` in place: multiplicative weight-decay (`×DREAM_BC_RECTIFY_DECAY`, default 0.5) + `normalizeRows(DREAM_BC_RECTIFY_NORM`, default 0.6) + clears the stale sep-probe `_lastSemMotorMeanCos` + the collapsed `_emissionBus` history + sets `_gpuShadowDirty` for re-upload.
   - The **`SATURATION HALT` no longer `return`s** — it calls `_rectifySemMotor()`, force-checkpoints the corrected weights, and **CONTINUES** the walk. Saturation never hard-stops the walk again.
-  - `sem_to_motor` lives on the dense ~323K **language cortex** (CPU-resident CSR), so the rectify reaches it at full deployed scale — it is NOT the 61M GPU main cortex.
+  - `sem_to_motor` lives on the dense ~1.5M **language cortex** (WMB grew it from ~323K/349K; CPU-resident CSR), so the rectify reaches it at full deployed scale — it is NOT the 61M GPU main cortex.
 - **`server/brain-server.js`**:
   - Periodic save now **force-writes through the curriculum guard** during a walk (`{force:true, trigger:'periodic-curriculum-checkpoint'}`) → weights persist every 5 min regardless of cell-pass.
   - `/update` endpoint now reads **`?keep=1`** (or `?mode=savestart`) and spawns `self-update.sh` with `UAL_KEEP_STATE=1`. Default (no query) = the original fresh-walk.

@@ -11232,15 +11232,21 @@ export class Curriculum {
   _installBucketMap(subject, words) {
     const cluster = this.cluster;
     if (!cluster) return null;
-    const subjKey = normalizeSubject(subject);
-    if (!subjKey || !Array.isArray(words) || words.length === 0) return null;
+    if (!Array.isArray(words) || words.length === 0) return null;
+    // WMB unify (2026-07-14) — ONE global bucket map on the umbrella fields
+    // (`wordBucketMap` = Map word→index, `wordBucketWords` = Array). No
+    // per-subject replication: every subject's word emission shares this single
+    // map + the single `word_motor` band, so a word occupies exactly ONE bucket
+    // regardless of which subject taught it. `subject` is ignored for keying
+    // (kept for call-site compatibility). Bucket index = array position; frozen
+    // + append-only so trained sem→word_motor rows stay addressable (SPEAK.1).
     const map = new Map();
     for (let wi = 0; wi < words.length; wi++) map.set(words[wi], wi);
-    cluster[`wordBucketMap_${subjKey}`] = map;
-    cluster[`wordBucketWords_${subjKey}`] = words.slice();
-    cluster[`wordBucketBandName_${subjKey}`] = `word_motor_${subjKey}`;
-    cluster[`wordBucketDictSize_${subjKey}`] = this.dictionary?._words?.size ?? 0;
-    return { map, words: cluster[`wordBucketWords_${subjKey}`] };
+    cluster.wordBucketMap = map;
+    cluster.wordBucketWords = words.slice();
+    cluster.wordBucketBandName = 'word_motor';
+    cluster.wordBucketDictSize = this.dictionary?._words?.size ?? 0;
+    return { map, words: cluster.wordBucketWords };
   }
   // Ensure the bucket map exists for `subject`. Lazy-populates on first
   // call, then APPEND-ONLY extends as new dictionary words land via
@@ -11249,31 +11255,30 @@ export class Curriculum {
   _ensureWordBucketMap(subject) {
     const cluster = this.cluster;
     if (!cluster) return null;
-    const subjKey = normalizeSubject(subject);
-    if (!subjKey) return null;
-    const mapKey = `wordBucketMap_${subjKey}`;
-    const wordsKey = `wordBucketWords_${subjKey}`;
-    const sizeKey = `wordBucketDictSize_${subjKey}`;
+    // WMB unify (2026-07-14) — single global bucket map on the umbrella fields
+    // (`wordBucketMap`/`wordBucketWords`); `subject` ignored (all subjects share
+    // one map + the single `word_motor` band). Enumerates the full bucketable
+    // dictionary once, append-only as it grows — same frozen-index contract as
+    // before, just not replicated per subject.
     const dictSize = this.dictionary?._words?.size ?? 0;
     // SPEAK.1d — resume case: words[] restored from disk but the Map is not
-    // persisted. Rebuild the Map from the RESTORED order rather than letting
-    // first-call init re-enumerate the dictionary (which would reorder indices
-    // and desync every trained sem->word_motor weight after a resume).
-    if (!cluster[mapKey] && Array.isArray(cluster[wordsKey]) && cluster[wordsKey].length > 0) {
+    // persisted. Rebuild the Map from the RESTORED order rather than
+    // re-enumerating (which would reorder indices and desync trained weights).
+    if (!cluster.wordBucketMap && Array.isArray(cluster.wordBucketWords) && cluster.wordBucketWords.length > 0) {
       const rebuilt = new Map();
-      const w = cluster[wordsKey];
+      const w = cluster.wordBucketWords;
       for (let i = 0; i < w.length; i++) rebuilt.set(w[i], i);
-      cluster[mapKey] = rebuilt;
+      cluster.wordBucketMap = rebuilt;
     }
     // Map exists and dictionary hasn't grown → reuse.
-    if (cluster[mapKey] && Array.isArray(cluster[wordsKey]) && cluster[wordsKey].length > 0
-        && cluster[sizeKey] === dictSize) {
-      return { map: cluster[mapKey], words: cluster[wordsKey] };
+    if (cluster.wordBucketMap && Array.isArray(cluster.wordBucketWords) && cluster.wordBucketWords.length > 0
+        && cluster.wordBucketDictSize === dictSize) {
+      return { map: cluster.wordBucketMap, words: cluster.wordBucketWords };
     }
     // Map exists but dictionary grew → append new words to existing map.
-    if (cluster[mapKey] && Array.isArray(cluster[wordsKey]) && cluster[wordsKey].length > 0) {
-      const map = cluster[mapKey];
-      const words = cluster[wordsKey];
+    if (cluster.wordBucketMap && Array.isArray(cluster.wordBucketWords) && cluster.wordBucketWords.length > 0) {
+      const map = cluster.wordBucketMap;
+      const words = cluster.wordBucketWords;
       const seen = new Set(words);
       const fresh = this._enumerateBucketableWords();
       for (const w of fresh) {
@@ -11281,13 +11286,13 @@ export class Curriculum {
         map.set(w, words.length);
         words.push(w);
       }
-      cluster[sizeKey] = dictSize;
+      cluster.wordBucketDictSize = dictSize;
       return { map, words };
     }
     // First-call init.
     const words = this._enumerateBucketableWords();
     if (words.length === 0) return null;
-    return this._installBucketMap(subjKey, words);
+    return this._installBucketMap(subject, words);
   }
   _writeAnswerToWordMotor(answerText, subject) {
     const cluster = this.cluster;
@@ -11303,11 +11308,10 @@ export class Curriculum {
       .split(/[,;\s]+/)
       .filter(t => /^[a-z]+$/.test(t));
     if (tokens.length === 0) return;
-    const subjKey = normalizeSubject(subject);
-    // Lazy-init the bucket map. _teachQABinding runs BEFORE
-    // _teachWordEmissionDirect in cell phase order — without this,
-    // first-QA-pair-of-cell would hit a missing map.
-    if (subjKey) this._ensureWordBucketMap(subjKey);
+    // WMB unify (2026-07-14) — single global word_motor band + umbrella map.
+    // Lazy-init the map (QA-train runs BEFORE _teachWordEmissionDirect in cell
+    // phase order). `subject` ignored for keying (all subjects share one map).
+    this._ensureWordBucketMap(subject);
     const writeBucketIntoBand = (bucketIdx, regionName, totalBuckets, value = 1, perBucketOverride = null) => {
       const region = cluster.regions[regionName];
       if (!region || bucketIdx == null || bucketIdx < 0) return;
@@ -11324,29 +11328,17 @@ export class Curriculum {
       const end = Math.min(region.end, start + perBucket);
       for (let i = start; i < end; i++) cluster.lastSpikes[i] = value;
     };
-    // Subject sub-band write (primary path — what emit argmaxes in).
-    if (subjKey) {
-      const subjMap = cluster[`wordBucketMap_${subjKey}`];
-      const subjWords = cluster[`wordBucketWords_${subjKey}`];
-      const subjBand = `word_motor_${subjKey}`;
-      if (subjMap && typeof subjMap.get === 'function' && Array.isArray(subjWords) && cluster.regions[subjBand]) {
-        for (const tok of tokens) {
-          const idx = subjMap.get(tok);
-          if (typeof idx === 'number' && idx >= 0) {
-            writeBucketIntoBand(idx, subjBand, subjWords.length, 1, (typeof cluster.wordBucketCellSizeFor === 'function' ? cluster.wordBucketCellSizeFor(subjKey) : null));
-          }
-        }
-      }
-    }
-    // Umbrella word_motor write (covers unsubjected QA + legacy emit
-    // path). Same multi-token logic.
+    // Unified word_motor write — MUST pass the frozen cellsPerWord so this
+    // lands on the exact same cells emitWordDirect argmaxes (write/read share
+    // wordBucketCellSizeFor()).
     const fullMap = cluster.wordBucketMap;
     const fullWords = cluster.wordBucketWords;
     if (fullMap && typeof fullMap.get === 'function' && Array.isArray(fullWords)) {
+      const cell = (typeof cluster.wordBucketCellSizeFor === 'function') ? cluster.wordBucketCellSizeFor() : null;
       for (const tok of tokens) {
         const idx = fullMap.get(tok);
         if (typeof idx === 'number' && idx >= 0) {
-          writeBucketIntoBand(idx, 'word_motor', fullWords.length);
+          writeBucketIntoBand(idx, 'word_motor', fullWords.length, 1, cell);
         }
       }
     }

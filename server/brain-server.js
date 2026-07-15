@@ -734,7 +734,7 @@ function writeBrainCodeHash(hash) {
 // on normal deploys, but DREAM_KEEP_STATE=1 BYPASSES the hash check — this format bump is the
 // belt-and-suspenders that still rejects v1 weights on that path, forcing the mandatory fresh
 // K→PhD walk that trains the new senses in from scratch (no migration, no garbage-weight load).
-const WEIGHTS_FORMAT_VERSION = 2;
+const WEIGHTS_FORMAT_VERSION = 3;   // WMB 2026-07-14: word_motor unified to one band + langCortexSize grown — geometry change, old weights auto-refuse → clean fresh walk
 const RESUME_MARKER_PATH = path.join(__dirname, '.resume-marker.json');
 
 // #112.11 — checkpoint slot cap. Keep only the last N rolling save slots
@@ -1610,7 +1610,17 @@ class ServerBrain {
       // limit that is not biologically correct.
       // Size is now bounded by VRAM allocator + V8 heap + free RAM only.
       const os = require('os');
-      const LANG_CLUSTER_BYTES_PER_NEURON = 40000;
+      // WMB (Gee 2026-07-14): the old 40000 B/neuron coefficient was a ~10x
+      // over-estimate that FALSELY pinned langCortexSize at ~349K on the box
+      // (freemem×0.5 / 40000). Real CPU-side footprint at 349K is ~370 B/neuron
+      // (live: 85MB intra + ~30MB cross at 354K = ~325 B/neuron; the stale
+      // "25KB/neuron / 8.8GB" comment below predates the sparse+chunked upload).
+      // The bogus cap starved word_motor (6% of s = ~21K cells) below the full
+      // K→PhD vocab, silencing learned words (the band-overflow bug). Lowered to
+      // 4000 (still ~10x the real ~370 for heap-object + scratch safety) so
+      // ram/v8 bounds no longer falsely cap size; the explicit WORD_MOTOR target
+      // below controls the actual landing size.
+      const LANG_CLUSTER_BYTES_PER_NEURON = 4000;
       const freeRamBytes = os.freemem();
       const ramBudget = freeRamBytes * 0.5;
       const ramBasedMax = Math.floor(ramBudget / LANG_CLUSTER_BYTES_PER_NEURON);
@@ -1775,11 +1785,32 @@ class ServerBrain {
       const projectedBytesFinal = projectedBytes;
 
       const autoSize = Math.min(configuredCortex, ramBasedMax, v8BasedMax, vramBasedMax);
-      const langCortexSize = Number.isFinite(envOverride) && envOverride > 0 ? envOverride : autoSize;
+      // WMB (Gee 2026-07-14) — target langCortexSize so word_motor (6% of s)
+      // holds the FULL K→PhD UNIFIED vocab (one bucket per unique word, no
+      // per-subject replication) + headroom: ~90K word_motor cells ⟹ s ≈ 1.5M
+      // (word_motor span = 0.06 × s). Cap autoSize at this target so the fixed
+      // per-neuron coefficient can't balloon the cortex past what the vocab
+      // needs; on a smaller box autoSize (real RAM/V8/VRAM bounds) still floors
+      // it lower — graceful, never larger than the host can hold. Overridable
+      // via DREAM_LANG_CORTEX for a controlled fresh walk.
+      const WORD_MOTOR_TARGET_LANG_CORTEX = 1_500_000;
+      const targetedAuto = Math.min(autoSize, WORD_MOTOR_TARGET_LANG_CORTEX);
+      const langCortexSize = Number.isFinite(envOverride) && envOverride > 0 ? envOverride : targetedAuto;
       const langMemGb = (langCortexSize * LANG_CLUSTER_BYTES_PER_NEURON / 1e9).toFixed(2);
       const heapLimitGb = (v8BasedMax === Infinity ? 'unlimited' : ((v8BasedMax * LANG_CLUSTER_BYTES_PER_NEURON) / 1e9).toFixed(1) + 'GB');
       const projectedMB = Math.round(projectedBytesFinal / 1024 / 1024);
       console.log(`[Brain] Language cortex auto-scaled to ${langCortexSize.toLocaleString()} neurons (~${langMemGb} GB RAM, projected ${projectedMB}MB GPU footprint via geometry estimator, ${rescaleIterations} rescale iter${rescaleIterations === 1 ? '' : 's'}). Bounds: free RAM ${(freeRamBytes/1e9).toFixed(1)}GB × 50% = ${(ramBudget/1e9).toFixed(1)}GB → ${ramBasedMax.toLocaleString()} neurons | V8 heap cluster-budget → ${heapLimitGb} → ${v8BasedMax === Infinity ? '∞' : v8BasedMax.toLocaleString()} neurons | GPU VRAM budget from unified allocator → ${vramCortexMB}MB = ${(BRAIN_VRAM_ALLOC.weights.language_cortex*100).toFixed(1)}% of ${BRAIN_VRAM_ALLOC.brainBudgetMB}MB brain budget → ${vramBasedMax.toLocaleString()} neurons AFTER geometric rescale (static seed was ${vramStaticSeed.toLocaleString()}) | configured cortex ${configuredCortex.toLocaleString()} neurons. Main GPU brain at ${TOTAL_NEURONS.toLocaleString()} neurons. Sparse matmul ON GPU.${envOverride > 0 ? ' DREAM_LANG_CORTEX override active.' : ''}`);
+      // WMB.6 boot capacity assertion (Gee 2026-07-14) — word_motor is the top
+      // 6% of langCortexSize and must hold the full K→PhD UNIFIED vocab (one
+      // bucket per unique word). Surface the capacity HERE so an undersized band
+      // is caught at boot, never silently at emit time (the old overflow bug).
+      {
+        const _wmCells = Math.floor(langCortexSize) - Math.floor(langCortexSize * 0.940);
+        const _wmTargetVocab = 60000;   // ~17K curriculum floor + definition-token + headroom
+        const _msg = `[Brain] WMB word_motor capacity: ${_wmCells.toLocaleString()} cells (6% of ${langCortexSize.toLocaleString()} langCortexSize) — UNIFIED single band, 1 bucket/unique word. Full K→PhD vocab target ~${_wmTargetVocab.toLocaleString()}.`;
+        if (_wmCells < _wmTargetVocab) console.warn(`${_msg} ⚠ UNDER target — words past index ${_wmCells.toLocaleString()} would be silenced; raise DREAM_LANG_CORTEX or WORD_MOTOR_TARGET_LANG_CORTEX.`);
+        else console.log(`${_msg} ✓ covers target.`);
+      }
       if (rescaleLog.length > 0) {
         console.log(`[Brain] rescale trace:\n  ${rescaleLog.join('\n  ')}`);
       }
@@ -4615,22 +4646,23 @@ class ServerBrain {
             // Savestart even though curriculum resumed cleanly. Fix
             // serializes the per-subject string arrays + dict-size
             // watermarks. Restore wired in `_applyPendingCortexState`.
+            // WMB unify (2026-07-14) — persist the SINGLE global umbrella word
+            // bucket (one bucket per unique word; no per-subject replication).
+            // The resume-rebuild (SPEAK.1d) restores the Map from THIS saved
+            // ORDER, keeping bucket-index↔word stable so trained sem→word_motor
+            // rows stay addressable across a restart. Without it, Savestart
+            // resumes with an empty array and emit goes silent until the next
+            // _teachWordEmissionDirect re-enumerates.
             wordBuckets: (() => {
-              const SUBJECTS = ['ela', 'math', 'sci', 'soc', 'art', 'life'];
-              const out = {};
-              for (const subj of SUBJECTS) {
-                const list = cortex[`wordBucketWords_${subj}`];
-                const watermark = cortex[`wordBucketDictSize_${subj}`];
-                const cellSize = cortex[`wordBucketCellSize_${subj}`]; // SPEAK.1 frozen geometry
-                if (Array.isArray(list) && list.length > 0) {
-                  out[subj] = {
-                    words: list.slice(),
-                    watermark: typeof watermark === 'number' ? watermark : list.length,
-                    cellSize: typeof cellSize === 'number' ? cellSize : undefined,
-                  };
-                }
-              }
-              return out;
+              const list = cortex.wordBucketWords;
+              if (!Array.isArray(list) || list.length === 0) return {};
+              return {
+                unified: {
+                  words: list.slice(),
+                  watermark: typeof cortex.wordBucketDictSize === 'number' ? cortex.wordBucketDictSize : list.length,
+                  cellSize: typeof cortex.wordBucketCellSize_unified === 'number' ? cortex.wordBucketCellSize_unified : undefined,
+                },
+              };
             })(),
           };
         }
@@ -5395,25 +5427,18 @@ class ServerBrain {
         // empty for every subject and inner-voice go silent post-
         // resume. Caught 2026-05-08 live test: vocab arrays empty
         // after Savestart even though curriculum + weights resumed.
+        // WMB unify (2026-07-14) — restore the SINGLE global umbrella word
+        // bucket. Rebuild of the Map from the saved order happens lazily in
+        // _ensureWordBucketMap (SPEAK.1d) so bucket-index↔word stays stable.
         if (pending.wordBuckets && typeof pending.wordBuckets === 'object') {
-          let restoredSubjects = 0;
-          let restoredWords = 0;
-          for (const [subj, payload] of Object.entries(pending.wordBuckets)) {
-            if (payload && Array.isArray(payload.words)) {
-              cortex[`wordBucketWords_${subj}`] = payload.words.slice();
-              cortex[`wordBucketDictSize_${subj}`] = typeof payload.watermark === 'number'
-                ? payload.watermark : payload.words.length;
-              // SPEAK.1 — restore frozen bucket geometry so a cap env change between
-              // boots can't silently re-shape bands and desync trained weights.
-              if (typeof payload.cellSize === 'number' && payload.cellSize >= 1) {
-                cortex[`wordBucketCellSize_${subj}`] = payload.cellSize;
-              }
-              restoredSubjects++;
-              restoredWords += payload.words.length;
+          const uni = pending.wordBuckets.unified;
+          if (uni && Array.isArray(uni.words) && uni.words.length > 0) {
+            cortex.wordBucketWords = uni.words.slice();
+            cortex.wordBucketDictSize = typeof uni.watermark === 'number' ? uni.watermark : uni.words.length;
+            if (typeof uni.cellSize === 'number' && uni.cellSize >= 1) {
+              cortex.wordBucketCellSize_unified = uni.cellSize;
             }
-          }
-          if (restoredSubjects > 0) {
-            console.log(`[Brain] restored word-bucket maps: ${restoredWords} words across ${restoredSubjects} subject(s) — emitWordDirect + inner-voice showcase active immediately on resume.`);
+            console.log(`[Brain] restored unified word-bucket map: ${cortex.wordBucketWords.length} words — emitWordDirect + inner-voice active immediately on resume.`);
           }
         }
         // Grade-advance pause — restore so curriculum walker lands on
