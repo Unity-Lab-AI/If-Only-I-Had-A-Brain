@@ -10417,6 +10417,24 @@ export class Curriculum {
   // before the migration). Loops across cluster.regions so every
   // region the bound cross-projections read from gets cleared in
   // lockstep with the CPU shadow.
+  // CELL-TEACH SPEED FIX (Gee 2026-07-15) — CPU-only scoped clear of named
+  // cortexCluster region spans. The K word/vocab/sentence/sequence teach methods
+  // used to zero the WHOLE 1.5M cluster before each per-word/per-letter tile-write
+  // (a per-item O(cluster.size) pin = the ~100× Kindergarten cell slowdown). Since
+  // _writeTiledPattern only SETS active dims (never zeroes the region), the clear
+  // IS needed — but only over the regions actually written (letter/phon/motor/sem).
+  // Scoping drops it O(cluster.size) → O(region). CPU-only (matches the old inline
+  // full-clear; GPU slices re-sync via the teach pass's own writes/dispatch).
+  _clearCortexRegionSpans(names) {
+    const cluster = this.cluster;
+    if (!cluster || !cluster.regions || !cluster.lastSpikes) return;
+    for (const nm of names) {
+      const r = cluster.regions[nm];
+      if (!r) continue;
+      for (let j = r.start; j < r.end; j++) cluster.lastSpikes[j] = 0;
+    }
+  }
+
   _clearSpikes(regionNames = null) {
     const cluster = this.cluster;
     if (!cluster) return;
@@ -18238,6 +18256,24 @@ export class Curriculum {
       }
       return target;
     };
+    // CELL-TEACH SPEED FIX (Gee 2026-07-15 — K cells ~100× slower than the seed).
+    // The four spike clears below used to zero the WHOLE cortexCluster (1.5M)
+    // each time; the per-letter one runs letters×reps (~48× per word) = the
+    // Kindergarten pin (sustained 0.3–4.7s [EventLoop] BLOCKED on _teachWord-
+    // Integrated, which starved GPU dispatch to ~1.5/s). _teachWordIntegrated
+    // only ever writes/reads letter+phon+motor (the per-letter identity fires,
+    // sem explicitly silent there) or sem+motor (the direct sem→motor carves),
+    // so clearing ONLY those region spans is bit-identical for everything the
+    // method reads and drops each clear from O(cluster.size) to O(region).
+    // CPU-only (matches the old inline clear; the GPU slices are overwritten by
+    // the _writeTiledPattern / _crossRegionHebbian writes that immediately follow).
+    const _clearRegionSpans = (names) => {
+      for (const nm of names) {
+        const r = cluster.regions && cluster.regions[nm];
+        if (!r) continue;
+        for (let j = r.start; j < r.end; j++) cluster.lastSpikes[j] = 0;
+      }
+    };
 
     ensureLetters(letters);
 
@@ -18269,7 +18305,7 @@ export class Curriculum {
         const chOneHot = encodeLetter(ch);
         const phonFeat = _phonemeFeatureForLetter(ch);
 
-        for (let j = 0; j < cluster.size; j++) cluster.lastSpikes[j] = 0;
+        _clearRegionSpans(['letter', 'phon', 'motor']);   // was a full 1.5M clear PER LETTER × PER REP — the K-cell 100× pin
 
         const letterPat = buildPattern(letterSize, chOneHot, wScratch.letterPat);
         for (let j = 0; j < letterSize; j++) {
@@ -18314,7 +18350,7 @@ export class Curriculum {
         // regions via `_writeTiledPattern` which also mirrors to GPU
         // via `writeSpikeSlice`. This guarantees CPU + GPU see the
         // same sem+motor-only state so hebbianBound reads right slices.
-        for (let j = 0; j < cluster.size; j++) cluster.lastSpikes[j] = 0;
+        _clearRegionSpans(['sem', 'motor']);
         this._writeTiledPattern(semRegion, wordEmb, true);
         this._writeTiledPattern(motorRegion, firstLetterOneHot, true);
         // Build preF/postF from the now-populated lastSpikes for the
@@ -18369,7 +18405,7 @@ export class Curriculum {
           const wrongCh = ALPHABET_CONTRAST[wi];
           if (wrongCh === correctLetter) continue;
           const wrongOneHot = encodeLetter(wrongCh);
-          for (let j = 0; j < cluster.size; j++) cluster.lastSpikes[j] = 0;
+          _clearRegionSpans(['sem', 'motor']);
           this._writeTiledPattern(semRegion, wordEmb, true);
           this._writeTiledPattern(motorRegion, wrongOneHot, true);
           // iter22 — reuse scratch buffers, don't allocate per wrong letter.
@@ -18430,7 +18466,7 @@ export class Curriculum {
             ? sharedEmbeddings.getSentenceEmbedding(sentence) : null;
           if (!sentEmb || sentEmb.length === 0) continue;
 
-          for (let j = 0; j < cluster.size; j++) cluster.lastSpikes[j] = 0;
+          _clearRegionSpans(['sem', 'motor']);
           this._writeTiledPattern(semRegion, sentEmb, true);
           this._writeTiledPattern(motorRegion, firstLetterOneHot, true);
           // iter22 — reuse scratch buffers, don't allocate per template.
@@ -18601,7 +18637,7 @@ export class Curriculum {
         const phonFeat = _phonemeFeatureForLetter(firstLetter);
 
         // Clear all spikes
-        for (let j = 0; j < cluster.size; j++) cluster.lastSpikes[j] = 0;
+        this._clearCortexRegionSpans(['letter', 'phon', 'motor', 'sem']);   // CELL-TEACH SPEED — was full 1.5M clear per word/rep
         // Letter region
         const letterPat = buildPattern(letterSize, letterOneHot);
         for (let j = 0; j < letterSize; j++) {
@@ -18697,7 +18733,7 @@ export class Curriculum {
           if (!firstLetter) continue;
           const letterOneHot = encodeLetter(firstLetter);
           const phonFeat = _phonemeFeatureForLetter(firstLetter);
-          for (let j = 0; j < cluster.size; j++) cluster.lastSpikes[j] = 0;
+          this._clearCortexRegionSpans(['letter', 'phon', 'motor', 'sem']);   // CELL-TEACH SPEED — was full 1.5M clear per word/rep
           const letterPat = buildPattern(letterSize, letterOneHot);
           for (let j = 0; j < letterSize; j++) {
             cluster.lastSpikes[letterRegion.start + j] = letterPat[j] > 0 ? 1 : 0;
@@ -19116,7 +19152,7 @@ export class Curriculum {
           const phonFeat = _phonemeFeatureForLetter(firstLetter);
 
           // Clear + write clean patterns
-          for (let j = 0; j < cluster.size; j++) cluster.lastSpikes[j] = 0;
+          this._clearCortexRegionSpans(['letter', 'phon', 'motor', 'sem']);   // CELL-TEACH SPEED — was full 1.5M clear per word/rep
           // Letter
           const letterPat = buildPattern(letterSize, letterOneHot);
           for (let j = 0; j < letterSize; j++) {
@@ -20590,7 +20626,7 @@ export class Curriculum {
         const letterOneHot = firstLetter ? encodeLetter(firstLetter) : null;
 
         // Clear all spikes
-        for (let j = 0; j < cluster.size; j++) cluster.lastSpikes[j] = 0;
+        this._clearCortexRegionSpans(['letter', 'phon', 'motor', 'free', 'sem']);   // CELL-TEACH SPEED — was full 1.5M clear per word/rep
 
         // Letter: first letter of concept name
         if (letterOneHot) {
@@ -22373,7 +22409,7 @@ export class Curriculum {
           const phonFeat = _phonemeFeatureForLetter(firstLetter);
 
           // Clear + write clean patterns
-          for (let j = 0; j < cluster.size; j++) cluster.lastSpikes[j] = 0;
+          this._clearCortexRegionSpans(['letter', 'phon', 'motor', 'sem']);   // CELL-TEACH SPEED — was full 1.5M clear per word/rep
           const letterPat = buildPattern(letterSize, letterOneHot);
           for (let j = 0; j < letterSize; j++) {
             cluster.lastSpikes[letterRegion.start + j] = letterPat[j] > 0 ? 1 : 0;
