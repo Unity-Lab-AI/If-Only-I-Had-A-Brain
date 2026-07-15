@@ -15,6 +15,16 @@ So: a change touching only `js/` + `html/` + `index.html` → just push to main,
 
 ---
 
+## 2026-07-14 — donor keeps dropping: reconnect-churn debounce (backend) + ⚠ LIVE nginx /ws tolerance check (Red)
+
+**Symptom (Gee live log):** donor drops repeatedly; each drop → full 85MB `cortex_intraSynapses` re-upload → churn. Root: 12–29s (historically up to 98/211s) Node event-loop pins = **major-GC stalls at the 306M/61M scale on the CPU-only box** starve the proxied WS → the donor's socket is closed → "GPU compute client disconnected UNEXPECTEDLY … proxied WS closed" + `read ECONNRESET`.
+
+**Backend change (NEEDS the manual redeploy overlay below):** `server/brain-server.js` — reconnect-churn coalesce in `_rearmCortexGpuUpload` + a main-loop debounce fire (`_cortexRearmPending` / `_lastCortexUploadStartTs`). A donor churn-dropping no longer fires a full 85MB re-upload PER reconnect; repeats coalesce into ONE throttled re-upload (`DREAM_REUPLOAD_DEBOUNCE_MS`, default 30s). Eventual-arm guaranteed (a genuinely-new primary is only delayed up to the debounce, never starved). `node --check` PASS. Server-only, no bundle, no fresh walk, no donor rebuild — deploys via Update & Savestart / the overlay.
+
+**⚠ THE ACTUAL DROP-KILLER IS A LIVE-BOX NGINX CHECK (Red) — not in this repo:** every repo timeout already tolerates a 30s pin (donor `IDLE_TIMEOUT`=150s; server heartbeat *forgives* loop-blocks; zombie-kick=180s; this repo's `deploy/nginx-unity-brain.conf` `/ws` = `proxy_read_timeout 3600s`). The drop signature (upstream `ECONNRESET`, server merely observing the close) points at the **live per-host vhost `unity-brain.git.unityailab.com.conf` (NOT git-tracked)** — if its `location /ws` (and `/admin/ws`) block lacks `proxy_read_timeout 3600s`, nginx falls to its **60s default** and the giant GC pins blow past it → the drop. **ACTION:** on the box, confirm the live vhost `/ws` + `/admin/ws` carry `proxy_read_timeout 3600s;` + `proxy_send_timeout 3600s;` (match `deploy/nginx-unity-brain.conf:83-84/106-107`); if absent, add them → `nginx -t && systemctl reload nginx` (config-only, no brain restart). That lets the donor ride through a pin instead of dropping — the churn-debounce above just bounds the damage when a drop does slip through. (The deeper cure — killing the GC pins themselves at 61M-on-CPU — stays queued; see docs/TODO.md "DONOR KEEPS DROPPING".)
+
+---
+
 ## 2026-06-21 — live-bring-up fix cluster (#29–#33)
 
 **Backend files changed (need redeploy):**

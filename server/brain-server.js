@@ -3849,6 +3849,23 @@ class ServerBrain {
                 console.warn(`[Brain] TU.20.2 — cortex re-upload DEFERRED: primary ws.bufferedAmount=${(_priWs.bufferedAmount / 1024 / 1024).toFixed(1)}MB > ${_RESYNC_BUF_GATE / 1024 / 1024}MB gate; waiting for drain (avoids the resync-into-saturated-buffer storm).`);
               }
             }
+            // RECONNECT-CHURN DEBOUNCE fire — a re-arm that was COALESCED by
+            // _rearmCortexGpuUpload (because an upload was in flight or had just
+            // started) is released here as exactly ONE fresh upload, but only
+            // once the debounce window since the last upload START has elapsed.
+            // Collapses a churn of N reconnects into a single throttled
+            // re-upload instead of one full 85MB push per drop.
+            if (this._cortexRearmPending && !this._cortexUploadInFlight) {
+              const _dbMs = Number(process.env.DREAM_REUPLOAD_DEBOUNCE_MS) > 0
+                ? Number(process.env.DREAM_REUPLOAD_DEBOUNCE_MS) : 30000;
+              if (!this._lastCortexUploadStartTs || (Date.now() - this._lastCortexUploadStartTs) >= _dbMs) {
+                this._cortexRearmPending = false;
+                this._cortexGpuInitStarted = false;
+                this._allClustersConfirmedAt = null;
+                if (this.cortexCluster) this.cortexCluster._cortexFullyReady = false;
+                console.log('[Brain] reconnect-churn debounce elapsed — arming ONE fresh cortex upload (coalesced reconnect re-uploads suppressed).');
+              }
+            }
             if (
               this.cortexCluster &&
               this.cortexCluster._gpuProxy &&
@@ -3859,6 +3876,11 @@ class ServerBrain {
             ) {
               this._cortexGpuInitStarted = true;
               this._cortexUploadInFlight = true;
+              // Reconnect-churn debounce anchor — stamps when a full upload
+              // last STARTED so _rearmCortexGpuUpload coalesces reconnects that
+              // land inside DREAM_REUPLOAD_DEBOUNCE_MS instead of stacking a
+              // fresh 85MB re-upload per drop.
+              this._lastCortexUploadStartTs = Date.now();
               console.log(`[Brain] Sparse language-cortex upload starting — trigger=${warmReady ? `compute_batch warm (${warmupBatches} round-trips)` : `TIME FALLBACK (${(confirmedForMs / 1000).toFixed(0)}s since clusters confirmed, only ${warmupBatches} batches — teach-heavy deploy never warmed the main loop)`}`);
               this.cortexCluster.initGpu().then(async (gpuReady) => {
                 // T17.7 Phase C.1 — once the 14 cross-projections + the
@@ -5594,6 +5616,36 @@ let _serverLogSeq = 0;
 // re-arming the flag makes it fully re-upload to the new primary on the next
 // warm tick (the warmup-batch counter is cumulative, so it fires promptly).
 function _rearmCortexGpuUpload(reason) {
+  // RECONNECT-CHURN COALESCE (Gee 2026-07-14 "the doner keeps dropping") —
+  // every reconnect/failover/promote funnels here and (via the reset below)
+  // fires a fresh FULL 85MB cortex_intraSynapses + cross-projection upload.
+  // When a donor churn-drops (a 12-29s GC pin at 61M starves the proxied WS →
+  // drop → this re-arm → 85MB re-upload → the upload competes for the same
+  // pinned loop → next pin → drop → ...), an unthrottled re-arm fires a full
+  // re-upload PER reconnect, none able to complete, feeding the very
+  // loop-starvation that caused the drop. Guard: if a full upload is in
+  // flight, or one STARTED within the debounce window, don't stack another —
+  // mark it PENDING; the main-loop debounce (see the _cortexRearmPending block
+  // above the initGpu fire) arms exactly ONE fresh upload once the window
+  // elapses, targeting whatever primary is current by then. Eventual-arm is
+  // guaranteed — a genuinely-new primary is never starved, only delayed up to
+  // the debounce. DREAM_REUPLOAD_DEBOUNCE_MS overrides (default 30s).
+  const _now = Date.now();
+  const _dbMs = Number(process.env.DREAM_REUPLOAD_DEBOUNCE_MS) > 0
+    ? Number(process.env.DREAM_REUPLOAD_DEBOUNCE_MS) : 30000;
+  if (brain._cortexUploadInFlight
+      || (brain._lastCortexUploadStartTs && (_now - brain._lastCortexUploadStartTs) < _dbMs)) {
+    brain._cortexRearmPending = true;
+    if (!brain._rearmCoalesceLogMs || (_now - brain._rearmCoalesceLogMs) > 5000) {
+      brain._rearmCoalesceLogMs = _now;
+      const _since = brain._cortexUploadInFlight
+        ? 'in flight'
+        : `started ${((_now - brain._lastCortexUploadStartTs) / 1000).toFixed(0)}s ago`;
+      console.log(`[Brain] re-arm COALESCED (${reason}) — full upload ${_since}; ONE fresh upload fires after the ${(_dbMs / 1000).toFixed(0)}s reconnect-churn debounce (not a full 85MB re-upload per reconnect).`);
+    }
+    return;
+  }
+  brain._cortexRearmPending = false;
   brain._cortexGpuInitStarted = false;
   // #31 — reset the time-fallback anchor too, so the new primary re-arms the
   // both-triggers gate from scratch (clusters re-confirm → re-stamp → upload
