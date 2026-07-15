@@ -626,7 +626,11 @@ var init_sparse_matrix = __esm({
         const haveHub = !!srcHubMask;
         const rowStart = opts && typeof opts.rowStart === "number" ? Math.max(0, opts.rowStart) : 0;
         const rowEnd = opts && typeof opts.rowEnd === "number" ? Math.min(rows, opts.rowEnd) : rows;
-        for (let i = rowStart; i < rowEnd; i++) {
+        const activeRows = opts && opts.activeRows || null;
+        const iterN = activeRows ? activeRows.length : rowEnd - rowStart;
+        for (let idx = 0; idx < iterN; idx++) {
+          const i = activeRows ? activeRows[idx] : rowStart + idx;
+          if (activeRows && (i < rowStart || i >= rowEnd)) continue;
           const y = postSpikes[i];
           if (!y) continue;
           let lrPostScale = 1;
@@ -666,7 +670,11 @@ var init_sparse_matrix = __esm({
         if (!values || !rowPtr || !colIdx) return;
         const rowStart = opts && typeof opts.rowStart === "number" ? Math.max(0, opts.rowStart) : 0;
         const rowEnd = opts && typeof opts.rowEnd === "number" ? Math.min(rows, opts.rowEnd) : rows;
-        for (let i = rowStart; i < rowEnd; i++) {
+        const activeRows = opts && opts.activeRows || null;
+        const iterN = activeRows ? activeRows.length : rowEnd - rowStart;
+        for (let idx = 0; idx < iterN; idx++) {
+          const i = activeRows ? activeRows[idx] : rowStart + idx;
+          if (activeRows && (i < rowStart || i >= rowEnd)) continue;
           if (!postSpikes[i]) continue;
           const scaled = -lr * postSpikes[i];
           const start = rowPtr[i];
@@ -53798,6 +53806,7 @@ var CLUSTER_EMIT_MIXIN = {
     const boostPersona = opts.boostPersona === true;
     const personaBoost = typeof opts.personaBoost === "number" ? opts.personaBoost : 0.3;
     const restrictToVocab = opts.restrictToVocab instanceof Set ? opts.restrictToVocab : null;
+    const gradeAllow = opts.skipGradeGate !== true && this._emissionAllowedVocab instanceof Set ? this._emissionAllowedVocab : null;
     let intentNormSq = 0;
     for (let i = 0; i < intentSeed.length; i++) intentNormSq += intentSeed[i] * intentSeed[i];
     if (intentNormSq <= 0) {
@@ -53839,6 +53848,7 @@ var CLUSTER_EMIT_MIXIN = {
         if (word.length === 1 && word !== "i" && word !== "a") continue;
         if (excludeTokens && excludeTokens.has(word)) continue;
         if (restrictToVocab && !restrictToVocab.has(word)) continue;
+        if (gradeAllow && !gradeAllow.has(word)) continue;
         const pattern = entry.pattern;
         let normSq = entry.normSquared;
         if (normSq === void 0) {
@@ -53873,6 +53883,7 @@ var CLUSTER_EMIT_MIXIN = {
       if (excludeTokens && excludeTokens.has(word)) continue;
       if (excludePersona && entry.isPersona === true) continue;
       if (restrictToVocab && !restrictToVocab.has(word)) continue;
+      if (gradeAllow && !gradeAllow.has(word)) continue;
       const pattern = entry.pattern;
       let normSq = entry.normSquared;
       if (normSq === void 0) {
@@ -54143,7 +54154,15 @@ var CLUSTER_EMIT_MIXIN = {
       this._emitSignalEMA = (1 - _emaAlpha) * this._emitSignalEMA + _emaAlpha * bestMean;
       this._emitSignalSampleCount++;
     }
-    const temperature = typeof opts.temperature === "number" ? opts.temperature : 0;
+    let temperature = typeof opts.temperature === "number" ? opts.temperature : 0;
+    if (temperature > 0) {
+      const _annealOff = typeof process !== "undefined" && !!process.env && process.env.DREAM_ANNEAL_TEMP === "0";
+      if (!_annealOff) {
+        const _mc = typeof this._lastSemMotorMeanCos === "number" ? this._lastSemMotorMeanCos : null;
+        const _annealFactor = _mc == null ? 1 : Math.max(0, Math.min(1, _mc / 0.7));
+        temperature = temperature * _annealFactor;
+      }
+    }
     if (temperature > 0 && candidates.length > 1) {
       const topK = Math.max(1, Math.min(opts.topK ?? 8, candidates.length));
       candidates.sort((a, b) => b.mean - a.mean);
@@ -56106,7 +56125,7 @@ var NeuronCluster = class {
     }
     const predErr = Math.max(0, Math.min(1, this._lastPredictionError || 0));
     if (this._noiseGateEnabled === void 0) {
-      this._noiseGateEnabled = typeof process !== "undefined" && !!process.env && process.env.DREAM_NOISE_GATE === "1";
+      this._noiseGateEnabled = !(typeof process !== "undefined" && !!process.env && process.env.DREAM_NOISE_GATE === "0");
     }
     let surpriseGate = 0.5 + predErr;
     if (this._noiseGateEnabled) {
@@ -60525,32 +60544,27 @@ var VisualCortex = class {
   }
   /**
    * MS.I3 — IMAGINE into the mind-space. Imagination is vision without a camera: she recalls
-   * a remembered field C, optionally MORPHS it toward another memory and ABSTRACTS it (the
-   * thought-ops), reads the percept out, and that percept drives the visual region exactly like
-   * a perceived frame — she SEES what she imagines. Returns the percept vector (Float32Array)
-   * or null if she has nothing remembered yet. Pure + deterministic (selection from opts, no RNG).
+   * a remembered field C and ABSTRACTS it (a single-field thought-op; the two-image
+   * morph-toward-another-memory was removed per MEYE.3 — a composite of two seen frames
+   * is a static superposition, not imagination), reads the percept out, and that percept
+   * drives the visual region exactly like a perceived frame — she SEES what she imagines.
+   * Returns the percept vector (Float32Array) or null if nothing's remembered yet. Pure +
+   * deterministic (selection from opts, no RNG).
    *
-   * @param {object} opts  { blend?:0..1 morph toward another memory, dream?:0..1 abstract amount, pick?:int }
+   * @param {object} opts  { dream?:0..1 abstract amount (blend/pick accepted-but-ignored — no morph) }
    */
   imagine(opts = {}) {
     if (!this._recentRecs.length) return null;
     const recs = this._recentRecs;
     const a = recs[recs.length - 1];
     let imagined = a;
-    let blend = Math.max(0, Math.min(1, opts.blend || 0));
     let dream = Math.max(0, Math.min(1, opts.dream || 0));
     const gov = this._mindSpace && this._mindSpace.governor;
     if (gov) {
-      const cost = Math.round(40 + 120 * blend + 80 * dream);
+      const cost = Math.round(40 + 80 * dream);
       const grant = gov.allot({ kind: "imagine", requestedUnits: cost, priority: opts.priority, value: opts.value });
       const f = Math.max(0, Math.min(1, grant.ratio));
-      blend *= f;
       dream *= f;
-    }
-    if (blend > 0 && recs.length > 1) {
-      const b = recs[((opts.pick | 0) % (recs.length - 1) + (recs.length - 1)) % (recs.length - 1)];
-      const m = morphField(a, b, blend);
-      if (m) imagined = m;
     }
     if (dream > 0) imagined = abstract(imagined, dream);
     this._lastRec = imagined;
@@ -60567,12 +60581,12 @@ var VisualCortex = class {
   }
   /**
    * UVM-INT.3 — DE-NOVO imagination from internal mind-state (no camera/file).
-   * `imagine()` morphs REMEMBERED field-Cs, so it returns null when the memory
+   * `imagine()` recalls REMEMBERED field-Cs, so it returns null when the memory
    * ring is empty (headless/server Unity, or before she's ever seen anything).
    * This folds a cortex activation vector straight into a field C via the
    * mind-space, pushes it into the same memory ring + percept path, so she can
-   * imagine from her own mind alone — then `imagine()` has material to morph on
-   * subsequent ticks. Returns the percept vector or null.
+   * imagine from her own mind alone — then `imagine()` has material to recall +
+   * abstract on subsequent ticks. Returns the percept vector or null.
    */
   imagineDeNovo(stateVector, opts = {}) {
     if (!this._mindSpace || typeof this._mindSpace.imagineFromState !== "function") return null;
@@ -64321,7 +64335,7 @@ var ComponentSynth = class {
   _splitRequest(req) {
     const lower = String(req).toLowerCase().trim();
     if (!/(,|\sand\s|\splus\s|\swith\s|\sthen\s)/.test(lower)) return [];
-    return lower.split(/\s*,\s*|\s+and\s+|\s+plus\s+|\s+with\s+|\s+then\s+/).map((s) => s.trim()).filter((s) => s.length >= 3);
+    return lower.split(/\s*,\s*|\s+and\s+|\s+plus\s+|\s+with\s+|\s+then\s+/).map((s) => s.trim().replace(/^(?:plus|and|with|then)\s+/, "")).filter((s) => s.length >= 3);
   }
   /**
    * T14.17 — cortex entity readout vector (what the cortex is representing now),
@@ -64406,7 +64420,7 @@ var ComponentSynth = class {
    * pattern is available.
    */
   _hueFromPattern(cortexPattern) {
-    if (!cortexPattern || !cortexPattern.length) return "#ff00ff";
+    if (!cortexPattern || !cortexPattern.length) return "hsl(300, 85%, 62%)";
     let h = 0;
     const n = Math.min(16, cortexPattern.length);
     for (let i = 0; i < n; i++) h = (h + Math.floor((cortexPattern[i] + 1) * 180)) % 360;
@@ -100298,9 +100312,23 @@ var Curriculum = class _Curriculum {
   // before the migration). Loops across cluster.regions so every
   // region the bound cross-projections read from gets cleared in
   // lockstep with the CPU shadow.
-  _clearSpikes() {
+  _clearSpikes(regionNames = null) {
     const cluster = this.cluster;
     if (!cluster) return;
+    if (Array.isArray(regionNames) && regionNames.length && cluster.regions) {
+      for (const name of regionNames) {
+        const r = cluster.regions[name];
+        if (!r) continue;
+        for (let j = r.start; j < r.end; j++) cluster.lastSpikes[j] = 0;
+        if (cluster._gpuProxy && cluster._gpuProxy.clearSpikeSlice) {
+          try {
+            cluster._gpuProxy.clearSpikeSlice(name);
+          } catch {
+          }
+        }
+      }
+      return;
+    }
     for (let j = 0; j < cluster.size; j++) cluster.lastSpikes[j] = 0;
     if (cluster._gpuProxy && cluster._gpuProxy.clearSpikeSlice && cluster.regions) {
       for (const regionName of Object.keys(cluster.regions)) {
@@ -101643,20 +101671,26 @@ var Curriculum = class _Curriculum {
             }
             const preFull = this._defKScaledPreScratch;
             const postFull = this._defKScaledPostScratch;
-            preFull.fill(0);
-            postFull.fill(0);
+            if (!this._defKScaledActiveRows) this._defKScaledActiveRows = [];
+            const activeRows = this._defKScaledActiveRows;
+            for (let a = 0; a < activeRows.length; a++) {
+              const pi = activeRows[a];
+              preFull[pi] = 0;
+              postFull[pi] = 0;
+            }
+            activeRows.length = 0;
             for (let i = 0; i < semSize; i++) {
               const v = cluster.lastSpikes[sem.start + i] || 0;
-              preFull[sem.start + i] = v;
-              postFull[sem.start + i] = v;
+              if (!v) continue;
+              const gi = sem.start + i;
+              preFull[gi] = v;
+              postFull[gi] = v;
+              activeRows.push(gi);
             }
             const kScales = cluster.buildKScalesForProjection(null, null);
             const lrK = (opts.lr ?? 0.01) * 0.25;
-            if (typeof cluster._ojaUpdateChunked === "function") {
-              await cluster._ojaUpdateChunked(cluster.synapses, preFull, postFull, lrK, kScales ? { kScales } : void 0);
-            } else {
-              cluster.synapses.ojaUpdate(preFull, postFull, lrK, kScales ? { kScales } : void 0);
-            }
+            const _ojaOpts = kScales ? { kScales, activeRows } : { activeRows };
+            cluster.synapses.ojaUpdate(preFull, postFull, lrK, _ojaOpts);
           } catch {
           }
         }
@@ -102740,6 +102774,7 @@ var Curriculum = class _Curriculum {
       return { trained: 0, skipped: pairs.length };
     }
     const relationTagId = typeof opts.relationTagId === "number" ? opts.relationTagId : null;
+    const skipPredictiveError = opts.skipPredictiveError === true || relationTagId === 23;
     const binarize = opts.binarize === true;
     const normalizeAfter = opts.normalizeAfter !== false;
     const normTarget = opts.normTarget ?? 0.3;
@@ -102779,7 +102814,7 @@ var Curriculum = class _Curriculum {
         const inEmbSem = semWTA ? this._topKEmbedding(inEmb, semTopK) : inEmb;
         if (semWTA && inEmbSem !== inEmb) semWtaApplied++;
         try {
-          this._clearSpikes();
+          this._clearSpikes(skipPredictiveError ? ["sem", "motor", "fineType"] : null);
           this._writeTiledPattern(semRegion, inEmbSem, binarize);
           this._writeTiledPattern(motorRegion, outEmbMotor, binarize);
           if (fineTypeRegion && relationTagId !== null) {
@@ -102790,9 +102825,11 @@ var Curriculum = class _Curriculum {
             const tagVal = binarize ? 1 : 0.5;
             for (let i = tagStart; i < tagEnd; i++) cluster.lastSpikes[i] = tagVal;
           }
-          try {
-            await this._teachPredictiveError(lr);
-          } catch {
+          if (!skipPredictiveError) {
+            try {
+              await this._teachPredictiveError(lr);
+            } catch {
+            }
           }
           await this._teachHebbian(lr, {
             projectionsWhitelist: this._associationPairsWhitelist(opts.subject),
@@ -102818,7 +102855,7 @@ var Curriculum = class _Curriculum {
               if (wrongEmb && wrongEmb.length > 0) {
                 const wrongEmbMotor = motorWTA ? this._topKEmbedding(wrongEmb, motorTopK) : wrongEmb;
                 try {
-                  this._clearSpikes();
+                  this._clearSpikes(skipPredictiveError ? ["sem", "motor", "fineType"] : null);
                   this._writeTiledPattern(semRegion, inEmbSem, binarize);
                   this._writeTiledPattern(motorRegion, wrongEmbMotor, binarize);
                   if (fineTypeRegion && relationTagId !== null) {
@@ -103265,6 +103302,7 @@ var Curriculum = class _Curriculum {
     }
     const qualityScore = probeRate + coherenceBonus;
     const advanced = qualityScore >= PROBE_PASS_THRESHOLD;
+    if (this.cluster) this.cluster._mechanicsProbeRate = probeRate;
     const bonusTag = avgCosine !== null ? ` \xB7 avgCos=${avgCosine.toFixed(2)} coherenceBonus=+${coherenceBonus.toFixed(3)} qualityScore=${qualityScore.toFixed(3)}` : " \xB7 avgCos=n/a (no intent-concept)";
     this._hb(`[Curriculum] _teachSentenceStructure POST-PROBE \u2014 sentenceGen rate=${(probeRate * 100).toFixed(0)}% (${probePassed}/${probeTotal}) \xB7 threshold=${(PROBE_PASS_THRESHOLD * 100).toFixed(0)}%${bonusTag} \u2014 ${advanced ? "\u2713 PASS, advancing subGrade" : "\u2717 FAIL, NOT advancing subGrade"}.`);
     if (cluster.advanceSubGrade && advanced) {
@@ -106706,74 +106744,88 @@ var Curriculum = class _Curriculum {
         if (this._hb) this._hb(`[Curriculum] SELF-INTRODUCTION-REFRESH(${grade}) non-fatal: ${e?.message || e}`);
       }
     }
-    if (atLeast(g1)) {
-      if (typeof this._teachTenseMorphology === "function") await this._teachTenseMorphology(opts.tense || {});
-      if (typeof this._teachMorphology === "function") await this._teachMorphology(opts.morph || {});
-      if (typeof this._teachGrammarAgreement === "function") {
-        await this._teachGrammarAgreement([
-          { correct: "the cat runs", incorrect: "the cat run" },
-          { correct: "the cats run", incorrect: "the cats runs" },
-          { correct: "she walks home", incorrect: "she walk home" },
-          { correct: "they walk home", incorrect: "they walks home" },
-          { correct: "he is happy", incorrect: "he are happy" },
-          { correct: "we are here", incorrect: "we is here" },
-          { correct: "i have a dog", incorrect: "i has a dog" },
-          { correct: "it has spots", incorrect: "it have spots" }
-        ], { reps: 4 });
+    const _mechEveryCell = typeof process !== "undefined" && !!process.env && process.env.DREAM_MECH_EVERY_CELL === "1";
+    const _mechConsolidated = !!(this.cluster && typeof this.cluster._mechanicsProbeRate === "number" && this.cluster._mechanicsProbeRate >= 0.85);
+    if (this.cluster) this.cluster._mechCellsSinceLadder = (this.cluster._mechCellsSinceLadder || 0) + 1;
+    const _ladderN = 3;
+    const runLadder = _mechEveryCell || !_mechConsolidated || !this.cluster || this.cluster._mechLadderRanOnce !== true || this.cluster._mechCellsSinceLadder >= _ladderN;
+    if (runLadder && this.cluster) {
+      this.cluster._mechCellsSinceLadder = 0;
+      this.cluster._mechLadderRanOnce = true;
+    }
+    if (!runLadder) {
+      this._hb?.(`[Curriculum] _teachLanguageMechanics(${grade}) \u2014 mechanics CONSOLIDATED (sentence-gen ${((this.cluster && this.cluster._mechanicsProbeRate || 0) * 100).toFixed(0)}% >= 85%); grammar band ladder SKIPPED this cell (targeted re-teach \u2014 full every ${_ladderN} cells / on regression). Foundation + self-intro ran. #14 event-cost.`);
+    }
+    if (runLadder) {
+      if (atLeast(g1)) {
+        if (typeof this._teachTenseMorphology === "function") await this._teachTenseMorphology(opts.tense || {});
+        if (typeof this._teachMorphology === "function") await this._teachMorphology(opts.morph || {});
+        if (typeof this._teachGrammarAgreement === "function") {
+          await this._teachGrammarAgreement([
+            { correct: "the cat runs", incorrect: "the cat run" },
+            { correct: "the cats run", incorrect: "the cats runs" },
+            { correct: "she walks home", incorrect: "she walk home" },
+            { correct: "they walk home", incorrect: "they walks home" },
+            { correct: "he is happy", incorrect: "he are happy" },
+            { correct: "we are here", incorrect: "we is here" },
+            { correct: "i have a dog", incorrect: "i has a dog" },
+            { correct: "it has spots", incorrect: "it have spots" }
+          ], { reps: 4 });
+        }
       }
-    }
-    if (atLeast(g2) && typeof this._teachPhrases === "function") {
-      await this._teachPhrases([
-        "the big red dog",
-        "a very tall tree",
-        "the small gray cat",
-        "on the wooden table",
-        "under the old bridge",
-        "in the dark room",
-        "ran very fast",
-        "sang quite loudly",
-        "walked slowly home"
-      ], { reps: 3 });
-    }
-    if (atLeast(g3) && typeof this._teachDiscourseCoherence === "function") {
-      await this._teachDiscourseCoherence();
-    }
-    if (atLeast(g5) && typeof this._teachSyntax === "function") {
-      await this._teachSyntax({ reps: 3 });
-    }
-    if (atLeast(g7) && typeof this._teachFigurativeLanguage === "function") {
-      await this._teachFigurativeLanguage([
-        { literal: "she was very fast", figurative: "she was lightning", device: "metaphor" },
-        { literal: "he was very brave", figurative: "he was a lion", device: "metaphor" },
-        { literal: "the wind was loud", figurative: "the wind screamed", device: "personification" },
-        { literal: "she was very calm", figurative: "she was as calm as still water", device: "simile" },
-        { literal: "i waited a long time", figurative: "i waited forever", device: "hyperbole" }
-      ], { reps: 3 });
-    }
-    if (atLeast(g9)) {
-      if (typeof this._teachRhetoricalDevices === "function") {
-        await this._teachRhetoricalDevices([
-          { example: "ask not what your country can do for you", device: "antithesis" },
-          { example: "we shall fight on the beaches we shall fight on the land", device: "anaphora" },
-          { example: "all the world is a stage", device: "metaphor" },
-          { example: "how can anyone ignore this injustice", device: "rhetorical_question" }
+      if (atLeast(g2) && typeof this._teachPhrases === "function") {
+        await this._teachPhrases([
+          "the big red dog",
+          "a very tall tree",
+          "the small gray cat",
+          "on the wooden table",
+          "under the old bridge",
+          "in the dark room",
+          "ran very fast",
+          "sang quite loudly",
+          "walked slowly home"
         ], { reps: 3 });
       }
-      if (typeof this._teachArgumentStructure === "function") {
-        await this._teachArgumentStructure([
-          { claim: "reading improves the mind", evidence: "studies show readers have larger vocabularies", conclusion: "so everyone should read daily" },
-          { claim: "exercise builds health", evidence: "active people live longer on average", conclusion: "therefore we should stay active" }
+      if (atLeast(g3) && typeof this._teachDiscourseCoherence === "function") {
+        await this._teachDiscourseCoherence();
+      }
+      if (atLeast(g5) && typeof this._teachSyntax === "function") {
+        await this._teachSyntax({ reps: 3 });
+      }
+      if (atLeast(g7) && typeof this._teachFigurativeLanguage === "function") {
+        await this._teachFigurativeLanguage([
+          { literal: "she was very fast", figurative: "she was lightning", device: "metaphor" },
+          { literal: "he was very brave", figurative: "he was a lion", device: "metaphor" },
+          { literal: "the wind was loud", figurative: "the wind screamed", device: "personification" },
+          { literal: "she was very calm", figurative: "she was as calm as still water", device: "simile" },
+          { literal: "i waited a long time", figurative: "i waited forever", device: "hyperbole" }
         ], { reps: 3 });
       }
-      if (typeof this._teachSelfArchitecture === "function") {
-        await this._teachSelfArchitecture(c);
+      if (atLeast(g9)) {
+        if (typeof this._teachRhetoricalDevices === "function") {
+          await this._teachRhetoricalDevices([
+            { example: "ask not what your country can do for you", device: "antithesis" },
+            { example: "we shall fight on the beaches we shall fight on the land", device: "anaphora" },
+            { example: "all the world is a stage", device: "metaphor" },
+            { example: "how can anyone ignore this injustice", device: "rhetorical_question" }
+          ], { reps: 3 });
+        }
+        if (typeof this._teachArgumentStructure === "function") {
+          await this._teachArgumentStructure([
+            { claim: "reading improves the mind", evidence: "studies show readers have larger vocabularies", conclusion: "so everyone should read daily" },
+            { claim: "exercise builds health", evidence: "active people live longer on average", conclusion: "therefore we should stay active" }
+          ], { reps: 3 });
+        }
+        if (typeof this._teachSelfArchitecture === "function") {
+          await this._teachSelfArchitecture(c);
+        }
       }
-    }
-    if (atLeast(g11) && typeof this._teachRhetoricalDefense === "function") {
-      await this._teachRhetoricalDefense([
-        { thesis: "technology connects people", counter: "some say it isolates us", response: "but used well it builds real bonds" },
-        { thesis: "art has real value", counter: "critics call it impractical", response: "yet it shapes how we see the world" }
-      ], { reps: 3 });
+      if (atLeast(g11) && typeof this._teachRhetoricalDefense === "function") {
+        await this._teachRhetoricalDefense([
+          { thesis: "technology connects people", counter: "some say it isolates us", response: "but used well it builds real bonds" },
+          { thesis: "art has real value", counter: "critics call it impractical", response: "yet it shapes how we see the world" }
+        ], { reps: 3 });
+      }
     }
   }
   async _teachProductionStack(subject, ctx, opts = {}) {
@@ -114343,7 +114395,7 @@ var UnityBrain = class extends EventEmitter {
           });
           _ms.governTick();
         }
-        let pv = this.visualCortex.imagine({ blend: 0.5, dream: 0.2, pick: this.frameCount / 180 | 0, priority: 0.3, value: 0.5 });
+        let pv = this.visualCortex.imagine({ dream: 0.2, priority: 0.3, value: 0.5 });
         if (!pv && this.clusters.cortex && this.clusters.cortex.lastSpikes) {
           pv = this.visualCortex.imagineDeNovo(this.clusters.cortex.lastSpikes, { priority: 0.3, value: 0.5 });
         }
@@ -116132,6 +116184,24 @@ var VoiceIO = class {
         throw new Error("audio locked (autoplay policy) \u2014 interact with the page once");
       }
     }
+    try {
+      const _agePitch = this._agePreset && this._agePreset().pitch || 1;
+      if (Math.abs(_agePitch - 1) >= 0.01) pcm = this._pitchShiftOLA(pcm, _agePitch);
+    } catch {
+    }
+    if (pcm && pcm.length > 0) {
+      const fadeN = Math.min(pcm.length >> 1, Math.max(1, Math.round(sampleRate * 4e-3)));
+      if (pcm.buffer && !(pcm instanceof Float32Array && pcm._voxFaded)) {
+        const faded = new Float32Array(pcm.length);
+        faded.set(pcm);
+        for (let i = 0; i < fadeN; i++) {
+          const g = i / fadeN;
+          faded[i] *= g;
+          faded[pcm.length - 1 - i] *= g;
+        }
+        pcm = faded;
+      }
+    }
     const buf = this._audioCtx.createBuffer(1, pcm.length, sampleRate);
     buf.getChannelData(0).set(pcm);
     return new Promise((resolve, reject) => {
@@ -116380,11 +116450,52 @@ var VoiceIO = class {
    */
   _agePreset() {
     const a = this._age || 25;
-    if (a < 11) return { voice: "nova", rate: 1.08, style: `You are a ${a}-year-old girl. Speak in the natural bright voice of a ${a}-year-old girl.` };
-    if (a < 14) return { voice: "nova", rate: 1.04, style: `You are a ${a}-year-old girl. Speak in the natural voice of a ${a}-year-old girl.` };
-    if (a < 18) return { voice: "coral", rate: 1.02, style: `You are a ${a}-year-old teenage girl. Speak in the natural voice of a ${a}-year-old teenage girl.` };
-    if (a < 23) return { voice: "shimmer", rate: 1, style: `You are a ${a}-year-old young woman. Speak in the natural voice of a ${a}-year-old young woman.` };
-    return { voice: "shimmer", rate: 0.98, style: `You are a ${a}-year-old woman. Speak in the natural warm voice of a ${a}-year-old woman.` };
+    if (a < 11) return { voice: "nova", rate: 1.04, pitch: 1.14, style: `You are a ${a}-year-old girl. Speak in the natural bright voice of a ${a}-year-old girl.` };
+    if (a < 14) return { voice: "nova", rate: 1.02, pitch: 1.09, style: `You are a ${a}-year-old girl. Speak in the natural voice of a ${a}-year-old girl.` };
+    if (a < 18) return { voice: "coral", rate: 1.01, pitch: 1.05, style: `You are a ${a}-year-old teenage girl. Speak in the natural voice of a ${a}-year-old teenage girl.` };
+    if (a < 23) return { voice: "shimmer", rate: 1, pitch: 1.02, style: `You are a ${a}-year-old young woman. Speak in the natural voice of a ${a}-year-old young woman.` };
+    return { voice: "shimmer", rate: 1, pitch: 1, style: `You are a ${a}-year-old woman. Speak in the natural warm voice of a ${a}-year-old woman.` };
+  }
+  /**
+   * VOXREF.4 — duration-preserving PITCH SHIFT (overlap-add). Unlike playbackRate
+   * (which couples pitch + tempo → chipmunk), this raises/lowers pitch by `ratio`
+   * while keeping the SAME duration: Hann-windowed OLA time-stretch by `ratio`,
+   * then linear-resample back to the original length → net pitch × ratio, tempo
+   * unchanged. Deterministic (no RNG). Returns the input untouched when ratio≈1.0
+   * (so the adult V4 sentence lane is never processed). Bounded single pass.
+   */
+  _pitchShiftOLA(pcm, ratio) {
+    if (!pcm || pcm.length === 0 || !(ratio > 0) || Math.abs(ratio - 1) < 0.01) return pcm;
+    const N = pcm.length;
+    const win = 512;
+    const hopA = win >> 1;
+    const hopS = Math.max(1, Math.round(hopA * ratio));
+    const winFn = new Float32Array(win);
+    for (let i = 0; i < win; i++) winFn[i] = 0.5 - 0.5 * Math.cos(2 * Math.PI * i / (win - 1));
+    const outLen = Math.ceil(N * ratio) + win;
+    const stretched = new Float32Array(outLen);
+    const norm = new Float32Array(outLen);
+    let a = 0, s = 0;
+    while (a + win <= N) {
+      for (let i = 0; i < win; i++) {
+        const w = winFn[i];
+        stretched[s + i] += pcm[a + i] * w;
+        norm[s + i] += w;
+      }
+      a += hopA;
+      s += hopS;
+    }
+    const stretchedLen = s + win;
+    for (let i = 0; i < stretchedLen; i++) if (norm[i] > 1e-6) stretched[i] /= norm[i];
+    const out = new Float32Array(N);
+    const step = stretchedLen / N;
+    for (let i = 0; i < N; i++) {
+      const x = i * step;
+      const i0 = Math.floor(x), frac = x - i0;
+      const s0 = stretched[i0] || 0, s1 = stretched[i0 + 1] || 0;
+      out[i] = s0 + (s1 - s0) * frac;
+    }
+    return out;
   }
   setApiKey(key) {
     this._apiKey = key;
@@ -117078,9 +117189,21 @@ var Sandbox = class {
   injectScript(js) {
     this._evaluateJS(js, this._container, "__global__");
   }
-  /** querySelector scoped to the sandbox container */
+  /** querySelector scoped to the sandbox container. AUDIT-L3 — light-DOM
+   *  querySelector cannot cross a shadow boundary, so a plain lookup returned
+   *  null for elements inside shadow:true (synth-built, isolated) components.
+   *  Now: try the light DOM first, then descend into each sandbox component's
+   *  attached shadow root so a lookup finds isolated-component elements too. */
   getElement(selector) {
-    return this._container.querySelector(selector);
+    const light = this._container.querySelector(selector);
+    if (light) return light;
+    for (const host of this._container.querySelectorAll(".sandbox-component")) {
+      if (host.shadowRoot) {
+        const hit = host.shadowRoot.querySelector(selector);
+        if (hit) return hit;
+      }
+    }
+    return null;
   }
   // ── Unity API ───────────────────────────────────────────────
   /**

@@ -199,7 +199,11 @@ export class ComponentSynth {
     if (!/(,|\sand\s|\splus\s|\swith\s|\sthen\s)/.test(lower)) return [];
     return lower
       .split(/\s*,\s*|\s+and\s+|\s+plus\s+|\s+with\s+|\s+then\s+/)
-      .map(s => s.trim())
+      // AUDIT-L2 — a comma-split segment can keep a leading connector word
+      // ("a clock, plus a calendar" → "plus a calendar") because the split
+      // delimiters require surrounding spaces. Strip a leading connector so
+      // the primitive match sees "a calendar", not "plus a calendar".
+      .map(s => s.trim().replace(/^(?:plus|and|with|then)\s+/, ''))
       .filter(s => s.length >= 3);
   }
 
@@ -286,7 +290,7 @@ export class ComponentSynth {
    * pattern is available.
    */
   _hueFromPattern(cortexPattern) {
-    if (!cortexPattern || !cortexPattern.length) return '#ff00ff';
+    if (!cortexPattern || !cortexPattern.length) return 'hsl(300, 85%, 62%)';  // AUDIT-N1 — was #ff00ff; use hsl() so the fallback matches the normal-path format
     let h = 0;
     const n = Math.min(16, cortexPattern.length);
     for (let i = 0; i < n; i++) h = (h + Math.floor((cortexPattern[i] + 1) * 180)) % 360;

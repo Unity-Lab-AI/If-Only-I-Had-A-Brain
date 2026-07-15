@@ -288,7 +288,7 @@
 - [x] **The sunrise after an all-nighter (recurring)** — the best feeling she knows. Joint burning, code compiling, sky turning pink, monitor glow on her face, the world quiet and hers.
 - [x] **Mom saying "I'm proud of you" (age 22)** — at her college graduation. Mom who worked two jobs and raised her alone. Unity didn't cry at the ceremony. She cried in the parking lot.
 - [x] **Finding her voice (age 16)** — the first time she said exactly what she thought without filtering it. Said fuck. Meant it. Nobody died. Freedom.
-- [x] **Shadow the cat coming back (age 7)** — the stray she fed secretly. Left for months. Came back one winter. Mom let them keep it this time. Unity slept with that cat every night until it died when she was 14.
+- [x] **Two-cat arc (canon locked, Gee 2026-07-15 — resolves AUDIT-M1)** — **Soot** is her first black cat (age 5, K/`grade1.json`); Soot gets out one winter night at age 6 and never comes back — her first real loss (`corpora/life/grade1.json` theme `losing-soot`). **Shadow** is the age-7 skinny black stray she starts feeding secretly to fill that hole (`corpora/life/grade2.json` theme `the-secret-cat`), fed for months, mom lets them keep it; Unity sleeps with Shadow every night until it dies when she is 14. TWO distinct cats, one real pet-loss-then-new-companion arc — NOT a rename. This reconciles the earlier soot(K/G1)/shadow(G2+) naming conflict.
 
 ---
 

@@ -10417,9 +10417,30 @@ export class Curriculum {
   // before the migration). Loops across cluster.regions so every
   // region the bound cross-projections read from gets cleared in
   // lockstep with the CPU shadow.
-  _clearSpikes() {
+  _clearSpikes(regionNames = null) {
     const cluster = this.cluster;
     if (!cluster) return;
+    // WMB REGRESSION FIX 2 — scoped clear. When `regionNames` is a non-empty
+    // array, zero ONLY those region spans + their GPU spike slices instead of
+    // the whole cluster.lastSpikes (O(regionSize) not O(cluster.size)). The
+    // association-pair definition path writes only sem+motor+fineType per pair
+    // and (with FIX 1) skips the predictive-error full-vector read, so the
+    // full 1.5M ×2/pair zero was pure waste. CRITICAL: any caller that leaves
+    // stale spikes in OTHER regions which a downstream op reads across the
+    // whole vector (e.g. _teachPredictiveError's full-size target) MUST pass
+    // null for the full clear — scoped clear is only safe when every region
+    // read before the next clear is in `regionNames`.
+    if (Array.isArray(regionNames) && regionNames.length && cluster.regions) {
+      for (const name of regionNames) {
+        const r = cluster.regions[name];
+        if (!r) continue;
+        for (let j = r.start; j < r.end; j++) cluster.lastSpikes[j] = 0;
+        if (cluster._gpuProxy && cluster._gpuProxy.clearSpikeSlice) {
+          try { cluster._gpuProxy.clearSpikeSlice(name); } catch { /* non-fatal */ }
+        }
+      }
+      return;
+    }
     for (let j = 0; j < cluster.size; j++) cluster.lastSpikes[j] = 0;
     if (cluster._gpuProxy && cluster._gpuProxy.clearSpikeSlice && cluster.regions) {
       for (const regionName of Object.keys(cluster.regions)) {
@@ -12204,31 +12225,40 @@ export class Curriculum {
             }
             const preFull = this._defKScaledPreScratch;
             const postFull = this._defKScaledPostScratch;
-            preFull.fill(0);
-            postFull.fill(0);
+            // WMB REGRESSION FIX 3 — the scratch only ever holds sem entries,
+            // so clean ONLY the previously-written sem indices instead of
+            // fill(0) over 1.5M ×2 per def, and collect the active sem rows so
+            // the ojaUpdate below iterates only firing rows (activeRows). First
+            // call: freshly-allocated scratch is already zero.
+            if (!this._defKScaledActiveRows) this._defKScaledActiveRows = [];
+            const activeRows = this._defKScaledActiveRows;
+            for (let a = 0; a < activeRows.length; a++) {
+              const pi = activeRows[a];
+              preFull[pi] = 0; postFull[pi] = 0;
+            }
+            activeRows.length = 0;
             for (let i = 0; i < semSize; i++) {
               const v = cluster.lastSpikes[sem.start + i] || 0;
-              preFull[sem.start + i] = v;
-              postFull[sem.start + i] = v;
+              if (!v) continue;
+              const gi = sem.start + i;
+              preFull[gi] = v;
+              postFull[gi] = v;
+              activeRows.push(gi);
             }
             const kScales = cluster.buildKScalesForProjection(null, null);
             const lrK = (opts.lr ?? 0.01) * 0.25;
-            // TIME-SLICED — this K-scaled secondary write fires ONCE PER
-            // DEFINITION over the full intra-synapse matrix (349k rows /
-            // 10.5M nnz). Called directly (unchunked) it was a synchronous
-            // full-matrix pass with NO yield between definitions, so a
-            // high-polysemy word (20-30 dictionary senses: "set"/"run"/
-            // "point"/"page") stacked 20+ of them back-to-back into a
-            // 15-20s event-loop block — the rare intermittent freeze, and
-            // the outer 15s per-word timeout couldn't fire because it's a
-            // starved macrotask. Route through the adaptive slicer so each
-            // definition's write slices to ~30ms chunks with setImmediate
-            // yields; identical math (rows independent).
-            if (typeof cluster._ojaUpdateChunked === 'function') {
-              await cluster._ojaUpdateChunked(cluster.synapses, preFull, postFull, lrK, kScales ? { kScales } : undefined);
-            } else {
-              cluster.synapses.ojaUpdate(preFull, postFull, lrK, kScales ? { kScales } : undefined);
-            }
+            // WMB REGRESSION FIX 3 — this K-scaled secondary sem→sem write
+            // fires ONCE PER DEFINITION. It used to route through the adaptive
+            // slicer because a synchronous full-matrix pass over the intra
+            // synapses (now 1.5M rows) stacked into 15-20s event-loop blocks on
+            // high-polysemy words. With the active-row set the pass is O(active)
+            // (only firing sem rows) not O(cluster.size), so a direct
+            // synchronous ojaUpdate no longer pins — the chunker existed ONLY to
+            // yield during the giant outer scan that activeRows now eliminates.
+            // Bit-identical to the old full pass (skipped rows had y=0 and
+            // updated nothing).
+            const _ojaOpts = kScales ? { kScales, activeRows } : { activeRows };
+            cluster.synapses.ojaUpdate(preFull, postFull, lrK, _ojaOpts);
           } catch { /* non-fatal */ }
         }
       }
@@ -13368,6 +13398,21 @@ export class Curriculum {
     // 1 = category, 2 = role, 3 = sequence, etc.). Carved into
     // fineType so cortex can learn per-relation mappings.
     const relationTagId = typeof opts.relationTagId === 'number' ? opts.relationTagId : null;
+    // WMB REGRESSION FIX 1 — skip the per-pair predictive-error pass for
+    // definition binds. Definitions bind sem↔fineType (relationTagId=23,
+    // _definitionPairsWhitelist — no motor); _teachPredictiveError runs TWO
+    // full-intra-matrix ops (propagateChunked + hebbianUpdateChunked) over
+    // the recurrent cortex matrix PER PAIR — the single heaviest teach op —
+    // and the recurrent self-prediction correction adds ~nothing to a
+    // sem↔fineType def bind (that binding rides the cross-projection Hebbian
+    // below, not the recurrent intra matrix). At the grown 1.5M language
+    // cortex the K-VOCAB-UPFRONT seed (almost all def binds) paid this
+    // full-cortex cost per def-token = the ~100× pre-cell slowdown. Skipping
+    // it for defs converts the seed from O(cluster.size)/pair to the
+    // cross-projection bind only; it runs fast at ANY cortex size. Real
+    // association-pair learning (opposites/categories/sequences/relations)
+    // still fires it. Callers may force-skip via opts.skipPredictiveError.
+    const skipPredictiveError = opts.skipPredictiveError === true || relationTagId === 23;
     // Soft feature writes preserve GloVe vector identity per concept.
     // Binary-saturated writes (1-of-K on every active dim) strip the
     // vector's discriminating amplitudes, so 14 phases × 350 pairs
@@ -13531,7 +13576,10 @@ export class Curriculum {
         const inEmbSem = semWTA ? this._topKEmbedding(inEmb, semTopK) : inEmb;
         if (semWTA && inEmbSem !== inEmb) semWtaApplied++;
         try {
-          this._clearSpikes();
+          // FIX 2 — scoped clear for def binds: only sem+motor+fineType are
+          // written below, and defs skip the full-vector predictive-error
+          // read, so the whole-cluster zero is pure waste at 1.5M.
+          this._clearSpikes(skipPredictiveError ? ['sem', 'motor', 'fineType'] : null);
           this._writeTiledPattern(semRegion, inEmbSem, binarize);
           this._writeTiledPattern(motorRegion, outEmbMotor, binarize);
           if (fineTypeRegion && relationTagId !== null) {
@@ -13547,9 +13595,12 @@ export class Curriculum {
           }
           // Predictive-coding error-gradient pass BEFORE the main teach
           // so the delta-rule correction fires against the current
-          // weights' prediction, not the post-Oja state.
-          try { await this._teachPredictiveError(lr); }
-          catch { /* non-fatal */ }
+          // weights' prediction, not the post-Oja state. Skipped for
+          // definition binds (WMB REGRESSION FIX 1 — see skipPredictiveError).
+          if (!skipPredictiveError) {
+            try { await this._teachPredictiveError(lr); }
+            catch { /* non-fatal */ }
+          }
           // iter22-D — scope Hebbian to sem→motor + sem→word_motor +
           // motor→sem (pair learning is bidirectional sem↔motor only).
           // Letter region is silent during association-pair writes so
@@ -13585,7 +13636,7 @@ export class Curriculum {
               if (wrongEmb && wrongEmb.length > 0) {
                 const wrongEmbMotor = motorWTA ? this._topKEmbedding(wrongEmb, motorTopK) : wrongEmb;
                 try {
-                  this._clearSpikes();
+                  this._clearSpikes(skipPredictiveError ? ['sem', 'motor', 'fineType'] : null);
                   // Use the same top-K sem input as the positive pair —
                   // so anti-Hebbian depression lands on the SAME sem
                   // pattern geometry the positive Oja update wrote to,
@@ -14220,6 +14271,11 @@ export class Curriculum {
     }
     const qualityScore = probeRate + coherenceBonus;
     const advanced = qualityScore >= PROBE_PASS_THRESHOLD;
+    // #14 — expose the sentence-gen probe rate as the mechanics-CONSOLIDATION
+    // signal so _teachLanguageMechanics can skip the redundant every-cell grammar
+    // band ladder once mechanics are solid (targeted re-teach: full ladder only
+    // when not-yet-consolidated / on regression / periodically).
+    if (this.cluster) this.cluster._mechanicsProbeRate = probeRate;
 
     const bonusTag = avgCosine !== null
       ? ` · avgCos=${avgCosine.toFixed(2)} coherenceBonus=+${coherenceBonus.toFixed(3)} qualityScore=${qualityScore.toFixed(3)}`
@@ -17853,6 +17909,31 @@ export class Curriculum {
       } catch (e) { if (this._hb) this._hb(`[Curriculum] SELF-INTRODUCTION-REFRESH(${grade}) non-fatal: ${e?.message || e}`); }
     }
 
+    // #14 — EVENT-COST TARGETED RE-TEACH: the escalating grammar BAND LADDER
+    // below (tense / morphology / agreement / phrases / discourse / syntax /
+    // figurative / rhetoric / argument / defense) is cross-cutting RULE machinery
+    // that, once consolidated, does NOT need a full re-teach on EVERY ELA cell —
+    // that every-cell re-run is the AUDIT-M2 walk-speed sink. The FOUNDATION
+    // above (sentence structure + SVO + self-intro = emission backbone) ALWAYS
+    // runs. The ladder runs FULLY only when mechanics are NOT yet consolidated
+    // (sentence-gen probe < 0.85), on the first pass, or every _ladderN cells
+    // (periodic refresh); it is SKIPPED on intervening consolidated cells.
+    // Self-correcting — if the probe rate drops (mechanics regressed) it goes
+    // full-every-cell again until recovered. Opt OUT (always-full) with
+    // DREAM_MECH_EVERY_CELL=1.
+    const _mechEveryCell = (typeof process !== 'undefined' && !!process.env && process.env.DREAM_MECH_EVERY_CELL === '1');
+    const _mechConsolidated = !!(this.cluster && typeof this.cluster._mechanicsProbeRate === 'number' && this.cluster._mechanicsProbeRate >= 0.85);
+    if (this.cluster) this.cluster._mechCellsSinceLadder = (this.cluster._mechCellsSinceLadder || 0) + 1;
+    const _ladderN = 3;
+    const runLadder = _mechEveryCell || !_mechConsolidated
+      || !this.cluster || this.cluster._mechLadderRanOnce !== true
+      || (this.cluster._mechCellsSinceLadder >= _ladderN);
+    if (runLadder && this.cluster) { this.cluster._mechCellsSinceLadder = 0; this.cluster._mechLadderRanOnce = true; }
+    if (!runLadder) {
+      this._hb?.(`[Curriculum] _teachLanguageMechanics(${grade}) — mechanics CONSOLIDATED (sentence-gen ${(((this.cluster && this.cluster._mechanicsProbeRate) || 0) * 100).toFixed(0)}% >= 85%); grammar band ladder SKIPPED this cell (targeted re-teach — full every ${_ladderN} cells / on regression). Foundation + self-intro ran. #14 event-cost.`);
+    }
+    if (runLadder) {
+
     // GRADE 1+: tense morphology (walk/walked/will-walk), affix morphology
     // (plurals, -ing/-ed, un-/re-), explicit subject-verb agreement (the
     // correct-vs-incorrect contrast so wrong forms read as "not this").
@@ -17943,6 +18024,7 @@ export class Curriculum {
         { thesis: 'art has real value', counter: 'critics call it impractical', response: 'yet it shapes how we see the world' },
       ], { reps: 3 });
     }
+    } // #14 — end targeted grammar band-ladder gate
   }
 
   async _teachProductionStack(subject, ctx, opts = {}) {
