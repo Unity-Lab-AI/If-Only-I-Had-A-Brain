@@ -386,6 +386,37 @@ const clusterState = {}; // persists across reconnects
 // main-brain LIF re-init uploads — stacking VRAM pressure while the
 // curriculum teach was already pushing the device.
 let _reconnectAttempt = 0;
+let _reconnectTimer = null;   // #112.1(d) — held so a manual reconnect can cancel the backoff wait
+
+// #112.1(d) — ONE-CLICK RECONNECT. When the donor drops, the exponential
+// backoff can make a user who KNOWS the brain is back wait up to 60s. This
+// surfaces a button that skips the wait: cancel the pending backoff timer,
+// reset the attempt counter, and reconnect immediately.
+function reconnectNow() {
+  if (_reconnectTimer) { clearTimeout(_reconnectTimer); _reconnectTimer = null; }
+  _reconnectAttempt = 0;
+  _showReconnectButton(false);
+  try { if (ws && ws.readyState <= 1) ws.close(); } catch { /* ignore */ }
+  try { statusEl.textContent = 'Reconnecting now...'; statusEl.style.color = '#f59e0b'; } catch { /* nf */ }
+  connectToServer();
+}
+function _showReconnectButton(show) {
+  let btn = document.getElementById('donor-reconnect-btn');
+  if (show) {
+    if (!btn) {
+      btn = document.createElement('button');
+      btn.id = 'donor-reconnect-btn';
+      btn.textContent = '↻ Reconnect now';
+      btn.style.cssText = 'margin-left:10px;padding:4px 10px;background:#7c3aed;color:#fff;border:0;border-radius:6px;cursor:pointer;font-size:13px;';
+      btn.addEventListener('click', reconnectNow);
+      if (statusEl && statusEl.parentNode) statusEl.parentNode.insertBefore(btn, statusEl.nextSibling);
+      else document.body.appendChild(btn);
+    }
+    btn.style.display = '';
+  } else if (btn) {
+    btn.style.display = 'none';
+  }
+}
 
 // Concurrent fullStep calls across clusters run in parallel via
 // Promise.all. The readback path uses a per-call 4-byte disposable
@@ -416,6 +447,8 @@ function connectToServer() {
     // disconnect starts over at 3 s instead of carrying forward a
     // stale exponent from an earlier transient hiccup.
     _reconnectAttempt = 0;
+    if (_reconnectTimer) { clearTimeout(_reconnectTimer); _reconnectTimer = null; }
+    _showReconnectButton(false);   // #112.1(d) — hide the manual-reconnect button once connected
     // Report this donor's GPU capacity so the server tracks the
     // community-compute level + gates milestone resizes (resize+retrain fires
     // only at a critical-mass milestone, never per-connection). WebGPU can't
@@ -1117,7 +1150,9 @@ function connectToServer() {
     _reconnectAttempt++;
     statusEl.textContent = `Disconnected — reconnecting in ${delaySec}s... (attempt ${_reconnectAttempt})`;
     statusEl.style.color = '#f59e0b';
-    setTimeout(() => connectToServer(), delaySec * 1000);
+    if (_reconnectTimer) clearTimeout(_reconnectTimer);
+    _reconnectTimer = setTimeout(() => { _reconnectTimer = null; connectToServer(); }, delaySec * 1000);
+    _showReconnectButton(true);   // #112.1(d) — surface one-click reconnect (skips the backoff wait)
   };
 } // end connectToServer
 

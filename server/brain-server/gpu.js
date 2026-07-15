@@ -2118,6 +2118,13 @@ const SERVER_GPU_MIXIN = {
     if (target.bufferedAmount > SOFT_SHED_MB * 1024 * 1024) {
       if (!this._wsShedCount) this._wsShedCount = 0;
       this._wsShedCount += ops.length;
+      // #16 — PER-MATRIX dirty tracking. Record WHICH matrices this shed dropped
+      // (each op carries its matrix name) so the resync can re-upload ONLY those
+      // via gpuSparseUpload instead of the full ~85MB initGpu. Bounded set; the
+      // resync falls back to a full re-upload whenever the set is empty/uncertain
+      // (donor-left divergence, unknown name), so this can never regress.
+      if (!this._gpuDirtyMatrices) this._gpuDirtyMatrices = new Set();
+      for (const _op of ops) { if (_op && _op.name) this._gpuDirtyMatrices.add(_op.name); }
       this._armShadowResyncDeferred('teach-hebbian batch shed at soft cap'); // dirty on the clearable flag + resync actually armed
       if (!this._wsShedLogMs || (Date.now() - this._wsShedLogMs) > 30000) {
         this._wsShedLogMs = Date.now();
@@ -2270,6 +2277,37 @@ const SERVER_GPU_MIXIN = {
       : 60000;
     if (this._shadowAutoResyncAt && (now - this._shadowAutoResyncAt) <= _resyncThrottleMs) return;
     this._shadowAutoResyncAt = now;
+    // #16 — PER-MATRIX TARGETED RESYNC. When we know EXACTLY which matrices drifted
+    // (the shed recorded their names in _gpuDirtyMatrices) AND every one is in the
+    // replica registry AND a live primary's buffer is drained, re-upload ONLY those
+    // via gpuSparseUpload instead of the full ~85MB initGpu canonical re-upload
+    // (kills the resync tax). ANY uncertainty — empty/oversized set, an unknown
+    // matrix name, no live donor, or a still-saturated buffer — FALLS THROUGH to
+    // the full canonical re-upload below (non-regressing by construction). Clears
+    // the dirty set + the shadow flag on a fully-successful targeted upload; a
+    // failed matrix goes back in the set for a full resync on the next arm.
+    const _ws = this._gpuClient;
+    const _dirty = this._gpuDirtyMatrices;
+    const _reg = this._replicaMatrixRegistry;
+    const _drainGate = (typeof this._donorSoftCapBytes === 'function') ? this._donorSoftCapBytes() / 2 : 32 * 1024 * 1024;
+    if (_ws && _ws.readyState === 1 && _reg
+        && _dirty && _dirty.size > 0 && _dirty.size <= 8
+        && _ws.bufferedAmount < _drainGate
+        && [..._dirty].every((n) => _reg.has(n))) {
+      const names = [..._dirty];
+      this._gpuDirtyMatrices = new Set();
+      Promise.all(names.map((n) => {
+        const e = _reg.get(n);
+        return this.gpuSparseUpload(n, e.matrix, e.binding, _ws).catch(() => {
+          this._gpuDirtyMatrices.add(n);  // failed → re-dirty for a full resync next arm
+          return null;
+        });
+      })).then(() => {
+        if (this._gpuDirtyMatrices.size === 0 && this.cortexCluster) this.cortexCluster._gpuShadowDirty = false;
+        console.log(`[Brain] #16 TARGETED RESYNC (${reason}) — re-uploaded ONLY the ${names.length} drifted matrix(es) [${names.join(', ')}] via gpuSparseUpload (not the full ~85MB). ${this._gpuDirtyMatrices.size === 0 ? 'shadow clean.' : this._gpuDirtyMatrices.size + ' failed → full resync next arm.'}`);
+      }).catch(() => {});
+      return;   // targeted path handled it — skip the full canonical re-upload
+    }
     this._cortexGpuInitStarted = false;
     this._allClustersConfirmedAt = null;
     if (this.cortexCluster) this.cortexCluster._cortexFullyReady = false;

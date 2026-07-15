@@ -1079,7 +1079,15 @@ const SERVER_CHAT_MIXIN = {
             if (rec && typeof this._lastSketchLabel === 'string' && this._lastSketchLabel.startsWith('canvas:scene:')) {
               try {
                 const _rc = this._lastSketchLabel.slice('canvas:scene:'.length).replace(/\?$/, '');
-                this._realizeDrawing(_rc, 'hand-drawn crayon scene', now);
+                // MEYE.1 (Gee 2026-07-10, "realized art uncapped") — her own
+                // minds-eye SKETCH stays her canon crayon, but when she hands a
+                // composition to the image executor to REALIZE, it renders at
+                // FULL FIDELITY — no forced "hand-drawn crayon scene" childish
+                // cap. The realize prompt = her definition-grounded concept +
+                // her live-affect goth style tail (_composeImagePrompt), so the
+                // realized image reflects her actual imagined intent uncapped,
+                // not a crayon filter. (sceneWords intentionally empty.)
+                this._realizeDrawing(_rc, '', now);
               } catch { /* realization best-effort */ }
             }
           }
@@ -1692,12 +1700,12 @@ const SERVER_CHAT_MIXIN = {
   // in-memory per boot) steadies her hand: _drawFromMemoryStrokes shrinks
   // its wobble as skill grows, so her line control genuinely improves with
   // practice. No image-model anywhere in the loop.
-  // DRAW.9 — MEMORY-PAINTING: sometimes the practiced drawing composites
-  // ONTO the memory itself via morphField (equation-domain coefficient
-  // union + lerp) — her strokes fused with the real seen field C = a
-  // composed painting from real material, label canvas:paint:<concept>.
-  // The practice render uses the MEMORY's dims so the percept comparison is
-  // apples-to-apples and the morph pads match.
+  // DRAW.9 — MEMORY-PAINTING was REMOVED (operator directive, MEYE.3):
+  // compositing her strokes ONTO the seen field via morphField faded two
+  // images together — the same noise-pollution class as memory morphing.
+  // Her drawing now stands ALONE; the reference stays pristine in memory.
+  // The practice render still uses the MEMORY's dims so the percept
+  // comparison stays apples-to-apples.
   async _practiceDrawFromMemory(concept, memRec) {
     if (!memRec || !this.mindSpace || typeof this.mindSpace.sketch !== 'function') return null;
     let memPercept = null;

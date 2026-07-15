@@ -773,7 +773,21 @@ export class SparseMatrix {
     const rowStart = (opts && typeof opts.rowStart === 'number') ? Math.max(0, opts.rowStart) : 0;
     const rowEnd = (opts && typeof opts.rowEnd === 'number') ? Math.min(rows, opts.rowEnd) : rows;
 
-    for (let i = rowStart; i < rowEnd; i++) {
+    // WMB REGRESSION FIX 3 — active-index iteration. When the caller knows the
+    // firing post-rows (e.g. a sem→sem def bind touches only sem rows), it
+    // passes `opts.activeRows` (a list of row indices) so the outer loop walks
+    // ONLY those instead of scanning all `rows`. At the grown 1.5M language
+    // cortex a full outer scan is seconds-of-skip-checks even though ~5K rows
+    // do real work; iterating the active set is O(active), not O(cluster.size),
+    // and is BIT-IDENTICAL (dead rows have y=0 and contributed nothing anyway).
+    // Default (no activeRows) = full rowStart..rowEnd scan, so the 14 other
+    // callers are unaffected.
+    const activeRows = (opts && opts.activeRows) || null;
+    const iterN = activeRows ? activeRows.length : (rowEnd - rowStart);
+
+    for (let idx = 0; idx < iterN; idx++) {
+      const i = activeRows ? activeRows[idx] : rowStart + idx;
+      if (activeRows && (i < rowStart || i >= rowEnd)) continue;
       const y = postSpikes[i];
       if (!y) continue;
       // per-layer plasticity per-row layer plasticity scale (post-neuron's absolute layer)
@@ -824,7 +838,15 @@ export class SparseMatrix {
     const rowStart = (opts && typeof opts.rowStart === 'number') ? Math.max(0, opts.rowStart) : 0;
     const rowEnd = (opts && typeof opts.rowEnd === 'number') ? Math.min(rows, opts.rowEnd) : rows;
 
-    for (let i = rowStart; i < rowEnd; i++) {
+    // WMB REGRESSION FIX 3 — active-index iteration (mirrors ojaUpdate). See
+    // ojaUpdate for rationale; walking the caller-supplied firing rows is
+    // O(active) and bit-identical to the full scan (skipped rows are y=0).
+    const activeRows = (opts && opts.activeRows) || null;
+    const iterN = activeRows ? activeRows.length : (rowEnd - rowStart);
+
+    for (let idx = 0; idx < iterN; idx++) {
+      const i = activeRows ? activeRows[idx] : rowStart + idx;
+      if (activeRows && (i < rowStart || i >= rowEnd)) continue;
       if (!postSpikes[i]) continue;
       const scaled = -lr * postSpikes[i]; // negative — weights depress
       const start = rowPtr[i];

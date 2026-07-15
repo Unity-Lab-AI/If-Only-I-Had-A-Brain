@@ -902,7 +902,9 @@ export class UnityBrain extends EventEmitter {
           });
           _ms.governTick();
         }
-        let pv = this.visualCortex.imagine({ blend: 0.5, dream: 0.2, pick: (this.frameCount / 180) | 0, priority: 0.3, value: 0.5 });
+        // MEYE.3 — no blend (two-image morph removed); she imagines from her
+        // own single recalled field + de-novo thought state, not a composite.
+        let pv = this.visualCortex.imagine({ dream: 0.2, priority: 0.3, value: 0.5 });
         // UVM-INT.3 — memory ring empty (no camera frames seen yet)? Imagine
         // DE-NOVO from the current cortex spike state so she can daydream from
         // her own mind alone. Seeds the ring so imagine() has material next time.
