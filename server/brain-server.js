@@ -2543,6 +2543,33 @@ class ServerBrain {
         console.warn('[Brain] persona-cosmic.txt unreadable:', err.message);
       }
 
+      // FIX B (corpus-bleed grade-defer, Gee 2026-07-10 / set-up 2026-07-14):
+      // gate the ADVANCED corpus boot loaders on the SAVED mastered grade so
+      // academic/dev vocab (quantum/sentient/piezo/python/code) isn't dumped
+      // into the dictionary candidate pool while Unity is at kindergarten —
+      // the confirmed source of the K-emission bleed (these two loaders mark
+      // isPersona:FALSE, so the oracle path's persona-exclusion misses them,
+      // and they leave the corpus reachable by generate()'s dictionary
+      // scoring). loadSelfImage (her IDENTITY, isPersona:true) +
+      // loadLinguisticBaseline (generic English) stay UNGATED — iter14-C keeps
+      // her persona/identity present at K; only the pure academic/dev corpus
+      // defers. Thresholds match the curriculum's own unlock points: coding
+      // knowledge → grade5 (where _trainCodingStories begins), cosmic/
+      // psychedelic-peak vocab → grade9 (where the adult/altered-state
+      // register unlocks). The saved grade is stashed by _loadWeights (runs in
+      // the constructor, before this boot block); a fresh/pre-K brain defers,
+      // and the savestart-heavy workflow reloads the corpus at the first boot
+      // AFTER the walk crosses the threshold (Gee 2026-07-14: savestarts are
+      // the norm, fresh walks rare). A single zero-savestart pre-K→PhD walk
+      // would need a mid-walk lazy-load — documented follow-up, not the
+      // operational reality.
+      const CORPUS_GRADE_ORDER = ['pre-K','kindergarten','grade1','grade2','grade3','grade4','grade5','grade6','grade7','grade8','grade9','grade10','grade11','grade12','college1','college2','college3','college4','grad','phd'];
+      const _savedGrades = (this._pendingCortexState && this._pendingCortexState.grades) || null;
+      const _masteredIdx = _savedGrades
+        ? Math.max(-1, ...Object.values(_savedGrades).map(g => CORPUS_GRADE_ORDER.indexOf(g)))
+        : CORPUS_GRADE_ORDER.indexOf('pre-K');
+      const _gradeReached = (g) => _masteredIdx >= CORPUS_GRADE_ORDER.indexOf(g);
+
       // Feed corpora through the language cortex — same path the client
       // uses, same learning rules, same type n-grams, same semantic
       // centroid computation. After this the server's dictionary and
@@ -2560,10 +2587,12 @@ class ServerBrain {
         baselineCount = this.languageCortex.loadLinguisticBaseline(baselineText, this.dictionary, 0.50, 0);
         console.log(`[Brain] Stage: loadLinguisticBaseline DONE (${baselineCount} sentences)`);
       }
-      if (codingText) {
+      if (codingText && _gradeReached('grade5')) {
         console.log('[Brain] Stage: loadCodingKnowledge START');
         codingCount = this.languageCortex.loadCodingKnowledge(codingText, this.dictionary, 0.40, 0);
         console.log(`[Brain] Stage: loadCodingKnowledge DONE (${codingCount} sentences)`);
+      } else if (codingText) {
+        console.log('[Brain] Stage: loadCodingKnowledge DEFERRED — mastered grade below grade5 (corpus-bleed grade-defer, FIX B); loads on the first boot after the walk reaches grade5.');
       }
       if (templateText) {
         console.log('[Brain] Stage: loadTemplates START');
@@ -2571,10 +2600,12 @@ class ServerBrain {
         console.log(`[Brain] Stage: loadTemplates DONE (${templateCount} templates)`);
       }
       // T15-C17 — cosmic / ethereal / Oz corpus for psychedelic-peak vocab
-      if (cosmicText && typeof this.languageCortex.loadCosmicCorpus === 'function') {
+      if (cosmicText && typeof this.languageCortex.loadCosmicCorpus === 'function' && _gradeReached('grade9')) {
         console.log('[Brain] Stage: loadCosmicCorpus START');
         const cosmicCount = this.languageCortex.loadCosmicCorpus(cosmicText, this.dictionary, 0.7, 0.6);
         console.log(`[Brain] Stage: loadCosmicCorpus DONE (${cosmicCount} sentences)`);
+      } else if (cosmicText && typeof this.languageCortex.loadCosmicCorpus === 'function') {
+        console.log('[Brain] Stage: loadCosmicCorpus DEFERRED — mastered grade below grade9 (corpus-bleed grade-defer, FIX B); loads on the first boot after the walk reaches grade9.');
       }
 
       // T13.7.6 — Hebbian-train the cortex cluster on persona corpus so

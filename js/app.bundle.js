@@ -63437,7 +63437,19 @@ var InnerVoice = class {
             speechMod: state.speechMod ?? null,
             fear: state.fear ?? 0,
             reward: state.reward ?? 0,
-            socialNeed: state.socialNeed ?? 0.5
+            socialNeed: state.socialNeed ?? 0.5,
+            // FIX B (corpus-bleed, Gee 2026-07-10): the inner voice IS
+            // internal thought — mark it so the pre-curriculum dictionary
+            // scorer SKIPS the chat persona-boost (language-cortex.js ~2456
+            // `isChatPath = !opts._internalThought` → `boostPersona:
+            // isChatPath`). Previously the rich path omitted this flag, so
+            // her inner monologue was persona-boosted like a chat reply and
+            // surfaced persona/consciousness-corpus tokens
+            // (sentient/quantum/piezo/python) at kindergarten. `gradeGate`
+            // mirrors the fast path below so any gate-aware sub-path also
+            // honors the taught-vocab allow-set.
+            _internalThought: true,
+            gradeGate: true
           }
         );
         const trimmed = (sentence || "").trim();
@@ -98556,11 +98568,13 @@ var Curriculum = class _Curriculum {
           const CHUNK2 = 25;
           const reps = opts.vocabReps ?? 4;
           this._hb(`[Curriculum][${cellKey}] UPFRONT-VOCAB-TEACH START \u2014 ${words.length} missing exam words \xD7 ${reps} reps (before cell teach phases)`);
+          this._vocabTaughtSet = this._vocabTaughtSet || /* @__PURE__ */ new Set();
           let done = 0;
           for (let i = 0; i < words.length; i += CHUNK2) {
             const slice = words.slice(i, i + CHUNK2);
             try {
               await this._teachVocabList(slice, ctx2, { reps });
+              for (const w of slice) this._vocabTaughtSet.add(String(w).toLowerCase());
             } catch (err) {
               console.warn(`[Curriculum][${cellKey}] UPFRONT-VOCAB-TEACH chunk ${i / CHUNK2 | 0} failed:`, err?.message || err);
             }
