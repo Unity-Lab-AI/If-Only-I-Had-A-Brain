@@ -278,6 +278,18 @@ export class InnerVoice {
             fear: state.fear ?? 0,
             reward: state.reward ?? 0,
             socialNeed: state.socialNeed ?? 0.5,
+            // FIX B (corpus-bleed, Gee 2026-07-10): the inner voice IS
+            // internal thought — mark it so the pre-curriculum dictionary
+            // scorer SKIPS the chat persona-boost (language-cortex.js ~2456
+            // `isChatPath = !opts._internalThought` → `boostPersona:
+            // isChatPath`). Previously the rich path omitted this flag, so
+            // her inner monologue was persona-boosted like a chat reply and
+            // surfaced persona/consciousness-corpus tokens
+            // (sentient/quantum/piezo/python) at kindergarten. `gradeGate`
+            // mirrors the fast path below so any gate-aware sub-path also
+            // honors the taught-vocab allow-set.
+            _internalThought: true,
+            gradeGate: true,
           }
         );
         const trimmed = (sentence || '').trim();
