@@ -86,7 +86,7 @@ The recall layer that turns the mind's eye from a de-novo renderer into IMAGINAT
   via `MindSpaceGPU.morph` → `transform.js morphField`, equation-domain recombination).
 - **`js/visual-feeder.js`** — standalone raw-served client module (index.html, NOT bundled):
   camera frames (permission-gated) + generated-image renders (Pollinations URL → prompt label).
-- **Recall-first order** in `_imagineTick` / IMG-SEE: recall+morph → de-novo only for unseen
+- **Recall-first order** in `_imagineTick` / IMG-SEE: recall (single-field abstract/dream — the two-image morph was REMOVED per MEYE.3; a composite of two seen frames is static, not imagination) → de-novo only for unseen
   concepts. De-novo glyphs demoted to symbol thoughts (numbers/letters); abstract color/mood
   field otherwise (`symbolGlyphText` in `mindspace/gpu.js`).
 - **Persistence** — `server/visual-memory.json`, LRU 384 concepts, debounced 30s atomic write.
