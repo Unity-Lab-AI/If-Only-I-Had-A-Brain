@@ -144,6 +144,19 @@ export const CLUSTER_EMIT_MIXIN = {
     const restrictToVocab = opts.restrictToVocab instanceof Set
       ? opts.restrictToVocab
       : null;
+    // #13 corpus-bleed FIX B — the LIVE grade allow-set (setEmissionAllowedVocab:
+    // union pre-K→current grade, populated by the curriculum) now ALSO gates the
+    // dictionary oracle, not just emitWordDirect's argmax. Without it the oracle
+    // scanned the FULL dictionary on the live chat path (the "full dictionary
+    // stays available" comments above) so persona / dev / consciousness-corpus
+    // words bound by LATER-stage training could win an EARLY-grade emission — the
+    // corpus bleed. Now an out-of-grade word is skipped in BOTH oracle scans.
+    // NO MUTE RISK: if no grade-cleared word clears minScore the oracle returns
+    // null and the (also grade-gated) trained matrix drives emission — she still
+    // speaks, only her cleared vocabulary. Bypass with opts.skipGradeGate (test
+    // probes / methodology that intentionally scan the full dictionary).
+    const gradeAllow = (opts.skipGradeGate !== true && this._emissionAllowedVocab instanceof Set)
+      ? this._emissionAllowedVocab : null;
 
     let intentNormSq = 0;
     for (let i = 0; i < intentSeed.length; i++) intentNormSq += intentSeed[i] * intentSeed[i];
@@ -229,6 +242,7 @@ export const CLUSTER_EMIT_MIXIN = {
         if (word.length === 1 && word !== 'i' && word !== 'a') continue;
         if (excludeTokens && excludeTokens.has(word)) continue;
         if (restrictToVocab && !restrictToVocab.has(word)) continue;
+        if (gradeAllow && !gradeAllow.has(word)) continue;   // #13 FIX B — grade allow-set gates persona-first too
         const pattern = entry.pattern;
         let normSq = entry.normSquared;
         if (normSq === undefined) {
@@ -267,6 +281,7 @@ export const CLUSTER_EMIT_MIXIN = {
       if (excludeTokens && excludeTokens.has(word)) continue;
       if (excludePersona && entry.isPersona === true) continue;
       if (restrictToVocab && !restrictToVocab.has(word)) continue;
+      if (gradeAllow && !gradeAllow.has(word)) continue;   // #13 FIX B — grade allow-set gates the full-dict oracle scan (blocks later-stage corpus bleed)
       const pattern = entry.pattern;
       let normSq = entry.normSquared;
       if (normSq === undefined) {
@@ -841,7 +856,27 @@ export const CLUSTER_EMIT_MIXIN = {
     // 0.5-1.0 for variety; gate probes pass 0 (or unset) for
     // deterministic argmax. top-K default 8 limits sampling to the
     // strongest candidates so noise doesn't promote nonsense words.
-    const temperature = typeof opts.temperature === 'number' ? opts.temperature : 0;
+    // HB.5 — ANNEAL EXPLORATION TEMPERATURE. The caller's requested sampling
+    // temperature is scaled by how CONSOLIDATED the current content is: hot early
+    // (basins still overlapping → meanCos high → full requested temp = explore)
+    // and annealing toward SHARP as a cell consolidates (basins separated →
+    // meanCos low → temp → 0 = confident greedy emission). Correct-by-construction
+    // off the live sem→motor separation signal (_lastSemMotorMeanCos, SAT≈0.7);
+    // bounded (0 ≤ factor ≤ 1 — only ever REDUCES the caller's temp, never raises
+    // it), so deterministic gate probes (temperature 0) stay 0 and, once fully
+    // consolidated, exploratory callers fall through to greedy argmax below. No
+    // signal yet (very early) → hot. Composes with HB.4 (which damps the
+    // PLASTICITY boost on incoherent output; this sharpens EMISSION as it settles).
+    // Opt OUT with DREAM_ANNEAL_TEMP=0.
+    let temperature = typeof opts.temperature === 'number' ? opts.temperature : 0;
+    if (temperature > 0) {
+      const _annealOff = (typeof process !== 'undefined' && !!process.env && process.env.DREAM_ANNEAL_TEMP === '0');
+      if (!_annealOff) {
+        const _mc = (typeof this._lastSemMotorMeanCos === 'number') ? this._lastSemMotorMeanCos : null;
+        const _annealFactor = (_mc == null) ? 1 : Math.max(0, Math.min(1, _mc / 0.7));
+        temperature = temperature * _annealFactor;
+      }
+    }
     if (temperature > 0 && candidates.length > 1) {
       const topK = Math.max(1, Math.min(opts.topK ?? 8, candidates.length));
       candidates.sort((a, b) => b.mean - a.mean);

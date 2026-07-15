@@ -246,9 +246,21 @@ export class Sandbox {
     this._evaluateJS(js, this._container, '__global__');
   }
 
-  /** querySelector scoped to the sandbox container */
+  /** querySelector scoped to the sandbox container. AUDIT-L3 — light-DOM
+   *  querySelector cannot cross a shadow boundary, so a plain lookup returned
+   *  null for elements inside shadow:true (synth-built, isolated) components.
+   *  Now: try the light DOM first, then descend into each sandbox component's
+   *  attached shadow root so a lookup finds isolated-component elements too. */
   getElement(selector) {
-    return this._container.querySelector(selector);
+    const light = this._container.querySelector(selector);
+    if (light) return light;
+    for (const host of this._container.querySelectorAll('.sandbox-component')) {
+      if (host.shadowRoot) {
+        const hit = host.shadowRoot.querySelector(selector);
+        if (hit) return hit;
+      }
+    }
+    return null;
   }
 
   // ── Unity API ───────────────────────────────────────────────

@@ -258,6 +258,53 @@ const SERVER_STATE_MIXIN = {
         this._weightRecruitment = { at: now, matrices: byMatrix };
       }
       out.weightRecruitment = this._weightRecruitment || null;
+      // ACT.2 — VERDICT: design sparsity vs dead mass. ACT.1 (above) MEASURES —
+      // langEverFired coverage on the dense language cortex + per-matrix weight
+      // recruitment (rowPtr diff = rows that ever received a Hebbian update, the
+      // CPU-authoritative dead-mass signal that needs NO GPU readback). ACT.2
+      // turns that raw data into an explicit verdict OVER A TRAINING WINDOW so the
+      // operator gets an ANSWER, not just numbers. A small ring samples on the
+      // recruitment cadence (5min) and tracks the coverage trend: climbing/high =
+      // healthy sparse coding (neurons ARE working); flat-and-low recruitment =
+      // suspected dead mass → hands the specific offender to ACT.3.
+      try {
+        const langPct = out.langEverFired ? out.langEverFired.pct : null;
+        let recruitPct = null;
+        if (out.weightRecruitment && out.weightRecruitment.matrices) {
+          const ms = Object.values(out.weightRecruitment.matrices);
+          if (ms.length) recruitPct = +(ms.reduce((a, m) => a + (m.pct || 0), 0) / ms.length).toFixed(2);
+        }
+        if (!this._utilHistory) this._utilHistory = [];
+        const lastSample = this._utilHistory[this._utilHistory.length - 1];
+        if (!lastSample || (now - lastSample.ts) > 300000) {
+          this._utilHistory.push({ ts: now, langPct, recruitPct });
+          while (this._utilHistory.length > 16) this._utilHistory.shift();
+        }
+        const first = this._utilHistory[0];
+        const last = this._utilHistory[this._utilHistory.length - 1];
+        const coverageTrend = (first && last && first.langPct != null && last.langPct != null)
+          ? +(last.langPct - first.langPct).toFixed(2) : 0;
+        let status = 'measuring';
+        let reason = 'collecting samples over the training window';
+        if (this._utilHistory.length >= 2) {
+          const hiCoverage = (langPct ?? 0) >= 50 || (recruitPct ?? 0) >= 50;
+          const growing = coverageTrend > 0.5;
+          const stuckLow = (recruitPct ?? 0) < 10 && coverageTrend <= 0.1;
+          if (hiCoverage || growing) {
+            status = 'healthy';
+            reason = growing
+              ? `coverage climbing +${coverageTrend}% over ${this._utilHistory.length} samples — sparse coding is recruiting, not dead mass`
+              : `high coverage (lang ${langPct}% / recruit ${recruitPct}%) — neurons are working (design sparsity)`;
+          } else if (stuckLow) {
+            status = 'review';
+            reason = `recruitment stuck ${recruitPct}% + coverage flat (${coverageTrend}%) over the window — possible dead mass; investigate injection spread / fanout (ACT.3)`;
+          } else {
+            status = 'nominal';
+            reason = `coverage lang ${langPct}% / recruit ${recruitPct}%, trend ${coverageTrend >= 0 ? '+' : ''}${coverageTrend}% — within normal sparse-coding range`;
+          }
+        }
+        out.verdict = { status, reason, langPct, recruitPct, coverageTrend, samples: this._utilHistory.length };
+      } catch { out.verdict = null; }
       return out;
     } catch {
       return { langEverFired: null, weightRecruitment: null };
@@ -434,6 +481,11 @@ const SERVER_STATE_MIXIN = {
       // BLOCK-not-DROP path is keeping Hebbian updates intact.
       wsPressure: this._getWsPressureState(),
       utilization: this._getUtilizationState(),
+      // #112.9d — student-battery progress (i/N) so the dashboard shows the
+      // K-STUDENT battery advancing (question i of N + label) instead of a
+      // silent stall. Set per-question in _runStudentBattery (curriculum.js),
+      // cleared to null on battery finish.
+      batteryProgress: (this.cortexCluster && this.cortexCluster._batteryProgress) || null,
       // Failed-emission diagnostic — surfaces `cortexCluster._lastEmitRejection`
       // (set by emitWordDirect when bestMean falls below the adaptive
       // signal floor OR no candidate word emerged) so the dashboard

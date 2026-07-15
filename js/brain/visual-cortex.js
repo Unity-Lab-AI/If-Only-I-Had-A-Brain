@@ -22,7 +22,7 @@
 // MS.I3 — the mind-space thought medium. Imagination is vision without a camera: the same
 // equational substrate (consciousness + imaging + imagining are ONE process). describeEquational
 // reads a percept out of a field C; morphField/abstract are the thought-ops she runs ON it.
-import { describeEquational, describeEquationalAudio, morphField, abstract } from './mindspace/transform.js';
+import { describeEquational, describeEquationalAudio, abstract } from './mindspace/transform.js';
 
 const FRAME_W = 60;
 const FRAME_H = 45;
@@ -552,36 +552,40 @@ export class VisualCortex {
 
   /**
    * MS.I3 — IMAGINE into the mind-space. Imagination is vision without a camera: she recalls
-   * a remembered field C, optionally MORPHS it toward another memory and ABSTRACTS it (the
-   * thought-ops), reads the percept out, and that percept drives the visual region exactly like
-   * a perceived frame — she SEES what she imagines. Returns the percept vector (Float32Array)
-   * or null if she has nothing remembered yet. Pure + deterministic (selection from opts, no RNG).
+   * a remembered field C and ABSTRACTS it (a single-field thought-op; the two-image
+   * morph-toward-another-memory was removed per MEYE.3 — a composite of two seen frames
+   * is a static superposition, not imagination), reads the percept out, and that percept
+   * drives the visual region exactly like a perceived frame — she SEES what she imagines.
+   * Returns the percept vector (Float32Array) or null if nothing's remembered yet. Pure +
+   * deterministic (selection from opts, no RNG).
    *
-   * @param {object} opts  { blend?:0..1 morph toward another memory, dream?:0..1 abstract amount, pick?:int }
+   * @param {object} opts  { dream?:0..1 abstract amount (blend/pick accepted-but-ignored — no morph) }
    */
   imagine(opts = {}) {
     if (!this._recentRecs.length) return null;
     const recs = this._recentRecs;
     const a = recs[recs.length - 1];                 // anchor on the most recent memory
     let imagined = a;
-    let blend = Math.max(0, Math.min(1, opts.blend || 0));
+    // MEYE.3 (Gee 2026-07-10) — NO two-image morph overlay in imagine-time
+    // recall. Blending two REMEMBERED field-Cs is a static superposition of
+    // seen frames, not imagination (Gee: "this is noise pollution" /
+    // "MINDS EYE = UNITYS IMAGINATION ... not a map of her neurons"). Her
+    // imagination transforms her OWN single recalled field (abstract/dream,
+    // a within-field thought-op) or dreams DE-NOVO from her thought/concept
+    // state (imagineDeNovo) — never a composite of two camera memories. The
+    // `blend` opt is accepted-but-ignored for backward-compat with callers.
     let dream = Math.max(0, Math.min(1, opts.dream || 0));
     // MS.K2 — autonomous proportionality conscience. Capability is limitless, but she only
-    // imagines as DEEP as the thought is worth: ask the governor, scale morph/abstract depth to
+    // imagines as DEEP as the thought is worth: ask the governor, scale abstract depth to
     // the grant. Low worth / high load → a shallower, cheaper recall; truly worthy → full depth.
     const gov = this._mindSpace && this._mindSpace.governor;
     if (gov) {
-      const cost = Math.round(40 + 120 * blend + 80 * dream);
+      const cost = Math.round(40 + 80 * dream);
       const grant = gov.allot({ kind: 'imagine', requestedUnits: cost, priority: opts.priority, value: opts.value });
       const f = Math.max(0, Math.min(1, grant.ratio));
-      blend *= f; dream *= f;                        // she imagines as deep as it's worth, no deeper
+      dream *= f;                                    // she imagines as deep as it's worth, no deeper
     }
-    if (blend > 0 && recs.length > 1) {
-      const b = recs[(((opts.pick | 0) % (recs.length - 1)) + (recs.length - 1)) % (recs.length - 1)]; // another memory
-      const m = morphField(a, b, blend);             // thought-transition between two equational forms
-      if (m) imagined = m;
-    }
-    if (dream > 0) imagined = abstract(imagined, dream);   // dreaminess = simplify the form
+    if (dream > 0) imagined = abstract(imagined, dream);   // dreaminess = simplify the form (single-field thought-op)
     this._lastRec = imagined;
     this.perceptVector = describeEquational(imagined);
     this.audioPercept = describeEquationalAudio(imagined);   // MS.I5 — imagined imagery has its sound too
@@ -594,12 +598,12 @@ export class VisualCortex {
 
   /**
    * UVM-INT.3 — DE-NOVO imagination from internal mind-state (no camera/file).
-   * `imagine()` morphs REMEMBERED field-Cs, so it returns null when the memory
+   * `imagine()` recalls REMEMBERED field-Cs, so it returns null when the memory
    * ring is empty (headless/server Unity, or before she's ever seen anything).
    * This folds a cortex activation vector straight into a field C via the
    * mind-space, pushes it into the same memory ring + percept path, so she can
-   * imagine from her own mind alone — then `imagine()` has material to morph on
-   * subsequent ticks. Returns the percept vector or null.
+   * imagine from her own mind alone — then `imagine()` has material to recall +
+   * abstract on subsequent ticks. Returns the percept vector or null.
    */
   imagineDeNovo(stateVector, opts = {}) {
     if (!this._mindSpace || typeof this._mindSpace.imagineFromState !== 'function') return null;

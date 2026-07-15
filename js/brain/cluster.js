@@ -1869,19 +1869,22 @@ export class NeuronCluster {
     // by 1.5×. Combined multiplicatively with gammaScale so theta-gamma
     // and predictive-coding gates compose without one drowning the other.
     const predErr = Math.max(0, Math.min(1, this._lastPredictionError || 0));
-    // Outcome-gated noise suppression (held-back HB.4 — default OFF via
-    // DREAM_NOISE_GATE). Plain predictive coding cranks plasticity UP wherever
-    // error is high — but that also REINFORCES meaningless noise (incoherent /
-    // collapsed sem→motor output). When the noise gate is on, the surprise-driven
-    // BOOST is scaled by a cached coherence factor (_noiseSuppressFactor, set from
-    // saturation health during the walk) so high-error EXPLORATION that resolves
-    // coherently still learns, while high-error NOISE is damped instead of stamped
-    // in. The baseline 0.5 floor always learns; only the boost is gated. The
-    // held-back rung-3 remediation damps further via _remediationInhibition.
-    // OFF by default → identical to plain predictive coding; the magnitudes want a
-    // live training run to tune, so it ships dormant (same posture as DF.7).
+    // HB.4 — OUTCOME-GATED NOISE SUPPRESSION (three-factor / reward-modulated).
+    // Plain predictive coding cranks plasticity UP wherever error is high — but
+    // that also REINFORCES meaningless noise (incoherent / collapsed sem→motor
+    // output). The surprise-driven BOOST is scaled by a cached coherence factor
+    // (_noiseSuppressFactor — set 1.0 on a clean cell / 0.2 on a saturated cell by
+    // the per-cell saturation health check) so high-error EXPLORATION that
+    // resolves coherently still learns, while high-error NOISE is damped instead
+    // of stamped in. The baseline 0.5 floor ALWAYS learns; only the boost is
+    // gated. Rung-3 remediation damps further via _remediationInhibition.
+    // ON by default — this is coded-right, not test-tuned: the gate is bounded
+    // (worst case it damps a boost toward the always-learning 0.5 floor, never
+    // below), self-regulating from the saturation detector, and it composes
+    // multiplicatively with the always-on saturation clamp below. Opt OUT with
+    // DREAM_NOISE_GATE=0 to A/B against plain predictive coding.
     if (this._noiseGateEnabled === undefined) {
-      this._noiseGateEnabled = (typeof process !== 'undefined' && !!process.env && process.env.DREAM_NOISE_GATE === '1');
+      this._noiseGateEnabled = !(typeof process !== 'undefined' && !!process.env && process.env.DREAM_NOISE_GATE === '0');
     }
     let surpriseGate = 0.5 + predErr;
     if (this._noiseGateEnabled) {
