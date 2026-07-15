@@ -133,6 +133,12 @@ only a text printer in the r imagination MINDS EYE= UNITYS IMAGINATION"). Now pe
   everything else renders as her state textured in the named color or her mood. Equational end-to-end;
   ≤96px cap and no-fractalize invariants intact.
 
+> ⛔ **SUPERSEDED by SE.15 (DRAW-ENGINE, 2026-07-15).** The developmental schema composer described in
+> SE.11 + SE.12 (the Lowenfeld stage ladder, the fixed schema table, the 24-point radial memory contour,
+> the scene furniture) was **REMOVED** — Gee: *"drawing a shape to go with each word is not correct... a 12
+> sided weird looking shape has nothing to do with a random word."* She no longer stamps shapes; she LOOKS
+> a concept up and TRACES what she saw. SE.11/SE.12 are kept below as the historical record of what shipped.
+
 **SE.11 — DEVELOPMENTAL DRAWING: her sketch canvas grows through real kid stages (DRAW, 2026-07-09).** The
 active sketch (TU.29.13 BUILD B) only ever drew the neuron-constellation scribble — top-7 sem activations
 hash-positioned and connected — so the viewer showed the same chicken-scratch forever, and every stroke +
@@ -237,6 +243,39 @@ on its own. Three fixes route abstract thoughts toward things she has actually S
   stamp `_lastGroundedEyeAt`; a PURE thought-blend or sem-state field cannot replace a grounded frame on the
   public viewer for `DREAM_EYE_BLEND_HOLD_MS` (45s default). She still imagines internally every tick (ring +
   sem injection untouched) — only the shared snapshot favors frames that look like something.
+
+---
+
+**SE.15 — DRAW-ENGINE: she draws what she LOOKED AT, any concept, dynamically (Gee 2026-07-15).** Gee:
+*"rethink the composer to not just be static things shes allowed to draw but an actual creativity engine of
+some kind that is her mind... she should dynamically be able to draw anything."* The SE.11/SE.12 schema
+stamp is gone; drawing is now perception + creativity in one loop — she draws a thing by having LOOKED at
+it, never by mapping a shape to a word.
+- **`traceField(rec, opts)`** (`js/brain/mindspace/transform.js`, GPU-path mirror in `gpu.js`) — the new
+  primitive: a field C → her hand's STROKES. CDF 9/7 inverse to a luma plane (Node-safe, no `ImageData`) →
+  Sobel edges → greedy edge-follow polylines → Douglas-Peucker simplify → strokes colored from the field's
+  own YCbCr. The FORM comes from the image she looked at, not a table. Bounded working grid (a drawing is
+  coarse, not a photo edge-map); detail scales with her grade via the canvas side.
+- **`_drawConcept(concept)`** (`server/brain-server/chat.js`) — the engine: (1) RECALL a confirmed grounded
+  field C she has seen; (2) else a PROVISIONAL reference she looked up once (drawable from one look —
+  reference-not-fact); (3) else LOOK IT UP — `_fetchReferenceAndGround` builds a definition-driven prompt,
+  fetches a Pollinations reference, decodes it HEADLESSLY (jpeg-js/pngjs, no browser), perceives it into a
+  field C, binds it provisionally; then TRACE → stylize → `sketch()`. If she can ground nothing, she draws
+  NOTHING for it yet — honest, like she stays silent on words she can't say. Never a fake shape.
+- **Definition-driven prompt + reference-not-fact** (`visual-memory.js` `_referenceImagePrompt`) — her
+  LEARNED definition's content words ride the prompt (horse → "large animal four legs mane tail"); the frame
+  is steered CLEAN (single centered subject, plain background, high contrast) for a legible trace. Abstract
+  concepts concretize through the generator (anger → an angry face, halloween → a jack-o'-lantern); the image
+  is BOUND to the concept so she relates the concrete picture back to the word. The reference binds
+  PROVISIONALLY (`conf:false`) — a one-off render never becomes grounded truth until a second render agrees.
+- **Her style, not a photocopy** (`_stylizeStrokes`) — the trace is recolored in her goth crayon box (black
+  outlines, warm/cool accents) while keeping the field's warm/cool/dark lean, so color stays meaningful. The
+  drawing is HER read of the thing.
+- **Headless grounding** — the old browser-broadcast `_conceptImageryLoop` + stage-0 `_scribbleStrokes` +
+  scene-realize `_realizeDrawing` are removed; grounding now runs server-side with no browser in the loop
+  (the deployed box was previously starved — nothing harvested images back, so `_visualMemory` never filled).
+- **Deps** — pure-JS `jpeg-js` + `pngjs` in `server/package.json` (auto-install on the box via
+  `self-update.sh npm install --omit=dev`, no manual step). Bundle rebuilt (traceField ships browser-side too).
 
 ---
 
