@@ -168,7 +168,11 @@ Pollinations       → /pollinations-setup to connect, then generate
 
 ---
 
-## CURRENT-STATE NOTES (2026-05-07, iter25-D through iter25-O)
+## CURRENT-STATE NOTES
+
+> **Live current-state lives in `docs/NOW.md` + `docs/RESUME.md` + `docs/TODO.md` + `docs/FINALIZED.md`** — those are the authoritative session-by-session record; this file is the workflow INDEX. Post-iter25 headline (2026-07-14, WMB batch): the deployed brain runs **306,458,816 neurons (tier 3)**; **word emission is UNIFIED** — one global `word_motor` band, one bucket per unique word (replaced the 6 per-subject sub-bands that overflowed + silenced learned words); the **dense language cortex grew ~349K→~1.5M** (`WEIGHTS_FORMAT_VERSION 2→3` → fresh walk); a **donor-freeze guard** stops chat/emission CPU-ticking the 61M cortex when the GPU proxy isn't ready (the ~57s/word freeze that tripped the donor's 150s idle); **corpus-bleed grade-defer** + **event-cost FIX A** shipped. Box changes are dashboard-only (Update-Savestart / rare Fresh-walk).
+
+## CURRENT-STATE NOTES — HISTORICAL (2026-05-07, iter25-D through iter25-O)
 
 The LAW framework is unchanged — iter25 (D through M) was feature-implementation work within existing LAWs. Live capabilities now operational:
 

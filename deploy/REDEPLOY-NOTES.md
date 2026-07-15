@@ -15,6 +15,18 @@ So: a change touching only `js/` + `html/` + `index.html` → just push to main,
 
 ---
 
+## 2026-07-14 — WMB: word_motor emission UNIFIED + language cortex grown — ⚠ requires a FRESH WALK
+
+**What changed:** word_motor emission collapsed from 6 per-subject sub-bands (each replicating the full dictionary → overflow → learned words silenced) to ONE global band, one bucket per UNIQUE word; the dense language cortex grown ~349K→~1.5M so word_motor (top 6% ≈ 90K cells) holds the full K→PhD vocab. Files (overlay all): `server/brain-server.js` (langCortexSize grow via fixing the bogus `LANG_CLUSTER_BYTES_PER_NEURON` 40000→4000 + `WORD_MOTOR_TARGET_LANG_CORTEX` cap + `WEIGHTS_FORMAT_VERSION 2→3` + unified persistence), `js/brain/cluster.js`, `js/brain/cluster/emit.js`, `js/brain/curriculum.js`, `js/brain/curriculum/kindergarten.js`, `js/app.bundle.js` (rebuilt).
+
+**⚠ GEOMETRY CHANGE → FRESH WALK, not a Savestart.** `WEIGHTS_FORMAT_VERSION` 2→3 makes old weights auto-refuse and the cortex changed size — the box will auto-fresh-start on the version mismatch (or press the dashboard **Fresh Walk** button). Do NOT expect a resume; she re-walks from K. This is the one time a fresh walk is intended.
+
+**Cost of the grow (~349K→~1.5M):** ~+0.5GB host RAM (CPU CSR shadow) + ~+0.5GB donor VRAM (intra upload ~85MB→~360MB, cross ~30MB→~130MB). Well within the 32GB box + 16GB donor. No donor rebuild (the donor is size-agnostic; matrices stay under the ~16.7M-row dispatch cap).
+
+**Boot verify:** `[Brain] WMB word_motor capacity: N cells (6% of ~1,500,000 langCortexSize) — UNIFIED single band ... ✓ covers target` + `[emit] word_motor bucket geometry FROZEN (UNIFIED single band)`. If `⚠ UNDER target` appears, langCortexSize didn't reach ~1.5M (RAM/V8/VRAM bound) — set `DREAM_LANG_CORTEX=1500000`.
+
+---
+
 ## 2026-07-14 — donor keeps dropping: reconnect-churn debounce (backend) + ⚠ LIVE nginx /ws tolerance check (Red)
 
 **Symptom (Gee live log):** donor drops repeatedly; each drop → full 85MB `cortex_intraSynapses` re-upload → churn. Root: 12–29s (historically up to 98/211s) Node event-loop pins = **major-GC stalls at the 306M/61M scale on the CPU-only box** starve the proxied WS → the donor's socket is closed → "GPU compute client disconnected UNEXPECTEDLY … proxied WS closed" + `read ECONNRESET`.

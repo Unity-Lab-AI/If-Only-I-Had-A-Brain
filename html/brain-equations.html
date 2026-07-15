@@ -1098,7 +1098,7 @@ probe(word, grade, subject):
  |
  v
 <span class="cy">[N Rulkov-map Neurons in 7 CLUSTERS]</span>
- Cortex (20% — contains the ~349K language cortex: auditory|visual|free|letter|phon|sem|fineType|motor sub-regions) | Cerebellum (20%)
+ Cortex (20% — contains the ~1.5M dense language cortex: auditory|visual|free|letter|phon|sem|fineType|motor|word_motor sub-regions) | Cerebellum (20%)
  Hippocampus (12%) | Amygdala (12%) | Basal Ganglia (12%) | Hypothalamus (12%) | Mystery (12%)
  |
  ├── <span class="cy">[20 Inter-Cluster Projections]</span> — sparse connectivity between regions
@@ -1494,7 +1494,7 @@ CORTEX SUBSTRATE:
  letter 0.500-0.550 phon 0.550-0.750
  sem 0.750-0.875 sem_ela/_math/_sci/_soc/_art/_life carved within
  fineType 0.875-0.917 motor 0.917-0.940
- word_motor 0.940-1.000 word_motor_ela/_math/_sci/_soc/_art/_life carved within
+ word_motor 0.940-1.000 UNIFIED single band (WMB 2026-07-14) — one bucket per UNIQUE word, argmaxed globally (no per-subject sub-bands)
  16 cross-projections (8 pairs × both directions, SparseMatrix):
  visual↔letter letter↔phon phon↔sem sem↔fineType
  sem↔motor motor↔letter (closes letter-by-letter writing loop)
@@ -1634,7 +1634,7 @@ BIO-WEIGHT ALLOCATION (host free RAM sets total N):
  7 cluster slots (RAM-ceiling on the coordinator; ~306M at full
  deployed size). Real-biology citation: Herculano-Houzel 2009
  ("The Human Brain in Numbers", Frontiers Hum Neurosci 3:31).
- cortex 0.20 general cerebral cortex (contains the ~349K language cortex)
+ cortex 0.20 general cerebral cortex (contains the ~1.5M dense language cortex — WMB grew it from ~349K)
  cerebellum 0.20 tied-largest, matches real-brain mass share
  hippocampus 0.12
  amygdala 0.12
@@ -1647,7 +1647,7 @@ BIO-WEIGHT ALLOCATION (host free RAM sets total N):
  floors exceed biology — applied because OPERATOR ＞
  BIOLOGY when explicit. Combined with crossTargetFanout 10 +
  INTRA_CONNECTIVITY_CAP 0.05 cuts, the language cortex holds
- ~349K neurons inside the cortex cluster.
+ ~1.5M neurons inside the cortex cluster (WMB grew it from ~349K).
 
 COMPREHENSION GATE (real human-grade test):
  For each {prompt: [w1,w2,...], answer: wA}:
@@ -2590,7 +2590,7 @@ fn main(id: vec3&lt;u32&gt;) {
  <tr><td>Neuron count</td><td>86 billion</td><td>N (auto-scales from host free RAM via a unified biologically-weighted allocator; ~306M neurons on the deployed coordinator)</td><td>Simplified, hardware-adaptive</td></tr>
  <tr><td>Neuron model</td><td>Thousands of ion channels (Hodgkin-Huxley biophysics)</td><td>Rulkov 2D chaotic map per cluster (GPU runtime) + LIF + HH reference models</td><td>Moderate — bursting dynamics reproduced, ion channels abstracted</td></tr>
  <tr><td>Synaptic plasticity</td><td>Hebbian + STDP + neuromodulation</td><td>All three, per-cluster matrices</td><td>Good</td></tr>
- <tr><td>Brain regions</td><td>Hundreds of distinct areas</td><td>7 dedicated clusters (including a ~349K language cortex with 9 sub-regions + 16 cross-projections inside the cortex cluster — a dedicated <code>word_motor</code> sub-region + <code>sem↔word_motor</code> projection give single-tick word emission) plus sparse white-matter tract projections between them</td><td>Core captured</td></tr>
+ <tr><td>Brain regions</td><td>Hundreds of distinct areas</td><td>7 dedicated clusters (including a ~1.5M dense language cortex — WMB grew it from ~349K — with 9 sub-regions + 16 cross-projections inside the cortex cluster — a dedicated UNIFIED <code>word_motor</code> sub-region, one bucket per unique word, + <code>sem↔word_motor</code> projection give single-tick word emission) plus sparse white-matter tract projections between them</td><td>Core captured</td></tr>
  <tr><td>Oscillations</td><td>Complex EEG with spatial patterns</td><td>8 Kuramoto oscillators</td><td>Dynamics correct</td></tr>
  <tr><td>Visual cortex</td><td>V1&rarr;V2&rarr;V4&rarr;IT hierarchy</td><td>V1 edge kernels, V4 color, IT via equational mind-space (CDF 9/7)</td><td>Simplified but real</td></tr>
  <tr><td>Auditory cortex</td><td>Tonotopic, cortical magnification</td><td>50 neurons, speech magnification, efference copy</td><td>Good</td></tr>

@@ -5,6 +5,31 @@
 
 ---
 
+## 2026-07-14 — WMB: word_motor emission UNIFIED + language cortex grown + full document push — feature/post-fullsize-walk-0710
+
+### Gee ask (verbatim per LAW #0)
+
+> *"this needs fixed: sounds like erroniuos bumbing down of her capabilities:art-vocab-exceeds-band issue"* + *"that needs fioxed ciriculum wide"* + *"okay lets do the full fix and we can do a fresh walk"* + (chose) *"UNIFY — one band, one bucket per word"* + *"full document push, add to todo and task list, all workflow files, docs, pages , htmls, and documented informations about the brain public facing and internal , updating all stale information readmes and how to's... add all this to be done before the atomic cascade"* + *"write resume.md too befoir fin al casdcad"* + *"if the donorbinaries need rebuild make sure deploy build them correctly"*.
+
+**Root cause:** word emission ran on 6 per-subject `word_motor_<subj>` sub-bands, but `_ensureWordBucketMap` enumerates the ENTIRE dictionary with NO subject filter → every band held the SAME replicated full dictionary and overflowed (art's ~2270-cell band vs a K→PhD vocab of tens of thousands → learned words past the band silently couldn't emit; `[emit] word_motor_art capacity overflow`). The dense emission cortex (`cortexCluster`, distinct from the 61M `clusters.cortex`) was pinned at ~349K by a bogus `LANG_CLUSTER_BYTES_PER_NEURON=40000` (real ~370, confirmed by the live 85MB intra upload at 354K), so word_motor (top 6% ≈ 21K cells) couldn't hold the vocab.
+
+**SHIPPED — UNIFY + GROW (geometry change → FRESH WALK):**
+- `js/brain/cluster/emit.js` — `emitWordDirect` now reads ONE global `word_motor` band (single iterate-once pass over the umbrella word list); `wordBucketCellSizeFor()` is the single geometry authority off the umbrella band.
+- `js/brain/curriculum/kindergarten.js` — `_teachWordEmissionDirect` writes the full `word_motor` umbrella band (bandStart=0, bandEnd=wmSize), unified cellSize.
+- `js/brain/curriculum.js` — `_ensureWordBucketMap`/`_installBucketMap`/`_writeAnswerToWordMotor` consolidated onto `cluster.wordBucketWords` (Array) + `wordBucketMap` (Map); QA-write passes the frozen cellSize so it lands on the exact cells emit reads.
+- `js/brain/cluster.js` — `getTrainedCapability` counts the unified array (Array `.length`, not Map `.size`).
+- `server/brain-server.js` — langCortexSize grow (coefficient 40000→4000 + `WORD_MOTOR_TARGET_LANG_CORTEX=1_500_000` cap → word_motor ≈ 90K cells for the full K→PhD unified vocab), `WEIGHTS_FORMAT_VERSION 2→3`, unified persistence (save/restore umbrella `wordBucketWords`), boot capacity assertion.
+- `js/app.bundle.js` rebuilt.
+- One bucket per UNIQUE word, argmaxed globally; non-canonical subjects (cs/music/pe/health/civics/economics/psychology) that had no band + collided in the umbrella now share the one global map. Cost ~0.5GB host RAM + ~0.5GB donor VRAM. NO donor rebuild (donor is size-agnostic; matrices stay under the ~16.7M-row 1-D dispatch cap; if a future grow crosses it, the donor's 2-D `dispatch_dims` fix + a CI `donor-v*` tag build is the path).
+
+**Verified (no-tests / no-walk LAW):** `node --check` + ESM `import()` on all four edited JS + `node --check` brain-server.js PASS; bundle rebuilt with `wordBucketCellSize_unified` + `_wmOnce` markers confirmed present in the artifact; write/read/map hand-traced to share one authority (`word_motor` band + `wordBucketWords`/`wordBucketMap` + `wordBucketCellSizeFor()`) so no desync. Deploys via dashboard **Update & FRESH WALK**.
+
+**FULL DOCUMENT PUSH (Gee directive, SAME atomic commit — docs-before-push LAW, matched each doc's format, no wall-of-text dumps):** `docs/ARCHITECTURE.md` (WMB banner + region table), `docs/EQUATIONS.md`, `README.md`, `docs/NOW.md` (WMB Current banner), `docs/RESUME.md` (session pickup block), `docs/SPONGE-HANDOFF.md`, `.claude/CLAUDE.md` (current-state pointer), `html/brain-equations.html` (×5), `html/unity-guide.html` (×2), `html/compute.html`, `html/dashboard.html` (tooltip), `deploy/REDEPLOY-NOTES.md` (WMB fresh-walk deploy entry) — all swept ~349K→~1.5M + per-subject word_motor → unified. `docs/SKILL_TREE.md` dated iter entries left as history; `docs/WEBSOCKET.md` clean.
+
+**Docs:** `docs/TODO.md` WMB task (Gee verbatim + ROOT CAUSE + WMB.1-8 task list), this FINALIZED entry.
+
+---
+
 ## 2026-07-14 — donor-drop ROOT CAUSE fixed: ban the 61M synchronous-CPU cortex tick when the GPU isn't ready — feature/post-fullsize-walk-0710
 
 ### Gee ask (verbatim per LAW #0)
