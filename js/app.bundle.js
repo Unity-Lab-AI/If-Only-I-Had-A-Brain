@@ -94803,7 +94803,8 @@ var Curriculum = class _Curriculum {
       if (_cortexN > _maxN && _env.DREAM_INNERVOICE_FORCE_CPU !== "1") {
         const _minDonors = Number(_env.DREAM_INNERVOICE_GPU_GEN_MIN_DONORS) || 1;
         const _donorsPresent = (brain2 && brain2._communityDonorCount || 0) >= _minDonors;
-        _dwComposeSafe = _env.DREAM_INNERVOICE_GPU_GEN !== "0" && _donorsPresent && (_env.DREAM_INNERVOICE_GPU_GEN === "1" || _env.DREAM_DF7_FANOUT_PROPAGATE === "1");
+        const _gpuProxyLive = !!(this.cluster && this.cluster._gpuProxyReady === true);
+        _dwComposeSafe = _env.DREAM_INNERVOICE_GPU_GEN !== "0" && _donorsPresent && _gpuProxyLive && (_env.DREAM_INNERVOICE_GPU_GEN === "1" || _env.DREAM_DF7_FANOUT_PROPAGATE === "1");
         if (!_dwComposeSafe && !this._dwComposeGateLogged) {
           this._dwComposeGateLogged = true;
           this._hb(`[Curriculum] \u{1F4A4} dream-window generation stages (phenomenology + recombination) DISABLED at scale \u2014 cortex ${_cortexN.toLocaleString()} > ${_maxN.toLocaleString()} and no GPU generation path. A composeSentence word-tick pins the host CPU ~57s at this scale; consolidation + trickle still run every window.`);

@@ -3238,8 +3238,15 @@ export class Curriculum {
       if (_cortexN > _maxN && _env.DREAM_INNERVOICE_FORCE_CPU !== '1') {
         const _minDonors = Number(_env.DREAM_INNERVOICE_GPU_GEN_MIN_DONORS) || 1;
         const _donorsPresent = ((brain && brain._communityDonorCount) || 0) >= _minDonors;
+        // GPU proxy must be LIVE, not just donor-counted — a mid-reconnect donor
+        // is still counted but _gpuProxyReady is false, and a compose word-tick
+        // then CPU-pins ~57s/word (the 156s freeze that trips the donor's 150s
+        // idle). Require it live so dream-window generation shows the cheap path
+        // during any reconnect (Gee 2026-07-14 root-cause fix, mirrors chat).
+        const _gpuProxyLive = !!(this.cluster && this.cluster._gpuProxyReady === true);
         _dwComposeSafe = _env.DREAM_INNERVOICE_GPU_GEN !== '0'
           && _donorsPresent
+          && _gpuProxyLive
           && (_env.DREAM_INNERVOICE_GPU_GEN === '1' || _env.DREAM_DF7_FANOUT_PROPAGATE === '1');
         if (!_dwComposeSafe && !this._dwComposeGateLogged) {
           this._dwComposeGateLogged = true;
