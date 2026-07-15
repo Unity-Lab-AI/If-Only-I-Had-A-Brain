@@ -509,6 +509,12 @@ export class MindSpaceGPU {
   // leaving the equational domain. Returns null on canvas/pad dim mismatch.
   morph(recA, recB, t) { return CPU.morphField(recA, recB, t); }
 
+  // DRAW-ENGINE (Gee 2026-07-15) — field C → her hand's strokes. The faithful
+  // trace (CDF 9/7 inverse → Sobel edges → edge-follow polylines → simplify →
+  // field-colored strokes) that lets her draw the THING she looked at, not a
+  // shape-per-word stamp. Cheap CPU (tiny plane) — always CPU, like describe().
+  traceField(rec, opts = {}) { return CPU.traceField(rec, opts); }
+
   // ── DE-NOVO IMAGINATION (UVM-INT.3) — cortex state → field C, no camera/file ─────────────────
   // Her current mind-state (any cortex activation vector — sem region, percept, emission
   // embedding) is folded into a small grayscale image and equationalized into a REAL field C.

@@ -347,5 +347,114 @@ export function morphField(recA, recB, t) {
   return { ...recA, channels, equation_count: total, fidelity: { ...(recA.fidelity || {}), source: 'mindspace-morph' } };
 }
 
+// ── traceField(rec, opts) — field C → HER HAND'S STROKES (DRAW-ENGINE, Gee 2026-07-15) ───────
+// The faithful inverse of sketch(): takes a REAL field C (a thing she has SEEN /
+// imagined / recombined) and traces its salient contours into stroke primitives
+// her hand can draw. This REPLACES the old shape-per-word stamp + the 24-point
+// radial-blob draw-from-memory: the SHAPE comes from the actual image she looked
+// at, never a table. A 12-gon has nothing to do with a word; a traced contour of
+// a horse she perceived IS the horse.
+//
+// Node-safe (NO ImageData — reconstructImageData is browser-only): runs the CDF
+// 9/7 inverse straight to Y/Cb/Cr luma planes, Sobel gradient, relative-threshold
+// edge map, greedy edge-follow into polylines, Douglas-Peucker simplify to a
+// bounded stroke budget, colors each stroke from the field's local YCbCr. Coords
+// normalized [0,1] for sketch(). Bounded working grid (a DRAWING is coarse, not a
+// photo edge map) — loop-safe on the no-GPU box.
+//
+// REFERENCE-NOT-FACT (Gee): this is a TRACE — her interpretation of what she saw,
+// coarsened + budgeted + re-colorable by the caller (her goth palette) — never a
+// pixel-perfect photostat of the reference image.
+function _rdp(pts, eps) {                       // Douglas-Peucker polyline simplify
+  if (pts.length < 3) return pts;
+  let dmax = 0, idx = 0;
+  const a = pts[0], b = pts[pts.length - 1];
+  const dx = b[0] - a[0], dy = b[1] - a[1], len = Math.hypot(dx, dy) || 1;
+  for (let i = 1; i < pts.length - 1; i++) {
+    const d = Math.abs((pts[i][0] - a[0]) * dy - (pts[i][1] - a[1]) * dx) / len;
+    if (d > dmax) { dmax = d; idx = i; }
+  }
+  if (dmax > eps) {
+    const left = _rdp(pts.slice(0, idx + 1), eps);
+    const right = _rdp(pts.slice(idx), eps);
+    return left.slice(0, -1).concat(right);
+  }
+  return [a, b];
+}
+export function traceField(rec, opts = {}) {
+  if (!rec || !rec.channels) return [];
+  const W = rec.width, H = rec.height, W2 = rec.pad_w, H2 = rec.pad_h;
+  if (!W || !H || !W2 || !H2) return [];
+  // inverse-transform each channel to a full plane (Node-safe: no ImageData)
+  const planes = {};
+  for (const name of ['Y', 'Cb', 'Cr']) {
+    const c = rec.channels[name];
+    const flat = new Float64Array(W2 * H2);
+    if (c && c.val_b64) {
+      const val = b64i16(c.val_b64), qs = c.qscale || 1, pos = decodePositions(c, val.length), SIZE = W2 * H2;
+      for (let i = 0; i < pos.length; i++) { const p = pos[i]; if (p >= 0 && p < SIZE) flat[p] = val[i] * qs; }
+      idwt2(flat, H2, W2);
+    }
+    planes[name] = flat;
+  }
+  // working grid — coarse on purpose (a drawing, not an edge photo). Aspect-kept.
+  const target = Math.max(24, Math.min(opts.traceSide || 80, 256));
+  const gw = Math.max(8, Math.round(W >= H ? target : target * (W / H)));
+  const gh = Math.max(8, Math.round(H >= W ? target : target * (H / W)));
+  const px = (gx) => Math.min(W - 1, Math.max(0, Math.round((gx / (gw - 1)) * (W - 1))));
+  const py = (gy) => Math.min(H - 1, Math.max(0, Math.round((gy / (gh - 1)) * (H - 1))));
+  const L = new Float64Array(gw * gh);
+  for (let gy = 0; gy < gh; gy++) { const sy = py(gy); for (let gx = 0; gx < gw; gx++) L[gy * gw + gx] = planes.Y[sy * W2 + px(gx)]; }
+  // Sobel gradient magnitude
+  const G = new Float64Array(gw * gh); let gmax = 1e-6;
+  for (let y = 1; y < gh - 1; y++) for (let x = 1; x < gw - 1; x++) {
+    const i = y * gw + x;
+    const gxv = -L[i - gw - 1] - 2 * L[i - 1] - L[i + gw - 1] + L[i - gw + 1] + 2 * L[i + 1] + L[i + gw + 1];
+    const gyv = -L[i - gw - 1] - 2 * L[i - gw] - L[i - gw + 1] + L[i + gw - 1] + 2 * L[i + gw] + L[i + gw + 1];
+    const m = Math.sqrt(gxv * gxv + gyv * gyv); G[i] = m; if (m > gmax) gmax = m;
+  }
+  const thr = gmax * Math.max(0.03, Math.min(0.9, opts.edgeThresh ?? 0.28));
+  const edge = new Uint8Array(gw * gh);
+  for (let i = 0; i < G.length; i++) edge[i] = G[i] >= thr ? 1 : 0;
+  // greedy edge-follow: each unvisited edge pixel seeds a polyline that walks the
+  // strongest unvisited 8-neighbor until the contour ends.
+  const visited = new Uint8Array(gw * gh);
+  const NB = [[-1, -1], [0, -1], [1, -1], [-1, 0], [1, 0], [-1, 1], [0, 1], [1, 1]];
+  const maxStrokes = Math.max(4, Math.min(opts.maxStrokes || 48, 240));
+  const polylines = [];
+  for (let sy = 0; sy < gh && polylines.length < maxStrokes; sy++) {
+    for (let sx = 0; sx < gw && polylines.length < maxStrokes; sx++) {
+      const si = sy * gw + sx;
+      if (!edge[si] || visited[si]) continue;
+      const pts = []; let cx = sx, cy = sy, ci = si, guard = 0;
+      while (guard++ < gw * gh) {
+        visited[ci] = 1; pts.push([cx, cy]);
+        let best = -1, bestG = 0, bx = 0, by = 0;
+        for (const [dx, dy] of NB) {
+          const nx = cx + dx, ny = cy + dy;
+          if (nx < 0 || ny < 0 || nx >= gw || ny >= gh) continue;
+          const ni = ny * gw + nx;
+          if (edge[ni] && !visited[ni] && G[ni] > bestG) { bestG = G[ni]; best = ni; bx = nx; by = ny; }
+        }
+        if (best < 0) break;
+        cx = bx; cy = by; ci = best;
+      }
+      if (pts.length >= 3) polylines.push(pts);
+    }
+  }
+  // simplify + normalize + color each stroke from the field's local YCbCr
+  const eps = Math.max(0.3, opts.simplify ?? 1.1);
+  const strokes = [];
+  for (const pl of polylines) {
+    const simp = _rdp(pl, eps);
+    if (simp.length < 2) continue;
+    const mid = simp[simp.length >> 1];
+    const mo = py(mid[1]) * W2 + px(mid[0]);
+    const rgb = ycbcrToRGB(planes.Y[mo], planes.Cb[mo], planes.Cr[mo]).map(v => Math.max(0, Math.min(255, Math.round(v * 255))));
+    strokes.push({ type: 'poly', pts: simp.map(p => [p[0] / (gw - 1), p[1] / (gh - 1)]), rgb });
+  }
+  return strokes;
+}
+
 // low-level transform primitives exported for the GPU path / golden-vector parity (MS.H6)
 export { fwd1d, fwd2d, inv1d, idwt2, rgbToYCbCr, ycbcrToRGB, padDim, encPos, decPos, decodePositions, b64bytes, b64i16, bytesToB64, i16ToB64, A97, B97, G97, D97, K97 };
