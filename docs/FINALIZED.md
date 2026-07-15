@@ -5,6 +5,26 @@
 
 ---
 
+## 2026-07-14 — donor keeps dropping: reconnect-churn debounce (backend) + live-nginx tolerance check (Red) — feature/post-fullsize-walk-0710
+
+### Gee ask (verbatim per LAW #0)
+
+> *"the doner keeps dropping connection:"* + full 8:25-8:27PM live log paste (deployed box, build d92f561, social/kindergarten, 1 remote RTX donor over the proxied WS). Then: *"Both: tolerance + churn-debounce (Rec)"* (chose the fix path), then *"we are not doing investigative walks,, make sure the code is correct in how ever way u can"*.
+
+**Diagnosis (code-read, no walk):** the donor drops because the Node loop pins 12-29s (historically up to 98/211s) — **major-GC stop-the-world at the 306M/61M scale on the CPU-only coordinator box** (`_teachPredictiveError` alone pools ~1.46GB of Float64Array scratches at 61M; it is ALREADY time-sliced via propagateChunked + `_hebbianUpdateChunked`, so the pin is GC, not an unsliced op). The pin starves the proxied WS → the socket is closed upstream ("disconnected UNEXPECTEDLY … proxied WS closed" + `read ECONNRESET`) → `_gpuShadowDirty` → **full 85MB `cortex_intraSynapses` re-upload on every reconnect** → the re-upload competes for the same pinned loop → churn.
+
+**SHIPPED — reconnect-churn debounce (`server/brain-server.js`):** `_rearmCortexGpuUpload` (the single funnel for register/failover/promote re-uploads) now COALESCES: if a full upload is in flight OR started within `DREAM_REUPLOAD_DEBOUNCE_MS` (default 30s), it sets `_cortexRearmPending` instead of resetting the one-time upload gate; a main-loop block fires exactly ONE fresh upload once the window since the last upload START (`_lastCortexUploadStartTs`, stamped at the upload-fire site) elapses. A churn-dropping donor no longer fires a full 85MB re-upload per reconnect — N rapid reconnects collapse to one throttled re-upload. Eventual-arm guaranteed (a genuinely-new primary is delayed at most the debounce, never starved); the first-ever upload is never blocked (null start ts); composes with the existing `_cortexUploadInFlight` guard + TU.20.2 buffer-saturation defer (no double-upload — the pending-fire is the only path that resets the gate during the window).
+
+**Tolerance = LIVE-BOX NGINX (Red, NOT code — the real drop-killer):** every repo timeout already tolerates a 30s pin (donor `IDLE_TIMEOUT`=150s; server heartbeat forgives loop-blocks + can't run mid-pin; zombie-kick=180s; `deploy/nginx-unity-brain.conf` `/ws`=`proxy_read_timeout 3600s`). The upstream-observed close signature points at the live per-host vhost `unity-brain.git.unityailab.com.conf` (not git-tracked): if its `/ws`+`/admin/ws` lack `proxy_read_timeout 3600s` it falls to nginx's 60s default and the giant GC pins blow past it. Documented for Red in `deploy/REDEPLOY-NOTES.md` (config-only, `nginx -t && systemctl reload`, no restart) — this is what lets the donor RIDE THROUGH a pin instead of dropping; the debounce just bounds the damage when a drop slips through.
+
+**Queued (root cure, not blind-shipped):** the 12-29s GC pins themselves — moving the ~1.46GB predictive-error/teach scratches off the main heap / onto a worker at 61M. Bigger change; tolerance + debounce hold the line until then.
+
+**Verified (no-tests / no-walk LAW):** `node --check server/brain-server.js` PASS; debounce logic hand-traced against the upload-fire gate (first-upload / coalesce / pending-fire / eventual-arm / no-double-upload paths). Server-only — no bundle, no fresh walk, no donor rebuild; deploys via Update & Savestart.
+
+**Docs (same commit, docs-before-push LAW):** `docs/TODO.md` "DONOR KEEPS DROPPING" task (Gee verbatim + diagnosis + shipped/remaining), `deploy/REDEPLOY-NOTES.md` 2026-07-14 entry (backend redeploy + the Red nginx action), this FINALIZED entry.
+
+---
+
 ## 2026-07-14 — /workflow four-thread sweep: gate-check verdict + 40M-lock/utilization verdict + event-cost FIX A + corpus-bleed FIX B (vectors 1+4) — feature/post-fullsize-walk-0710
 
 ### Gee ask (verbatim per LAW #0)
