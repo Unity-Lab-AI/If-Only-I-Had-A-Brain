@@ -107141,6 +107141,7 @@ var Curriculum = class _Curriculum {
     const motorFirstLetter = buildPattern(motorSize, firstLetterOneHot, wScratch.motorFirstLetterBuf);
     for (let rep = 0; rep < reps; rep++) {
       if (typeof globalThis._brainShutdownRequested !== "undefined" && globalThis._brainShutdownRequested) return;
+      layer12Opts.skipCpuWhitelist = rep < reps - 1;
       for (let i = 0; i < letters.length; i++) {
         const ch = letters[i];
         const chOneHot = encodeLetter(ch);

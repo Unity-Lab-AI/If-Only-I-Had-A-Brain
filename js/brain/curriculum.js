@@ -18291,6 +18291,19 @@ export class Curriculum {
     for (let rep = 0; rep < reps; rep++) {
       if (typeof globalThis._brainShutdownRequested !== 'undefined' && globalThis._brainShutdownRequested) return;
 
+      // CELL-TEACH SPEED (Gee 2026-07-15 — ~16s/word live, "this seems excessive").
+      // The expensive probe-critical CPU-shadow Oja inside _crossRegionHebbian
+      // (letter_to_phon + letter_to_motor, ~15M+ nnz EACH after the WMB grow to a
+      // 1.5M language cortex) was running on EVERY letter × EVERY rep here because
+      // this path never set skipCpuWhitelist — ~letters×reps full-nnz CPU passes
+      // per word = the 16s/word driver. The GPU `hebbianBound` fires every rep
+      // regardless (GPU weights stay current), and the post-teach probes read the
+      // CPU arrays which only need to be current ONCE per word — so gate the CPU
+      // whitelist Oja to the FINAL rep, the exact teach-loop pattern documented in
+      // cluster/hebbian.js this method was missing. ~reps× fewer full-nnz CPU Oja
+      // passes (4×), bit-identical GPU training, CPU arrays current for probes.
+      layer12Opts.skipCpuWhitelist = (rep < reps - 1);
+
       // === Layers 1+2 (per-letter identity): letter(ch)+phon(ch)+motor(ch) ===
       // Sem is NOT overlaid during per-letter fires. Overlaying sem(word)
       // on every letter (c, a, t for "cat") writes three conflicting
