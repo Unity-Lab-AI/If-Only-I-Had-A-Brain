@@ -1794,8 +1794,30 @@ class ServerBrain {
       // it lower — graceful, never larger than the host can hold. Overridable
       // via DREAM_LANG_CORTEX for a controlled fresh walk.
       const WORD_MOTOR_TARGET_LANG_CORTEX = 1_500_000;
-      const targetedAuto = Math.min(autoSize, WORD_MOTOR_TARGET_LANG_CORTEX);
-      const langCortexSize = Number.isFinite(envOverride) && envOverride > 0 ? envOverride : targetedAuto;
+      // WMB FLOOR (Gee 2026-07-14, fix v2): the VRAM-budget rescale (vramBasedMax)
+      // clamps langCortexSize to whatever fits `LANG_CORTEX_VRAM_BUDGET_BYTES` — a
+      // badly under-provisioned ~115MB slice that pinned the language cortex at
+      // ~349K (85MB intra) even though its REAL footprint at 1.5M is only ~490MB
+      // and the donor has 16GB. A `min()` cap can't fix that (nothing raises a
+      // clamped autoSize). So FLOOR langCortexSize UP to the WMB target when the
+      // target's ACTUAL geometry (estimateLangCortexVramBytes, the real ~370B/neuron
+      // model — NOT the tiny budget slice) fits a safe VRAM ceiling AND stays under
+      // the true RAM/V8 bounds. This bypasses only the under-sized budget slice; the
+      // real VRAM/RAM/V8 safety still governs. DREAM_LANG_CORTEX overrides outright.
+      const WMB_VRAM_SAFETY_BYTES = 4 * 1024 * 1024 * 1024;   // ~490MB real at 1.5M ⟹ 8x headroom under the donor's 16GB
+      let langCortexSize = (Number.isFinite(envOverride) && envOverride > 0)
+        ? envOverride
+        : Math.min(autoSize, WORD_MOTOR_TARGET_LANG_CORTEX);
+      if (!(Number.isFinite(envOverride) && envOverride > 0) && langCortexSize < WORD_MOTOR_TARGET_LANG_CORTEX) {
+        const _targetVram = estimateLangCortexVramBytes(WORD_MOTOR_TARGET_LANG_CORTEX);
+        const _ramFloor = Math.min(ramBasedMax, v8BasedMax);
+        if (_targetVram <= WMB_VRAM_SAFETY_BYTES && WORD_MOTOR_TARGET_LANG_CORTEX <= _ramFloor) {
+          console.log(`[Brain] WMB FLOOR — raising langCortexSize ${langCortexSize.toLocaleString()} → ${WORD_MOTOR_TARGET_LANG_CORTEX.toLocaleString()} (target real VRAM ${(_targetVram/1e6).toFixed(0)}MB ≤ ${(WMB_VRAM_SAFETY_BYTES/1e9).toFixed(0)}GB ceiling; under RAM/V8 floor ${_ramFloor.toLocaleString()}) — bypassing the under-provisioned ${(LANG_CORTEX_VRAM_BUDGET_BYTES/1e6).toFixed(0)}MB budget slice.`);
+          langCortexSize = WORD_MOTOR_TARGET_LANG_CORTEX;
+        } else {
+          console.warn(`[Brain] WMB FLOOR SKIPPED — target ${WORD_MOTOR_TARGET_LANG_CORTEX.toLocaleString()} blocked by ${_targetVram > WMB_VRAM_SAFETY_BYTES ? `real VRAM ${(_targetVram/1e9).toFixed(2)}GB > ${(WMB_VRAM_SAFETY_BYTES/1e9).toFixed(0)}GB ceiling` : `RAM/V8 floor ${_ramFloor.toLocaleString()}`}; staying at ${langCortexSize.toLocaleString()}.`);
+        }
+      }
       const langMemGb = (langCortexSize * LANG_CLUSTER_BYTES_PER_NEURON / 1e9).toFixed(2);
       const heapLimitGb = (v8BasedMax === Infinity ? 'unlimited' : ((v8BasedMax * LANG_CLUSTER_BYTES_PER_NEURON) / 1e9).toFixed(1) + 'GB');
       const projectedMB = Math.round(projectedBytesFinal / 1024 / 1024);
