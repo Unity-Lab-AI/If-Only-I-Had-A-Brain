@@ -389,6 +389,161 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
     } catch { return rec.equation_count || 0; }
     return n;
   },
+
+  // ── DRAW-ENGINE (Gee 2026-07-15) — SHE LOOKS IT UP ───────────────────────────────────────────
+  // Definition-driven Pollinations REFERENCE prompt for a concept she wants to
+  // draw but has NOT seen. Her LEARNED definition's content words ride the prompt
+  // (horse → "large animal four legs mane tail"), and the frame is steered CLEAN
+  // (single centered subject, plain background, high contrast) so it traces into a
+  // legible drawing — her GOTH interpretation happens on the DRAWING side (trace +
+  // palette), never here. Abstract concepts concretize through the generator
+  // itself (anger → an angry face, halloween → a jack-o'-lantern); the returned
+  // image is BOUND to the concept, so she relates the concrete picture back to the
+  // word. Reference, not fact.
+  _referenceImagePrompt(concept) {
+    const c = String(concept || '').toLowerCase().replace(/[^a-z' -]/g, ' ').replace(/\s+/g, ' ').trim();
+    if (!c) return '';
+    let defTail = '';
+    try {
+      const cx = this.cortexCluster;
+      const d = (cx && typeof cx.lookupDefinitionSync === 'function') ? cx.lookupDefinitionSync(c) : null;
+      if (d && typeof d === 'string') {
+        const stop = new Set(['the', 'a', 'an', 'of', 'to', 'and', 'or', 'in', 'on', 'for', 'with', 'that', 'which', 'who', 'whom', 'is', 'are', 'was', 'were', 'be', 'been', 'as', 'by', 'at', 'it', 'its', 'this', 'these', 'those', 'from', 'used', 'uses', 'using', 'having', 'being', 'one', 'any', 'some', 'such', 'other', 'more', 'most', 'very', 'into', 'about', 'when', 'where', 'also', 'not', 'can', 'may']);
+        const words = d.toLowerCase().split(/[^a-z]+/).filter(w => w.length > 2 && !stop.has(w) && w !== c);
+        if (words.length) defTail = ' ' + [...new Set(words)].slice(0, 6).join(' ');
+      }
+    } catch { /* bare concept prompt */ }
+    return `${c}${defTail}, simple clear centered illustration, single subject, plain background, high contrast`;
+  },
+
+  // Fetch a Pollinations REFERENCE for a concept, perceive it into a field C
+  // HEADLESSLY (no browser — the box decodes the render itself), and bind it
+  // PROVISIONALLY into visual memory. Returns the rec so the caller draws from
+  // what she just looked at. Reference-not-fact (Gee): binds conf:false on first
+  // sight (a one-off render never becomes grounded truth), confirmed only when a
+  // later independent render AGREES (percept cosine ≥ 0.45) — the same noisy-
+  // oracle discipline as _ingestVisualFrame. Node fetch + jpeg-js/pngjs decode
+  // (server deps, auto-installed on the box). Cooldown-gated (never hammer the
+  // generator for one word), global-paced, in-flight-guarded, best-effort.
+  async _fetchReferenceAndGround(concept, opts = {}) {
+    if (!this.mindSpace || typeof this.mindSpace.perceive !== 'function') return null;
+    if (typeof this._buildPollinationsImageUrl !== 'function') return null;
+    if (typeof fetch !== 'function') return null;   // Node < 18 (the box is 18+)
+    const key = (this._vmContentTokens(concept)[0]) || String(concept || '').toLowerCase().trim();
+    if (!key) return null;
+    const now = Date.now();
+    // per-concept refetch cooldown — never spam the generator for the same word
+    const COOL = Number(process.env.DREAM_REF_FETCH_COOLDOWN_MS) || 21600000;   // 6h
+    if (!this._vmRefFetchAt) this._vmRefFetchAt = new Map();
+    if (!opts.force && (now - (this._vmRefFetchAt.get(key) || 0)) < COOL) return null;
+    // in-flight guard (per concept) + global pacing so a flood of unseen concepts
+    // can't trigger a fetch storm
+    if (!this._vmRefInFlight) this._vmRefInFlight = new Set();
+    if (this._vmRefInFlight.has(key)) return null;
+    const GAP = Number(process.env.DREAM_REF_FETCH_GAP_MS) || 15000;
+    if (!opts.force && this._vmLastRefFetchAt && (now - this._vmLastRefFetchAt) < GAP) return null;
+    this._vmRefInFlight.add(key);
+    this._vmLastRefFetchAt = now;
+    this._vmRefFetchAt.set(key, now);
+    try {
+      const prompt = this._referenceImagePrompt(concept);
+      if (!prompt) return null;
+      let url = '';
+      try { url = this._buildPollinationsImageUrl(prompt, { width: 256, height: 256 }); } catch { return null; }
+      if (!url) return null;
+      let buf;
+      try {
+        const ctrl = new AbortController();
+        const to = setTimeout(() => ctrl.abort(), Number(process.env.DREAM_REF_FETCH_TIMEOUT_MS) || 25000);
+        const r = await fetch(url, { signal: ctrl.signal });
+        clearTimeout(to);
+        if (!r || !r.ok) {
+          if (!this._vmRefHttpLogAt || now - this._vmRefHttpLogAt > 60000) { this._vmRefHttpLogAt = now; console.warn(`[VisualMemory] reference fetch "${key}" HTTP ${r ? r.status : '?'} — no image (verify the Pollinations key on the box).`); }
+          return null;
+        }
+        buf = Buffer.from(await r.arrayBuffer());
+      } catch (e) {
+        if (!this._vmRefFetchErrAt || now - this._vmRefFetchErrAt > 60000) { this._vmRefFetchErrAt = now; console.warn(`[VisualMemory] reference fetch failed for "${key}": ${e?.message || e}`); }
+        return null;
+      }
+      const img = this._decodeImageToRGBA(buf);
+      if (!img) return null;
+      const small = this._downsampleRGBA(img, Number(process.env.DREAM_REF_MAXSIDE) || 128);
+      let rec;
+      try { rec = await this.mindSpace.perceive({ width: small.w, height: small.h, data: small.data }); } catch { return null; }
+      if (!rec || !rec.channels) return null;
+      // reject a degenerate (blank/uniform) reference — a flat field is not a look
+      if (typeof this._recDetail === 'function' && this._recDetail(rec) < (Number(process.env.DREAM_REF_MIN_DETAIL) || 200)) {
+        if (!this._vmRefBlankLogAt || now - this._vmRefBlankLogAt > 60000) { this._vmRefBlankLogAt = now; console.log(`[VisualMemory] reference for "${key}" came back near-uniform (no detail) — not binding.`); }
+        return null;
+      }
+      rec.fidelity = { psnr_db: null, source: 'reference-lookup' };
+      // BIND PROVISIONALLY (reference-not-fact) — conf:false on first sight;
+      // confirmed only when a later independent render agrees (cosine ≥ 0.45),
+      // exactly the _ingestVisualFrame noisy-oracle gate.
+      try {
+        const store = this._vmStore();
+        let percept = null;
+        try { const _d = await this.mindSpace.describe(rec); if (_d) percept = Array.from(_d); } catch { percept = null; }
+        const prev = store.get(key);
+        const cos = (a, b) => { if (!a || !b) return 0; let d = 0, na = 0, nb = 0; const n = Math.min(a.length, b.length); for (let i = 0; i < n; i++) { d += a[i] * b[i]; na += a[i] * a[i]; nb += b[i] * b[i]; } const dn = Math.sqrt(na) * Math.sqrt(nb); return dn > 0 ? d / dn : 0; };
+        const confirmed = !!(prev && prev.p && percept && cos(percept, prev.p) >= 0.45);
+        store.delete(key);
+        store.set(key, { rec, at: now, seen: (prev ? prev.seen : 0) + 1, conf: confirmed, p: percept || (prev && prev.p) || null, shownAt: prev && prev.shownAt });
+        while (store.size > VM_CAP) store.delete(store.keys().next().value);
+        this._vmSaveSoon();
+        try { process.stdout.write(`[VisualMemory] 🔎 looked up "${key}" → reference field C (${rec.equation_count} terms, ${confirmed ? 'CONFIRMED' : 'provisional'}) — she can draw it now.\n`); } catch { /* nf */ }
+      } catch { /* bind best-effort — the rec still returns for immediate drawing */ }
+      return rec;
+    } finally {
+      this._vmRefInFlight.delete(key);
+    }
+  },
+
+  // Magic-byte image decode → { w, h, data:Uint8ClampedArray RGBA }. Pure-JS
+  // jpeg-js / pngjs (server deps) so the box decodes a Pollinations render with
+  // NO browser and NO native build. Returns null on unknown format / decode fail.
+  _decodeImageToRGBA(buf) {
+    try {
+      const b = buf instanceof Uint8Array ? buf : new Uint8Array(buf);
+      if (b.length < 4) return null;
+      if (b[0] === 0xFF && b[1] === 0xD8) {                                      // JPEG
+        const jpeg = this._jpegDec || (this._jpegDec = require('jpeg-js'));
+        const r = jpeg.decode(b, { useTArray: true, maxMemoryUsageInMB: 512 });
+        if (!r || !r.data) return null;
+        return { w: r.width, h: r.height, data: new Uint8ClampedArray(r.data.buffer, r.data.byteOffset, r.data.length) };
+      }
+      if (b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4E && b[3] === 0x47) {    // PNG
+        const { PNG } = this._pngDec || (this._pngDec = require('pngjs'));
+        const p = PNG.sync.read(Buffer.from(b));
+        if (!p || !p.data) return null;
+        return { w: p.width, h: p.height, data: new Uint8ClampedArray(p.data.buffer, p.data.byteOffset, p.data.length) };
+      }
+    } catch (e) {
+      if (!this._vmDecodeErrAt || Date.now() - this._vmDecodeErrAt > 60000) { this._vmDecodeErrAt = Date.now(); console.warn(`[VisualMemory] image decode failed: ${e?.message || e}`); }
+    }
+    return null;
+  },
+
+  // Nearest-neighbor downsample of an RGBA image to a bounded max side (aspect
+  // kept). A reference only needs ~128px for a clean traced percept; smaller =
+  // faster perceive + cleaner contours.
+  _downsampleRGBA(img, maxSide) {
+    const sw = img.w, sh = img.h;
+    const scale = Math.min(1, maxSide / Math.max(sw, sh));
+    const w = Math.max(1, Math.round(sw * scale)), h = Math.max(1, Math.round(sh * scale));
+    if (w === sw && h === sh) return { w: sw, h: sh, data: img.data };
+    const out = new Uint8ClampedArray(w * h * 4);
+    for (let y = 0; y < h; y++) {
+      const sy = Math.min(sh - 1, Math.floor(y / scale));
+      for (let x = 0; x < w; x++) {
+        const sx = Math.min(sw - 1, Math.floor(x / scale));
+        const si = (sy * sw + sx) * 4, di = (y * w + x) * 4;
+        out[di] = img.data[si]; out[di + 1] = img.data[si + 1]; out[di + 2] = img.data[si + 2]; out[di + 3] = 255;
+      }
+    }
+    return { w, h, data: out };
+  },
 };
 
 module.exports = { SERVER_VISUAL_MEMORY_MIXIN };
