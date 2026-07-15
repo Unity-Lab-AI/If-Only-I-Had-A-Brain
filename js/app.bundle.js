@@ -100312,6 +100312,23 @@ var Curriculum = class _Curriculum {
   // before the migration). Loops across cluster.regions so every
   // region the bound cross-projections read from gets cleared in
   // lockstep with the CPU shadow.
+  // CELL-TEACH SPEED FIX (Gee 2026-07-15) — CPU-only scoped clear of named
+  // cortexCluster region spans. The K word/vocab/sentence/sequence teach methods
+  // used to zero the WHOLE 1.5M cluster before each per-word/per-letter tile-write
+  // (a per-item O(cluster.size) pin = the ~100× Kindergarten cell slowdown). Since
+  // _writeTiledPattern only SETS active dims (never zeroes the region), the clear
+  // IS needed — but only over the regions actually written (letter/phon/motor/sem).
+  // Scoping drops it O(cluster.size) → O(region). CPU-only (matches the old inline
+  // full-clear; GPU slices re-sync via the teach pass's own writes/dispatch).
+  _clearCortexRegionSpans(names) {
+    const cluster = this.cluster;
+    if (!cluster || !cluster.regions || !cluster.lastSpikes) return;
+    for (const nm of names) {
+      const r = cluster.regions[nm];
+      if (!r) continue;
+      for (let j = r.start; j < r.end; j++) cluster.lastSpikes[j] = 0;
+    }
+  }
   _clearSpikes(regionNames = null) {
     const cluster = this.cluster;
     if (!cluster) return;
@@ -107000,6 +107017,13 @@ var Curriculum = class _Curriculum {
       }
       return target;
     };
+    const _clearRegionSpans = (names) => {
+      for (const nm of names) {
+        const r = cluster.regions && cluster.regions[nm];
+        if (!r) continue;
+        for (let j = r.start; j < r.end; j++) cluster.lastSpikes[j] = 0;
+      }
+    };
     ensureLetters(letters);
     if (this.dictionary && typeof this.dictionary.learnWord === "function") {
       try {
@@ -107016,7 +107040,7 @@ var Curriculum = class _Curriculum {
         const ch = letters[i];
         const chOneHot = encodeLetter(ch);
         const phonFeat = _phonemeFeatureForLetter(ch);
-        for (let j = 0; j < cluster.size; j++) cluster.lastSpikes[j] = 0;
+        _clearRegionSpans(["letter", "phon", "motor"]);
         const letterPat = buildPattern(letterSize, chOneHot, wScratch.letterPat);
         for (let j = 0; j < letterSize; j++) {
           cluster.lastSpikes[letterRegion.start + j] = letterPat[j] > 0 ? 1 : 0;
@@ -107036,7 +107060,7 @@ var Curriculum = class _Curriculum {
       const semToMotor = cluster.crossProjections?.sem_to_motor;
       if (semRegion && wordEmb && wordEmb.length > 0 && semToMotor) {
         const firstLetterCarvingReps = 4;
-        for (let j = 0; j < cluster.size; j++) cluster.lastSpikes[j] = 0;
+        _clearRegionSpans(["sem", "motor"]);
         this._writeTiledPattern(semRegion, wordEmb, true);
         this._writeTiledPattern(motorRegion, firstLetterOneHot, true);
         const preF = wScratch.preF;
@@ -107073,7 +107097,7 @@ var Curriculum = class _Curriculum {
           const wrongCh = ALPHABET_CONTRAST[wi];
           if (wrongCh === correctLetter) continue;
           const wrongOneHot = encodeLetter(wrongCh);
-          for (let j = 0; j < cluster.size; j++) cluster.lastSpikes[j] = 0;
+          _clearRegionSpans(["sem", "motor"]);
           this._writeTiledPattern(semRegion, wordEmb, true);
           this._writeTiledPattern(motorRegion, wrongOneHot, true);
           const preAF = wScratch.preAF;
@@ -107121,7 +107145,7 @@ var Curriculum = class _Curriculum {
         for (const sentence of templates) {
           const sentEmb = sharedEmbeddings && typeof sharedEmbeddings.getSentenceEmbedding === "function" ? sharedEmbeddings.getSentenceEmbedding(sentence) : null;
           if (!sentEmb || sentEmb.length === 0) continue;
-          for (let j = 0; j < cluster.size; j++) cluster.lastSpikes[j] = 0;
+          _clearRegionSpans(["sem", "motor"]);
           this._writeTiledPattern(semRegion, sentEmb, true);
           this._writeTiledPattern(motorRegion, firstLetterOneHot, true);
           const preF = wScratch.preF;
@@ -107235,7 +107259,7 @@ var Curriculum = class _Curriculum {
         if (!firstLetter) continue;
         const letterOneHot = encodeLetter(firstLetter);
         const phonFeat = _phonemeFeatureForLetter(firstLetter);
-        for (let j = 0; j < cluster.size; j++) cluster.lastSpikes[j] = 0;
+        this._clearCortexRegionSpans(["letter", "phon", "motor", "sem"]);
         const letterPat = buildPattern(letterSize, letterOneHot);
         for (let j = 0; j < letterSize; j++) {
           cluster.lastSpikes[letterRegion.start + j] = letterPat[j] > 0 ? 1 : 0;
@@ -107298,7 +107322,7 @@ var Curriculum = class _Curriculum {
           if (!firstLetter) continue;
           const letterOneHot = encodeLetter(firstLetter);
           const phonFeat = _phonemeFeatureForLetter(firstLetter);
-          for (let j = 0; j < cluster.size; j++) cluster.lastSpikes[j] = 0;
+          this._clearCortexRegionSpans(["letter", "phon", "motor", "sem"]);
           const letterPat = buildPattern(letterSize, letterOneHot);
           for (let j = 0; j < letterSize; j++) {
             cluster.lastSpikes[letterRegion.start + j] = letterPat[j] > 0 ? 1 : 0;
@@ -107668,7 +107692,7 @@ var Curriculum = class _Curriculum {
           if (!firstLetter) continue;
           const letterOneHot = encodeLetter(firstLetter);
           const phonFeat = _phonemeFeatureForLetter(firstLetter);
-          for (let j = 0; j < cluster.size; j++) cluster.lastSpikes[j] = 0;
+          this._clearCortexRegionSpans(["letter", "phon", "motor", "sem"]);
           const letterPat = buildPattern(letterSize, letterOneHot);
           for (let j = 0; j < letterSize; j++) {
             cluster.lastSpikes[letterRegion.start + j] = letterPat[j] > 0 ? 1 : 0;
@@ -108963,7 +108987,7 @@ var Curriculum = class _Curriculum {
         const nameEmb = sharedEmbeddings.getSentenceEmbedding ? sharedEmbeddings.getSentenceEmbedding(name) : sharedEmbeddings.getEmbedding(name.split(/\s+/)[0]);
         const firstLetter = name.replace(/[^a-z]/g, "")[0];
         const letterOneHot = firstLetter ? encodeLetter(firstLetter) : null;
-        for (let j = 0; j < cluster.size; j++) cluster.lastSpikes[j] = 0;
+        this._clearCortexRegionSpans(["letter", "phon", "motor", "free", "sem"]);
         if (letterOneHot) {
           const letterPat = buildPattern(letterSize, letterOneHot);
           for (let j = 0; j < letterSize; j++) {
@@ -110243,7 +110267,7 @@ var Curriculum = class _Curriculum {
           if (!firstLetter) continue;
           const letterOneHot = encodeLetter(firstLetter);
           const phonFeat = _phonemeFeatureForLetter(firstLetter);
-          for (let j = 0; j < cluster.size; j++) cluster.lastSpikes[j] = 0;
+          this._clearCortexRegionSpans(["letter", "phon", "motor", "sem"]);
           const letterPat = buildPattern(letterSize, letterOneHot);
           for (let j = 0; j < letterSize; j++) {
             cluster.lastSpikes[letterRegion.start + j] = letterPat[j] > 0 ? 1 : 0;
