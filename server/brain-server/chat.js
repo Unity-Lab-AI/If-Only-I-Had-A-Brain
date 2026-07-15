@@ -463,40 +463,67 @@ const SERVER_CHAT_MIXIN = {
     // driven by live brain state (arousal, valence, psi, cortex
     // pattern, fear, reward, drug state). Same signature the client
     // uses at engine.js:775.
+    // DONOR-FREEZE GUARD (Gee 2026-07-14, confirmed root cause) — at
+    // biological scale generateAsync ticks the 61M cortex per word, and when
+    // the GPU proxy isn't ready (donor mid-reconnect) `cluster.stepAwait`
+    // falls back to a SYNCHRONOUS CPU step ~57s/WORD (cluster.js ~3697). A few
+    // words = a 150+s loop freeze — which is exactly what exceeded the donor's
+    // 150s idle watchdog and dropped it (the reconnect-churn root cause: a chat
+    // message landing during a reconnect froze the box 156s). So NEVER CPU-tick
+    // the huge cortex: if cortex > DREAM_INNERVOICE_MAX_NEURONS AND the GPU
+    // proxy isn't live, SKIP generation and fall through to the honest-silence
+    // handler below — she goes briefly quiet during a ~25s reconnect instead of
+    // freezing the box + knocking the donor off. Mirrors the #36 inner-voice
+    // gate but keyed on the LIVE `_gpuProxyReady` (the flag the #36 env-only
+    // gate omits, which let a still-counted mid-reconnect donor slip through).
+    // Zero behavior change when the donor is connected (_gpuProxyReady === true).
+    // DREAM_INNERVOICE_FORCE_CPU=1 opts back into the CPU tick (small/local brains).
+    const _cortexNeurons = (this.clusters && this.clusters.cortex && this.clusters.cortex.size) || 0;
+    const _ivMaxNeurons = Number(process.env.DREAM_INNERVOICE_MAX_NEURONS) || 2000000;
+    const _gpuReadyForGen = !!(this.cortexCluster && this.cortexCluster._gpuProxyReady === true);
+    const _cpuTickUnsafe = _cortexNeurons > _ivMaxNeurons
+      && !_gpuReadyForGen
+      && process.env.DREAM_INNERVOICE_FORCE_CPU !== '1';
+
     let response = '';
-    try {
-      // T14.26 — `generateAsync` (NOT `generate`) so the dictionary-
-      // cosine scoring loop yields to the Node event loop every 500
-      // entries. Without this yield, state broadcasts and compute_batch
-      // dispatch stall for the whole duration of Unity's response work,
-      // and the client's 3D brain visualization freezes whenever
-      // the user sends a message or Unity speaks. With the yield,
-      // setInterval
-      // broadcasts keep firing every 100ms through the scoring pass so
-      // the viz stays animated while Unity thinks.
-      response = await this.languageCortex.generateAsync(
-        this.dictionary,
-        this.arousal,
-        this.coherence,
-        {
-          predictionError: 0,
-          motorConfidence: this.motorConfidence ?? 0,
-          psi: this.psi,
-          cortexPattern,
-          // T13.7.6 — server's local cortex cluster, Hebbian-trained on
-          // persona at boot. T13.3 emission loop reads from it directly.
-          cortexCluster: this.cortexCluster,
-          drugState: this._drugStateLabel(),
-          speechMod: this.drugScheduler ? this.drugScheduler.speechModulation() : null,
-          fear: this.fear,
-          reward: this.reward,
-          socialNeed: this.persona?.socialAttachment ?? 0.5,
-        }
-      );
-    } catch (err) {
-      console.error('[Brain] languageCortex.generate threw:', err.message);
-      console.error(err.stack);
-      return { text: '', action: 'respond_text' };
+    if (_cpuTickUnsafe) {
+      try { process.stdout.write(`[Brain] chat generation SKIPPED — cortex ${_cortexNeurons.toLocaleString()} > ${_ivMaxNeurons.toLocaleString()} AND GPU proxy not ready (donor mid-reconnect); a CPU cortex tick would freeze the loop ~57s/word and trip the donor's 150s idle watchdog. Honest silence until the donor re-syncs.\n`); } catch { /* non-fatal */ }
+      // response stays '' → the honest-silence handler below fires (motor_unstable).
+    } else {
+      try {
+        // T14.26 — `generateAsync` (NOT `generate`) so the dictionary-
+        // cosine scoring loop yields to the Node event loop every 500
+        // entries. Without this yield, state broadcasts and compute_batch
+        // dispatch stall for the whole duration of Unity's response work,
+        // and the client's 3D brain visualization freezes whenever
+        // the user sends a message or Unity speaks. With the yield,
+        // setInterval
+        // broadcasts keep firing every 100ms through the scoring pass so
+        // the viz stays animated while Unity thinks.
+        response = await this.languageCortex.generateAsync(
+          this.dictionary,
+          this.arousal,
+          this.coherence,
+          {
+            predictionError: 0,
+            motorConfidence: this.motorConfidence ?? 0,
+            psi: this.psi,
+            cortexPattern,
+            // T13.7.6 — server's local cortex cluster, Hebbian-trained on
+            // persona at boot. T13.3 emission loop reads from it directly.
+            cortexCluster: this.cortexCluster,
+            drugState: this._drugStateLabel(),
+            speechMod: this.drugScheduler ? this.drugScheduler.speechModulation() : null,
+            fear: this.fear,
+            reward: this.reward,
+            socialNeed: this.persona?.socialAttachment ?? 0.5,
+          }
+        );
+      } catch (err) {
+        console.error('[Brain] languageCortex.generate threw:', err.message);
+        console.error(err.stack);
+        return { text: '', action: 'respond_text' };
+      }
     }
 
     if (!response || response.length < 2) {
@@ -2260,8 +2287,17 @@ const SERVER_CHAT_MIXIN = {
     // DREAM_INNERVOICE_GPU_GEN=0 forces the CPU-safe showcase.
     const _readFanoutProven = process.env.DREAM_DF7_FANOUT_PROPAGATE === '1';
     const _donorsPresent = (this._communityDonorCount || 0) >= (Number(process.env.DREAM_INNERVOICE_GPU_GEN_MIN_DONORS) || 1);
+    // The GPU proxy must be LIVE, not just donor-counted — a donor mid-reconnect
+    // is still counted (`_communityDonorCount>=1`) but `cluster._gpuProxyReady`
+    // is false until its full re-upload completes, and `stepAwait` CPU-ticks
+    // (~57s/word) while it's false. Without this term the env-only gate passed
+    // during a reconnect and generation CPU-ticked → the 156s freeze that trips
+    // the donor's 150s idle. Requiring _gpuProxyReady forces the cheap showcase
+    // during any reconnect window (Gee 2026-07-14 root-cause fix).
+    const _gpuProxyLive = !!(this.cortexCluster && this.cortexCluster._gpuProxyReady === true);
     const _gpuGenAvailable = process.env.DREAM_INNERVOICE_GPU_GEN !== '0'
       && _donorsPresent
+      && _gpuProxyLive
       && (process.env.DREAM_INNERVOICE_GPU_GEN === '1' || _readFanoutProven);
     if (_gpuGenAvailable && _cortexNeurons > _innerVoiceMaxNeurons && !this._gpuGenLoggedOnce) {
       this._gpuGenLoggedOnce = true;

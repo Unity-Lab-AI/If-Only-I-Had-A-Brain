@@ -5,6 +5,27 @@
 
 ---
 
+## 2026-07-14 — donor-drop ROOT CAUSE fixed: ban the 61M synchronous-CPU cortex tick when the GPU isn't ready — feature/post-fullsize-walk-0710
+
+### Gee ask (verbatim per LAW #0)
+
+> *"doner keep crashing"* / *"when the doner drops it just keeps running tech ops while the dashboard shows it disconnected then it goes through the whole reconnect process"* + the 9:34PM log, then the box constraint *"we ARE NOT DOING ANYTHING ELSE TO THE BOX WE CAN ONLY USE THE UPDATE SAVESTART FROM HERE ON IN OR THE RARE CASE FRESH WALK — from the dashboard"* and *"if u need to make a new doner version do it correctly to handle the compute it needs to"*.
+
+**ROOT CAUSE (confirmed from the log, not guessed):** `[EventLoop] BLOCKED 155809ms` + `loop delay max 156,363.7ms` + a 2.5-min zero-log gap = the box froze SOLID for 156 seconds. The donor's `IDLE_TIMEOUT` is 150s (donor.rs:41) → 156s server silence > 150s → the donor declared the link dead and reconnected, even though nothing crashed (exactly Gee's "keeps running tech ops but dashboard shows disconnected"). NOT TDR, NOT backpressure, NOT network. The freeze = a synchronous CPU cortex tick: at 61M, emission/generation ticks the cortex per word, and `cluster.stepAwait` (cluster.js ~3697) falls back to a synchronous CPU `step()` ~57s/WORD (documented REDEPLOY-NOTES #36) the instant `cortexCluster._gpuProxyReady` is false (donor mid-reconnect). A chat message ("Rekt") landing during a reconnect window ran a few CPU-ticked words = 156s. The #36 inner-voice gate keyed GPU-availability on donor COUNT + env flags, NOT the live `_gpuProxyReady`, so a still-counted mid-reconnect donor slipped through; and the CHAT path had no scale gate at all. Investigation also ruled out the earlier TDR theory (no single GPU op is >2s: LIF is memory-bound ms; sparse propagate/hebbian is nnz-bound ~10M over ~1.25M rows, ms) — so no donor v0.3.11 was needed.
+
+**SHIPPED (server-side, ships via dashboard Update-Savestart per the box constraint; NO-FALLBACKS-compliant — GPU emission OR honest silence, never the catastrophic CPU tick):**
+- `server/brain-server/chat.js` `processAndRespond` — DONOR-FREEZE GUARD before `generateAsync`: if `clusters.cortex.size > DREAM_INNERVOICE_MAX_NEURONS` (2M) AND `cortexCluster._gpuProxyReady !== true` AND `DREAM_INNERVOICE_FORCE_CPU !== '1'` → skip generation, fall through to the existing honest-silence handler. Zero behavior change when the donor is connected (`_gpuProxyReady === true`); she's briefly quiet during a ~25s reconnect instead of freezing the box 156s and dropping the donor.
+- `server/brain-server/chat.js` inner-voice #36 gate — added `_gpuProxyLive` (`cortexCluster._gpuProxyReady === true`) to `_gpuGenAvailable`.
+- `js/brain/curriculum.js` `_dwComposeSafe` (dream-window generation) — same `_gpuProxyLive` term.
+
+**Verified (no-tests / no-walk LAW):** `node --check` chat.js + curriculum.js PASS; ESM `import()` curriculum.js (26 exports) PASS; bundle rebuilt (curriculum.js bundled; chat.js server-only). Logic hand-traced: guard fires ONLY at `>2M AND !_gpuProxyReady`, so steady-state (donor connected) is unchanged. Deploys via Update & Savestart (keep weights).
+
+**Box-deploy constraint recorded** as durable memory ([[feedback_box_deploy_dashboard_only]]): the box changes ONLY via dashboard Update-Savestart / rare Fresh-walk; every fix ships as code on main. The earlier reconnect-churn debounce (same-day) still bounds any residual drop to a clean single reconnect.
+
+**Docs (same commit):** `docs/TODO.md` "DONOR KEEPS DROPPING" task (root cause + shipped), this FINALIZED entry.
+
+---
+
 ## 2026-07-14 — donor keeps dropping: reconnect-churn debounce (backend) + live-nginx tolerance check (Red) — feature/post-fullsize-walk-0710
 
 ### Gee ask (verbatim per LAW #0)
