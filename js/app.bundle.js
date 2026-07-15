@@ -102774,7 +102774,7 @@ var Curriculum = class _Curriculum {
       return { trained: 0, skipped: pairs.length };
     }
     const relationTagId = typeof opts.relationTagId === "number" ? opts.relationTagId : null;
-    const skipPredictiveError = opts.skipPredictiveError === true || relationTagId === 23;
+    const skipPredictiveError = opts.keepPredictiveError !== true;
     const binarize = opts.binarize === true;
     const normalizeAfter = opts.normalizeAfter !== false;
     const normTarget = opts.normTarget ?? 0.3;

@@ -13398,21 +13398,30 @@ export class Curriculum {
     // 1 = category, 2 = role, 3 = sequence, etc.). Carved into
     // fineType so cortex can learn per-relation mappings.
     const relationTagId = typeof opts.relationTagId === 'number' ? opts.relationTagId : null;
-    // WMB REGRESSION FIX 1 — skip the per-pair predictive-error pass for
-    // definition binds. Definitions bind sem↔fineType (relationTagId=23,
-    // _definitionPairsWhitelist — no motor); _teachPredictiveError runs TWO
-    // full-intra-matrix ops (propagateChunked + hebbianUpdateChunked) over
-    // the recurrent cortex matrix PER PAIR — the single heaviest teach op —
-    // and the recurrent self-prediction correction adds ~nothing to a
-    // sem↔fineType def bind (that binding rides the cross-projection Hebbian
-    // below, not the recurrent intra matrix). At the grown 1.5M language
-    // cortex the K-VOCAB-UPFRONT seed (almost all def binds) paid this
-    // full-cortex cost per def-token = the ~100× pre-cell slowdown. Skipping
-    // it for defs converts the seed from O(cluster.size)/pair to the
-    // cross-projection bind only; it runs fast at ANY cortex size. Real
-    // association-pair learning (opposites/categories/sequences/relations)
-    // still fires it. Callers may force-skip via opts.skipPredictiveError.
-    const skipPredictiveError = opts.skipPredictiveError === true || relationTagId === 23;
+    // WMB REGRESSION FIX 1 — EXTENDED TO ALL GRADES (Gee 2026-07-15: "did we not
+    // carry over those fixes for all grades?"). Skip the per-pair recurrent
+    // predictive-error pass for EVERY association bind, not just defs.
+    // `_teachPredictiveError` runs TWO full-intra-matrix ops PER PAIR — a
+    // propagateChunked (~45M nnz over the 1.5M recurrent cortex matrix) + a
+    // hebbianUpdateChunked — the single heaviest teach op. The K-VOCAB def SEED
+    // already skipped it (relationTagId=23) and binds landed clean → the seed
+    // went fast. But the KINDERGARTEN+ CELLS teach with NON-def association pairs
+    // (slots rel=8, intent rel=9, word→word rel=13, anecdotal rel=34), so they
+    // FELL THROUGH the old def-only gate and still paid the full ~45M-nnz
+    // propagate PER PAIR at 1.5M = the ~100× cell slowdown Gee caught right after
+    // the seed sped up. It is SAFE to skip for ALL association binds:
+    //   (a) the actual binding rides the CROSS-projection Hebbian (`_teachHebbian`
+    //       below), NOT this recurrent-intra self-prediction correction;
+    //   (b) the recurrent intra matrix is STILL trained every pair by that same
+    //       `_teachHebbian` (skipIntraSynapses:false) — the recurrent weights that
+    //       drive tick-by-tick composition keep learning;
+    //   (c) HB.4's surprise signal `_lastPredictionError` is set INDEPENDENTLY by
+    //       the cluster-level predictive pass (cluster.js), NOT by this method —
+    //       so the predictive-coding LEARNING signal is fully preserved.
+    // This removes ONLY the redundant per-pair recurrent delta; runs fast at ANY
+    // cortex size, ALL grades. Opt IN with opts.keepPredictiveError to restore
+    // the per-pair recurrent correction for a path that genuinely needs it.
+    const skipPredictiveError = opts.keepPredictiveError !== true;
     // Soft feature writes preserve GloVe vector identity per concept.
     // Binary-saturated writes (1-of-K on every active dim) strip the
     // vector's discriminating amplitudes, so 14 phases × 350 pairs
