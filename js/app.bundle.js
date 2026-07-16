@@ -6,18 +6,23 @@ var __require = /* @__PURE__ */ ((x) => typeof require !== "undefined" ? require
   if (typeof require !== "undefined") return require.apply(this, arguments);
   throw Error('Dynamic require of "' + x + '" is not supported');
 });
-var __esm = (fn, res) => function __init() {
-  return fn && (res = (0, fn[__getOwnPropNames(fn)[0]])(fn = 0)), res;
+var __esm = (fn, res, err) => function __init() {
+  if (err) throw err[0];
+  try {
+    return fn && (res = (0, fn[__getOwnPropNames(fn)[0]])(fn = 0)), res;
+  } catch (e) {
+    throw err = [e], e;
+  }
 };
 var __export = (target, all) => {
   for (var name in all)
     __defProp(target, name, { get: all[name], enumerable: true });
 };
 
-// ../js/brain/sparse-matrix.js
+// js/brain/sparse-matrix.js
 var SparseMatrix;
 var init_sparse_matrix = __esm({
-  "../js/brain/sparse-matrix.js"() {
+  "js/brain/sparse-matrix.js"() {
     SparseMatrix = class _SparseMatrix {
       /**
        * @param {number} rows — number of post-synaptic neurons
@@ -1081,7 +1086,7 @@ var init_sparse_matrix = __esm({
   }
 });
 
-// ../js/brain/k-vocabulary.js
+// js/brain/k-vocabulary.js
 var k_vocabulary_exports = {};
 __export(k_vocabulary_exports, {
   K_VOCABULARY: () => K_VOCABULARY,
@@ -1102,7 +1107,7 @@ function _buildVocabulary(raw) {
 }
 var K_VOCABULARY_RAW, K_VOCABULARY, K_VOCABULARY_SIZE;
 var init_k_vocabulary = __esm({
-  "../js/brain/k-vocabulary.js"() {
+  "js/brain/k-vocabulary.js"() {
     K_VOCABULARY_RAW = [
       // ─── Letters (lowercase) ─────────────────────────────────────────
       "a",
@@ -4127,7 +4132,7 @@ var init_k_vocabulary = __esm({
   }
 });
 
-// ../js/brain/grade1-vocabulary.js
+// js/brain/grade1-vocabulary.js
 var grade1_vocabulary_exports = {};
 __export(grade1_vocabulary_exports, {
   G1_VOCABULARY: () => G1_VOCABULARY,
@@ -4135,7 +4140,7 @@ __export(grade1_vocabulary_exports, {
 });
 var G1_VOCABULARY, G1_VOCABULARY_SIZE;
 var init_grade1_vocabulary = __esm({
-  "../js/brain/grade1-vocabulary.js"() {
+  "js/brain/grade1-vocabulary.js"() {
     G1_VOCABULARY = [
       "abbreviated",
       "absence",
@@ -6164,7 +6169,7 @@ var init_grade1_vocabulary = __esm({
   }
 });
 
-// ../js/brain/grade2-vocabulary.js
+// js/brain/grade2-vocabulary.js
 var grade2_vocabulary_exports = {};
 __export(grade2_vocabulary_exports, {
   G2_VOCABULARY: () => G2_VOCABULARY,
@@ -6172,7 +6177,7 @@ __export(grade2_vocabulary_exports, {
 });
 var G2_VOCABULARY, G2_VOCABULARY_SIZE;
 var init_grade2_vocabulary = __esm({
-  "../js/brain/grade2-vocabulary.js"() {
+  "js/brain/grade2-vocabulary.js"() {
     G2_VOCABULARY = [
       "abandon",
       "abbreviations",
@@ -8262,7 +8267,7 @@ var init_grade2_vocabulary = __esm({
   }
 });
 
-// ../js/brain/grade3-vocabulary.js
+// js/brain/grade3-vocabulary.js
 var grade3_vocabulary_exports = {};
 __export(grade3_vocabulary_exports, {
   G3_VOCABULARY: () => G3_VOCABULARY,
@@ -8270,7 +8275,7 @@ __export(grade3_vocabulary_exports, {
 });
 var G3_VOCABULARY, G3_VOCABULARY_SIZE;
 var init_grade3_vocabulary = __esm({
-  "../js/brain/grade3-vocabulary.js"() {
+  "js/brain/grade3-vocabulary.js"() {
     G3_VOCABULARY = [
       "abacus",
       "abandon",
@@ -9716,7 +9721,7 @@ var init_grade3_vocabulary = __esm({
   }
 });
 
-// ../js/brain/grade4-vocabulary.js
+// js/brain/grade4-vocabulary.js
 var grade4_vocabulary_exports = {};
 __export(grade4_vocabulary_exports, {
   G4_VOCABULARY: () => G4_VOCABULARY,
@@ -9724,7 +9729,7 @@ __export(grade4_vocabulary_exports, {
 });
 var G4_VOCABULARY, G4_VOCABULARY_SIZE;
 var init_grade4_vocabulary = __esm({
-  "../js/brain/grade4-vocabulary.js"() {
+  "js/brain/grade4-vocabulary.js"() {
     G4_VOCABULARY = [
       "abandoned",
       "abbreviations",
@@ -11879,7 +11884,7 @@ var init_grade4_vocabulary = __esm({
   }
 });
 
-// ../js/brain/grade5-vocabulary.js
+// js/brain/grade5-vocabulary.js
 var grade5_vocabulary_exports = {};
 __export(grade5_vocabulary_exports, {
   G5_VOCABULARY: () => G5_VOCABULARY,
@@ -11887,7 +11892,7 @@ __export(grade5_vocabulary_exports, {
 });
 var G5_VOCABULARY, G5_VOCABULARY_SIZE;
 var init_grade5_vocabulary = __esm({
-  "../js/brain/grade5-vocabulary.js"() {
+  "js/brain/grade5-vocabulary.js"() {
     G5_VOCABULARY = [
       "abacus",
       "abandoned",
@@ -13924,7 +13929,7 @@ var init_grade5_vocabulary = __esm({
   }
 });
 
-// ../js/brain/grade6-vocabulary.js
+// js/brain/grade6-vocabulary.js
 var grade6_vocabulary_exports = {};
 __export(grade6_vocabulary_exports, {
   G6_VOCABULARY: () => G6_VOCABULARY,
@@ -13932,7 +13937,7 @@ __export(grade6_vocabulary_exports, {
 });
 var G6_VOCABULARY, G6_VOCABULARY_SIZE;
 var init_grade6_vocabulary = __esm({
-  "../js/brain/grade6-vocabulary.js"() {
+  "js/brain/grade6-vocabulary.js"() {
     G6_VOCABULARY = [
       "abandoned",
       "abandonment",
@@ -16637,7 +16642,7 @@ var init_grade6_vocabulary = __esm({
   }
 });
 
-// ../js/brain/grade7-vocabulary.js
+// js/brain/grade7-vocabulary.js
 var grade7_vocabulary_exports = {};
 __export(grade7_vocabulary_exports, {
   G7_VOCABULARY: () => G7_VOCABULARY,
@@ -16645,7 +16650,7 @@ __export(grade7_vocabulary_exports, {
 });
 var G7_VOCABULARY, G7_VOCABULARY_SIZE;
 var init_grade7_vocabulary = __esm({
-  "../js/brain/grade7-vocabulary.js"() {
+  "js/brain/grade7-vocabulary.js"() {
     G7_VOCABULARY = [
       "abandon",
       "abides",
@@ -20302,7 +20307,7 @@ var init_grade7_vocabulary = __esm({
   }
 });
 
-// ../js/brain/grade8-vocabulary.js
+// js/brain/grade8-vocabulary.js
 var grade8_vocabulary_exports = {};
 __export(grade8_vocabulary_exports, {
   G8_VOCABULARY: () => G8_VOCABULARY,
@@ -20310,7 +20315,7 @@ __export(grade8_vocabulary_exports, {
 });
 var G8_VOCABULARY, G8_VOCABULARY_SIZE;
 var init_grade8_vocabulary = __esm({
-  "../js/brain/grade8-vocabulary.js"() {
+  "js/brain/grade8-vocabulary.js"() {
     G8_VOCABULARY = [
       "abandoned",
       "ability",
@@ -23231,7 +23236,7 @@ var init_grade8_vocabulary = __esm({
   }
 });
 
-// ../js/brain/grade9-vocabulary.js
+// js/brain/grade9-vocabulary.js
 var grade9_vocabulary_exports = {};
 __export(grade9_vocabulary_exports, {
   G9_VOCABULARY: () => G9_VOCABULARY,
@@ -23239,7 +23244,7 @@ __export(grade9_vocabulary_exports, {
 });
 var G9_VOCABULARY, G9_VOCABULARY_SIZE;
 var init_grade9_vocabulary = __esm({
-  "../js/brain/grade9-vocabulary.js"() {
+  "js/brain/grade9-vocabulary.js"() {
     G9_VOCABULARY = [
       "abandon",
       "abilities",
@@ -27501,7 +27506,7 @@ var init_grade9_vocabulary = __esm({
   }
 });
 
-// ../js/brain/grade10-vocabulary.js
+// js/brain/grade10-vocabulary.js
 var grade10_vocabulary_exports = {};
 __export(grade10_vocabulary_exports, {
   G10_VOCABULARY: () => G10_VOCABULARY,
@@ -27509,7 +27514,7 @@ __export(grade10_vocabulary_exports, {
 });
 var G10_VOCABULARY, G10_VOCABULARY_SIZE;
 var init_grade10_vocabulary = __esm({
-  "../js/brain/grade10-vocabulary.js"() {
+  "js/brain/grade10-vocabulary.js"() {
     G10_VOCABULARY = [
       "a-generic",
       "abandonment",
@@ -31714,7 +31719,7 @@ var init_grade10_vocabulary = __esm({
   }
 });
 
-// ../js/brain/grade11-vocabulary.js
+// js/brain/grade11-vocabulary.js
 var grade11_vocabulary_exports = {};
 __export(grade11_vocabulary_exports, {
   G11_VOCABULARY: () => G11_VOCABULARY,
@@ -31722,7 +31727,7 @@ __export(grade11_vocabulary_exports, {
 });
 var G11_VOCABULARY, G11_VOCABULARY_SIZE;
 var init_grade11_vocabulary = __esm({
-  "../js/brain/grade11-vocabulary.js"() {
+  "js/brain/grade11-vocabulary.js"() {
     G11_VOCABULARY = [
       "abandonment",
       "abbreviation",
@@ -35900,7 +35905,7 @@ var init_grade11_vocabulary = __esm({
   }
 });
 
-// ../js/brain/grade12-vocabulary.js
+// js/brain/grade12-vocabulary.js
 var grade12_vocabulary_exports = {};
 __export(grade12_vocabulary_exports, {
   G12_VOCABULARY: () => G12_VOCABULARY,
@@ -35908,7 +35913,7 @@ __export(grade12_vocabulary_exports, {
 });
 var G12_VOCABULARY, G12_VOCABULARY_SIZE;
 var init_grade12_vocabulary = __esm({
-  "../js/brain/grade12-vocabulary.js"() {
+  "js/brain/grade12-vocabulary.js"() {
     G12_VOCABULARY = [
       "a-generic",
       "abandoned",
@@ -40008,7 +40013,7 @@ var init_grade12_vocabulary = __esm({
   }
 });
 
-// ../js/brain/college1-vocabulary.js
+// js/brain/college1-vocabulary.js
 var college1_vocabulary_exports = {};
 __export(college1_vocabulary_exports, {
   COL1_VOCABULARY: () => COL1_VOCABULARY,
@@ -40016,7 +40021,7 @@ __export(college1_vocabulary_exports, {
 });
 var COL1_VOCABULARY, COL1_VOCABULARY_SIZE;
 var init_college1_vocabulary = __esm({
-  "../js/brain/college1-vocabulary.js"() {
+  "js/brain/college1-vocabulary.js"() {
     COL1_VOCABULARY = [
       "abandon",
       "abbreviated",
@@ -42567,7 +42572,7 @@ var init_college1_vocabulary = __esm({
   }
 });
 
-// ../js/brain/college2-vocabulary.js
+// js/brain/college2-vocabulary.js
 var college2_vocabulary_exports = {};
 __export(college2_vocabulary_exports, {
   COL2_VOCABULARY: () => COL2_VOCABULARY,
@@ -42575,7 +42580,7 @@ __export(college2_vocabulary_exports, {
 });
 var COL2_VOCABULARY, COL2_VOCABULARY_SIZE;
 var init_college2_vocabulary = __esm({
-  "../js/brain/college2-vocabulary.js"() {
+  "js/brain/college2-vocabulary.js"() {
     COL2_VOCABULARY = [
       "ability",
       "absolute",
@@ -44619,7 +44624,7 @@ var init_college2_vocabulary = __esm({
   }
 });
 
-// ../js/brain/college3-vocabulary.js
+// js/brain/college3-vocabulary.js
 var college3_vocabulary_exports = {};
 __export(college3_vocabulary_exports, {
   COL3_VOCABULARY: () => COL3_VOCABULARY,
@@ -44627,7 +44632,7 @@ __export(college3_vocabulary_exports, {
 });
 var COL3_VOCABULARY, COL3_VOCABULARY_SIZE;
 var init_college3_vocabulary = __esm({
-  "../js/brain/college3-vocabulary.js"() {
+  "js/brain/college3-vocabulary.js"() {
     COL3_VOCABULARY = [
       "abandoned",
       "abelian",
@@ -46575,7 +46580,7 @@ var init_college3_vocabulary = __esm({
   }
 });
 
-// ../js/brain/college4-vocabulary.js
+// js/brain/college4-vocabulary.js
 var college4_vocabulary_exports = {};
 __export(college4_vocabulary_exports, {
   COL4_VOCABULARY: () => COL4_VOCABULARY,
@@ -46583,7 +46588,7 @@ __export(college4_vocabulary_exports, {
 });
 var COL4_VOCABULARY, COL4_VOCABULARY_SIZE;
 var init_college4_vocabulary = __esm({
-  "../js/brain/college4-vocabulary.js"() {
+  "js/brain/college4-vocabulary.js"() {
     COL4_VOCABULARY = [
       "abandoned",
       "abandonment",
@@ -48682,7 +48687,7 @@ var init_college4_vocabulary = __esm({
   }
 });
 
-// ../js/brain/gradschool-vocabulary.js
+// js/brain/gradschool-vocabulary.js
 var gradschool_vocabulary_exports = {};
 __export(gradschool_vocabulary_exports, {
   GRAD_VOCABULARY: () => GRAD_VOCABULARY,
@@ -48690,7 +48695,7 @@ __export(gradschool_vocabulary_exports, {
 });
 var GRAD_VOCABULARY, GRAD_VOCABULARY_SIZE;
 var init_gradschool_vocabulary = __esm({
-  "../js/brain/gradschool-vocabulary.js"() {
+  "js/brain/gradschool-vocabulary.js"() {
     GRAD_VOCABULARY = [
       "ability",
       "abraham",
@@ -50483,7 +50488,7 @@ var init_gradschool_vocabulary = __esm({
   }
 });
 
-// ../js/brain/phd-vocabulary.js
+// js/brain/phd-vocabulary.js
 var phd_vocabulary_exports = {};
 __export(phd_vocabulary_exports, {
   PHD_VOCABULARY: () => PHD_VOCABULARY,
@@ -50491,7 +50496,7 @@ __export(phd_vocabulary_exports, {
 });
 var PHD_VOCABULARY, PHD_VOCABULARY_SIZE;
 var init_phd_vocabulary = __esm({
-  "../js/brain/phd-vocabulary.js"() {
+  "js/brain/phd-vocabulary.js"() {
     PHD_VOCABULARY = [
       "abandoned",
       "abandonment",
@@ -52071,7 +52076,7 @@ var init_phd_vocabulary = __esm({
   }
 });
 
-// ../js/brain/grade-vocabulary.js
+// js/brain/grade-vocabulary.js
 var grade_vocabulary_exports = {};
 __export(grade_vocabulary_exports, {
   gradeVocabularyFor: () => gradeVocabularyFor
@@ -52121,11 +52126,11 @@ async function gradeVocabularyFor(grade) {
   }
 }
 var init_grade_vocabulary = __esm({
-  "../js/brain/grade-vocabulary.js"() {
+  "js/brain/grade-vocabulary.js"() {
   }
 });
 
-// ../js/brain/benchmark.js
+// js/brain/benchmark.js
 var benchmark_exports = {};
 __export(benchmark_exports, {
   runBenchmark: () => runBenchmark,
@@ -52300,7 +52305,7 @@ function runScaleTest(sizes = [1e3, 5e3, 1e4, 5e4, 1e5, 25e4, 5e5, 1e6]) {
 }
 var DenseMatrix;
 var init_benchmark = __esm({
-  "../js/brain/benchmark.js"() {
+  "js/brain/benchmark.js"() {
     init_sparse_matrix();
     DenseMatrix = class {
       constructor(n) {
@@ -52351,12 +52356,12 @@ var init_benchmark = __esm({
   }
 });
 
-// ../js/version.js
+// js/version.js
 var VERSION = "0.1.0";
 var BUILD = "262f758f-f649";
 var FULL = `${VERSION}+${BUILD}`;
 
-// ../js/brain/neurons.js
+// js/brain/neurons.js
 var LIF_DEFAULTS = {
   tau: 20,
   // membrane time constant (ms)
@@ -52416,10 +52421,10 @@ var LIFPopulation = class {
   }
 };
 
-// ../js/brain/cluster.js
+// js/brain/cluster.js
 init_sparse_matrix();
 
-// ../js/brain/embeddings.js
+// js/brain/embeddings.js
 var EMBED_DIM = 300;
 var GLOVE_LOCAL_PATH = "corpora/glove.6B.300d.txt";
 var GLOVE_URLS = (() => {
@@ -52857,7 +52862,7 @@ var SemanticEmbeddings = class {
 };
 var sharedEmbeddings = new SemanticEmbeddings();
 
-// ../js/brain/letter-input.js
+// js/brain/letter-input.js
 var LETTER_INVENTORY = /* @__PURE__ */ new Set();
 var DEFAULT_ALPHABET = [
   // Lowercase English (26)
@@ -53029,7 +53034,7 @@ function loadInventory(arr) {
   _cachedInventorySize = 0;
 }
 
-// ../js/brain/subjects.js
+// js/brain/subjects.js
 var SUBJECT_NORMALIZE = Object.freeze({
   ela: "ela",
   english: "ela",
@@ -53055,7 +53060,7 @@ function wordMotorBandName(subject) {
   return subj ? `word_motor_${subj}` : null;
 }
 
-// ../js/brain/cluster/telemetry.js
+// js/brain/cluster/telemetry.js
 var CLUSTER_TELEMETRY_MIXIN = {
   trackRecentEmission(word) {
     if (typeof word !== "string" || word.length === 0) return;
@@ -53344,7 +53349,7 @@ var CLUSTER_TELEMETRY_MIXIN = {
   }
 };
 
-// ../js/brain/cluster/hebbian.js
+// js/brain/cluster/hebbian.js
 var CLUSTER_HEBBIAN_MIXIN = {
   async _crossRegionHebbian(lr, opts = {}) {
     if (!this.crossProjections) return;
@@ -53768,7 +53773,7 @@ var CLUSTER_HEBBIAN_MIXIN = {
   }
 };
 
-// ../js/brain/cluster/emit.js
+// js/brain/cluster/emit.js
 var CLUSTER_EMIT_MIXIN = {
   /**
    * Set (or clear) the grade-vocab emission allow-set consumed by
@@ -55002,6 +55007,7 @@ var CLUSTER_EMIT_MIXIN = {
         if (TERMINATORS.has(nextLetter)) break;
       }
     }
+    void letterToMotor;
     this._motorEmissionTicks = committedLetters;
     this._lastEmissionDiag = {
       ticksRun: committedLetters,
@@ -55015,7 +55021,7 @@ var CLUSTER_EMIT_MIXIN = {
   }
 };
 
-// ../js/brain/cluster/probe.js
+// js/brain/cluster/probe.js
 var CLUSTER_PROBE_MIXIN = {
   diagnoseReadoutForEmbedding(emb, ticks = 10, langStart = 150) {
     const currents = sharedEmbeddings.mapToCortex(emb, this.size, langStart);
@@ -55047,7 +55053,7 @@ var CLUSTER_PROBE_MIXIN = {
   }
 };
 
-// ../js/brain/cluster.js
+// js/brain/cluster.js
 var CLUSTER_FRACTIONS = {
   cortex: 0.55,
   hippocampus: 0.18,
@@ -58006,7 +58012,7 @@ Object.assign(NeuronCluster.prototype, CLUSTER_HEBBIAN_MIXIN);
 Object.assign(NeuronCluster.prototype, CLUSTER_EMIT_MIXIN);
 Object.assign(NeuronCluster.prototype, CLUSTER_PROBE_MIXIN);
 
-// ../js/brain/modules.js
+// js/brain/modules.js
 function sigmoid(x) {
   return 1 / (1 + Math.exp(-x));
 }
@@ -58336,7 +58342,7 @@ var Hypothalamus = class {
   }
 };
 
-// ../js/brain/mystery.js
+// js/brain/mystery.js
 var MysteryModule = class {
   /**
    * @param {object} weights - Persona-tunable weights { alpha, beta, gamma, delta }
@@ -58496,7 +58502,7 @@ var MysteryModule = class {
   }
 };
 
-// ../js/brain/oscillations.js
+// js/brain/oscillations.js
 var TWO_PI = 2 * Math.PI;
 var BANDS = {
   theta: { lo: 4, hi: 8 },
@@ -58628,7 +58634,7 @@ var OscillatorNetwork = class {
   }
 };
 
-// ../js/brain/persona.js
+// js/brain/persona.js
 var UNITY_PERSONA = {
   // === Identity ===
   name: "Unity",
@@ -58840,7 +58846,7 @@ function getBrainParams(persona = UNITY_PERSONA, scheduler = null, now = void 0)
   return params;
 }
 
-// ../js/brain/sensory.js
+// js/brain/sensory.js
 var CORTEX_SIZE = 300;
 var AUDITORY_START = 0;
 var AUDITORY_END = 50;
@@ -59148,7 +59154,7 @@ var SensoryProcessor = class {
   }
 };
 
-// ../js/brain/motor.js
+// js/brain/motor.js
 var BG_SIZE = 150;
 var CHANNELS = 6;
 var NEURONS_PER_CHANNEL = 25;
@@ -59324,7 +59330,7 @@ var MotorOutput = class {
   }
 };
 
-// ../js/brain/memory.js
+// js/brain/memory.js
 var MAX_EPISODES = 100;
 var WM_DECAY_RATE = 0.9995;
 var CONSOLIDATION_THRESHOLD = 3;
@@ -59559,7 +59565,7 @@ var MemorySystem = class {
   }
 };
 
-// ../js/brain/auditory-cortex.js
+// js/brain/auditory-cortex.js
 var AUDITORY_NEURONS = 50;
 var AuditoryCortex = class {
   constructor() {
@@ -59784,7 +59790,7 @@ var AuditoryCortex = class {
   }
 };
 
-// ../js/brain/mindspace/transform.js
+// js/brain/mindspace/transform.js
 var A97 = -1.586134342059924;
 var B97 = -0.052980118572961;
 var G97 = 0.882911075530934;
@@ -60291,8 +60297,277 @@ function traceField(rec, opts = {}) {
   }
   return strokes;
 }
+function _fieldToGrid(rec, target) {
+  const W = rec.width, H = rec.height, W2 = rec.pad_w, H2 = rec.pad_h;
+  if (!W || !H || !W2 || !H2) return null;
+  const planes = {};
+  for (const name of ["Y", "Cb", "Cr"]) {
+    const c = rec.channels[name];
+    const flat = new Float64Array(W2 * H2);
+    if (c && c.val_b64) {
+      const val = b64i16(c.val_b64), qs = c.qscale || 1, pos = decodePositions(c, val.length), SIZE = W2 * H2;
+      for (let i = 0; i < pos.length; i++) {
+        const p = pos[i];
+        if (p >= 0 && p < SIZE) flat[p] = val[i] * qs;
+      }
+      idwt2(flat, H2, W2);
+    }
+    planes[name] = flat;
+  }
+  const t = Math.max(24, Math.min(target || 96, 256));
+  const gw = Math.max(8, Math.round(W >= H ? t : t * (W / H)));
+  const gh = Math.max(8, Math.round(H >= W ? t : t * (H / W)));
+  const pxc = (gx) => Math.min(W - 1, Math.max(0, Math.round(gx / (gw - 1) * (W - 1))));
+  const pyc = (gy) => Math.min(H - 1, Math.max(0, Math.round(gy / (gh - 1) * (H - 1))));
+  const Y = new Float64Array(gw * gh), Cb = new Float64Array(gw * gh), Cr = new Float64Array(gw * gh);
+  for (let gy = 0; gy < gh; gy++) {
+    const sy = pyc(gy);
+    for (let gx = 0; gx < gw; gx++) {
+      const o = sy * W2 + pxc(gx), g = gy * gw + gx;
+      Y[g] = planes.Y[o];
+      Cb[g] = planes.Cb[o];
+      Cr[g] = planes.Cr[o];
+    }
+  }
+  return { gw, gh, Y, Cb, Cr };
+}
+function traceLineArt(rec, opts = {}) {
+  if (!rec || !rec.channels) return [];
+  const grid = _fieldToGrid(rec, opts.traceSide || 96);
+  if (!grid) return [];
+  const { gw, gh, Y } = grid;
+  const B = new Float64Array(gw * gh);
+  for (let y = 0; y < gh; y++) for (let x = 0; x < gw; x++) {
+    let s = 0, n = 0;
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+      const nx = x + dx, ny = y + dy;
+      if (nx < 0 || ny < 0 || nx >= gw || ny >= gh) continue;
+      s += Y[ny * gw + nx];
+      n++;
+    }
+    B[y * gw + x] = s / n;
+  }
+  const G = new Float64Array(gw * gh), TH = new Float64Array(gw * gh);
+  let gmax = 1e-6;
+  for (let y = 1; y < gh - 1; y++) for (let x = 1; x < gw - 1; x++) {
+    const i = y * gw + x;
+    const gxv = -B[i - gw - 1] - 2 * B[i - 1] - B[i + gw - 1] + B[i - gw + 1] + 2 * B[i + 1] + B[i + gw + 1];
+    const gyv = -B[i - gw - 1] - 2 * B[i - gw] - B[i - gw + 1] + B[i + gw - 1] + 2 * B[i + gw] + B[i + gw + 1];
+    const m = Math.sqrt(gxv * gxv + gyv * gyv);
+    G[i] = m;
+    TH[i] = Math.atan2(gyv, gxv);
+    if (m > gmax) gmax = m;
+  }
+  const NMS = new Float64Array(gw * gh);
+  for (let y = 1; y < gh - 1; y++) for (let x = 1; x < gw - 1; x++) {
+    const i = y * gw + x;
+    const deg = (TH[i] * 180 / Math.PI + 180) % 180;
+    let dx, dy;
+    if (deg < 22.5 || deg >= 157.5) {
+      dx = 1;
+      dy = 0;
+    } else if (deg < 67.5) {
+      dx = 1;
+      dy = 1;
+    } else if (deg < 112.5) {
+      dx = 0;
+      dy = 1;
+    } else {
+      dx = 1;
+      dy = -1;
+    }
+    const g1 = G[(y + dy) * gw + (x + dx)], g2 = G[(y - dy) * gw + (x - dx)];
+    NMS[i] = G[i] >= g1 && G[i] >= g2 ? G[i] : 0;
+  }
+  const thr = gmax * Math.max(0.04, Math.min(0.9, opts.edgeThresh ?? 0.16));
+  const edge = new Uint8Array(gw * gh);
+  for (let i = 0; i < NMS.length; i++) edge[i] = NMS[i] >= thr ? 1 : 0;
+  const order = [];
+  for (let i = 0; i < edge.length; i++) if (edge[i]) order.push(i);
+  order.sort((a, b) => NMS[b] - NMS[a]);
+  const visited = new Uint8Array(gw * gh);
+  const NB = [[1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1], [0, -1], [1, -1]];
+  const walk = (sx, sy) => {
+    const pts = [];
+    let cx = sx, cy = sy, guard = 0;
+    while (guard++ < gw * gh) {
+      pts.push([cx, cy]);
+      let best = -1, bg = 0, bx = 0, by = 0;
+      for (const [dx, dy] of NB) {
+        const nx = cx + dx, ny = cy + dy;
+        if (nx < 0 || ny < 0 || nx >= gw || ny >= gh) continue;
+        const ni = ny * gw + nx;
+        if (edge[ni] && !visited[ni] && NMS[ni] > bg) {
+          bg = NMS[ni];
+          best = ni;
+          bx = nx;
+          by = ny;
+        }
+      }
+      if (best < 0) break;
+      visited[best] = 1;
+      cx = bx;
+      cy = by;
+    }
+    return pts;
+  };
+  const maxStrokes = Math.max(4, Math.min(opts.maxStrokes || 40, 300));
+  const minLen = Math.max(3, Math.round((opts.minLenFrac ?? 0.08) * Math.max(gw, gh)));
+  const polylines = [];
+  for (const si of order) {
+    if (polylines.length >= maxStrokes) break;
+    if (visited[si]) continue;
+    const sx = si % gw, sy = si / gw | 0;
+    visited[si] = 1;
+    const fwd = walk(sx, sy);
+    const back = walk(sx, sy);
+    const pts = back.length > 1 ? back.slice(1).reverse().concat(fwd) : fwd;
+    if (pts.length >= minLen) polylines.push(pts);
+  }
+  const eps = Math.max(0.3, opts.simplify ?? 1);
+  const ink = Array.isArray(opts.ink) ? opts.ink : [228, 226, 230];
+  const strokes = [];
+  for (const pl of polylines) {
+    const simp = _rdp(pl, eps);
+    if (simp.length < 2) continue;
+    strokes.push({ type: "poly", pts: simp.map((p) => [p[0] / (gw - 1), p[1] / (gh - 1)]), rgb: ink.slice() });
+  }
+  return strokes;
+}
+function traceColorFill(rec, opts = {}) {
+  const grid = _fieldToGrid(rec, opts.traceSide || 64);
+  if (!grid) return [];
+  const { gw, gh, Y, Cb, Cr } = grid;
+  const cells = Math.max(10, Math.min(opts.cells || 24, 64));
+  const cw = gw / cells, ch = gh / cells;
+  const bgLum = Math.max(0, Math.min(255, opts.bgLum ?? 232));
+  const strokes = [];
+  for (let cy = 0; cy < cells; cy++) for (let cx = 0; cx < cells; cx++) {
+    let sy = 0, scb = 0, scr = 0, n = 0;
+    const y0 = Math.floor(cy * ch), y1 = Math.min(gh, Math.floor((cy + 1) * ch));
+    const x0 = Math.floor(cx * cw), x1 = Math.min(gw, Math.floor((cx + 1) * cw));
+    for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) {
+      const i = y * gw + x;
+      sy += Y[i];
+      scb += Cb[i];
+      scr += Cr[i];
+      n++;
+    }
+    if (!n) continue;
+    const rgb = ycbcrToRGB(sy / n, scb / n, scr / n).map((v) => Math.max(0, Math.min(255, Math.round(v * 255))));
+    const lum = rgb[0] * 0.299 + rgb[1] * 0.587 + rgb[2] * 0.114;
+    if (lum >= bgLum) continue;
+    const gx0 = cx / cells, gy0 = cy / cells, gx1 = (cx + 1) / cells, gy1 = (cy + 1) / cells;
+    strokes.push({ type: "fill", pts: [[gx0, gy0], [gx1, gy0], [gx1, gy1], [gx0, gy1]], rgb });
+  }
+  return strokes;
+}
+function stylizeField(rec, opts = {}) {
+  const grid = _fieldToGrid(rec, opts.traceSide || 128);
+  if (!grid) return null;
+  const { gw, gh, Y, Cb, Cr } = grid;
+  const bands = Math.max(3, Math.min(opts.bands || 6, 16));
+  const data = new Uint8ClampedArray(gw * gh * 4);
+  for (let i = 0; i < gw * gh; i++) {
+    const rgb = ycbcrToRGB(Y[i], Cb[i], Cr[i]);
+    let lum = Math.max(0, Math.min(1, rgb[0] * 0.299 + rgb[1] * 0.587 + rgb[2] * 0.114));
+    const q = Math.round(lum * (bands - 1)) / (bands - 1);
+    const g = lum > 1e-4 ? q / lum : 1;
+    const o = i * 4;
+    data[o] = Math.max(0, Math.min(255, Math.round(rgb[0] * g * 255)));
+    data[o + 1] = Math.max(0, Math.min(255, Math.round(rgb[1] * g * 255)));
+    data[o + 2] = Math.max(0, Math.min(255, Math.round(rgb[2] * g * 255)));
+    data[o + 3] = 255;
+  }
+  const ls = Array.isArray(opts.labelStrokes) ? opts.labelStrokes : null;
+  if (ls && ls.length) {
+    const put = (nx, ny, rgb) => {
+      const xi = Math.round(nx * (gw - 1)), yi = Math.round(ny * (gh - 1));
+      if (xi < 0 || xi >= gw || yi < 0 || yi >= gh) return;
+      const o = (yi * gw + xi) * 4;
+      data[o] = rgb[0];
+      data[o + 1] = rgb[1];
+      data[o + 2] = rgb[2];
+      data[o + 3] = 255;
+    };
+    for (const s of ls) {
+      if (!s) continue;
+      const rgb = Array.isArray(s.rgb) ? s.rgb : [222, 220, 226];
+      if (s.type === "line") {
+        const steps = Math.max(2, Math.round(Math.hypot((s.x1 - s.x0) * gw, (s.y1 - s.y0) * gh)));
+        for (let k = 0; k <= steps; k++) {
+          const t = k / steps;
+          put(s.x0 + (s.x1 - s.x0) * t, s.y0 + (s.y1 - s.y0) * t, rgb);
+        }
+      } else if (s.type === "point") {
+        put(s.x, s.y, rgb);
+      }
+    }
+  }
+  return equationalizeImageData({ width: gw, height: gh, data });
+}
+function composeFields(recs, opts = {}) {
+  if (!Array.isArray(recs) || recs.length === 0) return null;
+  const S = Math.max(96, Math.min(opts.side || 256, 512));
+  const bands = Math.max(3, Math.min(opts.bands || 7, 16));
+  const data = new Uint8ClampedArray(S * S * 4);
+  const paper = [26, 25, 29];
+  for (let p = 0; p < S * S; p++) {
+    const o = p * 4;
+    data[o] = paper[0];
+    data[o + 1] = paper[1];
+    data[o + 2] = paper[2];
+    data[o + 3] = 255;
+  }
+  const n = recs.length;
+  for (let idx = 0; idx < n; idx++) {
+    const g = _fieldToGrid(recs[idx], 110);
+    if (!g) continue;
+    const { gw, gh, Y, Cb, Cr } = g;
+    const rw = Math.max(8, Math.floor(S * (0.86 / n))), rx = Math.floor(S * (0.07 + idx * (0.86 / n)));
+    const rh = Math.max(8, Math.floor(S * 0.62)), ry = Math.floor(S * (0.1 + idx % 2 * 0.14));
+    for (let py = 0; py < rh; py++) for (let px = 0; px < rw; px++) {
+      const sx = Math.min(gw - 1, Math.floor(px / rw * gw)), sy = Math.min(gh - 1, Math.floor(py / rh * gh)), si = sy * gw + sx;
+      const rgb = ycbcrToRGB(Y[si], Cb[si], Cr[si]).map((v) => Math.max(0, Math.min(1, v)));
+      const lum = rgb[0] * 0.299 + rgb[1] * 0.587 + rgb[2] * 0.114;
+      if (lum > 0.9) continue;
+      const q = Math.round(lum * (bands - 1)) / (bands - 1), k = lum > 1e-4 ? q / lum : 1;
+      const dx = rx + px, dy = ry + py;
+      if (dx < 0 || dx >= S || dy < 0 || dy >= S) continue;
+      const o = (dy * S + dx) * 4;
+      data[o] = Math.max(0, Math.min(255, Math.round(rgb[0] * k * 255)));
+      data[o + 1] = Math.max(0, Math.min(255, Math.round(rgb[1] * k * 255)));
+      data[o + 2] = Math.max(0, Math.min(255, Math.round(rgb[2] * k * 255)));
+      data[o + 3] = 255;
+    }
+  }
+  const ls = Array.isArray(opts.labelStrokes) ? opts.labelStrokes : null;
+  if (ls && ls.length) {
+    const put = (nx, ny, rgb) => {
+      const xi = Math.round(nx * (S - 1)), yi = Math.round(ny * (S - 1));
+      if (xi < 0 || xi >= S || yi < 0 || yi >= S) return;
+      const o = (yi * S + xi) * 4;
+      data[o] = rgb[0];
+      data[o + 1] = rgb[1];
+      data[o + 2] = rgb[2];
+      data[o + 3] = 255;
+    };
+    for (const s of ls) {
+      if (!s) continue;
+      const rgb = Array.isArray(s.rgb) ? s.rgb : [222, 220, 226];
+      if (s.type === "line") {
+        const steps = Math.max(2, Math.round(Math.hypot((s.x1 - s.x0) * S, (s.y1 - s.y0) * S)));
+        for (let k2 = 0; k2 <= steps; k2++) {
+          const t = k2 / steps;
+          put(s.x0 + (s.x1 - s.x0) * t, s.y0 + (s.y1 - s.y0) * t, rgb);
+        }
+      } else if (s.type === "point") put(s.x, s.y, rgb);
+    }
+  }
+  return equationalizeImageData({ width: S, height: S, data });
+}
 
-// ../js/brain/visual-cortex.js
+// js/brain/visual-cortex.js
 var FRAME_W = 60;
 var FRAME_H = 45;
 var V1_ORIENTATIONS = 4;
@@ -60862,7 +61137,7 @@ var VisualCortex = class {
   }
 };
 
-// ../js/brain/dictionary.js
+// js/brain/dictionary.js
 var MAX_WORDS = 5e4;
 var PATTERN_DIM = EMBED_DIM;
 var STORAGE_KEY = "unity_brain_dictionary_v4";
@@ -61185,7 +61460,7 @@ var Dictionary = class {
   // is the canonical cosine used everywhere else in the codebase.
 };
 
-// ../js/brain/language-cortex.js
+// js/brain/language-cortex.js
 var PATTERN_DIM2 = EMBED_DIM;
 var VOWELS = "aeiou";
 var _LIVE_CHAT_STOPWORDS = /* @__PURE__ */ new Set([
@@ -62410,6 +62685,7 @@ var LanguageCortex = class {
       case "pre-K":
       default:
         return 0;
+      // silence — not learned yet
       case "kindergarten":
       case "grade1":
       case "grade2":
@@ -63385,7 +63661,7 @@ var LanguageCortex = class {
   // via `cluster.regionReadout('letter', dim)`.
 };
 
-// ../js/brain/inner-voice.js
+// js/brain/inner-voice.js
 var SPEECH_THRESHOLD = 0.15;
 var THOUGHT_INTERVAL = 60;
 var InnerVoice = class {
@@ -63880,7 +64156,7 @@ var InnerVoice = class {
   }
 };
 
-// ../js/brain/persistence.js
+// js/brain/persistence.js
 init_sparse_matrix();
 function mapOfMapsToJson(m) {
   if (!(m instanceof Map)) return null;
@@ -64329,7 +64605,7 @@ var BrainPersistence = class _BrainPersistence {
   }
 };
 
-// ../js/brain/component-synth.js
+// js/brain/component-synth.js
 var MIN_MATCH_SCORE = 0.4;
 var ComponentSynth = class {
   constructor() {
@@ -64588,7 +64864,7 @@ var ComponentSynth = class {
   }
 };
 
-// ../js/brain/student-question-banks.js
+// js/brain/student-question-banks.js
 var ELA_KINDERGARTEN_EXAM = [
   // K.RF.1 Print Concepts — understand basic features of print
   {
@@ -67369,7 +67645,7 @@ function scoreMethodologyAnswer(emission, expectedKeywords) {
   return { matched, matchCount: matched.length };
 }
 
-// ../js/brain/mindspace/knowledge.js
+// js/brain/mindspace/knowledge.js
 var FILE_TYPES = [
   {
     exts: ["png", "jpg", "jpeg", "webp", "gif", "bmp", "avif"],
@@ -67627,7 +67903,7 @@ function conceptDefinitions() {
   return out;
 }
 
-// ../js/brain/curriculum/pre-K.js
+// js/brain/curriculum/pre-K.js
 var PREK_MIXIN = {
   // ══════════════════════════════════════════════════════════════════
   // PRE-K COGNITIVE PRIMITIVES — spatial / visual / logic / self-model
@@ -68598,7 +68874,7 @@ var PREK_MIXIN = {
   }
 };
 
-// ../js/brain/curriculum/kindergarten.js
+// js/brain/curriculum/kindergarten.js
 var _kGateEnvNum = (key, dflt) => {
   try {
     const v = typeof process !== "undefined" && process.env ? Number(process.env[key]) : NaN;
@@ -77800,7 +78076,7 @@ var K_MIXIN = {
   }
 };
 
-// ../js/brain/curriculum/grade1.js
+// js/brain/curriculum/grade1.js
 var G1_MIXIN = {
   async runElaG1Real(ctx) {
     const DOLCH_G1 = [
@@ -78931,7 +79207,7 @@ var G1_MIXIN = {
   }
 };
 
-// ../js/brain/curriculum/grade2.js
+// js/brain/curriculum/grade2.js
 var G2_MIXIN = {
   async runElaG2Real(ctx) {
     const DIGRAPHS = ["th", "sh", "ch", "ph", "wh", "ck", "ng"];
@@ -79761,7 +80037,7 @@ var G2_MIXIN = {
   }
 };
 
-// ../js/brain/curriculum/grade3.js
+// js/brain/curriculum/grade3.js
 var G3_MIXIN = {
   async runElaG3Real(ctx) {
     const ELA_G3_VOCAB = [
@@ -80461,7 +80737,7 @@ var G3_MIXIN = {
   }
 };
 
-// ../js/brain/curriculum/grade4.js
+// js/brain/curriculum/grade4.js
 var G4_MIXIN = {
   async runElaG4Real(ctx) {
     const ELA_G4_VOCAB = [
@@ -81432,7 +81708,7 @@ var G4_MIXIN = {
   }
 };
 
-// ../js/brain/curriculum/grade5.js
+// js/brain/curriculum/grade5.js
 var G5_MIXIN = {
   async runElaG5Real(ctx) {
     const SENTENCES = [
@@ -82251,7 +82527,7 @@ var G5_MIXIN = {
   }
 };
 
-// ../js/brain/curriculum/grade6.js
+// js/brain/curriculum/grade6.js
 var G6_MIXIN = {
   async runElaG6Real(ctx) {
     const SENTENCES = [
@@ -83029,7 +83305,7 @@ var G6_MIXIN = {
   }
 };
 
-// ../js/brain/curriculum/grade7.js
+// js/brain/curriculum/grade7.js
 var G7_MIXIN = {
   async runElaG7Real(ctx) {
     const SENTENCES = [
@@ -83792,7 +84068,7 @@ var G7_MIXIN = {
   }
 };
 
-// ../js/brain/curriculum/grade8.js
+// js/brain/curriculum/grade8.js
 var G8_MIXIN = {
   async runElaG8Real(ctx) {
     const SENTENCES = [
@@ -84535,7 +84811,7 @@ var G8_MIXIN = {
   }
 };
 
-// ../js/brain/curriculum/grade9.js
+// js/brain/curriculum/grade9.js
 var G9_MIXIN = {
   async runElaG9Real(ctx) {
     const SENTENCES = [
@@ -85351,7 +85627,7 @@ var G9_MIXIN = {
   }
 };
 
-// ../js/brain/curriculum/grade10.js
+// js/brain/curriculum/grade10.js
 var G10_MIXIN = {
   async runElaG10Real(ctx) {
     const SENTENCES = [
@@ -86176,7 +86452,7 @@ var G10_MIXIN = {
   }
 };
 
-// ../js/brain/curriculum/grade11.js
+// js/brain/curriculum/grade11.js
 var G11_MIXIN = {
   async runElaG11Real(ctx) {
     const SENTENCES = [
@@ -87057,7 +87333,7 @@ var G11_MIXIN = {
   }
 };
 
-// ../js/brain/curriculum/grade12.js
+// js/brain/curriculum/grade12.js
 var G12_MIXIN = {
   async runElaG12Real(ctx) {
     const SENTENCES = [
@@ -87913,7 +88189,7 @@ var G12_MIXIN = {
   }
 };
 
-// ../js/brain/curriculum/college1.js
+// js/brain/curriculum/college1.js
 var COL1_MIXIN = {
   async runElaCol1Real(ctx) {
     const SENTENCES = [
@@ -88445,7 +88721,7 @@ var COL1_MIXIN = {
   }
 };
 
-// ../js/brain/curriculum/college2.js
+// js/brain/curriculum/college2.js
 var COL2_MIXIN = {
   async runElaCol2Real(ctx) {
     const SENTENCES = [
@@ -88938,7 +89214,7 @@ var COL2_MIXIN = {
   }
 };
 
-// ../js/brain/curriculum/college3.js
+// js/brain/curriculum/college3.js
 var COL3_MIXIN = {
   async runElaCol3Real(ctx) {
     const SENTENCES = [
@@ -89427,7 +89703,7 @@ var COL3_MIXIN = {
   }
 };
 
-// ../js/brain/curriculum/college4.js
+// js/brain/curriculum/college4.js
 var COL4_MIXIN = {
   async runElaCol4Real(ctx) {
     const SENTENCES = [
@@ -89939,7 +90215,7 @@ var COL4_MIXIN = {
   }
 };
 
-// ../js/brain/curriculum/grad.js
+// js/brain/curriculum/grad.js
 var GRAD_MIXIN = {
   async runElaGradReal(ctx) {
     const SENTENCES = [
@@ -90329,7 +90605,7 @@ var GRAD_MIXIN = {
   }
 };
 
-// ../js/brain/curriculum/phd.js
+// js/brain/curriculum/phd.js
 var PHD_MIXIN = {
   async runElaPhDReal(ctx) {
     const SENTENCES = [
@@ -90737,7 +91013,7 @@ var PHD_MIXIN = {
   }
 };
 
-// ../js/brain/curriculum.js
+// js/brain/curriculum.js
 var LETTER_TICKS_BASE = 3;
 var SHORT_WORD_TICKS = 2;
 var LONG_WORD_TICKS = 1;
@@ -96158,12 +96434,12 @@ var Curriculum = class _Curriculum {
           emitOpts.minScore = 1.5;
           emitOpts.boostPersona = true;
           emitOpts.maxLetters = 32;
-          const letterSeed = cue ? function buildLetterSeed(letter) {
+          const letterSeed = cue ? (function buildLetterSeed(letter) {
             const oh = new Float32Array(26);
             const i = letter.charCodeAt(0) - 97;
             if (i >= 0 && i < 26) oh[i] = 1;
             return oh;
-          }(cue) : null;
+          })(cue) : null;
           const emissionPromise = cluster.generateSentenceAwait(letterSeed, emitOpts);
           const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve({ _timeout: true }), PER_CUE_TIMEOUT_MS));
           const raw = await Promise.race([emissionPromise, timeoutPromise]);
@@ -97734,42 +98010,72 @@ var Curriculum = class _Curriculum {
   _cellRunnerRaw(subject, grade) {
     if (subject === "ela") {
       switch (grade) {
+        // ELA Pre-K equational runner added per LAW 6 Part 1 under
+        // the Pre-K + K ONLY scope. Teaches phoneme perception +
+        // first letter-sound bindings before the alphabet sequence
+        // + name-binding that ELA-K assumes.
         case "pre-K":
           return async (ctx) => this.runElaPreK(ctx);
+        // ELA-K dispatches to the real equational teaching methods:
+        // alphabet-order exposure + letter-name
+        // GloVe binding + letter-sound phoneme-feature binding + reverse-
+        // pass TALK training + 3-pathway READ/THINK/TALK gate. The
+        // pre-Session-2 `runKindergarten` (frequency-ordered exposure
+        // via `_phaseLetters`) is retained in the class for reference
+        // and for any legacy caller that wants raw corpus letter
+        // exposure without the name/sound binding.
         case "kindergarten":
           return async (ctx) => this.runElaKReal(ctx);
+        // T14.24 Session 4 (2026-04-15) — ELA-G1 dispatches to the REAL
+        // teaching equations: curated CVC + Dolch sight words, letter-
+        // stream sem binding, real 3-pathway gate. Pre-Session-4
+        // `runGrade1` (corpus-frequency 1-3 letter word walk) is retained
+        // for legacy callers that want raw short-word corpus exposure.
         case "grade1":
           return async (ctx) => this.runElaG1Real(ctx);
+        // T14.24 Session 7 (2026-04-15) — ELA-G2 ships real teaching:
+        // digraphs (th/sh/ch/ph/wh/ck/ng) as distinct phon basins via
+        // digraph-specific phoneme feature hash + short phrase walks.
         case "grade2":
           return async (ctx) => this.runElaG2Real(ctx);
+        // T14.24 Session 8 — ELA-G3 ships SVO + tense sentence teaching
         case "grade3":
           return async (ctx) => this.runElaG3Real(ctx);
+        // T14.24 Session 9 — ELA-G4 + ELA-G5 ship real teaching via
+        // _teachSentenceList with their own hand-crafted sentence sets.
         case "grade4":
           return async (ctx) => this.runElaG4Real(ctx);
         case "grade5":
           return async (ctx) => this.runElaG5Real(ctx);
+        // T14.24 Session 10 — ELA-G6 real teaching (subordinate clauses)
         case "grade6":
           return async (ctx) => this.runElaG6Real(ctx);
+        // T14.24 Session 11 — ELA-G7/G8 ship real teaching
         case "grade7":
           return async (ctx) => this.runElaG7Real(ctx);
         case "grade8":
           return async (ctx) => this.runElaG8Real(ctx);
+        // T14.24 Session 12 — ELA-G9/G10 real teaching
         case "grade9":
           return async (ctx) => this.runElaG9Real(ctx);
         case "grade10":
           return async (ctx) => this.runElaG10Real(ctx);
+        // T14.24 Session 13 — ELA-G11/G12 real teaching
         case "grade11":
           return async (ctx) => this.runElaG11Real(ctx);
         case "grade12":
           return async (ctx) => this.runElaG12Real(ctx);
+        // T14.24 Session 14 — ELA-Col1/Col2 real teaching
         case "college1":
           return async (ctx) => this.runElaCol1Real(ctx);
         case "college2":
           return async (ctx) => this.runElaCol2Real(ctx);
+        // T14.24 Session 15 — ELA-Col3/Col4 real teaching
         case "college3":
           return async (ctx) => this.runElaCol3Real(ctx);
         case "college4":
           return async (ctx) => this.runElaCol4Real(ctx);
+        // T14.24 Session 16 — ELA-Grad/PhD real teaching
         case "grad":
           return async (ctx) => this.runElaGradReal(ctx);
         case "phd":
@@ -102655,7 +102961,7 @@ var Curriculum = class _Curriculum {
           label: `${label}-${w}`,
           signal: ac.signal
         });
-        const timeoutSentinel = Symbol("per-word-timeout");
+        const timeoutSentinel = /* @__PURE__ */ Symbol("per-word-timeout");
         let timer = null;
         const timeoutPromise = new Promise((resolve) => {
           timer = setTimeout(() => resolve(timeoutSentinel), PER_WORD_TIMEOUT_MS);
@@ -107353,6 +107659,7 @@ var Curriculum = class _Curriculum {
     }
     const _bagLeftovers = [];
     for (const _skip of _bagLeftovers) {
+      void _skip;
     }
     try {
       const _elapsedSec = Math.round((Date.now() - _vocabListStartMs) / 1e3);
@@ -112233,7 +112540,7 @@ Object.assign(Curriculum.prototype, COL4_MIXIN);
 Object.assign(Curriculum.prototype, GRAD_MIXIN);
 Object.assign(Curriculum.prototype, PHD_MIXIN);
 
-// ../js/brain/drug-scheduler.js
+// js/brain/drug-scheduler.js
 var GRADE_ORDER2 = [
   "pre-K",
   "kindergarten",
@@ -113573,7 +113880,7 @@ var DrugScheduler = class {
   }
 };
 
-// ../js/brain/drug-detector.js
+// js/brain/drug-detector.js
 var SUBSTANCE_SYNONYMS = {
   cannabis: [
     "weed",
@@ -113883,7 +114190,7 @@ function escapeRegex(s) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-// ../js/brain/engine.js
+// js/brain/engine.js
 var EventEmitter = class {
   constructor() {
     this._listeners = {};
@@ -115071,7 +115378,7 @@ var UnityBrain = class extends EventEmitter {
   // through the equations, not through AI model calls
 };
 
-// ../js/brain/peripherals/ai-providers.js
+// js/brain/peripherals/ai-providers.js
 var LOCAL_IMAGE_BACKENDS = [
   { name: "Automatic1111", url: "http://localhost:7860", probe: "/sdapi/v1/sd-models", kind: "a1111" },
   { name: "SD.Next / Forge", url: "http://localhost:7861", probe: "/sdapi/v1/sd-models", kind: "a1111" },
@@ -115788,7 +116095,7 @@ var SensoryAIProviders = class {
   }
 };
 
-// ../js/ai/pollinations.js
+// js/ai/pollinations.js
 var GEN_URL = "https://gen.pollinations.ai";
 var PollinationsAI = class _PollinationsAI {
   constructor(apiKey = null) {
@@ -115950,7 +116257,7 @@ var PollinationsAI = class _PollinationsAI {
   }
 };
 
-// ../js/brain/mindspace/audio.js
+// js/brain/mindspace/audio.js
 var VOX_BANK_VERSION = 1;
 var CHUNK = 32768;
 var AUDIO_TOL = 0.02;
@@ -116056,7 +116363,7 @@ function concatAudio(pcms, sampleRate = 24e3, xfadeMs = 30) {
   return out;
 }
 
-// ../js/io/voice-piper.js
+// js/io/voice-piper.js
 var WORKER_URL = "/js/voice-piper-worker.bundle.js";
 var _worker = null;
 var _seq = 0;
@@ -116115,7 +116422,7 @@ function isVoicePreloading() {
   return _readyPromise != null;
 }
 
-// ../js/io/voice.js
+// js/io/voice.js
 var VoiceIO = class {
   constructor() {
     this._listening = false;
@@ -116333,11 +116640,6 @@ var VoiceIO = class {
         }
         throw new Error("audio locked (autoplay policy) \u2014 interact with the page once");
       }
-    }
-    try {
-      const _agePitch = this._agePreset && this._agePreset().pitch || 1;
-      if (Math.abs(_agePitch - 1) >= 0.01) pcm = this._pitchShiftOLA(pcm, _agePitch);
-    } catch {
     }
     if (pcm && pcm.length > 0) {
       const fadeN = Math.min(pcm.length >> 1, Math.max(1, Math.round(sampleRate * 4e-3)));
@@ -116599,54 +116901,12 @@ var VoiceIO = class {
    * nova (bright/young), coral (mid), shimmer (warm adult).
    */
   _agePreset() {
-    const a = this._age || 25;
-    if (a < 11) return { voice: "nova", rate: 1.04, pitch: 1.14, style: `You are a ${a}-year-old girl. Speak in the natural bright voice of a ${a}-year-old girl.` };
-    if (a < 14) return { voice: "nova", rate: 1.02, pitch: 1.09, style: `You are a ${a}-year-old girl. Speak in the natural voice of a ${a}-year-old girl.` };
-    if (a < 18) return { voice: "coral", rate: 1.01, pitch: 1.05, style: `You are a ${a}-year-old teenage girl. Speak in the natural voice of a ${a}-year-old teenage girl.` };
-    if (a < 23) return { voice: "shimmer", rate: 1, pitch: 1.02, style: `You are a ${a}-year-old young woman. Speak in the natural voice of a ${a}-year-old young woman.` };
-    return { voice: "shimmer", rate: 1, pitch: 1, style: `You are a ${a}-year-old woman. Speak in the natural warm voice of a ${a}-year-old woman.` };
+    return { voice: "shimmer", rate: 1, pitch: 1, style: "Speak in her natural warm voice, verbatim." };
   }
-  /**
-   * VOXREF.4 — duration-preserving PITCH SHIFT (overlap-add). Unlike playbackRate
-   * (which couples pitch + tempo → chipmunk), this raises/lowers pitch by `ratio`
-   * while keeping the SAME duration: Hann-windowed OLA time-stretch by `ratio`,
-   * then linear-resample back to the original length → net pitch × ratio, tempo
-   * unchanged. Deterministic (no RNG). Returns the input untouched when ratio≈1.0
-   * (so the adult V4 sentence lane is never processed). Bounded single pass.
-   */
-  _pitchShiftOLA(pcm, ratio) {
-    if (!pcm || pcm.length === 0 || !(ratio > 0) || Math.abs(ratio - 1) < 0.01) return pcm;
-    const N = pcm.length;
-    const win = 512;
-    const hopA = win >> 1;
-    const hopS = Math.max(1, Math.round(hopA * ratio));
-    const winFn = new Float32Array(win);
-    for (let i = 0; i < win; i++) winFn[i] = 0.5 - 0.5 * Math.cos(2 * Math.PI * i / (win - 1));
-    const outLen = Math.ceil(N * ratio) + win;
-    const stretched = new Float32Array(outLen);
-    const norm = new Float32Array(outLen);
-    let a = 0, s = 0;
-    while (a + win <= N) {
-      for (let i = 0; i < win; i++) {
-        const w = winFn[i];
-        stretched[s + i] += pcm[a + i] * w;
-        norm[s + i] += w;
-      }
-      a += hopA;
-      s += hopS;
-    }
-    const stretchedLen = s + win;
-    for (let i = 0; i < stretchedLen; i++) if (norm[i] > 1e-6) stretched[i] /= norm[i];
-    const out = new Float32Array(N);
-    const step = stretchedLen / N;
-    for (let i = 0; i < N; i++) {
-      const x = i * step;
-      const i0 = Math.floor(x), frac = x - i0;
-      const s0 = stretched[i0] || 0, s1 = stretched[i0 + 1] || 0;
-      out[i] = s0 + (s1 - s0) * frac;
-    }
-    return out;
-  }
+  // _pitchShiftOLA — REMOVED (Gee 2026-07-15: "scrap the per age/grade modulation").
+  // The duration-preserving OLA pitch shift existed ONLY to age-pitch her voice;
+  // with the age modulation scrapped it had no caller. Her voice is the untouched
+  // original — no pitch shifting anywhere.
   setApiKey(key) {
     this._apiKey = key;
     return this;
@@ -116829,7 +117089,7 @@ var VoiceIO = class {
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.lang = "en-US";
       utterance.rate = 1;
-      utterance.pitch = 1.1;
+      utterance.pitch = 1;
       const voices = speechSynthesis.getVoices();
       const preferred = [
         "Samantha",
@@ -116878,7 +117138,7 @@ var VoiceIO = class {
   }
 };
 
-// ../js/io/permissions.js
+// js/io/permissions.js
 var STORAGE_KEY3 = "unity_brain_permissions";
 async function requestPermissions(opts = {}) {
   const wantMic = opts.requestMic !== false;
@@ -116920,7 +117180,7 @@ async function requestPermissions(opts = {}) {
   return result;
 }
 
-// ../js/storage.js
+// js/storage.js
 var PREFIX = "unity_brain_";
 var MAX_HISTORY = 50;
 function prefixKey(key) {
@@ -117173,7 +117433,7 @@ var UserStorage = class {
   }
 };
 
-// ../js/ui/sandbox.js
+// js/ui/sandbox.js
 var MAX_ACTIVE_COMPONENTS = 10;
 var Sandbox = class {
   /** @param {string} containerId — DOM id of the sandbox container */
@@ -117569,7 +117829,7 @@ ${scopedInner}
   }
 };
 
-// ../js/ui/chat-panel.js
+// js/ui/chat-panel.js
 var ChatPanel = class {
   constructor({ storage: storage2, onSend, onMicToggle }) {
     this._storage = storage2;
@@ -117740,7 +118000,7 @@ var ChatPanel = class {
   }
 };
 
-// ../js/ui/brain-viz.js
+// js/ui/brain-viz.js
 var TOTAL_NEURONS2 = 1e3;
 var BrainVisualizer = class {
   constructor() {
@@ -118807,7 +119067,7 @@ var BrainVisualizer = class {
   }
 };
 
-// ../js/ui/sensory-status.js
+// js/ui/sensory-status.js
 var TOAST_DURATION = 6e3;
 var MAX_TOASTS = 4;
 var SHOWN_BOOT_INVENTORY = { image: false, vision: false };
@@ -119009,7 +119269,7 @@ ${vis}${status.visionPaused ? "\n\n\u26A0 vision paused" : ""}`;
 };
 var sensoryStatus = new SensoryStatusUI();
 
-// ../js/ui/brain-event-detectors.js
+// js/ui/brain-event-detectors.js
 var CLUSTER_IDX = {
   cortex: 0,
   hippocampus: 1,
@@ -119416,7 +119676,7 @@ function detectBrainEvents(currentState, previousState, history2) {
 var BRAIN_EVENT_CATALOG = DETECTORS.map((d) => d.name || "anonymous");
 var CLUSTER_KEYS = ["cortex", "hippocampus", "amygdala", "basalGanglia", "cerebellum", "hypothalamus", "mystery"];
 
-// ../js/ui/brain-3d.js
+// js/ui/brain-3d.js
 var TOTAL = 1e3;
 var MAX_RENDER_NEURONS_PER_CLUSTER = 2e4;
 var AFTERGLOW_DECAY = 0.92;
@@ -122050,7 +122310,7 @@ Probes: ${ps.totalProbes} total, ${ps.totalPasses} pass, ${ps.totalFails} fail`;
   }
 };
 
-// ../js/brain/mindspace/governor.js
+// js/brain/mindspace/governor.js
 var ProcessGovernor = class {
   constructor(opts = {}) {
     this.baseUnits = opts.baseUnits || 64;
@@ -122124,7 +122384,7 @@ function clamp01(x) {
   return Math.max(0, Math.min(1, x));
 }
 
-// ../js/brain/mindspace/gpu.js
+// js/brain/mindspace/gpu.js
 var MAX_LINE = 2048;
 var PARITY_TOL = 0.01;
 var LIFT_WGSL = `
@@ -122670,6 +122930,18 @@ var MindSpaceGPU = class {
   traceField(rec, opts = {}) {
     return traceField(rec, opts);
   }
+  traceLineArt(rec, opts = {}) {
+    return traceLineArt(rec, opts);
+  }
+  traceColorFill(rec, opts = {}) {
+    return traceColorFill(rec, opts);
+  }
+  stylizeField(rec, opts = {}) {
+    return stylizeField(rec, opts);
+  }
+  composeFields(recs, opts = {}) {
+    return composeFields(recs, opts);
+  }
   // ── DE-NOVO IMAGINATION (UVM-INT.3) — cortex state → field C, no camera/file ─────────────────
   // Her current mind-state (any cortex activation vector — sem region, percept, emission
   // embedding) is folded into a small grayscale image and equationalized into a REAL field C.
@@ -122767,21 +123039,37 @@ var MindSpaceGPU = class {
       else if (s.type === "point") dot(s.x, s.y, Math.max(0, Math.min(4, s.r ?? 1)), rgb);
       else if (s.type === "poly" && Array.isArray(s.pts)) {
         for (let i = 0; i + 1 < s.pts.length; i++) line(s.pts[i][0], s.pts[i][1], s.pts[i + 1][0], s.pts[i + 1][1], rgb);
+      } else if (s.type === "fill" && Array.isArray(s.pts) && s.pts.length >= 3) {
+        let mnx = 1, mny = 1, mxx = 0, mxy = 0;
+        for (const p of s.pts) {
+          if (p[0] < mnx) mnx = p[0];
+          if (p[1] < mny) mny = p[1];
+          if (p[0] > mxx) mxx = p[0];
+          if (p[1] > mxy) mxy = p[1];
+        }
+        const xa = Math.round(mnx * (W - 1)), xb = Math.round(mxx * (W - 1)), ya = Math.round(mny * (H - 1)), yb = Math.round(mxy * (H - 1));
+        for (let yy = ya; yy <= yb; yy++) for (let xx = xa; xx <= xb; xx++) {
+          if (xx < 0 || xx >= W || yy < 0 || yy >= H) continue;
+          const o = (yy * W + xx) * 4;
+          data[o] = rgb[0];
+          data[o + 1] = rgb[1];
+          data[o + 2] = rgb[2];
+          data[o + 3] = 255;
+        }
       }
     }
     const rec = equationalizeImageData({ width: W, height: H, data });
     if (rec) rec.fidelity = { psnr_db: null, source: "mindspace-sketch" };
     return rec;
   }
-  // DRAW.1 — letters as PENCIL STROKES (her own hand), not a raster
-  // stamp. Converts each character's 5x7 bitmap (FONT5X7 — single source of
-  // truth shared with the glyph raster) into line strokes for sketch():
-  // horizontal + vertical runs of lit cells become jittered line segments,
-  // isolated single cells become points. `wobble` scales the hand-jitter.
-  // Jitter comes ONLY from live affect (arousal/fear shake any hand) plus
-  // natural micro-tremor, annealed by practiced skill — NEVER from an
-  // age/grade mimicry constant (operator directive: no hand-wobble to fake
-  // children's writing; her line quality is her trained state, period).
+  // DRAW.1 — letters as PENCIL STROKES (her own hand), not a raster stamp.
+  // Converts each character's 5x7 bitmap (FONT5X7 — single source of truth shared
+  // with the glyph raster) into line strokes for sketch(): horizontal + vertical
+  // runs of lit cells become line segments, isolated single cells become points.
+  // NO WOBBLE / NO JITTER (Gee 2026-07-15: "NO FUCKING WOBBLE ... wobble = dumbing
+  // her down"). Her handwriting is her CLEAN trained hand — crisp + legible, never
+  // an artificial tremor faking imperfect/child writing. j() is a hard 0 and
+  // opts.wobble is ignored by design (her line quality is her trained state, period).
   // Normalized [0,1] canvas coords, bounded 12 chars.
   glyphStrokes(text, opts = {}) {
     const t = String(text || "").toUpperCase().slice(0, 12);
@@ -122789,11 +123077,10 @@ var MindSpaceGPU = class {
     const x0 = Math.max(0, Math.min(1, opts.x ?? 0.1));
     const y0 = Math.max(0, Math.min(1, opts.y ?? 0.78));
     const size = Math.max(0.03, Math.min(0.3, opts.size ?? 0.08));
-    const wob = Math.max(0, Math.min(0.5, opts.wobble ?? 0.02));
     const rgb = opts.rgb;
     const cw = size * (5 / 7);
     const adv = cw * 1.35;
-    const j = () => (Math.random() * 2 - 1) * wob * size;
+    const j = () => 0;
     const strokes = [];
     let cx = x0;
     for (const ch of t) {
@@ -122868,7 +123155,7 @@ var MindSpaceGPU = class {
   // LEARN the knowledge into sem-space
 };
 
-// ../js/brain/remote-brain.js
+// js/brain/remote-brain.js
 var EventEmitter2 = class {
   constructor() {
     this._listeners = {};
@@ -123430,7 +123717,7 @@ async function detectRemoteBrain(url = "ws://localhost:7525") {
   return new RemoteBrain(url);
 }
 
-// ../js/app.js
+// js/app.js
 console.log(`%c[Unity] app.js ${FULL} module loaded`, "color:#ff4d9a;font-weight:bold");
 if (typeof window !== "undefined") {
   window.addEventListener("error", (e) => {
