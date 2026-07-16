@@ -107141,6 +107141,9 @@ var Curriculum = class _Curriculum {
     const motorFirstLetter = buildPattern(motorSize, firstLetterOneHot, wScratch.motorFirstLetterBuf);
     for (let rep = 0; rep < reps; rep++) {
       if (typeof globalThis._brainShutdownRequested !== "undefined" && globalThis._brainShutdownRequested) return;
+      const _isFinalRep = rep === reps - 1;
+      cluster._teachIntermediateRep = !_isFinalRep;
+      cluster._teachFinalRepSampleEveryN = _isFinalRep ? 5 : 0;
       for (let i = 0; i < letters.length; i++) {
         const ch = letters[i];
         const chOneHot = encodeLetter(ch);
@@ -107279,6 +107282,8 @@ var Curriculum = class _Curriculum {
       }
       if (typeof _microtask === "function") await _microtask();
     }
+    cluster._teachIntermediateRep = false;
+    cluster._teachFinalRepSampleEveryN = 0;
     this.stats.shortWordsSeen++;
     const _wordIntElapsedMs = Date.now() - _wordIntStartMs;
     try {
