@@ -74,6 +74,23 @@ class MindSpaceWorkerProxy {
       ? this._local.glyphStrokes(...args)
       : [];
   }
+
+  // Pure field-C → HER HAND'S STROKES (CDF 9/7 inverse → Sobel edges → edge-
+  // follow polylines → Douglas-Peucker → field-colored). Like glyphStrokes it's
+  // pure geometry over the rec with NO engine/GPU state, so it runs SYNC on the
+  // local instance. It MUST stay sync: _drawConcept / _practiceDrawFromMemory
+  // call it as `strokes = this.mindSpace.traceField(...)` (NOT awaited) — routing
+  // it through the worker would hand back a Promise (no .length), every draw
+  // would silently fall to null, and she'd look things up without ever drawing.
+  // THIS omission was exactly that bug: the proxy lacked traceField, so
+  // _drawConcept's guard (`typeof this.mindSpace.traceField !== 'function'`)
+  // bailed on EVERY call and no drawing was ever produced. (Gee 2026-07-15:
+  // "twn - twenty lookups in a row and not one single drawing has been attempted".)
+  traceField(...args) {
+    return (this._local && typeof this._local.traceField === 'function')
+      ? this._local.traceField(...args)
+      : [];
+  }
 }
 
 module.exports = { MindSpaceWorkerProxy };

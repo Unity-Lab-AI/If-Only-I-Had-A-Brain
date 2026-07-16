@@ -51,3 +51,5 @@ _TODO zeroed 2026-07-15 — all completed tasks migrated VERBATIM to `docs/FINAL
 _Add new tasks below, each with Gee's verbatim words (LAW #0), `[~]` while in flight, migrated to FINALIZED + removed from here when done._
 
 _MINDS-EYE FREEZE FIX migrated VERBATIM to `docs/FINALIZED.md` (§2026-07-15 MINDS-EYE FREEZE) — non-blocking draw path shipped, awaiting dashboard Update & SAVESTART. No open tasks._
+
+_MINDS-EYE NEVER DRAWS (proxy missing traceField) migrated VERBATIM to `docs/FINALIZED.md` (§2026-07-15 MINDS-EYE NEVER DRAWS) — proxy `traceField` forward + look-up→draw 1:1 shipped + proven (traceField→20 strokes), awaiting dashboard Update & SAVESTART. No open tasks._
