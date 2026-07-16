@@ -1422,10 +1422,10 @@ const SERVER_CHAT_MIXIN = {
   // DRAWABLE (noun) parts. Needs ≥2 or it declines (honest — no fake combination).
   // SLOW (may fetch) → always call DETACHED (background), never awaited in the tick.
   async _drawImagined(concepts) {
-    if (!this.mindSpace || typeof this.mindSpace.traceLineArt !== 'function' || typeof this.mindSpace.sketch !== 'function') return null;
-    const keys = [], parts = [];
+    if (!this.mindSpace || typeof this.mindSpace.composeFields !== 'function') return null;
+    const keys = [], recs = [];
     for (const c of (Array.isArray(concepts) ? concepts : [])) {
-      if (parts.length >= 3) break;
+      if (recs.length >= 3) break;
       const key = (typeof this._vmContentTokens === 'function' ? (this._vmContentTokens(c)[0] || '') : String(c || '').toLowerCase());
       if (!key || keys.includes(key)) continue;
       if (typeof this._conceptIsDrawable === 'function' && !(await this._conceptIsDrawable(key))) continue;   // only compose DRAWABLE (noun) concepts
@@ -1439,24 +1439,17 @@ const SERVER_CHAT_MIXIN = {
         try { const f = await this._fetchReferenceAndGround(c); if (f) recP = f; } catch { /* nf */ }
       }
       if (!recP) continue;
-      let s = null;
-      try { s = this.mindSpace.traceLineArt(recP, { traceSide: 80, maxStrokes: 28, edgeThresh: 0.16, minLenFrac: 0.09, simplify: 1.0, ink: [228, 226, 230] }); } catch { s = null; }
-      if (s && s.length) { parts.push(s); keys.push(key); }
+      recs.push(recP); keys.push(key);
     }
-    if (parts.length < 2) return null;   // need ≥2 grounded parts to imagine a combination
-    const n = parts.length, placed = [];
-    for (let i = 0; i < n; i++) {                       // lay parts across the page, staggered = a scene
-      const sx = 0.86 / n, ox = 0.07 + i * (0.86 / n);
-      const sy = 0.60, oy = 0.10 + (i % 2) * 0.14;
-      for (const st of parts[i]) {
-        if (st && st.type === 'poly' && Array.isArray(st.pts)) placed.push({ type: 'poly', rgb: st.rgb, pts: st.pts.map(p => [ox + sx * p[0], oy + sy * p[1]]) });
-      }
-    }
-    if (!placed.length) return null;
-    try { for (const g of this._labelStrokes(keys.join('+'))) placed.push(g); } catch { /* label best-effort */ }
+    if (recs.length < 2) return null;   // need ≥2 grounded parts to imagine a combination
+    // COMPOSE IN COLOUR — each part rendered as a coloured field-let into its region
+    // (composeFields), NOT white-pencil strokes (Gee: "NO MORE PENCIL ART"). The
+    // imagined scene looks like her beautiful recreations, combined.
     const side = (typeof this._drawCanvasSide === 'function') ? this._drawCanvasSide() : 96;
+    let labelStrokes = [];
+    try { labelStrokes = this._labelStrokes(keys.join('+')); } catch { /* nf */ }
     let drawn = null;
-    try { drawn = await this.mindSpace.sketch(placed, { maxSide: side, mood: { arousal: this.arousal, valence: this.valence } }); } catch { return null; }
+    try { drawn = this.mindSpace.composeFields(recs, { side: Math.max(160, Math.min(side, 320)), bands: 7, labelStrokes }); } catch { return null; }
     if (!drawn) return null;
     this._lastSketchLabel = 'canvas:imagine:' + keys.join('+');
     return { rec: drawn, label: this._lastSketchLabel, source: 'canvas:imagine:' + keys.join('+'), imagined: true };
