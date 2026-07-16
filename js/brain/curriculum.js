@@ -18291,6 +18291,19 @@ export class Curriculum {
     for (let rep = 0; rep < reps; rep++) {
       if (typeof globalThis._brainShutdownRequested !== 'undefined' && globalThis._brainShutdownRequested) return;
 
+      // CELL-TEACH SPEED (Gee 2026-07-15) — the per-letter cost. WORD-INT scaled
+      // ~2s/letter (blow=7s → caterpillar=25s) because the per-letter Layer 1+2
+      // _crossRegionHebbian ran the probe-critical CPU-shadow Oja (letter_to_phon
+      // + letter_to_motor) on EVERY rep. The GPU hebbianBound fires every rep
+      // (weights current); the post-teach gate probe reads the CPU shadow only
+      // ONCE per word — so mirror the PROVEN _teachWordEmission fast path: update
+      // the CPU shadow only on the FINAL rep, sampled every 5th call. Cluster-level
+      // flags read by cluster/hebbian.js (skipCpuWhitelist / final-rep sampling);
+      // reset after the loop so they never leak to other teach paths.
+      const _isFinalRep = rep === reps - 1;
+      cluster._teachIntermediateRep = !_isFinalRep;
+      cluster._teachFinalRepSampleEveryN = _isFinalRep ? 5 : 0;
+
       // === Layers 1+2 (per-letter identity): letter(ch)+phon(ch)+motor(ch) ===
       // Sem is NOT overlaid during per-letter fires. Overlaying sem(word)
       // on every letter (c, a, t for "cat") writes three conflicting
@@ -18491,6 +18504,10 @@ export class Curriculum {
 
       if (typeof _microtask === 'function') await _microtask();
     }
+    // CELL-TEACH SPEED — reset the final-rep CPU-Oja gate flags so they never
+    // leak into other teach paths (mirrors _teachWordEmission's post-loop reset).
+    cluster._teachIntermediateRep = false;
+    cluster._teachFinalRepSampleEveryN = 0;
 
     this.stats.shortWordsSeen++;
     // Brain Events DONE broadcast (I.11 closure). Pairs with the START
