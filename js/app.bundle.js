@@ -60490,17 +60490,42 @@ function stylizeField(rec, opts = {}) {
       data[o + 2] = rgb[2];
       data[o + 3] = 255;
     };
+    const disc = (nx, ny, r, rgb) => {
+      for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) if (dx * dx + dy * dy <= r * r) put(nx + dx / (gw - 1), ny + dy / (gh - 1), rgb);
+    };
+    const wRad = (w) => typeof w === "number" && w > 0 ? Math.max(1, Math.round(w * (gw - 1) * 0.5)) : 0;
     for (const s of ls) {
       if (!s) continue;
       const rgb = Array.isArray(s.rgb) ? s.rgb : [222, 220, 226];
-      if (s.type === "line") {
+      if (s.type === "fill" && Array.isArray(s.pts) && s.pts.length >= 3) {
+        let mnx = 1, mny = 1, mxx = 0, mxy = 0;
+        for (const p of s.pts) {
+          if (p[0] < mnx) mnx = p[0];
+          if (p[1] < mny) mny = p[1];
+          if (p[0] > mxx) mxx = p[0];
+          if (p[1] > mxy) mxy = p[1];
+        }
+        const xa = Math.max(0, Math.round(mnx * (gw - 1))), xb = Math.min(gw - 1, Math.round(mxx * (gw - 1)));
+        const ya = Math.max(0, Math.round(mny * (gh - 1))), yb = Math.min(gh - 1, Math.round(mxy * (gh - 1)));
+        for (let yy = ya; yy <= yb; yy++) for (let xx = xa; xx <= xb; xx++) {
+          const o = (yy * gw + xx) * 4;
+          data[o] = rgb[0];
+          data[o + 1] = rgb[1];
+          data[o + 2] = rgb[2];
+          data[o + 3] = 255;
+        }
+      } else if (s.type === "line") {
+        const r = wRad(s.w);
         const steps = Math.max(2, Math.round(Math.hypot((s.x1 - s.x0) * gw, (s.y1 - s.y0) * gh)));
         for (let k = 0; k <= steps; k++) {
-          const t = k / steps;
-          put(s.x0 + (s.x1 - s.x0) * t, s.y0 + (s.y1 - s.y0) * t, rgb);
+          const t = k / steps, x = s.x0 + (s.x1 - s.x0) * t, y = s.y0 + (s.y1 - s.y0) * t;
+          if (r > 0) disc(x, y, r, rgb);
+          else put(x, y, rgb);
         }
       } else if (s.type === "point") {
-        put(s.x, s.y, rgb);
+        const r = wRad(s.w);
+        if (r > 0) disc(s.x, s.y, r, rgb);
+        else put(s.x, s.y, rgb);
       }
     }
   }
@@ -122964,20 +122989,23 @@ var MindSpaceGPU = class {
     const dot = (x, y, r, rgb) => {
       for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) if (dx * dx + dy * dy <= r * r) px(x + dx / (W - 1), y + dy / (H - 1), rgb);
     };
-    const line = (x0, y0, x1, y1, rgb) => {
+    const wRad = (w) => typeof w === "number" && w > 0 ? Math.max(1, Math.round(w * (W - 1) * 0.5)) : 0;
+    const line = (x0, y0, x1, y1, rgb, w) => {
+      const r = wRad(w);
       const steps = Math.max(2, Math.round(Math.hypot((x1 - x0) * W, (y1 - y0) * H)));
       for (let i = 0; i <= steps; i++) {
-        const t = i / steps;
-        px(x0 + (x1 - x0) * t, y0 + (y1 - y0) * t, rgb);
+        const t = i / steps, x = x0 + (x1 - x0) * t, y = y0 + (y1 - y0) * t;
+        if (r > 0) dot(x, y, r, rgb);
+        else px(x, y, rgb);
       }
     };
     for (const s of Array.isArray(strokes) ? strokes : []) {
       if (!s) continue;
       const rgb = s.rgb || ink;
-      if (s.type === "line") line(s.x0, s.y0, s.x1, s.y1, rgb);
-      else if (s.type === "point") dot(s.x, s.y, Math.max(0, Math.min(4, s.r ?? 1)), rgb);
+      if (s.type === "line") line(s.x0, s.y0, s.x1, s.y1, rgb, s.w);
+      else if (s.type === "point") dot(s.x, s.y, Math.max(wRad(s.w), Math.max(0, Math.min(4, s.r ?? 1))), rgb);
       else if (s.type === "poly" && Array.isArray(s.pts)) {
-        for (let i = 0; i + 1 < s.pts.length; i++) line(s.pts[i][0], s.pts[i][1], s.pts[i + 1][0], s.pts[i + 1][1], rgb);
+        for (let i = 0; i + 1 < s.pts.length; i++) line(s.pts[i][0], s.pts[i][1], s.pts[i + 1][0], s.pts[i + 1][1], rgb, s.w);
       } else if (s.type === "fill" && Array.isArray(s.pts) && s.pts.length >= 3) {
         let mnx = 1, mny = 1, mxx = 0, mxy = 0;
         for (const p of s.pts) {
@@ -123011,7 +123039,7 @@ var MindSpaceGPU = class {
   // opts.wobble is ignored by design (her line quality is her trained state, period).
   // Normalized [0,1] canvas coords, bounded 12 chars.
   glyphStrokes(text, opts = {}) {
-    const t = String(text || "").toUpperCase().slice(0, 12);
+    const t = String(text || "").toUpperCase().slice(0, 16);
     if (!t) return [];
     const x0 = Math.max(0, Math.min(1, opts.x ?? 0.1));
     const y0 = Math.max(0, Math.min(1, opts.y ?? 0.78));
@@ -123020,33 +123048,28 @@ var MindSpaceGPU = class {
     const colors = Array.isArray(opts.colors) && opts.colors.length ? opts.colors : null;
     const slant = Math.max(-0.5, Math.min(0.5, opts.slant || 0));
     const bold = !!opts.bold;
-    const shadow = Array.isArray(opts.shadow) ? opts.shadow : null;
     const font = typeof opts.font === "string" ? opts.font : "block";
     const gh = size * (font === "tall" ? 1.3 : 1);
-    const boldOff = size * 0.055;
     const cw = size * (5 / 7) * (font === "wide" ? 1.35 : font === "tall" ? 0.8 : 1);
     const adv = cw * 1.35;
+    const thick = Math.max(4e-3, opts.thickness ?? size * (bold ? 0.15 : 0.1));
+    const silhouette = Array.isArray(opts.silhouette) ? opts.silhouette : null;
+    const highlight = Array.isArray(opts.highlight) ? opts.highlight : null;
     const shx = (x, y) => x + slant * (y0 + gh - y);
     const strokes = [];
     let cx = x0, li = 0;
-    const rawLine = (ax, ay, bx, by, rgb) => {
-      strokes.push({ type: "line", x0: shx(ax, ay), y0: ay, x1: shx(bx, by), y1: by, rgb });
-      if (bold) strokes.push({ type: "line", x0: shx(ax, ay) + boldOff, y0: ay, x1: shx(bx, by) + boldOff, y1: by, rgb });
-    };
     const line = (ax, ay, bx, by, rgb) => {
-      if (shadow) strokes.push({ type: "line", x0: shx(ax, ay) + boldOff * 0.9, y0: ay + boldOff * 0.9, x1: shx(bx, by) + boldOff * 0.9, y1: by + boldOff * 0.9, rgb: shadow });
       if (font === "bubble") {
         const nx = -(by - ay), ny = bx - ax, nl = Math.hypot(nx, ny) || 1;
         const off = size * 0.028, ox = nx / nl * off, oy = ny / nl * off;
-        rawLine(ax + ox, ay + oy, bx + ox, by + oy, rgb);
-        rawLine(ax - ox, ay - oy, bx - ox, by - oy, rgb);
+        strokes.push({ type: "line", x0: shx(ax + ox, ay + oy), y0: ay + oy, x1: shx(bx + ox, by + oy), y1: by + oy, rgb, w: thick * 0.6 });
+        strokes.push({ type: "line", x0: shx(ax - ox, ay - oy), y0: ay - oy, x1: shx(bx - ox, by - oy), y1: by - oy, rgb, w: thick * 0.6 });
         return;
       }
-      rawLine(ax, ay, bx, by, rgb);
+      strokes.push({ type: "line", x0: shx(ax, ay), y0: ay, x1: shx(bx, by), y1: by, rgb, w: thick });
     };
     const dot = (x, y, rgb) => {
-      strokes.push({ type: "point", x: shx(x, y), y, r: font === "bubble" ? 1 : 0, rgb });
-      if (bold) strokes.push({ type: "point", x: shx(x, y) + boldOff, y, r: 0, rgb });
+      strokes.push({ type: "point", x: shx(x, y), y, r: font === "bubble" ? 1 : 0, rgb, w: thick });
     };
     for (const ch of t) {
       const glyph = FONT5X7[ch] || null;
@@ -123101,11 +123124,21 @@ var MindSpaceGPU = class {
       if (cx > 0.96) break;
     }
     if (opts.underline) {
-      const uy = y0 + gh * 1.08, ux1 = Math.min(0.96, cx - adv * 0.25), uc = colors ? colors[0] : baseRgb;
-      strokes.push({ type: "line", x0, y0: uy, x1: ux1, y1: uy, rgb: uc });
-      if (bold) strokes.push({ type: "line", x0, y0: uy + boldOff, x1: ux1, y1: uy + boldOff, rgb: uc });
+      const uy = y0 + gh * 1.08, ux1 = Math.min(0.98, cx - adv * 0.25), uc = colors ? colors[0] : baseRgb;
+      strokes.push({ type: "line", x0, y0: uy, x1: ux1, y1: uy, rgb: uc, w: thick });
     }
-    return strokes;
+    const out = [];
+    if (highlight) {
+      const padX = size * 0.18, padY = size * 0.22;
+      const hx1 = Math.min(0.995, cx - adv * 0.25 + padX + (slant > 0 ? slant * gh : 0));
+      const hy1 = y0 + gh * (opts.underline ? 1.16 : 1) + padY;
+      out.push({ type: "fill", pts: [[Math.max(5e-3, x0 - padX), Math.max(5e-3, y0 - padY)], [hx1, Math.max(5e-3, y0 - padY)], [hx1, Math.min(0.995, hy1)], [Math.max(5e-3, x0 - padX), Math.min(0.995, hy1)]], rgb: highlight });
+    }
+    if (silhouette) {
+      for (const s of strokes) out.push({ ...s, rgb: silhouette, w: (s.w || thick) * 1.9 });
+    }
+    for (const s of strokes) out.push(s);
+    return out;
   }
   // MS.K1 — Unity KNOWS her mind-space: all file types, equations, and how to solve them.
   // Her cognition answers "what is this file / how do I solve it" from the equation itself.

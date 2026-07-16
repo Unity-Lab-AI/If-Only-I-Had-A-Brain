@@ -1517,14 +1517,21 @@ const SERVER_CHAT_MIXIN = {
     // letter SHAPE itself varies too: block / serif / dots / bubble / tall / wide
     // (rendered differently from the one FONT5X7 grid in glyphStrokes).
     const FONTS = ['block', 'serif', 'dots', 'bubble', 'tall', 'wide'];
+    // PLACEMENT (Gee 2026-07-16: "in differnt places on the image to fit so its
+    // not always a banner at the bottom") — seeded anchor around the page.
+    const ANCHORS = ['bottom-center', 'top-left', 'top-right', 'bottom-left', 'bottom-right', 'top-center'];
     return {
       colors,
       font: FONTS[(seed >> 9) % FONTS.length],
+      anchor: ANCHORS[(seed >> 11) % ANCHORS.length],
       bold: ((seed >> 3) & 1) === 0,
       slant: ((seed >> 4) % 3 === 0) ? (0.13 + (seed % 7) * 0.012) : 0,
       underline: ((seed >> 6) & 1) === 0,
-      shadow: ((seed >> 7) % 3 === 0) ? [18, 16, 22] : null,
-      size: 0.07 + ((seed >> 8) % 4) * 0.006,
+      // silhouette ALWAYS (dark backing — "sillouetted"); highlight chip seeded
+      // ~1/3 (a dark hue-tinted band behind the word — "highlighted").
+      silhouette: [16, 14, 20],
+      highlight: ((seed >> 7) % 3 === 0) ? hsl(baseHue, 0.45, 0.14) : null,
+      size: 0.075 + ((seed >> 8) % 4) * 0.008,
     };
   },
 
@@ -1534,11 +1541,33 @@ const SERVER_CHAT_MIXIN = {
   // hand + dynamic dazzle style (see _labelStyle). Returns styled glyph strokes.
   _labelStrokes(key) {
     if (!key || !this.mindSpace || typeof this.mindSpace.glyphStrokes !== 'function') return [];
-    const label = String(key).slice(0, 10);
-    const st = (typeof this._labelStyle === 'function') ? this._labelStyle(key) : { colors: [[222, 220, 226]], size: 0.075 };
-    const _wideK = st.font === 'wide' ? 1.35 : st.font === 'tall' ? 0.8 : 1;
-    const x = Math.max(0.03, 0.5 - label.length * 0.033 * (st.size / 0.075) * _wideK - (st.slant ? 0.03 : 0));
-    return this.mindSpace.glyphStrokes(label, { x, y: 0.9, size: st.size, font: st.font, colors: st.colors, bold: st.bold, slant: st.slant, underline: st.underline, shadow: st.shadow }) || [];
+    // FULL WORD, AUTO-FIT (Gee 2026-07-16: "the last few letters of longer words
+    // are always being cut off") — no more 10-char slice: the glyph size SHRINKS
+    // so the whole word always fits the available width. Never truncated.
+    const label = String(key).slice(0, 14);
+    const st = (typeof this._labelStyle === 'function') ? this._labelStyle(key) : { colors: [[222, 220, 226]], size: 0.075, anchor: 'bottom-center', silhouette: [16, 14, 20] };
+    const wideK = st.font === 'wide' ? 1.35 : st.font === 'tall' ? 0.8 : 1;
+    const advPerChar = (5 / 7) * wideK * 1.35;   // glyph advance per char, in units of `size` (mirrors glyphStrokes)
+    const MARGIN = 0.04;
+    const availW = 1 - 2 * MARGIN - (st.slant ? 0.05 : 0);
+    let size = st.size;
+    if (label.length * advPerChar * size > availW) size = availW / (label.length * advPerChar);
+    size = Math.max(0.032, size);
+    const wordW = label.length * advPerChar * size;
+    const ghK = st.font === 'tall' ? 1.3 : 1;
+    const wordH = size * ghK * (st.underline ? 1.2 : 1.05);
+    // VARIED PLACEMENT — anchor from the style seed, not a fixed bottom banner.
+    let x, y;
+    switch (st.anchor) {
+      case 'top-left':     x = MARGIN; y = MARGIN + 0.015; break;
+      case 'top-right':    x = 1 - MARGIN - wordW; y = MARGIN + 0.015; break;
+      case 'top-center':   x = 0.5 - wordW / 2; y = MARGIN + 0.015; break;
+      case 'bottom-left':  x = MARGIN; y = 1 - MARGIN - wordH; break;
+      case 'bottom-right': x = 1 - MARGIN - wordW; y = 1 - MARGIN - wordH; break;
+      default:             x = 0.5 - wordW / 2; y = 1 - MARGIN - wordH; break;   // bottom-center
+    }
+    x = Math.max(0.012, Math.min(x, 1 - MARGIN - wordW));
+    return this.mindSpace.glyphStrokes(label, { x, y, size, font: st.font, colors: st.colors, bold: st.bold, slant: st.slant, underline: st.underline, silhouette: st.silhouette, highlight: st.highlight }) || [];
   },
 
   // _stylizeStrokes — REMOVED (Gee 2026-07-15). It recolored EACH traced stroke a
