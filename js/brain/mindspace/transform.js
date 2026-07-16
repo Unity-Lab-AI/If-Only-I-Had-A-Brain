@@ -456,5 +456,173 @@ export function traceField(rec, opts = {}) {
   return strokes;
 }
 
+// ── _fieldToGrid — shared: rec → coarse aspect-kept Y/Cb/Cr working grids ────
+// Node-safe (no ImageData). Used by the draw modes below (line-art / color-fill /
+// stylize). One inverse-transform, one downsample, reused across modes.
+function _fieldToGrid(rec, target) {
+  const W = rec.width, H = rec.height, W2 = rec.pad_w, H2 = rec.pad_h;
+  if (!W || !H || !W2 || !H2) return null;
+  const planes = {};
+  for (const name of ['Y', 'Cb', 'Cr']) {
+    const c = rec.channels[name];
+    const flat = new Float64Array(W2 * H2);
+    if (c && c.val_b64) {
+      const val = b64i16(c.val_b64), qs = c.qscale || 1, pos = decodePositions(c, val.length), SIZE = W2 * H2;
+      for (let i = 0; i < pos.length; i++) { const p = pos[i]; if (p >= 0 && p < SIZE) flat[p] = val[i] * qs; }
+      idwt2(flat, H2, W2);
+    }
+    planes[name] = flat;
+  }
+  const t = Math.max(24, Math.min(target || 96, 256));
+  const gw = Math.max(8, Math.round(W >= H ? t : t * (W / H)));
+  const gh = Math.max(8, Math.round(H >= W ? t : t * (H / W)));
+  const pxc = (gx) => Math.min(W - 1, Math.max(0, Math.round((gx / (gw - 1)) * (W - 1))));
+  const pyc = (gy) => Math.min(H - 1, Math.max(0, Math.round((gy / (gh - 1)) * (H - 1))));
+  const Y = new Float64Array(gw * gh), Cb = new Float64Array(gw * gh), Cr = new Float64Array(gw * gh);
+  for (let gy = 0; gy < gh; gy++) { const sy = pyc(gy); for (let gx = 0; gx < gw; gx++) { const o = sy * W2 + pxc(gx), g = gy * gw + gx; Y[g] = planes.Y[o]; Cb[g] = planes.Cb[o]; Cr[g] = planes.Cr[o]; } }
+  return { gw, gh, Y, Cb, Cr };
+}
+
+// ── traceLineArt(rec, opts) — CLEAN INK CONTOURS (DRAW-ENGINE v2, Gee 2026-07-15) ──
+// The old traceField sprayed short fragments across the canvas (thick Sobel edges
+// + scanline seeding split every contour) and the caller rainbow-recolored each
+// one → "a jumbled pile of multicolored yarn". This is the fixed line-art tracer:
+// box-blur (kill speckle) → Sobel magnitude+direction → NON-MAX SUPPRESSION (1px
+// thin edges, no parallel duplicates) → seed STRONGEST-first + walk both ways from
+// the seed so a contour is ONE stroke, not split → drop short specks (minLen) →
+// RDP simplify → a SINGLE ink color (coloring-book / tattoo linework), never a
+// per-stroke random hue. Recognizable line drawing of what she looked at.
+export function traceLineArt(rec, opts = {}) {
+  if (!rec || !rec.channels) return [];
+  const grid = _fieldToGrid(rec, opts.traceSide || 96);
+  if (!grid) return [];
+  const { gw, gh, Y } = grid;
+  // 3x3 box blur — removes single-pixel noise edges before gradient
+  const B = new Float64Array(gw * gh);
+  for (let y = 0; y < gh; y++) for (let x = 0; x < gw; x++) {
+    let s = 0, n = 0;
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const nx = x + dx, ny = y + dy; if (nx < 0 || ny < 0 || nx >= gw || ny >= gh) continue; s += Y[ny * gw + nx]; n++; }
+    B[y * gw + x] = s / n;
+  }
+  // Sobel magnitude + gradient direction
+  const G = new Float64Array(gw * gh), TH = new Float64Array(gw * gh); let gmax = 1e-6;
+  for (let y = 1; y < gh - 1; y++) for (let x = 1; x < gw - 1; x++) {
+    const i = y * gw + x;
+    const gxv = -B[i - gw - 1] - 2 * B[i - 1] - B[i + gw - 1] + B[i - gw + 1] + 2 * B[i + 1] + B[i + gw + 1];
+    const gyv = -B[i - gw - 1] - 2 * B[i - gw] - B[i - gw + 1] + B[i + gw - 1] + 2 * B[i + gw] + B[i + gw + 1];
+    const m = Math.sqrt(gxv * gxv + gyv * gyv); G[i] = m; TH[i] = Math.atan2(gyv, gxv); if (m > gmax) gmax = m;
+  }
+  // non-maximum suppression → thin the edge to 1px ridges (kills the yarn duplication)
+  const NMS = new Float64Array(gw * gh);
+  for (let y = 1; y < gh - 1; y++) for (let x = 1; x < gw - 1; x++) {
+    const i = y * gw + x; const deg = ((TH[i] * 180 / Math.PI) + 180) % 180;
+    let dx, dy;
+    if (deg < 22.5 || deg >= 157.5) { dx = 1; dy = 0; } else if (deg < 67.5) { dx = 1; dy = 1; } else if (deg < 112.5) { dx = 0; dy = 1; } else { dx = 1; dy = -1; }
+    const g1 = G[(y + dy) * gw + (x + dx)], g2 = G[(y - dy) * gw + (x - dx)];
+    NMS[i] = (G[i] >= g1 && G[i] >= g2) ? G[i] : 0;
+  }
+  const thr = gmax * Math.max(0.04, Math.min(0.9, opts.edgeThresh ?? 0.16));
+  const edge = new Uint8Array(gw * gh);
+  for (let i = 0; i < NMS.length; i++) edge[i] = NMS[i] >= thr ? 1 : 0;
+  // seed STRONGEST-first so main contours form before any speck
+  const order = []; for (let i = 0; i < edge.length; i++) if (edge[i]) order.push(i);
+  order.sort((a, b) => NMS[b] - NMS[a]);
+  const visited = new Uint8Array(gw * gh);
+  const NB = [[1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1], [0, -1], [1, -1]];
+  // walk from (sx,sy) following the strongest unvisited edge neighbor to a contour end
+  const walk = (sx, sy) => {
+    const pts = []; let cx = sx, cy = sy, guard = 0;
+    while (guard++ < gw * gh) {
+      pts.push([cx, cy]);
+      let best = -1, bg = 0, bx = 0, by = 0;
+      for (const [dx, dy] of NB) { const nx = cx + dx, ny = cy + dy; if (nx < 0 || ny < 0 || nx >= gw || ny >= gh) continue; const ni = ny * gw + nx; if (edge[ni] && !visited[ni] && NMS[ni] > bg) { bg = NMS[ni]; best = ni; bx = nx; by = ny; } }
+      if (best < 0) break;
+      visited[best] = 1; cx = bx; cy = by;
+    }
+    return pts;
+  };
+  const maxStrokes = Math.max(4, Math.min(opts.maxStrokes || 40, 120));
+  const minLen = Math.max(3, Math.round((opts.minLenFrac ?? 0.08) * Math.max(gw, gh)));
+  const polylines = [];
+  for (const si of order) {
+    if (polylines.length >= maxStrokes) break;
+    if (visited[si]) continue;
+    const sx = si % gw, sy = (si / gw) | 0; visited[si] = 1;
+    const fwd = walk(sx, sy);                 // one direction from the seed
+    const back = walk(sx, sy);                // the other (neighbors on the first side now visited)
+    const pts = back.length > 1 ? back.slice(1).reverse().concat(fwd) : fwd;
+    if (pts.length >= minLen) polylines.push(pts);
+  }
+  const eps = Math.max(0.3, opts.simplify ?? 1.0);
+  // ONE ink color (never a per-stroke random hue). sketch() draws on her DARK
+  // sketchbook paper ([26,25,29]), so line-art needs a LIGHT chalk/bone stroke to
+  // be visible — a white-on-black contour reads clean + goth. Callers may pass a
+  // pink/accent ink via opts.ink.
+  const ink = Array.isArray(opts.ink) ? opts.ink : [228, 226, 230];
+  const strokes = [];
+  for (const pl of polylines) {
+    const simp = _rdp(pl, eps);
+    if (simp.length < 2) continue;
+    strokes.push({ type: 'poly', pts: simp.map(p => [p[0] / (gw - 1), p[1] / (gh - 1)]), rgb: ink.slice() });
+  }
+  return strokes;
+}
+
+// ── traceColorFill(rec, opts) — FLAT COLOUR REGIONS (one of her draw styles) ──
+// "She colours it in": coarse blocks averaged from the reference, each filled in
+// the block's ACTUAL colour (an orange cat stays orange), background paper left
+// bare. Emits type:'fill' strokes (sketch bbox-fills them). ONE of many styles
+// (Gee) — a poster / cut-paper look, distinct from the line-art sketch.
+export function traceColorFill(rec, opts = {}) {
+  const grid = _fieldToGrid(rec, opts.traceSide || 64);
+  if (!grid) return [];
+  const { gw, gh, Y, Cb, Cr } = grid;
+  const cells = Math.max(10, Math.min(opts.cells || 24, 64));
+  const cw = gw / cells, ch = gh / cells;
+  const bgLum = Math.max(0, Math.min(255, opts.bgLum ?? 232));   // near-paper cells = background, left bare
+  const strokes = [];
+  for (let cy = 0; cy < cells; cy++) for (let cx = 0; cx < cells; cx++) {
+    let sy = 0, scb = 0, scr = 0, n = 0;
+    const y0 = Math.floor(cy * ch), y1 = Math.min(gh, Math.floor((cy + 1) * ch));
+    const x0 = Math.floor(cx * cw), x1 = Math.min(gw, Math.floor((cx + 1) * cw));
+    for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) { const i = y * gw + x; sy += Y[i]; scb += Cb[i]; scr += Cr[i]; n++; }
+    if (!n) continue;
+    const rgb = ycbcrToRGB(sy / n, scb / n, scr / n).map(v => Math.max(0, Math.min(255, Math.round(v * 255))));
+    const lum = rgb[0] * 0.299 + rgb[1] * 0.587 + rgb[2] * 0.114;
+    if (lum >= bgLum) continue;                                   // background paper cell → bare
+    const gx0 = cx / cells, gy0 = cy / cells, gx1 = (cx + 1) / cells, gy1 = (cy + 1) / cells;
+    strokes.push({ type: 'fill', pts: [[gx0, gy0], [gx1, gy0], [gx1, gy1], [gx0, gy1]], rgb });
+  }
+  return strokes;
+}
+
+// ── stylizeField(rec, opts) — DETAILED STYLED RENDER (her high-fidelity mode) ──
+// Not a coarse sketch: reconstructs the reference field at full working
+// resolution and posterizes the tone into bands (a hand-painted / screen-print
+// feel) while KEEPING the real chroma, so the subject stays immaculately
+// recognizable in her own rendering. Returns a NEW rec (already a drawn field C,
+// no tracing) — the closest to the "immaculate" mode; detail scales with
+// traceSide. (On a GPU host the CDF 9/7 here runs on GPU; on the CPU-only box it
+// runs CPU — same math either way.)
+export function stylizeField(rec, opts = {}) {
+  const grid = _fieldToGrid(rec, opts.traceSide || 128);
+  if (!grid) return null;
+  const { gw, gh, Y, Cb, Cr } = grid;
+  const bands = Math.max(3, Math.min(opts.bands || 6, 16));
+  const data = new Uint8ClampedArray(gw * gh * 4);
+  for (let i = 0; i < gw * gh; i++) {
+    const rgb = ycbcrToRGB(Y[i], Cb[i], Cr[i]);
+    let lum = Math.max(0, Math.min(1, rgb[0] * 0.299 + rgb[1] * 0.587 + rgb[2] * 0.114));
+    const q = Math.round(lum * (bands - 1)) / (bands - 1);        // posterized tone
+    const g = lum > 1e-4 ? q / lum : 1;                            // scale colour to the posterized tone, keep hue
+    const o = i * 4;
+    data[o] = Math.max(0, Math.min(255, Math.round(rgb[0] * g * 255)));
+    data[o + 1] = Math.max(0, Math.min(255, Math.round(rgb[1] * g * 255)));
+    data[o + 2] = Math.max(0, Math.min(255, Math.round(rgb[2] * g * 255)));
+    data[o + 3] = 255;
+  }
+  return equationalizeImageData({ width: gw, height: gh, data });
+}
+
 // low-level transform primitives exported for the GPU path / golden-vector parity (MS.H6)
 export { fwd1d, fwd2d, inv1d, idwt2, rgbToYCbCr, ycbcrToRGB, padDim, encPos, decPos, decodePositions, b64bytes, b64i16, bytesToB64, i16ToB64, A97, B97, G97, D97, K97 };

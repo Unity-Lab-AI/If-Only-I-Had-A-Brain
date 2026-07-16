@@ -1176,6 +1176,12 @@ const SERVER_CHAT_MIXIN = {
   _publishMindsEyeFrame(rec, source, now) {
     if (!rec) return;
     if (typeof now !== 'number') now = Date.now();
+    // LOOKUP HOLD (pacing) — while she is "studying" a freshly looked-up reference
+    // (its `lookup:` frame is live for _lookupHoldUntil), don't let the imagine
+    // tick's RANDOM favorite draw shove it off the viewer. She looks, THEN draws
+    // (her own `canvas:draw:` publishes after the hold expires). Only the random
+    // favorite is held back — the concept's own drawing always shows.
+    if (this._lookupHoldUntil && now < this._lookupHoldUntil && typeof source === 'string' && source.startsWith('draw:fav:')) return;
     this._lastImagineRec = { terms: rec.equation_count || 0, source, at: now };
     if (!Array.isArray(this._imaginedFieldRing)) this._imaginedFieldRing = [];
     this._imaginedFieldRing.push({ rec, at: now });
@@ -1209,10 +1215,59 @@ const SERVER_CHAT_MIXIN = {
     let grounded = null;
     try { grounded = await this._fetchReferenceAndGround(concept); } catch { grounded = null; }
     if (!grounded) return;   // cooldown / gap / fetch-fail / blank ref → nothing new to draw
+    // HOLD — she LOOKS at the reference (its `lookup:` frame is live) for a beat
+    // before she draws it: the viewer shows what she SEES, then what she MAKES,
+    // paced like a person studying then sketching — not the draw clobbering the
+    // lookup in 1ms (Gee: "im not seeing her lookups any more"). The hold window
+    // also suppresses the tick's random favorite draw (see _publishMindsEyeFrame).
+    const HOLD = Number(process.env.DREAM_LOOKUP_HOLD_MS) || 4500;
+    this._lookupHoldUntil = Date.now() + HOLD;
+    await new Promise(r => setTimeout(r, HOLD));
     if (typeof this._drawConcept !== 'function') return;
     let drawn = null;
     try { drawn = await this._drawConcept(concept, { allowFetch: false }); } catch { drawn = null; }
-    if (drawn && drawn.rec) this._publishMindsEyeFrame(drawn.rec, drawn.source || drawn.label);
+    if (drawn && drawn.rec) {
+      this._publishMindsEyeFrame(drawn.rec, drawn.source || drawn.label);
+      // REMEMBER-IN-RELATION (Gee: "she should be remembering what she looks up and
+      // draws in relation like real") — bind her DRAWING to the concept alongside
+      // the reference, so recall surfaces both what she saw + what she made, and it
+      // sharpens with practice (best-resemblance kept).
+      try { await this._rememberDrawing(concept, drawn.rec); } catch { /* remember best-effort */ }
+    }
+  },
+
+  // Bind her drawing to the concept's visual-memory entry, IN RELATION to the
+  // reference she looked up. `e.rec` stays the pristine reference (recall re-sees
+  // that); `e.drawing` is HER rendition; `e.drawResemblance` is how close her
+  // drawing came to the reference (cosine of their percepts), so repeated draws
+  // KEEP THE BEST — practice makes the remembered drawing better over time, like a
+  // real sketchbook. `_drawSkill` tracks the per-concept resemblance ceiling.
+  async _rememberDrawing(concept, drawnRec) {
+    if (!drawnRec || typeof this._vmStore !== 'function') return;
+    const key = (typeof this._vmContentTokens === 'function' ? (this._vmContentTokens(concept)[0] || '') : String(concept || '').toLowerCase().split(/\s+/)[0]) || '';
+    if (!key) return;
+    const store = this._vmStore();
+    const e = store.get(key);
+    if (!e) return;   // no reference bound → nothing to relate the drawing to
+    let resemblance = 0;
+    try {
+      const dp = (this.mindSpace && typeof this.mindSpace.describe === 'function') ? await this.mindSpace.describe(drawnRec) : null;
+      if (dp && e.p && e.p.length) {
+        const a = Array.from(dp), b = e.p; let d = 0, na = 0, nb = 0; const n = Math.min(a.length, b.length);
+        for (let i = 0; i < n; i++) { d += a[i] * b[i]; na += a[i] * a[i]; nb += b[i] * b[i]; }
+        const dn = Math.sqrt(na) * Math.sqrt(nb); resemblance = dn > 0 ? d / dn : 0;
+      }
+    } catch { /* resemblance best-effort */ }
+    // keep the BEST rendition (practice improves it); first drawing always stored
+    if (!e.drawing || resemblance >= (e.drawResemblance || 0)) {
+      e.drawing = drawnRec;
+      e.drawResemblance = resemblance;
+      e.drawnAt = Date.now();
+      store.delete(key); store.set(key, e);   // touch → LRU freshen
+      if (!(this._drawSkill instanceof Map)) this._drawSkill = new Map();
+      this._drawSkill.set(key, Math.max(this._drawSkill.get(key) || 0, resemblance));
+      if (typeof this._vmSaveSoon === 'function') this._vmSaveSoon();
+    }
   },
 
   // TU.29.13 GROUNDING LOOPS — REMOVED (Gee 2026-07-15). _conceptImageryLoop
@@ -1231,7 +1286,7 @@ const SERVER_CHAT_MIXIN = {
   // she can ground nothing (never seen it, no reference), she draws NOTHING for it
   // yet — honest, like she stays silent on words she can't say — never a fake shape.
   async _drawConcept(concept, opts = {}) {
-    if (!this.mindSpace || typeof this.mindSpace.traceField !== 'function'
+    if (!this.mindSpace || typeof this.mindSpace.traceLineArt !== 'function'
         || typeof this.mindSpace.sketch !== 'function') return null;
     const seed = String(concept || '').trim();
     if (!seed) return null;
@@ -1264,27 +1319,52 @@ const SERVER_CHAT_MIXIN = {
 
     if (!rec) return null;   // nothing grounded to draw from → honest no-drawing (never a fake shape)
 
-    // 4) TRACE — her hand draws the field's contours. Detail scales with her grade
-    //    (bigger canvas = more strokes) — her trained state, not a dumb-down filter.
+    // 4) STYLE — she is NOT limited to one way of drawing (Gee: "not subject to
+    //    limits on how or what she draws"). She varies her artistic style, STABLE
+    //    per subject (a name-hash picks it, so re-drawing a thing stays consistent)
+    //    across an extensible repertoire — more styles can join this list, no cap:
+    //      • lineart   — clean single-ink contour sketch (her hand)
+    //      • colorfill — flat colour regions from the real image + a dark outline
+    //      • field     — a DETAILED posterized field render (her high-fidelity mode)
     const side = (typeof this._drawCanvasSide === 'function') ? this._drawCanvasSide() : 96;
-    const traceSide = Math.max(48, Math.min(Math.round(side * 0.7), 160));
+    const STYLES = ['lineart', 'colorfill', 'field'];
+    const _hstyle = (s) => { let h = 5381; for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0; return h; };
+    const style = (typeof opts.style === 'string' && STYLES.includes(opts.style)) ? opts.style : STYLES[_hstyle(key) % STYLES.length];
+
+    // FIELD style returns a FINISHED drawn rec (no tracing/sketch) — the detailed
+    // "immaculate" mode: a posterized full-res render of the reference in her own
+    // rendering. Falls through to line-art if it can't render.
+    if (style === 'field' && typeof this.mindSpace.stylizeField === 'function') {
+      let fr = null;
+      try { fr = this.mindSpace.stylizeField(rec, { traceSide: Math.max(96, Math.min(side, 192)), bands: 6 }); } catch { fr = null; }
+      if (fr) { this._lastSketchLabel = 'canvas:draw:' + key; return { rec: fr, label: this._lastSketchLabel, source: 'canvas:draw:' + key, from: source || ('draw:' + key), style }; }
+    }
+
+    // STROKE styles — build strokes, then sketch() rasterizes them onto her paper.
+    const traceSide = Math.max(48, Math.min(Math.round(side * 0.9), 160));
     const maxStrokes = Math.max(16, Math.min(Math.round(side / 3), 120));
     let strokes = null;
     try {
-      strokes = this.mindSpace.traceField(rec, { traceSide, maxStrokes, edgeThresh: 0.26, simplify: 1.1 });
+      if (style === 'colorfill' && typeof this.mindSpace.traceColorFill === 'function') {
+        const fills = this.mindSpace.traceColorFill(rec, { traceSide: Math.min(traceSide, 80), cells: 26 }) || [];
+        const outline = this.mindSpace.traceLineArt(rec, { traceSide, maxStrokes, edgeThresh: 0.18, minLenFrac: 0.1, simplify: 1.0, ink: [24, 22, 28] }) || [];
+        strokes = fills.concat(outline);   // flat colour under, dark ink outline on top
+      } else {
+        // lineart (default): ONE coherent chalk ink — no per-stroke recolor (the old
+        // _stylizeStrokes random-hue was the "multicolored yarn").
+        strokes = this.mindSpace.traceLineArt(rec, { traceSide, maxStrokes, edgeThresh: 0.16, minLenFrac: 0.08, simplify: 1.0, ink: [228, 226, 230] });
+      }
     } catch { return null; }
     if (!strokes || !strokes.length) return null;
 
-    // 5) HER STYLE — reference-not-fact: recolor the traced form in her goth palette.
-    try { if (typeof this._stylizeStrokes === 'function') strokes = this._stylizeStrokes(strokes, key); } catch { /* keep field colors */ }
-
-    // 6) HAND — equationalize the strokes back into a field C she re-sees (the
-    //    affect-driven hand wobble lives in sketch()); label it in her own hand.
+    // 5) HAND — label the drawing in her own hand (light ink, legible: low wobble
+    //    so the handwriting is readable, not the shaky near-black scrawl that was
+    //    invisible on dark paper). Equationalized back into a field C by sketch().
     try {
       if (key && this.mindSpace && typeof this.mindSpace.glyphStrokes === 'function') {
         const label = key.slice(0, 10);
         const arousal = Math.max(0, Math.min(1, this.arousal ?? 0.4));
-        const gs = this.mindSpace.glyphStrokes(label, { x: Math.max(0.06, 0.5 - label.length * 0.033), y: 0.9, size: 0.07, wobble: 0.02 + 0.1 * arousal, rgb: [30, 28, 32] });
+        const gs = this.mindSpace.glyphStrokes(label, { x: Math.max(0.06, 0.5 - label.length * 0.033), y: 0.92, size: 0.075, wobble: 0.008 + 0.02 * arousal, rgb: [222, 220, 226] });
         for (const g of gs) strokes.push(g);
       }
     } catch { /* label best-effort */ }
@@ -1293,41 +1373,16 @@ const SERVER_CHAT_MIXIN = {
     try { drawn = await this.mindSpace.sketch(strokes, { maxSide: side, mood: { arousal: this.arousal, valence: this.valence } }); } catch { return null; }
     if (!drawn) return null;
     this._lastSketchLabel = 'canvas:draw:' + key;
-    // The RETURNED rec is her DRAWING (the trace), so label it canvas:draw: — the
-    // reference it came from (recall/ref/lookup) already published itself to the
-    // viewer separately, so the viewer shows the reference she saw THEN her drawing
-    // of it, distinctly. (source var kept for the log/provenance.)
-    return { rec: drawn, label: this._lastSketchLabel, source: 'canvas:draw:' + key, from: source || ('draw:' + key) };
+    // The RETURNED rec is her DRAWING, labeled canvas:draw: — the reference it came
+    // from (recall/ref/lookup) published itself separately, so the viewer shows the
+    // reference she saw THEN her drawing of it, distinctly.
+    return { rec: drawn, label: this._lastSketchLabel, source: 'canvas:draw:' + key, from: source || ('draw:' + key), style };
   },
 
-  // #46 REFERENCE-NOT-FACT styling — the trace is HER read of the thing, not a
-  // photocopy. Recolor each traced stroke in her goth crayon box while KEEPING
-  // the field's warm/cool/dark lean (a warm subject stays warm, dark edges stay
-  // black outlines) so color is meaningful, not arbitrary. Deterministic per
-  // (concept, stroke index) so a drawing is stable but distinct per subject.
-  _stylizeStrokes(strokes, concept) {
-    if (!Array.isArray(strokes) || !strokes.length) return strokes;
-    const P = {
-      dark: [30, 28, 32], red: [214, 48, 49], pink: [253, 121, 168], orange: [235, 140, 50],
-      purple: [162, 89, 216], blue: [72, 116, 224], teal: [64, 190, 200],
-    };
-    const WARM = [P.red, P.pink, P.orange], COOL = [P.purple, P.blue, P.teal];
-    const hash = (s) => { let h = 5381; const t = String(s); for (let i = 0; i < t.length; i++) h = ((h << 5) + h + t.charCodeAt(i)) >>> 0; return h; };
-    const out = [];
-    let i = 0;
-    for (const s of strokes) {
-      if (!s) { i++; continue; }
-      const rgb = Array.isArray(s.rgb) ? s.rgb : [180, 180, 180];
-      const lum = rgb[0] * 0.299 + rgb[1] * 0.587 + rgb[2] * 0.114;
-      let crayon;
-      if (lum < 72) crayon = P.dark;                                        // her black outline (goth)
-      else if ((rgb[0] || 0) >= (rgb[2] || 0)) crayon = WARM[hash(concept + ':w' + i) % WARM.length];
-      else crayon = COOL[hash(concept + ':c' + i) % COOL.length];
-      out.push({ ...s, rgb: crayon });
-      i++;
-    }
-    return out;
-  },
+  // _stylizeStrokes — REMOVED (Gee 2026-07-15). It recolored EACH traced stroke a
+  // hash-random goth warm/cool hue — that per-stroke rainbow WAS the "jumbled pile
+  // of multicolored yarn". Superseded: traceLineArt draws ONE coherent chalk ink,
+  // traceColorFill fills from the real image colours. No per-stroke recolor.
 
   // DRAW.2 SCHEMA STAMP — REMOVED (Gee 2026-07-15). The developmental
   // shape composer (_sketchFromState) mapped each word to one of 12 fixed
@@ -1451,23 +1506,23 @@ const SERVER_CHAT_MIXIN = {
   // variants nudge the edge threshold so each attempt is a different READ of the
   // same memory (the DRAW.7 compare-keep-best loop picks the closest).
   async _drawFromMemoryStrokes(concept, srcRec, variant = 0) {
-    if (!srcRec || !this.mindSpace || typeof this.mindSpace.traceField !== 'function') return null;
+    if (!srcRec || !this.mindSpace || typeof this.mindSpace.traceLineArt !== 'function') return null;
     const side = (typeof this._drawCanvasSide === 'function') ? this._drawCanvasSide() : 96;
-    const traceSide = Math.max(48, Math.min(Math.round(side * 0.7), 160));
+    const traceSide = Math.max(48, Math.min(Math.round(side * 0.9), 160));
     const maxStrokes = Math.max(16, Math.min(Math.round(side / 3), 120));
-    const edgeThresh = Math.max(0.14, 0.30 - variant * 0.06);   // each attempt reads the memory a little differently
+    const edgeThresh = Math.max(0.10, 0.18 - variant * 0.03);   // each attempt reads the memory a little differently
     let strokes = null;
-    try { strokes = this.mindSpace.traceField(srcRec, { traceSide, maxStrokes, edgeThresh, simplify: 1.1 }); } catch { return null; }
+    try { strokes = this.mindSpace.traceLineArt(srcRec, { traceSide, maxStrokes, edgeThresh, minLenFrac: 0.08, simplify: 1.0, ink: [228, 226, 230] }); } catch { return null; }
     if (!strokes || !strokes.length) return null;
     try { this._drawPracticeBump(concept || 'seen'); } catch { /* nf */ }
-    // reference-not-fact: recolor the traced form in her goth palette (keeps warm/cool/dark lean)
-    try { if (typeof this._stylizeStrokes === 'function') strokes = this._stylizeStrokes(strokes, concept || 'seen'); } catch { /* keep field colors */ }
-    // she labels the memory in her own hand (she KNOWS this one — no "?")
+    // NO per-stroke recolor — traceLineArt draws ONE coherent chalk ink (the old
+    // _stylizeStrokes rainbow was the yarn). She labels the memory in her own hand
+    // (light + legible; she KNOWS this one — no "?").
     try {
       if (concept && typeof this.mindSpace.glyphStrokes === 'function') {
         const label = String(concept).slice(0, 10);
         const arousal = Math.max(0, Math.min(1, this.arousal ?? 0.4));
-        const gs = this.mindSpace.glyphStrokes(label, { x: Math.max(0.06, 0.5 - label.length * 0.033), y: 0.9, size: 0.07, wobble: 0.02 + 0.1 * arousal, rgb: [30, 28, 32] });
+        const gs = this.mindSpace.glyphStrokes(label, { x: Math.max(0.06, 0.5 - label.length * 0.033), y: 0.92, size: 0.075, wobble: 0.008 + 0.02 * arousal, rgb: [222, 220, 226] });
         for (const g of gs) strokes.push(g);
       }
     } catch { /* label best-effort */ }
