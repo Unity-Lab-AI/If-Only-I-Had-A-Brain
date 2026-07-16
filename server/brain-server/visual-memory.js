@@ -492,7 +492,22 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
         store.set(key, { rec, at: now, seen: (prev ? prev.seen : 0) + 1, conf: confirmed, p: percept || (prev && prev.p) || null, shownAt: prev && prev.shownAt });
         while (store.size > VM_CAP) store.delete(store.keys().next().value);
         this._vmSaveSoon();
-        try { process.stdout.write(`[VisualMemory] 🔎 looked up "${key}" → reference field C (${rec.equation_count} terms, ${confirmed ? 'CONFIRMED' : 'provisional'}) — she can draw it now.\n`); } catch { /* nf */ }
+        // MIND'S-EYE — she SEES the reference she looked up (Gee 2026-07-15: "the
+        // minds eye shows the shit she sees period"). The looked-up image IS what
+        // her eyes receive, so publish the perceived field C to the shared viewer
+        // (reconstructs to the reference image she's looking at) — a grounded
+        // frame, exactly like a camera/generated frame ingested via
+        // _ingestVisualFrame. She then draws from it; both the look + the drawing
+        // show on the mind's-eye, never the de-novo texture.
+        try {
+          this._lastGroundedEyeAt = now;
+          this._mindsEyeJson = JSON.stringify({ type: 'mindsEye', rec, terms: rec.equation_count || 0, source: 'lookup:' + key, at: now });
+          if (this.clients && this.clients.size > 0) {
+            const _p = JSON.stringify({ type: 'imagine', terms: rec.equation_count || 0, source: 'lookup:' + key, ts: now });
+            for (const [ws] of this.clients) { if (ws.readyState === 1) { try { ws.send(_p); } catch { /* nf */ } } }
+          }
+        } catch { /* viewer publish best-effort */ }
+        try { process.stdout.write(`[VisualMemory] 🔎 looked up "${key}" → reference field C (${rec.equation_count} terms, ${confirmed ? 'CONFIRMED' : 'provisional'}) — SEEING it + can draw it now.\n`); } catch { /* nf */ }
       } catch { /* bind best-effort — the rec still returns for immediate drawing */ }
       return rec;
     } finally {
