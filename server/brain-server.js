@@ -2003,7 +2003,16 @@ class ServerBrain {
         phon:      [0.550, 0.750],
         sem:       [0.750, 0.917],
         fineType:  [0.917, 0.967],
-        motor:     [0.967, 1.000],
+        motor:     [0.967, 0.984],
+        // WMB word_motor band (Gee 2026-07-15) — the unified emission band added by
+        // the WMB grow had no main-cortex home, so sem_to_word_motor / word_motor_to_sem
+        // never bound (14/16) and emission teach ran CPU. Maps into the tail of the
+        // motor sub-region: motor (langCortex 34.5K) uses only the FIRST-N of the
+        // [0.967,1.0] territory (~2.02M main-cortex neurons), so word_motor (90K)
+        // drops into the unused space at 0.984 → main-cortex [~60.31M, ~60.40M], no
+        // overlap with motor's used slice, no shift to any other region → the other
+        // bindings are byte-identical, no weight/format change, SAVESTART-safe.
+        word_motor: [0.984, 1.000],
       };
       const mainCortexSize = CLUSTER_SIZES.cortex;
       const mainSliceStart = {};
