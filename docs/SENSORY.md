@@ -270,12 +270,41 @@ it, never by mapping a shape to a word.
   PROVISIONALLY (`conf:false`) — a one-off render never becomes grounded truth until a second render agrees.
 - **Her style, not a photocopy** (`_stylizeStrokes`) — the trace is recolored in her goth crayon box (black
   outlines, warm/cool accents) while keeping the field's warm/cool/dark lean, so color stays meaningful. The
-  drawing is HER read of the thing.
+  drawing is HER read of the thing. *(⛔ superseded in SE.16 — the per-stroke recolor WAS the "yarn"; removed.)*
 - **Headless grounding** — the old browser-broadcast `_conceptImageryLoop` + stage-0 `_scribbleStrokes` +
   scene-realize `_realizeDrawing` are removed; grounding now runs server-side with no browser in the loop
   (the deployed box was previously starved — nothing harvested images back, so `_visualMemory` never filled).
 - **Deps** — pure-JS `jpeg-js` + `pngjs` in `server/package.json` (auto-install on the box via
   `self-update.sh npm install --omit=dev`, no manual step). Bundle rebuilt (traceField ships browser-side too).
+
+---
+
+**SE.16 — DRAW-ENGINE v2: beautiful colored recreations, real imagination, dazzle labels (Gee 2026-07-15/16).**
+Live viewing of SE.15's output showed "multicolored yarn" (fragment spray + per-stroke random recolor) and
+white-pencil frames. The v2 arc, all deployed:
+- **Field render is the DEFAULT drawing** (`stylizeField`) — the recalled/looked-up reference reconstructed
+  FULL-COLOUR and posterized (hue preserved) = her "beautiful recreation of seen things". The line-art
+  fallback is **`traceLineArt`** (blur → Sobel → non-max suppression → strongest-first bidirectional
+  edge-follow → min-length cull → RDP → ONE ink) — coherent contours, never the fragment spray; the old
+  `traceField` remains only as a legacy primitive. `_stylizeStrokes` (random per-stroke goth hue) REMOVED —
+  it WAS the yarn. Colorfill dropped from the auto-rotation (read as crude crayon).
+- **Drawability gate** (`_conceptIsDrawable`) — only NOUNS draw; part-of-speech read dynamically from the
+  same dictionary she uses for definitions (works for never-seen words, NO word lists). Abstract/verb
+  thought-words fall to a grounded favourite instead of tracing scatter.
+- **Colourful references** — `_referenceImagePrompt` biases "colorful vibrant richly detailed... full color,
+  soft shading" (the old "simple/high-contrast" steered Pollinations into black-on-white line drawings =
+  pencil-looking field renders). Visual-memory store v2→v3 orphaned the monochrome-era cache.
+- **Imagination = ONE genuinely new image** (`_drawImagined` + `_imagineAndDraw`) — a drawable-noun combo
+  from her inner-thought chain grounds ONE unified combined-scene reference (its own `a+b` key + cooldown,
+  `keyOverride`/`promptOverride` on the fetch) and field-renders it; the `composeFields` region-paste
+  collage was REMOVED (cookie-cutter). Detached from the imagine tick (~18%), honest decline if ungroundable.
+- **Zero dumbing** — 512 canvas always (grade cap gone), no skill→detail gate, no wobble anywhere;
+  `_drawSkill`/`_rememberDrawing` keep her best rendition (remember-in-relation) without gating a draw.
+- **Labels (her signature)** — dazzle typography: per-letter HSL hue-rotation colours (infinite), six
+  letterforms (block/serif/dots/bubble/tall/wide), real stroke THICKNESS through both rasterizers (bold, not
+  pencil), always-on dark silhouette under-pass + seeded highlight chip, AUTO-FIT full words (the 10-char
+  truncation slice is dead), six seeded anchors (not always a bottom banner). Baked INTO the field C.
+- **Pacing** — lookup→hold(~4.5s)→draw: the viewer shows the reference she's studying, THEN her drawing.
 
 ---
 
