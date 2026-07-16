@@ -1023,13 +1023,20 @@ const SERVER_CHAT_MIXIN = {
       // apple" into truth (after the first generate). Gated hard so it's
       // curiosity, not spam: concrete-noun head only, not already seen, cooldown,
       // low probability, never mid-teach-perturbing (broadcast only).
-      // DRAW-ENGINE (Gee 2026-07-15) — grounding is done INSIDE _drawConcept (its
-      // step-3 look-up fetches the reference, publishes it to the mind's-eye, and
-      // returns the field C to trace). The old fire-and-forget fetch here was a
-      // BUG: it grabbed the concept first (in-flight + cooldown guard), so
-      // _drawConcept's own fetch returned null and she NEVER produced a drawing —
-      // "all lookups, no drawings". Removed; _drawConcept is the single fetch+draw
-      // path (reference shows as `lookup:`, then her trace as `canvas:draw:`).
+      // DRAW-ENGINE (Gee 2026-07-15) — NON-BLOCKING GROUND + DRAW. Grounding a
+      // never-seen concept needs a network fetch (slow: up to 25s). AWAITING that
+      // fetch inside the tick froze the mind's-eye on the last grounded frame for
+      // MINUTES ("stuck on recall: taxi for 10+ minutes") — the in-flight fetch
+      // held `_imagineInFlight` the entire time so every new tick bailed at the
+      // reentrancy guard. FIX: the reference look-up is now FIRE-AND-FORGET (it
+      // grounds the concept in the background and publishes its OWN `lookup:` frame
+      // when it lands — visual-memory.js), and `_drawConcept` is called
+      // `allowFetch:false` so it draws ONLY from already-grounded memory (recall /
+      // provisional) = microsecond-fast, the viewer cycles every ~6-8s. No
+      // double-fetch collision (the earlier bug) because the fire-and-forget is now
+      // the SOLE fetcher — `_drawConcept` never fetches. Its per-concept cooldown /
+      // gap / in-flight guards stop any fetch storm. Reference shows as `lookup:`,
+      // her trace as `canvas:draw:`.
       // TU.29.13 BUILD B — ACTIVE SKETCH. Some idle daydreams aren't a recalled
       // percept OR a mood wash — she picks up the pencil and DRAWS her active
       // mind: her most-active sem neurons become nodes, connected in activation
@@ -1046,8 +1053,19 @@ const SERVER_CHAT_MIXIN = {
       // at. _drawConcept returns null when she can nothing to ground (never seen,
       // no reference) → honest no-drawing, and the de-novo mood field renders below.
       if (!rec && _recallMissed && typeof this._drawConcept === 'function') {
+        // GROUND IN THE BACKGROUND — fire the reference look-up FIRE-AND-FORGET so
+        // the slow Pollinations fetch NEVER holds `_imagineInFlight` (that await was
+        // the freeze). It self-publishes its `lookup:` frame + broadcast when it
+        // lands and grounds the concept for the NEXT time she thinks it; its own
+        // per-concept cooldown / gap / in-flight guards prevent a storm.
+        if (typeof this._fetchReferenceAndGround === 'function') {
+          this._fetchReferenceAndGround(_seedText).catch(() => { /* background ground best-effort */ });
+        }
+        // DRAW NOW from what she has ALREADY grounded (recall / provisional) — never
+        // a fetch (allowFetch:false), so the tick stays microsecond-fast and the
+        // viewer cycles every ~6-8s instead of stalling on the network round-trip.
         try {
-          const drawn = await this._drawConcept(_seedText);
+          const drawn = await this._drawConcept(_seedText, { allowFetch: false });
           if (drawn && drawn.rec) { rec = drawn.rec; _seedSource = drawn.source || drawn.label; }
         } catch { /* draw best-effort */ }
         // FAVORITE fallback (Gee 2026-07-15) — the current thought couldn't ground
