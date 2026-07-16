@@ -1053,13 +1053,15 @@ const SERVER_CHAT_MIXIN = {
       // at. _drawConcept returns null when she can nothing to ground (never seen,
       // no reference) → honest no-drawing, and the de-novo mood field renders below.
       if (!rec && _recallMissed && typeof this._drawConcept === 'function') {
-        // GROUND IN THE BACKGROUND — fire the reference look-up FIRE-AND-FORGET so
-        // the slow Pollinations fetch NEVER holds `_imagineInFlight` (that await was
-        // the freeze). It self-publishes its `lookup:` frame + broadcast when it
-        // lands and grounds the concept for the NEXT time she thinks it; its own
-        // per-concept cooldown / gap / in-flight guards prevent a storm.
-        if (typeof this._fetchReferenceAndGround === 'function') {
-          this._fetchReferenceAndGround(_seedText).catch(() => { /* background ground best-effort */ });
+        // LOOK UP → DRAW, in the background (Gee 2026-07-15: "she shall draw more
+        // often"). Detached from the tick (never holds `_imagineInFlight`, so the
+        // slow fetch can't freeze the viewer — that was the earlier bug). It fetches
+        // the reference (self-publishes the `lookup:` frame as she SEES it) and then
+        // DRAWS the very thing she looked up (`canvas:draw:` frame) — 1:1, the
+        // reference then her own traced version. Its per-concept cooldown / gap /
+        // in-flight guards keep it to ~one real look-up + draw per 15s.
+        if (typeof this._lookUpAndDraw === 'function') {
+          this._lookUpAndDraw(_seedText).catch(() => { /* background look-up + draw best-effort */ });
         }
         // DRAW NOW from what she has ALREADY grounded (recall / provisional) — never
         // a fetch (allowFetch:false), so the tick stays microsecond-fast and the
@@ -1149,59 +1151,68 @@ const SERVER_CHAT_MIXIN = {
       if (!_midTeach && percept && typeof this.cortexCluster.injectEmbeddingToRegion === 'function') {
         try { this.cortexCluster.injectEmbeddingToRegion('sem', percept, 0.08); } catch { /* non-fatal */ }
       }
-      // TU.25.G — surface WHAT seeded the image (thought / thought-blend /
-      // sem-state) so the viewer shows she's imaging her thinking.
-      this._lastImagineRec = { terms: rec.equation_count || 0, source: _seedSource, at: now };
-      // UVM-INT.4 — persist the field C as memory (the ".uvme medium"). Push the
-      // full rec into a bounded ring that saveWeights serializes, so her imagined
-      // imagery survives reboot instead of evaporating with the volatile cortex.
-      if (!Array.isArray(this._imaginedFieldRing)) this._imaginedFieldRing = [];
-      this._imaginedFieldRing.push({ rec, at: now });
-      while (this._imaginedFieldRing.length > 8) this._imaginedFieldRing.shift();
-      // MINDSEYE.1 — cache the SINGLE current field C as a public snapshot so the
-      // read-only mind's-eye viewer (html/minds-eye.html) can poll one cached blob
-      // (GET /minds-eye.json) and reconstruct the image client-side. One compute,
-      // one shared snapshot — N viewers cost nothing extra (the dashboard-public
-      // model). The rec is sparse wavelet coeffs for a ≤48² plane = a few KB.
-      // SEE.6 — BLEND HOLD. Grounded frames (recalls / drawings / favorites /
-      // impressions / dream-mixes / seen) stamp _lastGroundedEyeAt; a PURE
-      // thought-blend or sem-state field may not shove a grounded frame off
-      // the public viewer for DREAM_EYE_BLEND_HOLD_MS (default 45s). She
-      // still imagines every tick (the ring + sem injection above are
-      // untouched) — only the shared viewer snapshot favors frames that LOOK
-      // like something over raw texture.
-      // GROUNDED-ONLY VIEWER (Gee 2026-07-15) — the de-novo thought-blend / sem-state
-      // field is a raw-semantic-state mood TEXTURE (the "solid-color line-vector
-      // neuron-map blob" — no detail, not a drawing). It must NEVER be the public
-      // mind's-eye image. Publish ONLY grounded frames (recall / draw / lookup /
-      // impression / seen); a non-grounded tick HOLDS the last real drawing
-      // indefinitely (no 45s expiry — the blob can't take the screen back). She
-      // still imagines internally every tick (the sem injection + imagined-field
-      // ring above are untouched) — only the shared VIEWER snapshot is
-      // drawings-only. DREAM_EYE_SHOW_THOUGHT=1 restores the old texture-on-viewer.
-      const _groundedEye = _seedSource !== 'thought-blend' && _seedSource !== 'sem-state';
-      if (_groundedEye) this._lastGroundedEyeAt = now;
-      const _publishEye = _groundedEye || process.env.DREAM_EYE_SHOW_THOUGHT === '1';
-      if (_publishEye) {
-        try {
-          this._mindsEyeJson = JSON.stringify({
-            type: 'mindsEye', rec,
-            terms: rec.equation_count || 0,
-            source: this._lastImagineRec.source,
-            at: now,
-          });
-        } catch { /* non-fatal */ }
-        // dashboard mind's-eye indicator
-        if (this.clients && this.clients.size > 0) {
-          const payload = JSON.stringify({ type: 'imagine', terms: rec.equation_count || 0,
-            source: this._lastImagineRec.source, ts: now });
-          for (const [ws] of this.clients) {
-            if (ws.readyState === ws.OPEN) { try { ws.send(payload); } catch { /* non-fatal */ } }
-          }
-        }
-      }
+      // Publish the imagined frame to the shared mind's-eye viewer + dashboard.
+      // Grounded-only (a de-novo thought-blend / sem-state texture never takes the
+      // screen), + persists the rec to the imagined-field ring. Shared with
+      // _lookUpAndDraw so the tick and the background look-up→draw publish
+      // identically (see _publishMindsEyeFrame).
+      this._publishMindsEyeFrame(rec, _seedSource, now);
     } catch { /* imagination is best-effort — never fatal to the tick */ }
     finally { this._imagineInFlight = false; }
+  },
+
+  // Shared mind's-eye publish (used by _imagineTick + _lookUpAndDraw). Stamps
+  // _lastImagineRec, pushes the rec into the bounded imagined-field ring
+  // (UVM-INT.4 — serialized by saveWeights so imagery survives reboot), and
+  // caches the SINGLE current field C as the public snapshot the read-only viewer
+  // polls (GET /minds-eye.json → reconstructs client-side; one compute, N viewers
+  // free) + pings the dashboard indicator over WS.
+  // GROUNDED-ONLY VIEWER (Gee 2026-07-15) — the de-novo thought-blend / sem-state
+  // field is a raw-semantic-state mood TEXTURE (the "solid-color line-vector
+  // neuron-map blob" — no detail, not a drawing). It must NEVER be the public
+  // image: publish ONLY grounded frames (recall / draw / lookup / impression /
+  // seen). A non-grounded tick simply doesn't publish, so the last real drawing
+  // holds. DREAM_EYE_SHOW_THOUGHT=1 restores the old texture-on-viewer.
+  _publishMindsEyeFrame(rec, source, now) {
+    if (!rec) return;
+    if (typeof now !== 'number') now = Date.now();
+    this._lastImagineRec = { terms: rec.equation_count || 0, source, at: now };
+    if (!Array.isArray(this._imaginedFieldRing)) this._imaginedFieldRing = [];
+    this._imaginedFieldRing.push({ rec, at: now });
+    while (this._imaginedFieldRing.length > 8) this._imaginedFieldRing.shift();
+    const _groundedEye = source !== 'thought-blend' && source !== 'sem-state';
+    if (_groundedEye) this._lastGroundedEyeAt = now;
+    const _publishEye = _groundedEye || process.env.DREAM_EYE_SHOW_THOUGHT === '1';
+    if (!_publishEye) return;
+    try {
+      this._mindsEyeJson = JSON.stringify({ type: 'mindsEye', rec, terms: rec.equation_count || 0, source, at: now });
+    } catch { /* non-fatal */ }
+    if (this.clients && this.clients.size > 0) {
+      const payload = JSON.stringify({ type: 'imagine', terms: rec.equation_count || 0, source, ts: now });
+      for (const [ws] of this.clients) {
+        if (ws.readyState === ws.OPEN) { try { ws.send(payload); } catch { /* non-fatal */ } }
+      }
+    }
+  },
+
+  // LOOK UP → DRAW (Gee 2026-07-15: "she shall draw more often!!!! ... twn -
+  // twenty lookups in a row and not one single drawing has been attempted").
+  // Runs DETACHED from the imagine tick (never touches _imagineInFlight) so the
+  // slow Pollinations fetch can never freeze the viewer. She fetches the
+  // reference — which self-publishes its `lookup:` frame as she SEES it — then
+  // immediately DRAWS the concept she just looked up (the fetch grounded it
+  // provisionally, so _drawConcept step-2 finds it with allowFetch:false; no
+  // re-fetch, no double-fetch collision) and publishes that `canvas:draw:` frame.
+  // Result: every real look-up becomes a drawing of the SAME concept, 1:1.
+  async _lookUpAndDraw(concept) {
+    if (typeof this._fetchReferenceAndGround !== 'function') return;
+    let grounded = null;
+    try { grounded = await this._fetchReferenceAndGround(concept); } catch { grounded = null; }
+    if (!grounded) return;   // cooldown / gap / fetch-fail / blank ref → nothing new to draw
+    if (typeof this._drawConcept !== 'function') return;
+    let drawn = null;
+    try { drawn = await this._drawConcept(concept, { allowFetch: false }); } catch { drawn = null; }
+    if (drawn && drawn.rec) this._publishMindsEyeFrame(drawn.rec, drawn.source || drawn.label);
   },
 
   // TU.29.13 GROUNDING LOOPS — REMOVED (Gee 2026-07-15). _conceptImageryLoop
