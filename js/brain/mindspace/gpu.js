@@ -649,15 +649,14 @@ export class MindSpaceGPU {
     return rec;
   }
 
-  // DRAW.1 — letters as PENCIL STROKES (her own hand), not a raster
-  // stamp. Converts each character's 5x7 bitmap (FONT5X7 — single source of
-  // truth shared with the glyph raster) into line strokes for sketch():
-  // horizontal + vertical runs of lit cells become jittered line segments,
-  // isolated single cells become points. `wobble` scales the hand-jitter.
-  // Jitter comes ONLY from live affect (arousal/fear shake any hand) plus
-  // natural micro-tremor, annealed by practiced skill — NEVER from an
-  // age/grade mimicry constant (operator directive: no hand-wobble to fake
-  // children's writing; her line quality is her trained state, period).
+  // DRAW.1 — letters as PENCIL STROKES (her own hand), not a raster stamp.
+  // Converts each character's 5x7 bitmap (FONT5X7 — single source of truth shared
+  // with the glyph raster) into line strokes for sketch(): horizontal + vertical
+  // runs of lit cells become line segments, isolated single cells become points.
+  // NO WOBBLE / NO JITTER (Gee 2026-07-15: "NO FUCKING WOBBLE ... wobble = dumbing
+  // her down"). Her handwriting is her CLEAN trained hand — crisp + legible, never
+  // an artificial tremor faking imperfect/child writing. j() is a hard 0 and
+  // opts.wobble is ignored by design (her line quality is her trained state, period).
   // Normalized [0,1] canvas coords, bounded 12 chars.
   glyphStrokes(text, opts = {}) {
     const t = String(text || '').toUpperCase().slice(0, 12);
@@ -665,11 +664,10 @@ export class MindSpaceGPU {
     const x0 = Math.max(0, Math.min(1, opts.x ?? 0.1));
     const y0 = Math.max(0, Math.min(1, opts.y ?? 0.78));
     const size = Math.max(0.03, Math.min(0.3, opts.size ?? 0.08));   // glyph height in canvas units
-    const wob = Math.max(0, Math.min(0.5, opts.wobble ?? 0.02));   // micro-tremor default; callers add affect
     const rgb = opts.rgb;
     const cw = size * (5 / 7);            // glyph width
     const adv = cw * 1.35;                // advance incl. gap
-    const j = () => (Math.random() * 2 - 1) * wob * size;
+    const j = () => 0;                    // NO wobble — clean trained hand (Gee)
     const strokes = [];
     let cx = x0;
     for (const ch of t) {

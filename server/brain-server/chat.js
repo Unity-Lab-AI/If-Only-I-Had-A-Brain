@@ -1336,7 +1336,8 @@ const SERVER_CHAT_MIXIN = {
     // rendering. Falls through to line-art if it can't render.
     if (style === 'field' && typeof this.mindSpace.stylizeField === 'function') {
       let fr = null;
-      try { fr = this.mindSpace.stylizeField(rec, { traceSide: Math.max(96, Math.min(side, 192)), bands: 6 }); } catch { fr = null; }
+      const labelStrokes = this._labelStrokes(key);   // she writes the word on the field render too
+      try { fr = this.mindSpace.stylizeField(rec, { traceSide: Math.max(96, Math.min(side, 192)), bands: 6, labelStrokes }); } catch { fr = null; }
       if (fr) { this._lastSketchLabel = 'canvas:draw:' + key; return { rec: fr, label: this._lastSketchLabel, source: 'canvas:draw:' + key, from: source || ('draw:' + key), style }; }
     }
 
@@ -1357,17 +1358,9 @@ const SERVER_CHAT_MIXIN = {
     } catch { return null; }
     if (!strokes || !strokes.length) return null;
 
-    // 5) HAND — label the drawing in her own hand (light ink, legible: low wobble
-    //    so the handwriting is readable, not the shaky near-black scrawl that was
-    //    invisible on dark paper). Equationalized back into a field C by sketch().
-    try {
-      if (key && this.mindSpace && typeof this.mindSpace.glyphStrokes === 'function') {
-        const label = key.slice(0, 10);
-        const arousal = Math.max(0, Math.min(1, this.arousal ?? 0.4));
-        const gs = this.mindSpace.glyphStrokes(label, { x: Math.max(0.06, 0.5 - label.length * 0.033), y: 0.92, size: 0.075, wobble: 0.008 + 0.02 * arousal, rgb: [222, 220, 226] });
-        for (const g of gs) strokes.push(g);
-      }
-    } catch { /* label best-effort */ }
+    // 5) HAND — she writes the WORD of what she drew, in her own CLEAN trained hand
+    //    (light legible ink on dark paper; NO wobble — wobble dumbs her down).
+    try { for (const g of this._labelStrokes(key)) strokes.push(g); } catch { /* label best-effort */ }
 
     let drawn = null;
     try { drawn = await this.mindSpace.sketch(strokes, { maxSide: side, mood: { arousal: this.arousal, valence: this.valence } }); } catch { return null; }
@@ -1377,6 +1370,16 @@ const SERVER_CHAT_MIXIN = {
     // from (recall/ref/lookup) published itself separately, so the viewer shows the
     // reference she saw THEN her drawing of it, distinctly.
     return { rec: drawn, label: this._lastSketchLabel, source: 'canvas:draw:' + key, from: source || ('draw:' + key), style };
+  },
+
+  // She writes the WORD of what she drew on almost every image (Gee) — her own
+  // CLEAN trained hand: crisp, LEGIBLE, light ink on the dark page, NO wobble/jitter
+  // (wobble dumbs her down). Shared by every draw style (line-art / color-fill /
+  // field) so the label is consistent. Returns glyph line-strokes in [0,1] coords.
+  _labelStrokes(key) {
+    if (!key || !this.mindSpace || typeof this.mindSpace.glyphStrokes !== 'function') return [];
+    const label = String(key).slice(0, 10);
+    return this.mindSpace.glyphStrokes(label, { x: Math.max(0.06, 0.5 - label.length * 0.033), y: 0.92, size: 0.075, rgb: [222, 220, 226] }) || [];
   },
 
   // _stylizeStrokes — REMOVED (Gee 2026-07-15). It recolored EACH traced stroke a
@@ -1516,15 +1519,11 @@ const SERVER_CHAT_MIXIN = {
     if (!strokes || !strokes.length) return null;
     try { this._drawPracticeBump(concept || 'seen'); } catch { /* nf */ }
     // NO per-stroke recolor — traceLineArt draws ONE coherent chalk ink (the old
-    // _stylizeStrokes rainbow was the yarn). She labels the memory in her own hand
-    // (light + legible; she KNOWS this one — no "?").
+    // _stylizeStrokes rainbow was the yarn). She writes the word in her own CLEAN
+    // hand (legible, NO wobble); shared _labelStrokes.
     try {
-      if (concept && typeof this.mindSpace.glyphStrokes === 'function') {
-        const label = String(concept).slice(0, 10);
-        const arousal = Math.max(0, Math.min(1, this.arousal ?? 0.4));
-        const gs = this.mindSpace.glyphStrokes(label, { x: Math.max(0.06, 0.5 - label.length * 0.033), y: 0.92, size: 0.075, wobble: 0.008 + 0.02 * arousal, rgb: [222, 220, 226] });
-        for (const g of gs) strokes.push(g);
-      }
+      const _k = (typeof this._vmContentTokens === 'function' ? (this._vmContentTokens(concept)[0] || String(concept || '')) : String(concept || '')).slice(0, 10);
+      for (const g of this._labelStrokes(_k)) strokes.push(g);
     } catch { /* label best-effort */ }
     return strokes;
   },
