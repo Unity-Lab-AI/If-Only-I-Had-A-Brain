@@ -118,13 +118,8 @@ class MindSpaceWorkerProxy {
       : null;
   }
 
-  // Compose several field recs into one COLOURED imagined scene — sync-local
-  // (pure array work over the parts, no engine state). Returns a drawn rec.
-  composeFields(...args) {
-    return (this._local && typeof this._local.composeFields === 'function')
-      ? this._local.composeFields(...args)
-      : null;
-  }
+  // composeFields forward REMOVED (2026-07-16) — the collage compositor is gone;
+  // imagination now field-renders ONE unified looked-up scene (see chat.js).
 }
 
 module.exports = { MindSpaceWorkerProxy };

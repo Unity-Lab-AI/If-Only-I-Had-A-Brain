@@ -60506,66 +60506,6 @@ function stylizeField(rec, opts = {}) {
   }
   return equationalizeImageData({ width: gw, height: gh, data });
 }
-function composeFields(recs, opts = {}) {
-  if (!Array.isArray(recs) || recs.length === 0) return null;
-  const S = Math.max(96, Math.min(opts.side || 256, 512));
-  const bands = Math.max(3, Math.min(opts.bands || 7, 16));
-  const data = new Uint8ClampedArray(S * S * 4);
-  const paper = [26, 25, 29];
-  for (let p = 0; p < S * S; p++) {
-    const o = p * 4;
-    data[o] = paper[0];
-    data[o + 1] = paper[1];
-    data[o + 2] = paper[2];
-    data[o + 3] = 255;
-  }
-  const n = recs.length;
-  for (let idx = 0; idx < n; idx++) {
-    const g = _fieldToGrid(recs[idx], 110);
-    if (!g) continue;
-    const { gw, gh, Y, Cb, Cr } = g;
-    const rw = Math.max(8, Math.floor(S * (0.86 / n))), rx = Math.floor(S * (0.07 + idx * (0.86 / n)));
-    const rh = Math.max(8, Math.floor(S * 0.62)), ry = Math.floor(S * (0.1 + idx % 2 * 0.14));
-    for (let py = 0; py < rh; py++) for (let px = 0; px < rw; px++) {
-      const sx = Math.min(gw - 1, Math.floor(px / rw * gw)), sy = Math.min(gh - 1, Math.floor(py / rh * gh)), si = sy * gw + sx;
-      const rgb = ycbcrToRGB(Y[si], Cb[si], Cr[si]).map((v) => Math.max(0, Math.min(1, v)));
-      const lum = rgb[0] * 0.299 + rgb[1] * 0.587 + rgb[2] * 0.114;
-      if (lum > 0.9) continue;
-      const q = Math.round(lum * (bands - 1)) / (bands - 1), k = lum > 1e-4 ? q / lum : 1;
-      const dx = rx + px, dy = ry + py;
-      if (dx < 0 || dx >= S || dy < 0 || dy >= S) continue;
-      const o = (dy * S + dx) * 4;
-      data[o] = Math.max(0, Math.min(255, Math.round(rgb[0] * k * 255)));
-      data[o + 1] = Math.max(0, Math.min(255, Math.round(rgb[1] * k * 255)));
-      data[o + 2] = Math.max(0, Math.min(255, Math.round(rgb[2] * k * 255)));
-      data[o + 3] = 255;
-    }
-  }
-  const ls = Array.isArray(opts.labelStrokes) ? opts.labelStrokes : null;
-  if (ls && ls.length) {
-    const put = (nx, ny, rgb) => {
-      const xi = Math.round(nx * (S - 1)), yi = Math.round(ny * (S - 1));
-      if (xi < 0 || xi >= S || yi < 0 || yi >= S) return;
-      const o = (yi * S + xi) * 4;
-      data[o] = rgb[0];
-      data[o + 1] = rgb[1];
-      data[o + 2] = rgb[2];
-      data[o + 3] = 255;
-    };
-    for (const s of ls) {
-      if (!s) continue;
-      const rgb = Array.isArray(s.rgb) ? s.rgb : [222, 220, 226];
-      if (s.type === "line") {
-        const steps = Math.max(2, Math.round(Math.hypot((s.x1 - s.x0) * S, (s.y1 - s.y0) * S)));
-        for (let k2 = 0; k2 <= steps; k2++) {
-          const t = k2 / steps;
-          put(s.x0 + (s.x1 - s.x0) * t, s.y0 + (s.y1 - s.y0) * t, rgb);
-        }
-      } else if (s.type === "point") put(s.x, s.y, rgb);
-    }
-  }
-  return equationalizeImageData({ width: S, height: S, data });
-}
 
 // js/brain/visual-cortex.js
 var FRAME_W = 60;
@@ -122939,9 +122879,8 @@ var MindSpaceGPU = class {
   stylizeField(rec, opts = {}) {
     return stylizeField(rec, opts);
   }
-  composeFields(recs, opts = {}) {
-    return composeFields(recs, opts);
-  }
+  // composeFields delegate REMOVED (2026-07-16) — the collage compositor is gone;
+  // imagination now field-renders ONE unified looked-up scene (see chat.js).
   // ── DE-NOVO IMAGINATION (UVM-INT.3) — cortex state → field C, no camera/file ─────────────────
   // Her current mind-state (any cortex activation vector — sem region, percept, emission
   // embedding) is folded into a small grayscale image and equationalized into a REAL field C.

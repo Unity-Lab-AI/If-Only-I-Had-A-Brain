@@ -467,7 +467,7 @@ function connectToServer() {
     // VRAM (same-tab WS hiccup keeps WebGPU buffers alive, like the cluster
     // skip-reinit below). The server skips re-streaming these ONCE on this
     // reconnect; periodic rebroadcasts still re-converge any drift.
-    ws.send(JSON.stringify({ type: 'gpu_register', vramMB: _vramMB, maxStorageBindingMB: _maxBindMB, gpuName: _gpuName, donorId: window._donorId || null, donorName: (window._getDonorName && window._getDonorName()) || null, heldMatrices: (gpu && gpu._sparseMatrices) ? Object.keys(gpu._sparseMatrices).slice(0, 256) : [], crashCrumb: (() => { try { const c = JSON.parse(localStorage.getItem('ual_donor_crumb') || 'null'); localStorage.removeItem('ual_donor_crumb'); return (c && (Date.now() - c.t) < 600000) ? c : null; } catch (e) { return null; } })() }));
+    ws.send(JSON.stringify({ type: 'gpu_register', sparseV2: true, vramMB: _vramMB, maxStorageBindingMB: _maxBindMB, gpuName: _gpuName, donorId: window._donorId || null, donorName: (window._getDonorName && window._getDonorName()) || null, heldMatrices: (gpu && gpu._sparseMatrices) ? Object.keys(gpu._sparseMatrices).slice(0, 256) : [], crashCrumb: (() => { try { const c = JSON.parse(localStorage.getItem('ual_donor_crumb') || 'null'); localStorage.removeItem('ual_donor_crumb'); return (c && (Date.now() - c.t) < 600000) ? c : null; } catch (e) { return null; } })() }));
   };
 
   ws.onerror = (err) => {
@@ -700,6 +700,73 @@ function connectToServer() {
             ws.send(resp);
           } catch (err) {
             console.warn('[GPU Compute] sparse_propagate binary failed:', err.message);
+          }
+          return;
+        }
+        if (typeByte === 6) {
+          // SPARSE PROPAGATE (CHAT.1, 2026-07-16) — the chat-latency fix. The
+          // legacy type=2 ships the FULL dense pre-spike array (~6MB at the 1.5M
+          // language cortex) and returns the FULL dense currents (~6MB) — per
+          // emission tick. Type=6 ships only the ACTIVE spike INDICES (KBs) and
+          // returns only the NONZERO currents as (index, value) pairs. Same GPU
+          // dispatch, same math, ~100-500× less wire. Request layout after the
+          // standard header: preLen (u32) + nnz (u32) + indices (u32 × nnz).
+          // preLen === 0 → bound mode (read the bound cluster buffer), same
+          // convention as type=2's empty pre.
+          const preLen = view.getUint32(off, true); off += 4;
+          const nnz = view.getUint32(off, true); off += 4;
+          try {
+            if (preLen > 0) {
+              // rebuild the dense pre buffer donor-side from indices (cached
+              // scratch per matrix, zeroed each call so stale actives never linger)
+              if (!window._sparsePreScratch) window._sparsePreScratch = {};
+              let scratch = window._sparsePreScratch[name];
+              if (!scratch || scratch.length !== preLen) { scratch = new Uint32Array(preLen); window._sparsePreScratch[name] = scratch; }
+              else scratch.fill(0);
+              const idxArr = new Uint32Array(buf, off, nnz);
+              for (let i = 0; i < nnz; i++) { const j = idxArr[i]; if (j < preLen) scratch[j] = 1; }
+              gpu.writeSparsePreSpikes(name, scratch);
+            }
+            const currents = await gpu.propagateSparse(name);
+            const clen = currents ? currents.length : 0;
+            // count nonzero currents; if the sparse encoding would be BIGGER than
+            // dense (pathological near-dense currents), fall back to the dense
+            // type=2 response — the server ack handler switches on the RESPONSE
+            // type byte, so mixed formats are fine.
+            let n = 0;
+            if (currents) for (let i = 0; i < clen; i++) if (currents[i] !== 0) n++;
+            if (currents && n * 8 >= clen * 4) {
+              const resp = new ArrayBuffer(16 + clen * 4);
+              const rv = new DataView(resp);
+              rv.setUint8(0,'S'.charCodeAt(0)); rv.setUint8(1,'P'.charCodeAt(0));
+              rv.setUint8(2,'R'.charCodeAt(0)); rv.setUint8(3,'R'.charCodeAt(0));
+              rv.setUint8(4, 2);
+              rv.setUint32(8, reqId, true);
+              rv.setUint32(12, clen, true);
+              new Float32Array(resp, 16, clen).set(currents);
+              ws.send(resp);
+              return;
+            }
+            // sparse response: magic + type(6) + pad(3) + reqId@8 + postLen@12 +
+            // nnz@16 + pairs@20 (u32 index + f32 value per entry, 8B each)
+            const resp = new ArrayBuffer(20 + n * 8);
+            const rv = new DataView(resp);
+            rv.setUint8(0,'S'.charCodeAt(0)); rv.setUint8(1,'P'.charCodeAt(0));
+            rv.setUint8(2,'R'.charCodeAt(0)); rv.setUint8(3,'R'.charCodeAt(0));
+            rv.setUint8(4, 6);
+            rv.setUint32(8, reqId, true);
+            rv.setUint32(12, clen, true);
+            rv.setUint32(16, n, true);
+            if (currents && n > 0) {
+              let w = 20;
+              for (let i = 0; i < clen; i++) {
+                if (currents[i] === 0) continue;
+                rv.setUint32(w, i, true); rv.setFloat32(w + 4, currents[i], true); w += 8;
+              }
+            }
+            ws.send(resp);
+          } catch (err) {
+            console.warn('[GPU Compute] sparse_propagate_v2 (type 6) failed:', err.message);
           }
           return;
         }

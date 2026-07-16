@@ -1859,7 +1859,10 @@ class ServerBrain {
         // window (the Phase C.1 rebind path still exists for the case
         // where binding metadata wasn't shipped).
         upload:    (name, matrix, binding)       => this.gpuSparseUpload(name, matrix, binding),
-        propagate: (name, preSpikes)             => this.gpuSparsePropagate(name, preSpikes),
+        // CHAT.1 (2026-07-16) — wire-lean router: bound matrices skip the dense
+        // pre payload entirely (donor discards it); unbound go sparse-index
+        // (type=6) when the donor speaks sparseV2, legacy dense otherwise.
+        propagate: (name, preSpikes)             => this.gpuSparsePropagateAuto(name, preSpikes),
         hebbian:   (name, preSpikes, postSpikes, lr) => this.gpuSparseHebbian(name, preSpikes, postSpikes, lr),
         // T17.7 Phase C.1 — cluster-bound dispatch. After
         // _ensureCortexCrossProjectionsBound rebinds a projection to main
@@ -7600,7 +7603,7 @@ wss.on('connection', (ws, req) => {
       // a 4-byte boundary (compute.html used to emit new Float32Array(
       // resp, 13, clen) which is a WebGPU-validator violation —
       // "start offset of Float32Array should be a multiple of 4").
-      const reqId = typeByte === 2 ? data.readUInt32LE(8) : data.readUInt32LE(5);
+      const reqId = (typeByte === 2 || typeByte === 6) ? data.readUInt32LE(8) : data.readUInt32LE(5);
       if (brain._gpuSparsePending) {
         const pending = brain._gpuSparsePending.get(reqId);
         if (pending) {
@@ -7619,6 +7622,24 @@ wss.on('connection', (ws, req) => {
                 data.byteOffset + currentsOffset,
                 data.byteOffset + currentsOffset + currentsLen * 4,
               ));
+              pending.resolve({ currents });
+            }
+          } else if (typeByte === 6) {
+            // CHAT.1 — SPARSE propagate response: postLen@12 + nnz@16 + pairs@20
+            // (u32 index + f32 value per entry). Reassemble the dense currents
+            // server-side so callers see the exact same Float32Array as type=2.
+            const postLen = data.readUInt32LE(12);
+            const nnz = data.readUInt32LE(16);
+            const expectedLen = 20 + nnz * 8;
+            if (data.length < expectedLen || postLen > 100_000_000) {
+              pending.resolve({ error: 'truncated sparse propagate response' });
+            } else {
+              const currents = new Float32Array(postLen);
+              for (let k = 0; k < nnz; k++) {
+                const o = 20 + k * 8;
+                const ci = data.readUInt32LE(o);
+                if (ci < postLen) currents[ci] = data.readFloatLE(o + 4);
+              }
               pending.resolve({ currents });
             }
           } else {
@@ -7859,6 +7880,11 @@ wss.on('connection', (ws, req) => {
           }
           client.donorAppVersion = _donorVer || 'browser';
           client.isGPU = true;
+          // CHAT.1 — sparse-propagate-v2 capability (type=6 sparse-index wire).
+          // Browser donors (current compute.html) advertise it; native donors
+          // don't → they keep the legacy dense type=2 path. Stamped on the ws so
+          // gpuSparsePropagateAuto can gate per-socket.
+          ws._sparseV2 = msg.sparseV2 === true;
           // PA.4.3 multi-donor pool. Track every registered donor GPU. The
           // brain's weights live in the PRIMARY donor's VRAM and ALL dispatch
           // targets brain._gpuClient (the primary) — unchanged. A second donor
