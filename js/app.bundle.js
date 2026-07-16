@@ -57748,24 +57748,40 @@ var NeuronCluster = class {
     const posLr = opts.posLr ?? this.learningRate * 10;
     const negLr = opts.negLr ?? -this.learningRate * 5;
     const reps = opts.reps ?? 100;
-    const buildPattern = (oneHot) => {
-      const p = new Float64Array(this.size);
+    if (!this._pairReinforceScratch || this._pairReinforceScratch.size !== this.size) {
+      this._pairReinforceScratch = {
+        size: this.size,
+        pre: new Float64Array(this.size),
+        correctPost: new Float64Array(this.size),
+        wrongPost: new Float64Array(this.size)
+      };
+    }
+    const _prs = this._pairReinforceScratch;
+    const buildInto = (buf, oneHot) => {
+      for (let k = region.start; k < region.end; k++) buf[k] = 0;
+      const active = [];
       for (let d = 0; d < oneHot.length; d++) {
         if (oneHot[d] <= 0) continue;
         for (let n = 0; n < groupSize; n++) {
           const idx = region.start + d * groupSize + n;
-          if (idx < region.end) p[idx] = 1;
+          if (idx < region.end) {
+            buf[idx] = 1;
+            active.push(idx);
+          }
         }
       }
-      return p;
+      return active;
     };
-    const pre = buildPattern(opts.srcOneHot);
-    const correctPost = buildPattern(opts.correctOneHot);
-    const wrongPost = opts.wrongOneHot ? buildPattern(opts.wrongOneHot) : null;
+    const pre = _prs.pre;
+    buildInto(pre, opts.srcOneHot);
+    const correctPost = _prs.correctPost;
+    const correctActive = buildInto(correctPost, opts.correctOneHot);
+    const wrongPost = opts.wrongOneHot ? _prs.wrongPost : null;
+    const wrongActive = wrongPost ? buildInto(wrongPost, opts.wrongOneHot) : null;
     const negAbs = Math.abs(negLr);
     for (let i = 0; i < reps; i++) {
-      this.synapses.ojaUpdate(pre, correctPost, posLr);
-      if (wrongPost) this.synapses.antiHebbianUpdate(pre, wrongPost, negAbs);
+      this.synapses.ojaUpdate(pre, correctPost, posLr, { activeRows: correctActive });
+      if (wrongPost) this.synapses.antiHebbianUpdate(pre, wrongPost, negAbs, { activeRows: wrongActive });
     }
   }
   /**
