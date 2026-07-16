@@ -621,6 +621,22 @@ export function stylizeField(rec, opts = {}) {
     data[o + 2] = Math.max(0, Math.min(255, Math.round(rgb[2] * g * 255)));
     data[o + 3] = 255;
   }
+  // She writes the WORD of what she drew on the field render too (Gee: "she writes
+  // words ... on almost every image"). The caller passes her CLEAN hand's glyph
+  // line-strokes ([0,1] coords); rasterize them straight onto the RGBA (crisp, no
+  // wobble) before equationalizing so the label rides in the drawn field C.
+  const ls = Array.isArray(opts.labelStrokes) ? opts.labelStrokes : null;
+  if (ls && ls.length) {
+    const put = (nx, ny, rgb) => { const xi = Math.round(nx * (gw - 1)), yi = Math.round(ny * (gh - 1)); if (xi < 0 || xi >= gw || yi < 0 || yi >= gh) return; const o = (yi * gw + xi) * 4; data[o] = rgb[0]; data[o + 1] = rgb[1]; data[o + 2] = rgb[2]; data[o + 3] = 255; };
+    for (const s of ls) {
+      if (!s) continue;
+      const rgb = Array.isArray(s.rgb) ? s.rgb : [222, 220, 226];
+      if (s.type === 'line') {
+        const steps = Math.max(2, Math.round(Math.hypot((s.x1 - s.x0) * gw, (s.y1 - s.y0) * gh)));
+        for (let k = 0; k <= steps; k++) { const t = k / steps; put(s.x0 + (s.x1 - s.x0) * t, s.y0 + (s.y1 - s.y0) * t, rgb); }
+      } else if (s.type === 'point') { put(s.x, s.y, rgb); }
+    }
+  }
   return equationalizeImageData({ width: gw, height: gh, data });
 }
 
