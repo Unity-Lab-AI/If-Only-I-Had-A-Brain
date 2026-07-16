@@ -2779,7 +2779,14 @@ const SERVER_GPU_MIXIN = {
       phon:      [0.550, 0.750],
       sem:       [0.750, 0.917],
       fineType:  [0.917, 0.967],
-      motor:     [0.967, 1.000],
+      motor:     [0.967, 0.984],
+      // WMB word_motor band (Gee 2026-07-15) — lockstep with brain-server.js
+      // CORTEX_SUBREGION_LAYOUT. word_motor (langCortex 90K) drops into the unused
+      // tail of the motor sub-region (motor uses only ~34.5K of the [0.967,1.0]
+      // ~2.02M territory) → main-cortex start ~60.31M, no overlap, no shift to any
+      // other region. Fixes sem_to_word_motor / word_motor_to_sem binding (14/16 → 16/16)
+      // so emission teach runs GPU-bound. Binding-only, SAVESTART-safe.
+      word_motor: [0.984, 1.000],
     };
     const mainSliceStart = {};
     for (const [regName, [frA]] of Object.entries(LAYOUT)) {
