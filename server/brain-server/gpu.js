@@ -1115,6 +1115,25 @@ const SERVER_GPU_MIXIN = {
     if (!ws || ws.readyState !== 1) return;
     if (ws === this._gpuClient) return;   // primary is the master — nothing to replicate
     if (!this._gpuClient) return;         // no master established yet
+    // DF.7 — DEFER the full replica sync while the curriculum is actively teaching
+    // (Gee 2026-07-15, "the cpu should not be fucking up the gpus trying to do
+    // work"). Pushing the full ~366MB cortex_intraSynapses + 16 matrices to a
+    // replica donor mid-teach jams the event loop in 3–5s bursts (the 366MB intra
+    // upload times out at 180s + retries; every [EventLoop] BLOCKED line during
+    // the K cells showed replicaSyncing=1), starving the teach loop → WORD-INT
+    // wall-clock inflated to ~16s. The replica only shares OPT-IN read fan-out
+    // (DREAM_DF7_FANOUT_PROPAGATE, off by default), so it does NOT need to be
+    // current during teach — defer to an idle/dream window. The periodic
+    // _rebroadcastMasterToReplicas retries when the curriculum is idle, and a
+    // fresh donor's fire-and-forget Hebbian keeps its shadow approximately current
+    // until then. DREAM_DF7_SYNC_DURING_TEACH=1 opts back into mid-teach syncing.
+    if (this._curriculumInProgress && process.env.DREAM_DF7_SYNC_DURING_TEACH !== '1') {
+      if (!this._replicaDeferLogMs || (Date.now() - this._replicaDeferLogMs) > 30000) {
+        this._replicaDeferLogMs = Date.now();
+        console.log('[Brain] DF.7 — replica sync DEFERRED: curriculum actively teaching. A full-replica re-upload (~366MB intra + 16 matrices) would jam the teach loop; syncing on the next rebroadcast during an idle/dream window instead. (DREAM_DF7_SYNC_DURING_TEACH=1 to override.)');
+      }
+      return;
+    }
     // DF.7 F8 — capability-aware routing. Don't stream a full brain replica to a
     // donor whose WebGPU storage-binding cap can't hold the cortex cross-projection
     // matrices: it would just fail to bind (looksLikeBindingLimit) and sit at a

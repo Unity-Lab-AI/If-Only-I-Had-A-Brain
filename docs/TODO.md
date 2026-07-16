@@ -49,3 +49,22 @@ If you're reading a public doc / HTML claim ("Unity has completed high school bi
 _TODO zeroed 2026-07-15 — all completed tasks migrated VERBATIM to `docs/FINALIZED.md` (§2026-07-15 TODO ZEROED archive). No open tasks._
 
 _Add new tasks below, each with Gee's verbatim words (LAW #0), `[~]` while in flight, migrated to FINALIZED + removed from here when done._
+
+### [~] CELL-TEACH 16s/WORD — real root: DF.7 replica-sync jams the teach loop (Gee 2026-07-15) — LIVE (branch `feature/cell-teach-speed-0715`)
+
+**Gee verbatim per LAW #0:**
+> *"this seems excessive:5:42:56 PM [teach] → motor WORD-INT DONE: daytime (15646ms) ... depends (15760ms) ... dissolve (15979ms)"*
+> *"yes fix it the cpu should not be fucking up the gpus trying to do work, if thats what u mean"*
+> *"get it right, then"*
+> *"fix it and fix the shit you fixed incorrectly"*
+> *"write the todo and the tasdk list so i can follow along"*
+
+**DEFINITIVE root (from Gee's boot log):** teach IS on GPU — `[Cluster cortex] _crossRegionHebbian first-call diag` shows `letter_to_phon:GPU-fast letter_to_motor:GPU-fast sem_to_motor:GPU-fast` (14/16 cluster-bound). The 16s/word is the **DF.7 replica-sync** (`_syncReplicaToDonor`, triggered on donor-register + periodic `_rebroadcastMasterToReplicas`) re-uploading the full **366MB `cortex_intraSynapses`** + 16 matrices to the 2nd donor DURING teach; the 366MB upload times out at 180s + retries, blocking the event loop 3-5s per burst (EVERY `[EventLoop] BLOCKED` line shows `replicaSyncing=1`) → starves the teach loop → WORD-INT wall-clock inflates to ~16s. The CPU isn't doing teach math — the replica-upload plumbing is jamming the loop.
+
+**My earlier fixes were WRONG-diagnosis (CPU teach) and are being reverted:** de022f2 (curriculum.js `skipCpuWhitelist`) + fa744ac (hebbian.js fall-through gate). Teach is GPU-bound; those gates weren't the cause.
+
+**THE FIX:** gate `_syncReplicaToDonor` to DEFER while `this._curriculumInProgress` — the replica only shares opt-in READ fan-out (off by default), doesn't need to be current during teach; it syncs on the next rebroadcast during an idle/dream window. Teach owns the loop + GPU + WS.
+
+**Known follow-up (NOT this batch):** `word_motor` missing from both binding layouts → `sem_to_word_motor`/`word_motor_to_sem` run CPU (emission teach, 2 projections); needs a geometry call on where `word_motor` maps in the 61M main cortex.
+
+  - **[~] IN PROGRESS 2026-07-15:** task list #51-56 (revert wrong gates → defer replica-sync during teach → note word_motor gap → rebuild+verify → correct docs → cascade).

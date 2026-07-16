@@ -260,39 +260,21 @@ export const CLUSTER_HEBBIAN_MIXIN = {
       // residual ~5s [EventLoop] BLOCK during teach. _ojaUpdateChunked slices it
       // + yields between slices (row-independent math = identical result), so a
       // /ws donor/chat handshake gets an event-loop slot even on the CPU path.
-      // CELL-TEACH SPEED (Gee 2026-07-15 — the ~16s/word actually lived HERE).
-      // This is the NON-GPU-bound fall-through; it's supposed to be cold at
-      // biological scale, but when the langCortex cross-projections aren't
-      // GPU-bound it runs the full per-projection CPU Oja on EVERY letter ×
-      // EVERY rep (the letter_to_phon / letter_to_motor / phon_to_letter /
-      // motor_to_letter identity projections over the grown 1.5M cortex) — the
-      // residual per-word cost my first gate missed (that gate only covered the
-      // GPU-bound branch above). Same safe posture as that branch: on an
-      // intermediate teach rep (skipCpuWhitelist) the CPU shadow doesn't need
-      // updating (post-teach probes read it only after the FINAL rep) and the GPU
-      // fire-and-forget below carries the training EVERY rep — so skip the
-      // expensive CPU Oja here. Never skip when there's no live GPU proxy
-      // (learning must not be lost); then the CPU pass is the only training.
-      const _gpuWillCarry = !!(this._gpuProxyReady && this._gpuProxy && this._gpuProxy.hebbian);
-      if (!(skipCpuWhitelist && _gpuWillCarry)) {
-        if (this._sparsePool && this._sparsePool.ready) {
-          try {
-            await this._sparsePool.hebbianUpdate(proj, preF, postF, lrEff);
-          } catch {
-            await this._ojaUpdateChunked(proj, preF, postF, lrEff, ojaOpts);
-          }
-        } else {
+      if (this._sparsePool && this._sparsePool.ready) {
+        try {
+          await this._sparsePool.hebbianUpdate(proj, preF, postF, lrEff);
+        } catch {
           await this._ojaUpdateChunked(proj, preF, postF, lrEff, ojaOpts);
         }
+      } else {
+        await this._ojaUpdateChunked(proj, preF, postF, lrEff, ojaOpts);
       }
-      // T17.3.d — fire-and-forget GPU Hebbian for standalone (non-bound)
-      // projections. Runs EVERY rep so GPU weights stay current even when the
-      // CPU Oja above was skipped on an intermediate rep. Bandwidth: srcSize +
-      // dstSize u32s.
-      if (_gpuWillCarry) {
+      // T17.3.d — fire-and-forget GPU Hebbian fallback for standalone
+      // (non-bound) projections. Bandwidth cost: srcSize + dstSize u32s.
+      if (this._gpuProxyReady && this._gpuProxy && this._gpuProxy.hebbian) {
         try {
           this._gpuProxy.hebbian(`${this.name}_${name}`, preF, postF, lrEff);
-        } catch { /* non-fatal — CPU path already updated when not skipped */ }
+        } catch { /* non-fatal — CPU path already updated */ }
       }
     }
   },
