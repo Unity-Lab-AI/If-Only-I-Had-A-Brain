@@ -1059,7 +1059,7 @@ const SERVER_CHAT_MIXIN = {
       // actually SEE (the old grounded-only + 15% version never fired: starved), but
       // reference drawings stay primary. It composes drawable nouns from her stream
       // of thought and publishes its own canvas:imagine frame when ready.
-      if (typeof this._imagineAndDraw === 'function' && Math.random() < (Number(process.env.DREAM_IMAGINE_DRAW_PROB) || 0.3)) {
+      if (typeof this._imagineAndDraw === 'function' && Math.random() < (Number(process.env.DREAM_IMAGINE_DRAW_PROB) || 0.18)) {
         this._imagineAndDraw().catch(() => { /* background imagine best-effort */ });
       }
       if (!rec && _recallMissed && typeof this._drawConcept === 'function') {
@@ -1352,13 +1352,18 @@ const SERVER_CHAT_MIXIN = {
     // ideal. The traceColorFill primitive stays available (opts.style) but is out of
     // her auto-rotation.
     const side = (typeof this._drawCanvasSide === 'function') ? this._drawCanvasSide() : 96;
-    const STYLES = ['lineart', 'field'];
-    const _hstyle = (s) => { let h = 5381; for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0; return h; };
-    const style = (typeof opts.style === 'string' && STYLES.includes(opts.style)) ? opts.style : STYLES[_hstyle(key) % STYLES.length];
+    // FIELD is her DEFAULT — the beautiful, detailed, COLORED recreation of what she
+    // sees (Gee 2026-07-15: "WTF happened to her beautiful reacreations of seen
+    // things! ... its all just white pencil drawlings on green the shit i told you
+    // to get rid of originally"). The white-pencil line-art is NO LONGER auto-picked
+    // for a single concept — it's a fallback only if the field render can't build,
+    // and it's what imagination composition uses (strokes can't overlap as images).
+    // Caller may still force a style via opts.style.
+    const style = (typeof opts.style === 'string') ? opts.style : 'field';
 
     // FIELD style returns a FINISHED drawn rec (no tracing/sketch) — the detailed
     // "immaculate" mode: a posterized full-res render of the reference in her own
-    // rendering. Falls through to line-art if it can't render.
+    // rendering. Falls through to line-art ONLY if it can't render.
     if (style === 'field' && typeof this.mindSpace.stylizeField === 'function') {
       let fr = null;
       const labelStrokes = this._labelStrokes(key);   // she writes the word on the field render too
