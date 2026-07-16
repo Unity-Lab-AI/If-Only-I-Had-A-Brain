@@ -1023,15 +1023,13 @@ const SERVER_CHAT_MIXIN = {
       // apple" into truth (after the first generate). Gated hard so it's
       // curiosity, not spam: concrete-noun head only, not already seen, cooldown,
       // low probability, never mid-teach-perturbing (broadcast only).
-      // DRAW-ENGINE (Gee 2026-07-15) — HEADLESS curiosity grounding. A concept she
-      // couldn't re-see gets LOOKED UP (definition-driven Pollinations reference,
-      // perceived server-side into a field C, bound provisionally) so her NEXT
-      // recall + draw shows the real thing. Fire-and-forget, cooldown + in-flight
-      // gated inside — NO browser needed (replaces the old browser-broadcast
-      // _conceptImageryLoop that never grounded on the headless box).
-      if (_recallMissed && typeof this._fetchReferenceAndGround === 'function') {
-        this._fetchReferenceAndGround(_seedText).catch(() => { /* best-effort */ });
-      }
+      // DRAW-ENGINE (Gee 2026-07-15) — grounding is done INSIDE _drawConcept (its
+      // step-3 look-up fetches the reference, publishes it to the mind's-eye, and
+      // returns the field C to trace). The old fire-and-forget fetch here was a
+      // BUG: it grabbed the concept first (in-flight + cooldown guard), so
+      // _drawConcept's own fetch returned null and she NEVER produced a drawing —
+      // "all lookups, no drawings". Removed; _drawConcept is the single fetch+draw
+      // path (reference shows as `lookup:`, then her trace as `canvas:draw:`).
       // TU.29.13 BUILD B — ACTIVE SKETCH. Some idle daydreams aren't a recalled
       // percept OR a mood wash — she picks up the pencil and DRAWS her active
       // mind: her most-active sem neurons become nodes, connected in activation
@@ -1266,7 +1264,11 @@ const SERVER_CHAT_MIXIN = {
     try { drawn = await this.mindSpace.sketch(strokes, { maxSide: side, mood: { arousal: this.arousal, valence: this.valence } }); } catch { return null; }
     if (!drawn) return null;
     this._lastSketchLabel = 'canvas:draw:' + key;
-    return { rec: drawn, label: this._lastSketchLabel, source: source || ('draw:' + key) };
+    // The RETURNED rec is her DRAWING (the trace), so label it canvas:draw: — the
+    // reference it came from (recall/ref/lookup) already published itself to the
+    // viewer separately, so the viewer shows the reference she saw THEN her drawing
+    // of it, distinctly. (source var kept for the log/provenance.)
+    return { rec: drawn, label: this._lastSketchLabel, source: 'canvas:draw:' + key, from: source || ('draw:' + key) };
   },
 
   // #46 REFERENCE-NOT-FACT styling — the trace is HER read of the thing, not a
