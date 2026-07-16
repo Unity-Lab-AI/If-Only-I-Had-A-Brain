@@ -6,6 +6,8 @@
 >
 > **IMAGINATION (Gee: "cookie cutter copy and pastes ... instead of correctly makeing new images"):** killed the `composeFields` collage (all 3 layers, no-vestigial). `_drawImagined` now grounds ONE UNIFIED scene of the combo ("chicken and sand together in one unified scene, colorful vibrant...") via `_fetchReferenceAndGround` `keyOverride`/`promptOverride` (combo key `a+b` — own 6h cooldown, zero single-concept memory pollution) → field-render + dazzle label → `canvas:imagine:a+b`. Eyeballed: rooster STANDING ON a sand mound, one integrated image. Honest decline when the fetch can't ground.
 >
+> **LABELS v2 (same day):** Gee — "last few letters ... always being cut off ... always pensil symbols ... need to be bold and sillouetted and highlighted ... differnt places on the image". Roots: `_labelStrokes` 10-char slice + fixed bottom anchor + 1px strokes. Fixed: AUTO-FIT full words (size shrinks to fit, never truncates), real stroke THICKNESS `w` through glyphStrokes + BOTH rasterizers (fat filled letters), always-on dark silhouette backing (1.9× thick under-pass), seeded highlight chip, 6 seeded anchors. Eyeballed BUTTERFLY (top, bold rainbow + chip over busy image) / PLAYGROUND / ELEPHANT.
+>
 > **Open follow-up (noted, not built):** bound cross-propagates during chat read the DONOR-resident spike state (teach-written), not the server cluster's live chat state — pre-existing semantics, preserved exactly; making emission write per-tick spike slices needs a teach-interlock (hebbian-on-chat-spikes hazard) — future batch if her reply relevance needs it.
 >
 > ---

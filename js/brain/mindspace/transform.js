@@ -628,13 +628,24 @@ export function stylizeField(rec, opts = {}) {
   const ls = Array.isArray(opts.labelStrokes) ? opts.labelStrokes : null;
   if (ls && ls.length) {
     const put = (nx, ny, rgb) => { const xi = Math.round(nx * (gw - 1)), yi = Math.round(ny * (gh - 1)); if (xi < 0 || xi >= gw || yi < 0 || yi >= gh) return; const o = (yi * gw + xi) * 4; data[o] = rgb[0]; data[o + 1] = rgb[1]; data[o + 2] = rgb[2]; data[o + 3] = 255; };
+    // thick disc painting (stroke.w = normalized thickness) + filled rects, so
+    // labels render BOLD + silhouetted + highlighted here too — not 1px pencil.
+    const disc = (nx, ny, r, rgb) => { for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) if (dx * dx + dy * dy <= r * r) put(nx + dx / (gw - 1), ny + dy / (gh - 1), rgb); };
+    const wRad = (w) => (typeof w === 'number' && w > 0) ? Math.max(1, Math.round(w * (gw - 1) * 0.5)) : 0;
     for (const s of ls) {
       if (!s) continue;
       const rgb = Array.isArray(s.rgb) ? s.rgb : [222, 220, 226];
-      if (s.type === 'line') {
+      if (s.type === 'fill' && Array.isArray(s.pts) && s.pts.length >= 3) {
+        let mnx = 1, mny = 1, mxx = 0, mxy = 0;
+        for (const p of s.pts) { if (p[0] < mnx) mnx = p[0]; if (p[1] < mny) mny = p[1]; if (p[0] > mxx) mxx = p[0]; if (p[1] > mxy) mxy = p[1]; }
+        const xa = Math.max(0, Math.round(mnx * (gw - 1))), xb = Math.min(gw - 1, Math.round(mxx * (gw - 1)));
+        const ya = Math.max(0, Math.round(mny * (gh - 1))), yb = Math.min(gh - 1, Math.round(mxy * (gh - 1)));
+        for (let yy = ya; yy <= yb; yy++) for (let xx = xa; xx <= xb; xx++) { const o = (yy * gw + xx) * 4; data[o] = rgb[0]; data[o + 1] = rgb[1]; data[o + 2] = rgb[2]; data[o + 3] = 255; }
+      } else if (s.type === 'line') {
+        const r = wRad(s.w);
         const steps = Math.max(2, Math.round(Math.hypot((s.x1 - s.x0) * gw, (s.y1 - s.y0) * gh)));
-        for (let k = 0; k <= steps; k++) { const t = k / steps; put(s.x0 + (s.x1 - s.x0) * t, s.y0 + (s.y1 - s.y0) * t, rgb); }
-      } else if (s.type === 'point') { put(s.x, s.y, rgb); }
+        for (let k = 0; k <= steps; k++) { const t = k / steps, x = s.x0 + (s.x1 - s.x0) * t, y = s.y0 + (s.y1 - s.y0) * t; if (r > 0) disc(x, y, r, rgb); else put(x, y, rgb); }
+      } else if (s.type === 'point') { const r = wRad(s.w); if (r > 0) disc(s.x, s.y, r, rgb); else put(s.x, s.y, rgb); }
     }
   }
   return equationalizeImageData({ width: gw, height: gh, data });
