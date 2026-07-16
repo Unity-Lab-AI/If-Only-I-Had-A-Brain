@@ -541,7 +541,7 @@ export function traceLineArt(rec, opts = {}) {
     }
     return pts;
   };
-  const maxStrokes = Math.max(4, Math.min(opts.maxStrokes || 40, 120));
+  const maxStrokes = Math.max(4, Math.min(opts.maxStrokes || 40, 300));   // ceiling raised for full-detail draws (zero-dumbing)
   const minLen = Math.max(3, Math.round((opts.minLenFrac ?? 0.08) * Math.max(gw, gh)));
   const polylines = [];
   for (const si of order) {
