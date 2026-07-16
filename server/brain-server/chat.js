@@ -1481,14 +1481,45 @@ const SERVER_CHAT_MIXIN = {
     }
   },
 
-  // She writes the WORD of what she drew on almost every image (Gee) — her own
-  // CLEAN trained hand: crisp, LEGIBLE, light ink on the dark page, NO wobble/jitter
-  // (wobble dumbs her down). Shared by every draw style (line-art / color-fill /
-  // field) so the label is consistent. Returns glyph line-strokes in [0,1] coords.
+  // DYNAMIC LABEL STYLE (Gee 2026-07-16: "wheres all the different fonts and styles
+  // and colors bond underline dazzle and pizzaz into infinity") — she writes the
+  // word in a DIFFERENT style every drawing, open-ended, NO fixed set: vibrant
+  // per-letter colours via hue rotation (infinite palette), optional bold / italic
+  // slant / underline / drop-shadow. Deterministic per (concept, rotation) so it's
+  // varied yet not random-noise. NO wobble (clean hand) — this is typographic
+  // FLAIR, not degradation.
+  _labelStyle(key) {
+    const hash = (s) => { let h = 5381; const t = String(s); for (let i = 0; i < t.length; i++) h = ((h << 5) + h + t.charCodeAt(i)) >>> 0; return h; };
+    this._labelRotate = ((this._labelRotate || 0) + 1) >>> 0;
+    const seed = (hash(key) + this._labelRotate * 2654435761) >>> 0;
+    // HSL→RGB (vibrant): s,l in 0..1, h in deg → [r,g,b] 0..255
+    const hsl = (h, s, l) => { h = (((h % 360) + 360) % 360) / 360; const a = s * Math.min(l, 1 - l); const f = (n) => { const k = (n + h * 12) % 12; return Math.max(0, Math.min(255, Math.round(255 * (l - a * Math.max(-1, Math.min(k - 3, Math.min(9 - k, 1))))))); }; return [f(0), f(8), f(4)]; };
+    const baseHue = seed % 360, mode = seed % 4;
+    let colors;
+    if (mode === 0) colors = Array.from({ length: 7 }, (_, i) => hsl(baseHue + i * 44, 0.9, 0.62));          // DAZZLE rainbow (per-letter cycle)
+    else if (mode === 1) { const h2 = baseHue + 70 + (seed % 130); colors = Array.from({ length: 6 }, (_, i) => hsl(baseHue + (h2 - baseHue) * (i / 5), 0.82, 0.6)); }  // two-tone gradient
+    else if (mode === 2) colors = [hsl(baseHue, 0.92, 0.6)];                                                 // single vibrant hue
+    else colors = [hsl(45, 0.9, 0.62), hsl(35, 0.95, 0.55), hsl(50, 0.85, 0.66)];                            // gold shimmer
+    return {
+      colors,
+      bold: ((seed >> 3) & 1) === 0,
+      slant: ((seed >> 4) % 3 === 0) ? (0.13 + (seed % 7) * 0.012) : 0,
+      underline: ((seed >> 6) & 1) === 0,
+      shadow: ((seed >> 7) % 3 === 0) ? [18, 16, 22] : null,
+      size: 0.07 + ((seed >> 8) % 4) * 0.006,
+    };
+  },
+
+  // She writes the WORD of what she drew on almost every image, BUILT INTO the image
+  // (the strokes are rasterized into the drawn field C — sketch()/stylizeField/
+  // composeFields all bake them in — never a separate overlay layer). Clean trained
+  // hand + dynamic dazzle style (see _labelStyle). Returns styled glyph strokes.
   _labelStrokes(key) {
     if (!key || !this.mindSpace || typeof this.mindSpace.glyphStrokes !== 'function') return [];
     const label = String(key).slice(0, 10);
-    return this.mindSpace.glyphStrokes(label, { x: Math.max(0.06, 0.5 - label.length * 0.033), y: 0.92, size: 0.075, rgb: [222, 220, 226] }) || [];
+    const st = (typeof this._labelStyle === 'function') ? this._labelStyle(key) : { colors: [[222, 220, 226]], size: 0.075 };
+    const x = Math.max(0.05, 0.5 - label.length * 0.033 * (st.size / 0.075) - (st.slant ? 0.03 : 0));
+    return this.mindSpace.glyphStrokes(label, { x, y: 0.9, size: st.size, colors: st.colors, bold: st.bold, slant: st.slant, underline: st.underline, shadow: st.shadow }) || [];
   },
 
   // _stylizeStrokes — REMOVED (Gee 2026-07-15). It recolored EACH traced stroke a

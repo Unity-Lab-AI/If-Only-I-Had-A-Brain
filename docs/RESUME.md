@@ -1,5 +1,13 @@
 # RESUME — Session Pickup Brief
 
+> ## ⭐ 2026-07-16 (Opus 4.8) — VOICE age-modulator scrapped + LABEL dazzle typography (main `e3ef533` → cascaded)
+> - **VOICE**: `js/io/voice.js` `_agePreset()` age-pitch (OLA) distorted her into a "sand-scavenger". SCRAPPED — always her original chosen voice (piper hfc_female V4, rate/pitch 1.0); removed the OLA + `_pitchShiftOLA`; SpeechSynthesis pitch 1.1→1.0.
+> - **LABELS**: `glyphStrokes` (gpu.js) + `_labelStyle` (chat.js) — dazzle typography: per-letter colours (HSL hue-rotation, infinite), bold/slant/underline/shadow, varied per drawing, baked INTO the field C (not overlaid). One FONT5X7 letterform w/ rich style variation (not multiple typefaces).
+> - **⚠ BUNDLE BUILD GOTCHA (critical for future)**: `js/app.bundle.js` is browser-side + tracked. Rebuild with **`esbuild --format=esm --external:./env.js`** (entry `js/app.js` has top-level await → ESM; `env.js` is the gitignored runtime key file — MUST be external or the Pollinations `sk_` key inlines into the bundle → **GitHub push protection rejects the push**). The key stays in `env.js` + `index.html` for runtime; the bundle must NOT contain it. (Cost me a history-rewrite + force-push this session.)
+>
+> ---
+
+
 > ## ⭐⭐⭐ 2026-07-15 (Opus 4.8) — ✅ DRAW QUALITY REBUILD (recognizable art, 3 styles, clean handwriting) — main `b0f9a24` (branch `feature/cell-teach-speed-0715`)
 >
 > **The mind's-eye drawing arc this session, all cascaded to main (awaiting one dashboard Update & SAVESTART to go live):**
