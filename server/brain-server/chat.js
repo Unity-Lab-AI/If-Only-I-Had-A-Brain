@@ -1083,10 +1083,14 @@ const SERVER_CHAT_MIXIN = {
         // DRAW NOW from what she has ALREADY grounded (recall / provisional) — never
         // a fetch (allowFetch:false), so the tick stays microsecond-fast and the
         // viewer cycles every ~6-8s instead of stalling on the network round-trip.
-        try {
-          const drawn = await this._drawConcept(_seedText, { allowFetch: false });
-          if (drawn && drawn.rec) { rec = drawn.rec; _seedSource = drawn.source || drawn.label; }
-        } catch { /* draw best-effort */ }
+        // Only for a DRAWABLE concept — an OBJECT/noun (abstract thought-words trace
+        // to garbage scatter → skip to the favorite below). Dynamic POS gate.
+        if (typeof this._conceptIsDrawable !== 'function' || await this._conceptIsDrawable(_seedText)) {
+          try {
+            const drawn = await this._drawConcept(_seedText, { allowFetch: false });
+            if (drawn && drawn.rec) { rec = drawn.rec; _seedSource = drawn.source || drawn.label; }
+          } catch { /* draw best-effort */ }
+        }
         // FAVORITE fallback (Gee 2026-07-15) — the current thought couldn't ground
         // (never seen + no reference yet), but she can still DRAW a concept she HAS
         // grounded so the mind's-eye shows a REAL picture instead of falling to the
@@ -1229,6 +1233,13 @@ const SERVER_CHAT_MIXIN = {
   // Result: every real look-up becomes a drawing of the SAME concept, 1:1.
   async _lookUpAndDraw(concept) {
     if (typeof this._fetchReferenceAndGround !== 'function') return;
+    // DRAWABILITY GATE (dynamic POS) — only look up + draw concepts that are OBJECTS
+    // (nouns). An abstract/function word ("nicknamed", "because") fetches a reference
+    // that traces to garbage vector scatter (Gee: "stop her basic vector ...
+    // drawings"). Non-drawable → don't fetch, don't draw; the tick shows a grounded
+    // favorite instead. Gated at the source (the fetch path), so non-nouns never get
+    // grounded in the first place.
+    if (typeof this._conceptIsDrawable === 'function' && !(await this._conceptIsDrawable(concept))) return;
     let grounded = null;
     try { grounded = await this._fetchReferenceAndGround(concept); } catch { grounded = null; }
     if (!grounded) return;   // cooldown / gap / fetch-fail / blank ref → nothing new to draw
@@ -1341,10 +1352,14 @@ const SERVER_CHAT_MIXIN = {
     //    per subject (a name-hash picks it, so re-drawing a thing stays consistent)
     //    across an extensible repertoire — more styles can join this list, no cap:
     //      • lineart   — clean single-ink contour sketch (her hand)
-    //      • colorfill — flat colour regions from the real image + a dark outline
     //      • field     — a DETAILED posterized field render (her high-fidelity mode)
+    // COLORFILL DROPPED (Gee 2026-07-15: "stop doing her basic vector crayon
+    // drawings they are terrible"). The flat-colour-block style read as crude crayon
+    // vectors; her TRACE (line-art) + detailed FIELD render + imagination are the
+    // ideal. The traceColorFill primitive stays available (opts.style) but is out of
+    // her auto-rotation.
     const side = (typeof this._drawCanvasSide === 'function') ? this._drawCanvasSide() : 96;
-    const STYLES = ['lineart', 'colorfill', 'field'];
+    const STYLES = ['lineart', 'field'];
     const _hstyle = (s) => { let h = 5381; for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0; return h; };
     const style = (typeof opts.style === 'string' && STYLES.includes(opts.style)) ? opts.style : STYLES[_hstyle(key) % STYLES.length];
 
@@ -1413,6 +1428,7 @@ const SERVER_CHAT_MIXIN = {
       if (parts.length >= 3) break;
       const key = (typeof this._vmContentTokens === 'function' ? (this._vmContentTokens(c)[0] || '') : String(c || '').toLowerCase());
       if (!key || keys.includes(key)) continue;
+      if (typeof this._conceptIsDrawable === 'function' && !(await this._conceptIsDrawable(key))) continue;   // only compose DRAWABLE (noun) concepts
       let recP = null;
       try { const hit = (typeof this._recallVisualMemory === 'function') ? this._recallVisualMemory(c) : null; if (hit && hit.rec) recP = hit.rec; } catch { /* nf */ }
       if (!recP) { try { const e = (typeof this._vmStore === 'function') ? this._vmStore().get(key) : null; if (e && e.rec && (typeof this._recDetail !== 'function' || this._recDetail(e.rec) >= 200)) recP = e.rec; } catch { /* nf */ } }
@@ -1499,6 +1515,29 @@ const SERVER_CHAT_MIXIN = {
     // grade. Her drawing quality is her FULL capability, not gated by how far she's
     // walked. (env override for a smaller box if ever needed.)
     return Number(process.env.DREAM_DRAW_CANVAS) || 512;
+  },
+
+  // Is this a DRAWABLE concept? DYNAMIC — works for ANY word including never-seen
+  // ones, NO hardcoded word list (Gee 2026-07-15: "it has to be dynamic for never
+  // seen words"). A drawable concept denotes a physical OBJECT = a NOUN. She reads
+  // the part-of-speech from the SAME dictionary she queries for every definition
+  // (dictionaryapi.dev via the definition service, cached). A word whose senses are
+  // only verb / adverb / conjunction / pronoun / preposition ("nicknamed",
+  // "because", "however") names an action or relation, not a thing — tracing its
+  // reference gives the vector-scatter garbage, so don't draw it (→ she draws a
+  // grounded favorite instead). This was the empirical finding: drawability can NOT
+  // be read from the reference image (coherence, plain-bg fraction, and cross-seed
+  // stability all fail to separate concrete from abstract) — it is SEMANTIC (POS).
+  // Dictionary miss → permissive (draw it; genuinely-unknown words are rare).
+  async _conceptIsDrawable(word) {
+    const w = (typeof this._vmContentTokens === 'function') ? (this._vmContentTokens(word)[0] || '') : String(word || '').toLowerCase().trim();
+    if (!w || w.length < 2) return false;
+    if (!this.cortexCluster || typeof this.cortexCluster.lookupDefinitionFull !== 'function') return true;
+    let defs = null;
+    try { defs = await this.cortexCluster.lookupDefinitionFull(w); } catch { defs = null; }
+    if (!Array.isArray(defs) || defs.length === 0) return true;   // unknown to the dictionary → permissive
+    for (const d of defs) { if (String(d.partOfSpeech || '').toLowerCase() === 'noun') return true; }
+    return false;   // known word with NO noun sense → an action/relation, not an object
   },
 
   // DRAW.7 — the PRACTICE LOOP: draw → compare → adjust → keep the best.
