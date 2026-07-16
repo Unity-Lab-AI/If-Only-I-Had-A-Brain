@@ -511,6 +511,11 @@ const SERVER_CHAT_MIXIN = {
           this.arousal,
           this.coherence,
           {
+            // DONOR-DROP FIX (Gee 2026-07-16) — while the curriculum is walking,
+            // compose reranking drops to ONE candidate (see language-cortex):
+            // 3 full emissions per reply (~39s) stacked on teach + a weights save
+            // starved the event loop 47s → donor socket EPIPE → donor dead.
+            curriculumBusy: !!this._curriculumInProgress,
             predictionError: 0,
             motorConfidence: this.motorConfidence ?? 0,
             psi: this.psi,
@@ -2209,6 +2214,7 @@ const SERVER_CHAT_MIXIN = {
             fear: this.fear,
             reward: this.reward,
             socialNeed: this.persona?.socialAttachment ?? 0.5,
+            curriculumBusy: !!this._curriculumInProgress,   // donor-drop fix — 1 compose candidate mid-walk
           },
           chain: this._innerThoughtChain,
           opts: { seed },
@@ -2708,7 +2714,7 @@ const SERVER_CHAT_MIXIN = {
       composed = await cluster.composeSentence(concept, {
         questionMode: true,
         intentConcept: concept,
-        coherenceCandidates: 2,
+        coherenceCandidates: this._curriculumInProgress ? 1 : 2,   // donor-drop fix — rerank is idle-only
         ...this._affectDecoder(),   // temperature + topK from live affect/chemical state
       });
     } catch { composed = null; }

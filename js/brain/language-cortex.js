@@ -2334,7 +2334,11 @@ export class LanguageCortex {
                 subject: inferredSubject || undefined,
                 temperature: Number(_temp.toFixed(2)),
                 topK: _topK,
-                coherenceCandidates: 3,
+                // DONOR-DROP FIX (2026-07-16) — mid-walk, ONE candidate: each
+                // rerank candidate is a FULL sentence emission (~13s of GPU
+                // dispatches); 3 of them stacked on teach starved the event
+                // loop 47s and killed the donor socket. Rerank = idle luxury.
+                coherenceCandidates: opts.curriculumBusy ? 1 : 3,
                 coherenceFloor: _chatCohFloor,
                 // grade-vocab gate: chat reply stays in developmentally-
                 // cleared vocabulary (blocks corpus-bleed). Chat-only —
@@ -2378,7 +2382,7 @@ export class LanguageCortex {
                         subject: inferredSubject || undefined,
                         temperature: Number(_temp.toFixed(2)),
                         topK: _topK,
-                        coherenceCandidates: 2,
+                        coherenceCandidates: opts.curriculumBusy ? 1 : 2,   // donor-drop fix — see above
                         gradeGate: true,
                       });
                     } catch { cont = null; }
