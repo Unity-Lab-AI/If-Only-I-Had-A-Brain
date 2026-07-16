@@ -988,25 +988,18 @@ const SERVER_CHAT_MIXIN = {
             rec = hit.rec;
             _seedSource = (hit.recombined ? 'recall+morph:' : 'recall:') + hit.matched.join('+');
             // DRAW.4 — sometimes she DRAWS what she remembers instead of just
-            // re-seeing it. The composer used to fire ONLY on recall-miss, so
-            // everything she had actually SEEN was excluded from her drawing
-            // pool — her drawings could never contain learned imagery and the
-            // viewer looped the same fixed schema/shape stacks ("like shes pre
-            // programmed"). Now a recall-hit has a 35% chance of becoming a
-            // DRAWING OF THE MEMORY: the stroke contour comes from the stored
-            // field C's OWN percept vector (coarse spatial coefficients →
-            // radial outline, chroma → crayon, texture ratio → hatch detail),
-            // so each remembered thing draws as a DISTINCT learned form and
-            // her sketchbook grows with everything her eyes have grounded.
-            if (typeof this.mindSpace.sketch === 'function' && Math.random() < 0.35) {
+            // re-seeing it (a recall-hit has a 35% chance of becoming a DRAWING
+            // OF THE MEMORY, so her sketchbook includes learned imagery).
+            // AUDIT FIX (Gee 2026-07-16 "make sure weve been doing everything
+            // correct"): this branch used _practiceDrawFromMemory → white-ink
+            // traceLineArt strokes = the LAST leftover white-pencil publisher
+            // ("NO MORE PENCIL ART"). Now it draws via _drawConcept — the field
+            // default: her beautiful COLOURED recreation + dazzle label.
+            if (typeof this._drawConcept === 'function' && Math.random() < 0.35) {
               try {
-                // DRAW.7/9 — the PRACTICE LOOP: bounded draw→compare→adjust
-                // attempts against the memory's own percept; the best drawing
-                // survives, her per-concept skill grows, and sometimes the
-                // result composites ONTO the memory (canvas:paint:<concept>).
                 const _mConcept = (hit.matched && hit.matched[0]) || null;
-                const practiced = await this._practiceDrawFromMemory(_mConcept, hit.rec);
-                if (practiced && practiced.rec) { rec = practiced.rec; _seedSource = practiced.label; }
+                const practiced = _mConcept ? await this._drawConcept(_mConcept, { allowFetch: false }) : null;
+                if (practiced && practiced.rec) { rec = practiced.rec; _seedSource = practiced.source || practiced.label; }
               } catch { /* memory-draw best-effort — the recall itself stands */ }
             }
           } else {
@@ -1500,8 +1493,13 @@ const SERVER_CHAT_MIXIN = {
     else if (mode === 1) { const h2 = baseHue + 70 + (seed % 130); colors = Array.from({ length: 6 }, (_, i) => hsl(baseHue + (h2 - baseHue) * (i / 5), 0.82, 0.6)); }  // two-tone gradient
     else if (mode === 2) colors = [hsl(baseHue, 0.92, 0.6)];                                                 // single vibrant hue
     else colors = [hsl(45, 0.9, 0.62), hsl(35, 0.95, 0.55), hsl(50, 0.85, 0.66)];                            // gold shimmer
+    // ALTERNATE LETTERFORMS (Gee 2026-07-16: "yes alternat leter forms") — the
+    // letter SHAPE itself varies too: block / serif / dots / bubble / tall / wide
+    // (rendered differently from the one FONT5X7 grid in glyphStrokes).
+    const FONTS = ['block', 'serif', 'dots', 'bubble', 'tall', 'wide'];
     return {
       colors,
+      font: FONTS[(seed >> 9) % FONTS.length],
       bold: ((seed >> 3) & 1) === 0,
       slant: ((seed >> 4) % 3 === 0) ? (0.13 + (seed % 7) * 0.012) : 0,
       underline: ((seed >> 6) & 1) === 0,
@@ -1518,8 +1516,9 @@ const SERVER_CHAT_MIXIN = {
     if (!key || !this.mindSpace || typeof this.mindSpace.glyphStrokes !== 'function') return [];
     const label = String(key).slice(0, 10);
     const st = (typeof this._labelStyle === 'function') ? this._labelStyle(key) : { colors: [[222, 220, 226]], size: 0.075 };
-    const x = Math.max(0.05, 0.5 - label.length * 0.033 * (st.size / 0.075) - (st.slant ? 0.03 : 0));
-    return this.mindSpace.glyphStrokes(label, { x, y: 0.9, size: st.size, colors: st.colors, bold: st.bold, slant: st.slant, underline: st.underline, shadow: st.shadow }) || [];
+    const _wideK = st.font === 'wide' ? 1.35 : st.font === 'tall' ? 0.8 : 1;
+    const x = Math.max(0.03, 0.5 - label.length * 0.033 * (st.size / 0.075) * _wideK - (st.slant ? 0.03 : 0));
+    return this.mindSpace.glyphStrokes(label, { x, y: 0.9, size: st.size, font: st.font, colors: st.colors, bold: st.bold, slant: st.slant, underline: st.underline, shadow: st.shadow }) || [];
   },
 
   // _stylizeStrokes — REMOVED (Gee 2026-07-15). It recolored EACH traced stroke a
@@ -1539,31 +1538,12 @@ const SERVER_CHAT_MIXIN = {
   // the form comes from an image she looked at, never a table. No stages,
   // no allow-list, no furniture.
 
-  // DRAW.5 — drawing PRACTICE counter. Kids don't stamp the same drawing —
-  // they iterate: each time they draw a thing it comes out a little different
-  // as the motor plan evolves. Every composed drawing of a concept bumps its
-  // counter (bounded Map, cap 300); the counter folds into the layout hash so
-  // repeat drawings of the SAME subject evolve every couple of attempts
-  // instead of repeating pixel-identical forms. Colors stay concept-stable
-  // (her cast keeps its crayons) — only composition/layout practices forward.
-  _drawPracticeBump(concept) {
-    if (!concept) return 0;
-    if (!(this._drawPractice instanceof Map)) this._drawPractice = new Map();
-    const n = (this._drawPractice.get(concept) || 0) + 1;
-    if (this._drawPractice.size >= 300 && !this._drawPractice.has(concept)) {
-      const first = this._drawPractice.keys().next().value;
-      this._drawPractice.delete(first);
-    }
-    this._drawPractice.set(concept, n);
-    return n;
-  },
+  // DRAW.5 _drawPracticeBump — RETIRED (Gee 2026-07-16 audit): its only caller was
+  // the retired white-ink practice loop; the layout-hash it fed died with the old
+  // schema composer. No-vestigial.
 
-  // DRAW.8 — grade-gated canvas resolution. Her drawing surface grows with
-  // her education exactly like a real artist's control does: K crayons on a
-  // small page → adult work on a big sheet. Reads the live minGrade (the
-  // same signal that caps her speech). Bounded 96..512 (the raised sketch()
-  // cap; engine MAX_LINE 2048 upstream, no-fractalize invariant untouched —
-  // the CPU CDF 9/7 on a padded 512² plane is still milliseconds).
+  // DRAW.8 — full-resolution canvas, always (the old grade-gated 96..512 ladder
+  // was ripped out per the zero-dumbing directive).
   _drawCanvasSide() {
     // ZERO DUMBING (Gee 2026-07-15: "rip out BOTH gates ... K quality == PhD
     // quality, zero intentional limits"). NO grade cap on canvas resolution — every
@@ -1596,97 +1576,14 @@ const SERVER_CHAT_MIXIN = {
     return false;   // known word with NO noun sense → an action/relation, not an object
   },
 
-  // DRAW.7 — the PRACTICE LOOP: draw → compare → adjust → keep the best.
-  // When she draws from a visual memory she HAS a reference — the stored
-  // field C. A human gets past stick figures exactly this way: look at the
-  // thing, draw it, compare, adjust, repeat for years. Bounded attempts
-  // (loop-safe, tiny planes): each renders a stroke variant and scores it by
-  // the cosine between describe(drawing) and describe(memory) — the
-  // equational "does my drawing look like the thing" — and the best
-  // survives. Per-concept skill (best cosine achieved, Map cap 300, in-memory
-  // per boot) tracks her BEST rendition so recall keeps it (remember-in-relation)
-  // — it does NOT dumb any draw (NO wobble anywhere, no skill/grade detail gate;
-  // every draw is her full capability per Gee's zero-dumbing directive). No
-  // image-model anywhere in the loop.
-  // DRAW.9 — MEMORY-PAINTING was REMOVED (operator directive, MEYE.3):
-  // compositing her strokes ONTO the seen field via morphField faded two
-  // images together — the same noise-pollution class as memory morphing.
-  // Her drawing now stands ALONE; the reference stays pristine in memory.
-  // The practice render still uses the MEMORY's dims so the percept
-  // comparison stays apples-to-apples.
-  async _practiceDrawFromMemory(concept, memRec) {
-    if (!memRec || !this.mindSpace || typeof this.mindSpace.sketch !== 'function') return null;
-    let memPercept = null;
-    try { memPercept = await this.mindSpace.describe(memRec); } catch { return null; }
-    if (!memPercept) return null;
-    const cos = (a, b) => {
-      let d = 0, na = 0, nb = 0; const n = Math.min(a.length, b.length);
-      for (let i = 0; i < n; i++) { d += a[i] * b[i]; na += a[i] * a[i]; nb += b[i] * b[i]; }
-      const dn = Math.sqrt(na) * Math.sqrt(nb); return dn > 0 ? d / dn : 0;
-    };
-    if (!(this._drawSkill instanceof Map)) this._drawSkill = new Map();
-    const key = concept || 'seen';
-    const mood = { arousal: this.arousal, valence: this.valence };
-    const side = Math.max(16, Math.min(memRec.width || 96, 512));
-    const ATTEMPTS = 2;
-    let best = null, bestCos = -1;
-    for (let v = 0; v < ATTEMPTS; v++) {
-      let strokes = null;
-      try { strokes = await this._drawFromMemoryStrokes(key, memRec, v); } catch { strokes = null; }
-      if (!strokes || !strokes.length) continue;
-      let drawn = null;
-      try { drawn = await this.mindSpace.sketch(strokes, { maxSide: side, mood }); } catch { drawn = null; }
-      if (!drawn) continue;
-      let s = 0;
-      try { s = cos(await this.mindSpace.describe(drawn), memPercept); } catch { s = 0; }
-      if (s > bestCos) { bestCos = s; best = drawn; }
-    }
-    if (!best) return null;
-    // skill = the best resemblance she has ever achieved for this concept
-    const prev = this._drawSkill.get(key) || 0;
-    if (bestCos > prev) {
-      if (this._drawSkill.size >= 300 && !this._drawSkill.has(key)) {
-        const first = this._drawSkill.keys().next().value;
-        this._drawSkill.delete(first);
-      }
-      this._drawSkill.set(key, bestCos);
-    }
-    try { process.stdout.write(`[Brain] ✏ drawing practice "${key}" — resemblance ${bestCos.toFixed(3)} (skill ${Math.max(prev, bestCos).toFixed(3)})\n`); } catch { /* nf */ }
-    // DRAW.9 memory-painting REMOVED (operator directive): compositing her
-    // strokes ONTO the seen field faded two images together — the same
-    // noise-pollution class as memory morphing. Her drawing stands alone;
-    // the reference stays pristine in memory.
-    return { rec: best, label: 'canvas:memory:' + key, resemblance: bestCos };
-  },
-
-  // DRAW.4 — draw WHAT SHE REMEMBERS. TRACES a recalled visual-memory field C
-  // into her hand's strokes via mindSpace.traceField (CDF 9/7 inverse → Sobel
-  // edges → edge-follow polylines → simplify → her goth palette). Replaces the
-  // old 24-point radial-blob projection (a lumpy circle from coarse coefficients,
-  // NOT the thing) — the form now comes from the memory's actual contours, so
-  // every concept her eyes grounded draws as a DISTINCT real shape. Practice
-  // variants nudge the edge threshold so each attempt is a different READ of the
-  // same memory (the DRAW.7 compare-keep-best loop picks the closest).
-  async _drawFromMemoryStrokes(concept, srcRec, variant = 0) {
-    if (!srcRec || !this.mindSpace || typeof this.mindSpace.traceLineArt !== 'function') return null;
-    const side = (typeof this._drawCanvasSide === 'function') ? this._drawCanvasSide() : 96;
-    const traceSide = Math.max(48, Math.min(Math.round(side * 0.9), 160));
-    const maxStrokes = Math.max(16, Math.min(Math.round(side / 3), 120));
-    const edgeThresh = Math.max(0.10, 0.18 - variant * 0.03);   // each attempt reads the memory a little differently
-    let strokes = null;
-    try { strokes = this.mindSpace.traceLineArt(srcRec, { traceSide, maxStrokes, edgeThresh, minLenFrac: 0.08, simplify: 1.0, ink: [228, 226, 230] }); } catch { return null; }
-    if (!strokes || !strokes.length) return null;
-    try { this._drawPracticeBump(concept || 'seen'); } catch { /* nf */ }
-    // NO per-stroke recolor — traceLineArt draws ONE coherent chalk ink (the old
-    // _stylizeStrokes rainbow was the yarn). She writes the word in her own CLEAN
-    // hand (legible, NO wobble); shared _labelStrokes.
-    try {
-      const _k = (typeof this._vmContentTokens === 'function' ? (this._vmContentTokens(concept)[0] || String(concept || '')) : String(concept || '')).slice(0, 10);
-      for (const g of this._labelStrokes(_k)) strokes.push(g);
-    } catch { /* label best-effort */ }
-    return strokes;
-  },
-
+  // DRAW.7 _practiceDrawFromMemory + DRAW.4 _drawFromMemoryStrokes — RETIRED
+  // (Gee 2026-07-16 audit). The practice loop rendered the memory as WHITE-INK
+  // traceLineArt strokes and published them as canvas:memory: — the last leftover
+  // white-pencil publisher after "NO MORE PENCIL ART". The recall-hit draw branch
+  // now goes through _drawConcept (field default = her beautiful COLOURED
+  // recreation + dazzle label). _drawSkill / remember-in-relation bookkeeping
+  // lives on in _rememberDrawing (the look-up→draw path); nothing else called
+  // these, so they're gone per the no-vestigial law.
 
   // SPEAK.6a — brain-driven OUTWARD image generation. Beyond the mind's-eye
   // (internal field C), when her arousal/drive crosses a threshold she

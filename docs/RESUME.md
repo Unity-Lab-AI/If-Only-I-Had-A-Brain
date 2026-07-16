@@ -1,5 +1,12 @@
 # RESUME — Session Pickup Brief
 
+> ## ⭐ 2026-07-16 (later, Fable 5) — ALTERNATE LETTERFORMS + full-session audit (last pencil leak killed)
+> - **AUDIT** (Gee "make sure weve been doing everything correct"): caught the LAST white-pencil publisher — recall-hit 35% branch (`_practiceDrawFromMemory` → white-ink strokes → `canvas:memory:`). Now draws via `_drawConcept` (field-coloured + dazzle label); retired `_practiceDrawFromMemory`/`_drawFromMemoryStrokes`/`_drawPracticeBump` (no-vestigial). Fixed stale comments (voice "K reads younger", DRAW.8 "grade-gated canvas", proxy mention).
+> - **LETTERFORMS**: `glyphStrokes` `font` ∈ block/serif/dots/bubble/tall/wide — geometrically distinct letter shapes from the one FONT5X7 grid, composing with dazzle colours/bold/slant/underline/shadow → infinity. `_labelStyle` picks per (concept, rotation). All six eyeballed distinct+legible.
+> - Bundle rebuilt KEYLESS (`--external:./env.js`); bundled glyphStrokes confirmed carrying font code (esbuild renames `export class`→`var X = class` — grep gotcha).
+>
+> ---
+
 > ## ⭐ 2026-07-16 (Opus 4.8) — VOICE age-modulator scrapped + LABEL dazzle typography (main `e3ef533` → cascaded)
 > - **VOICE**: `js/io/voice.js` `_agePreset()` age-pitch (OLA) distorted her into a "sand-scavenger". SCRAPPED — always her original chosen voice (piper hfc_female V4, rate/pitch 1.0); removed the OLA + `_pitchShiftOLA`; SpeechSynthesis pitch 1.1→1.0.
 > - **LABELS**: `glyphStrokes` (gpu.js) + `_labelStyle` (chat.js) — dazzle typography: per-letter colours (HSL hue-rotation, infinite), bold/slant/underline/shadow, varied per drawing, baked INTO the field C (not overlaid). One FONT5X7 letterform w/ rich style variation (not multiple typefaces).
