@@ -53422,19 +53422,16 @@ var CLUSTER_HEBBIAN_MIXIN = {
       }
       const preF = this.regionSpikes(src);
       const postF = this.regionSpikes(dst);
-      const _gpuWillCarry = !!(this._gpuProxyReady && this._gpuProxy && this._gpuProxy.hebbian);
-      if (!(skipCpuWhitelist && _gpuWillCarry)) {
-        if (this._sparsePool && this._sparsePool.ready) {
-          try {
-            await this._sparsePool.hebbianUpdate(proj, preF, postF, lrEff);
-          } catch {
-            await this._ojaUpdateChunked(proj, preF, postF, lrEff, ojaOpts);
-          }
-        } else {
+      if (this._sparsePool && this._sparsePool.ready) {
+        try {
+          await this._sparsePool.hebbianUpdate(proj, preF, postF, lrEff);
+        } catch {
           await this._ojaUpdateChunked(proj, preF, postF, lrEff, ojaOpts);
         }
+      } else {
+        await this._ojaUpdateChunked(proj, preF, postF, lrEff, ojaOpts);
       }
-      if (_gpuWillCarry) {
+      if (this._gpuProxyReady && this._gpuProxy && this._gpuProxy.hebbian) {
         try {
           this._gpuProxy.hebbian(`${this.name}_${name}`, preF, postF, lrEff);
         } catch {
@@ -107144,7 +107141,6 @@ var Curriculum = class _Curriculum {
     const motorFirstLetter = buildPattern(motorSize, firstLetterOneHot, wScratch.motorFirstLetterBuf);
     for (let rep = 0; rep < reps; rep++) {
       if (typeof globalThis._brainShutdownRequested !== "undefined" && globalThis._brainShutdownRequested) return;
-      layer12Opts.skipCpuWhitelist = rep < reps - 1;
       for (let i = 0; i < letters.length; i++) {
         const ch = letters[i];
         const chOneHot = encodeLetter(ch);
