@@ -1047,11 +1047,24 @@ const SERVER_CHAT_MIXIN = {
       // rain/house furniture — the FORM comes from an image she actually looked
       // at. _drawConcept returns null when she can nothing to ground (never seen,
       // no reference) → honest no-drawing, and the de-novo mood field renders below.
-      if (!rec && _recallMissed && typeof this._drawConcept === 'function' && Math.random() < 0.45) {
+      if (!rec && _recallMissed && typeof this._drawConcept === 'function') {
         try {
           const drawn = await this._drawConcept(_seedText);
           if (drawn && drawn.rec) { rec = drawn.rec; _seedSource = drawn.source || drawn.label; }
-        } catch { /* draw best-effort — mood field below */ }
+        } catch { /* draw best-effort */ }
+        // FAVORITE fallback (Gee 2026-07-15) — the current thought couldn't ground
+        // (never seen + no reference yet), but she can still DRAW a concept she HAS
+        // grounded so the mind's-eye shows a REAL picture instead of falling to the
+        // de-novo texture. Pick a random grounded concept; no fetch (draw from what
+        // she's already seen). This is what keeps the viewer full of her drawings.
+        if (!rec && this._visualMemory && this._visualMemory.size > 0) {
+          try {
+            const _favKeys = Array.from(this._visualMemory.keys());
+            const _fav = _favKeys[Math.floor(Math.random() * _favKeys.length)];
+            const drawnFav = await this._drawConcept(_fav, { allowFetch: false });
+            if (drawnFav && drawnFav.rec) { rec = drawnFav.rec; _seedSource = 'draw:fav:' + _fav; }
+          } catch { /* favorite best-effort — de-novo field below (view-only, not published) */ }
+        }
       }
       if (!rec) {
         rec = await this.mindSpace.imagineFromState(_seed, {
@@ -1141,13 +1154,19 @@ const SERVER_CHAT_MIXIN = {
       // still imagines every tick (the ring + sem injection above are
       // untouched) — only the shared viewer snapshot favors frames that LOOK
       // like something over raw texture.
+      // GROUNDED-ONLY VIEWER (Gee 2026-07-15) — the de-novo thought-blend / sem-state
+      // field is a raw-semantic-state mood TEXTURE (the "solid-color line-vector
+      // neuron-map blob" — no detail, not a drawing). It must NEVER be the public
+      // mind's-eye image. Publish ONLY grounded frames (recall / draw / lookup /
+      // impression / seen); a non-grounded tick HOLDS the last real drawing
+      // indefinitely (no 45s expiry — the blob can't take the screen back). She
+      // still imagines internally every tick (the sem injection + imagined-field
+      // ring above are untouched) — only the shared VIEWER snapshot is
+      // drawings-only. DREAM_EYE_SHOW_THOUGHT=1 restores the old texture-on-viewer.
       const _groundedEye = _seedSource !== 'thought-blend' && _seedSource !== 'sem-state';
       if (_groundedEye) this._lastGroundedEyeAt = now;
-      const _blendHoldMs = Number(process.env.DREAM_EYE_BLEND_HOLD_MS) > 0
-        ? Number(process.env.DREAM_EYE_BLEND_HOLD_MS) : 45000;
-      const _holdViewer = !_groundedEye && !!this._mindsEyeJson
-        && !!this._lastGroundedEyeAt && (now - this._lastGroundedEyeAt) < _blendHoldMs;
-      if (!_holdViewer) {
+      const _publishEye = _groundedEye || process.env.DREAM_EYE_SHOW_THOUGHT === '1';
+      if (_publishEye) {
         try {
           this._mindsEyeJson = JSON.stringify({
             type: 'mindsEye', rec,
