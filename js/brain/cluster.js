@@ -3890,21 +3890,41 @@ export class NeuronCluster {
     const negLr = opts.negLr ?? -this.learningRate * 5;
     const reps = opts.reps ?? 100;
 
-    const buildPattern = (oneHot) => {
-      const p = new Float64Array(this.size);
+    // CELL-TEACH SPEED (Gee 2026-07-15) — was the ~2s/letter WORD-INT cost. This
+    // is fired (letters-1)× per rep from _teachWordIntegrated; the old body
+    // allocated THREE Float64Array(this.size) (=1.5M at the grown cortex) per call
+    // AND ran `reps` (default 100) full-1.5M-row ojaUpdate passes over the intra
+    // matrix → caterpillar = 4000 full-intra Oja/word, pure CPU, synchronous.
+    // Fix is BIT-IDENTICAL: (1) reuse cluster-scoped scratch, clearing only the
+    // region span (never the whole 1.5M); (2) collect the active post indices and
+    // pass them as `activeRows` — for Oja a zero-post row is a zero update (and a
+    // zero decay), so iterating only the active rows is identical math, O(active)
+    // not O(1.5M). reps/learning unchanged.
+    if (!this._pairReinforceScratch || this._pairReinforceScratch.size !== this.size) {
+      this._pairReinforceScratch = {
+        size: this.size,
+        pre: new Float64Array(this.size),
+        correctPost: new Float64Array(this.size),
+        wrongPost: new Float64Array(this.size),
+      };
+    }
+    const _prs = this._pairReinforceScratch;
+    const buildInto = (buf, oneHot) => {
+      for (let k = region.start; k < region.end; k++) buf[k] = 0;   // clear only the region span
+      const active = [];
       for (let d = 0; d < oneHot.length; d++) {
         if (oneHot[d] <= 0) continue;
         for (let n = 0; n < groupSize; n++) {
           const idx = region.start + d * groupSize + n;
-          if (idx < region.end) p[idx] = 1.0;
+          if (idx < region.end) { buf[idx] = 1.0; active.push(idx); }
         }
       }
-      return p;
+      return active;
     };
-
-    const pre = buildPattern(opts.srcOneHot);
-    const correctPost = buildPattern(opts.correctOneHot);
-    const wrongPost = opts.wrongOneHot ? buildPattern(opts.wrongOneHot) : null;
+    const pre = _prs.pre; buildInto(pre, opts.srcOneHot);
+    const correctPost = _prs.correctPost; const correctActive = buildInto(correctPost, opts.correctOneHot);
+    const wrongPost = opts.wrongOneHot ? _prs.wrongPost : null;
+    const wrongActive = wrongPost ? buildInto(wrongPost, opts.wrongOneHot) : null;
 
     // Positive pair via Oja (self-normalizing, decorrelating), negative
     // pair via explicit anti-Hebbian with positive lr. Using antiHebbian
@@ -3912,8 +3932,8 @@ export class NeuronCluster {
     // internally — and matches the push-pull math reviewers expect.
     const negAbs = Math.abs(negLr);
     for (let i = 0; i < reps; i++) {
-      this.synapses.ojaUpdate(pre, correctPost, posLr);
-      if (wrongPost) this.synapses.antiHebbianUpdate(pre, wrongPost, negAbs);
+      this.synapses.ojaUpdate(pre, correctPost, posLr, { activeRows: correctActive });
+      if (wrongPost) this.synapses.antiHebbianUpdate(pre, wrongPost, negAbs, { activeRows: wrongActive });
     }
   }
 
