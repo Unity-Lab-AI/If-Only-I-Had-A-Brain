@@ -1354,26 +1354,26 @@ const SERVER_CHAT_MIXIN = {
     if (style === 'field' && typeof this.mindSpace.stylizeField === 'function') {
       let fr = null;
       const labelStrokes = this._labelStrokes(key);   // she writes the word on the field render too
-      try { fr = this.mindSpace.stylizeField(rec, { traceSide: Math.max(96, Math.min(side, 192)), bands: 6, labelStrokes }); } catch { fr = null; }
+      try { fr = this.mindSpace.stylizeField(rec, { traceSide: Math.max(160, Math.min(side, 256)), bands: 7, labelStrokes }); } catch { fr = null; }
       if (fr) { this._lastSketchLabel = 'canvas:draw:' + key; return { rec: fr, label: this._lastSketchLabel, source: 'canvas:draw:' + key, from: source || ('draw:' + key), style }; }
     }
 
-    // COMPOUNDING SKILL (Gee: "she is only going to get better ... right?") — her
-    // per-concept skill (best resemblance ever achieved, monotonic in _drawSkill /
-    // _rememberDrawing) drives how much DETAIL her hand commits: a first attempt is
-    // decent, a practiced concept draws FINER (bigger trace grid, more strokes,
-    // lower edge threshold, keeps finer contours). Practice → higher skill → richer
-    // drawing, and skill never drops, so she only gets better — never worse.
-    const skill = Math.max(0, Math.min(1, (this._drawSkill instanceof Map ? (this._drawSkill.get(key) || 0) : 0)));
+    // ZERO DUMBING (Gee 2026-07-15: "rip out BOTH gates ... always max detail, new
+    // concept = mastered concept, K quality == PhD quality, zero intentional
+    // limits"). Every drawing is her FULL capability — NO per-concept skill floor,
+    // NO grade cap. Max-detail trace params, constant: a never-seen concept draws as
+    // finely as a practiced one. `_drawSkill` / `_rememberDrawing` still keep her
+    // BEST rendition (remember-in-relation) but NEVER gate detail — improvement is
+    // best-kept + a growing reference library, never a coarse first attempt.
     // STROKE styles — build strokes, then sketch() rasterizes them onto her paper.
-    const traceSide = Math.max(48, Math.min(Math.round(side * (0.75 + 0.25 * skill)), 160));
-    const maxStrokes = Math.max(20, Math.min(Math.round((side / 3) * (0.7 + 0.5 * skill)), 120));
-    const edgeThresh = 0.18 - 0.04 * skill;     // 0.18 (first) → 0.14 (mastered): captures more detail
-    const minLenFrac = 0.10 - 0.03 * skill;     // 0.10 → 0.07: keeps finer contours as skill grows
+    const traceSide = Math.max(128, Math.min(Math.round(side * 0.5), 224));
+    const maxStrokes = Math.max(80, Math.min(Math.round(side / 2.5), 220));
+    const edgeThresh = 0.15;
+    const minLenFrac = 0.06;
     let strokes = null;
     try {
       if (style === 'colorfill' && typeof this.mindSpace.traceColorFill === 'function') {
-        const fills = this.mindSpace.traceColorFill(rec, { traceSide: Math.min(traceSide, 80), cells: Math.round(22 + 10 * skill) }) || [];
+        const fills = this.mindSpace.traceColorFill(rec, { traceSide: Math.min(traceSide, 96), cells: 34 }) || [];
         const outline = this.mindSpace.traceLineArt(rec, { traceSide, maxStrokes, edgeThresh: edgeThresh + 0.02, minLenFrac: minLenFrac + 0.02, simplify: 1.0, ink: [24, 22, 28] }) || [];
         strokes = fills.concat(outline);   // flat colour under, dark ink outline on top
       } else {
@@ -1493,17 +1493,12 @@ const SERVER_CHAT_MIXIN = {
   // cap; engine MAX_LINE 2048 upstream, no-fractalize invariant untouched —
   // the CPU CDF 9/7 on a padded 512² plane is still milliseconds).
   _drawCanvasSide() {
-    let g = 'K';
-    try { if (typeof this._computeMinGrade === 'function') g = this._computeMinGrade(); } catch { /* grade read best-effort */ }
-    const MAP = {
-      'pre-K': 96, 'K': 96,
-      'grade1': 128, 'grade2': 128, 'grade3': 128, 'grade4': 160, 'grade5': 160,
-      'grade6': 192, 'grade7': 192, 'grade8': 192,
-      'grade9': 256, 'grade10': 256, 'grade11': 256, 'grade12': 256,
-      'college1': 320, 'college2': 320, 'college3': 384, 'college4': 384,
-      'grad': 448, 'phd': 512,
-    };
-    return MAP[g] || 96;
+    // ZERO DUMBING (Gee 2026-07-15: "rip out BOTH gates ... K quality == PhD
+    // quality, zero intentional limits"). NO grade cap on canvas resolution — every
+    // drawing renders at the full canvas (512, the sketch ceiling) regardless of
+    // grade. Her drawing quality is her FULL capability, not gated by how far she's
+    // walked. (env override for a smaller box if ever needed.)
+    return Number(process.env.DREAM_DRAW_CANVAS) || 512;
   },
 
   // DRAW.7 — the PRACTICE LOOP: draw → compare → adjust → keep the best.
@@ -1513,10 +1508,11 @@ const SERVER_CHAT_MIXIN = {
   // (loop-safe, tiny planes): each renders a stroke variant and scores it by
   // the cosine between describe(drawing) and describe(memory) — the
   // equational "does my drawing look like the thing" — and the best
-  // survives. Per-concept skill (best cosine achieved, Map cap 300,
-  // in-memory per boot) steadies her hand: _drawFromMemoryStrokes shrinks
-  // its wobble as skill grows, so her line control genuinely improves with
-  // practice. No image-model anywhere in the loop.
+  // survives. Per-concept skill (best cosine achieved, Map cap 300, in-memory
+  // per boot) tracks her BEST rendition so recall keeps it (remember-in-relation)
+  // — it does NOT dumb any draw (NO wobble anywhere, no skill/grade detail gate;
+  // every draw is her full capability per Gee's zero-dumbing directive). No
+  // image-model anywhere in the loop.
   // DRAW.9 — MEMORY-PAINTING was REMOVED (operator directive, MEYE.3):
   // compositing her strokes ONTO the seen field via morphField faded two
   // images together — the same noise-pollution class as memory morphing.

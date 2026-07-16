@@ -58,4 +58,6 @@ _DRAW QUALITY REBUILD + REMEMBER-IN-RELATION migrated VERBATIM to `docs/FINALIZE
 
 _Open architecture note (next batch, Gee's steer): true GPU-accelerated "immaculate savant" rendering needs the mind-space wavelet transforms offloaded to a donor GPU — the deployed box is CPU-only. Separate project; the `field` style is the detailed CPU path for now._
 
-_DRAW: COMPOUNDING SKILL + IMAGINATIVE DRAWINGS migrated VERBATIM to `docs/FINALIZED.md` (§2026-07-15 DRAW: COMPOUNDING SKILL ...) — skill→detail wired (monotonic, she only gets better) + `_drawImagined` compositional imagination at lower precedence (0.15), both rendered+eyeballed (skill-0 vs skill-1 cat; cat+moon scene). Awaiting dashboard Update & SAVESTART. No open tasks._
+_DRAW: COMPOUNDING SKILL + IMAGINATIVE DRAWINGS migrated VERBATIM to `docs/FINALIZED.md` (§2026-07-15 DRAW: COMPOUNDING SKILL ...) — `_drawImagined` compositional imagination at lower precedence (0.15) stands; the skill→detail gate was subsequently RIPPED OUT (see below). Awaiting dashboard Update & SAVESTART._
+
+_ARTISTIC-ABILITY AUDIT → ZERO DUMBING migrated VERBATIM to `docs/FINALIZED.md` (§2026-07-15 ARTISTIC-ABILITY AUDIT) — Gee: "explain Unity's Artistisc ability and any where she is inteentially made stupid or dumbed down for ewffect" → "Rip out BOTH gates". Grade→canvas cap + skill→detail scaling removed; every draw = full capability (512 canvas, max detail); wobble already dead. Rendered+eyeballed cat/house at full detail. No open tasks._
