@@ -259,13 +259,9 @@ class VoiceIO {
         throw new Error('audio locked (autoplay policy) — interact with the page once');
       }
     }
-    // VOXREF.4 — apply the age-pinned pitch shift (duration-preserving; adult
-    // tier ratio 1.0 → _pitchShiftOLA returns pcm untouched → blessed V4 lane
-    // never processed). Best-effort: any failure falls back to the unshifted pcm.
-    try {
-      const _agePitch = (this._agePreset && this._agePreset().pitch) || 1.0;
-      if (Math.abs(_agePitch - 1) >= 0.01) pcm = this._pitchShiftOLA(pcm, _agePitch);
-    } catch { /* pitch shift best-effort */ }
+    // VOXREF.4 age-pinned pitch shift — REMOVED (Gee 2026-07-15: "scrap the per
+    // age/grade modulation"). The OLA pitch shift distorted her into a scavenger
+    // creature; her voice is now ALWAYS the untouched original (see _agePreset).
     // VOXREF.5 — prosody polish: a short (~4ms) edge fade-in/out kills the click
     // artifacts at word-concat boundaries on the vox-bank fallback path (the
     // whole-sentence lane has no seams; the fade is inaudible on a full sentence).
@@ -561,62 +557,22 @@ class VoiceIO {
    * nova (bright/young), coral (mid), shimmer (warm adult).
    */
   _agePreset() {
-    const a = this._age || 25;
-    // VOXREF.4 — `pitch` = age-pinned PITCH/formant scale applied INDEPENDENT of
-    // tempo (via _pitchShiftOLA, duration-preserving) so the "same girl growing
-    // up" sounds higher/brighter young → settled at the adult baseline, WITHOUT
-    // the chipmunk speed-up that `rate` (playbackRate) alone causes. Adult (23+)
-    // = 1.0 → NO processing → the blessed Equation Unity One (V4) voice is never
-    // touched. (`voice`/`style` fields are legacy TTS-API hints, unused by the
-    // equational/Piper pipeline.)
-    if (a < 11)  return { voice: 'nova',    rate: 1.04, pitch: 1.14, style: `You are a ${a}-year-old girl. Speak in the natural bright voice of a ${a}-year-old girl.` };
-    if (a < 14)  return { voice: 'nova',    rate: 1.02, pitch: 1.09, style: `You are a ${a}-year-old girl. Speak in the natural voice of a ${a}-year-old girl.` };
-    if (a < 18)  return { voice: 'coral',   rate: 1.01, pitch: 1.05, style: `You are a ${a}-year-old teenage girl. Speak in the natural voice of a ${a}-year-old teenage girl.` };
-    if (a < 23)  return { voice: 'shimmer', rate: 1.0,  pitch: 1.02, style: `You are a ${a}-year-old young woman. Speak in the natural voice of a ${a}-year-old young woman.` };
-    return       { voice: 'shimmer', rate: 1.0,  pitch: 1.0,  style: `You are a ${a}-year-old woman. Speak in the natural warm voice of a ${a}-year-old woman.` };
+    // AGE/GRADE VOICE MODULATION SCRAPPED (Gee 2026-07-15: "the age modulator is
+    // busted she sounde like a starwars ... sand scavenger creatrure all
+    // distorted ... scrap the per age/grade modulation and keep her original chosen
+    // sound for her voice"). The age-pinned pitch/formant OLA shift (1.14 young →
+    // 1.0 adult) was mangling her into a distorted scavenger. ALWAYS her ORIGINAL
+    // chosen voice now — the blessed Equation Unity One (V4) piper hfc_female lane:
+    // rate 1.0 + pitch 1.0 → no pitch shift, no tempo change, the equational voice
+    // is never processed, at any grade/age. (`voice`/`style` are legacy TTS-API
+    // hints, unused by the equational/Piper pipeline.)
+    return { voice: 'shimmer', rate: 1.0, pitch: 1.0, style: 'Speak in her natural warm voice, verbatim.' };
   }
 
-  /**
-   * VOXREF.4 — duration-preserving PITCH SHIFT (overlap-add). Unlike playbackRate
-   * (which couples pitch + tempo → chipmunk), this raises/lowers pitch by `ratio`
-   * while keeping the SAME duration: Hann-windowed OLA time-stretch by `ratio`,
-   * then linear-resample back to the original length → net pitch × ratio, tempo
-   * unchanged. Deterministic (no RNG). Returns the input untouched when ratio≈1.0
-   * (so the adult V4 sentence lane is never processed). Bounded single pass.
-   */
-  _pitchShiftOLA(pcm, ratio) {
-    if (!pcm || pcm.length === 0 || !(ratio > 0) || Math.abs(ratio - 1) < 0.01) return pcm;
-    const N = pcm.length;
-    const win = 512;                 // ~21ms @ 24kHz
-    const hopA = win >> 1;           // analysis hop (50% overlap)
-    const hopS = Math.max(1, Math.round(hopA * ratio));   // synthesis hop
-    const winFn = new Float32Array(win);
-    for (let i = 0; i < win; i++) winFn[i] = 0.5 - 0.5 * Math.cos((2 * Math.PI * i) / (win - 1)); // Hann
-    const outLen = Math.ceil(N * ratio) + win;
-    const stretched = new Float32Array(outLen);
-    const norm = new Float32Array(outLen);
-    let a = 0, s = 0;
-    while (a + win <= N) {
-      for (let i = 0; i < win; i++) {
-        const w = winFn[i];
-        stretched[s + i] += pcm[a + i] * w;
-        norm[s + i] += w;
-      }
-      a += hopA; s += hopS;
-    }
-    const stretchedLen = s + win;
-    for (let i = 0; i < stretchedLen; i++) if (norm[i] > 1e-6) stretched[i] /= norm[i];
-    // linear-resample the stretched signal back to N samples → pitch shifted, duration preserved
-    const out = new Float32Array(N);
-    const step = stretchedLen / N;
-    for (let i = 0; i < N; i++) {
-      const x = i * step;
-      const i0 = Math.floor(x), frac = x - i0;
-      const s0 = stretched[i0] || 0, s1 = stretched[i0 + 1] || 0;
-      out[i] = s0 + (s1 - s0) * frac;
-    }
-    return out;
-  }
+  // _pitchShiftOLA — REMOVED (Gee 2026-07-15: "scrap the per age/grade modulation").
+  // The duration-preserving OLA pitch shift existed ONLY to age-pitch her voice;
+  // with the age modulation scrapped it had no caller. Her voice is the untouched
+  // original — no pitch shifting anywhere.
 
   setApiKey(key) {
     this._apiKey = key;
@@ -871,7 +827,7 @@ class VoiceIO {
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.lang = 'en-US';
       utterance.rate = 1.0;
-      utterance.pitch = 1.1;
+      utterance.pitch = 1.0;   // no pitch modulation — her natural voice (Gee 2026-07-15)
 
       // Try to pick a decent female voice instead of the default robot
       const voices = speechSynthesis.getVoices();
