@@ -665,57 +665,68 @@ export class MindSpaceGPU {
     const x0 = Math.max(0, Math.min(1, opts.x ?? 0.1));
     const y0 = Math.max(0, Math.min(1, opts.y ?? 0.78));
     const size = Math.max(0.03, Math.min(0.3, opts.size ?? 0.08));   // glyph height in canvas units
-    const rgb = opts.rgb;
+    // STYLE (Gee 2026-07-16: "wheres all the different fonts and styles and colors
+    // bond underline dazzle and pizzaz into infinity"). Per-letter colours (dazzle),
+    // italic slant, bold (offset double-stroke), and an underline — all NO wobble,
+    // clean trained hand. Styling comes from the caller (_labelStyle, dynamic).
+    const baseRgb = opts.rgb || [222, 220, 226];
+    const colors = (Array.isArray(opts.colors) && opts.colors.length) ? opts.colors : null;
+    const slant = Math.max(-0.5, Math.min(0.5, opts.slant || 0));
+    const bold = !!opts.bold;
+    const shadow = Array.isArray(opts.shadow) ? opts.shadow : null;   // drop-shadow colour
+    const boldOff = size * 0.055;
     const cw = size * (5 / 7);            // glyph width
     const adv = cw * 1.35;                // advance incl. gap
-    const j = () => 0;                    // NO wobble — clean trained hand (Gee)
+    const shx = (x, y) => x + slant * ((y0 + size) - y);   // italic shear (top → right)
     const strokes = [];
-    let cx = x0;
+    let cx = x0, li = 0;
+    const line = (ax, ay, bx, by, rgb) => {
+      if (shadow) strokes.push({ type: 'line', x0: shx(ax, ay) + boldOff * 0.9, y0: ay + boldOff * 0.9, x1: shx(bx, by) + boldOff * 0.9, y1: by + boldOff * 0.9, rgb: shadow });
+      strokes.push({ type: 'line', x0: shx(ax, ay), y0: ay, x1: shx(bx, by), y1: by, rgb });
+      if (bold) strokes.push({ type: 'line', x0: shx(ax, ay) + boldOff, y0: ay, x1: shx(bx, by) + boldOff, y1: by, rgb });
+    };
+    const dot = (x, y, rgb) => {
+      strokes.push({ type: 'point', x: shx(x, y), y, r: 0, rgb });
+      if (bold) strokes.push({ type: 'point', x: shx(x, y) + boldOff, y, r: 0, rgb });
+    };
     for (const ch of t) {
       const glyph = FONT5X7[ch] || null;
+      const col = colors ? colors[li % colors.length] : baseRgb;
       if (glyph) {
         const covered = new Set();
-        // horizontal runs (length >= 2)
-        for (let r = 0; r < 7; r++) {
+        for (let r = 0; r < 7; r++) {           // horizontal runs
           let run = -1;
           for (let c = 0; c <= 5; c++) {
             const on = c < 5 && glyph[r][c] === '1';
             if (on && run < 0) run = c;
             else if (!on && run >= 0) {
-              if (c - run >= 2) {
-                const y = y0 + ((r + 0.5) / 7) * size;
-                strokes.push({ type: 'line', x0: cx + (run / 5) * cw + j(), y0: y + j(), x1: cx + ((c - 0.5) / 5) * cw + j(), y1: y + j(), rgb });
-                for (let k = run; k < c; k++) covered.add(r * 5 + k);
-              }
+              if (c - run >= 2) { const y = y0 + ((r + 0.5) / 7) * size; line(cx + (run / 5) * cw, y, cx + ((c - 0.5) / 5) * cw, y, col); for (let k = run; k < c; k++) covered.add(r * 5 + k); }
               run = -1;
             }
           }
         }
-        // vertical runs (length >= 2)
-        for (let c = 0; c < 5; c++) {
+        for (let c = 0; c < 5; c++) {           // vertical runs
           let run = -1;
           for (let r = 0; r <= 7; r++) {
             const on = r < 7 && glyph[r][c] === '1';
             if (on && run < 0) run = r;
             else if (!on && run >= 0) {
-              if (r - run >= 2) {
-                const x = cx + ((c + 0.5) / 5) * cw;
-                strokes.push({ type: 'line', x0: x + j(), y0: y0 + (run / 7) * size + j(), x1: x + j(), y1: y0 + ((r - 0.5) / 7) * size + j(), rgb });
-                for (let k = run; k < r; k++) covered.add(k * 5 + c);
-              }
+              if (r - run >= 2) { const x = cx + ((c + 0.5) / 5) * cw; line(x, y0 + (run / 7) * size, x, y0 + ((r - 0.5) / 7) * size, col); for (let k = run; k < r; k++) covered.add(k * 5 + c); }
               run = -1;
             }
           }
         }
-        // isolated cells no run covered → a dot
-        for (let r = 0; r < 7; r++) for (let c = 0; c < 5; c++) {
-          if (glyph[r][c] === '1' && !covered.has(r * 5 + c)) {
-            strokes.push({ type: 'point', x: cx + ((c + 0.5) / 5) * cw + j(), y: y0 + ((r + 0.5) / 7) * size + j(), r: 0, rgb });
-          }
+        for (let r = 0; r < 7; r++) for (let c = 0; c < 5; c++) {   // isolated cells → dots
+          if (glyph[r][c] === '1' && !covered.has(r * 5 + c)) dot(cx + ((c + 0.5) / 5) * cw, y0 + ((r + 0.5) / 7) * size, col);
         }
       }
-      cx += adv;
+      cx += adv; li++;
       if (cx > 0.96) break;
+    }
+    if (opts.underline) {                        // decorative underline in the label colour
+      const uy = y0 + size * 1.08, ux1 = Math.min(0.96, cx - adv * 0.25), uc = colors ? colors[0] : baseRgb;
+      strokes.push({ type: 'line', x0: x0, y0: uy, x1: ux1, y1: uy, rgb: uc });
+      if (bold) strokes.push({ type: 'line', x0: x0, y0: uy + boldOff, x1: ux1, y1: uy + boldOff, rgb: uc });
     }
     return strokes;
   }
