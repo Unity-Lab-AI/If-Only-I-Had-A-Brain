@@ -34,7 +34,12 @@ const path = require('path');
 // concepts because unlabeled camera frames bind to whatever she's thinking) and
 // by green-screen-era captures. The rename orphans the polluted store — her
 // eyes start clean under the new gates. v1 stays on disk, unused.
-const VM_FILE = path.join(__dirname, '..', 'visual-memory-v2.json');
+// 2026-07-15 — bumped to v3: the v2 store cached MONOCHROME references (old
+// "simple ... high contrast" prompt → black-on-white line drawings), whose field
+// renders looked like white pencil (Gee: "NO MORE PENCIL ART"). v3 orphans those
+// so she re-grounds every concept with the new COLOURFUL reference prompt. v2 stays
+// on disk, unused.
+const VM_FILE = path.join(__dirname, '..', 'visual-memory-v3.json');
 const VM_CAP = 384;              // distinct seen-concepts held (LRU)
 const VM_INGEST_GAP_MS = 2000;   // per-brain pacing across ALL clients
 const VM_STOP = new Set([
@@ -413,7 +418,12 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
         if (words.length) defTail = ' ' + [...new Set(words)].slice(0, 6).join(' ');
       }
     } catch { /* bare concept prompt */ }
-    return `${c}${defTail}, simple clear centered illustration, single subject, plain background, high contrast`;
+    // COLOURFUL, not monochrome (Gee 2026-07-15: "NO MORE PENCIL ART"). The old
+    // "simple ... high contrast" biased Pollinations toward black-on-white LINE
+    // drawings — the field render of a monochrome reference looks like pencil.
+    // Bias vibrant FULL-COLOUR + soft shading so her recreations are beautiful and
+    // coloured; keep single-centred-subject + clean background for legible tracing.
+    return `${c}${defTail}, colorful vibrant richly detailed illustration, full color, soft shading, single centered subject, clean plain background`;
   },
 
   // Fetch a Pollinations REFERENCE for a concept, perceive it into a field C

@@ -517,6 +517,7 @@ export class MindSpaceGPU {
   traceLineArt(rec, opts = {}) { return CPU.traceLineArt(rec, opts); }
   traceColorFill(rec, opts = {}) { return CPU.traceColorFill(rec, opts); }
   stylizeField(rec, opts = {}) { return CPU.stylizeField(rec, opts); }
+  composeFields(recs, opts = {}) { return CPU.composeFields(recs, opts); }
 
   // ── DE-NOVO IMAGINATION (UVM-INT.3) — cortex state → field C, no camera/file ─────────────────
   // Her current mind-state (any cortex activation vector — sem region, percept, emission

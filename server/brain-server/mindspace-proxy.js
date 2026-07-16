@@ -117,6 +117,14 @@ class MindSpaceWorkerProxy {
       ? this._local.stylizeField(...args)
       : null;
   }
+
+  // Compose several field recs into one COLOURED imagined scene — sync-local
+  // (pure array work over the parts, no engine state). Returns a drawn rec.
+  composeFields(...args) {
+    return (this._local && typeof this._local.composeFields === 'function')
+      ? this._local.composeFields(...args)
+      : null;
+  }
 }
 
 module.exports = { MindSpaceWorkerProxy };
