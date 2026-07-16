@@ -1053,6 +1053,23 @@ const SERVER_CHAT_MIXIN = {
       // at. _drawConcept returns null when she can nothing to ground (never seen,
       // no reference) → honest no-drawing, and the de-novo mood field renders below.
       if (!rec && _recallMissed && typeof this._drawConcept === 'function') {
+        // IMAGINATIVE DRAWING — LOWER PRECEDENCE (Gee: "where is her imaginaity
+        // drawings too" + "imaginative drawings need to take less presidence"). On a
+        // MINORITY of recall-miss ticks, if her thought names ≥2 concepts she has
+        // grounded, she COMPOSES them into one invented scene (canvas:imagine:a+b) —
+        // assembling real traced parts, not field-morphing (banned noise). Reference
+        // drawings stay primary; this is the ~15% "from her own head" fraction.
+        if (typeof this._drawImagined === 'function' && Math.random() < (Number(process.env.DREAM_IMAGINE_DRAW_PROB) || 0.15)) {
+          const _iToks = (typeof this._vmContentTokens === 'function') ? this._vmContentTokens(_seedText) : [];
+          if (_iToks.length >= 2) {
+            try {
+              const imagined = await this._drawImagined(_iToks);
+              if (imagined && imagined.rec) { rec = imagined.rec; _seedSource = imagined.source; }
+            } catch { /* imagine best-effort — falls through to reference draw */ }
+          }
+        }
+      }
+      if (!rec && _recallMissed && typeof this._drawConcept === 'function') {
         // LOOK UP → DRAW, in the background (Gee 2026-07-15: "she shall draw more
         // often"). Detached from the tick (never holds `_imagineInFlight`, so the
         // slow fetch can't freeze the viewer — that was the earlier bug). It fetches
@@ -1341,19 +1358,28 @@ const SERVER_CHAT_MIXIN = {
       if (fr) { this._lastSketchLabel = 'canvas:draw:' + key; return { rec: fr, label: this._lastSketchLabel, source: 'canvas:draw:' + key, from: source || ('draw:' + key), style }; }
     }
 
+    // COMPOUNDING SKILL (Gee: "she is only going to get better ... right?") — her
+    // per-concept skill (best resemblance ever achieved, monotonic in _drawSkill /
+    // _rememberDrawing) drives how much DETAIL her hand commits: a first attempt is
+    // decent, a practiced concept draws FINER (bigger trace grid, more strokes,
+    // lower edge threshold, keeps finer contours). Practice → higher skill → richer
+    // drawing, and skill never drops, so she only gets better — never worse.
+    const skill = Math.max(0, Math.min(1, (this._drawSkill instanceof Map ? (this._drawSkill.get(key) || 0) : 0)));
     // STROKE styles — build strokes, then sketch() rasterizes them onto her paper.
-    const traceSide = Math.max(48, Math.min(Math.round(side * 0.9), 160));
-    const maxStrokes = Math.max(16, Math.min(Math.round(side / 3), 120));
+    const traceSide = Math.max(48, Math.min(Math.round(side * (0.75 + 0.25 * skill)), 160));
+    const maxStrokes = Math.max(20, Math.min(Math.round((side / 3) * (0.7 + 0.5 * skill)), 120));
+    const edgeThresh = 0.18 - 0.04 * skill;     // 0.18 (first) → 0.14 (mastered): captures more detail
+    const minLenFrac = 0.10 - 0.03 * skill;     // 0.10 → 0.07: keeps finer contours as skill grows
     let strokes = null;
     try {
       if (style === 'colorfill' && typeof this.mindSpace.traceColorFill === 'function') {
-        const fills = this.mindSpace.traceColorFill(rec, { traceSide: Math.min(traceSide, 80), cells: 26 }) || [];
-        const outline = this.mindSpace.traceLineArt(rec, { traceSide, maxStrokes, edgeThresh: 0.18, minLenFrac: 0.1, simplify: 1.0, ink: [24, 22, 28] }) || [];
+        const fills = this.mindSpace.traceColorFill(rec, { traceSide: Math.min(traceSide, 80), cells: Math.round(22 + 10 * skill) }) || [];
+        const outline = this.mindSpace.traceLineArt(rec, { traceSide, maxStrokes, edgeThresh: edgeThresh + 0.02, minLenFrac: minLenFrac + 0.02, simplify: 1.0, ink: [24, 22, 28] }) || [];
         strokes = fills.concat(outline);   // flat colour under, dark ink outline on top
       } else {
         // lineart (default): ONE coherent chalk ink — no per-stroke recolor (the old
         // _stylizeStrokes random-hue was the "multicolored yarn").
-        strokes = this.mindSpace.traceLineArt(rec, { traceSide, maxStrokes, edgeThresh: 0.16, minLenFrac: 0.08, simplify: 1.0, ink: [228, 226, 230] });
+        strokes = this.mindSpace.traceLineArt(rec, { traceSide, maxStrokes, edgeThresh, minLenFrac, simplify: 1.0, ink: [228, 226, 230] });
       }
     } catch { return null; }
     if (!strokes || !strokes.length) return null;
@@ -1370,6 +1396,48 @@ const SERVER_CHAT_MIXIN = {
     // from (recall/ref/lookup) published itself separately, so the viewer shows the
     // reference she saw THEN her drawing of it, distinctly.
     return { rec: drawn, label: this._lastSketchLabel, source: 'canvas:draw:' + key, from: source || ('draw:' + key), style };
+  },
+
+  // IMAGINATIVE DRAWING (Gee: "where is her imaginaity drawings too") — she draws
+  // from her OWN HEAD by COMPOSING things she has grounded: trace each concept's
+  // reference and place them across the page as one invented scene (a cat AND a
+  // moon; a thing that doesn't exist as a single reference). This assembles real
+  // traced parts — NOT field-morphing (blending two percepts = the banned noise).
+  // Grounds from memory only (recall / provisional, no fetch) so it's fast + never
+  // a fetch storm; imagination composes what she KNOWS, and grows as she learns.
+  // Needs ≥2 grounded parts or it declines (honest — no fake combination).
+  async _drawImagined(concepts) {
+    if (!this.mindSpace || typeof this.mindSpace.traceLineArt !== 'function' || typeof this.mindSpace.sketch !== 'function') return null;
+    const keys = [], parts = [];
+    for (const c of (Array.isArray(concepts) ? concepts : [])) {
+      if (parts.length >= 3) break;
+      const key = (typeof this._vmContentTokens === 'function' ? (this._vmContentTokens(c)[0] || '') : String(c || '').toLowerCase());
+      if (!key || keys.includes(key)) continue;
+      let recP = null;
+      try { const hit = (typeof this._recallVisualMemory === 'function') ? this._recallVisualMemory(c) : null; if (hit && hit.rec) recP = hit.rec; } catch { /* nf */ }
+      if (!recP) { try { const e = (typeof this._vmStore === 'function') ? this._vmStore().get(key) : null; if (e && e.rec && (typeof this._recDetail !== 'function' || this._recDetail(e.rec) >= 200)) recP = e.rec; } catch { /* nf */ } }
+      if (!recP) continue;   // only compose from what she has grounded
+      let s = null;
+      try { s = this.mindSpace.traceLineArt(recP, { traceSide: 80, maxStrokes: 28, edgeThresh: 0.16, minLenFrac: 0.09, simplify: 1.0, ink: [228, 226, 230] }); } catch { s = null; }
+      if (s && s.length) { parts.push(s); keys.push(key); }
+    }
+    if (parts.length < 2) return null;   // need ≥2 grounded parts to imagine a combination
+    const n = parts.length, placed = [];
+    for (let i = 0; i < n; i++) {                       // lay parts across the page, staggered = a scene
+      const sx = 0.86 / n, ox = 0.07 + i * (0.86 / n);
+      const sy = 0.60, oy = 0.10 + (i % 2) * 0.14;
+      for (const st of parts[i]) {
+        if (st && st.type === 'poly' && Array.isArray(st.pts)) placed.push({ type: 'poly', rgb: st.rgb, pts: st.pts.map(p => [ox + sx * p[0], oy + sy * p[1]]) });
+      }
+    }
+    if (!placed.length) return null;
+    try { for (const g of this._labelStrokes(keys.join('+'))) placed.push(g); } catch { /* label best-effort */ }
+    const side = (typeof this._drawCanvasSide === 'function') ? this._drawCanvasSide() : 96;
+    let drawn = null;
+    try { drawn = await this.mindSpace.sketch(placed, { maxSide: side, mood: { arousal: this.arousal, valence: this.valence } }); } catch { return null; }
+    if (!drawn) return null;
+    this._lastSketchLabel = 'canvas:imagine:' + keys.join('+');
+    return { rec: drawn, label: this._lastSketchLabel, source: 'canvas:imagine:' + keys.join('+'), imagined: true };
   },
 
   // She writes the WORD of what she drew on almost every image (Gee) — her own

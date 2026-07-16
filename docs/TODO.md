@@ -57,3 +57,5 @@ _MINDS-EYE NEVER DRAWS (proxy missing traceField) migrated VERBATIM to `docs/FIN
 _DRAW QUALITY REBUILD + REMEMBER-IN-RELATION migrated VERBATIM to `docs/FINALIZED.md` (§2026-07-15 DRAW QUALITY REBUILD) — traceLineArt (recognizable contours, no yarn) + 3 artistic styles (lineart/colorfill/field) + handwriting fixed + remember-in-relation + lookup→hold→draw pacing, all wired through every layer + rendered+eyeballed recognizable (cat/house/apple). Awaiting dashboard Update & SAVESTART. No open tasks._
 
 _Open architecture note (next batch, Gee's steer): true GPU-accelerated "immaculate savant" rendering needs the mind-space wavelet transforms offloaded to a donor GPU — the deployed box is CPU-only. Separate project; the `field` style is the detailed CPU path for now._
+
+_DRAW: COMPOUNDING SKILL + IMAGINATIVE DRAWINGS migrated VERBATIM to `docs/FINALIZED.md` (§2026-07-15 DRAW: COMPOUNDING SKILL ...) — skill→detail wired (monotonic, she only gets better) + `_drawImagined` compositional imagination at lower precedence (0.15), both rendered+eyeballed (skill-0 vs skill-1 cat; cat+moon scene). Awaiting dashboard Update & SAVESTART. No open tasks._
