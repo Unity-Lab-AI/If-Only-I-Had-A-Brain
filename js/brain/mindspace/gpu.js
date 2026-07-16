@@ -517,7 +517,8 @@ export class MindSpaceGPU {
   traceLineArt(rec, opts = {}) { return CPU.traceLineArt(rec, opts); }
   traceColorFill(rec, opts = {}) { return CPU.traceColorFill(rec, opts); }
   stylizeField(rec, opts = {}) { return CPU.stylizeField(rec, opts); }
-  composeFields(recs, opts = {}) { return CPU.composeFields(recs, opts); }
+  // composeFields delegate REMOVED (2026-07-16) — the collage compositor is gone;
+  // imagination now field-renders ONE unified looked-up scene (see chat.js).
 
   // ── DE-NOVO IMAGINATION (UVM-INT.3) — cortex state → field C, no camera/file ─────────────────
   // Her current mind-state (any cortex activation vector — sem region, percept, emission

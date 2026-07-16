@@ -439,7 +439,12 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
     if (!this.mindSpace || typeof this.mindSpace.perceive !== 'function') return null;
     if (typeof this._buildPollinationsImageUrl !== 'function') return null;
     if (typeof fetch !== 'function') return null;   // Node < 18 (the box is 18+)
-    const key = (this._vmContentTokens(concept)[0]) || String(concept || '').toLowerCase().trim();
+    // opts.keyOverride — imagination combos ground under their OWN key ("a+b")
+    // so a combined scene never pollutes the single concepts' visual memory.
+    // opts.promptOverride — the caller supplies the full generation prompt
+    // (imagination's unified-scene phrasing) instead of the def-driven single-
+    // concept prompt.
+    const key = opts.keyOverride || (this._vmContentTokens(concept)[0]) || String(concept || '').toLowerCase().trim();
     if (!key) return null;
     const now = Date.now();
     // per-concept refetch cooldown — never spam the generator for the same word
@@ -456,7 +461,7 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
     this._vmLastRefFetchAt = now;
     this._vmRefFetchAt.set(key, now);
     try {
-      const prompt = this._referenceImagePrompt(concept);
+      const prompt = opts.promptOverride || this._referenceImagePrompt(concept);
       if (!prompt) return null;
       let url = '';
       try { url = this._buildPollinationsImageUrl(prompt, { width: 256, height: 256 }); } catch { return null; }

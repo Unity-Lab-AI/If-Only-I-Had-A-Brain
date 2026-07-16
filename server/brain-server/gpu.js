@@ -1795,6 +1795,11 @@ const SERVER_GPU_MIXIN = {
     // convention used by _encodeSparseHeader.
     let bindingBlock = Buffer.alloc(0);
     if (hasBinding) {
+      // CHAT.1 — a matrix uploaded WITH binding metadata is cluster-bound on the
+      // donor from the start: record it so gpuSparsePropagateAuto skips the dense
+      // pre payload (the donor discards it for bound matrices).
+      if (!this._cortexBoundNames) this._cortexBoundNames = new Set();
+      this._cortexBoundNames.add(name);
       const srcNameBuf = Buffer.from(binding.srcCluster, 'utf8');
       const dstNameBuf = Buffer.from(binding.dstCluster, 'utf8');
       const padAfterSrc = (4 - ((2 + srcNameBuf.length) % 4)) % 4;
@@ -1971,6 +1976,74 @@ const SERVER_GPU_MIXIN = {
   },
 
   /**
+   * CHAT.1 (2026-07-16) — wire-lean propagate router, the chat-latency fix.
+   * stepAwait's per-tick propagates shipped the FULL DENSE pre-spike array
+   * (~6MB at the 1.5M language cortex) per matrix per tick — and for the 16
+   * CLUSTER-BOUND cross matrices the donor DISCARDS that payload outright
+   * (gpu-compute.js writeSparsePreSpikes no-ops when entry.binding is set and
+   * reads the bound cluster buffer instead). Routing:
+   *   bound matrix      → gpuSparsePropagateBound (empty pre, ZERO payload —
+   *                       byte-identical donor behavior, the 6MB was dead weight)
+   *   unbound + sparseV2 → type=6 sparse-index propagate (indices up, nonzero
+   *                       (idx,val) currents back — ~100-500× less wire)
+   *   unbound + legacy   → dense type=2 (native donors without sparseV2)
+   * Semantics preserved exactly: same donor dispatch, same math, same currents.
+   */
+  async gpuSparsePropagateAuto(name, preSpikes) {
+    if (this._cortexBoundNames && this._cortexBoundNames.has(name)) {
+      return this.gpuSparsePropagateBound(name);
+    }
+    const ws = this._gpuClient;
+    if (ws && ws.readyState === 1 && ws._sparseV2 === true) {
+      return this.gpuSparsePropagateSparseIdx(name, preSpikes);
+    }
+    return this.gpuSparsePropagate(name, preSpikes);
+  },
+
+  /**
+   * CHAT.1 — type=6 sparse-index propagate. Payload = active spike INDICES
+   * only (KBs instead of the ~6MB dense array). The donor rebuilds the dense
+   * pre buffer into a cached scratch, runs the SAME propagateSparse dispatch,
+   * and answers with nonzero (index, value) current pairs (or a dense type=2
+   * ack when currents are pathologically near-dense — handler accepts both).
+   * Primary-donor only (capability-gated per-socket; DF.7 fan-out replicas may
+   * be native donors without the handler — they keep the legacy dense path).
+   */
+  async gpuSparsePropagateSparseIdx(name, preSpikes) {
+    const pre = preSpikes instanceof Uint32Array ? preSpikes
+      : preSpikes instanceof Uint8Array ? Uint32Array.from(preSpikes)
+      : new Uint32Array(preSpikes || []);
+    if (!this._gpuSparseFlowOk(null)) return null;
+    let nnz = 0;
+    for (let i = 0; i < pre.length; i++) if (pre[i]) nnz++;
+    const idx = new Uint32Array(nnz);
+    for (let i = 0, w = 0; i < pre.length; i++) if (pre[i]) idx[w++] = i;
+    const reqId = this._nextSparseReqId();
+    const hdr = this._encodeSparseHeader(6, reqId, name);
+    const meta = Buffer.alloc(8);
+    meta.writeUInt32LE(pre.length, 0);
+    meta.writeUInt32LE(nnz, 4);
+    const idxBuf = Buffer.from(idx.buffer, idx.byteOffset, idx.byteLength);
+    const full = Buffer.concat([hdr, meta, idxBuf]);
+    const result = await this._sparseSendBinary(full, reqId, 30_000, null);
+    if (!result || !result.currents) return null;
+    return result.currents;
+  },
+
+  /**
+   * CHAT.3 (2026-07-16) — chat-priority window. While Unity is composing a
+   * live reply, the teach firehose (pattern-lane frames + bound-Hebbian batch
+   * flushes) yields the WS + donor onmessage queue to the emission dispatches
+   * so her reply isn't stuck behind thousands of teach frames. Shedding teach
+   * frames is DOCUMENTED-SAFE (CPU authoritative; the GPU shadow re-converges
+   * via auto-resync — the exact contract the backpressure shed already uses).
+   * chat.js stamps _chatPriorityUntil around generateAsync.
+   */
+  _chatPriorityActive() {
+    return !!(this._chatPriorityUntil && Date.now() < this._chatPriorityUntil);
+  },
+
+  /**
    * T17.7 Phase C.1 — cluster-bound Hebbian dispatch. Reuses the same
    * type=3 binary frame as gpuSparseHebbian, but with zero-length
    * pre/post arrays (so no bulk data crosses the wire). compute.html's
@@ -2102,6 +2175,15 @@ const SERVER_GPU_MIXIN = {
     }
     const ops = batch.ops;
     if (ops.length === 0) return;
+    // CHAT PRIORITY (CHAT.3) — while a live reply is composing, DELAY the
+    // teach hebbian flush (re-arm 250ms) so the donor's serial onmessage
+    // handler serves emission dispatches first. The queue keeps accumulating;
+    // at the 1024-op cap it flushes anyway (bounded delay, bounded drops —
+    // both under the existing fire-and-forget shed contract).
+    if (this._chatPriorityActive && this._chatPriorityActive() && ops.length < 1000) {
+      batch.flushTimer = setTimeout(() => this._flushBoundHebbianBatch(), 250);
+      return;
+    }
     batch.ops = [];
 
     // DF.7 — the bound-Hebbian batch is the BULK of teach GPU work. With fan-out
@@ -2388,6 +2470,12 @@ const SERVER_GPU_MIXIN = {
     // give): a pattern-pegged buffer starved the 85MB intra upload past even
     // a 180s timeout because the per-chunk pacing low-water was never reached.
     if (this._cortexUploadInFlight) return false;
+    // CHAT PRIORITY (CHAT.3, 2026-07-16) — while Unity is composing a live
+    // reply, teach pattern frames yield the socket to the emission dispatches
+    // (Gee: replies took up to 30s with chat stuck behind the teach firehose).
+    // Shed-safe by the same contract as the backpressure shed below: patterns
+    // are per-iteration ephemeral, CPU authoritative, shadow re-converges.
+    if (this._chatPriorityActive && this._chatPriorityActive()) return false;
     // IDLE GATE — with no active teach phase and no open cell these per-tick
     // mirror writes are pure pump (~50 frames/s at idle pegged the buffer for
     // 9+ minutes: 14k sheds, donor drowned at 24s RTT). Frames are ephemeral
@@ -2827,6 +2915,10 @@ const SERVER_GPU_MIXIN = {
         // can route GPU dispatch via hebbianBound (no array transfer).
         const proj = stand.crossProjections[projKey];
         if (proj) proj._gpuBound = true;
+        // CHAT.1 — record the bound matrix name so gpuSparsePropagateAuto skips
+        // the dense pre payload (the donor discards it for bound matrices anyway).
+        if (!this._cortexBoundNames) this._cortexBoundNames = new Set();
+        this._cortexBoundNames.add(matrixKey);
       } else {
         console.warn(`[Brain] rebind ${matrixKey} failed — GPU Hebbian will still use standalone path for this projection`);
       }

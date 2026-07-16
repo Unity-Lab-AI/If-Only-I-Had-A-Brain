@@ -491,6 +491,12 @@ const SERVER_CHAT_MIXIN = {
       // response stays '' → the honest-silence handler below fires (motor_unstable).
     } else {
       try {
+        // CHAT.3 (2026-07-16) — open the chat-priority window: while the reply
+        // is composing, the teach firehose (pattern lane + hebbian batch flush)
+        // yields the WS + donor queue to the emission dispatches (see gpu.js
+        // _chatPriorityActive). 60s ceiling = a stuck generate can't starve
+        // teach forever; cleared in finally the moment the reply lands.
+        this._chatPriorityUntil = Date.now() + 60_000;
         // T14.26 — `generateAsync` (NOT `generate`) so the dictionary-
         // cosine scoring loop yields to the Node event loop every 500
         // entries. Without this yield, state broadcasts and compute_batch
@@ -520,10 +526,12 @@ const SERVER_CHAT_MIXIN = {
           }
         );
       } catch (err) {
+        this._chatPriorityUntil = 0;   // CHAT.3 — close the priority window on failure too
         console.error('[Brain] languageCortex.generate threw:', err.message);
         console.error(err.stack);
         return { text: '', action: 'respond_text' };
       }
+      this._chatPriorityUntil = 0;   // CHAT.3 — reply composed; teach lane reopens immediately
     }
 
     if (!response || response.length < 2) {
@@ -1414,38 +1422,50 @@ const SERVER_CHAT_MIXIN = {
   // parts — NOT field-morphing (blending two percepts = the banned noise). Only
   // DRAWABLE (noun) parts. Needs ≥2 or it declines (honest — no fake combination).
   // SLOW (may fetch) → always call DETACHED (background), never awaited in the tick.
+  // IMAGINATION = A GENUINELY NEW IMAGE (Gee 2026-07-16: "chicken and sand are
+  // jsut ... two older pics put cookie cutter like into one image... this is
+  // wrong.. instead of correctly makeing new images"). The old composeFields
+  // collage pasted each part's field into its own region — copy-paste by
+  // construction. Now she imagines the COMBINATION AS ONE SCENE: her thought
+  // picks the concepts (the creativity is HERS), the sensory executor renders
+  // ONE unified reference of the combined concept ("chicken and sand together,
+  // one scene"), she perceives it, grounds it under the combo's OWN key ("a+b" —
+  // never polluting the single concepts' memories), and field-renders HER
+  // recreation with a dazzle label. Exactly the DRAW-ENGINE law, applied to a
+  // concept that exists only in her head. Can't ground → honest decline (null),
+  // never a collage, never a fake.
   async _drawImagined(concepts) {
-    if (!this.mindSpace || typeof this.mindSpace.composeFields !== 'function') return null;
-    const keys = [], recs = [];
+    if (!this.mindSpace || typeof this.mindSpace.stylizeField !== 'function') return null;
+    const keys = [];
     for (const c of (Array.isArray(concepts) ? concepts : [])) {
-      if (recs.length >= 3) break;
+      if (keys.length >= 3) break;
       const key = (typeof this._vmContentTokens === 'function' ? (this._vmContentTokens(c)[0] || '') : String(c || '').toLowerCase());
       if (!key || keys.includes(key)) continue;
-      if (typeof this._conceptIsDrawable === 'function' && !(await this._conceptIsDrawable(key))) continue;   // only compose DRAWABLE (noun) concepts
-      let recP = null;
-      try { const hit = (typeof this._recallVisualMemory === 'function') ? this._recallVisualMemory(c) : null; if (hit && hit.rec) recP = hit.rec; } catch { /* nf */ }
-      if (!recP) { try { const e = (typeof this._vmStore === 'function') ? this._vmStore().get(key) : null; if (e && e.rec && (typeof this._recDetail !== 'function' || this._recDetail(e.rec) >= 200)) recP = e.rec; } catch { /* nf */ } }
-      // OPEN-ENDED — ground a part she has never seen by looking it up (this is what
-      // lets her imagine things beyond her seen library; own per-concept cooldown/gap
-      // guards prevent a storm, and _drawImagined runs detached so the fetch is fine).
-      if (!recP && typeof this._fetchReferenceAndGround === 'function') {
-        try { const f = await this._fetchReferenceAndGround(c); if (f) recP = f; } catch { /* nf */ }
-      }
-      if (!recP) continue;
-      recs.push(recP); keys.push(key);
+      if (typeof this._conceptIsDrawable === 'function' && !(await this._conceptIsDrawable(key))) continue;   // only DRAWABLE (noun) concepts
+      keys.push(key);
     }
-    if (recs.length < 2) return null;   // need ≥2 grounded parts to imagine a combination
-    // COMPOSE IN COLOUR — each part rendered as a coloured field-let into its region
-    // (composeFields), NOT white-pencil strokes (Gee: "NO MORE PENCIL ART"). The
-    // imagined scene looks like her beautiful recreations, combined.
+    if (keys.length < 2) return null;   // need ≥2 concepts to invent a combination
+    const comboKey = keys.join('+');
+    // already imagined this combo? (grounded under its own key, 6h cooldown applies)
+    let rec = null;
+    try {
+      const e = (typeof this._vmStore === 'function') ? this._vmStore().get(comboKey) : null;
+      if (e && e.rec && (typeof this._recDetail !== 'function' || this._recDetail(e.rec) >= 200)) rec = e.rec;
+    } catch { /* store peek best-effort */ }
+    if (!rec && typeof this._fetchReferenceAndGround === 'function') {
+      const phrase = keys.join(' and ');
+      const prompt = `${phrase} together in one unified scene, colorful vibrant richly detailed illustration, full color, soft shading, clean background`;
+      try { rec = await this._fetchReferenceAndGround(comboKey, { keyOverride: comboKey, promptOverride: prompt }); } catch { rec = null; }
+    }
+    if (!rec) return null;   // cooldown / fetch-fail / blank → honest decline
     const side = (typeof this._drawCanvasSide === 'function') ? this._drawCanvasSide() : 96;
     let labelStrokes = [];
-    try { labelStrokes = this._labelStrokes(keys.join('+')); } catch { /* nf */ }
+    try { labelStrokes = this._labelStrokes(comboKey); } catch { /* nf */ }
     let drawn = null;
-    try { drawn = this.mindSpace.composeFields(recs, { side: Math.max(160, Math.min(side, 320)), bands: 7, labelStrokes }); } catch { return null; }
+    try { drawn = this.mindSpace.stylizeField(rec, { traceSide: Math.max(160, Math.min(side, 256)), bands: 7, labelStrokes }); } catch { return null; }
     if (!drawn) return null;
-    this._lastSketchLabel = 'canvas:imagine:' + keys.join('+');
-    return { rec: drawn, label: this._lastSketchLabel, source: 'canvas:imagine:' + keys.join('+'), imagined: true };
+    this._lastSketchLabel = 'canvas:imagine:' + comboKey;
+    return { rec: drawn, label: this._lastSketchLabel, source: 'canvas:imagine:' + comboKey, imagined: true };
   },
 
   // Fire an imaginative drawing from her STREAM OF THOUGHT — open-ended + dynamic to

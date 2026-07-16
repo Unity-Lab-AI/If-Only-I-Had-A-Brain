@@ -640,50 +640,11 @@ export function stylizeField(rec, opts = {}) {
   return equationalizeImageData({ width: gw, height: gh, data });
 }
 
-// composeFields(recs, opts) — COMPOSE several field recs into ONE COLOURED scene
-// (imagination: a dragon AND a castle). Each part is rendered in FULL COLOUR
-// (posterized, like stylizeField) into its own region of a dark-paper canvas, with
-// the plain-light background skipped so the parts overlay cleanly. This is the
-// imagination equivalent of her beautiful recreations — NOT white-pencil strokes
-// (Gee: "NO MORE PENCIL ART"). Returns a drawn field-C rec (label rasterized in).
-export function composeFields(recs, opts = {}) {
-  if (!Array.isArray(recs) || recs.length === 0) return null;
-  const S = Math.max(96, Math.min(opts.side || 256, 512));
-  const bands = Math.max(3, Math.min(opts.bands || 7, 16));
-  const data = new Uint8ClampedArray(S * S * 4);
-  const paper = [26, 25, 29];
-  for (let p = 0; p < S * S; p++) { const o = p * 4; data[o] = paper[0]; data[o + 1] = paper[1]; data[o + 2] = paper[2]; data[o + 3] = 255; }
-  const n = recs.length;
-  for (let idx = 0; idx < n; idx++) {
-    const g = _fieldToGrid(recs[idx], 110); if (!g) continue;
-    const { gw, gh, Y, Cb, Cr } = g;
-    const rw = Math.max(8, Math.floor(S * (0.86 / n))), rx = Math.floor(S * (0.07 + idx * (0.86 / n)));
-    const rh = Math.max(8, Math.floor(S * 0.62)), ry = Math.floor(S * (0.10 + (idx % 2) * 0.14));
-    for (let py = 0; py < rh; py++) for (let px = 0; px < rw; px++) {
-      const sx = Math.min(gw - 1, Math.floor(px / rw * gw)), sy = Math.min(gh - 1, Math.floor(py / rh * gh)), si = sy * gw + sx;
-      const rgb = ycbcrToRGB(Y[si], Cb[si], Cr[si]).map(v => Math.max(0, Math.min(1, v)));
-      const lum = rgb[0] * 0.299 + rgb[1] * 0.587 + rgb[2] * 0.114;
-      if (lum > 0.90) continue;   // plain-light background → leave paper (clean overlay)
-      const q = Math.round(lum * (bands - 1)) / (bands - 1), k = lum > 1e-4 ? q / lum : 1;
-      const dx = rx + px, dy = ry + py; if (dx < 0 || dx >= S || dy < 0 || dy >= S) continue;
-      const o = (dy * S + dx) * 4;
-      data[o] = Math.max(0, Math.min(255, Math.round(rgb[0] * k * 255)));
-      data[o + 1] = Math.max(0, Math.min(255, Math.round(rgb[1] * k * 255)));
-      data[o + 2] = Math.max(0, Math.min(255, Math.round(rgb[2] * k * 255)));
-      data[o + 3] = 255;
-    }
-  }
-  const ls = Array.isArray(opts.labelStrokes) ? opts.labelStrokes : null;
-  if (ls && ls.length) {
-    const put = (nx, ny, rgb) => { const xi = Math.round(nx * (S - 1)), yi = Math.round(ny * (S - 1)); if (xi < 0 || xi >= S || yi < 0 || yi >= S) return; const o = (yi * S + xi) * 4; data[o] = rgb[0]; data[o + 1] = rgb[1]; data[o + 2] = rgb[2]; data[o + 3] = 255; };
-    for (const s of ls) {
-      if (!s) continue; const rgb = Array.isArray(s.rgb) ? s.rgb : [222, 220, 226];
-      if (s.type === 'line') { const steps = Math.max(2, Math.round(Math.hypot((s.x1 - s.x0) * S, (s.y1 - s.y0) * S))); for (let k2 = 0; k2 <= steps; k2++) { const t = k2 / steps; put(s.x0 + (s.x1 - s.x0) * t, s.y0 + (s.y1 - s.y0) * t, rgb); } }
-      else if (s.type === 'point') put(s.x, s.y, rgb);
-    }
-  }
-  return equationalizeImageData({ width: S, height: S, data });
-}
+// composeFields — REMOVED (Gee 2026-07-16: imagined combos looked like "two older
+// pics put cookie cutter like into one image ... instead of correctly makeing new
+// images"). Pasting each part's field into its own region IS a collage by
+// construction. Superseded: _drawImagined now grounds ONE unified reference of the
+// combined concept (its own "a+b" key) and field-renders it — a genuinely new image.
 
 // low-level transform primitives exported for the GPU path / golden-vector parity (MS.H6)
 export { fwd1d, fwd2d, inv1d, idwt2, rgbToYCbCr, ycbcrToRGB, padDim, encPos, decPos, decodePositions, b64bytes, b64i16, bytesToB64, i16ToB64, A97, B97, G97, D97, K97 };
