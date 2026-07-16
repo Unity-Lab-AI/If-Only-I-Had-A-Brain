@@ -123082,25 +123082,41 @@ var MindSpaceGPU = class {
     const slant = Math.max(-0.5, Math.min(0.5, opts.slant || 0));
     const bold = !!opts.bold;
     const shadow = Array.isArray(opts.shadow) ? opts.shadow : null;
+    const font = typeof opts.font === "string" ? opts.font : "block";
+    const gh = size * (font === "tall" ? 1.3 : 1);
     const boldOff = size * 0.055;
-    const cw = size * (5 / 7);
+    const cw = size * (5 / 7) * (font === "wide" ? 1.35 : font === "tall" ? 0.8 : 1);
     const adv = cw * 1.35;
-    const shx = (x, y) => x + slant * (y0 + size - y);
+    const shx = (x, y) => x + slant * (y0 + gh - y);
     const strokes = [];
     let cx = x0, li = 0;
-    const line = (ax, ay, bx, by, rgb) => {
-      if (shadow) strokes.push({ type: "line", x0: shx(ax, ay) + boldOff * 0.9, y0: ay + boldOff * 0.9, x1: shx(bx, by) + boldOff * 0.9, y1: by + boldOff * 0.9, rgb: shadow });
+    const rawLine = (ax, ay, bx, by, rgb) => {
       strokes.push({ type: "line", x0: shx(ax, ay), y0: ay, x1: shx(bx, by), y1: by, rgb });
       if (bold) strokes.push({ type: "line", x0: shx(ax, ay) + boldOff, y0: ay, x1: shx(bx, by) + boldOff, y1: by, rgb });
     };
+    const line = (ax, ay, bx, by, rgb) => {
+      if (shadow) strokes.push({ type: "line", x0: shx(ax, ay) + boldOff * 0.9, y0: ay + boldOff * 0.9, x1: shx(bx, by) + boldOff * 0.9, y1: by + boldOff * 0.9, rgb: shadow });
+      if (font === "bubble") {
+        const nx = -(by - ay), ny = bx - ax, nl = Math.hypot(nx, ny) || 1;
+        const off = size * 0.028, ox = nx / nl * off, oy = ny / nl * off;
+        rawLine(ax + ox, ay + oy, bx + ox, by + oy, rgb);
+        rawLine(ax - ox, ay - oy, bx - ox, by - oy, rgb);
+        return;
+      }
+      rawLine(ax, ay, bx, by, rgb);
+    };
     const dot = (x, y, rgb) => {
-      strokes.push({ type: "point", x: shx(x, y), y, r: 0, rgb });
+      strokes.push({ type: "point", x: shx(x, y), y, r: font === "bubble" ? 1 : 0, rgb });
       if (bold) strokes.push({ type: "point", x: shx(x, y) + boldOff, y, r: 0, rgb });
     };
     for (const ch of t) {
       const glyph = FONT5X7[ch] || null;
       const col = colors ? colors[li % colors.length] : baseRgb;
-      if (glyph) {
+      if (glyph && font === "dots") {
+        for (let r = 0; r < 7; r++) for (let c = 0; c < 5; c++) {
+          if (glyph[r][c] === "1") dot(cx + (c + 0.5) / 5 * cw, y0 + (r + 0.5) / 7 * gh, col);
+        }
+      } else if (glyph) {
         const covered = /* @__PURE__ */ new Set();
         for (let r = 0; r < 7; r++) {
           let run = -1;
@@ -123109,7 +123125,7 @@ var MindSpaceGPU = class {
             if (on && run < 0) run = c;
             else if (!on && run >= 0) {
               if (c - run >= 2) {
-                const y = y0 + (r + 0.5) / 7 * size;
+                const y = y0 + (r + 0.5) / 7 * gh;
                 line(cx + run / 5 * cw, y, cx + (c - 0.5) / 5 * cw, y, col);
                 for (let k = run; k < c; k++) covered.add(r * 5 + k);
               }
@@ -123124,8 +123140,13 @@ var MindSpaceGPU = class {
             if (on && run < 0) run = r;
             else if (!on && run >= 0) {
               if (r - run >= 2) {
-                const x = cx + (c + 0.5) / 5 * cw;
-                line(x, y0 + run / 7 * size, x, y0 + (r - 0.5) / 7 * size, col);
+                const x = cx + (c + 0.5) / 5 * cw, ya = y0 + run / 7 * gh, yb = y0 + (r - 0.5) / 7 * gh;
+                line(x, ya, x, yb, col);
+                if (font === "serif") {
+                  const f = cw * 0.24;
+                  line(x - f, ya, x + f, ya, col);
+                  line(x - f, yb, x + f, yb, col);
+                }
                 for (let k = run; k < r; k++) covered.add(k * 5 + c);
               }
               run = -1;
@@ -123133,7 +123154,7 @@ var MindSpaceGPU = class {
           }
         }
         for (let r = 0; r < 7; r++) for (let c = 0; c < 5; c++) {
-          if (glyph[r][c] === "1" && !covered.has(r * 5 + c)) dot(cx + (c + 0.5) / 5 * cw, y0 + (r + 0.5) / 7 * size, col);
+          if (glyph[r][c] === "1" && !covered.has(r * 5 + c)) dot(cx + (c + 0.5) / 5 * cw, y0 + (r + 0.5) / 7 * gh, col);
         }
       }
       cx += adv;
@@ -123141,7 +123162,7 @@ var MindSpaceGPU = class {
       if (cx > 0.96) break;
     }
     if (opts.underline) {
-      const uy = y0 + size * 1.08, ux1 = Math.min(0.96, cx - adv * 0.25), uc = colors ? colors[0] : baseRgb;
+      const uy = y0 + gh * 1.08, ux1 = Math.min(0.96, cx - adv * 0.25), uc = colors ? colors[0] : baseRgb;
       strokes.push({ type: "line", x0, y0: uy, x1: ux1, y1: uy, rgb: uc });
       if (bold) strokes.push({ type: "line", x0, y0: uy + boldOff, x1: ux1, y1: uy + boldOff, rgb: uc });
     }
