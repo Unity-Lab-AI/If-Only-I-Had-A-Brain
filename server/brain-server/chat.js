@@ -1052,22 +1052,15 @@ const SERVER_CHAT_MIXIN = {
       // rain/house furniture — the FORM comes from an image she actually looked
       // at. _drawConcept returns null when she can nothing to ground (never seen,
       // no reference) → honest no-drawing, and the de-novo mood field renders below.
-      if (!rec && _recallMissed && typeof this._drawConcept === 'function') {
-        // IMAGINATIVE DRAWING — LOWER PRECEDENCE (Gee: "where is her imaginaity
-        // drawings too" + "imaginative drawings need to take less presidence"). On a
-        // MINORITY of recall-miss ticks, if her thought names ≥2 concepts she has
-        // grounded, she COMPOSES them into one invented scene (canvas:imagine:a+b) —
-        // assembling real traced parts, not field-morphing (banned noise). Reference
-        // drawings stay primary; this is the ~15% "from her own head" fraction.
-        if (typeof this._drawImagined === 'function' && Math.random() < (Number(process.env.DREAM_IMAGINE_DRAW_PROB) || 0.15)) {
-          const _iToks = (typeof this._vmContentTokens === 'function') ? this._vmContentTokens(_seedText) : [];
-          if (_iToks.length >= 2) {
-            try {
-              const imagined = await this._drawImagined(_iToks);
-              if (imagined && imagined.rec) { rec = imagined.rec; _seedSource = imagined.source; }
-            } catch { /* imagine best-effort — falls through to reference draw */ }
-          }
-        }
+      // IMAGINATIVE DRAWING — open-ended, from her own head (Gee: "she needs to
+      // imagine too and draw things not always what she sees ... open ended
+      // dynamically to infinity"). Fired DETACHED/background (it may fetch parts, so
+      // awaiting would freeze the viewer) on a fraction of ticks — regular enough to
+      // actually SEE (the old grounded-only + 15% version never fired: starved), but
+      // reference drawings stay primary. It composes drawable nouns from her stream
+      // of thought and publishes its own canvas:imagine frame when ready.
+      if (typeof this._imagineAndDraw === 'function' && Math.random() < (Number(process.env.DREAM_IMAGINE_DRAW_PROB) || 0.3)) {
+        this._imagineAndDraw().catch(() => { /* background imagine best-effort */ });
       }
       if (!rec && _recallMissed && typeof this._drawConcept === 'function') {
         // LOOK UP → DRAW, in the background (Gee 2026-07-15: "she shall draw more
@@ -1413,14 +1406,16 @@ const SERVER_CHAT_MIXIN = {
     return { rec: drawn, label: this._lastSketchLabel, source: 'canvas:draw:' + key, from: source || ('draw:' + key), style };
   },
 
-  // IMAGINATIVE DRAWING (Gee: "where is her imaginaity drawings too") — she draws
-  // from her OWN HEAD by COMPOSING things she has grounded: trace each concept's
-  // reference and place them across the page as one invented scene (a cat AND a
-  // moon; a thing that doesn't exist as a single reference). This assembles real
-  // traced parts — NOT field-morphing (blending two percepts = the banned noise).
-  // Grounds from memory only (recall / provisional, no fetch) so it's fast + never
-  // a fetch storm; imagination composes what she KNOWS, and grows as she learns.
-  // Needs ≥2 grounded parts or it declines (honest — no fake combination).
+  // IMAGINATIVE DRAWING (Gee: "she needs to imagine too and draw things not always
+  // what she sees ... open ended dynamically to infinity") — she draws from her OWN
+  // HEAD by COMPOSING drawable concepts into one invented scene (a dragon AND a
+  // castle; a thing that has no single reference). OPEN-ENDED: each part is grounded
+  // recall → provisional → LOOK IT UP (fetch a reference she's never seen), so she
+  // can imagine + draw combinations she has NOT literally seen — infinite, dynamic,
+  // sourced from her stream of thought (see _imagineAndDraw). Assembles real traced
+  // parts — NOT field-morphing (blending two percepts = the banned noise). Only
+  // DRAWABLE (noun) parts. Needs ≥2 or it declines (honest — no fake combination).
+  // SLOW (may fetch) → always call DETACHED (background), never awaited in the tick.
   async _drawImagined(concepts) {
     if (!this.mindSpace || typeof this.mindSpace.traceLineArt !== 'function' || typeof this.mindSpace.sketch !== 'function') return null;
     const keys = [], parts = [];
@@ -1432,7 +1427,13 @@ const SERVER_CHAT_MIXIN = {
       let recP = null;
       try { const hit = (typeof this._recallVisualMemory === 'function') ? this._recallVisualMemory(c) : null; if (hit && hit.rec) recP = hit.rec; } catch { /* nf */ }
       if (!recP) { try { const e = (typeof this._vmStore === 'function') ? this._vmStore().get(key) : null; if (e && e.rec && (typeof this._recDetail !== 'function' || this._recDetail(e.rec) >= 200)) recP = e.rec; } catch { /* nf */ } }
-      if (!recP) continue;   // only compose from what she has grounded
+      // OPEN-ENDED — ground a part she has never seen by looking it up (this is what
+      // lets her imagine things beyond her seen library; own per-concept cooldown/gap
+      // guards prevent a storm, and _drawImagined runs detached so the fetch is fine).
+      if (!recP && typeof this._fetchReferenceAndGround === 'function') {
+        try { const f = await this._fetchReferenceAndGround(c); if (f) recP = f; } catch { /* nf */ }
+      }
+      if (!recP) continue;
       let s = null;
       try { s = this.mindSpace.traceLineArt(recP, { traceSide: 80, maxStrokes: 28, edgeThresh: 0.16, minLenFrac: 0.09, simplify: 1.0, ink: [228, 226, 230] }); } catch { s = null; }
       if (s && s.length) { parts.push(s); keys.push(key); }
@@ -1454,6 +1455,32 @@ const SERVER_CHAT_MIXIN = {
     if (!drawn) return null;
     this._lastSketchLabel = 'canvas:imagine:' + keys.join('+');
     return { rec: drawn, label: this._lastSketchLabel, source: 'canvas:imagine:' + keys.join('+'), imagined: true };
+  },
+
+  // Fire an imaginative drawing from her STREAM OF THOUGHT — open-ended + dynamic to
+  // infinity (Gee). Candidate concepts are the drawable nouns across her current +
+  // recent inner-thoughts (an infinite, ever-changing source — "what a person might
+  // want to draw" = what she's turning over in her head), NOT a fixed list. Picks a
+  // couple, composes them via _drawImagined (which look-up-grounds parts she hasn't
+  // seen), and publishes the canvas:imagine frame. DETACHED from the tick (it may
+  // fetch) so it never freezes the viewer; guarded so parts don't storm the fetcher.
+  async _imagineAndDraw() {
+    if (typeof this._drawImagined !== 'function') return;
+    const chain = Array.isArray(this._innerThoughtChain) ? this._innerThoughtChain : [];
+    const texts = chain.map(e => (typeof e === 'string' ? e : (e && e.sentence) || '')).filter(t => t && t.trim());
+    const pool = texts.slice(-4).join(' ');
+    const toks = (typeof this._vmContentTokens === 'function') ? this._vmContentTokens(pool) : [];
+    const cand = [];
+    for (const t of toks) if (t && !cand.includes(t)) cand.push(t);
+    if (cand.length < 2) return;   // need ≥2 concepts to invent a combination
+    // rotate the starting point so successive imaginings recombine different ideas
+    this._imagineRotate = ((this._imagineRotate || 0) + 1) % cand.length;
+    const pick = cand.slice(this._imagineRotate).concat(cand.slice(0, this._imagineRotate)).slice(0, 4);
+    let imagined = null;
+    try { imagined = await this._drawImagined(pick); } catch { imagined = null; }
+    if (imagined && imagined.rec && typeof this._publishMindsEyeFrame === 'function') {
+      this._publishMindsEyeFrame(imagined.rec, imagined.source);
+    }
   },
 
   // She writes the WORD of what she drew on almost every image (Gee) — her own
