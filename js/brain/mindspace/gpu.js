@@ -674,25 +674,47 @@ export class MindSpaceGPU {
     const slant = Math.max(-0.5, Math.min(0.5, opts.slant || 0));
     const bold = !!opts.bold;
     const shadow = Array.isArray(opts.shadow) ? opts.shadow : null;   // drop-shadow colour
+    // LETTERFORMS (Gee 2026-07-16: "alternat leter forms") — genuinely different
+    // letter SHAPES, not just colour: block (solid runs) / dots (dot-matrix) /
+    // serif (feet on stems) / bubble (hollow parallel outline) / tall (condensed)
+    // / wide (extended). All from the one FONT5X7 grid, rendered differently —
+    // composes with the dazzle colours/bold/slant/underline → infinity.
+    const font = typeof opts.font === 'string' ? opts.font : 'block';
+    const gh = size * (font === 'tall' ? 1.3 : 1);                    // glyph height
     const boldOff = size * 0.055;
-    const cw = size * (5 / 7);            // glyph width
+    const cw = size * (5 / 7) * (font === 'wide' ? 1.35 : font === 'tall' ? 0.8 : 1);   // glyph width
     const adv = cw * 1.35;                // advance incl. gap
-    const shx = (x, y) => x + slant * ((y0 + size) - y);   // italic shear (top → right)
+    const shx = (x, y) => x + slant * ((y0 + gh) - y);   // italic shear (top → right)
     const strokes = [];
     let cx = x0, li = 0;
-    const line = (ax, ay, bx, by, rgb) => {
-      if (shadow) strokes.push({ type: 'line', x0: shx(ax, ay) + boldOff * 0.9, y0: ay + boldOff * 0.9, x1: shx(bx, by) + boldOff * 0.9, y1: by + boldOff * 0.9, rgb: shadow });
+    const rawLine = (ax, ay, bx, by, rgb) => {
       strokes.push({ type: 'line', x0: shx(ax, ay), y0: ay, x1: shx(bx, by), y1: by, rgb });
       if (bold) strokes.push({ type: 'line', x0: shx(ax, ay) + boldOff, y0: ay, x1: shx(bx, by) + boldOff, y1: by, rgb });
     };
+    const line = (ax, ay, bx, by, rgb) => {
+      if (shadow) strokes.push({ type: 'line', x0: shx(ax, ay) + boldOff * 0.9, y0: ay + boldOff * 0.9, x1: shx(bx, by) + boldOff * 0.9, y1: by + boldOff * 0.9, rgb: shadow });
+      if (font === 'bubble') {                   // hollow: two parallel outlines, no fill stroke
+        const nx = -(by - ay), ny = bx - ax, nl = Math.hypot(nx, ny) || 1;
+        const off = size * 0.028, ox = (nx / nl) * off, oy = (ny / nl) * off;
+        rawLine(ax + ox, ay + oy, bx + ox, by + oy, rgb);
+        rawLine(ax - ox, ay - oy, bx - ox, by - oy, rgb);
+        return;
+      }
+      rawLine(ax, ay, bx, by, rgb);
+    };
     const dot = (x, y, rgb) => {
-      strokes.push({ type: 'point', x: shx(x, y), y, r: 0, rgb });
+      strokes.push({ type: 'point', x: shx(x, y), y, r: font === 'bubble' ? 1 : 0, rgb });
       if (bold) strokes.push({ type: 'point', x: shx(x, y) + boldOff, y, r: 0, rgb });
     };
     for (const ch of t) {
       const glyph = FONT5X7[ch] || null;
       const col = colors ? colors[li % colors.length] : baseRgb;
-      if (glyph) {
+      if (glyph && font === 'dots') {
+        // DOT-MATRIX letterform — every lit cell is a dot; no runs at all.
+        for (let r = 0; r < 7; r++) for (let c = 0; c < 5; c++) {
+          if (glyph[r][c] === '1') dot(cx + ((c + 0.5) / 5) * cw, y0 + ((r + 0.5) / 7) * gh, col);
+        }
+      } else if (glyph) {
         const covered = new Set();
         for (let r = 0; r < 7; r++) {           // horizontal runs
           let run = -1;
@@ -700,7 +722,7 @@ export class MindSpaceGPU {
             const on = c < 5 && glyph[r][c] === '1';
             if (on && run < 0) run = c;
             else if (!on && run >= 0) {
-              if (c - run >= 2) { const y = y0 + ((r + 0.5) / 7) * size; line(cx + (run / 5) * cw, y, cx + ((c - 0.5) / 5) * cw, y, col); for (let k = run; k < c; k++) covered.add(r * 5 + k); }
+              if (c - run >= 2) { const y = y0 + ((r + 0.5) / 7) * gh; line(cx + (run / 5) * cw, y, cx + ((c - 0.5) / 5) * cw, y, col); for (let k = run; k < c; k++) covered.add(r * 5 + k); }
               run = -1;
             }
           }
@@ -711,20 +733,29 @@ export class MindSpaceGPU {
             const on = r < 7 && glyph[r][c] === '1';
             if (on && run < 0) run = r;
             else if (!on && run >= 0) {
-              if (r - run >= 2) { const x = cx + ((c + 0.5) / 5) * cw; line(x, y0 + (run / 7) * size, x, y0 + ((r - 0.5) / 7) * size, col); for (let k = run; k < r; k++) covered.add(k * 5 + c); }
+              if (r - run >= 2) {
+                const x = cx + ((c + 0.5) / 5) * cw, ya = y0 + (run / 7) * gh, yb = y0 + ((r - 0.5) / 7) * gh;
+                line(x, ya, x, yb, col);
+                if (font === 'serif') {          // SERIF letterform — feet on stem ends
+                  const f = cw * 0.24;
+                  line(x - f, ya, x + f, ya, col);
+                  line(x - f, yb, x + f, yb, col);
+                }
+                for (let k = run; k < r; k++) covered.add(k * 5 + c);
+              }
               run = -1;
             }
           }
         }
         for (let r = 0; r < 7; r++) for (let c = 0; c < 5; c++) {   // isolated cells → dots
-          if (glyph[r][c] === '1' && !covered.has(r * 5 + c)) dot(cx + ((c + 0.5) / 5) * cw, y0 + ((r + 0.5) / 7) * size, col);
+          if (glyph[r][c] === '1' && !covered.has(r * 5 + c)) dot(cx + ((c + 0.5) / 5) * cw, y0 + ((r + 0.5) / 7) * gh, col);
         }
       }
       cx += adv; li++;
       if (cx > 0.96) break;
     }
     if (opts.underline) {                        // decorative underline in the label colour
-      const uy = y0 + size * 1.08, ux1 = Math.min(0.96, cx - adv * 0.25), uc = colors ? colors[0] : baseRgb;
+      const uy = y0 + gh * 1.08, ux1 = Math.min(0.96, cx - adv * 0.25), uc = colors ? colors[0] : baseRgb;
       strokes.push({ type: 'line', x0: x0, y0: uy, x1: ux1, y1: uy, rgb: uc });
       if (bold) strokes.push({ type: 'line', x0: x0, y0: uy + boldOff, x1: ux1, y1: uy + boldOff, rgb: uc });
     }

@@ -749,9 +749,8 @@ class VoiceIO {
     for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
     const arrayBuffer = bytes.buffer;
 
-    // Try AudioContext first, fall back to HTML5 Audio — both honor the
-    // age preset's playback rate (a light pitch/tempo nudge on top of the
-    // voice + style so K-Unity reads younger than PhD-Unity).
+    // Try AudioContext first, fall back to HTML5 Audio. preset.rate is always
+    // 1.0 now (age/grade voice modulation scrapped — her original voice, period).
     try {
       await this._playWithAudioContext(arrayBuffer.slice(0), preset.rate);
     } catch (_) {
