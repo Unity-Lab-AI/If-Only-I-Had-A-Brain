@@ -1,5 +1,22 @@
 # RESUME — Session Pickup Brief
 
+> ## ⭐⭐⭐ 2026-07-15 (Opus 4.8) — ✅ DRAW QUALITY REBUILD (recognizable art, 3 styles, clean handwriting) — main `b0f9a24` (branch `feature/cell-teach-speed-0715`)
+>
+> **The mind's-eye drawing arc this session, all cascaded to main (awaiting one dashboard Update & SAVESTART to go live):**
+> 1. **Freeze** (`recall:taxi` stuck 10+min) → non-blocking draw path.
+> 2. **Never drew** ("lookups, no drawings") → the worker proxy never forwarded `traceField`; `_drawConcept` guard bailed every call. Forwarded it.
+> 3. **Confetti** ("multicolored yarn ... poison her mind") → CONFIRMED BY LOOKING (live rec + offline clean-cat). Root: old `traceField` sprayed edge-fragments + `_stylizeStrokes` random-hue per stroke. Fixed: **`traceLineArt`** (blur→Sobel→non-max-suppression→strongest-first bidirectional follow→min-length→ONE chalk ink), removed `_stylizeStrokes`. Rendered + EYEBALLED recognizable (cat/house/apple).
+> 4. **3 artistic styles, no cap** (Gee "not limited on how she draws"), stable per concept, extensible list: **lineart** / **colorfill** (`traceColorFill` flat regions from real image + dark outline; `sketch()` gained `type:'fill'`) / **field** (`stylizeField` detailed posterized full-res render — the "immaculate" mode). All eyeballed recognizable.
+> 5. **Remember-in-relation** (`_rememberDrawing`) — her drawing binds to the concept beside the reference (`e.drawing`/`e.drawResemblance`), best kept, practice sharpens; recall still re-sees the pristine reference (no poison).
+> 6. **Lookup → hold(~4.5s) → draw pacing** (`_lookUpAndDraw` + `_publishMindsEyeFrame` hold-guard) — she shows what she SEES then what she DREW.
+> 7. **Handwriting — NO WOBBLE** (Gee "wobble = dumbing her down"): `glyphStrokes` jitter hard-zeroed (clean trained hand); shared `_labelStrokes(key)`; she writes the word on EVERY style incl. `field` (`stylizeField` rasterizes `labelStrokes`). Eyeballed legible (cat→"CAT").
+>
+> **Wired through ALL layers:** `transform.js` (CPU math) → `MindSpaceGPU` delegates (`gpu.js`) → `MindSpaceWorkerProxy` forwards (`mindspace-proxy.js`, load-bearing) → `chat.js`. Tracing is CPU-by-design (no WGSL trace kernel); the box is CPU-only so mind's-eye renders run on CPU regardless — the `field` style is the detailed CPU path; **true GPU render = a separate donor-GPU mind-space offload project (OPEN, in TODO note).** Server-only draw path → `js/app.bundle.js` unchanged (browser never calls the new fns; box rebuilds on Savestart). All `node --check` + ESM/proxy-chain + rendered-and-eyeballed verified. Commits: `2b6adc2` (freeze) → `74a6f54` (proxy traceField) → `c3057b4` (quality+styles+memory+pacing) → `b0f9a24` (no-wobble+field-label).
+>
+> **NEXT:** Gee's dashboard Update & SAVESTART deploys it all. Possible follow-ups (Gee's call): GPU mind-space offload for savant-detail; surface her OWN drawing on some recalls (currently stored-not-surfaced).
+>
+> ---
+
 > ## ⭐⭐ 2026-07-15 (Opus 4.8) — ✅ FIXED: mind's-eye NEVER DREW (proxy missing `traceField`) + freeze + cell-teach speed (branch `feature/cell-teach-speed-0715`)
 >
 > **✅ FIXED — mind's-eye NEVER DREW (the REAL root, deeper than the freeze; code shipped, awaiting dashboard Update & SAVESTART):** Gee: *"she is just using lookup without ever drawing anything ... twn - twenty lookups in a row and not one single drawing."*
