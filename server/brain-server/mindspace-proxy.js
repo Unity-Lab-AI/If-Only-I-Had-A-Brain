@@ -91,6 +91,32 @@ class MindSpaceWorkerProxy {
       ? this._local.traceField(...args)
       : [];
   }
+
+  // Clean-ink line-art tracer (DRAW-ENGINE v2). Same sync-local contract as
+  // traceField/glyphStrokes: pure stroke geometry, no GPU/engine state, MUST NOT
+  // be a Promise (callers do `strokes = this.mindSpace.traceLineArt(...)`). This
+  // forward is load-bearing — `_drawConcept` guards on it, so if the proxy lacks
+  // it the guard bails and she draws nothing (the exact traceField bug).
+  traceLineArt(...args) {
+    return (this._local && typeof this._local.traceLineArt === 'function')
+      ? this._local.traceLineArt(...args)
+      : [];
+  }
+
+  // Color-fill draw style — flat colour-region strokes (sync-local, same contract).
+  traceColorFill(...args) {
+    return (this._local && typeof this._local.traceColorFill === 'function')
+      ? this._local.traceColorFill(...args)
+      : [];
+  }
+
+  // Detailed styled field render — returns a NEW rec (drawn field C), not strokes.
+  // Pure CDF 9/7 over the local instance; sync (no worker round-trip needed).
+  stylizeField(...args) {
+    return (this._local && typeof this._local.stylizeField === 'function')
+      ? this._local.stylizeField(...args)
+      : null;
+  }
 }
 
 module.exports = { MindSpaceWorkerProxy };

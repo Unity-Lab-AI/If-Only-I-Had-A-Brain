@@ -514,6 +514,9 @@ export class MindSpaceGPU {
   // field-colored strokes) that lets her draw the THING she looked at, not a
   // shape-per-word stamp. Cheap CPU (tiny plane) — always CPU, like describe().
   traceField(rec, opts = {}) { return CPU.traceField(rec, opts); }
+  traceLineArt(rec, opts = {}) { return CPU.traceLineArt(rec, opts); }
+  traceColorFill(rec, opts = {}) { return CPU.traceColorFill(rec, opts); }
+  stylizeField(rec, opts = {}) { return CPU.stylizeField(rec, opts); }
 
   // ── DE-NOVO IMAGINATION (UVM-INT.3) — cortex state → field C, no camera/file ─────────────────
   // Her current mind-state (any cortex activation vector — sem region, percept, emission
@@ -632,6 +635,14 @@ export class MindSpaceGPU {
       if (s.type === 'line') line(s.x0, s.y0, s.x1, s.y1, rgb);
       else if (s.type === 'point') dot(s.x, s.y, Math.max(0, Math.min(4, s.r ?? 1)), rgb);
       else if (s.type === 'poly' && Array.isArray(s.pts)) { for (let i = 0; i + 1 < s.pts.length; i++) line(s.pts[i][0], s.pts[i][1], s.pts[i + 1][0], s.pts[i + 1][1], rgb); }
+      else if (s.type === 'fill' && Array.isArray(s.pts) && s.pts.length >= 3) {
+        // filled region (color-fill draw style) — bbox fill in normalized space
+        // (exact for the axis-aligned cells traceColorFill emits).
+        let mnx = 1, mny = 1, mxx = 0, mxy = 0;
+        for (const p of s.pts) { if (p[0] < mnx) mnx = p[0]; if (p[1] < mny) mny = p[1]; if (p[0] > mxx) mxx = p[0]; if (p[1] > mxy) mxy = p[1]; }
+        const xa = Math.round(mnx * (W - 1)), xb = Math.round(mxx * (W - 1)), ya = Math.round(mny * (H - 1)), yb = Math.round(mxy * (H - 1));
+        for (let yy = ya; yy <= yb; yy++) for (let xx = xa; xx <= xb; xx++) { if (xx < 0 || xx >= W || yy < 0 || yy >= H) continue; const o = (yy * W + xx) * 4; data[o] = rgb[0]; data[o + 1] = rgb[1]; data[o + 2] = rgb[2]; data[o + 3] = 255; }
+      }
     }
     const rec = CPU.equationalizeImageData({ width: W, height: H, data });
     if (rec) rec.fidelity = { psnr_db: null, source: 'mindspace-sketch' };
