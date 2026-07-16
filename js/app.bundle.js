@@ -53422,16 +53422,19 @@ var CLUSTER_HEBBIAN_MIXIN = {
       }
       const preF = this.regionSpikes(src);
       const postF = this.regionSpikes(dst);
-      if (this._sparsePool && this._sparsePool.ready) {
-        try {
-          await this._sparsePool.hebbianUpdate(proj, preF, postF, lrEff);
-        } catch {
+      const _gpuWillCarry = !!(this._gpuProxyReady && this._gpuProxy && this._gpuProxy.hebbian);
+      if (!(skipCpuWhitelist && _gpuWillCarry)) {
+        if (this._sparsePool && this._sparsePool.ready) {
+          try {
+            await this._sparsePool.hebbianUpdate(proj, preF, postF, lrEff);
+          } catch {
+            await this._ojaUpdateChunked(proj, preF, postF, lrEff, ojaOpts);
+          }
+        } else {
           await this._ojaUpdateChunked(proj, preF, postF, lrEff, ojaOpts);
         }
-      } else {
-        await this._ojaUpdateChunked(proj, preF, postF, lrEff, ojaOpts);
       }
-      if (this._gpuProxyReady && this._gpuProxy && this._gpuProxy.hebbian) {
+      if (_gpuWillCarry) {
         try {
           this._gpuProxy.hebbian(`${this.name}_${name}`, preF, postF, lrEff);
         } catch {
