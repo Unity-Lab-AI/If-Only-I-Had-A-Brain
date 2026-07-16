@@ -268,6 +268,10 @@ export class InnerVoice {
           state.arousal ?? 0.5,
           state.coherence ?? 0.5,
           {
+            // DONOR-DROP FIX (2026-07-16) — inner thoughts mid-walk compose with
+            // ONE candidate (each rerank candidate = a full ~13s emission; the
+            // 3-candidate default stacked on teach starved the loop → donor EPIPE).
+            curriculumBusy: state.curriculumBusy === true,
             predictionError: state.predictionError ?? 0,
             motorConfidence: state.motorConfidence ?? 0,
             psi: state.psi ?? 0,

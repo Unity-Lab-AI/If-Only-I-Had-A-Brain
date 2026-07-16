@@ -62971,7 +62971,11 @@ var LanguageCortex = class {
                 subject: inferredSubject || void 0,
                 temperature: Number(_temp.toFixed(2)),
                 topK: _topK,
-                coherenceCandidates: 3,
+                // DONOR-DROP FIX (2026-07-16) — mid-walk, ONE candidate: each
+                // rerank candidate is a FULL sentence emission (~13s of GPU
+                // dispatches); 3 of them stacked on teach starved the event
+                // loop 47s and killed the donor socket. Rerank = idle luxury.
+                coherenceCandidates: opts.curriculumBusy ? 1 : 3,
                 coherenceFloor: _chatCohFloor,
                 // grade-vocab gate: chat reply stays in developmentally-
                 // cleared vocabulary (blocks corpus-bleed). Chat-only —
@@ -62995,7 +62999,8 @@ var LanguageCortex = class {
                         subject: inferredSubject || void 0,
                         temperature: Number(_temp.toFixed(2)),
                         topK: _topK,
-                        coherenceCandidates: 2,
+                        coherenceCandidates: opts.curriculumBusy ? 1 : 2,
+                        // donor-drop fix — see above
                         gradeGate: true
                       });
                     } catch {
@@ -63801,6 +63806,10 @@ var InnerVoice = class {
           state.arousal ?? 0.5,
           state.coherence ?? 0.5,
           {
+            // DONOR-DROP FIX (2026-07-16) — inner thoughts mid-walk compose with
+            // ONE candidate (each rerank candidate = a full ~13s emission; the
+            // 3-candidate default stacked on teach starved the loop → donor EPIPE).
+            curriculumBusy: state.curriculumBusy === true,
             predictionError: state.predictionError ?? 0,
             motorConfidence: state.motorConfidence ?? 0,
             psi: state.psi ?? 0,
