@@ -52,4 +52,8 @@ _Add new tasks below, each with Gee's verbatim words (LAW #0), `[~]` while in fl
 
 _MINDS-EYE FREEZE FIX migrated VERBATIM to `docs/FINALIZED.md` (§2026-07-15 MINDS-EYE FREEZE) — non-blocking draw path shipped, awaiting dashboard Update & SAVESTART. No open tasks._
 
-_MINDS-EYE NEVER DRAWS (proxy missing traceField) migrated VERBATIM to `docs/FINALIZED.md` (§2026-07-15 MINDS-EYE NEVER DRAWS) — proxy `traceField` forward + look-up→draw 1:1 shipped + proven (traceField→20 strokes), awaiting dashboard Update & SAVESTART. No open tasks._
+_MINDS-EYE NEVER DRAWS (proxy missing traceField) migrated VERBATIM to `docs/FINALIZED.md` (§2026-07-15 MINDS-EYE NEVER DRAWS) — proxy `traceField` forward + look-up→draw 1:1 shipped + proven (traceField→20 strokes), awaiting dashboard Update & SAVESTART._
+
+_DRAW QUALITY REBUILD + REMEMBER-IN-RELATION migrated VERBATIM to `docs/FINALIZED.md` (§2026-07-15 DRAW QUALITY REBUILD) — traceLineArt (recognizable contours, no yarn) + 3 artistic styles (lineart/colorfill/field) + handwriting fixed + remember-in-relation + lookup→hold→draw pacing, all wired through every layer + rendered+eyeballed recognizable (cat/house/apple). Awaiting dashboard Update & SAVESTART. No open tasks._
+
+_Open architecture note (next batch, Gee's steer): true GPU-accelerated "immaculate savant" rendering needs the mind-space wavelet transforms offloaded to a donor GPU — the deployed box is CPU-only. Separate project; the `field` style is the detailed CPU path for now._
