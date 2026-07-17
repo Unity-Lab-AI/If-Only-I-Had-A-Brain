@@ -3845,11 +3845,31 @@ class ServerBrain {
           // compute dispatch until every cluster's ack comes back.
           const needsSend = allClusters.filter(c => !this._gpuInitialized[c]);
           if (needsSend.length > 0) {
-            console.log(`[Brain] GPU init send: ${needsSend.join(', ')}`);
-            for (const gc of needsSend) {
-              this._gpuStep(gc); // sends gpu_init, marks _gpuInitialized
+            // LOG-SPAM FIX (Gee 2026-07-16: "GPU init send" machine-gunning ~9/s) —
+            // _gpuStep() NO-OPS while the canonical cortex weight upload is in
+            // flight (its first guard), so during a post-reconnect upload this
+            // branch retried + LOGGED every tick without sending anything. Mirror
+            // the guard here: defer quietly (one log) until the upload completes;
+            // the per-cluster "GPU init sent" line remains the real send signal.
+            if (this._cortexUploadInFlight) {
+              if (!this._gpuInitUploadWaitLogged) {
+                this._gpuInitUploadWaitLogged = true;
+                console.log(`[Brain] GPU init deferred (${needsSend.join(', ')}) — canonical cortex upload in flight; init resumes when it completes.`);
+              }
+              this._updateDerivedState();
+            } else {
+              this._gpuInitUploadWaitLogged = false;
+              // rate-limit the batch line (once per 5s) — the per-tick retry loop
+              // is normal while acks stream in, but the log doesn't need 9Hz.
+              if (!this._gpuInitSendLogMs || (Date.now() - this._gpuInitSendLogMs) > 5000) {
+                this._gpuInitSendLogMs = Date.now();
+                console.log(`[Brain] GPU init send: ${needsSend.join(', ')}`);
+              }
+              for (const gc of needsSend) {
+                this._gpuStep(gc); // sends gpu_init, marks _gpuInitialized
+              }
+              this._updateDerivedState();
             }
-            this._updateDerivedState();
           } else {
             const needsAck = allClusters.filter(c => !this._gpuInitializedConfirmed[c]);
             if (needsAck.length > 0) {
