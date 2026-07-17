@@ -11,7 +11,13 @@
 // The worker does all the heavy lifting (phonemize + VITS inference) on the
 // visitor's machine — no server, no external API. This module is just the courier.
 
-const WORKER_URL = '/js/voice-piper-worker.bundle.js';
+// CACHE-BUSTED (Gee 2026-07-17, donor still dropping on chat AFTER the wasm-only
+// voice fix deployed): the un-busted URL let browsers serve the OLD cached worker
+// bundle — the one whose TTS grabbed WebGPU — so the fix never executed in the
+// visitor's tab. On a machine where the NATIVE donor binary shares the same
+// physical GPU, that stale worker's WebGPU grab pressure-killed the donor's
+// device on every reply. Same Date.now() busting app.bundle.js uses.
+const WORKER_URL = '/js/voice-piper-worker.bundle.js?v=' + Date.now();
 
 let _worker = null;
 let _seq = 0;
