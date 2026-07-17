@@ -2955,6 +2955,41 @@ const SERVER_CHAT_MIXIN = {
     // through to baseline cortex state. Genuine silence is OK here.
     return { pattern: null, source: 'baseline', label: 'baseline cortex state' };
   },
+
+  // ── ONE PROCESS, the last mile — HER VOICE FROM HER PROCESS ──────────────
+  // (Gee 2026-07-17: "what the fuck, she still drops the doner connection
+  // every time she speaks" + "its all gpu now right? voice, minds eye and the
+  // brain! one unified system".) Listener browsers used to synthesize every
+  // reply themselves (per-visitor onnxruntime worker) — on the operator's
+  // machine that shared silicon with the compute donor, and one stale cached
+  // tab could grab WebGPU and kill the donation whenever she spoke. Now the
+  // reply's voice is synthesized by HER process — a voiceSynth-capable donor
+  // when connected (browser donors carry it; the native binary gains it with
+  // its ort port), the box worker thread otherwise — and the viewer receives
+  // her field-A equations (a few KB) to reconstruct + play. Fire-and-forget:
+  // the text reply already shipped; a failed synth = a silently text-only
+  // reply, never a delayed one.
+  async _voiceLane(ws, text) {
+    try {
+      if (!text || typeof text !== 'string' || !ws || ws.readyState !== 1) return;
+      let out = null;
+      if (typeof this._mindspaceDonorCapable === 'function' && this._mindspaceDonorCapable('voiceSynth')) {
+        // 60s: a donor's FIRST synth may pay the one-time model fetch/cache.
+        const r = await this.gpuMindspaceOp('voiceSynth', { text }, 60_000);
+        if (r && r.rec) out = { rec: r.rec, sampleRate: r.sampleRate || r.rec.sampleRate };
+      }
+      if (!out) {
+        if (!this._voiceSynth) {
+          const { VoiceSynthProxy } = require('./voice-synth.js');
+          this._voiceSynth = new VoiceSynthProxy();
+        }
+        out = await this._voiceSynth.synthesizeRec(text);
+      }
+      if (out && out.rec && ws.readyState === 1) {
+        ws.send(JSON.stringify({ type: 'voice', text, rec: out.rec, sampleRate: out.sampleRate || out.rec.sampleRate || 22050 }));
+      }
+    } catch { /* voice is best-effort — the text reply already landed */ }
+  },
 };
 
 module.exports = { SERVER_CHAT_MIXIN };

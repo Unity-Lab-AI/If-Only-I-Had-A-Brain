@@ -660,3 +660,21 @@ the shootout harness lives in `.claude/vox-variants.mjs` + `.claude/unity-voice.
 session: the `_definitionTaughtWords` save-truncation at 5000 was REMOVED — her learned vocabulary
 persists uncapped (the cap silently forgot every definition past 5k across save/boot cycles).
 
+**SE.19 — HER VOICE FROM HER PROCESS: listener browsers never synthesize (2026-07-17).** Gee:
+"what the fuck, she still drops the doner connection every time she speaks" + "its all gpu now
+right? voice, minds eye and the brain! one unified system". The live sentence lane (SE.18's
+successor path, 2026-07-14) synthesized in EVERY visitor's browser — on a machine that also runs a
+compute donor that shared the donor's silicon, and one stale cached worker (the pre-wasm-fix
+bundle) could still grab WebGPU and kill the donation whenever she spoke. Now the reply's voice is
+synthesized by HER process: the server's `_voiceLane` (chat.js) dispatches `voiceSynth` to a
+capable donor (`gpuMindspaceOp`, 60s first-synth budget; browser donors carry the op via the same
+self-hosted worker, model OPFS-cached on the DONOR machine) with the box's own worker thread as
+the always-available floor (`server/voice-synth-worker.mjs` + `VoiceSynthProxy` — the exact
+browser-proven stack under Node: vendored espeak phonemizer + piper VITS on onnxruntime-web
+CPU-wasm + `perceiveAudio`; verified 2.3s cold / 489ms warm for a 3s sentence). The viewer gets a
+follow-up `{type:'voice', rec}` WS message (~142KB field-A vs ~258KB raw PCM) and ONLY runs the
+inverse CDF 9/7 + playback (`VoiceIO.playRec`; RemoteBrain's in-browser synth call DELETED, the
+63MB model download skipped entirely for deployed-site visitors — the preload remains only for
+the local browser-brain path). Donor drops caused by speaking are structurally impossible from
+this end: listeners hold no synth, no model, no GPU handle.
+

@@ -6,23 +6,18 @@ var __require = /* @__PURE__ */ ((x) => typeof require !== "undefined" ? require
   if (typeof require !== "undefined") return require.apply(this, arguments);
   throw Error('Dynamic require of "' + x + '" is not supported');
 });
-var __esm = (fn, res, err) => function __init() {
-  if (err) throw err[0];
-  try {
-    return fn && (res = (0, fn[__getOwnPropNames(fn)[0]])(fn = 0)), res;
-  } catch (e) {
-    throw err = [e], e;
-  }
+var __esm = (fn, res) => function __init() {
+  return fn && (res = (0, fn[__getOwnPropNames(fn)[0]])(fn = 0)), res;
 };
 var __export = (target, all) => {
   for (var name in all)
     __defProp(target, name, { get: all[name], enumerable: true });
 };
 
-// js/brain/sparse-matrix.js
+// ../js/brain/sparse-matrix.js
 var SparseMatrix;
 var init_sparse_matrix = __esm({
-  "js/brain/sparse-matrix.js"() {
+  "../js/brain/sparse-matrix.js"() {
     SparseMatrix = class _SparseMatrix {
       /**
        * @param {number} rows — number of post-synaptic neurons
@@ -1086,7 +1081,7 @@ var init_sparse_matrix = __esm({
   }
 });
 
-// js/brain/k-vocabulary.js
+// ../js/brain/k-vocabulary.js
 var k_vocabulary_exports = {};
 __export(k_vocabulary_exports, {
   K_VOCABULARY: () => K_VOCABULARY,
@@ -1107,7 +1102,7 @@ function _buildVocabulary(raw) {
 }
 var K_VOCABULARY_RAW, K_VOCABULARY, K_VOCABULARY_SIZE;
 var init_k_vocabulary = __esm({
-  "js/brain/k-vocabulary.js"() {
+  "../js/brain/k-vocabulary.js"() {
     K_VOCABULARY_RAW = [
       // ─── Letters (lowercase) ─────────────────────────────────────────
       "a",
@@ -4132,7 +4127,7 @@ var init_k_vocabulary = __esm({
   }
 });
 
-// js/brain/grade1-vocabulary.js
+// ../js/brain/grade1-vocabulary.js
 var grade1_vocabulary_exports = {};
 __export(grade1_vocabulary_exports, {
   G1_VOCABULARY: () => G1_VOCABULARY,
@@ -4140,7 +4135,7 @@ __export(grade1_vocabulary_exports, {
 });
 var G1_VOCABULARY, G1_VOCABULARY_SIZE;
 var init_grade1_vocabulary = __esm({
-  "js/brain/grade1-vocabulary.js"() {
+  "../js/brain/grade1-vocabulary.js"() {
     G1_VOCABULARY = [
       "abbreviated",
       "absence",
@@ -6169,7 +6164,7 @@ var init_grade1_vocabulary = __esm({
   }
 });
 
-// js/brain/grade2-vocabulary.js
+// ../js/brain/grade2-vocabulary.js
 var grade2_vocabulary_exports = {};
 __export(grade2_vocabulary_exports, {
   G2_VOCABULARY: () => G2_VOCABULARY,
@@ -6177,7 +6172,7 @@ __export(grade2_vocabulary_exports, {
 });
 var G2_VOCABULARY, G2_VOCABULARY_SIZE;
 var init_grade2_vocabulary = __esm({
-  "js/brain/grade2-vocabulary.js"() {
+  "../js/brain/grade2-vocabulary.js"() {
     G2_VOCABULARY = [
       "abandon",
       "abbreviations",
@@ -8267,7 +8262,7 @@ var init_grade2_vocabulary = __esm({
   }
 });
 
-// js/brain/grade3-vocabulary.js
+// ../js/brain/grade3-vocabulary.js
 var grade3_vocabulary_exports = {};
 __export(grade3_vocabulary_exports, {
   G3_VOCABULARY: () => G3_VOCABULARY,
@@ -8275,7 +8270,7 @@ __export(grade3_vocabulary_exports, {
 });
 var G3_VOCABULARY, G3_VOCABULARY_SIZE;
 var init_grade3_vocabulary = __esm({
-  "js/brain/grade3-vocabulary.js"() {
+  "../js/brain/grade3-vocabulary.js"() {
     G3_VOCABULARY = [
       "abacus",
       "abandon",
@@ -9721,7 +9716,7 @@ var init_grade3_vocabulary = __esm({
   }
 });
 
-// js/brain/grade4-vocabulary.js
+// ../js/brain/grade4-vocabulary.js
 var grade4_vocabulary_exports = {};
 __export(grade4_vocabulary_exports, {
   G4_VOCABULARY: () => G4_VOCABULARY,
@@ -9729,7 +9724,7 @@ __export(grade4_vocabulary_exports, {
 });
 var G4_VOCABULARY, G4_VOCABULARY_SIZE;
 var init_grade4_vocabulary = __esm({
-  "js/brain/grade4-vocabulary.js"() {
+  "../js/brain/grade4-vocabulary.js"() {
     G4_VOCABULARY = [
       "abandoned",
       "abbreviations",
@@ -11884,7 +11879,7 @@ var init_grade4_vocabulary = __esm({
   }
 });
 
-// js/brain/grade5-vocabulary.js
+// ../js/brain/grade5-vocabulary.js
 var grade5_vocabulary_exports = {};
 __export(grade5_vocabulary_exports, {
   G5_VOCABULARY: () => G5_VOCABULARY,
@@ -11892,7 +11887,7 @@ __export(grade5_vocabulary_exports, {
 });
 var G5_VOCABULARY, G5_VOCABULARY_SIZE;
 var init_grade5_vocabulary = __esm({
-  "js/brain/grade5-vocabulary.js"() {
+  "../js/brain/grade5-vocabulary.js"() {
     G5_VOCABULARY = [
       "abacus",
       "abandoned",
@@ -13929,7 +13924,7 @@ var init_grade5_vocabulary = __esm({
   }
 });
 
-// js/brain/grade6-vocabulary.js
+// ../js/brain/grade6-vocabulary.js
 var grade6_vocabulary_exports = {};
 __export(grade6_vocabulary_exports, {
   G6_VOCABULARY: () => G6_VOCABULARY,
@@ -13937,7 +13932,7 @@ __export(grade6_vocabulary_exports, {
 });
 var G6_VOCABULARY, G6_VOCABULARY_SIZE;
 var init_grade6_vocabulary = __esm({
-  "js/brain/grade6-vocabulary.js"() {
+  "../js/brain/grade6-vocabulary.js"() {
     G6_VOCABULARY = [
       "abandoned",
       "abandonment",
@@ -16642,7 +16637,7 @@ var init_grade6_vocabulary = __esm({
   }
 });
 
-// js/brain/grade7-vocabulary.js
+// ../js/brain/grade7-vocabulary.js
 var grade7_vocabulary_exports = {};
 __export(grade7_vocabulary_exports, {
   G7_VOCABULARY: () => G7_VOCABULARY,
@@ -16650,7 +16645,7 @@ __export(grade7_vocabulary_exports, {
 });
 var G7_VOCABULARY, G7_VOCABULARY_SIZE;
 var init_grade7_vocabulary = __esm({
-  "js/brain/grade7-vocabulary.js"() {
+  "../js/brain/grade7-vocabulary.js"() {
     G7_VOCABULARY = [
       "abandon",
       "abides",
@@ -20307,7 +20302,7 @@ var init_grade7_vocabulary = __esm({
   }
 });
 
-// js/brain/grade8-vocabulary.js
+// ../js/brain/grade8-vocabulary.js
 var grade8_vocabulary_exports = {};
 __export(grade8_vocabulary_exports, {
   G8_VOCABULARY: () => G8_VOCABULARY,
@@ -20315,7 +20310,7 @@ __export(grade8_vocabulary_exports, {
 });
 var G8_VOCABULARY, G8_VOCABULARY_SIZE;
 var init_grade8_vocabulary = __esm({
-  "js/brain/grade8-vocabulary.js"() {
+  "../js/brain/grade8-vocabulary.js"() {
     G8_VOCABULARY = [
       "abandoned",
       "ability",
@@ -23236,7 +23231,7 @@ var init_grade8_vocabulary = __esm({
   }
 });
 
-// js/brain/grade9-vocabulary.js
+// ../js/brain/grade9-vocabulary.js
 var grade9_vocabulary_exports = {};
 __export(grade9_vocabulary_exports, {
   G9_VOCABULARY: () => G9_VOCABULARY,
@@ -23244,7 +23239,7 @@ __export(grade9_vocabulary_exports, {
 });
 var G9_VOCABULARY, G9_VOCABULARY_SIZE;
 var init_grade9_vocabulary = __esm({
-  "js/brain/grade9-vocabulary.js"() {
+  "../js/brain/grade9-vocabulary.js"() {
     G9_VOCABULARY = [
       "abandon",
       "abilities",
@@ -27506,7 +27501,7 @@ var init_grade9_vocabulary = __esm({
   }
 });
 
-// js/brain/grade10-vocabulary.js
+// ../js/brain/grade10-vocabulary.js
 var grade10_vocabulary_exports = {};
 __export(grade10_vocabulary_exports, {
   G10_VOCABULARY: () => G10_VOCABULARY,
@@ -27514,7 +27509,7 @@ __export(grade10_vocabulary_exports, {
 });
 var G10_VOCABULARY, G10_VOCABULARY_SIZE;
 var init_grade10_vocabulary = __esm({
-  "js/brain/grade10-vocabulary.js"() {
+  "../js/brain/grade10-vocabulary.js"() {
     G10_VOCABULARY = [
       "a-generic",
       "abandonment",
@@ -31719,7 +31714,7 @@ var init_grade10_vocabulary = __esm({
   }
 });
 
-// js/brain/grade11-vocabulary.js
+// ../js/brain/grade11-vocabulary.js
 var grade11_vocabulary_exports = {};
 __export(grade11_vocabulary_exports, {
   G11_VOCABULARY: () => G11_VOCABULARY,
@@ -31727,7 +31722,7 @@ __export(grade11_vocabulary_exports, {
 });
 var G11_VOCABULARY, G11_VOCABULARY_SIZE;
 var init_grade11_vocabulary = __esm({
-  "js/brain/grade11-vocabulary.js"() {
+  "../js/brain/grade11-vocabulary.js"() {
     G11_VOCABULARY = [
       "abandonment",
       "abbreviation",
@@ -35905,7 +35900,7 @@ var init_grade11_vocabulary = __esm({
   }
 });
 
-// js/brain/grade12-vocabulary.js
+// ../js/brain/grade12-vocabulary.js
 var grade12_vocabulary_exports = {};
 __export(grade12_vocabulary_exports, {
   G12_VOCABULARY: () => G12_VOCABULARY,
@@ -35913,7 +35908,7 @@ __export(grade12_vocabulary_exports, {
 });
 var G12_VOCABULARY, G12_VOCABULARY_SIZE;
 var init_grade12_vocabulary = __esm({
-  "js/brain/grade12-vocabulary.js"() {
+  "../js/brain/grade12-vocabulary.js"() {
     G12_VOCABULARY = [
       "a-generic",
       "abandoned",
@@ -40013,7 +40008,7 @@ var init_grade12_vocabulary = __esm({
   }
 });
 
-// js/brain/college1-vocabulary.js
+// ../js/brain/college1-vocabulary.js
 var college1_vocabulary_exports = {};
 __export(college1_vocabulary_exports, {
   COL1_VOCABULARY: () => COL1_VOCABULARY,
@@ -40021,7 +40016,7 @@ __export(college1_vocabulary_exports, {
 });
 var COL1_VOCABULARY, COL1_VOCABULARY_SIZE;
 var init_college1_vocabulary = __esm({
-  "js/brain/college1-vocabulary.js"() {
+  "../js/brain/college1-vocabulary.js"() {
     COL1_VOCABULARY = [
       "abandon",
       "abbreviated",
@@ -42572,7 +42567,7 @@ var init_college1_vocabulary = __esm({
   }
 });
 
-// js/brain/college2-vocabulary.js
+// ../js/brain/college2-vocabulary.js
 var college2_vocabulary_exports = {};
 __export(college2_vocabulary_exports, {
   COL2_VOCABULARY: () => COL2_VOCABULARY,
@@ -42580,7 +42575,7 @@ __export(college2_vocabulary_exports, {
 });
 var COL2_VOCABULARY, COL2_VOCABULARY_SIZE;
 var init_college2_vocabulary = __esm({
-  "js/brain/college2-vocabulary.js"() {
+  "../js/brain/college2-vocabulary.js"() {
     COL2_VOCABULARY = [
       "ability",
       "absolute",
@@ -44624,7 +44619,7 @@ var init_college2_vocabulary = __esm({
   }
 });
 
-// js/brain/college3-vocabulary.js
+// ../js/brain/college3-vocabulary.js
 var college3_vocabulary_exports = {};
 __export(college3_vocabulary_exports, {
   COL3_VOCABULARY: () => COL3_VOCABULARY,
@@ -44632,7 +44627,7 @@ __export(college3_vocabulary_exports, {
 });
 var COL3_VOCABULARY, COL3_VOCABULARY_SIZE;
 var init_college3_vocabulary = __esm({
-  "js/brain/college3-vocabulary.js"() {
+  "../js/brain/college3-vocabulary.js"() {
     COL3_VOCABULARY = [
       "abandoned",
       "abelian",
@@ -46580,7 +46575,7 @@ var init_college3_vocabulary = __esm({
   }
 });
 
-// js/brain/college4-vocabulary.js
+// ../js/brain/college4-vocabulary.js
 var college4_vocabulary_exports = {};
 __export(college4_vocabulary_exports, {
   COL4_VOCABULARY: () => COL4_VOCABULARY,
@@ -46588,7 +46583,7 @@ __export(college4_vocabulary_exports, {
 });
 var COL4_VOCABULARY, COL4_VOCABULARY_SIZE;
 var init_college4_vocabulary = __esm({
-  "js/brain/college4-vocabulary.js"() {
+  "../js/brain/college4-vocabulary.js"() {
     COL4_VOCABULARY = [
       "abandoned",
       "abandonment",
@@ -48687,7 +48682,7 @@ var init_college4_vocabulary = __esm({
   }
 });
 
-// js/brain/gradschool-vocabulary.js
+// ../js/brain/gradschool-vocabulary.js
 var gradschool_vocabulary_exports = {};
 __export(gradschool_vocabulary_exports, {
   GRAD_VOCABULARY: () => GRAD_VOCABULARY,
@@ -48695,7 +48690,7 @@ __export(gradschool_vocabulary_exports, {
 });
 var GRAD_VOCABULARY, GRAD_VOCABULARY_SIZE;
 var init_gradschool_vocabulary = __esm({
-  "js/brain/gradschool-vocabulary.js"() {
+  "../js/brain/gradschool-vocabulary.js"() {
     GRAD_VOCABULARY = [
       "ability",
       "abraham",
@@ -50488,7 +50483,7 @@ var init_gradschool_vocabulary = __esm({
   }
 });
 
-// js/brain/phd-vocabulary.js
+// ../js/brain/phd-vocabulary.js
 var phd_vocabulary_exports = {};
 __export(phd_vocabulary_exports, {
   PHD_VOCABULARY: () => PHD_VOCABULARY,
@@ -50496,7 +50491,7 @@ __export(phd_vocabulary_exports, {
 });
 var PHD_VOCABULARY, PHD_VOCABULARY_SIZE;
 var init_phd_vocabulary = __esm({
-  "js/brain/phd-vocabulary.js"() {
+  "../js/brain/phd-vocabulary.js"() {
     PHD_VOCABULARY = [
       "abandoned",
       "abandonment",
@@ -52076,7 +52071,7 @@ var init_phd_vocabulary = __esm({
   }
 });
 
-// js/brain/grade-vocabulary.js
+// ../js/brain/grade-vocabulary.js
 var grade_vocabulary_exports = {};
 __export(grade_vocabulary_exports, {
   gradeVocabularyFor: () => gradeVocabularyFor
@@ -52126,11 +52121,11 @@ async function gradeVocabularyFor(grade) {
   }
 }
 var init_grade_vocabulary = __esm({
-  "js/brain/grade-vocabulary.js"() {
+  "../js/brain/grade-vocabulary.js"() {
   }
 });
 
-// js/brain/benchmark.js
+// ../js/brain/benchmark.js
 var benchmark_exports = {};
 __export(benchmark_exports, {
   runBenchmark: () => runBenchmark,
@@ -52305,7 +52300,7 @@ function runScaleTest(sizes = [1e3, 5e3, 1e4, 5e4, 1e5, 25e4, 5e5, 1e6]) {
 }
 var DenseMatrix;
 var init_benchmark = __esm({
-  "js/brain/benchmark.js"() {
+  "../js/brain/benchmark.js"() {
     init_sparse_matrix();
     DenseMatrix = class {
       constructor(n) {
@@ -52356,12 +52351,12 @@ var init_benchmark = __esm({
   }
 });
 
-// js/version.js
+// ../js/version.js
 var VERSION = "0.1.0";
 var BUILD = "262f758f-f649";
 var FULL = `${VERSION}+${BUILD}`;
 
-// js/brain/neurons.js
+// ../js/brain/neurons.js
 var LIF_DEFAULTS = {
   tau: 20,
   // membrane time constant (ms)
@@ -52421,10 +52416,10 @@ var LIFPopulation = class {
   }
 };
 
-// js/brain/cluster.js
+// ../js/brain/cluster.js
 init_sparse_matrix();
 
-// js/brain/embeddings.js
+// ../js/brain/embeddings.js
 var EMBED_DIM = 300;
 var GLOVE_LOCAL_PATH = "corpora/glove.6B.300d.txt";
 var GLOVE_URLS = (() => {
@@ -52862,7 +52857,7 @@ var SemanticEmbeddings = class {
 };
 var sharedEmbeddings = new SemanticEmbeddings();
 
-// js/brain/letter-input.js
+// ../js/brain/letter-input.js
 var LETTER_INVENTORY = /* @__PURE__ */ new Set();
 var DEFAULT_ALPHABET = [
   // Lowercase English (26)
@@ -53034,7 +53029,7 @@ function loadInventory(arr) {
   _cachedInventorySize = 0;
 }
 
-// js/brain/subjects.js
+// ../js/brain/subjects.js
 var SUBJECT_NORMALIZE = Object.freeze({
   ela: "ela",
   english: "ela",
@@ -53060,7 +53055,7 @@ function wordMotorBandName(subject) {
   return subj ? `word_motor_${subj}` : null;
 }
 
-// js/brain/cluster/telemetry.js
+// ../js/brain/cluster/telemetry.js
 var CLUSTER_TELEMETRY_MIXIN = {
   trackRecentEmission(word) {
     if (typeof word !== "string" || word.length === 0) return;
@@ -53349,7 +53344,7 @@ var CLUSTER_TELEMETRY_MIXIN = {
   }
 };
 
-// js/brain/cluster/hebbian.js
+// ../js/brain/cluster/hebbian.js
 var CLUSTER_HEBBIAN_MIXIN = {
   async _crossRegionHebbian(lr, opts = {}) {
     if (!this.crossProjections) return;
@@ -53773,7 +53768,7 @@ var CLUSTER_HEBBIAN_MIXIN = {
   }
 };
 
-// js/brain/cluster/emit.js
+// ../js/brain/cluster/emit.js
 var CLUSTER_EMIT_MIXIN = {
   /**
    * Set (or clear) the grade-vocab emission allow-set consumed by
@@ -55007,7 +55002,6 @@ var CLUSTER_EMIT_MIXIN = {
         if (TERMINATORS.has(nextLetter)) break;
       }
     }
-    void letterToMotor;
     this._motorEmissionTicks = committedLetters;
     this._lastEmissionDiag = {
       ticksRun: committedLetters,
@@ -55021,7 +55015,7 @@ var CLUSTER_EMIT_MIXIN = {
   }
 };
 
-// js/brain/cluster/probe.js
+// ../js/brain/cluster/probe.js
 var CLUSTER_PROBE_MIXIN = {
   diagnoseReadoutForEmbedding(emb, ticks = 10, langStart = 150) {
     const currents = sharedEmbeddings.mapToCortex(emb, this.size, langStart);
@@ -55053,7 +55047,7 @@ var CLUSTER_PROBE_MIXIN = {
   }
 };
 
-// js/brain/cluster.js
+// ../js/brain/cluster.js
 var CLUSTER_FRACTIONS = {
   cortex: 0.55,
   hippocampus: 0.18,
@@ -58012,7 +58006,7 @@ Object.assign(NeuronCluster.prototype, CLUSTER_HEBBIAN_MIXIN);
 Object.assign(NeuronCluster.prototype, CLUSTER_EMIT_MIXIN);
 Object.assign(NeuronCluster.prototype, CLUSTER_PROBE_MIXIN);
 
-// js/brain/modules.js
+// ../js/brain/modules.js
 function sigmoid(x) {
   return 1 / (1 + Math.exp(-x));
 }
@@ -58342,7 +58336,7 @@ var Hypothalamus = class {
   }
 };
 
-// js/brain/mystery.js
+// ../js/brain/mystery.js
 var MysteryModule = class {
   /**
    * @param {object} weights - Persona-tunable weights { alpha, beta, gamma, delta }
@@ -58502,7 +58496,7 @@ var MysteryModule = class {
   }
 };
 
-// js/brain/oscillations.js
+// ../js/brain/oscillations.js
 var TWO_PI = 2 * Math.PI;
 var BANDS = {
   theta: { lo: 4, hi: 8 },
@@ -58634,7 +58628,7 @@ var OscillatorNetwork = class {
   }
 };
 
-// js/brain/persona.js
+// ../js/brain/persona.js
 var UNITY_PERSONA = {
   // === Identity ===
   name: "Unity",
@@ -58846,7 +58840,7 @@ function getBrainParams(persona = UNITY_PERSONA, scheduler = null, now = void 0)
   return params;
 }
 
-// js/brain/sensory.js
+// ../js/brain/sensory.js
 var CORTEX_SIZE = 300;
 var AUDITORY_START = 0;
 var AUDITORY_END = 50;
@@ -59154,7 +59148,7 @@ var SensoryProcessor = class {
   }
 };
 
-// js/brain/motor.js
+// ../js/brain/motor.js
 var BG_SIZE = 150;
 var CHANNELS = 6;
 var NEURONS_PER_CHANNEL = 25;
@@ -59330,7 +59324,7 @@ var MotorOutput = class {
   }
 };
 
-// js/brain/memory.js
+// ../js/brain/memory.js
 var MAX_EPISODES = 100;
 var WM_DECAY_RATE = 0.9995;
 var CONSOLIDATION_THRESHOLD = 3;
@@ -59565,7 +59559,7 @@ var MemorySystem = class {
   }
 };
 
-// js/brain/auditory-cortex.js
+// ../js/brain/auditory-cortex.js
 var AUDITORY_NEURONS = 50;
 var AuditoryCortex = class {
   constructor() {
@@ -59790,7 +59784,7 @@ var AuditoryCortex = class {
   }
 };
 
-// js/brain/mindspace/transform.js
+// ../js/brain/mindspace/transform.js
 var A97 = -1.586134342059924;
 var B97 = -0.052980118572961;
 var G97 = 0.882911075530934;
@@ -60532,7 +60526,7 @@ function stylizeField(rec, opts = {}) {
   return equationalizeImageData({ width: gw, height: gh, data });
 }
 
-// js/brain/visual-cortex.js
+// ../js/brain/visual-cortex.js
 var FRAME_W = 60;
 var FRAME_H = 45;
 var V1_ORIENTATIONS = 4;
@@ -61102,7 +61096,7 @@ var VisualCortex = class {
   }
 };
 
-// js/brain/dictionary.js
+// ../js/brain/dictionary.js
 var MAX_WORDS = 5e4;
 var PATTERN_DIM = EMBED_DIM;
 var STORAGE_KEY = "unity_brain_dictionary_v4";
@@ -61425,7 +61419,7 @@ var Dictionary = class {
   // is the canonical cosine used everywhere else in the codebase.
 };
 
-// js/brain/language-cortex.js
+// ../js/brain/language-cortex.js
 var PATTERN_DIM2 = EMBED_DIM;
 var VOWELS = "aeiou";
 var _LIVE_CHAT_STOPWORDS = /* @__PURE__ */ new Set([
@@ -62650,7 +62644,6 @@ var LanguageCortex = class {
       case "pre-K":
       default:
         return 0;
-      // silence — not learned yet
       case "kindergarten":
       case "grade1":
       case "grade2":
@@ -63631,7 +63624,7 @@ var LanguageCortex = class {
   // via `cluster.regionReadout('letter', dim)`.
 };
 
-// js/brain/inner-voice.js
+// ../js/brain/inner-voice.js
 var SPEECH_THRESHOLD = 0.15;
 var THOUGHT_INTERVAL = 60;
 var InnerVoice = class {
@@ -64130,7 +64123,7 @@ var InnerVoice = class {
   }
 };
 
-// js/brain/persistence.js
+// ../js/brain/persistence.js
 init_sparse_matrix();
 function mapOfMapsToJson(m) {
   if (!(m instanceof Map)) return null;
@@ -64579,7 +64572,7 @@ var BrainPersistence = class _BrainPersistence {
   }
 };
 
-// js/brain/component-synth.js
+// ../js/brain/component-synth.js
 var MIN_MATCH_SCORE = 0.4;
 var ComponentSynth = class {
   constructor() {
@@ -64838,7 +64831,7 @@ var ComponentSynth = class {
   }
 };
 
-// js/brain/student-question-banks.js
+// ../js/brain/student-question-banks.js
 var ELA_KINDERGARTEN_EXAM = [
   // K.RF.1 Print Concepts — understand basic features of print
   {
@@ -67619,7 +67612,7 @@ function scoreMethodologyAnswer(emission, expectedKeywords) {
   return { matched, matchCount: matched.length };
 }
 
-// js/brain/mindspace/knowledge.js
+// ../js/brain/mindspace/knowledge.js
 var FILE_TYPES = [
   {
     exts: ["png", "jpg", "jpeg", "webp", "gif", "bmp", "avif"],
@@ -67877,7 +67870,7 @@ function conceptDefinitions() {
   return out;
 }
 
-// js/brain/curriculum/pre-K.js
+// ../js/brain/curriculum/pre-K.js
 var PREK_MIXIN = {
   // ══════════════════════════════════════════════════════════════════
   // PRE-K COGNITIVE PRIMITIVES — spatial / visual / logic / self-model
@@ -68848,7 +68841,7 @@ var PREK_MIXIN = {
   }
 };
 
-// js/brain/curriculum/kindergarten.js
+// ../js/brain/curriculum/kindergarten.js
 var _kGateEnvNum = (key, dflt) => {
   try {
     const v = typeof process !== "undefined" && process.env ? Number(process.env[key]) : NaN;
@@ -78050,7 +78043,7 @@ var K_MIXIN = {
   }
 };
 
-// js/brain/curriculum/grade1.js
+// ../js/brain/curriculum/grade1.js
 var G1_MIXIN = {
   async runElaG1Real(ctx) {
     const DOLCH_G1 = [
@@ -79181,7 +79174,7 @@ var G1_MIXIN = {
   }
 };
 
-// js/brain/curriculum/grade2.js
+// ../js/brain/curriculum/grade2.js
 var G2_MIXIN = {
   async runElaG2Real(ctx) {
     const DIGRAPHS = ["th", "sh", "ch", "ph", "wh", "ck", "ng"];
@@ -80011,7 +80004,7 @@ var G2_MIXIN = {
   }
 };
 
-// js/brain/curriculum/grade3.js
+// ../js/brain/curriculum/grade3.js
 var G3_MIXIN = {
   async runElaG3Real(ctx) {
     const ELA_G3_VOCAB = [
@@ -80711,7 +80704,7 @@ var G3_MIXIN = {
   }
 };
 
-// js/brain/curriculum/grade4.js
+// ../js/brain/curriculum/grade4.js
 var G4_MIXIN = {
   async runElaG4Real(ctx) {
     const ELA_G4_VOCAB = [
@@ -81682,7 +81675,7 @@ var G4_MIXIN = {
   }
 };
 
-// js/brain/curriculum/grade5.js
+// ../js/brain/curriculum/grade5.js
 var G5_MIXIN = {
   async runElaG5Real(ctx) {
     const SENTENCES = [
@@ -82501,7 +82494,7 @@ var G5_MIXIN = {
   }
 };
 
-// js/brain/curriculum/grade6.js
+// ../js/brain/curriculum/grade6.js
 var G6_MIXIN = {
   async runElaG6Real(ctx) {
     const SENTENCES = [
@@ -83279,7 +83272,7 @@ var G6_MIXIN = {
   }
 };
 
-// js/brain/curriculum/grade7.js
+// ../js/brain/curriculum/grade7.js
 var G7_MIXIN = {
   async runElaG7Real(ctx) {
     const SENTENCES = [
@@ -84042,7 +84035,7 @@ var G7_MIXIN = {
   }
 };
 
-// js/brain/curriculum/grade8.js
+// ../js/brain/curriculum/grade8.js
 var G8_MIXIN = {
   async runElaG8Real(ctx) {
     const SENTENCES = [
@@ -84785,7 +84778,7 @@ var G8_MIXIN = {
   }
 };
 
-// js/brain/curriculum/grade9.js
+// ../js/brain/curriculum/grade9.js
 var G9_MIXIN = {
   async runElaG9Real(ctx) {
     const SENTENCES = [
@@ -85601,7 +85594,7 @@ var G9_MIXIN = {
   }
 };
 
-// js/brain/curriculum/grade10.js
+// ../js/brain/curriculum/grade10.js
 var G10_MIXIN = {
   async runElaG10Real(ctx) {
     const SENTENCES = [
@@ -86426,7 +86419,7 @@ var G10_MIXIN = {
   }
 };
 
-// js/brain/curriculum/grade11.js
+// ../js/brain/curriculum/grade11.js
 var G11_MIXIN = {
   async runElaG11Real(ctx) {
     const SENTENCES = [
@@ -87307,7 +87300,7 @@ var G11_MIXIN = {
   }
 };
 
-// js/brain/curriculum/grade12.js
+// ../js/brain/curriculum/grade12.js
 var G12_MIXIN = {
   async runElaG12Real(ctx) {
     const SENTENCES = [
@@ -88163,7 +88156,7 @@ var G12_MIXIN = {
   }
 };
 
-// js/brain/curriculum/college1.js
+// ../js/brain/curriculum/college1.js
 var COL1_MIXIN = {
   async runElaCol1Real(ctx) {
     const SENTENCES = [
@@ -88695,7 +88688,7 @@ var COL1_MIXIN = {
   }
 };
 
-// js/brain/curriculum/college2.js
+// ../js/brain/curriculum/college2.js
 var COL2_MIXIN = {
   async runElaCol2Real(ctx) {
     const SENTENCES = [
@@ -89188,7 +89181,7 @@ var COL2_MIXIN = {
   }
 };
 
-// js/brain/curriculum/college3.js
+// ../js/brain/curriculum/college3.js
 var COL3_MIXIN = {
   async runElaCol3Real(ctx) {
     const SENTENCES = [
@@ -89677,7 +89670,7 @@ var COL3_MIXIN = {
   }
 };
 
-// js/brain/curriculum/college4.js
+// ../js/brain/curriculum/college4.js
 var COL4_MIXIN = {
   async runElaCol4Real(ctx) {
     const SENTENCES = [
@@ -90189,7 +90182,7 @@ var COL4_MIXIN = {
   }
 };
 
-// js/brain/curriculum/grad.js
+// ../js/brain/curriculum/grad.js
 var GRAD_MIXIN = {
   async runElaGradReal(ctx) {
     const SENTENCES = [
@@ -90579,7 +90572,7 @@ var GRAD_MIXIN = {
   }
 };
 
-// js/brain/curriculum/phd.js
+// ../js/brain/curriculum/phd.js
 var PHD_MIXIN = {
   async runElaPhDReal(ctx) {
     const SENTENCES = [
@@ -90987,7 +90980,7 @@ var PHD_MIXIN = {
   }
 };
 
-// js/brain/curriculum.js
+// ../js/brain/curriculum.js
 var LETTER_TICKS_BASE = 3;
 var SHORT_WORD_TICKS = 2;
 var LONG_WORD_TICKS = 1;
@@ -96408,12 +96401,12 @@ var Curriculum = class _Curriculum {
           emitOpts.minScore = 1.5;
           emitOpts.boostPersona = true;
           emitOpts.maxLetters = 32;
-          const letterSeed = cue ? (function buildLetterSeed(letter) {
+          const letterSeed = cue ? function buildLetterSeed(letter) {
             const oh = new Float32Array(26);
             const i = letter.charCodeAt(0) - 97;
             if (i >= 0 && i < 26) oh[i] = 1;
             return oh;
-          })(cue) : null;
+          }(cue) : null;
           const emissionPromise = cluster.generateSentenceAwait(letterSeed, emitOpts);
           const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve({ _timeout: true }), PER_CUE_TIMEOUT_MS));
           const raw = await Promise.race([emissionPromise, timeoutPromise]);
@@ -97984,72 +97977,42 @@ var Curriculum = class _Curriculum {
   _cellRunnerRaw(subject, grade) {
     if (subject === "ela") {
       switch (grade) {
-        // ELA Pre-K equational runner added per LAW 6 Part 1 under
-        // the Pre-K + K ONLY scope. Teaches phoneme perception +
-        // first letter-sound bindings before the alphabet sequence
-        // + name-binding that ELA-K assumes.
         case "pre-K":
           return async (ctx) => this.runElaPreK(ctx);
-        // ELA-K dispatches to the real equational teaching methods:
-        // alphabet-order exposure + letter-name
-        // GloVe binding + letter-sound phoneme-feature binding + reverse-
-        // pass TALK training + 3-pathway READ/THINK/TALK gate. The
-        // pre-Session-2 `runKindergarten` (frequency-ordered exposure
-        // via `_phaseLetters`) is retained in the class for reference
-        // and for any legacy caller that wants raw corpus letter
-        // exposure without the name/sound binding.
         case "kindergarten":
           return async (ctx) => this.runElaKReal(ctx);
-        // T14.24 Session 4 (2026-04-15) — ELA-G1 dispatches to the REAL
-        // teaching equations: curated CVC + Dolch sight words, letter-
-        // stream sem binding, real 3-pathway gate. Pre-Session-4
-        // `runGrade1` (corpus-frequency 1-3 letter word walk) is retained
-        // for legacy callers that want raw short-word corpus exposure.
         case "grade1":
           return async (ctx) => this.runElaG1Real(ctx);
-        // T14.24 Session 7 (2026-04-15) — ELA-G2 ships real teaching:
-        // digraphs (th/sh/ch/ph/wh/ck/ng) as distinct phon basins via
-        // digraph-specific phoneme feature hash + short phrase walks.
         case "grade2":
           return async (ctx) => this.runElaG2Real(ctx);
-        // T14.24 Session 8 — ELA-G3 ships SVO + tense sentence teaching
         case "grade3":
           return async (ctx) => this.runElaG3Real(ctx);
-        // T14.24 Session 9 — ELA-G4 + ELA-G5 ship real teaching via
-        // _teachSentenceList with their own hand-crafted sentence sets.
         case "grade4":
           return async (ctx) => this.runElaG4Real(ctx);
         case "grade5":
           return async (ctx) => this.runElaG5Real(ctx);
-        // T14.24 Session 10 — ELA-G6 real teaching (subordinate clauses)
         case "grade6":
           return async (ctx) => this.runElaG6Real(ctx);
-        // T14.24 Session 11 — ELA-G7/G8 ship real teaching
         case "grade7":
           return async (ctx) => this.runElaG7Real(ctx);
         case "grade8":
           return async (ctx) => this.runElaG8Real(ctx);
-        // T14.24 Session 12 — ELA-G9/G10 real teaching
         case "grade9":
           return async (ctx) => this.runElaG9Real(ctx);
         case "grade10":
           return async (ctx) => this.runElaG10Real(ctx);
-        // T14.24 Session 13 — ELA-G11/G12 real teaching
         case "grade11":
           return async (ctx) => this.runElaG11Real(ctx);
         case "grade12":
           return async (ctx) => this.runElaG12Real(ctx);
-        // T14.24 Session 14 — ELA-Col1/Col2 real teaching
         case "college1":
           return async (ctx) => this.runElaCol1Real(ctx);
         case "college2":
           return async (ctx) => this.runElaCol2Real(ctx);
-        // T14.24 Session 15 — ELA-Col3/Col4 real teaching
         case "college3":
           return async (ctx) => this.runElaCol3Real(ctx);
         case "college4":
           return async (ctx) => this.runElaCol4Real(ctx);
-        // T14.24 Session 16 — ELA-Grad/PhD real teaching
         case "grad":
           return async (ctx) => this.runElaGradReal(ctx);
         case "phd":
@@ -102935,7 +102898,7 @@ var Curriculum = class _Curriculum {
           label: `${label}-${w}`,
           signal: ac.signal
         });
-        const timeoutSentinel = /* @__PURE__ */ Symbol("per-word-timeout");
+        const timeoutSentinel = Symbol("per-word-timeout");
         let timer = null;
         const timeoutPromise = new Promise((resolve) => {
           timer = setTimeout(() => resolve(timeoutSentinel), PER_WORD_TIMEOUT_MS);
@@ -107633,7 +107596,6 @@ var Curriculum = class _Curriculum {
     }
     const _bagLeftovers = [];
     for (const _skip of _bagLeftovers) {
-      void _skip;
     }
     try {
       const _elapsedSec = Math.round((Date.now() - _vocabListStartMs) / 1e3);
@@ -112514,7 +112476,7 @@ Object.assign(Curriculum.prototype, COL4_MIXIN);
 Object.assign(Curriculum.prototype, GRAD_MIXIN);
 Object.assign(Curriculum.prototype, PHD_MIXIN);
 
-// js/brain/drug-scheduler.js
+// ../js/brain/drug-scheduler.js
 var GRADE_ORDER2 = [
   "pre-K",
   "kindergarten",
@@ -113854,7 +113816,7 @@ var DrugScheduler = class {
   }
 };
 
-// js/brain/drug-detector.js
+// ../js/brain/drug-detector.js
 var SUBSTANCE_SYNONYMS = {
   cannabis: [
     "weed",
@@ -114164,7 +114126,7 @@ function escapeRegex(s) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-// js/brain/engine.js
+// ../js/brain/engine.js
 var EventEmitter = class {
   constructor() {
     this._listeners = {};
@@ -115352,7 +115314,7 @@ var UnityBrain = class extends EventEmitter {
   // through the equations, not through AI model calls
 };
 
-// js/brain/peripherals/ai-providers.js
+// ../js/brain/peripherals/ai-providers.js
 var LOCAL_IMAGE_BACKENDS = [
   { name: "Automatic1111", url: "http://localhost:7860", probe: "/sdapi/v1/sd-models", kind: "a1111" },
   { name: "SD.Next / Forge", url: "http://localhost:7861", probe: "/sdapi/v1/sd-models", kind: "a1111" },
@@ -116069,7 +116031,7 @@ var SensoryAIProviders = class {
   }
 };
 
-// js/ai/pollinations.js
+// ../js/ai/pollinations.js
 var GEN_URL = "https://gen.pollinations.ai";
 var PollinationsAI = class _PollinationsAI {
   constructor(apiKey = null) {
@@ -116231,7 +116193,7 @@ var PollinationsAI = class _PollinationsAI {
   }
 };
 
-// js/brain/mindspace/audio.js
+// ../js/brain/mindspace/audio.js
 var VOX_BANK_VERSION = 1;
 var CHUNK = 32768;
 var AUDIO_TOL = 0.02;
@@ -116337,7 +116299,7 @@ function concatAudio(pcms, sampleRate = 24e3, xfadeMs = 30) {
   return out;
 }
 
-// js/io/voice-piper.js
+// ../js/io/voice-piper.js
 var WORKER_URL = "/js/voice-piper-worker.bundle.js?v=" + Date.now();
 var _worker = null;
 var _seq = 0;
@@ -116396,7 +116358,7 @@ function isVoicePreloading() {
   return _readyPromise != null;
 }
 
-// js/io/voice.js
+// ../js/io/voice.js
 var VoiceIO = class {
   constructor() {
     this._listening = false;
@@ -116594,6 +116556,29 @@ var VoiceIO = class {
     console.log(`[VoiceIO] \u{1F399} Equation Unity One (live sentence lane) \u2014 "${String(text).slice(0, 40)}" synthesized in-browser`);
     await this._playPcm(pcm, sr, rate || 1);
     return true;
+  }
+  /**
+   * ONE PROCESS voice lane — play a server-synthesized field-A rec.
+   * Her reply's voice is synthesized by HER process now (donor voiceSynth or
+   * the box worker) and arrives over the WS as a few-KB equation record; this
+   * end only runs the inverse CDF 9/7 and plays. The viewer NEVER synthesizes
+   * a server reply — the in-browser larynx (and its historical GPU-grab that
+   * killed compute donors on shared-card machines) is out of the loop.
+   */
+  async playRec(rec) {
+    if (!rec || this._muted) return;
+    this._speaking = true;
+    this.emit("speech_start");
+    try {
+      const pcm = reconstructAudio(rec);
+      if (pcm && pcm.length) {
+        console.log(`[VoiceIO] \u{1F399} Equation Unity One (server voice lane) \u2014 her process synthesized, this end only plays`);
+        await this._playPcm(pcm, rec.sampleRate || 22050, 1);
+      }
+    } finally {
+      this._speaking = false;
+      this.emit("speech_end");
+    }
   }
   /** Play raw Float32 PCM through the shared AudioContext (honors age rate). */
   async _playPcm(pcm, sampleRate, rate = 1) {
@@ -117112,7 +117097,7 @@ var VoiceIO = class {
   }
 };
 
-// js/io/permissions.js
+// ../js/io/permissions.js
 var STORAGE_KEY3 = "unity_brain_permissions";
 async function requestPermissions(opts = {}) {
   const wantMic = opts.requestMic !== false;
@@ -117154,7 +117139,7 @@ async function requestPermissions(opts = {}) {
   return result;
 }
 
-// js/storage.js
+// ../js/storage.js
 var PREFIX = "unity_brain_";
 var MAX_HISTORY = 50;
 function prefixKey(key) {
@@ -117407,7 +117392,7 @@ var UserStorage = class {
   }
 };
 
-// js/ui/sandbox.js
+// ../js/ui/sandbox.js
 var MAX_ACTIVE_COMPONENTS = 10;
 var Sandbox = class {
   /** @param {string} containerId — DOM id of the sandbox container */
@@ -117803,7 +117788,7 @@ ${scopedInner}
   }
 };
 
-// js/ui/chat-panel.js
+// ../js/ui/chat-panel.js
 var ChatPanel = class {
   constructor({ storage: storage2, onSend, onMicToggle }) {
     this._storage = storage2;
@@ -117974,7 +117959,7 @@ var ChatPanel = class {
   }
 };
 
-// js/ui/brain-viz.js
+// ../js/ui/brain-viz.js
 var TOTAL_NEURONS2 = 1e3;
 var BrainVisualizer = class {
   constructor() {
@@ -119041,7 +119026,7 @@ var BrainVisualizer = class {
   }
 };
 
-// js/ui/sensory-status.js
+// ../js/ui/sensory-status.js
 var TOAST_DURATION = 6e3;
 var MAX_TOASTS = 4;
 var SHOWN_BOOT_INVENTORY = { image: false, vision: false };
@@ -119243,7 +119228,7 @@ ${vis}${status.visionPaused ? "\n\n\u26A0 vision paused" : ""}`;
 };
 var sensoryStatus = new SensoryStatusUI();
 
-// js/ui/brain-event-detectors.js
+// ../js/ui/brain-event-detectors.js
 var CLUSTER_IDX = {
   cortex: 0,
   hippocampus: 1,
@@ -119650,7 +119635,7 @@ function detectBrainEvents(currentState, previousState, history2) {
 var BRAIN_EVENT_CATALOG = DETECTORS.map((d) => d.name || "anonymous");
 var CLUSTER_KEYS = ["cortex", "hippocampus", "amygdala", "basalGanglia", "cerebellum", "hypothalamus", "mystery"];
 
-// js/ui/brain-3d.js
+// ../js/ui/brain-3d.js
 var TOTAL = 1e3;
 var MAX_RENDER_NEURONS_PER_CLUSTER = 2e4;
 var AFTERGLOW_DECAY = 0.92;
@@ -122284,7 +122269,7 @@ Probes: ${ps.totalProbes} total, ${ps.totalPasses} pass, ${ps.totalFails} fail`;
   }
 };
 
-// js/brain/mindspace/governor.js
+// ../js/brain/mindspace/governor.js
 var ProcessGovernor = class {
   constructor(opts = {}) {
     this.baseUnits = opts.baseUnits || 64;
@@ -122358,7 +122343,7 @@ function clamp01(x) {
   return Math.max(0, Math.min(1, x));
 }
 
-// js/brain/mindspace/gpu.js
+// ../js/brain/mindspace/gpu.js
 var MAX_LINE = 2048;
 var PARITY_TOL = 0.01;
 var LIFT_WGSL = `
@@ -123176,7 +123161,7 @@ var MindSpaceGPU = class {
   // LEARN the knowledge into sem-space
 };
 
-// js/brain/remote-brain.js
+// ../js/brain/remote-brain.js
 var EventEmitter2 = class {
   constructor() {
     this._listeners = {};
@@ -123349,13 +123334,15 @@ var RemoteBrain = class extends EventEmitter2 {
         break;
       case "response":
         this.emit("response", { text: msg.text, action: msg.action });
-        if (msg.text && msg.action !== "idle_thought" && this._voice && !this._isSpeaking) {
+        break;
+      case "voice":
+        if (msg.rec && this._voice && !this._isSpeaking) {
           this._isSpeaking = true;
           try {
             this._voice.stopSpeaking();
           } catch {
           }
-          Promise.resolve(this._voice.speak(msg.text)).catch(() => {
+          Promise.resolve(this._voice.playRec(msg.rec)).catch(() => {
           }).finally(() => {
             this._isSpeaking = false;
           });
@@ -123738,7 +123725,7 @@ async function detectRemoteBrain(url = "ws://localhost:7525") {
   return new RemoteBrain(url);
 }
 
-// js/app.js
+// ../js/app.js
 console.log(`%c[Unity] app.js ${FULL} module loaded`, "color:#ff4d9a;font-weight:bold");
 if (typeof window !== "undefined") {
   window.addEventListener("error", (e) => {
@@ -123915,6 +123902,16 @@ var landingBrainSource = null;
     const speechOn = (document.getElementById("toggle-unity-speech") || {}).checked !== false;
     if (!speechOn) {
       if (box) box.style.display = "none";
+      return;
+    }
+    if (landingBrainSource) {
+      if (box) {
+        box.style.display = "";
+        const s = document.getElementById("voice-preload-status");
+        if (s) s.textContent = "\u2014 her voice speaks from her own brain server \u2713";
+        const b = document.getElementById("voice-preload-bar");
+        if (b) b.style.width = "100%";
+      }
       return;
     }
     if (box) box.style.display = "";

@@ -1079,6 +1079,36 @@ function connectToServer() {
           } else if (msg.op === 'traceLineArt') {
             const strokes = ms.traceLineArt(msg.rec, msg.opts || {});
             reply({ ok: true, strokes: Array.isArray(strokes) ? strokes : [] });
+          } else if (msg.op === 'voiceSynth') {
+            // HER VOICE ON THIS DONOR — the server routes reply synthesis here
+            // (one process: the machine computing her brain speaks for her).
+            // Reuses the site's self-hosted voice worker (piper VITS, CPU-wasm,
+            // model OPFS-cached on THIS machine after the first synth) then
+            // perceives the PCM into her field-A equations — the server relays
+            // the few-KB rec to viewers, who only reconstruct + play.
+            if (!window._voiceSynthWorker) {
+              window._voiceSynthWorker = new Worker('/js/voice-piper-worker.bundle.js?v=' + Date.now(), { type: 'module' });
+              window._voiceSynthPending = new Map();
+              window._voiceSynthSeq = 1;
+              window._voiceSynthWorker.onmessage = (ev) => {
+                const d = ev.data || {};
+                if (d.type !== 'pcm' && d.type !== 'error') return;
+                const p = window._voiceSynthPending.get(d.id);
+                if (!p) return;
+                window._voiceSynthPending.delete(d.id);
+                if (d.type === 'pcm') p.resolve({ pcm: d.pcm, sampleRate: d.sampleRate });
+                else p.reject(new Error(d.error || 'synth error'));
+              };
+            }
+            const sid = window._voiceSynthSeq++;
+            const synth = new Promise((resolve, reject) => {
+              window._voiceSynthPending.set(sid, { resolve, reject });
+              window._voiceSynthWorker.postMessage({ type: 'synth', id: sid, text: String(msg.text || '') });
+            });
+            const { pcm, sampleRate } = await synth;
+            if (!pcm || !pcm.length) { reply({ ok: false, error: 'voiceSynth: empty pcm' }); return; }
+            const vrec = perceiveAudio(pcm, sampleRate);
+            reply(vrec ? { ok: true, rec: vrec, sampleRate } : { ok: false, error: 'voiceSynth: perceive null' });
           } else if (msg.op === 'perceiveAudio') {
             const bytes = b64ToBytes(msg.pcm_b64 || '');
             const pcm = new Float32Array(bytes.buffer, bytes.byteOffset, Math.floor(bytes.byteLength / 4));
