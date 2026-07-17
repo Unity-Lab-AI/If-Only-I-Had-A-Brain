@@ -5,7 +5,7 @@
 // Pipeline (mirrors the proven @mintplex-labs/piper-tts-web I/O, but drives OUR
 // model with zero external calls):
 //   text --espeak--> phoneme ids   (vendored piper_phonemize wasm)
-//        --VITS onnx--> 22050Hz PCM (onnxruntime-web, WebGPU -> CPU-wasm fallback)
+//        --VITS onnx--> 22050Hz PCM (onnxruntime-web, CPU-wasm ONLY — the GPU belongs to the donor brain)
 //
 // Voice = en_US-hfc_female-medium = "Equation Unity One" V4 (the sound Gee approved).
 // Every asset is served from OUR origin under /voice-engine/*; the 63MB model is
@@ -25,8 +25,8 @@ const OPFS_MODEL = 'en_US-hfc_female-medium.onnx';
 
 // Single-thread wasm: avoids the SharedArrayBuffer / cross-origin-isolation
 // (COOP+COEP) requirement multi-thread ORT needs. Piper is a tiny VITS model —
-// single-thread CPU is real-time for short utterances, and the WebGPU EP offloads
-// the heavy matmuls to the visitor's GPU when the browser has one.
+// single-thread CPU is real-time for short utterances. NO WebGPU EP here, ever:
+// the visitor's GPU belongs to the donor brain (see the donor-drop fix below).
 ort.env.wasm.wasmPaths = ORT_WASM_DIR;
 ort.env.wasm.numThreads = 1;
 ort.env.allowLocalModels = false;
@@ -71,8 +71,18 @@ async function fetchWithProgress(url, onProgress) {
 }
 
 // Load the model + config once. Config is small (fetched fresh from our origin);
-// the 63MB model is OPFS-cached. Session uses WebGPU when the visitor's browser
-// exposes it, else CPU-wasm — never our server.
+// the 63MB model is OPFS-cached. Session is CPU-WASM ONLY — never WebGPU.
+//
+// DONOR-DROP FIX (Gee 2026-07-17: "every time i talk to Unity the doner drops",
+// confirmed reproducible): the visitor's browser tab IS the compute donor — its
+// WebGPU device holds gigabytes of resident brain buffers. TTS grabbing
+// 'webgpu' FIRST spun a SECOND GPU session in the same browser on every reply
+// → VRAM/device pressure → device-lost on the DONOR device → the donor died
+// the moment she spoke. (A headless non-donating, voiceless chat client never
+// reproduced it — server-side chat is clean.) Voice is a few seconds of PCM per
+// sentence; single-thread wasm synthesizes that in real time. One correct path
+// (no fallback chain per the no-fallbacks LAW): the GPU belongs to her BRAIN,
+// her voice runs on the CPU.
 async function ensureModel(onProgress) {
   if (_session) { if (onProgress) onProgress(1, 1); return; }
   _config = await (await fetch(CONFIG_URL)).json();
@@ -85,7 +95,7 @@ async function ensureModel(onProgress) {
   }
   const buf = await modelBlob.arrayBuffer();
   _session = await ort.InferenceSession.create(buf, {
-    executionProviders: ['webgpu', 'wasm'],   // visitor's GPU first, CPU-wasm fallback
+    executionProviders: ['wasm'],   // CPU only — the GPU belongs to the brain (donor tab)
   });
 }
 

@@ -1,16 +1,11 @@
-var __getOwnPropNames = Object.getOwnPropertyNames;
-var __commonJS = (cb2, mod2) => function __require() {
-  return mod2 || (0, cb2[__getOwnPropNames(cb2)[0]])((mod2 = { exports: {} }).exports, mod2), mod2.exports;
-};
-
-// ../js/io/vendor/node-empty-stub.cjs
-var require_node_empty_stub = __commonJS({
-  "../js/io/vendor/node-empty-stub.cjs"(exports2, module2) {
-    module2.exports = {};
-  }
+var __require = /* @__PURE__ */ ((x) => typeof require !== "undefined" ? require : typeof Proxy !== "undefined" ? new Proxy(x, {
+  get: (a, b) => (typeof require !== "undefined" ? require : a)[b]
+}) : x)(function(x) {
+  if (typeof require !== "undefined") return require.apply(this, arguments);
+  throw Error('Dynamic require of "' + x + '" is not supported');
 });
 
-// ../js/io/vendor/piper-phonemize.js
+// js/io/vendor/piper-phonemize.js
 var createPiperPhonemize = (() => {
   var _scriptDir = typeof document !== "undefined" && document.currentScript ? document.currentScript.src : void 0;
   if (typeof __filename !== "undefined") _scriptDir = _scriptDir || __filename;
@@ -43,7 +38,7 @@ var createPiperPhonemize = (() => {
         var REMOTE_PACKAGE_SIZE = metadata["remote_package_size"];
         function fetchRemotePackage(packageName, packageSize, callback, errback) {
           if (typeof process === "object" && typeof process.versions === "object" && typeof process.versions.node === "string") {
-            require_node_empty_stub().readFile(packageName, function(err2, contents) {
+            __require("fs").readFile(packageName, function(err2, contents) {
               if (err2) {
                 errback(err2);
               } else {
@@ -222,8 +217,8 @@ var createPiperPhonemize = (() => {
     }
     var read_, readAsync, readBinary;
     if (ENVIRONMENT_IS_NODE) {
-      var fs2 = require_node_empty_stub();
-      var nodePath = require_node_empty_stub();
+      var fs2 = __require("fs");
+      var nodePath = __require("path");
       if (ENVIRONMENT_IS_WORKER) {
         scriptDirectory = nodePath.dirname(scriptDirectory) + "/";
       } else {
@@ -659,7 +654,7 @@ var createPiperPhonemize = (() => {
         return (view) => crypto.getRandomValues(view);
       } else if (ENVIRONMENT_IS_NODE) {
         try {
-          var crypto_module = require_node_empty_stub();
+          var crypto_module = __require("crypto");
           var randomFillSync = crypto_module["randomFillSync"];
           if (randomFillSync) {
             return (view) => crypto_module["randomFillSync"](view);
@@ -3103,7 +3098,7 @@ var createPiperPhonemize = (() => {
   };
 })();
 
-// ../node_modules/onnxruntime-web/dist/esm/ort.min.js
+// node_modules/onnxruntime-web/dist/esm/ort.min.js
 var vd = Object.create;
 var Pn = Object.defineProperty;
 var _d = Object.getOwnPropertyDescriptor;
@@ -3969,7 +3964,7 @@ var _s = L(() => {
 var Os = me((Xo) => {
   "use strict";
   Xo.__esModule = true;
-  var $d = function() {
+  var $d = (function() {
     function a(t) {
       if (!t) throw new TypeError("Invalid argument; `value` has no value.");
       this.value = a.EMPTY, t && a.isGuid(t) && (this.value = t);
@@ -3997,7 +3992,7 @@ var Os = me((Xo) => {
     }, a.prototype.toJSON = function() {
       return { value: this.value };
     }, a.validator = new RegExp("^[a-z0-9]{8}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{12}$", "i"), a.EMPTY = "00000000-0000-0000-0000-000000000000", a;
-  }();
+  })();
   Xo.Guid = $d;
 });
 function be(a, t, o) {
@@ -6447,7 +6442,7 @@ var Xs = me((Iy, Ys) => {
   "use strict";
   Ys.exports = Vs(Vs);
   function Vs(a) {
-    return typeof Float32Array < "u" ? function() {
+    return typeof Float32Array < "u" ? (function() {
       var t = new Float32Array([-0]), o = new Uint8Array(t.buffer), e = o[3] === 128;
       function r(u, l, c) {
         t[0] = u, l[c] = o[0], l[c + 1] = o[1], l[c + 2] = o[2], l[c + 3] = o[3];
@@ -6463,7 +6458,7 @@ var Xs = me((Iy, Ys) => {
         return o[3] = u[l], o[2] = u[l + 1], o[1] = u[l + 2], o[0] = u[l + 3], t[0];
       }
       a.readFloatLE = e ? s : i, a.readFloatBE = e ? i : s;
-    }() : function() {
+    })() : (function() {
       function t(e, r, n, s) {
         var i = r < 0 ? 1 : 0;
         if (i && (r = -r), r === 0) e(1 / r > 0 ? 0 : 2147483648, n, s);
@@ -6481,7 +6476,7 @@ var Xs = me((Iy, Ys) => {
         return u === 255 ? l ? NaN : i * (1 / 0) : u === 0 ? i * 1401298464324817e-60 * l : i * Math.pow(2, u - 150) * (l + 8388608);
       }
       a.readFloatLE = o.bind(null, qs), a.readFloatBE = o.bind(null, js);
-    }(), typeof Float64Array < "u" ? function() {
+    })(), typeof Float64Array < "u" ? (function() {
       var t = new Float64Array([-0]), o = new Uint8Array(t.buffer), e = o[7] === 128;
       function r(u, l, c) {
         t[0] = u, l[c] = o[0], l[c + 1] = o[1], l[c + 2] = o[2], l[c + 3] = o[3], l[c + 4] = o[4], l[c + 5] = o[5], l[c + 6] = o[6], l[c + 7] = o[7];
@@ -6497,7 +6492,7 @@ var Xs = me((Iy, Ys) => {
         return o[7] = u[l], o[6] = u[l + 1], o[5] = u[l + 2], o[4] = u[l + 3], o[3] = u[l + 4], o[2] = u[l + 5], o[1] = u[l + 6], o[0] = u[l + 7], t[0];
       }
       a.readDoubleLE = e ? s : i, a.readDoubleBE = e ? i : s;
-    }() : function() {
+    })() : (function() {
       function t(e, r, n, s, i, u) {
         var l = s < 0 ? 1 : 0;
         if (l && (s = -s), s === 0) e(0, i, u + r), e(1 / s > 0 ? 0 : 2147483648, i, u + n);
@@ -6518,7 +6513,7 @@ var Xs = me((Iy, Ys) => {
         return p === 2047 ? d ? NaN : c * (1 / 0) : p === 0 ? c * 5e-324 * d : c * Math.pow(2, p - 1075) * (d + 4503599627370496);
       }
       a.readDoubleLE = o.bind(null, qs, 0, 4), a.readDoubleBE = o.bind(null, js, 4, 0);
-    }(), a;
+    })(), a;
   }
   function Ws(a, t, o) {
     t[o] = a & 255, t[o + 1] = a >>> 8 & 255, t[o + 2] = a >>> 16 & 255, t[o + 3] = a >>> 24;
@@ -6665,14 +6660,14 @@ var Jt = me((ei) => {
     var e = t[o];
     return e != null && t.hasOwnProperty(o) ? typeof e != "object" || (Array.isArray(e) ? e.length : Object.keys(e).length) > 0 : false;
   };
-  W.Buffer = function() {
+  W.Buffer = (function() {
     try {
       var a = W.inquire("buffer").Buffer;
       return a.prototype.utf8Write ? a : null;
     } catch {
       return null;
     }
-  }();
+  })();
   W._Buffer_from = null;
   W._Buffer_allocUnsafe = null;
   W.newBuffer = function(t) {
@@ -6918,14 +6913,14 @@ var fi = me((Cy, bu) => {
   };
   Ae.create = mu();
   Ae.prototype._slice = Pt.Array.prototype.subarray || Pt.Array.prototype.slice;
-  Ae.prototype.uint32 = /* @__PURE__ */ function() {
+  Ae.prototype.uint32 = /* @__PURE__ */ (function() {
     var t = 4294967295;
     return function() {
       if (t = (this.buf[this.pos] & 127) >>> 0, this.buf[this.pos++] < 128 || (t = (t | (this.buf[this.pos] & 127) << 7) >>> 0, this.buf[this.pos++] < 128) || (t = (t | (this.buf[this.pos] & 127) << 14) >>> 0, this.buf[this.pos++] < 128) || (t = (t | (this.buf[this.pos] & 127) << 21) >>> 0, this.buf[this.pos++] < 128) || (t = (t | (this.buf[this.pos] & 15) << 28) >>> 0, this.buf[this.pos++] < 128)) return t;
       if ((this.pos += 5) > this.len) throw this.pos = this.len, Et(this, 10);
       return t;
     };
-  }();
+  })();
   Ae.prototype.int32 = function() {
     return this.uint32() | 0;
   };
@@ -7138,12 +7133,12 @@ var Lu = me((Ry, Du) => {
 var Cr = me((My, Cu) => {
   "use strict";
   var ge = Lu(), N = ge.Reader, Pe = ge.Writer, g = ge.util, h = ge.roots.default || (ge.roots.default = {});
-  h.onnx = function() {
+  h.onnx = (function() {
     var a = {};
-    return a.Version = function() {
+    return a.Version = (function() {
       var t = {}, o = Object.create(t);
       return o[t[0] = "_START_VERSION"] = 0, o[t[1] = "IR_VERSION_2017_10_10"] = 1, o[t[2] = "IR_VERSION_2017_10_30"] = 2, o[t[3] = "IR_VERSION_2017_11_3"] = 3, o[t[4] = "IR_VERSION_2019_1_22"] = 4, o[t[5] = "IR_VERSION_2019_3_18"] = 5, o[t[6] = "IR_VERSION_2019_9_19"] = 6, o[t[7] = "IR_VERSION_2020_5_8"] = 7, o[t[8] = "IR_VERSION_2021_7_30"] = 8, o[t[9] = "IR_VERSION"] = 9, o;
-    }(), a.AttributeProto = function() {
+    })(), a.AttributeProto = (function() {
       function t(o) {
         if (this.floats = [], this.ints = [], this.strings = [], this.tensors = [], this.graphs = [], this.sparseTensors = [], this.typeProtos = [], o) for (var e = Object.keys(o), r = 0; r < e.length; ++r) o[e[r]] != null && (this[e[r]] = o[e[r]]);
       }
@@ -7518,11 +7513,11 @@ var Cr = me((My, Cu) => {
         return this.constructor.toObject(this, ge.util.toJSONOptions);
       }, t.getTypeUrl = function(e) {
         return e === void 0 && (e = "type.googleapis.com"), e + "/onnx.AttributeProto";
-      }, t.AttributeType = function() {
+      }, t.AttributeType = (function() {
         var o = {}, e = Object.create(o);
         return e[o[0] = "UNDEFINED"] = 0, e[o[1] = "FLOAT"] = 1, e[o[2] = "INT"] = 2, e[o[3] = "STRING"] = 3, e[o[4] = "TENSOR"] = 4, e[o[5] = "GRAPH"] = 5, e[o[11] = "SPARSE_TENSOR"] = 11, e[o[13] = "TYPE_PROTO"] = 13, e[o[6] = "FLOATS"] = 6, e[o[7] = "INTS"] = 7, e[o[8] = "STRINGS"] = 8, e[o[9] = "TENSORS"] = 9, e[o[10] = "GRAPHS"] = 10, e[o[12] = "SPARSE_TENSORS"] = 12, e[o[14] = "TYPE_PROTOS"] = 14, e;
-      }(), t;
-    }(), a.ValueInfoProto = function() {
+      })(), t;
+    })(), a.ValueInfoProto = (function() {
       function t(o) {
         if (o) for (var e = Object.keys(o), r = 0; r < e.length; ++r) o[e[r]] != null && (this[e[r]] = o[e[r]]);
       }
@@ -7582,7 +7577,7 @@ var Cr = me((My, Cu) => {
       }, t.getTypeUrl = function(e) {
         return e === void 0 && (e = "type.googleapis.com"), e + "/onnx.ValueInfoProto";
       }, t;
-    }(), a.NodeProto = function() {
+    })(), a.NodeProto = (function() {
       function t(o) {
         if (this.input = [], this.output = [], this.attribute = [], o) for (var e = Object.keys(o), r = 0; r < e.length; ++r) o[e[r]] != null && (this[e[r]] = o[e[r]]);
       }
@@ -7700,7 +7695,7 @@ var Cr = me((My, Cu) => {
       }, t.getTypeUrl = function(e) {
         return e === void 0 && (e = "type.googleapis.com"), e + "/onnx.NodeProto";
       }, t;
-    }(), a.TrainingInfoProto = function() {
+    })(), a.TrainingInfoProto = (function() {
       function t(o) {
         if (this.initializationBinding = [], this.updateBinding = [], o) for (var e = Object.keys(o), r = 0; r < e.length; ++r) o[e[r]] != null && (this[e[r]] = o[e[r]]);
       }
@@ -7811,7 +7806,7 @@ var Cr = me((My, Cu) => {
       }, t.getTypeUrl = function(e) {
         return e === void 0 && (e = "type.googleapis.com"), e + "/onnx.TrainingInfoProto";
       }, t;
-    }(), a.ModelProto = function() {
+    })(), a.ModelProto = (function() {
       function t(o) {
         if (this.opsetImport = [], this.metadataProps = [], this.trainingInfo = [], this.functions = [], o) for (var e = Object.keys(o), r = 0; r < e.length; ++r) o[e[r]] != null && (this[e[r]] = o[e[r]]);
       }
@@ -7999,7 +7994,7 @@ var Cr = me((My, Cu) => {
       }, t.getTypeUrl = function(e) {
         return e === void 0 && (e = "type.googleapis.com"), e + "/onnx.ModelProto";
       }, t;
-    }(), a.StringStringEntryProto = function() {
+    })(), a.StringStringEntryProto = (function() {
       function t(o) {
         if (o) for (var e = Object.keys(o), r = 0; r < e.length; ++r) o[e[r]] != null && (this[e[r]] = o[e[r]]);
       }
@@ -8045,7 +8040,7 @@ var Cr = me((My, Cu) => {
       }, t.getTypeUrl = function(e) {
         return e === void 0 && (e = "type.googleapis.com"), e + "/onnx.StringStringEntryProto";
       }, t;
-    }(), a.TensorAnnotation = function() {
+    })(), a.TensorAnnotation = (function() {
       function t(o) {
         if (this.quantParameterTensorNames = [], o) for (var e = Object.keys(o), r = 0; r < e.length; ++r) o[e[r]] != null && (this[e[r]] = o[e[r]]);
       }
@@ -8113,7 +8108,7 @@ var Cr = me((My, Cu) => {
       }, t.getTypeUrl = function(e) {
         return e === void 0 && (e = "type.googleapis.com"), e + "/onnx.TensorAnnotation";
       }, t;
-    }(), a.GraphProto = function() {
+    })(), a.GraphProto = (function() {
       function t(o) {
         if (this.node = [], this.initializer = [], this.sparseInitializer = [], this.input = [], this.output = [], this.valueInfo = [], this.quantizationAnnotation = [], o) for (var e = Object.keys(o), r = 0; r < e.length; ++r) o[e[r]] != null && (this[e[r]] = o[e[r]]);
       }
@@ -8330,7 +8325,7 @@ var Cr = me((My, Cu) => {
       }, t.getTypeUrl = function(e) {
         return e === void 0 && (e = "type.googleapis.com"), e + "/onnx.GraphProto";
       }, t;
-    }(), a.TensorProto = function() {
+    })(), a.TensorProto = (function() {
       function t(o) {
         if (this.dims = [], this.floatData = [], this.int32Data = [], this.stringData = [], this.int64Data = [], this.externalData = [], this.doubleData = [], this.uint64Data = [], o) for (var e = Object.keys(o), r = 0; r < e.length; ++r) o[e[r]] != null && (this[e[r]] = o[e[r]]);
       }
@@ -8607,10 +8602,10 @@ var Cr = me((My, Cu) => {
         return this.constructor.toObject(this, ge.util.toJSONOptions);
       }, t.getTypeUrl = function(e) {
         return e === void 0 && (e = "type.googleapis.com"), e + "/onnx.TensorProto";
-      }, t.DataType = function() {
+      }, t.DataType = (function() {
         var o = {}, e = Object.create(o);
         return e[o[0] = "UNDEFINED"] = 0, e[o[1] = "FLOAT"] = 1, e[o[2] = "UINT8"] = 2, e[o[3] = "INT8"] = 3, e[o[4] = "UINT16"] = 4, e[o[5] = "INT16"] = 5, e[o[6] = "INT32"] = 6, e[o[7] = "INT64"] = 7, e[o[8] = "STRING"] = 8, e[o[9] = "BOOL"] = 9, e[o[10] = "FLOAT16"] = 10, e[o[11] = "DOUBLE"] = 11, e[o[12] = "UINT32"] = 12, e[o[13] = "UINT64"] = 13, e[o[14] = "COMPLEX64"] = 14, e[o[15] = "COMPLEX128"] = 15, e[o[16] = "BFLOAT16"] = 16, e[o[17] = "FLOAT8E4M3FN"] = 17, e[o[18] = "FLOAT8E4M3FNUZ"] = 18, e[o[19] = "FLOAT8E5M2"] = 19, e[o[20] = "FLOAT8E5M2FNUZ"] = 20, e;
-      }(), t.Segment = function() {
+      })(), t.Segment = (function() {
         function o(e) {
           if (e) for (var r = Object.keys(e), n = 0; n < r.length; ++n) e[r[n]] != null && (this[r[n]] = e[r[n]]);
         }
@@ -8666,11 +8661,11 @@ var Cr = me((My, Cu) => {
         }, o.getTypeUrl = function(r) {
           return r === void 0 && (r = "type.googleapis.com"), r + "/onnx.TensorProto.Segment";
         }, o;
-      }(), t.DataLocation = function() {
+      })(), t.DataLocation = (function() {
         var o = {}, e = Object.create(o);
         return e[o[0] = "DEFAULT"] = 0, e[o[1] = "EXTERNAL"] = 1, e;
-      }(), t;
-    }(), a.SparseTensorProto = function() {
+      })(), t;
+    })(), a.SparseTensorProto = (function() {
       function t(o) {
         if (this.dims = [], o) for (var e = Object.keys(o), r = 0; r < e.length; ++r) o[e[r]] != null && (this[e[r]] = o[e[r]]);
       }
@@ -8756,7 +8751,7 @@ var Cr = me((My, Cu) => {
       }, t.getTypeUrl = function(e) {
         return e === void 0 && (e = "type.googleapis.com"), e + "/onnx.SparseTensorProto";
       }, t;
-    }(), a.TensorShapeProto = function() {
+    })(), a.TensorShapeProto = (function() {
       function t(o) {
         if (this.dim = [], o) for (var e = Object.keys(o), r = 0; r < e.length; ++r) o[e[r]] != null && (this[e[r]] = o[e[r]]);
       }
@@ -8818,7 +8813,7 @@ var Cr = me((My, Cu) => {
         return this.constructor.toObject(this, ge.util.toJSONOptions);
       }, t.getTypeUrl = function(e) {
         return e === void 0 && (e = "type.googleapis.com"), e + "/onnx.TensorShapeProto";
-      }, t.Dimension = function() {
+      }, t.Dimension = (function() {
         function o(r) {
           if (r) for (var n = Object.keys(r), s = 0; s < n.length; ++s) r[n[s]] != null && (this[n[s]] = r[n[s]]);
         }
@@ -8877,8 +8872,8 @@ var Cr = me((My, Cu) => {
         }, o.getTypeUrl = function(n) {
           return n === void 0 && (n = "type.googleapis.com"), n + "/onnx.TensorShapeProto.Dimension";
         }, o;
-      }(), t;
-    }(), a.TypeProto = function() {
+      })(), t;
+    })(), a.TypeProto = (function() {
       function t(e) {
         if (e) for (var r = Object.keys(e), n = 0; n < r.length; ++n) e[r[n]] != null && (this[r[n]] = e[r[n]]);
       }
@@ -9002,7 +8997,7 @@ var Cr = me((My, Cu) => {
         return this.constructor.toObject(this, ge.util.toJSONOptions);
       }, t.getTypeUrl = function(r) {
         return r === void 0 && (r = "type.googleapis.com"), r + "/onnx.TypeProto";
-      }, t.Tensor = function() {
+      }, t.Tensor = (function() {
         function e(r) {
           if (r) for (var n = Object.keys(r), s = 0; s < n.length; ++s) r[n[s]] != null && (this[n[s]] = r[n[s]]);
         }
@@ -9058,7 +9053,7 @@ var Cr = me((My, Cu) => {
         }, e.getTypeUrl = function(n) {
           return n === void 0 && (n = "type.googleapis.com"), n + "/onnx.TypeProto.Tensor";
         }, e;
-      }(), t.Sequence = function() {
+      })(), t.Sequence = (function() {
         function e(r) {
           if (r) for (var n = Object.keys(r), s = 0; s < n.length; ++s) r[n[s]] != null && (this[n[s]] = r[n[s]]);
         }
@@ -9109,7 +9104,7 @@ var Cr = me((My, Cu) => {
         }, e.getTypeUrl = function(n) {
           return n === void 0 && (n = "type.googleapis.com"), n + "/onnx.TypeProto.Sequence";
         }, e;
-      }(), t.Map = function() {
+      })(), t.Map = (function() {
         function e(r) {
           if (r) for (var n = Object.keys(r), s = 0; s < n.length; ++s) r[n[s]] != null && (this[n[s]] = r[n[s]]);
         }
@@ -9165,7 +9160,7 @@ var Cr = me((My, Cu) => {
         }, e.getTypeUrl = function(n) {
           return n === void 0 && (n = "type.googleapis.com"), n + "/onnx.TypeProto.Map";
         }, e;
-      }(), t.Optional = function() {
+      })(), t.Optional = (function() {
         function e(r) {
           if (r) for (var n = Object.keys(r), s = 0; s < n.length; ++s) r[n[s]] != null && (this[n[s]] = r[n[s]]);
         }
@@ -9216,7 +9211,7 @@ var Cr = me((My, Cu) => {
         }, e.getTypeUrl = function(n) {
           return n === void 0 && (n = "type.googleapis.com"), n + "/onnx.TypeProto.Optional";
         }, e;
-      }(), t.SparseTensor = function() {
+      })(), t.SparseTensor = (function() {
         function e(r) {
           if (r) for (var n = Object.keys(r), s = 0; s < n.length; ++s) r[n[s]] != null && (this[n[s]] = r[n[s]]);
         }
@@ -9272,8 +9267,8 @@ var Cr = me((My, Cu) => {
         }, e.getTypeUrl = function(n) {
           return n === void 0 && (n = "type.googleapis.com"), n + "/onnx.TypeProto.SparseTensor";
         }, e;
-      }(), t;
-    }(), a.OperatorSetIdProto = function() {
+      })(), t;
+    })(), a.OperatorSetIdProto = (function() {
       function t(o) {
         if (o) for (var e = Object.keys(o), r = 0; r < e.length; ++r) o[e[r]] != null && (this[e[r]] = o[e[r]]);
       }
@@ -9323,10 +9318,10 @@ var Cr = me((My, Cu) => {
       }, t.getTypeUrl = function(e) {
         return e === void 0 && (e = "type.googleapis.com"), e + "/onnx.OperatorSetIdProto";
       }, t;
-    }(), a.OperatorStatus = function() {
+    })(), a.OperatorStatus = (function() {
       var t = {}, o = Object.create(t);
       return o[t[0] = "EXPERIMENTAL"] = 0, o[t[1] = "STABLE"] = 1, o;
-    }(), a.FunctionProto = function() {
+    })(), a.FunctionProto = (function() {
       function t(o) {
         if (this.input = [], this.output = [], this.attribute = [], this.attributeProto = [], this.node = [], this.opsetImport = [], o) for (var e = Object.keys(o), r = 0; r < e.length; ++r) o[e[r]] != null && (this[e[r]] = o[e[r]]);
       }
@@ -9505,8 +9500,8 @@ var Cr = me((My, Cu) => {
       }, t.getTypeUrl = function(e) {
         return e === void 0 && (e = "type.googleapis.com"), e + "/onnx.FunctionProto";
       }, t;
-    }(), a;
-  }();
+    })(), a;
+  })();
   Cu.exports = h;
 });
 function Fr(a, t) {
@@ -16328,7 +16323,7 @@ var Pp = me((Ap, ra) => {
         return Te[D >>> 2 >>> 0] = M, 0;
       }, r: jr, c: function(m, x, O, D) {
         return jr(m >>> 0, x >>> 0, O >>> 0, D >>> 0);
-      } }, te = function() {
+      } }, te = (function() {
         function m(O) {
           return te = O.exports, te = _n(), F = te.K, Le(), Ne.unshift(te.L), yt--, yt == 0 && (et !== null && (clearInterval(et), et = null), ee && (O = ee, ee = null, O())), te;
         }
@@ -16341,7 +16336,7 @@ var Pp = me((Ap, ra) => {
         return qt(x, function(O) {
           m(O.instance);
         }).catch(r), {};
-      }();
+      })();
       o._OrtInit = (m, x) => (o._OrtInit = te.M)(m, x), o._OrtGetLastError = (m, x) => (o._OrtGetLastError = te.N)(m, x), o._OrtCreateSessionOptions = (m, x, O, D, M, q, re, Fe, st, ze) => (o._OrtCreateSessionOptions = te.O)(m, x, O, D, M, q, re, Fe, st, ze), o._OrtAppendExecutionProvider = (m, x) => (o._OrtAppendExecutionProvider = te.P)(m, x), o._OrtAddFreeDimensionOverride = (m, x, O) => (o._OrtAddFreeDimensionOverride = te.Q)(m, x, O), o._OrtAddSessionConfigEntry = (m, x, O) => (o._OrtAddSessionConfigEntry = te.R)(m, x, O), o._OrtReleaseSessionOptions = (m) => (o._OrtReleaseSessionOptions = te.S)(m), o._OrtCreateSession = (m, x, O) => (o._OrtCreateSession = te.T)(m, x, O), o._OrtReleaseSession = (m) => (o._OrtReleaseSession = te.U)(m), o._OrtGetInputOutputCount = (m, x, O) => (o._OrtGetInputOutputCount = te.V)(m, x, O), o._OrtGetInputName = (m, x) => (o._OrtGetInputName = te.W)(m, x), o._OrtGetOutputName = (m, x) => (o._OrtGetOutputName = te.X)(m, x), o._OrtFree = (m) => (o._OrtFree = te.Y)(m), o._OrtCreateTensor = (m, x, O, D, M, q) => (o._OrtCreateTensor = te.Z)(m, x, O, D, M, q), o._OrtGetTensorData = (m, x, O, D, M) => (o._OrtGetTensorData = te._)(m, x, O, D, M), o._OrtReleaseTensor = (m) => (o._OrtReleaseTensor = te.$)(m), o._OrtCreateRunOptions = (m, x, O, D) => (o._OrtCreateRunOptions = te.aa)(m, x, O, D), o._OrtAddRunConfigEntry = (m, x, O) => (o._OrtAddRunConfigEntry = te.ba)(m, x, O), o._OrtReleaseRunOptions = (m) => (o._OrtReleaseRunOptions = te.ca)(m), o._OrtCreateBinding = (m) => (o._OrtCreateBinding = te.da)(m), o._OrtBindInput = (m, x, O) => (o._OrtBindInput = te.ea)(m, x, O), o._OrtBindOutput = (m, x, O, D) => (o._OrtBindOutput = te.fa)(m, x, O, D), o._OrtClearBoundOutputs = (m) => (o._OrtClearBoundOutputs = te.ga)(m), o._OrtReleaseBinding = (m) => (o._OrtReleaseBinding = te.ha)(m), o._OrtRunWithBinding = (m, x, O, D, M) => (o._OrtRunWithBinding = te.ia)(m, x, O, D, M), o._OrtRun = (m, x, O, D, M, q, re, Fe) => (o._OrtRun = te.ja)(m, x, O, D, M, q, re, Fe), o._OrtEndProfiling = (m) => (o._OrtEndProfiling = te.ka)(m), o._malloc = (m) => (o._malloc = te.la)(m), o._free = (m) => (o._free = te.ma)(m);
       var Xr = (m) => (Xr = te.oa)(m), vn = (m) => (vn = te.pa)(m), X = (m) => (X = te.qa)(m), or = () => (or = te.ra)();
       function _n() {
@@ -16924,7 +16919,7 @@ var kp = me(($p, na) => {
         return false;
       }, M: Ia, N: Sa, G: Yr, g: Aa, m: Pa, v: Ea, l: Da, a: Se || i.wasmMemory, w: Fa, d: function(f, b, y, I) {
         return Fa(f >>> 0, b >>> 0, y >>> 0, I >>> 0);
-      } }, K = function() {
+      } }, K = (function() {
         function f(y, I) {
           return K = y.exports, K = wd(), X.ab.push(K.ya), Kr = K.za, qt.unshift(K.V), yt = I, tr(), K;
         }
@@ -16937,7 +16932,7 @@ var kp = me(($p, na) => {
         return Tn(b, function(y) {
           f(y.instance, y.module);
         }).catch(l), {};
-      }();
+      })();
       i._OrtInit = (f, b) => (i._OrtInit = K.W)(f, b), i._OrtGetLastError = (f, b) => (i._OrtGetLastError = K.X)(f, b), i._OrtCreateSessionOptions = (f, b, y, I, k, $, z, Oe, $t, Ye) => (i._OrtCreateSessionOptions = K.Y)(f, b, y, I, k, $, z, Oe, $t, Ye), i._OrtAppendExecutionProvider = (f, b) => (i._OrtAppendExecutionProvider = K.Z)(f, b), i._OrtAddFreeDimensionOverride = (f, b, y) => (i._OrtAddFreeDimensionOverride = K._)(f, b, y), i._OrtAddSessionConfigEntry = (f, b, y) => (i._OrtAddSessionConfigEntry = K.$)(f, b, y), i._OrtReleaseSessionOptions = (f) => (i._OrtReleaseSessionOptions = K.aa)(f), i._OrtCreateSession = (f, b, y) => (i._OrtCreateSession = K.ba)(f, b, y), i._OrtReleaseSession = (f) => (i._OrtReleaseSession = K.ca)(f), i._OrtGetInputOutputCount = (f, b, y) => (i._OrtGetInputOutputCount = K.da)(f, b, y), i._OrtGetInputName = (f, b) => (i._OrtGetInputName = K.ea)(f, b), i._OrtGetOutputName = (f, b) => (i._OrtGetOutputName = K.fa)(f, b), i._OrtFree = (f) => (i._OrtFree = K.ga)(f), i._OrtCreateTensor = (f, b, y, I, k, $) => (i._OrtCreateTensor = K.ha)(f, b, y, I, k, $), i._OrtGetTensorData = (f, b, y, I, k) => (i._OrtGetTensorData = K.ia)(f, b, y, I, k), i._OrtReleaseTensor = (f) => (i._OrtReleaseTensor = K.ja)(f), i._OrtCreateRunOptions = (f, b, y, I) => (i._OrtCreateRunOptions = K.ka)(f, b, y, I), i._OrtAddRunConfigEntry = (f, b, y) => (i._OrtAddRunConfigEntry = K.la)(f, b, y), i._OrtReleaseRunOptions = (f) => (i._OrtReleaseRunOptions = K.ma)(f), i._OrtCreateBinding = (f) => (i._OrtCreateBinding = K.na)(f), i._OrtBindInput = (f, b, y) => (i._OrtBindInput = K.oa)(f, b, y), i._OrtBindOutput = (f, b, y, I) => (i._OrtBindOutput = K.pa)(f, b, y, I), i._OrtClearBoundOutputs = (f) => (i._OrtClearBoundOutputs = K.qa)(f), i._OrtReleaseBinding = (f) => (i._OrtReleaseBinding = K.ra)(f), i._OrtRunWithBinding = (f, b, y, I, k) => (i._OrtRunWithBinding = K.sa)(f, b, y, I, k), i._OrtRun = (f, b, y, I, k, $, z, Oe) => (i._OrtRun = K.ta)(f, b, y, I, k, $, z, Oe), i._OrtEndProfiling = (f) => (i._OrtEndProfiling = K.ua)(f);
       var In = i._pthread_self = () => (In = i._pthread_self = K.va)();
       i._malloc = (f) => (i._malloc = K.wa)(f), i._free = (f) => (i._free = K.xa)(f), i.__emscripten_tls_init = () => (i.__emscripten_tls_init = K.ya)();
@@ -17775,7 +17770,7 @@ var jO = qo;
 }
 Object.defineProperty(Z.versions, "web", { value: Ts, enumerable: true });
 
-// ../js/io/voice-piper-worker.js
+// js/io/voice-piper-worker.js
 var MODEL_URL = "/voice-engine/models/en_US-hfc_female-medium.onnx";
 var CONFIG_URL = "/voice-engine/models/en_US-hfc_female-medium.onnx.json";
 var PIPER_WASM = "/voice-engine/piper/piper_phonemize.wasm";
@@ -17840,8 +17835,8 @@ async function ensureModel(onProgress) {
   }
   const buf = await modelBlob.arrayBuffer();
   _session = await Pd.create(buf, {
-    executionProviders: ["webgpu", "wasm"]
-    // visitor's GPU first, CPU-wasm fallback
+    executionProviders: ["wasm"]
+    // CPU only — the GPU belongs to the brain (donor tab)
   });
 }
 function phonemize(text) {
