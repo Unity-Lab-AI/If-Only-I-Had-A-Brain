@@ -312,6 +312,15 @@ let landingBrainSource = null; // RemoteBrain or null
     const box = document.getElementById('voice-preload');
     const speechOn = (document.getElementById('toggle-unity-speech') || {}).checked !== false;
     if (!speechOn) { if (box) box.style.display = 'none'; return; }
+    // ONE PROCESS voice lane — on the DEPLOYED brain the viewer never
+    // synthesizes: her process sends the reply's field-A rec and this end just
+    // reconstructs + plays (RemoteBrain 'voice' handler). No model, no worker,
+    // no 63MB download for visitors. The preload only serves the LOCAL
+    // browser-brain path (engine.js speak → _speakPiper).
+    if (landingBrainSource) {
+      if (box) { box.style.display = ''; const s = document.getElementById('voice-preload-status'); if (s) s.textContent = '— her voice speaks from her own brain server ✓'; const b = document.getElementById('voice-preload-bar'); if (b) b.style.width = '100%'; }
+      return;
+    }
     if (box) box.style.display = '';
     if (isVoicePreloading()) return;   // already running/done — don't restack
     const bar = document.getElementById('voice-preload-bar');

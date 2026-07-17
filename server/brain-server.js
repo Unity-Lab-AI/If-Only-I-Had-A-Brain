@@ -7783,6 +7783,12 @@ wss.on('connection', (ws, req) => {
                 ws.send(JSON.stringify({ type: 'image', prompt: result.text, url: _buildPollinationsImageUrl(result.text) }));
               } else {
                 ws.send(JSON.stringify({ type: 'response', text: result.text, action: result.action }));
+                // ONE PROCESS voice lane — HER process synthesizes the reply
+                // (donor voiceSynth when capable, box worker otherwise) and the
+                // viewer only reconstructs + plays the field-A rec. Detached:
+                // the text already shipped; voice follows ~1s later or not at
+                // all. idle_thought is HUD chatter, never voiced.
+                if (result.action !== 'idle_thought') brain._voiceLane(ws, result.text);
               }
             } else if (result.silent) {
               // Unity went silent on purpose — tell the client why instead
