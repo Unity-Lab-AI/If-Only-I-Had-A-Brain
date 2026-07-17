@@ -275,6 +275,9 @@ enum Work {
     Readback { req_id: u32, cluster: String, region: String, bucket_count: u32, sub_slice_len: u32, start_offset: u32 },
     // TU.19-D — GPU↔CPU parity: read back a resident matrix's weight digest.
     ChecksumMatrix { req_id: u32, name: String, sample_count: u32 },
+    // ONE PROCESS — a mind-space op (her imagery) computed on this donor.
+    // Pure CPU (no engine state); answered with a mindspace_result JSON.
+    Mindspace { id: u64, op: String, payload: serde_json::Map<String, serde_json::Value> },
 }
 
 /// A reply the worker produced; the WS loop sends it in receipt order.
@@ -318,9 +321,12 @@ impl WorkQueue {
         }
     }
     fn push(&self, work: Work) {
+        // Mindspace ops ride the priority lane too: the server awaits each with a
+        // 30s deadline, and they're small CPU work that must not queue behind a
+        // minutes-deep teach flood (same reasoning as compute_batch).
         let hi = matches!(
             &work,
-            Work::Batch(_) | Work::Init(_) | Work::ChecksumMatrix { .. }
+            Work::Batch(_) | Work::Init(_) | Work::ChecksumMatrix { .. } | Work::Mindspace { .. }
         ) || matches!(&work, Work::Frame(f) if matches!(f, Frame::Upload { .. } | Frame::Chunk { .. }));
         if let Ok(mut lanes) = self.inner.lock() {
             if hi { lanes.hi.push_back(work) } else { lanes.lo.push_back(work) }
@@ -599,6 +605,7 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                 Work::ClearSpike { cluster, region } => format!("clear_spike {cluster}/{region}"),
                 Work::Readback { cluster, region, .. } => format!("readback {cluster}/{region}"),
                 Work::ChecksumMatrix { name, .. } => format!("checksum {name}"),
+                Work::Mindspace { op, .. } => format!("mindspace {op}"),
             });
             match work {
                 Work::Init(init) => {
@@ -676,6 +683,13 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                         },
                     };
                     let _ = reply_tx.send(Out::Text(serde_json::to_string(&ack).unwrap()));
+                }
+                // ONE PROCESS — her imagery on this donor. Pure CPU op → one
+                // mindspace_result reply (ok:false inside on any parse/op error,
+                // so the server's local ramp takes over instead of timing out).
+                Work::Mindspace { id, op, payload } => {
+                    let reply = crate::mindspace::handle_op(id, &op, &payload);
+                    let _ = reply_tx.send(Out::Text(reply));
                 }
             }
             activity_w.end();
@@ -827,6 +841,7 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                             Ok(ServerMessage::ClearSpikeRegion(w)) => { pending.fetch_add(1, Ordering::Relaxed); workq.push(Work::ClearSpike { cluster: w.cluster_name, region: w.region_name }); }
                             Ok(ServerMessage::ReadbackLetterBuckets(rb)) => { pending.fetch_add(1, Ordering::Relaxed); workq.push(Work::Readback { req_id: rb.req_id, cluster: rb.cluster_name, region: rb.region_name, bucket_count: rb.bucket_count, sub_slice_len: rb.sub_slice_len, start_offset: rb.start_offset }); }
                             Ok(ServerMessage::ReadbackMatrixChecksum(rc)) => { pending.fetch_add(1, Ordering::Relaxed); workq.push(Work::ChecksumMatrix { req_id: rc.req_id, name: rc.name, sample_count: rc.sample_count }); }
+                            Ok(ServerMessage::MindspaceOp(m)) => { pending.fetch_add(1, Ordering::Relaxed); workq.push(Work::Mindspace { id: m.id, op: m.op, payload: m.payload }); }
                             // TU.20.12 — the brain refused this binary as incompatible. Surface it
                             // and set stop so the supervisor does NOT reconnect-loop a version it
                             // already rejected. The user must download the current donor + restart.

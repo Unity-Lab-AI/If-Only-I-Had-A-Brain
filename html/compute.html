@@ -108,6 +108,15 @@
 // under '/html/compute.html' (resolved to '/html/js/...' which is
 // not a folder on disk).
 import { GPUCompute } from '/js/brain/gpu-compute.js';
+// ONE PROCESS (Gee 2026-07-17: "the minds eye and voice go on the GPU ... its
+// one process not bolted together shit") — the donor that computes her brain
+// ALSO computes her mind's eye. MindSpaceGPU brings the CDF 9/7 lifting (WGSL,
+// parity-checked vs the CPU reference) + the draw ops; mindspace_op messages
+// from the server run here and answer mindspace_result. Advertised via
+// `mindspaceV1: true` in gpu_register.
+import { MindSpaceGPU } from '/js/brain/mindspace/gpu.js';
+// Her VOICE's equations too (field-A, 1-D CDF 9/7) — same donor, one process.
+import { perceiveAudio, reconstructAudio } from '/js/brain/mindspace/audio.js';
 
 const statusEl = document.getElementById('status');
 const gpuEl = document.getElementById('yourgpu');
@@ -467,7 +476,7 @@ function connectToServer() {
     // VRAM (same-tab WS hiccup keeps WebGPU buffers alive, like the cluster
     // skip-reinit below). The server skips re-streaming these ONCE on this
     // reconnect; periodic rebroadcasts still re-converge any drift.
-    ws.send(JSON.stringify({ type: 'gpu_register', sparseV2: true, vramMB: _vramMB, maxStorageBindingMB: _maxBindMB, gpuName: _gpuName, donorId: window._donorId || null, donorName: (window._getDonorName && window._getDonorName()) || null, heldMatrices: (gpu && gpu._sparseMatrices) ? Object.keys(gpu._sparseMatrices).slice(0, 256) : [], crashCrumb: (() => { try { const c = JSON.parse(localStorage.getItem('ual_donor_crumb') || 'null'); localStorage.removeItem('ual_donor_crumb'); return (c && (Date.now() - c.t) < 600000) ? c : null; } catch (e) { return null; } })() }));
+    ws.send(JSON.stringify({ type: 'gpu_register', sparseV2: true, mindspaceV1: true, vramMB: _vramMB, maxStorageBindingMB: _maxBindMB, gpuName: _gpuName, donorId: window._donorId || null, donorName: (window._getDonorName && window._getDonorName()) || null, heldMatrices: (gpu && gpu._sparseMatrices) ? Object.keys(gpu._sparseMatrices).slice(0, 256) : [], crashCrumb: (() => { try { const c = JSON.parse(localStorage.getItem('ual_donor_crumb') || 'null'); localStorage.removeItem('ual_donor_crumb'); return (c && (Date.now() - c.t) < 600000) ? c : null; } catch (e) { return null; } })() }));
   };
 
   ws.onerror = (err) => {
@@ -1027,6 +1036,68 @@ function connectToServer() {
       } catch (err) {
         console.warn(`[GPU Compute] write_spike_slice ${clusterName}/${regionName} failed:`, err.message);
       }
+      return;
+    }
+
+    // ── ONE PROCESS — mind-space ops on THIS donor (Gee 2026-07-17) ──────────
+    // The server routes her imagery here: perceive / describe / imagineFromState
+    // / stylizeField / traceLineArt run on the SAME donor computing her brain.
+    // MindSpaceGPU lazily inits its own (tiny — ≤512² planes) WGSL context with
+    // CPU-reference fallback + parity selfCheck; payloads are small JSON+base64.
+    if (msg.type === 'mindspace_op') {
+      (async () => {
+        const reply = (extra) => { try { ws.send(JSON.stringify({ type: 'mindspace_result', id: msg.id, ...extra })); } catch (e) { /* socket gone */ } };
+        try {
+          if (!window._mindspace) {
+            window._mindspace = new MindSpaceGPU();
+            try { await window._mindspace.init(); } catch (e) { /* CPU-reference path still valid */ }
+          }
+          const ms = window._mindspace;
+          const b64ToBytes = (b64) => Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+          if (msg.op === 'perceive') {
+            const bytes = b64ToBytes(msg.rgba_b64);
+            const rec = await ms.perceive({ width: msg.width, height: msg.height, data: new Uint8ClampedArray(bytes.buffer, bytes.byteOffset, bytes.byteLength) });
+            reply(rec ? { ok: true, rec } : { ok: false, error: 'perceive null' });
+          } else if (msg.op === 'describe') {
+            const p = await ms.describe(msg.rec, msg.dim);
+            if (!p) { reply({ ok: false, error: 'describe null' }); return; }
+            const f32 = p instanceof Float32Array ? p : Float32Array.from(p);
+            // chunked base64 — spreading a large byte array into fromCharCode blows the call stack
+            const u8 = new Uint8Array(f32.buffer, f32.byteOffset, f32.byteLength);
+            let bin = '';
+            for (let i = 0; i < u8.length; i += 8192) bin += String.fromCharCode.apply(null, u8.subarray(i, i + 8192));
+            reply({ ok: true, percept_b64: btoa(bin) });
+          } else if (msg.op === 'imagineFromState') {
+            const bytes = b64ToBytes(msg.seed_b64);
+            const seed = new Float32Array(bytes.buffer, bytes.byteOffset, Math.floor(bytes.byteLength / 4));
+            const rec = await ms.imagineFromState(seed, msg.opts || {});
+            reply(rec ? { ok: true, rec } : { ok: false, error: 'imagine null' });
+          } else if (msg.op === 'stylizeField') {
+            const o = Object.assign({}, msg.opts || {}, { labelStrokes: msg.labelStrokes || null });
+            const rec = ms.stylizeField(msg.rec, o);
+            reply(rec ? { ok: true, rec } : { ok: false, error: 'stylize null' });
+          } else if (msg.op === 'traceLineArt') {
+            const strokes = ms.traceLineArt(msg.rec, msg.opts || {});
+            reply({ ok: true, strokes: Array.isArray(strokes) ? strokes : [] });
+          } else if (msg.op === 'perceiveAudio') {
+            const bytes = b64ToBytes(msg.pcm_b64 || '');
+            const pcm = new Float32Array(bytes.buffer, bytes.byteOffset, Math.floor(bytes.byteLength / 4));
+            const rec = perceiveAudio(pcm, msg.sampleRate || 24000);
+            reply(rec ? { ok: true, rec } : { ok: false, error: 'perceiveAudio: empty pcm' });
+          } else if (msg.op === 'reconstructAudio') {
+            const pcm = reconstructAudio(msg.rec);
+            if (!pcm) { reply({ ok: false, error: 'reconstructAudio: bad rec' }); return; }
+            const u8p = new Uint8Array(pcm.buffer, pcm.byteOffset, pcm.byteLength);
+            let binp = '';
+            for (let i = 0; i < u8p.length; i += 8192) binp += String.fromCharCode.apply(null, u8p.subarray(i, i + 8192));
+            reply({ ok: true, pcm_b64: btoa(binp) });
+          } else {
+            reply({ ok: false, error: 'unknown op: ' + msg.op });
+          }
+        } catch (err) {
+          reply({ ok: false, error: String((err && err.message) || err) });
+        }
+      })();
       return;
     }
 

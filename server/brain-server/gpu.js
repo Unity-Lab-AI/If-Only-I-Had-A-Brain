@@ -2044,6 +2044,59 @@ const SERVER_GPU_MIXIN = {
   },
 
   /**
+   * ONE PROCESS (Gee 2026-07-17: "the minds eye and voice go on the GPU ...
+   * its one process not bolted together shit") — mind-space op dispatch to the
+   * DONOR GPU. The donor that computes her brain also computes her imagery:
+   * the CDF 9/7 lifting + trace/stylize/imagine ops run donor-side (browser
+   * donor = MindSpaceGPU in compute.html; native donor = mindspace.rs WGSL,
+   * donor-v0.3.11+). Protocol v1 (mindspaceV1 capability in gpu_register):
+   *   server→donor  {type:'mindspace_op', id, op, ...payload}
+   *     op='perceive'         {width, height, rgba_b64}
+   *     op='reconstruct'      {rec}
+   *     op='stylizeField'     {rec, opts, labelStrokes}
+   *     op='traceLineArt'     {rec, opts}
+   *     op='imagineFromState' {seed_b64 (f32le), opts}
+   *     op='describe'         {rec, dim}
+   *   donor→server  {type:'mindspace_result', id, ok, rec|strokes|percept_b64|data_b64|error}
+   * Payloads are SMALL (≤192² frames ≈ 150KB, recs are KBs) → JSON+base64 is
+   * the right wire; nothing like the 6MB spike arrays. Timeout → null; the
+   * caller (MindSpaceWorkerProxy) holds the rollout ramp until v0.3.11 is the
+   * min donor version (sparseV2 precedent — ramp removal is a logged milestone).
+   */
+  _mindspaceDonorCapable(op) {
+    const ws = this._gpuClient;
+    if (!(ws && ws.readyState === 1 && ws._mindspaceV1 === true)) return false;
+    // Per-op capability: a donor may advertise a `mindspaceOps` list (the native
+    // binary ships perceive/describe/stylizeField/traceLineArt first; de-novo
+    // imagineFromState lands with its glyph-plane port). No list = all ops
+    // (the browser donor hosts the full MindSpaceGPU surface).
+    if (op && ws._mindspaceOps && !ws._mindspaceOps.has(op)) return false;
+    return true;
+  },
+
+  async gpuMindspaceOp(op, payload, timeoutMs = 30_000) {
+    const ws = this._gpuClient;
+    if (!this._mindspaceDonorCapable(op)) return null;
+    if (!this._mindspacePending) this._mindspacePending = new Map();
+    if (!this._mindspaceReqId) this._mindspaceReqId = 1;
+    const id = this._mindspaceReqId++;
+    return new Promise((resolve) => {
+      const timeout = setTimeout(() => {
+        this._mindspacePending.delete(id);
+        resolve(null);
+      }, timeoutMs);
+      this._mindspacePending.set(id, { resolve, timeout });
+      try {
+        ws.send(JSON.stringify({ type: 'mindspace_op', id, op, ...payload }));
+      } catch {
+        clearTimeout(timeout);
+        this._mindspacePending.delete(id);
+        resolve(null);
+      }
+    });
+  },
+
+  /**
    * T17.7 Phase C.1 — cluster-bound Hebbian dispatch. Reuses the same
    * type=3 binary frame as gpuSparseHebbian, but with zero-length
    * pre/post arrays (so no bulk data crosses the wire). compute.html's

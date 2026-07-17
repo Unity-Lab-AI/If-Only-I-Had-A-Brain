@@ -57,11 +57,61 @@ class MindSpaceWorkerProxy {
     });
   }
 
-  // Heavy engine ops — async, serialized in the worker.
-  imagineFromState(...args) { return this._call('imagineFromState', args); }
+  // ── ONE PROCESS (Gee 2026-07-17: "the minds eye and voice go on the GPU ...
+  // its one process not bolted together shit") — DONOR BRIDGE ────────────────
+  // When a mindspace-capable donor is connected (compute.html / donor-v0.3.11+),
+  // the heavy mind-space ops run ON THE DONOR GPU — the same device computing
+  // her brain. brain-server injects the bridge after construction. The LOCAL
+  // worker path below each op is the ROLLOUT RAMP ONLY (until v0.3.11 is the
+  // min donor version — sparseV2 precedent; removal milestone in TODO §ONE
+  // PROCESS), NOT a permanent fallback.
+  setDonorBridge(dispatch, capable) {
+    this._donorDispatch = dispatch;   // (op, payload, timeoutMs) => Promise<result|null>
+    this._donorCapable = capable;     // () => boolean
+  }
+
+  _viaDonor(op) {
+    return !!(this._donorDispatch && this._donorCapable && this._donorCapable(op));
+  }
+
+  // Heavy engine ops — async; donor GPU when capable, local worker as the ramp.
+  async imagineFromState(seed, opts) {
+    if (this._viaDonor('imagineFromState')) {
+      const f32 = seed instanceof Float32Array ? seed : Float32Array.from(seed || []);
+      const r = await this._donorDispatch('imagineFromState', {
+        seed_b64: Buffer.from(f32.buffer, f32.byteOffset, f32.byteLength).toString('base64'),
+        opts: opts || {},
+      });
+      if (r && r.rec) return r.rec;
+      // fall through to the local ramp on donor miss/timeout
+    }
+    return this._call('imagineFromState', [seed, opts]);
+  }
+
   sketch(...args) { return this._call('sketch', args); }
-  describe(...args) { return this._call('describe', args); }
-  perceive(...args) { return this._call('perceive', args); }
+
+  async describe(rec, dim) {
+    if (this._viaDonor('describe')) {
+      const r = await this._donorDispatch('describe', { rec, dim });
+      if (r && r.percept_b64) {
+        const buf = Buffer.from(r.percept_b64, 'base64');
+        return new Float32Array(buf.buffer, buf.byteOffset, Math.floor(buf.byteLength / 4)).slice();
+      }
+    }
+    return this._call('describe', [rec, dim]);
+  }
+
+  async perceive(img) {
+    if (this._viaDonor('perceive') && img && img.data && img.width && img.height) {
+      const r = await this._donorDispatch('perceive', {
+        width: img.width, height: img.height,
+        rgba_b64: Buffer.from(img.data.buffer, img.data.byteOffset, img.data.byteLength).toString('base64'),
+      });
+      if (r && r.rec) return r.rec;
+    }
+    return this._call('perceive', [img]);
+  }
+
   morph(...args) { return this._call('morph', args); }
 
   // Governor state lives with the engine; call sites stay sync-shaped.
@@ -92,29 +142,46 @@ class MindSpaceWorkerProxy {
       : [];
   }
 
-  // Clean-ink line-art tracer (DRAW-ENGINE v2). Same sync-local contract as
-  // traceField/glyphStrokes: pure stroke geometry, no GPU/engine state, MUST NOT
-  // be a Promise (callers do `strokes = this.mindSpace.traceLineArt(...)`). This
-  // forward is load-bearing — `_drawConcept` guards on it, so if the proxy lacks
-  // it the guard bails and she draws nothing (the exact traceField bug).
-  traceLineArt(...args) {
+  // Clean-ink line-art tracer (DRAW-ENGINE v2) — NOW ASYNC (ONE PROCESS):
+  // donor GPU when capable (the lifting inside the trace runs on the same
+  // device as her brain), local instance as the rollout ramp. ⚠ Contract
+  // change from the old sync version: EVERY caller must `await` it (chat.js
+  // _drawConcept/_drawImagined updated in the same batch — a non-awaited call
+  // would see a Promise with no .length and silently draw nothing, the exact
+  // old traceField-forward bug class).
+  async traceLineArt(rec, opts) {
+    if (this._viaDonor('traceLineArt')) {
+      const r = await this._donorDispatch('traceLineArt', { rec, opts: opts || {} });
+      if (r && Array.isArray(r.strokes)) return r.strokes;
+    }
     return (this._local && typeof this._local.traceLineArt === 'function')
-      ? this._local.traceLineArt(...args)
+      ? this._local.traceLineArt(rec, opts)
       : [];
   }
 
-  // Color-fill draw style — flat colour-region strokes (sync-local, same contract).
+  // Color-fill draw style — flat colour-region strokes (sync-local; out of the
+  // auto-rotation, explicit opts.style only — not donor-routed).
   traceColorFill(...args) {
     return (this._local && typeof this._local.traceColorFill === 'function')
       ? this._local.traceColorFill(...args)
       : [];
   }
 
-  // Detailed styled field render — returns a NEW rec (drawn field C), not strokes.
-  // Pure CDF 9/7 over the local instance; sync (no worker round-trip needed).
-  stylizeField(...args) {
+  // Detailed styled field render — NOW ASYNC (ONE PROCESS): donor GPU when
+  // capable, local as the rollout ramp. Same await-contract warning as
+  // traceLineArt above.
+  async stylizeField(rec, opts) {
+    if (this._viaDonor('stylizeField')) {
+      const o = opts || {};
+      const r = await this._donorDispatch('stylizeField', {
+        rec,
+        opts: { traceSide: o.traceSide, bands: o.bands },
+        labelStrokes: o.labelStrokes || null,
+      });
+      if (r && r.rec) return r.rec;
+    }
     return (this._local && typeof this._local.stylizeField === 'function')
-      ? this._local.stylizeField(...args)
+      ? this._local.stylizeField(rec, opts)
       : null;
   }
 

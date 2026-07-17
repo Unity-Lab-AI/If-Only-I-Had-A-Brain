@@ -60,6 +60,16 @@ pub struct GpuRegister {
     /// binary that speaks an out-of-date protocol. Compile-time constant.
     #[serde(rename = "appVersion")]
     pub app_version: String,
+    /// ONE PROCESS — this donor hosts the equational mind-space ops (the
+    /// `mindspace_op` / `mindspace_result` protocol): her imagery computes on
+    /// the SAME donor as her brain.
+    #[serde(rename = "mindspaceV1")]
+    pub mindspace_v1: bool,
+    /// Per-op capability list — the server checks the op name before dispatch,
+    /// so ops not in this build (de-novo imagineFromState pending its
+    /// glyph-plane port) fall to the server's local ramp with zero round-trips.
+    #[serde(rename = "mindspaceOps")]
+    pub mindspace_ops: Vec<String>,
 }
 
 impl GpuRegister {
@@ -93,6 +103,8 @@ impl GpuRegister {
             donated_mb,
             link_down_mbps,
             app_version: env!("CARGO_PKG_VERSION").to_string(),
+            mindspace_v1: true,
+            mindspace_ops: crate::mindspace::OPS.iter().map(|s| s.to_string()).collect(),
         }
     }
 }
@@ -366,6 +378,17 @@ pub struct IncompatibleVersion {
     pub message: String,
 }
 
+/// ONE PROCESS — a mind-space op (perceive / describe / stylizeField /
+/// traceLineArt) the server routes to this donor. The payload stays raw JSON —
+/// `mindspace::handle_op` parses per-op and builds the `mindspace_result` reply.
+#[derive(Debug, Clone, Deserialize)]
+pub struct MindspaceOp {
+    pub id: u64,
+    pub op: String,
+    #[serde(flatten)]
+    pub payload: serde_json::Map<String, serde_json::Value>,
+}
+
 /// Tagged dispatch over the JSON messages a donor receives. Unknown types are ignored
 /// (forward-compat, matching the browser donor).
 #[derive(Debug, Clone, Deserialize)]
@@ -389,6 +412,8 @@ pub enum ServerMessage {
     ReadbackLetterBuckets(ReadbackLetterBuckets),
     #[serde(rename = "readback_matrix_checksum")]
     ReadbackMatrixChecksum(ReadbackMatrixChecksum),
+    #[serde(rename = "mindspace_op")]
+    MindspaceOp(MindspaceOp),
     #[serde(other)]
     Other,
 }
