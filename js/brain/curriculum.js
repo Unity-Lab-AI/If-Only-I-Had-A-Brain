@@ -7602,7 +7602,14 @@ export class Curriculum {
    * corpora.
    */
   async runSubjectGrade(subject, grade, corpora, opts = {}) {
-    if (!SUBJECTS.includes(subject)) return { pass: false, reason: `unknown subject: ${subject}` };
+    // ROSTER GATE FIX (Gee log 2026-07-17: "✗ pe/kindergarten — unknown subject:
+    // pe" + music + health → K force-advanced incomplete). The SCHEDULER walks
+    // subjectsForGrade(grade) (core 6 + the introduced-at roster: pe/music/health
+    // at K, language at G3, cs at G5, …) but THIS gate only accepted the flat
+    // core-6 — rejecting subjects whose runners exist (runPeKReal/runMusicKReal/
+    // runHealthKReal…, the operator's 2026-06-18 full-roster directive). Accept
+    // every track valid AT THIS GRADE.
+    if (!subjectsForGrade(grade).includes(subject)) return { pass: false, reason: `unknown subject: ${subject}` };
     if (!GRADE_ORDER.includes(grade)) return { pass: false, reason: `unknown grade: ${grade}` };
     const cluster = this.cluster;
     if (!cluster) return { pass: false, reason: 'no cluster wired' };

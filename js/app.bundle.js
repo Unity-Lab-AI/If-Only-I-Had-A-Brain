@@ -98807,7 +98807,7 @@ var Curriculum = class _Curriculum {
    * corpora.
    */
   async runSubjectGrade(subject, grade, corpora, opts = {}) {
-    if (!SUBJECTS2.includes(subject)) return { pass: false, reason: `unknown subject: ${subject}` };
+    if (!subjectsForGrade(grade).includes(subject)) return { pass: false, reason: `unknown subject: ${subject}` };
     if (!GRADE_ORDER.includes(grade)) return { pass: false, reason: `unknown grade: ${grade}` };
     const cluster = this.cluster;
     if (!cluster) return { pass: false, reason: "no cluster wired" };

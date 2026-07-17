@@ -469,7 +469,12 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
       let buf;
       try {
         const ctrl = new AbortController();
-        const to = setTimeout(() => ctrl.abort(), Number(process.env.DREAM_REF_FETCH_TIMEOUT_MS) || 25000);
+        // timeout 25s→60s (Gee log 2026-07-17: EVERY reference fetch aborting on
+        // the box while Pollinations itself answers in ~2.5s — the box's uplink
+        // sits at 16-19MB buffered under the teach-pattern flood, starving other
+        // connections past 25s. 60s lets fetches land in the drain windows; the
+        // fetch is fire-and-forget/detached so the longer wait blocks nothing.)
+        const to = setTimeout(() => ctrl.abort(), Number(process.env.DREAM_REF_FETCH_TIMEOUT_MS) || 60000);
         const r = await fetch(url, { signal: ctrl.signal });
         clearTimeout(to);
         if (!r || !r.ok) {
