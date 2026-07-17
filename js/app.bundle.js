@@ -116338,7 +116338,7 @@ function concatAudio(pcms, sampleRate = 24e3, xfadeMs = 30) {
 }
 
 // js/io/voice-piper.js
-var WORKER_URL = "/js/voice-piper-worker.bundle.js";
+var WORKER_URL = "/js/voice-piper-worker.bundle.js?v=" + Date.now();
 var _worker = null;
 var _seq = 0;
 var _pending = /* @__PURE__ */ new Map();
