@@ -22,6 +22,7 @@ mod frames;
 mod gpu;
 #[cfg(feature = "gui")]
 mod gui;
+mod mindspace;
 mod protocol;
 
 use clap::Parser;

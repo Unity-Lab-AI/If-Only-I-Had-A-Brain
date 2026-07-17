@@ -1373,7 +1373,7 @@ const SERVER_CHAT_MIXIN = {
     if (style === 'field' && typeof this.mindSpace.stylizeField === 'function') {
       let fr = null;
       const labelStrokes = this._labelStrokes(key);   // she writes the word on the field render too
-      try { fr = this.mindSpace.stylizeField(rec, { traceSide: Math.max(160, Math.min(side, 256)), bands: 7, labelStrokes }); } catch { fr = null; }
+      try { fr = await this.mindSpace.stylizeField(rec, { traceSide: Math.max(160, Math.min(side, 256)), bands: 7, labelStrokes }); } catch { fr = null; }   // ONE PROCESS - async (donor GPU when capable)
       if (fr) { this._lastSketchLabel = 'canvas:draw:' + key; return { rec: fr, label: this._lastSketchLabel, source: 'canvas:draw:' + key, from: source || ('draw:' + key), style }; }
     }
 
@@ -1393,12 +1393,12 @@ const SERVER_CHAT_MIXIN = {
     try {
       if (style === 'colorfill' && typeof this.mindSpace.traceColorFill === 'function') {
         const fills = this.mindSpace.traceColorFill(rec, { traceSide: Math.min(traceSide, 96), cells: 34 }) || [];
-        const outline = this.mindSpace.traceLineArt(rec, { traceSide, maxStrokes, edgeThresh: edgeThresh + 0.02, minLenFrac: minLenFrac + 0.02, simplify: 1.0, ink: [24, 22, 28] }) || [];
+        const outline = (await this.mindSpace.traceLineArt(rec, { traceSide, maxStrokes, edgeThresh: edgeThresh + 0.02, minLenFrac: minLenFrac + 0.02, simplify: 1.0, ink: [24, 22, 28] })) || [];
         strokes = fills.concat(outline);   // flat colour under, dark ink outline on top
       } else {
         // lineart (default): ONE coherent chalk ink — no per-stroke recolor (the old
         // _stylizeStrokes random-hue was the "multicolored yarn").
-        strokes = this.mindSpace.traceLineArt(rec, { traceSide, maxStrokes, edgeThresh, minLenFrac, simplify: 1.0, ink: [228, 226, 230] });
+        strokes = await this.mindSpace.traceLineArt(rec, { traceSide, maxStrokes, edgeThresh, minLenFrac, simplify: 1.0, ink: [228, 226, 230] });   // ONE PROCESS - async
       }
     } catch { return null; }
     if (!strokes || !strokes.length) return null;
@@ -1467,7 +1467,7 @@ const SERVER_CHAT_MIXIN = {
     let labelStrokes = [];
     try { labelStrokes = this._labelStrokes(comboKey); } catch { /* nf */ }
     let drawn = null;
-    try { drawn = this.mindSpace.stylizeField(rec, { traceSide: Math.max(160, Math.min(side, 256)), bands: 7, labelStrokes }); } catch { return null; }
+    try { drawn = await this.mindSpace.stylizeField(rec, { traceSide: Math.max(160, Math.min(side, 256)), bands: 7, labelStrokes }); } catch { return null; }   // ONE PROCESS - async
     if (!drawn) return null;
     this._lastSketchLabel = 'canvas:imagine:' + comboKey;
     return { rec: drawn, label: this._lastSketchLabel, source: 'canvas:imagine:' + comboKey, imagined: true };
