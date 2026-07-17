@@ -36,29 +36,43 @@ voice-equation protocol. One machine, one process, her whole mind.
 - Type-6 sparse-index propagate (`sparseV2`) — still browser-donor only; this
   binary keeps the legacy dense path (the brain gates per-socket).
 
-## Build (Sponge / CI — no cargo on the dev box)
+## Build — OUR Forgejo CI, hands-off (how every donor since 0.3.4 shipped)
+
+Push the tag and `.forgejo/workflows/donor-release.yml` does EVERYTHING:
 
 ```bash
-# Linux GUI+CUDA (default features)
-cargo build --release                      # → target/release/unity-donor
-
-# Windows cross-build (from Linux)
-rustup target add x86_64-pc-windows-gnu
-cargo build --release --target x86_64-pc-windows-gnu
-
-# Pure portable headless (AMD/no-CUDA)
-cargo build --release --no-default-features
+git tag donor-v0.3.11 <commit-with-Cargo-0.3.11>
+git push origin donor-v0.3.11
 ```
 
-## Publish + rollout sequence (ORDER MATTERS)
+The workflow then: (1) fail-early guards `donor-app/Cargo.toml` version ==
+the tag (already bumped to 0.3.11 in this batch), (2) builds Linux x86-64 +
+Windows x86-64 (mingw cross, default GUI+CUDA feature set — CUDA is
+dynamic-loaded, wgpu fallback everywhere), (3) publishes both binaries to
+the Forgejo release for the tag (create-if-missing, replace-safe re-runs),
+(4) auto-bumps the site download links (`html/compute.html` +
+`html/legend.html`) on `main`, which triggers the Pages redeploy. No manual
+builds, no third party, no cargo needed on the dev box.
 
-1. Build both targets, publish binaries as a **Forgejo release** tagged
-   `donor-v0.3.11` (same channel as v0.3.10).
-2. Install v0.3.11 on the live donor host(s); confirm the brain log shows the
-   register with `mindspaceV1` and the ops list, and mind's-eye frames keep
-   flowing (`mindspace <op>` lines in the donor activity on a draw).
+Local reference (only if building by hand for some reason):
+
+```bash
+cargo build --release                      # → target/release/unity-donor
+cargo build --release --target x86_64-pc-windows-gnu   # Windows cross
+cargo build --release --no-default-features            # portable headless
+```
+
+## Rollout sequence (ORDER MATTERS)
+
+1. Push the `donor-v0.3.11` tag — CI builds + publishes the release + bumps
+   the site links (above).
+2. Download + run v0.3.11 on the live donor host(s); confirm the brain log
+   shows the register with `mindspaceV1` and the ops list, and mind's-eye
+   frames keep flowing (`mindspace <op>` lines in the donor activity on a
+   draw).
 3. **Only after** every active donor runs v0.3.11: set
    `DREAM_MIN_DONOR_VERSION=0.3.11` on the box (env; default stays 0.3.7 in
-   code) — that is the ramp-removal milestone for the server's local
-   mind-space worker fallback. Do NOT set it before step 2 or the live donor
-   gets refused at register and the brain goes donor-less.
+   code — the workflow deliberately never touches it) — that is the
+   ramp-removal milestone for the server's local mind-space worker fallback.
+   Do NOT set it before step 2 or the live donor gets refused at register
+   and the brain goes donor-less.
