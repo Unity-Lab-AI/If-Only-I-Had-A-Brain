@@ -5023,11 +5023,26 @@ class ServerBrain {
     const SLICE = 8 * 1048576;
     const t0 = Date.now();
     let fd;
-    const yieldMacro = () => new Promise((r) => setImmediate(r));
+    // DONOR-STARVATION FIX (Gee 2026-07-16) — the old tail blocked the event loop
+    // ~32s at EVERY save completion (the exact signature in the box log: a ~32s
+    // [EventLoop] BLOCKED span ending at "Binary weights saved"). Two blockers:
+    //   (1) fs.writeSync per 8MB slice — synchronous; when the OS write-back
+    //       cache saturates (680MB written fast), the kernel throttles the
+    //       WRITER thread = the main thread, seconds per slice.
+    //   (2) fs.renameSync over the existing weights file — ext4 auto_da_alloc
+    //       flush-on-rename synchronously writes back ALL the tmp file's dirty
+    //       pages (680MB) on the main thread → the single contiguous ~32s block.
+    // Fix: every write goes through async fs.write (libuv threadpool — kernel
+    // throttling stalls a pool thread, never the loop), an async fs.fsync
+    // flushes the 680MB on the threadpool BEFORE the swap, and the rename is
+    // async too (nothing left to flush by then). A starved loop was exactly what
+    // EPIPE'd the donor socket.
+    const writeAsync = (buf) => new Promise((resolve, reject) => {
+      fs.write(fd, buf, 0, buf.length, null, (err) => err ? reject(err) : resolve());
+    });
     const writeSliced = async (buf) => {
       for (let off = 0; off < buf.length; off += SLICE) {
-        fs.writeSync(fd, buf.subarray(off, Math.min(off + SLICE, buf.length)));
-        await yieldMacro();
+        await writeAsync(buf.subarray(off, Math.min(off + SLICE, buf.length)));
       }
     };
     try {
@@ -5037,17 +5052,21 @@ class ServerBrain {
       hdr.writeUInt32LE(1, 4);
       hdr.writeUInt32LE(this._saveVersion || 0, 8);
       hdr.writeUInt32LE(sections.length, 12);
-      fs.writeSync(fd, hdr);
+      await writeAsync(hdr);
       for (const s of sections) {
         this._writeBinarySection(fd, s);
         await writeSliced(Buffer.from(s.rowPtr.buffer, s.rowPtr.byteOffset, (s.rows + 1) * 4));
         await writeSliced(Buffer.from(s.colIdx.buffer, s.colIdx.byteOffset, s.nnz * 4));
         await writeSliced(Buffer.from(s.values.buffer, s.values.byteOffset, s.nnz * 8));
       }
-      fs.closeSync(fd);
+      // Flush ALL dirty pages on the threadpool so the rename below has nothing
+      // to write back (kills the ext4 flush-on-rename main-thread stall) AND the
+      // atomic-swap guarantee gets stronger: data is on disk before the swap.
+      await new Promise((resolve, reject) => fs.fsync(fd, (err) => err ? reject(err) : resolve()));
+      await new Promise((resolve, reject) => fs.close(fd, (err) => err ? reject(err) : resolve()));
       fd = undefined;
-      fs.renameSync(TMP_FILE, BIN_FILE);   // atomic swap — readers never see a torn file
-      console.log(`[Brain] Binary weights saved ${sections.length} sections, ${(totalBytes / 1048576).toFixed(1)} MB → ${path.basename(BIN_FILE)} (time-sliced, ${Date.now() - t0}ms wall, loop kept breathing)`);
+      await fs.promises.rename(TMP_FILE, BIN_FILE);   // atomic swap — readers never see a torn file
+      console.log(`[Brain] Binary weights saved ${sections.length} sections, ${(totalBytes / 1048576).toFixed(1)} MB → ${path.basename(BIN_FILE)} (async-write + fsync, ${Date.now() - t0}ms wall, loop never blocked)`);
     } catch (err) {
       if (fd !== undefined) { try { fs.closeSync(fd); } catch {} }
       try { if (fs.existsSync(TMP_FILE)) fs.unlinkSync(TMP_FILE); } catch { /* tmp cleanup best-effort */ }
