@@ -236,6 +236,30 @@ class VoiceIO {
     return true;
   }
 
+  /**
+   * ONE PROCESS voice lane — play a server-synthesized field-A rec.
+   * Her reply's voice is synthesized by HER process now (donor voiceSynth or
+   * the box worker) and arrives over the WS as a few-KB equation record; this
+   * end only runs the inverse CDF 9/7 and plays. The viewer NEVER synthesizes
+   * a server reply — the in-browser larynx (and its historical GPU-grab that
+   * killed compute donors on shared-card machines) is out of the loop.
+   */
+  async playRec(rec) {
+    if (!rec || this._muted) return;
+    this._speaking = true;
+    this.emit('speech_start');
+    try {
+      const pcm = reconstructAudio(rec);
+      if (pcm && pcm.length) {
+        console.log(`[VoiceIO] 🎙 Equation Unity One (server voice lane) — her process synthesized, this end only plays`);
+        await this._playPcm(pcm, rec.sampleRate || 22050, 1.0);
+      }
+    } finally {
+      this._speaking = false;
+      this.emit('speech_end');
+    }
+  }
+
   /** Play raw Float32 PCM through the shared AudioContext (honors age rate). */
   async _playPcm(pcm, sampleRate, rate = 1.0) {
     if (!this._audioCtx) {

@@ -208,18 +208,24 @@ export class RemoteBrain extends EventEmitter {
 
       case 'response':
         this.emit('response', { text: msg.text, action: msg.action });
-        // LIVE SENTENCE LANE — voice her server reply. The deployed brain is
-        // server-side; the browser RemoteBrain never spoke its emissions (the
-        // app-side 'response' handler renders text only), so chat was silent.
-        // Mirror engine.js's respond path: speak through the connected VoiceIO,
-        // which routes to _speakPiper (Equation Unity One, in-browser). Mute,
-        // autoplay gesture-unlock, and vox/executor fallbacks all live inside
-        // VoiceIO.speak. idle_thought = internal HUD chatter, never voiced.
-        if (msg.text && msg.action !== 'idle_thought' && this._voice && !this._isSpeaking) {
+        // ONE PROCESS voice lane (Gee 2026-07-17: "she still drops the doner
+        // connection every time she speaks" / "one unified system"): this end
+        // NO LONGER synthesizes the reply. Her process does — the server sends
+        // a follow-up 'voice' message carrying the field-A rec (donor or box
+        // synthesized); the handler below just reconstructs + plays. The old
+        // in-browser synth here was the donor-killer on shared-card machines
+        // (a stale cached worker could still grab WebGPU) — deleted, not
+        // fallback-chained.
+        break;
+
+      case 'voice':
+        // Her reply's voice, synthesized by HER process — reconstruct + play.
+        // No worker, no model download, no GPU touch on this end, ever.
+        if (msg.rec && this._voice && !this._isSpeaking) {
           this._isSpeaking = true;
           try { this._voice.stopSpeaking(); } catch { /* nf */ }
-          Promise.resolve(this._voice.speak(msg.text))
-            .catch(() => { /* silent — VoiceIO logs its own fallbacks */ })
+          Promise.resolve(this._voice.playRec(msg.rec))
+            .catch(() => { /* silent — playback issues log inside VoiceIO */ })
             .finally(() => { this._isSpeaking = false; });
         }
         break;
