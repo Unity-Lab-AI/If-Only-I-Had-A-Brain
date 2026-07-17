@@ -21,7 +21,7 @@ LLM/VLM vision describer — vision is now 100% equational (`project_future_no_t
 | File | Role |
 |------|------|
 | `transform.js` | CPU reference + GPU CPU-fallback. `equationalizeImageData` (forward 9/7 = SEEING), `reconstructImageData` (inverse = IMAGINING), `describeEquational` (field C → 64-dim percept — the brain's sensory input), `morphField`/`abstract` (thought-ops), `describeEquationalAudio` (synesthesia), **DRAW-ENGINE ops (2026-07-15/16): `traceLineArt`** (field C → coherent ink contours — CDF 9/7 inverse → Sobel + non-max suppression → strongest-first bidirectional edge-follow → min-length → Douglas-Peucker; ONE ink, no fragment spray), **`stylizeField`** (field C → full-colour posterized plane + baked-in label strokes — her DEFAULT "beautiful recreation" render), **`traceColorFill`** (flat colour regions; out of auto-rotation), `traceField` (legacy v1 tracer). `composeFields` (collage) REMOVED 2026-07-16 — imagination grounds ONE unified looked-up scene instead. `TRUSTED=true` by default (her own vision is limitless; integrity bounds always on). |
-| `gpu.js` | `MindSpaceGPU` — WGSL CDF 9/7 lifting (GPU) with transparent CPU fallback + `selfCheck()` parity guard. `perceive`/`imagine`/`describe`, `imagineFromState` (de-novo), the DRAW-ENGINE delegates (`traceLineArt`/`stylizeField`/`traceColorFill`/`traceField` — CPU-delegate mirrors), `glyphStrokes` (her label typography: letterforms + colours + thickness + silhouette/highlight), the `governor`, and the `knowledge` query surface. NOTE: the SERVER reaches all of these through `MindSpaceWorkerProxy` (`server/brain-server/mindspace-proxy.js`) — a new draw op MUST be forwarded there too or `_drawConcept`'s guard silently draws nothing (the 2026-07-15 traceField-forward bug). |
+| `gpu.js` | `MindSpaceGPU` — WGSL CDF 9/7 lifting (GPU) with transparent CPU fallback + `selfCheck()` parity guard. `perceive`/`imagine`/`describe`, `imagineFromState` (de-novo), the DRAW-ENGINE delegates (`traceLineArt`/`stylizeField`/`traceColorFill`/`traceField` — CPU-delegate mirrors), `glyphStrokes` (her label typography: letterforms + colours + thickness + silhouette/highlight), the `governor`, and the `knowledge` query surface. NOTE: the SERVER reaches all of these through `MindSpaceWorkerProxy` (`server/brain-server/mindspace-proxy.js`) — a new draw op MUST be forwarded there too or `_drawConcept`'s guard silently draws nothing (the 2026-07-15 traceField-forward bug). ONE PROCESS (2026-07-17): `stylizeField`/`traceLineArt` are now **ASYNC** on the proxy (donor-first) — every caller must `await` them; a non-awaited call sees a Promise and silently draws nothing (same bug class). |
 | `knowledge.js` | What she KNOWS about her mind-space: `FILE_TYPES`, `EQUATIONS`, `METHODS`, `SESSION_UPDATES` + query API (`whatIs`/`howToSolve`/…) + `teachInto`/`conceptDefinitions` (sem-binding). |
 | `governor.js` | `ProcessGovernor` — her autonomous proportionality conscience (MS.K2). Capability is limitless; this judges how much to SPEND on a thought. Refuses the absurd ("simulate a universe") by her own reason, never an external cap. |
 
@@ -60,6 +60,22 @@ field C so she can imagine **from her own mind alone** — then the ring has mat
 > (`maxSide ≤ 96`, default 64; server uses 48) regardless of state length OR governor
 > grant. Imagination has a floor of detail, never infinite resolution. The governor adds
 > proportionality on top. (Operator caution, 2026-06-27.)
+
+### ONE PROCESS — imagery on the donor GPU — **(NEW, 2026-07-17)**
+The donor that computes her brain now ALSO computes her mind's eye. New JSON protocol:
+server → donor `{type:'mindspace_op', id, op, ...payload}` / donor → server
+`{type:'mindspace_result', id, ok, ...}`; capability at `gpu_register` via
+`mindspaceV1: true` + optional per-op `mindspaceOps` list (no list = all ops). Ops:
+`perceive` / `describe` / `stylizeField` / `traceLineArt` / `imagineFromState`
+(browser donor only for now) + the VOICE pair `perceiveAudio`/`reconstructAudio`
+(field-A). `MindSpaceWorkerProxy.setDonorBridge(dispatch, capable)` routes heavy ops
+donor-first; the LOCAL mindspace worker is the **rollout ramp only** until
+`DREAM_MIN_DONOR_VERSION=0.3.11` (env, set AFTER the binary is on every live donor —
+sparseV2 precedent). Hosts: `html/compute.html` (full `MindSpaceGPU` surface) +
+`donor-app/src/mindspace.rs` (donor-v0.3.11 — line-faithful Rust port of transform.js
++ audio.js, priority work lane; release handoff `donor-app/RELEASE-0.3.11.md`).
+Timeout/incapable/unsupported all resolve null → local ramp; donors=0 → imagery
+pauses WITH the brain at the same gate (one process, coherent behavior).
 
 ### Learning her own mind-space — **UVM-INT.2 (NEW)**
 `knowledge.js` was data-only. `curriculum._teachMindSpaceKnowledge()` now calls

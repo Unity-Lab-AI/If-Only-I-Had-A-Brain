@@ -2411,6 +2411,19 @@ class ServerBrain {
         // init() probes WebGPU; in Node it returns false and we stay on the CPU
         // reference path. Await so _useGpu() is settled before first imagine.
         try { await this.mindSpace.init(); } catch { /* CPU path */ }
+        // ONE PROCESS (Gee 2026-07-17) — wire the DONOR bridge into the proxy:
+        // when a mindspace-capable donor (compute.html / donor-v0.3.11+) is
+        // connected, her imagery computes on the SAME GPU as her brain. The
+        // local worker path remains ONLY as the rollout ramp until v0.3.11 is
+        // the min donor version (sparseV2 precedent; ramp removal is a logged
+        // milestone in docs/TODO.md §ONE PROCESS).
+        if (typeof this.mindSpace.setDonorBridge === 'function') {
+          this.mindSpace.setDonorBridge(
+            (op, payload, timeoutMs) => this.gpuMindspaceOp(op, payload, timeoutMs),
+            (op) => this._mindspaceDonorCapable(op),
+          );
+          console.log('[MindSpace] donor bridge wired — imagery runs on the donor GPU when a mindspace-capable donor is connected (one process).');
+        }
         console.log(`[MindSpace] server equational mind-space ready (${this.mindSpace.available ? 'GPU' : 'CPU reference'} path, worker thread — off the event loop) — de-novo imagination wired`);
         // UVM-INT.4 — restore the persisted imagined field-C ring (.uvme-medium
         // memory) so her mental imagery has continuity across reboot.
@@ -7882,6 +7895,19 @@ wss.on('connection', (ws, req) => {
           client.name = msg.name;
           break;
 
+        case 'mindspace_result': {
+          // ONE PROCESS — donor answered a mind-space op (gpuMindspaceOp).
+          // Donor isolation: only a registered donor may resolve mindspace
+          // pendings (same PA.4.6 posture as SPRR frames).
+          if (!brain._gpuClients || !brain._gpuClients.has(ws)) break;
+          const p = brain._mindspacePending && brain._mindspacePending.get(msg.id);
+          if (p) {
+            brain._mindspacePending.delete(msg.id);
+            clearTimeout(p.timeout);
+            p.resolve(msg.ok ? msg : null);
+          }
+          break;
+        }
         case 'gpu_register': {
           // TU.20.12 — version-incompatibility gate. A native donor binary sends
           // its `appVersion` (Cargo pkg version). If it's older than the minimum
@@ -7924,6 +7950,13 @@ wss.on('connection', (ws, req) => {
           // don't → they keep the legacy dense type=2 path. Stamped on the ws so
           // gpuSparsePropagateAuto can gate per-socket.
           ws._sparseV2 = msg.sparseV2 === true;
+          // ONE PROCESS — mind-space-on-donor capability (mindspace_op protocol;
+          // compute.html + donor-v0.3.11+). Gated per-socket like sparseV2.
+          // Optional per-op list (`mindspaceOps`): the native binary ships
+          // perceive/describe/stylizeField/traceLineArt first (de-novo
+          // imagineFromState lands with its glyph-plane port); no list = all.
+          ws._mindspaceV1 = msg.mindspaceV1 === true;
+          ws._mindspaceOps = Array.isArray(msg.mindspaceOps) ? new Set(msg.mindspaceOps) : null;
           // PA.4.3 multi-donor pool. Track every registered donor GPU. The
           // brain's weights live in the PRIMARY donor's VRAM and ALL dispatch
           // targets brain._gpuClient (the primary) — unchanged. A second donor
