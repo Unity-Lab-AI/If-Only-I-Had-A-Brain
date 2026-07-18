@@ -464,7 +464,12 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
     // can't trigger a fetch storm
     if (!this._vmRefInFlight) this._vmRefInFlight = new Set();
     if (this._vmRefInFlight.has(key)) return null;
-    const GAP = Number(process.env.DREAM_REF_FETCH_GAP_MS) || 15000;
+    // GLOBAL look-up budget (Gee 2026-07-17: "lets make the brain only able to
+    // do a look up once ever 10 minutes.. she is killing my accoutn pollen
+    // doing multiple a minute"). Every render costs real pollen; one fetch per
+    // 10 minutes brain-wide. Recalls (visual-memory hits) are free and
+    // unlimited — this gates only NEW outbound generations.
+    const GAP = Number(process.env.DREAM_REF_FETCH_GAP_MS) || 600000;
     if (!opts.force && this._vmLastRefFetchAt && (now - this._vmLastRefFetchAt) < GAP) return null;
     this._vmRefInFlight.add(key);
     this._vmLastRefFetchAt = now;
