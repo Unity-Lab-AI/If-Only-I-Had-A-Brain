@@ -100751,6 +100751,14 @@ var Curriculum = class _Curriculum {
     const cluster = this.cluster;
     const brain2 = this.brain || cluster && cluster._brain;
     if (!brain2 || !("_gpuClient" in brain2)) return;
+    const chatUntil = () => Number(brain2._chatPriorityUntil) || 0;
+    if (chatUntil() > Date.now()) {
+      const t0 = Date.now();
+      while (chatUntil() > Date.now() && Date.now() - t0 < 9e4) {
+        await new Promise((r) => setTimeout(r, 250));
+      }
+      this._chatPauseMs = (this._chatPauseMs || 0) + (Date.now() - t0);
+    }
     const live = () => !!(brain2._gpuClient && brain2._gpuClient.readyState === 1);
     if (live()) {
       this._noDonorSince = null;
