@@ -181,6 +181,21 @@ export class RemoteBrain extends EventEmitter {
     switch (msg.type) {
       case 'welcome':
         this._userId = msg.id;
+        // DEPLOY VERSION HANDSHAKE — the CHAT page now self-reloads on a build
+        // change, exactly like donor tabs. A long-lived chat tab used to
+        // survive every deploy running OLD bundle code — which is how the
+        // in-browser voice synth (deleted server-lane-side 2026-07-17) kept
+        // resurrecting from stale tabs and killing same-machine donors when
+        // she spoke. The WS reconnects after every SAVESTART; a changed
+        // buildStamp on the fresh welcome = this tab's code is stale → reload
+        // once and run current.
+        if (msg.buildStamp) {
+          if (this._buildStamp && this._buildStamp !== msg.buildStamp && typeof location !== 'undefined') {
+            console.warn('[RemoteBrain] deploy detected (buildStamp changed) — reloading to run current code.');
+            try { location.reload(); return; } catch { /* keep going on old code if reload is blocked */ }
+          }
+          this._buildStamp = msg.buildStamp;
+        }
         if (msg.state) this._applyState(msg.state);
         console.log(`[RemoteBrain] Welcome — user ${this._userId}, ${msg.state?.connectedUsers ?? '?'} users online`);
         // Browser-side WS roundtrip smoke test. Verifies

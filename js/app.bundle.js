@@ -123313,6 +123313,17 @@ var RemoteBrain = class extends EventEmitter2 {
     switch (msg.type) {
       case "welcome":
         this._userId = msg.id;
+        if (msg.buildStamp) {
+          if (this._buildStamp && this._buildStamp !== msg.buildStamp && typeof location !== "undefined") {
+            console.warn("[RemoteBrain] deploy detected (buildStamp changed) \u2014 reloading to run current code.");
+            try {
+              location.reload();
+              return;
+            } catch {
+            }
+          }
+          this._buildStamp = msg.buildStamp;
+        }
         if (msg.state) this._applyState(msg.state);
         console.log(`[RemoteBrain] Welcome \u2014 user ${this._userId}, ${msg.state?.connectedUsers ?? "?"} users online`);
         if (!this._wsRoundtripTested) {
