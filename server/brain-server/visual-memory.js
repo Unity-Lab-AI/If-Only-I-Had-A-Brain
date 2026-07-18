@@ -423,7 +423,16 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
     // drawings — the field render of a monochrome reference looks like pencil.
     // Bias vibrant FULL-COLOUR + soft shading so her recreations are beautiful and
     // coloured; keep single-centred-subject + clean background for legible tracing.
-    return `${c}${defTail}, colorful vibrant richly detailed illustration, full color, soft shading, single centered subject, clean plain background`;
+    // REALISTIC, not cutesy (Gee 2026-07-17: "too many kittens puppies and funky
+    // characters... like there is some meta prompt that is way to strong making
+    // all the look up drawling sorta outlandish and non Unity canon"). The word
+    // "illustration" dragged the generator into cartoon-mascot/cute-character
+    // territory on anything ambiguous. Steer PHOTOGRAPHIC + true-to-life: her
+    // look-ups are LEARNING references (what the thing actually looks like);
+    // colour stays, the cutesy stylization dies. POSITIVE terms ONLY (Gee: an
+    // image model attends to the nouns — writing "no cartoon" PAINTS cartoons);
+    // her own interpretation still happens on the DRAWING side, never here.
+    return `${c}${defTail}, realistic photograph, true to life, documentary photography, natural lighting, full color, richly detailed, single centered subject, plain uncluttered background`;
   },
 
   // Fetch a Pollinations REFERENCE for a concept, perceive it into a field C

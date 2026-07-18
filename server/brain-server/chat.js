@@ -1459,7 +1459,11 @@ const SERVER_CHAT_MIXIN = {
     } catch { /* store peek best-effort */ }
     if (!rec && typeof this._fetchReferenceAndGround === 'function') {
       const phrase = keys.join(' and ');
-      const prompt = `${phrase} together in one unified scene, colorful vibrant richly detailed illustration, full color, soft shading, clean background`;
+      // Same realistic steer as _referenceImagePrompt (Gee 2026-07-17: "too many
+      // kittens puppies and funky characters" — "illustration" pulled the
+      // generator cutesy/cartoon; her imagined scenes ground TRUE-TO-LIFE too).
+      // POSITIVE terms ONLY (a model attends to the nouns — "no cartoon" paints one).
+      const prompt = `${phrase} together in one unified scene, realistic photograph, true to life, natural lighting, full color, richly detailed, plain uncluttered background`;
       try { rec = await this._fetchReferenceAndGround(comboKey, { keyOverride: comboKey, promptOverride: prompt }); } catch { rec = null; }
     }
     if (!rec) return null;   // cooldown / fetch-fail / blank → honest decline

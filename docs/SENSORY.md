@@ -291,9 +291,15 @@ white-pencil frames. The v2 arc, all deployed:
 - **Drawability gate** (`_conceptIsDrawable`) — only NOUNS draw; part-of-speech read dynamically from the
   same dictionary she uses for definitions (works for never-seen words, NO word lists). Abstract/verb
   thought-words fall to a grounded favourite instead of tracing scatter.
-- **Colourful references** — `_referenceImagePrompt` biases "colorful vibrant richly detailed... full color,
-  soft shading" (the old "simple/high-contrast" steered Pollinations into black-on-white line drawings =
-  pencil-looking field renders). Visual-memory store v2→v3 orphaned the monochrome-era cache.
+- **Colourful references** — `_referenceImagePrompt` biases full colour (the old "simple/high-contrast"
+  steered Pollinations into black-on-white line drawings = pencil-looking field renders). Visual-memory
+  store v2→v3 orphaned the monochrome-era cache. **Realistic, not cutesy (2026-07-17):** the word
+  "illustration" in the steer dragged the generator into cartoon-mascot/kitten-puppy territory on anything
+  ambiguous (Gee: "too many kittens puppies and funky characters... outlandish and non Unity canon") —
+  the steer is now "realistic photograph, true to life, documentary photography, natural lighting, full
+  color, richly detailed, single centered subject, plain uncluttered background", POSITIVE terms only
+  (an image model attends to the nouns — writing "no cartoon" paints one). Same steer on the imagined
+  combined-scene prompt. Her look-ups are LEARNING references; her own style happens on the drawing side.
 - **Imagination = ONE genuinely new image** (`_drawImagined` + `_imagineAndDraw`) — a drawable-noun combo
   from her inner-thought chain grounds ONE unified combined-scene reference (its own `a+b` key + cooldown,
   `keyOverride`/`promptOverride` on the fetch) and field-renders it; the `composeFields` region-paste
