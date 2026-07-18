@@ -10505,6 +10505,25 @@ export class Curriculum {
     const cluster = this.cluster;
     const brain = this.brain || (cluster && cluster._brain);
     if (!brain || !('_gpuClient' in brain)) return; // no donor has ever registered — walk-start gates own that window
+    // CHAT-PRIORITY MUTEX (2026-07-17) — the walk YIELDS while a reply composes.
+    // Chat emission and teach share ONE cortex substrate (lastSpikes + the event
+    // loop): a grade-1 cell grinding _teachLateralInhibition through a chat
+    // window blocked the loop 51s (live log, phase-named), the WS socket backed
+    // up 40MB, and the donor connection got RESET out from under a healthy
+    // binary — "she drops the donor every time she speaks", the real root.
+    // brain._chatPriorityUntil (CHAT.3) is stamped when a reply starts
+    // composing (≤60s ceiling) and ZEROED the moment it completes or fails, so
+    // this pause frees the loop within one teach step and resumes instantly
+    // when she's done talking. 90s hard ceiling = a stale stamp can never
+    // wedge the walk.
+    const chatUntil = () => Number(brain._chatPriorityUntil) || 0;
+    if (chatUntil() > Date.now()) {
+      const t0 = Date.now();
+      while (chatUntil() > Date.now() && (Date.now() - t0) < 90_000) {
+        await new Promise((r) => setTimeout(r, 250));
+      }
+      this._chatPauseMs = (this._chatPauseMs || 0) + (Date.now() - t0);
+    }
     const live = () => !!(brain._gpuClient && brain._gpuClient.readyState === 1);
     if (live()) { this._noDonorSince = null; return; }
     const graceMs = Number(process.env.DREAM_NO_DONOR_GRACE_MS) > 0

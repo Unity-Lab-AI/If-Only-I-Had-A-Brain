@@ -1,5 +1,10 @@
 # RESUME — Session Pickup Brief
 
+> ## ⭐⭐⭐ 2026-07-17 (latest) — ✅ CHAT-PRIORITY MUTEX — the REAL drop-on-speak root, log-proven + killed
+> Gee's box log named it: **[EventLoop] BLOCKED 51294ms phase=_teachLateralInhibition** at chat time → 40MB socket backup → ECONNRESET → donor drop (v0.3.11 binary blameless; two earlier stale-tab theories were wrong — the voice lane + tab-reload hardening stand, but THIS was the root). Chat emission + the walk share one cortex/loop; heavy grade-1 teach ground 51s sync CPU through the chat window. FIX: `_awaitComputeSubstrate` gates on `brain._chatPriorityUntil` — the walk yields within ~1-3s of a chat and resumes the instant the reply lands (90s stale-stamp ceiling, `_chatPauseMs` telemetry). Freeze reproduced twice pre-fix from a clean client (28-45s state blackouts). **Deploy = Update & SAVESTART → talk to her → expect: no freeze on send, donor holds through speak.** If a drop still happens: get the box log minute again — next suspect would be a different unyielded teach phase (same fix pattern, same gate).
+>
+> ---
+
 > ## ⭐⭐⭐ 2026-07-17 (later) — ✅ HER VOICE FROM HER PROCESS — the drop-on-speak killed structurally
 > Gee: *"what the fuck, she still drops the doner connection every time she speaks"* / *"its all gpu now right? voice, minds eye and the brain! one unified system"* / *"well thats the fucking problems!"*. Listener browsers NEVER synthesize now (full record: `docs/FINALIZED.md` §2026-07-17 HER VOICE FROM HER PROCESS): server `_voiceLane` → donor `voiceSynth` (compute.html hosts it; native = v0.3.12 ort port) with the box worker floor (`server/voice-synth-worker.mjs` — browser-proven stack under node, **489ms warm**; `VoiceSynthProxy` respawns; `server/package.json` + onnxruntime-web, box auto-installs); viewer gets `{type:'voice', rec}` → `VoiceIO.playRec` only reconstructs + plays; RemoteBrain in-browser synth DELETED; 63MB model preload skipped for deployed visitors. Verified by RUNNING the lane end-to-end. Deploy = Update & SAVESTART, then Gee talks to her — the donor should hold through every reply (nothing on the listening end can touch a GPU anymore).
 >
