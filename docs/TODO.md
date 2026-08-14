@@ -129,12 +129,12 @@ _REMOTE SYNC AUDIT migrated VERBATIM to `docs/FINALIZED.md` (§2026-08-14 REMOTE
 - [ ] **0.4** Surface `batchTiming` through `state.profiling.throughput` → dashboard card (needs the full 800-line read of `state.js` first)
 - [ ] **0.5** ⛔ **BUG FOUND — `phaseTimingMs` is dropped by the server, not missing from donors.** `brain-server.js:8371` resolves `resolver({ perCluster: _per })` and never forwards `msg.phaseTimingMs`, so the read at `brain-server.js:4308` is undefined for EVERY donor — including browser donors that measure `substepLoopMs`/`voltReadbackMs` and ship them correctly. One-line fix (`phaseTimingMs: msg.phaseTimingMs`) but it edits `brain-server.js` → requires the full ~9,100-line read first per the read-before-edit LAW. This is what unlocks the exact donor-vs-server split.
 
-### PHASE 1 — CUT THE BLOCKING (rising order of work; stop at whichever hits milliseconds)
+### PHASE 1 — CUT THE BLOCKING
 
-- [ ] **1.1** Coalesce the ~142 per-tick teach-pattern frames into ONE batched frame (fewest moving parts, no donor release needed)
-- [ ] **1.2** Priority lane for `compute_batch` on the browser donor (`compute.html`) — thought-frames jump the teach queue
-- [ ] **1.3** Priority lane on the NATIVE donor (`donor-app`, Rust) — needs a `donor-v0.3.12` tag + CI build + install
-- [ ] **1.4** Separate socket for the teach firehose — architectural fix; the teach lane physically CANNOT sit in front of her thoughts
+⚠ **1.1–1.4 as originally written were scoped against the WRONG root** (donor-side queueing) and are CANCELLED, not done — see 0.1/0.1a. The block is server-side and single-threaded, so donor priority lanes and extra sockets would have bought nothing. Recorded rather than deleted so the reasoning survives.
+
+- [x] **1.5 — THE FIX: time-slice the active-row Oja and yield.** `js/brain/cluster/hebbian.js` `_ojaUpdateChunked`. The active-row fast path (arrived via Rev's PR #2, merged today) ran `proj.ojaUpdate` in ONE unbroken synchronous call and returned BEFORE the chunked yield loop — its own comment argued that O(firing) work "doesn't need" chunking, with a >250ms warn conceding the block while accepting it. But on a single-threaded loop, less work in one unyielded call pins the thread exactly as hard: while it runs, the donor's `compute_batch` reply sits unprocessed, `/ws` stalls, the dashboard freezes. FIX: slice the ACTIVE LIST itself (not row ranges — an active list is a sparse set of indices, so row-range slicing would silently drop rows) with a macrotask yield between slices, adaptive ~30ms targeting, own chunk state, `ACTIVE_SLICE_MIN=2048` floor so small sets stay single-pass. **Total work unchanged** (every active row visited exactly once), **bit-identical** (rows independent under Oja). Also SNAPSHOTS the index list first: `regionSpikesActive` returns a SHARED scratch array its next call clears+refills, and yielding lets a concurrent teach/emission path reset it mid-loop — copying a few thousand ints once closes that hazard.
+- [x] **1.6** Bundle rebuilt (`cluster.js`/`hebbian.js` ship browser-side) — keyless, fix confirmed present.
 
 ### PHASE 2 — VERIFY + SHIP
 

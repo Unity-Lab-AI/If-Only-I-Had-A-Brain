@@ -53468,11 +53468,36 @@ var CLUSTER_HEBBIAN_MIXIN = {
     if (!this._ojaChunkRows) this._ojaChunkRows = 65536;
     const activeRows = ojaOpts && ojaOpts.activeRows;
     if (activeRows) {
-      const _t0 = Date.now();
-      proj.ojaUpdate(preF, postF, lr, ojaOpts);
-      const _dt = Date.now() - _t0;
-      if (_dt > 250) {
-        console.warn(`[Cluster ${this.name}] Oja over ${activeRows.length.toLocaleString()} ACTIVE rows took ${_dt}ms (nnz=${proj.nnz ?? "?"}) \u2014 this is real work, not a skip-scan; if it repeats, this projection's fan-out is the cost.`);
+      const n = activeRows.length | 0;
+      const ACTIVE_SLICE_MIN = 2048;
+      if (n <= ACTIVE_SLICE_MIN) {
+        const _t0 = Date.now();
+        proj.ojaUpdate(preF, postF, lr, ojaOpts);
+        const _dt = Date.now() - _t0;
+        if (_dt > 250) {
+          console.warn(`[Cluster ${this.name}] Oja over ${n.toLocaleString()} ACTIVE rows took ${_dt}ms (nnz=${proj.nnz ?? "?"}) \u2014 under the ${ACTIVE_SLICE_MIN}-row slice floor so it ran unsliced; if it repeats, this projection's fan-out is the cost.`);
+        }
+        return;
+      }
+      const rowsList = Array.prototype.slice.call(activeRows);
+      const total = rowsList.length;
+      if (!this._ojaActiveChunk) this._ojaActiveChunk = 8192;
+      const yieldMacro2 = typeof setImmediate === "function" ? () => new Promise((r) => setImmediate(r)) : () => new Promise((r) => setTimeout(r, 0));
+      const _tStart = Date.now();
+      for (let i = 0; i < total; ) {
+        const chunk = this._ojaActiveChunk;
+        const j = Math.min(i + chunk, total);
+        const t0 = Date.now();
+        proj.ojaUpdate(preF, postF, lr, { ...ojaOpts || {}, activeRows: rowsList.slice(i, j) });
+        const dt = Date.now() - t0;
+        i = j;
+        if (dt > 60 && chunk > 1024) this._ojaActiveChunk = Math.max(1024, chunk >> 1);
+        else if (dt < 15 && chunk < 65536) this._ojaActiveChunk = chunk << 1;
+        await yieldMacro2();
+      }
+      const _tot = Date.now() - _tStart;
+      if (_tot > 2e3) {
+        console.warn(`[Cluster ${this.name}] Oja over ${total.toLocaleString()} ACTIVE rows took ${_tot}ms WALL (nnz=${proj.nnz ?? "?"}) \u2014 but SLICED at ~${this._ojaActiveChunk} rows with event-loop yields, so the tick/donor/ws kept getting slots. Wall time here is real work, not a loop pin.`);
       }
       return;
     }
