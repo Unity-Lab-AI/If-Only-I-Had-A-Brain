@@ -2434,6 +2434,29 @@
         $('d-curr-cellbar').style.background = 'linear-gradient(90deg,#a78bfa,#ff4d9a)';
       }
       $('d-curr-cellbar').style.width = pct + '%';
+      // LIVENESS TAIL - the answer to "is she stuck?" in one glance.
+      //
+      // A healthy walk runs THOUSANDS of teach calls per minute while the phase
+      // name and the percentage sit still for a quarter of an hour, so a
+      // static-looking bar is not evidence of a stall. This puts the rate on
+      // screen next to it. Measured live during ELA-K phase 10: ~2,970/min.
+      //
+      // The probe-gate note exists because `totalSpikes` STOPS ADVANCING during
+      // a gate probe by design - the tick early-returns while the cortex owns
+      // the GPU. An unlabelled frozen counter reads exactly like a dead brain.
+      if (c.liveness) {
+        const lv = c.liveness;
+        const rate = lv.teachCallsPerMin | 0;
+        const sinceS = (lv.sinceLastTeachMs == null) ? null : Math.round(lv.sinceLastTeachMs / 1000);
+        const alive = rate > 0 || (sinceS !== null && sinceS < 30);
+        const colour = alive ? '#4ade80' : '#f87171';
+        const gate = lv.probeGateActive
+          ? ' &middot; <span style="color:#fbbf24;">spikes paused &mdash; probe gate (expected)</span>'
+          : '';
+        pctLabel += `<br><span style="color:${colour};">${rate.toLocaleString()} teach/min</span>`
+          + (sinceS === null ? '' : ` &middot; last teach ${sinceS}s ago`)
+          + gate;
+      }
       $('d-curr-cellpct').innerHTML = pctLabel;
 
       // Per-subject breakdown grid. One row per subject. Shows the

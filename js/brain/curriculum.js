@@ -2784,6 +2784,14 @@ export class Curriculum {
           // I.12 closure - per-cell SUB-PHASE counter. Increments on every
           // wrapped teach call but scoped to the CURRENT cell only.
           this._currentCellSubPhases = (this._currentCellSubPhases | 0) + 1;
+          // LIVENESS (2026-08-14). Answering "is she training or is she stuck"
+          // previously took THREE polls 45s apart plus arithmetic, because
+          // nothing published a RATE or a LAST-ACTIVITY time - a single
+          // snapshot genuinely could not tell the two apart. These two lines
+          // make one snapshot sufficient. The counter itself already exists;
+          // all that was missing was WHEN it last moved and HOW FAST.
+          this._lastTeachAtMs = Date.now();
+          this._teachTickCount = (this._teachTickCount | 0) + 1;
           return result;
         } finally {
           // Remove THIS call BY IDENTITY - never by position, never by
@@ -3157,6 +3165,41 @@ export class Curriculum {
         ? { reason: this._substratePause.reason,
             pausedMs: Date.now() - this._substratePause.sinceMs }
         : null,
+      // LIVENESS - "is she training, or is she stuck?" answered from ONE
+      // snapshot (2026-08-14).
+      //
+      //   teachCallsPerMin  - rolling 60s rate over the wrapped-teach counter
+      //   sinceLastTeachMs  - how long since a teach call last COMPLETED
+      //   probeGateActive   - the tick is deliberately paused (see below)
+      //
+      // The rate is what actually separates the two states: a healthy walk runs
+      // thousands of teach calls per minute even while the phase name and the
+      // percentage sit still for a quarter of an hour, so a static-looking
+      // dashboard is not evidence of a stall and never was.
+      //
+      // `probeGateActive` is published because `totalSpikes` STOPS ADVANCING
+      // during a gate probe by design - the main tick early-returns while the
+      // cortex owns the GPU exclusively. An unlabelled frozen counter reads
+      // exactly like a dead brain; it fooled me once already today. Same
+      // reasoning as the `batchPaused` / `batchStall` split on the donor side:
+      // an expected pause must say so, or it will be read as a failure.
+      liveness: (() => {
+        const now = Date.now();
+        const count = this._teachTickCount | 0;
+        if (!this._teachRateWindow) this._teachRateWindow = { atMs: now, count };
+        const w = this._teachRateWindow;
+        const spanMs = now - w.atMs;
+        const rate = spanMs > 0 ? Math.round(((count - w.count) * 60000) / spanMs) : 0;
+        // Roll the window once a minute so the rate reflects NOW, not the whole
+        // run: a cell that has been going for hours would otherwise average its
+        // way straight through a genuine stall without the number moving.
+        if (spanMs >= 60000) this._teachRateWindow = { atMs: now, count };
+        return {
+          teachCallsPerMin: rate,
+          sinceLastTeachMs: this._lastTeachAtMs ? (now - this._lastTeachAtMs) : null,
+          probeGateActive: !!(cluster && cluster._probeGateActive),
+        };
+      })(),
       activePhase,
       // The REAL cell phase, distinct from `activePhase` which is whatever
       // nested primitive is executing this instant. This is the phase the cell

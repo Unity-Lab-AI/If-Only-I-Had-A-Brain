@@ -95133,6 +95133,8 @@ var Curriculum = class _Curriculum {
             if (s) s.teachEvents = (s.teachEvents | 0) + 1;
           }
           this._currentCellSubPhases = (this._currentCellSubPhases | 0) + 1;
+          this._lastTeachAtMs = Date.now();
+          this._teachTickCount = (this._teachTickCount | 0) + 1;
           return result;
         } finally {
           if (stack) {
@@ -95401,6 +95403,38 @@ var Curriculum = class _Curriculum {
         reason: this._substratePause.reason,
         pausedMs: Date.now() - this._substratePause.sinceMs
       } : null,
+      // LIVENESS - "is she training, or is she stuck?" answered from ONE
+      // snapshot (2026-08-14).
+      //
+      //   teachCallsPerMin  - rolling 60s rate over the wrapped-teach counter
+      //   sinceLastTeachMs  - how long since a teach call last COMPLETED
+      //   probeGateActive   - the tick is deliberately paused (see below)
+      //
+      // The rate is what actually separates the two states: a healthy walk runs
+      // thousands of teach calls per minute even while the phase name and the
+      // percentage sit still for a quarter of an hour, so a static-looking
+      // dashboard is not evidence of a stall and never was.
+      //
+      // `probeGateActive` is published because `totalSpikes` STOPS ADVANCING
+      // during a gate probe by design - the main tick early-returns while the
+      // cortex owns the GPU exclusively. An unlabelled frozen counter reads
+      // exactly like a dead brain; it fooled me once already today. Same
+      // reasoning as the `batchPaused` / `batchStall` split on the donor side:
+      // an expected pause must say so, or it will be read as a failure.
+      liveness: (() => {
+        const now = Date.now();
+        const count = this._teachTickCount | 0;
+        if (!this._teachRateWindow) this._teachRateWindow = { atMs: now, count };
+        const w = this._teachRateWindow;
+        const spanMs = now - w.atMs;
+        const rate = spanMs > 0 ? Math.round((count - w.count) * 6e4 / spanMs) : 0;
+        if (spanMs >= 6e4) this._teachRateWindow = { atMs: now, count };
+        return {
+          teachCallsPerMin: rate,
+          sinceLastTeachMs: this._lastTeachAtMs ? now - this._lastTeachAtMs : null,
+          probeGateActive: !!(cluster && cluster._probeGateActive)
+        };
+      })(),
       activePhase,
       // The REAL cell phase, distinct from `activePhase` which is whatever
       // nested primitive is executing this instant. This is the phase the cell
