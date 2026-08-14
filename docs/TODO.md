@@ -365,3 +365,27 @@ V.8, D.7, L.6 and G.9 were four separate pending items all waiting on the same e
 - [x] **GC.1** **DONE.** Derive the live per-subject grade from `passedCells` + `GRADE_ORDER` and use it for BOTH the grade column and `courseNameFor()`, replacing the `cluster.grades[sub]` override.
 - [x] **GC.2** **DONE.** Verify — no-tests LAW: `node --check`, ESM `import()`, exercise the derivation against real `passedCells` shapes (nothing passed / pre-K passed / mid-K / all passed), bundle rebuild.
 - [x] **GC.3** **DONE.** Docs + FINALIZED, atomic commit, cascade, push BOTH remotes. **NO DEPLOY** — Gee walks the current build until after the combined live-verify; this ships to the repo and waits for his next Update & SAVESTART.
+
+---
+
+## OPEN TASKS — 2026-08-14 · `_phasedTeach` KEEPS A SECOND, PARALLEL PHASE LEDGER
+
+> Gee (verbatim): *"sounds good, do that.. and you werent clear.... she is still training fine, right? even tho no events are posting?"*
+
+**FOUND** while checking whether phase 2's tail units emit brain events (they do not — see below). `_phasedTeach` (`curriculum.js:2899`) maintains its OWN phase ledger alongside the constructor auto-wrap's:
+
+- It appends to `cluster.passedPhases` under **TAG** names — `${tag}-WORD-SPELL`, `${tag}-LETTER-NAMING-DIRECT`, `${tag}-WORD-EMISSION-DIRECT` — not `_teach*` method names.
+- It separately increments `this._currentCellPhasesCompleted` **and** `_perSubjectStats[subject].phasesCompleted`.
+
+**WHY THAT MATTERS.** These tag units run INSIDE a declared phase (`_teachLanguageMechanics`), so counting them as phases double-counts: the enclosing phase is banked again when it completes. The L.2 fix already filters the CELL count to declared names, so the cell bar is correct — but the **per-subject `phases` column** counts every `passedPhases` entry for that subject prefix, tags included, so the two columns measure different things. Exactly the "two mechanisms that can disagree" shape torn out of the cell ledger earlier today; this instance was simply not reached.
+
+**KEEP the `passedPhases` write + `_saveCheckpoint`** — those tags are what let a restart resume PART-WAY THROUGH a long phase (mid-`_teachLanguageMechanics`), which is real and valuable. They are checkpoint markers, not phases. The fix is to stop counting them as phases, not to stop writing them.
+
+**SEPARATELY (answers Gee's question, no code change).** Phase 2's tail — `_teachWordSpellingDirect`, `_teachLetterNamingDirect` (`reps: 50`), `_teachWordEmissionDirect`, `_teachQuestionIntent`, and `_phasedTeach` itself — contains **ZERO** `_pushBrainEvent` calls (the whole 25K-line teach layer has 17). A quiet brain-events feed during that stretch is EXPECTED and is not evidence either way. The liveness signal is the per-subject `events` counter (`teachEvents`), incremented in the auto-wrap on every wrapped teach call.
+
+### THE WORK
+
+- [x] **SL.1** **DONE.** Per-subject `phasesCompleted` counts DECLARED phases only — same rule as the cell count. Filter each `passedPhases` entry by `_declaredPhaseNames(cellKey).has(method)`.
+- [x] **SL.2** **DONE.** Remove `_phasedTeach`'s parallel counter increments (`_currentCellPhasesCompleted`, `s.phasesCompleted`). Keep its `passedPhases` write + `_saveCheckpoint` as mid-phase resume markers.
+- [x] **SL.3** **DONE.** Verify — no-tests LAW: `node --check`, ESM `import()`, exercise the per-subject count against a `passedPhases` array containing BOTH declared method names and `_phasedTeach` tags, bundle rebuild.
+- [x] **SL.4** **DONE.** Docs + FINALIZED, atomic commit, cascade, push BOTH remotes. **NO DEPLOY** — walks with the current build until after the combined live-verify.

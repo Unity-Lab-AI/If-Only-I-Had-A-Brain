@@ -1,6 +1,20 @@
 # RESUME — Session Pickup Brief
 
-> ## ⭐⭐ 2026-08-14 (latest) — PER-SUBJECT GRADE COLUMN derived, not read from a pointer — SHIPPED TO REPO, NOT DEPLOYED
+> ## ⭐⭐ 2026-08-14 (latest) — `_phasedTeach` kept a SECOND parallel phase ledger (3× overcount) — SHIPPED TO REPO, NOT DEPLOYED
+>
+> **Nothing here is on the box.** Walks with the current build until after the combined live-verify.
+>
+> **THE QUESTION THAT STARTED IT.** Gee: *"brain events look like they are stalled"*. **Answer: that feed cannot tell you.** Phase 2’s tail — `_teachWordSpellingDirect`, `_teachLetterNamingDirect` (`reps: 50`), `_teachWordEmissionDirect`, `_teachQuestionIntent`, all via `_phasedTeach` — contains **ZERO** `_pushBrainEvent` calls; the entire 25K-line teach layer has 17. Quiet there is EXPECTED and distinguishes nothing, so it must not be read as healthy OR as stalled. **The liveness signal is the per-subject `events` counter** (`teachEvents`, bumped in the auto-wrap on every wrapped teach call). Say so plainly instead of reassuring off a signal that cannot support the claim.
+>
+> **THE DEFECT FOUND WHILE LOOKING.** `_phasedTeach` (`curriculum.js:2899`) ran its own ledger beside the auto-wrap’s: `passedPhases` entries under TAG names (`ELA-K-WORD-SPELL`, `ELA-K-LETTER-NAMING-DIRECT`, …) plus direct bumps of `_currentCellPhasesCompleted` and `_perSubjectStats[].phasesCompleted`. Those tags are work units INSIDE a declared phase, so counting them as phases double-counts — the enclosing `_teachLanguageMechanics` is banked again when it finishes. L.2 had already filtered the CELL count, so the bar was right, but the **per-subject `phases` column counted tags too**.
+>
+> **FIX.** Per-subject `phasesCompleted` admits only names in `_declaredPhaseNames(cellKey)` — the same rule as the cell ledger, so the two cannot disagree. `_phasedTeach`’s parallel counter bumps are deleted. Its `passedPhases` write + `_saveCheckpoint` **STAY** — those tags are what let a restart resume part-way through a long phase instead of re-running it from the top. Checkpoint markers, excluded by name rather than deleted.
+>
+> **VERIFIED** on the live brain’s exact mixed shape: 3 declared phases counted, 6 `_phasedTeach` tags excluded, **where the old behaviour reported 9 — a 3× overcount.** Plus `node --check`, ESM `import()`, bundle rebuild.
+>
+> ---
+
+> ## ⭐⭐ 2026-08-14 (earlier today) — PER-SUBJECT GRADE COLUMN derived, not read from a pointer — SHIPPED TO REPO, NOT DEPLOYED
 >
 > **READ THIS FIRST: nothing in this block is on the box.** Gee: *"we will do update savestart later on that issue and we will walk current build till we get to a good spot after the live-verify"*. It is on `main` in both remotes and waits for his next Update & SAVESTART.
 >
