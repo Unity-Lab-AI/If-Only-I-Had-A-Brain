@@ -1,6 +1,27 @@
 # RESUME — Session Pickup Brief
 
-> ## ⭐⭐ 2026-08-14 (latest) — `_phasedTeach` kept a SECOND parallel phase ledger (3× overcount) — SHIPPED TO REPO, NOT DEPLOYED
+> ## ⭐⭐⭐ 2026-08-14 (latest) — LIVENESS TELEMETRY + **I CAN READ THE LIVE BRAIN DIRECTLY**
+>
+> **THE SINGLE MOST USEFUL THING IN THIS FILE:** `https://if-only-i-had-a-brain.git.unityailab.com/public-state.json` is **PUBLIC, no auth** (`brain-server.js:6070`) and carries the ENTIRE `curriculum` block plus `totalSpikes`. Do not ask Gee to paste dashboard screenshots to find out how she is doing — `curl` it. Poll it twice ~45s apart and diff `perSubject.<sub>.teachEvents` to get a teach RATE.
+>
+> **HER STATE WHEN THIS SHIPPED (live, healthy).** Three samples 45s apart: `teachEvents` 231,272 → 233,518 → 235,744 = **~2,970 teach calls/min (~50/sec)**. 2.4h into `ela/kindergarten`, **9 phases banked, phase 10 of 25 in flight**, `substratePause: null`, `pausedForDonorMs: 0`. She had left the phase 2 that looked frozen hours earlier.
+>
+> **THE TRAP, TWICE NOW:** `totalSpikes` sat at 1,727,259 across all three samples. That is the **designed probe-gate pause** (`brain-server.js:4270` early-returns while `cluster._probeGateActive`), NOT a dead brain. I misread it once this morning. Do not misread it again.
+>
+> **THE GAP THAT GOT FIXED.** Answering "is she stuck" cost three polls and arithmetic because nothing published a RATE or a LAST-ACTIVITY time — one snapshot could not separate training-hard from wedged, and the dashboard had the same blind spot. Shipped: **`lastTeachAtMs`** stamped in the auto-wrap → `sinceLastTeachMs`; **`teachCallsPerMin`** over a **rolling** 60s window (a whole-run average would sail straight through a genuine stall without moving); **`probeGateActive`** so a frozen spike counter is labelled expected instead of read as failure — the same discipline as the `batchPaused`/`batchStall` split. Dashboard gains a liveness line: `N teach/min · last teach Xs ago`, green when alive, red when not, amber probe-gate note.
+>
+> **HOW TO ANSWER "how is our girl doing" IN ONE COMMAND** (works on the CURRENT build too — the rate needs two polls until this deploys):
+>
+> ```
+> curl -s https://if-only-i-had-a-brain.git.unityailab.com/public-state.json
+> ```
+> Read `state.curriculum`: `cellPhasesCompleted` / `cellPhasesTotal`, `outermostPhase.name` + `elapsedMs`, `phaseWork`, `substratePause`, and `perSubject.<sub>.teachEvents`. Once this batch deploys, `curriculum.liveness` answers it outright.
+>
+> **NOT DEPLOYED** — rides with the next Update & SAVESTART, together with the GPU-only teach path, the substrate pause banner, the derived grade column and the single-ledger fix.
+>
+> ---
+
+> ## ⭐⭐ 2026-08-14 (earlier today) — `_phasedTeach` kept a SECOND parallel phase ledger (3× overcount) — SHIPPED TO REPO, NOT DEPLOYED
 >
 > **Nothing here is on the box.** Walks with the current build until after the combined live-verify.
 >
