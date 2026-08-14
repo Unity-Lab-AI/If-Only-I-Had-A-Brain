@@ -1,6 +1,28 @@
 # RESUME — Session Pickup Brief
 
-> ## ⭐⭐⭐ 2026-08-14 (latest) — REMOTES SYNCED · REV'S 3 PRs MERGED · DONOR DROWN KILLED · HONEST PROGRESS FOR ALL TRAINING · NO-DONOR GATE EVERYWHERE — main `d10144c`, both remotes `b0/a0`
+> ## ⭐⭐⭐ 2026-08-14 (latest) — PHASE LEDGER WAS DEAD: one chat message latched the outermost-phase flag for the whole run
+>
+> **START HERE.** Code-shipped on `feature/phase-latch-0814`, cascaded to `develop` + `main`, pushed to BOTH remotes. Nothing is on the box until Gee presses **Update & SAVESTART** or **Fresh Walk**. No donor rebuild, no weights-format change.
+>
+> **THE ASK.** Gee: *"is this right? 50k events and still phase 1, 0% complete?"* with the dashboard reading `0% · phase 1/25 · 0 complete · _teachAntiHebbian (+0s) · 29.2 min`. Answer: **no, and it was not a display bug.**
+>
+> **PROVED FROM HIS PASTE, NOT INFERRED.** `_teachAntiHebbian` is a PRIMITIVE (called from inside `_teachAssociationPairs`). It could only reach that slot through the `exact:false` fallback, which fires only when `_outermostPhase` is null; and the line carried no `work N/N` tail, meaning `_phaseWorkTotal` was 0. Both are assigned in the SAME `if (isOutermost)` block → `isOutermost` had not been true once that cell.
+>
+> **THE MECHANISM — A LATCH.** The auto-wrap saved `prev = cl._activePhase` on entry and restored it in `finally`. Sound only if teach calls never interleave — and they do: `brain-server.js:2256` fires `_teachWordDefinition` (CHAT-DEF, a NETWORK fetch up to 20s) un-awaited, `chat.js:246/599` fires `_teachAssociationPairs`, emission fires EMIT-DEF. Walk phase P enters (outermost), chat call D enters mid-await (nested), **P finishes first and restores null, then D finishes and restores P — a phase object that already exited.** `_activePhase` is non-null forever after: every later phase reads as nested, `passedPhases` stops growing, resume-skip dies, `cellPhasesStarted` degrades to the constant 1. ONE chat message poisons the rest of the run, brain-wide, until restart.
+>
+> **WHAT WAS NOT BROKEN: the teaching.** Nested calls always execute — only skip/persist was outermost-gated. Those 45.2k events were real Hebbian work. The ledger under-reported; it did not under-teach. Do not "fix" her pace on the strength of that screen.
+>
+> **SHIPPED (`js/brain/curriculum.js`).** (1) In-flight `cl._phaseStack` of tokens, removed **by identity** on exit — an out-of-order finish can only remove itself and can never resurrect a dead phase; empty stack = genuinely nothing teaching. Applied to the `TRACKED_NO_SKIP` probe wrapper too. (2) Ledger admission by NAME: new **`_declaredPhaseNames(cellKey)`** reads the `_teach*` set from the cell runner’s own source (thin delegating arrow resolved first), cached — only those names may write `passedPhases`, so a chat teach can never bank itself as a cell phase and get the runner’s own call SKIPPED. (3) ONE derivation feeds the denominator, the admission list AND the persisted-count filter, so the bar and the ledger cannot disagree. (4) Within-phase work counted on **EXIT**, credited to the tally captured by reference when the unit started; a running vocab list folds into the SAME fraction.
+>
+> **FALLBACKS DELETED** (Gee mid-batch: *"fallbacks are illegal"*, *"the names shall never not be there.. code it cortrectly"* — both aimed at code I had written earlier the same day). Gone: the `exact:false` publish-the-primitive branch; `_persistedPhaseTotalFor()` (method removed) and the `declared || observed || persisted` cascade; the observed-total learner; `cellPhasesTotalSource`; `cellPhasesPersisted`; and in `html/dashboard.html` the **entire post-render override** — cell progress had been computed in TWO places that could disagree — with its five-branch cascade ending in `Math.min(85, elapsed/EXPECTED_K_CELL_MIN * 85)`, a stopwatch rendered as a percentage and hard-capped so it could never pass 85. Both heuristic constants deleted. The host renderer now computes `(done + frac) / total` ONCE and prints **"no declared phase in flight"** in amber rather than ever naming a primitive.
+>
+> **VERIFIED** (no-tests LAW): `node --check` PASS; ESM `import()` PASS; all 3 dashboard inline blocks parse; app + voice bundles rebuilt with the new code present and every deleted fallback absent; no stale consumers of the removed fields anywhere. **Derivation exercised for real: 48 cells (6 subjects × 8 grades, pre-K→PhD) ALL resolve non-zero** — ela/K=25, math/K=24, life/K=28, ela/pre-K=4, life/pre-K=8. Nothing to fall back to.
+>
+> **OPEN / NEXT.** (1) **L.6 live-verify** after his next Update/Fresh-walk: the cell line must name a REAL phase with a MINUTES-scale `+Ns`, carry a `work N/N` tail that climbs, and `0 complete` must leave 0 when phase 1 lands. (2) **V.8** still open — first dream window, `kVocabTaught` off 0. (3) Per-phase duration distribution is finally measurable now that the ledger records; `_teachLanguageMechanics` at 15—45 min is the first thing to check. (4) `brain-server.js:8371` still drops `msg.phaseTimingMs` (one-line fix, needs the full-file read first).
+>
+> ---
+
+> ## ⭐⭐⭐ 2026-08-14 (earlier today) — REMOTES SYNCED · REV'S 3 PRs MERGED · DONOR DROWN KILLED · HONEST PROGRESS FOR ALL TRAINING · NO-DONOR GATE EVERYWHERE — main `d10144c`, both remotes `b0/a0`
 >
 > **START HERE.** Everything below is CODE-SHIPPED and pushed to BOTH remotes (`origin` git.unityailab + `github`). The box was mid-walk at last check and healthy. The one thing NEVER yet verified live is the grade-wide definition trickle (V.8) — it needs her to pass a cell and open a dream window.
 >

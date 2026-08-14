@@ -242,3 +242,54 @@ _REMOTE SYNC AUDIT migrated VERBATIM to `docs/FINALIZED.md` (§2026-08-14 REMOTE
 ---
 
 _NO MORE PENCIL (colorful refs + colored imagination + store v3) migrated VERBATIM to `docs/FINALIZED.md` (§2026-07-15 DRAW: NO MORE PENCIL) — Gee: "build 54b8af59 · main deploys watch playwrite see if u see her imagine at all and make sure there isNO MORE PENCIL ART(IT SUCKS)". Live-watch found 25/30 pencil — root was MONOCHROME references from the "simple/high-contrast" prompt. Fixed: colorful reference prompt, `composeFields` colored imagination (replaced white strokes), visual-memory store v2→v3 (orphan monochrome refs). Rendered+eyeballed colored house + dragon+castle. No open tasks._
+
+---
+
+## OPEN TASKS — 2026-08-14 · PHASE-LATCH: the outermost-phase flag corrupts permanently on the FIRST concurrent teach
+
+> Gee (verbatim): *"is this right? 50k events and still phase 1, 0% complete?"*
+>
+> Gee (verbatim, mid-batch correction): *"fallback? you should know we cxode it right the first time which means fallbacks are illegal"*
+>
+> Gee (verbatim, mid-batch correction): *"no the names shall never not be there.. wtf are you talking about!!! code it cortrectly"*
+>
+> Gee's dashboard paste (verbatim):
+> ```
+> phase: _teachLateralInhibition (+0.1s)
+> current cell progress
+> 0% · phase 1/25 · 0 complete · _teachAntiHebbian (+0s) · 29.2 min
+> course / grade / phases / cells / events
+> Foundational Reading / pre-K / 0 / 0 / 45.2k
+> ```
+
+**ANSWER: NO. It is not right, and it is not a display bug — the phase ledger is dead.**
+
+**THE PROOF, read off Gee's own paste (no inference).** The cell-progress line names `_teachAntiHebbian` with `+0s` elapsed. `_teachAntiHebbian` is a PRIMITIVE — `curriculum.js:11974` / `:14090` call it from inside `_teachAssociationPairs` / `_teachQABinding`. `getCurriculumStatus` only publishes a primitive there via the `exact:false` fallback at `curriculum.js:3089`, which fires **only when `cluster._outermostPhase` is null**. The same line carries **no `work N/N` tail**, which means `phaseWork` is null, which means `_phaseWorkTotal` is 0. `_outermostPhase` and `_phaseWorkTotal` are assigned in the SAME block — `curriculum.js:2683-2688`, `if (isOutermost && cl)`. Both absent ⇒ **`isOutermost` has not been true once this cell.**
+
+**THE MECHANISM — a latch, not a glitch.** The constructor auto-wrap decides outermost by `const prev = cl._activePhase; const isOutermost = prev === null;` and restores `cl._activePhase = prev` in `finally` (`curriculum.js:2641/2660/2789`). That save/restore is only sound if teach calls never interleave. **They do:**
+- `server/brain-server.js:2256` — `this.curriculum._teachWordDefinition(word, {label:'CHAT-DEF'}).catch(...)` — fire-and-forget from chat, and it awaits a **network** dictionary fetch (`timeoutMs` up to 20000).
+- `server/brain-server/chat.js:246` — `this.curriculum._teachAssociationPairs(pairs, {...})` un-awaited from the chat path.
+- `server/brain-server/chat.js:599` — `await curric._teachAssociationPairs(...)` from curiosity-followup.
+- `js/brain/curriculum.js:13620` — `this._teachWordDefinition(word, {label:'EMIT-DEF'})` un-awaited on emission.
+
+Interleave: walk phase **P** enters (`prev=null`, outermost ✓, `_activePhase=P`) → chat's **D** enters mid-await (`prev=P`, nested) → **P finishes first** and restores `_activePhase = null` → **D finishes second** and restores `_activePhase = P`, a phase object that already exited. From that instant `_activePhase` is permanently non-null, so **every subsequent phase in the entire walk sees `prev !== null` and is misclassified as nested — forever, brain-wide, until restart.** One chat message or one `EMIT-DEF` is enough to poison the rest of the run.
+
+**WHAT IT ACTUALLY BREAKS (this is the part that is not cosmetic):**
+1. `passedPhases` never appended by the auto-wrap → `cellPhasesCompleted` frozen at 0 → **`0 complete` after 29.2 min is the ledger, not her pace.**
+2. Resume-skip is dead — `⤳ PHASE SKIPPED` can never fire, so **every restart re-teaches from scratch**.
+3. `cellPhasesStarted` degrades to `passedPhases + 1` = the constant `1`. **`phase 1/25` is a stuck counter, not her position.**
+4. `phaseWork` null → the honest within-phase bar shipped this morning can never move → **`0%`.**
+5. `_cellPhaseObserved` never learns a cell's real phase count.
+6. `server/brain-server/gpu.js:2641` idle-detection reads `!_cc2._activePhase` and will now never see idle.
+
+**WHAT IS NOT BROKEN:** the teaching itself. Nested calls always execute — only the skip/persist path is outermost-gated. Those **45.2k events are real Hebbian work**; her weights are moving. It is the ledger that is lying, in the direction of under-reporting.
+
+### THE WORK
+
+- [x] **L.1** **DONE.** Replace the save/restore-across-await with a latch-proof in-flight STACK. `cl._phaseStack` of per-call tokens; `isOutermost = stack.length === 0` at entry; on exit remove **by identity** (`splice(indexOf(token),1)`) and set `_activePhase = stack[stack.length-1] || null`. Self-healing: once every in-flight call exits the stack is empty and the next walk phase is outermost again. No dead phase object can ever be resurrected.
+- [x] **L.2** **DONE.** Guard persist/skip against foreign teach calls. With a stack, a chat-driven `_teachWordDefinition` firing while the walk is BETWEEN phases would qualify as outermost and get written into `passedPhases` as a phase of the current cell — which would then be SKIPPED when the runner legitimately reaches it. Fix: persist/skip only when the method name is one the current cell's runner actually declares. `_cellRunner` already computes that name set at `curriculum.js:7044-7050` and throws it away after taking `.size` — keep it as `this._cellPhaseNames[cellKey]` and gate on it. Visibility/telemetry stays on for every call; only the LEDGER is gated.
+- [x] **L.3** **DONE.** Make the fallback honest about itself. When `outermostPhase.exact === false` the dashboard currently renders the primitive name as if it were the phase. Label it so a latch (or any future gap) is visible on screen instead of masquerading as progress.
+- [x] **L.4** **DONE.** Verify — no-tests LAW: `node --check`, ESM `import()` (catches dup bindings `--check` misses), bundle rebuild, and re-read the edited regions.
+- [x] **L.5** **DONE.** Docs + FINALIZED migration, atomic commit, cascade develop→main, push BOTH remotes.
+- [x] **L.7** **DONE.** *"fallback? you should know we cxode it right the first time which means fallbacks are illegal"* + *"no the names shall never not be there.. wtf are you talking about!!! code it cortrectly"* - every fallback branch deleted, including ones written earlier the same day: the `exact:false` publish-the-primitive branch; `_persistedPhaseTotalFor()` (method removed) and the `declared || observed || persisted` cascade; the in-memory observed-total learner; `cellPhasesTotalSource` + `cellPhasesPersisted`; and in `html/dashboard.html` the WHOLE post-render override block (cell progress was computed in two places that could disagree) with its five-branch cascade ending in `Math.min(85, elapsed/EXPECTED_K_CELL_MIN * 85)`, plus both heuristic constants. `_declaredPhaseNames()` always returns the set - proven by deriving it for 48 cells (6 subjects x 8 grades, pre-K through PhD): every one non-zero, so there is nothing to fall back to.
+- [ ] **L.6** ⏳ LIVE-VERIFY on Gee's next Update/Fresh-walk: cell-progress line must name a REAL phase (`_teachLetterCaseBinding`-class, not `_teachAntiHebbian`) with a **minutes-scale** `+Ns`, must carry a `work N/N` tail that climbs, and `0 complete` must leave 0 when phase 1 lands.

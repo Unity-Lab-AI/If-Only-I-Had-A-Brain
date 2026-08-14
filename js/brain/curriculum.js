@@ -2633,76 +2633,97 @@ export class Curriculum {
         this._teachNestedTotal[_n] = _nested.size;
       } catch { this._teachNestedTotal[_n] = 0; }
     }
+    // LATCH-PROOF PHASE STACK (2026-08-14). The prior implementation decided
+    // "am I the outermost phase?" by saving `prev = cl._activePhase` on entry
+    // and restoring it in `finally`. That is sound ONLY if teach calls never
+    // interleave - and they do. Chat fires `_teachWordDefinition` (CHAT-DEF: a
+    // NETWORK dictionary fetch that can run 20s) and `_teachAssociationPairs`
+    // un-awaited; emission fires EMIT-DEF the same way. Whenever one of those
+    // OUTLIVES the walk phase it started inside, its `finally` restores a phase
+    // object that has already exited: `_activePhase` is non-null forever after,
+    // every later phase reads as nested, `passedPhases` stops growing,
+    // resume-skip dies, and the dashboard can only name a primitive. ONE chat
+    // message poisoned the rest of the run, brain-wide, until restart. Caught
+    // live: 29.2 min into the first cell, 45.2k teach events, phase counter
+    // pinned at 1, 0 complete, and the cell-progress line naming
+    // `_teachAntiHebbian` at +0s - a primitive, not a phase.
+    //
+    // An in-flight STACK cannot latch. Entries are removed BY IDENTITY, so a
+    // call that finishes out of order removes only itself and can never
+    // resurrect a dead one, and an empty stack means genuinely nothing is
+    // teaching.
+    //
+    // LEDGER ADMISSION is a separate question from nesting and is answered by
+    // NAME: `_declaredPhaseNames(cellKey)` is the set this cell's own runner
+    // declares, derived from the runner's source - the same derivation that
+    // produces the phase-total denominator, so the bar and the ledger cannot
+    // disagree. Only those names may write `passedPhases`. That is what stops a
+    // chat-driven `_teachWordDefinition` from banking itself as a phase of the
+    // running cell, which would make the runner's own call to it get SKIPPED
+    // and never taught.
     for (const name of TRACKED) {
       const original = this[name].bind(this);
       this[name] = async (...args) => {
         const cl = this.cluster;
         const phaseKey = buildPhaseKey(name);
-        const prev = cl ? cl._activePhase : null;
-        // OUTERMOST-ONLY skip+persist. Prior T31-extended wrapped EVERY
-        // _teachX method with skip+persist — which CATASTROPHICALLY broke
+        if (cl && !Array.isArray(cl._phaseStack)) cl._phaseStack = [];
+        const stack = cl ? cl._phaseStack : null;
+        const isOutermost = stack ? stack.length === 0 : true;
+        // `phaseKey` is non-null exactly when a cell is running, which is also
+        // exactly when there is a declared-name set to ask.
+        const isCellPhase = !!phaseKey
+          && this._declaredPhaseNames(cl._currentCellKey).has(name)
+          && !stack.some((t) => t.ledger);
+
+        // CELL-PHASE-ONLY skip+persist. Prior T31-extended wrapped EVERY
+        // _teachX method with skip+persist - which CATASTROPHICALLY broke
         // primitives like _teachHebbian / _teachHebbianAsymmetric /
         // _teachCombination that are called hundreds of times PER CELL
         // from inside other teach methods. The FIRST call would persist
-        // the key, every subsequent call would SKIP → brain received
+        // the key, every subsequent call would SKIP -> brain received
         // ONE Hebbian update per cell instead of thousands. Entire pre-K
         // curriculum "passed" in seconds with zero actual learning, and
         // ELA-K log flooded with 90,000+ "PHASE SKIPPED" lines from the
         // broken primitives.
-
-        // Fix: only the OUTERMOST wrapped call (direct from cell runner,
-        // `prev === null`) does skip+persist. Nested calls (primitives
-        // invoked from inside another wrapped teach method) just track
-        // _activePhase for visibility and always run. A method's role
-        // (phase vs primitive) depends on CALL CONTEXT, not the method
-        // name — `_teachCausalChains` can be either depending on who
-        // called it.
-        const isOutermost = prev === null;
-        if (isOutermost && cl && phaseKey && Array.isArray(cl.passedPhases) && cl.passedPhases.includes(phaseKey)) {
-          this._hb(`[Curriculum] ⤳ PHASE SKIPPED — ${phaseKey} (already passed; resumed from persisted passedPhases — weights carried forward via brain-weights.bin)`);
+        //
+        // A method's role (phase vs primitive) is not a property of its
+        // name - `_teachCausalChains` can be either. It is now decided by
+        // the two facts that actually determine it: whether THIS cell's
+        // runner declares it, and whether a declared phase is already in
+        // flight above it.
+        if (isCellPhase && Array.isArray(cl.passedPhases) && cl.passedPhases.includes(phaseKey)) {
+          this._hb(`[Curriculum] PHASE SKIPPED - ${phaseKey} (already passed; resumed from persisted passedPhases - weights carried forward via brain-weights.bin)`);
           return;
         }
-        if (cl) cl._activePhase = { name, startAt: Date.now() };
-        // HONEST PROGRESS (2026-08-14) — count outermost phases STARTED,
-        // not only completed. The first phase of a K cell legitimately runs
-        // tens of minutes, so `phasesCompleted` sits at 0 the whole time and
-        // the dashboard falls back to an elapsed-time guess it renders as
-        // "~85% [time-est] · 0 phases reported · server phase counter stuck".
-        // That estimate saturates and stops, which reads as a hang on a brain
-        // that is teaching perfectly well. A started-count moves the instant
-        // real work begins, so "is she moving?" is answerable by looking.
-        // Self-resets when the cell key changes — no external reset needed.
-        // OUTERMOST-PHASE VISIBILITY (2026-08-14). `_activePhase` is
-        // overwritten by every NESTED call, so the dashboard showed
-        // `_teachHebbian` — a primitive fired thousands of times per phase —
-        // instead of the real cell phase. Reading the live box: 45 minutes in
-        // `ela/kindergarten` with 73,421 sub-phase calls and `passedPhases`
-        // still EMPTY, meaning not one of ELA-K's 27 phases had completed and
-        // nothing on screen could say WHICH one was grinding. Track the
-        // outermost separately so the phase actually responsible is nameable.
-        if (isOutermost && cl) {
-          cl._outermostPhase = { name, startAt: Date.now() };
+        const token = { name, startAt: Date.now(), ledger: isCellPhase };
+        if (stack) { stack.push(token); cl._activePhase = token; }
+        // HONEST PROGRESS (2026-08-14) - count cell phases STARTED, not only
+        // completed. The first phase of a K cell legitimately runs tens of
+        // minutes, so `phasesCompleted` sits at 0 the whole time and the
+        // dashboard falls back to an elapsed-time guess it renders as "~85%
+        // [time-est]". That estimate saturates and stops, which reads as a hang
+        // on a brain that is teaching perfectly well. A started-count moves the
+        // instant real work begins, so "is she moving?" is answerable by
+        // looking. Self-resets when the cell key changes.
+        //
+        // CELL-PHASE VISIBILITY (2026-08-14). `_activePhase` is overwritten by
+        // every NESTED call, so the dashboard showed `_teachHebbian` - a
+        // primitive fired thousands of times per phase - instead of the real
+        // cell phase. Track the cell phase separately so the phase actually
+        // responsible is nameable.
+        if (isCellPhase) {
+          cl._outermostPhase = token;
           // Start a fresh within-phase work tally for this phase.
           this._phaseWorkName = name;
           this._phaseWorkSeen = new Set();
           this._phaseWorkTotal = (this._teachNestedTotal && this._teachNestedTotal[name]) || 0;
-        } else if (this._phaseWorkSeen) {
-          // A nested teach call IS one unit of the enclosing phase's work.
-          this._phaseWorkSeen.add(name);
         }
-        if (isOutermost && cl) {
+        // The tally this call will be credited to when it finishes - captured
+        // now, by reference, so it lands on the phase it actually ran inside.
+        const workSeen = isCellPhase ? null : this._phaseWorkSeen;
+        if (isCellPhase) {
           const _ck = cl._currentCellKey || '';
           if (this._cellPhasesStartedKey !== _ck) {
-            // Leaving a cell — bank its OBSERVED outermost-phase count as the
-            // learned total for runners that don't declare phases via
-            // `_phaseTick`. Monotonic (only ever grows) so a cell cut short by
-            // a restart can't shrink a previously-complete count.
-            if (this._cellPhasesStartedKey && this._cellPhasesStartedSet?.size > 0) {
-              if (!this._cellPhaseObserved) this._cellPhaseObserved = {};
-              const _prev = this._cellPhasesStartedKey;
-              const _seen = this._cellPhasesStartedSet.size;
-              if (!(this._cellPhaseObserved[_prev] >= _seen)) this._cellPhaseObserved[_prev] = _seen;
-            }
             this._cellPhasesStartedKey = _ck;
             this._cellPhasesStartedSet = new Set();
           }
@@ -2711,7 +2732,7 @@ export class Curriculum {
         }
         // NO-DONOR GATE, EVERYWHERE (2026-08-14). `_awaitComputeSubstrate` is
         // awaited at only FOUR call sites in the whole curriculum and NONE of
-        // them sit inside the teach loops — so once she is deep in a long
+        // them sit inside the teach loops - so once she is deep in a long
         // phase she never REACHES a checkpoint and CPU-grinds the entire phase
         // with the donor switched off. She was never ignoring the gate; she
         // never arrived at one. That is worse than wasted work: the gate's own
@@ -2719,10 +2740,10 @@ export class Curriculum {
         // returning donor needs", so grinding donor-less actively blocks the
         // donor from reconnecting.
         //
-        // Checking it HERE puts the gate on every OUTERMOST phase entry and on
-        // every Nth nested teach call, so the walk pauses within seconds of a
-        // donor loss ANYWHERE in training and resumes the moment one registers
-        // — one place, all grades, no per-runner wiring. The 120s grace and
+        // Checking it HERE puts the gate on every outermost entry and on every
+        // Nth nested teach call, so the walk pauses within seconds of a donor
+        // loss ANYWHERE in training and resumes the moment one registers - one
+        // place, all grades, no per-runner wiring. The 120s grace and
         // DREAM_NO_DONOR_GRIND=1 override live inside the gate and are
         // untouched. Nested checks are sampled (not every call) because this
         // fires ~50x/sec during teach.
@@ -2736,16 +2757,17 @@ export class Curriculum {
         } catch { /* gate must never break a teach call */ }
         try {
           const result = await original(...args);
-          // Persist ONLY outermost phases. Nested primitives never
-          // get marked as passed — they can run freely across cells.
-          if (isOutermost && cl && phaseKey) {
+          // Persist ONLY this cell's declared phases. Primitives and foreign
+          // (chat / emission) teach calls never get marked as passed - they
+          // must stay free to run again.
+          if (isCellPhase) {
             if (!Array.isArray(cl.passedPhases)) cl.passedPhases = [];
             if (!cl.passedPhases.includes(phaseKey)) cl.passedPhases.push(phaseKey);
             if (typeof this._saveCheckpoint === 'function') {
               try { this._saveCheckpoint(phaseKey); } catch { /* non-fatal */ }
             }
-            // Dashboard training progress — increment per-subject phase
-            // counter on each completed OUTERMOST teach phase. Used by
+            // Dashboard training progress - increment per-subject phase
+            // counter on each completed cell phase. Used by
             // `getCurriculumStatus()` for the "Current Training" card.
             this._currentCellPhasesCompleted = (this._currentCellPhasesCompleted | 0) + 1;
             if (this._currentSubject && this._perSubjectStats) {
@@ -2755,58 +2777,66 @@ export class Curriculum {
                 s.lastCellAt = Date.now();
               }
             }
-            // iter20-D moved to per-cell-runner _phaseDone helpers
-            // (kindergarten.js + pre-K.js). The auto-wrap path for
-            // outermost phase detection wasn't reliably reaching here
-            // for K_MIXIN methods despite TRACKED including them.
-            // Per-runner _phaseDone helpers DO fire reliably (visible
-            // as "✓ Phase DONE" log lines) so storeEpisode is hooked
-            // directly there in `_recordPhaseEpisode()`.
           }
-          // Every wrapped teach call (outermost OR nested) counts as a
-          // teach event for per-subject totals so the dashboard's long-
-          // run "training events" tally grows even when the same
-          // primitive is invoked thousands of times inside a single
-          // phase (e.g. _teachHebbian inside a teach loop).
+          // Every wrapped teach call (phase OR primitive) counts as a teach
+          // event for per-subject totals so the dashboard's long-run "training
+          // events" tally grows even when the same primitive is invoked
+          // thousands of times inside a single phase.
           if (this._currentSubject && this._perSubjectStats) {
             const s = this._perSubjectStats[this._currentSubject];
             if (s) s.teachEvents = (s.teachEvents | 0) + 1;
           }
-          // I.12 closure — per-cell SUB-PHASE counter. Increments on
-          // every wrapped teach call (outermost OR nested) but scoped to
-          // the CURRENT cell only (resets on cell entry, see line 6580).
-          // The outermost-only counter (_currentCellPhasesCompleted)
-          // stays at 0 for the entire cell duration because K cells
-          // wrap their whole teach pass as ONE outermost phase with
-          // dozens of nested teach calls — operator's dashboard saw
-          // "0% · 0 phases · 9.3 min elapsed" while 25+ nested teach
-          // calls were firing. Exposing the nested counter via the
-          // snapshot lets the dashboard render real-time progress
-          // without waiting for cell completion.
+          // I.12 closure - per-cell SUB-PHASE counter. Increments on every
+          // wrapped teach call but scoped to the CURRENT cell only.
           this._currentCellSubPhases = (this._currentCellSubPhases | 0) + 1;
           return result;
         } finally {
-          if (cl) cl._activePhase = prev;
-          // Clear the outermost marker only when the OUTERMOST call exits —
-          // a nested primitive must never clear it or the real phase name
-          // vanishes from the dashboard again.
-          if (isOutermost && cl) cl._outermostPhase = null;
+          // Remove THIS call BY IDENTITY - never by position, never by
+          // overwriting with a value saved before an await. A call that
+          // finishes out of order can then only remove itself; whatever is
+          // still running stays on top. This is what makes the latch
+          // impossible.
+          if (stack) {
+            const _i = stack.lastIndexOf(token);
+            if (_i >= 0) stack.splice(_i, 1);
+            cl._activePhase = stack.length ? stack[stack.length - 1] : null;
+          }
+          // Identity-checked, so an out-of-order exit can never clear a phase
+          // that is still live, and the work tally retires with its own phase
+          // instead of lingering at 99% between phases.
+          if (cl && cl._outermostPhase === token) {
+            cl._outermostPhase = null;
+            this._phaseWorkName = null;
+            this._phaseWorkSeen = null;
+            this._phaseWorkTotal = 0;
+          } else if (workSeen) {
+            // A nested teach call is one unit of the enclosing phase's work,
+            // credited on EXIT so an in-flight unit is never counted as done.
+            workSeen.add(name);
+          }
         }
       };
     }
     // Tracked-no-skip methods just get the active-phase visibility
-    // without the passedPhases check/append.
+    // without the passedPhases check/append. Same identity-removed stack -
+    // a probe that outlives the phase it ran inside must not latch either.
     for (const name of TRACKED_NO_SKIP) {
       if (!proto[name]) continue;
       const original = this[name].bind(this);
       this[name] = async (...args) => {
         const cl = this.cluster;
-        const prev = cl ? cl._activePhase : null;
-        if (cl) cl._activePhase = { name, startAt: Date.now() };
+        if (cl && !Array.isArray(cl._phaseStack)) cl._phaseStack = [];
+        const stack = cl ? cl._phaseStack : null;
+        const token = { name, startAt: Date.now(), ledger: false };
+        if (stack) { stack.push(token); cl._activePhase = token; }
         try {
           return await original(...args);
         } finally {
-          if (cl) cl._activePhase = prev;
+          if (stack) {
+            const _i = stack.lastIndexOf(token);
+            if (_i >= 0) stack.splice(_i, 1);
+            cl._activePhase = stack.length ? stack[stack.length - 1] : null;
+          }
         }
       };
     }
@@ -2997,8 +3027,14 @@ export class Curriculum {
       elapsedMs: cluster._activePhase.startAt ? Date.now() - cluster._activePhase.startAt : 0,
     } : null;
     const cellKey = cluster && cluster._currentCellKey ? cluster._currentCellKey : null;
-    const currentCellPassedPhases = cellKey && Array.isArray(cluster?.passedPhases)
-      ? cluster.passedPhases.filter(k => k && k.startsWith(`${cellKey}:`)).length
+    // The declared phase set for the running cell - resolved once here and
+    // reused for the ledger count, the started count and the denominator, so
+    // all three are literally the same list.
+    const declaredNow = cellKey ? this._declaredPhaseNames(cellKey) : null;
+    const currentCellPassedPhases = declaredNow && Array.isArray(cluster?.passedPhases)
+      ? cluster.passedPhases.filter((k) => k
+          && k.startsWith(`${cellKey}:`)
+          && declaredNow.has(k.slice(cellKey.length + 1))).length
       : 0;
     // Cell status — distinguish "in-progress" from "passed" so the
     // dashboard progress bar doesn't misleadingly cap at 100% while
@@ -3072,75 +3108,53 @@ export class Curriculum {
       cellStatus,
       pausedForDonorMs: this._pausedForDonorSinceMs ? (Date.now() - this._pausedForDonorSinceMs) : 0,
       activePhase,
-      // The REAL cell phase (OUTERMOST), distinct from `activePhase` which is
-      // whatever nested primitive is executing this instant. Reading the live
-      // box: 45 min in ela/kindergarten, 73,421 sub-phase calls, `passedPhases`
-      // still EMPTY — so no phase had completed and nothing on screen could
-      // name WHICH phase was grinding, because activePhase only ever showed
-      // `_teachHebbian` (a primitive fired thousands of times per phase).
+      // The REAL cell phase, distinct from `activePhase` which is whatever
+      // nested primitive is executing this instant. This is the phase the cell
+      // runner declared and is currently inside; it is null when no declared
+      // phase is in flight, and that null is the honest answer - the earlier
+      // build substituted the nested primitive here and marked it "inexact",
+      // which meant a dead phase ledger rendered as `_teachAntiHebbian (+0s)`
+      // and read like progress. A name that is not the phase is worse than no
+      // name: it hides the exact failure it was added to survive.
       outermostPhase: cluster?._outermostPhase
         ? { name: cluster._outermostPhase.name,
-            elapsedMs: Date.now() - cluster._outermostPhase.startAt, exact: true }
-        // FALLBACK — this published `null` on the live box while a nested
-        // `_teachHebbian` ran, so the phase still could not name itself.
-        // Never publish null while SOMETHING is teaching: fall back to the
-        // active (possibly nested) phase and mark it inexact, so the UI
-        // always has a name and can show how confident it is.
-        : (activePhase ? { name: activePhase.name, elapsedMs: activePhase.elapsedMs, exact: false } : null),
-      // WITHIN-PHASE WORK — distinct nested `_teach*` units entered, over the
-      // count derived from the phase's own source. This is what makes the bar
-      // MOVE during a long phase instead of sitting at 0% then jumping.
-      phaseWork: (this._phaseWorkTotal > 0)
-        ? { name: this._phaseWorkName || null,
-            done: (this._phaseWorkSeen ? this._phaseWorkSeen.size : 0),
-            total: this._phaseWorkTotal,
-            pct: Math.min(99, Math.round(((this._phaseWorkSeen ? this._phaseWorkSeen.size : 0) / this._phaseWorkTotal) * 100)) }
+            elapsedMs: Date.now() - cluster._outermostPhase.startAt }
         : null,
-      cellPhasesCompleted: this._currentCellPhasesCompleted | 0,
-      // HONEST PROGRESS (2026-08-14) — `cellPhasesCompleted` only ticks when
-      // an OUTERMOST phase FINISHES, so a K cell reads 0 for tens of minutes
-      // and the dashboard degrades to an elapsed-time estimate ("~85%
-      // [time-est] · server phase counter stuck") that saturates and looks
-      // like a hang. These two move while she works:
-      //   cellPhasesStarted — outermost phases ENTERED in this cell
-      //   vocabProgress     — live word position inside the current list
-      // Together they answer "is she moving?" without interpreting a
-      // frozen counter.
-      // UNIVERSAL PHASE COUNT (2026-08-14) — works for EVERY runner, every
-      // grade, regardless of which bookkeeping that runner uses.
+      // WITHIN-PHASE WORK - what makes the bar move DURING a phase instead of
+      // sitting at 0% for its whole duration and then jumping.
       //
-      // There are TWO phase-recording mechanisms and neither is reliable
-      // alone: the constructor auto-wrap (which this file itself documents as
-      // "wasn't reliably reaching here for K_MIXIN methods"), and the
-      // hand-written `_phaseTick`/`_phaseDone` helpers that only
-      // `runElaKReal` defines. Counting either one left `cellPhasesCompleted`
-      // and `cellPhasesStarted` pinned at 0 for entire cells — which is what
-      // pushed the dashboard onto its elapsed-time stopwatch in the first
-      // place.
+      // `total` is the count of distinct nested `_teach*` units the phase's own
+      // source calls; `done` is how many have FINISHED (counted on exit, not on
+      // entry, so an in-flight unit is never reported as complete). A vocabulary
+      // list running inside the phase is within-phase work too, so its position
+      // folds into the SAME fraction rather than becoming a second signal the UI
+      // would have to choose between.
+      phaseWork: (this._phaseWorkTotal > 0)
+        ? (() => {
+            const done = this._phaseWorkSeen ? this._phaseWorkSeen.size : 0;
+            const vp = this._vocabProgress;
+            const vFrac = (vp && vp.total > 0) ? Math.min(1, (vp.taught | 0) / vp.total) : 0;
+            return {
+              name: this._phaseWorkName || null,
+              done,
+              total: this._phaseWorkTotal,
+              frac: Math.min(0.99, (done + vFrac) / this._phaseWorkTotal),
+            };
+          })()
+        : null,
+      // PHASE COUNTS - ONE derivation, from ONE record.
       //
-      // But BOTH mechanisms append `cellKey:methodName` to `passedPhases`,
-      // and `passedPhases` is persisted. So the honest count is derived from
-      // the record itself: phases COMPLETED for this cell = its entries;
-      // STARTED = those plus the one currently in flight. Mechanism-agnostic,
-      // resume-correct, and true for pre-K through PhD.
-      cellPhasesStarted: Math.max(
-        this._currentCellPhasesStarted | 0,
-        (currentCellPassedPhases | 0) + (cluster?._activePhase ? 1 : 0),
-      ),
-      // EXACT total for THIS cell — declared (counted from the runner's own
-      // source) preferred, else observed (learned from a previous run of the
-      // same cell), else NULL. Null means "not known yet"; consumers must show
-      // no denominator rather than substitute a guess.
-      cellPhasesTotal: (cellKey && (
-        (this._cellPhaseDeclared && this._cellPhaseDeclared[cellKey])
-        || (this._cellPhaseObserved && this._cellPhaseObserved[cellKey])
-        || this._persistedPhaseTotalFor(cellKey, cluster)
-      )) || null,
-      cellPhasesTotalSource: (cellKey && this._cellPhaseDeclared && this._cellPhaseDeclared[cellKey])
-        ? 'declared'
-        : ((cellKey && this._cellPhaseObserved && this._cellPhaseObserved[cellKey])
-            ? 'observed'
-            : (this._persistedPhaseTotalFor(cellKey, cluster) ? 'persisted' : null)),
+      // `passedPhases` is the ledger: the auto-wrap appends `cellKey:method`
+      // for every DECLARED phase of the cell that completes, the file
+      // persists it, and resume reads it back. So for the running cell:
+      //   completed = its entries
+      //   started   = completed + the one currently in flight
+      //   total     = the size of the runner's declared phase set
+      // All three come from the same place, which is why they cannot
+      // contradict each other and why they survive a restart unchanged.
+      cellPhasesCompleted: currentCellPassedPhases,
+      cellPhasesStarted: currentCellPassedPhases + (cluster?._outermostPhase ? 1 : 0),
+      cellPhasesTotal: declaredNow ? declaredNow.size : null,
       vocabProgress: this._vocabProgress
         ? {
             label: this._vocabProgress.label,
@@ -3152,7 +3166,6 @@ export class Curriculum {
               ? Math.round((this._vocabProgress.taught / this._vocabProgress.total) * 100) : 0,
           }
         : null,
-      cellPhasesPersisted: currentCellPassedPhases,
       // I.12 closure — nested sub-phase counter. cellPhasesCompleted
       // only ticks on OUTERMOST teach phases, which means K cells stay
       // at 0 phases for their entire ~25 min runtime. cellSubPhases ticks
@@ -3815,43 +3828,6 @@ export class Curriculum {
       const _dwSkipNote = _dwSkipped.length ? ` · skipped: ${_dwSkipped.join(', ')}` : '';
       this._hb(`[Curriculum] ☀ dream window closed (${(totalMs / 1000).toFixed(1)}s total${_dwStages ? ' — ' + _dwStages : ''}${_dwSkipNote}) — resuming curriculum`);
     }
-  }
-
-  /**
-   * PERSISTED phase total for a cell — FREE persistence across restarts
-   * (2026-08-14).
-   *
-   * The declared total is recomputed from source every boot, and the observed
-   * total is in-memory only, so a restart mid-walk would otherwise lose any
-   * total for a runner whose source scan came up empty. `passedPhases` is
-   * ALREADY persisted in the weights file (`brain-server.js` saves and
-   * restores it for phase-level resume), and every entry is keyed
-   * `cellKey:methodName` — so for a cell that ACTUALLY PASSED, the number of
-   * its entries IS its exact phase total. No new save field needed.
-   *
-   * Gated on `passedCells` deliberately: an INTERRUPTED cell has a partial
-   * entry list, and using that as a denominator would silently over-report
-   * progress (12 of "12" while 15 remain). A total we cannot trust must read
-   * as unknown, not as a smaller number.
-   *
-   * @returns {number|null}
-   */
-  _persistedPhaseTotalFor(cellKey, cluster) {
-    try {
-      if (!cellKey || !cluster) return null;
-      const passedCells = cluster.passedCells;
-      const passedOk = Array.isArray(passedCells)
-        ? passedCells.includes(cellKey)
-        : (passedCells instanceof Set ? passedCells.has(cellKey) : false);
-      if (!passedOk) return null;               // never trust a partial cell
-      if (!Array.isArray(cluster.passedPhases)) return null;
-      const prefix = `${cellKey}:`;
-      let n = 0;
-      for (const p of cluster.passedPhases) {
-        if (typeof p === 'string' && p.startsWith(prefix)) n++;
-      }
-      return n > 0 ? n : null;
-    } catch { return null; }
   }
 
   /**
@@ -6987,6 +6963,53 @@ export class Curriculum {
   // subject/grade combinations throw — no silent fallthrough.
 
   /**
+   * The set of `_teach*` method names the (subject, grade) cell runner
+   * DECLARES - read from the runner's own source, cached per cell key.
+   *
+   * This is the single derivation behind two things that must never
+   * disagree: the phase-total denominator the dashboard divides by, and the
+   * admission list the phase ledger uses to decide whether a given teach
+   * call is one of THIS cell's phases. Teach calls also arrive from outside
+   * the walk entirely - chat fires `_teachWordDefinition` (CHAT-DEF) and
+   * `_teachAssociationPairs`, emission fires EMIT-DEF - and those must never
+   * be written into `passedPhases`, or the runner's own call to the same
+   * method would be skipped and never taught.
+   */
+  _declaredPhaseNames(cellKey) {
+    if (!this._cellPhaseNames) this._cellPhaseNames = {};
+    const cached = this._cellPhaseNames[cellKey];
+    if (cached) return cached;
+    const _slash = cellKey.indexOf('/');
+    const subject = cellKey.slice(0, _slash);
+    const grade = cellKey.slice(_slash + 1);
+    // RESOLVE THE THIN ARROW FIRST. `_cellRunnerRaw` returns delegating
+    // arrows - `async (ctx) => this.runElaKReal(ctx)` - so scanning THAT
+    // source finds zero `_teach` names and the total came out as just the
+    // 2 phases the wrapper adds (observed live: ela/kindergarten reported
+    // "2"). Follow the arrow to the method it names and scan the real body.
+    let src = Function.prototype.toString.call(this._cellRunnerRaw(subject, grade));
+    const deleg = src.match(/this\.(run[A-Za-z0-9_]+)\s*\(/);
+    if (deleg && typeof this[deleg[1]] === 'function') {
+      src = Function.prototype.toString.call(this[deleg[1]]);
+    }
+    // DISTINCT names are the right unit because that is exactly what the
+    // numerator counts: the constructor auto-wrap makes a `_teach*` an
+    // outermost phase, and calling the same one twice is still ONE phase.
+    //
+    // Cross-checked: ELA-K yields 27 by this method and 27 by counting its
+    // `_phaseTick` declarations - two independent reads agreeing exactly.
+    const names = new Set(
+      [...src.matchAll(/this\.(_teach[A-Za-z0-9_]+)\s*\(/g)].map((m) => m[1]),
+    );
+    // `_cellRunner` itself prepends these before delegating, so they are
+    // outermost phases of this cell too.
+    if (subject !== 'life') names.add('_teachCourseIdentity');
+    if (subject === 'ela') names.add('_teachLanguageMechanics');
+    this._cellPhaseNames[cellKey] = names;
+    return names;
+  }
+
+  /**
    * Return an async runner `(ctx) => {pass, reason, metrics}` for the given
    * (subject, grade) cell. Wraps the raw dispatch (`_cellRunnerRaw`) so EVERY
    * cell — every subject, every grade, pre-K → PhD, retroactively — first
@@ -7000,62 +7023,23 @@ export class Curriculum {
   _cellRunner(subject, grade) {
     const raw = this._cellRunnerRaw(subject, grade);
     if (typeof raw !== 'function') return raw;
-    // EXACT PHASE TOTAL (2026-08-14) — read the runner's DECLARED phase count
+    // EXACT PHASE TOTAL (2026-08-14) - read the runner's DECLARED phase count
     // from its own source instead of guessing. The dashboard previously
     // divided by a hardcoded `EXPECTED_PHASES_PER_CELL = 12` living in a
     // public HTML that cannot know which cell is running; the ELA-K runner
     // declares 27, so the bar rendered 50% at phase 6 when the truth was 22%
-    // — wrong by 2.25×, not merely imprecise.
+    // - wrong by 2.25x, not merely imprecise.
     //
-    // The cell runners are NOT auto-wrapped (the constructor wrap only tracks
-    // `_teach*` plus two named probes), so `raw` really is the authored
-    // function and its source is the authoritative phase list. Counted once
-    // per cell key and cached. Runners that don't declare phases via
-    // `_phaseTick` fall through to the OBSERVED total learned below — and if
-    // neither exists we publish null and the UI shows no denominator rather
-    // than inventing one.
-    try {
-      const _ck = `${subject}/${grade}`;
-      if (!this._cellPhaseDeclared) this._cellPhaseDeclared = {};
-      if (this._cellPhaseDeclared[_ck] == null) {
-        // RESOLVE THE THIN ARROW FIRST. `_cellRunnerRaw` returns delegating
-        // arrows — `async (ctx) => this.runElaKReal(ctx)` — so scanning THAT
-        // source finds zero `_teach` names and the total came out as just the
-        // 2 phases the wrapper adds (observed live: ela/kindergarten reported
-        // "2"). Follow the arrow to the method it names and scan the real
-        // body; fall back to the arrow's own source if it isn't a delegator.
-        let _src = Function.prototype.toString.call(raw);
-        const _deleg = _src.match(/this\.(run[A-Za-z0-9_]+)\s*\(/);
-        if (_deleg && typeof this[_deleg[1]] === 'function') {
-          _src = Function.prototype.toString.call(this[_deleg[1]]);
-        }
-        // DISTINCT `this._teachX(` names are the right denominator because
-        // that is exactly what the numerator counts: the constructor
-        // auto-wrap makes every `_teach*` an outermost phase, and
-        // `passedPhases` keys on `cellKey:methodName` — so a method called
-        // twice is still ONE phase. Counting names (not call sites) keeps
-        // numerator and denominator measuring the same thing.
-        //
-        // Cross-checked: ELA-K yields 27 by this method and 27 by counting
-        // its `_phaseTick` declarations — two independent reads agreeing
-        // exactly. Every other runner declares no `_phaseTick` at all, which
-        // is why the old approach left pre-K (where a fresh walk OPENS) with
-        // no denominator.
-        const _names = new Set(
-          [...(_src.matchAll(/this\.(_teach[A-Za-z0-9_]+)\s*\(/g) || [])].map((m) => m[1]),
-        );
-        // `_cellRunner` itself prepends these before delegating to `raw`, so
-        // they are outermost phases too and the numerator will count them.
-        if (subject !== 'life') _names.add('_teachCourseIdentity');
-        if (subject === 'ela') _names.add('_teachLanguageMechanics');
-        const _n = _names.size;
-        if (_n > 0) {
-          this._cellPhaseDeclared[_ck] = _n;
-          const _ticks = (_src.match(/_phaseTick\s*\(/g) || []).length;
-          this._hb?.(`[Curriculum] phase-total for ${_ck}: ${_n} phases — READ from the runner's own source, not estimated${_ticks ? ` (${_ticks} of them additionally declared via _phaseTick)` : ''}.`);
-        }
-      }
-    } catch { /* non-fatal — falls back to the observed/persisted total */ }
+    // The count is `_declaredPhaseNames()`'s set size. ONE derivation feeds
+    // both this denominator and the phase ledger's admission list, so the
+    // number on screen and the rule deciding what counts can never disagree.
+    const _ck = `${subject}/${grade}`;
+    if (!this._cellPhaseDeclared) this._cellPhaseDeclared = {};
+    if (this._cellPhaseDeclared[_ck] == null) {
+      const _names = this._declaredPhaseNames(_ck);
+      this._cellPhaseDeclared[_ck] = _names.size;
+      this._hb?.(`[Curriculum] phase-total for ${_ck}: ${_names.size} phases - READ from the runner's own source, not estimated.`);
+    }
     return async (ctx) => {
       if (subject !== 'life') {
         try { await this._teachCourseIdentity(subject, grade, ctx); }

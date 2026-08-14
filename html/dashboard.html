@@ -2179,15 +2179,6 @@
     // (phase count / heuristic total) and a per-subject breakdown
     // grid showing phases + cells-passed + teach-events per subject.
 
-    // Heuristic: we don't know the TOTAL phase count for the current
-    // cell in advance (each cell's teach phase count varies — pre-K
-    // runners fire 4-6 phases, K runners fire 14-18). So progress %
-    // is computed as completed / max(completed, expected) where
-    // `expected` starts at 12 (typical K cell) and grows if the
-    // actual count overshoots. Bar saturates at 100% after the
-    // expected count, which is fine — operator cares about direction
-    // of motion, not exact total.
-    const EXPECTED_PHASES_PER_CELL = 12;
     // Substitute the active grade's compact label into the
     // dashboard panel headers that previously hardcoded "K-". Reads
     // c.currentGradeShort from getCurriculumStatus (single source
@@ -2375,24 +2366,19 @@
         $('d-curr-phase').textContent = 'phase: (between phases)';
       }
 
-      // In-cell progress bar. Prefer the persisted count (survives
-      // restarts) over the live runtime count (which resets to zero
-      // on each cell entry). Cap the bar at 95% while the cell is
-      // still in progress — only show 100% + ✓ once cluster.passed-
-      // Cells includes the cell's key (cellStatus === 'passed').
-      // Without this cap the display hits 100% after ~12 phases and
-      // stays there for the remaining hours of teaching.
+      // CELL PROGRESS - ONE formula, from the server's ONE record.
       //
-      // `cellSubPhases` is the new server-side field
-      // that ticks on every wrapped teach call (outermost OR nested),
-      // unlike `cellPhasesCompleted` which only ticks on outermost
-      // boundaries. K cells wrap their whole pass as ONE outermost
-      // phase with 25+ nested calls; using `cellSubPhases` as a
-      // fallback when the outermost counter is 0 gives the operator
-      // real-time visible progress instead of 0%/0-phases for 25 min.
-      const outermostDone = Math.max(c.cellPhasesPersisted | 0, c.cellPhasesCompleted | 0);
-      const subPhaseDone = c.cellSubPhases | 0;
-      const done = outermostDone > 0 ? outermostDone : subPhaseDone;
+      //   done  = declared phases of this cell already in `passedPhases`
+      //   frac  = how far through the phase currently in flight
+      //   total = the phase count this cell's runner declares in its source
+      //
+      // Everything the bar shows is measured work. There is no expected-count
+      // heuristic, no elapsed-time estimate, and no second counter that can
+      // disagree with the first - the build this replaces had all three, and
+      // between them they hid a DEAD phase ledger behind a bar that still
+      // moved: 29.2 min into a cell it read "0% - phase 1/25 - 0 complete"
+      // while naming a primitive as the phase.
+      const done = c.cellPhasesCompleted | 0;
       const elapsedMs = c.cellElapsedMs | 0;
       const elapsedMin = (elapsedMs / 60000).toFixed(1);
       const status = c.cellStatus || 'idle';
@@ -2400,44 +2386,45 @@
       let pctLabel;
       // Pre-cell macro-phase progress takes precedence over
       // the in-cell bar when no real cell is active. Without this the
-      // dashboard showed "idle · 0 phases" during the 5-15 min K-VOCAB
-      // upfront-multi-def-seed pass, leaving master with no clue how
-      // much longer pre-cell setup would take. Now the bar fills based
-      // on words processed (e.g. 425/2247 ≈ 19%) so wall-clock time
-      // remaining is visible at a glance.
+      // dashboard showed "idle - 0 phases" during the pre-cell seed pass,
+      // leaving no clue how much longer setup would take. The bar fills on
+      // words processed so wall-clock remaining is visible at a glance.
       if (c.macroPhaseProgress && c.macroPhaseProgress.total > 0) {
         const mp = c.macroPhaseProgress;
         pct = Math.max(0, Math.min(100, mp.pct | 0));
-        pctLabel = `${pct}% · ${mp.current}/${mp.total} ${mp.label}`;
+        pctLabel = `${pct}% &middot; ${mp.current}/${mp.total} ${mp.label}`;
         $('d-curr-cellbar').style.background = 'linear-gradient(90deg,#fbbf24,#f59e0b)'; // amber for pre-cell
       } else if (status === 'passed') {
         pct = 100;
-        pctLabel = `✓ PASSED · ${done} phases · ${elapsedMin} min`;
+        pctLabel = `&#10003; PASSED &middot; ${done} phases &middot; ${elapsedMin} min`;
         $('d-curr-cellbar').style.background = 'linear-gradient(90deg,#22c55e,#16a34a)';
       } else if (status === 'in-progress') {
-        // Cap visually at 95% — the remaining 5% fills only on pass.
-        // Use a log scale so early phases show visible progress and
-        // late phases converge slowly toward the cap, matching real-
-        // world K-cell phase distribution (short early phases + long
-        // teach-heavy later phases).
-        // When using the sub-phase fallback, expected
-        // tracks higher (each cell averages ~40-100 nested teach calls)
-        // so the bar moves smoothly. Tag the label so operator can tell
-        // which counter is being used.
-        const usingSubPhase = outermostDone === 0 && subPhaseDone > 0;
-        const expected = usingSubPhase
-          ? Math.max(60, subPhaseDone)
-          : Math.max(20, done);
-        pct = Math.min(95, Math.round((done / expected) * 95));
-        const counterTag = usingSubPhase ? ' sub-phases' : ' phases';
-        pctLabel = `${pct}% · ${done}${counterTag} · ${elapsedMin} min elapsed (in progress)`;
+        const total = c.cellPhasesTotal | 0;
+        const pw = c.phaseWork;
+        pct = Math.min(99, Math.round(((done + (pw ? pw.frac : 0)) / total) * 100));
+        // A phase name is published only while a DECLARED phase is actually in
+        // flight. If that is ever absent the label says so plainly instead of
+        // substituting a nested primitive, because a name that is not the
+        // phase hides exactly the failure it would be covering for.
+        const phaseTail = c.outermostPhase
+          ? ` &middot; <span style="color:#e9d5ff;">${c.outermostPhase.name}</span> (+${((c.outermostPhase.elapsedMs || 0) / 60000).toFixed(1)}m)`
+          : ` &middot; <span style="color:#fbbf24;">no declared phase in flight</span>`;
+        const workTail = pw
+          ? ` &middot; <span style="color:#fcd34d;">work ${pw.done}/${pw.total}</span>`
+          : '';
+        const vp = c.vocabProgress;
+        const vocabTail = (vp && vp.total > 0)
+          ? ` &middot; <span style="color:#93c5fd;">${vp.label} ${vp.taught}/${vp.total}</span>${vp.lastWord ? ` &mdash; "${vp.lastWord}"` : ''}`
+          : '';
+        pctLabel = `${pct}% &middot; <span style="color:#4ade80;">phase ${c.cellPhasesStarted | 0}/${total}</span>`
+          + ` &middot; ${done} complete${phaseTail}${workTail}${vocabTail} &middot; ${elapsedMin} min`;
         $('d-curr-cellbar').style.background = 'linear-gradient(90deg,#a78bfa,#ff4d9a)';
       } else {
-        pctLabel = `idle · 0 phases`;
+        pctLabel = `idle &middot; 0 phases`;
         $('d-curr-cellbar').style.background = 'linear-gradient(90deg,#a78bfa,#ff4d9a)';
       }
       $('d-curr-cellbar').style.width = pct + '%';
-      $('d-curr-cellpct').textContent = pctLabel;
+      $('d-curr-cellpct').innerHTML = pctLabel;
 
       // Per-subject breakdown grid. One row per subject. Shows the
       // subject label, its current grade pointer, cumulative phases
@@ -3336,7 +3323,6 @@
       let syntheticSeqCounter = -1; // negative so we never collide with server seq numbers
       const PATCH_TAG = 'client-side observability patch';
       const HEARTBEAT_INTERVAL_MS = 30000;
-      const EXPECTED_K_CELL_MIN = 20; // heuristic — K cells average ~20min during UPFRONT-VOCAB-TEACH
 
       // Re-use the existing renderBrainEvents pipeline so synthetic
       // events get the same formatting + color coding + scroll cap.
@@ -3415,92 +3401,6 @@
             lastHeartbeatPushTs = now;
           }
 
-          // ── Override cell progress % when server counter is stuck ───
-          // The host renderer computes pct from
-          // c.cellPhasesCompleted, which the server isn't yet
-          // incrementing during cell-level teach. When done=0 + elapsed
-          // > 1 min + no macroPhaseProgress (i.e. we're past SEED, in
-          // actual cell teach), substitute a time-based estimate so the
-          // bar moves and operator can see the brain is alive.
-          // REAL PROGRESS, NOT A TIMER (2026-08-14).
-          // This block used to substitute `min(85, elapsed/expected * 85)`
-          // whenever the completed-phase counter read 0 — a STOPWATCH
-          // rendered as a percentage. Two consequences: it was hard-capped
-          // at 85 so the bar could never reach 86% no matter what the brain
-          // did, and it saturated there and froze — which reads as a hang on
-          // a brain that is teaching normally. It measured wall-clock, never
-          // work.
-          //
-          // The server now publishes real signals, so use them and keep the
-          // time estimate strictly as a last resort, plainly marked:
-          //   cellPhasesStarted — outermost phases ENTERED this cell (moves
-          //     the moment work starts; the COMPLETED counter legitimately
-          //     stays 0 for tens of minutes on a long first phase)
-          //   vocabProgress     — live word position inside the running list
-          // Composite = phases entered, plus the fraction of the list in
-          // flight, over the expected phase count. Capped at 99 so the bar
-          // never claims done before the cell actually passes.
-          if (c.cellStatus === 'in-progress' && !c.macroPhaseProgress) {
-            const done = Math.max(c.cellPhasesPersisted | 0, c.cellPhasesCompleted | 0);
-            const started = c.cellPhasesStarted | 0;
-            const vp = c.vocabProgress || null;
-            const elapsedMin = (c.cellElapsedMs || 0) / 60000;
-            const cellBar = document.getElementById('d-curr-cellbar');
-            const cellPct = document.getElementById('d-curr-cellpct');
-            let pct = null;
-            let html = null;
-            // EXACT total for THIS cell, published by the server: counted from
-            // the runner's own declared phase list, or learned from a previous
-            // run of the same cell. NULL means genuinely not-known-yet, and in
-            // that case we show NO denominator rather than divide by a
-            // hardcoded guess — the old constant said 12 while the ELA-K runner
-            // declares 27, so the bar read 50% at phase 6 when the truth was
-            // 22%. A wrong denominator is worse than an absent one.
-            const totalPhases = (typeof c.cellPhasesTotal === 'number' && c.cellPhasesTotal > 0)
-              ? c.cellPhasesTotal : null;
-            const totalTag = (c.cellPhasesTotalSource === 'observed') ? '~' : '';
-            const pwTail = (c.phaseWork && c.phaseWork.total > 0)
-              ? ` · <span style="color:#fcd34d;">work ${c.phaseWork.done}/${c.phaseWork.total}</span>`
-              : '';
-            const phaseName = (c.outermostPhase && c.outermostPhase.name)
-              ? ` · <span style="color:#e9d5ff;">${c.outermostPhase.name}</span> (+${Math.round((c.outermostPhase.elapsedMs||0)/1000)}s)`
-              : '';
-            const vpTail = (vp && vp.total > 0)
-              ? ` · <span style="color:#93c5fd;">${vp.label} ${vp.taught}/${vp.total}</span>${vp.lastWord ? ` — "${vp.lastWord}"` : ''}`
-              : '';
-            if (started > 0 && totalPhases) {
-              // WITHIN-PHASE fraction so the bar MOVES during a long phase
-              // instead of sitting at 0% for its whole duration then jumping.
-              // Prefer the phase's own nested-work tally (derived from its
-              // source; works for every phase in every grade); fall back to the
-              // vocab-list position when a list is the thing running.
-              const pw = c.phaseWork || null;
-              const frac = (pw && pw.total > 0) ? (pw.done / pw.total)
-                : ((vp && vp.total > 0) ? (vp.taught / vp.total) : 0);
-              pct = Math.min(99, Math.round(((Math.max(0, started - 1) + frac) / totalPhases) * 100));
-              html = `${pct}% · <span style="color:#4ade80;">phase ${started}/${totalTag}${totalPhases}</span> · ${done} complete${phaseName}${pwTail}${vpTail} · ${elapsedMin.toFixed(1)} min`;
-            } else if (started > 0) {
-              // Phases ARE moving but this cell's total has never been seen
-              // (first run of a runner that doesn't declare phases). Drive the
-              // bar from the vocab list when one is running; otherwise report
-              // the honest phase number with no denominator at all.
-              pct = (vp && vp.total > 0) ? Math.max(0, Math.min(99, Math.round(vp.pct || 0))) : null;
-              html = `<span style="color:#4ade80;">phase ${started}</span> <span style="color:#94a3b8;">(total unknown — first run of this cell)</span>${phaseName}${vpTail} · ${elapsedMin.toFixed(1)} min`;
-              if (pct === null && cellPct) cellPct.innerHTML = html;
-            } else if (vp && vp.total > 0) {
-              // Inside a vocab list before any outermost phase registered —
-              // the list position is still REAL work, so show it.
-              pct = Math.max(0, Math.min(99, Math.round(vp.pct || 0)));
-              html = `${pct}%${vpTail} · ${elapsedMin.toFixed(1)} min`;
-            } else if (done === 0 && elapsedMin > 1) {
-              pct = Math.min(85, Math.round((elapsedMin / EXPECTED_K_CELL_MIN) * 85));
-              html = `~${pct}% <span style="color:#fbbf24;">[time-est — no real signal yet, this is a stopwatch]</span> · ${elapsedMin.toFixed(1)} min elapsed`;
-            }
-            if (pct !== null) {
-              if (cellBar) cellBar.style.width = pct + '%';
-              if (cellPct) cellPct.innerHTML = html;
-            }
-          }
         } catch (err) {
           console.error('[' + PATCH_TAG + '] post-render threw:', err);
         }

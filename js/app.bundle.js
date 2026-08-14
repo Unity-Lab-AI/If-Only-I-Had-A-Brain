@@ -95022,30 +95022,29 @@ var Curriculum = class _Curriculum {
       this[name] = async (...args) => {
         const cl = this.cluster;
         const phaseKey = buildPhaseKey(name);
-        const prev = cl ? cl._activePhase : null;
-        const isOutermost = prev === null;
-        if (isOutermost && cl && phaseKey && Array.isArray(cl.passedPhases) && cl.passedPhases.includes(phaseKey)) {
-          this._hb(`[Curriculum] \u2933 PHASE SKIPPED \u2014 ${phaseKey} (already passed; resumed from persisted passedPhases \u2014 weights carried forward via brain-weights.bin)`);
+        if (cl && !Array.isArray(cl._phaseStack)) cl._phaseStack = [];
+        const stack = cl ? cl._phaseStack : null;
+        const isOutermost = stack ? stack.length === 0 : true;
+        const isCellPhase = !!phaseKey && this._declaredPhaseNames(cl._currentCellKey).has(name) && !stack.some((t) => t.ledger);
+        if (isCellPhase && Array.isArray(cl.passedPhases) && cl.passedPhases.includes(phaseKey)) {
+          this._hb(`[Curriculum] PHASE SKIPPED - ${phaseKey} (already passed; resumed from persisted passedPhases - weights carried forward via brain-weights.bin)`);
           return;
         }
-        if (cl) cl._activePhase = { name, startAt: Date.now() };
-        if (isOutermost && cl) {
-          cl._outermostPhase = { name, startAt: Date.now() };
+        const token = { name, startAt: Date.now(), ledger: isCellPhase };
+        if (stack) {
+          stack.push(token);
+          cl._activePhase = token;
+        }
+        if (isCellPhase) {
+          cl._outermostPhase = token;
           this._phaseWorkName = name;
           this._phaseWorkSeen = /* @__PURE__ */ new Set();
           this._phaseWorkTotal = this._teachNestedTotal && this._teachNestedTotal[name] || 0;
-        } else if (this._phaseWorkSeen) {
-          this._phaseWorkSeen.add(name);
         }
-        if (isOutermost && cl) {
+        const workSeen = isCellPhase ? null : this._phaseWorkSeen;
+        if (isCellPhase) {
           const _ck = cl._currentCellKey || "";
           if (this._cellPhasesStartedKey !== _ck) {
-            if (this._cellPhasesStartedKey && this._cellPhasesStartedSet?.size > 0) {
-              if (!this._cellPhaseObserved) this._cellPhaseObserved = {};
-              const _prev = this._cellPhasesStartedKey;
-              const _seen = this._cellPhasesStartedSet.size;
-              if (!(this._cellPhaseObserved[_prev] >= _seen)) this._cellPhaseObserved[_prev] = _seen;
-            }
             this._cellPhasesStartedKey = _ck;
             this._cellPhasesStartedSet = /* @__PURE__ */ new Set();
           }
@@ -95063,7 +95062,7 @@ var Curriculum = class _Curriculum {
         }
         try {
           const result = await original(...args);
-          if (isOutermost && cl && phaseKey) {
+          if (isCellPhase) {
             if (!Array.isArray(cl.passedPhases)) cl.passedPhases = [];
             if (!cl.passedPhases.includes(phaseKey)) cl.passedPhases.push(phaseKey);
             if (typeof this._saveCheckpoint === "function") {
@@ -95088,8 +95087,19 @@ var Curriculum = class _Curriculum {
           this._currentCellSubPhases = (this._currentCellSubPhases | 0) + 1;
           return result;
         } finally {
-          if (cl) cl._activePhase = prev;
-          if (isOutermost && cl) cl._outermostPhase = null;
+          if (stack) {
+            const _i = stack.lastIndexOf(token);
+            if (_i >= 0) stack.splice(_i, 1);
+            cl._activePhase = stack.length ? stack[stack.length - 1] : null;
+          }
+          if (cl && cl._outermostPhase === token) {
+            cl._outermostPhase = null;
+            this._phaseWorkName = null;
+            this._phaseWorkSeen = null;
+            this._phaseWorkTotal = 0;
+          } else if (workSeen) {
+            workSeen.add(name);
+          }
         }
       };
     }
@@ -95098,12 +95108,21 @@ var Curriculum = class _Curriculum {
       const original = this[name].bind(this);
       this[name] = async (...args) => {
         const cl = this.cluster;
-        const prev = cl ? cl._activePhase : null;
-        if (cl) cl._activePhase = { name, startAt: Date.now() };
+        if (cl && !Array.isArray(cl._phaseStack)) cl._phaseStack = [];
+        const stack = cl ? cl._phaseStack : null;
+        const token = { name, startAt: Date.now(), ledger: false };
+        if (stack) {
+          stack.push(token);
+          cl._activePhase = token;
+        }
         try {
           return await original(...args);
         } finally {
-          if (cl) cl._activePhase = prev;
+          if (stack) {
+            const _i = stack.lastIndexOf(token);
+            if (_i >= 0) stack.splice(_i, 1);
+            cl._activePhase = stack.length ? stack[stack.length - 1] : null;
+          }
         }
       };
     }
@@ -95267,7 +95286,8 @@ var Curriculum = class _Curriculum {
       elapsedMs: cluster._activePhase.startAt ? Date.now() - cluster._activePhase.startAt : 0
     } : null;
     const cellKey = cluster && cluster._currentCellKey ? cluster._currentCellKey : null;
-    const currentCellPassedPhases = cellKey && Array.isArray(cluster?.passedPhases) ? cluster.passedPhases.filter((k) => k && k.startsWith(`${cellKey}:`)).length : 0;
+    const declaredNow = cellKey ? this._declaredPhaseNames(cellKey) : null;
+    const currentCellPassedPhases = declaredNow && Array.isArray(cluster?.passedPhases) ? cluster.passedPhases.filter((k) => k && k.startsWith(`${cellKey}:`) && declaredNow.has(k.slice(cellKey.length + 1))).length : 0;
     let cellStatus = "idle";
     if (cellKey) {
       const inPassedList = cluster && Array.isArray(cluster.passedCells) && cluster.passedCells.includes(cellKey);
@@ -95313,63 +95333,51 @@ var Curriculum = class _Curriculum {
       cellStatus,
       pausedForDonorMs: this._pausedForDonorSinceMs ? Date.now() - this._pausedForDonorSinceMs : 0,
       activePhase,
-      // The REAL cell phase (OUTERMOST), distinct from `activePhase` which is
-      // whatever nested primitive is executing this instant. Reading the live
-      // box: 45 min in ela/kindergarten, 73,421 sub-phase calls, `passedPhases`
-      // still EMPTY — so no phase had completed and nothing on screen could
-      // name WHICH phase was grinding, because activePhase only ever showed
-      // `_teachHebbian` (a primitive fired thousands of times per phase).
+      // The REAL cell phase, distinct from `activePhase` which is whatever
+      // nested primitive is executing this instant. This is the phase the cell
+      // runner declared and is currently inside; it is null when no declared
+      // phase is in flight, and that null is the honest answer - the earlier
+      // build substituted the nested primitive here and marked it "inexact",
+      // which meant a dead phase ledger rendered as `_teachAntiHebbian (+0s)`
+      // and read like progress. A name that is not the phase is worse than no
+      // name: it hides the exact failure it was added to survive.
       outermostPhase: cluster?._outermostPhase ? {
         name: cluster._outermostPhase.name,
-        elapsedMs: Date.now() - cluster._outermostPhase.startAt,
-        exact: true
-      } : activePhase ? { name: activePhase.name, elapsedMs: activePhase.elapsedMs, exact: false } : null,
-      // WITHIN-PHASE WORK — distinct nested `_teach*` units entered, over the
-      // count derived from the phase's own source. This is what makes the bar
-      // MOVE during a long phase instead of sitting at 0% then jumping.
-      phaseWork: this._phaseWorkTotal > 0 ? {
-        name: this._phaseWorkName || null,
-        done: this._phaseWorkSeen ? this._phaseWorkSeen.size : 0,
-        total: this._phaseWorkTotal,
-        pct: Math.min(99, Math.round((this._phaseWorkSeen ? this._phaseWorkSeen.size : 0) / this._phaseWorkTotal * 100))
+        elapsedMs: Date.now() - cluster._outermostPhase.startAt
       } : null,
-      cellPhasesCompleted: this._currentCellPhasesCompleted | 0,
-      // HONEST PROGRESS (2026-08-14) — `cellPhasesCompleted` only ticks when
-      // an OUTERMOST phase FINISHES, so a K cell reads 0 for tens of minutes
-      // and the dashboard degrades to an elapsed-time estimate ("~85%
-      // [time-est] · server phase counter stuck") that saturates and looks
-      // like a hang. These two move while she works:
-      //   cellPhasesStarted — outermost phases ENTERED in this cell
-      //   vocabProgress     — live word position inside the current list
-      // Together they answer "is she moving?" without interpreting a
-      // frozen counter.
-      // UNIVERSAL PHASE COUNT (2026-08-14) — works for EVERY runner, every
-      // grade, regardless of which bookkeeping that runner uses.
+      // WITHIN-PHASE WORK - what makes the bar move DURING a phase instead of
+      // sitting at 0% for its whole duration and then jumping.
       //
-      // There are TWO phase-recording mechanisms and neither is reliable
-      // alone: the constructor auto-wrap (which this file itself documents as
-      // "wasn't reliably reaching here for K_MIXIN methods"), and the
-      // hand-written `_phaseTick`/`_phaseDone` helpers that only
-      // `runElaKReal` defines. Counting either one left `cellPhasesCompleted`
-      // and `cellPhasesStarted` pinned at 0 for entire cells — which is what
-      // pushed the dashboard onto its elapsed-time stopwatch in the first
-      // place.
+      // `total` is the count of distinct nested `_teach*` units the phase's own
+      // source calls; `done` is how many have FINISHED (counted on exit, not on
+      // entry, so an in-flight unit is never reported as complete). A vocabulary
+      // list running inside the phase is within-phase work too, so its position
+      // folds into the SAME fraction rather than becoming a second signal the UI
+      // would have to choose between.
+      phaseWork: this._phaseWorkTotal > 0 ? (() => {
+        const done = this._phaseWorkSeen ? this._phaseWorkSeen.size : 0;
+        const vp = this._vocabProgress;
+        const vFrac = vp && vp.total > 0 ? Math.min(1, (vp.taught | 0) / vp.total) : 0;
+        return {
+          name: this._phaseWorkName || null,
+          done,
+          total: this._phaseWorkTotal,
+          frac: Math.min(0.99, (done + vFrac) / this._phaseWorkTotal)
+        };
+      })() : null,
+      // PHASE COUNTS - ONE derivation, from ONE record.
       //
-      // But BOTH mechanisms append `cellKey:methodName` to `passedPhases`,
-      // and `passedPhases` is persisted. So the honest count is derived from
-      // the record itself: phases COMPLETED for this cell = its entries;
-      // STARTED = those plus the one currently in flight. Mechanism-agnostic,
-      // resume-correct, and true for pre-K through PhD.
-      cellPhasesStarted: Math.max(
-        this._currentCellPhasesStarted | 0,
-        (currentCellPassedPhases | 0) + (cluster?._activePhase ? 1 : 0)
-      ),
-      // EXACT total for THIS cell — declared (counted from the runner's own
-      // source) preferred, else observed (learned from a previous run of the
-      // same cell), else NULL. Null means "not known yet"; consumers must show
-      // no denominator rather than substitute a guess.
-      cellPhasesTotal: cellKey && (this._cellPhaseDeclared && this._cellPhaseDeclared[cellKey] || this._cellPhaseObserved && this._cellPhaseObserved[cellKey] || this._persistedPhaseTotalFor(cellKey, cluster)) || null,
-      cellPhasesTotalSource: cellKey && this._cellPhaseDeclared && this._cellPhaseDeclared[cellKey] ? "declared" : cellKey && this._cellPhaseObserved && this._cellPhaseObserved[cellKey] ? "observed" : this._persistedPhaseTotalFor(cellKey, cluster) ? "persisted" : null,
+      // `passedPhases` is the ledger: the auto-wrap appends `cellKey:method`
+      // for every DECLARED phase of the cell that completes, the file
+      // persists it, and resume reads it back. So for the running cell:
+      //   completed = its entries
+      //   started   = completed + the one currently in flight
+      //   total     = the size of the runner's declared phase set
+      // All three come from the same place, which is why they cannot
+      // contradict each other and why they survive a restart unchanged.
+      cellPhasesCompleted: currentCellPassedPhases,
+      cellPhasesStarted: currentCellPassedPhases + (cluster?._outermostPhase ? 1 : 0),
+      cellPhasesTotal: declaredNow ? declaredNow.size : null,
       vocabProgress: this._vocabProgress ? {
         label: this._vocabProgress.label,
         taught: this._vocabProgress.taught | 0,
@@ -95378,7 +95386,6 @@ var Curriculum = class _Curriculum {
         lastWord: this._vocabProgress.lastWord || null,
         pct: this._vocabProgress.total > 0 ? Math.round(this._vocabProgress.taught / this._vocabProgress.total * 100) : 0
       } : null,
-      cellPhasesPersisted: currentCellPassedPhases,
       // I.12 closure — nested sub-phase counter. cellPhasesCompleted
       // only ticks on OUTERMOST teach phases, which means K cells stay
       // at 0 phases for their entire ~25 min runtime. cellSubPhases ticks
@@ -95858,42 +95865,6 @@ var Curriculum = class _Curriculum {
       const _dwStages = Object.entries(_dwStageMs).filter(([, v]) => v >= 100).map(([k, v]) => `${k} ${(v / 1e3).toFixed(1)}s`).join(" \xB7 ");
       const _dwSkipNote = _dwSkipped.length ? ` \xB7 skipped: ${_dwSkipped.join(", ")}` : "";
       this._hb(`[Curriculum] \u2600 dream window closed (${(totalMs / 1e3).toFixed(1)}s total${_dwStages ? " \u2014 " + _dwStages : ""}${_dwSkipNote}) \u2014 resuming curriculum`);
-    }
-  }
-  /**
-   * PERSISTED phase total for a cell — FREE persistence across restarts
-   * (2026-08-14).
-   *
-   * The declared total is recomputed from source every boot, and the observed
-   * total is in-memory only, so a restart mid-walk would otherwise lose any
-   * total for a runner whose source scan came up empty. `passedPhases` is
-   * ALREADY persisted in the weights file (`brain-server.js` saves and
-   * restores it for phase-level resume), and every entry is keyed
-   * `cellKey:methodName` — so for a cell that ACTUALLY PASSED, the number of
-   * its entries IS its exact phase total. No new save field needed.
-   *
-   * Gated on `passedCells` deliberately: an INTERRUPTED cell has a partial
-   * entry list, and using that as a denominator would silently over-report
-   * progress (12 of "12" while 15 remain). A total we cannot trust must read
-   * as unknown, not as a smaller number.
-   *
-   * @returns {number|null}
-   */
-  _persistedPhaseTotalFor(cellKey, cluster) {
-    try {
-      if (!cellKey || !cluster) return null;
-      const passedCells = cluster.passedCells;
-      const passedOk = Array.isArray(passedCells) ? passedCells.includes(cellKey) : passedCells instanceof Set ? passedCells.has(cellKey) : false;
-      if (!passedOk) return null;
-      if (!Array.isArray(cluster.passedPhases)) return null;
-      const prefix = `${cellKey}:`;
-      let n = 0;
-      for (const p of cluster.passedPhases) {
-        if (typeof p === "string" && p.startsWith(prefix)) n++;
-      }
-      return n > 0 ? n : null;
-    } catch {
-      return null;
     }
   }
   /**
@@ -98427,6 +98398,39 @@ var Curriculum = class _Curriculum {
   // plus the 20-method Life Experience track. Unknown
   // subject/grade combinations throw — no silent fallthrough.
   /**
+   * The set of `_teach*` method names the (subject, grade) cell runner
+   * DECLARES - read from the runner's own source, cached per cell key.
+   *
+   * This is the single derivation behind two things that must never
+   * disagree: the phase-total denominator the dashboard divides by, and the
+   * admission list the phase ledger uses to decide whether a given teach
+   * call is one of THIS cell's phases. Teach calls also arrive from outside
+   * the walk entirely - chat fires `_teachWordDefinition` (CHAT-DEF) and
+   * `_teachAssociationPairs`, emission fires EMIT-DEF - and those must never
+   * be written into `passedPhases`, or the runner's own call to the same
+   * method would be skipped and never taught.
+   */
+  _declaredPhaseNames(cellKey) {
+    if (!this._cellPhaseNames) this._cellPhaseNames = {};
+    const cached = this._cellPhaseNames[cellKey];
+    if (cached) return cached;
+    const _slash = cellKey.indexOf("/");
+    const subject = cellKey.slice(0, _slash);
+    const grade = cellKey.slice(_slash + 1);
+    let src = Function.prototype.toString.call(this._cellRunnerRaw(subject, grade));
+    const deleg = src.match(/this\.(run[A-Za-z0-9_]+)\s*\(/);
+    if (deleg && typeof this[deleg[1]] === "function") {
+      src = Function.prototype.toString.call(this[deleg[1]]);
+    }
+    const names = new Set(
+      [...src.matchAll(/this\.(_teach[A-Za-z0-9_]+)\s*\(/g)].map((m) => m[1])
+    );
+    if (subject !== "life") names.add("_teachCourseIdentity");
+    if (subject === "ela") names.add("_teachLanguageMechanics");
+    this._cellPhaseNames[cellKey] = names;
+    return names;
+  }
+  /**
    * Return an async runner `(ctx) => {pass, reason, metrics}` for the given
    * (subject, grade) cell. Wraps the raw dispatch (`_cellRunnerRaw`) so EVERY
    * cell — every subject, every grade, pre-K → PhD, retroactively — first
@@ -98440,28 +98444,12 @@ var Curriculum = class _Curriculum {
   _cellRunner(subject, grade) {
     const raw = this._cellRunnerRaw(subject, grade);
     if (typeof raw !== "function") return raw;
-    try {
-      const _ck = `${subject}/${grade}`;
-      if (!this._cellPhaseDeclared) this._cellPhaseDeclared = {};
-      if (this._cellPhaseDeclared[_ck] == null) {
-        let _src = Function.prototype.toString.call(raw);
-        const _deleg = _src.match(/this\.(run[A-Za-z0-9_]+)\s*\(/);
-        if (_deleg && typeof this[_deleg[1]] === "function") {
-          _src = Function.prototype.toString.call(this[_deleg[1]]);
-        }
-        const _names = new Set(
-          [..._src.matchAll(/this\.(_teach[A-Za-z0-9_]+)\s*\(/g) || []].map((m) => m[1])
-        );
-        if (subject !== "life") _names.add("_teachCourseIdentity");
-        if (subject === "ela") _names.add("_teachLanguageMechanics");
-        const _n = _names.size;
-        if (_n > 0) {
-          this._cellPhaseDeclared[_ck] = _n;
-          const _ticks = (_src.match(/_phaseTick\s*\(/g) || []).length;
-          this._hb?.(`[Curriculum] phase-total for ${_ck}: ${_n} phases \u2014 READ from the runner's own source, not estimated${_ticks ? ` (${_ticks} of them additionally declared via _phaseTick)` : ""}.`);
-        }
-      }
-    } catch {
+    const _ck = `${subject}/${grade}`;
+    if (!this._cellPhaseDeclared) this._cellPhaseDeclared = {};
+    if (this._cellPhaseDeclared[_ck] == null) {
+      const _names = this._declaredPhaseNames(_ck);
+      this._cellPhaseDeclared[_ck] = _names.size;
+      this._hb?.(`[Curriculum] phase-total for ${_ck}: ${_names.size} phases - READ from the runner's own source, not estimated.`);
     }
     return async (ctx) => {
       if (subject !== "life") {

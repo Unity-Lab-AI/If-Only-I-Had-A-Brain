@@ -5,6 +5,45 @@
 
 ---
 
+## 2026-08-14 - PHASE LEDGER WAS DEAD: one chat message latched the outermost-phase flag for the whole run - feature/phase-latch-0814
+
+### Gee ask (verbatim per LAW #0)
+
+> *"is this right? 50k events and still phase 1, 0% complete?"*
+> *"fallback? you should know we cxode it right the first time which means fallbacks are illegal"*
+> *"no the names shall never not be there.. wtf are you talking about!!! code it cortrectly"*
+
+Gee's dashboard paste (verbatim):
+
+```
+phase: _teachLateralInhibition (+0.1s)
+current cell progress
+0% . phase 1/25 . 0 complete . _teachAntiHebbian (+0s) . 29.2 min
+course / grade / phases / cells / events
+Foundational Reading / pre-K / 0 / 0 / 45.2k
+```
+
+**ANSWER: NO - and it was not a display bug. The phase ledger was dead.**
+
+**PROVED FROM THE PASTE, NOT INFERRED.** The cell-progress line named `_teachAntiHebbian` at `+0s`. That is a PRIMITIVE - `curriculum.js` calls it from inside `_teachAssociationPairs` / `_teachQABinding`. A primitive could only reach that slot through the `exact:false` fallback, which fires only when `_outermostPhase` is null. The same line carried **no `work N/N` tail**, meaning `_phaseWorkTotal` was 0. Both are assigned in the SAME `if (isOutermost)` block - both missing means `isOutermost` had not been true once that cell.
+
+**THE MECHANISM - A LATCH, NOT A GLITCH.** The auto-wrap decided outermost by saving `prev = cl._activePhase` on entry and restoring it in `finally`. Sound only if teach calls never interleave - and they do: `brain-server.js` fires `_teachWordDefinition` (CHAT-DEF, a NETWORK fetch up to 20s) un-awaited, `chat.js` fires `_teachAssociationPairs` un-awaited, emission fires EMIT-DEF the same way. Walk phase P enters (prev=null, outermost). Chat call D enters mid-await (nested). P finishes first and restores null. **D finishes second and restores P - a phase object that already exited.** From that instant `_activePhase` is permanently non-null, every later phase reads as nested, and the ledger stops recording. ONE chat message poisoned the rest of the run, brain-wide, until restart.
+
+**WHAT IT BROKE:** `passedPhases` never appended (so `0 complete` was the ledger, not her pace); resume-skip dead, meaning **every restart re-taught from scratch**; `cellPhasesStarted` degraded to the constant 1 (`phase 1/25` was a stuck counter); `phaseWork` null so the honest within-phase bar could never move (`0%`); the observed phase-count learner never learned. **What it did NOT break: the teaching.** Nested calls always execute - only skip/persist was gated. Those 45.2k events were real Hebbian work; her weights were moving. The ledger under-reported, it did not under-teach.
+
+**SHIPPED - `js/brain/curriculum.js`:**
+
+- **Latch-proof in-flight stack.** `cl._phaseStack` of per-call tokens; entry pushes, exit removes **by identity** (`lastIndexOf` + `splice`) and sets `_activePhase` to whatever is still on top. A call finishing out of order can only remove itself and can never resurrect a dead phase; an empty stack means genuinely nothing is teaching. Applied to the `TRACKED_NO_SKIP` probe wrapper too - a probe outliving its phase must not latch either.
+- **Ledger admission by NAME, not by nesting.** New `_declaredPhaseNames(cellKey)` returns the `_teach*` set the cell's own runner declares, read from the runner's source (thin delegating arrow resolved first) and cached. Only those names may write `passedPhases` - which is what stops a chat-driven `_teachWordDefinition` banking itself as a phase of the running cell and causing the runner's own call to be SKIPPED and never taught.
+- **ONE derivation, ONE record.** The same declared set is now the phase-total denominator AND the ledger admission list AND the filter on the persisted count, so the bar and the ledger cannot disagree. `cellPhasesCompleted` = this cell's entries in `passedPhases`; `cellPhasesStarted` = that plus the one in flight; `cellPhasesTotal` = the declared set size.
+- **Within-phase work counted on EXIT, not entry**, credited to the tally captured by reference when the unit started - so an in-flight unit is never reported done and a phase change mid-unit can never credit the wrong phase. A running vocabulary list folds its position into the SAME fraction instead of being a second signal.
+
+**FALLBACKS DELETED (Gee's LAW, called out mid-batch and applied to code I had written the same day):** the `exact:false` "publish the nested primitive so the UI always has a name" branch - a name that is not the phase hides the exact failure it covers for; `_persistedPhaseTotalFor()` (method removed entirely) and the `declared || observed || persisted` cascade behind `cellPhasesTotal`; the in-memory observed-total learner that fed it; `cellPhasesTotalSource` and `cellPhasesPersisted`. **`html/dashboard.html`:** the entire post-render override block (cell progress was computed in TWO places that could disagree) including its five-branch cascade ending in `Math.min(85, elapsed/EXPECTED_K_CELL_MIN * 85)` - a stopwatch rendered as a percentage, hard-capped so it could never pass 85; both heuristic constants (`EXPECTED_PHASES_PER_CELL = 12`, `EXPECTED_K_CELL_MIN = 20`). The host renderer now computes `(done + frac) / total` once, and prints **"no declared phase in flight"** in amber rather than ever naming a primitive.
+
+**VERIFIED (no-tests LAW - read, check, import, bundle, derive):** `node --check` PASS; ESM `import()` PASS (catches the dup-binding/link errors `--check` misses); all 3 dashboard inline script blocks parse (module block via `node --check`, classic blocks via `new Function`); app bundle + voice worker rebuilt, new `_phaseStack`/`_declaredPhaseNames` present and every deleted fallback absent; no stale consumers of the removed fields anywhere in `server/`, `html/`, `js/brain/`, `scripts/`. **Derivation exercised for real: 48 cells across 6 subjects x 8 grades (pre-K -> PhD) all resolve to a non-zero declared phase count** - ela/K=25, math/K=24, life/K=28, ela/pre-K=4, life/pre-K=8, phd/social=5. No unknown totals, no divide-by-zero, nothing to fall back to.
+
+**Deploy = dashboard Update & SAVESTART or Fresh Walk. No donor rebuild, no weights-format change.** Live-verify: the cell-progress line must name a REAL phase with a MINUTES-scale elapsed, carry a `work N/N` tail that climbs, and `0 complete` must leave 0 when phase 1 lands.
+
 ## 2026-07-17 — VOICE WORKER CACHE-BUST: the wasm-only fix never reached the visitor's tab — feature/cell-teach-speed-0715
 
 ### Gee ask (verbatim per LAW #0)
