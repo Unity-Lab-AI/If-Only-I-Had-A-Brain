@@ -2709,6 +2709,31 @@ export class Curriculum {
           this._cellPhasesStartedSet.add(name);
           this._currentCellPhasesStarted = this._cellPhasesStartedSet.size;
         }
+        // NO-DONOR GATE, EVERYWHERE (2026-08-14). `_awaitComputeSubstrate` is
+        // awaited at only FOUR call sites in the whole curriculum and NONE of
+        // them sit inside the teach loops — so once she is deep in a long
+        // phase she never REACHES a checkpoint and CPU-grinds the entire phase
+        // with the donor switched off. She was never ignoring the gate; she
+        // never arrived at one. That is worse than wasted work: the gate's own
+        // comment notes CPU-grinding 306M "starves the very handshake a
+        // returning donor needs", so grinding donor-less actively blocks the
+        // donor from reconnecting.
+        //
+        // Checking it HERE puts the gate on every OUTERMOST phase entry and on
+        // every Nth nested teach call, so the walk pauses within seconds of a
+        // donor loss ANYWHERE in training and resumes the moment one registers
+        // — one place, all grades, no per-runner wiring. The 120s grace and
+        // DREAM_NO_DONOR_GRIND=1 override live inside the gate and are
+        // untouched. Nested checks are sampled (not every call) because this
+        // fires ~50x/sec during teach.
+        try {
+          if (typeof this._awaitComputeSubstrate === 'function') {
+            this._gateSampleN = (this._gateSampleN | 0) + 1;
+            if (isOutermost || (this._gateSampleN % 64) === 0) {
+              await this._awaitComputeSubstrate();
+            }
+          }
+        } catch { /* gate must never break a teach call */ }
         try {
           const result = await original(...args);
           // Persist ONLY outermost phases. Nested primitives never
