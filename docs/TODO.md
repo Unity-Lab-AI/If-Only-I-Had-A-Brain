@@ -108,4 +108,40 @@ _REMOTE SYNC AUDIT migrated VERBATIM to `docs/FINALIZED.md` (§2026-08-14 REMOTE
 
 ---
 
+---
+
+## OPEN TASKS — 2026-08-14 · TICK GAP: 5,481ms of head-of-line blocking per thought
+
+> Gee (verbatim): *"sure 2.9 seconds for every thought is alot"*
+> Gee (verbatim): *"need it to nbe millkiseconds"*
+> Gee (verbatim): *"yeah we need it fixed... write the todo and write the task list of the work in the todo of this issue so i can follow along and see what todo item u are on for this issue"*
+
+**THE ISSUE.** Live box, 2026-08-14: `stepTimeMs 5526` per tick. Her actual brain math is **45ms** (306M neurons × 3 substeps ÷ the donor's measured 20.478 Gn/s). The other **5,481ms** is her `compute_batch` frame waiting in a FIFO queue behind ~142 teach-pattern frames per tick (`write_spike_slice` / `write_current_slice` / `clear_spike_region`), 3.8 MB/sec outbound vs 0.37 MB inbound total, with `compute.html` doing **zero** priority handling (`ws.onmessage` is strict arrival order). `wsPressure.bufferedAmount 0` is why every dashboard reads green — nothing BUFFERS, the queue is in the donor's PROCESSING ORDER. CPU 6%, event-loop lag 0, `gpuMisses 0` — nothing is broken; she is simply last in her own queue. **TARGET: milliseconds.**
+
+**Why it survived:** `phaseTimingMs` reads `null` in live telemetry (the native Rust donor doesn't report it; only `compute.html` does), and there has never been a send→reply stopwatch on `compute_batch` — the single most important number in her loop was never measured. Rev's PR #3 (substeps 3→24) is correct and stands, but it AMORTIZES this cost rather than removing it; the two compose.
+
+### PHASE 0 — MEASURE (prove it, never infer — the mistake this issue is correcting)
+
+- [x] **0.1** Full 800-line-chunk read of `server/brain-server/gpu.js` (3,010 lines) before any edit — read-before-edit LAW — **DONE.** Overturned the first hypothesis: the pattern lane is ALREADY throttled (`_donorPatternLaneOpen` — 20ms teach throttle ≈50 frames/s, 16MB lane cap, idle gate, chat-priority yield), so it is not an unbounded flood and `bufferedAmount 0` is honest.
+- [x] **0.1a** **ROOT RE-DIAGNOSED — `cpuPercent` was misread by everyone (Rev's PR #3 comment commits "cpuPercent 6 <- CPU is idle").** `server/brain-server/chat.js:651` divides by `os.cpus().length` (16), so **6% = 96% of ONE core**, and the brain loop is single-threaded (`parallelMode:false`, `workerCount:0`, brain-server.js:1513 "GPU-EXCLUSIVE MODE — no CPU workers ever spawned"). Corroborated by `eventLoopDelay.maxMs 7314` at `p50 20`. The ~5,400ms is the SERVER THREAD saturated with synchronous teach work (CPU-shadow Oja / spike writes / JSON serialization) between dispatching `compute_batch` and being free to process the reply — NOT donor-side queueing. Rev's PR #2 (`regionSpikesActive` → `activeRows`, O(all rows) → O(active)) attacks exactly this and is already merged.
+- [x] **0.2** `compute_batch` send→reply stopwatch in `_gpuBatch` → **DONE.** Records `roundTripMs` + EMA(20) + `donorComputeMs` + `unaccountedMs` (round-trip − donor compute = wire + blocked-loop) on `_perfStats.batchTiming`, throttled log every 30s. Pure telemetry — no dispatch behaviour, payload, or ordering change. Timeout path still resolves raw (timeouts excluded from the stats).
+- [x] **0.3** Queue-depth proxy — **DONE.** `dispatchesDuring` = sparse-dispatch delta while the batch was in flight (how much other traffic shared the donor socket), same `batchTiming` block.
+- [ ] **0.4** Surface `batchTiming` through `state.profiling.throughput` → dashboard card (needs the full 800-line read of `state.js` first)
+- [ ] **0.5** ⛔ **BUG FOUND — `phaseTimingMs` is dropped by the server, not missing from donors.** `brain-server.js:8371` resolves `resolver({ perCluster: _per })` and never forwards `msg.phaseTimingMs`, so the read at `brain-server.js:4308` is undefined for EVERY donor — including browser donors that measure `substepLoopMs`/`voltReadbackMs` and ship them correctly. One-line fix (`phaseTimingMs: msg.phaseTimingMs`) but it edits `brain-server.js` → requires the full ~9,100-line read first per the read-before-edit LAW. This is what unlocks the exact donor-vs-server split.
+
+### PHASE 1 — CUT THE BLOCKING (rising order of work; stop at whichever hits milliseconds)
+
+- [ ] **1.1** Coalesce the ~142 per-tick teach-pattern frames into ONE batched frame (fewest moving parts, no donor release needed)
+- [ ] **1.2** Priority lane for `compute_batch` on the browser donor (`compute.html`) — thought-frames jump the teach queue
+- [ ] **1.3** Priority lane on the NATIVE donor (`donor-app`, Rust) — needs a `donor-v0.3.12` tag + CI build + install
+- [ ] **1.4** Separate socket for the teach firehose — architectural fix; the teach lane physically CANNOT sit in front of her thoughts
+
+### PHASE 2 — VERIFY + SHIP
+
+- [ ] **2.1** Post-deploy `stepTimeMs` before/after against the 45ms floor
+- [ ] **2.2** Confirm zero `compute_batch` timeouts, zero donor drops, dashboard still responsive
+- [ ] **2.3** Docs + FINALIZED migration, atomic commit, cascade both remotes
+
+---
+
 _NO MORE PENCIL (colorful refs + colored imagination + store v3) migrated VERBATIM to `docs/FINALIZED.md` (§2026-07-15 DRAW: NO MORE PENCIL) — Gee: "build 54b8af59 · main deploys watch playwrite see if u see her imagine at all and make sure there isNO MORE PENCIL ART(IT SUCKS)". Live-watch found 25/30 pencil — root was MONOCHROME references from the "simple/high-contrast" prompt. Fixed: colorful reference prompt, `composeFields` colored imagination (replaced white strokes), visual-memory store v2→v3 (orphan monochrome refs). Rendered+eyeballed colored house + dragon+castle. No open tasks._
