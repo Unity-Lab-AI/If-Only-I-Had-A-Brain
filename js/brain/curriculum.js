@@ -3540,6 +3540,21 @@ export class Curriculum {
         // moderate plasticity without basin-blur.
         if (!_dwOverBudget('dictionary dream-trickle') && cluster && typeof this._teachWordDefinition === 'function') {
           try {
+            // GRADE-WIDE DEFINITION SEED (2026-08-14). The queue is no longer
+            // K-only: every grade enqueues ITS OWN vocabulary at ITS OWN grade
+            // start (see the per-grade block in the curriculum loop), so this
+            // one lane carries multi-def Hebbian for all ~49.9K words across
+            // K→PhD instead of only K's 2,247. Enqueue-at-grade-start is what
+            // keeps it grade-appropriate — advanced vocabulary is never in the
+            // queue before its grade begins, so the corpus-bleed rule holds by
+            // construction rather than by a filter.
+            //
+            // The K_VOCABULARY import below is now only a FALLBACK for a brain
+            // that reaches a dream window before any grade-start enqueue has
+            // run (boot race / resumed mid-K state). Field name kept as
+            // `_kVocabQueue` deliberately: it is already persisted in saved
+            // weights, and renaming it would orphan every in-flight queue on
+            // the next load.
             if (!cluster._kVocabQueue) {
               const { K_VOCABULARY } = await import('./k-vocabulary.js');
               if (Array.isArray(K_VOCABULARY)) {
@@ -3549,7 +3564,15 @@ export class Curriculum {
                 cluster._kVocabQueue = [];
               }
             }
-            const DREAM_TRICKLE_BATCH = 25;
+            // Batch was sized (25) when the queue only ever held K's 2,247
+            // words. Carrying ~2,000 words PER GRADE needs a larger bite or the
+            // queue lags a whole grade behind the walk. The window-budget gate
+            // (`_dwOverBudget`, checked per word inside the loop below) is what
+            // actually bounds the cost — it stops mid-batch the moment the
+            // window's time is spent — so a bigger batch raises the ceiling
+            // without lengthening a dream window. Env-tunable for live tuning.
+            const _tb = Number(typeof process !== 'undefined' && process?.env?.DREAM_TRICKLE_BATCH);
+            const DREAM_TRICKLE_BATCH = (Number.isFinite(_tb) && _tb > 0) ? Math.floor(_tb) : 120;
             const batchN = Math.min(DREAM_TRICKLE_BATCH, cluster._kVocabQueue.length);
             if (batchN > 0) {
               const batchStart = Date.now();
@@ -3580,7 +3603,7 @@ export class Curriculum {
               }
               const dt = ((Date.now() - batchStart) / 1000).toFixed(1);
               const timeoutNote = timedOut > 0 ? ` · ⚠ ${timedOut} re-timed-out (will retry next cycle)` : '';
-              this._hb(`[Curriculum] 💤 dream trickle: ${batchN} words processed in ${dt}s (${bound} multi-def Hebbian fires)${timeoutNote} · ${cluster._kVocabQueue.length} K-vocab words remaining in queue`);
+              this._hb(`[Curriculum] 💤 dream trickle: ${batchN} words processed in ${dt}s (${bound} multi-def Hebbian fires)${timeoutNote} · ${cluster._kVocabQueue.length} words remaining in the definition-seed queue${cluster._defSeedEnqueuedGrades ? ` (grades enqueued: ${[...cluster._defSeedEnqueuedGrades].join(', ')})` : ''}`);
               // I.2 — re-queue the words that timed out THIS cycle so
               // they don't get lost forever. Push them to the back of
               // the queue so other words get a chance first; eventually
@@ -3619,6 +3642,64 @@ export class Curriculum {
       const _dwSkipNote = _dwSkipped.length ? ` · skipped: ${_dwSkipped.join(', ')}` : '';
       this._hb(`[Curriculum] ☀ dream window closed (${(totalMs / 1000).toFixed(1)}s total${_dwStages ? ' — ' + _dwStages : ''}${_dwSkipNote}) — resuming curriculum`);
     }
+  }
+
+  /**
+   * GRADE-WIDE DEFINITION SEED — enqueue one grade's vocabulary into the
+   * dream-trickle queue (2026-08-14).
+   *
+   * Kindergarten used to be the only grade that learned its definitions,
+   * and it paid for them with a BLOCKING upfront Hebbian pass over all
+   * 2,247 words before a single cell ran (~2.2h of pre-cell wall-clock at
+   * the measured seed rate). Every other grade got a fire-and-forget
+   * dictionary CACHE warm and no definition binding at all.
+   *
+   * This routes all 19 grades (~49.9K words) through the dream-trickle
+   * lane instead: it already binds multi-def Hebbian at reps:4 — DEEPER
+   * than the blocking seed's reps:1-2 — carries a retry queue for API
+   * timeouts, and is bounded by the dream window's own time budget, so it
+   * never blocks the walk. More content, deeper binding, zero wall.
+   *
+   * Grade-appropriateness is structural, not filtered: a grade's words
+   * only enter the queue when that grade STARTS, so advanced vocabulary
+   * cannot surface early (the corpus-bleed rule).
+   *
+   * @param {object} cluster
+   * @param {string[]} words   — the grade's vocabulary
+   * @param {string} gradeLabel
+   * @returns {number} how many words were actually added
+   */
+  _enqueueDefinitionSeed(cluster, words, gradeLabel) {
+    if (!cluster || !Array.isArray(words) || words.length === 0) return 0;
+    // Queue may not exist yet (grade start can precede the first dream
+    // window). Create it EMPTY — the trickle's K_VOCABULARY fallback only
+    // fires when the queue is absent, and pre-seeding it here would make
+    // that fallback silently skip K on a fresh walk.
+    if (!Array.isArray(cluster._kVocabQueue)) cluster._kVocabQueue = [];
+    if (!cluster._defSeedEnqueuedGrades) cluster._defSeedEnqueuedGrades = new Set();
+    if (cluster._defSeedEnqueuedGrades.has(gradeLabel)) return 0;   // idempotent per grade
+    cluster._defSeedEnqueuedGrades.add(gradeLabel);
+
+    // DEDUP on both axes: words already BOUND (persisted across boots in
+    // `_definitionTaughtWords`) and words already WAITING in the queue —
+    // grade vocabularies overlap heavily by design (AoA-ordered bands
+    // share common words), so without this a late grade would re-queue
+    // thousands of words the walk already taught.
+    const taught = cluster._definitionTaughtWords instanceof Set
+      ? cluster._definitionTaughtWords : new Set();
+    const queued = new Set(cluster._kVocabQueue);
+    let added = 0;
+    for (const w of words) {
+      if (!w || typeof w !== 'string') continue;
+      if (taught.has(w) || queued.has(w)) continue;
+      queued.add(w);
+      cluster._kVocabQueue.push(w);   // CARRY-FORWARD: append, never replace —
+      added++;                        // a prior grade's undrained tail survives.
+    }
+    if (added > 0) {
+      this._hb(`[Curriculum] 📚 ${gradeLabel}-DEF-SEED ENQUEUED — ${added} new words into the definition-seed queue (${words.length - added} already taught or queued) · queue depth now ${cluster._kVocabQueue.length}. Binds at reps:4 during dream windows; does NOT block the walk.`);
+    }
+    return added;
   }
 
   /**
@@ -8746,6 +8827,15 @@ export class Curriculum {
               cluster.prefetchDefinitions(gradeVocab, { timeoutMs: 8000 })
                 .then(stats => this._hb(`[Curriculum] 📚 ${grade}-VOCAB-PREFETCH DONE — ${stats?.prefetched || 0} new cached, ${stats?.alreadyCached || 0} already cached.`))
                 .catch(err => this._hb(`[Curriculum] 📚 ${grade}-VOCAB-PREFETCH error (non-fatal — words fetch on demand): ${err?.message || err}`));
+              // GRADE-WIDE DEFINITION SEED — the prefetch above only warms the
+              // dictionary CACHE; it binds nothing. Enqueue this grade's words
+              // for real multi-def Hebbian on the dream-trickle lane so every
+              // grade LEARNS its vocabulary the way K did, at reps:4, without
+              // the blocking upfront pass K used to pay. Idempotent per grade;
+              // dedups against already-taught + already-queued words.
+              if (typeof this._enqueueDefinitionSeed === 'function') {
+                this._enqueueDefinitionSeed(cluster, gradeVocab, grade);
+              }
             }
           } catch (err) {
             this._hb(`[Curriculum] ${grade}-vocab prefetch skipped (non-fatal): ${err?.message || err}`);
@@ -8829,7 +8919,28 @@ export class Curriculum {
             // 6-rep upfront). Bulk of definition learning happens via
             // inline-from-teach + dream-trickle; this is just the seed.
             try {
-              if (typeof this._teachWordDefinitions === 'function' && !cluster._kVocabUpfrontTaught) {
+              // K DE-BLOCKED (2026-08-14). Kindergarten was the ONLY grade that
+              // paid a BLOCKING upfront definition pass before its first cell —
+              // all 2,247 words × every definition sense, measured at ~17
+              // words/min on the deployed box = ~2.2 HOURS of pre-cell wall
+              // clock on every fresh walk, while the other 18 grades started
+              // their cells immediately. K now routes through the SAME
+              // dream-trickle lane as every other grade, which binds at reps:4
+              // (deeper than this pass's reps:1) and never blocks the walk.
+              //
+              // This does not remove K's definition learning — it moves it off
+              // the critical path and deepens it. Restore the old blocking
+              // behaviour with DREAM_K_UPFRONT_SEED=1 if a walk ever needs the
+              // full seed landed before the first cell.
+              const _kUpfrontBlocking = (typeof process !== 'undefined'
+                && process?.env?.DREAM_K_UPFRONT_SEED === '1');
+              if (!_kUpfrontBlocking && !cluster._kVocabUpfrontTaught) {
+                cluster._kVocabUpfrontTaught = true;
+                const _n = this._enqueueDefinitionSeed(cluster, K_VOCABULARY, 'kindergarten');
+                this._hb(`[Curriculum] 📚 K-VOCAB — upfront BLOCKING seed skipped (${_n} words routed to the dream-trickle at reps:4 instead). The walk starts its first cell now instead of after a ~2h pre-cell pass. DREAM_K_UPFRONT_SEED=1 restores the blocking pass.`);
+                this._currentMacroPhase = null;
+                this._macroPhaseProgress = null;
+              } else if (typeof this._teachWordDefinitions === 'function' && !cluster._kVocabUpfrontTaught) {
                 // 114.19ev — switch macro-phase label to seed-specific.
                 this._currentMacroPhase = '📚 K-VOCAB-UPFRONT-MULTIDEF SEED (pre-cell setup)';
                 // 114.19ew — chunk-level progress for the dashboard.

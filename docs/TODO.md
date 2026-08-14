@@ -110,6 +110,33 @@ _REMOTE SYNC AUDIT migrated VERBATIM to `docs/FINALIZED.md` (§2026-08-14 REMOTE
 
 ---
 
+## OPEN TASKS — 2026-08-14 · EVERY GRADE LEARNS DEFINITIONS LIKE K (via the dream-trickle, not a blocking wall)
+
+> Gee (verbatim): *"and why the fuck does it take so long to do kvocab, but every other grade doesnt do a vocab?"*
+> Gee (verbatim): *"i think option 1 is best,, but i dont want to make k like every other grade... should we instead make every other greade like k"*
+> Gee (verbatim): *"build it, write the todo fully, and DO NOT FORGET TO BUILD THE TASDK LIST IN THE CLI SO I CAN FOLLOW ALONG ON WHERE U ARE!!! YOU FORGOT TO DO THIS LAST TIME"*
+
+**THE FINDING.** Kindergarten is the ONLY grade that runs a BLOCKING upfront definition seed. `curriculum.js:8774` fires `_teachWordDefinitions(K_VOCABULARY)` — all 2,247 words × every definition each, reps:2 — BEFORE a single cell runs. Every other grade (`curriculum.js:8735`) gets prefetch-ONLY: a fire-and-forget dictionary cache warm that never blocks, with definition binding left lazy. The K block's own comment says the upfront Hebbian was **DROPPED** for basin-blur risk ("~70k cross-bindings would dense-web the sem region"), calls it "BONUS that may be net-negative", then it was partially re-added at reps 6→2 as "just the seed" — and the blocking-at-boot cost was never revisited.
+
+**MEASURED LIVE (2026-08-14, deployed box, build 6fbb992d):** `kVocabTaught` 117 → 143 over 90.3s = **~17 words/min**. K alone = **2.2 hours** of pre-cell blocking on every fresh walk.
+
+**WHY NOT THE LITERAL "make every grade like K":** the 19 grade vocab files total **49,921 words** (K 2,247 · G1 2,022 · G2 2,083 · G3 1,439 · G4 2,148 · G5 2,030 · G6 2,698 · G7 3,650 · G8 2,914 · G9 4,255 · G10 4,198 · G11 4,171 · G12 4,093 · C1 2,544 · C2 2,037 · C3 1,941 · C4 2,092 · grad 1,786 · phd 1,573). At the measured 17 words/min that is **48.9 hours ≈ 2 DAYS of blocking pre-cell seed** before she reaches the cells that actually teach her. Gee's instinct (more depth, not less) is right; the PLACEMENT is what kills it.
+
+**THE BUILD — same content, better lane.** The mechanism already exists and is BETTER than K's blocking seed: `curriculum.js:3532` dream-trickle — `DREAM_TRICKLE_BATCH=25` words per dream window, `_teachWordDefinition(word, {reps: 4, label:'DREAM-DEF-TRICKLE', timeoutMs:20000})`, retry queue for API timeouts, `_dwOverBudget` window-budget gate. **reps:4 is DEEPER than the blocking seed's reps:2.** Its only flaw: `curriculum.js:3544` hardcodes the queue source to `K_VOCABULARY`, so 18 grades never touch it. Feed every grade's vocab into that queue AT ITS OWN GRADE START and she gets 49,921 words of multi-def Hebbian (22× today's 2,247), deeper (reps 4 vs 2), with ZERO blocking — and no corpus bleed, because enqueue-at-grade-start means PhD words can never surface at K.
+
+### TASKS
+
+- [x] **V.1** Generalize the trickle queue from K-only to any grade — **DONE.** K-only lazy init demoted to a FALLBACK (boot race / resumed mid-K); field name `_kVocabQueue` deliberately KEPT because it is persisted in saved weights and renaming would orphan every in-flight queue on load.
+- [x] **V.2** Enqueue EACH grade's vocab at ITS OWN grade start — **DONE.** Wired beside the existing per-grade prefetch. Grade-appropriateness is now STRUCTURAL, not filtered: advanced vocabulary cannot be in the queue before its grade begins.
+- [x] **V.3** De-block Kindergarten — **DONE.** Blocking upfront pass skipped; K's 2,247 words route through the trickle at reps:4 (deeper than the reps:1 it loses). `DREAM_K_UPFRONT_SEED=1` restores the old wall.
+- [x] **V.4** Drain-rate tune — **DONE (code).** `DREAM_TRICKLE_BATCH` 25 → 120, env-tunable. The per-word `_dwOverBudget` gate inside the loop is what bounds cost, so a bigger batch raises the ceiling without lengthening a window. **NOT claimed as tuned** — folded into V.8.
+- [x] **V.5** Dedup + carry-forward — **DONE.** `_enqueueDefinitionSeed()` dedups on both axes (already-bound via persisted `_definitionTaughtWords`, and already-queued — AoA grade bands overlap heavily); appends rather than replaces so a prior grade's undrained tail survives; idempotent per grade.
+- [x] **V.6** Verify per the no-tests LAW — **DONE.** `node --check` PASS; ESM `import()` 26 exports with `_enqueueDefinitionSeed`/`_dreamWindow`/`_teachWordDefinition`/`_teachWordDefinitions` on the prototype; all three wiring points grepped; bundle rebuilt keyless (0 live-key hits).
+- [x] **V.7** Docs + FINALIZED migration, atomic commit, cascade develop→main, push BOTH remotes — **DONE.**
+- [ ] **V.8** ⏳ LIVE-VERIFY (needs Gee's SAVESTART): confirm the walk reaches its first cell in seconds instead of 2.2h, and that `💤 dream trickle: N words processed … N words remaining in the definition-seed queue (grades enqueued: …)` lines show the queue draining across grades. If it lags, raise `DREAM_TRICKLE_BATCH`.
+
+---
+
 ## OPEN TASKS — 2026-08-14 · TICK GAP: 5,481ms of head-of-line blocking per thought
 
 > Gee (verbatim): *"sure 2.9 seconds for every thought is alot"*
