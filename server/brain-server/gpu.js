@@ -177,6 +177,42 @@ const SERVER_GPU_MIXIN = {
    * @returns {Promise<{perCluster: Object} | null>}
    */
   async _gpuBatch(substeps, clusterParams) {
+    // ── SILENT-STALL WATCHDOG (2026-08-14) ──
+    // On 2026-08-14 the brain stopped computing for MINUTES and nothing
+    // said a word: `gpuHits` frozen at 147, `gpuMisses` 0 (so no timeout
+    // ever fired), `totalSpikes` frozen at 803,242, `cellPhasesCompleted`
+    // 0 for 41 minutes — while the tick loop span at 663ms/tick and every
+    // dashboard panel read green. The failure is invisible BY SHAPE: every
+    // early return below hands back `null` silently, so "never dispatched"
+    // and "healthy idle" look identical from the outside, and the 180s
+    // timeout can only fire for batches that were actually SENT.
+    //
+    // Track the last SUCCESSFUL completion (stamped in the resolve below).
+    // If a donor is connected but completions have stopped, scream and
+    // surface it on `_perfStats` so state/dashboard can never hide it
+    // again. Detection only — it changes no dispatch behaviour.
+    {
+      const _now = Date.now();
+      const _live = !!(this._gpuClient && this._gpuClient.readyState === 1);
+      const _stallMs = this._lastBatchOkMs ? (_now - this._lastBatchOkMs) : 0;
+      const _STALL_MS = Number(process.env.DREAM_BATCH_STALL_MS) > 0
+        ? Number(process.env.DREAM_BATCH_STALL_MS) : 30000;
+      if (_live && this._lastBatchOkMs && _stallMs > _STALL_MS) {
+        this._perfStats.batchStall = {
+          stalledMs: _stallMs,
+          lastOkAt: this._lastBatchOkMs,
+          donorBufferedMB: +(((this._gpuClient.bufferedAmount || 0) / 1048576).toFixed(1)),
+          substeps,
+        };
+        if (!this._batchStallLogMs || (_now - this._batchStallLogMs) > 30000) {
+          this._batchStallLogMs = _now;
+          const _c = (this.clients && this.clients.get) ? this.clients.get(this._gpuClient) : null;
+          console.error(`[Brain] ⛔ COMPUTE STALL — no compute_batch has COMPLETED in ${(_stallMs / 1000).toFixed(0)}s while a donor is connected. The brain is not stepping: spikes are frozen and the walk cannot pass a gate. donor buffered=${((this._gpuClient.bufferedAmount || 0) / 1048576).toFixed(1)}MB rtt=${_c && _c.rttMs != null ? _c.rttMs : '?'}ms substeps=${substeps}. Suspect the donor link is saturated (teach lane) or the donor cannot service its socket while computing. Rate-limited 30s.`);
+        }
+      } else if (this._perfStats && this._perfStats.batchStall && _stallMs <= _STALL_MS) {
+        this._perfStats.batchStall = null;   // recovered — clear the banner
+      }
+    }
     if (!this._gpuClient || this._gpuClient.readyState !== 1) return null;
 
     // Defensive pre-flight: if the GPU device is known lost, skip sending
@@ -274,6 +310,10 @@ const SERVER_GPU_MIXIN = {
     const _dispatchAtSend = this._gpuDispatchTotal || 0;
     return new Promise((resolve) => {
       const _instrumentedResolve = (value) => {
+        // Liveness stamp for the SILENT-STALL WATCHDOG above. Only a real
+        // completion counts — the timeout path resolves the raw `resolve`
+        // below, so a timing-out donor can never look alive.
+        this._lastBatchOkMs = Date.now();
         try {
           const rtMs = Date.now() - _rtStart;
           const donorMs = (value && value.phaseTimingMs
@@ -2613,10 +2653,49 @@ const SERVER_GPU_MIXIN = {
     // already handled above; canonical resync/upload rides its own lane.
     const _ap = _cc2 && _cc2._activePhase;
     if (_ap && typeof _ap.name === 'string' && _ap.name.startsWith('_teach')) {
-      const THROTTLE_MS = Number(process.env.DREAM_PATTERN_TEACH_THROTTLE_MS) > 0
-        ? Number(process.env.DREAM_PATTERN_TEACH_THROTTLE_MS) : 20;
+      // DONOR-DROWN FIX (2026-08-14). The 20ms base let this lane put ~50
+      // frames/sec on the wire, and these frames are NOT small: they carry
+      // `sparseIndices` as JSON arrays of raw integers, measured at a
+      // 153.1 KB AVERAGE on the live box (11,089 MB out in 47 min = 3.87
+      // MB/s sustained). The donor could not drain that: RTT climbed to
+      // 6.3s, its socket parked at 19.4MB, it was flagged unhealthy, and
+      // `compute_batch` stopped completing entirely — `gpuHits` frozen and
+      // `totalSpikes` frozen for minutes, i.e. her neurons stopped firing
+      // while the teach loop kept hammering.
+      //
+      // Two changes:
+      //  (1) base 20ms -> 100ms. These frames are per-iteration EPHEMERAL
+      //      (the next iteration's clear+write supersedes) and at
+      //      saturation they were already ~100% shed — 110 sheds/sec — so
+      //      pacing them costs nothing real and returns the link to the
+      //      traffic that DOES matter (compute_batch, hebbian deltas, acks,
+      //      pings).
+      //  (2) ADAPTIVE back-off. A fixed throttle cannot know the link is
+      //      drowning; it kept firing into a full socket and let the shed
+      //      counter absorb the lie. Scale the interval by how far the
+      //      donor's buffer is past its link cap, and by a high smoothed
+      //      RTT — so a struggling donor self-paces and recovers instead of
+      //      being held under. Bounded at 16x so this can never become an
+      //      effective mute.
+      const _baseThrottle = Number(process.env.DREAM_PATTERN_TEACH_THROTTLE_MS) > 0
+        ? Number(process.env.DREAM_PATTERN_TEACH_THROTTLE_MS) : 100;
+      let _mult = 1;
+      try {
+        const _linkCap = this._donorLinkCapBytes();
+        const _buf = (typeof ws.bufferedAmount === 'number') ? ws.bufferedAmount : 0;
+        if (_linkCap > 0 && _buf > _linkCap) _mult = Math.min(16, _buf / _linkCap);
+        const _pc = (this.clients && this.clients.get) ? this.clients.get(ws) : null;
+        const _rtt = (_pc && typeof _pc.rttMs === 'number') ? _pc.rttMs : 0;
+        // >1s RTT means our own frames are already queued deep on this link.
+        if (_rtt > 1000) _mult = Math.min(16, Math.max(_mult, _rtt / 1000));
+      } catch { /* non-fatal — fall back to the flat base throttle */ }
+      const THROTTLE_MS = Math.round(_baseThrottle * _mult);
       if (this._wsPatternLastSendMs && (Date.now() - this._wsPatternLastSendMs) < THROTTLE_MS) {
         this._wsPatternThrottleSkips = (this._wsPatternThrottleSkips || 0) + 1;
+        if (_mult > 1 && (!this._wsPatternBackoffLogMs || (Date.now() - this._wsPatternBackoffLogMs) > 30000)) {
+          this._wsPatternBackoffLogMs = Date.now();
+          console.warn(`[Brain] pattern-lane ADAPTIVE BACK-OFF ×${_mult.toFixed(1)} (throttle ${THROTTLE_MS}ms) — donor buffer ${((ws.bufferedAmount || 0) / 1048576).toFixed(1)}MB over its link cap. Teach patterns are ephemeral; yielding the link so compute_batch + acks + pings drain. Rate-limited 30s.`);
+        }
         return false;
       }
     }

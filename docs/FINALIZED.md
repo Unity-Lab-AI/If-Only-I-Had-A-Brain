@@ -30191,6 +30191,32 @@ Gee relayed the author's own summary (verbatim): *"Gee, ignore all my walls of t
 
 **VERIFY (no-tests LAW — syntax + read only, the two `test_*.mjs` files were NOT executed):** `node --check` PASS on `js/brain/engine.js` and both new `.mjs` files; merge was conflict-free.
 
+## 2026-08-14 — DONOR DROWNED: her neurons stopped firing (the bottleneck moved, it did not close)
+
+Gee (verbatim): *"are we sure she is running smothely?"* → *"do we need changed to the doner binary with everything Rev and we have done?"* → *"we are going to do a update and fr4esh walk once you fix the isssues... so write the todo information make the task list and then get to it"*
+
+**GEE CAUGHT IT.** Stuck at 85% for 20+ minutes, over half the walk's runtime. He was right and the reported "running smoothly" was wrong.
+
+**MEASURED (live, build `03153e0a`, 44-47 min uptime):** `totalSpikes` **803,242 → 803,242 → 803,242** frozen across 4+ minutes — her neurons were not firing at all. `gpuHits` **147 → 147 → 147** with `gpuMisses: 0` — `compute_batch` was not failing, it was never dispatched/completed. `cellPhasesCompleted: 0` after **41.6 min** in `ela/kindergarten`. Donor: `rttMs` **6,348**, `bufferedKB` **19,394** and climbing, `unhealthy: true`. Outbound **11,089 MB in 47 min = 3.87 MB/s**, `msgOut` 74,172 → **153.1 KB AVERAGE MESSAGE**. `patternSheds` +110/sec. Meanwhile the SERVER was healthy: `stepTimeMs` 663, eventLoop p50 21ms, ticks +210/min — the loop span freely with nothing behind it.
+
+**ROOT.** The teach lane ships `write_spike_slice`/`write_current_slice` as JSON arrays of raw integers — 153 KB/message, 3.87 MB/s — into a socket the donor cannot drain. The CHAT.1 lesson (emission went zero-payload / sparse-index binary) was never applied to the TEACH lane. Compounding it: at `SUBSTEPS=24` the donor is busy ~360ms per batch and CANNOT READ ITS SOCKET WHILE COMPUTING, so ~1.4MB piles up per batch.
+
+**OWNED HONESTLY.** Today's two changes moved the bottleneck rather than closing it: Rev's substeps 3→24 made the donor 8× slower to service its socket, and the tick-gap yield fix freed the server loop to push teach frames FASTER. The tick collapse (5,526→663ms) was real, but "running smoothly" was reported without checking `totalSpikes` — the stall was already underway at the time.
+
+**DONOR BINARY — Gee's question answered by verification:** `git diff donor-v0.3.11..main -- donor-app/` is **EMPTY**; `html/compute.html` unchanged. **Nothing Rev or we shipped today requires a donor rebuild.** The connected donor (`engineBackend: cuda` = native v0.3.11) is correct for all of it.
+
+**DEPLOY CONSTRAINT honored:** Gee deploys via dashboard buttons only and cannot set env vars on the box, so every fix ships as a **CODE DEFAULT** with the env var retained purely as an override.
+
+- **D.1 pattern-lane flood control** (`gpu.js _donorPatternLaneOpen`): teach-throttle default **20ms → 100ms**, plus **ADAPTIVE back-off** — the interval scales by how far the donor's buffer is past its link cap and by smoothed RTT >1s, bounded ×16 so it can never become an effective mute. A fixed throttle could not know the link was drowning; it kept firing into a full socket while the shed counter absorbed the lie. These frames are per-iteration ephemeral and were already ~100% shed, so pacing them costs nothing real and returns the link to `compute_batch` + hebbian deltas + acks + pings.
+- **D.2 substeps** (`brain-server.js`): `_SUBSTEPS_AUTO` at >1M **24 → 8**. Keeps ~2.7× of Rev's gain and returns the servicing headroom 24 stole. 8× the brain steps on a brain that has STOPPED is worth less than 2.7× on one that is running. Sub-1M tiers untouched.
+- **D.3 silent-stall watchdog** (`gpu.js` + `state.js`): the failure was invisible BY SHAPE — every early return in `_gpuBatch` hands back `null` silently, so "never dispatched" and "healthy idle" are indistinguishable, and the 180s timeout can only fire for batches actually SENT. Now the last SUCCESSFUL completion is stamped (`_lastBatchOkMs`, set only on a real resolve — the timeout path uses the raw resolve so a timing-out donor can never look alive); if a donor is connected and completions stop for >30s it logs a CRITICAL naming buffer/RTT/substeps and surfaces `batchStall` in state. `batchTiming` (the earlier send→reply stopwatch) is now surfaced too — it existed but was never wired into the payload.
+
+**VERIFY (no-tests LAW):** `node --check` PASS on all three server files; both mixins load (gpu 56 methods, state 15); all six wiring points grepped present. Server-only change set — no browser bundle rebuild required.
+
+**OPEN — D.4 (deliberately NOT built yet):** the real cure for the class is putting `compute_batch` on the donor's PRIORITY lane (it already exists for `Work::Mindspace`; her thinking currently queues behind the teach flood). That needs a `donor-v0.3.12` tag → CI build → Gee installs the binary. Deferred ON PURPOSE: it is an unverifiable-here Rust change (no cargo on this box) shipped immediately before a fresh walk, and the server-side half should be measured first. Measure, then cut — the same discipline this batch exists to enforce.
+
+**OPEN — D.7:** live-verify on Gee's Update & FRESH WALK — `totalSpikes` must CLIMB, `gpuHits` must advance, donor `rttMs` well under 1s, `bufferedKB` low, `cellPhasesCompleted` must leave 0. That is the check that was skipped last time.
+
 ## 2026-08-14 — EVERY GRADE LEARNS DEFINITIONS LIKE K (via the dream-trickle, not a 2.2h blocking wall)
 
 Gee (verbatim): *"and why the fuck does it take so long to do kvocab, but every other grade doesnt do a vocab?"* → *"i think option 1 is best,, but i dont want to make k like every other grade... should we instead make every other greade like k"* → *"build it, write the todo fully, and DO NOT FORGET TO BUILD THE TASDK LIST IN THE CLI SO I CAN FOLLOW ALONG ON WHERE U ARE!!! YOU FORGOT TO DO THIS LAST TIME"*
