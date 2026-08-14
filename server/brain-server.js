@@ -1184,7 +1184,29 @@ const _TICK_MS_AUTO = TOTAL_NEURONS > 1000000 ? 100 : TOTAL_NEURONS > 500000 ? 5
 // The sub-1M tiers are UNCHANGED: at those sizes the payload genuinely
 // is small, the overhead share is different, and nothing here was
 // measured against them.
-const _SUBSTEPS_AUTO = TOTAL_NEURONS > 1000000 ? 24 : TOTAL_NEURONS > 500000 ? 5 : TOTAL_NEURONS > 100000 ? 10 : 10;
+//
+// ── AMENDED 2026-08-14: 24 -> 8 after a live measurement the 24 was
+// never tested against. ──
+// The reasoning above is sound about the GPU idling and the round-trip
+// being fixed per tick, and 24 DID deliver (~1.5 -> ~36 brain-steps/sec).
+// What it missed: the donor CANNOT READ ITS SOCKET WHILE IT COMPUTES. At
+// 24 substeps a batch occupies the donor ~360ms, and with the teach lane
+// pushing 3.87 MB/s that is ~1.4 MB of inbound piling up per batch with
+// nobody draining it. Observed at 44-47 min uptime: donor RTT 6,348ms,
+// socket parked at 19.4MB, flagged unhealthy, `compute_batch` completions
+// FROZEN (gpuHits stuck at 147, gpuMisses 0) and `totalSpikes` frozen at
+// 803,242 for minutes — her neurons had stopped firing entirely while the
+// server loop span happily at 663ms/tick.
+//
+// 8 keeps ~2.7x of the win and returns the servicing headroom: 8x the
+// brain steps on a brain that has STOPPED is worth less than 2.7x on one
+// that is running. This pairs with the pattern-lane flood control
+// (gpu.js `_donorPatternLaneOpen`) — the two together are what let the
+// donor drain. The deeper cure is putting `compute_batch` on the donor's
+// PRIORITY lane (it already exists for Work::Mindspace), which needs a
+// donor-v0.3.12 binary; until that ships, this is the server-side half.
+// DREAM_SUBSTEPS still overrides in either direction for live tuning.
+const _SUBSTEPS_AUTO = TOTAL_NEURONS > 1000000 ? 8 : TOTAL_NEURONS > 500000 ? 5 : TOTAL_NEURONS > 100000 ? 10 : 10;
 
 // ── TRAINING THROUGHPUT KNOBS ────────────────────────────────────────
 // The auto-scaled values above are the DEFAULTS and nothing changes

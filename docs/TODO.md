@@ -110,6 +110,43 @@ _REMOTE SYNC AUDIT migrated VERBATIM to `docs/FINALIZED.md` (§2026-08-14 REMOTE
 
 ---
 
+## OPEN TASKS — 2026-08-14 · DONOR DROWNED: her neurons stopped firing (the bottleneck moved, it did not close)
+
+> Gee (verbatim): *"are we sure she is running smothely?"*
+> Gee (verbatim): *"do we need changed to the doner binary with everything Rev and we have done?"*
+> Gee (verbatim): *"we are going to do a update and fr4esh walk once you fix the isssues... so write the todo information make the task list and then get to it"*
+
+**WHAT GEE CAUGHT.** Stuck at 85% for 20+ minutes — over half the walk's runtime. He was right.
+
+**MEASURED (live box, build `03153e0a`, 44-47 min uptime):**
+- `totalSpikes` **803,242 → 803,242 → 803,242** — FROZEN across 4+ minutes. **Her neurons were not firing at all.**
+- `gpuHits` **147 → 147 → 147** with `gpuMisses: 0` — `compute_batch` was not failing, it was **not being dispatched**.
+- `cellPhasesCompleted: 0` after **41.6 minutes** in `ela/kindergarten`.
+- Donor: `rttMs` **6,348** · `bufferedKB` **19,394** (climbing) · `unhealthy: true`.
+- Outbound to donor: **11,089 MB in 47 min = 3.87 MB/s sustained**, `msgOut` 74,172 = 25.9 msg/s → **153.1 KB AVERAGE MESSAGE**.
+- `patternSheds` +110/sec (217,015 total) — the pattern lane is at its cap and shedding ~everything.
+- Server side was HEALTHY throughout: `stepTimeMs` 663, eventLoop p50 21ms, `frameCount` +210/min. The tick loop span freely with nothing behind it.
+
+**ROOT.** The teach lane ships `write_spike_slice` / `write_current_slice` as **JSON arrays of raw integers** — 153 KB per message, 3.87 MB/s sustained — into a socket the donor cannot drain. This is the CHAT.1 lesson (emission went zero-payload / sparse-index binary) never applied to the TEACH lane. Compounding it: at `SUBSTEPS=24` the donor is busy ~360 ms per batch and **cannot read its socket while computing**, so ~1.4 MB accumulates per batch.
+
+**OUR CONTRIBUTION — stated plainly.** Today's two changes moved the bottleneck rather than closing it: Rev's substeps 3→24 made the donor 8× slower to service its socket, and the tick-gap yield fix freed the server loop to push teach frames *faster*. Bottleneck went from the server thread to the donor link. The tick collapse (5,526→663 ms) was real but I reported "running smoothly" without checking `totalSpikes` — the stall was already underway.
+
+**DONOR BINARY — verified, answering Gee's question:** `git diff donor-v0.3.11..main -- donor-app/` is **EMPTY** and `html/compute.html` is unchanged. **Nothing Rev or we shipped today requires a donor rebuild.** The connected donor (`engineBackend: cuda`, native v0.3.11) is correct for all of it. A donor change is however the proper CURE for this class (D.4) — the donor has a priority lane for `Work::Mindspace` but **`compute_batch` is not on it**, so her thinking queues behind the teach flood.
+
+⚠ **DEPLOY CONSTRAINT: dashboard-only.** Gee deploys via Update & Fresh-Walk buttons — he cannot set env vars on the box. Every fix below therefore ships as a **CODE DEFAULT**, with the env var retained only as an override.
+
+### TASKS
+
+- [x] **D.1** Pattern-lane flood control — teach-throttle default 20ms → 100ms (cuts the lane ~5×) **plus** adaptive back-off keyed to the donor's live buffer/RTT so a drowning link self-paces instead of shedding 110 frames/sec into a full socket
+- [x] **D.2** `_SUBSTEPS_AUTO` at >1M: 24 → 8 — keeps ~2.7× of Rev's gain while giving the donor back the socket-servicing time 24 stole. 8× of a frozen brain is worth less than 2.7× of a running one
+- [x] **D.3** SILENT-STALL WATCHDOG — the whole failure was invisible: `gpuHits` frozen, `gpuMisses` 0, nothing logged, dashboard green. Add a loud CRITICAL when `compute_batch` completions stop advancing while a donor is connected AND ticks keep incrementing, and surface it in state so it can never hide again
+- [ ] **D.4** ⏸ DEFERRED ON PURPOSE (measure the server-side half first) — DONOR v0.3.12 — put `compute_batch` on the donor's PRIORITY lane (it already exists for `Work::Mindspace`). The real cure for the class. **Needs a `donor-v0.3.12` tag → CI build → Gee installs the binary** — flagged as ops, NOT required for the fresh walk
+- [x] **D.5** Verify per the no-tests LAW — `node --check` + ESM `import()` + wiring greps + keyless bundle rebuild
+- [x] **D.6** Docs + FINALIZED, atomic commit, cascade develop→main, push BOTH remotes
+- [ ] **D.7** ⏳ LIVE-VERIFY on Gee's Update & FRESH WALK: `totalSpikes` must CLIMB, `gpuHits` must advance, donor `rttMs` must fall well under 1s, `bufferedKB` must stay low, and `cellPhasesCompleted` must leave 0
+
+---
+
 ## OPEN TASKS — 2026-08-14 · EVERY GRADE LEARNS DEFINITIONS LIKE K (via the dream-trickle, not a blocking wall)
 
 > Gee (verbatim): *"and why the fuck does it take so long to do kvocab, but every other grade doesnt do a vocab?"*
