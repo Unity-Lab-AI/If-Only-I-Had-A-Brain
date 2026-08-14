@@ -2614,6 +2614,25 @@ export class Curriculum {
       const cellKey = this.cluster?._currentCellKey;
       return cellKey ? `${cellKey}:${name}` : null;
     };
+    // WITHIN-PHASE WORK TOTAL — every `_teach*` is wrapped, so a phase's
+    // internal work units are the DISTINCT nested `_teach*` methods it calls.
+    // Counted ONCE here from each method's own source (before binding, while
+    // `this[name]` is still the authored function) and cached. This is what
+    // lets the bar move INSIDE a long phase — e.g. the ~715-line
+    // `_teachLanguageMechanics` band ladder — instead of sitting at 0% for the
+    // phase's entire duration and then jumping 4%. Derived and exact, and it
+    // works for every phase in every grade with no per-runner wiring.
+    if (!this._teachNestedTotal) this._teachNestedTotal = {};
+    for (const _n of TRACKED) {
+      try {
+        const _src = String(this[_n]);
+        const _nested = new Set(
+          [...(_src.matchAll(/this\.(_teach[A-Za-z0-9_]+)\s*\(/g) || [])].map((m) => m[1]),
+        );
+        _nested.delete(_n);
+        this._teachNestedTotal[_n] = _nested.size;
+      } catch { this._teachNestedTotal[_n] = 0; }
+    }
     for (const name of TRACKED) {
       const original = this[name].bind(this);
       this[name] = async (...args) => {
@@ -2653,6 +2672,24 @@ export class Curriculum {
         // that is teaching perfectly well. A started-count moves the instant
         // real work begins, so "is she moving?" is answerable by looking.
         // Self-resets when the cell key changes — no external reset needed.
+        // OUTERMOST-PHASE VISIBILITY (2026-08-14). `_activePhase` is
+        // overwritten by every NESTED call, so the dashboard showed
+        // `_teachHebbian` — a primitive fired thousands of times per phase —
+        // instead of the real cell phase. Reading the live box: 45 minutes in
+        // `ela/kindergarten` with 73,421 sub-phase calls and `passedPhases`
+        // still EMPTY, meaning not one of ELA-K's 27 phases had completed and
+        // nothing on screen could say WHICH one was grinding. Track the
+        // outermost separately so the phase actually responsible is nameable.
+        if (isOutermost && cl) {
+          cl._outermostPhase = { name, startAt: Date.now() };
+          // Start a fresh within-phase work tally for this phase.
+          this._phaseWorkName = name;
+          this._phaseWorkSeen = new Set();
+          this._phaseWorkTotal = (this._teachNestedTotal && this._teachNestedTotal[name]) || 0;
+        } else if (this._phaseWorkSeen) {
+          // A nested teach call IS one unit of the enclosing phase's work.
+          this._phaseWorkSeen.add(name);
+        }
         if (isOutermost && cl) {
           const _ck = cl._currentCellKey || '';
           if (this._cellPhasesStartedKey !== _ck) {
@@ -2725,6 +2762,10 @@ export class Curriculum {
           return result;
         } finally {
           if (cl) cl._activePhase = prev;
+          // Clear the outermost marker only when the OUTERMOST call exits —
+          // a nested primitive must never clear it or the real phase name
+          // vanishes from the dashboard again.
+          if (isOutermost && cl) cl._outermostPhase = null;
         }
       };
     }
@@ -3006,6 +3047,30 @@ export class Curriculum {
       cellStatus,
       pausedForDonorMs: this._pausedForDonorSinceMs ? (Date.now() - this._pausedForDonorSinceMs) : 0,
       activePhase,
+      // The REAL cell phase (OUTERMOST), distinct from `activePhase` which is
+      // whatever nested primitive is executing this instant. Reading the live
+      // box: 45 min in ela/kindergarten, 73,421 sub-phase calls, `passedPhases`
+      // still EMPTY — so no phase had completed and nothing on screen could
+      // name WHICH phase was grinding, because activePhase only ever showed
+      // `_teachHebbian` (a primitive fired thousands of times per phase).
+      outermostPhase: cluster?._outermostPhase
+        ? { name: cluster._outermostPhase.name,
+            elapsedMs: Date.now() - cluster._outermostPhase.startAt, exact: true }
+        // FALLBACK — this published `null` on the live box while a nested
+        // `_teachHebbian` ran, so the phase still could not name itself.
+        // Never publish null while SOMETHING is teaching: fall back to the
+        // active (possibly nested) phase and mark it inexact, so the UI
+        // always has a name and can show how confident it is.
+        : (activePhase ? { name: activePhase.name, elapsedMs: activePhase.elapsedMs, exact: false } : null),
+      // WITHIN-PHASE WORK — distinct nested `_teach*` units entered, over the
+      // count derived from the phase's own source. This is what makes the bar
+      // MOVE during a long phase instead of sitting at 0% then jumping.
+      phaseWork: (this._phaseWorkTotal > 0)
+        ? { name: this._phaseWorkName || null,
+            done: (this._phaseWorkSeen ? this._phaseWorkSeen.size : 0),
+            total: this._phaseWorkTotal,
+            pct: Math.min(99, Math.round(((this._phaseWorkSeen ? this._phaseWorkSeen.size : 0) / this._phaseWorkTotal) * 100)) }
+        : null,
       cellPhasesCompleted: this._currentCellPhasesCompleted | 0,
       // HONEST PROGRESS (2026-08-14) — `cellPhasesCompleted` only ticks when
       // an OUTERMOST phase FINISHES, so a K cell reads 0 for tens of minutes

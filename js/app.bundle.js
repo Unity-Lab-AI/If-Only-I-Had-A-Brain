@@ -95004,6 +95004,19 @@ var Curriculum = class _Curriculum {
       const cellKey = this.cluster?._currentCellKey;
       return cellKey ? `${cellKey}:${name}` : null;
     };
+    if (!this._teachNestedTotal) this._teachNestedTotal = {};
+    for (const _n of TRACKED) {
+      try {
+        const _src = String(this[_n]);
+        const _nested = new Set(
+          [..._src.matchAll(/this\.(_teach[A-Za-z0-9_]+)\s*\(/g) || []].map((m) => m[1])
+        );
+        _nested.delete(_n);
+        this._teachNestedTotal[_n] = _nested.size;
+      } catch {
+        this._teachNestedTotal[_n] = 0;
+      }
+    }
     for (const name of TRACKED) {
       const original = this[name].bind(this);
       this[name] = async (...args) => {
@@ -95016,6 +95029,14 @@ var Curriculum = class _Curriculum {
           return;
         }
         if (cl) cl._activePhase = { name, startAt: Date.now() };
+        if (isOutermost && cl) {
+          cl._outermostPhase = { name, startAt: Date.now() };
+          this._phaseWorkName = name;
+          this._phaseWorkSeen = /* @__PURE__ */ new Set();
+          this._phaseWorkTotal = this._teachNestedTotal && this._teachNestedTotal[name] || 0;
+        } else if (this._phaseWorkSeen) {
+          this._phaseWorkSeen.add(name);
+        }
         if (isOutermost && cl) {
           const _ck = cl._currentCellKey || "";
           if (this._cellPhasesStartedKey !== _ck) {
@@ -95059,6 +95080,7 @@ var Curriculum = class _Curriculum {
           return result;
         } finally {
           if (cl) cl._activePhase = prev;
+          if (isOutermost && cl) cl._outermostPhase = null;
         }
       };
     }
@@ -95282,6 +95304,26 @@ var Curriculum = class _Curriculum {
       cellStatus,
       pausedForDonorMs: this._pausedForDonorSinceMs ? Date.now() - this._pausedForDonorSinceMs : 0,
       activePhase,
+      // The REAL cell phase (OUTERMOST), distinct from `activePhase` which is
+      // whatever nested primitive is executing this instant. Reading the live
+      // box: 45 min in ela/kindergarten, 73,421 sub-phase calls, `passedPhases`
+      // still EMPTY — so no phase had completed and nothing on screen could
+      // name WHICH phase was grinding, because activePhase only ever showed
+      // `_teachHebbian` (a primitive fired thousands of times per phase).
+      outermostPhase: cluster?._outermostPhase ? {
+        name: cluster._outermostPhase.name,
+        elapsedMs: Date.now() - cluster._outermostPhase.startAt,
+        exact: true
+      } : activePhase ? { name: activePhase.name, elapsedMs: activePhase.elapsedMs, exact: false } : null,
+      // WITHIN-PHASE WORK — distinct nested `_teach*` units entered, over the
+      // count derived from the phase's own source. This is what makes the bar
+      // MOVE during a long phase instead of sitting at 0% then jumping.
+      phaseWork: this._phaseWorkTotal > 0 ? {
+        name: this._phaseWorkName || null,
+        done: this._phaseWorkSeen ? this._phaseWorkSeen.size : 0,
+        total: this._phaseWorkTotal,
+        pct: Math.min(99, Math.round((this._phaseWorkSeen ? this._phaseWorkSeen.size : 0) / this._phaseWorkTotal * 100))
+      } : null,
       cellPhasesCompleted: this._currentCellPhasesCompleted | 0,
       // HONEST PROGRESS (2026-08-14) — `cellPhasesCompleted` only ticks when
       // an OUTERMOST phase FINISHES, so a K cell reads 0 for tens of minutes
