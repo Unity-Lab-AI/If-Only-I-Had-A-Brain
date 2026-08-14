@@ -20,8 +20,43 @@
 // this._gpuProxy, this._sparsePool, this.regions, this.lastSpikes etc.
 
 export const CLUSTER_HEBBIAN_MIXIN = {
+  /**
+   * MAY THIS BRAIN TEACH RIGHT NOW? (2026-08-14)
+   *
+   * One predicate, asked by every teach entry point, answering the question
+   * the compute layer actually cares about: is this brain's declared substrate
+   * present. For a GPU-required brain that is `_gpuProxyReady` - the WEIGHTS
+   * ARE UPLOADED - not merely "a socket is open". Those are different
+   * questions, and confusing them is what let a connected-but-not-yet-uploaded
+   * donor pass the walk gate while the math still landed on the host CPU.
+   *
+   * Returns false instead of waiting, so a chat reply with no donor simply
+   * does not LEARN rather than hanging. Pausing the WALK is the curriculum
+   * gate's job; refusing the MATH is this one's. Both enforce the same rule,
+   * and this one is the law: nothing downstream can teach around it.
+   */
+  _teachSubstrateReady(who) {
+    if (!this.requireGpuSubstrate) return true;   // browser brain: CPU IS its substrate
+    if (this._gpuProxyReady === true) {
+      if (this._substrateDownSince) {
+        console.log(`[Cluster ${this.name}] compute substrate BACK after ${((Date.now() - this._substrateDownSince) / 1000).toFixed(0)}s (${this._substrateRefusals | 0} teach calls refused while it was gone) - teaching resumes.`);
+        this._substrateDownSince = null;
+        this._substrateRefusals = 0;
+      }
+      return true;
+    }
+    if (!this._substrateDownSince) {
+      this._substrateDownSince = Date.now();
+      this._substrateRefusals = 0;
+      console.warn(`[Cluster ${this.name}] NO COMPUTE SUBSTRATE - teach REFUSED (first refusal from ${who}). Weights are not uploaded to a donor GPU, and this brain has no CPU teach path: training does not happen without a donor, by design.`);
+    }
+    this._substrateRefusals = (this._substrateRefusals | 0) + 1;
+    return false;
+  },
+
   async _crossRegionHebbian(lr, opts = {}) {
     if (!this.crossProjections) return;
+    if (!this._teachSubstrateReady('_crossRegionHebbian')) return;
     // One-shot diagnostic — fires only the FIRST time this method is
     // called after cluster init. Reports which path every projection
     // is taking so a hang in the first Phase 1 iter has attributable
@@ -250,6 +285,26 @@ export const CLUSTER_HEBBIAN_MIXIN = {
       // already fire-and-forget updated above when possible, and the
       // Hebbian signal for this specific projection just doesn't land
       // this iter. Better a weak Hebbian than a frozen event loop.
+      // GPU-REQUIRED BRAIN: no CPU teach path exists here (2026-08-14).
+      // Reaching this point means the projection is not GPU-BOUND even though
+      // the substrate is ready - it was uploaded standalone rather than bound
+      // into the cortex spike buffer. That is still a GPU-resident matrix, so
+      // it goes to the proxy's UNBOUND entry point. What it must never do is
+      // fall through to the CPU Oja below: that branch is what let a
+      // disconnected donor keep "training" on the host CPU.
+      if (this.requireGpuSubstrate) {
+        if (this._gpuProxy && this._gpuProxy.hebbian) {
+          const preU = this.regionSpikesActive(src);
+          const postU = this.regionSpikesActive(dst);
+          try { this._gpuProxy.hebbian(`${this.name}_${name}`, preU.vec, postU.vec, lrEff); }
+          catch { /* non-fatal - batched plasticity queue backpressured */ }
+        } else if (!this._unboundNoProxyWarned) {
+          this._unboundNoProxyWarned = true;
+          console.error(`[Cluster ${this.name}] CRITICAL - ${name} is not GPU-bound and the proxy exposes no unbound hebbian entry point, so this projection is NOT being trained. It is deliberately NOT computed on the CPU: this brain's substrate is the GPU.`);
+        }
+        continue;
+      }
+
       if (!proj.values || !proj.colIdx || !proj.rowPtr) {
         if (!proj._nullCsrHebbianWarned) {
           proj._nullCsrHebbianWarned = true;
@@ -737,6 +792,7 @@ export const CLUSTER_HEBBIAN_MIXIN = {
    */
   async intraSynapsesHebbian(pre, post, lr) {
     if (!this.synapses) return;
+    if (!this._teachSubstrateReady('intraSynapsesHebbian')) return;
     // T17.2 — parallelize CPU Hebbian across worker pool when available.
     // Same row-range partitioning pattern as sparse matmul (disjoint
     // row-ranges, no write collisions on values buffer). Falls through
@@ -975,6 +1031,7 @@ export const CLUSTER_HEBBIAN_MIXIN = {
    */
   async intraSynapsesAntiHebbian(pre, post, lr) {
     if (!this.synapses) return;
+    if (!this._teachSubstrateReady('intraSynapsesAntiHebbian')) return;
     if (typeof this.synapses.antiHebbianUpdate !== 'function') return;
     const BIOLOGICAL_SCALE_SYNC_THRESHOLD = 100_000;
     const atBioScale = (this.size | 0) > BIOLOGICAL_SCALE_SYNC_THRESHOLD;

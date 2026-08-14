@@ -334,6 +334,22 @@ export class NeuronCluster {
     // dispatch helpers when the GPU client is connected.
     this._gpuProxy = opts.gpuProxy || null;
     this._gpuProxyReady = false; // flips true once cross-projections uploaded
+    // COMPUTE SUBSTRATE IS DECIDED ONCE, HERE (2026-08-14).
+    //
+    // Training used to continue after the donor disconnected, because every
+    // compute path was written as `if (GPU ready) { GPU } else { CPU }`.
+    // Pulling the donor stopped nothing: the dispatch silently took the other
+    // branch and the host CPU began doing 306M-neuron Hebbian by hand. The
+    // same shape existed in propagate ("CPU fallback - GPU cache miss or GPU
+    // proxy not ready yet") and is announced by the upload log itself
+    // ("PARTIAL - falling back to CPU for failed matrices").
+    //
+    // A brain wired with a GPU proxy REQUIRES it: that is this deployment's
+    // substrate, and there is no second one. A brain with no proxy (the
+    // browser/standalone brain) has the CPU implementation as its ONE
+    // substrate. Either way the choice is made once, at construction, and is
+    // never re-decided per call - so there is no branch left to take silently.
+    this.requireGpuSubstrate = !!this._gpuProxy;
     // T18.4.e — optional worker-thread pool for parallel CPU sparse matmul.
     // When provided, the CPU fallback path in `_propagateCrossRegions` and
     // `step`'s intra-cluster propagate parallelizes across all worker

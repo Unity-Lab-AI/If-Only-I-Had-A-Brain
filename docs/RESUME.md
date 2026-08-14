@@ -1,6 +1,28 @@
 # RESUME — Session Pickup Brief
 
-> ## ⭐⭐⭐ 2026-08-14 (latest) — PHASE LEDGER WAS DEAD: one chat message latched the outermost-phase flag for the whole run
+> ## ⭐⭐⭐ 2026-08-14 (latest) — THE COMPUTE LAYER WAS BUILT ON FALLBACKS: teaching is now GPU-ONLY
+>
+> **START HERE.** Code-shipped on `feature/gpu-required-0814`, cascaded to `develop` + `main`, pushed to BOTH remotes. Nothing is on the box until Gee presses **Update & SAVESTART** or **Fresh Walk**. No donor rebuild, no weights-format change.
+>
+> **THE ASK.** Gee: *"why does it keep training when i disconnect the doner? that should NOT be possible!!!, RIGHT?"* then *"find out how it is even doing that — its like its using the server cpu or something weird"*. **He was right on both counts.**
+>
+> **THE FINDING — the GPU was never REQUIRED.** It is an accelerator layered on a CPU implementation that is always present, selected per call. `js/brain/cluster/hebbian.js:157` takes the GPU branch and `continue`s; when `_gpuProxyReady` is false it **falls through** to a full CPU Oja over millions of rows. `js/brain/cluster.js:3296` does the same for propagation (*"CPU fallback — GPU cache miss or GPU proxy not ready yet"*). The upload log says it out loud: *"PARTIAL — falling back to CPU for failed matrices"*, and a comment records the all-night *"2/17 uploaded, 15 fell to CPU"* loop. **And `intraSynapsesHebbian` had NO GPU dispatch at all** — the shadow was deliberately removed (T18.18, OOM) — so the intra-cluster Hebbian that `_teachHebbian` drives never needed a donor in the first place. That is the other half of it.
+>
+> **MY OWN GATE WAS ALSO WRONG.** The no-donor gate shipped earlier the same day tested `brain._gpuClient.readyState === 1` — *is a socket open* — while the compute path tested `cluster._gpuProxyReady` — *did the weight upload finish*. **Two different questions**, so a connected-but-not-uploaded donor passed the gate and the math still landed on the CPU. Plus a 120s grace, every-64th-call sampling, and a `DREAM_NO_DONOR_GRIND=1` override. A timer discouraging a fallback, not an architecture forbidding one.
+>
+> **GEE’S DECISION (verbatim option): "Walk stops, she stays awake."** Curriculum walk HALTED, no CPU Hebbian ever; brain tick + chat keep running so she can still talk; dashboard reads PAUSED; donor back → walk resumes.
+>
+> **SHIPPED — the substrate is a DECLARED PROPERTY, decided once.** `cluster.requireGpuSubstrate = !!this._gpuProxy` in the constructor. A brain wired with a proxy REQUIRES it; a brain without one (browser/standalone) has the CPU implementation as its ONE substrate. **Verified the proxy reaches the language cortex ONLY** (`brain-server.js:2064` — the single cluster `initGpu()` runs on), so no other region can be frozen by this. New **`_teachSubstrateReady(who)`** is ONE predicate asked by `_crossRegionHebbian`, `intraSynapsesHebbian` and `intraSynapsesAntiHebbian` (`_crossRegionAntiHebbian` already refused correctly), testing `_gpuProxyReady` — **the weights are uploaded**. It RETURNS FALSE rather than waiting, so a chat reply with no donor simply does not LEARN instead of hanging. The CPU fallthrough is closed: an unbound projection goes to the proxy’s UNBOUND GPU entry point; if none exists it logs CRITICAL and trains nothing rather than computing on the host. The CPU block below survives only for the browser brain.
+>
+> **`_awaitComputeSubstrate` REWRITTEN.** Asks `cluster._gpuProxyReady`. The **120s grace, the every-64th sampling and `DREAM_NO_DONOR_GRIND` are DELETED** — with no CPU path underneath, a grace permits nothing, a sampling gap only delays the halt, and an override to grind anyway has nothing to grind with. It runs on EVERY teach call and names WHICH half is missing: *no donor connected* vs *donor connected but brain weights are not uploaded to it yet*. `html/dashboard.html` renders **PAUSED — no compute substrate** in red with that reason and the elapsed pause.
+>
+> **VERIFIED** (no-tests LAW): full 800-line-chunk read of `hebbian.js` (952 lines) and the edited regions of `cluster.js` / `curriculum.js` before editing; `node --check` PASS on all three; ESM `import()` PASS with `_teachSubstrateReady` confirmed on `NeuronCluster.prototype`; all 3 dashboard blocks parse; bundles rebuilt with the new symbols present. Also corrected in-flight: **a LAW slip of mine** — Gee’s verbatim words had gone into a `cluster.js` code comment; quotes are workflow-docs-only, so it was rewritten to neutral rationale.
+>
+> **OPEN / NEXT — ONE combined live-verify** (Gee: *"combine v.8. D.7 and L.6 as one task/todo item, we dont need the same thing 3x"*). V.8 + D.7 + L.6 + G.9 are merged into the single **LV** item at the bottom of `docs/TODO.md`; the originals stay in place marked `[>]` MERGED with every word intact. Four checks in one pass after the next deploy: vocab trickle draining, donor health, phase ledger naming a REAL phase with a climbing `work N/N`, and **kill the donor** — PAUSED within seconds, teach events stop, chat still replies, resumes on upload.
+>
+> ---
+
+> ## ⭐⭐⭐ 2026-08-14 (earlier today) — PHASE LEDGER WAS DEAD: one chat message latched the outermost-phase flag for the whole run
 >
 > **START HERE.** Code-shipped on `feature/phase-latch-0814`, cascaded to `develop` + `main`, pushed to BOTH remotes. Nothing is on the box until Gee presses **Update & SAVESTART** or **Fresh Walk**. No donor rebuild, no weights-format change.
 >
