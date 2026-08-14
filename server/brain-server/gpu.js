@@ -197,7 +197,16 @@ const SERVER_GPU_MIXIN = {
       const _stallMs = this._lastBatchOkMs ? (_now - this._lastBatchOkMs) : 0;
       const _STALL_MS = Number(process.env.DREAM_BATCH_STALL_MS) > 0
         ? Number(process.env.DREAM_BATCH_STALL_MS) : 30000;
-      if (_live && this._lastBatchOkMs && _stallMs > _STALL_MS) {
+      // PAUSE-AWARE (2026-08-14 amendment). A DESIGNED pause must never be
+      // reported as a stall: the main tick deliberately stops dispatching
+      // while the cortex owns the GPU for a cell's gate probe, or while the
+      // canonical upload runs. Screaming then would train everyone to ignore
+      // the alarm — and the authoritative, always-runs version of this check
+      // now lives in state.js `_getProfilingState` (this copy only catches
+      // the case where _gpuBatch IS still being called).
+      const _pausedByDesign = !!(this._cortexUploadInFlight
+        || (this.cortexCluster && this.cortexCluster._probeGateActive));
+      if (!_pausedByDesign && _live && this._lastBatchOkMs && _stallMs > _STALL_MS) {
         this._perfStats.batchStall = {
           stalledMs: _stallMs,
           lastOkAt: this._lastBatchOkMs,

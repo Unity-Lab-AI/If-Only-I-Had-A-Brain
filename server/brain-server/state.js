@@ -763,6 +763,48 @@ const SERVER_STATE_MIXIN = {
         const span = (dts[dts.length - 1] - dts[0]) / 1000;
         if (span > 0) gpuDispatchPerSec = r2(dts.length / span);
       }
+      // ── PAUSE-AWARE STALL DETECTION (2026-08-14) ──
+      // D.3 put this check INSIDE `_gpuBatch`, which the tick never calls
+      // while the main loop is paused — so it reported `batchStall: null`
+      // while spikes sat frozen. Blind in exactly the case it existed for.
+      // It lives here now, in the state builder, which always runs.
+      //
+      // And it splits two states that were indistinguishable from outside
+      // and cost a wrong diagnosis (spikes frozen was read as "her neurons
+      // stopped firing" when it was a designed pause):
+      //   batchPaused — EXPECTED. The main tick deliberately returns early
+      //     while the cortex owns the GPU for a cell's gate probe
+      //     (brain-server.js `_probeGateActive`) or while the canonical
+      //     sparse upload runs. Frozen spikes here are CORRECT.
+      //   batchStall  — UNEXPLAINED. A donor is connected, nothing is
+      //     paused, and completions have stopped anyway. This is the only
+      //     one that means something is wrong.
+      let _batchPaused = null;
+      let _batchStall = null;
+      try {
+        const _donorLive = !!(this._gpuClient && this._gpuClient.readyState === 1);
+        const _sinceOkMs = this._lastBatchOkMs ? (now - this._lastBatchOkMs) : 0;
+        const _pauseReason = this._cortexUploadInFlight
+          ? 'canonical-upload (donor ACKs own the message loop until it settles)'
+          : (this.cortexCluster && this.cortexCluster._probeGateActive)
+            ? 'probe-gate (cortex owns the GPU exclusively for this cell)'
+            : null;
+        if (_pauseReason) {
+          _batchPaused = {
+            reason: _pauseReason,
+            sinceLastBatchMs: _sinceOkMs,
+            cell: (this.cortexCluster && this.cortexCluster._currentCellKey) || null,
+            expected: true,
+          };
+        } else if (_donorLive && this._lastBatchOkMs && _sinceOkMs > 30000) {
+          _batchStall = {
+            stalledMs: _sinceOkMs,
+            lastOkAt: this._lastBatchOkMs,
+            donorBufferedMB: r1(((this._gpuClient.bufferedAmount || 0) / 1048576)),
+            expected: false,
+          };
+        }
+      } catch { /* telemetry must never break a broadcast */ }
       out.throughput = {
         stepTimeMs: r2(perf.stepTimeMs || 0),
         stepsPerSec: r2(perf.stepsPerSec || 0),
@@ -780,7 +822,8 @@ const SERVER_STATE_MIXIN = {
         // 2026-08-14 freeze (spikes stuck for minutes, gpuHits frozen,
         // gpuMisses 0) was invisible precisely because neither existed.
         batchTiming: perf.batchTiming || null,
-        batchStall: perf.batchStall || null,
+        batchPaused: _batchPaused,
+        batchStall: _batchStall,
         defsLearnedPerHour: (this._defLearnedTimestamps && this._defLearnedTimestamps.length)
           ? this._defLearnedTimestamps.length : 0,
         chatHebbianTurns: (this._chatTimeHebbianStats && this._chatTimeHebbianStats.turns) || 0,

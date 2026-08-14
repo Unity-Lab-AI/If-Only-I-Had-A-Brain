@@ -2644,6 +2644,24 @@ export class Curriculum {
           return;
         }
         if (cl) cl._activePhase = { name, startAt: Date.now() };
+        // HONEST PROGRESS (2026-08-14) — count outermost phases STARTED,
+        // not only completed. The first phase of a K cell legitimately runs
+        // tens of minutes, so `phasesCompleted` sits at 0 the whole time and
+        // the dashboard falls back to an elapsed-time guess it renders as
+        // "~85% [time-est] · 0 phases reported · server phase counter stuck".
+        // That estimate saturates and stops, which reads as a hang on a brain
+        // that is teaching perfectly well. A started-count moves the instant
+        // real work begins, so "is she moving?" is answerable by looking.
+        // Self-resets when the cell key changes — no external reset needed.
+        if (isOutermost && cl) {
+          const _ck = cl._currentCellKey || '';
+          if (this._cellPhasesStartedKey !== _ck) {
+            this._cellPhasesStartedKey = _ck;
+            this._cellPhasesStartedSet = new Set();
+          }
+          this._cellPhasesStartedSet.add(name);
+          this._currentCellPhasesStarted = this._cellPhasesStartedSet.size;
+        }
         try {
           const result = await original(...args);
           // Persist ONLY outermost phases. Nested primitives never
@@ -2979,6 +2997,27 @@ export class Curriculum {
       pausedForDonorMs: this._pausedForDonorSinceMs ? (Date.now() - this._pausedForDonorSinceMs) : 0,
       activePhase,
       cellPhasesCompleted: this._currentCellPhasesCompleted | 0,
+      // HONEST PROGRESS (2026-08-14) — `cellPhasesCompleted` only ticks when
+      // an OUTERMOST phase FINISHES, so a K cell reads 0 for tens of minutes
+      // and the dashboard degrades to an elapsed-time estimate ("~85%
+      // [time-est] · server phase counter stuck") that saturates and looks
+      // like a hang. These two move while she works:
+      //   cellPhasesStarted — outermost phases ENTERED in this cell
+      //   vocabProgress     — live word position inside the current list
+      // Together they answer "is she moving?" without interpreting a
+      // frozen counter.
+      cellPhasesStarted: this._currentCellPhasesStarted | 0,
+      vocabProgress: this._vocabProgress
+        ? {
+            label: this._vocabProgress.label,
+            taught: this._vocabProgress.taught | 0,
+            total: this._vocabProgress.total | 0,
+            elapsedSec: this._vocabProgress.elapsedSec | 0,
+            lastWord: this._vocabProgress.lastWord || null,
+            pct: this._vocabProgress.total > 0
+              ? Math.round((this._vocabProgress.taught / this._vocabProgress.total) * 100) : 0,
+          }
+        : null,
       cellPhasesPersisted: currentCellPassedPhases,
       // I.12 closure — nested sub-phase counter. cellPhasesCompleted
       // only ticks on OUTERMOST teach phases, which means K cells stay
@@ -18707,6 +18746,17 @@ export class Curriculum {
     ensureLetters(Array.from(letterSet));
 
     let _vocabIdx = 0;
+    // HONEST PROGRESS (2026-08-14) — publish the live word position. This
+    // loop already computed taught/total for its log line and then threw it
+    // away, so the dashboard had nothing finer than "phase N" for a phase
+    // that runs tens of minutes. Held on a SINGLE mutated object (no
+    // per-word allocation) and read by getCurriculumStatus. Updated every
+    // word, not every 5th like the event broadcast — the whole point is that
+    // it moves visibly while a long phase grinds.
+    this._vocabProgress = {
+      label: _vocabLabel, taught: 0, total: _vocabTotal,
+      startedAt: _vocabListStartMs, elapsedSec: 0, lastWord: null,
+    };
     for (const word of vocab) {
       if (typeof globalThis._brainShutdownRequested !== 'undefined' && globalThis._brainShutdownRequested) return { pass: false, reason: 'shutdown' };
       await this._teachWordIntegrated(word, {
@@ -18725,6 +18775,11 @@ export class Curriculum {
       // doesn't trip 982s falsely. Fire every 5 words = max ~5×N-ms
       // gap between heartbeats no matter how saturated the matrix gets.
       _vocabIdx++;
+      if (this._vocabProgress) {
+        this._vocabProgress.taught = _vocabIdx;
+        this._vocabProgress.lastWord = word;
+        this._vocabProgress.elapsedSec = Math.round((Date.now() - _vocabListStartMs) / 1000);
+      }
       if (_vocabIdx % 5 === 0) {
         await new Promise((resolve) => setImmediate(resolve));
         // Brain Events progress broadcast (I.11). Every 5 words = roughly
@@ -18751,6 +18806,7 @@ export class Curriculum {
       const _elapsedSec = Math.round((Date.now() - _vocabListStartMs) / 1000);
       this._pushBrainEvent?.('teach', 'sem', `VOCAB-LIST DONE: ${_vocabLabel} · ${_vocabIdx}/${_vocabTotal} words · ${_elapsedSec}s`, { label: _vocabLabel, taught: _vocabIdx, total: _vocabTotal, elapsedSec: _elapsedSec });
     } catch {}
+    this._vocabProgress = null;   // list finished — stop reporting a stale position
     return { pass: true, reason: 'integrated-teach-complete' };
 
     // ───────────────── LEGACY PATH (unreachable — kept for diff) ─────────────────

@@ -3422,17 +3422,59 @@
           // > 1 min + no macroPhaseProgress (i.e. we're past SEED, in
           // actual cell teach), substitute a time-based estimate so the
           // bar moves and operator can see the brain is alive.
+          // REAL PROGRESS, NOT A TIMER (2026-08-14).
+          // This block used to substitute `min(85, elapsed/expected * 85)`
+          // whenever the completed-phase counter read 0 — a STOPWATCH
+          // rendered as a percentage. Two consequences: it was hard-capped
+          // at 85 so the bar could never reach 86% no matter what the brain
+          // did, and it saturated there and froze — which reads as a hang on
+          // a brain that is teaching normally. It measured wall-clock, never
+          // work.
+          //
+          // The server now publishes real signals, so use them and keep the
+          // time estimate strictly as a last resort, plainly marked:
+          //   cellPhasesStarted — outermost phases ENTERED this cell (moves
+          //     the moment work starts; the COMPLETED counter legitimately
+          //     stays 0 for tens of minutes on a long first phase)
+          //   vocabProgress     — live word position inside the running list
+          // Composite = phases entered, plus the fraction of the list in
+          // flight, over the expected phase count. Capped at 99 so the bar
+          // never claims done before the cell actually passes.
           if (c.cellStatus === 'in-progress' && !c.macroPhaseProgress) {
             const done = Math.max(c.cellPhasesPersisted | 0, c.cellPhasesCompleted | 0);
+            const started = c.cellPhasesStarted | 0;
+            const vp = c.vocabProgress || null;
             const elapsedMin = (c.cellElapsedMs || 0) / 60000;
-            if (done === 0 && elapsedMin > 1) {
-              const timePct = Math.min(85, Math.round((elapsedMin / EXPECTED_K_CELL_MIN) * 85));
-              const cellBar = document.getElementById('d-curr-cellbar');
-              const cellPct = document.getElementById('d-curr-cellpct');
-              if (cellBar) cellBar.style.width = timePct + '%';
-              if (cellPct) {
-                cellPct.innerHTML = `~${timePct}% <span style="color:#fbbf24;">[time-est]</span> · 0 phases reported · ${elapsedMin.toFixed(1)} min elapsed (in progress, server phase counter stuck)`;
-              }
+            const cellBar = document.getElementById('d-curr-cellbar');
+            const cellPct = document.getElementById('d-curr-cellpct');
+            let pct = null;
+            let html = null;
+            // Self-contained: the sibling constant is declared in a DIFFERENT
+            // <script> block (and not at its top level), so referencing it
+            // directly would throw ReferenceError here. `typeof` on an
+            // undeclared identifier is safe and returns 'undefined', so this
+            // picks it up when it IS reachable and falls back otherwise.
+            const expectedPhases = (typeof EXPECTED_PHASES_PER_CELL === 'number' && EXPECTED_PHASES_PER_CELL > 0)
+              ? EXPECTED_PHASES_PER_CELL : 12;
+            const vpTail = (vp && vp.total > 0)
+              ? ` · <span style="color:#93c5fd;">${vp.label} ${vp.taught}/${vp.total}</span>${vp.lastWord ? ` — "${vp.lastWord}"` : ''}`
+              : '';
+            if (started > 0) {
+              const frac = (vp && vp.total > 0) ? (vp.taught / vp.total) : 0;
+              pct = Math.min(99, Math.round(((Math.max(0, started - 1) + frac) / expectedPhases) * 100));
+              html = `${pct}% · <span style="color:#4ade80;">phase ${started}/${expectedPhases}</span> · ${done} complete${vpTail} · ${elapsedMin.toFixed(1)} min`;
+            } else if (vp && vp.total > 0) {
+              // Inside a vocab list before any outermost phase registered —
+              // the list position is still REAL work, so show it.
+              pct = Math.max(0, Math.min(99, Math.round(vp.pct || 0)));
+              html = `${pct}%${vpTail} · ${elapsedMin.toFixed(1)} min`;
+            } else if (done === 0 && elapsedMin > 1) {
+              pct = Math.min(85, Math.round((elapsedMin / EXPECTED_K_CELL_MIN) * 85));
+              html = `~${pct}% <span style="color:#fbbf24;">[time-est — no real signal yet, this is a stopwatch]</span> · ${elapsedMin.toFixed(1)} min elapsed`;
+            }
+            if (pct !== null) {
+              if (cellBar) cellBar.style.width = pct + '%';
+              if (cellPct) cellPct.innerHTML = html;
             }
           }
         } catch (err) {
