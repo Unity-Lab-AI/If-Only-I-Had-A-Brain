@@ -122,11 +122,12 @@ _REMOTE SYNC AUDIT migrated VERBATIM to `docs/FINALIZED.md` (§2026-08-14 REMOTE
 
 ### PHASE 0 — MEASURE (prove it, never infer — the mistake this issue is correcting)
 
-- [~] **0.1** Full 800-line-chunk read of `server/brain-server/gpu.js` (3,010 lines) before any edit — read-before-edit LAW
-- [ ] **0.2** `compute_batch` send→reply stopwatch in `_gpuBatch` → `batchRoundTripMs`
-- [ ] **0.3** Queue-depth proxy — count outbound messages sent since the last batch → `msgsAheadOfBatch`
-- [ ] **0.4** Surface both through `_perfStats` → `state.profiling.throughput` → dashboard card
-- [ ] **0.5** Record the native-donor `phaseTimingMs` blind spot (Rust reports nothing; browser donor does)
+- [x] **0.1** Full 800-line-chunk read of `server/brain-server/gpu.js` (3,010 lines) before any edit — read-before-edit LAW — **DONE.** Overturned the first hypothesis: the pattern lane is ALREADY throttled (`_donorPatternLaneOpen` — 20ms teach throttle ≈50 frames/s, 16MB lane cap, idle gate, chat-priority yield), so it is not an unbounded flood and `bufferedAmount 0` is honest.
+- [x] **0.1a** **ROOT RE-DIAGNOSED — `cpuPercent` was misread by everyone (Rev's PR #3 comment commits "cpuPercent 6 <- CPU is idle").** `server/brain-server/chat.js:651` divides by `os.cpus().length` (16), so **6% = 96% of ONE core**, and the brain loop is single-threaded (`parallelMode:false`, `workerCount:0`, brain-server.js:1513 "GPU-EXCLUSIVE MODE — no CPU workers ever spawned"). Corroborated by `eventLoopDelay.maxMs 7314` at `p50 20`. The ~5,400ms is the SERVER THREAD saturated with synchronous teach work (CPU-shadow Oja / spike writes / JSON serialization) between dispatching `compute_batch` and being free to process the reply — NOT donor-side queueing. Rev's PR #2 (`regionSpikesActive` → `activeRows`, O(all rows) → O(active)) attacks exactly this and is already merged.
+- [x] **0.2** `compute_batch` send→reply stopwatch in `_gpuBatch` → **DONE.** Records `roundTripMs` + EMA(20) + `donorComputeMs` + `unaccountedMs` (round-trip − donor compute = wire + blocked-loop) on `_perfStats.batchTiming`, throttled log every 30s. Pure telemetry — no dispatch behaviour, payload, or ordering change. Timeout path still resolves raw (timeouts excluded from the stats).
+- [x] **0.3** Queue-depth proxy — **DONE.** `dispatchesDuring` = sparse-dispatch delta while the batch was in flight (how much other traffic shared the donor socket), same `batchTiming` block.
+- [ ] **0.4** Surface `batchTiming` through `state.profiling.throughput` → dashboard card (needs the full 800-line read of `state.js` first)
+- [ ] **0.5** ⛔ **BUG FOUND — `phaseTimingMs` is dropped by the server, not missing from donors.** `brain-server.js:8371` resolves `resolver({ perCluster: _per })` and never forwards `msg.phaseTimingMs`, so the read at `brain-server.js:4308` is undefined for EVERY donor — including browser donors that measure `substepLoopMs`/`voltReadbackMs` and ship them correctly. One-line fix (`phaseTimingMs: msg.phaseTimingMs`) but it edits `brain-server.js` → requires the full ~9,100-line read first per the read-before-edit LAW. This is what unlocks the exact donor-vs-server split.
 
 ### PHASE 1 — CUT THE BLOCKING (rising order of work; stop at whichever hits milliseconds)
 

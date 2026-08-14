@@ -247,8 +247,62 @@ const SERVER_GPU_MIXIN = {
     // without masking real hangs (a true device-lost still surfaces
     // after 3 minutes — long enough for transient pressure to clear).
     const TIMEOUT_MS = 180000;
+    // ── TICK-GAP INSTRUMENT — the send→reply stopwatch this loop never had ──
+    // `stepTimeMs` measures the WHOLE tick, and `phaseTimingMs` reads null for
+    // EVERY donor — not because donors don't report it (compute.html measures
+    // substepLoopMs + voltReadbackMs and ships it faithfully) but because the
+    // `compute_batch_result` handler resolves `{ perCluster }` ONLY and drops
+    // `msg.phaseTimingMs` on the floor, so the read at brain-server.js:4308 is
+    // always undefined. Net effect: the single most important number in the
+    // brain's loop — how long a thought-frame sits between dispatch and being
+    // processed — has never been measured. The
+    // 98.5%-GPU-idle gap was therefore attributed by INFERENCE (to donor-side
+    // round-trip), while the live evidence points at the server's own
+    // single-threaded loop: cpuPercent is normalised across all cores
+    // (chat.js `cpuTimeMs / (elapsed * os.cpus().length)`), so the reported 6%
+    // on a 16-core box is ~96% of ONE core — and this process is
+    // single-threaded (no worker pool). Event-loop delay p50 20ms / max 7315ms
+    // corroborates seconds-long stalls.
+    //
+    // Splits the tick honestly into three parts:
+    //   roundTripMs     — dispatch → this promise resolving
+    //   donorComputeMs  — the donor's own reported total (null on native)
+    //   unaccountedMs   — roundTrip − donorCompute = wire + BLOCKED-loop time
+    // EMA-smoothed so one slow tick doesn't read as a trend. Pure telemetry:
+    // no dispatch behaviour, no payload, no ordering change.
+    const _rtStart = Date.now();
+    const _dispatchAtSend = this._gpuDispatchTotal || 0;
     return new Promise((resolve) => {
-      this._gpuBatchPending = { batchId, resolve };
+      const _instrumentedResolve = (value) => {
+        try {
+          const rtMs = Date.now() - _rtStart;
+          const donorMs = (value && value.phaseTimingMs
+            && Number.isFinite(Number(value.phaseTimingMs.totalMs)))
+            ? Number(value.phaseTimingMs.totalMs) : null;
+          const t = this._batchTiming || (this._batchTiming = { samples: 0, roundTripEmaMs: 0 });
+          t.samples++;
+          t.roundTripMs = rtMs;
+          // EMA over ~20 batches; seeded by the first sample so it converges fast.
+          t.roundTripEmaMs = t.samples === 1 ? rtMs : (t.roundTripEmaMs * 0.95 + rtMs * 0.05);
+          t.donorComputeMs = donorMs;
+          t.unaccountedMs = (donorMs != null) ? Math.max(0, rtMs - donorMs) : null;
+          t.donorReports = donorMs != null;
+          t.substeps = substeps;
+          // Sparse dispatches issued while this batch was in flight — the
+          // queue-depth proxy (how much other traffic shared the donor socket).
+          t.dispatchesDuring = (this._gpuDispatchTotal || 0) - _dispatchAtSend;
+          this._perfStats.batchTiming = t;
+          if (!this._batchTimingLogMs || (Date.now() - this._batchTimingLogMs) > 30000) {
+            this._batchTimingLogMs = Date.now();
+            const donorTxt = donorMs != null
+              ? `donor=${donorMs.toFixed(0)}ms · UNACCOUNTED=${t.unaccountedMs.toFixed(0)}ms (wire + blocked loop)`
+              : 'donor=not-reported (native donor sends no phaseTimingMs — the unaccounted split needs a browser donor or a donor-side port)';
+            console.log(`[Brain] TICK-GAP — compute_batch round-trip ${rtMs}ms (ema ${t.roundTripEmaMs.toFixed(0)}ms) · substeps=${substeps} · ${donorTxt} · sparse dispatches in flight during batch=${t.dispatchesDuring}. Rate-limited 30s.`);
+          }
+        } catch { /* telemetry must never break a tick */ }
+        resolve(value);
+      };
+      this._gpuBatchPending = { batchId, resolve: _instrumentedResolve };
       setTimeout(() => {
         if (this._gpuBatchPending && this._gpuBatchPending.batchId === batchId) {
           this._gpuBatchPending = null;
