@@ -95019,6 +95019,12 @@ var Curriculum = class _Curriculum {
         if (isOutermost && cl) {
           const _ck = cl._currentCellKey || "";
           if (this._cellPhasesStartedKey !== _ck) {
+            if (this._cellPhasesStartedKey && this._cellPhasesStartedSet?.size > 0) {
+              if (!this._cellPhaseObserved) this._cellPhaseObserved = {};
+              const _prev = this._cellPhasesStartedKey;
+              const _seen = this._cellPhasesStartedSet.size;
+              if (!(this._cellPhaseObserved[_prev] >= _seen)) this._cellPhaseObserved[_prev] = _seen;
+            }
             this._cellPhasesStartedKey = _ck;
             this._cellPhasesStartedSet = /* @__PURE__ */ new Set();
           }
@@ -95287,6 +95293,12 @@ var Curriculum = class _Curriculum {
       // Together they answer "is she moving?" without interpreting a
       // frozen counter.
       cellPhasesStarted: this._currentCellPhasesStarted | 0,
+      // EXACT total for THIS cell — declared (counted from the runner's own
+      // source) preferred, else observed (learned from a previous run of the
+      // same cell), else NULL. Null means "not known yet"; consumers must show
+      // no denominator rather than substitute a guess.
+      cellPhasesTotal: cellKey && (this._cellPhaseDeclared && this._cellPhaseDeclared[cellKey] || this._cellPhaseObserved && this._cellPhaseObserved[cellKey]) || null,
+      cellPhasesTotalSource: cellKey && this._cellPhaseDeclared && this._cellPhaseDeclared[cellKey] ? "declared" : cellKey && this._cellPhaseObserved && this._cellPhaseObserved[cellKey] ? "observed" : null,
       vocabProgress: this._vocabProgress ? {
         label: this._vocabProgress.label,
         taught: this._vocabProgress.taught | 0,
@@ -98321,6 +98333,19 @@ var Curriculum = class _Curriculum {
   _cellRunner(subject, grade) {
     const raw = this._cellRunnerRaw(subject, grade);
     if (typeof raw !== "function") return raw;
+    try {
+      const _ck = `${subject}/${grade}`;
+      if (!this._cellPhaseDeclared) this._cellPhaseDeclared = {};
+      if (this._cellPhaseDeclared[_ck] == null) {
+        const _src = Function.prototype.toString.call(raw);
+        const _n = (_src.match(/_phaseTick\s*\(/g) || []).length;
+        if (_n > 0) {
+          this._cellPhaseDeclared[_ck] = _n;
+          this._hb?.(`[Curriculum] phase-total for ${_ck}: ${_n} declared phases (read from the runner, not estimated).`);
+        }
+      }
+    } catch {
+    }
     return async (ctx) => {
       if (subject !== "life") {
         try {

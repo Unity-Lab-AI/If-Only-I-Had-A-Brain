@@ -3449,20 +3449,31 @@
             const cellPct = document.getElementById('d-curr-cellpct');
             let pct = null;
             let html = null;
-            // Self-contained: the sibling constant is declared in a DIFFERENT
-            // <script> block (and not at its top level), so referencing it
-            // directly would throw ReferenceError here. `typeof` on an
-            // undeclared identifier is safe and returns 'undefined', so this
-            // picks it up when it IS reachable and falls back otherwise.
-            const expectedPhases = (typeof EXPECTED_PHASES_PER_CELL === 'number' && EXPECTED_PHASES_PER_CELL > 0)
-              ? EXPECTED_PHASES_PER_CELL : 12;
+            // EXACT total for THIS cell, published by the server: counted from
+            // the runner's own declared phase list, or learned from a previous
+            // run of the same cell. NULL means genuinely not-known-yet, and in
+            // that case we show NO denominator rather than divide by a
+            // hardcoded guess — the old constant said 12 while the ELA-K runner
+            // declares 27, so the bar read 50% at phase 6 when the truth was
+            // 22%. A wrong denominator is worse than an absent one.
+            const totalPhases = (typeof c.cellPhasesTotal === 'number' && c.cellPhasesTotal > 0)
+              ? c.cellPhasesTotal : null;
+            const totalTag = (c.cellPhasesTotalSource === 'observed') ? '~' : '';
             const vpTail = (vp && vp.total > 0)
               ? ` · <span style="color:#93c5fd;">${vp.label} ${vp.taught}/${vp.total}</span>${vp.lastWord ? ` — "${vp.lastWord}"` : ''}`
               : '';
-            if (started > 0) {
+            if (started > 0 && totalPhases) {
               const frac = (vp && vp.total > 0) ? (vp.taught / vp.total) : 0;
-              pct = Math.min(99, Math.round(((Math.max(0, started - 1) + frac) / expectedPhases) * 100));
-              html = `${pct}% · <span style="color:#4ade80;">phase ${started}/${expectedPhases}</span> · ${done} complete${vpTail} · ${elapsedMin.toFixed(1)} min`;
+              pct = Math.min(99, Math.round(((Math.max(0, started - 1) + frac) / totalPhases) * 100));
+              html = `${pct}% · <span style="color:#4ade80;">phase ${started}/${totalTag}${totalPhases}</span> · ${done} complete${vpTail} · ${elapsedMin.toFixed(1)} min`;
+            } else if (started > 0) {
+              // Phases ARE moving but this cell's total has never been seen
+              // (first run of a runner that doesn't declare phases). Drive the
+              // bar from the vocab list when one is running; otherwise report
+              // the honest phase number with no denominator at all.
+              pct = (vp && vp.total > 0) ? Math.max(0, Math.min(99, Math.round(vp.pct || 0))) : null;
+              html = `<span style="color:#4ade80;">phase ${started}</span> <span style="color:#94a3b8;">(total unknown — first run of this cell)</span>${vpTail} · ${elapsedMin.toFixed(1)} min`;
+              if (pct === null && cellPct) cellPct.innerHTML = html;
             } else if (vp && vp.total > 0) {
               // Inside a vocab list before any outermost phase registered —
               // the list position is still REAL work, so show it.
