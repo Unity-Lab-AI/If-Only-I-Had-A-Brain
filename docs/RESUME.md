@@ -1,6 +1,26 @@
 # RESUME — Session Pickup Brief
 
-> ## ⭐⭐⭐ 2026-08-14 (latest) — LIVENESS TELEMETRY + **I CAN READ THE LIVE BRAIN DIRECTLY**
+> ## ⭐⭐⭐ 2026-08-14 (latest) — ⛔ V.8 FAILED LIVE — the dictionary trickle had NEVER run (ZERO definitions bound in 4.6h) — FIXED, NOT DEPLOYED
+>
+> **THE HEADLINE: she had learned ZERO word definitions.** Gee asked for the dream-window check we had been waiting on all day. Live `/public-state.json`: dictionary **healthy** — 8,747 words fetched, 1,343 errs, cache 10,090, `fetchAvailable ✓`, `smokeTestPassed ✓` — and **`kVocabTaught: 0`, `defsLearnedPerHour: 0`** after **3 consolidation passes** and 4.6 hours. Words were being FETCHED and never BOUND.
+>
+> **ROOT (traced, not guessed).** `_dreamWindow` stamps `const startedAt` (`curriculum.js:3479`) then **awaits the forced consolidation pass inside that same clock**. Every stage is gated by `_dwOverBudget()` measured from `startedAt` against a shared **180s** budget (`DREAM_WINDOW_MAX_MS`), and the dictionary trickle was the **LAST** stage behind phenomenology, recombination and promotion. At 306M a forced consolidation pass spends that budget by itself → the trickle was skipped **every window, every time**.
+>
+> **IT WAS MY REGRESSION, FROM V.3.** Removing K’s blocking upfront seed made the dream trickle the ONLY path that binds word meanings — so the sole vocabulary path became the last item behind a shared budget, i.e. the first thing sacrificed. Caught only because Gee asked for the check.
+>
+> **FIXED to his chosen shape ("Both — untimed consolidation AND trickle early").** `_dwBudgetFrom` is stamped once the MANDATORY consolidation completes and the gate measures from it (`startedAt` still measures the total window for logs); the trickle now runs FIRST, immediately after consolidation. Order verified by read-back: `_dwBudgetFrom` (3571) → **trickle (3582)** → phenomenology (3677) → recombination (3762) → promotion (3889). The skip label now names it *"the ONLY path that binds word meanings"* so a future skip cannot read as one gated stage among four.
+>
+> **A TDZ BUG CAUGHT BEFORE SHIPPING:** the first draft put `const _dwBudgetFrom` inside the consolidation block — invisible to `_dwOverBudget`, which is defined above it — and guarded with `typeof`. `typeof` does NOT shield a `const`/`let` in TDZ; it would have thrown at call time. Declared in the outer scope with a `null` origin instead.
+>
+> **NOTHING WAS LOST.** `_kVocabQueue` and `_definitionTaughtWords` both persist in saved weights, so the queue drains from wherever it stands.
+>
+> **BUILD CORRECTION.** Gee believed he was training on an old push. He was not: deployed build **`156980f1`, 18:50:49Z, IS the GPU-only batch** (`substratePause` present in the payload). Not deployed: the grade column, single-ledger, liveness, and this trickle fix.
+>
+> **HER STATE AT THE CHECK.** `ela/kindergarten`, phase **24/25, 23 complete**, `_teachSentenceStructure +108.9m`, 274.6 min in the cell, 435,261 teach events — healthy, one phase from finishing kindergarten ELA.
+>
+> ---
+
+> ## ⭐⭐⭐ 2026-08-14 (earlier today) — LIVENESS TELEMETRY + **I CAN READ THE LIVE BRAIN DIRECTLY**
 >
 > **THE SINGLE MOST USEFUL THING IN THIS FILE:** `https://if-only-i-had-a-brain.git.unityailab.com/public-state.json` is **PUBLIC, no auth** (`brain-server.js:6070`) and carries the ENTIRE `curriculum` block plus `totalSpikes`. Do not ask Gee to paste dashboard screenshots to find out how she is doing — `curl` it. Poll it twice ~45s apart and diff `perSubject.<sub>.teachEvents` to get a teach RATE.
 >

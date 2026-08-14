@@ -5,6 +5,47 @@
 
 ---
 
+## 2026-08-14 - V.8 FAILED LIVE: the dictionary trickle had NEVER run - ZERO definitions bound in 4.6h - feature/trickle-budget-0814
+
+### Gee ask (verbatim per LAW #0)
+
+> *"okay, time to do that check on our girl weve been waiting forever to get to, its finally ready to do dreaming soon... mind you we havent savestart updated yet and are still training on old push"*
+
+Gee's decision, verbatim from the option he chose: **"Both - untimed consolidation AND trickle early"** - *"consolidation (mandatory) untimed; --- budget clock STARTS (180s) ---; dictionary trickle first claim on the budget; promotion gated; phenomenology / recombination gated. Vocabulary can be starved by neither consolidation nor exploration."*
+
+**BUILD CORRECTION - he believed he was on an older push.** Live `/public-state.json` reports build **`156980f1`, deployed 2026-08-14T18:50:49Z**: that is the **GPU-ONLY (G) batch**, confirmed by `substratePause` being present in the payload. NOT deployed: GC / SL / LT. The GPU-only teach enforcement had been live for the entire 4.6h run.
+
+**WHERE SHE WAS.** `ela/kindergarten`, **phase 24/25, 23 complete**, `_teachSentenceStructure +108.9m`, cell elapsed 274.6 min, 435,261 teach events - healthy, one phase from finishing kindergarten ELA.
+
+**THE CHECK FAILED.**
+
+```
+dictionary:  8,747 fetched - 1,343 errs - cache 10,090 - fetchAvailable OK - smokeTestPassed OK
+kVocabTaught:         0      (= cortex._definitionTaughtWords.size, state.js:1230)
+defsLearnedPerHour:   0
+consolidation passes: 3
+```
+
+**8,747 words fetched. ZERO bound.** The prefetch half worked perfectly; the LEARNING half had never once executed.
+
+**MECHANISM, TRACED IN THE CODE.** `_dreamWindow` stamps `const startedAt = Date.now()` (`curriculum.js:3479`) and then **awaits the forced consolidation pass inside that same clock**. Every stage was gated by `_dwOverBudget()` measured from `startedAt` against a shared **180s** budget (`DREAM_WINDOW_MAX_MS`, default `180000`). The dictionary trickle was the **LAST** stage, behind phenomenology, recombination and promotion. At 306M neurons a forced consolidation pass spends that budget by itself, so execution reached the trickle with the gate already tripped and **the whole trickle was skipped every window, every time.**
+
+**THIS WAS A REGRESSION I INTRODUCED IN V.3.** Removing K's blocking upfront seed made the dream trickle the ONLY path that binds word definitions - which turned the sole vocabulary path into the last item behind a shared budget, i.e. the first thing sacrificed. Caught only because Gee asked for the check.
+
+**SHIPPED (Gee's chosen shape, both halves):**
+
+- **Budget clock starts AFTER consolidation.** New `_dwBudgetFrom`, assigned once the mandatory pass completes; `_dwOverBudget` measures from it. `startedAt` still measures the TOTAL window for logging. Consolidation is mandatory, not a stage - charging its wall time to the optional stages was the defect.
+- **Trickle moved to run FIRST**, immediately after consolidation, ahead of phenomenology / recombination / promotion. Verified by reading the rewritten region back: `_dwBudgetFrom` (3571) -> trickle (3582) -> phenomenology (3677) -> recombination (3762) -> promotion (3889).
+- **The skip names itself.** The stage label passed to `_dwOverBudget` now reads *"dictionary dream-trickle -- the ONLY path that binds word meanings; skipping it means NO vocabulary is learned this window"*, so a future skip cannot read as one gated stage among four.
+
+**A SCOPING BUG CAUGHT BEFORE IT SHIPPED.** The first draft declared `const _dwBudgetFrom` inside the consolidation block, where `_dwOverBudget` - defined above it and closing over the outer scope - could not see it, and guarded with `typeof`. Per the standing note, `typeof` does NOT shield a `const`/`let` in TDZ; it would have thrown at call time. Declared in the outer scope with a `null` origin instead.
+
+**NOTHING WAS LOST.** `_kVocabQueue` and `_definitionTaughtWords` both persist in saved weights, so the queue drains from wherever it stands once the trickle runs.
+
+**VERIFIED (no-tests LAW):** `node --check` PASS; ESM `import()` PASS; stage order read back from the rewritten region; bundle rebuilt.
+
+**LIVE-VERIFY** folds into the combined LV item: after the next Update & SAVESTART, `kVocabTaught` MUST climb off 0 and `dream trickle: N words processed` MUST appear.
+
 ## 2026-08-14 - LIVENESS TELEMETRY: "stuck or stalled" answerable from ONE snapshot - feature/liveness-telemetry-0814
 
 ### Gee ask (verbatim per LAW #0)
