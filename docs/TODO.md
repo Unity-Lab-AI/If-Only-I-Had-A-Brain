@@ -102,4 +102,10 @@ _ALTERNATE LETTERFORMS + AUDIT migrated VERBATIM to `docs/FINALIZED.md` (§2026-
 
 _LABEL FONTS/STYLES — DAZZLE TO INFINITY migrated VERBATIM to `docs/FINALIZED.md` (§2026-07-16 DRAW LABELS) — Gee: "wheres all the differtn fonts and styles and colorss bond underline dazzle and pizzaz into infinity ... build the labels and text in her images into the image as not to over lay". `glyphStrokes` gained colors/bold/slant/underline/shadow; `_labelStyle` dynamic HSL-hue-rotation picker (infinite, no list); baked into the field C (not overlaid). Rendered+eyeballed DRAGON/CASTLE/UNITY/FLOWER + house-with-label. Bundle rebuilt keyless. No open tasks._
 
+---
+
+_REMOTE SYNC AUDIT migrated VERBATIM to `docs/FINALIZED.md` (§2026-08-14 REMOTE SYNC AUDIT) — Gee: "lets make sure git.unityailab repo and github repo are current with what we have locally... lets make sure we dont lose anything if we need to push". Item 1 (git.unityailab) DONE — 6 feature tips pushed, trunk was already identical. Item 2 (github) DONE — main +22, develop +14, 10 donor tags. Item 3 (lose nothing) DONE — verified 196MB full-repo bundle off-repo before any network write. No open tasks._
+
+---
+
 _NO MORE PENCIL (colorful refs + colored imagination + store v3) migrated VERBATIM to `docs/FINALIZED.md` (§2026-07-15 DRAW: NO MORE PENCIL) — Gee: "build 54b8af59 · main deploys watch playwrite see if u see her imagine at all and make sure there isNO MORE PENCIL ART(IT SUCKS)". Live-watch found 25/30 pencil — root was MONOCHROME references from the "simple/high-contrast" prompt. Fixed: colorful reference prompt, `composeFields` colored imagination (replaced white strokes), visual-memory store v2→v3 (orphan monochrome refs). Rendered+eyeballed colored house + dragon+castle. No open tasks._
