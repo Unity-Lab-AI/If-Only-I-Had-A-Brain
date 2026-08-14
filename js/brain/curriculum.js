@@ -2656,6 +2656,16 @@ export class Curriculum {
         if (isOutermost && cl) {
           const _ck = cl._currentCellKey || '';
           if (this._cellPhasesStartedKey !== _ck) {
+            // Leaving a cell — bank its OBSERVED outermost-phase count as the
+            // learned total for runners that don't declare phases via
+            // `_phaseTick`. Monotonic (only ever grows) so a cell cut short by
+            // a restart can't shrink a previously-complete count.
+            if (this._cellPhasesStartedKey && this._cellPhasesStartedSet?.size > 0) {
+              if (!this._cellPhaseObserved) this._cellPhaseObserved = {};
+              const _prev = this._cellPhasesStartedKey;
+              const _seen = this._cellPhasesStartedSet.size;
+              if (!(this._cellPhaseObserved[_prev] >= _seen)) this._cellPhaseObserved[_prev] = _seen;
+            }
             this._cellPhasesStartedKey = _ck;
             this._cellPhasesStartedSet = new Set();
           }
@@ -3007,6 +3017,17 @@ export class Curriculum {
       // Together they answer "is she moving?" without interpreting a
       // frozen counter.
       cellPhasesStarted: this._currentCellPhasesStarted | 0,
+      // EXACT total for THIS cell — declared (counted from the runner's own
+      // source) preferred, else observed (learned from a previous run of the
+      // same cell), else NULL. Null means "not known yet"; consumers must show
+      // no denominator rather than substitute a guess.
+      cellPhasesTotal: (cellKey && (
+        (this._cellPhaseDeclared && this._cellPhaseDeclared[cellKey])
+        || (this._cellPhaseObserved && this._cellPhaseObserved[cellKey])
+      )) || null,
+      cellPhasesTotalSource: (cellKey && this._cellPhaseDeclared && this._cellPhaseDeclared[cellKey])
+        ? 'declared'
+        : ((cellKey && this._cellPhaseObserved && this._cellPhaseObserved[cellKey]) ? 'observed' : null),
       vocabProgress: this._vocabProgress
         ? {
             label: this._vocabProgress.label,
@@ -6829,6 +6850,32 @@ export class Curriculum {
   _cellRunner(subject, grade) {
     const raw = this._cellRunnerRaw(subject, grade);
     if (typeof raw !== 'function') return raw;
+    // EXACT PHASE TOTAL (2026-08-14) — read the runner's DECLARED phase count
+    // from its own source instead of guessing. The dashboard previously
+    // divided by a hardcoded `EXPECTED_PHASES_PER_CELL = 12` living in a
+    // public HTML that cannot know which cell is running; the ELA-K runner
+    // declares 27, so the bar rendered 50% at phase 6 when the truth was 22%
+    // — wrong by 2.25×, not merely imprecise.
+    //
+    // The cell runners are NOT auto-wrapped (the constructor wrap only tracks
+    // `_teach*` plus two named probes), so `raw` really is the authored
+    // function and its source is the authoritative phase list. Counted once
+    // per cell key and cached. Runners that don't declare phases via
+    // `_phaseTick` fall through to the OBSERVED total learned below — and if
+    // neither exists we publish null and the UI shows no denominator rather
+    // than inventing one.
+    try {
+      const _ck = `${subject}/${grade}`;
+      if (!this._cellPhaseDeclared) this._cellPhaseDeclared = {};
+      if (this._cellPhaseDeclared[_ck] == null) {
+        const _src = Function.prototype.toString.call(raw);
+        const _n = (_src.match(/_phaseTick\s*\(/g) || []).length;
+        if (_n > 0) {
+          this._cellPhaseDeclared[_ck] = _n;
+          this._hb?.(`[Curriculum] phase-total for ${_ck}: ${_n} declared phases (read from the runner, not estimated).`);
+        }
+      }
+    } catch { /* non-fatal — falls back to the observed total */ }
     return async (ctx) => {
       if (subject !== 'life') {
         try { await this._teachCourseIdentity(subject, grade, ctx); }
