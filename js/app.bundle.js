@@ -114163,6 +114163,8 @@ var THOUGHT_INTERVAL2 = 3e3;
 var COUPLING_BASE = 2.5;
 var MEMORY_SALIENCE_THRESHOLD = 0.6;
 var RECALL_ERROR_THRESHOLD = 0.4;
+var PREDICTION_BASELINE = 0.25;
+var PREDICTION_GAIN = 0.02;
 var CLUSTER_SIZES = clusterSizesFor(TOTAL_NEURONS);
 var UnityBrain = class extends EventEmitter {
   constructor(personaOverrides = {}) {
@@ -114648,6 +114650,16 @@ var UnityBrain = class extends EventEmitter {
     else if (selectedAction === "generate_image") this.clusters.cortex.actionGate = 1.2;
     else if (selectedAction === "search_web") this.clusters.hippocampus.actionGate = 1.3;
     else if (selectedAction === "build_ui") this.clusters.cortex.actionGate = 1.4;
+    const predErr = this.state.cortex?.error;
+    if (predErr && predErr.length) {
+      let mag = 0;
+      for (let i = 0; i < predErr.length; i++) mag += Math.abs(predErr[i]);
+      mag /= predErr.length;
+      const surprise = Math.min(mag, 1);
+      this.reward += (PREDICTION_BASELINE - surprise) * PREDICTION_GAIN;
+      if (this.reward > 1) this.reward = 1;
+      else if (this.reward < -1) this.reward = -1;
+    }
     const globalReward = this.reward + amygdalaOut.valence * 0.1;
     for (const cluster of Object.values(this.clusters)) cluster.learn(globalReward);
     if (sensoryOutput.salience > MEMORY_SALIENCE_THRESHOLD) {
