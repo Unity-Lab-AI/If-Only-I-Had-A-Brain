@@ -674,6 +674,12 @@ export class SparseMatrix {
 
     const { rows, values, colIdx, rowPtr, wMin, wMax } = this;
 
+    // MEASURED, NOT ASSUMED: a `if (pre === 0) continue` guard inside this
+    // loop was tried and is SLOWER (8.6 ms/tick vs 7.6). Spikes are sparse
+    // enough that skipping looks free on paper, but the branch is
+    // unpredictable per element, and a mispredict costs more than the
+    // multiply-and-store it avoids. The straight-line version below lets
+    // the JIT keep the loop tight. Left as-is deliberately.
     for (let i = 0; i < rows; i++) {
       if (!postSpikes[i]) continue;
       const scaled = factor * postSpikes[i];
