@@ -95683,10 +95683,12 @@ var Curriculum = class _Curriculum {
     const startedAt = Date.now();
     this._hb(`[Curriculum] \u{1F4A4} dream window opened \u2014 curriculum paused \xB7 ConsolidationEngine firing \xB7 Tier 1\u21922\u21923 promotion \xB7 V8 + native GC settling`);
     const _dwBudgetMs = typeof process !== "undefined" && Number(process.env?.DREAM_WINDOW_MAX_MS) > 0 ? Number(process.env.DREAM_WINDOW_MAX_MS) : 18e4;
+    let _dwBudgetFrom = null;
     const _dwSkipped = [];
     const _dwStageMs = {};
     const _dwOverBudget = (stage) => {
-      if (Date.now() - startedAt < _dwBudgetMs) return false;
+      if (_dwBudgetFrom === null) return false;
+      if (Date.now() - _dwBudgetFrom < _dwBudgetMs) return false;
       if (!_dwSkipped.includes(stage)) {
         _dwSkipped.push(stage);
         this._hb(`[Curriculum] \u{1F4A4} dream window over budget (${((Date.now() - startedAt) / 1e3).toFixed(0)}s \u2265 ${(_dwBudgetMs / 1e3).toFixed(0)}s) \u2014 skipping ${stage} this window; later windows pick it up (tune DREAM_WINDOW_MAX_MS).`);
@@ -95718,6 +95720,50 @@ var Curriculum = class _Curriculum {
         const passCount = engine.passCount || 0;
         this._hb(`[Curriculum] \u2699 dream pass complete in ${(passMs / 1e3).toFixed(1)}s \u2014 ConsolidationEngine passCount=${passCount} \xB7 entering ${(settleMs / 1e3).toFixed(0)}s settle window for V8 + native drain`);
         let _dwT = Date.now();
+        _dwBudgetFrom = Date.now();
+        if (!_dwOverBudget("dictionary dream-trickle -- the ONLY path that binds word meanings; skipping it means NO vocabulary is learned this window") && cluster && typeof this._teachWordDefinition === "function") {
+          try {
+            if (!cluster._kVocabQueue) {
+              const { K_VOCABULARY: K_VOCABULARY2 } = await Promise.resolve().then(() => (init_k_vocabulary(), k_vocabulary_exports));
+              if (Array.isArray(K_VOCABULARY2)) {
+                const taught = cluster._definitionTaughtWords || /* @__PURE__ */ new Set();
+                cluster._kVocabQueue = K_VOCABULARY2.filter((w) => !taught.has(w));
+              } else {
+                cluster._kVocabQueue = [];
+              }
+            }
+            const _tb = Number(typeof process !== "undefined" && process?.env?.DREAM_TRICKLE_BATCH);
+            const DREAM_TRICKLE_BATCH = Number.isFinite(_tb) && _tb > 0 ? Math.floor(_tb) : 120;
+            const batchN = Math.min(DREAM_TRICKLE_BATCH, cluster._kVocabQueue.length);
+            if (batchN > 0) {
+              const batchStart = Date.now();
+              let bound = 0;
+              let timedOut = 0;
+              for (let i = 0; i < batchN; i++) {
+                if (_dwOverBudget("dream-trickle (remaining words this window) -- vocabulary binding cut short; the queue persists and later windows resume it")) break;
+                const word = cluster._kVocabQueue.shift();
+                if (!word) break;
+                try {
+                  const r = await this._teachWordDefinition(word, { reps: 4, label: "DREAM-DEF-TRICKLE", timeoutMs: 2e4 });
+                  if (r && r.defsBound > 0) bound += r.defsBound;
+                  else if (r && r.skipped && /timeout/i.test(r.skipped)) timedOut++;
+                } catch {
+                }
+              }
+              const dt = ((Date.now() - batchStart) / 1e3).toFixed(1);
+              const timeoutNote = timedOut > 0 ? ` \xB7 \u26A0 ${timedOut} re-timed-out (will retry next cycle)` : "";
+              this._hb(`[Curriculum] \u{1F4A4} dream trickle: ${batchN} words processed in ${dt}s (${bound} multi-def Hebbian fires)${timeoutNote} \xB7 ${cluster._kVocabQueue.length} words remaining in the definition-seed queue${cluster._defSeedEnqueuedGrades ? ` (grades enqueued: ${[...cluster._defSeedEnqueuedGrades].join(", ")})` : ""}`);
+              if (timedOut > 0 && Array.isArray(cluster._kVocabRetryQueue)) {
+                while (cluster._kVocabRetryQueue.length > 0) {
+                  cluster._kVocabQueue.push(cluster._kVocabRetryQueue.shift());
+                }
+              }
+            }
+          } catch (err) {
+          }
+        }
+        _dwStageMs.trickle = Date.now() - _dwT;
+        _dwT = Date.now();
         try {
           if (_dwComposeSafe && !_dwOverBudget("phenomenology (generateAsync)") && brain2 && brain2.languageCortex && cluster && typeof brain2.languageCortex.generateAsync === "function") {
             let dreamSeed = null;
@@ -95910,49 +95956,6 @@ var Curriculum = class _Curriculum {
         } catch (err) {
         }
         _dwStageMs.promotion = Date.now() - _dwT;
-        _dwT = Date.now();
-        if (!_dwOverBudget("dictionary dream-trickle") && cluster && typeof this._teachWordDefinition === "function") {
-          try {
-            if (!cluster._kVocabQueue) {
-              const { K_VOCABULARY: K_VOCABULARY2 } = await Promise.resolve().then(() => (init_k_vocabulary(), k_vocabulary_exports));
-              if (Array.isArray(K_VOCABULARY2)) {
-                const taught = cluster._definitionTaughtWords || /* @__PURE__ */ new Set();
-                cluster._kVocabQueue = K_VOCABULARY2.filter((w) => !taught.has(w));
-              } else {
-                cluster._kVocabQueue = [];
-              }
-            }
-            const _tb = Number(typeof process !== "undefined" && process?.env?.DREAM_TRICKLE_BATCH);
-            const DREAM_TRICKLE_BATCH = Number.isFinite(_tb) && _tb > 0 ? Math.floor(_tb) : 120;
-            const batchN = Math.min(DREAM_TRICKLE_BATCH, cluster._kVocabQueue.length);
-            if (batchN > 0) {
-              const batchStart = Date.now();
-              let bound = 0;
-              let timedOut = 0;
-              for (let i = 0; i < batchN; i++) {
-                if (_dwOverBudget("dream-trickle (remaining words this window)")) break;
-                const word = cluster._kVocabQueue.shift();
-                if (!word) break;
-                try {
-                  const r = await this._teachWordDefinition(word, { reps: 4, label: "DREAM-DEF-TRICKLE", timeoutMs: 2e4 });
-                  if (r && r.defsBound > 0) bound += r.defsBound;
-                  else if (r && r.skipped && /timeout/i.test(r.skipped)) timedOut++;
-                } catch {
-                }
-              }
-              const dt = ((Date.now() - batchStart) / 1e3).toFixed(1);
-              const timeoutNote = timedOut > 0 ? ` \xB7 \u26A0 ${timedOut} re-timed-out (will retry next cycle)` : "";
-              this._hb(`[Curriculum] \u{1F4A4} dream trickle: ${batchN} words processed in ${dt}s (${bound} multi-def Hebbian fires)${timeoutNote} \xB7 ${cluster._kVocabQueue.length} words remaining in the definition-seed queue${cluster._defSeedEnqueuedGrades ? ` (grades enqueued: ${[...cluster._defSeedEnqueuedGrades].join(", ")})` : ""}`);
-              if (timedOut > 0 && Array.isArray(cluster._kVocabRetryQueue)) {
-                while (cluster._kVocabRetryQueue.length > 0) {
-                  cluster._kVocabQueue.push(cluster._kVocabRetryQueue.shift());
-                }
-              }
-            }
-          } catch (err) {
-          }
-        }
-        _dwStageMs.trickle = Date.now() - _dwT;
         _dwT = Date.now();
         await new Promise((r) => setTimeout(r, settleMs));
       } else {

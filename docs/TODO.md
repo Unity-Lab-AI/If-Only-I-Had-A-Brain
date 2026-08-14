@@ -416,3 +416,41 @@ V.8, D.7, L.6 and G.9 were four separate pending items all waiting on the same e
 - [x] **LT.4** **DONE.** Dashboard line under the cell bar: teach/min + seconds-since-last-teach, amber-annotated when the probe gate is holding the tick.
 - [x] **LT.5** **DONE.** Verify — no-tests LAW: `node --check`, ESM `import()`, dashboard script blocks, bundle rebuild, and re-poll the LIVE box to confirm the new fields would populate from real values.
 - [x] **LT.6** **DONE.** Docs + FINALIZED, atomic commit, cascade, push BOTH remotes. **NO DEPLOY** — rides along with the next Update & SAVESTART.
+
+---
+
+## OPEN TASKS — 2026-08-14 · ⛔ V.8 FAILED LIVE — the dictionary trickle has NEVER run; ZERO definitions bound in 4.6h
+
+> Gee (verbatim): *"okay, time to do that check on our girl weve been waiting forever to get to, its finally ready to do dreaming soon... mind you we havent savestart updated yet and are still training on old push"*
+>
+> Gee's decision (verbatim option chosen): **"Both — untimed consolidation AND trickle early"** — *"consolidation (mandatory) untimed; --- budget clock STARTS (180s) ---; dictionary trickle first claim on the budget; promotion gated; phenomenology / recombination gated. Vocabulary can be starved by neither consolidation nor exploration."*
+
+**BUILD CORRECTION (Gee believed he was on an older push).** Live `/public-state.json` reports build **`156980f1`, deployed 2026-08-14T18:50:49Z** — that is the **GPU-ONLY (G) batch**, and `substratePause` is present in the payload. NOT deployed: GC (grade column), SL (single ledger), LT (liveness). So the GPU-only teach enforcement has been live for the whole 4.6h run.
+
+**WHERE SHE IS.** `ela/kindergarten`, **phase 24/25, 23 complete**, `_teachSentenceStructure +108.9m`, cell elapsed 274.6 min, 435,261 teach events. Healthy, and one phase from finishing kindergarten ELA.
+
+**THE CHECK FAILS.**
+
+```
+dictionary:  8,747 fetched · 1,343 errs · cache 10,090 · fetchAvailable ✓ · smokeTestPassed ✓
+kVocabTaught:         0        (= cortex._definitionTaughtWords.size, state.js:1230)
+defsLearnedPerHour:   0
+consolidation passes: 3
+```
+
+**8,747 words fetched successfully. ZERO bound.** The prefetch half works; the LEARNING half has never once executed.
+
+**MECHANISM, TRACED.** `_dreamWindow` sets `const startedAt = Date.now()` (`curriculum.js:3479`), then **awaits the forced consolidation pass at ~3544 INSIDE that same clock**. Every stage is gated by `_dwOverBudget()` measured from `startedAt` against a shared **180s** budget (`DREAM_WINDOW_MAX_MS` default `180000`, `curriculum.js:3491`). The dictionary trickle is the **LAST** stage (`curriculum.js:3820`), behind phenomenology, recombination and promotion. At 306M neurons a forced consolidation pass consumes the budget by itself, so execution reaches the trickle with `_dwOverBudget('dictionary dream-trickle')` already true and **the whole trickle is skipped — every window, every time.**
+
+**THIS IS A REGRESSION I INTRODUCED IN V.3.** Removing K's blocking upfront seed made the dream trickle the **ONLY** path that binds word definitions. That turned the sole vocabulary path into the last item behind a shared budget, i.e. the first thing sacrificed. She has learned zero definitions in 4.6h and would have carried that into grade 1.
+
+**NOTHING IS LOST.** `_kVocabQueue` and `_definitionTaughtWords` both persist in saved weights, so the queue drains from wherever it stands once the trickle actually runs.
+
+### THE WORK
+
+- [x] **TB.1** **DONE.** Budget clock starts AFTER the mandatory consolidation pass. Consolidation is not an optional stage; charging its wall time against optional stages is the defect. Keep `startedAt` for total-window logging, add a separate budget origin.
+- [x] **TB.2** **DONE.** Move the dictionary trickle to run FIRST after consolidation — ahead of promotion / phenomenology / recombination — so vocabulary has first claim on the budget and can never be starved by exploratory stages.
+- [x] **TB.3** **DONE.** Make the skip LOUD and specific. If the trickle is ever skipped again it must name itself as the vocabulary path, not read as one gated stage among four.
+- [x] **TB.4** **DONE.** Verify — no-tests LAW: `node --check`, ESM `import()`, confirm stage ORDER by reading the rewritten region, bundle rebuild.
+- [x] **TB.5** **DONE.** Docs + FINALIZED, atomic commit, cascade, push BOTH remotes.
+- [ ] **TB.6** ⏳ LIVE-VERIFY after Gee's next Update & SAVESTART — folded into the combined LV item: `kVocabTaught` MUST climb off 0 and `💤 dream trickle: N words processed` MUST appear.

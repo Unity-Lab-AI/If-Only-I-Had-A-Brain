@@ -3490,10 +3490,22 @@ export class Curriculum {
     // candidates persist across windows by design).
     const _dwBudgetMs = (typeof process !== 'undefined' && Number(process.env?.DREAM_WINDOW_MAX_MS) > 0)
       ? Number(process.env.DREAM_WINDOW_MAX_MS) : 180000;
+    // Budget origin, assigned after the mandatory consolidation pass (see the
+    // note in `_dwOverBudget`). Declared out here because the gate closes over
+    // it and runs before the assignment site.
+    let _dwBudgetFrom = null;
     const _dwSkipped = [];
     const _dwStageMs = {};
     const _dwOverBudget = (stage) => {
-      if ((Date.now() - startedAt) < _dwBudgetMs) return false;
+      // Measured from `_dwBudgetFrom`, stamped once the MANDATORY consolidation
+      // pass completes - not from window entry. `startedAt` precedes that pass,
+      // so budgeting from it charged consolidation's wall time to the optional
+      // stages; at biological scale a forced pass spends the entire budget on
+      // its own and every gated stage downstream was skipped on arrival.
+      // Consolidation is not a stage. `startedAt` still measures the TOTAL
+      // window for logging. Null origin = no stage has started, nothing spent.
+      if (_dwBudgetFrom === null) return false;
+      if ((Date.now() - _dwBudgetFrom) < _dwBudgetMs) return false;
       if (!_dwSkipped.includes(stage)) {
         _dwSkipped.push(stage);
         this._hb(`[Curriculum] 💤 dream window over budget (${((Date.now() - startedAt) / 1000).toFixed(0)}s ≥ ${(_dwBudgetMs / 1000).toFixed(0)}s) — skipping ${stage} this window; later windows pick it up (tune DREAM_WINDOW_MAX_MS).`);
@@ -3546,6 +3558,112 @@ export class Curriculum {
         const passCount = engine.passCount || 0;
         this._hb(`[Curriculum] ⚙ dream pass complete in ${(passMs / 1000).toFixed(1)}s — ConsolidationEngine passCount=${passCount} · entering ${(settleMs / 1000).toFixed(0)}s settle window for V8 + native drain`);
         let _dwT = Date.now();
+        // TRICKLE FIRST, IMMEDIATELY AFTER CONSOLIDATION (2026-08-14).
+        //
+        // This is the ONLY path that binds word meanings - V.3 removed the
+        // blocking upfront seed, so nothing else teaches a definition. It used
+        // to run LAST, behind phenomenology, recombination and promotion, all
+        // sharing one budget, which made the sole vocabulary path the first
+        // thing sacrificed. Live evidence after 4.6h: 8,747 words fetched from
+        // the dictionary, ZERO bound, because execution never once reached this
+        // block before the budget was spent. It now has first claim; the
+        // exploratory stages are what get squeezed when a window runs long.
+        _dwBudgetFrom = Date.now();
+
+        // Background-trickle K_VOCABULARY multi-def Hebbian during
+        // dream cycles. Session 114.19ei bumped batch size 1 → 25
+        // per the "lets do a little bit of all three" directive,
+        // matching definition-service.js PREFETCH_CONCURRENCY=20 + a
+        // small headroom. Each word fires one Hebbian binding per
+        // definition sense (multi-def per memory feedback). After
+        // upfront seed (reps:2) + inline-from-teach + this dream
+        // trickle, every K-word converges to multi-def coverage at
+        // moderate plasticity without basin-blur.
+        if (!_dwOverBudget('dictionary dream-trickle -- the ONLY path that binds word meanings; skipping it means NO vocabulary is learned this window') && cluster && typeof this._teachWordDefinition === 'function') {
+          try {
+            // GRADE-WIDE DEFINITION SEED (2026-08-14). The queue is no longer
+            // K-only: every grade enqueues ITS OWN vocabulary at ITS OWN grade
+            // start (see the per-grade block in the curriculum loop), so this
+            // one lane carries multi-def Hebbian for all ~49.9K words across
+            // K→PhD instead of only K's 2,247. Enqueue-at-grade-start is what
+            // keeps it grade-appropriate — advanced vocabulary is never in the
+            // queue before its grade begins, so the corpus-bleed rule holds by
+            // construction rather than by a filter.
+            //
+            // The K_VOCABULARY import below is now only a FALLBACK for a brain
+            // that reaches a dream window before any grade-start enqueue has
+            // run (boot race / resumed mid-K state). Field name kept as
+            // `_kVocabQueue` deliberately: it is already persisted in saved
+            // weights, and renaming it would orphan every in-flight queue on
+            // the next load.
+            if (!cluster._kVocabQueue) {
+              const { K_VOCABULARY } = await import('./k-vocabulary.js');
+              if (Array.isArray(K_VOCABULARY)) {
+                const taught = cluster._definitionTaughtWords || new Set();
+                cluster._kVocabQueue = K_VOCABULARY.filter(w => !taught.has(w));
+              } else {
+                cluster._kVocabQueue = [];
+              }
+            }
+            // Batch was sized (25) when the queue only ever held K's 2,247
+            // words. Carrying ~2,000 words PER GRADE needs a larger bite or the
+            // queue lags a whole grade behind the walk. The window-budget gate
+            // (`_dwOverBudget`, checked per word inside the loop below) is what
+            // actually bounds the cost — it stops mid-batch the moment the
+            // window's time is spent — so a bigger batch raises the ceiling
+            // without lengthening a dream window. Env-tunable for live tuning.
+            const _tb = Number(typeof process !== 'undefined' && process?.env?.DREAM_TRICKLE_BATCH);
+            const DREAM_TRICKLE_BATCH = (Number.isFinite(_tb) && _tb > 0) ? Math.floor(_tb) : 120;
+            const batchN = Math.min(DREAM_TRICKLE_BATCH, cluster._kVocabQueue.length);
+            if (batchN > 0) {
+              const batchStart = Date.now();
+              let bound = 0;
+              let timedOut = 0;
+              for (let i = 0; i < batchN; i++) {
+                if (_dwOverBudget('dream-trickle (remaining words this window) -- vocabulary binding cut short; the queue persists and later windows resume it')) break;
+                const word = cluster._kVocabQueue.shift();
+                if (!word) break;
+                try {
+                  // I.2 closure — bumped per-word timeoutMs 3s → 20s for
+                  // the dream-trickle retry path. The SEED-phase upfront
+                  // pass dropped 289 of 2247 K-vocab words (12.9%) at
+                  // 8-15s timeouts on cold-cache API calls (2026-06-17
+                  // 21:50 PT live test). Those same words land back in
+                  // _kVocabQueue and need a LONGER timeout to clear on
+                  // retry — they were the slowest-to-respond words at
+                  // the dictionaryapi.dev edge. By dream-trickle time
+                  // the disk cache has warmed for everything that DID
+                  // succeed, so the retries are predominantly cold-API
+                  // hits that legitimately need ~15s. 20s gives 30%
+                  // headroom past the slowest observed SEED-phase
+                  // timeout (15s) so we don't drop the same words again.
+                  const r = await this._teachWordDefinition(word, { reps: 4, label: 'DREAM-DEF-TRICKLE', timeoutMs: 20000 });
+                  if (r && r.defsBound > 0) bound += r.defsBound;
+                  else if (r && r.skipped && /timeout/i.test(r.skipped)) timedOut++;
+                } catch { /* skip per-word failures */ }
+              }
+              const dt = ((Date.now() - batchStart) / 1000).toFixed(1);
+              const timeoutNote = timedOut > 0 ? ` · ⚠ ${timedOut} re-timed-out (will retry next cycle)` : '';
+              this._hb(`[Curriculum] 💤 dream trickle: ${batchN} words processed in ${dt}s (${bound} multi-def Hebbian fires)${timeoutNote} · ${cluster._kVocabQueue.length} words remaining in the definition-seed queue${cluster._defSeedEnqueuedGrades ? ` (grades enqueued: ${[...cluster._defSeedEnqueuedGrades].join(', ')})` : ''}`);
+              // I.2 — re-queue the words that timed out THIS cycle so
+              // they don't get lost forever. Push them to the back of
+              // the queue so other words get a chance first; eventually
+              // every word either binds successfully or accumulates
+              // enough retry attempts that operator can see persistent
+              // dictionary-API failures (e.g. a word that's genuinely
+              // not in dictionaryapi.dev).
+              if (timedOut > 0 && Array.isArray(cluster._kVocabRetryQueue)) {
+                while (cluster._kVocabRetryQueue.length > 0) {
+                  cluster._kVocabQueue.push(cluster._kVocabRetryQueue.shift());
+                }
+              }
+            }
+          } catch (err) {
+            // Non-fatal — dream consolidation continues even if trickle fails.
+          }
+        }
+        _dwStageMs.trickle = Date.now() - _dwT; _dwT = Date.now();
+
 
         // Dream phenomenology. During the dream window,
         // emit ONE dream-content thought generated from a Tier 1 episodic
@@ -3808,99 +3926,6 @@ export class Curriculum {
         }
         _dwStageMs.promotion = Date.now() - _dwT; _dwT = Date.now();
 
-        // Background-trickle K_VOCABULARY multi-def Hebbian during
-        // dream cycles. Session 114.19ei bumped batch size 1 → 25
-        // per the "lets do a little bit of all three" directive,
-        // matching definition-service.js PREFETCH_CONCURRENCY=20 + a
-        // small headroom. Each word fires one Hebbian binding per
-        // definition sense (multi-def per memory feedback). After
-        // upfront seed (reps:2) + inline-from-teach + this dream
-        // trickle, every K-word converges to multi-def coverage at
-        // moderate plasticity without basin-blur.
-        if (!_dwOverBudget('dictionary dream-trickle') && cluster && typeof this._teachWordDefinition === 'function') {
-          try {
-            // GRADE-WIDE DEFINITION SEED (2026-08-14). The queue is no longer
-            // K-only: every grade enqueues ITS OWN vocabulary at ITS OWN grade
-            // start (see the per-grade block in the curriculum loop), so this
-            // one lane carries multi-def Hebbian for all ~49.9K words across
-            // K→PhD instead of only K's 2,247. Enqueue-at-grade-start is what
-            // keeps it grade-appropriate — advanced vocabulary is never in the
-            // queue before its grade begins, so the corpus-bleed rule holds by
-            // construction rather than by a filter.
-            //
-            // The K_VOCABULARY import below is now only a FALLBACK for a brain
-            // that reaches a dream window before any grade-start enqueue has
-            // run (boot race / resumed mid-K state). Field name kept as
-            // `_kVocabQueue` deliberately: it is already persisted in saved
-            // weights, and renaming it would orphan every in-flight queue on
-            // the next load.
-            if (!cluster._kVocabQueue) {
-              const { K_VOCABULARY } = await import('./k-vocabulary.js');
-              if (Array.isArray(K_VOCABULARY)) {
-                const taught = cluster._definitionTaughtWords || new Set();
-                cluster._kVocabQueue = K_VOCABULARY.filter(w => !taught.has(w));
-              } else {
-                cluster._kVocabQueue = [];
-              }
-            }
-            // Batch was sized (25) when the queue only ever held K's 2,247
-            // words. Carrying ~2,000 words PER GRADE needs a larger bite or the
-            // queue lags a whole grade behind the walk. The window-budget gate
-            // (`_dwOverBudget`, checked per word inside the loop below) is what
-            // actually bounds the cost — it stops mid-batch the moment the
-            // window's time is spent — so a bigger batch raises the ceiling
-            // without lengthening a dream window. Env-tunable for live tuning.
-            const _tb = Number(typeof process !== 'undefined' && process?.env?.DREAM_TRICKLE_BATCH);
-            const DREAM_TRICKLE_BATCH = (Number.isFinite(_tb) && _tb > 0) ? Math.floor(_tb) : 120;
-            const batchN = Math.min(DREAM_TRICKLE_BATCH, cluster._kVocabQueue.length);
-            if (batchN > 0) {
-              const batchStart = Date.now();
-              let bound = 0;
-              let timedOut = 0;
-              for (let i = 0; i < batchN; i++) {
-                if (_dwOverBudget('dream-trickle (remaining words this window)')) break;
-                const word = cluster._kVocabQueue.shift();
-                if (!word) break;
-                try {
-                  // I.2 closure — bumped per-word timeoutMs 3s → 20s for
-                  // the dream-trickle retry path. The SEED-phase upfront
-                  // pass dropped 289 of 2247 K-vocab words (12.9%) at
-                  // 8-15s timeouts on cold-cache API calls (2026-06-17
-                  // 21:50 PT live test). Those same words land back in
-                  // _kVocabQueue and need a LONGER timeout to clear on
-                  // retry — they were the slowest-to-respond words at
-                  // the dictionaryapi.dev edge. By dream-trickle time
-                  // the disk cache has warmed for everything that DID
-                  // succeed, so the retries are predominantly cold-API
-                  // hits that legitimately need ~15s. 20s gives 30%
-                  // headroom past the slowest observed SEED-phase
-                  // timeout (15s) so we don't drop the same words again.
-                  const r = await this._teachWordDefinition(word, { reps: 4, label: 'DREAM-DEF-TRICKLE', timeoutMs: 20000 });
-                  if (r && r.defsBound > 0) bound += r.defsBound;
-                  else if (r && r.skipped && /timeout/i.test(r.skipped)) timedOut++;
-                } catch { /* skip per-word failures */ }
-              }
-              const dt = ((Date.now() - batchStart) / 1000).toFixed(1);
-              const timeoutNote = timedOut > 0 ? ` · ⚠ ${timedOut} re-timed-out (will retry next cycle)` : '';
-              this._hb(`[Curriculum] 💤 dream trickle: ${batchN} words processed in ${dt}s (${bound} multi-def Hebbian fires)${timeoutNote} · ${cluster._kVocabQueue.length} words remaining in the definition-seed queue${cluster._defSeedEnqueuedGrades ? ` (grades enqueued: ${[...cluster._defSeedEnqueuedGrades].join(', ')})` : ''}`);
-              // I.2 — re-queue the words that timed out THIS cycle so
-              // they don't get lost forever. Push them to the back of
-              // the queue so other words get a chance first; eventually
-              // every word either binds successfully or accumulates
-              // enough retry attempts that operator can see persistent
-              // dictionary-API failures (e.g. a word that's genuinely
-              // not in dictionaryapi.dev).
-              if (timedOut > 0 && Array.isArray(cluster._kVocabRetryQueue)) {
-                while (cluster._kVocabRetryQueue.length > 0) {
-                  cluster._kVocabQueue.push(cluster._kVocabRetryQueue.shift());
-                }
-              }
-            }
-          } catch (err) {
-            // Non-fatal — dream consolidation continues even if trickle fails.
-          }
-        }
-        _dwStageMs.trickle = Date.now() - _dwT; _dwT = Date.now();
 
         // Settle window for V8 GC + native worker-pool buffer drain.
         await new Promise((r) => setTimeout(r, settleMs));
