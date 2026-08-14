@@ -110,6 +110,32 @@ _REMOTE SYNC AUDIT migrated VERBATIM to `docs/FINALIZED.md` (§2026-08-14 REMOTE
 
 ---
 
+## OPEN TASKS — 2026-08-14 · HONEST PROGRESS TELEMETRY (stop making Gee interpret frozen counters)
+
+> Gee (verbatim): *"she is at 85% again and its not ticking up anymore.. it was 12-15 secs for each percent upto *5% then it never gets to 86%"*
+> Gee (verbatim): *"is she fine?"*
+> Gee (verbatim): *"build #1 and #2 while she does. we can do an update and save start later"*
+
+**WHY THIS EXISTS.** Twice now Gee has had to ask whether his brain is alive, and twice the answer required me reading raw JSON and reasoning about it — once WRONGLY. The instruments are the problem, not the brain.
+
+**WHAT WE LEARNED (2026-08-14, build `98383ea6`):**
+- The **85% is a TIME ESTIMATE, not progress.** `dashboard.html:3434` renders `~N% [time-est] · 0 phases reported · (in progress, server phase counter stuck)` — elapsed-time ÷ expected-duration. It climbs ~1%/13s then saturates. It never measured her.
+- **Frozen `totalSpikes` / `gpuHits` is BY DESIGN.** `brain-server.js:4270` — while `cortexCluster._probeGateActive`, the main tick returns early and dispatches NO `compute_batch` ("cortex owns GPU exclusively"). Spikes freezing during a cell is EXPECTED.
+- **I misdiagnosed this as "her neurons stopped firing"** on the previous walk. The donor drown found alongside it was real and the D.1/D.2 fixes worked (RTT 6,348→816, sheds 217,015→0, buffer 19.4MB→0, unhealthy→false) — but the frozen-spike alarm was a designed pause misread as a freeze.
+- **D.3's watchdog is blind in the exact case it exists for:** it lives INSIDE `_gpuBatch`, which is never called during the probe-gate pause, so it reported `batchStall: null` while spikes sat frozen.
+- She IS progressing: `cellSubPhases` +48/sec, WORD-INT ~1.1s/word, donor clean.
+
+### TASKS
+
+- [x] **P.1** REAL progress signal — surface honest per-cell progress so "is she moving?" is answerable by LOOKING: phases STARTED (not just completed — the first phase is long and `cellPhasesCompleted` sits at 0 for tens of minutes), the active phase name, and the live vocab-list position (`_vocabIdx`/`_vocabTotal`, which the teach loop already computes and then throws away after logging)
+- [x] **P.2** PAUSE-AWARE stall detection — move the check OUT of `_gpuBatch` (which isn't called while paused) into the state builder that always runs, and split the two states that currently look identical: `batchPaused {reason, ms}` for a DESIGNED pause (probe-gate / canonical upload) vs `batchStall {...}` for a genuinely unexplained stop. A designed pause must never read as a stall, and a real stall must never read as null
+- [x] **P.5** REAL PROGRESS BARS, NOT TIMERS — Gee (verbatim): *"io think we also need to make the progress bars real progress bars not timers"*. P.1 ships the honest DATA; the dashboard still has to CONSUME it. `dashboard.html:3434` currently computes elapsed-time ÷ expected-duration and renders it as a percentage (labelled `[time-est]`, which is exactly the 85% that read as a stall). Rewire the cell progress bar onto the real signal — `vocabProgress.pct` for position inside the running list, `cellPhasesStarted` vs `EXPECTED_PHASES_PER_CELL` for position within the cell — and fall back to a time estimate ONLY when no real signal exists, clearly marked as an estimate when it does
+- [x] **P.3** Verify per the no-tests LAW — `node --check` + ESM `import()` + wiring greps + keyless bundle rebuild
+- [x] **P.4** Docs + FINALIZED, atomic commit, cascade develop→main, push BOTH remotes
+- [ ] **P.5** ⏳ Deploy on Gee's next Update & SAVESTART (explicitly NOT urgent — he said "we can do an update and save start later"; the running walk must not be interrupted so V.8 can finally be checked at her first dream window)
+
+---
+
 ## OPEN TASKS — 2026-08-14 · DONOR DROWNED: her neurons stopped firing (the bottleneck moved, it did not close)
 
 > Gee (verbatim): *"are we sure she is running smothely?"*
