@@ -1148,8 +1148,59 @@ const SCALE = Math.floor(TOTAL_NEURONS / 1000);
 // Scale tick rate + substeps to neuron count — prevent CPU meltdown
 // Scale tick rate to neuron count — target ~60% CPU across all cores
 // Parallel workers split the load, so more neurons are feasible
-const BRAIN_TICK_MS = TOTAL_NEURONS > 1000000 ? 100 : TOTAL_NEURONS > 500000 ? 50 : TOTAL_NEURONS > 100000 ? 33 : 16;
-const SUBSTEPS = TOTAL_NEURONS > 1000000 ? 3 : TOTAL_NEURONS > 500000 ? 5 : TOTAL_NEURONS > 100000 ? 10 : 10;
+const _TICK_MS_AUTO = TOTAL_NEURONS > 1000000 ? 100 : TOTAL_NEURONS > 500000 ? 50 : TOTAL_NEURONS > 100000 ? 33 : 16;
+const _SUBSTEPS_AUTO = TOTAL_NEURONS > 1000000 ? 3 : TOTAL_NEURONS > 500000 ? 5 : TOTAL_NEURONS > 100000 ? 10 : 10;
+
+// ── TRAINING THROUGHPUT KNOBS ────────────────────────────────────────
+// The auto-scaled values above are the DEFAULTS and nothing changes
+// unless one of these env vars is set. They exist because the two
+// numbers that decide how fast the brain lives through its curriculum
+// were only editable by changing this file.
+//
+// WHERE THE TIME GOES. Every tick costs exactly one WebSocket
+// round-trip to the donor, whatever it carries. SUBSTEPS is how many
+// brain steps ride along inside that one round-trip. So the protocol
+// cost is FIXED PER TICK and raising SUBSTEPS buys brain steps at
+// almost no extra overhead — the GPU is already resident, the buffers
+// are already bound, the batch shader just loops more times before
+// answering. On a card that finishes a 306M-neuron substep in a few
+// milliseconds, 3 substeps per 100 ms leaves the GPU idle most of the
+// wall clock; the tick rate, not the math, is the ceiling.
+//
+// DREAM_SUBSTEPS — brain steps per donor round-trip. The cheap knob:
+//   throughput scales close to linearly and the wire cost does not
+//   move. Raise this FIRST. If the donor starts timing out on
+//   compute_batch, that is the real GPU limit and the batch is finally
+//   the expensive part rather than the protocol.
+//
+// DREAM_TICK_MS — milliseconds between ticks. The tighter knob: the
+//   loop is a recursive setTimeout scheduled AFTER each tick resolves,
+//   so lowering it raises the round-trip rate and with it the share of
+//   the event loop the brain takes. The teach path deliberately yields
+//   so donor handshakes, /ws chat and dashboard requests get slots —
+//   push this too low and those starve. That starvation is exactly why
+//   the 100 ms default exists at biological scale, so treat it as a
+//   deliberate trade and not an oversight: lower it while WATCHING the
+//   dashboard stay responsive, and back off the moment it does not.
+//
+// Both are validated as finite positive numbers; anything else falls
+// back to the auto value rather than producing a NaN timeout (a NaN
+// delay fires setTimeout as 1 ms and would spin the loop).
+function _envPositive(name, fallback) {
+  const raw = process.env[name];
+  if (raw === undefined || raw === '') return fallback;
+  const v = Number(raw);
+  if (!Number.isFinite(v) || v <= 0) {
+    console.warn(`[Brain] ${name}="${raw}" is not a positive number — using the auto-scaled ${fallback}.`);
+    return fallback;
+  }
+  return v;
+}
+const BRAIN_TICK_MS = _envPositive('DREAM_TICK_MS', _TICK_MS_AUTO);
+const SUBSTEPS = Math.max(1, Math.floor(_envPositive('DREAM_SUBSTEPS', _SUBSTEPS_AUTO)));
+if (BRAIN_TICK_MS !== _TICK_MS_AUTO || SUBSTEPS !== _SUBSTEPS_AUTO) {
+  console.log(`[Brain] THROUGHPUT OVERRIDE — tick=${BRAIN_TICK_MS}ms (auto ${_TICK_MS_AUTO}) · substeps=${SUBSTEPS} (auto ${_SUBSTEPS_AUTO}) · ${(1000 / BRAIN_TICK_MS * SUBSTEPS).toFixed(0)} brain-steps/sec vs ${(1000 / _TICK_MS_AUTO * _SUBSTEPS_AUTO).toFixed(0)} at defaults. Watch the dashboard: if it stops responding or the donor times out compute_batch, back these off.`);
+}
 
 // ── Brain Setup (CommonJS wrapper around ES modules) ──────────
 // R3 of brain-refactor-full-control — the server now dynamically
@@ -9032,7 +9083,8 @@ httpServer.listen(PORT, BIND_HOST, () => {
   Hypothal:   ${CLUSTER_SIZES.hypothalamus.toLocaleString()} neurons
   Mystery:    ${CLUSTER_SIZES.mystery.toLocaleString()} neurons
 
-  Tick rate:  ${Math.round(1000/BRAIN_TICK_MS)}fps × 10 = ${Math.round(10000/BRAIN_TICK_MS)} brain-steps/sec
+  Tick rate:  ${Math.round(1000/BRAIN_TICK_MS)}fps × ${SUBSTEPS} substeps = ${Math.round(1000/BRAIN_TICK_MS*SUBSTEPS)} brain-steps/sec
+              (DREAM_TICK_MS / DREAM_SUBSTEPS override these)
 
   Brain is thinking. Launching GPU compute client...
   `);

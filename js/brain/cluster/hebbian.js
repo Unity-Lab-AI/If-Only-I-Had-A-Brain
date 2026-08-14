@@ -204,8 +204,24 @@ export const CLUSTER_HEBBIAN_MIXIN = {
               continue; // skip THIS call, GPU already dispatched above
             }
           }
-          const preF = this.regionSpikes(src);
-          const postF = this.regionSpikes(dst);
+          // ACTIVE-ROW ITERATION. `postF` is a dense vector over a region
+          // that is millions of rows wide at biological scale, but only a
+          // few thousand of them fired. ojaUpdate's `if (!y) continue`
+          // still has to VISIT every row to learn that — so the outer scan
+          // costs O(region size) while the real work is O(firing), and at
+          // 1.5M rows that skip-scan IS the multi-second synchronous block
+          // that starves donor handshakes and the dashboard mid-teach.
+          //
+          // Passing `activeRows` makes the loop O(firing) and is
+          // BIT-IDENTICAL: under Oja a post=0 row updates by
+          // lr·0·x − lr·0²·w = 0, so a skipped row and a visited-then-
+          // skipped row leave the same weights. Same reasoning and same
+          // mechanism the direct pair-reinforce path already uses.
+          const preS = this.regionSpikesActive(src);
+          const postS = this.regionSpikesActive(dst);
+          const preF = preS.vec;
+          const postF = postS.vec;
+          const activeRows = postS.active;
           // #37 step 2 — chunk this sync CPU Oja by row-range with event-loop
           // yields. It's the dominant teach-path blocker at 306M: even on the
           // GPU-bound fast path we still run the probe-critical CPU Oja so the
@@ -215,7 +231,10 @@ export const CLUSTER_HEBBIAN_MIXIN = {
           // identical; we just `await` a macrotask between slices so the loop
           // drains HTTP/WS work. GPU fire-and-forget already ran above, so GPU
           // weights stay current regardless.
-          await this._ojaUpdateChunked(proj, preF, postF, lrEff, ojaOpts);
+          await this._ojaUpdateChunked(
+            proj, preF, postF, lrEff,
+            ojaOpts ? { ...ojaOpts, activeRows } : { activeRows },
+          );
         }
         continue;
       }
@@ -238,8 +257,13 @@ export const CLUSTER_HEBBIAN_MIXIN = {
         }
         continue;
       }
-      const preF = this.regionSpikes(src);
-      const postF = this.regionSpikes(dst);
+      // Same active-row iteration as the GPU-bound branch above: walk the
+      // firing rows instead of scanning the whole region to skip them.
+      const preS2 = this.regionSpikesActive(src);
+      const postS2 = this.regionSpikesActive(dst);
+      const preF = preS2.vec;
+      const postF = postS2.vec;
+      const activeRows2 = postS2.active;
       // CPU Hebbian OOM fix — route through worker pool when
       // available. AWAIT the pool job so
       // pending cross-projection Hebbians don't pile up in semi-space
@@ -260,14 +284,15 @@ export const CLUSTER_HEBBIAN_MIXIN = {
       // residual ~5s [EventLoop] BLOCK during teach. _ojaUpdateChunked slices it
       // + yields between slices (row-independent math = identical result), so a
       // /ws donor/chat handshake gets an event-loop slot even on the CPU path.
+      const ojaOpts2 = ojaOpts ? { ...ojaOpts, activeRows: activeRows2 } : { activeRows: activeRows2 };
       if (this._sparsePool && this._sparsePool.ready) {
         try {
           await this._sparsePool.hebbianUpdate(proj, preF, postF, lrEff);
         } catch {
-          await this._ojaUpdateChunked(proj, preF, postF, lrEff, ojaOpts);
+          await this._ojaUpdateChunked(proj, preF, postF, lrEff, ojaOpts2);
         }
       } else {
-        await this._ojaUpdateChunked(proj, preF, postF, lrEff, ojaOpts);
+        await this._ojaUpdateChunked(proj, preF, postF, lrEff, ojaOpts2);
       }
       // T17.3.d — fire-and-forget GPU Hebbian fallback for standalone
       // (non-bound) projections. Bandwidth cost: srcSize + dstSize u32s.
@@ -293,6 +318,29 @@ export const CLUSTER_HEBBIAN_MIXIN = {
   async _ojaUpdateChunked(proj, preF, postF, lr, ojaOpts) {
     const rows = proj.rows | 0;
     if (!this._ojaChunkRows) this._ojaChunkRows = 65536;
+
+    // ACTIVE-ROW FAST PATH. When the caller supplied the firing rows, the
+    // work is O(firing) — typically a few thousand — not O(rows). Chunking
+    // that across event-loop yields is pointless overhead, and worse, the
+    // row-RANGE slicing below would be wrong: it slices by row INDEX, and
+    // an active list is a sparse set of indices, not a contiguous span.
+    // Slicing [0,65536) against an active list holding index 900,000 would
+    // silently drop every update outside the first chunk. So dispatch the
+    // whole active set in one synchronous pass and return.
+    //
+    // If the active set is ever large enough to block, that block is REAL
+    // work rather than a skip-scan, and it warns with the count so the
+    // next reader sees which projection and how many rows.
+    const activeRows = ojaOpts && ojaOpts.activeRows;
+    if (activeRows) {
+      const _t0 = Date.now();
+      proj.ojaUpdate(preF, postF, lr, ojaOpts);
+      const _dt = Date.now() - _t0;
+      if (_dt > 250) {
+        console.warn(`[Cluster ${this.name}] Oja over ${activeRows.length.toLocaleString()} ACTIVE rows took ${_dt}ms (nnz=${proj.nnz ?? '?'}) — this is real work, not a skip-scan; if it repeats, this projection's fan-out is the cost.`);
+      }
+      return;
+    }
     // SINGLE-PASS only for genuinely small matrices — a FIXED threshold, NOT
     // the adaptive slice size (which ratchets up on fast small projections and
     // would then single-pass a large matrix unsliced = the 2-9s teach blocks).

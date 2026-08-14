@@ -1297,6 +1297,51 @@ export class NeuronCluster {
   }
 
   /**
+   * Region spike vector PLUS the list of indices that actually fired.
+   *
+   * Cortical firing is sparse — a few thousand neurons out of a region
+   * that is millions wide. Every plasticity path that takes a dense
+   * post-vector then walks all of it to find those few thousand, and at
+   * biological scale that skip-scan is the dominant synchronous cost of
+   * a teach call: seconds of `if (!y) continue` per projection, on the
+   * main thread, blocking donor handshakes and dashboard requests.
+   *
+   * `ojaUpdate` / `antiHebbianUpdate` already accept `opts.activeRows`
+   * to iterate only the firing rows — identical math, because a row
+   * with post=0 contributes exactly zero update AND zero decay under
+   * Oja. This returns that index list alongside the vector so callers
+   * can use it without a second pass.
+   *
+   * The dense buffer is cluster-scoped and REUSED across calls (cleared
+   * per call), because the allocating version was producing a fresh
+   * multi-megabyte Float64Array per projection per rep.
+   *
+   * @param {string} regionName
+   * @returns {{vec: Float64Array, active: number[]}}
+   */
+  regionSpikesActive(regionName) {
+    const region = this.regions[regionName];
+    if (!region) return { vec: new Float64Array(0), active: [] };
+    const len = region.end - region.start;
+    if (!this._regionSpikeScratch) this._regionSpikeScratch = new Map();
+    let entry = this._regionSpikeScratch.get(regionName);
+    if (!entry || entry.vec.length !== len) {
+      entry = { vec: new Float64Array(len), active: [] };
+      this._regionSpikeScratch.set(regionName, entry);
+    }
+    const { vec } = entry;
+    const active = entry.active;
+    active.length = 0;
+    vec.fill(0);
+    const spikes = this.lastSpikes;
+    const start = region.start;
+    for (let i = 0; i < len; i++) {
+      if (spikes[start + i]) { vec[i] = 1; active.push(i); }
+    }
+    return { vec, active };
+  }
+
+  /**
    * T14.4 — Inject embedding-shaped current into a named cluster region.
    * Replaces the old hardcoded `mapToCortex(emb, size, langStart=150)` calls.
    * Reads the region offsets from `this.regions[regionName]` so callers
