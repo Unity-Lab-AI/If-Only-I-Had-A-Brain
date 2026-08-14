@@ -3459,6 +3459,9 @@
             const totalPhases = (typeof c.cellPhasesTotal === 'number' && c.cellPhasesTotal > 0)
               ? c.cellPhasesTotal : null;
             const totalTag = (c.cellPhasesTotalSource === 'observed') ? '~' : '';
+            const pwTail = (c.phaseWork && c.phaseWork.total > 0)
+              ? ` · <span style="color:#fcd34d;">work ${c.phaseWork.done}/${c.phaseWork.total}</span>`
+              : '';
             const phaseName = (c.outermostPhase && c.outermostPhase.name)
               ? ` · <span style="color:#e9d5ff;">${c.outermostPhase.name}</span> (+${Math.round((c.outermostPhase.elapsedMs||0)/1000)}s)`
               : '';
@@ -3466,9 +3469,16 @@
               ? ` · <span style="color:#93c5fd;">${vp.label} ${vp.taught}/${vp.total}</span>${vp.lastWord ? ` — "${vp.lastWord}"` : ''}`
               : '';
             if (started > 0 && totalPhases) {
-              const frac = (vp && vp.total > 0) ? (vp.taught / vp.total) : 0;
+              // WITHIN-PHASE fraction so the bar MOVES during a long phase
+              // instead of sitting at 0% for its whole duration then jumping.
+              // Prefer the phase's own nested-work tally (derived from its
+              // source; works for every phase in every grade); fall back to the
+              // vocab-list position when a list is the thing running.
+              const pw = c.phaseWork || null;
+              const frac = (pw && pw.total > 0) ? (pw.done / pw.total)
+                : ((vp && vp.total > 0) ? (vp.taught / vp.total) : 0);
               pct = Math.min(99, Math.round(((Math.max(0, started - 1) + frac) / totalPhases) * 100));
-              html = `${pct}% · <span style="color:#4ade80;">phase ${started}/${totalTag}${totalPhases}</span> · ${done} complete${phaseName}${vpTail} · ${elapsedMin.toFixed(1)} min`;
+              html = `${pct}% · <span style="color:#4ade80;">phase ${started}/${totalTag}${totalPhases}</span> · ${done} complete${phaseName}${pwTail}${vpTail} · ${elapsedMin.toFixed(1)} min`;
             } else if (started > 0) {
               // Phases ARE moving but this cell's total has never been seen
               // (first run of a runner that doesn't declare phases). Drive the
