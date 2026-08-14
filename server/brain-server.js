@@ -1149,7 +1149,42 @@ const SCALE = Math.floor(TOTAL_NEURONS / 1000);
 // Scale tick rate to neuron count — target ~60% CPU across all cores
 // Parallel workers split the load, so more neurons are feasible
 const _TICK_MS_AUTO = TOTAL_NEURONS > 1000000 ? 100 : TOTAL_NEURONS > 500000 ? 50 : TOTAL_NEURONS > 100000 ? 33 : 16;
-const _SUBSTEPS_AUTO = TOTAL_NEURONS > 1000000 ? 3 : TOTAL_NEURONS > 500000 ? 5 : TOTAL_NEURONS > 100000 ? 10 : 10;
+// SUBSTEPS INVERTED AT SCALE — measured on the live deployed brain,
+// 2026-08-14, 306M neurons on one RTX 4070 Ti SUPER:
+//
+//   stepTimeMs      3010.5    <- one tick takes THREE SECONDS
+//   ticks/sec       0.728     (frameCount / uptime)
+//   cpuPercent      6         <- CPU is idle
+//   eventLoopLagMs  4         <- the event loop is NOT starved
+//   gpuMisses       0         <- the donor answers every batch
+//   donor rate      20.3 Gneurons/sec (self-reported)
+//
+// 7 clusters x 3 substeps x 306M = 919M neuron-steps per tick, which at
+// 20.3 Gneurons/sec is 45 ms of actual GPU math inside a 3010 ms tick.
+// The GPU does real work 1.5% of the time and idles for the other 98.5%.
+// The remaining ~2965 ms is round-trip: dispatch, per-cluster readback,
+// ack handling, and the state broadcast — and it is FIXED PER TICK,
+// independent of how many substeps ride inside it.
+//
+// That inverts the original scaling rule. The old ladder LOWERS substeps
+// as the brain grows (10 -> 5 -> 3) on the assumption that more neurons
+// mean more per-substep cost that must be throttled. But the throttle
+// only ever reduced the payload, never the overhead, so at biological
+// scale it maximised the fraction of wall-clock spent on protocol. The
+// bigger the brain, the MORE substeps should ride per round-trip,
+// because the round-trip is what is expensive.
+//
+// 24 substeps at 306M = ~360 ms of GPU math per ~3300 ms tick: 8x the
+// brain steps for ~10% more wall clock. Deliberately not pushed to the
+// full 60 the arithmetic allows, because compute_batch has a real
+// timeout and a donor that stalls mid-batch trips the zombie-kick path;
+// 24 keeps a wide margin while taking most of the win. DREAM_SUBSTEPS
+// overrides in either direction.
+//
+// The sub-1M tiers are UNCHANGED: at those sizes the payload genuinely
+// is small, the overhead share is different, and nothing here was
+// measured against them.
+const _SUBSTEPS_AUTO = TOTAL_NEURONS > 1000000 ? 24 : TOTAL_NEURONS > 500000 ? 5 : TOTAL_NEURONS > 100000 ? 10 : 10;
 
 // ── TRAINING THROUGHPUT KNOBS ────────────────────────────────────────
 // The auto-scaled values above are the DEFAULTS and nothing changes
