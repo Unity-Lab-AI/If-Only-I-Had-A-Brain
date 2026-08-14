@@ -64,7 +64,7 @@ const AUTO_ROT_SPEED = 0.0015;
 // of spotty and holey. Each sub-region maps to a real anatomical
 // language area, all LEFT-LATERALIZED to match human left-dominant
 // language organization. Sub-region totals: 30+100+90+30+80+50+30+130 = 540
-// GRAND TOTAL: 1000 + 540 = 1540.
+// GRAND TOTAL: 1000 + 540 + 60 (thalamic relay) = 1600.
 const CLUSTERS = [
   { key: 'cortex',       label: 'CORTEX',        n: 200, rgb: [1.0, 0.302, 0.604],  hex: '#ff4d9a' },
   { key: 'hippocampus',  label: 'HIPPOCAMPUS',   n: 100, rgb: [0.659, 0.333, 0.969], hex: '#a855f7' },
@@ -82,6 +82,10 @@ const CLUSTERS = [
   { key: 'lang_auditory', label: "HESCHL'S (AUDITORY)", n: 50,  rgb: [0.94, 0.15, 0.58], hex: '#f02694' },
   { key: 'lang_fineType', label: 'TEMPORAL POLE',       n: 30,  rgb: [0.58, 0.80, 0.45], hex: '#93cc72' },
   { key: 'lang_free',     label: 'PFC (INTEGRATION)',   n: 130, rgb: [0.45, 0.20, 0.76], hex: '#7333c2' },
+  // Deep relay — bilateral, sits in the centre where nothing rendered
+  // before. Cyan-white so it reads as distinct from both the pink
+  // cortical family and the orange language band.
+  { key: 'thalamus',      label: 'THALAMUS (RELAY)',    n: 60,  rgb: [0.55, 0.93, 0.95], hex: '#8ceef2' },
 ];
 
 // ── Inline shaders ──────────────────────────────────────────────────
@@ -739,12 +743,43 @@ function genLangFree(n) {
   return pts;
 }
 
+function genThalamus(n) {
+  // THALAMUS (pulvinar-weighted) — the relay. Deep central structure,
+  // bilateral, sitting above the hypothalamus and below the corpus
+  // callosum, with every cortical region radiating around it. MNI:
+  // (±12, -20, 8) for the body; the pulvinar is its posterior cushion
+  // at (±18, -28, 8), which is why the point cloud is biased posterior
+  // (negative z) rather than centred on the thalamic body.
+  //
+  // This is the one deep structure the brain was missing: the seven
+  // clusters talked cortex-to-cortex with no relay between them. The
+  // attention read over the emission context window is exactly a relay
+  // function — gating which stored representations get amplified into
+  // the current processing window — so it renders here rather than on
+  // any cortical patch.
+  const pts = [];
+  for (let i = 0; i < n; i++) {
+    // Bilateral, two egg-shaped bodies flanking the midline.
+    const side = Math.random() < 0.5 ? -1 : 1;
+    const r = 0.07 * Math.cbrt(Math.random());
+    const theta = Math.random() * Math.PI * 2;
+    const phi = Math.acos(2 * Math.random() - 1);
+    pts.push([
+      side * (0.10 + r * Math.abs(Math.sin(phi) * Math.cos(theta)) * 0.9) + gauss() * 0.02,
+      0.06 + r * Math.cos(phi) * 0.7 + gauss() * 0.025,
+      -0.06 + r * Math.sin(phi) * Math.sin(theta) * 1.1 + gauss() * 0.03,
+    ]);
+  }
+  return pts;
+}
+
 // Order matches CLUSTERS array
 const POS_GEN = [
   genCortex, genHippocampus, genAmygdala, genBasalGanglia,
   genCerebellum, genHypothalamus, genMystery,
   genLangMotor, genLangPhon, genLangSem, genLangLetter,
   genLangVisual, genLangAuditory, genLangFineType, genLangFree,
+  genThalamus,
 ];
 
 // ── Brain3D class ───────────────────────────────────────────────────
@@ -2410,6 +2445,7 @@ export class Brain3D {
           auditory: 12, lang_auditory: 12,
           fineType: 13, lang_fineType: 13,
           free: 14, lang_free: 14,
+          thalamus: 15,
           cortex: 0,
           hippocampus: 1,
           amygdala: 2,

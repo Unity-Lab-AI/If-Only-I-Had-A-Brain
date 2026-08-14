@@ -53407,9 +53407,18 @@ var CLUSTER_HEBBIAN_MIXIN = {
               continue;
             }
           }
-          const preF2 = this.regionSpikes(src);
-          const postF2 = this.regionSpikes(dst);
-          await this._ojaUpdateChunked(proj, preF2, postF2, lrEff, ojaOpts);
+          const preS = this.regionSpikesActive(src);
+          const postS = this.regionSpikesActive(dst);
+          const preF2 = preS.vec;
+          const postF2 = postS.vec;
+          const activeRows = postS.active;
+          await this._ojaUpdateChunked(
+            proj,
+            preF2,
+            postF2,
+            lrEff,
+            ojaOpts ? { ...ojaOpts, activeRows } : { activeRows }
+          );
         }
         continue;
       }
@@ -53420,16 +53429,20 @@ var CLUSTER_HEBBIAN_MIXIN = {
         }
         continue;
       }
-      const preF = this.regionSpikes(src);
-      const postF = this.regionSpikes(dst);
+      const preS2 = this.regionSpikesActive(src);
+      const postS2 = this.regionSpikesActive(dst);
+      const preF = preS2.vec;
+      const postF = postS2.vec;
+      const activeRows2 = postS2.active;
+      const ojaOpts2 = ojaOpts ? { ...ojaOpts, activeRows: activeRows2 } : { activeRows: activeRows2 };
       if (this._sparsePool && this._sparsePool.ready) {
         try {
           await this._sparsePool.hebbianUpdate(proj, preF, postF, lrEff);
         } catch {
-          await this._ojaUpdateChunked(proj, preF, postF, lrEff, ojaOpts);
+          await this._ojaUpdateChunked(proj, preF, postF, lrEff, ojaOpts2);
         }
       } else {
-        await this._ojaUpdateChunked(proj, preF, postF, lrEff, ojaOpts);
+        await this._ojaUpdateChunked(proj, preF, postF, lrEff, ojaOpts2);
       }
       if (this._gpuProxyReady && this._gpuProxy && this._gpuProxy.hebbian) {
         try {
@@ -53453,6 +53466,16 @@ var CLUSTER_HEBBIAN_MIXIN = {
   async _ojaUpdateChunked(proj, preF, postF, lr, ojaOpts) {
     const rows = proj.rows | 0;
     if (!this._ojaChunkRows) this._ojaChunkRows = 65536;
+    const activeRows = ojaOpts && ojaOpts.activeRows;
+    if (activeRows) {
+      const _t0 = Date.now();
+      proj.ojaUpdate(preF, postF, lr, ojaOpts);
+      const _dt = Date.now() - _t0;
+      if (_dt > 250) {
+        console.warn(`[Cluster ${this.name}] Oja over ${activeRows.length.toLocaleString()} ACTIVE rows took ${_dt}ms (nnz=${proj.nnz ?? "?"}) \u2014 this is real work, not a skip-scan; if it repeats, this projection's fan-out is the cost.`);
+      }
+      return;
+    }
     if (rows <= 65536) {
       const _t0 = Date.now();
       proj.ojaUpdate(preF, postF, lr, ojaOpts);
@@ -54329,6 +54352,8 @@ var CLUSTER_EMIT_MIXIN = {
         this.externalCurrent[i] = 0;
       }
     }
+    const attnEnabled = opts.attention === true && typeof this.attentionRead === "function" && typeof this.attentionPush === "function";
+    if (attnEnabled) this.attentionReset();
     const MAX_CUMULATIVE_SEM_INJECT = 1.5;
     let _cumulativeSemInject = 0;
     const _budgetedInject = (region, embedding, requestedStrength, budgetShare) => {
@@ -54443,6 +54468,30 @@ var CLUSTER_EMIT_MIXIN = {
             const BACK_INJECT_DECAY = 0.92;
             const backInjectStrength = BACK_INJECT_BASE * Math.pow(BACK_INJECT_DECAY, i);
             this.injectEmbeddingToRegion("sem", wordEmb, backInjectStrength);
+            if (attnEnabled) {
+              this.attentionPush(word, wordEmb);
+              const attnOpts = typeof opts.attentionTemperature === "number" ? { temperature: opts.attentionTemperature } : void 0;
+              const attn = this.attentionRead(wordEmb, attnOpts);
+              if (attn && attn.context) {
+                const ATTN_INJECT_SCALE = 0.6;
+                this.injectEmbeddingToRegion(
+                  "sem",
+                  attn.context,
+                  backInjectStrength * ATTN_INJECT_SCALE
+                );
+                if (typeof this._pushBrainEvent === "function") {
+                  try {
+                    this._pushBrainEvent(
+                      "attention",
+                      "thalamus",
+                      `attend "${attn.top ?? word}" \xB7 H=${attn.entropy.toFixed(2)}`,
+                      { top: attn.top, entropy: attn.entropy, span: attn.words.length }
+                    );
+                  } catch {
+                  }
+                }
+              }
+            }
           }
         } catch {
         }
@@ -55043,6 +55092,181 @@ var CLUSTER_PROBE_MIXIN = {
       rms: Math.sqrt(sumSq / count),
       maxAbs,
       nnz
+    };
+  }
+};
+
+// ../js/brain/cluster/attention.js
+var CLUSTER_ATTENTION_MIXIN = {
+  /**
+   * Clear the attention context window. Called at the start of every
+   * compose call so the previous utterance's words don't leak into the
+   * next one's context — the same "fresh intent window" discipline
+   * composeSentence already applies to the sem externalCurrent buffer.
+   */
+  attentionReset() {
+    this._attnKeys = [];
+    this._attnWords = [];
+    this._attnLastWeights = null;
+    this._attnLastWords = null;
+  },
+  /**
+   * Append an emitted word + its embedding to the context window.
+   *
+   * Key and value are the SAME vector here (the word's semantic
+   * embedding). Separate learned K/V projections are what the
+   * neuron-resident follow-up adds; at this stage tying them keeps the
+   * read purely a function of live state with no free parameters to
+   * mis-set.
+   *
+   * The window is capped at ATTN_WINDOW. Sentences are bounded at 12
+   * words by composeSentence's MAX_WORDS, so a 16-slot window holds a
+   * whole utterance and the cap only exists to bound memory if a
+   * caller composes something longer.
+   *
+   * @param {string} word
+   * @param {Float32Array|number[]} embedding
+   */
+  attentionPush(word, embedding) {
+    if (!embedding || embedding.length === 0) return;
+    if (!Array.isArray(this._attnKeys)) this.attentionReset();
+    const ATTN_WINDOW = 16;
+    this._attnKeys.push(embedding);
+    this._attnWords.push(typeof word === "string" ? word : "");
+    while (this._attnKeys.length > ATTN_WINDOW) {
+      this._attnKeys.shift();
+      this._attnWords.shift();
+    }
+  },
+  /**
+   * Content-addressed read over the context window.
+   *
+   *   score_i = (query · key_i) / (|query| · |key_i|)     cosine, in [-1, 1]
+   *   a       = softmax(score / temperature)
+   *   context = Σ a_i · value_i          then L2-normalised
+   *
+   * NO 1/sqrt(d) TERM, deliberately. Standard dot-product attention
+   * divides by sqrt(d) because its raw Q·K products grow with embedding
+   * dimension and would saturate the softmax. Cosine is ALREADY that
+   * normalisation — it is bounded to [-1, 1] at any dimension. Applying
+   * sqrt(d) on top double-corrects: at d=300 it compresses every score
+   * into ±0.058, the softmax comes out flat, and the read degenerates
+   * into a plain average of the window. Measured, not reasoned: with
+   * the sqrt(d) term the test's three-word window scored 0.338 / 0.327 /
+   * 0.335 (entropy 1.099 = log(3), i.e. exactly uniform), which is
+   * attention contributing nothing. Cosine alone, with temperature
+   * carrying the sharpness, is the correct pairing.
+   *
+   * RECENCY BIAS: a small positional term is added to each score so
+   * that, all else equal, a recent word outweighs an old one. This is
+   * not a positional ENCODING (there are no learned position vectors);
+   * it is the same cortical-leak intuition the back-injection decay
+   * already encodes, expressed inside the score instead of outside it.
+   * Set opts.recencyBias to 0 for a pure content read.
+   *
+   * Returns null when the window is empty or the query is unusable, so
+   * the caller can simply skip the injection and behave exactly as it
+   * did before this module existed.
+   *
+   * @param {Float32Array|number[]} queryEmbedding — current semantic state
+   * @param {object} [opts]
+   * @param {number} [opts.temperature=0.15] — softmax sharpness (>0)
+   * @param {number} [opts.recencyBias=0.05] — per-position recency weight
+   * @returns {{context: Float32Array, weights: number[], words: string[], entropy: number, top: string|null, topWeight: number}|null}
+   */
+  attentionRead(queryEmbedding, opts = {}) {
+    if (!queryEmbedding || queryEmbedding.length === 0) return null;
+    const keys = this._attnKeys;
+    if (!Array.isArray(keys) || keys.length === 0) return null;
+    const d = queryEmbedding.length;
+    const temperature = typeof opts.temperature === "number" && opts.temperature > 0 ? opts.temperature : 0.15;
+    const recencyBias = typeof opts.recencyBias === "number" ? opts.recencyBias : 0.05;
+    let qNorm = 0;
+    for (let i = 0; i < d; i++) qNorm += queryEmbedding[i] * queryEmbedding[i];
+    qNorm = Math.sqrt(qNorm);
+    if (!(qNorm > 0)) return null;
+    const n = keys.length;
+    const scores = new Float64Array(n);
+    for (let k = 0; k < n; k++) {
+      const key = keys[k];
+      const L = Math.min(d, key.length);
+      let dot = 0;
+      let kNorm = 0;
+      for (let i = 0; i < L; i++) {
+        dot += queryEmbedding[i] * key[i];
+        kNorm += key[i] * key[i];
+      }
+      kNorm = Math.sqrt(kNorm);
+      const cos = kNorm > 0 ? dot / (qNorm * kNorm) : 0;
+      const recency = n > 1 ? k / (n - 1) : 1;
+      scores[k] = cos + recency * recencyBias;
+    }
+    let maxScore = -Infinity;
+    for (let k = 0; k < n; k++) if (scores[k] > maxScore) maxScore = scores[k];
+    let sumExp = 0;
+    const weights = new Array(n);
+    for (let k = 0; k < n; k++) {
+      const w = Math.exp((scores[k] - maxScore) / temperature);
+      weights[k] = w;
+      sumExp += w;
+    }
+    if (!(sumExp > 0)) return null;
+    for (let k = 0; k < n; k++) weights[k] /= sumExp;
+    const context = new Float32Array(d);
+    for (let k = 0; k < n; k++) {
+      const key = keys[k];
+      const w = weights[k];
+      const L = Math.min(d, key.length);
+      for (let i = 0; i < L; i++) context[i] += w * key[i];
+    }
+    let cNorm = 0;
+    for (let i = 0; i < d; i++) cNorm += context[i] * context[i];
+    cNorm = Math.sqrt(cNorm);
+    if (cNorm > 0) for (let i = 0; i < d; i++) context[i] /= cNorm;
+    let entropy = 0;
+    for (let k = 0; k < n; k++) {
+      const w = weights[k];
+      if (w > 0) entropy -= w * Math.log(w);
+    }
+    let top = null;
+    let topWeight = -Infinity;
+    for (let k = 0; k < n; k++) {
+      if (weights[k] > topWeight) {
+        topWeight = weights[k];
+        top = this._attnWords[k] ?? null;
+      }
+    }
+    this._attnLastWeights = weights;
+    this._attnLastWords = this._attnWords.slice();
+    this._attnLastEntropy = entropy;
+    this._attnReads = (this._attnReads || 0) + 1;
+    return { context, weights, words: this._attnWords.slice(), entropy, top, topWeight };
+  },
+  /**
+   * Telemetry reader — surfaces the last read's distribution so the
+   * dashboard and the 3D visualization can show which prior words the
+   * brain is attending to, and how sharply.
+   *
+   * @returns {{words: string[], weights: number[], entropy: number, maxEntropy: number, reads: number, top: string|null}}
+   */
+  getAttentionState() {
+    const words = Array.isArray(this._attnLastWords) ? this._attnLastWords : [];
+    const weights = Array.isArray(this._attnLastWeights) ? this._attnLastWeights : [];
+    let top = null;
+    let best = -Infinity;
+    for (let k = 0; k < weights.length; k++) {
+      if (weights[k] > best) {
+        best = weights[k];
+        top = words[k] ?? null;
+      }
+    }
+    return {
+      words,
+      weights,
+      entropy: this._attnLastEntropy ?? 0,
+      maxEntropy: weights.length > 1 ? Math.log(weights.length) : 0,
+      reads: this._attnReads || 0,
+      top
     };
   }
 };
@@ -55724,6 +55948,53 @@ var NeuronCluster = class {
     const out = new Float64Array(region.end - region.start);
     for (let i = 0; i < out.length; i++) out[i] = this.lastSpikes[region.start + i] ? 1 : 0;
     return out;
+  }
+  /**
+   * Region spike vector PLUS the list of indices that actually fired.
+   *
+   * Cortical firing is sparse — a few thousand neurons out of a region
+   * that is millions wide. Every plasticity path that takes a dense
+   * post-vector then walks all of it to find those few thousand, and at
+   * biological scale that skip-scan is the dominant synchronous cost of
+   * a teach call: seconds of `if (!y) continue` per projection, on the
+   * main thread, blocking donor handshakes and dashboard requests.
+   *
+   * `ojaUpdate` / `antiHebbianUpdate` already accept `opts.activeRows`
+   * to iterate only the firing rows — identical math, because a row
+   * with post=0 contributes exactly zero update AND zero decay under
+   * Oja. This returns that index list alongside the vector so callers
+   * can use it without a second pass.
+   *
+   * The dense buffer is cluster-scoped and REUSED across calls (cleared
+   * per call), because the allocating version was producing a fresh
+   * multi-megabyte Float64Array per projection per rep.
+   *
+   * @param {string} regionName
+   * @returns {{vec: Float64Array, active: number[]}}
+   */
+  regionSpikesActive(regionName) {
+    const region = this.regions[regionName];
+    if (!region) return { vec: new Float64Array(0), active: [] };
+    const len = region.end - region.start;
+    if (!this._regionSpikeScratch) this._regionSpikeScratch = /* @__PURE__ */ new Map();
+    let entry = this._regionSpikeScratch.get(regionName);
+    if (!entry || entry.vec.length !== len) {
+      entry = { vec: new Float64Array(len), active: [] };
+      this._regionSpikeScratch.set(regionName, entry);
+    }
+    const { vec } = entry;
+    const active = entry.active;
+    active.length = 0;
+    vec.fill(0);
+    const spikes = this.lastSpikes;
+    const start = region.start;
+    for (let i = 0; i < len; i++) {
+      if (spikes[start + i]) {
+        vec[i] = 1;
+        active.push(i);
+      }
+    }
+    return { vec, active };
   }
   /**
    * T14.4 — Inject embedding-shaped current into a named cluster region.
@@ -57479,7 +57750,10 @@ var NeuronCluster = class {
     const k5Scale = k5Active ? this.columnCoherenceBeta * 0.05 : 0;
     let attentionLookup = null;
     if (this.regions && this.attentionGain && Object.keys(this.attentionGain).length > 0) {
-      attentionLookup = new Float32Array(size);
+      if (!this._attentionLookupBuf || this._attentionLookupBuf.length !== size) {
+        this._attentionLookupBuf = new Float32Array(size);
+      }
+      attentionLookup = this._attentionLookupBuf;
       attentionLookup.fill(1);
       for (const [regionName, gain] of Object.entries(this.attentionGain)) {
         const r = this.regions[regionName];
@@ -57692,9 +57966,12 @@ var NeuronCluster = class {
    * AND on the cross-region projections (T14.4).
    */
   learn(rewardSignal) {
-    const pre = new Float64Array(this.lastSpikes);
-    const post = new Float64Array(this.lastSpikes);
-    this.synapses.rewardModulatedUpdate(pre, post, rewardSignal, this.learningRate);
+    this.synapses.rewardModulatedUpdate(
+      this.lastSpikes,
+      this.lastSpikes,
+      rewardSignal,
+      this.learningRate
+    );
     this._crossRegionHebbian(this.learningRate);
   }
   /**
@@ -58005,6 +58282,7 @@ Object.assign(NeuronCluster.prototype, CLUSTER_TELEMETRY_MIXIN);
 Object.assign(NeuronCluster.prototype, CLUSTER_HEBBIAN_MIXIN);
 Object.assign(NeuronCluster.prototype, CLUSTER_EMIT_MIXIN);
 Object.assign(NeuronCluster.prototype, CLUSTER_PROBE_MIXIN);
+Object.assign(NeuronCluster.prototype, CLUSTER_ATTENTION_MIXIN);
 
 // ../js/brain/modules.js
 function sigmoid(x) {
@@ -119681,7 +119959,11 @@ var CLUSTERS = [
   { key: "lang_visual", label: "V1 (VISUAL INPUT)", n: 80, rgb: [0.11, 0.45, 0.85], hex: "#1c72d9" },
   { key: "lang_auditory", label: "HESCHL'S (AUDITORY)", n: 50, rgb: [0.94, 0.15, 0.58], hex: "#f02694" },
   { key: "lang_fineType", label: "TEMPORAL POLE", n: 30, rgb: [0.58, 0.8, 0.45], hex: "#93cc72" },
-  { key: "lang_free", label: "PFC (INTEGRATION)", n: 130, rgb: [0.45, 0.2, 0.76], hex: "#7333c2" }
+  { key: "lang_free", label: "PFC (INTEGRATION)", n: 130, rgb: [0.45, 0.2, 0.76], hex: "#7333c2" },
+  // Deep relay — bilateral, sits in the centre where nothing rendered
+  // before. Cyan-white so it reads as distinct from both the pink
+  // cortical family and the orange language band.
+  { key: "thalamus", label: "THALAMUS (RELAY)", n: 60, rgb: [0.55, 0.93, 0.95], hex: "#8ceef2" }
 ];
 var NEURON_VS = `
 attribute vec3 aPos;
@@ -120247,6 +120529,21 @@ function genLangFree(n) {
   }
   return pts;
 }
+function genThalamus(n) {
+  const pts = [];
+  for (let i = 0; i < n; i++) {
+    const side = Math.random() < 0.5 ? -1 : 1;
+    const r = 0.07 * Math.cbrt(Math.random());
+    const theta = Math.random() * Math.PI * 2;
+    const phi = Math.acos(2 * Math.random() - 1);
+    pts.push([
+      side * (0.1 + r * Math.abs(Math.sin(phi) * Math.cos(theta)) * 0.9) + gauss() * 0.02,
+      0.06 + r * Math.cos(phi) * 0.7 + gauss() * 0.025,
+      -0.06 + r * Math.sin(phi) * Math.sin(theta) * 1.1 + gauss() * 0.03
+    ]);
+  }
+  return pts;
+}
 var POS_GEN = [
   genCortex,
   genHippocampus,
@@ -120262,7 +120559,8 @@ var POS_GEN = [
   genLangVisual,
   genLangAuditory,
   genLangFineType,
-  genLangFree
+  genLangFree,
+  genThalamus
 ];
 var Brain3D = class {
   constructor(containerId) {
@@ -121493,6 +121791,7 @@ Probes: ${ps.totalProbes} total, ${ps.totalPasses} pass, ${ps.totalFails} fail`;
           lang_fineType: 13,
           free: 14,
           lang_free: 14,
+          thalamus: 15,
           cortex: 0,
           hippocampus: 1,
           amygdala: 2,
