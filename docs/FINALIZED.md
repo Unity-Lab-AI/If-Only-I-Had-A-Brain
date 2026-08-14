@@ -30191,6 +30191,22 @@ Gee relayed the author's own summary (verbatim): *"Gee, ignore all my walls of t
 
 **VERIFY (no-tests LAW — syntax + read only, the two `test_*.mjs` files were NOT executed):** `node --check` PASS on `js/brain/engine.js` and both new `.mjs` files; merge was conflict-free.
 
+## 2026-08-14 — TOLERABLE / REV PR #3 MERGED (substeps 3 → 24 at biological scale — the GPU idles 98.5% of every tick)
+
+Gee (verbatim): *"Rev made another PR, same thing update local and both repos"*
+
+github PR #3 — *"The GPU is idle 98.5% of every tick — measured on the live brain"* — head `8cab418`, 1 commit, 1 file, **+36/−1**, conflict-free. Fetched via `refs/pull/3/head` → local `pr3/head`, merged `--no-ff` into `feature/merge-rev-pr3-substeps-0814` off main, cascaded develop → main, pushed to BOTH remotes. Authorship preserved (`Reverend Dr Tolerant`).
+
+**THE ONE SUBSTANTIVE LINE:** `_SUBSTEPS_AUTO` at the `>1,000,000` neuron tier, **3 → 24**. Sub-1M tiers deliberately UNCHANGED (never measured against them).
+
+**HIS MEASUREMENT (live deployed brain, 306M neurons, one RTX 4070 Ti SUPER):** `stepTimeMs 3010.5` (one tick takes three seconds) · `ticks/sec 0.728` · `cpuPercent 6` (CPU idle) · `eventLoopLagMs 4` (loop NOT starved) · `gpuMisses 0` (donor answers every batch) · donor self-reported `20.3 Gneurons/sec`. Arithmetic: 7 clusters × 3 substeps × 306M = 919M neuron-steps/tick, which at 20.3 Gn/s is **45ms of real GPU math inside a 3010ms tick — the GPU works 1.5% of the time**. The other ~2965ms is round-trip (dispatch, per-cluster readback, ack handling, state broadcast) and is **FIXED PER TICK regardless of substeps**.
+
+**WHY THE OLD LADDER WAS BACKWARDS:** it LOWERED substeps as the brain grew (10 → 5 → 3) on the assumption that more neurons mean more per-substep cost to throttle. But the throttle only ever shrank the payload, never the overhead — so at biological scale it maximised the fraction of wall-clock spent on protocol. The bigger the brain, the MORE substeps should ride per round-trip, because the round-trip is the expensive part. 24 substeps ≈ 360ms of GPU math per ~3300ms tick: **8× the brain steps for ~10% more wall clock**. Deliberately not pushed to the ~60 the arithmetic allows, because `compute_batch` has a real timeout and a donor stalling mid-batch trips the zombie-kick path.
+
+**THIS IS THE FIRST OF REV'S PRs THAT CHANGES DEPLOYED BEHAVIOUR BY DEFAULT** (PR #1 landed on the browser-only brain; PR #2's attention relay is opt-in). Watch after deploy: `compute_batch` timeouts, donor disconnects mid-batch, dashboard responsiveness. **ROLLBACK IS ONE ENV VAR — `DREAM_SUBSTEPS=3`** (the knob PR #2 added, which is what makes this safe to try).
+
+**NO FRESH WALK, NO BUNDLE.** No weight-format or geometry change → Update & SAVESTART. `server/brain-server.js` is server-side CommonJS and not in the esbuild entry graph, so no browser bundle rebuild. `brain-server.js` IS in `BRAIN_CODE_FILES` so the code hash moves; `DREAM_KEEP_STATE=1` (Savestart) bypasses the hash check and weights survive. VERIFY: `node --check server/brain-server.js` PASS; diff confirmed to be the single `_SUBSTEPS_AUTO` constant plus its rationale comment.
+
 ## 2026-08-14 — TOLERABLE / REV PR #2 MERGED (active-row teach loop + thalamic attention relay)
 
 Gee (verbatim): *"tollerant made another update to the github like before, he just made the PR... go ahead and do the same again and make sure our local, and both repos are updated. check again!"*
