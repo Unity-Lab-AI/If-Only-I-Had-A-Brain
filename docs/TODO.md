@@ -345,3 +345,23 @@ V.8, D.7, L.6 and G.9 were four separate pending items all waiting on the same e
   2. **(was D.7)** Donor health — `totalSpikes` climbing, `gpuHits` advancing, donor `rttMs` under 1s, `cellPhasesCompleted` leaving 0.
   3. **(was L.6)** Phase ledger — the cell-progress line names a REAL phase with a **minutes**-scale `+Ns` (never `_teachAntiHebbian (+0s)`), carries a `work N/N` tail that climbs, and `0 complete` leaves 0 when phase 1 lands.
   4. **(was G.9)** Donor kill — pull the donor: the dashboard must show **PAUSED — no compute substrate** within seconds with the reason named, teach events must STOP climbing, chat must still reply, and the walk must resume the moment a donor finishes uploading.
+
+---
+
+## OPEN TASKS — 2026-08-14 · PER-SUBJECT GRADE COLUMN SHOWS THE LAST GRADE PASSED, NOT THE ONE SHE IS IN
+
+> Gee (verbatim): *"sure, lets make sure its all correct, but we will do update savestart later on that issue and we will walk current build till we get to a good spot after the live-verify"*
+
+**THE ISSUE (caught on the live dashboard while ELA-K was mid-cell).** The per-subject table read `Foundational Reading / pre-K / 1 / 0 / 24.8k` while the card header directly above it read `Kindergarten (Common Core K.RF / K.W / K.L / K.SL / K.RL …)`. Both were rendered from the same status payload, disagreeing about which grade she is in.
+
+**ROOT — the column is the LAST-PASSED pointer, not the live one.** `getCurriculumStatus` overrides the per-subject grade with `cluster.grades[sub]` (`curriculum.js:3015`), and `cluster.grades[subject]` is assigned **only inside `if (result && result.pass)`** (`curriculum.js:8721`) — i.e. when a cell COMPLETES. It is seeded `{ela:'pre-K', math:'pre-K', …}`, so mid-K it still reads `pre-K`. `courseNameFor(sub, grade)` is computed from that same stale value, so it inherits the staleness. **Correction to my first reading of this:** the course name did NOT look wrong in the caught case — `courseNameFor('ela', …)` returns `Foundational Reading` for pre-K, kindergarten AND grade1, so the string matched by coincidence. It would show the previous grade's class at any boundary where the name actually changes (e.g. math grade8→grade9 `Algebra I`, science→`Biology`). Verified by calling `courseNameFor` directly rather than assuming.
+
+**Also note:** the seeded default makes "passed pre-K" and "has passed nothing at all" indistinguishable in that field — both read `pre-K`. Any correct derivation has to consult `passedCells`, not the pointer.
+
+**THE CORRECT DERIVATION — one rule, both cases.** The grade a subject is AT = the first grade in `GRADE_ORDER` whose cell is not in `cluster.passedCells`. For the subject currently being taught this yields exactly the in-flight grade; for idle subjects it yields the grade they will run next. Terminal case (every grade passed) yields the last grade in the order. No branch on "is this the active subject", no second source to disagree with the first.
+
+### THE WORK
+
+- [x] **GC.1** **DONE.** Derive the live per-subject grade from `passedCells` + `GRADE_ORDER` and use it for BOTH the grade column and `courseNameFor()`, replacing the `cluster.grades[sub]` override.
+- [x] **GC.2** **DONE.** Verify — no-tests LAW: `node --check`, ESM `import()`, exercise the derivation against real `passedCells` shapes (nothing passed / pre-K passed / mid-K / all passed), bundle rebuild.
+- [x] **GC.3** **DONE.** Docs + FINALIZED, atomic commit, cascade, push BOTH remotes. **NO DEPLOY** — Gee walks the current build until after the combined live-verify; this ships to the repo and waits for his next Update & SAVESTART.
