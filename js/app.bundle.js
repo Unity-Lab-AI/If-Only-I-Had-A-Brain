@@ -95053,6 +95053,15 @@ var Curriculum = class _Curriculum {
           this._currentCellPhasesStarted = this._cellPhasesStartedSet.size;
         }
         try {
+          if (typeof this._awaitComputeSubstrate === "function") {
+            this._gateSampleN = (this._gateSampleN | 0) + 1;
+            if (isOutermost || this._gateSampleN % 64 === 0) {
+              await this._awaitComputeSubstrate();
+            }
+          }
+        } catch {
+        }
+        try {
           const result = await original(...args);
           if (isOutermost && cl && phaseKey) {
             if (!Array.isArray(cl.passedPhases)) cl.passedPhases = [];
