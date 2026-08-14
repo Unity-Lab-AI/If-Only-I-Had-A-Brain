@@ -320,24 +320,72 @@ export const CLUSTER_HEBBIAN_MIXIN = {
     if (!this._ojaChunkRows) this._ojaChunkRows = 65536;
 
     // ACTIVE-ROW FAST PATH. When the caller supplied the firing rows, the
-    // work is O(firing) — typically a few thousand — not O(rows). Chunking
-    // that across event-loop yields is pointless overhead, and worse, the
-    // row-RANGE slicing below would be wrong: it slices by row INDEX, and
-    // an active list is a sparse set of indices, not a contiguous span.
+    // work is O(firing) — typically a few thousand — not O(rows). The
+    // row-RANGE slicing below cannot be reused here: it slices by row INDEX,
+    // and an active list is a sparse SET of indices, not a contiguous span.
     // Slicing [0,65536) against an active list holding index 900,000 would
-    // silently drop every update outside the first chunk. So dispatch the
-    // whole active set in one synchronous pass and return.
+    // silently drop every update outside the first chunk.
     //
-    // If the active set is ever large enough to block, that block is REAL
-    // work rather than a skip-scan, and it warns with the count so the
-    // next reader sees which projection and how many rows.
+    // TICK-GAP FIX (2026-08-14) — but "O(firing), therefore don't yield" was
+    // the wrong conclusion. Less work in ONE unbroken synchronous call still
+    // pins the single-threaded loop for the whole duration, and this process
+    // is single-threaded: while it runs, the donor's compute_batch reply sits
+    // unprocessed, /ws handshakes stall, and the dashboard freezes. Measured
+    // live: stepTimeMs 5526 with the donor answering in ~45ms and
+    // eventLoopDelay p50 20ms / MAX 7315ms — the tick is not waiting on the
+    // GPU, it is waiting for this thread. (The prior comment's own escape
+    // hatch — a >250ms warn saying "this is real work, not a skip-scan" —
+    // conceded the block while accepting it; real work blocks the loop
+    // exactly as hard as wasted work does.)
+    //
+    // So slice the ACTIVE LIST itself (not row ranges) and yield a macrotask
+    // between slices. Total work is unchanged — every active row is visited
+    // exactly once — and the math is bit-identical because rows are
+    // independent under Oja. Same adaptive ~30ms time-slicing as the
+    // row-range loop below, with its own chunk state (active-list slices and
+    // row-range slices have very different per-unit costs).
     const activeRows = ojaOpts && ojaOpts.activeRows;
     if (activeRows) {
-      const _t0 = Date.now();
-      proj.ojaUpdate(preF, postF, lr, ojaOpts);
-      const _dt = Date.now() - _t0;
-      if (_dt > 250) {
-        console.warn(`[Cluster ${this.name}] Oja over ${activeRows.length.toLocaleString()} ACTIVE rows took ${_dt}ms (nnz=${proj.nnz ?? '?'}) — this is real work, not a skip-scan; if it repeats, this projection's fan-out is the cost.`);
+      const n = activeRows.length | 0;
+      // Small sets stay a single synchronous pass — below this the yield
+      // overhead costs more than the block it would break up.
+      const ACTIVE_SLICE_MIN = 2048;
+      if (n <= ACTIVE_SLICE_MIN) {
+        const _t0 = Date.now();
+        proj.ojaUpdate(preF, postF, lr, ojaOpts);
+        const _dt = Date.now() - _t0;
+        if (_dt > 250) {
+          console.warn(`[Cluster ${this.name}] Oja over ${n.toLocaleString()} ACTIVE rows took ${_dt}ms (nnz=${proj.nnz ?? '?'}) — under the ${ACTIVE_SLICE_MIN}-row slice floor so it ran unsliced; if it repeats, this projection's fan-out is the cost.`);
+        }
+        return;
+      }
+      // SNAPSHOT the indices. `regionSpikesActive` hands back a SHARED scratch
+      // array that its next call clears and refills — and we are about to
+      // await between slices, so a concurrent teach/emission path calling it
+      // for the same region would reset the list mid-loop and corrupt the
+      // remaining slices. Copying a few thousand ints once is free next to
+      // the Oja work it guards.
+      const rowsList = Array.prototype.slice.call(activeRows);
+      const total = rowsList.length;
+      if (!this._ojaActiveChunk) this._ojaActiveChunk = 8192;
+      const yieldMacro = (typeof setImmediate === 'function')
+        ? () => new Promise((r) => setImmediate(r))
+        : () => new Promise((r) => setTimeout(r, 0));
+      const _tStart = Date.now();
+      for (let i = 0; i < total; ) {
+        const chunk = this._ojaActiveChunk;
+        const j = Math.min(i + chunk, total);
+        const t0 = Date.now();
+        proj.ojaUpdate(preF, postF, lr, { ...(ojaOpts || {}), activeRows: rowsList.slice(i, j) });
+        const dt = Date.now() - t0;
+        i = j;
+        if (dt > 60 && chunk > 1024) this._ojaActiveChunk = Math.max(1024, chunk >> 1);
+        else if (dt < 15 && chunk < 65536) this._ojaActiveChunk = chunk << 1;
+        await yieldMacro();
+      }
+      const _tot = Date.now() - _tStart;
+      if (_tot > 2000) {
+        console.warn(`[Cluster ${this.name}] Oja over ${total.toLocaleString()} ACTIVE rows took ${_tot}ms WALL (nnz=${proj.nnz ?? '?'}) — but SLICED at ~${this._ojaActiveChunk} rows with event-loop yields, so the tick/donor/ws kept getting slots. Wall time here is real work, not a loop pin.`);
       }
       return;
     }
