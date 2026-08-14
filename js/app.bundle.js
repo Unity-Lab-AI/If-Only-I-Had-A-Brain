@@ -95016,6 +95016,15 @@ var Curriculum = class _Curriculum {
           return;
         }
         if (cl) cl._activePhase = { name, startAt: Date.now() };
+        if (isOutermost && cl) {
+          const _ck = cl._currentCellKey || "";
+          if (this._cellPhasesStartedKey !== _ck) {
+            this._cellPhasesStartedKey = _ck;
+            this._cellPhasesStartedSet = /* @__PURE__ */ new Set();
+          }
+          this._cellPhasesStartedSet.add(name);
+          this._currentCellPhasesStarted = this._cellPhasesStartedSet.size;
+        }
         try {
           const result = await original(...args);
           if (isOutermost && cl && phaseKey) {
@@ -95268,6 +95277,24 @@ var Curriculum = class _Curriculum {
       pausedForDonorMs: this._pausedForDonorSinceMs ? Date.now() - this._pausedForDonorSinceMs : 0,
       activePhase,
       cellPhasesCompleted: this._currentCellPhasesCompleted | 0,
+      // HONEST PROGRESS (2026-08-14) — `cellPhasesCompleted` only ticks when
+      // an OUTERMOST phase FINISHES, so a K cell reads 0 for tens of minutes
+      // and the dashboard degrades to an elapsed-time estimate ("~85%
+      // [time-est] · server phase counter stuck") that saturates and looks
+      // like a hang. These two move while she works:
+      //   cellPhasesStarted — outermost phases ENTERED in this cell
+      //   vocabProgress     — live word position inside the current list
+      // Together they answer "is she moving?" without interpreting a
+      // frozen counter.
+      cellPhasesStarted: this._currentCellPhasesStarted | 0,
+      vocabProgress: this._vocabProgress ? {
+        label: this._vocabProgress.label,
+        taught: this._vocabProgress.taught | 0,
+        total: this._vocabProgress.total | 0,
+        elapsedSec: this._vocabProgress.elapsedSec | 0,
+        lastWord: this._vocabProgress.lastWord || null,
+        pct: this._vocabProgress.total > 0 ? Math.round(this._vocabProgress.taught / this._vocabProgress.total * 100) : 0
+      } : null,
       cellPhasesPersisted: currentCellPassedPhases,
       // I.12 closure — nested sub-phase counter. cellPhasesCompleted
       // only ticks on OUTERMOST teach phases, which means K cells stay
@@ -107944,6 +107971,14 @@ var Curriculum = class _Curriculum {
     for (const w of vocab) for (const ch of String(w).toLowerCase().replace(/[^a-z]/g, "")) letterSet.add(ch);
     ensureLetters(Array.from(letterSet));
     let _vocabIdx = 0;
+    this._vocabProgress = {
+      label: _vocabLabel,
+      taught: 0,
+      total: _vocabTotal,
+      startedAt: _vocabListStartMs,
+      elapsedSec: 0,
+      lastWord: null
+    };
     for (const word of vocab) {
       if (typeof globalThis._brainShutdownRequested !== "undefined" && globalThis._brainShutdownRequested) return { pass: false, reason: "shutdown" };
       await this._teachWordIntegrated(word, {
@@ -107953,6 +107988,11 @@ var Curriculum = class _Curriculum {
         skipTemplates: opts.skipTemplates === true
       });
       _vocabIdx++;
+      if (this._vocabProgress) {
+        this._vocabProgress.taught = _vocabIdx;
+        this._vocabProgress.lastWord = word;
+        this._vocabProgress.elapsedSec = Math.round((Date.now() - _vocabListStartMs) / 1e3);
+      }
       if (_vocabIdx % 5 === 0) {
         await new Promise((resolve) => setImmediate(resolve));
         try {
@@ -107970,6 +108010,7 @@ var Curriculum = class _Curriculum {
       this._pushBrainEvent?.("teach", "sem", `VOCAB-LIST DONE: ${_vocabLabel} \xB7 ${_vocabIdx}/${_vocabTotal} words \xB7 ${_elapsedSec}s`, { label: _vocabLabel, taught: _vocabIdx, total: _vocabTotal, elapsedSec: _elapsedSec });
     } catch {
     }
+    this._vocabProgress = null;
     return { pass: true, reason: "integrated-teach-complete" };
     const letterSize = letterRegion.end - letterRegion.start;
     const phonSize = phonRegion.end - phonRegion.start;
