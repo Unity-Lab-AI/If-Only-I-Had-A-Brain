@@ -1106,6 +1106,16 @@ export const CLUSTER_EMIT_MIXIN = {
       }
     }
 
+    // Thalamic relay — clear the attention context window alongside the
+    // sem externalCurrent reset above. Same "fresh intent window" rule:
+    // the previous utterance's words must not be visible to this one's
+    // context read. Guarded so a cluster built before the attention
+    // mixin existed still composes.
+    const attnEnabled = opts.attention === true
+      && typeof this.attentionRead === 'function'
+      && typeof this.attentionPush === 'function';
+    if (attnEnabled) this.attentionReset();
+
     // (0) Cortex-pattern injection — chain-blended seed from inner-voice
     // Audit B.5 + E.3 — cumulative sem-injection energy budget.
     // Pre-audit the seed/intent/cortex/schema/back-injection sum stacked
@@ -1356,6 +1366,63 @@ export const CLUSTER_EMIT_MIXIN = {
             const BACK_INJECT_DECAY = 0.92;
             const backInjectStrength = BACK_INJECT_BASE * Math.pow(BACK_INJECT_DECAY, i);
             this.injectEmbeddingToRegion('sem', wordEmb, backInjectStrength);
+
+            // ─── THALAMIC RELAY (attention over the sentence so far) ───
+            //
+            // The back-injection above carries ONE word of history,
+            // decayed by position. That is a bigram's worth of context,
+            // and a bigram is why emission comes out topically correct
+            // but grammatically scrambled. This block widens the read:
+            // the just-emitted word becomes the QUERY, every prior word
+            // in the utterance is a KEY, and the softmax-weighted sum of
+            // them is injected as a second, weaker signal alongside the
+            // recency term.
+            //
+            // Query = the current word because that is the brain's
+            // present position in the sequence — the same role the
+            // query vector plays at each position of an attention layer.
+            // The read is forward-only (cosine → softmax → weighted
+            // sum); it learns nothing and stores nothing across calls.
+            //
+            // Strength is deliberately BELOW the recency injection
+            // (ATTN_INJECT_SCALE < 1): recency stays the primary
+            // sequencing drive and context is a bias on top of it, so a
+            // bad read degrades word choice rather than replacing the
+            // trained transition signal. Both together stay inside the
+            // per-call sem energy budget the compose call already
+            // enforces.
+            if (attnEnabled) {
+              this.attentionPush(word, wordEmb);
+              // Temperature is passed ONLY when the caller set one —
+              // otherwise the module's own default (0.15) applies. Do not
+              // reintroduce a 1.0 default here: at the cosine spread a
+              // real sentence produces, 1.0 flattens the softmax into a
+              // uniform average, which is attention contributing nothing.
+              const attnOpts = (typeof opts.attentionTemperature === 'number')
+                ? { temperature: opts.attentionTemperature } : undefined;
+              const attn = this.attentionRead(wordEmb, attnOpts);
+              if (attn && attn.context) {
+                const ATTN_INJECT_SCALE = 0.6;
+                this.injectEmbeddingToRegion(
+                  'sem', attn.context, backInjectStrength * ATTN_INJECT_SCALE,
+                );
+                // Fire a brain event so the relay shows up as activity
+                // in the live view instead of being an invisible math
+                // change. Region tag 'thalamus' — the relay has no
+                // cortical sub-region of its own, and mislabelling it
+                // 'sem' would put a popup on the wrong structure.
+                // Best-effort: the event stream must never break emission.
+                if (typeof this._pushBrainEvent === 'function') {
+                  try {
+                    this._pushBrainEvent(
+                      'attention', 'thalamus',
+                      `attend "${attn.top ?? word}" · H=${attn.entropy.toFixed(2)}`,
+                      { top: attn.top, entropy: attn.entropy, span: attn.words.length },
+                    );
+                  } catch { /* nf */ }
+                }
+              }
+            }
           }
         } catch { /* nf */ }
       }

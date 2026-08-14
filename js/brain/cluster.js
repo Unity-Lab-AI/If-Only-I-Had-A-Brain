@@ -111,6 +111,7 @@ import { CLUSTER_TELEMETRY_MIXIN } from './cluster/telemetry.js';
 import { CLUSTER_HEBBIAN_MIXIN } from './cluster/hebbian.js';
 import { CLUSTER_EMIT_MIXIN } from './cluster/emit.js';
 import { CLUSTER_PROBE_MIXIN } from './cluster/probe.js';
+import { CLUSTER_ATTENTION_MIXIN } from './cluster/attention.js';
 
 // Question key-token extraction + fractional-offset region injection.
 // Duplicated here (vs importing from curriculum.js) so `readInput` stays
@@ -4224,4 +4225,11 @@ Object.assign(NeuronCluster.prototype, CLUSTER_TELEMETRY_MIXIN);
 Object.assign(NeuronCluster.prototype, CLUSTER_HEBBIAN_MIXIN);
 Object.assign(NeuronCluster.prototype, CLUSTER_EMIT_MIXIN);
 Object.assign(NeuronCluster.prototype, CLUSTER_PROBE_MIXIN);
+// Attention attaches LAST: the emit mixin calls attentionRead /
+// attentionPush through `this`, so the methods must be on the prototype
+// by the time any compose call runs. Assign order does not matter for
+// resolution (no name collisions with the other four mixins) but the
+// dependency direction is emit → attention, and the attach order
+// mirrors it so a future reader sees the dependency at a glance.
+Object.assign(NeuronCluster.prototype, CLUSTER_ATTENTION_MIXIN);
 
