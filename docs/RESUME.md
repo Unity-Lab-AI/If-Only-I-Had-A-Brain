@@ -1,6 +1,24 @@
 # RESUME — Session Pickup Brief
 
-> ## ⭐⭐⭐ 2026-08-14 (latest) — THE COMPUTE LAYER WAS BUILT ON FALLBACKS: teaching is now GPU-ONLY
+> ## ⭐⭐ 2026-08-14 (latest) — PER-SUBJECT GRADE COLUMN derived, not read from a pointer — SHIPPED TO REPO, NOT DEPLOYED
+>
+> **READ THIS FIRST: nothing in this block is on the box.** Gee: *"we will do update savestart later on that issue and we will walk current build till we get to a good spot after the live-verify"*. It is on `main` in both remotes and waits for his next Update & SAVESTART.
+>
+> **THE CATCH.** Live dashboard mid-ELA-K showed `Foundational Reading / pre-K` in the per-subject table while the header directly above said `Kindergarten` — two fields from ONE payload disagreeing about her grade.
+>
+> **ROOT.** `getCurriculumStatus` overlaid `cluster.grades[sub]`, assigned ONLY inside `if (result && result.pass)` (`curriculum.js:8721`) when a cell COMPLETES, and seeded `{ela:'pre-K', …}` — so mid-K it still read pre-K. The seeded default also makes "passed pre-K" and "passed nothing" the same value, so the pointer cannot answer the question at all.
+>
+> **FIX.** Derived: the grade a subject is AT = the first `GRADE_ORDER` entry whose cell is not in `passedCells`. In-flight grade for the active subject, next grade for idle ones, last grade when all have passed — one rule, three cases, from the same persisted record the phase ledger uses. Used for the column AND `courseNameFor()`.
+>
+> **A CORRECTION I MADE BEFORE SHIPPING** (kept because the reasoning matters): I first wrote that the course NAME was wrong for the same reason. It was not — `courseNameFor` returns `Foundational Reading` for ela at pre-K, kindergarten AND grade1, so the string matched by coincidence. It DOES inherit the staleness and would show the previous grade’s class at any boundary where the name actually changes (math G8→G9 `Algebra I`, science → `Biology`). Found by calling the function instead of assuming it.
+>
+> **VERIFIED.** `node --check` + ESM `import()` + bundle rebuild, and the derivation exercised on four real `passedCells` shapes: nothing passed → all `pre-K`; **pre-K passed (her exact live state) → `kindergarten`** (the bug case, now correct); ela-through-grade1 → `ela=grade2` with the rest at `kindergarten`; everything passed → `phd`.
+>
+> **STATE OF THE WALK AT THIS POINT (live, healthy).** `5% · phase 2/25 · 1 complete · _teachLanguageMechanics (+12.6m) · work 4/14 · 15.4 min`. The phase-ledger fix is CONFIRMED WORKING on the box: a real declared phase named with a minutes-scale elapsed, a climbing within-phase tally, and the ledger banking phases (`1 complete`, per-subject `phases 1`). The 5% is exact — `(1 + 4/14) / 25 = 5.14%`. Each work unit is 0.29% of the cell, so the bar moves in ~0.3% steps: **watch `work N/14`, not the percentage.**
+>
+> ---
+
+> ## ⭐⭐⭐ 2026-08-14 (earlier today) — THE COMPUTE LAYER WAS BUILT ON FALLBACKS: teaching is now GPU-ONLY
 >
 > **START HERE.** Code-shipped on `feature/gpu-required-0814`, cascaded to `develop` + `main`, pushed to BOTH remotes. Nothing is on the box until Gee presses **Update & SAVESTART** or **Fresh Walk**. No donor rebuild, no weights-format change.
 >

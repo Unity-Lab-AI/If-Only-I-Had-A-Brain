@@ -5,6 +5,24 @@
 
 ---
 
+## 2026-08-14 - PER-SUBJECT GRADE COLUMN read the LAST-PASSED pointer, not the grade she is in - feature/live-grade-column-0814
+
+### Gee ask (verbatim per LAW #0)
+
+> *"sure, lets make sure its all correct, but we will do update savestart later on that issue and we will walk current build till we get to a good spot after the live-verify"*
+
+**CAUGHT ON THE LIVE DASHBOARD** while ELA-K was mid-cell: the per-subject table read `Foundational Reading / pre-K / 1 / 0 / 24.8k` while the card header directly above it read `Kindergarten (Common Core K.RF / K.W / K.L / K.SL / K.RL ...)`. Two fields rendered from ONE status payload, disagreeing about which grade she is in.
+
+**ROOT.** `getCurriculumStatus` overlaid the per-subject grade with `cluster.grades[sub]`, and `cluster.grades[subject]` is assigned **only inside `if (result && result.pass)`** (`curriculum.js:8721`) - when a cell COMPLETES. It is seeded `{ela:'pre-K', math:'pre-K', ...}`, so mid-kindergarten it still read `pre-K`. That seeded default also makes "passed pre-K" and "passed nothing at all" indistinguishable in the field, so the pointer cannot answer the question at all.
+
+**CORRECTION TO MY OWN FIRST READING, made before shipping.** I wrote that the course NAME was wrong for the same reason. It was not visibly wrong in the caught case: calling `courseNameFor` directly shows it returns `Foundational Reading` for ela at pre-K, kindergarten AND grade1, so the string matched by coincidence. The name IS computed from the stale grade and so inherits the staleness - it would show the previous grade's class at any boundary where the name actually changes (math grade8 -> grade9 `Algebra I`, science -> `Biology`). Claim corrected in the code comment and in `docs/TODO.md` rather than shipped as written.
+
+**SHIPPED.** The grade is DERIVED, not read from a pointer: the grade a subject is AT = the first entry in `GRADE_ORDER` whose cell is not in `cluster.passedCells`. For the subject being taught right now that is exactly the in-flight grade; for idle subjects it is the grade they will run next; when every grade has passed it is the last one. One rule, all three cases, derived from the same persisted record the phase ledger uses - so there is no second source that can drift out of agreement with it. Used for both the grade column and `courseNameFor()`.
+
+**VERIFIED (no-tests LAW):** `node --check` PASS; ESM `import()` PASS; bundle rebuilt; the derivation exercised against four real `passedCells` shapes - nothing passed -> every subject `pre-K`; **pre-K passed (her exact live state) -> `kindergarten`, which is the bug case now correct**; ela through grade1 with others at pre-K -> `ela=grade2` while the rest stay `kindergarten`; everything passed -> `phd`.
+
+**NOT DEPLOYED, deliberately.** Per Gee: he walks the CURRENT build until after the combined live-verify. This ships to both repos and waits for his next Update & SAVESTART.
+
 ## 2026-08-14 - THE COMPUTE LAYER WAS BUILT ON FALLBACKS: teaching is now GPU-ONLY - feature/gpu-required-0814
 
 ### Gee ask (verbatim per LAW #0)

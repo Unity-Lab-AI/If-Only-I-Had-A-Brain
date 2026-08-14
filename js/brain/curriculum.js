@@ -3001,19 +3001,41 @@ export class Curriculum {
     }
     // Real per-grade COURSE NAME for each subject (Algebra I / Biology /
     // U.S. Government / Physical Education / Literature / etc.) so the brain
-    // footer + dashboard show the ACTUAL class she's taking at her current
-    // grade — not the generic "ela / math / science" key. Falls back to the
-    // band's nearest earlier name, else the capitalized subject. Updates live
-    // as each subject's grade advances (K → G1 → … → PhD).
+    // footer + dashboard show the ACTUAL class she is taking at her current
+    // grade - not the generic "ela / math / science" key.
+    //
+    // THE GRADE HERE IS DERIVED, NOT READ FROM A POINTER (2026-08-14).
+    // This used to overlay `cluster.grades[sub]`, which is assigned ONLY
+    // inside `if (result && result.pass)` when a cell COMPLETES, and is seeded
+    // `{ela:'pre-K', ...}`. Mid-kindergarten it therefore still read `pre-K`,
+    // directly under a card header that correctly said Kindergarten - two
+    // fields from one payload disagreeing about which grade she is in. The
+    // course name is computed from the same value, so it inherits the staleness
+    // too; it did not LOOK wrong in the caught case only because ELA's course
+    // name happens to be identical across pre-K, K and grade 1, and it would
+    // show the previous grade's class at any boundary where the name actually
+    // changes. The seeded default additionally makes "passed pre-K" and "passed
+    // nothing" indistinguishable in that field, so the pointer cannot answer
+    // this question at all.
+    //
+    // The grade a subject is AT = the first grade in GRADE_ORDER whose cell is
+    // not yet in `passedCells`. For the subject being taught right now that is
+    // exactly the in-flight grade; for idle subjects it is the grade they will
+    // run next; when every grade has passed it is the last one. One rule, all
+    // three cases, derived from the same persisted record the ledger uses - so
+    // there is no second source that can drift out of agreement with it.
+    const passedCellSet = (cluster && Array.isArray(cluster.passedCells))
+      ? new Set(cluster.passedCells)
+      : new Set();
+    const gradeAt = (sub) => {
+      for (const g of GRADE_ORDER) {
+        if (!passedCellSet.has(`${sub}/${g}`)) return g;
+      }
+      return GRADE_ORDER[GRADE_ORDER.length - 1];
+    };
     for (const sub of SUBJECTS) {
       if (perSubject[sub]) {
-        // Authoritative current grade comes from `cluster.grades` (set on
-        // every advance) — the per-subject runtime stat can lag it (this is
-        // why the footer "never updated pre-K→K"). Prefer it, then compute
-        // the real course name from THAT grade.
-        if (cluster && cluster.grades && cluster.grades[sub]) {
-          perSubject[sub].grade = cluster.grades[sub];
-        }
+        perSubject[sub].grade = gradeAt(sub);
         perSubject[sub].courseName = courseNameFor(sub, perSubject[sub].grade);
       }
     }

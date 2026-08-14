@@ -95321,11 +95321,16 @@ var Curriculum = class _Curriculum {
         }
       }
     }
+    const passedCellSet = cluster && Array.isArray(cluster.passedCells) ? new Set(cluster.passedCells) : /* @__PURE__ */ new Set();
+    const gradeAt = (sub) => {
+      for (const g of GRADE_ORDER) {
+        if (!passedCellSet.has(`${sub}/${g}`)) return g;
+      }
+      return GRADE_ORDER[GRADE_ORDER.length - 1];
+    };
     for (const sub of SUBJECTS2) {
       if (perSubject[sub]) {
-        if (cluster && cluster.grades && cluster.grades[sub]) {
-          perSubject[sub].grade = cluster.grades[sub];
-        }
+        perSubject[sub].grade = gradeAt(sub);
         perSubject[sub].courseName = courseNameFor(sub, perSubject[sub].grade);
       }
     }
