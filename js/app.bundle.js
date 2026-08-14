@@ -53346,8 +53346,42 @@ var CLUSTER_TELEMETRY_MIXIN = {
 
 // ../js/brain/cluster/hebbian.js
 var CLUSTER_HEBBIAN_MIXIN = {
+  /**
+   * MAY THIS BRAIN TEACH RIGHT NOW? (2026-08-14)
+   *
+   * One predicate, asked by every teach entry point, answering the question
+   * the compute layer actually cares about: is this brain's declared substrate
+   * present. For a GPU-required brain that is `_gpuProxyReady` - the WEIGHTS
+   * ARE UPLOADED - not merely "a socket is open". Those are different
+   * questions, and confusing them is what let a connected-but-not-yet-uploaded
+   * donor pass the walk gate while the math still landed on the host CPU.
+   *
+   * Returns false instead of waiting, so a chat reply with no donor simply
+   * does not LEARN rather than hanging. Pausing the WALK is the curriculum
+   * gate's job; refusing the MATH is this one's. Both enforce the same rule,
+   * and this one is the law: nothing downstream can teach around it.
+   */
+  _teachSubstrateReady(who) {
+    if (!this.requireGpuSubstrate) return true;
+    if (this._gpuProxyReady === true) {
+      if (this._substrateDownSince) {
+        console.log(`[Cluster ${this.name}] compute substrate BACK after ${((Date.now() - this._substrateDownSince) / 1e3).toFixed(0)}s (${this._substrateRefusals | 0} teach calls refused while it was gone) - teaching resumes.`);
+        this._substrateDownSince = null;
+        this._substrateRefusals = 0;
+      }
+      return true;
+    }
+    if (!this._substrateDownSince) {
+      this._substrateDownSince = Date.now();
+      this._substrateRefusals = 0;
+      console.warn(`[Cluster ${this.name}] NO COMPUTE SUBSTRATE - teach REFUSED (first refusal from ${who}). Weights are not uploaded to a donor GPU, and this brain has no CPU teach path: training does not happen without a donor, by design.`);
+    }
+    this._substrateRefusals = (this._substrateRefusals | 0) + 1;
+    return false;
+  },
   async _crossRegionHebbian(lr, opts = {}) {
     if (!this.crossProjections) return;
+    if (!this._teachSubstrateReady("_crossRegionHebbian")) return;
     if (!this._crossRegionHebbianDiagLogged) {
       this._crossRegionHebbianDiagLogged = true;
       try {
@@ -53419,6 +53453,20 @@ var CLUSTER_HEBBIAN_MIXIN = {
             lrEff,
             ojaOpts ? { ...ojaOpts, activeRows } : { activeRows }
           );
+        }
+        continue;
+      }
+      if (this.requireGpuSubstrate) {
+        if (this._gpuProxy && this._gpuProxy.hebbian) {
+          const preU = this.regionSpikesActive(src);
+          const postU = this.regionSpikesActive(dst);
+          try {
+            this._gpuProxy.hebbian(`${this.name}_${name}`, preU.vec, postU.vec, lrEff);
+          } catch {
+          }
+        } else if (!this._unboundNoProxyWarned) {
+          this._unboundNoProxyWarned = true;
+          console.error(`[Cluster ${this.name}] CRITICAL - ${name} is not GPU-bound and the proxy exposes no unbound hebbian entry point, so this projection is NOT being trained. It is deliberately NOT computed on the CPU: this brain's substrate is the GPU.`);
         }
         continue;
       }
@@ -53701,6 +53749,7 @@ var CLUSTER_HEBBIAN_MIXIN = {
    */
   async intraSynapsesHebbian(pre, post, lr) {
     if (!this.synapses) return;
+    if (!this._teachSubstrateReady("intraSynapsesHebbian")) return;
     const BIOLOGICAL_SCALE_SYNC_THRESHOLD = 1e5;
     const atBioScale = (this.size | 0) > BIOLOGICAL_SCALE_SYNC_THRESHOLD;
     if (atBioScale) {
@@ -53799,6 +53848,7 @@ var CLUSTER_HEBBIAN_MIXIN = {
    */
   async intraSynapsesAntiHebbian(pre, post, lr) {
     if (!this.synapses) return;
+    if (!this._teachSubstrateReady("intraSynapsesAntiHebbian")) return;
     if (typeof this.synapses.antiHebbianUpdate !== "function") return;
     const BIOLOGICAL_SCALE_SYNC_THRESHOLD = 1e5;
     const atBioScale = (this.size | 0) > BIOLOGICAL_SCALE_SYNC_THRESHOLD;
@@ -55552,6 +55602,7 @@ var NeuronCluster = class {
     this.size = size;
     this._gpuProxy = opts.gpuProxy || null;
     this._gpuProxyReady = false;
+    this.requireGpuSubstrate = !!this._gpuProxy;
     this._sparsePool = opts.sparsePool || null;
     this._cachedIntraCurrents = null;
     this._cachedCrossCurrents = /* @__PURE__ */ new Map();
@@ -95053,10 +95104,7 @@ var Curriculum = class _Curriculum {
         }
         try {
           if (typeof this._awaitComputeSubstrate === "function") {
-            this._gateSampleN = (this._gateSampleN | 0) + 1;
-            if (isOutermost || this._gateSampleN % 64 === 0) {
-              await this._awaitComputeSubstrate();
-            }
+            await this._awaitComputeSubstrate();
           }
         } catch {
         }
@@ -95332,6 +95380,15 @@ var Curriculum = class _Curriculum {
       currentCellKey: cellKey,
       cellStatus,
       pausedForDonorMs: this._pausedForDonorSinceMs ? Date.now() - this._pausedForDonorSinceMs : 0,
+      // WHY the walk is not moving, when it is not moving. Null means the
+      // substrate is live. The reason names WHICH half is missing - no donor at
+      // all, versus a donor that is connected but has not been handed the
+      // weights yet - because conflating those two is what let work land on the
+      // host CPU while every dashboard read green.
+      substratePause: this._substratePause ? {
+        reason: this._substratePause.reason,
+        pausedMs: Date.now() - this._substratePause.sinceMs
+      } : null,
       activePhase,
       // The REAL cell phase, distinct from `activePhase` which is whatever
       // nested primitive is executing this instant. This is the phase the cell
@@ -101249,54 +101306,71 @@ var Curriculum = class _Curriculum {
   // nothing. Calling `synapses.hebbianUpdate` directly bypasses the
   // reward gate and fires symmetric Hebbian across the full cluster.
   /**
-   * NO-DONOR WALK GATE — pause instead of grind. With zero donors at
-   * biological scale the teach path falls to host-CPU Hebbian whose pins
-   * (observed 5s steady-state + 100-430s bursts) BLOCK the /ws handshake a
-   * returning donor needs — no donor -> CPU grind -> pins -> donor can't
-   * land: circular. A full night of donorless grind bought ~1.5 K-cells.
-   * This gate awaits a live primary with an idle loop (event loop stays
-   * FREE, a reconnect lands instantly) after DREAM_NO_DONOR_GRACE_MS
-   * (default 2min — short blips keep teaching through the donor's own
-   * fast auto-reconnect). Scoped to brains where a donor has EVER
-   * registered this boot ('_gpuClient' property exists): the cold-boot
-   * pre-first-donor window and browser/standalone runs are untouched.
-   * DREAM_NO_DONOR_GRIND=1 restores the old grind behavior.
+   * COMPUTE-SUBSTRATE GATE (2026-08-14 rewrite).
+   *
+   * The walk does not run without the substrate the teach layer requires. This
+   * is the WALK half of the rule; `NeuronCluster._teachSubstrateReady()` is the
+   * other half and is the one that actually refuses the math. This gate exists
+   * so the walk waits with a FREE event loop instead of spinning through
+   * thousands of refused teach calls.
+   *
+   * WHAT CHANGED AND WHY. The previous version asked whether a donor SOCKET was
+   * open (`brain._gpuClient.readyState === 1`) while the compute path asked
+   * whether the WEIGHTS WERE UPLOADED (`cluster._gpuProxyReady`). Two different
+   * questions: a connected-but-not-yet-uploaded donor passed this gate and the
+   * work still landed on the host CPU. It also carried a 120s grace, was
+   * sampled every 64th nested teach call, and honoured a DREAM_NO_DONOR_GRIND
+   * override - all three of which only made sense while a CPU teach path
+   * existed underneath to absorb the difference. There is no such path now, so
+   * a grace period permits nothing, a sampling gap only delays the halt, and an
+   * override to "grind anyway" has nothing left to grind with. All three are
+   * gone; the gate asks the same question the compute layer asks, and it asks
+   * it on every teach call.
+   *
+   * Brains with no GPU proxy (the browser/standalone brain) return immediately:
+   * the CPU is that deployment's declared substrate, not a fallback.
    */
   async _awaitComputeSubstrate() {
-    if (typeof process === "undefined" || !process.env) return;
-    if (process.env.DREAM_NO_DONOR_GRIND === "1") return;
     const cluster = this.cluster;
     const brain2 = this.brain || cluster && cluster._brain;
-    if (!brain2 || !("_gpuClient" in brain2)) return;
-    const chatUntil = () => Number(brain2._chatPriorityUntil) || 0;
-    if (chatUntil() > Date.now()) {
-      const t0 = Date.now();
-      while (chatUntil() > Date.now() && Date.now() - t0 < 9e4) {
-        await new Promise((r) => setTimeout(r, 250));
+    if (brain2) {
+      const chatUntil = () => Number(brain2._chatPriorityUntil) || 0;
+      if (chatUntil() > Date.now()) {
+        const t0 = Date.now();
+        while (chatUntil() > Date.now() && Date.now() - t0 < 9e4) {
+          await new Promise((r) => setTimeout(r, 250));
+        }
+        this._chatPauseMs = (this._chatPauseMs || 0) + (Date.now() - t0);
       }
-      this._chatPauseMs = (this._chatPauseMs || 0) + (Date.now() - t0);
     }
-    const live = () => !!(brain2._gpuClient && brain2._gpuClient.readyState === 1);
-    if (live()) {
-      this._noDonorSince = null;
+    if (!cluster || cluster.requireGpuSubstrate !== true) return;
+    const ready = () => cluster._gpuProxyReady === true;
+    if (ready()) {
+      if (this._substratePause) {
+        this._hb(`[Curriculum] > compute substrate READY - walk resumes (was paused ${((Date.now() - this._substratePause.sinceMs) / 6e4).toFixed(1)}min: ${this._substratePause.reason}).`);
+        this._substratePause = null;
+        this._pausedForDonorSinceMs = null;
+      }
       return;
     }
-    const graceMs = Number(process.env.DREAM_NO_DONOR_GRACE_MS) > 0 ? Number(process.env.DREAM_NO_DONOR_GRACE_MS) : 12e4;
-    if (!this._noDonorSince) this._noDonorSince = Date.now();
-    if (Date.now() - this._noDonorSince < graceMs) return;
-    this._pausedForDonorSinceMs = Date.now();
-    this._hb(`[Curriculum] \u23F8 walk PAUSED \u2014 no donor for ${((Date.now() - this._noDonorSince) / 6e4).toFixed(1)}min. CPU-grinding 306M starves the very handshake a returning donor needs; the walk waits with a free event loop instead and resumes the moment a donor registers (DREAM_NO_DONOR_GRIND=1 to grind anyway).`);
+    const reasonNow = () => brain2 && brain2._gpuClient && brain2._gpuClient.readyState === 1 ? "donor connected but brain weights are not uploaded to it yet" : "no donor connected";
+    if (!this._substratePause) {
+      this._substratePause = { sinceMs: Date.now(), reason: reasonNow() };
+      this._pausedForDonorSinceMs = this._substratePause.sinceMs;
+      this._hb(`[Curriculum] PAUSED - no compute substrate (${this._substratePause.reason}). This brain has no CPU teach path: training does not happen without a donor GPU. The walk waits with a free event loop and resumes the moment the weights are live on one.`);
+    }
     let lastLog = Date.now();
-    while (!live()) {
-      await new Promise((r) => setTimeout(r, 5e3));
+    while (!ready()) {
+      await new Promise((r) => setTimeout(r, 1e3));
+      this._substratePause.reason = reasonNow();
       if (Date.now() - lastLog > 6e4) {
         lastLog = Date.now();
-        this._hb(`[Curriculum] \u23F8 still waiting for a donor (paused ${((Date.now() - this._pausedForDonorSinceMs) / 6e4).toFixed(1)}min) \u2014 resumes automatically on donor register.`);
+        this._hb(`[Curriculum] still PAUSED - no compute substrate for ${((Date.now() - this._substratePause.sinceMs) / 6e4).toFixed(1)}min (${this._substratePause.reason}) - resumes automatically.`);
       }
     }
-    this._hb(`[Curriculum] \u25B6 donor is BACK \u2014 walk resumes (was paused ${((Date.now() - this._pausedForDonorSinceMs) / 6e4).toFixed(1)}min).`);
+    this._hb(`[Curriculum] > compute substrate READY - walk resumes (was paused ${((Date.now() - this._substratePause.sinceMs) / 6e4).toFixed(1)}min).`);
+    this._substratePause = null;
     this._pausedForDonorSinceMs = null;
-    this._noDonorSince = null;
   }
   async _teachHebbian(lr, opts = {}) {
     await this._awaitComputeSubstrate();
