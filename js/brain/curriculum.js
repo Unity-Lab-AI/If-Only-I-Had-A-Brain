@@ -2911,12 +2911,18 @@ export class Curriculum {
       if (typeof this._saveCheckpoint === 'function') {
         try { this._saveCheckpoint(phaseKey); } catch { /* non-fatal */ }
       }
-      if (this._currentSubject && this._perSubjectStats?.[this._currentSubject]) {
-        const s = this._perSubjectStats[this._currentSubject];
-        s.phasesCompleted = (s.phasesCompleted | 0) + 1;
-        s.lastCellAt = Date.now();
-      }
-      this._currentCellPhasesCompleted = (this._currentCellPhasesCompleted | 0) + 1;
+      // NO PARALLEL PHASE COUNTERS HERE (2026-08-14). This method used to bump
+      // `_perSubjectStats[subject].phasesCompleted` and
+      // `_currentCellPhasesCompleted` directly - a second ledger running
+      // alongside the auto-wrap's, counting work units that live INSIDE a
+      // declared phase as though they were phases themselves. The counts are
+      // now derived in ONE place, from `passedPhases` filtered by the cell
+      // runner's declared name set, so there is nothing here to keep in sync.
+      //
+      // The `passedPhases` write above STAYS: these tag entries are what let a
+      // restart resume part-way through a long phase instead of re-running it
+      // from the top. They are checkpoint markers, and the counts exclude them
+      // by name.
       // iter20-H — Tier 1 episode for Math/Sci/Soc/Art/Life-K phases
       // (these use _phasedTeach instead of ELA-K's hand-rolled
       // _phaseDone helper).
@@ -2981,19 +2987,37 @@ export class Curriculum {
       }
     }
     // passedPhases also persists, so use it to compute the authoritative
-    // phasesCompleted for each subject — survives Savestart restarts
-    // where the runtime counter would reset to zero.
+    // phasesCompleted for each subject - survives Savestart restarts where the
+    // runtime counter would reset to zero.
+    //
+    // COUNT DECLARED PHASES ONLY (2026-08-14). `passedPhases` holds two KINDS
+    // of entry. The auto-wrap writes `cellKey:_teachSomething` for a completed
+    // cell phase; `_phasedTeach` writes `cellKey:TAG-NAME` (e.g.
+    // `ELA-K-LETTER-NAMING-DIRECT`) for a work unit completed INSIDE such a
+    // phase, as a mid-phase resume marker. Those tags are checkpoints, not
+    // phases: the enclosing phase is banked again when it finishes, so counting
+    // both double-counts. The cell-level count already filters by the runner's
+    // declared name set; this applies the SAME rule here, so the per-subject
+    // column and the cell bar cannot report different numbers for one run.
     if (cluster && Array.isArray(cluster.passedPhases)) {
       const persisted = {};
       for (const phaseKey of cluster.passedPhases) {
-        const sub = String(phaseKey).split('/')[0];
-        if (perSubject[sub]) persisted[sub] = (persisted[sub] | 0) + 1;
+        const key = String(phaseKey);
+        const colon = key.lastIndexOf(':');
+        if (colon < 0) continue;
+        const ck = key.slice(0, colon);
+        const method = key.slice(colon + 1);
+        const sub = ck.split('/')[0];
+        if (!perSubject[sub]) continue;
+        let declared = null;
+        try { declared = this._declaredPhaseNames(ck); } catch { declared = null; }
+        if (!declared || !declared.has(method)) continue;
+        persisted[sub] = (persisted[sub] | 0) + 1;
       }
       for (const sub of Object.keys(persisted)) {
-        // Take the larger of runtime counter OR persisted count. Runtime
-        // can exceed persisted when a cell is mid-run (phases completed
-        // during this session but not yet persisted to disk via
-        // _saveCheckpoint, e.g. before the save-throttle interval elapses).
+        // Take the larger of runtime counter OR persisted count. Runtime can
+        // exceed persisted when a cell is mid-run (phases completed this
+        // session but not yet flushed by _saveCheckpoint).
         if (perSubject[sub]) {
           perSubject[sub].phasesCompleted = Math.max(perSubject[sub].phasesCompleted | 0, persisted[sub]);
         }

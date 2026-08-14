@@ -5,6 +5,28 @@
 
 ---
 
+## 2026-08-14 - `_phasedTeach` KEPT A SECOND PARALLEL PHASE LEDGER (3x overcount) - feature/single-ledger-0814
+
+### Gee ask (verbatim per LAW #0)
+
+> *"hows our girl doing? brain events look like they are stalled"*
+> *"sounds good, do that.. and you werent clear.... she is still training fine, right? even tho no events are posting?"*
+
+**FIRST, THE QUESTION ABOUT THE QUIET FEED - no code change, this is a finding.** Phase 2 of ELA-K (`_teachLanguageMechanics`) runs its expensive tail through `_phasedTeach` -> `_teachWordSpellingDirect`, `_teachLetterNamingDirect` (`reps: 50`), `_teachWordEmissionDirect`, `_teachQuestionIntent`. Checked every one of them: **ZERO `_pushBrainEvent` calls** (the entire 25K-line teach layer contains 17). **A quiet brain-events feed during that stretch is EXPECTED and is evidence of nothing either way** - it cannot distinguish healthy from wedged, so it must not be read as either. The liveness signal is the per-subject `events` counter (`teachEvents`), incremented in the constructor auto-wrap on EVERY wrapped teach call. Told Gee plainly rather than reassuring him off a signal that cannot support the claim.
+
+**THE DEFECT FOUND WHILE LOOKING.** `_phasedTeach` (`curriculum.js:2899`) maintained its OWN phase ledger alongside the auto-wrap's. It appends to `cluster.passedPhases` under **TAG** names (`ELA-K-WORD-SPELL`, `ELA-K-LETTER-NAMING-DIRECT`, `ELA-K-WORD-EMISSION-DIRECT`, ...) rather than `_teach*` method names, and separately incremented `this._currentCellPhasesCompleted` AND `_perSubjectStats[subject].phasesCompleted`.
+
+Those tag units run INSIDE a declared phase, so counting them as phases double-counts - the enclosing `_teachLanguageMechanics` is banked again when it completes. The earlier L.2 fix already filtered the CELL count to declared names, so the cell bar was right, but the **per-subject `phases` column counted every entry with the subject prefix, tags included**. Two columns from one payload measuring different things: the same "two mechanisms that can disagree" shape torn out of the cell ledger earlier the same day, in an instance that pass did not reach.
+
+**SHIPPED.**
+
+- **Per-subject `phasesCompleted` counts DECLARED phases only** - each `passedPhases` entry is split into `cellKey` + `method` and admitted only if `_declaredPhaseNames(cellKey).has(method)`. The SAME rule the cell ledger uses, so the two can no longer disagree.
+- **`_phasedTeach`'s parallel counter increments removed.** Its `passedPhases` write and `_saveCheckpoint` **STAY** - those tags are what let a restart resume PART-WAY THROUGH a long phase instead of re-running it from the top. They are checkpoint markers, not phases, and the counts now exclude them by name rather than by deleting them.
+
+**VERIFIED (no-tests LAW):** `node --check` PASS; ESM `import()` PASS; bundle rebuilt; and the admission rule exercised against the exact mixed shape the live brain is carrying right now - 3 real declared phases (`ela/pre-K:_teachCourseIdentity`, `ela/kindergarten:_teachLetterCaseBinding`, `ela/kindergarten:_teachLanguageMechanics`) plus 6 `_phasedTeach` tags. Result: **3 counted, 6 excluded, where the old behaviour reported 9 - a 3x overcount.**
+
+**NOT DEPLOYED, deliberately.** Gee walks the CURRENT build until after the combined live-verify; this ships to both repos and waits for his next Update & SAVESTART.
+
 ## 2026-08-14 - PER-SUBJECT GRADE COLUMN read the LAST-PASSED pointer, not the grade she is in - feature/live-grade-column-0814
 
 ### Gee ask (verbatim per LAW #0)
