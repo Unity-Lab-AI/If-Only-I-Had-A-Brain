@@ -389,3 +389,30 @@ V.8, D.7, L.6 and G.9 were four separate pending items all waiting on the same e
 - [x] **SL.2** **DONE.** Remove `_phasedTeach`'s parallel counter increments (`_currentCellPhasesCompleted`, `s.phasesCompleted`). Keep its `passedPhases` write + `_saveCheckpoint` as mid-phase resume markers.
 - [x] **SL.3** **DONE.** Verify — no-tests LAW: `node --check`, ESM `import()`, exercise the per-subject count against a `passedPhases` array containing BOTH declared method names and `_phasedTeach` tags, bundle rebuild.
 - [x] **SL.4** **DONE.** Docs + FINALIZED, atomic commit, cascade, push BOTH remotes. **NO DEPLOY** — walks with the current build until after the combined live-verify.
+
+---
+
+## OPEN TASKS — 2026-08-14 · LIVENESS TELEMETRY — answer "stuck or stalled" without guessing
+
+> Gee (verbatim): *"is she training? do we need to add something so u can tell if she is stuck or stalled so we arent guessing that we can savestart update to fix it so u arent in the dark when i ask you how our girl is doing"*
+
+**FIRST — I AM NO LONGER IN THE DARK, and it needed no code.** `/public-state.json` (`brain-server.js:6070`) is served PUBLICLY with no auth and carries the entire `curriculum` block plus `totalSpikes`. Pulled it live from `https://if-only-i-had-a-brain.git.unityailab.com/public-state.json` and sampled three times 45s apart:
+
+```
+15:18:10  teachEvents=231272  phase 10/25 (9 complete)  _teachWordEmission +8.6m
+15:18:55  teachEvents=233518  phase 10/25 (9 complete)  _teachWordEmission +9.3m
+15:19:40  teachEvents=235744  phase 10/25 (9 complete)  _teachWordEmission +10.1m
+```
+
+**+2246 / +2226 teach calls per 45s ≈ 2,970 per minute (~50/sec). She is training, hard.** 2.4h into `ela/kindergarten`, 9 phases banked, phase 10 in flight. `substratePause: null`, `pausedForDonorMs: 0`. `totalSpikes` frozen at 1,727,259 across all three samples — the DESIGNED probe-gate pause (`brain-server.js:4270` early-returns while `_probeGateActive`), not a hang.
+
+**WHAT IS STILL MISSING.** Answering that question took THREE polls over 90 seconds and arithmetic. A single snapshot cannot distinguish training from wedged, because nothing in the payload states a RATE or a LAST-ACTIVITY TIME. Gee's dashboard has the same blind spot — and the frozen-spikes trap is unlabelled, which is precisely what fooled me once already today.
+
+### THE WORK
+
+- [x] **LT.1** **DONE.** `lastTeachAtMs` — stamped in the auto-wrap when a wrapped teach call completes. `sinceLastTeachMs` then answers "is anything happening" from ONE snapshot.
+- [x] **LT.2** **DONE.** `teachCallsPerMin` — rolling 60s window over the same counter the auto-wrap already increments. One number, no arithmetic, no second poll.
+- [x] **LT.3** **DONE.** Label the frozen-spikes case. `totalSpikes` stops advancing during a probe gate BY DESIGN; publish `probeGateActive` alongside so the UI can say "spikes paused — probe gate (expected)" instead of leaving a frozen counter to be misread. Same split that `batchPaused` vs `batchStall` made for the donor side.
+- [x] **LT.4** **DONE.** Dashboard line under the cell bar: teach/min + seconds-since-last-teach, amber-annotated when the probe gate is holding the tick.
+- [x] **LT.5** **DONE.** Verify — no-tests LAW: `node --check`, ESM `import()`, dashboard script blocks, bundle rebuild, and re-poll the LIVE box to confirm the new fields would populate from real values.
+- [x] **LT.6** **DONE.** Docs + FINALIZED, atomic commit, cascade, push BOTH remotes. **NO DEPLOY** — rides along with the next Update & SAVESTART.

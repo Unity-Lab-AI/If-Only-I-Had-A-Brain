@@ -5,6 +5,35 @@
 
 ---
 
+## 2026-08-14 - LIVENESS TELEMETRY: "stuck or stalled" answerable from ONE snapshot - feature/liveness-telemetry-0814
+
+### Gee ask (verbatim per LAW #0)
+
+> *"is she training? do we need to add something so u can tell if she is stuck or stalled so we arent guessing that we can savestart update to fix it so u arent in the dark when i ask you how our girl is doing"*
+
+**FIRST, THE ANSWER: SHE IS TRAINING - and I stopped being in the dark without writing a line of code.** `/public-state.json` (`brain-server.js:6070`) is served PUBLICLY, no auth, carrying the whole `curriculum` block plus `totalSpikes`. Pulled it live and sampled three times, 45s apart:
+
+```
+15:18:10  teachEvents=231272  phase 10/25 (9 complete)  _teachWordEmission +8.6m
+15:18:55  teachEvents=233518  phase 10/25 (9 complete)  _teachWordEmission +9.3m
+15:19:40  teachEvents=235744  phase 10/25 (9 complete)  _teachWordEmission +10.1m
+```
+
+**+2246 / +2226 teach calls per 45s = ~2,970 per minute (~50/sec).** 2.4h into `ela/kindergarten`, **9 phases banked, phase 10 of 25 in flight** - she had long since left the phase 2 that looked frozen. `substratePause: null`, `pausedForDonorMs: 0`. `totalSpikes` sat at 1,727,259 across all three samples: the DESIGNED probe-gate pause (`brain-server.js:4270` early-returns while `_probeGateActive`), not a hang.
+
+**THE REAL GAP.** That answer cost THREE polls over 90 seconds plus arithmetic, because nothing published a RATE or a LAST-ACTIVITY time - a single snapshot genuinely could not separate "training hard" from "wedged". Gee's dashboard had the identical blind spot, and the frozen-spikes counter was unlabelled, which is exactly what fooled me earlier the same day.
+
+**SHIPPED.**
+
+- **`lastTeachAtMs`** stamped in the constructor auto-wrap when a wrapped teach call completes -> `sinceLastTeachMs`.
+- **`teachCallsPerMin`** - rolling 60s window over the counter the auto-wrap already increments. The window ROLLS (rather than averaging the whole run) because a cell running for hours would otherwise average straight through a genuine stall without the number moving.
+- **`probeGateActive`** published alongside, so a frozen `totalSpikes` can be labelled as the expected pause rather than left to be misread. Same reasoning as the `batchPaused` / `batchStall` split on the donor side: an expected pause must SAY it is expected, or it gets read as a failure.
+- **Dashboard**: a liveness line under the cell bar - `N teach/min · last teach Xs ago`, green when alive, red when not, with `spikes paused - probe gate (expected)` in amber while the gate holds the tick.
+
+**VERIFIED (no-tests LAW):** `node --check` PASS; ESM `import()` PASS; all 3 dashboard inline blocks parse; bundles rebuilt; `_probeGateActive` confirmed a real property with 5 writers (`curriculum.js` x3, `curriculum/kindergarten.js` x2); and the live box re-polled to confirm every source value the new fields derive from is populated and moving (`teachEvents` 241,228 and climbing; `liveness` correctly absent from the DEPLOYED build, which predates this).
+
+**NOT DEPLOYED, deliberately.** Rides along with the next Update & SAVESTART.
+
 ## 2026-08-14 - `_phasedTeach` KEPT A SECOND PARALLEL PHASE LEDGER (3x overcount) - feature/single-ledger-0814
 
 ### Gee ask (verbatim per LAW #0)
