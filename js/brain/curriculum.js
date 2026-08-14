@@ -3024,10 +3024,13 @@ export class Curriculum {
       cellPhasesTotal: (cellKey && (
         (this._cellPhaseDeclared && this._cellPhaseDeclared[cellKey])
         || (this._cellPhaseObserved && this._cellPhaseObserved[cellKey])
+        || this._persistedPhaseTotalFor(cellKey, cluster)
       )) || null,
       cellPhasesTotalSource: (cellKey && this._cellPhaseDeclared && this._cellPhaseDeclared[cellKey])
         ? 'declared'
-        : ((cellKey && this._cellPhaseObserved && this._cellPhaseObserved[cellKey]) ? 'observed' : null),
+        : ((cellKey && this._cellPhaseObserved && this._cellPhaseObserved[cellKey])
+            ? 'observed'
+            : (this._persistedPhaseTotalFor(cellKey, cluster) ? 'persisted' : null)),
       vocabProgress: this._vocabProgress
         ? {
             label: this._vocabProgress.label,
@@ -3702,6 +3705,43 @@ export class Curriculum {
       const _dwSkipNote = _dwSkipped.length ? ` · skipped: ${_dwSkipped.join(', ')}` : '';
       this._hb(`[Curriculum] ☀ dream window closed (${(totalMs / 1000).toFixed(1)}s total${_dwStages ? ' — ' + _dwStages : ''}${_dwSkipNote}) — resuming curriculum`);
     }
+  }
+
+  /**
+   * PERSISTED phase total for a cell — FREE persistence across restarts
+   * (2026-08-14).
+   *
+   * The declared total is recomputed from source every boot, and the observed
+   * total is in-memory only, so a restart mid-walk would otherwise lose any
+   * total for a runner whose source scan came up empty. `passedPhases` is
+   * ALREADY persisted in the weights file (`brain-server.js` saves and
+   * restores it for phase-level resume), and every entry is keyed
+   * `cellKey:methodName` — so for a cell that ACTUALLY PASSED, the number of
+   * its entries IS its exact phase total. No new save field needed.
+   *
+   * Gated on `passedCells` deliberately: an INTERRUPTED cell has a partial
+   * entry list, and using that as a denominator would silently over-report
+   * progress (12 of "12" while 15 remain). A total we cannot trust must read
+   * as unknown, not as a smaller number.
+   *
+   * @returns {number|null}
+   */
+  _persistedPhaseTotalFor(cellKey, cluster) {
+    try {
+      if (!cellKey || !cluster) return null;
+      const passedCells = cluster.passedCells;
+      const passedOk = Array.isArray(passedCells)
+        ? passedCells.includes(cellKey)
+        : (passedCells instanceof Set ? passedCells.has(cellKey) : false);
+      if (!passedOk) return null;               // never trust a partial cell
+      if (!Array.isArray(cluster.passedPhases)) return null;
+      const prefix = `${cellKey}:`;
+      let n = 0;
+      for (const p of cluster.passedPhases) {
+        if (typeof p === 'string' && p.startsWith(prefix)) n++;
+      }
+      return n > 0 ? n : null;
+    } catch { return null; }
   }
 
   /**
@@ -6869,13 +6909,33 @@ export class Curriculum {
       if (!this._cellPhaseDeclared) this._cellPhaseDeclared = {};
       if (this._cellPhaseDeclared[_ck] == null) {
         const _src = Function.prototype.toString.call(raw);
-        const _n = (_src.match(/_phaseTick\s*\(/g) || []).length;
+        // DISTINCT `this._teachX(` names are the right denominator because
+        // that is exactly what the numerator counts: the constructor
+        // auto-wrap makes every `_teach*` an outermost phase, and
+        // `passedPhases` keys on `cellKey:methodName` — so a method called
+        // twice is still ONE phase. Counting names (not call sites) keeps
+        // numerator and denominator measuring the same thing.
+        //
+        // Cross-checked: ELA-K yields 27 by this method and 27 by counting
+        // its `_phaseTick` declarations — two independent reads agreeing
+        // exactly. Every other runner declares no `_phaseTick` at all, which
+        // is why the old approach left pre-K (where a fresh walk OPENS) with
+        // no denominator.
+        const _names = new Set(
+          [...(_src.matchAll(/this\.(_teach[A-Za-z0-9_]+)\s*\(/g) || [])].map((m) => m[1]),
+        );
+        // `_cellRunner` itself prepends these before delegating to `raw`, so
+        // they are outermost phases too and the numerator will count them.
+        if (subject !== 'life') _names.add('_teachCourseIdentity');
+        if (subject === 'ela') _names.add('_teachLanguageMechanics');
+        const _n = _names.size;
         if (_n > 0) {
           this._cellPhaseDeclared[_ck] = _n;
-          this._hb?.(`[Curriculum] phase-total for ${_ck}: ${_n} declared phases (read from the runner, not estimated).`);
+          const _ticks = (_src.match(/_phaseTick\s*\(/g) || []).length;
+          this._hb?.(`[Curriculum] phase-total for ${_ck}: ${_n} phases — READ from the runner's own source, not estimated${_ticks ? ` (${_ticks} of them additionally declared via _phaseTick)` : ''}.`);
         }
       }
-    } catch { /* non-fatal — falls back to the observed total */ }
+    } catch { /* non-fatal — falls back to the observed/persisted total */ }
     return async (ctx) => {
       if (subject !== 'life') {
         try { await this._teachCourseIdentity(subject, grade, ctx); }
