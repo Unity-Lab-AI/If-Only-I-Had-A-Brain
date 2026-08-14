@@ -3522,9 +3522,17 @@ export class NeuronCluster {
     // neuron spikes, basin formation collapses, consciousness
     // becomes random instead of focused. The clamp keeps attention
     // a meaningful biasing signal rather than a brute amplifier.
+    // Reused across ticks. This allocated a fresh Float32Array of `size`
+    // on EVERY step -- 3,685 floats for cortex, 60 times a second, thrown
+    // away each time. The contents are fully rewritten below (fill then
+    // per-region overwrite), so a persistent buffer is identical and the
+    // allocator stops doing work nobody reads.
     let attentionLookup = null;
     if (this.regions && this.attentionGain && Object.keys(this.attentionGain).length > 0) {
-      attentionLookup = new Float32Array(size);
+      if (!this._attentionLookupBuf || this._attentionLookupBuf.length !== size) {
+        this._attentionLookupBuf = new Float32Array(size);
+      }
+      attentionLookup = this._attentionLookupBuf;
       attentionLookup.fill(1.0);
       for (const [regionName, gain] of Object.entries(this.attentionGain)) {
         const r = this.regions[regionName];
@@ -3830,9 +3838,14 @@ export class NeuronCluster {
    * AND on the cross-region projections (T14.4).
    */
   learn(rewardSignal) {
-    const pre = new Float64Array(this.lastSpikes);
-    const post = new Float64Array(this.lastSpikes);
-    this.synapses.rewardModulatedUpdate(pre, post, rewardSignal, this.learningRate);
+    // NO COPY. This used to build two fresh Float64Arrays of lastSpikes on
+    // every call -- two allocations per cluster per tick, ~7,400 elements
+    // for cortex alone, at 60Hz, all so the update could read the same
+    // array under two names. rewardModulatedUpdate only READS pre and post,
+    // so passing lastSpikes twice is identical arithmetic with none of the
+    // allocation or the garbage collection that follows it.
+    this.synapses.rewardModulatedUpdate(
+      this.lastSpikes, this.lastSpikes, rewardSignal, this.learningRate);
     // T14.4 — cross-region Hebbian. Always fires when the cluster learns,
     // shaping the projections through normal use during curriculum + live chat.
     this._crossRegionHebbian(this.learningRate);
