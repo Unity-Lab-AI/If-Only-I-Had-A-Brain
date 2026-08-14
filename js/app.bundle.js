@@ -95292,7 +95292,27 @@ var Curriculum = class _Curriculum {
       //   vocabProgress     — live word position inside the current list
       // Together they answer "is she moving?" without interpreting a
       // frozen counter.
-      cellPhasesStarted: this._currentCellPhasesStarted | 0,
+      // UNIVERSAL PHASE COUNT (2026-08-14) — works for EVERY runner, every
+      // grade, regardless of which bookkeeping that runner uses.
+      //
+      // There are TWO phase-recording mechanisms and neither is reliable
+      // alone: the constructor auto-wrap (which this file itself documents as
+      // "wasn't reliably reaching here for K_MIXIN methods"), and the
+      // hand-written `_phaseTick`/`_phaseDone` helpers that only
+      // `runElaKReal` defines. Counting either one left `cellPhasesCompleted`
+      // and `cellPhasesStarted` pinned at 0 for entire cells — which is what
+      // pushed the dashboard onto its elapsed-time stopwatch in the first
+      // place.
+      //
+      // But BOTH mechanisms append `cellKey:methodName` to `passedPhases`,
+      // and `passedPhases` is persisted. So the honest count is derived from
+      // the record itself: phases COMPLETED for this cell = its entries;
+      // STARTED = those plus the one currently in flight. Mechanism-agnostic,
+      // resume-correct, and true for pre-K through PhD.
+      cellPhasesStarted: Math.max(
+        this._currentCellPhasesStarted | 0,
+        (currentCellPassedPhases | 0) + (cluster?._activePhase ? 1 : 0)
+      ),
       // EXACT total for THIS cell — declared (counted from the runner's own
       // source) preferred, else observed (learned from a previous run of the
       // same cell), else NULL. Null means "not known yet"; consumers must show
@@ -98373,7 +98393,11 @@ var Curriculum = class _Curriculum {
       const _ck = `${subject}/${grade}`;
       if (!this._cellPhaseDeclared) this._cellPhaseDeclared = {};
       if (this._cellPhaseDeclared[_ck] == null) {
-        const _src = Function.prototype.toString.call(raw);
+        let _src = Function.prototype.toString.call(raw);
+        const _deleg = _src.match(/this\.(run[A-Za-z0-9_]+)\s*\(/);
+        if (_deleg && typeof this[_deleg[1]] === "function") {
+          _src = Function.prototype.toString.call(this[_deleg[1]]);
+        }
         const _names = new Set(
           [..._src.matchAll(/this\.(_teach[A-Za-z0-9_]+)\s*\(/g) || []].map((m) => m[1])
         );
