@@ -95248,12 +95248,6 @@ var Curriculum = class _Curriculum {
         } catch {
         }
       }
-      if (this._currentSubject && this._perSubjectStats?.[this._currentSubject]) {
-        const s = this._perSubjectStats[this._currentSubject];
-        s.phasesCompleted = (s.phasesCompleted | 0) + 1;
-        s.lastCellAt = Date.now();
-      }
-      this._currentCellPhasesCompleted = (this._currentCellPhasesCompleted | 0) + 1;
       if (typeof this._recordPhaseEpisode === "function") {
         this._recordPhaseEpisode(cellKey, methodName);
       }
@@ -95312,8 +95306,21 @@ var Curriculum = class _Curriculum {
     if (cluster && Array.isArray(cluster.passedPhases)) {
       const persisted = {};
       for (const phaseKey of cluster.passedPhases) {
-        const sub = String(phaseKey).split("/")[0];
-        if (perSubject[sub]) persisted[sub] = (persisted[sub] | 0) + 1;
+        const key = String(phaseKey);
+        const colon = key.lastIndexOf(":");
+        if (colon < 0) continue;
+        const ck = key.slice(0, colon);
+        const method = key.slice(colon + 1);
+        const sub = ck.split("/")[0];
+        if (!perSubject[sub]) continue;
+        let declared = null;
+        try {
+          declared = this._declaredPhaseNames(ck);
+        } catch {
+          declared = null;
+        }
+        if (!declared || !declared.has(method)) continue;
+        persisted[sub] = (persisted[sub] | 0) + 1;
       }
       for (const sub of Object.keys(persisted)) {
         if (perSubject[sub]) {
