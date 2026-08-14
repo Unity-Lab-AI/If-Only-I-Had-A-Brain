@@ -176,7 +176,7 @@ _REMOTE SYNC AUDIT migrated VERBATIM to `docs/FINALIZED.md` (§2026-08-14 REMOTE
 - [ ] **D.4** ⏸ DEFERRED ON PURPOSE (measure the server-side half first) — DONOR v0.3.12 — put `compute_batch` on the donor's PRIORITY lane (it already exists for `Work::Mindspace`). The real cure for the class. **Needs a `donor-v0.3.12` tag → CI build → Gee installs the binary** — flagged as ops, NOT required for the fresh walk
 - [x] **D.5** Verify per the no-tests LAW — `node --check` + ESM `import()` + wiring greps + keyless bundle rebuild
 - [x] **D.6** Docs + FINALIZED, atomic commit, cascade develop→main, push BOTH remotes
-- [ ] **D.7** ⏳ LIVE-VERIFY on Gee's Update & FRESH WALK: `totalSpikes` must CLIMB, `gpuHits` must advance, donor `rttMs` must fall well under 1s, `bufferedKB` must stay low, and `cellPhasesCompleted` must leave 0
+- [>] **D.7** **MERGED into LIVE-VERIFY (combined) at the bottom of this file.** ⏳ LIVE-VERIFY on Gee's Update & FRESH WALK: `totalSpikes` must CLIMB, `gpuHits` must advance, donor `rttMs` must fall well under 1s, `bufferedKB` must stay low, and `cellPhasesCompleted` must leave 0
 
 ---
 
@@ -203,7 +203,7 @@ _REMOTE SYNC AUDIT migrated VERBATIM to `docs/FINALIZED.md` (§2026-08-14 REMOTE
 - [x] **V.5** Dedup + carry-forward — **DONE.** `_enqueueDefinitionSeed()` dedups on both axes (already-bound via persisted `_definitionTaughtWords`, and already-queued — AoA grade bands overlap heavily); appends rather than replaces so a prior grade's undrained tail survives; idempotent per grade.
 - [x] **V.6** Verify per the no-tests LAW — **DONE.** `node --check` PASS; ESM `import()` 26 exports with `_enqueueDefinitionSeed`/`_dreamWindow`/`_teachWordDefinition`/`_teachWordDefinitions` on the prototype; all three wiring points grepped; bundle rebuilt keyless (0 live-key hits).
 - [x] **V.7** Docs + FINALIZED migration, atomic commit, cascade develop→main, push BOTH remotes — **DONE.**
-- [ ] **V.8** ⏳ LIVE-VERIFY (needs Gee's SAVESTART): confirm the walk reaches its first cell in seconds instead of 2.2h, and that `💤 dream trickle: N words processed … N words remaining in the definition-seed queue (grades enqueued: …)` lines show the queue draining across grades. If it lags, raise `DREAM_TRICKLE_BATCH`.
+- [>] **V.8** **MERGED into LIVE-VERIFY (combined) at the bottom of this file.** ⏳ LIVE-VERIFY (needs Gee's SAVESTART): confirm the walk reaches its first cell in seconds instead of 2.2h, and that `💤 dream trickle: N words processed … N words remaining in the definition-seed queue (grades enqueued: …)` lines show the queue draining across grades. If it lags, raise `DREAM_TRICKLE_BATCH`.
 
 ---
 
@@ -292,4 +292,56 @@ Interleave: walk phase **P** enters (`prev=null`, outermost ✓, `_activePhase=P
 - [x] **L.4** **DONE.** Verify — no-tests LAW: `node --check`, ESM `import()` (catches dup bindings `--check` misses), bundle rebuild, and re-read the edited regions.
 - [x] **L.5** **DONE.** Docs + FINALIZED migration, atomic commit, cascade develop→main, push BOTH remotes.
 - [x] **L.7** **DONE.** *"fallback? you should know we cxode it right the first time which means fallbacks are illegal"* + *"no the names shall never not be there.. wtf are you talking about!!! code it cortrectly"* - every fallback branch deleted, including ones written earlier the same day: the `exact:false` publish-the-primitive branch; `_persistedPhaseTotalFor()` (method removed) and the `declared || observed || persisted` cascade; the in-memory observed-total learner; `cellPhasesTotalSource` + `cellPhasesPersisted`; and in `html/dashboard.html` the WHOLE post-render override block (cell progress was computed in two places that could disagree) with its five-branch cascade ending in `Math.min(85, elapsed/EXPECTED_K_CELL_MIN * 85)`, plus both heuristic constants. `_declaredPhaseNames()` always returns the set - proven by deriving it for 48 cells (6 subjects x 8 grades, pre-K through PhD): every one non-zero, so there is nothing to fall back to.
-- [ ] **L.6** ⏳ LIVE-VERIFY on Gee's next Update/Fresh-walk: cell-progress line must name a REAL phase (`_teachLetterCaseBinding`-class, not `_teachAntiHebbian`) with a **minutes-scale** `+Ns`, must carry a `work N/N` tail that climbs, and `0 complete` must leave 0 when phase 1 lands.
+- [>] **L.6** **MERGED into LIVE-VERIFY (combined) at the bottom of this file.** ⏳ LIVE-VERIFY on Gee's next Update/Fresh-walk: cell-progress line must name a REAL phase (`_teachLetterCaseBinding`-class, not `_teachAntiHebbian`) with a **minutes-scale** `+Ns`, must carry a `work N/N` tail that climbs, and `0 complete` must leave 0 when phase 1 lands.
+
+---
+
+## OPEN TASKS — 2026-08-14 · THE COMPUTE LAYER IS BUILT ON FALLBACKS — teaching must be GPU-ONLY
+
+> Gee (verbatim): *"why does it keep training when i disconnect the doner? that should NOT be possible!!!, RIGHT?"*
+>
+> Gee (verbatim): *"find out how it is even doing that to find the issue? its like its using the server cpu or something weird"*
+>
+> Gee (verbatim): *"fallback!?!?!?!?!!??!?!?!"*
+>
+> Gee (verbatim): *"fallbacks!!!!?????"*
+>
+> Gee's decision (verbatim option chosen): **"Walk stops, she stays awake"** — *"curriculum walk HALTED (no CPU Hebbian, ever); brain tick / propagate running (CPU); chat / voice she can still talk; dashboard 'PAUSED - no compute substrate'; DONOR BACK: walk resumes instantly"*
+
+**ANSWER: he is right, and his guess was right — it IS the server CPU.**
+
+**THE FINDING.** The GPU was never required anywhere. It is an accelerator layered over a CPU implementation that is always present, selected per call:
+
+- **Hebbian — `js/brain/cluster/hebbian.js:169`.** The GPU branch runs and `continue`s. When `_gpuProxyReady` is false execution **falls through** to lines 262–296 and runs the FULL CPU Oja over millions of destination rows (`_sparsePool.hebbianUpdate` or `_ojaUpdateChunked`). Same math, same weights, on the box's Xeon.
+- **Propagation — `js/brain/cluster.js:3296`.** `const useGpu = this._gpuProxyReady && this._cachedCrossCurrents;` then line 3308 *"CPU fallback — GPU cache miss or GPU proxy not ready yet"* → `proj.propagate(srcSpikes)`.
+- The code announces it in its own logs: **`PARTIAL — falling back to CPU for failed matrices`** (`hebbian.js:683`), and `hebbian.js:282` records the all-night **`"2/17 uploaded, 15 fell to CPU"`** loop.
+
+**AND THE GATE I SHIPPED THIS MORNING WAS ITSELF WRONG.** `_awaitComputeSubstrate` (`curriculum.js:10888`) tests `brain._gpuClient.readyState === 1` — *is a socket open*. The compute path tests `cluster._gpuProxyReady` — *did the weight upload finish*. **Two different questions.** A donor connected-but-not-uploaded passes the gate and still lands on the CPU branch. On top of that the gate has a **120s grace** and is sampled **every 64th** nested teach call, and `DREAM_NO_DONOR_GRIND=1` re-enables grinding on purpose. That is a timer discouraging a fallback, not an architecture forbidding one.
+
+**THE CORRECT ARCHITECTURE.** Compute substrate is a **deployment property decided once**, not a per-call `if`. The server's biological-scale brain REQUIRES the GPU substrate: no substrate → the walk halts, and no teach math runs at all. The browser/standalone brain (6.7K neurons, no donor ever) has the CPU implementation as its ONE path. One decision, made at construction, never re-decided per call — so there is no branch to silently take.
+
+### THE WORK
+
+- [x] **G.1** **DONE.** `cluster.requireGpuSubstrate` — set once at construction (server biological-scale = true, browser standalone = false). Single source for "which substrate is this brain's".
+- [x] **G.2** **DONE.** DELETE the CPU-Hebbian fallthrough in `_crossRegionHebbian` for GPU-required brains. Not "skip and warn" — the teach call must never be reached without a substrate. The probe-critical CPU Oja INSIDE the GPU branch stays (it is the CPU shadow that lets gate probes read the arrays, and it only runs while the GPU is also running — it is not a fallback).
+- [x] **G.3** **DONE.** Same treatment for the intra-cluster teach paths (`intraSynapsesHebbian` / `intraSynapsesAntiHebbian`) that `_teachLateralInhibition` and `_teachAntiHebbian` drive.
+- [x] **G.4** **DONE.** FIX THE GATE CONDITION: require the substrate the compute path actually asks for — `cortexCluster._gpuProxyReady === true` — not merely an open socket.
+- [x] **G.5** **DONE.** DELETE the 120s grace, DELETE the every-64th sampling, DELETE `DREAM_NO_DONOR_GRIND`. With no CPU branch underneath, a grace period permits nothing and a sampling gap only delays the halt. Halt on the first teach call without a substrate; resume on the first poll after it returns.
+- [x] **G.6** **DONE.** Dashboard: **"PAUSED — no compute substrate"** per Gee's chosen wording, plus the reason (socket down vs uploaded-not-ready) so the two conditions are never confused again.
+- [x] **G.7** **DONE.** Verify — no-tests LAW: full read of every edited file, `node --check`, ESM `import()`, dashboard script blocks, bundle rebuild.
+- [ ] **G.8** Docs + FINALIZED, atomic commit, cascade, push BOTH remotes.
+- [>] **G.9** **MERGED into LIVE-VERIFY (combined) at the bottom of this file.** ⏳ LIVE-VERIFY: Gee kills the donor → the walk must show **PAUSED — no compute substrate** within seconds, teach events must STOP climbing, chat must still reply, and the walk must resume the moment a donor uploads.
+
+---
+
+## OPEN TASK — LIVE-VERIFY (COMBINED) · one pass, four checks
+
+> Gee (verbatim): *"combine v.8. D.7 and L.6 as one task/todo item, we dont need the same thing 3x"*
+
+V.8, D.7, L.6 and G.9 were four separate pending items all waiting on the same event — Gee pressing **Update & SAVESTART** or **Fresh Walk**. They are merged here as ONE. Their original entries are left in place above, status changed to `[>]` MERGED, every word intact per the never-delete-TODO-info LAW.
+
+- [ ] **LV** ⏳ ONE live-verification pass after the next deploy:
+  1. **(was V.8)** Grade-wide definition trickle — `kVocabTaught` climbs off 0, and `💤 dream trickle: N words processed … N words remaining in the definition-seed queue (grades enqueued: …)` shows the queue draining across grades. If it lags, raise `DREAM_TRICKLE_BATCH`.
+  2. **(was D.7)** Donor health — `totalSpikes` climbing, `gpuHits` advancing, donor `rttMs` under 1s, `cellPhasesCompleted` leaving 0.
+  3. **(was L.6)** Phase ledger — the cell-progress line names a REAL phase with a **minutes**-scale `+Ns` (never `_teachAntiHebbian (+0s)`), carries a `work N/N` tail that climbs, and `0 complete` leaves 0 when phase 1 lands.
+  4. **(was G.9)** Donor kill — pull the donor: the dashboard must show **PAUSED — no compute substrate** within seconds with the reason named, teach events must STOP climbing, chat must still reply, and the walk must resume the moment a donor finishes uploading.

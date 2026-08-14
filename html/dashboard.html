@@ -2398,6 +2398,16 @@
         pct = 100;
         pctLabel = `&#10003; PASSED &middot; ${done} phases &middot; ${elapsedMin} min`;
         $('d-curr-cellbar').style.background = 'linear-gradient(90deg,#22c55e,#16a34a)';
+      } else if (c.substratePause) {
+        // The walk is not stopped, it is REFUSING. This brain has no CPU teach
+        // path: without a donor GPU holding the weights, training does not
+        // happen. Name which half is missing so a connected-but-not-uploaded
+        // donor is never mistaken for a working one.
+        pct = 0;
+        pctLabel = `<span style="color:#f87171;">PAUSED &mdash; no compute substrate</span>`
+          + ` &middot; <span style="color:#fbbf24;">${c.substratePause.reason}</span>`
+          + ` &middot; ${(c.substratePause.pausedMs / 60000).toFixed(1)} min`;
+        $('d-curr-cellbar').style.background = 'linear-gradient(90deg,#7f1d1d,#f87171)';
       } else if (status === 'in-progress') {
         const total = c.cellPhasesTotal | 0;
         const pw = c.phaseWork;
