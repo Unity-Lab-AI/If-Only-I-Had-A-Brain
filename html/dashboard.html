@@ -3459,20 +3459,23 @@
             const totalPhases = (typeof c.cellPhasesTotal === 'number' && c.cellPhasesTotal > 0)
               ? c.cellPhasesTotal : null;
             const totalTag = (c.cellPhasesTotalSource === 'observed') ? '~' : '';
+            const phaseName = (c.outermostPhase && c.outermostPhase.name)
+              ? ` · <span style="color:#e9d5ff;">${c.outermostPhase.name}</span> (+${Math.round((c.outermostPhase.elapsedMs||0)/1000)}s)`
+              : '';
             const vpTail = (vp && vp.total > 0)
               ? ` · <span style="color:#93c5fd;">${vp.label} ${vp.taught}/${vp.total}</span>${vp.lastWord ? ` — "${vp.lastWord}"` : ''}`
               : '';
             if (started > 0 && totalPhases) {
               const frac = (vp && vp.total > 0) ? (vp.taught / vp.total) : 0;
               pct = Math.min(99, Math.round(((Math.max(0, started - 1) + frac) / totalPhases) * 100));
-              html = `${pct}% · <span style="color:#4ade80;">phase ${started}/${totalTag}${totalPhases}</span> · ${done} complete${vpTail} · ${elapsedMin.toFixed(1)} min`;
+              html = `${pct}% · <span style="color:#4ade80;">phase ${started}/${totalTag}${totalPhases}</span> · ${done} complete${phaseName}${vpTail} · ${elapsedMin.toFixed(1)} min`;
             } else if (started > 0) {
               // Phases ARE moving but this cell's total has never been seen
               // (first run of a runner that doesn't declare phases). Drive the
               // bar from the vocab list when one is running; otherwise report
               // the honest phase number with no denominator at all.
               pct = (vp && vp.total > 0) ? Math.max(0, Math.min(99, Math.round(vp.pct || 0))) : null;
-              html = `<span style="color:#4ade80;">phase ${started}</span> <span style="color:#94a3b8;">(total unknown — first run of this cell)</span>${vpTail} · ${elapsedMin.toFixed(1)} min`;
+              html = `<span style="color:#4ade80;">phase ${started}</span> <span style="color:#94a3b8;">(total unknown — first run of this cell)</span>${phaseName}${vpTail} · ${elapsedMin.toFixed(1)} min`;
               if (pct === null && cellPct) cellPct.innerHTML = html;
             } else if (vp && vp.total > 0) {
               // Inside a vocab list before any outermost phase registered —

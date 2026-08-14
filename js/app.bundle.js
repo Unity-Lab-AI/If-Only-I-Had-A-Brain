@@ -95017,6 +95017,9 @@ var Curriculum = class _Curriculum {
         }
         if (cl) cl._activePhase = { name, startAt: Date.now() };
         if (isOutermost && cl) {
+          cl._outermostPhase = { name, startAt: Date.now() };
+        }
+        if (isOutermost && cl) {
           const _ck = cl._currentCellKey || "";
           if (this._cellPhasesStartedKey !== _ck) {
             if (this._cellPhasesStartedKey && this._cellPhasesStartedSet?.size > 0) {
@@ -95059,6 +95062,7 @@ var Curriculum = class _Curriculum {
           return result;
         } finally {
           if (cl) cl._activePhase = prev;
+          if (isOutermost && cl) cl._outermostPhase = null;
         }
       };
     }
@@ -95282,6 +95286,16 @@ var Curriculum = class _Curriculum {
       cellStatus,
       pausedForDonorMs: this._pausedForDonorSinceMs ? Date.now() - this._pausedForDonorSinceMs : 0,
       activePhase,
+      // The REAL cell phase (OUTERMOST), distinct from `activePhase` which is
+      // whatever nested primitive is executing this instant. Reading the live
+      // box: 45 min in ela/kindergarten, 73,421 sub-phase calls, `passedPhases`
+      // still EMPTY — so no phase had completed and nothing on screen could
+      // name WHICH phase was grinding, because activePhase only ever showed
+      // `_teachHebbian` (a primitive fired thousands of times per phase).
+      outermostPhase: cluster?._outermostPhase ? {
+        name: cluster._outermostPhase.name,
+        elapsedMs: Date.now() - cluster._outermostPhase.startAt
+      } : null,
       cellPhasesCompleted: this._currentCellPhasesCompleted | 0,
       // HONEST PROGRESS (2026-08-14) — `cellPhasesCompleted` only ticks when
       // an OUTERMOST phase FINISHES, so a K cell reads 0 for tens of minutes

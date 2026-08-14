@@ -2653,6 +2653,17 @@ export class Curriculum {
         // that is teaching perfectly well. A started-count moves the instant
         // real work begins, so "is she moving?" is answerable by looking.
         // Self-resets when the cell key changes — no external reset needed.
+        // OUTERMOST-PHASE VISIBILITY (2026-08-14). `_activePhase` is
+        // overwritten by every NESTED call, so the dashboard showed
+        // `_teachHebbian` — a primitive fired thousands of times per phase —
+        // instead of the real cell phase. Reading the live box: 45 minutes in
+        // `ela/kindergarten` with 73,421 sub-phase calls and `passedPhases`
+        // still EMPTY, meaning not one of ELA-K's 27 phases had completed and
+        // nothing on screen could say WHICH one was grinding. Track the
+        // outermost separately so the phase actually responsible is nameable.
+        if (isOutermost && cl) {
+          cl._outermostPhase = { name, startAt: Date.now() };
+        }
         if (isOutermost && cl) {
           const _ck = cl._currentCellKey || '';
           if (this._cellPhasesStartedKey !== _ck) {
@@ -2725,6 +2736,10 @@ export class Curriculum {
           return result;
         } finally {
           if (cl) cl._activePhase = prev;
+          // Clear the outermost marker only when the OUTERMOST call exits —
+          // a nested primitive must never clear it or the real phase name
+          // vanishes from the dashboard again.
+          if (isOutermost && cl) cl._outermostPhase = null;
         }
       };
     }
@@ -3006,6 +3021,16 @@ export class Curriculum {
       cellStatus,
       pausedForDonorMs: this._pausedForDonorSinceMs ? (Date.now() - this._pausedForDonorSinceMs) : 0,
       activePhase,
+      // The REAL cell phase (OUTERMOST), distinct from `activePhase` which is
+      // whatever nested primitive is executing this instant. Reading the live
+      // box: 45 min in ela/kindergarten, 73,421 sub-phase calls, `passedPhases`
+      // still EMPTY — so no phase had completed and nothing on screen could
+      // name WHICH phase was grinding, because activePhase only ever showed
+      // `_teachHebbian` (a primitive fired thousands of times per phase).
+      outermostPhase: cluster?._outermostPhase
+        ? { name: cluster._outermostPhase.name,
+            elapsedMs: Date.now() - cluster._outermostPhase.startAt }
+        : null,
       cellPhasesCompleted: this._currentCellPhasesCompleted | 0,
       // HONEST PROGRESS (2026-08-14) — `cellPhasesCompleted` only ticks when
       // an OUTERMOST phase FINISHES, so a K cell reads 0 for tens of minutes
