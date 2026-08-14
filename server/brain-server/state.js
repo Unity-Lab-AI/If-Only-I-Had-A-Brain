@@ -773,6 +773,14 @@ const SERVER_STATE_MIXIN = {
         gpuMisses: perf.gpuMisses || 0,
         totalSpikes: this._lastTotalSpikes || perf.totalSpikes || 0,
         phaseTimingMs: perf.phaseTimingMs || null,
+        // TICK-GAP + SILENT-STALL (2026-08-14) — `batchTiming` is the
+        // compute_batch send->reply stopwatch (round-trip, donor compute,
+        // unaccounted remainder); `batchStall` is non-null ONLY when
+        // completions have stopped while a donor is connected. The
+        // 2026-08-14 freeze (spikes stuck for minutes, gpuHits frozen,
+        // gpuMisses 0) was invisible precisely because neither existed.
+        batchTiming: perf.batchTiming || null,
+        batchStall: perf.batchStall || null,
         defsLearnedPerHour: (this._defLearnedTimestamps && this._defLearnedTimestamps.length)
           ? this._defLearnedTimestamps.length : 0,
         chatHebbianTurns: (this._chatTimeHebbianStats && this._chatTimeHebbianStats.turns) || 0,
