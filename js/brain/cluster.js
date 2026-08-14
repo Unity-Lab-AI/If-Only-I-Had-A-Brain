@@ -111,6 +111,7 @@ import { CLUSTER_TELEMETRY_MIXIN } from './cluster/telemetry.js';
 import { CLUSTER_HEBBIAN_MIXIN } from './cluster/hebbian.js';
 import { CLUSTER_EMIT_MIXIN } from './cluster/emit.js';
 import { CLUSTER_PROBE_MIXIN } from './cluster/probe.js';
+import { CLUSTER_ATTENTION_MIXIN } from './cluster/attention.js';
 
 // Question key-token extraction + fractional-offset region injection.
 // Duplicated here (vs importing from curriculum.js) so `readInput` stays
@@ -1293,6 +1294,51 @@ export class NeuronCluster {
     const out = new Float64Array(region.end - region.start);
     for (let i = 0; i < out.length; i++) out[i] = this.lastSpikes[region.start + i] ? 1 : 0;
     return out;
+  }
+
+  /**
+   * Region spike vector PLUS the list of indices that actually fired.
+   *
+   * Cortical firing is sparse — a few thousand neurons out of a region
+   * that is millions wide. Every plasticity path that takes a dense
+   * post-vector then walks all of it to find those few thousand, and at
+   * biological scale that skip-scan is the dominant synchronous cost of
+   * a teach call: seconds of `if (!y) continue` per projection, on the
+   * main thread, blocking donor handshakes and dashboard requests.
+   *
+   * `ojaUpdate` / `antiHebbianUpdate` already accept `opts.activeRows`
+   * to iterate only the firing rows — identical math, because a row
+   * with post=0 contributes exactly zero update AND zero decay under
+   * Oja. This returns that index list alongside the vector so callers
+   * can use it without a second pass.
+   *
+   * The dense buffer is cluster-scoped and REUSED across calls (cleared
+   * per call), because the allocating version was producing a fresh
+   * multi-megabyte Float64Array per projection per rep.
+   *
+   * @param {string} regionName
+   * @returns {{vec: Float64Array, active: number[]}}
+   */
+  regionSpikesActive(regionName) {
+    const region = this.regions[regionName];
+    if (!region) return { vec: new Float64Array(0), active: [] };
+    const len = region.end - region.start;
+    if (!this._regionSpikeScratch) this._regionSpikeScratch = new Map();
+    let entry = this._regionSpikeScratch.get(regionName);
+    if (!entry || entry.vec.length !== len) {
+      entry = { vec: new Float64Array(len), active: [] };
+      this._regionSpikeScratch.set(regionName, entry);
+    }
+    const { vec } = entry;
+    const active = entry.active;
+    active.length = 0;
+    vec.fill(0);
+    const spikes = this.lastSpikes;
+    const start = region.start;
+    for (let i = 0; i < len; i++) {
+      if (spikes[start + i]) { vec[i] = 1; active.push(i); }
+    }
+    return { vec, active };
   }
 
   /**
@@ -3522,9 +3568,17 @@ export class NeuronCluster {
     // neuron spikes, basin formation collapses, consciousness
     // becomes random instead of focused. The clamp keeps attention
     // a meaningful biasing signal rather than a brute amplifier.
+    // Reused across ticks. This allocated a fresh Float32Array of `size`
+    // on EVERY step -- 3,685 floats for cortex, 60 times a second, thrown
+    // away each time. The contents are fully rewritten below (fill then
+    // per-region overwrite), so a persistent buffer is identical and the
+    // allocator stops doing work nobody reads.
     let attentionLookup = null;
     if (this.regions && this.attentionGain && Object.keys(this.attentionGain).length > 0) {
-      attentionLookup = new Float32Array(size);
+      if (!this._attentionLookupBuf || this._attentionLookupBuf.length !== size) {
+        this._attentionLookupBuf = new Float32Array(size);
+      }
+      attentionLookup = this._attentionLookupBuf;
       attentionLookup.fill(1.0);
       for (const [regionName, gain] of Object.entries(this.attentionGain)) {
         const r = this.regions[regionName];
@@ -3830,9 +3884,14 @@ export class NeuronCluster {
    * AND on the cross-region projections (T14.4).
    */
   learn(rewardSignal) {
-    const pre = new Float64Array(this.lastSpikes);
-    const post = new Float64Array(this.lastSpikes);
-    this.synapses.rewardModulatedUpdate(pre, post, rewardSignal, this.learningRate);
+    // NO COPY. This used to build two fresh Float64Arrays of lastSpikes on
+    // every call -- two allocations per cluster per tick, ~7,400 elements
+    // for cortex alone, at 60Hz, all so the update could read the same
+    // array under two names. rewardModulatedUpdate only READS pre and post,
+    // so passing lastSpikes twice is identical arithmetic with none of the
+    // allocation or the garbage collection that follows it.
+    this.synapses.rewardModulatedUpdate(
+      this.lastSpikes, this.lastSpikes, rewardSignal, this.learningRate);
     // T14.4 — cross-region Hebbian. Always fires when the cluster learns,
     // shaping the projections through normal use during curriculum + live chat.
     this._crossRegionHebbian(this.learningRate);
@@ -4211,4 +4270,11 @@ Object.assign(NeuronCluster.prototype, CLUSTER_TELEMETRY_MIXIN);
 Object.assign(NeuronCluster.prototype, CLUSTER_HEBBIAN_MIXIN);
 Object.assign(NeuronCluster.prototype, CLUSTER_EMIT_MIXIN);
 Object.assign(NeuronCluster.prototype, CLUSTER_PROBE_MIXIN);
+// Attention attaches LAST: the emit mixin calls attentionRead /
+// attentionPush through `this`, so the methods must be on the prototype
+// by the time any compose call runs. Assign order does not matter for
+// resolution (no name collisions with the other four mixins) but the
+// dependency direction is emit → attention, and the attach order
+// mirrors it so a future reader sees the dependency at a glance.
+Object.assign(NeuronCluster.prototype, CLUSTER_ATTENTION_MIXIN);
 

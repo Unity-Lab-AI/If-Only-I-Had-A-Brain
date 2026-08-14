@@ -732,7 +732,7 @@ export class UnityBrain extends EventEmitter {
     // weights away from whatever produced it; accurate prediction drives
     // it positive and reinforces what worked. That is the same
     // predict-measure-adjust loop a language model runs, expressed
-    // entirely in your equations -- no gradients, no backprop, nothing
+    // entirely in this engine's equations -- no gradients, no backprop, nothing
     // imported, and the action rewards above are untouched. Biology
     // splits it the same way: dopamine for outcome, cortical prediction
     // error for representation.

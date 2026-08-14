@@ -15,10 +15,21 @@ js/brain/cluster/
   ├── hebbian.js        (_crossRegionHebbian, intraSynapsesHebbian,
   │                      intraSynapsesBcm, anti-Hebbian variants —
   │                      deferred to later bite)
-  └── probe.js          (computePhi, getTrainedCapability,
-                         diagnoseReadoutForEmbedding, working-memory
-                         readout — deferred to later bite)
+  ├── probe.js          (computePhi, getTrainedCapability,
+  │                      diagnoseReadoutForEmbedding, working-memory
+  │                      readout — deferred to later bite)
+  └── attention.js      (attentionReset, attentionPush, attentionRead,
+                         getAttentionState — thalamic relay over the
+                         emission context window)
 ```
+
+## `attention.js` — the thalamic relay
+
+Not an extraction from cluster.js; a new capability. `emit.js` calls it
+from the compose loop when the caller passes `attention: true`, so it
+attaches LAST in the entry-point assign block to mirror that dependency
+direction (emit → attention). Default-off, no neurons, no topology change,
+no weight-format bump. Full rationale and measurements: `js/brain/ATTENTION.md`.
 
 ## Mixin pattern
 
