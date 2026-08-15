@@ -30724,3 +30724,13 @@ Gee (verbatim): *"hows our girl? shes been at it for 12 hours... are we sure eve
 **RELEASE FLOW (unchanged LAW):** I code + tag `donor-v0.3.14`, CI builds, **GEE deploys the binary** (verbatim: *"no the doner release is my territory just like we have doployed all the previous versions"*).
 
 **OPEN — WC.6 (Gee + me):** deploy donor-v0.3.14, then LIVE-VERIFY: teach/min climbs well above ~104, buffer stops parking at ~16MB (breathing cycle tightens or vanishes), donor RTT under ~1s during teach, suppression stays ~0, dream windows finally fire (`definitionQueue.lastWindow` populates — the OI.2 watch rides on this).
+
+## 2026-08-15 — donor-v0.3.14 ADDENDUM: CI caught my verify hole; cargo is now LOCAL and the tag is re-cut green
+
+Gee (verbatim): *"it failed and didnot deploy the doner"* — correct: the tag build FAILED (4× E0308) and NO release published; the running v0.3.13 donor was never at risk.
+
+**THE DEFECT:** cudarc 0.16's `launch()` returns `Result<Option<(CudaEvent, CudaEvent)>, _>`. Every pre-existing call site uses `?;` (unwraps AND discards), so the Option was invisible to a read of the codebase; my four new tail-position `launch(...).map_err(...)` returns surfaced it. FIX: `.map(|_| ())` at all four sites — behavior identical to the `?;` sites.
+
+**THE LESSON (banked):** read-verification cannot catch a RETURN-type mismatch in an unfamiliar API — WC.4's "stronger than planned" claim was overclaimed and CI falsified it. CLOSED STRUCTURALLY: **rustup + cargo installed on this box** (stable-msvc minimal, ~/.cargo/bin); `cargo check` now runs locally and PASSES both `--no-default-features --features cuda` (1.5s) and full default features (36s; 1 pre-existing `gui.rs` f32 warning, deliberately untouched — not this batch's scope). Every future donor change gets a real compile before any tag.
+
+**RE-TAG:** `donor-v0.3.14` deleted on both remotes and re-cut on the fixed main merge — legitimate because the release never published; no binary of the broken commit ever existed.

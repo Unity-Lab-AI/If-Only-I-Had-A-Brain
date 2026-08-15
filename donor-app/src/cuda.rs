@@ -282,14 +282,14 @@ impl CudaEngine {
     fn dev_zero_u32(&self, dst: &CudaSlice<u32>, offset: u32, len: u32) -> Result<(), String> {
         let mut b = self.stream.launch_builder(&self.f_fill_u32);
         b.arg(&len).arg(&offset).arg(dst);
-        unsafe { b.launch(cfg(len)) }.map_err(|e| format!("fill_zero_u32 launch: {e}"))
+        unsafe { b.launch(cfg(len)) }.map(|_| ()).map_err(|e| format!("fill_zero_u32 launch: {e}"))
     }
 
     /// Zero `dst[offset .. offset+len]` on the device (f32) — async on the stream.
     fn dev_zero_f32(&self, dst: &CudaSlice<f32>, offset: u32, len: u32) -> Result<(), String> {
         let mut b = self.stream.launch_builder(&self.f_fill_f32);
         b.arg(&len).arg(&offset).arg(dst);
-        unsafe { b.launch(cfg(len)) }.map_err(|e| format!("fill_zero_f32 launch: {e}"))
+        unsafe { b.launch(cfg(len)) }.map(|_| ()).map_err(|e| format!("fill_zero_f32 launch: {e}"))
     }
 
     /// Set `dst[offset + idx] = 1` for every in-bounds index — uploads ONLY the sparse
@@ -303,7 +303,7 @@ impl CudaEngine {
         let count = indices.len() as u32;
         let mut b = self.stream.launch_builder(&self.f_scatter_u32);
         b.arg(&count).arg(&offset).arg(&len).arg(&idx_buf).arg(dst);
-        unsafe { b.launch(cfg(count)) }.map_err(|e| format!("scatter_ones_u32 launch: {e}"))
+        unsafe { b.launch(cfg(count)) }.map(|_| ()).map_err(|e| format!("scatter_ones_u32 launch: {e}"))
     }
 
     pub fn upload_sparse(&mut self, name: &str, rows: u32, cols: u32, row_ptr: &[u32], values: &[f32], col_idx: &[u32]) {
@@ -431,7 +431,7 @@ impl CudaEngine {
         let count = indices.len() as u32;
         let mut b = self.stream.launch_builder(&self.f_scatter_f32);
         b.arg(&count).arg(&vcount).arg(&start).arg(&len).arg(&psi).arg(&idx_buf).arg(&val_buf).arg(&c.currents);
-        unsafe { b.launch(cfg(count)) }.map_err(|e| format!("scatter_vals_f32 launch: {e}"))
+        unsafe { b.launch(cfg(count)) }.map(|_| ()).map_err(|e| format!("scatter_vals_f32 launch: {e}"))
     }
 
     pub fn readback_letter_buckets(&self, cluster: &str, region: &str, bucket_count: u32, sub_slice_len: u32, start_offset: u32) -> Result<Vec<u32>, String> {
