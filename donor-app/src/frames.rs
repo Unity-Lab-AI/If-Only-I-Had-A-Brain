@@ -3,10 +3,14 @@
 //!   'SPRS' | typeByte(1) | reqId(u32 LE) | nameLen(u16 LE) | name(UTF-8) | pad→4B align
 //! Types: 1=upload, 2=propagate, 3=hebbian, 4=chunked-upload, 5=batched-hebbian,
 //! 7=write-spike-slice, 8=write-current-slice, 9=clear-spike-region (7-9: v0.3.13
-//! binary teach patterns - fire-and-forget, no ack; name field carries "cluster/region").
+//! binary teach patterns - fire-and-forget, no ack; name field carries "cluster/region"),
+//! 12=repeat (v0.3.15: the server detected a byte-identical teach payload and sends this
+//! ~30-byte frame instead of re-shipping ~150-700KB — the donor re-executes its cached
+//! copy; payload = origType(u8); type-3 repeats carry a real reqId and are acked as type 3).
 //!
-//! Cluster-binding metadata (chunked flag bit 2) is parsed but treated as standalone for
-//! the MVP (propagate uses the carried preSpikes); cluster-slice binding is a refinement.
+//! Cluster-binding metadata (chunked flag bit 2) is CAPTURED as of v0.3.15 (was parsed +
+//! discarded): a bound matrix's batched-hebbian (type 5) reads resident cluster spike
+//! state at the bound offsets instead of acking a stub.
 
 const MAGIC_SPRS: &[u8; 4] = b"SPRS";
 
@@ -44,6 +48,22 @@ pub enum Frame {
     WriteSpikeSlice { cluster: String, region: String, indices: Vec<u32> },
     WriteCurrentSlice { cluster: String, region: String, indices: Vec<u32>, values: Vec<f32>, psi: f32 },
     ClearSpikeRegion { cluster: String, region: String },
+    /// v0.3.15 — re-execute the cached payload of the last (orig_type, name) frame.
+    Repeat { req_id: u32, orig_type: u8, name: String },
+}
+
+/// Cluster-slice binding for a sparse matrix (chunk flags bit 2): the matrix's pre
+/// spikes live in `src_cluster`'s spike buffer at [src_start..src_end] and its post
+/// side in `dst_cluster`'s at [dst_start..dst_end] — offsets are cluster-absolute,
+/// exactly the compute.html semantics.
+#[derive(Debug, Clone)]
+pub struct Binding {
+    pub src_cluster: String,
+    pub dst_cluster: String,
+    pub src_start: u32,
+    pub src_end: u32,
+    pub dst_start: u32,
+    pub dst_end: u32,
 }
 
 #[derive(Debug)]
@@ -52,6 +72,7 @@ pub struct ChunkFirst {
     pub cols: u32,
     pub nnz: u32,
     pub row_ptr: Vec<u32>,
+    pub binding: Option<Binding>,
 }
 
 struct Reader<'a> {
@@ -153,17 +174,21 @@ pub fn decode(data: &[u8]) -> Option<Frame> {
                 let row_ptr_len = r.u32()? as usize;
                 let row_ptr = r.u32_vec(row_ptr_len)?;
                 r.align4();
-                if flags & 2 != 0 {
-                    // cluster-binding metadata — parse + skip (standalone for MVP).
+                // v0.3.15 — cluster-binding metadata is CAPTURED (used to be skipped):
+                // it is what lets batched-hebbian run on resident cluster spike state.
+                let binding = if flags & 2 != 0 {
                     let src_len = r.u16()? as usize;
-                    let _src = r.bytes(src_len)?;
+                    let src_cluster = String::from_utf8_lossy(r.bytes(src_len)?).into_owned();
                     r.align4();
                     let dst_len = r.u16()? as usize;
-                    let _dst = r.bytes(dst_len)?;
+                    let dst_cluster = String::from_utf8_lossy(r.bytes(dst_len)?).into_owned();
                     r.align4();
-                    let _ = (r.u32()?, r.u32()?, r.u32()?, r.u32()?); // src/dst start/end
-                }
-                Some(ChunkFirst { rows, cols, nnz, row_ptr })
+                    let (src_start, src_end, dst_start, dst_end) = (r.u32()?, r.u32()?, r.u32()?, r.u32()?);
+                    Some(Binding { src_cluster, dst_cluster, src_start, src_end, dst_start, dst_end })
+                } else {
+                    None
+                };
+                Some(ChunkFirst { rows, cols, nnz, row_ptr, binding })
             } else {
                 None
             };
@@ -209,6 +234,11 @@ pub fn decode(data: &[u8]) -> Option<Frame> {
         9 => {
             let (cluster, region) = split_cluster_region(&name)?;
             Some(Frame::ClearSpikeRegion { cluster, region })
+        }
+        // v0.3.15 — repeat: name = the original frame's name field, payload = origType.
+        12 => {
+            let orig_type = r.u8()?;
+            Some(Frame::Repeat { req_id, orig_type, name })
         }
         _ => None,
     }

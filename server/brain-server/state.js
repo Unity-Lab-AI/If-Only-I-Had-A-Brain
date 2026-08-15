@@ -1431,6 +1431,14 @@ const SERVER_STATE_MIXIN = {
       // each panel computing its own.
       gpuShadowDirty: !!(this.cortexCluster && this.cortexCluster._gpuShadowDirty),
       lastDropTs: this._wsLastDropTs || 0,
+      // RH.3r (v0.3.15) — per-frame-type outbound teach telemetry: frames +
+      // bytes per SPRS type (t3 hebbian arrays, t7 spike writes, t8 current
+      // writes, t9 clears, t12 repeats) plus the bytes repeat compression
+      // avoided shipping. The wire river's composition is READ here now,
+      // never again inferred from average message sizes.
+      teachOutByType: this._teachOutByType || null,
+      teachOutBytesSaved: this._teachOutBytesSaved || 0,
+      repeatTeach: !!this._repeatTeachOk,
     };
   },
 };

@@ -260,6 +260,17 @@ struct PartialUpload {
     row_ptr: Vec<u32>,
     values: Vec<f32>,
     col_idx: Vec<u32>,
+    binding: Option<frames::Binding>,
+}
+
+/// v0.3.15 — cached teach payloads keyed (origType, frame name), so a ~30-byte
+/// type-12 repeat frame re-executes the identical GPU op without the server
+/// re-shipping the 150-700KB index arrays (the measured wire river). One entry
+/// per (type, region/matrix) — bounded by the brain's region + matrix count.
+enum CachedTeach {
+    Spike { cluster: String, region: String, indices: Vec<u32> },
+    Current { cluster: String, region: String, indices: Vec<u32>, values: Vec<f32>, psi: f32 },
+    Hebbian { name: String, pre: Vec<u32>, post: Vec<u32>, lr: f32 },
 }
 
 /// M3.3 — a unit of GPU work handed from the (async) WS loop to the GPU worker thread.
@@ -603,6 +614,7 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                     Frame::WriteSpikeSlice { cluster, region, .. } => format!("write_spike(bin) {cluster}/{region}"),
                     Frame::WriteCurrentSlice { cluster, region, .. } => format!("write_current(bin) {cluster}/{region}"),
                     Frame::ClearSpikeRegion { cluster, region } => format!("clear_spike(bin) {cluster}/{region}"),
+                    Frame::Repeat { name, .. } => format!("repeat {name}"),
                 },
                 Work::WriteSpike { cluster, region, .. } => format!("write_spike {cluster}/{region}"),
                 Work::WriteCurrent { cluster, region, .. } => format!("write_current {cluster}/{region}"),
@@ -720,6 +732,11 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
     let mut bytes_in_window: u64 = 0;
     let mut link_down_mbps: f64 = 0.0;
     let mut link_window_start = std::time::Instant::now();
+    // v0.3.15 — teach-payload cache for type-12 repeat frames + miss counter.
+    // Lives in the WS loop (per-connection, like the server's per-socket cache),
+    // so a reconnect starts empty on BOTH ends in lockstep.
+    let mut teach_cache: HashMap<(u8, String), CachedTeach> = HashMap::new();
+    let mut repeat_misses: u64 = 0;
     // GPU-HANG WATCHDOG — poll the worker's activity stamp. When one Work item
     // blocks past the limit, the GPU engine is wedged (driver hang): crumb it
     // WITH telemetry, tell the brain while the socket still works, abandon the
@@ -869,10 +886,42 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                             // v0.3.13 binary teach patterns route straight onto the SAME
                             // Work items the JSON path produces - identical GPU behavior,
                             // minus the serde_json parse that was the drain bottleneck.
+                            // v0.3.15 - teach payloads are CACHED at receive so a type-12
+                            // repeat re-executes them without the bytes crossing the wire.
                             match frame {
-                                Frame::WriteSpikeSlice { cluster, region, indices } => workq.push(Work::WriteSpike { cluster, region, indices }),
-                                Frame::WriteCurrentSlice { cluster, region, indices, values, psi } => workq.push(Work::WriteCurrent { cluster, region, indices, values, psi }),
+                                Frame::WriteSpikeSlice { cluster, region, indices } => {
+                                    teach_cache.insert((7u8, format!("{cluster}/{region}")), CachedTeach::Spike { cluster: cluster.clone(), region: region.clone(), indices: indices.clone() });
+                                    workq.push(Work::WriteSpike { cluster, region, indices });
+                                }
+                                Frame::WriteCurrentSlice { cluster, region, indices, values, psi } => {
+                                    teach_cache.insert((8u8, format!("{cluster}/{region}")), CachedTeach::Current { cluster: cluster.clone(), region: region.clone(), indices: indices.clone(), values: values.clone(), psi });
+                                    workq.push(Work::WriteCurrent { cluster, region, indices, values, psi });
+                                }
                                 Frame::ClearSpikeRegion { cluster, region } => workq.push(Work::ClearSpike { cluster, region }),
+                                Frame::Hebbian { req_id, name, pre, post, lr } => {
+                                    teach_cache.insert((3u8, name.clone()), CachedTeach::Hebbian { name: name.clone(), pre: pre.clone(), post: post.clone(), lr });
+                                    workq.push(Work::Frame(Frame::Hebbian { req_id, name, pre, post, lr }));
+                                }
+                                Frame::Repeat { req_id, orig_type, name } => {
+                                    match teach_cache.get(&(orig_type, name.clone())) {
+                                        Some(CachedTeach::Spike { cluster, region, indices }) => workq.push(Work::WriteSpike { cluster: cluster.clone(), region: region.clone(), indices: indices.clone() }),
+                                        Some(CachedTeach::Current { cluster, region, indices, values, psi }) => workq.push(Work::WriteCurrent { cluster: cluster.clone(), region: region.clone(), indices: indices.clone(), values: values.clone(), psi: *psi }),
+                                        Some(CachedTeach::Hebbian { name: n, pre, post, lr }) => workq.push(Work::Frame(Frame::Hebbian { req_id, name: n.clone(), pre: pre.clone(), post: post.clone(), lr: *lr })),
+                                        None => {
+                                            // Cache miss (should not happen on one ordered socket) —
+                                            // NEVER stall the server: type-3 repeats are awaited, so
+                                            // ack even though nothing executed, and count the miss.
+                                            pending.fetch_sub(1, Ordering::Relaxed);
+                                            repeat_misses += 1;
+                                            if orig_type == 3 {
+                                                let _ = tx.send(Message::Binary(frames::ack_simple(3, req_id).into())).await;
+                                            }
+                                            if repeat_misses <= 3 {
+                                                eprintln!("[donor] repeat-frame cache MISS (type {orig_type} '{name}') — acked without executing ({repeat_misses} total).");
+                                            }
+                                        }
+                                    }
+                                }
                                 other => workq.push(Work::Frame(other)),
                             }
                         }
@@ -959,7 +1008,8 @@ fn run_batch(engine: &MultiEngine, batch: &ComputeBatch, step_seed: &mut u32, st
 fn handle_frame(engine: &mut MultiEngine, partials: &mut HashMap<String, PartialUpload>, frame: Frame) -> Option<Vec<u8>> {
     match frame {
         Frame::Upload { req_id, name, rows, cols, row_ptr, values, col_idx } => {
-            engine.upload_sparse(&name, rows, cols, &row_ptr, &values, &col_idx);
+            // Legacy non-chunked upload carries no binding metadata — standalone.
+            engine.upload_sparse(&name, rows, cols, &row_ptr, &values, &col_idx, None);
             Some(frames::ack_simple(1, req_id))
         }
         Frame::Chunk { req_id, name, chunk_seq, total_chunks, first, values_offset, values, col_idx_offset, col_idx } => {
@@ -972,6 +1022,7 @@ fn handle_frame(engine: &mut MultiEngine, partials: &mut HashMap<String, Partial
                         row_ptr: f.row_ptr,
                         values: vec![0.0; f.nnz as usize],
                         col_idx: vec![0u32; f.nnz as usize],
+                        binding: f.binding,
                     },
                 );
             }
@@ -992,7 +1043,7 @@ fn handle_frame(engine: &mut MultiEngine, partials: &mut HashMap<String, Partial
             // The server expects the SPRR ack only on the LAST chunk.
             if chunk_seq + 1 >= total_chunks {
                 if let Some(p) = partials.remove(&name) {
-                    engine.upload_sparse(&name, p.rows, p.cols, &p.row_ptr, &p.values, &p.col_idx);
+                    engine.upload_sparse(&name, p.rows, p.cols, &p.row_ptr, &p.values, &p.col_idx, p.binding);
                 }
                 Some(frames::ack_simple(1, req_id))
             } else {
@@ -1027,11 +1078,22 @@ fn handle_frame(engine: &mut MultiEngine, partials: &mut HashMap<String, Partial
             let _ = engine.clear_spike_region(&cluster, &region);
             None
         }
-        Frame::BatchedHebbian { req_id, ops: _ } => {
-            // type=5 carries only (name, lr) per op — spikes are resident from prior writes.
-            // M3 refinement: track resident pre/post spikes per matrix. For now ack so the
-            // brain doesn't stall (no incorrect weight change applied).
+        Frame::BatchedHebbian { req_id, ops } => {
+            // v0.3.15 — REAL resident bound-hebbian (this was a stub that acked and
+            // applied NOTHING, which left the GPU weight shadow permanently drifted).
+            // Each (name, lr) op runs plasticity on a cluster-BOUND matrix reading the
+            // resident spike state the type-7/9 pattern frames established, at the
+            // bound src/dst offsets — the exact compute.html semantics. Unbound or
+            // unresident matrices are skipped and counted, never silently pretended.
+            for (name, lr) in &ops {
+                if let Err(e) = engine.hebbian_bound(name, *lr) {
+                    eprintln!("[donor] bound hebbian '{name}' failed: {e}");
+                }
+            }
             Some(frames::ack_simple(5, req_id))
         }
+        // Repeat frames are resolved against the teach cache at receive and never
+        // reach the worker; the arm exists for match exhaustiveness.
+        Frame::Repeat { .. } => None,
     }
 }
