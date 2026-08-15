@@ -11083,6 +11083,18 @@ export class Curriculum {
     const ready = () => cluster._gpuProxyReady === true
       && !!(brain && brain._gpuClient && brain._gpuClient.readyState === 1);
     if (ready()) {
+      // WALK PACED TO THE DONOR (2026-08-15, operator-chosen trade). The
+      // substrate being READY is necessary but not sufficient: the pattern
+      // lane absorbs ~10 teach groups/sec while an unpaced walk produces ~32,
+      // so two thirds of GPU teaching could never land - refused honestly by
+      // the stale guard, but refused. Waiting here, on every teach call, means
+      // each iteration starts exactly when its first frame will be admitted:
+      // the whole pattern ships, the Hebbian trains the association it was
+      // meant to, and the suppression counter stays at true saturation only.
+      // The walk runs at the donor's real absorption rate; slower and true.
+      if (brain && typeof brain._patternLaneWait === 'function') {
+        try { await brain._patternLaneWait(); } catch { /* pacing must never break a teach call */ }
+      }
       if (this._substratePause) {
         this._hb(`[Curriculum] > compute substrate READY - walk resumes (was paused ${((Date.now() - this._substratePause.sinceMs) / 60000).toFixed(1)}min: ${this._substratePause.reason}).`);
         this._substratePause = null;

@@ -1,6 +1,18 @@
 # RESUME — Session Pickup Brief
 
-> ## ⭐⭐⭐ 2026-08-15 (latest) — TEACH-PATTERN ATOMICITY: pacing was refusing ~1/3 of her teaching — the group is now the unit of admission
+> ## ⭐⭐⭐ 2026-08-15 (latest) — WALK PACED TO THE DONOR — Gee chose 100%-correct over speed; ONE deploy pending
+>
+> **THE STATE:** Gee pressed Update & FRESH WALK (`bb06b3e` live — every prior fix active, word_motor unmask included). Vocab queue LOADED at 2,247. But TP.6 FAILED: suppression ~83/s — the walk produces ~32 teach groups/sec, the donor link absorbs ~10, and no admission scheme fixes a producer running 3× its pipe. Gee’s verbatim decision: **“Pace the walk to the donor (100% correct)”**.
+>
+> **SHIPPED (not yet deployed):** `brain._patternLaneWait()` in `gpu.js` — waits until the lane’s OWN admission condition would pass (same base throttle, same adaptive back-off, no second policy) — awaited by `_awaitComputeSubstrate` on every teach call. Every iteration ships whole; Hebbian trains what it meant to; walk runs at the donor’s true rate (~3× longer).
+>
+> **PENDING GEE:** (1) one more **Update & SAVESTART** — deploys the donor-kill substrate gate (DK), the atomic groups (TP) and this pacing (WP) onto the running fresh walk; weights kept, walk continues. (2) **DK.6** — donor-kill re-run after that deploy.
+>
+> **PENDING ME (all read-only polls):** WP.5 — teach/min ≈ lane rate, suppression growth ~0. OI.2 — first dream window: `definitionQueue.lastWindow` shows ~120 processed with binds, `kVocabTaught` climbs. OI.5b — word_motor wiring: `sem_to_word_motor` nnz ≈ 4× 66,964 in the boot log, `matrixDrivenPct` climbing off 6% after ELA-K word emission. OI.7 — the closing docs batch.
+>
+> ---
+
+> ## ⭐⭐⭐ 2026-08-15 (earlier) — TEACH-PATTERN ATOMICITY: pacing was refusing ~1/3 of her teaching — the group is now the unit of admission
 >
 > **THE NUMBER THAT FOUND IT:** `patternSheds: 59` vs `hebbianSuppressedStale: 25,676` in ~13 min (~33/s) on `be5dee59`. When a guard’s refusal count is 400× its trigger count, the guard is being tripped by something other than what it guards against — here, the D.1 pacing throttle staling the lane on EVERY frame it paced, while a teach group (clear → writes → hebbianBound) needs ALL its frames to land for the Hebbian to be valid.
 >

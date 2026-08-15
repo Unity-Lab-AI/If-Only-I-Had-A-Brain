@@ -2798,6 +2798,46 @@ const SERVER_GPU_MIXIN = {
     return true;
   },
 
+  /**
+   * WALK PACED TO THE DONOR (2026-08-15, operator-chosen trade).
+   *
+   * The walk taught ~32 iterations/sec while the donor link absorbs ~10
+   * pattern groups/sec, so two thirds of GPU teaching could not fit through
+   * the pipe no matter how admission was arranged - corrupt before the stale
+   * guard, honestly refused after it, never actually taught. The operator
+   * chose correctness over speed: every teach iteration WAITS for lane
+   * admission before it starts, so its whole pattern ships and its Hebbian
+   * fires on exactly the pattern it was meant for. The walk runs at the
+   * donor's real absorption rate (~3x longer) and nothing is lost.
+   *
+   * Awaited by the curriculum's substrate gate on every teach call. Uses the
+   * SAME base throttle and the SAME adaptive back-off the lane's own admission
+   * uses, so this waits precisely as long as the first frame would have been
+   * refused - no second pacing policy to drift out of agreement. Returns
+   * immediately when the donor socket is not open; the substrate gate owns
+   * that case and pauses the walk properly.
+   */
+  async _patternLaneWait() {
+    const base = (typeof process !== 'undefined' && Number(process.env?.DREAM_PATTERN_TEACH_THROTTLE_MS) > 0)
+      ? Number(process.env.DREAM_PATTERN_TEACH_THROTTLE_MS) : 100;
+    for (;;) {
+      const ws = this._gpuClient;
+      if (!ws || ws.readyState !== 1) return;
+      let mult = 1;
+      try {
+        const linkCap = this._donorLinkCapBytes();
+        const buf = (typeof ws.bufferedAmount === 'number') ? ws.bufferedAmount : 0;
+        if (linkCap > 0 && buf > linkCap) mult = Math.min(16, buf / linkCap);
+      } catch { /* pace on the flat base */ }
+      const dueAt = (this._wsPatternLastSendMs || 0) + Math.round(base * mult);
+      let overCap = false;
+      try { overCap = ws.bufferedAmount > this._donorPatternLaneCapBytes(); } catch { overCap = false; }
+      const waitMs = dueAt - Date.now();
+      if (waitMs <= 0 && !overCap) return;
+      await new Promise((r) => setTimeout(r, Math.min(100, Math.max(5, waitMs > 0 ? waitMs : 25))));
+    }
+  },
+
   _donorPatternSendGated(json) {
     if (!this._donorPatternLaneOpen()) return false;
     this._gpuClient.send(json);
