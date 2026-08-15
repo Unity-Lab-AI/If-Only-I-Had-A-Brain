@@ -5,6 +5,25 @@
 
 ---
 
+## 2026-08-15 - TEACH-PATTERN ATOMICITY: pacing was refusing ~1/3 of her teaching - feature/teach-pattern-atomicity-0815
+
+### Gee ask (verbatim per LAW #0)
+
+> *"wo whats next?"* -> the OI.3 live check surfaced this.
+> *"so there is nothing else for you to finish? we are 100%?"* -> the honest answer was NO: this item.
+
+**MEASURED LIVE (build `be5dee59`, ~13 min after boot):** `patternSheds: 59` but `hebbianSuppressedStale: 25,676` (~33/s). The PS.1 stale guard was doing its job - never train on a pattern that did not land - but the D.1 pacing throttle ALSO marked the lane stale, and pacing fires constantly during teach. A teach iteration is clear -> write(s) -> hebbianBound; if ANY frame of that group hit the 100ms throttle, the group's Hebbian was suppressed. Teach runs many iterations/sec against ~10 admitted frames/sec, so roughly a third of all teach updates were refused BY PACING, not by saturation. **Before PS.1 they were CORRUPT; after PS.1 they were LOST; neither is 100% correct.**
+
+**SHIPPED - the GROUP is now the unit of admission (`server/brain-server/gpu.js`):**
+
+- The FIRST frame of a teach iteration faces the pacing throttle. Refused -> the WHOLE group is refused before any state ships (stale marked, Hebbian suppressed, zero bytes on the wire).
+- Frames inside an admitted group BYPASS pacing - the decision was already made. A group is opened by the first successfully-sent frame, closed by the `gpuSparseHebbianBound` dispatch (either branch - suppressed or enqueued), with a 500ms TTL so a hebbian-less path can never hold the lane open.
+- **The donor stays protected by both remaining mechanisms, unchanged:** the ADAPTIVE back-off is computed from live `bufferedAmount` at every group admission, so the inter-group interval stretches the moment bytes pile up; and the 16MB lane cap still hard-stops a group mid-flight under true saturation - staling that ONE group (which also closes it), the rare case instead of the common one.
+
+**NET EFFECT:** each admitted group delivers one COMPLETE teach pattern and its Hebbian fires on exactly the pattern it was meant for. Suppression collapses to the true-saturation case. D.1's pacing ceiling still applies between groups, so the drown protection holds.
+
+**VERIFIED (no-tests LAW):** `node --check` PASS; edited region re-read; bundle rebuilt (server-only change; bundle for consistency). **LIVE-VERIFY = TP.6:** after the next Update & SAVESTART, `hebbianSuppressedStale` growth must collapse from ~33/s to near-zero outside true saturation, with donor RTT < 1s and `patternSheds` low.
+
 ## 2026-08-15 - G.9 FAILED LIVE: she kept teaching after the donor was killed - the substrate flag was a latch - feature/donor-kill-gate-0815
 
 ### Gee ask (verbatim per LAW #0)
