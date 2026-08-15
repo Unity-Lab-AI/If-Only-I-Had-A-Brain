@@ -889,6 +889,12 @@ const SERVER_STATE_MIXIN = {
             msgOut: c.msgOut || 0,
             bufferedKB: r1(buffered / 1024),
             gpuName: isGPU ? (c.gpuName || (tele && tele.gpuName) || null) : null,
+            // v0.3.13 — the donor's announced binary version + whether the server
+            // selected BINARY teach frames for it. Without these two fields the
+            // BT.8 verification was guesswork: the lane symptoms said JSON but
+            // nothing in the payload could say WHICH binary had registered.
+            donorAppVersion: isGPU ? (c.donorAppVersion || null) : null,
+            binaryTeach: isGPU ? !!(this._binTeachWs === ws && this._binTeachOk === true) : null,
             gneuronsPerSec: (isGPU && tele) ? r2(tele.gneuronsPerSec || 0) : null,
             // F9 — WebGPU storage-binding cap + capability flag, so the dashboard can
             // show "GPU buffer too small for cortex matrix" instead of a mystery 0 Gn/s.
