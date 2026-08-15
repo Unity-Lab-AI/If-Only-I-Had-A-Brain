@@ -12546,6 +12546,10 @@ export class Curriculum {
       }
     }
     if (haveProxy && fwdIndices.length > 0) {
+      // TEMPLATE FORM (donor-v0.3.16) — a constant-value run is a count-1
+      // template: one value tiled across the slot. See cluster.js
+      // injectEmbeddingToRegion for the tagged-property rationale.
+      fwdValues._template = { rowStart: slotStart - fineType.start, groupSize: slotEnd - slotStart, values: [value] };
       try { cluster._gpuProxy.writeCurrentSlice('fineType', fwdIndices, fwdValues); }
       catch { /* non-fatal */ }
     }
@@ -13926,8 +13930,10 @@ export class Curriculum {
     const haveProxy = !!(cluster._gpuProxy && cluster._gpuProxy.writeCurrentSlice);
     const fwdIndices = haveProxy ? [] : null;
     const fwdValues = haveProxy ? [] : null;
+    const tmplValues = haveProxy ? [] : null;
     for (let d = 0; d < emb.length; d++) {
       const value = emb[d] * 8 * (strength ?? 1.0);
+      if (tmplValues) tmplValues.push(value);
       const startNeuron = sliceStart + d * gSize;
       for (let n = 0; n < gSize; n++) {
         const idx = startNeuron + n;
@@ -13942,6 +13948,9 @@ export class Curriculum {
       }
     }
     if (haveProxy && fwdIndices.length > 0) {
+      // TEMPLATE FORM (donor-v0.3.16) — offset-tiled injection; see
+      // cluster.js injectEmbeddingToRegion for the tagged-property rationale.
+      fwdValues._template = { rowStart: sliceStart - region.start, groupSize: gSize, values: tmplValues };
       try { cluster._gpuProxy.writeCurrentSlice(regionName, fwdIndices, fwdValues); }
       catch { /* non-fatal — CPU injection already landed */ }
     }

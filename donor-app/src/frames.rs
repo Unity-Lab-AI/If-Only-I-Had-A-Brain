@@ -50,6 +50,14 @@ pub enum Frame {
     ClearSpikeRegion { cluster: String, region: String },
     /// v0.3.15 — re-execute the cached payload of the last (orig_type, name) frame.
     Repeat { req_id: u32, orig_type: u8, name: String },
+    /// v0.3.16 — TEMPLATE current write: the server ships the group-tiled
+    /// template (~KB) instead of the expanded (idx,val) pairs (measured at
+    /// ~840KB per frame = 99.5% of all box→donor bytes at the 1.5M cortex).
+    /// Expansion at receive reproduces the IDENTICAL write_current work item:
+    /// dim d's value fills rows [row_start + d*group_size, +group_size),
+    /// clipped at the region end; zero-valued dims are skipped (they read as
+    /// 0 from the zero-then-scatter semantics anyway).
+    WriteCurrentTemplate { cluster: String, region: String, row_start: u32, group_size: u32, values: Vec<f32>, psi: f32 },
 }
 
 /// Cluster-slice binding for a sparse matrix (chunk flags bit 2): the matrix's pre
@@ -234,6 +242,16 @@ pub fn decode(data: &[u8]) -> Option<Frame> {
         9 => {
             let (cluster, region) = split_cluster_region(&name)?;
             Some(Frame::ClearSpikeRegion { cluster, region })
+        }
+        // v0.3.16 — template current write: rowStart + groupSize + count + f32 values + psi.
+        10 => {
+            let (cluster, region) = split_cluster_region(&name)?;
+            let row_start = r.u32()?;
+            let group_size = r.u32()?.max(1);
+            let count = r.u32()? as usize;
+            let values = r.f32_vec(count)?;
+            let psi = r.f32()?;
+            Some(Frame::WriteCurrentTemplate { cluster, region, row_start, group_size, values, psi })
         }
         // v0.3.15 — repeat: name = the original frame's name field, payload = origType.
         12 => {

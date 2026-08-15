@@ -166,8 +166,10 @@ function injectEmbeddingToRegionOffset(cluster, regionName, emb, strength, offse
   const haveProxy = !!(cluster._gpuProxy && cluster._gpuProxy.writeCurrentSlice);
   const fwdIndices = haveProxy ? [] : null;
   const fwdValues = haveProxy ? [] : null;
+  const tmplValues = haveProxy ? [] : null;
   for (let d = 0; d < emb.length; d++) {
     const value = emb[d] * INJECTION_GAIN * (strength ?? 1.0);
+    if (tmplValues) tmplValues.push(value);
     const startNeuron = sliceStart + d * gSize;
     for (let n = 0; n < gSize; n++) {
       const idx = startNeuron + n;
@@ -180,6 +182,9 @@ function injectEmbeddingToRegionOffset(cluster, regionName, emb, strength, offse
     }
   }
   if (haveProxy && fwdIndices.length > 0) {
+    // TEMPLATE FORM (donor-v0.3.16) — offset variant: rowStart is the slice
+    // offset within the region. See injectEmbeddingToRegion for the rationale.
+    fwdValues._template = { rowStart: sliceStart - region.start, groupSize: gSize, values: tmplValues };
     try { cluster._gpuProxy.writeCurrentSlice(regionName, fwdIndices, fwdValues); }
     catch { /* non-fatal — CPU injection already landed */ }
   }
@@ -1422,8 +1427,10 @@ export class NeuronCluster {
         this.externalCurrent[i] = 0;
       }
     }
+    const tmplValues = haveProxy ? [] : null;
     for (let d = 0; d < emb.length; d++) {
       const value = emb[d] * INJECTION_GAIN * strength;
+      if (tmplValues) tmplValues.push(value);
       const startNeuron = region.start + d * groupSize;
       for (let n = 0; n < groupSize; n++) {
         const idx = startNeuron + n;
@@ -1442,6 +1449,15 @@ export class NeuronCluster {
       }
     }
     if (haveProxy && fwdIndices.length > 0) {
+      // TEMPLATE FORM (donor-v0.3.16) — this injection is a group-tiled
+      // expansion of ~emb.length values, so the whole pattern reconstructs
+      // from {rowStart, groupSize, values} (~KB) instead of the expanded
+      // (idx,val) pairs (~hundreds of KB at the 1.5M cortex — measured as
+      // 99.5% of all box→donor bytes). The template rides as a tagged
+      // property on the values array because the brain-server proxy arrow
+      // forwards arguments positionally (promoting it to a real parameter
+      // needs that file's full-read batch — recorded in TODO).
+      fwdValues._template = { rowStart: 0, groupSize, values: tmplValues };
       try { this._gpuProxy.writeCurrentSlice(regionName, fwdIndices, fwdValues); }
       catch { /* non-fatal — CPU path already updated */ }
     }

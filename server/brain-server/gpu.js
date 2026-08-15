@@ -2947,6 +2947,28 @@ const SERVER_GPU_MIXIN = {
     return this._repeatTeachOk === true;
   },
 
+  /**
+   * v0.3.16 - does the PRIMARY donor speak TEMPLATE current frames (type 10)?
+   * Same TU.20.12 negotiation pattern as binTeach/repeatTeach.
+   */
+  _donorTemplateTeach() {
+    const ws = this._gpuClient;
+    if (!ws) return false;
+    if (this._tmplTeachWs === ws) return this._tmplTeachOk === true;
+    this._tmplTeachWs = ws;
+    this._tmplTeachOk = false;
+    try {
+      const c = (this.clients && this.clients.get) ? this.clients.get(ws) : null;
+      const v = ((c && c.donorAppVersion) || '').toString().trim();
+      const m = v.match(/^(\d+)\.(\d+)\.(\d+)/);
+      if (m) this._tmplTeachOk = ((+m[1]) * 1e6 + (+m[2]) * 1e3 + (+m[3])) >= 3016; // 0.3.16
+    } catch { this._tmplTeachOk = false; }
+    try {
+      console.log(`[Brain] teach-frame TEMPLATE currents for PRIMARY donor: ${this._tmplTeachOk ? 'ON (SPRS 10)' : 'off'} (requires >= 0.3.16).`);
+    } catch { /* best-effort */ }
+    return this._tmplTeachOk === true;
+  },
+
   // Per-SOCKET last-sent teach payload cache ('type:name' -> Buffer). Dies with
   // the socket, so a reconnected donor always receives full frames first - the
   // donor's own cache is per-connection too, keeping both ends in lockstep.
@@ -3058,6 +3080,29 @@ const SERVER_GPU_MIXIN = {
   _gpuWriteCortexCurrentSlice(regionName, sparseIndices, sparseValues) {
     if (!this._gpuClient || this._gpuClient.readyState !== 1) return;
     if (!this._donorPatternLaneOpen()) return;   // BEFORE Array.from/stringify — a shed frame costs zero serialization
+    // TEMPLATE FORM (donor-v0.3.16) — every injection call site builds its
+    // expanded (idx,val) pairs from a group-tiled template {rowStart,
+    // groupSize, values} and tags it on the values array (the brain-server
+    // proxy arrow forwards positionally; promotion to a real parameter waits
+    // on that file's full-read batch). When the donor speaks type 10, ship
+    // the ~KB template and let it expand at receive into the IDENTICAL
+    // write_current work item — measured 99.5% of all outbound bytes were
+    // these frames fully expanded (~840KB each at the 1.5M cortex).
+    const tmpl = sparseValues && sparseValues._template;
+    if (tmpl && Array.isArray(tmpl.values) && tmpl.values.length > 0 && this._donorTemplateTeach()) {
+      const name = `cortex/${regionName}`;
+      const hdr = this._encodeSparseHeader(10, 0, name);
+      const meta = Buffer.alloc(12);
+      meta.writeUInt32LE(tmpl.rowStart >>> 0, 0);
+      meta.writeUInt32LE(Math.max(1, tmpl.groupSize >>> 0), 4);
+      meta.writeUInt32LE(tmpl.values.length >>> 0, 8);
+      const tv = Float32Array.from(tmpl.values);
+      const psiBuf = Buffer.alloc(4);
+      psiBuf.writeFloatLE(Math.round((this.psi ?? 0) * 1000) / 1000, 0); // PSIQ quantization, same law as t8
+      const frame = Buffer.concat([hdr, meta, Buffer.from(tv.buffer, tv.byteOffset, tv.byteLength), psiBuf]);
+      if (this._donorPatternSendGated(frame)) this._countTeachOut(10, frame.length);
+      return;
+    }
     const idx = Array.isArray(sparseIndices) ? sparseIndices : Array.from(sparseIndices || []);
     const val = Array.isArray(sparseValues)  ? sparseValues  : Array.from(sparseValues || []);
     if (idx.length === 0 || idx.length !== val.length) return;
