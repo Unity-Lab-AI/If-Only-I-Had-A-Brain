@@ -684,3 +684,20 @@ The CHECK is fixed (it now names starved projections instead of averaging them i
 - [x] **WP.3** **DONE.** Verify — no-tests LAW: `node --check`, ESM `import()`, re-read edits, bundle.
 - [x] **WP.4** **DONE.** Docs + FINALIZED, atomic commit, cascade, push BOTH remotes.
 - [ ] **WP.5** ⏳ LIVE-VERIFY after Gee's next Update & SAVESTART: teach/min settles near the lane rate (~600), `hebbianSuppressedStale` growth ~0, donor RTT healthy, and the walk still progresses phase over phase.
+
+---
+
+## OPEN TASKS — 2026-08-15 · LANE BASE THROTTLE 100ms → 15ms — the fixed constant, not the link, is what still refuses her teaching
+
+> Gee (verbatim): *"im pressing fresh walk , shes starting up her"*
+
+**WP.5 PARTIAL (fresh walk 2, build `1a6498a` — latest main, all fixes live):** pacing works — teach/min pulled from ~1,900 down to 449–739, `patternSheds` collapsed 20k → 1.8k — but `hebbianSuppressedStale` still grows at ~29/s, not ~0.
+
+**RESIDUAL ROOT:** the WP gate paces per teach CALL, but one call writes 2–3 pattern GROUPS (positive pair, anti-pair, lateral-inhibition variants). The first group is admitted post-wait; the next group lands ~0ms later, inside the 100ms base throttle window, and is refused → its Hebbians suppressed. Meanwhile **`bufferedAmount` reads 0.0MB continuously** — the link is nowhere near capacity. The refusals come from a GUESSED CONSTANT, not from measured pressure.
+
+**THE CORRECT GOVERNOR IS BACKPRESSURE, and every safety mechanism for it now exists:** the adaptive back-off scales the interval up to 16× off live `bufferedAmount` AND smoothed RTT; the 16MB lane cap stales a group under true saturation (honest, PS.1); WP pacing slows the walk when the lane refuses; atomic groups keep corruption impossible. With those four in place, the base throttle's job is only to set the UNPRESSURED cadence — and 100ms starves a healthy link.
+
+- [x] **LB.1** **DONE.** Base `DREAM_PATTERN_TEACH_THROTTLE_MS` default 100ms → 15ms in BOTH readers (`_donorPatternLaneOpen` admission + `_patternLaneWait`), same env override, so the walk's cadence is governed by the adaptive feedback loops instead of a fixed guess. ~66 groups/s ceiling unpressured; the moment buffer or RTT climbs, the mult stretches it back out.
+- [x] **LB.2** **DONE.** Verify — no-tests LAW: `node --check`, re-read both sites, bundle.
+- [x] **LB.3** **DONE.** Docs + FINALIZED, atomic commit, cascade, push BOTH remotes.
+- [ ] **LB.4** ⏳ LIVE-VERIFY after Gee's next Update & SAVESTART: `hebbianSuppressedStale` growth ~0, teach/min recovers most of the way (the walk no longer starves on a healthy link), donor RTT stays <1s and buffer near 0 — and if the donor ever chokes, the adaptive mult + WP pacing must slow the walk instead of suppressing.

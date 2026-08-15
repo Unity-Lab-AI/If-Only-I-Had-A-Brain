@@ -5,6 +5,20 @@
 
 ---
 
+## 2026-08-15 - LANE BASE THROTTLE 100ms -> 15ms: the constant, not the link, was refusing her teaching - feature/lane-base-throttle-0815
+
+### Gee ask (verbatim per LAW #0)
+
+> *"im pressing fresh walk , shes starting up her"*
+
+**FRESH WALK 2 VERIFIED (build `1a6498a` - latest main, ALL fixes live from phase 1):** the WP pacing works - teach/min pulled from ~1,900 to 449-739, `patternSheds` collapsed 20k -> 1.8k. **But `hebbianSuppressedStale` still grew at ~29/s** instead of ~0.
+
+**RESIDUAL ROOT:** the WP gate paces per teach CALL, but one call writes 2-3 pattern GROUPS (positive pair, anti-pair, lateral-inhibition variants). The first group is admitted after the wait; the next lands ~0ms later, inside the fixed 100ms base window, and is refused. Meanwhile `bufferedAmount` read **0.0MB continuously** - the link was nowhere near capacity. The refusals came from a GUESSED CONSTANT, not measured pressure.
+
+**SHIPPED:** base `DREAM_PATTERN_TEACH_THROTTLE_MS` default 100ms -> **15ms at BOTH readers** (lane admission + `_patternLaneWait`, same env override so they can never disagree). The unpressured cadence now belongs to the link's measured state: the adaptive mult (live buffer + smoothed RTT, up to 16x) stretches the interval the moment pressure appears; the 16MB lane cap stales a group under true saturation (PS.1, honest); the WP gate slows the WALK when the lane refuses. A healthy link takes every group; a choking one slows the walk. Four feedback mechanisms replace one guess.
+
+**VERIFIED (no-tests LAW):** `node --check` PASS, both edited sites re-read, bundle rebuilt. **LIVE-VERIFY = LB.4** after the next Update & SAVESTART: suppression growth ~0, teach/min recovers on the healthy local link, RTT <1s, buffer ~0 - and under donor stress the mult + walk pacing must SLOW the walk rather than suppress.
+
 ## 2026-08-15 - WALK PACED TO THE DONOR: Gee chose 100%-correct over speed after TP.6 failed on the fresh walk - feature/walk-paced-to-donor-0815
 
 ### Gee ask (verbatim per LAW #0)

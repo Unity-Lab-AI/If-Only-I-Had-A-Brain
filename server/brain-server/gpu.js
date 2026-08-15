@@ -2733,7 +2733,17 @@ const SERVER_GPU_MIXIN = {
       //      being held under. Bounded at 16x so this can never become an
       //      effective mute.
       const _baseThrottle = Number(process.env.DREAM_PATTERN_TEACH_THROTTLE_MS) > 0
-        ? Number(process.env.DREAM_PATTERN_TEACH_THROTTLE_MS) : 100;
+        ? Number(process.env.DREAM_PATTERN_TEACH_THROTTLE_MS)
+        // BASE 100ms -> 15ms (2026-08-15). The 100ms constant - not the link -
+        // was what still refused teaching: bufferedAmount read 0.0MB
+        // continuously while ~29 Hebbians/sec were suppressed, because one
+        // teach call writes 2-3 pattern groups and the second landed inside
+        // the fixed window. The UNPRESSURED cadence belongs to the link's
+        // measured state now: the adaptive mult (live buffer + smoothed RTT,
+        // up to 16x), the 16MB lane cap (stales a group under true
+        // saturation), and the walk pacing gate together govern the rate.
+        // A healthy link takes every group; a choking one slows the walk.
+        : 15;
       let _mult = 1;
       try {
         const _linkCap = this._donorLinkCapBytes();
@@ -2819,7 +2829,17 @@ const SERVER_GPU_MIXIN = {
    */
   async _patternLaneWait() {
     const base = (typeof process !== 'undefined' && Number(process.env?.DREAM_PATTERN_TEACH_THROTTLE_MS) > 0)
-      ? Number(process.env.DREAM_PATTERN_TEACH_THROTTLE_MS) : 100;
+      ? Number(process.env.DREAM_PATTERN_TEACH_THROTTLE_MS)
+        // BASE 100ms -> 15ms (2026-08-15). The 100ms constant - not the link -
+        // was what still refused teaching: bufferedAmount read 0.0MB
+        // continuously while ~29 Hebbians/sec were suppressed, because one
+        // teach call writes 2-3 pattern groups and the second landed inside
+        // the fixed window. The UNPRESSURED cadence belongs to the link's
+        // measured state now: the adaptive mult (live buffer + smoothed RTT,
+        // up to 16x), the 16MB lane cap (stales a group under true
+        // saturation), and the walk pacing gate together govern the rate.
+        // A healthy link takes every group; a choking one slows the walk.
+        : 15;
     for (;;) {
       const ws = this._gpuClient;
       if (!ws || ws.readyState !== 1) return;
