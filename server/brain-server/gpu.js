@@ -2910,6 +2910,13 @@ const SERVER_GPU_MIXIN = {
         this._binTeachOk = num >= 3013; // 0.3.13
       }
     } catch { this._binTeachOk = false; }
+    // One-shot per socket: make the encoding decision VISIBLE. The first BT.8
+    // verification ran blind because nothing logged which protocol the primary
+    // was granted; the lane symptoms had to be read like tea leaves.
+    try {
+      const c2 = (this.clients && this.clients.get) ? this.clients.get(ws) : null;
+      console.log(`[Brain] teach-frame encoding for PRIMARY donor: ${this._binTeachOk ? 'BINARY (SPRS 7/8/9)' : 'JSON (legacy)'} — donorAppVersion='${(c2 && c2.donorAppVersion) || 'unknown'}' (binary requires >= 0.3.13).`);
+    } catch { /* log is best-effort */ }
     return this._binTeachOk === true;
   },
 
