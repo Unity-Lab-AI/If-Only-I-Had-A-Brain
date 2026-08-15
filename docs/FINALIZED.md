@@ -5,6 +5,26 @@
 
 ---
 
+## 2026-08-15 - DT.1 BUILT: binary teach frames (types 7/8/9) + donor-v0.3.13 tagged - feature/binary-teach-frames-0815
+
+### Gee ask (verbatim per LAW #0)
+
+> *"no the doner release is my territory just like we have doployed all the previous versions"*
+> *"okay so now write the todo and make the cli task list so i can see whats to do in the todo, then get to the work of the doner fix"*
+
+**THE PROBLEM (measured twice on the live box):** a fresh donor drains a 19MB socket in seconds; DURING TEACH the same donor drains at ~KB/s, parking the buffer at 16-19MB and settling the walk at ~50-100 teach/min. Teach patterns shipped as ~153KB JSON frames whose `serde_json` parse on the donor's single receive thread was the bottleneck. The sparse protocol already had binary frames for uploads/hebbian - teach patterns were the last big JSON holdout.
+
+**SHIPPED - binary teach frames end to end:**
+
+- **Wire format (extends the existing SPRS framing, types 7/8/9):** header name carries `cluster/region`; type 7 = `u32 count + u32[count] indices` (write_spike_slice); type 8 = `u32 count + u32[] indices + u32 vcount + f32[] values + f32 psi` (write_current_slice); type 9 = header only (clear_spike_region). Fire-and-forget with reqId 0 - the JSON versions never acked and neither do these.
+- **Server (`server/brain-server/gpu.js`):** `_donorBinTeach()` selects the encoding per donor from `client.donorAppVersion >= 0.3.13` (already stored at register - ZERO brain-server.js edits, its full-read law untriggered; browser donors report 'browser' and stay JSON). The three cortex senders build packed Buffers on the same pattern lane with the same group/brake/cap gating - the lane cannot tell the encodings apart. **One bug caught on read-back before it shipped:** the binary clear branch early-returns, and the JSON path clears `_patternLaneStale` AFTER its send further down the method - the binary branch now clears it itself on a successful send, or binary donors would have latched stale forever after the first shed.
+- **Rust donor (v0.3.13):** `frames.rs` gains the three `Frame` variants + decode arms + a `split_cluster_region` helper; `donor.rs` routes the decoded variants straight onto the SAME `Work::WriteSpike/WriteCurrent/ClearSpike` items the JSON path produces - identical GPU behavior, minus the parse. Exhaustive-match arms added to the activity label and `handle_frame` (defensive, same engine ops, no ack). `Cargo.toml` 0.3.11 -> 0.3.13 - the version bump itself announces the capability via the `appVersion` register field.
+- **BT.5 scope-cut, honest:** a compute.html decoder would be dead code today (browser donors never qualify); it ships with the explicit caps store later.
+
+**VERIFIED (no-tests LAW, no local cargo - CI compiles on the tag):** byte-walk of all three frame types - server-encoded buffers walked with the exact Reader sequence `frames.rs` uses (u8/u32/u16/bytes/align4/u32_vec/f32_vec): **all three PASS with buffers fully consumed** (40/40, 56/56, 24/24 bytes) and the cluster/region split correct. `node --check` + ESM `import()` PASS; bundle rebuilt; every edited Rust region re-read line by line.
+
+**RELEASE:** tag `donor-v0.3.13` pushed to origin -> CI builds the binary -> **GEE deploys it (his territory, his words).** Expected on deploy (BT.8): teach-drain up ~5-10x, no 16-19MB parking, walk teach/min rises with the lane, suppression stays ~0.
+
 ## 2026-08-15 (night) - BC.4 PASS + DK.6 FULL PASS (ran itself on Gee's donor restart) + probe-gate mystery settled as design - feature/night-verify-0815
 
 ### Gee ask (verbatim per LAW #0)

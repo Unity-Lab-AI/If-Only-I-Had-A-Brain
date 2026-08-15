@@ -2889,6 +2889,31 @@ const SERVER_GPU_MIXIN = {
   },
 
   /**
+   * v0.3.13 - does the PRIMARY donor speak binary teach frames (types 7/8/9)?
+   * Gated on the appVersion the donor announced at gpu_register (stored as
+   * client.donorAppVersion by the register handler). Browser donors report
+   * 'browser' and stay on JSON until the register handler stores an explicit
+   * capability flag. Cached per socket - one parse per donor session.
+   */
+  _donorBinTeach() {
+    const ws = this._gpuClient;
+    if (!ws) return false;
+    if (this._binTeachWs === ws) return this._binTeachOk === true;
+    this._binTeachWs = ws;
+    this._binTeachOk = false;
+    try {
+      const c = (this.clients && this.clients.get) ? this.clients.get(ws) : null;
+      const v = ((c && c.donorAppVersion) || '').toString().trim();
+      const m = v.match(/^(\d+)\.(\d+)\.(\d+)/);
+      if (m) {
+        const num = (+m[1]) * 1e6 + (+m[2]) * 1e3 + (+m[3]);
+        this._binTeachOk = num >= 3013; // 0.3.13
+      }
+    } catch { this._binTeachOk = false; }
+    return this._binTeachOk === true;
+  },
+
+  /**
    * T17.7 Phase C.1 — ship a sparse spike pattern to the main cortex
    * GPU sub-region slice via the existing write_spike_slice message.
    * sparseIndices are relative to the region's start on the main
@@ -2907,6 +2932,22 @@ const SERVER_GPU_MIXIN = {
       : (sparseIndices && typeof sparseIndices.length === 'number')
         ? Array.from(sparseIndices)
         : [];
+    // v0.3.13 - binary teach frame (type 7) when the donor speaks it: packed
+    // u32 indices instead of a JSON integer array. Same lane, same gating,
+    // ~3x fewer bytes and no serde_json parse on the donor's receive thread
+    // (the measured teach-drain bottleneck). reqId 0: fire-and-forget, no ack.
+    if (this._donorBinTeach()) {
+      const hdr = this._encodeSparseHeader(7, 0, `cortex/${regionName}`);
+      const meta = Buffer.alloc(4);
+      meta.writeUInt32LE(arr.length, 0);
+      const ta = Uint32Array.from(arr);
+      const payload = Buffer.concat([hdr, meta, Buffer.from(ta.buffer, ta.byteOffset, ta.byteLength)]);
+      this._donorPatternSendGated(payload);
+      // Replica mirror stays JSON-only: replicas negotiate their own caps when
+      // DF.7 fanout revives; a binary mirror to an unknown replica would be
+      // dropped unparsed. Fanout is currently flag-gated off.
+      return;
+    }
     const json = JSON.stringify({
       type: 'write_spike_slice',
       clusterName: 'cortex',
@@ -2939,6 +2980,24 @@ const SERVER_GPU_MIXIN = {
     const idx = Array.isArray(sparseIndices) ? sparseIndices : Array.from(sparseIndices || []);
     const val = Array.isArray(sparseValues)  ? sparseValues  : Array.from(sparseValues || []);
     if (idx.length === 0 || idx.length !== val.length) return;
+    // v0.3.13 - binary teach frame (type 8): u32 indices + f32 values + f32 psi.
+    if (this._donorBinTeach()) {
+      const hdr = this._encodeSparseHeader(8, 0, `cortex/${regionName}`);
+      const meta = Buffer.alloc(4);
+      meta.writeUInt32LE(idx.length, 0);
+      const ti = Uint32Array.from(idx);
+      const vmeta = Buffer.alloc(4);
+      vmeta.writeUInt32LE(val.length, 0);
+      const tv = Float32Array.from(val);
+      const psiBuf = Buffer.alloc(4);
+      psiBuf.writeFloatLE(this.psi ?? 0, 0);
+      const payload = Buffer.concat([
+        hdr, meta, Buffer.from(ti.buffer, ti.byteOffset, ti.byteLength),
+        vmeta, Buffer.from(tv.buffer, tv.byteOffset, tv.byteLength), psiBuf,
+      ]);
+      this._donorPatternSendGated(payload);
+      return; // replica mirror stays JSON-only (see type-7 note)
+    }
     const json = JSON.stringify({
       type: 'write_current_slice',
       clusterName: 'cortex',
@@ -2963,6 +3022,16 @@ const SERVER_GPU_MIXIN = {
   _gpuClearCortexSpikeRegion(regionName) {
     if (!this._gpuClient || this._gpuClient.readyState !== 1) return;
     if (!this._donorPatternLaneOpen()) return;   // BEFORE Array.from/stringify — a shed frame costs zero serialization
+    // v0.3.13 - binary teach frame (type 9): header only, region in the name.
+    if (this._donorBinTeach()) {
+      if (this._donorPatternSendGated(this._encodeSparseHeader(9, 0, `cortex/${regionName}`))) {
+        // The JSON path clears the stale flag after ITS send further down this
+        // method; this early-return branch must do it itself or a binary donor
+        // would latch stale forever after the first shed.
+        this._patternLaneStale = false;
+      }
+      return;
+    }
     const json = JSON.stringify({
       type: 'clear_spike_region',
       clusterName: 'cortex',
