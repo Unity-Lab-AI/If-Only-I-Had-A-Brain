@@ -1,6 +1,18 @@
 # RESUME — Session Pickup Brief
 
-> ## ⭐⭐⭐ 2026-08-15 (latest) — WALK PACED TO THE DONOR — Gee chose 100%-correct over speed; ONE deploy pending
+> ## ⭐⭐⭐ 2026-08-15 (latest) — LANE BASE 100ms→15ms — backpressure governs now; ONE deploy pending, then the verification sweep
+>
+> **WHERE SHE IS:** fresh walk 2 on `1a6498a`, ELA-K from zero, ALL fixes live (word_motor unmask included — her voice wiring is real this walk). Vocab queue re-loaded at 2,247.
+>
+> **THE CHAIN OF THIS EVENING, compressed:** PS.1 stale-guard exposed honest loss → TP atomic groups (suppression got WORSE: walk 32 groups/s vs link ~10) → Gee chose “pace the walk to the donor (100% correct)” → WP gate paces every teach call (teach/min 1,900→~600, sheds 20k→1.8k) → residual ~29/s suppression traced to the FIXED 100ms base window refusing the 2nd–3rd group inside a single teach call while `bufferedAmount` sat at 0.0MB → **base throttle 100ms→15ms at both readers; the adaptive mult (buffer+RTT ≤16×) + 16MB lane cap + WP pacing are the actual governors.** A healthy link takes every group; a choking one slows the walk.
+>
+> **PENDING GEE:** (1) ONE more **Update & SAVESTART** (deploys this base-throttle change onto the running walk — weights kept). (2) **DK.6 donor-kill re-run** after it: PAUSED within seconds, teach stops, chat alive, auto-resume on re-upload.
+>
+> **PENDING ME (read-only polls, all criteria in TODO):** LB.4 suppression ~0 + teach/min recovered; OI.2 first dream window binds (~120 processed, `kVocabTaught` climbing, depth draining from 2,247); OI.5b `matrixDrivenPct` climbing off 0 after ELA-K word emission (voice = matrix, not oracle); OI.6 no multi-second loop pins; then OI.7 the closing docs batch.
+>
+> ---
+
+> ## ⭐⭐⭐ 2026-08-15 (earlier) — WALK PACED TO THE DONOR — Gee chose 100%-correct over speed; ONE deploy pending
 >
 > **THE STATE:** Gee pressed Update & FRESH WALK (`bb06b3e` live — every prior fix active, word_motor unmask included). Vocab queue LOADED at 2,247. But TP.6 FAILED: suppression ~83/s — the walk produces ~32 teach groups/sec, the donor link absorbs ~10, and no admission scheme fixes a producer running 3× its pipe. Gee’s verbatim decision: **“Pace the walk to the donor (100% correct)”**.
 >
