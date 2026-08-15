@@ -3183,6 +3183,19 @@ export class Curriculum {
       // exactly like a dead brain; it fooled me once already today. Same
       // reasoning as the `batchPaused` / `batchStall` split on the donor side:
       // an expected pause must say so, or it will be read as a failure.
+      // DEFINITION-SEED QUEUE - the vocabulary lane, answerable from
+      // /public-state.json (2026-08-15).
+      //
+      // This existed only as a rate-limited console line, and when the queue was
+      // empty the batch block was skipped so the line was not emitted AT ALL -
+      // a silent no-op that hid a whole run's worth of un-learned vocabulary
+      // behind an absent log. Depth + the last window's outcome are published so
+      // "is she actually learning word meanings" is a field read, not a log hunt.
+      definitionQueue: {
+        depth: (cluster && Array.isArray(cluster._kVocabQueue)) ? cluster._kVocabQueue.length : 0,
+        unresolved: (cluster && cluster._kVocabUnresolved instanceof Set) ? cluster._kVocabUnresolved.size : 0,
+        lastWindow: this._trickleLastWindow || null,
+      },
       liveness: (() => {
         const now = Date.now();
         const count = this._teachTickCount | 0;
@@ -3596,68 +3609,104 @@ export class Curriculum {
             // `_kVocabQueue` deliberately: it is already persisted in saved
             // weights, and renaming it would orphan every in-flight queue on
             // the next load.
-            if (!cluster._kVocabQueue) {
-              const { K_VOCABULARY } = await import('./k-vocabulary.js');
-              if (Array.isArray(K_VOCABULARY)) {
-                const taught = cluster._definitionTaughtWords || new Set();
-                cluster._kVocabQueue = K_VOCABULARY.filter(w => !taught.has(w));
+            // REFILL ON EMPTY, NOT ON MISSING (2026-08-15).
+            //
+            // This guard was `if (!cluster._kVocabQueue)`. An EMPTY ARRAY IS
+            // TRUTHY, so once the queue had been persisted as `[]` it was never
+            // refilled again - and V.3 deliberately creates it empty, because
+            // each grade is supposed to enqueue its own words when that grade
+            // BEGINS. Resume lands mid-grade, so no grade-start ever fires, and
+            // the queue stays empty forever. `batchN` then computes
+            // `min(120, 0) = 0`, the whole batch block below is skipped, and it
+            // is skipped SILENTLY - no words processed and no summary line, which
+            // is exactly why the `dream trickle:` line was absent from the live
+            // console while `kVocabTaught` sat at ~0.
+            //
+            // Refilling from the CURRENT grade's own list (not unconditionally
+            // from K) keeps the grade-appropriateness that enqueue-at-grade-start
+            // was there to guarantee.
+            if (!Array.isArray(cluster._kVocabQueue) || cluster._kVocabQueue.length === 0) {
+              const _g = this._currentGrade || 'kindergarten';
+              let _words = [];
+              if (_g === 'kindergarten' || _g === 'pre-K') {
+                const { K_VOCABULARY } = await import('./k-vocabulary.js');
+                if (Array.isArray(K_VOCABULARY)) _words = K_VOCABULARY;
               } else {
-                cluster._kVocabQueue = [];
+                const { gradeVocabularyFor } = await import('./grade-vocabulary.js');
+                const _gv = await gradeVocabularyFor(_g);
+                if (Array.isArray(_gv)) _words = _gv;
+              }
+              if (!Array.isArray(cluster._kVocabQueue)) cluster._kVocabQueue = [];
+              if (_words.length > 0) {
+                const _added = this._enqueueDefinitionSeed(cluster, _words, _g);
+                this._hb(`[Curriculum] 📚 definition-seed queue was EMPTY on a ${_g} dream window — refilled from that grade's own vocabulary (${_added} words queued). Resume lands mid-grade, so the grade-start enqueue never fires on a savestart; this is the path that keeps vocabulary learning alive across restarts.`);
               }
             }
-            // Batch was sized (25) when the queue only ever held K's 2,247
-            // words. Carrying ~2,000 words PER GRADE needs a larger bite or the
-            // queue lags a whole grade behind the walk. The window-budget gate
-            // (`_dwOverBudget`, checked per word inside the loop below) is what
-            // actually bounds the cost — it stops mid-batch the moment the
-            // window's time is spent — so a bigger batch raises the ceiling
-            // without lengthening a dream window. Env-tunable for live tuning.
             const _tb = Number(typeof process !== 'undefined' && process?.env?.DREAM_TRICKLE_BATCH);
             const DREAM_TRICKLE_BATCH = (Number.isFinite(_tb) && _tb > 0) ? Math.floor(_tb) : 120;
             const batchN = Math.min(DREAM_TRICKLE_BATCH, cluster._kVocabQueue.length);
-            if (batchN > 0) {
-              const batchStart = Date.now();
-              let bound = 0;
-              let timedOut = 0;
-              for (let i = 0; i < batchN; i++) {
-                if (_dwOverBudget('dream-trickle (remaining words this window) -- vocabulary binding cut short; the queue persists and later windows resume it')) break;
-                const word = cluster._kVocabQueue.shift();
-                if (!word) break;
-                try {
-                  // I.2 closure — bumped per-word timeoutMs 3s → 20s for
-                  // the dream-trickle retry path. The SEED-phase upfront
-                  // pass dropped 289 of 2247 K-vocab words (12.9%) at
-                  // 8-15s timeouts on cold-cache API calls (2026-06-17
-                  // 21:50 PT live test). Those same words land back in
-                  // _kVocabQueue and need a LONGER timeout to clear on
-                  // retry — they were the slowest-to-respond words at
-                  // the dictionaryapi.dev edge. By dream-trickle time
-                  // the disk cache has warmed for everything that DID
-                  // succeed, so the retries are predominantly cold-API
-                  // hits that legitimately need ~15s. 20s gives 30%
-                  // headroom past the slowest observed SEED-phase
-                  // timeout (15s) so we don't drop the same words again.
-                  const r = await this._teachWordDefinition(word, { reps: 4, label: 'DREAM-DEF-TRICKLE', timeoutMs: 20000 });
-                  if (r && r.defsBound > 0) bound += r.defsBound;
-                  else if (r && r.skipped && /timeout/i.test(r.skipped)) timedOut++;
-                } catch { /* skip per-word failures */ }
-              }
-              const dt = ((Date.now() - batchStart) / 1000).toFixed(1);
-              const timeoutNote = timedOut > 0 ? ` · ⚠ ${timedOut} re-timed-out (will retry next cycle)` : '';
-              this._hb(`[Curriculum] 💤 dream trickle: ${batchN} words processed in ${dt}s (${bound} multi-def Hebbian fires)${timeoutNote} · ${cluster._kVocabQueue.length} words remaining in the definition-seed queue${cluster._defSeedEnqueuedGrades ? ` (grades enqueued: ${[...cluster._defSeedEnqueuedGrades].join(', ')})` : ''}`);
-              // I.2 — re-queue the words that timed out THIS cycle so
-              // they don't get lost forever. Push them to the back of
-              // the queue so other words get a chance first; eventually
-              // every word either binds successfully or accumulates
-              // enough retry attempts that operator can see persistent
-              // dictionary-API failures (e.g. a word that's genuinely
-              // not in dictionaryapi.dev).
-              if (timedOut > 0 && Array.isArray(cluster._kVocabRetryQueue)) {
-                while (cluster._kVocabRetryQueue.length > 0) {
-                  cluster._kVocabQueue.push(cluster._kVocabRetryQueue.shift());
+            const batchStart = Date.now();
+            let bound = 0;
+            let failed = 0;
+            let processed = 0;
+            if (!cluster._kVocabAttempts) cluster._kVocabAttempts = {};
+            if (!(cluster._kVocabUnresolved instanceof Set)) cluster._kVocabUnresolved = new Set();
+            // A word is removed from the queue ONLY once it has actually bound.
+            //
+            // The old loop did `shift()` FIRST and attempted afterwards, so any
+            // word that failed for any reason other than a timeout was dropped
+            // from the queue permanently and never retried. The timeout path did
+            // not save them either: it drained `_kVocabRetryQueue`, an array
+            // NOTHING in this file ever pushes to, and its trigger tested
+            // `/timeout/i` against `_teachWordDefinition`'s skip values - which
+            // are only ever 'no definition' / 'aborted-*' / 'empty word' / 'no
+            // cluster/word'. Both halves of that safety net were dead code.
+            //
+            // Now: bind -> remove. Fail -> rotate to the BACK with an attempt
+            // count so it retries later without blocking the queue head. After
+            // MAX_ATTEMPTS it moves to `_kVocabUnresolved`, which is REPORTED
+            // rather than silently discarded - a word dictionaryapi.dev genuinely
+            // does not carry should be visible, not vanish.
+            const MAX_ATTEMPTS = 3;
+            for (let i = 0; i < batchN; i++) {
+              if (_dwOverBudget('dream-trickle (remaining words this window) -- vocabulary binding cut short; the queue persists and later windows resume it')) break;
+              const word = cluster._kVocabQueue[0];
+              if (!word) break;
+              processed++;
+              let didBind = false;
+              try {
+                // 20s per word: the slowest dictionaryapi.dev responses observed
+                // during the seed phase were ~15s, and those are exactly the
+                // words that land back here needing a retry.
+                const r = await this._teachWordDefinition(word, { reps: 4, label: 'DREAM-DEF-TRICKLE', timeoutMs: 20000 });
+                if (r && r.defsBound > 0) { bound += r.defsBound; didBind = true; }
+              } catch { /* per-word failure falls through to the retry path */ }
+              cluster._kVocabQueue.shift();
+              if (didBind) {
+                delete cluster._kVocabAttempts[word];
+              } else {
+                failed++;
+                const _n = (cluster._kVocabAttempts[word] | 0) + 1;
+                cluster._kVocabAttempts[word] = _n;
+                if (_n < MAX_ATTEMPTS) cluster._kVocabQueue.push(word);
+                else {
+                  cluster._kVocabUnresolved.add(word);
+                  delete cluster._kVocabAttempts[word];
                 }
               }
             }
+            const dt = ((Date.now() - batchStart) / 1000).toFixed(1);
+            // ALWAYS log, including the zero case. A silent skip is what hid
+            // this for an entire run.
+            this._hb(`[Curriculum] 💤 dream trickle: ${processed} words processed in ${dt}s (${bound} multi-def Hebbian fires, ${failed} deferred for retry) · ${cluster._kVocabQueue.length} words remaining in the definition-seed queue · ${cluster._kVocabUnresolved.size} unresolved after ${MAX_ATTEMPTS} attempts${cluster._defSeedEnqueuedGrades ? ` (grades enqueued: ${[...cluster._defSeedEnqueuedGrades].join(', ')})` : ''}`);
+            // Published so this is answerable from /public-state.json instead of
+            // by hunting a rate-limited console line.
+            this._trickleLastWindow = {
+              processed, bound, failed,
+              ms: Date.now() - batchStart,
+              queueDepth: cluster._kVocabQueue.length,
+              unresolved: cluster._kVocabUnresolved.size,
+            };
           } catch (err) {
             // Non-fatal — dream consolidation continues even if trickle fails.
           }
