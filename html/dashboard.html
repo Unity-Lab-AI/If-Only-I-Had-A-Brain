@@ -683,7 +683,7 @@
         <div id="d-ut-wrlist" style="max-height:120px;overflow-y:auto;font-size:10px;color:#888;margin-top:4px;"></div>
       </div>
     </div>
-    <div class="card ws-pressure-panel" style="margin-top:12px;" title="WebSocket backpressure between brain-server (CPU shadow, decision-making) and compute.html (GPU shadow, hot-path forward propagation). Under heavy teach load the channel can fill faster than the GPU client drains it. Drops here are EXPENSIVE — a dropped Hebbian update permanently de-syncs the two shadows for that projection. Threshold raised to 500MB and timeout to 30s with BLOCK-not-DROP semantics.">
+    <div class="card ws-pressure-panel" style="margin-top:12px;" title="WebSocket backpressure between the brain-server and its GPU donor (browser compute.html or the native donor app). Teaching is GPU-only: teach patterns + Hebbian updates ride a governed binary lane — quadratic brake on measured buffer/RTT, atomic clear→write→hebbian groups, and a stale-guard that SUPPRESSES any Hebbian whose pattern didn't land (never trains on a stale pattern). Byte-identical repeated payloads collapse to ~30-byte repeat frames on donors ≥0.3.15. Sheds/suppressions here are honest loss accounting, not silent corruption; the 500MB threshold + 30s BLOCK-not-DROP guard the bulk upload path.">
       <div class="card-title">📡 WS Backpressure (GPU client)</div>
       <div id="d-ws-ws" style="padding:8px 12px;font-family:monospace;font-size:11px;color:#aaa;line-height:1.6;max-height:240px;overflow-y:auto;">
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;">

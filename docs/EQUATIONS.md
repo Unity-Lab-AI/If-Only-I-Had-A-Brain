@@ -594,7 +594,7 @@ The Ego (self-model) IS her residual self-image — the cortex predicting WHAT s
 
 ## 10. GPU Exclusive Compute
 
-Main-brain Rulkov neurons (auto-scaled from host free RAM, ~306M deployed) run on donated browser GPUs. No `ParallelBrain` compute replicas. The language-cortex cross-projection learning runs CPU-side in Node, time-sliced (see §10.5). The main brain pauses without a GPU donor (`compute.html`).
+Main-brain Rulkov neurons (auto-scaled from host free RAM, ~306M deployed) run on donated GPUs — browser tabs on `compute.html` or the native donor app (CUDA/wgpu). No `ParallelBrain` compute replicas. Teaching is GPU-ONLY at biological scale: the walk HALTS without a compute substrate (uploaded weights + open donor socket — no CPU fallthrough exists); a probe-critical CPU shadow of the language-cortex matrices stays current for gate probes, time-sliced (see §10.5). Teach traffic rides the governed binary lane (§10.6).
 
 | Equation | Purpose | File |
 |----------|---------|------|
@@ -605,7 +605,7 @@ Main-brain Rulkov neurons (auto-scaled from host free RAM, ~306M deployed) run o
 | `compute_result`: sparse spike indices (only fired neurons, not full N array) | 95%+ compression at any N — only active-spike indices return over WebSocket | `compute.html` |
 | `gpu_init_ack`: GPU confirms buffer creation | Server knows GPU is ready | `compute.html` |
 | All 7 clusters init at once on first tick | No staggering, no CPU fallback | `brain-server.js` |
-| No `ParallelBrain` compute replicas spawned; CPU carries the authoritative sparse-CSR weights + time-sliced language-cortex teach; the equational mind-space runs in its own worker thread + WebGPU, off the main loop | CPU non-zero during teach / imagination | `brain-server.js` / `js/brain/mindspace/` |
+| No `ParallelBrain` compute replicas spawned; the CPU carries the sparse-CSR weight masters + the probe-critical time-sliced shadow (teach itself dispatches to the donor GPU only); the equational mind-space runs in its own worker thread + WebGPU, off the main loop | CPU non-zero during teach / imagination | `brain-server.js` / `js/brain/mindspace/` |
 
 ---
 
@@ -617,6 +617,22 @@ Every heavy full-matrix op in the CPU-side language-cortex teach path — Oja, H
 |----------|---------|------|
 | `chunk ← dt>60ms ? max(16384, chunk>>1) : dt<15ms ? min(CEIL, chunk<<1) : chunk` (measure each synchronous slice) | Adaptive-chunk time-slicing of Oja / Hebbian / anti-Hebbian / predictive-error propagate — each row-independent slice is timed and the chunk halves past 60ms / doubles under 15ms, converging to ~30ms slices at ANY scale; a `setImmediate` yield between slices lets `/ws` handshakes + donor frames + HTTP requests through | `js/brain/cluster/hebbian.js` (`_ojaUpdateChunked` / `_hebbianUpdateChunked` / `_antiHebbianChunked`) + `js/brain/sparse-matrix.js` (`propagateChunked`) |
 | Time-sliced binary weight save (yield between sections) | 158 MB `brain-weights.bin` writes in ~390ms wall without blocking the loop | `brain-server.js` |
+
+---
+
+## 10.6 Governed Binary Teach Lane (donor v0.3.13 → v0.3.15)
+
+Teach patterns + Hebbian updates ride packed SPRS binary frames on a lane whose admission is governed by measured backpressure, whose groups are atomic, and whose repeats compress to near-zero — so the walk runs at the donor link's real rate, never corrupting and never silently dropping learning. Full frame reference: `docs/WEBSOCKET.md` §Binary sparse frames.
+
+| Equation | Purpose | File |
+|----------|---------|------|
+| `mult = clamp((buf / 2MB)², 1, 133)` + `max(mult, rtt/1000)` when rtt > 1s; `THROTTLE = 15ms × mult` | Quadratic brake at BOTH lane governors — 2MB→15ms, 8MB→~1s, ceiling ~2s; an empty lane runs the full 15ms base; full force arrives well before the 16MB shed cliff | `server/brain-server/gpu.js` (`_donorPatternLaneOpen` + `_patternLaneWait`) |
+| clear→write(s)→hebbian = ONE atomic group; admitted or refused WHOLE at the clear (500ms TTL) | A mid-group refusal can never leave the previous iteration's pattern under a live Hebbian | `server/brain-server/gpu.js` |
+| shed/throttled frame ⇒ `_patternLaneStale = true` ⇒ dependent bound-Hebbian SUPPRESSED until a landed clear re-establishes known state | Losing an update is acceptable; training a lie is not (`wsPressure.hebbianSuppressedStale` counts the cost) | `server/brain-server/gpu.js` |
+| `_awaitComputeSubstrate` awaits `_patternLaneWait()` on EVERY teach call | The walk paces itself to the lane's real admission rate (the "100% correct" choice) — under pressure the walk slows instead of suppressing | `js/brain/curriculum.js` |
+| payload(type,name) `Buffer.equals` last-sent ⇒ ~30-byte SPRS type-12 REPEAT frame; donor re-executes its per-connection cache | Rep loops re-send ~14 near-identical frames per teach call into a ~4MB/s wire — repeats cut the dominant bytes ~10–50×; `teachOutBytesSaved` counts the savings | `server/brain-server/gpu.js` + `donor-app/src/donor.rs` |
+| bound type-5 hebbian: plasticity reads RESIDENT cluster spike buffers at binding offsets (`preSpikes[srcOff + colIdx[k]]`, `postSpikes[dstOff + i]`) | No index arrays on the wire for bound projections; the native donor applies these for real as of v0.3.15 (was an ack-only stub) | `donor-app/src/cuda.rs` / `compute.rs` + `html/compute.html` |
+| version gates: types 7/8/9 ⇐ `donorAppVersion ≥ 0.3.13`; type 12 ⇐ `≥ 0.3.15` | Protocol NEGOTIATION per donor (never a fallback) — each donor gets the best wire it announces | `server/brain-server/gpu.js` (`_donorBinTeach` / `_donorRepeatTeach`) |
 
 ---
 
