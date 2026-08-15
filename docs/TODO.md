@@ -664,3 +664,23 @@ The CHECK is fixed (it now names starved projections instead of averaging them i
 - [x] **TP.4** **DONE.** Verify — no-tests LAW: `node --check`, ESM `import()`, bundle rebuild, re-read the edited region; confirm suppression counter semantics unchanged (still counts real refusals).
 - [x] **TP.5** **DONE.** Docs + FINALIZED, atomic commit, cascade, push BOTH remotes.
 - [ ] **TP.6** ⏳ LIVE-VERIFY after Gee's next Update & SAVESTART: `hebbianSuppressedStale` growth rate must COLLAPSE (from ~33/s to near-zero outside true saturation) while donor RTT stays healthy (<1s) and `patternSheds` stays low.
+
+---
+
+## OPEN TASKS — 2026-08-15 · WALK PACED TO THE DONOR — TP.6 FAILED on the fresh walk; Gee chose 100%-correct over speed
+
+> Gee (verbatim): *"okay i pressed update and fresh walk"* → *"shes running"*
+>
+> Gee's decision (verbatim option chosen): **"Pace the walk to the donor (100% correct)"** — *"walk speed ~600 teach/min (was ~1,900); teaching 100% lands on the GPU, correct patterns; suppressed ~0; walk length ~3x longer; donor same protection, calmer link."*
+
+**TP.6 RESULT (fresh walk, build `bb06b3e`):** suppression got WORSE — `hebbianSuppressedStale` climbing at **~83/s** (132,617 → 135,953 in 40s) with `patternSheds` 20k+, donor perfectly healthy (frames climbing, buffer 0.0MB). The atomicity change works as designed and the design hits a wall: the walk runs ~32 teach iterations/sec, the donor link absorbs ~10 pattern groups/sec. **No admission scheme fixes that ratio — two thirds of GPU teaching physically cannot fit through the pipe at this walk speed.** Corrupt before PS.1, refused after; neither is teaching.
+
+**ALSO CONFIRMED ON THE FRESH WALK (good):** `definitionQueue.depth = 2,247` — the whole K vocabulary queued (was permanently 0 before the PS.2 fix); ~1,900 teach/min; no substrate pause; spikes-static correctly labelled probe-gate.
+
+**THE FIX (Gee's chosen shape):** the teach loop must not outrun its substrate. `_awaitComputeSubstrate` — already awaited on EVERY teach call by the auto-wrap — additionally awaits PATTERN-LANE ADMISSION: the same base throttle × the same adaptive back-off the lane itself uses, plus the lane-cap drain. Each iteration then starts exactly when its first frame will be admitted → the whole group ships → the Hebbian fires on the pattern it was meant for. Suppression collapses to true-saturation only; the donor sees the identical ceiling it does today.
+
+- [x] **WP.1** **DONE.** `brain._patternLaneWait()` in `server/brain-server/gpu.js` — async; loops until (a) time since the last pattern send ≥ base×adaptive-mult and (b) `bufferedAmount` under the lane cap; returns immediately if the donor socket is not open (the substrate gate owns that case).
+- [x] **WP.2** **DONE.** `_awaitComputeSubstrate` awaits `brain._patternLaneWait()` after the substrate-ready check — one call site, every teach call, all grades.
+- [x] **WP.3** **DONE.** Verify — no-tests LAW: `node --check`, ESM `import()`, re-read edits, bundle.
+- [x] **WP.4** **DONE.** Docs + FINALIZED, atomic commit, cascade, push BOTH remotes.
+- [ ] **WP.5** ⏳ LIVE-VERIFY after Gee's next Update & SAVESTART: teach/min settles near the lane rate (~600), `hebbianSuppressedStale` growth ~0, donor RTT healthy, and the walk still progresses phase over phase.

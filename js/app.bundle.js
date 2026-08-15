@@ -101283,6 +101283,12 @@ var Curriculum = class _Curriculum {
     if (!cluster || cluster.requireGpuSubstrate !== true) return;
     const ready = () => cluster._gpuProxyReady === true && !!(brain2 && brain2._gpuClient && brain2._gpuClient.readyState === 1);
     if (ready()) {
+      if (brain2 && typeof brain2._patternLaneWait === "function") {
+        try {
+          await brain2._patternLaneWait();
+        } catch {
+        }
+      }
       if (this._substratePause) {
         this._hb(`[Curriculum] > compute substrate READY - walk resumes (was paused ${((Date.now() - this._substratePause.sinceMs) / 6e4).toFixed(1)}min: ${this._substratePause.reason}).`);
         this._substratePause = null;
