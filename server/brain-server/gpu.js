@@ -3072,7 +3072,14 @@ const SERVER_GPU_MIXIN = {
       vmeta.writeUInt32LE(val.length, 0);
       const tv = Float32Array.from(val);
       const psiBuf = Buffer.alloc(4);
-      psiBuf.writeFloatLE(this.psi ?? 0, 0);
+      // PSIQ (2026-08-16) - psi is QUANTIZED to 3 decimals on this wire. The live
+      // scalar drifts every tick, and because it rides inside the payload it broke
+      // byte-equality on every frame - the type-12 repeat compression never caught
+      // the t8 river (measured: 2.99GB of t8 in 12.6min, 842KB avg, ~the whole
+      // 4MB/s link) even though rep loops resend identical indices+values. A
+      // <=0.1% rounding on an injected-current amplitude sits far below the
+      // Rulkov noise floor; the pattern's identity is untouched.
+      psiBuf.writeFloatLE(Math.round((this.psi ?? 0) * 1000) / 1000, 0);
       const payload = Buffer.concat([
         hdr, meta, Buffer.from(ti.buffer, ti.byteOffset, ti.byteLength),
         vmeta, Buffer.from(tv.buffer, tv.byteOffset, tv.byteLength), psiBuf,

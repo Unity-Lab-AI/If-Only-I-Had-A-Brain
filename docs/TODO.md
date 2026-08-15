@@ -860,3 +860,16 @@ A fresh donor drains 19MB in seconds (observed at restart). During TEACH, the sa
 - [x] **DP.4** **DONE.** README.md: the stale "cross-projection learning runs CPU-side in Node" paragraph replaced with the GPU-only truth (native donor app + governed binary lane + repeat frames + honest suppression + probe-critical CPU shadow). SETUP.md checked — no stale donor/version claims. PUBLIC MARKDOWN sweep — README.md (donor version + capabilities), any how-tos/setup readmes (donor-app README if present), layman docs.
 - [x] **DP.5** **DONE.** dashboard.html ws-pressure tooltip rewritten (was describing the pre-GPU-only two-shadow world; now the governed lane + stale-guard + repeat frames + honest loss accounting); compute.html stale "learned CPU-side ... no GPU path yet" comment corrected (cluster-bound, GPU-only teach); donor download links already at v0.3.15 via the CI link-bump (merged in, not hand-edited); docs.html / unity-guide.html / brain-equations.html / legend.html grepped clean of stale claims. PUBLIC HTML sweep — docs.html, brain-equations.html, unity-guide.html, legend.html, minds-eye.html, dashboard.html tooltips/labels where stale (equations updates, tool tips), format/layout preserved exactly.
 - [x] **DP.6** **DONE.** VERIFY (no-tests LAW) — re-read every edited region, node --check any touched JS-bearing HTML script blocks unaffected (docs-only edits), then FINALIZED + atomic commit + cascade develop→main + push BOTH remotes.
+
+---
+
+## OPEN TASKS — 2026-08-16 · RH.8 RESULT + PSIQ — the river is type-8 current writes (2.99GB/12.6min) and psi drift blocks their repeat compression
+
+> Gee (verbatim): *"okay check on our girl and see if she is back to the 2000+ per min instead of just the couple hundred"*
+
+**RH.8 READ (build `9c884b19`, donor v0.3.15 confirmed, `repeatTeach: true`):** teach/min ~133 — NOT 2,000. But the new `teachOutByType` telemetry names the river on its first read: **t8 (write_current_slice) = 3,551 frames = 2,991,547,836 bytes in 12.6 min — 842KB average — the entire ~4MB/s wire.** t7 spikes total 28.7MB; t12 repeats fired 564× (10.8MB saved) — the protocol WORKS — but t8 never repeats because **`psi` (her live consciousness scalar, drifting every tick) rides inside the payload, so byte-equality breaks on every frame even when the rep loop's indices+values are identical.** My own v0.3.15 comment called that exactness a feature; it is the exact thing starving the compression.
+
+- [x] **PSIQ.1** **DONE.** Quantize psi to 3 decimals in the type-8 sender (`_gpuWriteCortexCurrentSlice`) — a ≤0.1% rounding on an injected-current amplitude scalar, far below the Rulkov noise floor — so rep-loop-identical patterns byte-match and collapse to type-12 repeats. Server-only; the v0.3.15 donor needs nothing.
+- [x] **PSIQ.2** **DONE** (node --check PASS; JSON legacy branch untouched — the quantization lives only in the binary t8 encoder). Verify (no-tests LAW): node --check, re-read the edit, confirm the JSON legacy branch untouched.
+- [x] **PSIQ.3** **DONE.** Docs + FINALIZED, atomic commit, cascade, push BOTH remotes.
+- [ ] **PSIQ.4** ⏳ GEE: ONE Update & SAVESTART → re-read: t12 frames must dwarf t8 fulls, `teachOutBytesSaved` must climb toward GB-scale, outbound MB/s collapses, teach/min climbs toward the server ceiling.
