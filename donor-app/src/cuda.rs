@@ -19,6 +19,8 @@ use std::sync::Arc;
 use cudarc::driver::{CudaContext, CudaFunction, CudaSlice, CudaStream, LaunchConfig, PushKernelArg};
 use cudarc::nvrtc::Ptx;
 
+use crate::frames::Binding;
+
 const THREADS: u32 = 256;
 
 /// Precompiled PTX for the four kernels (see cuda_kernels.cu). Loaded via the driver
@@ -97,6 +99,9 @@ struct CudaSparse {
     pre_spikes: CudaSlice<u32>,    // cols
     post_currents: CudaSlice<f32>, // rows
     post_spikes: CudaSlice<u32>,   // rows
+    /// v0.3.15 — cluster-slice binding: when set, batched-hebbian (type 5) reads the
+    /// bound clusters' resident spike buffers at the bound offsets.
+    binding: Option<Binding>,
 }
 
 /// One NVIDIA GPU driven through the CUDA driver API. Mirrors `compute::ComputeEngine`'s
@@ -306,7 +311,7 @@ impl CudaEngine {
         unsafe { b.launch(cfg(count)) }.map(|_| ()).map_err(|e| format!("scatter_ones_u32 launch: {e}"))
     }
 
-    pub fn upload_sparse(&mut self, name: &str, rows: u32, cols: u32, row_ptr: &[u32], values: &[f32], col_idx: &[u32]) {
+    pub fn upload_sparse(&mut self, name: &str, rows: u32, cols: u32, row_ptr: &[u32], values: &[f32], col_idx: &[u32], binding: Option<Binding>) {
         let nnz = values.len() as u32;
         // rowPtr must have rows+1 entries (the kernel reads rowPtr[i+1]); pad with nnz so a
         // short/empty CSR can't read out of bounds (CUDA OOB = crash, not a validation error).
@@ -324,7 +329,7 @@ impl CudaEngine {
             let pre_spikes = self.stream.alloc_zeros::<u32>(cols.max(1) as usize).map_err(|e| e.to_string())?;
             let post_currents = self.stream.alloc_zeros::<f32>(rows.max(1) as usize).map_err(|e| e.to_string())?;
             let post_spikes = self.stream.alloc_zeros::<u32>(rows.max(1) as usize).map_err(|e| e.to_string())?;
-            Ok(CudaSparse { rows, cols, nnz, values: values_buf, col_idx: col_idx_buf, row_ptr: row_ptr_buf, pre_spikes, post_currents, post_spikes })
+            Ok(CudaSparse { rows, cols, nnz, values: values_buf, col_idx: col_idx_buf, row_ptr: row_ptr_buf, pre_spikes, post_currents, post_spikes, binding: binding.clone() })
         })();
         match res {
             Ok(m) => { self.sparse.insert(name.to_string(), m); }
@@ -395,6 +400,43 @@ impl CudaEngine {
         unsafe { b.launch(cfg(rows)) }.map_err(|e| format!("hebbian launch: {e}"))?;
         // No readback — ack-only, like the wgpu path (don't block the worker).
         Ok(())
+    }
+
+    /// v0.3.15 — resident bound-hebbian: plasticity on a cluster-BOUND matrix reading
+    /// the bound clusters' resident spike buffers at the bound offsets (the state the
+    /// type-7/9 pattern frames established). Ok(true) = applied; Ok(false) = skipped
+    /// (unbound / clusters not resident / windows don't fit — never a crash).
+    pub fn hebbian_bound(&self, name: &str, lr: f32) -> Result<bool, String> {
+        let m = match self.sparse.get(name) { Some(m) => m, None => return Ok(false) };
+        if m.rows == 0 || m.nnz == 0 {
+            return Ok(false);
+        }
+        let b = match &m.binding { Some(b) => b, None => return Ok(false) };
+        let src = match self.clusters.get(&b.src_cluster) { Some(c) => c, None => return Ok(false) };
+        let dst = match self.clusters.get(&b.dst_cluster) { Some(c) => c, None => return Ok(false) };
+        // The kernel reads preSpikes[srcOffset + colIdx[k]] (colIdx < cols) and
+        // postSpikes[dstOffset + i] (i < rows) — both windows must fit the cluster
+        // buffers (CUDA OOB = crash, not a validation error).
+        if (b.src_start as u64) + (m.cols as u64) > (src.spikes.len() as u64) { return Ok(false); }
+        if (b.dst_start as u64) + (m.rows as u64) > (dst.spikes.len() as u64) { return Ok(false); }
+        let rows = m.rows;
+        let (reward, w_min, w_max) = (1.0f32, -2.0f32, 2.0f32);
+        let (src_off, dst_off) = (b.src_start, b.dst_start);
+        let mut bld = self.stream.launch_builder(&self.f_hebb);
+        bld.arg(&rows)
+            .arg(&lr)
+            .arg(&reward)
+            .arg(&w_min)
+            .arg(&w_max)
+            .arg(&src_off)
+            .arg(&dst_off)
+            .arg(&m.values)
+            .arg(&m.col_idx)
+            .arg(&m.row_ptr)
+            .arg(&src.spikes)
+            .arg(&dst.spikes);
+        unsafe { bld.launch(cfg(rows)) }.map(|_| ()).map_err(|e| format!("bound hebbian launch: {e}"))?;
+        Ok(true)
     }
 
     pub fn write_spike_slice(&mut self, cluster: &str, region: &str, indices: &[u32]) -> Result<(), String> {

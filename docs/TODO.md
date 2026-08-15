@@ -787,3 +787,59 @@ A fresh donor drains 19MB in seconds (observed at restart). During TEACH, the sa
 - [x] **WC.5** **DONE.** Docs + FINALIZED, atomic commit, cascade develop→main, push BOTH remotes, **tag `donor-v0.3.14`** so CI builds.
 - [x] **WC.4b** **CORRECTION — WC.4's claim was WRONG and CI proved it:** the tag build FAILED with 4× E0308 — `launch()` in cudarc 0.16 returns `Result<Option<(CudaEvent, CudaEvent)>, _>`, not `Result<(), _>`; the existing code's `?;` discards the value silently, my four tail-position returns did not. My "arg-order + borrow walk" verify could never catch a RETURN-type mismatch — read-verification of an unfamiliar API is not verification. FIXED: `.map(|_| ())` at all four launch sites; **rustup + cargo INSTALLED ON THIS BOX** (stable-msvc, minimal) and `cargo check` now PASSES both `--features cuda` and full default features (1 pre-existing gui.rs warning, untouched — not this batch). No donor change ever ships read-verified-only again. Tag donor-v0.3.14 MOVED to the fixed commit (no release had published, so the version never shipped broken).
 - [ ] **WC.6** ⏳ GEE: deploy donor-v0.3.14, then LIVE-VERIFY: teach/min climbs well above ~104 (target: hundreds+), buffer stops parking at 16MB (breathing cycle tightens or vanishes), RTT drops under ~1s during teach, suppression stays ~0, dream windows finally fire (phase completes → `definitionQueue.lastWindow` populates).
+
+---
+
+## OPEN TASKS — 2026-08-16 · donor-v0.3.15 — RESIDENT BOUND-HEBBIAN (the type-5 stub is why she trains slow; kill the resync upload storm)
+
+> Gee (verbatim): *"check on our girl donor .14 deployed and donating... no idea if is 10-15x faster tho"*
+>
+> Gee (verbatim, go-ahead): *"yea do it and dont have ass the shit make sure u thouroughly plan out the corrections to the issues of slow training we are having"*
+
+**WC.6 RESULT — donor-v0.3.14 VERIFIED ENGAGED, SPEED UNCHANGED (recorded honestly):** `donorAppVersion: "0.3.14"`, binary true, zero drops — but teach/min still 60–108, buffer still parked ~16MB, RTT ~7s. The device-side scatter fix was correct and stands (donor executes what it receives at microsecond cost now) — but execution was not the wall.
+
+**THE MEASURED WALL (this time measured FIRST):** outbound to the donor = **4.06 MB/s at 20 msgs/s = 207KB average message**. Teach patterns are ~1KB, type-5 hebbian batches ~25KB — nothing in the teach lane is 207KB. **Matrix upload chunks are.** The socket is parked by the shadow-resync upload stream, and the server's own comments state the mechanism: (1) for bound projections the CPU CSR is the authoritative Hebbian master and the GPU gets a fire-and-forget type-5 batched-hebbian shadow; (2) `donor-app` `handle_frame` type-5 is a STUB — *"For now ack so the brain doesn't stall (no incorrect weight change applied)"* — every bound-hebbian shadow is DISCARDED on the native donor; (3) the GPU weight shadow therefore drifts permanently → auto-resync re-uploads matrices forever → 4MB/s of chunks park the buffer at ~16MB → the pattern-lane brake reads that buffer and throttles the walk to ~85 teach/min. v0.3.13 (parse) and v0.3.14 (execution) were both real fixes to the wrong stream.
+
+**THE FIX SHAPE:** implement type-5 batched-hebbian FOR REAL on the native donor — cluster-BOUND matrices whose plasticity reads resident spike state (written by the type-7/8/9 pattern frames) at the bound src/dst offsets. The plasticity kernel ALREADY takes srcOffset/dstOffset; the binding metadata is ALREADY in the chunked-upload frames (donor parses and discards it, frames.rs flags bit 2). Shadow then converges from ~50-byte ops instead of megabyte re-uploads → resync storm dies → socket drains → brake releases → walk runs at the server's own ceiling (~1,300–2,000 teach/min measured on unpaced walks). Same shadow-accuracy contract compute.html donors run today (fire-and-forget, CPU authoritative, periodic resync heals residual drift — but rare, not continuous).
+
+### PHASE 0 — VERIFY THE HYPOTHESIS IN CODE (no donor line changes until these are read)
+
+- [x] **RH.0a** **DONE (findings in PHASE 0 above).** Read `html/compute.html`'s binding + resident-spike hebbian implementation (the REFERENCE): how binding metadata (srcName/dstName + src/dst start/end) is stored at upload, which buffer + offsets `hebbianSparse(name, lr)` reads, exact cluster-vs-region semantics of the offsets.
+- [x] **RH.0b** **DONE (findings in PHASE 0 above).** Read the server upload encoder in `server/brain-server/gpu.js`: confirm binding metadata (chunk flags bit 2) is sent to ALL donors including native; record the chunk size (validates the 207KB avg-message fingerprint); confirm `_flushBoundHebbianBatch` type-5 targets the primary native donor.
+- [x] **RH.0c** **DONE — resync EXONERATED (findings above).** Read the resync/re-broadcast scheduler: what arms it, its cadence, per-matrix dirty targeting vs full re-upload — confirm the continuous-upload loop and record the exact call chain in this TODO.
+- [x] **RH.0d** **DONE — propagate out of scope this release (recorded above).** Confirm how bound PROPAGATE (type-2 zero-length pre) is gated for native donors (CHAT.1 says capability-gated; frames.rs has no type 6) — decide + record whether propagate joins this release or stays as-is.
+
+#### PHASE 0 — FINDINGS (hypothesis REVISED; recorded before any build per the thorough-plan directive)
+
+- **RH.0a/b DONE.** Binding metadata confirmed shipped to ALL donors (chunk flags bit 2: srcCluster/dstCluster names + src/dst start..end — `gpuSparseUpload` is donor-agnostic); compute.html reference semantics confirmed: type-5 `hebbianSparse(name, lr)` = plasticity reading the CLUSTER spike buffers at the bound region offsets. Chunks are 750k-nnz (~6MB).
+- **RH.0c DONE — the RESYNC IS EXONERATED.** Teach-time resync throttle is 15 MINUTES (~95KB/s avg; `DREAM_RESYNC_TEACH_THROTTLE_MS` default 900000) and the deferred arm waits for `_curriculumInProgress` false. It cannot be 4MB/s. The type-5 stub fix stays in scope (honest shadow + kills residual re-uploads) but it is NOT the speed lever.
+- **RH.0e THE ACTUAL RIVER — the teach frames themselves are fat, and the server already measured it:** `gpu.js:2713` — pattern frames carry sparseIndices "measured at a **153.1 KB AVERAGE** on the live box". Type-8 current writes on a 90k region can run to ~720KB; intra-cortex type-3 hebbian frames carry FULL pre+post active-index arrays of the 1.5M-row cortex (same class). ~20 msgs/s × ~207KB = the 4.06MB/s measured tonight.
+- **RH.0f THE WIRE IS THE CEILING:** ~4MB/s is the box→donor downlink capacity — corroborated twice independently ("19MB drains in seconds" ≈ 4-5s ≈ 4MB/s; sustained-equilibrium 4.06MB/s with the buffer parked at the lane cap; donor RTT 6.6s = exactly a 16.5MB queue at 4.1MB/s). No donor-side execution change can beat the pipe — the fix is SEND FEWER BYTES.
+- **RH.0g THE REPETITION STRUCTURE THAT SAVES US:** ~20 msgs/s against ~1.4 teach calls/s = ~14 frames per call — the rep loops (reps 2–50) put NEAR-IDENTICAL payloads on the wire over and over. A repeat-frame protocol collapses those to ~30-byte frames: ~10–50× byte cut on exactly the traffic that dominates.
+- **RH.0d propagate:** bound propagate stays as-is this release (server already has a working native-donor path; type-6 remains browser-only) — recorded, deliberately out of scope.
+
+### PHASE 1 — BUILD (donor-v0.3.15 + the server half of the repeat protocol) — REVISED per Phase 0
+
+- [x] **RH.1r** **DONE.** PROTOCOL — new SPRS type 12 "repeat": header name = the original frame's name field; payload = origType(u8). Server side (`gpu.js`): per-SOCKET payload cache keyed (type, name) storing the last-sent payload Buffer; when the new payload is byte-identical (`Buffer.equals`) AND the donor announced ≥0.3.15, send the ~30-byte repeat frame instead. Cache dies with the socket (keyed per ws) — a reconnected donor always gets full frames first. Version gate = negotiation (same TU.20.12 pattern as binTeach), NOT a fallback.
+- [x] **RH.2r** **DONE.** DONOR — frames.rs decodes type 12; donor.rs caches the last decoded teach payload per (type, cluster/region or matrix) at the receive layer and re-pushes an identical Work item on repeat. Applies to types 3 (hebbian arrays), 7 (spike writes), 8 (current writes); type 9 is header-only (no cache needed).
+- [x] **RH.3r** **DONE** (`wsPressure.teachOutByType` + `teachOutBytesSaved` + `repeatTeach`). TELEMETRY — per-frame-type outbound byte + frame counters on the donor socket, published through wsPressure, so the river's composition is READ, not inferred, in RH.8 and forever after.
+
+- [x] **RH.1** **DONE.** frames.rs: KEEP the parsed binding metadata (srcName, dstName, src/dst ranges) on `ChunkFirst` instead of discarding it.
+- [x] **RH.2** **DONE.** donor.rs + compute.rs: store binding per assembled matrix; **engine affinity** — a bound matrix MUST land on the SAME GPU as its cluster (MultiEngine currently round-robins matrices and clusters independently; single-GPU donors unaffected, multi-GPU donors would bind across devices and crash or silently no-op).
+- [x] **RH.3** **DONE — BOTH backends (CUDA + wgpu), no new kernels (plasticity already takes src/dst offsets); bounds-guarded so an ill-fitting window skips instead of reading OOB.** cuda.rs + compute.rs (wgpu): implement resident bound-hebbian — type-5 op on a bound matrix launches plasticity with preSpikes/postSpikes = the CLUSTER's resident spike buffer at the bound offsets (kernels already take srcOffset/dstOffset). Unbound or unresident ops: skip + count (never silently pretend).
+- [x] **RH.4** **DONE.** donor.rs: route type-5 ops through the real implementation; keep the ack contract identical (SPRR type 5, reqId) so the server's pending-resolve path is untouched.
+- [x] **RH.5** **DONE.** Cargo 0.3.14 → 0.3.15 (appVersion announces; protocol unchanged — the server already sends everything needed).
+
+### PHASE 2 — VERIFY (cargo is LOCAL now)
+
+- [x] **RH.6** **DONE — cargo check PASSES both feature sets (LOCAL, the WC.4b lesson applied); node --check gpu.js + state.js PASS; repeat-frame + binding byte-walks MATCH both codecs; kernels.ptx UNCHANGED; cache-discipline walk done (update only on confirmed send; delete on uncertainty; per-socket on both ends so reconnects start in lockstep).** `cargo check` both feature sets + full read-back of every edited region + byte-walk the binding fields against the server encoder + kernels.ptx UNCHANGED check (no new kernels needed — offsets already in the signatures).
+
+### PHASE 3 — SHIP
+
+- [x] **RH.7** **DONE.** Docs + FINALIZED, atomic commit, cascade develop→main, push BOTH remotes, tag `donor-v0.3.15`, CI builds.
+
+### PHASE 4 — DEPLOY + LIVE-VERIFY (explicit pass metrics, no vibes)
+
+- [ ] **RH.8** ⏳ GEE: Update & SAVESTART (site link-bump) → download + swap + restart donor. Then LIVE-VERIFY: (a) outbound MB/s to the donor COLLAPSES from ~4MB/s to ~KB/s once the canonical upload finishes; (b) buffer stops parking (near-0 between canonical uploads); (c) donor RTT <1s during teach; (d) teach/min climbs toward the ~1,300–2,000 server ceiling; (e) suppression ~0; (f) dream windows FIRE (`definitionQueue.lastWindow` populates, `kVocabTaught` climbs — OI.2 rides on this).
+
+**KNOWN NEXT WALL (recorded now, not this batch):** once the socket is clear, the ceiling becomes the server's own single-threaded teach loop (~32 calls/s measured unpaced). That is server-side work, no donor release needed.
