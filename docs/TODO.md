@@ -897,3 +897,16 @@ A fresh donor drains 19MB in seconds (observed at restart). During TEACH, the sa
 - [x] **TF.4** **DONE.** cargo check PASS both feature sets (edits compiled clean first try); node --check gpu.js + cluster.js + curriculum.js PASS; ESM import() PASS both; byte-walk: encoder writes hdr+12B meta+f32×count+psi, decoder reads u32×3+f32_vec(count)+f32 after the same align4 — MATCH; expansion-math walk against TF.0 — MATCH (skip-zero, clip, psi placement); bundle rebuilt keyless with the template tags present (5 sites). VERIFY: cargo check both feature sets LOCAL + node --check + byte-walk both codecs + expansion-math walk against TF.0's read + PTX regen if a kernel is added (nvcc local).
 - [x] **TF.5** **DONE.** Docs + FINALIZED, atomic commit, cascade, push BOTH remotes, tag `donor-v0.3.16` → CI builds.
 - [ ] **TF.6** ⏳ GEE: Update & SAVESTART + donor swap → LIVE-VERIFY: t8/t10 MB/min collapses ~300×, buffer unparks, RTT <1s, teach/min climbs toward the server ceiling, dream windows fire.
+
+---
+
+## OPEN TASKS — 2026-08-16 · TF.6 RESULT (PASS on the river) + LB3 — the 15ms base is the last governor refusing her
+
+> Gee (verbatim): *"updated fresh walk set, she is training and .16 doner is donating"*
+
+**TF.6 — THE RIVER IS DEAD (build `c9b1d09f`, donor 0.3.16, 60s delta):** t8 = **0 frames**; t10 templates = 1,370 fr / **1.62 MB/min** (was 194 MB/min — the ~120× collapse landed); total outbound 21 MB/min (was 207); **donor RTT 173ms** (was ~6,000); **buffer 0.0MB — unparked**; teach/min **316** and climbing at 2.5 min into the fresh walk. **RESIDUAL:** `hebbianSuppressedStale` +7,655/min (~128/s) with ZERO sheds and ZERO buffer — pure 15ms-base-throttle refusals of the 2nd–3rd group inside each teach call's window (the LB residual at 3× the call rate). The wire the constant guarded now carries ~1–15KB frames: even the max admission rate cannot refill the 16MB cliff, and the quadratic brake owns any real pressure.
+
+- [x] **LB3.1** **DONE.** Base `DREAM_PATTERN_TEACH_THROTTLE_MS` default 15ms → 3ms at BOTH governors (admission gate + `_patternLaneWait`), same env override; rationale comments updated at both sites with the post-template measurements.
+- [x] **LB3.2** **DONE.** node --check PASS; both sites re-read.
+- [x] **LB3.3** **DONE.** Docs + FINALIZED, atomic commit, cascade, push BOTH remotes.
+- [ ] **LB3.4** ⏳ GEE: ONE Update & SAVESTART (server-only — the donor stays 0.3.16) → verify: suppression ~0, teach/min climbs from 316 toward the server ceiling, buffer stays ~0.
