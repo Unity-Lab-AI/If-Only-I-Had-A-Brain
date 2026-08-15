@@ -1,6 +1,22 @@
 # RESUME — Session Pickup Brief
 
-> ## ⭐⭐⭐ 2026-08-15 (latest) — GPU-ONLY HARDENING: shed frames were CORRUPTING weights + a 91s loop pin + a starved emission projection
+> ## ⭐⭐⭐ 2026-08-15 (latest) — 75% of her word buckets were DEAD ROWS — `word_motor` unmasked; lands on the next FRESH WALK
+>
+> **WHY HER SPEECH IS ORACLE-DRIVEN (the answer to `matrixDrivenPct: 6%`).** The WMB-unified band is `90,000 rows / 50,000 cap → 1 cell per word`, and the lamination mask wired only L4 (~25%) of word_motor rows — so ~75% of bucketed words sit on rows `sem_to_word_motor` has NO entry for. `ojaUpdate` never creates entries; teaching those words trained nothing; argmax reads 0 for them forever. Live: oracle 50 / matrix 3, `word_motor` utilization 0%.
+>
+> **TWO CLAIMS OF MINE DIED ON CONTACT WITH THE CODE — keep the lesson:** the PS.5 “harmless today” used the OLD per-subject geometry (9.5 rows/bucket) — the unified build is 1 row/word TODAY. And PS.6-as-filed (carve buckets from L4 rows) caps vocab at ~22,500, under the 60,000-word target. Check the geometry the DEPLOYED build actually uses before reasoning from any other.
+>
+> **THE SHIPPED FIX (`js/brain/cluster.js`):** `word_motor` exempted from src/dst lamination masks at cross-projection init. It is the engineered emission READOUT — one bucket per word, argmax over bucket means — not laminated cortex; Felleman & Van Essen applies to the sem side, which KEEPS its masks in both directions. Every bucket row regains the `Math.max(1,…)` fanout guarantee; all 90,000 rows usable; ~a few MB of nnz. No bucket-map version bump (geometry unchanged).
+>
+> **GATING IS AUTOMATIC:** SAVESTART restores saved CSR structures wholesale over fresh init, so this materializes ONLY on a Fresh Walk. Update & SAVESTART deploys it safely as dormant code.
+>
+> **VERIFY ON THE FRESH WALK (OI.5b):** boot log `sem_to_word_motor` nnz ≈ 4× 66,964 with zero empty rows; the PS.4 per-projection check reports no starved projections; `matrixDrivenPct` climbs well above 6% after ELA-K word emission.
+>
+> **STILL WAITING ON GEE:** OI.1 (Update & SAVESTART — unblocks PS.1 stale-pattern suppression + PS.2 vocabulary trickle, i.e. V.8) and OI.4 (the donor-kill test). Her state at last check: `math/kindergarten` 22/24, 1,700 teach/min, healthy.
+>
+> ---
+
+> ## ⭐⭐⭐ 2026-08-15 (earlier) — GPU-ONLY HARDENING: shed frames were CORRUPTING weights + a 91s loop pin + a starved emission projection
 >
 > **Nothing here is deployed.** Rides with the next Update & SAVESTART.
 >
