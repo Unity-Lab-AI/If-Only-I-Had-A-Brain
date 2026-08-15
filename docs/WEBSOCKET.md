@@ -246,6 +246,24 @@ On the public donor lane (`wss://<host>/ws`), any number of `compute.html` donor
 
 Admin-only telemetry rides the admin lane (`wss://<host>/admin/ws`): the live server console stream and auto-scale telemetry (replica count, per-replica throughput, scaling decisions) are pushed only to authed admin clients, never to donors/viewers.
 
+#### Binary sparse frames (SPRS → donor, SPRR ← donor)
+
+Bulk teach + matrix traffic rides BINARY WebSocket frames, not JSON — they bypass V8's JSON string limit and the stringify/parse round-trip (10-20× faster for typed-array payloads). Every request frame starts with the same header: `'SPRS' | typeByte(u8) | reqId(u32 LE) | nameLen(u16 LE) | name(UTF-8) | pad→4B` (the pad keeps typed-array views aligned). Acks come back as `SPRR | typeByte | reqId`. Encoders/decoders: server `server/brain-server/gpu.js` (`_encodeSparseHeader` / `_sparseSendBinary`), native donor `donor-app/src/frames.rs`, browser donor `html/compute.html` binary handler.
+
+| Type | Name field | Payload | Meaning |
+|---|---|---|---|
+| 1 | matrix | rows, cols, nnz, rowPtr[], values[], colIdx[] | Upload (or replace) a CSR sparse matrix (legacy non-chunked; carries no binding) |
+| 2 | matrix | preLen, pre[] | Propagate — scatter pre-spikes, CSR matmul, ack carries post currents. **Zero-length pre = cluster-BOUND mode**: the donor reads pre-spikes from the bound cluster's resident spike buffer (CHAT.1 wire cut) |
+| 3 | matrix | preLen, pre[], postLen, post[], lr | Standalone Hebbian/Oja — full pre/post active-index arrays (the intra-cortex teach path). Acked |
+| 4 | matrix | chunkSeq, totalChunks, flags, [first: rows/cols/nnz/rowPtr + **binding** when flags&2], values slice, colIdx slice | Chunked upload (750k nnz/chunk). The first chunk's binding block (`srcCluster` + `dstCluster` names + src/dst start..end) is what makes a matrix cluster-BOUND — captured by BOTH donors as of donor-v0.3.15 (the native donor parsed + discarded it before). Ack on the LAST chunk only |
+| 5 | (empty) | opCount, then per op: name + lr | Batched bound-Hebbian — the BULK of teach GPU work. NO index arrays: plasticity reads the RESIDENT cluster spike buffers (written by types 7/9) at the bound offsets. Browser donors always did this; the native donor STUBBED it (ack, no-op) from v0.3.11 until donor-v0.3.15 implemented it for real (engine affinity: a bound matrix lives on the same GPU as its clusters) |
+| 7 | `cluster/region` | count, indices[] (u32) | write_spike_slice as binary (donor-v0.3.13+; fire-and-forget, reqId 0). Replaced the ~153KB-average JSON integer arrays whose serde_json parse was the measured drain bottleneck |
+| 8 | `cluster/region` | count, indices[], vcount, values[] (f32), psi | write_current_slice as binary (fire-and-forget) |
+| 9 | `cluster/region` | (header only) | clear_spike_region as binary (fire-and-forget). The clear OPENS each atomic teach-pattern group |
+| 12 | original frame's name | origType(u8) | **REPEAT** (donor-v0.3.15+): the payload for this (type, name) is byte-identical to the last one sent on this socket — re-execute the donor's cached copy. ~30 bytes instead of 150-700KB; rep loops send ~14 near-identical frames per teach call and the box→donor wire tops out ~4MB/s, so this is the teach-throughput lever. Caches are per-connection on BOTH ends (a reconnect starts full-frames); server cache updates only on CONFIRMED sends; a type-3 repeat rides a real reqId and acks as type 3 |
+
+Version negotiation (never a fallback — each donor gets the best protocol it announces at `gpu_register`): types 7/8/9 require `donorAppVersion ≥ 0.3.13`, type 12 requires `≥ 0.3.15`; browser donors report `'browser'` and keep JSON teach patterns. The server logs its encoding decisions one-shot per socket, the clients list exposes `donorAppVersion` + `binaryTeach`, and `wsPressure.teachOutByType` + `teachOutBytesSaved` publish per-type outbound frames/bytes so the wire's composition is read, not inferred.
+
 ---
 
 ## Messages: Client → Server
