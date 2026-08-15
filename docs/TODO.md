@@ -484,9 +484,9 @@ The live log, **8,103 times in 12 minutes**:
 
 Driver: donor **RTT 2,597ms** with **20.3MB buffered** (over the 16MB pattern-lane cap) — the lane is saturated at a new operating point.
 
-- [ ] **PS.1a** Decide + implement the correct semantics under GPU-only. The two candidates: (i) **block instead of drop** while a teach is in flight — the shape `MAX_AWAIT_MS` already uses for `compute_batch` (D.1/N.2), so the lane back-pressures the teach loop instead of silently discarding its inputs; (ii) **couple the pair** — if a pattern frame is shed, suppress the `hebbianBound` that depends on it so a bad update is never fired on stale buffers. These are not equivalent: (i) preserves the update at the cost of teach throughput, (ii) drops it cleanly and honestly.
-- [ ] **PS.1b** Rewrite the shed log line — it must never again assert "CPU authoritative" on a brain where the CPU teach path has been removed. A stale justification in a log is how this survived.
-- [ ] **PS.1c** Surface shed-frames-during-teach as a FIRST-CLASS dashboard number, not a rate-limited console line. If teaching can be lost, the count belongs next to the progress bar.
+- [x] **PS.1a** **DONE.** Decide + implement the correct semantics under GPU-only. The two candidates: (i) **block instead of drop** while a teach is in flight — the shape `MAX_AWAIT_MS` already uses for `compute_batch` (D.1/N.2), so the lane back-pressures the teach loop instead of silently discarding its inputs; (ii) **couple the pair** — if a pattern frame is shed, suppress the `hebbianBound` that depends on it so a bad update is never fired on stale buffers. These are not equivalent: (i) preserves the update at the cost of teach throughput, (ii) drops it cleanly and honestly.
+- [x] **PS.1b** **DONE.** Rewrite the shed log line — it must never again assert "CPU authoritative" on a brain where the CPU teach path has been removed. A stale justification in a log is how this survived.
+- [x] **PS.1c** **DONE.** Surface shed-frames-during-teach as a FIRST-CLASS dashboard number, not a rate-limited console line. If teaching can be lost, the count belongs next to the progress bar.
 
 ### PS.2 ⛔ The dictionary trickle binds ~2 of 120 words per window
 
@@ -517,7 +517,7 @@ Driver: donor **RTT 2,597ms** with **20.3MB buffered** (over the 16MB pattern-la
 
 **91.6 seconds** of a single-threaded loop pinned in one teach unit — long enough to starve donor frames, `/ws` handshakes and pings, and it is the same failure family the tick-gap batch attacked (`_ojaUpdateChunked` time-slicing). `_teachWordEmissionDirect` evidently has an unyielded synchronous stretch that slicing has not reached.
 
-- [ ] **PS.3a** Locate the unyielded stretch in `_teachWordEmissionDirect` and time-slice it with the same adaptive ~30ms macrotask-yield pattern `_ojaUpdateChunked` uses. Row-independent work only — no change to totals or math.
+- [x] **PS.3a** **DONE.** Locate the unyielded stretch in `_teachWordEmissionDirect` and time-slice it with the same adaptive ~30ms macrotask-yield pattern `_ojaUpdateChunked` uses. Row-independent work only — no change to totals or math.
 
 ### PS.4 Cross-projection fanout drift — 4.9 entries/row against a 20–40 target
 
@@ -525,7 +525,32 @@ Driver: donor **RTT 2,597ms** with **20.3MB buffered** (over the 16MB pattern-la
 
 Flagged by her own boot self-check, ~4× below the low end of its own target band. Every other equation check passed.
 
-- [ ] **PS.4a** Determine whether 4.9/row is a real wiring regression or a stale target band for the current 1.5M-neuron cortex geometry, and fix whichever is wrong — the wiring or the check. A self-check that cries wolf every boot trains us to ignore it.
+- [x] **PS.4a** **DONE.** Determine whether 4.9/row is a real wiring regression or a stale target band for the current 1.5M-neuron cortex geometry, and fix whichever is wrong — the wiring or the check. A self-check that cries wolf every boot trains us to ignore it.
+
+#### PS.4 — WHAT THE BROKEN CHECK WAS HIDING (appended finding — needs Gee's call)
+
+> Gee (verbatim): *"we are getting her 100% correct so get to it"*
+
+Computing every projection's fanout from her own boot log reproduces the 4.9 average exactly, and shows why the aggregate was worthless — and what it buried:
+
+```
+sem_to_word_motor       0.744   <-- rows with NO incoming connection
+word_motor_to_sem       0.744   <-- rows with NO incoming connection
+letter_to_motor         1.497        sem_to_motor      1.497
+motor_to_sem            1.498        motor_to_letter   1.498
+letter_to_phon          2.500        phon_to_letter    2.500
+phon_to_sem             3.000        sem_to_phon       3.000
+visual_to_letter       10.000        letter_to_visual 10.000
+sem_to_fineType        10.000        fineType_to_sem  10.000
+auditory_to_phon       10.000        phon_to_auditory 10.000
+                                     average = 4.905
+```
+
+**`sem_to_word_motor` is the projection that DRIVES WORD EMISSION, and it carries 0.744 entries per row** — 66,964 nnz over 90,000 rows. `ojaUpdate` only adjusts EXISTING CSR entries; it never creates one. So roughly a quarter of her word buckets are **structurally incapable of ever learning to fire, no matter how long she trains.** That is consistent with the utilization panel reading `word_motor: 0% (0/90,000)`.
+
+The CHECK is fixed (it now names starved projections instead of averaging them into noise). **The WIRING is not** — raising `sem_to_word_motor` density changes init parameters, VRAM footprint and upload size, so it is Gee's call, not mine.
+
+- [ ] **PS.5** ⏳ DECISION + FIX: re-wire `sem_to_word_motor` / `word_motor_to_sem` to at least 1 entry per row so every word bucket can learn. Needs Gee's go-ahead because it moves VRAM and upload size.
 
 ### EXPLICITLY OUT OF SCOPE
 

@@ -1402,6 +1402,14 @@ const SERVER_STATE_MIXIN = {
       // Split out from `sheds` (hebbian ops) so the dashboard/public-state
       // shows WHICH stream is saturating at a glance.
       patternSheds: this._wsPatternShedCount || 0,
+      // GPU-ONLY CONSEQUENCE (2026-08-15). A shed pattern frame is no longer
+      // free: the bound-Hebbian dispatch reads its pre/post out of the very
+      // buffer these frames write, so a shed marks the lane stale and the
+      // dependent Hebbian is SUPPRESSED rather than fired on the previous
+      // iteration pattern. This counter is the teaching that cost us - it
+      // belongs on screen, not in a rate-limited console line.
+      hebbianSuppressedStale: this._hebbianSuppressedStale || 0,
+      patternLaneStale: !!this._patternLaneStale,
       mirrorSheds: this._wsMirrorShedCount || 0,
       dropRatePerSec,
       wsConnected: !!(ws && ws.readyState === 1),

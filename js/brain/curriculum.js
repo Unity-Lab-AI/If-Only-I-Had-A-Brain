@@ -4395,22 +4395,38 @@ export class Curriculum {
         issues.push(`✗ cross-projection clamp drift: ${clampBad} projection(s) outside ±0.4 — sample: ${sampleBad.join(', ')}`);
       }
 
-      // 4. Average fanout per row across all cross-projections (sanity
-      //    check that init density landed where expected — target ~20-40).
-      let totalFanout = 0;
-      let totalProj = 0;
-      for (const [, proj] of Object.entries(cluster.crossProjections)) {
-        if (proj && proj.rows > 0 && typeof proj.nnz === 'number') {
-          totalFanout += proj.nnz / proj.rows;
-          totalProj++;
+      // 4. Cross-projection wiring density - PER PROJECTION, not an average.
+      //
+      // This used to average nnz/rows across every cross-projection and compare
+      // that single number to one band. The statistic is meaningless here: the
+      // set mixes dense associative maps (visual_to_letter, sem_to_fineType,
+      // auditory_to_phon - all exactly 10.0/row by design) with deliberately
+      // sparse topographic maps (letter_to_phon 2.5, sem_to_motor 1.5). Their
+      // mean lands at 4.9, outside the band, so the check failed on EVERY boot
+      // while all ten other checks passed - and a self-check that always fails
+      // is a self-check nobody reads. Its own text disagreed with its own test
+      // as well: the message said "target 20-40" while the condition accepted
+      // 10-80.
+      //
+      // The condition that actually matters is per-projection and structural: a
+      // projection averaging BELOW 1.0 entries per row has rows with NO incoming
+      // connection, and `ojaUpdate` only ever adjusts EXISTING CSR entries - it
+      // never creates one. Those rows can never learn, no matter how long she
+      // trains. At the current geometry that is true of sem_to_word_motor and
+      // word_motor_to_sem (0.744 each) - the pair that drives WORD EMISSION.
+      const _fanouts = [];
+      for (const [_pname, _pproj] of Object.entries(cluster.crossProjections)) {
+        if (_pproj && _pproj.rows > 0 && typeof _pproj.nnz === 'number') {
+          _fanouts.push({ name: _pname, fanout: _pproj.nnz / _pproj.rows });
         }
       }
-      if (totalProj > 0) {
-        const avg = totalFanout / totalProj;
-        if (avg >= 10 && avg <= 80) {
-          checks.push(`✓ cross-projection avg fanout: ${avg.toFixed(1)} entries/row across ${totalProj} projections (target 20-40)`);
+      if (_fanouts.length > 0) {
+        const _starved = _fanouts.filter(f => f.fanout < 1.0);
+        if (_starved.length === 0) {
+          const _lo = _fanouts.reduce((m, f) => (f.fanout < m.fanout ? f : m));
+          checks.push(`✓ cross-projection wiring: all ${_fanouts.length} projections at ≥1 entry/row (sparsest ${_lo.name} ${_lo.fanout.toFixed(2)}) — no row is structurally unable to learn`);
         } else {
-          issues.push(`⚠ cross-projection avg fanout drift: ${avg.toFixed(1)} entries/row (target 20-40)`);
+          issues.push(`✗ cross-projection STARVED — ${_starved.map(f => `${f.name} ${f.fanout.toFixed(2)} entries/row`).join(', ')}. Below 1.0/row means rows with NO incoming connection; ojaUpdate only adjusts EXISTING CSR entries and never creates one, so those rows can never learn.`);
         }
       }
 

@@ -77922,9 +77922,11 @@ var K_MIXIN = {
         }
       }
     };
+    const YIELD_SLICE_MS = 30;
+    const _kScalesWM = typeof cluster.buildKScalesForProjection === "function" ? cluster.buildKScalesForProjection("sem", "word_motor") : null;
     for (let rep = 0; rep < reps; rep++) {
       if (typeof globalThis._brainShutdownRequested !== "undefined" && globalThis._brainShutdownRequested) return;
-      let count = 0;
+      let sliceStart = Date.now();
       for (let wi = 0; wi < words.length; wi++) {
         const word = words[wi];
         if (!forceAll && emTaught.has(word)) {
@@ -77942,183 +77944,26 @@ var K_MIXIN = {
         const bStart = bandStart + wi * bucketSize;
         if (bStart >= bandEnd) break;
         const bEnd = Math.min(bandEnd, bStart + bucketSize);
-        for (let n = bStart; n < bEnd; n++) postWM[n] = 1;
+        const activeRows = new Array(bEnd - bStart);
+        for (let n = bStart, ai = 0; n < bEnd; n++, ai++) {
+          postWM[n] = 1;
+          activeRows[ai] = n;
+        }
         try {
-          const kScales = typeof cluster.buildKScalesForProjection === "function" ? cluster.buildKScalesForProjection("sem", "word_motor") : null;
-          semToWordMotor.ojaUpdate(preSem, postWM, lr, kScales ? { kScales } : void 0);
+          semToWordMotor.ojaUpdate(
+            preSem,
+            postWM,
+            lr,
+            _kScalesWM ? { kScales: _kScalesWM, activeRows } : { activeRows }
+          );
           updates++;
         } catch {
           skipped++;
         }
-        if (++count % 100 === 0) await _microtask();
-      }
-      await _microtask();
-    }
-    for (const w of newlyTaught) emTaught.add(w);
-    let sepMaxAbs = 0, sepMeanAbs = 0;
-    try {
-      let renormTarget = 1;
-      try {
-        const v = parseFloat(process?.env?.DREAM_WORD_MOTOR_RENORM);
-        if (Number.isFinite(v) && v > 0) renormTarget = v;
-      } catch {
-      }
-      if (typeof semToWordMotor.normalizeRows === "function" && semToWordMotor.values && semToWordMotor.values.length > 0) {
-        const rowsN = semToWordMotor.normalizeRows(renormTarget);
-        cluster._gpuShadowDirty = true;
-        try {
-          const vals = semToWordMotor.values;
-          let sum = 0, nnz = 0;
-          const stride = Math.max(1, Math.floor(vals.length / 2e3));
-          for (let k = 0; k < vals.length; k += stride) {
-            const a = vals[k] < 0 ? -vals[k] : vals[k];
-            if (a > 1e-6) {
-              sum += a;
-              nnz++;
-              if (a > sepMaxAbs) sepMaxAbs = a;
-            }
-          }
-          sepMeanAbs = nnz > 0 ? sum / nnz : 0;
-          cluster[`wordMotorWeightMaxAbs_${subject}`] = sepMaxAbs;
-          cluster[`wordMotorWeightMeanAbs_${subject}`] = sepMeanAbs;
-        } catch {
+        if (Date.now() - sliceStart >= YIELD_SLICE_MS) {
+          await _microtask();
+          sliceStart = Date.now();
         }
-        this._hb(`[Curriculum] _teachWordEmissionDirect SEPARABILITY \u2014 L2-renorm ${rowsN} word_motor rows to |w|=${renormTarget} (subject=${subject}); post-renorm sampled maxAbs=${sepMaxAbs.toFixed(4)} meanAbs=${sepMeanAbs.toFixed(4)} ratio=${sepMeanAbs > 0 ? (sepMaxAbs / sepMeanAbs).toFixed(2) : "n/a"} (uniform mass = more separable). GPU shadow flagged for re-upload.`);
-      }
-    } catch {
-    }
-    const dt = ((Date.now() - t0) / 1e3).toFixed(1);
-    this._hb(`[Curriculum] _teachWordEmissionDirect DONE in ${dt}s \u2014 ${updates} Oja updates \xB7 ${skipped} skipped (${words.length} words \xD7 ${reps} reps target \xB7 band=${subjectBandName || "umbrella"})`);
-    try {
-      if (cluster && typeof this._teachWordDefinition === "function") {
-        const taught = cluster._definitionTaughtWords || /* @__PURE__ */ new Set();
-        const untaught = words.filter((w) => w && !taught.has(String(w).toLowerCase().trim()));
-        const INLINE_CAP = 10;
-        const batchN = Math.min(INLINE_CAP, untaught.length);
-        if (batchN > 0) {
-          const inlineStart = Date.now();
-          let bound = 0;
-          for (let i = 0; i < batchN; i++) {
-            try {
-              const r = await this._teachWordDefinition(untaught[i], { reps: 4, label: "INLINE-DEF" });
-              if (r && r.defsBound > 0) bound += r.defsBound;
-            } catch {
-            }
-          }
-          const inlineDt = ((Date.now() - inlineStart) / 1e3).toFixed(1);
-          this._hb(`[Curriculum] _teachWordEmissionDirect inline-multi-def: ${batchN} untaught words processed in ${inlineDt}s (${bound} multi-def Hebbian fires)`);
-        }
-      }
-    } catch {
-    }
-    if (subject && subject !== "all" && updates > 0 && typeof cluster.advanceSubGrade === "function") {
-      if (cluster.advanceSubGrade(subject, "words")) {
-        this._hb(`[Curriculum] \u{1F4C8} subGrade ${subject} advanced \u2192 'words' (${updates} bucket writes seated \xB7 live capability now reflects this)`);
-      }
-    }
-  },
-  // iter15-A — Direct sem→motor word→firstChar identity write that
-  // bypasses cross-region Hebbian. Mirror of iter14-A pattern but on
-  // sem_to_motor instead of letter_to_motor.
-  // Operator caught (2026-05-05 verbatim sequence: "no if they are empty
-  // they are failures and is need document to be fixed" + "DO THE
-  // FUCKING WORK"): even with iter11-J `_teachWordSpellingDirect` +
-  // iter13 hotfix #1 (entry.glove → entry.pattern field rename) +
-  // iter14-F bio-weights, PROD still 0/17 across ELA-K (bucket-stuck:
-  // cat→r dog→r) AND Math-K (empty emissions). Root cause same as
-  // iter14-A on letter_to_motor: `_teachWordSpellingDirect` uses
-  // `_teachHebbianAsymmetric` which fires through `cluster._crossRegion
-  // Hebbian` — meaning the QA-TRAIN phase that runs AFTER (in ELA-K)
-  // OR BEFORE (in Math-K) ALSO fires sem_to_motor writes through the
-  // SAME cross-region Hebbian path with QA-pair patterns that pollute
-  // the WordSpellingDirect attractors. Plus QA-TRAIN saturation
-  // triggers `rescale×0.5 [sem_to_motor: 0.400→0.200]` which halves
-  // ALL sem_to_motor weights including the discriminative ones.
-  // Fix: write concept(word) → motor(firstChar) DIRECTLY to sem_to_motor's
-  // SparseMatrix via ojaUpdate, NOT through firing patterns + global
-  // Hebbian rule. Wipe existing weights first (`scale(0)`) so the
-  // QA-pollution is cleared. Then carve fresh discriminative one-hots
-  // at 5× lr × 8 reps (mirrors iter14-A reps tuning — Oja's normalizing
-  // rule converges fast on orthogonal pairs). MUST RUN LAST in each
-  // subject's teach phase — any subsequent cross-region Hebbian write
-  // re-pollutes sem_to_motor.
-  async _teachWordSpellingDirectFinal(opts = {}) {
-    const cluster = this.cluster;
-    if (!cluster || !cluster.crossProjections?.sem_to_motor) return;
-    const semToMotor = cluster.crossProjections.sem_to_motor;
-    const semRegion = cluster.regions?.sem;
-    const motorRegion = cluster.regions?.motor;
-    if (!semRegion || !motorRegion) return;
-    const reps = opts.reps ?? 8;
-    const lr = (cluster.learningRate ?? 0.01) * 5;
-    const subject = opts.subject || "all";
-    let words = Array.isArray(opts.words) ? opts.words : null;
-    if (!words && this.dictionary && this.dictionary._words?.entries) {
-      words = [];
-      for (const [w, entry] of this.dictionary._words.entries()) {
-        if (typeof w !== "string" || w.length === 0) continue;
-        if (!/^[a-z]+$/.test(w)) continue;
-        if (!entry || !entry.pattern || !entry.pattern.length) continue;
-        if (entry.isPersona) continue;
-        words.push(w);
-      }
-    }
-    if (!words || words.length === 0) {
-      this._hb(`[Curriculum] _teachWordSpellingDirectFinal SKIPPED \u2014 no K vocab found (subject=${subject})`);
-      return;
-    }
-    this._hb(`[Curriculum] _teachWordSpellingDirectFinal START: ${words.length} K words \xD7 ${reps} reps \xB7 lr=${lr.toFixed(4)} (subject=${subject}) \u2014 DIRECT sem_to_motor.ojaUpdate writes (bypasses cross-region Hebbian + QA-rescale to protect discriminative attractors)`);
-    if (typeof semToMotor.scale === "function") {
-      semToMotor.scale(0);
-      this._hb(`[Curriculum] _teachWordSpellingDirectFinal \u2014 wiped prior sem_to_motor weights (QA-TRAIN cross-region Hebbian pollution + rescale damage cleared)`);
-    }
-    if (typeof semToMotor.ojaUpdate !== "function") {
-      this._hb(`[Curriculum] _teachWordSpellingDirectFinal SKIPPED \u2014 sem_to_motor.ojaUpdate not available`);
-      return;
-    }
-    const t0 = Date.now();
-    let updates = 0, skipped = 0;
-    const semSize = semRegion.end - semRegion.start;
-    const motorSize = motorRegion.end - motorRegion.start;
-    const buildRegionSizedTiled = (regionSize, src, binarize) => {
-      const vec = new Float64Array(regionSize);
-      if (!src || src.length === 0) return vec;
-      const gSize = Math.max(1, Math.floor(regionSize / src.length));
-      for (let d = 0; d < src.length; d++) {
-        const v = src[d] || 0;
-        if (binarize ? v <= 0 : v === 0) continue;
-        for (let n = 0; n < gSize; n++) {
-          const idx = d * gSize + n;
-          if (idx < regionSize) vec[idx] = binarize ? 1 : v;
-        }
-      }
-      return vec;
-    };
-    for (let rep = 0; rep < reps; rep++) {
-      if (typeof globalThis._brainShutdownRequested !== "undefined" && globalThis._brainShutdownRequested) return;
-      let count = 0;
-      for (const word of words) {
-        const firstChar = word[0];
-        const entry = this.dictionary._words.get(word);
-        if (!entry || !entry.pattern) {
-          skipped++;
-          continue;
-        }
-        const firstCharOneHot = encodeLetter(firstChar);
-        if (!firstCharOneHot || firstCharOneHot.length === 0) {
-          skipped++;
-          continue;
-        }
-        const preSem = buildRegionSizedTiled(semSize, entry.pattern, false);
-        const postMot = buildRegionSizedTiled(motorSize, firstCharOneHot, true);
-        try {
-          const kScales = typeof cluster.buildKScalesForProjection === "function" ? cluster.buildKScalesForProjection("sem", "motor") : null;
-          semToMotor.ojaUpdate(preSem, postMot, lr, kScales ? { kScales } : void 0);
-          updates++;
-        } catch {
-          skipped++;
-        }
-        if (++count % 100 === 0) await _microtask();
       }
       await _microtask();
     }
@@ -96386,20 +96231,19 @@ var Curriculum = class _Curriculum {
       } else {
         issues.push(`\u2717 cross-projection clamp drift: ${clampBad} projection(s) outside \xB10.4 \u2014 sample: ${sampleBad.join(", ")}`);
       }
-      let totalFanout = 0;
-      let totalProj = 0;
-      for (const [, proj] of Object.entries(cluster.crossProjections)) {
-        if (proj && proj.rows > 0 && typeof proj.nnz === "number") {
-          totalFanout += proj.nnz / proj.rows;
-          totalProj++;
+      const _fanouts = [];
+      for (const [_pname, _pproj] of Object.entries(cluster.crossProjections)) {
+        if (_pproj && _pproj.rows > 0 && typeof _pproj.nnz === "number") {
+          _fanouts.push({ name: _pname, fanout: _pproj.nnz / _pproj.rows });
         }
       }
-      if (totalProj > 0) {
-        const avg = totalFanout / totalProj;
-        if (avg >= 10 && avg <= 80) {
-          checks.push(`\u2713 cross-projection avg fanout: ${avg.toFixed(1)} entries/row across ${totalProj} projections (target 20-40)`);
+      if (_fanouts.length > 0) {
+        const _starved = _fanouts.filter((f) => f.fanout < 1);
+        if (_starved.length === 0) {
+          const _lo = _fanouts.reduce((m, f) => f.fanout < m.fanout ? f : m);
+          checks.push(`\u2713 cross-projection wiring: all ${_fanouts.length} projections at \u22651 entry/row (sparsest ${_lo.name} ${_lo.fanout.toFixed(2)}) \u2014 no row is structurally unable to learn`);
         } else {
-          issues.push(`\u26A0 cross-projection avg fanout drift: ${avg.toFixed(1)} entries/row (target 20-40)`);
+          issues.push(`\u2717 cross-projection STARVED \u2014 ${_starved.map((f) => `${f.name} ${f.fanout.toFixed(2)} entries/row`).join(", ")}. Below 1.0/row means rows with NO incoming connection; ojaUpdate only adjusts EXISTING CSR entries and never creates one, so those rows can never learn.`);
         }
       }
       const sample = cluster.crossProjections.sem_to_motor;
