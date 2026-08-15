@@ -37,7 +37,15 @@ export const CLUSTER_HEBBIAN_MIXIN = {
    */
   _teachSubstrateReady(who) {
     if (!this.requireGpuSubstrate) return true;   // browser brain: CPU IS its substrate
-    if (this._gpuProxyReady === true) {
+    // ALIVE, not uploaded-once (2026-08-15). `_gpuProxyReady` is written false
+    // in exactly one place - the constructor - and true when initGpu's upload
+    // completes. NOTHING clears it when the donor dies, so after a donor kill
+    // it kept answering "substrate ready" and teaching continued against a
+    // corpse (caught live: donor killed, GPU-needed popup showing, teach events
+    // still climbing). The substrate is ready only while the weights are
+    // uploaded AND the socket carrying them is open.
+    const _sockLive = !!(this._brain && this._brain._gpuClient && this._brain._gpuClient.readyState === 1);
+    if (this._gpuProxyReady === true && _sockLive) {
       if (this._substrateDownSince) {
         console.log(`[Cluster ${this.name}] compute substrate BACK after ${((Date.now() - this._substrateDownSince) / 1000).toFixed(0)}s (${this._substrateRefusals | 0} teach calls refused while it was gone) - teaching resumes.`);
         this._substrateDownSince = null;
@@ -542,6 +550,12 @@ export const CLUSTER_HEBBIAN_MIXIN = {
    */
   async initGpu() {
     if (!this._gpuProxy || !this._gpuProxy.upload) return false;
+    // NOT READY DURING A (RE-)UPLOAD (2026-08-15). This method is also the
+    // re-arm path after a donor swap, and the stale `true` from the PREVIOUS
+    // donor otherwise lets teach dispatch against matrices the new donor does
+    // not hold yet. Cleared here; the assignment at the end of this method is
+    // the ONLY place it returns to true, and only when every matrix uploaded.
+    this._gpuProxyReady = false;
     const targets = [];
     // T17.3.e — intra-cluster synapse matrix uploaded alongside
     // cross-projections. Hebbian updates during curriculum teach call
