@@ -1,6 +1,22 @@
 # RESUME — Session Pickup Brief
 
-> ## ⭐⭐⭐ 2026-08-14 (latest) — ⛔ V.8 FAILED LIVE — the dictionary trickle had NEVER run (ZERO definitions bound in 4.6h) — FIXED, NOT DEPLOYED
+> ## ⭐⭐⭐ 2026-08-15 (latest) — THE TRICKLE PROCESSED ZERO WORDS: an empty array is truthy — FIXED, NOT DEPLOYED
+>
+> **THE LESSON WORTH KEEPING:** `kVocabTaught: 2` read like "binds 2 of 120". It was **zero** — the two came from the fused-token purge. Do not infer a rate from a counter without confirming the producer ran.
+>
+> **ROOT — `if (!cluster._kVocabQueue)` and AN EMPTY ARRAY IS TRUTHY.** Once the queue persisted as `[]` it was never refilled. V.3 creates it empty ON PURPOSE (each grade enqueues at grade START), and a savestart resumes MID-grade so no grade-start fires. `batchN = min(120,0) = 0` skipped the entire batch block **silently — no words processed and no summary line**. The absent `💤 dream trickle:` line in the console was not a filtering artifact; it was the bug announcing itself by omission.
+>
+> **THREE MORE IN THE SAME LOOP:** `_kVocabRetryQueue` has ZERO writers (the "don't get lost forever" block drains an array nothing fills); `/timeout/i.test(r.skipped)` can never match — `_teachWordDefinition` only returns `no definition` / `aborted-*` / `empty word` / `no cluster/word`; and `shift()` ran BEFORE the attempt, so any non-timeout failure lost the word permanently.
+>
+> **FIXED:** refill on EMPTINESS from the CURRENT grade’s own vocabulary (K list for K/pre-K, `gradeVocabularyFor(grade)` otherwise) so resume keeps vocabulary alive; **bind-then-remove** with rotate-to-back + `MAX_ATTEMPTS=3` → `_kVocabUnresolved` (reported, never vanished); dead retry queue and impossible regex deleted; summary line ALWAYS logs including zero; **`curriculum.definitionQueue { depth, unresolved, lastWindow{processed,bound,failed,ms} }` published to `/public-state.json`** — check that field, not a console line.
+>
+> **CONFIRMED WORKING on deploy `64c71147`:** resume-skip ALIVE — 32 phase markers restored and six phases skipped in the SAME SECOND with zero heap delta, recovering 4.6h of ELA-K in seconds (the latch bug would have re-taught all of it); GPU-only clean (`all 16 GPU-fast, zero CPU`); liveness line rendering `0 teach/min · last teach 278s ago · spikes paused — probe gate (expected)`; `no declared phase in flight` instead of a primitive.
+>
+> **STILL OPEN — see TODO PS.1 / PS.3 / PS.4.** PS.1 is the important one: the pattern-lane shed still justifies itself with *"Dropping is safe — CPU authoritative"* on a brain whose CPU teach path the G batch REMOVED, and it shed **8,103 frames in 12 minutes** at donor RTT 2,597ms. Those frames populate the GPU spike buffers `hebbianBound` then reads; dropping them may now lose real teaching rather than a redundant mirror.
+>
+> ---
+
+> ## ⭐⭐⭐ 2026-08-14 (earlier) — ⛔ V.8 FAILED LIVE — the dictionary trickle had NEVER run (ZERO definitions bound in 4.6h) — FIXED, NOT DEPLOYED
 >
 > **THE HEADLINE: she had learned ZERO word definitions.** Gee asked for the dream-window check we had been waiting on all day. Live `/public-state.json`: dictionary **healthy** — 8,747 words fetched, 1,343 errs, cache 10,090, `fetchAvailable ✓`, `smokeTestPassed ✓` — and **`kVocabTaught: 0`, `defsLearnedPerHour: 0`** after **3 consolidation passes** and 4.6 hours. Words were being FETCHED and never BOUND.
 >

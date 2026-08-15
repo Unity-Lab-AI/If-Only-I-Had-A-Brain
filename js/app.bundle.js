@@ -95421,6 +95421,19 @@ var Curriculum = class _Curriculum {
       // exactly like a dead brain; it fooled me once already today. Same
       // reasoning as the `batchPaused` / `batchStall` split on the donor side:
       // an expected pause must say so, or it will be read as a failure.
+      // DEFINITION-SEED QUEUE - the vocabulary lane, answerable from
+      // /public-state.json (2026-08-15).
+      //
+      // This existed only as a rate-limited console line, and when the queue was
+      // empty the batch block was skipped so the line was not emitted AT ALL -
+      // a silent no-op that hid a whole run's worth of un-learned vocabulary
+      // behind an absent log. Depth + the last window's outcome are published so
+      // "is she actually learning word meanings" is a field read, not a log hunt.
+      definitionQueue: {
+        depth: cluster && Array.isArray(cluster._kVocabQueue) ? cluster._kVocabQueue.length : 0,
+        unresolved: cluster && cluster._kVocabUnresolved instanceof Set ? cluster._kVocabUnresolved.size : 0,
+        lastWindow: this._trickleLastWindow || null
+      },
       liveness: (() => {
         const now = Date.now();
         const count = this._teachTickCount | 0;
@@ -95723,42 +95736,71 @@ var Curriculum = class _Curriculum {
         _dwBudgetFrom = Date.now();
         if (!_dwOverBudget("dictionary dream-trickle -- the ONLY path that binds word meanings; skipping it means NO vocabulary is learned this window") && cluster && typeof this._teachWordDefinition === "function") {
           try {
-            if (!cluster._kVocabQueue) {
-              const { K_VOCABULARY: K_VOCABULARY2 } = await Promise.resolve().then(() => (init_k_vocabulary(), k_vocabulary_exports));
-              if (Array.isArray(K_VOCABULARY2)) {
-                const taught = cluster._definitionTaughtWords || /* @__PURE__ */ new Set();
-                cluster._kVocabQueue = K_VOCABULARY2.filter((w) => !taught.has(w));
+            if (!Array.isArray(cluster._kVocabQueue) || cluster._kVocabQueue.length === 0) {
+              const _g = this._currentGrade || "kindergarten";
+              let _words = [];
+              if (_g === "kindergarten" || _g === "pre-K") {
+                const { K_VOCABULARY: K_VOCABULARY2 } = await Promise.resolve().then(() => (init_k_vocabulary(), k_vocabulary_exports));
+                if (Array.isArray(K_VOCABULARY2)) _words = K_VOCABULARY2;
               } else {
-                cluster._kVocabQueue = [];
+                const { gradeVocabularyFor: gradeVocabularyFor2 } = await Promise.resolve().then(() => (init_grade_vocabulary(), grade_vocabulary_exports));
+                const _gv = await gradeVocabularyFor2(_g);
+                if (Array.isArray(_gv)) _words = _gv;
+              }
+              if (!Array.isArray(cluster._kVocabQueue)) cluster._kVocabQueue = [];
+              if (_words.length > 0) {
+                const _added = this._enqueueDefinitionSeed(cluster, _words, _g);
+                this._hb(`[Curriculum] \u{1F4DA} definition-seed queue was EMPTY on a ${_g} dream window \u2014 refilled from that grade's own vocabulary (${_added} words queued). Resume lands mid-grade, so the grade-start enqueue never fires on a savestart; this is the path that keeps vocabulary learning alive across restarts.`);
               }
             }
             const _tb = Number(typeof process !== "undefined" && process?.env?.DREAM_TRICKLE_BATCH);
             const DREAM_TRICKLE_BATCH = Number.isFinite(_tb) && _tb > 0 ? Math.floor(_tb) : 120;
             const batchN = Math.min(DREAM_TRICKLE_BATCH, cluster._kVocabQueue.length);
-            if (batchN > 0) {
-              const batchStart = Date.now();
-              let bound = 0;
-              let timedOut = 0;
-              for (let i = 0; i < batchN; i++) {
-                if (_dwOverBudget("dream-trickle (remaining words this window) -- vocabulary binding cut short; the queue persists and later windows resume it")) break;
-                const word = cluster._kVocabQueue.shift();
-                if (!word) break;
-                try {
-                  const r = await this._teachWordDefinition(word, { reps: 4, label: "DREAM-DEF-TRICKLE", timeoutMs: 2e4 });
-                  if (r && r.defsBound > 0) bound += r.defsBound;
-                  else if (r && r.skipped && /timeout/i.test(r.skipped)) timedOut++;
-                } catch {
+            const batchStart = Date.now();
+            let bound = 0;
+            let failed = 0;
+            let processed = 0;
+            if (!cluster._kVocabAttempts) cluster._kVocabAttempts = {};
+            if (!(cluster._kVocabUnresolved instanceof Set)) cluster._kVocabUnresolved = /* @__PURE__ */ new Set();
+            const MAX_ATTEMPTS = 3;
+            for (let i = 0; i < batchN; i++) {
+              if (_dwOverBudget("dream-trickle (remaining words this window) -- vocabulary binding cut short; the queue persists and later windows resume it")) break;
+              const word = cluster._kVocabQueue[0];
+              if (!word) break;
+              processed++;
+              let didBind = false;
+              try {
+                const r = await this._teachWordDefinition(word, { reps: 4, label: "DREAM-DEF-TRICKLE", timeoutMs: 2e4 });
+                if (r && r.defsBound > 0) {
+                  bound += r.defsBound;
+                  didBind = true;
                 }
+              } catch {
               }
-              const dt = ((Date.now() - batchStart) / 1e3).toFixed(1);
-              const timeoutNote = timedOut > 0 ? ` \xB7 \u26A0 ${timedOut} re-timed-out (will retry next cycle)` : "";
-              this._hb(`[Curriculum] \u{1F4A4} dream trickle: ${batchN} words processed in ${dt}s (${bound} multi-def Hebbian fires)${timeoutNote} \xB7 ${cluster._kVocabQueue.length} words remaining in the definition-seed queue${cluster._defSeedEnqueuedGrades ? ` (grades enqueued: ${[...cluster._defSeedEnqueuedGrades].join(", ")})` : ""}`);
-              if (timedOut > 0 && Array.isArray(cluster._kVocabRetryQueue)) {
-                while (cluster._kVocabRetryQueue.length > 0) {
-                  cluster._kVocabQueue.push(cluster._kVocabRetryQueue.shift());
+              cluster._kVocabQueue.shift();
+              if (didBind) {
+                delete cluster._kVocabAttempts[word];
+              } else {
+                failed++;
+                const _n = (cluster._kVocabAttempts[word] | 0) + 1;
+                cluster._kVocabAttempts[word] = _n;
+                if (_n < MAX_ATTEMPTS) cluster._kVocabQueue.push(word);
+                else {
+                  cluster._kVocabUnresolved.add(word);
+                  delete cluster._kVocabAttempts[word];
                 }
               }
             }
+            const dt = ((Date.now() - batchStart) / 1e3).toFixed(1);
+            this._hb(`[Curriculum] \u{1F4A4} dream trickle: ${processed} words processed in ${dt}s (${bound} multi-def Hebbian fires, ${failed} deferred for retry) \xB7 ${cluster._kVocabQueue.length} words remaining in the definition-seed queue \xB7 ${cluster._kVocabUnresolved.size} unresolved after ${MAX_ATTEMPTS} attempts${cluster._defSeedEnqueuedGrades ? ` (grades enqueued: ${[...cluster._defSeedEnqueuedGrades].join(", ")})` : ""}`);
+            this._trickleLastWindow = {
+              processed,
+              bound,
+              failed,
+              ms: Date.now() - batchStart,
+              queueDepth: cluster._kVocabQueue.length,
+              unresolved: cluster._kVocabUnresolved.size
+            };
           } catch (err) {
           }
         }

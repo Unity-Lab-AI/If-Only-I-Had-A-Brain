@@ -5,6 +5,36 @@
 
 ---
 
+## 2026-08-15 - THE DICTIONARY TRICKLE PROCESSED ZERO WORDS: an empty array is truthy - feature/post-deploy-findings-0815
+
+### Gee ask (verbatim per LAW #0)
+
+> *"write the todo to fix all these: and here is the info u asked for, i think but not sure 100% but here it is:"* (Memory-System tier panel)
+> *"figure out the bind rate issue and fix it too"*
+
+**IT WAS NEVER A BIND-RATE PROBLEM.** `kVocabTaught` reading 2 after the first post-deploy dream window looked like "binds 2 of 120". The trickle in fact processed **zero** words; those two bindings came from another path (the fused-token purge, which calls the same `_teachWordDefinition`).
+
+**FOUR DEFECTS, read straight out of the code:**
+
+1. **`if (!cluster._kVocabQueue)` - AN EMPTY ARRAY IS TRUTHY.** Once the queue persisted as `[]` it was never refilled. V.3 deliberately creates it empty because each grade enqueues its own vocabulary at grade START - and a savestart resumes MID-grade, so no grade-start fires. `batchN = min(120, 0) = 0` skipped the whole batch block **silently: no words processed AND no summary line**. That missing log is exactly why the `dream trickle:` line could not be found in the live console, and why this survived a full run.
+2. **`_kVocabRetryQueue` has ZERO writers** - the "so they don't get lost forever" block drains an array nothing ever pushes to.
+3. **`/timeout/i.test(r.skipped)` can never match** - `_teachWordDefinition` only ever returns 'no definition' / 'aborted-*' / 'no cluster/word' / 'empty word'. `timedOut` was permanently 0, so even the dead re-queue never executed.
+4. **`shift()` ran BEFORE the attempt** - any word failing for any reason other than the impossible timeout was dropped from the queue for good.
+
+**SHIPPED:**
+
+- **Refill guard tests EMPTINESS, not existence**, and refills from the CURRENT grade's own list (K_VOCABULARY for K/pre-K, `gradeVocabularyFor(grade)` otherwise) - so a resume mid-grade keeps vocabulary learning alive instead of silently stopping it, while preserving the grade-appropriateness that enqueue-at-grade-start guaranteed.
+- **Bind-then-remove.** A word leaves the queue only once it has actually bound. On failure it rotates to the BACK with an attempt count; after `MAX_ATTEMPTS = 3` it moves to `cluster._kVocabUnresolved` and is REPORTED. A word the dictionary genuinely does not carry becomes visible instead of vanishing.
+- **Dead code deleted** - the retry queue and the impossible timeout regex.
+- **The summary line ALWAYS logs, including the zero case.** A silent skip is what hid this.
+- **`curriculum.definitionQueue { depth, unresolved, lastWindow{processed,bound,failed,ms} }`** published to `/public-state.json`, so "is she learning word meanings" is a field read rather than a console hunt.
+
+**VERIFIED (no-tests LAW):** `node --check` PASS; ESM `import()` PASS; bundle rebuilt; and the queue mechanics exercised standalone - one binder plus two permanent failures gave 7 rounds, 1 bound, queue drained to 0, both failures surfaced as unresolved, none lost.
+
+**ALSO RECORDED FROM THE SAME DEPLOY CHECK** (build `64c71147`): resume-skip is ALIVE (32 phase markers restored, six phases skipped in the same second with no heap delta - 4.6h recovered in seconds where the latch bug would have re-taught everything); GPU-only clean (all 16 projections GPU-fast, zero CPU); the liveness line rendering `0 teach/min - last teach 278s ago - spikes paused - probe gate (expected)`; `no declared phase in flight` instead of a primitive; and the dream window running end to end.
+
+**STILL OPEN** (TODO PS.1 / PS.3 / PS.4): the pattern-lane shed still says "CPU authoritative" on a brain whose CPU teach path was removed (8,103 frames shed in 12 min); `EventLoop BLOCKED 91,640ms` inside `_teachWordEmissionDirect`; cross-projection fanout drift 4.9/row against its own 20-40 target.
+
 ## 2026-08-14 - V.8 FAILED LIVE: the dictionary trickle had NEVER run - ZERO definitions bound in 4.6h - feature/trickle-budget-0814
 
 ### Gee ask (verbatim per LAW #0)
