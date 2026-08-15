@@ -5,6 +5,27 @@
 
 ---
 
+## 2026-08-15 - WALK PACED TO THE DONOR: Gee chose 100%-correct over speed after TP.6 failed on the fresh walk - feature/walk-paced-to-donor-0815
+
+### Gee ask (verbatim per LAW #0)
+
+> *"okay i pressed update and fresh walk"* -> *"shes running"* -> *"and clean up those old tasks passed over and rebuild taskk list in the cli so i can see whats up"*
+
+Gee's decision, verbatim from the option he chose: **"Pace the walk to the donor (100% correct)"** - *"walk speed ~600 teach/min (was ~1,900); teaching 100% lands on the GPU, correct patterns; suppressed ~0; walk length ~3x longer; donor same protection, calmer link."*
+
+**FRESH-WALK RESULTS (build `bb06b3e`, the latest - everything active):**
+
+- **PASS - vocabulary queue LOADED:** `definitionQueue.depth = 2,247` (the whole K list; permanently 0 before the PS.2 fix). Binding starts at her first dream window.
+- **PASS - walk healthy:** fresh ELA-K at ~1,900 teach/min, donor clean (frames climbing, buffer 0.0MB, no drops), spikes-static correctly labelled probe-gate.
+- **FAIL - TP.6:** `hebbianSuppressedStale` climbing at ~83/s (132,617 -> 135,953 in 40s), WORSE than the ~33/s it replaced. The atomicity change works as designed and the design hits a wall: the walk produces ~32 teach iterations/sec, the donor link absorbs ~10 pattern groups/sec. **No admission scheme fixes that ratio** - two thirds of GPU teaching physically cannot fit through the pipe at that walk speed. Corrupt before PS.1, honestly refused after; never taught either way.
+
+**SHIPPED (Gee's chosen shape):**
+
+- **`brain._patternLaneWait()`** (`server/brain-server/gpu.js`) - async wait until (a) time since the last pattern send >= the SAME base throttle x the SAME adaptive back-off the lane's own admission uses (no second pacing policy to drift), and (b) `bufferedAmount` under the lane cap. Returns immediately when the donor socket is closed - the substrate gate owns that case.
+- **`_awaitComputeSubstrate` awaits it on every teach call** (the auto-wrap already routes every teach through that gate) - one call site paces every iteration in every grade to the donor's real absorption rate. Each iteration starts exactly when its first frame will be admitted -> the whole group ships -> the Hebbian fires on the association it was meant to train.
+
+**VERIFIED (no-tests LAW):** `node --check` PASS on both files; ESM `import()` PASS; edited regions re-read; bundle rebuilt. **LIVE-VERIFY = WP.5** after the next Update & SAVESTART: teach/min settles near the lane rate, `hebbianSuppressedStale` growth ~0, donor RTT healthy, phases keep completing.
+
 ## 2026-08-15 - TEACH-PATTERN ATOMICITY: pacing was refusing ~1/3 of her teaching - feature/teach-pattern-atomicity-0815
 
 ### Gee ask (verbatim per LAW #0)
