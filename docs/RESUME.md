@@ -1,6 +1,18 @@
 # RESUME — Session Pickup Brief
 
-> ## ⭐⭐⭐ 2026-08-15 night (latest) — BC.4 PASS · DK.6 FULL PASS · the one remainder is DONOR THROUGHPUT (DT.1)
+> ## ⭐⭐⭐ 2026-08-15 (latest) — donor-v0.3.13: BINARY TEACH FRAMES built + tagged — Gee deploys the binary
+>
+> **WHAT SHIPPED:** SPRS types **7/8/9** (write_spike_slice / write_current_slice / clear_spike_region), header name = `cluster/region`, fire-and-forget reqId 0. Server: `_donorBinTeach()` version-gates on `client.donorAppVersion ≥ 0.3.13` (already stored — zero brain-server.js edits); the three cortex senders build packed Buffers on the SAME pattern lane/gating. Rust: 3 Frame variants + decode + `split_cluster_region`, routed onto the SAME Work items as the JSON path; `Cargo.toml` 0.3.11→0.3.13 announces the capability. Browser donors stay JSON (BT.5 scope-cut — they report `appVersion: 'browser'` and never qualify; decoder ships with the future caps store).
+>
+> **THE BUG CAUGHT ON READ-BACK (remember the shape):** early-return branches must re-implement whatever the fall-through path does BELOW the branch point. The binary clear branch returned before the line that clears `_patternLaneStale` — binary donors would have latched stale forever after the first shed. Fixed by clearing on successful send inside the branch.
+>
+> **VERIFY DONE:** byte-walk of all three types with the exact `frames.rs` Reader sequence — PASS, buffers fully consumed (40/40, 56/56, 24/24). node --check + ESM import + bundle PASS. No local cargo — **CI compiles on the tag**; a red tag build = fix and re-tag.
+>
+> **NEXT:** (1) CI builds `donor-v0.3.13` from the tag. (2) **GEE downloads + runs the new binary** (his territory — verbatim: *"no the doner release is my territory just like we have doployed all the previous versions"*). (3) BT.8 live-verify: donor drain ~5–10× up during teach, buffer never parks at 16–19MB, walk teach/min rises with the lane, suppression stays ~0. Then the standing watches: OI.2 first dream window, OI.5b matrix voice.
+>
+> ---
+
+> ## ⭐⭐⭐ 2026-08-15 night (earlier) — BC.4 PASS · DK.6 FULL PASS · the one remainder is DONOR THROUGHPUT (DT.1)
 >
 > **THE TWO PASSES:** (1) BC.4 — suppression ~79/s → ~1/s on `5fe5e42`; the PS.1→TP→WP→LB→BC governor chain is DONE, teaching is never corrupted and never pacing-refused. (2) DK.6 — Gee restarted the donor and she paused herself within seconds (*“donor connected but brain weights are not uploaded to it yet”*), held through the re-upload, auto-resumed at 00:36. End-to-end verified. The dashboard 502 during it was a proxy blip — same bootedAt, she never died.
 >

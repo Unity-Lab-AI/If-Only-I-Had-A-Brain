@@ -599,6 +599,10 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                     Frame::Propagate { name, .. } => format!("propagate {name}"),
                     Frame::Hebbian { name, .. } => format!("hebbian {name}"),
                     Frame::BatchedHebbian { .. } => "batched-hebbian".to_string(),
+                    // Routed to Work::WriteSpike/etc at receive; arms exist for exhaustiveness.
+                    Frame::WriteSpikeSlice { cluster, region, .. } => format!("write_spike(bin) {cluster}/{region}"),
+                    Frame::WriteCurrentSlice { cluster, region, .. } => format!("write_current(bin) {cluster}/{region}"),
+                    Frame::ClearSpikeRegion { cluster, region } => format!("clear_spike(bin) {cluster}/{region}"),
                 },
                 Work::WriteSpike { cluster, region, .. } => format!("write_spike {cluster}/{region}"),
                 Work::WriteCurrent { cluster, region, .. } => format!("write_current {cluster}/{region}"),
@@ -861,7 +865,16 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                     }
                     Message::Binary(bytes) => {
                         if let Some(frame) = frames::decode(&bytes) {
-                            pending.fetch_add(1, Ordering::Relaxed); workq.push(Work::Frame(frame));
+                            pending.fetch_add(1, Ordering::Relaxed);
+                            // v0.3.13 binary teach patterns route straight onto the SAME
+                            // Work items the JSON path produces - identical GPU behavior,
+                            // minus the serde_json parse that was the drain bottleneck.
+                            match frame {
+                                Frame::WriteSpikeSlice { cluster, region, indices } => workq.push(Work::WriteSpike { cluster, region, indices }),
+                                Frame::WriteCurrentSlice { cluster, region, indices, values, psi } => workq.push(Work::WriteCurrent { cluster, region, indices, values, psi }),
+                                Frame::ClearSpikeRegion { cluster, region } => workq.push(Work::ClearSpike { cluster, region }),
+                                other => workq.push(Work::Frame(other)),
+                            }
                         }
                     }
                     Message::Ping(p) => { let _ = tx.send(Message::Pong(p)).await; }
@@ -998,6 +1011,21 @@ fn handle_frame(engine: &mut MultiEngine, partials: &mut HashMap<String, Partial
                 eprintln!("[donor] hebbian '{name}' failed: {e}");
             }
             Some(frames::ack_simple(3, req_id))
+        }
+        // v0.3.13 teach patterns are routed to Work items at receive and normally
+        // never reach here; these arms keep the match exhaustive and, if one DOES
+        // arrive, perform the identical engine op. Fire-and-forget: no ack.
+        Frame::WriteSpikeSlice { cluster, region, indices } => {
+            let _ = engine.write_spike_slice(&cluster, &region, &indices);
+            None
+        }
+        Frame::WriteCurrentSlice { cluster, region, indices, values, psi } => {
+            let _ = engine.write_current_slice(&cluster, &region, &indices, &values, psi);
+            None
+        }
+        Frame::ClearSpikeRegion { cluster, region } => {
+            let _ = engine.clear_spike_region(&cluster, &region);
+            None
         }
         Frame::BatchedHebbian { req_id, ops: _ } => {
             // type=5 carries only (name, lr) per op — spikes are resident from prior writes.

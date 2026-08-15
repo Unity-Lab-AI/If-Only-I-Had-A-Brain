@@ -1,7 +1,9 @@
 //! Binary sparse-frame codec (M3). Decodes the server's `SPRS` frames and encodes the
 //! donor's `SPRR` ack frames, byte-for-byte per the mapped spec. Header (all frames):
 //!   'SPRS' | typeByte(1) | reqId(u32 LE) | nameLen(u16 LE) | name(UTF-8) | pad→4B align
-//! Types: 1=upload, 2=propagate, 3=hebbian, 4=chunked-upload, 5=batched-hebbian.
+//! Types: 1=upload, 2=propagate, 3=hebbian, 4=chunked-upload, 5=batched-hebbian,
+//! 7=write-spike-slice, 8=write-current-slice, 9=clear-spike-region (7-9: v0.3.13
+//! binary teach patterns - fire-and-forget, no ack; name field carries "cluster/region").
 //!
 //! Cluster-binding metadata (chunked flag bit 2) is parsed but treated as standalone for
 //! the MVP (propagate uses the carried preSpikes); cluster-slice binding is a refinement.
@@ -34,6 +36,14 @@ pub enum Frame {
     Propagate { req_id: u32, name: String, pre: Vec<u32> },
     Hebbian { req_id: u32, name: String, pre: Vec<u32>, post: Vec<u32>, lr: f32 },
     BatchedHebbian { req_id: u32, ops: Vec<(String, f32)> },
+    /// v0.3.13 binary teach patterns (types 7-9). These replace the ~153KB JSON
+    /// write_spike_slice / write_current_slice / clear_spike_region frames whose
+    /// serde_json parse on the single receive thread was the teach-drain
+    /// bottleneck (fresh donor drained 19MB in seconds; during teach ~KB/s).
+    /// Fire-and-forget: the JSON versions never acked and neither do these.
+    WriteSpikeSlice { cluster: String, region: String, indices: Vec<u32> },
+    WriteCurrentSlice { cluster: String, region: String, indices: Vec<u32>, values: Vec<f32>, psi: f32 },
+    ClearSpikeRegion { cluster: String, region: String },
 }
 
 #[derive(Debug)]
@@ -180,8 +190,39 @@ pub fn decode(data: &[u8]) -> Option<Frame> {
             }
             Some(Frame::BatchedHebbian { req_id, ops })
         }
+        // v0.3.13 teach patterns: header name = "cluster/region".
+        7 => {
+            let (cluster, region) = split_cluster_region(&name)?;
+            let count = r.u32()? as usize;
+            let indices = r.u32_vec(count)?;
+            Some(Frame::WriteSpikeSlice { cluster, region, indices })
+        }
+        8 => {
+            let (cluster, region) = split_cluster_region(&name)?;
+            let count = r.u32()? as usize;
+            let indices = r.u32_vec(count)?;
+            let vcount = r.u32()? as usize;
+            let values = r.f32_vec(vcount)?;
+            let psi = r.f32()?;
+            Some(Frame::WriteCurrentSlice { cluster, region, indices, values, psi })
+        }
+        9 => {
+            let (cluster, region) = split_cluster_region(&name)?;
+            Some(Frame::ClearSpikeRegion { cluster, region })
+        }
         _ => None,
     }
+}
+
+/// Split the header name of a type 7/8/9 frame into (cluster, region).
+/// Region names never contain '/', so the FIRST '/' is the separator.
+fn split_cluster_region(name: &str) -> Option<(String, String)> {
+    let idx = name.find('/')?;
+    let (c, r) = name.split_at(idx);
+    if c.is_empty() || r.len() < 2 {
+        return None;
+    }
+    Some((c.to_string(), r[1..].to_string()))
 }
 
 // ─── SPRR ack encoders ────────────────────────────────────────────
