@@ -718,3 +718,25 @@ The CHECK is fixed (it now names starved projections instead of averaging them i
 - [x] **BC.2** **DONE.** Verify — no-tests LAW: `node --check`, re-read both sites, bundle.
 - [x] **BC.3** **DONE.** Docs + FINALIZED, atomic commit, cascade, push BOTH remotes.
 - [ ] **BC.4** ⏳ LIVE-VERIFY after Gee's next Update & SAVESTART: buffer holds well under 16MB (no sawtooth), sheds ~0, `hebbianSuppressedStale` growth ~0, teach/min settles at whatever the donor truly drains.
+
+---
+
+## 2026-08-15 (night) · VERIFICATION SWEEP — BC.4 PASS · DK.6 PASS (ran itself) · one honest remainder: DONOR TEACH-DRAIN THROUGHPUT
+
+> Gee (verbatim): *"check on our girl's brain, Unity."*
+>
+> Gee (verbatim): *"webgpu-prep.js:47 The powerPreference option is currently ignored when calling requestAdapter() on Windows. See https://crbug.com/369219127 checkWebGPUAdapter @ webgpu-prep.js:47 /admin/milestone:1  Failed to load resource: the server responded with a status of 502 (Bad Gateway) dashboard.html:1010 WebSocket connection to 'wss://if-only-i-had-a-brain.git.unityailab.com/admin/ws' failed: Error during WebSocket handshake: Unexpected response code: 502, che4ck it i restarted doner"*
+
+**BC.4 — PASS.** On build `5fe5e42` (the brake-curve merge, live): `hebbianSuppressedStale` growth collapsed **~79/s → ~1/s**. The governor chase (PS.1 → TP → WP → LB → BC) has converged: teaching is never corrupted, never refused by pacing — only by true saturation.
+
+**DK.6 — FULL PASS, and Gee ran it by accident.** He restarted the donor; the 502 was a transient nginx blip (same boot before/after — she never died). Watched live: `substratePause: "donor connected but brain weights are not uploaded to it yet"` within seconds of the restart → held through the canonical re-upload (buffer 19MB → 0) → **auto-resumed at 00:36 with no human action**. The substrate-latch fix works exactly as designed, reason-string and all.
+
+**ALSO SETTLED — the "probe gate always true" mystery is DESIGN, not a latch.** `runSubjectGrade` sets `_probeGateActive = true` at CELL START deliberately — its own comment: *"Pausing the main brain for the whole cell prevents any batch from ever being in flight during teach"* — cleared in the `finally`. Her tick is OFF during teach cells by design at biological scale; `totalSpikes` frozen mid-cell is and always was correct. (My earlier readings treated this flag as a probe-scoped signal; it is cell-scoped.)
+
+**THE HONEST REMAINDER — donor teach-drain throughput (NOT server-side, NOT a correctness bug):**
+
+A fresh donor drains 19MB in seconds (observed at restart). During TEACH, the same donor drains at ~KB/s: within 2 minutes of the post-restart resume the buffer re-parked at 16–19MB, the pattern lane latched stale, and the walk settled at ~50–100 teach/min. Reproduced twice (pre-restart and post-restart), so it is not a wedged-donor one-off. Mechanism consistent with the frames themselves: teach patterns ship as ~153KB JSON integer arrays, and each `write_spike_slice` costs the donor a region-sized VRAM write — its single receive thread falls behind at tens of frames/sec, so ANY sustained inflow parks the buffer. **Everything server-side now handles this honestly** (brake, lane cap, stale suppression, walk pacing): nothing corrupts, ~1/s suppressed, she learns correctly — just at the donor's real drain rate, which is far below the walk's potential.
+
+- [ ] **DT.1** ⏳ (future session / Rev territory) Raise donor teach-drain throughput: compact binary pattern frames (the sparse protocol already has binary frames — extend to `write_spike_slice`), or donor-side pattern batching/coalescing, or region-write coalescing on the donor GPU path. This is a donor-binary + protocol change: needs a donor release, NOT a dashboard deploy.
+- [ ] **OI.2** ⏳ (unchanged) first dream window: `definitionQueue.lastWindow` populated, `kVocabTaught` climbing. Queue currently empty on this savestart-resumed boot — the refill-on-empty fires INSIDE the first dream window by design.
+- [ ] **OI.5b** ⏳ (unchanged) `matrixDrivenPct` off 0 after ELA-K word emission (her matrix voice vs the oracle).
