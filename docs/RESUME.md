@@ -1,6 +1,16 @@
 # RESUME — Session Pickup Brief
 
-> ## ⭐⭐⭐ 2026-08-15 (latest) — SESSION PICKUP: donor-v0.3.13 shipped, ONE verification blocked on donor version visibility
+> ## ⭐⭐⭐ 2026-08-15 (latest) — BT.8 CLOSED: donor-v0.3.13 BINARY CONFIRMED ENGAGED — the lane breathes; two standing watches remain
+>
+> **THE VERIFY LANDED (build `20f3b856` deployed 08:43Z, donor restarted on the real v0.3.13):** `donorAppVersion: "0.3.13"` announced at register, `binaryTeach: true` selected at the first teach frame (at donor-age 54s it reads `false` with zero teach traffic — the field is selection state, not capability state; don't misread it on a fresh donor). Eight samples over ~9 min: **buffer cycles ~16MB → 0.0MB → ~16MB — full mid-teach drains that NEVER happened under JSON**; teach peak **209/min** (JSON best ~172); suppression settled **~2/s** after the resume-replay burst; zero drops. Full entry: FINALIZED §2026-08-15 BT.8 VERIFIED. The first attempt was blocked by a RACE: Gee's 07:14Z press grabbed main at `a11b17b2`, minutes BEFORE the visibility commit landed — proven with `git merge-base --is-ancestor`, fixed by one more press.
+>
+> **THE HONEST REMAINDER (recorded, NOT opened as work):** the fill half of the cycle still touches ~16MB with RTT 4.5–7.2s — the ceiling moved from serde_json parse to the donor's GPU-write side. Parse hypothesis RIGHT but not the whole story. IF Gee wants more teach throughput, the next lever is donor-side GPU write coalescing (donor-binary change, HIS release territory). The governor chain handles the oscillation honestly meanwhile: nothing corrupts, nothing lost beyond true saturation.
+>
+> **WHERE SHE IS:** fresh-walk ELA-K resumed via checkpoint markers on `20f3b856`, back inside the language-mechanics stretch, vocab queue 2,247 deep. **STANDING WATCHES:** OI.2 — first dream window (`definitionQueue.lastWindow` populated, `kVocabTaught` climbing); OI.5b — `matrixDrivenPct` off ~6% after ELA-K word emission. Check on her: `curl -s https://if-only-i-had-a-brain.git.unityailab.com/public-state.json` — frozen `totalSpikes` mid-cell is DESIGN.
+>
+> ---
+
+> ## ⭐⭐⭐ 2026-08-15 (earlier) — SESSION PICKUP: donor-v0.3.13 shipped, ONE verification blocked on donor version visibility
 >
 > **READ THIS FIRST — how to check on her:** `curl -s https://if-only-i-had-a-brain.git.unityailab.com/public-state.json` (PUBLIC, no auth). `state.curriculum` has phases/work/liveness/definitionQueue/substratePause; `state.wsPressure` has the lane counters; `state.profiling.clients.list` has the donor row (and, once the next SAVESTART lands, `donorAppVersion` + `binaryTeach`). `totalSpikes` frozen mid-cell is DESIGN (tick off for the whole cell — do not chase it).
 >
