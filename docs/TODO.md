@@ -454,3 +454,79 @@ consolidation passes: 3
 - [x] **TB.4** **DONE.** Verify — no-tests LAW: `node --check`, ESM `import()`, confirm stage ORDER by reading the rewritten region, bundle rebuild.
 - [x] **TB.5** **DONE.** Docs + FINALIZED, atomic commit, cascade, push BOTH remotes.
 - [ ] **TB.6** ⏳ LIVE-VERIFY after Gee's next Update & SAVESTART — folded into the combined LV item: `kVocabTaught` MUST climb off 0 and `💤 dream trickle: N words processed` MUST appear.
+
+---
+
+## OPEN TASKS — 2026-08-15 · POST-DEPLOY FINDINGS (build `64c71147`)
+
+> Gee (verbatim): *"okay save start update pressed, check on our girl"*
+>
+> Gee (verbatim): *"write the todo to fix all these: and here is the info u asked for, i think but not sure 100% but here it is:"* (followed by the 5-Tier Memory System panel)
+
+**ON THE INFO PASTED:** it is the Memory-System tier panel, NOT the `💤 dream trickle:` console line, so it does not settle the bind-rate question below. What it DOES confirm: Tier 0 holds `ela/kindergarten @_runStudentBattery ×3` and `×4`, so she is inside the K-STUDENT battery — which matches `liveness.probeGateActive: true` and the dashboard's `spikes paused — probe gate (expected)`.
+
+### WHAT THE DEPLOY VERIFIED AS WORKING (no action needed — recorded so it is not re-litigated)
+
+- **Resume-skip is ALIVE** (it was dead before L.1). `passedPhases restored: 32 phase markers`, then `after _teachLetterCaseBinding / _teachVowelSoundVariants / _teachRhymeFamilies / _teachSyllableCounts / _teachCVCSoundIsolation / _teachPhonemeBlending` **all logged in the same second with Δheap +0.0MB** — skips, not re-teaches. 4.6h of ELA-K recovered in seconds.
+- **GPU-only is clean.** `_crossRegionHebbian first-call diag — gpuReady=true proxy=true pool=true · paths:` **all 16 GPU-fast**, zero CPU.
+- **Liveness line works:** `0 teach/min · last teach 278s ago · spikes paused — probe gate (expected)` — the exact state that was misread this morning, now labelled.
+- **`no declared phase in flight`** renders instead of a primitive masquerading as the phase.
+- **Dream window ran:** `💤 inner-voice paused — dream window in progress` (5:54:53) → `☀ inner-voice resumed — dream window closed` (5:55:47); consolidation pass 1 completed.
+- **`kVocabTaught` moved off zero** for the first time (0 → 2).
+
+### PS.1 ⛔ CRITICAL — the pattern-lane shed's safety justification is FALSE under GPU-only
+
+The live log, **8,103 times in 12 minutes**:
+
+> `TU.28.1 — teach-pattern frame SHED (pre-serialization): ws.bufferedAmount=20.4MB > 16MB pattern-lane cap … **Dropping is safe — CPU authoritative**; patterns are per-iteration ephemeral; the GPU shadow re-converges via auto-resync`
+
+**That sentence was true when the CPU shadow did the real Hebbian and the GPU was a mirror. After the G batch it is false** — the GPU IS the substrate and `_teachSubstrateReady()` refuses any CPU teach path. Teach-pattern frames (`write_spike_slice` / `write_current_slice` / `clear_spike_region`) are what populate the GPU pre/post buffers that `hebbianBound` then reads at bound offsets. Shedding one does not lose a redundant mirror-update any more; it means **the next `hebbianBound` fires against stale or partial spike buffers, and nothing else re-derives that update.** 8,103 shed frames is potentially 8,103 corrupted-or-lost Hebbian fires, silently, while every dashboard reads green.
+
+Driver: donor **RTT 2,597ms** with **20.3MB buffered** (over the 16MB pattern-lane cap) — the lane is saturated at a new operating point.
+
+- [ ] **PS.1a** Decide + implement the correct semantics under GPU-only. The two candidates: (i) **block instead of drop** while a teach is in flight — the shape `MAX_AWAIT_MS` already uses for `compute_batch` (D.1/N.2), so the lane back-pressures the teach loop instead of silently discarding its inputs; (ii) **couple the pair** — if a pattern frame is shed, suppress the `hebbianBound` that depends on it so a bad update is never fired on stale buffers. These are not equivalent: (i) preserves the update at the cost of teach throughput, (ii) drops it cleanly and honestly.
+- [ ] **PS.1b** Rewrite the shed log line — it must never again assert "CPU authoritative" on a brain where the CPU teach path has been removed. A stale justification in a log is how this survived.
+- [ ] **PS.1c** Surface shed-frames-during-teach as a FIRST-CLASS dashboard number, not a rate-limited console line. If teaching can be lost, the count belongs next to the progress bar.
+
+### PS.2 ⛔ The dictionary trickle binds ~2 of 120 words per window
+
+`kVocabTaught` climbed 0 → 2 after the first dream window — the TB fix gave the trickle its slice, so it is no longer skipped outright. But `DREAM_TRICKLE_BATCH` is 120, so ~98% of processed words returned `defsBound = 0`, and at 2/window the 2,247-word K list needs ~1,100 dream windows.
+
+**Unresolved:** the `💤 dream trickle: N words processed in Xs (N multi-def Hebbian fires) · N words remaining` line does not appear anywhere in the 558-line console capture. Until it is seen, it cannot be confirmed that the trickle stage executed at all — those 2 bindings may have come from the `fused-token purge — 47 candidate compound(s) queued for API verification` (5:48:56), which calls the same `_teachWordDefinition`.
+
+- [x] **PS.2a** **DONE.** Find why `defsBound` is 0 for the overwhelming majority of words. Read `_teachWordDefinition` end-to-end (800-line chunks) and identify every path that returns without binding — cache miss, error entry (1,343 of 10,090 cached are errors), empty definition token set, missing sem region, or a substrate refusal.
+- [x] **PS.2b** **DONE.** Make the trickle's outcome UNMISSABLE. The existing summary line is rate-limited/absent in practice; publish processed / bound / remaining into the state payload so it is answerable from `/public-state.json` without hunting a console.
+- [ ] **PS.2c** Re-verify the rate live after the change: `kVocabTaught` must climb by roughly the batch size per dream window, not by 2.
+
+#### PS.2 — ROOT CAUSE FOUND, AND IT WAS NOT A BIND-RATE PROBLEM (correction, appended — nothing above removed)
+
+> Gee (verbatim): *"figure out the bind rate issue and fix it too"*
+
+**The trickle processed ZERO words.** The framing above ("binds ~2 of 120") was wrong; the two bindings came from another path entirely. Three defects, all read directly out of the code:
+
+1. **`if (!cluster._kVocabQueue)` — AN EMPTY ARRAY IS TRUTHY.** Once the queue persisted as `[]` it was never refilled. V.3 deliberately creates it empty because each grade enqueues its own words at grade START — and a savestart resumes MID-grade, so no grade-start ever fires. `batchN = min(120, 0) = 0`, so the entire batch block was skipped **silently: no words processed AND no summary line emitted.** That absent log is precisely why `💤 dream trickle:` could not be found in the 558-line console.
+2. **`_kVocabRetryQueue` has ZERO writers.** The "so they don't get lost forever" block drains an array nothing in the file ever pushes to.
+3. **`/timeout/i.test(r.skipped)` can never match.** `_teachWordDefinition`'s skip values are only `'no definition'` / `'aborted-pre-entry'` / `'aborted-mid-defs'` / `'aborted-mid-hebbian'` / `'no cluster/word'` / `'empty word'`. `timedOut` was permanently 0, so even the dead re-queue never ran.
+4. **`shift()` fired BEFORE the attempt**, so any word failing for any reason other than the (impossible) timeout was dropped from the queue permanently.
+
+**FIXED:** refill guard tests EMPTINESS and refills from the CURRENT grade's own vocabulary (K list for K/pre-K, `gradeVocabularyFor(grade)` otherwise) so resume keeps vocabulary learning alive; bind-then-remove with rotate-to-back and an attempt counter, `MAX_ATTEMPTS=3`, after which a word moves to `cluster._kVocabUnresolved` and is REPORTED rather than vanishing; the dead retry queue and the impossible timeout regex deleted; the summary line now ALWAYS logs including the zero case; and `curriculum.definitionQueue { depth, unresolved, lastWindow{processed,bound,failed,ms} }` is published to `/public-state.json`. Queue mechanics exercised standalone: one binder + two permanent failures → 7 rounds, 1 bound, queue drained to 0, both failures surfaced as unresolved, none lost.
+
+### PS.3 EventLoop BLOCKED 91,640 ms inside `_teachWordEmissionDirect`
+
+> `[EventLoop] BLOCKED 91640ms — /ws handshakes + donor frames stalled this long. context: phase=_teachWordEmissionDirect cell=ela/kindergarten donors=1`
+
+**91.6 seconds** of a single-threaded loop pinned in one teach unit — long enough to starve donor frames, `/ws` handshakes and pings, and it is the same failure family the tick-gap batch attacked (`_ojaUpdateChunked` time-slicing). `_teachWordEmissionDirect` evidently has an unyielded synchronous stretch that slicing has not reached.
+
+- [ ] **PS.3a** Locate the unyielded stretch in `_teachWordEmissionDirect` and time-slice it with the same adaptive ~30ms macrotask-yield pattern `_ojaUpdateChunked` uses. Row-independent work only — no change to totals or math.
+
+### PS.4 Cross-projection fanout drift — 4.9 entries/row against a 20–40 target
+
+> `[Brain] ⚠ fractal equation drift detected — 1 issue(s) + 10 ok:` … `⚠ cross-projection avg fanout drift: 4.9 entries/row (target 20-40)`
+
+Flagged by her own boot self-check, ~4× below the low end of its own target band. Every other equation check passed.
+
+- [ ] **PS.4a** Determine whether 4.9/row is a real wiring regression or a stale target band for the current 1.5M-neuron cortex geometry, and fix whichever is wrong — the wiring or the check. A self-check that cries wolf every boot trains us to ignore it.
+
+### EXPLICITLY OUT OF SCOPE
+
+- `[VisualMemory] reference fetch "hi" HTTP 402 — no image (verify the Pollinations key on the box)` — Gee, earlier this session (verbatim): *"pollinations is dead dont worry about it"*. Recorded, not actioned.
