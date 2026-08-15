@@ -643,7 +643,7 @@ The CHECK is fixed (it now names starved projections instead of averaging them i
 - [x] **DK.3** **DONE.** `initGpu()` clears `_gpuProxyReady` at ENTRY — during a re-upload the substrate is NOT ready, and the flag returns true only when the upload completes (the existing end-of-method assignment).
 - [x] **DK.4** **DONE.** Verify — no-tests LAW: `node --check`, ESM `import()`, bundle rebuild, re-read the three edited regions.
 - [x] **DK.5** **DONE.** Docs + FINALIZED, atomic commit, cascade, push BOTH remotes.
-- [ ] **DK.6** ⏳ GEE RE-RUNS THE DONOR-KILL after the next Update & SAVESTART: kill the donor → **PAUSED — no compute substrate** within seconds, teach events STOP, chat still replies → donor back → walk resumes after the re-upload completes.
+- [>] **DK.6** **CANCELLED by Gee (verbatim): "we arent doing the doner kill anymore we already did it and she is currently training i think". The DK fix is DEPLOYED (build 1a6498a) but goes live-unverified until a donor ever drops naturally — expected behavior on that day: PAUSED — no compute substrate within seconds, auto-resume after re-upload.** ⏳ GEE RE-RUNS THE DONOR-KILL after the next Update & SAVESTART: kill the donor → **PAUSED — no compute substrate** within seconds, teach events STOP, chat still replies → donor back → walk resumes after the re-upload completes.
 
 ---
 
