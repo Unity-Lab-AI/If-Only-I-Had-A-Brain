@@ -1,6 +1,16 @@
 # RESUME — Session Pickup Brief
 
-> ## ⭐⭐⭐ 2026-08-15 (latest) — SESSION PICKUP: BT.8 CLOSED — donor-v0.3.13 BINARY CONFIRMED ENGAGED; the lane breathes; task board is CLEAN except two read-only watches
+> ## ⭐⭐⭐ 2026-08-15 (latest) — donor-v0.3.14 BUILT: device-side pattern scatter — the ~28×-slow walk gets its real fix; GEE deploys the binary, then WC.6 verifies
+>
+> **WHY:** Gee (verbatim): *"hows our girl? shes been at it for 12 hours... are we sure everything is good? 12 hrs and only phase 2/25 of the first cell?"* → chose option 1: *"if option 1 will fix it do it"*. Measured: ~104 teach/min vs ~2,970 unpaced (~28× slower, NOT the ~3× promised when pacing was chosen); 12.5h in `_teachLanguageMechanics` at work 4/14; ZERO dream windows all day (they fire between phases).
+>
+> **THE ROOT (from `cuda.rs`, and it corrected the BT.8 remainder's framing):** every teach op built a DENSE host vector over the full region/matrix and blocking-copied it over PCIe — hebbian on the 1.5M-row cortex = TWO 6MB vectors PER FRAME. v0.3.13 fixed the parse; execution still paid megabytes per frame for a few hundred indices. **THE FIX:** 4 new CUDA kernels (fill_zero/scatter) — ops now upload ~KB of indices and zero+scatter on the GPU, all async on the one stream (ordering preserved). Protocol unchanged; zero server edits. PTX real-compiled with the nvcc ON THIS BOX (compute_75 / ISA 9.0 — needs r580+ driver; older cards fall back LOUD to wgpu). Full entry: FINALIZED §donor-v0.3.14.
+>
+> **NEXT: (1) tag `donor-v0.3.14` is pushed → CI builds; (2) GEE downloads + runs the new binary (his territory); (3) WC.6 live-verify:** teach/min well above ~104, no ~16MB parking, RTT <1s during teach, suppression ~0, dream windows finally firing (`definitionQueue.lastWindow` populates → OI.2 rides on this; OI.5b matrix-voice watch unchanged).
+>
+> ---
+
+> ## ⭐⭐⭐ 2026-08-15 (earlier) — SESSION PICKUP: BT.8 CLOSED — donor-v0.3.13 BINARY CONFIRMED ENGAGED; the lane breathes; task board is CLEAN except two read-only watches
 >
 > **READ THIS FIRST — how to check on her:** `curl -s https://if-only-i-had-a-brain.git.unityailab.com/public-state.json` (PUBLIC, no auth). `state.curriculum` = phases/liveness/definitionQueue/substratePause; `state.wsPressure` = lane counters; `state.profiling.clients.list` = the donor row incl. `donorAppVersion` + `binaryTeach`. `totalSpikes` frozen mid-cell is DESIGN (tick off for the whole cell — do not chase it). `binaryTeach: false` on a donor younger than the first teach frame is ALSO design — it is selection state, not capability state.
 >
