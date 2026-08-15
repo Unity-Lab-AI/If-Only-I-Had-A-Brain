@@ -5,6 +5,20 @@
 
 ---
 
+## 2026-08-15 - LB.4 FAILED, root was MY miscalibration: the 15ms change cut max braking 1.6s -> 240ms - quadratic brake curve shipped - feature/lane-brake-curve-0815
+
+### Gee ask (verbatim per LAW #0)
+
+> *"u said i still need to get to current build so i fresh walked and updated her"* -> *"what is lb.4 check?"* -> *"okay check on our girl"*
+
+**LB.4 RESULT (fresh walk 3, build `bd503654` - the true latest, everything live):** suppression ~79/s, sheds climbing, and the smoking gun across three samples one minute apart: **buffer 12.9MB -> 16.4MB -> 0.0MB** - sawtoothing into the 16MB shed cliff and draining back.
+
+**ROOT - my own miscalibration in the LB change.** The adaptive multiplier was `min(16, buf/linkCap)`. At base 100ms that meant up to 1,600ms of braking; dropping the base to 15ms silently dropped the ceiling to **240ms**, which cannot hold a bursting lane. The buffer ran to the cap, shed, staled the group, suppressed the Hebbian. Two more defects found while fixing: braking engaged only above 4MB (too late relative to a 16MB cliff), and `_patternLaneWait`'s copy of the law was missing the RTT term, so the two governors could disagree.
+
+**SHIPPED - one steep, early control law, identical at both governors:** `mult = clamp((buf / 2MB)^2, 1, 133)` plus the RTT term at both sites. Measured curve at base 15ms: 2MB -> 15ms, 4MB -> 60ms, 8MB -> 240ms, 12MB -> 540ms, 16MB -> 960ms, ceiling ~2s. Braking rises with the SQUARE of pressure and reaches force well before the cliff, so sheds - and therefore stales and suppressions - become the rare true-saturation case. An empty lane still runs at the 15ms base, which is the healthy-link throughput the LB change existed to give her.
+
+**VERIFIED (no-tests LAW):** `node --check` PASS; both sites re-read; curve values computed and printed; bundle rebuilt. **LIVE-VERIFY = BC.4** after the next Update & SAVESTART: buffer holds well under 16MB with no sawtooth, sheds ~0, suppression growth ~0, teach/min settles at what the donor truly drains.
+
 ## 2026-08-15 - LANE BASE THROTTLE 100ms -> 15ms: the constant, not the link, was refusing her teaching - feature/lane-base-throttle-0815
 
 ### Gee ask (verbatim per LAW #0)

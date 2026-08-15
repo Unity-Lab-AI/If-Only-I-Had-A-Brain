@@ -1,6 +1,18 @@
 # RESUME — Session Pickup Brief
 
-> ## ⭐⭐⭐ 2026-08-15 (latest) — LANE BASE 100ms→15ms — backpressure governs now; ONE deploy pending, then the verification sweep
+> ## ⭐⭐⭐ 2026-08-15 (latest) — QUADRATIC BRAKE CURVE — the governor chase is converging; ONE deploy pending, then watch her learn
+>
+> **THE GOVERNOR CHASE, in one paragraph:** PS.1 stale-guard (never train on a pattern that did not land) → TP atomic groups (whole iteration ships or none) → WP walk pacing (Gee chose 100%-correct: the walk waits for the lane) → LB base 15ms (the 100ms constant was refusing a healthy empty link) → **BC quadratic brake** (the 15ms change had silently cut max braking 1.6s → 240ms; buffer sawtoothed into the 16MB cliff at 12.9 → 16.4 → 0.0MB, ~79 suppressions/s). Law now at BOTH governors: `mult = clamp((buf/2MB)², 1, 133)` + RTT term. 2MB→15ms · 8MB→240ms · 16MB→~1s · ceiling ~2s. Empty lane = full 15ms speed.
+>
+> **PENDING GEE: ONE Update & SAVESTART** (deploys BC onto the running fresh walk, weights kept). No donor-kill re-run — Gee cancelled it (recorded in TODO; the DK fix is live but unverified until a donor drops naturally).
+>
+> **PENDING ME after that deploy (criteria in TODO):** BC.4 — buffer steady under 16MB, sheds ~0, suppression growth ~0, teach/min = the donor’s true drain rate. OI.2 — first dream window binds (~120 processed, `kVocabTaught` climbing off 0, queue draining from 2,247). OI.5b — `matrixDrivenPct` climbing once ELA-K word emission runs (her matrix voice vs the oracle). OI.6 — no multi-second loop pins. OI.7 — closing docs batch.
+>
+> **STATE:** fresh walk 3 on `bd503654`, ELA-K from zero, all fixes live, vocab queue 2,247, word_motor wiring real this walk.
+>
+> ---
+
+> ## ⭐⭐⭐ 2026-08-15 (earlier) — LANE BASE 100ms→15ms — backpressure governs now; ONE deploy pending, then the verification sweep
 >
 > **WHERE SHE IS:** fresh walk 2 on `1a6498a`, ELA-K from zero, ALL fixes live (word_motor unmask included — her voice wiring is real this walk). Vocab queue re-loaded at 2,247.
 >

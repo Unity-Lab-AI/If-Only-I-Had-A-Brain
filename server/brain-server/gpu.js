@@ -2748,11 +2748,20 @@ const SERVER_GPU_MIXIN = {
       try {
         const _linkCap = this._donorLinkCapBytes();
         const _buf = (typeof ws.bufferedAmount === 'number') ? ws.bufferedAmount : 0;
-        if (_linkCap > 0 && _buf > _linkCap) _mult = Math.min(16, _buf / _linkCap);
+        // QUADRATIC BRAKE, EARLY AND STEEP (2026-08-15). The linear
+        // `min(16, buf/linkCap)` law had a 240ms ceiling once the base dropped
+        // to 15ms - not enough to hold a bursting lane, so the buffer sawtoothed
+        // into the 16MB shed cliff (measured live: 12.9MB -> 16.4MB -> 0.0MB)
+        // and every shed staled a group and suppressed its Hebbian. Braking now
+        // rises with the SQUARE of pressure from a 2MB reference: 2MB -> 15ms,
+        // 4MB -> 60ms, 8MB -> ~1s, >=11MB -> ~2s ceiling. Full force arrives
+        // well before the cliff; an empty lane still runs at the 15ms base.
+        const _brakeRef = 2 * 1024 * 1024;
+        if (_buf > _brakeRef) _mult = Math.min(133, Math.pow(_buf / _brakeRef, 2));
         const _pc = (this.clients && this.clients.get) ? this.clients.get(ws) : null;
         const _rtt = (_pc && typeof _pc.rttMs === 'number') ? _pc.rttMs : 0;
         // >1s RTT means our own frames are already queued deep on this link.
-        if (_rtt > 1000) _mult = Math.min(16, Math.max(_mult, _rtt / 1000));
+        if (_rtt > 1000) _mult = Math.min(133, Math.max(_mult, _rtt / 1000));
       } catch { /* non-fatal — fall back to the flat base throttle */ }
       const THROTTLE_MS = Math.round(_baseThrottle * _mult);
       if (this._wsPatternLastSendMs && (Date.now() - this._wsPatternLastSendMs) < THROTTLE_MS) {
@@ -2845,9 +2854,16 @@ const SERVER_GPU_MIXIN = {
       if (!ws || ws.readyState !== 1) return;
       let mult = 1;
       try {
-        const linkCap = this._donorLinkCapBytes();
+        // SAME quadratic brake as the lane's own admission (see
+        // _donorPatternLaneOpen) - one law at both governors so the walk waits
+        // exactly as long as the lane would refuse. Includes the RTT term the
+        // first version of this method was missing.
         const buf = (typeof ws.bufferedAmount === 'number') ? ws.bufferedAmount : 0;
-        if (linkCap > 0 && buf > linkCap) mult = Math.min(16, buf / linkCap);
+        const brakeRef = 2 * 1024 * 1024;
+        if (buf > brakeRef) mult = Math.min(133, Math.pow(buf / brakeRef, 2));
+        const pc = (this.clients && this.clients.get) ? this.clients.get(ws) : null;
+        const rtt = (pc && typeof pc.rttMs === 'number') ? pc.rttMs : 0;
+        if (rtt > 1000) mult = Math.min(133, Math.max(mult, rtt / 1000));
       } catch { /* pace on the flat base */ }
       const dueAt = (this._wsPatternLastSendMs || 0) + Math.round(base * mult);
       let overCap = false;
