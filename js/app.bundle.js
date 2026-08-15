@@ -55936,8 +55936,8 @@ var NeuronCluster = class {
         };
         const aRegion = this.regions[a];
         const bRegion = this.regions[b];
-        const srcMaskAB = this.lamination && aRegion ? buildLayerMask(aRegion, 1) : null;
-        const dstMaskAB = this.lamination && bRegion ? buildLayerMask(bRegion, 2) : null;
+        const srcMaskAB = this.lamination && aRegion && a !== "word_motor" ? buildLayerMask(aRegion, 1) : null;
+        const dstMaskAB = this.lamination && bRegion && b !== "word_motor" ? buildLayerMask(bRegion, 2) : null;
         if (TOPOGRAPHIC_PAIRS.has(abKey) && typeof ab.initTopographicProjection === "function") {
           ab.initTopographicProjection(abDensity, abExcitatory, 0.2, {
             radiusTopo: 30,
@@ -55952,8 +55952,8 @@ var NeuronCluster = class {
         if (logConstruction) console.log(`[Cluster ${name}]   ${_projIdx}/${pairs.length * 2} ${a}_to_${b}${TOPOGRAPHIC_PAIRS.has(abKey) ? " [topographic]" : ""} (${bSize.toLocaleString()}\xD7${aSize.toLocaleString()}, nnz=${ab.nnz.toLocaleString()}) in ${Date.now() - abTime}ms`);
         const baTime = Date.now();
         const ba = new SparseMatrix(aSize, bSize, { wMin: -_wMaxFor(`${b}_to_${a}`), wMax: _wMaxFor(`${b}_to_${a}`) });
-        const srcMaskBA = this.lamination && bRegion ? buildLayerMask(bRegion, 1) : null;
-        const dstMaskBA = this.lamination && aRegion ? buildLayerMask(aRegion, 2) : null;
+        const srcMaskBA = this.lamination && bRegion && b !== "word_motor" ? buildLayerMask(bRegion, 1) : null;
+        const dstMaskBA = this.lamination && aRegion && a !== "word_motor" ? buildLayerMask(aRegion, 2) : null;
         if (TOPOGRAPHIC_PAIRS.has(baKey) && typeof ba.initTopographicProjection === "function") {
           ba.initTopographicProjection(baDensity, baExcitatory, 0.2, {
             radiusTopo: 30,

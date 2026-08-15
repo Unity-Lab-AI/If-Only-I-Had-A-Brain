@@ -1155,8 +1155,27 @@ export class NeuronCluster {
         };
         const aRegion = this.regions[a];
         const bRegion = this.regions[b];
-        const srcMaskAB = (this.lamination && aRegion) ? buildLayerMask(aRegion, 1) : null; // L2/3 of source
-        const dstMaskAB = (this.lamination && bRegion) ? buildLayerMask(bRegion, 2) : null; // L4 of dest
+        // WORD_MOTOR IS A READOUT BAND, NOT LAMINATED CORTEX (2026-08-15).
+        //
+        // The lamination masks exist for cortico-cortical realism: projections
+        // terminate on L4 stellate input cells, originate from L2/3 pyramidals
+        // (Felleman & Van Essen 1991). `word_motor` is not that - it is the
+        // engineered word-emission readout, one bucket per unique word, argmax
+        // over bucket means. Masking ITS side of a projection to one lamina
+        // leaves ~75% of bucket rows with NO incoming entry, and `ojaUpdate`
+        // only adjusts existing CSR entries - so at the unified geometry of ONE
+        // cell per word, three quarters of all words were physically incapable
+        // of matrix emission. Measured live before this change: matrixDrivenPct
+        // 6% (oracle 50 / matrix 3), word_motor utilization 0%.
+        //
+        // Exempting word_motor from the mask on ITS side restores the
+        // `Math.max(1, ...)` fanout guarantee to every bucket row (all 90,000
+        // usable - the 60,000-word K->PhD target fits again) for ~0.3MB of
+        // additional nnz. The OTHER side of each pair keeps its mask: sem
+        // stays laminated cortex. Init-time change: takes effect on the next
+        // FRESH WALK; bucket geometry is unchanged so no bucket-map bump.
+        const srcMaskAB = (this.lamination && aRegion && a !== 'word_motor') ? buildLayerMask(aRegion, 1) : null; // L2/3 of source
+        const dstMaskAB = (this.lamination && bRegion && b !== 'word_motor') ? buildLayerMask(bRegion, 2) : null; // L4 of dest
         if (TOPOGRAPHIC_PAIRS.has(abKey) && typeof ab.initTopographicProjection === 'function') {
           ab.initTopographicProjection(abDensity, abExcitatory, 0.2, {
             radiusTopo: 30,
@@ -1172,8 +1191,8 @@ export class NeuronCluster {
         const baTime = Date.now();
         const ba = new SparseMatrix(aSize, bSize, { wMin: -_wMaxFor(`${b}_to_${a}`), wMax: _wMaxFor(`${b}_to_${a}`) });
         // reverse direction: src = L2/3 of b, dst = L4 of a.
-        const srcMaskBA = (this.lamination && bRegion) ? buildLayerMask(bRegion, 1) : null;
-        const dstMaskBA = (this.lamination && aRegion) ? buildLayerMask(aRegion, 2) : null;
+        const srcMaskBA = (this.lamination && bRegion && b !== 'word_motor') ? buildLayerMask(bRegion, 1) : null;
+        const dstMaskBA = (this.lamination && aRegion && a !== 'word_motor') ? buildLayerMask(aRegion, 2) : null;
         if (TOPOGRAPHIC_PAIRS.has(baKey) && typeof ba.initTopographicProjection === 'function') {
           ba.initTopographicProjection(baDensity, baExcitatory, 0.2, {
             radiusTopo: 30,
