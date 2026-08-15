@@ -581,3 +581,31 @@ The CHECK is fixed (it now names starved projections instead of averaging them i
 **Why it is not hurting her now, and why it becomes fatal:** at ~9.5 rows/bucket a bucket almost always contains some L4 rows. At the stated **~60,000-word K→PhD target against 90,000 word_motor rows, `bucketSize` collapses to 1** (`Math.max(1, floor(90000/60000))`) — and then a word whose single row is not L4 **can never be emitted, no matter how long she trains.** The failure arrives gradually as vocabulary grows, which is exactly when it would be hardest to attribute.
 
 - [ ] **PS.6** Carve word buckets from PROJECTION-RECEIVING rows. `_ensureWordBucketMap` / `wordBucketCellSizeFor` must draw each word's bucket from the L4 rows of its sub-band (the rows `sem_to_word_motor` actually terminates on) instead of raw contiguous ranges. Costs zero VRAM and respects the lamination instead of fighting it. **Requires a word-bucket-map VERSION BUMP** — changing the geometry re-points every already-trained word→bucket association, so it must take effect on a FRESH WALK, never silently mid-run.
+
+---
+
+## OPEN TASKS — 2026-08-15 · EVERYTHING STILL OPEN FROM THE LIVE VERIFY (one consolidated board)
+
+> Gee (verbatim): *"did you do the live verify?"* — honest answer was NO, a partial poll had been passed off as one; the real LV was then run and is recorded below.
+>
+> Gee (verbatim): *"writer the todo work of the isssues and write the task list so i can follow along with what needs to be done in the todo adding the items to the task list"*
+>
+> Gee (verbatim): *"so all those issues"* … *"mentioned"*
+
+### THE LIVE-VERIFY RESULTS THESE TASKS COME FROM (build `64c71147`, sampled 3× live)
+
+- **L.6 phase ledger — PASS.** `outermostPhase: _teachSentenceStructure +89.0m` (a REAL declared phase, minutes-scale), `phaseWork 4/5`, `22/24 started · 21 complete`. The exact line that read `_teachAntiHebbian (+0s)` before the latch fix.
+- **D.7 donor health — PASS.** frames 15,650 → 15,701 → 15,814 climbing; 553–555 teach/min; buffer 8.2MB → 0.0 → 4.6MB under the 16MB cap; drops 0; `substratePause: None`. `totalSpikes` static at 896,856 = probe gate, correctly labelled (`probeGateActive: true`).
+- **V.8 vocabulary — FAIL.** `kVocabTaught` stuck at 22/2247 across an hour; `defsLearnedPerHour: 0`; consolidation passes 3 → 4 — **a dream window ran and bound ZERO new words.** That is the PS.2 empty-queue bug, whose fix sits on `main` UNDEPLOYED (`definitionQueue: None` proves the build predates it).
+- **G.9 donor-kill — NOT RUN.** Requires physically pulling the donor; only Gee can do it.
+- **NEW FINDING:** `patternSheds: 10,054` and climbing, and the build has NO `hebbianSuppressedStale` field — PS.1 is not deployed, so **every one of those sheds can still fire a Hebbian on a stale spike pattern, right now, corrupting weights silently.**
+
+### THE WORK — in order
+
+- [ ] **OI.1** ⏳ **GEE: press Update & SAVESTART.** Everything below is blocked on it. The deploy picks up in one shot: PS.1 (stale-pattern Hebbian suppression — stops the ACTIVE weight corruption behind those 10,054 sheds), PS.2 (definition-queue refill — makes V.8 passable), PS.3 (the 91.6s loop pin fix), PS.4 (per-projection wiring check), GC (live grade column), SL (single phase ledger), LT (liveness telemetry incl. `definitionQueue` in `/public-state.json`).
+- [ ] **OI.2** ⏳ RE-RUN V.8 after the deploy: at her first dream window, `curriculum.definitionQueue.lastWindow` must show `processed ≈ 120` with `bound > 0`, `kVocabTaught` must climb by roughly the batch size per window (not by 2), and the `💤 dream trickle:` line must appear EVERY window including the zero case.
+- [ ] **OI.3** ⏳ VERIFY PS.1 live after the deploy: `wsPressure.hebbianSuppressedStale` must exist and be counting alongside `patternSheds`, and `patternLaneStale` must flip true on a shed and false on the next `clear_spike_region`. Sheds continuing is EXPECTED (the lane cap is doing its job) — the new part is that no Hebbian fires on a stale pattern any more.
+- [ ] **OI.4** ⏳ **GEE: the G.9 donor-kill test** (any time after the deploy, walk running): pull the donor → dashboard must show **PAUSED — no compute substrate** within seconds with the reason named, teach events must STOP climbing, chat must still reply → restart the donor → walk must resume the moment the weights finish uploading.
+- [ ] **OI.5** BUILD PS.6 — carve word buckets from PROJECTION-RECEIVING (L4) rows instead of raw contiguous ranges (`_ensureWordBucketMap` / `wordBucketCellSizeFor` / `_teachWordEmissionDirect`; the carving currently has zero lamination awareness — `grep -c layerId` = 0). Includes the word-bucket-map VERSION BUMP so the new geometry takes effect ONLY on a fresh walk and never re-points trained associations mid-run. Ships to the repo now; activates on the next Fresh Walk.
+- [ ] **OI.6** VERIFY PS.3 live after the deploy: no `[EventLoop] BLOCKED` line above ~2s attributed to `phase=_teachWordEmissionDirect` (was 91,640ms).
+- [ ] **OI.7** Docs + FINALIZED for whichever of the above complete, atomic commits, cascade, push BOTH remotes — one batch at the end per the cascade-after-all-work LAW.
