@@ -1,9 +1,15 @@
-// CUDA-C kernels for the unity-donor CUDA backend — direct ports of shaders/*.wgsl so a CUDA
-// donor returns byte-identical results to the wgpu/browser donor. Compiled to PTX at build
-// time (`nvcc --ptx -arch=compute_60`) and committed as kernels.ptx, which the driver JITs to
-// the host GPU's arch — so the runtime needs only libcuda (no nvrtc / no toolkit).
+// CUDA-C kernels for the unity-donor CUDA backend. The four compute kernels (lif /
+// spike_count / synapse_propagate / plasticity) are direct ports of shaders/*.wgsl so a CUDA
+// donor returns byte-identical results to the wgpu/browser donor; the fill_zero_* /
+// scatter_* pattern ops are device-side replacements for what the host used to do with
+// dense vectors + full-span PCIe copies. Compiled to PTX at build time and committed as
+// kernels.ptx, which the driver JITs to the host GPU's arch — so the runtime needs only
+// libcuda (no nvrtc / no toolkit).
 //
-// Regenerate after editing:  nvcc --ptx -arch=compute_60 -o src/kernels.ptx src/cuda_kernels.cu
+// Regenerate after editing:  nvcc --ptx -arch=compute_75 -o src/kernels.ptx src/cuda_kernels.cu
+// (compute_75 = Turing+; CUDA 13 toolchains no longer emit compute_60. PTX ISA 9.0 needs an
+// r580+ driver — on older drivers/cards the module-load failure is LOUD and the card falls
+// back to wgpu, never silently computing zero.)
 
 extern "C" {
 
@@ -70,6 +76,52 @@ __global__ void synapse_propagate(unsigned int rows, unsigned int srcOffset, uns
     if (spikes[srcOffset + j] != 0u) sum += values[k];
   }
   currents[dstOffset + i] += sum;
+}
+
+// ─── v0.3.14 device-side pattern ops ───────────────────────────────────────
+// The host used to materialize a DENSE region/matrix-sized vector for every
+// teach write (spike pattern, current pattern, clear, and the pre/post sets of
+// every plasticity call) and memcpy the whole thing over PCIe — up to megabytes
+// of mostly-zeros per frame, synchronously, on the single worker thread. These
+// kernels move the scatter to the device: the host uploads ONLY the sparse
+// indices (a few hundred bytes) and the GPU zeroes + scatters in-place. All
+// launches ride the same stream, so clear→write→plasticity ordering is
+// preserved by stream order with no host synchronization at all.
+
+// dst[offset .. offset+n] = 0 (u32).
+__global__ void fill_zero_u32(unsigned int n, unsigned int offset, unsigned int* dst) {
+  unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
+  if (i >= n) return;
+  dst[offset + i] = 0u;
+}
+
+// dst[offset .. offset+n] = 0 (f32).
+__global__ void fill_zero_f32(unsigned int n, unsigned int offset, float* dst) {
+  unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
+  if (i >= n) return;
+  dst[offset + i] = 0.0f;
+}
+
+// dst[offset + indices[i]] = 1 for every in-bounds index (len = span guard).
+__global__ void scatter_ones_u32(unsigned int count, unsigned int offset, unsigned int len,
+                                 const unsigned int* indices, unsigned int* dst) {
+  unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
+  if (i >= count) return;
+  unsigned int idx = indices[i];
+  if (idx < len) dst[offset + idx] = 1u;
+}
+
+// dst[offset + indices[i]] = values[i] * psi (0 when values is shorter than indices —
+// matches the host path's values.get(k).unwrap_or(0.0)).
+__global__ void scatter_vals_f32(unsigned int count, unsigned int vcount, unsigned int offset,
+                                 unsigned int len, float psi,
+                                 const unsigned int* indices, const float* values, float* dst) {
+  unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
+  if (i >= count) return;
+  unsigned int idx = indices[i];
+  if (idx >= len) return;
+  float v = (i < vcount) ? values[i] : 0.0f;
+  dst[offset + idx] = v * psi;
 }
 
 // Oja / anti-Hebbian plasticity (port of plasticity.wgsl).

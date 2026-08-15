@@ -1,9 +1,12 @@
 //! CUDA compute backend (NVIDIA) — the high-control sibling of the wgpu `ComputeEngine`.
 //!
-//! Same brain protocol, same math (the four kernels below are line-for-line ports of the
+//! Same brain protocol, same math (the four compute kernels are line-for-line ports of the
 //! WGSL in `shaders/`, so a CUDA donor and a browser/wgpu donor return byte-identical
 //! results — the brain can't tell them apart). What CUDA buys: no 2 GB per-binding cap
 //! (device pointers are sized only by VRAM), real streams, and a much higher ceiling.
+//! Teach patterns (spike/current writes, clears, plasticity pre/post sets) scatter
+//! DEVICE-SIDE via the fill_zero_* / scatter_* kernels — the host uploads only sparse
+//! index lists, never dense region-sized vectors.
 //!
 //! Built only with the `cuda` feature. cudarc is loaded with `dynamic-loading`, so the
 //! binary links without CUDA and this whole module no-ops gracefully on non-NVIDIA hosts —
@@ -108,6 +111,14 @@ pub struct CudaEngine {
     f_spike: CudaFunction,
     f_prop: CudaFunction,
     f_hebb: CudaFunction,
+    // Device-side pattern ops: zero a span / scatter sparse indices in-place. These replace
+    // the host-side dense-vector + full-span memcpy per teach frame (up to megabytes of
+    // mostly-zeros over PCIe, synchronously, per frame) with a ~KB index upload + async
+    // kernel launches — the teach-drain fix. Stream order preserves clear→write→plasticity.
+    f_fill_u32: CudaFunction,
+    f_fill_f32: CudaFunction,
+    f_scatter_u32: CudaFunction,
+    f_scatter_f32: CudaFunction,
     clusters: HashMap<String, CudaCluster>,
     sparse: HashMap<String, CudaSparse>,
 }
@@ -144,6 +155,10 @@ impl CudaEngine {
         let f_spike = module.load_function("spike_count").map_err(|e| { eprintln!("[cuda] ⚠⚠ kernel 'spike_count' load failed on '{name}': {e}"); format!("load spike_count: {e}") })?;
         let f_prop = module.load_function("synapse_propagate").map_err(|e| { eprintln!("[cuda] ⚠⚠ kernel 'synapse_propagate' load failed on '{name}': {e}"); format!("load propagate: {e}") })?;
         let f_hebb = module.load_function("plasticity").map_err(|e| { eprintln!("[cuda] ⚠⚠ kernel 'plasticity' load failed on '{name}': {e}"); format!("load plasticity: {e}") })?;
+        let f_fill_u32 = module.load_function("fill_zero_u32").map_err(|e| { eprintln!("[cuda] ⚠⚠ kernel 'fill_zero_u32' load failed on '{name}': {e}"); format!("load fill_zero_u32: {e}") })?;
+        let f_fill_f32 = module.load_function("fill_zero_f32").map_err(|e| { eprintln!("[cuda] ⚠⚠ kernel 'fill_zero_f32' load failed on '{name}': {e}"); format!("load fill_zero_f32: {e}") })?;
+        let f_scatter_u32 = module.load_function("scatter_ones_u32").map_err(|e| { eprintln!("[cuda] ⚠⚠ kernel 'scatter_ones_u32' load failed on '{name}': {e}"); format!("load scatter_ones_u32: {e}") })?;
+        let f_scatter_f32 = module.load_function("scatter_vals_f32").map_err(|e| { eprintln!("[cuda] ⚠⚠ kernel 'scatter_vals_f32' load failed on '{name}': {e}"); format!("load scatter_vals_f32: {e}") })?;
         Ok(Self {
             ctx,
             stream,
@@ -154,6 +169,10 @@ impl CudaEngine {
             f_spike,
             f_prop,
             f_hebb,
+            f_fill_u32,
+            f_fill_f32,
+            f_scatter_u32,
+            f_scatter_f32,
             clusters: HashMap::new(),
             sparse: HashMap::new(),
         })
@@ -258,6 +277,35 @@ impl CudaEngine {
         self.sparse.contains_key(name)
     }
 
+    /// Zero `dst[offset .. offset+len]` on the device (u32) — async on the stream. Replaces
+    /// the host-side zero-vec + full-span memcpy that cost megabytes of PCIe per teach frame.
+    fn dev_zero_u32(&self, dst: &CudaSlice<u32>, offset: u32, len: u32) -> Result<(), String> {
+        let mut b = self.stream.launch_builder(&self.f_fill_u32);
+        b.arg(&len).arg(&offset).arg(dst);
+        unsafe { b.launch(cfg(len)) }.map_err(|e| format!("fill_zero_u32 launch: {e}"))
+    }
+
+    /// Zero `dst[offset .. offset+len]` on the device (f32) — async on the stream.
+    fn dev_zero_f32(&self, dst: &CudaSlice<f32>, offset: u32, len: u32) -> Result<(), String> {
+        let mut b = self.stream.launch_builder(&self.f_fill_f32);
+        b.arg(&len).arg(&offset).arg(dst);
+        unsafe { b.launch(cfg(len)) }.map_err(|e| format!("fill_zero_f32 launch: {e}"))
+    }
+
+    /// Set `dst[offset + idx] = 1` for every in-bounds index — uploads ONLY the sparse
+    /// index list (a few hundred bytes) and scatters on the device. The index buffer drops
+    /// after launch; cudarc frees it stream-ordered, i.e. after the kernel consumes it.
+    fn dev_scatter_ones(&self, indices: &[u32], dst: &CudaSlice<u32>, offset: u32, len: u32) -> Result<(), String> {
+        if indices.is_empty() {
+            return Ok(());
+        }
+        let idx_buf = self.stream.memcpy_stod(indices).map_err(|e| e.to_string())?;
+        let count = indices.len() as u32;
+        let mut b = self.stream.launch_builder(&self.f_scatter_u32);
+        b.arg(&count).arg(&offset).arg(&len).arg(&idx_buf).arg(dst);
+        unsafe { b.launch(cfg(count)) }.map_err(|e| format!("scatter_ones_u32 launch: {e}"))
+    }
+
     pub fn upload_sparse(&mut self, name: &str, rows: u32, cols: u32, row_ptr: &[u32], values: &[f32], col_idx: &[u32]) {
         let nnz = values.len() as u32;
         // rowPtr must have rows+1 entries (the kernel reads rowPtr[i+1]); pad with nnz so a
@@ -292,15 +340,11 @@ impl CudaEngine {
         if rows == 0 || nnz == 0 {
             return Ok(vec![0.0; rows as usize]);
         }
-        let dense_pre = scatter(cols, pre_indices);
-        let zeros = vec![0f32; rows as usize];
-        // Host writes need &mut on the buffers.
-        {
-            let m = self.sparse.get_mut(name).unwrap();
-            self.stream.memcpy_htod(&dense_pre, &mut m.pre_spikes).map_err(|e| e.to_string())?;
-            self.stream.memcpy_htod(&zeros, &mut m.post_currents).map_err(|e| e.to_string())?;
-        }
         let m = self.sparse.get(name).unwrap();
+        // Device-side zero + scatter (no dense host vectors, no full-span PCIe copies).
+        self.dev_zero_u32(&m.pre_spikes, 0, cols)?;
+        self.dev_zero_f32(&m.post_currents, 0, rows)?;
+        self.dev_scatter_ones(pre_indices, &m.pre_spikes, 0, cols)?;
         let (src_off, dst_off) = (0u32, 0u32);
         let mut b = self.stream.launch_builder(&self.f_prop);
         b.arg(&rows)
@@ -325,14 +369,15 @@ impl CudaEngine {
         if rows == 0 || nnz == 0 {
             return Ok(());
         }
-        let dense_pre = scatter(cols, pre_indices);
-        let dense_post = scatter(rows, post_indices);
-        {
-            let m = self.sparse.get_mut(name).unwrap();
-            self.stream.memcpy_htod(&dense_pre, &mut m.pre_spikes).map_err(|e| e.to_string())?;
-            self.stream.memcpy_htod(&dense_post, &mut m.post_spikes).map_err(|e| e.to_string())?;
-        }
         let m = self.sparse.get(name).unwrap();
+        // Device-side zero + scatter. On a 1.5M-row cortex matrix the old path built TWO
+        // 6MB dense host vectors and blocking-copied both over PCIe — per plasticity frame.
+        // Now: two async zero kernels + index-only uploads. Stream order keeps the
+        // plasticity launch below reading exactly these patterns.
+        self.dev_zero_u32(&m.pre_spikes, 0, cols)?;
+        self.dev_zero_u32(&m.post_spikes, 0, rows)?;
+        self.dev_scatter_ones(pre_indices, &m.pre_spikes, 0, cols)?;
+        self.dev_scatter_ones(post_indices, &m.post_spikes, 0, rows)?;
         let (reward, w_min, w_max, src_off, dst_off) = (1.0f32, -2.0f32, 2.0f32, 0u32, 0u32);
         let mut b = self.stream.launch_builder(&self.f_hebb);
         b.arg(&rows)
@@ -354,33 +399,39 @@ impl CudaEngine {
 
     pub fn write_spike_slice(&mut self, cluster: &str, region: &str, indices: &[u32]) -> Result<(), String> {
         let (start, end) = match self.region(cluster, region) { Some(r) => r, None => return Ok(()) };
-        let len = (end - start) as usize;
-        let dense = scatter_len(len, indices);
-        let c = self.clusters.get_mut(cluster).unwrap();
-        let mut view = c.spikes.slice_mut(start as usize..end as usize);
-        self.stream.memcpy_htod(&dense, &mut view).map_err(|e| e.to_string())
+        let len = end - start;
+        let c = self.clusters.get(cluster).unwrap();
+        // Zero the region span then scatter the sparse pattern — both device-side, async.
+        // Same semantics as the old dense write (everything outside `indices` reads 0).
+        self.dev_zero_u32(&c.spikes, start, len)?;
+        self.dev_scatter_ones(indices, &c.spikes, start, len)
     }
 
     pub fn clear_spike_region(&mut self, cluster: &str, region: &str) -> Result<(), String> {
         let (start, end) = match self.region(cluster, region) { Some(r) => r, None => return Ok(()) };
-        let zeros = vec![0u32; ((end - start) as usize).max(1)];
-        let c = self.clusters.get_mut(cluster).unwrap();
-        let mut view = c.spikes.slice_mut(start as usize..end as usize);
-        self.stream.memcpy_htod(&zeros, &mut view).map_err(|e| e.to_string())
+        let c = self.clusters.get(cluster).unwrap();
+        self.dev_zero_u32(&c.spikes, start, end - start)
     }
 
     pub fn write_current_slice(&mut self, cluster: &str, region: &str, indices: &[u32], values: &[f32], psi: f32) -> Result<(), String> {
         let (start, end) = match self.region(cluster, region) { Some(r) => r, None => return Ok(()) };
-        let len = (end - start) as usize;
-        let mut dense = vec![0f32; len.max(1)];
-        for (k, &idx) in indices.iter().enumerate() {
-            if (idx as usize) < len {
-                dense[idx as usize] = values.get(k).copied().unwrap_or(0.0) * psi;
-            }
+        let len = end - start;
+        let c = self.clusters.get(cluster).unwrap();
+        self.dev_zero_f32(&c.currents, start, len)?;
+        if indices.is_empty() {
+            return Ok(());
         }
-        let c = self.clusters.get_mut(cluster).unwrap();
-        let mut view = c.currents.slice_mut(start as usize..end as usize);
-        self.stream.memcpy_htod(&dense[..len.max(1)], &mut view).map_err(|e| e.to_string())
+        let idx_buf = self.stream.memcpy_stod(indices).map_err(|e| e.to_string())?;
+        // A shorter `values` reads as 0.0 past its end (vcount guard in the kernel — same
+        // as the old host path's values.get(k).unwrap_or(0.0)). Empty values uploads one
+        // dummy element (no zero-size alloc) that vcount=0 keeps the kernel from reading.
+        let vcount = values.len() as u32;
+        let val_src: &[f32] = if values.is_empty() { &[0.0] } else { values };
+        let val_buf = self.stream.memcpy_stod(val_src).map_err(|e| e.to_string())?;
+        let count = indices.len() as u32;
+        let mut b = self.stream.launch_builder(&self.f_scatter_f32);
+        b.arg(&count).arg(&vcount).arg(&start).arg(&len).arg(&psi).arg(&idx_buf).arg(&val_buf).arg(&c.currents);
+        unsafe { b.launch(cfg(count)) }.map_err(|e| format!("scatter_vals_f32 launch: {e}"))
     }
 
     pub fn readback_letter_buckets(&self, cluster: &str, region: &str, bucket_count: u32, sub_slice_len: u32, start_offset: u32) -> Result<Vec<u32>, String> {
@@ -452,17 +503,5 @@ impl CudaEngine {
     }
 }
 
-/// Scatter sparse 1-indices into a dense u32 buffer of length `n` (min 1).
-fn scatter(n: u32, indices: &[u32]) -> Vec<u32> {
-    scatter_len(n.max(1) as usize, indices)
-}
-
-fn scatter_len(len: usize, indices: &[u32]) -> Vec<u32> {
-    let mut dense = vec![0u32; len.max(1)];
-    for &idx in indices {
-        if (idx as usize) < dense.len() {
-            dense[idx as usize] = 1;
-        }
-    }
-    dense
-}
+// (The host-side dense scatter helpers are gone — pattern scatter now runs on the device;
+// see fill_zero_* / scatter_* in cuda_kernels.cu and the dev_* helpers above.)
