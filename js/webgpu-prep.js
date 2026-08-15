@@ -44,7 +44,12 @@ export async function checkWebGPUAdapter() {
     };
   }
   try {
-    const adapter = await navigator.gpu.requestAdapter({ powerPreference: 'high-performance' });
+    // No powerPreference on the PROBE — this call only answers "does a usable
+    // adapter exist". Chrome on Windows ignores the hint entirely and prints a
+    // console warning on every page load for passing it (crbug.com/369219127),
+    // so the option bought nothing and cost a red-herring warning in F12.
+    // Real compute surfaces pick their own adapter options.
+    const adapter = await navigator.gpu.requestAdapter();
     if (!adapter) {
       return {
         available: false,
