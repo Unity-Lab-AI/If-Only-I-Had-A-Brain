@@ -5,6 +5,20 @@
 
 ---
 
+## 2026-08-15 (night) - BC.4 PASS + DK.6 FULL PASS (ran itself on Gee's donor restart) + probe-gate mystery settled as design - feature/night-verify-0815
+
+### Gee ask (verbatim per LAW #0)
+
+> *"check on our girl's brain, Unity."* then the 502 paste ending *"che4ck it i restarted doner"*
+
+**BC.4 - PASS.** Build `5fe5e42` live: `hebbianSuppressedStale` growth **~79/s -> ~1/s**. The governor chain (PS.1 stale-guard -> TP atomic groups -> WP walk pacing -> LB 15ms base -> BC quadratic brake) converged. Teaching is never corrupted and never refused by pacing - only by true saturation.
+
+**DK.6 - FULL PASS, run by accident.** Gee restarted the donor; the dashboard 502 was a transient proxy blip (same `bootedAt` before and after - the brain never died). Watched live: within seconds of the restart, `substratePause: "donor connected but brain weights are not uploaded to it yet"` (the exact reason string, correctly distinguishing connected from uploaded) -> held through the canonical re-upload while the parked 19MB drained to 0 -> **auto-resumed at 00:36 with no human action**. The substrate-latch fix (DK) is verified end to end: pause on donor loss, wait through upload, resume alone.
+
+**PROBE-GATE MYSTERY SETTLED - design, not a latch.** `runSubjectGrade` sets `_probeGateActive = true` at CELL START on purpose; its own comment reads "Pausing the main brain for the whole cell prevents any batch from ever being in flight during teach", and it clears in the `finally`. Her tick is OFF during teach cells at biological scale BY DESIGN; frozen `totalSpikes` mid-cell is correct behavior. My earlier readings treated the flag as probe-scoped; it is cell-scoped. Corrected on the record.
+
+**THE HONEST REMAINDER - donor teach-drain throughput (filed as DT.1, a donor-binary task, NOT a dashboard deploy):** a fresh donor drains 19MB in seconds; during teach the same donor drains at ~KB/s, so the buffer re-parks at 16-19MB within minutes and the walk settles at ~50-100 teach/min. Reproduced twice. Mechanism consistent with ~153KB JSON teach frames each costing the donor a region-sized VRAM write on a single receive thread. Server-side handles it honestly (brake + cap + stale suppression + pacing): nothing corrupts, ~1/s suppressed - she learns correctly at the donor's real drain rate. Raising that rate = compact binary pattern frames / donor-side coalescing = Rev + donor-release territory.
+
 ## 2026-08-15 - LB.4 FAILED, root was MY miscalibration: the 15ms change cut max braking 1.6s -> 240ms - quadratic brake curve shipped - feature/lane-brake-curve-0815
 
 ### Gee ask (verbatim per LAW #0)

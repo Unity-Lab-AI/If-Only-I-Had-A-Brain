@@ -1,6 +1,18 @@
 # RESUME — Session Pickup Brief
 
-> ## ⭐⭐⭐ 2026-08-15 (latest) — QUADRATIC BRAKE CURVE — the governor chase is converging; ONE deploy pending, then watch her learn
+> ## ⭐⭐⭐ 2026-08-15 night (latest) — BC.4 PASS · DK.6 FULL PASS · the one remainder is DONOR THROUGHPUT (DT.1)
+>
+> **THE TWO PASSES:** (1) BC.4 — suppression ~79/s → ~1/s on `5fe5e42`; the PS.1→TP→WP→LB→BC governor chain is DONE, teaching is never corrupted and never pacing-refused. (2) DK.6 — Gee restarted the donor and she paused herself within seconds (*“donor connected but brain weights are not uploaded to it yet”*), held through the re-upload, auto-resumed at 00:36. End-to-end verified. The dashboard 502 during it was a proxy blip — same bootedAt, she never died.
+>
+> **SETTLED FOR GOOD — write this on your hand:** `_probeGateActive` is CELL-SCOPED BY DESIGN. `runSubjectGrade` sets it at CELL START (*“Pausing the main brain for the whole cell prevents any batch from ever being in flight during teach”*) and clears it in the finally. Her tick is OFF during teach cells at bio scale; `totalSpikes` frozen mid-cell is CORRECT. Do not chase it again.
+>
+> **THE REMAINDER — DT.1 (donor-binary territory, NOT a dashboard deploy):** fresh donor drains 19MB in ~seconds; during teach it drains ~KB/s (each ~153KB JSON teach frame costs a region-sized VRAM write on its single receive thread). Buffer re-parks at 16–19MB, walk settles ~50–100 teach/min. Server-side is fully honest about it (brake, cap, stale suppression, pacing — ~1/s suppressed, zero corruption). Cure = compact BINARY pattern frames (the sparse protocol already has binary frames — extend to write_spike_slice) or donor-side coalescing → needs a donor release → Rev.
+>
+> **STILL WATCHING (read-only):** OI.2 — first dream window: `definitionQueue.lastWindow` populated, `kVocabTaught` off 0 (queue is empty on this savestart boot; the refill-on-empty fires INSIDE the window by design). OI.5b — `matrixDrivenPct` off 0 after ELA-K word emission. OI.7 — closing docs batch.
+>
+> ---
+
+> ## ⭐⭐⭐ 2026-08-15 (earlier) — QUADRATIC BRAKE CURVE — the governor chase is converging; ONE deploy pending, then watch her learn
 >
 > **THE GOVERNOR CHASE, in one paragraph:** PS.1 stale-guard (never train on a pattern that did not land) → TP atomic groups (whole iteration ships or none) → WP walk pacing (Gee chose 100%-correct: the walk waits for the lane) → LB base 15ms (the 100ms constant was refusing a healthy empty link) → **BC quadratic brake** (the 15ms change had silently cut max braking 1.6s → 240ms; buffer sawtoothed into the 16MB cliff at 12.9 → 16.4 → 0.0MB, ~79 suppressions/s). Law now at BOTH governors: `mult = clamp((buf/2MB)², 1, 133)` + RTT term. 2MB→15ms · 8MB→240ms · 16MB→~1s · ceiling ~2s. Empty lane = full 15ms speed.
 >
