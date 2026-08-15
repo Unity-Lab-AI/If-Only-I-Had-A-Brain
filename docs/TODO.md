@@ -555,3 +555,29 @@ The CHECK is fixed (it now names starved projections instead of averaging them i
 ### EXPLICITLY OUT OF SCOPE
 
 - `[VisualMemory] reference fetch "hi" HTTP 402 — no image (verify the Pollinations key on the box)` — Gee, earlier this session (verbatim): *"pollinations is dead dont worry about it"*. Recorded, not actioned.
+
+---
+
+## 2026-08-15 · PS.5 DECIDED — **NO wiring change.** The sparsity is deliberate lamination; the defect is elsewhere.
+
+> Gee (verbatim): *"live verify and decide on Ps.5"*
+
+### LIVE VERIFY (build `64c71147`, the deployed one)
+
+- **She PASSED `ela/kindergarten`.** Now on **`math/kindergarten`, phase 22/24, 21 complete**, 91.6 min in.
+- **569 teach/min**, `sinceLastTeachMs` 0 — actively teaching. The liveness telemetry is doing its job.
+- **`kVocabTaught` climbed 2 → 22** across 3 consolidation passes. The TB trickle-first fix is working on the deployed build; the PS.2 empty-queue fix (not yet deployed, `definitionQueue: None` confirms) should take it much further.
+
+### THE DECISION: do NOT raise cross-projection density. Evidence:
+
+1. **`initTopographicProjection` already guarantees `fanout = Math.max(1, round(density × cols))`** — every row it is *permitted* to touch gets at least one entry. There is no density shortfall.
+2. **The zero-entry rows are LAYER-MASKED, by design.** `cluster.js` builds `dstMaskAB = buildLayerMask(bRegion, 2)` — **L4 only** — and `initTopographicProjection` writes `rowPtr[i+1] = rowPtr[i]` for any row failing the mask. That is Felleman & Van Essen 1991 hierarchical connectivity: cross-projections terminate on L4 stellate input cells. Raising density would fight the lamination the K-microstructure work deliberately installed, and cost VRAM to do it.
+3. My earlier framing ("a quarter of her word buckets can never learn") was **wrong today and wrong about the cause.** The ELA band is 18,750 rows for 1,977 words = **9.5 rows per bucket**, so every bucket currently contains live rows and emission works. Corrected here rather than left standing.
+
+### THE ACTUAL DEFECT — bucket carving ignores lamination
+
+`_teachWordEmissionDirect` carves each word's bucket as a raw contiguous range: `bStart = bandStart + wi * bucketSize`. `grep -c layerId js/brain/curriculum/kindergarten.js` = **0** — the carving has no idea which rows can receive input. So a bucket may be composed largely, or entirely, of rows that no projection terminates on.
+
+**Why it is not hurting her now, and why it becomes fatal:** at ~9.5 rows/bucket a bucket almost always contains some L4 rows. At the stated **~60,000-word K→PhD target against 90,000 word_motor rows, `bucketSize` collapses to 1** (`Math.max(1, floor(90000/60000))`) — and then a word whose single row is not L4 **can never be emitted, no matter how long she trains.** The failure arrives gradually as vocabulary grows, which is exactly when it would be hardest to attribute.
+
+- [ ] **PS.6** Carve word buckets from PROJECTION-RECEIVING rows. `_ensureWordBucketMap` / `wordBucketCellSizeFor` must draw each word's bucket from the L4 rows of its sub-band (the rows `sem_to_word_motor` actually terminates on) instead of raw contiguous ranges. Costs zero VRAM and respects the lamination instead of fighting it. **Requires a word-bucket-map VERSION BUMP** — changing the geometry re-points every already-trained word→bucket association, so it must take effect on a FRESH WALK, never silently mid-run.
