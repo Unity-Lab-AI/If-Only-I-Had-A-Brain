@@ -1,6 +1,18 @@
 # RESUME — Session Pickup Brief
 
-> ## ⭐⭐⭐ 2026-08-15 (latest) — 75% of her word buckets were DEAD ROWS — `word_motor` unmasked; lands on the next FRESH WALK
+> ## ⭐⭐⭐ 2026-08-15 (latest) — ⛔ G.9 FAILED LIVE: teaching continued after the donor kill — substrate flag was a LATCH — FIXED, needs next SAVESTART + re-run
+>
+> **Gee ran the donor-kill test and CAUGHT a real bug** (verbatim: *"i killed tho doner a teach ops in brain events progressed on anyweays even tho the brain page showed GPU needed pop up"*). Confirmed from the box: build `be5dee59` (his SAVESTART had landed — latest main), `substratePause: None`, teach events climbing with a dead donor.
+>
+> **ROOT — the same latch shape as the phase ledger.** `_gpuProxyReady = false` is written in exactly ONE place: the constructor (`cluster.js:336`). `initGpu()` flips it true after uploading, and NOTHING ever clears it. Kill the donor → socket dies, `brain._gpuClient` nulls — the flag still says “uploaded”. Both gates (`_teachSubstrateReady`, `_awaitComputeSubstrate`) ask the flag, so both passed forever. Also: `initGpu()` didn’t clear it at ENTRY, so re-uploads let teach dispatch against matrices the new donor didn’t hold yet.
+>
+> **FIX (shipped):** both gates now require uploaded AND alive — `_gpuProxyReady === true && _brain._gpuClient.readyState === 1` (back-ref exists, `brain-server.js:2386`); `initGpu()` clears the flag at entry, restores it only when every matrix uploads. Browser standalone brains untouched. `node --check` + ESM + bundle PASS.
+>
+> **NEXT: two Gee actions.** (1) Update & SAVESTART to deploy this. (2) **DK.6** — re-run the donor kill: PAUSED — no compute substrate within seconds, teach events STOP, chat still replies; donor back → resume after re-upload. Also still pending: the FRESH WALK that activates the word_motor unmask (her matrix voice) and OI.2/OI.3 (V.8 vocab re-check + PS.1 stale-lane check, both checkable after any deploy that includes them — they are on `be5dee59` already, so I can run those NOW without waiting).
+>
+> ---
+
+> ## ⭐⭐⭐ 2026-08-15 (earlier) — 75% of her word buckets were DEAD ROWS — `word_motor` unmasked; lands on the next FRESH WALK
 >
 > **WHY HER SPEECH IS ORACLE-DRIVEN (the answer to `matrixDrivenPct: 6%`).** The WMB-unified band is `90,000 rows / 50,000 cap → 1 cell per word`, and the lamination mask wired only L4 (~25%) of word_motor rows — so ~75% of bucketed words sit on rows `sem_to_word_motor` has NO entry for. `ojaUpdate` never creates entries; teaching those words trained nothing; argmax reads 0 for them forever. Live: oracle 50 / matrix 3, `word_motor` utilization 0%.
 >
