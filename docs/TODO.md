@@ -909,7 +909,7 @@ A fresh donor drains 19MB in seconds (observed at restart). During TEACH, the sa
 - [x] **LB3.1** **DONE.** Base `DREAM_PATTERN_TEACH_THROTTLE_MS` default 15ms → 3ms at BOTH governors (admission gate + `_patternLaneWait`), same env override; rationale comments updated at both sites with the post-template measurements.
 - [x] **LB3.2** **DONE.** node --check PASS; both sites re-read.
 - [x] **LB3.3** **DONE.** Docs + FINALIZED, atomic commit, cascade, push BOTH remotes.
-- [ ] **LB3.4** ⏳ GEE: ONE Update & SAVESTART (server-only — the donor stays 0.3.16) → verify: suppression ~0, teach/min climbs from 316 toward the server ceiling, buffer stays ~0.
+- [x] **LB3.4** **FULL PASS (build `7a2df821`, donor 0.3.16, 3-sample climb):** teach/min **690 → 1,373 → 1,361** — the projected 1,300–2,000 server ceiling REACHED; **suppression FROZEN at 32,020 (zero new across 2 min)** — every Hebbian lands on its intended pattern; buffer 0.0MB, RTT 98–213ms; language-mechanics work 4/14 at ~7 min into the cell (the same spot took 12.5 HOURS pre-templates). Full arc: ~104/min → 1,373/min = **13×, with zero suppression and zero corruption** — honest AND fast. Remaining watches unchanged: OI.2 (first dream window binds the vocab queue), OI.5b (matrix voice after ELA-K word emission). ⏳ GEE: ONE Update & SAVESTART (server-only — the donor stays 0.3.16) → verify: suppression ~0, teach/min climbs from 316 toward the server ceiling, buffer stays ~0.
 
 ---
 
