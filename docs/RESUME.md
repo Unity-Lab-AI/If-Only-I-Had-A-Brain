@@ -1,6 +1,22 @@
 # RESUME — Session Pickup Brief
 
-> ## ⭐⭐⭐ 2026-08-15 (latest) — donor-v0.3.13: BINARY TEACH FRAMES built + tagged — Gee deploys the binary
+> ## ⭐⭐⭐ 2026-08-15 (latest) — SESSION PICKUP: donor-v0.3.13 shipped, ONE verification blocked on donor version visibility
+>
+> **READ THIS FIRST — how to check on her:** `curl -s https://if-only-i-had-a-brain.git.unityailab.com/public-state.json` (PUBLIC, no auth). `state.curriculum` has phases/work/liveness/definitionQueue/substratePause; `state.wsPressure` has the lane counters; `state.profiling.clients.list` has the donor row (and, once the next SAVESTART lands, `donorAppVersion` + `binaryTeach`). `totalSpikes` frozen mid-cell is DESIGN (tick off for the whole cell — do not chase it).
+>
+> **WHERE SHE IS:** fresh-walk ELA-K on a current build, phase 2/25, `_teachLanguageMechanics`, ~70–240 teach/min (paced to the donor by choice — Gee, verbatim: *"Pace the walk to the donor (100% correct)"*). Vocab queue loaded (2,247; binds at her first dream window — OI.2 still unobserved). Word_motor unmask ACTIVE this walk (OI.5b: watch `matrixDrivenPct` climb off 0 after ELA-K word emission). Nothing corrupted anywhere: suppression ~1/s, the whole governor chain (PS.1 stale-guard → TP atomic groups → WP walk pacing → LB 15ms base → BC quadratic brake) verified live.
+>
+> **THE NIGHT’S HEADLINE — donor-v0.3.13 (binary teach frames), built + tagged + CI-published (06:54Z, exe = 12,640,256 bytes):** SPRS types 7/8/9 replace the ~153KB JSON teach frames whose serde_json parse on the donor’s single receive thread was the measured drain bottleneck (fresh donor drains 19MB in seconds; teaching donor ~KB/s). Server selects per donor on `donorAppVersion ≥ 0.3.13` (version gate — zero brain-server.js edits); Rust decodes onto the SAME Work items as JSON; byte-walked all three types encode→decode, buffers fully consumed. Browser donors stay JSON (scope-cut; they report `appVersion:'browser'`).
+>
+> **THE OPEN VERIFICATION — BT.8, currently ambiguous:** Gee deployed a donor after the release published, but the lane still shows the JSON signature (RTT ~6s = the donor’s WS task busy parsing; buffer parked ~16MB) and NOTHING exposed which version registered. Fixed blind-spot shipped (`feature/bt-visibility-0815`, on main): the clients list now carries `donorAppVersion` + `binaryTeach`, and `_donorBinTeach()` logs its decision once per socket. **NEXT STEPS: (1) Gee presses Update & SAVESTART; (2) donor restarts; (3) read `donorAppVersion` off the endpoint.** If old → re-download from `releases/tag/donor-v0.3.13` (size identifies it: new exe 12,640,256 vs old 12,624,896). If 0.3.13 + BINARY and the lane STILL parks → the parse hypothesis was insufficient; next lever is donor-side GPU write coalescing (say so plainly, then build it).
+>
+> **VERIFIED EARLIER TONIGHT (do not re-litigate):** DK.6 donor-kill FULL PASS (paused with named reason, auto-resumed after re-upload — ran itself on Gee’s donor restart); BC.4 PASS (suppression 79/s → ~1/s); probe-gate-always-true settled as CELL-SCOPED DESIGN; the resume-skip, liveness line, phase ledger, substrate gates all confirmed working on the box.
+>
+> **STANDING RULES REINFORCED TONIGHT:** donor releases are GEE’s to deploy (verbatim: *"no the doner release is my territory just like we have doployed all the previous versions"*) — we code + tag, CI builds, he runs it. Fallbacks are illegal; version/protocol NEGOTIATION is not a fallback. Early-return branches must re-implement whatever the fall-through does BELOW the branch point (the binary clear branch nearly latched `_patternLaneStale` forever).
+>
+> ---
+
+> ## ⭐⭐⭐ 2026-08-15 (earlier) — donor-v0.3.13: BINARY TEACH FRAMES built + tagged — Gee deploys the binary
 >
 > **WHAT SHIPPED:** SPRS types **7/8/9** (write_spike_slice / write_current_slice / clear_spike_region), header name = `cluster/region`, fire-and-forget reqId 0. Server: `_donorBinTeach()` version-gates on `client.donorAppVersion ≥ 0.3.13` (already stored — zero brain-server.js edits); the three cortex senders build packed Buffers on the SAME pattern lane/gating. Rust: 3 Frame variants + decode + `split_cluster_region`, routed onto the SAME Work items as the JSON path; `Cargo.toml` 0.3.11→0.3.13 announces the capability. Browser donors stay JSON (BT.5 scope-cut — they report `appVersion: 'browser'` and never qualify; decoder ships with the future caps store).
 >
