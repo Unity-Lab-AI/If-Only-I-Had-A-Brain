@@ -2921,6 +2921,60 @@ const SERVER_GPU_MIXIN = {
   },
 
   /**
+   * v0.3.15 - does the PRIMARY donor speak REPEAT frames (type 12)? Teach rep
+   * loops put byte-identical payloads on the wire over and over (~14 frames per
+   * teach call measured live; pattern + hebbian index arrays average 150-700KB
+   * while the box->donor link tops out ~4MB/s - the measured walk-speed wall).
+   * When the payload for a (type, name) equals the last one SENT on this socket,
+   * a ~30-byte type-12 frame re-executes the donor's cached copy instead.
+   * Negotiation, not a fallback: each donor gets the best protocol it announces.
+   */
+  _donorRepeatTeach() {
+    const ws = this._gpuClient;
+    if (!ws) return false;
+    if (this._repeatTeachWs === ws) return this._repeatTeachOk === true;
+    this._repeatTeachWs = ws;
+    this._repeatTeachOk = false;
+    try {
+      const c = (this.clients && this.clients.get) ? this.clients.get(ws) : null;
+      const v = ((c && c.donorAppVersion) || '').toString().trim();
+      const m = v.match(/^(\d+)\.(\d+)\.(\d+)/);
+      if (m) this._repeatTeachOk = ((+m[1]) * 1e6 + (+m[2]) * 1e3 + (+m[3])) >= 3015; // 0.3.15
+    } catch { this._repeatTeachOk = false; }
+    try {
+      console.log(`[Brain] teach-frame REPEAT compression for PRIMARY donor: ${this._repeatTeachOk ? 'ON (SPRS 12)' : 'off'} (requires >= 0.3.15).`);
+    } catch { /* best-effort */ }
+    return this._repeatTeachOk === true;
+  },
+
+  // Per-SOCKET last-sent teach payload cache ('type:name' -> Buffer). Dies with
+  // the socket, so a reconnected donor always receives full frames first - the
+  // donor's own cache is per-connection too, keeping both ends in lockstep.
+  // Bounded: cleared wholesale past 64 keys (one key per region/matrix in use).
+  _teachRepeatCacheFor(ws) {
+    if (!ws._teachRepeatCache) ws._teachRepeatCache = new Map();
+    if (ws._teachRepeatCache.size > 64) ws._teachRepeatCache.clear();
+    return ws._teachRepeatCache;
+  },
+
+  _encodeRepeatFrame(origType, reqId, name) {
+    return Buffer.concat([this._encodeSparseHeader(12, reqId, name), Buffer.from([origType])]);
+  },
+
+  // RH.3r - per-frame-type outbound teach telemetry, so the wire river's
+  // composition is READ off the state payload instead of inferred from
+  // average message sizes ever again. savedBytes accumulates what repeat
+  // frames avoided shipping.
+  _countTeachOut(type, bytes, savedBytes = 0) {
+    if (!this._teachOutByType) this._teachOutByType = {};
+    const k = 't' + type;
+    const e = this._teachOutByType[k] || (this._teachOutByType[k] = { frames: 0, bytes: 0 });
+    e.frames += 1;
+    e.bytes += bytes;
+    if (savedBytes > 0) this._teachOutBytesSaved = (this._teachOutBytesSaved || 0) + savedBytes;
+  },
+
+  /**
    * T17.7 Phase C.1 — ship a sparse spike pattern to the main cortex
    * GPU sub-region slice via the existing write_spike_slice message.
    * sparseIndices are relative to the region's start on the main
@@ -2944,12 +2998,32 @@ const SERVER_GPU_MIXIN = {
     // ~3x fewer bytes and no serde_json parse on the donor's receive thread
     // (the measured teach-drain bottleneck). reqId 0: fire-and-forget, no ack.
     if (this._donorBinTeach()) {
-      const hdr = this._encodeSparseHeader(7, 0, `cortex/${regionName}`);
+      const name = `cortex/${regionName}`;
+      const hdr = this._encodeSparseHeader(7, 0, name);
       const meta = Buffer.alloc(4);
       meta.writeUInt32LE(arr.length, 0);
       const ta = Uint32Array.from(arr);
       const payload = Buffer.concat([hdr, meta, Buffer.from(ta.buffer, ta.byteOffset, ta.byteLength)]);
-      this._donorPatternSendGated(payload);
+      // v0.3.15 - repeat compression: a payload byte-identical to the last one
+      // SENT for this region collapses to a ~30-byte type-12 frame (rep loops
+      // re-send the same pattern ~14x per teach call - the measured wire river).
+      // Cache updates ONLY on a confirmed send so both ends stay in lockstep.
+      if (this._donorRepeatTeach()) {
+        const cache = this._teachRepeatCacheFor(this._gpuClient);
+        const key = '7:' + name;
+        const prev = cache.get(key);
+        if (prev && prev.equals(payload)) {
+          const rep = this._encodeRepeatFrame(7, 0, name);
+          if (this._donorPatternSendGated(rep)) this._countTeachOut(12, rep.length, payload.length - rep.length);
+          return;
+        }
+        if (this._donorPatternSendGated(payload)) {
+          cache.set(key, payload);
+          this._countTeachOut(7, payload.length);
+        }
+        return;
+      }
+      if (this._donorPatternSendGated(payload)) this._countTeachOut(7, payload.length);
       // Replica mirror stays JSON-only: replicas negotiate their own caps when
       // DF.7 fanout revives; a binary mirror to an unknown replica would be
       // dropped unparsed. Fanout is currently flag-gated off.
@@ -2989,7 +3063,8 @@ const SERVER_GPU_MIXIN = {
     if (idx.length === 0 || idx.length !== val.length) return;
     // v0.3.13 - binary teach frame (type 8): u32 indices + f32 values + f32 psi.
     if (this._donorBinTeach()) {
-      const hdr = this._encodeSparseHeader(8, 0, `cortex/${regionName}`);
+      const name = `cortex/${regionName}`;
+      const hdr = this._encodeSparseHeader(8, 0, name);
       const meta = Buffer.alloc(4);
       meta.writeUInt32LE(idx.length, 0);
       const ti = Uint32Array.from(idx);
@@ -3002,7 +3077,24 @@ const SERVER_GPU_MIXIN = {
         hdr, meta, Buffer.from(ti.buffer, ti.byteOffset, ti.byteLength),
         vmeta, Buffer.from(tv.buffer, tv.byteOffset, tv.byteLength), psiBuf,
       ]);
-      this._donorPatternSendGated(payload);
+      // v0.3.15 - repeat compression (see type-7 note). psi rides inside the
+      // payload, so a psi change breaks equality and ships a full frame - exact.
+      if (this._donorRepeatTeach()) {
+        const cache = this._teachRepeatCacheFor(this._gpuClient);
+        const key = '8:' + name;
+        const prev = cache.get(key);
+        if (prev && prev.equals(payload)) {
+          const rep = this._encodeRepeatFrame(8, 0, name);
+          if (this._donorPatternSendGated(rep)) this._countTeachOut(12, rep.length, payload.length - rep.length);
+          return;
+        }
+        if (this._donorPatternSendGated(payload)) {
+          cache.set(key, payload);
+          this._countTeachOut(8, payload.length);
+        }
+        return;
+      }
+      if (this._donorPatternSendGated(payload)) this._countTeachOut(8, payload.length);
       return; // replica mirror stays JSON-only (see type-7 note)
     }
     const json = JSON.stringify({
@@ -3031,11 +3123,13 @@ const SERVER_GPU_MIXIN = {
     if (!this._donorPatternLaneOpen()) return;   // BEFORE Array.from/stringify — a shed frame costs zero serialization
     // v0.3.13 - binary teach frame (type 9): header only, region in the name.
     if (this._donorBinTeach()) {
-      if (this._donorPatternSendGated(this._encodeSparseHeader(9, 0, `cortex/${regionName}`))) {
+      const clearFrame = this._encodeSparseHeader(9, 0, `cortex/${regionName}`);
+      if (this._donorPatternSendGated(clearFrame)) {
         // The JSON path clears the stale flag after ITS send further down this
         // method; this early-return branch must do it itself or a binary donor
         // would latch stale forever after the first shed.
         this._patternLaneStale = false;
+        this._countTeachOut(9, clearFrame.length);
       }
       return;
     }
@@ -3368,7 +3462,33 @@ const SERVER_GPU_MIXIN = {
     lrBuf.writeFloatLE(lr || 0.01, 0);
     const preBuf = Buffer.from(pre.buffer, pre.byteOffset, pre.byteLength);
     const postBuf = Buffer.from(post.buffer, post.byteOffset, post.byteLength);
-    const full = Buffer.concat([hdr, preLen, preBuf, postLen, postBuf, lrBuf]);
+    // v0.3.15 - repeat compression on the BODY (the header carries a fresh reqId
+    // every call, so equality is judged on everything after it — pre + post + lr).
+    // A type-3 repeat rides a real reqId and the donor acks it as type 3, so the
+    // await contract is identical. Cache discipline: only trust the cache when the
+    // socket is far below any drop threshold (a dropped-but-cached frame would
+    // make a later repeat re-execute the WRONG payload); any uncertainty deletes
+    // the key so the next identical payload ships full.
+    const body = Buffer.concat([preLen, preBuf, postLen, postBuf, lrBuf]);
+    if (this._donorRepeatTeach()) {
+      const ws = this._gpuClient;
+      const safeToCache = ws && ws.readyState === 1 && ws.bufferedAmount < 64 * 1024 * 1024;
+      const cache = this._teachRepeatCacheFor(ws);
+      const key = '3:' + name;
+      if (safeToCache) {
+        const prevBody = cache.get(key);
+        if (prevBody && prevBody.equals(body)) {
+          const rep = this._encodeRepeatFrame(3, reqId, name);
+          this._countTeachOut(12, rep.length, (hdr.length + body.length) - rep.length);
+          return this._sparseSendBinary(rep, reqId, 30_000);
+        }
+        cache.set(key, body);
+      } else {
+        cache.delete(key);
+      }
+    }
+    const full = Buffer.concat([hdr, body]);
+    this._countTeachOut(3, full.length);
     return this._sparseSendBinary(full, reqId, 30_000);
   },
 };

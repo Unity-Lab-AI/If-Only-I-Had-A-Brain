@@ -1,6 +1,18 @@
 # RESUME — Session Pickup Brief
 
-> ## ⭐⭐⭐ 2026-08-15 (latest) — donor-v0.3.14 BUILT: device-side pattern scatter — the ~28×-slow walk gets its real fix; GEE deploys the binary, then WC.6 verifies
+> ## ⭐⭐⭐ 2026-08-16 (latest) — donor-v0.3.15 BUILT: REPEAT FRAMES + resident bound-hebbian — the river was the teach frames, the ceiling was the WIRE (~4MB/s); BOTH halves must deploy (box + binary)
+>
+> **WHY (Gee, verbatim):** *"yea do it and dont have ass the shit make sure u thouroughly plan out the corrections to the issues of slow training we are having"* — after v0.3.14 verified engaged with speed UNCHANGED (~85 teach/min, 16MB parking, RTT 7s).
+>
+> **THE PHASE-0 TRUTH (verified in code before building — two prior hypotheses overturned):** the resync is throttled to 15min during teach (exonerated); the river is the TEACH FRAMES THEMSELVES (pattern frames measured 153KB avg at `gpu.js:2713`; intra-cortex type-3 hebbian arrays same class); **~4MB/s is the box→donor WIRE ceiling** (three independent corroborations). ~14 near-identical frames per teach call (rep loops) = the compressible structure.
+>
+> **BUILT (donor-v0.3.15 + the SERVER half in the same commit):** (a) SPRS type-12 REPEAT frames — byte-identical teach payloads collapse to ~30 bytes, per-socket `Buffer.equals` caches both ends, version-gated ≥0.3.15, cache updates ONLY on confirmed sends; (b) the type-5 batched-hebbian STUB replaced with REAL resident bound-hebbian (binding metadata captured, engine affinity, both backends, zero new kernels); (c) `wsPressure.teachOutByType` + `teachOutBytesSaved` — the river is READ now, never inferred. cargo check LOCAL both feature sets PASS (rustup installed this session after CI falsified a read-only verify — the WC.4b lesson).
+>
+> **DEPLOY SEQUENCE (BOTH halves, Gee's buttons):** (1) **Update & SAVESTART** — ships the server half (repeat senders + telemetry) AND the site's donor link-bump; (2) download + swap + restart the donor (v0.3.15). **RH.8 PASS METRICS (falsifiable):** outbound ~4MB/s → ~KB/s; buffer stops parking at 16MB; RTT <1s during teach; teach/min ~104 → toward 1,300–2,000; suppression ~0; dream windows FIRE (`definitionQueue.lastWindow` populates = OI.2). If teach/min plateaus at the server's single-threaded ceiling instead — that's the NEXT wall, server-side work, recorded in TODO.
+>
+> ---
+
+> ## ⭐⭐⭐ 2026-08-15 (earlier) — donor-v0.3.14 BUILT: device-side pattern scatter — the ~28×-slow walk gets its real fix; GEE deploys the binary, then WC.6 verifies
 >
 > **WHY:** Gee (verbatim): *"hows our girl? shes been at it for 12 hours... are we sure everything is good? 12 hrs and only phase 2/25 of the first cell?"* → chose option 1: *"if option 1 will fix it do it"*. Measured: ~104 teach/min vs ~2,970 unpaced (~28× slower, NOT the ~3× promised when pacing was chosen); 12.5h in `_teachLanguageMechanics` at work 4/14; ZERO dream windows all day (they fire between phases).
 >

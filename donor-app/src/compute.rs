@@ -10,6 +10,7 @@ use std::collections::HashMap;
 use std::time::Instant;
 use wgpu::util::DeviceExt;
 
+use crate::frames::Binding;
 use crate::gpu::{LIF_SHADER, PLASTICITY_SHADER, SPIKE_COUNT_SHADER, SYNAPSE_PROPAGATE_SHADER};
 
 const WORKGROUP: u32 = 256;
@@ -76,6 +77,10 @@ struct SparseMatrix {
     post_currents: wgpu::Buffer, // f32 × rows
     post_spikes: wgpu::Buffer,   // u32 × rows
     currents_staging: wgpu::Buffer,
+    /// v0.3.15 — cluster-slice binding: when set, batched-hebbian (type 5) reads the
+    /// bound clusters' resident spike buffers at the bound offsets instead of the
+    /// standalone pre/post buffers above.
+    binding: Option<Binding>,
 }
 
 struct Cluster {
@@ -421,8 +426,9 @@ impl ComputeEngine {
         self.sparse.contains_key(name)
     }
 
-    /// Upload (or replace) a standalone CSR sparse matrix on the GPU.
-    pub fn upload_sparse(&mut self, name: &str, rows: u32, cols: u32, row_ptr: &[u32], values: &[f32], col_idx: &[u32]) {
+    /// Upload (or replace) a CSR sparse matrix on the GPU (standalone, or cluster-bound
+    /// when `binding` is provided — see SparseMatrix.binding).
+    pub fn upload_sparse(&mut self, name: &str, rows: u32, cols: u32, row_ptr: &[u32], values: &[f32], col_idx: &[u32], binding: Option<Binding>) {
         let nnz = values.len() as u32;
         let dev = &self.device;
         let su = wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST;
@@ -444,7 +450,51 @@ impl ComputeEngine {
         let postu = vec![0u32; rows.max(1) as usize];
         let post_spikes = dev.create_buffer_init(&wgpu::util::BufferInitDescriptor { label: Some(name), contents: bytemuck::cast_slice(&postu), usage: su });
         let currents_staging = dev.create_buffer(&wgpu::BufferDescriptor { label: Some(name), size: (rows.max(1) as u64) * 4, usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST, mapped_at_creation: false });
-        self.sparse.insert(name.to_string(), SparseMatrix { rows, cols, nnz, values: values_buf, col_idx: col_idx_buf, row_ptr: row_ptr_buf, pre_spikes, post_currents, post_spikes, currents_staging });
+        self.sparse.insert(name.to_string(), SparseMatrix { rows, cols, nnz, values: values_buf, col_idx: col_idx_buf, row_ptr: row_ptr_buf, pre_spikes, post_currents, post_spikes, currents_staging, binding });
+    }
+
+    /// v0.3.15 — resident bound-hebbian: run plasticity on a cluster-BOUND matrix
+    /// reading the bound clusters' resident spike buffers at the bound offsets
+    /// (the state the type-7/9 pattern frames established). Returns Ok(true) when
+    /// applied, Ok(false) when skipped (unbound / clusters not resident / degenerate).
+    pub fn hebbian_bound(&self, name: &str, lr: f32) -> Result<bool, String> {
+        let m = match self.sparse.get(name) { Some(m) => m, None => return Ok(false) };
+        if m.rows == 0 || m.nnz == 0 {
+            return Ok(false);
+        }
+        let b = match &m.binding { Some(b) => b, None => return Ok(false) };
+        let src = match self.clusters.get(&b.src_cluster) { Some(c) => c, None => return Ok(false) };
+        let dst = match self.clusters.get(&b.dst_cluster) { Some(c) => c, None => return Ok(false) };
+        // The kernel reads preSpikes[srcOffset + colIdx[k]] (colIdx < cols) and
+        // postSpikes[dstOffset + i] (i < rows) — both windows must fit the cluster
+        // buffers or the dispatch would read out of bounds.
+        if (b.src_start as u64) + (m.cols as u64) > (src.size as u64) { return Ok(false); }
+        if (b.dst_start as u64) + (m.rows as u64) > (dst.size as u64) { return Ok(false); }
+        let params = HebbParams { rows: m.rows, nnz: m.nnz, lr, reward: 1.0, w_min: -2.0, w_max: 2.0, src_offset: b.src_start, dst_offset: b.dst_start };
+        let ub = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor { label: Some("hebb-bound-params"), contents: bytemuck::bytes_of(&params), usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST });
+        let bg = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("hebb-bound-bg"),
+            layout: &self.plasticity_pipeline.get_bind_group_layout(0),
+            entries: &[
+                wgpu::BindGroupEntry { binding: 0, resource: ub.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 1, resource: m.values.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 2, resource: m.col_idx.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 3, resource: m.row_ptr.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 4, resource: src.spikes.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 5, resource: dst.spikes.as_entire_binding() },
+            ],
+        });
+        let wg = (m.rows.div_ceil(WORKGROUP)).max(1).min(MAX_WG_DIM);
+        let mut enc = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("hebbian-bound") });
+        {
+            let mut cp = enc.begin_compute_pass(&wgpu::ComputePassDescriptor { label: Some("hebbian-bound"), timestamp_writes: None });
+            cp.set_pipeline(&self.plasticity_pipeline);
+            cp.set_bind_group(0, &bg, &[]);
+            cp.dispatch_workgroups(wg, 1, 1);
+        }
+        self.queue.submit(std::iter::once(enc.finish()));
+        // No blocking readback — same fire-and-forget contract as standalone hebbian.
+        Ok(true)
     }
 
     /// Scatter sparse spike indices into a dense u32 buffer (set 1 at each index).
@@ -669,11 +719,19 @@ impl Backend {
             Backend::Cuda(e) => e.has_sparse(name),
         }
     }
-    fn upload_sparse(&mut self, name: &str, rows: u32, cols: u32, row_ptr: &[u32], values: &[f32], col_idx: &[u32]) {
+    fn upload_sparse(&mut self, name: &str, rows: u32, cols: u32, row_ptr: &[u32], values: &[f32], col_idx: &[u32], binding: Option<Binding>) {
         match self {
-            Backend::Wgpu(e) => e.upload_sparse(name, rows, cols, row_ptr, values, col_idx),
+            Backend::Wgpu(e) => e.upload_sparse(name, rows, cols, row_ptr, values, col_idx, binding),
             #[cfg(feature = "cuda")]
-            Backend::Cuda(e) => e.upload_sparse(name, rows, cols, row_ptr, values, col_idx),
+            Backend::Cuda(e) => e.upload_sparse(name, rows, cols, row_ptr, values, col_idx, binding),
+        }
+    }
+    /// v0.3.15 — resident bound-hebbian (see engine impls).
+    fn hebbian_bound(&self, name: &str, lr: f32) -> Result<bool, String> {
+        match self {
+            Backend::Wgpu(e) => e.hebbian_bound(name, lr),
+            #[cfg(feature = "cuda")]
+            Backend::Cuda(e) => e.hebbian_bound(name, lr),
         }
     }
     fn propagate(&mut self, name: &str, pre: &[u32]) -> Result<Vec<f32>, String> {
@@ -935,9 +993,34 @@ impl MultiEngine {
         self.matrix_gpu.get(name).map(|&g| self.engines[g].has_sparse(name)).unwrap_or(false)
     }
 
-    pub fn upload_sparse(&mut self, name: &str, rows: u32, cols: u32, row_ptr: &[u32], values: &[f32], col_idx: &[u32]) {
+    pub fn upload_sparse(&mut self, name: &str, rows: u32, cols: u32, row_ptr: &[u32], values: &[f32], col_idx: &[u32], binding: Option<Binding>) {
+        // v0.3.15 — ENGINE AFFINITY: a cluster-bound matrix's plasticity reads its
+        // clusters' resident spike buffers, so the matrix MUST live on the same GPU
+        // as those clusters. Route it there; if the two clusters somehow live on
+        // DIFFERENT GPUs, the binding is dropped loudly (standalone behavior) rather
+        // than dispatched across devices. Single-GPU hosts are unaffected.
+        let mut bind = binding;
+        if let Some(b) = &bind {
+            let src_g = self.cluster_gpu.get(&b.src_cluster).copied();
+            let dst_g = self.cluster_gpu.get(&b.dst_cluster).copied();
+            match (src_g, dst_g) {
+                (Some(sg), Some(dg)) if sg == dg => { self.matrix_gpu.insert(name.to_string(), sg); }
+                (Some(_), Some(_)) => {
+                    eprintln!("[multi] matrix '{name}' binds clusters on DIFFERENT GPUs — binding dropped; it stays standalone (bound hebbian skips it).");
+                    bind = None;
+                }
+                _ => { /* cluster(s) not initialized yet — keep the binding; hebbian_bound skips until they are resident on this matrix's engine */ }
+            }
+        }
         let g = self.matrix_engine(name);
-        self.engines[g].upload_sparse(name, rows, cols, row_ptr, values, col_idx);
+        self.engines[g].upload_sparse(name, rows, cols, row_ptr, values, col_idx, bind);
+    }
+
+    /// v0.3.15 — resident bound-hebbian for a type-5 batch op. Routes to the engine
+    /// holding the matrix; Ok(false) = skipped (not resident / unbound), never an error.
+    pub fn hebbian_bound(&self, name: &str, lr: f32) -> Result<bool, String> {
+        let g = match self.matrix_gpu.get(name) { Some(&g) => g, None => return Ok(false) };
+        self.engines[g].hebbian_bound(name, lr)
     }
 
     pub fn propagate(&mut self, name: &str, pre: &[u32]) -> Result<Vec<f32>, String> {
@@ -1082,7 +1165,7 @@ pub async fn self_test(gpu_index: usize, neurons: u32, steps: u32, drive: f32) -
     // CSR: row_ptr=[0,2,3,4,5] values=[1,2,3,4,5] col_idx=[0,2,1,3,0]
     // pre={0,2} → expected currents [1+2, 0, 0, 5] = [3,0,0,5]
     println!("self-test: sparse propagate (known 4x4 CSR)...");
-    eng.upload_sparse("probe", 4, 4, &[0, 2, 3, 4, 5], &[1.0, 2.0, 3.0, 4.0, 5.0], &[0, 2, 1, 3, 0]);
+    eng.upload_sparse("probe", 4, 4, &[0, 2, 3, 4, 5], &[1.0, 2.0, 3.0, 4.0, 5.0], &[0, 2, 1, 3, 0], None);
     let currents = eng.propagate("probe", &[0, 2])?;
     let expected = [3.0_f32, 0.0, 0.0, 5.0];
     println!("  currents = {currents:?} (expected {expected:?})");
