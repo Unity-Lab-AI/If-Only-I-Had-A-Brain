@@ -2743,7 +2743,14 @@ const SERVER_GPU_MIXIN = {
         // up to 16x), the 16MB lane cap (stales a group under true
         // saturation), and the walk pacing gate together govern the rate.
         // A healthy link takes every group; a choking one slows the walk.
-        : 15;
+        // BASE 15ms -> 3ms (2026-08-16, post-v0.3.16 template frames). The
+        // frames this throttle guards are now ~1-15KB (t10 templates + t7
+        // spikes), not 150-840KB: measured post-deploy, buffer 0.0MB and RTT
+        // 173ms while ~128 Hebbians/sec were STILL suppressed by this
+        // constant alone (zero sheds, zero pressure). At KB frames even the
+        // 3ms ceiling (~333 groups/s ≈ 5MB/min worst case) cannot refill the
+        // 16MB cliff, and the quadratic brake still owns any real pressure.
+        : 3;
       let _mult = 1;
       try {
         const _linkCap = this._donorLinkCapBytes();
@@ -2848,7 +2855,9 @@ const SERVER_GPU_MIXIN = {
         // up to 16x), the 16MB lane cap (stales a group under true
         // saturation), and the walk pacing gate together govern the rate.
         // A healthy link takes every group; a choking one slows the walk.
-        : 15;
+        // BASE 15ms -> 3ms (2026-08-16) — same law as the admission gate above;
+        // see that site's rationale (KB-scale frames post-v0.3.16 templates).
+        : 3;
     for (;;) {
       const ws = this._gpuClient;
       if (!ws || ws.readyState !== 1) return;
