@@ -1,6 +1,18 @@
 # RESUME — Session Pickup Brief
 
-> ## ⭐⭐⭐ 2026-08-15 (latest) — ⛔ G.9 FAILED LIVE: teaching continued after the donor kill — substrate flag was a LATCH — FIXED, needs next SAVESTART + re-run
+> ## ⭐⭐⭐ 2026-08-15 (latest) — TEACH-PATTERN ATOMICITY: pacing was refusing ~1/3 of her teaching — the group is now the unit of admission
+>
+> **THE NUMBER THAT FOUND IT:** `patternSheds: 59` vs `hebbianSuppressedStale: 25,676` in ~13 min (~33/s) on `be5dee59`. When a guard’s refusal count is 400× its trigger count, the guard is being tripped by something other than what it guards against — here, the D.1 pacing throttle staling the lane on EVERY frame it paced, while a teach group (clear → writes → hebbianBound) needs ALL its frames to land for the Hebbian to be valid.
+>
+> **FIX (`server/brain-server/gpu.js`):** admission is per-GROUP. First frame of a teach iteration faces the throttle — refused means the whole group is refused before any bytes ship. Admitted groups bypass pacing; `gpuSparseHebbianBound` closes the group either way; 500ms TTL backstop. Donor protection UNCHANGED: adaptive back-off (live `bufferedAmount`) stretches the inter-group interval, and the 16MB lane cap still stales a mid-flight group under true saturation — now the rare case.
+>
+> **VERIFY (TP.6, after the next Update & SAVESTART):** `hebbianSuppressedStale` growth collapses from ~33/s to near-zero outside saturation; donor RTT < 1s; `patternSheds` low.
+>
+> **THE FULL REMAINING BOARD:** Gee — (1) one more Update & SAVESTART (deploys the donor-kill substrate gate + this atomicity fix), (2) DK.6 donor-kill re-run (expect PAUSED in seconds, chat alive, resume on re-upload), (3) Fresh Walk when ready (activates the word_motor unmask — her matrix voice; verify = OI.5b). Me — OI.2 vocabulary verdict at her first post-deploy dream window (`definitionQueue.lastWindow`, `kVocabTaught` climbing by ~batch per window), TP.6, OI.5b.
+>
+> ---
+
+> ## ⭐⭐⭐ 2026-08-15 (earlier) — ⛔ G.9 FAILED LIVE: teaching continued after the donor kill — substrate flag was a LATCH — FIXED, needs next SAVESTART + re-run
 >
 > **Gee ran the donor-kill test and CAUGHT a real bug** (verbatim: *"i killed tho doner a teach ops in brain events progressed on anyweays even tho the brain page showed GPU needed pop up"*). Confirmed from the box: build `be5dee59` (his SAVESTART had landed — latest main), `substratePause: None`, teach events climbing with a dead donor.
 >
