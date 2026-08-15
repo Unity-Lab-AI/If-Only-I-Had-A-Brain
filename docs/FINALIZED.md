@@ -5,6 +5,24 @@
 
 ---
 
+## 2026-08-15 - GPU-ONLY HARDENING: shed frames corrupt weights, a 91s loop pin, and a self-check that hid a starved projection - feature/gpu-only-hardening-0815
+
+### Gee ask (verbatim per LAW #0)
+
+> *"we are getting her 100% correct so get to it"*
+
+**PS.1 - THE PATTERN LANE IS LOAD-BEARING NOW, AND SHEDDING IT CORRUPTS WEIGHTS.** The live log shed 8,103 teach-pattern frames in 12 minutes under the justification *"Dropping is safe - CPU authoritative; patterns are per-iteration ephemeral; the GPU shadow re-converges"*. Two things were wrong with that. The CPU teach path no longer exists (the G batch removed it). And these frames are NOT a shadow: `hebbianBound` carries no pre/post of its own - it tells the donor to run Hebbian over whatever sits in the bound spike-buffer window, which `write_spike_slice` / `write_current_slice` / `clear_spike_region` populate moments earlier. A shed frame therefore leaves the PREVIOUS iteration's pattern in place and the next dispatch **trains a wrong association into real weights**. Losing an update is bad; training a lie is worse, and it was completely silent.
+
+**SHIPPED:** shed AND throttle now mark `_patternLaneStale`; a successful `clear_spike_region` (the first frame of every teach pattern) clears it; `gpuSparseHebbianBound` refuses to dispatch while stale and counts `_hebbianSuppressedStale`. Both counters plus `patternLaneStale` publish into `state.throughput` so the cost is on screen instead of in a rate-limited console line. Both stale "CPU authoritative" justifications rewritten - one in the shed path, one in the batch-queue overflow note.
+
+**PS.3 - `EventLoop BLOCKED 91,640ms` inside `_teachWordEmissionDirect`.** My first hypothesis was wrong and reading the code killed it: `_microtask` DOES hop via `setImmediate` despite the name. The hop was never the problem - the work between hops was. `semToWordMotor.ojaUpdate(preSem, postWM, lr)` was called with **no `activeRows`**, so every word scanned ALL 90,000 rows of `sem_to_word_motor` to discover that exactly ONE bucket was lit, and the yield fired every **100 words** - about **9,000,000 row visits between event-loop hops**. **SHIPPED:** pass the bucket's row range as `activeRows` (bit-identical under Oja - a post=0 row updates by `lr*0*x - lr*0^2*w = 0`), yield on **elapsed time (~30ms)** instead of a count, and hoist the per-word `buildKScalesForProjection` call out of the loop.
+
+**PS.4 - the self-check cried wolf every boot AND hid something real.** It averaged nnz/rows across every cross-projection against one band. That mixes dense associative maps (10.0/row by design) with deliberately sparse topographic maps (1.5-3.0), so the mean sat at 4.9 and failed on EVERY boot while all ten other checks passed. Its text disagreed with its own test as well ("target 20-40" vs a condition accepting 10-80). Recomputing per projection from her boot log reproduces 4.905 exactly - and shows **`sem_to_word_motor` and `word_motor_to_sem` at 0.744 entries per row**. Below 1.0 means rows with NO incoming connection, and `ojaUpdate` only adjusts EXISTING CSR entries - it never creates one. **Roughly a quarter of her word buckets are structurally incapable of ever learning to fire**, which matches the utilization panel reading `word_motor: 0% (0/90,000)`. **SHIPPED:** the check is per-projection now and names starved projections outright. **The WIRING is deliberately NOT changed** - raising that density moves VRAM and upload size, so it is Gee's call and is filed as TODO PS.5.
+
+**VERIFIED (no-tests LAW):** `node --check` on `curriculum.js`, `curriculum/kindergarten.js`, `brain-server/gpu.js`, `brain-server/state.js` - all PASS; ESM `import()` PASS; bundle rebuilt with the browser-side changes present (`cross-projection STARVED`, `YIELD_SLICE_MS`, `definitionQueue`) and the server-only symbols correctly absent. One self-caught error: the first PS.4 patch brace-matched wrong and deleted a closing brace; `node --check` caught it, the file was restored from git and redone with real brace matching rather than line counting.
+
+**NOT DEPLOYED** - rides with the next Update & SAVESTART.
+
 ## 2026-08-15 - THE DICTIONARY TRICKLE PROCESSED ZERO WORDS: an empty array is truthy - feature/post-deploy-findings-0815
 
 ### Gee ask (verbatim per LAW #0)

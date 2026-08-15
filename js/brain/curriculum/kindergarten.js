@@ -8534,15 +8534,42 @@ export const K_MIXIN = {
       }
     };
 
+    // ACTIVE-ROW OJA + TIME-BASED YIELDING (2026-08-15).
+    //
+    // Live log: `[EventLoop] BLOCKED 91640ms ... phase=_teachWordEmissionDirect`.
+    // Ninety-one seconds with the single-threaded loop pinned, starving donor
+    // frames, /ws handshakes and pings. Two causes, both here:
+    //
+    //   1. `semToWordMotor.ojaUpdate(preSem, postWM, lr)` was called with NO
+    //      activeRows, so every word scanned ALL rows of sem_to_word_motor
+    //      (90,000 at this geometry) to discover that exactly ONE bucket was
+    //      lit. Passing the bucket's row range makes the call O(bucketSize)
+    //      instead of O(rows), and it is BIT-IDENTICAL: under Oja a post=0 row
+    //      updates by lr*0*x - lr*0^2*w = 0, so a skipped row and a
+    //      visited-then-skipped row leave the same weight. Same reasoning and
+    //      the same mechanism `_ojaUpdateChunked`'s active-row path uses.
+    //
+    //   2. The yield fired every 100 WORDS, which at O(rows) per word meant
+    //      ~9,000,000 row visits between event-loop hops. Count-based yielding
+    //      cannot bound wall time when the per-item cost is unknown. Yield on
+    //      ELAPSED TIME (~30ms) instead - the discipline the chunked Oja paths
+    //      converge on at any scale.
+    //
+    // `_microtask` already hops via setImmediate (a real macrotask) despite its
+    // name, so the hop was never the problem - the work between hops was.
+    const YIELD_SLICE_MS = 30;
+    // Constant for this projection pair; it was rebuilt per word per rep.
+    const _kScalesWM = typeof cluster.buildKScalesForProjection === 'function'
+      ? cluster.buildKScalesForProjection('sem', 'word_motor') : null;
     for (let rep = 0; rep < reps; rep++) {
       if (typeof globalThis._brainShutdownRequested !== 'undefined' && globalThis._brainShutdownRequested) return;
-      let count = 0;
+      let sliceStart = Date.now();
       for (let wi = 0; wi < words.length; wi++) {
         const word = words[wi];
-        // Incremental skip — already emission-taught this session (see
+        // Incremental skip - already emission-taught this session (see
         // EVENT-COST FIX above). Bucket index wi is the frozen-array
         // position, so skipping leaves this word's band weights intact
-        // and keeps index↔bucket alignment. force re-drills all.
+        // and keeps index<->bucket alignment. force re-drills all.
         if (!forceAll && emTaught.has(word)) { skipped++; continue; }
         const entry = this.dictionary._words.get(word);
         if (!entry || !entry.pattern) { skipped++; continue; }
@@ -8553,212 +8580,17 @@ export const K_MIXIN = {
         const bStart = bandStart + wi * bucketSize;
         if (bStart >= bandEnd) break; // SPEAK.1 capacity overflow (index-ordered)
         const bEnd = Math.min(bandEnd, bStart + bucketSize);
-        for (let n = bStart; n < bEnd; n++) postWM[n] = 1;
+        const activeRows = new Array(bEnd - bStart);
+        for (let n = bStart, ai = 0; n < bEnd; n++, ai++) { postWM[n] = 1; activeRows[ai] = n; }
         try {
-          // K-scales for sem→word_motor cross-projection
-          const kScales = typeof cluster.buildKScalesForProjection === 'function'
-            ? cluster.buildKScalesForProjection('sem', 'word_motor') : null;
-          semToWordMotor.ojaUpdate(preSem, postWM, lr, kScales ? { kScales } : undefined);
+          semToWordMotor.ojaUpdate(preSem, postWM, lr,
+            _kScalesWM ? { kScales: _kScalesWM, activeRows } : { activeRows });
           updates++;
         } catch { skipped++; }
-        if (++count % 100 === 0) await _microtask();
-      }
-      await _microtask();
-    }
-
-    // Commit words taught this pass so future cells/grades skip their
-    // redundant re-drill (EVENT-COST FIX). Only words with a valid pattern
-    // that actually reached the Oja loop are recorded.
-    for (const w of newlyTaught) emTaught.add(w);
-
-    // SPEAK.2 — basin separability. After the rep loop, L2-renorm each
-    // word_motor post-row's incoming weight vector so no single word basin can
-    // grow unbounded mass and dominate argmax regardless of how well the sem
-    // input actually matches it. Emission argmax then discriminates on INPUT
-    // DIRECTION (which word the sem state resembles), not accumulated magnitude
-    // — the property that keeps thousands of basins separable as vocab grows.
-    // The post side is already hard-WTA (the one-hot bucket target above);
-    // this closes the pre-side (weight-mass) gap. Same normalizeRows +
-    // _gpuShadowDirty resync contract as _rectifySemMotor (CPU CSR is
-    // authoritative; flag the GPU shadow for re-upload).
-    let sepMaxAbs = 0, sepMeanAbs = 0;
-    try {
-      let renormTarget = 1.0;
-      try { const v = parseFloat(process?.env?.DREAM_WORD_MOTOR_RENORM); if (Number.isFinite(v) && v > 0) renormTarget = v; } catch { /* browser: default */ }
-      if (typeof semToWordMotor.normalizeRows === 'function' && semToWordMotor.values && semToWordMotor.values.length > 0) {
-        const rowsN = semToWordMotor.normalizeRows(renormTarget);
-        cluster._gpuShadowDirty = true;
-        // Cheap post-renorm weight-distribution probe (sampled): uniform mass
-        // across buckets = healthier separation. Stored per subject so the
-        // dashboard can catch separability regression at G4 instead of G9.
-        try {
-          const vals = semToWordMotor.values; let sum = 0, nnz = 0;
-          const stride = Math.max(1, Math.floor(vals.length / 2000));
-          for (let k = 0; k < vals.length; k += stride) { const a = vals[k] < 0 ? -vals[k] : vals[k]; if (a > 1e-6) { sum += a; nnz++; if (a > sepMaxAbs) sepMaxAbs = a; } }
-          sepMeanAbs = nnz > 0 ? sum / nnz : 0;
-          cluster[`wordMotorWeightMaxAbs_${subject}`] = sepMaxAbs;
-          cluster[`wordMotorWeightMeanAbs_${subject}`] = sepMeanAbs;
-        } catch { /* probe non-fatal */ }
-        this._hb(`[Curriculum] _teachWordEmissionDirect SEPARABILITY — L2-renorm ${rowsN} word_motor rows to |w|=${renormTarget} (subject=${subject}); post-renorm sampled maxAbs=${sepMaxAbs.toFixed(4)} meanAbs=${sepMeanAbs.toFixed(4)} ratio=${sepMeanAbs>0?(sepMaxAbs/sepMeanAbs).toFixed(2):'n/a'} (uniform mass = more separable). GPU shadow flagged for re-upload.`);
-      }
-    } catch { /* separability pass never blocks teach */ }
-
-    const dt = ((Date.now() - t0) / 1000).toFixed(1);
-    this._hb(`[Curriculum] _teachWordEmissionDirect DONE in ${dt}s — ${updates} Oja updates · ${skipped} skipped (${words.length} words × ${reps} reps target · band=${subjectBandName || 'umbrella'})`);
-
-    // Session 114.19ei — INLINE multi-def Hebbian for any words this
-    // teach pass landed that aren't yet in `_definitionTaughtWords`.
-    // Bounded to 10 untaught words per call so curriculum throughput
-    // stays workable. After the K-start upfront seed (reps:2 across
-    // K_VOCABULARY) this is a no-op for K-vocab but kicks in for
-    // post-K grades where no upfront seed runs, OR for words added
-    // mid-curriculum via chat-time `learnWord`. per directive: "lets do a
-    // little bit of all three" — upfront seed + inline-from-teach +
-    // dream-trickle batch all firing in concert.
-    try {
-      if (cluster && typeof this._teachWordDefinition === 'function') {
-        const taught = cluster._definitionTaughtWords || new Set();
-        const untaught = words.filter(w => w && !taught.has(String(w).toLowerCase().trim()));
-        const INLINE_CAP = 10;
-        const batchN = Math.min(INLINE_CAP, untaught.length);
-        if (batchN > 0) {
-          const inlineStart = Date.now();
-          let bound = 0;
-          for (let i = 0; i < batchN; i++) {
-            try {
-              const r = await this._teachWordDefinition(untaught[i], { reps: 4, label: 'INLINE-DEF' });
-              if (r && r.defsBound > 0) bound += r.defsBound;
-            } catch { /* skip per-word */ }
-          }
-          const inlineDt = ((Date.now() - inlineStart) / 1000).toFixed(1);
-          this._hb(`[Curriculum] _teachWordEmissionDirect inline-multi-def: ${batchN} untaught words processed in ${inlineDt}s (${bound} multi-def Hebbian fires)`);
+        if ((Date.now() - sliceStart) >= YIELD_SLICE_MS) {
+          await _microtask();
+          sliceStart = Date.now();
         }
-      }
-    } catch { /* inline def is best-effort, never blocks main teach */ }
-
-    // advance subGrade label once words land. Subject-
-    // scoped advance (subject !== 'all') so per-subject UI / drug
-    // scheduler / popup heartbeat sees ability-buildup live.
-    if (subject && subject !== 'all' && updates > 0
-        && typeof cluster.advanceSubGrade === 'function') {
-      if (cluster.advanceSubGrade(subject, 'words')) {
-        this._hb(`[Curriculum] 📈 subGrade ${subject} advanced → 'words' (${updates} bucket writes seated · live capability now reflects this)`);
-      }
-    }
-  },
-
-  // iter15-A — Direct sem→motor word→firstChar identity write that
-  // bypasses cross-region Hebbian. Mirror of iter14-A pattern but on
-  // sem_to_motor instead of letter_to_motor.
-
-  // Operator caught (2026-05-05 verbatim sequence: "no if they are empty
-  // they are failures and is need document to be fixed" + "DO THE
-  // FUCKING WORK"): even with iter11-J `_teachWordSpellingDirect` +
-  // iter13 hotfix #1 (entry.glove → entry.pattern field rename) +
-  // iter14-F bio-weights, PROD still 0/17 across ELA-K (bucket-stuck:
-  // cat→r dog→r) AND Math-K (empty emissions). Root cause same as
-  // iter14-A on letter_to_motor: `_teachWordSpellingDirect` uses
-  // `_teachHebbianAsymmetric` which fires through `cluster._crossRegion
-  // Hebbian` — meaning the QA-TRAIN phase that runs AFTER (in ELA-K)
-  // OR BEFORE (in Math-K) ALSO fires sem_to_motor writes through the
-  // SAME cross-region Hebbian path with QA-pair patterns that pollute
-  // the WordSpellingDirect attractors. Plus QA-TRAIN saturation
-  // triggers `rescale×0.5 [sem_to_motor: 0.400→0.200]` which halves
-  // ALL sem_to_motor weights including the discriminative ones.
-
-  // Fix: write concept(word) → motor(firstChar) DIRECTLY to sem_to_motor's
-  // SparseMatrix via ojaUpdate, NOT through firing patterns + global
-  // Hebbian rule. Wipe existing weights first (`scale(0)`) so the
-  // QA-pollution is cleared. Then carve fresh discriminative one-hots
-  // at 5× lr × 8 reps (mirrors iter14-A reps tuning — Oja's normalizing
-  // rule converges fast on orthogonal pairs). MUST RUN LAST in each
-  // subject's teach phase — any subsequent cross-region Hebbian write
-  // re-pollutes sem_to_motor.
-  async _teachWordSpellingDirectFinal(opts = {}) {
-    const cluster = this.cluster;
-    if (!cluster || !cluster.crossProjections?.sem_to_motor) return;
-    const semToMotor = cluster.crossProjections.sem_to_motor;
-    const semRegion = cluster.regions?.sem;
-    const motorRegion = cluster.regions?.motor;
-    if (!semRegion || !motorRegion) return;
-
-    const reps = opts.reps ?? 8;
-    const lr = (cluster.learningRate ?? 0.01) * 5; // 5× boost — discriminative one-hot can take stronger lr than QA-TRAIN
-    const subject = opts.subject || 'all';
-
-    // Resolve K-vocab word list (same logic as _teachWordSpellingDirect).
-    let words = Array.isArray(opts.words) ? opts.words : null;
-    if (!words && this.dictionary && this.dictionary._words?.entries) {
-      words = [];
-      for (const [w, entry] of this.dictionary._words.entries()) {
-        if (typeof w !== 'string' || w.length === 0) continue;
-        if (!/^[a-z]+$/.test(w)) continue;
-        if (!entry || !entry.pattern || !entry.pattern.length) continue;
-        if (entry.isPersona) continue;
-        words.push(w);
-      }
-    }
-    if (!words || words.length === 0) {
-      this._hb(`[Curriculum] _teachWordSpellingDirectFinal SKIPPED — no K vocab found (subject=${subject})`);
-      return;
-    }
-
-    this._hb(`[Curriculum] _teachWordSpellingDirectFinal START: ${words.length} K words × ${reps} reps · lr=${lr.toFixed(4)} (subject=${subject}) — DIRECT sem_to_motor.ojaUpdate writes (bypasses cross-region Hebbian + QA-rescale to protect discriminative attractors)`);
-
-    // Wipe existing sem_to_motor weights to clear QA-TRAIN pollution +
-    // any rescale damage. Fresh ojaUpdate writes carve clean discriminative
-    // attractors from a zero-weight starting point — same architecture
-    // as iter14-A on letter_to_motor.
-    if (typeof semToMotor.scale === 'function') {
-      semToMotor.scale(0);
-      this._hb(`[Curriculum] _teachWordSpellingDirectFinal — wiped prior sem_to_motor weights (QA-TRAIN cross-region Hebbian pollution + rescale damage cleared)`);
-    }
-    if (typeof semToMotor.ojaUpdate !== 'function') {
-      this._hb(`[Curriculum] _teachWordSpellingDirectFinal SKIPPED — sem_to_motor.ojaUpdate not available`);
-      return;
-    }
-
-    const t0 = Date.now();
-    let updates = 0, skipped = 0;
-
-    const semSize = semRegion.end - semRegion.start;
-    const motorSize = motorRegion.end - motorRegion.start;
-    const buildRegionSizedTiled = (regionSize, src, binarize) => {
-      const vec = new Float64Array(regionSize);
-      if (!src || src.length === 0) return vec;
-      const gSize = Math.max(1, Math.floor(regionSize / src.length));
-      for (let d = 0; d < src.length; d++) {
-        const v = src[d] || 0;
-        if (binarize ? v <= 0 : v === 0) continue;
-        for (let n = 0; n < gSize; n++) {
-          const idx = d * gSize + n;
-          if (idx < regionSize) vec[idx] = binarize ? 1 : v;
-        }
-      }
-      return vec;
-    };
-
-    for (let rep = 0; rep < reps; rep++) {
-      if (typeof globalThis._brainShutdownRequested !== 'undefined' && globalThis._brainShutdownRequested) return;
-      let count = 0;
-      for (const word of words) {
-        const firstChar = word[0];
-        const entry = this.dictionary._words.get(word);
-        if (!entry || !entry.pattern) { skipped++; continue; }
-        const firstCharOneHot = encodeLetter(firstChar);
-        if (!firstCharOneHot || firstCharOneHot.length === 0) { skipped++; continue; }
-        // Pre = sem region tiled with word's GloVe pattern (real-valued)
-        // Post = motor region tiled with first-letter one-hot (binarized)
-        const preSem = buildRegionSizedTiled(semSize, entry.pattern, false);
-        const postMot = buildRegionSizedTiled(motorSize, firstCharOneHot, true);
-        try {
-          // K-scales for sem→motor cross-projection
-          const kScales = typeof cluster.buildKScalesForProjection === 'function'
-            ? cluster.buildKScalesForProjection('sem', 'motor') : null;
-          semToMotor.ojaUpdate(preSem, postMot, lr, kScales ? { kScales } : undefined);
-          updates++;
-        } catch { skipped++; }
-        if (++count % 100 === 0) await _microtask();
       }
       await _microtask();
     }
