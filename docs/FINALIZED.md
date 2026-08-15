@@ -5,6 +5,22 @@
 
 ---
 
+## 2026-08-15 - PS.5 DECIDED: NO wiring change - the sparsity is deliberate L4 lamination - feature/ps5-decision-0815
+
+### Gee ask (verbatim per LAW #0)
+
+> *"live verify and decide on Ps.5"*
+
+**LIVE VERIFY (deployed build ).** She **PASSED ** and is on **, phase 22/24, 21 complete**, 91.6 min in, at **569 teach/min** with  0. ** climbed 2 -> 22** across 3 consolidation passes, so the TB trickle-first fix is working on the deployed build;  confirms the PS.2 empty-queue fix is not deployed yet.
+
+**DECISION: do NOT raise cross-projection density.** Three pieces of evidence:
+
+1.  computes  and fills that many entries for **every row it is permitted to touch**. There is no density shortfall.
+2. The zero-entry rows are **layer-masked by design**:  builds  - **L4 only** - and the init writes  for rows failing the mask. That is Felleman & Van Essen 1991 hierarchical connectivity: cross-projections terminate on L4 stellate input cells. Raising density fights the lamination the K-microstructure work deliberately installed, and spends VRAM to do it.
+3. **My earlier framing was wrong** - "a quarter of her word buckets can never learn" was wrong about the present state AND about the cause. The ELA band is 18,750 rows for 1,977 words = **9.5 rows per bucket**, so every bucket currently holds live rows and emission works. Corrected here rather than left standing.
+
+**THE ACTUAL DEFECT, re-filed as PS.6.**  carves each word bucket as a raw contiguous range () with **zero lamination awareness** - 0 returns **0** - while only L4 rows receive . Harmless at 9.5 rows/bucket. At the stated **~60,000-word K->PhD target against 90,000 word_motor rows  collapses to 1**, and a word whose single row is not L4 **can never be emitted regardless of training**. The failure arrives gradually as vocabulary grows - precisely when it would be hardest to attribute. Fix costs zero VRAM but **requires a word-bucket-map version bump** so it lands on a FRESH WALK and never re-points already-trained associations mid-run.
+
 ## 2026-08-15 - GPU-ONLY HARDENING: shed frames corrupt weights, a 91s loop pin, and a self-check that hid a starved projection - feature/gpu-only-hardening-0815
 
 ### Gee ask (verbatim per LAW #0)
