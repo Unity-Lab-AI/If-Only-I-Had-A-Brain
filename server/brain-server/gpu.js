@@ -2250,6 +2250,10 @@ const SERVER_GPU_MIXIN = {
     // Skipping costs one Hebbian update. Firing costs a corrupted one that
     // nothing downstream will ever notice. The counter is published so the cost
     // of skipping is visible rather than silent.
+    // The Hebbian dispatch CLOSES the pattern group either way - the group's
+    // purpose (deliver one teach iteration's pattern whole) is spent, and the
+    // next iteration's first frame must face admission again.
+    if (this._patternGroup) this._patternGroup.open = false;
     if (this._patternLaneStale) {
       this._hebbianSuppressedStale = (this._hebbianSuppressedStale || 0) + 1;
       return null;
@@ -2680,8 +2684,30 @@ const SERVER_GPU_MIXIN = {
     // K-STUDENT battery run with teach PAUSED (no `_teach*` activePhase), so
     // their pattern writes (drain-to-10MB then fire) are untouched; idle is
     // already handled above; canonical resync/upload rides its own lane.
+    // ATOMIC PATTERN GROUPS (2026-08-15). A teach iteration is
+    // clear -> write(s) -> hebbianBound, and the PS.1 stale guard rightly
+    // refuses the Hebbian when any frame of that sequence is dropped. But the
+    // pacing throttle below used to gate EVERY frame independently, so almost
+    // every group lost at least one frame mid-flight and its Hebbian was
+    // suppressed - measured live at ~33 suppressions/sec against 59 real
+    // sheds. Honest, but a third of teaching was being refused by PACING, not
+    // by saturation.
+    //
+    // The group is now the unit of admission: the FIRST frame of a group faces
+    // the throttle (refuse whole, before any state ships); frames inside an
+    // admitted group bypass pacing (the decision was already made); the group
+    // closes at the hebbianBound dispatch (see gpuSparseHebbianBound) or after
+    // a 500ms TTL so a hebbian-less path can never hold the lane open. The
+    // donor stays protected by BOTH remaining mechanisms: the adaptive
+    // back-off (computed from live bufferedAmount, it stretches the
+    // inter-group interval the moment bytes pile up) and the 16MB lane cap
+    // below, which still hard-stops a group mid-flight under true saturation
+    // - staling that ONE group, the rare case instead of the common one.
+    if (!this._patternGroup) this._patternGroup = { open: false, openedAt: 0 };
+    const _pg = this._patternGroup;
+    const _pgInside = _pg.open && (Date.now() - _pg.openedAt) < 500;
     const _ap = _cc2 && _cc2._activePhase;
-    if (_ap && typeof _ap.name === 'string' && _ap.name.startsWith('_teach')) {
+    if (!_pgInside && _ap && typeof _ap.name === 'string' && _ap.name.startsWith('_teach')) {
       // DONOR-DROWN FIX (2026-08-14). The 20ms base let this lane put ~50
       // frames/sec on the wire, and these frames are NOT small: they carry
       // `sparseIndices` as JSON arrays of raw integers, measured at a
@@ -2752,6 +2778,9 @@ const SERVER_GPU_MIXIN = {
       // dispatch until a fresh clear_spike_region re-establishes a known
       // pattern. Losing an update is acceptable; training a lie is not.
       this._patternLaneStale = true;
+      // A mid-group cap overrun kills the WHOLE group - close it so the next
+      // frame faces admission again instead of riding a dead group's bypass.
+      if (this._patternGroup) this._patternGroup.open = false;
       // A shed PATTERN frame does NOT dirty the weight shadow - DO NOT arm a
       // resync here. The old `_armShadowResyncDeferred` call set
       // `_gpuShadowDirty` on every shed, and a heavy cell sheds thousands of
@@ -2775,6 +2804,11 @@ const SERVER_GPU_MIXIN = {
     // Stamp the actual send so the TEACH-FLOOD THROTTLE (above) paces off the
     // last frame that truly went out, not off shed/throttled attempts.
     this._wsPatternLastSendMs = Date.now();
+    // A frame that actually went out while a group was not open OPENS one -
+    // the admission decision was just made above, and the rest of this teach
+    // iteration's frames ride it without re-facing the pacing gate.
+    if (!this._patternGroup) this._patternGroup = { open: false, openedAt: 0 };
+    if (!this._patternGroup.open) { this._patternGroup.open = true; this._patternGroup.openedAt = Date.now(); }
     return true;
   },
 

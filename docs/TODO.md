@@ -644,3 +644,23 @@ The CHECK is fixed (it now names starved projections instead of averaging them i
 - [x] **DK.4** **DONE.** Verify — no-tests LAW: `node --check`, ESM `import()`, bundle rebuild, re-read the three edited regions.
 - [x] **DK.5** **DONE.** Docs + FINALIZED, atomic commit, cascade, push BOTH remotes.
 - [ ] **DK.6** ⏳ GEE RE-RUNS THE DONOR-KILL after the next Update & SAVESTART: kill the donor → **PAUSED — no compute substrate** within seconds, teach events STOP, chat still replies → donor back → walk resumes after the re-upload completes.
+
+---
+
+## OPEN TASKS — 2026-08-15 · TEACH-PATTERN ATOMICITY — ~1/3 of teach Hebbians honestly dropped by the throttle × stale-guard interaction
+
+> Gee (verbatim): *"wo whats next?"* → the OI.3 live check surfaced this.
+> Gee (verbatim): *"so there is nothing else for you to finish? we are 100%?"* — answer: NO, this item.
+
+**MEASURED LIVE (build `be5dee59`, ~13 min after boot):** `patternSheds: 59` but `hebbianSuppressedStale: 25,676` (~33/s), `patternLaneStale: true` at sample time. The PS.1 stale guard is CORRECT — never train on a pattern that did not land — but the D.1 pacing throttle ALSO marks the lane stale, and pacing fires constantly during teach. A teach iteration is clear_spike_region → write_spike_slice(s) → hebbianBound; if ANY frame of that group hits the 100ms throttle, the group's Hebbian is suppressed. Teach runs many iterations/sec against ~10 allowed frames/sec, so roughly a third of all teach updates are lost. **Before PS.1 they were CORRUPT; now they are LOST. Neither is 100% correct.**
+
+**THE CORRECT SHAPE:** the clear→write→Hebbian group is ATOMIC. Pacing throttles BETWEEN groups (where it protects the donor exactly as D.1 intended), never inside one. A group either lands whole — and its Hebbian fires — or is refused whole at its first frame, before any partial state ships.
+
+### THE WORK
+
+- [x] **TP.1** **DONE.** Group primitive: `_gpuClearCortexSpikeRegion` OPENS a pattern group (this is where the throttle gate runs — refuse the whole group here, before any state ships); the write-slice senders inside an open group BYPASS throttle/shed checks (the group was already admitted); the group CLOSES on the hebbianBound dispatch (or the next clear).
+- [x] **TP.2** **DONE.** Shed semantics inside an admitted group: the lane cap (16MB) still protects the donor — if a mid-group frame would exceed it, the whole group is marked stale (existing PS.1 path) so the Hebbian is suppressed — but this becomes the RARE case (true saturation) instead of the common one (pacing).
+- [x] **TP.3** **DONE.** Pacing between groups keeps D.1's adaptive back-off exactly as-is — measured at the group OPEN, so the donor sees the same frame rate ceiling it does today.
+- [x] **TP.4** **DONE.** Verify — no-tests LAW: `node --check`, ESM `import()`, bundle rebuild, re-read the edited region; confirm suppression counter semantics unchanged (still counts real refusals).
+- [x] **TP.5** **DONE.** Docs + FINALIZED, atomic commit, cascade, push BOTH remotes.
+- [ ] **TP.6** ⏳ LIVE-VERIFY after Gee's next Update & SAVESTART: `hebbianSuppressedStale` growth rate must COLLAPSE (from ~33/s to near-zero outside true saturation) while donor RTT stays healthy (<1s) and `patternSheds` stays low.
