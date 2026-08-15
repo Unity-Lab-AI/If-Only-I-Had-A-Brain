@@ -615,6 +615,7 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                     Frame::WriteCurrentSlice { cluster, region, .. } => format!("write_current(bin) {cluster}/{region}"),
                     Frame::ClearSpikeRegion { cluster, region } => format!("clear_spike(bin) {cluster}/{region}"),
                     Frame::Repeat { name, .. } => format!("repeat {name}"),
+                    Frame::WriteCurrentTemplate { cluster, region, .. } => format!("write_current(tmpl) {cluster}/{region}"),
                 },
                 Work::WriteSpike { cluster, region, .. } => format!("write_spike {cluster}/{region}"),
                 Work::WriteCurrent { cluster, region, .. } => format!("write_current {cluster}/{region}"),
@@ -898,6 +899,25 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                                     workq.push(Work::WriteCurrent { cluster, region, indices, values, psi });
                                 }
                                 Frame::ClearSpikeRegion { cluster, region } => workq.push(Work::ClearSpike { cluster, region }),
+                                // v0.3.16 — expand the group-tiled template at receive into the
+                                // IDENTICAL Work::WriteCurrent the expanded t8 frame produces:
+                                // dim d fills rows [row_start + d*group_size, +group_size);
+                                // zero-valued dims skipped (rows read 0 from zero-then-scatter);
+                                // psi multiplication stays in the engine, exactly as t8.
+                                // Region-end clipping happens engine-side (indices >= len skip).
+                                Frame::WriteCurrentTemplate { cluster, region, row_start, group_size, values, psi } => {
+                                    let mut indices: Vec<u32> = Vec::with_capacity(values.len() * group_size as usize);
+                                    let mut vals: Vec<f32> = Vec::with_capacity(values.len() * group_size as usize);
+                                    for (d, &v) in values.iter().enumerate() {
+                                        if v == 0.0 { continue; }
+                                        let base = row_start + (d as u32) * group_size;
+                                        for n in 0..group_size {
+                                            indices.push(base + n);
+                                            vals.push(v);
+                                        }
+                                    }
+                                    workq.push(Work::WriteCurrent { cluster, region, indices, values: vals, psi });
+                                }
                                 Frame::Hebbian { req_id, name, pre, post, lr } => {
                                     teach_cache.insert((3u8, name.clone()), CachedTeach::Hebbian { name: name.clone(), pre: pre.clone(), post: post.clone(), lr });
                                     workq.push(Work::Frame(Frame::Hebbian { req_id, name, pre, post, lr }));
@@ -1093,7 +1113,23 @@ fn handle_frame(engine: &mut MultiEngine, partials: &mut HashMap<String, Partial
             Some(frames::ack_simple(5, req_id))
         }
         // Repeat frames are resolved against the teach cache at receive and never
-        // reach the worker; the arm exists for match exhaustiveness.
+        // reach the worker; template frames expand to Work::WriteCurrent at
+        // receive. Both arms exist for match exhaustiveness only.
         Frame::Repeat { .. } => None,
+        Frame::WriteCurrentTemplate { cluster, region, row_start, group_size, values, psi } => {
+            // Defensive twin of the receive-layer expansion (identical math).
+            let mut indices: Vec<u32> = Vec::with_capacity(values.len() * group_size as usize);
+            let mut vals: Vec<f32> = Vec::with_capacity(values.len() * group_size as usize);
+            for (d, &v) in values.iter().enumerate() {
+                if v == 0.0 { continue; }
+                let base = row_start + (d as u32) * group_size;
+                for n in 0..group_size {
+                    indices.push(base + n);
+                    vals.push(v);
+                }
+            }
+            let _ = engine.write_current_slice(&cluster, &region, &indices, &vals, psi);
+            None
+        }
     }
 }
