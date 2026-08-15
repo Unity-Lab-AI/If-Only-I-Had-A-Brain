@@ -602,10 +602,10 @@ The CHECK is fixed (it now names starved projections instead of averaging them i
 
 ### THE WORK — in order
 
-- [ ] **OI.1** ⏳ **GEE: press Update & SAVESTART.** Everything below is blocked on it. The deploy picks up in one shot: PS.1 (stale-pattern Hebbian suppression — stops the ACTIVE weight corruption behind those 10,054 sheds), PS.2 (definition-queue refill — makes V.8 passable), PS.3 (the 91.6s loop pin fix), PS.4 (per-projection wiring check), GC (live grade column), SL (single phase ledger), LT (liveness telemetry incl. `definitionQueue` in `/public-state.json`).
+- [x] **OI.1** **DONE — confirmed from the box: build `be5dee59` (latest main) is deployed.** ⏳ **GEE: press Update & SAVESTART.** Everything below is blocked on it. The deploy picks up in one shot: PS.1 (stale-pattern Hebbian suppression — stops the ACTIVE weight corruption behind those 10,054 sheds), PS.2 (definition-queue refill — makes V.8 passable), PS.3 (the 91.6s loop pin fix), PS.4 (per-projection wiring check), GC (live grade column), SL (single phase ledger), LT (liveness telemetry incl. `definitionQueue` in `/public-state.json`).
 - [ ] **OI.2** ⏳ RE-RUN V.8 after the deploy: at her first dream window, `curriculum.definitionQueue.lastWindow` must show `processed ≈ 120` with `bound > 0`, `kVocabTaught` must climb by roughly the batch size per window (not by 2), and the `💤 dream trickle:` line must appear EVERY window including the zero case.
 - [ ] **OI.3** ⏳ VERIFY PS.1 live after the deploy: `wsPressure.hebbianSuppressedStale` must exist and be counting alongside `patternSheds`, and `patternLaneStale` must flip true on a shed and false on the next `clear_spike_region`. Sheds continuing is EXPECTED (the lane cap is doing its job) — the new part is that no Hebbian fires on a stale pattern any more.
-- [ ] **OI.4** ⏳ **GEE: the G.9 donor-kill test** (any time after the deploy, walk running): pull the donor → dashboard must show **PAUSED — no compute substrate** within seconds with the reason named, teach events must STOP climbing, chat must still reply → restart the donor → walk must resume the moment the weights finish uploading.
+- [x] **OI.4** **RUN — and it FAILED (teaching continued after the kill); root + fix = the DK section below; re-run is DK.6.** ⏳ **GEE: the G.9 donor-kill test** (any time after the deploy, walk running): pull the donor → dashboard must show **PAUSED — no compute substrate** within seconds with the reason named, teach events must STOP climbing, chat must still reply → restart the donor → walk must resume the moment the weights finish uploading.
 - [x] **OI.5** **DONE — but NOT as filed; see the correction below.** BUILD PS.6 — carve word buckets from PROJECTION-RECEIVING (L4) rows instead of raw contiguous ranges (`_ensureWordBucketMap` / `wordBucketCellSizeFor` / `_teachWordEmissionDirect`; the carving currently has zero lamination awareness — `grep -c layerId` = 0). Includes the word-bucket-map VERSION BUMP so the new geometry takes effect ONLY on a fresh walk and never re-points trained associations mid-run. Ships to the repo now; activates on the next Fresh Walk.
 
 #### OI.5 / PS.6 — CORRECTION (appended; nothing above removed): the filed fix was WRONG twice, the shipped fix is the word_motor unmask
@@ -623,3 +623,24 @@ The CHECK is fixed (it now names starved projections instead of averaging them i
 
 - [ ] **OI.6** VERIFY PS.3 live after the deploy: no `[EventLoop] BLOCKED` line above ~2s attributed to `phase=_teachWordEmissionDirect` (was 91,640ms).
 - [ ] **OI.7** Docs + FINALIZED for whichever of the above complete, atomic commits, cascade, push BOTH remotes — one batch at the end per the cascade-after-all-work LAW.
+
+---
+
+## OPEN TASKS — 2026-08-15 · ⛔ G.9 FAILED LIVE — she kept teaching after the donor was killed
+
+> Gee (verbatim): *"i killed tho doner a teach ops in brain events progressed on anyweays even tho the brain page showed GPU needed pop up"*
+
+**CONFIRMED FROM THE BOX** (build `be5dee59` — Gee HAS pressed Update & SAVESTART; that is the latest main, so OI.1 is DONE): `substratePause: None`, `pausedForDonorMs: 0`, teach/min 16 and `teachEvents` climbing — while the donor was dead and the brain page itself showed the GPU-needed popup. **The G.9 test failed exactly as run.**
+
+**ROOT — the substrate flag is a LATCH, again.** `_gpuProxyReady = false` is written in ONE place in the entire codebase: the cluster CONSTRUCTOR (`cluster.js:336`). It flips true when `initGpu()` finishes uploading — and then **nothing ever clears it.** Kill the donor: `brain._gpuClient` goes null, the socket dies, and the flag still says "weights are uploaded." Both gates ask THAT flag — `_teachSubstrateReady()` and `_awaitComputeSubstrate()` — so both keep answering "substrate ready" to a brain whose substrate is a corpse. Same failure shape as the phase-latch: state set on entry, never invalidated by the event that falsifies it.
+
+**SECOND GAP FOUND WHILE TRACING:** `initGpu()` does not clear the flag at ENTRY either — so during a re-upload to a freshly registered donor, the stale `true` from the PREVIOUS donor lets teach dispatch against matrices the new donor does not have yet.
+
+### THE WORK
+
+- [x] **DK.1** **DONE.** `_teachSubstrateReady()` requires the substrate to be ALIVE, not just uploaded-once: `_gpuProxyReady === true` AND the donor socket open (`this._brain._gpuClient.readyState === 1` — the back-ref exists, `brain-server.js:2386`). Browser standalone brains (`requireGpuSubstrate` false) unaffected.
+- [x] **DK.2** **DONE.** `_awaitComputeSubstrate()` same condition — the walk pauses within one teach call of the socket dying, resumes when the weights are live on a donor again. The reason string already distinguishes "no donor connected" from "connected but not uploaded".
+- [x] **DK.3** **DONE.** `initGpu()` clears `_gpuProxyReady` at ENTRY — during a re-upload the substrate is NOT ready, and the flag returns true only when the upload completes (the existing end-of-method assignment).
+- [x] **DK.4** **DONE.** Verify — no-tests LAW: `node --check`, ESM `import()`, bundle rebuild, re-read the three edited regions.
+- [x] **DK.5** **DONE.** Docs + FINALIZED, atomic commit, cascade, push BOTH remotes.
+- [ ] **DK.6** ⏳ GEE RE-RUNS THE DONOR-KILL after the next Update & SAVESTART: kill the donor → **PAUSED — no compute substrate** within seconds, teach events STOP, chat still replies → donor back → walk resumes after the re-upload completes.

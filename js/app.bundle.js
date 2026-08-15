@@ -53363,7 +53363,8 @@ var CLUSTER_HEBBIAN_MIXIN = {
    */
   _teachSubstrateReady(who) {
     if (!this.requireGpuSubstrate) return true;
-    if (this._gpuProxyReady === true) {
+    const _sockLive = !!(this._brain && this._brain._gpuClient && this._brain._gpuClient.readyState === 1);
+    if (this._gpuProxyReady === true && _sockLive) {
       if (this._substrateDownSince) {
         console.log(`[Cluster ${this.name}] compute substrate BACK after ${((Date.now() - this._substrateDownSince) / 1e3).toFixed(0)}s (${this._substrateRefusals | 0} teach calls refused while it was gone) - teaching resumes.`);
         this._substrateDownSince = null;
@@ -53636,6 +53637,7 @@ var CLUSTER_HEBBIAN_MIXIN = {
    */
   async initGpu() {
     if (!this._gpuProxy || !this._gpuProxy.upload) return false;
+    this._gpuProxyReady = false;
     const targets = [];
     if (this.synapses) {
       targets.push({ key: `${this.name}_intraSynapses`, proj: this.synapses, binding: null });
@@ -101279,7 +101281,7 @@ var Curriculum = class _Curriculum {
       }
     }
     if (!cluster || cluster.requireGpuSubstrate !== true) return;
-    const ready = () => cluster._gpuProxyReady === true;
+    const ready = () => cluster._gpuProxyReady === true && !!(brain2 && brain2._gpuClient && brain2._gpuClient.readyState === 1);
     if (ready()) {
       if (this._substratePause) {
         this._hb(`[Curriculum] > compute substrate READY - walk resumes (was paused ${((Date.now() - this._substratePause.sinceMs) / 6e4).toFixed(1)}min: ${this._substratePause.reason}).`);

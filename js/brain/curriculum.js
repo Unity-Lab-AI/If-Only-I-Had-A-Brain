@@ -11076,7 +11076,12 @@ export class Curriculum {
       }
     }
     if (!cluster || cluster.requireGpuSubstrate !== true) return;
-    const ready = () => cluster._gpuProxyReady === true;
+    // ALIVE, not uploaded-once (2026-08-15) - same condition as
+    // NeuronCluster._teachSubstrateReady, for the same reason: `_gpuProxyReady`
+    // is never cleared on donor death, so flag-only meant the walk ground on
+    // after a donor kill (caught live). Weights uploaded AND socket open.
+    const ready = () => cluster._gpuProxyReady === true
+      && !!(brain && brain._gpuClient && brain._gpuClient.readyState === 1);
     if (ready()) {
       if (this._substratePause) {
         this._hb(`[Curriculum] > compute substrate READY - walk resumes (was paused ${((Date.now() - this._substratePause.sinceMs) / 60000).toFixed(1)}min: ${this._substratePause.reason}).`);

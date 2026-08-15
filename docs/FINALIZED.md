@@ -5,6 +5,26 @@
 
 ---
 
+## 2026-08-15 - G.9 FAILED LIVE: she kept teaching after the donor was killed - the substrate flag was a latch - feature/donor-kill-gate-0815
+
+### Gee ask (verbatim per LAW #0)
+
+> *"i killed tho doner a teach ops in brain events progressed on anyweays even tho the brain page showed GPU needed pop up"*
+
+**GEE RAN THE DONOR-KILL TEST AND IT FAILED - exactly what the test exists to catch.** Confirmed from the box (build `be5dee59`, which is the latest main - so his Update & SAVESTART landed and OI.1 closed): `substratePause: None`, `pausedForDonorMs: 0`, teach events climbing, while the donor was dead and the brain page showed the GPU-needed popup.
+
+**ROOT - the substrate flag is a LATCH, the same failure shape as the phase ledger.** `_gpuProxyReady = false` is written in ONE place in the codebase: the cluster constructor (`cluster.js:336`). It flips true when `initGpu()` finishes uploading, and **nothing ever clears it**. Kill the donor: the socket dies, `brain._gpuClient` goes null - and the flag still says "weights are uploaded". Both gates ask THAT flag (`_teachSubstrateReady()`, `_awaitComputeSubstrate()`), so both kept answering "substrate ready" to a corpse. State set on entry, never invalidated by the event that falsifies it.
+
+**SECOND GAP found while tracing:** `initGpu()` did not clear the flag at ENTRY either, so during a re-upload to a freshly registered donor the stale `true` from the PREVIOUS donor let teach dispatch against matrices the new donor did not hold yet.
+
+**SHIPPED:**
+
+- **`_teachSubstrateReady()` requires ALIVE, not uploaded-once:** `_gpuProxyReady === true` AND `this._brain._gpuClient.readyState === 1` (the back-ref exists - `brain-server.js:2386`). Browser standalone brains are untouched (`requireGpuSubstrate` false returns before the check).
+- **`_awaitComputeSubstrate()` same condition** - the walk pauses within one teach call of the socket dying and resumes when the weights are live on a donor again. The pause reason already distinguishes "no donor connected" from "donor connected but weights not uploaded yet".
+- **`initGpu()` clears the flag at entry** - during a (re-)upload the substrate is NOT ready; the end-of-method assignment remains the only path back to true, and only when every matrix uploaded.
+
+**VERIFIED (no-tests LAW):** `node --check` PASS on both files; ESM `import()` PASS; bundle rebuilt with the new condition present at both sites. Live re-verify is DK.6: after the next Update & SAVESTART, kill the donor -> **PAUSED - no compute substrate** within seconds, teach events STOP, chat still replies; donor back -> walk resumes after the re-upload completes.
+
 ## 2026-08-15 - 75% OF HER WORD BUCKETS WERE DEAD ROWS: word_motor unmasked from lamination - feature/l4-bucket-carving-0815
 
 ### Gee ask (verbatim per LAW #0)
