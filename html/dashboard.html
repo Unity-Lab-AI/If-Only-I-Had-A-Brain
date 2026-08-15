@@ -1016,6 +1016,7 @@
         // WS lands. Banner re-shows automatically if WS drops again.
         document.getElementById('no-conn-banner').classList.remove('active');
         if (window.__connRetryTimer) { clearInterval(window.__connRetryTimer); window.__connRetryTimer = null; }
+        window.__connFails = 0; // successful open resets the reconnect backoff curve
         log('Connected to brain server');
       };
       ws.onmessage = (e) => {
@@ -1057,8 +1058,16 @@
         // retry. Operator gets explicit instructions instead of just
         // a tiny "disconnected" pill (2026-06-17 live-test pain point).
         document.getElementById('no-conn-banner').classList.add('active');
+        // CONSOLE-NOISE GUARD — every failed WS handshake prints a red line
+        // the page cannot suppress, and the fixed 3s retry painted ~20 of
+        // them across a savestart/deploy window. Exponential backoff
+        // (3s → 6s → 12s → 24s → 30s cap, reset on a successful open) cuts
+        // that to a handful while still reconnecting within seconds of the
+        // server returning. The "retry now" link stays for the impatient.
+        window.__connFails = (window.__connFails || 0) + 1;
+        const retryS = Math.min(30, 3 * Math.pow(2, window.__connFails - 1));
         const countdownEl = document.getElementById('conn-retry-countdown');
-        let countdownS = 3;
+        let countdownS = retryS;
         countdownEl.textContent = countdownS;
         if (window.__connRetryTimer) clearInterval(window.__connRetryTimer);
         window.__connRetryTimer = setInterval(() => {
@@ -1070,7 +1079,7 @@
             countdownEl.textContent = countdownS;
           }
         }, 1000);
-        setTimeout(connect, 3000);
+        setTimeout(connect, retryS * 1000);
       };
       ws.onerror = () => {};
     }
@@ -3102,6 +3111,13 @@
       // "public version of the dashboard is asking for admin login"). Bail before
       // any admin fetch; the panel stays hidden via body.public-mode .admin-only.
       if (PUBLIC_MODE) return;
+      // CONSOLE-NOISE GUARD — browsers print a red network line for EVERY
+      // failed HTTP attempt no matter how the JS handles it, so during a
+      // savestart/deploy window (server down ~a minute) this 5s poll painted
+      // a 502 per tick. Poll only while the admin WS is OPEN — the WS is the
+      // live proof the server is up; when it drops, milestone polling pauses
+      // and resumes automatically on reconnect.
+      if (!ws || ws.readyState !== 1) return;
       try {
         const r = await fetch(adminApi('milestone'), { cache: 'no-store' });
         if (!r.ok) return;

@@ -910,3 +910,14 @@ A fresh donor drains 19MB in seconds (observed at restart). During TEACH, the sa
 - [x] **LB3.2** **DONE.** node --check PASS; both sites re-read.
 - [x] **LB3.3** **DONE.** Docs + FINALIZED, atomic commit, cascade, push BOTH remotes.
 - [ ] **LB3.4** ⏳ GEE: ONE Update & SAVESTART (server-only — the donor stays 0.3.16) → verify: suppression ~0, teach/min climbs from 316 toward the server ceiling, buffer stays ~0.
+
+---
+
+## OPEN TASKS — 2026-08-16 · CN — F12 CONSOLE NOISE (webgpu-prep powerPreference warning + admin 502 spam)
+
+> Gee (verbatim): *"and i want these errors fixed and or removed... they dont need to be poping up in the F12 when there isnt anything wrong, or is there? webgpu-prep.js:47 The powerPreference option is currently ignored when calling requestAdapter() on Windows. See https://crbug.com/369219127 [...] dashboard.html:3106 GET https://if-only-i-had-a-brain.git.unityailab.com/admin/milestone 502 (Bad Gateway) refreshMilestone [...] dashboard.html:1010 WebSocket connection to 'wss://.../admin/ws' failed: Error during WebSocket handshake: Unexpected response code: 502"*
+
+- [x] **CN.1** **DONE — answer to "or is there?": NO real fault.** The powerPreference warning is Chrome noise for an option Windows ignores (crbug 369219127) passed on a mere existence probe; the two 502 classes are savestart/deploy-window noise — the server is legitimately down for ~a minute, browsers print a red line for EVERY failed HTTP/WS attempt no page code can suppress, and the fixed 5s poll + 3s WS retry painted dozens per restart. READ webgpu-prep.js (full) + the three dashboard.html regions (WS connect ~1010, refreshMilestone ~3106, interval ~3305) — determine whether the 502s indicate a real fault or restart-window/permission noise, and answer Gee's "or is there?" honestly.
+- [x] **CN.2** **DONE.** webgpu-prep.js — stop passing `powerPreference` to `requestAdapter()` (Chrome ignores it on Windows and warns every load; dropping it silences the warning with zero behavior change on the platforms we run).
+- [x] **CN.3** **DONE.** /admin/milestone polls ONLY while the admin WS is OPEN (the WS is live proof the server is up; polling pauses on drop, resumes on reconnect — the 502-per-5s spam is structurally gone); admin-WS reconnects moved to exponential backoff 3s→6s→12s→24s→30s-cap, reset on successful open, "retry now" link untouched (~20 red lines per restart window → ~5). dashboard.html — stop the 502 spam structurally: browsers ALWAYS console-log failed HTTP/WS attempts, so the fix is to not fire doomed requests — gate /admin/milestone polling + admin-WS reconnects behind health/backoff so a down-or-unauthorized admin lane produces one quiet probe on a backoff curve, not a red line per interval.
+- [x] **CN.4** **DONE.** Verify + docs + FINALIZED + cascade + push BOTH remotes.
