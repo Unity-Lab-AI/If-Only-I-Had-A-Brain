@@ -701,3 +701,20 @@ The CHECK is fixed (it now names starved projections instead of averaging them i
 - [x] **LB.2** **DONE.** Verify — no-tests LAW: `node --check`, re-read both sites, bundle.
 - [x] **LB.3** **DONE.** Docs + FINALIZED, atomic commit, cascade, push BOTH remotes.
 - [ ] **LB.4** ⏳ LIVE-VERIFY after Gee's next Update & SAVESTART: `hebbianSuppressedStale` growth ~0, teach/min recovers most of the way (the walk no longer starves on a healthy link), donor RTT stays <1s and buffer near 0 — and if the donor ever chokes, the adaptive mult + WP pacing must slow the walk instead of suppressing.
+
+---
+
+## OPEN TASKS — 2026-08-15 · LB.4 FAILED — the 15ms change also lowered MAX braking 1.6s → 240ms; the brake curve must be steep and early
+
+> Gee (verbatim): *"u said i still need to get to current build so i fresh walked and updated her"* → *"okay check on our girl"*
+
+**LB.4 RESULT (fresh walk 3, build `bd503654` — true latest):** suppression ~79/s, sheds climbing, and the smoking gun in three samples: **buffer 12.9MB → 16.4MB → 0.0MB** — sawtoothing into the 16MB shed cliff and back.
+
+**ROOT — my own miscalibration in LB.1.** The adaptive multiplier is `min(16, buf/linkCap)` (linkCap 4MB). At base 100ms the ceiling was 1,600ms of braking; dropping base to 15ms silently dropped the ceiling to **240ms** — not enough to hold a bursting lane, so the buffer runs to the cap, sheds, stales the group, suppresses the Hebbian. Two further defects: braking engages only ABOVE 4MB (too late relative to a 16MB cliff), and `_patternLaneWait`'s copy of the law lacks the RTT term (the two governors can disagree).
+
+**FIX — one steep early control law, identical at both sites:** `mult = clamp((buf / 2MB)², 1, 133)` plus the existing RTT term. At 2MB → 15ms; 4MB → 60ms; 8MB → 960ms; ≥11MB → ~2s ceiling. Brakes rise with the SQUARE of pressure and reach full force well before the cliff, so sheds (and therefore stales/suppressions) become the rare true-saturation case. Empty lane still runs at 15ms — the healthy-link throughput the LB change was for.
+
+- [x] **BC.1** **DONE.** Replace the mult law at BOTH sites (`_donorPatternLaneOpen` + `_patternLaneWait`) with the shared quadratic curve; keep the RTT term at both; same env knobs.
+- [x] **BC.2** **DONE.** Verify — no-tests LAW: `node --check`, re-read both sites, bundle.
+- [x] **BC.3** **DONE.** Docs + FINALIZED, atomic commit, cascade, push BOTH remotes.
+- [ ] **BC.4** ⏳ LIVE-VERIFY after Gee's next Update & SAVESTART: buffer holds well under 16MB (no sawtooth), sheds ~0, `hebbianSuppressedStale` growth ~0, teach/min settles at whatever the donor truly drains.
