@@ -5,6 +5,25 @@
 
 ---
 
+## 2026-08-15 - 75% OF HER WORD BUCKETS WERE DEAD ROWS: word_motor unmasked from lamination - feature/l4-bucket-carving-0815
+
+### Gee ask (verbatim per LAW #0)
+
+> *"check on our girl! i said "hi" to her"* -> *"then begin the work"*
+
+**HER STATE AT THE CHECK:** `math/kindergarten` phase 22/24 (21 complete), **1,700 teach/min** - the fastest observed. On the "hi": her replies are private by design (never in the public state), but nothing blocked one - `substratePause: None`, chat-priority mutex live. `canSpeak: False` was checked and is COSMETIC: computed from `minGrade !== 'pre-K'`, forwarded to browser state, and **zero consumers in the chat path**.
+
+**TWO OF MY OWN CLAIMS FELL OVER when the work began, and the fix changed accordingly:**
+
+1. **"Harmless today" (from the PS.5 decision) was FALSE.** The 9.5-rows-per-bucket figure used the OLD per-subject band layout. The deployed WMB-UNIFIED geometry is `bandSize 90,000 / vocabCap 50,000 -> cellsPerWord = 1` - one row per word, TODAY. With the L4 destination mask wiring only ~25% of word_motor rows, **~75% of her bucketed words were already physically incapable of matrix emission.** Live corroboration, exact: `emissionSource { oracleHits: 50, matrixHits: 3, matrixDrivenPct: 6% }`, `word_motor` utilization 0%. **The dictionary oracle has been doing her talking because three quarters of her word buckets are dead rows.**
+2. **PS.6-as-filed (carve buckets from L4 rows) FAILS THE TARGET** - only ~22,500 L4 rows exist, under the ~60,000-word K->PhD vocabulary target.
+
+**SHIPPED - `js/brain/cluster.js`: `word_motor` exempted from the lamination masks at cross-projection init.** The masks exist for cortico-cortical realism (Felleman & Van Essen: terminate on L4 stellates, originate from L2/3 pyramidals). `word_motor` is not cortex - it is the engineered word-emission READOUT, one bucket per unique word, argmax over bucket means; masking a readout to one lamina leaves most of it unreachable. Exempting its side restores `initTopographicProjection`'s `Math.max(1, ...)` per-row fanout guarantee to EVERY bucket row - all 90,000 usable, the 60,000-word target fits - for a few MB of nnz. The sem side of both pairs KEEPS its mask (verified direction-by-direction: `sem_to_word_motor` keeps sem's L2/3 source mask; `word_motor_to_sem` keeps sem's L4 dest mask). No bucket-map version bump: bucket geometry is unchanged, only the wiring beneath it fills in.
+
+**FRESH-WALK GATING COMES FREE:** a SAVESTART restores the saved CSR structures wholesale over the fresh init, so the new wiring only materializes on a FRESH WALK. Deploying via Update & SAVESTART is safe and changes nothing until then.
+
+**VERIFIED (no-tests LAW):** `node --check` PASS; ESM `import()` PASS; bundle rebuilt and the changed mask conditions confirmed present at the minified sites (esbuild strips comments, so the comment grep reading 0 was expected and checked rather than trusted). Verify-on-fresh-walk criteria filed as OI.5b: `sem_to_word_motor` nnz ~4x the old 66,964 with zero empty rows, the PS.4 per-projection check reporting no starved projections, and `matrixDrivenPct` climbing well above 6% after ELA-K's word-emission phase.
+
 ## 2026-08-15 - PS.5 DECIDED: NO wiring change - the sparsity is deliberate L4 lamination - feature/ps5-decision-0815
 
 ### Gee ask (verbatim per LAW #0)
