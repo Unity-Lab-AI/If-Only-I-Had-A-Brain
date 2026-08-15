@@ -2231,9 +2231,29 @@ const SERVER_GPU_MIXIN = {
     // Flow gate: curriculum-teach's flow gate `_gpuSparseFlowOk()` caps
     // PENDING count at 4. One batch = one pending, so up to 4 batches ×
     // 64 ops = 256 in-flight ops without changing the cap. If the batch
-    // queue overflows the cap too, the call becomes a no-op (CPU remains
-    // authoritative on Hebbian per cluster.js intraSynapsesHebbian's
-    // fire-and-forget contract, so dropped GPU shadow is safe).
+    // queue overflows the cap too, the call becomes a no-op. NOTE (2026-08-15):
+    // the note that used to end this paragraph - "CPU remains authoritative on
+    // Hebbian, so a dropped GPU shadow is safe" - is no longer true. The
+    // GPU-only change removed the CPU teach path; a dropped bound-Hebbian is a
+    // LOST update, not a redundant one. It is still preferable to a corrupt one
+    // (see the stale-pattern guard below), but it is a real cost.
+    // REFUSE TO TRAIN ON A STALE PATTERN (2026-08-15).
+    //
+    // This dispatch does not carry its own pre/post - it tells the donor to run
+    // Hebbian over whatever is currently in the bound spike-buffer window, which
+    // the pattern lane wrote moments earlier. If any frame of that pattern was
+    // shed or throttled, the buffer still holds the PREVIOUS iteration's
+    // pattern, and firing here would train a wrong association into real
+    // weights. Under the old design the CPU shadow corrected for that; the
+    // GPU-only change removed it, so the check has to live here.
+    //
+    // Skipping costs one Hebbian update. Firing costs a corrupted one that
+    // nothing downstream will ever notice. The counter is published so the cost
+    // of skipping is visible rather than silent.
+    if (this._patternLaneStale) {
+      this._hebbianSuppressedStale = (this._hebbianSuppressedStale || 0) + 1;
+      return null;
+    }
     return this._enqueueBoundHebbian(name, lr);
   },
 
@@ -2701,6 +2721,10 @@ const SERVER_GPU_MIXIN = {
       const THROTTLE_MS = Math.round(_baseThrottle * _mult);
       if (this._wsPatternLastSendMs && (Date.now() - this._wsPatternLastSendMs) < THROTTLE_MS) {
         this._wsPatternThrottleSkips = (this._wsPatternThrottleSkips || 0) + 1;
+        // A throttled frame breaks the in-flight pattern exactly as a shed one
+        // does - the write never reaches the GPU spike buffer the bound Hebbian
+        // is about to read. Same treatment.
+        this._patternLaneStale = true;
         if (_mult > 1 && (!this._wsPatternBackoffLogMs || (Date.now() - this._wsPatternBackoffLogMs) > 30000)) {
           this._wsPatternBackoffLogMs = Date.now();
           console.warn(`[Brain] pattern-lane ADAPTIVE BACK-OFF ×${_mult.toFixed(1)} (throttle ${THROTTLE_MS}ms) — donor buffer ${((ws.bufferedAmount || 0) / 1048576).toFixed(1)}MB over its link cap. Teach patterns are ephemeral; yielding the link so compute_batch + acks + pings drain. Rate-limited 30s.`);
@@ -2711,24 +2735,34 @@ const SERVER_GPU_MIXIN = {
     const laneCap = this._donorPatternLaneCapBytes();
     if (ws.bufferedAmount > laneCap) {
       this._wsPatternShedCount = (this._wsPatternShedCount || 0) + 1;
-      // A shed PATTERN frame does NOT dirty the weight shadow — DO NOT arm a
-      // resync here. These are write_spike_slice / write_current_slice /
-      // clear_spike_region frames: per-iteration EPHEMERAL spike/current mirror
-      // state that the next teach iteration's clear+write fully supersedes, and
-      // the teach WEIGHT updates ride the bound-Hebbian dispatch (explicit correct
-      // pre/post patterns), NOT this mirror. The old `_armShadowResyncDeferred`
-      // call here set `_gpuShadowDirty` on every shed — and a heavy cell sheds
-      // thousands of pattern frames per phase, re-arming the dirty flag faster
-      // than the pause-gated resync could EVER clear it, so the "GPU shadow DIRTY"
-      // banner flapped permanently true the instant a cell started and never left.
-      // Only REAL weight-delta drops (the TU.25.A hebbian-batch shed) and genuine
-      // divergence (donor drop / failover) dirty the weight shadow + arm a resync;
-      // those route through their own arms. The shed itself (buffer protection)
-      // still happens below — it's just no longer a false-positive dirty trigger.
+      // PATTERN LANE IS NOW LOAD-BEARING (2026-08-15).
+      //
+      // The justification that used to sit here - "dropping is safe, CPU
+      // authoritative, the shadow re-converges" - was written when the CPU
+      // shadow performed the real Hebbian and the GPU was a mirror. The
+      // GPU-only change removed the CPU teach path entirely, and these frames
+      // are NOT a mirror: `hebbianBound` reads its pre/post patterns straight
+      // out of the GPU spike buffer that write_spike_slice / write_current_slice
+      // / clear_spike_region populate. Shedding one therefore does not discard a
+      // redundant copy - it leaves the PREVIOUS iteration's pattern in place, so
+      // the next bound-Hebbian dispatch trains the wrong association. That is
+      // worse than losing the update: it actively corrupts weights, silently.
+      //
+      // So a shed marks the lane STALE, and `gpuSparseHebbianBound` refuses to
+      // dispatch until a fresh clear_spike_region re-establishes a known
+      // pattern. Losing an update is acceptable; training a lie is not.
+      this._patternLaneStale = true;
+      // A shed PATTERN frame does NOT dirty the weight shadow - DO NOT arm a
+      // resync here. The old `_armShadowResyncDeferred` call set
+      // `_gpuShadowDirty` on every shed, and a heavy cell sheds thousands of
+      // frames per phase, re-arming faster than the pause-gated resync could
+      // ever clear it - so the "GPU shadow DIRTY" banner flapped permanently
+      // true the instant a cell started. Real weight-delta drops (the TU.25.A
+      // hebbian-batch shed) and genuine divergence route through their own arms.
       const now = Date.now();
       if (!this._wsPatternShedLogMs || (now - this._wsPatternShedLogMs) > 30000) {
         this._wsPatternShedLogMs = now;
-        console.warn(`[Brain] TU.28.1 — teach-pattern frame SHED (pre-serialization): ws.bufferedAmount=${(ws.bufferedAmount / 1024 / 1024).toFixed(1)}MB > ${(laneCap / 1024 / 1024)}MB pattern-lane cap (operating point — NOT the ${(this._donorSoftCapBytes() / 1024 / 1024)}MB shed cap; a lane parked at the shed cap starves resyncs + ACKs indefinitely). Dropping is safe — CPU authoritative; patterns are per-iteration ephemeral; the GPU shadow re-converges via auto-resync in the drain windows this cap creates. ${this._wsPatternShedCount} pattern frames shed since boot (rate-limited 30s).`);
+        console.warn(`[Brain] teach-pattern frame SHED: ws.bufferedAmount=${(ws.bufferedAmount / 1024 / 1024).toFixed(1)}MB > ${(laneCap / 1024 / 1024)}MB pattern-lane cap. THIS COSTS TEACHING - the bound-Hebbian dispatch reads its pre/post from the buffer these frames write, so the lane is marked STALE and the dependent Hebbian is SUPPRESSED rather than fired on a stale pattern. ${this._wsPatternShedCount} frames shed / ${this._hebbianSuppressedStale || 0} Hebbian dispatches suppressed since boot (rate-limited 30s).`);
       }
       return false;
     }
@@ -2825,6 +2859,10 @@ const SERVER_GPU_MIXIN = {
       regionName,
     });
     if (!this._donorPatternSendGated(json)) return;   // TU.28.1 — soft-cap gate (stream was unguarded)
+    // The clear is the FIRST frame of every teach pattern (`_clearSpikes` runs
+    // before the tiled writes), so a clear that actually lands re-establishes a
+    // known GPU spike state and the lane is trustworthy again from here.
+    this._patternLaneStale = false;
     this._mirrorCortexWriteToReplicas(json);   // DF.7 — mirror to replicas (flag-gated)
   },
 

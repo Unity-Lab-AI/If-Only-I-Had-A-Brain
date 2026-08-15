@@ -1,6 +1,20 @@
 # RESUME — Session Pickup Brief
 
-> ## ⭐⭐⭐ 2026-08-15 (latest) — THE TRICKLE PROCESSED ZERO WORDS: an empty array is truthy — FIXED, NOT DEPLOYED
+> ## ⭐⭐⭐ 2026-08-15 (latest) — GPU-ONLY HARDENING: shed frames were CORRUPTING weights + a 91s loop pin + a starved emission projection
+>
+> **Nothing here is deployed.** Rides with the next Update & SAVESTART.
+>
+> **PS.1 — the worst of the three.** 8,103 teach-pattern frames shed in 12 minutes, justified by *"Dropping is safe — CPU authoritative"*. That was false twice: the G batch REMOVED the CPU teach path, and these frames are not a shadow — `hebbianBound` carries no pre/post of its own, it runs Hebbian over whatever sits in the bound spike-buffer window that `write_spike_slice` / `clear_spike_region` populate. A shed frame leaves the PREVIOUS iteration’s pattern in place, so the next dispatch **trains a wrong association into real weights — silently**. Fixed: shed AND throttle mark `_patternLaneStale`; a successful `clear_spike_region` (first frame of every pattern) clears it; `gpuSparseHebbianBound` REFUSES while stale and counts `_hebbianSuppressedStale`; both counters + `patternLaneStale` publish to `state.throughput`.
+>
+> **PS.3 — and I was wrong first.** I assumed `_microtask` was a microtask yield. It is not — it hops via `setImmediate`. Reading it killed the hypothesis. The real cause: `semToWordMotor.ojaUpdate(preSem, postWM, lr)` with **no `activeRows`**, scanning all 90,000 rows per word to find ONE lit bucket, yielding every 100 WORDS ≈ **9,000,000 row visits between event-loop hops**. Fixed with active-row Oja (bit-identical — a post=0 row updates by zero) + **time-based** ~30ms yielding, and the per-word `buildKScalesForProjection` hoisted out.
+>
+> **PS.4 — the broken check was hiding a real defect.** It averaged nnz/rows across projections that mix dense associative maps (10.0/row by design) with deliberately sparse topographic maps (1.5–3.0); the mean sat at 4.9 and failed EVERY boot while ten other checks passed, and its message ("target 20-40") disagreed with its own condition (10–80). Recomputing per projection reproduces 4.905 exactly and surfaces the real problem: **`sem_to_word_motor` and `word_motor_to_sem` at 0.744 entries/row**. Below 1.0 = rows with NO incoming connection, and `ojaUpdate` only adjusts EXISTING CSR entries — it never creates one. **~A quarter of her word buckets can never learn to fire**, matching `word_motor: 0% (0/90,000)` on the utilization panel. The CHECK is fixed; **the WIRING is deliberately untouched — TODO PS.5, Gee’s call, it moves VRAM and upload size.**
+>
+> **NEXT THING TO DECIDE:** PS.5. If a quarter of the word buckets are unwired, word emission has a hard ceiling no amount of training removes.
+>
+> ---
+
+> ## ⭐⭐⭐ 2026-08-15 (earlier) — THE TRICKLE PROCESSED ZERO WORDS: an empty array is truthy — FIXED, NOT DEPLOYED
 >
 > **THE LESSON WORTH KEEPING:** `kVocabTaught: 2` read like "binds 2 of 120". It was **zero** — the two came from the fused-token purge. Do not infer a rate from a counter without confirming the producer ran.
 >
