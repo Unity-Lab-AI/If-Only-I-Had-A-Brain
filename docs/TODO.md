@@ -740,3 +740,26 @@ A fresh donor drains 19MB in seconds (observed at restart). During TEACH, the sa
 - [ ] **DT.1** ⏳ (OURS — Gee, verbatim: "no the doner release is my territory just like we have doployed all the previous versions". I write the server encoder + donor decoder, tag the release, CI builds, GEE deploys the binary — same flow as donor-v0.3.11 and every version before.) Raise donor teach-drain throughput: compact binary pattern frames (the sparse protocol already has binary frames — extend to `write_spike_slice`), or donor-side pattern batching/coalescing, or region-write coalescing on the donor GPU path. This is a donor-binary + protocol change: needs a donor release, NOT a dashboard deploy.
 - [ ] **OI.2** ⏳ (unchanged) first dream window: `definitionQueue.lastWindow` populated, `kVocabTaught` climbing. Queue currently empty on this savestart-resumed boot — the refill-on-empty fires INSIDE the first dream window by design.
 - [ ] **OI.5b** ⏳ (unchanged) `matrixDrivenPct` off 0 after ELA-K word emission (her matrix voice vs the oracle).
+
+---
+
+## OPEN TASKS — 2026-08-15 · DT.1 BUILD — BINARY TEACH FRAMES + donor-v0.3.13 (the donor teach-drain fix)
+
+> Gee (verbatim): *"no the doner release is my territory just like we have doployed all the previous versions"*
+>
+> Gee (verbatim): *"okay so now write the todo and make the cli task list so i can see whats to do in the todo, then get to the work of the doner fix"*
+
+**THE PROBLEM (measured, twice):** a fresh donor drains a 19MB socket in seconds; DURING TEACH the same donor drains at ~KB/s, so the buffer parks at 16–19MB and the walk settles at ~50–100 teach/min against a ~600+ potential. Teach patterns ship as ~153KB JSON frames (`write_spike_slice` / `write_current_slice` / `clear_spike_region` carrying `sparseIndices` as JSON integer arrays); the donor's single receive thread pays `JSON.parse` on every one plus a region-sized VRAM write. The JSON parse is the drain killer — the sparse protocol already has BINARY frames for uploads/hebbian, teach patterns are the last big JSON holdout.
+
+**THE FIX:** binary teach-pattern frames end to end, gated per-donor by a capability announced at `gpu_register` (protocol selection, not a fallback: each donor speaks the best protocol it declares; old community donors keep JSON and their current speed, new donors get the fast lane). Ships as **donor-v0.3.13** — I code + tag, CI builds, GEE deploys the binary, same flow as v0.3.11.
+
+### THE WORK
+
+- [x] **BT.1** **DONE.** READ the existing binary sparse protocol end to end (server `_encodeSparseHeader` / `_sparseSendBinary` in `server/brain-server/gpu.js`; Rust `donor-app/src/frames.rs` + `donor.rs` dispatch; `html/compute.html` binary handler) — frame layout, type bytes in use, ack conventions — so the new types extend the existing framing instead of inventing a second one.
+- [x] **BT.2** **DONE.** SERVER encoders: new binary frame types for WRITE_SPIKE_SLICE (region + u32 indices), WRITE_CURRENT_SLICE (region + u32 indices + f32 values), CLEAR_SPIKE_REGION (region). Fire-and-forget (no ack — same semantics as today's JSON pattern frames). Same pattern-lane gating (group admission, brake, cap) — the LANE code must not care which encoding rides it.
+- [x] **BT.3** **DONE — as a VERSION GATE, simpler than a new field:** `client.donorAppVersion` is already stored at register (TU.20.12), so binary selects on `donorAppVersion ≥ 0.3.13` and the Cargo bump itself announces the capability. Zero `brain-server.js` edits (its full-read law untriggered). CAPABILITY negotiation: donor announces `binTeach` in its `gpu_register` payload; server records it per-client and selects encoding per donor. Browser donor (`compute.html`) announces it too once its decoder lands.
+- [x] **BT.4** **DONE.** RUST donor decoder (`frames.rs` + wherever spike/current writes execute): parse the new types on the existing binary path, perform the identical GPU writes the JSON handlers do today, zero-copy where the frame layout allows.
+- [>] **BT.5** **SCOPE-CUT (honest):** browser donors report `appVersion: 'browser'` and never qualify for the version gate, so a compute.html decoder would be dead code today. Browser donors keep JSON and their current speed; the decoder + an explicit caps store in `brain-server.js` (1 line, behind that file's full read) ship together in a future batch. BROWSER donor decoder in `compute.html`: same three types on its binary `onmessage` path.
+- [x] **BT.6** **DONE.** VERIFY — no-tests LAW: `cargo check` on donor-app; `node --check` + ESM `import()` server-side; encode→decode byte-walk of each new frame type read against both decoders; bundle rebuild.
+- [x] **BT.7** **DONE.** Docs + FINALIZED, atomic commit, cascade, push BOTH remotes — and **tag `donor-v0.3.13` to origin** so CI builds the binary.
+- [ ] **BT.8** ⏳ GEE: deploy the new donor binary (his territory), then LIVE-VERIFY: donor drain rate during teach up ~5–10× (buffer stays low, no 16–19MB parking), walk teach/min rises accordingly with suppression still ~0.
