@@ -30785,3 +30785,11 @@ Gee (verbatim): *"looks like instead of 20X faster, now its 20x slower"* → *"y
 **VERIFY:** cargo check PASS both feature sets locally; node --check + ESM import() PASS on gpu.js/cluster.js/curriculum.js; byte-walk both codecs MATCH; expansion-math walk MATCH; bundle rebuilt keyless with the template tags present.
 
 **RELEASE FLOW:** tag `donor-v0.3.16` → OUR CI builds → **GEE: Update & SAVESTART (server half + link-bump) → download + swap + restart donor.** TF.6 pass: t8 MB/min collapses to t10 KB/min, buffer unparks, RTT <1s, teach/min climbs toward the ~1,300–2,000 server ceiling, dream windows fire.
+
+## 2026-08-16 — TF.6 PASS (the t8 river is dead) + LB3: base throttle 15ms → 3ms — the last constant refusing her teaching
+
+Gee (verbatim): *"updated fresh walk set, she is training and .16 doner is donating"*
+
+**TF.6 VERIFIED (build `c9b1d09f`, donor 0.3.16):** t8 = ZERO; templates (t10) = 1.62 MB/min where the expanded river ran 194 MB/min; donor RTT 6,000ms → **173ms**; buffer parked-at-16MB → **0.0MB**; teach/min ~104 → **316** minutes into the fresh walk. The v0.3.16 template frames did exactly what the math said.
+
+**THE RESIDUAL AND ITS FIX (LB3):** suppression ran ~128/s with zero sheds and zero buffer — pure base-throttle refusals (the 15ms constant, guarding 840KB frames that no longer exist, refusing the 2nd–3rd ~KB group inside each teach call's window — the LB-era residual at triple the call rate). Base 15ms → 3ms at BOTH governors: at KB frames even the ~333 groups/s ceiling ≈ 5MB/min worst case cannot refill the 16MB cliff, and the quadratic brake (`(buf/2MB)²`, ceiling 133×) still owns any real pressure. Env override unchanged. node --check PASS. LB3.4: after ONE server-only Update & SAVESTART — suppression ~0, teach/min climbs from 316 toward the ceiling.
