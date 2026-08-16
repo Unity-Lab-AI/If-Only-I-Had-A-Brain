@@ -10971,7 +10971,18 @@ export class Curriculum {
     const size = region.end - region.start;
     const gSize = Math.max(1, Math.floor(size / feat.length));
     const haveProxy = !!(cluster._gpuProxy && cluster._gpuProxy.writeSpikeSlice);
-    const sparseIndices = haveProxy ? [] : null;
+    // TEMPLATE SPIKES (donor-v0.3.17, the t7 fix) — when the donor speaks
+    // type-11 spike templates, SKIP building the expanded index array (at the
+    // 12M cortex a sem-region mirror expanded to ~750K pushes = a ~3MB t7
+    // frame; 403MB of them in 12min was the last raw wire river). The tiled
+    // pattern is fully determined by {rowStart:0, groupSize, values} — the
+    // donor expands it at receive into the identical spike write. Same-flag
+    // law: this builder and the gpu.js encoder consult the SAME server-side
+    // `_tmplSpikeOk` flag, so a built-but-unencodable mismatch cannot happen.
+    // CPU lastSpikes writes below are unchanged (the CPU shadow is written
+    // identically either way).
+    const tmplSpikeWire = haveProxy && !!(cluster._brain && cluster._brain._tmplSpikeOk === true);
+    const sparseIndices = haveProxy && !tmplSpikeWire ? [] : null;
     // SOFT-WRITE BUG FIX: `cluster.lastSpikes` is a Uint8Array. Writing
     // a float like `feat[d] = 0.2` (typical GloVe magnitude) to a
     // Uint8Array TRUNCATES to 0 — effectively blanking the spike.
@@ -10996,10 +11007,28 @@ export class Curriculum {
         if (sparseIndices) sparseIndices.push(idx - region.start);
       }
     }
-    if (sparseIndices && sparseIndices.length > 0) {
+    if (haveProxy) {
       const regionName = this._resolveRegionName(cluster, region);
       if (regionName) {
-        try { cluster._gpuProxy.writeSpikeSlice(regionName, sparseIndices); } catch { /* non-fatal */ }
+        // Canonical 0/1 active-flags (spike where >0 on the donor) so rep
+        // loops produce byte-identical template frames. ~70 entries — cheap.
+        const tmplValues = new Array(feat.length);
+        let anyActive = false;
+        for (let d = 0; d < feat.length; d++) {
+          const on = feat[d] > 0 ? 1 : 0;
+          tmplValues[d] = on;
+          if (on) anyActive = true;
+        }
+        if (anyActive) {
+          // The template TAG rides on EVERY carrier (expanded or empty) — the
+          // encoder evaluates the donor's capability on the first tagged frame
+          // and stamps `_tmplSpikeOk`; from the next call the builder skips the
+          // expansion. Same bootstrap the current-template (t10) lane used:
+          // tag always, gate at the encoder, skip once the flag is stamped.
+          const carrier = tmplSpikeWire ? [] : sparseIndices;
+          carrier._template = { rowStart: 0, groupSize: gSize, values: tmplValues };
+          try { cluster._gpuProxy.writeSpikeSlice(regionName, carrier); } catch { /* non-fatal */ }
+        }
       }
     }
   }

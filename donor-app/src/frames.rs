@@ -58,6 +58,14 @@ pub enum Frame {
     /// clipped at the region end; zero-valued dims are skipped (they read as
     /// 0 from the zero-then-scatter semantics anyway).
     WriteCurrentTemplate { cluster: String, region: String, row_start: u32, group_size: u32, values: Vec<f32>, psi: f32 },
+    /// v0.3.17 — TEMPLATE SPIKE write (type 11): the t7 fix. The teach loop's
+    /// tiled spike patterns are fully determined by {row_start, group_size,
+    /// values} — the expanded t7 index list was ~3MB per sem-region frame at
+    /// the 12M cortex (403MB in 12min, the last raw wire river). Expansion at
+    /// receive reproduces the IDENTICAL write_spike work item: dim d with
+    /// value > 0 sets spikes over rows [row_start + d*group_size, +group_size),
+    /// clipped at the region end engine-side; non-positive dims are skipped.
+    WriteSpikeTemplate { cluster: String, region: String, row_start: u32, group_size: u32, values: Vec<f32> },
 }
 
 /// Cluster-slice binding for a sparse matrix (chunk flags bit 2): the matrix's pre
@@ -252,6 +260,15 @@ pub fn decode(data: &[u8]) -> Option<Frame> {
             let values = r.f32_vec(count)?;
             let psi = r.f32()?;
             Some(Frame::WriteCurrentTemplate { cluster, region, row_start, group_size, values, psi })
+        }
+        // v0.3.17 — template spike write: rowStart + groupSize + count + f32 values (no psi).
+        11 => {
+            let (cluster, region) = split_cluster_region(&name)?;
+            let row_start = r.u32()?;
+            let group_size = r.u32()?.max(1);
+            let count = r.u32()? as usize;
+            let values = r.f32_vec(count)?;
+            Some(Frame::WriteSpikeTemplate { cluster, region, row_start, group_size, values })
         }
         // v0.3.15 — repeat: name = the original frame's name field, payload = origType.
         12 => {

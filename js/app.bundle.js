@@ -101245,7 +101245,8 @@ var Curriculum = class _Curriculum {
     const size = region.end - region.start;
     const gSize = Math.max(1, Math.floor(size / feat.length));
     const haveProxy = !!(cluster._gpuProxy && cluster._gpuProxy.writeSpikeSlice);
-    const sparseIndices = haveProxy ? [] : null;
+    const tmplSpikeWire = haveProxy && !!(cluster._brain && cluster._brain._tmplSpikeOk === true);
+    const sparseIndices = haveProxy && !tmplSpikeWire ? [] : null;
     for (let d = 0; d < feat.length; d++) {
       if (feat[d] <= 0) continue;
       for (let n = 0; n < gSize; n++) {
@@ -101255,12 +101256,23 @@ var Curriculum = class _Curriculum {
         if (sparseIndices) sparseIndices.push(idx - region.start);
       }
     }
-    if (sparseIndices && sparseIndices.length > 0) {
+    if (haveProxy) {
       const regionName = this._resolveRegionName(cluster, region);
       if (regionName) {
-        try {
-          cluster._gpuProxy.writeSpikeSlice(regionName, sparseIndices);
-        } catch {
+        const tmplValues = new Array(feat.length);
+        let anyActive = false;
+        for (let d = 0; d < feat.length; d++) {
+          const on = feat[d] > 0 ? 1 : 0;
+          tmplValues[d] = on;
+          if (on) anyActive = true;
+        }
+        if (anyActive) {
+          const carrier = tmplSpikeWire ? [] : sparseIndices;
+          carrier._template = { rowStart: 0, groupSize: gSize, values: tmplValues };
+          try {
+            cluster._gpuProxy.writeSpikeSlice(regionName, carrier);
+          } catch {
+          }
         }
       }
     }
