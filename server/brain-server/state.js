@@ -801,7 +801,16 @@ const SERVER_STATE_MIXIN = {
           // batchStall object written just before the gate opened survived the
           // whole cell in `state.perf`, contradicting this pause-aware pair.
           if (this._perfStats && this._perfStats.batchStall) this._perfStats.batchStall = null;
-        } else if (_donorLive && this._lastBatchOkMs && _sinceOkMs > 30000) {
+          // PAUSE-END ANCHOR (2026-08-16, the 709s false alarm). Both stall
+          // watchdogs measured from `_lastBatchOkMs` alone, so the FIRST check
+          // after a long designed pause (the 12-min canonical upload) saw the
+          // pre-pause anchor with the pause flag already cleared and screamed
+          // ⛔ COMPUTE STALL before the first post-pause batch could complete.
+          // This always-runs branch stamps the pause as it happens; both stall
+          // checks measure from max(lastBatchOk, pauseSeen).
+          this._designedPauseSeenMs = now;
+        } else if (_donorLive && this._lastBatchOkMs
+                   && (now - Math.max(this._lastBatchOkMs, this._designedPauseSeenMs || 0)) > 30000) {
           _batchStall = {
             stalledMs: _sinceOkMs,
             lastOkAt: this._lastBatchOkMs,

@@ -71,6 +71,20 @@ _Completed sections zeroed 2026-08-16 (third zeroing) — migrated VERBATIM to `
 
 ---
 
+## WI12M — 2026-08-16 · THE WALK RUNS BUT CRAWLS AT 12M: _teachWordIntegrated 13.7s/word (teach/min 4 vs ~1,400) — profiler-named, layer 3b root
+
+> Gee (verbatim): *"major problems by the looks of this console log, just look att all these stalls we can not having it stalling half the time"*
+> Gee (verbatim): *"by the way something happend she isds running suppper supper slow we lost our massive traing speed we had, investigate"*
+
+**INVESTIGATED LIVE:** the walk STARTED at 12M (17/17 uploaded, 16/16 bound, all GPU-fast, upload timed ~11.8min) but `liveness.teachProfile` named it: `_teachWordIntegrated 137,321ms / 10 calls = 13.7s/word`. ROOT (read, then confirmed against the 2–5.4s BLOCKED pins): the direct-projection layers 3/3b/4 BYPASS the final-rep CPU-shadow gates that layers 1+2 already use — and layer 3b (contrastive anti-Hebbian) cleared + rewrote the ENTIRE sem region (1.5M cells at 12M) + refilled a sem-sized scratch for EVERY one of 25 wrong letters × every rep, though sem(word) is IDENTICAL across all 25 — ~1.6 BILLION redundant array ops per word, synchronous, yielding once per rep.
+
+- [x] **WI12M.1** **DONE** — layer 3b restructured: sem write + preAF fill HOISTED out of the wrong-letter loop (bit-identical state — iteration 1's sem persists; only the motor span clears/rewrites per wrong letter); CPU anti-Hebbian gated to the FINAL rep (`_isFinalRep`, already in scope) while GPU `hebbianBound(-lr)` keeps firing every rep (GPU training mass unchanged). Layers 3 + 4 given the same final-rep gating for their direct CPU `ojaUpdate` + region-sized fills (fills still run every rep when the projection is NOT GPU-bound — the non-bound GPU fallback consumes them; never skip without GPU).
+- [x] **WI12M.2** **DONE** — per-layer telemetry: `[WORD-INT] per-word layer split over N words — l12=..ms l3=..ms l3b=..ms l1b=..ms l4=..ms` throttled 30s, so the next console paste PROVES the cut and names any remainder (l1b `hebbianPairReinforce` is the unmeasured one to watch).
+- [x] **WI12M.3** **DONE** — the ⛔ COMPUTE STALL 709s false alarm: both watchdog copies measured from `_lastBatchOkMs` alone, so the first check after the 12-min designed upload pause screamed before the first post-pause batch could complete; both now measure from `max(lastBatchOk, designedPauseSeen)` (the always-runs state.js copy stamps the pause as it happens).
+- [ ] **WI12M.4** ⏳ GEE: **Update & SAVESTART** (teach-path change only — no geometry change, the 12M fresh-walk state resumes; the donor reconnect replays the ~12min upload, expected). Then verify: `[WORD-INT]` split lines appear, per-word total falls from ~13,700ms to well under 1s, `teachCallsPerMin` climbs back toward the known-good band, BLOCKED pins above ~2s stop appearing under `_teachWordIntegrated`.
+
+---
+
 ## TFLOOR — 2026-08-16 · the RE-press died a SECOND death: the box env's 180s upload timeout starves the 2.9GB intra
 
 > Gee (verbatim): *"why dont you check becasue the server console lighting up like a mutherfucker is not normalsparse chunked upload reqId=1 name=cortex_intraSynapses timed out after 180000ms"*
