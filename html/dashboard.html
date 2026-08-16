@@ -2457,12 +2457,24 @@
         const lv = c.liveness;
         const rate = lv.teachCallsPerMin | 0;
         const sinceS = (lv.sinceLastTeachMs == null) ? null : Math.round(lv.sinceLastTeachMs / 1000);
-        const alive = rate > 0 || (sinceS !== null && sinceS < 30);
+        // EM.2 — emission ticks are LIVENESS too. Emission-heavy phases
+        // (phoneme blending, word emission, batteries) legitimately run
+        // minutes at 0 teach/min while emitting thousands of ticks — that
+        // combination read as "stuck" and scared the operator. Alive =
+        // teaching OR emitting, and the emitting rate is shown by name.
+        const emitRate = lv.emissionTicksPerMin | 0;
+        const sinceEmitS = (lv.sinceLastEmitTickMs == null) ? null : Math.round(lv.sinceLastEmitTickMs / 1000);
+        const alive = rate > 0 || (sinceS !== null && sinceS < 30)
+          || emitRate > 0 || (sinceEmitS !== null && sinceEmitS < 30);
         const colour = alive ? '#4ade80' : '#f87171';
         const gate = lv.probeGateActive
           ? ' &middot; <span style="color:#fbbf24;">spikes paused &mdash; probe gate (expected)</span>'
           : '';
+        const emitBit = emitRate > 0
+          ? ` &middot; <span style="color:#a78bfa;">${emitRate.toLocaleString()} emit-ticks/min (emission phase)</span>`
+          : '';
         pctLabel += `<br><span style="color:${colour};">${rate.toLocaleString()} teach/min</span>`
+          + emitBit
           + (sinceS === null ? '' : ` &middot; last teach ${sinceS}s ago`)
           + gate;
       }

@@ -2794,6 +2794,18 @@ export class Curriculum {
           this._teachTickCount = (this._teachTickCount | 0) + 1;
           return result;
         } finally {
+          // EM.1 - PER-METHOD WALL-MS PROFILE. The week's law: NAME the cost
+          // before cutting it. Inclusive time per method (primitives are
+          // leaves in practice, so inclusive ~= self time for them; cell
+          // phases include their children, which is itself informative).
+          // Bounded: one entry per TRACKED method name. Published as the
+          // top-8 by ms in getCurriculumStatus().liveness.teachProfile.
+          {
+            if (!this._teachProfile) this._teachProfile = Object.create(null);
+            const _pf = this._teachProfile[name] || (this._teachProfile[name] = { ms: 0, calls: 0 });
+            _pf.ms += Date.now() - token.startAt;
+            _pf.calls += 1;
+          }
           // Remove THIS call BY IDENTITY - never by position, never by
           // overwriting with a value saved before an await. A call that
           // finishes out of order can then only remove itself; whatever is
@@ -3207,10 +3219,40 @@ export class Curriculum {
         // run: a cell that has been going for hours would otherwise average its
         // way straight through a genuine stall without the number moving.
         if (spanMs >= 60000) this._teachRateWindow = { atMs: now, count };
+        // EM.2 - EMISSION-TICK LIVENESS. Emission-heavy phases (phoneme
+        // blending, word emission, batteries) legitimately run MINUTES with
+        // zero wrapped teach calls - the work is emission ticks, which are
+        // not teach calls - so teachCallsPerMin alone read 0 and scared the
+        // operator (Gee, 2026-08-16: "is our girl okay? 0 teach/min?????").
+        // Same rolling-window pattern over the cluster's emission-tick
+        // counter, so ONE snapshot separates "emitting" from "stuck" too.
+        let emitRate = 0;
+        let sinceEmit = null;
+        if (cluster) {
+          const ec = cluster._emitTickCount | 0;
+          if (!this._emitRateWindow) this._emitRateWindow = { atMs: now, count: ec };
+          const ew = this._emitRateWindow;
+          const eSpan = now - ew.atMs;
+          emitRate = eSpan > 0 ? Math.round(((ec - ew.count) * 60000) / eSpan) : 0;
+          if (eSpan >= 60000) this._emitRateWindow = { atMs: now, count: ec };
+          sinceEmit = cluster._lastEmitTickMs ? (now - cluster._lastEmitTickMs) : null;
+        }
+        // EM.1 - top-8 wall-ms offenders from the per-method profile, so the
+        // next optimization is chosen by numbers read off this payload.
+        let teachProfile = null;
+        if (this._teachProfile) {
+          teachProfile = Object.entries(this._teachProfile)
+            .map(([n, p]) => ({ name: n, ms: p.ms | 0, calls: p.calls | 0 }))
+            .sort((a, b) => b.ms - a.ms)
+            .slice(0, 8);
+        }
         return {
           teachCallsPerMin: rate,
           sinceLastTeachMs: this._lastTeachAtMs ? (now - this._lastTeachAtMs) : null,
           probeGateActive: !!(cluster && cluster._probeGateActive),
+          emissionTicksPerMin: emitRate,
+          sinceLastEmitTickMs: sinceEmit,
+          teachProfile,
         };
       })(),
       activePhase,
