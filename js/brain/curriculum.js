@@ -18973,62 +18973,77 @@ export class Curriculum {
     // NAMES where each word's time goes instead of leaving it to inference.
     const _wiT = { l12: 0, l3: 0, l3b: 0, l1b: 0, l4: 0 };
     let _wiMark = 0;
+
+    // === Layers 1+2 (per-letter identity), LETTERS-MAJOR (12M cut round 3) ===
+    // Telemetry named l12 at 2,606ms/word: this loop lived INSIDE the outer
+    // 12-rep loop, so each letter's IDENTICAL patterns were cleared + rewritten
+    // (letter 600K + phon 2.4M + motor 276K cells at the 12M cortex) twelve
+    // times per word, and every _crossRegionHebbian call re-scanned those
+    // regions from scratch. Letters-major writes each letter's patterns ONCE,
+    // reps the Hebbian inside, and hands _crossRegionHebbian a spkCacheToken so
+    // the region scans run once per letter (generation-guarded in hebbian.js —
+    // any foreign scan invalidates and forces a rescan). Training set + update
+    // COUNTS are identical; only the update ORDER changes (all reps of letter i
+    // complete before letter i+1 instead of interleaving across the outer
+    // loop) — Hebbian/Oja on the same static patterns converges to the same
+    // basins; the per-letter identity carving has no cross-letter interaction
+    // beyond weight-state evolution order.
+    // CELL-TEACH SPEED (Gee 2026-07-15, retained): the CPU-shadow whitelist Oja
+    // runs on the FINAL rep only, sampled every 5th call — GPU hebbianBound
+    // fires every rep so GPU weights stay current; probes read CPU arrays after
+    // the final rep. Sem is NOT overlaid during per-letter fires: overlaying
+    // sem(word) on every letter writes conflicting sem→motor fires that Oja
+    // normalizes to noise — the dedicated Layer 3 pass below owns
+    // sem→motor(first letter).
+    _wiMark = Date.now();
+    for (let i = 0; i < letters.length; i++) {
+      if (typeof globalThis._brainShutdownRequested !== 'undefined' && globalThis._brainShutdownRequested) return;
+      const ch = letters[i];
+      const chOneHot = encodeLetter(ch);
+      const phonFeat = _phonemeFeatureForLetter(ch);
+
+      _clearRegionSpans(['letter', 'phon', 'motor']);   // once per LETTER now (was per letter × per rep)
+
+      const letterPat = buildPattern(letterSize, chOneHot, wScratch.letterPat);
+      for (let j = 0; j < letterSize; j++) {
+        cluster.lastSpikes[letterRegion.start + j] = letterPat[j] > 0 ? 1 : 0;
+      }
+      if (phonRegion && phonFeat.length > 0 && wScratch.phonPat) {
+        const phonPat = buildPattern(phonSize, phonFeat, wScratch.phonPat);
+        for (let j = 0; j < phonSize; j++) {
+          cluster.lastSpikes[phonRegion.start + j] = phonPat[j] > 0 ? 1 : 0;
+        }
+      }
+      const motorPat = buildPattern(motorSize, chOneHot, wScratch.motorPat);
+      for (let j = 0; j < motorSize; j++) {
+        cluster.lastSpikes[motorRegion.start + j] = motorPat[j] > 0 ? 1 : 0;
+      }
+      // NO sem overlay here — see header comment.
+
+      // Scope cross-region Hebbian to projections actually touching the
+      // active regions (letter / phon / motor — sem is silent in Layer 1+2).
+      layer12Opts.spkCacheToken = `wi:${cleanWord}:${i}`;
+      for (let rep = 0; rep < reps; rep++) {
+        cluster._teachIntermediateRep = rep < reps - 1;
+        cluster._teachFinalRepSampleEveryN = (rep === reps - 1) ? 5 : 0;
+        await cluster._crossRegionHebbian(lr, layer12Opts);
+      }
+    }
+    layer12Opts.spkCacheToken = undefined;
+    _wiT.l12 += Date.now() - _wiMark;
+
     for (let rep = 0; rep < reps; rep++) {
       if (typeof globalThis._brainShutdownRequested !== 'undefined' && globalThis._brainShutdownRequested) return;
 
-      // CELL-TEACH SPEED (Gee 2026-07-15) — the per-letter cost. WORD-INT scaled
-      // ~2s/letter (blow=7s → caterpillar=25s) because the per-letter Layer 1+2
-      // _crossRegionHebbian ran the probe-critical CPU-shadow Oja (letter_to_phon
-      // + letter_to_motor) on EVERY rep. The GPU hebbianBound fires every rep
-      // (weights current); the post-teach gate probe reads the CPU shadow only
-      // ONCE per word — so mirror the PROVEN _teachWordEmission fast path: update
-      // the CPU shadow only on the FINAL rep, sampled every 5th call. Cluster-level
-      // flags read by cluster/hebbian.js (skipCpuWhitelist / final-rep sampling);
-      // reset after the loop so they never leak to other teach paths.
+      // Final-rep CPU-shadow gating flags for the direct-projection layers
+      // below (3/3b/4 read _isFinalRep directly; the cluster-level flags are
+      // kept in the same cycle so any nested _crossRegionHebbian caller sees
+      // consistent rep state). Reset after the loop.
       const _isFinalRep = rep === reps - 1;
       cluster._teachIntermediateRep = !_isFinalRep;
       cluster._teachFinalRepSampleEveryN = _isFinalRep ? 5 : 0;
 
-      // === Layers 1+2 (per-letter identity): letter(ch)+phon(ch)+motor(ch) ===
-      // Sem is NOT overlaid during per-letter fires. Overlaying sem(word)
-      // on every letter (c, a, t for "cat") writes three conflicting
-      // sem→motor Hebbian fires per rep — sem(cat)→motor(c),
-      // sem(cat)→motor(a), sem(cat)→motor(t) — which Oja normalizes to
-      // noise. Net effect: sem(cat)→argmax decodes random letter. Fix:
-      // keep sem silent during per-letter identity carving so
-      // letter_to_phon and letter_to_motor (identity) get clean signal,
-      // and use a dedicated clean pass (below) for sem→motor(first letter).
       _wiMark = Date.now();
-      for (let i = 0; i < letters.length; i++) {
-        const ch = letters[i];
-        const chOneHot = encodeLetter(ch);
-        const phonFeat = _phonemeFeatureForLetter(ch);
-
-        _clearRegionSpans(['letter', 'phon', 'motor']);   // was a full 1.5M clear PER LETTER × PER REP — the K-cell 100× pin
-
-        const letterPat = buildPattern(letterSize, chOneHot, wScratch.letterPat);
-        for (let j = 0; j < letterSize; j++) {
-          cluster.lastSpikes[letterRegion.start + j] = letterPat[j] > 0 ? 1 : 0;
-        }
-        if (phonRegion && phonFeat.length > 0 && wScratch.phonPat) {
-          const phonPat = buildPattern(phonSize, phonFeat, wScratch.phonPat);
-          for (let j = 0; j < phonSize; j++) {
-            cluster.lastSpikes[phonRegion.start + j] = phonPat[j] > 0 ? 1 : 0;
-          }
-        }
-        const motorPat = buildPattern(motorSize, chOneHot, wScratch.motorPat);
-        for (let j = 0; j < motorSize; j++) {
-          cluster.lastSpikes[motorRegion.start + j] = motorPat[j] > 0 ? 1 : 0;
-        }
-        // NO sem overlay here — see header comment.
-
-        // Scope cross-region Hebbian to projections actually touching
-        // the active regions (letter / phon / motor — sem is silent in
-        // Layer 1+2). Whitelist hoisted outside the rep loop above.
-        await cluster._crossRegionHebbian(lr, layer12Opts);
-      }
-
-      _wiT.l12 += Date.now() - _wiMark; _wiMark = Date.now();
       // === Layer 3 (CLEAN sem→motor first-letter carve, DIRECT projection) ===
       // Targeted Oja update on `sem_to_motor` ONLY. Does NOT call
       // `_crossRegionHebbian` because that iterates ALL projections — and

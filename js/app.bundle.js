@@ -53402,12 +53402,22 @@ var CLUSTER_HEBBIAN_MIXIN = {
     const skipCpuWhitelist = opts.skipCpuWhitelist === true || this._teachIntermediateRep === true;
     const wl = opts.projectionsWhitelist;
     const whitelistSet = wl ? wl instanceof Set ? wl : new Set(wl) : null;
-    const _spkCache = /* @__PURE__ */ new Map();
+    let _spkCache;
+    const _spkTok = opts.spkCacheToken;
+    if (_spkTok !== void 0 && this._spkTokCache && this._spkTokCache.token === _spkTok && this._spkTokCache.gen === (this._regionScratchGen | 0)) {
+      _spkCache = this._spkTokCache.map;
+    } else {
+      _spkCache = /* @__PURE__ */ new Map();
+      this._spkTokCache = _spkTok !== void 0 ? { token: _spkTok, map: _spkCache, gen: -1 } : null;
+    }
     const _spk = (regionName) => {
       let e = _spkCache.get(regionName);
       if (!e) {
         e = this.regionSpikesActive(regionName);
         _spkCache.set(regionName, e);
+        if (this._spkTokCache && this._spkTokCache.map === _spkCache) {
+          this._spkTokCache.gen = this._regionScratchGen | 0;
+        }
       }
       return e;
     };
@@ -56105,6 +56115,7 @@ var NeuronCluster = class {
    * @returns {{vec: Float64Array, active: number[]}}
    */
   regionSpikesActive(regionName) {
+    this._regionScratchGen = (this._regionScratchGen | 0) + 1;
     const region = this.regions[regionName];
     if (!region) return { vec: new Float64Array(0), active: [] };
     const len = region.end - region.start;
@@ -108038,34 +108049,41 @@ var Curriculum = class _Curriculum {
     const motorFirstLetter = buildPattern(motorSize, firstLetterOneHot, wScratch.motorFirstLetterBuf);
     const _wiT = { l12: 0, l3: 0, l3b: 0, l1b: 0, l4: 0 };
     let _wiMark = 0;
+    _wiMark = Date.now();
+    for (let i = 0; i < letters.length; i++) {
+      if (typeof globalThis._brainShutdownRequested !== "undefined" && globalThis._brainShutdownRequested) return;
+      const ch = letters[i];
+      const chOneHot = encodeLetter(ch);
+      const phonFeat = _phonemeFeatureForLetter(ch);
+      _clearRegionSpans(["letter", "phon", "motor"]);
+      const letterPat = buildPattern(letterSize, chOneHot, wScratch.letterPat);
+      for (let j = 0; j < letterSize; j++) {
+        cluster.lastSpikes[letterRegion.start + j] = letterPat[j] > 0 ? 1 : 0;
+      }
+      if (phonRegion && phonFeat.length > 0 && wScratch.phonPat) {
+        const phonPat = buildPattern(phonSize, phonFeat, wScratch.phonPat);
+        for (let j = 0; j < phonSize; j++) {
+          cluster.lastSpikes[phonRegion.start + j] = phonPat[j] > 0 ? 1 : 0;
+        }
+      }
+      const motorPat = buildPattern(motorSize, chOneHot, wScratch.motorPat);
+      for (let j = 0; j < motorSize; j++) {
+        cluster.lastSpikes[motorRegion.start + j] = motorPat[j] > 0 ? 1 : 0;
+      }
+      layer12Opts.spkCacheToken = `wi:${cleanWord}:${i}`;
+      for (let rep = 0; rep < reps; rep++) {
+        cluster._teachIntermediateRep = rep < reps - 1;
+        cluster._teachFinalRepSampleEveryN = rep === reps - 1 ? 5 : 0;
+        await cluster._crossRegionHebbian(lr, layer12Opts);
+      }
+    }
+    layer12Opts.spkCacheToken = void 0;
+    _wiT.l12 += Date.now() - _wiMark;
     for (let rep = 0; rep < reps; rep++) {
       if (typeof globalThis._brainShutdownRequested !== "undefined" && globalThis._brainShutdownRequested) return;
       const _isFinalRep = rep === reps - 1;
       cluster._teachIntermediateRep = !_isFinalRep;
       cluster._teachFinalRepSampleEveryN = _isFinalRep ? 5 : 0;
-      _wiMark = Date.now();
-      for (let i = 0; i < letters.length; i++) {
-        const ch = letters[i];
-        const chOneHot = encodeLetter(ch);
-        const phonFeat = _phonemeFeatureForLetter(ch);
-        _clearRegionSpans(["letter", "phon", "motor"]);
-        const letterPat = buildPattern(letterSize, chOneHot, wScratch.letterPat);
-        for (let j = 0; j < letterSize; j++) {
-          cluster.lastSpikes[letterRegion.start + j] = letterPat[j] > 0 ? 1 : 0;
-        }
-        if (phonRegion && phonFeat.length > 0 && wScratch.phonPat) {
-          const phonPat = buildPattern(phonSize, phonFeat, wScratch.phonPat);
-          for (let j = 0; j < phonSize; j++) {
-            cluster.lastSpikes[phonRegion.start + j] = phonPat[j] > 0 ? 1 : 0;
-          }
-        }
-        const motorPat = buildPattern(motorSize, chOneHot, wScratch.motorPat);
-        for (let j = 0; j < motorSize; j++) {
-          cluster.lastSpikes[motorRegion.start + j] = motorPat[j] > 0 ? 1 : 0;
-        }
-        await cluster._crossRegionHebbian(lr, layer12Opts);
-      }
-      _wiT.l12 += Date.now() - _wiMark;
       _wiMark = Date.now();
       const semToMotor = cluster.crossProjections?.sem_to_motor;
       if (semRegion && wordEmb && wordEmb.length > 0 && semToMotor) {

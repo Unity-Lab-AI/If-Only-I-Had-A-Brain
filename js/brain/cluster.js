@@ -1364,6 +1364,12 @@ export class NeuronCluster {
    * @returns {{vec: Float64Array, active: number[]}}
    */
   regionSpikesActive(regionName) {
+    // Scan-generation counter (12M cut round 3) — every call refills the
+    // shared per-region scratch, so any consumer holding references across
+    // calls (the _crossRegionHebbian spkCacheToken reuse) must know a refill
+    // happened. Bumped unconditionally at entry; the token cache compares
+    // generations and rescans when ANY caller touched the scratch since.
+    this._regionScratchGen = (this._regionScratchGen | 0) + 1;
     const region = this.regions[regionName];
     if (!region) return { vec: new Float64Array(0), active: [] };
     const len = region.end - region.start;
