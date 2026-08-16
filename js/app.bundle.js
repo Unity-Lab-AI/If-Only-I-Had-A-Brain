@@ -53402,6 +53402,15 @@ var CLUSTER_HEBBIAN_MIXIN = {
     const skipCpuWhitelist = opts.skipCpuWhitelist === true || this._teachIntermediateRep === true;
     const wl = opts.projectionsWhitelist;
     const whitelistSet = wl ? wl instanceof Set ? wl : new Set(wl) : null;
+    const _spkCache = /* @__PURE__ */ new Map();
+    const _spk = (regionName) => {
+      let e = _spkCache.get(regionName);
+      if (!e) {
+        e = this.regionSpikesActive(regionName);
+        _spkCache.set(regionName, e);
+      }
+      return e;
+    };
     for (const [name, proj] of Object.entries(this.crossProjections)) {
       if (whitelistSet && !whitelistSet.has(name)) continue;
       const idx = name.indexOf("_to_");
@@ -53442,8 +53451,8 @@ var CLUSTER_HEBBIAN_MIXIN = {
               continue;
             }
           }
-          const preS = this.regionSpikesActive(src);
-          const postS = this.regionSpikesActive(dst);
+          const preS = _spk(src);
+          const postS = _spk(dst);
           const preF2 = preS.vec;
           const postF2 = postS.vec;
           const activeRows = postS.active;
@@ -53459,8 +53468,8 @@ var CLUSTER_HEBBIAN_MIXIN = {
       }
       if (this.requireGpuSubstrate) {
         if (this._gpuProxy && this._gpuProxy.hebbian) {
-          const preU = this.regionSpikesActive(src);
-          const postU = this.regionSpikesActive(dst);
+          const preU = _spk(src);
+          const postU = _spk(dst);
           try {
             this._gpuProxy.hebbian(`${this.name}_${name}`, preU.vec, postU.vec, lrEff);
           } catch {
@@ -53478,8 +53487,8 @@ var CLUSTER_HEBBIAN_MIXIN = {
         }
         continue;
       }
-      const preS2 = this.regionSpikesActive(src);
-      const postS2 = this.regionSpikesActive(dst);
+      const preS2 = _spk(src);
+      const postS2 = _spk(dst);
       const preF = preS2.vec;
       const postF = postS2.vec;
       const activeRows2 = postS2.active;
@@ -53599,9 +53608,34 @@ var CLUSTER_HEBBIAN_MIXIN = {
   // #37 + TIME-SLICED — chunked CPU anti-Hebbian; same adaptive ~30ms
   // slicing as _ojaUpdateChunked (shared chunk-size state so both paths
   // converge together). Identical math; row-independent.
-  async _antiHebbianChunked(mat, preF, postF, lr) {
+  async _antiHebbianChunked(mat, preF, postF, lr, opts) {
     const rows = mat.rows | 0;
     if (!this._ojaChunkRows) this._ojaChunkRows = 65536;
+    const activeRows = opts && opts.activeRows;
+    if (activeRows) {
+      const n = activeRows.length | 0;
+      const ACTIVE_SLICE_MIN = 2048;
+      if (n <= ACTIVE_SLICE_MIN) {
+        mat.antiHebbianUpdate(preF, postF, lr, { activeRows });
+        return;
+      }
+      const rowsList = Array.prototype.slice.call(activeRows);
+      const total = rowsList.length;
+      if (!this._ojaActiveChunk) this._ojaActiveChunk = 8192;
+      const yieldMacroA = typeof setImmediate === "function" ? () => new Promise((r) => setImmediate(r)) : () => new Promise((r) => setTimeout(r, 0));
+      for (let i = 0; i < total; ) {
+        const chunk = this._ojaActiveChunk;
+        const j = Math.min(i + chunk, total);
+        const t0 = Date.now();
+        mat.antiHebbianUpdate(preF, postF, lr, { activeRows: rowsList.slice(i, j) });
+        const dt = Date.now() - t0;
+        i = j;
+        if (dt > 60 && chunk > 1024) this._ojaActiveChunk = Math.max(1024, chunk >> 1);
+        else if (dt < 15 && chunk < 65536) this._ojaActiveChunk = chunk << 1;
+        await yieldMacroA();
+      }
+      return;
+    }
     if (rows <= 65536) {
       const _t0 = Date.now();
       mat.antiHebbianUpdate(preF, postF, lr);
@@ -53755,7 +53789,11 @@ var CLUSTER_HEBBIAN_MIXIN = {
     const BIOLOGICAL_SCALE_SYNC_THRESHOLD = 1e5;
     const atBioScale = (this.size | 0) > BIOLOGICAL_SCALE_SYNC_THRESHOLD;
     if (atBioScale) {
-      await this._ojaUpdateChunked(this.synapses, pre, post, lr);
+      const _act = [];
+      for (let _i = 0; _i < post.length; _i++) {
+        if (post[_i]) _act.push(_i);
+      }
+      await this._ojaUpdateChunked(this.synapses, pre, post, lr, { activeRows: _act });
     } else if (this._sparsePool && this._sparsePool.ready) {
       try {
         await this._sparsePool.hebbianUpdate(this.synapses, pre, post, lr);
@@ -53855,7 +53893,11 @@ var CLUSTER_HEBBIAN_MIXIN = {
     const BIOLOGICAL_SCALE_SYNC_THRESHOLD = 1e5;
     const atBioScale = (this.size | 0) > BIOLOGICAL_SCALE_SYNC_THRESHOLD;
     if (atBioScale) {
-      await this._antiHebbianChunked(this.synapses, pre, post, lr);
+      const _act = [];
+      for (let _i = 0; _i < post.length; _i++) {
+        if (post[_i]) _act.push(_i);
+      }
+      await this._antiHebbianChunked(this.synapses, pre, post, lr, { activeRows: _act });
     } else if (this._sparsePool && this._sparsePool.ready && typeof this._sparsePool.antiHebbianUpdate === "function") {
       try {
         await this._sparsePool.antiHebbianUpdate(this.synapses, pre, post, lr);
@@ -55405,20 +55447,28 @@ function injectEmbeddingToRegionOffset(cluster, regionName, emb, strength, offse
   const haveProxy = !!(cluster._gpuProxy && cluster._gpuProxy.writeCurrentSlice);
   const fwdIndices = haveProxy ? [] : null;
   const fwdValues = haveProxy ? [] : null;
+  const tmplWire = haveProxy && !!(cluster._brain && cluster._brain._tmplTeachOk === true);
+  const tmplValues = haveProxy ? [] : null;
+  let tmplNonZero = false;
   for (let d = 0; d < emb.length; d++) {
     const value = emb[d] * INJECTION_GAIN * (strength ?? 1);
+    if (tmplValues) {
+      tmplValues.push(value);
+      if (value !== 0) tmplNonZero = true;
+    }
     const startNeuron = sliceStart + d * gSize;
     for (let n = 0; n < gSize; n++) {
       const idx = startNeuron + n;
       if (idx >= region.end) break;
       cluster.externalCurrent[idx] += value;
-      if (fwdIndices && value !== 0) {
+      if (fwdIndices && !tmplWire && value !== 0) {
         fwdIndices.push(idx - region.start);
         fwdValues.push(value);
       }
     }
   }
-  if (haveProxy && fwdIndices.length > 0) {
+  if (haveProxy && (fwdIndices.length > 0 || tmplWire && tmplNonZero)) {
+    fwdValues._template = { rowStart: sliceStart - region.start, groupSize: gSize, values: tmplValues };
     try {
       cluster._gpuProxy.writeCurrentSlice(regionName, fwdIndices, fwdValues);
     } catch {
@@ -56099,8 +56149,15 @@ var NeuronCluster = class {
         this.externalCurrent[i] = 0;
       }
     }
+    const tmplWire = haveProxy && !!(this._brain && this._brain._tmplTeachOk === true);
+    const tmplValues = haveProxy ? [] : null;
+    let tmplNonZero = false;
     for (let d = 0; d < emb.length; d++) {
       const value = emb[d] * INJECTION_GAIN * strength;
+      if (tmplValues) {
+        tmplValues.push(value);
+        if (value !== 0) tmplNonZero = true;
+      }
       const startNeuron = region.start + d * groupSize;
       for (let n = 0; n < groupSize; n++) {
         const idx = startNeuron + n;
@@ -56110,13 +56167,14 @@ var NeuronCluster = class {
         } else {
           this.externalCurrent[idx] += value;
         }
-        if (fwdIndices && value !== 0) {
+        if (fwdIndices && !tmplWire && value !== 0) {
           fwdIndices.push(idx - region.start);
           fwdValues.push(value);
         }
       }
     }
-    if (haveProxy && fwdIndices.length > 0) {
+    if (haveProxy && (fwdIndices.length > 0 || tmplWire && tmplNonZero)) {
+      fwdValues._template = { rowStart: 0, groupSize, values: tmplValues };
       try {
         this._gpuProxy.writeCurrentSlice(regionName, fwdIndices, fwdValues);
       } catch {
@@ -102359,14 +102417,16 @@ var Curriculum = class _Curriculum {
     const fwdIndices = haveProxy ? [] : null;
     const fwdValues = haveProxy ? [] : null;
     const value = 8 * strength;
+    const tmplWire = haveProxy && !!(cluster._brain && cluster._brain._tmplTeachOk === true);
     for (let i = slotStart; i < slotEnd; i++) {
       cluster.externalCurrent[i] += value;
-      if (fwdIndices) {
+      if (fwdIndices && !tmplWire) {
         fwdIndices.push(i - fineType.start);
         fwdValues.push(value);
       }
     }
-    if (haveProxy && fwdIndices.length > 0) {
+    if (haveProxy && (fwdIndices.length > 0 || tmplWire && value !== 0)) {
+      fwdValues._template = { rowStart: slotStart - fineType.start, groupSize: slotEnd - slotStart, values: [value] };
       try {
         cluster._gpuProxy.writeCurrentSlice("fineType", fwdIndices, fwdValues);
       } catch {
@@ -103626,20 +103686,28 @@ var Curriculum = class _Curriculum {
     const haveProxy = !!(cluster._gpuProxy && cluster._gpuProxy.writeCurrentSlice);
     const fwdIndices = haveProxy ? [] : null;
     const fwdValues = haveProxy ? [] : null;
+    const tmplWire = haveProxy && !!(cluster._brain && cluster._brain._tmplTeachOk === true);
+    const tmplValues = haveProxy ? [] : null;
+    let tmplNonZero = false;
     for (let d = 0; d < emb.length; d++) {
       const value = emb[d] * 8 * (strength ?? 1);
+      if (tmplValues) {
+        tmplValues.push(value);
+        if (value !== 0) tmplNonZero = true;
+      }
       const startNeuron = sliceStart + d * gSize;
       for (let n = 0; n < gSize; n++) {
         const idx = startNeuron + n;
         if (idx >= region.end) break;
         cluster.externalCurrent[idx] += value;
-        if (fwdIndices && value !== 0) {
+        if (fwdIndices && !tmplWire && value !== 0) {
           fwdIndices.push(idx - region.start);
           fwdValues.push(value);
         }
       }
     }
-    if (haveProxy && fwdIndices.length > 0) {
+    if (haveProxy && (fwdIndices.length > 0 || tmplWire && tmplNonZero)) {
+      fwdValues._template = { rowStart: sliceStart - region.start, groupSize: gSize, values: tmplValues };
       try {
         cluster._gpuProxy.writeCurrentSlice(regionName, fwdIndices, fwdValues);
       } catch {

@@ -166,22 +166,26 @@ function injectEmbeddingToRegionOffset(cluster, regionName, emb, strength, offse
   const haveProxy = !!(cluster._gpuProxy && cluster._gpuProxy.writeCurrentSlice);
   const fwdIndices = haveProxy ? [] : null;
   const fwdValues = haveProxy ? [] : null;
+  // TW S4 — skip the wire-dead expanded arrays when templates ride (see
+  // injectEmbeddingToRegion). tmplNonZero preserves the all-zero no-op.
+  const tmplWire = haveProxy && !!(cluster._brain && cluster._brain._tmplTeachOk === true);
   const tmplValues = haveProxy ? [] : null;
+  let tmplNonZero = false;
   for (let d = 0; d < emb.length; d++) {
     const value = emb[d] * INJECTION_GAIN * (strength ?? 1.0);
-    if (tmplValues) tmplValues.push(value);
+    if (tmplValues) { tmplValues.push(value); if (value !== 0) tmplNonZero = true; }
     const startNeuron = sliceStart + d * gSize;
     for (let n = 0; n < gSize; n++) {
       const idx = startNeuron + n;
       if (idx >= region.end) break;
       cluster.externalCurrent[idx] += value;
-      if (fwdIndices && value !== 0) {
+      if (fwdIndices && !tmplWire && value !== 0) {
         fwdIndices.push(idx - region.start);
         fwdValues.push(value);
       }
     }
   }
-  if (haveProxy && fwdIndices.length > 0) {
+  if (haveProxy && (fwdIndices.length > 0 || (tmplWire && tmplNonZero))) {
     // TEMPLATE FORM (donor-v0.3.16) — offset variant: rowStart is the slice
     // offset within the region. See injectEmbeddingToRegion for the rationale.
     fwdValues._template = { rowStart: sliceStart - region.start, groupSize: gSize, values: tmplValues };
@@ -1427,10 +1431,20 @@ export class NeuronCluster {
         this.externalCurrent[i] = 0;
       }
     }
+    // TW S4 — when the donor wire speaks TEMPLATE current frames (v0.3.16,
+    // negotiated per socket and cached on the brain as _tmplTeachOk), the
+    // expanded (idx,val) arrays are DEAD WEIGHT: the sender ships only the
+    // template. Skip building them (~100k+ array pushes per injection at the
+    // grown cortex); the CPU externalCurrent loop below is authoritative and
+    // unchanged. tmplNonZero preserves the old no-op semantics: an all-zero
+    // injection previously sent NOTHING (empty pair list), so it must not
+    // start shipping a zeroing template.
+    const tmplWire = haveProxy && !!(this._brain && this._brain._tmplTeachOk === true);
     const tmplValues = haveProxy ? [] : null;
+    let tmplNonZero = false;
     for (let d = 0; d < emb.length; d++) {
       const value = emb[d] * INJECTION_GAIN * strength;
-      if (tmplValues) tmplValues.push(value);
+      if (tmplValues) { tmplValues.push(value); if (value !== 0) tmplNonZero = true; }
       const startNeuron = region.start + d * groupSize;
       for (let n = 0; n < groupSize; n++) {
         const idx = startNeuron + n;
@@ -1440,7 +1454,7 @@ export class NeuronCluster {
         } else {
           this.externalCurrent[idx] += value;
         }
-        if (fwdIndices && value !== 0) {
+        if (fwdIndices && !tmplWire && value !== 0) {
           // Index relative to region start — matches main-cortex
           // first-N sub-slice where Phase C pattern writes land.
           fwdIndices.push(idx - region.start);
@@ -1448,7 +1462,7 @@ export class NeuronCluster {
         }
       }
     }
-    if (haveProxy && fwdIndices.length > 0) {
+    if (haveProxy && (fwdIndices.length > 0 || (tmplWire && tmplNonZero))) {
       // TEMPLATE FORM (donor-v0.3.16) — this injection is a group-tiled
       // expansion of ~emb.length values, so the whole pattern reconstructs
       // from {rowStart, groupSize, values} (~KB) instead of the expanded
