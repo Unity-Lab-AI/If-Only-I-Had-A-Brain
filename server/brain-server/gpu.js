@@ -1480,6 +1480,49 @@ const SERVER_GPU_MIXIN = {
     return hdr;
   },
 
+  // WS-level message fragmentation for oversized frames (2026-08-16, rode in
+  // with the language-growth hop). The native donor's Rust WebSocket stack
+  // (tungstenite defaults — donor-app sets no custom limits) KILLS the
+  // connection on any single FRAME over ~16MiB, but reassembles a fragmented
+  // MESSAGE up to its 64MiB message cap. At the 12M language cortex the
+  // intra-synapses upload's FIRST chunk carries the whole rowPtr array —
+  // (rows+1)×4 = 48MB — so the frame blew the ceiling and the donor dropped in
+  // a connect→upload→EPIPE loop before the walk could start (live: "first
+  // frame = 51.5MB" → "write EPIPE" every ~6s). The dense type-2 intra
+  // propagate pre-array (12M×4B = 48MB) threatened the same kill on native
+  // donors the moment emission ticked. Splitting at the WS layer is
+  // PROTOCOL-TRANSPARENT: continuation frames reassemble into the identical
+  // message bytes on every receiver (tungstenite AND browsers), so no donor
+  // release and no version gate. All parts are sent in ONE synchronous loop —
+  // Node's single thread + ws's in-order sender guarantee the fragment train
+  // can't be interleaved by another send. cb fires exactly once, after all
+  // parts flush (first error wins) — pacing/backpressure callers see the same
+  // semantics as a single send.
+  // ⚠ 64MiB HARD MESSAGE CAP remains on native donors: at hop 2 (~20M rows)
+  // the intra rowPtr alone is ~80MB — that needs a donor-side protocol change
+  // (segmented rowPtr) + release BEFORE the next growth. Tripwire warn below.
+  _wsSendFrag(ws, buf, cb) {
+    const LIMIT = 15 * 1024 * 1024; // margin under the ~16MiB native frame ceiling
+    if (!buf || buf.length <= LIMIT) { ws.send(buf, cb); return; }
+    if (buf.length > 60 * 1024 * 1024 && (!this._fragCapWarnMs || (Date.now() - this._fragCapWarnMs) > 60000)) {
+      this._fragCapWarnMs = Date.now();
+      console.warn(`[Brain] fragmented WS message is ${(buf.length / 1048576).toFixed(1)}MB — approaching/exceeding the native donor's 64MiB MESSAGE cap. Native donors may refuse it; this is the hop-2 rowPtr-segmentation prerequisite (donor release).`);
+    }
+    const parts = Math.ceil(buf.length / LIMIT);
+    let firstErr = null;
+    let acked = 0;
+    const onPart = (err) => {
+      if (err && !firstErr) firstErr = err;
+      acked++;
+      if (acked === parts && cb) cb(firstErr || undefined);
+    };
+    for (let off = 0; off < buf.length; off += LIMIT) {
+      const slice = buf.subarray(off, Math.min(off + LIMIT, buf.length));
+      const fin = (off + LIMIT) >= buf.length;
+      ws.send(slice, { fin, binary: true }, onPart);
+    }
+  },
+
   async _sparseSendBinary(msgBuffer, reqId, timeoutMs = 120_000, targetWs = null) {
     // DF.7 — dispatch to a chosen donor replica when given, else the primary.
     // The untargeted path (bound-Hebbian batch flush, standalone propagate to
@@ -1619,7 +1662,7 @@ const SERVER_GPU_MIXIN = {
     // browser disconnected mid-await (loop condition `while (this._gpuClient && ...)`
     // exits normally on null; no exception, just falls through here).
     if (!ws || ws.readyState !== 1) return Promise.resolve(null);
-    ws.send(msgBuffer, (err) => {
+    this._wsSendFrag(ws, msgBuffer, (err) => {
       if (err) {
         // Throttle ENOBUFS spam. Earlier logs had ~1200 consecutive
         // identical ENOBUFS lines before the drop-threshold fix.
@@ -1969,7 +2012,7 @@ const SERVER_GPU_MIXIN = {
             : [hdr, chunkMeta, firstMeta, rowPtrBuf, valuesHdr, valuesSlice, colIdxHdr, colIdxSlice])
         : [hdr, chunkMeta, valuesHdr, valuesSlice, colIdxHdr, colIdxSlice];
       const frame = Buffer.concat(pieces);
-      if (isFirst) console.log(`[Brain] sparse upload ${name} first frame = ${(frame.length / 1048576).toFixed(1)}MB (frame ceiling ~16MiB on native donors — tune DREAM_SPARSE_CHUNK_NNZ if this approaches it).`);
+      if (isFirst) console.log(`[Brain] sparse upload ${name} first frame = ${(frame.length / 1048576).toFixed(1)}MB${frame.length > 15 * 1024 * 1024 ? ` — FRAGMENTED into ${Math.ceil(frame.length / (15 * 1024 * 1024))} WS continuation frames (native donor frame ceiling ~16MiB; message reassembles up to 64MiB)` : ' (under the ~16MiB native frame ceiling — sent whole)'}.`);
       // Send chunk. WebSocket preserves order. Wait for the send
       // callback so we don't flood the send buffer with hundreds of
       // MB at once — backpressure per chunk.
@@ -2003,7 +2046,7 @@ const SERVER_GPU_MIXIN = {
         if (!ws || ws.readyState !== 1) break;
       }
       await new Promise((res) => {
-        ws.send(frame, (err) => {
+        this._wsSendFrag(ws, frame, (err) => {
           if (err) {
             const _benignClosed = err.message && (/stream was destroyed|not open|ERR_STREAM_DESTROYED/i.test(err.message));
             if (_benignClosed) {
