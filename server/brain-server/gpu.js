@@ -2043,7 +2043,25 @@ const SERVER_GPU_MIXIN = {
             ? [hdr, chunkMeta, firstMeta, rowPtrBuf, bindingBlock, valuesHdr, valuesSlice, colIdxHdr, colIdxSlice]
             : [hdr, chunkMeta, firstMeta, rowPtrBuf, valuesHdr, valuesSlice, colIdxHdr, colIdxSlice])
         : [hdr, chunkMeta, valuesHdr, valuesSlice, colIdxHdr, colIdxSlice];
-      const frame = Buffer.concat(pieces);
+      // UPLOAD GC FIX (2026-08-16, Gee: "lots of time just being burnt up") —
+      // Buffer.concat allocated a FRESH 6-15MB frame for EVERY chunk (480+
+      // chunks × ~7MB ≈ 3.4GB of transient garbage per canonical upload at
+      // the 12M cortex), and V8 collected it in the ~300ms [EventLoop] BLOCKED
+      // bites that walled the console through every upload window. The loop
+      // AWAITS each send's completion callback before building the next chunk,
+      // so ONE reusable scratch buffer is provably safe: copy the pieces into
+      // it, send a zero-copy subarray view, reuse after the awaited callback.
+      // Grows on demand (the intra's first frame carries the 48MB rowPtr).
+      let _frameLen = 0;
+      for (const p of pieces) _frameLen += p.length;
+      if (!this._uploadChunkScratch || this._uploadChunkScratch.length < _frameLen) {
+        this._uploadChunkScratch = Buffer.allocUnsafe(Math.ceil(_frameLen * 1.25));
+      }
+      {
+        let _off = 0;
+        for (const p of pieces) { p.copy(this._uploadChunkScratch, _off); _off += p.length; }
+      }
+      const frame = this._uploadChunkScratch.subarray(0, _frameLen);
       if (isFirst) console.log(`[Brain] sparse upload ${name} first frame = ${(frame.length / 1048576).toFixed(1)}MB${frame.length > 15 * 1024 * 1024 ? ` — FRAGMENTED into ${Math.ceil(frame.length / (15 * 1024 * 1024))} WS continuation frames (native donor frame ceiling ~16MiB; message reassembles up to 64MiB)` : ' (under the ~16MiB native frame ceiling — sent whole)'}.`);
       // Send chunk. WebSocket preserves order. Wait for the send
       // callback so we don't flood the send buffer with hundreds of
