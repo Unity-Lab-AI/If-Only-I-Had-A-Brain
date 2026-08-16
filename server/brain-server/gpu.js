@@ -3058,6 +3058,34 @@ const SERVER_GPU_MIXIN = {
     return this._tmplTeachOk === true;
   },
 
+  /**
+   * v0.3.17 - does the PRIMARY donor speak TEMPLATE spike frames (type 11)?
+   * The t7 spike-write river was the LAST uncompressed wire lane at the 12M
+   * cortex (live: 403MB of t7 in ~12min vs t10's 4.6MB — every _writeTiledPattern
+   * sem-region mirror shipped ~3MB of expanded u32 indices that the tiled
+   * pattern fully determines). Same TU.20.12 negotiation pattern as the
+   * other capability gates; also stamps `_tmplSpikeOk` for the curriculum's
+   * build-skip (the same-flag law from the current-template lane: the encoder
+   * and the builder consult the SAME flag so a mismatch cannot happen).
+   */
+  _donorSpikeTemplateTeach() {
+    const ws = this._gpuClient;
+    if (!ws) return false;
+    if (this._tmplSpikeWs === ws) return this._tmplSpikeOk === true;
+    this._tmplSpikeWs = ws;
+    this._tmplSpikeOk = false;
+    try {
+      const c = (this.clients && this.clients.get) ? this.clients.get(ws) : null;
+      const v = ((c && c.donorAppVersion) || '').toString().trim();
+      const m = v.match(/^(\d+)\.(\d+)\.(\d+)/);
+      if (m) this._tmplSpikeOk = ((+m[1]) * 1e6 + (+m[2]) * 1e3 + (+m[3])) >= 3017; // 0.3.17
+    } catch { this._tmplSpikeOk = false; }
+    try {
+      console.log(`[Brain] teach-frame TEMPLATE spikes for PRIMARY donor: ${this._tmplSpikeOk ? 'ON (SPRS 11)' : 'off'} (requires >= 0.3.17).`);
+    } catch { /* best-effort */ }
+    return this._tmplSpikeOk === true;
+  },
+
   // Per-SOCKET last-sent teach payload cache ('type:name' -> Buffer). Dies with
   // the socket, so a reconnected donor always receives full frames first - the
   // donor's own cache is per-connection too, keeping both ends in lockstep.
@@ -3099,6 +3127,26 @@ const SERVER_GPU_MIXIN = {
   _gpuWriteCortexSpikeSlice(regionName, sparseIndices) {
     if (!this._gpuClient || this._gpuClient.readyState !== 1) return;
     if (!this._donorPatternLaneOpen()) return;   // BEFORE Array.from/stringify — a shed frame costs zero serialization
+    // TEMPLATE SPIKES (donor-v0.3.17) — the t7 fix. _writeTiledPattern's spike
+    // mirrors are group-tiled patterns fully determined by {rowStart, groupSize,
+    // values}: when the donor speaks type 11, ship the ~KB template and let it
+    // expand at receive into the IDENTICAL Work::WriteSpike the expanded t7
+    // frame produces (spike set where value > 0). At the 12M cortex the
+    // expanded sem-region t7 was ~3MB/frame — 403MB in 12min, the last raw
+    // wire river and the pattern-lane staling driver.
+    const tmplS = sparseIndices && sparseIndices._template;
+    if (tmplS && Array.isArray(tmplS.values) && tmplS.values.length > 0 && this._donorSpikeTemplateTeach()) {
+      const name = `cortex/${regionName}`;
+      const hdr = this._encodeSparseHeader(11, 0, name);
+      const meta = Buffer.alloc(12);
+      meta.writeUInt32LE(tmplS.rowStart >>> 0, 0);
+      meta.writeUInt32LE(Math.max(1, tmplS.groupSize >>> 0), 4);
+      meta.writeUInt32LE(tmplS.values.length >>> 0, 8);
+      const tv = Float32Array.from(tmplS.values);
+      const frame = Buffer.concat([hdr, meta, Buffer.from(tv.buffer, tv.byteOffset, tv.byteLength)]);
+      if (this._donorPatternSendGated(frame)) this._countTeachOut(11, frame.length);
+      return;
+    }
     const arr = Array.isArray(sparseIndices)
       ? sparseIndices
       : (sparseIndices && typeof sparseIndices.length === 'number')
