@@ -108070,6 +108070,7 @@ var Curriculum = class _Curriculum {
     const firstLetterOneHot = encodeLetter(letters[0]);
     const motorFirstLetter = buildPattern(motorSize, firstLetterOneHot, wScratch.motorFirstLetterBuf);
     const _wiT = { l12: 0, l3: 0, l3b: 0, l1b: 0, l4: 0 };
+    const _wiWordStart = Date.now();
     let _wiMark = 0;
     _wiMark = Date.now();
     for (let i = 0; i < letters.length; i++) {
@@ -108246,17 +108247,20 @@ var Curriculum = class _Curriculum {
     cluster._teachIntermediateRep = false;
     cluster._teachFinalRepSampleEveryN = 0;
     {
-      const _p = this._wiProf || (this._wiProf = { words: 0, l12: 0, l3: 0, l3b: 0, l1b: 0, l4: 0, lastLogMs: 0 });
+      const _p = this._wiProf || (this._wiProf = { words: 0, l12: 0, l3: 0, l3b: 0, l1b: 0, l4: 0, other: 0, lastLogMs: 0 });
+      const _layerSum = _wiT.l12 + _wiT.l3 + _wiT.l3b + _wiT.l1b + _wiT.l4;
+      const _other = Math.max(0, Date.now() - _wiWordStart - _layerSum);
       _p.words++;
       _p.l12 += _wiT.l12;
       _p.l3 += _wiT.l3;
       _p.l3b += _wiT.l3b;
       _p.l1b += _wiT.l1b;
       _p.l4 += _wiT.l4;
+      _p.other = (_p.other || 0) + _other;
       if (!_p.lastLogMs || Date.now() - _p.lastLogMs > 3e4) {
         _p.lastLogMs = Date.now();
         const _n = Math.max(1, _p.words);
-        console.log(`[WORD-INT] per-word layer split over ${_p.words} words \u2014 l12(letters)=${Math.round(_p.l12 / _n)}ms l3(carve)=${Math.round(_p.l3 / _n)}ms l3b(contrast)=${Math.round(_p.l3b / _n)}ms l1b(seq)=${Math.round(_p.l1b / _n)}ms l4(templates)=${Math.round(_p.l4 / _n)}ms.`);
+        console.log(`[WORD-INT] per-word layer split over ${_p.words} words \u2014 l12(letters)=${Math.round(_p.l12 / _n)}ms l3(carve)=${Math.round(_p.l3 / _n)}ms l3b(contrast)=${Math.round(_p.l3b / _n)}ms l1b(seq)=${Math.round(_p.l1b / _n)}ms l4(templates)=${Math.round(_p.l4 / _n)}ms other(waits/preamble)=${Math.round((_p.other || 0) / _n)}ms.`);
       }
     }
     this.stats.shortWordsSeen++;
