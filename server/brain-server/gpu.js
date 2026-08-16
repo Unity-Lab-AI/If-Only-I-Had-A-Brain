@@ -3130,6 +3130,53 @@ const SERVER_GPU_MIXIN = {
   },
 
   /**
+   * GINTRA (2026-08-16) — donor-side `langCortex` PSEUDO-CLUSTER carrying the
+   * language cortex's STANDALONE spike space, so the intra-synapse matrix can
+   * bind + train GPU-RESIDENT (hebbian_bound reads this buffer through the
+   * standard binding — the 0.3.17 donor's generic init_cluster/region paths
+   * need NO release). Not in CLUSTER_SIZES → never stepped by compute_batch;
+   * its spike buffer is written solely by the teach-frame TWINS (the t11/t9
+   * duplicates _gpuWriteCortexSpikeSlice/_gpuClearCortexSpikeRegion emit).
+   * Gated on the donor speaking template spikes (≥0.3.17) so the twins only
+   * ever ride the KB-scale template lane. Costs the donor one 12M-cell
+   * spike/current buffer pair (~96MB VRAM).
+   */
+  _gpuInitLangPseudoCluster() {
+    this._langPseudoInit = false;
+    const cortex = this.cortexCluster;
+    if (!cortex || !cortex.regions || !cortex.size) return;
+    if (!this._gpuClient || this._gpuClient.readyState !== 1) return;
+    if (!this._donorSpikeTemplateTeach()) return;   // pre-0.3.17 donor — intra stays CPU exactly as before
+    const all = cortex.regions;
+    const regions = {};
+    for (const [rn, r] of Object.entries(all)) {
+      // Top-level regions only — a sub-band's name extends a parent region's
+      // name (the same structural filter the lamination pass uses); sub-bands
+      // overlap their parents and would double-cover the spike space.
+      let sub = false;
+      for (let p = rn.indexOf('_'); p > 0; p = rn.indexOf('_', p + 1)) {
+        if (all[rn.slice(0, p)]) { sub = true; break; }
+      }
+      if (!sub && r && r.end > r.start) regions[rn] = { start: r.start, end: r.end, side: 'left' };
+    }
+    try {
+      this._gpuClient.send(JSON.stringify({
+        type: 'gpu_init',
+        clusterName: 'langCortex',
+        size: cortex.size,
+        tonicDrive: 0,
+        noiseAmp: 0,
+        lifParams: { tau: 20, Vrest: -65, Vthresh: -50, Vreset: -70, dt: 1, R: 1, tRefrac: 2 },
+        regions,
+      }));
+      this._langPseudoInit = true;
+      console.log(`[Brain] GINTRA — langCortex pseudo-cluster gpu_init sent (${cortex.size.toLocaleString()} neurons, ${Object.keys(regions).length} regions). The intra matrix binds here; teach-frame twins keep its spike space current; hebbian_bound trains it GPU-resident.`);
+    } catch (e) {
+      console.warn('[Brain] GINTRA — pseudo-cluster init send failed:', e && e.message);
+    }
+  },
+
+  /**
    * T17.7 Phase C.1 — ship a sparse spike pattern to the main cortex
    * GPU sub-region slice via the existing write_spike_slice message.
    * sparseIndices are relative to the region's start on the main
@@ -3161,6 +3208,17 @@ const SERVER_GPU_MIXIN = {
       const tv = Float32Array.from(tmplS.values);
       const frame = Buffer.concat([hdr, meta, Buffer.from(tv.buffer, tv.byteOffset, tv.byteLength)]);
       if (this._donorPatternSendGated(frame)) this._countTeachOut(11, frame.length);
+      // GINTRA TWIN — the same template lands in the langCortex pseudo-
+      // cluster's spike space (standalone coordinates: the donor's pseudo
+      // regions are the standalone absolute spans, and this template's
+      // rowStart/indices are region-relative on BOTH targets). ~300–600
+      // bytes; keeps the GPU-bound intra Hebbian reading exactly the
+      // pattern the teach loop wrote.
+      if (this._langPseudoInit === true) {
+        const hdr2 = this._encodeSparseHeader(11, 0, `langCortex/${regionName}`);
+        const frame2 = Buffer.concat([hdr2, meta, Buffer.from(tv.buffer, tv.byteOffset, tv.byteLength)]);
+        if (this._donorPatternSendGated(frame2)) this._countTeachOut(11, frame2.length);
+      }
       return;
     }
     const arr = Array.isArray(sparseIndices)
@@ -3335,6 +3393,12 @@ const SERVER_GPU_MIXIN = {
         // would latch stale forever after the first shed.
         this._patternLaneStale = false;
         this._countTeachOut(9, clearFrame.length);
+      }
+      // GINTRA TWIN — clear the pseudo-cluster's matching region span so the
+      // GPU-bound intra Hebbian never reads a previous pattern's residual spikes.
+      if (this._langPseudoInit === true) {
+        const clearFrame2 = this._encodeSparseHeader(9, 0, `langCortex/${regionName}`);
+        if (this._donorPatternSendGated(clearFrame2)) this._countTeachOut(9, clearFrame2.length);
       }
       return;
     }
