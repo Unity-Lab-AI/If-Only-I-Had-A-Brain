@@ -420,6 +420,11 @@ export const CLUSTER_EMIT_MIXIN = {
     let stableTicks = 0;
 
     for (let tick = 0; tick < maxTicks; tick++) {
+      // EM.2 — emission-tick liveness: counted so an emission-heavy phase
+      // never reads as "0 teach/min = stuck" (teach calls and emission ticks
+      // are different work; liveness publishes both).
+      this._emitTickCount = (this._emitTickCount | 0) + 1;
+      this._lastEmitTickMs = Date.now();
       this.step(0.001);
 
       // STEP 2a — Read motor region as a letter activation vector over
@@ -1891,6 +1896,9 @@ export const CLUSTER_EMIT_MIXIN = {
 
     for (let tick = 0; tick < maxTicks; tick++) {
       ticksRun = tick + 1;
+      // EM.2 — emission-tick liveness (see generateSentence's loop).
+      this._emitTickCount = (this._emitTickCount | 0) + 1;
+      this._lastEmitTickMs = Date.now();
       // The ONLY delta vs generateSentence — full-await cascade per tick.
       await this.stepAwait(0.001);
 

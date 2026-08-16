@@ -218,8 +218,13 @@ const SERVER_GPU_MIXIN = {
           const _c = (this.clients && this.clients.get) ? this.clients.get(this._gpuClient) : null;
           console.error(`[Brain] ⛔ COMPUTE STALL — no compute_batch has COMPLETED in ${(_stallMs / 1000).toFixed(0)}s while a donor is connected. The brain is not stepping: spikes are frozen and the walk cannot pass a gate. donor buffered=${((this._gpuClient.bufferedAmount || 0) / 1048576).toFixed(1)}MB rtt=${_c && _c.rttMs != null ? _c.rttMs : '?'}ms substeps=${substeps}. Suspect the donor link is saturated (teach lane) or the donor cannot service its socket while computing. Rate-limited 30s.`);
         }
-      } else if (this._perfStats && this._perfStats.batchStall && _stallMs <= _STALL_MS) {
-        this._perfStats.batchStall = null;   // recovered — clear the banner
+      } else if (this._perfStats && this._perfStats.batchStall && (_pausedByDesign || _stallMs <= _STALL_MS)) {
+        // EM.4 — recovered OR paused-by-design clears the banner. Without the
+        // paused clause a stall object written just before a probe gate opened
+        // LATCHED for the whole cell (this method is never called while the
+        // gate holds the tick), so `state.perf.batchStall` contradicted the
+        // pause-aware `profiling.throughput.batchPaused` all cell long.
+        this._perfStats.batchStall = null;
       }
     }
     if (!this._gpuClient || this._gpuClient.readyState !== 1) return null;
