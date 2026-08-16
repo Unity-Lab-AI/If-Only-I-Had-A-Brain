@@ -616,6 +616,7 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                     Frame::ClearSpikeRegion { cluster, region } => format!("clear_spike(bin) {cluster}/{region}"),
                     Frame::Repeat { name, .. } => format!("repeat {name}"),
                     Frame::WriteCurrentTemplate { cluster, region, .. } => format!("write_current(tmpl) {cluster}/{region}"),
+                    Frame::WriteSpikeTemplate { cluster, region, .. } => format!("write_spike(tmpl) {cluster}/{region}"),
                 },
                 Work::WriteSpike { cluster, region, .. } => format!("write_spike {cluster}/{region}"),
                 Work::WriteCurrent { cluster, region, .. } => format!("write_current {cluster}/{region}"),
@@ -918,6 +919,22 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                                     }
                                     workq.push(Work::WriteCurrent { cluster, region, indices, values: vals, psi });
                                 }
+                                // v0.3.17 — expand the spike template at receive into the
+                                // IDENTICAL Work::WriteSpike the expanded t7 frame produces:
+                                // dim d with value > 0 sets spikes over
+                                // [row_start + d*group_size, +group_size); region-end
+                                // clipping happens engine-side (indices >= len skip).
+                                Frame::WriteSpikeTemplate { cluster, region, row_start, group_size, values } => {
+                                    let mut indices: Vec<u32> = Vec::with_capacity(values.len() * group_size as usize);
+                                    for (d, &v) in values.iter().enumerate() {
+                                        if v <= 0.0 { continue; }
+                                        let base = row_start + (d as u32) * group_size;
+                                        for n in 0..group_size {
+                                            indices.push(base + n);
+                                        }
+                                    }
+                                    workq.push(Work::WriteSpike { cluster, region, indices });
+                                }
                                 Frame::Hebbian { req_id, name, pre, post, lr } => {
                                     teach_cache.insert((3u8, name.clone()), CachedTeach::Hebbian { name: name.clone(), pre: pre.clone(), post: post.clone(), lr });
                                     workq.push(Work::Frame(Frame::Hebbian { req_id, name, pre, post, lr }));
@@ -1129,6 +1146,19 @@ fn handle_frame(engine: &mut MultiEngine, partials: &mut HashMap<String, Partial
                 }
             }
             let _ = engine.write_current_slice(&cluster, &region, &indices, &vals, psi);
+            None
+        }
+        Frame::WriteSpikeTemplate { cluster, region, row_start, group_size, values } => {
+            // Defensive twin of the receive-layer expansion (identical math).
+            let mut indices: Vec<u32> = Vec::with_capacity(values.len() * group_size as usize);
+            for (d, &v) in values.iter().enumerate() {
+                if v <= 0.0 { continue; }
+                let base = row_start + (d as u32) * group_size;
+                for n in 0..group_size {
+                    indices.push(base + n);
+                }
+            }
+            let _ = engine.write_spike_slice(&cluster, &region, &indices);
             None
         }
     }
