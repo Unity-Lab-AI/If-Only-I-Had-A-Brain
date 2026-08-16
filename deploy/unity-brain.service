@@ -47,11 +47,14 @@ Environment=DREAM_KEEP_STATE=1
 # here. (DREAM_DF7_FANOUT_PROPAGATE stays UNSET/off — fanning READS off a not-yet-
 # synced replica can fail a gate; only enable after replica sync is proven clean.)
 Environment=DREAM_DF7_FANOUT=1
-# Chunked sparse-matrix upload timeout. Default 45s is too short for a slow-link
-# donor (Starlink / high-latency: satellite RTT + jitter + ~15s handover stalls) to
-# RECEIVE a full cross-projection — it times out + never fully replica-syncs. 3min
-# lets satellite-class donors complete the upload and actually share compute.
-Environment=DREAM_SPARSE_UPLOAD_TIMEOUT_MS=180000
+# Chunked sparse-matrix upload timeout. The size-scaled default (payload at
+# DREAM_UPLOAD_MIN_MBPS + margin, capped 30min) governs — an explicit env here
+# acts as a FLOOR-RAISED minimum for slow links (Starlink-class), and since the
+# 2026-08-16 fix it can never LOWER the deadline below what the payload
+# physically needs at the wire rate. The old hard 180000 starved the 12M
+# language cortex's ~2.9GB intra upload (~12min at the real wire) into a
+# timeout-retry loop; the line is removed so the scaled deadline governs.
+# Environment=DREAM_SPARSE_UPLOAD_TIMEOUT_MS=180000
 
 Restart=always
 RestartSec=5
