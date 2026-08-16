@@ -94985,12 +94985,12 @@ var Curriculum = class _Curriculum {
         if (cl && !Array.isArray(cl._phaseStack)) cl._phaseStack = [];
         const stack = cl ? cl._phaseStack : null;
         const isOutermost = stack ? stack.length === 0 : true;
-        const isCellPhase = !!phaseKey && this._declaredPhaseNames(cl._currentCellKey).has(name) && !stack.some((t) => t.ledger);
+        const isCellPhase = !!phaseKey && this._declaredPhaseNames(cl._currentCellKey).has(name) && !stack.some((t) => t.ledger || t.teach);
         if (isCellPhase && Array.isArray(cl.passedPhases) && cl.passedPhases.includes(phaseKey)) {
           this._hb(`[Curriculum] PHASE SKIPPED - ${phaseKey} (already passed; resumed from persisted passedPhases - weights carried forward via brain-weights.bin)`);
           return;
         }
-        const token = { name, startAt: Date.now(), ledger: isCellPhase };
+        const token = { name, startAt: Date.now(), ledger: isCellPhase, teach: name.startsWith("_teach") };
         if (stack) {
           stack.push(token);
           cl._activePhase = token;
