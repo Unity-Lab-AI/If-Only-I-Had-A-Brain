@@ -8771,7 +8771,34 @@ const _lagTimer = setInterval(() => {
     const consol = !!(brain.consolidationEngine && brain.consolidationEngine._inFlight);
     const innerVoice = !!brain._innerVoiceInFlight;
     const syncing = brain._replicaSyncInFlight ? brain._replicaSyncInFlight.size : 0;
-    console.warn(`[EventLoop] BLOCKED ${lagMs.toFixed(0)}ms — /ws handshakes + donor frames stalled this long. context: phase=${phase} cell=${cell} donors=${donors} consolidationInFlight=${consol} innerVoiceInFlight=${innerVoice} replicaSyncing=${syncing}`);
+    // UPLOAD-WINDOW HONESTY (2026-08-16, Gee: "is all this event loop Blocked
+    // shit ... lots of time just being burnt up") — during the canonical
+    // upload the tick is PAUSED by design and these sub-second blocks are the
+    // loop shoveling chunk buffers (the GC driver itself is fixed by the
+    // upload scratch-buffer reuse in gpu.js). A wall of identical lines every
+    // ~1.5s for a 10-minute window trains the operator to ignore the monitor
+    // — so while the upload is in flight the warn RATE-LIMITS to one line per
+    // 30s carrying the suppressed count + the window's name. Detection is
+    // untouched: outside designed pauses every block ≥ threshold still prints
+    // immediately, and blocks ≥ 5s print even mid-upload (a real pin is never
+    // hidden).
+    const uploading = !!brain._cortexUploadInFlight;
+    if (uploading && lagMs < 5000) {
+      brain._lagUploadSuppressed = (brain._lagUploadSuppressed || 0) + 1;
+      brain._lagUploadWorstMs = Math.max(brain._lagUploadWorstMs || 0, Math.round(lagMs));
+      if (!brain._lagUploadLogMs || (Date.now() - brain._lagUploadLogMs) > 30000) {
+        brain._lagUploadLogMs = Date.now();
+        console.warn(`[EventLoop] blocked ${lagMs.toFixed(0)}ms during the CANONICAL UPLOAD window (tick paused by design; chunk pumping + GC). ${brain._lagUploadSuppressed} similar blocks this window, worst ${brain._lagUploadWorstMs}ms — rate-limited 30s; full-detail lines resume when the upload settles. context: donors=${donors}`);
+      }
+      return;
+    }
+    if (!uploading && brain._lagUploadSuppressed) {
+      // window closed — one summary, counters reset
+      console.log(`[EventLoop] upload window closed — ${brain._lagUploadSuppressed} sub-5s blocks were rate-limited during it (worst ${brain._lagUploadWorstMs || 0}ms).`);
+      brain._lagUploadSuppressed = 0;
+      brain._lagUploadWorstMs = 0;
+    }
+    console.warn(`[EventLoop] BLOCKED ${lagMs.toFixed(0)}ms — /ws handshakes + donor frames stalled this long. context: phase=${phase} cell=${cell} donors=${donors} consolidationInFlight=${consol} innerVoiceInFlight=${innerVoice} replicaSyncing=${syncing}${uploading ? ' uploadInFlight=true' : ''}`);
   }
 }, _LAG_SAMPLE_MS);
 wss.on('close', () => clearInterval(_lagTimer));

@@ -31976,3 +31976,15 @@ Gee (verbatim, the fork answer): *"Do it correctly so that it fucking runs fast 
 - **No cutting:** GPU receives every rep's full mass; the CPU shadow cadence is the exact posture every bound cross-projection has shipped with for weeks; pre-0.3.17/browser donors keep the unchanged CPU path (negotiation, not fallback).
 
 **VERIFY:** node --check ×4 + ESM ×2 + canonical bundle (GINTRA identifiers in bundle). Donor-side sanity from source: bounds (0+12M ≤ 12M ✓), 12M rows under the ~16.7M dispatch cap ✓, negative-lr anti routing = the exact production path sem_to_motor's contrastive pass already uses. ⏳ GEE: ONE **Update & SAVESTART** (no geometry change — weights resume). Verify: boot logs `GINTRA — langCortex pseudo-cluster gpu_init sent`, t11 twins appear for langCortex, `_teachHebbian` falls from 3.8s toward ms-scale, pair phases climb toward the 1300–1500 band.
+
+## 2026-08-16 — UPGC: the upload window's BLOCKED wall — GC driver killed (scratch-buffer reuse) + the monitor names the window
+
+Gee (verbatim): *"is all this event loop Blocked shit  looks bad and lots of time just being burnt up"* — his paste ALSO carried the GINTRA landing proof: `[CPU-CSR-free] keeping probe-critical cortex_intraSynapses CPU arrays resident (4165.6MB)` = the intra uploaded WITH its binding and the whitelist protected the checkpoints, a line that could not print before the GINTRA build.
+
+**The BLOCKED wall's driver:** the canonical-upload chunk loop allocated a FRESH 6–15MB `Buffer.concat` per chunk — 480+ chunks ≈ **3.4GB of transient garbage per upload** at the 12M cortex — and V8 collected it in the ~250–650ms bites that walled the console for the whole ~10min window (~30% loop occupancy, cosmetic-but-corrosive: the tick is paused by design during upload, so the real cost was slightly slower chunk pacing + a console that trains the operator to ignore the monitor).
+
+**FIX 1 (`gpu.js`):** ONE reusable scratch buffer — the loop AWAITS each send's completion callback (and the 8MB low-water pacing) before building the next chunk, so reuse is provably safe; pieces copy into the scratch, the send takes a zero-copy subarray view; grows on demand (the intra's 48MB-rowPtr first frame). Kills the 3.4GB/upload garbage at the source. Mechanics exercised standalone: PASS (content-exact, grew once, reused).
+
+**FIX 2 (`brain-server.js` lag monitor):** during the upload window, sub-5s blocks RATE-LIMIT to one line per 30s carrying the suppressed count + worst-ms + the window's name; a window-closed summary prints on exit; blocks ≥5s still print immediately even mid-upload, and outside designed pauses detection is byte-identical (a real pin is never hidden). The full-detail line also gains `uploadInFlight=true` when applicable.
+
+**VERIFY:** node --check ×2 + scratch mechanics exercised. Server-only; rides the same Update & SAVESTART as GINTRA. Expected: the next boot's upload window shows a handful of summarized lines instead of a 400-line wall, and the blocks themselves shrink (GC starved of its 3.4GB).
