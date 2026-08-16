@@ -162,3 +162,38 @@ A fresh donor drains 19MB in seconds (observed at restart). During TEACH, the sa
 - [x] **EM.2** **DONE — both emission tick loops (generateSentence + generateSentenceAwait) count `_emitTickCount` + stamp `_lastEmitTickMs`; liveness publishes `emissionTicksPerMin` + `sinceLastEmitTickMs` (same rolling-window law as teach/min); the dashboard line shows "N emit-ticks/min (emission phase)" and alive = teaching OR emitting — the 0-teach/min scare cannot recur.** Emission-tick liveness: publish emission-iteration rate beside teachCallsPerMin so "0 teach/min" inside an emission phase reads as the design it is, on the dashboard line too.
 - [ ] **EM.3** ⏳ GATED ON EM.1's LIVE NUMBERS (deploy first, read `liveness.teachProfile` + the emission wire mix, THEN cut). THEN, profiler-guided: attack the emission wire flood (t7/t9 per-tick spike traffic — candidates: per-tick repeat compression already helps (3.68GB saved); template-form spike patterns (t7 is tiled like t8 was); readback batching; tick-local donor-side emission loops) — CHOSEN BY THE NUMBERS, not by theory. The teach-wire war's discipline applies verbatim.
 - [x] **EM.4** **DONE — the stall banner was a LATCH: `_gpuBatch`'s clear can't run while the probe gate holds the tick, so a stall object written just before the gate opened survived the whole cell. Fixed BOTH ends: the watchdog clears on paused-by-design, and the always-runs state builder clears `perf.batchStall` whenever the pause-aware pair reads batchPaused.** Minor telemetry inconsistency found: `state.perf.batchStall` (raw _perfStats) still shows a stale stall object while `profiling.throughput.batchPaused` correctly reads probe-gate/expected — align the perf block or retire the stale field.
+
+---
+
+## OPEN TASKS — 2026-08-16 · LG — LANGUAGE-CORTEX GROWTH (1.5M → biological proportion) — ⛔ REVERT POINT: `restore-pre-language-growth` @ `69c8e0d`
+
+> Gee (verbatim): *"is it a problem that the brain has 300 million neurons, that the brains only purpose is to speak, and yet only like .0001 % of nuerons are for speaking as like language only has 10000 neurons: [utilization paste]"*
+>
+> Gee (verbatim, GO): *"the day has come! lets do it,m write the todo work, make the revert point in the repo noting it incase it goes bad, and add the todo items to the task list where there is still one open item u forgot to do"*
+>
+> Gee (April, the standing target): *"IT NEEDS TO BE MORE LIKE 25% of the fucking brain!!!"*
+
+**⛔ THE REVERT POINT (recorded exactly as ordered):** tag **`restore-pre-language-growth`** = `69c8e0d` (main at: 1.5M language cortex, ~1,400–2,100 teach/min, vocabulary lane ALIVE at 4,378 defs/hour, donor v0.3.16, the whole teach-wire war won), pushed to BOTH remotes. **If it goes bad and Gee says jump back:** branch from the tag → merge FORWARD into main → push → Update & FRESH WALK (geometry changes need the fresh walk both directions; weights from the grown geometry cannot load into the old — that is what the format-version bump enforces). Never rewrite pushed history.
+
+**THE FACTS THE PLAN IS SIZED AGAINST (all measured this week):**
+- Today: language = 1,500,000 of 306,458,816 neurons = **0.49%**. Biology: 12–20%. Gee's target: 25%.
+- Language neurons are the EXPENSIVE kind: intra CSR (fanout ~30 ≈ ~360B/neuron) + 16 cross-projections (topographic, ~1–10 nnz/row) + spike/current buffers ≈ **~400–500 bytes/neuron end-to-end**, vs 12B/neuron for the Rulkov main-brain mass.
+- Donor VRAM: 16,375MB total; main-brain Rulkov state ≈ 3.7GB; realistic language budget ≈ **~10–11GB → ~20–24M neurons ceiling at current density** (≈ 7–8% of brain). True 12–20% (37–61M) requires either intra-fanout reduction, main-brain rebalance, or bigger/more donors — DECIDED IN LG.1, not assumed.
+- Box RAM 31.8GB (5GB used): 20M × 30 fanout × 12B ≈ 7.2GB CPU CSR masters + crosses — fits, but brain-weights.bin grows ~10–20× (multi-GB saves/loads — time-sliced, but minutes).
+- ⚠ THE WIRE, AGAIN: canonical upload grows with nnz — at the measured ~4MB/s box→donor, a multi-GB upload = **10–20+ minutes per donor (re)connect**. This ALONE justifies STAGED growth + possibly upload compression as part of LG.
+- `sem` already reads 100% ever-fired — the region that strains first as ~45k more words land across the grades; `basinHealth.semMotorMeanCos` + OVERLOAD probes are the strain gauges.
+
+**THE SHAPE: STAGED GROWTH, VALIDATE EACH HOP.** Hop 1: 1.5M → **~6M (4×, ~2% of brain)** — upload ~4× (manageable minutes), save ~4×, validates the whole geometry pipeline end-to-end at modest risk. Hop 2: → ~20M (VRAM-fit, ~7%). Hop 3 (12–20%+): gated on the LG.1 design decision (fanout cuts / rebalance / more donors). Each hop = WEIGHTS_FORMAT_VERSION bump + FRESH WALK + full gate re-verification at the new scale.
+
+### THE WORK
+
+- [ ] **LG.0** ⛔ FRESH-SESSION OPENER — the mandatory reads: `server/brain-server.js` FULL (9,100 lines — the read law; also unlocks the parked 0.5 phaseTimingMs one-liner in the same pass), plus the geometry-bearing regions: `CORTEX_SUBREGION_LAYOUT` (cluster.js) + gpu.js `LAYOUT` (the lockstep pair), the langCortexSize auto-scale, WMB's 349K→1.5M change as the worked example, and the K.1–K.9 microstructure builders (columns/layers/hubs scale with size).
+- [ ] **LG.1** DESIGN DECISION (recorded here before building): hop-1 target size + per-region proportions (does word_motor grow past 90k? sem/phon/letter ratios?); intra fanout at the new scale; VRAM arithmetic against the REAL donor; upload strategy (chunk cadence at 4MB/s, whether upload compression ships in the same batch or its own); WEIGHTS_FORMAT_VERSION bump number.
+- [ ] **LG.2** BUILD hop 1: the layout pair in lockstep (cluster.js + gpu.js + wherever brain-server.js binds), auto-scale formulas, format-version bump, microstructure scaling — bit-faithful patterns to the WMB precedent.
+- [ ] **LG.3** VERIFY (no-tests LAW): node --check + ESM + bundle (server-canonical build), layout-pair lockstep walk, VRAM arithmetic re-checked against the real numbers, boot-path dry reasoning (fresh walk from empty at 6M).
+- [ ] **LG.4** Docs (ARCHITECTURE banner + EQUATIONS scaling rows + README neuron counts) + FINALIZED + atomic commit + cascade + push BOTH remotes.
+- [ ] **LG.5** ⏳ GEE: Update & **FRESH WALK** (geometry change — savestart cannot carry old weights into new geometry). Then LIVE-VERIFY at 6M: boot clean, upload completes (time it — the wire number matters for hop 2), walk runs at the known-good rates, gates pass, defs bind, `sem` utilization headroom appears (<100% ever-fired), basin health steady.
+- [ ] **LG.6** HOP 2 (→ ~20M VRAM-fit) once hop 1 validates — same ritual, fresh revert tag first.
+- [ ] **LG.7** HOP 3 (12–20%+, the April target) — gated on LG.1's chosen lever (fanout / rebalance / donor fleet); its own design pass.
+
+**STANDING WATCHES RIDING ALONG (the one open item + friends):** OI.5b (`matrixDrivenPct` off 0 after word emission — the matrix-voice verdict), EM.3 (profiler named `_teachHebbian` at 88ms/call — the next speed cut, may land BEFORE LG so the grown walk inherits it), the lastWindow/depth accounting check at her next dream window.
