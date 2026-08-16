@@ -12538,14 +12538,17 @@ export class Curriculum {
     const fwdIndices = haveProxy ? [] : null;
     const fwdValues = haveProxy ? [] : null;
     const value = 8 * strength;
+    // TW S4 — skip the wire-dead expanded arrays when templates ride
+    // (see cluster.js injectEmbeddingToRegion).
+    const tmplWire = haveProxy && !!(cluster._brain && cluster._brain._tmplTeachOk === true);
     for (let i = slotStart; i < slotEnd; i++) {
       cluster.externalCurrent[i] += value;
-      if (fwdIndices) {
+      if (fwdIndices && !tmplWire) {
         fwdIndices.push(i - fineType.start);
         fwdValues.push(value);
       }
     }
-    if (haveProxy && fwdIndices.length > 0) {
+    if (haveProxy && (fwdIndices.length > 0 || (tmplWire && value !== 0))) {
       // TEMPLATE FORM (donor-v0.3.16) — a constant-value run is a count-1
       // template: one value tiled across the slot. See cluster.js
       // injectEmbeddingToRegion for the tagged-property rationale.
@@ -13930,16 +13933,21 @@ export class Curriculum {
     const haveProxy = !!(cluster._gpuProxy && cluster._gpuProxy.writeCurrentSlice);
     const fwdIndices = haveProxy ? [] : null;
     const fwdValues = haveProxy ? [] : null;
+    // TW S4 — skip the wire-dead expanded arrays when templates ride
+    // (see cluster.js injectEmbeddingToRegion). tmplNonZero preserves the
+    // all-zero no-op semantics.
+    const tmplWire = haveProxy && !!(cluster._brain && cluster._brain._tmplTeachOk === true);
     const tmplValues = haveProxy ? [] : null;
+    let tmplNonZero = false;
     for (let d = 0; d < emb.length; d++) {
       const value = emb[d] * 8 * (strength ?? 1.0);
-      if (tmplValues) tmplValues.push(value);
+      if (tmplValues) { tmplValues.push(value); if (value !== 0) tmplNonZero = true; }
       const startNeuron = sliceStart + d * gSize;
       for (let n = 0; n < gSize; n++) {
         const idx = startNeuron + n;
         if (idx >= region.end) break;
         cluster.externalCurrent[idx] += value;
-        if (fwdIndices && value !== 0) {
+        if (fwdIndices && !tmplWire && value !== 0) {
           // Index relative to region start — same convention as
           // `injectEmbeddingToRegion` for GPU main-cortex sub-slice.
           fwdIndices.push(idx - region.start);
@@ -13947,7 +13955,7 @@ export class Curriculum {
         }
       }
     }
-    if (haveProxy && fwdIndices.length > 0) {
+    if (haveProxy && (fwdIndices.length > 0 || (tmplWire && tmplNonZero))) {
       // TEMPLATE FORM (donor-v0.3.16) — offset-tiled injection; see
       // cluster.js injectEmbeddingToRegion for the tagged-property rationale.
       fwdValues._template = { rowStart: sliceStart - region.start, groupSize: gSize, values: tmplValues };
