@@ -3457,6 +3457,23 @@ export class Curriculum {
                 }
               }
             } catch { /* non-fatal */ }
+            // UPLOAD-AWARE (2026-08-16) — the watchdog was upload-BLIND: during
+            // the canonical sparse upload (12+ minutes at the 12M cortex) the
+            // runner is CORRECTLY waiting for _cortexFullyReady, but this warn
+            // fired "Likely a hung await on dictionary fetch / Hebbian /
+            // dream-window" — a false alarm that names every cause EXCEPT the
+            // designed one (the same alarm-blindness class as the COMPUTE
+            // STALL 709s scream). When the brain reports the upload in flight
+            // or the cortex not yet fully ready with a live donor, say THAT.
+            try {
+              const brain = this.cluster && this.cluster._brain;
+              const uploading = !!(brain && brain._cortexUploadInFlight);
+              const notReady = !!(this.cluster && this.cluster._gpuProxy && this.cluster._cortexFullyReady !== true);
+              if (uploading || notReady) {
+                console.warn(`[Curriculum] runner quiet ${idleMin} min — EXPECTED: ${uploading ? 'the canonical sparse upload is IN FLIGHT (multi-GB at the 12M cortex ≈ 12+ min per donor connect; the walk waits for _cortexFullyReady by design)' : 'cortex GPU state not fully ready yet (upload/rebind still settling) — the walk waits by design'}.${cacheInfo} Not a stall; the watchdog resumes normal checks once teaching starts.`);
+                return;
+              }
+            } catch { /* fall through to the generic warn */ }
             console.warn(`[Curriculum] ⚠⚠ STALL DETECTED — no [Curriculum] log line in ${idleMin} minutes while runner is active${phaseInfo}${cacheInfo}. Likely a hung await on dictionary fetch / Hebbian dispatch / dream-window. Watchdog will re-warn every ${(STALL_THRESHOLD_MS / 60000)} min until activity resumes.`);
           }
         }
