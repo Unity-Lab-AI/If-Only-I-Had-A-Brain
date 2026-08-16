@@ -25,6 +25,8 @@ So: a change touching only `js/` + `html/` + `index.html` → just push to main,
 
 **Boot verify:** `[Brain] WMB FLOOR — raising langCortexSize N → 12,000,000` + `[Brain] WMB word_motor capacity: 720,000 cells (6% of 12,000,000 langCortexSize) ... ✓ covers target`. If `WMB FLOOR SKIPPED` appears, the RAM/V8 floor blocked it (check free RAM ≥ ~24GB at boot) — or set `DREAM_LANG_CORTEX=12000000` explicitly.
 
+**⚠ FRAG amendment (same day):** the first 12M press hit a connect→upload→EPIPE drop-loop — the intra upload's first chunk carries the whole rowPtr (48MB at 12M rows) and the native donor's WS stack kills any FRAME over ~16MiB. Fixed server-side in `server/brain-server/gpu.js` (`_wsSendFrag` — frames > 15MiB split into WS continuation frames; message reassembles up to the donor's 64MiB cap; proven live with the real ws library). NO donor rebuild. Upload boot line now reads `first frame = 51.5MB — FRAGMENTED into 4 WS continuation frames`; EPIPE gone; all 480 intra chunks must ack before the crosses. ⛔ HOP-2 PREREQUISITE: at ~20M rows the rowPtr alone (~80MB) exceeds the donor's 64MiB MESSAGE cap — a segmented-rowPtr donor release is required BEFORE the next growth.
+
 ---
 
 ## 2026-07-14 — WMB: word_motor emission UNIFIED + language cortex grown — ⚠ requires a FRESH WALK
