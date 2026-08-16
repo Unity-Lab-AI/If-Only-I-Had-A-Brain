@@ -108144,7 +108144,7 @@ var Curriculum = class _Curriculum {
       }
       _wiT.l3b += Date.now() - _wiMark;
       _wiMark = Date.now();
-      if (typeof cluster.hebbianPairReinforce === "function" && letters.length > 1) {
+      if (_isFinalRep && typeof cluster.hebbianPairReinforce === "function" && letters.length > 1) {
         for (let i = 0; i < letters.length - 1; i++) {
           const curr = encodeLetter(letters[i]);
           const next = encodeLetter(letters[i + 1]);

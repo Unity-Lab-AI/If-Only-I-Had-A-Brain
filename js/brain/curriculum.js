@@ -19161,7 +19161,17 @@ export class Curriculum {
       // c→a→t for "cat" — not just the first letter. `_emitDirectPropagate`
       // step 2+ now reads these via intra-letter-region propagate (not
       // letter_to_motor which is identity-trained and would loop).
-      if (typeof cluster.hebbianPairReinforce === 'function' && letters.length > 1) {
+      // 12M REGRESSION CUT round 2 (2026-08-16, telemetry-named: the [WORD-INT]
+      // split read l1b=3,451ms/word — the new #1 after the layer-3b cut).
+      // hebbianPairReinforce runs its OWN 100-rep internal Oja loop per pair
+      // (the method's designed dose, self-normalizing) — and this call sat
+      // INSIDE the outer 12-rep loop, so every word ran 1,200 reps of the
+      // IDENTICAL static pattern (~1.2B nnz-ops/word on the intra matrix,
+      // CPU-only — the intra has no GPU dispatch, so this was pure loop heat).
+      // Oja converges to its fixed point on a static pattern; reps past
+      // convergence are no-ops. Fire once per word (final outer rep) —
+      // restoring the designed 100-rep dose, not inventing a new one.
+      if (_isFinalRep && typeof cluster.hebbianPairReinforce === 'function' && letters.length > 1) {
         for (let i = 0; i < letters.length - 1; i++) {
           const curr = encodeLetter(letters[i]);
           const next = encodeLetter(letters[i + 1]);
