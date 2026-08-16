@@ -117,6 +117,21 @@ export const CLUSTER_HEBBIAN_MIXIN = {
     const whitelistSet = wl
       ? (wl instanceof Set ? wl : new Set(wl))
       : null;
+    // TW S1 — PER-CALL spike-scan cache. The projection loop below asked
+    // `regionSpikesActive` for src+dst on every projection — up to 32 full
+    // region scans per call over the same ~8 unique regions (each scan is
+    // O(region len) + a vec.fill over up to hundreds of thousands of rows).
+    // Spikes do not change between projections within one call's intent, so
+    // scan each unique region ONCE per call and reuse. A snapshot-at-entry is
+    // also SAFER than the old mid-loop rescans: the chunked Oja awaits between
+    // slices, and a concurrent path re-filling the shared scratch mid-loop was
+    // exactly the hazard _ojaUpdateChunked's snapshot comment documents.
+    const _spkCache = new Map();
+    const _spk = (regionName) => {
+      let e = _spkCache.get(regionName);
+      if (!e) { e = this.regionSpikesActive(regionName); _spkCache.set(regionName, e); }
+      return e;
+    };
     for (const [name, proj] of Object.entries(this.crossProjections)) {
       if (whitelistSet && !whitelistSet.has(name)) continue;
       const idx = name.indexOf('_to_');
@@ -260,8 +275,8 @@ export const CLUSTER_HEBBIAN_MIXIN = {
           // lr·0·x − lr·0²·w = 0, so a skipped row and a visited-then-
           // skipped row leave the same weights. Same reasoning and same
           // mechanism the direct pair-reinforce path already uses.
-          const preS = this.regionSpikesActive(src);
-          const postS = this.regionSpikesActive(dst);
+          const preS = _spk(src);
+          const postS = _spk(dst);
           const preF = preS.vec;
           const postF = postS.vec;
           const activeRows = postS.active;
@@ -302,8 +317,8 @@ export const CLUSTER_HEBBIAN_MIXIN = {
       // disconnected donor keep "training" on the host CPU.
       if (this.requireGpuSubstrate) {
         if (this._gpuProxy && this._gpuProxy.hebbian) {
-          const preU = this.regionSpikesActive(src);
-          const postU = this.regionSpikesActive(dst);
+          const preU = _spk(src);
+          const postU = _spk(dst);
           try { this._gpuProxy.hebbian(`${this.name}_${name}`, preU.vec, postU.vec, lrEff); }
           catch { /* non-fatal - batched plasticity queue backpressured */ }
         } else if (!this._unboundNoProxyWarned) {
@@ -322,8 +337,8 @@ export const CLUSTER_HEBBIAN_MIXIN = {
       }
       // Same active-row iteration as the GPU-bound branch above: walk the
       // firing rows instead of scanning the whole region to skip them.
-      const preS2 = this.regionSpikesActive(src);
-      const postS2 = this.regionSpikesActive(dst);
+      const preS2 = _spk(src);
+      const postS2 = _spk(dst);
       const preF = preS2.vec;
       const postF = postS2.vec;
       const activeRows2 = postS2.active;
@@ -507,9 +522,41 @@ export const CLUSTER_HEBBIAN_MIXIN = {
   // #37 + TIME-SLICED — chunked CPU anti-Hebbian; same adaptive ~30ms
   // slicing as _ojaUpdateChunked (shared chunk-size state so both paths
   // converge together). Identical math; row-independent.
-  async _antiHebbianChunked(mat, preF, postF, lr) {
+  async _antiHebbianChunked(mat, preF, postF, lr, opts) {
     const rows = mat.rows | 0;
     if (!this._ojaChunkRows) this._ojaChunkRows = 65536;
+    // TW S2 — ACTIVE-ROW fast path, mirroring _ojaUpdateChunked's (see its
+    // comment block for the full rationale: O(firing) not O(rows), snapshot
+    // against the shared scratch, slice the LIST not row ranges, yield
+    // between slices). antiHebbianUpdate is post-gated, so skipped rows are
+    // exact no-ops — bit-identical to the full scan.
+    const activeRows = opts && opts.activeRows;
+    if (activeRows) {
+      const n = activeRows.length | 0;
+      const ACTIVE_SLICE_MIN = 2048;
+      if (n <= ACTIVE_SLICE_MIN) {
+        mat.antiHebbianUpdate(preF, postF, lr, { activeRows });
+        return;
+      }
+      const rowsList = Array.prototype.slice.call(activeRows);
+      const total = rowsList.length;
+      if (!this._ojaActiveChunk) this._ojaActiveChunk = 8192;
+      const yieldMacroA = (typeof setImmediate === 'function')
+        ? () => new Promise((r) => setImmediate(r))
+        : () => new Promise((r) => setTimeout(r, 0));
+      for (let i = 0; i < total; ) {
+        const chunk = this._ojaActiveChunk;
+        const j = Math.min(i + chunk, total);
+        const t0 = Date.now();
+        mat.antiHebbianUpdate(preF, postF, lr, { activeRows: rowsList.slice(i, j) });
+        const dt = Date.now() - t0;
+        i = j;
+        if (dt > 60 && chunk > 1024) this._ojaActiveChunk = Math.max(1024, chunk >> 1);
+        else if (dt < 15 && chunk < 65536) this._ojaActiveChunk = chunk << 1;
+        await yieldMacroA();
+      }
+      return;
+    }
     // SINGLE-PASS only for genuinely small matrices (fixed threshold, see
     // _ojaUpdateChunked) — a large matrix must never single-pass unsliced.
     if (rows <= 65536) {
@@ -884,7 +931,17 @@ export const CLUSTER_HEBBIAN_MIXIN = {
       // slices produces an IDENTICAL result while letting HTTP/WS work get an
       // event-loop slot. Below the chunk threshold _ojaUpdateChunked runs a
       // single synchronous pass (no yield overhead).
-      await this._ojaUpdateChunked(this.synapses, pre, post, lr);
+      //
+      // TW S2 — ACTIVE-ROW iteration for the intra matrix too. This call ran
+      // the row-RANGE chunk walk over ALL rows (~1.5M at the grown cortex,
+      // ~23 chunk slices + macrotask yields per call, fired per pair per rep)
+      // even though ojaUpdate has had an O(active) fast path since the WMB
+      // fix — it just never received activeRows from here. One typed scan of
+      // `post` (a few ms) builds the firing list; skipped rows are y=0 under
+      // Oja so the result is BIT-IDENTICAL.
+      const _act = [];
+      for (let _i = 0; _i < post.length; _i++) { if (post[_i]) _act.push(_i); }
+      await this._ojaUpdateChunked(this.synapses, pre, post, lr, { activeRows: _act });
     } else if (this._sparsePool && this._sparsePool.ready) {
       try {
         // Pool path keeps bare Hebbian (external worker RPC doesn't
@@ -1053,7 +1110,12 @@ export const CLUSTER_HEBBIAN_MIXIN = {
       // #37 — CHUNK the intra-synapse anti-Hebbian like the Oja path above so
       // the contrastive push-pull pass doesn't block the event loop at
       // biological scale (same residual [EventLoop] BLOCKED cause).
-      await this._antiHebbianChunked(this.synapses, pre, post, lr);
+      // TW S2 — active-row iteration (see intraSynapsesHebbian): one typed
+      // scan of `post` replaces the full row-range walk; antiHebbianUpdate is
+      // post-gated so skipped rows are exact no-ops — bit-identical.
+      const _act = [];
+      for (let _i = 0; _i < post.length; _i++) { if (post[_i]) _act.push(_i); }
+      await this._antiHebbianChunked(this.synapses, pre, post, lr, { activeRows: _act });
     } else if (this._sparsePool && this._sparsePool.ready && typeof this._sparsePool.antiHebbianUpdate === 'function') {
       try {
         await this._sparsePool.antiHebbianUpdate(this.synapses, pre, post, lr);
