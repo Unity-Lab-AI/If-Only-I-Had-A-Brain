@@ -14307,6 +14307,18 @@ export class Curriculum {
     try { this._pushBrainEvent?.('teach', 'sem', `ASSOC START: ${label} · ${pairs.length}×${reps}`, { label, pairs: pairs.length, reps }); } catch {}
     for (let rep = 0; rep < reps; rep++) {
       if (typeof globalThis._brainShutdownRequested !== 'undefined' && globalThis._brainShutdownRequested) return { trained, skipped };
+      // GINTRA (2026-08-16) — the final-rep CPU-shadow flag cycle, the SAME
+      // law the word-integrated/emission loops already run: GPU-bound Hebbian
+      // (cross + the now-bound intra) fires EVERY rep with full mass; the CPU
+      // shadow (checkpoints + CPU probes) catches up on the FINAL rep,
+      // sampled. This loop never set the flags before, so the pair phases
+      // paid the full CPU pass per pair per rep — the measured 3.8s/call
+      // _teachHebbian that held teach/min at ~25 vs the 1300+ band. If the
+      // convergence early-exit breaks before the final rep, the shadow's
+      // catch-up rides the next phase (approximately-current, the accepted
+      // posture everywhere else).
+      cluster._teachIntermediateRep = rep < reps - 1;
+      cluster._teachFinalRepSampleEveryN = (rep === reps - 1) ? 5 : 0;
       for (let pairIdx = 0; pairIdx < pairs.length; pairIdx++) {
         const pair = pairs[pairIdx];
         if (!Array.isArray(pair) || pair.length < 2) { skipped++; continue; }
@@ -14453,6 +14465,10 @@ export class Curriculum {
         } catch { /* probe failure leaves rep loop running */ }
       }
     }
+    // GINTRA — reset the shadow-cadence flags so they never leak into teach
+    // paths that don't cycle them (mirrors the word-integrated loop's reset).
+    cluster._teachIntermediateRep = false;
+    cluster._teachFinalRepSampleEveryN = 0;
     this._convergenceStreak = 0;
     // Per-phase top-K-per-row pruning of sem_to_motor + motor_to_sem.
     // After the rep loop, keep only each output neuron's `pruneTopK`

@@ -642,7 +642,18 @@ export const CLUSTER_HEBBIAN_MIXIN = {
     // the intra-cluster matrix on GPU so it's ready for propagate
     // dispatch once the async cascade is wired through cluster.step.
     if (this.synapses) {
-      targets.push({ key: `${this.name}_intraSynapses`, proj: this.synapses, binding: null });
+      // GINTRA (2026-08-16) — bind the intra matrix to the donor-side
+      // `langCortex` PSEUDO-CLUSTER (server mode only: the binding hint
+      // exists). The pseudo-cluster carries the langCortex's STANDALONE spike
+      // space (gpu_init'd by the server; populated by the teach-frame twins),
+      // so `hebbian_bound` trains the intra GPU-RESIDENT at ~30 bytes/op —
+      // the cure for the 3.8s/call CPU intra pass at the 12M cortex (the
+      // 25-teach/min pair-phase crawl). Browser/standalone stays unbound.
+      const _intraBinding = (this._gpuBindingHint && this.size > 0)
+        ? { srcCluster: 'langCortex', srcRegion: { start: 0, end: this.size },
+            dstCluster: 'langCortex', dstRegion: { start: 0, end: this.size } }
+        : null;
+      targets.push({ key: `${this.name}_intraSynapses`, name: 'intraSynapses', proj: this.synapses, binding: _intraBinding });
     }
     // T18.6.b — cross-projections upload with cluster-binding metadata
     // from the start. The `binding` describes WHERE in the destination
@@ -769,6 +780,12 @@ export const CLUSTER_HEBBIAN_MIXIN = {
               'letter_to_phon',   // READ probe reads phon via CPU propagate
               'letter_to_motor',  // TALK probe + DYN-PROD letter fallback
               'sem_to_motor',     // DYN-PROD primary path + separation probe
+              // GINTRA — the intra matrix is now GPU-BOUND (langCortex pseudo-
+              // cluster) which routes it through this free branch for the first
+              // time. Its CPU CSR must NEVER free: checkpoints serialize it
+              // (brain-weights.bin section 'cortex.synapses'), the final-rep
+              // shadow trains it, and emission's intra propagate reads it.
+              'intraSynapses',
               // Reverted: widening the whitelist added ~2 GB CPU CSR
               // back per extra projection and re-triggered the 14 GB
               // external-memory V8 GC stall that T24.a fixed. READ
@@ -885,6 +902,33 @@ export const CLUSTER_HEBBIAN_MIXIN = {
   async intraSynapsesHebbian(pre, post, lr) {
     if (!this.synapses) return;
     if (!this._teachSubstrateReady('intraSynapsesHebbian')) return;
+    // GINTRA (2026-08-16, Gee: "Do it correctly so that it fucking runs fast
+    // ... no cutting shit") — the intra matrix is GPU-BOUND to the donor's
+    // langCortex pseudo-cluster whose spike space the teach-frame TWINS keep
+    // current. Dispatch the bound Hebbian EVERY call (full training mass on
+    // the substrate, ~30 bytes/op through the SAME stale-guarded type-5 lane
+    // as every cross-projection) and run the CPU shadow on the FINAL rep,
+    // sampled — the exact law every bound cross-projection already ships
+    // with (the shadow exists for checkpoints + CPU probes; the GPU is the
+    // running brain). This is the cure for the measured 3.8s/call CPU intra
+    // pass at 12M (the 25-teach/min pair-phase crawl vs the 1300+ band).
+    // SAFETY GATES: (a) identity check — the pseudo spike space mirrors
+    // cluster.lastSpikes ONLY, so callers passing custom pre/post vectors
+    // (_teachHebbianAsymmetric etc.) NEVER take the GPU path; (b) no
+    // binding / no proxy / no pseudo-cluster → the CPU path below runs
+    // every call exactly as before (negotiation, not fallback).
+    if (pre === this.lastSpikes && post === this.lastSpikes
+        && this.synapses._gpuBound && this._gpuProxyReady
+        && this._gpuProxy && this._gpuProxy.hebbianBound
+        && this._brain && this._brain._langPseudoInit === true) {
+      try { this._gpuProxy.hebbianBound(`${this.name}_intraSynapses`, lr); } catch { /* non-fatal */ }
+      if (this._teachIntermediateRep === true) return;   // GPU carried it; the shadow catches up on the final rep
+      const _sampleN = this._teachFinalRepSampleEveryN | 0;
+      if (_sampleN > 1) {
+        this._intraShadowSampleCounter = (this._intraShadowSampleCounter || 0) + 1;
+        if (this._intraShadowSampleCounter % _sampleN !== 0) return;
+      }
+    }
     // T17.2 — parallelize CPU Hebbian across worker pool when available.
     // Same row-range partitioning pattern as sparse matmul (disjoint
     // row-ranges, no write collisions on values buffer). Falls through
@@ -1135,6 +1179,23 @@ export const CLUSTER_HEBBIAN_MIXIN = {
     if (!this.synapses) return;
     if (!this._teachSubstrateReady('intraSynapsesAntiHebbian')) return;
     if (typeof this.synapses.antiHebbianUpdate !== 'function') return;
+    // GINTRA — same GPU-bound law as intraSynapsesHebbian: NEGATIVE lr on the
+    // bound op routes to the plasticity anti branch (the exact sign-selection
+    // the sem_to_motor contrastive pass already uses in production). Identity
+    // check keeps custom-vector callers on the CPU path; the shadow's
+    // final-rep/sampled cadence matches the positive pass.
+    if (pre === this.lastSpikes && post === this.lastSpikes
+        && this.synapses._gpuBound && this._gpuProxyReady
+        && this._gpuProxy && this._gpuProxy.hebbianBound
+        && this._brain && this._brain._langPseudoInit === true) {
+      try { this._gpuProxy.hebbianBound(`${this.name}_intraSynapses`, -Math.abs(lr)); } catch { /* non-fatal */ }
+      if (this._teachIntermediateRep === true) return;
+      const _sampleN = this._teachFinalRepSampleEveryN | 0;
+      if (_sampleN > 1) {
+        this._intraShadowAntiSampleCounter = (this._intraShadowAntiSampleCounter || 0) + 1;
+        if (this._intraShadowAntiSampleCounter % _sampleN !== 0) return;
+      }
+    }
     const BIOLOGICAL_SCALE_SYNC_THRESHOLD = 100_000;
     const atBioScale = (this.size | 0) > BIOLOGICAL_SCALE_SYNC_THRESHOLD;
     if (atBioScale) {

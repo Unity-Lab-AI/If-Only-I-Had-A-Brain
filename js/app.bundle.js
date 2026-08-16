@@ -53684,7 +53684,13 @@ var CLUSTER_HEBBIAN_MIXIN = {
     this._gpuProxyReady = false;
     const targets = [];
     if (this.synapses) {
-      targets.push({ key: `${this.name}_intraSynapses`, proj: this.synapses, binding: null });
+      const _intraBinding = this._gpuBindingHint && this.size > 0 ? {
+        srcCluster: "langCortex",
+        srcRegion: { start: 0, end: this.size },
+        dstCluster: "langCortex",
+        dstRegion: { start: 0, end: this.size }
+      } : null;
+      targets.push({ key: `${this.name}_intraSynapses`, name: "intraSynapses", proj: this.synapses, binding: _intraBinding });
     }
     if (this.crossProjections) {
       const hint = this._gpuBindingHint || null;
@@ -53738,8 +53744,14 @@ var CLUSTER_HEBBIAN_MIXIN = {
               // READ probe reads phon via CPU propagate
               "letter_to_motor",
               // TALK probe + DYN-PROD letter fallback
-              "sem_to_motor"
+              "sem_to_motor",
               // DYN-PROD primary path + separation probe
+              // GINTRA — the intra matrix is now GPU-BOUND (langCortex pseudo-
+              // cluster) which routes it through this free branch for the first
+              // time. Its CPU CSR must NEVER free: checkpoints serialize it
+              // (brain-weights.bin section 'cortex.synapses'), the final-rep
+              // shadow trains it, and emission's intra propagate reads it.
+              "intraSynapses"
               // Reverted: widening the whitelist added ~2 GB CPU CSR
               // back per extra projection and re-triggered the 14 GB
               // external-memory V8 GC stall that T24.a fixed. READ
@@ -53796,6 +53808,18 @@ var CLUSTER_HEBBIAN_MIXIN = {
   async intraSynapsesHebbian(pre, post, lr) {
     if (!this.synapses) return;
     if (!this._teachSubstrateReady("intraSynapsesHebbian")) return;
+    if (pre === this.lastSpikes && post === this.lastSpikes && this.synapses._gpuBound && this._gpuProxyReady && this._gpuProxy && this._gpuProxy.hebbianBound && this._brain && this._brain._langPseudoInit === true) {
+      try {
+        this._gpuProxy.hebbianBound(`${this.name}_intraSynapses`, lr);
+      } catch {
+      }
+      if (this._teachIntermediateRep === true) return;
+      const _sampleN = this._teachFinalRepSampleEveryN | 0;
+      if (_sampleN > 1) {
+        this._intraShadowSampleCounter = (this._intraShadowSampleCounter || 0) + 1;
+        if (this._intraShadowSampleCounter % _sampleN !== 0) return;
+      }
+    }
     const BIOLOGICAL_SCALE_SYNC_THRESHOLD = 1e5;
     const atBioScale = (this.size | 0) > BIOLOGICAL_SCALE_SYNC_THRESHOLD;
     if (atBioScale) {
@@ -53900,6 +53924,18 @@ var CLUSTER_HEBBIAN_MIXIN = {
     if (!this.synapses) return;
     if (!this._teachSubstrateReady("intraSynapsesAntiHebbian")) return;
     if (typeof this.synapses.antiHebbianUpdate !== "function") return;
+    if (pre === this.lastSpikes && post === this.lastSpikes && this.synapses._gpuBound && this._gpuProxyReady && this._gpuProxy && this._gpuProxy.hebbianBound && this._brain && this._brain._langPseudoInit === true) {
+      try {
+        this._gpuProxy.hebbianBound(`${this.name}_intraSynapses`, -Math.abs(lr));
+      } catch {
+      }
+      if (this._teachIntermediateRep === true) return;
+      const _sampleN = this._teachFinalRepSampleEveryN | 0;
+      if (_sampleN > 1) {
+        this._intraShadowAntiSampleCounter = (this._intraShadowAntiSampleCounter || 0) + 1;
+        if (this._intraShadowAntiSampleCounter % _sampleN !== 0) return;
+      }
+    }
     const BIOLOGICAL_SCALE_SYNC_THRESHOLD = 1e5;
     const atBioScale = (this.size | 0) > BIOLOGICAL_SCALE_SYNC_THRESHOLD;
     if (atBioScale) {
@@ -103848,6 +103884,8 @@ var Curriculum = class _Curriculum {
     }
     for (let rep = 0; rep < reps; rep++) {
       if (typeof globalThis._brainShutdownRequested !== "undefined" && globalThis._brainShutdownRequested) return { trained, skipped };
+      cluster._teachIntermediateRep = rep < reps - 1;
+      cluster._teachFinalRepSampleEveryN = rep === reps - 1 ? 5 : 0;
       for (let pairIdx = 0; pairIdx < pairs.length; pairIdx++) {
         const pair = pairs[pairIdx];
         if (!Array.isArray(pair) || pair.length < 2) {
@@ -103953,6 +103991,8 @@ var Curriculum = class _Curriculum {
         }
       }
     }
+    cluster._teachIntermediateRep = false;
+    cluster._teachFinalRepSampleEveryN = 0;
     this._convergenceStreak = 0;
     const diagProjKeys = Array.isArray(opts.projectionsWhitelist) && opts.projectionsWhitelist.length > 0 ? opts.projectionsWhitelist.filter((k) => cluster.crossProjections && cluster.crossProjections[k]) : ["sem_to_motor", "motor_to_sem"].filter((k) => cluster.crossProjections && cluster.crossProjections[k]);
     const primaryProj = diagProjKeys[0] || "sem_to_motor";
