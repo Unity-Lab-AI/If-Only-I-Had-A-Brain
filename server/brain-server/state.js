@@ -223,24 +223,39 @@ const SERVER_STATE_MIXIN = {
     try {
       const out = { langEverFired: null, weightRecruitment: null };
       const c = this.cortexCluster;
+      const now = Date.now();
       if (this._lcEverFired && c && c.regions) {
-        const regions = {};
-        for (const [rn, r] of Object.entries(c.regions)) {
-          let n = 0;
-          for (let i = r.start; i < r.end && i < this._lcEverFired.length; i++) n += this._lcEverFired[i];
-          regions[rn] = { size: r.end - r.start, everFired: n, pct: +((n / Math.max(1, r.end - r.start)) * 100).toFixed(2) };
+        // 12M BROADCAST STALL FIX (2026-08-16, Gee: "1/5 the time its fucking
+        // stalled") — this per-region bitset walk is O(cortex × region overlap)
+        // ≈ ~14M byte-reads at the 12M cortex (regions + sem/word_motor
+        // sub-bands re-walk their parents' spans), and it ran UNTHROTTLED on
+        // every getState() — which the broadcast loop calls at 10fps. ~50ms ×
+        // 10/s ≈ 500ms of loop block per second = the metronome "BLOCKED
+        // ~520ms" lines at ~25% loop occupancy, invisible at 1.5M (walk ~6ms)
+        // and exposed by the 8× growth. The bitset SOURCE only advances every
+        // 5s (_updateLangEverFired's throttle), so recomputing the breakdown
+        // faster than that measured nothing new. Cache the regions walk on the
+        // same 5s cadence; total/pct stay live O(1) off the maintained counter.
+        if (!this._lueRegions || !this._lueRegionsAt || (now - this._lueRegionsAt) >= 5000) {
+          this._lueRegionsAt = now;
+          const regions = {};
+          for (const [rn, r] of Object.entries(c.regions)) {
+            let n = 0;
+            for (let i = r.start; i < r.end && i < this._lcEverFired.length; i++) n += this._lcEverFired[i];
+            regions[rn] = { size: r.end - r.start, everFired: n, pct: +((n / Math.max(1, r.end - r.start)) * 100).toFixed(2) };
+          }
+          this._lueRegions = regions;
         }
         out.langEverFired = {
           total: this._lcEverFiredCount || 0,
           size: this._lcEverFired.length,
           pct: +(((this._lcEverFiredCount || 0) / Math.max(1, this._lcEverFired.length)) * 100).toFixed(2),
           sinceMs: this._lcEverFiredSince || null,
-          regions,
+          regions: this._lueRegions,
         };
       }
       // Throttled CSR row-recruitment scan (rowPtr diff — O(rows)/matrix,
       // every 5min). Registry entries whose CSR was freed post-upload skip.
-      const now = Date.now();
       if (!this._wrAt || (now - this._wrAt) > 300000) {
         this._wrAt = now;
         const reg = this._replicaMatrixRegistry;
