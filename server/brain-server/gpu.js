@@ -1920,10 +1920,35 @@ const SERVER_GPU_MIXIN = {
       const _minMBps = Number(process.env.DREAM_UPLOAD_MIN_MBPS) > 0
         ? Number(process.env.DREAM_UPLOAD_MIN_MBPS) : 4;
       const _payloadBytes = values.byteLength + colIdx.byteLength + rowPtr.byteLength;
-      const _scaledMs = Math.ceil((_payloadBytes / (_minMBps * 1048576)) * 1000) + 30_000;
+      // Margin 30s → 120s (2026-08-16): at multi-GB payloads the wire estimate's
+      // error is minutes-scale, and the donor's post-receive GPU alloc adds
+      // seconds — a 30s margin on a 12-minute transfer left no room for jitter.
+      const _scaledMs = Math.ceil((_payloadBytes / (_minMBps * 1048576)) * 1000) + 120_000;
+      // Cap 15min → 30min (2026-08-16): the 12M language cortex's intra upload
+      // is ~2.9GB ≈ 12min at the measured wire — a 15min cap left no headroom
+      // for a slower link; hop 2 grows it further.
       const _capMs = Number(process.env.DREAM_SPARSE_UPLOAD_TIMEOUT_MAX_MS) > 0
-        ? Number(process.env.DREAM_SPARSE_UPLOAD_TIMEOUT_MAX_MS) : 900_000;
-      const timeoutMs = _envTimeout > 0 ? _envTimeout : Math.min(_capMs, Math.max(45_000, _scaledMs));
+        ? Number(process.env.DREAM_SPARSE_UPLOAD_TIMEOUT_MAX_MS) : 1_800_000;
+      // ENV FLOOR (2026-08-16, the 12M fresh walk's second kill): the box unit
+      // ships DREAM_SPARSE_UPLOAD_TIMEOUT_MS=180000 (a Starlink-donor tuning
+      // from the 366MB era) and the old "env wins outright" rule let it
+      // undercut PHYSICS — the 2.9GB intra needs ~10-12min at the measured
+      // ~4-5MB/s wire, so every upload died at exactly 180000ms, retried its
+      // 480 chunks from zero, and flooded the console (live 2026-08-16; the
+      // SAME foot-gun bit at 85MB on 2026-07-10 and the box-env check was
+      // deferred). The env still RAISES the deadline for slow links (its
+      // documented purpose) but can no longer LOWER it below what the payload
+      // physically requires at the assumed wire rate. One-shot log when floored.
+      let timeoutMs;
+      if (_envTimeout > 0) {
+        timeoutMs = Math.max(_envTimeout, _scaledMs);
+        if (timeoutMs > _envTimeout && (!this._uploadTimeoutFloorLogMs || (Date.now() - this._uploadTimeoutFloorLogMs) > 60000)) {
+          this._uploadTimeoutFloorLogMs = Date.now();
+          console.log(`[Brain] upload timeout FLOORED — env DREAM_SPARSE_UPLOAD_TIMEOUT_MS=${_envTimeout}ms is below what this ${(_payloadBytes / 1048576).toFixed(0)}MB payload physically needs at ${_minMBps}MB/s; using ${timeoutMs}ms (size-scaled). The env can raise deadlines, never starve them.`);
+        }
+      } else {
+        timeoutMs = Math.min(_capMs, Math.max(45_000, _scaledMs));
+      }
       const timeout = setTimeout(() => {
         if (this._gpuSparsePending && this._gpuSparsePending.has(reqId)) {
           this._gpuSparsePending.delete(reqId);
