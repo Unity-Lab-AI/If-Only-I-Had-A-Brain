@@ -1,5 +1,20 @@
 # RESUME — Session Pickup Brief
 
+> ## ⭐⭐⭐ 2026-08-16 (latest) — THE LANGUAGE-GROWTH SESSION OPENS HERE: LG.0 first (brain-server.js FULL READ), revert point `restore-pre-language-growth` @ `69c8e0d`
+>
+> **GEE'S GO (verbatim):** *"the day has come! lets do it,m write the todo work, make the revert point in the repo noting it incase it goes bad, and add the todo items to the task list"* — the growth of her language cortex from 1.5M (0.49% of brain) toward biological 12–20% / the April 25% target. FULL battle plan + measured constraints + staged hops (1.5M → ~6M → ~20M VRAM-fit → biological) live in **docs/TODO.md §LG** — read it before anything.
+>
+> **OPEN THIS SESSION WITH LG.0:** the 9,100-line `server/brain-server.js` full read (the read LAW; also unlocks the parked 0.5 `phaseTimingMs` one-liner — `resolver({perCluster})` at ~8371 drops `msg.phaseTimingMs`), then the geometry pair (`CORTEX_SUBREGION_LAYOUT` in cluster.js + gpu.js `LAYOUT` — LOCKSTEP), the langCortexSize auto-scale, and the WMB 349K→1.5M change as the worked precedent. THEN LG.1's design decision gets recorded in the TODO before any edit.
+>
+> **THE STATE SHE'S IN (all verified live):** ~1,400–2,100 teach/min at ZERO suppression; the wire is template-frames + repeats (donor v0.3.16, ~KB-scale); vocabulary lane ALIVE (first defs ever bound: 0→10+ at 4,378/hr — the trickle-skip latch fix); resume-skip, substrate gates, phase ledger, liveness + emission liveness + per-method profiler all working. Profiler's first verdict: `_teachHebbian` 88ms/call avg × 17,875 calls = EM.3's named target (consider landing EM.3 BEFORE the growth so the grown walk inherits the speed).
+>
+> **STANDING WATCHES:** OI.5b (`matrixDrivenPct` off 0 after ELA-K word emission — matrix voice vs oracle), the lastWindow/depth accounting check at her next dream window (binds proven; the summary/drain bookkeeping unconfirmed), EM.3 (profiler-guided).
+>
+> **THE RITUALS THAT MADE THIS WEEK WORK (bind yourself to them):** revert tag BEFORE surgery; measure/read before cutting (three wrong hypotheses died to reads this week); TODO verbatim first, CLI tasks second, build third; FINALIZED-before-delete; cargo/node/ESM/bundle verify (bundle builds from `cd server && npm run build`); box deploys ONLY via Gee's dashboard buttons; donor binaries are GEE's to run; geometry changes = FRESH WALK both directions.
+>
+> ---
+
+
 > ## ⭐⭐⭐ 2026-08-16 (latest) — donor-v0.3.15 BUILT: REPEAT FRAMES + resident bound-hebbian — the river was the teach frames, the ceiling was the WIRE (~4MB/s); BOTH halves must deploy (box + binary)
 >
 > **WHY (Gee, verbatim):** *"yea do it and dont have ass the shit make sure u thouroughly plan out the corrections to the issues of slow training we are having"* — after v0.3.14 verified engaged with speed UNCHANGED (~85 teach/min, 16MB parking, RTT 7s).
