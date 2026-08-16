@@ -714,7 +714,7 @@ function connectToServer() {
         }
         if (typeByte === 6) {
           // SPARSE PROPAGATE (CHAT.1, 2026-07-16) — the chat-latency fix. The
-          // legacy type=2 ships the FULL dense pre-spike array (~6MB at the 1.5M
+          // legacy type=2 ships the FULL dense pre-spike array (~48MB at the 12M
           // language cortex) and returns the FULL dense currents (~6MB) — per
           // emission tick. Type=6 ships only the ACTIVE spike INDICES (KBs) and
           // returns only the NONZERO currents as (index, value) pairs. Same GPU
@@ -931,7 +931,7 @@ function connectToServer() {
       // Seven GPU-resident main-brain clusters total (cortex /
       // hippocampus / amygdala / basalGanglia / cerebellum /
       // hypothalamus / mystery). The language cortex is NOT a
-      // separate cluster — it's a ~1.5M set of sub-regions (WMB grew from ~349K)
+      // separate cluster — it's a ~12M set of sub-regions (WMB grew ~349K→~1.5M; language-growth hop 1 grew ~1.5M→~12M)
       // that auto-scale inside the cortex cluster; its cross-projections are
       // cluster-BOUND and taught GPU-only via the binary teach lane (the CPU
       // keeps only a probe-critical shadow) — so this status counter tracks
