@@ -108036,11 +108036,14 @@ var Curriculum = class _Curriculum {
     const wordEmb = sharedEmbeddings && typeof sharedEmbeddings.getEmbedding === "function" ? sharedEmbeddings.getEmbedding(cleanWord) : null;
     const firstLetterOneHot = encodeLetter(letters[0]);
     const motorFirstLetter = buildPattern(motorSize, firstLetterOneHot, wScratch.motorFirstLetterBuf);
+    const _wiT = { l12: 0, l3: 0, l3b: 0, l1b: 0, l4: 0 };
+    let _wiMark = 0;
     for (let rep = 0; rep < reps; rep++) {
       if (typeof globalThis._brainShutdownRequested !== "undefined" && globalThis._brainShutdownRequested) return;
       const _isFinalRep = rep === reps - 1;
       cluster._teachIntermediateRep = !_isFinalRep;
       cluster._teachFinalRepSampleEveryN = _isFinalRep ? 5 : 0;
+      _wiMark = Date.now();
       for (let i = 0; i < letters.length; i++) {
         const ch = letters[i];
         const chOneHot = encodeLetter(ch);
@@ -108062,6 +108065,8 @@ var Curriculum = class _Curriculum {
         }
         await cluster._crossRegionHebbian(lr, layer12Opts);
       }
+      _wiT.l12 += Date.now() - _wiMark;
+      _wiMark = Date.now();
       const semToMotor = cluster.crossProjections?.sem_to_motor;
       if (semRegion && wordEmb && wordEmb.length > 0 && semToMotor) {
         const firstLetterCarvingReps = 4;
@@ -108070,10 +108075,13 @@ var Curriculum = class _Curriculum {
         this._writeTiledPattern(motorRegion, firstLetterOneHot, true);
         const preF = wScratch.preF;
         const postF = wScratch.postF;
-        for (let j = 0; j < semSize; j++) preF[j] = cluster.lastSpikes[semRegion.start + j];
-        for (let j = 0; j < motorSize; j++) postF[j] = cluster.lastSpikes[motorRegion.start + j];
+        const _l3NeedArrays = _isFinalRep || !semToMotor._gpuBound;
+        if (_l3NeedArrays) {
+          for (let j = 0; j < semSize; j++) preF[j] = cluster.lastSpikes[semRegion.start + j];
+          for (let j = 0; j < motorSize; j++) postF[j] = cluster.lastSpikes[motorRegion.start + j];
+        }
         for (let k = 0; k < firstLetterCarvingReps; k++) {
-          if (typeof semToMotor.ojaUpdate === "function" && semToMotor.values && semToMotor.values.length > 0) {
+          if (_isFinalRep && typeof semToMotor.ojaUpdate === "function" && semToMotor.values && semToMotor.values.length > 0) {
             try {
               const kScales = typeof cluster.buildKScalesForProjection === "function" ? cluster.buildKScalesForProjection("sem", "motor") : null;
               semToMotor.ojaUpdate(preF, postF, lr, kScales ? { kScales } : void 0);
@@ -108093,25 +108101,33 @@ var Curriculum = class _Curriculum {
           }
         }
       }
+      _wiT.l3 += Date.now() - _wiMark;
+      _wiMark = Date.now();
       if (semRegion && wordEmb && wordEmb.length > 0 && semToMotor && letters.length > 0) {
         const wrongLrScale = opts.wrongLrScale ?? 0.5;
         const wrongAntiReps = opts.wrongAntiReps ?? 2;
         const correctLetter = letters[0].toLowerCase();
         const ALPHABET_CONTRAST = "abcdefghijklmnopqrstuvwxyz";
+        _clearRegionSpans(["sem", "motor"]);
+        this._writeTiledPattern(semRegion, wordEmb, true);
+        const preAF = wScratch.preAF;
+        const postAF = wScratch.postAF;
+        const _l3bCpu = _isFinalRep && typeof semToMotor.antiHebbianUpdate === "function" && semToMotor.values && semToMotor.values.length > 0;
+        if (_l3bCpu) {
+          for (let j = 0; j < semSize; j++) preAF[j] = cluster.lastSpikes[semRegion.start + j];
+        }
         for (let wi = 0; wi < ALPHABET_CONTRAST.length; wi++) {
           const wrongCh = ALPHABET_CONTRAST[wi];
           if (wrongCh === correctLetter) continue;
           const wrongOneHot = encodeLetter(wrongCh);
-          _clearRegionSpans(["sem", "motor"]);
-          this._writeTiledPattern(semRegion, wordEmb, true);
+          _clearRegionSpans(["motor"]);
           this._writeTiledPattern(motorRegion, wrongOneHot, true);
-          const preAF = wScratch.preAF;
-          const postAF = wScratch.postAF;
-          for (let j = 0; j < semSize; j++) preAF[j] = cluster.lastSpikes[semRegion.start + j];
-          for (let j = 0; j < motorSize; j++) postAF[j] = cluster.lastSpikes[motorRegion.start + j];
+          if (_l3bCpu) {
+            for (let j = 0; j < motorSize; j++) postAF[j] = cluster.lastSpikes[motorRegion.start + j];
+          }
           const antiLr = lr * wrongLrScale;
           for (let k = 0; k < wrongAntiReps; k++) {
-            if (typeof semToMotor.antiHebbianUpdate === "function" && semToMotor.values && semToMotor.values.length > 0) {
+            if (_l3bCpu) {
               try {
                 semToMotor.antiHebbianUpdate(preAF, postAF, antiLr);
               } catch {
@@ -108126,6 +108142,8 @@ var Curriculum = class _Curriculum {
           }
         }
       }
+      _wiT.l3b += Date.now() - _wiMark;
+      _wiMark = Date.now();
       if (typeof cluster.hebbianPairReinforce === "function" && letters.length > 1) {
         for (let i = 0; i < letters.length - 1; i++) {
           const curr = encodeLetter(letters[i]);
@@ -108141,6 +108159,8 @@ var Curriculum = class _Curriculum {
           }
         }
       }
+      _wiT.l1b += Date.now() - _wiMark;
+      _wiMark = Date.now();
       if (!opts.skipTemplates && semRegion && semToMotor) {
         const templates = opts.templates || [
           `i see a ${cleanWord}`,
@@ -108155,9 +108175,12 @@ var Curriculum = class _Curriculum {
           this._writeTiledPattern(motorRegion, firstLetterOneHot, true);
           const preF = wScratch.preF;
           const postF = wScratch.postF;
-          for (let j = 0; j < semSize; j++) preF[j] = cluster.lastSpikes[semRegion.start + j];
-          for (let j = 0; j < motorSize; j++) postF[j] = cluster.lastSpikes[motorRegion.start + j];
-          if (typeof semToMotor.ojaUpdate === "function" && semToMotor.values && semToMotor.values.length > 0) {
+          const _l4NeedArrays = _isFinalRep || !semToMotor._gpuBound;
+          if (_l4NeedArrays) {
+            for (let j = 0; j < semSize; j++) preF[j] = cluster.lastSpikes[semRegion.start + j];
+            for (let j = 0; j < motorSize; j++) postF[j] = cluster.lastSpikes[motorRegion.start + j];
+          }
+          if (_isFinalRep && typeof semToMotor.ojaUpdate === "function" && semToMotor.values && semToMotor.values.length > 0) {
             try {
               const kScales = typeof cluster.buildKScalesForProjection === "function" ? cluster.buildKScalesForProjection("sem", "motor") : null;
               semToMotor.ojaUpdate(preF, postF, lr, kScales ? { kScales } : void 0);
@@ -108177,10 +108200,25 @@ var Curriculum = class _Curriculum {
           }
         }
       }
+      _wiT.l4 += Date.now() - _wiMark;
       if (typeof _microtask === "function") await _microtask();
     }
     cluster._teachIntermediateRep = false;
     cluster._teachFinalRepSampleEveryN = 0;
+    {
+      const _p = this._wiProf || (this._wiProf = { words: 0, l12: 0, l3: 0, l3b: 0, l1b: 0, l4: 0, lastLogMs: 0 });
+      _p.words++;
+      _p.l12 += _wiT.l12;
+      _p.l3 += _wiT.l3;
+      _p.l3b += _wiT.l3b;
+      _p.l1b += _wiT.l1b;
+      _p.l4 += _wiT.l4;
+      if (!_p.lastLogMs || Date.now() - _p.lastLogMs > 3e4) {
+        _p.lastLogMs = Date.now();
+        const _n = Math.max(1, _p.words);
+        console.log(`[WORD-INT] per-word layer split over ${_p.words} words \u2014 l12(letters)=${Math.round(_p.l12 / _n)}ms l3(carve)=${Math.round(_p.l3 / _n)}ms l3b(contrast)=${Math.round(_p.l3b / _n)}ms l1b(seq)=${Math.round(_p.l1b / _n)}ms l4(templates)=${Math.round(_p.l4 / _n)}ms.`);
+      }
+    }
     this.stats.shortWordsSeen++;
     const _wordIntElapsedMs = Date.now() - _wordIntStartMs;
     try {

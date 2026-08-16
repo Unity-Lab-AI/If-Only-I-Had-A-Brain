@@ -206,9 +206,16 @@ const SERVER_GPU_MIXIN = {
       // the case where _gpuBatch IS still being called).
       const _pausedByDesign = !!(this._cortexUploadInFlight
         || (this.cortexCluster && this.cortexCluster._probeGateActive));
-      if (!_pausedByDesign && _live && this._lastBatchOkMs && _stallMs > _STALL_MS) {
+      // PAUSE-END ANCHOR (2026-08-16) — stamp designed pauses here too, and
+      // measure the stall from max(lastBatchOk, pauseSeen): this method isn't
+      // called DURING a pause, so its first post-pause call used to see the
+      // stale pre-pause anchor with the flag already false (the 709s ⛔ false
+      // alarm right as the canonical upload settled).
+      if (_pausedByDesign) this._designedPauseSeenMs = _now;
+      const _sinceAnchorMs = _now - Math.max(this._lastBatchOkMs || 0, this._designedPauseSeenMs || 0);
+      if (!_pausedByDesign && _live && this._lastBatchOkMs && _sinceAnchorMs > _STALL_MS) {
         this._perfStats.batchStall = {
-          stalledMs: _stallMs,
+          stalledMs: _sinceAnchorMs,
           lastOkAt: this._lastBatchOkMs,
           donorBufferedMB: +(((this._gpuClient.bufferedAmount || 0) / 1048576).toFixed(1)),
           substeps,
@@ -216,9 +223,9 @@ const SERVER_GPU_MIXIN = {
         if (!this._batchStallLogMs || (_now - this._batchStallLogMs) > 30000) {
           this._batchStallLogMs = _now;
           const _c = (this.clients && this.clients.get) ? this.clients.get(this._gpuClient) : null;
-          console.error(`[Brain] ⛔ COMPUTE STALL — no compute_batch has COMPLETED in ${(_stallMs / 1000).toFixed(0)}s while a donor is connected. The brain is not stepping: spikes are frozen and the walk cannot pass a gate. donor buffered=${((this._gpuClient.bufferedAmount || 0) / 1048576).toFixed(1)}MB rtt=${_c && _c.rttMs != null ? _c.rttMs : '?'}ms substeps=${substeps}. Suspect the donor link is saturated (teach lane) or the donor cannot service its socket while computing. Rate-limited 30s.`);
+          console.error(`[Brain] ⛔ COMPUTE STALL — no compute_batch has COMPLETED in ${(_sinceAnchorMs / 1000).toFixed(0)}s while a donor is connected (measured from the last completion OR the last designed pause, whichever is later). The brain is not stepping: spikes are frozen and the walk cannot pass a gate. donor buffered=${((this._gpuClient.bufferedAmount || 0) / 1048576).toFixed(1)}MB rtt=${_c && _c.rttMs != null ? _c.rttMs : '?'}ms substeps=${substeps}. Suspect the donor link is saturated (teach lane) or the donor cannot service its socket while computing. Rate-limited 30s.`);
         }
-      } else if (this._perfStats && this._perfStats.batchStall && (_pausedByDesign || _stallMs <= _STALL_MS)) {
+      } else if (this._perfStats && this._perfStats.batchStall && (_pausedByDesign || _sinceAnchorMs <= _STALL_MS)) {
         // EM.4 — recovered OR paused-by-design clears the banner. Without the
         // paused clause a stall object written just before a probe gate opened
         // LATCHED for the whole cell (this method is never called while the

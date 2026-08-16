@@ -18968,6 +18968,11 @@ export class Curriculum {
     const firstLetterOneHot = encodeLetter(letters[0]);
     const motorFirstLetter = buildPattern(motorSize, firstLetterOneHot, wScratch.motorFirstLetterBuf);
 
+    // 12M REGRESSION CUT telemetry — per-layer wall-ms accumulated across the
+    // rep loop and reported throttled after the word, so the live console
+    // NAMES where each word's time goes instead of leaving it to inference.
+    const _wiT = { l12: 0, l3: 0, l3b: 0, l1b: 0, l4: 0 };
+    let _wiMark = 0;
     for (let rep = 0; rep < reps; rep++) {
       if (typeof globalThis._brainShutdownRequested !== 'undefined' && globalThis._brainShutdownRequested) return;
 
@@ -18993,6 +18998,7 @@ export class Curriculum {
       // keep sem silent during per-letter identity carving so
       // letter_to_phon and letter_to_motor (identity) get clean signal,
       // and use a dedicated clean pass (below) for sem→motor(first letter).
+      _wiMark = Date.now();
       for (let i = 0; i < letters.length; i++) {
         const ch = letters[i];
         const chOneHot = encodeLetter(ch);
@@ -19022,6 +19028,7 @@ export class Curriculum {
         await cluster._crossRegionHebbian(lr, layer12Opts);
       }
 
+      _wiT.l12 += Date.now() - _wiMark; _wiMark = Date.now();
       // === Layer 3 (CLEAN sem→motor first-letter carve, DIRECT projection) ===
       // Targeted Oja update on `sem_to_motor` ONLY. Does NOT call
       // `_crossRegionHebbian` because that iterates ALL projections — and
@@ -19049,13 +19056,25 @@ export class Curriculum {
         // Build preF/postF from the now-populated lastSpikes for the
         // CPU shadow oja update (ojaUpdate takes region-sized arrays).
         // iter22 — reuse scratch buffers, don't allocate per rep.
+        // 12M REGRESSION CUT (2026-08-16, profiler-named: _teachWordIntegrated
+        // 13.7s/word, teach/min 4 vs ~1,400 known-good) — the direct-projection
+        // layers (3/3b/4) bypassed the layer-1+2 final-rep CPU-shadow gates
+        // entirely: region-sized fills (semSize is 1.5M at the 12M cortex) +
+        // synchronous CPU updates ran EVERY rep. Same posture as layers 1+2
+        // now: CPU shadow (probe-read) updates on the FINAL rep only; GPU
+        // hebbianBound fires every rep so GPU training mass is unchanged. The
+        // fills are also needed by the non-bound GPU fallback, so they run
+        // when either consumer will.
         const preF = wScratch.preF;
         const postF = wScratch.postF;
-        for (let j = 0; j < semSize; j++) preF[j] = cluster.lastSpikes[semRegion.start + j];
-        for (let j = 0; j < motorSize; j++) postF[j] = cluster.lastSpikes[motorRegion.start + j];
+        const _l3NeedArrays = _isFinalRep || !semToMotor._gpuBound;
+        if (_l3NeedArrays) {
+          for (let j = 0; j < semSize; j++) preF[j] = cluster.lastSpikes[semRegion.start + j];
+          for (let j = 0; j < motorSize; j++) postF[j] = cluster.lastSpikes[motorRegion.start + j];
+        }
         for (let k = 0; k < firstLetterCarvingReps; k++) {
-          // CPU shadow oja update (probes read CPU CSR).
-          if (typeof semToMotor.ojaUpdate === 'function' && semToMotor.values && semToMotor.values.length > 0) {
+          // CPU shadow oja update (probes read CPU CSR) — final rep only.
+          if (_isFinalRep && typeof semToMotor.ojaUpdate === 'function' && semToMotor.values && semToMotor.values.length > 0) {
             try {
               const kScales = typeof cluster.buildKScalesForProjection === 'function'
                 ? cluster.buildKScalesForProjection('sem', 'motor') : null;
@@ -19073,6 +19092,7 @@ export class Curriculum {
         }
       }
 
+      _wiT.l3 += Date.now() - _wiMark; _wiMark = Date.now();
       // === Layer 3b (CONTRASTIVE anti-Hebbian push-AWAY against 25 wrong letters) ===
       // Layer 3 pushes sem(word)→motor(correct letter) UP via Oja.
       // Without active contrastive pressure, Oja's positive updates merge
@@ -19094,23 +19114,37 @@ export class Curriculum {
         const wrongAntiReps = opts.wrongAntiReps ?? 2;
         const correctLetter = letters[0].toLowerCase();
         const ALPHABET_CONTRAST = 'abcdefghijklmnopqrstuvwxyz';
+        // 12M REGRESSION CUT (2026-08-16) — THE dominant per-word cost at the
+        // grown cortex, caught by the profiler + the 2–5.4s BLOCKED pins. The
+        // old loop cleared + rewrote the ENTIRE sem region (1.5M cells at 12M)
+        // AND refilled the sem-sized preAF scratch for EVERY one of the 25
+        // wrong letters × every rep — but sem(word) is IDENTICAL across all
+        // 25: only the MOTOR pattern changes per wrong letter. Hoist the sem
+        // write + preAF fill out of the wrong-letter loop (bit-identical
+        // state), clear/write only the motor span per iteration, and — same
+        // posture as layers 1+2 — run the CPU-shadow anti-Hebbian on the
+        // FINAL rep only while GPU hebbianBound(-lr) keeps firing every rep.
+        _clearRegionSpans(['sem', 'motor']);
+        this._writeTiledPattern(semRegion, wordEmb, true);
+        const preAF = wScratch.preAF;
+        const postAF = wScratch.postAF;
+        const _l3bCpu = _isFinalRep && typeof semToMotor.antiHebbianUpdate === 'function'
+          && semToMotor.values && semToMotor.values.length > 0;
+        if (_l3bCpu) {
+          for (let j = 0; j < semSize; j++) preAF[j] = cluster.lastSpikes[semRegion.start + j];
+        }
         for (let wi = 0; wi < ALPHABET_CONTRAST.length; wi++) {
           const wrongCh = ALPHABET_CONTRAST[wi];
           if (wrongCh === correctLetter) continue;
           const wrongOneHot = encodeLetter(wrongCh);
-          _clearRegionSpans(['sem', 'motor']);
-          this._writeTiledPattern(semRegion, wordEmb, true);
+          _clearRegionSpans(['motor']);
           this._writeTiledPattern(motorRegion, wrongOneHot, true);
-          // iter22 — reuse scratch buffers, don't allocate per wrong letter.
-          // Was 25 wrong letters × 2 buffers per word per rep = primary
-          // _teachWordIntegrated leak source.
-          const preAF = wScratch.preAF;
-          const postAF = wScratch.postAF;
-          for (let j = 0; j < semSize; j++) preAF[j] = cluster.lastSpikes[semRegion.start + j];
-          for (let j = 0; j < motorSize; j++) postAF[j] = cluster.lastSpikes[motorRegion.start + j];
+          if (_l3bCpu) {
+            for (let j = 0; j < motorSize; j++) postAF[j] = cluster.lastSpikes[motorRegion.start + j];
+          }
           const antiLr = lr * wrongLrScale;
           for (let k = 0; k < wrongAntiReps; k++) {
-            if (typeof semToMotor.antiHebbianUpdate === 'function' && semToMotor.values && semToMotor.values.length > 0) {
+            if (_l3bCpu) {
               try { semToMotor.antiHebbianUpdate(preAF, postAF, antiLr); } catch { /* non-fatal */ }
             }
             if (semToMotor._gpuBound && cluster._gpuProxyReady && cluster._gpuProxy && cluster._gpuProxy.hebbianBound) {
@@ -19120,6 +19154,7 @@ export class Curriculum {
         }
       }
 
+      _wiT.l3b += Date.now() - _wiMark; _wiMark = Date.now();
       // === Layer 1b: letter sequence transitions (intra-letter synapses) ===
       // letter(word[i]) → letter(word[i+1]) via intra-synapses. This
       // carves the recurrent sequence that motor emission uses to emit
@@ -19141,6 +19176,7 @@ export class Curriculum {
         }
       }
 
+      _wiT.l1b += Date.now() - _wiMark; _wiMark = Date.now();
       // === Layer 4: sentence-frame templates (DIRECT sem→motor) ===
       // Three K-grade templates that embed the word in plausible
       // grammatical contexts. Trains sem(full-sentence) → motor(first
@@ -19163,11 +19199,17 @@ export class Curriculum {
           this._writeTiledPattern(semRegion, sentEmb, true);
           this._writeTiledPattern(motorRegion, firstLetterOneHot, true);
           // iter22 — reuse scratch buffers, don't allocate per template.
+          // 12M REGRESSION CUT (2026-08-16) — same final-rep CPU-shadow gating
+          // as layers 1+2/3/3b: sem-sized fills + the synchronous CPU Oja ran
+          // every rep here ungated; GPU hebbianBound keeps firing every rep.
           const preF = wScratch.preF;
           const postF = wScratch.postF;
-          for (let j = 0; j < semSize; j++) preF[j] = cluster.lastSpikes[semRegion.start + j];
-          for (let j = 0; j < motorSize; j++) postF[j] = cluster.lastSpikes[motorRegion.start + j];
-          if (typeof semToMotor.ojaUpdate === 'function' && semToMotor.values && semToMotor.values.length > 0) {
+          const _l4NeedArrays = _isFinalRep || !semToMotor._gpuBound;
+          if (_l4NeedArrays) {
+            for (let j = 0; j < semSize; j++) preF[j] = cluster.lastSpikes[semRegion.start + j];
+            for (let j = 0; j < motorSize; j++) postF[j] = cluster.lastSpikes[motorRegion.start + j];
+          }
+          if (_isFinalRep && typeof semToMotor.ojaUpdate === 'function' && semToMotor.values && semToMotor.values.length > 0) {
             try {
               const kScales = typeof cluster.buildKScalesForProjection === 'function'
                 ? cluster.buildKScalesForProjection('sem', 'motor') : null;
@@ -19182,12 +19224,23 @@ export class Curriculum {
         }
       }
 
+      _wiT.l4 += Date.now() - _wiMark;
       if (typeof _microtask === 'function') await _microtask();
     }
     // CELL-TEACH SPEED — reset the final-rep CPU-Oja gate flags so they never
     // leak into other teach paths (mirrors _teachWordEmission's post-loop reset).
     cluster._teachIntermediateRep = false;
     cluster._teachFinalRepSampleEveryN = 0;
+    // 12M REGRESSION CUT telemetry — accumulate + throttled report (30s).
+    {
+      const _p = this._wiProf || (this._wiProf = { words: 0, l12: 0, l3: 0, l3b: 0, l1b: 0, l4: 0, lastLogMs: 0 });
+      _p.words++; _p.l12 += _wiT.l12; _p.l3 += _wiT.l3; _p.l3b += _wiT.l3b; _p.l1b += _wiT.l1b; _p.l4 += _wiT.l4;
+      if (!_p.lastLogMs || (Date.now() - _p.lastLogMs) > 30000) {
+        _p.lastLogMs = Date.now();
+        const _n = Math.max(1, _p.words);
+        console.log(`[WORD-INT] per-word layer split over ${_p.words} words — l12(letters)=${Math.round(_p.l12 / _n)}ms l3(carve)=${Math.round(_p.l3 / _n)}ms l3b(contrast)=${Math.round(_p.l3b / _n)}ms l1b(seq)=${Math.round(_p.l1b / _n)}ms l4(templates)=${Math.round(_p.l4 / _n)}ms.`);
+      }
+    }
 
     this.stats.shortWordsSeen++;
     // Brain Events DONE broadcast (I.11 closure). Pairs with the START
