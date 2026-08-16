@@ -2671,9 +2671,23 @@ export class Curriculum {
         const isOutermost = stack ? stack.length === 0 : true;
         // `phaseKey` is non-null exactly when a cell is running, which is also
         // exactly when there is a declared-name set to ask.
+        //
+        // TRICKLE-SKIP LATCH FIX (2026-08-16, caught by the OI.2 watcher):
+        // the old condition only refused cell-phase status when a LEDGER
+        // ancestor was in flight. But foreign teach entries push NON-ledger
+        // tokens — `_teachWordDefinition` (dream trickle / chat / emission
+        // defs) nests `_teachAssociationPairs` under one — and since the
+        // runner DECLARES _teachAssociationPairs, every such nested call
+        // qualified as "the cell phase again" and got PHASE-SKIPPED once the
+        // real phase banked. First live dream window: 120 words processed,
+        // 120 failed in 27ms, zero bound — the entire vocabulary lane eaten
+        // by resume-skip. The correct discriminator: a declared phase may
+        // bank/skip ONLY when no `_teach*` ancestor is in flight. Runner and
+        // battery tokens (non-_teach names) don't block banking; any teach
+        // ancestor means "nested primitive — always execute, never ledger".
         const isCellPhase = !!phaseKey
           && this._declaredPhaseNames(cl._currentCellKey).has(name)
-          && !stack.some((t) => t.ledger);
+          && !stack.some((t) => t.ledger || t.teach);
 
         // CELL-PHASE-ONLY skip+persist. Prior T31-extended wrapped EVERY
         // _teachX method with skip+persist - which CATASTROPHICALLY broke
@@ -2695,7 +2709,7 @@ export class Curriculum {
           this._hb(`[Curriculum] PHASE SKIPPED - ${phaseKey} (already passed; resumed from persisted passedPhases - weights carried forward via brain-weights.bin)`);
           return;
         }
-        const token = { name, startAt: Date.now(), ledger: isCellPhase };
+        const token = { name, startAt: Date.now(), ledger: isCellPhase, teach: name.startsWith('_teach') };
         if (stack) { stack.push(token); cl._activePhase = token; }
         // HONEST PROGRESS (2026-08-14) - count cell phases STARTED, not only
         // completed. The first phase of a K cell legitimately runs tens of
