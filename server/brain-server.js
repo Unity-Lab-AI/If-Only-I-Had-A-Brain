@@ -4104,6 +4104,13 @@ class ServerBrain {
               // fresh 85MB re-upload per drop.
               this._lastCortexUploadStartTs = Date.now();
               console.log(`[Brain] Sparse language-cortex upload starting — trigger=${warmReady ? `compute_batch warm (${warmupBatches} round-trips)` : `TIME FALLBACK (${(confirmedForMs / 1000).toFixed(0)}s since clusters confirmed, only ${warmupBatches} batches — teach-heavy deploy never warmed the main loop)`}`);
+              // GINTRA — init the donor-side langCortex pseudo-cluster BEFORE
+              // the upload so the intra matrix's binding (shipped with its
+              // chunks) targets a cluster the donor already holds. Ordering on
+              // one socket guarantees the init lands first; the donor also
+              // tolerates late binding resolution (hebbian_bound skips until
+              // the cluster is resident). No-op below donor 0.3.17.
+              try { this._gpuInitLangPseudoCluster(); } catch (e) { console.warn('[Brain] GINTRA pseudo-init failed (intra stays CPU):', e && e.message); }
               this.cortexCluster.initGpu().then(async (gpuReady) => {
                 // T17.7 Phase C.1 — once the 14 cross-projections + the
                 // intra-cluster synapse matrix are on GPU in standalone
