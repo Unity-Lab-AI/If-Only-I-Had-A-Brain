@@ -734,7 +734,7 @@ function writeBrainCodeHash(hash) {
 // on normal deploys, but DREAM_KEEP_STATE=1 BYPASSES the hash check — this format bump is the
 // belt-and-suspenders that still rejects v1 weights on that path, forcing the mandatory fresh
 // K→PhD walk that trains the new senses in from scratch (no migration, no garbage-weight load).
-const WEIGHTS_FORMAT_VERSION = 3;   // WMB 2026-07-14: word_motor unified to one band + langCortexSize grown — geometry change, old weights auto-refuse → clean fresh walk
+const WEIGHTS_FORMAT_VERSION = 4;   // language-growth hop 1 (2026-08-16): langCortexSize 1.5M→12M — geometry change, old weights auto-refuse → clean fresh walk. (v3 was WMB 2026-07-14: word_motor unified band.)
 const RESUME_MARKER_PATH = path.join(__dirname, '.resume-marker.json');
 
 // #112.11 — checkpoint slot cap. Keep only the last N rolling save slots
@@ -1728,7 +1728,15 @@ class ServerBrain {
       // 4000 (still ~10x the real ~370 for heap-object + scratch safety) so
       // ram/v8 bounds no longer falsely cap size; the explicit WORD_MOTOR target
       // below controls the actual landing size.
-      const LANG_CLUSTER_BYTES_PER_NEURON = 4000;
+      // language-growth hop 1 (2026-08-16): 4000 → 1000. At the 12M target the
+      // real CPU-master footprint is ~590 B/neuron (intra 360M nnz × 12B +
+      // crosses ~230M nnz × 12B ≈ 7.1GB / 12M); 4000 made the RAM floor
+      // (freemem×0.5/4000 ≈ 3.3M on a 32GB box) silently block the floor-raise
+      // to any target above ~3.3M. 1000 keeps ~1.7x safety and the box floor
+      // lands at ~13M — the WORD_MOTOR target below still controls landing size.
+      // If boot-time free RAM dips and the floor skips, DREAM_LANG_CORTEX=12000000
+      // overrides outright (logged either way).
+      const LANG_CLUSTER_BYTES_PER_NEURON = 1000;
       const freeRamBytes = os.freemem();
       const ramBudget = freeRamBytes * 0.5;
       const ramBasedMax = Math.floor(ramBudget / LANG_CLUSTER_BYTES_PER_NEURON);
@@ -1901,7 +1909,15 @@ class ServerBrain {
       // needs; on a smaller box autoSize (real RAM/V8/VRAM bounds) still floors
       // it lower — graceful, never larger than the host can hold. Overridable
       // via DREAM_LANG_CORTEX for a controlled fresh walk.
-      const WORD_MOTOR_TARGET_LANG_CORTEX = 1_500_000;
+      // language-growth hop 1 (2026-08-16): 1.5M → 12M (8x, ~3.9% of the 306M
+      // brain; biology says 12-20%, staged hops get there — the operator chose
+      // the 12M middle over 6M live). word_motor grows 90K → 720K cells (6% of
+      // s) — the ~60K unified-vocab target now fits 12x over. Proportions/
+      // fanouts UNCHANGED — pure size scale; the real VRAM estimate at 12M is
+      // ~4.8GB (under the 6GB safety ceiling below; donor total ~8.5GB of 16GB)
+      // and the CPU master ~7.1GB. Geometry change ⟹ WEIGHTS_FORMAT_VERSION
+      // 3→4 ⟹ FRESH WALK required both directions.
+      const WORD_MOTOR_TARGET_LANG_CORTEX = 12_000_000;
       // WMB FLOOR (Gee 2026-07-14, fix v2): the VRAM-budget rescale (vramBasedMax)
       // clamps langCortexSize to whatever fits `LANG_CORTEX_VRAM_BUDGET_BYTES` — a
       // badly under-provisioned ~115MB slice that pinned the language cortex at
@@ -1912,7 +1928,7 @@ class ServerBrain {
       // model — NOT the tiny budget slice) fits a safe VRAM ceiling AND stays under
       // the true RAM/V8 bounds. This bypasses only the under-sized budget slice; the
       // real VRAM/RAM/V8 safety still governs. DREAM_LANG_CORTEX overrides outright.
-      const WMB_VRAM_SAFETY_BYTES = 4 * 1024 * 1024 * 1024;   // ~490MB real at 1.5M ⟹ 8x headroom under the donor's 16GB
+      const WMB_VRAM_SAFETY_BYTES = 6 * 1024 * 1024 * 1024;   // ~4.8GB real at the 12M hop-1 target ⟹ headroom under this ceiling, and the 16GB donor still holds main-brain LIF (~3.7GB) + this at ~8.5GB total with >7GB free
       let langCortexSize = (Number.isFinite(envOverride) && envOverride > 0)
         ? envOverride
         : Math.min(autoSize, WORD_MOTOR_TARGET_LANG_CORTEX);
@@ -8390,7 +8406,12 @@ wss.on('connection', (ws, req) => {
               }
             }
           }
-          resolver({ perCluster: _per });
+          // Forward the donor's per-phase GPU timing (browser donors measure
+          // substepLoopMs/voltReadbackMs and ship it; native donors omit it).
+          // The tick loop stores it on _perfStats.phaseTimingMs — before this
+          // forward the field was dropped here and read undefined for EVERY
+          // donor, so the donor-vs-server step-time split was never visible.
+          resolver({ perCluster: _per, phaseTimingMs: msg.phaseTimingMs || null });
           break;
         }
 

@@ -15,6 +15,18 @@ So: a change touching only `js/` + `html/` + `index.html` → just push to main,
 
 ---
 
+## 2026-08-16 — LANGUAGE-GROWTH HOP 1: dense language cortex 1.5M → 12M — ⚠ requires a FRESH WALK
+
+**What changed:** the dense language cortex (`cortexCluster`, distinct from the 168M main cortex) grew 1.5M → **12M** (8×, ~3.9% of the 306M brain; staged hops toward biological 12–20%; Gee chose 12M over the 6M first draft live). Files (overlay): `server/brain-server.js` ONLY — `WORD_MOTOR_TARGET_LANG_CORTEX` 1.5M→12M, `LANG_CLUSTER_BYTES_PER_NEURON` 4000→1000 (RAM-floor coefficient honesty fix, same shape as WMB's 40000→4000), `WMB_VRAM_SAFETY_BYTES` 4GB→6GB, `WEIGHTS_FORMAT_VERSION 3→4`, plus the `compute_batch_result` phaseTimingMs forward. No donor rebuild (the donor is size-agnostic); HTML text refreshed (sizing claims).
+
+**⚠ GEOMETRY CHANGE → FRESH WALK, not a Savestart.** `WEIGHTS_FORMAT_VERSION` 3→4 makes old weights auto-refuse — press the dashboard **Update & Fresh Walk** button. Do NOT expect a resume; she re-walks from K on the grown cortex.
+
+**Cost of the grow (1.5M→12M):** CPU CSR master ~7.1GB host RAM (intra 360M nnz + crosses ~230M nnz at 12B/nnz); donor VRAM ~4.8GB (intra ~2.9GB + crosses ~1.9GB) — donor total ~8.5GB of 16GB with the 306M main brain. **⚠ canonical upload grows ~85MB→~4.8GB ⟹ ~20 min per donor (re)connect at the measured ~4MB/s wire** — expect the first post-boot upload (and any donor reconnect) to hold the tick paused that long; TIME IT (the number decides whether hop 2 ships upload compression first). brain-weights.bin saves grow to ~7.1GB each — watch box disk (CHECKPOINT_SLOTS backup copies).
+
+**Boot verify:** `[Brain] WMB FLOOR — raising langCortexSize N → 12,000,000` + `[Brain] WMB word_motor capacity: 720,000 cells (6% of 12,000,000 langCortexSize) ... ✓ covers target`. If `WMB FLOOR SKIPPED` appears, the RAM/V8 floor blocked it (check free RAM ≥ ~24GB at boot) — or set `DREAM_LANG_CORTEX=12000000` explicitly.
+
+---
+
 ## 2026-07-14 — WMB: word_motor emission UNIFIED + language cortex grown — ⚠ requires a FRESH WALK
 
 **What changed:** word_motor emission collapsed from 6 per-subject sub-bands (each replicating the full dictionary → overflow → learned words silenced) to ONE global band, one bucket per UNIQUE word; the dense language cortex grown ~349K→~1.5M so word_motor (top 6% ≈ 90K cells) holds the full K→PhD vocab. Files (overlay all): `server/brain-server.js` (langCortexSize grow via fixing the bogus `LANG_CLUSTER_BYTES_PER_NEURON` 40000→4000 + `WORD_MOTOR_TARGET_LANG_CORTEX` cap + `WEIGHTS_FORMAT_VERSION 2→3` + unified persistence), `js/brain/cluster.js`, `js/brain/cluster/emit.js`, `js/brain/curriculum.js`, `js/brain/curriculum/kindergarten.js`, `js/app.bundle.js` (rebuilt).

@@ -1,6 +1,14 @@
 # RESUME — Session Pickup Brief
 
-> ## ⭐⭐⭐ 2026-08-16 (latest) — THE LANGUAGE-GROWTH SESSION OPENS HERE: LG.0 first (brain-server.js FULL READ), revert point `restore-pre-language-growth` @ `69c8e0d`
+> ## ⭐⭐⭐ 2026-08-16 (latest) — LG HOP 1 SHIPPED AT 12M: the dense language cortex 1.5M → 12M, WEIGHTS_FORMAT_VERSION 3→4 — ⏳ LG.5 = GEE'S UPDATE & FRESH WALK PRESS
+>
+> **WHAT SHIPPED (cascaded to main, both remotes):** `server/brain-server.js` five edits — `WORD_MOTOR_TARGET_LANG_CORTEX` 1.5M→**12M** (Gee re-dialed from the 6M draft live: *"i think option 3"* on the 6M/12M/20M fork; word_motor 90K→720K cells, 12× vocab headroom), `LANG_CLUSTER_BYTES_PER_NEURON` 4000→1000 (the RAM-floor over-estimate that silently blocked any target above ~3.3M), `WMB_VRAM_SAFETY_BYTES` 4GB→6GB (12M real ≈ 4.8GB), `WEIGHTS_FORMAT_VERSION` 3→**4**, + the parked phaseTimingMs forward (the resolver dropped it; donor-vs-server step-split now visible). NO layout/fanout/proportion changes (verified by the full LG.0 read — pure size scale). Docs synced same commit (ARCHITECTURE banner incl. the "wtf is the other 96% for" answer, EQUATIONS, NOW, README, REDEPLOY-NOTES, 3 HTMLs).
+>
+> **LG.5 — GEE'S PRESS:** dashboard **Update & FRESH WALK** (geometry change; savestart cannot carry v3 weights). Boot-verify: `WMB FLOOR — raising langCortexSize → 12,000,000` + `word_motor capacity: 720,000 cells ✓`. **TIME THE CANONICAL UPLOAD** — expected ~20min at the measured ~4MB/s wire (~4.8GB); that number decides whether hop 2 (~20M) ships upload compression FIRST. Then: walk at known-good rates (~1,400+ teach/min), gates pass, defs bind, `sem` ever-fired drops below 100%. If it goes bad on Gee's word: branch from `restore-pre-language-growth` @ `69c8e0d` → merge forward → push → Update & FRESH WALK.
+>
+> **RISK NOTED:** the RAM floor is TIGHT at 12M (needs ~24GB free at boot on the 32GB box) — if boot logs `WMB FLOOR SKIPPED`, set `DREAM_LANG_CORTEX=12000000` in the unit env. brain-weights.bin grows to ~7.1GB/save — watch box disk. Standing watches ride along: OI.5b (matrixDrivenPct off 0), EM.3 (`_teachHebbian` 88ms/call — the profiler-named next cut), lastWindow accounting at the next dream window.
+
+> ## 2026-08-16 (prior) — THE LANGUAGE-GROWTH SESSION OPENED HERE: LG.0 first (brain-server.js FULL READ), revert point `restore-pre-language-growth` @ `69c8e0d`
 >
 > **GEE'S GO (verbatim):** *"the day has come! lets do it,m write the todo work, make the revert point in the repo noting it incase it goes bad, and add the todo items to the task list"* — the growth of her language cortex from 1.5M (0.49% of brain) toward biological 12–20% / the April 25% target. FULL battle plan + measured constraints + staged hops (1.5M → ~6M → ~20M VRAM-fit → biological) live in **docs/TODO.md §LG** — read it before anything.
 >
