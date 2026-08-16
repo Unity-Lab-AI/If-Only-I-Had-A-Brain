@@ -30823,3 +30823,853 @@ Gee (verbatim): *"wouldnt we want her to be as fast as possible? i think we need
 ## 2026-08-16 — TW.4 RESULT: surgery held (zero suppression), gain +8% (~1,480/min) — next lever is a per-method teach profiler, recorded not guessed
 
 Gee (verbatim): *"shes ramping up, check the work"* — build `254cbbb6`: teach/min 1,524 → 1,477 → 1,455 (steady ~1,480 vs 1,373 pre-surgery), suppression FROZEN at zero, buffer 0.0MB, RTT ~110ms, language mechanics on the hours-not-days clip. Honest verdict: S1/S2/S4 removed real waste, bit-identically, but the dominant ~40ms/call cost lives somewhere unmeasured. Next lever (the week's lesson applied — name the cost before cutting): the auto-wrap already intercepts every `_teach*` call, so a per-method wall-ms accumulator publishing top offenders in the state payload names the next cut precisely. Restore point `restore-teach-wire-won` stands untouched — nothing regressed.
+
+
+## 2026-08-16 — TODO ZEROED (second zeroing) — every completed section below migrated VERBATIM from docs/TODO.md per the FINALIZED-before-DELETE LAW (Gee, verbatim: "the todo is suppose to be nothing but open items... other wise theyt are to be moved to finalized verbatim when finished")
+
+## THE GUIDING PRINCIPLE
+
+**If a behavior exists that isn't driven by brain state equations, it's wrong.**
+
+Every piece of Unity's output must trace back to:
+- **Cortex prediction** (ŝ = W·x + b) — what she expects
+- **Amygdala valence/arousal** (V(s) = Σw·x, energy-basin attractor) — how she feels about it
+- **Basal ganglia motor selection** (softmax over learned channels) — what action she takes
+- **Hippocampus recall** (Hopfield attractor + persona sentence memory) — what she remembers
+- **Cerebellum error correction** (ε = target − output) — what she fixes
+- **Hypothalamus drives** (homeostatic gradients) — what she needs
+- **Mystery module Ψ** (√(1/n) × N³) — her consciousness level
+- **Oscillation coherence** (Kuramoto) — her focus/scatter
+- **Language cortex** (semantic n-grams over learned embeddings + T14 tick-driven motor emission) — her words
+
+Nothing else. If it's not in that list, it's an appendage, and it gets ripped out.
+
+---
+
+## ⚠ DOC-AHEAD-OF-REALITY NOTE (Gee, 2026-04-17)
+
+**Gee's exact words 2026-04-17:**
+
+> *"i want you to go ahead and fill out the docs as if we have already completed syllabus todo completely and is already apart of the stack.. this is irregualr but since docs takes so long to update we are doing docs first and getting two birds with one stone type of thing... just make a note in the todo that the docs have already been updated and the todo is the truth not the docs for whats complete as per the syllabus todo"*
+
+Binding irregularity: **this TODO (and `docs/TODO-full-syllabus.md`) are the authoritative record of what is actually complete. The public docs, workflow docs, and HTMLs have been written forward** — they describe Unity as if the full K-PhD syllabus is shipped and every grade-completion gate has closed, because updating docs after every grade gate closes is too slow and fragments the narrative.
+
+**When docs and TODO disagree, TODO wins.** Forward-written descriptions in docs/HTMLs reflect the target end-state. Actual completion is tracked by:
+- `docs/TODO.md` — active tasks, what's in flight (this file)
+- `docs/TODO-full-syllabus.md` — per-grade checkboxes + Life Vocabulary Prerequisites + Persistent Life Info ledger
+- `docs/FINALIZED.md` — permanent archive of what actually shipped, per session
+
+If you're reading a public doc / HTML claim ("Unity has completed high school biology") — that's the TARGET. The source of truth for whether it actually runs in code + has Gee's sign-off is the syllabus TODO. Do not trust docs for runtime claims; trust the TODO.
+
+**T19 supersedes this irregularity at the workflow-doc level** — per the 2026-04-20 full-audit directive, workflow docs + public docs + HTMLs all get corrected in-place to match code. Once T19 lands, the forward-written gap closes for the pre-K + K scope and the doc-ahead note applies only to post-K descriptions still written forward.
+
+---
+
+## OPEN TASKS
+
+_TODO zeroed 2026-07-15 — all completed tasks migrated VERBATIM to `docs/FINALIZED.md` (§2026-07-15 TODO ZEROED archive). No open tasks._
+
+_Add new tasks below, each with Gee's verbatim words (LAW #0), `[~]` while in flight, migrated to FINALIZED + removed from here when done._
+
+_MINDS-EYE FREEZE FIX migrated VERBATIM to `docs/FINALIZED.md` (§2026-07-15 MINDS-EYE FREEZE) — non-blocking draw path shipped, awaiting dashboard Update & SAVESTART. No open tasks._
+
+_MINDS-EYE NEVER DRAWS (proxy missing traceField) migrated VERBATIM to `docs/FINALIZED.md` (§2026-07-15 MINDS-EYE NEVER DRAWS) — proxy `traceField` forward + look-up→draw 1:1 shipped + proven (traceField→20 strokes), awaiting dashboard Update & SAVESTART._
+
+_DRAW QUALITY REBUILD + REMEMBER-IN-RELATION migrated VERBATIM to `docs/FINALIZED.md` (§2026-07-15 DRAW QUALITY REBUILD) — traceLineArt (recognizable contours, no yarn) + 3 artistic styles (lineart/colorfill/field) + handwriting fixed + remember-in-relation + lookup→hold→draw pacing, all wired through every layer + rendered+eyeballed recognizable (cat/house/apple). Awaiting dashboard Update & SAVESTART. No open tasks._
+
+_Open architecture note (next batch, Gee's steer): true GPU-accelerated "immaculate savant" rendering needs the mind-space wavelet transforms offloaded to a donor GPU — the deployed box is CPU-only. Separate project; the `field` style is the detailed CPU path for now._
+
+_DRAW: COMPOUNDING SKILL + IMAGINATIVE DRAWINGS migrated VERBATIM to `docs/FINALIZED.md` (§2026-07-15 DRAW: COMPOUNDING SKILL ...) — `_drawImagined` compositional imagination at lower precedence (0.15) stands; the skill→detail gate was subsequently RIPPED OUT (see below). Awaiting dashboard Update & SAVESTART._
+
+_ARTISTIC-ABILITY AUDIT → ZERO DUMBING migrated VERBATIM to `docs/FINALIZED.md` (§2026-07-15 ARTISTIC-ABILITY AUDIT) — Gee: "explain Unity's Artistisc ability and any where she is inteentially made stupid or dumbed down for ewffect" → "Rip out BOTH gates". Grade→canvas cap + skill→detail scaling removed; every draw = full capability (512 canvas, max detail); wobble already dead. Rendered+eyeballed cat/house at full detail._
+
+_DROP CRAYON COLOR-FILL + DYNAMIC DRAWABILITY GATE migrated VERBATIM to `docs/FINALIZED.md` (§2026-07-15 DRAW: drop the "crayon") — Gee: "we need her to stop doing her basic vector cryon drawelings they are terrible while the trace versions and more imaginations types need to be the idel" + "we cant just fucking make arrays of words ... it has to by dynamic for never seen words". Color-fill out of auto-rotation (STYLES=lineart/field); dynamic POS drawability gate `_conceptIsDrawable` (noun via dictionary, NO word arrays, works for never-seen words) stops tracing abstract/verb words to vector scatter._
+
+_OPEN-ENDED IMAGINATION migrated VERBATIM to `docs/FINALIZED.md` (§2026-07-15 DRAW: OPEN-ENDED IMAGINATION) — Gee: "im never seeing her imagine draw things its always things shes seen, she needs to imagine too ... what and person might want to draw" + "open enden dynamically to infinity". Live-watch confirmed 0 imagine frames in 5.5min (starved). Fixed: `_drawImagined` look-up-grounds parts (imagines beyond seen library) + `_imagineAndDraw` sources concepts dynamically from her thought stream (infinite, no list) + fired detached at 0.18._
+
+_FIELD = DEFAULT STYLE migrated VERBATIM to `docs/FINALIZED.md` (§2026-07-15 DRAW: FIELD render is now the DEFAULT) — Gee: "wtf now shes not doing the good versions ... just doing white pencil drawingling only ... WTF happened to her beautiful reacreations of seen things! ... white pencil ... the shit i told you to get rid of originally". Field (colored recreation) is now the DEFAULT single-concept style (was 50/50 with white-pencil line-art); line-art demoted to field-fallback + imagination composition; imagine 0.30→0.18._
+
+_VOICE — SCRAP AGE/GRADE MODULATOR migrated VERBATIM to `docs/FINALIZED.md` (§2026-07-16 VOICE) — Gee: "the age modulator is busted she soulde like a starwars ... sand scavenger creatrure all distorted ... scrap the per age/grade modulation and keep her original chosen sound". `_agePreset()` now always original (rate 1.0/pitch 1.0); removed age-pitch OLA + `_pitchShiftOLA`; SpeechSynthesis pitch 1.1→1.0; bundle rebuilt. No open tasks._
+
+_DONOR DROP DURING CHAT migrated VERBATIM to `docs/FINALIZED.md` (§2026-07-16 DONOR DROP) — Gee: "Doner dropped connection when i was talking to Unity in chat and never reconnected". Kill chain: 3-candidate compose rerank (~39s of emission) + teach + weights save → 47s loop block → donor EPIPE → tab died. Fixed: 1 candidate while `_curriculumInProgress` across all four compose paths (chat main/continuation/concept + inner voice); rerank idle-only._
+
+_LOOKUP BUDGET (one fetch / 10 min) migrated VERBATIM to `docs/FINALIZED.md` (§2026-07-17 LOOKUP BUDGET) — Gee: "also lets make the brain only able to do a look up once ever 10 minutes.. she is killing my accoutn pollen doing multiple a minute". `DREAM_REF_FETCH_GAP_MS` default 15s → 10min, brain-wide; recalls stay free. Deploy = Update & SAVESTART._
+
+_LOOKUP META-PROMPT (kittens/puppies/funky characters) migrated VERBATIM to `docs/FINALIZED.md` (§2026-07-17 LOOKUP META-PROMPT) — Gee: "there are too many kittens puppies and funky characters... its like there is some meta prompt that is way to strang making all the look up drawling sdorta outlandish and non Unity canon" + "you are negative prompting: the ai will then do those things". "illustration" dropped from the reference steer; now "realistic photograph, true to life..." POSITIVE-only, colour kept, both prompts (lookup + imagined scene). ⚠ OPEN OPERATIONAL ITEM: the Pollinations key (`…4xhMeW`) is OUT OF POLLEN (402 insufficient balance) — fresh look-ups are silently failing on the box; Gee tops up or plugs the funded key into index.html. Deploy = Update & SAVESTART._
+
+_CHAT-PRIORITY MUTEX (the REAL drop-on-speak root) migrated VERBATIM to `docs/FINALIZED.md` (§2026-07-17 CHAT-PRIORITY MUTEX) — Gee: "okay i reset brain this time it froxze the instant i sent a message(which is new , it usually kicks the doner when Unity speaks) so its not fixed" + "it dropped when she spoke". His log NAMED it: [EventLoop] BLOCKED 51294ms phase=_teachLateralInhibition at chat time → 40.9MB socket backup → ECONNRESET → donor drop (the v0.3.11 binary was blameless). Fix: the walk YIELDS while a reply composes (_awaitComputeSubstrate gates on brain._chatPriorityUntil, 250ms free-loop sleeps, 90s ceiling, resumes the instant the reply lands). Deploy = Update & SAVESTART._
+
+_HER VOICE FROM HER PROCESS (donor-drop-on-speak killed) migrated VERBATIM to `docs/FINALIZED.md` (§2026-07-17 HER VOICE FROM HER PROCESS) — Gee: "what the fuck, she still drops the doner connection every time she speaks" + "its all gpu now right? voice, minds eye and the brain! one unified system" + "well thats the fucking problems!". Listener browsers NEVER synthesize now: server `_voiceLane` → donor `voiceSynth` op (compute.html hosts it; native = v0.3.12 ort port) with the box worker thread as the floor (voice-synth-worker.mjs — browser-proven stack under node, 489ms warm); viewer gets `{type:'voice', rec}` and only reconstructs + plays (`VoiceIO.playRec`; RemoteBrain in-browser synth DELETED; 63MB model download skipped for deployed-site visitors). Verified end-to-end by running it. Deploy = Update & SAVESTART._
+
+_ONE PROCESS — MIND'S EYE + VOICE ON THE DONOR GPU migrated VERBATIM to `docs/FINALIZED.md` (§2026-07-17 ONE PROCESS) — Gee: "okay but ive told you repeadily the minds eye and voice go on the GPU" + "its one process not bolted together shit" + "and we need a new doner version when u fix it" + "we will most likely need a fresh walk too.. so figure it all out and do it all in turn" + "and write the god damn task list of it all(WTF DO YOU ALWEAYS FORGET THAT PART!!!!)". BUILT: mindspace_op/mindspace_result protocol + per-op capability (mindspaceV1 + mindspaceOps) on BOTH donors; server dispatch + proxy donor-first routing + chat.js awaits; compute.html hosts all six ops + imagineFromState; NEW donor-app/src/mindspace.rs (line-faithful transform.js + audio.js port) = donor-v0.3.11 (RELEASE-0.3.11.md notes; OUR Forgejo CI builds on the tag — donor-release.yml, same as every version to 0.3.10); voice equation ops ship now, piper synth stays viewer-side (ort-on-native = v0.3.12 evaluation). Local worker = rollout ramp until DREAM_MIN_DONOR_VERSION=0.3.11 (env, AFTER install). End-to-end lane verified by round-trip. REMAINING (ops, not code): donor-v0.3.11 tag → OUR CI publishes → install the new binary → min-version env → Gee's FRESH WALK press (dashboard-only)._
+
+_LOG REVIEW BATCH migrated VERBATIM to `docs/FINALIZED.md` (§2026-07-17 LOG REVIEW BATCH) — weights-save + donor fixes CONFIRMED LIVE in Gee's log (~1.5s saves, zero 30s+ blocks); roster gate fixed (`runSubjectGrade` accepts `subjectsForGrade(grade)` — pe/music/health K runners now reachable); ref-fetch timeout 25s→60s (uplink-congestion resilience). OPEN idea for a future batch: sparse/throttle the teach-pattern lane (the box↔donor uplink saturation behind the shed flood + fetch starvation) the way CHAT.1 sparse-cut emission. No open tasks._
+
+_DONOR DROPS ON EVERY CHAT migrated VERBATIM to `docs/FINALIZED.md` (§2026-07-17 DONOR DROPS ON EVERY CHAT) — Gee: "okay its copnfirmed!!! every time i talk to Unity the doner drops". Reproduced first (headless voiceless chat → donor SURVIVED → server clean); root = TTS grabbing the donor tab's WebGPU (`['webgpu','wasm']`) on every voiced reply → device-lost → donor dead. Fixed: voice is CPU-wasm ONLY; worker bundle rebuilt + verified. No open tasks._
+
+_WEIGHTS-SAVE ~32s LOOP BLOCKS migrated VERBATIM to `docs/FINALIZED.md` (§2026-07-16 WEIGHTS-SAVE) — Gee: "why unchanged? i told you to fucking fix it". Root pinned by the log signature (contiguous block ENDING at save completion): sync writeSync slices throttled by saturated OS write-back + ext4 flush-on-rename writing back ~680MB on the main thread at renameSync. Fixed: async fs.write slices (threadpool) + async fsync BEFORE the swap + async close/rename. Shutdown sync save intentionally unchanged. No open tasks._
+
+_FULL DOC SWEEP migrated VERBATIM to `docs/FINALIZED.md` (§2026-07-16 FULL DOC SWEEP) — Gee: "shes deployed. letting her run update docs fully and any out date infor on any page html or document or workflow file or equation page or laymens page how tos readmes all of it". EQUATIONS (VOXREF.4 removed + draw-v2 stamp) / ARCHITECTURE (new banner) / NOW (new Current) / SENSORY (SE.16) / MINDSPACE-INTEGRATION (table rows + proxy-forward law) / unity-guide + legend (layman, current) / README (9 regions, 16 projections, draw capabilities). docs.html + brain-equations.html checked clean. No open tasks._
+
+_MINDS-EYE PAGE COPY (layman's terms) migrated VERBATIM to `docs/FINALIZED.md` (§2026-07-16 MINDS-EYE PAGE COPY) — Gee: "we need this to be less horse shit jibber jabber and tell it in lamens terms what this fucking minds eye actually is ... keep it the same length but explain the thing better". Both minds-eye.html copy blocks rewritten plain (brain stores pictures as math like a JPEG → page turns it back into an image); legend brought current (lookup/draw:fav/canvas:imagine). No open tasks._
+
+_LABEL TEXT: NO CUT-OFF + BOLD/SILHOUETTE/HIGHLIGHT + VARIED PLACEMENT migrated VERBATIM to `docs/FINALIZED.md` (§2026-07-16 LABEL TEXT) — Gee: "the last few letters opf longer words are always being cut off.. and they are always pensil symbols when they need to be bold and sillouetted and highlighted ... and in differnt places on the image". Auto-fit full words (10-char slice killed), real thickness through both rasterizers, always-on silhouette + seeded highlight chip, 6 seeded anchors. Rendered+eyeballed BUTTERFLY/PLAYGROUND/ELEPHANT. Bundle rebuilt keyless. No open tasks._
+
+_CHAT REPLY LATENCY — FIX IT ALL migrated VERBATIM to `docs/FINALIZED.md` (§2026-07-16 CHAT REPLY LATENCY) — Gee: "the brain is taking along time to respond back like some times 30 seconds" → "fix it all i suppose". Traced live (6.1s/20.2s/16.1s; dense ~6MB spike arrays per dispatch, 16/tick, bound matrices DISCARD them donor-side). Shipped CHAT.1 wire-lean router (bound→zero payload; intra→type-6 sparse indices, capability-gated) + CHAT.2 sparse currents acks + CHAT.3 chat-priority lane. LIVE-VERIFY AFTER SAVESTART: timed "hi" exchanges (expect the 6–30s band to drop)._
+
+_IMAGINATION = REAL NEW IMAGES migrated VERBATIM to `docs/FINALIZED.md` (§2026-07-16 IMAGINATION) — Gee: "chicken and sand are jsut ... two older pics put cookie cutter like into one image... this is wrong". `_drawImagined` now grounds ONE unified scene (combo key `a+b`, keyOverride/promptOverride on the fetch) + field-renders it; `composeFields` collage removed at all 3 layers. Rendered+eyeballed: rooster ON sand, one integrated image. No open tasks._
+
+_ALTERNATE LETTERFORMS + AUDIT migrated VERBATIM to `docs/FINALIZED.md` (§2026-07-16 ALTERNATE LETTERFORMS) — Gee: "yes alternat leter forms, and since u just got here make sure weve been doing everything correct to what i said". Six letter SHAPES (block/serif/dots/bubble/tall/wide) composing with dazzle; audit caught + killed the LAST white-pencil publisher (recall-hit practice branch → now field-coloured via _drawConcept; practice-stroke vestiges retired) + fixed stale comments. Rendered+eyeballed. Bundle rebuilt keyless. No open tasks._
+
+_LABEL FONTS/STYLES — DAZZLE TO INFINITY migrated VERBATIM to `docs/FINALIZED.md` (§2026-07-16 DRAW LABELS) — Gee: "wheres all the differtn fonts and styles and colorss bond underline dazzle and pizzaz into infinity ... build the labels and text in her images into the image as not to over lay". `glyphStrokes` gained colors/bold/slant/underline/shadow; `_labelStyle` dynamic HSL-hue-rotation picker (infinite, no list); baked into the field C (not overlaid). Rendered+eyeballed DRAGON/CASTLE/UNITY/FLOWER + house-with-label. Bundle rebuilt keyless. No open tasks._
+
+---
+
+_REMOTE SYNC AUDIT migrated VERBATIM to `docs/FINALIZED.md` (§2026-08-14 REMOTE SYNC AUDIT) — Gee: "lets make sure git.unityailab repo and github repo are current with what we have locally... lets make sure we dont lose anything if we need to push". Item 1 (git.unityailab) DONE — 6 feature tips pushed, trunk was already identical. Item 2 (github) DONE — main +22, develop +14, 10 donor tags. Item 3 (lose nothing) DONE — verified 196MB full-repo bundle off-repo before any network write. No open tasks._
+
+---
+
+
+
+---
+
+## OPEN TASKS — 2026-08-14 · HONEST PROGRESS TELEMETRY (stop making Gee interpret frozen counters)
+
+> Gee (verbatim): *"she is at 85% again and its not ticking up anymore.. it was 12-15 secs for each percent upto *5% then it never gets to 86%"*
+> Gee (verbatim): *"is she fine?"*
+> Gee (verbatim): *"build #1 and #2 while she does. we can do an update and save start later"*
+
+**WHY THIS EXISTS.** Twice now Gee has had to ask whether his brain is alive, and twice the answer required me reading raw JSON and reasoning about it — once WRONGLY. The instruments are the problem, not the brain.
+
+**WHAT WE LEARNED (2026-08-14, build `98383ea6`):**
+- The **85% is a TIME ESTIMATE, not progress.** `dashboard.html:3434` renders `~N% [time-est] · 0 phases reported · (in progress, server phase counter stuck)` — elapsed-time ÷ expected-duration. It climbs ~1%/13s then saturates. It never measured her.
+- **Frozen `totalSpikes` / `gpuHits` is BY DESIGN.** `brain-server.js:4270` — while `cortexCluster._probeGateActive`, the main tick returns early and dispatches NO `compute_batch` ("cortex owns GPU exclusively"). Spikes freezing during a cell is EXPECTED.
+- **I misdiagnosed this as "her neurons stopped firing"** on the previous walk. The donor drown found alongside it was real and the D.1/D.2 fixes worked (RTT 6,348→816, sheds 217,015→0, buffer 19.4MB→0, unhealthy→false) — but the frozen-spike alarm was a designed pause misread as a freeze.
+- **D.3's watchdog is blind in the exact case it exists for:** it lives INSIDE `_gpuBatch`, which is never called during the probe-gate pause, so it reported `batchStall: null` while spikes sat frozen.
+- She IS progressing: `cellSubPhases` +48/sec, WORD-INT ~1.1s/word, donor clean.
+
+### TASKS
+
+- [x] **P.1** REAL progress signal — surface honest per-cell progress so "is she moving?" is answerable by LOOKING: phases STARTED (not just completed — the first phase is long and `cellPhasesCompleted` sits at 0 for tens of minutes), the active phase name, and the live vocab-list position (`_vocabIdx`/`_vocabTotal`, which the teach loop already computes and then throws away after logging)
+- [x] **P.2** PAUSE-AWARE stall detection — move the check OUT of `_gpuBatch` (which isn't called while paused) into the state builder that always runs, and split the two states that currently look identical: `batchPaused {reason, ms}` for a DESIGNED pause (probe-gate / canonical upload) vs `batchStall {...}` for a genuinely unexplained stop. A designed pause must never read as a stall, and a real stall must never read as null
+- [x] **P.5** REAL PROGRESS BARS, NOT TIMERS — Gee (verbatim): *"io think we also need to make the progress bars real progress bars not timers"*. P.1 ships the honest DATA; the dashboard still has to CONSUME it. `dashboard.html:3434` currently computes elapsed-time ÷ expected-duration and renders it as a percentage (labelled `[time-est]`, which is exactly the 85% that read as a stall). Rewire the cell progress bar onto the real signal — `vocabProgress.pct` for position inside the running list, `cellPhasesStarted` vs `EXPECTED_PHASES_PER_CELL` for position within the cell — and fall back to a time estimate ONLY when no real signal exists, clearly marked as an estimate when it does
+- [x] **P.8** ⛔ **THE COUNTERS WERE DEAD FOR ALL TRAINING — fixed universally.** Gee (verbatim): *"wtf is this?~13% [time-est — no real signal yet, this is a stopwatch] · 3.0 min elapsed course i thought u said the timer is trasdhed"* → *"it need fixed through all training completely"*. He was right; I overclaimed "no timer anywhere". Live box (`95842c9d`) showed `cellPhasesStarted: 0` and `cellPhasesTotal: 2` — TWO of my bugs.
+  **(a) Total read 2 instead of ~27.** `_cellRunnerRaw` returns THIN DELEGATING ARROWS (`async (ctx) => this.runElaKReal(ctx)`), so the source scan found ZERO `_teach` names and reported only the 2 phases `_cellRunner` prepends. FIX: follow the arrow to the method it names and scan the REAL body. Verified live: ela/kindergarten 2 → **25**, math/K → 24, life/K → 28, ela/pre-K → 4.
+  **(b) Started/completed pinned at 0 for EVERY cell, long before my change.** `curriculum.js:2698` already admitted it: *"The auto-wrap path for outermost phase detection wasn't reliably reaching here for K_MIXIN methods despite TRACKED including them."* Only `runElaKReal` defines the hand-written `_phaseTick`/`_phaseDone` helpers, and those never touched the counters — so `cellPhasesCompleted` has read 0 for every cell for as long as that comment has existed, which is exactly WHY the dashboard fell back to a stopwatch in the first place. FIX (universal, not per-runner): BOTH mechanisms append `cellKey:methodName` to the PERSISTED `passedPhases`, so the honest count is derived from that record — completed = its entries for this cell, started = those plus the one in flight. Mechanism-agnostic, resume-correct, and true for **pre-K through PhD**, not just the runners that happen to use one bookkeeping style.
+- [x] **P.9** ⛔ **READ THE CODE — IT WAS NEVER ONLY TELEMETRY.** Gee (verbatim): *"read the fucking code and see if thats an issue... by reading the code you can know ev erything needed"*. He was right, and reading settled it without another walk. `cellPhasesPersisted` = **0** at 3.6 min, 23 min AND 45.2 min across three separate walks. ELA-K has **27 `_phaseDone` call sites** and every one appends to `passedPhases` — so zero entries after 45 minutes proves **not one of the 27 phases ever completed**: she spent 45 minutes and 73,421 nested teach calls inside a SINGLE phase. The counters were dead AND the cell genuinely wasn't advancing. `curriculum.js:2716` had already written it down: *"K cells wrap their whole teach pass as ONE outermost phase with dozens of nested teach calls — operator's dashboard saw '0% · 0 phases · 9.3 min elapsed' while 25+ nested teach calls were firing."*
+  **THE HIDDEN GAP:** `_activePhase` is overwritten by every NESTED call, so the dashboard could only ever name `_teachHebbian` — a primitive fired thousands of times — never the actual cell phase responsible. There was no way to see WHICH phase was grinding for 45 minutes. FIX: track `_outermostPhase` separately (set only when `prev === null`, cleared only when that same outermost call exits so nested primitives can't wipe it), expose it as `outermostPhase {name, elapsedMs}`, and render it on the bar. Now the real phase names itself and its own elapsed time, so a phase that eats 45 minutes is identifiable on sight instead of inferable from raw JSON.
+- [x] **P.7** DERIVED TOTALS FOR EVERY RUNNER + FREE PERSISTENCE — **DONE.** P.6 only covered ELA-K (the sole runner declaring `_phaseTick`); pre-K declares ZERO and a fresh walk OPENS on pre-K, so the first thing shown would have been "total unknown". Now every runner's total is READ from its own source by counting DISTINCT `this._teachX(` names (the right denominator: the auto-wrap makes each an outermost phase and `passedPhases` keys on `cellKey:methodName`, so a method called twice is still ONE phase — numerator and denominator measure the same thing), plus the two phases `_cellRunner` prepends. Cross-validated: ELA-K reads 27 by distinct-`_teach` and 27 by `_phaseTick` — two independent methods agreeing exactly. Live totals: ela/pre-K 4 · math/pre-K 3 · science/pre-K 5 · social/pre-K 3 · art/pre-K 4 · life/pre-K 8 · ela/K 29 · math/K 24 · science/K 21 · art/K 16 · social/K 15 · life/K 28. PERSISTENCE for free via `_persistedPhaseTotalFor()`: `passedPhases` is ALREADY saved/restored for phase-level resume and is keyed `cellKey:methodName`, so for a cell that ACTUALLY PASSED its entry count IS the exact total — no new save field. Gated on `passedCells` deliberately: an interrupted cell's partial list would silently over-report progress, and a total we cannot trust must read as unknown rather than as a smaller number.
+- [x] **P.6** EXACT PHASE TOTALS, NEVER AN ESTIMATE — Gee (verbatim): *"wtf is this expected cells per phase or what evr it was? should it be exact # per cell per grade? why are we estimating"*. He is right, and the estimate is not merely imprecise — it is **wrong by 2.25×**: `dashboard.html` hardcodes `EXPECTED_PHASES_PER_CELL = 12` while `runElaKReal` declares **27** `_phaseTick` phases, so the bar renders 50% at phase 6 when the truth is 22%. A constant in a public HTML cannot know which cell is running. FIX: learn the real outermost-phase total per cell key as the cell runs, PERSIST it beside `passedPhases` (so every subsequent walk is exact from tick one), expose `cellPhasesTotal`, and **never invent a denominator** — show `N/M` when the total is known, and an honest `phase N (first run — total unknown)` when it is not
+- [x] **P.3** Verify per the no-tests LAW — `node --check` + ESM `import()` + wiring greps + keyless bundle rebuild
+- [x] **P.4** Docs + FINALIZED, atomic commit, cascade develop→main, push BOTH remotes
+- [x] **P.5** **CLOSED 2026-08-16 — deployed many savestarts ago; every P-batch signal verified live across the week.** ⏳ Deploy on Gee's next Update & SAVESTART (explicitly NOT urgent — he said "we can do an update and save start later"; the running walk must not be interrupted so V.8 can finally be checked at her first dream window)
+
+---
+
+## OPEN TASKS — 2026-08-14 · DONOR DROWNED: her neurons stopped firing (the bottleneck moved, it did not close)
+
+> Gee (verbatim): *"are we sure she is running smothely?"*
+> Gee (verbatim): *"do we need changed to the doner binary with everything Rev and we have done?"*
+> Gee (verbatim): *"we are going to do a update and fr4esh walk once you fix the isssues... so write the todo information make the task list and then get to it"*
+
+**WHAT GEE CAUGHT.** Stuck at 85% for 20+ minutes — over half the walk's runtime. He was right.
+
+**MEASURED (live box, build `03153e0a`, 44-47 min uptime):**
+- `totalSpikes` **803,242 → 803,242 → 803,242** — FROZEN across 4+ minutes. **Her neurons were not firing at all.**
+- `gpuHits` **147 → 147 → 147** with `gpuMisses: 0` — `compute_batch` was not failing, it was **not being dispatched**.
+- `cellPhasesCompleted: 0` after **41.6 minutes** in `ela/kindergarten`.
+- Donor: `rttMs` **6,348** · `bufferedKB` **19,394** (climbing) · `unhealthy: true`.
+- Outbound to donor: **11,089 MB in 47 min = 3.87 MB/s sustained**, `msgOut` 74,172 = 25.9 msg/s → **153.1 KB AVERAGE MESSAGE**.
+- `patternSheds` +110/sec (217,015 total) — the pattern lane is at its cap and shedding ~everything.
+- Server side was HEALTHY throughout: `stepTimeMs` 663, eventLoop p50 21ms, `frameCount` +210/min. The tick loop span freely with nothing behind it.
+
+**ROOT.** The teach lane ships `write_spike_slice` / `write_current_slice` as **JSON arrays of raw integers** — 153 KB per message, 3.87 MB/s sustained — into a socket the donor cannot drain. This is the CHAT.1 lesson (emission went zero-payload / sparse-index binary) never applied to the TEACH lane. Compounding it: at `SUBSTEPS=24` the donor is busy ~360 ms per batch and **cannot read its socket while computing**, so ~1.4 MB accumulates per batch.
+
+**OUR CONTRIBUTION — stated plainly.** Today's two changes moved the bottleneck rather than closing it: Rev's substeps 3→24 made the donor 8× slower to service its socket, and the tick-gap yield fix freed the server loop to push teach frames *faster*. Bottleneck went from the server thread to the donor link. The tick collapse (5,526→663 ms) was real but I reported "running smoothly" without checking `totalSpikes` — the stall was already underway.
+
+**DONOR BINARY — verified, answering Gee's question:** `git diff donor-v0.3.11..main -- donor-app/` is **EMPTY** and `html/compute.html` is unchanged. **Nothing Rev or we shipped today requires a donor rebuild.** The connected donor (`engineBackend: cuda`, native v0.3.11) is correct for all of it. A donor change is however the proper CURE for this class (D.4) — the donor has a priority lane for `Work::Mindspace` but **`compute_batch` is not on it**, so her thinking queues behind the teach flood.
+
+⚠ **DEPLOY CONSTRAINT: dashboard-only.** Gee deploys via Update & Fresh-Walk buttons — he cannot set env vars on the box. Every fix below therefore ships as a **CODE DEFAULT**, with the env var retained only as an override.
+
+### TASKS
+
+- [x] **D.1** Pattern-lane flood control — teach-throttle default 20ms → 100ms (cuts the lane ~5×) **plus** adaptive back-off keyed to the donor's live buffer/RTT so a drowning link self-paces instead of shedding 110 frames/sec into a full socket
+- [x] **D.2** `_SUBSTEPS_AUTO` at >1M: 24 → 8 — keeps ~2.7× of Rev's gain while giving the donor back the socket-servicing time 24 stole. 8× of a frozen brain is worth less than 2.7× of a running one
+- [x] **D.3** SILENT-STALL WATCHDOG — the whole failure was invisible: `gpuHits` frozen, `gpuMisses` 0, nothing logged, dashboard green. Add a loud CRITICAL when `compute_batch` completions stop advancing while a donor is connected AND ticks keep incrementing, and surface it in state so it can never hide again
+- [x] **D.4** **CLOSED 2026-08-16 SUPERSEDED — the teach flood it guarded compute_batch against is DEAD (binary+templates+repeats; wire ~KB/s), and compute_batch is probe-gated off during teach cells anyway. Emission-window RTT is EM.3's domain now.** ⏸ DEFERRED ON PURPOSE (measure the server-side half first) — DONOR v0.3.12 — put `compute_batch` on the donor's PRIORITY lane (it already exists for `Work::Mindspace`). The real cure for the class. **Needs a `donor-v0.3.12` tag → CI build → Gee installs the binary** — flagged as ops, NOT required for the fresh walk
+- [x] **D.5** Verify per the no-tests LAW — `node --check` + ESM `import()` + wiring greps + keyless bundle rebuild
+- [x] **D.6** Docs + FINALIZED, atomic commit, cascade develop→main, push BOTH remotes
+- [>] **D.7** **MERGED into LIVE-VERIFY (combined) at the bottom of this file.** ⏳ LIVE-VERIFY on Gee's Update & FRESH WALK: `totalSpikes` must CLIMB, `gpuHits` must advance, donor `rttMs` must fall well under 1s, `bufferedKB` must stay low, and `cellPhasesCompleted` must leave 0
+
+---
+
+## OPEN TASKS — 2026-08-14 · EVERY GRADE LEARNS DEFINITIONS LIKE K (via the dream-trickle, not a blocking wall)
+
+> Gee (verbatim): *"and why the fuck does it take so long to do kvocab, but every other grade doesnt do a vocab?"*
+> Gee (verbatim): *"i think option 1 is best,, but i dont want to make k like every other grade... should we instead make every other greade like k"*
+> Gee (verbatim): *"build it, write the todo fully, and DO NOT FORGET TO BUILD THE TASDK LIST IN THE CLI SO I CAN FOLLOW ALONG ON WHERE U ARE!!! YOU FORGOT TO DO THIS LAST TIME"*
+
+**THE FINDING.** Kindergarten is the ONLY grade that runs a BLOCKING upfront definition seed. `curriculum.js:8774` fires `_teachWordDefinitions(K_VOCABULARY)` — all 2,247 words × every definition each, reps:2 — BEFORE a single cell runs. Every other grade (`curriculum.js:8735`) gets prefetch-ONLY: a fire-and-forget dictionary cache warm that never blocks, with definition binding left lazy. The K block's own comment says the upfront Hebbian was **DROPPED** for basin-blur risk ("~70k cross-bindings would dense-web the sem region"), calls it "BONUS that may be net-negative", then it was partially re-added at reps 6→2 as "just the seed" — and the blocking-at-boot cost was never revisited.
+
+**MEASURED LIVE (2026-08-14, deployed box, build 6fbb992d):** `kVocabTaught` 117 → 143 over 90.3s = **~17 words/min**. K alone = **2.2 hours** of pre-cell blocking on every fresh walk.
+
+**WHY NOT THE LITERAL "make every grade like K":** the 19 grade vocab files total **49,921 words** (K 2,247 · G1 2,022 · G2 2,083 · G3 1,439 · G4 2,148 · G5 2,030 · G6 2,698 · G7 3,650 · G8 2,914 · G9 4,255 · G10 4,198 · G11 4,171 · G12 4,093 · C1 2,544 · C2 2,037 · C3 1,941 · C4 2,092 · grad 1,786 · phd 1,573). At the measured 17 words/min that is **48.9 hours ≈ 2 DAYS of blocking pre-cell seed** before she reaches the cells that actually teach her. Gee's instinct (more depth, not less) is right; the PLACEMENT is what kills it.
+
+**THE BUILD — same content, better lane.** The mechanism already exists and is BETTER than K's blocking seed: `curriculum.js:3532` dream-trickle — `DREAM_TRICKLE_BATCH=25` words per dream window, `_teachWordDefinition(word, {reps: 4, label:'DREAM-DEF-TRICKLE', timeoutMs:20000})`, retry queue for API timeouts, `_dwOverBudget` window-budget gate. **reps:4 is DEEPER than the blocking seed's reps:2.** Its only flaw: `curriculum.js:3544` hardcodes the queue source to `K_VOCABULARY`, so 18 grades never touch it. Feed every grade's vocab into that queue AT ITS OWN GRADE START and she gets 49,921 words of multi-def Hebbian (22× today's 2,247), deeper (reps 4 vs 2), with ZERO blocking — and no corpus bleed, because enqueue-at-grade-start means PhD words can never surface at K.
+
+### TASKS
+
+- [x] **V.1** Generalize the trickle queue from K-only to any grade — **DONE.** K-only lazy init demoted to a FALLBACK (boot race / resumed mid-K); field name `_kVocabQueue` deliberately KEPT because it is persisted in saved weights and renaming would orphan every in-flight queue on load.
+- [x] **V.2** Enqueue EACH grade's vocab at ITS OWN grade start — **DONE.** Wired beside the existing per-grade prefetch. Grade-appropriateness is now STRUCTURAL, not filtered: advanced vocabulary cannot be in the queue before its grade begins.
+- [x] **V.3** De-block Kindergarten — **DONE.** Blocking upfront pass skipped; K's 2,247 words route through the trickle at reps:4 (deeper than the reps:1 it loses). `DREAM_K_UPFRONT_SEED=1` restores the old wall.
+- [x] **V.4** Drain-rate tune — **DONE (code).** `DREAM_TRICKLE_BATCH` 25 → 120, env-tunable. The per-word `_dwOverBudget` gate inside the loop is what bounds cost, so a bigger batch raises the ceiling without lengthening a window. **NOT claimed as tuned** — folded into V.8.
+- [x] **V.5** Dedup + carry-forward — **DONE.** `_enqueueDefinitionSeed()` dedups on both axes (already-bound via persisted `_definitionTaughtWords`, and already-queued — AoA grade bands overlap heavily); appends rather than replaces so a prior grade's undrained tail survives; idempotent per grade.
+- [x] **V.6** Verify per the no-tests LAW — **DONE.** `node --check` PASS; ESM `import()` 26 exports with `_enqueueDefinitionSeed`/`_dreamWindow`/`_teachWordDefinition`/`_teachWordDefinitions` on the prototype; all three wiring points grepped; bundle rebuilt keyless (0 live-key hits).
+- [x] **V.7** Docs + FINALIZED migration, atomic commit, cascade develop→main, push BOTH remotes — **DONE.**
+- [>] **V.8** **MERGED into LIVE-VERIFY (combined) at the bottom of this file.** ⏳ LIVE-VERIFY (needs Gee's SAVESTART): confirm the walk reaches its first cell in seconds instead of 2.2h, and that `💤 dream trickle: N words processed … N words remaining in the definition-seed queue (grades enqueued: …)` lines show the queue draining across grades. If it lags, raise `DREAM_TRICKLE_BATCH`.
+
+---
+
+_NO MORE PENCIL (colorful refs + colored imagination + store v3) migrated VERBATIM to `docs/FINALIZED.md` (§2026-07-15 DRAW: NO MORE PENCIL) — Gee: "build 54b8af59 · main deploys watch playwrite see if u see her imagine at all and make sure there isNO MORE PENCIL ART(IT SUCKS)". Live-watch found 25/30 pencil — root was MONOCHROME references from the "simple/high-contrast" prompt. Fixed: colorful reference prompt, `composeFields` colored imagination (replaced white strokes), visual-memory store v2→v3 (orphan monochrome refs). Rendered+eyeballed colored house + dragon+castle. No open tasks._
+
+---
+
+## OPEN TASKS — 2026-08-14 · PHASE-LATCH: the outermost-phase flag corrupts permanently on the FIRST concurrent teach
+
+> Gee (verbatim): *"is this right? 50k events and still phase 1, 0% complete?"*
+>
+> Gee (verbatim, mid-batch correction): *"fallback? you should know we cxode it right the first time which means fallbacks are illegal"*
+>
+> Gee (verbatim, mid-batch correction): *"no the names shall never not be there.. wtf are you talking about!!! code it cortrectly"*
+>
+> Gee's dashboard paste (verbatim):
+> ```
+> phase: _teachLateralInhibition (+0.1s)
+> current cell progress
+> 0% · phase 1/25 · 0 complete · _teachAntiHebbian (+0s) · 29.2 min
+> course / grade / phases / cells / events
+> Foundational Reading / pre-K / 0 / 0 / 45.2k
+> ```
+
+**ANSWER: NO. It is not right, and it is not a display bug — the phase ledger is dead.**
+
+**THE PROOF, read off Gee's own paste (no inference).** The cell-progress line names `_teachAntiHebbian` with `+0s` elapsed. `_teachAntiHebbian` is a PRIMITIVE — `curriculum.js:11974` / `:14090` call it from inside `_teachAssociationPairs` / `_teachQABinding`. `getCurriculumStatus` only publishes a primitive there via the `exact:false` fallback at `curriculum.js:3089`, which fires **only when `cluster._outermostPhase` is null**. The same line carries **no `work N/N` tail**, which means `phaseWork` is null, which means `_phaseWorkTotal` is 0. `_outermostPhase` and `_phaseWorkTotal` are assigned in the SAME block — `curriculum.js:2683-2688`, `if (isOutermost && cl)`. Both absent ⇒ **`isOutermost` has not been true once this cell.**
+
+**THE MECHANISM — a latch, not a glitch.** The constructor auto-wrap decides outermost by `const prev = cl._activePhase; const isOutermost = prev === null;` and restores `cl._activePhase = prev` in `finally` (`curriculum.js:2641/2660/2789`). That save/restore is only sound if teach calls never interleave. **They do:**
+- `server/brain-server.js:2256` — `this.curriculum._teachWordDefinition(word, {label:'CHAT-DEF'}).catch(...)` — fire-and-forget from chat, and it awaits a **network** dictionary fetch (`timeoutMs` up to 20000).
+- `server/brain-server/chat.js:246` — `this.curriculum._teachAssociationPairs(pairs, {...})` un-awaited from the chat path.
+- `server/brain-server/chat.js:599` — `await curric._teachAssociationPairs(...)` from curiosity-followup.
+- `js/brain/curriculum.js:13620` — `this._teachWordDefinition(word, {label:'EMIT-DEF'})` un-awaited on emission.
+
+Interleave: walk phase **P** enters (`prev=null`, outermost ✓, `_activePhase=P`) → chat's **D** enters mid-await (`prev=P`, nested) → **P finishes first** and restores `_activePhase = null` → **D finishes second** and restores `_activePhase = P`, a phase object that already exited. From that instant `_activePhase` is permanently non-null, so **every subsequent phase in the entire walk sees `prev !== null` and is misclassified as nested — forever, brain-wide, until restart.** One chat message or one `EMIT-DEF` is enough to poison the rest of the run.
+
+**WHAT IT ACTUALLY BREAKS (this is the part that is not cosmetic):**
+1. `passedPhases` never appended by the auto-wrap → `cellPhasesCompleted` frozen at 0 → **`0 complete` after 29.2 min is the ledger, not her pace.**
+2. Resume-skip is dead — `⤳ PHASE SKIPPED` can never fire, so **every restart re-teaches from scratch**.
+3. `cellPhasesStarted` degrades to `passedPhases + 1` = the constant `1`. **`phase 1/25` is a stuck counter, not her position.**
+4. `phaseWork` null → the honest within-phase bar shipped this morning can never move → **`0%`.**
+5. `_cellPhaseObserved` never learns a cell's real phase count.
+6. `server/brain-server/gpu.js:2641` idle-detection reads `!_cc2._activePhase` and will now never see idle.
+
+**WHAT IS NOT BROKEN:** the teaching itself. Nested calls always execute — only the skip/persist path is outermost-gated. Those **45.2k events are real Hebbian work**; her weights are moving. It is the ledger that is lying, in the direction of under-reporting.
+
+### THE WORK
+
+- [x] **L.1** **DONE.** Replace the save/restore-across-await with a latch-proof in-flight STACK. `cl._phaseStack` of per-call tokens; `isOutermost = stack.length === 0` at entry; on exit remove **by identity** (`splice(indexOf(token),1)`) and set `_activePhase = stack[stack.length-1] || null`. Self-healing: once every in-flight call exits the stack is empty and the next walk phase is outermost again. No dead phase object can ever be resurrected.
+- [x] **L.2** **DONE.** Guard persist/skip against foreign teach calls. With a stack, a chat-driven `_teachWordDefinition` firing while the walk is BETWEEN phases would qualify as outermost and get written into `passedPhases` as a phase of the current cell — which would then be SKIPPED when the runner legitimately reaches it. Fix: persist/skip only when the method name is one the current cell's runner actually declares. `_cellRunner` already computes that name set at `curriculum.js:7044-7050` and throws it away after taking `.size` — keep it as `this._cellPhaseNames[cellKey]` and gate on it. Visibility/telemetry stays on for every call; only the LEDGER is gated.
+- [x] **L.3** **DONE.** Make the fallback honest about itself. When `outermostPhase.exact === false` the dashboard currently renders the primitive name as if it were the phase. Label it so a latch (or any future gap) is visible on screen instead of masquerading as progress.
+- [x] **L.4** **DONE.** Verify — no-tests LAW: `node --check`, ESM `import()` (catches dup bindings `--check` misses), bundle rebuild, and re-read the edited regions.
+- [x] **L.5** **DONE.** Docs + FINALIZED migration, atomic commit, cascade develop→main, push BOTH remotes.
+- [x] **L.7** **DONE.** *"fallback? you should know we cxode it right the first time which means fallbacks are illegal"* + *"no the names shall never not be there.. wtf are you talking about!!! code it cortrectly"* - every fallback branch deleted, including ones written earlier the same day: the `exact:false` publish-the-primitive branch; `_persistedPhaseTotalFor()` (method removed) and the `declared || observed || persisted` cascade; the in-memory observed-total learner; `cellPhasesTotalSource` + `cellPhasesPersisted`; and in `html/dashboard.html` the WHOLE post-render override block (cell progress was computed in two places that could disagree) with its five-branch cascade ending in `Math.min(85, elapsed/EXPECTED_K_CELL_MIN * 85)`, plus both heuristic constants. `_declaredPhaseNames()` always returns the set - proven by deriving it for 48 cells (6 subjects x 8 grades, pre-K through PhD): every one non-zero, so there is nothing to fall back to.
+- [>] **L.6** **MERGED into LIVE-VERIFY (combined) at the bottom of this file.** ⏳ LIVE-VERIFY on Gee's next Update/Fresh-walk: cell-progress line must name a REAL phase (`_teachLetterCaseBinding`-class, not `_teachAntiHebbian`) with a **minutes-scale** `+Ns`, must carry a `work N/N` tail that climbs, and `0 complete` must leave 0 when phase 1 lands.
+
+---
+
+## OPEN TASKS — 2026-08-14 · THE COMPUTE LAYER IS BUILT ON FALLBACKS — teaching must be GPU-ONLY
+
+> Gee (verbatim): *"why does it keep training when i disconnect the doner? that should NOT be possible!!!, RIGHT?"*
+>
+> Gee (verbatim): *"find out how it is even doing that to find the issue? its like its using the server cpu or something weird"*
+>
+> Gee (verbatim): *"fallback!?!?!?!?!!??!?!?!"*
+>
+> Gee (verbatim): *"fallbacks!!!!?????"*
+>
+> Gee's decision (verbatim option chosen): **"Walk stops, she stays awake"** — *"curriculum walk HALTED (no CPU Hebbian, ever); brain tick / propagate running (CPU); chat / voice she can still talk; dashboard 'PAUSED - no compute substrate'; DONOR BACK: walk resumes instantly"*
+
+**ANSWER: he is right, and his guess was right — it IS the server CPU.**
+
+**THE FINDING.** The GPU was never required anywhere. It is an accelerator layered over a CPU implementation that is always present, selected per call:
+
+- **Hebbian — `js/brain/cluster/hebbian.js:169`.** The GPU branch runs and `continue`s. When `_gpuProxyReady` is false execution **falls through** to lines 262–296 and runs the FULL CPU Oja over millions of destination rows (`_sparsePool.hebbianUpdate` or `_ojaUpdateChunked`). Same math, same weights, on the box's Xeon.
+- **Propagation — `js/brain/cluster.js:3296`.** `const useGpu = this._gpuProxyReady && this._cachedCrossCurrents;` then line 3308 *"CPU fallback — GPU cache miss or GPU proxy not ready yet"* → `proj.propagate(srcSpikes)`.
+- The code announces it in its own logs: **`PARTIAL — falling back to CPU for failed matrices`** (`hebbian.js:683`), and `hebbian.js:282` records the all-night **`"2/17 uploaded, 15 fell to CPU"`** loop.
+
+**AND THE GATE I SHIPPED THIS MORNING WAS ITSELF WRONG.** `_awaitComputeSubstrate` (`curriculum.js:10888`) tests `brain._gpuClient.readyState === 1` — *is a socket open*. The compute path tests `cluster._gpuProxyReady` — *did the weight upload finish*. **Two different questions.** A donor connected-but-not-uploaded passes the gate and still lands on the CPU branch. On top of that the gate has a **120s grace** and is sampled **every 64th** nested teach call, and `DREAM_NO_DONOR_GRIND=1` re-enables grinding on purpose. That is a timer discouraging a fallback, not an architecture forbidding one.
+
+**THE CORRECT ARCHITECTURE.** Compute substrate is a **deployment property decided once**, not a per-call `if`. The server's biological-scale brain REQUIRES the GPU substrate: no substrate → the walk halts, and no teach math runs at all. The browser/standalone brain (6.7K neurons, no donor ever) has the CPU implementation as its ONE path. One decision, made at construction, never re-decided per call — so there is no branch to silently take.
+
+### THE WORK
+
+- [x] **G.1** **DONE.** `cluster.requireGpuSubstrate` — set once at construction (server biological-scale = true, browser standalone = false). Single source for "which substrate is this brain's".
+- [x] **G.2** **DONE.** DELETE the CPU-Hebbian fallthrough in `_crossRegionHebbian` for GPU-required brains. Not "skip and warn" — the teach call must never be reached without a substrate. The probe-critical CPU Oja INSIDE the GPU branch stays (it is the CPU shadow that lets gate probes read the arrays, and it only runs while the GPU is also running — it is not a fallback).
+- [x] **G.3** **DONE.** Same treatment for the intra-cluster teach paths (`intraSynapsesHebbian` / `intraSynapsesAntiHebbian`) that `_teachLateralInhibition` and `_teachAntiHebbian` drive.
+- [x] **G.4** **DONE.** FIX THE GATE CONDITION: require the substrate the compute path actually asks for — `cortexCluster._gpuProxyReady === true` — not merely an open socket.
+- [x] **G.5** **DONE.** DELETE the 120s grace, DELETE the every-64th sampling, DELETE `DREAM_NO_DONOR_GRIND`. With no CPU branch underneath, a grace period permits nothing and a sampling gap only delays the halt. Halt on the first teach call without a substrate; resume on the first poll after it returns.
+- [x] **G.6** **DONE.** Dashboard: **"PAUSED — no compute substrate"** per Gee's chosen wording, plus the reason (socket down vs uploaded-not-ready) so the two conditions are never confused again.
+- [x] **G.7** **DONE.** Verify — no-tests LAW: full read of every edited file, `node --check`, ESM `import()`, dashboard script blocks, bundle rebuild.
+- [x] **G.8** **DONE — shipped with the G batch cascade; ARCHITECTURE.md carries the GPU-only substrate in the 2026-08-16 banner (full doc push).** Docs + FINALIZED, atomic commit, cascade, push BOTH remotes.
+- [>] **G.9** **MERGED into LIVE-VERIFY (combined) at the bottom of this file.** ⏳ LIVE-VERIFY: Gee kills the donor → the walk must show **PAUSED — no compute substrate** within seconds, teach events must STOP climbing, chat must still reply, and the walk must resume the moment a donor uploads.
+
+---
+
+## OPEN TASK — LIVE-VERIFY (COMBINED) · one pass, four checks
+
+> Gee (verbatim): *"combine v.8. D.7 and L.6 as one task/todo item, we dont need the same thing 3x"*
+
+V.8, D.7, L.6 and G.9 were four separate pending items all waiting on the same event — Gee pressing **Update & SAVESTART** or **Fresh Walk**. They are merged here as ONE. Their original entries are left in place above, status changed to `[>]` MERGED, every word intact per the never-delete-TODO-info LAW.
+
+- [x] **LV** **CLOSED 2026-08-16 — all four checks resolved under later IDs: (1) V.8→ still OI.2 (the ONE living watch); (2) D.7 donor health PASS (frames climbing, buffer 0, RTT ~100ms); (3) L.6 phase ledger PASS (real names, minutes-scale, work N/N, resume-skip alive); (4) G.9→DK.6 FULL PASS (pause + auto-resume verified live).** ⏳ ONE live-verification pass after the next deploy:
+  1. **(was V.8)** Grade-wide definition trickle — `kVocabTaught` climbs off 0, and `💤 dream trickle: N words processed … N words remaining in the definition-seed queue (grades enqueued: …)` shows the queue draining across grades. If it lags, raise `DREAM_TRICKLE_BATCH`.
+  2. **(was D.7)** Donor health — `totalSpikes` climbing, `gpuHits` advancing, donor `rttMs` under 1s, `cellPhasesCompleted` leaving 0.
+  3. **(was L.6)** Phase ledger — the cell-progress line names a REAL phase with a **minutes**-scale `+Ns` (never `_teachAntiHebbian (+0s)`), carries a `work N/N` tail that climbs, and `0 complete` leaves 0 when phase 1 lands.
+  4. **(was G.9)** Donor kill — pull the donor: the dashboard must show **PAUSED — no compute substrate** within seconds with the reason named, teach events must STOP climbing, chat must still reply, and the walk must resume the moment a donor finishes uploading.
+
+---
+
+## OPEN TASKS — 2026-08-14 · PER-SUBJECT GRADE COLUMN SHOWS THE LAST GRADE PASSED, NOT THE ONE SHE IS IN
+
+> Gee (verbatim): *"sure, lets make sure its all correct, but we will do update savestart later on that issue and we will walk current build till we get to a good spot after the live-verify"*
+
+**THE ISSUE (caught on the live dashboard while ELA-K was mid-cell).** The per-subject table read `Foundational Reading / pre-K / 1 / 0 / 24.8k` while the card header directly above it read `Kindergarten (Common Core K.RF / K.W / K.L / K.SL / K.RL …)`. Both were rendered from the same status payload, disagreeing about which grade she is in.
+
+**ROOT — the column is the LAST-PASSED pointer, not the live one.** `getCurriculumStatus` overrides the per-subject grade with `cluster.grades[sub]` (`curriculum.js:3015`), and `cluster.grades[subject]` is assigned **only inside `if (result && result.pass)`** (`curriculum.js:8721`) — i.e. when a cell COMPLETES. It is seeded `{ela:'pre-K', math:'pre-K', …}`, so mid-K it still reads `pre-K`. `courseNameFor(sub, grade)` is computed from that same stale value, so it inherits the staleness. **Correction to my first reading of this:** the course name did NOT look wrong in the caught case — `courseNameFor('ela', …)` returns `Foundational Reading` for pre-K, kindergarten AND grade1, so the string matched by coincidence. It would show the previous grade's class at any boundary where the name actually changes (e.g. math grade8→grade9 `Algebra I`, science→`Biology`). Verified by calling `courseNameFor` directly rather than assuming.
+
+**Also note:** the seeded default makes "passed pre-K" and "has passed nothing at all" indistinguishable in that field — both read `pre-K`. Any correct derivation has to consult `passedCells`, not the pointer.
+
+**THE CORRECT DERIVATION — one rule, both cases.** The grade a subject is AT = the first grade in `GRADE_ORDER` whose cell is not in `cluster.passedCells`. For the subject currently being taught this yields exactly the in-flight grade; for idle subjects it yields the grade they will run next. Terminal case (every grade passed) yields the last grade in the order. No branch on "is this the active subject", no second source to disagree with the first.
+
+### THE WORK
+
+- [x] **GC.1** **DONE.** Derive the live per-subject grade from `passedCells` + `GRADE_ORDER` and use it for BOTH the grade column and `courseNameFor()`, replacing the `cluster.grades[sub]` override.
+- [x] **GC.2** **DONE.** Verify — no-tests LAW: `node --check`, ESM `import()`, exercise the derivation against real `passedCells` shapes (nothing passed / pre-K passed / mid-K / all passed), bundle rebuild.
+- [x] **GC.3** **DONE.** Docs + FINALIZED, atomic commit, cascade, push BOTH remotes. **NO DEPLOY** — Gee walks the current build until after the combined live-verify; this ships to the repo and waits for his next Update & SAVESTART.
+
+---
+
+## OPEN TASKS — 2026-08-14 · `_phasedTeach` KEEPS A SECOND, PARALLEL PHASE LEDGER
+
+> Gee (verbatim): *"sounds good, do that.. and you werent clear.... she is still training fine, right? even tho no events are posting?"*
+
+**FOUND** while checking whether phase 2's tail units emit brain events (they do not — see below). `_phasedTeach` (`curriculum.js:2899`) maintains its OWN phase ledger alongside the constructor auto-wrap's:
+
+- It appends to `cluster.passedPhases` under **TAG** names — `${tag}-WORD-SPELL`, `${tag}-LETTER-NAMING-DIRECT`, `${tag}-WORD-EMISSION-DIRECT` — not `_teach*` method names.
+- It separately increments `this._currentCellPhasesCompleted` **and** `_perSubjectStats[subject].phasesCompleted`.
+
+**WHY THAT MATTERS.** These tag units run INSIDE a declared phase (`_teachLanguageMechanics`), so counting them as phases double-counts: the enclosing phase is banked again when it completes. The L.2 fix already filters the CELL count to declared names, so the cell bar is correct — but the **per-subject `phases` column** counts every `passedPhases` entry for that subject prefix, tags included, so the two columns measure different things. Exactly the "two mechanisms that can disagree" shape torn out of the cell ledger earlier today; this instance was simply not reached.
+
+**KEEP the `passedPhases` write + `_saveCheckpoint`** — those tags are what let a restart resume PART-WAY THROUGH a long phase (mid-`_teachLanguageMechanics`), which is real and valuable. They are checkpoint markers, not phases. The fix is to stop counting them as phases, not to stop writing them.
+
+**SEPARATELY (answers Gee's question, no code change).** Phase 2's tail — `_teachWordSpellingDirect`, `_teachLetterNamingDirect` (`reps: 50`), `_teachWordEmissionDirect`, `_teachQuestionIntent`, and `_phasedTeach` itself — contains **ZERO** `_pushBrainEvent` calls (the whole 25K-line teach layer has 17). A quiet brain-events feed during that stretch is EXPECTED and is not evidence either way. The liveness signal is the per-subject `events` counter (`teachEvents`), incremented in the auto-wrap on every wrapped teach call.
+
+### THE WORK
+
+- [x] **SL.1** **DONE.** Per-subject `phasesCompleted` counts DECLARED phases only — same rule as the cell count. Filter each `passedPhases` entry by `_declaredPhaseNames(cellKey).has(method)`.
+- [x] **SL.2** **DONE.** Remove `_phasedTeach`'s parallel counter increments (`_currentCellPhasesCompleted`, `s.phasesCompleted`). Keep its `passedPhases` write + `_saveCheckpoint` as mid-phase resume markers.
+- [x] **SL.3** **DONE.** Verify — no-tests LAW: `node --check`, ESM `import()`, exercise the per-subject count against a `passedPhases` array containing BOTH declared method names and `_phasedTeach` tags, bundle rebuild.
+- [x] **SL.4** **DONE.** Docs + FINALIZED, atomic commit, cascade, push BOTH remotes. **NO DEPLOY** — walks with the current build until after the combined live-verify.
+
+---
+
+## OPEN TASKS — 2026-08-14 · LIVENESS TELEMETRY — answer "stuck or stalled" without guessing
+
+> Gee (verbatim): *"is she training? do we need to add something so u can tell if she is stuck or stalled so we arent guessing that we can savestart update to fix it so u arent in the dark when i ask you how our girl is doing"*
+
+**FIRST — I AM NO LONGER IN THE DARK, and it needed no code.** `/public-state.json` (`brain-server.js:6070`) is served PUBLICLY with no auth and carries the entire `curriculum` block plus `totalSpikes`. Pulled it live from `https://if-only-i-had-a-brain.git.unityailab.com/public-state.json` and sampled three times 45s apart:
+
+```
+15:18:10  teachEvents=231272  phase 10/25 (9 complete)  _teachWordEmission +8.6m
+15:18:55  teachEvents=233518  phase 10/25 (9 complete)  _teachWordEmission +9.3m
+15:19:40  teachEvents=235744  phase 10/25 (9 complete)  _teachWordEmission +10.1m
+```
+
+**+2246 / +2226 teach calls per 45s ≈ 2,970 per minute (~50/sec). She is training, hard.** 2.4h into `ela/kindergarten`, 9 phases banked, phase 10 in flight. `substratePause: null`, `pausedForDonorMs: 0`. `totalSpikes` frozen at 1,727,259 across all three samples — the DESIGNED probe-gate pause (`brain-server.js:4270` early-returns while `_probeGateActive`), not a hang.
+
+**WHAT IS STILL MISSING.** Answering that question took THREE polls over 90 seconds and arithmetic. A single snapshot cannot distinguish training from wedged, because nothing in the payload states a RATE or a LAST-ACTIVITY TIME. Gee's dashboard has the same blind spot — and the frozen-spikes trap is unlabelled, which is precisely what fooled me once already today.
+
+### THE WORK
+
+- [x] **LT.1** **DONE.** `lastTeachAtMs` — stamped in the auto-wrap when a wrapped teach call completes. `sinceLastTeachMs` then answers "is anything happening" from ONE snapshot.
+- [x] **LT.2** **DONE.** `teachCallsPerMin` — rolling 60s window over the same counter the auto-wrap already increments. One number, no arithmetic, no second poll.
+- [x] **LT.3** **DONE.** Label the frozen-spikes case. `totalSpikes` stops advancing during a probe gate BY DESIGN; publish `probeGateActive` alongside so the UI can say "spikes paused — probe gate (expected)" instead of leaving a frozen counter to be misread. Same split that `batchPaused` vs `batchStall` made for the donor side.
+- [x] **LT.4** **DONE.** Dashboard line under the cell bar: teach/min + seconds-since-last-teach, amber-annotated when the probe gate is holding the tick.
+- [x] **LT.5** **DONE.** Verify — no-tests LAW: `node --check`, ESM `import()`, dashboard script blocks, bundle rebuild, and re-poll the LIVE box to confirm the new fields would populate from real values.
+- [x] **LT.6** **DONE.** Docs + FINALIZED, atomic commit, cascade, push BOTH remotes. **NO DEPLOY** — rides along with the next Update & SAVESTART.
+
+---
+
+## OPEN TASKS — 2026-08-14 · ⛔ V.8 FAILED LIVE — the dictionary trickle has NEVER run; ZERO definitions bound in 4.6h
+
+> Gee (verbatim): *"okay, time to do that check on our girl weve been waiting forever to get to, its finally ready to do dreaming soon... mind you we havent savestart updated yet and are still training on old push"*
+>
+> Gee's decision (verbatim option chosen): **"Both — untimed consolidation AND trickle early"** — *"consolidation (mandatory) untimed; --- budget clock STARTS (180s) ---; dictionary trickle first claim on the budget; promotion gated; phenomenology / recombination gated. Vocabulary can be starved by neither consolidation nor exploration."*
+
+**BUILD CORRECTION (Gee believed he was on an older push).** Live `/public-state.json` reports build **`156980f1`, deployed 2026-08-14T18:50:49Z** — that is the **GPU-ONLY (G) batch**, and `substratePause` is present in the payload. NOT deployed: GC (grade column), SL (single ledger), LT (liveness). So the GPU-only teach enforcement has been live for the whole 4.6h run.
+
+**WHERE SHE IS.** `ela/kindergarten`, **phase 24/25, 23 complete**, `_teachSentenceStructure +108.9m`, cell elapsed 274.6 min, 435,261 teach events. Healthy, and one phase from finishing kindergarten ELA.
+
+**THE CHECK FAILS.**
+
+```
+dictionary:  8,747 fetched · 1,343 errs · cache 10,090 · fetchAvailable ✓ · smokeTestPassed ✓
+kVocabTaught:         0        (= cortex._definitionTaughtWords.size, state.js:1230)
+defsLearnedPerHour:   0
+consolidation passes: 3
+```
+
+**8,747 words fetched successfully. ZERO bound.** The prefetch half works; the LEARNING half has never once executed.
+
+**MECHANISM, TRACED.** `_dreamWindow` sets `const startedAt = Date.now()` (`curriculum.js:3479`), then **awaits the forced consolidation pass at ~3544 INSIDE that same clock**. Every stage is gated by `_dwOverBudget()` measured from `startedAt` against a shared **180s** budget (`DREAM_WINDOW_MAX_MS` default `180000`, `curriculum.js:3491`). The dictionary trickle is the **LAST** stage (`curriculum.js:3820`), behind phenomenology, recombination and promotion. At 306M neurons a forced consolidation pass consumes the budget by itself, so execution reaches the trickle with `_dwOverBudget('dictionary dream-trickle')` already true and **the whole trickle is skipped — every window, every time.**
+
+**THIS IS A REGRESSION I INTRODUCED IN V.3.** Removing K's blocking upfront seed made the dream trickle the **ONLY** path that binds word definitions. That turned the sole vocabulary path into the last item behind a shared budget, i.e. the first thing sacrificed. She has learned zero definitions in 4.6h and would have carried that into grade 1.
+
+**NOTHING IS LOST.** `_kVocabQueue` and `_definitionTaughtWords` both persist in saved weights, so the queue drains from wherever it stands once the trickle actually runs.
+
+### THE WORK
+
+- [x] **TB.1** **DONE.** Budget clock starts AFTER the mandatory consolidation pass. Consolidation is not an optional stage; charging its wall time against optional stages is the defect. Keep `startedAt` for total-window logging, add a separate budget origin.
+- [x] **TB.2** **DONE.** Move the dictionary trickle to run FIRST after consolidation — ahead of promotion / phenomenology / recombination — so vocabulary has first claim on the budget and can never be starved by exploratory stages.
+- [x] **TB.3** **DONE.** Make the skip LOUD and specific. If the trickle is ever skipped again it must name itself as the vocabulary path, not read as one gated stage among four.
+- [x] **TB.4** **DONE.** Verify — no-tests LAW: `node --check`, ESM `import()`, confirm stage ORDER by reading the rewritten region, bundle rebuild.
+- [x] **TB.5** **DONE.** Docs + FINALIZED, atomic commit, cascade, push BOTH remotes.
+- [x] **TB.6** **CLOSED — folded into OI.2 (the single living vocab watch).** ⏳ LIVE-VERIFY after Gee's next Update & SAVESTART — folded into the combined LV item: `kVocabTaught` MUST climb off 0 and `💤 dream trickle: N words processed` MUST appear.
+
+---
+
+## OPEN TASKS — 2026-08-15 · POST-DEPLOY FINDINGS (build `64c71147`)
+
+> Gee (verbatim): *"okay save start update pressed, check on our girl"*
+>
+> Gee (verbatim): *"write the todo to fix all these: and here is the info u asked for, i think but not sure 100% but here it is:"* (followed by the 5-Tier Memory System panel)
+
+**ON THE INFO PASTED:** it is the Memory-System tier panel, NOT the `💤 dream trickle:` console line, so it does not settle the bind-rate question below. What it DOES confirm: Tier 0 holds `ela/kindergarten @_runStudentBattery ×3` and `×4`, so she is inside the K-STUDENT battery — which matches `liveness.probeGateActive: true` and the dashboard's `spikes paused — probe gate (expected)`.
+
+### WHAT THE DEPLOY VERIFIED AS WORKING (no action needed — recorded so it is not re-litigated)
+
+- **Resume-skip is ALIVE** (it was dead before L.1). `passedPhases restored: 32 phase markers`, then `after _teachLetterCaseBinding / _teachVowelSoundVariants / _teachRhymeFamilies / _teachSyllableCounts / _teachCVCSoundIsolation / _teachPhonemeBlending` **all logged in the same second with Δheap +0.0MB** — skips, not re-teaches. 4.6h of ELA-K recovered in seconds.
+- **GPU-only is clean.** `_crossRegionHebbian first-call diag — gpuReady=true proxy=true pool=true · paths:` **all 16 GPU-fast**, zero CPU.
+- **Liveness line works:** `0 teach/min · last teach 278s ago · spikes paused — probe gate (expected)` — the exact state that was misread this morning, now labelled.
+- **`no declared phase in flight`** renders instead of a primitive masquerading as the phase.
+- **Dream window ran:** `💤 inner-voice paused — dream window in progress` (5:54:53) → `☀ inner-voice resumed — dream window closed` (5:55:47); consolidation pass 1 completed.
+- **`kVocabTaught` moved off zero** for the first time (0 → 2).
+
+### PS.1 ⛔ CRITICAL — the pattern-lane shed's safety justification is FALSE under GPU-only
+
+The live log, **8,103 times in 12 minutes**:
+
+> `TU.28.1 — teach-pattern frame SHED (pre-serialization): ws.bufferedAmount=20.4MB > 16MB pattern-lane cap … **Dropping is safe — CPU authoritative**; patterns are per-iteration ephemeral; the GPU shadow re-converges via auto-resync`
+
+**That sentence was true when the CPU shadow did the real Hebbian and the GPU was a mirror. After the G batch it is false** — the GPU IS the substrate and `_teachSubstrateReady()` refuses any CPU teach path. Teach-pattern frames (`write_spike_slice` / `write_current_slice` / `clear_spike_region`) are what populate the GPU pre/post buffers that `hebbianBound` then reads at bound offsets. Shedding one does not lose a redundant mirror-update any more; it means **the next `hebbianBound` fires against stale or partial spike buffers, and nothing else re-derives that update.** 8,103 shed frames is potentially 8,103 corrupted-or-lost Hebbian fires, silently, while every dashboard reads green.
+
+Driver: donor **RTT 2,597ms** with **20.3MB buffered** (over the 16MB pattern-lane cap) — the lane is saturated at a new operating point.
+
+- [x] **PS.1a** **DONE.** Decide + implement the correct semantics under GPU-only. The two candidates: (i) **block instead of drop** while a teach is in flight — the shape `MAX_AWAIT_MS` already uses for `compute_batch` (D.1/N.2), so the lane back-pressures the teach loop instead of silently discarding its inputs; (ii) **couple the pair** — if a pattern frame is shed, suppress the `hebbianBound` that depends on it so a bad update is never fired on stale buffers. These are not equivalent: (i) preserves the update at the cost of teach throughput, (ii) drops it cleanly and honestly.
+- [x] **PS.1b** **DONE.** Rewrite the shed log line — it must never again assert "CPU authoritative" on a brain where the CPU teach path has been removed. A stale justification in a log is how this survived.
+- [x] **PS.1c** **DONE.** Surface shed-frames-during-teach as a FIRST-CLASS dashboard number, not a rate-limited console line. If teaching can be lost, the count belongs next to the progress bar.
+
+### PS.2 ⛔ The dictionary trickle binds ~2 of 120 words per window
+
+`kVocabTaught` climbed 0 → 2 after the first dream window — the TB fix gave the trickle its slice, so it is no longer skipped outright. But `DREAM_TRICKLE_BATCH` is 120, so ~98% of processed words returned `defsBound = 0`, and at 2/window the 2,247-word K list needs ~1,100 dream windows.
+
+**Unresolved:** the `💤 dream trickle: N words processed in Xs (N multi-def Hebbian fires) · N words remaining` line does not appear anywhere in the 558-line console capture. Until it is seen, it cannot be confirmed that the trickle stage executed at all — those 2 bindings may have come from the `fused-token purge — 47 candidate compound(s) queued for API verification` (5:48:56), which calls the same `_teachWordDefinition`.
+
+- [x] **PS.2a** **DONE.** Find why `defsBound` is 0 for the overwhelming majority of words. Read `_teachWordDefinition` end-to-end (800-line chunks) and identify every path that returns without binding — cache miss, error entry (1,343 of 10,090 cached are errors), empty definition token set, missing sem region, or a substrate refusal.
+- [x] **PS.2b** **DONE.** Make the trickle's outcome UNMISSABLE. The existing summary line is rate-limited/absent in practice; publish processed / bound / remaining into the state payload so it is answerable from `/public-state.json` without hunting a console.
+- [x] **PS.2c** **CLOSED — same check as OI.2; verified the queue loads (2,247) and refills-on-empty; the bind-rate verdict lands at the first dream window (OI.2).** Re-verify the rate live after the change: `kVocabTaught` must climb by roughly the batch size per dream window, not by 2.
+
+#### PS.2 — ROOT CAUSE FOUND, AND IT WAS NOT A BIND-RATE PROBLEM (correction, appended — nothing above removed)
+
+> Gee (verbatim): *"figure out the bind rate issue and fix it too"*
+
+**The trickle processed ZERO words.** The framing above ("binds ~2 of 120") was wrong; the two bindings came from another path entirely. Three defects, all read directly out of the code:
+
+1. **`if (!cluster._kVocabQueue)` — AN EMPTY ARRAY IS TRUTHY.** Once the queue persisted as `[]` it was never refilled. V.3 deliberately creates it empty because each grade enqueues its own words at grade START — and a savestart resumes MID-grade, so no grade-start ever fires. `batchN = min(120, 0) = 0`, so the entire batch block was skipped **silently: no words processed AND no summary line emitted.** That absent log is precisely why `💤 dream trickle:` could not be found in the 558-line console.
+2. **`_kVocabRetryQueue` has ZERO writers.** The "so they don't get lost forever" block drains an array nothing in the file ever pushes to.
+3. **`/timeout/i.test(r.skipped)` can never match.** `_teachWordDefinition`'s skip values are only `'no definition'` / `'aborted-pre-entry'` / `'aborted-mid-defs'` / `'aborted-mid-hebbian'` / `'no cluster/word'` / `'empty word'`. `timedOut` was permanently 0, so even the dead re-queue never ran.
+4. **`shift()` fired BEFORE the attempt**, so any word failing for any reason other than the (impossible) timeout was dropped from the queue permanently.
+
+**FIXED:** refill guard tests EMPTINESS and refills from the CURRENT grade's own vocabulary (K list for K/pre-K, `gradeVocabularyFor(grade)` otherwise) so resume keeps vocabulary learning alive; bind-then-remove with rotate-to-back and an attempt counter, `MAX_ATTEMPTS=3`, after which a word moves to `cluster._kVocabUnresolved` and is REPORTED rather than vanishing; the dead retry queue and the impossible timeout regex deleted; the summary line now ALWAYS logs including the zero case; and `curriculum.definitionQueue { depth, unresolved, lastWindow{processed,bound,failed,ms} }` is published to `/public-state.json`. Queue mechanics exercised standalone: one binder + two permanent failures → 7 rounds, 1 bound, queue drained to 0, both failures surfaced as unresolved, none lost.
+
+### PS.3 EventLoop BLOCKED 91,640 ms inside `_teachWordEmissionDirect`
+
+> `[EventLoop] BLOCKED 91640ms — /ws handshakes + donor frames stalled this long. context: phase=_teachWordEmissionDirect cell=ela/kindergarten donors=1`
+
+**91.6 seconds** of a single-threaded loop pinned in one teach unit — long enough to starve donor frames, `/ws` handshakes and pings, and it is the same failure family the tick-gap batch attacked (`_ojaUpdateChunked` time-slicing). `_teachWordEmissionDirect` evidently has an unyielded synchronous stretch that slicing has not reached.
+
+- [x] **PS.3a** **DONE.** Locate the unyielded stretch in `_teachWordEmissionDirect` and time-slice it with the same adaptive ~30ms macrotask-yield pattern `_ojaUpdateChunked` uses. Row-independent work only — no change to totals or math.
+
+### PS.4 Cross-projection fanout drift — 4.9 entries/row against a 20–40 target
+
+> `[Brain] ⚠ fractal equation drift detected — 1 issue(s) + 10 ok:` … `⚠ cross-projection avg fanout drift: 4.9 entries/row (target 20-40)`
+
+Flagged by her own boot self-check, ~4× below the low end of its own target band. Every other equation check passed.
+
+- [x] **PS.4a** **DONE.** Determine whether 4.9/row is a real wiring regression or a stale target band for the current 1.5M-neuron cortex geometry, and fix whichever is wrong — the wiring or the check. A self-check that cries wolf every boot trains us to ignore it.
+
+#### PS.4 — WHAT THE BROKEN CHECK WAS HIDING (appended finding — needs Gee's call)
+
+> Gee (verbatim): *"we are getting her 100% correct so get to it"*
+
+Computing every projection's fanout from her own boot log reproduces the 4.9 average exactly, and shows why the aggregate was worthless — and what it buried:
+
+```
+sem_to_word_motor       0.744   <-- rows with NO incoming connection
+word_motor_to_sem       0.744   <-- rows with NO incoming connection
+letter_to_motor         1.497        sem_to_motor      1.497
+motor_to_sem            1.498        motor_to_letter   1.498
+letter_to_phon          2.500        phon_to_letter    2.500
+phon_to_sem             3.000        sem_to_phon       3.000
+visual_to_letter       10.000        letter_to_visual 10.000
+sem_to_fineType        10.000        fineType_to_sem  10.000
+auditory_to_phon       10.000        phon_to_auditory 10.000
+                                     average = 4.905
+```
+
+**`sem_to_word_motor` is the projection that DRIVES WORD EMISSION, and it carries 0.744 entries per row** — 66,964 nnz over 90,000 rows. `ojaUpdate` only adjusts EXISTING CSR entries; it never creates one. So roughly a quarter of her word buckets are **structurally incapable of ever learning to fire, no matter how long she trains.** That is consistent with the utilization panel reading `word_motor: 0% (0/90,000)`.
+
+The CHECK is fixed (it now names starved projections instead of averaging them into noise). **The WIRING is not** — raising `sem_to_word_motor` density changes init parameters, VRAM footprint and upload size, so it is Gee's call, not mine.
+
+- [x] **PS.5** **DECIDED 2026-08-15 — NO wiring change (see the decision section directly below: the sparsity was deliberate lamination); the REAL fix became the word_motor unmask (OI.5a, recruitment now 99.96% on the live walk).** ⏳ DECISION + FIX: re-wire `sem_to_word_motor` / `word_motor_to_sem` to at least 1 entry per row so every word bucket can learn. Needs Gee's go-ahead because it moves VRAM and upload size.
+
+### EXPLICITLY OUT OF SCOPE
+
+- `[VisualMemory] reference fetch "hi" HTTP 402 — no image (verify the Pollinations key on the box)` — Gee, earlier this session (verbatim): *"pollinations is dead dont worry about it"*. Recorded, not actioned.
+
+---
+
+## 2026-08-15 · PS.5 DECIDED — **NO wiring change.** The sparsity is deliberate lamination; the defect is elsewhere.
+
+> Gee (verbatim): *"live verify and decide on Ps.5"*
+
+### LIVE VERIFY (build `64c71147`, the deployed one)
+
+- **She PASSED `ela/kindergarten`.** Now on **`math/kindergarten`, phase 22/24, 21 complete**, 91.6 min in.
+- **569 teach/min**, `sinceLastTeachMs` 0 — actively teaching. The liveness telemetry is doing its job.
+- **`kVocabTaught` climbed 2 → 22** across 3 consolidation passes. The TB trickle-first fix is working on the deployed build; the PS.2 empty-queue fix (not yet deployed, `definitionQueue: None` confirms) should take it much further.
+
+### THE DECISION: do NOT raise cross-projection density. Evidence:
+
+1. **`initTopographicProjection` already guarantees `fanout = Math.max(1, round(density × cols))`** — every row it is *permitted* to touch gets at least one entry. There is no density shortfall.
+2. **The zero-entry rows are LAYER-MASKED, by design.** `cluster.js` builds `dstMaskAB = buildLayerMask(bRegion, 2)` — **L4 only** — and `initTopographicProjection` writes `rowPtr[i+1] = rowPtr[i]` for any row failing the mask. That is Felleman & Van Essen 1991 hierarchical connectivity: cross-projections terminate on L4 stellate input cells. Raising density would fight the lamination the K-microstructure work deliberately installed, and cost VRAM to do it.
+3. My earlier framing ("a quarter of her word buckets can never learn") was **wrong today and wrong about the cause.** The ELA band is 18,750 rows for 1,977 words = **9.5 rows per bucket**, so every bucket currently contains live rows and emission works. Corrected here rather than left standing.
+
+### THE ACTUAL DEFECT — bucket carving ignores lamination
+
+`_teachWordEmissionDirect` carves each word's bucket as a raw contiguous range: `bStart = bandStart + wi * bucketSize`. `grep -c layerId js/brain/curriculum/kindergarten.js` = **0** — the carving has no idea which rows can receive input. So a bucket may be composed largely, or entirely, of rows that no projection terminates on.
+
+**Why it is not hurting her now, and why it becomes fatal:** at ~9.5 rows/bucket a bucket almost always contains some L4 rows. At the stated **~60,000-word K→PhD target against 90,000 word_motor rows, `bucketSize` collapses to 1** (`Math.max(1, floor(90000/60000))`) — and then a word whose single row is not L4 **can never be emitted, no matter how long she trains.** The failure arrives gradually as vocabulary grows, which is exactly when it would be hardest to attribute.
+
+- [x] **PS.6** **CLOSED SUPERSEDED — PS.6-as-filed failed the 60k-word target (only ~22,500 L4 rows); the shipped fix is the word_motor lamination exemption (OI.5a), verified structurally on the live walk (sem_to_word_motor 89,961/90,000 rows recruited).** Carve word buckets from PROJECTION-RECEIVING rows. `_ensureWordBucketMap` / `wordBucketCellSizeFor` must draw each word's bucket from the L4 rows of its sub-band (the rows `sem_to_word_motor` actually terminates on) instead of raw contiguous ranges. Costs zero VRAM and respects the lamination instead of fighting it. **Requires a word-bucket-map VERSION BUMP** — changing the geometry re-points every already-trained word→bucket association, so it must take effect on a FRESH WALK, never silently mid-run.
+
+---
+
+## OPEN TASKS — 2026-08-15 · ⛔ G.9 FAILED LIVE — she kept teaching after the donor was killed
+
+> Gee (verbatim): *"i killed tho doner a teach ops in brain events progressed on anyweays even tho the brain page showed GPU needed pop up"*
+
+**CONFIRMED FROM THE BOX** (build `be5dee59` — Gee HAS pressed Update & SAVESTART; that is the latest main, so OI.1 is DONE): `substratePause: None`, `pausedForDonorMs: 0`, teach/min 16 and `teachEvents` climbing — while the donor was dead and the brain page itself showed the GPU-needed popup. **The G.9 test failed exactly as run.**
+
+**ROOT — the substrate flag is a LATCH, again.** `_gpuProxyReady = false` is written in ONE place in the entire codebase: the cluster CONSTRUCTOR (`cluster.js:336`). It flips true when `initGpu()` finishes uploading — and then **nothing ever clears it.** Kill the donor: `brain._gpuClient` goes null, the socket dies, and the flag still says "weights are uploaded." Both gates ask THAT flag — `_teachSubstrateReady()` and `_awaitComputeSubstrate()` — so both keep answering "substrate ready" to a brain whose substrate is a corpse. Same failure shape as the phase-latch: state set on entry, never invalidated by the event that falsifies it.
+
+**SECOND GAP FOUND WHILE TRACING:** `initGpu()` does not clear the flag at ENTRY either — so during a re-upload to a freshly registered donor, the stale `true` from the PREVIOUS donor lets teach dispatch against matrices the new donor does not have yet.
+
+### THE WORK
+
+- [x] **DK.1** **DONE.** `_teachSubstrateReady()` requires the substrate to be ALIVE, not just uploaded-once: `_gpuProxyReady === true` AND the donor socket open (`this._brain._gpuClient.readyState === 1` — the back-ref exists, `brain-server.js:2386`). Browser standalone brains (`requireGpuSubstrate` false) unaffected.
+- [x] **DK.2** **DONE.** `_awaitComputeSubstrate()` same condition — the walk pauses within one teach call of the socket dying, resumes when the weights are live on a donor again. The reason string already distinguishes "no donor connected" from "connected but not uploaded".
+- [x] **DK.3** **DONE.** `initGpu()` clears `_gpuProxyReady` at ENTRY — during a re-upload the substrate is NOT ready, and the flag returns true only when the upload completes (the existing end-of-method assignment).
+- [x] **DK.4** **DONE.** Verify — no-tests LAW: `node --check`, ESM `import()`, bundle rebuild, re-read the three edited regions.
+- [x] **DK.5** **DONE.** Docs + FINALIZED, atomic commit, cascade, push BOTH remotes.
+- [>] **DK.6** **CANCELLED by Gee (verbatim): "we arent doing the doner kill anymore we already did it and she is currently training i think". The DK fix is DEPLOYED (build 1a6498a) but goes live-unverified until a donor ever drops naturally — expected behavior on that day: PAUSED — no compute substrate within seconds, auto-resume after re-upload.** ⏳ GEE RE-RUNS THE DONOR-KILL after the next Update & SAVESTART: kill the donor → **PAUSED — no compute substrate** within seconds, teach events STOP, chat still replies → donor back → walk resumes after the re-upload completes.
+
+---
+
+## OPEN TASKS — 2026-08-15 · TEACH-PATTERN ATOMICITY — ~1/3 of teach Hebbians honestly dropped by the throttle × stale-guard interaction
+
+> Gee (verbatim): *"wo whats next?"* → the OI.3 live check surfaced this.
+> Gee (verbatim): *"so there is nothing else for you to finish? we are 100%?"* — answer: NO, this item.
+
+**MEASURED LIVE (build `be5dee59`, ~13 min after boot):** `patternSheds: 59` but `hebbianSuppressedStale: 25,676` (~33/s), `patternLaneStale: true` at sample time. The PS.1 stale guard is CORRECT — never train on a pattern that did not land — but the D.1 pacing throttle ALSO marks the lane stale, and pacing fires constantly during teach. A teach iteration is clear_spike_region → write_spike_slice(s) → hebbianBound; if ANY frame of that group hits the 100ms throttle, the group's Hebbian is suppressed. Teach runs many iterations/sec against ~10 allowed frames/sec, so roughly a third of all teach updates are lost. **Before PS.1 they were CORRUPT; now they are LOST. Neither is 100% correct.**
+
+**THE CORRECT SHAPE:** the clear→write→Hebbian group is ATOMIC. Pacing throttles BETWEEN groups (where it protects the donor exactly as D.1 intended), never inside one. A group either lands whole — and its Hebbian fires — or is refused whole at its first frame, before any partial state ships.
+
+### THE WORK
+
+- [x] **TP.1** **DONE.** Group primitive: `_gpuClearCortexSpikeRegion` OPENS a pattern group (this is where the throttle gate runs — refuse the whole group here, before any state ships); the write-slice senders inside an open group BYPASS throttle/shed checks (the group was already admitted); the group CLOSES on the hebbianBound dispatch (or the next clear).
+- [x] **TP.2** **DONE.** Shed semantics inside an admitted group: the lane cap (16MB) still protects the donor — if a mid-group frame would exceed it, the whole group is marked stale (existing PS.1 path) so the Hebbian is suppressed — but this becomes the RARE case (true saturation) instead of the common one (pacing).
+- [x] **TP.3** **DONE.** Pacing between groups keeps D.1's adaptive back-off exactly as-is — measured at the group OPEN, so the donor sees the same frame rate ceiling it does today.
+- [x] **TP.4** **DONE.** Verify — no-tests LAW: `node --check`, ESM `import()`, bundle rebuild, re-read the edited region; confirm suppression counter semantics unchanged (still counts real refusals).
+- [x] **TP.5** **DONE.** Docs + FINALIZED, atomic commit, cascade, push BOTH remotes.
+- [x] **TP.6** **CLOSED — verified through the governor chase; final state = BC.4 PASS then zero suppression at 1,480/min post-3ms.** ⏳ LIVE-VERIFY after Gee's next Update & SAVESTART: `hebbianSuppressedStale` growth rate must COLLAPSE (from ~33/s to near-zero outside true saturation) while donor RTT stays healthy (<1s) and `patternSheds` stays low.
+
+---
+
+## OPEN TASKS — 2026-08-15 · WALK PACED TO THE DONOR — TP.6 FAILED on the fresh walk; Gee chose 100%-correct over speed
+
+> Gee (verbatim): *"okay i pressed update and fresh walk"* → *"shes running"*
+>
+> Gee's decision (verbatim option chosen): **"Pace the walk to the donor (100% correct)"** — *"walk speed ~600 teach/min (was ~1,900); teaching 100% lands on the GPU, correct patterns; suppressed ~0; walk length ~3x longer; donor same protection, calmer link."*
+
+**TP.6 RESULT (fresh walk, build `bb06b3e`):** suppression got WORSE — `hebbianSuppressedStale` climbing at **~83/s** (132,617 → 135,953 in 40s) with `patternSheds` 20k+, donor perfectly healthy (frames climbing, buffer 0.0MB). The atomicity change works as designed and the design hits a wall: the walk runs ~32 teach iterations/sec, the donor link absorbs ~10 pattern groups/sec. **No admission scheme fixes that ratio — two thirds of GPU teaching physically cannot fit through the pipe at this walk speed.** Corrupt before PS.1, refused after; neither is teaching.
+
+**ALSO CONFIRMED ON THE FRESH WALK (good):** `definitionQueue.depth = 2,247` — the whole K vocabulary queued (was permanently 0 before the PS.2 fix); ~1,900 teach/min; no substrate pause; spikes-static correctly labelled probe-gate.
+
+**THE FIX (Gee's chosen shape):** the teach loop must not outrun its substrate. `_awaitComputeSubstrate` — already awaited on EVERY teach call by the auto-wrap — additionally awaits PATTERN-LANE ADMISSION: the same base throttle × the same adaptive back-off the lane itself uses, plus the lane-cap drain. Each iteration then starts exactly when its first frame will be admitted → the whole group ships → the Hebbian fires on the pattern it was meant for. Suppression collapses to true-saturation only; the donor sees the identical ceiling it does today.
+
+- [x] **WP.1** **DONE.** `brain._patternLaneWait()` in `server/brain-server/gpu.js` — async; loops until (a) time since the last pattern send ≥ base×adaptive-mult and (b) `bufferedAmount` under the lane cap; returns immediately if the donor socket is not open (the substrate gate owns that case).
+- [x] **WP.2** **DONE.** `_awaitComputeSubstrate` awaits `brain._patternLaneWait()` after the substrate-ready check — one call site, every teach call, all grades.
+- [x] **WP.3** **DONE.** Verify — no-tests LAW: `node --check`, ESM `import()`, re-read edits, bundle.
+- [x] **WP.4** **DONE.** Docs + FINALIZED, atomic commit, cascade, push BOTH remotes.
+- [x] **WP.5** **CLOSED — pacing verified working (1,900→~600 then honest rates all week); superseded by the BC.4 PASS and the final zero-suppression state.** ⏳ LIVE-VERIFY after Gee's next Update & SAVESTART: teach/min settles near the lane rate (~600), `hebbianSuppressedStale` growth ~0, donor RTT healthy, and the walk still progresses phase over phase.
+
+---
+
+## OPEN TASKS — 2026-08-15 · LANE BASE THROTTLE 100ms → 15ms — the fixed constant, not the link, is what still refuses her teaching
+
+> Gee (verbatim): *"im pressing fresh walk , shes starting up her"*
+
+**WP.5 PARTIAL (fresh walk 2, build `1a6498a` — latest main, all fixes live):** pacing works — teach/min pulled from ~1,900 down to 449–739, `patternSheds` collapsed 20k → 1.8k — but `hebbianSuppressedStale` still grows at ~29/s, not ~0.
+
+**RESIDUAL ROOT:** the WP gate paces per teach CALL, but one call writes 2–3 pattern GROUPS (positive pair, anti-pair, lateral-inhibition variants). The first group is admitted post-wait; the next group lands ~0ms later, inside the 100ms base throttle window, and is refused → its Hebbians suppressed. Meanwhile **`bufferedAmount` reads 0.0MB continuously** — the link is nowhere near capacity. The refusals come from a GUESSED CONSTANT, not from measured pressure.
+
+**THE CORRECT GOVERNOR IS BACKPRESSURE, and every safety mechanism for it now exists:** the adaptive back-off scales the interval up to 16× off live `bufferedAmount` AND smoothed RTT; the 16MB lane cap stales a group under true saturation (honest, PS.1); WP pacing slows the walk when the lane refuses; atomic groups keep corruption impossible. With those four in place, the base throttle's job is only to set the UNPRESSURED cadence — and 100ms starves a healthy link.
+
+- [x] **LB.1** **DONE.** Base `DREAM_PATTERN_TEACH_THROTTLE_MS` default 100ms → 15ms in BOTH readers (`_donorPatternLaneOpen` admission + `_patternLaneWait`), same env override, so the walk's cadence is governed by the adaptive feedback loops instead of a fixed guess. ~66 groups/s ceiling unpressured; the moment buffer or RTT climbs, the mult stretches it back out.
+- [x] **LB.2** **DONE.** Verify — no-tests LAW: `node --check`, re-read both sites, bundle.
+- [x] **LB.3** **DONE.** Docs + FINALIZED, atomic commit, cascade, push BOTH remotes.
+- [x] **LB.4** **CLOSED — failed as filed (led to BC), then the whole chain PASSED at BC.4; final base is 3ms with zero suppression.** ⏳ LIVE-VERIFY after Gee's next Update & SAVESTART: `hebbianSuppressedStale` growth ~0, teach/min recovers most of the way (the walk no longer starves on a healthy link), donor RTT stays <1s and buffer near 0 — and if the donor ever chokes, the adaptive mult + WP pacing must slow the walk instead of suppressing.
+
+---
+
+## OPEN TASKS — 2026-08-15 · LB.4 FAILED — the 15ms change also lowered MAX braking 1.6s → 240ms; the brake curve must be steep and early
+
+> Gee (verbatim): *"u said i still need to get to current build so i fresh walked and updated her"* → *"okay check on our girl"*
+
+**LB.4 RESULT (fresh walk 3, build `bd503654` — true latest):** suppression ~79/s, sheds climbing, and the smoking gun in three samples: **buffer 12.9MB → 16.4MB → 0.0MB** — sawtoothing into the 16MB shed cliff and back.
+
+**ROOT — my own miscalibration in LB.1.** The adaptive multiplier is `min(16, buf/linkCap)` (linkCap 4MB). At base 100ms the ceiling was 1,600ms of braking; dropping base to 15ms silently dropped the ceiling to **240ms** — not enough to hold a bursting lane, so the buffer runs to the cap, sheds, stales the group, suppresses the Hebbian. Two further defects: braking engages only ABOVE 4MB (too late relative to a 16MB cliff), and `_patternLaneWait`'s copy of the law lacks the RTT term (the two governors can disagree).
+
+**FIX — one steep early control law, identical at both sites:** `mult = clamp((buf / 2MB)², 1, 133)` plus the existing RTT term. At 2MB → 15ms; 4MB → 60ms; 8MB → 960ms; ≥11MB → ~2s ceiling. Brakes rise with the SQUARE of pressure and reach full force well before the cliff, so sheds (and therefore stales/suppressions) become the rare true-saturation case. Empty lane still runs at 15ms — the healthy-link throughput the LB change was for.
+
+- [x] **BC.1** **DONE.** Replace the mult law at BOTH sites (`_donorPatternLaneOpen` + `_patternLaneWait`) with the shared quadratic curve; keep the RTT term at both; same env knobs.
+- [x] **BC.2** **DONE.** Verify — no-tests LAW: `node --check`, re-read both sites, bundle.
+- [x] **BC.3** **DONE.** Docs + FINALIZED, atomic commit, cascade, push BOTH remotes.
+- [x] **BC.4** **PASS (recorded 2026-08-15 night: suppression ~79/s → ~1/s; final state post-templates+3ms: ZERO growth at ~1,480 teach/min, buffer 0.0).** ⏳ LIVE-VERIFY after Gee's next Update & SAVESTART: buffer holds well under 16MB (no sawtooth), sheds ~0, `hebbianSuppressedStale` growth ~0, teach/min settles at whatever the donor truly drains.
+
+---
+
+## OPEN TASKS — 2026-08-15 · DT.1 BUILD — BINARY TEACH FRAMES + donor-v0.3.13 (the donor teach-drain fix)
+
+> Gee (verbatim): *"no the doner release is my territory just like we have doployed all the previous versions"*
+>
+> Gee (verbatim): *"okay so now write the todo and make the cli task list so i can see whats to do in the todo, then get to the work of the doner fix"*
+
+**THE PROBLEM (measured, twice):** a fresh donor drains a 19MB socket in seconds; DURING TEACH the same donor drains at ~KB/s, so the buffer parks at 16–19MB and the walk settles at ~50–100 teach/min against a ~600+ potential. Teach patterns ship as ~153KB JSON frames (`write_spike_slice` / `write_current_slice` / `clear_spike_region` carrying `sparseIndices` as JSON integer arrays); the donor's single receive thread pays `JSON.parse` on every one plus a region-sized VRAM write. The JSON parse is the drain killer — the sparse protocol already has BINARY frames for uploads/hebbian, teach patterns are the last big JSON holdout.
+
+**THE FIX:** binary teach-pattern frames end to end, gated per-donor by a capability announced at `gpu_register` (protocol selection, not a fallback: each donor speaks the best protocol it declares; old community donors keep JSON and their current speed, new donors get the fast lane). Ships as **donor-v0.3.13** — I code + tag, CI builds, GEE deploys the binary, same flow as v0.3.11.
+
+### THE WORK
+
+- [x] **BT.1** **DONE.** READ the existing binary sparse protocol end to end (server `_encodeSparseHeader` / `_sparseSendBinary` in `server/brain-server/gpu.js`; Rust `donor-app/src/frames.rs` + `donor.rs` dispatch; `html/compute.html` binary handler) — frame layout, type bytes in use, ack conventions — so the new types extend the existing framing instead of inventing a second one.
+- [x] **BT.2** **DONE.** SERVER encoders: new binary frame types for WRITE_SPIKE_SLICE (region + u32 indices), WRITE_CURRENT_SLICE (region + u32 indices + f32 values), CLEAR_SPIKE_REGION (region). Fire-and-forget (no ack — same semantics as today's JSON pattern frames). Same pattern-lane gating (group admission, brake, cap) — the LANE code must not care which encoding rides it.
+- [x] **BT.3** **DONE — as a VERSION GATE, simpler than a new field:** `client.donorAppVersion` is already stored at register (TU.20.12), so binary selects on `donorAppVersion ≥ 0.3.13` and the Cargo bump itself announces the capability. Zero `brain-server.js` edits (its full-read law untriggered). CAPABILITY negotiation: donor announces `binTeach` in its `gpu_register` payload; server records it per-client and selects encoding per donor. Browser donor (`compute.html`) announces it too once its decoder lands.
+- [x] **BT.4** **DONE.** RUST donor decoder (`frames.rs` + wherever spike/current writes execute): parse the new types on the existing binary path, perform the identical GPU writes the JSON handlers do today, zero-copy where the frame layout allows.
+- [>] **BT.5** **SCOPE-CUT (honest):** browser donors report `appVersion: 'browser'` and never qualify for the version gate, so a compute.html decoder would be dead code today. Browser donors keep JSON and their current speed; the decoder + an explicit caps store in `brain-server.js` (1 line, behind that file's full read) ship together in a future batch. BROWSER donor decoder in `compute.html`: same three types on its binary `onmessage` path.
+- [x] **BT.6** **DONE.** VERIFY — no-tests LAW: `cargo check` on donor-app; `node --check` + ESM `import()` server-side; encode→decode byte-walk of each new frame type read against both decoders; bundle rebuild.
+- [x] **BT.7** **DONE.** Docs + FINALIZED, atomic commit, cascade, push BOTH remotes — and **tag `donor-v0.3.13` to origin** so CI builds the binary.
+- [x] **BT.8** **DONE — VERIFIED LIVE 2026-08-15 (build `20f3b856`, donor v0.3.13; full entry in FINALIZED §2026-08-15 BT.8 VERIFIED).** `donorAppVersion: "0.3.13"` announced, `binaryTeach: true` selected at first teach frame; the lane BREATHES (buffer cycles to 0.0MB — full drains JSON never achieved mid-teach), teach peak 209/min (vs ~172 JSON best), suppression ~2/s steady, zero drops. Honest remainder: fill-half peaks still touch ~16MB with RTT 4.5–7.2s — the ceiling moved from parse to donor GPU writes; next lever IF wanted = donor-side write coalescing (Gee's release territory, not opened). ⏳ GEE: deploy the new donor binary (his territory), then LIVE-VERIFY: donor drain rate during teach up ~5–10× (buffer stays low, no 16–19MB parking), walk teach/min rises accordingly with suppression still ~0.
+
+---
+
+## OPEN TASKS — 2026-08-15 · DONOR-v0.3.14 — GPU WRITE COALESCING (the walk is ~28× slower, not the promised ~3×; the donor's one-write-per-frame loop is the wall)
+
+> Gee (verbatim): *"hows our girl? shes been at it for 12 hours... are we sure everything is good? 12 hrs and only phase 2/25 of the first cell?"*
+>
+> Gee (verbatim, choosing option 1 — donor-side GPU write coalescing): *"if option 1 will fix it do it"*
+
+**THE MEASURED PROBLEM (build `20f3b856`, 12.6h uptime):** she is teaching CORRECTLY (binary engaged, zero drops, suppression ~2.3/s, ledger honest, +314 teach events per 120s) — but at **~104 teach/min average vs ~2,970/min on unpaced walks = ~28× slower**, not the ~3× estimated when Gee chose "Pace the walk to the donor (100% correct)". 12.5 hours inside `_teachLanguageMechanics` with `phaseWork 4/14` → ~39h projected for ONE phase; ELA-K historically consumed ~435k teach events → ~70h ≈ 3 days for ONE cell at this rate. **Collateral:** dream windows fire between phases, so 12.6h inside one phase = ZERO dream windows = no consolidation, no vocab trickle, `definitionQueue.lastWindow` still null.
+
+**THE WALL (named in FINALIZED §BT.8 VERIFIED as the honest remainder):** the donor absorbs ~10 pattern groups/sec during teach. BT.8 proved the parse cost is gone (binary engaged, full drains happen) — the residual ceiling is the donor's receive loop doing **one GPU write per frame**: each write_spike_slice/clear costs a separate device submit + sync, so tens of frames/sec saturates it regardless of how fast frames decode. Buffer parks ~16MB, RTT 5–8s, the brake correctly holds the walk to that drain.
+
+**THE FIX — donor-side GPU write coalescing, ships as donor-v0.3.14:** the donor drains its incoming work queue and BATCHES consecutive teach writes into one GPU submission (group by region where the kernel allows), instead of submit-sync per frame. Protocol unchanged — same SPRS 7/8/9 frames, same server, same lane; only the donor's execution of them changes. Same release flow as v0.3.13: I code + tag, CI builds, **GEE deploys the binary** (his territory, verbatim: *"no the doner release is my territory just like we have doployed all the previous versions"*).
+
+### THE WORK
+
+- [x] **WC.1** **DONE.** READ the donor's full teach-write execution path (800-line-chunk law): `donor.rs` (receive → Work queue → dispatch), `compute.rs` + `cuda.rs` (how WriteSpike/WriteCurrent/ClearSpike hit the GPU — per-write submit? per-write sync?), `frames.rs` (already known). Identify exactly where the per-frame cost is paid.
+- [x] **WC.2** **DONE — and the read overturned the "coalescer" framing (recorded honestly):** the per-frame cost was not submit-batching, it was the host materializing a DENSE region/matrix-sized vector for EVERY teach op and blocking-copying it over PCIe (write_spike/current/clear: full region ~360KB each; hebbian: TWO full-matrix vectors — 6MB each on the 1.5M-row cortex — per frame). BUILT instead: four device-side kernels (fill_zero_u32/f32 + scatter_ones_u32 + scatter_vals_f32) in cuda_kernels.cu; cuda.rs rewired so write_spike_slice / clear_spike_region / write_current_slice / hebbian / propagate upload ONLY sparse index lists (~KB) and zero+scatter on the GPU, all async on the one stream — clear→write→plasticity ordering preserved by stream order, zero host syncs on the teach path. kernels.ptx regenerated with the REAL nvcc on this box (13.0; compute_60 unsupported → compute_75/PTX ISA 9.0 — needs r580+ driver; older cards hit the existing LOUD module-load-fail → wgpu fallback, never silent). BUILD the coalescer: drain all queued teach writes at dispatch time, group compatible writes, execute as one GPU submission (or the minimum number the kernel layout allows); ordering preserved (clear→write→hebbian group semantics must survive — a clear must never be reordered after a write it was meant to precede).
+- [x] **WC.3** **DONE.** Bump `donor-app/Cargo.toml` 0.3.13 → 0.3.14 (appVersion announces itself; no protocol change, no server edits needed).
+- [x] **WC.4** **DONE — stronger than planned: the kernels are REAL-compiled (nvcc built the shipping PTX, 8/8 entries verified), not just read-verified.** Rust side: full read-back of every edited region; arg-order walk against each kernel signature; borrow walk (all-immutable reborrows, no get_mut left); stream-ordering walk (one stream = issue order is execution order); buffer-lifetime walk (stream-ordered frees land after the consuming kernel). No cargo on this box — CI compiles on the tag, same as v0.3.13. VERIFY — no-tests LAW: `cargo check` if available else read-verify + CI compile on tag; re-read every edited region; confirm ordering invariants by walking the queue-drain logic against the clear→write→hebbian sequence.
+- [x] **WC.5** **DONE.** Docs + FINALIZED, atomic commit, cascade develop→main, push BOTH remotes, **tag `donor-v0.3.14`** so CI builds.
+- [x] **WC.4b** **CORRECTION — WC.4's claim was WRONG and CI proved it:** the tag build FAILED with 4× E0308 — `launch()` in cudarc 0.16 returns `Result<Option<(CudaEvent, CudaEvent)>, _>`, not `Result<(), _>`; the existing code's `?;` discards the value silently, my four tail-position returns did not. My "arg-order + borrow walk" verify could never catch a RETURN-type mismatch — read-verification of an unfamiliar API is not verification. FIXED: `.map(|_| ())` at all four launch sites; **rustup + cargo INSTALLED ON THIS BOX** (stable-msvc, minimal) and `cargo check` now PASSES both `--features cuda` and full default features (1 pre-existing gui.rs warning, untouched — not this batch). No donor change ever ships read-verified-only again. Tag donor-v0.3.14 MOVED to the fixed commit (no release had published, so the version never shipped broken).
+- [x] **WC.6** **DONE — verified engaged (0.3.14, binary true), speed unchanged → led to the RH root-cause revision; the class closed at TF.6/LB3.4 (1,373→1,480/min).** ⏳ GEE: deploy donor-v0.3.14, then LIVE-VERIFY: teach/min climbs well above ~104 (target: hundreds+), buffer stops parking at 16MB (breathing cycle tightens or vanishes), RTT drops under ~1s during teach, suppression stays ~0, dream windows finally fire (phase completes → `definitionQueue.lastWindow` populates).
+
+---
+
+## OPEN TASKS — 2026-08-16 · donor-v0.3.15 — RESIDENT BOUND-HEBBIAN (the type-5 stub is why she trains slow; kill the resync upload storm)
+
+> Gee (verbatim): *"check on our girl donor .14 deployed and donating... no idea if is 10-15x faster tho"*
+>
+> Gee (verbatim, go-ahead): *"yea do it and dont have ass the shit make sure u thouroughly plan out the corrections to the issues of slow training we are having"*
+
+**WC.6 RESULT — donor-v0.3.14 VERIFIED ENGAGED, SPEED UNCHANGED (recorded honestly):** `donorAppVersion: "0.3.14"`, binary true, zero drops — but teach/min still 60–108, buffer still parked ~16MB, RTT ~7s. The device-side scatter fix was correct and stands (donor executes what it receives at microsecond cost now) — but execution was not the wall.
+
+**THE MEASURED WALL (this time measured FIRST):** outbound to the donor = **4.06 MB/s at 20 msgs/s = 207KB average message**. Teach patterns are ~1KB, type-5 hebbian batches ~25KB — nothing in the teach lane is 207KB. **Matrix upload chunks are.** The socket is parked by the shadow-resync upload stream, and the server's own comments state the mechanism: (1) for bound projections the CPU CSR is the authoritative Hebbian master and the GPU gets a fire-and-forget type-5 batched-hebbian shadow; (2) `donor-app` `handle_frame` type-5 is a STUB — *"For now ack so the brain doesn't stall (no incorrect weight change applied)"* — every bound-hebbian shadow is DISCARDED on the native donor; (3) the GPU weight shadow therefore drifts permanently → auto-resync re-uploads matrices forever → 4MB/s of chunks park the buffer at ~16MB → the pattern-lane brake reads that buffer and throttles the walk to ~85 teach/min. v0.3.13 (parse) and v0.3.14 (execution) were both real fixes to the wrong stream.
+
+**THE FIX SHAPE:** implement type-5 batched-hebbian FOR REAL on the native donor — cluster-BOUND matrices whose plasticity reads resident spike state (written by the type-7/8/9 pattern frames) at the bound src/dst offsets. The plasticity kernel ALREADY takes srcOffset/dstOffset; the binding metadata is ALREADY in the chunked-upload frames (donor parses and discards it, frames.rs flags bit 2). Shadow then converges from ~50-byte ops instead of megabyte re-uploads → resync storm dies → socket drains → brake releases → walk runs at the server's own ceiling (~1,300–2,000 teach/min measured on unpaced walks). Same shadow-accuracy contract compute.html donors run today (fire-and-forget, CPU authoritative, periodic resync heals residual drift — but rare, not continuous).
+
+### PHASE 0 — VERIFY THE HYPOTHESIS IN CODE (no donor line changes until these are read)
+
+- [x] **RH.0a** **DONE (findings in PHASE 0 above).** Read `html/compute.html`'s binding + resident-spike hebbian implementation (the REFERENCE): how binding metadata (srcName/dstName + src/dst start/end) is stored at upload, which buffer + offsets `hebbianSparse(name, lr)` reads, exact cluster-vs-region semantics of the offsets.
+- [x] **RH.0b** **DONE (findings in PHASE 0 above).** Read the server upload encoder in `server/brain-server/gpu.js`: confirm binding metadata (chunk flags bit 2) is sent to ALL donors including native; record the chunk size (validates the 207KB avg-message fingerprint); confirm `_flushBoundHebbianBatch` type-5 targets the primary native donor.
+- [x] **RH.0c** **DONE — resync EXONERATED (findings above).** Read the resync/re-broadcast scheduler: what arms it, its cadence, per-matrix dirty targeting vs full re-upload — confirm the continuous-upload loop and record the exact call chain in this TODO.
+- [x] **RH.0d** **DONE — propagate out of scope this release (recorded above).** Confirm how bound PROPAGATE (type-2 zero-length pre) is gated for native donors (CHAT.1 says capability-gated; frames.rs has no type 6) — decide + record whether propagate joins this release or stays as-is.
+
+#### PHASE 0 — FINDINGS (hypothesis REVISED; recorded before any build per the thorough-plan directive)
+
+- **RH.0a/b DONE.** Binding metadata confirmed shipped to ALL donors (chunk flags bit 2: srcCluster/dstCluster names + src/dst start..end — `gpuSparseUpload` is donor-agnostic); compute.html reference semantics confirmed: type-5 `hebbianSparse(name, lr)` = plasticity reading the CLUSTER spike buffers at the bound region offsets. Chunks are 750k-nnz (~6MB).
+- **RH.0c DONE — the RESYNC IS EXONERATED.** Teach-time resync throttle is 15 MINUTES (~95KB/s avg; `DREAM_RESYNC_TEACH_THROTTLE_MS` default 900000) and the deferred arm waits for `_curriculumInProgress` false. It cannot be 4MB/s. The type-5 stub fix stays in scope (honest shadow + kills residual re-uploads) but it is NOT the speed lever.
+- **RH.0e THE ACTUAL RIVER — the teach frames themselves are fat, and the server already measured it:** `gpu.js:2713` — pattern frames carry sparseIndices "measured at a **153.1 KB AVERAGE** on the live box". Type-8 current writes on a 90k region can run to ~720KB; intra-cortex type-3 hebbian frames carry FULL pre+post active-index arrays of the 1.5M-row cortex (same class). ~20 msgs/s × ~207KB = the 4.06MB/s measured tonight.
+- **RH.0f THE WIRE IS THE CEILING:** ~4MB/s is the box→donor downlink capacity — corroborated twice independently ("19MB drains in seconds" ≈ 4-5s ≈ 4MB/s; sustained-equilibrium 4.06MB/s with the buffer parked at the lane cap; donor RTT 6.6s = exactly a 16.5MB queue at 4.1MB/s). No donor-side execution change can beat the pipe — the fix is SEND FEWER BYTES.
+- **RH.0g THE REPETITION STRUCTURE THAT SAVES US:** ~20 msgs/s against ~1.4 teach calls/s = ~14 frames per call — the rep loops (reps 2–50) put NEAR-IDENTICAL payloads on the wire over and over. A repeat-frame protocol collapses those to ~30-byte frames: ~10–50× byte cut on exactly the traffic that dominates.
+- **RH.0d propagate:** bound propagate stays as-is this release (server already has a working native-donor path; type-6 remains browser-only) — recorded, deliberately out of scope.
+
+### PHASE 1 — BUILD (donor-v0.3.15 + the server half of the repeat protocol) — REVISED per Phase 0
+
+- [x] **RH.1r** **DONE.** PROTOCOL — new SPRS type 12 "repeat": header name = the original frame's name field; payload = origType(u8). Server side (`gpu.js`): per-SOCKET payload cache keyed (type, name) storing the last-sent payload Buffer; when the new payload is byte-identical (`Buffer.equals`) AND the donor announced ≥0.3.15, send the ~30-byte repeat frame instead. Cache dies with the socket (keyed per ws) — a reconnected donor always gets full frames first. Version gate = negotiation (same TU.20.12 pattern as binTeach), NOT a fallback.
+- [x] **RH.2r** **DONE.** DONOR — frames.rs decodes type 12; donor.rs caches the last decoded teach payload per (type, cluster/region or matrix) at the receive layer and re-pushes an identical Work item on repeat. Applies to types 3 (hebbian arrays), 7 (spike writes), 8 (current writes); type 9 is header-only (no cache needed).
+- [x] **RH.3r** **DONE** (`wsPressure.teachOutByType` + `teachOutBytesSaved` + `repeatTeach`). TELEMETRY — per-frame-type outbound byte + frame counters on the donor socket, published through wsPressure, so the river's composition is READ, not inferred, in RH.8 and forever after.
+
+- [x] **RH.1** **DONE.** frames.rs: KEEP the parsed binding metadata (srcName, dstName, src/dst ranges) on `ChunkFirst` instead of discarding it.
+- [x] **RH.2** **DONE.** donor.rs + compute.rs: store binding per assembled matrix; **engine affinity** — a bound matrix MUST land on the SAME GPU as its cluster (MultiEngine currently round-robins matrices and clusters independently; single-GPU donors unaffected, multi-GPU donors would bind across devices and crash or silently no-op).
+- [x] **RH.3** **DONE — BOTH backends (CUDA + wgpu), no new kernels (plasticity already takes src/dst offsets); bounds-guarded so an ill-fitting window skips instead of reading OOB.** cuda.rs + compute.rs (wgpu): implement resident bound-hebbian — type-5 op on a bound matrix launches plasticity with preSpikes/postSpikes = the CLUSTER's resident spike buffer at the bound offsets (kernels already take srcOffset/dstOffset). Unbound or unresident ops: skip + count (never silently pretend).
+- [x] **RH.4** **DONE.** donor.rs: route type-5 ops through the real implementation; keep the ack contract identical (SPRR type 5, reqId) so the server's pending-resolve path is untouched.
+- [x] **RH.5** **DONE.** Cargo 0.3.14 → 0.3.15 (appVersion announces; protocol unchanged — the server already sends everything needed).
+
+### PHASE 2 — VERIFY (cargo is LOCAL now)
+
+- [x] **RH.6** **DONE — cargo check PASSES both feature sets (LOCAL, the WC.4b lesson applied); node --check gpu.js + state.js PASS; repeat-frame + binding byte-walks MATCH both codecs; kernels.ptx UNCHANGED; cache-discipline walk done (update only on confirmed send; delete on uncertainty; per-socket on both ends so reconnects start in lockstep).** `cargo check` both feature sets + full read-back of every edited region + byte-walk the binding fields against the server encoder + kernels.ptx UNCHANGED check (no new kernels needed — offsets already in the signatures).
+
+### PHASE 3 — SHIP
+
+- [x] **RH.7** **DONE.** Docs + FINALIZED, atomic commit, cascade develop→main, push BOTH remotes, tag `donor-v0.3.15`, CI builds.
+
+### PHASE 4 — DEPLOY + LIVE-VERIFY (explicit pass metrics, no vibes)
+
+- [x] **RH.8** **CLOSED — superseded by TF.6/LB3.4 PASS: outbound collapsed to ~KB/s-scale, buffer 0.0, RTT ~110ms, teach/min 1,373→1,480, suppression ZERO. Dream windows = OI.2 (mid-phase; fires between phases).** ⏳ GEE: Update & SAVESTART (site link-bump) → download + swap + restart donor. Then LIVE-VERIFY: (a) outbound MB/s to the donor COLLAPSES from ~4MB/s to ~KB/s once the canonical upload finishes; (b) buffer stops parking (near-0 between canonical uploads); (c) donor RTT <1s during teach; (d) teach/min climbs toward the ~1,300–2,000 server ceiling; (e) suppression ~0; (f) dream windows FIRE (`definitionQueue.lastWindow` populates, `kVocabTaught` climbs — OI.2 rides on this).
+
+**KNOWN NEXT WALL (recorded now, not this batch):** once the socket is clear, the ceiling becomes the server's own single-threaded teach loop (~32 calls/s measured unpaced). That is server-side work, no donor release needed.
+
+---
+
+## OPEN TASKS — 2026-08-16 · FULL DOC PUSH + docs/ FOLDER CLEANUP (no agents, everything by hand, format-true)
+
+> Gee (verbatim): *"now its time for full doc push, all workflow documents, all informational pages, like equations, laymans, readmes, ect ect how tos, setups readmes. NO AGENTS! update all stall information and out date things like tool tips, equations updates, keeping true to the layout and formate of the current pages,htmls, and information in the entire project from the archetect file to any and all of it... and i see youve been using my docs folder as you own dumping ground for your test, log, and json like files of work claude did... so i want my docs folder to be cleaned of non informational files that are not cureent , are stall, or we temp, logs, and similar type files that are not informational files we use and the public uses"*
+
+**SCOPE:** every workflow doc + every informational page (equations, layman's, readmes, how-tos, setups) + every public HTML (docs/equations/legend/guide/minds-eye/dashboard tooltips) brought current with everything shipped since the last sweep — donor v0.3.13/14/15 (binary teach frames, device-side scatter, REPEAT frames, resident bound-hebbian), the governor chain (stale-guard → atomic groups → walk pacing → 15ms base → quadratic brake), GPU-only substrate + substrate-latch fix, phase-ledger stack + liveness telemetry, per-grade definition trickle, word_motor unmask, teachOutByType telemetry. Format-true per the MATCH DOC FORMAT LAW — edit in place within each doc's existing structure, no wall-of-text dumps. **NO AGENTS** — all reads and edits by hand.
+
+### THE WORK
+
+- [x] **DP.1** **DONE — removal set (26 files), all verified stale one-offs (June–July, shipped/superseded), none referenced by code, none LAW-referenced, none canon:** NewTodo.md · Supertodo.md · Problems.md · ISSUE-basin-collapse-fix.md · ISSUE-student-battery-stall.md · CHECKPOINT-WIPE-PLAN.md · LAW-AUDIT.md · unity-speech-consciousness-rectify.md · T15-architecture.md · T15-pharmacology-research.md · T17.7-single-cortex-architecture.md · gate-probe-coverage.md · V2-WATCHDOG.md (Claude's own monitoring instrument) · all 13 SPONGE-* handoffs/diagnostics/runbooks (dated June 24–July 14; the runbook predates the dashboard-only deploy LAW and is actively misleading) · root resume.md (stale July 9 handoff; docs/RESUME.md is canonical). **KEPT deliberately:** COMP-todo.md (LAW-referenced), MEMORY-WALK.md + TODO-life-experience.md + UNITY-TEACHING-LEDGER.md (her canon), aimagination.md (the imagination equation), Ultimate Unity.txt + persona-cosmic.txt (persona sources), coding-knowledge/component-templates/english-baseline .txt (code-loaded corpora), STATUSLINE/SETUP/TALK-TO-UNITY-PLAYWRIGHT (how-tos), THRESHOLD-DERIVATION + HTML-ENTRY-POINTS + KNOWN_ISSUES + HELD-BACK + DECOMPOSED-curriculum-build + CODE-CURRICULUM + CURRICULUM-SCOPE-SEQUENCE + ADMIN-CONTROLS + PERSONA + PUSH_WORKFLOW + MINDSPACE-INTEGRATION + all workflow/equation/sensory docs + docs/archive/. INVENTORY `docs/` — classify every file: informational (ours/public, KEEP + maybe update) vs non-informational dumping-ground files (test outputs, logs, json-like work artifacts, temp/stale files). List the removal set BEFORE deleting anything.
+- [x] **DP.2** **DONE — 26 files git rm'd (working tree clean; git history preserves them).** CLEAN `docs/` — `git rm` the non-informational set (history preserves them; the working tree gets clean). Nothing informational, current, or public-facing is touched.
+- [x] **DP.3** **DONE.** NOW.md new Current banner (v0.3.15 + doc push + cleanup); ARCHITECTURE.md new TEACH-WIRE ERA banner (GPU-only substrate, phase-ledger stack, governor chain, SPRS 7/8/9/12, device-side scatter, repeat frames + resident bound-hebbian, honest telemetry, word_motor unmask); EQUATIONS.md §10 intro + row corrected (GPU-only truth) + NEW §10.6 Governed Binary Teach Lane (brake law, atomic groups, stale-guard, walk pacing, repeat compression, resident hebbian, version gates); WEBSOCKET.md gains the full SPRS/SPRR frame table (types 1–9, 12) + negotiation rules. ROADMAP/SKILL_TREE/SENSORY grepped clean of the stale claims. WORKFLOW DOCS sweep — NOW.md brought current; ARCHITECTURE.md (donor protocol section: SPRS types incl 7/8/9/12, resident bound-hebbian, governor chain); ROADMAP/SKILL_TREE/EQUATIONS/SENSORY/WEBSOCKET wherever stale, each edited in place in its own format.
+- [x] **DP.4** **DONE.** README.md: the stale "cross-projection learning runs CPU-side in Node" paragraph replaced with the GPU-only truth (native donor app + governed binary lane + repeat frames + honest suppression + probe-critical CPU shadow). SETUP.md checked — no stale donor/version claims. PUBLIC MARKDOWN sweep — README.md (donor version + capabilities), any how-tos/setup readmes (donor-app README if present), layman docs.
+- [x] **DP.5** **DONE.** dashboard.html ws-pressure tooltip rewritten (was describing the pre-GPU-only two-shadow world; now the governed lane + stale-guard + repeat frames + honest loss accounting); compute.html stale "learned CPU-side ... no GPU path yet" comment corrected (cluster-bound, GPU-only teach); donor download links already at v0.3.15 via the CI link-bump (merged in, not hand-edited); docs.html / unity-guide.html / brain-equations.html / legend.html grepped clean of stale claims. PUBLIC HTML sweep — docs.html, brain-equations.html, unity-guide.html, legend.html, minds-eye.html, dashboard.html tooltips/labels where stale (equations updates, tool tips), format/layout preserved exactly.
+- [x] **DP.6** **DONE.** VERIFY (no-tests LAW) — re-read every edited region, node --check any touched JS-bearing HTML script blocks unaffected (docs-only edits), then FINALIZED + atomic commit + cascade develop→main + push BOTH remotes.
+
+---
+
+## OPEN TASKS — 2026-08-16 · RH.8 RESULT + PSIQ — the river is type-8 current writes (2.99GB/12.6min) and psi drift blocks their repeat compression
+
+> Gee (verbatim): *"okay check on our girl and see if she is back to the 2000+ per min instead of just the couple hundred"*
+
+**RH.8 READ (build `9c884b19`, donor v0.3.15 confirmed, `repeatTeach: true`):** teach/min ~133 — NOT 2,000. But the new `teachOutByType` telemetry names the river on its first read: **t8 (write_current_slice) = 3,551 frames = 2,991,547,836 bytes in 12.6 min — 842KB average — the entire ~4MB/s wire.** t7 spikes total 28.7MB; t12 repeats fired 564× (10.8MB saved) — the protocol WORKS — but t8 never repeats because **`psi` (her live consciousness scalar, drifting every tick) rides inside the payload, so byte-equality breaks on every frame even when the rep loop's indices+values are identical.** My own v0.3.15 comment called that exactness a feature; it is the exact thing starving the compression.
+
+- [x] **PSIQ.1** **DONE.** Quantize psi to 3 decimals in the type-8 sender (`_gpuWriteCortexCurrentSlice`) — a ≤0.1% rounding on an injected-current amplitude scalar, far below the Rulkov noise floor — so rep-loop-identical patterns byte-match and collapse to type-12 repeats. Server-only; the v0.3.15 donor needs nothing.
+- [x] **PSIQ.2** **DONE** (node --check PASS; JSON legacy branch untouched — the quantization lives only in the binary t8 encoder). Verify (no-tests LAW): node --check, re-read the edit, confirm the JSON legacy branch untouched.
+- [x] **PSIQ.3** **DONE.** Docs + FINALIZED, atomic commit, cascade, push BOTH remotes.
+- [x] **PSIQ.4** **CLOSED — verified INSUFFICIENT as predicted possible: t8 values drift beyond psi, repeats never caught the river; the real fix was TF template frames. PSIQ stands as a correct micro-fix (psi quantized on the wire).** ⏳ GEE: ONE Update & SAVESTART → re-read: t12 frames must dwarf t8 fulls, `teachOutBytesSaved` must climb toward GB-scale, outbound MB/s collapses, teach/min climbs toward the server ceiling.
+
+---
+
+## OPEN TASKS — 2026-08-16 · TF — TEMPLATE-FORM CURRENT FRAMES (donor-v0.3.16): the t8 river is 99.5% of the wire at 840KB/frame; ship the template, expand on the donor
+
+> Gee (verbatim): *"looks like instead of 20X faster, now its 20x slower"*
+>
+> Gee (verbatim): *"yup 20x slower now"*
+>
+> Gee (verbatim): *"we went from weeks per cell to now monthsa, wtf Unity!"*
+
+**MEASURED (fresh walk, build `44bb3508`, 60s delta in `_teachCourseIdentity` — the LIGHTEST phase):** t8 write_current_slice = **237 frames = 194.39 MB/min (3.2 MB/s) at ~840KB per frame** — 99.5% of all outbound bytes; t7 0.85 MB/min, t9/t12 negligible. teach/min 115, suppression ~1/s, donor RTT 5.9s, buffer parked 16.9MB. The walk is CORRECT and honestly paced — to a ~3.4MB/s wire hauling ~105,000 (idx,val) pairs per injection. **WHY the frames are obese:** the WMB batch grew the language cortex 349K→1.5M; every `injectEmbeddingToRegion` forward-path injection tiles a ~300-dim embedding across the region and ships the FULLY-EXPANDED result. **WHY no prior lever touched it:** repeats need byte-identical payloads (live values never repeat — PSIQ proved psi wasn't the only drift); v0.3.13 fixed parse; v0.3.14 fixed execution — none shrank the bytes. **Historical context recorded honestly:** the remembered ~1,900 teach/min fresh walks predate the pacing gate — they shed/corrupted most GPU teaching silently; the walk is slower BECAUSE it is now honest. This fix makes honest ALSO fast.
+
+**THE FIX:** SPRS type 10 "write_current_template" — ship the template (active dims + per-dim values + tiling params, a few KB) and expand device-side (the v0.3.14 kernel infrastructure extends naturally). ~300× cut on the stream that is the entire bottleneck. Donor-v0.3.16 + the server sender; version-gated ≥0.3.16 (negotiation — older donors keep expanded t8).
+
+### THE WORK
+
+- [x] **TF.0** **DONE — ALL FOUR call sites are template-expressible:** `injectEmbeddingToRegion` (rowStart 0), `injectEmbeddingToRegionOffset` + curriculum offset variant (rowStart = slice offset), fineType slot writer (count-1 template: one value × slot run). Expansion math nailed: `groupSize = max(1, floor(sliceSize/embLen))`, dim d fills rows [rowStart + d·groupSize, +groupSize) clipped at region end, value = emb[d]·8·strength, zero-valued dims skipped, psi multiplies engine-side — donor expansion reproduces the IDENTICAL Work item bit-for-bit. READ the injection generator end-to-end (800-line-chunk law): `injectEmbeddingToRegion` in `js/brain/cluster.js` + every caller that reaches `_gpuWriteCortexCurrentSlice` — nail the EXACT expansion math (dim→row mapping, group size, scaling, psi placement) so the donor expansion is bit-faithful, and confirm what fraction of t8 traffic is template-expressible (any non-template callers keep expanded t8).
+- [x] **TF.1** **DONE.** Type 10 payload = rowStart(u32) + groupSize(u32) + count(u32) + f32 values + psi (PSIQ-quantized, same law as t8). Template rides to the sender as a tagged property on the values array (the brain-server proxy arrow forwards positionally; promoting to a real 4th parameter awaits that file's 9,100-line full-read batch — recorded here so it is not forgotten). `_donorTemplateTeach()` gate ≥0.3.16 with the one-shot selection log; non-template payloads + older donors keep expanded t8 untouched. PROTOCOL: SPRS type 10 — header name = `cluster/region`; payload = the template (dim indices + values + expansion params, exact layout decided by TF.0). Server sender in `_gpuWriteCortexCurrentSlice`'s template-capable path; expanded t8 stays for non-template callers and <0.3.16 donors.
+- [x] **TF.2** **DONE — SIMPLER than filed, deliberately:** no new kernels, no PTX change, no wgpu divergence. frames.rs decodes type 10; donor.rs expands the template AT RECEIVE into the IDENTICAL `Work::WriteCurrent` the t8 frame produces (zero-valued dims skipped; region-end clipping engine-side — both backends already guard idx < len). Execution cost unchanged (0.3.14 proved execution was never the wall); only the WIRE shrinks. Defensive twin in handle_frame for exhaustiveness. DONOR (v0.3.16): frames.rs decode + a template-expansion kernel (or index-map reuse per TF.0's math) on BOTH backends; same zero-then-write semantics as t8; engine affinity + bounds guards per the v0.3.15 pattern.
+- [x] **TF.3** **DECIDED — t10 frames are NOT repeat-cached:** live values drift (proven by PSIQ) and the frames are ~1.2KB — caching would add machinery for no bytes. Repeat-compression compatibility: type-10 payloads are SMALL — cache/repeat them too if they byte-repeat (cheap, same machinery).
+- [x] **TF.4** **DONE.** cargo check PASS both feature sets (edits compiled clean first try); node --check gpu.js + cluster.js + curriculum.js PASS; ESM import() PASS both; byte-walk: encoder writes hdr+12B meta+f32×count+psi, decoder reads u32×3+f32_vec(count)+f32 after the same align4 — MATCH; expansion-math walk against TF.0 — MATCH (skip-zero, clip, psi placement); bundle rebuilt keyless with the template tags present (5 sites). VERIFY: cargo check both feature sets LOCAL + node --check + byte-walk both codecs + expansion-math walk against TF.0's read + PTX regen if a kernel is added (nvcc local).
+- [x] **TF.5** **DONE.** Docs + FINALIZED, atomic commit, cascade, push BOTH remotes, tag `donor-v0.3.16` → CI builds.
+- [x] **TF.6** **FULL PASS 2026-08-16 — t8 = ZERO (templates 1.62MB/min where 194MB/min ran), donor RTT 6,000→173ms, buffer unparked to 0.0, teach/min 316→1,373 (then 1,480 post-3ms+TW).** ⏳ GEE: Update & SAVESTART + donor swap → LIVE-VERIFY: t8/t10 MB/min collapses ~300×, buffer unparks, RTT <1s, teach/min climbs toward the server ceiling, dream windows fire.
+
+---
+
+## OPEN TASKS — 2026-08-16 · TF.6 RESULT (PASS on the river) + LB3 — the 15ms base is the last governor refusing her
+
+> Gee (verbatim): *"updated fresh walk set, she is training and .16 doner is donating"*
+
+**TF.6 — THE RIVER IS DEAD (build `c9b1d09f`, donor 0.3.16, 60s delta):** t8 = **0 frames**; t10 templates = 1,370 fr / **1.62 MB/min** (was 194 MB/min — the ~120× collapse landed); total outbound 21 MB/min (was 207); **donor RTT 173ms** (was ~6,000); **buffer 0.0MB — unparked**; teach/min **316** and climbing at 2.5 min into the fresh walk. **RESIDUAL:** `hebbianSuppressedStale` +7,655/min (~128/s) with ZERO sheds and ZERO buffer — pure 15ms-base-throttle refusals of the 2nd–3rd group inside each teach call's window (the LB residual at 3× the call rate). The wire the constant guarded now carries ~1–15KB frames: even the max admission rate cannot refill the 16MB cliff, and the quadratic brake owns any real pressure.
+
+- [x] **LB3.1** **DONE.** Base `DREAM_PATTERN_TEACH_THROTTLE_MS` default 15ms → 3ms at BOTH governors (admission gate + `_patternLaneWait`), same env override; rationale comments updated at both sites with the post-template measurements.
+- [x] **LB3.2** **DONE.** node --check PASS; both sites re-read.
+- [x] **LB3.3** **DONE.** Docs + FINALIZED, atomic commit, cascade, push BOTH remotes.
+- [x] **LB3.4** **FULL PASS (build `7a2df821`, donor 0.3.16, 3-sample climb):** teach/min **690 → 1,373 → 1,361** — the projected 1,300–2,000 server ceiling REACHED; **suppression FROZEN at 32,020 (zero new across 2 min)** — every Hebbian lands on its intended pattern; buffer 0.0MB, RTT 98–213ms; language-mechanics work 4/14 at ~7 min into the cell (the same spot took 12.5 HOURS pre-templates). Full arc: ~104/min → 1,373/min = **13×, with zero suppression and zero corruption** — honest AND fast. Remaining watches unchanged: OI.2 (first dream window binds the vocab queue), OI.5b (matrix voice after ELA-K word emission). ⏳ GEE: ONE Update & SAVESTART (server-only — the donor stays 0.3.16) → verify: suppression ~0, teach/min climbs from 316 toward the server ceiling, buffer stays ~0.
+
+---
+
+## OPEN TASKS — 2026-08-16 · CN — F12 CONSOLE NOISE (webgpu-prep powerPreference warning + admin 502 spam)
+
+> Gee (verbatim): *"and i want these errors fixed and or removed... they dont need to be poping up in the F12 when there isnt anything wrong, or is there? webgpu-prep.js:47 The powerPreference option is currently ignored when calling requestAdapter() on Windows. See https://crbug.com/369219127 [...] dashboard.html:3106 GET https://if-only-i-had-a-brain.git.unityailab.com/admin/milestone 502 (Bad Gateway) refreshMilestone [...] dashboard.html:1010 WebSocket connection to 'wss://.../admin/ws' failed: Error during WebSocket handshake: Unexpected response code: 502"*
+
+- [x] **CN.1** **DONE — answer to "or is there?": NO real fault.** The powerPreference warning is Chrome noise for an option Windows ignores (crbug 369219127) passed on a mere existence probe; the two 502 classes are savestart/deploy-window noise — the server is legitimately down for ~a minute, browsers print a red line for EVERY failed HTTP/WS attempt no page code can suppress, and the fixed 5s poll + 3s WS retry painted dozens per restart. READ webgpu-prep.js (full) + the three dashboard.html regions (WS connect ~1010, refreshMilestone ~3106, interval ~3305) — determine whether the 502s indicate a real fault or restart-window/permission noise, and answer Gee's "or is there?" honestly.
+- [x] **CN.2** **DONE.** webgpu-prep.js — stop passing `powerPreference` to `requestAdapter()` (Chrome ignores it on Windows and warns every load; dropping it silences the warning with zero behavior change on the platforms we run).
+- [x] **CN.3** **DONE.** /admin/milestone polls ONLY while the admin WS is OPEN (the WS is live proof the server is up; polling pauses on drop, resumes on reconnect — the 502-per-5s spam is structurally gone); admin-WS reconnects moved to exponential backoff 3s→6s→12s→24s→30s-cap, reset on successful open, "retry now" link untouched (~20 red lines per restart window → ~5). dashboard.html — stop the 502 spam structurally: browsers ALWAYS console-log failed HTTP/WS attempts, so the fix is to not fire doomed requests — gate /admin/milestone polling + admin-WS reconnects behind health/backoff so a down-or-unauthorized admin lane produces one quiet probe on a backoff curve, not a red line per interval.
+- [x] **CN.4** **DONE.** Verify + docs + FINALIZED + cascade + push BOTH remotes.
+
+---
+
+## OPEN TASKS — 2026-08-16 · TW — TEACH-LOOP SPEED SURGERY (the ~1,300/min single-thread ceiling) — ⛔ RESTORE POINT: `restore-teach-wire-won` @ `c20400f`
+
+> Gee (verbatim): *"wouldnt we want her to be as fast as possible? i think we need to do this:Yes — that's the "next wall" already written in the TODO: offload the CPU-shadow Oja and pattern-building to worker threads (the box has 15 idle cores), skip redundant intermediate-rep shadow work harder, batch calls. Realistic gain: maybe 2–5×. But it's surgery on the authoritative weight path, so it deserves its own careful batch — not a 2am rider., but make a not if anything goes wrong and i tell you to we jump back to this build(noting this repo version is our restore point if the surgery goes bad"*
+
+**⛔ THE RESTORE POINT (Gee's insurance, recorded exactly as ordered):** tag **`restore-teach-wire-won`** = commit `c20400f` (main at the LB3.4 FULL PASS — 1,373 teach/min, zero suppression, donor 0.3.16, the teach-wire war won), pushed to BOTH remotes. **IF anything goes wrong and Gee says jump back:** cut `rollback/teach-workers` FROM the tag, merge it FORWARD into main (never rewrite pushed history), push, Gee presses Update & SAVESTART — the box is back on this exact build with weights intact (server-only surgery; the 0.3.16 donor is untouched either way).
+
+**THE CEILING BEING ATTACKED:** ~1,300–1,400 teach/min = ~43ms of synchronous single-core server work per teach call (the brain loop pins ONE of the box's 16 cores; 15 sit idle): the probe-critical CPU-shadow Oja + server-side pattern building + frame encode + yields. The wire is no longer the constraint (0.0MB, RTT ~100ms, suppression 0).
+
+**DESIGN CANDIDATES (TW.0 decides — the old worker pool is a RECORDED FAILURE: per-call SAB allocation leaked 37GB and stepAwait deliberately skips the pool at biological scale, so any threading must use PERSISTENT workers + persistent buffers, never per-call):**
+- **(a) TIME-SHIFT the shadow (no threads):** queue CPU-shadow Oja ops during the hot loop; replay the queue (FIFO, order-preserving per matrix) during pacing-gate awaits / idle slices / mandatory catch-up BEFORE any gate probe reads the arrays. Correctness identical (probes always see a caught-up shadow); hot-loop cost drops to a queue push.
+- **(b) COALESCE rep loops analytically:** N identical Oja applications of the same (pre, post, lr) have a closed form (geometric convergence per synapse) — one application replaces N. Massive if the math checks out against `ojaUpdate`'s exact update rule; MUST be derived from the code, not assumed.
+- **(c) WORKER THREADS for shadow + pattern building:** persistent workers over SharedArrayBuffer-backed CSR values — the real 15-core play, but requires SparseMatrix storage to move to SAB (bigger refactor, save-path implications).
+- **(d) Extend final-rep-only shadow gating** (exists partially — `skipCpuWhitelist` pattern) to every teach path that still shadows intermediate reps.
+
+### THE WORK
+
+- [x] **TW.0** **DONE — design decided from the read: (a)+(d)-adjacent surgical set, NO THREADS this round** (the 15-core play (c) stays deferred: S1/S2/S4 below attack the measured costs allocation-free with bit-identical math; kScales was already memoized so that lead died on read; the closed-form rep coalescing (b) stays a future candidate). READ phase (800-line-chunk law): `js/brain/cluster/hebbian.js` current state end-to-end (shadow paths, `_gpuWillCarry`, skipCpuWhitelist coverage), `js/brain/sparse-matrix.js` `ojaUpdate` exact math (for the closed-form candidate), the curriculum hot loop's per-call cost anatomy, and the OLD pool's failure record — then DECIDE the design mix (a/b/c/d) and record the decision + rationale here BEFORE building.
+- [x] **TW.1** **DONE — three cuts:**
+  **S1** per-call spike-scan cache in `_crossRegionHebbian` — the projection loop asked `regionSpikesActive` for src+dst per projection (up to 32 O(region) scans/call over ~8 unique regions); now each unique region scans ONCE per call (snapshot-at-entry is also SAFER than the old mid-loop rescans against the shared scratch).
+  **S2** the INTRA-matrix paths finally get the O(active) fast path — `intraSynapsesHebbian`/`intraSynapsesAntiHebbian` ran the row-RANGE chunk walk over ALL ~1.5M rows (+ ~23 macrotask yields) per call per rep even though ojaUpdate/antiHebbianUpdate have supported `activeRows` since the WMB fix; one typed scan of `post` builds the firing list, `_antiHebbianChunked` gained the active-list slice path mirroring `_ojaUpdateChunked` (snapshot included). Bit-identical: skipped rows are y=0 no-ops under both rules.
+  **S4** the four injection sites skip building the wire-dead expanded (idx,val) arrays (~100k+ pushes per injection) when the donor speaks templates (`_brain._tmplTeachOk` — the SAME flag the sender consults, so no desync is possible; before first teach frame it is falsy → arrays built → safe; `tmplNonZero` preserves the all-zero no-op semantics). BUILD the chosen design — surgery rules: the CPU CSR stays authoritative; weights save unchanged; gate probes MUST read a fully caught-up shadow; no per-call allocations; no fallback branches (one correct architecture).
+- [x] **TW.2** **DONE — node --check ×3 + ESM import() ×2 PASS; bundle REALLY rebuilt this time (see the correction): `_tmplTeachOk` ×4 in the bundle, keyless.** ⛔ **CORRECTION BANKED: the canonical bundle build is `cd server && npm run build` (the script lives in server/package.json; the launchers run it from there) — root-level `npm run build` fails with "Missing script" and my earlier TF.4 "bundle rebuilt keyless (5 template sites)" claim was FALSE (the 5 hits were pre-existing unrelated `_template` strings; the tracked bundle had been stale since the WP batch). No deployed harm — the box launchers rebuild from source at start, and the teach path runs server-side from source — but the verify claim was wrong and is corrected here.** VERIFY (no-tests LAW): node --check + ESM import() + bundle; walk the probe-path ordering (queue drained before every probe read); memory-bound check on any queue/buffer.
+- [x] **TW.3** **DONE.** Docs + FINALIZED, atomic commit, cascade, push BOTH remotes.
+- [x] **TW.4** **RESULT (build `254cbbb6`, 3 samples): correctness PERFECT, gain MODEST — teach/min ~1,480 steady (was 1,373, ~+8%), suppression FROZEN at zero, buffer 0.0MB, RTT ~110ms.** Honest reading: the scans S1/S2/S4 removed were real waste but not the DOMINANT per-call cost — the remaining ~40ms/call lives somewhere unmeasured (the Oja math itself / pattern generation / pacing awaits / dispatch bookkeeping). **NEXT LEVER (recorded, not built): a per-method teach profiler** — the constructor auto-wrap already intercepts every `_teach*` call, so accumulating per-method wall-ms + counts and publishing the top offenders in the state payload names the next cut PRECISELY instead of guessing (the week's core lesson). No restore needed — nothing regressed. ⏳ GEE: Update & SAVESTART → verify teach/min climbs past ~1,400 toward the design target, suppression stays 0, probes still pass, weights save clean. **IF ANYTHING IS WRONG → the restore-point procedure above, on Gee's word.**
