@@ -2847,8 +2847,20 @@ const SERVER_GPU_MIXIN = {
         if (_buf > _brakeRef) _mult = Math.min(133, Math.pow(_buf / _brakeRef, 2));
         const _pc = (this.clients && this.clients.get) ? this.clients.get(ws) : null;
         const _rtt = (_pc && typeof _pc.rttMs === 'number') ? _pc.rttMs : 0;
-        // >1s RTT means our own frames are already queued deep on this link.
-        if (_rtt > 1000) _mult = Math.min(133, Math.max(_mult, _rtt / 1000));
+        // RTT term QUEUE-GATED (2026-08-16). The old premise — ">1s RTT means
+        // our own frames are already queued deep on this link" — was written
+        // when this lane shipped 150-840KB frames and the buffer parked at
+        // 16-19MB. Post-template wire (t10/t11, KB-scale) the buffer reads
+        // 0.0MB continuously while the donor's heartbeat RTT reads 1-3.5s
+        // BECAUSE IT IS COMPUTING 12M matrices — compute latency, not queue
+        // depth. Braking on RTT with an empty buffer inflated per-group
+        // admission ~3.5× across ~350 pattern groups/word ≈ 3.7s/word of
+        // pure pacing wait (the measured wall-vs-layers gap) AND staled the
+        // lane on every refusal (the climbing hebbianSuppressedStale on an
+        // empty wire). The RTT term now only amplifies when there is REAL
+        // queue depth to protect (≥256KB buffered — ours to drain); an empty
+        // lane runs at the base + quadratic buffer brake alone.
+        if (_rtt > 1000 && _buf > 262144) _mult = Math.min(133, Math.max(_mult, _rtt / 1000));
       } catch { /* non-fatal — fall back to the flat base throttle */ }
       const THROTTLE_MS = Math.round(_baseThrottle * _mult);
       if (this._wsPatternLastSendMs && (Date.now() - this._wsPatternLastSendMs) < THROTTLE_MS) {
@@ -2952,7 +2964,11 @@ const SERVER_GPU_MIXIN = {
         if (buf > brakeRef) mult = Math.min(133, Math.pow(buf / brakeRef, 2));
         const pc = (this.clients && this.clients.get) ? this.clients.get(ws) : null;
         const rtt = (pc && typeof pc.rttMs === 'number') ? pc.rttMs : 0;
-        if (rtt > 1000) mult = Math.min(133, Math.max(mult, rtt / 1000));
+        // QUEUE-GATED like the admission gate above (one law at both
+        // governors): RTT amplifies the brake only when ≥256KB of OUR frames
+        // are actually buffered — an empty lane's RTT is donor compute
+        // latency, not congestion, and braking on it paced the whole walk.
+        if (rtt > 1000 && buf > 262144) mult = Math.min(133, Math.max(mult, rtt / 1000));
       } catch { /* pace on the flat base */ }
       const dueAt = (this._wsPatternLastSendMs || 0) + Math.round(base * mult);
       let overCap = false;
