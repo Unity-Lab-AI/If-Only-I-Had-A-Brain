@@ -95559,6 +95559,16 @@ var Curriculum = class _Curriculum {
               }
             } catch {
             }
+            try {
+              const brain2 = this.cluster && this.cluster._brain;
+              const uploading = !!(brain2 && brain2._cortexUploadInFlight);
+              const notReady = !!(this.cluster && this.cluster._gpuProxy && this.cluster._cortexFullyReady !== true);
+              if (uploading || notReady) {
+                console.warn(`[Curriculum] runner quiet ${idleMin} min \u2014 EXPECTED: ${uploading ? "the canonical sparse upload is IN FLIGHT (multi-GB at the 12M cortex \u2248 12+ min per donor connect; the walk waits for _cortexFullyReady by design)" : "cortex GPU state not fully ready yet (upload/rebind still settling) \u2014 the walk waits by design"}.${cacheInfo} Not a stall; the watchdog resumes normal checks once teaching starts.`);
+                return;
+              }
+            } catch {
+            }
             console.warn(`[Curriculum] \u26A0\u26A0 STALL DETECTED \u2014 no [Curriculum] log line in ${idleMin} minutes while runner is active${phaseInfo}${cacheInfo}. Likely a hung await on dictionary fetch / Hebbian dispatch / dream-window. Watchdog will re-warn every ${STALL_THRESHOLD_MS / 6e4} min until activity resumes.`);
           }
         }
