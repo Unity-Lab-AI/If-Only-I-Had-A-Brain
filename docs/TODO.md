@@ -85,6 +85,18 @@ _Completed sections zeroed 2026-08-16 (third zeroing) — migrated VERBATIM to `
 
 ---
 
+## BSTALL — 2026-08-16 · "1/5 the time its fucking stalled": the metronome ~520ms BLOCKED lines = the 10fps state broadcast walking a 12M bitset per call
+
+> Gee (verbatim): *"i told you i want this shit fixed!!!"*
+> Gee (verbatim): *"1/5 the time its fucking stalled"*
+
+**ROOT (source-confirmed, math locks):** `_getUtilizationState()` walks the lifetime ever-fired bitset region-by-region — ~14M byte-reads at 12M (sub-bands re-walk their parents' spans) — UNTHROTTLED, on every `getState()`; the broadcast loop calls getState at **10fps** (`STATE_BROADCAST_MS=100`, and the donor's own WS keeps `clients.size ≥ 1` so it never idles). ~50ms × 10/s ≈ 500ms of loop block per second = exactly his "1/5 the time," metronome-regular, upload or teach alike. Invisible at 1.5M (~6ms/walk, under the 250ms warn); the 8× growth exposed it. The bitset SOURCE only advances every 5s (`_updateLangEverFired`'s throttle) — 10fps recomputation measured nothing new.
+
+- [x] **BSTALL.1** **DONE** — the regions walk is cached on the same 5s cadence as its source (`_lueRegions`/`_lueRegionsAt`); `total`/`pct` stay live O(1) off the maintained counter. Post-fix cost: one ~40-80ms walk per 5s (~1.5% occupancy, under the warn threshold) instead of ~500ms/s. Also swept state.js for other O(cortex) loops in the 10fps path: the accumulator is already 5s-throttled; `_computeCortexDivergence`'s span walk only fires on batch results carrying `regionSpikes` (native donors don't send them → early return) — clean.
+- [ ] **BSTALL.2** ⏳ rides the SAME Update & SAVESTART press as WI12M.4: the metronome BLOCKED lines must VANISH from the console (teach-phase blocks are WI12M's separate cut); if any periodic BLOCKED line survives, its cadence names the next offender.
+
+---
+
 ## TFLOOR — 2026-08-16 · the RE-press died a SECOND death: the box env's 180s upload timeout starves the 2.9GB intra
 
 > Gee (verbatim): *"why dont you check becasue the server console lighting up like a mutherfucker is not normalsparse chunked upload reqId=1 name=cortex_intraSynapses timed out after 180000ms"*
