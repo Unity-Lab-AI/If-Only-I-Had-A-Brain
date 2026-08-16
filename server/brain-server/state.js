@@ -796,6 +796,11 @@ const SERVER_STATE_MIXIN = {
             cell: (this.cortexCluster && this.cortexCluster._currentCellKey) || null,
             expected: true,
           };
+          // EM.4 — the ALWAYS-RUNS stale-clear. _gpuBatch's own clear can't
+          // fire while the probe gate holds the tick (it isn't called), so a
+          // batchStall object written just before the gate opened survived the
+          // whole cell in `state.perf`, contradicting this pause-aware pair.
+          if (this._perfStats && this._perfStats.batchStall) this._perfStats.batchStall = null;
         } else if (_donorLive && this._lastBatchOkMs && _sinceOkMs > 30000) {
           _batchStall = {
             stalledMs: _sinceOkMs,

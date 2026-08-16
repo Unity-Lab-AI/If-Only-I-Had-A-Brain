@@ -54102,6 +54102,8 @@ var CLUSTER_EMIT_MIXIN = {
     let lastMotorLetter = null;
     let stableTicks = 0;
     for (let tick = 0; tick < maxTicks; tick++) {
+      this._emitTickCount = (this._emitTickCount | 0) + 1;
+      this._lastEmitTickMs = Date.now();
       this.step(1e-3);
       const invSize = inventorySize();
       if (invSize === 0) break;
@@ -54930,6 +54932,8 @@ var CLUSTER_EMIT_MIXIN = {
     const canGpuMotorRead = !!(this._gpuProxy && typeof this._gpuProxy.readbackLetterBuckets === "function" && this.crossProjections && this.crossProjections.sem_to_motor && this.crossProjections.sem_to_motor._gpuBound && motorSubSliceLen > 0);
     for (let tick = 0; tick < maxTicks; tick++) {
       ticksRun = tick + 1;
+      this._emitTickCount = (this._emitTickCount | 0) + 1;
+      this._lastEmitTickMs = Date.now();
       await this.stepAwait(1e-3);
       const invSize = inventorySize();
       if (invSize === 0) break;
@@ -95042,6 +95046,12 @@ var Curriculum = class _Curriculum {
           this._teachTickCount = (this._teachTickCount | 0) + 1;
           return result;
         } finally {
+          {
+            if (!this._teachProfile) this._teachProfile = /* @__PURE__ */ Object.create(null);
+            const _pf = this._teachProfile[name] || (this._teachProfile[name] = { ms: 0, calls: 0 });
+            _pf.ms += Date.now() - token.startAt;
+            _pf.calls += 1;
+          }
           if (stack) {
             const _i = stack.lastIndexOf(token);
             if (_i >= 0) stack.splice(_i, 1);
@@ -95347,10 +95357,28 @@ var Curriculum = class _Curriculum {
         const spanMs = now - w.atMs;
         const rate = spanMs > 0 ? Math.round((count - w.count) * 6e4 / spanMs) : 0;
         if (spanMs >= 6e4) this._teachRateWindow = { atMs: now, count };
+        let emitRate = 0;
+        let sinceEmit = null;
+        if (cluster) {
+          const ec = cluster._emitTickCount | 0;
+          if (!this._emitRateWindow) this._emitRateWindow = { atMs: now, count: ec };
+          const ew = this._emitRateWindow;
+          const eSpan = now - ew.atMs;
+          emitRate = eSpan > 0 ? Math.round((ec - ew.count) * 6e4 / eSpan) : 0;
+          if (eSpan >= 6e4) this._emitRateWindow = { atMs: now, count: ec };
+          sinceEmit = cluster._lastEmitTickMs ? now - cluster._lastEmitTickMs : null;
+        }
+        let teachProfile = null;
+        if (this._teachProfile) {
+          teachProfile = Object.entries(this._teachProfile).map(([n, p]) => ({ name: n, ms: p.ms | 0, calls: p.calls | 0 })).sort((a, b) => b.ms - a.ms).slice(0, 8);
+        }
         return {
           teachCallsPerMin: rate,
           sinceLastTeachMs: this._lastTeachAtMs ? now - this._lastTeachAtMs : null,
-          probeGateActive: !!(cluster && cluster._probeGateActive)
+          probeGateActive: !!(cluster && cluster._probeGateActive),
+          emissionTicksPerMin: emitRate,
+          sinceLastEmitTickMs: sinceEmit,
+          teachProfile
         };
       })(),
       activePhase,
