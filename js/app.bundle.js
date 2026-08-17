@@ -53604,7 +53604,13 @@ var CLUSTER_HEBBIAN_MIXIN = {
         i = j;
         if (dt > 60 && chunk > 1024) this._ojaActiveChunk = Math.max(1024, chunk >> 1);
         else if (dt < 15 && chunk < 65536) this._ojaActiveChunk = chunk << 1;
-        await yieldMacro2();
+        if (i < total) {
+          const _h0 = Date.now();
+          await yieldMacro2();
+          const _hp = this._hopProf || (this._hopProf = { n: 0, ms: 0 });
+          _hp.n++;
+          _hp.ms += Date.now() - _h0;
+        }
       }
       const _tot = Date.now() - _tStart;
       if (_tot > 2e3) {
@@ -53630,7 +53636,13 @@ var CLUSTER_HEBBIAN_MIXIN = {
       if (dt > 60 && chunk > 16384) this._ojaChunkRows = Math.max(16384, chunk >> 1);
       else if (dt < 15 && chunk < 65536) this._ojaChunkRows = chunk << 1;
       if (dt > 2e3) console.warn(`[Cluster ${this.name}] SLOW Hebbian slice: ${dt}ms for ${chunk.toLocaleString()} rows (nnz-dense projection) \u2014 chunk auto-halved; if this repeats, this projection is the freeze culprit.`);
-      await yieldMacro();
+      if (rs < rows) {
+        const _h0 = Date.now();
+        await yieldMacro();
+        const _hp = this._hopProf || (this._hopProf = { n: 0, ms: 0 });
+        _hp.n++;
+        _hp.ms += Date.now() - _h0;
+      }
     }
   },
   // TIME-SLICED — chunked bare-Hebbian write (the predictive-error delta
@@ -53655,7 +53667,13 @@ var CLUSTER_HEBBIAN_MIXIN = {
       rs = re;
       if (dt > 60 && chunk > 16384) this._ojaChunkRows = Math.max(16384, chunk >> 1);
       else if (dt < 15 && chunk < 65536) this._ojaChunkRows = chunk << 1;
-      await yieldMacro();
+      if (rs < rows) {
+        const _h0 = Date.now();
+        await yieldMacro();
+        const _hp = this._hopProf || (this._hopProf = { n: 0, ms: 0 });
+        _hp.n++;
+        _hp.ms += Date.now() - _h0;
+      }
     }
   },
   // #37 + TIME-SLICED — chunked CPU anti-Hebbian; same adaptive ~30ms
@@ -53685,7 +53703,13 @@ var CLUSTER_HEBBIAN_MIXIN = {
         i = j;
         if (dt > 60 && chunk > 1024) this._ojaActiveChunk = Math.max(1024, chunk >> 1);
         else if (dt < 15 && chunk < 65536) this._ojaActiveChunk = chunk << 1;
-        await yieldMacroA();
+        if (i < total) {
+          const _h0 = Date.now();
+          await yieldMacroA();
+          const _hp = this._hopProf || (this._hopProf = { n: 0, ms: 0 });
+          _hp.n++;
+          _hp.ms += Date.now() - _h0;
+        }
       }
       return;
     }
@@ -53707,7 +53731,13 @@ var CLUSTER_HEBBIAN_MIXIN = {
       if (dt > 60 && chunk > 16384) this._ojaChunkRows = Math.max(16384, chunk >> 1);
       else if (dt < 15 && chunk < 65536) this._ojaChunkRows = chunk << 1;
       if (dt > 2e3) console.warn(`[Cluster ${this.name}] SLOW anti-Hebbian slice: ${dt}ms for ${chunk.toLocaleString()} rows \u2014 chunk auto-halved; repeated hits name this matrix as the freeze culprit.`);
-      await yieldMacro();
+      if (rs < rows) {
+        const _h0 = Date.now();
+        await yieldMacro();
+        const _hp = this._hopProf || (this._hopProf = { n: 0, ms: 0 });
+        _hp.n++;
+        _hp.ms += Date.now() - _h0;
+      }
     }
   },
   /**
@@ -95482,7 +95512,15 @@ var Curriculum = class _Curriculum {
           // instead of re-theorized: the ~350ms lateral + ~365ms hebbian
           // averages survived two theory-led fixes because nothing measured
           // WHICH stage inside them was paying. Fixed keys, bounded.
-          stageProfile: this._teachStageProfile || null
+          // + hops: every macrotask yield in the teach chunkers (cluster-
+          // side _hopProf) and the _teachHebbian yields (hebbianYield) are
+          // counted + timed — at eventLoopLagMs ~758 the hops WERE the cost.
+          stageProfile: (() => {
+            const sp = this._teachStageProfile;
+            const hp = cluster && cluster._hopProf;
+            if (!sp && !hp) return null;
+            return { ...sp || {}, chunkerHops: hp || null };
+          })()
         };
       })(),
       activePhase,
@@ -101632,6 +101670,10 @@ var Curriculum = class _Curriculum {
       if (_t - this._lastHebbianYieldAt > 50) {
         await new Promise((resolve) => setImmediate(resolve));
         this._lastHebbianYieldAt = Date.now();
+        const sp = this._teachStageProfile || (this._teachStageProfile = {});
+        const hy = sp.hebbianYield || (sp.hebbianYield = { n: 0, ms: 0 });
+        hy.n += 1;
+        hy.ms += Date.now() - _t;
       }
     };
     await _yieldIfHot();

@@ -490,7 +490,11 @@ export const CLUSTER_HEBBIAN_MIXIN = {
         i = j;
         if (dt > 60 && chunk > 1024) this._ojaActiveChunk = Math.max(1024, chunk >> 1);
         else if (dt < 15 && chunk < 65536) this._ojaActiveChunk = chunk << 1;
-        await yieldMacro();
+        // Yield ONLY between slices — a trailing hop after the final slice
+        // protects nothing and pays the loop's full backlog (measured live:
+        // ~340ms/hop at eventLoopLagMs 758 — the hop WAS the per-call cost).
+        // _hopProf counts + times every hop so the backlog is a field read.
+        if (i < total) { const _h0 = Date.now(); await yieldMacro(); const _hp = this._hopProf || (this._hopProf = { n: 0, ms: 0 }); _hp.n++; _hp.ms += Date.now() - _h0; }
       }
       const _tot = Date.now() - _tStart;
       if (_tot > 2000) {
@@ -521,7 +525,7 @@ export const CLUSTER_HEBBIAN_MIXIN = {
       if (dt > 60 && chunk > 16384) this._ojaChunkRows = Math.max(16384, chunk >> 1);
       else if (dt < 15 && chunk < 65536) this._ojaChunkRows = chunk << 1;
       if (dt > 2000) console.warn(`[Cluster ${this.name}] SLOW Hebbian slice: ${dt}ms for ${chunk.toLocaleString()} rows (nnz-dense projection) — chunk auto-halved; if this repeats, this projection is the freeze culprit.`);
-      await yieldMacro();
+      if (rs < rows) { const _h0 = Date.now(); await yieldMacro(); const _hp = this._hopProf || (this._hopProf = { n: 0, ms: 0 }); _hp.n++; _hp.ms += Date.now() - _h0; }
     }
   },
 
@@ -546,7 +550,7 @@ export const CLUSTER_HEBBIAN_MIXIN = {
       rs = re;
       if (dt > 60 && chunk > 16384) this._ojaChunkRows = Math.max(16384, chunk >> 1);
       else if (dt < 15 && chunk < 65536) this._ojaChunkRows = chunk << 1;
-      await yieldMacro();
+      if (rs < rows) { const _h0 = Date.now(); await yieldMacro(); const _hp = this._hopProf || (this._hopProf = { n: 0, ms: 0 }); _hp.n++; _hp.ms += Date.now() - _h0; }
     }
   },
 
@@ -584,7 +588,10 @@ export const CLUSTER_HEBBIAN_MIXIN = {
         i = j;
         if (dt > 60 && chunk > 1024) this._ojaActiveChunk = Math.max(1024, chunk >> 1);
         else if (dt < 15 && chunk < 65536) this._ojaActiveChunk = chunk << 1;
-        await yieldMacroA();
+        // Yield ONLY between slices (see _ojaUpdateChunked) — the lateral-
+        // inhibition path's single-slice calls paid one wasted ~340ms hop
+        // here per call; measured as the ENTIRE 344ms/call antiMs stage.
+        if (i < total) { const _h0 = Date.now(); await yieldMacroA(); const _hp = this._hopProf || (this._hopProf = { n: 0, ms: 0 }); _hp.n++; _hp.ms += Date.now() - _h0; }
       }
       return;
     }
@@ -610,7 +617,7 @@ export const CLUSTER_HEBBIAN_MIXIN = {
       if (dt > 60 && chunk > 16384) this._ojaChunkRows = Math.max(16384, chunk >> 1);
       else if (dt < 15 && chunk < 65536) this._ojaChunkRows = chunk << 1;
       if (dt > 2000) console.warn(`[Cluster ${this.name}] SLOW anti-Hebbian slice: ${dt}ms for ${chunk.toLocaleString()} rows — chunk auto-halved; repeated hits name this matrix as the freeze culprit.`);
-      await yieldMacro();
+      if (rs < rows) { const _h0 = Date.now(); await yieldMacro(); const _hp = this._hopProf || (this._hopProf = { n: 0, ms: 0 }); _hp.n++; _hp.ms += Date.now() - _h0; }
     }
   },
 

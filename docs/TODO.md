@@ -203,3 +203,17 @@ _Completed sections zeroed 2026-08-16 (third zeroing) — migrated VERBATIM to `
 - [x] **LATFIX.2** **DONE** — `_teachLateralInhibition` collects the cross-bucket indices WHILE building `crossBucketPost` (it already walks them) and passes them as `opts.activeRows`. `_teachAntiHebbian`'s full-intra call is identity-gated GPU already (0ms live) — untouched.
 - [x] **LATFIX.3** **LIVE VERDICT (48-min watch on `ee74da1a`): the number did NOT move** — lateral 350ms, hebbian 365ms; the 12M-scan theory was at most a sliver. defsTaught climbing 0→60 ✓ (first meanings this walk), suppression 0 ✓, counter 18,017 ✓. The remainder is UNNAMED by static reads (kScales memoized, chunker honors activeRows, substrate gate fast) → TPROF built.
 - [~] **TPROF.1** per-stage wall-ms telemetry INSIDE the primitives — `_teachHebbian` {substrateMs, crossMs, intraMs} + `_teachLateralInhibition` {substrateMs, scanMs, antiMs, activeSum} — published at `liveness.stageProfile` (fixed keys, bounded). Built + verified (node --check + ESM + bundle). ⏳ rides the next press; the first stage read names the eater, then the fix is built on that number, not another theory.
+
+---
+
+## HOPFIX — 2026-08-17 · TPROF's live verdict: the pair-primitive cost is EVENT-LOOP HOPS paying a ~758ms backlog, not compute — trailing yields fixed + the backlog gets named
+
+> Gee (verbatim): *"shes been training for an hour and oinly is at 60ish definitions! wtf thats 1 word per minute"*
+> Gee (verbatim): *"this is horse shit and she only moving at around 200 teach/min"*
+
+**THE STAGE NUMBERS (live off `9926252d`, Gee's own press):** hebbian real work = substrate 7ms + cross 124ms + intra 38,876ms over 3,120 calls ≈ **12.5ms/call actual compute** — but the wrapper reads 361ms/call. lateral: scan 2.3ms, **antiMs 344ms/call — and activeSum/calls = only 4,879 rows** (should be ~2ms). The matrix method honors activeRows (verified in source), so the 344ms is NOT compute: it's the ONE `await yieldMacro()` the chunker fires AFTER its only slice — a trailing hop that pays the event loop's measured **eventLoopLagMs 758** backlog. Per pair-rep: ~15ms of real teaching + ~3 hops × ~300ms of backlog tax = the ~720ms wall = the ~200 teach/min plateau AND the 1 def/min crawl (defs ride the same primitives).
+
+- [x] **HOPFIX.1** **DONE** — trailing yields removed in ALL FOUR teach chunkers (`_ojaUpdateChunked` active + row-range, `_hebbianUpdateChunked`, `_antiHebbianChunked` active + row-range): yield only BETWEEN slices; a single-slice call now runs pure sync (~2ms) with ZERO hops. Every remaining hop is counted + timed (`cluster._hopProf {n, ms}`).
+- [x] **HOPFIX.2** **DONE** — `_yieldIfHot`'s hops in `_teachHebbian` counted + timed (`stageProfile.hebbianYield`), and `stageProfile` now carries `chunkerHops` — the wrapper-vs-stages gap is a field read.
+- [x] **HOPFIX.3** **DONE** — the 10fps broadcast pipeline timed (`wsPressure.bcast {n, getStateMs, serializeSendMs, worstMs}`) — the prime backlog-burner suspect measured at its source.
+- [ ] **HOPFIX.4** ⏳ GEE: ONE **Update & SAVESTART**. Verdict reads: lateral antiMs collapses 344ms → ms-scale (its wasted hop is gone); teach/min + defs/min jump proportionally (~3 hops/rep → ~1); `hebbianYield`/`chunkerHops` price the remaining hops; `bcast` names how much of the backlog is the broadcast. If the loop lag itself persists, the bcast/hop numbers point at the next fix — measured, not theorized.

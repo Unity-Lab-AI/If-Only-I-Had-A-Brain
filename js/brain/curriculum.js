@@ -3273,7 +3273,15 @@ export class Curriculum {
           // instead of re-theorized: the ~350ms lateral + ~365ms hebbian
           // averages survived two theory-led fixes because nothing measured
           // WHICH stage inside them was paying. Fixed keys, bounded.
-          stageProfile: this._teachStageProfile || null,
+          // + hops: every macrotask yield in the teach chunkers (cluster-
+          // side _hopProf) and the _teachHebbian yields (hebbianYield) are
+          // counted + timed — at eventLoopLagMs ~758 the hops WERE the cost.
+          stageProfile: (() => {
+            const sp = this._teachStageProfile;
+            const hp = cluster && cluster._hopProf;
+            if (!sp && !hp) return null;
+            return { ...(sp || {}), chunkerHops: hp || null };
+          })(),
         };
       })(),
       activePhase,
@@ -11382,6 +11390,13 @@ export class Curriculum {
       if (_t - this._lastHebbianYieldAt > 50) {
         await new Promise(resolve => setImmediate(resolve));
         this._lastHebbianYieldAt = Date.now();
+        // Hop cost accounting — at eventLoopLagMs ~758 each polite hop pays
+        // the loop's whole backlog (~hundreds of ms), which is where the
+        // wrapper-vs-stages gap lives. Counted so the backlog is a field read.
+        const sp = this._teachStageProfile || (this._teachStageProfile = {});
+        const hy = sp.hebbianYield || (sp.hebbianYield = { n: 0, ms: 0 });
+        hy.n += 1;
+        hy.ms += Date.now() - _t;
       }
     };
     await _yieldIfHot();
