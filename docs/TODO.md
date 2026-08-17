@@ -271,3 +271,15 @@ _Completed sections zeroed 2026-08-16 (third zeroing) — migrated VERBATIM to `
 
 - [x] **CONSCFIX.1** **DONE — built + verified (node --check + ESM):** both counts cached once, keyed on array IDENTITY (recompute only if the cortex is regrown). getState's expected residual: ~15-20ms/call total.
 - [ ] **CONSCFIX.2** ⏳ GEE: rides the next press. Verdict: `bcast.sections.consciousness` stops growing; getStateMs → ~20ms/call; eventLoopLag → double digits; the BLOCKED carpet DIES; teach/min from ~1,000 INTO the 1300–1500 band.
+
+---
+
+## SENDFOR — 2026-08-17 · the drop-on-"hi" forensics: the donor socket's every outbound byte gets named
+
+> Gee (verbatim): *"okay shes up and running , go ahead and monitor her shit as im going to say "hi" to her and we see if that shit drops the doner like before"* → *"i just said hi and it dropped"*
+
+**THE MURDER TAPE (Gee's server console):** `1:12:45 "hi" → 1:12:46 teach-pattern frame SHED: ws.bufferedAmount=23.4MB > 16MB (FIRST shed of the whole boot) → 1:12:47 CRITICAL — GPU compute client disconnected UNEXPECTEDLY ("Remote donor tab dropped (proxied WS closed) — cause pending the donor crumb")`. REPRODUCED TWICE (both hi's, ~1s to death). The physics: STALEGATE's queue-gate proves the buffer was <256KB until seconds before (0 suppressions all boot) → the 23.4MB is ONE huge send or a sudden burst AT chat time. Static reads cleared: injections are template-KB (TW S4), chat deep-Hebbian is t10/t11-scale, chat turns never even counted. DROPCHAT's per-letter propagate fix was real but this killer fires EARLIER (she answered silent — pre-K gate — no compose ever ran).
+
+- [x] **SENDFOR.1** **DONE — built + verified (node --check):** the PRIMARY donor socket's `send` wrapped ONCE at gpu_register: 16-slot ring of {kind, len} per outbound frame (SPRS type sniffed, JSON type extracted), a tripwire on any >2MB non-upload send, and a one-shot ring dump when bufferedAmount crosses 4MB outside the upload window. The next "hi" prints the killer's name, size, and the 15 frames before it.
+- [ ] **SENDFOR.2** ⏳ GEE: press, say "hi" again, paste the `[SendForensics]` lines + any `DONOR CRUMB` line (the donor also reports its own death cause on reconnect — none appeared in tonight's paste, so also check the donor app's own window for its close reason).
+- [ ] **SENDFOR.3** the named sender gets its fix (template/fragment/pace — whatever fits what the forensics name).
