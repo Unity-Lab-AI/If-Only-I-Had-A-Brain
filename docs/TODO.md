@@ -262,3 +262,12 @@ _Completed sections zeroed 2026-08-16 (third zeroing) — migrated VERBATIM to `
 - [x] **GSLAPS.1** **DONE** — EVERY getState section wrapped in cumulative lap timers (`_lap(name, fn)` → `this._gsSections`): everFired, clusters(+region walk), fullMindK, sharedMood, growth, memoryStats, consciousness, wsPressure, utilization, brainEvents, curriculum, compositional, wordCreation, leaderboard, basinHealth. Published at `wsPressure.bcast.sections` — the burner becomes a field read.
 - [x] **GSLAPS.2** **DONE** — the growth block (sync SQLite COUNT(*) + full-conversations walk + all-words key-array build, EVERY call, all growing with her life) cached 5s like memoryStats; uptime/frames stay live.
 - [ ] **GSLAPS.3** ⏳ GEE: ONE **Update & SAVESTART**. Then `bcast.sections` names the residual in one read; the named section gets its fix; the BLOCKED carpet dies for real. teach/min already at 1,095 — the band is one burner away.
+
+---
+
+## CONSCFIX — 2026-08-17 · GSLAPS's first field read CONVICTED the last burner: _getConsciousnessState walks 24M static entries per call
+
+**THE FIELD READ (live off `54439968`):** `bcast.sections = {consciousness: 1,136,960ms of 4,630 calls ≈ 245ms/call — 94% of getState's 262ms}`; every other section is single-digit ms (everFired 2.3, clusters 3.4, utilization 10.7 avg). Inside: the layer histogram (layerId, 12M) + hub count (hubMask, 12M) recomputed EVERY call — both arrays are STATIC after construction (lamination assigned once; hubs deterministic-hash persistent).
+
+- [x] **CONSCFIX.1** **DONE — built + verified (node --check + ESM):** both counts cached once, keyed on array IDENTITY (recompute only if the cortex is regrown). getState's expected residual: ~15-20ms/call total.
+- [ ] **CONSCFIX.2** ⏳ GEE: rides the next press. Verdict: `bcast.sections.consciousness` stops growing; getStateMs → ~20ms/call; eventLoopLag → double digits; the BLOCKED carpet DIES; teach/min from ~1,000 INTO the 1300–1500 band.
