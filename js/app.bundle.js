@@ -77747,7 +77747,7 @@ var K_MIXIN = {
             post = this._buildRegionPattern(phonRegion, phonB);
           }
           if (typeof cluster.intraSynapsesHebbian === "function") {
-            cluster.intraSynapsesHebbian(pre, post, lr);
+            await cluster.intraSynapsesHebbian(pre, post, lr);
           } else {
             await cluster.intraSynapsesHebbian(pre, post, lr);
           }

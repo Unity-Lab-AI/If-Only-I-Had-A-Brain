@@ -8046,8 +8046,19 @@ export const K_MIXIN = {
             post = this._buildRegionPattern(phonRegion, phonB);
           }
           // T17.3.e — GPU shadow for intra-cluster sequence Hebbian.
+          // AWAITED (2026-08-17). This call was fire-and-forget while the
+          // branch below it documents exactly why awaiting is mandatory —
+          // at the 12M cortex each call is a chunked CPU Oja over
+          // 300-500K active phon rows (custom pre/post vectors keep it
+          // off the GPU bound-op by design), and WITHOUT the await dozens
+          // interleaved at once (the 13-35s WALL storm), starved the
+          // timer queue (donor pings/heartbeats — the drop-during-
+          // phoneme-blending), AND — worse — iteration i+1 overwrote the
+          // REUSED scratch pre/post buffers while call i was still
+          // mid-computation, silently training on corrupted patterns.
+          // One word fixes all three: same math, same dose, serialized.
           if (typeof cluster.intraSynapsesHebbian === 'function') {
-            cluster.intraSynapsesHebbian(pre, post, lr);
+            await cluster.intraSynapsesHebbian(pre, post, lr);
           } else {
             // OOM fix — route through
         // cluster.intraSynapsesHebbian (async / awaitable) so the
