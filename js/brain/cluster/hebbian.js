@@ -923,10 +923,23 @@ export const CLUSTER_HEBBIAN_MIXIN = {
         && this._brain && this._brain._langPseudoInit === true) {
       try { this._gpuProxy.hebbianBound(`${this.name}_intraSynapses`, lr); } catch { /* non-fatal */ }
       if (this._teachIntermediateRep === true) return;   // GPU carried it; the shadow catches up on the final rep
+      // TIME-BASED SHADOW CADENCE (2026-08-17). The every-Nth-call sampler
+      // scaled shadow cost WITH the call rate: at the 12M cortex one CPU
+      // shadow pass costs ~3.9s over 360M nnz, so every-5th pinned the
+      // per-call average at ~800ms (measured live) — a hard ~75 teach/min
+      // ceiling on the pair phases against the 1300-1500 band, and the
+      // faster the walk ran the MORE 3.9s passes it paid. The shadow's
+      // purpose (checkpoints + CPU probes read an approximately current
+      // matrix) is served by wall-clock recency, not call counts: run at
+      // most one shadow pass per gap window per direction, first call
+      // after boot always shadows. GPU training mass above is untouched —
+      // every rep still dispatches.
       const _sampleN = this._teachFinalRepSampleEveryN | 0;
       if (_sampleN > 1) {
-        this._intraShadowSampleCounter = (this._intraShadowSampleCounter || 0) + 1;
-        if (this._intraShadowSampleCounter % _sampleN !== 0) return;
+        const _nowSh = Date.now();
+        const _gapSh = (this._intraShadowMinGapMs | 0) > 0 ? (this._intraShadowMinGapMs | 0) : 30000;
+        if (_nowSh - (this._lastIntraShadowMs || 0) < _gapSh) return;
+        this._lastIntraShadowMs = _nowSh;
       }
     }
     // T17.2 — parallelize CPU Hebbian across worker pool when available.
@@ -1190,10 +1203,16 @@ export const CLUSTER_HEBBIAN_MIXIN = {
         && this._brain && this._brain._langPseudoInit === true) {
       try { this._gpuProxy.hebbianBound(`${this.name}_intraSynapses`, -Math.abs(lr)); } catch { /* non-fatal */ }
       if (this._teachIntermediateRep === true) return;
+      // TIME-BASED SHADOW CADENCE (2026-08-17) — same law as the positive
+      // pass above; per-direction timestamp so a busy positive lane can't
+      // starve the anti shadow (they write opposite signs into the same
+      // matrix and probes read both effects).
       const _sampleN = this._teachFinalRepSampleEveryN | 0;
       if (_sampleN > 1) {
-        this._intraShadowAntiSampleCounter = (this._intraShadowAntiSampleCounter || 0) + 1;
-        if (this._intraShadowAntiSampleCounter % _sampleN !== 0) return;
+        const _nowSh = Date.now();
+        const _gapSh = (this._intraShadowMinGapMs | 0) > 0 ? (this._intraShadowMinGapMs | 0) : 30000;
+        if (_nowSh - (this._lastIntraAntiShadowMs || 0) < _gapSh) return;
+        this._lastIntraAntiShadowMs = _nowSh;
       }
     }
     const BIOLOGICAL_SCALE_SYNC_THRESHOLD = 100_000;
