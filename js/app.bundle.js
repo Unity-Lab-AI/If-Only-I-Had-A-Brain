@@ -52074,6 +52074,7 @@ var init_phd_vocabulary = __esm({
 // ../js/brain/grade-vocabulary.js
 var grade_vocabulary_exports = {};
 __export(grade_vocabulary_exports, {
+  fullJourneyVocabularyStats: () => fullJourneyVocabularyStats,
   gradeVocabularyFor: () => gradeVocabularyFor
 });
 async function gradeVocabularyFor(grade) {
@@ -52120,8 +52121,50 @@ async function gradeVocabularyFor(grade) {
       return null;
   }
 }
+async function fullJourneyVocabularyStats() {
+  if (_journeyStats) return _journeyStats;
+  const uniq = /* @__PURE__ */ new Set();
+  let sum = 0;
+  const perGrade = {};
+  for (const g of JOURNEY_GRADES) {
+    try {
+      const v = await gradeVocabularyFor(g);
+      const n = Array.isArray(v) ? v.length : 0;
+      perGrade[g] = n;
+      sum += n;
+      if (Array.isArray(v)) for (const w of v) uniq.add(w);
+    } catch {
+      perGrade[g] = 0;
+    }
+  }
+  _journeyStats = { unique: uniq.size, sum, perGrade };
+  return _journeyStats;
+}
+var JOURNEY_GRADES, _journeyStats;
 var init_grade_vocabulary = __esm({
   "../js/brain/grade-vocabulary.js"() {
+    JOURNEY_GRADES = [
+      "kindergarten",
+      "grade1",
+      "grade2",
+      "grade3",
+      "grade4",
+      "grade5",
+      "grade6",
+      "grade7",
+      "grade8",
+      "grade9",
+      "grade10",
+      "grade11",
+      "grade12",
+      "college1",
+      "college2",
+      "college3",
+      "college4",
+      "grad",
+      "phd"
+    ];
+    _journeyStats = null;
   }
 });
 

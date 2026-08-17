@@ -522,10 +522,10 @@
             <div>rate-limited: <span id="d-cortex-cache-rl" style="color:#f59e0b;">0</span></div>
             <div>in-flight: <span id="d-cortex-cache-inflight" style="color:#888;">0</span></div>
           </div>
-          <div title="Vocabulary list for the active curriculum grade. 'prefetched' = the API call to warm every word's definition into the cache has finished. 'defs taught' = how many of the words have had their definitions Hebbian-bound into Unity's semantic region (multi-def — every meaning of every word binds, not just the first).">
-            <div style="color:#22c55e;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;" id="d-cortex-kvocab-title">📖 VOCABULARY</div>
+          <div title="Full K→PhD journey vocabulary (all 19 grade lists, unique words — the AoA bands overlap by design, a word taught once is taught). 'prefetched' = the active grade's definition cache warm has finished. 'defs taught' = how many journey words have had their definitions Hebbian-bound into Unity's semantic region (multi-def — every meaning of every word binds, not just the first). Denominator computes once at boot; shows … until ready.">
+            <div style="color:#22c55e;font-size:10px;letter-spacing:0.5px;margin-bottom:4px;" id="d-cortex-kvocab-title">📖 VOCABULARY (K→PhD)</div>
             <div>prefetched: <span id="d-cortex-kvocab-prefetched" style="color:#888;">no</span></div>
-            <div>defs taught: <span id="d-cortex-kvocab-taught" style="color:#22c55e;">0</span> / <span id="d-cortex-kvocab-total" style="color:#666;">2247</span> (<span id="d-cortex-kvocab-pct" style="color:#00e5ff;">0%</span>)</div>
+            <div>defs taught: <span id="d-cortex-kvocab-taught" style="color:#22c55e;">0</span> / <span id="d-cortex-kvocab-total" style="color:#666;">…</span> (<span id="d-cortex-kvocab-pct" style="color:#00e5ff;">0%</span>)</div>
           </div>
         </div>
       </div>
@@ -1442,9 +1442,13 @@
         $('d-cortex-kvocab-prefetched').textContent = m.kVocabPrefetched ? 'yes' : 'no';
         $('d-cortex-kvocab-prefetched').style.color = m.kVocabPrefetched ? '#22c55e' : '#888';
         $('d-cortex-kvocab-taught').textContent = m.kVocabTaught || 0;
-        $('d-cortex-kvocab-total').textContent = m.kVocabTotal || 2247;
-        const kvocPct = m.kVocabTotal > 0 ? ((m.kVocabTaught || 0) / m.kVocabTotal * 100).toFixed(1) : '0.0';
-        $('d-cortex-kvocab-pct').textContent = kvocPct + '%';
+        // Journey-wide denominator (unique words across all 19 grade lists).
+        // null = the server's one-time warm hasn't finished — show … rather
+        // than inventing a number (the old || 2247 fallback was K-only and
+        // lied against a journey-wide numerator).
+        $('d-cortex-kvocab-total').textContent = (m.kVocabTotal > 0) ? m.kVocabTotal.toLocaleString() : '…';
+        const kvocPct = m.kVocabTotal > 0 ? ((m.kVocabTaught || 0) / m.kVocabTotal * 100).toFixed(1) : '…';
+        $('d-cortex-kvocab-pct').textContent = kvocPct + (m.kVocabTotal > 0 ? '%' : '');
         // SPEAK speech-health panel (SPEAK.1/2/9-obs)
         if (m.speechHealth) {
           const sh = m.speechHealth;

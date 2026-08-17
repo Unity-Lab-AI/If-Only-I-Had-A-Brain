@@ -1261,9 +1261,25 @@ const SERVER_STATE_MIXIN = {
         if (cortex.hubMask[i]) hubCount += 1;
       }
     }
-    // K-vocab definition-taught count (single number).
+    // Definition-taught count (single number). The taught-set spans EVERY
+    // grade's learned words — journey-wide by construction.
     const kvocabTaught = cortex && cortex._definitionTaughtWords
       ? cortex._definitionTaughtWords.size : 0;
+    // FULL-JOURNEY DENOMINATOR (2026-08-17). The old hardcoded 2247 was
+    // K's list size, but the numerator above already counted all grades —
+    // the pair lied the moment the walk crossed a grade boundary (taught
+    // once read 2,287 against "2,247 total"). Warm the real total once
+    // (async — the state getter is sync); publish null until it lands so
+    // the dashboard shows "still computing" instead of an invented number.
+    // The real figure: 19 grade lists, 49,921 words summed, 18,017 unique
+    // (the AoA bands overlap by design; a word taught once is taught).
+    if (!this._defVocabJourneyWarm) {
+      this._defVocabJourneyWarm = true;
+      import('../../js/brain/grade-vocabulary.js')
+        .then((m) => m.fullJourneyVocabularyStats())
+        .then((s) => { this._defVocabJourneyTotal = s && s.unique ? s.unique : null; })
+        .catch(() => { this._defVocabJourneyWarm = false; });   // retry on next state read
+    }
     // Theta phase (single scalar in [0, 1]).
     const tickCounter = (cortex && cortex._tickCounter) || 0;
     const thetaPeriod = (cortex && cortex.thetaPeriod) || 167;
@@ -1276,7 +1292,10 @@ const SERVER_STATE_MIXIN = {
       smokeTestPassed: typeof this._dictionarySmokeTestResult === 'boolean' ? this._dictionarySmokeTestResult : null,
       cache: cacheStats,
       kVocabPrefetched: cortex ? !!cortex._kVocabPrefetched : false,
-      kVocabTotal: 2247, // matches K_VOCABULARY size
+      // Full K→PhD journey total (unique words across all 19 grade lists);
+      // null until the one-time async warm completes — never an invented
+      // stand-in number.
+      kVocabTotal: this._defVocabJourneyTotal || null,
       kVocabTaught: kvocabTaught,
       // M.22 K-wiring assertion
       kwiring: kwiring ? { ok: kwiring.ok, gaps: (kwiring.gaps || []).slice(0, 5) } : null,

@@ -53,3 +53,37 @@ export async function gradeVocabularyFor(grade) {
       return null;
   }
 }
+
+// FULL-JOURNEY VOCABULARY STATS (2026-08-17). The dashboard's defs-taught
+// denominator must reflect the WHOLE K→PhD journey, not just the active
+// grade: the taught-set numerator counts every grade's learned words, so a
+// grade-sized denominator lies the moment the walk crosses a grade boundary
+// (it already had — the taught count once read 2,287 against K's 2,247).
+// Loads every grade's list once, dedups (the AoA frequency bands overlap by
+// design — a word taught once is taught), caches the result. ~50k strings,
+// one-time cost, trivial RAM.
+const JOURNEY_GRADES = [
+  'kindergarten', 'grade1', 'grade2', 'grade3', 'grade4', 'grade5',
+  'grade6', 'grade7', 'grade8', 'grade9', 'grade10', 'grade11', 'grade12',
+  'college1', 'college2', 'college3', 'college4', 'grad', 'phd',
+];
+let _journeyStats = null;
+export async function fullJourneyVocabularyStats() {
+  if (_journeyStats) return _journeyStats;
+  const uniq = new Set();
+  let sum = 0;
+  const perGrade = {};
+  for (const g of JOURNEY_GRADES) {
+    try {
+      const v = await gradeVocabularyFor(g);
+      const n = Array.isArray(v) ? v.length : 0;
+      perGrade[g] = n;
+      sum += n;
+      if (Array.isArray(v)) for (const w of v) uniq.add(w);
+    } catch {
+      perGrade[g] = 0;   // a missing grade file must not sink the total
+    }
+  }
+  _journeyStats = { unique: uniq.size, sum, perGrade };
+  return _journeyStats;
+}
