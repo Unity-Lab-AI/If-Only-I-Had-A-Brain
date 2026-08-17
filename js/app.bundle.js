@@ -55275,10 +55275,18 @@ var CLUSTER_EMIT_MIXIN = {
       return { idx: bestIdx, score: bestSum };
     };
     if (synapses && typeof synapses.propagate === "function" && synapses.values && synapses.values.length > 0) {
+      if (!this._emitPropInScratch || this._emitPropInScratch.length !== this.size) {
+        this._emitPropInScratch = new Float64Array(this.size);
+      }
+      const _synRows = synapses.rows | 0;
+      if (!this._emitPropOutScratch || this._emitPropOutScratch.length !== _synRows) {
+        this._emitPropOutScratch = new Float64Array(_synRows);
+      }
+      const clusterInput = this._emitPropInScratch;
       for (let step = 1; step < maxLetters && prevLetter !== null; step++) {
         if (TERMINATORS.has(prevLetter)) break;
         const prevOneHot = encodeLetter(prevLetter);
-        const clusterInput = new Float64Array(this.size);
+        for (let i = letterRegion.start; i < letterRegion.end; i++) clusterInput[i] = 0;
         const gSize = Math.max(1, Math.floor(letterSize / prevOneHot.length));
         for (let d = 0; d < prevOneHot.length; d++) {
           if (prevOneHot[d] <= 0) continue;
@@ -55287,7 +55295,7 @@ var CLUSTER_EMIT_MIXIN = {
             if (idx < letterRegion.end) clusterInput[idx] = 1;
           }
         }
-        const clusterOutput = synapses.propagate(clusterInput);
+        const clusterOutput = typeof synapses.propagateChunked === "function" ? await synapses.propagateChunked(clusterInput, { outBuf: this._emitPropOutScratch, chunkRows: 25e4 }) : synapses.propagate(clusterInput);
         if (!clusterOutput || clusterOutput.length === 0) break;
         const best = letterBucketArgmax(clusterOutput);
         if (best.score > maxMotorBucket) maxMotorBucket = best.score;
