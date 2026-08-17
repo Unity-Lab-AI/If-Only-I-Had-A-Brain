@@ -11591,11 +11591,19 @@ export class Curriculum {
     const crossBucketPost = this._crossBucketPostScratch;
     for (let i = motorRegion.start; i < motorRegion.end; i++) crossBucketPost[i] = 0;
     let crossCount = 0;
+    // ACTIVE-INDEX COLLECTION (2026-08-17) — this loop already visits every
+    // index it sets, so collect them and hand them to the anti-Hebbian
+    // directly. Without this the callee re-derived the same list by scanning
+    // the ENTIRE cluster (12M cells at the grown cortex ≈ ~360ms/call,
+    // measured live at 364ms — once per pair per rep, a pair-phase
+    // band-blocker). Same rows, same math — only the rediscovery is gone.
+    const crossActiveRows = [];
     for (let i = 0; i < motorSize; i++) {
       if (cluster.lastSpikes[motorRegion.start + i]) {
         const b = Math.min(numBuckets - 1, Math.floor(i / bucketSize));
         if (b !== primaryBucket) {
           crossBucketPost[motorRegion.start + i] = 1;
+          crossActiveRows.push(motorRegion.start + i);
           crossCount++;
         }
       }
@@ -11608,7 +11616,7 @@ export class Curriculum {
     // recurrent circuitry entirely.
     const inhibitLr = Math.abs(lr) * 0.3;
     if (typeof cluster.intraSynapsesAntiHebbian === 'function') {
-      await cluster.intraSynapsesAntiHebbian(cluster.lastSpikes, crossBucketPost, inhibitLr);
+      await cluster.intraSynapsesAntiHebbian(cluster.lastSpikes, crossBucketPost, inhibitLr, { activeRows: crossActiveRows });
     } else if (cluster.synapses && typeof cluster.synapses.antiHebbianUpdate === 'function') {
       cluster.synapses.antiHebbianUpdate(cluster.lastSpikes, crossBucketPost, inhibitLr);
     }
