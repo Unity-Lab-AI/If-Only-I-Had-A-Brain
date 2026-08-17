@@ -1299,19 +1299,40 @@ const SERVER_STATE_MIXIN = {
         kwiring = cortex._kWiringCache;
       }
     } catch { kwiring = null; }
-    // Layer histogram (small fixed-size array; aggregates only).
+    // Layer histogram + hub count — CACHED ONCE (2026-08-17). These two
+    // loops walked layerId (12M) + hubMask (12M) on EVERY call — 24M reads
+    // ≈ the ENTIRE 245ms/call the getState section lap timers measured on
+    // 'consciousness' (94% of the broadcast build, ~36% of wall-clock, the
+    // event-loop backlog that taxed every teach yield). Both arrays are
+    // STATIC after construction: lamination is assigned once and hubs are
+    // deterministic-hash-seeded precisely so they persist — the counts can
+    // never change while the process lives. Recompute only if the cortex
+    // is regrown (size or array identity changes).
     let layerCounts = [0, 0, 0, 0, 0];
-    if (cortex && cortex.layerId) {
-      for (let i = 0; i < cortex.layerId.length; i++) {
-        const l = cortex.layerId[i];
-        if (l < layerCounts.length) layerCounts[l] += 1;
-      }
-    }
-    // Hub count (single number).
     let hubCount = 0;
-    if (cortex && cortex.hubMask) {
-      for (let i = 0; i < cortex.hubMask.length; i++) {
-        if (cortex.hubMask[i]) hubCount += 1;
+    if (cortex && (cortex.layerId || cortex.hubMask)) {
+      const cc = this._corticalCountsCache;
+      if (cc && cc.layerIdRef === cortex.layerId && cc.hubMaskRef === cortex.hubMask) {
+        layerCounts = cc.layerCounts;
+        hubCount = cc.hubCount;
+      } else {
+        if (cortex.layerId) {
+          for (let i = 0; i < cortex.layerId.length; i++) {
+            const l = cortex.layerId[i];
+            if (l < layerCounts.length) layerCounts[l] += 1;
+          }
+        }
+        if (cortex.hubMask) {
+          for (let i = 0; i < cortex.hubMask.length; i++) {
+            if (cortex.hubMask[i]) hubCount += 1;
+          }
+        }
+        this._corticalCountsCache = {
+          layerIdRef: cortex.layerId || null,
+          hubMaskRef: cortex.hubMask || null,
+          layerCounts,
+          hubCount,
+        };
       }
     }
     // Definition-taught count (single number). The taught-set spans EVERY
