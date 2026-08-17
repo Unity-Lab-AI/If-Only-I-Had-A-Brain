@@ -217,3 +217,12 @@ _Completed sections zeroed 2026-08-16 (third zeroing) — migrated VERBATIM to `
 - [x] **HOPFIX.2** **DONE** — `_yieldIfHot`'s hops in `_teachHebbian` counted + timed (`stageProfile.hebbianYield`), and `stageProfile` now carries `chunkerHops` — the wrapper-vs-stages gap is a field read.
 - [x] **HOPFIX.3** **DONE** — the 10fps broadcast pipeline timed (`wsPressure.bcast {n, getStateMs, serializeSendMs, worstMs}`) — the prime backlog-burner suspect measured at its source.
 - [ ] **HOPFIX.4** ⏳ GEE: ONE **Update & SAVESTART**. Verdict reads: lateral antiMs collapses 344ms → ms-scale (its wasted hop is gone); teach/min + defs/min jump proportionally (~3 hops/rep → ~1); `hebbianYield`/`chunkerHops` price the remaining hops; `bcast` names how much of the backlog is the broadcast. If the loop lag itself persists, the bcast/hop numbers point at the next fix — measured, not theorized.
+
+
+---
+
+## VOCTITLE — 2026-08-17 · the dashboard vocab panel title said K-VOCABULARY over the journey-wide 18,017 counter
+
+> Gee (verbatim): *"aand this isnt right on the dashboard it say k definitiontions is 18K:📖 K-VOCABULARY prefetched: yes defs taught: 73 / 18,017 (0.4%)"*
+
+- [x] **VOCTITLE.1** **DONE** — `applyGradeLabels` rewrote the panel title to `📖 ${grade}-VOCABULARY` on every render, clobbering the static K→PhD label; the counter beneath it is journey-wide (taught set + 18,017-unique denominator span all 19 grades), so the title now renders `📖 VOCABULARY (K→PhD)` unconditionally. Grade prefixes stay on the genuinely grade-scoped panels (dictionary cache warm, wiring assertion). Rides the next press.
