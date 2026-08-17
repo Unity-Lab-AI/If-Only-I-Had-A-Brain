@@ -96056,6 +96056,94 @@ var Curriculum = class _Curriculum {
     return added;
   }
   /**
+   * PRE-CELL VOCAB SETUP (2026-08-17) — every cell of every grade opens by
+   * LEARNING its grade's vocabulary before any binding trains on it:
+   * definitions land FIRST, or the cell's Hebbian associations land on
+   * noise (the words-must-be-learned-first law). Kindergarten used to pay
+   * this as a one-off pre-cell pass; the 2026-08-14 de-block removed it
+   * (trickle-only), and no other grade ever had one — their words only
+   * reached the dream-trickle lane, which starves whenever walk phases run
+   * long between windows. This restores the pass and generalizes it to
+   * ALL cells:
+   *
+   *   - the grade's OWN list loads (K/pre-K → K_VOCABULARY; every other
+   *     grade → gradeVocabularyFor) — corpus-bleed holds by construction;
+   *   - words already in `_definitionTaughtWords` (persisted) skip, so the
+   *     FIRST cell of a grade pays the full pass and every sibling cell of
+   *     the same grade re-verifies for free;
+   *   - the teach runs in 300-word chunks with interleaved dream windows
+   *     (the same memory-pressure pattern the original K pass used);
+   *   - the full list also enqueues on the dream-trickle lane for the
+   *     deeper reps:4 multi-def pass (idempotent, dedups internally).
+   *
+   * DREAM_PRECELL_VOCAB=0 skips it (trickle-only, the old shape); default ON.
+   */
+  async _preCellVocabSetup(subject, grade) {
+    const cluster = this.cluster;
+    if (!cluster || typeof this._teachWordDefinitions !== "function") return;
+    if (typeof process !== "undefined" && process?.env?.DREAM_PRECELL_VOCAB === "0") {
+      this._hb(`[Curriculum] \u{1F4DA} PRE-CELL VOCAB skipped for ${subject}/${grade} \u2014 DREAM_PRECELL_VOCAB=0 (trickle-only mode).`);
+      return;
+    }
+    let words = [];
+    try {
+      if (grade === "kindergarten" || grade === "pre-K") {
+        const { K_VOCABULARY: K_VOCABULARY2 } = await Promise.resolve().then(() => (init_k_vocabulary(), k_vocabulary_exports));
+        if (Array.isArray(K_VOCABULARY2)) words = K_VOCABULARY2;
+      } else {
+        const { gradeVocabularyFor: gradeVocabularyFor2 } = await Promise.resolve().then(() => (init_grade_vocabulary(), grade_vocabulary_exports));
+        const gv = await gradeVocabularyFor2(grade);
+        if (Array.isArray(gv)) words = gv;
+      }
+    } catch (err) {
+      this._hb(`[Curriculum] \u{1F4DA} PRE-CELL VOCAB \u2014 vocabulary load failed for ${subject}/${grade} (non-fatal; the dream-trickle still carries defs): ${err?.message || err}`);
+      return;
+    }
+    if (words.length === 0) return;
+    try {
+      this._enqueueDefinitionSeed(cluster, words, grade);
+    } catch {
+    }
+    const taught = cluster._definitionTaughtWords instanceof Set ? cluster._definitionTaughtWords : /* @__PURE__ */ new Set();
+    const todo = words.filter((w) => w && typeof w === "string" && !taught.has(w));
+    if (todo.length === 0) {
+      this._hb(`[Curriculum] \u{1F4DA} PRE-CELL VOCAB ${subject}/${grade} \u2014 all ${words.length} grade words already learned (a sibling cell paid the pass). Cell starts now.`);
+      return;
+    }
+    this._currentMacroPhase = `\u{1F4DA} PRE-CELL VOCAB \u2014 ${subject}/${grade}`;
+    this._macroPhaseProgress = { current: 0, total: todo.length, label: `PRE-CELL VOCAB ${subject}/${grade}` };
+    this._hb(`[Curriculum] \u{1F4DA} PRE-CELL VOCAB START \u2014 ${subject}/${grade}: ${todo.length} of ${words.length} grade words unlearned; multi-def Hebbian at reps:1, 300-word chunks with dream windows between. Definitions land BEFORE the cell's bindings train on these words.`);
+    const CHUNK2 = 300;
+    let totalTrained = 0, totalWordsBound = 0, totalDefsBound = 0, totalTimeouts = 0, totalSlowWords = 0;
+    const t0 = Date.now();
+    for (let chunkStart = 0; chunkStart < todo.length; chunkStart += CHUNK2) {
+      const chunk = todo.slice(chunkStart, chunkStart + CHUNK2);
+      this._hb(`[Curriculum] \u{1F4DA} PRE-CELL VOCAB chunk ${chunkStart}\u2013${chunkStart + chunk.length}/${todo.length} (${subject}/${grade})`);
+      const stats = await this._teachWordDefinitions(chunk, { reps: 1, label: `PRECELL-${subject}-${grade}` });
+      totalTrained += stats?.totalTrained || 0;
+      totalWordsBound += stats?.wordsBound || 0;
+      totalDefsBound += stats?.totalDefsBound || 0;
+      totalTimeouts += stats?.timeouts || 0;
+      totalSlowWords += stats?.slowWords || 0;
+      this._macroPhaseProgress = {
+        current: Math.min(chunkStart + chunk.length, todo.length),
+        total: todo.length,
+        label: `PRE-CELL VOCAB ${subject}/${grade}`
+      };
+      if (chunkStart + CHUNK2 < todo.length) {
+        try {
+          await this._dreamWindow({ minMs: 3e4, settleMs: 3e3 });
+        } catch (dwErr) {
+          this._hb(`[Curriculum] \u{1F4DA} PRE-CELL VOCAB dream-window error (non-fatal): ${dwErr?.message || dwErr}`);
+        }
+      }
+    }
+    const stall = totalTimeouts > 0 || totalSlowWords > 0 ? ` \xB7 \u26A0 ${totalTimeouts} per-word timeouts, ${totalSlowWords} slow words` : "";
+    this._hb(`[Curriculum] \u{1F4DA} PRE-CELL VOCAB DONE \u2014 ${subject}/${grade}: ${totalTrained} Hebbian fires across ${totalWordsBound} words (${totalDefsBound} definition senses) in ${((Date.now() - t0) / 1e3).toFixed(0)}s${stall}. Cell teach phases begin.`);
+    this._currentMacroPhase = null;
+    this._macroPhaseProgress = null;
+  }
+  /**
    * Retention rate — how many of the last N runs for this cell passed.
    * Measures whether the binding SURVIVES subsequent curriculum runs
    * (i.e. isn't drifting away).
@@ -99480,6 +99568,11 @@ var Curriculum = class _Curriculum {
     this._perSubjectStats[subject].label = SUBJECT_LABELS[subject] || subject;
     this._currentCellSubPhases = 0;
     cluster._probeGateActive = true;
+    try {
+      await this._preCellVocabSetup(subject, grade);
+    } catch (err) {
+      this._hb(`[Curriculum] \u{1F4DA} PRE-CELL VOCAB error (non-fatal \u2014 cell proceeds; the dream-trickle still carries defs): ${err?.message || err}`);
+    }
     let _aliveTick = 0;
     let _priorRssMb = 0;
     const _nativeRolling = [];
