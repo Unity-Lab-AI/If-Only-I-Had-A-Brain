@@ -327,8 +327,21 @@ const SERVER_STATE_MIXIN = {
   },
 
   getState() {
-    this._updateLangEverFired();
+    // SECTION LAP TIMERS (2026-08-17). bcast.getStateMs measured this build
+    // at 312→262ms/call even after the region-walk + memoryStats caches —
+    // the remainder resisted read-based bisection TWICE, so every section
+    // is now timed (cumulative ms per named section, published under
+    // wsPressure.bcast.sections) and the burner is named by a field read,
+    // never re-theorized. The lap helper costs one Date.now() pair per
+    // section per call.
+    const _gsAcc = this._gsSections || (this._gsSections = {});
+    const _lap = (name, fn) => {
+      const _t0 = Date.now();
+      try { return fn(); } finally { _gsAcc[name] = (_gsAcc[name] || 0) + (Date.now() - _t0); }
+    };
+    _lap('everFired', () => this._updateLangEverFired());
     const clusterStates = {};
+    const _gsClustersT0 = Date.now();
     for (const [name, cluster] of Object.entries(this.clusters)) {
       const size = cluster.size || 1;
       const spikeCount = cluster.spikeCount | 0;
@@ -411,6 +424,8 @@ const SERVER_STATE_MIXIN = {
         };
       }
     }
+
+    _gsAcc.clusters = (_gsAcc.clusters || 0) + (Date.now() - _gsClustersT0);
 
     // Derive band power from INSTANT spike rates (not slow EMA)
     const cortexRate = this.clusters.cortex.spikeCount / (this.CLUSTER_SIZES.cortex || 1);
@@ -495,31 +510,45 @@ const SERVER_STATE_MIXIN = {
       // Live performance stats
       perf: this._perfStats,
       // Brain growth metrics
-      growth: {
-        totalWords: Object.keys(this._wordFreq || {}).length,
-        totalInteractions: Object.values(this._conversations || {}).reduce((s, c) => s + c.length, 0),
-        totalEpisodes: this._db ? this.getEpisodeCount() : 0,
-        uptime: (Date.now() - (this._startedAt || Date.now())) / 1000,
-        totalFrames: this.frameCount,
-      },
+      // growth CACHED 5s (2026-08-17) — this block ran a sync SQLite
+      // COUNT(*) + a full-conversations walk + an all-words key-array
+      // build on EVERY getState; all three grow with her life. Same
+      // human-cadence law as the memoryStats cache. uptime/frames stay
+      // live (cheap scalars).
+      growth: _lap('growth', () => {
+        const _gNow = Date.now();
+        if (!this._growthCache || (_gNow - (this._growthCacheAt || 0)) >= 5000) {
+          this._growthCacheAt = _gNow;
+          this._growthCache = {
+            totalWords: Object.keys(this._wordFreq || {}).length,
+            totalInteractions: Object.values(this._conversations || {}).reduce((s, c) => s + c.length, 0),
+            totalEpisodes: this._db ? this.getEpisodeCount() : 0,
+          };
+        }
+        return {
+          ...this._growthCache,
+          uptime: (Date.now() - (this._startedAt || Date.now())) / 1000,
+          totalFrames: this.frameCount,
+        };
+      }),
       // iter15-mem — unified 5-tier memory snapshot for dashboard +
       // 3D brain memory tab. Tier 1 (Episodic SQLite) + Tier 2
       // (Schematic) + Tier 3 (Identity-bound) + ConsolidationEngine
       // + Working memory all in one payload. Operator verbatim:
       // "shall be one unified system of the brain for memory not
       // some side processes".
-      memoryStats: this._getMemoryStats(),
+      memoryStats: _lap('memoryStats', () => this._getMemoryStats()),
       //Phase 6 — Display/Visibility snapshot for dashboard.
       // Bounded payload: aggregates only, no per-neuron / per-column
       // enumeration, no unbounded lists. Counts + small fixed-size
       // arrays only (gaps capped at 5, etc).
-      consciousness: this._getConsciousnessState(),
+      consciousness: _lap('consciousness', () => this._getConsciousnessState()),
       // WS backpressure metrics for the GPU client. Reads
       // _gpuClient.bufferedAmount + drop/absorb/enobufs counters +
       // a rolling drops/sec rate so operator can see whether the
       // BLOCK-not-DROP path is keeping Hebbian updates intact.
-      wsPressure: this._getWsPressureState(),
-      utilization: this._getUtilizationState(),
+      wsPressure: _lap('wsPressure', () => this._getWsPressureState()),
+      utilization: _lap('utilization', () => this._getUtilizationState()),
       // #112.9d — student-battery progress (i/N) so the dashboard shows the
       // K-STUDENT battery advancing (question i of N + label) instead of a
       // silent stall. Set per-question in _runStudentBattery (curriculum.js),
@@ -550,29 +579,29 @@ const SERVER_STATE_MIXIN = {
       // {seq, ts, type, region, label, detail}. Dashboard filters to
       // events newer than `_brainEventTTL` for popup rendering. The
       // seq field lets the dashboard dedupe across poll intervals.
-      brainEvents: this._recentBrainEvents(),
+      brainEvents: _lap('brainEvents', () => this._recentBrainEvents()),
       // Current training-subject snapshot for the dashboard "Current
       // Training" card. Null fields when no cell is active. Sourced
       // from the curriculum's per-cell + per-subject counters so the
       // dashboard's subject/grade/progress display and the curriculum
       // teach path can never drift out of sync — ONE cortex, ONE
       // curriculum object, ONE dashboard read.
-      curriculum: this.curriculum && typeof this.curriculum.getCurriculumStatus === 'function'
+      curriculum: _lap('curriculum', () => (this.curriculum && typeof this.curriculum.getCurriculumStatus === 'function'
         ? this.curriculum.getCurriculumStatus()
-        : null,
+        : null)),
       // Audit A.1 — P6.6 compositional-emergence telemetry surfaced.
       // Was previously write-only inside cluster/telemetry.js. Reports
       // verbatim/novel/partial classification rates + max-novelty
       // sample + firstNovelMsAfterBoot. Dashboard panel reads this.
-      compositionalEmergence: (this.cortexCluster && typeof this.cortexCluster.getCompositionalStats === 'function')
+      compositionalEmergence: _lap('compositional', () => ((this.cortexCluster && typeof this.cortexCluster.getCompositionalStats === 'function')
         ? (() => { try { return this.cortexCluster.getCompositionalStats(); } catch (err) { return { error: err.message }; } })()
-        : null,
+        : null)),
       // Audit A.2 — P6.7 word-creation tip-of-tongue candidates. Top-10
       // by frequency, minCount=3. Dashboard renders a panel showing the
       // emergent compounds the rejection-loop is observing.
-      wordCreationCandidates: (this.cortexCluster && typeof this.cortexCluster.getWordCreationCandidates === 'function')
+      wordCreationCandidates: _lap('wordCreation', () => ((this.cortexCluster && typeof this.cortexCluster.getWordCreationCandidates === 'function')
         ? (() => { try { return this.cortexCluster.getWordCreationCandidates({ limit: 10, minCount: 3 }); } catch (err) { return { error: err.message }; } })()
-        : null,
+        : null)),
       // Audit A.3 — P6.3 chat-time deep Hebbian counters. turns +
       // totalPairs + lastTs + errors (post-A.4 the silent-swallow
       // catch increments these counters instead of dropping the error).
@@ -590,7 +619,7 @@ const SERVER_STATE_MIXIN = {
       // Gneuron-seconds, with display names. Persists in saveWeights, resets on
       // a fresh walk. Dashboard + public dashboard + compute.html render it; a
       // donor finds their own row by their persistent donorId.
-      leaderboard: (() => {
+      leaderboard: _lap('leaderboard', () => {
         try {
           const lb = this._neuronLeaderboard || {};
           // Collapse to canonical identity before rendering: every donor sharing a
@@ -615,13 +644,13 @@ const SERVER_STATE_MIXIN = {
           const total = rows.reduce((s, r) => s + r.neurons, 0);
           return { top: rows.slice(0, 20), totalContributors: rows.length, totalNeurons: total };
         } catch (err) { return { top: [], totalContributors: 0, totalNeurons: 0, error: err.message }; }
-      })(),
+      }),
       // BC.12 — basin-collapse telemetry. Surfaces the signals behind the
       // single-token mode-collapse so recovery is visible without hand-
       // diffing /ws polls: sem→motor saturation, dominant-token share of
       // recent emissions, GW broadcast diversity. Computed once per state
       // broadcast (not per tick) so the checkSemMotorHealth sample is cheap.
-      basinHealth: (() => {
+      basinHealth: _lap('basinHealth', () => {
         try {
           const cc = this.cortexCluster;
           if (!cc) return null;
@@ -650,7 +679,7 @@ const SERVER_STATE_MIXIN = {
           }
           return out;
         } catch (err) { return { error: err.message }; }
-      })(),
+      }),
       // Audit A.3 — P6.4 dream-recombination consolidation counters.
       // Per audit E.4 the curriculum-side _dreamRecombinationStats also
       // exposes a `consolidatedSamples` ring (cap 20) for operator audit.
@@ -1514,7 +1543,11 @@ const SERVER_STATE_MIXIN = {
       // Broadcast pipeline profile (2026-08-17) — 10fps loop cost split
       // (state build vs stringify+send) so the event-loop backlog that
       // taxes every teach-chain yield is decomposed from the field.
-      bcast: this._bcastProf || null,
+      // + sections: cumulative ms per getState section (the lap timers) —
+      // the per-call remainder is named here, never re-theorized.
+      bcast: (this._bcastProf || this._gsSections)
+        ? { ...(this._bcastProf || {}), sections: this._gsSections || null }
+        : null,
     };
   },
 };

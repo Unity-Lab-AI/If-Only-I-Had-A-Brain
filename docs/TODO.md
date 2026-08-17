@@ -250,3 +250,15 @@ _Completed sections zeroed 2026-08-16 (third zeroing) — migrated VERBATIM to `
 - [x] **BCASTFIX.1** **DONE** — the lang-region spike fallback walk (native donors never send per-region counts → EVERY getState walked ~14M+ cells across all region + sub-band spans) cached on a 5s cadence — same cadence-of-the-source law as the langEverFired regions cache; the 3D brain's sub-volume shading can't tell.
 - [x] **BCASTFIX.2** **DONE** — `_getMemoryStats` (SYNC SQLite aggregate scans: SUM-over-episodes with WHERE, COUNT(*), re-prepared per call, growing with her episode count) cached whole on the same 5s cadence.
 - [ ] **BCASTFIX.3** ⏳ GEE: ONE **Update & SAVESTART**. Verdict: `bcast.getStateMs`/n collapses 312ms → tens-of-ms; eventLoopLagMs falls from ~1,000 toward ~100; `hebbianYield` ms/hop collapses with it; teach/min climbs from 984 INTO the 1300–1500 band; the BLOCKED-every-second carpet vanishes. If getStateMs stays high, the remainder inside getState gets section lap-timers next.
+
+---
+
+## GSLAPS — 2026-08-17 · getState STILL 262ms/call after BCASTFIX — every section gets a lap timer + the growth block cached
+
+> Gee (verbatim): *"wtf is all this stalling? im not going to ask you again!!!"*
+
+**THE FIELD READ (live off `c7d68442`, Gee's press):** BCASTFIX helped (loopLag 1,093→362, lateral antiMs 344→1.0ms/call, hebbian intra 1.1ms/call, teach/min 200→**1,095 and climbing**) but `bcast` reads getState at **262ms/call still** — the region-walk + memoryStats caches weren't the bulk, and read-based bisection failed twice more (kScales memoized, checkSemMotorHealth stride-sampled). The BLOCKED carpet Gee pasted = this remainder + attribution artifact (phase tags blame the active teach phase).
+
+- [x] **GSLAPS.1** **DONE** — EVERY getState section wrapped in cumulative lap timers (`_lap(name, fn)` → `this._gsSections`): everFired, clusters(+region walk), fullMindK, sharedMood, growth, memoryStats, consciousness, wsPressure, utilization, brainEvents, curriculum, compositional, wordCreation, leaderboard, basinHealth. Published at `wsPressure.bcast.sections` — the burner becomes a field read.
+- [x] **GSLAPS.2** **DONE** — the growth block (sync SQLite COUNT(*) + full-conversations walk + all-words key-array build, EVERY call, all growing with her life) cached 5s like memoryStats; uptime/frames stay live.
+- [ ] **GSLAPS.3** ⏳ GEE: ONE **Update & SAVESTART**. Then `bcast.sections` names the residual in one read; the named section gets its fix; the BLOCKED carpet dies for real. teach/min already at 1,095 — the band is one burner away.
