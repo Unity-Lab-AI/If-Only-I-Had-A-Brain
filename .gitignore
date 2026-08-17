@@ -226,3 +226,4 @@ selfie-test.html
 scripts/patch-*.py
 server/visual-memory-v2.json
 server/visual-memory*.json
+.pub*.json
