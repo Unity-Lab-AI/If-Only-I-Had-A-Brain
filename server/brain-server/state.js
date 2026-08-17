@@ -368,15 +368,39 @@ const SERVER_STATE_MIXIN = {
       const gpuFresh = gpuRS && this._lastCortexRegionSpikesAt
         && (Date.now() - this._lastCortexRegionSpikesAt) < 5000;
       const ls = this.cortexCluster.lastSpikes;
+      // CPU-FALLBACK WALK CACHED 5s (2026-08-17). Native donors never send
+      // per-region spike counts, so gpuFresh is false for the whole walk at
+      // biological scale and this fallback walked ~14M+ cells across every
+      // region + sub-band span ON EVERY getState — the largest measured
+      // share of bcast.getStateMs 312ms/call (~36% of wall at the ~1/s
+      // broadcast cadence), and the backlog that taxed every teach-chain
+      // yield. lastSpikes only changes on teach pattern writes; a 5s-fresh
+      // count is indistinguishable on the 3D brain's sub-volume shading.
+      // Same cadence-of-the-source law as the langEverFired regions cache.
+      let cpuCounts = null;
+      if (!gpuFresh && ls) {
+        const _lrNow = Date.now();
+        if (!this._langRegionCountsAt || (_lrNow - this._langRegionCountsAt) >= 5000) {
+          this._langRegionCountsAt = _lrNow;
+          const counts = {};
+          for (const [regName, region] of Object.entries(this.cortexCluster.regions)) {
+            let n = 0;
+            for (let i = region.start; i < region.end && i < ls.length; i++) {
+              if (ls[i]) n++;
+            }
+            counts[regName] = n;
+          }
+          this._langRegionCounts = counts;
+        }
+        cpuCounts = this._langRegionCounts || null;
+      }
       for (const [regName, region] of Object.entries(this.cortexCluster.regions)) {
         const size = region.end - region.start;
         let spikeCount = 0;
         if (gpuFresh && typeof gpuRS[regName] === 'number') {
           spikeCount = gpuRS[regName] | 0;
-        } else if (ls) {
-          for (let i = region.start; i < region.end && i < ls.length; i++) {
-            if (ls[i]) spikeCount++;
-          }
+        } else if (cpuCounts && typeof cpuCounts[regName] === 'number') {
+          spikeCount = cpuCounts[regName] | 0;
         }
         const spikeRate = Math.min(1, Math.max(0, spikeCount / Math.max(1, size)));
         clusterStates[`lang_${regName}`] = {
