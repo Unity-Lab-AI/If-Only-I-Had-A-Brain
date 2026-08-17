@@ -3237,7 +3237,49 @@ const SERVER_GPU_MIXIN = {
     // frame produces (spike set where value > 0). At the 12M cortex the
     // expanded sem-region t7 was ~3MB/frame — 403MB in 12min, the last raw
     // wire river and the pattern-lane staling driver.
-    const tmplS = sparseIndices && sparseIndices._template;
+    let tmplS = sparseIndices && sparseIndices._template;
+    // TEMPLATE CANONICALIZATION (2026-08-17 — the drop-on-chat flooder,
+    // named by SendForensics: sprs-t11 frames at 1,968.8KB ×2 per write =
+    // 504,000-value "templates" — a full fineType-region band pattern fed
+    // through an encoder built for ~300-value embeddings, shipped again as
+    // the GINTRA twin: ~4MB per teach rep, 95K sheds, donor RTT 7.6s, the
+    // wire drowned and the donor died). For t11 the donor sets spikes where
+    // value > 0, so ANY template whose nonzero support is ONE contiguous
+    // run collapses losslessly: trim the zero head/tail, fold the run into
+    // groupSize — identical expanded row set, ~30 bytes instead of ~2MB.
+    // Band patterns (fineType grammar bands, motor buckets, one-hots)
+    // all fit this shape; scattered-value embeddings (~300 values) pass
+    // through untouched. A template that survives canonicalization above
+    // 4096 values warns loudly instead of silently flooding again.
+    if (tmplS && Array.isArray(tmplS.values) && tmplS.values.length > 4) {
+      const v = tmplS.values;
+      let d0 = 0, d1 = v.length;
+      while (d0 < d1 && !(v[d0] > 0)) d0++;
+      while (d1 > d0 && !(v[d1 - 1] > 0)) d1--;
+      if (d1 > d0) {
+        let contiguous = true;
+        for (let d = d0; d < d1; d++) { if (!(v[d] > 0)) { contiguous = false; break; } }
+        if (contiguous && (d1 - d0) > 1) {
+          const g = Math.max(1, tmplS.groupSize >>> 0);
+          tmplS = {
+            rowStart: (tmplS.rowStart >>> 0) + d0 * g,
+            groupSize: (d1 - d0) * g,
+            values: [1],
+          };
+        } else if (d0 > 0 || d1 < v.length) {
+          // Non-uniform support — still trim the zero head/tail.
+          tmplS = {
+            rowStart: (tmplS.rowStart >>> 0) + d0 * Math.max(1, tmplS.groupSize >>> 0),
+            groupSize: Math.max(1, tmplS.groupSize >>> 0),
+            values: v.slice(d0, d1),
+          };
+        }
+      }
+      if (tmplS.values.length > 4096 && (!this._tmplMonsterWarnMs || (Date.now() - this._tmplMonsterWarnMs) > 30000)) {
+        this._tmplMonsterWarnMs = Date.now();
+        console.warn(`[Brain] MONSTER spike template survived canonicalization: ${tmplS.values.length.toLocaleString()} values (~${((tmplS.values.length * 4) / 1048576).toFixed(1)}MB/frame ×2 with the twin) for cortex/${regionName} — this caller's pattern needs its own shape fix. Rate-limited 30s.`);
+      }
+    }
     if (tmplS && Array.isArray(tmplS.values) && tmplS.values.length > 0 && this._donorSpikeTemplateTeach()) {
       const name = `cortex/${regionName}`;
       const hdr = this._encodeSparseHeader(11, 0, name);
@@ -3339,7 +3381,32 @@ const SERVER_GPU_MIXIN = {
     // the ~KB template and let it expand at receive into the IDENTICAL
     // write_current work item — measured 99.5% of all outbound bytes were
     // these frames fully expanded (~840KB each at the 1.5M cortex).
-    const tmpl = sparseValues && sparseValues._template;
+    let tmpl = sparseValues && sparseValues._template;
+    // TEMPLATE CANONICALIZATION — current-frame (t10) sibling of the t11 fix
+    // above. Currents carry AMPLITUDES, so a run only folds when every
+    // nonzero value is EXACTLY equal (bit-identical expansion); zero head/
+    // tail always trims. Same monster warn as t11.
+    if (tmpl && Array.isArray(tmpl.values) && tmpl.values.length > 4) {
+      const v = tmpl.values;
+      let d0 = 0, d1 = v.length;
+      while (d0 < d1 && v[d0] === 0) d0++;
+      while (d1 > d0 && v[d1 - 1] === 0) d1--;
+      if (d1 > d0) {
+        let uniform = true;
+        const v0 = v[d0];
+        for (let d = d0; d < d1; d++) { if (v[d] !== v0) { uniform = false; break; } }
+        const g = Math.max(1, tmpl.groupSize >>> 0);
+        if (uniform && v0 !== 0 && (d1 - d0) > 1) {
+          tmpl = { rowStart: (tmpl.rowStart >>> 0) + d0 * g, groupSize: (d1 - d0) * g, values: [v0] };
+        } else if (d0 > 0 || d1 < v.length) {
+          tmpl = { rowStart: (tmpl.rowStart >>> 0) + d0 * g, groupSize: g, values: v.slice(d0, d1) };
+        }
+      }
+      if (tmpl.values.length > 4096 && (!this._tmplMonsterWarnMs2 || (Date.now() - this._tmplMonsterWarnMs2) > 30000)) {
+        this._tmplMonsterWarnMs2 = Date.now();
+        console.warn(`[Brain] MONSTER current template survived canonicalization: ${tmpl.values.length.toLocaleString()} values (~${((tmpl.values.length * 4) / 1048576).toFixed(1)}MB/frame) for cortex/${regionName}. Rate-limited 30s.`);
+      }
+    }
     if (tmpl && Array.isArray(tmpl.values) && tmpl.values.length > 0 && this._donorTemplateTeach()) {
       const name = `cortex/${regionName}`;
       const hdr = this._encodeSparseHeader(10, 0, name);
