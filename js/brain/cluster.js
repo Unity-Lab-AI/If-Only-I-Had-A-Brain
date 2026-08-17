@@ -4009,7 +4009,7 @@ export class NeuronCluster {
    * @param {number} [opts.negLr=-this.learningRate*5] — weaken rate for wrong pair
    * @param {number} [opts.reps=100] — iterations of both updates
    */
-  hebbianPairReinforce(opts) {
+  async hebbianPairReinforce(opts) {
     if (!opts || !opts.region || !opts.srcOneHot || !opts.correctOneHot) return;
     const region = this.regions[opts.region];
     if (!region || region.end <= region.start) return;
@@ -4060,10 +4060,25 @@ export class NeuronCluster {
     // pair via explicit anti-Hebbian with positive lr. Using antiHebbian
     // lets us pass a positive rate for clarity — it handles the sign
     // internally — and matches the push-pull math reviewers expect.
+    // TIME-SLICED (2026-08-17). The 100-rep dose ran as ONE synchronous
+    // stretch (~834ms/word measured live as [WORD-INT] l1b — minutes of
+    // pinned event loop per vocab phase; donor pongs + chat + everything
+    // queued waited behind it). Same math, same dose, same rep count —
+    // the loop just yields a macrotask between reps whenever ~60ms of
+    // work has accumulated (never after the final rep — a trailing hop
+    // pays the loop's backlog for nothing). Callers await.
     const negAbs = Math.abs(negLr);
+    const _yieldMacro = (typeof setImmediate === 'function')
+      ? () => new Promise((r) => setImmediate(r))
+      : () => new Promise((r) => setTimeout(r, 0));
+    let _sliceT0 = Date.now();
     for (let i = 0; i < reps; i++) {
       this.synapses.ojaUpdate(pre, correctPost, posLr, { activeRows: correctActive });
       if (wrongPost) this.synapses.antiHebbianUpdate(pre, wrongPost, negAbs, { activeRows: wrongActive });
+      if (i + 1 < reps && (Date.now() - _sliceT0) >= 60) {
+        await _yieldMacro();
+        _sliceT0 = Date.now();
+      }
     }
   }
 

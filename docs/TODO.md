@@ -295,3 +295,14 @@ _Completed sections zeroed 2026-08-16 (third zeroing) — migrated VERBATIM to `
 - [x] **TMPLFIX.1** **DONE — built + verified (node --check + ESM + the exact 504K band case math-checked: → {rowStart:168000, groupSize:168000, values:[1]}, identical expanded row set, ~30 bytes):** t11 spike-template canonicalization at the encoder — trim zero head/tail; a single contiguous nonzero run folds into groupSize (t11 spikes only test value>0, lossless). Covers fineType bands, motor buckets, one-hots universally; ~300-value embeddings pass untouched. Twin inherits automatically.
 - [x] **TMPLFIX.2** **DONE** — t10 current-template sibling: zero trim always; run-fold only when every nonzero value is EXACTLY equal (amplitudes preserved bit-identical). Both encoders warn loudly (30s rate-limit) if a >4096-value template ever survives canonicalization — no silent flood can return.
 - [ ] **TMPLFIX.3** ⏳ GEE: ONE **Update & SAVESTART**. Verify: sheds STOP climbing, buffer stays ~0MB through def/mechanics phases, donor RTT settles <1s, teach/min recovers from the wire-brake, [SendForensics] stays quiet — then say "hi" AGAIN: the donor must HOLD (DROPCHAT.3 verify finally readable on a healthy wire).
+
+---
+
+## PAIRSLICE — 2026-08-17 · l1b's 100-rep dose time-sliced — the last minutes-scale loop pin in the word phases
+
+> Gee (verbatim): *"minutes of blocked event loop, that shit adds up doesnt it"*
+
+**THE NUMBER:** [WORD-INT] l1b(seq) = 834-861ms/word of UNBROKEN sync (hebbianPairReinforce's designed 100-rep Oja+anti dose over the intra, per letter pair) — hundreds of words per vocab phase = ~10+ min of pinned loop per phase; every pinned second delays donor pongs/chat/broadcast. Cannot ride the GPU bound-op (asymmetric pre→post pairs vs the symmetric spike-buffer op — moving it would CHANGE training; forbidden).
+
+- [x] **PAIRSLICE.1** **DONE — built + verified (node --check ×3 + ESM + bundle):** hebbianPairReinforce is async + time-sliced — same math, same dose, same rep count; a macrotask yield lands between reps whenever ~60ms of work accumulates (never trailing, per the HOPFIX law). Both call sites awaited (curriculum word-integrated final-rep pass + kindergarten math-gate remediation).
+- [ ] **PAIRSLICE.2** ⏳ rides the next press. Verify: BLOCKED lines during `_teachWordIntegrated` cap ≤~100ms (was 250ms-3.5s), l1b wall ≈ unchanged (~850ms of the same work, just breathing), donor RTT steady through vocab phases.
