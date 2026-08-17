@@ -53965,7 +53965,7 @@ var CLUSTER_HEBBIAN_MIXIN = {
    * branch) — zero external-memory allocation, single CSR walk. `lr`
    * here is always POSITIVE; the method handles the sign internally.
    */
-  async intraSynapsesAntiHebbian(pre, post, lr) {
+  async intraSynapsesAntiHebbian(pre, post, lr, opts = {}) {
     if (!this.synapses) return;
     if (!this._teachSubstrateReady("intraSynapsesAntiHebbian")) return;
     if (typeof this.synapses.antiHebbianUpdate !== "function") return;
@@ -53986,10 +53986,13 @@ var CLUSTER_HEBBIAN_MIXIN = {
     const BIOLOGICAL_SCALE_SYNC_THRESHOLD = 1e5;
     const atBioScale = (this.size | 0) > BIOLOGICAL_SCALE_SYNC_THRESHOLD;
     if (atBioScale) {
-      const _act = [];
-      for (let _i = 0; _i < post.length; _i++) {
-        if (post[_i]) _act.push(_i);
-      }
+      const _act = Array.isArray(opts.activeRows) ? opts.activeRows : (() => {
+        const a = [];
+        for (let _i = 0; _i < post.length; _i++) {
+          if (post[_i]) a.push(_i);
+        }
+        return a;
+      })();
       await this._antiHebbianChunked(this.synapses, pre, post, lr, { activeRows: _act });
     } else if (this._sparsePool && this._sparsePool.ready && typeof this._sparsePool.antiHebbianUpdate === "function") {
       try {
@@ -101777,11 +101780,13 @@ var Curriculum = class _Curriculum {
     const crossBucketPost = this._crossBucketPostScratch;
     for (let i = motorRegion.start; i < motorRegion.end; i++) crossBucketPost[i] = 0;
     let crossCount = 0;
+    const crossActiveRows = [];
     for (let i = 0; i < motorSize; i++) {
       if (cluster.lastSpikes[motorRegion.start + i]) {
         const b = Math.min(numBuckets - 1, Math.floor(i / bucketSize));
         if (b !== primaryBucket) {
           crossBucketPost[motorRegion.start + i] = 1;
+          crossActiveRows.push(motorRegion.start + i);
           crossCount++;
         }
       }
@@ -101789,7 +101794,7 @@ var Curriculum = class _Curriculum {
     if (crossCount === 0) return;
     const inhibitLr = Math.abs(lr) * 0.3;
     if (typeof cluster.intraSynapsesAntiHebbian === "function") {
-      await cluster.intraSynapsesAntiHebbian(cluster.lastSpikes, crossBucketPost, inhibitLr);
+      await cluster.intraSynapsesAntiHebbian(cluster.lastSpikes, crossBucketPost, inhibitLr, { activeRows: crossActiveRows });
     } else if (cluster.synapses && typeof cluster.synapses.antiHebbianUpdate === "function") {
       cluster.synapses.antiHebbianUpdate(cluster.lastSpikes, crossBucketPost, inhibitLr);
     }
