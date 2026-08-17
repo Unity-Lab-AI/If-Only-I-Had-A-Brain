@@ -1487,6 +1487,10 @@ const SERVER_STATE_MIXIN = {
       teachOutByType: this._teachOutByType || null,
       teachOutBytesSaved: this._teachOutBytesSaved || 0,
       repeatTeach: !!this._repeatTeachOk,
+      // Broadcast pipeline profile (2026-08-17) — 10fps loop cost split
+      // (state build vs stringify+send) so the event-loop backlog that
+      // taxes every teach-chain yield is decomposed from the field.
+      bcast: this._bcastProf || null,
     };
   },
 };

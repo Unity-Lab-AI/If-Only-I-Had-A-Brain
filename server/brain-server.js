@@ -8630,7 +8630,15 @@ setInterval(() => {
   const hasWsViewers = brain.clients.size > 0;
   const hasRecentPublicPoll = (Date.now() - (brain._lastPublicPollTs || 0)) < 30000;
   if (!hasWsViewers && !hasRecentPublicPoll) return; // nobody watching → skip the compute
+  // BROADCAST PIPELINE PROFILE (2026-08-17) — this loop runs 10fps and is a
+  // prime suspect for the measured eventLoopLagMs ~758 (every teach-chain
+  // yield pays the loop's backlog, and the backlog's composition was never
+  // measured). getState build vs stringify+send are timed separately and
+  // published (wsPressure.bcast) so the burner is a field read, not a theory.
+  const _bp = brain._bcastProf || (brain._bcastProf = { n: 0, getStateMs: 0, serializeSendMs: 0, worstMs: 0 });
+  const _b0 = Date.now();
   const stateObj = brain.getState();
+  const _b1 = Date.now();
   // Cache the public snapshot (SAME data points as the admin WS state).
   // donor-latest rides the public snapshot — the one endpoint the public
   // proxy provably forwards; the legend/compute pages upgrade their
@@ -8645,6 +8653,11 @@ setInterval(() => {
       }
     }
   }
+  const _b2 = Date.now();
+  _bp.n += 1;
+  _bp.getStateMs += (_b1 - _b0);
+  _bp.serializeSendMs += (_b2 - _b1);
+  if ((_b2 - _b0) > _bp.worstMs) _bp.worstMs = (_b2 - _b0);
 }, STATE_BROADCAST_MS);
 
 // #33 — donor-socket liveness heartbeat sweep. Pings every connected socket;
