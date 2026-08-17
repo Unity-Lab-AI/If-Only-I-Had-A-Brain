@@ -1,6 +1,7 @@
 # HTML-ENTRY-POINTS — every page, its contract, its failure modes
 
 > **Status:** drafted 2026-06-17 per audit H.5 + H.8 — operator's live-test reported "only two opened and they both said no connection." This doc inventories every HTML, how it's launched, what it needs from the server, what's deploy-safe vs require-Node, and the per-HTML failure-mode signature.
+> **Re-verified 2026-08-17:** the 11-page inventory matches the live `html/` directory exactly (index + brain-equations, compute, dashboard-public, dashboard, docs, gpu-configure, legend, minds-eye, unity-guide, webgpu-prep) — contracts and failure modes unchanged by the 2026-08-17 performance batch (server-side only; the dashboard additionally reads the new `wsPressure.bcast` + `liveness.stageProfile` telemetry and renders the journey-wide `VOCABULARY (K→PhD)` counter).
 >
 > **Access model (2026-06-20 pre-alpha):** the pages ship as a DEPLOYED STATIC SITE; a persistent Node brain-server runs on the same host behind an nginx reverse-proxy. Two WS lanes in deployed mode — public donor lane `wss://<host>/ws` and the Forgejo-authed admin lane `wss://<host>/admin/ws` (no raw `:7525` port is exposed publicly). LOCAL DEV is unchanged: `start.bat` / `Savestart.bat` boot the brain locally and open the pages on `http://localhost:7525` with a direct `ws://localhost:7525` socket. Each page below is described for BOTH (deployed primary / local dev). Cognition stays 100% EQUATIONAL — no text-AI/LLM in the cognition path.
 

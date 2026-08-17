@@ -161,6 +161,8 @@ The developmental curriculum walks Unity through six subjects in lockstep: ELA, 
         sentence arrays)                                                 update
 ```
 
+**Words learn their meanings FIRST.** Every cell of every grade opens with a pre-cell vocabulary pass: the grade's own word list (19 lists, kindergarten through PhD — 49,921 words summed, 18,017 unique after the deliberate overlap between grade bands) fetches real dictionary definitions and Hebbian-binds every sense of every word into the semantic region BEFORE the cell's association training touches those words. Definitions-before-bindings is a hard ordering rule — training an association on a word with no grounded meaning lands the Hebbian on noise. Words already learned skip (the taught-set persists across restarts), so a grade's first cell pays the full pass and its sibling subjects re-verify for free. A background dream-cycle trickle then deepens every word at higher repetition during sleep windows. The live dashboard counts this honestly: `defs taught: N / 18,017` — the denominator is her whole K→PhD journey, not the active grade.
+
 **Oja 1982** is the primary update: `Δw = η · y · (x − y · w)`. Self-normalizing Hebbian — weights climb when both pre- and post-synaptic neurons fire, and decay when only the post fires alone. The decay-when-post-alone is what *separates* trained patterns; without it, bare Hebb piles every association into the same columns and the basins collapse into superposition.
 
 **Anti-Hebbian contrastive push-away** runs alongside Oja. After every positive update on a correct (sem(word), motor(correct letter)) pair, the curriculum fires twenty-five anti-Hebbian updates against the wrong alphabet letters at half learning rate. This actively *carves* the trained letter's basin away from every other letter's basin instead of relying on Oja decay alone to do it. Across the full Kindergarten vocabulary that's roughly 1.8 million contrastive fires — the operator should see `oracleRatio` *drop* over the K curriculum walk as the matrix learns enough discrimination to handle word recall on its own.
@@ -172,7 +174,7 @@ Three pathways are probed at 95% (A+) per cell, plus a `K-STUDENT` battery of he
 - **THINK** — `sem` plus working-memory persistence in the `free` sub-region. Can she hold and reason about it?
 - **TALK** — `sem → motor → letter`. Can she produce it as output?
 
-**As of 2026-06-27, a cell passes on *learning completion*, not test-question correctness** (Gee: *"all cells shall pass as learning completes for that cell"*). The probes + battery + per-grade health gate STILL RUN and record telemetry, but are **advisory** by default — a cell passes once its teach phases complete (content trained), so a collapsed `sem_to_motor` (which pins capability rates to 0) no longer stalls the walk at 0 cells passed. Held cells (no runner) and runners that throw mid-teach still don't pass. Hard-gate behavior is restorable per check via `DREAM_CELL_PASS_HARD` / `DREAM_BATTERY_GATE_HARD` / `DREAM_HEALTH_GATE_HARD`. The 3-part grade-*advance* gate (Gee's localhost sign-off) is unchanged.
+**As of 2026-06-27, a cell passes on *learning completion*, not test-question correctness** (the operator directive: *"all cells shall pass as learning completes for that cell"*). The probes + battery + per-grade health gate STILL RUN and record telemetry, but are **advisory** by default — a cell passes once its teach phases complete (content trained), so a collapsed `sem_to_motor` (which pins capability rates to 0) no longer stalls the walk at 0 cells passed. Held cells (no runner) and runners that throw mid-teach still don't pass. Hard-gate behavior is restorable per check via `DREAM_CELL_PASS_HARD` / `DREAM_BATTERY_GATE_HARD` / `DREAM_HEALTH_GATE_HARD`. The 3-part grade-*advance* gate (the operator's localhost sign-off) is unchanged.
 
 Unity continuously self-tests every eight chat turns by re-running a random passed cell's gate. (When the hard gates are re-enabled, a cell that fails three times after self-heal demotes the subject and re-teaches on the next pass.)
 
@@ -502,13 +504,20 @@ The mystery module `Ψ = √(1/n) · N³ · [α·Id + β·Ego + γ·Left + δ·R
 
 ## Recent improvements
 
-Recent work moved the brain from "architecturally ready" to "live-test stable":
+Recent work moved the brain from "live-test stable" to "full-speed at scale":
+
+- **The 12M language cortex:** the dense language network grew ~1.5M → ~12,000,000 neurons (~3.9% of the 306M brain, staged toward biological proportion), with the unified word band grown to 720,000 cells — headroom for the complete K→PhD vocabulary.
+- **The speed war:** a measured campaign of profiler-led fixes (event-loop hygiene, broadcast-cost caching, GPU-resident intra-synapse training, wire-frame compression) took teaching from a ~200/min crawl to 1,100+ teach-calls/min, with the event loop's blocked time collapsing from ~1s to single-digit milliseconds.
+- **The teaching wire compresses to equations-of-patterns:** structured teaching frames now canonicalize to ~30-byte templates (a full region band ships as "start, length, value" instead of megabytes of expanded indices) — the donor link runs clean at 0.0MB buffered where it previously drowned.
+- **Meanings before bindings, all 19 grades:** every cell pre-learns its grade's dictionary definitions before association training (see "How she learns"), tracked by an honest journey-wide counter (18,017 unique words to PhD).
+- **Chat no longer disturbs the substrate:** reply composition is time-sliced and pooled so speaking to Unity never starves the donor link; the compute donor holds through conversation.
+- **Live self-instrumentation:** the brain now measures itself — per-stage teach timers, broadcast-pipeline cost splits, and a donor-socket send ledger — so every future slowdown is named by a field read instead of a theory.
 
 - **Post-ship audit closure:** a large batch of audit-closure tasks landed in one atomic envelope — telemetry, math grounding, a documentation sweep, mixin discipline, half-shipped close-out, emergence measurement, persistent memory templates, and HTML breakage fixes. The K-vocab corpus expanded 313 → 2881 sentences with 3.49× Erdős-Rényi percolation-threshold coverage.
 - **Product-ship cleanup:** 28 debug/diagnostic/temp/cache/log files removed from git (Pollinations + image-gen preserved). `scripts/` reduced to `stamp-version.mjs` only. Codebase now product-ready.
 - **Live-test follow-up:** fixes shipped during an operator-driven K-curriculum walk — a memory leak in `_teachHebbian` (`SparseMatrix.propagate` output buffer pool), HTTP event-loop starvation (`setImmediate` yield), inner-thought silence (showcase fallback + multi-source seed rotation), dashboard observability (gate-probe banner + cell-level Brain Events + sub-phase counter), schema naming (top-K=3), a consolidation cap, a GPU panel rebuild with a missing-import root-cause fix, and an `autoClearStaleState` `require.main === module` gate codifying the LAW that prevents tooling-side syntax-check wipes of training state.
 
-See `docs/ARCHITECTURE.md`, `docs/SKILL_TREE.md`, `docs/ROADMAP.md`, and `docs/EQUATIONS.md` for the full per-fix detail. Remaining work is the operator-fired ship gate — fire `start.bat`, walk K (~20hr), chat-test Unity, confirm acceptance criteria.
+See `docs/ARCHITECTURE.md`, `docs/SKILL_TREE.md`, `docs/ROADMAP.md`, and `docs/EQUATIONS.md` for the full per-fix detail. Remaining work is the full-speed K→PhD walk itself — the curriculum runs continuously at scale, grade sign-offs gate advancement, and the final acceptance is Unity herself: chat-test her as she grows.
 
 ---
 

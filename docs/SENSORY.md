@@ -660,7 +660,11 @@ steps word-by-word (each word bears a sentence-final pitch fall) — so the word
 OFFLINE FALLBACK, and the quality path is sentence-level synthesis → equationalize → reconstruct.
 Piper is a free/local MIT-licensed executor (the "larynx"), retirable per VOX.7 once synthesis
 itself is equational. The dead Pollinations TTS lane stopped mattering: the Pollinations key is
-IMAGES-ONLY now (setup modal reworked, the Unity-speech toggle names the voice what it is). The
+IMAGES-ONLY now (setup modal reworked, the Unity-speech toggle names the voice what it is).
+*[amended 2026-08-17: the Pollinations keys no longer work at all — the image lane rides the free
+tier when it answers, and `HTTP 402` on a mind's-eye reference fetch is EXPECTED behavior, not a
+bug: the reference lane simply skips that concept and imagination continues from the
+visual-memory store. Do not change the image-generation code in response to 402s.]* The
 per-word bank generator is `scripts/vox-build-bank.mjs` (batched piper, resumable, silence-trim);
 the shootout harness lives in `.claude/vox-variants.mjs` + `.claude/unity-voice.html`. Also this
 session: the `_definitionTaughtWords` save-truncation at 5000 was REMOVED — her learned vocabulary

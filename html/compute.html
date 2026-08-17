@@ -108,7 +108,7 @@
 // under '/html/compute.html' (resolved to '/html/js/...' which is
 // not a folder on disk).
 import { GPUCompute } from '/js/brain/gpu-compute.js';
-// ONE PROCESS (Gee 2026-07-17: "the minds eye and voice go on the GPU ... its
+// ONE PROCESS (operator directive 2026-07-17: "the minds eye and voice go on the GPU ... its
 // one process not bolted together shit") — the donor that computes her brain
 // ALSO computes her mind's eye. MindSpaceGPU brings the CDF 9/7 lifting (WGSL,
 // parity-checked vs the CPU reference) + the draw ops; mindspace_op messages
@@ -1040,7 +1040,7 @@ function connectToServer() {
       return;
     }
 
-    // ── ONE PROCESS — mind-space ops on THIS donor (Gee 2026-07-17) ──────────
+    // ── ONE PROCESS — mind-space ops on THIS donor (operator directive 2026-07-17) ──────────
     // The server routes her imagery here: perceive / describe / imagineFromState
     // / stylizeField / traceLineArt run on the SAME donor computing her brain.
     // MindSpaceGPU lazily inits its own (tiny — ≤512² planes) WGSL context with
