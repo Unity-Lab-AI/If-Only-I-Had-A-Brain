@@ -32003,3 +32003,30 @@ Gee (verbatim): *"oi.5b and LG.5 should be started and then completed, so get to
 ## 2026-08-17 — FLOW VIOLATION OWNED: the TPROF commit (fae6510) landed direct-to-main
 
 The TPROF stage-telemetry commit was made while standing on `main` (left there by the prior cascade) instead of the feature branch — caught immediately after push. Pushed history is never rewritten: forward-repaired by converging `develop` with `main` on both remotes. Same shape as the 652d118 round-3 violation; the guard is the same — check the branch BEFORE committing, not after.
+
+## 2026-08-17 — THE SPEED-WAR CLOSING DAY: the loop, the wire, and the chat all cured by instruments — teach/min 200 → 1,100+, sheds 95,639 → 0, the donor survives being spoken to
+
+The day's law, proven over and over: MEASURE → the field names the thief → fix ONLY what the numbers name → verify live. Every fix below was named by an instrument shipped the same day, and every one verified on Gee's own console or the public wire.
+
+**STALEGATE** — the 3ms base-throttle refusal staled the pattern lane on an EMPTY wire (~14-20 suppressed hebbianBound/s, sheds=0, buffer 0.0MB); stale only clears on a now-rare t9 send. The refusal + the walk wait queue-gate on ≥256KB real pressure (the RTTGATE law at the base term). Verified: suppression pinned 0 for whole boots.
+
+**SHADOWTIME** — the every-5th-call CPU intra shadow (~3.9s/pass over 360M nnz) pinned `_teachHebbian` at ~800ms avg — a count-based sampler scales cost WITH call rate. Both intra branches moved to wall-clock cadence (one shadow per 30s per direction). GPU mass untouched.
+
+**TPROF → the stage profile** — per-stage ms inside the pair primitives (`liveness.stageProfile`), because two theory-led fixes missed. Its FIRST live read decomposed everything: real compute ~15ms/rep; the rest was event-loop hops paying a ~758ms backlog.
+
+**HOPFIX** — all four teach chunkers yielded AFTER their final slice — a trailing hop that protected nothing and paid the loop's whole backlog (lateral's ENTIRE 344ms/call was one wasted hop). Yields now land only BETWEEN slices; every hop counted (`chunkerHops`, `hebbianYield`). Verified: lateral 344ms → 3ms, teach/min 200 → 984.
+
+**BCASTFIX + GSLAPS + CONSCFIX** — the backlog's source: `getState` at 312ms/call ~1/s = 36% of wall-clock building the dashboard snapshot, mis-attributed to teach phases by the BLOCKED tags. Fixed by instruments, not theories: bcast timers → section lap timers → the verdict (`consciousness` = 94%: TWO full 12M walks per call counting the STATIC layer histogram + hub mask). Caches: lang-region walk 5s, memoryStats SQLite aggregates 5s, growth block 5s, cortical counts once (array-identity keyed). Verified: getState 312 → ~13ms, loop lag ~1,000 → sub-200ms, the BLOCKED carpet dead.
+
+**PRECELL** — Gee (verbatim): *"but u have to fix precell set up for all celss to include asll words in the cell that all cells have precell setup for vocab as there are 2K+ in just kprecell setup, and u never correctly did every other cell of every other grade!!!!"* — `_preCellVocabSetup` at the top of EVERY cell of EVERY grade: the grade's own vocabulary learns its definitions BEFORE bindings (words-learned-first law), taught-set dedup so a grade's first cell pays and siblings ride free, 300-word chunks with dream windows. Verified live: defs 60 → 2,206 overnight.
+
+**DEFTOTAL + VOCTITLE** — the dashboard's defs denominator lied (hardcoded 2,247 = K's list under a journey-wide numerator; the panel title re-stamped "K-VOCABULARY" over it). The real journey: 19 grade lists, 49,921 summed, 18,017 unique. Live counter now `X / 18,017` under `📖 VOCABULARY (K→PhD)`.
+
+**DROPCHAT** — chat replies dropped the donor: `_emitDirectPropagate` ran a synchronous full-matrix propagate (360M nnz) + a fresh 96MB allocation PER LETTER. Pooled buffers + time-sliced propagateChunked. (Necessary but not sufficient — see TMPLFIX.)
+
+**SENDFOR → TMPLFIX** — the forensics ring (donor-socket send wrapper: kind/size ring + >2MB tripwire) named the real donor-killer on Gee's next hi: `sprs-t11:1968.8KB ×2` — 504,000-value "templates" = the fineType grammar band shipped full-region through an encoder built for ~300-value embeddings, doubled by the GINTRA twin (~4MB/rep; 95,639 sheds; donor RTT 7,654ms; the wire drowned and the donor died — the "hi" was the last straw, not the cause). Both template encoders now CANONICALIZE: zero-trim + single-contiguous-run fold for t11 (spikes only test value>0 — lossless, math-checked on the exact band: 504,000 values → {rowStart:168000, groupSize:168000, values:[1]} ≈ 30 bytes); exactly-equal-run fold only for t10 (amplitudes bit-identical); >4096-value survivors warn loudly. Verified live: sheds 95,639 → 0, suppression 46,129 → 0, buffer 18-52MB → 0.0MB, donor RTT 7,654 → 66ms, t11 average frame ~204 bytes.
+
+**PAIRSLICE** — Gee (verbatim): *"minutes of blocked event loop, that shit adds up doesnt it"* — l1b's designed 100-rep letter-pair dose ran as ~850ms of unbroken sync per word (~10+ min pinned loop per vocab phase). Cannot ride the GPU bound-op (asymmetric pre→post pairs vs the symmetric spike-buffer op — moving it would change training). Same math, same dose, time-sliced at ~60ms with no trailing hop; both call sites await. Rides the next press.
+
+**ALSO THIS DAY:** OI.5b + LG.5 closed (see their own entry); the first real dream window verified (`lastWindow: processed 11, bound 221` — the OI.2 accounting watch answered); memory-tier behavior confirmed correct (Tier 1 empty pre-dream by design); Pollinations keys recorded DEAD (free tier only; HTTP 402 reference fetches are expected, code untouched per Gee's order); the say-FIX-not-cut law recorded permanent; one flow violation (TPROF direct-to-main) owned + forward-repaired.
+

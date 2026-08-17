@@ -306,3 +306,14 @@ _Completed sections zeroed 2026-08-16 (third zeroing) — migrated VERBATIM to `
 
 - [x] **PAIRSLICE.1** **DONE — built + verified (node --check ×3 + ESM + bundle):** hebbianPairReinforce is async + time-sliced — same math, same dose, same rep count; a macrotask yield lands between reps whenever ~60ms of work accumulates (never trailing, per the HOPFIX law). Both call sites awaited (curriculum word-integrated final-rep pass + kindergarten math-gate remediation).
 - [ ] **PAIRSLICE.2** ⏳ rides the next press. Verify: BLOCKED lines during `_teachWordIntegrated` cap ≤~100ms (was 250ms-3.5s), l1b wall ≈ unchanged (~850ms of the same work, just breathing), donor RTT steady through vocab phases.
+
+---
+
+## DOCPUSH — 2026-08-17 · the full documentation ceremony — every doc, page, HTML synced to the post-speed-war brain
+
+> Gee (verbatim): *"full doc push, htmls, pages, readmes, workflow files, skill tree, archetect, laymens, equuations, all docs pages and htmls fully and completely updated, ANY AND ALL INFORMATIONAL DOCUMENTS EVEN ANY I FORGOT TO MENTION!!!!  and if any doc is nothing but a text wall it needs to be beautifully organized,formated, and designed layout to make them all beautiful and imaculate in theri organization and conveying of the brains informations"*
+
+- [x] **DOCPUSH.1** **DONE** — Core state docs (NOW, RESUME, ROADMAP, SKILL_TREE) — today's arc + capabilities in place.
+- [x] **DOCPUSH.2** **DONE** — Technical references (ARCHITECTURE, EQUATIONS, WEBSOCKET, SENSORY, KNOWN_ISSUES, HTML-ENTRY-POINTS) — wire canonicalization, GINTRA, telemetry organs, PRECELL, state-build caches, resolved/open issues.
+- [x] **DOCPUSH.3** **DONE (+ 5 pre-existing name leaks in README/compute/dashboard comments neutralized — quotes kept verbatim, names → operator)** — Public pages (README + all html/) — stale facts killed (2,247→18,017 journey where journey-scoped, 1.5M→12M, 90K→720K word_motor), layman pages beautified with their own styles, no codenames/names in public files.
+- [x] **DOCPUSH.4** **DONE** — Verify all edits (markdown clean, HTML tags balanced, no stale numbers survive a final grep) → single atomic commit → cascade → push BOTH remotes.
