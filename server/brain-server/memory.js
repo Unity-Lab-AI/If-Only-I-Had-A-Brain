@@ -813,6 +813,17 @@ const SERVER_MEMORY_MIXIN = {
    * `×N` count. Cap at 12 distinct rows for display sanity.
    */
   _getMemoryStats() {
+    // 5s CACHE (2026-08-17) — this builder ran SYNCHRONOUS SQLite aggregate
+    // scans (SUM over episodes with a WHERE, COUNT(*), re-prepared per call)
+    // on EVERY getState — the broadcast loop calls that ~1/s and the scans
+    // grow with her episode count: a measured slice of the 312ms/call
+    // broadcast build (bcast.getStateMs) that taxed every teach-chain yield.
+    // Memory stats move at human cadence; 5s freshness is invisible on the
+    // dashboard and frees the loop.
+    const _msNow = Date.now();
+    if (this._memStatsCache && (_msNow - (this._memStatsCacheAt || 0)) < 5000) {
+      return this._memStatsCache;
+    }
     // iter17 per operator verbatim 2026-05-05: "what the fuck are these
     // erronious max numbers to the memroies unity has a whole life ahead
     // not eroonous limits to dumb her down". Hard caps removed —
@@ -959,6 +970,8 @@ const SERVER_MEMORY_MIXIN = {
       stats.working.itemLabels = [];
     }
 
+    this._memStatsCache = stats;
+    this._memStatsCacheAt = _msNow;
     return stats;
   },
 };
