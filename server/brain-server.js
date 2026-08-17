@@ -8219,6 +8219,46 @@ wss.on('connection', (ws, req) => {
             }
             brain._lastPrimaryPromoteTs = Date.now();
             brain._gpuClient = ws;
+            // SEND FORENSICS (2026-08-17, the drop-on-"hi" hunt). The donor
+            // died ~1s after a chat message with 23.4MB SUDDENLY buffered on
+            // this socket — and the STALEGATE queue-gate proves the buffer
+            // was near-empty seconds earlier (zero suppressions all boot), so
+            // ONE huge send (or a burst) appears at chat time and no static
+            // read has named its sender. Wrap the socket's send ONCE: a
+            // 16-slot ring of {len, kind, ts} for every outbound frame, a
+            // one-shot tripwire on any >2MB send outside the canonical
+            // upload window, and a one-shot ring dump when bufferedAmount
+            // crosses 4MB outside the upload. The next "hi" prints the
+            // killer's name and size.
+            if (!ws._sendForensicsWrapped) {
+              ws._sendForensicsWrapped = true;
+              const _origSend = ws.send.bind(ws);
+              const _ring = [];
+              const _kindOf = (p) => {
+                try {
+                  if (typeof p === 'string') return 'json:' + (p.slice(0, 40).match(/"type"\s*:\s*"([^"]+)"/) || [])[1];
+                  if (p && p.length >= 6 && p[0] === 0x53 && p[1] === 0x50 && p[2] === 0x52 && p[3] === 0x53) return 'sprs-t' + p[4];
+                  return 'bin';
+                } catch { return '?'; }
+              };
+              ws.send = (payload, ...rest) => {
+                try {
+                  const len = (typeof payload === 'string') ? payload.length : (payload ? payload.length : 0);
+                  const kind = _kindOf(payload);
+                  _ring.push({ len, kind, ts: Date.now() });
+                  if (_ring.length > 16) _ring.shift();
+                  if (len > 2 * 1024 * 1024 && !brain._cortexUploadInFlight) {
+                    console.warn(`[SendForensics] LARGE non-upload send to PRIMARY donor: ${(len / 1048576).toFixed(1)}MB kind=${kind} buffered=${((ws.bufferedAmount || 0) / 1048576).toFixed(1)}MB — this is the drop-on-chat suspect class.`);
+                  }
+                  const _buf = ws.bufferedAmount || 0;
+                  if (_buf > 4 * 1024 * 1024 && !brain._cortexUploadInFlight && !ws._bufDumped) {
+                    ws._bufDumped = true;
+                    console.warn(`[SendForensics] donor buffer crossed ${(_buf / 1048576).toFixed(1)}MB OUTSIDE upload — last ${_ring.length} sends: ${_ring.map(r => `${r.kind}:${(r.len / 1024).toFixed(1)}KB`).join(' · ')}`);
+                  }
+                } catch { /* forensics must never break the send */ }
+                return _origSend(payload, ...rest);
+              };
+            }
             brain._lastPrimaryAt = Date.now();   // dead-socket defer window (uploads wait for a RECENT primary's return)
             brain._gpuConnected = true;
             brain._gpuWaitLogged = false;
