@@ -1,6 +1,20 @@
 # RESUME — Session Pickup Brief
 
-> ## ⭐⭐⭐ 2026-08-16 (latest) — GINTRA SHIPPED: the intra-synapse Hebbian is GPU-RESIDENT (zero donor changes, "no cutting shit") + the upload GC wall killed — ⏳ ONE press (Update & SAVESTART), then the 1300–1500 band verdict
+> ## ⭐⭐⭐ 2026-08-17 (latest) — GINTRA CONFIRMED LIVE on `85efc1d3` + the monitor named the TWO band-blockers, both built same-hour (STALEGATE + SHADOWTIME) — ⏳ ONE press (Update & SAVESTART), then the RAMP17.6 band verdict
+>
+> **GEE'S GO (verbatim):** *"OI.5b and LG.5 both are a go, and check she ramps up into 1500ish teach/min like she was(it obviouslyt has nothing to do with the GPU as weither i donate 10% or **% teaching is the exact same slow as speed!!!! read resume.md to first"* — and his donation-share datapoint (10% vs more = same speed) independently confirms the ceiling is SERVER-SIDE, exactly what both fixes below cut.
+>
+> **THE PRESS LANDED + GINTRA IS ALIVE (all live-verified on `85efc1d3`, booted 23:30Z):** boot clean at 12M, 17 matrices recruited (`cortex_intraSynapses` 12M rows 100%, `sem_to_word_motor` 719,684/720,000 = 99.96% — OI.5b's structural half ✓), recruitment verdict "healthy, +27.71% over 4 samples", t9 twins flowing (1,271), `_teachHebbian` collapsed **3.8s → 798ms avg** — the exact every-5th-shadow signature ((4×fast + 1×~3.9s CPU pass)/5). teach/min climbed 11 → 104 into the pair phases. `matrixDrivenPct` still null (emission not yet run this boot — OI.5b behavioral half WAITS).
+>
+> **BAND-BLOCKER 1 — STALEGATE (built + verified):** `hebbianSuppressedStale` bled 16,879 → 33,920 (~14–20/s) with sheds=0 and buffer 0.0MB: the 3ms BASE-throttle refusal marks the pattern lane STALE on an EMPTY wire, and stale only clears on a t9 clear send (rare post-scoping) — one refusal poisoned whole stale windows and SUPPRESSED every hebbianBound behind it (cross-projection AND GINTRA intra — dropped GPU training mass, a "no cutting shit" violation by bug). FIX = the RTTGATE law applied to the base term at BOTH governors: the refusal (admission) and the wait (`_patternLaneWait`) only engage when ≥256KB of OUR frames are actually buffered; under real pressure the pacing law is byte-identical.
+>
+> **BAND-BLOCKER 2 — SHADOWTIME (built + verified):** the every-5th-call CPU intra shadow costs ~3.9s/pass over 360M nnz → 798ms/call average → a hard **~75 teach/min ceiling** — and a count-based sampler scales cost WITH the call rate (self-defeating against 1300–1500). FIX = time-based cadence in BOTH intra branches (per-direction timestamps): at most one CPU shadow per 30s (`_intraShadowMinGapMs` overridable), first call after boot always shadows, GPU mass untouched (every rep still dispatches).
+>
+> **⏳ THE PRESS — RAMP17.6: ONE Update & SAVESTART** (server-only, no geometry change; ~10min upload replays). Verdict: `hebbianSuppressedStale` growth STOPS; `_teachHebbian` avg → ms-scale; pair phases climb toward the **1300–1500 band**; `matrixDrivenPct` climbs once ELA-K word emission runs. If the band still hides, `liveness.teachProfile` names the remainder.
+>
+> **OPEN BOARD:** RAMP17.6 (the press) · RAMP17.2/OI.5b behavioral half · OI.2 accounting watch · LG.6 hop 2 ~20M (⛔ segmented-rowPtr donor release + upload-compression decision FIRST) · LG.7 (25%) · `_writeTiledPatternOffset` one-arg anomaly. **Revert:** `restore-pre-language-growth` @ `69c8e0d` stands.
+
+> ## 2026-08-16 (prior) — GINTRA SHIPPED: the intra-synapse Hebbian is GPU-RESIDENT (zero donor changes, "no cutting shit") + the upload GC wall killed — ⏳ ONE press (Update & SAVESTART), then the 1300–1500 band verdict
 >
 > **THE ULTIMATUM AND THE ANSWER:** the 2.5h ramp watch returned **best teach/min 32, ramp NOT confirmed** — the pair phases (`_teachAssociationPairs`/`_teachCourseIdentity`, the 1300+ producers at 1.5M) crawled at ~25/min because `_teachHebbian` measured **3.8s/call (88ms at 1.5M — 43×)**: the INTRA matrix (360M nnz) was the ONE matrix with no GPU dispatch (T18.18 removed its OOM-prone full-array shadow) — pure CPU, per pair, per rep. Gee's verbatim orders: *"Do it correctly so that it fucking runs fast and we get our 1500 teach/ min back...!!!!"* + *"no cutting shit"* — no rep-dose cuts, no size dial-down, no revert.
 >

@@ -53816,8 +53816,10 @@ var CLUSTER_HEBBIAN_MIXIN = {
       if (this._teachIntermediateRep === true) return;
       const _sampleN = this._teachFinalRepSampleEveryN | 0;
       if (_sampleN > 1) {
-        this._intraShadowSampleCounter = (this._intraShadowSampleCounter || 0) + 1;
-        if (this._intraShadowSampleCounter % _sampleN !== 0) return;
+        const _nowSh = Date.now();
+        const _gapSh = (this._intraShadowMinGapMs | 0) > 0 ? this._intraShadowMinGapMs | 0 : 3e4;
+        if (_nowSh - (this._lastIntraShadowMs || 0) < _gapSh) return;
+        this._lastIntraShadowMs = _nowSh;
       }
     }
     const BIOLOGICAL_SCALE_SYNC_THRESHOLD = 1e5;
@@ -53932,8 +53934,10 @@ var CLUSTER_HEBBIAN_MIXIN = {
       if (this._teachIntermediateRep === true) return;
       const _sampleN = this._teachFinalRepSampleEveryN | 0;
       if (_sampleN > 1) {
-        this._intraShadowAntiSampleCounter = (this._intraShadowAntiSampleCounter || 0) + 1;
-        if (this._intraShadowAntiSampleCounter % _sampleN !== 0) return;
+        const _nowSh = Date.now();
+        const _gapSh = (this._intraShadowMinGapMs | 0) > 0 ? this._intraShadowMinGapMs | 0 : 3e4;
+        if (_nowSh - (this._lastIntraAntiShadowMs || 0) < _gapSh) return;
+        this._lastIntraAntiShadowMs = _nowSh;
       }
     }
     const BIOLOGICAL_SCALE_SYNC_THRESHOLD = 1e5;
