@@ -4129,6 +4129,94 @@ export class Curriculum {
   }
 
   /**
+   * PRE-CELL VOCAB SETUP (2026-08-17) — every cell of every grade opens by
+   * LEARNING its grade's vocabulary before any binding trains on it:
+   * definitions land FIRST, or the cell's Hebbian associations land on
+   * noise (the words-must-be-learned-first law). Kindergarten used to pay
+   * this as a one-off pre-cell pass; the 2026-08-14 de-block removed it
+   * (trickle-only), and no other grade ever had one — their words only
+   * reached the dream-trickle lane, which starves whenever walk phases run
+   * long between windows. This restores the pass and generalizes it to
+   * ALL cells:
+   *
+   *   - the grade's OWN list loads (K/pre-K → K_VOCABULARY; every other
+   *     grade → gradeVocabularyFor) — corpus-bleed holds by construction;
+   *   - words already in `_definitionTaughtWords` (persisted) skip, so the
+   *     FIRST cell of a grade pays the full pass and every sibling cell of
+   *     the same grade re-verifies for free;
+   *   - the teach runs in 300-word chunks with interleaved dream windows
+   *     (the same memory-pressure pattern the original K pass used);
+   *   - the full list also enqueues on the dream-trickle lane for the
+   *     deeper reps:4 multi-def pass (idempotent, dedups internally).
+   *
+   * DREAM_PRECELL_VOCAB=0 skips it (trickle-only, the old shape); default ON.
+   */
+  async _preCellVocabSetup(subject, grade) {
+    const cluster = this.cluster;
+    if (!cluster || typeof this._teachWordDefinitions !== 'function') return;
+    if (typeof process !== 'undefined' && process?.env?.DREAM_PRECELL_VOCAB === '0') {
+      this._hb(`[Curriculum] 📚 PRE-CELL VOCAB skipped for ${subject}/${grade} — DREAM_PRECELL_VOCAB=0 (trickle-only mode).`);
+      return;
+    }
+    let words = [];
+    try {
+      if (grade === 'kindergarten' || grade === 'pre-K') {
+        const { K_VOCABULARY } = await import('./k-vocabulary.js');
+        if (Array.isArray(K_VOCABULARY)) words = K_VOCABULARY;
+      } else {
+        const { gradeVocabularyFor } = await import('./grade-vocabulary.js');
+        const gv = await gradeVocabularyFor(grade);
+        if (Array.isArray(gv)) words = gv;
+      }
+    } catch (err) {
+      this._hb(`[Curriculum] 📚 PRE-CELL VOCAB — vocabulary load failed for ${subject}/${grade} (non-fatal; the dream-trickle still carries defs): ${err?.message || err}`);
+      return;
+    }
+    if (words.length === 0) return;
+    // The deepening lane rides regardless — reps:4 multi-def during dream
+    // windows; idempotent per grade, dedups against taught + queued.
+    try { this._enqueueDefinitionSeed(cluster, words, grade); } catch { /* non-fatal */ }
+    const taught = cluster._definitionTaughtWords instanceof Set
+      ? cluster._definitionTaughtWords : new Set();
+    const todo = words.filter(w => w && typeof w === 'string' && !taught.has(w));
+    if (todo.length === 0) {
+      this._hb(`[Curriculum] 📚 PRE-CELL VOCAB ${subject}/${grade} — all ${words.length} grade words already learned (a sibling cell paid the pass). Cell starts now.`);
+      return;
+    }
+    this._currentMacroPhase = `📚 PRE-CELL VOCAB — ${subject}/${grade}`;
+    this._macroPhaseProgress = { current: 0, total: todo.length, label: `PRE-CELL VOCAB ${subject}/${grade}` };
+    this._hb(`[Curriculum] 📚 PRE-CELL VOCAB START — ${subject}/${grade}: ${todo.length} of ${words.length} grade words unlearned; multi-def Hebbian at reps:1, 300-word chunks with dream windows between. Definitions land BEFORE the cell's bindings train on these words.`);
+    const CHUNK = 300;
+    let totalTrained = 0, totalWordsBound = 0, totalDefsBound = 0, totalTimeouts = 0, totalSlowWords = 0;
+    const t0 = Date.now();
+    for (let chunkStart = 0; chunkStart < todo.length; chunkStart += CHUNK) {
+      const chunk = todo.slice(chunkStart, chunkStart + CHUNK);
+      this._hb(`[Curriculum] 📚 PRE-CELL VOCAB chunk ${chunkStart}–${chunkStart + chunk.length}/${todo.length} (${subject}/${grade})`);
+      const stats = await this._teachWordDefinitions(chunk, { reps: 1, label: `PRECELL-${subject}-${grade}` });
+      totalTrained += stats?.totalTrained || 0;
+      totalWordsBound += stats?.wordsBound || 0;
+      totalDefsBound += stats?.totalDefsBound || 0;
+      totalTimeouts += stats?.timeouts || 0;
+      totalSlowWords += stats?.slowWords || 0;
+      this._macroPhaseProgress = {
+        current: Math.min(chunkStart + chunk.length, todo.length),
+        total: todo.length,
+        label: `PRE-CELL VOCAB ${subject}/${grade}`,
+      };
+      if (chunkStart + CHUNK < todo.length) {
+        try { await this._dreamWindow({ minMs: 30_000, settleMs: 3_000 }); }
+        catch (dwErr) { this._hb(`[Curriculum] 📚 PRE-CELL VOCAB dream-window error (non-fatal): ${dwErr?.message || dwErr}`); }
+      }
+    }
+    const stall = (totalTimeouts > 0 || totalSlowWords > 0)
+      ? ` · ⚠ ${totalTimeouts} per-word timeouts, ${totalSlowWords} slow words`
+      : '';
+    this._hb(`[Curriculum] 📚 PRE-CELL VOCAB DONE — ${subject}/${grade}: ${totalTrained} Hebbian fires across ${totalWordsBound} words (${totalDefsBound} definition senses) in ${((Date.now() - t0) / 1000).toFixed(0)}s${stall}. Cell teach phases begin.`);
+    this._currentMacroPhase = null;
+    this._macroPhaseProgress = null;
+  }
+
+  /**
    * Retention rate — how many of the last N runs for this cell passed.
    * Measures whether the binding SURVIVES subsequent curriculum runs
    * (i.e. isn't drifting away).
@@ -8304,6 +8392,18 @@ export class Curriculum {
     // ALWAYS releases (normal return or exception).
     cluster._probeGateActive = true;
 
+    // PRE-CELL VOCAB SETUP (2026-08-17) — every cell opens by learning its
+    // grade's vocabulary: definitions land BEFORE the cell's bindings train
+    // on those words. Runs under the cell's substrate pause; words already
+    // learned skip, so only the grade's FIRST cell pays the full pass and
+    // sibling cells re-verify for free. Non-fatal on error — the cell
+    // proceeds and the dream-trickle lane still carries defs.
+    try {
+      await this._preCellVocabSetup(subject, grade);
+    } catch (err) {
+      this._hb(`[Curriculum] 📚 PRE-CELL VOCAB error (non-fatal — cell proceeds; the dream-trickle still carries defs): ${err?.message || err}`);
+    }
+
     // Cell-alive heartbeat — fires every 10 s for the whole cell run.
     // Long teach phases (e.g. _teachWordEmission at biological scale)
     // can go silent for minutes inside a single sync loop; this timer
@@ -9314,11 +9414,13 @@ export class Curriculum {
       // Per-grade vocab prefetch (G1→PhD) — fire-and-forget cache warm of
       // the grade's vocabulary corpus (grade-vocabulary.js registry → the
       // grade<N>-vocabulary.js frequency-band file) so dictionary lookups
-      // during the grade's cells + chat are instant. Prefetch-only (no
-      // upfront Hebbian) — same basin-blur-avoidance design as the K block
-      // below; definition binding stays lazy (chat / runner teach paths).
-      // K + pre-K are handled separately (K by the block below). Skipped
-      // silently if the grade has no registry entry. Per the operator 2026-06-18.
+      // during the grade's cells + chat are instant. NOTE (2026-08-17): the
+      // REAL definition teach now happens in `_preCellVocabSetup`, which
+      // every cell runs at its start (definitions before bindings — the
+      // words-learned-first law, generalized to all grades). This block is
+      // an early cache warm + trickle enqueue only; both are idempotent
+      // against the per-cell pass. Skipped silently if the grade has no
+      // registry entry.
       if (grade !== 'kindergarten' && grade !== 'pre-K'
           && cluster && typeof cluster.prefetchDefinitions === 'function') {
         if (!cluster._gradeVocabPrefetched) cluster._gradeVocabPrefetched = {};
@@ -9349,24 +9451,17 @@ export class Curriculum {
         }
       }
 
-      // PREFETCH-ONLY at K start (no upfront Hebbian).
-      // Earlier upfront _teachWordDefinitions(K_VOCABULARY) was DROPPED
-      // because:
-      //   (a) Basin-blur risk: ~70k cross-bindings would dense-web the
-      //       sem region, washing out discriminative basins K-vocab
-      //       teach is meanwhile carving (the same problem iter22's
-      //       wMax bisect / anti-Hebbian / top-K-prune were built to
-      //       fight).
-      //   (b) Knowing definitions ≠ Hebbian-bound co-activations.
-      //       Operator's "she shall know definitions" is fully served
-      //       by `_emitDefinition` (lookup + emit verbatim) alone.
-      //       Hebbian binding is BONUS that may be net-negative.
-      // Replacement: prefetch all 2289 K_VOCABULARY definitions in
-      // parallel so cache is HOT when chat queries arrive. Definition
-      // Hebbian fires LAZILY in chat path when user asks
-      // "what is X" — lifetime learning instead of upfront blur.
-      // Cache warm-up takes ~1 minute (network-bound), not 30 minutes
-      // (Hebbian-bound).
+      // K-START CACHE WARM. NOTE (2026-08-17): the old rationale that lived
+      // here ("prefetch-only, no upfront Hebbian, definition binding stays
+      // lazy") is SUPERSEDED — the removal of K's pre-cell definition pass
+      // starved the vocabulary lane and taught bindings BEFORE meanings,
+      // backwards against the words-learned-first law. The authoritative
+      // path is now `_preCellVocabSetup`, run at the START of EVERY cell of
+      // EVERY grade: the grade's own words learn their definitions first,
+      // already-learned words skip, chunked with dream windows. This block
+      // remains as K's early background cache warm (so the per-cell pass
+      // hits a hot cache) + the trickle enqueue for reps:4 deepening —
+      // both idempotent against the per-cell pass.
       if (grade === 'kindergarten'
           && !cluster._kVocabPrefetched
           && cluster && typeof cluster.prefetchDefinitions === 'function') {
