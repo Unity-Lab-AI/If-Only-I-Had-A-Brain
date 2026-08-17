@@ -283,3 +283,15 @@ _Completed sections zeroed 2026-08-16 (third zeroing) — migrated VERBATIM to `
 - [x] **SENDFOR.1** **DONE — built + verified (node --check):** the PRIMARY donor socket's `send` wrapped ONCE at gpu_register: 16-slot ring of {kind, len} per outbound frame (SPRS type sniffed, JSON type extracted), a tripwire on any >2MB non-upload send, and a one-shot ring dump when bufferedAmount crosses 4MB outside the upload window. The next "hi" prints the killer's name, size, and the 15 frames before it.
 - [ ] **SENDFOR.2** ⏳ GEE: press, say "hi" again, paste the `[SendForensics]` lines + any `DONOR CRUMB` line (the donor also reports its own death cause on reconnect — none appeared in tonight's paste, so also check the donor app's own window for its close reason).
 - [ ] **SENDFOR.3** the named sender gets its fix (template/fragment/pace — whatever fits what the forensics name).
+
+---
+
+## TMPLFIX — 2026-08-17 · SENDFOR's verdict: 2MB "templates" — the fineType band pattern shipped 504,000 values ×2 per rep; canonicalized to ~30 bytes
+
+> Gee (verbatim): *"okay turn on your monitor shit, im going to say hi again"* → *"think it dropped"* → his forensics paste (verbatim): *"[SendForensics] donor buffer crossed 5.8MB OUTSIDE upload — last 16 sends: ... sprs-t11:1968.8KB · sprs-t11:1968.8KB · json:state:23.6KB"*
+
+**THE CONVICTION:** 1,968.8KB = ~504,000 f32 template values = EXACTLY the fineType region (504,000 cells) — the grammar-band pattern the definition/mechanics path writes per pair, fed through the t11 template encoder (built for ~300-value embeddings) as a full-region values array, shipped TWICE (main + GINTRA twin) ≈ 4MB/rep. The watch caught the wire pre-drowned BEFORE the hi (buf 17.9MB, RTT 7,654ms, sheds 94,999 — the hi was the last straw, not the cause). Same flooder class as the night's 23.4MB kill.
+
+- [x] **TMPLFIX.1** **DONE — built + verified (node --check + ESM + the exact 504K band case math-checked: → {rowStart:168000, groupSize:168000, values:[1]}, identical expanded row set, ~30 bytes):** t11 spike-template canonicalization at the encoder — trim zero head/tail; a single contiguous nonzero run folds into groupSize (t11 spikes only test value>0, lossless). Covers fineType bands, motor buckets, one-hots universally; ~300-value embeddings pass untouched. Twin inherits automatically.
+- [x] **TMPLFIX.2** **DONE** — t10 current-template sibling: zero trim always; run-fold only when every nonzero value is EXACTLY equal (amplitudes preserved bit-identical). Both encoders warn loudly (30s rate-limit) if a >4096-value template ever survives canonicalization — no silent flood can return.
+- [ ] **TMPLFIX.3** ⏳ GEE: ONE **Update & SAVESTART**. Verify: sheds STOP climbing, buffer stays ~0MB through def/mechanics phases, donor RTT settles <1s, teach/min recovers from the wire-brake, [SendForensics] stays quiet — then say "hi" AGAIN: the donor must HOLD (DROPCHAT.3 verify finally readable on a healthy wire).
