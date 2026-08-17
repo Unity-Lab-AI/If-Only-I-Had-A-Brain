@@ -3267,6 +3267,13 @@ export class Curriculum {
           emissionTicksPerMin: emitRate,
           sinceLastEmitTickMs: sinceEmit,
           teachProfile,
+          // STAGE PROFILE (2026-08-17) — per-stage wall-ms INSIDE the pair
+          // primitives (substrate-wait / cross-projection / intra / scan /
+          // anti), so a stuck per-call average is decomposed from the field
+          // instead of re-theorized: the ~350ms lateral + ~365ms hebbian
+          // averages survived two theory-led fixes because nothing measured
+          // WHICH stage inside them was paying. Fixed keys, bounded.
+          stageProfile: this._teachStageProfile || null,
         };
       })(),
       activePhase,
@@ -11324,7 +11331,9 @@ export class Curriculum {
   }
 
   async _teachHebbian(lr, opts = {}) {
+    const _sp0 = Date.now();
     await this._awaitComputeSubstrate();   // no-donor gate — pause with a free loop instead of CPU-grinding
+    const _sp1 = Date.now();
     const cluster = this.cluster;
     if (!cluster) return;
     // opts.projectionsWhitelist scopes _crossRegionHebbian to a subset
@@ -11376,14 +11385,28 @@ export class Curriculum {
       }
     };
     await _yieldIfHot();
+    const _sp2 = Date.now();
     await cluster._crossRegionHebbian(lr, opts);
+    const _sp3 = Date.now();
     await _yieldIfHot();
-    if (opts.skipIntraSynapses || opts.skipIntraHebbian) return;
+    // STAGE PROFILE accumulator — fixed keys, cumulative ms + calls; read
+    // off liveness.stageProfile so the next fix is named by a field read.
+    const _spRec = (intraMs) => {
+      const sp = this._teachStageProfile || (this._teachStageProfile = {});
+      const e = sp.hebbian || (sp.hebbian = { calls: 0, substrateMs: 0, crossMs: 0, intraMs: 0 });
+      e.calls += 1;
+      e.substrateMs += (_sp1 - _sp0);
+      e.crossMs += (_sp3 - _sp2);
+      e.intraMs += intraMs;
+    };
+    if (opts.skipIntraSynapses || opts.skipIntraHebbian) { _spRec(0); return; }
+    const _sp4 = Date.now();
     if (typeof cluster.intraSynapsesHebbian === 'function') {
       await cluster.intraSynapsesHebbian(cluster.lastSpikes, cluster.lastSpikes, lr);
     } else if (cluster.synapses && typeof cluster.synapses.hebbianUpdate === 'function') {
       cluster.synapses.hebbianUpdate(cluster.lastSpikes, cluster.lastSpikes, lr);
     }
+    _spRec(Date.now() - _sp4);
     // Optional BCM pass — stacks with Oja to provide per-neuron
     // sliding-threshold homeostasis. No-op when `_bcmEnabled` is
     // false (the default); opt-in via `cluster._bcmEnabled = true`
@@ -11546,7 +11569,9 @@ export class Curriculum {
    * no cluster reconstruction is needed.
    */
   async _teachLateralInhibition(lr, numBuckets = 26) {
+    const _lp0 = Date.now();
     await this._awaitComputeSubstrate();   // no-donor gate — pause with a free loop instead of CPU-grinding
+    const _lp1 = Date.now();
     const cluster = this.cluster;
     if (!cluster) return;
     const motorRegion = cluster.regions && cluster.regions.motor;
@@ -11615,10 +11640,23 @@ export class Curriculum {
     // positive-pair Oja update — too aggressive would starve the
     // recurrent circuitry entirely.
     const inhibitLr = Math.abs(lr) * 0.3;
+    const _lp2 = Date.now();
     if (typeof cluster.intraSynapsesAntiHebbian === 'function') {
       await cluster.intraSynapsesAntiHebbian(cluster.lastSpikes, crossBucketPost, inhibitLr, { activeRows: crossActiveRows });
     } else if (cluster.synapses && typeof cluster.synapses.antiHebbianUpdate === 'function') {
       cluster.synapses.antiHebbianUpdate(cluster.lastSpikes, crossBucketPost, inhibitLr);
+    }
+    // STAGE PROFILE — substrate-wait / bucket-scan-and-build / anti-update,
+    // cumulative, read off liveness.stageProfile. `active` tracks the mean
+    // cross-bucket row count so the anti stage's cost has its size next to it.
+    {
+      const sp = this._teachStageProfile || (this._teachStageProfile = {});
+      const e = sp.lateral || (sp.lateral = { calls: 0, substrateMs: 0, scanMs: 0, antiMs: 0, activeSum: 0 });
+      e.calls += 1;
+      e.substrateMs += (_lp1 - _lp0);
+      e.scanMs += (_lp2 - _lp1);
+      e.antiMs += (Date.now() - _lp2);
+      e.activeSum += crossCount;
     }
   }
 
