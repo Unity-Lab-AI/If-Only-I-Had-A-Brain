@@ -317,3 +317,14 @@ _Completed sections zeroed 2026-08-16 (third zeroing) — migrated VERBATIM to `
 - [x] **DOCPUSH.2** **DONE** — Technical references (ARCHITECTURE, EQUATIONS, WEBSOCKET, SENSORY, KNOWN_ISSUES, HTML-ENTRY-POINTS) — wire canonicalization, GINTRA, telemetry organs, PRECELL, state-build caches, resolved/open issues.
 - [x] **DOCPUSH.3** **DONE (+ 5 pre-existing name leaks in README/compute/dashboard comments neutralized — quotes kept verbatim, names → operator)** — Public pages (README + all html/) — stale facts killed (2,247→18,017 journey where journey-scoped, 1.5M→12M, 90K→720K word_motor), layman pages beautified with their own styles, no codenames/names in public files.
 - [x] **DOCPUSH.4** **DONE** — Verify all edits (markdown clean, HTML tags balanced, no stale numbers survive a final grep) → single atomic commit → cascade → push BOTH remotes.
+
+---
+
+## AWAITFIX — 2026-08-17 · the phoneme-blending stampede: ONE missing await = the 13-35s Oja WALL storm, the timer starvation, the mid-phase donor drop, AND silent pattern corruption
+
+> Gee (verbatim): *"is she frozen? its showing 0 teach/min"* — and his console paste: hundreds of `Oja over 300,000-500,000 ACTIVE rows took 13-35s WALL` lines completing in same-second batches, eventLoopLag 4,159ms, the donor dropped mid-phase ("compute substrate BACK after 107s (7416 teach calls refused)"), donor throughput collapsed 18.6→3.1Gn/s.
+
+**THE CONVICTION (kindergarten.js:8050):** `cluster.intraSynapsesHebbian(pre, post, lr)` fired WITHOUT await inside the per-letter-pair loop — while the else-branch comment directly beneath documents why awaiting is mandatory. At 12M each call = chunked CPU Oja over 300-500K active phon rows (custom pre/post vectors are identity-gated OFF the GPU bound-op by design). Un-awaited: (1) dozens interleaved concurrently — the WALL storm + the crawl; (2) the continuous yield churn starved Node's timer queue — donor pings/heartbeats are timers — the drop; (3) **iteration i+1 overwrote the REUSED scratch pre/post buffers while call i still computed — silently training corrupted patterns** (the exact snapshot hazard `_ojaUpdateChunked`'s own comment warns about — it snapshots indices, reads the vectors live).
+
+- [x] **AWAITFIX.1** **DONE — built + verified (node --check + bundle; grep-swept: this was the ONLY bare intra call in the curriculum):** the call is awaited. Same math, same dose, serialized — bounded memory, honest patterns, breathing timers.
+- [ ] **AWAITFIX.2** ⏳ GEE: ONE **Update & SAVESTART**. Verify: the `Oja ... WALL` lines drop to ONE at a time with falling walls, eventLoopLag returns to sub-200ms during phoneme blending, the donor HOLDS through the whole phase, phases advance past 7/25.
