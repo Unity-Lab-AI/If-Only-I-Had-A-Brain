@@ -178,3 +178,15 @@ _Completed sections zeroed 2026-08-16 (third zeroing) — migrated VERBATIM to `
 - [x] **PRECELL.1** **DONE — built + verified (node --check + ESM + bundle):** `_preCellVocabSetup(subject, grade)` — runs at the TOP of EVERY cell (runSubjectGrade): load the grade's OWN vocabulary (K → K_VOCABULARY 2,247; every other grade → gradeVocabularyFor), skip words already in `_definitionTaughtWords` (first cell of a grade pays the full pass; sibling cells re-verify cheap), background-prefetch definitions, teach multi-def Hebbian chunked with interleaved dream windows, enqueue into the trickle for deepening. Dashboard shows live progress (macro-phase + defs-taught climbing).
 - [x] **PRECELL.2** **DONE** — the K-only de-blocked path folds INTO the generalized setup (no special-casing K; DREAM_PRECELL_VOCAB=0 is the only skip, default ON).
 - [~] **PRECELL.3** verify: build half DONE (node --check + ESM + bundle PASS); node --check + ESM + bundle; on the next press the boot shows the pre-cell pass running before ela/kindergarten phases, "defs taught" climbs off 0 DURING pre-cell, and every later grade logs its own pre-cell pass.
+
+---
+
+## DEFTOTAL — 2026-08-17 · the dashboard defs-taught denominator = the FULL K→PhD journey, not K's 2,247
+
+> Gee (verbatim): *"ok 2247 for kprecell how many words in the next one? and the like 18grades after that and all theri cells??? u cant have 0/2247 when there are hundreds of cells and hundreds of thousands of words... you fucking idiot u have to update the dashboard  too becasue 0/2247 is not right maininly the "2247""*
+
+**THE MEASURED ANSWER:** per-grade lists — K 2,247 · G1 2,022 · G2 2,083 · G3 1,439 · G4 2,148 · G5 2,030 · G6 2,698 · G7 3,650 · G8 2,914 · G9 4,255 · G10 4,198 · G11 4,171 · G12 4,093 · COL1 2,544 · COL2 2,037 · COL3 1,941 · COL4 2,092 · GRAD 1,786 · PHD 1,573 = **49,921 summed, 18,017 UNIQUE** (the AoA bands overlap by design; a word taught once is taught). The numerator (`_definitionTaughtWords.size`) was ALREADY journey-wide — only the denominator lied at 2,247 (`state.js` hardcode + dashboard fallback).
+
+- [x] **DEFTOTAL.1** **DONE** — `grade-vocabulary.js` gains `fullJourneyVocabularyStats()` — loads all 19 lists once, dedups, caches {unique, sum, perGrade}.
+- [x] **DEFTOTAL.2** **DONE** — `state.js` publishes `kVocabTotal` = the journey-unique total (one-time async warm; null until ready — no invented fallback) instead of the 2247 hardcode.
+- [x] **DEFTOTAL.3** **DONE** — `dashboard.html` renders taught / journey-total honestly (no `|| 2247` fallback) + tooltip updated to journey-wide wording.
