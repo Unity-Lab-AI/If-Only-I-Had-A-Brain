@@ -1188,7 +1188,7 @@ export const CLUSTER_HEBBIAN_MIXIN = {
    * branch) — zero external-memory allocation, single CSR walk. `lr`
    * here is always POSITIVE; the method handles the sign internally.
    */
-  async intraSynapsesAntiHebbian(pre, post, lr) {
+  async intraSynapsesAntiHebbian(pre, post, lr, opts = {}) {
     if (!this.synapses) return;
     if (!this._teachSubstrateReady('intraSynapsesAntiHebbian')) return;
     if (typeof this.synapses.antiHebbianUpdate !== 'function') return;
@@ -1224,8 +1224,19 @@ export const CLUSTER_HEBBIAN_MIXIN = {
       // TW S2 — active-row iteration (see intraSynapsesHebbian): one typed
       // scan of `post` replaces the full row-range walk; antiHebbianUpdate is
       // post-gated so skipped rows are exact no-ops — bit-identical.
-      const _act = [];
-      for (let _i = 0; _i < post.length; _i++) { if (post[_i]) _act.push(_i); }
+      // CALLER-SUPPLIED ACTIVES (2026-08-17). At the 12M cortex this scan
+      // itself became the cost: ~360ms of full-cluster walk per call to find
+      // a few thousand actives the caller often SET by index moments earlier
+      // (measured live: _teachLateralInhibition at 364ms/call, once per pair
+      // per rep — a pair-phase band-blocker). When the caller passes its
+      // active indices the scan is skipped; the update is identical either
+      // way (the same rows, the same math). Callers that don't know their
+      // actives keep the scan exactly as before.
+      const _act = Array.isArray(opts.activeRows) ? opts.activeRows : (() => {
+        const a = [];
+        for (let _i = 0; _i < post.length; _i++) { if (post[_i]) a.push(_i); }
+        return a;
+      })();
       await this._antiHebbianChunked(this.synapses, pre, post, lr, { activeRows: _act });
     } else if (this._sparsePool && this._sparsePool.ready && typeof this._sparsePool.antiHebbianUpdate === 'function') {
       try {
