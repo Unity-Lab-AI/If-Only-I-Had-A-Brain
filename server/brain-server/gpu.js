@@ -2850,9 +2850,11 @@ const SERVER_GPU_MIXIN = {
         // 16MB cliff, and the quadratic brake still owns any real pressure.
         : 3;
       let _mult = 1;
+      let _bufGate = 0;   // live buffered bytes — queue-gates the base refusal below
       try {
         const _linkCap = this._donorLinkCapBytes();
         const _buf = (typeof ws.bufferedAmount === 'number') ? ws.bufferedAmount : 0;
+        _bufGate = _buf;
         // QUADRATIC BRAKE, EARLY AND STEEP (2026-08-15). The linear
         // `min(16, buf/linkCap)` law had a 240ms ceiling once the base dropped
         // to 15ms - not enough to hold a bursting lane, so the buffer sawtoothed
@@ -2881,7 +2883,20 @@ const SERVER_GPU_MIXIN = {
         if (_rtt > 1000 && _buf > 262144) _mult = Math.min(133, Math.max(_mult, _rtt / 1000));
       } catch { /* non-fatal — fall back to the flat base throttle */ }
       const THROTTLE_MS = Math.round(_baseThrottle * _mult);
-      if (this._wsPatternLastSendMs && (Date.now() - this._wsPatternLastSendMs) < THROTTLE_MS) {
+      // BASE REFUSAL QUEUE-GATED (2026-08-17) — the same law the RTT term got
+      // above, applied to the 3ms base. A refusal here marks the lane STALE,
+      // and stale now clears ONLY on an explicit clear_spike_region send —
+      // rare since region clears were scoped (measured live: 217 t9 frames in
+      // ~an hour) — so one 3ms refusal on an EMPTY wire poisoned the lane for
+      // a whole stale window and suppressed every dependent hebbianBound
+      // behind it (measured live: 29,404 suppressions at buffer 0.0MB with
+      // sheds 0 — ~20/s of GPU training mass dropped across cross-projection
+      // AND intra dispatches). At KB-scale template frames the 3ms floor
+      // guards nothing the quadratic brake + 16MB lane cap don't already own;
+      // the refusal (and its stale poison) now engages only when ≥256KB of
+      // OUR frames are actually buffered — real pressure, the case this guard
+      // was built for. Under pressure the pacing law is byte-identical.
+      if (_bufGate > 262144 && this._wsPatternLastSendMs && (Date.now() - this._wsPatternLastSendMs) < THROTTLE_MS) {
         this._wsPatternThrottleSkips = (this._wsPatternThrottleSkips || 0) + 1;
         // A throttled frame breaks the in-flight pattern exactly as a shed one
         // does - the write never reaches the GPU spike buffer the bound Hebbian
@@ -2972,12 +2987,14 @@ const SERVER_GPU_MIXIN = {
       const ws = this._gpuClient;
       if (!ws || ws.readyState !== 1) return;
       let mult = 1;
+      let bufNow = 0;
       try {
         // SAME quadratic brake as the lane's own admission (see
         // _donorPatternLaneOpen) - one law at both governors so the walk waits
         // exactly as long as the lane would refuse. Includes the RTT term the
         // first version of this method was missing.
         const buf = (typeof ws.bufferedAmount === 'number') ? ws.bufferedAmount : 0;
+        bufNow = buf;
         const brakeRef = 2 * 1024 * 1024;
         if (buf > brakeRef) mult = Math.min(133, Math.pow(buf / brakeRef, 2));
         const pc = (this.clients && this.clients.get) ? this.clients.get(ws) : null;
@@ -2991,6 +3008,11 @@ const SERVER_GPU_MIXIN = {
       const dueAt = (this._wsPatternLastSendMs || 0) + Math.round(base * mult);
       let overCap = false;
       try { overCap = ws.bufferedAmount > this._donorPatternLaneCapBytes(); } catch { overCap = false; }
+      // QUEUE-GATED like the admission refusal (2026-08-17, one law at both
+      // governors): with <256KB buffered the lane admits every group, so
+      // there is nothing to wait for — the base window only paces under
+      // real queue depth. Over-cap still holds the walk regardless.
+      if (bufNow <= 262144 && !overCap) return;
       const waitMs = dueAt - Date.now();
       if (waitMs <= 0 && !overCap) return;
       await new Promise((r) => setTimeout(r, Math.min(100, Math.max(5, waitMs > 0 ? waitMs : 25))));
