@@ -2209,7 +2209,12 @@
       const kvoc = $('d-cortex-kvocab-title');
       const kwir = $('d-cortex-kwiring-title');
       if (dict) dict.textContent = `📚 Dictionary API + ${dictPrefix}Vocabulary`;
-      if (kvoc) kvoc.textContent = `📖 ${prefix}VOCABULARY`;
+      // The vocabulary counter is JOURNEY-WIDE (taught set + 18,017-unique
+      // denominator span all 19 grades), so this panel's title must never
+      // take a grade prefix — the old `${prefix}VOCABULARY` rendered
+      // "K-VOCABULARY" over a K→PhD number, exactly the lie the journey
+      // denominator was built to end.
+      if (kvoc) kvoc.textContent = '📖 VOCABULARY (K→PhD)';
       if (kwir) kwir.textContent = `🎯 ${prefix}WIRING ASSERTION`;
     }
 
