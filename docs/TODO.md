@@ -226,3 +226,15 @@ _Completed sections zeroed 2026-08-16 (third zeroing) — migrated VERBATIM to `
 > Gee (verbatim): *"aand this isnt right on the dashboard it say k definitiontions is 18K:📖 K-VOCABULARY prefetched: yes defs taught: 73 / 18,017 (0.4%)"*
 
 - [x] **VOCTITLE.1** **DONE** — `applyGradeLabels` rewrote the panel title to `📖 ${grade}-VOCABULARY` on every render, clobbering the static K→PhD label; the counter beneath it is journey-wide (taught set + 18,017-unique denominator span all 19 grades), so the title now renders `📖 VOCABULARY (K→PhD)` unconditionally. Grade prefixes stay on the genuinely grade-scoped panels (dictionary cache warm, wiring assertion). Rides the next press.
+
+---
+
+## DROPCHAT — 2026-08-17 · talking to her kills the donor: chat emission blocks the loop → donor keepalives starve → drop → ~10min re-upload
+
+> Gee (verbatim): *"did u see that drop out? of the doner? i said hi to her knowing she couldnt respond. and any time i talk to her the doners drop out"*
+
+**OBSERVED LIVE:** donor dropped on Gee's chat message, reconnected, re-upload in flight (substratePause "donor connected but brain weights are not uploaded to it yet"), walk auto-paused correctly. REPEATABLE per Gee — every chat → drop. Baseline eventLoopLagMs ~700 + chat-emission synchronous CPU work (the intra propagate consumers GINTRA.0 catalogued: emission + probes read the CPU intra CSR — 360M nnz per propagate) = multi-second unbroken loop pins during a reply; the donor's keepalive traffic goes unserved past its idle trip → disconnect → full canonical re-upload every time she's spoken to.
+
+- [x] **DROPCHAT.1** **DONE** — READ the live chat emission path (generateAsync → emission ticks → which propagates run sync CPU at 12M) and name the specific pins.
+- [x] **DROPCHAT.2** **DONE (named: emit.js _emitDirectPropagate step-2+ loop — a SYNC full-matrix propagate per letter + a fresh 96MB Float64Array per letter; fixed: pooled input scratch with letter-span-only clears + pooled outBuf + propagateChunked time-sliced yields — bit-identical output, zero capability change; standalone emit.js ESM import failure is PRE-EXISTING circular-mixin shape, real entry cluster.js imports clean)** — FIX: slice the named sync propagate(s) with between-slice yields (row-independent accumulation — identical math, the exact treatment the teach chunkers got) so the loop keeps serving donor pings during a reply; NO capability change, the reply still composes from her full trained state.
+- [~] **DROPCHAT.3** build half DONE (node --check + cluster.js ESM + bundle PASS); node --check + ESM + bundle; live: Gee says hi → reply composes → donor RTT spikes but NO drop, no re-upload.
