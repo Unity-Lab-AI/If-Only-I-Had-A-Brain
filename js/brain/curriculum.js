@@ -19413,7 +19413,9 @@ export class Curriculum {
           const curr = encodeLetter(letters[i]);
           const next = encodeLetter(letters[i + 1]);
           try {
-            cluster.hebbianPairReinforce({
+            // Awaited since the method went async (time-sliced 100-rep dose —
+            // same math, the loop breathes between rep slices).
+            await cluster.hebbianPairReinforce({
               region: 'letter',
               srcOneHot: curr,
               correctOneHot: next,

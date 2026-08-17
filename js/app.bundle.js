@@ -58290,7 +58290,7 @@ var NeuronCluster = class {
    * @param {number} [opts.negLr=-this.learningRate*5] — weaken rate for wrong pair
    * @param {number} [opts.reps=100] — iterations of both updates
    */
-  hebbianPairReinforce(opts) {
+  async hebbianPairReinforce(opts) {
     if (!opts || !opts.region || !opts.srcOneHot || !opts.correctOneHot) return;
     const region = this.regions[opts.region];
     if (!region || region.end <= region.start) return;
@@ -58331,9 +58331,15 @@ var NeuronCluster = class {
     const wrongPost = opts.wrongOneHot ? _prs.wrongPost : null;
     const wrongActive = wrongPost ? buildInto(wrongPost, opts.wrongOneHot) : null;
     const negAbs = Math.abs(negLr);
+    const _yieldMacro = typeof setImmediate === "function" ? () => new Promise((r) => setImmediate(r)) : () => new Promise((r) => setTimeout(r, 0));
+    let _sliceT0 = Date.now();
     for (let i = 0; i < reps; i++) {
       this.synapses.ojaUpdate(pre, correctPost, posLr, { activeRows: correctActive });
       if (wrongPost) this.synapses.antiHebbianUpdate(pre, wrongPost, negAbs, { activeRows: wrongActive });
+      if (i + 1 < reps && Date.now() - _sliceT0 >= 60) {
+        await _yieldMacro();
+        _sliceT0 = Date.now();
+      }
     }
   }
   /**
@@ -72436,7 +72442,7 @@ var K_MIXIN = {
         const tgtDigit = DIGITS[srcIdx + 1];
         const gotMatch = failStr.match(/\(got (.)\)/);
         const wrongDigit = gotMatch ? gotMatch[1] : null;
-        cluster.hebbianPairReinforce({
+        await cluster.hebbianPairReinforce({
           region: "letter",
           srcOneHot: encodeLetter(srcDigit),
           correctOneHot: encodeLetter(tgtDigit),
@@ -108461,7 +108467,7 @@ var Curriculum = class _Curriculum {
           const curr = encodeLetter(letters[i]);
           const next = encodeLetter(letters[i + 1]);
           try {
-            cluster.hebbianPairReinforce({
+            await cluster.hebbianPairReinforce({
               region: "letter",
               srcOneHot: curr,
               correctOneHot: next,

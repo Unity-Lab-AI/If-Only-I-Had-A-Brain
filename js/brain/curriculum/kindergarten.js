@@ -2978,7 +2978,7 @@ export const K_MIXIN = {
       const gotMatch = failStr.match(/\(got (.)\)/);
       const wrongDigit = gotMatch ? gotMatch[1] : null;
 
-      cluster.hebbianPairReinforce({
+      await cluster.hebbianPairReinforce({
         region: 'letter',
         srcOneHot: encodeLetter(srcDigit),
         correctOneHot: encodeLetter(tgtDigit),
