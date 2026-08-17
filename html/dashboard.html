@@ -883,7 +883,7 @@
     // to the brain-server — NOT a raw :7525 port on the public host).
     const _dashIsLocal = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
     // Human-readable duration — "Dd Hh Mm Ss", dropping leading-zero units
-    // (Gee 2026-06-28: thousands-of-seconds uptime is unreadable / hard math on
+    // (operator directive 2026-06-28: thousands-of-seconds uptime is unreadable / hard math on
     // the fly). Examples: 45 → "45s", 12393 → "3h 26m 33s", 90061 → "1d 1h 1m 1s".
     function fmtDur(sec) {
       sec = Math.max(0, Math.floor(Number(sec) || 0));
@@ -3128,7 +3128,7 @@
     async function refreshMilestone() {
       // PUBLIC viewers must NEVER hit /admin/* — the milestone / save-state
       // panel is .admin-only. Polling it in public mode returned 401 and threw
-      // a Forgejo Basic-auth login prompt at every public visitor (Gee 2026-06-27:
+      // a Forgejo Basic-auth login prompt at every public visitor (operator directive 2026-06-27:
       // "public version of the dashboard is asking for admin login"). Bail before
       // any admin fetch; the panel stays hidden via body.public-mode .admin-only.
       if (PUBLIC_MODE) return;
