@@ -238,3 +238,15 @@ _Completed sections zeroed 2026-08-16 (third zeroing) — migrated VERBATIM to `
 - [x] **DROPCHAT.1** **DONE** — READ the live chat emission path (generateAsync → emission ticks → which propagates run sync CPU at 12M) and name the specific pins.
 - [x] **DROPCHAT.2** **DONE (named: emit.js _emitDirectPropagate step-2+ loop — a SYNC full-matrix propagate per letter + a fresh 96MB Float64Array per letter; fixed: pooled input scratch with letter-span-only clears + pooled outBuf + propagateChunked time-sliced yields — bit-identical output, zero capability change; standalone emit.js ESM import failure is PRE-EXISTING circular-mixin shape, real entry cluster.js imports clean)** — FIX: slice the named sync propagate(s) with between-slice yields (row-independent accumulation — identical math, the exact treatment the teach chunkers got) so the loop keeps serving donor pings during a reply; NO capability change, the reply still composes from her full trained state.
 - [~] **DROPCHAT.3** build half DONE (node --check + cluster.js ESM + bundle PASS); node --check + ESM + bundle; live: Gee says hi → reply composes → donor RTT spikes but NO drop, no re-upload.
+
+---
+
+## BCASTFIX — 2026-08-17 · the BLOCKED-every-second lines named by the new instruments: getState costs 312ms/call (36% of her wall-clock) — two O(huge) per-call jobs cached
+
+> Gee (verbatim): *"what is all this every second? looks like alot a stalling:12:05:28 AM [EventLoop] BLOCKED 321ms — /ws handshakes + donor frames stalled this long. context: phase=_teachAssociationPairs..."*
+
+**THE FIELD READ (live off `a3d6a782`):** `bcast = {n: 6,447, getStateMs: 2,009,845, serializeSendMs: 3,839}` → **312ms PER getState call, ~1.15 calls/s = 36% of the boot's entire wall-clock building the dashboard snapshot** — THE eventLoopLagMs ~1,093 source, THE tax on every teach-chain yield (hebbianYield: 3,264 hops × ~364ms), THE BLOCKED lines (phase tags blame whatever teach phase is active — attribution artifact). The send is free (0.6ms). MEANWHILE the wins confirmed same read: teach/min 200 → **984**, lateral 344ms → **3ms**, hebbian 361 → 113ms, defs 255/18,017 climbing.
+
+- [x] **BCASTFIX.1** **DONE** — the lang-region spike fallback walk (native donors never send per-region counts → EVERY getState walked ~14M+ cells across all region + sub-band spans) cached on a 5s cadence — same cadence-of-the-source law as the langEverFired regions cache; the 3D brain's sub-volume shading can't tell.
+- [x] **BCASTFIX.2** **DONE** — `_getMemoryStats` (SYNC SQLite aggregate scans: SUM-over-episodes with WHERE, COUNT(*), re-prepared per call, growing with her episode count) cached whole on the same 5s cadence.
+- [ ] **BCASTFIX.3** ⏳ GEE: ONE **Update & SAVESTART**. Verdict: `bcast.getStateMs`/n collapses 312ms → tens-of-ms; eventLoopLagMs falls from ~1,000 toward ~100; `hebbianYield` ms/hop collapses with it; teach/min climbs from 984 INTO the 1300–1500 band; the BLOCKED-every-second carpet vanishes. If getStateMs stays high, the remainder inside getState gets section lap-timers next.
