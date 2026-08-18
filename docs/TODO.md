@@ -775,3 +775,21 @@ The CLI restart from the prior handoff was FOR this. Gee authorized a 4090 proof
 - [x] **ALIASFIX.3** **DONE - disarmed, then re-armed.** DELTAIDX was flipped to opt-in the moment the illegal-address was seen (safety before diagnosis, because a wrong index corrupts training silently). Re-armed to default-on only after the root cause was understood AND regression-tested. Kill-switch `DREAM_DELTA_COLIDX=0` remains.
 - [ ] **ALIASFIX.4** GEE: Update & Savestart. Verdict: `bound hebbian ... ILLEGAL_ADDRESS` gone; the RunPod donor stays `[CUDA]` with a ~24090MB cap instead of falling to `wgpu`/2047MB; DELTAIDX savings lines still print.
 - [ ] **ALIASFIX.5** **OPEN - the lesson worth keeping.** A returned VIEW into reusable memory is only safe if every caller consumes it before the next call - an invariant that held for the frame scratch (its loop awaits each send) and silently did NOT hold for mine (a second concurrent upload). Audit any other returned-subarray-into-shared-scratch in the upload path before adding a third.
+
+---
+
+## INCREMENTAL - 2026-08-18 - a leaderboard only the primary can score on is not a leaderboard
+
+> Gee (verbatim): *"i want the doners to connect and all show positinve 0 Gn/s"*
+> Gee (verbatim): *"i mean wtf is the point of the leaderboard if only one doner can be on it"*
+
+**HE IS RIGHT AND IT IS THE SHARPEST FRAMING OF THIS BUG YET.** Every replica holds a full GPU, is counted in `communityComputeMB` for tier sizing, and earns ZERO neurons - so the public leaderboard structurally has one entry. The community-compute premise does not survive that.
+
+**ROOT CAUSE - ALL-OR-NOTHING ELIGIBILITY.** SYNCGATE (correctly) stopped feeding work to a donor holding no weights, but it gated on `_df7Synced`, which only flips after EVERY matrix lands. Measured on a home donor: under 1MB/s, so a full ~1.87GB replica is ~30 minutes of holding a GPU and contributing nothing - and every restart discards the progress. Meanwhile the registry iteration order put `cortex_intraSynapses` (2.8GB, ~96% of the payload) near the front, so a slow donor spent its entire window on the ONE matrix least likely to finish.
+
+- [x] **INCREMENTAL.1** **DONE - eligibility is PER MATRIX.** `_donorCoversMatrices` now checks `heldMatrices` (the set a donor has actually received) instead of the all-or-nothing `_df7Synced` flag. A donor can serve work for a matrix the moment it holds THAT matrix. Work with no named matrix still requires a complete sync, because coverage cannot be proven for it.
+- [x] **INCREMENTAL.2** **DONE - sync SMALLEST-FIRST.** Registry order is replaced by an nnz sort, so the cheap cross-projections land in seconds and the intra arrives LAST as a bonus rather than a prerequisite. A donor becomes productive almost immediately and grows.
+- [x] **INCREMENTAL.3** **DONE - only genuinely-received matrices count.** `gpuSparseUpload` resolves `{ok:true,reqId}` on ack and `null` on timeout (verified at the ack handler, not assumed) - so the record is gated on a non-null result. Recording regardless is exactly how a donor gets handed work for a matrix it never received, which is the ILLEGAL_ADDRESS class of failure.
+- [x] **INCREMENTAL.4** **DONE - the held set clears whenever a sync is refused** (bind-incapable / replica-incapable), so a donor can never keep stale eligibility after being dropped from the fan-out.
+- [x] **INCREMENTAL.5** **DONE - visible.** `df7HeldMatrices` joins the donor rows, and the server logs when a donor holds its FIRST matrix plus its final held/total count. "How much can this donor do yet" is now a field read rather than an inference.
+- [ ] **INCREMENTAL.6** GEE: Update & Savestart. Verdict: every connected donor shows a POSITIVE Gn/s within a minute or two of attaching - not after a full sync - and the leaderboard carries more than one contributor. Watch `DF.7 INCREMENTAL — donor <name> holds its first matrix`.

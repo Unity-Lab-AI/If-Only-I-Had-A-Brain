@@ -868,7 +868,24 @@ const SERVER_GPU_MIXIN = {
     // matrices. That is the 0 Gn/s row: the donor was not skipped, it was fed work
     // it could not do. Training was never at risk (the CPU CSR stays the
     // authoritative master) but the units were wasted and the card looked broken.
-    if (ws !== this._gpuClient && !c._df7Synced) return false;
+    // INCREMENTAL — eligibility is PER MATRIX, not all-or-nothing. The original SYNCGATE
+    // gated on `_df7Synced`, which only flips after EVERY matrix has landed; on a slow link
+    // (a home donor measured under 1MB/s) that is ~30 minutes of holding a full GPU and
+    // contributing exactly nothing, which is the "connected but 0 Gn/s" complaint. A donor
+    // can serve work for a matrix the moment it holds THAT matrix, so `heldMatrices` (filled
+    // per successful upload, smallest-first) decides instead — the donor starts earning
+    // within seconds of its first small matrix and grows as the rest arrive. Work with no
+    // named matrix still requires a complete sync, since we cannot prove coverage for it.
+    if (ws !== this._gpuClient) {
+      const held = c.heldMatrices;
+      if (!held || held.size === 0) return false;
+      if (names === undefined || names === null) return !!c._df7Synced;
+      const _list = Array.isArray(names) ? names : [names];
+      for (const _n of _list) {
+        if (typeof _n !== 'string' || !held.has(_n)) return false;
+      }
+      return true;
+    }
     const cov = c.clusterCoverage;
     if (!cov || !cov.size) return true;
     if (names === undefined || names === null) return false;
@@ -1331,6 +1348,7 @@ const SERVER_GPU_MIXIN = {
     if (_cc && _bindCap > 0 && _bindCap < _minBind) {
       _cc._bindIncapable = true;
       _cc._df7Synced = false;
+      if (_cc.heldMatrices instanceof Set) _cc.heldMatrices.clear();
       if (!_cc._bindSkipWarned) {
         _cc._bindSkipWarned = true;
         console.warn(`[Brain] DF.7 F8 — donor ${_cc.gpuName || _cc.id} maxBind ${_bindCap}MB < ${_minBind}MB floor — NOT replica-syncing (can't bind cortex matrices; would 0-compute after a wasted upload). Stays connected but excluded from the fan-out.`);
@@ -1374,6 +1392,7 @@ const SERVER_GPU_MIXIN = {
           _cc._partialReplica = false;
           _cc.clusterCoverage = null;
           _cc._df7Synced = false;
+          if (_cc.heldMatrices instanceof Set) _cc.heldMatrices.clear();
           if (!_cc._replicaSkipWarned) {
             _cc._replicaSkipWarned = true;
             console.warn(`[Brain] DF.7 — donor ${_cc.gpuName || _cc.id} effective VRAM ${Math.round(_effVram)}MB cannot fit even the smallest priority cluster — NOT replica-syncing. Stays connected; never shrinks the brain.`);
@@ -1444,17 +1463,45 @@ const SERVER_GPU_MIXIN = {
       let _resumedCount = 0;
       const reg = this._replicaMatrixRegistry;
       let synced = 0;
+      if (_cc && !(_cc.heldMatrices instanceof Set)) _cc.heldMatrices = new Set();
       if (reg && reg.size) {
-        for (const [name, entry] of reg) {
+        // INCREMENTAL — SMALLEST FIRST. Registry order put `cortex_intraSynapses` (2.8GB,
+        // 96% of the payload) early, so a slow donor spent its entire window on one matrix
+        // and became eligible for nothing. Ordering by nnz means the cheap cross-projections
+        // land in seconds and the donor is productive almost immediately, with the intra
+        // arriving last as a bonus rather than a prerequisite.
+        const _ordered = [...reg.entries()].sort((x, y) => {
+          const nx = (x[1] && x[1].matrix && x[1].matrix.values && x[1].matrix.values.length) || 0;
+          const ny = (y[1] && y[1].matrix && y[1].matrix.values && y[1].matrix.values.length) || 0;
+          return nx - ny;
+        });
+        for (const [name, entry] of _ordered) {
           if (!ws || ws.readyState !== 1) break;
-          if (_resumeHeld && _resumeHeld.has(name)) { _resumedCount++; continue; }
+          if (_resumeHeld && _resumeHeld.has(name)) {
+            _resumedCount++;
+            if (_cc) _cc.heldMatrices.add(name);   // it still holds it — count it as eligible
+            continue;
+          }
           if (_coverage) {
             let _covOk = false;
             for (const _cl of _coverage) { if (name.startsWith(_cl + '_')) { _covOk = true; break; } }
             if (!_covOk) continue;
           }
-          try { await this.gpuSparseUpload(name, entry.matrix, entry.binding, ws); synced++; }
-          catch { /* skip a matrix that failed; rebroadcast will retry */ }
+          try {
+            const _res = await this.gpuSparseUpload(name, entry.matrix, entry.binding, ws);
+            // gpuSparseUpload resolves null on timeout/abort — only a non-null result proves
+            // the donor actually holds it. Recording it regardless is how a donor ends up
+            // being handed work for a matrix it never received.
+            if (_res !== null && _res !== undefined) {
+              synced++;
+              if (_cc) {
+                _cc.heldMatrices.add(name);
+                if (_cc.heldMatrices.size === 1) {
+                  console.log(`[Brain] DF.7 INCREMENTAL — donor ${_cc.gpuName || _cc.id} holds its first matrix (${name}) and is now work-eligible for it; remaining matrices stream in behind it.`);
+                }
+              }
+            }
+          } catch { /* skip a matrix that failed; rebroadcast will retry */ }
         }
       }
       if (_cc && _cc.resumeHeldMatrices) _cc.resumeHeldMatrices = null;   // one-shot consumed
@@ -1464,7 +1511,10 @@ const SERVER_GPU_MIXIN = {
       // `_df7FanoutPropagate` will allow reads to land on it. Set only on the success
       // path, so a donor that never synced (deferred / incapable / threw) is never
       // handed work it cannot compute.
-      if (_cc) { _cc._df7Synced = true; _cc._df7SyncedAt = Date.now(); _cc._df7SyncedMatrices = synced; }
+      if (_cc) {
+        _cc._df7Synced = true; _cc._df7SyncedAt = Date.now(); _cc._df7SyncedMatrices = synced;
+        console.log(`[Brain] DF.7 INCREMENTAL — donor ${_cc.gpuName || _cc.id} now holds ${_cc.heldMatrices.size}/${(reg && reg.size) || 0} matrices and is work-eligible for each of them.`);
+      }
       console.log(`[Brain] DF.7 — replica sync complete: ${synced} matrices pushed to a donor${_coverage ? ` (PARTIAL coverage [${[..._coverage].join(', ')}] — it shares compute for the clusters it holds)` : '. It now holds a FULL brain replica and shares compute (no longer idle standby)'}.`);
     } catch (e) {
       if (_cc) _cc._df7Synced = false;

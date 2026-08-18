@@ -992,6 +992,10 @@ const SERVER_STATE_MIXIN = {
             df7Primary: isGPU ? (ws === this._gpuClient) : false,
             df7Synced: isGPU ? (ws === this._gpuClient ? true : !!c._df7Synced) : false,
             df7SyncedMatrices: isGPU ? (Number(c._df7SyncedMatrices) || 0) : 0,
+            // INCREMENTAL — how many matrices this donor actually HOLDS right now. Work
+            // eligibility is per-matrix, so this is the honest "how much can it do yet"
+            // number; df7Synced only says whether a full pass has finished.
+            df7HeldMatrices: isGPU ? ((c.heldMatrices instanceof Set) ? c.heldMatrices.size : 0) : 0,
             df7SyncedAgoSec: (isGPU && c._df7SyncedAt) ? Math.round((Date.now() - c._df7SyncedAt) / 1000) : null,
             // FLAP — platform/backend telemetry so a red / 0-Gn/s donor's OS, compute backend,
             // driver, and compute-capability are visible in the Clients table instead of
