@@ -306,7 +306,8 @@ const SERVER_GPU_MIXIN = {
     // Skipped for a donor whose socket is already backed up past the link cap — it is
     // mid-sync and piling a step on top would slow the sync that makes it useful.
     if (this._df7Fanout && this._df7Fanout() && typeof this._livePoolDonors === 'function') {
-      const _mirrorMsg = JSON.stringify({ ..._batchMsg, batchId: -batchId, mirror: true });
+      const _mirrorBase = { ..._batchMsg, batchId: -batchId, mirror: true };
+      const _mirrorMsg = JSON.stringify(_mirrorBase);
       // MIRRORCAP — do NOT reuse _donorLinkCapBytes (4MB) here. That cap exists to keep
       // HEAVY Hebbian payloads off a congested socket, and reusing it gated the mirror off
       // for exactly the donors that need it: a replica mid-sync sits at 5-40MB buffered by
@@ -321,7 +322,22 @@ const SERVER_GPU_MIXIN = {
       for (const _ws of this._livePoolDonors()) {
         if (_ws === this._gpuClient || !_ws || _ws.readyState !== 1) continue;
         if (((_ws.bufferedAmount) || 0) > _mirrorCap) continue;   // socket genuinely drowning
-        try { _ws.send(_mirrorMsg); } catch { /* a dropped mirror is never fatal */ }
+        // COVERAGE-AWARE MIRROR — a PARTIAL replica is only gpu_init'ed for the clusters it
+        // covers (line ~1500 skips the rest), so a donor with, say, [cortex, hippocampus]
+        // holds 2 of 8 cluster buffers. Sending it the FULL 8-cluster batch references
+        // clusters it never initialised, so it cannot run the step and scores 0 Gn/s -
+        // exactly what a 5.6GB card was doing while two larger cards worked. Send each
+        // partial donor only the clusters it actually holds; it then steps its real subset
+        // and earns. A donor covering nothing is skipped rather than sent an empty batch.
+        let _msg = _mirrorMsg;
+        const _mc = (this.clients && this.clients.get) ? this.clients.get(_ws) : null;
+        const _mcov = _mc && _mc.clusterCoverage;
+        if (_mcov && _mcov.size) {
+          const _sub = (clusterParams || []).filter((cp) => cp && _mcov.has(cp.name));
+          if (_sub.length === 0) continue;
+          _msg = JSON.stringify({ ..._mirrorBase, clusters: _sub });
+        }
+        try { _ws.send(_msg); } catch { /* a dropped mirror is never fatal */ }
       }
     }
 
