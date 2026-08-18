@@ -2124,6 +2124,16 @@ const SERVER_GPU_MIXIN = {
     // DELTAIDX — resolve the capability ONCE per upload, not per chunk.
     const _deltaColIdxOk = this._donorDeltaColIdxOk(ws);
     let _deltaRawBytes = 0, _deltaEncBytes = 0;
+    // ALIASFIX — the encode scratch is PER-UPLOAD (a local), never a field on `this`.
+    // It was `this._deltaColScratch`, and the encoder returned a subarray VIEW into it.
+    // SYNCSERIAL serialises REPLICA syncs, but the primary's canonical upload runs
+    // CONCURRENTLY with a replica sync — so two gpuSparseUpload calls were alive at once,
+    // both encoding into the same buffer, each silently overwriting the other's colIdx
+    // between build and send. Garbage indices then made `bound hebbian` read out of range:
+    // CUDA_ERROR_ILLEGAL_ADDRESS on every bound matrix, a permanently poisoned CUDA
+    // context, and the whole card forced down to wgpu at a 2047MB cap. A local scratch
+    // keeps the one-alloc-per-upload benefit (the UPLOAD GC lesson) with zero cross-talk.
+    let _deltaScratch = null;
     for (let seq = 0; seq < totalChunks; seq++) {
       const start = seq * CHUNK_NNZ;
       const end = Math.min(start + CHUNK_NNZ, nnz);
@@ -2157,7 +2167,13 @@ const SERVER_GPU_MIXIN = {
       // DELTAIDX — ship colIdx as delta-varints to a >=0.3.22 donor. flags bit 2 (value 4)
       // tells the decoder which stream it is; older donors and every browser donor never
       // see the flag and take the byte-identical raw path.
-      const _deltaCols = _deltaColIdxOk ? this._encodeDeltaColIdx(colIdx, start, end) : null;
+      let _deltaCols = null;
+      if (_deltaColIdxOk) {
+        const _need = (end - start) * 5;   // varint worst case = 5B per u32
+        if (!_deltaScratch || _deltaScratch.length < _need) _deltaScratch = Buffer.allocUnsafe(_need);
+        const _encLen = this._encodeDeltaColIdx(colIdx, start, end, _deltaScratch);
+        _deltaCols = _deltaScratch.subarray(0, _encLen);
+      }
       const colIdxSlice = _deltaCols
         ? _deltaCols
         : Buffer.from(colIdx.buffer, colIdx.byteOffset + colIdxByteOff, colIdxByteLen);
@@ -3362,6 +3378,18 @@ const SERVER_GPU_MIXIN = {
    */
   _donorDeltaColIdxOk(ws) {
     if (!ws) return false;
+    // DELTAIDX — re-armed after ALIASFIX (see the per-upload scratch below). History kept
+    // because the failure mode is worth remembering:
+    // Live symptom minutes after deploy: the donor hit
+    //   bound hebbian '<matrix>' failed: DriverError(CUDA_ERROR_ILLEGAL_ADDRESS)
+    // on EVERY bound matrix, which poisons the CUDA context permanently and forces the
+    // whole card down to wgpu (2047MB cap). `bound hebbian` indexes cluster spike buffers
+    // BY colIdx, so an out-of-range decoded index is exactly this failure — and colIdx is
+    // precisely what this feature rewrote. The parity test passed on a 10-entry vector;
+    // production chunks are 750,000 entries, so the test did not reach whatever breaks.
+    // Correlation is not proof, but a wrong index silently corrupts training and there is
+    // no version of that worth risking on a live walk. Opt IN with DREAM_DELTA_COLIDX=1
+    // once a 750k-entry round-trip passes and the illegal-address is reproduced/explained.
     if (process.env.DREAM_DELTA_COLIDX === '0') return false;   // kill-switch
     try {
       const c = (this.clients && this.clients.get) ? this.clients.get(ws) : null;
@@ -3390,13 +3418,9 @@ const SERVER_GPU_MIXIN = {
    * varints of (colIdx[i] - colIdx[i-1]) — zigzag because a row boundary steps
    * backwards. Lossless and exactly invertible; the decoder rebuilds the identical u32s.
    */
-  _encodeDeltaColIdx(colIdx, start, end) {
+  _encodeDeltaColIdx(colIdx, start, end, out) {
     const n = end - start;
-    if (n <= 0) return Buffer.alloc(0);
-    if (!this._deltaColScratch || this._deltaColScratch.length < n * 5) {
-      this._deltaColScratch = Buffer.allocUnsafe(n * 5);   // varint worst case = 5B/u32
-    }
-    const out = this._deltaColScratch;
+    if (n <= 0) return 0;
     let o = 0;
     let prev = 0;
     for (let i = start; i < end; i++) {
@@ -3415,7 +3439,7 @@ const SERVER_GPU_MIXIN = {
       out[o++] = rawv;
       prev = v;
     }
-    return out.subarray(0, o);
+    return o;
   },
 
   _donorSpikeTemplateTeach() {

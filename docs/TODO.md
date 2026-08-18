@@ -759,3 +759,19 @@ The CLI restart from the prior handoff was FOR this. Gee authorized a 4090 proof
 - [x] **QUEUEDEADLINE.2** **DONE** - the FLOORED log line now reports the queued-ahead megabytes alongside the effective rate, so the next person reading it can see WHY a deadline is large instead of assuming the number is arbitrary.
 - [x] **QUEUEDEADLINE.3** **VERIFY (build half) DONE** - `node --check` + `import()` ESM PASS. Server-side only, no bundle rebuild, no donor change.
 - [ ] **QUEUEDEADLINE.4** GEE: Update & Savestart (server-only, weights preserved). Verdict: `timed out after 180000ms` disappears from the boot window entirely, and `replica sync complete: 17 matrices` appears once per replica. If a deadline is hit AFTER this, it is a genuinely dead link rather than an under-priced timeout - which is the distinction the old number could not make.
+
+---
+
+## ALIASFIX - 2026-08-18 - MY DELTAIDX shipped a shared scratch buffer and it poisoned the donor CUDA context
+
+> Gee (verbatim): *"stil 0 G/ns!!!!!!!!!!!"*
+
+**I BROKE HER LIVE BRAIN AND THE LOG SAID SO WITHIN MINUTES.** The RunPod donor went from `linux·cuda·8.9 · bind 23.5GB` to `linux·vulkan · bind 2.0GB`. Cause, from the pod log: `[donor] bound hebbian <matrix> failed: DriverError(CUDA_ERROR_ILLEGAL_ADDRESS)` on EVERY bound matrix, then `[multi] CUDA init failed (CUDA context 0: ILLEGAL_ADDRESS); using wgpu`. `bound hebbian` indexes cluster spike buffers BY colIdx, so an out-of-range index is exactly this failure - and colIdx is precisely what DELTAIDX rewrote an hour earlier.
+
+**ROOT CAUSE - NOT THE CODEC, THE BUFFER.** `_encodeDeltaColIdx` returned a `subarray` VIEW into `this._deltaColScratch` - a scratch hung off the brain object and therefore shared process-wide. SYNCSERIAL serialises REPLICA syncs, but the PRIMARY canonical upload runs CONCURRENTLY with a replica sync, so two `gpuSparseUpload` calls were alive at once, both encoding into the same buffer, each overwriting the other colIdx between frame-build and send. **The codec was never wrong:** a 750,000-entry round-trip (production chunk size) is BYTE-EXACT, and so is the 10-entry parity vector. The bug needed CONCURRENCY, not scale - which is exactly the axis my parity test did not cover.
+
+- [x] **ALIASFIX.1** **DONE - the scratch is PER-UPLOAD, never a field on `this`.** The encoder now takes a caller-owned buffer and returns the byte count; `gpuSparseUpload` owns one local scratch for the life of ONE upload. Keeps the one-alloc-per-upload benefit (the UPLOAD GC lesson) with zero cross-talk between concurrent uploads.
+- [x] **ALIASFIX.2** **DONE - regression test proves BOTH directions.** Interleaved two-upload round-trip with separate scratches: BOTH BYTE-EXACT. Same test with a single shared scratch: the first view IS mutated - the original bug, reproduced on demand rather than argued about.
+- [x] **ALIASFIX.3** **DONE - disarmed, then re-armed.** DELTAIDX was flipped to opt-in the moment the illegal-address was seen (safety before diagnosis, because a wrong index corrupts training silently). Re-armed to default-on only after the root cause was understood AND regression-tested. Kill-switch `DREAM_DELTA_COLIDX=0` remains.
+- [ ] **ALIASFIX.4** GEE: Update & Savestart. Verdict: `bound hebbian ... ILLEGAL_ADDRESS` gone; the RunPod donor stays `[CUDA]` with a ~24090MB cap instead of falling to `wgpu`/2047MB; DELTAIDX savings lines still print.
+- [ ] **ALIASFIX.5** **OPEN - the lesson worth keeping.** A returned VIEW into reusable memory is only safe if every caller consumes it before the next call - an invariant that held for the frame scratch (its loop awaits each send) and silently did NOT hold for mine (a second concurrent upload). Audit any other returned-subarray-into-shared-scratch in the upload path before adding a third.
