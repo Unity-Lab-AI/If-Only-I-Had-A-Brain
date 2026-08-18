@@ -2360,6 +2360,62 @@ const SERVER_GPU_MIXIN = {
   },
 
   /**
+   * v0.3.18 — range-form plasticity dispatch. The whole N-rep band-pair
+   * dose (the pair-reinforce primitive's static one-hot patterns are
+   * contiguous [start,len] ranges) ships as ONE ~60-byte JSON frame; the
+   * donor expands ranges locally and loops its existing hebbian op
+   * stream-ordered. SELF-CONTAINED: carries its own pre/post, touches no
+   * shared spike buffers — so no pattern-lane admission, no stale
+   * coupling, no group membership. Fire-and-forget like every teach
+   * frame; a drowning socket refuses (the caller's CPU shadow law keeps
+   * training whole). Returns true ONLY when the frame actually went out.
+   */
+  gpuSparseHebbianRanges(name, lr, reps, preRanges, postRanges) {
+    if (!this._donorHebbianRanges()) return false;
+    const ws = this._gpuClient;
+    if (!ws || ws.readyState !== 1) return false;
+    if (ws.bufferedAmount > this._donorPatternLaneCapBytes()) return false;
+    if (!Array.isArray(preRanges) || !Array.isArray(postRanges) || !preRanges.length || !postRanges.length) return false;
+    try {
+      ws.send(JSON.stringify({
+        type: 'hebbian_ranges',
+        name,
+        lr,
+        reps: Math.max(1, Math.min(1000, Math.round(reps || 1))),
+        preRanges,
+        postRanges,
+      }));
+      this._hebbianRangesSent = (this._hebbianRangesSent || 0) + 1;
+      return true;
+    } catch {
+      return false;
+    }
+  },
+
+  /**
+   * v0.3.18 - does the PRIMARY donor speak range-form plasticity
+   * (hebbian_ranges)? Same TU.20.12 negotiation pattern as the other
+   * capability gates.
+   */
+  _donorHebbianRanges() {
+    const ws = this._gpuClient;
+    if (!ws) return false;
+    if (this._hebRangesWs === ws) return this._hebRangesOk === true;
+    this._hebRangesWs = ws;
+    this._hebRangesOk = false;
+    try {
+      const c = (this.clients && this.clients.get) ? this.clients.get(ws) : null;
+      const v = ((c && c.donorAppVersion) || '').toString().trim();
+      const m = v.match(/^(\d+)\.(\d+)\.(\d+)/);
+      if (m) this._hebRangesOk = ((+m[1]) * 1e6 + (+m[2]) * 1e3 + (+m[3])) >= 3018; // 0.3.18
+    } catch { this._hebRangesOk = false; }
+    try {
+      console.log(`[Brain] teach-frame RANGE plasticity for PRIMARY donor: ${this._hebRangesOk ? 'ON (hebbian_ranges)' : 'off'} (requires >= 0.3.18).`);
+    } catch { /* best-effort */ }
+    return this._hebRangesOk === true;
+  },
+
+  /**
    * T18.8 — bound-Hebbian batch queue + flush scheduler.
    *
    * Accumulates (name, lr) tuples in `_boundHebbianBatch.ops`. Flushes when:
