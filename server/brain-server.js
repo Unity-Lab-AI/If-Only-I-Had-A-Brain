@@ -17,6 +17,32 @@
  * Requires: npm install ws (WebSocket library)
  */
 
+// ── PROCESS TIMEZONE (2026-08-18) — the deployed box runs UTC, so every
+// server-rendered timestamp (crash-log stamps, save markers, boot-reason
+// files, the console ring's clock) read as UTC 24-hour and matched nothing
+// on the admin's screen. A server cannot know the admin's system time, so
+// per the operator's own stated fallback it renders MOUNTAIN. Pinning
+// process.env.TZ here — before any Date is constructed anywhere in the
+// process — fixes every server-side stamp in one stroke rather than
+// per-call-site. A real TZ in the environment still wins, so hosts that
+// deliberately set one are never overridden.
+if (!process.env.TZ) process.env.TZ = 'America/Denver';
+
+// Human-readable clock for anything a person reads: 12-hour with AM/PM,
+// explicitly en-US so no host locale can render 14:13 instead of 2:13 PM.
+const HUMAN_TIME_OPTS = { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true };
+function humanTime(ts) {
+  const d = (ts === undefined || ts === null) ? new Date() : new Date(ts);
+  try { return d.toLocaleTimeString('en-US', HUMAN_TIME_OPTS); }
+  catch { return d.toISOString(); }
+}
+function humanStamp(ts) {
+  const d = (ts === undefined || ts === null) ? new Date() : new Date(ts);
+  try {
+    return d.toLocaleString('en-US', { year: 'numeric', month: 'short', day: '2-digit', ...HUMAN_TIME_OPTS });
+  } catch { return d.toISOString(); }
+}
+
 // ── CONSOLE RING (2026-08-18) — the box's logs live ONLY in journald and
 // the operator's tail session can die exactly when the confession lines
 // print (lived it: a ~45s loop freeze's post-mortem lines — the BLOCKED
@@ -6269,9 +6295,14 @@ const httpServer = http.createServer((req, res) => {
         const n = Math.min(500, Math.max(1, parseInt(qs.get('console') || '300', 10) || 300));
         const since = parseInt(qs.get('since') || '0', 10) || 0;
         const ring = globalThis.__consoleRing || [];
-        const lines = (since > 0 ? ring.filter((e) => e.ts > since) : ring).slice(-n);
+        // Each line ships a preformatted human clock (12-hour AM/PM, box TZ =
+        // Mountain) beside the raw epoch, so every reader of this tunnel shows
+        // the same time instead of re-deriving one and landing on UTC 24-hour.
+        const lines = (since > 0 ? ring.filter((e) => e.ts > since) : ring)
+          .slice(-n)
+          .map((e) => ({ ...e, tsLabel: humanTime(e.ts) }));
         res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
-        res.end(JSON.stringify({ now: Date.now(), count: lines.length, lines }));
+        res.end(JSON.stringify({ now: Date.now(), nowLabel: humanStamp(), tz: process.env.TZ || 'system', count: lines.length, lines }));
       } catch (err) {
         res.writeHead(500, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: err && err.message }));
@@ -6298,9 +6329,11 @@ const httpServer = http.createServer((req, res) => {
       const n = Math.min(500, Math.max(1, parseInt(u.searchParams.get('n') || '300', 10) || 300));
       const since = parseInt(u.searchParams.get('since') || '0', 10) || 0;
       const ring = globalThis.__consoleRing || [];
-      const lines = (since > 0 ? ring.filter((e) => e.ts > since) : ring).slice(-n);
+      const lines = (since > 0 ? ring.filter((e) => e.ts > since) : ring)
+        .slice(-n)
+        .map((e) => ({ ...e, tsLabel: humanTime(e.ts) }));
       res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
-      res.end(JSON.stringify({ now: Date.now(), count: lines.length, lines }));
+      res.end(JSON.stringify({ now: Date.now(), nowLabel: humanStamp(), tz: process.env.TZ || 'system', count: lines.length, lines }));
     } catch (err) {
       res.writeHead(500, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: err && err.message }));

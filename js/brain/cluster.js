@@ -28,6 +28,12 @@ import { LIFPopulation } from './neurons.js';
 // and docs/EQUATIONS.md cross-references — see the header comment there.
 import { SparseMatrix } from './sparse-matrix.js';
 
+// Shared zero-length pre-spike payload for CLUSTER-BOUND matrices. The donor
+// reads those matrices' pre-spikes from its own resident cluster buffer and
+// DISCARDS anything sent on the wire, so the payload is dead weight. One frozen
+// empty array is handed to every such call instead of allocating per tick.
+const EMPTY_PRE_SPIKES = new Uint32Array(0);
+
 // ── Shared cluster sizing constants ──────────────────────────────────
 // Biological proportions. SHARED between client (`engine.js`) and
 // server (`brain-server.js`) so both compute identical cluster sizes
@@ -3932,6 +3938,40 @@ export class NeuronCluster {
    * @param {number} dt — timestep in seconds
    * @returns {Promise<{ spikes: Uint8Array, spikeCount: number, voltages: Float64Array }>}
    */
+
+  /**
+   * Is this matrix CLUSTER-BOUND on the donor? A bound matrix was uploaded
+   * with binding metadata, so the donor resolves its pre-spikes from its own
+   * resident cluster buffer and the propagate router ships no payload at all
+   * for it. Browser instances have no `_brain`, so they always answer false
+   * and keep the full dense path.
+   */
+  _isBoundMatrix(matrixName) {
+    const b = this._brain;
+    return !!(b && b._cortexBoundNames && b._cortexBoundNames.has(matrixName));
+  }
+
+  /**
+   * Build the pre-spike payload for one propagate — or skip building it.
+   *
+   * For a CLUSTER-BOUND matrix the router discards this payload outright, yet
+   * the old code allocated a fresh `Uint32Array(size)` and ran a full-length
+   * binarization loop for it anyway, once PER MATRIX PER TICK. At 12M neurons
+   * that is ~48MB allocated and 12M iterations burned to produce a buffer
+   * nobody ever reads — and an emission loop runs 36-108 ticks across ~15
+   * matrices for a single chat reply. That waste was the bulk of the
+   * synchronous CPU inside the reply pin that kept killing the donor.
+   * Bound → hand back the shared empty array. Unbound → build it exactly as
+   * before, byte-identical.
+   */
+  _preSpikePayload(matrixName, spikes) {
+    if (!spikes || spikes.length === 0) return EMPTY_PRE_SPIKES;
+    if (this._isBoundMatrix(matrixName)) return EMPTY_PRE_SPIKES;
+    const out = new Uint32Array(spikes.length);
+    for (let i = 0; i < spikes.length; i++) out[i] = spikes[i] > 0 ? 1 : 0;
+    return out;
+  }
+
   async stepAwait(dt) {
     // BIO-SCALE CPU-STEP ABORT (2026-08-18). The reply pipeline's entry
     // guard checks GPU readiness ONCE at reply start — but a donor that
@@ -3960,6 +4000,39 @@ export class NeuronCluster {
         return { spikes: this.lastSpikes, spikeCount: 0, voltages: (this.neurons && this.neurons.voltages) || null, aborted: true };
       }
     }
+    // LOOP BREATHE (2026-08-18). `await` is NOT a yield. When the awaited
+    // promise resolves without real I/O — the bound-matrix fast path, cached
+    // currents, an empty promise set — the continuation runs as a MICROTASK,
+    // so an emission loop of 36-108 ticks chains into ONE unbroken macrotask.
+    // The 1s lag sampler then cannot fire, queued donor ping/pong frames cannot
+    // be read, and the heartbeat eventually executes a donor that never went
+    // silent. Live ring evidence: a single contiguous BLOCKED 76,408ms spanning
+    // one chat reply, five forgiven sweeps, then the drop.
+    // A real macrotask boundary between ticks lets the loop reach its timer and
+    // poll phases, so keepalives are answered WHILE she composes. Time-bounded,
+    // so short ticks pay almost nothing: at most one setImmediate per
+    // BREATHE_MS of continuous compute. Nothing is removed from emission — not
+    // a tick, not a word, not a candidate. She keeps every bit of her signal;
+    // the loop just stops going deaf while she uses it.
+    if (typeof setImmediate === 'function') {
+      if (this._tickBreatheMs === undefined) {
+        let ms = 50;
+        try {
+          if (typeof process !== 'undefined' && process.env
+              && process.env.DREAM_TICK_BREATHE_MS !== undefined) {
+            const v = Number(process.env.DREAM_TICK_BREATHE_MS);
+            if (Number.isFinite(v) && v >= 0) ms = v;
+          }
+        } catch { /* default */ }
+        this._tickBreatheMs = ms;
+      }
+      const _bNow = Date.now();
+      if (_bNow - (this._lastTickBreatheAt || 0) >= this._tickBreatheMs) {
+        this._lastTickBreatheAt = _bNow;
+        await new Promise((r) => setImmediate(r));
+      }
+    }
+
     if (!this._gpuProxyReady || !this._gpuProxy || !this._gpuProxy.propagate) {
       // No GPU proxy — synchronous CPU step. SPEAK.4b/WL.3: that step's
       // synapses.propagate blocks the loop ~57s at biological scale. When
@@ -3994,11 +4067,10 @@ export class NeuronCluster {
 
     // Intra-cluster propagate.
     if (this.synapses && this.lastSpikes) {
-      const spikes = this.lastSpikes;
-      const pSpikes = new Uint32Array(spikes.length);
-      for (let i = 0; i < spikes.length; i++) pSpikes[i] = spikes[i] ? 1 : 0;
+      const _intraName = `${this.name}_intraSynapses`;
+      const pSpikes = this._preSpikePayload(_intraName, this.lastSpikes);
       try {
-        const p = this._gpuProxy.propagate(`${this.name}_intraSynapses`, pSpikes);
+        const p = this._gpuProxy.propagate(_intraName, pSpikes);
         if (p && typeof p.then === 'function') {
           promises.push(p.then((currents) => {
             if (currents && currents.length > 0) this._cachedIntraCurrents = currents;
@@ -4014,11 +4086,16 @@ export class NeuronCluster {
         if (idx < 0) continue;
         const src = projName.slice(0, idx);
         if (!this.regions[src]) continue;
-        const srcSpikes = this.regionSpikes(src);
-        const pSpikes = new Uint32Array(srcSpikes.length);
-        for (let i = 0; i < srcSpikes.length; i++) pSpikes[i] = srcSpikes[i] > 0 ? 1 : 0;
+        const _projMatrix = `${this.name}_${projName}`;
+        // Bound projections read their pre-spikes from the donor's own resident
+        // cluster buffer, so `regionSpikes` (itself a full region copy) is dead
+        // work too — skip the read entirely, not just the conversion.
+        const _projBound = this._isBoundMatrix(_projMatrix);
+        const pSpikes = _projBound
+          ? EMPTY_PRE_SPIKES
+          : this._preSpikePayload(_projMatrix, this.regionSpikes(src));
         try {
-          const p = this._gpuProxy.propagate(`${this.name}_${projName}`, pSpikes);
+          const p = this._gpuProxy.propagate(_projMatrix, pSpikes);
           if (p && typeof p.then === 'function') {
             promises.push(p.then((currents) => {
               if (currents && currents.length > 0) cache.set(projName, currents);

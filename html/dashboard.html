@@ -1049,7 +1049,7 @@
         } catch (parseErr) {
           // Capture JS error in diagnostic panel
           const elErr = document.getElementById('d-diag-js-errors');
-          if (elErr) elErr.textContent = (elErr.textContent === '— none yet —' ? '' : elErr.textContent + '\n') + new Date().toLocaleTimeString() + ' onmessage: ' + parseErr.message;
+          if (elErr) elErr.textContent = (elErr.textContent === '— none yet —' ? '' : elErr.textContent + '\n') + new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true }) + ' onmessage: ' + parseErr.message;
         }
       };
       ws.onclose = () => {
@@ -1095,7 +1095,7 @@
         catch (renderErr) {
           const elErr = document.getElementById('d-diag-js-errors');
           if (elErr) {
-            const stamp = new Date().toLocaleTimeString();
+            const stamp = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true });
             const cur = elErr.textContent === '— none yet —' ? '' : elErr.textContent + '\n';
             elErr.textContent = cur + stamp + ' updateDashboard: ' + renderErr.message + (renderErr.stack ? '\n  ' + renderErr.stack.split('\n').slice(0, 3).join('\n  ') : '');
           }
@@ -1787,7 +1787,7 @@
       if (s.chatTimeHebbianStats) {
         const cs = s.chatTimeHebbianStats;
         const set = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
-        const tsFmt = (ts) => ts ? new Date(ts).toLocaleTimeString() : '—';
+        const tsFmt = (ts) => ts ? new Date(ts).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true }) : '—';
         set('d-chat-turns', cs.turns || 0);
         set('d-chat-pairs', cs.totalPairs || 0);
         set('d-chat-lastts', tsFmt(cs.lastTs));
@@ -1802,7 +1802,7 @@
       if (s.dreamRecombinationStats) {
         const ds = s.dreamRecombinationStats;
         const set = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
-        const tsFmt = (ts) => ts ? new Date(ts).toLocaleTimeString() : '—';
+        const tsFmt = (ts) => ts ? new Date(ts).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true }) : '—';
         set('d-dream-total', ds.totalDreamed || 0);
         set('d-dream-novel', ds.novelConsolidated || 0);
         set('d-dream-lastts', tsFmt(ds.lastTs));
@@ -1821,7 +1821,7 @@
       const el = document.getElementById('d-log');
       const entry = document.createElement('div');
       entry.className = 'log-entry';
-      entry.textContent = `[${new Date().toLocaleTimeString()}] ${text}`;
+      entry.textContent = `[${new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true })}] ${text}`;
       el.appendChild(entry);
       el.scrollTop = el.scrollHeight;
       while (el.children.length > 200) el.children[0].remove();
@@ -1847,7 +1847,7 @@
       const color = level === 'error' ? '#ff6b6b' : (level === 'warn' ? '#f59e0b' : '#9ca3af');
       const div = document.createElement('div');
       div.className = 'log-entry';
-      const ts = entry.ts ? new Date(entry.ts).toLocaleTimeString() : '';
+      const ts = entry.ts ? new Date(entry.ts).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true }) : '';
       const safe = String(entry.text || '').replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
       div.innerHTML = `<span style="color:#555;">${ts}</span> <span style="color:${color};">${safe}</span>`;
       el.appendChild(div);
@@ -2167,7 +2167,7 @@
       };
       for (const e of fresh) {
         const div = document.createElement('div');
-        const ts = new Date(e.ts).toLocaleTimeString();
+        const ts = new Date(e.ts).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true });
         const color = colors[e.type] || colors.event;
         div.style.cssText = `margin-bottom:3px;padding-left:6px;border-left:2px solid ${color};`;
         div.innerHTML = `<span style="color:#666;">${ts}</span> <span style="color:${color};font-weight:bold;">[${e.type}]</span> <span style="color:#888;">${regionIcon(e.region)} ${e.region || ''}</span> <span style="color:#ccc;">${e.label}</span>`;
@@ -2311,7 +2311,7 @@
           rows.push(`<div style="display:flex;padding:3px 10px;font-size:10px;color:#aaa;border-bottom:1px solid #111;">
             <span style="width:60px;color:#888;">${id}</span>
             <span style="width:60px;color:${iconColor};">${icon} ${scorePct}</span>
-            <span style="color:#555;font-size:9px;">${probe.ts ? new Date(probe.ts).toLocaleTimeString() : ''}</span>
+            <span style="color:#555;font-size:9px;">${probe.ts ? new Date(probe.ts).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true }) : ''}</span>
           </div>`);
         }
       }

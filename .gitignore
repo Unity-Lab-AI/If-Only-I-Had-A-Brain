@@ -231,3 +231,4 @@ server/visual-memory*.json
 .pv.json
 .bandwatch.*
 .hiwatch*
+.scratch/
