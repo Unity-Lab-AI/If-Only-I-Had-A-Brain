@@ -5031,12 +5031,24 @@ class ServerBrain {
           this._saveBinaryWeightsAsync()
             .then(() => {
               // v-rotation only after a COMPLETE file exists; async copy so the
-              // 158MB duplicate never pins the loop either.
+              // duplicate never pins the loop either. NOTE the duplicate is the
+              // FULL weights file (5.4GB at the 12M cortex — the "158MB" this
+              // comment once named is long gone): each save cycle churns
+              // ~2× the file size of disk I/O + page cache. Stage-stamped so
+              // its cost is READ (SavePin split + BLOCKED saveStage=), never
+              // assumed.
               try {
-                if (fs.existsSync(BIN_FILE_R)) fs.copyFile(BIN_FILE_R, _binBackupFile, (err) => {
-                  if (err) console.warn('[Brain] Binary weights versioned backup failed:', err?.message || err);
-                });
+                if (fs.existsSync(BIN_FILE_R)) {
+                  this._saveStage = 'v-copy'; this._saveStageAt = Date.now();
+                  const _ct = Date.now();
+                  fs.copyFile(BIN_FILE_R, _binBackupFile, (err) => {
+                    this._saveStage = null;
+                    if (err) console.warn('[Brain] Binary weights versioned backup failed:', err?.message || err);
+                    else console.log(`[SavePin] v-copy=${Date.now() - _ct}ms (${path.basename(_binBackupFile)})`);
+                  });
+                }
               } catch (err) {
+                this._saveStage = null;
                 console.warn('[Brain] Binary weights versioned backup failed:', err?.message || err);
               }
             })
@@ -5210,8 +5222,26 @@ class ServerBrain {
   // the event loop services /ws + HTTP between every slice, so a 158MB
   // checkpoint no longer freezes the brain/dashboard for its duration.
   async _saveBinaryWeightsAsync() {
+    // SAVE-STAGE EYES — a 5.4GB save window carried two ~112s contiguous
+    // loop pins (donor died of starved pings) while this method's own
+    // completion line claimed "loop never blocked"; an earlier save of the
+    // IDENTICAL bytes took 20s with no pin, so the cost is state-dependent
+    // and the guilty stage is unnamed. Same law as the chat-stage eyes:
+    // stamp every stage, lap-time it, and let the lag monitor's BLOCKED
+    // line print saveStage=NAME when a pin lands inside a save. No fix
+    // ships until the save names its own pin.
+    const _laps = [];
+    let _stageT0 = Date.now();
+    const _stamp = (stage) => {
+      const now = Date.now();
+      if (this._saveStage) _laps.push(`${this._saveStage}=${now - _stageT0}ms`);
+      this._saveStage = stage || null;
+      this._saveStageAt = now;
+      _stageT0 = now;
+    };
+    _stamp('collect');
     const col = this._collectBinarySections();
-    if (!col) return;
+    if (!col) { _stamp(null); return; }
     const { sections, totalBytes } = col;
     const BIN_FILE = WEIGHTS_FILE.replace(/\.json$/, '.bin');
     const TMP_FILE = BIN_FILE + '.tmp';
@@ -5233,7 +5263,12 @@ class ServerBrain {
     // async too (nothing left to flush by then). A starved loop was exactly what
     // EPIPE'd the donor socket.
     const writeAsync = (buf) => new Promise((resolve, reject) => {
-      fs.write(fd, buf, 0, buf.length, null, (err) => err ? reject(err) : resolve());
+      const _wt = Date.now();
+      fs.write(fd, buf, 0, buf.length, null, (err) => {
+        const _wms = Date.now() - _wt;
+        if (_wms > 2000) console.warn(`[SavePin] one ${(buf.length / 1048576).toFixed(1)}MB slice await took ${_wms}ms at saveStage=${this._saveStage} — threadpool/kernel writeback pressure (a slow slice stalls a pool thread, not the loop; if the loop ALSO pinned, the BLOCKED line names the stage).`);
+        err ? reject(err) : resolve();
+      });
     });
     const writeSliced = async (buf) => {
       for (let off = 0; off < buf.length; off += SLICE) {
@@ -5249,6 +5284,7 @@ class ServerBrain {
       hdr.writeUInt32LE(sections.length, 12);
       await writeAsync(hdr);
       for (const s of sections) {
+        _stamp(`write:${s.name}`);
         this._writeBinarySection(fd, s);
         await writeSliced(Buffer.from(s.rowPtr.buffer, s.rowPtr.byteOffset, (s.rows + 1) * 4));
         await writeSliced(Buffer.from(s.colIdx.buffer, s.colIdx.byteOffset, s.nnz * 4));
@@ -5257,12 +5293,17 @@ class ServerBrain {
       // Flush ALL dirty pages on the threadpool so the rename below has nothing
       // to write back (kills the ext4 flush-on-rename main-thread stall) AND the
       // atomic-swap guarantee gets stronger: data is on disk before the swap.
+      _stamp('fsync');
       await new Promise((resolve, reject) => fs.fsync(fd, (err) => err ? reject(err) : resolve()));
       await new Promise((resolve, reject) => fs.close(fd, (err) => err ? reject(err) : resolve()));
       fd = undefined;
+      _stamp('rename');
       await fs.promises.rename(TMP_FILE, BIN_FILE);   // atomic swap — readers never see a torn file
-      console.log(`[Brain] Binary weights saved ${sections.length} sections, ${(totalBytes / 1048576).toFixed(1)} MB → ${path.basename(BIN_FILE)} (async-write + fsync, ${Date.now() - t0}ms wall, loop never blocked)`);
+      _stamp(null);
+      console.log(`[Brain] Binary weights saved ${sections.length} sections, ${(totalBytes / 1048576).toFixed(1)} MB → ${path.basename(BIN_FILE)} (async-write + fsync, ${Date.now() - t0}ms wall)`);
+      console.log(`[SavePin] split — ${_laps.join(' · ')}`);
     } catch (err) {
+      _stamp(null);
       if (fd !== undefined) { try { fs.closeSync(fd); } catch {} }
       try { if (fs.existsSync(TMP_FILE)) fs.unlinkSync(TMP_FILE); } catch { /* tmp cleanup best-effort */ }
       console.warn('[Brain] Binary weights save failed:', err?.message || err);
@@ -8957,7 +8998,11 @@ const _lagTimer = setInterval(() => {
     // a pin during chat prints the guilty stage's NAME right here.
     const _chatStageTag = (brain._chatStage && (Date.now() - (brain._chatStageAt || 0)) < 120000)
       ? ` chatStage=${brain._chatStage}` : '';
-    console.warn(`[EventLoop] BLOCKED ${lagMs.toFixed(0)}ms — /ws handshakes + donor frames stalled this long. context: phase=${phase} cell=${cell} donors=${donors} consolidationInFlight=${consol} innerVoiceInFlight=${innerVoice} replicaSyncing=${syncing}${uploading ? ' uploadInFlight=true' : ''}${_chatStageTag}`);
+    // SAVE-STAGE EYES — a pin during a weights save names the guilty save
+    // stage (the 5.4GB save carried two ~112s pins the completion line
+    // denied; same conviction pattern as chatStage=).
+    const _saveStageTag = brain._saveStage ? ` saveStage=${brain._saveStage}` : '';
+    console.warn(`[EventLoop] BLOCKED ${lagMs.toFixed(0)}ms — /ws handshakes + donor frames stalled this long. context: phase=${phase} cell=${cell} donors=${donors} consolidationInFlight=${consol} innerVoiceInFlight=${innerVoice} replicaSyncing=${syncing}${uploading ? ' uploadInFlight=true' : ''}${_chatStageTag}${_saveStageTag}`);
   }
 }, _LAG_SAMPLE_MS);
 wss.on('close', () => clearInterval(_lagTimer));
