@@ -352,3 +352,13 @@ _Completed sections zeroed 2026-08-16 (third zeroing) — migrated VERBATIM to `
 - [x] **TICKGUARD.1** **DONE — built + verified (node --check ×3 + ESM + bundle):** `stepAwait` gains a per-tick bio-scale abort — GPU path must be GENUINELY alive (proxy flag AND socket) every tick; not-live at >2M neurons returns an aborted zero-spike tick (emission starves naturally → honest brief silence) instead of the 57s CPU propagate. Rate-limited warn names each abort. Same law as the teach side: no CPU path at biological scale.
 - [x] **TICKGUARD.2** **DONE** — CHAT-STAGE EYES: `processAndRespond` stamps `brain._chatStage` through 8 stages (entry / img-detect / pair-enqueue / turn-history / identity-inject / schema-retrieve / generate / respond); the lag monitor's BLOCKED line appends `chatStage=` when a pin lands within 120s of chat activity — the next freeze prints the guilty organ's NAME.
 - [ ] **TICKGUARD.3** ⏳ GEE: ONE **Update & SAVESTART**, then hi-test round 3. Pass = no freeze, donor holds, reply or honest-silence. If ANY pin remains, the console's BLOCKED line now carries `chatStage=<name>` — the final organ convicts itself in one read.
+
+---
+
+## CONSOLERING — 2026-08-18 · "look it up yourself" — the box console becomes remotely readable, forever
+
+> Gee (verbatim): *"look it up yourself"* · Gee (verbatim): *"my cosole is blank"* — the round-3 freeze's confession lines (the BLOCKED line carrying `chatStage=`, the stepAwait aborts, the donor crumb) printed at freeze-break while his tail session was dead; the diagnosis stalled on a blank view while the answers sat in journald.
+
+- [x] **CONSOLERING.1** **DONE — built + verified (node --check + ring smoke test):** console.log/warn/error wrapped ONCE at boot — every line also lands in a bounded in-memory ring (2,000 × ≤600 chars; never throws, never alters stdout/journald).
+- [x] **CONSOLERING.2** **DONE** — `GET /console-tail.json?n=N` (cap 500, default 300; `?since=ms` filter) — public read-only, same transparency lane as /public-state.json. After the next press I curl her console MYSELF.
+- [ ] **CONSOLERING.3** ⏳ GEE: ONE **Update & SAVESTART**, then hi-test round 4: I pull `/console-tail.json` the moment it freezes/recovers and read the `chatStage=` confession without anyone's tail needing to be alive. The round-3 confession is ALSO recoverable NOW via `journalctl -u unity-brain --since` around 7:13-7:15 PM his time if he wants the answer before the press.
