@@ -844,3 +844,21 @@ The CLI restart from the prior handoff was FOR this. Gee authorized a 4090 proof
 - [x] **PARTMIRROR.2** **VERIFY (build half) DONE** - `node --check` + `import()` ESM PASS. Server-side only.
 - [ ] **PARTMIRROR.3** GEE: Update & Savestart. Verdict: **all three donors positive**, including the 5.6GB card - which is the real test of the whole batch, because a small volunteer card is the common case for public donors, not the exception.
 - [ ] **PARTMIRROR.4** **OPEN - worth checking later:** a partial donor Gn/s will be proportionally LOWER (it steps 2 of 8 clusters, so its neuron-count per batch is smaller). That is honest and correct - it is doing less work - but the leaderboard should not read it as a broken card. Consider surfacing coverage alongside the rate so a small donor sees "contributing 2/8 clusters" rather than an unexplained low number.
+
+---
+
+## ALLINIT - 2026-08-18 - a replica got its CLUSTER BUFFERS only as a side effect of the multi-GB weight sync
+
+> Gee (verbatim): *"0Gn/s out the gate but boith others are working fine fix it for sPONGE!!!!! FIX IT!!!!"*
+
+**THE ACTUAL ROOT CAUSE, and every earlier fix was downstream of it.** `gpu_init` is sent from exactly THREE places: two target `this._gpuClient` (the PRIMARY) and the third lives INSIDE `_syncReplicaToDonor`. So a replica received its cluster buffers ONLY as a side effect of the multi-GB weight sync. Until that sync ran it had **ZERO clusters initialised** and therefore could not execute a `compute_batch` at all - and compute_batch is the ONLY thing that produces Gn/s. A donor read 0 from the moment it connected until its sync completed: minutes on a fast link, the whole session on a slow one, and NEVER if the sync kept being interrupted by restarts.
+
+**Why the other two worked and Sponge did not:** both are full-coverage donors whose syncs had already delivered gpu_init. Sponge sync is serialised behind them (SYNCSERIAL, correctly), so his buffers had not arrived. Nothing about his card was broken - he had simply never been given anything to compute WITH.
+
+**gpu_init is TINY** - cluster name, size, tonic drive, noise amp, LIF params, regions. No matrices, no weights. Coupling it to a 2.8GB transfer was never necessary.
+
+- [x] **ALLINIT.1** **DONE - `_gpuInitDonorClusters(ws, coverage)`**: cluster init extracted into a helper any donor can receive, optionally coverage-filtered for a partial replica. Idempotent (a repeat gpu_init is a re-init, and the sync path still sends its own set, so a double-send is safe).
+- [x] **ALLINIT.2** **DONE - every donor is initialised AT REGISTRATION**, on the same 1.5s delay the sync uses (so the donor own WebGPU/CUDA device init finishes first). The weight sync becomes an UPGRADE that unlocks matrix work, rather than the precondition for participating at all.
+- [x] **ALLINIT.3** **VERIFY (build half) DONE** - `node --check` on both touched files + `import()` ESM PASS; confirmed `_regionsFor` / `CLUSTER_SIZES` / `tonicDrives` / `noiseAmplitudes` all exist on the mixin rather than assuming.
+- [ ] **ALLINIT.4** GEE: Update & Savestart. Verdict: `[<id>] ALLINIT — N cluster buffers initialised at registration` appears for EVERY donor, and every donor shows positive Gn/s within seconds of connecting - sync state irrelevant. **This is the one that should finally make it true.**
+- [ ] **ALLINIT.5** **OPEN - the design lesson.** Cluster init (cheap, instant, the prerequisite for ANY compute) was entangled with weight sync (expensive, slow, the prerequisite for MATRIX compute). Every 0 Gn/s symptom this session traced back to that single coupling, and I fixed six things downstream of it before finding it. Worth auditing whether anything else cheap is gated behind something expensive purely because they share a function.

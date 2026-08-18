@@ -1363,6 +1363,51 @@ const SERVER_GPU_MIXIN = {
    * primary IS the master, so syncing it is a no-op. Per-donor in-flight guard
    * prevents overlapping syncs (a slow replica + a rebroadcast racing).
    */
+  /**
+   * ALLINIT — send cluster buffers (gpu_init) to ANY donor, decoupled from the matrix sync.
+   *
+   * THE BUG THIS EXISTS FOR: gpu_init was only ever sent to `this._gpuClient` (the primary,
+   * at two sites) or from inside `_syncReplicaToDonor`. So a replica got its cluster buffers
+   * ONLY as a side effect of the multi-GB weight sync — and until that sync ran it had ZERO
+   * clusters initialised and therefore could not execute a `compute_batch` at all. Since
+   * compute_batch is the ONLY thing that produces Gn/s (donor.rs: gneurons_per_sec), a donor
+   * showed 0 from the moment it connected until its sync completed — minutes on a fast link,
+   * the entire session on a slow one, and never at all if the sync kept being interrupted.
+   * Observed live: two full-coverage donors working while a third sat at 0 "out the gate".
+   *
+   * gpu_init is TINY — cluster name, size, tonic drive, noise amp, LIF params, regions. No
+   * matrices, no weights. Coupling it to a 2.8GB transfer was never necessary; sending it at
+   * registration means every donor can compute within seconds of connecting, and the weight
+   * sync becomes an upgrade (it unlocks matrix work) rather than a precondition for existing.
+   *
+   * Idempotent: compute.html / the native donor treat a repeat gpu_init for the same cluster
+   * as a re-init, and `_syncReplicaToDonor` still sends its own set, so a double-send is safe.
+   */
+  _gpuInitDonorClusters(ws, coverage) {
+    if (!ws || ws.readyState !== 1) return 0;
+    const names = Object.keys(this.CLUSTER_SIZES || {});
+    let sent = 0;
+    for (const clusterName of names) {
+      const size = this.CLUSTER_SIZES[clusterName];
+      if (!size) continue;
+      if (coverage && coverage.size && !coverage.has(clusterName)) continue;
+      const regions = this._regionsFor ? this._regionsFor(clusterName, size) : undefined;
+      try {
+        ws.send(JSON.stringify({
+          type: 'gpu_init',
+          clusterName,
+          size,
+          tonicDrive: this.tonicDrives[clusterName],
+          noiseAmp: this.noiseAmplitudes[clusterName],
+          lifParams: { tau: 20, Vrest: -65, Vthresh: -50, Vreset: -70, dt: 1, R: 1, tRefrac: 2 },
+          regions,
+        }));
+        sent++;
+      } catch { /* donor dropped mid-init — the sync path re-sends */ }
+    }
+    return sent;
+  },
+
   async _syncReplicaToDonor(ws) {
     if (!ws || ws.readyState !== 1) return;
     if (ws === this._gpuClient) return;   // primary is the master — nothing to replicate

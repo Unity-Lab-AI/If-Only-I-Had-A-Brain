@@ -8590,6 +8590,22 @@ wss.on('connection', (ws, req) => {
             // donor finishes its own WebGPU device init before we stream
             // weights at it. With this, every connected GPU holds the brain
             // and independent work fans out across all of them (_gpuParallelMap).
+            // ALLINIT — give the donor its CLUSTER BUFFERS IMMEDIATELY, decoupled from the
+            // weight sync below. compute_batch is the only work that produces Gn/s and it
+            // needs gpu_init and nothing else; previously gpu_init arrived only as a side
+            // effect of the multi-GB sync, so a donor sat at 0 from connect until that sync
+            // finished — the whole session on a slow link. Same 1.5s delay so the donor's own
+            // WebGPU/CUDA device init completes first, then it can compute straight away and
+            // the weight sync becomes an UPGRADE (unlocking matrix work) rather than the
+            // precondition for participating at all.
+            if (typeof brain._gpuInitDonorClusters === 'function') {
+              setTimeout(() => {
+                try {
+                  const _n = brain._gpuInitDonorClusters(ws, null);
+                  if (_n > 0) console.log(`[${id}] ALLINIT — ${_n} cluster buffers initialised at registration; this donor can compute NOW, before its weight sync.`);
+                } catch { /* non-fatal */ }
+              }, 1500);
+            }
             if (typeof brain._syncReplicaToDonor === 'function') {
               setTimeout(() => { brain._syncReplicaToDonor(ws).catch(() => {}); }, 1500);
             }
