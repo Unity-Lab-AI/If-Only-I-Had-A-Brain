@@ -5027,18 +5027,51 @@ class ServerBrain {
             console.warn('[Brain] Binary weights versioned backup failed:', err?.message || err);
           }
         } else if (!this._binSaveInFlight) {
+          // SAVE PACING — the save-stage eyes' first-boot conviction: forced
+          // cell-checkpoint saves fired every ~5min, each writing ~16GB of
+          // disk traffic (5.4GB tmp + rename writeback + a full-file v-copy),
+          // until kernel writeback throttling turned one save into a
+          // 22.5-MINUTE box-wide wedge (a 16-byte header write took 286s, an
+          // 8MB slice 1,056s, the MAIN THREAD froze with them — donor dead,
+          // every page dark). A binary save may not START until
+          // max(10min, 4× the last save's wall) has passed since the last
+          // one COMPLETED: a healthy 20s save keeps a 10min cadence, a
+          // struggling save backs off in proportion, the disk drains between
+          // rounds. A checkpoint landing inside the gap LATCHES one unref'd
+          // timer and fires when the gap opens — durability is deferred
+          // minutes, never dropped (a save always writes the CURRENT live
+          // weights). Shutdown-class sync saves bypass all of this.
+          const _paceGapMs = Math.max(600000, (this._binSaveWallMs || 0) * 4);
+          const _sinceDone = Date.now() - (this._binSaveDoneAt || 0);
+          if (this._binSaveDoneAt && _sinceDone < _paceGapMs) {
+            if (!this._binSavePendingTimer) {
+              const _waitMs = _paceGapMs - _sinceDone;
+              console.log(`[SavePin] binary save PACED — last save cost ${((this._binSaveWallMs || 0) / 1000).toFixed(0)}s of wall; next checkpoint fires in ${(_waitMs / 60000).toFixed(1)}min (the disk drains between 5.4GB saves).`);
+              this._binSavePendingTimer = setTimeout(() => {
+                this._binSavePendingTimer = null;
+                this.saveWeights({ force: true, trigger: 'paced-binary-checkpoint' });
+              }, _waitMs);
+              if (this._binSavePendingTimer && typeof this._binSavePendingTimer.unref === 'function') this._binSavePendingTimer.unref();
+            }
+          } else {
           this._binSaveInFlight = true;
+          const _svT0 = Date.now();
           this._saveBinaryWeightsAsync()
             .then(() => {
+              this._binSaveWallMs = Date.now() - _svT0;
+              this._binSaveDoneAt = Date.now();
               // v-rotation only after a COMPLETE file exists; async copy so the
               // duplicate never pins the loop either. NOTE the duplicate is the
               // FULL weights file (5.4GB at the 12M cortex — the "158MB" this
               // comment once named is long gone): each save cycle churns
               // ~2× the file size of disk I/O + page cache. Stage-stamped so
               // its cost is READ (SavePin split + BLOCKED saveStage=), never
-              // assumed.
+              // assumed — and rotated AT MOST HOURLY: a full-file duplicate
+              // per 5-minute checkpoint was a third of the wedge's I/O.
               try {
-                if (fs.existsSync(BIN_FILE_R)) {
+                const V_COPY_MIN_GAP_MS = 3600000;
+                if (fs.existsSync(BIN_FILE_R) && (!this._lastVCopyMs || (Date.now() - this._lastVCopyMs) >= V_COPY_MIN_GAP_MS)) {
+                  this._lastVCopyMs = Date.now();
                   this._saveStage = 'v-copy'; this._saveStageAt = Date.now();
                   const _ct = Date.now();
                   fs.copyFile(BIN_FILE_R, _binBackupFile, (err) => {
@@ -5046,6 +5079,8 @@ class ServerBrain {
                     if (err) console.warn('[Brain] Binary weights versioned backup failed:', err?.message || err);
                     else console.log(`[SavePin] v-copy=${Date.now() - _ct}ms (${path.basename(_binBackupFile)})`);
                   });
+                } else if (fs.existsSync(BIN_FILE_R)) {
+                  console.log('[SavePin] v-copy SKIPPED (hourly rotation — each copy duplicates the full weights file on disk).');
                 }
               } catch (err) {
                 this._saveStage = null;
@@ -5054,6 +5089,7 @@ class ServerBrain {
             })
             .catch((err) => console.warn('[Brain] Binary weights async save failed:', err?.message || err))
             .finally(() => { this._binSaveInFlight = false; });
+          }
         } else {
           console.log('[Brain] Binary weights save skipped — previous time-sliced save still writing (next checkpoint catches up).');
         }
