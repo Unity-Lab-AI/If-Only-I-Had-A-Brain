@@ -3804,6 +3804,33 @@ export class NeuronCluster {
    * @returns {Promise<{ spikes: Uint8Array, spikeCount: number, voltages: Float64Array }>}
    */
   async stepAwait(dt) {
+    // BIO-SCALE CPU-STEP ABORT (2026-08-18). The reply pipeline's entry
+    // guard checks GPU readiness ONCE at reply start — but a donor that
+    // dies MID-REPLY sent every remaining word-tick into the CPU fallback
+    // below: a synchronous ~57s/word propagate over the 12M intra that
+    // pinned the loop ~30s+, starved the donor keepalives further, and
+    // turned one donor wobble into a hard freeze + drop (watched live on
+    // the operator's hi-test — the reply ran because she has passed cells
+    // now). At biological scale a CPU step is FORBIDDEN, same law as the
+    // teach side ("this brain has no CPU teach path"): if the GPU path is
+    // not GENUINELY alive (flag AND socket), return an aborted zero-spike
+    // tick — emission loops starve naturally and the reply ends as honest
+    // brief silence; the walk/donor never feel it. Socket checked per-tick,
+    // not per-reply. DREAM_INNERVOICE_FORCE_CPU=1 opts small brains back in.
+    {
+      const _b = this._brain;
+      const _sockAlive = !!(_b && _b._gpuClient && _b._gpuClient.readyState === 1);
+      const _gpuLive = !!(this._gpuProxyReady && this._gpuProxy && this._gpuProxy.propagate && _sockAlive);
+      if (!_gpuLive
+          && (this.size | 0) > 2_000_000
+          && !(typeof process !== 'undefined' && process.env && process.env.DREAM_INNERVOICE_FORCE_CPU === '1')) {
+        if (!this._stepAbortWarnMs || (Date.now() - this._stepAbortWarnMs) > 30000) {
+          this._stepAbortWarnMs = Date.now();
+          console.warn(`[Cluster ${this.name}] stepAwait ABORTED at biological scale — GPU path not live (proxyReady=${!!this._gpuProxyReady} socketAlive=${_sockAlive}); a CPU step would pin the loop ~57s/word. Emission goes briefly silent instead. Rate-limited 30s.`);
+        }
+        return { spikes: this.lastSpikes, spikeCount: 0, voltages: (this.neurons && this.neurons.voltages) || null, aborted: true };
+      }
+    }
     if (!this._gpuProxyReady || !this._gpuProxy || !this._gpuProxy.propagate) {
       // No GPU proxy — synchronous CPU step. SPEAK.4b/WL.3: that step's
       // synapses.propagate blocks the loop ~57s at biological scale. When

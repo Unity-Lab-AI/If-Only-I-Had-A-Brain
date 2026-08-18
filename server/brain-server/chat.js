@@ -49,6 +49,9 @@ const { execSync } = require('child_process');
 
 const SERVER_CHAT_MIXIN = {
   async processAndRespond(text, userId) {
+    // CHAT-STAGE EYES (2026-08-18) — the lag monitor prints _chatStage when
+    // a loop pin lands during chat, so the next freeze names its organ.
+    this._chatStage = 'entry'; this._chatStageAt = Date.now();
     // Inject text into brain
     this.injectText(text);
     this._lastInputTime = Date.now();
@@ -96,6 +99,7 @@ const SERVER_CHAT_MIXIN = {
     // generate_image with a prompt built from what they asked for. The client
     // turns the prompt into an actual image via Pollinations.
     if (text) {
+      this._chatStage = 'img-detect';
       const imgRequest = this._detectImageRequest(text);
       // TU.29.7 — the detected request is the INTENT; the PROMPT is hers.
       // TU.29.9 — EXCEPT a selfie: _detectImageRequest returns her curated
@@ -186,6 +190,7 @@ const SERVER_CHAT_MIXIN = {
     // tokens (typos, rare vocabulary) are skipped so chat input never
     // lands Hebbian writes on phantom-token noise basins.
     try {
+      this._chatStage = 'pair-enqueue';
       if (this.cortexCluster
           && this.curriculum
           && typeof this.curriculum._teachAssociationPairs === 'function'
@@ -269,6 +274,7 @@ const SERVER_CHAT_MIXIN = {
     // any other context loads so Unity sees "what we've been talking
     // about" alongside the current turn. Crucial for "you said dogs
     // are scary, why?" type follow-ups.
+    this._chatStage = 'turn-history';
     if (this.cortexCluster) {
       if (!Array.isArray(this.cortexCluster._chatTurnHistory)) {
         this.cortexCluster._chatTurnHistory = [];
@@ -294,6 +300,7 @@ const SERVER_CHAT_MIXIN = {
     // is present in cortex sem region BEFORE the user-input intent seed
     // gets stamped on top. Drug-state immune (this is pattern injection,
     // not weight modification — drugs modulate decoding, not identity).
+    this._chatStage = 'identity-inject';
     if (this.tier3Store && typeof this.tier3Store.injectIdentityBaseline === 'function') {
       try {
         const injected = this.tier3Store.injectIdentityBaseline();
@@ -313,6 +320,7 @@ const SERVER_CHAT_MIXIN = {
     // before generating a response. Sets _hippocampusContextSchemas on
     // cortexCluster so downstream generation can also reference the
     // schema list (e.g., for retrieval-augmented oracle).
+    this._chatStage = 'schema-retrieve';
     if (this.schemaStore && this.cortexCluster && this.sharedEmbeddings && text) {
       try {
         const intentEmb = this.sharedEmbeddings.getSentenceEmbedding(text);
@@ -495,6 +503,7 @@ const SERVER_CHAT_MIXIN = {
         // _chatPriorityActive). 60s ceiling = a stuck generate can't starve
         // teach forever; cleared in finally the moment the reply lands.
         this._chatPriorityUntil = Date.now() + 60_000;
+        this._chatStage = 'generate';
         // T14.26 — `generateAsync` (NOT `generate`) so the dictionary-
         // cosine scoring loop yields to the Node event loop every 500
         // entries. Without this yield, state broadcasts and compute_batch
@@ -537,6 +546,7 @@ const SERVER_CHAT_MIXIN = {
       this._chatPriorityUntil = 0;   // CHAT.3 — reply composed; teach lane reopens immediately
     }
 
+    this._chatStage = 'respond';
     if (!response || response.length < 2) {
       // TRAINED-STATE silence reason, not grade-label.
       // Operator (2026-05-06): "at any point in her training she
