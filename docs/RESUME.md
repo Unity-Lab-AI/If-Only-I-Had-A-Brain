@@ -1,6 +1,23 @@
 # RESUME — Session Pickup Brief
 
-> ## ⭐⭐⭐ 2026-08-18 (latest) — THE SECOND HALF: the reply path stopped murdering the donor · save-wedge caged · donor v0.3.18→v0.3.20 shipped · Gee: *"i think we are good! she looks great"*
+> ## ⭐⭐⭐ 2026-08-18 (latest) — GENPIN: the reply pinned the loop **DEAF**, and that is what kept killing the donor · TZSTAMP: clocks moved to Mountain AM/PM · Gee: *"she crashed the doner just now, can u pull that and see what if needs to be fixed"*
+>
+> **PULLED IT — the ring convicted `generate` and nothing else.** 500 lines, 7:57-8:16 AM Mountain, fourteen replies. `generate` is **97-99% of every reply pass**: floor 11-13s, spikes to 47,584ms and **77,760ms**. Every other stage is clean (`entry=0ms`, `img-detect=0-1ms`, `pair-enqueue=0ms`, `identity-inject=~300ms`, `respond=0ms`). **INJECTSPARSE and SALIENCEDEFER are holding** — last session's fixes are intact; this is the next organ down.
+>
+> **THE KILL:** the 76,408ms block ends 8:12:27 AM. The heartbeat forgives FIVE sweeps (HBSELF self-lateness works exactly as built), then two clean sweeps count and at **8:15:01 AM** the donor is terminated — followed by 227 cancelled sparse requests, `No GPU - brain paused`, and a 2,792MB re-upload. **The heartbeat is not the bug. The deafness is.**
+>
+> **THE TWO DEFECTS, both inside `stepAwait`:**
+> - **`await` is not a yield.** When the awaited promise resolves without real I/O, the continuation is a MICROTASK — so an emission loop of 36-108 ticks (12 words × 3 ticks, ×3 R.9 clauses) chains into ONE unbroken macrotask. The 1s lag sampler cannot fire; donor keepalives cannot be read. Hence a single contiguous 76s block instead of 108 small ones.
+> - **~48MB allocated per tick to build a payload the donor discards.** `gpuSparsePropagateAuto` routes CLUSTER-BOUND matrices to `gpuSparsePropagateBound`, which ignores `preSpikes` entirely — yet `stepAwait` built a fresh `Uint32Array(12,000,000)` + a full-length loop for the intra matrix and each cross-projection anyway. Every cortex matrix is bound. Multiple GB of garbage per chat message, for buffers nobody reads.
+>
+> **SHIPPED (nothing removed from her emission — not a tick, not a word, not a candidate):** LOOP BREATHE forces a real macrotask boundary between ticks (`DREAM_TICK_BREATHE_MS`, default 50ms) so keepalives are answered WHILE she composes · `_isBoundMatrix()` + `_preSpikePayload()` + shared `EMPTY_PRE_SPIKES` skip the allocation and the region copy for bound matrices, with the unbound path byte-identical. **An 11s reply is fine; an 11s DEAF reply kills the donor.**
+>
+> **TZSTAMP:** the box ran UTC, so every server stamp was UTC 24-hour and matched nothing on Gee's screen. `process.env.TZ` now pinned to `America/Denver` before any Date exists (env still wins); all 8 dashboard stamps render **the admin's own system time** with explicit `'en-US'` + `hour12: true`; both console-ring routes ship `tsLabel`/`nowLabel`/`tz`. The 14:15:01 UTC kill now reads **8:15:01 AM**.
+>
+> **⏳ NEXT PRESS PICKS UP:** GENPIN + TZSTAMP + the still-undeployed SALIENCEDEFER, donor v0.3.20 and the IMGHOST image fix (the box was on `560182af`). **Watch on the press:** `[EventLoop] BLOCKED` during `chatStage=generate` must fall to sub-second and the donor must survive a sustained hi-test — `generate` itself may legitimately stay seconds.
+
+
+> ## ⭐⭐⭐ 2026-08-18 — THE SECOND HALF: the reply path stopped murdering the donor · save-wedge caged · donor v0.3.18→v0.3.20 shipped · Gee: *"i think we are good! she looks great"*
 >
 > **LIVE STATE AT CLOSE:** box on `4fef36f9`, walking math/kindergarten, donor RTT ~72ms, **0 donor drops across the final 221-sample watch**. `main` @ `c855ae7`. ⏳ ONE press pending — it picks up SALIENCEDEFER + the v0.3.20 negotiation (CI is building the binary; the donor self-updates).
 >

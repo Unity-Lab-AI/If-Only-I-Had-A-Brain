@@ -5,6 +5,45 @@
 
 ---
 
+## 2026-08-18 - GENPIN + TZSTAMP: the reply's `generate` stage was pinning the loop DEAF for 11-78s (the donor kill), and the clocks were UTC 24-hour - feature/genpin-timestamps-0818
+
+### Gee ask (verbatim per LAW #0)
+
+> *"she crashed the doner just now, can u pull that and see what if needs to be fixed"*
+
+> *"and i dont know what type of time zone the brain is using on all its time stamps but the time stamps need to be current with the admins sytem time or if u cant do that then just set it to mountain time"*
+
+> *"and need to be AM PM not 14:13...."*
+
+### GENPIN - what the ring said
+
+Pulled the live console ring (`/public-state.json?console=2000`, 500 lines, 7:57:05 AM - 8:16:24 AM Mountain). **Fourteen chat replies in the window. `generate` is 97-99% of every single one of them**, floor 11-13s, with spikes to 47,584ms and **77,760ms**. Every other stage is innocent: `entry=0ms`, `img-detect=0-1ms`, `pair-enqueue=0ms`, `turn-history=~20ms`, `identity-inject=~300ms`, `schema-retrieve=~50ms`, `respond=0ms`, `store-episode=~2ms`. INJECTSPARSE and SALIENCEDEFER are holding exactly as shipped.
+
+**The kill, reconstructed with no ambiguity:** the 76,408ms block ends 8:12:27 AM. The heartbeat sweep self-reports `71.9s LATE` and forgives (HBSELF works as designed). Two more sweeps forgive on `loopBlockedRecently` (the 11.4s + 11.2s pins). Then two clean sweeps count for real, and at **8:15:01 AM** `missed 2 consecutive pings (+3 forgiven) - terminating`, `CRITICAL - GPU compute client disconnected UNEXPECTEDLY at +2753s`, 227 in-flight sparse requests cancelled, `No GPU - brain paused`, then a 2,792MB canonical re-upload. **The heartbeat is not the bug - it forgave five times before firing. The deafness is the bug.**
+
+### GENPIN - the mechanism (read out of the code, not guessed)
+
+`chat.js:553 generate` -> `languageCortex.generateAsync` -> `cluster.composeSentence` -> `_composeSentenceOnce`. That loop is `MAX_WORDS=12` x `TICKS_PER_WORD=3` = 36 `await stepAwait(0.001)` per sentence, and R.9's continuation clauses take a single reply to **up to 108 ticks**. Two compounding defects inside those ticks:
+
+1. **`await` is not a yield.** When the awaited promise resolves without real I/O, the continuation runs as a MICROTASK - so 36-108 heavy ticks chain into ONE unbroken macrotask. The 1s lag sampler cannot fire, queued donor ping/pong frames cannot be read. That is exactly the shape the ring shows: a single contiguous 76,408ms block, not 108 small ones.
+2. **~48MB allocated per tick to build a payload the donor throws away.** `stepAwait` built a fresh `Uint32Array(12,000,000)` plus a full-length binarization loop for the intra matrix, and did the same per cross-projection - but `gpuSparsePropagateAuto` routes CLUSTER-BOUND matrices to `gpuSparsePropagateBound(name)`, which **ignores `preSpikes` entirely** (the donor reads its own resident cluster buffer; CHAT.1 already documented the payload as dead weight). Every cortex matrix is bound. So across ~15 matrices x up to 108 ticks, one chat message allocated multiple GB of garbage and burned hundreds of millions of loop iterations producing buffers nobody reads.
+
+- [x] **GENPIN.1 DONE** - **LOOP BREATHE** in `stepAwait` (`js/brain/cluster.js`): a real macrotask boundary (`setImmediate`) between ticks so the loop reaches its timer + poll phases and keepalives are answered WHILE she composes. Time-bounded (`DREAM_TICK_BREATHE_MS`, default 50ms) so short ticks pay ~nothing. **Nothing was removed from emission - not a tick, not a word, not a candidate.** An 11s reply is fine; an 11s DEAF reply kills the donor.
+- [x] **GENPIN.2 DONE** - `_isBoundMatrix()` + `_preSpikePayload()` helpers + shared frozen `EMPTY_PRE_SPIKES`. Bound matrix -> skip the allocation AND the `regionSpikes` region copy entirely, hand the router the empty array it already expects. Unbound -> byte-identical to before, so the worst case is no change and the best case is the pin collapsing.
+- [ ] **GENPIN.3 OPEN** - press + watch. `generate` may stay seconds, but `[EventLoop] BLOCKED` during `chatStage=generate` must drop to sub-second and the donor must survive a sustained hi-test.
+
+Verified: `node --check` on both touched files, ESM `import()` of `cluster.js` (`NeuronCluster: function`), esbuild bundle rebuilt clean (4.0mb), fix confirmed present in `js/app.bundle.js`. No live test per the NO TESTS LAW.
+
+### TZSTAMP - the clocks
+
+The box runs UTC, so every server-rendered stamp read UTC 24-hour and matched nothing on Gee's screen; the dashboard's bare `toLocaleTimeString()` follows whatever locale the browser reports, with nothing stopping `14:13:12`.
+
+- [x] **TZSTAMP.1 DONE** - `process.env.TZ` pinned to `America/Denver` at the very top of `server/brain-server.js`, before any Date exists in the process, so every server-side stamp is Mountain in one stroke. A TZ already set in the environment still wins. Per Gee's own stated fallback: the server cannot know the admin's system time, so it renders Mountain.
+- [x] **TZSTAMP.2 DONE** - all 8 dashboard stamps now pass explicit `'en-US'` + `hour12: true`, rendering **the admin's own system time in AM/PM**. No browser locale can produce `14:13` again.
+- [x] **TZSTAMP.3 DONE** - both console-ring routes ship `tsLabel` per line plus `nowLabel` + `tz`, so every consumer of the tunnel reads one agreed AM/PM Mountain clock instead of re-deriving UTC. Verified: the 14:15:01 UTC kill renders `8:15:01 AM`.
+
+---
+
 ## 2026-08-15 - DT.1 BUILT: binary teach frames (types 7/8/9) + donor-v0.3.13 tagged - feature/binary-teach-frames-0815
 
 ### Gee ask (verbatim per LAW #0)

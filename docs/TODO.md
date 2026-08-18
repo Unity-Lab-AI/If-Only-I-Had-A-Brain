@@ -562,3 +562,54 @@ _Completed sections zeroed 2026-08-16 (third zeroing) — migrated VERBATIM to `
 - **NOT eligible (stated so no time is wasted):** NSF CAREER and Sloan Research Fellowships both structurally require a >=50% tenure-track faculty appointment; Sloan is additionally nomination-only.
 - [ ] **GRANT.2** - the two free zero-barrier actions, whenever Gee wants them fired: (a) Emergent Ventures application, (b) NSF Project Pitch (VERIFY the portal is open first - sources conflicted on an SBIR reauthorization pause).
 - [ ] **GRANT.3** - the highest-value asset to build: **the documented developmental trajectory** (vocab size, gate pass rates, emission quality, basin separation, grade by grade). The curriculum already generates it; recording and plotting it deliberately converts "impressive engineering" into "a scientific instrument producing data nobody else can produce". Also: post  to arXiv (cs.NE / q-bio.NC) for a citable artifact.
+
+---
+
+## GENPIN - 2026-08-18 - SHE CRASHED THE DONOR AGAIN: the reply's `generate` stage pins the loop 11-78s and the heartbeat executes a donor that never went silent
+
+> Gee (verbatim): *"she crashed the doner just now, can u pull that and see what if needs to be fixed"*
+
+**PULLED IT.** Console ring off the live box (`/public-state.json?console=2000`, 500 lines, 13:57:05-14:16:24 UTC). The kill is fully reconstructed and there is no ambiguity.
+
+**THE LEDGER — every chat reply in the window, `generate` stage only:**
+
+| time (UTC) | reply pass | generate | EventLoop BLOCKED |
+|---|---|---|---|
+| 13:57:46 | 14292ms | 13945ms | 7582ms |
+| 13:58:26 | 13799ms | 13430ms | 7200ms |
+| 13:59:05 | 13199ms | 12831ms | 11259ms |
+| 13:59:51 | 13260ms | 12881ms | 11265ms |
+| 14:00:31 | 12622ms | 12249ms | 10905ms |
+| **14:01:41** | **48144ms** | **47584ms** | **40741ms** |
+| 14:02:08 | 11405ms | 11000ms | 11527ms |
+| 14:02:52 | 14371ms | 13966ms | 7633ms |
+| 14:08:30 | 13625ms | 13261ms | 7012ms |
+| 14:09:59 | 12694ms | 12327ms | 10833ms |
+| 14:10:43 | 13757ms | 13374ms | 6988ms |
+| **14:12:27** | **78124ms** | **77760ms** | **76408ms** |
+| 14:13:12 | 11615ms | 11240ms | 11437ms |
+| 14:14:01 | 11193ms | 10852ms | 11185ms |
+
+**EVERY OTHER STAGE IS INNOCENT** — `entry=0ms`, `img-detect=0-1ms`, `pair-enqueue=0ms`, `turn-history=~20ms`, `identity-inject=~300ms`, `schema-retrieve=~50ms`, `respond=0ms`, `store-episode=~2ms`, `curiosity=0ms`, `history-push=0ms`. INJECTSPARSE and SALIENCEDEFER are holding. **`generate` is 97-99% of every reply pass**, with an **11-13s FLOOR** and spikes to 47s and 78s.
+
+**THE DEATH, exactly:** the 76.4s block ends 14:12:27; the heartbeat sweep self-reports `71.9s LATE` and correctly forgives (HBSELF works). But the donor never ponged again. Sweeps at ~14:13/14:14 forgive 2 more on `loopBlockedRecently` (the 11.4s + 11.2s pins). Then two clean sweeps count for real -> `14:15:01 missed 2 consecutive pings (+3 forgiven) - terminating`. Then `CRITICAL - GPU compute client disconnected UNEXPECTEDLY at +2753s`, 227 in-flight sparse requests cancelled, `No GPU - brain paused`, and a full re-upload/re-init at 14:15:21 (2792MB canonical upload = ~11 more minutes of walk lost). **The heartbeat is not the bug — it forgave five times before firing. The 76s deafness is the bug.**
+
+**THE MECHANISM (read the code, not a guess):** `chat.js:553 generate` -> `languageCortex.generateAsync` -> `cluster.composeSentence` -> `_composeSentenceOnce` (emit.js:1062). That loop is `MAX_WORDS=12` x `TICKS_PER_WORD=3` = **36 `await this.stepAwait(0.001)` per sentence**, and R.9 adds up to 2 continuation sentences -> **up to 108 ticks per single reply**. Inside `stepAwait` (cluster.js:3935) each tick allocates a fresh `Uint32Array(12,000,000)` (~48MB) and runs a 12M-element spike-conversion loop for the intra matrix, then does the same per cross-projection, then runs `step(dt)`'s CPU neuron update. **`await` on a promise that resolves without real I/O is a microtask, not a yield** — when `promises` is empty or resolves inline, 36-108 ticks of heavy synchronous work chain together in ONE unbroken macrotask, and the 1s lag sampler cannot fire. That is precisely the shape the ring shows: one contiguous 76,408ms block, not 108 small ones.
+
+- [x] **GENPIN.1** **DONE - LOOP BREATHE shipped in `stepAwait` (cluster.js); `node --check` + ESM import() + bundle rebuilt clean.** the loop must BREATHE during a reply. Force a REAL macrotask yield (`setImmediate`) inside the emission tick loop so donor ping/pong, `/ws` handshakes and the lag sampler run BETWEEN word-ticks. **An 11s reply is fine; an 11s DEAF reply kills the donor.** Not one tick, not one word, not one candidate is removed - her signal is untouched, the loop just stops going deaf.
+- [x] **GENPIN.2** **DONE - `_isBoundMatrix()` + `_preSpikePayload()` + shared `EMPTY_PRE_SPIKES`; bound matrices skip the alloc AND the region copy, unbound path byte-identical.** kill the per-tick allocation storm in `stepAwait` - a fresh `Uint32Array(12M)` (~48MB) plus a 12M-element conversion loop EVERY tick, x108 ticks per reply = ~5GB of garbage per message and pure CPU burn. Reuse persistent scratch buffers keyed by matrix name (the same pattern already used elsewhere for pSpikes).
+- [ ] **GENPIN.3** press + watch: reply `generate` may stay seconds, but `[EventLoop] BLOCKED` during `chatStage=generate` must drop to sub-second, and the donor must survive a sustained hi-test.
+
+---
+
+## TZSTAMP - 2026-08-18 - the timestamps are in the wrong timezone AND in 24-hour
+
+> Gee (verbatim): *"and i dont know what type of time zone the brain is using on all its time stamps but the time stamps need to be current with the admins sytem time or if u cant do that then just set it to mountain time"*
+> Gee (verbatim): *"and need to be AM PM not 14:13...."*
+
+The box runs UTC, so every server-side stamp (`toISOString()` in crash logs, save markers, boot-reason files) reads UTC 24-hour, and the console ring ships raw epoch with no label. The browser-rendered dashboard stamps call bare `toLocaleTimeString()`, which follows whatever locale the browser reports - a 24-hour locale renders `14:13:12` with nothing to stop it.
+
+- [x] **TZSTAMP.1** **DONE - `process.env.TZ` pinned to `America/Denver` at the top of brain-server.js, env still wins.** server side: pin the process timezone to Mountain (`America/Denver`) at boot so EVERY server-rendered Date is Mountain in one stroke, env-overridable. The server cannot know the admin's system time, so per Gee's own fallback it gets Mountain.
+- [x] **TZSTAMP.2** **DONE - all 8 dashboard stamps now pass explicit `'en-US'` + `hour12: true`.** browser side: every user-visible stamp renders **the admin's own system time in AM/PM** - explicit `'en-US'` + `hour12: true` so no browser locale can ever produce `14:13` again.
+- [x] **TZSTAMP.3** **DONE - both ring routes ship `tsLabel` per line + `nowLabel` + `tz`; verified 14:15:01 UTC renders `8:15:01 AM`.** console ring: ship a preformatted human label beside the epoch so every consumer of the tunnel reads the same AM/PM Mountain time instead of re-deriving it.
+
