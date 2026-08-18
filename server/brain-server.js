@@ -8693,6 +8693,17 @@ wss.on('connection', (ws, req) => {
           // spikeCountTotal = sum across all substeps in the batch
           // lastSpikeCount  = final substep's spike count (used as the
           //                   current-state readout by the tick loop)
+          // WORKSHARE — a MIRRORED batch is credit-only work handed to a NON-PRIMARY
+          // donor so it computes (and therefore scores Gn/s) instead of sitting at 0.
+          // Its result is not authoritative and must never resolve the tick promise:
+          // dropped here, BEFORE the batchId match, so it also cannot trip the
+          // mismatch warning. Counted so the mirrored work is visible rather than
+          // invisible. The `ws !== primary` clause is belt-and-braces for any result
+          // that reaches this handler from a non-primary socket.
+          if (msg.mirror || (brain._gpuClient && ws !== brain._gpuClient)) {
+            brain._gpuMirrorBatches = (brain._gpuMirrorBatches || 0) + 1;
+            break;
+          }
           if (!brain._gpuBatchPending) break;
           if (brain._gpuBatchPending.batchId !== msg.batchId) {
             console.warn(`[Brain] compute_batch_result batchId mismatch: expected ${brain._gpuBatchPending.batchId}, got ${msg.batchId}`);
