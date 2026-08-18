@@ -3440,7 +3440,21 @@ const SERVER_GPU_MIXIN = {
     // Correlation is not proof, but a wrong index silently corrupts training and there is
     // no version of that worth risking on a live walk. Opt IN with DREAM_DELTA_COLIDX=1
     // once a 750k-entry round-trip passes and the illegal-address is reproduced/explained.
-    if (process.env.DREAM_DELTA_COLIDX === '0') return false;   // kill-switch
+    // DELTAIDX OFF BY DEFAULT 2026-08-18 — SECOND failure, cause still unknown.
+    // ALIASFIX removed a REAL shared-scratch corruption path, but the illegal-address
+    // returned at 19:40:47 on the ALIASFIX build, so that was not the whole cause. The
+    // symptom is unchanged: bound hebbian (which indexes cluster spike buffers BY colIdx)
+    // faults on every bound matrix, permanently poisons the CUDA context, and drops a 24GB
+    // card to wgpu at a 2047MB cap. colIdx is what this feature rewrote and nothing else
+    // changed on that path, so it stays OFF until the corruption is REPRODUCED offline
+    // rather than theorised against a live brain. Two outages is the limit.
+    //
+    // Known-good facts, so the next attempt does not re-derive them: the codec itself is
+    // byte-exact at 750,000 entries (production chunk size) and at the 10-entry parity
+    // vector; concurrent encodes with SEPARATE scratches round-trip byte-exact. What has
+    // NOT been reproduced offline is the actual multi-donor upload path end to end.
+    // Re-enable with DREAM_DELTA_COLIDX=1 only after that reproduction exists.
+    if (process.env.DREAM_DELTA_COLIDX !== '1') return false;
     try {
       const c = (this.clients && this.clients.get) ? this.clients.get(ws) : null;
       const v = ((c && c.donorAppVersion) || '').toString().trim();
