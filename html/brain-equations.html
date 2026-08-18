@@ -377,7 +377,7 @@ noiseAmp[mystery] = 12 × chaos<br>
  </div>
 
  <div class="eq-card">
- <div class="eq-title"><span class="eq-tip" data-tip="User text gets tokenized; each token's GloVe embedding writes into the cortex's phon sub-region (Wernicke's area) via injectText. Hash-and-spread injection: each character lands at a deterministic slice-relative index with ±1 lateral excitation. Cortex spike rates immediately rise in the hit slices. This IS sensory input arriving — the rest of the brain reacts.">Step 1 — Text arrives, cortex gets injected</span></div>
+ <div class="eq-title"><span class="eq-tip" data-tip="User text gets tokenized; each token's GloVe embedding writes into the cortex's phon sub-region (Wernicke's area) via injectText. Hash-and-spread injection: each character lands at a deterministic slice-relative index with ±1 lateral excitation, accumulated and shipped SPARSE — only the touched indices go to the GPU (~160 bytes for a short message), not a dense region snapshot. Cortex spike rates immediately rise in the hit slices. This IS sensory input arriving — the rest of the brain reacts.">Step 1 — Text arrives, cortex gets injected</span></div>
  <div class="eq-desc">
  <p>"hi unity, how's the high" hits the server. `_computeServerCortexPattern(text)` runs:</p>
  <div class="eq" style="font-size:13px;">
