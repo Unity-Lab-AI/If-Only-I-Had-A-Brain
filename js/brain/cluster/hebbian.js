@@ -828,7 +828,19 @@ export const CLUSTER_HEBBIAN_MIXIN = {
             if (_projBytes < _freeMinBytes) {
               console.log(`[CPU-CSR-free] keeping ${key} resident (${_freedMB}MB < ${Math.round(_freeMinBytes / 1048576)}MB pressure gate) — checkpoints stay complete, donor churn stays lossless.`);
             } else if (PROBE_CRITICAL_CPU_CSR.has(projName)) {
-              console.log(`[CPU-CSR-free] keeping probe-critical ${key} CPU arrays resident (${_freedMB}MB) — needed for READ/TALK/DYN-PROD gate probes.`);
+              // NOT NEGOTIABLE, and the reason is bigger than the probes
+              // (investigated 2026-08-18 after the live line showed 4165.6MB
+              // held for cortex_intraSynapses — the single largest tenant on a
+              // 31GB box). Freeing it cannot be traded for RAM today because
+              // CHECKPOINTS SKIP FREED MATRICES: GPU values-readback is not
+              // wired, so a freed intra matrix simply stops being saved, and
+              // the intra matrix is the LARGEST section of her checkpoint.
+              // Trading 4.1GB of RAM for silently unsaved intra weights is
+              // strictly worse than paying the RAM. Routing probe reads through
+              // the donor is the real cure and needs a values-only readback
+              // frame (donor-protocol work, its own batch) — until that exists,
+              // this stays resident deliberately, not by oversight.
+              console.log(`[CPU-CSR-free] keeping probe-critical ${key} CPU arrays resident (${_freedMB}MB) — needed for READ/TALK/DYN-PROD gate probes AND for checkpoint completeness (freed matrices are skipped by the save; freeing this would silently stop persisting the largest section of her brain).`);
             } else {
               // Free the CPU CSR. `SparseMatrix.propagate` has a
               // null-CSR guard that returns a zero vector for any stale
