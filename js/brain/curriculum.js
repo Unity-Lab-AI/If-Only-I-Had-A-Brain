@@ -11312,6 +11312,46 @@ export class Curriculum {
         this._substratePause = null;
         this._pausedForDonorSinceMs = null;
       }
+      // CHAT-PAIR DRAIN — ONE TEACHER AT A TIME (2026-08-18). Chat-time
+      // deep Hebbian used to fire _teachAssociationPairs CONCURRENTLY with
+      // the walk's running teach (fire-and-forget from the chat handler) —
+      // two teach chains interleaving on one thread + one scratch-buffer
+      // set = 40s+ unbroken loop pins on every mid-walk chat message, the
+      // frozen state endpoint, starved donor keepalives, and the
+      // drop-on-speak. The chat handler now ENQUEUES pairs
+      // (brain._chatPairTeachQueue); THIS gate — which every walk teach
+      // call passes through — drains a bounded batch serialized into the
+      // walk's own chain. Reps/label/relation channel identical to the old
+      // fire; the A.4 error accounting moves here. Reentrancy-guarded:
+      // the drain's own _teachAssociationPairs re-enters this gate.
+      if (brain && Array.isArray(brain._chatPairTeachQueue)
+          && brain._chatPairTeachQueue.length > 0
+          && !this._chatPairDrainActive
+          && typeof this._teachAssociationPairs === 'function') {
+        this._chatPairDrainActive = true;
+        try {
+          const batch = brain._chatPairTeachQueue.splice(0, 24);
+          if (brain._chatTimeHebbianStats) brain._chatTimeHebbianStats.queued = brain._chatPairTeachQueue.length;
+          await this._teachAssociationPairs(batch, {
+            reps: 1,
+            label: 'CHAT-TIME-DEEP-HEBBIAN',
+            relationTagId: 30,
+          });
+        } catch (err) {
+          const stats = brain._chatTimeHebbianStats;
+          if (stats) {
+            stats.errors = (stats.errors || 0) + 1;
+            stats.lastError = err && err.message ? err.message : String(err);
+            const now = Date.now();
+            if (stats.errors <= 3 || (now - (stats.lastWarnTs || 0)) > 60_000) {
+              console.warn(`[Brain] chat-Hebbian drain failed (#${stats.errors}): ${stats.lastError}`);
+              stats.lastWarnTs = now;
+            }
+          }
+        } finally {
+          this._chatPairDrainActive = false;
+        }
+      }
       return;
     }
     // Name WHICH half is missing. These two states used to be conflated and
