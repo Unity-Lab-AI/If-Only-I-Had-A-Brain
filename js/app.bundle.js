@@ -101821,6 +101821,25 @@ var Curriculum = class _Curriculum {
           this._chatPairDrainActive = false;
         }
       }
+      if (brain2 && Array.isArray(brain2._salienceQueue) && brain2._salienceQueue.length > 0 && !this._salienceDrainActive && this.cortexCluster && typeof this.cortexCluster.computeTransitionSurpriseAsync === "function") {
+        this._salienceDrainActive = true;
+        try {
+          const job = brain2._salienceQueue.shift();
+          if (job && job.text && job.episodeId) {
+            const s = await this.cortexCluster.computeTransitionSurpriseAsync(job.text);
+            if (typeof s === "number" && Number.isFinite(s) && typeof brain2._patchEpisodeSurprise === "function") {
+              brain2._patchEpisodeSurprise(job.episodeId, Math.min(1, Math.max(0, s)));
+            }
+          }
+        } catch (err) {
+          if (!this._salienceWarnMs || Date.now() - this._salienceWarnMs > 6e4) {
+            this._salienceWarnMs = Date.now();
+            console.warn(`[Brain] salience drain failed: ${err && err.message ? err.message : err}`);
+          }
+        } finally {
+          this._salienceDrainActive = false;
+        }
+      }
       return;
     }
     const reasonNow = () => brain2 && brain2._gpuClient && brain2._gpuClient.readyState === 1 ? "donor connected but brain weights are not uploaded to it yet" : "no donor connected";
