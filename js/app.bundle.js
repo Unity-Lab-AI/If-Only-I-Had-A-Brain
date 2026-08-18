@@ -58129,6 +58129,18 @@ var NeuronCluster = class {
    * @returns {Promise<{ spikes: Uint8Array, spikeCount: number, voltages: Float64Array }>}
    */
   async stepAwait(dt) {
+    {
+      const _b = this._brain;
+      const _sockAlive = !!(_b && _b._gpuClient && _b._gpuClient.readyState === 1);
+      const _gpuLive = !!(this._gpuProxyReady && this._gpuProxy && this._gpuProxy.propagate && _sockAlive);
+      if (!_gpuLive && (this.size | 0) > 2e6 && !(typeof process !== "undefined" && process.env && process.env.DREAM_INNERVOICE_FORCE_CPU === "1")) {
+        if (!this._stepAbortWarnMs || Date.now() - this._stepAbortWarnMs > 3e4) {
+          this._stepAbortWarnMs = Date.now();
+          console.warn(`[Cluster ${this.name}] stepAwait ABORTED at biological scale \u2014 GPU path not live (proxyReady=${!!this._gpuProxyReady} socketAlive=${_sockAlive}); a CPU step would pin the loop ~57s/word. Emission goes briefly silent instead. Rate-limited 30s.`);
+        }
+        return { spikes: this.lastSpikes, spikeCount: 0, voltages: this.neurons && this.neurons.voltages || null, aborted: true };
+      }
+    }
     if (!this._gpuProxyReady || !this._gpuProxy || !this._gpuProxy.propagate) {
       try {
         if (typeof process !== "undefined" && process.env && process.env.DREAM_GEN_PROPAGATE_CHUNKED === "1" && this.synapses && this.lastSpikes && typeof this.synapses.propagateChunked === "function") {
