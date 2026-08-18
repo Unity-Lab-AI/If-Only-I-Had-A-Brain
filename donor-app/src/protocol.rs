@@ -289,6 +289,28 @@ pub struct ClearSpikeRegion {
     pub region_name: String,
 }
 
+// v0.3.18 — range-form plasticity (the teach dose as ONE tiny frame).
+// The brain's pair-reinforce primitive trains a static one-hot band pair
+// for N reps; its patterns are contiguous [start,len] ranges (1-2 per
+// side), so the whole 100-rep dose ships as ~60 bytes instead of two
+// 15K-entry index arrays per rep. The donor expands ranges to indices
+// locally and loops the EXISTING engine hebbian op (same kernel, same
+// math, stream-ordered reps). lr >= 0 = Oja/EMA branch; lr < 0 =
+// anti-Hebbian depress branch — exactly the plasticity kernel's contract.
+#[derive(Debug, Clone, Deserialize)]
+pub struct HebbianRanges {
+    pub name: String,
+    pub lr: f32,
+    #[serde(default = "one_u32")]
+    pub reps: u32,
+    #[serde(rename = "preRanges", default)]
+    pub pre_ranges: Vec<[u32; 2]>,
+    #[serde(rename = "postRanges", default)]
+    pub post_ranges: Vec<[u32; 2]>,
+}
+
+fn one_u32() -> u32 { 1 }
+
 #[derive(Debug, Clone, Deserialize)]
 pub struct ReadbackLetterBuckets {
     #[serde(rename = "reqId")]
@@ -408,6 +430,8 @@ pub enum ServerMessage {
     WriteCurrentSlice(WriteCurrentSlice),
     #[serde(rename = "clear_spike_region")]
     ClearSpikeRegion(ClearSpikeRegion),
+    #[serde(rename = "hebbian_ranges")]
+    HebbianRanges(HebbianRanges),
     #[serde(rename = "readback_letter_buckets")]
     ReadbackLetterBuckets(ReadbackLetterBuckets),
     #[serde(rename = "readback_matrix_checksum")]

@@ -283,6 +283,10 @@ enum Work {
     WriteSpike { cluster: String, region: String, indices: Vec<u32> },
     WriteCurrent { cluster: String, region: String, indices: Vec<u32>, values: Vec<f32>, psi: f32 },
     ClearSpike { cluster: String, region: String },
+    // v0.3.18 — range-form plasticity: the whole N-rep band-pair dose in one
+    // tiny frame. Ranges expand to indices HERE (device scatter is index-based);
+    // the executor loops the existing engine hebbian op, stream-ordered.
+    HebbianRanges { name: String, lr: f32, reps: u32, pre_ranges: Vec<[u32; 2]>, post_ranges: Vec<[u32; 2]> },
     Readback { req_id: u32, cluster: String, region: String, bucket_count: u32, sub_slice_len: u32, start_offset: u32 },
     // TU.19-D — GPU↔CPU parity: read back a resident matrix's weight digest.
     ChecksumMatrix { req_id: u32, name: String, sample_count: u32 },
@@ -621,6 +625,7 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                 Work::WriteSpike { cluster, region, .. } => format!("write_spike {cluster}/{region}"),
                 Work::WriteCurrent { cluster, region, .. } => format!("write_current {cluster}/{region}"),
                 Work::ClearSpike { cluster, region } => format!("clear_spike {cluster}/{region}"),
+                Work::HebbianRanges { name, reps, .. } => format!("hebbian_ranges {name} x{reps}"),
                 Work::Readback { cluster, region, .. } => format!("readback {cluster}/{region}"),
                 Work::ChecksumMatrix { name, .. } => format!("checksum {name}"),
                 Work::Mindspace { op, .. } => format!("mindspace {op}"),
@@ -668,6 +673,29 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                 }
                 Work::ClearSpike { cluster, region } => {
                     let _ = engine.clear_spike_region(&cluster, &region);
+                }
+                // v0.3.18 — the whole rep dose runs HERE at engine speed: ranges
+                // expand once, then the existing hebbian op (device zero + scatter
+                // + plasticity kernel) launches `reps` times stream-ordered —
+                // sequential math identical to the brain's CPU rep loop, ~zero wire.
+                Work::HebbianRanges { name, lr, reps, pre_ranges, post_ranges } => {
+                    let expand = |ranges: &[[u32; 2]]| -> Vec<u32> {
+                        let mut v = Vec::new();
+                        for r in ranges {
+                            let (start, len) = (r[0] as u64, r[1] as u64);
+                            if len == 0 || len > 2_000_000 || v.len() as u64 + len > 2_000_000 { continue; }
+                            for i in start..(start + len) { v.push(i as u32); }
+                        }
+                        v
+                    };
+                    let pre = expand(&pre_ranges);
+                    let post = expand(&post_ranges);
+                    if !pre.is_empty() && !post.is_empty() {
+                        for _ in 0..reps {
+                            if engine.hebbian(&name, &pre, &post, lr).is_err() { break; }
+                        }
+                        set_status(&control_w, |s| { s.teach_ops += 1; s.note = "teaching".into(); });
+                    }
                 }
                 Work::Readback { req_id, cluster, region, bucket_count, sub_slice_len, start_offset } => {
                     let counts = engine
@@ -862,6 +890,14 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                             Ok(ServerMessage::WriteSpikeSlice(w)) => { pending.fetch_add(1, Ordering::Relaxed); workq.push(Work::WriteSpike { cluster: w.cluster_name, region: w.region_name, indices: w.sparse_indices }); }
                             Ok(ServerMessage::WriteCurrentSlice(w)) => { pending.fetch_add(1, Ordering::Relaxed); workq.push(Work::WriteCurrent { cluster: w.cluster_name, region: w.region_name, indices: w.sparse_indices, values: w.sparse_values, psi: w.psi }); }
                             Ok(ServerMessage::ClearSpikeRegion(w)) => { pending.fetch_add(1, Ordering::Relaxed); workq.push(Work::ClearSpike { cluster: w.cluster_name, region: w.region_name }); }
+                            Ok(ServerMessage::HebbianRanges(h)) => {
+                                // Defensive caps: a malformed frame must never expand into
+                                // gigabytes of indices or a runaway rep loop.
+                                if h.reps <= 1000 && h.pre_ranges.len() <= 16 && h.post_ranges.len() <= 16 {
+                                    pending.fetch_add(1, Ordering::Relaxed);
+                                    workq.push(Work::HebbianRanges { name: h.name, lr: h.lr, reps: h.reps.max(1), pre_ranges: h.pre_ranges, post_ranges: h.post_ranges });
+                                }
+                            }
                             Ok(ServerMessage::ReadbackLetterBuckets(rb)) => { pending.fetch_add(1, Ordering::Relaxed); workq.push(Work::Readback { req_id: rb.req_id, cluster: rb.cluster_name, region: rb.region_name, bucket_count: rb.bucket_count, sub_slice_len: rb.sub_slice_len, start_offset: rb.start_offset }); }
                             Ok(ServerMessage::ReadbackMatrixChecksum(rc)) => { pending.fetch_add(1, Ordering::Relaxed); workq.push(Work::ChecksumMatrix { req_id: rc.req_id, name: rc.name, sample_count: rc.sample_count }); }
                             Ok(ServerMessage::MindspaceOp(m)) => { pending.fetch_add(1, Ordering::Relaxed); workq.push(Work::Mindspace { id: m.id, op: m.op, payload: m.payload }); }

@@ -2040,6 +2040,13 @@ class ServerBrain {
         // without a new wire format or pipeline. |lr| is the magnitude;
         // the negative sign is strictly a mode selector for the shader.
         antiHebbianBound: (name, lr)                        => this.gpuSparseHebbianBound(name, -Math.abs(lr)),
+        // v0.3.18 — range-form plasticity: a whole N-rep band-pair dose as
+        // ONE ~60-byte fire-and-forget frame. Self-contained (carries its
+        // own pre/post ranges) — touches NO shared spike buffers, so no
+        // pattern-lane stale coupling; the donor expands ranges locally and
+        // loops its existing hebbian op stream-ordered. Returns true only
+        // when the frame was actually sent (donor ≥0.3.18 + socket live).
+        hebbianRanges: (name, lr, reps, preRanges, postRanges) => this.gpuSparseHebbianRanges(name, lr, reps, preRanges, postRanges),
         // T18.28 — drain-wait helper. Before gate probes fire readback
         // requests, wait for the WebSocket send queue to drop below
         // 10 MB so the readback lands immediately instead of queuing
