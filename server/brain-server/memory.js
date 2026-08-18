@@ -299,6 +299,31 @@ const SERVER_MEMORY_MIXIN = {
    * Frequency-merge prevents trivial-input bloat: same text within 48h
    * increments existing row's frequency_count instead of new insert.
    */
+  /**
+   * SALIENCE PATCH (2026-08-18) — fill in an episode's surprise term after the
+   * fact. The reply path stores the episode immediately (surprise 0) and queues
+   * the GPU letter-walk; when the walk's serialized drain produces the number,
+   * this writes it plus the recomputed salience score. Bookkeeping never stands
+   * between the human and the answer, and never races the teach for cortex.
+   */
+  _patchEpisodeSurprise(episodeId, surprise) {
+    if (!this._db || !episodeId || typeof surprise !== 'number' || !Number.isFinite(surprise)) return;
+    try {
+      const row = this._db.prepare(
+        'SELECT emotional_valence, arousal_at_encode, novelty FROM episodes WHERE id = ?'
+      ).get(episodeId);
+      if (!row) return;
+      const valenceAbs = Math.min(1, Math.abs(row.emotional_valence || 0));
+      const arousalNorm = Math.min(1, Math.max(0, row.arousal_at_encode || 0));
+      const noveltyNorm = Math.min(1, Math.max(0, row.novelty || 0));
+      const surpriseNorm = Math.min(1, Math.max(0, surprise));
+      const salience = 0.4 * valenceAbs + 0.3 * arousalNorm + 0.2 * surpriseNorm + 0.1 * noveltyNorm;
+      this._db.prepare(
+        'UPDATE episodes SET surprise = ?, salience_score = ?, effective_salience = ? WHERE id = ?'
+      ).run(surpriseNorm, salience, salience, episodeId);
+    } catch { /* salience is best-effort — a failed patch never breaks the episode */ }
+  },
+
   storeEpisode(userId, type, inputText, responseText, emotion = null, opts = null) {
     // `emotion` (optional) = { arousal, valence } overriding the brain's live
     // amygdala state for THIS episode's salience + stored affect fields. Used
@@ -422,7 +447,7 @@ const SERVER_MEMORY_MIXIN = {
     const salienceScore = 0.4 * valenceAbs + 0.3 * arousalNorm + 0.2 * surpriseNorm + 0.1 * noveltyNorm;
     const effectiveSalience = salienceScore; // fresh episode — no decay yet
 
-    this._stmtInsertEpisode.run(
+    const _insInfo = this._stmtInsertEpisode.run(
       Date.now(),
       this.time,
       userId || null,
@@ -446,7 +471,9 @@ const SERVER_MEMORY_MIXIN = {
       effectiveSalience,        // effective_salience
       inputEmbeddingBuf,        // input_embedding BLOB (Float64Array bytes)
     );
-    return { merged: false };
+    // Row id surfaced so the caller can queue the deferred salience walk and
+    // patch this exact episode when the number lands (_patchEpisodeSurprise).
+    return { merged: false, id: _insInfo && _insInfo.lastInsertRowid ? Number(_insInfo.lastInsertRowid) : null };
   },
 
   // iter13 T13.1 — embedding serialization helpers. Float64Array view

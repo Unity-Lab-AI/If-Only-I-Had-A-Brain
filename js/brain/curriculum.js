@@ -11352,6 +11352,38 @@ export class Curriculum {
           this._chatPairDrainActive = false;
         }
       }
+      // SALIENCE DRAIN (2026-08-18) — the episode's transition-surprise term
+      // used to be computed INSIDE the reply, making the human wait 190s for
+      // memory bookkeeping worth 0.2 of a consolidation score. It now rides the
+      // same lane as the chat pairs, for the same two reasons: (a) the reply
+      // ships the instant it is composed, and (b) the walk is stepping the SAME
+      // cortex — running a letter walk concurrently would mutate the spike state
+      // the teach is reading, which is exactly the concurrent-teach crime the
+      // pair queue exists to prevent. One item per pass, awaited, serialized
+      // into the walk's own chain. The DB row is patched when the number lands.
+      if (brain && Array.isArray(brain._salienceQueue)
+          && brain._salienceQueue.length > 0
+          && !this._salienceDrainActive
+          && this.cortexCluster
+          && typeof this.cortexCluster.computeTransitionSurpriseAsync === 'function') {
+        this._salienceDrainActive = true;
+        try {
+          const job = brain._salienceQueue.shift();
+          if (job && job.text && job.episodeId) {
+            const s = await this.cortexCluster.computeTransitionSurpriseAsync(job.text);
+            if (typeof s === 'number' && Number.isFinite(s) && typeof brain._patchEpisodeSurprise === 'function') {
+              brain._patchEpisodeSurprise(job.episodeId, Math.min(1, Math.max(0, s)));
+            }
+          }
+        } catch (err) {
+          if (!this._salienceWarnMs || (Date.now() - this._salienceWarnMs) > 60000) {
+            this._salienceWarnMs = Date.now();
+            console.warn(`[Brain] salience drain failed: ${err && err.message ? err.message : err}`);
+          }
+        } finally {
+          this._salienceDrainActive = false;
+        }
+      }
       return;
     }
     // Name WHICH half is missing. These two states used to be conflated and
