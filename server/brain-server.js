@@ -8851,7 +8851,15 @@ const _lagTimer = setInterval(() => {
       brain._lagUploadSuppressed = 0;
       brain._lagUploadWorstMs = 0;
     }
-    console.warn(`[EventLoop] BLOCKED ${lagMs.toFixed(0)}ms — /ws handshakes + donor frames stalled this long. context: phase=${phase} cell=${cell} donors=${donors} consolidationInFlight=${consol} innerVoiceInFlight=${innerVoice} replicaSyncing=${syncing}${uploading ? ' uploadInFlight=true' : ''}`);
+    // CHAT-STAGE EYES (2026-08-18) — the third drop-on-speak strain pinned
+    // the loop ~30s on a ONE-WORD message with the pair-learning skipped
+    // (turns=0), so the killer is an unnamed organ in the chat receive
+    // path — and this line's phase tag only names the WALK. The chat
+    // handler now stamps brain._chatStage as it moves through its stages;
+    // a pin during chat prints the guilty stage's NAME right here.
+    const _chatStageTag = (brain._chatStage && (Date.now() - (brain._chatStageAt || 0)) < 120000)
+      ? ` chatStage=${brain._chatStage}` : '';
+    console.warn(`[EventLoop] BLOCKED ${lagMs.toFixed(0)}ms — /ws handshakes + donor frames stalled this long. context: phase=${phase} cell=${cell} donors=${donors} consolidationInFlight=${consol} innerVoiceInFlight=${innerVoice} replicaSyncing=${syncing}${uploading ? ' uploadInFlight=true' : ''}${_chatStageTag}`);
   }
 }, _LAG_SAMPLE_MS);
 wss.on('close', () => clearInterval(_lagTimer));

@@ -340,3 +340,15 @@ _Completed sections zeroed 2026-08-16 (third zeroing) — migrated VERBATIM to `
 - [x] **CHATQUEUE.1** **DONE — built + verified (node --check ×2 + ESM + bundle):** the chat handler ENQUEUES pairs (`brain._chatPairTeachQueue`, bounded 512 drop-oldest with visible counter; stats gain `queued`/`droppedOldest`).
 - [x] **CHATQUEUE.2** **DONE** — the walk's own substrate gate (every teach call passes it) drains ≤24 pairs per pass, AWAITED — serialized into the walk's chain, reentrancy-guarded (`_chatPairDrainActive`; the drain's own teach re-enters the gate). reps:1 / relationTagId:30 / A.4 error accounting preserved. Chat learning lands within seconds; concurrent teaching is structurally impossible.
 - [ ] **CHATQUEUE.3** ⏳ GEE: ONE **Update & SAVESTART**, then the test he named: say hi mid-walk — NO freeze, NO donor crash, the reply comes, and `chatHebbian.queued` drains to 0 within seconds on the dashboard payload.
+
+---
+
+## TICKGUARD — 2026-08-18 · hi-test round 2: CHATQUEUE exonerated (turns=0 — one-word skips pairing), the pin is the REPLY pipeline's mid-flight CPU fallback + an unnamed ~30s chat organ
+
+> Gee (verbatim): *"okay get ready, im going to say hi again. lets see if the dopnor drops again"* → *"okay doner dropped.Im so fucking pissed!"*
+
+**THE TAPE (8s watch):** healthy at 00:42:58 (donor RTT 59, lag 0, 56 t/min) → snapshot STALE 15s→30s from ~00:43:00 (his hi) → donor DEAD + re-upload by 00:43:37. `turns=0, queued=0` the whole time — the chat deep-Hebbian never fired (one word skips pairing): **CHATQUEUE's fix stands; a THIRD organ pins ~30s on a one-word message.** KEY context: she has passed cells now → the silent-gate lifted → the FULL reply pipeline ran for the first time — and its donor-freeze guard checks GPU readiness ONCE at reply entry: a donor wobble MID-REPLY sends every remaining word-tick into `stepAwait`'s synchronous CPU fallback (~57s/word over the 12M intra — the code's own July note names this exact mechanism).
+
+- [x] **TICKGUARD.1** **DONE — built + verified (node --check ×3 + ESM + bundle):** `stepAwait` gains a per-tick bio-scale abort — GPU path must be GENUINELY alive (proxy flag AND socket) every tick; not-live at >2M neurons returns an aborted zero-spike tick (emission starves naturally → honest brief silence) instead of the 57s CPU propagate. Rate-limited warn names each abort. Same law as the teach side: no CPU path at biological scale.
+- [x] **TICKGUARD.2** **DONE** — CHAT-STAGE EYES: `processAndRespond` stamps `brain._chatStage` through 8 stages (entry / img-detect / pair-enqueue / turn-history / identity-inject / schema-retrieve / generate / respond); the lag monitor's BLOCKED line appends `chatStage=` when a pin lands within 120s of chat activity — the next freeze prints the guilty organ's NAME.
+- [ ] **TICKGUARD.3** ⏳ GEE: ONE **Update & SAVESTART**, then hi-test round 3. Pass = no freeze, donor holds, reply or honest-silence. If ANY pin remains, the console's BLOCKED line now carries `chatStage=<name>` — the final organ convicts itself in one read.
