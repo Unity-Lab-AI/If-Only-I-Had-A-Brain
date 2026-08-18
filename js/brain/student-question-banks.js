@@ -1989,6 +1989,46 @@ export function trainExamOverlap(cellKey) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════
+// HELD-OUT GUARANTEE AT THE SOURCE (2026-08-18)
+//
+// The exam banks are the held-out set: a gate pass only means LEARNING if
+// the question was never shown during teaching. Authoring drift had put the
+// same question text in BOTH banks — live boot found 37 collisions across
+// FOUR cells (ela/K 20, art/K 8, science/K 7, social/K 2), of which only the
+// ela/K warning was ever seen because the rest were lost in a same-
+// millisecond log burst.
+//
+// The curriculum used to repair this at RUNTIME by mutating the imported
+// EXAM_BANKS object on every boot. That works, but it leaves the authored
+// file disagreeing with what actually runs, re-warns forever, and silently
+// accepts the next authoring mistake. Sanitizing HERE — once, at module
+// load, before anything can read a bank — makes the export itself the
+// guarantee: whatever the banks say, a question the training side shows can
+// never be exported as held-out. Future authoring collisions are absorbed
+// the same way instead of contaminating a battery.
+//
+// EXAM loses the duplicate, never TRAIN: dropping it from training would
+// silently reduce what she is actually taught, and teaching coverage is the
+// point. `_examSanitizeReport` is exported so boot can state plainly what
+// was removed rather than have it happen invisibly.
+// ═══════════════════════════════════════════════════════════════════════
+export const _examSanitizeReport = { totalRemoved: 0, cells: {} };
+for (const cellKey of Object.keys(EXAM_BANKS)) {
+  const dupes = new Set(trainExamOverlap(cellKey));
+  if (dupes.size === 0) continue;
+  const before = EXAM_BANKS[cellKey].length;
+  EXAM_BANKS[cellKey] = EXAM_BANKS[cellKey].filter((e) => {
+    const q = String(e.question || e.q || '').trim().toLowerCase();
+    return !dupes.has(q);
+  });
+  const removed = before - EXAM_BANKS[cellKey].length;
+  if (removed > 0) {
+    _examSanitizeReport.totalRemoved += removed;
+    _examSanitizeReport.cells[cellKey] = { removed, before, after: EXAM_BANKS[cellKey].length };
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
 // Vocabulary-coverage check — EVERY word in an exam question must be a
 // word Unity has been TAUGHT. A question using an untrained word is
 // unanswerable regardless of learning — the brain literally cannot

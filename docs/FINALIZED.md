@@ -5,6 +5,34 @@
 
 ---
 
+## 2026-08-18 - WALKFIX REMAINDER: the batch closed 100% - feature/walkfix-remainder-0818
+
+### Gee ask (verbatim per LAW #0)
+
+> *"there are still open tasks we arent pushing a new version till its asll 100%"*
+
+**My violation, owned:** I cascaded and pushed the WALKFIX batch at `145a5cd` with WALKFIX.3, .5 and .8 still open. The batch is the unit of shipping and I broke that. History is not rewritten (pushed commits stand); the batch is completed here instead.
+
+### WALKFIX.3 - worse than the log said: FOUR contaminated cells, not one
+
+The boot only ever warned about `ela/kindergarten`. Reading the banks directly found **37 collisions across four cells**: ela/K 20, art/K 8, science/K 7, social/K 2. The other three warnings were lost to the same same-millisecond log burst that WALKFIX.0 fixed - the instrument bug was hiding the true scope of a second bug.
+
+Fixed AT THE SOURCE rather than at runtime. `student-question-banks.js` now sanitizes at module load, so held-out validity is a property of the EXPORT instead of a repair `curriculum.js` performed on every boot against an authored file that disagreed with what actually ran. Future authoring collisions are absorbed identically instead of silently contaminating a battery. EXAM loses the duplicate, never TRAIN - dropping it from training would quietly reduce what she is actually taught, and teaching coverage is the whole point. The runtime check is kept as VERIFICATION and now screams if any overlap ever survives sanitize (that would mean live re-contamination, a real defect). Verified: 37 removed, residual overlap **0**.
+
+### WALKFIX.5 - investigated, and the answer is "leave it", with the reason put in the code
+
+The 4165.6MB is `cortex_intraSynapses`, held by the PROBE_CRITICAL whitelist. It cannot be traded for RAM today, and the blocker is bigger than the probes: **checkpoints SKIP freed matrices** (GPU values-readback is not wired), so freeing it would silently stop persisting the LARGEST section of her brain. Trading 4.1GB of RAM for unsaved intra weights is strictly worse than paying the RAM - especially in the same week a checkpoint-integrity bug cost a morning of training. Routing probe reads through the donor is the real cure and needs a values-only readback frame (donor-protocol work, its own batch). The retention log line now states the checkpoint dependency outright, so this cannot be "optimized" later by someone reading only the RAM number.
+
+### WALKFIX.8 - spec written, deliberately NOT implemented
+
+`docs/SEEDED-TOPOLOGY-SPEC.md`. The topology is not "always changing" - fixed after construction, only values learn - but it IS randomly regenerated every boot from unseeded `Math.random()`, which is precisely what stops Rust reproducing it. Three prizes: donor-side generation on fresh walks, dropping `colIdx`+`rowPtr` from checkpoints (~1.49GB of ~4.4GB, **34%**), and reproducible wiring for honest ablations. The risk is stated without softening: one differing draw puts learned weights on the wrong synapses with no loud failure - right shape, successful upload, gates still run, and every downstream measurement quietly worthless. Sequencing therefore starts with the PRNG + a byte-identical JS/Rust parity harness in CI, then the checkpoint shrink (server-side only, no donor risk), and only then donor generation behind a flag. **If only one piece is ever built it should be the checkpoint shrink** - it needs no cross-language parity and is paid back on every save rather than once per fresh walk.
+
+Verified: `node --check` on curriculum.js, student-question-banks.js, hebbian.js; ESM `import()` of curriculum.js; direct run of the sanitize proving 37 removed / 0 residual; esbuild bundle rebuilt clean. No live test per the NO TESTS LAW.
+
+**Batch status: WALKFIX.0 through .8 all closed. Nothing open.**
+
+---
+
 ## 2026-08-18 - WALKFIX: the fresh-walk issue sweep - and the torn-checkpoint root cause - feature/walkfix-batch-0818
 
 ### Gee ask (verbatim per LAW #0)
