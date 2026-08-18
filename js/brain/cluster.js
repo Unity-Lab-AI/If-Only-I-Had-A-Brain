@@ -2495,6 +2495,19 @@ export class NeuronCluster {
    * @returns {number[]}  — boundary indices (positions in letterSequence where a new syllable starts; always includes 0)
    */
   detectBoundaries(letterSequence, opts = {}) {
+    // GATESTEP (2026-08-18) — bio-scale refusal. This method drives raw
+    // synchronous cluster.step() calls, and at biological scale each carries
+    // the full synaptic propagate on the CPU (measured: seconds per tick;
+    // a gate probe built from them hung the walk indefinitely at 12M).
+    // Same law as the teach side: no CPU cortex path at biological scale.
+    // Small-brain instances (browser tier) keep the full behavior.
+    if (this.size > 2000000) {
+      if (!this._bioStepWarnMs || (Date.now() - this._bioStepWarnMs) > 60000) {
+        this._bioStepWarnMs = Date.now();
+        console.warn(`[Cluster ${this.name}] detectBoundaries skipped at ${this.size.toLocaleString()} neurons — raw CPU cortex steps do not run at biological scale (use the awaited GPU form).`);
+      }
+      return [];
+    }
     if (!this.regions || !this.regions.letter) return [];
     const { ticksPerLetter = 2, k = 0.5 } = opts;
     const letters = typeof letterSequence === 'string'
@@ -2560,6 +2573,19 @@ export class NeuronCluster {
    *   secondary: index of secondary-stress syllable, or -1 if < 2 syllables
    */
   detectStress(letterSequence, opts = {}) {
+    // GATESTEP (2026-08-18) — bio-scale refusal. This method drives raw
+    // synchronous cluster.step() calls, and at biological scale each carries
+    // the full synaptic propagate on the CPU (measured: seconds per tick;
+    // a gate probe built from them hung the walk indefinitely at 12M).
+    // Same law as the teach side: no CPU cortex path at biological scale.
+    // Small-brain instances (browser tier) keep the full behavior.
+    if (this.size > 2000000) {
+      if (!this._bioStepWarnMs || (Date.now() - this._bioStepWarnMs) > 60000) {
+        this._bioStepWarnMs = Date.now();
+        console.warn(`[Cluster ${this.name}] detectStress skipped at ${this.size.toLocaleString()} neurons — raw CPU cortex steps do not run at biological scale (use the awaited GPU form).`);
+      }
+      return [];
+    }
     if (!this.regions || !this.regions.phon) {
       return { boundaries: [], stress: [], primary: -1, secondary: -1 };
     }
@@ -2719,6 +2745,19 @@ export class NeuronCluster {
    *   with `renderLetterTemplate(letter) → Float64Array` capability
    */
   readText(text, opts = {}) {
+    // GATESTEP (2026-08-18) — bio-scale refusal. This method drives raw
+    // synchronous cluster.step() calls, and at biological scale each carries
+    // the full synaptic propagate on the CPU (measured: seconds per tick;
+    // a gate probe built from them hung the walk indefinitely at 12M).
+    // Same law as the teach side: no CPU cortex path at biological scale.
+    // Small-brain instances (browser tier) keep the full behavior.
+    if (this.size > 2000000) {
+      if (!this._bioStepWarnMs || (Date.now() - this._bioStepWarnMs) > 60000) {
+        this._bioStepWarnMs = Date.now();
+        console.warn(`[Cluster ${this.name}] readText skipped at ${this.size.toLocaleString()} neurons — raw CPU cortex steps do not run at biological scale (use the awaited GPU form).`);
+      }
+      return null;
+    }
     if (!this.regions || !this.regions.letter || !text) return;
     const ticksPerChar = opts.ticksPerChar ?? 2;
     const visualCortex = opts.visualCortex || null;
@@ -4285,6 +4324,19 @@ export class NeuronCluster {
    * @returns {number} — Hebbian update count (one per consecutive word pair)
    */
   learnSentenceHebbian(embSequence, opts = {}) {
+    // GATESTEP (2026-08-18) — bio-scale refusal. This method drives raw
+    // synchronous cluster.step() calls, and at biological scale each carries
+    // the full synaptic propagate on the CPU (measured: seconds per tick;
+    // a gate probe built from them hung the walk indefinitely at 12M).
+    // Same law as the teach side: no CPU cortex path at biological scale.
+    // Small-brain instances (browser tier) keep the full behavior.
+    if (this.size > 2000000) {
+      if (!this._bioStepWarnMs || (Date.now() - this._bioStepWarnMs) > 60000) {
+        this._bioStepWarnMs = Date.now();
+        console.warn(`[Cluster ${this.name}] learnSentenceHebbian skipped at ${this.size.toLocaleString()} neurons — raw CPU cortex steps do not run at biological scale (use the awaited GPU form).`);
+      }
+      return undefined;
+    }
     const {
       ticksPerWord = 3,
       lr = 0.004,

@@ -54219,6 +54219,13 @@ var CLUSTER_EMIT_MIXIN = {
     return { cleanEmit, bestWord, bestScore };
   },
   generateSentence(intentSeed = null, opts = {}) {
+    if (this.size > 2e6) {
+      if (!this._bioStepWarnMs || Date.now() - this._bioStepWarnMs > 6e4) {
+        this._bioStepWarnMs = Date.now();
+        console.warn(`[Cluster ${this.name}] generateSentence skipped at biological scale - raw CPU cortex steps do not run here (use the awaited GPU form).`);
+      }
+      return "";
+    }
     if (!this.regions || !this.regions.motor || !this.regions.letter) return "";
     if (inventorySize() === 0) return "";
     const injectStrength = opts.injectStrength ?? 0.6;
@@ -55340,6 +55347,13 @@ var CLUSTER_EMIT_MIXIN = {
 // ../js/brain/cluster/probe.js
 var CLUSTER_PROBE_MIXIN = {
   diagnoseReadoutForEmbedding(emb, ticks = 10, langStart = 150) {
+    if (this.size > 2e6) {
+      if (!this._bioStepWarnMs || Date.now() - this._bioStepWarnMs > 6e4) {
+        this._bioStepWarnMs = Date.now();
+        console.warn(`[Cluster ${this.name}] diagnoseReadoutForEmbedding skipped at biological scale - raw CPU cortex steps do not run here (use the awaited GPU form).`);
+      }
+      return null;
+    }
     const currents = sharedEmbeddings.mapToCortex(emb, this.size, langStart);
     this.injectCurrent(currents);
     for (let t = 0; t < ticks; t++) this.step(1e-3);
@@ -57123,6 +57137,13 @@ var NeuronCluster = class {
    * @returns {number[]}  — boundary indices (positions in letterSequence where a new syllable starts; always includes 0)
    */
   detectBoundaries(letterSequence, opts = {}) {
+    if (this.size > 2e6) {
+      if (!this._bioStepWarnMs || Date.now() - this._bioStepWarnMs > 6e4) {
+        this._bioStepWarnMs = Date.now();
+        console.warn(`[Cluster ${this.name}] detectBoundaries skipped at ${this.size.toLocaleString()} neurons \u2014 raw CPU cortex steps do not run at biological scale (use the awaited GPU form).`);
+      }
+      return [];
+    }
     if (!this.regions || !this.regions.letter) return [];
     const { ticksPerLetter = 2, k = 0.5 } = opts;
     const letters = typeof letterSequence === "string" ? Array.from(letterSequence) : letterSequence;
@@ -57177,6 +57198,13 @@ var NeuronCluster = class {
    *   secondary: index of secondary-stress syllable, or -1 if < 2 syllables
    */
   detectStress(letterSequence, opts = {}) {
+    if (this.size > 2e6) {
+      if (!this._bioStepWarnMs || Date.now() - this._bioStepWarnMs > 6e4) {
+        this._bioStepWarnMs = Date.now();
+        console.warn(`[Cluster ${this.name}] detectStress skipped at ${this.size.toLocaleString()} neurons \u2014 raw CPU cortex steps do not run at biological scale (use the awaited GPU form).`);
+      }
+      return [];
+    }
     if (!this.regions || !this.regions.phon) {
       return { boundaries: [], stress: [], primary: -1, secondary: -1 };
     }
@@ -57322,6 +57350,13 @@ var NeuronCluster = class {
    *   with `renderLetterTemplate(letter) → Float64Array` capability
    */
   readText(text, opts = {}) {
+    if (this.size > 2e6) {
+      if (!this._bioStepWarnMs || Date.now() - this._bioStepWarnMs > 6e4) {
+        this._bioStepWarnMs = Date.now();
+        console.warn(`[Cluster ${this.name}] readText skipped at ${this.size.toLocaleString()} neurons \u2014 raw CPU cortex steps do not run at biological scale (use the awaited GPU form).`);
+      }
+      return null;
+    }
     if (!this.regions || !this.regions.letter || !text) return;
     const ticksPerChar = opts.ticksPerChar ?? 2;
     const visualCortex = opts.visualCortex || null;
@@ -58522,6 +58557,13 @@ var NeuronCluster = class {
    * @returns {number} — Hebbian update count (one per consecutive word pair)
    */
   learnSentenceHebbian(embSequence, opts = {}) {
+    if (this.size > 2e6) {
+      if (!this._bioStepWarnMs || Date.now() - this._bioStepWarnMs > 6e4) {
+        this._bioStepWarnMs = Date.now();
+        console.warn(`[Cluster ${this.name}] learnSentenceHebbian skipped at ${this.size.toLocaleString()} neurons \u2014 raw CPU cortex steps do not run at biological scale (use the awaited GPU form).`);
+      }
+      return void 0;
+    }
     const {
       ticksPerWord = 3,
       lr = 4e-3,
@@ -63589,7 +63631,7 @@ var LanguageCortex = class {
             if (typeof cluster.step === "function") {
               for (let t = 0; t < 5; t++) {
                 try {
-                  cluster.step(1e-3);
+                  await cluster.stepAwait(1e-3);
                 } catch {
                   break;
                 }
@@ -64771,7 +64813,8 @@ var InnerVoice = class {
     this.dictionary.learnSentence(text, cortexPattern, arousal, valence);
     if (this._curriculum && typeof this._curriculum.learnFromTurn === "function") {
       try {
-        this._curriculum.learnFromTurn(text, Math.max(0.95, arousal ?? 0.5), valence ?? 0);
+        Promise.resolve(this._curriculum.learnFromTurn(text, Math.max(0.95, arousal ?? 0.5), valence ?? 0)).catch(() => {
+        });
       } catch (err) {
       }
     }
@@ -78362,7 +78405,7 @@ var K_MIXIN = {
       for (let i = 0; i < ALPHABET.length; i++) {
         cluster.injectLetter(ALPHABET[i], 1);
         for (let t = 0; t < ticksPerLetter; t++) {
-          cluster.step(1e-3);
+          await cluster.stepAwait(1e-3);
           cluster.learn(0);
           this.stats.totalTicks++;
         }
@@ -78388,7 +78431,7 @@ var K_MIXIN = {
           cluster.injectEmbeddingToRegion("sem", nameEmb, 0.7);
         }
         for (let t = 0; t < ticksPerRep; t++) {
-          cluster.step(1e-3);
+          await cluster.stepAwait(1e-3);
           cluster.learn(0);
           this.stats.totalTicks++;
         }
@@ -78413,7 +78456,7 @@ var K_MIXIN = {
           cluster.injectEmbeddingToRegion("phon", phonFeat, 0.7);
         }
         for (let t = 0; t < ticksPerRep; t++) {
-          cluster.step(1e-3);
+          await cluster.stepAwait(1e-3);
           cluster.learn(0);
           this.stats.totalTicks++;
         }
@@ -78443,7 +78486,7 @@ var K_MIXIN = {
       for (let i = 0; i < DIGITS.length; i++) {
         cluster.injectLetter(DIGITS[i], 1);
         for (let t = 0; t < ticksPerDigit; t++) {
-          cluster.step(1e-3);
+          await cluster.stepAwait(1e-3);
           this.stats.totalTicks++;
         }
       }
@@ -78469,7 +78512,7 @@ var K_MIXIN = {
           cluster.injectEmbeddingToRegion("sem", nameEmb, 0.7);
         }
         for (let t = 0; t < ticksPerRep; t++) {
-          cluster.step(1e-3);
+          await cluster.stepAwait(1e-3);
           this.stats.totalTicks++;
         }
         cluster.learn(0);
@@ -78494,7 +78537,7 @@ var K_MIXIN = {
           cluster.injectEmbeddingToRegion("free", magFeat, 0.7);
         }
         for (let t = 0; t < ticksPerRep; t++) {
-          cluster.step(1e-3);
+          await cluster.stepAwait(1e-3);
           this.stats.totalTicks++;
         }
         cluster.learn(0);
@@ -78556,7 +78599,7 @@ var K_MIXIN = {
             cluster.injectEmbeddingToRegion("phon", phonFeat, 0.4);
           }
           for (let t = 0; t < ticksPerLetter; t++) {
-            cluster.step(1e-3);
+            await cluster.stepAwait(1e-3);
             this.stats.totalTicks++;
           }
         }
@@ -78596,7 +78639,7 @@ var K_MIXIN = {
             cluster.injectEmbeddingToRegion("phon", phonFeat, 0.4);
           }
           for (let t = 0; t < ticksPerLetter; t++) {
-            cluster.step(1e-3);
+            await cluster.stepAwait(1e-3);
             this.stats.totalTicks++;
           }
         }
@@ -79119,7 +79162,7 @@ var G1_MIXIN = {
   // (banned by the grade-completion-gate LAW) -- this tests whether the
   // letter->phon magnitude basin actually formed. Mirrors the READ/THINK
   // shape of _gateElaG1Real + the digit-READ logic of _gateMathKReal.
-  _gateMathG1Real() {
+  async _gateMathG1Real() {
     const cluster = this.cluster;
     const DIGITS = "0123456789".split("");
     let readPass = 0;
@@ -79140,7 +79183,7 @@ var G1_MIXIN = {
     }
     for (const digit of DIGITS) {
       cluster.injectLetter(digit, 1);
-      for (let t = 0; t < 3; t++) cluster.step(1e-3);
+      for (let t = 0; t < 3; t++) await cluster.stepAwait(1e-3);
       const phonReadout = cluster.regionReadout("phon", MAGNITUDE_FEATURE_DIM);
       let readCos = 0;
       if (phonReadout && phonReadout.length === MAGNITUDE_FEATURE_DIM) {
@@ -79153,7 +79196,7 @@ var G1_MIXIN = {
       }
       const readOk = readCos > READ_COS_MIN;
       if (readOk) readPass++;
-      for (let t = 0; t < 10; t++) cluster.step(1e-3);
+      for (let t = 0; t < 10; t++) await cluster.stepAwait(1e-3);
       const freeReadout = cluster.regionReadout("free", 64);
       let thinkVar = 0;
       if (freeReadout && freeReadout.length > 0) {
@@ -80042,7 +80085,7 @@ var G2_MIXIN = {
   // Equational math gate -- digit magnitude-READ probe (mirrors _gateMathG1Real).
   // For each digit 0-9: stream the digit char, read phon as a magnitude vector,
   // cosine vs the true magnitude feature. THINK = persistence. No first-letter.
-  _gateMathG2Real() {
+  async _gateMathG2Real() {
     const cluster = this.cluster;
     const DIGITS = "0123456789".split("");
     let readPass = 0;
@@ -80063,7 +80106,7 @@ var G2_MIXIN = {
     }
     for (const digit of DIGITS) {
       cluster.injectLetter(digit, 1);
-      for (let t = 0; t < 3; t++) cluster.step(1e-3);
+      for (let t = 0; t < 3; t++) await cluster.stepAwait(1e-3);
       const phonReadout = cluster.regionReadout("phon", MAGNITUDE_FEATURE_DIM);
       let readCos = 0;
       if (phonReadout && phonReadout.length === MAGNITUDE_FEATURE_DIM) {
@@ -80075,7 +80118,7 @@ var G2_MIXIN = {
         readCos = cosine(centered, _magnitudeFeatureForDigit(digit));
       }
       if (readCos > READ_COS_MIN) readPass++;
-      for (let t = 0; t < 10; t++) cluster.step(1e-3);
+      for (let t = 0; t < 10; t++) await cluster.stepAwait(1e-3);
       const freeReadout = cluster.regionReadout("free", 64);
       let thinkVar = 0;
       if (freeReadout && freeReadout.length > 0) {
@@ -97314,7 +97357,7 @@ var Curriculum = class _Curriculum {
           if (typeof cluster.step === "function") {
             for (let t = 0; t < 4; t++) {
               try {
-                cluster.step(1e-3);
+                await cluster.stepAwait(1e-3);
               } catch {
                 break;
               }
@@ -97454,7 +97497,7 @@ var Curriculum = class _Curriculum {
           if (typeof cluster.step === "function") {
             for (let t = 0; t < 5; t++) {
               try {
-                cluster.step(1e-3);
+                await cluster.stepAwait(1e-3);
               } catch {
                 break;
               }
@@ -97488,7 +97531,7 @@ var Curriculum = class _Curriculum {
             cluster.injectLetter(keyTok, 1);
             for (let t = 0; t < 4; t++) {
               try {
-                cluster.step(1e-3);
+                await cluster.stepAwait(1e-3);
               } catch {
                 break;
               }
@@ -97637,7 +97680,7 @@ var Curriculum = class _Curriculum {
             if (typeof cluster.step === "function") {
               for (let t = 0; t < 5; t++) {
                 try {
-                  cluster.step(1e-3);
+                  await cluster.stepAwait(1e-3);
                 } catch {
                   break;
                 }
@@ -98138,13 +98181,13 @@ var Curriculum = class _Curriculum {
    * phase uses on the boot corpus — no phase distinction, live chat is
    * just more corpus fed in real-time. The brain keeps learning forever.
    */
-  learnFromTurn(text, arousal = 0.95, valence = 0.3) {
+  async learnFromTurn(text, arousal = 0.95, valence = 0.3) {
     if (!text || !this.cluster) return;
     const clean = this._normalizeSentence(text);
     if (!clean) return;
     const words = clean.split(/\s+/).filter(Boolean);
     if (words.length === 0) return;
-    this._walkSentence(words, arousal, valence, LIVE_TICKS_PER_WORD);
+    await this._walkSentence(words, arousal, valence, LIVE_TICKS_PER_WORD);
   }
   // ─── internal phases ──────────────────────────────────────────────
   async _phaseLetters(letterFreq, arousal, valence) {
@@ -98160,7 +98203,7 @@ var Curriculum = class _Curriculum {
       for (let r = 0; r < reps; r++) {
         this.cluster.injectLetter(letter, 1);
         for (let t = 0; t < LETTER_TICKS_BASE; t++) {
-          this.cluster.step(1e-3);
+          await this.cluster.stepAwait(1e-3);
           this.stats.totalTicks++;
         }
         this.cluster.learn(0);
@@ -98193,7 +98236,7 @@ var Curriculum = class _Curriculum {
         for (let i = 0; i < lettersOnly.length; i++) {
           this.cluster.injectLetter(lettersOnly[i], 1);
           for (let t = 0; t < ticksPerWord; t++) {
-            this.cluster.step(1e-3);
+            await this.cluster.stepAwait(1e-3);
             this.stats.totalTicks++;
           }
         }
@@ -98208,7 +98251,7 @@ var Curriculum = class _Curriculum {
     for (const sentence of sentences) {
       const words = sentence.split(/\s+/).filter(Boolean);
       if (words.length < 2) continue;
-      this._walkSentence(words, arousal, valence, SENTENCE_TICKS_PER_WORD);
+      await this._walkSentence(words, arousal, valence, SENTENCE_TICKS_PER_WORD);
       this.stats.sentencesSeen++;
       if (this.stats.sentencesSeen % 16 === 0) await _microtask();
     }
@@ -98224,7 +98267,7 @@ var Curriculum = class _Curriculum {
    * transition / bigram tables (scheduled for T14.12 deletion but still
    * live for the app path).
    */
-  _walkSentence(words, arousal, valence, ticksPerWord) {
+  async _walkSentence(words, arousal, valence, ticksPerWord) {
     const text = words.join(" ");
     for (const word of words) {
       const emb = sharedEmbeddings.getEmbedding(word);
@@ -98235,7 +98278,7 @@ var Curriculum = class _Curriculum {
       for (let i = 0; i < lettersOnly.length; i++) {
         this.cluster.injectLetter(lettersOnly[i], 1);
         for (let t = 0; t < ticksPerWord; t++) {
-          this.cluster.step(1e-3);
+          await this.cluster.stepAwait(1e-3);
           this.stats.totalTicks++;
         }
       }
@@ -98410,7 +98453,7 @@ var Curriculum = class _Curriculum {
     await this._phaseLetters(letterFreq, arousal, valence);
     return this._gateKindergarten(letterFreq);
   }
-  _gateKindergarten(letterFreq) {
+  async _gateKindergarten(letterFreq) {
     const cluster = this.cluster;
     const letters = Array.from(letterFreq.keys()).filter((c) => /[a-z]/.test(c));
     if (letters.length < 5) {
@@ -98420,7 +98463,7 @@ var Curriculum = class _Curriculum {
     const baselineVariance = [];
     for (const letter of letters) {
       cluster.injectLetter(letter, 1);
-      for (let t = 0; t < 4; t++) cluster.step(1e-3);
+      for (let t = 0; t < 4; t++) await cluster.stepAwait(1e-3);
       const r = cluster.regionReadout("phon", 48);
       readouts.set(letter, r);
       let mean = 0;
@@ -98479,7 +98522,7 @@ var Curriculum = class _Curriculum {
     }, arousal, valence);
     return this._gateGrade1(wordFreq);
   }
-  _gateGrade1(wordFreq) {
+  async _gateGrade1(wordFreq) {
     const cluster = this.cluster;
     const cvc = Array.from(wordFreq.keys()).filter((w) => w.length === 3 && /^[a-z]{3}$/.test(w)).slice(0, 20);
     if (cvc.length < 5) {
@@ -98491,8 +98534,8 @@ var Curriculum = class _Curriculum {
       if (!target || target.length === 0) continue;
       for (const ch of word) {
         cluster.injectLetter(ch, 1);
-        cluster.step(1e-3);
-        cluster.step(1e-3);
+        await cluster.stepAwait(1e-3);
+        await cluster.stepAwait(1e-3);
       }
       const sem = cluster.regionReadout("sem", target.length);
       let dot = 0, nt = 0, ns = 0;
@@ -98603,7 +98646,7 @@ var Curriculum = class _Curriculum {
     for (let i = 0; i < compound.length; i++) {
       const words = compound[i].split(/\s+/).filter(Boolean);
       if (words.length < 2) continue;
-      this._walkSentence(words, arousal, valence, SENTENCE_TICKS_PER_WORD);
+      await this._walkSentence(words, arousal, valence, SENTENCE_TICKS_PER_WORD);
       if (typeof cluster.injectWorkingMemory === "function") {
         const emb = sharedEmbeddings.getSentenceEmbedding(compound[i]);
         if (emb && emb.length > 0) cluster.injectWorkingMemory(emb, 0.5);
@@ -98612,7 +98655,7 @@ var Curriculum = class _Curriculum {
     }
     return this._gateGrade4_5(compound);
   }
-  _gateGrade4_5(compoundSentences) {
+  async _gateGrade4_5(compoundSentences) {
     const cluster = this.cluster;
     if (typeof cluster.workingMemoryReadout !== "function") {
       return { pass: false, reason: "workingMemoryReadout missing" };
@@ -98626,7 +98669,7 @@ var Curriculum = class _Curriculum {
       if (typeof cluster.injectWorkingMemory === "function") {
         cluster.injectWorkingMemory(prevEmb, 0.6);
       }
-      this._walkSentence(words, 0.7, 0.2, 1);
+      await this._walkSentence(words, 0.7, 0.2, 1);
       const wm = cluster.workingMemoryReadout(prevEmb.length);
       let dot = 0, np = 0, nw = 0;
       for (let k = 0; k < prevEmb.length; k++) {
@@ -98658,7 +98701,7 @@ var Curriculum = class _Curriculum {
     for (let i = 0; i < complex.length; i++) {
       const words = complex[i].split(/\s+/).filter(Boolean);
       if (words.length < 3) continue;
-      this._walkSentence(words, arousal, valence, SENTENCE_TICKS_PER_WORD);
+      await this._walkSentence(words, arousal, valence, SENTENCE_TICKS_PER_WORD);
       if (i % 16 === 0) await _microtask();
     }
     return this._gateGrade6_8();
@@ -98691,7 +98734,7 @@ var Curriculum = class _Curriculum {
     for (let i = 0; i < sentences.length; i++) {
       const words = sentences[i].split(/\s+/).filter(Boolean);
       if (words.length < 2) continue;
-      this._walkSentence(words, arousal, valence, SENTENCE_TICKS_PER_WORD);
+      await this._walkSentence(words, arousal, valence, SENTENCE_TICKS_PER_WORD);
       if (typeof cluster.injectWorkingMemory === "function") {
         const emb = sharedEmbeddings.getSentenceEmbedding(sentences[i]);
         if (emb && emb.length > 0) cluster.injectWorkingMemory(emb, 0.45);
@@ -98784,25 +98827,25 @@ var Curriculum = class _Curriculum {
     }
     for (let i = 0; i < codingSentences.length; i++) {
       const words = codingSentences[i].split(/\s+/).filter(Boolean);
-      if (words.length >= 2) this._walkSentence(words, arousal, valence, 1);
+      if (words.length >= 2) await this._walkSentence(words, arousal, valence, 1);
       if (i % 16 === 0) await _microtask();
     }
     for (let i = 0; i < casualSentences.length; i++) {
       const words = casualSentences[i].split(/\s+/).filter(Boolean);
-      if (words.length >= 2) this._walkSentence(words, arousal, valence, 1);
+      if (words.length >= 2) await this._walkSentence(words, arousal, valence, 1);
       if (i % 16 === 0) await _microtask();
     }
     return this._gateCollege(codingSentences, casualSentences);
   }
-  _gateCollege(codingSentences, casualSentences) {
+  async _gateCollege(codingSentences, casualSentences) {
     const cluster = this.cluster;
-    const probe = (sentences) => {
+    const probe = async (sentences) => {
       let sum = null;
       let n = 0;
       for (let i = 0; i < Math.min(20, sentences.length); i++) {
         const words = sentences[i].split(/\s+/).filter(Boolean);
         if (words.length < 2) continue;
-        this._walkSentence(words, 0.7, 0.2, 1);
+        await this._walkSentence(words, 0.7, 0.2, 1);
         const r = cluster.regionReadout("sem", 300);
         if (!sum) sum = new Float64Array(r.length);
         for (let k = 0; k < r.length; k++) sum[k] += r[k];
@@ -98816,8 +98859,8 @@ var Curriculum = class _Curriculum {
       for (let k = 0; k < sum.length; k++) sum[k] /= norm;
       return sum;
     };
-    const codingMean = probe(codingSentences);
-    const casualMean = probe(casualSentences);
+    const codingMean = await probe(codingSentences);
+    const casualMean = await probe(casualSentences);
     if (!codingMean || !casualMean) return { pass: false, reason: "register probe failed" };
     let dot = 0;
     for (let k = 0; k < codingMean.length; k++) dot += codingMean[k] * casualMean[k];
@@ -98844,7 +98887,7 @@ var Curriculum = class _Curriculum {
       for (let i = 0; i < personaSentences.length; i++) {
         const words = personaSentences[i].split(/\s+/).filter(Boolean);
         if (words.length < 2) continue;
-        this._walkSentence(words, 0.9, 0.3, SENTENCE_TICKS_PER_WORD);
+        await this._walkSentence(words, 0.9, 0.3, SENTENCE_TICKS_PER_WORD);
         if (i % 16 === 0) await _microtask();
       }
     }
@@ -101372,7 +101415,7 @@ var Curriculum = class _Curriculum {
         }
         cluster.injectLetter(String(c), 0.5);
         for (let t = 0; t < ticksPerPair; t++) {
-          cluster.step(1e-3);
+          await cluster.stepAwait(1e-3);
           this.stats.totalTicks++;
         }
         cluster.learn(0);
@@ -101407,7 +101450,7 @@ var Curriculum = class _Curriculum {
         }
         cluster.injectLetter(String(c), 0.5);
         for (let t = 0; t < ticksPerTriple; t++) {
-          cluster.step(1e-3);
+          await cluster.stepAwait(1e-3);
           this.stats.totalTicks++;
         }
         cluster.learn(0);
@@ -104144,7 +104187,7 @@ var Curriculum = class _Curriculum {
     if (typeof cluster.step === "function") {
       for (let t = 0; t < 5; t++) {
         try {
-          cluster.step(1e-3);
+          await cluster.stepAwait(1e-3);
         } catch {
           break;
         }
@@ -107294,7 +107337,7 @@ var Curriculum = class _Curriculum {
     } else {
       for (const ch of q) {
         if (/[a-z0-9]/.test(ch)) cluster.injectLetter(ch, 1);
-        for (let t = 0; t < ticksPerChar; t++) cluster.step(1e-3);
+        for (let t = 0; t < ticksPerChar; t++) await cluster.stepAwait(1e-3);
       }
     }
     let cumulativeSpikes = null;
@@ -107302,7 +107345,7 @@ var Curriculum = class _Curriculum {
       cumulativeSpikes = new Uint8Array(cluster.size);
     }
     for (let t = 0; t < settleTicks; t++) {
-      cluster.step(1e-3);
+      await cluster.stepAwait(1e-3);
       if (cumulativeSpikes) {
         const ls = cluster.lastSpikes;
         for (let i = 0; i < cluster.size; i++) {
@@ -109105,7 +109148,7 @@ var Curriculum = class _Curriculum {
           cluster.injectEmbeddingToRegion("phon", phon1, 0.5);
         }
         for (let t = 0; t < ticksPerLetter; t++) {
-          cluster.step(1e-3);
+          await cluster.stepAwait(1e-3);
           this.stats.totalTicks++;
         }
         cluster.injectLetter(digraph[1], 1);
@@ -109114,7 +109157,7 @@ var Curriculum = class _Curriculum {
           cluster.injectEmbeddingToRegion("phon", digPhon, 0.8);
         }
         for (let t = 0; t < ticksPerLetter; t++) {
-          cluster.step(1e-3);
+          await cluster.stepAwait(1e-3);
           this.stats.totalTicks++;
         }
         cluster.learn(0);
@@ -109149,7 +109192,7 @@ var Curriculum = class _Curriculum {
             cluster.injectEmbeddingToRegion("phon", phonFeat, 0.4);
           }
           for (let t = 0; t < ticksPerLetter; t++) {
-            cluster.step(1e-3);
+            await cluster.stepAwait(1e-3);
             this.stats.totalTicks++;
           }
         }
@@ -109186,7 +109229,7 @@ var Curriculum = class _Curriculum {
       for (const phrase of phrases) {
         const words = phrase.split(/\s+/).filter(Boolean);
         if (words.length < 2) continue;
-        this._walkSentence(words, arousal, valence, ticksPerWord);
+        await this._walkSentence(words, arousal, valence, ticksPerWord);
         this.stats.sentencesSeen++;
       }
       await _microtask();
@@ -109517,10 +109560,10 @@ var Curriculum = class _Curriculum {
           cluster.injectEmbeddingToRegion("free", positional, 0.6);
         }
         cluster.injectLetter(String(tens), 1);
-        for (let t = 0; t < 2; t++) cluster.step(1e-3);
+        for (let t = 0; t < 2; t++) await cluster.stepAwait(1e-3);
         cluster.injectLetter(String(ones), 1);
         for (let t = 0; t < ticksPerNumber; t++) {
-          cluster.step(1e-3);
+          await cluster.stepAwait(1e-3);
           this.stats.totalTicks++;
         }
         cluster.learn(0);
@@ -109554,7 +109597,7 @@ var Curriculum = class _Curriculum {
           cluster.injectLetter(String(c), 0.5);
         }
         for (let t = 0; t < ticksPerPair; t++) {
-          cluster.step(1e-3);
+          await cluster.stepAwait(1e-3);
           this.stats.totalTicks++;
         }
         cluster.learn(0);
@@ -109593,7 +109636,7 @@ var Curriculum = class _Curriculum {
       for (const sentence of sentences) {
         const words = sentence.split(/\s+/).filter(Boolean);
         if (words.length < 2) continue;
-        this._walkSentence(words, arousal, valence, ticksPerWord);
+        await this._walkSentence(words, arousal, valence, ticksPerWord);
         this.stats.sentencesSeen++;
       }
       await _microtask();
@@ -109662,7 +109705,7 @@ var Curriculum = class _Curriculum {
         for (const ch of stem) {
           cluster.injectLetter(ch, 1);
           for (let t = 0; t < ticksPerPair; t++) {
-            cluster.step(1e-3);
+            await cluster.stepAwait(1e-3);
             this.stats.totalTicks++;
           }
         }
@@ -109673,7 +109716,7 @@ var Curriculum = class _Curriculum {
         for (const ch of inflected) {
           cluster.injectLetter(ch, 1);
           for (let t = 0; t < ticksPerPair; t++) {
-            cluster.step(1e-3);
+            await cluster.stepAwait(1e-3);
             this.stats.totalTicks++;
           }
         }
@@ -109735,7 +109778,7 @@ var Curriculum = class _Curriculum {
           }
           if (c < 10) cluster.injectLetter(String(c), 0.5);
           for (let t = 0; t < ticksPerPair; t++) {
-            cluster.step(1e-3);
+            await cluster.stepAwait(1e-3);
             this.stats.totalTicks++;
           }
           cluster.learn(0);
@@ -109773,7 +109816,7 @@ var Curriculum = class _Curriculum {
           }
           cluster.injectLetter(String(a), 0.5);
           for (let t = 0; t < ticksPerTriple; t++) {
-            cluster.step(1e-3);
+            await cluster.stepAwait(1e-3);
             this.stats.totalTicks++;
           }
           cluster.learn(0);
@@ -109824,7 +109867,7 @@ var Curriculum = class _Curriculum {
         }
         cluster.injectLetter(String(n), 0.5);
         for (let t = 0; t < ticksPerFraction; t++) {
-          cluster.step(1e-3);
+          await cluster.stepAwait(1e-3);
           this.stats.totalTicks++;
         }
         cluster.learn(0);
@@ -109881,11 +109924,11 @@ var Curriculum = class _Curriculum {
             }
             for (const ch of w) {
               cluster.injectLetter(ch, 0.7);
-              cluster.step(1e-3);
+              await cluster.stepAwait(1e-3);
             }
           }
         }
-        for (let t = 0; t < ticksPerDecimal; t++) cluster.step(1e-3);
+        for (let t = 0; t < ticksPerDecimal; t++) await cluster.stepAwait(1e-3);
         cluster.learn(0);
       }
       await _microtask();
@@ -109940,7 +109983,7 @@ var Curriculum = class _Curriculum {
         if (pctEmb && cluster.regions?.sem) {
           cluster.injectEmbeddingToRegion("sem", pctEmb, 0.4);
         }
-        for (let t = 0; t < ticksPerPct; t++) cluster.step(1e-3);
+        for (let t = 0; t < ticksPerPct; t++) await cluster.stepAwait(1e-3);
         cluster.learn(0);
       }
       await _microtask();
@@ -109984,7 +110027,7 @@ var Curriculum = class _Curriculum {
         if (ratioEmb && cluster.regions?.sem) {
           cluster.injectEmbeddingToRegion("sem", ratioEmb, 0.4);
         }
-        for (let t = 0; t < ticksPerRatio; t++) cluster.step(1e-3);
+        for (let t = 0; t < ticksPerRatio; t++) await cluster.stepAwait(1e-3);
         cluster.learn(0);
       }
       await _microtask();
@@ -110035,7 +110078,7 @@ var Curriculum = class _Curriculum {
         if (cluster.regions?.free) {
           cluster.injectEmbeddingToRegion("free", posScaled, 0.6);
         }
-        for (let t = 0; t < ticksPerPair; t++) cluster.step(1e-3);
+        for (let t = 0; t < ticksPerPair; t++) await cluster.stepAwait(1e-3);
         cluster.learn(0);
       }
       await _microtask();
@@ -110075,7 +110118,7 @@ var Curriculum = class _Curriculum {
           cluster.injectEmbeddingToRegion("free", slot, 0.6);
         }
         cluster.injectLetter(v, 1);
-        for (let t = 0; t < ticksPerVar; t++) cluster.step(1e-3);
+        for (let t = 0; t < ticksPerVar; t++) await cluster.stepAwait(1e-3);
         cluster.learn(0);
       }
       await _microtask();
@@ -110102,13 +110145,13 @@ var Curriculum = class _Curriculum {
     for (let rep = 0; rep < reps; rep++) {
       for (const { eq, sol } of EQUATIONS2) {
         const words = eq.split(/\s+/).filter(Boolean);
-        this._walkSentence(words, 0.8, 0.2, 2);
+        await this._walkSentence(words, 0.8, 0.2, 2);
         const magSol = _magnitudeFeatureForDigit(String(sol));
         if (magSol && cluster.regions?.phon) {
           cluster.injectEmbeddingToRegion("phon", magSol, 0.7);
         }
         cluster.injectLetter(String(sol), 0.5);
-        for (let t = 0; t < ticksPerEq; t++) cluster.step(1e-3);
+        for (let t = 0; t < ticksPerEq; t++) await cluster.stepAwait(1e-3);
         cluster.learn(0);
       }
       await _microtask();
@@ -110156,7 +110199,7 @@ var Curriculum = class _Curriculum {
         if (slopeEmb && cluster.regions?.sem) {
           cluster.injectEmbeddingToRegion("sem", slopeEmb, 0.5);
         }
-        for (let t = 0; t < ticksPerLine; t++) cluster.step(1e-3);
+        for (let t = 0; t < ticksPerLine; t++) await cluster.stepAwait(1e-3);
         cluster.learn(0);
       }
       await _microtask();
@@ -110198,7 +110241,7 @@ var Curriculum = class _Curriculum {
         if (cluster.regions?.free) {
           cluster.injectEmbeddingToRegion("free", feat, 0.6);
         }
-        for (let t = 0; t < ticksPerShape; t++) cluster.step(1e-3);
+        for (let t = 0; t < ticksPerShape; t++) await cluster.stepAwait(1e-3);
         cluster.learn(0);
       }
       await _microtask();
@@ -110241,7 +110284,7 @@ var Curriculum = class _Curriculum {
         if (qEmb && cluster.regions?.sem) {
           cluster.injectEmbeddingToRegion("sem", qEmb, 0.5);
         }
-        for (let t = 0; t < ticksPerEq; t++) cluster.step(1e-3);
+        for (let t = 0; t < ticksPerEq; t++) await cluster.stepAwait(1e-3);
         cluster.learn(0);
       }
       await _microtask();
@@ -110283,7 +110326,7 @@ var Curriculum = class _Curriculum {
             cluster.injectWorkingMemory(prevEmb, 0.75);
           }
           const words = step.split(/\s+/).filter(Boolean);
-          this._walkSentence(words, arousal, valence, 2);
+          await this._walkSentence(words, arousal, valence, 2);
           prevEmb = sharedEmbeddings.getSentenceEmbedding ? sharedEmbeddings.getSentenceEmbedding(step) : null;
         }
       }
@@ -110346,7 +110389,7 @@ var Curriculum = class _Curriculum {
         if (cluster.regions?.phon) {
           cluster.injectEmbeddingToRegion("phon", ratioFeat, 0.6);
         }
-        for (let t2 = 0; t2 < ticksPerAngle; t2++) cluster.step(1e-3);
+        for (let t2 = 0; t2 < ticksPerAngle; t2++) await cluster.stepAwait(1e-3);
         cluster.learn(0);
       }
       await _microtask();
@@ -110384,21 +110427,21 @@ var Curriculum = class _Curriculum {
     };
     for (let rep = 0; rep < reps; rep++) {
       for (const { f, df, coeffs, dCoeffs } of PAIRS) {
-        this._walkSentence(f.split(/\s+/).filter(Boolean), 0.8, 0.2, 2);
+        await this._walkSentence(f.split(/\s+/).filter(Boolean), 0.8, 0.2, 2);
         if (coeffs) {
           const fFeat = buildCoeffFeat(coeffs);
           if (fFeat && cluster.regions?.free) {
             cluster.injectEmbeddingToRegion("free", fFeat, 0.6);
           }
         }
-        this._walkSentence(df.split(/\s+/).filter(Boolean), 0.8, 0.2, 2);
+        await this._walkSentence(df.split(/\s+/).filter(Boolean), 0.8, 0.2, 2);
         if (dCoeffs) {
           const dFeat = buildCoeffFeat(dCoeffs);
           if (dFeat && cluster.regions?.phon) {
             cluster.injectEmbeddingToRegion("phon", dFeat, 0.6);
           }
         }
-        for (let t = 0; t < ticksPerPair; t++) cluster.step(1e-3);
+        for (let t = 0; t < ticksPerPair; t++) await cluster.stepAwait(1e-3);
         cluster.learn(0);
       }
       await _microtask();
@@ -110868,9 +110911,9 @@ var Curriculum = class _Curriculum {
         }
         for (const ch of name) {
           cluster.injectLetter(ch, 0.8);
-          cluster.step(1e-3);
+          await cluster.stepAwait(1e-3);
         }
-        for (let t = 0; t < ticksPerElement; t++) cluster.step(1e-3);
+        for (let t = 0; t < ticksPerElement; t++) await cluster.stepAwait(1e-3);
         cluster.learn(0);
       }
       await _microtask();
@@ -111705,9 +111748,9 @@ var Curriculum = class _Curriculum {
         }
         for (const ch of name) {
           cluster.injectLetter(ch, 0.7);
-          cluster.step(1e-3);
+          await cluster.stepAwait(1e-3);
         }
-        for (let t = 0; t < ticksPerElement; t++) cluster.step(1e-3);
+        for (let t = 0; t < ticksPerElement; t++) await cluster.stepAwait(1e-3);
         cluster.learn(0);
       }
       await _microtask();
@@ -111772,10 +111815,10 @@ var Curriculum = class _Curriculum {
         for (const w of words) {
           for (const ch of w.replace(/[^a-z]/g, "")) {
             cluster.injectLetter(ch, 0.7);
-            cluster.step(1e-3);
+            await cluster.stepAwait(1e-3);
           }
         }
-        for (let t = 0; t < ticksPerBond; t++) cluster.step(1e-3);
+        for (let t = 0; t < ticksPerBond; t++) await cluster.stepAwait(1e-3);
         cluster.learn(0);
       }
       await _microtask();
@@ -111818,7 +111861,7 @@ var Curriculum = class _Curriculum {
         if (cluster.regions?.phon) {
           cluster.injectEmbeddingToRegion("phon", output, 0.6);
         }
-        for (let i = 0; i < 3; i++) cluster.step(1e-3);
+        for (let i = 0; i < 3; i++) await cluster.stepAwait(1e-3);
         cluster.learn(0);
       }
       await _microtask();
@@ -111951,21 +111994,21 @@ var Curriculum = class _Curriculum {
           }
         }
         if (conjIdx === -1) {
-          this._walkSentence(words, arousal, valence, ticksPerWord);
+          await this._walkSentence(words, arousal, valence, ticksPerWord);
           continue;
         }
         const clauseA = words.slice(0, conjIdx);
-        this._walkSentence(clauseA, arousal, valence, ticksPerWord);
+        await this._walkSentence(clauseA, arousal, valence, ticksPerWord);
         const clauseAText = clauseA.join(" ");
         const prevEmb = sharedEmbeddings.getSentenceEmbedding ? sharedEmbeddings.getSentenceEmbedding(clauseAText) : null;
         if (prevEmb && prevEmb.length > 0 && typeof cluster.injectWorkingMemory === "function") {
           cluster.injectWorkingMemory(prevEmb, 0.7);
         }
         const conjWord = [words[conjIdx]];
-        this._walkSentence(conjWord, arousal, valence, ticksPerWord);
+        await this._walkSentence(conjWord, arousal, valence, ticksPerWord);
         const clauseB = words.slice(conjIdx + 1);
         if (clauseB.length > 0) {
-          this._walkSentence(clauseB, arousal, valence, ticksPerWord);
+          await this._walkSentence(clauseB, arousal, valence, ticksPerWord);
         }
         this.stats.sentencesSeen++;
       }
@@ -112003,13 +112046,13 @@ var Curriculum = class _Curriculum {
     for (let rep = 0; rep < reps; rep++) {
       for (const { noun, antecedentSentence, pronoun, pronounSentence } of PAIRS) {
         const wordsA = antecedentSentence.split(/\s+/).filter(Boolean);
-        this._walkSentence(wordsA, arousal, valence, ticksPerWord);
+        await this._walkSentence(wordsA, arousal, valence, ticksPerWord);
         const nounEmb = sharedEmbeddings.getEmbedding(noun);
         if (nounEmb && nounEmb.length > 0 && typeof cluster.injectWorkingMemory === "function") {
           cluster.injectWorkingMemory(nounEmb, 0.8);
         }
         const wordsB = pronounSentence.split(/\s+/).filter(Boolean);
-        this._walkSentence(wordsB, arousal, valence, ticksPerWord);
+        await this._walkSentence(wordsB, arousal, valence, ticksPerWord);
         this.stats.sentencesSeen += 2;
       }
       await _microtask();
@@ -112047,7 +112090,7 @@ var Curriculum = class _Curriculum {
           const sentence = para[i];
           const words = sentence.split(/\s+/).filter(Boolean);
           if (words.length < 2) continue;
-          this._walkSentence(words, arousal, valence, ticksPerWord);
+          await this._walkSentence(words, arousal, valence, ticksPerWord);
           if (i < para.length - 1) {
             const semReadout = typeof cluster.regionReadout === "function" ? cluster.regionReadout("sem", 300) : null;
             if (semReadout && semReadout.length > 0 && typeof cluster.injectWorkingMemory === "function") {
@@ -112078,9 +112121,9 @@ var Curriculum = class _Curriculum {
     for (let rep = 0; rep < reps; rep++) {
       for (const { context, question, answer } of qaPairs) {
         const ctxWords = context.split(/\s+/).filter(Boolean);
-        this._walkSentence(ctxWords, arousal, valence, ticksPerWord);
+        await this._walkSentence(ctxWords, arousal, valence, ticksPerWord);
         const qWords = question.split(/\s+/).filter(Boolean);
-        this._walkSentence(qWords, arousal, valence, ticksPerWord);
+        await this._walkSentence(qWords, arousal, valence, ticksPerWord);
         const ansEmb = sharedEmbeddings.getEmbedding(answer);
         if (ansEmb && ansEmb.length > 0 && cluster.regions?.sem) {
           cluster.injectEmbeddingToRegion("sem", ansEmb, 0.8);
@@ -112088,7 +112131,7 @@ var Curriculum = class _Curriculum {
         if (ansEmb && ansEmb.length > 0 && typeof cluster.injectWorkingMemory === "function") {
           cluster.injectWorkingMemory(ansEmb, 0.6);
         }
-        for (let t = 0; t < 4; t++) cluster.step(1e-3);
+        for (let t = 0; t < 4; t++) await cluster.stepAwait(1e-3);
         cluster.learn(0);
         this.stats.sentencesSeen += 2;
       }
@@ -112179,18 +112222,18 @@ var Curriculum = class _Curriculum {
           }
         }
         if (markerIdx === -1) {
-          this._walkSentence(words, arousal, valence, ticksPerWord);
+          await this._walkSentence(words, arousal, valence, ticksPerWord);
           continue;
         }
         const mainClause = words.slice(0, markerIdx);
-        this._walkSentence(mainClause, arousal, valence, ticksPerWord);
+        await this._walkSentence(mainClause, arousal, valence, ticksPerWord);
         const mainText = mainClause.join(" ");
         const mainEmb = sharedEmbeddings.getSentenceEmbedding ? sharedEmbeddings.getSentenceEmbedding(mainText) : null;
         if (mainEmb && mainEmb.length > 0 && typeof cluster.injectWorkingMemory === "function") {
           cluster.injectWorkingMemory(mainEmb, 0.75);
         }
         const subClause = words.slice(markerIdx);
-        this._walkSentence(subClause, arousal, valence, ticksPerWord);
+        await this._walkSentence(subClause, arousal, valence, ticksPerWord);
         this.stats.sentencesSeen++;
       }
       await _microtask();
@@ -112229,7 +112272,7 @@ var Curriculum = class _Curriculum {
         for (const s of sentences) {
           const words = s.split(/\s+/).filter(Boolean);
           if (words.length < 2) continue;
-          this._walkSentence(words, arousal, valence, ticksPerWord);
+          await this._walkSentence(words, arousal, valence, ticksPerWord);
         }
         const themeEmb = sharedEmbeddings.getEmbedding(theme);
         if (themeEmb && themeEmb.length > 0 && cluster.regions?.sem) {
@@ -112238,7 +112281,7 @@ var Curriculum = class _Curriculum {
         if (themeEmb && themeEmb.length > 0 && typeof cluster.injectWorkingMemory === "function") {
           cluster.injectWorkingMemory(themeEmb, 0.6);
         }
-        for (let t = 0; t < 5; t++) cluster.step(1e-3);
+        for (let t = 0; t < 5; t++) await cluster.stepAwait(1e-3);
         cluster.learn(0);
         this.stats.sentencesSeen++;
       }
@@ -112265,10 +112308,10 @@ var Curriculum = class _Curriculum {
         const pSentences = passage.split(/[.!?]/).map((s) => s.trim()).filter(Boolean);
         for (const s of pSentences) {
           const w = s.split(/\s+/).filter(Boolean);
-          if (w.length >= 2) this._walkSentence(w, arousal, valence, ticksPerWord);
+          if (w.length >= 2) await this._walkSentence(w, arousal, valence, ticksPerWord);
         }
         const qWords = question.split(/\s+/).filter(Boolean);
-        this._walkSentence(qWords, arousal, valence, ticksPerWord);
+        await this._walkSentence(qWords, arousal, valence, ticksPerWord);
         const ansEmb = sharedEmbeddings.getEmbedding(answer);
         if (ansEmb && ansEmb.length > 0 && cluster.regions?.sem) {
           cluster.injectEmbeddingToRegion("sem", ansEmb, 0.85);
@@ -112276,7 +112319,7 @@ var Curriculum = class _Curriculum {
         if (ansEmb && ansEmb.length > 0 && typeof cluster.injectWorkingMemory === "function") {
           cluster.injectWorkingMemory(ansEmb, 0.7);
         }
-        for (let t = 0; t < 5; t++) cluster.step(1e-3);
+        for (let t = 0; t < 5; t++) await cluster.stepAwait(1e-3);
         cluster.learn(0);
         this.stats.sentencesSeen += 2;
       }
@@ -112307,14 +112350,14 @@ var Curriculum = class _Curriculum {
     for (let rep = 0; rep < reps; rep++) {
       for (const { thesis, body } of essays) {
         const tWords = thesis.split(/\s+/).filter(Boolean);
-        this._walkSentence(tWords, arousal, valence, ticksPerWord);
+        await this._walkSentence(tWords, arousal, valence, ticksPerWord);
         const thesisEmb = sharedEmbeddings.getSentenceEmbedding ? sharedEmbeddings.getSentenceEmbedding(thesis) : null;
         for (const para of body) {
           if (thesisEmb && thesisEmb.length > 0 && typeof cluster.injectWorkingMemory === "function") {
             cluster.injectWorkingMemory(thesisEmb, 0.7);
           }
           const pWords = para.split(/\s+/).filter(Boolean);
-          if (pWords.length >= 2) this._walkSentence(pWords, arousal, valence, ticksPerWord);
+          if (pWords.length >= 2) await this._walkSentence(pWords, arousal, valence, ticksPerWord);
         }
         this.stats.sentencesSeen++;
       }
@@ -112338,9 +112381,9 @@ var Curriculum = class _Curriculum {
     for (let rep = 0; rep < reps; rep++) {
       for (const { correct, incorrect } of pairs) {
         const cWords = correct.split(/\s+/).filter(Boolean);
-        this._walkSentence(cWords, arousal, valence, ticksPerWord);
+        await this._walkSentence(cWords, arousal, valence, ticksPerWord);
         const iWords = incorrect.split(/\s+/).filter(Boolean);
-        this._walkSentence(iWords, arousal * 0.5, valence, 1);
+        await this._walkSentence(iWords, arousal * 0.5, valence, 1);
         this.stats.sentencesSeen += 2;
       }
       await _microtask();
@@ -112383,17 +112426,17 @@ var Curriculum = class _Curriculum {
     ensureLetters(Array.from(letterSet));
     for (let rep = 0; rep < reps; rep++) {
       for (const { literal, figurative, device } of pairs) {
-        this._walkSentence(literal.split(/\s+/).filter(Boolean), arousal, valence, ticksPerWord);
+        await this._walkSentence(literal.split(/\s+/).filter(Boolean), arousal, valence, ticksPerWord);
         const litEmb = sharedEmbeddings.getSentenceEmbedding ? sharedEmbeddings.getSentenceEmbedding(literal) : null;
         if (litEmb && typeof cluster.injectWorkingMemory === "function") {
           cluster.injectWorkingMemory(litEmb, 0.7);
         }
-        this._walkSentence(figurative.split(/\s+/).filter(Boolean), arousal, valence, ticksPerWord);
+        await this._walkSentence(figurative.split(/\s+/).filter(Boolean), arousal, valence, ticksPerWord);
         const deviceEmb = sharedEmbeddings.getEmbedding(device);
         if (deviceEmb && cluster.regions?.sem) {
           cluster.injectEmbeddingToRegion("sem", deviceEmb, 0.5);
         }
-        for (let t = 0; t < 3; t++) cluster.step(1e-3);
+        for (let t = 0; t < 3; t++) await cluster.stepAwait(1e-3);
         cluster.learn(0);
         this.stats.sentencesSeen += 2;
       }
@@ -112410,12 +112453,12 @@ var Curriculum = class _Curriculum {
     const valence = opts.valence ?? 0.2;
     for (let rep = 0; rep < reps; rep++) {
       for (const { example, device } of annotated) {
-        this._walkSentence(example.split(/\s+/).filter(Boolean), arousal, valence, ticksPerWord);
+        await this._walkSentence(example.split(/\s+/).filter(Boolean), arousal, valence, ticksPerWord);
         const deviceEmb = sharedEmbeddings.getEmbedding(device);
         if (deviceEmb && cluster.regions?.sem) {
           cluster.injectEmbeddingToRegion("sem", deviceEmb, 0.8);
         }
-        for (let t = 0; t < 3; t++) cluster.step(1e-3);
+        for (let t = 0; t < 3; t++) await cluster.stepAwait(1e-3);
         cluster.learn(0);
       }
       await _microtask();
@@ -112431,16 +112474,16 @@ var Curriculum = class _Curriculum {
     const valence = opts.valence ?? 0.2;
     for (let rep = 0; rep < reps; rep++) {
       for (const { claim, evidence, conclusion } of args) {
-        this._walkSentence(claim.split(/\s+/).filter(Boolean), arousal, valence, ticksPerWord);
+        await this._walkSentence(claim.split(/\s+/).filter(Boolean), arousal, valence, ticksPerWord);
         const claimEmb = sharedEmbeddings.getSentenceEmbedding ? sharedEmbeddings.getSentenceEmbedding(claim) : null;
         if (claimEmb && typeof cluster.injectWorkingMemory === "function") {
           cluster.injectWorkingMemory(claimEmb, 0.7);
         }
-        this._walkSentence(evidence.split(/\s+/).filter(Boolean), arousal, valence, ticksPerWord);
+        await this._walkSentence(evidence.split(/\s+/).filter(Boolean), arousal, valence, ticksPerWord);
         if (claimEmb && typeof cluster.injectWorkingMemory === "function") {
           cluster.injectWorkingMemory(claimEmb, 0.7);
         }
-        this._walkSentence(conclusion.split(/\s+/).filter(Boolean), arousal, valence, ticksPerWord);
+        await this._walkSentence(conclusion.split(/\s+/).filter(Boolean), arousal, valence, ticksPerWord);
         this.stats.sentencesSeen += 3;
       }
       await _microtask();
@@ -112475,13 +112518,13 @@ var Curriculum = class _Curriculum {
     const valence = opts.valence ?? 0.2;
     for (let rep = 0; rep < reps; rep++) {
       for (const { thesis, evidenceSections, counterargument, conclusion } of essays) {
-        this._walkSentence(thesis.split(/\s+/).filter(Boolean), arousal, valence, ticksPerWord);
+        await this._walkSentence(thesis.split(/\s+/).filter(Boolean), arousal, valence, ticksPerWord);
         const thesisEmb = sharedEmbeddings.getSentenceEmbedding ? sharedEmbeddings.getSentenceEmbedding(thesis) : null;
         for (const ev of evidenceSections) {
           if (thesisEmb && typeof cluster.injectWorkingMemory === "function") {
             cluster.injectWorkingMemory(thesisEmb, 0.7);
           }
-          this._walkSentence(ev.split(/\s+/).filter(Boolean), arousal, valence, ticksPerWord);
+          await this._walkSentence(ev.split(/\s+/).filter(Boolean), arousal, valence, ticksPerWord);
           const evEmb = sharedEmbeddings.getSentenceEmbedding ? sharedEmbeddings.getSentenceEmbedding(ev) : null;
           if (evEmb && cluster.regions?.sem) {
             cluster.injectEmbeddingToRegion("sem", evEmb, 0.5);
@@ -112491,13 +112534,13 @@ var Curriculum = class _Curriculum {
           if (thesisEmb && typeof cluster.injectWorkingMemory === "function") {
             cluster.injectWorkingMemory(thesisEmb, 0.7);
           }
-          this._walkSentence(counterargument.split(/\s+/).filter(Boolean), arousal, valence, ticksPerWord);
+          await this._walkSentence(counterargument.split(/\s+/).filter(Boolean), arousal, valence, ticksPerWord);
         }
         if (conclusion) {
           if (thesisEmb && typeof cluster.injectWorkingMemory === "function") {
             cluster.injectWorkingMemory(thesisEmb, 0.8);
           }
-          this._walkSentence(conclusion.split(/\s+/).filter(Boolean), arousal, valence, ticksPerWord);
+          await this._walkSentence(conclusion.split(/\s+/).filter(Boolean), arousal, valence, ticksPerWord);
         }
         this.stats.sentencesSeen++;
       }
@@ -112514,12 +112557,12 @@ var Curriculum = class _Curriculum {
     const valence = opts.valence ?? 0.2;
     for (let rep = 0; rep < reps; rep++) {
       for (const { text, style } of labeled) {
-        this._walkSentence(text.split(/\s+/).filter(Boolean), arousal, valence, ticksPerWord);
+        await this._walkSentence(text.split(/\s+/).filter(Boolean), arousal, valence, ticksPerWord);
         const styleEmb = sharedEmbeddings.getEmbedding(style);
         if (styleEmb && cluster.regions?.sem) {
           cluster.injectEmbeddingToRegion("sem", styleEmb, 0.75);
         }
-        for (let t = 0; t < 3; t++) cluster.step(1e-3);
+        for (let t = 0; t < 3; t++) await cluster.stepAwait(1e-3);
         cluster.learn(0);
       }
       await _microtask();
@@ -112556,7 +112599,7 @@ var Curriculum = class _Curriculum {
     const valence = opts.valence ?? 0.2;
     for (let rep = 0; rep < reps; rep++) {
       for (const { thesis, sources } of essays) {
-        this._walkSentence(thesis.split(/\s+/).filter(Boolean), arousal, valence, ticksPerWord);
+        await this._walkSentence(thesis.split(/\s+/).filter(Boolean), arousal, valence, ticksPerWord);
         const thesisEmb = sharedEmbeddings.getSentenceEmbedding ? sharedEmbeddings.getSentenceEmbedding(thesis) : null;
         for (const { name, claim } of sources) {
           if (thesisEmb && typeof cluster.injectWorkingMemory === "function") {
@@ -112566,7 +112609,7 @@ var Curriculum = class _Curriculum {
           if (sourceEmb && cluster.regions?.sem) {
             cluster.injectEmbeddingToRegion("sem", sourceEmb, 0.5);
           }
-          this._walkSentence(claim.split(/\s+/).filter(Boolean), arousal, valence, ticksPerWord);
+          await this._walkSentence(claim.split(/\s+/).filter(Boolean), arousal, valence, ticksPerWord);
         }
         this.stats.sentencesSeen++;
       }
@@ -112600,7 +112643,7 @@ var Curriculum = class _Curriculum {
           if (phonFeat && cluster.regions?.phon) {
             cluster.injectEmbeddingToRegion("phon", phonFeat, 0.6);
           }
-          for (let t = 0; t < ticksPerRep; t++) cluster.step(1e-3);
+          for (let t = 0; t < ticksPerRep; t++) await cluster.stepAwait(1e-3);
           cluster.learn(0);
         }
       }
@@ -112643,7 +112686,7 @@ var Curriculum = class _Curriculum {
         }
         for (const ch of root) {
           cluster.injectLetter(ch, 1);
-          for (let t = 0; t < ticksPerPair; t++) cluster.step(1e-3);
+          for (let t = 0; t < ticksPerPair; t++) await cluster.stepAwait(1e-3);
         }
         cluster.learn(0);
         const derivedEmb = sharedEmbeddings.getEmbedding(derived);
@@ -112652,7 +112695,7 @@ var Curriculum = class _Curriculum {
         }
         for (const ch of derived) {
           cluster.injectLetter(ch, 1);
-          for (let t = 0; t < ticksPerPair; t++) cluster.step(1e-3);
+          for (let t = 0; t < ticksPerPair; t++) await cluster.stepAwait(1e-3);
         }
         cluster.learn(0);
       }
@@ -112679,12 +112722,12 @@ var Curriculum = class _Curriculum {
     ];
     for (let rep = 0; rep < reps; rep++) {
       for (const { text, structure } of SENTENCES) {
-        this._walkSentence(text.split(/\s+/).filter(Boolean), arousal, valence, ticksPerWord);
+        await this._walkSentence(text.split(/\s+/).filter(Boolean), arousal, valence, ticksPerWord);
         const structureEmb = sharedEmbeddings.getEmbedding(structure);
         if (structureEmb && cluster.regions?.sem) {
           cluster.injectEmbeddingToRegion("sem", structureEmb, 0.65);
         }
-        for (let t = 0; t < 3; t++) cluster.step(1e-3);
+        for (let t = 0; t < 3; t++) await cluster.stepAwait(1e-3);
         cluster.learn(0);
       }
       await _microtask();
@@ -112723,12 +112766,12 @@ var Curriculum = class _Curriculum {
     const valence = opts.valence ?? 0.2;
     for (let rep = 0; rep < reps; rep++) {
       for (const { text, framework } of annotated) {
-        this._walkSentence(text.split(/\s+/).filter(Boolean), arousal, valence, ticksPerWord);
+        await this._walkSentence(text.split(/\s+/).filter(Boolean), arousal, valence, ticksPerWord);
         const fEmb = sharedEmbeddings.getEmbedding(framework);
         if (fEmb && cluster.regions?.sem) {
           cluster.injectEmbeddingToRegion("sem", fEmb, 0.75);
         }
-        for (let t = 0; t < 3; t++) cluster.step(1e-3);
+        for (let t = 0; t < 3; t++) await cluster.stepAwait(1e-3);
         cluster.learn(0);
       }
       await _microtask();
@@ -112744,16 +112787,16 @@ var Curriculum = class _Curriculum {
     const valence = opts.valence ?? 0.2;
     for (let rep = 0; rep < reps; rep++) {
       for (const { thesis, counter, response } of triples) {
-        this._walkSentence(thesis.split(/\s+/).filter(Boolean), arousal, valence, ticksPerWord);
+        await this._walkSentence(thesis.split(/\s+/).filter(Boolean), arousal, valence, ticksPerWord);
         const thesisEmb = sharedEmbeddings.getSentenceEmbedding ? sharedEmbeddings.getSentenceEmbedding(thesis) : null;
         if (thesisEmb && typeof cluster.injectWorkingMemory === "function") {
           cluster.injectWorkingMemory(thesisEmb, 0.8);
         }
-        this._walkSentence(counter.split(/\s+/).filter(Boolean), arousal, valence, ticksPerWord);
+        await this._walkSentence(counter.split(/\s+/).filter(Boolean), arousal, valence, ticksPerWord);
         if (thesisEmb && typeof cluster.injectWorkingMemory === "function") {
           cluster.injectWorkingMemory(thesisEmb, 0.9);
         }
-        this._walkSentence(response.split(/\s+/).filter(Boolean), arousal, valence, ticksPerWord);
+        await this._walkSentence(response.split(/\s+/).filter(Boolean), arousal, valence, ticksPerWord);
         this.stats.sentencesSeen += 3;
       }
       await _microtask();
@@ -112782,7 +112825,7 @@ var Curriculum = class _Curriculum {
         if (signEmb && typeof cluster.injectWorkingMemory === "function") {
           cluster.injectWorkingMemory(signEmb, 0.6);
         }
-        for (let t = 0; t < ticksPerTriad; t++) cluster.step(1e-3);
+        for (let t = 0; t < ticksPerTriad; t++) await cluster.stepAwait(1e-3);
         cluster.learn(0);
       }
       await _microtask();
@@ -116139,7 +116182,7 @@ var UnityBrain = class extends EventEmitter {
       this.clusters.amygdala.injectCurrent(surprise);
     }
     this.motor._interruptFlag = false;
-    for (let i = 0; i < 20; i++) this.step(1e-3);
+    for (let i = 0; i < 20; i++) await this.stepAwait(1e-3);
     const classifiedAction = this.motor.selectedAction || "respond_text";
     console.log(`[Brain] BG motor decision: ${classifiedAction} (confidence: ${this.motor.confidence.toFixed(3)})`);
     if (this.visualCortex.isActive() && this.visualCortex._describing) {
@@ -116174,7 +116217,7 @@ var UnityBrain = class extends EventEmitter {
     const brainCoherence = state.oscillations?.coherence ?? 0.5;
     const psi = state.psi ?? 0;
     let response = "";
-    for (let s = 0; s < 5; s++) this.step(1e-3);
+    for (let s = 0; s < 5; s++) await this.stepAwait(1e-3);
     const cortexPattern = this.clusters.cortex.getSemanticReadout(sharedEmbeddings);
     if (dictionary && dictionary.size > 0) {
       response = await this.innerVoice.languageCortex.generateAsync(
@@ -116248,7 +116291,7 @@ var UnityBrain = class extends EventEmitter {
    * primitives without touching source.
    */
   async _handleBuild(text) {
-    for (let s = 0; s < 5; s++) this.step(1e-3);
+    for (let s = 0; s < 5; s++) await this.stepAwait(1e-3);
     const cortexPattern = this.clusters.cortex.getSemanticReadout(sharedEmbeddings);
     const result = this.componentSynth.generateMany(text, { cortexPattern, cortexCluster: this.clusters.cortex });
     if (!result || !result.specs || result.specs.length === 0) {
@@ -116301,7 +116344,7 @@ var UnityBrain = class extends EventEmitter {
     return { text: quip, action: "build_ui" };
   }
   async _handleImage(text, includesSelf) {
-    for (let s = 0; s < 5; s++) this.step(1e-3);
+    for (let s = 0; s < 5; s++) await this.stepAwait(1e-3);
     const cortexPattern = this.clusters.cortex.getSemanticReadout(sharedEmbeddings);
     const state = this.getState();
     let prompt = "";

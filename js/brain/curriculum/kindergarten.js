@@ -4857,7 +4857,7 @@ export const K_MIXIN = {
     // processes the input in real time as wisdom. All three K
     // probes now use the FULL cluster tick loop:
 
-    //   DYNAMIC PROD — inject sem(word) → cluster.step() × N ticks with
+    //   DYNAMIC PROD — inject sem(word) → await cluster.stepAwait() × N ticks with
     //     re-injection to sustain the thought → accumulate motor spike
     //     counts over all ticks → argmax over 26 letter slots from the
     //     SETTLED motor spike rate. Uses all 14 cross-projections +
@@ -4960,10 +4960,10 @@ export const K_MIXIN = {
       { word: 'hen', expected: 'h' },
     ];
 
-    // ── DYNAMIC PROD — sem injection → cluster.step() × N → motor argmax
+    // ── DYNAMIC PROD — sem injection → await cluster.stepAwait() × N → motor argmax
 
     // T18.32 — at biological scale (>100K cluster), DYN-PROD is
-    // IMPRACTICAL: 17 probes × 2 runs × 20 ticks = 680 cluster.step()
+    // IMPRACTICAL: 17 probes × 2 runs × 20 ticks = 680 await cluster.stepAwait()
     // calls. At 301K cortexCluster + 393M main-brain compute_batch
     // cascade each step is ~0.5-1s → 5-11 minutes of pure DYN-PROD
     // compute, on top of all other probes — "got to here then
@@ -8640,7 +8640,7 @@ export const K_MIXIN = {
       for (let i = 0; i < ALPHABET.length; i++) {
         cluster.injectLetter(ALPHABET[i], 1.0);
         for (let t = 0; t < ticksPerLetter; t++) {
-          cluster.step(0.001);
+          await cluster.stepAwait(0.001);
           cluster.learn(0);
           this.stats.totalTicks++;
         }
@@ -8674,7 +8674,7 @@ export const K_MIXIN = {
         }
         // Hebbian every tick
         for (let t = 0; t < ticksPerRep; t++) {
-          cluster.step(0.001);
+          await cluster.stepAwait(0.001);
           cluster.learn(0);
           this.stats.totalTicks++;
         }
@@ -8706,7 +8706,7 @@ export const K_MIXIN = {
         }
         // Hebbian every tick
         for (let t = 0; t < ticksPerRep; t++) {
-          cluster.step(0.001);
+          await cluster.stepAwait(0.001);
           cluster.learn(0);
           this.stats.totalTicks++;
         }
@@ -8743,7 +8743,7 @@ export const K_MIXIN = {
       for (let i = 0; i < DIGITS.length; i++) {
         cluster.injectLetter(DIGITS[i], 1.0);
         for (let t = 0; t < ticksPerDigit; t++) {
-          cluster.step(0.001);
+          await cluster.stepAwait(0.001);
           this.stats.totalTicks++;
         }
       }
@@ -8774,7 +8774,7 @@ export const K_MIXIN = {
           cluster.injectEmbeddingToRegion('sem', nameEmb, 0.7);
         }
         for (let t = 0; t < ticksPerRep; t++) {
-          cluster.step(0.001);
+          await cluster.stepAwait(0.001);
           this.stats.totalTicks++;
         }
         cluster.learn(0);
@@ -8809,7 +8809,7 @@ export const K_MIXIN = {
           cluster.injectEmbeddingToRegion('free', magFeat, 0.7);
         }
         for (let t = 0; t < ticksPerRep; t++) {
-          cluster.step(0.001);
+          await cluster.stepAwait(0.001);
           this.stats.totalTicks++;
         }
         cluster.learn(0);
@@ -8881,7 +8881,7 @@ export const K_MIXIN = {
             cluster.injectEmbeddingToRegion('phon', phonFeat, 0.4);
           }
           for (let t = 0; t < ticksPerLetter; t++) {
-            cluster.step(0.001);
+            await cluster.stepAwait(0.001);
             this.stats.totalTicks++;
           }
         }
@@ -8925,7 +8925,7 @@ export const K_MIXIN = {
             cluster.injectEmbeddingToRegion('phon', phonFeat, 0.4);
           }
           for (let t = 0; t < ticksPerLetter; t++) {
-            cluster.step(0.001);
+            await cluster.stepAwait(0.001);
             this.stats.totalTicks++;
           }
         }

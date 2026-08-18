@@ -1141,7 +1141,7 @@ export class UnityBrain extends EventEmitter {
     // drive BG channel firing. The motor output IS the classification.
     // No external AI call needed.
     // Run a few extra steps to let the input propagate through cortex→BG
-    for (let i = 0; i < 20; i++) this.step(0.001);
+    for (let i = 0; i < 20; i++) await this.stepAwait(0.001);
 
     const classifiedAction = this.motor.selectedAction || 'respond_text';
     console.log(`[Brain] BG motor decision: ${classifiedAction} (confidence: ${this.motor.confidence.toFixed(3)})`);
@@ -1257,7 +1257,7 @@ export class UnityBrain extends EventEmitter {
     let response = '';
 
     // ── Run brain for a few steps so clusters reflect the input ──
-    for (let s = 0; s < 5; s++) this.step(0.001);
+    for (let s = 0; s < 5; s++) await this.stepAwait(0.001);
     // R2: semantic cortex readout — reverse-mapping of Wernicke's area
     // activation back into GloVe embedding space. The slot scorer's
     // cosine(cortexPattern, wordPattern) now measures REAL semantic
@@ -1387,7 +1387,7 @@ export class UnityBrain extends EventEmitter {
    */
   async _handleBuild(text) {
     // Let the cortex settle on the user's intent first
-    for (let s = 0; s < 5; s++) this.step(0.001);
+    for (let s = 0; s < 5; s++) await this.stepAwait(0.001);
     const cortexPattern = this.clusters.cortex.getSemanticReadout(sharedEmbeddings);
 
     // T14.17 — pass the cortex cluster so componentSynth can consult
@@ -1493,7 +1493,7 @@ export class UnityBrain extends EventEmitter {
     //      local → env.js → Pollinations fallback)
 
     // Let the cortex settle on the input
-    for (let s = 0; s < 5; s++) this.step(0.001);
+    for (let s = 0; s < 5; s++) await this.stepAwait(0.001);
     const cortexPattern = this.clusters.cortex.getSemanticReadout(sharedEmbeddings);
     const state = this.getState();
 
