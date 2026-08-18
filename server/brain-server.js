@@ -5306,9 +5306,36 @@ class ServerBrain {
         err ? reject(err) : resolve();
       });
     });
+    // SAVEDRIP — twice-observed on this box: one 5.4GB save dumps dirty pages
+    // faster than the disk drains, the kernel's writeback throttle then
+    // freezes EVERY writer on the box (main thread included) and the whole
+    // origin 502/504s until the backlog clears (22.5min once, again on the
+    // paced build — pacing made wedges rarer, not survivable). The save is
+    // now a DRIP the disk controls: fsync every 256MB hard-bounds the dirty
+    // window (the avalanche becomes structurally impossible), and an
+    // adaptive inter-slice breather backs off 2× whenever a slice await ran
+    // slow (>1s), decaying back on healthy slices. Same bytes, same file,
+    // same atomic rename — only the I/O tempo changes.
+    const FSYNC_EVERY_BYTES = 256 * 1048576;
+    let _dripSinceFsync = 0;
+    let _dripDelayMs = 10;
+    const _dripSleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    const _fsyncAsync = () => new Promise((resolve, reject) => fs.fsync(fd, (err) => err ? reject(err) : resolve()));
     const writeSliced = async (buf) => {
       for (let off = 0; off < buf.length; off += SLICE) {
+        const _sw = Date.now();
         await writeAsync(buf.subarray(off, Math.min(off + SLICE, buf.length)));
+        const _swMs = Date.now() - _sw;
+        _dripDelayMs = _swMs > 1000 ? Math.min(2000, _dripDelayMs * 2) : Math.max(10, Math.round(_dripDelayMs * 0.7));
+        _dripSinceFsync += Math.min(SLICE, buf.length - off);
+        if (_dripSinceFsync >= FSYNC_EVERY_BYTES) {
+          _dripSinceFsync = 0;
+          const _ft = Date.now();
+          await _fsyncAsync();
+          const _fms = Date.now() - _ft;
+          if (_fms > 5000) console.warn(`[SavePin] drip fsync took ${_fms}ms at saveStage=${this._saveStage} — the disk is the governor now (bounded dirty window doing its job).`);
+        }
+        if (off + SLICE < buf.length) await _dripSleep(_dripDelayMs);
       }
     };
     try {
