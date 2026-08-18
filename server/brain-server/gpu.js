@@ -960,9 +960,30 @@ const SERVER_GPU_MIXIN = {
     // in ~linkCap bursts, a fat link takes the bulk, nobody's socket parks.
     // If EVERY donor is backed up, fall through to all (the downstream soft-
     // cap shed still guards the truly-saturated case).
+    // BUFFLOOR — prefer drained sockets, but NEVER zero a backed-up donor. This was a
+    // HARD exclusion: any donor buffered past the 4MB link cap was filtered out entirely
+    // whenever at least one drained donor existed - and the primary is almost always
+    // drained, so the filter was effectively "replicas get nothing". A replica mid-sync
+    // sits at 5-40MB buffered BY DESIGN (measured live: 5.8MB and 39MB on two donors), so
+    // every syncing replica was excluded from Hebbian batches AND propagate for its whole
+    // sync window - which on a slow link is the entire session. That is the same
+    // "willing GPU benched forever at 0 Gn/s" failure WSQ.1 already fixed for the RTT
+    // filter; the identical reasoning was simply never applied to the BUFFER filter.
+    // Now it is a WEIGHT PENALTY, not a ban: a drained socket is strongly preferred
+    // (default 10x) while a backed-up one still pulls a sliver, so it earns, appears on
+    // the leaderboard, and self-corrects as its socket drains. Tunable via
+    // DREAM_DF7_BACKED_PENALTY (0 restores the old hard exclusion).
     const _linkCap = this._donorLinkCapBytes();
-    const _drained = scored.filter((s) => ((s.ws && s.ws.bufferedAmount) || 0) <= _linkCap);
-    if (_drained.length > 0) scored = _drained;
+    const _penEnv = Number(process.env.DREAM_DF7_BACKED_PENALTY);
+    const _backedPenalty = Number.isFinite(_penEnv) && _penEnv >= 0 ? _penEnv : 0.1;
+    if (_backedPenalty <= 0) {
+      const _drained = scored.filter((s) => ((s.ws && s.ws.bufferedAmount) || 0) <= _linkCap);
+      if (_drained.length > 0) scored = _drained;
+    } else {
+      scored = scored.map((s) => (((s.ws && s.ws.bufferedAmount) || 0) <= _linkCap)
+        ? s
+        : { ws: s.ws, w: s.w * _backedPenalty });
+    }
     if (scored.some((s) => s.w > 0)) scored = scored.filter((s) => s.w > 0);
     else scored = scored.map((s) => ({ ws: s.ws, w: 1 }));
     const total = scored.reduce((a, s) => a + s.w, 0) || scored.length;
