@@ -299,7 +299,7 @@ const SERVER_MEMORY_MIXIN = {
    * Frequency-merge prevents trivial-input bloat: same text within 48h
    * increments existing row's frequency_count instead of new insert.
    */
-  storeEpisode(userId, type, inputText, responseText, emotion = null) {
+  storeEpisode(userId, type, inputText, responseText, emotion = null, opts = null) {
     // `emotion` (optional) = { arousal, valence } overriding the brain's live
     // amygdala state for THIS episode's salience + stored affect fields. Used
     // by life-memory encoding: an implanted memory must carry its OWN emotional
@@ -329,7 +329,14 @@ const SERVER_MEMORY_MIXIN = {
             inputEmbeddingBuf = Buffer.from(inputEmbedding.buffer, inputEmbedding.byteOffset, inputEmbedding.byteLength);
           }
         }
-        if (this.cortexCluster && typeof this.cortexCluster.computeTransitionSurprise === 'function') {
+        // SURPRISECPU — a caller that can await (the chat reply path) computes
+        // this on the DONOR GPU via computeTransitionSurpriseAsync and hands the
+        // number in here. Only callers with no async context fall through to the
+        // synchronous form, which refuses itself at biological scale rather than
+        // running 2 full CPU cortex ticks per letter (measured: 143s, donor dead).
+        if (opts && typeof opts.surprise === 'number' && Number.isFinite(opts.surprise)) {
+          surprise = opts.surprise;
+        } else if (this.cortexCluster && typeof this.cortexCluster.computeTransitionSurprise === 'function') {
           const s = this.cortexCluster.computeTransitionSurprise(inputText);
           if (typeof s === 'number' && Number.isFinite(s)) surprise = s;
         }

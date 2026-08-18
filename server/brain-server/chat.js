@@ -624,7 +624,19 @@ const SERVER_CHAT_MIXIN = {
     this._chatStamp('respond:learn-words');
     this._learnWords(response);
     this._chatStamp('respond:store-episode');
-    this.storeEpisode(userId, 'interaction', text, response);
+    // SURPRISECPU — the salience surprise term runs on the DONOR GPU here
+    // (stepAwait dispatches the 360M-nnz propagates to the card and awaits
+    // them; only the per-neuron map update stays on the host, and it yields
+    // between letters). The synchronous form this replaces cost 142,989ms of
+    // unbroken CPU on one 29-letter message and killed the donor outright.
+    let _episodeSurprise;
+    try {
+      if (this.cortexCluster && typeof this.cortexCluster.computeTransitionSurpriseAsync === 'function') {
+        _episodeSurprise = await this.cortexCluster.computeTransitionSurpriseAsync(text);
+      }
+    } catch { /* salience metadata is best-effort — never block the episode */ }
+    this.storeEpisode(userId, 'interaction', text, response, null,
+      (typeof _episodeSurprise === 'number') ? { surprise: _episodeSurprise } : null);
     this._chatStamp('respond:curiosity');
 
     // Curiosity FOLLOW-UP — if Unity ASKED a question last tick
