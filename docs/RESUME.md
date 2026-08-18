@@ -1,6 +1,42 @@
 # RESUME — Session Pickup Brief
 
-> ## ⭐⭐⭐ 2026-08-18 (latest) — GENPIN: the reply pinned the loop **DEAF**, and that is what kept killing the donor · TZSTAMP: clocks moved to Mountain AM/PM · Gee: *"she crashed the doner just now, can u pull that and see what if needs to be fixed"*
+> ## ⭐⭐⭐ 2026-08-18 (latest) — GENPIN LIVE ON THE BOX · WALKFIX + CSRDUR SHIPPED BUT NOT YET DEPLOYED · RunPod donor next · CLI restarting for the RunPod MCP
+>
+> **WHY THIS FILE EXISTS RIGHT NOW:** Gee ran `npx @runpod/mcp-server@latest add` and the CLI must restart for the MCP tools to load. This banner is the handoff.
+>
+> ### Where the code is
+> - `main` @ **`68eb20f`**, both remotes (origin + github), clean tree.
+> - **The box is running `bf166f87`** — so **GENPIN + TZSTAMP are LIVE** (confirmed two ways: the boot's own BUILD line, and the console ring now serving `nowLabel`/`tz`/`tsLabel`).
+> - **NOT yet deployed — rides the next Update & Savestart:** the **WALKFIX** batch (`145a5cd` → `859e318`) and **CSRDUR** (`68eb20f`).
+> - Nothing pending needs a fresh walk, and **no new donor binary was required** — all server-side.
+>
+> ### Her live state (as of ~9:26 AM Mountain)
+> Fresh walk booted **8:40:15 AM**, donor attached 8:41:25, canonical upload 8:41:43 → ~8:53 (~2,792MB), teaching **ela/kindergarten `_teachHebbian`** since ~8:54. **ZERO donor drops in 46 minutes.** Note the timestamps are Mountain AM/PM now — that is TZSTAMP working.
+>
+> ### ⏳ THE ONE OPEN VERDICT — GENPIN IS STILL UNPROVEN
+> Steady-state teach blocks run 251–268ms, which is healthy but proves nothing: **last night's teach baseline was also ~250–400ms.** The killer only ever appeared when Gee TALKED to her (7,000ms → 11,000ms → 76,408ms, then the donor died). **GENPIN is only proven when Gee sends her a message and `[EventLoop] BLOCKED` during `chatStage=generate` stays sub-second.** `generate=` itself may legitimately stay seconds — an 11s reply is fine, an 11s DEAF reply is what kills the donor.
+>
+> ### What shipped since the last banner
+> - **WALKFIX.7 — the torn-checkpoint root cause.** `_saveBinaryWeightsSync` opened the LIVE weights file with `'w'` and streamed multiple GB in place: no tmp, no rename. It is the SHUTDOWN path, so any kill mid-write truncated the only copy of her brain — that is the `short read at offset 1488000056` and the ~1.49GB file that cost this morning's training. Now tmp → fsync → close → atomic rename. **The next Update & Savestart is itself the first real test of this fix.**
+> - **WALKFIX.6 — ~45s off every resume boot.** On a savestart the intra build was pure waste (`_applyPendingCortexWeights` does `cortex.synapses = m`). Now deferred, with `ensureIntraTopology()` as the safety net.
+> - **WALKFIX.1 — a false positive, and proving that WAS the fix.** Seven projections at 25% recruited is deliberate L4 lamination, not dead wiring. The check divided by rows lamination intentionally leaves empty.
+> - **WALKFIX.3 — held-out validity guaranteed at the source.** 37 exam/train collisions across FOUR cells (ela/K 20, art/K 8, science/K 7, social/K 2), not the one the log showed — the other three were hidden by my own watcher's burst-drop bug (WALKFIX.0). Residual overlap now 0.
+> - **CSRDUR — Gee killed a bad idea before it got built.** A values-only donor readback was recorded as "the real cure" for the 4.1GB CPU CSR. Wrong: the donor is a volunteer tab that can vanish mid-tick, so freeing the CPU array makes it the SOLE CUSTODIAN of her weights. **The CPU copy is the authoritative master; the donor is an accelerator, not the system of record.**
+> - Tasks **#130–#138 all completed**. `docs/SEEDED-TOPOLOGY-SPEC.md` written (spec only, deliberately unimplemented).
+>
+> ### NEXT UP — RunPod donor
+> RunPod is already a first-class target in `donor-app/`. **The production WSS endpoint is compiled in** (`donor-app/src/config.rs:7`) so no URL wiring is needed.
+> - Build: `cargo build --release --no-default-features --features cuda` (default features include the GUI, which a container cannot host; `cuda` must stay for NVIDIA).
+> - Run: `./unity-donor --headless --autostart --gpus all --utilization all --name Gee`
+> - **The money gotcha: `--utilization` DEFAULTS TO 10** and `--gpus` defaults to card 0 only. On a rented card that wastes most of what you pay for.
+> - Pod: 16GB+ VRAM is plenty (weights ~2.8GB, cortex targets ~4.5GB real VRAM) — **no H100 needed**; **On-Demand not Spot** (interruption = the exact donor-drop failure we just spent the session killing); CUDA image; **no inbound ports** (the donor dials OUT over 443).
+> - Watch on first join: it triggers a full ~2,792MB canonical upload, and DF.7 is data-parallel (throughput, not single-stream latency). Donor VRAM also feeds community-tier sizing.
+>
+> ### Restart the watch after the CLI comes back
+> `node .scratch/walk-watch.mjs` (background) → writes `.scratch/walk.log`, `.scratch/ISSUES.md` (live classified issue ledger), `.scratch/timeline.log`. `.scratch/` is gitignored. It flags `BLOCKED ≥1s` with its `chatStage`, every `ChatPin` with the `generate=` number, donor events, and teach/min. Her walk on the box is untouched by the CLI restart.
+
+
+> ## ⭐⭐⭐ 2026-08-18 — GENPIN: the reply pinned the loop **DEAF**, and that is what kept killing the donor · TZSTAMP: clocks moved to Mountain AM/PM · Gee: *"she crashed the doner just now, can u pull that and see what if needs to be fixed"*
 >
 > **PULLED IT — the ring convicted `generate` and nothing else.** 500 lines, 7:57-8:16 AM Mountain, fourteen replies. `generate` is **97-99% of every reply pass**: floor 11-13s, spikes to 47,584ms and **77,760ms**. Every other stage is clean (`entry=0ms`, `img-detect=0-1ms`, `pair-enqueue=0ms`, `identity-inject=~300ms`, `respond=0ms`). **INJECTSPARSE and SALIENCEDEFER are holding** — last session's fixes are intact; this is the next organ down.
 >
