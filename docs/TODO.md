@@ -876,3 +876,20 @@ The CLI restart from the prior handoff was FOR this. Gee authorized a 4090 proof
 - [x] **MIRRORDIAG.1** **DONE - the dispatch names itself.** Every 30s (throttled, production-safe) the mirror loop emits `[Brain] MIRRORDIAG pool=N -> <donor>:SENT(all|N clusters) | <donor>:SKIP(<exact reason>) | <donor>:PRIMARY(real batch)`. Six distinct outcomes are labelled: PRIMARY, socket-not-open, buffered-over-cap (with the MB), coverage-matched-nothing (with the coverage set AND the param count), SENT (with cluster count), and SEND-THREW (with the error). Whatever is happening to Sponge, the next log line says it in words.
 - [x] **MIRRORDIAG.2** **VERIFY (build half) DONE** - `node --check` + `import()` ESM PASS. Server-side only, no donor change.
 - [ ] **MIRRORDIAG.3** GEE: Update & Savestart, then paste ONE `MIRRORDIAG` line. That single line decides the next move and ends the guessing: if it reads SENT for Sponge, the problem is donor-side (his client is receiving a batch it will not run - a Turing cc7.5 / partial-cluster issue) and the investigation moves to the donor. If it reads SKIP, it names the exact server-side reason and that gets fixed properly instead of speculatively.
+
+---
+
+## INITFIT - 2026-08-18 - ALLINIT asked a 5.6GB card to allocate 12GB; the instrument found it in one line
+
+> Gee (verbatim, pasting the dashboard): *"0Gn/s !!!!!!!!!!!!!!!!!!!!!!!!!!"*
+
+**THE INSTRUMENT ENDED FIVE ROUNDS OF GUESSING IMMEDIATELY.** One MIRRORDIAG line: `pool=3 -> RTX 4090:PRIMARY(real batch) | RTX 4070 Ti SUPER:SENT(all) | RTX 2060:SENT(2 clusters)`. The server was dispatching correctly to ALL THREE, correctly coverage-filtered. So the fault was never in routing - it was in what the card had been asked to hold.
+
+**THE OTHER NUMBER ON THE SAME ROW SAID THE REST:** Sponge RTT was **29,717ms**. A donor that is merely idle answers heartbeats instantly; one at 29.7s is BLOCKED. **ALLINIT called `_gpuInitDonorClusters(ws, null)` and null meant ALL SEVEN clusters - ~306M neurons ≈ 12GB of state/spike/current buffers - on a 5.6GB card.** The partial-coverage logic had ALREADY computed that this card fits only a small subset; passing null bypassed it entirely. So the fix I shipped to make every donor compute is the exact thing that stopped this one from computing.
+
+- [x] **INITFIT.1** **DONE - `_donorClusterFit(ws)`** lifts the VRAM-fit arithmetic out of `_syncReplicaToDonor` so cluster INIT asks the same question the sync does. Returns null when the card fits the full brain (the common case, unchanged), a Set when it fits a subset, empty when it fits nothing.
+- [x] **INITFIT.2** **DONE - ALLINIT defaults to the FIT, not to everything.** `coverage === null` now means "ask what this card can hold", not "send all seven". Verified arithmetic on the real card: **11.99GB requested before, 1.44GB after.**
+- [x] **INITFIT.3** **DONE - it says so out loud.** `[Brain] INITFIT — donor <name> initialised N/7 clusters [...] — VRAM-fitted, NOT the full set` whenever a donor gets less than everything, so an under-provisioned card is never silently mistaken for a broken one.
+- [x] **INITFIT.4** **VERIFY (build half) DONE** - `node --check` + `import()` ESM PASS. Server-side only.
+- [ ] **INITFIT.5** GEE: Update & Savestart. Verdict: Sponge RTT falls from ~30s to something sane, `INITFIT` names his fitted cluster set, and his Gn/s comes off 0. **It will be PROPORTIONALLY SMALL** - he steps 1-2 clusters of 7, so a fraction of a full donor rate. That is honest work from a small card, not a fault.
+- [ ] **INITFIT.6** **OPEN - the lesson, stated plainly.** MIRRORCAP, BUFFLOOR, PARTMIRROR and ALLINIT were four consecutive fixes reasoned from source that did not resolve the symptom; MIRRORDIAG resolved it on its FIRST line. Every one of those rounds cost Gee a press and a restart. The LAW already says instrument-first is the only law that kills - the cost of ignoring it is now measured in this session.
