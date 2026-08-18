@@ -1287,12 +1287,33 @@ const SERVER_GPU_MIXIN = {
     // _rebroadcastMasterToReplicas retries when the curriculum is idle, and a
     // fresh donor's fire-and-forget Hebbian keeps its shadow approximately current
     // until then. DREAM_DF7_SYNC_DURING_TEACH=1 opts back into mid-teach syncing.
-    if (this._curriculumInProgress && process.env.DREAM_DF7_SYNC_DURING_TEACH !== '1') {
+    // DF.7 PACEDSYNC — the hard defer above this line was correct for WHAT IT MEASURED
+    // (7925e16: mid-teach syncing inflated WORD-INT to ~16s/word) but it waits for an
+    // idle/dream window that a long cell may not reach for HOURS — observed live at
+    // `passCount=0` with `phases 0/25` ten minutes into ela/kindergarten, leaving a
+    // healthy second GPU pinned at 0 Gn/s with no path forward. Two things changed since
+    // that measurement: (a) the jam it clocked was dominated by the 366MB intra upload
+    // "timing out at 180s + retries" — TFLOOR (2026-08-16) floored that deadline at the
+    // size-scaled physical requirement, so the retry storm is gone; (b) WSQ.3 already
+    // paces replica-sync chunks against the DONOR's link. What was still missing is a
+    // pace against the SERVER's own event loop, which is the thing teach competes for.
+    // That term is added in the chunk loop below, so the sync now yields proportionally
+    // to measured loop lag instead of blocking on a window that may never arrive.
+    // DREAM_DF7_SYNC_DURING_TEACH: unset/'paced' = paced (default), '0' = the old hard
+    // defer, '1' = unpaced full-speed (the original override, still honoured).
+    const _syncDuringTeach = process.env.DREAM_DF7_SYNC_DURING_TEACH;
+    if (this._curriculumInProgress && _syncDuringTeach === '0') {
       if (!this._replicaDeferLogMs || (Date.now() - this._replicaDeferLogMs) > 30000) {
         this._replicaDeferLogMs = Date.now();
-        console.log('[Brain] DF.7 — replica sync DEFERRED: curriculum actively teaching. A full-replica re-upload (~366MB intra + 16 matrices) would jam the teach loop; syncing on the next rebroadcast during an idle/dream window instead. (DREAM_DF7_SYNC_DURING_TEACH=1 to override.)');
+        console.log('[Brain] DF.7 — replica sync DEFERRED: curriculum actively teaching (DREAM_DF7_SYNC_DURING_TEACH=0 — the pre-PACEDSYNC behaviour). A full-replica re-upload (~366MB intra + 16 matrices) would jam the teach loop; syncing on the next rebroadcast during an idle/dream window instead.');
       }
       return;
+    }
+    if (this._curriculumInProgress && _syncDuringTeach !== '1') {
+      if (!this._pacedSyncLogMs || (Date.now() - this._pacedSyncLogMs) > 30000) {
+        this._pacedSyncLogMs = Date.now();
+        console.log('[Brain] DF.7 PACEDSYNC — replica sync proceeding DURING teach, paced against event-loop lag (chunks breathe >= the measured lag so the teach loop keeps its slice). Set DREAM_DF7_SYNC_DURING_TEACH=0 for the old defer-until-idle behaviour, =1 for unpaced.');
+      }
     }
     // DF.7 F8 — capability-aware routing. Don't stream a full brain replica to a
     // donor whose WebGPU storage-binding cap can't hold the cortex cross-projection
@@ -2180,16 +2201,36 @@ const SERVER_GPU_MIXIN = {
         const _pc = this.clients && this.clients.get ? this.clients.get(ws) : null;
         const _prtt = _pc && typeof _pc.rttMs === 'number' ? _pc.rttMs : 0;
         const _mbps = _pc && Number(_pc.donorLinkMbps) > 0 ? Number(_pc.donorLinkMbps) : 0;
-        if (_prtt > 200 || _mbps > 0) {
-          const _capEnv = Number(process.env.DREAM_DF7_SYNC_PACE_MAX_MS);
-          const _capMs = Number.isFinite(_capEnv) && _capEnv > 0 ? _capEnv : 200;
-          // RTT proxy: ~RTT/8 between chunks. Bandwidth-aware (WSQ.4 hint, preferred when present):
-          // ~half this chunk's transmit time at the donor's measured downlink so we don't outrun the
-          // link. Take the max of the two, capped (DREAM_DF7_SYNC_PACE_MAX_MS).
-          const _rttPace = _prtt > 200 ? Math.round(_prtt / 8) : 0;
-          const _bwPace = _mbps > 0 ? Math.round(((valuesByteLen + colIdxByteLen) * 8 / 1e6) / _mbps * 1000 * 0.5) : 0;
-          const _paceMs = Math.min(_capMs, Math.max(_rttPace, _bwPace));
-          if (_paceMs > 0) await new Promise((r) => setTimeout(r, _paceMs));
+        const _capEnv = Number(process.env.DREAM_DF7_SYNC_PACE_MAX_MS);
+        const _capMs = Number.isFinite(_capEnv) && _capEnv > 0 ? _capEnv : 200;
+        // WSQ.3 DONOR-LINK terms (unchanged). RTT proxy: ~RTT/8 between chunks.
+        // Bandwidth-aware (WSQ.4 hint, preferred when present): ~half this chunk's transmit
+        // time at the donor's measured downlink so we don't outrun the link.
+        const _rttPace = _prtt > 200 ? Math.round(_prtt / 8) : 0;
+        const _bwPace = _mbps > 0 ? Math.round(((valuesByteLen + colIdxByteLen) * 8 / 1e6) / _mbps * 1000 * 0.5) : 0;
+        const _linkPace = (_prtt > 200 || _mbps > 0) ? Math.min(_capMs, Math.max(_rttPace, _bwPace)) : 0;
+        // DF.7 PACEDSYNC — SERVER-LOOP term. The donor-link terms above protect the DONOR's
+        // uplink; nothing protected the SERVER's event loop, which is what the teach loop is
+        // actually competing for and why mid-teach syncing had to be banned outright. While
+        // the curriculum is teaching, breathe at least a floor between chunks and scale up
+        // with the MEASURED loop lag, so teach reclaims the loop instead of queueing behind
+        // a 480-chunk burst. Floor keeps a healthy loop honest (~12s added over 480 chunks);
+        // the lag multiple backs off hard exactly when teach is suffering.
+        let _teachPace = 0;
+        if (this._curriculumInProgress && process.env.DREAM_DF7_SYNC_DURING_TEACH !== '1') {
+          const _lag = Number(this._lastEventLoopLagMs) || 0;
+          const _tEnv = Number(process.env.DREAM_DF7_SYNC_TEACH_PACE_MAX_MS);
+          const _tMax = Number.isFinite(_tEnv) && _tEnv > 0 ? _tEnv : 400;
+          const _tFloorEnv = Number(process.env.DREAM_DF7_SYNC_TEACH_PACE_MIN_MS);
+          const _tFloor = Number.isFinite(_tFloorEnv) && _tFloorEnv >= 0 ? _tFloorEnv : 25;
+          _teachPace = Math.min(_tMax, Math.max(_tFloor, _lag * 2));
+        }
+        const _paceMs = Math.max(_linkPace, _teachPace);
+        if (_paceMs > 0) await new Promise((r) => setTimeout(r, _paceMs));
+        // PACEDSYNC instrument — progress + the lag we are pacing against, so the real cost
+        // of syncing under teach is a FIELD READ and not another theory. Every 64 chunks.
+        if (_teachPace > 0 && (seq & 63) === 63) {
+          console.log(`[Brain] DF.7 PACEDSYNC ${name} chunk ${seq + 1}/${totalChunks} — loopLag=${Number(this._lastEventLoopLagMs) || 0}ms pace=${_paceMs}ms (link=${_linkPace} teach=${_teachPace}) teach/min=${(this.cortexCluster && this.cortexCluster._teachCallsPerMin) || 'n/a'}`);
         }
       }
     }
