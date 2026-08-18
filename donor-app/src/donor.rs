@@ -691,9 +691,12 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                     let pre = expand(&pre_ranges);
                     let post = expand(&post_ranges);
                     if !pre.is_empty() && !post.is_empty() {
-                        for _ in 0..reps {
-                            if engine.hebbian(&name, &pre, &post, lr).is_err() { break; }
-                        }
+                        // v0.3.19 — the dose runs as ONE engine call: pattern
+                        // written once, kernel looped `reps` times inside the
+                        // engine. The v0.3.18 loop-the-whole-op form re-wrote
+                        // two region-sized pattern buffers per rep and buried
+                        // the GPU queue (donor 'seen' climbed to ~300s live).
+                        let _ = engine.hebbian_reps(&name, &pre, &post, lr, reps);
                         set_status(&control_w, |s| { s.teach_ops += 1; s.note = "teaching".into(); });
                     }
                 }

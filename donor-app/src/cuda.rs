@@ -402,6 +402,45 @@ impl CudaEngine {
         Ok(())
     }
 
+    /// v0.3.19 — rep-dose hebbian: zero + scatter the STATIC pattern ONCE, then
+    /// launch the plasticity kernel `reps` times stream-ordered (sequential math
+    /// identical to reps separate calls). v0.3.18's executor looped the whole
+    /// hebbian() per rep — re-zeroing two region-sized buffers (2 × 12M u32 at
+    /// the intra) every rep buried the stream in zero-bandwidth and starved the
+    /// LIF compute batches behind it.
+    pub fn hebbian_reps(&mut self, name: &str, pre_indices: &[u32], post_indices: &[u32], lr: f32, reps: u32) -> Result<(), String> {
+        let (rows, cols, nnz) = match self.sparse.get(name) {
+            Some(m) => (m.rows, m.cols, m.nnz),
+            None => return Err(format!("sparse '{name}' not uploaded")),
+        };
+        if rows == 0 || nnz == 0 {
+            return Ok(());
+        }
+        let m = self.sparse.get(name).unwrap();
+        self.dev_zero_u32(&m.pre_spikes, 0, cols)?;
+        self.dev_zero_u32(&m.post_spikes, 0, rows)?;
+        self.dev_scatter_ones(pre_indices, &m.pre_spikes, 0, cols)?;
+        self.dev_scatter_ones(post_indices, &m.post_spikes, 0, rows)?;
+        let (reward, w_min, w_max, src_off, dst_off) = (1.0f32, -2.0f32, 2.0f32, 0u32, 0u32);
+        for _ in 0..reps.max(1) {
+            let mut b = self.stream.launch_builder(&self.f_hebb);
+            b.arg(&rows)
+                .arg(&lr)
+                .arg(&reward)
+                .arg(&w_min)
+                .arg(&w_max)
+                .arg(&src_off)
+                .arg(&dst_off)
+                .arg(&m.values)
+                .arg(&m.col_idx)
+                .arg(&m.row_ptr)
+                .arg(&m.pre_spikes)
+                .arg(&m.post_spikes);
+            unsafe { b.launch(cfg(rows)) }.map_err(|e| format!("hebbian-reps launch: {e}"))?;
+        }
+        Ok(())
+    }
+
     /// v0.3.15 — resident bound-hebbian: plasticity on a cluster-BOUND matrix reading
     /// the bound clusters' resident spike buffers at the bound offsets (the state the
     /// type-7/9 pattern frames established). Ok(true) = applied; Ok(false) = skipped
