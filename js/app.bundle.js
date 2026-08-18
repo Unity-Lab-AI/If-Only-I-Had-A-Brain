@@ -55559,6 +55559,7 @@ var CLUSTER_ATTENTION_MIXIN = {
 };
 
 // ../js/brain/cluster.js
+var EMPTY_PRE_SPIKES = new Uint32Array(0);
 var CLUSTER_FRACTIONS = {
   cortex: 0.55,
   hippocampus: 0.18,
@@ -58262,6 +58263,37 @@ var NeuronCluster = class {
    * @param {number} dt — timestep in seconds
    * @returns {Promise<{ spikes: Uint8Array, spikeCount: number, voltages: Float64Array }>}
    */
+  /**
+   * Is this matrix CLUSTER-BOUND on the donor? A bound matrix was uploaded
+   * with binding metadata, so the donor resolves its pre-spikes from its own
+   * resident cluster buffer and the propagate router ships no payload at all
+   * for it. Browser instances have no `_brain`, so they always answer false
+   * and keep the full dense path.
+   */
+  _isBoundMatrix(matrixName) {
+    const b = this._brain;
+    return !!(b && b._cortexBoundNames && b._cortexBoundNames.has(matrixName));
+  }
+  /**
+   * Build the pre-spike payload for one propagate — or skip building it.
+   *
+   * For a CLUSTER-BOUND matrix the router discards this payload outright, yet
+   * the old code allocated a fresh `Uint32Array(size)` and ran a full-length
+   * binarization loop for it anyway, once PER MATRIX PER TICK. At 12M neurons
+   * that is ~48MB allocated and 12M iterations burned to produce a buffer
+   * nobody ever reads — and an emission loop runs 36-108 ticks across ~15
+   * matrices for a single chat reply. That waste was the bulk of the
+   * synchronous CPU inside the reply pin that kept killing the donor.
+   * Bound → hand back the shared empty array. Unbound → build it exactly as
+   * before, byte-identical.
+   */
+  _preSpikePayload(matrixName, spikes) {
+    if (!spikes || spikes.length === 0) return EMPTY_PRE_SPIKES;
+    if (this._isBoundMatrix(matrixName)) return EMPTY_PRE_SPIKES;
+    const out = new Uint32Array(spikes.length);
+    for (let i = 0; i < spikes.length; i++) out[i] = spikes[i] > 0 ? 1 : 0;
+    return out;
+  }
   async stepAwait(dt) {
     {
       const _b = this._brain;
@@ -58273,6 +58305,24 @@ var NeuronCluster = class {
           console.warn(`[Cluster ${this.name}] stepAwait ABORTED at biological scale \u2014 GPU path not live (proxyReady=${!!this._gpuProxyReady} socketAlive=${_sockAlive}); a CPU step would pin the loop ~57s/word. Emission goes briefly silent instead. Rate-limited 30s.`);
         }
         return { spikes: this.lastSpikes, spikeCount: 0, voltages: this.neurons && this.neurons.voltages || null, aborted: true };
+      }
+    }
+    if (typeof setImmediate === "function") {
+      if (this._tickBreatheMs === void 0) {
+        let ms = 50;
+        try {
+          if (typeof process !== "undefined" && process.env && process.env.DREAM_TICK_BREATHE_MS !== void 0) {
+            const v = Number(process.env.DREAM_TICK_BREATHE_MS);
+            if (Number.isFinite(v) && v >= 0) ms = v;
+          }
+        } catch {
+        }
+        this._tickBreatheMs = ms;
+      }
+      const _bNow = Date.now();
+      if (_bNow - (this._lastTickBreatheAt || 0) >= this._tickBreatheMs) {
+        this._lastTickBreatheAt = _bNow;
+        await new Promise((r) => setImmediate(r));
       }
     }
     if (!this._gpuProxyReady || !this._gpuProxy || !this._gpuProxy.propagate) {
@@ -58296,11 +58346,10 @@ var NeuronCluster = class {
     const cache = this._cachedCrossCurrents;
     const promises = [];
     if (this.synapses && this.lastSpikes) {
-      const spikes = this.lastSpikes;
-      const pSpikes = new Uint32Array(spikes.length);
-      for (let i = 0; i < spikes.length; i++) pSpikes[i] = spikes[i] ? 1 : 0;
+      const _intraName = `${this.name}_intraSynapses`;
+      const pSpikes = this._preSpikePayload(_intraName, this.lastSpikes);
       try {
-        const p = this._gpuProxy.propagate(`${this.name}_intraSynapses`, pSpikes);
+        const p = this._gpuProxy.propagate(_intraName, pSpikes);
         if (p && typeof p.then === "function") {
           promises.push(p.then((currents) => {
             if (currents && currents.length > 0) this._cachedIntraCurrents = currents;
@@ -58316,11 +58365,11 @@ var NeuronCluster = class {
         if (idx < 0) continue;
         const src = projName.slice(0, idx);
         if (!this.regions[src]) continue;
-        const srcSpikes = this.regionSpikes(src);
-        const pSpikes = new Uint32Array(srcSpikes.length);
-        for (let i = 0; i < srcSpikes.length; i++) pSpikes[i] = srcSpikes[i] > 0 ? 1 : 0;
+        const _projMatrix = `${this.name}_${projName}`;
+        const _projBound = this._isBoundMatrix(_projMatrix);
+        const pSpikes = _projBound ? EMPTY_PRE_SPIKES : this._preSpikePayload(_projMatrix, this.regionSpikes(src));
         try {
-          const p = this._gpuProxy.propagate(`${this.name}_${projName}`, pSpikes);
+          const p = this._gpuProxy.propagate(_projMatrix, pSpikes);
           if (p && typeof p.then === "function") {
             promises.push(p.then((currents) => {
               if (currents && currents.length > 0) cache.set(projName, currents);
