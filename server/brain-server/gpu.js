@@ -1397,6 +1397,22 @@ const SERVER_GPU_MIXIN = {
     if (!this._replicaSyncInFlight) this._replicaSyncInFlight = new Set();
     if (this._replicaSyncInFlight.has(ws)) return;
     this._replicaSyncInFlight.add(ws);
+    // DF.7 SYNCSERIAL — replica syncs now run ONE AT A TIME. `_rebroadcastMasterToReplicas`
+    // fanned them out with `_gpuParallelMap` on the reasoning that a pool "re-merges in the
+    // time of the slowest single replica, not the sum" — which is only true if each replica
+    // has INDEPENDENT bandwidth. They do not: every byte leaves the same box uplink (~4MB/s
+    // measured). Run concurrently, each 2.9GB intra stream gets 1/N of the pipe, the small
+    // cross-projection matrices queue behind them in head-of-line blocking, and EVERY upload
+    // burns its deadline WAITING rather than transferring — observed live as ten
+    // `timed out after 180000ms` lines, retries that timed out again, and ZERO
+    // `replica sync complete` in the whole window. Serial is strictly better here: each
+    // donor gets the full pipe, finishes, and frees it. Sum-of-serial beats all-fail-and-retry.
+    // Queue via a promise chain so register-path and rebroadcast-path syncs share one lane.
+    const _prevSync = this._replicaSyncChain || Promise.resolve();
+    let _releaseSync;
+    this._replicaSyncChain = new Promise((r) => { _releaseSync = r; });
+    try { await _prevSync; } catch { /* a failed predecessor must never block the queue */ }
+    if (!ws || ws.readyState !== 1) { this._replicaSyncInFlight.delete(ws); _releaseSync(); return; }
     try {
       // 1) init the replica's cluster LIF buffers (mirror _gpuStep first-dispatch).
       const clusters = Object.keys(this.CLUSTER_SIZES || {});
@@ -1455,6 +1471,7 @@ const SERVER_GPU_MIXIN = {
       console.warn('[Brain] DF.7 — replica sync failed (donor stays standby until next rebroadcast):', e.message);
     } finally {
       this._replicaSyncInFlight.delete(ws);
+      _releaseSync();   // SYNCSERIAL — hand the uplink to the next queued replica
     }
   },
 
@@ -1491,7 +1508,11 @@ const SERVER_GPU_MIXIN = {
       // _gpuParallelMap primitive — replicas re-converge concurrently instead
       // of one-after-another, so a big pool re-merges in the time of the
       // slowest single replica, not the sum.
-      await this._gpuParallelMap(replicas, (ws) => this._syncReplicaToDonor(ws));
+      // SYNCSERIAL — sequential on purpose (see _syncReplicaToDonor). _gpuParallelMap is
+      // right for COMPUTE fan-out (independent GPUs, independent work) and wrong for weight
+      // STREAMING (one shared uplink). The per-donor lane lock below makes this redundant but
+      // explicit is better than relying on a lock two functions away.
+      for (const _ws of replicas) { await this._syncReplicaToDonor(_ws); }
       this._lastReplicaRebroadcastMs = Date.now();
       console.log(`[Brain] DF.7 — master re-broadcast to ${replicas.length} replica(s) complete (GPU shadows re-converged to the CPU master, in parallel).`);
     } finally {
@@ -2005,7 +2026,17 @@ const SERVER_GPU_MIXIN = {
       // Margin 30s → 120s (2026-08-16): at multi-GB payloads the wire estimate's
       // error is minutes-scale, and the donor's post-receive GPU alloc adds
       // seconds — a 30s margin on a 12-minute transfer left no room for jitter.
-      const _scaledMs = Math.ceil((_payloadBytes / (_minMBps * 1048576)) * 1000) + 120_000;
+      // SYNCSERIAL — CONTENTION-AWARE deadline. The estimate above assumed this upload owns
+      // the wire. It does not: the primary's canonical upload, teach frames, and any replica
+      // stream all leave the SAME box uplink, so a matrix can spend its whole deadline queued
+      // behind a multi-GB neighbour and time out having transferred almost nothing (live: ten
+      // 180s timeouts whose retries also timed out). Divide the assumed rate by the number of
+      // streams actually in flight so the deadline reflects this upload's real SHARE of the
+      // pipe. Serialising replica syncs keeps this near 1 in the normal case; this is the
+      // belt-and-braces for the primary-upload-plus-replica overlap that serialising can't remove.
+      const _concurrentStreams = 1 + ((this._replicaSyncInFlight && this._replicaSyncInFlight.size) || 0);
+      const _effMBps = _minMBps / Math.max(1, _concurrentStreams);
+      const _scaledMs = Math.ceil((_payloadBytes / (_effMBps * 1048576)) * 1000) + 120_000;
       // Cap 15min → 30min (2026-08-16): the 12M language cortex's intra upload
       // is ~2.9GB ≈ 12min at the measured wire — a 15min cap left no headroom
       // for a slower link; hop 2 grows it further.
@@ -2026,7 +2057,7 @@ const SERVER_GPU_MIXIN = {
         timeoutMs = Math.max(_envTimeout, _scaledMs);
         if (timeoutMs > _envTimeout && (!this._uploadTimeoutFloorLogMs || (Date.now() - this._uploadTimeoutFloorLogMs) > 60000)) {
           this._uploadTimeoutFloorLogMs = Date.now();
-          console.log(`[Brain] upload timeout FLOORED — env DREAM_SPARSE_UPLOAD_TIMEOUT_MS=${_envTimeout}ms is below what this ${(_payloadBytes / 1048576).toFixed(0)}MB payload physically needs at ${_minMBps}MB/s; using ${timeoutMs}ms (size-scaled). The env can raise deadlines, never starve them.`);
+          console.log(`[Brain] upload timeout FLOORED — env DREAM_SPARSE_UPLOAD_TIMEOUT_MS=${_envTimeout}ms is below what this ${(_payloadBytes / 1048576).toFixed(0)}MB payload physically needs at ${_effMBps.toFixed(2)}MB/s (${_minMBps}MB/s shared across ${_concurrentStreams} in-flight stream(s)); using ${timeoutMs}ms (size-scaled). The env can raise deadlines, never starve them.`);
         }
       } else {
         timeoutMs = Math.min(_capMs, Math.max(45_000, _scaledMs));
