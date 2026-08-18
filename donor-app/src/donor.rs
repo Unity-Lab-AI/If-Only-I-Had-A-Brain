@@ -19,7 +19,8 @@ use crate::frames::{self, Frame};
 use crate::gpu::GpuInfo;
 use crate::protocol::{
     ComputeBatch, ComputeBatchResult, GpuInit, GpuInitAck, GpuRegister, PerClusterResult,
-    MatrixSample, ReadbackAck, ReadbackMatrixChecksumAck, RebindAck, ServerMessage,
+    LetterSurpriseAck, MatrixSample, ReadbackAck, ReadbackMatrixChecksumAck, RebindAck,
+    ServerMessage,
 };
 
 /// Outbound keepalive cadence. We ping the brain on this interval so a quiet teach window never
@@ -287,6 +288,8 @@ enum Work {
     // tiny frame. Ranges expand to indices HERE (device scatter is index-based);
     // the executor loops the existing engine hebbian op, stream-ordered.
     HebbianRanges { name: String, lr: f32, reps: u32, pre_ranges: Vec<[u32; 2]>, post_ranges: Vec<[u32; 2]> },
+    // v0.3.20 — the whole letter-surprise walk, device-side (see protocol.rs).
+    LetterSurprise { req_id: u32, cluster: String, region: String, letters: Vec<Vec<[u32; 2]>>, ticks: u32, drive: f32, noise: f32 },
     Readback { req_id: u32, cluster: String, region: String, bucket_count: u32, sub_slice_len: u32, start_offset: u32 },
     // TU.19-D — GPU↔CPU parity: read back a resident matrix's weight digest.
     ChecksumMatrix { req_id: u32, name: String, sample_count: u32 },
@@ -626,6 +629,7 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                 Work::WriteCurrent { cluster, region, .. } => format!("write_current {cluster}/{region}"),
                 Work::ClearSpike { cluster, region } => format!("clear_spike {cluster}/{region}"),
                 Work::HebbianRanges { name, reps, .. } => format!("hebbian_ranges {name} x{reps}"),
+                Work::LetterSurprise { cluster, region, letters, .. } => format!("letter_surprise {cluster}/{region} x{}", letters.len()),
                 Work::Readback { cluster, region, .. } => format!("readback {cluster}/{region}"),
                 Work::ChecksumMatrix { name, .. } => format!("checksum {name}"),
                 Work::Mindspace { op, .. } => format!("mindspace {op}"),
@@ -699,6 +703,46 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                         let _ = engine.hebbian_reps(&name, &pre, &post, lr, reps);
                         set_status(&control_w, |s| { s.teach_ops += 1; s.note = "teaching".into(); });
                     }
+                }
+                // v0.3.20 — LETTER-SURPRISE WALK entirely on the card. Per letter:
+                // write its one-hot band into the region, step the cluster, then
+                // read the region's spike count as a SINGLE bucket. The metric is
+                // the mean |Δ rate| across letters — identical to the host-side
+                // equation, minus one network round-trip per letter (the host form
+                // measured 190s for a single chat message on a busy link).
+                Work::LetterSurprise { req_id, cluster, region, letters, ticks, drive, noise } => {
+                    let mut prev_rate = 0.0f32;
+                    let mut sum = 0.0f32;
+                    let mut count = 0u32;
+                    let mut seed = req_id.wrapping_mul(2654435761).wrapping_add(1);
+                    for ranges in letters.iter() {
+                        let mut idx: Vec<u32> = Vec::new();
+                        for r in ranges {
+                            let (start, len) = (r[0] as u64, r[1] as u64);
+                            if len == 0 || len > 1_000_000 || idx.len() as u64 + len > 1_000_000 { continue; }
+                            for i in start..(start + len) { idx.push(i as u32); }
+                        }
+                        if idx.is_empty() { continue; }
+                        if engine.write_spike_slice(&cluster, &region, &idx).is_err() { break; }
+                        seed = seed.wrapping_mul(1664525).wrapping_add(1013904223);
+                        // The pool drives clusters through run_substeps (same entry the
+                        // compute_batch path uses), so the walk inherits multi-GPU routing.
+                        let jobs = [StepJob { name: cluster.clone(), size: 0, drive, noise }];
+                        let _ = engine.run_substeps(&jobs, ticks, seed, &control_w.stop, &pending_w);
+                        // One bucket over the whole region span = the region spike count.
+                        let counts = engine
+                            .readback_letter_buckets(&cluster, &region, 1, 0, 0)
+                            .unwrap_or_default();
+                        let fired: u32 = counts.iter().copied().sum();
+                        let span = idx.len().max(1) as f32;
+                        let rate = (fired as f32) / span;
+                        sum += (rate - prev_rate).abs();
+                        prev_rate = rate;
+                        count += 1;
+                    }
+                    let surprise = if count > 0 { sum / (count as f32) } else { 0.0 };
+                    let ack = LetterSurpriseAck { msg_type: "letter_surprise_ack", req_id, surprise, letters: count };
+                    let _ = reply_tx.send(Out::Text(serde_json::to_string(&ack).unwrap()));
                 }
                 Work::Readback { req_id, cluster, region, bucket_count, sub_slice_len, start_offset } => {
                     let counts = engine
@@ -893,6 +937,16 @@ pub async fn run_donor(cfg: DonorConfig, gpus: Vec<GpuInfo>, utils: Vec<u8>, con
                             Ok(ServerMessage::WriteSpikeSlice(w)) => { pending.fetch_add(1, Ordering::Relaxed); workq.push(Work::WriteSpike { cluster: w.cluster_name, region: w.region_name, indices: w.sparse_indices }); }
                             Ok(ServerMessage::WriteCurrentSlice(w)) => { pending.fetch_add(1, Ordering::Relaxed); workq.push(Work::WriteCurrent { cluster: w.cluster_name, region: w.region_name, indices: w.sparse_indices, values: w.sparse_values, psi: w.psi }); }
                             Ok(ServerMessage::ClearSpikeRegion(w)) => { pending.fetch_add(1, Ordering::Relaxed); workq.push(Work::ClearSpike { cluster: w.cluster_name, region: w.region_name }); }
+                            Ok(ServerMessage::LetterSurprise(ls)) => {
+                                // Bounded: a malformed frame must not buy an unbounded walk.
+                                if ls.letters.len() <= 64 && ls.ticks <= 8 {
+                                    pending.fetch_add(1, Ordering::Relaxed);
+                                    workq.push(Work::LetterSurprise {
+                                        req_id: ls.req_id, cluster: ls.cluster_name, region: ls.region_name,
+                                        letters: ls.letters, ticks: ls.ticks.clamp(1, 8), drive: ls.drive, noise: ls.noise,
+                                    });
+                                }
+                            }
                             Ok(ServerMessage::HebbianRanges(h)) => {
                                 // Defensive caps: a malformed frame must never expand into
                                 // gigabytes of indices or a runaway rep loop.

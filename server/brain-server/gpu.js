@@ -3612,6 +3612,60 @@ const SERVER_GPU_MIXIN = {
     return new Uint32Array(ack.counts);
   },
 
+  /**
+   * v0.3.20 — LETTER-SURPRISE WALK on the donor.
+   *
+   * The episode-salience metric streams a clause's letters through the cortex
+   * and averages |Δ letter-region spike rate|. Host-side that is one network
+   * round-trip PER LETTER (measured: 190s for a single chat message against a
+   * teach-saturated donor — the reply-path pin that killed the donor twice).
+   * This ships every letter's index ranges in ONE frame; the donor injects,
+   * steps and counts entirely on the card and returns the mean.
+   *
+   * @param {string} regionName — 'letter'
+   * @param {Array<Array<[number,number]>>} letterRanges — per letter, its [start,len] ranges (region-relative)
+   * @param {number} [ticks=2] — steps per letter (matches the host equation)
+   * @returns {Promise<number|null>} mean surprise, or null when unsupported/unavailable
+   */
+  async gpuLetterSurprise(regionName, letterRanges, ticks = 2) {
+    if (!this._donorLetterSurprise()) return null;
+    if (!this._gpuClient || this._gpuClient.readyState !== 1) return null;
+    if (!Array.isArray(letterRanges) || letterRanges.length === 0) return null;
+    const ack = await this._sparseSend({
+      type: 'letter_surprise',
+      clusterName: 'cortex',
+      regionName,
+      letters: letterRanges.slice(0, 64),
+      ticks: Math.max(1, Math.min(8, ticks)),
+      drive: 0,
+      noise: 0,
+    }, 60000);
+    if (!ack || typeof ack.surprise !== 'number' || !Number.isFinite(ack.surprise)) return null;
+    return ack.surprise;
+  },
+
+  /**
+   * v0.3.20 - does the PRIMARY donor speak the device-side letter walk?
+   * Same TU.20.12 negotiation pattern as the other capability gates.
+   */
+  _donorLetterSurprise() {
+    const ws = this._gpuClient;
+    if (!ws) return false;
+    if (this._letterSurpWs === ws) return this._letterSurpOk === true;
+    this._letterSurpWs = ws;
+    this._letterSurpOk = false;
+    try {
+      const c = (this.clients && this.clients.get) ? this.clients.get(ws) : null;
+      const v = ((c && c.donorAppVersion) || '').toString().trim();
+      const m = v.match(/^(\d+)\.(\d+)\.(\d+)/);
+      if (m) this._letterSurpOk = ((+m[1]) * 1e6 + (+m[2]) * 1e3 + (+m[3])) >= 3020; // 0.3.20
+    } catch { this._letterSurpOk = false; }
+    try {
+      console.log(`[Brain] device-side LETTER-SURPRISE walk for PRIMARY donor: ${this._letterSurpOk ? 'ON (letter_surprise)' : 'off'} (requires >= 0.3.20).`);
+    } catch { /* best-effort */ }
+    return this._letterSurpOk === true;
+  },
+
   // ─── TU.19-D — GPU↔CPU parity harness ──────────────────────────────
   //
   // "GPU shadow DIRTY" conflated three independent failure modes. This

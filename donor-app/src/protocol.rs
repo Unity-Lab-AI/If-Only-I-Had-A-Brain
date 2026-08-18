@@ -311,6 +311,45 @@ pub struct HebbianRanges {
 
 fn one_u32() -> u32 { 1 }
 
+// v0.3.20 — LETTER-SURPRISE WALK, device-side.
+// The brain's episode-salience metric streams a clause's letters through the
+// cortex and averages |Δ letter-region spike rate| per letter. Done from the
+// host that is 2 ticks + 1 readback of NETWORK round-trip per letter (measured:
+// 190s for one chat message against a teach-saturated donor). The whole walk
+// belongs here: the server ships the per-letter index ranges once, the donor
+// injects/steps/counts entirely on the card, and ONE reply carries the mean.
+#[derive(Debug, Clone, Deserialize)]
+pub struct LetterSurprise {
+    #[serde(rename = "reqId")]
+    pub req_id: u32,
+    #[serde(rename = "clusterName")]
+    pub cluster_name: String,
+    #[serde(rename = "regionName")]
+    pub region_name: String,
+    /// One entry per letter; each entry is that letter's [start,len] ranges,
+    /// region-relative (same carrier shape as hebbian_ranges).
+    #[serde(default)]
+    pub letters: Vec<Vec<[u32; 2]>>,
+    #[serde(default = "two_u32")]
+    pub ticks: u32,
+    #[serde(default)]
+    pub drive: f32,
+    #[serde(default)]
+    pub noise: f32,
+}
+
+fn two_u32() -> u32 { 2 }
+
+#[derive(Debug, Clone, Serialize)]
+pub struct LetterSurpriseAck {
+    #[serde(rename = "type")]
+    pub msg_type: &'static str, // "letter_surprise_ack"
+    #[serde(rename = "reqId")]
+    pub req_id: u32,
+    pub surprise: f32,
+    pub letters: u32,
+}
+
 #[derive(Debug, Clone, Deserialize)]
 pub struct ReadbackLetterBuckets {
     #[serde(rename = "reqId")]
@@ -432,6 +471,8 @@ pub enum ServerMessage {
     ClearSpikeRegion(ClearSpikeRegion),
     #[serde(rename = "hebbian_ranges")]
     HebbianRanges(HebbianRanges),
+    #[serde(rename = "letter_surprise")]
+    LetterSurprise(LetterSurprise),
     #[serde(rename = "readback_letter_buckets")]
     ReadbackLetterBuckets(ReadbackLetterBuckets),
     #[serde(rename = "readback_matrix_checksum")]

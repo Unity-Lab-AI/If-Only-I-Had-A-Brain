@@ -2045,6 +2045,10 @@ class ServerBrain {
         // loops its existing hebbian op stream-ordered. Returns true only
         // when the frame was actually sent (donor ≥0.3.18 + socket live).
         hebbianRanges: (name, lr, reps, preRanges, postRanges) => this.gpuSparseHebbianRanges(name, lr, reps, preRanges, postRanges),
+        // v0.3.20 — the whole letter-surprise walk in ONE round trip (see
+        // gpuLetterSurprise). Returns null when the donor predates 0.3.20, and
+        // the caller falls back to its per-letter stepAwait form.
+        letterSurprise: (regionName, letterRanges, ticks) => this.gpuLetterSurprise(regionName, letterRanges, ticks),
         // T18.28 — drain-wait helper. Before gate probes fire readback
         // requests, wait for the WebSocket send queue to drop below
         // 10 MB so the readback lands immediately instead of queuing
@@ -8057,7 +8061,7 @@ wss.on('connection', (ws, req) => {
       // public/donor-route connection faking these could poison brain state.
       // gpu_register is exempt (it's how a donor JOINS the pool). Chat policy
       // (who may send 'text') is a separate operator decision — not gated here.
-      const DONOR_PROTOCOL = ['compute_result', 'compute_batch_result', 'gpu_init_ack', 'sparse_upload_ack', 'sparse_propagate_ack', 'sparse_hebbian_ack', 'rebind_sparse_ack', 'readback_letter_buckets_ack', 'readback_matrix_checksum_ack', 'device_lost'];
+      const DONOR_PROTOCOL = ['compute_result', 'compute_batch_result', 'gpu_init_ack', 'sparse_upload_ack', 'sparse_propagate_ack', 'sparse_hebbian_ack', 'rebind_sparse_ack', 'readback_letter_buckets_ack', 'readback_matrix_checksum_ack', 'letter_surprise_ack', 'device_lost'];
       if (DONOR_PROTOCOL.indexOf(msg.type) !== -1 && !(brain._gpuClients && brain._gpuClients.has(ws))) {
         if (!brain._donorSpoofWarnAt || (Date.now() - brain._donorSpoofWarnAt) > 5000) {
           brain._donorSpoofWarnAt = Date.now();
@@ -8701,6 +8705,7 @@ wss.on('connection', (ws, req) => {
         case 'sparse_hebbian_ack':
         case 'rebind_sparse_ack':
         case 'readback_letter_buckets_ack':
+        case 'letter_surprise_ack':
         case 'readback_matrix_checksum_ack': { // TU.19-D parity digest
           if (!brain._gpuSparsePending || !msg.reqId) break;
           const pending = brain._gpuSparsePending.get(msg.reqId);
