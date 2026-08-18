@@ -982,6 +982,17 @@ const SERVER_STATE_MIXIN = {
             // show "GPU buffer too small for cortex matrix" instead of a mystery 0 Gn/s.
             maxBindMB: isGPU ? (Number(c.maxBindMB || (tele && tele.maxBindMB)) || null) : null,
             bindIncapable: isGPU ? !!c._bindIncapable : false,
+            // DF.7 SYNCGATE — has this donor's replica weight-sync PROVENLY completed?
+            // A non-primary donor is only admitted to the work pool (and only allowed to
+            // serve propagate reads) once this is true, because before the gate a donor
+            // that joined mid-teach was handed Hebbian batches for matrices it did not
+            // hold — the honest cause of a 0 Gn/s row. `primary` distinguishes "IS the
+            // master, nothing to sync" from "replica still waiting for its weights", so
+            // the Clients table can say which one a quiet card actually is.
+            df7Primary: isGPU ? (ws === this._gpuClient) : false,
+            df7Synced: isGPU ? (ws === this._gpuClient ? true : !!c._df7Synced) : false,
+            df7SyncedMatrices: isGPU ? (Number(c._df7SyncedMatrices) || 0) : 0,
+            df7SyncedAgoSec: (isGPU && c._df7SyncedAt) ? Math.round((Date.now() - c._df7SyncedAt) / 1000) : null,
             // FLAP — platform/backend telemetry so a red / 0-Gn/s donor's OS, compute backend,
             // driver, and compute-capability are visible in the Clients table instead of
             // reverse-engineered from logs (native donor reports these; browser donor → null).

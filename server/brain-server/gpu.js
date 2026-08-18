@@ -859,6 +859,16 @@ const SERVER_GPU_MIXIN = {
     const c = this.clients && this.clients.get ? this.clients.get(ws) : null;
     if (!c) return true;
     if (c._replicaIncapable || c._bindIncapable) return false;
+    // DF.7 SYNCGATE — a NON-PRIMARY donor is work-eligible only once its replica
+    // sync has PROVENLY completed. Before this gate a donor that joined mid-teach
+    // hit the `_curriculumInProgress` sync deferral and returned BEFORE
+    // `_replicaIncapable` / `_bindIncapable` / `clusterCoverage` were ever assigned,
+    // so every flag read undefined here, the checks below fell through to
+    // `return true`, and the scheduler routed Hebbian batches to a card holding NO
+    // matrices. That is the 0 Gn/s row: the donor was not skipped, it was fed work
+    // it could not do. Training was never at risk (the CPU CSR stays the
+    // authoritative master) but the units were wasted and the card looked broken.
+    if (ws !== this._gpuClient && !c._df7Synced) return false;
     const cov = c.clusterCoverage;
     if (!cov || !cov.size) return true;
     if (names === undefined || names === null) return false;
@@ -939,7 +949,42 @@ const SERVER_GPU_MIXIN = {
   // replica weight-sync is proven healthy on the live pool. Opt in per-deploy with
   // DREAM_DF7_FANOUT_PROPAGATE=1 after confirming replica sync completes cleanly.
   _df7FanoutPropagate() {
-    return process.env.DREAM_DF7_FANOUT_PROPAGATE === '1';
+    if (process.env.DREAM_DF7_FANOUT_PROPAGATE === '1') return true;    // explicit opt-in (unchanged)
+    if (process.env.DREAM_DF7_FANOUT_PROPAGATE === '0') return false;   // explicit kill-switch
+    // DF.7 SYNCGATE — AUTO-ENABLE once at least one replica has PROVENLY completed
+    // its weight sync. The original DEFAULT-OFF existed because a stale or
+    // incompletely-synced replica returns a WRONG read the curriculum then acts on
+    // (spurious gate failures / stalled walk). `_df7Synced` is exactly the
+    // "after confirming replica sync completes cleanly" precondition that comment
+    // asked for — now checked PER DONOR from live state instead of asserted once
+    // per deploy by a human setting an env var. `_donorCoversMatrices` independently
+    // keeps unsynced donors out of `_nextPoolDonor`, so a read can only ever land on
+    // a donor whose weights this process actually pushed. Set the env to 0 to force
+    // the old primary-only behaviour.
+    return this._livePoolDonors().some((ws) => {
+      if (ws === this._gpuClient) return false;
+      const c = (this.clients && this.clients.get) ? this.clients.get(ws) : null;
+      return !!(c && c._df7Synced && this._df7ReadFresh(c));
+    });
+  },
+
+  // DF.7 SYNCGATE — FRESHNESS BOUND for READ fan-out (writes are exempt; the CPU CSR
+  // is the authoritative Hebbian master, so a write landing on a drifted shadow cannot
+  // corrupt training — a READ landing on one returns a wrong answer the curriculum then
+  // acts on). Hebbian batches ROUND-ROBIN across donors, so each donor sees a different
+  // subset and their GPU shadows genuinely diverge from each other between rebroadcasts.
+  // A replica therefore counts as read-safe only while its last proven sync is recent.
+  // This self-heals in both directions: `_rebroadcastMasterToReplicas` re-converges every
+  // REPLICA_REBROADCAST_MS (60s with fan-out on) and refreshes the stamp, so a healthy
+  // replica stays eligible; and while the curriculum is teaching the rebroadcast is
+  // deferred, the stamp ages out, and reads fall back to the primary ON THEIR OWN with
+  // no flag to remember. Default window is 3x the 60s rebroadcast, so a single missed
+  // cycle does not flap eligibility. Tune with DREAM_DF7_READ_FRESH_MS.
+  _df7ReadFresh(c) {
+    if (!c || !c._df7SyncedAt) return false;
+    const _env = Number(process.env.DREAM_DF7_READ_FRESH_MS);
+    const windowMs = Number.isFinite(_env) && _env > 0 ? _env : 180 * 1000;
+    return (Date.now() - c._df7SyncedAt) <= windowMs;
   },
 
   // DF.7 F2 — link health [0..1] from heartbeat RTT (set per client by the pong
@@ -1264,6 +1309,7 @@ const SERVER_GPU_MIXIN = {
     const _minBind = Number(process.env.DREAM_DF7_MIN_BIND_MB) > 0 ? Number(process.env.DREAM_DF7_MIN_BIND_MB) : 1800;
     if (_cc && _bindCap > 0 && _bindCap < _minBind) {
       _cc._bindIncapable = true;
+      _cc._df7Synced = false;
       if (!_cc._bindSkipWarned) {
         _cc._bindSkipWarned = true;
         console.warn(`[Brain] DF.7 F8 — donor ${_cc.gpuName || _cc.id} maxBind ${_bindCap}MB < ${_minBind}MB floor — NOT replica-syncing (can't bind cortex matrices; would 0-compute after a wasted upload). Stays connected but excluded from the fan-out.`);
@@ -1306,6 +1352,7 @@ const SERVER_GPU_MIXIN = {
           _cc._replicaIncapable = true;
           _cc._partialReplica = false;
           _cc.clusterCoverage = null;
+          _cc._df7Synced = false;
           if (!_cc._replicaSkipWarned) {
             _cc._replicaSkipWarned = true;
             console.warn(`[Brain] DF.7 — donor ${_cc.gpuName || _cc.id} effective VRAM ${Math.round(_effVram)}MB cannot fit even the smallest priority cluster — NOT replica-syncing. Stays connected; never shrinks the brain.`);
@@ -1375,8 +1422,15 @@ const SERVER_GPU_MIXIN = {
       }
       if (_cc && _cc.resumeHeldMatrices) _cc.resumeHeldMatrices = null;   // one-shot consumed
       if (_resumedCount > 0) console.log(`[Brain] DF.7 — reconnect-resume: skipped re-streaming ${_resumedCount} matrices the donor still holds in VRAM (drift converges on the periodic rebroadcast).`);
+      // DF.7 SYNCGATE — the sync is now PROVEN for this donor: it holds the matrices
+      // we just pushed, so `_donorCoversMatrices` will admit it to the work pool and
+      // `_df7FanoutPropagate` will allow reads to land on it. Set only on the success
+      // path, so a donor that never synced (deferred / incapable / threw) is never
+      // handed work it cannot compute.
+      if (_cc) { _cc._df7Synced = true; _cc._df7SyncedAt = Date.now(); _cc._df7SyncedMatrices = synced; }
       console.log(`[Brain] DF.7 — replica sync complete: ${synced} matrices pushed to a donor${_coverage ? ` (PARTIAL coverage [${[..._coverage].join(', ')}] — it shares compute for the clusters it holds)` : '. It now holds a FULL brain replica and shares compute (no longer idle standby)'}.`);
     } catch (e) {
+      if (_cc) _cc._df7Synced = false;
       console.warn('[Brain] DF.7 — replica sync failed (donor stays standby until next rebroadcast):', e.message);
     } finally {
       this._replicaSyncInFlight.delete(ws);
