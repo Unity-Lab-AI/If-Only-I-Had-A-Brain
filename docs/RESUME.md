@@ -1,6 +1,29 @@
 # RESUME — Session Pickup Brief
 
-> ## ⭐⭐⭐ 2026-08-18 (latest) — GENPIN LIVE ON THE BOX · WALKFIX + CSRDUR SHIPPED BUT NOT YET DEPLOYED · RunPod donor next · CLI restarting for the RunPod MCP
+> ## ⭐⭐⭐ 2026-08-18 (latest) — RUNPOD DONOR WIRED END-TO-END · THE PTX BUG THAT WAS *ALSO* THE "THAT'S NOT 24GB" BUG · **donor-v0.3.21 BUILT + VERIFIED, TAG PENDING (GEE)**
+>
+> **WHY THIS FILE MATTERS RIGHT NOW:** the donor fix is committed but the release does not exist until a `donor-v0.3.21` tag is pushed. Gee cannot press Update & Savestart until CI publishes the binary. **That tag is the one open action.**
+>
+> ### Her live state at handoff
+> Fresh walk booted **10:34:40 AM Mountain** on `bd9645e2`. **donors: 0 — she has NO GPU attached.** The browser donor did not come back after the walk; `communityComputeMB: 0` against an `11810` floor, `cell: null`, `teach/min: 0`, idle. **Reattaching the compute.html tab is what gets her walking again** — it needs no RunPod and no release.
+>
+> ### RunPod: wired, proven, then deliberately shut off
+> MCP connected; reusable template **`4u68iuvsnz`** (it self-resolves the newest donor release from her own `public-state.json`, so a pod restart always picks up the current binary — no template edit per release). A 4090 pod DID attach and register (`donorCount 1 -> 2`, `replicaCount 1`) with teach/min holding ~3,538 straight through the join. **All spend is now OFF and verified three ways: pods 0, serverless endpoints 0, network volumes 0.** Session cost ~$0.35.
+>
+> ### The two findings, and they turned out to be ONE bug
+> - **0 Gn/s was NOT the donor's fault.** Her own console named it on every rebroadcast: `[Brain] DF.7 — replica sync DEFERRED: curriculum actively teaching.` The replica was admitted and connected but **never received a single matrix** — nothing to compute. The guard is correct (it refuses to jam a running teach loop with a 366MB upload); the trap is she never stopped teaching, so the idle window never came. **A donor must be attached during the BOOT/UPLOAD window, not mid-teach.** Beware `master re-broadcast to 1 replica(s) complete` — that is GPU-shadow re-convergence, NOT the weight upload, and it reads like success.
+> - **"that's not 24GB" and the dead CUDA path were the same root cause.** `kernels.ptx` was stamped by a CUDA **13.0** toolchain (`.version 9.0`). A driver only JITs PTX at or below its OWN ISA, so every r570/CUDA-12.8 host failed `cuModuleLoadData` with `CUDA_ERROR_UNSUPPORTED_PTX_VERSION` and fell back to wgpu. And because the advertised binding cap comes from the ACTIVE backend (`compute.rs:842` — CUDA → real VRAM, wgpu → Vulkan's hard 2GB `maxStorageBufferRange`), the fallback registered **2047MB instead of 24564MB** — which dragged `communityComputeMB` below the 11810 floor and left the 2.9GB intra unplaceable. One stale build artifact, two symptoms.
+>
+> ### The fix that is built (Gee: *"permanite then fix it"*)
+> `kernels.ptx` regenerated with a **CUDA 12.0** toolkit in Docker → `.version 8.0`, `.target sm_75` unchanged. ISA 8.0 loads on **every driver from r525 up**, so this stops being host-roulette permanently. Equivalence proven BEFORE install, not assumed: identical 8-kernel entry set · identical 102-param type sequence · identical ld/st/atom/bra counts (112/18/1/45) · whole-file opcode multiset identical except `mov.f32` 7→6 (12.0 hoists one redundant zero-init to a different basic block) · `synapse_propagate` accumulator invariant re-checked in BOTH builds (zero-init precedes accumulate precedes store). `cargo check --release` clean on ALL THREE feature sets. `cuda_kernels.cu` header rewritten to document why the toolkit version is load-bearing so nobody regenerates with 13.x and silently reintroduces it.
+>
+> ### ⏳ THE ONE OPEN ACTION
+> **Tag `donor-v0.3.21`.** `donor-app/Cargo.toml` is already bumped to 0.3.21 (the CI guard refuses a tag/Cargo mismatch). Pushing the tag to `origin` runs `.forgejo/workflows/donor-release.yml`, which builds Linux + Windows, publishes both binaries, and auto-bumps `html/compute.html` + `html/legend.html` on main (do NOT hand-edit those — CI owns them). **Then** Update & Savestart, then relaunch the pod and verify `[donor] backends: <card> [cuda]` — NOT `[wgpu]` — with a ~24564MB binding cap instead of 2047.
+>
+> ### Still open, NOT fixed by this release
+> **RUNPOD.6** — `main.rs:49` calls `gpu::enumerate()` unconditionally and `main.rs:88` hard-exits when empty, and `wgpu::Backends::PRIMARY` is **Vulkan-only on Linux**. So a host with a perfectly good CUDA device and no Vulkan stack still cannot donate — which is the default state of most cloud GPU containers. This also invalidates the old RESUME advice to build `--no-default-features --features cuda`: that build hits the IDENTICAL exit, because the gate ignores feature flags. Correct fix: when CUDA devices enumerate, do not require a wgpu adapter. Until then a headless donor needs `NVIDIA_DRIVER_CAPABILITIES=all` + `libvulkan1` + **`libglvnd0`/`libglx0`** (libGLX_nvidia is a GLVND vendor lib — that was the final blocker) + `libx11-6`/`libxext6`, on an **ubuntu:24.04** base (the binary needs GLIBC_2.39; a `cu1281` image also carries a `cuda>=12.8` label that crash-loops older-driver hosts before any of our code runs).
+
+> ## ⭐⭐⭐ 2026-08-18 (prior) — GENPIN LIVE ON THE BOX · WALKFIX + CSRDUR SHIPPED BUT NOT YET DEPLOYED · RunPod donor next · CLI restarting for the RunPod MCP
 >
 > **WHY THIS FILE EXISTS RIGHT NOW:** Gee ran `npx @runpod/mcp-server@latest add` and the CLI must restart for the MCP tools to load. This banner is the handoff.
 >
