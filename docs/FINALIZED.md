@@ -5,6 +5,46 @@
 
 ---
 
+## 2026-08-18 - WALKFIX: the fresh-walk issue sweep - and the torn-checkpoint root cause - feature/walkfix-batch-0818
+
+### Gee ask (verbatim per LAW #0)
+
+> *"until then go through and investigate and fix thosae issues(write todo first and build the cli task list so i can follow along then fix them atomically in one update savestart with new binary if nessary noworries for freshwalk as we just did one so no loss"*
+
+> *"can the synaptic construction be built into the doner or is it always changeing? idk im trying of thingking how to limit the start up time"*
+
+### The instrument was lying first (WALKFIX.0)
+
+The fresh-walk watcher advanced its `since` cursor per LINE, so in a burst of same-millisecond console lines every line after the first had `ts <= since` and was silently dropped - which is exactly how post-mortems print. The fractal audit's 1 header + 1 issue + 10 check lines collapsed to ONE captured line, which is why the drift went unidentified. Fixed before anything else, because every finding below was read through it.
+
+### WALKFIX.1 - the drift was a FALSE POSITIVE, and saying so was the fix
+
+Seven projections read exactly 25% row-recruitment, which looks like 75% dead wiring across the entire letter<->phoneme<->motor loop. It is not. It is DELIBERATE LAMINATION: `dstLayerMask` pins terminals to L4, and L4 is 25% of the split [L1 5%, L2/3 25%, L4 25%, L5 25%, L6 20%], wired per Felleman & Van Essen 1991 (cluster.js:1193). Check #4 divided nnz by ALL rows including the intentionally-empty ones, so `word_motor_to_sem` measured 0.744/row and cried STARVED on every boot - the identical trap the comment directly above it documents ("a self-check that always fails is a self-check nobody reads"). Now lamination-aware: occupancy read off rowPtr, fanout per WIRED row, genuine starvation = a projection with no wired row at all. The audit header also carries its failing checks inline now, so a dropped burst can never hide the verdict again.
+
+### WALKFIX.2 - and a regression I caught on myself
+
+`_lastPass` is 0 when nothing has consolidated, so elapsed time was measured FROM THE EPOCH: "no completed consolidation pass in 29784410min" (~56 years) on a brain minutes old. My first fix measured from boot instead - which would have let the decay sweep START RUNNING on a never-consolidated brain, the exact erosion the CLS guard exists to prevent. Corrected: the gate keys on `!_everPassed` so behavior is byte-identical and only the number changed.
+
+### WALKFIX.6 - answering the startup-time question with a measurement
+
+Gee asked whether synaptic construction can live on the donor. Findings: the topology is NOT "always changing" - it is fixed after construction, only the values learn - but it IS randomly regenerated every boot because it uses unseeded `Math.random()` (sparse-matrix.js), so it cannot be reproduced in Rust today. More usefully: on a savestart resume the 45s build is **pure waste**, verified by reading `_applyPendingCortexWeights`, which does `cortex.synapses = m` - replacing rowPtr, colIdx AND values with the checkpoint's own. Shipped: `deferIntraTopology` holds construction as a thunk when a queued checkpoint carries a geometry-matching `cortex.synapses`, and `ensureIntraTopology()` fires it afterwards ONLY if the restore did not deliver. Verified by direct run at 60,000 neurons - normal 192ms, deferred 0ms, successful restore no-rebuild, FAILED restore rebuilds to real nnz 1,800,000, second call idempotent. At the 12M cortex that is the full ~45s off every savestart boot. The safety net is not theoretical: a torn checkpoint failed to load this very morning, and an unconditional skip would have left her running an EMPTY cortex.
+
+### WALKFIX.7 - THE TORN CHECKPOINT, ROOT CAUSE FOUND
+
+`_saveBinaryWeightsSync` opened the LIVE weights file with `'w'` and streamed multiple GB into it in place - no tmp, no rename. It is the SHUTDOWN path, so it runs precisely when the process is being told to die (systemd stop timeout, SIGKILL after the SIGTERM grace, an Update & Savestart that does not wait), and any kill mid-write leaves the only copy of her trained brain truncated with section headers declaring more data than follows. That is `short read at offset 1488000056, expected 536870912 more bytes` and the ~1.49GB file, exactly. The async checkpoint path has had tmp+fsync+rename all along; the shutdown path simply never got the same discipline. It does now: tmp -> fsync -> close -> atomic rename, with the tmp unlinked on any error. **An interrupted shutdown can now only lose the NEW checkpoint, never the old one.** This is the bug that cost this morning's trained state and forced the fresh walk.
+
+### WALKFIX.4 - resolved by verification, not by changing code
+
+The repo service template already had `DREAM_SPARSE_UPLOAD_TIMEOUT_MS` commented out with rationale, and the 2026-08-16 floor means an env value can never LOWER the deadline below what the payload physically needs - the live line `using 818090ms (size-scaled)` WAS that defense working. Residue is only the box's live systemd unit still carrying the stale value (Red/config; box config is not touched from here).
+
+### Still open, carried honestly
+
+WALKFIX.3 (ELA-K exam/train overlap at the source), WALKFIX.5 (4.1GB probe-pinned CSR - investigate whether the probe path can read through the donor), WALKFIX.8 (seeded-topology spec: the prize is donor-side structure generation + dropping colIdx/rowPtr from checkpoints, ~1.49GB of ~4.4GB, but a JS/Rust generator divergence would land learned weights on the wrong synapses - needs a parity harness and its own batch).
+
+Verified: `node --check` on every touched file, ESM `import()` of cluster.js, direct behavioral run of the defer/ensure semantics, esbuild bundle rebuilt clean. No live test per the NO TESTS LAW.
+
+---
+
 ## 2026-08-18 - GENPIN + TZSTAMP: the reply's `generate` stage was pinning the loop DEAF for 11-78s (the donor kill), and the clocks were UTC 24-hour - feature/genpin-timestamps-0818
 
 ### Gee ask (verbatim per LAW #0)

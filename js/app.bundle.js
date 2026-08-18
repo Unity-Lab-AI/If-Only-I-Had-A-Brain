@@ -55892,25 +55892,34 @@ var NeuronCluster = class {
     const _intraStart = Date.now();
     const _logIntra = size >= 5e4;
     this.synapses = new SparseMatrix(size, size, { wMin: -2, wMax: 2 });
-    if (this.topographic && size >= 1e4) {
-      const fanout = Math.min(this.topographicFanout, size - 1);
-      if (_logIntra) console.log(`[Cluster ${name}] initializing intra-cluster synapses (TOPOGRAPHIC) ${size.toLocaleString()}\xD7${size.toLocaleString()} fanout=${fanout} (~${(size * fanout).toLocaleString()} nnz)...`);
-      this.synapses.initTopographic(fanout, this.excitatoryRatio, 1);
-    } else if (this.smallWorld && size >= 2e3 && typeof this.synapses.initSmallWorld === "function") {
-      const fanout = Math.min(
-        Math.round(size * this.connectivity),
-        size - 1
-      );
-      if (_logIntra) console.log(`[Cluster ${name}] initializing intra-cluster synapses (small-world topology) ${size.toLocaleString()}\xD7${size.toLocaleString()} fanout=${fanout} radiusLocal=${this.smallWorldRadiusLocal} radiusMed=${this.smallWorldRadiusMed} (~${(size * fanout).toLocaleString()} nnz)...`);
-      this.synapses.initSmallWorld(fanout, this.excitatoryRatio, 1, {
-        radiusLocal: this.smallWorldRadiusLocal,
-        radiusMed: this.smallWorldRadiusMed
-      });
+    const _buildIntraTopology = () => {
+      if (this.topographic && size >= 1e4) {
+        const fanout = Math.min(this.topographicFanout, size - 1);
+        if (_logIntra) console.log(`[Cluster ${name}] initializing intra-cluster synapses (TOPOGRAPHIC) ${size.toLocaleString()}\xD7${size.toLocaleString()} fanout=${fanout} (~${(size * fanout).toLocaleString()} nnz)...`);
+        this.synapses.initTopographic(fanout, this.excitatoryRatio, 1);
+      } else if (this.smallWorld && size >= 2e3 && typeof this.synapses.initSmallWorld === "function") {
+        const fanout = Math.min(
+          Math.round(size * this.connectivity),
+          size - 1
+        );
+        if (_logIntra) console.log(`[Cluster ${name}] initializing intra-cluster synapses (small-world topology) ${size.toLocaleString()}\xD7${size.toLocaleString()} fanout=${fanout} radiusLocal=${this.smallWorldRadiusLocal} radiusMed=${this.smallWorldRadiusMed} (~${(size * fanout).toLocaleString()} nnz)...`);
+        this.synapses.initSmallWorld(fanout, this.excitatoryRatio, 1, {
+          radiusLocal: this.smallWorldRadiusLocal,
+          radiusMed: this.smallWorldRadiusMed
+        });
+      } else {
+        if (_logIntra) console.log(`[Cluster ${name}] initializing intra-cluster synapses ${size.toLocaleString()}\xD7${size.toLocaleString()} density=${this.connectivity.toFixed(4)} (~${Math.round(size * this.connectivity * size).toLocaleString()} nnz)...`);
+        this.synapses.initRandom(this.connectivity, this.excitatoryRatio, 1);
+      }
+      if (_logIntra) console.log(`[Cluster ${name}] intra-cluster synapses ready (nnz=${this.synapses.nnz.toLocaleString()}) in ${Date.now() - _intraStart}ms`);
+    };
+    if (opts.deferIntraTopology) {
+      this._intraTopologyThunk = _buildIntraTopology;
+      if (_logIntra) console.log(`[Cluster ${name}] intra-synapse topology DEFERRED \u2014 a matching checkpoint is queued and would overwrite it anyway (saves the full construction pass at ${size.toLocaleString()} neurons). ensureIntraTopology() builds it if the restore does not deliver.`);
     } else {
-      if (_logIntra) console.log(`[Cluster ${name}] initializing intra-cluster synapses ${size.toLocaleString()}\xD7${size.toLocaleString()} density=${this.connectivity.toFixed(4)} (~${Math.round(size * this.connectivity * size).toLocaleString()} nnz)...`);
-      this.synapses.initRandom(this.connectivity, this.excitatoryRatio, 1);
+      this._intraTopologyThunk = null;
+      _buildIntraTopology();
     }
-    if (_logIntra) console.log(`[Cluster ${name}] intra-cluster synapses ready (nnz=${this.synapses.nnz.toLocaleString()}) in ${Date.now() - _intraStart}ms`);
     this.attentionGain = {};
     this._metaRegister = [];
     this._metaRegisterMax = opts.metaRegisterMax ?? 32;
@@ -58270,6 +58279,25 @@ var NeuronCluster = class {
    * for it. Browser instances have no `_brain`, so they always answer false
    * and keep the full dense path.
    */
+  /**
+   * Build the deferred intra topology if — and only if — nothing else filled
+   * it. Called after a checkpoint restore attempt. A successful restore leaves
+   * `synapses.nnz > 0` and this is a no-op (the 45s stays saved); a failed or
+   * absent restore leaves it empty and this pays the cost rather than running
+   * the brain on an unwired cortex. Safe to call repeatedly.
+   *
+   * @param {string} reason — logged when the build actually has to happen
+   * @returns {boolean} true if the topology was built here
+   */
+  ensureIntraTopology(reason = "unspecified") {
+    const thunk = this._intraTopologyThunk;
+    if (!thunk) return false;
+    this._intraTopologyThunk = null;
+    if (this.synapses && this.synapses.nnz > 0) return false;
+    console.warn(`[Cluster ${this.name}] deferred intra topology BUILDING NOW (${reason}) \u2014 the checkpoint did not supply an intra matrix, so the construction pass runs after all. Not an error; this is the safety net.`);
+    thunk();
+    return true;
+  }
   _isBoundMatrix(matrixName) {
     const b = this._brain;
     return !!(b && b._cortexBoundNames && b._cortexBoundNames.has(matrixName));
@@ -96835,17 +96863,29 @@ var Curriculum = class _Curriculum {
       }
       const _fanouts = [];
       for (const [_pname, _pproj] of Object.entries(cluster.crossProjections)) {
-        if (_pproj && _pproj.rows > 0 && typeof _pproj.nnz === "number") {
-          _fanouts.push({ name: _pname, fanout: _pproj.nnz / _pproj.rows });
+        if (!_pproj || !(_pproj.rows > 0) || typeof _pproj.nnz !== "number") continue;
+        let _recruited = 0;
+        const _rp = _pproj.rowPtr;
+        if (_rp && _rp.length > _pproj.rows) {
+          for (let r = 0; r < _pproj.rows; r++) if (_rp[r + 1] > _rp[r]) _recruited++;
+        } else {
+          _recruited = _pproj.nnz > 0 ? _pproj.rows : 0;
         }
+        _fanouts.push({
+          name: _pname,
+          recruited: _recruited,
+          pct: _recruited / _pproj.rows * 100,
+          perWiredRow: _recruited > 0 ? _pproj.nnz / _recruited : 0
+        });
       }
       if (_fanouts.length > 0) {
-        const _starved = _fanouts.filter((f) => f.fanout < 1);
+        const _starved = _fanouts.filter((f) => f.recruited === 0 || f.perWiredRow < 1);
         if (_starved.length === 0) {
-          const _lo = _fanouts.reduce((m, f) => f.fanout < m.fanout ? f : m);
-          checks.push(`\u2713 cross-projection wiring: all ${_fanouts.length} projections at \u22651 entry/row (sparsest ${_lo.name} ${_lo.fanout.toFixed(2)}) \u2014 no row is structurally unable to learn`);
+          const _lo = _fanouts.reduce((m, f) => f.perWiredRow < m.perWiredRow ? f : m);
+          const _laminated = _fanouts.filter((f) => f.pct < 99).length;
+          checks.push(`\u2713 cross-projection wiring: ${_fanouts.length} projections, every wired row carries \u22651 entry (sparsest ${_lo.name} ${_lo.perWiredRow.toFixed(2)}/wired row); ${_laminated} laminated to a sub-layer (empty rows there are the L4 terminal rule, not starvation)`);
         } else {
-          issues.push(`\u2717 cross-projection STARVED \u2014 ${_starved.map((f) => `${f.name} ${f.fanout.toFixed(2)} entries/row`).join(", ")}. Below 1.0/row means rows with NO incoming connection; ojaUpdate only adjusts EXISTING CSR entries and never creates one, so those rows can never learn.`);
+          issues.push(`\u2717 cross-projection STARVED \u2014 ${_starved.map((f) => `${f.name} ${f.recruited} wired rows (${f.pct.toFixed(1)}%), ${f.perWiredRow.toFixed(2)} entries/wired row`).join(", ")}. A projection with no wired row can never learn: ojaUpdate only adjusts EXISTING CSR entries and never creates one.`);
         }
       }
       const sample = cluster.crossProjections.sem_to_motor;
@@ -113290,7 +113330,7 @@ var Curriculum = class _Curriculum {
           console.log(`[Brain] \u2713 fractal equation verified \u2014 ${audit.checks.length} checks passed`);
           for (const c of audit.checks) console.log(`  ${c}`);
         } else {
-          console.warn(`[Brain] \u26A0 fractal equation drift detected \u2014 ${audit.issues.length} issue(s) + ${audit.checks.length} ok:`);
+          console.warn(`[Brain] \u26A0 fractal equation drift detected \u2014 ${audit.issues.length} issue(s) + ${audit.checks.length} ok: ${audit.issues.map((i) => String(i).replace(/^✗\s*/, "").split("\u2014")[0].trim()).join(" | ")}`);
           for (const i of audit.issues) console.warn(`  ${i}`);
           for (const c of audit.checks) console.log(`  ${c}`);
         }
