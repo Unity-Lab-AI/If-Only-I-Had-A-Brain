@@ -306,7 +306,17 @@ const SERVER_GPU_MIXIN = {
     // Skipped for a donor whose socket is already backed up past the link cap — it is
     // mid-sync and piling a step on top would slow the sync that makes it useful.
     if (this._df7Fanout && this._df7Fanout() && typeof this._livePoolDonors === 'function') {
-      const _mirrorBase = { ..._batchMsg, batchId: -batchId, mirror: true };
+      // MIRRORID — the mirror batchId MUST be a POSITIVE u64. It was `-batchId`, chosen so it
+      // could never collide with the real one - but the donor parses it into
+      // `ComputeBatch { batch_id: u64 }` (protocol.rs:228), and serde CANNOT deserialize a
+      // negative number into an unsigned type. So every mirrored batch failed to parse on
+      // arrival and was silently dropped: no mirrored donor had EVER computed since
+      // WORKSHARE shipped. The dashboard hid it perfectly - gneurons_per_sec is a PERSISTENT
+      // donor-side field, so a card that was once primary keeps showing its old rate while
+      // doing nothing, and only a donor that had NEVER been primary (Sponge) read a true 0.
+      // A large positive OFFSET keeps the anti-collision property without breaking the type.
+      const _MIRROR_ID_BASE = 2000000000;
+      const _mirrorBase = { ..._batchMsg, batchId: _MIRROR_ID_BASE + batchId, mirror: true };
       const _mirrorMsg = JSON.stringify(_mirrorBase);
       // MIRRORCAP — do NOT reuse _donorLinkCapBytes (4MB) here. That cap exists to keep
       // HEAVY Hebbian payloads off a congested socket, and reusing it gated the mirror off
