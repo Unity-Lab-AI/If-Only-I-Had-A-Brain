@@ -3758,25 +3758,39 @@ class ServerBrain {
     const phonSize = phonEnd - phonStart;
     if (phonSize <= 0) return;
 
-    // Build a sparse Float32 current pattern on server — only touched
-    // indices get non-zero values. Sending the full 6M float array
-    // would be 24MB per tick, wasteful. Instead we allocate a dense
-    // Float32Array once and zero-reuse. For text of length N, only
-    // ~N×3 indices get non-zero values (char hash + ±1 neighbors).
-    const currents = new Float32Array(phonSize);
+    // SPARSE injection — text of length N touches only ~N×3 phon indices
+    // (char hash + ±1 neighbors), so those pairs are ALL that goes on the
+    // wire. The prior code allocated a dense Float32Array over the whole
+    // phon region and shipped `values: Array.from(...)` — 12M+ floats →
+    // ~23.4MB of JSON per chat message: the measured drop-on-chat killer
+    // (donor's single receive thread parsing 23MB while its pings starved
+    // + the pattern-lane cap blown + a multi-second stringify/GC loop pin).
+    // Worse: the native donor's WriteCurrentSlice deserializer has no
+    // dense `values` field at all — serde discarded it and the injection
+    // was a NO-OP. Sparse matches the amygdala branch below (which always
+    // worked) and both receiver classes handle it (native protocol.rs,
+    // browser compute.html sparse-expansion mode).
+    const inj = new Map();
     for (let i = 0; i < text.length; i++) {
       const idx = (text.charCodeAt(i) * 31 + i * 7) % phonSize;
-      currents[idx] += 8.0;
-      if (idx > 0) currents[idx - 1] += 3.0;
-      if (idx < phonSize - 1) currents[idx + 1] += 3.0;
+      inj.set(idx, (inj.get(idx) || 0) + 8.0);
+      if (idx > 0) inj.set(idx - 1, (inj.get(idx - 1) || 0) + 3.0);
+      if (idx < phonSize - 1) inj.set(idx + 1, (inj.get(idx + 1) || 0) + 3.0);
     }
-    this._gpuClient.send(JSON.stringify({
-      type: 'write_current_slice',
-      clusterName: 'cortex',
-      regionName: 'phon',
-      values: Array.from(currents),
-      psi: this.psi ?? 0,
-    }));
+    const phonIndices = new Array(inj.size);
+    const phonValues = new Array(inj.size);
+    let pk = 0;
+    for (const [pi, pv] of inj) { phonIndices[pk] = pi; phonValues[pk] = pv; pk++; }
+    if (phonIndices.length > 0) {
+      this._gpuClient.send(JSON.stringify({
+        type: 'write_current_slice',
+        clusterName: 'cortex',
+        regionName: 'phon',
+        sparseIndices: phonIndices,
+        sparseValues: phonValues,
+        psi: this.psi ?? 0,
+      }));
+    }
 
     // Amygdala injection — social input excites the emotional cluster.
     // Bilateral side → hemisphere gate stays 1.0 regardless of Ψ
