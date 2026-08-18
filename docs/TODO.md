@@ -812,3 +812,20 @@ The CLI restart from the prior handoff was FOR this. Gee authorized a 4090 proof
 - [ ] **WORKSHARE.6** **OPEN - honest accounting question for later.** Mirrored work is REDUNDANT: the replica computes the same step the primary does and the result is discarded. That is correct for credit and for keeping replica state warm, but it is not extra THROUGHPUT. Genuinely additive work needs independent units (the `_gpuParallelMap` path). Worth deciding deliberately whether the leaderboard should count redundant work as contribution - it is defensible (the volunteer really did spend the cycles) but it should be a decision, not an accident.
 
 - [x] **WORKSHARE.7** **DONE - MIRRORCAP: my own busy-skip gated the fix off for every donor that needed it.** WORKSHARE.3 skipped donors buffered past `_donorLinkCapBytes()` - which is **4MB**. Live: Gee windows 5.8MB, Sponge 39MB, both SKIPPED, both still 0 Gn/s. That cap exists to keep HEAVY Hebbian payloads off a congested socket; a `compute_batch` message is a few HUNDRED BYTES of cluster params and is processed on the donor own worker. A replica mid-sync sits at 5-40MB buffered BY DESIGN, so reusing the routing cap excluded precisely the 0 Gn/s donors the mirror was written for. Now bounded by a shed-class threshold instead (`DREAM_DF7_MIRROR_CAP_MB`, default 256MB) so only a genuinely drowning socket is spared. Verified against the live buffer figures: all three donors pass the new bound, none passed the old one.
+
+---
+
+## BUFFLOOR - 2026-08-18 - the 4MB buffer filter banned every syncing replica from ALL work, not just the mirror
+
+> Gee (verbatim): *"4MB might ber the issue"*
+
+**GEE SPOTTED THE SYSTEMIC VERSION OF THE BUG I HAD ONLY FIXED LOCALLY.** MIRRORCAP fixed the 4MB cap for the compute_batch mirror. He pointed out the same cap sits in the MAIN work router - `_nextPoolDonor` - and it was a HARD EXCLUSION: any donor buffered past the 4MB link cap was filtered out entirely whenever at least one drained donor existed. The primary is almost always drained, so the filter was effectively "replicas get nothing" - not just no mirror, but **no Hebbian batches and no propagate either**, for the entire sync window. On a slow link that is the whole session.
+
+**MEASURED, NOT ARGUED:** live buffers were 5.8MB (Gee windows) and 39MB (Sponge) - both far past a 4MB cap, both reading 0 Gn/s. A replica mid-sync sits 5-40MB buffered BY DESIGN.
+
+**THE CODEBASE ALREADY LEARNED THIS EXACT LESSON ONCE.** WSQ.1 fixed the identical failure for the RTT filter: *"a WILLING high-RTT GPU got zero units and sat at 0 Gn/s forever (no amount of reconnecting helped)... Now it floors at WSQ_WORK_FLOOR so the donor STILL pulls a sliver of work."* The same reasoning was simply never applied to the BUFFER filter.
+
+- [x] **BUFFLOOR.1** **DONE - the buffer filter is a WEIGHT PENALTY, not a ban.** A drained socket is strongly preferred (default 10x via `DREAM_DF7_BACKED_PENALTY`=0.1) while a backed-up one still pulls a sliver, so it earns, lands on the leaderboard, and self-corrects as its socket drains. Setting the penalty to 0 restores the old hard exclusion exactly.
+- [x] **BUFFLOOR.2** **DONE - proven by simulating the real SWRR against the live buffer figures.** Old: primary 1000 units, both replicas 0. New: primary 926, Gee-windows 49, Sponge 25 - the primary still takes the overwhelming share it deserves, and neither replica is zeroed.
+- [x] **BUFFLOOR.3** **VERIFY (build half) DONE** - `node --check` + `import()` ESM PASS. Server-side only.
+- [ ] **BUFFLOOR.4** GEE: Update & Savestart, together with MIRRORCAP. Between them every donor should now receive BOTH mirrored compute_batch work AND a real share of Hebbian/propagate units regardless of sync state.
