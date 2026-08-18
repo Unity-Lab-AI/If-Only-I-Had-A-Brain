@@ -8931,7 +8931,28 @@ const _HB_MISS_LIMIT_BUSY = 5;   // mid-sync: ~150s grace before death
 // during a long heavy phase: ~10 min of TOTAL silence terminates regardless.
 const _HB_MISS_LIMIT_HARD = 20;
 const _heartbeatTimer = setInterval(() => {
-  const loopBlockedRecently = (Date.now() - (brain._lastEventLoopBlockTs || 0)) < _HEARTBEAT_MS;
+  // HBSELF (2026-08-18) — the loop-block forgiveness below used to consult ONLY
+  // `brain._lastEventLoopBlockTs`, which the lag monitor stamps when a block
+  // ENDS. But the lag monitor is itself a timer: during a block it cannot run,
+  // so that timestamp stays FROZEN AT ITS OLD VALUE for the whole freeze — and
+  // when the loop finally releases, every queued timer fires at once. If this
+  // sweep wins that race (it did, live: heartbeat "missed 2 consecutive pings —
+  // terminating" printed BEFORE "[EventLoop] BLOCKED 174439ms"), the forgiveness
+  // check reads a stale timestamp, finds no recent block, and EXECUTES A DONOR
+  // THAT NEVER WENT SILENT — the server was frozen, not the donor.
+  // A timer knows its own lateness. If this sweep fired materially later than
+  // its own interval, the loop was blocked, and that is self-evident proof
+  // needing no other timer's cooperation. We do not kill a donor for OUR
+  // silence. (The pin itself is a separate bug and still has to die — see the
+  // reply-pin sub-stage eyes; this only stops the wrongful conviction.)
+  const _hbNow = Date.now();
+  const _hbLateMs = _hbNow - (brain._hbLastSweepAt || _hbNow) - _HEARTBEAT_MS;
+  brain._hbLastSweepAt = _hbNow;
+  if (_hbLateMs > 1000) {
+    brain._hbSelfBlockedMs = _hbLateMs;
+    console.warn(`[Server] heartbeat sweep ran ${(_hbLateMs / 1000).toFixed(1)}s LATE — the event loop was blocked that long, so any "missed ping" this sweep sees is OUR silence, not the donor's. Forgiving this round (the block itself is the bug).`);
+  }
+  const loopBlockedRecently = ((_hbNow - (brain._lastEventLoopBlockTs || 0)) < _HEARTBEAT_MS) || (_hbLateMs > 1000);
   for (const ws of wss.clients) {
     if (ws._isAlive === false) {
       const c = brain.clients.get(ws);
@@ -9064,8 +9085,13 @@ const _lagTimer = setInterval(() => {
     // path — and this line's phase tag only names the WALK. The chat
     // handler now stamps brain._chatStage as it moves through its stages;
     // a pin during chat prints the guilty stage's NAME right here.
-    const _chatStageTag = (brain._chatStage && (Date.now() - (brain._chatStageAt || 0)) < 120000)
-      ? ` chatStage=${brain._chatStage}` : '';
+    // The 120s freshness window used to SUPPRESS this tag — which meant the
+    // longest pins (the fatal ones: 174s on a single chat message) printed no
+    // attribution at all, exactly when it mattered most. Now the stage always
+    // prints with its own AGE, so a stale stamp is visibly stale instead of
+    // silently absent, and a pin that outlives the window still names its organ.
+    const _csAge = brain._chatStage ? (Date.now() - (brain._chatStageAt || 0)) : -1;
+    const _chatStageTag = brain._chatStage ? ` chatStage=${brain._chatStage}(+${(_csAge / 1000).toFixed(1)}s)` : '';
     // SAVE-STAGE EYES — a pin during a weights save names the guilty save
     // stage (the 5.4GB save carried two ~112s pins the completion line
     // denied; same conviction pattern as chatStage=).
