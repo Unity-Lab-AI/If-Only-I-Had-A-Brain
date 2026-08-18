@@ -328,3 +328,15 @@ _Completed sections zeroed 2026-08-16 (third zeroing) — migrated VERBATIM to `
 
 - [x] **AWAITFIX.1** **DONE — built + verified (node --check + bundle; grep-swept: this was the ONLY bare intra call in the curriculum):** the call is awaited. Same math, same dose, serialized — bounded memory, honest patterns, breathing timers.
 - [ ] **AWAITFIX.2** ⏳ GEE: ONE **Update & SAVESTART**. Verify: the `Oja ... WALL` lines drop to ONE at a time with falling walls, eventLoopLag returns to sub-200ms during phoneme blending, the donor HOLDS through the whole phase, phases advance past 7/25.
+
+---
+
+## CHATQUEUE — 2026-08-18 · the hi-freeze convicted: chat deep-Hebbian ran CONCURRENTLY with the walk's teach — one teacher at a time now, forever
+
+> Gee (verbatim): *"okay start youmonitor im going to say hi to her and we will watch the doner crash and i want you to fucking fix it so it doesnt happen again after u see it happen"* → *"the brain froze up when i said "hi""* → *"so wtf... the donor crashed when i talked to Unity"*
+
+**SEEN LIVE (the 8s watch + post-freeze counters):** his message → the loop pinned so hard the state endpoint served identical stale snapshots for 90+s then TIMED OUT twice at 40s; the donor's keepalives starved and it crashed (the crash is the freeze's symptom). Post-freeze: `chatHebbian turns=1 totalPairs=5` — the chat handler's `_teachAssociationPairs` fired FIRE-AND-FORGET ("no await so chat latency isn't blocked") CONCURRENTLY with the walk mid-`_teachCombination` (611s/call at math/K): two teach chains, one thread, one shared scratch-buffer set. Same crime family as the phoneme stampede. ALSO seen: `matrixDrivenPct=3` — OI.5b's behavioral counter populated (oracle-dominated early, expected).
+
+- [x] **CHATQUEUE.1** **DONE — built + verified (node --check ×2 + ESM + bundle):** the chat handler ENQUEUES pairs (`brain._chatPairTeachQueue`, bounded 512 drop-oldest with visible counter; stats gain `queued`/`droppedOldest`).
+- [x] **CHATQUEUE.2** **DONE** — the walk's own substrate gate (every teach call passes it) drains ≤24 pairs per pass, AWAITED — serialized into the walk's chain, reentrancy-guarded (`_chatPairDrainActive`; the drain's own teach re-enters the gate). reps:1 / relationTagId:30 / A.4 error accounting preserved. Chat learning lands within seconds; concurrent teaching is structurally impossible.
+- [ ] **CHATQUEUE.3** ⏳ GEE: ONE **Update & SAVESTART**, then the test he named: say hi mid-walk — NO freeze, NO donor crash, the reply comes, and `chatHebbian.queued` drains to 0 within seconds on the dashboard payload.

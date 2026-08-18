@@ -101651,6 +101651,31 @@ var Curriculum = class _Curriculum {
         this._substratePause = null;
         this._pausedForDonorSinceMs = null;
       }
+      if (brain2 && Array.isArray(brain2._chatPairTeachQueue) && brain2._chatPairTeachQueue.length > 0 && !this._chatPairDrainActive && typeof this._teachAssociationPairs === "function") {
+        this._chatPairDrainActive = true;
+        try {
+          const batch = brain2._chatPairTeachQueue.splice(0, 24);
+          if (brain2._chatTimeHebbianStats) brain2._chatTimeHebbianStats.queued = brain2._chatPairTeachQueue.length;
+          await this._teachAssociationPairs(batch, {
+            reps: 1,
+            label: "CHAT-TIME-DEEP-HEBBIAN",
+            relationTagId: 30
+          });
+        } catch (err) {
+          const stats = brain2._chatTimeHebbianStats;
+          if (stats) {
+            stats.errors = (stats.errors || 0) + 1;
+            stats.lastError = err && err.message ? err.message : String(err);
+            const now = Date.now();
+            if (stats.errors <= 3 || now - (stats.lastWarnTs || 0) > 6e4) {
+              console.warn(`[Brain] chat-Hebbian drain failed (#${stats.errors}): ${stats.lastError}`);
+              stats.lastWarnTs = now;
+            }
+          }
+        } finally {
+          this._chatPairDrainActive = false;
+        }
+      }
       return;
     }
     const reasonNow = () => brain2 && brain2._gpuClient && brain2._gpuClient.readyState === 1 ? "donor connected but brain weights are not uploaded to it yet" : "no donor connected";

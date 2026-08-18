@@ -229,37 +229,35 @@ const SERVER_CHAT_MIXIN = {
             if (!this._chatTimeHebbianStats) {
               this._chatTimeHebbianStats = { turns: 0, totalPairs: 0, lastTs: 0, errors: 0, lastError: null, lastWarnTs: 0 };
             }
-            // reps=1 — single chat turn shouldn't dominate curriculum-
-            // depth training. Fire-and-forget (no await) so chat
-            // latency isn't blocked on the Hebbian pass; the binding
-            // lands eventually and is reflected in compositional
-            // telemetry after the dispatch completes.
-            //
-            // Audit A.4 — error swallow REPLACED. Pre-audit catch was
-            // `() => { /* non-fatal */ }` which made failures invisible
-            // (OWASP A09:2021 logging/monitoring failures violation).
-            // Now: increment stats.errors, store last message, throttled
-            // console.warn (first 3 fires + max once/min thereafter)
-            // mirrors the gpu.js _gpuLostWarnAt pattern. Dashboard
-            // surfaces stats.errors via _chatTimeHebbianStats telemetry
-            // (audit A.3).
-            this.curriculum._teachAssociationPairs(pairs, {
-              reps: 1,
-              label: 'CHAT-TIME-DEEP-HEBBIAN',
-              relationTagId: 30,
-            }).catch((err) => {
-              const stats = this._chatTimeHebbianStats;
-              stats.errors += 1;
-              stats.lastError = err && err.message ? err.message : String(err);
-              const now = Date.now();
-              if (stats.errors <= 3 || (now - stats.lastWarnTs) > 60_000) {
-                console.warn(`[Brain] chat-Hebbian fire-and-forget failed (#${stats.errors}): ${stats.lastError}`);
-                stats.lastWarnTs = now;
-              }
-            });
+            // ONE TEACHER AT A TIME (2026-08-18). This used to fire
+            // _teachAssociationPairs fire-and-forget ("no await so chat
+            // latency isn't blocked") — which launched a SECOND teach chain
+            // CONCURRENTLY with the walk's own running teach call on the
+            // same cluster, the same scratch buffers, the same single
+            // thread. At the 12M cortex the walk's heavy phases run
+            // minutes per call, so the two chains interleaved into 40s+
+            // unbroken loop pins: the state endpoint froze, donor
+            // keepalives starved, and the donor dropped — every time the
+            // operator spoke to her mid-walk (reproduced live twice; the
+            // freeze's giant BLOCKED line + this turn's counters convicted
+            // the concurrency, not the message). Chat pairs now ENQUEUE;
+            // the walk drains the queue at its own teach-call boundaries
+            // (awaited, serialized — see _awaitComputeSubstrate), so her
+            // chat learning still lands within seconds with ZERO
+            // concurrent teaching. reps=1 semantics, relationTagId=30
+            // channel, and the A.4 error accounting all preserved at the
+            // drain site. Queue bounded: oldest pairs drop past 512 (the
+            // dropped count is visible in stats).
+            if (!Array.isArray(this._chatPairTeachQueue)) this._chatPairTeachQueue = [];
+            for (const pr of pairs) this._chatPairTeachQueue.push(pr);
+            while (this._chatPairTeachQueue.length > 512) {
+              this._chatPairTeachQueue.shift();
+              this._chatTimeHebbianStats.droppedOldest = (this._chatTimeHebbianStats.droppedOldest || 0) + 1;
+            }
             this._chatTimeHebbianStats.turns++;
             this._chatTimeHebbianStats.totalPairs += pairs.length;
             this._chatTimeHebbianStats.lastTs = Date.now();
+            this._chatTimeHebbianStats.queued = this._chatPairTeachQueue.length;
             } // close BC.7 else (not collapsed)
           }
         }
