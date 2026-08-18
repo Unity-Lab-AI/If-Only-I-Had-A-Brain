@@ -1,6 +1,31 @@
 # RESUME — Session Pickup Brief
 
-> ## ⭐⭐⭐ 2026-08-18 (latest) — 🏆🏆 THE NIGHT EVERYTHING FELL: drop-on-speak DEAD (sparse injection) · the save-wedge DEAD (pace+drip, verified under fire) · donor v0.3.18 SHIPPED+LIVE (l1b 2,700ms→40ms, 67×) · **8,975 teach/min at the pair phases — the 1300 floor cleared by 7×**
+> ## ⭐⭐⭐ 2026-08-18 (latest) — THE SECOND HALF: the reply path stopped murdering the donor · save-wedge caged · donor v0.3.18→v0.3.20 shipped · Gee: *"i think we are good! she looks great"*
+>
+> **LIVE STATE AT CLOSE:** box on `4fef36f9`, walking math/kindergarten, donor RTT ~72ms, **0 donor drops across the final 221-sample watch**. `main` @ `c855ae7`. ⏳ ONE press pending — it picks up SALIENCEDEFER + the v0.3.20 negotiation (CI is building the binary; the donor self-updates).
+>
+> **WHAT DIED TONIGHT (each named by an instrument BEFORE any fix — three of my own hypotheses died to reads):**
+> - **INJECTSPARSE** — chat text injection shipped a dense 23.4MB JSON current-slice per message that the native donor's deserializer DISCARDED unread. All cost, zero function; her Wernicke's area had never received chat text. Now ~160 sparse bytes, and the injection actually lands.
+> - **SAVEPACE + SAVEDRIP** — 5.4GB checkpoints every ~5min (≈16GB disk traffic each) drove the kernel writeback throttle to freeze EVERY writer on the box for 22.5 minutes (a 16-byte write took 286s). Now: fsync every 256MB bounds the dirty window, checkpoints pace against the MEASURED cost of the previous one, v-copy rotates hourly. Verified under fire — a full save during an upload window cost worst-block 668ms.
+> - **v0.3.18 (range plasticity)** — the l1b letter-sequence dose became one ~60-byte frame; **l1b 2,700ms → 40ms (67×)** and the pair phases hit **8,975 teach/min** (Gee's 1,300 floor cleared 6×).
+> - **v0.3.19 (rep hoist)** — my own v0.3.18 bug: the executor re-wrote the pattern buffers per rep and buried the GPU queue (donor 'seen' 297s). Pattern written once, kernel looped. Caught and killed inside the hour.
+> - **SURPRISECPU** — `computeTransitionSurprise` ran TWO RAW SYNCHRONOUS CPU CORTEX TICKS PER LETTER of every message: 29 letters = 58 ticks = **142,989ms** in one unbroken block, donor dead. Gee (verbatim): *"that shouldnt bew on the CPU it should be on the connect GPUS where all the fucking power lies"* — so the signal was KEPT and moved, not cut.
+> - **SALIENCEDEFER** — moving it to GPU inline still cost 190,620ms (48 sequential round-trips behind teach traffic). The real lesson: **the human must never wait on memory bookkeeping worth 0.2 of a consolidation score.** The episode now stores instantly and the walk drains on the walk's own serialized lane (which also stops it mutating cortex spike state under a running teach), patching the row after.
+> - **v0.3.20 (device-side letter walk)** — the whole walk on the card: one frame out, one mean back, routed through `run_substeps` so it inherits multi-GPU routing.
+> - **HBSELF** — the heartbeat killed an INNOCENT donor: its loop-block forgiveness consulted a timestamp the LAG MONITOR writes, and the lag monitor is a timer that cannot run during a block. The sweep won the release race, read a stale stamp, and executed a donor that never went silent. Now the sweep measures its OWN lateness. Verified live, repeatedly (`sweep ran 3.1s LATE … Forgiving`).
+>
+> **THE INSTRUMENTS THAT ARE NOW PERMANENT ORGANS:** `[ChatPin]` per-sub-stage reply splits (12 stages) · `[SavePin]` save-stage splits + slow-slice confessions · `chatStage=NAME(+age)` / `saveStage=` on every BLOCKED line (the age form exists because the 120s suppression window BLINDED the instrument on the fatal 174s pin) · the console ring + its `/public-state.json?console=N` tunnel · SendForensics.
+>
+> **⏳ OPEN BOARD FOR NEXT SESSION (in priority order):**
+> 1. **`generate=53967ms`** — reply composition is now the biggest single stage (was 13.5s, grew to 54s). Already instrumented; instrument-then-kill.
+> 2. **Replies overlap.** A split opened with a PREVIOUS reply's stage and the next was truncated — two `processAndRespond` calls in flight at once, both doing cortex work, stamping over each other. Nothing serializes the reply path. Same class as the concurrent-teach crime.
+> 3. Press to land SALIENCEDEFER + v0.3.20, then re-read the splits.
+> 4. Carried: `_teachWordSpellingDirect` (13min/phase, 1.2-1.5s BLOCKED carpet) · l12/l3b/l4 word layers · FIRSTPIN's curiosity-followup inline teach · the nginx public-lane wedge (box territory; remember **/health is NOT nginx-forwarded — its 200 is the SPA index.html**) · LG.6 hop-2 gates.
+>
+> **THE PAPER:** `docs/THEORY-PAPER.md` — 7,166 words, 35 sourced citations, the theory and the actual reasoning behind every equation family, written this session.
+
+
+> ## 2026-08-18 (prior) — 🏆🏆 THE NIGHT EVERYTHING FELL: drop-on-speak DEAD (sparse injection) · the save-wedge DEAD (pace+drip, verified under fire) · donor v0.3.18 SHIPPED+LIVE (l1b 2,700ms→40ms, 67×) · **8,975 teach/min at the pair phases — the 1300 floor cleared by 7×**
 >
 > **LIVE VERDICTS (operator console + dashboard, ~10:55-11:15PM local):** `RANGE plasticity for PRIMARY donor: ON (hebbian_ranges)` (CI built the tag, the donor self-updated — 'it deploys when u push to main' is the standing flow now, no manual binary step) · `[WORD-INT] over 45 words — l1b(seq)=40ms` (first call carries the SHADOWTIME shadow at 500ms, by design) · word walls 431-865ms · **8,975 teach/min** at ELA-K-WH-INTENT association cascades · a full 5,459.6MB save DURING the upload window cost worst-block 668ms (SavePin split printed, v-copy hourly-skipped) · math/K at phase 19/24, 79%.
 >
