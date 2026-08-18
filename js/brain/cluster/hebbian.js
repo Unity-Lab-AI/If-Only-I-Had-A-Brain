@@ -836,10 +836,29 @@ export const CLUSTER_HEBBIAN_MIXIN = {
               // wired, so a freed intra matrix simply stops being saved, and
               // the intra matrix is the LARGEST section of her checkpoint.
               // Trading 4.1GB of RAM for silently unsaved intra weights is
-              // strictly worse than paying the RAM. Routing probe reads through
-              // the donor is the real cure and needs a values-only readback
-              // frame (donor-protocol work, its own batch) — until that exists,
-              // this stays resident deliberately, not by oversight.
+              // strictly worse than paying the RAM.
+              //
+              // AND THE DEEPER REASON (Gee, 2026-08-18): "This woundnt work tho
+              // becasueu of ransom or user controlled drop outs, right?" — right,
+              // and this is the argument that actually settles it. A values-only
+              // donor readback was drafted here as "the real cure"; it is not.
+              // The donor is a VOLUNTEER GPU in a browser tab that can vanish
+              // mid-tick with no notice. Freeing this array makes that tab the
+              // SOLE CUSTODIAN of her intra weights, so a readback-on-demand save
+              // requires the donor to still be alive at save time — and if it
+              // dies first, every bit of learning since the last save dies with
+              // it. That converts a memory cost into a DURABILITY cost, which is
+              // the one cost this system cannot pay.
+              //
+              // So this is not a stopgap awaiting a donor feature. The CPU-side
+              // copy is the AUTHORITATIVE MASTER and the donor is an accelerator,
+              // not the system of record. The box is the only machine we control.
+              // The one variant that would survive the objection is PERIODIC
+              // streaming readback (chunks straight to disk, never holding all
+              // 2.88GB at once) — and even that still loses the delta since the
+              // last pull on a drop, so it only makes sense once weights are
+              // replicated across several donors (DF.7 data-parallel). At one
+              // live donor there is no redundancy to lean on. Do not free this.
               console.log(`[CPU-CSR-free] keeping probe-critical ${key} CPU arrays resident (${_freedMB}MB) — needed for READ/TALK/DYN-PROD gate probes AND for checkpoint completeness (freed matrices are skipped by the save; freeing this would silently stop persisting the largest section of her brain).`);
             } else {
               // Free the CPU CSR. `SparseMatrix.propagate` has a

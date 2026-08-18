@@ -5,6 +5,30 @@
 
 ---
 
+## 2026-08-18 - CSRDUR: Gee killed a bad idea before it got built - feature/csr-durability-rationale-0818
+
+### Gee ask (verbatim per LAW #0)
+
+> *"What would actually fix it is a values-only readback frame --- This woundnt work tho becasueu of ransom or user controlled drop outs, right?"*
+
+**He is right, and the objection is sharper than the reasoning I had recorded hours earlier.**
+
+WALKFIX.5 concluded correctly (keep the 4,165.6MB CPU-side `cortex_intraSynapses` copy) but for an incomplete reason - it named checkpoint completeness and called a values-only donor readback frame "the real cure". That framing was wrong and would have pointed a future session straight at a design that cannot work.
+
+**Why it cannot work:** the donor is a VOLUNTEER GPU in a browser tab that can vanish mid-tick with no notice - the exact failure this whole session has been fighting. Freeing the CPU array makes that tab the SOLE CUSTODIAN of her intra weights. A readback-on-demand save then requires the donor to be alive AT SAVE TIME, and if it dies first every bit of learning since the last save dies with it. It trades a memory cost for a DURABILITY cost, which is the one cost this system cannot pay - the same day a torn checkpoint already cost a morning of training.
+
+**The model, now stated where it will be read:**
+- The CPU-side copy is the **AUTHORITATIVE MASTER**. The box is the only machine we control.
+- The donor is an **accelerator, NOT the system of record**.
+
+The single surviving variant is PERIODIC STREAMING readback (values pulled in chunks straight to disk, never holding all 2.88GB at once). Genuinely cheaper in RAM - but it still loses the delta since the last pull on a drop, so it only becomes reasonable once weights are replicated across several donors (DF.7 data-parallel). At one live donor there is no redundancy to lean on.
+
+Recorded at the retention site in `js/brain/cluster/hebbian.js` (where someone reading only the RAM number would see it before freeing) and appended to `docs/SEEDED-TOPOLOGY-SPEC.md`. That addendum also draws the distinction the two ideas blur: **seeding shrinks STRUCTURE** (`colIdx` + `rowPtr`, ~1.49GB, deterministic, genuinely regenerable) and **never touches VALUES** (~2.88GB, learned, must be durably held by the box). Not the same shape; only one of them is safe.
+
+Verified: `node --check` on hebbian.js. No behavior change - this batch is reasoning made durable so a future session cannot unmake a correct decision.
+
+---
+
 ## 2026-08-18 - WALKFIX REMAINDER: the batch closed 100% - feature/walkfix-remainder-0818
 
 ### Gee ask (verbatim per LAW #0)
