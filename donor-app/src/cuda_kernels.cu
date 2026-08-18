@@ -6,10 +6,21 @@
 // kernels.ptx, which the driver JITs to the host GPU's arch — so the runtime needs only
 // libcuda (no nvrtc / no toolkit).
 //
-// Regenerate after editing:  nvcc --ptx -arch=compute_75 -o src/kernels.ptx src/cuda_kernels.cu
-// (compute_75 = Turing+; CUDA 13 toolchains no longer emit compute_60. PTX ISA 9.0 needs an
-// r580+ driver — on older drivers/cards the module-load failure is LOUD and the card falls
-// back to wgpu, never silently computing zero.)
+// Regenerate after editing — the toolkit version is LOAD-BEARING, use CUDA 12.x:
+//   docker run --rm -v "$PWD/donor-app/src:/src" nvidia/cuda:12.0.1-devel-ubuntu22.04 \
+//     nvcc --ptx -arch=compute_75 -o /src/kernels.ptx /src/cuda_kernels.cu
+// (compute_75 = Turing+; CUDA 13 toolchains no longer emit compute_60.)
+//
+// WHY THE TOOLKIT VERSION MATTERS: nvcc stamps a PTX ISA `.version` tied to its own release,
+// and a driver can only JIT PTX at or below its OWN ISA version. CUDA 13.x emits .version 9.0,
+// which needs an r580+ driver — every r570 / CUDA-12.8 host fails cuModuleLoadData with
+// CUDA_ERROR_UNSUPPORTED_PTX_VERSION and loses the CUDA path entirely. That costs more than
+// throughput: the per-binding capacity advertised to the brain comes from the ACTIVE backend
+// (CUDA -> the card's real VRAM, wgpu -> Vulkan's hard 2 GB maxStorageBufferRange), so a
+// fallback advertises 2047 MB instead of the full VRAM, and the brain's capability gate sizes
+// the whole community compute pool off that number. CUDA 12.0 emits .version 8.0, which loads
+// on every driver from r525 up. The module-load failure is LOUD either way — a card that
+// cannot JIT falls back to wgpu and never silently computes zero.
 
 extern "C" {
 
