@@ -307,10 +307,20 @@ const SERVER_GPU_MIXIN = {
     // mid-sync and piling a step on top would slow the sync that makes it useful.
     if (this._df7Fanout && this._df7Fanout() && typeof this._livePoolDonors === 'function') {
       const _mirrorMsg = JSON.stringify({ ..._batchMsg, batchId: -batchId, mirror: true });
-      const _linkCap = (typeof this._donorLinkCapBytes === 'function') ? this._donorLinkCapBytes() : 64 * 1024 * 1024;
+      // MIRRORCAP — do NOT reuse _donorLinkCapBytes (4MB) here. That cap exists to keep
+      // HEAVY Hebbian payloads off a congested socket, and reusing it gated the mirror off
+      // for exactly the donors that need it: a replica mid-sync sits at 5-40MB buffered by
+      // design, so every 0 Gn/s donor was skipped by the very fix meant to give it work.
+      // A compute_batch message is a few HUNDRED BYTES of cluster params - it costs the
+      // donor link nothing and is processed on the donor own worker. Only a genuinely
+      // drowning socket should be spared, so the bound is the shed-class threshold, not
+      // the routing cap. Tunable via DREAM_DF7_MIRROR_CAP_MB.
+      const _mirrorCapMB = Number(process.env.DREAM_DF7_MIRROR_CAP_MB) > 0
+        ? Number(process.env.DREAM_DF7_MIRROR_CAP_MB) : 256;
+      const _mirrorCap = _mirrorCapMB * 1024 * 1024;
       for (const _ws of this._livePoolDonors()) {
         if (_ws === this._gpuClient || !_ws || _ws.readyState !== 1) continue;
-        if (((_ws.bufferedAmount) || 0) > _linkCap) continue;   // busy receiving its replica
+        if (((_ws.bufferedAmount) || 0) > _mirrorCap) continue;   // socket genuinely drowning
         try { _ws.send(_mirrorMsg); } catch { /* a dropped mirror is never fatal */ }
       }
     }
