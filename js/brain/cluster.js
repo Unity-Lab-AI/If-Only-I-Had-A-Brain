@@ -4095,6 +4095,52 @@ export class NeuronCluster {
     // work has accumulated (never after the final rep — a trailing hop
     // pays the loop's backlog for nothing). Callers await.
     const negAbs = Math.abs(negLr);
+    // v0.3.18 GPU PATH — the dose's one-hot patterns are contiguous BANDS
+    // (active dim × groupSize), so the WHOLE rep dose ships as one ~60-byte
+    // range-form frame (hebbian_ranges) and the donor loops its resident
+    // plasticity kernel stream-ordered — per-rep math verified identical to
+    // the CPU loop below for one-hot patterns (y=1: Oja reduces to
+    // w←w(1−lr)+lr·x, the kernel's EMA branch; anti reduces to w←w−lr on
+    // co-active, the kernel's depress branch; same clamps). The CPU f64
+    // dose still runs as the SHADOW on the SHADOWTIME wall-clock law (at
+    // most once per gap window) — GPU carries the rate, the shadow keeps
+    // the authoritative-load copy honest. No donor ≥0.3.18 → full CPU path,
+    // exactly as before (negotiation, not fallback).
+    let _gpuCarried = false;
+    if (this._gpuProxyReady && this._gpuProxy && typeof this._gpuProxy.hebbianRanges === 'function') {
+      const _mkRanges = (oneHot) => {
+        const ranges = [];
+        for (let d = 0; d < oneHot.length; d++) {
+          if (oneHot[d] <= 0) continue;
+          const start = region.start + d * groupSize;
+          const len = Math.min(groupSize, region.end - start);
+          if (len > 0 && ranges.length < 16) ranges.push([start, len]);
+        }
+        return ranges;
+      };
+      const preR = _mkRanges(opts.srcOneHot);
+      const postR = _mkRanges(opts.correctOneHot);
+      if (preR.length && postR.length) {
+        const matName = `${this.name}_intraSynapses`;
+        const sent = this._gpuProxy.hebbianRanges(matName, posLr, reps, preR, postR);
+        if (sent && wrongPost && wrongActive && wrongActive.length) {
+          const wrongR = _mkRanges(opts.wrongOneHot);
+          if (wrongR.length) this._gpuProxy.hebbianRanges(matName, -negAbs, reps, preR, wrongR);
+        }
+        if (sent) {
+          const _sgGap = this._intraShadowMinGapMs || 30000;
+          const _sgNow = Date.now();
+          if (this._pairGpuShadowLastMs && (_sgNow - this._pairGpuShadowLastMs) < _sgGap) {
+            // GPU carried the dose; the shadow window hasn't opened — skip the CPU loop.
+            const _csG = this._pairConvStats || (this._pairConvStats = { calls: 0, repsSum: 0, minRep: Infinity, maxRep: 0, lastLogMs: 0, gpu: 0, shadow: 0 });
+            _csG.gpu = (_csG.gpu || 0) + 1;
+            return;
+          }
+          this._pairGpuShadowLastMs = _sgNow;
+          _gpuCarried = true; // fall through: the CPU loop below runs as the SHADOW pass
+        }
+      }
+    }
     const _yieldMacro = (typeof setImmediate === 'function')
       ? () => new Promise((r) => setImmediate(r))
       : () => new Promise((r) => setTimeout(r, 0));
@@ -4126,13 +4172,14 @@ export class NeuronCluster {
         _sliceT0 = Date.now();
       }
     }
-    const _cs = this._pairConvStats || (this._pairConvStats = { calls: 0, repsSum: 0, minRep: Infinity, maxRep: 0, lastLogMs: 0 });
+    const _cs = this._pairConvStats || (this._pairConvStats = { calls: 0, repsSum: 0, minRep: Infinity, maxRep: 0, lastLogMs: 0, gpu: 0, shadow: 0 });
     _cs.calls++; _cs.repsSum += _exitRep;
+    if (_gpuCarried) _cs.shadow = (_cs.shadow || 0) + 1;
     if (_exitRep < _cs.minRep) _cs.minRep = _exitRep;
     if (_exitRep > _cs.maxRep) _cs.maxRep = _exitRep;
-    if (Date.now() - _cs.lastLogMs > 60000 && _cs.calls > 0) {
-      console.log(`[L1B] convergence gate — ${_cs.calls} pair-doses this window: avg exit rep ${(_cs.repsSum / _cs.calls).toFixed(1)}/${reps}, min ${_cs.minRep === Infinity ? '-' : _cs.minRep}, max ${_cs.maxRep} (fixed-point exit, trained-equivalent ≤5e-10 measured; dose ceiling unchanged).`);
-      _cs.lastLogMs = Date.now(); _cs.calls = 0; _cs.repsSum = 0; _cs.minRep = Infinity; _cs.maxRep = 0;
+    if (Date.now() - _cs.lastLogMs > 60000 && (_cs.calls > 0 || (_cs.gpu || 0) > 0)) {
+      console.log(`[L1B] pair-dose window — gpu-carried=${_cs.gpu || 0} cpu-shadow=${_cs.shadow || 0} cpu-full=${_cs.calls - (_cs.shadow || 0)}: avg exit rep ${_cs.calls > 0 ? (_cs.repsSum / _cs.calls).toFixed(1) : '-'}/${reps}, min ${_cs.minRep === Infinity ? '-' : _cs.minRep}, max ${_cs.maxRep} (fixed-point exit, trained-equivalent ≤5e-10 measured; dose ceiling unchanged).`);
+      _cs.lastLogMs = Date.now(); _cs.calls = 0; _cs.repsSum = 0; _cs.minRep = Infinity; _cs.maxRep = 0; _cs.gpu = 0; _cs.shadow = 0;
     }
   }
 
