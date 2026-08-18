@@ -893,3 +893,19 @@ The CLI restart from the prior handoff was FOR this. Gee authorized a 4090 proof
 - [x] **INITFIT.4** **VERIFY (build half) DONE** - `node --check` + `import()` ESM PASS. Server-side only.
 - [ ] **INITFIT.5** GEE: Update & Savestart. Verdict: Sponge RTT falls from ~30s to something sane, `INITFIT` names his fitted cluster set, and his Gn/s comes off 0. **It will be PROPORTIONALLY SMALL** - he steps 1-2 clusters of 7, so a fraction of a full donor rate. That is honest work from a small card, not a fault.
 - [ ] **INITFIT.6** **OPEN - the lesson, stated plainly.** MIRRORCAP, BUFFLOOR, PARTMIRROR and ALLINIT were four consecutive fixes reasoned from source that did not resolve the symptom; MIRRORDIAG resolved it on its FIRST line. Every one of those rounds cost Gee a press and a restart. The LAW already says instrument-first is the only law that kills - the cost of ignoring it is now measured in this session.
+
+---
+
+## MIRRORID - 2026-08-18 - the mirror batchId was NEGATIVE and the donor parses it as u64, so every mirror was silently dropped
+
+> Gee (verbatim): *"so wtf?"*
+
+**THE REAL BUG, AND IT WAS MINE FROM THE MOMENT WORKSHARE SHIPPED.** The mirrored batch carried `batchId: -batchId` - deliberately negative so it could never collide with the authoritative id. But the donor deserializes into `ComputeBatch { batch_id: u64 }` (`protocol.rs:228`), and **serde cannot deserialize a negative number into an unsigned type**. Every mirrored batch therefore failed to parse ON ARRIVAL and was dropped without a trace. **No mirrored donor had ever computed. Not once.**
+
+**WHY THE DASHBOARD HID IT FOR HOURS:** `gneurons_per_sec` is a PERSISTENT donor-side field (`donor.rs:655` sets it only when a batch completes, and it keeps its last value forever). So a card that had ONCE been primary kept displaying its old rate while doing nothing at all - the 4090 showed 32.6 Gn/s as a stale number long after the 4070 Ti took over as primary. Only a donor that had NEVER been primary showed a true 0. **Sponge was not the broken one - he was the only HONEST reading on the board.**
+
+- [x] **MIRRORID.1** **DONE - mirrors use a large POSITIVE offset id** (`2000000000 + batchId`), keeping the anti-collision property that motivated the negative value without violating the wire type. Verified against the donor struct rather than assumed.
+- [x] **MIRRORID.2** **DONE - the server-side drop is double-guarded.** The donor does NOT echo the `mirror` flag (`ComputeBatchResult` carries only type/batchId/perCluster), so the `ws !== primary` clause is what actually catches an echoed mirror result - and the offset id can never match a pending batchId either. Both paths checked in source.
+- [x] **MIRRORID.3** **VERIFY (build half) DONE** - `node --check` + `import()` ESM PASS. Server-side only, no donor change.
+- [ ] **MIRRORID.4** GEE: Update & Savestart. Verdict: **all three donors positive**. Sponge will be proportionally small (2 of 7 clusters) - that is honest work from a 5.6GB card.
+- [ ] **MIRRORID.5** **OPEN - the dashboard actively misleads and should be fixed.** A donor showing a Gn/s it earned minutes ago while currently computing NOTHING is worse than showing 0: it hid this bug for hours and would hide the next one. The rate should decay or read `idle` when no batch has completed recently - the server already knows, since it counts mirrored batches. Without that, every future "is it working?" question is unanswerable from the board.
