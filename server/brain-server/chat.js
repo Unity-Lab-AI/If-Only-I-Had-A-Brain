@@ -624,19 +624,21 @@ const SERVER_CHAT_MIXIN = {
     this._chatStamp('respond:learn-words');
     this._learnWords(response);
     this._chatStamp('respond:store-episode');
-    // SURPRISECPU — the salience surprise term runs on the DONOR GPU here
-    // (stepAwait dispatches the 360M-nnz propagates to the card and awaits
-    // them; only the per-neuron map update stays on the host, and it yields
-    // between letters). The synchronous form this replaces cost 142,989ms of
-    // unbroken CPU on one 29-letter message and killed the donor outright.
-    let _episodeSurprise;
-    try {
-      if (this.cortexCluster && typeof this.cortexCluster.computeTransitionSurpriseAsync === 'function') {
-        _episodeSurprise = await this.cortexCluster.computeTransitionSurpriseAsync(text);
-      }
-    } catch { /* salience metadata is best-effort — never block the episode */ }
-    this.storeEpisode(userId, 'interaction', text, response, null,
-      (typeof _episodeSurprise === 'number') ? { surprise: _episodeSurprise } : null);
+    // SALIENCE OFF THE REPLY PATH (2026-08-18). Two measured failures taught
+    // this: computing the surprise term inline cost 142,989ms on CPU (donor
+    // dead), and moving it to the GPU inline still cost 190,620ms because 48
+    // sequential round-trips queue behind a donor saturated with teach traffic.
+    // The lesson is not "which processor" — it is that the human must NEVER
+    // wait on memory bookkeeping worth 0.2 of a consolidation score. The
+    // episode stores NOW; the letter walk is queued and drains serialized into
+    // the walk's own chain (see curriculum _awaitComputeSubstrate), which also
+    // keeps it from mutating cortex spike state underneath a running teach.
+    const _ep = this.storeEpisode(userId, 'interaction', text, response);
+    if (_ep && _ep.id && !_ep.merged && text) {
+      if (!Array.isArray(this._salienceQueue)) this._salienceQueue = [];
+      this._salienceQueue.push({ episodeId: _ep.id, text: String(text).slice(0, 200) });
+      while (this._salienceQueue.length > 64) this._salienceQueue.shift();  // bounded, drop-oldest
+    }
     this._chatStamp('respond:curiosity');
 
     // Curiosity FOLLOW-UP — if Unity ASKED a question last tick
