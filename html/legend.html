@@ -282,7 +282,7 @@
     </div>
 
     <h2>🔑 Admin / operator — login required</h2>
-    <p class="lede" style="margin:0 0 12px;">Operator tools, gated by the admin login. A normal visitor who opens the dashboard sees read-only vitals only — <strong>never the console logs or controls</strong> (those are enforced server-side, not just hidden).</p>
+    <p class="lede" style="margin:0 0 12px;">Operator tools, gated by the admin login. A normal visitor who opens the dashboard sees read-only vitals only — <strong>never the admin controls or the live console stream</strong> (enforced server-side, not just hidden). One deliberate exception: a bounded read-only <em>console tail</em> (the server's recent log lines) is publicly readable after the fact via <code>/public-state.json?console=N</code> — transparency for anyone debugging her, with zero control surface.</p>
     <div class="cards">
 
       <div class="card">
