@@ -25,6 +25,17 @@ import { sharedEmbeddings } from '../embeddings.js';
 
 export const CLUSTER_PROBE_MIXIN = {
   diagnoseReadoutForEmbedding(emb, ticks = 10, langStart = 150) {
+    // GATESTEP (2026-08-18) - bio-scale refusal: raw synchronous cluster steps
+    // carry the full synaptic propagate on the CPU at biological scale
+    // (seconds per tick; a probe built from them hangs the walk). The awaited
+    // GPU twin is the bio-scale path. Small brains keep full behavior.
+    if (this.size > 2000000) {
+      if (!this._bioStepWarnMs || (Date.now() - this._bioStepWarnMs) > 60000) {
+        this._bioStepWarnMs = Date.now();
+        console.warn(`[Cluster ${this.name}] diagnoseReadoutForEmbedding skipped at biological scale - raw CPU cortex steps do not run here (use the awaited GPU form).`);
+      }
+      return null;
+    }
     const currents = sharedEmbeddings.mapToCortex(emb, this.size, langStart);
     this.injectCurrent(currents);
     for (let t = 0; t < ticks; t++) this.step(0.001);

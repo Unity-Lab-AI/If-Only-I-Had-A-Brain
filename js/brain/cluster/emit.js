@@ -366,6 +366,17 @@ export const CLUSTER_EMIT_MIXIN = {
   },
 
   generateSentence(intentSeed = null, opts = {}) {
+    // GATESTEP (2026-08-18) - bio-scale refusal: raw synchronous cluster steps
+    // carry the full synaptic propagate on the CPU at biological scale
+    // (seconds per tick; a probe built from them hangs the walk). The awaited
+    // GPU twin is the bio-scale path. Small brains keep full behavior.
+    if (this.size > 2000000) {
+      if (!this._bioStepWarnMs || (Date.now() - this._bioStepWarnMs) > 60000) {
+        this._bioStepWarnMs = Date.now();
+        console.warn(`[Cluster ${this.name}] generateSentence skipped at biological scale - raw CPU cortex steps do not run here (use the awaited GPU form).`);
+      }
+      return '';
+    }
     if (!this.regions || !this.regions.motor || !this.regions.letter) return '';
     if (inventorySize() === 0) return '';
 

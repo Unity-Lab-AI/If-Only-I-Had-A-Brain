@@ -610,7 +610,13 @@ export class InnerVoice {
     // reads reflects the new exposure.
     if (this._curriculum && typeof this._curriculum.learnFromTurn === 'function') {
       try {
-        this._curriculum.learnFromTurn(text, Math.max(0.95, arousal ?? 0.5), valence ?? 0);
+        // GATESTEP (2026-08-18) — learnFromTurn became async when its cortex
+        // steps moved to the awaited GPU form. Left unhandled it is a floating
+        // promise doing cortex work concurrently with whatever runs next (the
+        // concurrent-cortex crime). It stays fire-and-forget by design here,
+        // but the rejection is now caught explicitly instead of escaping.
+        Promise.resolve(this._curriculum.learnFromTurn(text, Math.max(0.95, arousal ?? 0.5), valence ?? 0))
+          .catch(() => { /* non-fatal — legacy path below still runs */ });
       } catch (err) {
         // Non-fatal — legacy path below still runs
       }

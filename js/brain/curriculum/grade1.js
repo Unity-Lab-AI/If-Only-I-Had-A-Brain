@@ -275,7 +275,7 @@ export const G1_MIXIN = {
   // (banned by the grade-completion-gate LAW) -- this tests whether the
   // letter->phon magnitude basin actually formed. Mirrors the READ/THINK
   // shape of _gateElaG1Real + the digit-READ logic of _gateMathKReal.
-  _gateMathG1Real() {
+  async _gateMathG1Real() {
     const cluster = this.cluster;
     const DIGITS = '0123456789'.split('');
     let readPass = 0;
@@ -293,7 +293,7 @@ export const G1_MIXIN = {
     for (const digit of DIGITS) {
       // READ: digit char -> phon magnitude readout vs true magnitude feature
       cluster.injectLetter(digit, 1.0);
-      for (let t = 0; t < 3; t++) cluster.step(0.001);
+      for (let t = 0; t < 3; t++) await cluster.stepAwait(0.001);
       const phonReadout = cluster.regionReadout('phon', MAGNITUDE_FEATURE_DIM);
       let readCos = 0;
       if (phonReadout && phonReadout.length === MAGNITUDE_FEATURE_DIM) {
@@ -307,7 +307,7 @@ export const G1_MIXIN = {
       const readOk = readCos > READ_COS_MIN;
       if (readOk) readPass++;
       // THINK: magnitude state persists across silence (free-region variance)
-      for (let t = 0; t < 10; t++) cluster.step(0.001);
+      for (let t = 0; t < 10; t++) await cluster.stepAwait(0.001);
       const freeReadout = cluster.regionReadout('free', 64);
       let thinkVar = 0;
       if (freeReadout && freeReadout.length > 0) {

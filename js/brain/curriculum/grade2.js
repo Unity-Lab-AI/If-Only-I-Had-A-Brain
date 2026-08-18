@@ -193,7 +193,7 @@ export const G2_MIXIN = {
   // Equational math gate -- digit magnitude-READ probe (mirrors _gateMathG1Real).
   // For each digit 0-9: stream the digit char, read phon as a magnitude vector,
   // cosine vs the true magnitude feature. THINK = persistence. No first-letter.
-  _gateMathG2Real() {
+  async _gateMathG2Real() {
     const cluster = this.cluster;
     const DIGITS = '0123456789'.split('');
     let readPass = 0;
@@ -210,7 +210,7 @@ export const G2_MIXIN = {
     }
     for (const digit of DIGITS) {
       cluster.injectLetter(digit, 1.0);
-      for (let t = 0; t < 3; t++) cluster.step(0.001);
+      for (let t = 0; t < 3; t++) await cluster.stepAwait(0.001);
       const phonReadout = cluster.regionReadout('phon', MAGNITUDE_FEATURE_DIM);
       let readCos = 0;
       if (phonReadout && phonReadout.length === MAGNITUDE_FEATURE_DIM) {
@@ -222,7 +222,7 @@ export const G2_MIXIN = {
         readCos = cosine(centered, _magnitudeFeatureForDigit(digit));
       }
       if (readCos > READ_COS_MIN) readPass++;
-      for (let t = 0; t < 10; t++) cluster.step(0.001);
+      for (let t = 0; t < 10; t++) await cluster.stepAwait(0.001);
       const freeReadout = cluster.regionReadout('free', 64);
       let thinkVar = 0;
       if (freeReadout && freeReadout.length > 0) {

@@ -2143,7 +2143,7 @@ export class LanguageCortex {
             // (c) Settle ticks for sem → word_motor propagation
             if (typeof cluster.step === 'function') {
               for (let t = 0; t < 5; t++) {
-                try { cluster.step(0.001); } catch { break; }
+                try { await cluster.stepAwait(0.001); } catch { break; }
               }
             }
             // (d) Compose Unity's own answer — multi-word emission loop
