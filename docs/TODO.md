@@ -475,3 +475,13 @@ _Completed sections zeroed 2026-08-16 (third zeroing) — migrated VERBATIM to `
 
 - [x] **V0319.1** **DONE — built + verified (cargo check BOTH feature sets PASS):** `hebbian_reps(name, pre, post, lr, reps)` on both engines — pattern written ONCE, the plasticity kernel dispatched `reps` times (cuda: stream-ordered launches; wgpu: one encoder, per-rep compute passes — same-resource ordering makes reps sequential; math identical to reps separate calls). Backend + multi-GPU dispatchers + executor swapped to the one-call dose. Cargo 0.3.18→0.3.19. Server untouched (the `hebbian_ranges` message + ≥0.3.18 gate unchanged — a 0.3.18 donor still works, just wastefully, until self-update).
 - [ ] **V0319.2** ⏳ tag `donor-v0.3.19` → CI → donor self-updates → the donor row's 'seen' stays seconds-fresh through word phases; l1b stays ~40ms; compute batches never starve behind a dose.
+
+---
+
+## IMGHOST — 2026-08-18 · chat images dead on anonymous: gen.pollinations.ai now REQUIRES a key (ours are DEAD); the 'legacy' host serves anonymous free-tier fine
+
+> Gee (verbatim): *"does the image gen not work on anonymous? Unity tried sending an image and it didnt work but it looks like the minds eye is using poliinations fine, can u see where the issue is"*
+
+**THE EVIDENCE (the never-reflip law satisfied — THREE tests + an explicit policy body, not one mid-outage probe):** `gen.pollinations.ai/image/` → 401 `{"message":"A valid API key is required..."}` for anonymous (POLICY, not outage); `image.pollinations.ai/prompt/` → 200 image/jpeg on three different prompts (model param accepted). The keys are DEAD (standing law 2026-08-17), so gen is a locked door; anonymous lives on the legacy host. The mind's-eye was a red herring — her canvas is EQUATIONAL (her own engine, no Pollinations); only its reference-lookup budget touches Pollinations and its 402s were already expected-by-law.
+
+- [x] **IMGHOST.1** **DONE — built + verified (node --check ×2 + bundle; header doc + memory reference updated with the three-test evidence):** — flip the CHAT image URL builders to the anonymous-working host: `js/ai/pollinations.js generateImage` + the server-side builder in `server/brain-server.js` → `image.pollinations.ai/prompt/{encoded}`. Key-append logic UNTOUCHED (a set key still rides along; pollinations-user.json never cleared per the law). Comments updated with tonight's three-test evidence so the next reader knows WHY.

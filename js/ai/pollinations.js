@@ -3,7 +3,7 @@
  *
  * Endpoints (current — NOT the deprecated text.pollinations.ai):
  *   Text:  https://gen.pollinations.ai/v1/chat/completions
- *   Image: https://gen.pollinations.ai/image/{prompt}
+ *   Image: https://image.pollinations.ai/prompt/{prompt} (anonymous free tier — gen.pollinations.ai/image requires a key, ours are dead)
  *   Audio: https://gen.pollinations.ai/v1/audio/speech
  *   Auth:  https://enter.pollinations.ai/authorize
  *
@@ -138,19 +138,18 @@ export class PollinationsAI {
             // image and renders look recycled. A random seed (pinnable via
             // options.seed) makes each generation a new picture.
             const seed = (typeof options.seed === 'number') ? options.seed : Math.floor(Math.random() * 1e9);
-            // gen.pollinations.ai/image/{prompt} — the CURRENT unified gateway
-            // (June 2026; confirmed against the live Pollinations docs). The
-            // platform consolidated text/image/audio/video under gen.pollinations.ai;
-            // image.pollinations.ai/prompt/ is the LEGACY host that still lingers in
-            // the GitHub APIDOCS but is not the working gateway. This is the
-            // chat-window image path only — her equational mind's-eye imagination is
-            // a separate engine and was never affected.
-            // Auth via ?key= param (a browser <img> can't send a Bearer header).
-            // NOTE: do NOT re-flip this on a single HTTP test — Pollinations has
-            // intermittent API issues, and a transient 401 during an outage reads as
-            // "deprecated" when it isn't. A prior mid-outage probe wrongly moved this
-            // to the legacy host; trust the current docs + operator over one test.
-            let url = `${GEN_URL}/image/${encoded}?model=${encodeURIComponent(model)}&width=${width}&height=${height}&seed=${seed}&nologo=true`;
+            // image.pollinations.ai/prompt/{prompt} — the host that serves the
+            // ANONYMOUS free tier (re-verified 2026-08-18 with THREE prompts,
+            // all 200 image/jpeg, model param honored — the never-reflip-on-one-
+            // test law satisfied). gen.pollinations.ai/image/ now returns an
+            // explicit 401 POLICY body for anonymous requests ("A valid API key
+            // is required") — and the account keys are DEAD (2026-08-17 law:
+            // free tier only), so that gateway is a locked door, not an outage.
+            // This is the chat-window image path only — her equational
+            // mind's-eye imagination is a separate engine and was never affected.
+            // Auth via ?key= param (a browser <img> can't send a Bearer header);
+            // a saved key still rides along harmlessly if one is set.
+            let url = `${IMAGE_URL}/prompt/${encoded}?model=${encodeURIComponent(model)}&width=${width}&height=${height}&seed=${seed}&nologo=true`;
             if (this._apiKey) {
                 url += `&key=${encodeURIComponent(this._apiKey)}`;
             }

@@ -133,17 +133,15 @@ function _buildPollinationsImageUrl(prompt, opts = {}) {
   // picture even when the composed prompt repeats — imagination varies, it never
   // recycles. (Callers may pin opts.seed for a reproducible render.)
   const seed = (typeof opts.seed === 'number') ? opts.seed : Math.floor(Math.random() * 1e9);
-  // gen.pollinations.ai/image/{prompt} — the CURRENT unified gateway (June 2026;
-  // confirmed against the live Pollinations docs + gen.pollinations.ai/docs). The
-  // platform consolidated text/image/audio/video under gen.pollinations.ai;
-  // image.pollinations.ai/prompt/ is the LEGACY host that still lingers in the
-  // GitHub APIDOCS but is not the working gateway. Auth via ?key= (a browser <img>
-  // can't send a Bearer header; ?key= is supported on the GET image route).
-  // NOTE: do NOT "verify" this with a one-off HTTP test — Pollinations has
-  // intermittent API issues, and a transient 401/500 during an outage reads as
-  // "deprecated" when it isn't. A prior test taken mid-outage flipped this to the
-  // legacy host by mistake; trust the current docs + operator, not a single probe.
-  let url = `https://gen.pollinations.ai/image/${encoded}?model=${encodeURIComponent(model)}&width=${width}&height=${height}&seed=${seed}&nologo=true`;
+  // image.pollinations.ai/prompt/{prompt} — the host that serves the ANONYMOUS
+  // free tier (re-verified 2026-08-18 with THREE prompts, all 200 image/jpeg,
+  // model param honored — the never-reflip-on-one-test law satisfied).
+  // gen.pollinations.ai/image/ now answers anonymous requests with an explicit
+  // 401 POLICY body ("A valid API key is required") — and the account keys are
+  // DEAD (2026-08-17 law: free tier only), so that gateway is a locked door,
+  // not an outage. A saved key still rides along harmlessly if one is set
+  // (?key= — a browser <img> can't send a Bearer header).
+  let url = `https://image.pollinations.ai/prompt/${encoded}?model=${encodeURIComponent(model)}&width=${width}&height=${height}&seed=${seed}&nologo=true`;
   const key = _pollinationsImageKey();
   if (key) url += `&key=${encodeURIComponent(key)}`;
   return url;
