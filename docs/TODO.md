@@ -862,3 +862,17 @@ The CLI restart from the prior handoff was FOR this. Gee authorized a 4090 proof
 - [x] **ALLINIT.3** **VERIFY (build half) DONE** - `node --check` on both touched files + `import()` ESM PASS; confirmed `_regionsFor` / `CLUSTER_SIZES` / `tonicDrives` / `noiseAmplitudes` all exist on the mixin rather than assuming.
 - [ ] **ALLINIT.4** GEE: Update & Savestart. Verdict: `[<id>] ALLINIT — N cluster buffers initialised at registration` appears for EVERY donor, and every donor shows positive Gn/s within seconds of connecting - sync state irrelevant. **This is the one that should finally make it true.**
 - [ ] **ALLINIT.5** **OPEN - the design lesson.** Cluster init (cheap, instant, the prerequisite for ANY compute) was entangled with weight sync (expensive, slow, the prerequisite for MATRIX compute). Every 0 Gn/s symptom this session traced back to that single coupling, and I fixed six things downstream of it before finding it. Worth auditing whether anything else cheap is gated behind something expensive purely because they share a function.
+
+---
+
+## MIRRORDIAG - 2026-08-18 - stop guessing why one donor is 0; make the dispatch name itself
+
+> Gee (verbatim): *"0Gn/s !!!!!!!!!!!!!!!!!!!!!!!!!!"*
+
+**FOUR WRONG GUESSES IS ENOUGH.** MIRRORCAP, BUFFLOOR, PARTMIRROR and ALLINIT were each a REAL defect and each was shipped as "this is the one" - and Sponge is still 0. Every one of those was reasoned from source rather than measured from the running dispatch, which is precisely the failure mode this codebase has a LAW against ("instrument-first is not a preference; it is the only law that kills"). I kept writing fixes because writing fixes feels like progress.
+
+**WHAT THE EVIDENCE ACTUALLY SHOWS SO FAR (and where it runs out):** `ALLINIT` logged **2 lines for 3 donors** - correct, because the primary is initialised by `initGpu` and only the two replicas take the registration path. So all three DO have cluster buffers. `clusterParams` entries really do carry `.name` (brain-server.js:4359), so the PARTMIRROR coverage filter is matching on the right field. Which means the mirror SHOULD be reaching Sponge - and it is not producing a Gn/s. The chain from "we send it" to "he computes it" has no instrument anywhere along it, so the next step cannot be another inference.
+
+- [x] **MIRRORDIAG.1** **DONE - the dispatch names itself.** Every 30s (throttled, production-safe) the mirror loop emits `[Brain] MIRRORDIAG pool=N -> <donor>:SENT(all|N clusters) | <donor>:SKIP(<exact reason>) | <donor>:PRIMARY(real batch)`. Six distinct outcomes are labelled: PRIMARY, socket-not-open, buffered-over-cap (with the MB), coverage-matched-nothing (with the coverage set AND the param count), SENT (with cluster count), and SEND-THREW (with the error). Whatever is happening to Sponge, the next log line says it in words.
+- [x] **MIRRORDIAG.2** **VERIFY (build half) DONE** - `node --check` + `import()` ESM PASS. Server-side only, no donor change.
+- [ ] **MIRRORDIAG.3** GEE: Update & Savestart, then paste ONE `MIRRORDIAG` line. That single line decides the next move and ends the guessing: if it reads SENT for Sponge, the problem is donor-side (his client is receiving a batch it will not run - a Turing cc7.5 / partial-cluster issue) and the investigation moves to the donor. If it reads SKIP, it names the exact server-side reason and that gets fixed properly instead of speculatively.

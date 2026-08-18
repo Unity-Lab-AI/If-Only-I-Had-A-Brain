@@ -319,9 +319,17 @@ const SERVER_GPU_MIXIN = {
       const _mirrorCapMB = Number(process.env.DREAM_DF7_MIRROR_CAP_MB) > 0
         ? Number(process.env.DREAM_DF7_MIRROR_CAP_MB) : 256;
       const _mirrorCap = _mirrorCapMB * 1024 * 1024;
+      // MIRRORDIAG — after four wrong guesses about why one donor stays at 0 Gn/s, this
+      // stops being reasoned about and becomes a field read: every 30s, name each donor the
+      // mirror was SENT to and each one SKIPPED with the exact reason. Throttled so it can
+      // live in production permanently.
+      const _diag = [];
       for (const _ws of this._livePoolDonors()) {
-        if (_ws === this._gpuClient || !_ws || _ws.readyState !== 1) continue;
-        if (((_ws.bufferedAmount) || 0) > _mirrorCap) continue;   // socket genuinely drowning
+        const _dc = (this.clients && this.clients.get) ? this.clients.get(_ws) : null;
+        const _who = (_dc && (_dc.gpuName || _dc.id)) || "donor";
+        if (_ws === this._gpuClient) { _diag.push(_who + ":PRIMARY(real batch)"); continue; }
+        if (!_ws || _ws.readyState !== 1) { _diag.push(_who + ":SKIP(socket not open)"); continue; }
+        if (((_ws.bufferedAmount) || 0) > _mirrorCap) { _diag.push(_who + ":SKIP(buffered " + Math.round((_ws.bufferedAmount||0)/1048576) + "MB > cap)"); continue; }
         // COVERAGE-AWARE MIRROR — a PARTIAL replica is only gpu_init'ed for the clusters it
         // covers (line ~1500 skips the rest), so a donor with, say, [cortex, hippocampus]
         // holds 2 of 8 cluster buffers. Sending it the FULL 8-cluster batch references
@@ -334,10 +342,17 @@ const SERVER_GPU_MIXIN = {
         const _mcov = _mc && _mc.clusterCoverage;
         if (_mcov && _mcov.size) {
           const _sub = (clusterParams || []).filter((cp) => cp && _mcov.has(cp.name));
-          if (_sub.length === 0) continue;
+          if (_sub.length === 0) { _diag.push(_who + ":SKIP(coverage [" + [..._mcov].join("|") + "] matched 0 of " + (clusterParams||[]).length + " params)"); continue; }
           _msg = JSON.stringify({ ..._mirrorBase, clusters: _sub });
         }
-        try { _ws.send(_msg); } catch { /* a dropped mirror is never fatal */ }
+        try {
+          _ws.send(_msg);
+          _diag.push(_who + ":SENT(" + (_mcov && _mcov.size ? _mcov.size + " clusters" : "all") + ")");
+        } catch (e) { _diag.push(_who + ":SEND-THREW(" + (e && e.message) + ")"); }
+      }
+      if (_diag.length && (!this._mirrorDiagAt || (Date.now() - this._mirrorDiagAt) > 30000)) {
+        this._mirrorDiagAt = Date.now();
+        console.log("[Brain] MIRRORDIAG pool=" + _diag.length + " -> " + _diag.join("  |  "));
       }
     }
 
