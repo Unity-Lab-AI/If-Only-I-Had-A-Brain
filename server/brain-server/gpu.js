@@ -2036,7 +2036,18 @@ const SERVER_GPU_MIXIN = {
       // belt-and-braces for the primary-upload-plus-replica overlap that serialising can't remove.
       const _concurrentStreams = 1 + ((this._replicaSyncInFlight && this._replicaSyncInFlight.size) || 0);
       const _effMBps = _minMBps / Math.max(1, _concurrentStreams);
-      const _scaledMs = Math.ceil((_payloadBytes / (_effMBps * 1048576)) * 1000) + 120_000;
+      // QUEUEDEADLINE — the deadline must count the bytes this upload has to WAIT BEHIND,
+      // not just its own size. Scaling by bandwidth SHARE alone was not enough and the
+      // arithmetic shows why: a 42MB matrix at a contended 2MB/s scores 21s + 120s margin
+      // = 141s, which loses to the env's 180s floor, yet it still timed out — because it
+      // was dispatched behind ~1.8GB of already-queued intra on the same socket. Its own
+      // size never governed how long it waited. `ws.bufferedAmount` measures that queue
+      // directly (bytes handed to the socket and not yet flushed), so the deadline now
+      // covers drain-then-send instead of send-alone. This is the head-of-line blocking
+      // SYNCSERIAL diagnosed — sizing the timeout as if it did not exist was the gap.
+      const _queuedAhead = (ws && typeof ws.bufferedAmount === 'number') ? ws.bufferedAmount : 0;
+      const _deadlineBytes = _payloadBytes + _queuedAhead;
+      const _scaledMs = Math.ceil((_deadlineBytes / (_effMBps * 1048576)) * 1000) + 120_000;
       // Cap 15min → 30min (2026-08-16): the 12M language cortex's intra upload
       // is ~2.9GB ≈ 12min at the measured wire — a 15min cap left no headroom
       // for a slower link; hop 2 grows it further.
@@ -2057,7 +2068,7 @@ const SERVER_GPU_MIXIN = {
         timeoutMs = Math.max(_envTimeout, _scaledMs);
         if (timeoutMs > _envTimeout && (!this._uploadTimeoutFloorLogMs || (Date.now() - this._uploadTimeoutFloorLogMs) > 60000)) {
           this._uploadTimeoutFloorLogMs = Date.now();
-          console.log(`[Brain] upload timeout FLOORED — env DREAM_SPARSE_UPLOAD_TIMEOUT_MS=${_envTimeout}ms is below what this ${(_payloadBytes / 1048576).toFixed(0)}MB payload physically needs at ${_effMBps.toFixed(2)}MB/s (${_minMBps}MB/s shared across ${_concurrentStreams} in-flight stream(s)); using ${timeoutMs}ms (size-scaled). The env can raise deadlines, never starve them.`);
+          console.log(`[Brain] upload timeout FLOORED — env DREAM_SPARSE_UPLOAD_TIMEOUT_MS=${_envTimeout}ms is below what this ${(_payloadBytes / 1048576).toFixed(0)}MB payload physically needs at ${_effMBps.toFixed(2)}MB/s (${_minMBps}MB/s shared across ${_concurrentStreams} in-flight stream(s), plus ${(_queuedAhead / 1048576).toFixed(0)}MB already queued ahead of it on this socket); using ${timeoutMs}ms (size+queue-scaled). The env can raise deadlines, never starve them.`);
         }
       } else {
         timeoutMs = Math.min(_capMs, Math.max(45_000, _scaledMs));
