@@ -5,6 +5,41 @@
 
 ---
 
+## 2026-08-18 - DELTAIDX + SYNCSERIAL + PACEDSYNC + SYNCGATE: the multi-donor pool actually works - feature/df7-* + feature/deltaidx-colidx
+
+### Gee ask (verbatim per LAW #0)
+
+> *"nore GPU we should hit the auto scaling point right and it scales up and we can do it faster with more GPUS!!!! so make it fucking work and so all GPUS work!!! together!! not one works and all others site idel"*
+
+> *"it should of synced by now fix it so i can fresh walk and all doners connect and run together that are one a reboot time"*
+
+> *"option 2, so kill the runpod, do the work completely, push to main , all with todo rituals and finalized, then push casaced to repos, then i press the update and fresh walk button, and donw load the new doner, and you make the runpod properly use the new doner too"*
+
+**Four separate defects stood between a connected donor and a computing donor. Each was named by a field read before anything was changed.**
+
+**1. SYNCGATE - an unsynced replica was WORK-ELIGIBLE.** `_syncReplicaToDonor` returns at the mid-teach deferral BEFORE it assigns `_replicaIncapable` / `_bindIncapable` / `clusterCoverage`, so `_donorCoversMatrices` read every flag as undefined and fell through to `return true`. A donor that joined mid-teach was judged eligible and handed bound-Hebbian batches for matrices it did not hold. **The 0 Gn/s row was not a skipped donor - it was a donor being fed work it could not do.** Training was never at risk (CPU CSR is the authoritative master) but the units were wasted and the card looked dead. Fixed by making a PROVEN sync (`_df7Synced`, set on the success path only) the eligibility precondition; read fan-out now auto-enables from live per-donor state instead of a human remembering an env var, bounded by a freshness window because Hebbian batches round-robin and shadows genuinely diverge between rebroadcasts.
+
+**2. PACEDSYNC - the sync waited for an idle window that never came.** The hard defer from `7925e16` waits for a dream window; the live read was `[Consolidation] force PENDING (no completed pass in 600s; passCount=0)` with `phases 0/25` ten minutes into the cell and a 2h emergency valve. I had told Gee "it syncs at the next dream window" - that was design intent repeated back, not a checked cadence, and the honest answer was HOURS. Two things had changed since that deferral was measured: its ~16s/word was dominated by the intra upload "timing out at 180s + retries", which TFLOOR already killed; and WSQ.3 already paced against the DONOR's link. The missing term was a pace against the SERVER's event loop. Added: chunks breathe >= a floor and scale to 2x measured `_lastEventLoopLagMs`, capped. Live proof of the adaptive term working: `loopLag=0ms pace=200ms (link=200 teach=25)` -> `loopLag=177ms pace=354ms (link=200 teach=354)`, with max BLOCKED 843ms and ZERO over 1s.
+
+**3. SYNCSERIAL - a correct optimisation applied to the wrong resource.** `_rebroadcastMasterToReplicas` fanned syncs out with `_gpuParallelMap`, documented as "in the time of the slowest single replica, not the sum". TRUE for compute (independent GPUs, independent work). FALSE for weight streaming: every byte leaves the SAME ~4MB/s box uplink. Three concurrent streams each got a third of the pipe, small matrices sat in head-of-line blocking behind multi-GB intra streams, and every upload burned its deadline WAITING - ten `timed out after 180000ms` lines, retries that timed out again, ZERO `replica sync complete`. Fixed with a lane lock serialising BOTH call sites (audited for leaks against the real function span: all 7 early returns precede the lock, the one post-lock exit releases, the finally releases) + a contention-aware deadline. **Sum-of-serial beats all-fail-and-retry.**
+
+**4. DELTAIDX - half the payload was topology shipping raw.** `colIdx` is 1,373MB of 2,792MB. Verified the compressibility premise BEFORE building (Watts-Strogatz 70% local r=50 / 25% medium r=200 / 5% long-range, indices sorted ascending per CSR contract), then measured it: **round-trip BYTE-EXACT, colIdx 68.1% saved at 1.28 bytes/entry, whole payload 2,792MB -> 1,857MB = 33.5%, 11.6 -> 7.7 min per replica.** Type-4 flags bit 2 (value 4); entry count derived from the values slice so no header field was added; per-TARGET version gate so browser donors and older natives take the byte-identical raw path untouched.
+
+### Also fixed, and worth recording because both were instruments lying
+
+- The PACEDSYNC progress line did not name WHICH donor it belonged to, so concurrent syncs interleaved unreadably - that is exactly what cost an extra diagnostic round on "crawling or restarting?". It also printed `teach/min=` from `cortexCluster._teachCallsPerMin`, **a property that does not exist** (the real counter lives in `curriculum.js` liveness), so it read `n/a` on every line it ever emitted. A field that can only print n/a is worse than an absent one: it looks like a measurement. Replaced with donor socket backlog + RTT.
+- The cross-language parity test **silently ran ZERO tests** on first attempt (`#[test]` items nested inside `self_check()`; rustc only warned `cannot test inner items`). Caught by running `cargo test` instead of trusting the patch report. A test that does not run is worse than no test.
+
+### Corrections I owe the record
+
+- I reported ~41,500 and ~37,600 teach/min as apparent wins on two boots. **Both were artefacts of a 349,155-neuron language cortex** (`WMB FLOOR SKIPPED - target 12,000,000 blocked by RAM/V8 floor 11,751,147`) making every Hebbian call trivially cheap. The honest rate on a full 12M cortex is ~4,100-4,500/min. **The fast number was the symptom, not the win** - a Savestart taken while donors held multi-GB buffers left the floor ~2% short. Restart timing, not code.
+- I quoted Gee "~37%" for delta encoding before verifying the topology was local. It happened to be right (33.5% measured), but the premise was unchecked when I said it.
+
+### Verification
+
+`cargo check --release` clean on all three feature sets; `cargo test` 3/3; `node --check` + `import()` ESM PASS on every touched server file; round-trip harness byte-exact. Server-side changes need no bundle rebuild (nothing under `js/brain/` changed). Donor changes ship as `donor-v0.3.22` - no kernel changes, no PTX regeneration, no change to any existing frame type.
+
+---
 ## 2026-08-18 - CSRDUR: Gee killed a bad idea before it got built - feature/csr-durability-rationale-0818
 
 ### Gee ask (verbatim per LAW #0)
