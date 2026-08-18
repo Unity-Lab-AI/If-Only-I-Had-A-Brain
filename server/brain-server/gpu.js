@@ -1312,7 +1312,7 @@ const SERVER_GPU_MIXIN = {
     if (this._curriculumInProgress && _syncDuringTeach !== '1') {
       if (!this._pacedSyncLogMs || (Date.now() - this._pacedSyncLogMs) > 30000) {
         this._pacedSyncLogMs = Date.now();
-        console.log('[Brain] DF.7 PACEDSYNC — replica sync proceeding DURING teach, paced against event-loop lag (chunks breathe >= the measured lag so the teach loop keeps its slice). Set DREAM_DF7_SYNC_DURING_TEACH=0 for the old defer-until-idle behaviour, =1 for unpaced.');
+        console.log('[Brain] DF.7 PACEDSYNC — replica sync proceeding DURING teach, paced against event-loop lag (chunks breathe >= the measured lag so the teach loop keeps its slice). Syncs run ONE AT A TIME (SYNCSERIAL — they share one uplink). Set DREAM_DF7_SYNC_DURING_TEACH=0 for the old defer-until-idle behaviour, =1 for unpaced.');
       }
     }
     // DF.7 F8 — capability-aware routing. Don't stream a full brain replica to a
@@ -2261,7 +2261,20 @@ const SERVER_GPU_MIXIN = {
         // PACEDSYNC instrument — progress + the lag we are pacing against, so the real cost
         // of syncing under teach is a FIELD READ and not another theory. Every 64 chunks.
         if (_teachPace > 0 && (seq & 63) === 63) {
-          console.log(`[Brain] DF.7 PACEDSYNC ${name} chunk ${seq + 1}/${totalChunks} — loopLag=${Number(this._lastEventLoopLagMs) || 0}ms pace=${_paceMs}ms (link=${_linkPace} teach=${_teachPace}) teach/min=${(this.cortexCluster && this.cortexCluster._teachCallsPerMin) || 'n/a'}`);
+          // PACEDSYNC log, corrected twice over:
+          //  (1) NAME THE DONOR. Without it, concurrent syncs interleave into one
+          //      undifferentiated chunk stream and "is it crawling or restarting?" cannot be
+          //      answered from the log at all — which cost a real diagnostic round. Uses the
+          //      same `gpuName || id` convention as the other DF.7 donor lines in this file.
+          //  (2) DROP THE DEAD FIELD. The old line printed `teach/min=` from
+          //      `cortexCluster._teachCallsPerMin`, which does not exist — the real counter
+          //      lives in curriculum.js liveness — so it read 'n/a' on every single line. A
+          //      field that can only ever print 'n/a' is worse than absent: it looks like a
+          //      measurement. Replaced with the donor's own socket backlog, which is the
+          //      number that actually says whether THIS sync is keeping up.
+          const _who = _pc ? (_pc.gpuName || _pc.id || 'donor') : 'donor';
+          const _bufMB = ((ws && ws.bufferedAmount) || 0) / 1048576;
+          console.log(`[Brain] DF.7 PACEDSYNC [${_who}] ${name} chunk ${seq + 1}/${totalChunks} — loopLag=${Number(this._lastEventLoopLagMs) || 0}ms pace=${_paceMs}ms (link=${_linkPace} teach=${_teachPace}) donorBuf=${_bufMB.toFixed(1)}MB rtt=${_prtt}ms`);
         }
       }
     }
