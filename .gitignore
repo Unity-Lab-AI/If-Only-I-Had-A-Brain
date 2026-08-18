@@ -227,3 +227,7 @@ scripts/patch-*.py
 server/visual-memory-v2.json
 server/visual-memory*.json
 .pub*.json
+.ct.json
+.pv.json
+.bandwatch.*
+.hiwatch*
