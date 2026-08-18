@@ -791,6 +791,16 @@ export class SparseMatrix {
     const activeRows = (opts && opts.activeRows) || null;
     const iterN = activeRows ? activeRows.length : (rowEnd - rowStart);
 
+    // L1B CONVERGENCE TRACKING — when opts.trackDelta, accumulate the total
+    // POST-CLAMP |Δw| of this pass and return it. Post-clamp is the TRUE
+    // weight change: an Oja pass at its fixed point returns ~0, a clamped
+    // write returns 0 — so a repeated-static-pattern caller can detect
+    // "reps past convergence are no-ops" from the returned number instead
+    // of assuming it. Off by default; the hot path pays one predictable
+    // branch per nnz only when a caller asks.
+    const trackDelta = !!(opts && opts.trackDelta);
+    let deltaAbs = 0;
+
     for (let idx = 0; idx < iterN; idx++) {
       const i = activeRows ? activeRows[idx] : rowStart + idx;
       if (activeRows && (i < rowStart || i >= rowEnd)) continue;
@@ -815,12 +825,15 @@ export class SparseMatrix {
         let lrPreScale = 1.0;
         if (haveHub && srcHubMask[srcStart + col]) lrPreScale = hubMult;
         const lrEff = lr * lrPostScale * lrPreScale;
+        const w0 = values[k];
         // Oja: Δw = lr × y × (x - y × w) = lr·y·x - lr·y²·w
         values[k] += lrEff * y * x - lrEff * y2 * values[k];
         if (values[k] > wMax) values[k] = wMax;
         else if (values[k] < wMin) values[k] = wMin;
+        if (trackDelta) { const dv = values[k] - w0; deltaAbs += dv < 0 ? -dv : dv; }
       }
     }
+    return trackDelta ? deltaAbs : undefined;
   }
 
   /**
@@ -850,6 +863,14 @@ export class SparseMatrix {
     const activeRows = (opts && opts.activeRows) || null;
     const iterN = activeRows ? activeRows.length : (rowEnd - rowStart);
 
+    // Same trackDelta contract as ojaUpdate — post-clamp |Δw| returned on
+    // request. Anti-Hebbian is LINEAR (no decay term), so on a static pair
+    // its pre-clamp delta never shrinks — post-clamp goes to 0 only when
+    // the depressed weights saturate at wMin, which is exactly the honest
+    // "further reps are no-ops" signal a convergence-gated caller needs.
+    const trackDelta = !!(opts && opts.trackDelta);
+    let deltaAbs = 0;
+
     for (let idx = 0; idx < iterN; idx++) {
       const i = activeRows ? activeRows[idx] : rowStart + idx;
       if (activeRows && (i < rowStart || i >= rowEnd)) continue;
@@ -858,11 +879,14 @@ export class SparseMatrix {
       const start = rowPtr[i];
       const end = rowPtr[i + 1];
       for (let k = start; k < end; k++) {
+        const w0 = values[k];
         values[k] += scaled * preSpikes[colIdx[k]];
         if (values[k] > wMax) values[k] = wMax;
         else if (values[k] < wMin) values[k] = wMin;
+        if (trackDelta) { const dv = values[k] - w0; deltaAbs += dv < 0 ? -dv : dv; }
       }
     }
+    return trackDelta ? deltaAbs : undefined;
   }
 
   /**

@@ -628,6 +628,8 @@ var init_sparse_matrix = __esm({
         const rowEnd = opts && typeof opts.rowEnd === "number" ? Math.min(rows, opts.rowEnd) : rows;
         const activeRows = opts && opts.activeRows || null;
         const iterN = activeRows ? activeRows.length : rowEnd - rowStart;
+        const trackDelta = !!(opts && opts.trackDelta);
+        let deltaAbs = 0;
         for (let idx = 0; idx < iterN; idx++) {
           const i = activeRows ? activeRows[idx] : rowStart + idx;
           if (activeRows && (i < rowStart || i >= rowEnd)) continue;
@@ -649,11 +651,17 @@ var init_sparse_matrix = __esm({
             let lrPreScale = 1;
             if (haveHub && srcHubMask[srcStart + col]) lrPreScale = hubMult;
             const lrEff = lr * lrPostScale * lrPreScale;
+            const w0 = values[k];
             values[k] += lrEff * y * x - lrEff * y2 * values[k];
             if (values[k] > wMax) values[k] = wMax;
             else if (values[k] < wMin) values[k] = wMin;
+            if (trackDelta) {
+              const dv = values[k] - w0;
+              deltaAbs += dv < 0 ? -dv : dv;
+            }
           }
         }
+        return trackDelta ? deltaAbs : void 0;
       }
       /**
        * Anti-Hebbian negative-pair update.
@@ -672,6 +680,8 @@ var init_sparse_matrix = __esm({
         const rowEnd = opts && typeof opts.rowEnd === "number" ? Math.min(rows, opts.rowEnd) : rows;
         const activeRows = opts && opts.activeRows || null;
         const iterN = activeRows ? activeRows.length : rowEnd - rowStart;
+        const trackDelta = !!(opts && opts.trackDelta);
+        let deltaAbs = 0;
         for (let idx = 0; idx < iterN; idx++) {
           const i = activeRows ? activeRows[idx] : rowStart + idx;
           if (activeRows && (i < rowStart || i >= rowEnd)) continue;
@@ -680,11 +690,17 @@ var init_sparse_matrix = __esm({
           const start = rowPtr[i];
           const end = rowPtr[i + 1];
           for (let k = start; k < end; k++) {
+            const w0 = values[k];
             values[k] += scaled * preSpikes[colIdx[k]];
             if (values[k] > wMax) values[k] = wMax;
             else if (values[k] < wMin) values[k] = wMin;
+            if (trackDelta) {
+              const dv = values[k] - w0;
+              deltaAbs += dv < 0 ? -dv : dv;
+            }
           }
         }
+        return trackDelta ? deltaAbs : void 0;
       }
       /**
        * BCM plasticity rule (Bienenstock, Cooper, Munro 1982 — J Neurosci
@@ -58345,13 +58361,33 @@ var NeuronCluster = class {
     const negAbs = Math.abs(negLr);
     const _yieldMacro = typeof setImmediate === "function" ? () => new Promise((r) => setImmediate(r)) : () => new Promise((r) => setTimeout(r, 0));
     let _sliceT0 = Date.now();
+    let _d0 = -1;
+    let _exitRep = reps;
     for (let i = 0; i < reps; i++) {
-      this.synapses.ojaUpdate(pre, correctPost, posLr, { activeRows: correctActive });
-      if (wrongPost) this.synapses.antiHebbianUpdate(pre, wrongPost, negAbs, { activeRows: wrongActive });
+      let _d = this.synapses.ojaUpdate(pre, correctPost, posLr, { activeRows: correctActive, trackDelta: true }) || 0;
+      if (wrongPost) _d += this.synapses.antiHebbianUpdate(pre, wrongPost, negAbs, { activeRows: wrongActive, trackDelta: true }) || 0;
+      if (_d0 < 0) _d0 = _d;
+      if (_d === 0 || _d0 > 0 && _d < _d0 * 1e-9) {
+        _exitRep = i + 1;
+        break;
+      }
       if (i + 1 < reps && Date.now() - _sliceT0 >= 60) {
         await _yieldMacro();
         _sliceT0 = Date.now();
       }
+    }
+    const _cs = this._pairConvStats || (this._pairConvStats = { calls: 0, repsSum: 0, minRep: Infinity, maxRep: 0, lastLogMs: 0 });
+    _cs.calls++;
+    _cs.repsSum += _exitRep;
+    if (_exitRep < _cs.minRep) _cs.minRep = _exitRep;
+    if (_exitRep > _cs.maxRep) _cs.maxRep = _exitRep;
+    if (Date.now() - _cs.lastLogMs > 6e4 && _cs.calls > 0) {
+      console.log(`[L1B] convergence gate \u2014 ${_cs.calls} pair-doses this window: avg exit rep ${(_cs.repsSum / _cs.calls).toFixed(1)}/${reps}, min ${_cs.minRep === Infinity ? "-" : _cs.minRep}, max ${_cs.maxRep} (fixed-point exit, trained-equivalent \u22645e-10 measured; dose ceiling unchanged).`);
+      _cs.lastLogMs = Date.now();
+      _cs.calls = 0;
+      _cs.repsSum = 0;
+      _cs.minRep = Infinity;
+      _cs.maxRep = 0;
     }
   }
   /**

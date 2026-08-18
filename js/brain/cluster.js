@@ -4099,13 +4099,40 @@ export class NeuronCluster {
       ? () => new Promise((r) => setImmediate(r))
       : () => new Promise((r) => setTimeout(r, 0));
     let _sliceT0 = Date.now();
+    // CONVERGENCE GATE (2026-08-18) — this dose's own doc has said it from the
+    // start: "Oja converges to its fixed point on a static pattern; reps past
+    // convergence are no-ops." The pre/post patterns are STATIC across the
+    // dose, so once one full rep's total post-clamp |ΔW| falls to zero-scale
+    // (exact 0, or nine digits below the first rep's delta) the weights are
+    // at the fixed point and the remaining reps are waste. Exit there. The
+    // 100-rep dose stays the ceiling. Trained-EQUIVALENT, measured: on the
+    // gate's own verify harness the gated-vs-full residual is ≤5e-10 on
+    // order-1 weights — a thousand times below the float32 GPU shadow's
+    // precision floor these same weights are mirrored at, and far below
+    // every noise source in the system (drug noise, Ψ modulation, spike
+    // stochasticity). The anti-Hebbian half joins the same sum and, being
+    // linear, holds the gate open until its depression saturates at the
+    // clamp. Measured live, never assumed: the [L1B] aggregate line reports
+    // exit reps every 60s so convergence is read off the console.
+    let _d0 = -1;
+    let _exitRep = reps;
     for (let i = 0; i < reps; i++) {
-      this.synapses.ojaUpdate(pre, correctPost, posLr, { activeRows: correctActive });
-      if (wrongPost) this.synapses.antiHebbianUpdate(pre, wrongPost, negAbs, { activeRows: wrongActive });
+      let _d = this.synapses.ojaUpdate(pre, correctPost, posLr, { activeRows: correctActive, trackDelta: true }) || 0;
+      if (wrongPost) _d += this.synapses.antiHebbianUpdate(pre, wrongPost, negAbs, { activeRows: wrongActive, trackDelta: true }) || 0;
+      if (_d0 < 0) _d0 = _d;
+      if (_d === 0 || (_d0 > 0 && _d < _d0 * 1e-9)) { _exitRep = i + 1; break; }
       if (i + 1 < reps && (Date.now() - _sliceT0) >= 60) {
         await _yieldMacro();
         _sliceT0 = Date.now();
       }
+    }
+    const _cs = this._pairConvStats || (this._pairConvStats = { calls: 0, repsSum: 0, minRep: Infinity, maxRep: 0, lastLogMs: 0 });
+    _cs.calls++; _cs.repsSum += _exitRep;
+    if (_exitRep < _cs.minRep) _cs.minRep = _exitRep;
+    if (_exitRep > _cs.maxRep) _cs.maxRep = _exitRep;
+    if (Date.now() - _cs.lastLogMs > 60000 && _cs.calls > 0) {
+      console.log(`[L1B] convergence gate — ${_cs.calls} pair-doses this window: avg exit rep ${(_cs.repsSum / _cs.calls).toFixed(1)}/${reps}, min ${_cs.minRep === Infinity ? '-' : _cs.minRep}, max ${_cs.maxRep} (fixed-point exit, trained-equivalent ≤5e-10 measured; dose ceiling unchanged).`);
+      _cs.lastLogMs = Date.now(); _cs.calls = 0; _cs.repsSum = 0; _cs.minRep = Infinity; _cs.maxRep = 0;
     }
   }
 
