@@ -40,7 +40,7 @@
 
 import { sharedEmbeddings } from './embeddings.js';
 import { ensureLetter, ensureLetters, encodeLetter, decodeLetter, inventorySize, inventorySnapshot } from './letter-input.js';
-import { EXAM_BANKS, TRAIN_BANKS, cutScoreFor, trainExamOverlap, examVocabCoverage, extractVocabFromBank, methodologyBankFor, scoreMethodologyAnswer } from './student-question-banks.js';
+import { EXAM_BANKS, TRAIN_BANKS, _examSanitizeReport, cutScoreFor, trainExamOverlap, examVocabCoverage, extractVocabFromBank, methodologyBankFor, scoreMethodologyAnswer } from './student-question-banks.js';
 // Track-level subject names (ela/math/science/social/art/life) live as
 // the local `SUBJECTS` constant below. iter21-B band codes (ela/math/
 // sci/soc/art/life) are normalized via `subjects.js`. Keep them
@@ -25265,31 +25265,31 @@ export class Curriculum {
     // Warn loud on any overlap; operator can decide whether to abort
     // the run or proceed with the contaminated battery.
     try {
+      // The banks now arrive ALREADY disjoint — student-question-banks.js
+      // sanitizes at module load, so held-out validity is a property of the
+      // export rather than a repair this file performs on every boot. What
+      // remains here is verification plus an honest statement of what the
+      // source guarantee removed, because silently-dropped exam questions
+      // would misrepresent battery size.
       let totalOverlap = 0;
       let totalExam = 0;
-      let totalStripped = 0;
       for (const cellKey of Object.keys(EXAM_BANKS)) {
         const overlap = trainExamOverlap(cellKey);
         if (overlap.length > 0) {
-          // Auto-strip overlapping questions from the EXAM bank in
-          // place. EXAM is supposed to be the held-out set, so when
-          // train and exam share question text, the exam side gets
-          // dropped (preserving train coverage). The audit warning
-          // becomes informational instead of "held-out invalid".
-          const overlapSet = new Set(overlap);
-          const before = EXAM_BANKS[cellKey].length;
-          EXAM_BANKS[cellKey] = EXAM_BANKS[cellKey].filter(e => {
-            const q = String(e.question || e.q || '').trim().toLowerCase();
-            return !overlapSet.has(q);
-          });
-          const stripped = before - EXAM_BANKS[cellKey].length;
-          totalStripped += stripped;
-          console.warn(`[Curriculum] EXAM/TRAIN OVERLAP on ${cellKey}: auto-stripped ${stripped} duplicate question(s) from EXAM bank to preserve held-out validity. Sample: "${overlap[0].slice(0, 60)}"`);
+          // Reaching here means something re-contaminated the banks AFTER
+          // module load — a real defect, not authoring drift, so it is loud.
           totalOverlap += overlap.length;
+          console.warn(`[Curriculum] EXAM/TRAIN OVERLAP SURVIVED SANITIZE on ${cellKey}: ${overlap.length} question(s) are in BOTH banks at runtime — held-out validity is compromised and a gate pass here could be memorization. Sample: "${overlap[0].slice(0, 60)}"`);
         }
         totalExam += (EXAM_BANKS[cellKey] || []).length;
       }
-      this._hb(`[Curriculum] Held-out eval check: ${totalExam} exam questions across ${Object.keys(EXAM_BANKS).length} cells · overlap=${totalOverlap} → auto-stripped=${totalStripped} (0 remaining = valid held-out)`);
+      const _san = _examSanitizeReport || { totalRemoved: 0, cells: {} };
+      if (_san.totalRemoved > 0) {
+        const _detail = Object.entries(_san.cells)
+          .map(([k, v]) => `${k} ${v.removed} (${v.before}→${v.after})`).join(', ');
+        console.warn(`[Curriculum] Held-out sanitize removed ${_san.totalRemoved} duplicate question(s) from the EXAM banks at load: ${_detail}. These were authored into BOTH the training exposure and the held-out bank; EXAM loses the duplicate so teaching coverage is never reduced. Fix the authoring to reclaim the questions.`);
+      }
+      this._hb(`[Curriculum] Held-out eval check: ${totalExam} exam questions across ${Object.keys(EXAM_BANKS).length} cells · runtime overlap=${totalOverlap} (0 = valid held-out) · removed at source load=${_san.totalRemoved}`);
     } catch (err) {
       console.warn('[Curriculum] Held-out eval check failed:', err?.message || err);
     }
