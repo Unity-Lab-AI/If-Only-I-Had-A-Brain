@@ -2115,7 +2115,20 @@ class ServerBrain {
         writeCurrentSlice: (regionName, sparseIndices, sparseValues) =>
           this._gpuWriteCortexCurrentSlice(regionName, sparseIndices, sparseValues),
       };
+      // Does a queued checkpoint already carry this exact intra matrix? If so
+      // the ~45s construction pass at the 12M cortex is pure waste — the apply
+      // step replaces rowPtr, colIdx AND values wholesale. Only defer when a
+      // section is present AND its geometry matches the cortex we are about to
+      // build; anything else builds normally. `ensureIntraTopology()` after the
+      // apply is the safety net if the restore fails to deliver.
+      const _pendingIntra = (this._pendingCortexWeights?.sections || [])
+        .find((s) => s.name === 'cortex.synapses'
+          && s.rows === langCortexSize && s.cols === langCortexSize && s.nnz > 0);
+      if (_pendingIntra) {
+        console.log(`[Brain] intra-synapse construction will be DEFERRED — checkpoint carries cortex.synapses at matching geometry (${langCortexSize.toLocaleString()}², nnz=${_pendingIntra.nnz.toLocaleString()}), so building a random topology first would only be overwritten.`);
+      }
       this.cortexCluster = new clusterMod.NeuronCluster('cortex', langCortexSize, {
+        deferIntraTopology: !!_pendingIntra,
         tonicDrive: 14 + (this.persona.arousalBaseline || 0.9) * 6,
         noiseAmplitude: 7,
         connectivity: 0.15,
@@ -3879,6 +3892,14 @@ class ServerBrain {
     this._lastInputTime = Date.now();
     this._isDreaming = false;
 
+    // FINAL GUARD on the deferred intra topology. `_applyPendingCortexWeights`
+    // already fires this, but that call only happens if the apply path is
+    // reached at all — and the brain must NEVER begin running on an unwired
+    // cortex because a restore silently never ran. No-op in every healthy case.
+    if (this.cortexCluster && typeof this.cortexCluster.ensureIntraTopology === 'function') {
+      this.cortexCluster.ensureIntraTopology('boot complete — restore path never delivered');
+    }
+
     // Deploy identity — the "did the new code even land?" signal. Resolve
     // ONCE at boot, in priority order:
     //   1. server/deployed-build.json — written by deploy/self-update.sh from
@@ -5263,10 +5284,26 @@ class ServerBrain {
     if (!col) return;
     const { sections, totalBytes } = col;
     const BIN_FILE = WEIGHTS_FILE.replace(/\.json$/, '.bin');
+    // ATOMIC (2026-08-18) — THE TORN-CHECKPOINT ROOT CAUSE. This path used to
+    // open BIN_FILE itself with 'w', truncating the live weights file and then
+    // streaming multiple GB into it in place. Any kill during that window — and
+    // this is the SHUTDOWN path, so it runs precisely when the process is being
+    // told to die (systemd stop timeout, SIGKILL after the SIGTERM grace, an
+    // Update & Savestart that does not wait) — leaves the ONLY copy of her
+    // trained brain truncated, with section headers declaring more data than
+    // follows. That is exactly what was found live: `Binary weights load
+    // failed: short read at offset 1488000056, expected 536870912 more bytes`,
+    // a ~1.49GB file where multiple GB belonged, and the loader applies NOTHING
+    // on failure while the resume marker still claims cells passed — so she
+    // would have skipped ELA-K and math-K on a blank cortex.
+    // The async checkpoint path has always been tmp+fsync+rename; the shutdown
+    // path simply never got the same discipline. It does now: an interrupted
+    // shutdown can now only ever lose the NEW checkpoint, never the old one.
+    const TMP_FILE = BIN_FILE + '.tmp';
     const t0 = Date.now();
     let fd;
     try {
-      fd = fs.openSync(BIN_FILE, 'w');
+      fd = fs.openSync(TMP_FILE, 'w');
       const hdr = Buffer.alloc(16);
       hdr.write('UBWT', 0, 4, 'ascii');
       hdr.writeUInt32LE(1, 4);
@@ -5279,12 +5316,20 @@ class ServerBrain {
         fs.writeSync(fd, Buffer.from(s.colIdx.buffer, s.colIdx.byteOffset, s.nnz * 4));
         fs.writeSync(fd, Buffer.from(s.values.buffer, s.values.byteOffset, s.nnz * 8));
       }
+      // fsync BEFORE the swap so the bytes are on the platter, not just in the
+      // page cache — a power loss between rename and writeback would otherwise
+      // reproduce the very truncation this change exists to prevent.
+      fs.fsyncSync(fd);
       fs.closeSync(fd);
       fd = undefined;
-      console.log(`[Brain] Binary weights saved ${sections.length} sections, ${(totalBytes / 1048576).toFixed(1)} MB → ${path.basename(BIN_FILE)} (sync shutdown path, ${Date.now() - t0}ms)`);
+      fs.renameSync(TMP_FILE, BIN_FILE);   // atomic swap — the old checkpoint survives until this instant
+      console.log(`[Brain] Binary weights saved ${sections.length} sections, ${(totalBytes / 1048576).toFixed(1)} MB → ${path.basename(BIN_FILE)} (sync shutdown path, atomic tmp+fsync+rename, ${Date.now() - t0}ms)`);
     } catch (err) {
       if (fd !== undefined) { try { fs.closeSync(fd); } catch {} }
-      console.warn('[Brain] Binary weights save failed:', err?.message || err);
+      // Never leave a half-written tmp behind, and never let a failed save
+      // damage the checkpoint that is already on disk.
+      try { if (fs.existsSync(TMP_FILE)) fs.unlinkSync(TMP_FILE); } catch { /* best-effort */ }
+      console.warn('[Brain] Binary weights save failed (previous checkpoint left intact):', err?.message || err);
     }
   }
 
@@ -5565,6 +5610,13 @@ class ServerBrain {
     }
     if (applied > 0) {
       console.log(`[Brain] Binary weights applied — ${applied}/${pending.sections.length} sections restored onto live cortexCluster`);
+    }
+    // SAFETY NET for the deferred construction: if the restore did not actually
+    // deliver an intra matrix (apply threw, section missing, torn checkpoint),
+    // build the topology now rather than run on an unwired cortex. No-op when
+    // the restore succeeded — that is where the ~45s boot saving comes from.
+    if (typeof cortex.ensureIntraTopology === 'function') {
+      cortex.ensureIntraTopology('post-checkpoint-apply');
     }
     this._pendingCortexWeights = null;
   }
@@ -6160,12 +6212,28 @@ setInterval(() => {
   // catches the whole ledger up with zero correctness loss — episodes just
   // HOLD their salience (and their candidacy) until the brain has slept.
   const _ce = brain.consolidationEngine;
-  const _lastPass = (_ce && _ce.passCount > 0) ? (_ce.lastPassAt || 0) : 0;
-  const _starvedMs = Date.now() - _lastPass;
-  if (_starvedMs > 3 * 60 * 60 * 1000) {
+  const _everPassed = !!(_ce && _ce.passCount > 0 && _ce.lastPassAt);
+  // EPOCH-ZERO FIX (2026-08-18) — with no completed pass this read 0 and the
+  // elapsed time was measured FROM THE EPOCH: the live log said "no completed
+  // consolidation pass in 29784410min", which is ~56 YEARS on a brain minutes
+  // old. The gate behaved correctly; only the number was a lie, and absurd
+  // numbers train the operator to stop trusting the instrument. On a brain that
+  // has never consolidated, the honest reference is THIS BOOT.
+  // BEHAVIOR IS UNCHANGED: a brain that has NEVER consolidated still always
+  // skips the sweep (that is the whole CLS point — decay must not outrun the
+  // first sleep). Measuring from boot only fixes what the line SAYS; gating on
+  // `!_everPassed` keeps what it DOES. Measuring from boot alone would have
+  // silently let decay start running after 0min uptime on a fresh brain — the
+  // exact erosion this guard was written to stop.
+  const _ref = _everPassed ? _ce.lastPassAt : (brain._startedAt || Date.now());
+  const _starvedMs = Math.max(0, Date.now() - _ref);
+  if (!_everPassed || _starvedMs > 3 * 60 * 60 * 1000) {
     if (!brain._decayGateLogAt || (Date.now() - brain._decayGateLogAt) > 1800000) {
       brain._decayGateLogAt = Date.now();
-      console.log(`[Episodic] decay sweep SKIPPED — no completed consolidation pass in ${Math.round(_starvedMs / 60000)}min; episodes hold their salience until consolidation runs again (CLS pairing: decay travels WITH sleep, never ahead of it).`);
+      const _since = _everPassed
+        ? `no completed consolidation pass in ${Math.round(_starvedMs / 60000)}min`
+        : `no consolidation pass has completed YET this boot (${Math.round(_starvedMs / 60000)}min uptime)`;
+      console.log(`[Episodic] decay sweep SKIPPED — ${_since}; episodes hold their salience until consolidation runs again (CLS pairing: decay travels WITH sleep, never ahead of it).`);
     }
     return;
   }

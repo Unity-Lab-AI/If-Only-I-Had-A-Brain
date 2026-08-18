@@ -4590,19 +4590,48 @@ export class Curriculum {
       // never creates one. Those rows can never learn, no matter how long she
       // trains. At the current geometry that is true of sem_to_word_motor and
       // word_motor_to_sem (0.744 each) - the pair that drives WORD EMISSION.
+      // LAMINATION-AWARE (2026-08-18). The nnz/ALL-rows form above was a FALSE
+      // POSITIVE and fired on every single boot. Laminated projections carry a
+      // dstLayerMask pinning terminals to L4 — and L4 is 25% of the layer split
+      // [L1 5%, L2/3 25%, L4 25%, L5 25%, L6 20%] — so 75% of their rows are
+      // INTENTIONALLY empty (Felleman & Van Essen 1991, wired at cluster.js).
+      // Live proof: seven projections sit at exactly 25% recruited, and
+      // word_motor_to_sem averages 0.744 entries/ALL-rows purely because of it.
+      // Dividing by rows that lamination deliberately left empty measures the
+      // lamination, not starvation — the same "self-check that always fails is a
+      // self-check nobody reads" trap the previous averaging version fell into.
+      //
+      // The condition that actually matters: does a projection have rows that
+      // RECEIVED wiring at all, and does each wired row carry real fanout?
+      // Occupancy is read straight off rowPtr, so it is exact and needs no mask
+      // at audit time (restored checkpoints have no mask to consult anyway).
       const _fanouts = [];
       for (const [_pname, _pproj] of Object.entries(cluster.crossProjections)) {
-        if (_pproj && _pproj.rows > 0 && typeof _pproj.nnz === 'number') {
-          _fanouts.push({ name: _pname, fanout: _pproj.nnz / _pproj.rows });
+        if (!_pproj || !(_pproj.rows > 0) || typeof _pproj.nnz !== 'number') continue;
+        let _recruited = 0;
+        const _rp = _pproj.rowPtr;
+        if (_rp && _rp.length > _pproj.rows) {
+          for (let r = 0; r < _pproj.rows; r++) if (_rp[r + 1] > _rp[r]) _recruited++;
+        } else {
+          _recruited = _pproj.nnz > 0 ? _pproj.rows : 0;   // no rowPtr — assume uniform
         }
+        _fanouts.push({
+          name: _pname,
+          recruited: _recruited,
+          pct: (_recruited / _pproj.rows) * 100,
+          perWiredRow: _recruited > 0 ? _pproj.nnz / _recruited : 0,
+        });
       }
       if (_fanouts.length > 0) {
-        const _starved = _fanouts.filter(f => f.fanout < 1.0);
+        // Genuine starvation = a projection NOTHING can learn through (no wired
+        // row at all), or wired rows that somehow carry no entry.
+        const _starved = _fanouts.filter(f => f.recruited === 0 || f.perWiredRow < 1.0);
         if (_starved.length === 0) {
-          const _lo = _fanouts.reduce((m, f) => (f.fanout < m.fanout ? f : m));
-          checks.push(`✓ cross-projection wiring: all ${_fanouts.length} projections at ≥1 entry/row (sparsest ${_lo.name} ${_lo.fanout.toFixed(2)}) — no row is structurally unable to learn`);
+          const _lo = _fanouts.reduce((m, f) => (f.perWiredRow < m.perWiredRow ? f : m));
+          const _laminated = _fanouts.filter(f => f.pct < 99).length;
+          checks.push(`✓ cross-projection wiring: ${_fanouts.length} projections, every wired row carries ≥1 entry (sparsest ${_lo.name} ${_lo.perWiredRow.toFixed(2)}/wired row); ${_laminated} laminated to a sub-layer (empty rows there are the L4 terminal rule, not starvation)`);
         } else {
-          issues.push(`✗ cross-projection STARVED — ${_starved.map(f => `${f.name} ${f.fanout.toFixed(2)} entries/row`).join(', ')}. Below 1.0/row means rows with NO incoming connection; ojaUpdate only adjusts EXISTING CSR entries and never creates one, so those rows can never learn.`);
+          issues.push(`✗ cross-projection STARVED — ${_starved.map(f => `${f.name} ${f.recruited} wired rows (${f.pct.toFixed(1)}%), ${f.perWiredRow.toFixed(2)} entries/wired row`).join(', ')}. A projection with no wired row can never learn: ojaUpdate only adjusts EXISTING CSR entries and never creates one.`);
         }
       }
 
@@ -25216,7 +25245,13 @@ export class Curriculum {
         console.log(`[Brain] ✓ fractal equation verified — ${audit.checks.length} checks passed`);
         for (const c of audit.checks) console.log(`  ${c}`);
       } else {
-        console.warn(`[Brain] ⚠ fractal equation drift detected — ${audit.issues.length} issue(s) + ${audit.checks.length} ok:`);
+        // SELF-SUFFICIENT HEADER (2026-08-18) — the detail lines below print in
+        // the SAME millisecond as this header, and a remote reader that dedupes
+        // or cursors by timestamp can lose them (lived it: this audit fired
+        // "1 issue(s)" and the line naming WHICH check failed never arrived, so
+        // the drift went unidentified for hours). The header now carries the
+        // failing checks inline, so ONE surviving line is enough to act on.
+        console.warn(`[Brain] ⚠ fractal equation drift detected — ${audit.issues.length} issue(s) + ${audit.checks.length} ok: ${audit.issues.map(i => String(i).replace(/^✗\s*/, '').split('—')[0].trim()).join(' | ')}`);
         for (const i of audit.issues) console.warn(`  ${i}`);
         for (const c of audit.checks) console.log(`  ${c}`);
       }

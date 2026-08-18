@@ -624,6 +624,20 @@ export class NeuronCluster {
     const _intraStart = Date.now();
     const _logIntra = size >= 50000;
     this.synapses = new SparseMatrix(size, size, { wMin: -2.0, wMax: 2.0 });
+    // DEFERRED TOPOLOGY (2026-08-18). Building the intra matrix costs ~45s at
+    // the 12M cortex (360,000,000 nnz) — and on a savestart resume every byte
+    // of it is thrown away: `_applyPendingCortexWeights` does
+    // `cortex.synapses = m`, replacing rowPtr, colIdx AND values with the
+    // checkpoint's own. So the boot burned 45 seconds generating a random
+    // topology purely to overwrite it seconds later.
+    // When the caller knows a matching checkpoint is queued it passes
+    // `deferIntraTopology`, and construction is held as a thunk instead of run.
+    // `ensureIntraTopology()` fires it afterwards ONLY if the checkpoint did
+    // not actually deliver — so a FAILED or absent restore still gets a real
+    // topology (this matters: a torn checkpoint failed to load this very
+    // morning, and an unconditional skip would have left her with an EMPTY
+    // cortex instead of a random one).
+    const _buildIntraTopology = () => {
     if (this.topographic && size >= 10_000) {
       // Topographic ring topology for large clusters. Linear nnz
       // scaling lets the cortex push past the global-random VRAM
@@ -657,6 +671,14 @@ export class NeuronCluster {
       this.synapses.initRandom(this.connectivity, this.excitatoryRatio, 1.0);
     }
     if (_logIntra) console.log(`[Cluster ${name}] intra-cluster synapses ready (nnz=${this.synapses.nnz.toLocaleString()}) in ${Date.now() - _intraStart}ms`);
+    };
+    if (opts.deferIntraTopology) {
+      this._intraTopologyThunk = _buildIntraTopology;
+      if (_logIntra) console.log(`[Cluster ${name}] intra-synapse topology DEFERRED — a matching checkpoint is queued and would overwrite it anyway (saves the full construction pass at ${size.toLocaleString()} neurons). ensureIntraTopology() builds it if the restore does not deliver.`);
+    } else {
+      this._intraTopologyThunk = null;
+      _buildIntraTopology();
+    }
 
     // Per-region attention gain map. Posner attention
     // network functionally — amygdala (valence/arousal) and basal-
@@ -3946,6 +3968,26 @@ export class NeuronCluster {
    * for it. Browser instances have no `_brain`, so they always answer false
    * and keep the full dense path.
    */
+  /**
+   * Build the deferred intra topology if — and only if — nothing else filled
+   * it. Called after a checkpoint restore attempt. A successful restore leaves
+   * `synapses.nnz > 0` and this is a no-op (the 45s stays saved); a failed or
+   * absent restore leaves it empty and this pays the cost rather than running
+   * the brain on an unwired cortex. Safe to call repeatedly.
+   *
+   * @param {string} reason — logged when the build actually has to happen
+   * @returns {boolean} true if the topology was built here
+   */
+  ensureIntraTopology(reason = 'unspecified') {
+    const thunk = this._intraTopologyThunk;
+    if (!thunk) return false;
+    this._intraTopologyThunk = null;
+    if (this.synapses && this.synapses.nnz > 0) return false;   // restore delivered
+    console.warn(`[Cluster ${this.name}] deferred intra topology BUILDING NOW (${reason}) — the checkpoint did not supply an intra matrix, so the construction pass runs after all. Not an error; this is the safety net.`);
+    thunk();
+    return true;
+  }
+
   _isBoundMatrix(matrixName) {
     const b = this._brain;
     return !!(b && b._cortexBoundNames && b._cortexBoundNames.has(matrixName));
