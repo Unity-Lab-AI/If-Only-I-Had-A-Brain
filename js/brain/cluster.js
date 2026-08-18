@@ -2850,6 +2850,33 @@ export class NeuronCluster {
     const all = String(clause).toLowerCase().replace(/[^a-z']/g, '');
     if (all.length === 0) return Infinity; // non-alphabetic clause = max surprise
     const letters = all.slice(0, Math.max(1, maxLetters));
+    // v0.3.20 FAST PATH — the entire walk in ONE round trip. Per-letter
+    // stepAwait costs a network round trip each (48 for a short message), which
+    // queues behind teach traffic on a busy donor; this hands the donor every
+    // letter's band at once and it injects/steps/counts on the card. Returns
+    // null on an older donor and we fall through to the per-letter form below.
+    if (this._gpuProxyReady && this._gpuProxy && typeof this._gpuProxy.letterSurprise === 'function') {
+      try {
+        const region = this.regions.letter;
+        const groupSize = Math.max(1, Math.floor((region.end - region.start) / 26));
+        const ranges = [];
+        for (const ch of letters) {
+          const oneHot = encodeLetter(ch);
+          const r = [];
+          for (let d = 0; d < oneHot.length; d++) {
+            if (oneHot[d] <= 0) continue;
+            const start = region.start + d * groupSize;
+            const len = Math.min(groupSize, region.end - start);
+            if (len > 0 && r.length < 8) r.push([start, len]);
+          }
+          if (r.length) ranges.push(r);
+        }
+        if (ranges.length) {
+          const s = await this._gpuProxy.letterSurprise('letter', ranges, 2);
+          if (typeof s === 'number' && Number.isFinite(s)) return s;
+        }
+      } catch { /* fall through to the per-letter path */ }
+    }
     this._prevLetterRate = 0;
     let sum = 0;
     let count = 0;
