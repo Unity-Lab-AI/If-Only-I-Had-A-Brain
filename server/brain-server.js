@@ -17,6 +17,40 @@
  * Requires: npm install ws (WebSocket library)
  */
 
+// ── CONSOLE RING (2026-08-18) — the box's logs live ONLY in journald and
+// the operator's tail session can die exactly when the confession lines
+// print (lived it: a ~45s loop freeze's post-mortem lines — the BLOCKED
+// line carrying chatStage=, the stepAwait aborts, the donor crumb — all
+// landed while the operator's console view was dead, and the diagnosis
+// stalled on "my console is blank"). Every console.log/warn/error line
+// now ALSO lands in a bounded in-memory ring served at
+// GET /console-tail.json?n=N (public read-only, same transparency lane as
+// /public-state.json) — so the console is readable remotely, after the
+// fact, by anyone debugging her, without SSH and without a live tail.
+// Bounded: 2,000 lines × ≤600 chars; the wrap never throws and never
+// alters what reaches stdout/journald.
+(() => {
+  const RING_CAP = 2000;
+  const LINE_CAP = 600;
+  const ring = [];
+  globalThis.__consoleRing = ring;
+  const wrap = (orig, level) => (...args) => {
+    try {
+      let line = '';
+      for (const a of args) {
+        line += (typeof a === 'string' ? a : (a && a.message) ? a.message : String(a)) + ' ';
+        if (line.length > LINE_CAP) break;
+      }
+      ring.push({ ts: Date.now(), level, line: line.slice(0, LINE_CAP) });
+      if (ring.length > RING_CAP) ring.shift();
+    } catch { /* the ring must never break logging */ }
+    return orig.apply(console, args);
+  };
+  console.log = wrap(console.log.bind(console), 'log');
+  console.warn = wrap(console.warn.bind(console), 'warn');
+  console.error = wrap(console.error.bind(console), 'error');
+})();
+
 // ── HEAP SELF-CORRECTION — build to the HARDWARE, not Node defaults ──
 // The language cortex (the brain's main organ — its CSR weight matrices
 // live in the V8 HEAP, not VRAM) is size-bounded by v8 heap_size_limit
@@ -6094,6 +6128,28 @@ const httpServer = http.createServer((req, res) => {
     brain._lastPublicPollTs = Date.now();
     res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=2' });
     res.end(brain._publicStateJson || JSON.stringify({ type: 'state', state: null, snapshotAt: 0, note: 'snapshot warming up — try again in a moment' }));
+    return;
+  }
+  // CONSOLE TAIL (2026-08-18) — the in-memory console ring (see the wrap at
+  // the top of this file), served read-only so the box's console is
+  // reachable remotely after the fact: freeze post-mortems print their
+  // confession lines the moment the loop unblocks, and a dead tail session
+  // must never lose them again. ?n=N caps at 500 (default 300); ?since=ts
+  // returns lines newer than a millisecond timestamp. Same public
+  // transparency lane as /public-state.json.
+  if (req.url && req.url.startsWith('/console-tail.json') && req.method === 'GET') {
+    try {
+      const u = new URL(req.url, 'http://x');
+      const n = Math.min(500, Math.max(1, parseInt(u.searchParams.get('n') || '300', 10) || 300));
+      const since = parseInt(u.searchParams.get('since') || '0', 10) || 0;
+      const ring = globalThis.__consoleRing || [];
+      const lines = (since > 0 ? ring.filter((e) => e.ts > since) : ring).slice(-n);
+      res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
+      res.end(JSON.stringify({ now: Date.now(), count: lines.length, lines }));
+    } catch (err) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: err && err.message }));
+    }
     return;
   }
   // STABLE DONOR DOWNLOAD DOOR — the legend/compute pages used to bake a
