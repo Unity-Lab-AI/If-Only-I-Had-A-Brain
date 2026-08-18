@@ -829,3 +829,18 @@ The CLI restart from the prior handoff was FOR this. Gee authorized a 4090 proof
 - [x] **BUFFLOOR.2** **DONE - proven by simulating the real SWRR against the live buffer figures.** Old: primary 1000 units, both replicas 0. New: primary 926, Gee-windows 49, Sponge 25 - the primary still takes the overwhelming share it deserves, and neither replica is zeroed.
 - [x] **BUFFLOOR.3** **VERIFY (build half) DONE** - `node --check` + `import()` ESM PASS. Server-side only.
 - [ ] **BUFFLOOR.4** GEE: Update & Savestart, together with MIRRORCAP. Between them every donor should now receive BOTH mirrored compute_batch work AND a real share of Hebbian/propagate units regardless of sync state.
+
+---
+
+## PARTMIRROR - 2026-08-18 - a PARTIAL replica was mirrored the FULL 8-cluster batch it could not run
+
+> Gee (verbatim): *"okay but why is Sponge not working 0 Gn/s?"*
+
+**THE RIGHT QUESTION, AND IT ISOLATED THE LAST CASE.** After MIRRORCAP + BUFFLOOR two donors came alive (Gee windows 18.2 Gn/s, RunPod 32.6 Gn/s) while Sponge stayed at 0 with an IDENTICAL row - same 19s uptime, same 2.5MB in, same 0KB buffered. Identical inputs, different outcome, so the difference had to be the donor itself: **5.6GB VRAM against an 11,810MB full-replica need, so Sponge is a PARTIAL replica** with `clusterCoverage = [cortex, hippocampus]`.
+
+**THE MECHANISM.** `_syncReplicaToDonor` skips `gpu_init` for clusters outside a partial donor coverage (the `if (_coverage && !_coverage.has(clusterName)) continue;` at ~1500), so Sponge holds **2 of 8** cluster buffers - correct, deliberate, and how a small card participates at all. But my WORKSHARE mirror sent `clusters: clusterParams` for **all 8**. A batch referencing six clusters the donor never initialised cannot be run, so it computed nothing and scored 0. The two donors that worked are both full-coverage, which is exactly why they were unaffected and Sponge alone was not.
+
+- [x] **PARTMIRROR.1** **DONE - the mirror is COVERAGE-AWARE.** Each partial donor now receives only the cluster params it actually holds; it steps its real subset and earns. A donor covering nothing is skipped rather than sent an empty batch. Full-coverage donors are byte-identical to before.
+- [x] **PARTMIRROR.2** **VERIFY (build half) DONE** - `node --check` + `import()` ESM PASS. Server-side only.
+- [ ] **PARTMIRROR.3** GEE: Update & Savestart. Verdict: **all three donors positive**, including the 5.6GB card - which is the real test of the whole batch, because a small volunteer card is the common case for public donors, not the exception.
+- [ ] **PARTMIRROR.4** **OPEN - worth checking later:** a partial donor Gn/s will be proportionally LOWER (it steps 2 of 8 clusters, so its neuron-count per batch is smaller). That is honest and correct - it is doing less work - but the leaderboard should not read it as a broken card. Consider surfacing coverage alongside the rate so a small donor sees "contributing 2/8 clusters" rather than an unexplained low number.
