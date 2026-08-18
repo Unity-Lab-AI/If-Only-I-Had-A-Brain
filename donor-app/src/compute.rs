@@ -642,6 +642,47 @@ impl ComputeEngine {
         // the teach frame-flood and the brain reset the donor.
         Ok(())
     }
+
+    /// v0.3.19 — rep-dose hebbian: the STATIC pattern is written ONCE and the
+    /// plasticity kernel dispatches `reps` times in one encoder (WebGPU orders
+    /// same-resource dispatches within/across passes, so the reps are
+    /// sequential — identical math to reps separate calls). v0.3.18's executor
+    /// looped the whole hebbian() per rep, re-writing two dense region-sized
+    /// pattern buffers each time (~48MB × 2 × reps at the 12M intra — gigabytes
+    /// of queue writes per dose) — the donor's GPU queue drowned and compute
+    /// batches starved behind it (live: donor 'seen' climbed to ~300s).
+    pub fn hebbian_reps(&self, name: &str, pre_indices: &[u32], post_indices: &[u32], lr: f32, reps: u32) -> Result<(), String> {
+        let m = self.sparse.get(name).ok_or_else(|| format!("sparse '{name}' not uploaded"))?;
+        if m.rows == 0 || m.nnz == 0 {
+            return Ok(());
+        }
+        self.write_dense_spikes(&m.pre_spikes, m.cols, pre_indices);
+        self.write_dense_spikes(&m.post_spikes, m.rows, post_indices);
+        let params = HebbParams { rows: m.rows, nnz: m.nnz, lr, reward: 1.0, w_min: -2.0, w_max: 2.0, src_offset: 0, dst_offset: 0 };
+        let ub = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor { label: Some("hebb-reps-params"), contents: bytemuck::bytes_of(&params), usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST });
+        let bg = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("hebb-reps-bg"),
+            layout: &self.plasticity_pipeline.get_bind_group_layout(0),
+            entries: &[
+                wgpu::BindGroupEntry { binding: 0, resource: ub.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 1, resource: m.values.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 2, resource: m.col_idx.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 3, resource: m.row_ptr.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 4, resource: m.pre_spikes.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 5, resource: m.post_spikes.as_entire_binding() },
+            ],
+        });
+        let wg = (m.rows.div_ceil(WORKGROUP)).max(1).min(MAX_WG_DIM);
+        let mut enc = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("hebbian-reps") });
+        for _ in 0..reps.max(1) {
+            let mut cp = enc.begin_compute_pass(&wgpu::ComputePassDescriptor { label: Some("hebbian-rep"), timestamp_writes: None });
+            cp.set_pipeline(&self.plasticity_pipeline);
+            cp.set_bind_group(0, &bg, &[]);
+            cp.dispatch_workgroups(wg, 1, 1);
+        }
+        self.queue.submit(std::iter::once(enc.finish()));
+        Ok(())
+    }
 }
 
 fn build_pipeline(device: &wgpu::Device, label: &str, src: &str) -> wgpu::ComputePipeline {
@@ -746,6 +787,13 @@ impl Backend {
             Backend::Wgpu(e) => e.hebbian(name, pre, post, lr),
             #[cfg(feature = "cuda")]
             Backend::Cuda(e) => e.hebbian(name, pre, post, lr),
+        }
+    }
+    fn hebbian_reps(&mut self, name: &str, pre: &[u32], post: &[u32], lr: f32, reps: u32) -> Result<(), String> {
+        match self {
+            Backend::Wgpu(e) => e.hebbian_reps(name, pre, post, lr, reps),
+            #[cfg(feature = "cuda")]
+            Backend::Cuda(e) => e.hebbian_reps(name, pre, post, lr, reps),
         }
     }
     fn write_spike_slice(&mut self, cluster: &str, region: &str, indices: &[u32]) -> Result<(), String> {
@@ -1033,6 +1081,12 @@ impl MultiEngine {
     pub fn hebbian(&mut self, name: &str, pre: &[u32], post: &[u32], lr: f32) -> Result<(), String> {
         let g = match self.matrix_gpu.get(name) { Some(&g) => g, None => return Ok(()) };
         self.engines[g].hebbian(name, pre, post, lr)
+    }
+
+    /// v0.3.19 — rep-dose hebbian (pattern written once, kernel looped).
+    pub fn hebbian_reps(&mut self, name: &str, pre: &[u32], post: &[u32], lr: f32, reps: u32) -> Result<(), String> {
+        let g = match self.matrix_gpu.get(name) { Some(&g) => g, None => return Ok(()) };
+        self.engines[g].hebbian_reps(name, pre, post, lr, reps)
     }
 
     /// TU.19-D — resident weight digest for GPU↔CPU parity. Routes to the engine
