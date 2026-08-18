@@ -1398,8 +1398,55 @@ const SERVER_GPU_MIXIN = {
    * Idempotent: compute.html / the native donor treat a repeat gpu_init for the same cluster
    * as a re-init, and `_syncReplicaToDonor` still sends its own set, so a double-send is safe.
    */
+  /**
+   * INITFIT — which clusters can THIS donor physically hold?
+   *
+   * The same VRAM-fit arithmetic `_syncReplicaToDonor` uses, lifted out so cluster INIT can
+   * ask it too. It has to: ALLINIT was calling `_gpuInitDonorClusters(ws, null)`, which sent
+   * gpu_init for ALL SEVEN clusters — ~306M neurons ≈ 4.9GB of state/spike/current buffers —
+   * to a 5.6GB card. The partial-coverage logic had ALREADY worked out that card could only
+   * hold [cortex, hippocampus]; passing null bypassed it. The donor then thrashed trying to
+   * allocate ~4.9GB it did not have, its heartbeat RTT blew out to 29,717ms, and it computed
+   * nothing — while MIRRORDIAG correctly reported the mirror as SENT(2 clusters). The server
+   * was right; the card had been handed allocations it could never satisfy.
+   *
+   * Returns null when the donor fits the full brain (init everything, the common case), a Set
+   * of cluster names when it fits only a subset, and an empty Set when it fits nothing.
+   */
+  _donorClusterFit(ws) {
+    const c = (this.clients && this.clients.get) ? this.clients.get(ws) : null;
+    if (!c) return null;
+    const _fullVram = Number(c.gpuVramMB || 0);
+    // HELD VRAM (donated cap or full card) — duty-cycle is throughput, not VRAM held.
+    const _effVram = (Number(c.donatedMB) > 0)
+      ? (_fullVram > 0 ? Math.min(Number(c.donatedMB), _fullVram) : Number(c.donatedMB))
+      : _fullVram;
+    const _needMB = Number(this._runningFloorMB || 0);
+    if (!(_effVram > 0) || !(_needMB > 0) || _effVram >= _needMB) return null;   // fits it all
+    const _budgetBytes = Math.max(0, (_effVram * 0.75 - 2048)) * 1048576;
+    const _set = (typeof this._getAutoScaleSettings === 'function') ? this._getAutoScaleSettings() : null;
+    const _bpn = (_set && _set.donorBytesPerNeuron) || 42;
+    const _prio = ['cortex', 'hippocampus', 'amygdala', 'basalGanglia', 'hypothalamus', 'mystery', 'cerebellum'];
+    const _cov = new Set();
+    let _used = 0;
+    for (const _cl of _prio) {
+      const _n = (this.CLUSTER_SIZES && this.CLUSTER_SIZES[_cl]) || 0;
+      if (!_n) continue;
+      const _cost = _n * _bpn;
+      if (_used + _cost <= _budgetBytes) { _cov.add(_cl); _used += _cost; }
+    }
+    return _cov;
+  },
+
   _gpuInitDonorClusters(ws, coverage) {
     if (!ws || ws.readyState !== 1) return 0;
+    // INITFIT — when the caller does not pin a coverage, ASK what the card can hold rather
+    // than assuming everything. Passing null used to mean "all seven clusters", which is how
+    // a 5.6GB card was handed ~4.9GB of buffers and choked.
+    const _fit = (coverage === undefined || coverage === null)
+      ? (typeof this._donorClusterFit === 'function' ? this._donorClusterFit(ws) : null)
+      : coverage;
+    coverage = _fit;
     const names = Object.keys(this.CLUSTER_SIZES || {});
     let sent = 0;
     for (const clusterName of names) {
@@ -1419,6 +1466,10 @@ const SERVER_GPU_MIXIN = {
         }));
         sent++;
       } catch { /* donor dropped mid-init — the sync path re-sends */ }
+    }
+    if (coverage && coverage.size >= 0 && sent < names.length) {
+      const _c2 = (this.clients && this.clients.get) ? this.clients.get(ws) : null;
+      console.log(`[Brain] INITFIT — donor ${(_c2 && (_c2.gpuName || _c2.id)) || 'donor'} initialised ${sent}/${names.length} clusters [${[...coverage].join(', ')}] — VRAM-fitted, NOT the full set (sending all would allocate far more than the card holds).`);
     }
     return sent;
   },
