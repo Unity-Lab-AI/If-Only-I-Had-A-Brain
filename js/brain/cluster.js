@@ -2790,10 +2790,33 @@ export class NeuronCluster {
    * @param {string} clause
    * @returns {number}
    */
+  /**
+   * SURPRISECPU (2026-08-18) — bio-scale guard on the SYNCHRONOUS form.
+   *
+   * This loop runs TWO raw `step()` calls per letter of the clause, and
+   * `step()` at biological scale carries the FULL 360M-nnz synaptic propagate
+   * on the CPU. Measured live from the reply path: a 29-letter chat message
+   * cost 58 CPU cortex ticks = 142,989ms in one unbroken synchronous stretch
+   * (`[ChatPin] respond:store-episode=142989ms`), which starved the compute
+   * donor past its own idle watchdog and killed it. Same law TICKGUARD
+   * established for `stepAwait` — no CPU cortex path at biological scale —
+   * applied to the function TICKGUARD never covered.
+   *
+   * Above the bio threshold this form REFUSES and points callers at the
+   * async GPU form below, where the propagate runs on the donor's hardware.
+   * Small-brain instances (browser tier) keep the synchronous path unchanged.
+   */
   computeTransitionSurprise(clause) {
     if (!this.regions || !this.regions.letter || !clause) return 0;
     const letters = String(clause).toLowerCase().replace(/[^a-z']/g, '');
     if (letters.length === 0) return Infinity; // non-alphabetic clause = max surprise
+    if (this.size > 2000000) {
+      if (!this._surpriseSyncWarnMs || (Date.now() - this._surpriseSyncWarnMs) > 60000) {
+        this._surpriseSyncWarnMs = Date.now();
+        console.warn(`[Cluster ${this.name}] computeTransitionSurprise REFUSED on the sync path — ${this.size.toLocaleString()} neurons would run ${letters.length * 2} full CPU cortex ticks (measured: 143s for a 29-letter message, donor dead). Use computeTransitionSurpriseAsync — the propagate belongs on the donor GPU.`);
+      }
+      return 0;
+    }
     this._prevLetterRate = 0;
     let sum = 0;
     let count = 0;
@@ -2802,6 +2825,46 @@ export class NeuronCluster {
       for (let t = 0; t < 2; t++) this.step(0.001);
       sum += this.letterTransitionSurprise();
       count++;
+    }
+    return count > 0 ? sum / count : 0;
+  }
+
+  /**
+   * GPU-RESIDENT transition surprise (2026-08-18) — the same equation, with
+   * the expensive half where the power actually is.
+   *
+   * `stepAwait` dispatches the synaptic propagates to the donor GPU and awaits
+   * them, leaving only the per-neuron map update on the host; the 360M-nnz
+   * matmul that made the synchronous form fatal never touches the CPU. It also
+   * inherits TICKGUARD: if the GPU is not genuinely live at bio scale the tick
+   * aborts honestly instead of falling back to a CPU propagate.
+   *
+   * Letters are capped (default 24) because the metric is a MEAN of per-letter
+   * rate deltas — averaging the leading window estimates the same quantity at
+   * bounded cost, and an unbounded message must never be able to buy unbounded
+   * ticks. Yields between letters so donor keepalives and /ws handshakes keep
+   * their slots throughout.
+   */
+  async computeTransitionSurpriseAsync(clause, maxLetters = 24) {
+    if (!this.regions || !this.regions.letter || !clause) return 0;
+    const all = String(clause).toLowerCase().replace(/[^a-z']/g, '');
+    if (all.length === 0) return Infinity; // non-alphabetic clause = max surprise
+    const letters = all.slice(0, Math.max(1, maxLetters));
+    this._prevLetterRate = 0;
+    let sum = 0;
+    let count = 0;
+    const _yield = (typeof setImmediate === 'function')
+      ? () => new Promise((r) => setImmediate(r))
+      : () => new Promise((r) => setTimeout(r, 0));
+    for (const ch of letters) {
+      this.injectLetter(ch, 1.0);
+      for (let t = 0; t < 2; t++) {
+        const r = await this.stepAwait(0.001);
+        if (r && r.aborted) return count > 0 ? sum / count : 0;  // GPU not live — honest partial
+      }
+      sum += this.letterTransitionSurprise();
+      count++;
+      await _yield();
     }
     return count > 0 ? sum / count : 0;
   }
