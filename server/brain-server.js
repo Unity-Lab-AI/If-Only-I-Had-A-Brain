@@ -24,9 +24,12 @@
 // landed while the operator's console view was dead, and the diagnosis
 // stalled on "my console is blank"). Every console.log/warn/error line
 // now ALSO lands in a bounded in-memory ring served at
-// GET /console-tail.json?n=N (public read-only, same transparency lane as
-// /public-state.json) — so the console is readable remotely, after the
-// fact, by anyone debugging her, without SSH and without a live tail.
+// GET /console-tail.json?n=N (direct-port/loopback callers) AND tunneled
+// through GET /public-state.json?console=N (the PUBLIC path — the public
+// origin's nginx only forwards endpoints it already knows, so the fresh
+// route is SPA-swallowed from outside; the query-string tunnel rides the
+// one path guaranteed forwarded) — so the console is readable remotely,
+// after the fact, by anyone debugging her, without SSH and without a live tail.
 // Bounded: 2,000 lines × ≤600 chars; the wrap never throws and never
 // alters what reaches stdout/journald.
 (() => {
@@ -6124,7 +6127,30 @@ const httpServer = http.createServer((req, res) => {
   // and stamps _lastPublicPollTs so the broadcast keeps the snapshot warm even
   // with zero live WS clients. PUBLIC (no auth) — it's the same data the
   // public /ws lane sends. Short cache header lets nginx/browser micro-cache.
-  if (req.url === '/public-state.json' && req.method === 'GET') {
+  if (req.url && req.url.startsWith('/public-state.json') && req.method === 'GET') {
+    // CONSOLE-TAIL TUNNEL — the public origin's nginx only forwards endpoints
+    // it already knows (see the donor-doors note above refreshDonorLatest), so
+    // the /console-tail.json route is SPA-swallowed from outside the box.
+    // Query strings ride through a path-matched location untouched, so the
+    // console ring is ALSO served here under ?console=N[&since=ms] — the one
+    // public path guaranteed forwarded. /console-tail.json stays for
+    // direct-port/loopback callers.
+    const qAt = req.url.indexOf('?');
+    const qs = qAt !== -1 ? new URL(req.url, 'http://x').searchParams : null;
+    if (qs && qs.get('console') !== null) {
+      try {
+        const n = Math.min(500, Math.max(1, parseInt(qs.get('console') || '300', 10) || 300));
+        const since = parseInt(qs.get('since') || '0', 10) || 0;
+        const ring = globalThis.__consoleRing || [];
+        const lines = (since > 0 ? ring.filter((e) => e.ts > since) : ring).slice(-n);
+        res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' });
+        res.end(JSON.stringify({ now: Date.now(), count: lines.length, lines }));
+      } catch (err) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: err && err.message }));
+      }
+      return;
+    }
     brain._lastPublicPollTs = Date.now();
     res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=2' });
     res.end(brain._publicStateJson || JSON.stringify({ type: 'state', state: null, snapshotAt: 0, note: 'snapshot warming up — try again in a moment' }));
@@ -6135,8 +6161,10 @@ const httpServer = http.createServer((req, res) => {
   // reachable remotely after the fact: freeze post-mortems print their
   // confession lines the moment the loop unblocks, and a dead tail session
   // must never lose them again. ?n=N caps at 500 (default 300); ?since=ts
-  // returns lines newer than a millisecond timestamp. Same public
-  // transparency lane as /public-state.json.
+  // returns lines newer than a millisecond timestamp. NOTE: from OUTSIDE the
+  // box this path is SPA-swallowed by the public origin's nginx — remote
+  // readers use the /public-state.json?console=N tunnel above; this route
+  // serves direct-port/loopback callers.
   if (req.url && req.url.startsWith('/console-tail.json') && req.method === 'GET') {
     try {
       const u = new URL(req.url, 'http://x');
