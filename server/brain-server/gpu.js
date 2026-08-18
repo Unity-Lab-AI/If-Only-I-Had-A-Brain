@@ -274,7 +274,7 @@ const SERVER_GPU_MIXIN = {
     this._batchSeq = (this._batchSeq || 0) + 1;
     const batchId = this._batchSeq;
 
-    this._gpuClient.send(JSON.stringify({
+    const _batchMsg = {
       type: 'compute_batch',
       batchId,
       substeps,
@@ -285,7 +285,35 @@ const SERVER_GPU_MIXIN = {
       // Ψ-driven binding coefficient, matching biological split-brain +
       // global-workspace consciousness interpretation.
       psi: this.psi ?? 0,
-    }));
+    };
+    this._gpuClient.send(JSON.stringify(_batchMsg));
+
+    // WORKSHARE — mirror the SAME step to every OTHER live donor so it computes and
+    // scores. Gn/s is produced by compute_batch alone (donor.rs: gneurons_per_sec =
+    // Σcluster sizes × substeps / elapsed) and needs NO synaptic matrices — only
+    // gpu_init, which every donor receives seconds after connecting. Until now this
+    // message went to the PRIMARY ONLY, so a replica could sit connected for HOURS at
+    // 0 Gn/s no matter how much it had synced: it was never asked to compute. A
+    // volunteer who sees 0 has no reason to stay, so this is a product bug as much as a
+    // scheduling one — the leaderboard could only ever have one name on it.
+    //
+    // The mirror is FIRE-AND-FORGET and cannot corrupt the tick: it carries
+    // `mirror: true` and a distinct negative batchId, so the result handler drops it
+    // before the batchId match and the authoritative promise still resolves only from
+    // the primary. Stepping its own copy is what a DF.7 data-parallel replica is FOR,
+    // and it keeps the replica's LIF state warm instead of cold-starting at promotion.
+    //
+    // Skipped for a donor whose socket is already backed up past the link cap — it is
+    // mid-sync and piling a step on top would slow the sync that makes it useful.
+    if (this._df7Fanout && this._df7Fanout() && typeof this._livePoolDonors === 'function') {
+      const _mirrorMsg = JSON.stringify({ ..._batchMsg, batchId: -batchId, mirror: true });
+      const _linkCap = (typeof this._donorLinkCapBytes === 'function') ? this._donorLinkCapBytes() : 64 * 1024 * 1024;
+      for (const _ws of this._livePoolDonors()) {
+        if (_ws === this._gpuClient || !_ws || _ws.readyState !== 1) continue;
+        if (((_ws.bufferedAmount) || 0) > _linkCap) continue;   // busy receiving its replica
+        try { _ws.send(_mirrorMsg); } catch { /* a dropped mirror is never fatal */ }
+      }
+    }
 
     // Timeout budget. Previously 15 s — too short when the main JS
     // event loop gets blocked for >10 s by CPU-side sparse matmul

@@ -793,3 +793,20 @@ The CLI restart from the prior handoff was FOR this. Gee authorized a 4090 proof
 - [x] **INCREMENTAL.4** **DONE - the held set clears whenever a sync is refused** (bind-incapable / replica-incapable), so a donor can never keep stale eligibility after being dropped from the fan-out.
 - [x] **INCREMENTAL.5** **DONE - visible.** `df7HeldMatrices` joins the donor rows, and the server logs when a donor holds its FIRST matrix plus its final held/total count. "How much can this donor do yet" is now a field read rather than an inference.
 - [ ] **INCREMENTAL.6** GEE: Update & Savestart. Verdict: every connected donor shows a POSITIVE Gn/s within a minute or two of attaching - not after a full sync - and the leaderboard carries more than one contributor. Watch `DF.7 INCREMENTAL — donor <name> holds its first matrix`.
+
+---
+
+## WORKSHARE - 2026-08-18 - compute_batch went to the PRIMARY ONLY, so a replica could never score no matter what
+
+> Gee (verbatim): *"see this aint gonna work.. 2 doner been connect for along time and shows 0Gn/s anyone would just disconnect as they are getting no credit for the effert. this needs fucking FIXED SO ALL DONERS ALWAYS DO WORK"*
+
+**HE IS RIGHT AND IT IS A PRODUCT BUG, NOT A TIMING ONE.** A volunteer who sees 0 has no reason to stay, so the leaderboard could only ever carry one name. Every fix before this one (SYNCGATE / PACEDSYNC / SYNCSERIAL / QUEUEDEADLINE / INCREMENTAL) made SYNCS finish faster or sooner - none of them made a replica ELIGIBLE for the work that actually scores.
+
+**THE READ THAT ENDED IT.** `gneurons_per_sec` is set in exactly one place donor-side (`donor.rs:655`): the `compute_batch` handler, as `(Sigma cluster sizes x substeps) / elapsed`. **It needs NO synaptic matrices at all** - only `gpu_init`, which every donor receives seconds after connecting (visible in every pod log). And server-side, `_gpuStepBatched` sent that message to `this._gpuClient` and nobody else. So a replica could sync perfectly, hold every matrix, and STILL read 0 forever - it was never asked to compute.
+
+- [x] **WORKSHARE.1** **DONE - the step is mirrored to every other live donor.** The batch object is hoisted, sent to the primary unchanged, then fanned to each non-primary live pool donor. Stepping its own copy is precisely what a DF.7 data-parallel replica is FOR, and it keeps the replica LIF state warm instead of cold-starting at promotion.
+- [x] **WORKSHARE.2** **DONE - a mirror can never corrupt the tick.** Mirrored batches carry `mirror:true` AND a distinct NEGATIVE batchId, and the result handler drops them BEFORE the batchId match - so they cannot resolve the authoritative promise and cannot trip the mismatch warning either. A `ws !== primary` clause backs it up (`ws` verified in scope at that handler, not assumed). Mirrored batches are counted so the work is visible.
+- [x] **WORKSHARE.3** **DONE - a busy donor is skipped.** A donor whose socket is backed up past the link cap is mid-replica-sync; piling a step on top would slow the very sync that makes it useful. It picks up mirrored work as soon as its socket drains.
+- [x] **WORKSHARE.4** **VERIFY (build half) DONE** - `node --check` on both touched files + `import()` ESM PASS. Server-side only, no donor change, no bundle rebuild. Fire-and-forget send, so a dropped mirror is never fatal.
+- [ ] **WORKSHARE.5** GEE: Update & Savestart. Verdict: **EVERY connected donor shows a positive Gn/s within seconds** - not after a sync, not after a dream window - and the leaderboard carries every contributor. This is the answer to "ALL DONERS ALWAYS DO WORK".
+- [ ] **WORKSHARE.6** **OPEN - honest accounting question for later.** Mirrored work is REDUNDANT: the replica computes the same step the primary does and the result is discarded. That is correct for credit and for keeping replica state warm, but it is not extra THROUGHPUT. Genuinely additive work needs independent units (the `_gpuParallelMap` path). Worth deciding deliberately whether the leaderboard should count redundant work as contribution - it is defensible (the volunteer really did spend the cycles) but it should be a decision, not an accident.
