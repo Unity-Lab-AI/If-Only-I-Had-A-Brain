@@ -8,6 +8,9 @@
 //! ~30-byte frame instead of re-shipping ~150-700KB — the donor re-executes its cached
 //! copy; payload = origType(u8); type-3 repeats carry a real reqId and are acked as type 3).
 //!
+//! Chunked-upload flags: 1=first chunk (carries rows/cols/nnz + rowPtr), 2=binding block
+//! follows rowPtr, 4=colIdx is DELTA-VARINT encoded (v0.3.22 DELTAIDX — see `delta_cols`).
+//!
 //! Cluster-binding metadata (chunked flag bit 2) is CAPTURED as of v0.3.15 (was parsed +
 //! discarded): a bound matrix's batched-hebbian (type 5) reads resident cluster spike
 //! state at the bound offsets instead of acking a stub.
@@ -142,6 +145,61 @@ impl<'a> Reader<'a> {
         }
         Some(v)
     }
+    /// v0.3.22 DELTAIDX — LEB128 unsigned varint, bounded by `limit` so a truncated or
+    /// corrupt stream returns None instead of walking off the end of the frame.
+    fn varint(&mut self, limit: usize) -> Option<u64> {
+        let mut result: u64 = 0;
+        let mut shift: u32 = 0;
+        loop {
+            if self.pos >= limit {
+                return None;
+            }
+            let b = *self.b.get(self.pos)?;
+            self.pos += 1;
+            result |= ((b & 0x7f) as u64) << shift;
+            if b & 0x80 == 0 {
+                break;
+            }
+            shift += 7;
+            if shift > 63 {
+                return None;
+            }
+        }
+        Some(result)
+    }
+    /// v0.3.22 DELTAIDX — decode `n` column indices from a delta-varint stream of
+    /// `byte_len` bytes. Mirrors the server's `_encodeDeltaColIdx` exactly: entry 0 is an
+    /// UNSIGNED varint of the absolute index (chunks split mid-row, so a chunk cannot
+    /// assume it starts at a row boundary); entries 1.. are ZIGZAG varints of the delta
+    /// from the previous index (zigzag because a row boundary steps backwards). Lossless
+    /// and exactly invertible — the reconstructed Vec<u32> is byte-identical to what the
+    /// raw path would have produced.
+    fn delta_cols(&mut self, n: usize, byte_len: usize) -> Option<Vec<u32>> {
+        let end = self.pos.checked_add(byte_len)?;
+        if end > self.b.len() {
+            return None;
+        }
+        let mut out = Vec::with_capacity(n);
+        let mut prev: i64 = 0;
+        for i in 0..n {
+            let rawv = self.varint(end)?;
+            let v: i64 = if i == 0 {
+                rawv as i64
+            } else {
+                // zigzag decode: even -> +n/2, odd -> -(n+1)/2
+                let zz = ((rawv >> 1) as i64) ^ -((rawv & 1) as i64);
+                prev.checked_add(zz)?
+            };
+            if v < 0 || v > u32::MAX as i64 {
+                return None;
+            }
+            out.push(v as u32);
+            prev = v;
+        }
+        // Skip to the declared end so any trailing padding cannot desync the reader.
+        self.pos = end;
+        Some(out)
+    }
 }
 
 /// Decode an `SPRS` frame. Returns None if not a sparse frame or malformed.
@@ -213,7 +271,18 @@ pub fn decode(data: &[u8]) -> Option<Frame> {
             let values = r.f32_vec(values_byte_len / 4)?;
             let col_idx_offset = r.u32()?;
             let col_idx_byte_len = r.u32()? as usize;
-            let col_idx = r.u32_vec(col_idx_byte_len / 4)?;
+            // v0.3.22 DELTAIDX — flags bit 2 (value 4) means colIdx arrived delta-varint
+            // encoded. colIdx is HALF the canonical payload (1373MB of 2792MB at the 12M
+            // cortex) and the small-world topology makes 95% of consecutive deltas fit one
+            // byte, so this is ~68% off colIdx / ~34% off the whole upload — measured, not
+            // assumed. Entry count comes from the values slice: values and colIdx are 1:1
+            // in CSR, so no extra count field was added and the header layout is unchanged.
+            // An older donor never sees the flag and takes the raw path below, byte-identical.
+            let col_idx = if flags & 4 != 0 {
+                r.delta_cols(values.len(), col_idx_byte_len)?
+            } else {
+                r.u32_vec(col_idx_byte_len / 4)?
+            };
             Some(Frame::Chunk { req_id, name, chunk_seq, total_chunks, first, values_offset, values, col_idx_offset, col_idx })
         }
         5 => {
@@ -354,5 +423,62 @@ pub fn self_check() -> Result<(), String> {
             }
         }
         other => Err(format!("decode returned unexpected: {other:?}")),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// v0.3.22 DELTAIDX — CROSS-LANGUAGE PARITY. These bytes were produced by the SERVER's
+    /// `_encodeDeltaColIdx` (server/brain-server/gpu.js), NOT by this file's own logic, so
+    /// the test fails if either side's encoding drifts. The input deliberately exercises
+    /// every branch: a leading zero, small positive deltas (the 70% local case), a
+    /// long-range jump, a NEGATIVE delta (a CSR row boundary stepping backwards — the
+    /// reason deltas are zigzagged), and a second long jump.
+    ///
+    /// This matters more than a typical unit test: a silent encode/decode mismatch would
+    /// put learned weights on the WRONG SYNAPSES with no loud failure — right shape,
+    /// successful upload, gates still run, every downstream measurement quietly worthless.
+    #[test]
+    fn delta_cols_matches_server_encoder() {
+        let expected: Vec<u32> = vec![0, 3, 7, 8, 250, 11999999, 5, 6, 9, 4000000];
+        let encoded: Vec<u8> = vec![
+            0, 6, 8, 2, 228, 3, 138, 232, 184, 11, 243, 235, 184, 11, 2, 6, 238, 163, 232, 3,
+        ];
+        assert!(
+            encoded.len() < expected.len() * 4,
+            "delta stream must be smaller than the raw u32 stream"
+        );
+        let mut r = Reader::new(&encoded);
+        let got = r
+            .delta_cols(expected.len(), encoded.len())
+            .expect("decode must succeed");
+        assert_eq!(got, expected, "server-encoded delta stream must decode byte-exact");
+        assert_eq!(r.pos, encoded.len(), "decoder must consume exactly the declared bytes");
+    }
+
+    /// A truncated stream must return None, never a partial or garbage Vec — a corrupt
+    /// upload has to fail loudly rather than seed a donor with silently wrong topology.
+    #[test]
+    fn delta_cols_rejects_truncated_stream() {
+        let encoded: Vec<u8> = vec![0, 6, 8, 2, 228];
+        let mut r = Reader::new(&encoded);
+        assert!(
+            r.delta_cols(10, encoded.len()).is_none(),
+            "truncated stream must decode to None"
+        );
+    }
+
+    /// The raw path must remain byte-identical for donors/servers that never set flag 4.
+    #[test]
+    fn raw_col_idx_path_unchanged() {
+        let cols: Vec<u32> = vec![5, 9, 12];
+        let mut bytes = Vec::new();
+        for c in &cols {
+            bytes.extend_from_slice(&c.to_le_bytes());
+        }
+        let mut r = Reader::new(&bytes);
+        assert_eq!(r.u32_vec(cols.len()).expect("raw decode"), cols);
     }
 }

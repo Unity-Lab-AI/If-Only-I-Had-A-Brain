@@ -2110,6 +2110,9 @@ const SERVER_GPU_MIXIN = {
       bindingBlock.writeUInt32LE(binding.dstRegion.end   >>> 0, o); o += 4;
     }
 
+    // DELTAIDX — resolve the capability ONCE per upload, not per chunk.
+    const _deltaColIdxOk = this._donorDeltaColIdxOk(ws);
+    let _deltaRawBytes = 0, _deltaEncBytes = 0;
     for (let seq = 0; seq < totalChunks; seq++) {
       const start = seq * CHUNK_NNZ;
       const end = Math.min(start + CHUNK_NNZ, nnz);
@@ -2140,10 +2143,24 @@ const SERVER_GPU_MIXIN = {
       valuesHdr.writeUInt32LE(valuesByteOff, 0);
       valuesHdr.writeUInt32LE(valuesByteLen, 4);
       const valuesSlice = Buffer.from(values.buffer, values.byteOffset + valuesByteOff, valuesByteLen);
+      // DELTAIDX — ship colIdx as delta-varints to a >=0.3.22 donor. flags bit 2 (value 4)
+      // tells the decoder which stream it is; older donors and every browser donor never
+      // see the flag and take the byte-identical raw path.
+      const _deltaCols = _deltaColIdxOk ? this._encodeDeltaColIdx(colIdx, start, end) : null;
+      const colIdxSlice = _deltaCols
+        ? _deltaCols
+        : Buffer.from(colIdx.buffer, colIdx.byteOffset + colIdxByteOff, colIdxByteLen);
+      if (_deltaCols) {
+        flags |= 4;
+        _deltaRawBytes += colIdxByteLen;
+        _deltaEncBytes += _deltaCols.length;
+      }
       const colIdxHdr = Buffer.alloc(8);
       colIdxHdr.writeUInt32LE(colIdxByteOff, 0);
-      colIdxHdr.writeUInt32LE(colIdxByteLen, 4);
-      const colIdxSlice = Buffer.from(colIdx.buffer, colIdx.byteOffset + colIdxByteOff, colIdxByteLen);
+      // On the delta path this is the ENCODED byte length — the decoder derives the
+      // ENTRY count from the values slice (values and colIdx are 1:1 in CSR), so no
+      // extra count field is needed and the header layout is unchanged.
+      colIdxHdr.writeUInt32LE(colIdxSlice.length, 4);
       const pieces = isFirst
         ? (hasBinding
             ? [hdr, chunkMeta, firstMeta, rowPtrBuf, bindingBlock, valuesHdr, valuesSlice, colIdxHdr, colIdxSlice]
@@ -2238,7 +2255,9 @@ const SERVER_GPU_MIXIN = {
         // Bandwidth-aware (WSQ.4 hint, preferred when present): ~half this chunk's transmit
         // time at the donor's measured downlink so we don't outrun the link.
         const _rttPace = _prtt > 200 ? Math.round(_prtt / 8) : 0;
-        const _bwPace = _mbps > 0 ? Math.round(((valuesByteLen + colIdxByteLen) * 8 / 1e6) / _mbps * 1000 * 0.5) : 0;
+        // DELTAIDX — pace against the bytes actually on the wire, not the raw size.
+        const _wireBytes = valuesByteLen + colIdxSlice.length;
+        const _bwPace = _mbps > 0 ? Math.round((_wireBytes * 8 / 1e6) / _mbps * 1000 * 0.5) : 0;
         const _linkPace = (_prtt > 200 || _mbps > 0) ? Math.min(_capMs, Math.max(_rttPace, _bwPace)) : 0;
         // DF.7 PACEDSYNC — SERVER-LOOP term. The donor-link terms above protect the DONOR's
         // uplink; nothing protected the SERVER's event loop, which is what the teach loop is
@@ -2277,6 +2296,10 @@ const SERVER_GPU_MIXIN = {
           console.log(`[Brain] DF.7 PACEDSYNC [${_who}] ${name} chunk ${seq + 1}/${totalChunks} — loopLag=${Number(this._lastEventLoopLagMs) || 0}ms pace=${_paceMs}ms (link=${_linkPace} teach=${_teachPace}) donorBuf=${_bufMB.toFixed(1)}MB rtt=${_prtt}ms`);
         }
       }
+    }
+    if (_deltaEncBytes > 0) {
+      const _savedPct = 100 * (1 - _deltaEncBytes / Math.max(1, _deltaRawBytes));
+      console.log(`[Brain] DELTAIDX ${name} — colIdx ${(_deltaRawBytes / 1048576).toFixed(1)}MB raw -> ${(_deltaEncBytes / 1048576).toFixed(1)}MB delta-varint (${_savedPct.toFixed(1)}% saved, ${(_deltaEncBytes / Math.max(1, nnz)).toFixed(2)} bytes/entry)`);
     }
     console.log(`[Brain] sparse chunked upload reqId=${reqId} name=${name} all ${totalChunks} chunks dispatched, awaiting ack`);
     return promise;
@@ -3319,6 +3342,71 @@ const SERVER_GPU_MIXIN = {
    * build-skip (the same-flag law from the current-template lane: the encoder
    * and the builder consult the SAME flag so a mismatch cannot happen).
    */
+  /**
+   * DELTAIDX (donor-v0.3.22) — is THIS donor able to decode delta-varint colIdx?
+   * Per-TARGET (not the primary-keyed pattern the teach-frame gates use) because a
+   * replica sync targets an arbitrary donor and a pool can be mixed-version. A donor
+   * that reports no appVersion — every BROWSER donor — returns false and receives the
+   * byte-identical raw u32 stream it always did, so compute.html needs no change.
+   */
+  _donorDeltaColIdxOk(ws) {
+    if (!ws) return false;
+    if (process.env.DREAM_DELTA_COLIDX === '0') return false;   // kill-switch
+    try {
+      const c = (this.clients && this.clients.get) ? this.clients.get(ws) : null;
+      const v = ((c && c.donorAppVersion) || '').toString().trim();
+      const m = v.match(/^(\d+)\.(\d+)\.(\d+)/);
+      if (!m) return false;
+      return ((+m[1]) * 1e6 + (+m[2]) * 1e3 + (+m[3])) >= 3022;   // 0.3.22
+    } catch { return false; }
+  },
+
+  /**
+   * DELTAIDX — encode colIdx[start..end) as delta-varints.
+   *
+   * WHY THIS PAYS (measured from the topology, not assumed): the intra is built by
+   * `SparseMatrix` with the Watts-Strogatz hybrid — 70% local (radius 50) + 25%
+   * medium (radius 200) + 5% long-range — and each row's indices are SORTED ascending
+   * ("Sort row's col indices ascending per CSR contract", sparse-matrix.js). So 95% of
+   * consecutive deltas are single-digit-to-low-hundreds and fit ONE varint byte, versus
+   * four raw. Only the 5% long-range hops and the one negative delta per row boundary
+   * cost more. colIdx is HALF the canonical payload (1373MB of 2792MB at the 12M
+   * cortex), so this is the single biggest lever on replica-sync time that does not
+   * require regenerating topology from a seed.
+   *
+   * Format: entry 0 of the chunk is an UNSIGNED varint of the absolute index (chunks
+   * split mid-row, so a chunk cannot assume a row start). Entries 1..n-1 are ZIGZAG
+   * varints of (colIdx[i] - colIdx[i-1]) — zigzag because a row boundary steps
+   * backwards. Lossless and exactly invertible; the decoder rebuilds the identical u32s.
+   */
+  _encodeDeltaColIdx(colIdx, start, end) {
+    const n = end - start;
+    if (n <= 0) return Buffer.alloc(0);
+    if (!this._deltaColScratch || this._deltaColScratch.length < n * 5) {
+      this._deltaColScratch = Buffer.allocUnsafe(n * 5);   // varint worst case = 5B/u32
+    }
+    const out = this._deltaColScratch;
+    let o = 0;
+    let prev = 0;
+    for (let i = start; i < end; i++) {
+      const v = colIdx[i] >>> 0;
+      let rawv;
+      if (i === start) {
+        rawv = v;
+      } else {
+        const d = v - prev;
+        rawv = d >= 0 ? (d * 2) : (-d * 2 - 1);   // zigzag
+      }
+      while (rawv >= 0x80) {
+        out[o++] = (rawv & 0x7f) | 0x80;
+        rawv = Math.floor(rawv / 128);
+      }
+      out[o++] = rawv;
+      prev = v;
+    }
+    return out.subarray(0, o);
+  },
+
   _donorSpikeTemplateTeach() {
     const ws = this._gpuClient;
     if (!ws) return false;
