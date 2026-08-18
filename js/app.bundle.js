@@ -57439,6 +57439,29 @@ var NeuronCluster = class {
     const all = String(clause).toLowerCase().replace(/[^a-z']/g, "");
     if (all.length === 0) return Infinity;
     const letters = all.slice(0, Math.max(1, maxLetters));
+    if (this._gpuProxyReady && this._gpuProxy && typeof this._gpuProxy.letterSurprise === "function") {
+      try {
+        const region = this.regions.letter;
+        const groupSize = Math.max(1, Math.floor((region.end - region.start) / 26));
+        const ranges = [];
+        for (const ch of letters) {
+          const oneHot = encodeLetter(ch);
+          const r = [];
+          for (let d = 0; d < oneHot.length; d++) {
+            if (oneHot[d] <= 0) continue;
+            const start = region.start + d * groupSize;
+            const len = Math.min(groupSize, region.end - start);
+            if (len > 0 && r.length < 8) r.push([start, len]);
+          }
+          if (r.length) ranges.push(r);
+        }
+        if (ranges.length) {
+          const s = await this._gpuProxy.letterSurprise("letter", ranges, 2);
+          if (typeof s === "number" && Number.isFinite(s)) return s;
+        }
+      } catch {
+      }
+    }
     this._prevLetterRate = 0;
     let sum = 0;
     let count = 0;
