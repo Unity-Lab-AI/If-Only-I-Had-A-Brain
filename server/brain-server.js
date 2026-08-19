@@ -9237,7 +9237,20 @@ const _lagTimer = setInterval(() => {
     const _teachStageTag = brain._teachStage
       ? ` teachStage=${brain._teachStage}(+${brain._teachStageAt ? (Date.now() - brain._teachStageAt) : 0}ms)`
       : '';
-    console.warn(`[EventLoop] BLOCKED ${lagMs.toFixed(0)}ms — /ws handshakes + donor frames stalled this long. context: phase=${phase} cell=${cell} donors=${donors} consolidationInFlight=${consol} innerVoiceInFlight=${innerVoice} replicaSyncing=${syncing}${uploading ? ' uploadInFlight=true' : ''}${_chatStageTag}${_saveStageTag}${_teachStageTag}`);
+    // LOOPNAME v2 — teachStage alone printed the RECOVERY, not the stall (live: a
+    // 215,377ms block reported teachStage=hebbian:substrate(+44ms), because this
+    // monitor is a 1000ms setInterval and the teach loop resumes before it fires).
+    // teachStageMax is banked by _tstage when it overwrites, so the longest-held
+    // sub-op in this window survives the overwrite. If it matches the block length,
+    // that sub-op IS the block. If it is SMALL on a long block, the stall is NOT in
+    // any marked sub-op — equally decisive, and it says where to mark next.
+    const _teachMaxTag = brain._teachStageMaxMs
+      ? ` teachStageMax=${brain._teachStageMaxName}(${brain._teachStageMaxMs}ms)`
+      : '';
+    console.warn(`[EventLoop] BLOCKED ${lagMs.toFixed(0)}ms — /ws handshakes + donor frames stalled this long. context: phase=${phase} cell=${cell} donors=${donors} consolidationInFlight=${consol} innerVoiceInFlight=${innerVoice} replicaSyncing=${syncing}${uploading ? ' uploadInFlight=true' : ''}${_chatStageTag}${_saveStageTag}${_teachStageTag}${_teachMaxTag}`);
+    // Reset the window so the NEXT block reports ITS own longest stage, not a
+    // high-water mark inherited from an older one.
+    brain._teachStageMaxMs = 0; brain._teachStageMaxName = null;
   }
 }, _LAG_SAMPLE_MS);
 wss.on('close', () => clearInterval(_lagTimer));

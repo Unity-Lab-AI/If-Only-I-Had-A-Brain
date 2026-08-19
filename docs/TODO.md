@@ -975,3 +975,30 @@ The 279s line carries **no** `saveStage=` tag and **no** `uploadInFlight=true` t
 - [x] **LOOPNAME.12** **DONE - bundle rebuilt + committed.** `cd server && npm run build` -> `js/app.bundle.js` 4.0mb + `js/voice-piper-worker.bundle.js` 842.6kb (unchanged). Verified the instrument actually landed in the shipped artifact rather than assuming it: 7 `_tstage` references, plus `hebbian:intra` / `lateral:anti` / `teachStageAgeMs` all present.
 - [ ] **LOOPNAME.13** **OPEN - nothing enforces bundle freshness.** A `js/brain/*` edit that is not followed by a local rebuild ships a browser bundle that silently disagrees with the server. `self-update.sh` cannot catch it (no esbuild on the box) and the rsync deploy will happily publish a stale artifact. A pre-push check that compares bundle mtime/hash against its inputs would have caught this one automatically instead of it taking a "fix that shit".
 - [ ] **LOOPNAME.7** **OPEN - the dashboard dies exactly when it is needed most.** Every diagnostic channel we own (admin WS, `/public-state.json`, the console ring) rides the same event loop that is the thing under investigation. When she pins, we go blind at the precise moment we need eyes. A diagnostic lane that cannot starve - separate thread/process, or a pre-block breadcrumb flushed to disk - is the structural fix. Same family as MIRRORID.5 and RESYNCDUTY.9: the board cannot answer "is it working?"
+
+---
+
+## LOOPMAX - 2026-08-19 - LOOPNAME v1 measured the RECOVERY, not the stall; v2 banks the longest-held stage
+
+> Gee (verbatim): *"Dashboard keeps locking up:6:50:28 AM [Curriculum] checkpoint saved after passing art/kindergarten:_teachColorMixingK"*
+
+> Gee (verbatim): *"do i need to do a fresh save start? to get the language cortex to the right size?"*
+
+**THE INSTRUMENT FIRED AND CAUGHT ITS OWN FLAW.** The live line:
+```
+BLOCKED 215377ms  phase=_teachHebbian  cell=art/kindergarten  donors=1
+  consolidationInFlight=false innerVoiceInFlight=false replicaSyncing=0
+  teachStage=hebbian:substrate(+44ms)
+```
+**44 milliseconds, on a 215-SECOND block.** `_tstage('hebbian:substrate')` is the FIRST line of `_teachHebbian`, so that age means teach re-entered the method AFTER the block ended and overwrote the breadcrumb before the monitor read it. **LOOPNAME v1 was measuring the RECOVERY, not the STALL** — the lag monitor is a 1000ms `setInterval` (`brain-server.js:9169`) that by construction reports only once the loop is free, and the teach loop resumes first. v1 could never have named a block. That is my design error, not a surprise about the brain.
+
+**THE BLOCK IS REAL — that part is now PROVEN, not assumed.** `setInterval` callbacks do not queue: if the loop stalls, the timer fires ONCE on release and `lagMs` is the true gap. `lagMs = 215377` means the timer genuinely did not run for 215 seconds. The `State saved v9 at t=0.2s` + two cell-passes stamped at the same second are the flush AFTER release (`t=0.2s` is a save DURATION, not a timestamp), not evidence of work during it.
+
+- [x] **LOOPMAX.1** **DONE - bank the OUTGOING stage.** `_tstage` now computes how long the stage it is REPLACING was held and keeps the window maximum (`_teachStageMaxName` / `_teachStageMaxMs`). **This cannot be raced away: the max is written by the very call that would otherwise destroy the evidence.**
+- [x] **LOOPMAX.2** **DONE - the BLOCKED line prints `teachStageMax=<name>(<ms>ms)`** and resets the window after printing, so each block reports ITS own longest stage rather than inheriting a high-water mark from an older one.
+- [x] **LOOPMAX.3** **DONE - the NEGATIVE result is decisive too.** A long block with a SMALL `teachStageMax` proves the stall is NOT inside any of the six marked sub-ops - which says exactly where to mark next. The next BLOCKED line is an answer either way instead of an ambiguity.
+- [x] **LOOPMAX.4** **DONE - published** `teachStageMax` + `teachStageMaxMs` in the liveness block beside the v1 fields.
+- [x] **LOOPMAX.5** **VERIFY (build half) DONE** - `node --check` PASS on `curriculum.js` + `brain-server.js`, `import()` links cleanly, **and the bundle was rebuilt this time** (`cd server && npm run build` -> 4.0mb, 3 `_teachStageMaxMs` refs verified present) per the LOOPNAME.11 correction.
+- [ ] **LOOPMAX.6** GEE: gatling-gun Update & Savestart (pulls main, keeps weights). Then ONE `[EventLoop] BLOCKED` line. **`teachStageMax` is the verdict field, not `teachStage`.**
+- [ ] **LOOPMAX.7** **OPEN - the langCortex question, UNRESOLVED and NOT to be guessed at.** Gee asked whether a fresh walk is needed because the donor logged `gpu_init 'langCortex' - 349155 neurons` when it was **12,000,000** this morning. 349,155 is the exact `WMB FLOOR SKIPPED` fallback. **Cause read from source (`brain-server.js:1998`), NOT guessed:** the floor is skipped when `_targetVram > 6GB` **OR** `12,000,000 > min(ramBasedMax, v8BasedMax)`, and `ramBasedMax` is **free RAM x 50% measured at boot**. Donors are NOT in that calculation - an earlier donor-related hypothesis was wrong and was discarded before it reached code. **LEADING THEORY (unconfirmed):** the gatling restart fired while the old process still held ~8.5GB RSS + ~9.4GB ArrayBuffers, so free RAM read low and the floor was skipped. **If true, a plain Savestart on an idle box fixes it and NO fresh walk is needed - 4 passed cells preserved.** ⛔ **DO NOT PRESS FRESH WALK** until the boot line is read: `WMB FLOOR SKIPPED - target 12,000,000 blocked by <RAM/V8 floor N | real VRAM X GB>`. "blocked by RAM/V8 floor" confirms the theory; "blocked by real VRAM" refutes it and a Savestart would waste a press.
+- [ ] **LOOPMAX.8** **OPEN - the monitor cannot see into its own blind spot.** Every attribution tag (`chatStage`, `saveStage`, `teachStage`) is read by a timer that only runs once the loop is FREE, so all of them describe the aftermath. `saveStage` and `chatStage` have the same race v1 had and have not been audited for it. The banked-maximum pattern shipped here should be applied to both.

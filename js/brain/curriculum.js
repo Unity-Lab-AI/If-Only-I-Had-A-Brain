@@ -3284,6 +3284,10 @@ export class Curriculum {
             const _b = this.brain || (this.cluster && this.cluster._brain);
             return (_b && _b._teachStageAt) ? (Date.now() - _b._teachStageAt) : null;
           })(),
+          // LOOPNAME v2 — the LONGEST-HELD sub-op since the last report. This is the
+          // one that names a stall; the current stage is almost always the recovery.
+          teachStageMax: (this.brain || (this.cluster && this.cluster._brain) || {})._teachStageMaxName || null,
+          teachStageMaxMs: (this.brain || (this.cluster && this.cluster._brain) || {})._teachStageMaxMs || null,
           stageProfile: (() => {
             const sp = this._teachStageProfile;
             const hp = cluster && cluster._hopProf;
@@ -11815,8 +11819,34 @@ export class Curriculum {
   _tstage(name) {
     const brain = this.brain || (this.cluster && this.cluster._brain);
     if (!brain) return;
+    const now = Date.now();
+    // LOOPNAME v2 — BANK THE OUTGOING STAGE. v1 printed only the CURRENT stage and
+    // could never name a block, because of a race it did not account for: the lag
+    // monitor is a 1000ms setInterval, so it reports AFTER the loop frees — and the
+    // teach loop resumes first. Live proof from the box: a 215,377ms block printed
+    // `teachStage=hebbian:substrate(+44ms)`. 44ms, on a 215-second block — the
+    // breadcrumb had already been overwritten by the NEXT _teachHebbian call in the
+    // ~44ms between unblock and the timer firing. The instrument was measuring the
+    // recovery, not the stall.
+    //
+    // So bank how long the OUTGOING stage was actually held. If the block happened
+    // inside a marked sub-op, the very next _tstage call banks ~215000ms against
+    // that sub-op's name and the report prints it. This CANNOT be raced away: the
+    // max is written by the same call that would otherwise destroy the evidence.
+    //
+    // The negative result is equally decisive. A 215s block reported with a SMALL
+    // teachStageMax means the stall was NOT inside any of the six marked sub-ops —
+    // it is in the caller loop or somewhere unmarked, and the next marks go there.
+    // Either way the next BLOCKED line is an answer instead of an ambiguity.
+    if (brain._teachStage && brain._teachStageAt) {
+      const held = now - brain._teachStageAt;
+      if (held > (brain._teachStageMaxMs || 0)) {
+        brain._teachStageMaxMs = held;
+        brain._teachStageMaxName = brain._teachStage;
+      }
+    }
     brain._teachStage = name;
-    brain._teachStageAt = Date.now();
+    brain._teachStageAt = now;
   }
 
   async _teachAntiHebbian(lr, opts = {}) {
