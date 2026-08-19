@@ -1756,7 +1756,21 @@ const SERVER_GPU_MIXIN = {
       // sweep that landed 1 of 17 announced a full replica. That single sentence is why
       // a donor sat at 0 teach ops for an entire session with nothing in the log to
       // contradict it. A partial sync is now a WARNING that names what is missing.
-      if (_failed.length) {
+      // SYNCEMPTY — a sweep that attempted NOTHING is not a success. SYNCPARTIAL
+      // closed the partial case but left this one open, and it printed the same lie
+      // in a new form within minutes: "replica sync complete: 0/0 matrices pushed to
+      // a donor. It now holds a FULL brain replica." Zero of zero.
+      //
+      // ROOT CAUSE, and it corrects the readiness theory: the registration path fires
+      // _syncReplicaToDonor on a fixed 1.5s timer after the donor registers, but the
+      // matrix REGISTRY is populated by the canonical upload on the SERVER side. At 38s
+      // after boot the registry was still empty, so the sweep iterated nothing and
+      // declared victory. The retry pass cannot help here — there is nothing to retry.
+      // The donor is then left holding 0 matrices while the log says otherwise, and
+      // teach dispatch (matrix-scoped) silently skips it: compute batches, 0 teach ops.
+      if (_attempted === 0) {
+        console.warn(`[Brain] DF.7 SYNCEMPTY — replica sync attempted ZERO matrices (registry has ${(reg && reg.size) || 0} entries). This donor holds NOTHING and is NOT teach-eligible; it will show compute batches with 0 teach ops until a later rebroadcast finds a populated registry. NOT a successful sync — the sweep raced the registry, which is filled by the canonical upload, not by the donor being ready.`);
+      } else if (_failed.length) {
         console.warn(`[Brain] DF.7 SYNCPARTIAL — replica sync finished PARTIAL: ${synced}/${_attempted} matrices landed. STILL MISSING (${_failed.length}): ${_failed.map(f => f.name + " [" + f.why + "]").join("; ")}. Teach dispatch is matrix-scoped, so this donor is NOT eligible for teach batches touching those matrices — expect compute batches with ZERO teach ops until the next rebroadcast lands them.`);
       } else {
         console.log(`[Brain] DF.7 — replica sync complete: ${synced}/${_attempted} matrices pushed to a donor${_coverage ? ` (PARTIAL coverage [${[..._coverage].join(", ")}] — it shares compute for the clusters it holds)` : ". It now holds a FULL brain replica and shares compute (no longer idle standby)"}.`);

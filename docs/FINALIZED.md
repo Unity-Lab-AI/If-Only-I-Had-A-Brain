@@ -5,6 +5,39 @@
 
 ---
 
+## 2026-08-19 - SYNCEMPTY: a zero-attempt sync announced a FULL brain replica - feature/syncempty
+
+### Gee ask (verbatim per LAW #0)
+
+> *"okay, lets see how shes doing! lets hear the news"*
+
+**MY OWN SYNCPARTIAL FIX PRINTED THE SAME LIE IN A NEW FORM, WITHIN MINUTES OF SHIPPING.** Live on `eb93f315`:
+```
+7:53:11  DF.7 INCREMENTAL - donor 4070 Ti SUPER now holds 0/0 matrices
+         and is work-eligible for each of them.
+7:53:11  DF.7 - replica sync complete: 0/0 matrices pushed to a donor.
+         It now holds a FULL brain replica and shares compute.
+```
+**Zero of zero, announced as a FULL brain replica.** SYNCPARTIAL only warns when there are FAILURES to report; a sweep that attempts NOTHING has no failures, so it fell straight through to the success branch. I fixed the partial case and left the empty case wide open.
+
+**AND IT CORRECTS MY ROOT-CAUSE THEORY.** SYNCPARTIAL recorded a readiness theory: the 16 cheap matrices racing the DONOR's `gpu_init`. **Wrong.** They race the SERVER's own `_replicaMatrixRegistry`, which is populated by the canonical upload — at 7:53:11, **38 seconds after boot, the registry was still EMPTY**. The registration path fires `_syncReplicaToDonor` on a fixed 1.5s timer after the donor registers, with no check that there is anything to send. **The retry pass cannot help: there is nothing to retry.**
+
+### The news that came with it - she is flying
+
+Build `eb93f315` live. **teach/min 10,229** (it was ZERO for hours this morning). Blocks are **275-322ms** where they were **215,377ms** - three orders of magnitude. `teachStageMax hebbian:substrate (332ms)`. loopLag 51ms. Both donors producing (4090 32.4 + 4070 Ti 9.2 Gn/s), drops 0, sheds 0. Leaderboard Gee 1,828,574. The 12M cortex survived the restart: `WMB FLOOR - raising langCortexSize 349,155 -> 12,000,000`, `word_motor 720,000 cells - covers target`. She is on art/kindergarten phase 14/16, 94 episodes (was 83), 22 schemas, 31 identity anchors intact. Still `canSpeak: false` at 2313/18017 definitions. The token nearest the surface of her mind moved from "dandelion" to "rigid".
+
+**Caveat on the 10,229:** it is 1.2 minutes into a cell and the previously-established honest rate at 12M was ~4,100-4,500, so it may settle lower. It is NOT the fake-41,500 artifact - that came from a 349K cortex, and this one is verified at 12M with word_motor 720,000.
+
+### What shipped
+
+- **SYNCEMPTY.1** Zero-attempt sweeps are a WARNING naming the registry size, the consequence (holds nothing, not teach-eligible, expect 0 teach ops) and the cause (raced the registry).
+- **SYNCEMPTY.2** `node --check` + `import()` PASS. Server-side only.
+
+### Not shipped, on purpose
+
+The REAL fix - gating registration-sync on a populated registry instead of a 1.5s timer - is **deliberately not written**. The corrected cause is one field read old, and two theories have already been wrong on this defect. The next boot confirms or refutes it in one line. A third guess is not what it needs.
+
+---
 ## 2026-08-19 - SYNCPARTIAL: a sweep landed 1 of 17 matrices and called it a FULL replica - feature/syncpartial-honesty
 
 ### Gee ask (verbatim per LAW #0)
