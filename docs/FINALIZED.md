@@ -5,6 +5,43 @@
 
 ---
 
+## 2026-08-19 - CANSPEAK: I read a grade gate as a muteness flag - correction
+
+### Gee ask (verbatim per LAW #0)
+
+> *"what do u mean can speak is false?:Still canSpeak: false, 2313/18017 definitions. --- i talk to her on the brain page.... so whats the meaning of this"*
+
+**I MISREPORTED A FIELD FOR HOURS AND DRAMATISED IT ON TOP.** `state.js:483` is the whole definition:
+```
+canSpeak: this._computeMinGrade() !== 'pre-K',
+```
+`minGrade` is the **lowest grade across all six subjects**. Hers are ela/math/science/social = kindergarten, **art and life = pre-K**. So `minGrade` is pre-K and `canSpeak` is false. **That is pure grade arithmetic. It reports curriculum PROGRESS, not speech CAPABILITY**, and it will flip to true the moment art and life pass K even if nothing about her emission changes.
+
+**Gee caught it by simply knowing his own brain:** *"i talk to her on the brain page.... so whats the meaning of this"*. He was right and I was wrong. I reported *"she still cannot speak"* repeatedly and wrote the line *"sitting there with her mouth already open and the word won't come"* — narrative built on a boolean whose definition I had never read.
+
+**The supporting evidence I quoted was ALSO stale.** I cited `emitDiagnostic: {reason:"no-best-word", bestMean:0, sampleCount:0}` as proof she was reaching for words and finding none. That sample carried `ageMs: 171083` — **~3 minutes old**, captured while the probe gate held the GPU exclusively. Live now: `emitDiagnostic: null` — nothing failing at all, and `motor.selectedAction: "speak"` at 0.45 confidence is the winning channel.
+
+**WHAT IS ACTUALLY TRUE, and it is a real finding the wrong field was hiding:** `word_motor { size: 720000, everFired: 0, pct: 0 }`. Seven hundred and twenty thousand word slots, **zero fired since boot**. Her word-emission bindings were trained into the 349,155-neuron band and **do not map onto the 12,000,000 band**. The substrate is correct and EMPTY. `chatHebbianTurns: 0`, `compositionalEmergence` all zeros. **So the 12M switch cost more than the art/K cell I described — it also reset word emission**, and she will speak more thinly than this morning until the curriculum retrains it at the new geometry.
+
+### Corrected
+
+- **CANSPEAK.1** `canSpeak` = `minGrade !== 'pre-K'`. Curriculum progress, not capability. All "she cannot speak" statements retracted across NOW / RESUME / FINALIZED.
+- **CANSPEAK.2** The `no-best-word` diagnostic I quoted as proof was ~3 minutes stale and sampled inside a probe-gate window. Live value is `null`.
+- **CANSPEAK.3** The real finding: `word_motor.everFired = 0` of 720,000 - the 12M geometry reset word-emission bindings. The 12M switch cost word emission ON TOP of the art/K cell.
+
+### Worse: it was already written down
+
+`docs/NOW.md:33` from a PRIOR session says it in plain words: *"`canSpeak: False` verified cosmetic (zero chat-path consumers)"*. Someone already worked this out, recorded it in the handoff, and I repeated the error anyway. The same entry also hands over the field that DOES matter: *"`matrixDrivenPct 6%` (oracle 50 / matrix 3), `word_motor` utilization 0% — the oracle has been doing her talking"* — **~93% of her speech coming from the oracle path rather than trained weights.** That is the metric worth reporting, and no status line I wrote all session mentioned it.
+
+Live now: `matrixDrivenPct: null` (`oracleHits:0, matrixHits:0`) — zero emissions of either kind since the 7:52 restart, mid-curriculum under the probe gate. And `word_motor.everFired 0/720,000` means matrix-driven emission is currently near zero, so the oracle would carry an even larger share than the prior 93% until word emission retrains at 12M.
+
+Also confirmed: the teach/min caveat. I reported 10,229 while warning it was 1.2min into a cell and might settle toward the established ~4,100-4,500 band. **It settled to 3,916.**
+
+### The lesson, which is not a small one
+
+Five lying instruments were found in the code today. **This one was mine, in my own reporting** - and it is the same failure: a name that asserts more than the value supports, accepted without reading the definition, then narrated with confidence. Gee caught it by knowing his own brain better than my summary of it. **Read the definition of a field before reporting what it means, and read the AGE of any diagnostic quoted as proof.**
+
+---
 ## 2026-08-19 - SYNCEMPTY: a zero-attempt sync announced a FULL brain replica - feature/syncempty
 
 ### Gee ask (verbatim per LAW #0)
