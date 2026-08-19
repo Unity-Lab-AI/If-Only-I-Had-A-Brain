@@ -5,6 +5,42 @@
 
 ---
 
+## 2026-08-19 - LOOPMAX: LOOPNAME v1 measured the recovery, not the stall - feature/loopname-maxage
+
+### Gee ask (verbatim per LAW #0)
+
+> *"Dashboard keeps locking up:6:50:28 AM [Curriculum] checkpoint saved after passing art/kindergarten:_teachColorMixingK"*
+
+> *"do i need to do a fresh save start? to get the language cortex to the right size?"*
+
+**THE INSTRUMENT FIRED AND CAUGHT ITS OWN FLAW.** The live line:
+```
+BLOCKED 215377ms  phase=_teachHebbian  cell=art/kindergarten  donors=1
+  consolidationInFlight=false innerVoiceInFlight=false replicaSyncing=0
+  teachStage=hebbian:substrate(+44ms)
+```
+**44 milliseconds, on a 215-SECOND block.** `_tstage('hebbian:substrate')` is the FIRST line of `_teachHebbian`, so that age means teach re-entered the method AFTER the block ended and overwrote the breadcrumb before the monitor read it. **LOOPNAME v1 was measuring the RECOVERY, not the STALL** — the lag monitor is a 1000ms `setInterval` (`brain-server.js:9169`) that by construction reports only once the loop is free, and the teach loop resumes first. v1 could never have named a block. That is my design error, not a surprise about the brain.
+
+**THE BLOCK IS REAL — that part is now PROVEN, not assumed.** `setInterval` callbacks do not queue: if the loop stalls, the timer fires ONCE on release and `lagMs` is the true gap. `lagMs = 215377` means the timer genuinely did not run for 215 seconds. The `State saved v9 at t=0.2s` + two cell-passes stamped at the same second are the flush AFTER release (`t=0.2s` is a save DURATION, not a timestamp), not evidence of work during it.
+
+### What shipped
+
+- **LOOPMAX.1/.2** `_tstage` banks the OUTGOING stage's held time before overwriting; the BLOCKED line prints `teachStageMax=<name>(<ms>ms)` and resets the window. The max is written by the same call that would otherwise destroy the evidence, so the race that defeated v1 cannot defeat v2.
+- **LOOPMAX.3** The negative result is decisive: a long block with a SMALL max proves the stall is outside all six marked sub-ops and says where to mark next.
+- **LOOPMAX.4** `teachStageMax` + `teachStageMaxMs` published in liveness.
+- **LOOPMAX.5** `node --check` + `import()` PASS; **bundle rebuilt** (4.0mb, 3 refs verified) - the LOOPNAME.11 lesson applied without being told twice.
+
+### Also true, and worth keeping
+
+She is WALKING. `art/kindergarten` in progress with `_teachColorMixingK` and `_teachWarmCoolColors` both passed; **5 subjects have now reached kindergarten** (ela, math, science, social + art underway). The RunPod 4090 reattached on the CUDA path at full 24,080MB - the PTX ISA 8.0 fix holds on a **driver 580 / CUDA 13.0** host, newer than the one it was built against. The blocks are strangling her, not stopping her.
+
+### Left OPEN
+
+- **LOOPMAX.6** GEE presses; the verdict field is `teachStageMax`, NOT `teachStage`.
+- **LOOPMAX.7** langCortex at 349,155 vs 12,000,000 - cause read from source (free-RAM-at-boot gate, `brain-server.js:1998`), theory unconfirmed, **fresh walk explicitly NOT recommended** until the `WMB FLOOR SKIPPED` boot line names which branch fired.
+- **LOOPMAX.8** `saveStage` and `chatStage` have the same timer race v1 had and have not been audited.
+
+---
 ## 2026-08-19 - LOOPNAME: a 279-second event-loop block that no instrument could name - feature/teach-stage-instrument
 
 ### Gee ask (verbatim per LAW #0)
