@@ -1734,6 +1734,39 @@ const SERVER_GPU_MIXIN = {
     const replicas = this._livePoolDonors().filter(ws => ws !== this._gpuClient);
     if (replicas.length === 0) return;
     if (this._rebroadcastInFlight) return;
+    // RESYNCDUTY — the caller's timer schedules this every 60s, but a full 17-matrix
+    // sweep is 4.2GB and takes ~11.5 MINUTES at biological scale over the ~4MB/s donor
+    // uplink. The interval was therefore ~11x shorter than the work it scheduled, so the
+    // moment one sweep landed the next timer tick started another: a 100% duty cycle,
+    // permanently. `_rebroadcastInFlight` above stops two sweeps OVERLAPPING, which is
+    // exactly why this survived unnoticed — the guard suppressed the symptom (no error,
+    // no drop, no warning) while leaving the pathology invisible. Measured cost while it
+    // ran: the event loop blocked 3.2-8.1s in 300 of 500 consecutive console lines, GPU
+    // round-trip 11.1s, 311GB egress, and the curriculum starved to ZERO teach calls.
+    //
+    // So the interval is now derived from how long a sweep ACTUALLY took rather than from
+    // a constant that cannot know the brain's scale: the pool must sit idle for
+    // `ratio x lastSweepDuration` before another is eligible. Ratio 3 => re-convergence
+    // occupies at most ~25% of wall clock and teach keeps >=75%. At small scale a sweep is
+    // seconds, so `ratio x seconds` stays under the caller's 60s cadence and behaviour is
+    // unchanged — this only ever throttles when the sweep is genuinely expensive.
+    const _dutyRatio = Number(process.env.DREAM_DF7_REBROADCAST_DUTY) > 0
+      ? Number(process.env.DREAM_DF7_REBROADCAST_DUTY) : 3;
+    const _lastDur = this._lastRebroadcastDurationMs || 0;
+    const _lastEnd = this._lastReplicaRebroadcastMs || 0;
+    if (_lastDur > 0 && _lastEnd > 0) {
+      const _needIdleMs = _lastDur * _dutyRatio;
+      const _idleMs = Date.now() - _lastEnd;
+      if (_idleMs < _needIdleMs) {
+        // NO SILENT CAPS — a skipped sweep says so, with the numbers that justify it.
+        // A silent skip is how a 60s interval masqueraded as healthy for a whole session.
+        if (!this._rebroadcastDutyLogMs || (Date.now() - this._rebroadcastDutyLogMs) > 300000) {
+          this._rebroadcastDutyLogMs = Date.now();
+          console.log(`[Brain] DF.7 RESYNCDUTY — re-broadcast DEFERRED: the last sweep took ${(_lastDur / 1000).toFixed(0)}s, so the pool stays idle ${(_needIdleMs / 1000).toFixed(0)}s (duty ratio ${_dutyRatio}x) before the next one. ${((_needIdleMs - _idleMs) / 1000).toFixed(0)}s remaining. Replicas stay approximately current via fire-and-forget Hebbian meanwhile; this is drift correction, not a correctness requirement.`);
+        }
+        return;
+      }
+    }
     // TU.20.2 (ISSUE-B) — do NOT launch a full 17-matrix replica sweep while the
     // primary's WS send buffer is still saturated. Piling a rebroadcast onto a
     // jammed socket compounds the backpressure that the drop storm is already
@@ -1758,9 +1791,18 @@ const SERVER_GPU_MIXIN = {
       // right for COMPUTE fan-out (independent GPUs, independent work) and wrong for weight
       // STREAMING (one shared uplink). The per-donor lane lock below makes this redundant but
       // explicit is better than relying on a lock two functions away.
+      const _sweepStart = Date.now();
       for (const _ws of replicas) { await this._syncReplicaToDonor(_ws); }
+      // RESYNCDUTY — record what this sweep COST so the next one can be scheduled against
+      // reality. Without this the duty gate above has nothing to measure and the interval
+      // is back to being a guess about the brain's scale.
+      this._lastRebroadcastDurationMs = Date.now() - _sweepStart;
       this._lastReplicaRebroadcastMs = Date.now();
-      console.log(`[Brain] DF.7 — master re-broadcast to ${replicas.length} replica(s) complete (GPU shadows re-converged to the CPU master, in parallel).`);
+      // Says "sequentially" because SYNCSERIAL made this loop strictly sequential (one
+      // shared uplink). The old wording claimed "in parallel" — describing work it was not
+      // doing. Same class of lying instrument as a persistent gneurons_per_sec reading, and
+      // that one hid a real bug for hours.
+      console.log(`[Brain] DF.7 — master re-broadcast to ${replicas.length} replica(s) complete in ${(this._lastRebroadcastDurationMs / 1000).toFixed(0)}s (GPU shadows re-converged to the CPU master, sequentially over the shared uplink). Next sweep held off ~${((this._lastRebroadcastDurationMs * _dutyRatio) / 1000).toFixed(0)}s to keep the teach loop's slice.`);
     } finally {
       this._rebroadcastInFlight = false;
     }

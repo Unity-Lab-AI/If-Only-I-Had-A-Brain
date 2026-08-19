@@ -233,7 +233,7 @@ The static page and the persistent Node brain-server live on the **same machine*
 **Distributed donor-GPU compute (data-parallel):**
 
 - Visitors' **browser GPUs** donate compute via `compute.html` (WebGPU). Each donor holds a **full brain replica** and runs the Rulkov neuron model + sparse-CSR propagation locally.
-- The server merges Hebbian **weight-deltas** from donors and **re-broadcasts the master** periodically. The **CPU-side CSR weights on the server are authoritative**; donor GPUs are the compute accelerators.
+- The server merges Hebbian **weight-deltas** from donors and **re-broadcasts the master** periodically. The **CPU-side CSR weights on the server are authoritative**; donor GPUs are the compute accelerators. The re-broadcast is **duty-cycle bounded** (RESYNCDUTY, 2026-08-19): a sweep re-streams all 17 matrices and costs ~11.5 min / 4.2GB at biological scale over the ~4MB/s donor uplink, so the next one is ineligible until the pool has idled `ratio × lastSweepDuration` (default 3 → ≤25% of wall clock; `DREAM_DF7_REBROADCAST_DUTY`). A fixed interval cannot know the brain's scale — at 60s it ran continuously and starved the teach loop to zero.
 - More connected donors → more compute → the brain can hold more neurons.
 
 **Community-compute auto-scaling:**

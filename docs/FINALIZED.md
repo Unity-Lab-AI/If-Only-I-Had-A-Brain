@@ -5,6 +5,48 @@
 
 ---
 
+## 2026-08-19 - RESYNCDUTY: the replica re-broadcast ran at a 100% duty cycle and starved the walk to zero teach - feature/resync-duty-cycle
+
+### Gee ask (verbatim per LAW #0)
+
+> *"whats she doing? its like science is NOT finishing and wrapping up... its just sitting here at 0 teach/min: 4:18:54 AM [audit] ∼ sem VOCAB OK: science/kindergarten 100% (345 words)"*
+
+> *"looks like its moving:4:18:56 AM [teach] ⌗ fineType STRUCT DONE: science/kindergarten · 1 / 4:39:37 AM [teach] · phase (client-derived) phase change: _teachHebbian → _measureEmissionCapability"*
+
+**THE INTERVAL WAS 11x SHORTER THAN THE WORK IT SCHEDULED.** `REPLICA_REBROADCAST_MS` (`brain-server.js:6264`) is `60 * 1000` whenever DF.7 fan-out is on. A full re-broadcast re-streams all 17 weight matrices to every replica — **4.2GB, measured at ~11.5 MINUTES per sweep** at biological scale. So the moment one sweep landed, the very next timer tick started another. Three complete cycles sit back-to-back in the console ring with no gap between them: complete 4:01:28 -> restart 4:01:38 (10s); complete 4:13:11 -> restart 4:13:40 (29s); running again from 4:17:41.
+
+**THE GUARD IS WHY IT SURVIVED.** `_rebroadcastInFlight` correctly prevents two sweeps OVERLAPPING — so there was no error, no warning, no drop, and nothing on the dashboard that looked wrong. What the guard actually produced was a **100% duty cycle**: it suppressed the symptom and left the pathology invisible. This is the SECOND guard in two days to do exactly that (the first was the persistent `gneurons_per_sec` field that hid MIRRORID for hours).
+
+**THE PHYSICAL CEILING WAS IN OUR OWN LOG, AND IT IS THE NUMBER GEE ALREADY CALLED.** `upload timeout FLOORED - DREAM_SPARSE_UPLOAD_TIMEOUT_MS=180000ms is below what this 120MB payload physically needs at 2.00MB/s (4MB/s shared across 2 in-flight stream(s))`. **4MB/s.** 4.2GB at 4MB/s is a **~17 minute floor**. We were asking for it every 60 seconds. Gee named this ceiling on 2026-08-18 — *"4MB might ber the issue"* — and it was the link cap then and the physical bound now.
+
+**MEASURED DAMAGE (field-read, not inferred):** `[EventLoop] BLOCKED 3200-8100ms` in **300 of the last 500 console lines**, with `replicaSyncing=1` on every one; `cpuPercent 7` of 16 cores = **exactly 1.0 core pinned**, i.e. sustained synchronous main-thread work; `stepTimeMs: 11402`; `roundTripMs: 11137`; `eventLoopDelay.maxMs: 53083`; **311GB egress**; `teachCallsPerMin: 0` for 23 minutes. The control is decisive: loop lag measured INSIDE a sweep while the curriculum happened to be quiet was `77ms` / `129ms` / `206ms`; during the contended window it was `7809ms` / `7643ms`.
+
+### What shipped
+
+- **RESYNCDUTY.1 - the interval is DERIVED, not constant.** `_rebroadcastMasterToReplicas` now requires the pool to have idled `ratio x lastSweepDuration` before another sweep is eligible. Ratio 3 (default) => re-convergence takes at most ~25% of wall clock and teach keeps >=75%. Env-tunable via `DREAM_DF7_REBROADCAST_DUTY`. At small scale a sweep is seconds, so `ratio x seconds` stays under the caller's existing 60s cadence and behaviour is unchanged — this only ever throttles when the sweep is genuinely expensive.
+- **RESYNCDUTY.2 - the defer SAYS SO.** A skipped sweep logs (throttled 5min) with the measured last-sweep duration, the required idle, and the seconds remaining. NO SILENT CAPS — a silent skip is precisely how a 60s interval masqueraded as healthy for an entire session.
+- **RESYNCDUTY.3 - the duty cycle is READABLE.** `lastRebroadcastDurationMs` + `nextRebroadcastEligibleInMs` published beside the existing `lastRebroadcastMs`. The old block exposed only a completion timestamp, which looks identical whether the duty cycle is 5% or 100% — which is why this had to be reconstructed from a console ring instead of read off the board.
+- **RESYNCDUTY.4 - the completion log stopped lying.** It claimed the replicas re-converged **"in parallel"**; SYNCSERIAL made that loop strictly sequential (`for ... await`, one shared uplink). Now reads "sequentially over the shared uplink" and reports the measured sweep duration + the hold-off. A log describing work it is not doing is the same class of instrument failure as a persistent `gneurons_per_sec`.
+- **RESYNCDUTY.5 - VERIFY (build half).** `node --check` PASS on `gpu.js` / `state.js` / `brain-server.js`; `import()` links both edited modules cleanly (the ESM law — `--check` alone misses link errors); the "in parallel" string confirmed GONE. Server-side only, no donor change, no protocol change.
+
+### Two hypotheses KILLED before shipping - the MIRRORID lesson, applied
+
+1. **The 108-minute probe-gate GPU hold is BY DESIGN.** `curriculum.js:8437` pauses `compute_batch` for the ENTIRE cell deliberately, and the state block says so itself: `batchPaused.expected: true`. This was nearly called as the bug. It is not one.
+2. **A `_dreamWindow` / consolidation deadlock was DISPROVEN IN CODE.** The theory was tidy: `_dreamWindow` awaits `runConsolidationPass({forced:true})`, and the periodic path defers forced passes while the curriculum is in a walk. But `_dreamWindow` sets `_curriculumInProgress = false` BEFORE it awaits, and the `force PENDING` log only fires on the `_inWalk === true` branch — so the curriculum is provably NOT inside a dream window. Read the code instead of shipping the tidy story.
+
+### And she was never stuck - a prediction made BEFORE the evidence
+
+The `readText skipped` warn fired on a **perfectly regular 69-second cadence** — ten samples, deltas 69,69,69,69,69,69,69,70,69. From that cadence alone the call was made: she had left phase 20/21 into `_gateSciKReal` (which is NOT wrapped in `_phasedTeach`, hence `activePhase: null` and `cellPhasesStarted === cellPhasesCompleted === 20`), and `_probeProductionBatch` was grinding **17 production probes at ~69s each = ~19.5 minutes**, therefore **starved, not deadlocked**.
+
+Gee then pasted the dashboard: **`4:39:37 phase change: _teachHebbian -> _measureEmissionCapability`**, then `-> _runStudentBattery`. The batch ran 4:18:54 -> 4:39:37 = **20.7 minutes for 17 probes = 73s each.** Prediction confirmed against live evidence it did not have. **A gate probe that should cost seconds cost 73 seconds because the event loop and the donor uplink were both saturated by the runaway sweep** — which is exactly the damage RESYNCDUTY.1 removes. The same failure class has bitten here before and the code comment already records it: *"Operator saw art/kindergarten go silent for 11+ minutes during this batch"*.
+
+### Left OPEN, deliberately
+
+- **RESYNCDUTY.6** GEE: Update & Savestart (weights kept — this is a scheduler fix, not a walk change). Verdict: `[EventLoop] BLOCKED` collapses from ~60% of the ring to occasional, `teachCallsPerMin` comes off 0, gate probes stop costing 73s each.
+- **RESYNCDUTY.7** The **guard-hides-the-pathology** pattern. Two in two days. Any guard that prevents overlap should also MEASURE the duty cycle it produces and complain as it approaches 100%, or the next one hides just as long.
+- **RESYNCDUTY.9** `_gateSciKReal` is **invisible to the phase counter**. For 20.7 minutes the board read `activePhase: null` with started === completed === 20 — **indistinguishable from a hang**. That ambiguity is the entire reason this needed a console-ring forensic dig rather than a glance at the dashboard.
+
+---
 ## 2026-08-18 - DELTAIDX + SYNCSERIAL + PACEDSYNC + SYNCGATE: the multi-donor pool actually works - feature/df7-* + feature/deltaidx-colidx
 
 ### Gee ask (verbatim per LAW #0)

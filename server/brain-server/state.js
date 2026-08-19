@@ -737,6 +737,16 @@ const SERVER_STATE_MIXIN = {
         replicaCount: (typeof this._livePoolDonors === 'function')
           ? Math.max(0, this._livePoolDonors().length - 1) : 0,
         lastRebroadcastMs: this._lastReplicaRebroadcastMs || null,
+        // RESYNCDUTY — publish what the sweep COST and when the next one is eligible.
+        // The 60s-interval/11.5-minute-sweep runaway had to be reconstructed from a
+        // console ring because the dashboard only ever showed the completion timestamp,
+        // which looks identical whether the duty cycle is 5% or 100%.
+        lastRebroadcastDurationMs: this._lastRebroadcastDurationMs || null,
+        nextRebroadcastEligibleInMs: (this._lastRebroadcastDurationMs && this._lastReplicaRebroadcastMs)
+          ? Math.max(0, (this._lastRebroadcastDurationMs
+              * (Number(process.env.DREAM_DF7_REBROADCAST_DUTY) > 0 ? Number(process.env.DREAM_DF7_REBROADCAST_DUTY) : 3))
+              - (Date.now() - this._lastReplicaRebroadcastMs))
+          : null,
       };
     } catch {
       return {
@@ -744,6 +754,7 @@ const SERVER_STATE_MIXIN = {
         runningTier: 0, pendingTier: null, pendingSinceMs: null, runningFloorMB: 0,
         computeInsufficient: false, downPendingTier: null, downPendingSinceMs: null,
         replicaCount: 0, lastRebroadcastMs: null,
+        lastRebroadcastDurationMs: null, nextRebroadcastEligibleInMs: null,
       };
     }
   },
