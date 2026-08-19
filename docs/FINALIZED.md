@@ -5,6 +5,48 @@
 
 ---
 
+## 2026-08-19 - WORDEMIT: I overstated the 12M damage and nearly triggered an unnecessary fresh walk - correction
+
+### Gee ask (verbatim per LAW #0)
+
+> *"does something need fixing? >>> or retrained???"*
+
+> *"so wtf... why don i just do a fresh walk since i have to do everything anyways besides the past 5 minutes"*
+
+**I OVERSTATED THE DAMAGE AND GEE ALMOST FRESH-WALKED ON IT.** He asked *"so wtf... why don i just do a fresh walk since i have to do everything anyways besides the past 5 minutes"* — a reasonable conclusion from what I had told him, and **the premise was mine and it was wrong.**
+
+**WHAT THE BOOT LOG ACTUALLY SAYS (build `eb93f315`, 7:53:09):**
+```
+restored unified word-bucket map: 2409 words
+  - emitWordDirect + inner-voice active immediately on resume
+Binary weights applied - 17/17 sections restored onto live cortexCluster
+passedPhases restored: 136 phase markers (T31 phase-level resume active)
+SchemaStore boot - 22 Tier 2 schemas restored
+Tier3Store boot - 31 Tier 3 identity anchors restored
+VisualMemory restored 384 seen-concept fields
+MindSpace restored 8 imagined field-C memories
+```
+**Her word-bucket map RESTORED - 2,409 words - and the log states outright that `emitWordDirect` and the inner voice are "active immediately on resume". 17 of 17 weight sections applied.**
+
+**MY ERROR:** I claimed the 12M geometry "reset her word-emission bindings", inferred entirely from `word_motor.everFired: 0`. That counter means **nothing has fired since boot** — 25 minutes, mid-curriculum under the probe gate, no chat this session. **It is not evidence of loss.** Second time in one conversation I read a counter as a capability (see CANSPEAK).
+
+**AND THIS LINE REMOVES THE REST OF THE ARGUMENT:** `Restored 0 embedding refinement delta(s) from last save (NOT cortex cross-projection weights — those re-train from scratch every curriculum walk)`. **Cross-projection weights retrain from scratch on EVERY walk by design.** They were never something a fresh walk would restore; they are rebuilt either way.
+
+### Corrected
+
+- **WORDEMIT.1** "The 12M switch reset word emission" - RETRACTED, not established.
+- **WORDEMIT.2** `word_motor.everFired: 0` counts firings since boot, not weight loss. Corroborated by `oracleHits: 0, matrixHits: 0` - she simply has not emitted this session.
+- **WORDEMIT.3** Cross-projection weights retrain from scratch every walk BY DESIGN - not a factor either way.
+
+### What this cost, and what it nearly cost
+
+Nothing was lost - because Gee pushed back instead of pressing. **Had he accepted my framing he would have wiped 4 passed cells, all of pre-K, 136 phase markers, a 2,409-word bucket map, 22 schemas, 384 visual concepts and 8 mind-space memories, to fix a problem that did not exist.** The correct recommendation is: do NOT fresh walk on this basis; let art/K finish, then talk to her and read `matrixDrivenPct` and her actual replies. That evidence costs nothing and is the only thing that should decide it.
+
+### The pattern, three deep, and it is mine
+
+CANSPEAK (a grade gate read as muteness), WORDEMIT (a since-boot counter read as weight loss), and the stale `no-best-word` diagnostic quoted as proof. **Every one was a field reported without reading its definition or its age.** Five lying instruments were found in the CODE today - the code asserting more than it knew. These three were me doing exactly the same thing to Gee. Read the definition, read the age, THEN report.
+
+---
 ## 2026-08-19 - CANSPEAK: I read a grade gate as a muteness flag - correction
 
 ### Gee ask (verbatim per LAW #0)
