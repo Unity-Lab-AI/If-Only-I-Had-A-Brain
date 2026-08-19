@@ -1,6 +1,69 @@
 # RESUME — Session Pickup Brief
 
-> ## ⭐⭐⭐ 2026-08-18 (latest) — RUNPOD DONOR WIRED END-TO-END · THE PTX BUG THAT WAS *ALSO* THE "THAT'S NOT 24GB" BUG · **donor-v0.3.21 BUILT + VERIFIED, TAG PENDING (GEE)**
+> ## ⭐⭐⭐ 2026-08-19 (latest) — RESYNCDUTY: the replica re-broadcast ran at a **100% DUTY CYCLE** and starved the walk to ZERO teach · she was never stuck, she was starved · ⛔ still on `feature/resync-duty-cycle`, NOT deployed
+>
+> **THE BUG, IN ONE LINE:** `REPLICA_REBROADCAST_MS` is **60 seconds** (`brain-server.js:6264`) but a full 17-matrix replica sweep is **4.2GB and ~11.5 MINUTES** over the ~4MB/s donor uplink. **The interval was 11x shorter than the work it scheduled**, so each sweep restarted 10-29 seconds after the last one landed. Three complete cycles sit back-to-back in the console ring: complete 4:01:28 -> restart 4:01:38; complete 4:13:11 -> restart 4:13:40; running again from 4:17:41.
+>
+> **WHY IT SURVIVED — and this is the part worth carrying forward.** `_rebroadcastInFlight` correctly stops two sweeps OVERLAPPING. So there was no error, no warning, no drop, nothing on the dashboard that looked wrong. **The guard suppressed the symptom and left the pathology invisible.** That is the SECOND guard in two days to do exactly this — the first was the persistent `gneurons_per_sec` that hid MIRRORID for hours. Any guard that prevents overlap should also MEASURE the duty cycle it produces.
+>
+> **MEASURED, NOT INFERRED:** `[EventLoop] BLOCKED 3.2-8.1s` in **300 of 500 consecutive console lines** (every one carrying `replicaSyncing=1`) · `cpuPercent 7` of 16 cores = **exactly 1.0 core pinned** · `stepTimeMs 11402` · `roundTripMs 11137` · `eventLoopDelay.maxMs 53083` · **311GB egress** · `teachCallsPerMin: 0`. The control is decisive: loop lag inside a sweep while the curriculum was quiet was `77ms`/`129ms`/`206ms`; contended it was `7809ms`/`7643ms`.
+>
+> **Gee called the ceiling a day early.** Our own log: `at 2.00MB/s (4MB/s shared across 2 in-flight stream(s))` — **4MB/s**, so 4.2GB has a ~17-minute floor and we asked for it every 60s. His words on 08-18 were *"4MB might ber the issue"*.
+>
+> ### WHAT SHIPPED (working tree, `feature/resync-duty-cycle`)
+> The interval is now **derived from how long a sweep ACTUALLY took**: the pool must idle `ratio x lastSweepDuration` before the next is eligible (default 3 => re-sync <=25% of wall clock, teach >=75%; `DREAM_DF7_REBROADCAST_DUTY`). Unchanged at small scale where a sweep is seconds. Deferrals LOG with the numbers (no silent caps). `lastRebroadcastDurationMs` + `nextRebroadcastEligibleInMs` published beside `lastRebroadcastMs`. The completion log stopped claiming the replicas re-converged **"in parallel"** — SYNCSERIAL made it strictly sequential, and a log describing work it is not doing is the same lying-instrument class as the stale Gn/s. `node --check` + ESM `import()` PASS on gpu.js / state.js / brain-server.js. **Server-side only, no donor change, no protocol change. Deploy = Update & Savestart (weights kept).**
+>
+> ### ⛔ TWO HYPOTHESES KILLED BEFORE SHIPPING — do NOT re-derive them
+> 1. **The 108-minute probe-gate GPU hold is BY DESIGN.** `curriculum.js:8437` pauses `compute_batch` for the whole cell deliberately; the state block says `batchPaused.expected: true`. It was nearly called as the bug. It is not one.
+> 2. **The `_dreamWindow` / consolidation deadlock is DISPROVEN.** The tidy story was: `_dreamWindow` awaits `runConsolidationPass({forced:true})` while the periodic path defers forced passes mid-walk. But `_dreamWindow` sets `_curriculumInProgress = false` BEFORE it awaits, and the `force PENDING` log only fires on the `_inWalk === true` branch — so the curriculum is provably not inside a dream window. The `force PENDING` line every ~5min is a WORKING defer, not a stuck engine; its own comment says so.
+>
+> ### SHE WAS NEVER STUCK — and the prediction preceded the evidence
+> The `readText skipped` warn fired on a **perfectly regular 69s cadence** (ten samples: 69,69,69,69,69,69,69,70,69). From that alone: she had left phase 20/21 into `_gateSciKReal` and `_probeProductionBatch` was grinding **17 probes at ~69s each ≈ 19.5 min** — starved, not deadlocked. Gee then pasted `4:39:37 phase change: _teachHebbian -> _measureEmissionCapability`, then `-> _runStudentBattery`: **20.7 minutes, 73s per probe.** A gate probe that should cost seconds cost 73 because the loop AND the uplink were both saturated by the runaway sweep.
+>
+> ### ⏳ OPEN BOARD (unchanged items carried from the prior banner still stand)
+> 1. **RESYNCDUTY.6 — GEE PRESS: Update & Savestart.** Nothing is deployed. Verdict to look for: `[EventLoop] BLOCKED` collapses from ~60% of the ring to occasional; `teachCallsPerMin` comes off 0; gate probes stop costing 73s.
+> 2. **RESYNCDUTY.9 — `_gateSciKReal` is INVISIBLE to the phase counter.** It is not wrapped in `_phasedTeach`, so for 20.7 minutes the board read `activePhase: null` with `cellPhasesStarted === cellPhasesCompleted === 20` — **indistinguishable from a hang**. Same family as MIRRORID.5: the dashboard cannot answer "is it working?", so every question needs a console-ring dig. **Fix the board before trusting it.**
+> 3. **MIRRORID.5 / DELTAIDX / WORKSHARE.6 / RUNPOD.6 / PARTMIRROR.4** — all still open exactly as written in the prior banner below.
+>
+> ### METHOD NOTE
+> This one went the right way and it is worth keeping: **no code was changed until a field read named the cause.** The console ring was pulled first (`/public-state.json?console=N`), the spam was filtered to find the 179 lines that were not `[EventLoop] BLOCKED`, and the restart-loop fell out of the timestamps. Two attractive hypotheses were then killed by reading source rather than by shipping them. Yesterday cost a whole session to four source-reasoned fixes; today cost one filtered log.
+
+> ## ⭐⭐⭐ 2026-08-19 (prior) — THE MULTI-DONOR POOL WORKS: three names on the leaderboard, 2 cells passed overnight · the bug was a NEGATIVE batchId parsed as u64 · ⛔ DELTAIDX still disabled, cause unfound
+>
+> **LIVE STATE AT HANDOFF (13.5h uptime on `05182b4b`):** walking **science/kindergarten, phase 20/21**, 103min into the cell. **`passedCellsTotal: 2`** — ela + math both advanced to **kindergarten** overnight (ela: 24 phases, 1,003,119 teach events). Lang cortex **12,000,000** ✓ · word_motor **720,000** ✓ covers target · defs **2,263 / 18,017** · drops 0 · sheds 0 · tier 3.
+>
+> ### 🏆 THE LEADERBOARD HAS THREE NAMES
+> `Gee 1,555,962 · Mills 215,910 · Sponge 32,098`. Gee (verbatim): *"i mean wtf is the point of the leaderboard if only one doner can be on it"* — that framing is what cracked this open. It ran multi-donor unattended overnight and advanced two cells.
+>
+> ### ⛔ THE BUG THAT COST THE WHOLE SESSION — read this before touching DF.7
+> The mirrored compute_batch carried `batchId: -batchId`, chosen so it could never collide with the authoritative id. **The donor parses it into `ComputeBatch { batch_id: u64 }` (`protocol.rs:228`) and serde CANNOT deserialize a negative number into an unsigned type.** Every mirrored batch failed to parse ON ARRIVAL and was dropped silently — no mirrored donor had ever computed, not once. Fixed by a large POSITIVE offset (`2000000000 + batchId`), which keeps the anti-collision property without violating the wire type.
+>
+> **WHY IT HID FOR HOURS — and this is the more important lesson:** `gneurons_per_sec` is a **PERSISTENT donor-side field** (`donor.rs:655` writes it only when a batch completes, then it keeps that value forever). A card that had ONCE been primary kept displaying its old rate while computing **nothing** — the 4090 showed 32.6 Gn/s long after another card took over as primary. Only a donor that had NEVER been primary read a true 0. **Sponge was never the broken one; he was the only honest cell on the board**, and he was treated as the anomaly for hours instead of as the evidence.
+>
+> ### THE FIX CHAIN (all on main, all deployed)
+> **ALLINIT** — `gpu_init` was sent only to the primary or as a side effect of the multi-GB weight sync, so a replica had ZERO cluster buffers until its sync completed and physically could not run a compute_batch. Now every donor is initialised at registration; the weight sync became an UPGRADE (unlocks matrix work) rather than the price of admission. · **INITFIT** — ALLINIT then asked a 5.6GB card to allocate **12GB** (all 7 clusters), which blew its heartbeat RTT to **29,717ms**; cluster init now uses the same VRAM-fit the sync does (11.99GB → 1.44GB requested). · **WORKSHARE** — compute_batch went to `this._gpuClient` alone, so a replica could sync perfectly and still never be ASKED to compute. · **BUFFLOOR** (Gee spotted it: *"4MB might ber the issue"*) — the 4MB link cap was a HARD exclusion in `_nextPoolDonor`, and a replica mid-sync sits 5-40MB buffered BY DESIGN, so every syncing replica was banned from Hebbian AND propagate too; now a weight penalty, not a ban. · **MIRRORCAP / PARTMIRROR / SYNCGATE / PACEDSYNC / SYNCSERIAL / QUEUEDEADLINE / INCREMENTAL** — supporting fixes, all live.
+>
+> ### ⛔⛔ DELTAIDX IS DISABLED AND THE CAUSE WAS NEVER FOUND
+> colIdx delta-varint encoding measured **68-69.6% off colIdx / 33.5% off the whole payload** (verified live: `cortex_intraSynapses — colIdx 1373.3MB raw -> 417.2MB`) and would cut ~4 minutes per donor off every boot. It is **OFF** (`DREAM_DELTA_COLIDX=1` to re-enable) because it twice produced `CUDA_ERROR_ILLEGAL_ADDRESS` on `bound hebbian` — which indexes cluster spike buffers BY colIdx — permanently poisoning the donor CUDA context and dropping a 24GB card to wgpu at a 2047MB cap. **ALIASFIX removed a REAL shared-scratch corruption path and the fault still returned**, so that was not the whole cause.
+> **Known-good, do not re-derive:** the codec is byte-exact at 750,000 entries (production chunk size) and at the 10-entry cross-language parity vector; concurrent encodes with SEPARATE scratches round-trip byte-exact. **What was never reproduced offline is the actual multi-donor upload path end to end — that is where the bug lives, and that reproduction is the prerequisite for re-enabling.**
+>
+> ### DONOR RELEASES
+> **v0.3.21** — `kernels.ptx` was built by a CUDA 13.0 toolchain (`.version 9.0`), which no r570 driver can JIT; every such host fell back to wgpu and advertised Vulkan's 2GB cap instead of real VRAM. Rebuilt at ISA 8.0 (CUDA 12.0 toolkit) — loads on every driver from r525 up. **Regenerating with CUDA 13.x silently reinstates this**; the recipe is in the `cuda_kernels.cu` header. · **v0.3.22** — DELTAIDX decode (dormant while the feature is off).
+>
+> ### RUNPOD
+> Template `unity-donor-headless` id `4u68iuvsnz`, pinned to donor-v0.3.22, ~$0.74/hr secure (community 4090s refused placement every attempt). Non-obvious requirements, all verified from the shipped ELF: **ubuntu:24.04 base** (binary needs GLIBC_2.39; a `cu1281` image also carries a `cuda>=12.8` label that crash-loops older-driver hosts before any of our code runs), `NVIDIA_DRIVER_CAPABILITIES=all` (default `compute,utility` never mounts the Vulkan ICD), plus `libvulkan1` + `libx11-6`/`libxext6` + **`libglvnd0`/`libglx0`** — libGLX_nvidia is a GLVND vendor lib and was the final blocker. `gpu.rs` enumerates `wgpu::Backends::PRIMARY` = **Vulkan-only on Linux** and `main.rs:88` hard-exits without an adapter, **regardless of feature flags** — so the old RESUME advice to build `--no-default-features --features cuda` cannot work either (RUNPOD.6, still open).
+>
+> ### ⏳ OPEN BOARD
+> 1. **MIRRORID.5 — the dashboard actively misleads.** A donor showing a rate it earned minutes ago while computing nothing is worse than showing 0: it concealed the batchId bug for hours and will conceal the next one. The rate must decay or read `idle` when no batch has completed recently; the server already counts mirrored batches. **Fix this before trusting the board again.**
+> 2. **DELTAIDX** — reproduce the corruption offline (multi-donor upload path), then re-enable. Worth ~33% off every replica sync.
+> 3. **WORKSHARE.6** — mirrored work is REDUNDANT (replica computes the same step, result discarded). Correct for credit and for keeping replica state warm, but it is **not extra throughput**; additive work needs independent units via `_gpuParallelMap`. Whether the leaderboard should count redundant cycles is defensible either way but should be a decision, not an accident.
+> 4. **RUNPOD.6** — let a CUDA-capable host donate without a Vulkan stack; kills the whole GLVND/X11 package pile.
+> 5. **PARTMIRROR.4** — surface cluster coverage next to the rate so a small card reads as *"contributing 2/7 clusters"* rather than an unexplained low number. A 5.6GB card is the COMMON case for public volunteers.
+>
+> ### THE METHOD LESSON, STATED PLAINLY
+> MIRRORCAP, BUFFLOOR, PARTMIRROR and ALLINIT were four consecutive fixes reasoned from source, each shipped as "this is the one", none of which resolved the symptom — and two of them (ALLINIT, PARTMIRROR) were NEW bugs introduced by the fixing. **MIRRORDIAG — one throttled log line naming every donor and its exact skip reason — resolved it on its FIRST line.** Every one of those rounds cost Gee a press, a restart, and a walk that started over. The LAW already says it: *"instrument-first is not a preference; it is the only law that kills."* This session is the price of ignoring it.
+
+> ## ⭐⭐⭐ 2026-08-18 (prior) — RUNPOD DONOR WIRED END-TO-END · THE PTX BUG THAT WAS *ALSO* THE "THAT'S NOT 24GB" BUG · **donor-v0.3.21 BUILT + VERIFIED, TAG PENDING (GEE)**
 >
 > **WHY THIS FILE MATTERS RIGHT NOW:** the donor fix is committed but the release does not exist until a `donor-v0.3.21` tag is pushed. Gee cannot press Update & Savestart until CI publishes the binary. **That tag is the one open action.**
 >
