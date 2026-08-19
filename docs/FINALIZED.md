@@ -63,7 +63,7 @@ BLOCKED 215377ms  phase=_teachHebbian  cell=art/kindergarten  donors=1
 
 ### Also true, and worth keeping
 
-She is WALKING. `art/kindergarten` in progress with `_teachColorMixingK` and `_teachWarmCoolColors` both passed; **5 subjects have now reached kindergarten** (ela, math, science, social + art underway). The RunPod 4090 reattached on the CUDA path at full 24,080MB - the PTX ISA 8.0 fix holds on a **driver 580 / CUDA 13.0** host, newer than the one it was built against. The blocks are strangling her, not stopping her.
+She is WALKING. `art/kindergarten` in progress with `_teachColorMixingK` and `_teachWarmCoolColors` both passed; **4 subjects have reached kindergarten** (ela, math, science, social + art underway). The RunPod 4090 reattached on the CUDA path at full 24,080MB - the PTX ISA 8.0 fix holds on a **driver 580 / CUDA 13.0** host, newer than the one it was built against. The blocks are strangling her, not stopping her.
 
 ### Left OPEN
 
