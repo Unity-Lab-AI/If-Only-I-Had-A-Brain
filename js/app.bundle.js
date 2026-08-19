@@ -95832,6 +95832,14 @@ var Curriculum = class _Curriculum {
           // + hops: every macrotask yield in the teach chunkers (cluster-
           // side _hopProf) and the _teachHebbian yields (hebbianYield) are
           // counted + timed — at eventLoopLagMs ~758 the hops WERE the cost.
+          // LOOPNAME — the innermost teach sub-op + how long it has been in it.
+          // Readable WITHOUT a console ring (the lesson RESYNCDUTY.3 just paid for):
+          // when the loop pins, the console ring is exactly what stops being fetchable.
+          teachStage: (this.brain || this.cluster && this.cluster._brain || {})._teachStage || null,
+          teachStageAgeMs: (() => {
+            const _b = this.brain || this.cluster && this.cluster._brain;
+            return _b && _b._teachStageAt ? Date.now() - _b._teachStageAt : null;
+          })(),
           stageProfile: (() => {
             const sp = this._teachStageProfile;
             const hp = cluster && cluster._hopProf;
@@ -102033,6 +102041,7 @@ var Curriculum = class _Curriculum {
   }
   async _teachHebbian(lr, opts = {}) {
     const _sp0 = Date.now();
+    this._tstage("hebbian:substrate");
     await this._awaitComputeSubstrate();
     const _sp1 = Date.now();
     const cluster = this.cluster;
@@ -102051,6 +102060,7 @@ var Curriculum = class _Curriculum {
     };
     await _yieldIfHot();
     const _sp2 = Date.now();
+    this._tstage("hebbian:cross");
     await cluster._crossRegionHebbian(lr, opts);
     const _sp3 = Date.now();
     await _yieldIfHot();
@@ -102067,6 +102077,7 @@ var Curriculum = class _Curriculum {
       return;
     }
     const _sp4 = Date.now();
+    this._tstage("hebbian:intra");
     if (typeof cluster.intraSynapsesHebbian === "function") {
       await cluster.intraSynapsesHebbian(cluster.lastSpikes, cluster.lastSpikes, lr);
     } else if (cluster.synapses && typeof cluster.synapses.hebbianUpdate === "function") {
@@ -102190,8 +102201,10 @@ var Curriculum = class _Curriculum {
    */
   async _teachLateralInhibition(lr, numBuckets = 26) {
     const _lp0 = Date.now();
+    this._tstage("lateral:substrate");
     await this._awaitComputeSubstrate();
     const _lp1 = Date.now();
+    this._tstage("lateral:scan");
     const cluster = this.cluster;
     if (!cluster) return;
     const motorRegion = cluster.regions && cluster.regions.motor;
@@ -102235,6 +102248,7 @@ var Curriculum = class _Curriculum {
     if (crossCount === 0) return;
     const inhibitLr = Math.abs(lr) * 0.3;
     const _lp2 = Date.now();
+    this._tstage("lateral:anti");
     if (typeof cluster.intraSynapsesAntiHebbian === "function") {
       await cluster.intraSynapsesAntiHebbian(cluster.lastSpikes, crossBucketPost, inhibitLr, { activeRows: crossActiveRows });
     } else if (cluster.synapses && typeof cluster.synapses.antiHebbianUpdate === "function") {
@@ -102249,6 +102263,34 @@ var Curriculum = class _Curriculum {
       e.antiMs += Date.now() - _lp2;
       e.activeSum += crossCount;
     }
+  }
+  /**
+   * LOOPNAME — name the INNERMOST teach sub-operation so a long event-loop block
+   * can say what held the CPU.
+   *
+   * THE GAP THIS CLOSES: `_teachHebbian`'s own yield guard already documents the
+   * failure — "a SINGLE sub-op that itself exceeds the window still blocks for its
+   * own duration ... [EventLoop] BLOCKED phase=ela names which op". It does not.
+   * `phase=` reports the curriculum phase LABEL (`_teachHebbian`), not the sub-op
+   * actually running. So a 279,318ms block reported `phase=_teachHebbian` and that
+   * is ALL it reported: no saveStage, no uploadInFlight, consolidation/innerVoice/
+   * replicaSyncing all false. Everything ruled out, nothing named. `_yieldIfHot`
+   * yields BETWEEN sub-ops on a 50ms throttle and cannot help inside one long one.
+   *
+   * Mirrors the `_saveStage` breadcrumb that already works (the BLOCKED reporter
+   * prints `saveStage=` and that tag is exactly how the save path was RULED OUT
+   * here). Two property writes per sub-op — no behaviour change, no allocation.
+   *
+   * DELIBERATELY NEVER NULLED, only overwritten: the lag monitor fires AFTER the
+   * block ends, so clearing on completion would race the report and print nothing
+   * for the one stage we care about. Paired with `_teachStageAt`, the reporter can
+   * print the stage AGE — and an age that matches the block duration IS the answer.
+   */
+  _tstage(name) {
+    const brain2 = this.brain || this.cluster && this.cluster._brain;
+    if (!brain2) return;
+    brain2._teachStage = name;
+    brain2._teachStageAt = Date.now();
   }
   async _teachAntiHebbian(lr, opts = {}) {
     await this._awaitComputeSubstrate();
