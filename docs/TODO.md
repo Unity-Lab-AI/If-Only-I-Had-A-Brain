@@ -1032,3 +1032,33 @@ Bounds: free RAM 23.4GB x 50% = 11.7GB -> 11,715,457 neurons
 - [x] **LANGRAM.10** **CORRECTION - I overstated her progress and it reached the docs.** I wrote 5 subjects at kindergarten in NOW / RESUME / FINALIZED. It is FOUR (ela, math, science, social); art was WALKING its K cell, never passed. Corrected in all three files.
 - [ ] **LOOPMAX.9** **OPEN - first real signal from the fixed instrument.** Live: teachStage=hebbian:cross(+1734ms), teachStageMax=hebbian:cross(3165ms). _crossRegionHebbian is the longest-held sub-op at ~3.2s. NOT yet proof it causes the multi-minute class - the walk is young and the worst block since boot is 13s of boot-time work. Needs runtime before acting.
 - [ ] **LANGRAM.6** **OPEN - the flip-flop should be impossible, not just unlikely.** Sizing a load-bearing geometry off `os.freemem()` at boot means the brain can silently come up with a different vocabulary ceiling run to run, and the only symptom is a warn line buried in boot. Either pin it (persisted config the dashboard writes, like `community-tier.json`) or make a size CHANGE a loud, explicit, operator-acknowledged event.
+
+---
+
+## SYNCPARTIAL - 2026-08-19 - a sweep landed 1 of 17 matrices and announced "a FULL brain replica"
+
+> Gee (verbatim): *"is it normal my doner is showing zero tech ops?🟢 Working — compute task (brain tick) Brain status: accepting GPUs ✓ Unit: NVIDIA GeForce RTX 4070 Ti SUPER Your contribution:  21 compute batches · 0 teach ops · 283140037 spikes/last-batch"*
+
+> Gee (verbatim): *"fix them all now"*
+
+**ANSWER TO THE ASK: NO, THAT IS NOT NORMAL — the donor is holding 1 of 17 matrices.** Boot log, verbatim:
+```
+7:35:58  DF.7 INCREMENTAL - donor 4070 Ti SUPER holds its FIRST matrix
+         (cortex_intraSynapses) and is now work-eligible for it
+7:35:58  DF.7 INCREMENTAL - now holds 1/17 matrices
+7:35:58  DF.7 - replica sync complete: 1 matrices pushed to a donor.
+         It now holds a FULL brain replica and shares compute.
+```
+**"1 matrices pushed" and "a FULL brain replica" on the SAME LINE.** That is the third lying instrument found today, after the rebroadcast that claimed "in parallel" while SYNCSERIAL made it sequential, and the sizing log that hardcoded "x 50%".
+
+**WHY IT PRODUCES EXACTLY THE SYMPTOM.** Teach dispatch is MATRIX-SCOPED (`gpu.js:3010`: `_nextPoolDonor(ops.map(o => o.name))`), and `_nextPoolDonor` only offers a donor a batch whose matrices it HOLDS. Holding only `cortex_intraSynapses` filters it out of every teach batch touching the other 16. **compute_batch needs no matrices at all — only `gpu_init`** — so the donor reports plenty of compute batches and ZERO teach ops. The two numbers are perfectly consistent with 1/17 coverage, and the donor still earns real leaderboard credit (9.26 Gn/s) from the compute half.
+
+**THE FAILURE PATTERN CONTRADICTS THE CODE'S OWN COMMENT.** The loop is ordered SMALLEST-FIRST, with a comment promising "the cheap cross-projections land in seconds and the donor is productive almost immediately, with the intra arriving last". Yet `heldMatrices.size === 1` fired for **`cortex_intraSynapses` — the LARGEST, which under that ordering runs LAST.** So it was the first to SUCCEED, meaning **all 16 cheap cross-projections that ran BEFORE it returned null.** Size is not the discriminator; ORDER is. The 16 are sent seconds after registration while the donor is still running `gpu_init` across 8 clusters (measured at ~6s in this same session), and `_sparseSend` resolves null on timeout rather than throwing, so `catch { /* skip */ }` swallowed all 16 without a trace.
+
+- [x] **SYNCPARTIAL.1** **DONE - every miss is named.** A null ack is recorded as a FAILURE with the matrix name and reason (`null ack (upload timeout/abort)`), and the bare `catch { }` now captures the error message. Previously both paths vanished silently, which is why there was no evidence to read.
+- [x] **SYNCPARTIAL.2** **DONE - ONE bounded retry pass.** After the first pass, every missed matrix is retried exactly once. This is the actual FIX, not just observation: the evidence points at READINESS rather than size, and by the time the first pass ends the donor is demonstrably ready (it just absorbed a 2.9GB upload). Bounded to one extra attempt per matrix so a dead donor cannot spin the sweep.
+- [x] **SYNCPARTIAL.3** **DONE - the completion log stopped lying.** It printed "It now holds a FULL brain replica" unconditionally whenever no cluster-coverage filter was active. A partial sync is now a **WARNING** reporting `synced/attempted`, naming every still-missing matrix WITH its reason, and stating the consequence out loud: *"Teach dispatch is matrix-scoped, so this donor is NOT eligible for teach batches touching those matrices - expect compute batches with ZERO teach ops."* The success line reports `synced/attempted` rather than a bare count.
+- [x] **SYNCPARTIAL.4** **VERIFY (build half) DONE** - `node --check` + `import()` ESM PASS. Server-side only (`server/brain-server/gpu.js`); nothing under `js/brain/`, so no bundle rebuild required.
+- [ ] **SYNCPARTIAL.5** GEE: gatling Update & Savestart. Verdict: either `replica sync complete: 17/17` (retry recovered them), or a `SYNCPARTIAL` warning naming exactly which matrices failed and why. **Both outcomes are answers** - the second one hands us the cause we currently do not have.
+- [ ] **SYNCPARTIAL.6** **OPEN - root cause NOT established.** The readiness theory (uploads racing `gpu_init`) fits the order-not-size evidence but is UNPROVEN. If the retry pass succeeds, that effectively confirms it and the durable fix is to gate the first upload on cluster-init confirmation rather than a 1.5s timer. If the retry ALSO fails, the reasons now printed will say why. **No further code until that line is read.**
+- [ ] **SYNCPARTIAL.7** **OPEN - the donor UI should show coverage, not just counters.** "21 compute batches · 0 teach ops" is a true reading that looks like a fault. Showing "holds 1/17 matrices" beside it would make an under-synced donor self-evident instead of alarming. Same family as MIRRORID.5, RESYNCDUTY.9 and LOOPNAME.7: the board cannot answer "is it working?"
