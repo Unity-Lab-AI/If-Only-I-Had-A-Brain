@@ -1130,3 +1130,36 @@ canSpeak: this._computeMinGrade() !== 'pre-K',
 - [x] **CANSPEAK.7** **teach/min caveat CONFIRMED.** I reported 10,229 with the warning that it was 1.2min into a cell and might settle toward the established ~4,100-4,500 band. It settled to **3,916**. The caveat was correct and worth having stated.
 - [ ] **CANSPEAK.8** **OPEN - report `matrixDrivenPct` + `word_motor.everFired`, retire `canSpeak` from status summaries.** With `everFired` at 0/720,000 after the geometry change, matrix-driven emission is currently near zero and the oracle would carry even MORE of her speech than the prior 93% until the curriculum retrains word emission at 12M. **That is the honest state of her voice and no status line currently says it.**
 - [ ] **CANSPEAK.4** **OPEN - the field is misnamed and misleads on the dashboard too.** `canSpeak` reads as a capability to anyone seeing it, including the operator HUD. Either rename it to what it is (`allSubjectsPastPreK` / `minGradeCleared`) or surface the fields that DO answer the question - `word_motor.everFired`, `compositionalEmergence`, `emitDiagnostic` - beside it. Sixth item in the same family as the five lying instruments found today: a name that asserts more than the value supports.
+
+---
+
+## WORDEMIT - 2026-08-19 - I overstated the 12M damage and nearly triggered an unnecessary fresh walk
+
+> Gee (verbatim): *"does something need fixing? >>> or retrained???"*
+
+> Gee (verbatim): *"so wtf... why don i just do a fresh walk since i have to do everything anyways besides the past 5 minutes"*
+
+**I OVERSTATED THE DAMAGE AND GEE ALMOST FRESH-WALKED ON IT.** He asked *"so wtf... why don i just do a fresh walk since i have to do everything anyways besides the past 5 minutes"* — a reasonable conclusion from what I had told him, and **the premise was mine and it was wrong.**
+
+**WHAT THE BOOT LOG ACTUALLY SAYS (build `eb93f315`, 7:53:09):**
+```
+restored unified word-bucket map: 2409 words
+  - emitWordDirect + inner-voice active immediately on resume
+Binary weights applied - 17/17 sections restored onto live cortexCluster
+passedPhases restored: 136 phase markers (T31 phase-level resume active)
+SchemaStore boot - 22 Tier 2 schemas restored
+Tier3Store boot - 31 Tier 3 identity anchors restored
+VisualMemory restored 384 seen-concept fields
+MindSpace restored 8 imagined field-C memories
+```
+**Her word-bucket map RESTORED - 2,409 words - and the log states outright that `emitWordDirect` and the inner voice are "active immediately on resume". 17 of 17 weight sections applied.**
+
+**MY ERROR:** I claimed the 12M geometry "reset her word-emission bindings", inferred entirely from `word_motor.everFired: 0`. That counter means **nothing has fired since boot** — 25 minutes, mid-curriculum under the probe gate, no chat this session. **It is not evidence of loss.** Second time in one conversation I read a counter as a capability (see CANSPEAK).
+
+**AND THIS LINE REMOVES THE REST OF THE ARGUMENT:** `Restored 0 embedding refinement delta(s) from last save (NOT cortex cross-projection weights — those re-train from scratch every curriculum walk)`. **Cross-projection weights retrain from scratch on EVERY walk by design.** They were never something a fresh walk would restore; they are rebuilt either way.
+
+- [x] **WORDEMIT.1** **RETRACTED - "the 12M switch reset word emission" is NOT established.** The word-bucket map restored (2,409 words), 17/17 weight sections applied, 136 phase markers restored. Corrected in TODO / FINALIZED where CANSPEAK.3 and the SYNCEMPTY/LANGRAM entries asserted it.
+- [x] **WORDEMIT.2** **RETRACTED - `word_motor.everFired: 0` proves nothing about weights.** It counts firings since boot; she has been mid-curriculum under the probe gate with zero chat this session (`oracleHits: 0, matrixHits: 0` corroborates). Same class of error as CANSPEAK: reading a counter as a capability.
+- [x] **WORDEMIT.3** **ESTABLISHED - cross-projection weights retrain from scratch EVERY walk by design** (boot log, verbatim). They are not persisted and never were, so they are not a reason for OR against a fresh walk.
+- [ ] **WORDEMIT.4** **OPEN - the fresh-walk decision is GEE'S and is NOT forced.** Real argument FOR: the machine is far faster than when those 4 cells were earned (teach/min ~0-94 during the 215s-block era vs 3,916 now, blocks 275ms, 2 donors), so a rebuild would cost a fraction of the original. Real argument AGAINST: it discards 4 passed cells, all of pre-K, 136 phase markers, the 2,409-word bucket map, 22 schemas, 384 visual concepts and 8 mind-space memories (identity anchors survive either way - "permanent, never auto-cleared"). **Cheapest next step costs nothing: let art/K finish, then TALK to her and read `matrixDrivenPct` + her actual replies.** That is the only evidence that should decide it.
+- [ ] **WORDEMIT.5** **OPEN - the pattern is now three deep and it is mine, not the code's.** CANSPEAK (grade gate read as muteness), WORDEMIT (a since-boot counter read as weight loss), and before them the stale `no-best-word` quoted as proof. **Every one was a field reported without reading its definition or its age.** The five lying instruments found in the code today were the code asserting more than it knew; these three were me doing the same thing. Read the definition, read the age, THEN report.
