@@ -5,6 +5,48 @@
 
 ---
 
+## 2026-08-19 - LOOPNAME: a 279-second event-loop block that no instrument could name - feature/teach-stage-instrument
+
+### Gee ask (verbatim per LAW #0)
+
+> *"and before i do it,,,... did you fix the issue we just ran into of the brain crashing on phase 20ish of social k grade?"*
+
+> *"yeah, something is wrong we need a f12 savestart gattling gun"*
+
+**THE ANSWER WAS NO, AND SAYING SO IS THE POINT OF THIS ENTRY.** RESYNCDUTY shipped and worked - 50x teach throughput, `stepMs` 11402 -> 212, science/kindergarten PASSED on it. What has her now is a DIFFERENT defect. Gee asked before pressing, and pressing would have restarted her onto the same code into the same wall. **No fix shipped in this batch on purpose.**
+
+**IT IS NOT A CRASH.** nginx serves the static page in **0.26s** while `/public-state.json` - which needs the Node event loop - returns **HTTP 000 after 20s**. The process is alive; the loop is pinned. That is the blank dashboard: it never got a socket, so there were no buttons to press.
+
+### What the evidence already ruled out - before a line was written
+
+```
+5:44:15  BLOCKED 279318ms  phase=_teachHebbian  cell=social/kindergarten  donors=2
+         consolidationInFlight=false innerVoiceInFlight=false replicaSyncing=0
+```
+No `saveStage=` tag. No `uploadInFlight=true` tag. Both exist and fire when applicable. So: **not a checkpoint save, not a sparse upload, not consolidation, not the inner voice, not the replica sync.** A checkpoint-stack hypothesis had already been formed - two 5.4GB saves fired in the SAME SECOND at 5:39:37 (`v13`+`v14`), each 73-76s wall, `write:cortex.synapses` alone 55-58s, plus a later `save skipped - previous time-sliced save still writing`. **That hypothesis was killed by the absent `saveStage=` tag before any code was written.** Reading the tag cost nothing; shipping the fix would have cost a press.
+
+### The gap was already documented in our own source
+
+`_teachHebbian`'s yield guard says it outright: *"a SINGLE sub-op that itself exceeds the window still blocks for its own duration - chunking that internally is the lag-monitor-confirmed follow-up ([EventLoop] BLOCKED phase=ela names which op)"*. **It does not name which op.** `phase=` reports the curriculum phase LABEL, not the sub-operation holding the CPU. `_yieldIfHot` yields BETWEEN sub-ops on a 50ms throttle and cannot help inside one long one. So the single thing needed was the single thing nothing printed.
+
+### What shipped - INSTRUMENT ONLY
+
+- **LOOPNAME.1/.8** `_tstage(name)` writes `brain._teachStage` + `_teachStageAt`, marked at all six timed sites: `hebbian:substrate` / `hebbian:cross` / `hebbian:intra` and `lateral:substrate` / `lateral:scan` / `lateral:anti` - the same six spans `stageProfile` already times, so breadcrumb and counters can be cross-read. Mirrors the `_saveStage` pattern, which is precisely the tag that ruled the save path out here.
+- **LOOPNAME.2** The BLOCKED line prints `teachStage=hebbian:intra(+279000ms)`. **The AGE is the whole instrument** - an age matching the block duration means that sub-op IS the block. Deliberately **never nulled, only overwritten**: the lag monitor fires AFTER the block ends, so clearing on completion would race the report and blank the one stage that matters.
+- **LOOPNAME.3** `teachStage` + `teachStageAgeMs` published in the liveness block so it is readable without a console ring - which is exactly what stops being fetchable when the loop pins.
+- **LOOPNAME.4** VERIFY: `node --check` PASS on `curriculum.js` + `brain-server.js`; `import()` links `curriculum.js` cleanly. Two property writes per sub-op, no behaviour change, no allocation, no donor change, no protocol change.
+
+### Stated up front, not buried: I may have made this worse
+
+Before RESYNCDUTY the blocks were many-and-small (3.2-8.1s) and the endpoint stayed reachable all morning. After, they are few-and-enormous (93-279s) and the endpoint is mostly unreachable. Plausible mechanism: **the runaway sync was an ACCIDENTAL YIELD GENERATOR**, chopping the teach loop every few seconds whether teach wanted it or not; removing it let teach run its full uninterrupted synchronous span. **UNPROVEN - which is why this batch measures instead of fixes.** If true, the fix is teach yielding on its own, NOT reverting RESYNCDUTY: throughput rose 50x and a cell passed on it.
+
+### Left OPEN, deliberately
+
+- **LOOPNAME.5/.6** GEE fires the gatling gun (it pulls latest main, so the same shot delivers this instrument AND restarts her keeping weights), then pastes ONE `[EventLoop] BLOCKED` line. **That line decides the fix.** No code before it.
+- **LOOPNAME.10** `npm run build` **does not exist** - `linux/Savestart.sh:149` + `linux/start.sh` both call it to rebuild `js/app.bundle.js`, `package.json` defines only `social:shots`. The step fails and both scripts continue past it, so browser-side code has been shipping stale for an unknown period.
+- **LOOPNAME.7** Every diagnostic channel we own - admin WS, `/public-state.json`, the console ring - rides the same event loop under investigation. **We go blind at the exact moment we need eyes.** Same family as MIRRORID.5 and RESYNCDUTY.9.
+
+---
 ## 2026-08-19 - RESYNCDUTY: the replica re-broadcast ran at a 100% duty cycle and starved the walk to zero teach - feature/resync-duty-cycle
 
 ### Gee ask (verbatim per LAW #0)

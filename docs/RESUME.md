@@ -1,6 +1,36 @@
 # RESUME — Session Pickup Brief
 
-> ## ⭐⭐⭐ 2026-08-19 (latest) — RESYNCDUTY: the replica re-broadcast ran at a **100% DUTY CYCLE** and starved the walk to ZERO teach · she was never stuck, she was starved · ⛔ still on `feature/resync-duty-cycle`, NOT deployed
+> ## ⛔⛔⛔ 2026-08-19 (latest) — LOOPNAME: a **279-SECOND** event-loop block nothing can name · INSTRUMENT SHIPPED, **NOTHING FIXED ON PURPOSE** · ⏳ awaiting ONE log line
+>
+> **START HERE. The next `[EventLoop] BLOCKED` line decides the fix. Do not write code before reading it.**
+>
+> **STATE AT HANDOFF:** she is PINNED. The gatling gun (`POST /admin/update?keep=1`, 6 barrels, 2xx-only win) is the delivery path — it pulls latest main, so one shot deploys this instrument AND restarts her keeping weights. She resumes from the `social/kindergarten` checkpoint. Last confirmed live: `passedCells 3` (ela + math + science all kindergarten), social/K at 14/15 phases.
+>
+> ### ⛔ IT IS NOT A CRASH — do not go looking for one
+> nginx serves the static page in **0.26s**; `/public-state.json` (needs the Node event loop) returns **HTTP 000 after 20s**. The process is ALIVE and the loop is PINNED. That is also the blank dashboard with no buttons — it never completed a WS handshake, exactly as our own line says (`/ws handshakes + donor frames stalled this long`).
+>
+> ### ⛔ ALREADY RULED OUT — do not re-derive these
+> ```
+> 5:44:15  BLOCKED 279318ms  phase=_teachHebbian  cell=social/kindergarten  donors=2
+>          consolidationInFlight=false innerVoiceInFlight=false replicaSyncing=0
+> ```
+> **No `saveStage=` tag. No `uploadInFlight=true` tag.** Both exist and fire when applicable. Therefore: **NOT a checkpoint save, NOT a sparse upload, NOT consolidation, NOT the inner voice, NOT the replica sync.** A checkpoint-stack hypothesis — two 5.4GB saves in the SAME second at 5:39:37 (`v13`+`v14`), 73-76s each, `write:cortex.synapses` alone 55-58s, plus a later `save skipped — previous time-sliced save still writing` — was **KILLED by the absent tag before a line was written.** It is a good story and it is wrong.
+>
+> ### WHAT SHIPPED (instrument only, `feature/teach-stage-instrument`)
+> `_tstage(name)` writes `brain._teachStage` + `_teachStageAt` at all six timed sites — `hebbian:substrate` / `hebbian:cross` / `hebbian:intra` / `lateral:substrate` / `lateral:scan` / `lateral:anti` — the same six spans `stageProfile` already times, so breadcrumb and cumulative counters cross-read. The BLOCKED line now prints **`teachStage=hebbian:intra(+279000ms)`**. **The AGE is the instrument:** an age matching the block duration means that sub-op IS the block. **Never nulled, only overwritten** — the lag monitor fires AFTER the block ends, so clearing on completion would race the report and blank the one stage that matters. Also published as `teachStage`/`teachStageAgeMs` in liveness, because the console ring is precisely what stops being fetchable when the loop pins.
+>
+> **Why an instrument and not a fix:** `_teachHebbian`'s own yield guard already documents the gap — *"a SINGLE sub-op that itself exceeds the window still blocks for its own duration ... [EventLoop] BLOCKED phase=ela names which op"*. It does NOT name the op; `phase=` is the curriculum LABEL. `_yieldIfHot` yields BETWEEN sub-ops on a 50ms throttle and cannot help inside one long one. MIRRORDIAG ended five rounds of guessing on its first line; four source-reasoned fixes before it resolved nothing and two of them were new bugs introduced by the fixing.
+>
+> ### ⚠ I MAY HAVE CAUSED THIS — read before blaming teach
+> Before RESYNCDUTY: blocks many-and-small (3.2-8.1s), endpoint reachable all morning. After: few-and-enormous (93-279s), endpoint mostly unreachable. Plausible mechanism — **the runaway sync was an ACCIDENTAL YIELD GENERATOR**, chopping the teach loop every few seconds whether teach wanted it or not; removing it let teach run its full uninterrupted synchronous span. **UNPROVEN.** If true, the fix is **teach yielding on its own, NOT reverting RESYNCDUTY** — that change took `stepMs` 11402 → 212, raised teach throughput ~50x, and science/kindergarten passed on it.
+>
+> ### ⏳ OPEN BOARD
+> 1. **LOOPNAME.6 — the verdict line.** Paste one BLOCKED line after she walls. It names the sub-op and its age. **That decides everything.**
+> 2. **LOOPNAME.10 — `npm run build` DOES NOT EXIST.** `linux/Savestart.sh:149` + `linux/start.sh` call it to rebuild `js/app.bundle.js`; `package.json` defines only `social:shots` / `social:shots:admin`. The step fails, both scripts continue past it as a warning — **browser-side code has been shipping STALE for an unknown period.** Not load-bearing for LOOPNAME (breadcrumb is written by the curriculum, read by the SERVER lag monitor + liveness; the browser has no consumer) so the bundle was deliberately not rebuilt here.
+> 3. **LOOPNAME.7 — we go blind exactly when we need eyes.** Admin WS, `/public-state.json` and the console ring all ride the event loop under investigation. A diagnostic lane that cannot starve (separate thread/process, or a breadcrumb flushed to disk) is the structural fix. Same family as **MIRRORID.5** and **RESYNCDUTY.9**.
+> 4. **RESYNCDUTY.9 / MIRRORID.5 / DELTAIDX / WORKSHARE.6 / RUNPOD.6 / PARTMIRROR.4** — all still open exactly as written in the prior banners below.
+
+> ## ⭐⭐⭐ 2026-08-19 (prior) — RESYNCDUTY: the replica re-broadcast ran at a **100% DUTY CYCLE** and starved the walk to ZERO teach · she was never stuck, she was starved · ⛔ still on `feature/resync-duty-cycle`, NOT deployed
 >
 > **THE BUG, IN ONE LINE:** `REPLICA_REBROADCAST_MS` is **60 seconds** (`brain-server.js:6264`) but a full 17-matrix replica sweep is **4.2GB and ~11.5 MINUTES** over the ~4MB/s donor uplink. **The interval was 11x shorter than the work it scheduled**, so each sweep restarted 10-29 seconds after the last one landed. Three complete cycles sit back-to-back in the console ring: complete 4:01:28 -> restart 4:01:38; complete 4:13:11 -> restart 4:13:40; running again from 4:17:41.
 >
