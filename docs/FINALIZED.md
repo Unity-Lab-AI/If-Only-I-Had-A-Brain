@@ -5,6 +5,40 @@
 
 ---
 
+## 2026-08-19 - SYNCPARTIAL: a sweep landed 1 of 17 matrices and called it a FULL replica - feature/syncpartial-honesty
+
+### Gee ask (verbatim per LAW #0)
+
+> *"is it normal my doner is showing zero tech ops?🟢 Working — compute task (brain tick) Brain status: accepting GPUs ✓ Unit: NVIDIA GeForce RTX 4070 Ti SUPER Your contribution:  21 compute batches · 0 teach ops · 283140037 spikes/last-batch"*
+
+> *"fix them all now"*
+
+**ANSWER TO THE ASK: NO, THAT IS NOT NORMAL — the donor is holding 1 of 17 matrices.** Boot log, verbatim:
+```
+7:35:58  DF.7 INCREMENTAL - donor 4070 Ti SUPER holds its FIRST matrix
+         (cortex_intraSynapses) and is now work-eligible for it
+7:35:58  DF.7 INCREMENTAL - now holds 1/17 matrices
+7:35:58  DF.7 - replica sync complete: 1 matrices pushed to a donor.
+         It now holds a FULL brain replica and shares compute.
+```
+**"1 matrices pushed" and "a FULL brain replica" on the SAME LINE.** That is the third lying instrument found today, after the rebroadcast that claimed "in parallel" while SYNCSERIAL made it sequential, and the sizing log that hardcoded "x 50%".
+
+**WHY IT PRODUCES EXACTLY THE SYMPTOM.** Teach dispatch is MATRIX-SCOPED (`gpu.js:3010`: `_nextPoolDonor(ops.map(o => o.name))`), and `_nextPoolDonor` only offers a donor a batch whose matrices it HOLDS. Holding only `cortex_intraSynapses` filters it out of every teach batch touching the other 16. **compute_batch needs no matrices at all — only `gpu_init`** — so the donor reports plenty of compute batches and ZERO teach ops. The two numbers are perfectly consistent with 1/17 coverage, and the donor still earns real leaderboard credit (9.26 Gn/s) from the compute half.
+
+**THE FAILURE PATTERN CONTRADICTS THE CODE'S OWN COMMENT.** The loop is ordered SMALLEST-FIRST, with a comment promising "the cheap cross-projections land in seconds and the donor is productive almost immediately, with the intra arriving last". Yet `heldMatrices.size === 1` fired for **`cortex_intraSynapses` — the LARGEST, which under that ordering runs LAST.** So it was the first to SUCCEED, meaning **all 16 cheap cross-projections that ran BEFORE it returned null.** Size is not the discriminator; ORDER is. The 16 are sent seconds after registration while the donor is still running `gpu_init` across 8 clusters (measured at ~6s in this same session), and `_sparseSend` resolves null on timeout rather than throwing, so `catch { /* skip */ }` swallowed all 16 without a trace.
+
+### What shipped
+
+- **SYNCPARTIAL.1** Null acks and thrown errors are both recorded with the matrix name and a reason. Both used to vanish.
+- **SYNCPARTIAL.2** ONE bounded retry pass over the misses - the actual fix, not just observation. Evidence points at readiness (order, not size), and by the end of the first pass the donor has demonstrably proven itself by absorbing a 2.9GB upload.
+- **SYNCPARTIAL.3** The completion log reports `synced/attempted`, and a partial sync is now a WARNING naming every missing matrix with its reason and stating the consequence: teach dispatch is matrix-scoped, so expect ZERO teach ops.
+- **SYNCPARTIAL.4** `node --check` + `import()` PASS. Server-side only; no bundle rebuild needed.
+
+### Not claimed
+
+The root cause is **NOT established**. The readiness theory - the 16 cheap matrices being sent seconds after registration while the donor still runs `gpu_init` across 8 clusters - fits the order-not-size evidence but is unproven. If the retry succeeds it effectively confirms it, and the durable fix is gating the first upload on cluster-init confirmation instead of a 1.5s timer. If the retry also fails, the reasons now printed will say why. **No further code until that line is read** - this is the same discipline that ended five rounds of guessing on MIRRORDIAG.
+
+---
 ## 2026-08-19 - LANGRAM: the 12M language cortex lost its RAM gate by 2.4% - feature/lang-cortex-ram-fraction
 
 ### Gee ask (verbatim per LAW #0)

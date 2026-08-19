@@ -1659,6 +1659,10 @@ const SERVER_GPU_MIXIN = {
       let _resumedCount = 0;
       const reg = this._replicaMatrixRegistry;
       let synced = 0;
+      // SYNCPARTIAL — per-matrix outcome tracking. Without these the sweep could not
+      // tell the difference between "pushed 17" and "pushed 1 and lost 16 in silence".
+      const _failed = [];
+      let _attempted = 0;
       if (_cc && !(_cc.heldMatrices instanceof Set)) _cc.heldMatrices = new Set();
       if (reg && reg.size) {
         // INCREMENTAL — SMALLEST FIRST. Registry order put `cortex_intraSynapses` (2.8GB,
@@ -1683,6 +1687,7 @@ const SERVER_GPU_MIXIN = {
             for (const _cl of _coverage) { if (name.startsWith(_cl + '_')) { _covOk = true; break; } }
             if (!_covOk) continue;
           }
+          _attempted++;
           try {
             const _res = await this.gpuSparseUpload(name, entry.matrix, entry.binding, ws);
             // gpuSparseUpload resolves null on timeout/abort — only a non-null result proves
@@ -1697,7 +1702,42 @@ const SERVER_GPU_MIXIN = {
                 }
               }
             }
-          } catch { /* skip a matrix that failed; rebroadcast will retry */ }
+            // SYNCPARTIAL — a null ack is a FAILURE, and it used to leave no trace at
+            // all. Live cost: a donor finished a sweep holding 1 of 17 matrices while
+            // the completion line announced "a FULL brain replica". Teach dispatch is
+            // matrix-scoped (_nextPoolDonor filters on heldMatrices), so that donor was
+            // silently locked out of every teach batch touching the 16 it lacked - it
+            // logged 21 compute batches and 0 teach ops. Name every miss.
+            else _failed.push({ name, why: "null ack (upload timeout/abort)" });
+          } catch (e) { _failed.push({ name, why: (e && e.message) || String(e) }); }
+        }
+        // SYNCPARTIAL RETRY — ONE bounded second pass over the misses. The observed
+        // failure pattern points at readiness, not size: the 16 CHEAP cross-projections
+        // (4-200MB) all failed while the 2.9GB cortex_intraSynapses succeeded - and
+        // under the smallest-first ordering above the cheap ones are exactly the ones
+        // sent FIRST, seconds after registration while the donor is still running
+        // gpu_init across 8 clusters. By the time the first pass ends the donor is
+        // demonstrably ready (it just took a multi-GB upload), so a retry costs one
+        // extra attempt and recovers the matrices that make it useful for teach.
+        if (_failed.length && ws && ws.readyState === 1) {
+          const _retry = _failed.splice(0, _failed.length);
+          console.warn(`[Brain] DF.7 SYNCPARTIAL — ${_retry.length}/${_attempted} matrices did not land on the first pass; retrying ONCE. Misses: ${_retry.map(f => f.name).join(", ")}`);
+          for (const _f of _retry) {
+            if (!ws || ws.readyState !== 1) { _failed.push(_f); continue; }
+            const _entry = reg.get(_f.name);
+            if (!_entry) { _failed.push(_f); continue; }
+            try {
+              const _r2 = await this.gpuSparseUpload(_f.name, _entry.matrix, _entry.binding, ws);
+              if (_r2 !== null && _r2 !== undefined) {
+                synced++;
+                if (_cc) _cc.heldMatrices.add(_f.name);
+              } else {
+                _failed.push({ name: _f.name, why: _f.why + " (retry also null)" });
+              }
+            } catch (e2) {
+              _failed.push({ name: _f.name, why: (e2 && e2.message) || String(e2) });
+            }
+          }
         }
       }
       if (_cc && _cc.resumeHeldMatrices) _cc.resumeHeldMatrices = null;   // one-shot consumed
@@ -1711,7 +1751,16 @@ const SERVER_GPU_MIXIN = {
         _cc._df7Synced = true; _cc._df7SyncedAt = Date.now(); _cc._df7SyncedMatrices = synced;
         console.log(`[Brain] DF.7 INCREMENTAL — donor ${_cc.gpuName || _cc.id} now holds ${_cc.heldMatrices.size}/${(reg && reg.size) || 0} matrices and is work-eligible for each of them.`);
       }
-      console.log(`[Brain] DF.7 — replica sync complete: ${synced} matrices pushed to a donor${_coverage ? ` (PARTIAL coverage [${[..._coverage].join(', ')}] — it shares compute for the clusters it holds)` : '. It now holds a FULL brain replica and shares compute (no longer idle standby)'}.`);
+      // SYNCPARTIAL — HONEST COMPLETION. The old line printed "It now holds a FULL brain
+      // replica" unconditionally whenever no cluster-coverage filter was active, so a
+      // sweep that landed 1 of 17 announced a full replica. That single sentence is why
+      // a donor sat at 0 teach ops for an entire session with nothing in the log to
+      // contradict it. A partial sync is now a WARNING that names what is missing.
+      if (_failed.length) {
+        console.warn(`[Brain] DF.7 SYNCPARTIAL — replica sync finished PARTIAL: ${synced}/${_attempted} matrices landed. STILL MISSING (${_failed.length}): ${_failed.map(f => f.name + " [" + f.why + "]").join("; ")}. Teach dispatch is matrix-scoped, so this donor is NOT eligible for teach batches touching those matrices — expect compute batches with ZERO teach ops until the next rebroadcast lands them.`);
+      } else {
+        console.log(`[Brain] DF.7 — replica sync complete: ${synced}/${_attempted} matrices pushed to a donor${_coverage ? ` (PARTIAL coverage [${[..._coverage].join(", ")}] — it shares compute for the clusters it holds)` : ". It now holds a FULL brain replica and shares compute (no longer idle standby)"}.`);
+      }
     } catch (e) {
       if (_cc) _cc._df7Synced = false;
       console.warn('[Brain] DF.7 — replica sync failed (donor stays standby until next rebroadcast):', e.message);
