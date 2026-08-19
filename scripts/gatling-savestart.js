@@ -5,7 +5,7 @@
  * Restore fetch: window.fetch = window.__realFetch
  */
 (function () {
-  var CUR = 'f3ac6ff';   // build on the box now; a win = anything else
+  var CUR = '611d4b6';   // build on the box now; a win = anything else
 
   try {
     if (window.__gat) {
@@ -31,6 +31,21 @@
       return window.__realFetch(input, init);
     };
     window.__gatPatched = true;
+    // AUTO-RESTORE. The guard exists only to catch orphaned loops, and they
+    // reschedule every 250ms, so any live orphan hits it within ~1s and its
+    // promise never settles - it is dead for good. The PATCH itself is
+    // needed for that first moment. Leaving it installed swallowed the
+    // dashboard Update+Savestart BUTTON (no token), so a real press
+    // sent nothing and logged nothing. Restore after 5s: orphans stay dead,
+    // the button works.
+    setTimeout(function () {
+      if (window.__realFetch) {
+        window.fetch = window.__realFetch;
+        window.__gatPatched = false;
+        var m = '%c[gatling] fetch guard removed - button safe';
+        console.log(m, 'color:#8cf');
+      }
+    }, 5000);
   }
   window.__gatGen = (window.__gatGen || 0) + 1;
   var GEN = window.__gatGen;
@@ -70,8 +85,20 @@
     var opts = { method: 'POST', cache: 'no-store', __gatGen: GEN };
     window.fetch(UPD, opts).then(function (r) {
       if (r.ok) {
-        return r.json().catch(function () { return {}; })
-          .then(function (d) { win('HTTP ' + r.status, d); });
+        // A 2xx is NOT proof. The route returns 200 with
+        // {status:"already updating/restarting"} when a prior arm is still
+        // pending - and with 6 barrels firing at once, 5 of them get exactly
+        // that. Treating any 2xx as a win printed a green DEPLOY LANDED for a
+        // response that did nothing. Only "update armed" counts.
+        return r.json().catch(function () { return {}; }).then(function (d) {
+          var st = (d && d.status) || '';
+          if (st.indexOf('armed') !== -1) return win('HTTP ' + r.status, d);
+          if (st.indexOf('already') !== -1) {
+            G.dup = (G.dup || 0) + 1;
+            return;
+          }
+          log('200 but not armed: ' + st);
+        });
       }
       if (r.status === 401 || r.status === 403) return auth401();
       G.s504++;

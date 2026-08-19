@@ -1062,3 +1062,22 @@ Bounds: free RAM 23.4GB x 50% = 11.7GB -> 11,715,457 neurons
 - [ ] **SYNCPARTIAL.5** GEE: gatling Update & Savestart. Verdict: either `replica sync complete: 17/17` (retry recovered them), or a `SYNCPARTIAL` warning naming exactly which matrices failed and why. **Both outcomes are answers** - the second one hands us the cause we currently do not have.
 - [ ] **SYNCPARTIAL.6** **OPEN - root cause NOT established.** The readiness theory (uploads racing `gpu_init`) fits the order-not-size evidence but is UNPROVEN. If the retry pass succeeds, that effectively confirms it and the durable fix is to gate the first upload on cluster-init confirmation rather than a 1.5s timer. If the retry ALSO fails, the reasons now printed will say why. **No further code until that line is read.**
 - [ ] **SYNCPARTIAL.7** **OPEN - the donor UI should show coverage, not just counters.** "21 compute batches · 0 teach ops" is a true reading that looks like a fault. Showing "holds 1/17 matrices" beside it would make an under-synced donor self-evident instead of alarming. Same family as MIRRORID.5, RESYNCDUTY.9 and LOOPNAME.7: the board cannot answer "is it working?"
+
+---
+
+## GATGUARD - 2026-08-19 - my own gatling script silently ate the dashboard Update button
+
+> Gee (verbatim): *"wtf? is it on the right build? i pressed update and savestart and it still shows its been up for 30m+ when i just supposively update and save started it"*
+
+**THIS ONE IS MINE AND IT COST GEE A PRESS THAT NEVER HAPPENED.** Live proof: build stuck at `611d4b64`, bootedAt 13:16:33Z, uptime 32min, and **ZERO update-related lines across 31 minutes of console ring** (7:18:01 -> 7:48:55). The `/update` route ALWAYS logs `UPDATE + SAVESTART requested` when it fires. It never fired. **The POST never reached the server.**
+
+**CAUSE:** the orphan-killer in `scripts/gatling-savestart.js` monkey-patches `window.fetch` and parks any `/admin/update` POST that lacks the current generation token. **The dashboard's own Update & Savestart button does not carry that token**, so a real press was swallowed by my code - no request, no log, no restart. I noted this side effect once in passing and buried it under everything else; Gee pressed the button and nothing happened.
+
+**SECOND DEFECT IN THE SAME SCRIPT:** the win condition was `if (r.ok)`. The `/update` route returns **HTTP 200** with `{status:"already updating/restarting"}` when a prior arm is still pending - and with 6 barrels firing at once, five of them get exactly that. **So the script could print a green DEPLOY LANDED for a response that did nothing.** Same lying-instrument class as the three server-side ones fixed today (the "in parallel" rebroadcast, the hardcoded "x 50%", and "a FULL brain replica" on a 1-of-17 sync).
+
+- [x] **GATGUARD.1** **DONE - the fetch guard AUTO-RESTORES after 5s.** Orphaned loops reschedule every 250ms, so any live one hits the guard within ~1s and its promise never settles - dead for good. The PATCH is only needed for that first moment. After 5s `window.fetch` is restored and the real button works again.
+- [x] **GATGUARD.2** **DONE - a 2xx is no longer a win.** Only a `status` containing `armed` counts as landed; `already updating/restarting` is counted separately as `G.dup` instead of being reported as success.
+- [x] **GATGUARD.3** **DONE - build guard updated** `f3ac6ff` -> `611d4b6` so the spotter new-build check fires correctly.
+- [x] **GATGUARD.4** **VERIFY DONE** - `node --check` PASS, max line **78 chars**, **ZERO non-ASCII** - the copy-wrap class that broke three earlier pastes cannot recur.
+- [ ] **GATGUARD.5** **OPEN - the immediate unblock is a page RELOAD** (or `window.fetch = window.__realFetch`), which clears a guard left installed by an older copy of the script already pasted into a live tab. No amount of fixing the FILE helps a tab that already has the old patch resident.
+- [ ] **GATGUARD.6** **OPEN - I keep breaking my own tooling the same way.** Twice this session a bash `node -e "..."` with backticks inside a double-quoted string ran them as command substitution and silently emptied every code term in the text it wrote (this very section, first attempt). **Anything containing backticks MUST go through a Write-tool script file**, never an inline double-quoted bash string.
