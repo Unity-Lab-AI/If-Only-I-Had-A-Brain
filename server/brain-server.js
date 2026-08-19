@@ -9229,7 +9229,15 @@ const _lagTimer = setInterval(() => {
     // stage (the 5.4GB save carried two ~112s pins the completion line
     // denied; same conviction pattern as chatStage=).
     const _saveStageTag = brain._saveStage ? ` saveStage=${brain._saveStage}` : '';
-    console.warn(`[EventLoop] BLOCKED ${lagMs.toFixed(0)}ms — /ws handshakes + donor frames stalled this long. context: phase=${phase} cell=${cell} donors=${donors} consolidationInFlight=${consol} innerVoiceInFlight=${innerVoice} replicaSyncing=${syncing}${uploading ? ' uploadInFlight=true' : ''}${_chatStageTag}${_saveStageTag}`);
+    // LOOPNAME — name the innermost teach sub-op AND its age. The age is the point:
+    // if it matches the block duration, that sub-op IS the block. A 279,318ms block
+    // reported phase=_teachHebbian and nothing else — every other tag was absent, so
+    // the save / upload / consolidation / inner-voice / replica-sync paths were all
+    // ruled out and NOTHING named the cause. This is the tag that names it.
+    const _teachStageTag = brain._teachStage
+      ? ` teachStage=${brain._teachStage}(+${brain._teachStageAt ? (Date.now() - brain._teachStageAt) : 0}ms)`
+      : '';
+    console.warn(`[EventLoop] BLOCKED ${lagMs.toFixed(0)}ms — /ws handshakes + donor frames stalled this long. context: phase=${phase} cell=${cell} donors=${donors} consolidationInFlight=${consol} innerVoiceInFlight=${innerVoice} replicaSyncing=${syncing}${uploading ? ' uploadInFlight=true' : ''}${_chatStageTag}${_saveStageTag}${_teachStageTag}`);
   }
 }, _LAG_SAMPLE_MS);
 wss.on('close', () => clearInterval(_lagTimer));
