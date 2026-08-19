@@ -5,6 +5,37 @@
 
 ---
 
+## 2026-08-19 - LANGRAM: the 12M language cortex lost its RAM gate by 2.4% - feature/lang-cortex-ram-fraction
+
+### Gee ask (verbatim per LAW #0)
+
+> *"do i need to do a fresh save start? to get the language cortex to the right size?"*
+
+> Chosen option (verbatim): *"Raise the free-RAM fraction 50% -> 60%"*
+
+**THE BOOT LINE SETTLED IT — no guessing, and my first theory was WRONG.**
+```
+WMB FLOOR SKIPPED - target 12,000,000 blocked by RAM/V8 floor 11,715,457; staying at 349,155.
+Bounds: free RAM 23.4GB x 50% = 11.7GB -> 11,715,457 neurons
+        V8 heap cluster-budget -> 15.1GB -> 15,082,717 neurons
+```
+`min(11,715,457, 15,082,717) = 11,715,457 < 12,000,000` — **short by 284,543 neurons, 2.4%.** I had theorised the gatling restart raced the old process and read a starved free-RAM figure. **It did not:** free RAM was **23.4GB**, genuinely healthy. The rule was simply too conservative by a rounding margin. At 0.5 the box needs **24GB FREE** to clear the target, which a 32GB host only manages on a quiet boot — which is exactly why the cortex has been flip-flopping between 12,000,000 and the 349,155 fallback depending on what else happened to be resident.
+
+**THE COST OF LOSING THAT COIN FLIP IS NOT COSMETIC.** word_motor is 6% of the cortex, so 349,155 yields **20,950 emittable word buckets against a K-PhD target of ~60,000**. The boot log says it outright: `UNDER target - words past index 20,950 would be silenced`. **She can learn those words and never say them.**
+
+**THE ANSWER TO THE ASK WAS NO — and the reason changed after the evidence arrived.** A fresh walk was never the right first move (it costs four passed cells). But my recommendation of "a plain Savestart on an idle box will fix it" was **also wrong**, and the boot line is what corrected it: free RAM was already healthy at 23.4GB, so a Savestart was a coin flip, not a fix. **I would have sent Gee to press on chance.** Reading one line before recommending is the only reason that did not happen.
+
+### What shipped
+
+- **LANGRAM.1** Free-RAM fraction `0.5 -> 0.6`, env-tunable via `DREAM_LANG_RAM_FRACTION` (clamped 0.9). Verified arithmetically against the live boot numbers: 0.5 -> 11,700,000 = SKIPPED; 0.6 -> 14,040,000 = FLOOR FIRES, clearing 12,000,000 with ~17% headroom. Gee was shown the larger blast radius of this option versus a narrow tolerance band and chose it.
+- **LANGRAM.2** The sizing log hardcoded `x 50%` as a literal and would have printed a fraction it no longer used. Now derived. Same lying-instrument class as the "in parallel" rebroadcast line and the persistent `gneurons_per_sec`.
+- **LANGRAM.3** `node --check` PASS. Server-side only; no bundle rebuild needed (nothing under `js/brain/` touched).
+
+### Flagged BEFORE the press, not after
+
+**LANGRAM.5** — the next boot re-sizes langCortex 349,155 -> 12,000,000, and the source notes for the 1.5M->12M hop say a geometry change implies a fresh walk "both directions". `DREAM_KEEP_STATE=1` skips auto-clear (proven in this very boot log, where the geometry flipped 12M->349K and state was still kept), so a wipe is unlikely — **but language-cortex weights do not map across geometries.** Cells, grades, identity anchors and the 306M main brain live outside it. Whether the ~30min of art/K language learning at 349,155 survives is **unknown and is not being asserted**.
+
+---
 ## 2026-08-19 - LOOPMAX: LOOPNAME v1 measured the recovery, not the stall - feature/loopname-maxage
 
 ### Gee ask (verbatim per LAW #0)

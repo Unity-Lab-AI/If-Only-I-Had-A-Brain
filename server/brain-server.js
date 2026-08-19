@@ -1799,7 +1799,33 @@ class ServerBrain {
       // overrides outright (logged either way).
       const LANG_CLUSTER_BYTES_PER_NEURON = 1000;
       const freeRamBytes = os.freemem();
-      const ramBudget = freeRamBytes * 0.5;
+      // LANGRAM (2026-08-19) — the free-RAM fraction was 0.5 and it cost the 12M
+      // language cortex by 2.4%. Live boot line from the box:
+      //   WMB FLOOR SKIPPED - target 12,000,000 blocked by RAM/V8 floor 11,715,457
+      //   Bounds: free RAM 23.4GB x 50% = 11.7GB -> 11,715,457 neurons
+      //           V8 heap cluster-budget -> 15.1GB -> 15,082,717 neurons
+      // min(11,715,457, 15,082,717) = 11,715,457 < 12,000,000. Short by 284,543
+      // neurons on a box with 23.4GB genuinely free — this was NOT memory pressure,
+      // it was the rule being too conservative by a rounding margin. At 0.5 the box
+      // needs 24GB FREE to clear the target, which a 32GB host only manages on a
+      // quiet boot — so the cortex flip-flopped between 12,000,000 and the 349,155
+      // fallback depending on what else happened to be resident at start.
+      //
+      // The cost of losing that coin flip is not cosmetic: word_motor is 6% of the
+      // cortex, so 349,155 yields 20,950 emittable word buckets against a K-PhD
+      // vocab target of ~60,000. Every word past index 20,950 is SILENCED — she can
+      // learn it and never say it.
+      //
+      // 0.6 of 23.4GB = 14.0GB -> ~14M neurons, clearing 12M with real headroom on
+      // any normal boot. The V8 bound (15,082,717) already cleared it comfortably,
+      // so this brings the RAM bound in line with the constraint that was never the
+      // binding one. Env-tunable both directions via DREAM_LANG_RAM_FRACTION; the
+      // per-neuron estimate above already carries ~1.7x safety over the measured
+      // ~590 B/neuron real footprint.
+      const LANG_RAM_FRACTION = Number(process.env.DREAM_LANG_RAM_FRACTION) > 0
+        ? Math.min(0.9, Number(process.env.DREAM_LANG_RAM_FRACTION))
+        : 0.6;
+      const ramBudget = freeRamBytes * LANG_RAM_FRACTION;
       const ramBasedMax = Math.floor(ramBudget / LANG_CLUSTER_BYTES_PER_NEURON);
       // V8 heap sized from start.bat --max-old-space-size. Read the
       // actual limit from v8.getHeapStatistics() so env overrides flow
@@ -2006,7 +2032,7 @@ class ServerBrain {
       const langMemGb = (langCortexSize * LANG_CLUSTER_BYTES_PER_NEURON / 1e9).toFixed(2);
       const heapLimitGb = (v8BasedMax === Infinity ? 'unlimited' : ((v8BasedMax * LANG_CLUSTER_BYTES_PER_NEURON) / 1e9).toFixed(1) + 'GB');
       const projectedMB = Math.round(projectedBytesFinal / 1024 / 1024);
-      console.log(`[Brain] Language cortex auto-scaled to ${langCortexSize.toLocaleString()} neurons (~${langMemGb} GB RAM, projected ${projectedMB}MB GPU footprint via geometry estimator, ${rescaleIterations} rescale iter${rescaleIterations === 1 ? '' : 's'}). Bounds: free RAM ${(freeRamBytes/1e9).toFixed(1)}GB × 50% = ${(ramBudget/1e9).toFixed(1)}GB → ${ramBasedMax.toLocaleString()} neurons | V8 heap cluster-budget → ${heapLimitGb} → ${v8BasedMax === Infinity ? '∞' : v8BasedMax.toLocaleString()} neurons | GPU VRAM budget from unified allocator → ${vramCortexMB}MB = ${(BRAIN_VRAM_ALLOC.weights.language_cortex*100).toFixed(1)}% of ${BRAIN_VRAM_ALLOC.brainBudgetMB}MB brain budget → ${vramBasedMax.toLocaleString()} neurons AFTER geometric rescale (static seed was ${vramStaticSeed.toLocaleString()}) | configured cortex ${configuredCortex.toLocaleString()} neurons. Main GPU brain at ${TOTAL_NEURONS.toLocaleString()} neurons. Sparse matmul ON GPU.${envOverride > 0 ? ' DREAM_LANG_CORTEX override active.' : ''}`);
+      console.log(`[Brain] Language cortex auto-scaled to ${langCortexSize.toLocaleString()} neurons (~${langMemGb} GB RAM, projected ${projectedMB}MB GPU footprint via geometry estimator, ${rescaleIterations} rescale iter${rescaleIterations === 1 ? '' : 's'}). Bounds: free RAM ${(freeRamBytes/1e9).toFixed(1)}GB × ${(LANG_RAM_FRACTION*100).toFixed(0)}% = ${(ramBudget/1e9).toFixed(1)}GB → ${ramBasedMax.toLocaleString()} neurons | V8 heap cluster-budget → ${heapLimitGb} → ${v8BasedMax === Infinity ? '∞' : v8BasedMax.toLocaleString()} neurons | GPU VRAM budget from unified allocator → ${vramCortexMB}MB = ${(BRAIN_VRAM_ALLOC.weights.language_cortex*100).toFixed(1)}% of ${BRAIN_VRAM_ALLOC.brainBudgetMB}MB brain budget → ${vramBasedMax.toLocaleString()} neurons AFTER geometric rescale (static seed was ${vramStaticSeed.toLocaleString()}) | configured cortex ${configuredCortex.toLocaleString()} neurons. Main GPU brain at ${TOTAL_NEURONS.toLocaleString()} neurons. Sparse matmul ON GPU.${envOverride > 0 ? ' DREAM_LANG_CORTEX override active.' : ''}`);
       // WMB.6 boot capacity assertion (Gee 2026-07-14) — word_motor is the top
       // 6% of langCortexSize and must hold the full K→PhD UNIFIED vocab (one
       // bucket per unique word). Surface the capacity HERE so an undersized band
