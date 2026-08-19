@@ -1,6 +1,26 @@
 # RESUME — Session Pickup Brief
 
-> ## ⛔⛔⛔ 2026-08-19 (latest) — LOOPNAME: a **279-SECOND** event-loop block nothing can name · INSTRUMENT SHIPPED, **NOTHING FIXED ON PURPOSE** · ⏳ awaiting ONE log line
+> ## ⛔⛔⛔ 2026-08-19 (latest) — LOOPMAX: the instrument caught its OWN flaw · ⏳ awaiting ONE line, and the field is **teachStageMax**
+>
+> **v1 MEASURED THE RECOVERY, NOT THE STALL.** Live: `BLOCKED 215377ms ... teachStage=hebbian:substrate(+44ms)`. **44ms on a 215-second block.** `_tstage('hebbian:substrate')` is the FIRST line of `_teachHebbian`, so teach re-entered AFTER the block ended and overwrote the breadcrumb in the ~44ms before the monitor fired. The lag monitor is a 1000ms `setInterval` (`brain-server.js:9169`) that by construction reports only once the loop is FREE. **v1 could never have named a block. My design error, not a surprise about the brain.**
+>
+> **THE BLOCK IS REAL — PROVEN, not assumed.** `setInterval` callbacks do not queue: the timer fires ONCE on release and `lagMs` is the true gap, so 215,377ms means it did not run for 215 seconds. The `State saved v9 at t=0.2s` + two cell-passes stamped at that same second are the post-release FLUSH (`t=0.2s` is a save DURATION), not work performed during the stall.
+>
+> **v2:** `_tstage` banks the OUTGOING stage's held time; the BLOCKED line prints **`teachStageMax=<name>(<ms>ms)`** and resets per block. **It cannot be raced away — the max is written by the very call that would otherwise destroy the evidence.** A SMALL max on a long block is equally decisive: the stall is outside all six marked sub-ops, and that says where to mark next. `node --check` + `import()` PASS; **bundle rebuilt** (4.0mb, 3 refs verified) per the LOOPNAME.11 lesson.
+>
+> ### ⛔ READ THE RIGHT FIELD
+> **`teachStageMax`, NOT `teachStage`.** `teachStage` is the recovery. It will keep looking innocent.
+>
+> ### ⛔ LANGCORTEX — DO NOT FRESH WALK YET (LOOPMAX.7)
+> The donor logged `gpu_init 'langCortex' — 349155 neurons`; it was **12,000,000** this morning. 349,155 is the exact `WMB FLOOR SKIPPED` fallback. **From source (`brain-server.js:1998`), not guessed:** the floor is skipped when `_targetVram > 6GB` **OR** `12,000,000 > min(ramBasedMax, v8BasedMax)`, where `ramBasedMax` = **free RAM × 50% measured at boot**. Donors are NOT in that calculation — an earlier donor-based theory was wrong and was discarded before it reached code. **Leading theory:** the gatling restart fired while the old process still held ~8.5GB RSS + ~9.4GB ArrayBuffers, so free RAM read low and the floor was skipped. **If true, a plain Savestart on an idle box fixes it with ZERO cell loss.** Read the boot line FIRST: `WMB FLOOR SKIPPED — target 12,000,000 blocked by <RAM/V8 floor N | real VRAM X GB>`. "RAM/V8 floor" confirms the theory; "real VRAM" refutes it and a Savestart would waste a press.
+>
+> ### SHE IS WALKING
+> **art/kindergarten** underway (`_teachColorMixingK` + `_teachWarmCoolColors` both passed) — **5 subjects at kindergarten**. The RunPod 4090 reattached on the **CUDA** path at full **24,080MB** (not the 2047MB Vulkan cap) on a **driver 580 / CUDA 13.0** host, newer than the one the PTX was built against — the ISA 8.0 fix holds forward. The blocks strangle her; they do not stop her.
+>
+> ### OPEN
+> **LOOPMAX.8** — `saveStage` and `chatStage` have the SAME timer race v1 had and have NOT been audited. Every attribution tag is read by a timer that only runs once the loop is free, so all of them describe the aftermath. Apply the banked-maximum pattern to both.
+
+> ## ⛔⛔⛔ 2026-08-19 (prior) — LOOPNAME: a **279-SECOND** event-loop block nothing can name · INSTRUMENT SHIPPED, **NOTHING FIXED ON PURPOSE** · ⏳ awaiting ONE log line
 >
 > **START HERE. The next `[EventLoop] BLOCKED` line decides the fix. Do not write code before reading it.**
 >

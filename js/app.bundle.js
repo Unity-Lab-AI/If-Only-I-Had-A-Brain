@@ -95840,6 +95840,10 @@ var Curriculum = class _Curriculum {
             const _b = this.brain || this.cluster && this.cluster._brain;
             return _b && _b._teachStageAt ? Date.now() - _b._teachStageAt : null;
           })(),
+          // LOOPNAME v2 — the LONGEST-HELD sub-op since the last report. This is the
+          // one that names a stall; the current stage is almost always the recovery.
+          teachStageMax: (this.brain || this.cluster && this.cluster._brain || {})._teachStageMaxName || null,
+          teachStageMaxMs: (this.brain || this.cluster && this.cluster._brain || {})._teachStageMaxMs || null,
           stageProfile: (() => {
             const sp = this._teachStageProfile;
             const hp = cluster && cluster._hopProf;
@@ -102289,8 +102293,16 @@ var Curriculum = class _Curriculum {
   _tstage(name) {
     const brain2 = this.brain || this.cluster && this.cluster._brain;
     if (!brain2) return;
+    const now = Date.now();
+    if (brain2._teachStage && brain2._teachStageAt) {
+      const held = now - brain2._teachStageAt;
+      if (held > (brain2._teachStageMaxMs || 0)) {
+        brain2._teachStageMaxMs = held;
+        brain2._teachStageMaxName = brain2._teachStage;
+      }
+    }
     brain2._teachStage = name;
-    brain2._teachStageAt = Date.now();
+    brain2._teachStageAt = now;
   }
   async _teachAntiHebbian(lr, opts = {}) {
     await this._awaitComputeSubstrate();
