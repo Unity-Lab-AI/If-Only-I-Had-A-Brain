@@ -1081,3 +1081,25 @@ Bounds: free RAM 23.4GB x 50% = 11.7GB -> 11,715,457 neurons
 - [x] **GATGUARD.4** **VERIFY DONE** - `node --check` PASS, max line **78 chars**, **ZERO non-ASCII** - the copy-wrap class that broke three earlier pastes cannot recur.
 - [ ] **GATGUARD.5** **OPEN - the immediate unblock is a page RELOAD** (or `window.fetch = window.__realFetch`), which clears a guard left installed by an older copy of the script already pasted into a live tab. No amount of fixing the FILE helps a tab that already has the old patch resident.
 - [ ] **GATGUARD.6** **OPEN - I keep breaking my own tooling the same way.** Twice this session a bash `node -e "..."` with backticks inside a double-quoted string ran them as command substitution and silently emptied every code term in the text it wrote (this very section, first attempt). **Anything containing backticks MUST go through a Write-tool script file**, never an inline double-quoted bash string.
+
+---
+
+## SYNCEMPTY - 2026-08-19 - a sync that attempted ZERO matrices still announced a FULL brain replica
+
+> Gee (verbatim): *"okay, lets see how shes doing! lets hear the news"*
+
+**MY OWN SYNCPARTIAL FIX PRINTED THE SAME LIE IN A NEW FORM, WITHIN MINUTES OF SHIPPING.** Live on `eb93f315`:
+```
+7:53:11  DF.7 INCREMENTAL - donor 4070 Ti SUPER now holds 0/0 matrices
+         and is work-eligible for each of them.
+7:53:11  DF.7 - replica sync complete: 0/0 matrices pushed to a donor.
+         It now holds a FULL brain replica and shares compute.
+```
+**Zero of zero, announced as a FULL brain replica.** SYNCPARTIAL only warns when there are FAILURES to report; a sweep that attempts NOTHING has no failures, so it fell straight through to the success branch. I fixed the partial case and left the empty case wide open.
+
+**AND IT CORRECTS MY ROOT-CAUSE THEORY.** SYNCPARTIAL recorded a readiness theory: the 16 cheap matrices racing the DONOR's `gpu_init`. **Wrong.** They race the SERVER's own `_replicaMatrixRegistry`, which is populated by the canonical upload — at 7:53:11, **38 seconds after boot, the registry was still EMPTY**. The registration path fires `_syncReplicaToDonor` on a fixed 1.5s timer after the donor registers, with no check that there is anything to send. **The retry pass cannot help: there is nothing to retry.**
+
+- [x] **SYNCEMPTY.1** **DONE - a zero-attempt sweep is now a WARNING**, not a success. It reports the registry size, states plainly that the donor holds NOTHING and is not teach-eligible, predicts the exact symptom (compute batches with 0 teach ops), and names the cause: the sweep raced the registry.
+- [x] **SYNCEMPTY.2** **VERIFY (build half) DONE** - `node --check` + `import()` ESM PASS. Server-side only; no bundle rebuild needed.
+- [ ] **SYNCEMPTY.3** **OPEN - THE REAL FIX IS NOT SHIPPED.** The honest log makes the failure visible; it does not prevent it. The registration path should GATE on a populated registry (or subscribe to the event that fills it) instead of firing on a fixed 1.5s timer. **Deliberately not written yet** - the corrected cause is one field read old, and the next boot will confirm or refute it in one line. Two theories have already been wrong on this defect; a third guess is not what it needs.
+- [ ] **SYNCEMPTY.4** **OPEN - the pattern, stated plainly.** SYNCPARTIAL and SYNCEMPTY are the same bug reported twice, and I shipped a fix for the first form that was blind to the second. The lesson is not "add another branch" - it is that **a success message must be derived from evidence of success, never from the absence of recorded failure.** Four lying instruments were found today (rebroadcast "in parallel", sizing "x 50%", "FULL brain replica" on 1/17, my gatling printing green on a no-op) and this is the fifth. Every one of them said something true-shaped that no field actually supported.
