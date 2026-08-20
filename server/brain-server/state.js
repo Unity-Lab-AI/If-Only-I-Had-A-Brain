@@ -475,12 +475,17 @@ const SERVER_STATE_MIXIN = {
       // can show "Unity is at pre-K" without the user typing
       // /curriculum status. `grades` is the per-subject map; `minGrade`
       // is the lowest passing grade (what caps Unity's speech ceiling).
-      // `canSpeak` is true once the motor region has been trained — the
-      // letter→motor direct-pattern Hebbian at kindergarten ELA is what
-      // flips this from false to true.
+      // CANSPEAK.4 — `canSpeak` IS GONE AND IT IS NOT COMING BACK. It was
+      // `_computeMinGrade() !== 'pre-K'` — pure grade arithmetic over the
+      // per-subject map — and the comment that used to sit here claimed it
+      // "is true once the motor region has been trained", which no line of
+      // code ever supported. It was read as a muteness flag and reported as
+      // one for hours while she was talking on the brain page. The value is
+      // kept under the name of the thing it actually computes; the question
+      // it was mistaken for is answered by `voice` below, off real evidence.
       grades: this.cortexCluster?.grades ? { ...this.cortexCluster.grades } : null,
       minGrade: this._computeMinGrade(),
-      canSpeak: this._computeMinGrade() !== 'pre-K',
+      minGradeCleared: this._computeMinGrade() !== 'pre-K',
       // Full-Mind K Gate state — per-probe results + aggregate pass rule.
       // Populated by curriculum._aggregateFullMindK() when the K closure
       // gate runs. Dashboard renders the per-probe table + overall pass
@@ -549,6 +554,77 @@ const SERVER_STATE_MIXIN = {
       // BLOCK-not-DROP path is keeping Hebbian updates intact.
       wsPressure: _lap('wsPressure', () => this._getWsPressureState()),
       utilization: _lap('utilization', () => this._getUtilizationState()),
+      // CANSPEAK.8 — THE FIELDS THAT ACTUALLY ANSWER "CAN SHE SPEAK", in one
+      // place, so no status line has to infer it from a grade gate again.
+      // Placed AFTER `utilization` deliberately: the word_motor region counts
+      // come off the bitset walk that lap refreshes, so reading them earlier
+      // in this literal would serve a snapshot up to 5s older than the rest.
+      //
+      //   wordMotor*      the emission substrate. `everFired: 0` means not one
+      //                   bucket has fired SINCE BOOT. It does NOT mean the
+      //                   weights are gone — a since-boot counter is not a
+      //                   capability, and reading it as one is what nearly
+      //                   triggered an unnecessary fresh walk (WORDEMIT).
+      //   matrixDrivenPct how much of her speech comes from her OWN trained
+      //                   weights vs the dictionary-cosine oracle. Same
+      //                   counters `curriculum.emissionSource` publishes, read
+      //                   straight off the cluster so this block carries no
+      //                   ordering dependency on the curriculum lap.
+      //   emitRejection   WHY the last emission was refused AND HOW OLD that
+      //                   sample is, because a 3-minute-stale rejection was
+      //                   once quoted as live proof she was reaching for words.
+      //
+      // The verdict is derived from evidence that is PRESENT. It never reports
+      // health from the absence of a recorded failure (the SYNCEMPTY lesson).
+      voice: _lap('voice', () => {
+        try {
+          const cc = this.cortexCluster;
+          const wm = (this._lueRegions && this._lueRegions.word_motor) || null;
+          const oracleHits = (cc && cc._oracleHits) | 0;
+          const matrixHits = (cc && cc._matrixHits) | 0;
+          const emissions = oracleHits + matrixHits;
+          const matrixDrivenPct = emissions > 0
+            ? Math.round((matrixHits / emissions) * 100) : null;
+          const rej = cc && cc._lastEmitRejection;
+          const everFired = wm ? (wm.everFired | 0) : null;
+          let status = 'unmeasured';
+          let reason = 'nothing has attempted an emission since boot — this is'
+            + ' NOT a claim that she cannot speak, only that no sample exists';
+          if (emissions > 0) {
+            if (everFired > 0 && matrixDrivenPct >= 50) {
+              status = 'matrix-driven';
+              reason = `${matrixDrivenPct}% of ${emissions} emissions came from`
+                + ` her own trained weights; ${everFired} word_motor buckets`
+                + ' have fired';
+            } else if (everFired > 0) {
+              status = 'oracle-carried';
+              reason = `only ${matrixDrivenPct}% of ${emissions} emissions are`
+                + ` matrix-driven — the dictionary oracle is doing most of the`
+                + ` talking (${everFired} buckets have fired)`;
+            } else {
+              status = 'oracle-only';
+              reason = `${emissions} emissions with ZERO word_motor buckets`
+                + ' fired since boot — every word came from the oracle, not'
+                + ' from the emission band';
+            }
+          }
+          return {
+            wordMotorSize: wm ? (wm.size | 0) : null,
+            wordMotorEverFired: everFired,
+            wordMotorPct: wm ? wm.pct : null,
+            oracleHits,
+            matrixHits,
+            matrixDrivenPct,
+            emitRejection: rej
+              ? {
+                  reason: rej.reason || 'unknown',
+                  ageMs: Math.max(0, Date.now() - (rej.ts || Date.now())),
+                }
+              : null,
+            verdict: { status, reason },
+          };
+        } catch (err) { return { error: err.message }; }
+      }),
       // #112.9d — student-battery progress (i/N) so the dashboard shows the
       // K-STUDENT battery advancing (question i of N + label) instead of a
       // silent stall. Set per-question in _runStudentBattery (curriculum.js),
@@ -958,6 +1034,14 @@ const SERVER_STATE_MIXIN = {
     try {
       const list = [];
       let admins = 0, viewers = 0, donors = 0, totalBytesIn = 0, totalBytesOut = 0, rttSum = 0, rttN = 0, maxBuffered = 0;
+      // SYNCPARTIAL.7 / PARTMIRROR.4 — the DENOMINATORS. `df7HeldMatrices: 1`
+      // and `21 compute batches · 0 teach ops` are both TRUE readings that look
+      // like faults until you know they are 1-of-17 and 2-of-8. Work eligibility
+      // is per-matrix (teach) and per-cluster (compute), so a row without its
+      // denominator cannot answer "is it working?" — which is the whole family
+      // of bug this batch closes.
+      const _matrixTotal = (this._replicaMatrixRegistry && this._replicaMatrixRegistry.size) || 0;
+      const _clusterTotal = (this.clusters && Object.keys(this.clusters).length) || 0;
       if (this.clients) {
         for (const [ws, c] of this.clients) {
           const isGPU = !!c.isGPU;
@@ -968,6 +1052,42 @@ const SERVER_STATE_MIXIN = {
           const buffered = (ws && typeof ws.bufferedAmount === 'number') ? ws.bufferedAmount : 0;
           if (buffered > maxBuffered) maxBuffered = buffered;
           const tele = c.telemetry || null;
+          // MIRRORID.5 — `gneuronsPerSec` IS A PERSISTENT DONOR-SIDE FIELD.
+          // donor.rs:655 writes it only when a batch COMPLETES and it keeps its
+          // last value forever, so a card that has stopped computing entirely
+          // keeps displaying the rate it earned minutes ago. That is worse than
+          // showing 0: it hid the negative-batchId bug (every mirrored batch
+          // silently dropped, no donor ever computed) for HOURS, because the
+          // only honest 0 on the board belonged to the one card that had never
+          // been primary. A rate with no freshness is not a measurement.
+          //
+          // `stepsComputed` is the exact fix. Both donor backends increment it
+          // ONLY on batch completion and never decrease within a session
+          // (donor.rs:655 `s.steps_computed += _neurons * _substeps`,
+          // compute.html:1501/1547), so its delta is proof-of-work — no
+          // value-collision guessing like watching the float rate for change.
+          // Sampled here, in the state builder, on the same pattern the net /
+          // ws rate buffers already use.
+          const _steps = (tele && Number(tele.stepsComputed)) || 0;
+          if (isGPU) {
+            if (c._stepsSeen === undefined) { c._stepsSeen = _steps; c._stepsAdvancedAt = _steps > 0 ? now : null; }
+            else if (_steps > c._stepsSeen) { c._stepsSeen = _steps; c._stepsAdvancedAt = now; }
+          }
+          const _advancedAgoSec = (isGPU && c._stepsAdvancedAt)
+            ? Math.round((now - c._stepsAdvancedAt) / 1000) : null;
+          // 30s: comfortably longer than the ~5s telemetry cadence, short enough
+          // that a stalled card is visible before anyone asks about it. A donor
+          // that has NEVER advanced reads idle from the start — honestly, since
+          // it has genuinely computed nothing.
+          const _computeIdle = isGPU
+            ? (_advancedAgoSec === null || _advancedAgoSec > 30) : null;
+          // PARTMIRROR.4 — coverage is deliberate, not a fault. A 5.6GB card is
+          // gpu_init'ed for the subset of clusters it fits, so its rate is
+          // PROPORTIONALLY smaller because it is stepping less brain. Without
+          // the fraction on screen the board reads that as a broken card.
+          const _cov = (isGPU && c.clusterCoverage instanceof Set)
+            ? Array.from(c.clusterCoverage) : null;
+          const _isPrimary = isGPU && ws === this._gpuClient;
           list.push({
             id: c.id,
             type,
@@ -989,6 +1109,13 @@ const SERVER_STATE_MIXIN = {
             donorAppVersion: isGPU ? (c.donorAppVersion || null) : null,
             binaryTeach: isGPU ? !!(this._binTeachWs === ws && this._binTeachOk === true) : null,
             gneuronsPerSec: (isGPU && tele) ? r2(tele.gneuronsPerSec || 0) : null,
+            // The rate above is a LAST-EARNED value, not a live one. These three
+            // say whether it still means anything. Read them together or not at
+            // all: `computeIdle: true` beside a healthy-looking Gn/s means the
+            // card banked that number and then stopped.
+            computeSteps: isGPU ? _steps : null,
+            computeAdvancedAgoSec: _advancedAgoSec,
+            computeIdle: _computeIdle,
             // F9 — WebGPU storage-binding cap + capability flag, so the dashboard can
             // show "GPU buffer too small for cortex matrix" instead of a mystery 0 Gn/s.
             maxBindMB: isGPU ? (Number(c.maxBindMB || (tele && tele.maxBindMB)) || null) : null,
@@ -1000,14 +1127,38 @@ const SERVER_STATE_MIXIN = {
             // hold — the honest cause of a 0 Gn/s row. `primary` distinguishes "IS the
             // master, nothing to sync" from "replica still waiting for its weights", so
             // the Clients table can say which one a quiet card actually is.
-            df7Primary: isGPU ? (ws === this._gpuClient) : false,
-            df7Synced: isGPU ? (ws === this._gpuClient ? true : !!c._df7Synced) : false,
+            df7Primary: _isPrimary,
+            // DONORKILL.2 — WHAT BREAKS IF YOU KILL THIS ONE. A pod list, the
+            // Clients table and the leaderboard all showed a card without
+            // showing it was THE master holding her weights; a spend-kill on a
+            // primary took the walk to 0 teach/min, and the reasoning offered
+            // BEFORE that irreversible press was wrong (`replicaCount: 0` was
+            // read as "contributed nothing" when it meant "this card IS the
+            // master"). The consequence now travels with the row, so it is
+            // surfaced before the press instead of explained after it.
+            pauseIfKilled: !isGPU ? null : (_isPrimary
+              ? 'PRIMARY — this card is the master. Killing it pauses the walk'
+                + ' (no compute substrate) until another donor is promoted and'
+                + ' re-uploaded.'
+              : 'replica — killing it drops its share of work; the walk'
+                + ' continues on the primary.'),
+            df7Synced: isGPU ? (_isPrimary ? true : !!c._df7Synced) : false,
             df7SyncedMatrices: isGPU ? (Number(c._df7SyncedMatrices) || 0) : 0,
             // INCREMENTAL — how many matrices this donor actually HOLDS right now. Work
             // eligibility is per-matrix, so this is the honest "how much can it do yet"
             // number; df7Synced only says whether a full pass has finished.
             df7HeldMatrices: isGPU ? ((c.heldMatrices instanceof Set) ? c.heldMatrices.size : 0) : 0,
+            // The denominator that turns "holds 1" into "holds 1/17". A sync
+            // once logged `1 matrices pushed` and `a FULL brain replica` ON THE
+            // SAME LINE; a later one announced a full replica off `0/0`. A
+            // fraction cannot tell that lie.
+            df7TotalMatrices: isGPU ? _matrixTotal : null,
             df7SyncedAgoSec: (isGPU && c._df7SyncedAt) ? Math.round((Date.now() - c._df7SyncedAt) / 1000) : null,
+            // Cluster coverage — how much brain this card is actually stepping.
+            // null coverage = full-coverage donor (every cluster).
+            clusterCoverage: _cov,
+            clusterCoverageCount: isGPU ? (_cov ? _cov.length : _clusterTotal) : null,
+            clusterTotal: isGPU ? _clusterTotal : null,
             // FLAP — platform/backend telemetry so a red / 0-Gn/s donor's OS, compute backend,
             // driver, and compute-capability are visible in the Clients table instead of
             // reverse-engineered from logs (native donor reports these; browser donor → null).

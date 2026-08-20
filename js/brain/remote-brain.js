@@ -364,12 +364,18 @@ export class RemoteBrain extends EventEmitter {
     if (serverState.sharedMood) this.state.sharedMood = serverState.sharedMood;
     if (serverState.perf) this.state.perf = serverState.perf;
     if (serverState.growth) this.state.growth = serverState.growth;
-    // T18.3.b — forward grade state (per-subject map + minGrade + canSpeak)
-    // so the HUD can render Unity's lowest passing grade as a persistent
-    // visible element instead of forcing the user to type /curriculum status.
+    // T18.3.b — forward grade state (per-subject map + minGrade) so the HUD
+    // can render Unity's lowest passing grade as a persistent visible element
+    // instead of forcing the user to type /curriculum status.
+    // `canSpeak` is GONE — it was `minGrade !== 'pre-K'` and nothing more, and
+    // its name asserted a speech capability the value never measured. The
+    // boolean survives under the name of what it computes; the question it was
+    // mistaken for is answered by `voice`, which carries real emission
+    // evidence (word_motor everFired, matrixDrivenPct, last rejection + age).
     if (serverState.grades) this.state.grades = serverState.grades;
     if (serverState.minGrade) this.state.minGrade = serverState.minGrade;
-    if (typeof serverState.canSpeak === 'boolean') this.state.canSpeak = serverState.canSpeak;
+    if (typeof serverState.minGradeCleared === 'boolean') this.state.minGradeCleared = serverState.minGradeCleared;
+    if (serverState.voice) this.state.voice = serverState.voice;
 
     // Synthesize spike array for 3D visualization.
     // Server runs millions of neurons — render shows proportional sample.
