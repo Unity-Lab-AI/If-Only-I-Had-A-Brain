@@ -35155,3 +35155,415 @@ MindSpace restored 8 imagined field-C memories
 - [x] **SUBSTEPS.3** ✅ **FIXED 2026-08-20 — THE CONTROLLER READ THE WRONG NUMBER AND SILENTLY PINNED ITSELF AT ITS FLOOR.** It used `_perfStats.stepTimeMs` on the stated assumption that the tick "IS the batch plus overhead". **False on a teach-bound walk:** the tick is dominated by CPU-side Hebbian grind, not the donor round-trip. Measured live on build `200824d6`: tick **~4,000ms** (`stepsPerSec 6` at 24 substeps) while the ACTUAL `compute_batch` round-trip was **663ms** — and `TICK-GAP` had been printing that number the whole time. So 4,000ms cleared the 2,400ms shrink threshold every single 12s window, `Math.max(floorValue, …)` clamped the result back to 24, `next === prev` meant it never logged, and **the controller looked absent while actually deciding "too slow, back off" forever against an idling card** — the precise opposite of what Gee asked for, invisibly. **FIX:** read `_batchTiming.roundTripEmaMs` (`gpu.js:451`), the send→reply stopwatch the 2,000ms target was always meant to be measured against; fall back to the tick only when no batch has completed yet. **Re-simulated with the REAL box numbers (663ms batch inside a 4,000ms tick): the old read pins at 24 forever — reproducing the live symptom exactly — and the new read climbs 24 → 36 → 54, settling at 54 substeps (batch 1,492ms vs the 2,000ms target). 2.25x the neuron-steps per round-trip.** ⚠ **AND WHY THE FIRST SIMULATION MISSED IT, which is the part worth keeping: I fed the harness `mathMs + OVERHEAD` as `stepTimeMs` — I mocked the very assumption under test.** A model that encodes the belief it is meant to check cannot fail. Same family as `feedback_verify_esm_with_import_not_node_check`: the tool agreed with me because I had told it what to think. It also means my earlier "settles at 81 substeps / 91% GPU busy" figure was an artefact of that same mock; **54 is the number with real measurements under it.**
 
 <!-- END VERBATIM TODO ARCHIVE 2026-08-20 -->
+
+
+---
+
+# ═══ VERBATIM ARCHIVE OF docs/BOARD.md — 2026-08-20, file removed ═══
+
+> Gee (verbatim): *"delete the board file we dont need it"*
+>
+> **Archived before deletion, because it held Gee verbatim words that exist nowhere else.** A `grep` for its opening quote returned **0** hits in this file, so removing the doc would have destroyed them — LAW #0 and FINALIZED-BEFORE-DELETE both forbid that. Checked before deleting per the `SCRIPTKILL.3` lesson (grep the stem AND the directory, not just the filename): no code reads it, and the one `.claude/agents/` hit for "BOARD" was **ONBOARDING** — a false positive of exactly the class that lesson is about.
+>
+> The board itself is genuinely redundant now: it was a triage VIEW of `docs/TODO.md`, and the board reached **0 open / 171 closed** with `TODO.md` archived verbatim earlier today. What follows is the complete file, byte-for-byte.
+
+<!-- BEGIN VERBATIM BOARD ARCHIVE 2026-08-20 -->
+
+# BOARD — triaged task list (2026-08-20)
+
+> Gee (verbatim): *"okay we have alot in the todo still open i want you to build the full task list in the cli so i can follow along with any and all items still open in the todo...(mind you , you need to be smart about it, as some of these are related to what ive told you and some u just added yourself, so we need to make sure that what needs to be done get s done and what doesnt need to be done doesnt get done"*
+
+**86 open items on `docs/TODO.md` triaged by two axes: WHO it came from (Gee's directive vs my own addition) and whether it is STILL LIVE.** Nothing is deleted by this file — `docs/TODO.md` stays the record. This is the reading order.
+
+**Headline: only ~29 of the 86 are real remaining work. ~40 are stale press-riders already answered by later presses, and ~11 are retrospective lessons I wrote that are not tasks at all.**
+
+> **UPDATE 2026-08-20 — 7 of those closed in one batch (✅ rows below), so ~22 real items remain.** The whole **"the board cannot answer *is it working?*"** family shipped together: GATFILE.1/.2/.3, DASHDEAD.4, MIRRORID.5, DONORKILL.2, SYNCPARTIAL.7, PARTMIRROR.4, CANSPEAK.4/.8. **None of them needed a press** — that is why they were picked. One new item was filed from the reading (**MIRRORID.6**, Tier 2 #27) and **RESYNCDUTY.9 was deliberately left open**: it touches the same phase counter CELLBOUND.A–E already changed, so landing it before the CELLBOUND.F verdict would confound the exact read that press exists to produce. Ledger: `docs/FINALIZED.md` §2026-08-20 THE BOARD STOPS LYING.
+
+> **UPDATE 2026-08-20 (second batch) — THE BOARD IS DOWN TO 26 OPEN, AND 66 CLOSED.** Gee: *"keep working we are completeing it all"*. **Nine real items BUILT** (none needing a press to land — they are code, verified `node --check` + ESM `import()` + bundle rebuilt): **FIRSTPIN.1** (respond sub-stages), **FIRSTPIN.2** (the last inline concurrent teacher, evicted onto the drain lane with its definition channel intact), **SURPRISECPU.2** (`img-detect` was an inline mind's-eye preview → queued; `generate` split into primary + continuation stamps), **CELLBOUND.H** (deferral cursor persisted beside `passedPhases`), **LOOPMAX.8** (banked maximum for chatStage + saveStage, the race teachStage v1 lost), **LANGRAM.6** (`server/lang-geometry.json` — the geometry PIN wins over a boot-time RAM dip), **LOOPNAME.13** (bundle freshness checked at boot against the code-hash file list, reported in state), **SYNCEMPTY.3** (the registry GATE — the race removed without guessing a third cause), **MIRRORID.6** (leaderboard credits work, not connection time — Gee chose *"Credit real work only"*, which also answers WORKSHARE.6). **And 47 stale items CLOSED with verdicts on Gee's approval** — 38 Tier-4 press-riders + 9 Tier-5 lessons, statuses flipped in place (`[x]` + the leading `OPEN`/`⏳`/`GEE:` status token replaced by a closure verdict, every word of every description kept). ⛔ **`DELTAIDX.9` was NOT closed** — it was sitting in the close pile because this file's own warning sentence about it got parsed as tier membership by the roster reader. Still DISABLED, cause never found. Ledger: `docs/FINALIZED.md` §2026-08-20 FINISH THE BOARD.
+
+> **UPDATE 2026-08-20 (third batch — VERIFY BEFORE BUILDING) — 20 open.** Gee: *"still open items to do, make sure they are really needed before you do them"*. Every remaining item was checked against evidence BEFORE any code was written, and the checks changed the answers: **`RUNPOD.7` CLOSED on live snapshot data** (`maxBindMB 24210`, `sizeDriverMB 24210`, `computeInsufficient false`, `32.45 Gn/s` — its own escape clause fired when CUDA came back); **`RUNPOD.6` was TWO gates, not one** (main.rs enumeration AND `MultiEngine::new` requiring a wgpu adapter to even find the CUDA ordinal — both fixed, all three feature combos compile); **`LG.6`'s "hard prerequisite" was a client-side default, not a protocol limit** (tungstenite's 64MiB `max_message_size` vs the server's 2GB `maxPayload` — one config call, so the segmented-rowPtr redesign is now optional); **`CELLBOUND.G` is 73 sites, not ~58** (the per-grade files were never grepped); **`DF7SYNC.7`'s own stated prerequisite shipped** (sync-window duration + window + payload, because 8 minutes for 3GB and for 40MB are different diagnoses); **`SCRIPTKILL.2` shipped and my first cut was WRONG** — cap in lines, trigger in bytes, so small entries walked past it; the test caught it. **Closed as RULES rather than built**: `TASKLIST.2`, `TASKLIST.3`, `SCRIPTKILL.3` → persistent memory, because a standing instruction on a task board is a line that can never be finished. **`SCRIPTKILL.1` shipped as a REPORT, not a blocker** (session-start names untracked / patcher-shaped files in `scripts/`; a PreToolUse guard that silently eats a legitimate write is the failure class this ledger is about). New: **`RUNPOD.15`** — one donor tag ships RUNPOD.6 + the LG.6 prereq, filed separately so DONE is never confused with LIVE. Ledger: `docs/FINALIZED.md` §2026-08-20 VERIFY BEFORE BUILDING.
+
+---
+
+## TIER 0 — BLOCKING. Everything else waits on this.
+
+| # | id | what |
+|---|----|------|
+| 1 | **CELLBOUND.F** | ⏳ **ONE Update & Savestart.** Server+bundle only, weights preserved, art/K resumes from checkpoint. Verdict in one look: `phaseChain` names the full live chain · `cellPhasesCompleted` moves off 14/16 · `_gateArtKReal` finally runs · `phaseWork` no longer reads `done > total`. **A budget-stop line is EXPECTED, not a failure.** |
+
+---
+
+## TIER 1 — REAL WORK, FROM YOUR DIRECTIVES
+
+| # | id | what | why it's yours |
+|---|----|------|----------------|
+| 2 | ✅ **GATFILE.1/.2/.3** | Port the GATGUARD fixes into `scripts/Gattling Gun Savestart Forced.txt` — fetch guard never auto-restores (ate your Update button once), 2xx counted as a win, and the build guard pinned to `3efc220` makes the spotter declare victory on its FIRST poll and kill the barrels. **SHIPPED 2026-08-20 (v5):** baseline read off the live box at arm time (`build.short` OR `build.bootedAt` change = the win), fetch guard auto-restores in 5s, win only on `armed`, both copies byte-identical. **Nothing needs hand-editing before firing any more.** | *"mark that thing u spotted in the todo"* |
+| 3 | ✅ **SURPRISECPU.2** | The second offender from the same split: `generate=17,941ms` and `img-detect=4,925ms`. Both now visible per-stage. | *"did u catch that doner crash?"* |
+| 4 | ✅ **FIRSTPIN.1** | Instrument the respond stage sub-stages; no fix until the split names the resident. | drop-on-speak war |
+| 5 | ✅ **FIRSTPIN.2** | The curiosity-followup landmine — `chat.js` awaits `_teachAssociationPairs` INLINE, the exact concurrent-teach crime CHATQUEUE was built to kill, alive in a branch that didn't fire in rounds 4–5. **Real latent bug.** | drop-on-speak war |
+| 6 | **FIRSTPIN.3** | WATCH (read-only): Oja active-set inflates to ~2.4–2.6M rows during chat windows. | drop-on-speak war |
+| 7 | **LG.6 / LG.7** | Language-cortex hops → ~20M, then 12–20% (the April target). ⛔ LG.6 has a hard prerequisite: at ~20M the intra rowPtr alone (~80MB) exceeds the donor's 64MiB message cap — needs a segmented-rowPtr donor release first. | your scale target |
+| 8 | **GRANT.2 / GRANT.3** | (a) Emergent Ventures application, (b) NSF Project Pitch — both free, zero-barrier, fire whenever you want. (c) The documented developmental trajectory as the real asset. | *"search online for grant available for this type of project"* |
+
+---
+
+## TIER 2 — REAL WORK I ADDED. Kept because it is proven, not speculative.
+
+**⚠ THREE of these bit us TODAY.** That is the argument for them, not my opinion.
+
+| # | id | what | evidence it's real |
+|---|----|------|--------------------|
+| 9 | ✅ **DASHDEAD.4** | An auth failure renders as a BRAIN failure. "Brain server unreachable" on a brain teaching 4,257/min. The dashboard can read `/public-state.json` with NO auth — it should probe that before blaming the backend and say *"admin lane not authenticated — brain is UP"*. **SHIPPED 2026-08-20:** every WS close now probes the public snapshot and, when live state answers, rewrites the banner to **"Admin lane not authenticated — the brain is UP"** with live teach/min · cell · build · uptime · donors, and says *do not restart a healthy service*. The probe judges the BODY, not the status code (a 200-with-HTML is a lie on this origin). Probe-failed → old copy stands + the reason is appended. | **cost us a full diagnostic round today** |
+| 10 | ✅ **MIRRORID.5** | Donor Gn/s is a persistent field — it shows a rate earned minutes ago while computing nothing. Must decay or read `idle`. **SHIPPED 2026-08-20:** freshness comes off `stepsComputed` (verified monotonic in BOTH donor backends, incremented only on batch completion) → new `computeSteps` / `computeAdvancedAgoSec` / `computeIdle` per row; the table renders `idle 47s (last 9.3Gn/s)` in red instead of a live-looking green number. | **I read `0.00 Gn/s` on a healthy new donor today and had to caveat it** |
+| 11 | ✅ **DONORKILL.2** | Nothing outside the brain shows WHICH GPU is primary. RunPod pod list, Clients table and leaderboard all show a card without showing it's load-bearing. **SHIPPED 2026-08-20:** every donor row carries `pauseIfKilled` stating the consequence in words (primary → the walk pauses with no compute substrate until another donor is promoted and re-uploaded; replica → it just drops its share), rendered as a ★ + row tooltip. | **I terminated her primary today** |
+| 12 | ✅ **LOOPNAME.13** | Nothing enforces bundle freshness. A `js/brain/*` edit without a local rebuild ships a browser bundle that silently disagrees with the server. A pre-push mtime/hash check fixes it. | **I had to remember it manually this session** |
+| 13 | **CELLBOUND.G** | The same unbounded rep-loop shape lives in **~58 other teach methods**. Sweep once CELLBOUND.F proves the shape on the convicted one. | measured |
+| 14 | ✅ **CELLBOUND.H** | The deferral cursor is IN-MEMORY only — across a reboot deferred work repeats rather than resumes. Persist it beside `passedPhases`. | stated at build time |
+| 15 | ✅ **SYNCEMPTY.3** | The REAL sync fix is not shipped. Registration-sync fires on a fixed 1.5s timer and races the server's own registry. Should GATE on a populated registry. ⛔ **Two theories already wrong here — do not guess a third; the next boot line decides.** | open root cause |
+| 16 | ✅ **LOOPMAX.8** | `saveStage` and `chatStage` have the SAME timer race `teachStage` v1 had and were never audited. Apply the banked-maximum pattern. | proven pattern |
+| 17 | **RESYNCDUTY.9** | `_gateSciKReal` isn't wrapped in `_phasedTeach`, so a 20.7-minute gate reads `activePhase: null` — indistinguishable from a hang. ⛔ **HELD 2026-08-20, sequenced AFTER CELLBOUND.F:** it edits the same phase counter CELLBOUND.A–E already changed and F has not reported yet. Two unverified changes to `cellPhasesCompleted` / `phaseWork` on one press would confound the exact read F exists to produce. | cost a forensic dig |
+| 18 | **LOOPNAME.7** | Every diagnostic lane (admin WS, public-state, console ring) rides the event loop under investigation. We go blind exactly when we need eyes. | structural |
+| 19 | ✅ **SYNCPARTIAL.7** | Donor UI should show coverage ("holds 1/17 matrices") not just counters — "21 batches · 0 teach ops" is true but reads as a fault. **SHIPPED 2026-08-20:** `df7TotalMatrices` gives the fraction (`1/17 mx`) and `clusterCoverage` / `clusterCoverageCount` / `clusterTotal` give the compute fraction (`2/8 cl`), both rendered with tooltips explaining WHY a partly-synced or small card is honest work. A fraction cannot tell the "1 matrices pushed = a FULL brain replica" lie. | your own question raised it |
+| 20 | ✅ **CANSPEAK.4 / .8** | Retire `canSpeak` from status summaries (it's `minGrade !== 'pre-K'`, pure grade arithmetic); report `matrixDrivenPct` + `word_motor.everFired` instead. **SHIPPED 2026-08-20:** field RENAMED to `minGradeCleared` (the name of what it computes) and its one consumer updated — zero chat-path consumers, so nothing degrades. New `state.voice` block answers the real question off evidence: word_motor size/everFired/pct, oracle vs matrix hits, `matrixDrivenPct`, last emit rejection **with its age**, and a verdict that says `unmeasured` in words rather than implying she cannot speak. | you caught me misreporting it |
+| 21 | **RUNPOD.6** | `main.rs:49` enumerates wgpu unconditionally and `:88` hard-exits when empty — a CUDA-capable host with no Vulkan stack can never donate. Kills the whole GLVND/X11 package pile. | blocks a cheap donor fleet |
+| 22 | ✅ **LANGRAM.6** | Sizing a load-bearing geometry off `os.freemem()` means the vocabulary ceiling can differ run to run. Pin it or make a size change a loud acknowledged event. | it already flip-flopped once |
+| 23 | **SYNCPARTIAL.6 / DF7SYNC.7** | Root cause not established + the sync-window deadlock is narrowed, not eliminated. | honest open |
+| 27 | ✅ **MIRRORID.6** | *(new, filed 2026-08-20 from the MIRRORID.5 read — not swept in.)* The SAME disease one layer down, in the ACCOUNTING: `gpu_telemetry` accrues `gneuronsPerSec × dt` into the leaderboard on EVERY frame, and that rate is the persistent field — so a donor doing nothing keeps BANKING Gn·s for as long as it stays connected. One condition fixes it (accrue only when `stepsComputed` advanced, which MIRRORID.5 already tracks), but it lives in a 9,737-line file and it changes what the leaderboard MEANS — decide it together with WORKSHARE.6, not separately. | found while reading, filed not guessed |
+| 28 | **TASKLIST.1 / .2 / .3** | *(new, filed 2026-08-20 — Gee: "write task list of all open todo work".)* **.1 SHIPPED:** `scripts/write-open-tasks.py` writes `docs/OPEN-TASKS.md` — every open board item, grouped into these tiers, each body copied **byte-for-byte** off its TODO line with a `docs/TODO.md:<line>` backlink; refuses to write if the Tier 4/5 rosters don't parse, if anything lands UNTRIAGED, or if any body is not byte-present in the file **re-read from disk**. **.2 open:** nothing keeps the snapshot fresh (same disease as LOOPNAME.13, one doc down). **.3 open:** first action every new session is to call `TaskCreate` once — the CLI panel is what Gee actually asked for, and the triage is already done. | the CLI task tools are absent — `ToolSearch` says so, twice |
+
+---
+
+## TIER 3 — YOUR DECISION, not work
+
+| # | id | the call |
+|---|----|----------|
+| 24 | **WORDEMIT.4** | Fresh walk or not. **NOT forced.** Cheapest next step costs nothing: let art/K finish, talk to her, read `matrixDrivenPct`. |
+| 25 | **RUNPOD.8** | Community placement refused 3× at $0.34/hr; every pod lands SECURE at $0.74 (~$533/mo at 24/7). Retry community, accept secure, or switch card (A40 secure $0.44/hr, 48GB, HIGH stock). |
+| 26 | **RUNPOD.7** | ⚠ Likely already closed — the CUDA fix landed and today's pod advertised **24,210MB**, not the 2047MB Vulkan cap. Confirm and close. |
+
+---
+
+## TIER 4 — ✅ CLOSED 2026-08-20. Stale press-riders, answered.
+
+**CLOSED on Gee's approval (verbatim option: *"Close all 48 with verdicts"*). All 38 were "⏳ GEE: Update & Savestart, then verify X" written 08-18/08-19. Those presses HAPPENED — repeatedly — and the outcomes are in FINALIZED and in today's live reads (3 names on the leaderboard, CUDA path at 24GB, blocks 250-440ms, teach/min ~4,100, drops/sheds 0/0, 4 cells passed). Each line on `docs/TODO.md` now carries `[x]` plus its closure verdict where the `⏳` / `GEE:` / `OPEN` status token used to be; every word of every original description is preserved after it.**
+
+`RAMP17.3` · `PRECELL.3` · `TPROF.1` · `DROPCHAT.3` · `SAVEPIN.2` · `SAVEPACE.3` · `V0319.2` · `REPLYPIN.3` · `GATESTEP.3` · `GENPIN.3` · `BAND1300.1` (superseded — V0318 took l1b 2,700ms→40ms) · `RUNPOD.11` · `RUNPOD.12` · `RUNPOD.13` (tag landed; template pins v0.3.22) · `RUNPOD.14` (verified today: `[CUDA]` @ 24,210MB) · `DF7SYNC.6` · `PACEDSYNC.5` · `SYNCSERIAL.5` · `DELTAIDX.8` · `QUEUEDEADLINE.4` · `ALIASFIX.4` · `INCREMENTAL.6` · `WORKSHARE.5` · `BUFFLOOR.4` · `PARTMIRROR.3` · `ALLINIT.4` · `MIRRORDIAG.3` · `INITFIT.5` · `MIRRORID.4` · `RESYNCDUTY.6` · `LOOPNAME.5` · `LOOPNAME.6` · `LOOPMAX.6` · `LOOPMAX.7` (answered by LANGRAM: RAM floor, fixed, 12M confirmed) · `LOOPMAX.9` (superseded — CELLBOUND named the real cost) · `SYNCPARTIAL.5` · `LANGRAM.5` (risk MATERIALIZED and was recorded in LANGRAM.9) · `GATGUARD.5` (moot — dashboard is back)
+
+⚠ **`DELTAIDX.9` is NOT in this list and must not be closed** — DELTAIDX is still **DISABLED** and its corruption cause was never found.
+
+---
+
+## TIER 5 — ✅ CLOSED 2026-08-20. Not tasks: retrospective lessons I wrote into the board.
+
+These are things I learned, written as if they were work. They belong in memory/docs, not on a task board where they inflate the count and hide the real 29. **All 9 closed as lessons** (`WORKSHARE.6` closed as answered — Gee's leaderboard call: mirrored work still counts; `DONORKILL.1` was already carried into persistent memory as the name-the-primary rule).
+
+`ALIASFIX.5` · `WORKSHARE.6` · ✅ `PARTMIRROR.4` (turned out to BE work — shipped 2026-08-20 as the `N/M cl` coverage cell + tooltip, so a small card's proportionally lower rate reads as honest work instead of a dud GPU) · `ALLINIT.5` · `INITFIT.6` · `RESYNCDUTY.7` · `SYNCEMPTY.4` · `WORDEMIT.5` · `GATGUARD.6` · `DONORKILL.1` · `DELTAIDX.9`(the ceiling note; the DISABLED status stays live in Tier 2 terms)
+
+---
+
+## Reading order if you only do three things
+
+1. **CELLBOUND.F** — press. Unblocks the walk. *(Still #1 after BOTH 2026-08-20 batches. Nothing in either needed it, and nothing in either changes what it verifies — though the second batch adds lines that press will also show: `phaseRepCursor restored`, `bundle freshness OK`, `LANGRAM.6 geometry pin CONFIRMED`, and the split's new `generate:primary` / `generate:continuation-K` stage names.)*
+2. ~~**Tier 2 #9/#10/#11** — the three that bit us today. The board still cannot answer *"is it working?"*~~ → **DONE 2026-08-20**, along with #19, #20, #2 and PARTMIRROR.4. The board answers it now. Next in this slot: **FIRSTPIN.1** (instrument the respond stage before touching it).
+3. ~~**FIRSTPIN.2** — a real latent concurrent-teach bug sitting in an unfired branch.~~ → **DONE 2026-08-20** (enqueued onto a job queue that preserves the definition channel; the walk drains it serialized). Next in this slot: **RUNPOD.6** (the wgpu-only enumeration gate that blocks a cheap CUDA-only donor fleet) — or **LG.6**, once the segmented-rowPtr donor release exists.
+
+<!-- END VERBATIM BOARD ARCHIVE 2026-08-20 -->
+
+
+---
+
+# ═══ VERBATIM ARCHIVE OF docs/OPEN-TASKS.md — 2026-08-20, file removed ═══
+
+> Gee (verbatim): *"im fucking talking about the \"board\" list you made... the board of the 100+ completed items.. we dont need that list any more its all in finalized"*
+>
+> **He is right that it is redundant, and it is archived anyway because it holds his verbatim words** (its bodies were copied from `docs/TODO.md` line-by-line under LAW #0, and it carries quotes of its own). The list existed because `TaskCreate`/`TaskUpdate`/`TodoWrite` were absent from the session, so the CLI checklist he asked for had to be a doc. With the board at **0 open / 171 closed** and `docs/TODO.md` archived verbatim earlier today, it is now a stale snapshot of a file that no longer has open items — and a stale list that looks authoritative is worse than no list.
+>
+> 259 lines, 82 task lines, byte-for-byte below.
+
+<!-- BEGIN VERBATIM OPEN-TASKS ARCHIVE 2026-08-20 -->
+
+# OPEN TASKS — the written task list
+
+> **HAND-MAINTAINED from here on.** Every body below is its `docs/TODO.md` line copied byte-for-byte (LAW #0) with a `docs/TODO.md:<line>` backlink, grouped into the `docs/BOARD.md` tiers. `docs/TODO.md` stays the authoritative board — when this file and the board disagree, **the board wins**. Edit this file in place alongside the board; the one-shot generator that first laid it out has been deleted per Gee's 2026-08-20 directive (*"stop using scripts to edit code, files, and the stack"*).
+>
+> **Why a file and not the CLI checklist:** `TaskCreate` / `TaskUpdate` / `TodoWrite` are absent from this session — verified by `ToolSearch`, not recalled. `docs/TODO.md` stays the authoritative board; this is its open-work view, tier-ordered.
+
+| | count |
+|---|---|
+| **TOTAL OPEN** | **34** |
+| pending `[ ]` | 29 |
+| in progress `[~]` | 5 (`CELLBOUND.A–E`, riding the one press) |
+| closed on the board | 103 |
+
+*Counts re-derived from the board 2026-08-20 after the PAGESTALE + TEACHMIRROR batch. A duplicated header row was removed from this table in the same pass — a table that renders its own header twice is the mildest possible version of the disease this file tracks.*
+
+**⚠ THIS FILE IS ONE BATCH BEHIND ITSELF.** It was written when 82 items were open. Since then the **FINISH THE BOARD** batch (2026-08-20, second pass) built nine items and closed 47 stale ones with verdicts, so **the entries under TIER 4 and TIER 5 below are CLOSED** — they are kept as the closed record, and their live status lives on `docs/TODO.md` as `[x]` + a closure verdict. Tiers 0–3 entries that shipped are marked in `docs/BOARD.md` with ✅. **The 21 still genuinely open, each with the reason it is not done:**
+
+| item | why it is still open |
+|---|---|
+| `CELLBOUND.A`–`E` (5) | built + verified, riding the one press |
+| `CELLBOUND.F` | **the press. Gee's finger.** |
+| `CELLBOUND.G` | the sweep — **73 sites measured** (58 in `curriculum.js` + 15 in `curriculum/kindergarten.js`), deliberately after F proves the shape |
+| `RESYNCDUTY.9` | held: it edits the same phase counter F is verifying |
+| `DELTAIDX.9` | ⛔ DELTAIDX is still DISABLED and its corruption cause was never found. **Must not be closed.** |
+| `SYNCPARTIAL.6` | its own rule — *"no further code until that line is read"*; the registry gate may change what that line says |
+| `LOOPNAME.7` | structural. LOOPMAX.8's banked maxima now cover the common case, so the residual gap is a process that DIES mid-pin — real, but not the emergency it was filed as |
+| `FIRSTPIN.3` | read-only watch. `FIRSTPIN.2`'s inline teach is the prime suspect to rule out FIRST — not asserted as the cause |
+| `DF7SYNC.7` | prerequisite instrument shipped; the interleaved-sync rewrite waits for a real measurement |
+| `RUNPOD.15` | ⏳ Gee: one donor tag ships RUNPOD.6 + the LG.6 receive ceiling |
+| `SCRIPTKILL.4` | today's two hook fixes live in the gitignored `.claude/` tree — a `/unity-update` refresh reverts them silently. Needs an upstream port; the framework repo isn't cloned here |
+| `LG.6` | the 64MiB blocker is GONE (client-side default, now 512MiB); the hop itself is a geometry change ⟹ fresh walk ⟹ Gee's call |
+| `LG.7` | gated on LG.6 landing |
+| `RUNPOD.8` | spend decision (community vs secure vs A40) — Gee's |
+| `WORDEMIT.4` | fresh-walk decision — Gee's, explicitly NOT forced |
+| `GRANT.2` | applications are Gee's to fire |
+| `GRANT.3` | the trajectory asset is only worth building if GRANT.2 fires |
+| `TEACHMIRROR.3` | a MEASUREMENT, filed not scheduled — 21% VRAM and 9% utilisation are a latency + disk ceiling (205ms RTT per sparse op, 88s per 5.4GB checkpoint), so the work it implies is op batching and a closer region, which is its own programme |
+| `SCALEAUDIT.2/.4/.5` | the geometry ceiling, the syllabus depth gap and the 73-site dose sweep — each filed with numbers, each its own multi-batch programme |
+
+*Verify any count with `grep -cE "^- \[ \] \*\*" docs/TODO.md` (21), `grep -cE "^- \[~\] \*\*" docs/TODO.md` (5), `grep -cE "^- \[x\]" docs/TODO.md` (66). When this file and the board disagree, **the board wins.***
+
+---
+
+## TIER 0 — BLOCKING  (1)
+
+> One press gates the batch. Nothing below it verifies until this fires.
+
+- [ ] **CELLBOUND.F** ⏳ GEE: ONE **Update & SAVESTART** (server/bundle only - no geometry change, weights preserved; art/kindergarten resumes from its checkpoint). Then the verdict, in order: (a) `phaseChain` appears in the state payload naming the FULL live chain (`_teachSentenceStructure > <mid-level pass> > _teachHebbian`) - the field that would have answered this in one read; (b) the `_teachSentenceStructure CELLBOUND` line prints its visit number, mode (FULL/TOPUP), probe rate and effective dose; (c) the `_teachConcreteSentences CELLBOUND.C` line reports `7,831 unique of 11,436 transitions (31.5% were literal duplicates)`; (d) `cellPhasesCompleted` moves OFF 14/16 and `_gateArtKReal` finally runs; (e) `phaseWork` no longer reads `done > total`. **If a budget stop fires, its console line names the phase, the reps landed and the reps deferred** - a deferral is expected and is NOT a failure.
+  - <sub>`docs/TODO.md:739` — §CELLBOUND - 2026-08-20 - a cell phase can run 21+ hours with no budget, no cursor, no heartbeat: STRUCTURE-REFRESH x 114 cells = ~100 days of walk</sub>
+
+---
+
+## TIER 0b — BUILT + VERIFIED, RIDES THE SAME PRESS  (5)
+
+> Code is in and checked (node --check + ESM import() + bundle). These close on `CELLBOUND.F`'s verdict, not on new work.
+
+- [~] **CELLBOUND.A** **BUILD HALF DONE + VERIFIED (node --check + ESM import() + bundle rebuilt & identifier-checked).** **per-phase wall-clock BUDGET + persisted cursor + deferred remainder.** A teach pass stops on a clean rep boundary when its budget expires, PERSISTS where it stopped, and returns so the cell advances and the gate can run. The remainder resumes on the next visit to that phase (there are ~114). Nothing is discarded - deferred, never dropped - and every deferral LOGS its numbers (no silent caps, per the standing law).
+  - <sub>`docs/TODO.md:733` — §CELLBOUND - 2026-08-20 - a cell phase can run 21+ hours with no budget, no cursor, no heartbeat: STRUCTURE-REFRESH x 114 cells = ~100 days of walk</sub>
+- [~] **CELLBOUND.B** **BUILD HALF DONE + VERIFIED.** **recalibrate the dose to the 12M scale - EXPLICITLY AUTHORIZED by Gee.** The 100/80/60 rep counts were tuned when the language cortex was 349K-1.5M. Replace guessed constants with a dose driven by the MEASURED outcome that already exists: `_probeSentenceGeneration` rate against `PROBE_PASS_THRESHOLD = 0.4`, published as `cluster._mechanicsProbeRate`. Train a bounded increment, probe, and only continue if the probe says it is needed. **This reduces training mass and that is a real cost, not a free win.**
+  - <sub>`docs/TODO.md:734` — §CELLBOUND - 2026-08-20 - a cell phase can run 21+ hours with no budget, no cursor, no heartbeat: STRUCTURE-REFRESH x 114 cells = ~100 days of walk</sub>
+- [~] **CELLBOUND.C** **BUILD HALF DONE + VERIFIED.** **fold duplicate transitions into rep-weight instead of re-training them.** `_teachConcreteSentences` already BUILDS the dedup map (`sentencePairs`) and then uses it for TELEMETRY ONLY while training the full non-deduped array. Train unique pairs with frequency preserved as a bucketed rep-weight so a 70x transition still trains harder than a 1x one - 31.5% off without flattening the corpus statistics.
+  - <sub>`docs/TODO.md:735` — §CELLBOUND - 2026-08-20 - a cell phase can run 21+ hours with no budget, no cursor, no heartbeat: STRUCTURE-REFRESH x 114 cells = ~100 days of walk</sub>
+- [~] **CELLBOUND.D** **BUILD HALF DONE + VERIFIED.** **gate the every-cell re-teach behind the consolidation signal that ALREADY EXISTS.** `curriculum.js:15377` sets `cluster._mechanicsProbeRate` with an in-code comment saying it exists so `_teachLanguageMechanics` can skip the redundant every-cell grammar ladder once mechanics are solid. **That exact pattern was never applied to STRUCTURE-REFRESH itself.** Full depth on first teach / on regression / periodically; cheap top-up otherwise. This is the change that turns ~100 days into a walkable schedule, and it is not a cut - the full dose still happens, just not 114 times.
+  - <sub>`docs/TODO.md:736` — §CELLBOUND - 2026-08-20 - a cell phase can run 21+ hours with no budget, no cursor, no heartbeat: STRUCTURE-REFRESH x 114 cells = ~100 days of walk</sub>
+- [~] **CELLBOUND.E** **BUILD HALF DONE + VERIFIED.** **SHIPS REGARDLESS: make a long pass impossible to hide.** Wrap `_teachGlueWordProduction` + `_teachPersonaVoice` (and any other unprofiled nested teach) in the profiler, and emit a throttled progress heartbeat from inside the long passes. A 6-hour pass reported NOTHING for 6 hours - 500 ring lines across 28 minutes contained zero `[Curriculum]` output. Also fix `_teachNestedTotal[_teachSentenceStructure] = 5` (stale - the method now runs up to 7 nested passes, which is why `phaseWork` reads `done: 6 / total: 5` and `frac` pins at its `Math.min(0.99, ...)` cap).
+  - <sub>`docs/TODO.md:737` — §CELLBOUND - 2026-08-20 - a cell phase can run 21+ hours with no budget, no cursor, no heartbeat: STRUCTURE-REFRESH x 114 cells = ~100 days of walk</sub>
+
+---
+
+## TIER 1 — REAL WORK FROM GEE'S DIRECTIVES  (8)
+
+> Gee asked for these. Highest-priority buildable work.
+
+- [ ] **LG.6** HOP 2 (→ ~20M VRAM-fit) once hop 1 validates — same ritual, fresh revert tag first. **[carried + ⛔ FRAG.3 PREREQUISITE: at ~20M rows the intra rowPtr alone is ~80MB > the native donor's 64MiB MESSAGE cap — a segmented-rowPtr donor-side protocol change + donor release (Gee's territory) ships BEFORE this hop.]**
+  - <sub>`docs/TODO.md:69` — §NEXT CUTS + HOPS (after the press verifies)</sub>
+- [ ] **LG.7** HOP 3 (12–20%+, the April target) — gated on LG.1's chosen lever (fanout / rebalance / donor fleet); its own design pass.
+  - <sub>`docs/TODO.md:70` — §NEXT CUTS + HOPS (after the press verifies)</sub>
+- [ ] **FIRSTPIN.1** — instrument the respond stage the same way TICKGUARD named the stages: sub-stage stamps (silence-gate / learn-words / episode-store / curiosity / history-push / return) + a one-line wall-clock split printed when any respond pass exceeds 2s. NO fix until the split names the resident — three theories died this war to reads; zero get built on guesses.
+  - <sub>`docs/TODO.md:119` — §FIRSTPIN — 2026-08-18 · filed from round 5: the FIRST reply after boot still pins the loop (~21.5s chatStage=respond, ~3.4s chatStage=generate) — non-lethal now (nothing parks in the donor buffer), suspect = one-time warm-up in the respond path; instrument before cutting</sub>
+- [ ] **FIRSTPIN.2** — the curiosity-followup landmine: chat.js respond stage awaits curric._teachAssociationPairs INLINE (8 pairs × 12 reps, relationTagId=23) when _pendingQuestionConcept is set — the EXACT concurrent-teach crime CHATQUEUE was built to kill, alive in a branch that did not fire in rounds 4-5. Route it through brain._chatPairTeachQueue (the walk's drain teaches it serialized) with the definition relationTagId preserved.
+  - <sub>`docs/TODO.md:120` — §FIRSTPIN — 2026-08-18 · filed from round 5: the FIRST reply after boot still pins the loop (~21.5s chatStage=respond, ~3.4s chatStage=generate) — non-lethal now (nothing parks in the donor buffer), suspect = one-time warm-up in the respond path; instrument before cutting</sub>
+- [ ] **FIRSTPIN.3** — WATCH (read-only): the walk's Oja active-set inflates to ~2.4-2.6M rows (vs the normal 300-500K) during chat windows — sliced so it does not pin, but each pass costs ~5.6s of throughput. If the inflation is the reply's emission spraying the shared spike state, the fix belongs in emission cleanup, not the Oja.
+  - <sub>`docs/TODO.md:121` — §FIRSTPIN — 2026-08-18 · filed from round 5: the FIRST reply after boot still pins the loop (~21.5s chatStage=respond, ~3.4s chatStage=generate) — non-lethal now (nothing parks in the donor buffer), suspect = one-time warm-up in the respond path; instrument before cutting</sub>
+- [ ] **SURPRISECPU.2** ⏳ the SECOND offender from the same split: `generate=17941ms` (17.9s) and one later `img-detect=4925ms` (5s). Both are now visible per-stage on every slow pass; they get named-then-killed the same way once the 143s monster is gone.
+  - <sub>`docs/TODO.md:185` — §SURPRISECPU — 2026-08-18 · REPLYPIN.3 ANSWERED IN ONE READ: `computeTransitionSurprise` runs TWO RAW SYNCHRONOUS CPU CORTEX TICKS PER LETTER of every chat message</sub>
+- [ ] **GRANT.2** - the two free zero-barrier actions, whenever Gee wants them fired: (a) Emergent Ventures application, (b) NSF Project Pitch (VERIFY the portal is open first - sources conflicted on an SBIR reauthorization pause).
+  - <sub>`docs/TODO.md:207` — §GRANT - 2026-08-18 - funding research: what money exists for this and what it takes to get it</sub>
+- [ ] **GRANT.3** - the highest-value asset to build: **the documented developmental trajectory** (vocab size, gate pass rates, emission quality, basin separation, grade by grade). The curriculum already generates it; recording and plotting it deliberately converts "impressive engineering" into "a scientific instrument producing data nobody else can produce". Also: post  to arXiv (cs.NE / q-bio.NC) for a citable artifact.
+  - <sub>`docs/TODO.md:208` — §GRANT - 2026-08-18 - funding research: what money exists for this and what it takes to get it</sub>
+
+---
+
+## TIER 2 — REAL WORK I ADDED (proven, not speculative)  (17)
+
+> Each one is a defect or a blind spot that has already bitten us at least once.
+
+- [ ] **RUNPOD.6** **OPEN - the wgpu-only enumeration gate (root cause of RUNPOD.2).** `main.rs:49` calls `gpu::enumerate()` unconditionally and `main.rs:88` exits when it is empty, so a machine with a perfectly good CUDA device and no Vulkan stack can never donate - which is the DEFAULT state of most datacenter/cloud GPU containers. Correct fix: when the cuda feature is compiled in AND CUDA devices enumerate, do not require a wgpu adapter. That makes every headless server donor work without the GLVND/X11 package pile RUNPOD.3 had to install. Cheap, permanent, and it is what makes a RunPod fleet realistic.
+  - <sub>`docs/TODO.md:257` — §RUNPOD - 2026-08-18 - the rented-GPU donor: RunPod MCP wired + the headless donor ACTUALLY ATTACHED (donorCount 1 -> 2)</sub>
+- [ ] **DF7SYNC.7** **OPEN - the sync-window deadlock is NARROWED, not eliminated.** A replica still cannot sync while `_curriculumInProgress` is true (commit `7925e16` - mid-teach syncing was measured as the REAL ~16s/word root, so that deferral is correct and stays). Syncs land in dream windows, which flip the flag false. A donor attached BEFORE the walk starts syncs in the boot window and is productive immediately; a donor joining mid-teach waits for a dream window. **Practical rule for the operator: attach every donor before pressing the walk button.** A real fix (chunked//incremental replica sync that can interleave with teach without the 366MB burst) is its own batch and should not be guessed at - instrument the dream-window sync duration first.
+  - <sub>`docs/TODO.md:280` — §DF7SYNC - 2026-08-18 - all GPUs work TOGETHER: the 0 Gn/s replica was being FED work it had no weights for</sub>
+- [ ] **MIRRORID.6** **OPEN - the SAME disease one layer down, in the ACCOUNTING: a donor that stopped computing keeps BANKING leaderboard credit off its stale rate.** Found while reading for MIRRORID.5, filed rather than swept. `brain-server.js` gpu_telemetry accrues `lb.neurons += gneuronsPerSec x dt` on EVERY telemetry frame, and `gneuronsPerSec` is the persistent donor-side field that keeps its last value forever — so a card doing nothing at all continues earning Gn·s for as long as it stays connected. The fix is one condition (accrue only when `stepsComputed` advanced, which MIRRORID.5 already tracks per client), but it lives in a **9,737-line** file the 800-line-read LAW makes a full-read commitment, it was **not on the board**, and four source-reasoned fixes in a row already cost Gee four presses this week. Deliberately not blind-patched. **Note when it is done: this changes what the leaderboard MEANS** — it would stop crediting idle-but-connected donors, which is correct but is a product decision adjacent to WORKSHARE.6 (whether redundant mirrored work should count as contribution at all). Decide those two together, not separately.
+  - <sub>`docs/TODO.md:451` — §MIRRORID - 2026-08-18 - the mirror batchId was NEGATIVE and the donor parses it as u64, so every mirror was silently dropped</sub>
+- [ ] **RESYNCDUTY.9** **OPEN - `_gateSciKReal` is invisible to the phase counter.** The gate is not wrapped in `_phasedTeach`, so for the entire 20.7 minutes the dashboard read `activePhase: null` and `cellPhasesStarted === cellPhasesCompleted === 20` - i.e. **identical to a hang**. That ambiguity is the whole reason this needed a console-ring forensic dig instead of a glance at the board. The gate should report itself as the cell's final phase.
+  - <sub>`docs/TODO.md:472` — §RESYNCDUTY - 2026-08-19 - the replica re-broadcast fires every 60s but takes 11.5 MINUTES, so it never stops</sub>
+- [ ] **LOOPNAME.13** **OPEN - nothing enforces bundle freshness.** A `js/brain/*` edit that is not followed by a local rebuild ships a browser bundle that silently disagrees with the server. `self-update.sh` cannot catch it (no esbuild on the box) and the rsync deploy will happily publish a stale artifact. A pre-push check that compares bundle mtime/hash against its inputs would have caught this one automatically instead of it taking a "fix that shit".
+  - <sub>`docs/TODO.md:502` — §LOOPNAME - 2026-08-19 - a 279-SECOND event-loop block that no instrument can name</sub>
+- [ ] **LOOPNAME.7** **OPEN - the dashboard dies exactly when it is needed most.** Every diagnostic channel we own (admin WS, `/public-state.json`, the console ring) rides the same event loop that is the thing under investigation. When she pins, we go blind at the precise moment we need eyes. A diagnostic lane that cannot starve - separate thread/process, or a pre-block breadcrumb flushed to disk - is the structural fix. Same family as MIRRORID.5 and RESYNCDUTY.9: the board cannot answer "is it working?"
+  - <sub>`docs/TODO.md:503` — §LOOPNAME - 2026-08-19 - a 279-SECOND event-loop block that no instrument can name</sub>
+- [ ] **LOOPMAX.8** **OPEN - the monitor cannot see into its own blind spot.** Every attribution tag (`chatStage`, `saveStage`, `teachStage`) is read by a timer that only runs once the loop is FREE, so all of them describe the aftermath. `saveStage` and `chatStage` have the same race v1 had and have not been audited for it. The banked-maximum pattern shipped here should be applied to both.
+  - <sub>`docs/TODO.md:525` — §LOOPMAX - 2026-08-19 - LOOPNAME v1 measured the RECOVERY, not the stall; v2 banks the longest-held stage</sub>
+- [ ] **LANGRAM.6** **OPEN - the flip-flop should be impossible, not just unlikely.** Sizing a load-bearing geometry off `os.freemem()` at boot means the brain can silently come up with a different vocabulary ceiling run to run, and the only symptom is a warn line buried in boot. Either pin it (persisted config the dashboard writes, like `community-tier.json`) or make a size CHANGE a loud, explicit, operator-acknowledged event.
+  - <sub>`docs/TODO.md:547` — §LANGRAM - 2026-08-19 - the 12M language cortex lost its RAM gate by 2.4% and silenced 39,000 words</sub>
+- [ ] **SYNCPARTIAL.6** **OPEN - root cause NOT established.** The readiness theory (uploads racing `gpu_init`) fits the order-not-size evidence but is UNPROVEN. If the retry pass succeeds, that effectively confirms it and the durable fix is to gate the first upload on cluster-init confirmation rather than a 1.5s timer. If the retry ALSO fails, the reasons now printed will say why. **No further code until that line is read.**
+  - <sub>`docs/TODO.md:572` — §SYNCPARTIAL - 2026-08-19 - a sweep landed 1 of 17 matrices and announced "a FULL brain replica"</sub>
+- [ ] **SYNCEMPTY.3** **OPEN - THE REAL FIX IS NOT SHIPPED.** The honest log makes the failure visible; it does not prevent it. The registration path should GATE on a populated registry (or subscribe to the event that fills it) instead of firing on a fixed 1.5s timer. **Deliberately not written yet** - the corrected cause is one field read old, and the next boot will confirm or refute it in one line. Two theories have already been wrong on this defect; a third guess is not what it needs.
+  - <sub>`docs/TODO.md:607` — §SYNCEMPTY - 2026-08-19 - a sync that attempted ZERO matrices still announced a FULL brain replica</sub>
+- [ ] **CELLBOUND.G** **OPEN - the same unbounded shape exists in ~58 OTHER teach methods.** The clean-boundary deadline was applied to `_teachAssociationPairs` ONLY, because that is the one the profiler actually convicted and it carries every sentence-structure pass. A grep for the identical `for (let rep = 0; rep < reps; rep++)` + shutdown-guard shape finds it in ~58 more (`_teachCombination`, `_teachQABinding`, `_teachVocabList`, `_teachSentenceList`, `_teachWordIntegrated`, the whole G1-PhD math/science/ELA ladder...). **Deliberately NOT blind-patched** - a 58-site sweep of a training hot path on one measurement is exactly the four-source-reasoned-fixes-in-a-row mistake the ledger already paid for. Sweep it once CELLBOUND.F proves the shape is right on the convicted one.
+  - <sub>`docs/TODO.md:740` — §CELLBOUND - 2026-08-20 - a cell phase can run 21+ hours with no budget, no cursor, no heartbeat: STRUCTURE-REFRESH x 114 cells = ~100 days of walk</sub>
+- [ ] **CELLBOUND.H** **OPEN - the deferral cursor is IN-MEMORY only.** A budget stop reports its remainder and the next visit to the phase re-enters at full reps, so across a reboot the deferred work is REPEATED rather than resumed - work is never lost, but it is not yet resumed exactly where it stopped. A persisted per-phase rep cursor (alongside `cluster.passedPhases`, which already survives in `brain-weights.bin`) would close that. Stated plainly rather than implied by the word "deferred".
+  - <sub>`docs/TODO.md:741` — §CELLBOUND - 2026-08-20 - a cell phase can run 21+ hours with no budget, no cursor, no heartbeat: STRUCTURE-REFRESH x 114 cells = ~100 days of walk</sub>
+- [ ] **TASKLIST.2** **OPEN - the list is a snapshot and it is now MINE to keep true by hand.** `docs/OPEN-TASKS.md` is only correct until the next `docs/TODO.md` edit, and there is no generator to rerun any more. Rule: any edit to this board updates that file in the same pass, or the file is stale and lying - the same disease as `LOOPNAME.13` (bundle freshness) one doc down. `docs/TODO.md` is the record; when the two disagree, the board wins.
+  - <sub>`docs/TODO.md:751` — §TASKLIST - 2026-08-20 - the written task list of every open board item (the CLI task tools are absent from the session)</sub>
+- [ ] **TASKLIST.3** **OPEN - FIRST ACTION EVERY NEW SESSION: call `TaskCreate` once.** If the harness answers, build the live panel from `docs/OPEN-TASKS.md` in one pass - the triage and the ordering are already done, it is a straight read-and-fire. Gee has now asked for this list seven times; do not let session eight open without testing the tool first.
+  - <sub>`docs/TODO.md:752` — §TASKLIST - 2026-08-20 - the written task list of every open board item (the CLI task tools are absent from the session)</sub>
+- [ ] **SCRIPTKILL.1** **OPEN - the ban needs an enforcement point, not just my memory of it.** Nothing stops the next session writing `patch-whatever.py` again; the only guard is a memory file that a compaction can bury. The honest options: a `PreToolUse` guard that refuses a `Write` whose path matches `scripts/*patch*` / `*-edit.py` / `tmp-*`, or a `Stop`-hook sweep that flags any new untracked file in `scripts/`. **Not built yet - it is a harness change and Gee has not asked for one.**
+  - <sub>`docs/TODO.md:763` — §SCRIPTKILL - 2026-08-20 - 49 dead scripts + 14MB of debris deleted, and the script-to-edit-files habit BANNED</sub>
+- [ ] **SCRIPTKILL.2** **OPEN - `.claude/.session-usage.jsonl` is 2.5MB and grows every turn.** The `usage-track` hook appends to it forever with no rotation, so it is the one file in `.claude/` that will re-bloat on its own. Left alone in this pass because it is LIVE state the statusline reads - the fix is a size cap or a per-session roll, and it should be decided, not guessed.
+  - <sub>`docs/TODO.md:764` — §SCRIPTKILL - 2026-08-20 - 49 dead scripts + 14MB of debris deleted, and the script-to-edit-files habit BANNED</sub>
+- [ ] **SCRIPTKILL.3** **OPEN - the FALSE NEGATIVE that nearly cost a live doc, recorded so it is not repeated.** A filename grep for `DECOMPOSED-curriculum-build.md` returned ZERO references and it was one keystroke from deletion; the hooks and the yolo agent read that tier by PATTERN (`DECOMPOSED`), not by full filename. **An unreferenced-by-name file is not proof of an orphan** - grep the stem and the directory too before deleting anything. Same error class as the retraction family: a field (here, a grep count) reported without reading what produces it.
+  - <sub>`docs/TODO.md:765` — §SCRIPTKILL - 2026-08-20 - 49 dead scripts + 14MB of debris deleted, and the script-to-edit-files habit BANNED</sub>
+
+---
+
+## TIER 3 — GEE'S DECISION, not work  (3)
+
+> Nothing to build. These wait on a call from Gee.
+
+- [ ] **RUNPOD.7** **OPEN - WATCH: `minDonorMB` fell 16375 -> 2047 when the RunPod donor joined.** Vulkan on NVIDIA caps maxStorageBufferRange at 2GB (u32), so the wgpu path advertises a 2047MB binding cap vs the browser donor 16375MB. Community tier sizing reads the MINIMUM donor, so this is now the sizing driver. Tier 3 held and computeInsufficient is false right now, but the intra matrix is ~2.9GB - BIGGER than this donor 2047MB binding cap - so verify it actually receives and computes the canonical upload rather than idling admitted-but-useless. If CUDA (RUNPOD.5) is restored the cap problem likely goes with it.
+  - <sub>`docs/TODO.md:258` — §RUNPOD - 2026-08-18 - the rented-GPU donor: RunPod MCP wired + the headless donor ACTUALLY ATTACHED (donorCount 1 -> 2)</sub>
+- [ ] **RUNPOD.8** **OPEN - community placement refuses.** Gee authorized COMMUNITY at $0.34/hr; three explicit `cloudType: COMMUNITY` creates all returned 400 "This machine does not have the resources to deploy your pod" despite the catalog reporting HIGH stock at that price. Every successful pod landed SECURE at **$0.74/hr** (~$533/mo at 24/7). Flagged to Gee at the time. Decide deliberately: retry community later, accept secure, or switch card (A40 secure is $0.44/hr with 48GB and HIGH stock).
+  - <sub>`docs/TODO.md:259` — §RUNPOD - 2026-08-18 - the rented-GPU donor: RunPod MCP wired + the headless donor ACTUALLY ATTACHED (donorCount 1 -> 2)</sub>
+- [ ] **WORDEMIT.4** **OPEN - the fresh-walk decision is GEE'S and is NOT forced.** Real argument FOR: the machine is far faster than when those 4 cells were earned (teach/min ~0-94 during the 215s-block era vs 3,916 now, blocks 275ms, 2 donors), so a rebuild would cost a fraction of the original. Real argument AGAINST: it discards 4 passed cells, all of pre-K, 136 phase markers, the 2,409-word bucket map, 22 schemas, 384 visual concepts and 8 mind-space memories (identity anchors survive either way - "permanent, never auto-cleared"). **Cheapest next step costs nothing: let art/K finish, then TALK to her and read `matrixDrivenPct` + her actual replies.** That is the only evidence that should decide it.
+  - <sub>`docs/TODO.md:658` — §WORDEMIT - 2026-08-19 - I overstated the 12M damage and nearly triggered an unnecessary fresh walk</sub>
+
+---
+
+## TIER 4 — ✅ ALL 38 CLOSED 2026-08-20 (the record, kept)  (was 39; `DELTAIDX.9` stays OPEN)
+
+> Verify-after-press items whose press has since happened, or whose question a later press already answered. Closing them needs Gee's approval — nothing is migrated off the board unilaterally.
+>
+> ⚠ **`BAND1300.1` was invisible to the first pass of this list** and is added by hand below. Its TODO line carries extra text inside the bold ID (`**BAND1300.1 (L1BGPU — REDESIGNED...)**`), so the ID pattern that built this file never matched it — a silent drop of exactly the kind the untriaged gate existed to prevent, caught by re-counting the board with a looser grep. BOARD.md tiers it here (superseded — V0318 took l1b 2,700ms→40ms).
+
+- [~] **RAMP17.3** the 1500ish ramp watch: teach/min climbed 11 → 103 → 104 through the vocab/word phases into the pair phases. TWO band-blockers named by the monitor + reads, BOTH built same-hour (RAMP17.4/.5). Ramp verdict WAITS on the press that deploys them.
+  - <sub>`docs/TODO.md:80` — §RAMP17 — 2026-08-17 · OI.5b + LG.5 verification pass + the 1500 ramp watch on the GINTRA build (85efc1d3)</sub>
+- [~] **PRECELL.3** verify: build half DONE (node --check + ESM + bundle PASS); node --check + ESM + bundle; on the next press the boot shows the pre-cell pass running before ela/kindergarten phases, "defs taught" climbs off 0 DURING pre-cell, and every later grade logs its own pre-cell pass.
+  - <sub>`docs/TODO.md:91` — §PRECELL — 2026-08-17 · pre-cell vocab setup for ALL cells of ALL grades (defs-before-bindings LAW, generalized)</sub>
+- [~] **TPROF.1** per-stage wall-ms telemetry INSIDE the primitives — `_teachHebbian` {substrateMs, crossMs, intraMs} + `_teachLateralInhibition` {substrateMs, scanMs, antiMs, activeSum} — published at `liveness.stageProfile` (fixed keys, bounded). Built + verified (node --check + ESM + bundle). ⏳ rides the next press; the first stage read names the eater, then the fix is built on that number, not another theory.
+  - <sub>`docs/TODO.md:101` — §LATFIX — 2026-08-17 · the pair-phase band-blocker named: intraSynapsesAntiHebbian scans ALL 12M cells per call to find a few thousand actives</sub>
+- [~] **DROPCHAT.3** build half DONE (node --check + cluster.js ESM + bundle PASS); node --check + ESM + bundle; live: Gee says hi → reply composes → donor RTT spikes but NO drop, no re-upload.
+  - <sub>`docs/TODO.md:111` — §DROPCHAT — 2026-08-17 · talking to her kills the donor: chat emission blocks the loop → donor keepalives starve → drop → ~10min re-upload</sub>
+- [ ] **SAVEPIN.2** ⏳ next save on the pressed build prints its split + the BLOCKED lines name the stage → fix the NAMED organ at the source.
+  - <sub>`docs/TODO.md:131` — §SAVEPIN — 2026-08-18 · the NEXT donor-killer, no chat involved: the 5.4GB weights save pinned the loop ~112s TWICE and its own completion line lied ("loop never blocked")</sub>
+- [ ] **SAVEPACE.3** ⏳ ONE press (Update & SAVESTART) picks up SAVEPACE + the L1B convergence gate (missed the 02:52 press — the box is on a2d5bc2) + the flow repairs. Verify on the next save window: `[SavePin] split` stays seconds-scale, no BLOCKED saveStage= over ~1s, saves spaced ≥10min, v-copy hourly, donor HOLDS through a save.
+  - <sub>`docs/TODO.md:141` — §SAVEPACE — 2026-08-18 · SAVEPIN.2 ANSWERED ON ITS FIRST BOOT: the eyes convicted the save cadence — 5.4GB checkpoint saves every ~5min drowned the box (16GB I/O each) until a 22.5-MINUTE save pinned the loop, killed the donor, and dark-ed every page</sub>
+- [ ] **V0319.2** ⏳ tag `donor-v0.3.19` → CI → donor self-updates → the donor row's 'seen' stays seconds-fresh through word phases; l1b stays ~40ms; compute batches never starve behind a dose.
+  - <sub>`docs/TODO.md:159` — §V0319 — 2026-08-18 · HOTFIX on v0.3.18's first hour: the rep loop re-wrote the pattern per rep and buried the donor GPU queue — Gee (verbatim): *"why is this froZen"* (donor row 'seen 297s', rtt 2249ms)</sub>
+- [ ] **REPLYPIN.3** ⏳ ONE press, then say two things to her (a short one and a longer one): the `[ChatPin]` split names the guilty sub-stage in ONE read, and the donor SURVIVES the pin even before the pin is fixed (HBSELF). Then kill the named stage at the source.
+  - <sub>`docs/TODO.md:171` — §REPLYPIN — 2026-08-18 · the reply pipeline pins the loop 87-174s per message (pin start == message arrival, to the second) AND the heartbeat executed an innocent donor for the server's own silence</sub>
+- [ ] **GATESTEP.3** press + watch: she must now CLEAR the math/kindergarten gate instead of hanging. Verify: the walk advances past the gate, `[EventLoop] BLOCKED` stays sub-second through gate phases, teach/min recovers, and my remote eyes stop going dark (the endpoint timeouts were the pin).
+  - <sub>`docs/TODO.md:197` — §GATESTEP - 2026-08-18 - THE WALK HANGS AT THE GATE: every gate/probe/teach path still ran RAW SYNCHRONOUS CPU CORTEX STEPS; swept the whole brain</sub>
+- [ ] **GENPIN.3** press + watch: reply `generate` may stay seconds, but `[EventLoop] BLOCKED` during `chatStage=generate` must drop to sub-second, and the donor must survive a sustained hi-test.
+  - <sub>`docs/TODO.md:243` — §GENPIN - 2026-08-18 - SHE CRASHED THE DONOR AGAIN: the reply's `generate` stage pins the loop 11-78s and the heartbeat executes a donor that never went silent</sub>
+- [ ] **RUNPOD.11** **OPEN - THE SEQUENCING RULE for the fresh-walk retry (Gee: "i do a fresh walk ... and we will try again").** The RunPod donor must be CONNECTED DURING THE BOOT/UPLOAD WINDOW, before the curriculum starts teaching - that is the only window in which DF.7 will actually ship the replica its matrices. Attaching mid-teach reproduces RUNPOD.9 exactly. Order of operations: start the pod FIRST and confirm `registered as ...` in the pod log, THEN press Update & FRESH WALK, so the donor is resident when the canonical upload fans out. Alternative (NOT recommended without measurement): `DREAM_DF7_SYNC_DURING_TEACH=1` forces the sync mid-teach, which is exactly the teach-loop jam the guard exists to prevent, and is a box env change (dashboard-only territory).
+  - <sub>`docs/TODO.md:263` — §RUNPOD - 2026-08-18 - the rented-GPU donor: RunPod MCP wired + the headless donor ACTUALLY ATTACHED (donorCount 1 -> 2)</sub>
+- [ ] **RUNPOD.12** **OPEN - carry into the retry: the two known handicaps are UNCHANGED by a fresh walk.** (a) RUNPOD.5 - CUDA still dead on driver 570.x (`CUDA_ERROR_UNSUPPORTED_PTX_VERSION`), so the replica will compute on the SLOWER wgpu/Vulkan path even when it does get weights. (b) RUNPOD.7 - the wgpu path advertises a 2047MB binding cap vs the intra matrix ~2.9GB; whether DF.7 can actually place that matrix on a 2047MB-binding replica is STILL UNPROVEN and the fresh walk is the first honest test of it. Read the boot log for an admission/rejection verdict on `cortex_intraSynapses` specifically - do not infer success from `registered`.
+  - <sub>`docs/TODO.md:264` — §RUNPOD - 2026-08-18 - the rented-GPU donor: RunPod MCP wired + the headless donor ACTUALLY ATTACHED (donorCount 1 -> 2)</sub>
+- [x] **RUNPOD.13** ✅ **CLOSED on the board** (`docs/TODO.md`) — the tag landed and the donor attaches on the CUDA path. ⛔ **AND THE PARENTHETICAL BELOW IS FALSE, corrected 2026-08-20 (`PAGESTALE.1`):** the auto-bump commit is pushed with the Actions token, which **cannot** trigger `deploy.yml`, so it never triggered a Pages redeploy — `donor-v0.3.23` shipped correctly and the download page served `.22` for hours. The release job now rsyncs the frontend itself. Original filing: ⏳ **GEE: tag `donor-v0.3.21`** - that is the only remaining step to land the CUDA fix. CI (`.forgejo/workflows/donor-release.yml`) guards that `donor-app/Cargo.toml` version == the tag, which is already bumped to 0.3.21; the workflow then builds Linux + Windows, publishes both binaries, and auto-bumps the download links in `html/compute.html` + `html/legend.html` on main (which triggers the Pages redeploy). Donor binaries + tags are GEE's territory - the artifact is built and verified, the push is his.
+  - <sub>`docs/TODO.md:268` — §RUNPOD - 2026-08-18 - the rented-GPU donor: RunPod MCP wired + the headless donor ACTUALLY ATTACHED (donorCount 1 -> 2)</sub>
+- [ ] **RUNPOD.14** ⏳ VERIFY after the tag lands: relaunch the RunPod pod (template `4u68iuvsnz`, it self-resolves the newest release from public-state.json so no template edit is needed) and read the donor log for `[donor] backends: <card> [cuda]` - NOT `[wgpu]`. Registration must advertise the card's REAL VRAM (a 4090 reads ~24564 MB, not 2047 MB). Brain side: `minDonorMB` / `communityComputeMB` must reflect real VRAM instead of the 2GB Vulkan ceiling, which is what clears the 11810 MB running floor. THAT is the honest close of RUNPOD.7 as well - the binding-cap problem and the PTX problem were always the same bug wearing two hats.
+  - <sub>`docs/TODO.md:269` — §RUNPOD - 2026-08-18 - the rented-GPU donor: RunPod MCP wired + the headless donor ACTUALLY ATTACHED (donorCount 1 -> 2)</sub>
+- [ ] **DF7SYNC.6** ⏳ GEE: needs an **Update & Savestart** to take effect (server-side only, no geometry change, weights preserved). Then the honest verdicts, in order: (a) the second donor's row shows `df7Synced=true` with a non-zero `df7SyncedMatrices` once a dream window lets the sync land; (b) its Gn/s comes off 0; (c) `[Brain] DF.7 — replica sync complete` appears naming the matrix count. **Expectation to hold honestly: this does NOT make the walk 2x faster.** DF.7 is data-parallel THROUGHPUT, not single-stream latency - teaching one curriculum is largely sequential Hebbian over shared state, so the win shows up where work units are genuinely independent, not as a doubling of teach/min. If teach/min does not move, that is the architecture being what it is, not this fix failing.
+  - <sub>`docs/TODO.md:279` — §DF7SYNC - 2026-08-18 - all GPUs work TOGETHER: the 0 Gn/s replica was being FED work it had no weights for</sub>
+- [ ] **PACEDSYNC.5** ⏳ GEE: **Update & Savestart** (server-only, weights preserved, no fresh walk). Then the verdict, in order: (a) `[Brain] DF.7 PACEDSYNC — replica sync proceeding DURING teach` appears instead of the DEFERRED line; (b) `replicaSyncing=1` shows up on BLOCKED context lines (it has been 0 all session); (c) the PACEDSYNC progress lines report `loopLag` and the pace it chose; (d) `[Brain] DF.7 — replica sync complete: N matrices`; (e) the second donor's Gn/s comes off 0 and its row reads `df7Synced=true`. **WATCH FOR HARM:** if teach/min drops materially or BLOCKED lines grow past ~1s during the sync window, that is the ~16s/word ghost returning - set `DREAM_DF7_SYNC_DURING_TEACH=0` and tell me, do not tolerate it.
+  - <sub>`docs/TODO.md:292` — §PACEDSYNC - 2026-08-18 - the replica sync stops waiting for an idle window that may never come</sub>
+- [ ] **SYNCSERIAL.5** GEE: fresh walk with every donor connected at boot. Verdict: `replica sync complete: 17 matrices` appears ONCE PER REPLICA, `timed out after 180000ms` disappears, and each donor Gn/s comes off 0 as its sync lands. **HONEST EXPECTATION ON TIMING:** serial means replicas finish in SEQUENCE, so at ~2.9GB per replica and ~4MB/s each takes roughly 12 minutes and the second starts after the first ends - two replicas is ~25 minutes to all-computing. That is the box uplink being the real constraint, not a bug, and not something more parallelism can fix. What changed is that they now all FINISH instead of all timing out forever.
+  - <sub>`docs/TODO.md:304` — §SYNCSERIAL - 2026-08-18 - parallel replica syncs over ONE uplink made every upload fail; serial makes them all finish</sub>
+- [ ] **DELTAIDX.8** GEE: tag `donor-v0.3.22` -> CI builds + publishes -> **Update & FRESH WALK** with every donor connected at boot, and download the new donor. Verdict: `[Brain] DELTAIDX <matrix> — colIdx X MB raw -> Y MB delta-varint (Z% saved)` appears once per upload to a 0.3.22 donor; replica sync wall-time drops ~a third; `timed out after 180000ms` does not reappear; every donor's Gn/s comes off 0.
+  - <sub>`docs/TODO.md:316` — §DELTAIDX - 2026-08-18 - colIdx is HALF the payload and it was shipping raw; delta-varint takes 68% off it</sub>
+- [ ] **DELTAIDX.9** **OPEN - the honest remaining ceiling.** Even at 33.5% off, each replica is ~7.7 min and they run SERIALLY (SYNCSERIAL), so 2 replicas is still ~15 min to all-computing. `values` (1,373MB of f32 weights) is genuinely incompressible and is now the whole remaining cost. The only lever left that beats this is SEEDED TOPOLOGY - regenerate colIdx/rowPtr donor-side from a seed and ship values ONLY (~5.7 min/replica, and it shrinks every checkpoint ~34%). That is speced in `docs/SEEDED-TOPOLOGY-SPEC.md`, deliberately unimplemented, and gated on the PRNG parity harness because one differing draw puts weights on the WRONG SYNAPSES silently. DELTAIDX.6 is the first half of exactly that harness.
+  - <sub>`docs/TODO.md:317` — §DELTAIDX - 2026-08-18 - colIdx is HALF the payload and it was shipping raw; delta-varint takes 68% off it</sub>
+- [ ] **QUEUEDEADLINE.4** GEE: Update & Savestart (server-only, weights preserved). Verdict: `timed out after 180000ms` disappears from the boot window entirely, and `replica sync complete: 17 matrices` appears once per replica. If a deadline is hit AFTER this, it is a genuinely dead link rather than an under-priced timeout - which is the distinction the old number could not make.
+  - <sub>`docs/TODO.md:327` — §QUEUEDEADLINE - 2026-08-18 - the upload deadline priced SEND time and ignored WAIT time</sub>
+- [ ] **ALIASFIX.4** GEE: Update & Savestart. Verdict: `bound hebbian ... ILLEGAL_ADDRESS` gone; the RunPod donor stays `[CUDA]` with a ~24090MB cap instead of falling to `wgpu`/2047MB; DELTAIDX savings lines still print.
+  - <sub>`docs/TODO.md:339` — §ALIASFIX - 2026-08-18 - MY DELTAIDX shipped a shared scratch buffer and it poisoned the donor CUDA context</sub>
+- [ ] **INCREMENTAL.6** GEE: Update & Savestart. Verdict: every connected donor shows a POSITIVE Gn/s within a minute or two of attaching - not after a full sync - and the leaderboard carries more than one contributor. Watch `DF.7 INCREMENTAL — donor <name> holds its first matrix`.
+  - <sub>`docs/TODO.md:353` — §INCREMENTAL - 2026-08-18 - a leaderboard only the primary can score on is not a leaderboard</sub>
+- [ ] **WORKSHARE.5** GEE: Update & Savestart. Verdict: **EVERY connected donor shows a positive Gn/s within seconds** - not after a sync, not after a dream window - and the leaderboard carries every contributor. This is the answer to "ALL DONERS ALWAYS DO WORK".
+  - <sub>`docs/TODO.md:365` — §WORKSHARE - 2026-08-18 - compute_batch went to the PRIMARY ONLY, so a replica could never score no matter what</sub>
+- [ ] **BUFFLOOR.4** GEE: Update & Savestart, together with MIRRORCAP. Between them every donor should now receive BOTH mirrored compute_batch work AND a real share of Hebbian/propagate units regardless of sync state.
+  - <sub>`docs/TODO.md:381` — §BUFFLOOR - 2026-08-18 - the 4MB buffer filter banned every syncing replica from ALL work, not just the mirror</sub>
+- [ ] **PARTMIRROR.3** GEE: Update & Savestart. Verdict: **all three donors positive**, including the 5.6GB card - which is the real test of the whole batch, because a small volunteer card is the common case for public donors, not the exception.
+  - <sub>`docs/TODO.md:393` — §PARTMIRROR - 2026-08-18 - a PARTIAL replica was mirrored the FULL 8-cluster batch it could not run</sub>
+- [ ] **ALLINIT.4** GEE: Update & Savestart. Verdict: `[<id>] ALLINIT — N cluster buffers initialised at registration` appears for EVERY donor, and every donor shows positive Gn/s within seconds of connecting - sync state irrelevant. **This is the one that should finally make it true.**
+  - <sub>`docs/TODO.md:408` — §ALLINIT - 2026-08-18 - a replica got its CLUSTER BUFFERS only as a side effect of the multi-GB weight sync</sub>
+- [ ] **MIRRORDIAG.3** GEE: Update & Savestart, then paste ONE `MIRRORDIAG` line. That single line decides the next move and ends the guessing: if it reads SENT for Sponge, the problem is donor-side (his client is receiving a batch it will not run - a Turing cc7.5 / partial-cluster issue) and the investigation moves to the donor. If it reads SKIP, it names the exact server-side reason and that gets fixed properly instead of speculatively.
+  - <sub>`docs/TODO.md:421` — §MIRRORDIAG - 2026-08-18 - stop guessing why one donor is 0; make the dispatch name itself</sub>
+- [ ] **INITFIT.5** GEE: Update & Savestart. Verdict: Sponge RTT falls from ~30s to something sane, `INITFIT` names his fitted cluster set, and his Gn/s comes off 0. **It will be PROPORTIONALLY SMALL** - he steps 1-2 clusters of 7, so a fraction of a full donor rate. That is honest work from a small card, not a fault.
+  - <sub>`docs/TODO.md:433` — §INITFIT - 2026-08-18 - ALLINIT asked a 5.6GB card to allocate 12GB; the instrument found it in one line</sub>
+- [ ] **MIRRORID.4** GEE: Update & Savestart. Verdict: **all three donors positive**. Sponge will be proportionally small (2 of 7 clusters) - that is honest work from a 5.6GB card.
+  - <sub>`docs/TODO.md:446` — §MIRRORID - 2026-08-18 - the mirror batchId was NEGATIVE and the donor parses it as u64, so every mirror was silently dropped</sub>
+- [ ] **RESYNCDUTY.6** GEE: Update & Savestart (weights kept - this is a scheduler fix, not a walk change). Verdict: `[EventLoop] BLOCKED` lines collapse from ~60% of the ring to occasional; `teachCallsPerMin` comes off 0; gate probes stop costing 69s each.
+  - <sub>`docs/TODO.md:471` — §RESYNCDUTY - 2026-08-19 - the replica re-broadcast fires every 60s but takes 11.5 MINUTES, so it never stops</sub>
+- [ ] **LOOPNAME.5** GEE: fire the F12 gatling gun (`POST /admin/update?keep=1`, 6 barrels, 2xx-only win) - it pulls latest main, so the SAME shot delivers this instrument and restarts her keeping weights. She resumes from the social/kindergarten checkpoint.
+  - <sub>`docs/TODO.md:500` — §LOOPNAME - 2026-08-19 - a 279-SECOND event-loop block that no instrument can name</sub>
+- [ ] **LOOPNAME.6** **THE VERDICT LINE.** When she walls again, paste ONE `[EventLoop] BLOCKED` line. It will name the sub-op and its age. **That line decides the fix.** No code before it - MIRRORDIAG ended five rounds of guessing on its first line and four source-reasoned fixes before it resolved nothing (two of the four were new bugs introduced by the fixing).
+  - <sub>`docs/TODO.md:501` — §LOOPNAME - 2026-08-19 - a 279-SECOND event-loop block that no instrument can name</sub>
+- [ ] **LOOPMAX.6** GEE: gatling-gun Update & Savestart (pulls main, keeps weights). Then ONE `[EventLoop] BLOCKED` line. **`teachStageMax` is the verdict field, not `teachStage`.**
+  - <sub>`docs/TODO.md:523` — §LOOPMAX - 2026-08-19 - LOOPNAME v1 measured the RECOVERY, not the stall; v2 banks the longest-held stage</sub>
+- [ ] **LOOPMAX.7** **OPEN - the langCortex question, UNRESOLVED and NOT to be guessed at.** Gee asked whether a fresh walk is needed because the donor logged `gpu_init 'langCortex' - 349155 neurons` when it was **12,000,000** this morning. 349,155 is the exact `WMB FLOOR SKIPPED` fallback. **Cause read from source (`brain-server.js:1998`), NOT guessed:** the floor is skipped when `_targetVram > 6GB` **OR** `12,000,000 > min(ramBasedMax, v8BasedMax)`, and `ramBasedMax` is **free RAM x 50% measured at boot**. Donors are NOT in that calculation - an earlier donor-related hypothesis was wrong and was discarded before it reached code. **LEADING THEORY (unconfirmed):** the gatling restart fired while the old process still held ~8.5GB RSS + ~9.4GB ArrayBuffers, so free RAM read low and the floor was skipped. **If true, a plain Savestart on an idle box fixes it and NO fresh walk is needed - 4 passed cells preserved.** ⛔ **DO NOT PRESS FRESH WALK** until the boot line is read: `WMB FLOOR SKIPPED - target 12,000,000 blocked by <RAM/V8 floor N | real VRAM X GB>`. "blocked by RAM/V8 floor" confirms the theory; "blocked by real VRAM" refutes it and a Savestart would waste a press.
+  - <sub>`docs/TODO.md:524` — §LOOPMAX - 2026-08-19 - LOOPNAME v1 measured the RECOVERY, not the stall; v2 banks the longest-held stage</sub>
+- [ ] **LANGRAM.5** ⚠ **OPEN - GEOMETRY CHANGE RISK, flagged BEFORE the press.** Next boot re-sizes langCortex **349,155 -> 12,000,000**. The source notes for the 1.5M->12M hop say a geometry change implies `WEIGHTS_FORMAT_VERSION` bump and a fresh walk **"both directions"**. The box runs `DREAM_KEEP_STATE=1`, which SKIPS auto-clear (proven in this same boot log: `KEEPING prior state. Auto-clear SKIPPED` fired while the geometry flipped 12M->349K), so a wipe is unlikely — **but language-cortex weights trained under one geometry do not map onto the other.** Cells, grades, identity anchors and the 306M main brain live outside the langCortex and should persist. **What is genuinely unknown: whether the ~30min of art/K language learning done at 349,155 survives, and whether the pre-6:39 12M weights are still on disk to resume into.** Not asserted either way here.
+  - <sub>`docs/TODO.md:545` — §LANGRAM - 2026-08-19 - the 12M language cortex lost its RAM gate by 2.4% and silenced 39,000 words</sub>
+- [ ] **LOOPMAX.9** **OPEN - first real signal from the fixed instrument.** Live: teachStage=hebbian:cross(+1734ms), teachStageMax=hebbian:cross(3165ms). _crossRegionHebbian is the longest-held sub-op at ~3.2s. NOT yet proof it causes the multi-minute class - the walk is young and the worst block since boot is 13s of boot-time work. Needs runtime before acting.
+  - <sub>`docs/TODO.md:546` — §LANGRAM - 2026-08-19 - the 12M language cortex lost its RAM gate by 2.4% and silenced 39,000 words</sub>
+- [ ] **SYNCPARTIAL.5** GEE: gatling Update & Savestart. Verdict: either `replica sync complete: 17/17` (retry recovered them), or a `SYNCPARTIAL` warning naming exactly which matrices failed and why. **Both outcomes are answers** - the second one hands us the cause we currently do not have.
+  - <sub>`docs/TODO.md:571` — §SYNCPARTIAL - 2026-08-19 - a sweep landed 1 of 17 matrices and announced "a FULL brain replica"</sub>
+- [ ] **GATGUARD.5** **OPEN - the immediate unblock is a page RELOAD** (or `window.fetch = window.__realFetch`), which clears a guard left installed by an older copy of the script already pasted into a live tab. No amount of fixing the FILE helps a tab that already has the old patch resident.
+  - <sub>`docs/TODO.md:587` — §GATGUARD - 2026-08-19 - my own gatling script silently ate the dashboard Update button</sub>
+- [ ] **BAND1300.1 (L1BGPU — REDESIGNED at the kernel, the transport-only plan is DEAD):** the read went to cuda.rs `hebbian_bound`: pre AND post both read `spikes` of the bound clusters — for the intra binding (src=dst=langCortex) that is ONE buffer, truly symmetric (W += lr·s·sᵀ); an A→B pair shipped as one pattern would train A→A + B→B + B→A garbage alongside the real pair, AND the bound op is plain Hebbian while l1b is OJA — the existing ops cannot carry l1b without changing training math (PAIRSLICE's objection confirmed at the metal). THE HONEST BUILD: **donor v0.3.18 — asymmetric bound-OJA op** (new kernel both backends: pre from the src-region pattern established by the pattern lane, post from a SECOND pattern slot — exact Δw = lr·y·(x−y·w) semantics matching CPU ojaUpdate incl. clamps), SPRS op + version gate ≥0.3.18, server dispatch inside `hebbianPairReinforce` (one-hot band patterns ship as ~30B t11 templates, the 100-rep dose rides t12 repeats), CPU shadow on the SHADOWTIME law, donor release = the operator's deploy territory. Wire cost ~KB/word; l1b 2,700ms → dispatch-overhead scale.
+  - <sub>`docs/TODO.md:151` — §BAND1300 (the 1300/min teach band) — added by hand after the ID-pattern miss</sub>
+
+---
+
+## TIER 5 — ✅ ALL 9 CLOSED 2026-08-20 as lessons (the record, kept)
+
+> Written as tasks, but they are lessons/rules with no deliverable. They belong in the ledger, not on the board.
+
+- [ ] **ALIASFIX.5** **OPEN - the lesson worth keeping.** A returned VIEW into reusable memory is only safe if every caller consumes it before the next call - an invariant that held for the frame scratch (its loop awaits each send) and silently did NOT hold for mine (a second concurrent upload). Audit any other returned-subarray-into-shared-scratch in the upload path before adding a third.
+  - <sub>`docs/TODO.md:340` — §ALIASFIX - 2026-08-18 - MY DELTAIDX shipped a shared scratch buffer and it poisoned the donor CUDA context</sub>
+- [ ] **WORKSHARE.6** **OPEN - honest accounting question for later.** Mirrored work is REDUNDANT: the replica computes the same step the primary does and the result is discarded. That is correct for credit and for keeping replica state warm, but it is not extra THROUGHPUT. Genuinely additive work needs independent units (the `_gpuParallelMap` path). Worth deciding deliberately whether the leaderboard should count redundant work as contribution - it is defensible (the volunteer really did spend the cycles) but it should be a decision, not an accident.
+  - <sub>`docs/TODO.md:366` — §WORKSHARE - 2026-08-18 - compute_batch went to the PRIMARY ONLY, so a replica could never score no matter what</sub>
+- [ ] **ALLINIT.5** **OPEN - the design lesson.** Cluster init (cheap, instant, the prerequisite for ANY compute) was entangled with weight sync (expensive, slow, the prerequisite for MATRIX compute). Every 0 Gn/s symptom this session traced back to that single coupling, and I fixed six things downstream of it before finding it. Worth auditing whether anything else cheap is gated behind something expensive purely because they share a function.
+  - <sub>`docs/TODO.md:409` — §ALLINIT - 2026-08-18 - a replica got its CLUSTER BUFFERS only as a side effect of the multi-GB weight sync</sub>
+- [ ] **INITFIT.6** **OPEN - the lesson, stated plainly.** MIRRORCAP, BUFFLOOR, PARTMIRROR and ALLINIT were four consecutive fixes reasoned from source that did not resolve the symptom; MIRRORDIAG resolved it on its FIRST line. Every one of those rounds cost Gee a press and a restart. The LAW already says instrument-first is the only law that kills - the cost of ignoring it is now measured in this session.
+  - <sub>`docs/TODO.md:434` — §INITFIT - 2026-08-18 - ALLINIT asked a 5.6GB card to allocate 12GB; the instrument found it in one line</sub>
+- [ ] **RESYNCDUTY.7** **OPEN - the guard-hides-the-pathology pattern.** `_rebroadcastInFlight` is the second guard this week that suppressed a symptom while leaving the disease invisible (the first was persistent `gneurons_per_sec`). Any guard that prevents overlap should also MEASURE the duty cycle it is producing and complain when it approaches 100%, or the next one hides just as long.
+  - <sub>`docs/TODO.md:473` — §RESYNCDUTY - 2026-08-19 - the replica re-broadcast fires every 60s but takes 11.5 MINUTES, so it never stops</sub>
+- [ ] **GATGUARD.6** **OPEN - I keep breaking my own tooling the same way.** Twice this session a bash `node -e "..."` with backticks inside a double-quoted string ran them as command substitution and silently emptied every code term in the text it wrote (this very section, first attempt). **Anything containing backticks MUST go through a Write-tool script file**, never an inline double-quoted bash string.
+  - <sub>`docs/TODO.md:588` — §GATGUARD - 2026-08-19 - my own gatling script silently ate the dashboard Update button</sub>
+- [ ] **SYNCEMPTY.4** **OPEN - the pattern, stated plainly.** SYNCPARTIAL and SYNCEMPTY are the same bug reported twice, and I shipped a fix for the first form that was blind to the second. The lesson is not "add another branch" - it is that **a success message must be derived from evidence of success, never from the absence of recorded failure.** Four lying instruments were found today (rebroadcast "in parallel", sizing "x 50%", "FULL brain replica" on 1/17, my gatling printing green on a no-op) and this is the fifth. Every one of them said something true-shaped that no field actually supported.
+  - <sub>`docs/TODO.md:608` — §SYNCEMPTY - 2026-08-19 - a sync that attempted ZERO matrices still announced a FULL brain replica</sub>
+- [ ] **WORDEMIT.5** **OPEN - the pattern is now three deep and it is mine, not the code's.** CANSPEAK (grade gate read as muteness), WORDEMIT (a since-boot counter read as weight loss), and before them the stale `no-best-word` quoted as proof. **Every one was a field reported without reading its definition or its age.** The five lying instruments found in the code today were the code asserting more than it knew; these three were me doing the same thing. Read the definition, read the age, THEN report.
+  - <sub>`docs/TODO.md:659` — §WORDEMIT - 2026-08-19 - I overstated the 12M damage and nearly triggered an unnecessary fresh walk</sub>
+- [ ] **DONORKILL.1** **the operational rule, stated so it is not re-learned: name the PRIMARY before killing any donor.** Before terminating/stopping any pod or closing any donor tab, read `perf.gpuPool.donors[].isPrimary` and say out loud which card is the master and what pausing costs. An irreversible action on a live donor gets the consequence surfaced BEFORE the press, not after.
+  - <sub>`docs/TODO.md:684` — §DONORKILL - 2026-08-20 - I terminated the RunPod pod that was her PRIMARY donor and reported the wrong reason for it being safe</sub>
+
+---
+
+*Open-work view of `docs/TODO.md`, tiered per `docs/BOARD.md`. Keep it in sync by hand as items close — the board is the record, this is the reading order.*
+
+<!-- END VERBATIM OPEN-TASKS ARCHIVE 2026-08-20 -->
+
+---
+
+## 2026-08-20 — BOARD + OPEN-TASKS deleted: one board, not three
+
+> Gee (verbatim): *"delete the board file we dont need it"*
+> Gee (verbatim): *"im fucking talking about the "board" list you made... the board of the 100+ completed items.. we dont need that list any more its all in finalized"*
+
+**He is right, and the reason is structural rather than tidiness: a second list of the same tasks is a second thing to keep true.** Both files were parallel views of `docs/TODO.md` — `BOARD.md` a tiered triage, `OPEN-TASKS.md` the hand-maintained checklist built because `TaskCreate`/`TaskUpdate`/`TodoWrite` were absent from the session. Both drifted from the board they described (OPEN-TASKS carried its own warning: *"THIS FILE IS ONE BATCH BEHIND ITSELF"*), and with the board at **0 open / 171 closed** they were stale snapshots of a file with no open items left. **A stale list that looks authoritative is worse than no list** — and this session already paid for that lesson repeatedly in instruments that read healthy while nothing worked.
+
+**BOTH ARCHIVED VERBATIM BEFORE DELETION, AND THE FIRST ONE MATTERED.** A `grep` for `BOARD.md`'s opening Gee quote — *"okay we have alot in the todo still open i want you to build the full task list in the cli so i can follow along"* — returned **0** hits in this file, so deleting it outright would have destroyed his verbatim words. LAW #0 and FINALIZED-BEFORE-DELETE both forbid that. Checksums, extracted back out of this file and compared to the originals:
+
+| file | bytes | md5 | task lines |
+|---|---|---|---|
+| `docs/BOARD.md` | 18,871 | `91c012d49d5cd282314f9a43b51450f3` | — |
+| `docs/OPEN-TASKS.md` | 57,778 | `38857c079114b6c5e57da51071feac37` | 82 |
+
+Both **VERBATIM MATCH**. Search `BEGIN VERBATIM BOARD ARCHIVE 2026-08-20` / `BEGIN VERBATIM OPEN-TASKS ARCHIVE 2026-08-20`.
+
+**Checked before deleting, per the `SCRIPTKILL.3` lesson** (*"an unreferenced-by-name file is not proof of an orphan — grep the stem and the directory too"*): no code reads either file, every `BOARD.md` name-reference is in docs, and the one `.claude/agents/` hit for the string "BOARD" turned out to be **ONBOARDING** — a false positive of exactly the class that lesson is about, caught by looking instead of assuming.
+
+**Dangling references cleaned rather than left to rot:** `docs/TODO.md`'s template now records both as deleted with a pointer to the archives and the instruction **"This file is the only board. Do not re-create a second one."**; `docs/RESUME.md` carries a banner marking every mention of them as historical. FINALIZED's own earlier references stay as-is — this file is a historical record and its past entries are supposed to describe what was true when written.
+
+**Board: 0 open, 171 closed. One board file.**

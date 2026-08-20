@@ -42,8 +42,7 @@ Full bodies in `.claude/CONSTRAINTS.md`. These four are the ones this file exist
 
 - **`docs/FINALIZED.md`** — every completed task, verbatim, plus the full ledger of every batch. **Never delete an entry.** Contains the complete verbatim archive of this file as of 2026-08-20.
 - **`docs/NOW.md`** — the current-state banner, newest first.
-- **`docs/BOARD.md`** — tiered triage view.
-- **`docs/OPEN-TASKS.md`** — the hand-maintained open-work view. **When it and this file disagree, THIS file wins.** Update it in the same pass as any edit here.
+- ~~`docs/BOARD.md`~~ and ~~`docs/OPEN-TASKS.md`~~ — **both DELETED 2026-08-20.** They were parallel views of this file, and a second list of the same tasks is a second thing to keep true; both drifted, and a stale list that looks authoritative is worse than no list. Their full contents are archived **verbatim** in `docs/FINALIZED.md` (search `BEGIN VERBATIM BOARD ARCHIVE` / `BEGIN VERBATIM OPEN-TASKS ARCHIVE`). **This file is the only board. Do not re-create a second one.**
 - **`docs/KNOWN_ISSUES.md`** — running ledger of bugs, limitations and intentional deferrals (KI-1 … KI-23).
 
 ## STANDING PROGRAMMES (not board lines — they have their own docs)
