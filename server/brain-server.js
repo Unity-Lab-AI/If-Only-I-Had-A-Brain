@@ -2227,6 +2227,52 @@ class ServerBrain {
           console.log(`[Brain] LANGRAM.6 — geometry pin CONFIRMED: ${_pinSize.toLocaleString()} neurons, matching this boot's derived size. The vocabulary ceiling cannot flip run to run.`);
         }
       }
+      // ⛔ LANGRAM.7 — A FRESH WALK IS THE ONE BOOT WHERE THE PIN STEPS ASIDE, AND
+      // IT IS THE BOOT THAT DECIDES THE GEOMETRY FOR EVERY LATER ONE.
+      //
+      // Both guards above are gated on `_weightsOnDisk`. A fresh walk wipes the
+      // weights, so on that boot the pin is not honoured AND `_pinWouldDegrade`
+      // cannot fire — and the write below then REPINS whatever this boot's
+      // `os.freemem()` happened to allow. That is worse than the flip-flop
+      // LANGRAM.6 was built to stop: a busy-boot fresh walk would come up at
+      // 349,155 and make it PERMANENT, which is precisely the failure the
+      // pin-withheld guard exists to prevent and cannot reach from here.
+      //
+      // The rescue is deliberately NARROW — it is a FLOOR, never an inflation:
+      // it fires only when a pin already records a size at or above the target
+      // AND this boot derived BELOW the target. It can therefore only ever undo
+      // a coin-flip loss; it can never push the cortex past
+      // WORD_MOTOR_TARGET_LANG_CORTEX, and it never fires when the derived size
+      // is already good.
+      //
+      // RE-PRICED, as the LAW requires, because this changes `scale`: the target
+      // 12,000,000 IS the priced geometry — SELFFRAME measures 8.5 min/cell and
+      // ~16h across the 114-cell walk at 12M, and the ~24-day structure-refresh
+      // figure is computed at 12M. Booting at 349,155 is the UNPRICED case, not
+      // this one. Honouring the floor keeps the walk inside the arithmetic that
+      // has already been written down; losing the roll leaves it outside.
+      //
+      // Safety: the pinned size is one THIS box has already run (the pin records
+      // the `freeRamGB` it was derived under), and the per-neuron coefficient
+      // carries ~1.7x over the measured ~590 B/neuron — the same headroom
+      // argument the weights-present branch above already makes. A transient
+      // free-RAM dip is not a real constraint; it is a sampling artefact.
+      else if (_pinnedGeom && !_explicitResize && !_unpinRequested && !_weightsOnDisk) {
+        const _pinSize = Math.floor(Number(_pinnedGeom.langCortexSize));
+        if (_pinSize >= WORD_MOTOR_TARGET_LANG_CORTEX && langCortexSize < WORD_MOTOR_TARGET_LANG_CORTEX) {
+          console.warn(
+            `[Brain] ⛔ LANGRAM.7 FRESH-WALK GEOMETRY FLOOR — no weights on disk (fresh walk), so the pin would normally step aside, and this boot's live bounds derived ${langCortexSize.toLocaleString()} neurons: BELOW the ${WORD_MOTOR_TARGET_LANG_CORTEX.toLocaleString()} target. ` +
+            `The existing pin records ${_pinSize.toLocaleString()} (written ${_pinnedGeom.writtenAt || 'unknown date'} under ${_pinnedGeom.freeRamGB != null ? _pinnedGeom.freeRamGB + 'GB' : 'unknown'} free RAM), a size THIS box has already run. BOOTING AT THE PINNED SIZE. ` +
+            `Reason the floor exists: without it a fresh walk on a momentarily-busy box comes up small AND repins small, making a coin-flip loss permanent — the difference is boot-time free RAM (${(freeRamBytes / 1e9).toFixed(1)}GB × ${(LANG_RAM_FRACTION * 100).toFixed(0)}% → ${ramBasedMax.toLocaleString()} neurons), not a decision anyone made. ` +
+            `To take the derived size on purpose instead: DREAM_LANG_CORTEX=${langCortexSize}, or DREAM_LANG_UNPIN=1 to re-derive and repin.`
+          );
+          langCortexSize = _pinSize;
+        } else if (_pinSize !== langCortexSize) {
+          // Not a rescue case — say so, so a fresh walk that legitimately moves
+          // the geometry is never mistaken for the floor having fired.
+          console.log(`[Brain] LANGRAM.7 — fresh walk, pin present at ${_pinSize.toLocaleString()} and this boot derived ${langCortexSize.toLocaleString()}. The floor does NOT apply (it fires only when the pin is at/above the ${WORD_MOTOR_TARGET_LANG_CORTEX.toLocaleString()} target AND the derived size is below it); booting at the derived size and repinning it.`);
+        }
+      }
       // ⛔ NEVER PIN A DEGRADED COIN-FLIP OUTCOME (2026-08-20, caught before the
       // first press that would have run this code). The pin is written from THIS
       // boot's derived size — so the very first boot after this ships, if it
@@ -2241,10 +2287,16 @@ class ServerBrain {
       // the pin protects the good geometry. An explicit act (DREAM_LANG_CORTEX /
       // DREAM_LANG_UNPIN) always writes, because that is Gee deciding rather than
       // free RAM deciding.
+      // LANGRAM.7 — `_weightsOnDisk` REMOVED from this condition. It made the
+      // guard unable to fire on the one boot type that writes a pin from
+      // scratch: a fresh walk has no weights, so a below-target roll sailed
+      // past this check and got enshrined at line ~2274 as 'derived from live
+      // bounds'. Whether weights exist has nothing to do with whether THIS
+      // size is below the target it is supposed to reach — that is the only
+      // question the guard asks, and it is answerable either way.
       const _pinWouldDegrade = !_pinnedGeom
         && !_explicitResize
         && !_unpinRequested
-        && _weightsOnDisk
         && langCortexSize < WORD_MOTOR_TARGET_LANG_CORTEX;
       if (_pinWouldDegrade) {
         console.warn(`[Brain] ⛔ LANGRAM.6 — PIN WITHHELD. This boot derived ${langCortexSize.toLocaleString()} neurons, BELOW the ${WORD_MOTOR_TARGET_LANG_CORTEX.toLocaleString()} target, and there is no existing pin to hold. Writing one now would make this boot's RAM coin-flip PERMANENT (word_motor ${(Math.floor(langCortexSize) - Math.floor(langCortexSize * 0.940)).toLocaleString()} emittable buckets vs ${(Math.floor(WORD_MOTOR_TARGET_LANG_CORTEX) - Math.floor(WORD_MOTOR_TARGET_LANG_CORTEX * 0.940)).toLocaleString()} at target). No pin is written; a boot that clears the target takes it. To pin THIS size on purpose: DREAM_LANG_CORTEX=${langCortexSize}.`);
