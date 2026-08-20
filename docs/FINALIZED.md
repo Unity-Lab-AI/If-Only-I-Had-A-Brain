@@ -34083,3 +34083,27 @@ The other five: **`.resume-marker.json`** — where the walk resumes, so `Update
 Verified: `node --check` on both files, **ESM `import()`** on `curriculum.js` (which `node --check` cannot catch), scope-checked that `SPARSE_UPLOAD_TIME_FALLBACK_MS` is declared in the same block it is used in, and the bundle rebuilt and confirmed to contain the change.
 
 **Board: 37 open, 124 closed.**
+
+---
+
+## 2026-08-20 — PRIMARYFLOOR: a donor 1.5GB too small takes NO matrices, and every visible field read healthy
+
+> Gee (verbatim): *"the only thing that changed was the doner, so wtf is happening?"*
+> Gee (verbatim): *"so how do i get the pod to load the matrix"*
+
+**He was right from the first message and I took five exchanges to get there.** `brain-server.js:9361` refuses PRIMARY to any donor that cannot hold the FULL running brain, and **the canonical weight upload only ever targets the PRIMARY.** An RTX 3090 holding 24,124MB against a **25,619MB** floor was therefore filed as a partial replica: no primary existed, `_gpuClient` stayed null, `gpuReady` stayed false, the entire GPU region of the tick was skipped, and the walk waited forever — behind a dashboard row reading `bind 23.6GB · 7/7 cl · idle (last 30.1Gn/s)`. **Short by 1,495MB. 1.5GB.** The brain logged the answer exactly once, at register, and never again:
+
+```
+DF.7 — donor VRAM cannot hold the FULL running brain (needs ~25619MB)
+     — NOT eligible for PRIMARY; joins as a (partial) replica.
+```
+
+**`runningFloorMB` was already in the state payload — buried in the COMMUNITY block, nowhere near the donor whose VRAM it disqualifies.** A number is only an instrument when it sits next to the thing it judges. `primaryFloorMB`, `primaryEligible` and **`primaryShortfallMB`** now travel on the donor row, mirroring the server's own arithmetic (donated cap when set, else full card) so the row cannot disagree with the decision it reports. The dashboard renders **`⛔ 1.5GB SHORT of PRIMARY (needs 25.0GB)`** in red beside the bind size, tooltipped with why such a card can never receive the matrices. An unknown floor yields `null`, never a false OK. Verified against the real numbers: 3090 / A5000 / 4090 → short 1,495MB; A40 / A6000 / L40 → ELIGIBLE; a 10GB-capped donor → short 15,379MB.
+
+**AND MY OWN `UPLOADWD`, SHIPPED AN HOUR EARLIER, DID NOTHING — because I put it inside `if (gpuReady)`.** The incident it was written for had `gpuReady` **false** while a donor was connected and streaming telemetry, so the whole region — upload trigger and breaker together — was skipped, and the watchdog logged not one line. **A deadlock breaker placed behind the gate that jams is not a breaker.** Added an outer half that runs unconditionally: donors present + no live primary + cortex not ready for >120s → log every donor's held VRAM against the floor with an ELIGIBLE / TOO SMALL verdict. It **deliberately does not promote an ineligible card** — that refusal is correct, because a primary too small to hold the weights cannot serve them, and forcing it would trade a visible stall for silent partial state. It promotes only when an eligible donor sits unpromoted, which is the genuine bug and exactly what a pod restart fixed by accident today.
+
+**THE RETRACTION MATTERS MORE THAN THE FIX.** I recommended downsizing to a 24GB card — first the A5000 at $0.27, then the RTX 3090 community at $0.22 — on a VRAM estimate of **17.8GB** derived from 31.6 bytes/neuron **measured at the OLD 320M size**, before RAMHEAD and TIERTOP grew her to 425M. Matrices grow faster than neuron count. The brain's actual floor is 25,619MB, so **every 24GB card is disqualified**, and I put one in as the primary donor. The cheapest card that actually works is the **48GB A40 at $0.44/hr** — still below the A6000's $0.53, so the saving survives; the reasoning that produced 24GB does not. **Standing rule, filed as `PRIMARYFLOOR.3`: price a donor against `runningFloorMB` read LIVE from the brain, never against a bytes-per-neuron figure measured at a different brain size.**
+
+**How it resolved:** terminating the too-small 3090 triggered the primary-left path, the A40 was promoted, `_rearmCortexGpuUpload` cleared the flag, and the canonical upload started on its own — **2.3GB across the wire in ~80 seconds**, `mx 0/1` and climbing. No fresh walk needed; the brain had been waiting for a donor it was allowed to upload to.
+
+**Board: 38 open, 126 closed.**

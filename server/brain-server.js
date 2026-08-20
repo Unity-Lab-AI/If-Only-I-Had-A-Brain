@@ -4631,6 +4631,79 @@ class ServerBrain {
       }
 
       // ── GPU EXCLUSIVE: all computation on GPU, zero CPU burn ──
+      // ── UPLOADWD OUTER (2026-08-20) — THE HALF THAT CAN SEE THE FAILURE ──
+      //
+      // The breaker added earlier today sits INSIDE `if (gpuReady)` below, which
+      // made it useless for the very incident that prompted it: `gpuReady` was
+      // FALSE while a donor was connected and streaming telemetry, so the whole
+      // region — trigger, breaker and all — was skipped and the watchdog logged
+      // nothing at all. A deadlock breaker placed behind the gate that jams is
+      // not a breaker. This half runs unconditionally.
+      //
+      // THE CONFIRMED CAUSE it exists to name: `brain-server.js:9361` refuses
+      // PRIMARY to any donor that cannot hold the FULL running brain, and the
+      // canonical upload only ever targets the PRIMARY. An RTX 3090 (24,124MB)
+      // against a 25,619MB floor was therefore filed as a replica, no primary
+      // existed, `_gpuClient` stayed null, `gpuReady` stayed false, and the walk
+      // waited forever behind a row that read healthy — `bind 23.6GB`, `7/7 cl`,
+      // 30.1 Gn/s. Short by 1.5GB, invisible.
+      //
+      // It deliberately does NOT promote an ineligible card. That refusal is
+      // CORRECT — a primary too small to hold the weights cannot serve them, so
+      // forcing it would trade a visible stall for silent partial state. What it
+      // does is make the situation legible, and promote only when an ELIGIBLE
+      // donor is sitting unpromoted (the genuine bug, and the case a restart
+      // fixed by accident today).
+      {
+        const _cc0 = this.cortexCluster;
+        const _needsUpload = !!(_cc0 && !_cc0._cortexFullyReady && !this._cortexUploadInFlight);
+        const _primaryLive = !!(this._gpuClient && this._gpuClient.readyState === 1 && this._gpuConnected);
+        const _pool = [];
+        try {
+          if (this._gpuClients) for (const _c of this._gpuClients) { if (_c && _c.readyState === 1) _pool.push(_c); }
+        } catch { /* never break the tick on bookkeeping */ }
+        if (!(_needsUpload && !_primaryLive && _pool.length > 0)) {
+          this._wdNoPrimarySince = null;
+        } else {
+          if (!this._wdNoPrimarySince) this._wdNoPrimarySince = Date.now();
+          const _forMs = Date.now() - this._wdNoPrimarySince;
+          const _limEnv = Number(process.env.DREAM_NO_PRIMARY_WATCHDOG_MS);
+          const _limMs = Number.isFinite(_limEnv) && _limEnv > 0 ? _limEnv : 120000;
+          if (_forMs >= _limMs && (!this._wdNoPrimaryLogAt || (Date.now() - this._wdNoPrimaryLogAt) > 60000)) {
+            this._wdNoPrimaryLogAt = Date.now();
+            const _floor = Number(this._runningFloorMB) || 0;
+            let _eligible = null;
+            const _rows = _pool.map((_c) => {
+              const _cl = this.clients && this.clients.get(_c);
+              const _vram = Number(_cl && _cl.gpuVramMB) || 0;
+              const _held = (Number(_cl && _cl.donatedMB) > 0)
+                ? (_vram > 0 ? Math.min(Number(_cl.donatedMB), _vram) : Number(_cl.donatedMB))
+                : _vram;
+              const _ok = _floor > 0 && _held > 0 && _held >= _floor;
+              if (_ok && !_eligible) _eligible = _c;
+              return `${(_cl && _cl.gpuName) || 'donor'} holds ${_held}MB ${_ok ? 'ELIGIBLE' : `TOO SMALL (short ${Math.max(0, _floor - _held)}MB)`}`;
+            });
+            console.error(
+              `[Brain] ⛔ UPLOADWD/NO-PRIMARY — ${_pool.length} donor(s) connected for ${(_forMs / 1000).toFixed(0)}s but there is NO live PRIMARY, `
+              + `so the canonical weight upload can never run and the walk cannot start. The brain needs ~${_floor || '?'}MB to hold the FULL running brain. `
+              + `Pool: ${_rows.join(' · ')}. `
+              + (_eligible
+                ? 'An ELIGIBLE donor is present and unpromoted — PROMOTING it now and re-arming the upload.'
+                : 'EVERY connected donor is too small to be PRIMARY. This is NOT a bug to work around: a primary that cannot hold the weights cannot serve them. Attach a bigger card, or shrink the brain (DREAM_BRAIN_BUDGET_MB / a lower tier).')
+            );
+            if (_eligible) {
+              this._gpuClient = _eligible;
+              this._gpuConnected = true;
+              this._gpuInitialized = {};
+              this._gpuInitializedConfirmed = {};
+              this._cortexGpuInitStarted = false;
+              this._cortexUploadInFlight = false;
+              this._allClustersConfirmedAt = null;
+              if (this.cortexCluster) this.cortexCluster._cortexFullyReady = false;
+            }
+          }
+        }
+      }
       const gpuReady = this._gpuConnected && this._gpuClient?.readyState === 1;
 
       if (gpuReady) {
