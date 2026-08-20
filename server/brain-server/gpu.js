@@ -1488,6 +1488,49 @@ const SERVER_GPU_MIXIN = {
     if (!ws || ws.readyState !== 1) return;
     if (ws === this._gpuClient) return;   // primary is the master — nothing to replicate
     if (!this._gpuClient) return;         // no master established yet
+    // ─── SYNCEMPTY.3 (2026-08-20) — THE REGISTRY GATE ───────────────────────
+    //
+    // The caller fires this on a FIXED 1.5s timer after a donor registers, and
+    // the sweep's source of truth is `_replicaMatrixRegistry`, which the
+    // canonical upload fills. Measured live: 38 seconds after boot the registry
+    // was still EMPTY, so the sweep attempted 0 of 0 matrices and announced "a
+    // FULL brain replica" — and the retry pass could not help, because there was
+    // nothing to retry. Note what this fix does NOT claim: it does not assert
+    // why the registry was late. It removes the RACE, which is wrong on its own
+    // terms whatever the cause — a sweep whose input is empty should wait for
+    // its input, not report success over it. The wait is bounded, it logs what
+    // it waited for, and that log is also the instrument that will confirm or
+    // refute the timing theory on the next boot.
+    if (!(this._replicaMatrixRegistry && this._replicaMatrixRegistry.size > 0)) {
+      const _gc = (this.clients && this.clients.get) ? this.clients.get(ws) : null;
+      if (_gc && _gc._syncWaitingForRegistry) return;   // one waiter per donor, never a pile
+      if (_gc) _gc._syncWaitingForRegistry = true;
+      const _waitStart = Date.now();
+      const _capMs = Number(process.env.DREAM_DF7_REGISTRY_WAIT_MS) > 0
+        ? Number(process.env.DREAM_DF7_REGISTRY_WAIT_MS)
+        : 15 * 60 * 1000;
+      let _lastLog = 0;
+      try {
+        while (Date.now() - _waitStart < _capMs) {
+          if (!ws || ws.readyState !== 1) return;                       // donor left
+          if (this._replicaMatrixRegistry && this._replicaMatrixRegistry.size > 0) break;
+          const _held = Date.now() - _waitStart;
+          if (_held - _lastLog >= 30_000) {
+            _lastLog = _held;
+            console.log(`[Brain] DF.7 SYNCEMPTY — replica sync HELD ${(_held / 1000).toFixed(0)}s: the master matrix registry is still empty, so there is nothing to replicate yet. Waiting for the canonical upload to register matrices instead of sweeping 0 of 0 and calling it a full replica.`);
+          }
+          await new Promise((r) => setTimeout(r, 2000));
+        }
+      } finally {
+        if (_gc) _gc._syncWaitingForRegistry = false;
+      }
+      if (!(this._replicaMatrixRegistry && this._replicaMatrixRegistry.size > 0)) {
+        console.warn(`[Brain] ⛔ DF.7 SYNCEMPTY — GAVE UP after ${((Date.now() - _waitStart) / 60000).toFixed(1)}min: the master matrix registry never populated, so this donor CANNOT become a weight replica (it can still compute — ALLINIT gave it cluster buffers at registration). That is a master-upload failure, not a replica failure — look there. DREAM_DF7_REGISTRY_WAIT_MS tunes the wait.`);
+        return;
+      }
+      if (!ws || ws.readyState !== 1) return;
+      console.log(`[Brain] DF.7 SYNCEMPTY — registry populated after ${((Date.now() - _waitStart) / 1000).toFixed(1)}s of waiting (${this._replicaMatrixRegistry.size} matrices registered); replica sync proceeding with real work to do.`);
+    }
     // DF.7 — DEFER the full replica sync while the curriculum is actively teaching
     // (Gee 2026-07-15, "the cpu should not be fucking up the gpus trying to do
     // work"). Pushing the full ~366MB cortex_intraSynapses + 16 matrices to a

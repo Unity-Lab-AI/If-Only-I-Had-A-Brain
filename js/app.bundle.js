@@ -63806,6 +63806,14 @@ var LanguageCortex = class {
                 }
               } catch {
               }
+              const _lcBrain = cluster && cluster._brain;
+              const _lcStamp = (s) => {
+                try {
+                  if (_lcBrain && typeof _lcBrain._chatStamp === "function") _lcBrain._chatStamp(s);
+                } catch {
+                }
+              };
+              _lcStamp(`generate:primary(${opts.curriculumBusy ? 1 : 3}cand)`);
               composedSentence = await cluster.composeSentence(intentSeed, {
                 subject: inferredSubject || void 0,
                 temperature: Number(_temp.toFixed(2)),
@@ -63834,6 +63842,7 @@ var LanguageCortex = class {
                   for (let _s = 0; _s < maxExtra && _total < 30; _s++) {
                     let cont = null;
                     try {
+                      _lcStamp(`generate:continuation-${_s + 1}(${opts.curriculumBusy ? 1 : 2}cand)`);
                       cont = await cluster.composeSentence(intentSeed, {
                         subject: inferredSubject || void 0,
                         temperature: Number(_temp.toFixed(2)),
@@ -102034,6 +102043,47 @@ var Curriculum = class _Curriculum {
           this._chatPairDrainActive = false;
         }
       }
+      if (brain2 && Array.isArray(brain2._chatTeachJobQueue) && brain2._chatTeachJobQueue.length > 0 && !this._chatTeachJobDrainActive && typeof this._teachAssociationPairs === "function") {
+        this._chatTeachJobDrainActive = true;
+        try {
+          const job = brain2._chatTeachJobQueue.shift();
+          if (brain2._chatTimeHebbianStats) brain2._chatTimeHebbianStats.jobsQueued = brain2._chatTeachJobQueue.length;
+          if (job && Array.isArray(job.pairs) && job.pairs.length > 0) {
+            await this._teachAssociationPairs(job.pairs, job.opts || { reps: 1, label: "CHAT-TEACH-JOB", relationTagId: 30 });
+            if (brain2._chatTimeHebbianStats) {
+              brain2._chatTimeHebbianStats.jobsTaught = (brain2._chatTimeHebbianStats.jobsTaught || 0) + 1;
+              brain2._chatTimeHebbianStats.lastJobLabel = job.opts && job.opts.label || "CHAT-TEACH-JOB";
+              brain2._chatTimeHebbianStats.lastJobTs = Date.now();
+            }
+          }
+        } catch (err) {
+          const stats = brain2._chatTimeHebbianStats;
+          if (stats) {
+            stats.jobErrors = (stats.jobErrors || 0) + 1;
+            stats.lastJobError = err && err.message ? err.message : String(err);
+            const now = Date.now();
+            if (stats.jobErrors <= 3 || now - (stats.lastJobWarnTs || 0) > 6e4) {
+              console.warn(`[Brain] chat-teach job drain failed (#${stats.jobErrors}): ${stats.lastJobError}`);
+              stats.lastJobWarnTs = now;
+            }
+          }
+        } finally {
+          this._chatTeachJobDrainActive = false;
+        }
+      }
+      if (brain2 && typeof brain2._drainMindsEyePreview === "function" && Array.isArray(brain2._mindsEyePreviewQueue) && brain2._mindsEyePreviewQueue.length > 0 && !this._mindsEyeDrainActive) {
+        this._mindsEyeDrainActive = true;
+        try {
+          await brain2._drainMindsEyePreview();
+        } catch (err) {
+          if (!this._mindsEyeWarnMs || Date.now() - this._mindsEyeWarnMs > 6e4) {
+            this._mindsEyeWarnMs = Date.now();
+            console.warn(`[Brain] mind's-eye preview drain failed: ${err && err.message ? err.message : err}`);
+          }
+        } finally {
+          this._mindsEyeDrainActive = false;
+        }
+      }
       if (brain2 && Array.isArray(brain2._salienceQueue) && brain2._salienceQueue.length > 0 && !this._salienceDrainActive && this.cortexCluster && typeof this.cortexCluster.computeTransitionSurpriseAsync === "function") {
         this._salienceDrainActive = true;
         try {
@@ -104532,9 +104582,18 @@ var Curriculum = class _Curriculum {
     const cluster = this.cluster;
     if (!cluster || !cluster.crossProjections) return { trained: 0, skipped: 0 };
     if (!Array.isArray(pairs) || pairs.length === 0) return { trained: 0, skipped: 0 };
-    const reps = opts.reps ?? 24;
+    let reps = opts.reps ?? 24;
     const lr = opts.lr ?? 0.03;
     const label = opts.label || "ASSOC";
+    const _cursorKey = cluster._phaseDeadlineName && label ? `${cluster._phaseDeadlineName}::${label}` : null;
+    if (_cursorKey) {
+      if (!cluster._phaseRepCursor || typeof cluster._phaseRepCursor !== "object") cluster._phaseRepCursor = {};
+      const _owed = cluster._phaseRepCursor[_cursorKey];
+      if (Number.isFinite(_owed) && _owed > 0 && _owed < reps) {
+        console.warn(`[Curriculum][${label}] CELLBOUND.H - RESUMING a deferred phase: ${_owed} of ${reps} authored rep(s) still owed from a previous budget stop, so THIS visit trains the remainder (${_owed}) instead of repeating the whole dose. Cursor clears when the debt is paid.`);
+        reps = Math.max(1, _owed);
+      }
+    }
     const semRegion = cluster.regions && cluster.regions.sem;
     const motorRegion = cluster.regions && cluster.regions.motor;
     const fineTypeRegion = cluster.regions && cluster.regions.fineType;
@@ -104568,7 +104627,11 @@ var Curriculum = class _Curriculum {
       if (rep > 0 && cluster._phaseDeadlineAt && Date.now() > cluster._phaseDeadlineAt) {
         const _deferred = reps - rep;
         const _heldS = ((Date.now() - (cluster._phaseDeadlineAt - PHASE_BUDGET_MS)) / 1e3).toFixed(0);
-        console.warn(`[Curriculum][${label}] CELLBOUND - phase '${cluster._phaseDeadlineName || "?"}' spent its ${(PHASE_BUDGET_MS / 6e4).toFixed(0)}min budget after ${_heldS}s; stopping on a clean rep boundary at rep ${rep}/${reps} (${trained} pair-teaches landed). DEFERRED ${_deferred} rep(s) to the next visit to this phase - training is spread, NOT discarded. DREAM_PHASE_BUDGET_MS raises the budget; 0 disables the bound.`);
+        if (_cursorKey) {
+          if (!cluster._phaseRepCursor || typeof cluster._phaseRepCursor !== "object") cluster._phaseRepCursor = {};
+          cluster._phaseRepCursor[_cursorKey] = _deferred;
+        }
+        console.warn(`[Curriculum][${label}] CELLBOUND - phase '${cluster._phaseDeadlineName || "?"}' spent its ${(PHASE_BUDGET_MS / 6e4).toFixed(0)}min budget after ${_heldS}s; stopping on a clean rep boundary at rep ${rep}/${reps} (${trained} pair-teaches landed). DEFERRED ${_deferred} rep(s) to the next visit to this phase - training is spread, NOT discarded${_cursorKey ? ` \xB7 cursor BANKED as '${_cursorKey}' = ${_deferred} rep(s) owed (persisted, so a reboot resumes rather than repeats)` : ""}. DREAM_PHASE_BUDGET_MS raises the budget; 0 disables the bound.`);
         return { trained, skipped, repsDone: rep, deferredReps: _deferred, budgetStopped: true };
       }
       cluster._teachIntermediateRep = rep < reps - 1;
@@ -104681,6 +104744,9 @@ var Curriculum = class _Curriculum {
     cluster._teachIntermediateRep = false;
     cluster._teachFinalRepSampleEveryN = 0;
     this._convergenceStreak = 0;
+    if (_cursorKey && cluster._phaseRepCursor && _cursorKey in cluster._phaseRepCursor) {
+      delete cluster._phaseRepCursor[_cursorKey];
+    }
     const diagProjKeys = Array.isArray(opts.projectionsWhitelist) && opts.projectionsWhitelist.length > 0 ? opts.projectionsWhitelist.filter((k) => cluster.crossProjections && cluster.crossProjections[k]) : ["sem_to_motor", "motor_to_sem"].filter((k) => cluster.crossProjections && cluster.crossProjections[k]);
     const primaryProj = diagProjKeys[0] || "sem_to_motor";
     const _deferDiag = opts.deferDiagnostics === true;

@@ -132,6 +132,14 @@ server/visual-memory.json.tmp
 # to the donor-pool community tier. Per-machine runtime state — never committed.
 server/community-tier.json
 
+# === LANGRAM.6 language-cortex geometry pin ===
+# The size the language cortex was TRAINED at, written on every boot and held on
+# later ones so a boot-time free-RAM dip cannot silently resize the vocabulary
+# ceiling underneath weights sized for the old geometry. Per-machine runtime
+# state — never committed. DREAM_LANG_CORTEX / DREAM_LANG_UNPIN / a fresh walk
+# are the three ways to change it, all loud.
+server/lang-geometry.json
+
 # === DF.7 community-compute auto-scale settings ===
 # Admin-set toggle + dead-zone buffer + stability window for the milestone
 # auto-resize. Persisted by /autoscale POST. Per-deployment runtime state.

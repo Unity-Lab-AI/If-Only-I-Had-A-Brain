@@ -2330,6 +2330,24 @@ export class LanguageCortex {
               // the live walk. Gate/probe paths never pass this — chat only.
               let _chatCohFloor = 0.10;
               try { if (typeof process !== 'undefined' && process.env && process.env.DREAM_CHAT_COHERENCE_FLOOR) { const v = parseFloat(process.env.DREAM_CHAT_COHERENCE_FLOOR); if (Number.isFinite(v) && v >= 0) _chatCohFloor = v; } } catch { /* default */ }
+              // SURPRISECPU.2 (2026-08-20) — SPLIT THE `generate` STAGE.
+              // The chat split convicted `generate=17,941ms` as one opaque
+              // 17.9-second block, and this method is why: a reply is not one
+              // emission, it is the primary sentence (1 rerank candidate mid-
+              // walk, 3 when idle) PLUS up to two continuation sentences, each
+              // its own full emission with its own candidates — up to seven
+              // sentence emissions behind a single stage name. Stamping the
+              // sub-stages means the next slow reply says WHICH of them owns
+              // the seconds, instead of us guessing at a fix (three theories
+              // already died to reads in this war). The brain's own chat stamp
+              // is reused so the ChatPin split and the BLOCKED line's banked
+              // maximum both pick it up; absent in the browser bundle, where
+              // there is no server brain — the typeof check is the contract.
+              const _lcBrain = cluster && cluster._brain;
+              const _lcStamp = (s) => {
+                try { if (_lcBrain && typeof _lcBrain._chatStamp === 'function') _lcBrain._chatStamp(s); } catch { /* stamping must never break emission */ }
+              };
+              _lcStamp(`generate:primary(${opts.curriculumBusy ? 1 : 3}cand)`);
               composedSentence = await cluster.composeSentence(intentSeed, {
                 subject: inferredSubject || undefined,
                 temperature: Number(_temp.toFixed(2)),
@@ -2378,6 +2396,9 @@ export class LanguageCortex {
                   for (let _s = 0; _s < maxExtra && _total < 30; _s++) {
                     let cont = null;
                     try {
+                      // SURPRISECPU.2 — each continuation is a FULL emission;
+                      // name it so a 17.9s generate can be attributed.
+                      _lcStamp(`generate:continuation-${_s + 1}(${opts.curriculumBusy ? 1 : 2}cand)`);
                       cont = await cluster.composeSentence(intentSeed, {
                         subject: inferredSubject || undefined,
                         temperature: Number(_temp.toFixed(2)),

@@ -11466,6 +11466,73 @@ export class Curriculum {
           this._chatPairDrainActive = false;
         }
       }
+      // CHAT-TEACH JOB DRAIN (2026-08-20, FIRSTPIN.2) — the same lane for
+      // chat-time teach work that must keep its OWN training semantics. The
+      // curiosity follow-up ("she asked, you answered") binds the answer
+      // tokens to the gap concept at reps=12 on relationTagId=23, the
+      // definition/grounding channel — it cannot ride the tag-30 pair queue
+      // above without being silently demoted to a 1-rep chat-time binding.
+      // So the chat handler enqueues a JOB carrying its own opts and this
+      // gate awaits it, serialized into the walk's chain, ONE job per pass
+      // (a 12-rep dose is ~12x a pair batch; draining several would rebuild
+      // the pin at the drain site instead of the reply site). Same
+      // reentrancy guard and error accounting as the pair drain.
+      if (brain && Array.isArray(brain._chatTeachJobQueue)
+          && brain._chatTeachJobQueue.length > 0
+          && !this._chatTeachJobDrainActive
+          && typeof this._teachAssociationPairs === 'function') {
+        this._chatTeachJobDrainActive = true;
+        try {
+          const job = brain._chatTeachJobQueue.shift();
+          if (brain._chatTimeHebbianStats) brain._chatTimeHebbianStats.jobsQueued = brain._chatTeachJobQueue.length;
+          if (job && Array.isArray(job.pairs) && job.pairs.length > 0) {
+            await this._teachAssociationPairs(job.pairs, job.opts || { reps: 1, label: 'CHAT-TEACH-JOB', relationTagId: 30 });
+            if (brain._chatTimeHebbianStats) {
+              brain._chatTimeHebbianStats.jobsTaught = (brain._chatTimeHebbianStats.jobsTaught || 0) + 1;
+              brain._chatTimeHebbianStats.lastJobLabel = (job.opts && job.opts.label) || 'CHAT-TEACH-JOB';
+              brain._chatTimeHebbianStats.lastJobTs = Date.now();
+            }
+          }
+        } catch (err) {
+          const stats = brain._chatTimeHebbianStats;
+          if (stats) {
+            stats.jobErrors = (stats.jobErrors || 0) + 1;
+            stats.lastJobError = err && err.message ? err.message : String(err);
+            const now = Date.now();
+            if (stats.jobErrors <= 3 || (now - (stats.lastJobWarnTs || 0)) > 60_000) {
+              console.warn(`[Brain] chat-teach job drain failed (#${stats.jobErrors}): ${stats.lastJobError}`);
+              stats.lastJobWarnTs = now;
+            }
+          }
+        } finally {
+          this._chatTeachJobDrainActive = false;
+        }
+      }
+      // MIND'S-EYE PREVIEW DRAIN (2026-08-20, SURPRISECPU.2) — the third
+      // resident evicted from the reply path onto this lane. The image-request
+      // branch used to imagine + describe a preview INLINE (measured
+      // img-detect=4,925ms live), holding the loop while the human waited for a
+      // picture the client renders itself. The server brain owns the work
+      // (`_drainMindsEyePreview` in brain-server/chat.js); this gate just gives
+      // it a serialized slot. One per pass, guarded, and absent in the browser
+      // bundle where there is no server mind-space — the typeof check IS the
+      // portability contract, not a fallback.
+      if (brain && typeof brain._drainMindsEyePreview === 'function'
+          && Array.isArray(brain._mindsEyePreviewQueue)
+          && brain._mindsEyePreviewQueue.length > 0
+          && !this._mindsEyeDrainActive) {
+        this._mindsEyeDrainActive = true;
+        try {
+          await brain._drainMindsEyePreview();
+        } catch (err) {
+          if (!this._mindsEyeWarnMs || (Date.now() - this._mindsEyeWarnMs) > 60000) {
+            this._mindsEyeWarnMs = Date.now();
+            console.warn(`[Brain] mind's-eye preview drain failed: ${err && err.message ? err.message : err}`);
+          }
+        } finally {
+          this._mindsEyeDrainActive = false;
+        }
+      }
       // SALIENCE DRAIN (2026-08-18) — the episode's transition-surprise term
       // used to be computed INSIDE the reply, making the human wait 190s for
       // memory bookkeeping worth 0.2 of a consolidation score. It now rides the
@@ -14520,9 +14587,40 @@ export class Curriculum {
     // motor argmax cleanly. Operator binding 2026-04-25: training
     // needs to be deep enough for human-level knowledge — atomic fix,
     // not a surgical bump.
-    const reps = opts.reps ?? 24;
+    let reps = opts.reps ?? 24;
     const lr = opts.lr ?? 0.03;
     const label = opts.label || 'ASSOC';
+
+    // ─── CELLBOUND.H (2026-08-20) — THE DEFERRAL CURSOR, RESUMED NOT REPEATED ──
+    //
+    // CELLBOUND.A stops a runaway phase on a clean rep boundary and reports the
+    // remainder, but nothing REMEMBERED the remainder: the next visit to the
+    // phase re-entered at full authored reps, so the reps that already landed
+    // were paid for a second time. At 47ms per pair-teach and ~114 visits per
+    // phase that is the same unbounded multiplication one level up.
+    //
+    // The cursor is keyed on the PHASE NAME + the teach label, deliberately NOT
+    // on the cell key: the whole point is that the remainder resumes on the NEXT
+    // cell's visit to the same phase. It stores reps STILL OWED. On arrival the
+    // owed count replaces the authored dose (clamped, never above the authored
+    // dose and never below 1 - one full presentation always lands, same law as
+    // the `rep > 0` guarantee below). On a budget stop it is rewritten; on a
+    // clean finish it is deleted, because the debt is paid.
+    //
+    // Persisted beside `passedPhases` in brain-weights.bin (see brain-server
+    // saveWeights / loadWeights), so a reboot resumes instead of repeating -
+    // which is the entire complaint the item was filed for.
+    const _cursorKey = (cluster._phaseDeadlineName && label)
+      ? `${cluster._phaseDeadlineName}::${label}`
+      : null;
+    if (_cursorKey) {
+      if (!cluster._phaseRepCursor || typeof cluster._phaseRepCursor !== 'object') cluster._phaseRepCursor = {};
+      const _owed = cluster._phaseRepCursor[_cursorKey];
+      if (Number.isFinite(_owed) && _owed > 0 && _owed < reps) {
+        console.warn(`[Curriculum][${label}] CELLBOUND.H - RESUMING a deferred phase: ${_owed} of ${reps} authored rep(s) still owed from a previous budget stop, so THIS visit trains the remainder (${_owed}) instead of repeating the whole dose. Cursor clears when the debt is paid.`);
+        reps = Math.max(1, _owed);
+      }
+    }
 
     // Per-update hub neurons/theta-gamma oscillations/per-layer plasticity wiring is now applied INSIDE
     // ojaUpdate via opts.kScales (see sparse-matrix.js). The earlier
@@ -14730,7 +14828,14 @@ export class Curriculum {
       if (rep > 0 && cluster._phaseDeadlineAt && Date.now() > cluster._phaseDeadlineAt) {
         const _deferred = reps - rep;
         const _heldS = ((Date.now() - (cluster._phaseDeadlineAt - PHASE_BUDGET_MS)) / 1000).toFixed(0);
-        console.warn(`[Curriculum][${label}] CELLBOUND - phase '${cluster._phaseDeadlineName || '?'}' spent its ${(PHASE_BUDGET_MS / 60000).toFixed(0)}min budget after ${_heldS}s; stopping on a clean rep boundary at rep ${rep}/${reps} (${trained} pair-teaches landed). DEFERRED ${_deferred} rep(s) to the next visit to this phase - training is spread, NOT discarded. DREAM_PHASE_BUDGET_MS raises the budget; 0 disables the bound.`);
+        // CELLBOUND.H - BANK the remainder so the next visit resumes here
+        // instead of re-teaching the reps that already landed. Persisted with
+        // passedPhases, so this survives a reboot too.
+        if (_cursorKey) {
+          if (!cluster._phaseRepCursor || typeof cluster._phaseRepCursor !== 'object') cluster._phaseRepCursor = {};
+          cluster._phaseRepCursor[_cursorKey] = _deferred;
+        }
+        console.warn(`[Curriculum][${label}] CELLBOUND - phase '${cluster._phaseDeadlineName || '?'}' spent its ${(PHASE_BUDGET_MS / 60000).toFixed(0)}min budget after ${_heldS}s; stopping on a clean rep boundary at rep ${rep}/${reps} (${trained} pair-teaches landed). DEFERRED ${_deferred} rep(s) to the next visit to this phase - training is spread, NOT discarded${_cursorKey ? ` · cursor BANKED as '${_cursorKey}' = ${_deferred} rep(s) owed (persisted, so a reboot resumes rather than repeats)` : ''}. DREAM_PHASE_BUDGET_MS raises the budget; 0 disables the bound.`);
         return { trained, skipped, repsDone: rep, deferredReps: _deferred, budgetStopped: true };
       }
       // GINTRA (2026-08-16) — the final-rep CPU-shadow flag cycle, the SAME
@@ -14896,6 +15001,13 @@ export class Curriculum {
     cluster._teachIntermediateRep = false;
     cluster._teachFinalRepSampleEveryN = 0;
     this._convergenceStreak = 0;
+    // CELLBOUND.H - the rep loop ran to its end (or converged early, which IS
+    // the dose being met), so the debt is paid: clear the cursor. Reaching here
+    // is the only clean-finish path - a budget stop returns above and keeps its
+    // banked remainder.
+    if (_cursorKey && cluster._phaseRepCursor && _cursorKey in cluster._phaseRepCursor) {
+      delete cluster._phaseRepCursor[_cursorKey];
+    }
     // Per-phase top-K-per-row pruning of sem_to_motor + motor_to_sem.
     // After the rep loop, keep only each output neuron's `pruneTopK`
     // strongest inputs and zero the rest. At sparse-init densities
