@@ -1378,6 +1378,65 @@ const _TICK_MS_AUTO = TOTAL_NEURONS > 1000000 ? 100 : TOTAL_NEURONS > 500000 ? 5
 // DREAM_SUBSTEPS still overrides in either direction for live tuning.
 const _SUBSTEPS_AUTO = TOTAL_NEURONS > 1000000 ? 8 : TOTAL_NEURONS > 500000 ? 5 : TOTAL_NEURONS > 100000 ? 10 : 10;
 
+// ── SUBSTEPS.1 — THE 24→8 ROLLBACK REASON NO LONGER EXISTS ON A NATIVE DONOR ──
+//
+// Read the amendment above: 24 was rolled back to 8 because "the donor CANNOT
+// READ ITS SOCKET WHILE IT COMPUTES", and its own closing line named the cure —
+// "putting compute_batch on the donor's PRIORITY lane (it already exists for
+// Work::Mindspace), which needs a donor-v0.3.12 binary; until that ships, this
+// is the server-side half."
+//
+// THAT LANE SHIPPED, and nothing here was ever raised back. Verified in the
+// v0.3.23 source, not assumed:
+//   * donor.rs `WorkQueue::push` puts `Work::Batch(_)` on the HI lane, so a
+//     compute_batch jumps the entire teach flood (the very starvation the
+//     rollback was fighting).
+//   * the compute worker is a DEDICATED OS THREAD (`std::thread::spawn`), not an
+//     async task, popping from that queue.
+//   * the WebSocket loop is a SEPARATE `tokio::select!` that keeps reading while
+//     the worker is blocked — it even services a 5s hang-watchdog tick mid-batch.
+// A native donor therefore drains its socket DURING a batch. The serial-onmessage
+// constraint that pinned this at 8 belongs to the BROWSER donor (compute.html),
+// and it still does.
+//
+// So the ceiling is per-donor, not global. `substepsFor(ws)` returns the native
+// value when the primary announces >= 0.3.12, and 8 for a browser donor or an
+// unknown version — the conservative default stays the default for anything we
+// have not verified.
+//
+// RE-PRICED, as the LAW requires before a bound moves: this bound does NOT keep
+// the walk finite — it caps neuron-steps per round-trip, and raising it makes
+// the brain live FASTER in wall-clock, not longer. `corpus × reps × scale ×
+// visits` is untouched: no corpus grows, no rep count changes, `scale` (12M) is
+// unchanged, and visits are curriculum-driven. What it does change is how much
+// of each fixed round-trip is real math. From the measurement quoted above —
+// 306M × 7 clusters × 3 substeps = 45ms of GPU math inside a 3010ms tick — the
+// GPU works 1.5% of the wall clock. 24 substeps is ~360ms of math per tick: the
+// SAME wire cost, ~8x the brain steps, which is precisely the "only 10%
+// utilization" complaint this answers.
+//
+// Held at 24 rather than the ~60 the arithmetic allows, for the reason the
+// original note gave and which is still true: compute_batch carries a real
+// deadline, and a donor that stalls mid-batch trips the zombie-kick path. 24
+// keeps a wide margin. DREAM_SUBSTEPS still overrides in either direction, and
+// DREAM_SUBSTEPS_NATIVE tunes only the native tier.
+const _SUBSTEPS_NATIVE_AUTO = TOTAL_NEURONS > 1000000
+  ? Math.max(_SUBSTEPS_AUTO, Math.floor(_envPositiveEarly('DREAM_SUBSTEPS_NATIVE', 24)))
+  : _SUBSTEPS_AUTO;
+// Minimal early reader — the shared `_envPositive` is declared below and this
+// constant is needed here. Same validation contract: a non-positive or
+// non-finite value falls back rather than producing a NaN.
+function _envPositiveEarly(name, fallback) {
+  const raw = process.env[name];
+  if (raw === undefined || raw === '') return fallback;
+  const v = Number(raw);
+  if (!Number.isFinite(v) || v <= 0) {
+    console.warn(`[Brain] ${name}="${raw}" is not a positive number — using ${fallback}.`);
+    return fallback;
+  }
+  return v;
+}
+
 // ── TRAINING THROUGHPUT KNOBS ────────────────────────────────────────
 // The auto-scaled values above are the DEFAULTS and nothing changes
 // unless one of these env vars is set. They exist because the two
@@ -1425,6 +1484,35 @@ function _envPositive(name, fallback) {
 }
 const BRAIN_TICK_MS = _envPositive('DREAM_TICK_MS', _TICK_MS_AUTO);
 const SUBSTEPS = Math.max(1, Math.floor(_envPositive('DREAM_SUBSTEPS', _SUBSTEPS_AUTO)));
+// SUBSTEPS.1 — the native tier. An EXPLICIT DREAM_SUBSTEPS wins for both tiers:
+// if Gee pins a number, that number is what runs, and the capability logic does
+// not quietly override a deliberate act (the LANGRAM lesson).
+const _SUBSTEPS_EXPLICIT = process.env.DREAM_SUBSTEPS !== undefined && process.env.DREAM_SUBSTEPS !== '';
+const SUBSTEPS_NATIVE = _SUBSTEPS_EXPLICIT
+  ? SUBSTEPS
+  : Math.max(1, Math.floor(_SUBSTEPS_NATIVE_AUTO));
+/**
+ * SUBSTEPS.1 — brain steps to ride inside ONE round-trip to THIS donor.
+ *
+ * Native donors (>= 0.3.12) put compute_batch on their priority lane and run it
+ * on a dedicated OS thread while a separate WS loop keeps draining the socket,
+ * so a long batch does not park their inbound queue. Browser donors have a
+ * SERIAL onmessage handler and genuinely cannot, which is the constraint that
+ * forced 24 -> 8 in the first place. Anything whose version we cannot read gets
+ * the conservative value: an unverified donor is treated as a browser donor.
+ */
+function substepsForDonor(brain, ws) {
+  if (SUBSTEPS_NATIVE === SUBSTEPS) return SUBSTEPS;   // nothing to decide
+  try {
+    const c = brain && brain.clients && brain.clients.get(ws);
+    const v = ((c && c.donorAppVersion) || '').toString().trim();
+    const m = /^(\d+)\.(\d+)\.(\d+)/.exec(v);
+    if (!m) return SUBSTEPS;
+    // 0.3.12 = the release that added the donor's priority lane.
+    const ord = (+m[1]) * 1e6 + (+m[2]) * 1e3 + (+m[3]);
+    return ord >= 3012 ? SUBSTEPS_NATIVE : SUBSTEPS;
+  } catch { return SUBSTEPS; }
+}
 if (BRAIN_TICK_MS !== _TICK_MS_AUTO || SUBSTEPS !== _SUBSTEPS_AUTO) {
   console.log(`[Brain] THROUGHPUT OVERRIDE — tick=${BRAIN_TICK_MS}ms (auto ${_TICK_MS_AUTO}) · substeps=${SUBSTEPS} (auto ${_SUBSTEPS_AUTO}) · ${(1000 / BRAIN_TICK_MS * SUBSTEPS).toFixed(0)} brain-steps/sec vs ${(1000 / _TICK_MS_AUTO * _SUBSTEPS_AUTO).toFixed(0)} at defaults. Watch the dashboard: if it stops responding or the donor times out compute_batch, back these off.`);
 }
@@ -4648,7 +4736,7 @@ class ServerBrain {
             // 2/tick (request + response), eliminating most of the
             // protocol overhead.
             if (!this._gpuModeLogged) {
-              console.log(`[Brain] GPU BATCHED RUNNING — ${allClusters.length} clusters * ${SUBSTEPS} substeps in 1 message/tick`);
+              console.log(`[Brain] GPU BATCHED RUNNING — ${allClusters.length} clusters * ${this._substepsLastTick || SUBSTEPS} substeps in 1 message/tick`);
               this._gpuModeLogged = true;
               // T14.24 Session 95 — GPU-ready gate for curriculum kickoff.
               // Flip the flag the Curriculum._waitForGpuReady poll checks so
@@ -4782,7 +4870,21 @@ class ServerBrain {
               this._probeGateCellKey = null;
             }
 
-            const batchResult = await this._gpuBatch(SUBSTEPS, clusterParams);
+            // SUBSTEPS.1 — per-donor, resolved fresh each tick because the primary
+            // can change under us (failover / promotion) and a browser donor must
+            // never inherit a native donor's batch size.
+            const _substepsThisTick = substepsForDonor(this, this._gpuClient);
+            // Published on the instance so the metric sites below (firing-rate
+            // average, stepsPerSec) divide by the substep count THIS TICK
+            // actually used. Dividing by the module constant would misreport
+            // firing rate by 3x the moment the native tier engages — a lying
+            // instrument introduced by the fix for a lying instrument.
+            this._substepsLastTick = _substepsThisTick;
+            if (_substepsThisTick !== this._lastSubstepsLogged) {
+              this._lastSubstepsLogged = _substepsThisTick;
+              console.log(`[Brain] SUBSTEPS.1 — ${_substepsThisTick} brain-steps per donor round-trip (${_substepsThisTick === SUBSTEPS_NATIVE && SUBSTEPS_NATIVE !== SUBSTEPS ? 'NATIVE tier: this donor drains its socket during a batch — priority lane + dedicated compute thread' : 'conservative tier: browser donor, or a version we cannot read'}) → ${Math.round(1000 / BRAIN_TICK_MS * _substepsThisTick)} brain-steps/sec. Override with DREAM_SUBSTEPS.`);
+            }
+            const batchResult = await this._gpuBatch(_substepsThisTick, clusterParams);
 
             // T18.4.f — capture per-phase GPU timing from compute.html's
             // batch response so the dashboard can show WHERE step time
@@ -4816,7 +4918,7 @@ class ServerBrain {
                   this.clusters[name].spikeCount = entry.lastSpikeCount;
                   // Blend firing rate across the whole batch using the
                   // substep-average spike count, not just the last one.
-                  const avg = (entry.spikeCountTotal || 0) / SUBSTEPS;
+                  const avg = (entry.spikeCountTotal || 0) / (this._substepsLastTick || SUBSTEPS);
                   this.clusters[name].firingRate = this.clusters[name].firingRate * 0.95 + avg * 0.05;
                   this.totalSpikes += entry.lastSpikeCount;
                   // T18.4.c — capture GPU voltage-mean readback if
@@ -4881,7 +4983,7 @@ class ServerBrain {
       this._perfStats.stepTimeMs = +(stepEnd - stepStart).toFixed(3);
       if (this._stepTimeSamples.length > 0) {
         const avg = this._stepTimeSamples.reduce((a, b) => a + b, 0) / this._stepTimeSamples.length;
-        this._perfStats.stepsPerSec = avg > 0 ? Math.round(1000 / avg * SUBSTEPS) : 0;
+        this._perfStats.stepsPerSec = avg > 0 ? Math.round(1000 / avg * (this._substepsLastTick || SUBSTEPS)) : 0;
       }
 
       // Dreaming mode. iter18 per operator verbatim 2026-05-05: "wtf
