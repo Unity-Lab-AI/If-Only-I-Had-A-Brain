@@ -279,6 +279,37 @@ it, never by mapping a shape to a word.
 
 ---
 
+**SE.17 — OWNART: her own version, not a filtered photo (Gee 2026-08-20).** ⛔ **SUPERSEDES SE.16's "field render is the
+DEFAULT drawing".** Gee: *"NOT JUST APPLY LAYERS AND FILTERS to a pollinations image and calling it a draw... Unity needs
+to create new and her owen versions xcompletely unique learning from what shes seen and understands via dictionary and
+apperances of the word"* + *"when Unity is told to \"draw\" she should draw the topic,thiing,place, person, in context in
+the message from the user"*. What the audit found: `stylizeField(rec)` posterized the **perceived Pollinations
+reference** and `traceLineArt(rec)` edge-traced the same frame — both transforms OF a downloaded photo; the word "draw"
+matched `VISUAL` and routed to the **generator** so her hand was never involved; and the draw path used only the FIRST
+content word of the ask. The v3 arc:
+- **Shape schema, not pixels** (`_learnShapeSchema`) — a look reduces to ≤9 coarse 3×3 part cells
+  (`cx, cy, w, h, ang, density, weight`) + aspect + frame + a 4-entry colour family. ~1-2% of the reference's
+  information, so re-synthesis **cannot** be a copy. A second look refines the averages (`looks` counts how well she
+  knows a shape).
+- **She constructs the marks** (`_drawOwnCreation`) — her layout (1 centred / 2 side-by-side / 3 triangle), marks ∝ part
+  weight, arcs bowed by her hand this attempt and oriented by the part's learned angle, ink in her goth register blended
+  **≤60%** toward the learned colour family, a ground line + tufts for a named place, her trained glyph hand for the
+  label. **The reference field C never reaches the renderer.** Seeded from `words + arousal + valence + attempt#`:
+  different attempts, not a cache. Variation is STYLE — no wobble, no skill floor (the no-dumbing law stands).
+- **"Draw" means her hand** (`_detectDrawRequest`) — DRAW verbs (draw/sketch/doodle/illustrate/paint) route to OWNART;
+  GENERATOR words (picture/photo/image/render/generate) still route to Pollinations and stay honest about it.
+- **The whole message, in context** (`_drawPlanFromMessage`) — every drawable noun (POS-gated by her own dictionary) plus
+  the place from a prepositional tail, ≤3 subjects. *"draw a black cat on a gravestone"* = cat + gravestone place.
+- **`own` is the default style** for chat asks AND internal draw calls; `field`/`lineart` remain for SHOWING WHAT SHE
+  SAW and are never called a drawing. `DREAM_DRAW_STYLE` pins the old behaviour for comparison.
+- **Off the reply path** — a draw ask enqueues on the walk-lane drain (the same lane the chat pairs and the mind's-eye
+  preview ride); she answers in words immediately and the drawing publishes a beat later.
+- **NOLIMIT + FRESHEYES** — mind's-eye ceilings raised to the engine's integrity bound (`imagineFromState` 192→2048,
+  `sketch` 512→2048, plane default 128→512, reference 256²→512², `VM_CAP` 384→4096); and **all image state is wiped on a
+  fresh walk by PATTERN** (`visual-memory* / mindspace-memory* / minds-eye* / realized-art* / drawing-canvas*` + `.tmp`,
+  plus `pollinations-output/`) — the old literal list named `visual-memory.json`, which nothing writes, so the live
+  `visual-memory-v3.json` had been surviving every fresh walk. The Pollinations API key file is never touched.
+
 **SE.16 — DRAW-ENGINE v2: beautiful colored recreations, real imagination, dazzle labels (Gee 2026-07-15/16).**
 Live viewing of SE.15's output showed "multicolored yarn" (fragment spray + per-stroke random recolor) and
 white-pencil frames. The v2 arc, all deployed:

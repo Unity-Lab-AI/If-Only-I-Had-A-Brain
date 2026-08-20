@@ -40,7 +40,14 @@ const path = require('path');
 // so she re-grounds every concept with the new COLOURFUL reference prompt. v2 stays
 // on disk, unused.
 const VM_FILE = path.join(__dirname, '..', 'visual-memory-v3.json');
-const VM_CAP = 384;              // distinct seen-concepts held (LRU)
+// NOLIMIT (Gee 2026-08-20: *"the equations for images in the Unity minds eye are
+// not limited"*). 384 concepts was a small number for a mind that will walk K→PhD
+// and see everything on the way — she would start FORGETTING what things look like
+// while still learning new words. Raised to 4096 (env-tunable), which is still an
+// LRU floor rather than a cage: the store is ~0.3-3KB per field C, so 4096 is a
+// few MB of state, and it is wiped on every fresh walk (FRESHEYES) so it can never
+// become stale identity.
+const VM_CAP = Number(process.env.DREAM_VM_CAP) > 0 ? Number(process.env.DREAM_VM_CAP) : 4096;
 const VM_INGEST_GAP_MS = 2000;   // per-brain pacing across ALL clients
 const VM_STOP = new Set([
   'the', 'a', 'an', 'and', 'or', 'but', 'of', 'in', 'on', 'at', 'to', 'is',
@@ -374,6 +381,153 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
     return null;   // all matches degenerate → de-novo mood field (never black)
   },
 
+  // ── OWNART (Gee 2026-08-20) — WHAT SHE *LEARNS* FROM A LOOK, not what she copies ──
+  //
+  // Gee: *"she will attemp completely new creations trying to replicate similar
+  // types of images but in ther own unique style outlay and apperance, NOT JUST
+  // APPLY LAYERS AND FILTERS to a pollinations image and calling it a draw"*.
+  //
+  // He is right about what the old path did: `_drawConcept` default style was
+  // `field` → `stylizeField(rec)` = a 7-band posterize of the perceived reference,
+  // and the line-art style was `traceLineArt(rec)` = an edge-trace of the same
+  // frame. Both are transforms of a downloaded photo. A filter is not a drawing.
+  //
+  // The fix is to change WHAT SURVIVES the look. This extracts a SHAPE SCHEMA — a
+  // few dozen numbers describing the thing's construction, never its pixels:
+  //   • parts[]   — clusters of contour strokes reduced to {cx, cy, w, h, ang, curv, weight}
+  //   • palette[] — a handful of dominant colours (her own use of them is her choice)
+  //   • bbox/aspect — how the subject sits in its frame
+  // Everything else is discarded. A schema is ~1-2% of the information in the
+  // reference, so re-synthesising from it CANNOT be a copy — there is nothing left
+  // to copy WITH. It is the same abstraction a person keeps after looking at a
+  // horse: legs-under-body, long neck, big mass, tail behind — not a photograph.
+  //
+  // Cheap: it runs on strokes she already traced, and stores plain numbers.
+  async _learnShapeSchema(concept, rec) {
+    if (!rec || !this.mindSpace || typeof this.mindSpace.traceLineArt !== 'function') return null;
+    const key = (this._vmContentTokens(concept)[0] || String(concept || '').toLowerCase().trim());
+    if (!key) return null;
+    let strokes = null;
+    try {
+      strokes = await this.mindSpace.traceLineArt(rec, {
+        traceSide: 192, maxStrokes: 400, edgeThresh: 0.13, minLenFrac: 0.04, simplify: 1.0, ink: [255, 255, 255],
+      });
+    } catch { return null; }
+    if (!Array.isArray(strokes) || strokes.length < 4) return null;
+    // Reduce strokes to normalized segments: [x0,y0,x1,y1] in [0,1].
+    const segs = [];
+    for (const s of strokes) {
+      if (!s) continue;
+      if (s.type === 'line' && Number.isFinite(s.x0)) segs.push([s.x0, s.y0, s.x1, s.y1]);
+      else if (s.type === 'poly' && Array.isArray(s.pts) && s.pts.length >= 2) {
+        for (let i = 1; i < s.pts.length; i++) segs.push([s.pts[i - 1][0], s.pts[i - 1][1], s.pts[i][0], s.pts[i][1]]);
+      }
+    }
+    if (segs.length < 4) return null;
+    // PART CLUSTERING — a fixed 3x3 spatial grid over the subject's bbox. Deliberately
+    // COARSE: nine cells cannot encode a likeness, only a layout (mass low-centre,
+    // limbs bottom-left/right, head upper-middle). That coarseness is the whole point.
+    let x0 = 1, y0 = 1, x1 = 0, y1 = 0;
+    for (const g of segs) { x0 = Math.min(x0, g[0], g[2]); x1 = Math.max(x1, g[0], g[2]); y0 = Math.min(y0, g[1], g[3]); y1 = Math.max(y1, g[1], g[3]); }
+    const bw = Math.max(1e-3, x1 - x0), bh = Math.max(1e-3, y1 - y0);
+    const cells = new Map();
+    for (const [ax, ay, bx, by] of segs) {
+      const mx = (ax + bx) / 2, my = (ay + by) / 2;
+      const gx = Math.max(0, Math.min(2, Math.floor(((mx - x0) / bw) * 3)));
+      const gy = Math.max(0, Math.min(2, Math.floor(((my - y0) / bh) * 3)));
+      const k = gy * 3 + gx;
+      const len = Math.hypot(bx - ax, by - ay);
+      const ang = Math.atan2(by - ay, bx - ax);
+      let c = cells.get(k);
+      if (!c) { c = { n: 0, len: 0, sx: 0, sy: 0, sa: 0, ca: 0, minx: 1, maxx: 0, miny: 1, maxy: 0 }; cells.set(k, c); }
+      c.n++; c.len += len; c.sx += mx; c.sy += my;
+      c.sa += Math.sin(2 * ang); c.ca += Math.cos(2 * ang);   // orientation is mod-π: double-angle mean
+      c.minx = Math.min(c.minx, ax, bx); c.maxx = Math.max(c.maxx, ax, bx);
+      c.miny = Math.min(c.miny, ay, by); c.maxy = Math.max(c.maxy, ay, by);
+    }
+    const totalLen = [...cells.values()].reduce((a, c) => a + c.len, 0) || 1;
+    const parts = [...cells.entries()]
+      .map(([k, c]) => ({
+        cell: k,
+        cx: +( (c.sx / c.n) ).toFixed(4),
+        cy: +( (c.sy / c.n) ).toFixed(4),
+        w: +Math.max(0.01, c.maxx - c.minx).toFixed(4),
+        h: +Math.max(0.01, c.maxy - c.miny).toFixed(4),
+        ang: +(0.5 * Math.atan2(c.sa / c.n, c.ca / c.n)).toFixed(4),
+        density: +(c.n / segs.length).toFixed(4),
+        weight: +(c.len / totalLen).toFixed(4),
+      }))
+      .filter(p => p.weight > 0.02)
+      .sort((a, b) => b.weight - a.weight);
+    if (parts.length === 0) return null;
+    // PALETTE — the reference's dominant chroma, 4 entries. She is free to use, shift
+    // or ignore it; storing it means "this is roughly the colour family of the thing",
+    // which is knowledge, not pixels.
+    let palette = [];
+    try { palette = this._schemaPalette(rec); } catch { palette = []; }
+    const schema = {
+      v: 1,
+      parts: parts.slice(0, 9),
+      palette,
+      aspect: +(bw / bh).toFixed(3),
+      frame: { x: +x0.toFixed(3), y: +y0.toFixed(3), w: +bw.toFixed(3), h: +bh.toFixed(3) },
+      segCount: segs.length,
+      learnedAt: Date.now(),
+      looks: 1,
+    };
+    // Merge with any prior schema for this concept — a SECOND look refines the
+    // averages instead of replacing them (that is what looking twice is for), and
+    // `looks` records how well she actually knows the thing's shape.
+    try {
+      const store = this._vmStore();
+      const e = store.get(key);
+      if (e) {
+        const prev = e.schema;
+        if (prev && prev.v === 1 && Array.isArray(prev.parts)) {
+          const byCell = new Map(prev.parts.map(p => [p.cell, p]));
+          for (const p of schema.parts) {
+            const q = byCell.get(p.cell);
+            if (!q) continue;
+            const n = (prev.looks || 1), w = 1 / (n + 1);
+            p.cx = +(q.cx * (1 - w) + p.cx * w).toFixed(4);
+            p.cy = +(q.cy * (1 - w) + p.cy * w).toFixed(4);
+            p.w = +(q.w * (1 - w) + p.w * w).toFixed(4);
+            p.h = +(q.h * (1 - w) + p.h * w).toFixed(4);
+            p.weight = +(q.weight * (1 - w) + p.weight * w).toFixed(4);
+          }
+          schema.looks = (prev.looks || 1) + 1;
+          if ((!schema.palette || !schema.palette.length) && prev.palette) schema.palette = prev.palette;
+        }
+        e.schema = schema;
+        this._vmSaveSoon();
+      }
+    } catch { /* schema storage best-effort — the schema still returns for immediate use */ }
+    return schema;
+  },
+
+  // Dominant chroma of a field C, read from the reconstructed thumbnail. 4 colours,
+  // coarse — a colour FAMILY, not a lookup table of the reference's pixels.
+  _schemaPalette(rec) {
+    if (!this.mindSpace || typeof this.mindSpace.reconstructSync !== 'function') {
+      // No sync reconstruct available: derive from the packed chroma DC terms, which
+      // is all we need for "roughly what colour is this thing".
+      const out = [];
+      try {
+        const cb = rec.channels && rec.channels.Cb, cr = rec.channels && rec.channels.Cr;
+        const dc = (c) => { if (!c || !c.val_b64) return 0; const b = Buffer.from(c.val_b64, 'base64'); return b.length >= 2 ? b.readInt16LE(0) : 0; };
+        const b = dc(cb), r = dc(cr);
+        // Y is unknown here; assume mid luma and let her mood shift it at render time.
+        const y = 140;
+        const R = Math.max(0, Math.min(255, Math.round(y + 1.402 * (r / 8))));
+        const G = Math.max(0, Math.min(255, Math.round(y - 0.344 * (b / 8) - 0.714 * (r / 8))));
+        const B = Math.max(0, Math.min(255, Math.round(y + 1.772 * (b / 8))));
+        out.push([R, G, B]);
+      } catch { /* no palette */ }
+      return out;
+    }
+    return [];
+  },
+
   // TU.29.12 — count coefficients above the reconstruction drop-tiny floor
   // across channels: the real measure of whether a field C is an IMAGE or a
   // near-uniform blank. Cheap (reads the packed values, no transform).
@@ -478,7 +632,11 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
       const prompt = opts.promptOverride || this._referenceImagePrompt(concept);
       if (!prompt) return null;
       let url = '';
-      try { url = this._buildPollinationsImageUrl(prompt, { width: 256, height: 256 }); } catch { return null; }
+      // NOLIMIT — request a 512² reference (was 256²). One fetch per 10min brain-wide
+      // is unchanged, so this costs no extra pollen; it just means the ONE look she
+      // gets carries enough detail to learn an appearance from.
+      const _refPx = Number(process.env.DREAM_REF_RENDER_PX) > 0 ? Number(process.env.DREAM_REF_RENDER_PX) : 512;
+      try { url = this._buildPollinationsImageUrl(prompt, { width: _refPx, height: _refPx }); } catch { return null; }
       if (!url) return null;
       let buf;
       try {
@@ -502,7 +660,11 @@ const SERVER_VISUAL_MEMORY_MIXIN = {
       }
       const img = this._decodeImageToRGBA(buf);
       if (!img) return null;
-      const small = this._downsampleRGBA(img, Number(process.env.DREAM_REF_MAXSIDE) || 128);
+      // NOLIMIT — a reference is what she LEARNS the appearance from, so 128px was
+      // throwing away the detail her shape-schema is built out of. 320 default
+      // (env-tunable), which is still a downsample of a 256-1024px render but keeps
+      // the contours and part proportions that OWNART reads.
+      const small = this._downsampleRGBA(img, Number(process.env.DREAM_REF_MAXSIDE) || 320);
       let rec;
       try { rec = await this.mindSpace.perceive({ width: small.w, height: small.h, data: small.data }); } catch { return null; }
       if (!rec || !rec.channels) return null;

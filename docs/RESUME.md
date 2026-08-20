@@ -1,6 +1,32 @@
 # RESUME — Session Pickup Brief
 
-> ## ⭐⭐⭐ 2026-08-20 (latest) — VERIFY BEFORE BUILDING: the board is down to **20 open**, and the verification pass contradicted the board four times
+> ## ⭐⭐⭐ 2026-08-20 (latest) — OWNART: her "drawings" were filtered Pollinations photos, the word "draw" never reached her hand, and every field C had been surviving fresh walks
+>
+> **PICK-UP STATE.** Branch `feature/mindseye-own-art-0820` off main. **`CELLBOUND.F` is still the one blocking press**, and this batch now rides it too. Board 26 open / 81 closed.
+>
+> ### ⛔ THREE FINDINGS — all read out of the code before any code was written
+>
+> 1. **The default "drawing" was a filter.** `_drawConcept` style `field` → `stylizeField(rec)` = a 7-band posterize of the perceived Pollinations reference; style `lineart` → `traceLineArt(rec)` = an edge-trace of the same frame. Published as `canvas:draw:<word>`. Gee's accusation was exactly right.
+> 2. **"Draw me a cat" never reached her hand.** `VISUAL` matched the verb `draw`, so the ask routed to Pollinations and the returned PHOTO was presented as her drawing.
+> 3. **The context was thrown away.** The draw path used `_vmContentTokens(seed)[0]` — the FIRST content word — so *"draw a black cat on a gravestone"* drew "black".
+>
+> ### 🧹 FRESHEYES — image state was surviving every fresh walk
+>
+> `autoClearStaleState` named `visual-memory.json`. **Nothing writes that file.** The live store is `visual-memory-v3.json` (`VM_FILE`), so every field C she had ever perceived persisted across every fresh walk while the boot log "cleared" a 298KB July orphan. The comment above that list even records the last time this bug bit — then the filename grew a version and re-broke it. **So the wipe no longer names versions:** swept by PATTERN (`visual-memory* / mindspace-memory* / minds-eye* / realized-art* / drawing-canvas*` + `.tmp` siblings) plus `pollinations-output/`. Verified 10/10 store shapes caught, **11/11 precious files spared**, and **`.claude/pollinations-user.json` is never touched**.
+>
+> ### 🔓 NOLIMIT — and what deliberately STAYED
+>
+> `imagineFromState` ceiling **192 → MAX_LINE (2048)**, default plane **128 → 512**; `sketch` **512 → 2048**; reference downsample **128 → 320**, render **256² → 512²** (same one-look-per-10-min pollen budget); `VM_CAP` **384 → 4096**. All env-tunable. **`MAX_LINE` stays** (shader array bound with a CPU fallback = integrity, not a cage) and **the ProcessGovernor stays** — per Gee's own rule it is her conscience about spend, not a limit on capability.
+>
+> ### ✍ THE MECHANISM (this is the part to judge)
+>
+> A look now survives as a **SHAPE SCHEMA**: ≤9 coarse 3×3 part cells `{cx, cy, w, h, ang, density, weight}` + aspect + frame + a 4-entry colour family. **~1-2% of the reference's information — so a copy is impossible, the pixels are not in scope.** `_drawOwnCreation` then CONSTRUCTS: her layout (1 centred / 2 side-by-side / 3 triangle), marks ∝ part weight, each mark an arc bowed by her hand this attempt and oriented by the part's learned angle, ink blended **≤60%** toward the learned colour family, a ground line + tufts for a named place, her trained glyph hand for the label. Seeded from `words + arousal + valence + attempt#` → different ATTEMPTS, not a cache. **The reference's field C is never handed to the renderer.** `_detectDrawRequest` splits DRAW verbs (hers) from GENERATOR words (6/6 + 6/6), `_drawPlanFromMessage` reads every drawable noun (her own dictionary's POS check) plus the place from a prepositional tail. `own` is the default style everywhere; `field`/`lineart` survive only for SHOWING WHAT SHE SAW. Runs on the **walk lane**, so a reply is never held for it.
+>
+> ### ⏳ WHAT ONLY GEE CAN VERIFY (`OWNART.7`)
+>
+> Geometry, determinism, per-attempt variation, coordinate bounds, ink bounds and both classifiers are unit-tested; every module passes `node --check` + ESM + a rebuilt bundle. **Whether her marks READ as the thing is a judgement that needs eyes on the mind's eye.** Watch for `[OwnArt] ✍ HER OWN version of "<words>" — N marks she constructed, attempt #K. Learned from: <word>(N looks, P parts)` and a `canvas:own:<words>` frame. **If the likeness is too weak, the lever is schema resolution (3×3 → 4×4/5×5) and marks-per-part — NOT a return to filtering a photo.** Also open: `OWNART.8` — she abstracts a schema only when asked to draw; learning one at perception time would make her first drawing of a familiar thing better, but it puts a trace on the perception path and that cost gets measured before it ships.
+
+> ## ⭐⭐⭐ 2026-08-20 (prior) — VERIFY BEFORE BUILDING: the board is down to **20 open**, and the verification pass contradicted the board four times
 >
 > **PICK-UP STATE.** Branch `feature/verify-remaining-0820` off main (the two earlier branches are merged + cascaded). **`CELLBOUND.F` is STILL the one blocking press.** The box reads `85a01904` — behind ALL THREE of today's batches. **21 open / 73 closed.**
 >
