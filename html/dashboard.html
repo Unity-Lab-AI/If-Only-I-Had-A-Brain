@@ -2196,6 +2196,15 @@
         // F9 — show the donor's bind cap + the HONEST reason when it can't hold the
         // cortex matrices, instead of a mystery 0-Gn/s row.
         const bindGB = x.maxBindMB ? (x.maxBindMB / 1024).toFixed(1) + 'GB' : '';
+        // PRIMARYFLOOR — a card too small for PRIMARY takes NO matrices, ever,
+        // because the canonical upload only targets the primary. That donor then
+        // shows a healthy bind size, full cluster coverage and a real Gn/s rate
+        // while the walk never starts. An RTX 3090 (24,124MB) against a 25,619MB
+        // floor cost an afternoon exactly this way — short by 1.5GB, with every
+        // visible field reading fine. So the row states the verdict and the
+        // shortfall, in red, next to the bind size it disqualifies.
+        const floorCell = (!x.maxBindMB || x.primaryEligible !== false) ? ''
+          : ` · <span style="color:#ef4444;font-weight:600" title="TOO SMALL TO BE PRIMARY. The canonical weight upload only ever targets the PRIMARY donor, so this card will never receive the ${x.df7TotalMatrices || 17} matrices and the walk cannot start on it — it can only ever be a partial replica. Needs ${x.primaryFloorMB}MB to hold the full running brain, holds ${x.maxBindMB}MB. Give it ${x.primaryShortfallMB}MB more, or the brain has to shrink.">⛔ ${(x.primaryShortfallMB / 1024).toFixed(1)}GB SHORT of PRIMARY (needs ${(x.primaryFloorMB / 1024).toFixed(1)}GB)</span>`;
         // MIRRORID.5 — A RATE WITH NO FRESHNESS IS NOT A MEASUREMENT.
         // gneuronsPerSec is a PERSISTENT donor-side field: written only when a
         // batch completes, then kept forever. A card that stopped computing
@@ -2238,7 +2247,7 @@
         const gpu = x.type === 'donor'
           ? (x.bindIncapable
               ? `<span style="color:#ef4444">⚠ buffer too small for cortex (${bindGB})</span>`
-              : `${x.gpuName ? String(x.gpuName).slice(0, 18) : '?'}${rateCell}${mxCell}${clCell}${bindGB ? ' · bind ' + bindGB : ''}`)
+              : `${x.gpuName ? String(x.gpuName).slice(0, 18) : '?'}${rateCell}${mxCell}${clCell}${bindGB ? ' · bind ' + bindGB : ''}${floorCell}`)
           : '';
         // DONORKILL.2 — the ★ carries WHAT BREAKS IF YOU KILL THIS ONE.
         // Nothing outside the brain knew which GPU was load-bearing: the pod
