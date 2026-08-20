@@ -35603,3 +35603,42 @@ Re-tested against the real measured numbers (630ms batch, 54 substeps, 20.18 Gn/
 **Deployment:** all three are server-side and land on the next **Update & SAVESTART** — weights kept, walk resumes, no fresh walk needed.
 
 **Board: 0 open, 171 closed.**
+
+---
+
+## 2026-08-20 — DOC SWEEP (full stack): and it found a live public-facing bug nobody had noticed
+
+> Gee (verbatim): *"full doc push, readmes, workflow files, guides, equations pages, laymens,tool tips  all of them and any i did mention and forgot to mention, making sure all information is upto date with the stack in totality keeping true to the formate and layout of the documents there in"*
+
+**15 files. Every change made in the file's own existing format** — banner pattern, table row, section style — never a prose block dropped on top (`feedback_match_doc_format`).
+
+### THE FIND: `html/docs.html` was offering EIGHT BROKEN LINKS, live
+
+The page renders `../docs/<NAME>.md` from a whitelist in its own source. But `deploy.yml` excluded **`docs`** *and* **`*.md`**, so **none of those files were ever deployed** — and public nginx answers an unknown route with the SPA shell at HTTP 200. Every document the page offered was fetching **53,968 bytes of index HTML instead of the 348,458-byte document.**
+
+`curl` said `HTTP 200`. The BODY said `<!DOCTYPE html>`. That is the *"a 200-with-HTML is a lie"* trap (`reference_public_nginx_route_whitelist`) — and I only caught it because I went to check whether the live copy was FRESH, not whether it existed.
+
+**Fixed by deploying exactly the page's own whitelist and nothing more** — 7 docs + `README.md`, verified programmatically against `DOC_PATHS`: **none missing, none extra.** Includes must precede excludes (rsync: first match wins) and `--include='docs/'` is mandatory or rsync never descends far enough to see the file rules. Internal docs stay excluded on purpose — a whitelist, not a policy change — with a comment recording that **adding a doc to `DOC_PATHS` now requires adding it here too, or it silently 200s with HTML again.** Applied to **both** workflows, since `PAGESTALE` gave `donor-release.yml` its own copy; both re-parsed to **exactly 30 args with matching source/dest**, proving the filters are still identical.
+
+### Scale, corrected everywhere it is load-bearing
+
+`README.md` (the cluster-share breakdown — cortex/cerebellum ≈82.2M, subcortical ≈49.3M — and the headline count), `html/unity-guide.html` (the layman's page, 5 figures), `html/brain-equations.html` (5), and `Grant/04-THE-PITCH.md`, which was claiming **306,458,816 to funders**.
+
+**`docs/THEORY-PAPER.md` deliberately NOT rewritten.** Its numbers sit under *"System state at writing: 2026-08-18"* — a measurement with a date on it, and rewriting that falsifies the record. It got an **amendment** instead: the current count, why it changed (two sizing bugs, not a re-architecture), that **every equation and claim is unaffected because apportionment is by biological share**, and the scaling factor. Plus the methodological note that `TRAJECTORY-CAPTURE` forbids interpolating across a geometry change — which is exactly why the arXiv submission needs one unbroken walk.
+
+### Drift fixed in place, per the PUSH LAW's own rule
+
+- **`server/brain-server/README.md`** — claimed a 9,555-line `brain-server.js`; it is **10,945**. Annotated rather than silently swapped, because the growth is meaningful: the split moved concerns out while the remaining file absorbed the VRAM/tier allocator, the substep controller, the upload watchdogs and the geometry-pin logic.
+- **`js/brain/cluster/README.md`** — claimed 6,374 lines; it is **4,728**. It **shrank by ~1,650** — the split doing its job — so the baseline is kept to make the reduction legible.
+- **`deploy/README.md`** — still said *"Nothing here has been applied to any box."* **False for months.** Now leads with the fact that it is live and dashboard-driven, plus the two things that can destroy a deploy: the `--delete` exclude list is load-bearing (six runtime files were being wiped until `STATEWIPE`), and a `#` comment inside that backslash-continued `rsync` would comment out the source and destination.
+- **`donor-app/README.md`** — said **"Status: M0 (scaffold)"** while shipping **v0.3.25** with the WS loop, a CUDA backend, sparse frames, mind-space ops and a GUI. Rewritten to current reality, with the two v0.3.25 changes a donor operator must know (`--utilization` defaults to `all`; one `gpu_register` per physical card) and the one thing flags cannot fix — a card under `runningFloorMB` never becomes PRIMARY and therefore **receives no matrices at all**.
+
+### `docs/PUSH_WORKFLOW.md` — the day's most expensive lesson, in the doc that governs pushing
+
+It had **zero** mention of the trap that cost two fresh walks. Now a LAW at the top: **never push with suppressed output**, the full mechanism (the CI commits to Forgejo only → local `main` diverges → every later push is refused → GitHub keeps accepting → `self-update.sh` clones Forgejo → the box redeploys stale code), the `git ls-remote` verification recipe, the fetch-and-merge step to expect after any `donor-v*` tag, and the corollary that caught a second bug: **a failed shell line means later `&&` commands never ran**, which is how edits landed directly on `main` three times in one session.
+
+### Also updated
+
+`docs/ADMIN-CONTROLS.md` — **the eight env knobs added today were all undocumented**; each now has a row with its default and what it actually costs. `docs/ARCHITECTURE.md` — new banner carrying the scale, both sizing bugs, the coordinator ceiling ladder, donor v0.3.25's two changes, PRIMARY-by-VRAM, adaptive substeps and the new instruments. `docs/NOW.md` — current-state banner leading with the three failures rather than the wins.
+
+**Board: 0 open, 171 closed.**

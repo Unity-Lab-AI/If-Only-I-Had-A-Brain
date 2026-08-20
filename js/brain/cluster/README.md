@@ -1,6 +1,8 @@
 # `js/brain/cluster/` — per-module split of cluster.js
 
-Per the per-module split directive — break the 6,374-line cluster.js god-class into focused modules attached to `NeuronCluster.prototype` via `Object.assign` mixin pattern (same approach as `js/brain/curriculum/` per-grade split).
+Per the per-module split directive — break the (then) 6,374-line cluster.js god-class into focused modules attached to `NeuronCluster.prototype`
+<!-- Drift check 2026-08-20: cluster.js is now 4,728 lines — it SHRANK by ~1,650, which is the split doing exactly what it was for. The 6,374 above is the pre-split baseline and is kept so the reduction stays legible. -->
+ via `Object.assign` mixin pattern (same approach as `js/brain/curriculum/` per-grade split).
 
 ## Target layout (per-module files)
 

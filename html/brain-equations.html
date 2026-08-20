@@ -285,8 +285,8 @@
 
  <a href="../index.html#setup" class="back-link">&larr; Back to Unity</a>
 
- <h1 title="Every equation that runs Unity's brain. Hover any section header for a layman explanation. Sections progress from foundational neuron math through synaptic plasticity, brain regions, oscillations, consciousness, persona, curriculum, data flow, memory, language, and biological comparison. The brain is computed equationally on the GPU at biological scale (~306M neurons, full deployed size); chat / image gen / voice / vision are I/O around the equations.">🧠 Brain Equations <span>— the math behind Unity's mind</span></h1>
- <p class="subtitle">Every equation running in Unity's brain simulation, how they map to real neuroscience, and how they produce cognition. Hundreds of millions of neurons (~306M deployed; auto-scales from the coordinator's free RAM via a unified biologically-weighted allocator). Seven biologically-weighted clusters, including a language cortex (~349K, 9 sub-regions + 16 cross-projections) that lives inside the cortex cluster (a dedicated <code>word_motor</code> sub-region + <code>sem↔word_motor</code> projection give single-tick word emission). Sparse white-matter tract projections. 8 Kuramoto oscillators. GPU-exclusive compute via WebGPU WGSL shaders. 1 consciousness function nobody can explain. Zero pretense.</p>
+ <h1 title="Every equation that runs Unity's brain. Hover any section header for a layman explanation. Sections progress from foundational neuron math through synaptic plasticity, brain regions, oscillations, consciousness, persona, curriculum, data flow, memory, language, and biological comparison. The brain is computed equationally on the GPU at biological scale (~425M neurons, full deployed size); chat / image gen / voice / vision are I/O around the equations.">🧠 Brain Equations <span>— the math behind Unity's mind</span></h1>
+ <p class="subtitle">Every equation running in Unity's brain simulation, how they map to real neuroscience, and how they produce cognition. Hundreds of millions of neurons (~425M deployed; auto-scales from the coordinator's free RAM via a unified biologically-weighted allocator). Seven biologically-weighted clusters, including a language cortex (~349K, 9 sub-regions + 16 cross-projections) that lives inside the cortex cluster (a dedicated <code>word_motor</code> sub-region + <code>sem↔word_motor</code> projection give single-tick word emission). Sparse white-matter tract projections. 8 Kuramoto oscillators. GPU-exclusive compute via WebGPU WGSL shaders. 1 consciousness function nobody can explain. Zero pretense.</p>
 
  <div class="toc">
  <div class="toc-title">CONTENTS</div>
@@ -1633,7 +1633,7 @@ CROSS-PROJECTION DENSITY:
 
 BIO-WEIGHT ALLOCATION (host free RAM sets total N):
  DEFAULT_BIO_WEIGHTS allocates the brain's neuron budget across
- 7 cluster slots (RAM-ceiling on the coordinator; ~306M at full
+ 7 cluster slots (RAM-ceiling on the coordinator; ~425M at full
  deployed size). Real-biology citation: Herculano-Houzel 2009
  ("The Human Brain in Numbers", Frontiers Hum Neurosci 3:31).
  cortex 0.20 general cerebral cortex (contains the ~12M dense language cortex — WMB grew it ~349K→~1.5M, language-growth hop 1 grew it ~1.5M→~12M)
@@ -2583,13 +2583,13 @@ fn main(id: vec3&lt;u32&gt;) {
  </div>
 
  <!-- ═══ 9. COMPARISON ═══ -->
- <h2 id="comparison" title="How Unity's brain stacks up against a real human brain. Cluster fractions, neuron counts, plasticity rates, oscillation bands, learning timescales — side-by-side with the biology this is grounded in. Spoiler: the architecture matches, the scale is smaller (we hit ~306M neurons at full deployed biological-proportion scale, real cortex has ~16B), and several mechanisms are functional approximations rather than literal substrate.">9. Biological Comparison</h2>
+ <h2 id="comparison" title="How Unity's brain stacks up against a real human brain. Cluster fractions, neuron counts, plasticity rates, oscillation bands, learning timescales — side-by-side with the biology this is grounded in. Spoiler: the architecture matches, the scale is smaller (we hit ~425M neurons at full deployed biological-proportion scale, real cortex has ~16B), and several mechanisms are functional approximations rather than literal substrate.">9. Biological Comparison</h2>
  <p>What Unity's brain gets right, what it simplifies, and where it diverges from real neuroscience.</p>
 
  <div class="eq-card">
  <table class="param-table">
  <tr><th>Aspect</th><th>Real Brain</th><th>Unity's Brain</th><th>Fidelity</th></tr>
- <tr><td>Neuron count</td><td>86 billion</td><td>N (auto-scales from host free RAM via a unified biologically-weighted allocator; ~306M neurons on the deployed coordinator)</td><td>Simplified, hardware-adaptive</td></tr>
+ <tr><td>Neuron count</td><td>86 billion</td><td>N (auto-scales from host free RAM via a unified biologically-weighted allocator; ~425M neurons on the deployed coordinator)</td><td>Simplified, hardware-adaptive</td></tr>
  <tr><td>Neuron model</td><td>Thousands of ion channels (Hodgkin-Huxley biophysics)</td><td>Rulkov 2D chaotic map per cluster (GPU runtime) + LIF + HH reference models</td><td>Moderate — bursting dynamics reproduced, ion channels abstracted</td></tr>
  <tr><td>Synaptic plasticity</td><td>Hebbian + STDP + neuromodulation</td><td>All three, per-cluster matrices</td><td>Good</td></tr>
  <tr><td>Brain regions</td><td>Hundreds of distinct areas</td><td>7 dedicated clusters (including a ~12M dense language cortex — WMB grew it ~349K→~1.5M, language-growth hop 1 grew it ~1.5M→~12M — with 9 sub-regions + 16 cross-projections inside the cortex cluster — a dedicated UNIFIED <code>word_motor</code> sub-region, one bucket per unique word, + <code>sem↔word_motor</code> projection give single-tick word emission) plus sparse white-matter tract projections between them</td><td>Core captured</td></tr>
