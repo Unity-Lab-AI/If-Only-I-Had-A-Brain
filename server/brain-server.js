@@ -1962,15 +1962,41 @@ class ServerBrain {
       // (CORTEX_TARGET_FANOUT / size) keeps actual density much smaller.
       const INTRA_CONNECTIVITY_CAP = 0.05;
       const CROSS_DENSITY_CAP = 0.005;          // cluster.js cross-projection clamp
+      // SCALEAUDIT.1 (2026-08-20) — PARITY RESTORED. This table's own contract is
+      // "Fractions match js/brain/cluster.js `this.regions`… Must match cluster.js
+      // values exactly", and it had DRIFTED: `sem` 0.167 (real 0.125 — semStart
+      // 0.750 → semEnd 0.875), `fineType` 0.050 (real 0.042), `motor` 0.033 (real
+      // 0.023), and `word_motor` (0.940 → 1.000 = 0.060) was ABSENT along with its
+      // two cross-projections, so the estimator did not know about two of the
+      // sixteen matrices the cluster actually allocates.
+      //
+      // Verified against the LIVE box rather than by reading alone: at 12M the
+      // snapshot reports `cortex_phon_to_sem rows=1,500,000` (= 0.125),
+      // `cortex_sem_to_fineType rows=504,000` (= 0.042), `cortex_sem_to_motor
+      // rows=276,000` (= 0.023) and `cortex_sem_to_word_motor rows=720,000`
+      // (= 0.060) — every corrected value confirmed by a real row count.
+      //
+      // MEASURED IMPACT, stated plainly so this is not sold as a bug that
+      // mattered: **+0.7%** at both 12M and 20M (4.558GB → 4.589GB). The
+      // intra-synapse matrix is ~96% of the footprint, so cross-projection
+      // fraction errors barely move the total, and the WMB floor decision still
+      // clears its 6GB ceiling either way. The reason to fix it is that a table
+      // claiming exact parity must have it — the next geometry change might not be
+      // so forgiving.
+      //
+      // gustatory (0.020), somatosensory (0.030) and free (0.200) are still
+      // omitted ON PURPOSE: they carry no cross-projection edges, and this table
+      // is only read for cross-pair sizing. (The old comment's "free (0.250)" was
+      // also stale — it is 0.200 since the SE.6 taste/touch carve.)
       const FRACTIONS = {
-        auditory: 0.083,
-        visual:   0.167,
-        letter:   0.050,
-        phon:     0.200,
-        sem:      0.167,
-        fineType: 0.050,
-        motor:    0.033,
-        // `free` (0.250) + pad have no cross-projection edges — skipped.
+        auditory:   0.083,   // 0      → 0.083
+        visual:     0.167,   // 0.083  → 0.250
+        letter:     0.050,   // 0.500  → 0.550
+        phon:       0.200,   // 0.550  → 0.750
+        sem:        0.125,   // 0.750  → 0.875
+        fineType:   0.042,   // 0.875  → 0.917
+        motor:      0.023,   // 0.917  → 0.940
+        word_motor: 0.060,   // 0.940  → 1.000  (unified band, one bucket/unique word)
       };
       const CROSS_PAIRS = [
         ['visual', 'letter'], ['letter', 'visual'],
@@ -1980,6 +2006,11 @@ class ServerBrain {
         ['sem', 'motor'],     ['motor', 'sem'],
         ['motor', 'letter'],  ['letter', 'motor'],
         ['auditory', 'phon'], ['phon', 'auditory'],
+        // SCALEAUDIT.1 — the two the estimator never knew about. Confirmed live:
+        // `cortex_sem_to_word_motor` (720,000 rows) + `cortex_word_motor_to_sem`
+        // (1,500,000 rows). 16 cross-projections + the intra matrix = the 17 the
+        // box reports, so the estimator now covers the whole allocation.
+        ['sem', 'word_motor'], ['word_motor', 'sem'],
       ];
       function estimateLangCortexVramBytes(trial) {
         if (trial <= 0) return 0;
@@ -2146,9 +2177,37 @@ class ServerBrain {
           console.log(`[Brain] LANGRAM.6 — geometry pin CONFIRMED: ${_pinSize.toLocaleString()} neurons, matching this boot's derived size. The vocabulary ceiling cannot flip run to run.`);
         }
       }
+      // ⛔ NEVER PIN A DEGRADED COIN-FLIP OUTCOME (2026-08-20, caught before the
+      // first press that would have run this code). The pin is written from THIS
+      // boot's derived size — so the very first boot after this ships, if it
+      // happens to lose the `os.freemem()` coin flip, would pin the SMALL
+      // geometry and make the degradation permanent on every later boot. That is
+      // strictly worse than having no pin at all: the flip-flop at least
+      // recovered on a quiet boot.
+      //
+      // So a FIRST pin is only taken when the derived size clears the WMB target
+      // (the size the weights are meant to be). Below it, the pin is WITHHELD and
+      // says why; a later boot that clears the target takes it, and from then on
+      // the pin protects the good geometry. An explicit act (DREAM_LANG_CORTEX /
+      // DREAM_LANG_UNPIN) always writes, because that is Gee deciding rather than
+      // free RAM deciding.
+      const _pinWouldDegrade = !_pinnedGeom
+        && !_explicitResize
+        && !_unpinRequested
+        && _weightsOnDisk
+        && langCortexSize < WORD_MOTOR_TARGET_LANG_CORTEX;
+      if (_pinWouldDegrade) {
+        console.warn(`[Brain] ⛔ LANGRAM.6 — PIN WITHHELD. This boot derived ${langCortexSize.toLocaleString()} neurons, BELOW the ${WORD_MOTOR_TARGET_LANG_CORTEX.toLocaleString()} target, and there is no existing pin to hold. Writing one now would make this boot's RAM coin-flip PERMANENT (word_motor ${(Math.floor(langCortexSize) - Math.floor(langCortexSize * 0.940)).toLocaleString()} emittable buckets vs ${(Math.floor(WORD_MOTOR_TARGET_LANG_CORTEX) - Math.floor(WORD_MOTOR_TARGET_LANG_CORTEX * 0.940)).toLocaleString()} at target). No pin is written; a boot that clears the target takes it. To pin THIS size on purpose: DREAM_LANG_CORTEX=${langCortexSize}.`);
+      }
       // Write / refresh the pin. Explicit acts repin loudly; a fresh box pins on
       // its first boot so the SECOND boot is already protected.
       try {
+        if (_pinWouldDegrade) {
+          // Withheld above, with its own reason line. Falling through to the write
+          // would be the bug this guard exists to prevent, and routing it through
+          // the catch below would mislabel a deliberate decision as an I/O failure.
+          throw { _withheld: true };
+        }
         const _pinPayload = {
           langCortexSize,
           writtenAt: new Date().toISOString(),
@@ -2169,7 +2228,9 @@ class ServerBrain {
           console.log(`[Brain] LANGRAM.6 — geometry pinned at ${langCortexSize.toLocaleString()} neurons (${_pinPayload.reason}) → server/lang-geometry.json. Later boots hold this size instead of re-deriving it from free RAM.`);
         }
       } catch (e) {
-        console.warn(`[Brain] LANGRAM.6 — could not write lang-geometry.json (${e.message}); the geometry is UNPINNED this boot and can still flip on the next one.`);
+        if (!(e && e._withheld)) {
+          console.warn(`[Brain] LANGRAM.6 — could not write lang-geometry.json (${e && e.message ? e.message : e}); the geometry is UNPINNED this boot and can still flip on the next one.`);
+        }
       }
       const langMemGb = (langCortexSize * LANG_CLUSTER_BYTES_PER_NEURON / 1e9).toFixed(2);
       const heapLimitGb = (v8BasedMax === Infinity ? 'unlimited' : ((v8BasedMax * LANG_CLUSTER_BYTES_PER_NEURON) / 1e9).toFixed(1) + 'GB');
