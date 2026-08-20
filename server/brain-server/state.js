@@ -1199,6 +1199,48 @@ const SERVER_STATE_MIXIN = {
             // F9 — WebGPU storage-binding cap + capability flag, so the dashboard can
             // show "GPU buffer too small for cortex matrix" instead of a mystery 0 Gn/s.
             maxBindMB: isGPU ? (Number(c.maxBindMB || (tele && tele.maxBindMB)) || null) : null,
+            // ── PRIMARYFLOOR (2026-08-20) — "NEEDS X, CARD HAS Y", ON THE ROW ──
+            //
+            // Cost of not having this: a whole afternoon. An RTX 3090 was put in
+            // as the donor, showed `bind 23.6GB`, `7/7 cl`, healthy telemetry and
+            // a 30.1 Gn/s rate — and the walk silently never started, because
+            // `brain-server.js:9361` refuses PRIMARY to any donor that cannot
+            // hold the FULL running brain, and the matrices only ever upload to
+            // the PRIMARY. The card joined as a replica, no primary existed, and
+            // every visible field said fine. The brain KNEW the answer the whole
+            // time and logged it exactly once, at register:
+            //   "donor VRAM cannot hold the FULL running brain (needs ~25619MB)
+            //    — NOT eligible for PRIMARY; joins as a (partial) replica."
+            // 25,619 needed vs 24,124 held — short by 1.5GB.
+            //
+            // `runningFloorMB` was already published, but buried in the COMMUNITY
+            // block, nowhere near the donor whose VRAM it disqualifies. A number
+            // is only an instrument when it sits next to the thing it judges. So
+            // the floor, the verdict and the SHORTFALL travel with the row —
+            // `primaryShortfallMB` is the one that turns "why is nothing
+            // happening" into "buy 1.5GB more card".
+            //
+            // Mirrors the server's own arithmetic (donatedMB cap when set, else
+            // full card) so the row cannot disagree with the decision it reports.
+            primaryFloorMB: isGPU ? (Number(this._runningFloorMB) || null) : null,
+            primaryEligible: !isGPU ? null : (() => {
+              const _floor = Number(this._runningFloorMB) || 0;
+              const _vram = Number(c.gpuVramMB) || 0;
+              const _held = (Number(c.donatedMB) > 0)
+                ? (_vram > 0 ? Math.min(Number(c.donatedMB), _vram) : Number(c.donatedMB))
+                : _vram;
+              if (!(_floor > 0) || !(_held > 0)) return null;   // unknown, not "eligible"
+              return _held >= _floor;
+            })(),
+            primaryShortfallMB: !isGPU ? null : (() => {
+              const _floor = Number(this._runningFloorMB) || 0;
+              const _vram = Number(c.gpuVramMB) || 0;
+              const _held = (Number(c.donatedMB) > 0)
+                ? (_vram > 0 ? Math.min(Number(c.donatedMB), _vram) : Number(c.donatedMB))
+                : _vram;
+              if (!(_floor > 0) || !(_held > 0) || _held >= _floor) return null;
+              return _floor - _held;
+            })(),
             bindIncapable: isGPU ? !!c._bindIncapable : false,
             // DF.7 SYNCGATE — has this donor's replica weight-sync PROVENLY completed?
             // A non-primary donor is only admitted to the work pool (and only allowed to
