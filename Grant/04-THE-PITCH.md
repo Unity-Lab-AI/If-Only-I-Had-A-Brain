@@ -22,7 +22,7 @@ Contemporary conversational AI is a language model wrapped in a persona. This pr
 
 Every equation is drawn from primary literature and implemented at a scale where it can do biological work:
 
-- **Neurons:** Rulkov's two-dimensional map (Phys. Rev. E 65:041922, 2002) — spiking-bursting dynamics with chaos available, at ~6 arithmetic operations per neuron per tick, which is what makes 306M tractable
+- **Neurons:** Rulkov's two-dimensional map (Phys. Rev. E 65:041922, 2002) — spiking-bursting dynamics with chaos available, at ~6 arithmetic operations per neuron per tick, which is what makes 425M tractable
 - **Plasticity:** Oja's self-normalizing rule (J. Math. Biol. 15:267, 1982) as the primary intra-cortical rule, with explicit anti-Hebbian depression, BCM sliding-threshold homeostasis, and reward-modulated three-factor learning
 - **Memory:** Hopfield attractor recall (PNAS 79:2554, 1982) over a four-tier architecture built on complementary learning systems theory (McClelland, McNaughton & O'Reilly, Psych. Review 102:419, 1995), with dream-cycle consolidation transferring episodes into cortical schemas via Hebbian replay
 - **Connectivity:** Watts–Strogatz small-world topology (Nature 393:440, 1998), Mountcastle microcolumns, six-layer lamination with a per-layer plasticity gradient, and deterministic hub selection
@@ -107,7 +107,7 @@ Templeton's audience is comfortable with metaphysical seriousness — but be rig
 
 | Claim | Evidence |
 |---|---|
-| It runs at biological scale | 306,458,816 neurons, live and publicly observable |
+| It runs at biological scale | 425,436,550 neurons, live and publicly observable |
 | It actually learns | **Two curriculum cells passed** (ELA-K, Math-K); now walking Science-K |
 | It has no language model | Architecture is open; the boundary rule is documented and enforced as project law |
 | The equations are real | 35 primary citations in `docs/THEORY-PAPER.md` |

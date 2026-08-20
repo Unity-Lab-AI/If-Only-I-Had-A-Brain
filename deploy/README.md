@@ -1,8 +1,14 @@
-# Unity brain — pre-alpha deploy hand-off (PA.4.7)
+# Unity brain — deploy hand-off (PA.4.7, amended 2026-08-20)
 
+> ⚠ **THIS IS LIVE NOW. The line below said "Nothing here has been applied to any box" — that has been false for months.** The brain runs on the lab box and is driven **entirely from the dashboard buttons** (Update & Savestart / Update & Fresh Walk / Reset), with `deploy/self-update.sh` doing the git-archive overlay + `systemctl restart`. Treat everything below as a description of the installed system, not a proposal.
+>
+> **Two things about this directory you must know before touching a deploy:**
+>
+> 1. **`self-update.sh`'s `--delete` exclude list is load-bearing.** It overlays code with `rsync -a --delete`, so **anything the server writes under `__dirname` that is NOT on that list gets destroyed on every Update.** Six files were being wiped that way until 2026-08-20 — including `lang-geometry.json`, the language-cortex geometry pin, which is why the pin protections were dead on arrival and the vocabulary ceiling could silently re-derive on every deploy. **Rule: anything the server writes under `__dirname` belongs in that list, or a deploy eats it.**
+> 2. **A `#` comment inside that command would break the deploy.** The `rsync` invocation is one backslash-continued command; a comment line inside it makes the shell comment out every remaining `--exclude` **plus the source and destination**. Comments go ABOVE the command — there is a NOTE FOR EDITORS in the file saying so. Verify any edit with `bash -n` and by checking the arg count.
+>
 > Operator deploy steps. These artifacts make the deploy a near-one-command
-> install. Nothing here has been applied to any box — they're config files to
-> review + install.
+> install.
 
 ## Topology
 

@@ -195,11 +195,26 @@ jobs:
           mkdir -p ~/.ssh && chmod 700 ~/.ssh
           printf '%s' "$KEY" | base64 -d > ~/.ssh/deploy && chmod 600 ~/.ssh/deploy
           REPO_LC="$(echo "${{ github.event.repository.name }}" | tr 'A-Z' 'a-z')"
+          # PUBDOCS — byte-identical to deploy.yml's filter, including the public-doc
+          # whitelist. html/docs.html renders `../docs/<NAME>.md` from a list in its
+          # own source, and excluding docs/ meant all eight links fetched the SPA
+          # shell at HTTP 200 instead of the document. Includes MUST precede the
+          # excludes (rsync: first match wins) and `--include='docs/'` is required or
+          # rsync never descends far enough to see the file rules.
           rsync -az --delete \
+            --include='docs/' \
+            --include='docs/ARCHITECTURE.md' \
+            --include='docs/EQUATIONS.md' \
+            --include='docs/ROADMAP.md' \
+            --include='docs/SKILL_TREE.md' \
+            --include='docs/SENSORY.md' \
+            --include='docs/WEBSOCKET.md' \
+            --include='docs/SETUP.md' \
+            --include='README.md' \
             --exclude='.git' --exclude='.forgejo' --exclude='.gitea' \
             --exclude='.claude' --exclude='server' --exclude='corpora' \
             --exclude='node_modules' --exclude='scripts' --exclude='deploy' \
-            --exclude='docs' --exclude='*.md' --exclude='donor-app' \
+            --exclude='docs/**' --exclude='docs' --exclude='*.md' --exclude='donor-app' \
             --exclude='package.json' --exclude='package-lock.json' \
             -e "ssh -i ~/.ssh/deploy -o StrictHostKeyChecking=accept-new" \
             ./ "${USER}@${HOST}:${REPO_LC}/"

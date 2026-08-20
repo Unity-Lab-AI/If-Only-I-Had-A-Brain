@@ -5,6 +5,12 @@
 **Unity AI Lab — Technical Theory Paper**
 Written 2026-08-18 · System state at writing: 306,458,816 neurons · 12,000,000-neuron dense language cortex · walking the K→PhD curriculum
 
+> **AMENDMENT 2026-08-20 — the scale figures below are a DATED SNAPSHOT and are deliberately left as written.** The deployed brain is now **425,436,550 neurons** (`cortex 82,243,310`, five subcortical clusters at `49,345,986`, language cortex unchanged at **12,000,000**). The growth was not a re-architecture: two sizing bugs were corrected — the brain's RAM budget was governed by an arbitrary "45% of host" clause rather than the reasoned Forgejo reserve, and the DF.7 tier ladder simply **ended** at tier 3 (357,000,000) with the tier chosen from a hardcoded 16GB donor baseline, so no donor of any size could move it.
+>
+> **Every equation, mechanism and claim in this paper is unchanged by that** — the apportionment is by biological share, so the ratios hold and only the absolute counts moved. A paper's "state at writing" line is a measurement with a date on it; rewriting it would falsify the record. **Read the numbers below as of 2026-08-18 and scale by ~1.39× for the current deployment.**
+>
+> One methodological note worth carrying into any future empirical section: the trajectory capture spec (`docs/TRAJECTORY-CAPTURE.md`) forbids interpolating a curve across a geometry change for exactly this reason — rows either side of 2026-08-20 are not comparable, and the arXiv submission needs one complete K→PhD walk on a single unchanged build.
+
 ---
 
 ## Abstract

@@ -38,7 +38,7 @@ Because the donor GPU and the server's own copy of the weights are two separate 
 
 ## The seven clusters
 
-Each cluster is a self-contained Rulkov-map population with its own intra-region sparse synapse matrix, tonic drive, noise amplitude, connectivity density, and learning rate. On the deployed full-size brain (~306M neurons, auto-scaled from the coordinator's free RAM) the shares come from the server's `DEFAULT_BIO_WEIGHTS`: the cortex and cerebellum are the two largest at ~20% (≈61.3M) each — the cortex carries language, perception, and working memory; the cerebellum does error correction and timing — and the five subcortical clusters take ~12% (≈36.8M) each. (The ~6700-neuron browser-only fallback uses a different, cortex-dominant fraction set.)
+Each cluster is a self-contained Rulkov-map population with its own intra-region sparse synapse matrix, tonic drive, noise amplitude, connectivity density, and learning rate. On the deployed full-size brain (~425M neurons as of 2026-08-20, auto-scaled from the coordinator's free RAM) the shares come from the server's `DEFAULT_BIO_WEIGHTS`: the cortex and cerebellum are the two largest at ~20% (≈82.2M) each — the cortex carries language, perception, and working memory; the cerebellum does error correction and timing — and the five subcortical clusters take ~12% (≈49.3M) each. (The ~6700-neuron browser-only fallback uses a different, cortex-dominant fraction set.)
 
 ```
                          ┌─────────────────────────────────────┐
@@ -319,7 +319,7 @@ Per-directory rationale lives in the directory's own `README.md`:
 
 ## WebGPU setup (required before first connect)
 
-Unity's brain runs at full biological scale — 306,458,816 Rulkov neurons — with Hebbian/Oja-rule plasticity on GPU-resident sparse matrices. **WebGPU is required — there is no CPU fallback path** per the no-fallbacks LAW that governs the codebase. One correct compute architecture; no degraded-capability menu.
+Unity's brain runs at full biological scale — **425,436,550 Rulkov neurons** (2026-08-20; it was 306,458,816 before the coordinator's RAM governor and the tier ladder were both corrected) — with Hebbian/Oja-rule plasticity on GPU-resident sparse matrices. **WebGPU is required — there is no CPU fallback path** per the no-fallbacks LAW that governs the codebase. One correct compute architecture; no degraded-capability menu.
 
 Before you connect to the dashboard for the first time:
 
