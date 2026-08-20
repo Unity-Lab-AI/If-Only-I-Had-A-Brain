@@ -69,6 +69,32 @@ DEPLOYED_SHORT="$(git -C "$TMP/src" rev-parse --short=8 HEAD 2>/dev/null || echo
 DEPLOYED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 log "deploy identity: ${DEPLOYED_SHORT} (${GIT_BRANCH}) sha=${DEPLOYED_SHA}"
 
+# ── STATEWIPE (2026-08-20) — SIX runtime files were being DELETED by --delete on
+# every single Update, and not one of them was even mentioned in this script.
+# Found by auditing every `path.join(__dirname, '...')` the server writes
+# against this exclude list, after LANGRAM's geometry pin could not be verified
+# on the box no matter how many times it was written.
+#
+# `lang-geometry.json` is the worst of them: it IS the LANGRAM.6 geometry pin,
+# and LANGRAM.7's fresh-walk floor stands on it. Deleting it every deploy meant
+# the pin could never survive to be honoured, leaving the language cortex free
+# to be re-derived from `os.freemem()` on each update — the precise failure
+# those two items exist to prevent. Both shipped the day this was found and
+# both were dead on arrival because of this list.
+#
+# `.resume-marker.json` is the second: it is where the walk resumes, so an
+# Update & SAVESTART kept the weights and threw away the pointer into them.
+# `operator-identity.json` and `resource-config.json` are operator-owned config
+# that exists ONLY on the box (neither is tracked), so a deploy silently
+# reverted them. `brain-code-hash.json` feeds stale-state detection, and
+# `.last-boot-reason.json` is the boot-reason history the diagnostics read.
+#
+# All six are RUNTIME STATE, not code — exactly what this exclude list is for.
+# THE RULE: anything the server writes under `__dirname` belongs in this list,
+# or a deploy eats it. NOTE FOR EDITORS: this comment lives ABOVE the command on
+# purpose. A `#` line inside the backslash continuation would make the shell
+# comment out every remaining `--exclude` AND the source/dest arguments.
+#
 # Overlay code, PRESERVING runtime state + secrets + node_modules. --delete
 # removes stale files EXCEPT the excluded runtime/secret paths.
 #   ⚠ community-tier.json is LOAD-BEARING state: the DF.7 milestone gate writes
@@ -110,6 +136,18 @@ rsync -a --delete \
   --exclude 'user.json' \
   --exclude 'deployed-build.json' \
   --exclude 'server/deployed-build.json' \
+  --exclude 'lang-geometry.json' \
+  --exclude 'server/lang-geometry.json' \
+  --exclude '.resume-marker.json' \
+  --exclude 'server/.resume-marker.json' \
+  --exclude 'operator-identity.json' \
+  --exclude 'server/operator-identity.json' \
+  --exclude 'resource-config.json' \
+  --exclude 'server/resource-config.json' \
+  --exclude 'brain-code-hash.json' \
+  --exclude 'server/brain-code-hash.json' \
+  --exclude '.last-boot-reason.json' \
+  --exclude 'server/.last-boot-reason.json' \
   --exclude '.claude' \
   "$TMP/src/" "$BACKEND_DIR/" >> "$LOG" 2>&1 || { log "FATAL — rsync overlay failed; aborting."; exit 1; }
 

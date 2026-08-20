@@ -34036,3 +34036,27 @@ That is a hardware ask for Red/Sponge with arithmetic under it instead of a vagu
 **BUNDLEFIX.1 — the launcher's bundle rebuild has been failing on EVERY launch.** `linux/start.sh` step 6/7 runs `npm run build` from the **repo root**, and root `package.json` carried `"scripts": {}` — the real esbuild command lives in **`server/package.json`**. So every launch printed *"ERROR: esbuild bundle build failed … The browser will run STALE code"* and continued anyway. Found by hand while rebuilding the bundle for GATEPHASE, not by reading the launcher. Root now delegates (`npm --prefix server run build`), fixing **both** launchers without editing either and keeping `server/package.json` as the single source of the esbuild flags. Verified by running it from root. Also corrected: `start.sh:235` claims the bundle is gitignored — `git check-ignore` says it is **tracked**, which is what lets `deploy.yml` rsync it at all.
 
 **Board: 36 open, 119 closed.**
+
+---
+
+## 2026-08-20 — STATEWIPE: every Update deploy was deleting six runtime state files, and today's LANGRAM work was dead on arrival
+
+> Gee (verbatim): *"make sure the pod is using the updated version"*
+
+**The pod was fine — `DONOR v0.3.24`, confirmed from the server's own client record, `donor-app/` byte-identical to the tag, and `releases/latest` resolving to `.24`. Checking it is what surfaced something much worse.**
+
+`deploy/self-update.sh` overlays code with `rsync -a --delete` plus an exclude list protecting runtime state. **Six files the server writes under `__dirname` were not on that list and not even mentioned in the script.** Found by auditing every `path.join(__dirname, '...')` in `server/` against the list — prompted by the geometry pin being unverifiable on the box no matter how often it was written.
+
+**`lang-geometry.json` is the worst of them: it IS the `LANGRAM.6` geometry pin, and `LANGRAM.7`'s fresh-walk floor stands on it.** Deleted on every deploy, the pin could never survive long enough to be honoured — the language cortex stayed free to be re-derived from `os.freemem()` on each update, which is **precisely the failure those two items exist to prevent. Both shipped the same day this was found, and both were dead on arrival because of one exclude list.**
+
+The other five: **`.resume-marker.json`** — where the walk resumes, so `Update & SAVESTART` faithfully kept the weights and threw away the pointer into them. **`operator-identity.json`** and **`resource-config.json`** — operator-owned config that exists ONLY on the box (neither is tracked), so a deploy silently reverted them. **`brain-code-hash.json`** — stale-state detection. **`.last-boot-reason.json`** — the boot-reason history the diagnostics read.
+
+**Deliberately still deleted, with reasons:** `.force-fresh` (the script writes it AFTER the overlay, so preserving it could trigger an unintended wipe), `boot-error.log` (a log), and `visual-memory*.json` turned out to be glob-covered already. **Rule now recorded in the file: anything the server writes under `__dirname` belongs in that exclude list, or a deploy eats it.**
+
+**AND I CAUGHT MY OWN FIX BEFORE IT SHIPPED — it would have broken the deploy outright.** My first version placed the explanatory comment INSIDE the backslash-continued `rsync` invocation. In shell the `\` continues onto the `#` line, so the parser would have seen `rsync … --exclude 'deployed-build.json' # …` and **commented out every remaining `--exclude` along with the source and destination** — an rsync with no source, on the deploy path, wrapped in `|| { log FATAL; exit 1; }`. Verified after moving it with `bash -n` and a parse harness proving the command still receives **90 arguments with `$TMP/src/` and `$BACKEND_DIR/` as the last two**. The comment now carries a NOTE FOR EDITORS explaining why it must live above the command.
+
+**AND THE HONEST MEASUREMENT ON THE PRESS ITSELF: it reached 371,219,995 neurons, not 592,151,838.** Main-brain trimmed to ~357,000,000 (**tier 3**) plus 12,000,000 langCortex — a 1.15x growth, not 1.93x. `RAMHEAD` raised the BUDGET, but **the tier target is now the binding cap**, and a tier only rises on a boot that can already see a large `donorBaselineMB`. `TIERTOP.2` persists that baseline when the donor REGISTERS, which happens after boot — so boot N learns 45,488MB and boot N+1 spends it. **A two-boot sequence, which I documented inside `TIERTOP.3` but did not state prominently before Gee pressed. That is on me.** The donor has since registered at 45,488MB, and with `STATEWIPE.1` that file finally survives the deploy, so the next fresh walk qualifies **tier 4 (900,000,000)** clamped by `_safeMB` to **592,151,838**.
+
+**What DID land and is confirmed on the box** (`build 9475421e`): the RAMHEAD budget is live — the donor's own `gpu_init` reports `cortex — 71400000 neurons` and `hippocampus — 42839999` against the previous 61,291,763 / 36,775,058.
+
+**Board: 37 open, 121 closed.**
