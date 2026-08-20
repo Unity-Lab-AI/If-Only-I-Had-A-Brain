@@ -2437,6 +2437,33 @@ export function _magnitudeFeatureForNumber(n) {
 // for the rationale. Change one place, applies everywhere.
 const PRE_K_FALLBACK_CAP = 5;
 
+// ─── CELLBOUND (2026-08-20) — cell phases must FINISH ───────────────────────
+// Gee (verbatim): "we need to fix it so that the cells finish and stop running
+// on indefinately".
+//
+// PHASE_BUDGET_MS — the wall-clock a single declared cell phase may hold before
+// its long passes stop on a clean rep boundary and defer the remainder to the
+// next visit. This is NOT a cap on training: `STRUCTURE-REFRESH` runs in every
+// cell (~114 visits across K→PhD), so a deferred remainder is taught, just
+// spread. Raise it to trade walk latency for per-visit depth; set 0 to disable
+// the bound entirely and restore the pre-CELLBOUND unbounded behaviour.
+const PHASE_BUDGET_MS = Number(
+  (typeof process !== 'undefined' && process.env && process.env.DREAM_PHASE_BUDGET_MS) || 20 * 60 * 1000,
+);
+// STRUCTURE_DOSE — an explicit, logged multiplier on the authored rep counts of
+// the sentence-structure passes. The authored 100/80/60 were tuned when the
+// language cortex was 349K–1.5M; at 12M each pair-teach measures ~47ms, so the
+// same rep count costs 20–45× the wall it was sized against. ⚠ THIS REDUCES
+// TRAINING MASS — it is a real cut, explicitly authorised by Gee 2026-08-20
+// ("All of the above + recalibrate reps"), kept as ONE number so it can be
+// turned straight back up: DREAM_STRUCTURE_DOSE=1 restores the authored dose.
+const STRUCTURE_DOSE = Math.max(
+  0.05,
+  Math.min(1, Number(
+    (typeof process !== 'undefined' && process.env && process.env.DREAM_STRUCTURE_DOSE) || 0.4,
+  ) || 0.4),
+);
+
 export class Curriculum {
   static PRE_K_FALLBACK_CAP = PRE_K_FALLBACK_CAP;
 
@@ -2631,7 +2658,15 @@ export class Curriculum {
         );
         _nested.delete(_n);
         this._teachNestedTotal[_n] = _nested.size;
-      } catch { this._teachNestedTotal[_n] = 0; }
+        // CELLBOUND.E - keep the SET too; the count alone cannot tell a
+        // declared nested unit from a deep primitive at credit time.
+        if (!this._teachNestedSet) this._teachNestedSet = {};
+        this._teachNestedSet[_n] = _nested;
+      } catch {
+        this._teachNestedTotal[_n] = 0;
+        if (!this._teachNestedSet) this._teachNestedSet = {};
+        this._teachNestedSet[_n] = null;
+      }
     }
     // LATCH-PROOF PHASE STACK (2026-08-14). The prior implementation decided
     // "am I the outermost phase?" by saving `prev = cl._activePhase` on entry
@@ -2731,10 +2766,32 @@ export class Curriculum {
           this._phaseWorkName = name;
           this._phaseWorkSeen = new Set();
           this._phaseWorkTotal = (this._teachNestedTotal && this._teachNestedTotal[name]) || 0;
+          // CELLBOUND.E - the SET, not just its size, so a nested unit is only
+          // credited against a phase that actually declares it. `done` used to
+          // count every nested `_teach*` that ran, including deep primitives
+          // (`_teachHebbian` et al) that the phase's own source never names,
+          // while `total` counted only the lexically-present ones - so `done`
+          // could exceed `total` (measured live: done 6 / total 5) and `frac`
+          // pinned at its Math.min(0.99, ...) cap forever.
+          this._phaseWorkExpect = (this._teachNestedSet && this._teachNestedSet[name]) || null;
+          // CELLBOUND.A - THE PHASE DEADLINE.
+          //
+          // Nothing anywhere bounded a teach phase. Cost is corpus x reps x
+          // brain-scale and all three grew independently: 2,888 sentences ->
+          // 11,436 transitions x 100 reps x ~47ms/pair-teach at 12M neurons =
+          // 14.9 HOURS in a single `_teachConcreteSentences` call, inside a
+          // phase that runs in EVERY cell (114 of them). The deadline does NOT
+          // discard training - a pass that hits it stops on a clean rep
+          // boundary and reports its remainder, which the next visit resumes.
+          cl._phaseDeadlineAt = Date.now() + PHASE_BUDGET_MS;
+          cl._phaseDeadlineName = name;
         }
         // The tally this call will be credited to when it finishes - captured
         // now, by reference, so it lands on the phase it actually ran inside.
         const workSeen = isCellPhase ? null : this._phaseWorkSeen;
+        // CELLBOUND.E - the expected-unit set captured by reference alongside
+        // the tally, so credit lands on the phase this call actually ran inside.
+        const workExpect = isCellPhase ? null : this._phaseWorkExpect;
         if (isCellPhase) {
           const _ck = cl._currentCellKey || '';
           if (this._cellPhasesStartedKey !== _ck) {
@@ -2838,7 +2895,10 @@ export class Curriculum {
             this._phaseWorkName = null;
             this._phaseWorkSeen = null;
             this._phaseWorkTotal = 0;
-          } else if (workSeen) {
+            this._phaseWorkExpect = null;
+            cl._phaseDeadlineAt = 0;
+            cl._phaseDeadlineName = null;
+          } else if (workSeen && (!workExpect || workExpect.has(name))) {
             // A nested teach call is one unit of the enclosing phase's work,
             // credited on EXIT so an in-flight unit is never counted as done.
             workSeen.add(name);
@@ -3308,6 +3368,19 @@ export class Curriculum {
       outermostPhase: cluster?._outermostPhase
         ? { name: cluster._outermostPhase.name,
             elapsedMs: Date.now() - cluster._outermostPhase.startAt }
+        : null,
+      // CELLBOUND.E - THE FULL LIVE CALL CHAIN.
+      //
+      // `activePhase` names only the INNERMOST primitive and `outermostPhase`
+      // only the DECLARED cell phase. The mid-level pass between them - the one
+      // that can hold the cell for hours - was nameable NOWHERE, and
+      // `teachProfile` cannot cover it: a method is recorded only when it
+      // EXITS, so an in-flight multi-hour pass contributes exactly zero ms and
+      // is invisible by construction. Measured 2026-08-20: art/kindergarten sat
+      // 21.2h on `_teachSentenceStructure` with ~6.1h of it unattributable to
+      // any published field. The stack already existed; nothing ever read it.
+      phaseChain: Array.isArray(cluster && cluster._phaseStack)
+        ? cluster._phaseStack.map((t) => ({ name: t.name, elapsedMs: Date.now() - t.startAt }))
         : null,
       // WITHIN-PHASE WORK - what makes the bar move DURING a phase instead of
       // sitting at 0% for its whole duration and then jumping.
@@ -14637,6 +14710,29 @@ export class Curriculum {
     try { this._pushBrainEvent?.('teach', 'sem', `ASSOC START: ${label} · ${pairs.length}×${reps}`, { label, pairs: pairs.length, reps }); } catch {}
     for (let rep = 0; rep < reps; rep++) {
       if (typeof globalThis._brainShutdownRequested !== 'undefined' && globalThis._brainShutdownRequested) return { trained, skipped };
+      // CELLBOUND.A - THE PHASE DEADLINE, honoured on a CLEAN REP BOUNDARY.
+      //
+      // A rep is the atomic training unit: every pair has been presented the
+      // same number of times at every rep boundary, so stopping here leaves the
+      // matrix in exactly the state `reps = rep` would have produced. Stopping
+      // mid-rep would leave the corpus unevenly trained, which is why the check
+      // lives here and nowhere else - the same reasoning as the shutdown check
+      // directly above it.
+      //
+      // `rep > 0` guarantees at least ONE full presentation always lands, so a
+      // budget that has already expired on arrival still teaches rather than
+      // silently returning zero.
+      //
+      // NOT A CAP ON TRAINING: the remainder is reported and the phase that owns
+      // this call is re-entered on the next cell (STRUCTURE-REFRESH runs in all
+      // ~114 of them), so the dose is spread, not discarded. Loud by design -
+      // no silent caps, per the standing law.
+      if (rep > 0 && cluster._phaseDeadlineAt && Date.now() > cluster._phaseDeadlineAt) {
+        const _deferred = reps - rep;
+        const _heldS = ((Date.now() - (cluster._phaseDeadlineAt - PHASE_BUDGET_MS)) / 1000).toFixed(0);
+        console.warn(`[Curriculum][${label}] CELLBOUND - phase '${cluster._phaseDeadlineName || '?'}' spent its ${(PHASE_BUDGET_MS / 60000).toFixed(0)}min budget after ${_heldS}s; stopping on a clean rep boundary at rep ${rep}/${reps} (${trained} pair-teaches landed). DEFERRED ${_deferred} rep(s) to the next visit to this phase - training is spread, NOT discarded. DREAM_PHASE_BUDGET_MS raises the budget; 0 disables the bound.`);
+        return { trained, skipped, repsDone: rep, deferredReps: _deferred, budgetStopped: true };
+      }
       // GINTRA (2026-08-16) — the final-rep CPU-shadow flag cycle, the SAME
       // law the word-integrated/emission loops already run: GPU-bound Hebbian
       // (cross + the now-bound intra) fires EVERY rep with full mass; the CPU
@@ -15144,6 +15240,30 @@ export class Curriculum {
     let totalTrained = 0;
     let passes = 0;
 
+    // ─── CELLBOUND.D + CELLBOUND.B — how deep should THIS visit go? ───
+    //
+    // D — STRUCTURE-REFRESH runs in EVERY cell. At K→PhD that is ~114 visits,
+    // and at the authored dose one visit measured 21.2 HOURS — ~100 days of
+    // walk for the refresh phases alone. The signal to avoid that already
+    // existed and was never applied here: `cluster._mechanicsProbeRate` is set
+    // a few lines below with an in-code comment saying it exists precisely so
+    // the redundant every-cell grammar ladder can be skipped once mechanics are
+    // solid. Full depth on the first teach, on regression, and periodically;
+    // a cheap top-up otherwise. The full dose still happens — just not 114×.
+    //
+    // B — the authored 100/80/60 reps were sized when the language cortex was
+    // 349K–1.5M. At 12M each pair-teach measures ~47ms, so the identical rep
+    // count costs 20–45× the wall it was calibrated against. STRUCTURE_DOSE is
+    // that recalibration as ONE explicit, logged, reversible number.
+    const _probeRate = cluster._mechanicsProbeRate;
+    const _consolidated = typeof _probeRate === 'number' && _probeRate >= 0.4;
+    const _visit = (cluster._structureRefreshVisits = (cluster._structureRefreshVisits | 0) + 1);
+    const _periodicFull = (_visit % 10) === 1;   // re-deepen every 10th visit
+    const _mode = (!_consolidated || _periodicFull) ? 'FULL' : 'TOPUP';
+    const _dose = STRUCTURE_DOSE * (_mode === 'FULL' ? 1 : 0.15);
+    const R = (n) => Math.max(1, Math.round(n * _dose));
+    this._hb(`[Curriculum] _teachSentenceStructure CELLBOUND — visit #${_visit} · mode=${_mode} (mechanicsProbeRate=${typeof _probeRate === 'number' ? _probeRate.toFixed(2) : 'never probed'}${_periodicFull ? ' · periodic re-deepen' : ''}) · STRUCTURE_DOSE=${STRUCTURE_DOSE} → effective dose ×${_dose.toFixed(3)} · phase budget ${(PHASE_BUDGET_MS / 60000).toFixed(0)}min. Authored reps are scaled, NOT skipped; anything the budget defers resumes on the next visit.`);
+
     // ─── I.1 + I.2 — Slot-position primitives + word-type → slot bindings ───
     // Each (word, slot_tag) trains sem(word) → fineType(slot_tag) via
     // _teachAssociationPairs. Multi-target nouns (cat as subject AND object)
@@ -15191,7 +15311,7 @@ export class Curriculum {
     // can actually carve basins at biological scale. Total slot-pair
     // writes now ~6,000 (75 pairs × 80 reps).
     const r1 = await this._teachAssociationPairs(slotPairs, {
-      reps: 80,
+      reps: R(80),
       label: 'ELA-K-STRUCTURE-SLOTS',
       relationTagId: 8,
     });
@@ -15229,7 +15349,7 @@ export class Curriculum {
       ['birds','fly'], ['fish','swim'],
     ];
     const r4 = await this._teachAssociationPairs(agreementPairs, {
-      reps: 80,
+      reps: R(80),
       label: 'ELA-K-STRUCTURE-AGREEMENT',
       relationTagId: 10,
     });
@@ -15249,7 +15369,7 @@ export class Curriculum {
       ['apple','an'], ['egg','an'], ['orange','an'], ['ant','an'],
     ];
     const r5 = await this._teachAssociationPairs(articlePairs, {
-      reps: 80,
+      reps: R(80),
       label: 'ELA-K-STRUCTURE-ARTICLES',
       relationTagId: 11,
     });
@@ -15282,7 +15402,7 @@ export class Curriculum {
     // grammatical order was the least-trained, so the transition basins lost
     // to vocab + topic activation and emission scrambled. Bump 30→100 so the
     // sequence basins sharpen enough to win next-word argmax.
-    const rConcrete = await this._teachConcreteSentences({ reps: 100 });
+    const rConcrete = await this._teachConcreteSentences({ reps: R(100) });
     totalTrained += (rConcrete.totalTrained || 0);
     passes += 1;
 
@@ -15290,7 +15410,7 @@ export class Curriculum {
     // Unity can ASK, not just answer. Without this the brain has zero
     // interrogative-production basins (WH training was comprehension-only).
     if (typeof this._teachQuestionProduction === 'function') {
-      const rQ = await this._teachQuestionProduction({ reps: 100 });
+      const rQ = await this._teachQuestionProduction({ reps: R(100) });
       totalTrained += (rQ.totalTrained || 0);
       passes += 1;
     }
@@ -15457,6 +15577,17 @@ export class Curriculum {
     // relationTagId=13 (word-sequence channel).
     const pairs = [];
     const sentencePairs = new Map();  // dedup pair counter for telemetry
+    // CELLBOUND.C - transitions are collected ONCE, with their corpus frequency
+    // kept as a WEIGHT rather than as literal repetition. Measured on the live
+    // corpus: 11,436 total transitions vs 7,831 UNIQUE - 31.5% of every pass was
+    // re-teaching the identical pair (`in -> the` appears 70x, `i -> am` 54x).
+    // Training the same pair twice is not free at 12M (each pair-teach measures
+    // ~47ms), and it is not a no-op either - L1BCONV proved the Oja dose does
+    // NOT converge inside 100 reps at her live lr - so this genuinely reduces
+    // training mass and is stated as such rather than sold as pure waste removal.
+    // Frequency is PRESERVED by bucketing below, so a 70x transition still
+    // trains harder than a 1x one; what is removed is the flat re-presentation.
+    const uniquePairs = new Map();    // "a\u2192b" -> { a, b, count }
     for (const s of sentences) {
       const words = s.toLowerCase().split(/\s+/).filter(w => w.length > 0);
       for (let i = 0; i < words.length - 1; i++) {
@@ -15466,6 +15597,9 @@ export class Curriculum {
         pairs.push([a, b]);
         const key = `${a}→${b}`;
         sentencePairs.set(key, (sentencePairs.get(key) || 0) + 1);
+        const u = uniquePairs.get(key);
+        if (u) u.count += 1;
+        else uniquePairs.set(key, { a, b, count: 1 });
       }
     }
 
@@ -15475,15 +15609,40 @@ export class Curriculum {
     }
 
     const t0 = Date.now();
-    const r = await this._teachAssociationPairs(pairs, {
-      reps,
-      label: opts.label || 'ELA-K-STRUCTURE-CONCRETE-SENTENCES',
-      relationTagId: 13,  // new sequence-step channel
-      // Concrete sentence transitions are the load-bearing grammar
-      // training — these MUST drive sem→sem evolution at runtime, so
-      // we want the strongest signal: motor-WTA off (motor side is
-      // unused for sem→sem transitions), default Oja parameters.
-    });
+    // CELLBOUND.C - three frequency buckets, so corpus statistics survive the
+    // dedup. A pair seen once trains at the base dose; the recurring connective
+    // tissue (the/a/is/i) trains at 1.5x and 2x. Total pair-teaches fall from
+    // `total x reps` to roughly `unique x reps x 1.2` while the RELATIVE weight
+    // of a frequent transition over a rare one is kept.
+    const _bucket = { lo: [], mid: [], hi: [] };
+    for (const u of uniquePairs.values()) {
+      if (u.count >= 8) _bucket.hi.push([u.a, u.b]);
+      else if (u.count >= 3) _bucket.mid.push([u.a, u.b]);
+      else _bucket.lo.push([u.a, u.b]);
+    }
+    let _bucketTrained = 0;
+    let _bucketDeferred = 0;
+    for (const [tier, mult] of [['lo', 1], ['mid', 1.5], ['hi', 2]]) {
+      const _p = _bucket[tier];
+      if (!_p.length) continue;
+      const _r = await this._teachAssociationPairs(_p, {
+        reps: Math.max(1, Math.round(reps * mult)),
+        label: `${opts.label || 'ELA-K-STRUCTURE-CONCRETE-SENTENCES'}-${tier.toUpperCase()}`,
+        relationTagId: 13,
+      });
+      _bucketTrained += (_r.trained || 0);
+      _bucketDeferred += (_r.deferredReps || 0);
+      // The phase deadline propagates: once a bucket defers, the remaining
+      // buckets defer with it rather than each burning a fresh budget check.
+      if (_r.budgetStopped) break;
+    }
+    this._hb(`[Curriculum] _teachConcreteSentences CELLBOUND.C - ${uniquePairs.size} unique of ${pairs.length} transitions (${(100 * (pairs.length - uniquePairs.size) / Math.max(1, pairs.length)).toFixed(1)}% were literal duplicates) trained in 3 frequency buckets (lo ${_bucket.lo.length} x${reps} / mid ${_bucket.mid.length} x${Math.round(reps * 1.5)} / hi ${_bucket.hi.length} x${reps * 2})${_bucketDeferred ? ` · ${_bucketDeferred} rep(s) DEFERRED by the phase budget` : ''}.`);
+    const r = { trained: _bucketTrained, deferredReps: _bucketDeferred };
+    // (The single flat `_teachAssociationPairs(pairs, ...)` call that used to
+    // stand here is replaced by the bucketed loop above. Its rationale still
+    // holds and still governs the bucket calls: concrete sentence transitions
+    // are the load-bearing grammar training, they MUST drive sem→sem evolution
+    // at runtime, so motor-WTA stays off and Oja parameters stay default.)
     const dt = ((Date.now() - t0) / 1000).toFixed(1);
 
     // Telemetry — most-repeated transitions surface what patterns the
