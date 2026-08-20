@@ -4754,6 +4754,76 @@ class ServerBrain {
                 console.warn(`[Brain] TU.20.2 — cortex re-upload DEFERRED: primary ws.bufferedAmount=${(_priWs.bufferedAmount / 1024 / 1024).toFixed(1)}MB > ${_RESYNC_BUF_GATE / 1024 / 1024}MB gate; waiting for drain (avoids the resync-into-saturated-buffer storm).`);
               }
             }
+            // ── UPLOADWD (2026-08-20) — DEADLOCK BREAKER FOR THE CORTEX UPLOAD ──
+            //
+            // LIVE INCIDENT, and it cost a whole fresh walk: the walk sat for
+            // 5+ minutes with the donor connected, all 7 clusters confirmed,
+            // `mx 0/0`, `cortexUploadFailure: null`, `bindIncapable: false`,
+            // and the curriculum printing *"runner quiet 5.0 min — EXPECTED …
+            // the walk waits by design … Not a stall"*. Every field said
+            // healthy and nothing was happening.
+            //
+            // THE MECHANISM: the trigger below needs `_gpuProxy` truthy AND
+            // `!_cortexGpuInitStarted`. `_cortexGpuInitStarted` is set to true
+            // BEFORE the upload runs, and the only things that clear it are a
+            // donor-event re-arm (`_rearmCortexGpuUpload`) and the coalesced
+            // release just below. So if a donor drops mid-upload and the re-arm
+            // path does not fire — which is exactly what a community-cloud
+            // reconnect storm produces — the flag stays true forever, the
+            // trigger can never pass, the language cortex never gets its
+            // matrices, and the walk waits on `_cortexFullyReady` that nothing
+            // will ever set. A permanent stall wearing a reassuring message.
+            //
+            // The breaker deliberately does NOT try to work out which flag is
+            // wrong. It watches the OUTCOME — cortex not ready, no upload in
+            // flight, donor present and healthy — and after a bounded wait it
+            // forces the trigger's preconditions back to armed. That covers the
+            // stuck-flag case whatever set it, and it is idempotent: if the
+            // upload then runs, `_cortexFullyReady` flips and the timer clears.
+            //
+            // It also LOGS THE FLAG STATES, because the reason this took a
+            // console-ring dig is that none of them are visible from outside
+            // the process (`LOOPNAME.7`). If the cause is `_gpuProxy` being
+            // falsy rather than a stuck flag, the breaker cannot fix that — but
+            // the log will finally say so instead of leaving us to guess.
+            //
+            // Not a fallback under the NO-FALLBACKS law: there is no second
+            // code path or degraded mode here. It re-arms the ONE correct path.
+            {
+              const _cc = this.cortexCluster;
+              const _donorLive = !!(this._gpuClient && this._gpuClient.readyState === 1);
+              const _stuck = !!(_cc && !_cc._cortexFullyReady && !this._cortexUploadInFlight && _donorLive);
+              if (!_stuck) {
+                this._uploadWdSince = null;
+              } else {
+                if (!this._uploadWdSince) this._uploadWdSince = Date.now();
+                const _waitedMs = Date.now() - this._uploadWdSince;
+                const _limEnv = Number(process.env.DREAM_UPLOAD_WATCHDOG_MS);
+                const _limMs = Number.isFinite(_limEnv) && _limEnv > 0 ? _limEnv : 180000;
+                if (_waitedMs >= _limMs) {
+                  console.error(
+                    `[Brain] ⛔ UPLOADWD — the cortex upload has been UNREACHABLE for ${(_waitedMs / 1000).toFixed(0)}s `
+                    + `while a donor is connected and no upload is in flight. The walk cannot start without it. `
+                    + `Flags: _gpuProxy=${!!(_cc && _cc._gpuProxy)} _cortexGpuInitStarted=${!!this._cortexGpuInitStarted} `
+                    + `_cortexRearmPending=${!!this._cortexRearmPending} _cortexFullyReady=${!!(_cc && _cc._cortexFullyReady)} `
+                    + `registrySize=${(this._replicaMatrixRegistry && this._replicaMatrixRegistry.size) || 0} `
+                    + `donorBufferedMB=${(((this._gpuClient && this._gpuClient.bufferedAmount) || 0) / 1048576).toFixed(1)}. `
+                    + `FORCING a re-arm. ${!(_cc && _cc._gpuProxy)
+                      ? 'NOTE: _gpuProxy is FALSY — a re-arm cannot fix that; the cluster never got a GPU proxy attached, which is the real bug to chase.'
+                      : 'A stuck _cortexGpuInitStarted is the likely cause (it is set BEFORE the upload and only a donor-event re-arm clears it).'} `
+                    + `Tune the window with DREAM_UPLOAD_WATCHDOG_MS.`
+                  );
+                  this._cortexGpuInitStarted = false;
+                  this._cortexRearmPending = false;
+                  this._cortexUploadInFlight = false;
+                  // Make `timeReady` true on this same pass rather than waiting
+                  // another full fallback window for a brain that has already
+                  // been stalled for minutes.
+                  this._allClustersConfirmedAt = Date.now() - (SPARSE_UPLOAD_TIME_FALLBACK_MS + 1000);
+                  this._uploadWdSince = Date.now();   // re-arm the timer, so a second failure is caught too
+                }
+              }
+            }
             // RECONNECT-CHURN DEBOUNCE fire — a re-arm that was COALESCED by
             // _rearmCortexGpuUpload (because an upload was in flight or had just
             // started) is released here as exactly ONE fresh upload, but only
