@@ -340,6 +340,14 @@ flooding frames drop silently. Store: LRU-capped 384 concepts, persisted to
 
 Sent by `compute.html` (browser donor) or the native donor-app on WebSocket open to join the donor pool.
 
+> **⚠ `utilizationPct` — read this before trusting the field (donor v0.3.24, UTILDEFAULT).**
+> Despite the name and the CLI help it used to carry, **there is no duty-cycling anywhere in the donor** — `compute.rs` / `cuda.rs` never read it, and the card always computes flat out. It is a *declaration*, and the SERVER is what acts on it: `gpu.js` sizes the donor's effective donated capacity as `fullVram × utilizationPct / 100`.
+> The native donor's `--utilization` **defaulted to `10`**, so any volunteer who did not pass the flag told the brain to treat a 24GB card as 2.4GB — too small to hold the cortex, handed almost no work, a whole GPU donated and left idle. **The default is `all` (=100) from v0.3.24 onward**; holding back is now the thing you have to ask for. Browser donors omit the field → treated as 100.
+>
+> **⚠ One `gpu_register` per PHYSICAL card (donor v0.3.25, RUNPOD.16).** Before this, a Windows host enumerated the same GPU once per PRIMARY backend (Vulkan **and** DX12), so `--gpus all` sent **two** registrations for one card and the server believed it had two FULL weight replicas where it had one. `select_adapters()` now de-duplicates by `(vendor, device, name)`.
+>
+> **⚠ `utilizationPct` does NOT decide PRIMARY eligibility — held VRAM does.** A donor whose held VRAM is below `runningFloorMB` (the memory needed to hold the FULL running brain) is refused PRIMARY and joins as a partial replica — and **the canonical weight upload only ever targets the PRIMARY**, so such a donor receives no matrices at all while still reporting healthy cluster coverage and a real Gn/s rate. A 24,124MB card against a 25,619MB floor cost an afternoon this way (`PRIMARYFLOOR`). The Clients table now carries `primaryFloorMB` / `primaryEligible` / `primaryShortfallMB` per donor so the comparison is visible rather than inferable.
+
 ```json
 {
   "type": "gpu_register",
