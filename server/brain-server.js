@@ -1491,6 +1491,132 @@ const _SUBSTEPS_EXPLICIT = process.env.DREAM_SUBSTEPS !== undefined && process.e
 const SUBSTEPS_NATIVE = _SUBSTEPS_EXPLICIT
   ? SUBSTEPS
   : Math.max(1, Math.floor(_SUBSTEPS_NATIVE_AUTO));
+// ── SUBSTEPS.2 — DRIVE THE CARD TO THE WALL, AND LET IT FIND ITS OWN WALL ──
+//
+// Gee: "i just want the fucking doner to be able to run 100% to the wall doing
+// max work.. not these bullshit limits.. im paying for a GPU i best be using
+// 110% of all of it". He is right that 24 was a limit I picked, not a limit the
+// hardware has: at 24 substeps a batch is ~347ms of GPU math against a
+// TIMEOUT_MS of 180,000 — we were using 0.2% of the deadline we allow.
+//
+// But raising it blind is how 24 got rolled back to 8 the first time, so the
+// number is no longer a guess by anyone, including me. THE ONE REAL CONSTRAINT:
+// the native donor has a SINGLE worker thread popping a two-lane queue, so a
+// batch that runs long delays every teach op behind it. The walk is
+// teach-bound, so a huge batch would spin the GPU to 100% on the pod page while
+// making the curriculum SLOWER. Utilisation that costs throughput is a vanity
+// metric, and this project has spent a whole day killing instruments that
+// looked right and meant nothing.
+//
+// So the controller maximises GPU work SUBJECT TO not starving teach, using the
+// teach-op counter TEACHMIRROR added earlier today as its feedback signal:
+//
+//   grow  x1.5  when the batch is well under target AND teach throughput is
+//               holding (>= 85% of the best rate seen) AND no batch has missed
+//   shrink x0.7 when teach throughput drops below 70% of its best (the batch is
+//               starving the queue) or a batch MISSED (the real GPU limit)
+//
+// It converges on the largest batch this specific card can absorb without
+// costing teach — automatically, on any donor, with no hand-tuning. A miss also
+// records a ceiling so it never climbs back into a known-bad size.
+//
+// RE-PRICED per LAW: nothing here bounds the walk. `corpus × reps × scale ×
+// visits` is untouched — no corpus, rep count, geometry or visit schedule
+// changes. It only decides how much math rides inside a round-trip that happens
+// anyway, and the guard rail is explicitly "do not reduce teach throughput", so
+// the walk cannot get longer as a result.
+//
+// DREAM_SUBSTEPS pins a fixed value and DISABLES adaptation entirely (a
+// deliberate act always beats the controller — the LANGRAM lesson).
+// DREAM_SUBSTEPS_MAX caps the climb; DREAM_SUBSTEPS_TARGET_MS moves the target.
+const SUBSTEPS_MAX = Math.max(1, Math.floor(_envPositive('DREAM_SUBSTEPS_MAX', 1024)));
+const SUBSTEPS_TARGET_MS = Math.max(50, Math.floor(_envPositive('DREAM_SUBSTEPS_TARGET_MS', 2000)));
+const SUBSTEPS_ADAPT_MS = 12000;   // one decision per 12s — long enough for a real teach-rate sample
+
+/**
+ * SUBSTEPS.2 — one adaptation step. Called from the tick; cheap and rate-limited
+ * internally. Returns the substep count to use for THIS tick.
+ */
+function adaptSubsteps(brain, ws, floorValue) {
+  if (_SUBSTEPS_EXPLICIT) return floorValue;              // Gee pinned it — never touch
+  if (floorValue === SUBSTEPS) return floorValue;         // browser/unknown donor stays put
+  const now = Date.now();
+  if (brain._adaptSubsteps === undefined) {
+    brain._adaptSubsteps = floorValue;
+    brain._adaptAt = now;
+    // SEED FROM THE LIVE COUNTER, NOT ZERO. `teachOps` is a LIFETIME total, so
+    // seeding 0 makes the first sample `(everything so far) / 12s` — an
+    // inflated "best" no later window can match, after which the starvation
+    // branch fires every round and the controller shrinks forever instead of
+    // climbing. Caught in simulation before it ever ran: the loop collapsed
+    // straight back to the floor and looked like a working converge.
+    const _c0 = brain.clients && brain.clients.get(ws);
+    brain._adaptTeachOps = (_c0 && Number(_c0.teachOps)) || 0;
+    brain._adaptBestTeachRate = 0;
+    brain._adaptSamples = 0;
+    brain._adaptMisses = brain._gpuMisses || 0;
+    brain._adaptCeiling = SUBSTEPS_MAX;
+    brain._adaptCooldown = 0;
+    return brain._adaptSubsteps;
+  }
+  const dt = now - brain._adaptAt;
+  if (dt < SUBSTEPS_ADAPT_MS) return brain._adaptSubsteps;
+
+  const c = brain.clients && brain.clients.get(ws);
+  const teachOps = (c && Number(c.teachOps)) || 0;
+  const teachRate = Math.max(0, (teachOps - brain._adaptTeachOps) / (dt / 1000));
+  const missed = (brain._gpuMisses || 0) > brain._adaptMisses;
+  // Batch cost: stepTimeMs is the whole tick, which IS the batch plus overhead —
+  // the number the target is expressed against, and the one the operator sees.
+  const batchMs = Number(brain._perfStats && brain._perfStats.stepTimeMs) || 0;
+
+  brain._adaptAt = now;
+  brain._adaptTeachOps = teachOps;
+  brain._adaptMisses = brain._gpuMisses || 0;
+  // WARM-UP: the first window straddles whatever the donor was doing before
+  // adaptation started, so it is measured but never allowed to BE the baseline.
+  // Without this, one unrepresentative window becomes an unbeatable `best`.
+  brain._adaptSamples = (brain._adaptSamples || 0) + 1;
+  if (brain._adaptSamples > 1 && teachRate > brain._adaptBestTeachRate) {
+    brain._adaptBestTeachRate = teachRate;
+  }
+  const best = brain._adaptSamples > 1 ? brain._adaptBestTeachRate : 0;
+  const prev = brain._adaptSubsteps;
+  let next = prev, why = '';
+
+  if (missed) {
+    // A miss is the hardware or the link saying no. Record the ceiling BELOW
+    // this size so the climb never returns to it, and drop hard.
+    brain._adaptCeiling = Math.max(floorValue, Math.floor(prev * 0.7));
+    next = brain._adaptCeiling;
+    brain._adaptCooldown = 2;
+    why = `a compute_batch MISSED at ${prev} substeps — that is the real limit, not a guess. Ceiling recorded at ${brain._adaptCeiling}`;
+  } else if (best > 0 && teachRate < best * 0.7) {
+    next = Math.max(floorValue, Math.floor(prev * 0.7));
+    brain._adaptCooldown = 2;
+    why = `teach throughput fell to ${teachRate.toFixed(1)}/s from a best of ${best.toFixed(1)}/s — the batch is starving the donor's single worker thread, so backing off. GPU utilisation that costs teach is not work`;
+  } else if (brain._adaptCooldown > 0) {
+    // HYSTERESIS. Without it a starvation back-off is undone on the very next
+    // window and the controller hunts forever — simulation showed a permanent
+    // 35 <-> 58 flap, which is bounded and safe but churns throughput and the
+    // log every 12s. Two quiet windows after any shrink before climbing again.
+    brain._adaptCooldown--;
+  } else if (batchMs > 0 && batchMs < SUBSTEPS_TARGET_MS * 0.6 && (best === 0 || teachRate >= best * 0.85)) {
+    next = Math.min(brain._adaptCeiling, SUBSTEPS_MAX, Math.max(prev + 1, Math.floor(prev * 1.5)));
+    why = `tick is ${batchMs.toFixed(0)}ms against a ${SUBSTEPS_TARGET_MS}ms target and teach is holding (${teachRate.toFixed(1)}/s vs best ${best.toFixed(1)}/s) — the card has room`;
+  } else if (batchMs > SUBSTEPS_TARGET_MS * 1.2) {
+    next = Math.max(floorValue, Math.floor(prev * 0.85));
+    brain._adaptCooldown = 2;
+    why = `tick is ${batchMs.toFixed(0)}ms, past the ${SUBSTEPS_TARGET_MS}ms target — trimming`;
+  }
+
+  if (next !== prev) {
+    brain._adaptSubsteps = next;
+    console.log(`[Brain] SUBSTEPS.2 — ${prev} → ${next} substeps (${Math.round(1000 / BRAIN_TICK_MS * next)} brain-steps/sec, ${(TOTAL_NEURONS * next / 1e9).toFixed(2)}G neuron-steps per round-trip): ${why}. Ceiling ${brain._adaptCeiling}, max ${SUBSTEPS_MAX}. Pin with DREAM_SUBSTEPS to disable adaptation.`);
+  }
+  return brain._adaptSubsteps;
+}
+
 /**
  * SUBSTEPS.1 — brain steps to ride inside ONE round-trip to THIS donor.
  *
@@ -4873,7 +4999,11 @@ class ServerBrain {
             // SUBSTEPS.1 — per-donor, resolved fresh each tick because the primary
             // can change under us (failover / promotion) and a browser donor must
             // never inherit a native donor's batch size.
-            const _substepsThisTick = substepsForDonor(this, this._gpuClient);
+            // SUBSTEPS.1 picks the TIER (native vs browser); SUBSTEPS.2 then
+            // climbs within the native tier until the card is full or teach
+            // starts to suffer. The tier value is the FLOOR the controller can
+            // never fall below, so a browser donor is unaffected either way.
+            const _substepsThisTick = adaptSubsteps(this, this._gpuClient, substepsForDonor(this, this._gpuClient));
             // Published on the instance so the metric sites below (firing-rate
             // average, stepsPerSec) divide by the substep count THIS TICK
             // actually used. Dividing by the module constant would misreport

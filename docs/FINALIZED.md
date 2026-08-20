@@ -33917,3 +33917,33 @@ Donating 1 GPU(s) at 100% utilization (memory: All)
 ```
 
 **What the next press should print, and it is the read on three fixes at once:** `[Brain] SUBSTEPS.1 — 24 brain-steps per donor round-trip (NATIVE tier: this donor drains its socket during a batch …)` proves SUBSTEPS.1 engaged against a 0.3.24 donor (>= 0.3.12); `LANGRAM.6 — geometry pin CONFIRMED: 12,000,000` or `⛔ LANGRAM.7 FRESH-WALK GEOMETRY FLOOR` proves the fresh walk did not re-roll the geometry dice; and the donor row reading `teaching (N ops, compute lane quiet)` rather than red `idle` proves TEACHMIRROR's server half is live. A bare `Language cortex auto-scaled to 349,155` is the one line that means stop.
+
+---
+
+## 2026-08-20 — SUBSTEPS.2: the card finds its own wall, and 24 was MY limit not the hardware's
+
+> Gee (verbatim): *"i just want the fucking doner to be able to run 100% to the wall doing max work.. not these bullshit limits.. im paying for a GPU i best be using 110% of all of it you fucker!"*
+
+**He was right, and the number proves it: at 24 substeps a batch is ~347ms of GPU math against a `TIMEOUT_MS` of 180,000 — we were using 0.2% of the deadline we already allow.** I had picked 24 as a cautious step up from 8; nothing in the hardware asked for it.
+
+**THE ONE REAL CONSTRAINT, respected instead of ignored.** The native donor has a **single worker thread** popping its two-lane queue, so a long `compute_batch` delays every teach op behind it. The walk is teach-bound. A huge batch would therefore show 100% on the pod page while making the curriculum *slower* — utilisation that costs throughput, which is precisely the disease this entire day has been about. So the controller maximises GPU work **subject to not starving teach**, and its feedback signal is **TEACHMIRROR's own teach-op counter from earlier the same day**:
+
+* **grow x1.5** while the tick is under 60% of the 2,000ms target AND teach holds >=85% of its best rate AND no batch has missed
+* **shrink x0.7** when teach falls under 70% of its best — the batch is starving the queue
+* **on a MISS**, drop to a recorded **ceiling** and never climb back through it; a miss is the hardware saying no, and that is the only limit worth honouring
+
+**Simulated against the MEASURED A6000 rate (21.17 Gn/s) before it shipped: 24 -> 36 -> 54 -> 81, settling at 81 substeps = 1,173ms of math per tick = 91% GPU-busy = 24.8G neuron-steps per round-trip.** Together with SUBSTEPS.1's 8->24 that is **10x the original**, at identical wire cost, because the round-trip is fixed per tick and only the payload grows.
+
+**TWO DEFECTS THE SIMULATION CAUGHT BEFORE DEPLOY, and the first would have been invisible:**
+1. `_adaptTeachOps` was seeded to `0` against a **lifetime** counter, so the first sample read `(everything so far) / 12s` — an unbeatable "best" that fired the starvation branch every round and made the controller **shrink forever while appearing to converge on the floor**. A feedback loop that fails by looking correct is exactly the bug class this ledger keeps finding. Now seeded from the live counter, with the first window measured but never allowed to BE the baseline.
+2. A starvation back-off was undone on the very next window — a permanent **35<->58 flap every 12 seconds**. A 2-window cooldown damps it to a ~60s cycle averaging 87% busy.
+
+**Branch verification (no live test per the LAW):** healthy -> 81, STABLE, target governs; miss-at-50 -> 37 with ceiling 37, STABLE, never returns; starve+miss -> 37, STABLE; `DREAM_SUBSTEPS` pinned -> controller **fully disabled**, because a deliberate act must always beat the controller (the LANGRAM lesson).
+
+**RE-PRICED per LAW: nothing here bounds the walk.** `corpus x reps x scale x visits` is untouched — no corpus, rep count, geometry or visit schedule changes. It decides only how much math rides inside a round-trip that happens anyway, and its guard rail is literally *"do not reduce teach throughput"*, so the walk cannot get longer as a result.
+
+**RESIDUAL, NAMED NOT HIDDEN:** under *sustained* teach starvation it oscillates 37<->57 on a ~60s cycle rather than settling flat. Bounded, safe and self-correcting, and deliberately preferred over a hard ceiling — a permanent ceiling earned from a TRANSIENT teach spike would under-use the card forever, which is the very failure being fixed.
+
+**AND THE HONEST HALF I DID NOT DO: the 45GB card cannot be filled from a 32GB coordinator, and that is a box decision.** Every byte on the donor has a master copy in the coordinator's HOST RAM — the box is CPU-only, so the allocator uses host RAM as its sizing basis (`brain-server.js:555`). The measured chain: `_safeMB = min(45% of 32GB, 32GB - 13GB) = 14,745MB` -> **max ~456,472,096 neurons = 1.49x the current 306,458,816**. The A6000 could hold **1,681,286,758** (5.5x) and **`DF7_MILESTONES` has no rung for it — the ladder tops out at tier 3 = 357,000,000, which we are already on.** A third cap for completeness: the tier baseline is hardcoded `_blMB = 16384`, so tier selection never looks at the card actually attached. **Adding a tier and reading the real donor VRAM buys 21% -> ~31% VRAM and 1.49x the math per substep, priced at a fresh walk and ~24 -> ~36 days of structure refresh. Genuinely filling 45GB needs a bigger coordinator box or a master that streams rather than holding a full copy.** Filed as `VRAMFILL.2` with the arithmetic attached; not actioned, because it changes `scale` and the RE-PRICE LAW makes that Gee's call.
+
+**Board: 32 open, 109 closed.**
