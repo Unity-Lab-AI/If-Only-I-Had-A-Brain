@@ -35753,3 +35753,32 @@ The press landed the batch above and the box booted on **`8ece6297`** at 21:55:1
 **⚠ FILED FROM THIS BOOT — `SCALEDOC.1`:** she came up at **411,216,550** neurons while `RESUME.md` / `ARCHITECTURE.md` / `NOW.md` all state **425,436,550** as though it were fixed. Both figures are post-`RAMHEAD`; the delta is boot-time free RAM. A number that will not reproduce, stated without its condition, is the documentation version of the lying-instrument pattern this ledger is about. The docs should say the count is derived at boot and varies with free RAM, and quote a figure with the boot that produced it.
 
 **Board: 2 open, 177 closed** — `LANGRAM.10` closed (176 → 177), leaving `SUBSTEPS.6`, and `SCALEDOC.1` filed above joins it.
+
+---
+
+## 2026-08-20 — WDCLEAN: the watchdog's own verdict gets a clean-exit stamp, the day the watchdog shipped
+
+> Gee (verbatim): *"Go over everything done this session and make sure ther are no mistakes and its all coded to do what we want"* → *"write the todo of what u find"* → *"okay fix that then"*
+
+The full-session audit found one real defect, and it was in the instrument shipped hours earlier to stop instruments lying.
+
+**`WDCLEAN.1` — the defect, read out of the shipped code, not guessed:** the SIGTERM handler (`brain-server.js`) force-saves and writes the resume marker **before** `process.exit(0)`, and the restart paths await checkpoint saves before `process.exit(42)`. This ledger already records the 5.4GB save carrying **two ~112s loop pins**. During that final stretch the loop is *genuinely* blocked, so the watchdog **truthfully** writes `.loop-freeze.json` `state: STALLED` — and then the process exits **on purpose**. The file persists (deploy-excluded per STATEWIPE, by design), and the documented reading — *"STALLED after a reboot means the previous process never came back"* — becomes a **forged verdict on every clean savestart**. Truthful at write time, a lie at read time: the exact failure family the watchdog was built against, reproduced by the watchdog.
+
+**The fix is one `process.on('exit')` handler, and `'exit'` is the precise discriminator:** it fires on every deliberate `process.exit()` — the SIGTERM path, the restart's `exit(42)`, Ctrl+C — and **never** on SIGKILL / OOM-kill / power loss. So stamping `state: CLEAN_EXIT` there (keeping the stall fields as history, plus `cleanExitAt` + `exitCode`) converts the shutdown-window stall into what it was, while a surviving `STALLED` file goes back to meaning exactly one thing: a hard death.
+
+**Two guards, both load-bearing:**
+1. **Only a `STALLED` state is stamped** — a `RECOVERED` file is already truthful.
+2. **Only if `observedAt` falls inside THIS process's lifetime.** Without this, a `STALLED` file left by a *previous* boot's hard death — the very evidence the artifact exists to preserve — would be destroyed by the next clean exit that happened along.
+
+Residual race noted in the comment: the watchdog thread could rewrite between the stamp and process death, but it writes only on its 10s repeat cadence — microseconds against ten seconds.
+
+**Verified by RUNNING all three paths, not by reasoning:**
+- **H1** — real watchdog, real stall (heartbeat stopped to simulate the shutdown-save window), then a deliberate `exit(7)`: file read `state=CLEAN_EXIT exitCode=7` with the stall history kept.
+- **H2** — a pre-planted `STALLED` file with `observedAt` from a previous day, clean exit: file **untouched**, old evidence survives.
+- **H3** — a child process with the handler registered, killed with `SIGKILL`: handler never ran, file stayed `STALLED`. The hard-death case still reads as a hard death.
+
+**`WDCLEAN.2` — folded in as filed:** `lastSeenBeat` in `loop-watchdog.js`, written twice and never read (a draft leftover of the recovery math), removed. The watchdog's on-disk `note` text was also updated so the artifact explains its own CLEAN_EXIT semantics to whoever reads it cold.
+
+Docs amended in the same commit everywhere the old absolute reading was stated: `docs/ADMIN-CONTROLS.md`, `docs/ARCHITECTURE.md` (LOOPNAME.8 banner, persistence contract), `docs/RESUME.md`, `docs/NOW.md`, `.claude/CLAUDE.md`.
+
+**Board: 2 open, 179 closed** — `WDCLEAN.1` + `WDCLEAN.2` closed; `SUBSTEPS.6` (probe gate) and `SCALEDOC.1` remain.
