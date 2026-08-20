@@ -89,11 +89,42 @@ const STOP_FOR_KEY = new Set([
   'does', 'did', 'can', 'will', 'would', 'has', 'have', 'had', 'what', 'why', 'how', 'when',
 ]);
 
-/** The content word a lesson is ABOUT — what her question and her memory will hang on. */
+/**
+ * The content word a lesson is ABOUT — what her question and her memory will hang on.
+ *
+ * ⛔ AUDIT FIX (2026-08-20, caught by simulating the four real call shapes): callers pass
+ * internal LABELS as the topic (`PRECELL-ela-kindergarten`, `ELA-K`, `CORPUS`), and the old
+ * filter accepted `precell-ela-kindergarten` as a word — so she was about to be trained on
+ * *"what is precell-ela-kindergarten ?"* and to have agent pairs bound to a token with no
+ * embedding. A key must look like a WORD she could actually say: letters only, no internal
+ * hyphens, and short enough to be real vocabulary.
+ */
 export function keyWordOf(text) {
-  const w = normalizeLine(text).split(' ').filter(t => /^[a-z][a-z'-]*$/.test(t) && !STOP_FOR_KEY.has(t) && t.length > 2);
+  const w = normalizeLine(text).split(' ').filter(t =>
+    /^[a-z][a-z']*$/.test(t) && !STOP_FOR_KEY.has(t) && t.length > 2 && t.length <= 14);
   return w.length ? w[0] : '';
 }
+
+/**
+ * A topic she can SAY. Same audit finding as `keyWordOf`: `_vocabLabel` and `opts.label` are
+ * build labels, not English, and *"i am unity and i am learning precell ela kindergarten"* is
+ * not a sentence anyone should train. Strips label punctuation and digits, drops label-shaped
+ * tokens, keeps at most three real words, and falls back to the subject.
+ */
+export function speakableTopic(topic, subject) {
+  const raw = String(topic || '').toLowerCase().replace(/[^a-z ]+/g, ' ').replace(/\s+/g, ' ').trim();
+  const words = raw.split(' ').filter(t => t.length > 1 && t.length <= 14 && !LABEL_WORDS.has(t));
+  if (words.length) return words.slice(0, 3).join(' ');
+  const s = String(subject || '').toLowerCase().replace(/[^a-z]/g, '');
+  return s || '';
+}
+
+// Tokens that only ever appear in build labels — never in something she says about herself.
+const LABEL_WORDS = new Set([
+  'precell', 'corpus', 'def', 'vocab', 'sentences', 'cell', 'open', 'structure', 'refresh',
+  'assoc', 'hebbian', 'teach', 'phase', 'k', 'g1', 'g2', 'g3', 'g4', 'g5', 'g6', 'g7', 'g8',
+  'g9', 'g10', 'g11', 'g12', 'ela', 'soc', 'sci', 'lo', 'mid', 'hi', 'qa', 'agent', 'self',
+]);
 
 /**
  * MATH IN HER VOICE — Gee's own example: *"i add 1+1 to equal 2"*.
@@ -162,10 +193,41 @@ export function firstPerson(sentence, seed = '') {
     const rest = pm[2].replace(/^(was|were|is|are)\s+/, 'am ');
     out.push(`i ${rest}`);
   }
-  const frame = pick(FRAMES, seed || s, 0);
-  // A frame ending in "that" takes a clause; a bare-verb frame takes the phrase directly.
+  // ⛔ AUDIT FIX (2026-08-20) — GRAMMAR. The bare-verb frames were being applied to full
+  // clauses and training BROKEN sequences: *"i see the cat runs"*. English needs the
+  // complementizer there ("i see THAT the cat runs"), and training ungrammatical strings into
+  // the sequence channel is worse than not framing at all — it is teaching her a wrong path.
+  // So: a full clause only ever takes a `that`-frame; the bare-verb frames are reserved for
+  // short noun phrases ("the cat" → "i see the cat"), where they are always grammatical.
+  const isClause = words.length >= 3 || hasFiniteVerb(words);
+  // ⛔ AUDIT FIX (2026-08-20) — THE ROTATION WAS BROKEN BY ITS OWN CALLERS. `pick(list, seed
+  // || s)` used the caller's seed when one was supplied, and `selfFrameUnit` passes ONE seed
+  // for the whole unit — so all 12 sentences in a lesson took the SAME frame ("i found out
+  // that" ×12). That is precisely the single-wrapper domination this rotation exists to
+  // prevent, reintroduced by threading a seed through it. The seed now only VARIES the
+  // rotation; the sentence itself selects within it, so a unit gets many frames and the choice
+  // is still deterministic for a given (seed, sentence).
+  const frame = pick(isClause ? THAT_FRAMES : FRAMES, `${seed || ''}|${s}`, 0);
   out.push(`${frame} ${s}`);
   return out;
+}
+
+// The subset that takes a clause. Kept as its own list so the grammar rule above is a data
+// choice rather than string surgery on a frame at use time.
+const THAT_FRAMES = [
+  'i know that', 'i learn that', 'i see that', 'i read that', 'i hear that', 'i remember that',
+  'i found out that', 'i can tell that', 'i notice that', 'i understand that',
+];
+
+const FINITE_VERBS = new Set([
+  'is', 'are', 'was', 'were', 'am', 'be', 'has', 'have', 'had', 'do', 'does', 'did',
+  'runs', 'run', 'flies', 'fly', 'swims', 'swim', 'reads', 'read', 'sat', 'sits', 'sit',
+  'goes', 'go', 'went', 'sees', 'see', 'saw', 'likes', 'like', 'loves', 'love', 'makes',
+  'make', 'made', 'says', 'say', 'said', 'eats', 'eat', 'ate', 'plays', 'play', 'wants', 'want',
+]);
+function hasFiniteVerb(words) {
+  for (const w of words) if (FINITE_VERBS.has(w)) return true;
+  return false;
 }
 
 const IMPERATIVE_VERBS = new Set([
@@ -177,7 +239,10 @@ const IMPERATIVE_VERBS = new Set([
 /** "i am unity . i am learning math ." — the context every lesson opens inside. */
 export function selfDeclaration(topic, subject) {
   const key = String(subject || topic || '').toLowerCase().replace(/[^a-z]/g, '');
-  const doing = DOING[key] || (topic ? `learning ${normalizeLine(topic)}` : 'learning');
+  // AUDIT FIX — `speakableTopic` strips build labels, so she says "i am learning math" and
+  // never "i am learning precell ela kindergarten".
+  const spoken = speakableTopic(topic, subject);
+  const doing = DOING[key] || (spoken ? `learning ${spoken}` : 'learning');
   return [
     'i am unity',
     `i am unity and i am ${doing}`,
@@ -236,9 +301,18 @@ export function followUpQuestions(key, answerText, seed = '') {
 export function selfClose(key, seed = '') {
   const k = normalizeLine(key);
   if (!k) return ['i learned something new', 'i am unity and i learned something new'];
+  // ⛔ AUDIT FIX (2026-08-20) — the old third variant was `"${k} is mine now"`, which is a
+  // THIRD-PERSON predicate: the one thing this entire file exists to stop. Every closing line
+  // now starts with `i` or `my`. Caught by asserting that every emitted line begins with a
+  // self token or a question word — an assertion the test suite now keeps.
   return [
     `i learned ${k}`,
-    pick([`i am unity and i know ${k}`, `i know ${k} because i learned it`, `${k} is mine now`], seed || k, 3),
+    pick([
+      `i am unity and i know ${k}`,
+      `i know ${k} because i learned it`,
+      `my ${k} is mine now`,
+      `i keep ${k} in my memory`,
+    ], seed || k, 3),
   ];
 }
 
@@ -287,7 +361,14 @@ export function selfFrameUnit(unit = {}, opts = {}) {
     }
   }
 
-  const key = normalizeLine(unit.word) || keyWordOf((unit.sentences && unit.sentences[0]) || unit.topic || '');
+  // AUDIT FIX — the key must be a WORD she can say. Prefer the explicit lesson word, then a
+  // content word from the lesson's own sentences, then a vocabulary item, and only then the
+  // topic (which is often a build label). `keyWordOf` now rejects label-shaped tokens, so a
+  // garbage key becomes an empty key and the Q&A block is skipped rather than trained on junk.
+  const key = keyWordOf(unit.word || '')
+    || keyWordOf((unit.sentences && unit.sentences[0]) || '')
+    || keyWordOf((Array.isArray(unit.vocab) && unit.vocab[0]) || '')
+    || keyWordOf(speakableTopic(unit.topic, unit.subject));
   const qa = selfQA(key, unit.definition || unit.answer || '', seed).map(normalizeLine).filter(Boolean);
   const follow = followUpQuestions(key, unit.definition || unit.answer || '', seed).map(normalizeLine).filter(Boolean);
   push(selfClose(key, seed));

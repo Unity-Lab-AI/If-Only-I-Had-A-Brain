@@ -68849,9 +68849,53 @@ var STOP_FOR_KEY = /* @__PURE__ */ new Set([
   "when"
 ]);
 function keyWordOf(text) {
-  const w = normalizeLine(text).split(" ").filter((t) => /^[a-z][a-z'-]*$/.test(t) && !STOP_FOR_KEY.has(t) && t.length > 2);
+  const w = normalizeLine(text).split(" ").filter((t) => /^[a-z][a-z']*$/.test(t) && !STOP_FOR_KEY.has(t) && t.length > 2 && t.length <= 14);
   return w.length ? w[0] : "";
 }
+function speakableTopic(topic, subject) {
+  const raw = String(topic || "").toLowerCase().replace(/[^a-z ]+/g, " ").replace(/\s+/g, " ").trim();
+  const words = raw.split(" ").filter((t) => t.length > 1 && t.length <= 14 && !LABEL_WORDS.has(t));
+  if (words.length) return words.slice(0, 3).join(" ");
+  const s = String(subject || "").toLowerCase().replace(/[^a-z]/g, "");
+  return s || "";
+}
+var LABEL_WORDS = /* @__PURE__ */ new Set([
+  "precell",
+  "corpus",
+  "def",
+  "vocab",
+  "sentences",
+  "cell",
+  "open",
+  "structure",
+  "refresh",
+  "assoc",
+  "hebbian",
+  "teach",
+  "phase",
+  "k",
+  "g1",
+  "g2",
+  "g3",
+  "g4",
+  "g5",
+  "g6",
+  "g7",
+  "g8",
+  "g9",
+  "g10",
+  "g11",
+  "g12",
+  "ela",
+  "soc",
+  "sci",
+  "lo",
+  "mid",
+  "hi",
+  "qa",
+  "agent",
+  "self"
+]);
 function mathToFirstPerson(text) {
   const t = normalizeLine(text).replace(/\s+/g, " ");
   const m = t.match(/^([0-9]+)\s*([+\-*x×/÷])\s*([0-9]+)\s*=\s*([0-9]+)/);
@@ -68919,9 +68963,74 @@ function firstPerson(sentence, seed = "") {
     const rest = pm[2].replace(/^(was|were|is|are)\s+/, "am ");
     out.push(`i ${rest}`);
   }
-  const frame = pick(FRAMES, seed || s, 0);
+  const isClause = words.length >= 3 || hasFiniteVerb(words);
+  const frame = pick(isClause ? THAT_FRAMES : FRAMES, `${seed || ""}|${s}`, 0);
   out.push(`${frame} ${s}`);
   return out;
+}
+var THAT_FRAMES = [
+  "i know that",
+  "i learn that",
+  "i see that",
+  "i read that",
+  "i hear that",
+  "i remember that",
+  "i found out that",
+  "i can tell that",
+  "i notice that",
+  "i understand that"
+];
+var FINITE_VERBS = /* @__PURE__ */ new Set([
+  "is",
+  "are",
+  "was",
+  "were",
+  "am",
+  "be",
+  "has",
+  "have",
+  "had",
+  "do",
+  "does",
+  "did",
+  "runs",
+  "run",
+  "flies",
+  "fly",
+  "swims",
+  "swim",
+  "reads",
+  "read",
+  "sat",
+  "sits",
+  "sit",
+  "goes",
+  "go",
+  "went",
+  "sees",
+  "see",
+  "saw",
+  "likes",
+  "like",
+  "loves",
+  "love",
+  "makes",
+  "make",
+  "made",
+  "says",
+  "say",
+  "said",
+  "eats",
+  "eat",
+  "ate",
+  "plays",
+  "play",
+  "wants",
+  "want"
+]);
+function hasFiniteVerb(words) {
+  for (const w of words) if (FINITE_VERBS.has(w)) return true;
+  return false;
 }
 var IMPERATIVE_VERBS = /* @__PURE__ */ new Set([
   "read",
@@ -68959,7 +69068,8 @@ var IMPERATIVE_VERBS = /* @__PURE__ */ new Set([
 ]);
 function selfDeclaration(topic, subject) {
   const key = String(subject || topic || "").toLowerCase().replace(/[^a-z]/g, "");
-  const doing = DOING[key] || (topic ? `learning ${normalizeLine(topic)}` : "learning");
+  const spoken = speakableTopic(topic, subject);
+  const doing = DOING[key] || (spoken ? `learning ${spoken}` : "learning");
   return [
     "i am unity",
     `i am unity and i am ${doing}`,
@@ -69005,7 +69115,12 @@ function selfClose(key, seed = "") {
   if (!k) return ["i learned something new", "i am unity and i learned something new"];
   return [
     `i learned ${k}`,
-    pick([`i am unity and i know ${k}`, `i know ${k} because i learned it`, `${k} is mine now`], seed || k, 3)
+    pick([
+      `i am unity and i know ${k}`,
+      `i know ${k} because i learned it`,
+      `my ${k} is mine now`,
+      `i keep ${k} in my memory`
+    ], seed || k, 3)
   ];
 }
 function selfFrameUnit(unit = {}, opts = {}) {
@@ -69036,7 +69151,7 @@ function selfFrameUnit(unit = {}, opts = {}) {
       push(firstPerson(s, seed));
     }
   }
-  const key = normalizeLine(unit.word) || keyWordOf(unit.sentences && unit.sentences[0] || unit.topic || "");
+  const key = keyWordOf(unit.word || "") || keyWordOf(unit.sentences && unit.sentences[0] || "") || keyWordOf(Array.isArray(unit.vocab) && unit.vocab[0] || "") || keyWordOf(speakableTopic(unit.topic, unit.subject));
   const qa = selfQA(key, unit.definition || unit.answer || "", seed).map(normalizeLine).filter(Boolean);
   const follow = followUpQuestions(key, unit.definition || unit.answer || "", seed).map(normalizeLine).filter(Boolean);
   push(selfClose(key, seed));
