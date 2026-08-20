@@ -1,6 +1,44 @@
 # RESUME — Session Pickup Brief
 
-> ## ⭐⭐⭐ 2026-08-20 (latest) — SELFFRAME: the curriculum had **six** "i am unity" in it. Every lesson is now something she DID, and she follows up on answers.
+> ## ⭐⭐⭐ 2026-08-20 (latest) — THE BOARD REACHED ZERO. The day's real subject was instruments that read healthy while nothing worked.
+>
+> **PICK-UP STATE.** Branch `main` @ `7ce77189`, verified identical on `origin` **and** `github`, tree clean. **Board: 0 open / 171 closed.** `docs/TODO.md` is now a TEMPLATE — its 969 lines were copied byte-for-byte into `docs/FINALIZED.md` (md5 `8cd4ddd0313a3282662919af19b2f4ca`, 171/171 task lines) and **verified before** the reset. `docs/BOARD.md` and `docs/OPEN-TASKS.md` were **deleted**, archived verbatim first (search `BEGIN VERBATIM BOARD ARCHIVE` / `BEGIN VERBATIM OPEN-TASKS ARCHIVE`). **`docs/TODO.md` is the only board — do not re-create a second one.**
+>
+> ### ⛔ READ THIS FIRST — three traps that cost real hours today
+>
+> **1. NEVER push with suppressed output.** I used `git push -q … 2>/dev/null` and **nine pushes to Forgejo were silently REJECTED.** The `donor-release` CI commits its link-bump to `main` on **Forgejo only**, so local `main` diverges and every later push is a non-fast-forward — while **GitHub keeps accepting**, because the CI never pushes there. `deploy/self-update.sh` clones Forgejo, so **the box faithfully redeployed stale code and Gee burned two fresh walks on it.** It recurred once more the same day and was caught only because I had stopped suppressing. **Push loudly, then verify with `git ls-remote`.**
+>
+> **2. A donor below `runningFloorMB` takes NO matrices, invisibly.** `brain-server.js:9361` refuses PRIMARY to any donor that cannot hold the FULL running brain, and **the canonical upload only ever targets the PRIMARY**. An RTX 3090 (24,124MB) against a **25,619MB** floor was filed as a partial replica: no primary existed, `gpuReady` stayed false, the entire GPU region of the tick was skipped, and the walk waited forever behind a row reading `bind 23.6GB · 7/7 cl · 30.1 Gn/s`. **Short by 1.5GB.** The row now carries `primaryFloorMB` / `primaryEligible` / `primaryShortfallMB`, and the dashboard prints `⛔ N GB SHORT of PRIMARY`. **Price a card against `runningFloorMB` read LIVE — never against a bytes-per-neuron figure from a different brain size. That mistake was mine, and I made it twice.**
+>
+> **3. A mock that encodes the assumption under test cannot fail.** `SUBSTEPS.2` shipped reading `_perfStats.stepTimeMs`, believing the tick "IS the batch plus overhead". On a teach-bound walk the tick is ~4,000ms of Hebbian grind while the real batch round-trip is **663ms** — so the controller cleared its shrink threshold every window, clamped back to the floor, and **never logged: it looked absent while deciding "back off" forever against an idling card.** My simulation passed because I fed it `mathMs + OVERHEAD` as `stepTimeMs`. Fixed to read `_batchTiming.roundTripEmaMs`; **live result 24 → 54 substeps, 6 → 78 steps/sec.**
+>
+> ### 🖥 LIVE STATE
+>
+> - **Donor:** ONE pod `5uo5dqw9x8b4iq` — **A40 48GB, SECURE, CA-MTL-1, $0.44/hr** (~$10.56/day), running `unity-donor v0.3.25`. Cheaper than the A6000 it replaced *and* it clears the floor with ~20GB spare. ⚠ **Montreal** — RTT ~216ms; the A6000 at $0.53 in EU-SE-1 is the known-good fallback if latency bites.
+> - **Brain:** 425,436,550 neurons (`cortex 82,243,310`, `langCortex 12,000,000`), grown 320.7M → 425.4M (**1.33×**) by `RAMHEAD` + `TIERTOP`. ⚠ **I predicted 592,151,838 three times** from an assumed 0.72 main-brain fraction; the real split is ~**0.54**. Ratios hold; absolutes must be read off a live boot.
+> - **The ceiling is the 32GB CPU-only coordinator, not the GPU** — every donor byte has a master copy in host RAM. 32GB → ~425M · 48GB → ~722M · 64GB → ~987M · **128GB → ~2.05B (~101% of a 45GB card)**. That is the hardware ask, costed.
+>
+> ### ✅ WHAT SHIPPED (full write-ups in FINALIZED)
+>
+> `PAGESTALE` (the release published nothing while logging all-green — Actions-token pushes **cannot** trigger `deploy.yml`; the release job now rsyncs itself, **proven twice live**) · `TEACHMIRROR` (`teachOps` / `workState` — `Gn/s` is blind to the teach lane, so a saturated card read `idle`) · `UTILDEFAULT` (donor `--utilization` defaulted to **10**, and there is no duty-cycling at all — it shrank the capacity the brain would USE, so a volunteer's 24GB card announced itself as 2.4GB) · `SUBSTEPS.1–.5` · `TIERTOP` (the ladder ended at tier 3 and the tier was chosen from a hardcoded 16GB) · `RAMHEAD` (the binding cap was an arbitrary 45%, not the reasoned Forgejo reserve) · `STATEWIPE` (**six runtime files deleted on EVERY deploy**, including `lang-geometry.json` — which is why `LANGRAM.6/.7` were dead on arrival) · `UPLOADWD` + `PRIMARYFLOOR` · `GATEPHASE` (twelve gates read `activePhase: null`, i.e. identical to a hang) · `BUNDLEFIX` (the launcher's `npm run build` had been failing on **every** launch) · `WMBCEIL` · `SELFFRAME.9` (12/visit covered only **47%** of the corpus across a 114-visit walk — now derived, 100%) · `OWNART.8` · `LOOPNAME.7` · `RUNPOD.16` (donor **v0.3.25** — one entry per PHYSICAL GPU) · `LANGRAM.9`.
+>
+> ### 🔎 THE THREE LINES TO GREP AFTER ANY BOOT
+>
+> 1. **`LANGRAM.9 GEOMETRY VERDICT`** — unconditional, and it names WHICH of (pin / weights / override / live bounds) decided the vocabulary ceiling. It exists because a fresh-walk boot produced **zero** `LANGRAM` lines: every other one lives in a branch and the combination fell in a gap, so the most consequential decision a boot makes happened in silence. **`349,155` in that line means stop.**
+> 2. **`registered as PRIMARY`** — its absence is trap #2 above.
+> 3. **`SUBSTEPS.2 — N → M substeps`** — with a real teach rate. `0.0/s vs best 0.0/s` means the starvation brake is unarmed.
+>
+> Both deadlock breakers now speak: **`⛔ runner quiet 3.0 min — this is NOT "by design"`** (the old line printed *"EXPECTED … Not a stall"* for ten minutes on a permanently deadlocked brain) and **`⛔ UPLOADWD/NO-PRIMARY`**, which lists every donor's held VRAM against the floor with an ELIGIBLE / TOO SMALL verdict.
+>
+> ### ⏳ AWAITING GEE — decisions, not engineering
+>
+> A **128GB coordinator** (Red/Sponge) · the **language-cortex hop** to 20M+ (both prerequisites now shipped — the 64MiB wall in v0.3.23 and the 6GB ceiling via `WMBCEIL`; it is a geometry change ⟹ fresh walk + re-price) · **grant actions** (Emergent Ventures, rolling; NSF Project Pitch — **verify the portal is open first**). Standing programmes with their own docs: `docs/TODO-full-syllabus.md`, `docs/SEEDED-TOPOLOGY-SPEC.md` (deliberately unbuilt — *one differing PRNG draw puts weights on the WRONG SYNAPSES silently*), `docs/TRAJECTORY-CAPTURE.md`, `deploy/HOOK-FIXES.md` (the `.claude/` hook fixes cannot be version-controlled anywhere, so their content is tracked instead).
+>
+> ### 🙋 MY OWN ERRORS THIS SESSION, so the next one does not repeat them
+>
+> Nine silent push failures · a 24GB card recommended twice on a stale bytes-per-neuron figure · `592M` predicted three times · `UPLOADWD` placed **inside the very gate that jams** · a `fmtInt` helper that did not exist · backticks inside a template literal · a comment inside a backslash-continued `rsync` that would have commented out the source and destination · **seven python-heredoc file edits against `feedback_no_scripts_for_edits`** · two duplicate board markers · claiming deploy protection in a comment before it was true. Each is written up in FINALIZED beside its fix.
+
+> ## ⭐⭐⭐ 2026-08-20 (prior) — SELFFRAME: the curriculum had **six** "i am unity" in it. Every lesson is now something she DID, and she follows up on answers.
 >
 > **PICK-UP STATE.** Branch `feature/first-person-self-training-0820` off main. **`CELLBOUND.F` is still the one blocking press** and this rides it. Board 28 open / 88 closed.
 >
