@@ -34060,3 +34060,26 @@ The other five: **`.resume-marker.json`** — where the walk resumes, so `Update
 **What DID land and is confirmed on the box** (`build 9475421e`): the RAMHEAD budget is live — the donor's own `gpu_init` reports `cortex — 71400000 neurons` and `hippocampus — 42839999` against the previous 61,291,763 / 36,775,058.
 
 **Board: 37 open, 121 closed.**
+
+---
+
+## 2026-08-20 — UPLOADWD: the walk deadlocked for 10+ minutes while printing "EXPECTED … Not a stall"
+
+> Gee (verbatim): *"so wtf is happening? the doner is just sitting there, why is this happening... it should be downloading the matirx of the brain shouldnt it"*
+> Gee (verbatim): *"fix it and we will fresh walk again and reset the pod"*
+
+**A permanent deadlock wearing a reassuring message, and it cost a fresh walk.** The donor was connected, all 7 clusters confirmed, `mx 0/0`, `cortexUploadFailure: null`, `bindIncapable: false`, `buf 0KB` — and the curriculum printed *"runner quiet 5.0 min — EXPECTED: cortex GPU state not fully ready yet … the walk waits by design … Not a stall"*, then the same at 10.0 min. Every field read healthy and nothing was happening. **I also spent two answers telling Gee it was the cold boot before reading the console ring — which said `phase=curriculum` on the first look and would have ruled that out immediately.**
+
+**MECHANISM.** The upload trigger (`brain-server.js:4774`) requires `cortexCluster._gpuProxy` truthy AND `!_cortexGpuInitStarted`. `_cortexGpuInitStarted` is set **true BEFORE the upload runs**, and only a donor-event re-arm or the coalesced release clears it. **A donor that drops mid-upload without the re-arm firing leaves the flag true forever** — the trigger can never pass, the language cortex never receives its 17 matrices, and the walk waits on a `_cortexFullyReady` that nothing will ever set.
+
+**THE STUCK FLAG WAS IDENTIFIED FROM THE LYING MESSAGE ITSELF.** Its `notReady` branch requires `_gpuProxy` **truthy** in order to print, and the `uploading` branch did not print — so `_gpuProxy` was fine and `_cortexUploadInFlight` was false, leaving `_cortexGpuInitStarted === true` as the only remaining blocker. The message concealing the bug is what proves which flag it is. **Also established: it does not self-heal — a full donor pod restart did NOT clear it**, the ring going from `runner quiet 5.0 min` to `10.0 min` straight through the reconnect.
+
+**THE FIX IS A BREAKER THAT DOES NOT CARE WHICH FLAG IS WRONG**, because guessing at flags is what made this a console-ring dig. It watches the OUTCOME — cortex not ready, no upload in flight, donor live — and after 180s (`DREAM_UPLOAD_WATCHDOG_MS`) forces the trigger's preconditions back to armed, winding `_allClustersConfirmedAt` back far enough that `timeReady` is true on the same pass rather than costing another fallback window on a brain already stalled for minutes. Idempotent: if the upload runs, `_cortexFullyReady` flips and the timer clears. **And it logs every deciding flag**, since none are readable from outside the process (`LOOPNAME.7`) — including an explicit note that a falsy `_gpuProxy` **cannot** be fixed by a re-arm and is the real bug to chase. Not a fallback under the NO-FALLBACKS law: one path, re-armed.
+
+**AND THE MESSAGE NOW ESCALATES.** *"EXPECTED … by design … Not a stall"* existed to silence a false alarm during a legitimate multi-GB upload — right for the first few minutes, **actively harmful after that, because it is the only thing the operator sees and it says "by design".** Past a 3-minute grace (`DREAM_UPLOAD_GRACE_MIN`) the same condition is reported via `console.error` as a DEADLOCK, naming `gpuProxy` / `cortexFullyReady` / `uploadInFlight`. **It deliberately never escalates while `uploading` is true** — a real 12+ minute upload must stay quiet. Verified across seven idle/flag combinations.
+
+**CAUGHT MY OWN SYNTAX ERROR:** the first draft wrote backticks **inside** a backtick-delimited template literal, terminating the string (`SyntaxError: missing ) after argument list`). `node --check` caught it pre-ship. Same class as the STATEWIPE comment-inside-a-backslash-continuation slip earlier today — both are errors in the syntax of the thing I was writing *in*, not the thing I was writing *about*.
+
+Verified: `node --check` on both files, **ESM `import()`** on `curriculum.js` (which `node --check` cannot catch), scope-checked that `SPARSE_UPLOAD_TIME_FALLBACK_MS` is declared in the same block it is used in, and the bundle rebuilt and confirmed to contain the change.
+
+**Board: 37 open, 124 closed.**

@@ -3656,6 +3656,24 @@ export class Curriculum {
               const brain = this.cluster && this.cluster._brain;
               const uploading = !!(brain && brain._cortexUploadInFlight);
               const notReady = !!(this.cluster && this.cluster._gpuProxy && this.cluster._cortexFullyReady !== true);
+              // UPLOADWD — "EXPECTED … Not a stall" STOPS BEING TRUE, and this
+              // message printed it at 5.0 and 10.0 minutes on a brain that was
+              // permanently deadlocked (`_cortexGpuInitStarted` stuck true, so
+              // the upload trigger could never pass). It was written to stop a
+              // false alarm during a legitimate multi-GB upload — correct for
+              // the first few minutes, actively harmful after that, because it
+              // is the ONLY thing the operator sees and it says "by design".
+              //
+              // So it now escalates. Under the grace window it reads as before.
+              // Past it, the same condition is reported as a REAL fault with the
+              // flags that decide it, which is what turns this from "wait longer"
+              // into "here is which precondition is wrong".
+              const _graceMin = Number(process.env.DREAM_UPLOAD_GRACE_MIN) > 0
+                ? Number(process.env.DREAM_UPLOAD_GRACE_MIN) : 3;
+              if ((uploading || notReady) && Number(idleMin) >= _graceMin && !uploading) {
+                console.error(`[Curriculum] ⛔ runner quiet ${idleMin} min — this is NOT "by design" any more. The cortex GPU state has been not-ready for ${idleMin} minutes with NO upload in flight, so the walk is DEADLOCKED, not waiting. gpuProxy=${!!(this.cluster && this.cluster._gpuProxy)} cortexFullyReady=${!!(this.cluster && this.cluster._cortexFullyReady)} uploadInFlight=false — the upload trigger needs _cortexGpuInitStarted false, and it is set BEFORE the upload runs, so a donor drop mid-upload leaves it stuck true forever. The server-side UPLOADWD watchdog should force a re-arm; if this message keeps repeating, that watchdog is not firing either. Grace window: DREAM_UPLOAD_GRACE_MIN=${_graceMin}min.${cacheInfo}`);
+                return;
+              }
               if (uploading || notReady) {
                 console.warn(`[Curriculum] runner quiet ${idleMin} min — EXPECTED: ${uploading ? 'the canonical sparse upload is IN FLIGHT (multi-GB at the 12M cortex ≈ 12+ min per donor connect; the walk waits for _cortexFullyReady by design)' : 'cortex GPU state not fully ready yet (upload/rebind still settling) — the walk waits by design'}.${cacheInfo} Not a stall; the watchdog resumes normal checks once teaching starts.`);
                 return;
