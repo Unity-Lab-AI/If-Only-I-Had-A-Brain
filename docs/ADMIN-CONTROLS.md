@@ -212,8 +212,12 @@ A dedicated **Profiling** card on the admin dashboard (`html/dashboard.html`, sc
   - Each episode was also written to **stderr while it was happening** (raw
     `fs.writeSync`, not `console.log` — worker stdio is piped through the parent's
     event loop, the very thing under investigation), and the last one is on the box
-    at `server/.loop-freeze.json`. **If that file reads `state: STALLED` after a
-    reboot, the previous process never recovered from it.** It is excluded from the
+    at `server/.loop-freeze.json`. **A deliberate exit stamps that file
+    `CLEAN_EXIT` on the way out (`WDCLEAN.1`)** — the shutdown save pins the loop
+    for ~112s, so without the stamp every clean savestart would leave a forged
+    `STALLED` verdict behind. **So a file still reading `state: STALLED` after a
+    reboot really does mean a hard death (SIGKILL / OOM / power)** — `process.on('exit')`
+    fires on every deliberate exit and never on those. It is excluded from the
     deploy overlay's `--delete`, so a redeploy cannot erase the evidence of the
     freeze that prompted the redeploy.
 - **Network** — WS bytes in/out totals + live KB/s rates, message counts, GPU

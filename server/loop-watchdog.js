@@ -84,7 +84,6 @@ function lastBreadcrumb() {
 let inFreeze = false;
 let freezeStartedAt = 0;
 let lastRepeatAt = 0;
-let lastSeenBeat = 0n;
 
 emit(`[LoopWatchdog] LOOPNAME.8 armed on a separate thread — polling the main loop every ${POLL_MS}ms, `
   + `reporting a stall past ${WARN_MS}ms and re-reporting every ${REPEAT_MS}ms while it lasts. `
@@ -119,8 +118,10 @@ setInterval(() => {
           episodesThisSession: Number(Atomics.load(beat, COUNT)),
           worstMsThisSession: Number(Atomics.load(beat, WORST)),
           breadcrumb: lastBreadcrumb(),
-          note: 'LOOPNAME.8 — written by a WATCHDOG THREAD, not the main loop. If state is still STALLED on the next boot, '
-            + 'the process never recovered from this stall and stalledForMs is the last measurement before it died.',
+          note: 'LOOPNAME.8 — written by a WATCHDOG THREAD, not the main loop. A deliberate exit (process.exit ran) '
+            + 'rewrites this to CLEAN_EXIT on the way out (WDCLEAN.1 — the shutdown save pins the loop, so a clean '
+            + 'savestart would otherwise leave a forged STALLED verdict here). So if state still reads STALLED on the '
+            + 'next boot, the process died HARD — SIGKILL / OOM / power — and stalledForMs is the last measurement before it did.',
         }, null, 2));
       } catch { /* the watchdog never becomes the failure */ }
       if (staleMs >= WARN_MS + REPEAT_MS) {
@@ -155,5 +156,4 @@ setInterval(() => {
       }, null, 2));
     } catch { /* non-fatal */ }
   }
-  lastSeenBeat = hb;
 }, POLL_MS);
