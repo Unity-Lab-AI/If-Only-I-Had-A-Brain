@@ -42,11 +42,60 @@ fn first_selected_index(cli: &cli::Cli, gpus: &[gpu::GpuInfo]) -> usize {
     }
 }
 
+/// RUNPOD.6 — describe CUDA devices as donatable GPUs when wgpu enumerates nothing.
+///
+/// The advertised caps come from `total_mem` (the same figure `CudaEngine::binding_mb()` reports
+/// once an engine exists) because the CUDA path has no 2 GB storage-binding limit — that ceiling
+/// is a Vulkan-on-NVIDIA artifact of `maxStorageBufferRange` being u32. Probing here costs one
+/// driver query per device: no context, no NVRTC compile, nothing that can fail loudly at
+/// startup. A device whose VRAM query fails still gets listed with a conservative 4096 MB, the
+/// same floor the engine uses, so a driver quirk cannot make a real card invisible.
+#[cfg(feature = "cuda")]
+fn cuda_only_gpus() -> Vec<gpu::GpuInfo> {
+    let names = cuda::device_names();
+    if names.is_empty() {
+        return Vec::new();
+    }
+    println!(
+        "[gpu] no wgpu adapter found, but CUDA reports {} device(s) — donating over CUDA (no Vulkan/X11 stack needed).",
+        names.len()
+    );
+    names
+        .into_iter()
+        .enumerate()
+        .map(|(index, name)| {
+            let vram = cuda::device_vram_mb(index);
+            let cap = if vram > 0 { vram } else { 4096 };
+            gpu::GpuInfo {
+                index,
+                name: if name.is_empty() { format!("CUDA device {index}") } else { name },
+                backend: "Cuda".to_string(),
+                device_type: "DiscreteGpu".to_string(),
+                max_buffer_mb: cap,
+                max_storage_binding_mb: cap,
+            }
+        })
+        .collect()
+}
+
 fn main() {
     let cli = cli::Cli::parse();
 
     // --list-gpus: enumerate and exit.
-    let gpus = gpu::enumerate();
+    // RUNPOD.6 — a CUDA card with no Vulkan stack IS a donatable GPU. `gpu::enumerate()` only
+    // sees wgpu adapters (Vulkan/Metal/DX12), which is the state most datacenter and cloud GPU
+    // containers do NOT ship: they have libcuda and nothing else. Every such host used to die
+    // below on "No GPU adapter detected — nothing to donate", so renting a headless GPU meant
+    // installing a GLVND/X11 package pile purely to satisfy an enumeration call the CUDA path
+    // never uses. When the cuda feature is compiled in and wgpu finds nothing, describe the CUDA
+    // devices directly instead. wgpu-visible hosts are untouched — this only fires on an
+    // otherwise-empty list.
+    let gpus = {
+        let found = gpu::enumerate();
+        #[cfg(feature = "cuda")]
+        let found = if found.is_empty() { cuda_only_gpus() } else { found };
+        found
+    };
     if cli.list_gpus {
         gpu::print_list(&gpus);
         return;
