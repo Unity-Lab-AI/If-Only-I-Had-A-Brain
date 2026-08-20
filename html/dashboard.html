@@ -2568,8 +2568,29 @@
         const vocabTail = (vp && vp.total > 0)
           ? ` &middot; <span style="color:#93c5fd;">${vp.label} ${vp.taught}/${vp.total}</span>${vp.lastWord ? ` &mdash; "${vp.lastWord}"` : ''}`
           : '';
+        // SELFFRAME TAIL (2026-08-20) — is she learning in FIRST PERSON right now?
+        // Counts of frames that actually landed, never a flag that the feature is on.
+        // `capped` is surfaced because a low count with a stated reason is honest and a
+        // low count without one is the lying-instrument pattern this dashboard exists
+        // to kill. Absent block => an older backend, so the tail simply does not render.
+        const sf = c.selfFrame;
+        let selfTail = '';
+        if (sf) {
+          const dose = (typeof sf.structureDose === 'number') ? sf.structureDose : 1;
+          const budget = (sf.phaseBudgetMs | 0) > 0 ? `${Math.round(sf.phaseBudgetMs / 60000)}min budget` : 'no budget';
+          const tip = `First-person training (SELFFRAME): every lesson is also taught as something SHE did`
+            + ` — "i am unity and i am reading", "i add one and one to make two".\n`
+            + `${sf.units | 0} lesson(s) reframed this boot, ${sf.lines | 0} first-person line(s) trained.\n`
+            + `This cell: ${sf.unitsThisCell | 0}/${sf.capPerCell | 0}${sf.capped ? ' — CAP REACHED, further lessons this cell train unframed (raise DREAM_SELF_FRAME_MAX_UNITS)' : ''}.\n`
+            + `Corpus reframing cursor: sentence ${sf.corpusCursor | 0} (a rotating 12-sentence sample per visit).\n`
+            + `STRUCTURE_DOSE ${dose} (1 = full authored reps) · ${budget} — cells run to completion; the consolidation gate is what keeps the walk finite.`;
+          const col = sf.on ? (sf.capped ? '#fbbf24' : '#f0abfc') : '#f87171';
+          selfTail = ` &middot; <span title="${tip.replace(/"/g, '&quot;')}" style="color:${col};cursor:help;">`
+            + (sf.on ? `1st-person ${sf.units | 0}u/${sf.lines | 0}L${sf.capped ? ' (cap)' : ''}` : '1st-person OFF')
+            + `</span>`;
+        }
         pctLabel = `${pct}% &middot; <span style="color:#4ade80;">phase ${c.cellPhasesStarted | 0}/${total}</span>`
-          + ` &middot; ${done} complete${phaseTail}${workTail}${vocabTail} &middot; ${elapsedMin} min`;
+          + ` &middot; ${done} complete${phaseTail}${workTail}${vocabTail}${selfTail} &middot; ${elapsedMin} min`;
         $('d-curr-cellbar').style.background = 'linear-gradient(90deg,#a78bfa,#ff4d9a)';
       } else {
         pctLabel = `idle &middot; 0 phases`;

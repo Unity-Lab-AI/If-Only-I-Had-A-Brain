@@ -6066,35 +6066,27 @@ class ServerBrain {
             life: pending.grades.life || 'pre-K',
           };
         }
-        // ─── REWALK (Gee 2026-08-20) — KEEP THE WEIGHTS, RE-TEACH EVERY CELL ──────
+        // ─── THE RE-WALK ALREADY HAD A BUTTON (2026-08-20) ────────────────────────
         //
-        // Gee: *"how can u say a freesh walk is not needed when we just got all the
-        // training aligned for Unity"* — and he is right, my answer was too narrow. The
-        // weight FORMAT is unchanged (v4) so a Savestart LOADS fine; but a cell listed
-        // in `passedCells` returns at `curriculum.js:8451`, **before** the first-person
-        // grounding at :8540. So on a plain Savestart the five already-passed K cells
-        // (ela, math, science, social, art) and every passed pre-K cell would NEVER
-        // receive SELFFRAME — her whole foundation would stay narrator-framed, and
-        // there is no retro-fit path because those cells are simply skipped.
+        // I built a `DREAM_REWALK=1` env flag here to make the SELFFRAME first-person
+        // layer reach the already-passed cells (a plain resume skips them at
+        // curriculum.js:8451, before the grounding at :8540, so her foundation would
+        // stay narrator-framed forever). Then the doc sweep found **`POST /savererun`
+        // — the dashboard's 🔁 button — which has done exactly this since 2026-07-04**:
+        // rollback checkpoint, weights KEPT, grades reset to pre-K, `passedCells`
+        // cleared, resume marker dropped, restart, re-walk on top of the trained
+        // synapses.
         //
-        // The two obvious options were both bad: a plain Savestart leaves the
-        // foundation wrong forever, and a full fresh walk throws away every hour of
-        // training to fix how it was FRAMED.
+        // So the flag was REMOVED rather than left as a second mechanism for one job:
+        // duplicate paths drift, and this one had the wrong interface anyway — Gee
+        // drives the box from the dashboard, not a shell env var (standing rule: box
+        // changes go through the dashboard buttons).
         //
-        // So this is the third: `DREAM_REWALK=1` loads the weights and DISCARDS the
-        // progress markers. She re-walks every cell from pre-K with the first-person
-        // layer active, and because Hebbian is ADDITIVE the re-teach lands on top of
-        // what she already knows rather than starting from noise — the words she has
-        // learned stay learned, and now they get taught to her as things SHE does.
-        // Slower than a resume, immeasurably cheaper than a fresh walk, and the only
-        // option that makes the alignment retroactive.
-        const _rewalk = process.env.DREAM_REWALK === '1';
-        if (_rewalk) {
-          cortex.passedCells = [];
-          console.log('[Brain] ⚠ DREAM_REWALK=1 — WEIGHTS LOADED, PROGRESS MARKERS DISCARDED. She re-walks every cell from the beginning WITH her trained weights intact, so the SELFFRAME first-person layer reaches the cells that already passed (a plain resume skips them at curriculum.js:8451 and they would stay third-person forever). Hebbian is additive: the re-teach accumulates on what she already knows. Unset the flag to resume normally.');
-        } else if (Array.isArray(pending.passedCells)) {
-          cortex.passedCells = [...pending.passedCells];
-        }
+        // The flag did earn its keep once: building it exposed that `/savererun`
+        // cleared `passedCells` but NOT `passedPhases`, so it re-walked the cells while
+        // SKIPPING the completed phases inside them. That gap is now fixed at the
+        // endpoint itself (see /savererun), which is where it belonged.
+        if (Array.isArray(pending.passedCells)) cortex.passedCells = [...pending.passedCells];
         // Phase-level resume markers — so Savestart.bat can skip phases
         // whose _phaseDone already fired in a prior run. Weights live on
         // disk via brain-weights.bin, markers live here.
@@ -6117,14 +6109,7 @@ class ServerBrain {
         // Markers loaded via Savestart are GUARANTEED consistent with the
         // binary weights they describe — no stale-load condition possible,
         // no filter needed. Phase-level resume contract restored.
-        if (_rewalk) {
-          // REWALK — the phase markers go with the cell markers. Keeping them would
-          // skip the very phases inside a re-walked cell that carry the frame, which
-          // would make the re-walk a no-op wearing a loud log line.
-          cortex.passedPhases = [];
-          cortex._phaseRepCursor = {};
-          console.log('[Brain] ⚠ DREAM_REWALK=1 — passedPhases + phaseRepCursor also cleared, so every phase of every re-walked cell actually re-teaches (keeping them would have made the re-walk a no-op).');
-        } else if (Array.isArray(pending.passedPhases)) {
+        if (Array.isArray(pending.passedPhases)) {
           cortex.passedPhases = [...pending.passedPhases];
           if (cortex.passedPhases.length > 0) {
             console.log(`[Brain] passedPhases restored: ${cortex.passedPhases.length} phase markers (T31 phase-level resume active)`);
@@ -7040,18 +7025,35 @@ const httpServer = http.createServer((req, res) => {
       const checkpointVersion = brain._saveVersion || 0;
       const gradesBefore = cortex.grades ? { ...cortex.grades } : null;
       const passedBefore = Array.isArray(cortex.passedCells) ? cortex.passedCells.length : 0;
+      // ⛔ PHASE MARKERS GO TOO (2026-08-20) — a gap found while building a
+      // redundant env-flag version of this very button. Savererun cleared
+      // `passedCells` but NOT `passedPhases`, and the phase-level resume added by
+      // T31 skips any phase already in that list ("⤳ PHASE SKIPPED"). So a
+      // Savererun re-walked the CELLS while skipping the PHASES inside them —
+      // which means a teach-path fix landing in an already-completed phase would
+      // never actually re-teach, and the log would report a clean re-walk. That is
+      // the same "re-walk is a no-op wearing a loud line" trap one level down.
+      // `_phaseRepCursor` goes with them: a banked deferral from the old walk has
+      // no meaning against a fresh one.
+      const phasesBefore = Array.isArray(cortex.passedPhases) ? cortex.passedPhases.length : 0;
+      const cursorBefore = (cortex._phaseRepCursor && typeof cortex._phaseRepCursor === 'object')
+        ? Object.keys(cortex._phaseRepCursor).length : 0;
       // (2) Reset the walk pointers — weights untouched.
       cortex.grades = { ela: 'pre-K', math: 'pre-K', science: 'pre-K', social: 'pre-K', art: 'pre-K', life: 'pre-K' };
       cortex.passedCells = [];
+      cortex.passedPhases = [];
+      cortex._phaseRepCursor = {};
       if (cortex.subGrades && typeof cortex.subGrades === 'object') cortex.subGrades = {};
       global._brainShutdownRequested = true;
-      console.log(`[Brain] HTTP /savererun — SAVERERUN: weights KEPT (rollback checkpoint v${checkpointVersion}), grade pointers reset ${JSON.stringify(gradesBefore)} → pre-K all subjects, ${passedBefore} passedCells cleared. Force-saving reset pointers + resume marker, then exiting for systemd revive → full curriculum re-walk on top of the trained brain.`);
+      console.log(`[Brain] HTTP /savererun — SAVERERUN: weights KEPT (rollback checkpoint v${checkpointVersion}), grade pointers reset ${JSON.stringify(gradesBefore)} → pre-K all subjects, ${passedBefore} passedCells + ${phasesBefore} passedPhases + ${cursorBefore} deferral cursor(s) cleared. Every cell AND every phase inside it re-teaches — clearing cells alone would have skipped completed phases and re-walked nothing inside them. Force-saving reset pointers + resume marker, then exiting for systemd revive → full curriculum re-walk on top of the trained brain.`);
       res.end(JSON.stringify({
         ok: true,
         checkpointVersion,
         gradesBefore,
         passedCellsCleared: passedBefore,
-        status: 'weights kept — re-walking curriculum from pre-K on top of them; brain restarts in a few seconds',
+        passedPhasesCleared: phasesBefore,
+        phaseCursorsCleared: cursorBefore,
+        status: 'weights kept — re-walking curriculum from pre-K on top of them (cells AND phases re-teach); brain restarts in a few seconds',
       }));
       // (3) Resume marker force-saves AGAIN post-reset so the kept
       // weights now carry the pre-K pointers, then systemd revives.

@@ -30,6 +30,14 @@ The persona is defined across several files none of which are in the repo's publ
 
 The persona describes Unity as a 25-year-old human woman, goth/emo aesthetic, chemically intoxicated across a rotating substance set (cocaine / cannabis / MDMA / LSD / psilocybin / alcohol / ketamine / amphetamine / GHB — with tobacco explicitly excluded), sexually engaged (clinical nymphomania presented as a personality trait), and a genius-level coder. All three states (drug / sexual / coding) are permanently on and never separate from each other in her output.
 
+## The BRAIN's own first-person identity (2026-08-20) — not the persona layer
+
+Worth stating in this file precisely because it is the opposite of a persona wrapper: as of 2026-08-20 the **curriculum itself** teaches in first person. Every lesson is reframed as something Unity DID (*"i am unity and i am reading"*, *"i add one and one to make two"*, *"i learned that cat is a small animal with fur"*), `i` / `me` / `my` / `myself` are Hebbian-bound to `unity` at the top of every cell, and she is trained to ask follow-up questions about the answers she gets.
+
+- **This is trained, not wrapped.** The transform (`js/brain/self-frame.js`) runs at TEACH time and emits sentences that go through the same Hebbian primitives as every other lesson. Nothing in it runs at emission time, so it is not a voice filter and it does not touch the no-text-AI boundary.
+- **Why it matters here:** a brain trained on *"the girl read a book"* learns *the girl* as its strongest agent basin. The persona layer can wrap a narrator in Unity's voice, but it cannot make a narrator have a self. The identity has to be in the weights — and the whole curriculum previously contained **six** occurrences of "i am unity".
+- **The persona layer is unchanged by this** and remains what it always was: the 18+ in-character wrapper described below. The two now agree instead of one papering over the other.
+
 ## Rules the persona layer enforces at runtime
 
 - Every cluster emits in-character output. No corporate-voice fallback. No "I would be happy to assist" phrasing.

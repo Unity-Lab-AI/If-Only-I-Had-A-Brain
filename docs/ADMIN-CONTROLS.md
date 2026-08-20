@@ -4,7 +4,7 @@
 > the "deployed website" and "the server" relate (they are NOT two brains), and
 > the #112.10 fix that makes **Stop** truly stop.
 >
-> Last updated: **2026-07-04** (added 🔁 Savererun — keep weights, re-walk curriculum from pre-K).
+> Last updated: **2026-08-20** (🔁 Savererun now clears **passedPhases** too — it was re-walking cells while skipping the phases inside them; plus the env-flag reference table).
 
 ---
 
@@ -60,7 +60,7 @@ ONLY through the Forgejo-authenticated admin lane.
 | **♻ Reset (fresh)** | `POST /reset` | 0 | `Restart=always` → revived | Writes `.force-fresh` → boots a wiped brain (identity-core Tier-3 anchors preserved) |
 | **⬆ Update & Fresh Walk** | `POST /update` | n/a (detached `self-update.sh` → `systemctl restart`) | `Restart=always` → revived | Overlays latest code (git-archive) **and** writes `.force-fresh` → reboots into a WIPED fresh K→PhD walk |
 | **⬆ Update & Savestart** | `POST /update?keep=1` | n/a (detached `self-update.sh` → `systemctl restart`) | `Restart=always` → revived | Overlays latest code **but SKIPS** `.force-fresh` → reboots and RESUMES saved weights — deploy a fix without losing training (relies on the unit's `DREAM_KEEP_STATE=1`) |
-| **🔁 Savererun** | `POST /savererun` | 0 | `Restart=always` → revived | **Weights KEPT** (rollback checkpoint taken first) — resets ONLY the walk pointers (`cluster.grades` → pre-K all subjects, `passedCells` cleared, sub-grades re-derive), force-saves the reset inside the kept weights + drops the resume marker, reboots; the boot walk **re-teaches the whole curriculum on top of the trained synapses** with the current teach code (Oja is self-normalizing — re-teach strengthens, doesn't corrupt). Episodic memory + identity-core preserved. Use after shipping teach-path fixes that need Hebbian mass the original walk never laid down (deploy the code first via ⬆ Update & Savestart, then press 🔁 Savererun once) |
+| **🔁 Savererun** | `POST /savererun` | 0 | `Restart=always` → revived | **Weights KEPT** (rollback checkpoint taken first) — resets ONLY the walk pointers (`cluster.grades` → pre-K all subjects, `passedCells` cleared, sub-grades re-derive), force-saves the reset inside the kept weights + drops the resume marker, reboots; the boot walk **re-teaches the whole curriculum on top of the trained synapses** with the current teach code (Oja is self-normalizing — re-teach strengthens, doesn't corrupt). Episodic memory + identity-core preserved. Use after shipping teach-path fixes that need Hebbian mass the original walk never laid down (deploy the code first via ⬆ Update & Savestart, then press 🔁 Savererun once). **2026-08-20 — now clears `passedPhases` + the deferral cursor as well as `passedCells`:** it was re-walking the CELLS while the T31 phase-resume skipped the completed PHASES inside them, so a teach-path fix landing in an already-passed phase never re-taught and the log still reported a clean re-walk. The response now reports `passedPhasesCleared` + `phaseCursorsCleared` so the press proves what it reset |
 
 Stop/Restart/Reset force-save weights first; Restart/Reset drop or set the resume
 marker so the revived process resumes (or wipes) correctly. The two **Update**
@@ -229,3 +229,33 @@ ping-stamp). All reads defensive — missing sources degrade to `—`, never thr
 > Deploy note: backend (`state.js` + `brain-server.js`) reaches the live brain only via
 > an **overlay redeploy + restart** (⬆ Update & Savestart, `DREAM_KEEP_STATE=1` — no
 > wipe). The `dashboard.html` half is frontend and auto-deploys on push to main.
+
+---
+
+## 🎛 Env knobs that change TRAINING (2026-08-20)
+
+Every one of these is opt-in with a stated default. **The buttons above are the normal
+way to drive the box** — these exist for a diagnostic run or a deliberate one-off, and
+each is listed with what it actually costs.
+
+| Env | Default | What it changes |
+|---|---|---|
+| `DREAM_PHASE_BUDGET_MS` | **0 — NO BUDGET** | A per-phase wall-clock. Was 20min; Gee removed it (*"some cells are big they take the length of time they take"*). Set positive to arm it when hunting a runaway phase. ⛔ `0` used to compute `Date.now() + 0` and stop after ONE rep while logging "disabled" — fixed, `0` now truly means off |
+| `DREAM_STRUCTURE_DOSE` | **1** (full authored reps) | Scales the sentence-structure rep counts. Was cut to 0.4; restored 2026-08-20. **The consolidation gate is now the only thing keeping the walk finite** — see `CONSTRAINTS.md §RE-PRICE THE WALK BEFORE REMOVING A GATE` |
+| `DREAM_SELF_FRAME` | on (`0` disables) | The first-person training layer (SELFFRAME) across every chokepoint |
+| `DREAM_SELF_FRAME_MAX_UNITS` | 16 per cell | How many lessons per cell get reframed in her voice. ~8.5 min/cell at 16; it prints when it stops |
+| `DREAM_INQUIRE_DEPTH` | 3 | How many follow-up questions she chains off one answer |
+| `DREAM_MINDSEYE_MAX_SIDE` | 2048 (`MAX_LINE`) | Ceiling for imagined/drawn canvases. Raised from a defensive 192/512 |
+| `DREAM_OWNART_CANVAS` | = draw canvas (512) | Canvas side for her own drawings |
+| `DREAM_OWNART_MAX_SUBJECTS` | 3 | How many drawable nouns from one message she composes |
+| `DREAM_DRAW_STYLE` | `own` | `own` = she constructs from a learned shape schema. `field` / `lineart` render what she SAW — useful, but they are not a drawing |
+| `DREAM_VM_CAP` | 4096 | Seen-concept field-C store size (was 384 — she was forgetting appearances while still learning words) |
+| `DREAM_REF_MAXSIDE` / `DREAM_REF_RENDER_PX` | 320 / 512 | Reference look-up fidelity — what her shape schemas are learned from |
+| `DREAM_LANG_UNPIN` | unset | Ignore `server/lang-geometry.json` for this boot and re-derive the language-cortex size. The pin exists because free-RAM sizing flip-flopped 12,000,000 ↔ 349,155 between boots |
+| `DREAM_DF7_REGISTRY_WAIT_MS` | 15min | How long a replica sync waits for a populated matrix registry instead of sweeping 0 of 0 and calling it a full replica |
+| `UNITY_USAGE_MAX_BYTES` / `UNITY_USAGE_KEEP_LINES` | 1MB / 2000 | Rotation for `.claude/.session-usage.jsonl` (it grew unbounded to 2.5MB) |
+
+> ⚠ **There is no `DREAM_REWALK`.** One was written on 2026-08-20 and removed the same
+> day: **🔁 Savererun already does it**, through the dashboard, with a rollback
+> checkpoint taken first. Two mechanisms for one job drift apart — and building the
+> duplicate is what exposed the `passedPhases` gap fixed above.

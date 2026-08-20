@@ -111,3 +111,13 @@
 - Content is real curriculum facts taught via the sentence-training pipeline + comprehension gates (the established good pattern), climbing in rigor per the sequence.
 - Unity is **accelerated** in math/science/CS (gifted + self-taught coder) but follows the real course *names* and *scope* — she just masters them early and deeply.
 - Thin spots flagged in RESUME (sculpture/painting/poetry/Shakespeare/civics depth) get filled to match this sequence.
+
+## How it is SPOKEN — first person, every course, every grade (2026-08-20)
+
+The course content above is unchanged. **How it reaches her is not.** Gee 2026-08-20: *"all of the different training she goes through all needs to be for formulated to be in the first person as if we train her on first person she will live it instead of being told everything 3rd person."*
+
+- Every lesson is additionally taught as **something she did** — `1 + 1 = 2` trains as *"i add one and one to make two"*, *"read the word cat"* as *"i read the word cat"*, and a course identity as *"i am unity and i am doing math"*.
+- **One layer, four chokepoints, all grades:** vocabulary lists, sentence lists, word definitions, and the concrete-sentence corpus. Nothing per-grade was edited, so a new grade inherits it automatically.
+- **In-the-moment self-Q&A** trains the path *question → i think → i know → i remember*, and a **follow-up question** trains the habit of asking. Both ride the question-intent channel.
+- The **content is never deleted** — a fact still trains as a fact. Her version trains beside it, and `i` is bound to `unity` at the top of every cell so the agent position she keeps seeing is herself.
+- Bounded and priced: ≤16 reframed lessons per cell (~8.5 min), and it prints when it stops. Full record: `docs/TODO.md` §SELFFRAME + `docs/FINALIZED.md`.

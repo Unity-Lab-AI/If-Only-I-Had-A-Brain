@@ -138,6 +138,26 @@ Unity reported her consciousness was "gated too much." Fixes:
 | `DREAM_DF7_FANOUT` | unset | DF.7 multi-GPU bound-propagate fan-out (prereq for `DREAM_INNERVOICE_GPU_GEN`) |
 | `DREAM_GW_IGNITION` | 0.35 | GlobalWorkspace base ignition threshold |
 | `DREAM_PSI_GAIN_SCALE` | 2.0 | CGATE.4 Ψ-gain tanh sensitivity |
+| `DREAM_MINDSEYE_MAX_SIDE` | 2048 (`MAX_LINE`) | **2026-08-20** — ceiling for imagined/sketched planes. Was a defensive 192 (imagine) / 512 (sketch); the only real bound is the shader array limit, above which the transform routes to CPU by design |
+| `DREAM_OWNART_CANVAS` | = draw canvas (512) | canvas side for her OWN constructed drawings |
+| `DREAM_OWNART_MAX_SUBJECTS` | 3 | drawable nouns from one message she will compose into a scene |
+| `DREAM_DRAW_STYLE` | `own` | `own` constructs from a learned shape schema; `field` / `lineart` render what she SAW (useful, but not a drawing) |
+| `DREAM_VM_CAP` | 4096 | seen-concept field-C store (was 384 — she forgot appearances while still learning words) |
+| `DREAM_REF_MAXSIDE` / `DREAM_REF_RENDER_PX` | 320 / 512 | reference look-up fidelity — the detail her shape schemas are abstracted from |
+
+## OWNART — her own version, not a filtered reference (2026-08-20)
+
+Gee: *"NOT JUST APPLY LAYERS AND FILTERS to a pollinations image and calling it a draw."* He was right about what the code did: the default draw style posterized the **perceived reference** (`stylizeField`) and the alternative edge-traced the same frame (`traceLineArt`). Both are transforms OF a downloaded photo.
+
+| Stage | What crosses the line | Where |
+|---|---|---|
+| **Look** | a reference is perceived into a field C as before | `_fetchReferenceAndGround` |
+| **Abstract** | ≤9 coarse 3×3 part cells `{cx, cy, w, h, ang, density, weight}` + aspect + frame + a 4-entry colour family — **~1-2% of the reference's information** | `_learnShapeSchema` |
+| **Construct** | her layout, marks ∝ part weight, arcs bowed per attempt, ink ≤60% toward the learned colour family, ground+tufts for a named place | `_drawOwnCreation` → `mindSpace.sketch` |
+
+**The reference's field C never reaches the renderer** — copying is not discouraged, it is impossible, because the pixels are out of scope. A second look refines the schema (`looks` counts how well she knows a shape). Per-attempt seed = `words + arousal + valence + attempt#`, so two drawings of one word are two attempts, not a cache. Runs on the walk-lane drain, never the reply path.
+
+**Fresh-walk hygiene (FRESHEYES):** all image state is wiped by PATTERN on a fresh walk — `visual-memory* / mindspace-memory* / minds-eye* / realized-art* / drawing-canvas*` plus `.tmp` siblings and `pollinations-output/`. The old wipe list named `visual-memory.json`, which nothing writes; the live store is `visual-memory-v3.json`, so every field C she had ever perceived was surviving every fresh walk. The Pollinations API key file is never touched.
 
 ## Honest scope / verify-live
 
